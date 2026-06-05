@@ -158,197 +158,176 @@ VLIB_NODE_FN (mpls_lookup_node) (vlib_main_t * vm,
 
               if (PREDICT_FALSE(lb0->lb_n_buckets > 1))
               {
-                  hash_c0 = vnet_buffer (b0)->ip.flow_hash =
-                      mpls_compute_flow_hash(h0, lb0->lb_hash_config);
-                  dpo0 = load_balance_get_fwd_bucket
-                      (lb0,
-                       (hash_c0 & (lb0->lb_n_buckets_minus_1)));
-              }
-              else
-              {
-                  dpo0 = load_balance_get_bucket_i (lb0, 0);
-              }
-              next0 = dpo0->dpoi_next_node;
+		hash_c0 = vnet_buffer (b0)->ip.flow_hash =
+		  mpls_compute_flow_hash (h0, lb0->lb_hash_config, b0->current_length);
+		dpo0 = load_balance_get_fwd_bucket (lb0, (hash_c0 & (lb0->lb_n_buckets_minus_1)));
+	      }
+	      else
+		{
+		  dpo0 = load_balance_get_bucket_i (lb0, 0);
+		}
+	      next0 = dpo0->dpoi_next_node;
 
-              vnet_buffer (b0)->ip.adj_index[VLIB_TX] = dpo0->dpoi_index;
+	      vnet_buffer (b0)->ip.adj_index[VLIB_TX] = dpo0->dpoi_index;
 
-              vlib_increment_combined_counter
-                  (cm, thread_index, lbi0, 1,
-                   vlib_buffer_length_in_chain (vm, b0));
-          }
-          if (MPLS_IS_REPLICATE & lbi1)
-          {
-              next1 = mpls_lookup_to_replicate_edge;
-              vnet_buffer (b1)->ip.adj_index[VLIB_TX] =
-                  (lbi1 & ~MPLS_IS_REPLICATE);
-          }
-          else
-          {
-              lb1 = load_balance_get(lbi1);
-              ASSERT (lb1->lb_n_buckets > 0);
-              ASSERT (is_pow2 (lb1->lb_n_buckets));
+	      vlib_increment_combined_counter (cm, thread_index, lbi0, 1,
+					       vlib_buffer_length_in_chain (vm, b0));
+	  }
+	  if (MPLS_IS_REPLICATE & lbi1)
+	    {
+	      next1 = mpls_lookup_to_replicate_edge;
+	      vnet_buffer (b1)->ip.adj_index[VLIB_TX] = (lbi1 & ~MPLS_IS_REPLICATE);
+	    }
+	  else
+	    {
+	      lb1 = load_balance_get (lbi1);
+	      ASSERT (lb1->lb_n_buckets > 0);
+	      ASSERT (is_pow2 (lb1->lb_n_buckets));
 
-              if (PREDICT_FALSE(lb1->lb_n_buckets > 1))
-              {
-                  hash_c1 = vnet_buffer (b1)->ip.flow_hash =
-                      mpls_compute_flow_hash(h1, lb1->lb_hash_config);
-                  dpo1 = load_balance_get_fwd_bucket
-                      (lb1,
-                       (hash_c1 & (lb1->lb_n_buckets_minus_1)));
-              }
-              else
-              {
-                  dpo1 = load_balance_get_bucket_i (lb1, 0);
-              }
-              next1 = dpo1->dpoi_next_node;
+	      if (PREDICT_FALSE (lb1->lb_n_buckets > 1))
+		{
+		  hash_c1 = vnet_buffer (b1)->ip.flow_hash =
+		    mpls_compute_flow_hash (h1, lb1->lb_hash_config, b1->current_length);
+		  dpo1 = load_balance_get_fwd_bucket (lb1, (hash_c1 & (lb1->lb_n_buckets_minus_1)));
+		}
+	      else
+		{
+		  dpo1 = load_balance_get_bucket_i (lb1, 0);
+		}
+	      next1 = dpo1->dpoi_next_node;
 
-              vnet_buffer (b1)->ip.adj_index[VLIB_TX] = dpo1->dpoi_index;
+	      vnet_buffer (b1)->ip.adj_index[VLIB_TX] = dpo1->dpoi_index;
 
-              vlib_increment_combined_counter
-                  (cm, thread_index, lbi1, 1,
-                   vlib_buffer_length_in_chain (vm, b1));
-          }
-          if (MPLS_IS_REPLICATE & lbi2)
-          {
-              next2 = mpls_lookup_to_replicate_edge;
-              vnet_buffer (b2)->ip.adj_index[VLIB_TX] =
-                  (lbi2 & ~MPLS_IS_REPLICATE);
-          }
-          else
-          {
-              lb2 = load_balance_get(lbi2);
-              ASSERT (lb2->lb_n_buckets > 0);
-              ASSERT (is_pow2 (lb2->lb_n_buckets));
+	      vlib_increment_combined_counter (cm, thread_index, lbi1, 1,
+					       vlib_buffer_length_in_chain (vm, b1));
+	    }
+	  if (MPLS_IS_REPLICATE & lbi2)
+	    {
+	      next2 = mpls_lookup_to_replicate_edge;
+	      vnet_buffer (b2)->ip.adj_index[VLIB_TX] = (lbi2 & ~MPLS_IS_REPLICATE);
+	    }
+	  else
+	    {
+	      lb2 = load_balance_get (lbi2);
+	      ASSERT (lb2->lb_n_buckets > 0);
+	      ASSERT (is_pow2 (lb2->lb_n_buckets));
 
-              if (PREDICT_FALSE(lb2->lb_n_buckets > 1))
-              {
-                  hash_c2 = vnet_buffer (b2)->ip.flow_hash =
-                      mpls_compute_flow_hash(h2, lb2->lb_hash_config);
-                  dpo2 = load_balance_get_fwd_bucket
-                      (lb2,
-                       (hash_c2 & (lb2->lb_n_buckets_minus_1)));
-              }
-              else
-              {
-                  dpo2 = load_balance_get_bucket_i (lb2, 0);
-              }
-              next2 = dpo2->dpoi_next_node;
+	      if (PREDICT_FALSE (lb2->lb_n_buckets > 1))
+		{
+		  hash_c2 = vnet_buffer (b2)->ip.flow_hash =
+		    mpls_compute_flow_hash (h2, lb2->lb_hash_config, b2->current_length);
+		  dpo2 = load_balance_get_fwd_bucket (lb2, (hash_c2 & (lb2->lb_n_buckets_minus_1)));
+		}
+	      else
+		{
+		  dpo2 = load_balance_get_bucket_i (lb2, 0);
+		}
+	      next2 = dpo2->dpoi_next_node;
 
-              vnet_buffer (b2)->ip.adj_index[VLIB_TX] = dpo2->dpoi_index;
+	      vnet_buffer (b2)->ip.adj_index[VLIB_TX] = dpo2->dpoi_index;
 
-              vlib_increment_combined_counter
-                  (cm, thread_index, lbi2, 1,
-                   vlib_buffer_length_in_chain (vm, b2));
-          }
-          if (MPLS_IS_REPLICATE & lbi3)
-          {
-              next3 = mpls_lookup_to_replicate_edge;
-              vnet_buffer (b3)->ip.adj_index[VLIB_TX] =
-                  (lbi3 & ~MPLS_IS_REPLICATE);
-          }
-          else
-          {
-              lb3 = load_balance_get(lbi3);
-              ASSERT (lb3->lb_n_buckets > 0);
-              ASSERT (is_pow2 (lb3->lb_n_buckets));
+	      vlib_increment_combined_counter (cm, thread_index, lbi2, 1,
+					       vlib_buffer_length_in_chain (vm, b2));
+	    }
+	  if (MPLS_IS_REPLICATE & lbi3)
+	    {
+	      next3 = mpls_lookup_to_replicate_edge;
+	      vnet_buffer (b3)->ip.adj_index[VLIB_TX] = (lbi3 & ~MPLS_IS_REPLICATE);
+	    }
+	  else
+	    {
+	      lb3 = load_balance_get (lbi3);
+	      ASSERT (lb3->lb_n_buckets > 0);
+	      ASSERT (is_pow2 (lb3->lb_n_buckets));
 
-              if (PREDICT_FALSE(lb3->lb_n_buckets > 1))
-              {
-                  hash_c3 = vnet_buffer (b3)->ip.flow_hash =
-                      mpls_compute_flow_hash(h3, lb3->lb_hash_config);
-                  dpo3 = load_balance_get_fwd_bucket
-                      (lb3,
-                       (hash_c3 & (lb3->lb_n_buckets_minus_1)));
-              }
-              else
-              {
-                  dpo3 = load_balance_get_bucket_i (lb3, 0);
-              }
-              next3 = dpo3->dpoi_next_node;
+	      if (PREDICT_FALSE (lb3->lb_n_buckets > 1))
+		{
+		  hash_c3 = vnet_buffer (b3)->ip.flow_hash =
+		    mpls_compute_flow_hash (h3, lb3->lb_hash_config, b3->current_length);
+		  dpo3 = load_balance_get_fwd_bucket (lb3, (hash_c3 & (lb3->lb_n_buckets_minus_1)));
+		}
+	      else
+		{
+		  dpo3 = load_balance_get_bucket_i (lb3, 0);
+		}
+	      next3 = dpo3->dpoi_next_node;
 
-              vnet_buffer (b3)->ip.adj_index[VLIB_TX] = dpo3->dpoi_index;
+	      vnet_buffer (b3)->ip.adj_index[VLIB_TX] = dpo3->dpoi_index;
 
-              vlib_increment_combined_counter
-                  (cm, thread_index, lbi3, 1,
-                   vlib_buffer_length_in_chain (vm, b3));
-          }
+	      vlib_increment_combined_counter (cm, thread_index, lbi3, 1,
+					       vlib_buffer_length_in_chain (vm, b3));
+	    }
 
-          /*
-           * before we pop the label copy th values we need to maintain.
-           * The label header is in network byte order.
-           *  last byte is the TTL.
-           *  bits 2 to 4 inclusive are the EXP bits
-           */
-          vnet_buffer (b0)->mpls.ttl = ((char*)h0)[3];
-          vnet_buffer (b0)->mpls.exp = (((char*)h0)[2] & 0xe) >> 1;
-          vnet_buffer (b0)->mpls.first = 1;
-          vnet_buffer (b1)->mpls.ttl = ((char*)h1)[3];
-          vnet_buffer (b1)->mpls.exp = (((char*)h1)[2] & 0xe) >> 1;
-          vnet_buffer (b1)->mpls.first = 1;
-          vnet_buffer (b2)->mpls.ttl = ((char*)h2)[3];
-          vnet_buffer (b2)->mpls.exp = (((char*)h2)[2] & 0xe) >> 1;
-          vnet_buffer (b2)->mpls.first = 1;
-          vnet_buffer (b3)->mpls.ttl = ((char*)h3)[3];
-          vnet_buffer (b3)->mpls.exp = (((char*)h3)[2] & 0xe) >> 1;
-          vnet_buffer (b3)->mpls.first = 1;
+	  /*
+	   * before we pop the label copy th values we need to maintain.
+	   * The label header is in network byte order.
+	   *  last byte is the TTL.
+	   *  bits 2 to 4 inclusive are the EXP bits
+	   */
+	  vnet_buffer (b0)->mpls.ttl = ((char *) h0)[3];
+	  vnet_buffer (b0)->mpls.exp = (((char *) h0)[2] & 0xe) >> 1;
+	  vnet_buffer (b0)->mpls.first = 1;
+	  vnet_buffer (b1)->mpls.ttl = ((char *) h1)[3];
+	  vnet_buffer (b1)->mpls.exp = (((char *) h1)[2] & 0xe) >> 1;
+	  vnet_buffer (b1)->mpls.first = 1;
+	  vnet_buffer (b2)->mpls.ttl = ((char *) h2)[3];
+	  vnet_buffer (b2)->mpls.exp = (((char *) h2)[2] & 0xe) >> 1;
+	  vnet_buffer (b2)->mpls.first = 1;
+	  vnet_buffer (b3)->mpls.ttl = ((char *) h3)[3];
+	  vnet_buffer (b3)->mpls.exp = (((char *) h3)[2] & 0xe) >> 1;
+	  vnet_buffer (b3)->mpls.first = 1;
 
-          /*
-           * pop the label that was just used in the lookup
-           */
-          vlib_buffer_advance(b0, sizeof(*h0));
-          vlib_buffer_advance(b1, sizeof(*h1));
-          vlib_buffer_advance(b2, sizeof(*h2));
-          vlib_buffer_advance(b3, sizeof(*h3));
+	  /*
+	   * pop the label that was just used in the lookup
+	   */
+	  vlib_buffer_advance (b0, sizeof (*h0));
+	  vlib_buffer_advance (b1, sizeof (*h1));
+	  vlib_buffer_advance (b2, sizeof (*h2));
+	  vlib_buffer_advance (b3, sizeof (*h3));
 
-          if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED))
-          {
-              mpls_lookup_trace_t *tr = vlib_add_trace (vm, node,
-                                                        b0, sizeof (*tr));
-              tr->next_index = next0;
-              tr->lb_index = lbi0;
-              tr->lfib_index = lfib_index0;
-              tr->hash = hash_c0;
-              tr->label_net_byte_order = h0->label_exp_s_ttl;
-          }
+	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
+	    {
+	      mpls_lookup_trace_t *tr = vlib_add_trace (vm, node, b0, sizeof (*tr));
+	      tr->next_index = next0;
+	      tr->lb_index = lbi0;
+	      tr->lfib_index = lfib_index0;
+	      tr->hash = hash_c0;
+	      tr->label_net_byte_order = h0->label_exp_s_ttl;
+	    }
 
-          if (PREDICT_FALSE(b1->flags & VLIB_BUFFER_IS_TRACED))
-          {
-              mpls_lookup_trace_t *tr = vlib_add_trace (vm, node,
-                                                        b1, sizeof (*tr));
-              tr->next_index = next1;
-              tr->lb_index = lbi1;
-              tr->lfib_index = lfib_index1;
-              tr->hash = hash_c1;
-              tr->label_net_byte_order = h1->label_exp_s_ttl;
-          }
+	  if (PREDICT_FALSE (b1->flags & VLIB_BUFFER_IS_TRACED))
+	    {
+	      mpls_lookup_trace_t *tr = vlib_add_trace (vm, node, b1, sizeof (*tr));
+	      tr->next_index = next1;
+	      tr->lb_index = lbi1;
+	      tr->lfib_index = lfib_index1;
+	      tr->hash = hash_c1;
+	      tr->label_net_byte_order = h1->label_exp_s_ttl;
+	    }
 
-          if (PREDICT_FALSE(b2->flags & VLIB_BUFFER_IS_TRACED))
-          {
-              mpls_lookup_trace_t *tr = vlib_add_trace (vm, node,
-                                                        b2, sizeof (*tr));
-              tr->next_index = next2;
-              tr->lb_index = lbi2;
-              tr->lfib_index = lfib_index2;
-              tr->hash = hash_c2;
-              tr->label_net_byte_order = h2->label_exp_s_ttl;
-          }
+	  if (PREDICT_FALSE (b2->flags & VLIB_BUFFER_IS_TRACED))
+	    {
+	      mpls_lookup_trace_t *tr = vlib_add_trace (vm, node, b2, sizeof (*tr));
+	      tr->next_index = next2;
+	      tr->lb_index = lbi2;
+	      tr->lfib_index = lfib_index2;
+	      tr->hash = hash_c2;
+	      tr->label_net_byte_order = h2->label_exp_s_ttl;
+	    }
 
-          if (PREDICT_FALSE(b3->flags & VLIB_BUFFER_IS_TRACED))
-          {
-              mpls_lookup_trace_t *tr = vlib_add_trace (vm, node,
-                                                        b3, sizeof (*tr));
-              tr->next_index = next3;
-              tr->lb_index = lbi3;
-              tr->lfib_index = lfib_index3;
-              tr->hash = hash_c3;
-              tr->label_net_byte_order = h3->label_exp_s_ttl;
-          }
+	  if (PREDICT_FALSE (b3->flags & VLIB_BUFFER_IS_TRACED))
+	    {
+	      mpls_lookup_trace_t *tr = vlib_add_trace (vm, node, b3, sizeof (*tr));
+	      tr->next_index = next3;
+	      tr->lb_index = lbi3;
+	      tr->lfib_index = lfib_index3;
+	      tr->hash = hash_c3;
+	      tr->label_net_byte_order = h3->label_exp_s_ttl;
+	    }
 
-          vlib_validate_buffer_enqueue_x4 (vm, node, next_index,
-                                           to_next, n_left_to_next,
-                                           bi0, bi1, bi2, bi3,
-                                           next0, next1, next2, next3);
-        }
+	  vlib_validate_buffer_enqueue_x4 (vm, node, next_index, to_next, n_left_to_next, bi0, bi1,
+					   bi2, bi3, next0, next1, next2, next3);
+	}
 
       while (n_left_from > 0 && n_left_to_next > 0)
       {
@@ -388,54 +367,49 @@ VLIB_NODE_FN (mpls_lookup_node) (vlib_main_t * vm,
 
               if (PREDICT_FALSE(lb0->lb_n_buckets > 1))
               {
-                  hash_c0 = vnet_buffer (b0)->ip.flow_hash =
-                      mpls_compute_flow_hash(h0, lb0->lb_hash_config);
-                  dpo0 = load_balance_get_fwd_bucket
-                      (lb0,
-                       (hash_c0 & (lb0->lb_n_buckets_minus_1)));
-              }
-              else
-              {
-                  dpo0 = load_balance_get_bucket_i (lb0, 0);
-              }
-              next0 = dpo0->dpoi_next_node;
-              vnet_buffer (b0)->ip.adj_index[VLIB_TX] = dpo0->dpoi_index;
+		hash_c0 = vnet_buffer (b0)->ip.flow_hash =
+		  mpls_compute_flow_hash (h0, lb0->lb_hash_config, b0->current_length);
+		dpo0 = load_balance_get_fwd_bucket (lb0, (hash_c0 & (lb0->lb_n_buckets_minus_1)));
+	      }
+	      else
+		{
+		  dpo0 = load_balance_get_bucket_i (lb0, 0);
+		}
+	      next0 = dpo0->dpoi_next_node;
+	      vnet_buffer (b0)->ip.adj_index[VLIB_TX] = dpo0->dpoi_index;
 
-              vlib_increment_combined_counter
-                  (cm, thread_index, lbi0, 1,
-                   vlib_buffer_length_in_chain (vm, b0));
-          }
+	      vlib_increment_combined_counter (cm, thread_index, lbi0, 1,
+					       vlib_buffer_length_in_chain (vm, b0));
+	  }
 
-          /*
-           * before we pop the label copy, values we need to maintain.
-           * The label header is in network byte order.
-           *  last byte is the TTL.
-           *  bits 2 to 4 inclusive are the EXP bits
-           */
-          vnet_buffer (b0)->mpls.ttl = ((char*)h0)[3];
-          vnet_buffer (b0)->mpls.exp = (((char*)h0)[2] & 0xe) >> 1;
-          vnet_buffer (b0)->mpls.first = 1;
+	  /*
+	   * before we pop the label copy, values we need to maintain.
+	   * The label header is in network byte order.
+	   *  last byte is the TTL.
+	   *  bits 2 to 4 inclusive are the EXP bits
+	   */
+	  vnet_buffer (b0)->mpls.ttl = ((char *) h0)[3];
+	  vnet_buffer (b0)->mpls.exp = (((char *) h0)[2] & 0xe) >> 1;
+	  vnet_buffer (b0)->mpls.first = 1;
 
-          /*
-           * pop the label that was just used in the lookup
-           */
-          vlib_buffer_advance(b0, sizeof(*h0));
+	  /*
+	   * pop the label that was just used in the lookup
+	   */
+	  vlib_buffer_advance (b0, sizeof (*h0));
 
-          if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED))
-          {
-              mpls_lookup_trace_t *tr = vlib_add_trace (vm, node,
-                                                        b0, sizeof (*tr));
-              tr->next_index = next0;
-              tr->lb_index = lbi0;
-              tr->lfib_index = lfib_index0;
-              tr->hash = hash_c0;
-              tr->label_net_byte_order = h0->label_exp_s_ttl;
-          }
+	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
+	    {
+	      mpls_lookup_trace_t *tr = vlib_add_trace (vm, node, b0, sizeof (*tr));
+	      tr->next_index = next0;
+	      tr->lb_index = lbi0;
+	      tr->lfib_index = lfib_index0;
+	      tr->hash = hash_c0;
+	      tr->label_net_byte_order = h0->label_exp_s_ttl;
+	    }
 
-          vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
-                                           to_next, n_left_to_next,
-                                           bi0, next0);
-        }
+	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next, n_left_to_next, bi0,
+					   next0);
+      }
 
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
@@ -554,7 +528,7 @@ VLIB_NODE_FN (mpls_load_balance_node) (vlib_main_t * vm,
 	      else
 		{
 		  hc0 = vnet_buffer (p0)->ip.flow_hash =
-		    mpls_compute_flow_hash (mpls0, lb0->lb_hash_config);
+		    mpls_compute_flow_hash (mpls0, lb0->lb_hash_config, p0->current_length);
 		}
 	      dpo0 = load_balance_get_fwd_bucket (
 		lb0, (hc0 & lb0->lb_n_buckets_minus_1));
@@ -573,7 +547,7 @@ VLIB_NODE_FN (mpls_load_balance_node) (vlib_main_t * vm,
 	      else
 		{
 		  hc1 = vnet_buffer (p1)->ip.flow_hash =
-		    mpls_compute_flow_hash (mpls1, lb1->lb_hash_config);
+		    mpls_compute_flow_hash (mpls1, lb1->lb_hash_config, p1->current_length);
 		}
 	      dpo1 = load_balance_get_fwd_bucket (
 		lb1, (hc1 & lb1->lb_n_buckets_minus_1));
@@ -648,7 +622,7 @@ VLIB_NODE_FN (mpls_load_balance_node) (vlib_main_t * vm,
 	      else
 		{
 		  hc0 = vnet_buffer (p0)->ip.flow_hash =
-		    mpls_compute_flow_hash (mpls0, lb0->lb_hash_config);
+		    mpls_compute_flow_hash (mpls0, lb0->lb_hash_config, p0->current_length);
 		}
 	      dpo0 = load_balance_get_fwd_bucket (
 		lb0, (hc0 & lb0->lb_n_buckets_minus_1));

@@ -674,13 +674,15 @@ esp_encrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 		    {
 		      *next_hdr_ptr = IP_PROTOCOL_IP_IN_IP;
 		      tunnel_encap_fixup_4o6 (ort->tunnel_flags, b[0],
-					      (const ip4_header_t *) payload, ip6);
+					      (const ip4_header_t *) payload, ip6,
+					      b[0]->current_length);
 		    }
 		  else if (VNET_LINK_MPLS == lt)
 		    {
 		      *next_hdr_ptr = IP_PROTOCOL_MPLS_IN_IP;
 		      tunnel_encap_fixup_mplso6 (ort->tunnel_flags, b[0],
-						 (const mpls_unicast_header_t *) payload, ip6);
+						 (const mpls_unicast_header_t *) payload, ip6,
+						 b[0]->current_length);
 		    }
 		  else
 		    ASSERT (0);

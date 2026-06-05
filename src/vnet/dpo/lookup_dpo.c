@@ -397,14 +397,14 @@ lookup_dpo_ip4_inline (vlib_main_t * vm,
 	    {
 		flow_hash_config0 = lb0->lb_hash_config;
 		hash_c0 = vnet_buffer (b0)->ip.flow_hash =
-		    ip4_compute_flow_hash (ip0, flow_hash_config0);
+		  ip4_compute_flow_hash (ip0, flow_hash_config0, b0->current_length);
 	    }
 
 	    if (PREDICT_FALSE (lb1->lb_n_buckets > 1))
 	    {
 		flow_hash_config1 = lb1->lb_hash_config;
 		hash_c1 = vnet_buffer (b1)->ip.flow_hash =
-		    ip4_compute_flow_hash (ip1, flow_hash_config1);
+		  ip4_compute_flow_hash (ip1, flow_hash_config1, b1->current_length);
 	    }
 
 	    dpo0 = load_balance_get_bucket_i(lb0,
@@ -530,7 +530,7 @@ lookup_dpo_ip4_inline (vlib_main_t * vm,
 	    {
 		flow_hash_config0 = lb0->lb_hash_config;
 		hash_c0 = vnet_buffer (b0)->ip.flow_hash =
-		    ip4_compute_flow_hash (ip0, flow_hash_config0);
+		  ip4_compute_flow_hash (ip0, flow_hash_config0, b0->current_length);
 	    }
 
 	    dpo0 = load_balance_get_bucket_i(lb0,
@@ -774,14 +774,14 @@ lookup_dpo_ip6_inline (vlib_main_t * vm,
 	    {
 		flow_hash_config0 = lb0->lb_hash_config;
 		hash_c0 = vnet_buffer (b0)->ip.flow_hash =
-		    ip6_compute_flow_hash (ip0, flow_hash_config0);
+		  ip6_compute_flow_hash (ip0, flow_hash_config0, b0->current_length);
 	    }
 
 	    if (PREDICT_FALSE (lb1->lb_n_buckets > 1))
 	    {
 		flow_hash_config1 = lb1->lb_hash_config;
 		hash_c1 = vnet_buffer (b1)->ip.flow_hash =
-		    ip6_compute_flow_hash (ip1, flow_hash_config1);
+		  ip6_compute_flow_hash (ip1, flow_hash_config1, b1->current_length);
 	    }
 
 	    dpo0 = load_balance_get_bucket_i(lb0,
@@ -890,7 +890,7 @@ lookup_dpo_ip6_inline (vlib_main_t * vm,
 	    {
 		flow_hash_config0 = lb0->lb_hash_config;
 		hash_c0 = vnet_buffer (b0)->ip.flow_hash =
-		    ip6_compute_flow_hash (ip0, flow_hash_config0);
+		  ip6_compute_flow_hash (ip0, flow_hash_config0, b0->current_length);
 	    }
 
 	    dpo0 = load_balance_get_bucket_i(lb0,
@@ -1057,39 +1057,37 @@ lookup_dpo_mpls_inline (vlib_main_t * vm,
 
                 if (PREDICT_FALSE(lb0->lb_n_buckets > 1))
                 {
-                    hash0 = vnet_buffer (b0)->ip.flow_hash =
-                        mpls_compute_flow_hash(hdr0, lb0->lb_hash_config);
-                    dpo0 = load_balance_get_fwd_bucket
-                        (lb0,
-                         (hash0 & (lb0->lb_n_buckets_minus_1)));
-                }
-                else
-                {
-                    dpo0 = load_balance_get_bucket_i (lb0, 0);
-                }
-                next0 = dpo0->dpoi_next_node;
+		  hash0 = vnet_buffer (b0)->ip.flow_hash =
+		    mpls_compute_flow_hash (hdr0, lb0->lb_hash_config, b0->current_length);
+		  dpo0 = load_balance_get_fwd_bucket (lb0, (hash0 & (lb0->lb_n_buckets_minus_1)));
+		}
+		else
+		  {
+		    dpo0 = load_balance_get_bucket_i (lb0, 0);
+		  }
+		next0 = dpo0->dpoi_next_node;
 
-                vnet_buffer (b0)->ip.adj_index[VLIB_TX] = dpo0->dpoi_index;
+		vnet_buffer (b0)->ip.adj_index[VLIB_TX] = dpo0->dpoi_index;
 
-                vlib_increment_combined_counter
-                    (cm, thread_index, lbi0, 1,
-                     vlib_buffer_length_in_chain (vm, b0));
-            }
+		vlib_increment_combined_counter (cm, thread_index, lbi0, 1,
+						 vlib_buffer_length_in_chain (vm, b0));
+	    }
 
-            vnet_buffer (b0)->mpls.ttl = ((char*)hdr0)[3];
-            vnet_buffer (b0)->mpls.exp = (((char*)hdr0)[2] & 0xe) >> 1;
-            vnet_buffer (b0)->mpls.first = 1;
-            vlib_buffer_advance(b0, sizeof(*hdr0));
+	    vnet_buffer (b0)->mpls.ttl = ((char *) hdr0)[3];
+	    vnet_buffer (b0)->mpls.exp = (((char *) hdr0)[2] & 0xe) >> 1;
+	    vnet_buffer (b0)->mpls.first = 1;
+	    vlib_buffer_advance (b0, sizeof (*hdr0));
 
-            if (!(b0->flags & VNET_BUFFER_F_LOOP_COUNTER_VALID)) {
-                vnet_buffer2(b0)->loop_counter = 0;
-                b0->flags |= VNET_BUFFER_F_LOOP_COUNTER_VALID;
-            }
+	    if (!(b0->flags & VNET_BUFFER_F_LOOP_COUNTER_VALID))
+	      {
+		vnet_buffer2 (b0)->loop_counter = 0;
+		b0->flags |= VNET_BUFFER_F_LOOP_COUNTER_VALID;
+	      }
 
-            vnet_buffer2(b0)->loop_counter++;
+	    vnet_buffer2 (b0)->loop_counter++;
 
-            if (PREDICT_FALSE(vnet_buffer2(b0)->loop_counter > MAX_LUKPS_PER_PACKET))
-                next0 = MPLS_LOOKUP_NEXT_DROP;
+	    if (PREDICT_FALSE (vnet_buffer2 (b0)->loop_counter > MAX_LUKPS_PER_PACKET))
+	      next0 = MPLS_LOOKUP_NEXT_DROP;
 
 	    if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED))
             {

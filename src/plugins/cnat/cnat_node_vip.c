@@ -55,7 +55,7 @@ cnat_vip_feature_new_flow_inline (vlib_main_t *vm, vlib_buffer_t *b, ip_address_
   rw = &ts->cts_rewrites[CNAT_LOCATION_FIB];
   ts->ts_rw_bm |= 1 << CNAT_LOCATION_FIB;
 
-  trk0 = cnat_load_balance (ct, af, ip4, ip6, &dpoi_index, cm->maglev_len);
+  trk0 = cnat_load_balance (ct, af, ip4, ip6, &dpoi_index, cm->maglev_len, b->current_length);
 
   if (PREDICT_FALSE (!trk0))
     {

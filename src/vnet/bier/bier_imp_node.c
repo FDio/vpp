@@ -83,80 +83,77 @@ bier_imp_dpo_inline (vlib_main_t * vm,
                  * calculate an entropy
                  */
                 if (0 == vnet_buffer(b0)->ip.flow_hash)
-                {
-                    vnet_buffer(b0)->ip.flow_hash =
-                        ip4_compute_flow_hash (ip0, IP_FLOW_HASH_DEFAULT);
-                }
-            }
-            if (FIB_PROTOCOL_IP6 == fproto)
-            {
-                /*
-                 * decrement the TTL on ingress to the BIER domain
-                 */
-                ip6_header_t * ip0 = vlib_buffer_get_current(b0);
+		  {
+		    vnet_buffer (b0)->ip.flow_hash =
+		      ip4_compute_flow_hash (ip0, IP_FLOW_HASH_DEFAULT, b0->current_length);
+		  }
+	    }
+	    if (FIB_PROTOCOL_IP6 == fproto)
+	      {
+		/*
+		 * decrement the TTL on ingress to the BIER domain
+		 */
+		ip6_header_t *ip0 = vlib_buffer_get_current (b0);
 
-                ip0->hop_limit -= 1;
+		ip0->hop_limit -= 1;
 
-                /*
-                 * calculate an entropy
-                 */
-                if (0 == vnet_buffer(b0)->ip.flow_hash)
-                {
-                    vnet_buffer(b0)->ip.flow_hash =
-                        ip6_compute_flow_hash (ip0, IP_FLOW_HASH_DEFAULT);
-                }
-            }
+		/*
+		 * calculate an entropy
+		 */
+		if (0 == vnet_buffer (b0)->ip.flow_hash)
+		  {
+		    vnet_buffer (b0)->ip.flow_hash =
+		      ip6_compute_flow_hash (ip0, IP_FLOW_HASH_DEFAULT, b0->current_length);
+		  }
+	      }
 
-            /* Paint the BIER header */
-            vlib_buffer_advance(b0, -(sizeof(bier_hdr_t) +
-                                      bier_hdr_len_id_to_num_bytes(bimp0->bi_tbl.bti_hdr_len)));
-            hdr0 = vlib_buffer_get_current(b0);
+	    /* Paint the BIER header */
+	    vlib_buffer_advance (b0, -(sizeof (bier_hdr_t) +
+				       bier_hdr_len_id_to_num_bytes (bimp0->bi_tbl.bti_hdr_len)));
+	    hdr0 = vlib_buffer_get_current (b0);
 
-            /* RPF check */
-            if (PREDICT_FALSE(BIER_RX_ITF == vnet_buffer(b0)->ip.adj_index[VLIB_RX]))
-            {
-                next0 = 0;
-            }
-            else
-            {
-                clib_memcpy_fast(hdr0, &bimp0->bi_hdr,
-                            (sizeof(bier_hdr_t) +
-                             bier_hdr_len_id_to_num_bytes(bimp0->bi_tbl.bti_hdr_len)));
-                /*
-                 * Fixup the entropy and protocol, both of which have a
-                 * zero value post the paint job
-                 */
-                hdr0->bh_oam_dscp_proto |=
-                    clib_host_to_net_u16(bproto << BIER_HDR_PROTO_FIELD_SHIFT);
-                hdr0->bh_first_word |=
-                    clib_host_to_net_u32((vnet_buffer(b0)->ip.flow_hash &
-                                          BIER_HDR_ENTROPY_FIELD_MASK) <<
-                                         BIER_HDR_ENTROPY_FIELD_SHIFT);
+	    /* RPF check */
+	    if (PREDICT_FALSE (BIER_RX_ITF == vnet_buffer (b0)->ip.adj_index[VLIB_RX]))
+	      {
+		next0 = 0;
+	      }
+	    else
+	      {
+		clib_memcpy_fast (
+		  hdr0, &bimp0->bi_hdr,
+		  (sizeof (bier_hdr_t) + bier_hdr_len_id_to_num_bytes (bimp0->bi_tbl.bti_hdr_len)));
+		/*
+		 * Fixup the entropy and protocol, both of which have a
+		 * zero value post the paint job
+		 */
+		hdr0->bh_oam_dscp_proto |=
+		  clib_host_to_net_u16 (bproto << BIER_HDR_PROTO_FIELD_SHIFT);
+		hdr0->bh_first_word |= clib_host_to_net_u32 (
+		  (vnet_buffer (b0)->ip.flow_hash & BIER_HDR_ENTROPY_FIELD_MASK)
+		  << BIER_HDR_ENTROPY_FIELD_SHIFT);
 
-                /*
-                 * use TTL 64 for the post encap MPLS label/BIFT-ID
-                 * this we be decremented in bier_output node.
-                 */
-                vnet_buffer(b0)->mpls.ttl = 65;
+		/*
+		 * use TTL 64 for the post encap MPLS label/BIFT-ID
+		 * this we be decremented in bier_output node.
+		 */
+		vnet_buffer (b0)->mpls.ttl = 65;
 
-                /* next node */
-                next0 = bimp0->bi_dpo[fproto].dpoi_next_node;
-                vnet_buffer(b0)->ip.adj_index[VLIB_TX] =
-                    bimp0->bi_dpo[fproto].dpoi_index;
-            }
+		/* next node */
+		next0 = bimp0->bi_dpo[fproto].dpoi_next_node;
+		vnet_buffer (b0)->ip.adj_index[VLIB_TX] = bimp0->bi_dpo[fproto].dpoi_index;
+	      }
 
-            if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED))
-            {
-                bier_imp_trace_t *tr =
-                    vlib_add_trace (vm, node, b0, sizeof (*tr));
-                tr->imp = bii0;
-                tr->hdr = *hdr0;
-            }
+	    if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
+	      {
+		bier_imp_trace_t *tr = vlib_add_trace (vm, node, b0, sizeof (*tr));
+		tr->imp = bii0;
+		tr->hdr = *hdr0;
+	      }
 
-            vlib_validate_buffer_enqueue_x1(vm, node, next_index, to_next,
-                                            n_left_to_next, bi0, next0);
-        }
-        vlib_put_next_frame (vm, node, next_index, n_left_to_next);
+	    vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next, n_left_to_next, bi0,
+					     next0);
+	}
+	vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
     return from_frame->n_vectors;
 }

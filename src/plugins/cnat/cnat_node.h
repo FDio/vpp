@@ -835,7 +835,7 @@ cnat_make_buffer_5tuple (vlib_buffer_t *b, ip_address_family_t af, cnat_5tuple_t
 
 static_always_inline cnat_ep_trk_t *
 cnat_load_balance (const cnat_translation_t *ct, ip_address_family_t af, ip4_header_t *ip4,
-		   ip6_header_t *ip6, u32 *dpoi_index, u32 maglev_len)
+		   ip6_header_t *ip6, u32 *dpoi_index, u32 maglev_len, u16 buffer_length)
 {
   const load_balance_t *lb0;
   const dpo_id_t *dpo0;
@@ -847,8 +847,8 @@ cnat_load_balance (const cnat_translation_t *ct, ip_address_family_t af, ip4_hea
     return (0);
 
   /* session table miss */
-  hash_c0 = (AF_IP4 == af ? ip4_compute_flow_hash (ip4, lb0->lb_hash_config) :
-			    ip6_compute_flow_hash (ip6, lb0->lb_hash_config));
+  hash_c0 = (AF_IP4 == af ? ip4_compute_flow_hash (ip4, lb0->lb_hash_config, buffer_length) :
+			    ip6_compute_flow_hash (ip6, lb0->lb_hash_config, buffer_length));
 
   if (PREDICT_FALSE (ct->lb_type == CNAT_LB_MAGLEV))
     bucket0 = ct->lb_maglev[hash_c0 % maglev_len];

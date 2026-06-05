@@ -131,9 +131,8 @@ tunnel_encap_fixup_6o6 (tunnel_encap_decap_flags_t flags,
 }
 
 static_always_inline void
-tunnel_encap_fixup_4o6 (tunnel_encap_decap_flags_t flags,
-			const vlib_buffer_t *b, const ip4_header_t *inner,
-			ip6_header_t *outer)
+tunnel_encap_fixup_4o6 (tunnel_encap_decap_flags_t flags, const vlib_buffer_t *b,
+			const ip4_header_t *inner, ip6_header_t *outer, u16 inner_length)
 {
   if (PREDICT_FALSE (flags & TUNNEL_ENCAP_DECAP_FLAG_ENCAP_COPY_DSCP))
     ip6_set_dscp_network_order (outer, ip4_header_get_dscp (inner));
@@ -145,14 +144,13 @@ tunnel_encap_fixup_4o6 (tunnel_encap_decap_flags_t flags,
     ip6_set_flow_label_network_order (
       outer, (0 != vnet_buffer (b)->ip.flow_hash ?
 		vnet_buffer (b)->ip.flow_hash :
-		ip4_compute_flow_hash (inner, IP_FLOW_HASH_DEFAULT)));
+		ip4_compute_flow_hash (inner, IP_FLOW_HASH_DEFAULT, inner_length)));
 }
 
 static_always_inline void
-tunnel_encap_fixup_mplso6 (tunnel_encap_decap_flags_t flags,
-			   const vlib_buffer_t *b,
-			   const mpls_unicast_header_t *inner,
-			   ip6_header_t *outer)
+tunnel_encap_fixup_mplso6 (tunnel_encap_decap_flags_t flags, const vlib_buffer_t *b,
+			   const mpls_unicast_header_t *inner, ip6_header_t *outer,
+			   u16 inner_length)
 {
   if (flags & TUNNEL_ENCAP_DECAP_FLAG_ENCAP_COPY_DSCP)
     ip6_set_dscp_network_order (outer,
@@ -161,7 +159,7 @@ tunnel_encap_fixup_mplso6 (tunnel_encap_decap_flags_t flags,
     ip6_set_flow_label_network_order (
       outer, (0 != vnet_buffer (b)->ip.flow_hash ?
 		vnet_buffer (b)->ip.flow_hash :
-		mpls_compute_flow_hash (inner, IP_FLOW_HASH_DEFAULT)));
+		mpls_compute_flow_hash (inner, IP_FLOW_HASH_DEFAULT, inner_length)));
 }
 
 static_always_inline void

@@ -13,6 +13,7 @@ from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, UDP
 from scapy.layers.inet6 import IPv6
 from vpp_ip_route import VppIpRoute, VppRoutePath
+from vpp_papi import VppEnum
 
 try:
     text_type = unicode
@@ -266,6 +267,174 @@ class TestECMP(VppTestCase):
 
         # Check that all packets were forwarded via pg1, pg2 and pg3
         self.assertEqual(rx_count, len(pkts))
+
+    def test_ip_truncated_gtp_header(self):
+        """IP truncated GTP-U header"""
+
+        src_ip_net = "16.0.0.1"
+        dst_ip_net = "32.0.0.1"
+        ip_prefix_len = 24
+
+        self.create_ip_routes(dst_ip_net, ip_prefix_len)
+
+        fhcv2 = VppEnum.vl_api_ip_flow_hash_config_v2_t
+        af = VppEnum.vl_api_address_family_t
+        self.vapi.set_ip_flow_hash_v3(
+            af=af.ADDRESS_IP4,
+            table_id=0,
+            flow_hash_config=(
+                fhcv2.IP_API_V2_FLOW_HASH_SRC_IP
+                | fhcv2.IP_API_V2_FLOW_HASH_DST_IP
+                | fhcv2.IP_API_V2_FLOW_HASH_SRC_PORT
+                | fhcv2.IP_API_V2_FLOW_HASH_DST_PORT
+                | fhcv2.IP_API_V2_FLOW_HASH_PROTO
+                | fhcv2.IP_API_V2_FLOW_HASH_GTPV1_TEID
+            ),
+        )
+
+        # Craft an IPv4 header with UDP header with GTP-U destination port, but no GTP-U header
+        pkt = (
+            Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac)
+            / IP(
+                src=src_ip_net,
+                dst=dst_ip_net,
+            )
+            / UDP(sport=1234, dport=2152)
+        )
+
+        self.pg0.add_stream([pkt] * 16)
+
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        rx_count = 0
+        for pg_if in self.pg_interfaces[1:]:
+            capture = pg_if._get_capture() or []
+            rx_count += len(capture)
+        self.pg0.assert_nothing_captured(remark="IP packets forwarded on pg0")
+
+        self.assertEqual(
+            rx_count,
+            16,
+            "Truncated GTP-U header packet should be forwarded via ECMP load-balance",
+        )
+
+    def test_ip_truncated_tcp_header(self):
+        """IP truncated TCP header"""
+
+        src_ip_net = "16.0.0.1"
+        dst_ip_net = "32.0.0.1"
+        ip_prefix_len = 24
+
+        self.create_ip_routes(dst_ip_net, ip_prefix_len)
+
+        # Craft an IPv4 header with protocol = TCP but no TCP header
+        pkt = Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) / IP(
+            src=src_ip_net,
+            dst=dst_ip_net,
+            proto=6,
+        )
+
+        self.pg0.add_stream([pkt] * 16)
+
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        rx_count = 0
+        for pg_if in self.pg_interfaces[1:]:
+            capture = pg_if._get_capture() or []
+            rx_count += len(capture)
+        self.pg0.assert_nothing_captured(remark="IP packets forwarded on pg0")
+
+        self.assertEqual(
+            rx_count,
+            16,
+            "Truncated TCP header packet should be forwarded via ECMP load-balance",
+        )
+
+    def test_ip6_truncated_gtp_header(self):
+        """IPv6 truncated GTP-U header"""
+
+        src_ip_net = "3ffe:51::1"
+        dst_ip_net = "3ffe:71::1"
+        ip_prefix_len = 64
+
+        self.create_ip_routes(dst_ip_net, ip_prefix_len)
+
+        fhcv2 = VppEnum.vl_api_ip_flow_hash_config_v2_t
+        af = VppEnum.vl_api_address_family_t
+        self.vapi.set_ip_flow_hash_v3(
+            af=af.ADDRESS_IP6,
+            table_id=0,
+            flow_hash_config=(
+                fhcv2.IP_API_V2_FLOW_HASH_SRC_IP
+                | fhcv2.IP_API_V2_FLOW_HASH_DST_IP
+                | fhcv2.IP_API_V2_FLOW_HASH_SRC_PORT
+                | fhcv2.IP_API_V2_FLOW_HASH_DST_PORT
+                | fhcv2.IP_API_V2_FLOW_HASH_PROTO
+                | fhcv2.IP_API_V2_FLOW_HASH_GTPV1_TEID
+            ),
+        )
+
+        # Craft an IPv6 header with UDP header with GTP-U destination port, but no GTP-U header
+        pkt = (
+            Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac)
+            / IPv6(
+                src=src_ip_net,
+                dst=dst_ip_net,
+            )
+            / UDP(sport=1234, dport=2152)
+        )
+
+        self.pg0.add_stream([pkt] * 16)
+
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        rx_count = 0
+        for pg_if in self.pg_interfaces[1:]:
+            capture = pg_if._get_capture() or []
+            rx_count += len(capture)
+        self.pg0.assert_nothing_captured(remark="IPv6 packets forwarded on pg0")
+
+        self.assertEqual(
+            rx_count,
+            16,
+            "Truncated GTP-U header packet should be forwarded via ECMP load-balance",
+        )
+
+    def test_ip6_truncated_tcp_header(self):
+        """IPv6 truncated TCP header"""
+
+        src_ip_net = "3ffe:51::1"
+        dst_ip_net = "3ffe:71::1"
+        ip_prefix_len = 64
+
+        self.create_ip_routes(dst_ip_net, ip_prefix_len)
+
+        # Craft an IPv6 header with protocol = TCP but no TCP header
+        pkt = Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) / IPv6(
+            src=src_ip_net,
+            dst=dst_ip_net,
+            nh=6,
+        )
+
+        self.pg0.add_stream([pkt] * 16)
+
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        rx_count = 0
+        for pg_if in self.pg_interfaces[1:]:
+            capture = pg_if._get_capture() or []
+            rx_count += len(capture)
+        self.pg0.assert_nothing_captured(remark="IPv6 packets forwarded on pg0")
+
+        self.assertEqual(
+            rx_count,
+            16,
+            "Truncated TCP header packet should be forwarded via ECMP load-balance",
+        )
 
 
 if __name__ == "__main__":

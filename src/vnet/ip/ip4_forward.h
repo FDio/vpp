@@ -108,7 +108,7 @@ ip4_lookup_inline (vlib_main_t * vm,
 	{
 	  flow_hash_config0 = lb0->lb_hash_config;
 	  hash_c0 = vnet_buffer (b[0])->ip.flow_hash =
-	    ip4_compute_flow_hash (ip0, flow_hash_config0);
+	    ip4_compute_flow_hash (ip0, flow_hash_config0, b[0]->current_length);
 	  dpo0 =
 	    load_balance_get_fwd_bucket (lb0,
 					 (hash_c0 &
@@ -122,7 +122,7 @@ ip4_lookup_inline (vlib_main_t * vm,
 	{
 	  flow_hash_config1 = lb1->lb_hash_config;
 	  hash_c1 = vnet_buffer (b[1])->ip.flow_hash =
-	    ip4_compute_flow_hash (ip1, flow_hash_config1);
+	    ip4_compute_flow_hash (ip1, flow_hash_config1, b[1]->current_length);
 	  dpo1 =
 	    load_balance_get_fwd_bucket (lb1,
 					 (hash_c1 &
@@ -136,7 +136,7 @@ ip4_lookup_inline (vlib_main_t * vm,
 	{
 	  flow_hash_config2 = lb2->lb_hash_config;
 	  hash_c2 = vnet_buffer (b[2])->ip.flow_hash =
-	    ip4_compute_flow_hash (ip2, flow_hash_config2);
+	    ip4_compute_flow_hash (ip2, flow_hash_config2, b[2]->current_length);
 	  dpo2 =
 	    load_balance_get_fwd_bucket (lb2,
 					 (hash_c2 &
@@ -150,7 +150,7 @@ ip4_lookup_inline (vlib_main_t * vm,
 	{
 	  flow_hash_config3 = lb3->lb_hash_config;
 	  hash_c3 = vnet_buffer (b[3])->ip.flow_hash =
-	    ip4_compute_flow_hash (ip3, flow_hash_config3);
+	    ip4_compute_flow_hash (ip3, flow_hash_config3, b[3]->current_length);
 	  dpo3 =
 	    load_balance_get_fwd_bucket (lb3,
 					 (hash_c3 &
@@ -236,7 +236,7 @@ ip4_lookup_inline (vlib_main_t * vm,
 	{
 	  flow_hash_config0 = lb0->lb_hash_config;
 	  hash_c0 = vnet_buffer (b[0])->ip.flow_hash =
-	    ip4_compute_flow_hash (ip0, flow_hash_config0);
+	    ip4_compute_flow_hash (ip0, flow_hash_config0, b[0]->current_length);
 	  dpo0 =
 	    load_balance_get_fwd_bucket (lb0,
 					 (hash_c0 &
@@ -250,7 +250,7 @@ ip4_lookup_inline (vlib_main_t * vm,
 	{
 	  flow_hash_config1 = lb1->lb_hash_config;
 	  hash_c1 = vnet_buffer (b[1])->ip.flow_hash =
-	    ip4_compute_flow_hash (ip1, flow_hash_config1);
+	    ip4_compute_flow_hash (ip1, flow_hash_config1, b[1]->current_length);
 	  dpo1 =
 	    load_balance_get_fwd_bucket (lb1,
 					 (hash_c1 &
@@ -308,7 +308,7 @@ ip4_lookup_inline (vlib_main_t * vm,
 	  flow_hash_config0 = lb0->lb_hash_config;
 
 	  hash_c0 = vnet_buffer (b[0])->ip.flow_hash =
-	    ip4_compute_flow_hash (ip0, flow_hash_config0);
+	    ip4_compute_flow_hash (ip0, flow_hash_config0, b[0]->current_length);
 	  dpo0 =
 	    load_balance_get_fwd_bucket (lb0,
 					 (hash_c0 &

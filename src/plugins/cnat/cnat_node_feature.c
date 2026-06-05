@@ -84,7 +84,7 @@ cnat_input_feature_new_flow_inline (vlib_main_t *vm, vlib_buffer_t *b, ip_addres
   cnat_make_buffer_5tuple (b, af, &rw->tuple, 0 /* iph_offset */, 0 /* swap */);
 
   /* session table miss */
-  trk0 = cnat_load_balance (ct, af, ip4, ip6, &dpoi_index, cm->maglev_len);
+  trk0 = cnat_load_balance (ct, af, ip4, ip6, &dpoi_index, cm->maglev_len, b->current_length);
 
   if (PREDICT_FALSE (!trk0))
     {
