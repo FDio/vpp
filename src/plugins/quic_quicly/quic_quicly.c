@@ -14,6 +14,7 @@
 #include <vnet/session/session.h>
 
 quic_quicly_main_t quic_quicly_main;
+quic_plugin_methods_t quic_mvt;
 
 /* quicly assume that the buffer provided by the caller of quicly_send is no greater than the burst
  * size of the pacer (10 packets) */
@@ -78,8 +79,7 @@ quic_quicly_connection_delete (quic_ctx_t *ctx)
   QUIC_DBG (2, "Deleting connection %u", ctx->c_c_index);
 
   QUIC_ASSERT (!quic_ctx_is_stream (ctx));
-  quic_stop_ctx_timer (
-    &quic_wrk_ctx_get (qm, ctx->c_thread_index)->timer_wheel, ctx);
+  quic_mvt.conn_tx_timer_stop (quic_wrk_ctx_get (qm, ctx->c_thread_index), ctx);
   QUIC_DBG (4, "Stopped timer for ctx %u", ctx->c_c_index);
 
   quic_increment_counter (qm, QUIC_ERROR_CLOSED_CONNECTION, 1);
@@ -218,11 +218,10 @@ quic_quicly_connection_closed (quic_ctx_t *ctx)
 static void
 quic_quicly_reschedule_ctx (quic_ctx_t *ctx)
 {
-  int64_t next_timeout = quicly_get_first_timeout (ctx->conn);
   ASSERT (!quic_ctx_is_stream (ctx));
-  quic_update_timer (
-    quic_wrk_ctx_get (quic_quicly_main.qm, ctx->c_thread_index), ctx,
-    next_timeout);
+  int64_t next_timeout = quicly_get_first_timeout (ctx->conn);
+  quic_mvt.conn_tx_timer_update (quic_wrk_ctx_get (quic_quicly_main.qm, ctx->c_thread_index), ctx,
+				 next_timeout);
 }
 
 static_always_inline void
@@ -280,7 +279,7 @@ quic_quicly_send_packets (quic_ctx_t *ctx)
   if (svm_fifo_provision_chunks (udp_session->tx_fifo, 0, 0, buf_size))
     {
       quic_worker_ctx_t *wc = quic_wrk_ctx_get (quic_quicly_main.qm, ctx->c_thread_index);
-      quic_update_timer (wc, ctx, wc->time_now + 1);
+      quic_mvt.conn_tx_timer_update (wc, ctx, wc->time_now + 1);
       return;
     }
 
@@ -327,12 +326,12 @@ conn_close:
 }
 
 static void
-quic_quicly_timer_expired (u32 conn_index)
+quic_quicly_tx_timer_expired (u32 conn_index, clib_thread_index_t thread_index)
 {
   quic_ctx_t *ctx;
 
-  ctx = quic_quicly_get_quic_ctx (conn_index, vlib_get_thread_index ());
-  ctx->timer_handle = QUIC_TIMER_HANDLE_INVALID;
+  ctx = quic_quicly_get_quic_ctx (conn_index, thread_index);
+  ctx->timers[QUIC_TIMER_TX] = QUIC_TIMER_HANDLE_INVALID;
   quic_quicly_send_packets (ctx);
 }
 
@@ -1023,7 +1022,7 @@ quic_quicly_connection_migrate_rpc (quic_ctx_t *ctx)
 
   conn = new_ctx->conn;
   quic_quicly_store_conn_ctx (conn, new_ctx);
-  new_ctx->timer_handle = QUIC_TIMER_HANDLE_INVALID;
+  new_ctx->timers[QUIC_TIMER_TX] = QUIC_TIMER_HANDLE_INVALID;
 
   quic_quicly_reschedule_ctx (new_ctx);
 
@@ -1289,21 +1288,17 @@ quic_quicly_accept_connection (quic_ctx_t *ctx, quic_quicly_rx_packet_ctx_t *pct
   QUIC_DBG (2, "Accept connection: pkt ctx_index %u, thread %u", ctx->c_c_index,
 	    ctx->c_thread_index);
 
-  if (ctx->c_s_index != QUIC_SESSION_INVALID)
-    {
-      /* TODO: check how this can happen */
-      QUIC_DBG (2, "Accept connection (already accepted): session_index %u, thread %u",
-		ctx->c_s_index, ctx->c_thread_index);
-      return QUIC_QUICLY_RX_ERROR_NONE;
-    }
+  ASSERT (ctx->c_s_index == QUIC_SESSION_INVALID);
 
   quicly_ctx = quic_quicly_get_quicly_ctx_from_ctx (ctx);
   rv = quicly_accept (&conn, quicly_ctx, NULL, src_addr, &pctx->packet, NULL,
-		      &qqm->next_cid[ctx->c_thread_index], NULL, NULL);
+		      &qqm->next_cid[ctx->c_thread_index], NULL,
+		      (void *) (((u64) ctx->c_thread_index) << 32 | (u64) ctx->c_c_index));
+  quic_mvt.conn_accept_timer_stop (quic_wrk_ctx_get (qm, ctx->c_thread_index), ctx);
   if (rv)
     {
       /* Invalid packet, pass */
-      assert (conn == NULL);
+      ASSERT (conn == NULL);
       QUIC_ERR ("Accept connection: failed with %U", quic_quicly_format_err, rv);
       /* close UDP session */
       if (ctx->conn_state < QUIC_CONN_STATE_CLOSED)
@@ -1316,8 +1311,6 @@ quic_quicly_accept_connection (quic_ctx_t *ctx, quic_quicly_rx_packet_ctx_t *pct
   ASSERT (conn != NULL);
 
   ++qqm->next_cid[ctx->c_thread_index].master_id;
-  /* Save ctx handle in quicly connection */
-  quic_quicly_store_conn_ctx (conn, ctx);
   ctx->conn = conn;
   quic_increment_counter (qm, QUIC_ERROR_ACCEPTED_CONNECTION, 1);
 
@@ -1995,23 +1988,17 @@ const static quic_engine_vft_t quic_quicly_engine_vft = {
   .proto_on_reset = quic_quicly_on_app_reset,
   .transport_closed = quic_quicly_transport_closed,
   .ctx_attribute = quic_quicly_ctx_attribute,
-  .conn_timer_expired = quic_quicly_timer_expired,
+  .conn_tx_timer_expired = quic_quicly_tx_timer_expired,
 };
 
 static clib_error_t *
 quic_quicly_init (vlib_main_t *vm)
 {
-  quic_register_engine_fn register_engine;
+  clib_error_t *err = quic_plugin_exports_init (&quic_mvt);
+  if (err)
+    return err;
 
-  register_engine =
-    vlib_get_plugin_symbol ("quic_plugin.so", "quic_register_engine");
-  if (register_engine == 0)
-    {
-      clib_warning ("quic_plugin.so not loaded...");
-      return clib_error_return (0, "Unable to get plugin symbol: "
-				   "'quic_register_engine'");
-    }
-  (*register_engine) (&quic_quicly_engine_vft, QUIC_ENGINE_QUICLY);
+  quic_mvt.register_engine (&quic_quicly_engine_vft, QUIC_ENGINE_QUICLY);
 
   return 0;
 }
