@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "05ef3cb7_2240d288",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2026-06-05T08:07:15Z",
+      "side": 1,
+      "message": "With patch set 5, the affected test now passes: https://logs.fd.io/vex-yul-rot-jenkins-1/csit-vpp-bisect-2n-emr/26960567490/csit_latest/log.html.gz#s1-s1-s1-s1-s4-t1\n\nI still believe that the underlying cause of missing time_wait state (the non-SYN packet may belong to old session that got expired too soon) will need to be fixed properly later, but I think this workaround is good enough for 2606 release cycle.",
+      "revId": "6f686a8f24a57e95270bb72d00e532f175b1b93d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
