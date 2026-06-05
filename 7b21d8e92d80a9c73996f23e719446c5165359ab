@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "3d533e58_d3a6251c",
+        "filename": "src/plugins/hs_apps/proxy_lite.c",
+        "patchSetId": 29
+      },
+      "lineNbr": 151,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-06-05T01:28:18Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "53f77c26_9a078af4",
+      "revId": "7b21d8e92d80a9c73996f23e719446c5165359ab",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "568eb725_1f37d9d5",
@@ -35,6 +53,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "2b0daa9f_1d4af20e",
+        "filename": "src/plugins/hs_apps/proxy_lite.c",
+        "patchSetId": 29
+      },
+      "lineNbr": 174,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-06-05T01:28:18Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "568eb725_1f37d9d5",
+      "revId": "7b21d8e92d80a9c73996f23e719446c5165359ab",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "104c38d9_ebdda5c1",
@@ -48,6 +84,30 @@
       "writtenOn": "2026-06-03T14:28:27Z",
       "side": 1,
       "message": "you should do this under lock",
+      "range": {
+        "startLine": 816,
+        "startChar": 0,
+        "endLine": 824,
+        "endChar": 31
+      },
+      "revId": "7b21d8e92d80a9c73996f23e719446c5165359ab",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "bfe7625d_93b497d9",
+        "filename": "src/plugins/hs_apps/proxy_lite.c",
+        "patchSetId": 29
+      },
+      "lineNbr": 824,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-06-05T01:28:18Z",
+      "side": 1,
+      "message": "This is running with worker thread lock. Were you thinking about something else?",
+      "parentUuid": "104c38d9_ebdda5c1",
       "range": {
         "startLine": 816,
         "startChar": 0,
@@ -81,6 +141,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "8fd1f90f_143760d1",
+        "filename": "src/plugins/hsi/hsi_tracker_private.h",
+        "patchSetId": 29
+      },
+      "lineNbr": 39,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-06-05T01:28:18Z",
+      "side": 1,
+      "message": "yup, thanks!",
+      "parentUuid": "a4c9e9d9_c1378e89",
+      "range": {
+        "startLine": 39,
+        "startChar": 2,
+        "endLine": 39,
+        "endChar": 5
+      },
+      "revId": "7b21d8e92d80a9c73996f23e719446c5165359ab",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "a47289cf_cd331f37",
@@ -104,6 +188,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "54bfd433_526934b0",
+        "filename": "src/plugins/hsi/hsi_tracker_private.h",
+        "patchSetId": 29
+      },
+      "lineNbr": 182,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-06-05T01:28:18Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "a47289cf_cd331f37",
+      "range": {
+        "startLine": 182,
+        "startChar": 2,
+        "endLine": 182,
+        "endChar": 4
+      },
+      "revId": "7b21d8e92d80a9c73996f23e719446c5165359ab",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "6c10ac96_4e44587f",
@@ -117,6 +225,24 @@
       "writtenOn": "2026-06-03T14:28:27Z",
       "side": 1,
       "message": "should be fine since we run little endian machines only, maybe you can do something safe with https://golang.google.cn/pkg/encoding/binary/ it has NativeEndian",
+      "revId": "7b21d8e92d80a9c73996f23e719446c5165359ab",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "71dfcd65_cfc40bc1",
+        "filename": "test/hs-test/infra/tcpharness/packet.go",
+        "patchSetId": 29
+      },
+      "lineNbr": 458,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-06-05T01:28:18Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "6c10ac96_4e44587f",
       "revId": "7b21d8e92d80a9c73996f23e719446c5165359ab",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
