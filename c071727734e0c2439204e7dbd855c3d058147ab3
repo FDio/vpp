@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "c430b135_803e34cd",
+        "filename": "src/plugins/linux-cp/lcp_router.c",
+        "patchSetId": 30
+      },
+      "lineNbr": 784,
+      "author": {
+        "id": 3306
+      },
+      "writtenOn": "2026-06-05T08:27:56Z",
+      "side": 1,
+      "message": "Done. Simplified to if (rv) with LCP_ROUTER_DBG, removed the unreachable else if (rv) branch.",
+      "revId": "c071727734e0c2439204e7dbd855c3d058147ab3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
