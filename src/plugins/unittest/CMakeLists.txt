@@ -46,6 +46,7 @@ add_vpp_plugin(unittest
   mfib_test.c
   mpcap_node.c
   policer_test.c
+  pool_cache_perf_test.c
   pool_test.c
   punt_test.c
   rbtree_test.c
