@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Pool Cache Benchmark Visualizer</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <div>
+          <h1>Pool Cache Benchmark Visualizer</h1>
+          <p id="dataset-summary">Loading benchmark CSV files...</p>
+        </div>
+        <div class="topbar-actions">
+          <label class="file-button">
+            <input id="file-input" type="file" accept=".csv,text/csv" multiple />
+            <span aria-hidden="true">+</span>
+            Add CSV
+          </label>
+          <button id="reset-button" type="button" class="ghost-button" title="Reload bundled CSV files">
+            Reset
+          </button>
+        </div>
+      </header>
+
+      <main class="workspace">
+        <aside class="control-rail" aria-label="Benchmark controls">
+          <section class="control-section">
+            <div class="section-heading">
+              <h2>Datasets</h2>
+              <span id="file-count">0 files</span>
+            </div>
+            <div id="dataset-list" class="dataset-list"></div>
+          </section>
+
+          <section class="control-section">
+            <div class="section-heading">
+              <h2>Metric</h2>
+            </div>
+            <div class="segmented" role="group" aria-label="Metric">
+              <button type="button" class="segment is-active" data-metric="cycles_per_op">Cycles/op</button>
+              <button type="button" class="segment" data-metric="mops">Mops</button>
+            </div>
+          </section>
+
+          <section class="control-section">
+            <div class="section-heading">
+              <h2>Group By</h2>
+            </div>
+            <div class="segmented vertical" role="group" aria-label="Grouping">
+              <button type="button" class="segment is-active" data-group="mode">Mode, then workers</button>
+              <button type="button" class="segment" data-group="workers">Workers, then mode</button>
+            </div>
+          </section>
+
+          <section class="control-section">
+            <div class="section-heading">
+              <h2>Scale</h2>
+            </div>
+            <div class="segmented" role="group" aria-label="Y-axis scale">
+              <button type="button" class="segment" data-scale="linear">Linear</button>
+              <button type="button" class="segment is-active" data-scale="log">Log10</button>
+            </div>
+          </section>
+
+          <section class="control-section">
+            <div class="section-heading">
+              <h2>Aggregate Across</h2>
+              <span id="aggregate-count">0 params</span>
+            </div>
+            <div id="parameter-grouping" class="check-list"></div>
+          </section>
+
+          <section class="control-section">
+            <div class="section-heading">
+              <h2>Modes</h2>
+            </div>
+            <div id="mode-filters" class="check-list"></div>
+          </section>
+
+          <section class="control-section">
+            <div class="section-heading">
+              <h2>Workers</h2>
+            </div>
+            <div id="worker-filters" class="check-list compact"></div>
+          </section>
+
+          <section class="control-section">
+            <div class="section-heading">
+              <h2>Parameter Values</h2>
+              <span id="parameter-value-count">0 filters</span>
+            </div>
+            <div id="parameter-value-filters" class="parameter-value-filters"></div>
+          </section>
+
+          <section class="control-section">
+            <div class="section-heading">
+              <h2>Parameters</h2>
+            </div>
+            <p id="parameter-split" class="parameter-note">Parameter splits appear after data loads.</p>
+            <dl id="parameter-list" class="parameter-list"></dl>
+          </section>
+        </aside>
+
+        <section class="analysis-panel">
+          <div id="drop-zone" class="drop-zone">
+            <div class="chart-toolbar">
+              <div>
+                <h2 id="chart-title">Cycles/op by mode and worker count</h2>
+                <p id="chart-subtitle">Box shows p25-p75, whiskers show min-max, center line is median.</p>
+              </div>
+              <div class="legend" id="legend"></div>
+            </div>
+            <div id="chart-host" class="chart-host" aria-live="polite"></div>
+          </div>
+
+          <section class="table-panel">
+            <div class="table-heading">
+              <div>
+                <h2>Summary</h2>
+                <p id="table-summary">No rows selected.</p>
+              </div>
+              <button id="download-button" type="button" class="ghost-button">Export Summary CSV</button>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Dataset</th>
+                    <th>Mode</th>
+                    <th>Workers</th>
+                    <th>Params</th>
+                    <th>Samples</th>
+                    <th>Min</th>
+                    <th>p25</th>
+                    <th>Median</th>
+                    <th>p75</th>
+                    <th>Max</th>
+                    <th>Mean</th>
+                  </tr>
+                </thead>
+                <tbody id="summary-body"></tbody>
+              </table>
+            </div>
+          </section>
+        </section>
+      </main>
+    </div>
+
+    <div id="tooltip" class="tooltip" role="tooltip" hidden></div>
+    <script src="./app.js"></script>
+  </body>
+</html>
