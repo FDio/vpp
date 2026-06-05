@@ -25,7 +25,7 @@ from enum import Enum
 from abc import ABC, abstractmethod
 from vpp_running import use_running
 
-from config import config, max_vpp_cpus
+from config import config, max_vpp_cores
 import hook as hookmodule
 from vpp_lo_interface import VppLoInterface
 from vpp_papi_provider import VppPapiProvider
@@ -289,14 +289,21 @@ class CPUInterface(ABC):
         return getattr(cls, "helper_count", 0)
 
     @classmethod
-    def get_cpus_required(cls):
+    def get_cores_required(cls):
+        # One physical core per VPP thread (main + each worker) and one per
+        # helper slot. Measured in cores, not logical CPUs - see assign_cores.
         return 1 + cls.get_vpp_worker_count() + cls.get_helper_count()
 
     @classmethod
-    def assign_cpus(cls, cpus):
+    def assign_cores(cls, cores):
+        # cores is a list of physical cores, each a list of its sibling logical
+        # CPU ids (core[0] is the primary thread). VPP threads take the primary
+        # thread of a whole core each - the sibling is left idle so no other
+        # thread shares a VPP core. Helpers get whole cores (both siblings) as a
+        # pool to load-balance their own threads within.
         n = 1 + cls.get_vpp_worker_count()
-        cls.cpus = cpus[:n]
-        cls.helper_cpus = cpus[n:]
+        cls.cpus = [core[0] for core in cores[:n]]
+        cls.helper_cpus = [cpu for core in cores[n:] for cpu in core]
 
     @classmethod
     def helper_affinity(cls):
@@ -1472,8 +1479,8 @@ class VppTestResult(unittest.TestResult):
             if test.__class__.skipped_due_to_cpu_lack:
                 test_title = colorize(
                     f"{test_title} [skipped - not enough cpus, "
-                    f"required={test.__class__.get_cpus_required()}, "
-                    f"available={max_vpp_cpus}]",
+                    f"required={test.__class__.get_cores_required()} cores, "
+                    f"available={max_vpp_cores} cores]",
                     YELLOW,
                 )
 

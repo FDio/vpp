@@ -490,12 +490,17 @@ available_cpus = psutil.Process().cpu_affinity()
 num_cpus = len(available_cpus)
 
 
-def _num_physical_cpus(cpus):
-    """Count the distinct physical cores backing the given logical CPUs.
+def _physical_cores(cpus):
+    """Group the given logical CPUs by the physical core that backs them.
 
-    Falls back to the logical CPU count when topology is unavailable.
+    Returns a list of cores, each a list of the sibling logical CPU ids that
+    share one physical core, lowest id first - so core[0] is the core's primary
+    thread. Cores keep first-seen order. Falls back to one logical CPU per core
+    (each a single-element list) when topology is unavailable, which makes the
+    rest of the framework collapse to plain logical-CPU allocation.
     """
-    cores = set()
+    cores = {}
+    order = []
     for cpu in cpus:
         topo = f"/sys/devices/system/cpu/cpu{cpu}/topology"
         try:
@@ -504,12 +509,17 @@ def _num_physical_cpus(cpus):
             with open(f"{topo}/core_id") as f:
                 core = f.read()
         except OSError:
-            return len(cpus)
-        cores.add((package, core))
-    return len(cores)
+            return [[cpu] for cpu in cpus]
+        key = (package, core)
+        if key not in cores:
+            cores[key] = []
+            order.append(key)
+        cores[key].append(cpu)
+    return [sorted(cores[key]) for key in order]
 
 
-num_physical_cpus = _num_physical_cpus(available_cpus)
+physical_cores = _physical_cores(available_cpus)
+num_physical_cpus = len(physical_cores)
 
 if config.max_vpp_cpus == "auto":
     max_vpp_cpus = num_cpus
@@ -517,6 +527,10 @@ elif config.max_vpp_cpus > 0:
     max_vpp_cpus = min(config.max_vpp_cpus, num_cpus)
 else:
     max_vpp_cpus = num_cpus
+
+# Core-unit analog of max_vpp_cpus: each VPP thread occupies one whole physical
+# core, so the per-suite core cap mirrors the historical per-suite cpu cap.
+max_vpp_cores = min(max_vpp_cpus, num_physical_cpus)
 
 if not config.skip_netns_tests:
     if not can_create_namespaces():
