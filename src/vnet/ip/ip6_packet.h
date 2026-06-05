@@ -544,12 +544,16 @@ ip6_ext_next_header_s (ip_protocol_t cur_nh, void *hdr, u32 max_offset,
   void *res = 0;
   if (ip6_ext_hdr (cur_nh))
     {
+      if (*offset + sizeof (ip6_ext_header_t) > max_offset)
+	return 0;
       hdrlen = ip6_ext_header_len (hdr);
       new_nh = ((ip6_ext_header_t *) hdr)->next_hdr;
       res = hdr + hdrlen;
     }
   else if (cur_nh == IP_PROTOCOL_IPV6_FRAGMENTATION)
     {
+      if (*offset + sizeof (ip6_frag_hdr_t) > max_offset)
+	return 0;
       ip6_frag_hdr_t *frag_hdr = (ip6_frag_hdr_t *) hdr;
       if (ip6_frag_hdr_offset (frag_hdr) > 0)
 	*last = true;
@@ -559,6 +563,8 @@ ip6_ext_next_header_s (ip_protocol_t cur_nh, void *hdr, u32 max_offset,
     }
   else if (cur_nh == IP_PROTOCOL_IPSEC_AH)
     {
+      if (*offset + sizeof (ip6_ext_header_t) > max_offset)
+	return 0;
       new_nh = ((ip6_ext_header_t *) hdr)->next_hdr;
       hdrlen = ip6_ext_authhdr_len (hdr);
       res = hdr + hdrlen;
@@ -568,7 +574,7 @@ ip6_ext_next_header_s (ip_protocol_t cur_nh, void *hdr, u32 max_offset,
       ;
     }
 
-  if (res && (*offset + hdrlen) >= max_offset)
+  if (res && (*offset + hdrlen) > max_offset)
     {
       return 0;
     }
