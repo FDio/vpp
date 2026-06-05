@@ -65,13 +65,13 @@ def spawn_gdb(binary_path, core_path):
 
 def start_vpp_in_gdb():
     from sanity_run_vpp import SanityTestCase
-    from config import available_cpus
+    from config import physical_cores
 
     # here we use SanityTestCase as a dummy to inherit functionality,
     # but any test case class could be used ...
     SanityTestCase.set_debug_flags("attach")
     SanityTestCase.tempdir = SanityTestCase.get_tempdir()
-    SanityTestCase.assign_cpus(available_cpus[: SanityTestCase.get_cpus_required()])
+    SanityTestCase.assign_cores(physical_cores[: SanityTestCase.get_cores_required()])
     SanityTestCase.setUpConstants()
     vpp_cmdline = SanityTestCase.vpp_cmdline
     print("Hacking cmdline to make VPP interactive.")
