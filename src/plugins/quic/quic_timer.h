@@ -7,102 +7,47 @@
 
 #include <quic/quic.h>
 
-#define QUIC_TIMER_INTERVAL	  0.001	      /* QUIC tick resolution (1ms) */
+#define QUIC_TIMER_INTERVAL	    0.001	/* QUIC tick resolution (1ms) */
 #define QUIC_DEFAULT_CONN_TIMEOUT (30 * 1000) /* 30 seconds */
 
-static_always_inline void
-quic_timer_initialize_wheel (tw_timer_wheel_1t_3w_1024sl_ov_t *tw, void (*expired_timer_cb) (u32 *),
-			     f64 now)
-{
-  ASSERT (tw->timers == 0);
-  tw_timer_wheel_init_1t_3w_1024sl_ov (tw, expired_timer_cb, QUIC_TIMER_INTERVAL, ~0);
-  tw->last_run_time = now;
-}
+void quic_timer_initialize_wheel (quic_timer_wheel_t *tw, void (*expired_timer_cb) (u32 *),
+				  f64 now);
 
 static_always_inline void
 quic_update_time (f64 now, u8 thread_index)
 {
   quic_main_t *qm = &quic_main;
-  tw_timer_wheel_1t_3w_1024sl_ov_t *tw =
-    &quic_wrk_ctx_get (qm, thread_index)->timer_wheel;
+  quic_timer_wheel_t *tw = &quic_wrk_ctx_get (qm, thread_index)->timer_wheel;
 
   quic_wrk_ctx_get (qm, thread_index)->time_now = (int64_t) (now * 1000.f);
-  tw_timer_expire_timers_1t_3w_1024sl_ov (tw, now);
+  tw_timer_expire_timers_quic_twslov (tw, now);
 }
 
 static_always_inline void
-quic_stop_ctx_timer (tw_timer_wheel_1t_3w_1024sl_ov_t *tw, quic_ctx_t *ctx)
+quic_start_conn_timer (quic_timer_wheel_t *tw, quic_ctx_t *ctx, quic_timers_t timer_id,
+		       u32 interval)
 {
-  if (ctx->timer_handle == QUIC_TIMER_HANDLE_INVALID)
-    return;
-  tw_timer_stop_1t_3w_1024sl_ov (tw, ctx->timer_handle);
-  ctx->timer_handle = QUIC_TIMER_HANDLE_INVALID;
-}
-
-static_always_inline void
-quic_update_timer (quic_worker_ctx_t *wc, quic_ctx_t *ctx,
-		   int64_t next_timeout)
-{
-  tw_timer_wheel_1t_3w_1024sl_ov_t *tw = &wc->timer_wheel;
-  int64_t next_interval;
-  session_t *quic_session;
-  int rv;
-
   ASSERT (!quic_ctx_is_stream (ctx));
-  /*  This timeout is in ms which is the unit of our timer */
-  next_interval = next_timeout - wc->time_now;
-  if (next_timeout == 0 || next_interval <= 0)
-    {
-      if (ctx->c_s_index == QUIC_SESSION_INVALID || ctx->flags & QUIC_F_NO_APP_SESSION ||
-	  ctx->conn_state == QUIC_CONN_STATE_HANDSHAKE)
-	{
-	  next_interval = 1;
-	}
-      else
-	{
-	  quic_session = session_get (ctx->c_s_index, ctx->c_thread_index);
-	  if (svm_fifo_set_event (quic_session->tx_fifo))
-	    {
-	      rv = session_program_tx_io_evt (quic_session->handle,
-					      SESSION_IO_EVT_TX);
-	      if (PREDICT_FALSE (rv))
-		{
-		  QUIC_ERR ("Failed to enqueue builtin_tx %d", rv);
-		}
-	    }
-	  return;
-	}
-    }
-
-  ASSERT (vlib_get_thread_index () == ctx->c_thread_index ||
-	  vlib_get_thread_index () == 0);
-
-  QUIC_DBG (4, "Timer set to %ld (int %ld) for ctx %u", next_timeout,
-	    next_interval, ctx->c_c_index);
-
-  if (ctx->timer_handle == QUIC_TIMER_HANDLE_INVALID)
-    {
-      if (next_timeout == INT64_MAX)
-	{
-	  QUIC_DBG (4, "timer for ctx %u already stopped", ctx->c_c_index);
-	  return;
-	}
-      ctx->timer_handle =
-	tw_timer_start_1t_3w_1024sl_ov (tw, ctx->c_c_index, 0, next_interval);
-    }
-  else
-    {
-      if (next_timeout == INT64_MAX)
-	{
-	  quic_stop_ctx_timer (tw, ctx);
-	  QUIC_DBG (4, "Stopping timer for ctx %u", ctx->c_c_index);
-	}
-      else
-	{
-	  tw_timer_update_1t_3w_1024sl_ov (tw, ctx->timer_handle,
-					   next_interval);
-	}
-    }
+  ASSERT (ctx->timers[timer_id] == QUIC_TIMER_HANDLE_INVALID);
+  QUIC_DBG (4, "Started timer for ctx %u, timer_id %u", ctx->c_c_index, timer_id);
+  ctx->timers[timer_id] = tw_timer_start_quic_twslov (tw, ctx->c_c_index, timer_id, interval);
 }
+
+static_always_inline void
+quic_stop_conn_timer (quic_timer_wheel_t *tw, quic_ctx_t *ctx, quic_timers_t timer_id)
+{
+  ASSERT (!quic_ctx_is_stream (ctx));
+  QUIC_DBG (4, "Stopped timer for ctx %u, timer_id %u", ctx->c_c_index, timer_id);
+  if (ctx->timers[timer_id] == QUIC_TIMER_HANDLE_INVALID)
+    return;
+  tw_timer_stop_quic_twslov (tw, ctx->timers[timer_id]);
+  ctx->timers[timer_id] = QUIC_TIMER_HANDLE_INVALID;
+}
+
+void quic_update_conn_tx_timer (quic_worker_ctx_t *wc, quic_ctx_t *ctx, int64_t next_timeout);
+
+void quic_stop_conn_tx_timer (quic_worker_ctx_t *wc, quic_ctx_t *ctx);
+
+void quic_stop_conn_accept_timer (quic_worker_ctx_t *wc, quic_ctx_t *ctx);
 
 #endif /* __included_quic_timer_h__ */
