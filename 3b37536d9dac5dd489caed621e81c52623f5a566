@@ -35,6 +35,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "3db7996e_83f617d7",
+        "filename": "src/vnet/flow/flow.h",
+        "patchSetId": 13
+      },
+      "lineNbr": 360,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2026-06-05T12:39:18Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "325ff22c_f3e67c3a",
+      "revId": "3b37536d9dac5dd489caed621e81c52623f5a566",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "d140c12c_b14ba238",
@@ -48,6 +66,24 @@
       "writtenOn": "2026-06-05T10:15:37Z",
       "side": 1,
       "message": "Since `vnet_flow_t flow` is not zero-initialized, should we explicitly set fields `rss_types`/`rss_fun`/`queue_index`/`queue_num` (set in v2 API) to zero here ?",
+      "revId": "3b37536d9dac5dd489caed621e81c52623f5a566",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "83b4db43_ca41df69",
+        "filename": "src/vnet/flow/flow_api.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 225,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2026-06-05T12:39:18Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "d140c12c_b14ba238",
       "revId": "3b37536d9dac5dd489caed621e81c52623f5a566",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
