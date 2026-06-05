@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "54d25333_6985d963",
+        "filename": "src/plugins/cnat/cnat_inline.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 29,
+      "author": {
+        "id": 2556
+      },
+      "writtenOn": "2026-06-05T16:49:21Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "e93ec49a_f6862b28",
+      "revId": "07892fffc381d49b7f0646f64fe4cc85f029c1a5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "b947342f_b6629679",
@@ -31,6 +49,24 @@
       "writtenOn": "2026-06-01T13:49:15Z",
       "side": 1,
       "message": "as we do not have read lock anymore, this should be a simple spinlock instead",
+      "revId": "07892fffc381d49b7f0646f64fe4cc85f029c1a5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "d84bf462_98606fbf",
+        "filename": "src/plugins/cnat/cnat_inline.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 43,
+      "author": {
+        "id": 2556
+      },
+      "writtenOn": "2026-06-05T16:49:21Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "b947342f_b6629679",
       "revId": "07892fffc381d49b7f0646f64fe4cc85f029c1a5",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -52,6 +88,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "aa751d9a_44281bab",
+        "filename": "src/plugins/cnat/cnat_inline.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 53,
+      "author": {
+        "id": 2556
+      },
+      "writtenOn": "2026-06-05T16:49:21Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "87fe4422_3674d462",
+      "revId": "07892fffc381d49b7f0646f64fe4cc85f029c1a5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "684b6c06_5b173671",
@@ -65,6 +119,24 @@
       "writtenOn": "2026-06-01T13:49:15Z",
       "side": 1,
       "message": "ctm-\u003ets_free \u003d clib_bitmap_set_region (ctm-\u003ets_free, 0, 1, ctm-\u003epool_max);",
+      "revId": "07892fffc381d49b7f0646f64fe4cc85f029c1a5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "be58960a_2c88c3e1",
+        "filename": "src/plugins/cnat/cnat_types.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 249,
+      "author": {
+        "id": 2556
+      },
+      "writtenOn": "2026-06-05T16:49:21Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "684b6c06_5b173671",
       "revId": "07892fffc381d49b7f0646f64fe4cc85f029c1a5",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
