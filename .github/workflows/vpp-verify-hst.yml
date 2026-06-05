@@ -111,7 +111,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        build_type: ['debug']
+        build_type: ['debug', 'release']
         class: ['hst']
         os: ['ubuntu2404']
         executor_arch: ['x86_64']
