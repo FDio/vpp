@@ -142,6 +142,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "de6054e5_7f204997",
+        "filename": "src/plugins/hs_apps/proxy_lite.c",
+        "patchSetId": 29
+      },
+      "lineNbr": 824,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-06-05T15:40:12Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "56104282_359926b5",
+      "range": {
+        "startLine": 816,
+        "startChar": 0,
+        "endLine": 824,
+        "endChar": 31
+      },
+      "revId": "7b21d8e92d80a9c73996f23e719446c5165359ab",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "a4c9e9d9_c1378e89",
