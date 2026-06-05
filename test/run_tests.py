@@ -16,7 +16,13 @@ import warnings
 from multiprocessing import Process, Pipe, get_context
 from multiprocessing.queues import Queue
 from multiprocessing.managers import BaseManager
-from config import config, num_cpus, num_physical_cpus, available_cpus, max_vpp_cpus
+from config import (
+    config,
+    num_cpus,
+    num_physical_cpus,
+    physical_cores,
+    max_vpp_cores,
+)
 from vpp_papi import VPPApiJSONFiles
 from asfframework import (
     VppTestRunner,
@@ -281,11 +287,11 @@ class TestCaseWrapper(object):
         return self.result.was_successful()
 
     @property
-    def cpus_used(self):
-        return self.testcase_suite.cpus_used
+    def cores_used(self):
+        return self.testcase_suite.cores_used
 
-    def get_assigned_cpus(self):
-        return self.testcase_suite.get_assigned_cpus()
+    def get_assigned_cores(self):
+        return self.testcase_suite.get_assigned_cores()
 
 
 def stdouterr_reader_wrapper(
@@ -502,7 +508,7 @@ def run_forked(testcase_suites):
 
     def suite_sort_key(suite):
         cost = test_timings.get(get_suite_key(suite), unknown_cost)
-        return (cost, suite.cpus_used)
+        return (cost, suite.cores_used)
 
     testcase_suites = sorted(testcase_suites, key=suite_sort_key, reverse=True)
 
@@ -516,27 +522,27 @@ def run_forked(testcase_suites):
     manager = StreamQueueManager()
     manager.start()
     tests_running = 0
-    free_cpus = list(available_cpus)
+    free_cores = list(physical_cores)
 
     def on_suite_start(tc):
         nonlocal tests_running
-        nonlocal free_cpus
+        nonlocal free_cores
         tests_running = tests_running + 1
 
     def on_suite_finish(tc):
         nonlocal tests_running
-        nonlocal free_cpus
+        nonlocal free_cores
         tests_running = tests_running - 1
         assert tests_running >= 0
-        free_cpus.extend(tc.get_assigned_cpus())
+        free_cores.extend(tc.get_assigned_cores())
 
     def run_suite(suite):
         nonlocal manager
         nonlocal wrapped_testcase_suites
         nonlocal unread_testcases
-        nonlocal free_cpus
-        suite.assign_cpus(free_cpus[: suite.cpus_used])
-        free_cpus = free_cpus[suite.cpus_used :]
+        nonlocal free_cores
+        suite.assign_cores(free_cores[: suite.cores_used])
+        free_cores = free_cores[suite.cores_used :]
         wrapper = TestCaseWrapper(suite, manager)
         wrapped_testcase_suites.add(wrapper)
         unread_testcases.add(wrapper)
@@ -544,7 +550,7 @@ def run_forked(testcase_suites):
 
     def can_run_suite(suite):
         return tests_running < max_concurrent_tests and (
-            suite.cpus_used <= len(free_cpus) or suite.cpus_used > max_vpp_cpus
+            suite.cores_used <= len(free_cores) or suite.cores_used > max_vpp_cores
         )
 
     def schedule_suites():
@@ -558,7 +564,7 @@ def run_forked(testcase_suites):
                 testcase_suites.pop(i)
                 solo_testcase_suites.append(a_suite)
                 continue
-            if not free_cpus or tests_running >= max_concurrent_tests:
+            if not free_cores or tests_running >= max_concurrent_tests:
                 break
             if can_run_suite(a_suite):
                 testcase_suites.pop(i)
@@ -740,25 +746,25 @@ def run_forked(testcase_suites):
 
 
 class TestSuiteWrapper(unittest.TestSuite):
-    cpus_used = 0
+    cores_used = 0
 
     def __init__(self):
         return super().__init__()
 
     def addTest(self, test):
-        self.cpus_used = max(self.cpus_used, test.get_cpus_required())
+        self.cores_used = max(self.cores_used, test.get_cores_required())
         super().addTest(test)
 
-    def assign_cpus(self, cpus):
-        self.cpus = cpus
+    def assign_cores(self, cores):
+        self.cores = cores
 
     def _handleClassSetUp(self, test, result):
         if not test.__class__.skipped_due_to_cpu_lack:
-            test.assign_cpus(self.cpus)
+            test.assign_cores(self.cores)
         super()._handleClassSetUp(test, result)
 
-    def get_assigned_cpus(self):
-        return self.cpus
+    def get_assigned_cores(self):
+        return self.cores
 
 
 class SplitToSuitesCallback:
@@ -1158,7 +1164,7 @@ if __name__ == "__main__":
             "concurrently as set by 'TEST_JOBS'."
         )
 
-    print(f"Using at most {max_vpp_cpus} cpus for VPP threads.")
+    print(f"Using at most {max_vpp_cores} physical cores for VPP threads.")
 
     if run_interactive and max_concurrent_tests > 1:
         raise NotImplementedError(
@@ -1205,7 +1211,7 @@ if __name__ == "__main__":
     tests_amount = 0
     for testcase_suite in cb.suites.values():
         tests_amount += testcase_suite.countTestCases()
-        if testcase_suite.cpus_used > max_vpp_cpus:
+        if testcase_suite.cores_used > max_vpp_cores:
             # here we replace test functions with lambdas to just skip them
             # but we also replace setUp/tearDown functions to do nothing
             # so that the test can be "started" and "stopped", so that we can
@@ -1238,13 +1244,15 @@ if __name__ == "__main__":
         # don't fork if requiring interactive terminal
         print("Running tests in foreground in the current process")
         full_suite = unittest.TestSuite()
-        free_cpus = list(available_cpus)
+        free_cores = list(physical_cores)
         cpu_shortage = False
         for suite in suites:
-            if suite.cpus_used <= max_vpp_cpus:
-                suite.assign_cpus(free_cpus[: suite.cpus_used])
+            if suite.cores_used <= max_vpp_cores:
+                # foreground suites run consecutively, so they all reuse the
+                # same cores from the front of the pool.
+                suite.assign_cores(free_cores[: suite.cores_used])
             else:
-                suite.assign_cpus([])
+                suite.assign_cores([])
                 cpu_shortage = True
         full_suite.addTests(suites)
         result = VppTestRunner(
