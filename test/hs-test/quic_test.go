@@ -12,9 +12,10 @@ import (
 
 func init() {
 	RegisterQuicTests(QuicAlpnMatchTest, QuicAlpnOverlapMatchTest, QuicAlpnServerPriorityMatchTest, QuicAlpnMismatchTest,
-		QuicAlpnEmptyServerListTest, QuicAlpnEmptyClientListTest, QuicBuiltinEchoTest, QuicCpsTest,
+		QuicAlpnEmptyServerListTest, QuicAlpnEmptyClientListTest, QuicBuiltinEchoTest,
 		QuicBuiltinEchoBidirectionalTest, QuicBuiltinEchoTestBytesTest, QuicBuiltinEchoTestBytesBidirectionalTest,
 		QuicReorderTest, QuicCrlRejectThenAllowTest)
+	RegisterQuicMWTests(QuicCpsMWTest)
 	RegisterNoTopoTests(QuicFailedHandshakeTest)
 }
 
@@ -227,15 +228,22 @@ func QuicBuiltinEchoTestBytesBidirectionalTest(s *QuicSuite) {
 	AssertNotContains(o, "failed")
 }
 
-func QuicCpsTest(s *QuicSuite) {
+func QuicCpsMWTest(s *QuicSuite) {
+	var memoryConfig Stanza
+	memoryConfig.NewStanza("memory").Append("main-heap-size 2G").Close()
+	var quicConfig Stanza
+	quicConfig.NewStanza("quic").Append("fifo-size 4k").Append("first-segment-size 134217728").Close()
+	s.CpusPerVppContainer = 2
+	s.SetupTest(memoryConfig, quicConfig)
+
 	serverVpp := s.Containers.ServerVpp.VppInstance
 	clientVpp := s.Containers.ClientVpp.VppInstance
 
-	Log(serverVpp.Vppctl("test echo server " +
+	Log(serverVpp.Vppctl("test echo server fifo-size 4k" +
 		" uri quic://" + s.Interfaces.Server.Ip4AddressString() + "/" + s.Ports.Port1))
 
 	// syn-timeout must be less than quic connection timeout (30 seconds)
-	o := clientVpp.Vppctl("test echo client nclients 10000 bytes 64 syn-timeout 27" +
+	o := clientVpp.Vppctl("test echo client nclients 10000 bytes 64 syn-timeout 27 fifo-size 4k" +
 		" uri quic://" + s.Interfaces.Server.Ip4AddressString() + "/" + s.Ports.Port1)
 	Log(o)
 	// wait a bit to be sure quic do not crash when app detached after syn-timeout
@@ -244,6 +252,8 @@ func QuicCpsTest(s *QuicSuite) {
 	Log(clientVpp.Vppctl("show quic"))
 	Log(serverVpp.Vppctl("show quic crypto context"))
 	Log(clientVpp.Vppctl("show quic crypto context"))
+	Log(serverVpp.Vppctl("show error"))
+	Log(clientVpp.Vppctl("show error"))
 }
 
 func QuicReorderTest(s *QuicSuite) {
