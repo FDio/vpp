@@ -1098,6 +1098,11 @@ l2fib_scan (vlib_main_t * vm, f64 start_time, u8 event_only)
       reg = vl_api_client_index_to_registration (lm->client_index);
     }
 
+  /* Snapshot the data-path's learn counter before the walk below, which suspends and yields the
+   * main thread to the data path. Used to detect concurrent learning - see the guarded writeback
+   * after the loop. */
+  u32 global_at_start = lm->global_learn_count;
+
   for (i = 0; i < h->nbuckets; i++)
     {
       /* allow no more than 20us without a pause */
@@ -1246,12 +1251,20 @@ l2fib_scan (vlib_main_t * vm, f64 start_time, u8 event_only)
       ;
     }
 
-  /* keep learn count consistent */
-  l2learn_main.global_learn_count = learn_count;
-  vec_foreach_index (bd_index, l2input_main.bd_configs)
+  /* Keep learn count consistent - but only if the data path did not learn while this scan was
+   * running.
+   *
+   * FIXME: this guard improves CI stability as the unit test is single-worker. It's not a true fix
+   * for multi-worker case.
+   */
+  if (l2learn_main.global_learn_count == global_at_start)
     {
-      vec_elt (l2input_main.bd_configs, bd_index).learn_count =
-	vec_elt (bd_learn_counts, bd_index);
+      l2learn_main.global_learn_count = learn_count;
+      vec_foreach_index (bd_index, l2input_main.bd_configs)
+	{
+	  vec_elt (l2input_main.bd_configs, bd_index).learn_count =
+	    vec_elt (bd_learn_counts, bd_index);
+	}
     }
 
   if (mp)
