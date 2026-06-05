@@ -120,6 +120,30 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "56104282_359926b5",
+        "filename": "src/plugins/hs_apps/proxy_lite.c",
+        "patchSetId": 29
+      },
+      "lineNbr": 824,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-06-05T07:05:21Z",
+      "side": 1,
+      "message": "counters are always incremented with pm-\u003esessions_lock, aren\u0027t they? so you should read them with lock?",
+      "parentUuid": "bfe7625d_93b497d9",
+      "range": {
+        "startLine": 816,
+        "startChar": 0,
+        "endLine": 824,
+        "endChar": 31
+      },
+      "revId": "7b21d8e92d80a9c73996f23e719446c5165359ab",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "a4c9e9d9_c1378e89",
         "filename": "src/plugins/hsi/hsi_tracker_private.h",
         "patchSetId": 29
