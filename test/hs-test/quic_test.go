@@ -244,6 +244,8 @@ func QuicCpsTest(s *QuicSuite) {
 	Log(clientVpp.Vppctl("show quic"))
 	Log(serverVpp.Vppctl("show quic crypto context"))
 	Log(clientVpp.Vppctl("show quic crypto context"))
+	Log(serverVpp.Vppctl("show error"))
+	Log(clientVpp.Vppctl("show error"))
 }
 
 func QuicReorderTest(s *QuicSuite) {

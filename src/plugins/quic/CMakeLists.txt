@@ -10,6 +10,7 @@ add_vpp_plugin(quic
   SOURCES
   quic.c
   quic_cli.c
+  quic_timer.c
 
   LINK_LIBRARIES ${OPENSSL_LIBRARIES}
 )

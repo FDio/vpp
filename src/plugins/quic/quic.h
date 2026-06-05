@@ -5,15 +5,44 @@
 #ifndef __included_quic_h__
 #define __included_quic_h__
 
+#include <vlib/unix/plugin.h>
 #include <vnet/session/application_interface.h>
 #include <vnet/session/session.h>
 
 #include <vppinfra/clib.h>
 #include <vppinfra/lock.h>
-#include <vppinfra/tw_timer_1t_3w_1024sl_ov.h>
 #include <vppinfra/bihash_16_8.h>
 
 #include <vnet/crypto/crypto.h>
+
+#define QUIC_LOG2_TW_TIMERS_PER_OBJECT 1
+
+#undef TW_TIMER_WHEELS
+#undef TW_SLOTS_PER_RING
+#undef TW_RING_SHIFT
+#undef TW_RING_MASK
+#undef TW_TIMERS_PER_OBJECT
+#undef LOG2_TW_TIMERS_PER_OBJECT
+#undef TW_SUFFIX
+#undef TW_OVERFLOW_VECTOR
+#undef TW_FAST_WHEEL_BITMAP
+#undef TW_TIMER_ALLOW_DUPLICATE_STOP
+#undef TW_START_STOP_TRACE_SIZE
+
+#define TW_TIMER_WHEELS		      3
+#define TW_SLOTS_PER_RING	      1024
+#define TW_RING_SHIFT		      10
+#define TW_RING_MASK		      (TW_SLOTS_PER_RING - 1)
+#define TW_TIMERS_PER_OBJECT	      2
+#define LOG2_TW_TIMERS_PER_OBJECT     QUIC_LOG2_TW_TIMERS_PER_OBJECT
+#define TW_SUFFIX		      _quic_twslov
+#define TW_OVERFLOW_VECTOR	      1
+#define TW_FAST_WHEEL_BITMAP	      1
+#define TW_TIMER_ALLOW_DUPLICATE_STOP 1
+
+#include <vppinfra/tw_timer_template.h>
+
+typedef tw_timer_wheel_quic_twslov_t quic_timer_wheel_t;
 
 /* QUIC log levels
  * 1 - errors
@@ -153,6 +182,18 @@ typedef enum quic_cc_type
   QUIC_CC_CUBIC,
 } quic_cc_type_t;
 
+#define foreach_quic_timer                                                                         \
+  _ (ACCEPT, "ACCEPT")                                                                             \
+  _ (TX, "TX")
+
+typedef enum quic_timers_ : u8
+{
+#define _(sym, str) QUIC_TIMER_##sym,
+  foreach_quic_timer
+#undef _
+    QUIC_N_TIMERS
+} quic_timers_t;
+
 /* This structure is used to implement the concept of VPP connection for QUIC.
  * We create one per connection and one per stream. */
 typedef struct quic_ctx_
@@ -179,7 +220,7 @@ typedef struct quic_ctx_
     };
   };
   session_handle_t udp_session_handle;
-  u32 timer_handle;
+  u32 timers[QUIC_N_TIMERS];
   u32 parent_app_wrk_id;
   u32 parent_app_id;
   u32 crypto_owner_app_wrk_id;
@@ -256,7 +297,7 @@ typedef struct quic_worker_ctx_
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   int64_t time_now;
-  tw_timer_wheel_1t_3w_1024sl_ov_t timer_wheel;
+  quic_timer_wheel_t timer_wheel;
   quic_ctx_t *ctx_pool;
 } quic_worker_ctx_t;
 
@@ -277,15 +318,22 @@ typedef struct quic_main_
   u32 udp_fifo_size;
   u32 udp_fifo_prealloc;
   u32 connection_timeout;
-  int num_threads;
+  u32 num_threads;
   quic_engine_type_t engine_type;
   u8 engine_is_initialized[QUIC_ENGINE_LAST + 1];
 } quic_main_t;
 
 extern quic_main_t quic_main;
 
-static_always_inline quic_worker_ctx_t *
-quic_wrk_ctx_get (quic_main_t *qm, clib_thread_index_t thread_index)
+static_always_inline void
+quic_ctx_timers_init (quic_ctx_t *ctx){
+#define _(sym, str) ctx->timers[QUIC_TIMER_##sym] = QUIC_TIMER_HANDLE_INVALID;
+  foreach_quic_timer
+#undef _
+}
+
+static_always_inline quic_worker_ctx_t *quic_wrk_ctx_get (quic_main_t *qm,
+							  clib_thread_index_t thread_index)
 {
   return &qm->wrk_ctx[thread_index];
 }
@@ -300,7 +348,7 @@ quic_ctx_alloc (quic_main_t *qm, clib_thread_index_t thread_index)
 
   clib_memset (ctx, 0, sizeof (quic_ctx_t));
   ctx->c_thread_index = thread_index;
-  ctx->timer_handle = QUIC_TIMER_HANDLE_INVALID;
+  quic_ctx_timers_init (ctx);
   QUIC_DBG (3, "Allocated quic_ctx %u on thread %u",
 	    ctx - qm->wrk_ctx[thread_index].ctx_pool, thread_index);
   return ctx - qm->wrk_ctx[thread_index].ctx_pool;
@@ -318,9 +366,10 @@ quic_ctx_free (quic_main_t *qm, quic_ctx_t *ctx)
 {
   QUIC_DBG (2, "Free ctx %u %x", ctx->c_thread_index, ctx->c_c_index);
   clib_thread_index_t thread_index = ctx->c_thread_index;
-  QUIC_ASSERT (ctx->timer_handle == QUIC_TIMER_HANDLE_INVALID);
-  if (CLIB_DEBUG)
-    clib_memset (ctx, 0xfb, sizeof (*ctx));
+#define _(sym, str) ASSERT (ctx->timers[QUIC_TIMER_##sym] == QUIC_TIMER_HANDLE_INVALID);
+  foreach_quic_timer
+#undef _
+    if (CLIB_DEBUG) clib_memset (ctx, 0xfb, sizeof (*ctx));
   pool_put (qm->wrk_ctx[thread_index].ctx_pool, ctx);
 }
 
@@ -413,14 +462,11 @@ typedef struct quic_engine_vft_
   void (*proto_on_reset) (u32 ctx_index, clib_thread_index_t thread_index);
   void (*transport_closed) (quic_ctx_t *ctx);
   int (*ctx_attribute) (quic_ctx_t *ctx, u8 is_get, transport_endpt_attr_t *attr);
-  void (*conn_timer_expired) (u32 conn_index);
+  void (*conn_tx_timer_expired) (u32 conn_index, clib_thread_index_t thread_index);
 } quic_engine_vft_t;
 
 extern quic_engine_vft_t *quic_engine_vfts;
-extern void quic_register_engine (const quic_engine_vft_t *vft,
-				  quic_engine_type_t engine_type);
-typedef void (*quic_register_engine_fn) (const quic_engine_vft_t *vft,
-					 quic_engine_type_t engine_type);
+void quic_register_engine (const quic_engine_vft_t *vft, quic_engine_type_t engine_type);
 
 void quic_update_fifo_size ();
 
@@ -436,6 +482,47 @@ format_quic_crypto_context (u8 *s, va_list *args)
 	      crctx->ckpair_index);
   s = format (s, "[engine: %U]", format_crypto_engine, crctx->crypto_engine);
   return s;
+}
+
+typedef void (*quic_register_engine_fn_t) (const quic_engine_vft_t *vft,
+					   quic_engine_type_t engine_type);
+typedef void (*quic_update_conn_tx_timer_fn_t) (quic_worker_ctx_t *wc, quic_ctx_t *ctx,
+						int64_t next_timeout);
+typedef void (*quic_stop_conn_tx_timer_fn_t) (quic_worker_ctx_t *wc, quic_ctx_t *ctx);
+typedef void (*quic_stop_conn_accept_timer_fn_t) (quic_worker_ctx_t *wc, quic_ctx_t *ctx);
+
+#define foreach_quic_plugin_exported_method_name                                                   \
+  _ (register_engine)                                                                              \
+  _ (update_conn_tx_timer)                                                                         \
+  _ (stop_conn_accept_timer)                                                                       \
+  _ (stop_conn_tx_timer)
+
+typedef struct
+{
+#define _(name) quic_##name##_fn_t name;
+  foreach_quic_plugin_exported_method_name
+#undef _
+} quic_plugin_methods_t;
+
+#define QUIC_LOAD_SYMBOL_FROM_PLUGIN_TO(p, s, st)                                                  \
+  ({                                                                                               \
+    (st) = vlib_get_plugin_symbol (p, #s);                                                         \
+    if (!(st))                                                                                     \
+      return clib_error_return (0, "Plugin %s and/or symbol %s not found.", p, #s);                \
+  })
+
+typedef clib_error_t *(*quic_plugin_methods_vtable_init_fn_t) (quic_plugin_methods_t *m);
+
+clib_error_t *quic_plugin_methods_vtable_init (quic_plugin_methods_t *m);
+
+static inline clib_error_t *
+quic_plugin_exports_init (quic_plugin_methods_t *m)
+{
+  quic_plugin_methods_vtable_init_fn_t mvi;
+
+  QUIC_LOAD_SYMBOL_FROM_PLUGIN_TO ("quic_plugin.so", quic_plugin_methods_vtable_init, mvi);
+
+  return (mvi (m));
 }
 
 #endif /* __included_quic_h__ */
