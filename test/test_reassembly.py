@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import struct
 import unittest
 from random import shuffle, randrange
 
@@ -2587,6 +2588,33 @@ class TestIPv6SVReassembly(VppTestCase):
         )
 
         self.vapi.cli("set ip reassembly extended ip6 off")
+
+    def test_truncated_ext_header_chain(self):
+        """hop-by-hop options followed by truncated fragment header"""
+
+        IP_PROTOCOL_IP6_FRAGMENT_HEADER = 44
+
+        # 8-byte Hop-by-Hop header: next = Fragment Header, Hdr Ext Len = 0
+        # Followed by 1-byte (truncated) Fragment Header
+        hbh = struct.pack("BB", IP_PROTOCOL_IP6_FRAGMENT_HEADER, 0) + b"\x00" * 7
+
+        pkt = (
+            Ether(dst=self.src_if.local_mac, src=self.src_if.remote_mac)
+            / IPv6(
+                src=self.src_if.remote_ip6,
+                dst=self.dst_if.remote_ip6,
+                nh="Hop-by-Hop Option Header",
+            )
+            / Raw(load=hbh)
+        )
+
+        rx = self.send_and_expect(
+            self.src_if,
+            [pkt],
+            self.src_if,
+        )
+        self.assertIn(ICMPv6ParamProblem, rx[0])
+        self.assertEqual(rx[0][ICMPv6ParamProblem].code, 0)
 
 
 class TestIPv4ReassemblyLocalNode(VppTestCase):
