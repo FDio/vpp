@@ -138,7 +138,7 @@ VLIB_NODE_FN (ip4_load_balance_node) (vlib_main_t * vm,
 	  else
 	    {
 	      hc0 = vnet_buffer (b[0])->ip.flow_hash =
-		ip4_compute_flow_hash (ip0, lb0->lb_hash_config);
+		ip4_compute_flow_hash (ip0, lb0->lb_hash_config, b[0]->current_length);
 	    }
 	  dpo0 = load_balance_get_fwd_bucket
 	    (lb0, (hc0 & (lb0->lb_n_buckets_minus_1)));
@@ -157,7 +157,7 @@ VLIB_NODE_FN (ip4_load_balance_node) (vlib_main_t * vm,
 	  else
 	    {
 	      hc1 = vnet_buffer (b[1])->ip.flow_hash =
-		ip4_compute_flow_hash (ip1, lb1->lb_hash_config);
+		ip4_compute_flow_hash (ip1, lb1->lb_hash_config, b[1]->current_length);
 	    }
 	  dpo1 = load_balance_get_fwd_bucket
 	    (lb1, (hc1 & (lb1->lb_n_buckets_minus_1)));
@@ -206,7 +206,7 @@ VLIB_NODE_FN (ip4_load_balance_node) (vlib_main_t * vm,
 	  else
 	    {
 	      hc0 = vnet_buffer (b[0])->ip.flow_hash =
-		ip4_compute_flow_hash (ip0, lb0->lb_hash_config);
+		ip4_compute_flow_hash (ip0, lb0->lb_hash_config, b[0]->current_length);
 	    }
 	  dpo0 = load_balance_get_fwd_bucket
 	    (lb0, (hc0 & (lb0->lb_n_buckets_minus_1)));

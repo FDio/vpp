@@ -324,12 +324,12 @@ adj_nbr_midchain_stack_on_fib_entry (adj_index_t ai,
                 if (FIB_FORW_CHAIN_TYPE_UNICAST_IP4 == fct)
                 {
                     hash = ip4_compute_flow_hash ((ip4_header_t *) adj_get_rewrite (ai),
-                                                  lb->lb_hash_config);
+                                                  lb->lb_hash_config, adj->rewrite_header.data_bytes);
                 }
                 else if (FIB_FORW_CHAIN_TYPE_UNICAST_IP6 == fct)
                 {
                     hash = ip6_compute_flow_hash ((ip6_header_t *) adj_get_rewrite (ai),
-                                                  lb->lb_hash_config);
+                                                  lb->lb_hash_config, adj->rewrite_header.data_bytes);
                 }
                 else
                 {

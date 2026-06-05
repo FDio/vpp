@@ -1307,9 +1307,8 @@ srv6_tef_behavior (vlib_node_runtime_t *node, vlib_buffer_t *b0,
  * @brief IPv6 encapsulation processing as per RFC2473
  */
 static_always_inline void
-encaps_processing_v6 (vlib_node_runtime_t *node, vlib_buffer_t *b0,
-		      ip6_header_t *ip0, ip6_header_t *ip0_encap,
-		      u8 policy_type)
+encaps_processing_v6 (vlib_node_runtime_t *node, vlib_buffer_t *b0, ip6_header_t *ip0,
+		      ip6_header_t *ip0_encap, u8 policy_type, u16 encap_buffer_length)
 {
   u32 new_l0;
   u32 flow_label;
@@ -1320,7 +1319,7 @@ encaps_processing_v6 (vlib_node_runtime_t *node, vlib_buffer_t *b0,
     clib_net_to_host_u16 (ip0_encap->payload_length);
   ip0->payload_length = clib_host_to_net_u16 (new_l0);
 
-  flow_label = ip6_compute_flow_hash (ip0_encap, IP_FLOW_HASH_DEFAULT);
+  flow_label = ip6_compute_flow_hash (ip0_encap, IP_FLOW_HASH_DEFAULT, encap_buffer_length);
   ip0->ip_version_traffic_class_and_flow_label = clib_host_to_net_u32 (
     0 |
     (clib_net_to_host_u32 (
@@ -1364,6 +1363,8 @@ sr_policy_rewrite_encaps (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  ip6_header_t *ip0, *ip1, *ip2, *ip3;
 	  ip6_header_t *ip0_encap, *ip1_encap, *ip2_encap, *ip3_encap;
 	  ip6_sr_sl_t *sl0, *sl1, *sl2, *sl3;
+	  u16 encap_buffer_length0, encap_buffer_length1, encap_buffer_length2,
+	    encap_buffer_length3;
 
 	  /* Prefetch next iteration. */
 	  {
@@ -1426,6 +1427,10 @@ sr_policy_rewrite_encaps (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  ip1_encap = vlib_buffer_get_current (b1);
 	  ip2_encap = vlib_buffer_get_current (b2);
 	  ip3_encap = vlib_buffer_get_current (b3);
+	  encap_buffer_length0 = b0->current_length;
+	  encap_buffer_length1 = b1->current_length;
+	  encap_buffer_length2 = b2->current_length;
+	  encap_buffer_length3 = b3->current_length;
 
 	  clib_memcpy_fast (((u8 *) ip0_encap) - vec_len (sl0->rewrite),
 			    sl0->rewrite, vec_len (sl0->rewrite));
@@ -1446,10 +1451,10 @@ sr_policy_rewrite_encaps (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  ip2 = vlib_buffer_get_current (b2);
 	  ip3 = vlib_buffer_get_current (b3);
 
-	  encaps_processing_v6 (node, b0, ip0, ip0_encap, sl0->policy_type);
-	  encaps_processing_v6 (node, b1, ip1, ip1_encap, sl1->policy_type);
-	  encaps_processing_v6 (node, b2, ip2, ip2_encap, sl2->policy_type);
-	  encaps_processing_v6 (node, b3, ip3, ip3_encap, sl3->policy_type);
+	  encaps_processing_v6 (node, b0, ip0, ip0_encap, sl0->policy_type, encap_buffer_length0);
+	  encaps_processing_v6 (node, b1, ip1, ip1_encap, sl1->policy_type, encap_buffer_length1);
+	  encaps_processing_v6 (node, b2, ip2, ip2_encap, sl2->policy_type, encap_buffer_length2);
+	  encaps_processing_v6 (node, b3, ip3, ip3_encap, sl3->policy_type, encap_buffer_length3);
 
 	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = sl0->egress_fib_table;
 	  vnet_buffer (b1)->sw_if_index[VLIB_TX] = sl1->egress_fib_table;
@@ -1513,6 +1518,7 @@ sr_policy_rewrite_encaps (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  ip6_header_t *ip0 = 0, *ip0_encap = 0;
 	  ip6_sr_sl_t *sl0;
 	  u32 next0 = SR_POLICY_REWRITE_NEXT_IP6_LOOKUP;
+	  u16 encap_buffer_length0;
 
 	  bi0 = from[0];
 	  to_next[0] = bi0;
@@ -1529,6 +1535,7 @@ sr_policy_rewrite_encaps (vlib_main_t * vm, vlib_node_runtime_t * node,
 		  vec_len (sl0->rewrite));
 
 	  ip0_encap = vlib_buffer_get_current (b0);
+	  encap_buffer_length0 = b0->current_length;
 
 	  clib_memcpy_fast (((u8 *) ip0_encap) - vec_len (sl0->rewrite),
 			    sl0->rewrite, vec_len (sl0->rewrite));
@@ -1536,7 +1543,7 @@ sr_policy_rewrite_encaps (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  ip0 = vlib_buffer_get_current (b0);
 
-	  encaps_processing_v6 (node, b0, ip0, ip0_encap, sl0->policy_type);
+	  encaps_processing_v6 (node, b0, ip0, ip0_encap, sl0->policy_type, encap_buffer_length0);
 
 	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = sl0->egress_fib_table;
 
@@ -1590,9 +1597,8 @@ VLIB_REGISTER_NODE (sr_policy_rewrite_encaps_node) = {
  * @brief IPv4 encapsulation processing as per RFC2473
  */
 static_always_inline void
-encaps_processing_v4 (vlib_node_runtime_t * node,
-		      vlib_buffer_t * b0,
-		      ip6_header_t * ip0, ip4_header_t * ip0_encap)
+encaps_processing_v4 (vlib_node_runtime_t *node, vlib_buffer_t *b0, ip6_header_t *ip0,
+		      ip4_header_t *ip0_encap, u16 encap_buffer_length)
 {
   u32 new_l0;
   ip6_sr_header_t *sr0;
@@ -1609,7 +1615,7 @@ encaps_processing_v4 (vlib_node_runtime_t * node,
   /* Outer IPv6: Update length, FL, proto */
   new_l0 = ip0->payload_length + clib_net_to_host_u16 (ip0_encap->length);
   ip0->payload_length = clib_host_to_net_u16 (new_l0);
-  flow_label = ip4_compute_flow_hash (ip0_encap, IP_FLOW_HASH_DEFAULT);
+  flow_label = ip4_compute_flow_hash (ip0_encap, IP_FLOW_HASH_DEFAULT, encap_buffer_length);
   ip0->ip_version_traffic_class_and_flow_label = clib_host_to_net_u32 (
     0 | ((6 & 0xF) << 28) | ((ip0_encap->tos & 0xFF) << 20) |
     (flow_label & 0x0000ffff));
@@ -1655,6 +1661,8 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  ip6_header_t *ip0, *ip1, *ip2, *ip3;
 	  ip4_header_t *ip0_encap, *ip1_encap, *ip2_encap, *ip3_encap;
 	  ip6_sr_sl_t *sl0, *sl1, *sl2, *sl3;
+	  u16 encap_buffer_length0, encap_buffer_length1, encap_buffer_length2,
+	    encap_buffer_length3;
 
 	  /* Prefetch next iteration. */
 	  {
@@ -1716,6 +1724,10 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  ip1_encap = vlib_buffer_get_current (b1);
 	  ip2_encap = vlib_buffer_get_current (b2);
 	  ip3_encap = vlib_buffer_get_current (b3);
+	  encap_buffer_length0 = b0->current_length;
+	  encap_buffer_length1 = b1->current_length;
+	  encap_buffer_length2 = b2->current_length;
+	  encap_buffer_length3 = b3->current_length;
 
 	  clib_memcpy_fast (((u8 *) ip0_encap) - vec_len (sl0->rewrite),
 			    sl0->rewrite, vec_len (sl0->rewrite));
@@ -1736,10 +1748,10 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  ip2 = vlib_buffer_get_current (b2);
 	  ip3 = vlib_buffer_get_current (b3);
 
-	  encaps_processing_v4 (node, b0, ip0, ip0_encap);
-	  encaps_processing_v4 (node, b1, ip1, ip1_encap);
-	  encaps_processing_v4 (node, b2, ip2, ip2_encap);
-	  encaps_processing_v4 (node, b3, ip3, ip3_encap);
+	  encaps_processing_v4 (node, b0, ip0, ip0_encap, encap_buffer_length0);
+	  encaps_processing_v4 (node, b1, ip1, ip1_encap, encap_buffer_length1);
+	  encaps_processing_v4 (node, b2, ip2, ip2_encap, encap_buffer_length2);
+	  encaps_processing_v4 (node, b3, ip3, ip3_encap, encap_buffer_length3);
 
 	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = sl0->egress_fib_table;
 	  vnet_buffer (b1)->sw_if_index[VLIB_TX] = sl1->egress_fib_table;
@@ -1804,6 +1816,7 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  ip4_header_t *ip0_encap = 0;
 	  ip6_sr_sl_t *sl0;
 	  u32 next0 = SR_POLICY_REWRITE_NEXT_IP6_LOOKUP;
+	  u16 encap_buffer_length0;
 
 	  bi0 = from[0];
 	  to_next[0] = bi0;
@@ -1820,6 +1833,7 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
 		  vec_len (sl0->rewrite));
 
 	  ip0_encap = vlib_buffer_get_current (b0);
+	  encap_buffer_length0 = b0->current_length;
 
 	  clib_memcpy_fast (((u8 *) ip0_encap) - vec_len (sl0->rewrite),
 			    sl0->rewrite, vec_len (sl0->rewrite));
@@ -1827,7 +1841,7 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  ip0 = vlib_buffer_get_current (b0);
 
-	  encaps_processing_v4 (node, b0, ip0, ip0_encap);
+	  encaps_processing_v4 (node, b0, ip0, ip0_encap, encap_buffer_length0);
 
 	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = sl0->egress_fib_table;
 
@@ -1878,14 +1892,18 @@ VLIB_REGISTER_NODE (sr_policy_rewrite_encaps_v4_node) = {
 };
 
 always_inline u32
-ip_flow_hash (void *data)
+ip_flow_hash (void *data, u16 length)
 {
   ip4_header_t *iph = (ip4_header_t *) data;
 
+  if (length < sizeof (ip4_header_t))
+    return 0;
+
   if ((iph->ip_version_and_header_length & 0xF0) == 0x40)
-    return ip4_compute_flow_hash (iph, IP_FLOW_HASH_DEFAULT);
-  else
-    return ip6_compute_flow_hash ((ip6_header_t *) iph, IP_FLOW_HASH_DEFAULT);
+    return ip4_compute_flow_hash (iph, IP_FLOW_HASH_DEFAULT, length);
+  else if (length >= sizeof (ip6_header_t))
+    return ip6_compute_flow_hash ((ip6_header_t *) iph, IP_FLOW_HASH_DEFAULT, length);
+  return 0;
 }
 
 always_inline u64
@@ -1910,7 +1928,7 @@ l2_flow_hash (vlib_buffer_t * b0)
 
   /* since we have 2 cache lines, use them */
   if (is_ip)
-    a = ip_flow_hash ((u8 *) vlib_buffer_get_current (b0) + eh_size);
+    a = ip_flow_hash ((u8 *) vlib_buffer_get_current (b0) + eh_size, b0->current_length - eh_size);
   else
     a = eh->type;
 
@@ -3213,6 +3231,8 @@ sr_policy_rewrite_b_encaps (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  ip6_header_t *ip0_encap, *ip1_encap, *ip2_encap, *ip3_encap;
 	  ip6_sr_header_t *sr0, *sr1, *sr2, *sr3;
 	  ip6_sr_sl_t *sl0, *sl1, *sl2, *sl3;
+	  u16 encap_buffer_length0, encap_buffer_length1, encap_buffer_length2,
+	    encap_buffer_length3;
 
 	  /* Prefetch next iteration. */
 	  {
@@ -3274,6 +3294,10 @@ sr_policy_rewrite_b_encaps (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  ip1_encap = vlib_buffer_get_current (b1);
 	  ip2_encap = vlib_buffer_get_current (b2);
 	  ip3_encap = vlib_buffer_get_current (b3);
+	  encap_buffer_length0 = b0->current_length;
+	  encap_buffer_length1 = b1->current_length;
+	  encap_buffer_length2 = b2->current_length;
+	  encap_buffer_length3 = b3->current_length;
 
 	  sr0 =
 	    ip6_ext_header_find (vm, b0, ip0_encap, IP_PROTOCOL_IPV6_ROUTE,
@@ -3316,10 +3340,10 @@ sr_policy_rewrite_b_encaps (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  ip2 = vlib_buffer_get_current (b2);
 	  ip3 = vlib_buffer_get_current (b3);
 
-	  encaps_processing_v6 (node, b0, ip0, ip0_encap, sl0->policy_type);
-	  encaps_processing_v6 (node, b1, ip1, ip1_encap, sl1->policy_type);
-	  encaps_processing_v6 (node, b2, ip2, ip2_encap, sl2->policy_type);
-	  encaps_processing_v6 (node, b3, ip3, ip3_encap, sl3->policy_type);
+	  encaps_processing_v6 (node, b0, ip0, ip0_encap, sl0->policy_type, encap_buffer_length0);
+	  encaps_processing_v6 (node, b1, ip1, ip1_encap, sl1->policy_type, encap_buffer_length1);
+	  encaps_processing_v6 (node, b2, ip2, ip2_encap, sl2->policy_type, encap_buffer_length2);
+	  encaps_processing_v6 (node, b3, ip3, ip3_encap, sl3->policy_type, encap_buffer_length3);
 
 	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)))
 	    {
@@ -3379,6 +3403,7 @@ sr_policy_rewrite_b_encaps (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  ip6_sr_header_t *sr0;
 	  ip6_sr_sl_t *sl0;
 	  u32 next0 = SR_POLICY_REWRITE_NEXT_IP6_LOOKUP;
+	  u16 encap_buffer_length0;
 
 	  bi0 = from[0];
 	  to_next[0] = bi0;
@@ -3395,6 +3420,7 @@ sr_policy_rewrite_b_encaps (vlib_main_t * vm, vlib_node_runtime_t * node,
 		  vec_len (sl0->rewrite));
 
 	  ip0_encap = vlib_buffer_get_current (b0);
+	  encap_buffer_length0 = b0->current_length;
 	  sr0 =
 	    ip6_ext_header_find (vm, b0, ip0_encap, IP_PROTOCOL_IPV6_ROUTE,
 				 NULL);
@@ -3407,7 +3433,7 @@ sr_policy_rewrite_b_encaps (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  ip0 = vlib_buffer_get_current (b0);
 
-	  encaps_processing_v6 (node, b0, ip0, ip0_encap, sl0->policy_type);
+	  encaps_processing_v6 (node, b0, ip0, ip0_encap, sl0->policy_type, encap_buffer_length0);
 
 	  if (PREDICT_FALSE (node->flags & VLIB_NODE_FLAG_TRACE) &&
 	      PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))

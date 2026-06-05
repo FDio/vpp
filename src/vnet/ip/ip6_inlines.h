@@ -11,11 +11,17 @@
 #include <vnet/ip/ip6_packet.h>
 #include <vnet/ip/ip6_hop_by_hop_packet.h>
 
-/* Compute flow hash.  We'll use it to select which Sponge to use for this
-   flow.  And other things. */
+/**
+ * Compute flow hash for an IPv6 packet.
+ *
+ * @param ip - pointer to ip6 header
+ * @param flow_hash_config - flow hash configuration
+ * @param length - length of the remaining buffer in bytes including the IP header. Must be at least
+ * sizeof(ip6_header_t).
+ * @return flow hash
+ */
 always_inline u32
-ip6_compute_flow_hash (const ip6_header_t * ip,
-		       flow_hash_config_t flow_hash_config)
+ip6_compute_flow_hash (const ip6_header_t *ip, flow_hash_config_t flow_hash_config, u16 length)
 {
   const tcp_header_t *tcp;
   const udp_header_t *udp = (void *) (ip + 1);
@@ -24,10 +30,18 @@ ip6_compute_flow_hash (const ip6_header_t * ip,
   u64 t1, t2;
   u32 t3;
   uword is_tcp_udp = 0;
-  u8 protocol = ip->protocol;
-  uword is_udp = protocol == IP_PROTOCOL_UDP;
+  u8 protocol;
+  uword is_udp;
+  bool first_fragment = true;
 
-  if (PREDICT_TRUE ((protocol == IP_PROTOCOL_TCP) || is_udp))
+  ASSERT (length >= sizeof (ip6_header_t));
+
+  protocol = ip->protocol;
+  is_udp = protocol == IP_PROTOCOL_UDP && length >= sizeof (ip6_header_t) + sizeof (udp_header_t);
+
+  if (PREDICT_TRUE (
+	(protocol == IP_PROTOCOL_TCP && length >= sizeof (ip6_header_t) + sizeof (tcp_header_t)) ||
+	is_udp))
     {
       is_tcp_udp = 1;
       tcp = (void *) (ip + 1);
@@ -43,8 +57,9 @@ ip6_compute_flow_hash (const ip6_header_t * ip,
 	}
       if (protocol == IP_PROTOCOL_IPV6_FRAGMENTATION)
 	{
-	  const ip6_fragment_ext_header_t *frag = cur;
-	  protocol = frag->protocol;
+	  const ip6_frag_hdr_t *frag = cur;
+	  protocol = frag->next_hdr;
+	  first_fragment = ip6_frag_hdr_offset (frag) == 0;
 	}
       else if (protocol == IP_PROTOCOL_TCP || protocol == IP_PROTOCOL_UDP)
 	{
@@ -94,7 +109,9 @@ ip6_compute_flow_hash (const ip6_header_t * ip,
   c ^= t1;
   if (PREDICT_TRUE (is_udp) &&
       PREDICT_FALSE ((flow_hash_config & IP_FLOW_HASH_GTPV1_TEID) &&
-		     udp->dst_port == GTPV1_PORT_BE))
+		     udp->dst_port == GTPV1_PORT_BE && first_fragment &&
+		     length >=
+		       sizeof (ip6_header_t) + sizeof (udp_header_t) + sizeof (gtpv1u_header_t)))
     {
       t3 = gtpu->teid;
       a ^= t3;

@@ -54,12 +54,16 @@ ip_udp_compute_flow_hash (vlib_buffer_t *b0, u8 is_ip4)
   if (is_ip4)
     {
       ip4 = (ip4_header_t *) (b0->data + vnet_buffer (b0)->l3_hdr_offset);
-      return ip4_compute_flow_hash (ip4, IP_FLOW_HASH_DEFAULT);
+      return ip4_compute_flow_hash (ip4, IP_FLOW_HASH_DEFAULT,
+				    b0->current_length + b0->current_data -
+				      vnet_buffer (b0)->l3_hdr_offset);
     }
   else
     {
       ip6 = (ip6_header_t *) (b0->data + vnet_buffer (b0)->l3_hdr_offset);
-      return ip6_compute_flow_hash (ip6, IP_FLOW_HASH_DEFAULT);
+      return ip6_compute_flow_hash (ip6, IP_FLOW_HASH_DEFAULT,
+				    b0->current_length + b0->current_data -
+				      vnet_buffer (b0)->l3_hdr_offset);
     }
 }
 

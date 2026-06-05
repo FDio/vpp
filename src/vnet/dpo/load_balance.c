@@ -1107,14 +1107,18 @@ VLIB_CLI_COMMAND (load_balance_show_command, static) = {
 
 
 always_inline u32
-ip_flow_hash (void *data)
+ip_flow_hash (void *data, u16 length)
 {
   ip4_header_t *iph = (ip4_header_t *) data;
 
+  if (length < sizeof(ip4_header_t))
+    return 0;
+
   if ((iph->ip_version_and_header_length & 0xF0) == 0x40)
-    return ip4_compute_flow_hash (iph, IP_FLOW_HASH_DEFAULT);
-  else
-    return ip6_compute_flow_hash ((ip6_header_t *) iph, IP_FLOW_HASH_DEFAULT);
+    return ip4_compute_flow_hash (iph, IP_FLOW_HASH_DEFAULT, length);
+  else if (length >= sizeof(ip6_header_t))
+    return ip6_compute_flow_hash ((ip6_header_t *) iph, IP_FLOW_HASH_DEFAULT, length);
+  return 0;
 }
 
 always_inline u64
@@ -1139,7 +1143,7 @@ l2_flow_hash (vlib_buffer_t * b0)
 
   /* since we have 2 cache lines, use them */
   if (is_ip)
-    a = ip_flow_hash ((u8 *) vlib_buffer_get_current (b0) + eh_size);
+    a = ip_flow_hash ((u8 *) vlib_buffer_get_current (b0) + eh_size, b0->current_length - eh_size);
   else
     a = eh->type;
 

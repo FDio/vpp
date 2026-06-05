@@ -95,7 +95,7 @@ ip6_lookup_inline (vlib_main_t * vm,
 	    {
 	      flow_hash_config0 = lb0->lb_hash_config;
 	      vnet_buffer (p0)->ip.flow_hash =
-		ip6_compute_flow_hash (ip0, flow_hash_config0);
+		ip6_compute_flow_hash (ip0, flow_hash_config0, p0->current_length);
 	      dpo0 =
 		load_balance_get_fwd_bucket (lb0,
 					     (vnet_buffer (p0)->ip.flow_hash &
@@ -109,7 +109,7 @@ ip6_lookup_inline (vlib_main_t * vm,
 	    {
 	      flow_hash_config1 = lb1->lb_hash_config;
 	      vnet_buffer (p1)->ip.flow_hash =
-		ip6_compute_flow_hash (ip1, flow_hash_config1);
+		ip6_compute_flow_hash (ip1, flow_hash_config1, p1->current_length);
 	      dpo1 =
 		load_balance_get_fwd_bucket (lb1,
 					     (vnet_buffer (p1)->ip.flow_hash &
@@ -218,7 +218,7 @@ ip6_lookup_inline (vlib_main_t * vm,
 	    {
 	      flow_hash_config0 = lb0->lb_hash_config;
 	      vnet_buffer (p0)->ip.flow_hash =
-		ip6_compute_flow_hash (ip0, flow_hash_config0);
+		ip6_compute_flow_hash (ip0, flow_hash_config0, p0->current_length);
 	      dpo0 =
 		load_balance_get_fwd_bucket (lb0,
 					     (vnet_buffer (p0)->ip.flow_hash &

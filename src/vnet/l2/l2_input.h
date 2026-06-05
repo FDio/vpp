@@ -329,14 +329,14 @@ vnet_l2_compute_flow_hash (vlib_buffer_t * b)
   ethernet_header_t *eh = vlib_buffer_get_current (b);
   u8 *l3h = (u8 *) eh + vnet_buffer (b)->l2.l2_len;
   u16 ethertype = clib_net_to_host_u16 (*(u16 *) (l3h - 2));
+  u16 l3len = b->current_length - vnet_buffer (b)->l2.l2_len;
 
   if (ethertype == ETHERNET_TYPE_IP4)
-    return ip4_compute_flow_hash ((ip4_header_t *) l3h, IP_FLOW_HASH_DEFAULT);
+    return ip4_compute_flow_hash ((ip4_header_t *) l3h, IP_FLOW_HASH_DEFAULT, l3len);
   else if (ethertype == ETHERNET_TYPE_IP6)
-    return ip6_compute_flow_hash ((ip6_header_t *) l3h, IP_FLOW_HASH_DEFAULT);
+    return ip6_compute_flow_hash ((ip6_header_t *) l3h, IP_FLOW_HASH_DEFAULT, l3len);
   else if (ethertype == ETHERNET_TYPE_MPLS)
-    return mpls_compute_flow_hash ((mpls_unicast_header_t *) l3h,
-				   IP_FLOW_HASH_DEFAULT);
+    return mpls_compute_flow_hash ((mpls_unicast_header_t *) l3h, IP_FLOW_HASH_DEFAULT, l3len);
   else
     {
       u32 a, b, c;

@@ -236,7 +236,7 @@ tunnel_build_v6_hdr (const tunnel_t *t, ip_protocol_t next_proto,
   ip->protocol = next_proto;
   ip->hop_limit = (t->t_hop_limit == 0 ? 254 : t->t_hop_limit);
   ip6_set_flow_label_network_order (
-    ip, ip6_compute_flow_hash (ip, IP_FLOW_HASH_DEFAULT));
+    ip, ip6_compute_flow_hash (ip, IP_FLOW_HASH_DEFAULT, sizeof (ip6_header_t)));
 }
 
 void

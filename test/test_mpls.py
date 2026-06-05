@@ -2037,6 +2037,131 @@ class TestMPLS(VppTestCase):
             self.assertEqual(rx[Ether].dst, self.pg0.remote_mac)
             self.assertEqual(rx[IP].dst, self.pg0.remote_ip4)
 
+    def test_swap_ecmp_truncated(self):
+        """MPLS label swap tests with truncated packets"""
+
+        self.pg0.generate_remote_hosts(2)
+        self.pg0.configure_ipv4_neighbors()
+        route_32_eos = VppMplsRoute(
+            self,
+            32,
+            1,
+            [
+                VppRoutePath(
+                    self.pg0.remote_hosts[0].ip4,
+                    self.pg0.sw_if_index,
+                    labels=[VppMplsLabel(22)],
+                ),
+                VppRoutePath(
+                    self.pg0.remote_hosts[1].ip4,
+                    self.pg0.sw_if_index,
+                    labels=[VppMplsLabel(44)],
+                ),
+            ],
+        )
+        route_32_neos = VppMplsRoute(
+            self,
+            32,
+            0,
+            [
+                VppRoutePath(
+                    self.pg0.remote_hosts[0].ip4,
+                    self.pg0.sw_if_index,
+                    labels=[VppMplsLabel(22)],
+                ),
+                VppRoutePath(
+                    self.pg0.remote_hosts[1].ip4,
+                    self.pg0.sw_if_index,
+                    labels=[VppMplsLabel(44)],
+                ),
+            ],
+        )
+        route_32_eos.add_vpp_config()
+        route_32_neos.add_vpp_config()
+        self.logger.info(self.vapi.cli("show mpls fib"))
+
+        # Send packet that looks like it contains an IPv4 header, but is truncated
+        #
+        # It should be forwarded via ECMP load-balance, but shouldn't read beyond the end of the buffer.
+        self.reset_packet_infos()
+        self.create_packet_info(self.pg0, self.pg0)
+        pkt = (
+            Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac)
+            / MPLS(
+                label=32,
+                ttl=32,
+            )
+            / Raw(b"\x04")
+        )
+        rx = self.send_and_expect(self.pg0, [pkt], self.pg0)
+        self.assertEqual(len(rx), 1)
+        self.assertIn(rx[0][MPLS].label, [22, 44])
+
+        # Send packet that looks like it contains an IPv6 header, but is truncated
+        #
+        # It should be forwarded via ECMP load-balance, but shouldn't read beyond the end of the buffer.
+        self.reset_packet_infos()
+        self.create_packet_info(self.pg0, self.pg0)
+        pkt = (
+            Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac)
+            / MPLS(
+                label=32,
+                ttl=32,
+            )
+            / Raw(b"\x06")
+        )
+        rx = self.send_and_expect(self.pg0, [pkt], self.pg0)
+        self.assertEqual(len(rx), 1)
+        self.assertIn(rx[0][MPLS].label, [22, 44])
+
+        # Send packet with a whole buffer worth of labels with the last being EOS
+        #
+        # It should be forwarded via ECMP load-balance, but shouldn't read beyond the end of the buffer.
+        self.reset_packet_infos()
+        self.create_packet_info(self.pg0, self.pg0)
+        mpls = MPLS(
+            label=32,
+            ttl=32,
+            s=0,
+        )
+        pkt = (
+            Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac)
+            / mpls
+            # Use raw bytes to work around recursion limits in scapy
+            / Raw(bytes(mpls) * 506)
+            / MPLS(
+                label=32,
+                ttl=32,
+                s=1,
+            )
+        )
+        rx = self.send_and_expect(self.pg0, [pkt], self.pg0)
+        self.assertEqual(len(rx), 1)
+        self.assertIn(rx[0][MPLS].label, [22, 44])
+
+        # Send packet with a whole buffer worth of labels
+        #
+        # It should be forwarded via ECMP load-balance, but shouldn't read beyond the end of the buffer.
+        self.reset_packet_infos()
+        self.create_packet_info(self.pg0, self.pg0)
+        mpls = MPLS(
+            label=32,
+            ttl=32,
+            s=0,
+        )
+        pkt = (
+            Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac)
+            / mpls
+            # Use raw bytes to work around recursion limits in scapy
+            / Raw(bytes(mpls) * 507)
+        )
+        rx = self.send_and_expect(self.pg0, [pkt], self.pg0)
+        self.assertEqual(len(rx), 1)
+        self.assertIn(rx[0][MPLS].label, [22, 44])
+
+        route_32_neos.remove_vpp_config()
+        route_32_eos.remove_vpp_config()
+
 
 class TestMPLSDisabled(VppTestCase):
     """MPLS disabled"""

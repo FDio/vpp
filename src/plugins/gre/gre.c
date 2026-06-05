@@ -341,7 +341,8 @@ gre46_fixup (vlib_main_t *vm, const ip_adjacency_t *adj, vlib_buffer_t *b0,
    * at the midchain node */
   ip0->ip6.payload_length = clib_host_to_net_u16 (
     vlib_buffer_length_in_chain (vm, b0) - sizeof (ip0->ip6));
-  tunnel_encap_fixup_4o6 (flags, b0, (ip4_header_t *) (ip0 + 1), &ip0->ip6);
+  tunnel_encap_fixup_4o6 (flags, b0, (ip4_header_t *) (ip0 + 1), &ip0->ip6,
+			  b0->current_length - sizeof (*ip0));
 }
 
 static void

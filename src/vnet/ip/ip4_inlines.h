@@ -15,18 +15,32 @@
 
 #define IP_DF 0x4000		/* don't fragment */
 
-/* Compute flow hash.  We'll use it to select which adjacency to use for this
-   flow.  And other things. */
+/**
+ * Compute flow hash for an IPv4 packet.
+ *
+ * @param ip - pointer to ip4 header
+ * @param flow_hash_config - flow hash configuration
+ * @param length - length of the remaining buffer in bytes including the IP header. Must be at least
+ * sizeof(ip4_header_t).
+ * @return flow hash
+ */
 always_inline u32
-ip4_compute_flow_hash (const ip4_header_t * ip,
-		       flow_hash_config_t flow_hash_config)
+ip4_compute_flow_hash (const ip4_header_t *ip, flow_hash_config_t flow_hash_config, u16 length)
 {
   tcp_header_t *tcp = (void *) (ip + 1);
   udp_header_t *udp = (void *) (ip + 1);
   gtpv1u_header_t *gtpu = (void *) (udp + 1);
   u32 a, b, c, t1, t2;
-  uword is_udp = ip->protocol == IP_PROTOCOL_UDP;
-  uword is_tcp_udp = (ip->protocol == IP_PROTOCOL_TCP || is_udp);
+  uword is_udp;
+  uword is_tcp_udp;
+
+  ASSERT (length >= sizeof (ip4_header_t));
+
+  is_udp =
+    ip->protocol == IP_PROTOCOL_UDP && length >= sizeof (ip4_header_t) + sizeof (udp_header_t);
+  is_tcp_udp =
+    ((ip->protocol == IP_PROTOCOL_TCP && length >= sizeof (ip4_header_t) + sizeof (tcp_header_t)) ||
+     is_udp);
 
   t1 = (flow_hash_config & IP_FLOW_HASH_SRC_ADDR)
     ? ip->src_address.data_u32 : 0;
@@ -63,7 +77,9 @@ ip4_compute_flow_hash (const ip4_header_t * ip,
     (t1 << 16) | t2 : (t2 << 16) | t1;
   if (PREDICT_TRUE (is_udp) &&
       PREDICT_FALSE ((flow_hash_config & IP_FLOW_HASH_GTPV1_TEID) &&
-		     udp->dst_port == GTPV1_PORT_BE))
+		     udp->dst_port == GTPV1_PORT_BE && ip4_get_fragment_offset (ip) == 0 &&
+		     length >=
+		       sizeof (ip4_header_t) + sizeof (udp_header_t) + sizeof (gtpv1u_header_t)))
     {
       t1 = gtpu->teid;
       c ^= t1;
