@@ -29,15 +29,15 @@ class TestMemif(VppTestCase):
     remote_class = RemoteVppTestCase
 
     @classmethod
-    def get_cpus_required(cls):
-        return super().get_cpus_required() + cls.remote_class.get_cpus_required()
+    def get_cores_required(cls):
+        return super().get_cores_required() + cls.remote_class.get_cores_required()
 
     @classmethod
-    def assign_cpus(cls, cpus):
-        remote_cpus = cpus[: cls.remote_class.get_cpus_required()]
-        my_cpus = cpus[cls.remote_class.get_cpus_required() :]
-        cls.remote_class.assign_cpus(remote_cpus)
-        super().assign_cpus(my_cpus)
+    def assign_cores(cls, cores):
+        remote_cores = cores[: cls.remote_class.get_cores_required()]
+        my_cores = cores[cls.remote_class.get_cores_required() :]
+        cls.remote_class.assign_cores(remote_cores)
+        super().assign_cores(my_cores)
 
     @classmethod
     def setUpClass(cls):
