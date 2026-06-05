@@ -26,6 +26,8 @@ static vlib_error_desc_t quic_error_counters[] = {
 quic_main_t quic_main;
 quic_engine_vft_t *quic_engine_vfts;
 
+typedef void (*quic_timer_expiration_handler) (u32 conn_index, clib_thread_index_t thread_index);
+
 static_always_inline quic_engine_type_t
 quic_get_engine_type (quic_engine_type_t requested,
 		      quic_engine_type_t preferred)
@@ -45,6 +47,15 @@ quic_get_engine_type (quic_engine_type_t requested,
       engine_type = preferred;
     }
   return engine_type;
+}
+
+__clib_export clib_error_t *
+quic_plugin_methods_vtable_init (quic_plugin_methods_t *m)
+{
+#define _(name) m->name = quic_##name;
+  foreach_quic_plugin_exported_method_name
+#undef _
+    return 0;
 }
 
 __clib_export void
@@ -98,7 +109,6 @@ quic_connect_connection (transport_endpoint_cfg_t *tep)
   ctx->c_flags |= TRANSPORT_CONNECTION_F_NO_LOOKUP;
   ctx->udp_is_ip4 = sep->is_ip4;
   ctx->udp_session_handle = SESSION_INVALID_HANDLE;
-  ctx->timer_handle = QUIC_TIMER_HANDLE_INVALID;
   ctx->conn_state = QUIC_CONN_STATE_HANDSHAKE;
   ctx->listener_ctx_id = QUIC_CTX_INVALID_INDEX;
   ctx->client_opaque = sep->opaque;
@@ -417,9 +427,8 @@ quic_transfer_connection (u32 ctx_index, u32 dest_thread)
 
   clib_memcpy (temp_ctx, ctx, sizeof (quic_ctx_t));
 
-  quic_stop_ctx_timer (
-    &quic_wrk_ctx_get (qm, ctx->c_thread_index)->timer_wheel, ctx);
-  QUIC_DBG (4, "Stopped timer for ctx %u", ctx->c_c_index);
+  quic_stop_conn_timer (&quic_wrk_ctx_get (qm, ctx->c_thread_index)->timer_wheel, ctx,
+			QUIC_TIMER_TX);
   quic_eng_crypto_context_release (ctx->crypto_context_index, thread_index);
   quic_ctx_free (qm, ctx);
 
@@ -497,9 +506,8 @@ quic_udp_session_cleanup_callback (session_t *udp_session,
     return;
 
   ctx = quic_ctx_get (udp_session->opaque, udp_session->thread_index);
-  quic_stop_ctx_timer (
-    &quic_wrk_ctx_get (qm, ctx->c_thread_index)->timer_wheel, ctx);
-  QUIC_DBG (4, "Stopped timer for ctx %u", ctx->c_c_index);
+  quic_stop_conn_timer (&quic_wrk_ctx_get (qm, ctx->c_thread_index)->timer_wheel, ctx,
+			QUIC_TIMER_TX);
   quic_eng_crypto_context_release (ctx->crypto_context_index,
 				   ctx->c_thread_index);
   quic_ctx_free (qm, ctx);
@@ -555,8 +563,8 @@ quic_udp_session_accepted_callback (session_t * udp_session)
 		       udp_listen_session->thread_index);
   ctx->udp_is_ip4 = lctx->c_is_ip4;
   ctx->parent_app_id = lctx->parent_app_id;
+  ctx->connection_timeout = lctx->connection_timeout;
   ctx->crypto_owner_app_wrk_id = lctx->crypto_owner_app_wrk_id;
-  ctx->timer_handle = QUIC_TIMER_HANDLE_INVALID;
   ctx->conn_state = QUIC_CONN_STATE_OPENED;
   ctx->c_flags |= TRANSPORT_CONNECTION_F_NO_LOOKUP;
 
@@ -566,7 +574,8 @@ quic_udp_session_accepted_callback (session_t * udp_session)
   udp_session->opaque = ctx_index;
   udp_session->session_state = SESSION_STATE_READY;
 
-  /* TODO timeout to delete these if they never connect */
+  quic_start_conn_timer (&quic_wrk_ctx_get (&quic_main, thread_index)->timer_wheel, ctx,
+			 QUIC_TIMER_ACCEPT, ctx->connection_timeout);
   return 0;
 }
 
@@ -784,8 +793,31 @@ quic_app_enable (quic_main_t *qm, u8 is_en)
 }
 
 static void
+quic_accept_timer_expired (u32 conn_index, clib_thread_index_t thread_index)
+{
+  quic_main_t *qm = &quic_main;
+  quic_ctx_t *ctx;
+
+  ctx = quic_ctx_get (conn_index, thread_index);
+  ASSERT (!quic_ctx_is_stream (ctx));
+  ASSERT (ctx->c_s_index == QUIC_SESSION_INVALID);
+  ASSERT (ctx->flags & QUIC_F_NO_APP_SESSION);
+  ctx->timers[QUIC_TIMER_TX] = QUIC_TIMER_HANDLE_INVALID;
+  ctx->conn_state = QUIC_CONN_STATE_CLOSED;
+  quic_disconnect_transport (ctx, qm->app_index);
+}
+
+static quic_timer_expiration_handler quic_timer_expiration_handlers[QUIC_N_TIMERS] = {
+  quic_accept_timer_expired,
+  quic_eng_connection_tx_timer_expired,
+};
+
+static void
 quic_expired_timers_dispatch (u32 *expired_timers)
 {
+  clib_thread_index_t thread_index = vlib_get_thread_index ();
+  u32 conn_index;
+  quic_timers_t timer_id;
   int i;
 #if QUIC_DEBUG >= 4
   int64_t time_now = quic_wrk_ctx_get (&quic_main, vlib_get_thread_index ())->time_now;
@@ -793,8 +825,10 @@ quic_expired_timers_dispatch (u32 *expired_timers)
 
   for (i = 0; i < vec_len (expired_timers); i++)
     {
-      QUIC_DBG (4, "Timer expired for conn index %u at %ld", expired_timers[i], time_now);
-      quic_eng_connection_timer_expired (expired_timers[i]);
+      conn_index = expired_timers[i] & ((u32) (1 << (32 - QUIC_LOG2_TW_TIMERS_PER_OBJECT)) - 1);
+      timer_id = expired_timers[i] >> (32 - QUIC_LOG2_TW_TIMERS_PER_OBJECT);
+      QUIC_DBG (4, "timer_id %u expired for conn index %u at %ld", timer_id, conn_index, time_now);
+      quic_timer_expiration_handlers[timer_id](conn_index, thread_index);
     }
 }
 
@@ -806,7 +840,7 @@ quic_enable (vlib_main_t *vm, u8 is_en)
   quic_worker_ctx_t *qwc;
   clib_error_t *err;
   quic_ctx_t *ctx;
-  u64 i;
+  u32 i;
 
   qm->engine_type =
     quic_get_engine_type (QUIC_ENGINE_QUICLY, QUIC_ENGINE_OPENSSL);
