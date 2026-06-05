@@ -187,7 +187,7 @@ iavf_port_rx_irq_config (vlib_main_t *vm, vnet_dev_port_t *port, int enable)
   u16 n_rx_vectors = ap->n_rx_vectors;
   u8 buffer[VIRTCHNL_MSG_SZ (virtchnl_irq_map_info_t, vecmap, n_rx_vectors)];
   u8 n_intr_mode_queues_per_vector[n_rx_vectors];
-  u8 n_queues_per_vector[n_rx_vectors];
+  u8 n_timer_or_queues_per_vector[n_rx_vectors];
   virtchnl_irq_map_info_t *im = (virtchnl_irq_map_info_t *) buffer;
   const u32 rxq_map_bits = BITS (im->vecmap[0].rxq_map);
   vnet_dev_rv_t rv;
@@ -196,7 +196,7 @@ iavf_port_rx_irq_config (vlib_main_t *vm, vnet_dev_port_t *port, int enable)
 	     ap->intr_mode_per_rxq_bitmap);
 
   for (u32 i = 0; i < n_rx_vectors; i++)
-    n_intr_mode_queues_per_vector[i] = n_queues_per_vector[i] = 0;
+    n_intr_mode_queues_per_vector[i] = n_timer_or_queues_per_vector[i] = 0;
 
   *im = (virtchnl_irq_map_info_t){
     .num_vectors = n_rx_vectors,
@@ -234,7 +234,7 @@ iavf_port_rx_irq_config (vlib_main_t *vm, vnet_dev_port_t *port, int enable)
 		}
 
 	      im->vecmap[i].rxq_map |= 1 << rxq->queue_id;
-	      n_queues_per_vector[i]++;
+	      n_timer_or_queues_per_vector[i]++;
 	      n_intr_mode_queues_per_vector[i] +=
 		u64_is_bit_set (ap->intr_mode_per_rxq_bitmap, rxq->queue_id);
 	    }
@@ -258,6 +258,7 @@ iavf_port_rx_irq_config (vlib_main_t *vm, vnet_dev_port_t *port, int enable)
 		  return VNET_DEV_ERR_NOT_SUPPORTED;
 		}
 	      im->vecmap[0].rxq_map |= 1 << rxq->queue_id;
+	      n_timer_or_queues_per_vector[0]++;
 	    }
     }
 
@@ -268,7 +269,7 @@ iavf_port_rx_irq_config (vlib_main_t *vm, vnet_dev_port_t *port, int enable)
     {
       u32 val;
 
-      if (enable == 0 || n_queues_per_vector[i] == 0)
+      if (enable == 0 || n_timer_or_queues_per_vector[i] == 0)
 	val = dyn_ctln_disabled.as_u32;
       else if (ap->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_WB_ON_ITR &&
 	       n_intr_mode_queues_per_vector[i] == 0)
