@@ -24,7 +24,7 @@ class TestUtil(CPUInterface, unittest.TestCase):
         return False
 
     @classmethod
-    def get_cpus_required(cls):
+    def get_cores_required(cls):
         return 0
 
     def test_mac_to_binary(self):
