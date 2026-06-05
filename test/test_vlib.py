@@ -223,6 +223,32 @@ class TestVlib(VppTestCase):
                     self.logger.info(cmd + " FAIL retval " + str(r.retval))
 
 
+class BaseTestMultiWorkersPool(VppTestCase):
+    """VLIB Multi Workers Pool Test Cases"""
+
+    def test_multi_workers_pool(self):
+        r = self.vapi.cli_return_response("test pool-cache")
+        self.assertEqual(r.retval, 0, getattr(r, "reply", ""))
+
+
+class TestPoolCacheMainThread(BaseTestMultiWorkersPool):
+    """VLIB Main thread Pool Cache Test Cases"""
+
+    vpp_worker_count = 0
+
+
+class TestPoolCache2Workers(BaseTestMultiWorkersPool):
+    """VLIB 2 Workers Pool Cache Test Cases"""
+
+    vpp_worker_count = 2
+
+
+class Test4WorkersPool(BaseTestMultiWorkersPool):
+    """VLIB 4 Workers Pool Cache Test Cases"""
+
+    vpp_worker_count = 4
+
+
 class TestVlibFrameLeak(VppTestCase):
     """Vlib Frame Leak Test Cases"""
 
