@@ -16,6 +16,40 @@
       "message": "Re-run failed jobs via GitHub UI",
       "revId": "3b37536d9dac5dd489caed621e81c52623f5a566",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "325ff22c_f3e67c3a",
+        "filename": "src/vnet/flow/flow.h",
+        "patchSetId": 13
+      },
+      "lineNbr": 360,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-06-05T10:15:37Z",
+      "side": 1,
+      "message": "Looking at drivers, it seems like the octeon driver still needs to be updated with the new flow field changes (`src/drivers/octeon/flow.c`).\n\nAFAIK the octeon drivers are not built as part of the regular `make build` process or the CI. I wonder if we should support that to verify that changes are non-breaking ?",
+      "revId": "3b37536d9dac5dd489caed621e81c52623f5a566",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d140c12c_b14ba238",
+        "filename": "src/vnet/flow/flow_api.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 225,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-06-05T10:15:37Z",
+      "side": 1,
+      "message": "Since `vnet_flow_t flow` is not zero-initialized, should we explicitly set fields `rss_types`/`rss_fun`/`queue_index`/`queue_num` (set in v2 API) to zero here ?",
+      "revId": "3b37536d9dac5dd489caed621e81c52623f5a566",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
