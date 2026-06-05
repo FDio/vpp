@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "db2f613e_9ffbc101",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 12
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-06-05T16:06:34Z",
+      "side": 1,
+      "message": "Once this change is rebased on master, the verdict-testbench needs to be moved under the new `sfdp_services_sample` plugin.",
+      "revId": "873bc84471daa700c8e877a4f3ff8d0e53d2f08b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
