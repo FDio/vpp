@@ -185,10 +185,10 @@ quic_eng_ctx_attribute (quic_ctx_t *ctx, u8 is_get, transport_endpt_attr_t *attr
 }
 
 static_always_inline void
-quic_eng_connection_timer_expired (u32 conn_index)
+quic_eng_connection_tx_timer_expired (u32 conn_index, clib_thread_index_t thread_index)
 {
   quic_main_t *qm = &quic_main;
-  quic_engine_vfts[qm->engine_type].conn_timer_expired (conn_index);
+  quic_engine_vfts[qm->engine_type].conn_tx_timer_expired (conn_index, thread_index);
 }
 
 #endif /* __included_quic_eng_inline_h__ */
