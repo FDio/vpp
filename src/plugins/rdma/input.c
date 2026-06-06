@@ -903,7 +903,7 @@ rdma_device_mlx5dv_striding_rq_input (vlib_main_t * vm,
       u32 n_bytes_remaining = 0;	/*Remaining bytes in current buffer */
       u32 *next_in_frame = to_next;
       u32 *next_to_free = ptd->to_free_buffers;
-      bt->current_length = vlib_buffer_get_default_data_size (vm);
+      bt->current_length = rxq->buf_sz;
       do
 	{
 	  vlib_buffer_t *bufs[VLIB_FRAME_SIZE];
