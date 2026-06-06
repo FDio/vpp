@@ -1450,6 +1450,8 @@ sm_lookup_free_custom_segment (segment_manager_t *sm, u32 seg_ctx_index)
   pool_foreach (ct_seg, seg_ctx->segments)
     {
       /* Client or server has detached so segment cannot be used */
+      if (ct_seg->flags & (CUSTOM_SEGMENT_F_CLIENT_DETACHED | CUSTOM_SEGMENT_F_SERVER_DETACHED))
+	continue;
       fs = segment_manager_get_segment (sm, ct_seg->segment_index);
       free_bytes = fifo_segment_available_bytes (fs);
       max_fifos = fifo_segment_size (fs) / seg_ctx->fifo_pair_bytes;
