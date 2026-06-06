@@ -16,6 +16,23 @@
       "message": "recheck",
       "revId": "7d906aa3cd5231f2f1dfd8666618ce6358da5735",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "987984b6_b5bd59d1",
+        "filename": "test/hs-test/cut-thru_test.go",
+        "patchSetId": 2
+      },
+      "lineNbr": 15,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-06-06T01:12:15Z",
+      "side": 1,
+      "message": "Any idea why this needs to be solo?",
+      "revId": "7d906aa3cd5231f2f1dfd8666618ce6358da5735",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
