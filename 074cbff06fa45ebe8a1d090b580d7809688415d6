@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "755ea0ea_f1b03708",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 62,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-06-06T01:14:56Z",
+      "side": 1,
+      "message": "The context still needs to be free, otherwise we leak. And could this be treated as a migrated context, why wouldn\u0027t we have the ctx?",
+      "revId": "074cbff06fa45ebe8a1d090b580d7809688415d6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
