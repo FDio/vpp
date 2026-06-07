@@ -539,6 +539,7 @@ hsi_tcp_tracker_init (hsi_tcp_tracker_t *trk, tcp_connection_t *tc, hsi_tcp_trac
   clib_memset (trk, 0, sizeof (*trk));
 
   trk->magic = HSI_TCP_TRACKER_MAGIC;
+  trk->cc_algo = tcp_cc_algo_get (TCP_CC_NEWRENO);
   trk->peer_session_handle = peer->session_handle;
   trk->peer_conn_index = peer->conn_index;
   trk->tx_fib_index = peer->fib_index;
@@ -561,6 +562,9 @@ hsi_tcp_tracker_init (hsi_tcp_tracker_t *trk, tcp_connection_t *tc, hsi_tcp_trac
 static void
 hsi_tcp_track_cleanup_tcp_state (tcp_connection_t *tc)
 {
+  if (tc->cc_algo && tc->cc_algo->cleanup)
+    tc->cc_algo->cleanup (tc);
+
   vec_free (tc->snd_sacks);
   vec_free (tc->snd_sacks_fl);
   vec_free (tc->rcv_opts.sacks);
@@ -573,6 +577,21 @@ hsi_tcp_track_cleanup_tcp_state (tcp_connection_t *tc)
       tcp_bt_cleanup (tc);
       tc->cfg_flags &= ~TCP_CFG_F_RATE_SAMPLE;
     }
+}
+
+static void
+hsi_tcp_track_cleanup_pending_tx (session_t *s, tcp_connection_t *tc)
+{
+  s->flags &= ~SESSION_F_CUSTOM_TX;
+  if (s->tx_fifo)
+    svm_fifo_unset_event (s->tx_fifo);
+
+  tcp_cong_recovery_off (tc);
+  tc->flags &= ~(TCP_CONN_SNDACK | TCP_CONN_RXT_PENDING | TCP_CONN_DEQ_PENDING);
+  tc->pending_dupacks = 0;
+  tc->snd_sack_pos = 0;
+  tc->snd_rxt_bytes = 0;
+  tc->rxt_delivered = 0;
 }
 
 static void
@@ -675,7 +694,7 @@ hsi_tcp_track_commit (session_t *s, hsi_tcp_track_snapshot_t *peer)
 
   hsi_session_take_ownership (s);
   tcp_connection_timers_reset (tc);
-  tcp_cong_recovery_off (tc);
+  hsi_tcp_track_cleanup_pending_tx (s, tc);
   hsi_tcp_track_commit_connection (tc, peer);
   s->session_state = SESSION_STATE_TRANSPORT_CLOSED;
   hsi_session_cleanup_fifos (s);
