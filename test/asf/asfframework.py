@@ -324,6 +324,7 @@ class VppAsfTestCase(CPUInterface, unittest.TestCase):
     extra_vpp_statseg_config = ""
     extra_vpp_config = []
     extra_vpp_plugin_config = []
+    extra_vpp_heap_config = "1g"
     logger = null_logger
     vapi_response_timeout = 5
     remove_configured_vpp_objects_on_tear_down = True
@@ -456,6 +457,11 @@ class VppAsfTestCase(CPUInterface, unittest.TestCase):
             )
         cls.vpp_cmdline.extend(
             [
+                "}",
+                "memory",
+                "{",
+                "main-heap-size",
+                cls.extra_vpp_heap_config,
                 "}",
                 "physmem",
                 "{",
