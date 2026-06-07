@@ -16,6 +16,24 @@
       "message": "Please integrate as a \"proper\" vppapigen plugin. Like C, JSON, ...\nPlease also test the stubs with other IDEs, like VS Code to see if there is a general approach.",
       "revId": "cfdb0c9c4c4e19d1d3c8b362d512331ec95b923a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "0f3ba7e6_3577b56d",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-06-07T06:21:18Z",
+      "side": 1,
+      "message": "Python doesn’t allow stubs for a class to be sharded in multiple files - it has to be a single file - i.e. vpp_papi.py only matches vpp_papi.pyi and vice versa. Splitting the build into parts (like C) would then entail merging them anyway and thus is a pointless exercise.\n\nI’m not sure what you mean by “general approach”. Pyright is well known python static checker and editors like neovim or VS Code can connect to Pyright via LSP to display any warnings or errors inline. Command-line pyright works with these stubs well.",
+      "parentUuid": "1c44fbf9_a8752211",
+      "revId": "cfdb0c9c4c4e19d1d3c8b362d512331ec95b923a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
