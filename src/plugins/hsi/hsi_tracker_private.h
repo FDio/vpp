@@ -35,32 +35,37 @@ typedef enum hsi_tracker_flags_
 
 typedef struct hsi_tcp_tracker_
 {
+  ip46_address_t tx_lcl_ip;
+  ip46_address_t tx_rmt_ip;
+  session_handle_t peer_session_handle;
+  f64 fin_wait_start;
+  u64 packets;
+  u64 bytes;
   u32 magic;
   hsi_tracker_flags_t flags;
   u32 peer_fin_ack;
-  f64 fin_wait_start;
-  session_handle_t peer_session_handle;
   u32 peer_conn_index;
+  tcp_cc_algorithm_t *cc_algo;
   u32 tx_fib_index;
-  ip46_address_t tx_lcl_ip;
-  ip46_address_t tx_rmt_ip;
-  u16 tx_lcl_port;
-  u16 tx_rmt_port;
   i32 seq_delta;
   i32 ack_delta;
   i32 tsval_delta;
   i32 tsecr_delta;
+  u16 tx_lcl_port;
+  u16 tx_rmt_port;
   i8 wnd_delta;
-  u64 packets;
-  u64 bytes;
 } hsi_tcp_tracker_t;
 
-STATIC_ASSERT (sizeof (hsi_tcp_tracker_t) <= (STRUCT_OFFSET_OF (tcp_connection_t, bt) -
-					      STRUCT_OFFSET_OF (tcp_connection_t, fr_occurences)),
-	       "hsi tcp tracker must fit in unused tracked tcp fields");
-STATIC_ASSERT ((STRUCT_OFFSET_OF (tcp_connection_t, fr_occurences) %
-		__alignof__ (hsi_tcp_tracker_t)) == 0,
+#define HSI_TCP_TRACKER_OFFSET STRUCT_OFFSET_OF (tcp_connection_t, rcv_dupacks)
+
+STATIC_ASSERT (sizeof (hsi_tcp_tracker_t) <=
+		 (STRUCT_OFFSET_OF (tcp_connection_t, next_node_index) - HSI_TCP_TRACKER_OFFSET),
+	       "hsi tcp tracker must not overlap tcp output fields");
+STATIC_ASSERT ((HSI_TCP_TRACKER_OFFSET % __alignof__ (hsi_tcp_tracker_t)) == 0,
 	       "hsi tcp tracker overlay must be aligned");
+STATIC_ASSERT (STRUCT_OFFSET_OF (hsi_tcp_tracker_t, cc_algo) ==
+		 (STRUCT_OFFSET_OF (tcp_connection_t, cc_algo) - HSI_TCP_TRACKER_OFFSET),
+	       "hsi tcp tracker cc_algo must overlap tcp cc_algo");
 
 typedef struct hsi_udp_tracker_
 {
@@ -260,7 +265,7 @@ hsi_session_is_hsi_owned (session_t *s)
 static_always_inline hsi_tcp_tracker_t *
 hsi_tcp_tracker_from_connection (tcp_connection_t *tc)
 {
-  return (hsi_tcp_tracker_t *) &tc->fr_occurences;
+  return (hsi_tcp_tracker_t *) &tc->rcv_dupacks;
 }
 
 static inline hsi_tcp_tracker_t *
