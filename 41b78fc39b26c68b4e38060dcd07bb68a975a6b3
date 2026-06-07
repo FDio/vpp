@@ -33,6 +33,40 @@
       "message": "recheck",
       "revId": "41b78fc39b26c68b4e38060dcd07bb68a975a6b3",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ef28fa6f_c07c350a",
+        "filename": "test/vpp_pg_interface.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 126,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-06-07T16:31:15Z",
+      "side": 1,
+      "message": "Would you mind matching existing context by using % formatting for readability sake? Mixing the two looks weird to me.",
+      "revId": "41b78fc39b26c68b4e38060dcd07bb68a975a6b3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f5cb1eb5_a2b31a92",
+        "filename": "test/vpp_pg_interface.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 168,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-06-07T16:31:15Z",
+      "side": 1,
+      "message": "Since setting/getting maxframe doesn\u0027t carry immediate action (like for example coalesce_disable() does a vapi call) I\u0027d say it\u0027s better to have it as a readable/writable property. What do you think?",
+      "revId": "41b78fc39b26c68b4e38060dcd07bb68a975a6b3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
