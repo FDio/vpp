@@ -33,6 +33,7 @@ typedef enum svm_fifo_flag_
   SVM_FIFO_F_LL_TRACKED = 1 << 0,
   SVM_FIFO_F_SERVER_CT = 1 << 1,
   SVM_FIFO_F_CLIENT_CT = 1 << 2,
+  SVM_FIFO_F_CLIENT_CT_DETACHED = 1 << 3,
 } svm_fifo_flag_t;
 
 typedef enum
