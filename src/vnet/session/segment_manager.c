@@ -1314,6 +1314,7 @@ segment_manager_dealloc_fifos_ct (svm_fifo_t *rx_fifo, svm_fifo_t *tx_fifo, u32 
   int cnt;
   u32 seg_ctx_index = rx_fifo->seg_ctx_index;
   u32 ct_seg_index = rx_fifo->ct_seg_index;
+  u8 defer_server_cleanup = 0;
 
   /*
    * Cleanup fifos
@@ -1326,9 +1327,28 @@ segment_manager_dealloc_fifos_ct (svm_fifo_t *rx_fifo, svm_fifo_t *tx_fifo, u32 
   fs = segment_manager_get_segment_w_lock (sm, seg_index);
   ASSERT ((fifo_segment_flags (fs) & FIFO_SEGMENT_F_CUSTOM_USE) ==
 	  FIFO_SEGMENT_F_CUSTOM_USE);
+
+  if (is_client)
+    {
+      rx_fifo->flags |= SVM_FIFO_F_CLIENT_CT_DETACHED;
+      tx_fifo->flags |= SVM_FIFO_F_CLIENT_CT_DETACHED;
+    }
+  else
+    {
+      i32 rx_refcnt_after_free = rx_fifo->refcnt - 1;
+      i32 tx_refcnt_after_free = tx_fifo->refcnt - 1;
+      u8 expected_peer_ref = (rx_fifo->flags & SVM_FIFO_F_CLIENT_CT_DETACHED) ? 0 : 1;
+      i32 remaining_refs = clib_max (rx_refcnt_after_free, tx_refcnt_after_free);
+
+      defer_server_cleanup = remaining_refs > expected_peer_ref;
+    }
+
   fifo_segment_free_fifo (fs, rx_fifo);
   fifo_segment_free_fifo (fs, tx_fifo);
   segment_manager_segment_reader_unlock (sm);
+
+  if (defer_server_cleanup)
+    return;
 
   /*
    * Atomically update segment context with readers lock
