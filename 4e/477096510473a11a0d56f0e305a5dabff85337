@@ -1,0 +1,7 @@
+Code-Review+2: Dave Barach <vpp@barachs.net>
+Verified+1: FDio GitHub Actions <releng+fdio-github@linuxfoundation.org>
+Submitted-by: Dave Barach <vpp@barachs.net>
+Submitted-at: Sun, 07 Jun 2026 19:25:26 +0000
+Reviewed-on: https://gerrit.fd.io/r/c/vpp/+/46011
+Project: vpp
+Branch: refs/heads/master
