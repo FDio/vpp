@@ -37,6 +37,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "170d89cf_1c05b4e8",
+        "filename": "src/plugins/cnat/cnat_inline.h",
+        "patchSetId": 6
+      },
+      "lineNbr": 98,
+      "author": {
+        "id": 2556
+      },
+      "writtenOn": "2026-06-08T16:31:58Z",
+      "side": 1,
+      "message": "These cannot be the same as one is u16 and the other is u32",
+      "parentUuid": "00d2f9cd_555b0052",
+      "revId": "2331f681a4ac17ae98eec486bb337c88131b3c42",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "56934556_c8db00b4",
         "filename": "src/plugins/cnat/cnat_node_feature.c",
         "patchSetId": 6
