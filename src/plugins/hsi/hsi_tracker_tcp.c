@@ -1057,7 +1057,7 @@ hsi_tcp_track_schedule_cleanup_pair (tcp_connection_t *tc, hsi_tcp_tracker_t *tr
   session_t *local_s;
   hsi_worker_t *wrk;
   session_handle_t local_handle, first;
-  u8 local_shared, peer_shared;
+  u8 local_uses_remote_fifos, peer_uses_remote_fifos;
 
   ASSERT (tc->cfg_flags & TCP_CFG_F_TRACKED);
   ASSERT (tc->state == TCP_STATE_CLOSED);
@@ -1101,11 +1101,11 @@ hsi_tcp_track_schedule_cleanup_pair (tcp_connection_t *tc, hsi_tcp_tracker_t *tr
 
   local_s = session_get_from_handle_safe ((session_handle_tu_t){ .handle = local_handle });
   ASSERT (local_s);
-  local_shared = hsi_session_uses_shared_fifos (local_s);
-  peer_shared =
-    peer_s && hsi_session_is_hsi_owned (peer_s) && hsi_session_uses_shared_fifos (peer_s);
+  local_uses_remote_fifos = hsi_session_uses_remote_fifos (local_s);
+  peer_uses_remote_fifos =
+    peer_s && hsi_session_is_hsi_owned (peer_s) && hsi_session_uses_remote_fifos (peer_s);
 
-  if (local_shared && !peer_shared)
+  if (local_uses_remote_fifos && !peer_uses_remote_fifos)
     first = local_handle;
   else
     first = trk->peer_session_handle;

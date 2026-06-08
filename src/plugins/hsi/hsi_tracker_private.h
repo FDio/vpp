@@ -345,7 +345,7 @@ hsi_udp_session_conn_key_from_connection (udp_connection_t *uc)
 }
 
 static_always_inline u8
-hsi_session_uses_shared_fifos (session_t *s)
+hsi_session_uses_remote_fifos (session_t *s)
 {
   return (s->rx_fifo && s->rx_fifo->master_thread_index != s->thread_index) ||
 	 (s->tx_fifo && s->tx_fifo->master_thread_index != s->thread_index);
@@ -516,7 +516,7 @@ int hsi_track_sessions_compatible (session_t *s, session_t *peer_s);
 int hsi_track_tcp (session_t *s, session_t *peer_s);
 int hsi_track_udp (session_t *s, session_t *peer_s);
 
-u8 hsi_session_cleanup_fifos (session_t *s);
+void hsi_session_cleanup_fifos (session_t *s);
 void hsi_session_cleanup (session_t *s);
 void hsi_session_send_cleanup_pair (session_handle_t first);
 
