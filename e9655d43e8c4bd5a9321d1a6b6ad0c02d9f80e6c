@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c5f17836_ee688124",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-06-08T08:39:26Z",
+      "side": 1,
+      "message": "Hello Neale, I saw you left feedback on the original tracepath PR.\n\nI opened this PR to address your comments if you\u0027d like to take a look: https://gerrit.fd.io/r/c/vpp/+/44754",
+      "revId": "e9655d43e8c4bd5a9321d1a6b6ad0c02d9f80e6c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "551bcfcf_5c3ed1d7",
+        "filename": "test/test_tracepath.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 91,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-06-08T08:39:26Z",
+      "side": 1,
+      "message": "Higher worker count is used to exert the thread bitmap string formatting. Is this approach fine or could cause issues with the CI ?",
+      "revId": "e9655d43e8c4bd5a9321d1a6b6ad0c02d9f80e6c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
