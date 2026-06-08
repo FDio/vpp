@@ -1,0 +1,8 @@
+Code-Review+1: Vratko Polak <vrpolak@cisco.com>
+Code-Review+2: Damjan Marion <dmarion@0xa5.net>
+Verified+1: FDio GitHub Actions <releng+fdio-github@linuxfoundation.org>
+Submitted-by: Damjan Marion <dmarion@0xa5.net>
+Submitted-at: Mon, 08 Jun 2026 13:40:53 +0000
+Reviewed-on: https://gerrit.fd.io/r/c/vpp/+/45953
+Project: vpp
+Branch: refs/heads/master
