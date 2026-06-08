@@ -33,6 +33,24 @@
       "message": "Any idea why this needs to be solo?",
       "revId": "7d906aa3cd5231f2f1dfd8666618ce6358da5735",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "59b69674_7a4371d6",
+        "filename": "test/hs-test/cut-thru_test.go",
+        "patchSetId": 2
+      },
+      "lineNbr": 15,
+      "author": {
+        "id": 3325
+      },
+      "writtenOn": "2026-06-08T14:46:47Z",
+      "side": 1,
+      "message": "I had followed the surrounding cut-through registration pattern, but now when I look at it, there is no exclusive scheduling requirement, so there is no need for test to be registered as solo. I moved it to RegisterNoTopoTests.",
+      "parentUuid": "987984b6_b5bd59d1",
+      "revId": "7d906aa3cd5231f2f1dfd8666618ce6358da5735",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
