@@ -22,6 +22,24 @@
 #define DTLSO_MAX_DGRAM 2000
 #define DTLSO_MAX_BUFSIZE 16 << 10
 
+#define TLSO_SESS_CACHE_MAX_ENTRIES 128
+
+typedef struct openssl_sess_cache_entry_
+{
+  clib_llist_anchor_t lru_anchor;
+  SSL_SESSION *session;
+  u8 *key;
+} openssl_sess_cache_entry_t;
+
+typedef struct openssl_sess_cache_
+{
+  openssl_sess_cache_entry_t *entries;
+  uword *entry_by_key;
+  clib_llist_index_t lru_head_index;
+  u32 n_entries;
+  u32 max_entries;
+} openssl_sess_cache_t;
+
 #define ossl_check_err_is_fatal(_ssl, _rv)                                    \
   if (PREDICT_FALSE (_rv < 0 && SSL_get_error (_ssl, _rv) == SSL_ERROR_SSL))  \
     return -1;
@@ -52,6 +70,7 @@ typedef struct tls_ctx_openssl_
   BIO *rbio;
   BIO *wbio;
   app_crypto_async_req_ticket_t req_ticket;
+  u8 *sess_cache_key;
 } openssl_ctx_t;
 
 typedef struct tls_listen_ctx_opensl_
@@ -72,6 +91,10 @@ typedef struct openssl_main_
 
   u8 **rx_bufs;
   u8 **tx_bufs;
+
+  /* Global client session resumption cache */
+  openssl_sess_cache_t sess_cache;
+  clib_spinlock_t sess_cache_lock;
 
   /* API message ID base */
   u16 msg_id_base;
