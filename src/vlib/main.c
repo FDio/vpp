@@ -1053,7 +1053,9 @@ dispatch_pending_node (vlib_main_t * vm, uword pending_frame_index,
      frame is traced. */
   n->flags &= ~VLIB_NODE_FLAG_TRACE;
   n->flags |= (nf->flags & VLIB_FRAME_TRACE) ? VLIB_NODE_FLAG_TRACE : 0;
-  nf->flags &= ~VLIB_FRAME_TRACE;
+  /* Only clear the trace flag when processing the last frame for this node. */
+  if (nf->frame == NULL)
+    nf->flags &= ~VLIB_FRAME_TRACE;
 
   last_time_stamp =
     dispatch_node (vm, n, VLIB_NODE_TYPE_INTERNAL, f,
