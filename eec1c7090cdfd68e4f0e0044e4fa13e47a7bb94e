@@ -1,0 +1,89 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "c757a6f7_abb9a001",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-06-08T12:43:53Z",
+      "side": 1,
+      "message": "thanks, a few comments inline",
+      "revId": "eec1c7090cdfd68e4f0e0044e4fa13e47a7bb94e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e75dca9c_cbd67821",
+        "filename": "src/plugins/cnat/cnat_inline.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 30,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-06-08T12:43:53Z",
+      "side": 1,
+      "message": "I think we can skip the atomic_load here, as there should not be any race on the pointer. If any, we should be more worried by someone zeroing the value from under our feet.\nIn anycase, we should be protected by\n- the ordering of processing on creation: if packets are in the graph, that means the pool has already been initialized and stored in the vec with the lock held.\n- the routine that waiting for the graph emptying before freeing the pool, and erasing the vec\u0027s value\n- that both creation and deletion operations run with the lock held, thus preventing races between them",
+      "revId": "eec1c7090cdfd68e4f0e0044e4fa13e47a7bb94e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "91e58092_4bb37af9",
+        "filename": "src/plugins/cnat/cnat_inline.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 31,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-06-08T12:43:53Z",
+      "side": 1,
+      "message": "we need to use `pool[index]` here instead of `pool_elt_at_index`\nas the underlying bitmap might be invalidated by a writer while we\nread (not the individual entries thought, that we do care about here)",
+      "revId": "eec1c7090cdfd68e4f0e0044e4fa13e47a7bb94e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "700448b0_7ffd5a0e",
+        "filename": "src/plugins/cnat/cnat_inline.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 59,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-06-08T12:43:53Z",
+      "side": 1,
+      "message": "same thing here, we can simply assign the value we are protected by the lock",
+      "revId": "eec1c7090cdfd68e4f0e0044e4fa13e47a7bb94e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3de717b0_76f0a0c2",
+        "filename": "src/plugins/cnat/cnat_types.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 248,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-06-08T12:43:53Z",
+      "side": 1,
+      "message": "I think we can skip initializing the bitmap as it is always read/writen with the lock held",
+      "revId": "eec1c7090cdfd68e4f0e0044e4fa13e47a7bb94e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
