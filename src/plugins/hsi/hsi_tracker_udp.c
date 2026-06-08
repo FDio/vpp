@@ -236,6 +236,26 @@ hsi_udp_track_peer_set (session_t *s, session_handle_t peer_handle)
 	    peer_handle);
 }
 
+static void
+hsi_udp_send_cleanup_pair_once (session_handle_t session_handle,
+				session_handle_t peer_session_handle)
+{
+  session_t *s;
+
+  if (session_handle == SESSION_INVALID_HANDLE)
+    {
+      hsi_session_send_cleanup_pair (peer_session_handle);
+      return;
+    }
+
+  s = session_get_from_handle_safe (session_handle);
+  if (!s || session_get_transport_proto (s) != TRANSPORT_PROTO_UDP ||
+      !hsi_session_is_hsi_owned (s) || !hsi_udp_session_is_cleanup_ready (s))
+    session_handle = peer_session_handle;
+
+  hsi_session_send_cleanup_pair (session_handle);
+}
+
 static u8
 hsi_udp_track_peer_update (session_handle_t session_handle, session_handle_t peer_handle)
 {
@@ -278,8 +298,7 @@ hsi_udp_peer_update_rpc (void *arg)
   if (!hsi_udp_track_peer_update (a->session_handle, a->peer_session_handle))
     {
       hsi_worker_counter_inc (hsi_worker_get (vlib_get_thread_index ()), udp_track_peer_rpc_failed);
-      hsi_session_send_cleanup_pair (a->session_handle);
-      hsi_session_send_cleanup_pair (a->peer_session_handle);
+      hsi_udp_send_cleanup_pair_once (a->session_handle, a->peer_session_handle);
     }
   session_send_rpc_evt_to_thread (a->owner_thread, hsi_udp_peer_update_req_free_rpc, a);
 }
@@ -882,8 +901,7 @@ hsi_udp_drain_start_rpc (void *arg)
   if (!s || !peer_s)
     {
       hsi_worker_counter_inc (hsi_worker_get (vlib_get_thread_index ()), udp_track_peer_rpc_failed);
-      hsi_session_send_cleanup_pair (a->session_handle);
-      hsi_session_send_cleanup_pair (a->peer_session_handle);
+      hsi_udp_send_cleanup_pair_once (a->session_handle, a->peer_session_handle);
       goto done;
     }
 
@@ -1036,8 +1054,7 @@ hsi_udp_track_commit_rpc (void *arg)
   else
     {
       hsi_worker_counter_inc (hsi_worker_get (vlib_get_thread_index ()), udp_track_peer_rpc_failed);
-      hsi_session_send_cleanup_pair (a->session_handle);
-      hsi_session_send_cleanup_pair (a->peer.session_handle);
+      hsi_udp_send_cleanup_pair_once (a->session_handle, a->peer.session_handle);
     }
   session_send_rpc_evt_to_thread (a->owner_thread, hsi_udp_track_commit_req_free_rpc, a);
 }

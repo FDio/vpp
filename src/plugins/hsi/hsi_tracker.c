@@ -106,97 +106,33 @@ hsi_session_clear_fifos (session_t *s)
   s->tx_fifo = 0;
 }
 
-static_always_inline u8
-hsi_sessions_share_fifo_pair (session_t *s, session_t *peer_s, svm_fifo_t *rx_fifo,
-			      svm_fifo_t *tx_fifo)
-{
-  if (!peer_s || peer_s == s || !hsi_session_is_hsi_owned (peer_s) ||
-      peer_s->thread_index != vlib_get_thread_index () || !peer_s->rx_fifo || !peer_s->tx_fifo)
-    return 0;
-
-  return peer_s->rx_fifo == rx_fifo || peer_s->rx_fifo == tx_fifo || peer_s->tx_fifo == rx_fifo ||
-	 peer_s->tx_fifo == tx_fifo;
-}
-
-u8 hsi_session_cleanup_fifos (session_t *s);
-
-static void
-hsi_session_fifos_cleanup_rpc (void *arg)
-{
-  session_handle_tu_t sh = { .handle = pointer_to_uword (arg) };
-  session_t *s;
-
-  s = session_get_from_handle_if_valid (sh);
-  if (s)
-    hsi_session_cleanup_fifos (s);
-}
-
-static void
-hsi_session_send_fifos_cleanup (session_handle_t session_handle)
-{
-  session_handle_tu_t sh = { .handle = session_handle };
-
-  session_send_rpc_evt_to_thread_force (sh.thread_index, hsi_session_fifos_cleanup_rpc,
-					uword_to_pointer (session_handle, void *));
-}
-
-u8
+void
 hsi_session_cleanup_fifos (session_t *s)
 {
-  session_handle_t peer_handle;
-  session_handle_tu_t peer_sh;
   svm_fifo_t *rx_fifo, *tx_fifo;
-  session_t *peer_s = 0;
-  u8 local_shared, peer_shared = 0;
+  u8 local_uses_remote_fifos;
 
   ASSERT (s->thread_index == vlib_get_thread_index ());
 
+  /* session cleanup tries again to cleanup fifos */
   if (!s->rx_fifo && !s->tx_fifo)
-    return 1;
+    return;
 
   ASSERT (s->rx_fifo && s->tx_fifo);
 
   rx_fifo = s->rx_fifo;
   tx_fifo = s->tx_fifo;
-  peer_handle = hsi_session_cleanup_peer_handle (s);
-  if (peer_handle != SESSION_INVALID_HANDLE)
-    {
-      peer_sh.handle = peer_handle;
-      peer_s = hsi_session_peer_get_if_valid (peer_sh);
-      peer_shared =
-	peer_s && hsi_session_is_hsi_owned (peer_s) && hsi_session_uses_shared_fifos (peer_s);
-    }
 
-  local_shared = hsi_session_uses_shared_fifos (s);
-
-  if (!local_shared && peer_shared)
+  local_uses_remote_fifos = hsi_session_uses_remote_fifos (s);
+  if (local_uses_remote_fifos && s->thread_index != rx_fifo->master_thread_index)
     {
-      hsi_session_send_fifos_cleanup (peer_handle);
-      return 0;
-    }
-
-  if (local_shared && rx_fifo->refcnt <= 1 && !vlib_thread_is_main_w_barrier ())
-    {
-      if (hsi_sessions_share_fifo_pair (s, peer_s, rx_fifo, tx_fifo))
-	hsi_session_clear_fifos (peer_s);
       hsi_session_clear_fifos (s);
-      if (peer_s && peer_s->rx_fifo && peer_s->tx_fifo && !peer_shared)
-	hsi_session_send_fifos_cleanup (peer_handle);
-      else
-	hsi_session_send_fifos_cleanup_on_thread (rx_fifo->master_thread_index, rx_fifo, tx_fifo);
-      return 1;
+      hsi_session_send_fifos_cleanup_on_thread (rx_fifo->master_thread_index, rx_fifo, tx_fifo);
+      return;
     }
-
-  if (hsi_sessions_share_fifo_pair (s, peer_s, rx_fifo, tx_fifo))
-    hsi_session_clear_fifos (peer_s);
 
   segment_manager_dealloc_fifos (rx_fifo, tx_fifo);
   hsi_session_clear_fifos (s);
-
-  if (local_shared && peer_handle != SESSION_INVALID_HANDLE)
-    hsi_session_send_fifos_cleanup (peer_handle);
-
-  return 1;
 }
 
 void
@@ -209,8 +145,7 @@ hsi_session_cleanup (session_t *s)
   if (!hsi_session_is_cleanup_ready (s))
     return;
 
-  if (!hsi_session_cleanup_fifos (s))
-    return;
+  hsi_session_cleanup_fifos (s);
 
   proto = session_get_transport_proto (s);
   if (proto == TRANSPORT_PROTO_TCP)
