@@ -1,0 +1,89 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a5a5421c_da6be0fb",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 6
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-06-08T12:30:22Z",
+      "side": 1,
+      "message": "overall lgtm ! Thanks, just a few minor comments",
+      "revId": "2331f681a4ac17ae98eec486bb337c88131b3c42",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "00d2f9cd_555b0052",
+        "filename": "src/plugins/cnat/cnat_inline.h",
+        "patchSetId": 6
+      },
+      "lineNbr": 98,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-06-08T12:30:22Z",
+      "side": 1,
+      "message": "can we make this these values\n````\nctx_dpoi_next_node \u003d cts_lbi \u003d CTS_DPOI_NEXT_UNSET;\n````\n?\nSo that we have a reference on what the value means",
+      "revId": "2331f681a4ac17ae98eec486bb337c88131b3c42",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "56934556_c8db00b4",
+        "filename": "src/plugins/cnat/cnat_node_feature.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 134,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-06-08T12:30:22Z",
+      "side": 1,
+      "message": "Same here",
+      "revId": "2331f681a4ac17ae98eec486bb337c88131b3c42",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "990f8679_f51e2e0f",
+        "filename": "src/plugins/cnat/cnat_node_feature.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 174,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-06-08T12:30:22Z",
+      "side": 1,
+      "message": "Can we make this\n````\nif (rw-\u003ects_dpoi_next_node \u003d\u003d CTS_DPOI_NEXT_DROP)\n````",
+      "revId": "2331f681a4ac17ae98eec486bb337c88131b3c42",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "43ccb217_72926f7c",
+        "filename": "src/plugins/cnat/cnat_node_feature.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 437,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-06-08T12:30:22Z",
+      "side": 1,
+      "message": "Let\u0027s keep this static",
+      "revId": "2331f681a4ac17ae98eec486bb337c88131b3c42",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
