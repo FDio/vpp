@@ -1311,7 +1311,8 @@ proxy_server_attach ()
   a->options[APP_OPTIONS_PREALLOC_FIFO_PAIRS] =
     pm->prealloc_fifos ? pm->prealloc_fifos : 0;
 
-  a->options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_IS_BUILTIN;
+  a->options[APP_OPTIONS_FLAGS] =
+    APP_OPTIONS_FLAGS_IS_BUILTIN | APP_OPTIONS_FLAGS_MEMFD_FOR_BUILTIN;
 
   if (vnet_application_attach (a))
     {
@@ -1347,8 +1348,8 @@ active_open_attach (void)
   options[APP_OPTIONS_PREALLOC_FIFO_PAIRS] =
     pm->prealloc_fifos ? pm->prealloc_fifos : 0;
 
-  options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_IS_BUILTIN
-    | APP_OPTIONS_FLAGS_IS_PROXY;
+  options[APP_OPTIONS_FLAGS] =
+    APP_OPTIONS_FLAGS_IS_BUILTIN | APP_OPTIONS_FLAGS_IS_PROXY | APP_OPTIONS_FLAGS_MEMFD_FOR_BUILTIN;
 
   a->options = options;
 
