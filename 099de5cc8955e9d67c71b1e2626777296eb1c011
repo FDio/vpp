@@ -16,6 +16,23 @@
       "message": "recheck",
       "revId": "099de5cc8955e9d67c71b1e2626777296eb1c011",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "dae1e95c_d5e3117b",
+        "filename": "src/vnet/ip/ip4_inlines.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 23,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-06-08T16:23:49Z",
+      "side": 1,
+      "message": "I don\u0027t think we should validate buffers at this point. Instead, all code paths that lead to this point must make sure buffers are valid and flow hash is applicable.",
+      "revId": "099de5cc8955e9d67c71b1e2626777296eb1c011",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
