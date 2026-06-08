@@ -169,6 +169,16 @@ clib_cpu_time_now (void)
   asm volatile ("rdtime %0\n" : "=r"(result));
   return result;
 }
+
+#elif defined(__loongarch64)
+
+always_inline u64
+clib_cpu_time_now (void)
+{
+  u64 result, time_id;
+  asm volatile ("rdtime.d\t%[val],%[tid]\n\t" : [val] "=&r"(result), [tid] "=&r"(time_id));
+  return result;
+}
 #else
 #error "don't know how to read CPU time stamp"
 

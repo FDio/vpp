@@ -22,11 +22,19 @@
 #define CLIB_HAVE_VEC128
 #endif
 
+#if defined(__loongarch_sx)
+#define CLIB_HAVE_VEC128
+#endif
+
 #if defined (__AVX2__)
 #define CLIB_HAVE_VEC256
 #if defined (__clang__)  && __clang_major__ < 4
 #undef CLIB_HAVE_VEC256
 #endif
+#endif
+
+#if defined(__loongarch_asx)
+#define CLIB_HAVE_VEC256
 #endif
 
 #if defined (__AVX512BITALG__)
@@ -209,6 +217,14 @@ foreach_vec
 
 #if defined (__aarch64__)
 #include <vppinfra/vector_neon.h>
+#endif
+
+#if defined(__loongarch_sx)
+#include <vppinfra/vector_lsx.h>
+#endif
+
+#if defined(__loongarch_asx)
+#include <vppinfra/vector_lasx.h>
 #endif
 
 /* this macro generate _splat inline functions for each scalar vector type */

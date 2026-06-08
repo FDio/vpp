@@ -66,6 +66,14 @@
 #elif defined(__riscv)
 /* ra, sp, s0-s11, fs0-fs11 */
 #define CLIB_ARCH_LONGJMP_REGS (26)
+#elif defined(__loongarch64)
+#ifndef __loongarch_soft_float
+#define CLIB_LOONGARCH64_FP_REGS 8
+#else
+#define CLIB_LOONGARCH64_FP_REGS 0
+#endif
+/* ra, sp, r21, fp, s0-s8, fs0-fs7 */
+#define CLIB_ARCH_LONGJMP_REGS (13 + CLIB_LOONGARCH64_FP_REGS)
 #else
 #error "unknown machine"
 #endif

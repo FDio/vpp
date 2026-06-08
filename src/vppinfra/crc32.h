@@ -64,6 +64,37 @@ clib_crc32c_u64 (u32 last, u64 data)
 }
 #endif
 
+#if defined(__loongarch64)
+#define clib_crc32c_uses_intrinsics
+static_always_inline u32
+clib_crc32c_u8 (u32 last, u8 data)
+{
+  asm volatile ("crcc.w.b.w %0, %1, %0" : "+r"(last) : "r"(data));
+  return last;
+}
+
+static_always_inline u32
+clib_crc32c_u16 (u32 last, u16 data)
+{
+  asm volatile ("crcc.w.h.w %0, %1, %0" : "+r"(last) : "r"(data));
+  return last;
+}
+
+static_always_inline u32
+clib_crc32c_u32 (u32 last, u32 data)
+{
+  asm volatile ("crcc.w.w.w %0, %1, %0" : "+r"(last) : "r"(data));
+  return last;
+}
+
+static_always_inline u32
+clib_crc32c_u64 (u32 last, u64 data)
+{
+  asm volatile ("crcc.w.d.w %0, %1, %0" : "+r"(last) : "r"(data));
+  return last;
+}
+#endif
+
 #ifdef clib_crc32c_uses_intrinsics
 static_always_inline u32
 clib_crc32c_with_init (u8 *s, int len, u32 last)

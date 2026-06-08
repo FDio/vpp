@@ -244,6 +244,16 @@ elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64.*|AARCH64.*)")
     CACHE_PREFETCH_BYTES 64
   )
 
+# LoongArch v1.1 is required for byte and halfword atomics.
+elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^(loongarch64.*|LOONGARCH64.*)")
+  set(VPP_DEFAULT_MARCH_FLAGS -march=la64v1.1)
+  string(REPLACE ";" " " march_flags_str "${VPP_DEFAULT_MARCH_FLAGS}")
+  check_c_compiler_flag("${march_flags_str}" compiler_flag_march_la64v1_1)
+  if(NOT compiler_flag_march_la64v1_1)
+    message(FATAL_ERROR "LoongArch build with ${march_flags_str} is not supported by compiler")
+  endif()
+  set(MARCH_VARIANTS_NAMES "loongarch64-v1.1")
+
 endif()
 
 macro(vpp_library_set_multiarch_sources lib)

@@ -17,26 +17,51 @@
 static __thread unw_cursor_t cursor;
 static __thread unw_context_t context;
 
+/* Kept in TLS rather than on the stack to avoid overflowing the small
+ * per-process stacks used by vlib cooperative processes (fibers).
+ * On some architectures (e.g. LoongArch64) unw_cursor_t alone is 32 KB,
+ * which equals the default fiber stack size and causes a stack overflow
+ * when unw_backtrace() is called from within a fiber. */
+static __thread unw_cursor_t raw_cursor;
+static __thread unw_context_t raw_context;
+
 #endif /* HAVE_LIBUNWIND */
 
 __clib_export int
 clib_stack_frame_get_raw (void **sf, int n, int skip)
 {
 #if HAVE_LIBUNWIND == 1
-  void *sf__[20];
-  int n__;
+  unw_word_t ip;
+  int count = 0;
 
-  /* Also skip current frame. */
-  skip++;
-  n__ = unw_backtrace (sf__, clib_min (ARRAY_LEN (sf__), n + skip));
-
-  if (n__ <= skip)
+  if (n <= 0)
     return 0;
-  else if (n__ - skip < n)
-    n = n__ - skip;
 
-  clib_memcpy_fast (&sf[0], &sf__[skip], n * sizeof (sf[0]));
-  return n;
+  if (unw_getcontext (&raw_context) < 0)
+    return 0;
+
+  if (unw_init_local (&raw_cursor, &raw_context) < 0)
+    return 0;
+
+  /* The initialized cursor starts at this function, like unw_backtrace(). */
+  skip++;
+
+  do
+    {
+      if (unw_get_reg (&raw_cursor, UNW_REG_IP, &ip) < 0)
+	break;
+
+      if (skip > 0)
+	{
+	  skip--;
+	  continue;
+	}
+
+      sf[count++] = uword_to_pointer ((uword) ip, void *);
+    }
+  while (count < n && unw_step (&raw_cursor) > 0);
+
+  return count;
 #else  /* HAVE_LIBUNWIND */
   return 0;
 #endif /* HAVE_LIBUNWIND */

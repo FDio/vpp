@@ -866,6 +866,86 @@ cdecl(clib_calljmp):
 	ld	sp, 0(sp)	/* restore old stack pointer */
 	ret
 	.size   cdecl(clib_calljmp), .-cdecl(clib_calljmp)
+#elif defined(__loongarch64)
+	.global cdecl(clib_setjmp)
+	.p2align 2
+	.type cdecl(clib_setjmp), @function
+cdecl(clib_setjmp):
+	st.d	$ra, $a0, 0*8
+	st.d	$sp, $a0, 1*8
+	st.d	$r21, $a0, 2*8
+	st.d	$fp, $a0, 3*8
+	st.d	$s0, $a0, 4*8
+	st.d	$s1, $a0, 5*8
+	st.d	$s2, $a0, 6*8
+	st.d	$s3, $a0, 7*8
+	st.d	$s4, $a0, 8*8
+	st.d	$s5, $a0, 9*8
+	st.d	$s6, $a0, 10*8
+	st.d	$s7, $a0, 11*8
+	st.d	$s8, $a0, 12*8
+#ifndef __loongarch_soft_float
+	fst.d	$fs0, $a0, 13*8
+	fst.d	$fs1, $a0, 14*8
+	fst.d	$fs2, $a0, 15*8
+	fst.d	$fs3, $a0, 16*8
+	fst.d	$fs4, $a0, 17*8
+	fst.d	$fs5, $a0, 18*8
+	fst.d	$fs6, $a0, 19*8
+	fst.d	$fs7, $a0, 20*8
+#endif
+	move	$a0, $a1
+	ret
+	.size   cdecl(clib_setjmp), .-cdecl(clib_setjmp)
+
+	.global cdecl(clib_longjmp)
+	.p2align 2
+	.type cdecl(clib_longjmp), @function
+cdecl(clib_longjmp):
+	ld.d	$ra, $a0, 0*8
+	ld.d	$sp, $a0, 1*8
+	ld.d	$r21, $a0, 2*8
+	ld.d	$fp, $a0, 3*8
+	ld.d	$s0, $a0, 4*8
+	ld.d	$s1, $a0, 5*8
+	ld.d	$s2, $a0, 6*8
+	ld.d	$s3, $a0, 7*8
+	ld.d	$s4, $a0, 8*8
+	ld.d	$s5, $a0, 9*8
+	ld.d	$s6, $a0, 10*8
+	ld.d	$s7, $a0, 11*8
+	ld.d	$s8, $a0, 12*8
+#ifndef __loongarch_soft_float
+	fld.d	$fs0, $a0, 13*8
+	fld.d	$fs1, $a0, 14*8
+	fld.d	$fs2, $a0, 15*8
+	fld.d	$fs3, $a0, 16*8
+	fld.d	$fs4, $a0, 17*8
+	fld.d	$fs5, $a0, 18*8
+	fld.d	$fs6, $a0, 19*8
+	fld.d	$fs7, $a0, 20*8
+#endif
+	move	$a0, $a1
+	ret
+	.size   cdecl(clib_longjmp), .-cdecl(clib_longjmp)
+
+	.global cdecl(clib_calljmp)
+	.p2align 2
+	.type cdecl(clib_calljmp), @function
+cdecl(clib_calljmp):
+	li.d	$t0, -16
+	and	$a2, $a2, $t0	/* Make sure stack is 16-byte aligned. */
+	addi.d	$a2, $a2, -16	/* Allocate space on the new stack. */
+	st.d	$sp, $a2, 0
+	st.d	$ra, $a2, 8
+	move	$sp, $a2
+	move	$t0, $a0	/* Function pointer. */
+	move	$a0, $a1	/* Function argument. */
+	jirl	$ra, $t0, 0
+	ld.d	$ra, $sp, 8
+	ld.d	$sp, $sp, 0
+	ret
+	.size   cdecl(clib_calljmp), .-cdecl(clib_calljmp)
 #else
 #error "unknown machine"
 #endif
