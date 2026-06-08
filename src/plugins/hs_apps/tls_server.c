@@ -21,6 +21,7 @@ typedef struct
   u8 alpn_protos[4];
   vlib_main_t *vlib_main;
   u32 accepted_count;
+  u8 echo;
 } tls_server_main_t;
 
 tls_server_main_t tls_server_main;
@@ -28,6 +29,24 @@ tls_server_main_t tls_server_main;
 static int
 ts_ts_rx_callback (session_t *ts)
 {
+  tls_server_main_t *sm = &tls_server_main;
+  if (sm->echo)
+    {
+      u32 max_deq = svm_fifo_max_dequeue_cons (ts->rx_fifo);
+      if (max_deq)
+	{
+	  u8 buf[256];
+	  u32 n = clib_min (max_deq, sizeof (buf));
+	  int rv = svm_fifo_dequeue (ts->rx_fifo, n, buf);
+	  if (rv > 0)
+	    {
+	      svm_fifo_enqueue (ts->tx_fifo, rv, buf);
+	      if (svm_fifo_set_event (ts->tx_fifo))
+		session_program_tx_io_evt (ts->handle, SESSION_IO_EVT_TX);
+	    }
+	}
+      return 0;
+    }
   clib_warning ("called...");
   return -1;
 }
@@ -266,6 +285,7 @@ tls_server_create_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli
   sm->cert_type = 0;
   sm->cert_file = 0;
   sm->key_file = 0;
+  sm->echo = 0;
 
   if (!unformat_user (input, unformat_line_input, line_input))
     return clib_error_return (0, "expected URI");
@@ -294,6 +314,8 @@ tls_server_create_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli
 	;
       else if (unformat (line_input, "key %s", &sm->key_file))
 	;
+      else if (unformat (line_input, "echo"))
+	sm->echo = 1;
       else
 	{
 	  error = clib_error_return (0, "failed: unknown input `%U'",
