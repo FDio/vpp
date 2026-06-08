@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3a802d82_7e31d7c2",
+        "filename": "src/vnet/l2/l2_fib.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1260,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-06-08T20:59:47Z",
+      "side": 1,
+      "message": "Please add some code to handle the case where global_learn_count has changed.  At the very least there should be a warning logged and maybe add an error counter.\n\nIdeally, the global state should be updated to maintain consistency.  Not sure if that is possible or not.",
+      "range": {
+        "startLine": 1260,
+        "startChar": 0,
+        "endLine": 1260,
+        "endChar": 57
+      },
+      "revId": "1480e6144e4451f524744e54978c0639103ffa2c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
