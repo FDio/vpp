@@ -24,6 +24,9 @@
 
 openssl_main_t openssl_main;
 
+static void openssl_sess_cache_store (u8 *cache_key, SSL_SESSION *sess);
+static SSL_SESSION *openssl_sess_cache_lookup (u8 *cache_key);
+
 static u32
 openssl_ctx_alloc_w_thread (clib_thread_index_t thread_index)
 {
@@ -74,6 +77,7 @@ openssl_ctx_free (tls_ctx_t * ctx)
 	tls_async_evts_free_list (ctx);
 
       SSL_free (oc->ssl);
+      vec_free (oc->sess_cache_key);
       vec_free (ctx->srv_hostname);
     }
 
@@ -913,6 +917,147 @@ openssl_get_int_ca_trust (tls_ctx_t *ctx)
   return cti;
 }
 
+static u8 *
+openssl_sess_cache_make_key (tls_ctx_t *ctx)
+{
+  u8 *key = 0;
+  if (ctx->srv_hostname)
+    {
+      session_t *ts = session_get_from_handle (ctx->tls_session_handle);
+      transport_connection_t *tc = session_get_transport (ts);
+      key = format (key, "%s:%u", ctx->srv_hostname, (u32) tc->rmt_port);
+    }
+  else
+    {
+      session_t *ts = session_get_from_handle (ctx->tls_session_handle);
+      transport_connection_t *tc = session_get_transport (ts);
+      key = format (key, "%U:%u", format_ip46_address, &tc->rmt_ip,
+		    tc->is_ip4 ? IP46_TYPE_IP4 : IP46_TYPE_IP6, (u32) tc->rmt_port);
+    }
+  vec_add1 (key, 0);
+  return key;
+}
+
+static void
+openssl_sess_cache_evict_lru (openssl_sess_cache_t *cache)
+{
+  openssl_sess_cache_entry_t *head, *entry;
+
+  head = clib_llist_elt (cache->entries, cache->lru_head_index);
+  clib_llist_pop_first (cache->entries, lru_anchor, entry, head);
+
+  hash_unset_mem (cache->entry_by_key, entry->key);
+  SSL_SESSION_free (entry->session);
+  vec_free (entry->key);
+  clib_llist_put (cache->entries, entry);
+  cache->n_entries--;
+}
+
+static void
+openssl_sess_cache_store (u8 *cache_key, SSL_SESSION *sess)
+{
+  openssl_main_t *om = &openssl_main;
+  openssl_sess_cache_t *cache = &om->sess_cache;
+  openssl_sess_cache_entry_t *entry, *head;
+  u8 *key;
+  uword *p;
+
+  clib_spinlock_lock (&om->sess_cache_lock);
+
+  key = vec_dup (cache_key);
+  p = hash_get_mem (cache->entry_by_key, key);
+
+  if (p)
+    {
+      entry = pool_elt_at_index (cache->entries, p[0]);
+      head = clib_llist_elt (cache->entries, cache->lru_head_index);
+      clib_llist_remove (cache->entries, lru_anchor, entry);
+      clib_llist_add_tail (cache->entries, lru_anchor, entry, head);
+      SSL_SESSION_free (entry->session);
+      entry->session = sess;
+      vec_free (key);
+      clib_spinlock_unlock (&om->sess_cache_lock);
+      return;
+    }
+
+  if (cache->n_entries >= cache->max_entries)
+    openssl_sess_cache_evict_lru (cache);
+
+  pool_get_zero (cache->entries, entry);
+  entry->session = sess;
+  entry->key = key;
+  clib_llist_anchor_init (cache->entries, lru_anchor, entry);
+
+  head = clib_llist_elt (cache->entries, cache->lru_head_index);
+  clib_llist_add_tail (cache->entries, lru_anchor, entry, head);
+
+  hash_set_mem (cache->entry_by_key, entry->key, entry - cache->entries);
+  cache->n_entries++;
+
+  clib_spinlock_unlock (&om->sess_cache_lock);
+}
+
+static SSL_SESSION *
+openssl_sess_cache_lookup (u8 *cache_key)
+{
+  openssl_main_t *om = &openssl_main;
+  openssl_sess_cache_t *cache = &om->sess_cache;
+  openssl_sess_cache_entry_t *entry, *head;
+  SSL_SESSION *sess;
+  uword *p;
+
+  clib_spinlock_lock (&om->sess_cache_lock);
+
+  p = hash_get_mem (cache->entry_by_key, cache_key);
+
+  if (!p)
+    {
+      clib_spinlock_unlock (&om->sess_cache_lock);
+      return NULL;
+    }
+
+  entry = pool_elt_at_index (cache->entries, p[0]);
+
+  /* Check expiry using wall-clock time (SSL_SESSION times are epoch-based) */
+  long sess_time = SSL_SESSION_get_time (entry->session);
+  long sess_timeout = SSL_SESSION_get_timeout (entry->session);
+  f64 now = unix_time_now ();
+  if ((f64) (sess_time + sess_timeout) < now)
+    {
+      head = clib_llist_elt (cache->entries, cache->lru_head_index);
+      (void) head;
+      clib_llist_remove (cache->entries, lru_anchor, entry);
+      hash_unset_mem (cache->entry_by_key, entry->key);
+      SSL_SESSION_free (entry->session);
+      vec_free (entry->key);
+      clib_llist_put (cache->entries, entry);
+      cache->n_entries--;
+      clib_spinlock_unlock (&om->sess_cache_lock);
+      return NULL;
+    }
+
+  /* Move to tail (most recently used) */
+  head = clib_llist_elt (cache->entries, cache->lru_head_index);
+  clib_llist_remove (cache->entries, lru_anchor, entry);
+  clib_llist_add_tail (cache->entries, lru_anchor, entry, head);
+
+  sess = entry->session;
+  clib_spinlock_unlock (&om->sess_cache_lock);
+  return sess;
+}
+
+static int
+openssl_new_session_cb (SSL *ssl, SSL_SESSION *sess)
+{
+  openssl_ctx_t *oc = (openssl_ctx_t *) SSL_get_app_data (ssl);
+  if (!oc || !oc->sess_cache_key)
+    return 0;
+
+  openssl_sess_cache_store (oc->sess_cache_key, sess);
+  /* Return 1 = we took ownership of the session (no SSL_SESSION_free needed) */
+  return 1;
+}
+
 static int
 openssl_init_client_ctx (clib_thread_index_t thread_index,
 			 transport_proto_t proto)
@@ -952,6 +1097,10 @@ openssl_init_client_ctx (clib_thread_index_t thread_index,
 
   SSL_CTX_set_options (client_ssl_ctx, flags);
   SSL_CTX_set1_cert_store (client_ssl_ctx, om->cert_store);
+
+  /* Enable client-side session caching with callback */
+  SSL_CTX_set_session_cache_mode (client_ssl_ctx, SSL_SESS_CACHE_CLIENT);
+  SSL_CTX_sess_set_new_cb (client_ssl_ctx, openssl_new_session_cb);
 
   /* Set TLS Record size */
   if (om->record_size)
@@ -1178,6 +1327,8 @@ openssl_ctx_init_client (tls_ctx_t *ctx)
       return -1;
     }
 
+  SSL_set_app_data (oc->ssl, oc);
+
   ASSERT (ctx->crypto_owner_app_wrk_index != SESSION_INVALID_INDEX);
 
   /* Apply TLS profile configuration if specified */
@@ -1254,6 +1405,15 @@ openssl_ctx_init_client (tls_ctx_t *ctx)
     }
 
   SSL_set_bio (oc->ssl, oc->wbio, oc->rbio);
+
+  /* Try to resume a cached session */
+  oc->sess_cache_key = openssl_sess_cache_make_key (ctx);
+  {
+    SSL_SESSION *cached_sess = openssl_sess_cache_lookup (oc->sess_cache_key);
+    if (cached_sess)
+      SSL_set_session (oc->ssl, cached_sess); /* increments refcount */
+  }
+
   SSL_set_connect_state (oc->ssl);
 
   /*
@@ -2029,6 +2189,11 @@ tls_openssl_init (vlib_main_t * vm)
       vec_validate (om->rx_bufs[i], DTLSO_MAX_BUFSIZE);
       vec_validate (om->tx_bufs[i], DTLSO_MAX_BUFSIZE);
     }
+
+  om->sess_cache.entry_by_key = hash_create_string (0, sizeof (uword));
+  om->sess_cache.max_entries = TLSO_SESS_CACHE_MAX_ENTRIES;
+  om->sess_cache.lru_head_index = clib_llist_make_head (om->sess_cache.entries, lru_anchor);
+  clib_spinlock_init (&om->sess_cache_lock);
   tls_register_engine (&openssl_engine, CRYPTO_ENGINE_OPENSSL);
 
   om->engine_init = 0;
@@ -2128,11 +2293,37 @@ VLIB_CLI_COMMAND (tls_openssl_set_command, static) =
   .function = tls_openssl_set_command_fn,
 };
 
+static void
+openssl_sess_cache_set_max_size (vlib_main_t *vm, u32 new_cache_size)
+{
+  openssl_main_t *om = &openssl_main;
+  u32 old_size, evicted = 0;
+
+  clib_spinlock_lock (&om->sess_cache_lock);
+  old_size = om->sess_cache.max_entries;
+  om->sess_cache.max_entries = new_cache_size;
+  while (om->sess_cache.n_entries > om->sess_cache.max_entries)
+    {
+      openssl_sess_cache_evict_lru (&om->sess_cache);
+      evicted++;
+    }
+  clib_spinlock_unlock (&om->sess_cache_lock);
+
+  vlib_cli_output (vm,
+		   "TLS client session cache: max-size %u -> %u, "
+		   "evicted %u LRU entries",
+		   old_size, new_cache_size, evicted);
+  clib_warning ("TLS client session cache: max-size %u -> %u, "
+		"evicted %u LRU entries",
+		old_size, new_cache_size, evicted);
+}
+
 static clib_error_t *
 tls_openssl_set_tls_fn (vlib_main_t *vm, unformat_input_t *input,
 			vlib_cli_command_t *cmd)
 {
   openssl_main_t *om = &openssl_main;
+  u32 new_cache_size;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -2152,6 +2343,10 @@ tls_openssl_set_tls_fn (vlib_main_t *vm, unformat_input_t *input,
 	{
 	  clib_warning ("Using TLS max-pipelines of %d", om->max_pipelines);
 	}
+      else if (unformat (input, "session-cache-size %d", &new_cache_size))
+	{
+	  openssl_sess_cache_set_max_size (vm, new_cache_size);
+	}
       else
 	return clib_error_return (0, "failed: unknown input `%U'",
 				  format_unformat_error, input);
@@ -2163,7 +2358,7 @@ tls_openssl_set_tls_fn (vlib_main_t *vm, unformat_input_t *input,
 VLIB_CLI_COMMAND (tls_openssl_set_tls, static) = {
   .path = "tls openssl set-tls",
   .short_help = "tls openssl set-tls [record-size <size>] [record-split-size "
-		"<size>] [max-pipelines <size>]",
+		"<size>] [max-pipelines <size>] [session-cache-size <n>]",
   .function = tls_openssl_set_tls_fn,
 };
 
