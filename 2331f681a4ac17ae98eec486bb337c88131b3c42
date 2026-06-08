@@ -89,6 +89,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "5ad0fea0_fbeb781d",
+        "filename": "src/plugins/cnat/cnat_node_feature.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 174,
+      "author": {
+        "id": 2556
+      },
+      "writtenOn": "2026-06-08T16:31:16Z",
+      "side": 1,
+      "message": "The usage in the code has both `CNAT_FEATURE_NEXT_DROP` and `IP_LOOKUP_NEXT_DROP` as possible values for the next node drop, so I used 0 as a generic value that means drop in VPP at large. Do you mean use `CTS_DPOI_NEXT_DROP` everywhere or just in this shortcut to detect the drop ?",
+      "parentUuid": "990f8679_f51e2e0f",
+      "revId": "2331f681a4ac17ae98eec486bb337c88131b3c42",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "43ccb217_72926f7c",
         "filename": "src/plugins/cnat/cnat_node_feature.c",
         "patchSetId": 6
