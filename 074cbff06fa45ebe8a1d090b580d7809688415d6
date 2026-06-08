@@ -16,6 +16,24 @@
       "message": "The context still needs to be free, otherwise we leak. And could this be treated as a migrated context, why wouldn\u0027t we have the ctx?",
       "revId": "074cbff06fa45ebe8a1d090b580d7809688415d6",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ced3d394_14187e79",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 62,
+      "author": {
+        "id": 3325
+      },
+      "writtenOn": "2026-06-08T16:14:31Z",
+      "side": 1,
+      "message": "Fixed in P5.\n\nI removed the early return and only guard the SSL-specific cleanup now, so\nctx-owned state is still cleaned up and the ctx is returned to the pool.\n\nI left the migrated handling unchanged; this looked more like a partial\ninit/cleanup case than a migration one.",
+      "parentUuid": "755ea0ea_f1b03708",
+      "revId": "074cbff06fa45ebe8a1d090b580d7809688415d6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
