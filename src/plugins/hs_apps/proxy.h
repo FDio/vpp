@@ -120,6 +120,9 @@ typedef struct
   u8 prealloc_fifos;			/**< Request fifo preallocation */
   u32 idle_timeout; /**< connect-proxy timeout for idle connections */
   int rcv_buffer_size;
+  u8 *appns_id;	    /**< app namespace id */
+  u64 appns_flags;  /**< app namespace/scope flags */
+  u64 appns_secret; /**< app namespace secret */
 
   /*
    * Startup configuration

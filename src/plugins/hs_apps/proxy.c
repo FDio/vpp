@@ -1311,7 +1311,13 @@ proxy_server_attach ()
   a->options[APP_OPTIONS_PREALLOC_FIFO_PAIRS] =
     pm->prealloc_fifos ? pm->prealloc_fifos : 0;
 
-  a->options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_IS_BUILTIN;
+  a->options[APP_OPTIONS_FLAGS] =
+    APP_OPTIONS_FLAGS_IS_BUILTIN | APP_OPTIONS_FLAGS_MEMFD_FOR_BUILTIN | pm->appns_flags;
+  if (pm->appns_id)
+    {
+      a->namespace_id = pm->appns_id;
+      a->options[APP_OPTIONS_NAMESPACE_SECRET] = pm->appns_secret;
+    }
 
   if (vnet_application_attach (a))
     {
@@ -1347,8 +1353,13 @@ active_open_attach (void)
   options[APP_OPTIONS_PREALLOC_FIFO_PAIRS] =
     pm->prealloc_fifos ? pm->prealloc_fifos : 0;
 
-  options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_IS_BUILTIN
-    | APP_OPTIONS_FLAGS_IS_PROXY;
+  options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_IS_BUILTIN | APP_OPTIONS_FLAGS_IS_PROXY |
+			       APP_OPTIONS_FLAGS_MEMFD_FOR_BUILTIN | pm->appns_flags;
+  if (pm->appns_id)
+    {
+      a->namespace_id = pm->appns_id;
+      options[APP_OPTIONS_NAMESPACE_SECRET] = pm->appns_secret;
+    }
 
   a->options = options;
 
@@ -1590,6 +1601,11 @@ proxy_server_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
       return 0;
     }
 
+  vec_free (pm->appns_id);
+  pm->appns_id = 0;
+  pm->appns_flags = 0;
+  pm->appns_secret = 0;
+
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (line_input, "fifo-size %U", unformat_memory_size,
@@ -1618,6 +1634,16 @@ proxy_server_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	vec_add1 (server_uri, 0);
       else if (unformat (line_input, "client-uri %s", &client_uri))
 	vec_add1 (client_uri, 0);
+      else if (unformat (line_input, "appns %_%v%_", &pm->appns_id))
+	;
+      else if (unformat (line_input, "all-scope"))
+	pm->appns_flags |= (APP_OPTIONS_FLAGS_USE_GLOBAL_SCOPE | APP_OPTIONS_FLAGS_USE_LOCAL_SCOPE);
+      else if (unformat (line_input, "local-scope"))
+	pm->appns_flags |= APP_OPTIONS_FLAGS_USE_LOCAL_SCOPE;
+      else if (unformat (line_input, "global-scope"))
+	pm->appns_flags |= APP_OPTIONS_FLAGS_USE_GLOBAL_SCOPE;
+      else if (unformat (line_input, "secret %lu", &pm->appns_secret))
+	;
       else if (unformat (line_input, "idle-timeout %d", &pm->idle_timeout))
 	;
       else if (unformat (line_input, "http3"))
@@ -1678,7 +1704,9 @@ VLIB_CLI_COMMAND (proxy_create_command, static) = {
 		"[max-fifo-size <nn>[k|m]][high-watermark <nn>]"
 		"[low-watermark <nn>][rcv-buf-size <nn>][prealloc-fifos <nn>]"
 		"[private-segment-size <mem>][private-segment-count <nn>]"
-		"[idle-timeout <nn>] [http3] [enable-masque-draft-03]",
+		"[idle-timeout <nn>] [all-scope|local-scope|global-scope] "
+		"[appns <id>] [secret <n>] [http3] "
+		"[enable-masque-draft-03]",
   .function = proxy_server_create_command_fn,
 };
 
