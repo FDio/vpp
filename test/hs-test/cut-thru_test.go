@@ -13,6 +13,7 @@ import (
 func init() {
 	RegisterNoTopoSoloTests(RedisCutThruTest, LdpIperfTcpCutThruTest, LdpIperfUdpCutThruTest)
 	RegisterNoTopoMWTests(RedisCutThruMWTest, LdpIperfTcpCutThruMWTest, LdpIperfUdpCutThruMWTest)
+	RegisterVppProxySoloTests(LdpWgetVppProxyNginxCutThruTest, LdpWgetVppProxyNginxCutThruSmallFifoTest)
 }
 
 func RedisCutThruTest(s *NoTopoSuite) {
@@ -97,6 +98,99 @@ func LdpIperfUdpCutThruMWTest(s *NoTopoSuite) {
 	s.CpusPerVppContainer = 3
 	s.SetupTest()
 	AssertGreaterEqualUnlessCoverageBuild(ldPreloadIperfCutThru(s, "-u -b 10g"), 100, "Iperf bitrate below threshold")
+}
+
+func LdpWgetVppProxyNginxCutThruTest(s *VppProxySuite) {
+	ldpWgetVppProxyNginxCutThru(s, "64k", 64<<10, "--limit-rate=5m --timeout=30", "HTTP/1.1 200 OK")
+}
+
+func LdpWgetVppProxyNginxCutThruSmallFifoTest(s *VppProxySuite) {
+	ldpWgetVppProxyNginxCutThru(s, "4k", 4096,
+		"--header=Range:bytes=0-2097151 --limit-rate=128k --timeout=45",
+		"HTTP/1.1 206 Partial Content")
+}
+
+func ldpWgetVppProxyNginxCutThru(s *VppProxySuite, proxyFifoSize string, vclFifoSize int, wgetArgs, expectedStatus string) {
+	s.SetupNginxServer()
+	cleanup := configureVppProxyLdpClient(s, vclFifoSize)
+	defer cleanup()
+
+	vppProxy := s.Containers.VppProxy.VppInstance
+	cmd := fmt.Sprintf("test proxy server fifo-size %s server-uri tcp://%s:%d client-uri tcp://%s:%d",
+		proxyFifoSize, s.VppProxyAddr(), s.Ports.Proxy, s.ServerAddr(), s.Ports.Server)
+	output := vppProxy.Vppctl(cmd)
+	Log("proxy configured: " + output)
+	AssertNotContains(output, "failed")
+
+	ctCheck := make(chan error, 1)
+	go func() {
+		deadline := time.Now().Add(5 * time.Second)
+		var sessions string
+		for time.Now().Before(deadline) {
+			sessions = vppProxy.Vppctl("show session verbose proto ct")
+			if strings.Contains(strings.ToLower(sessions), "[ct:t]") {
+				Log(sessions)
+				ctCheck <- nil
+				return
+			}
+			time.Sleep(100 * time.Millisecond)
+		}
+		Log(sessions)
+		ctCheck <- fmt.Errorf("[CT:T] not found in sessions:\n%s", sessions)
+	}()
+
+	uri := fmt.Sprintf("http://%s:%d/httpTestFile", s.VppProxyAddr(), s.Ports.Proxy)
+	args := fmt.Sprintf("--server-response --progress=dot:giga --tries=1 --no-proxy -O /tmp/ldpProxyHttpTestFile %s %s", wgetArgs, uri)
+	log := RunLdpWgetContainer(s.Containers.IperfC, args)
+	AssertNil(<-ctCheck)
+	AssertContains(log, expectedStatus)
+	AssertContains(log, "saved")
+	AssertNotContains(log, "bytes remaining to read")
+	AssertNotContains(log, "timed out")
+}
+
+func configureVppProxyLdpClient(s *VppProxySuite, fifoSize int) func() {
+	vppProxy := s.Containers.VppProxy
+	client := s.Containers.IperfC
+	appSocketApi := fmt.Sprintf("app-socket-api %s/var/run/app_ns_sockets/default",
+		vppProxy.GetContainerWorkDir())
+
+	var vclConf Stanza
+	err := vclConf.
+		NewStanza("vcl").
+		Append(fmt.Sprintf("rx-fifo-size %d", fifoSize)).
+		Append(fmt.Sprintf("tx-fifo-size %d", fifoSize)).
+		Append("app-scope-local").
+		Append("app-scope-global").
+		Append("use-mq-eventfd").
+		Append(appSocketApi).Close().
+		SaveToFile(vppProxy.GetHostWorkDir() + "/vcl.conf")
+	AssertNil(err, fmt.Sprint(err))
+
+	envVars := map[string]string{
+		"VCL_DEBUG":  "0",
+		"LDP_DEBUG":  "0",
+		"VCL_CONFIG": vppProxy.GetContainerWorkDir() + "/vcl.conf",
+		"LD_PRELOAD": "/usr/lib/libvcl_ldpreload.so",
+	}
+	for key, value := range envVars {
+		client.AddEnvVar(key, value)
+	}
+	return func() {
+		for key := range envVars {
+			delete(client.EnvVars, key)
+		}
+	}
+}
+
+func RunLdpWgetContainer(clientCont *Container, args string) string {
+	cmd := fmt.Sprintf("wget %s", args)
+	Log(cmd)
+	clientCont.Run()
+	output, err := clientCont.Exec(true, cmd)
+	Log(output)
+	AssertNil(err, output)
+	return output
 }
 
 // only runs iperf for 5s
