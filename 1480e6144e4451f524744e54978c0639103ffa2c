@@ -22,6 +22,30 @@
       },
       "revId": "1480e6144e4451f524744e54978c0639103ffa2c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "310e0fc1_db506f3e",
+        "filename": "src/vnet/l2/l2_fib.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1260,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-06-09T05:28:29Z",
+      "side": 1,
+      "message": "This is a workaround patch for CI issues. I\u0027m only expecting it to be merged if desperate and am not going to invest into debugging this any more time. The description and comments explicitly say that there are deeper issues present.\n\nI\u0027m expecting L2BD maintainers to see this as a pointer at a problem, so that they can step in and do a proper fix.",
+      "parentUuid": "3a802d82_7e31d7c2",
+      "range": {
+        "startLine": 1260,
+        "startChar": 0,
+        "endLine": 1260,
+        "endChar": 57
+      },
+      "revId": "1480e6144e4451f524744e54978c0639103ffa2c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
