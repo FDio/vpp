@@ -22,8 +22,8 @@
 typedef struct ring_alloc_
 {
   svm_queue_t *rp;
-  u16 size;
-  u16 nitems;
+  u32 size;
+  u32 nitems;
   u32 hits;
   u32 misses;
 } ring_alloc_t;
@@ -43,22 +43,31 @@ typedef struct vl_api_shm_elem_config_
   u32 size;
 } vl_api_shm_elem_config_t;
 
-STATIC_ASSERT (sizeof (vl_api_shm_elem_config_t) == 8,
-	       "Size must be exactly 8 bytes");
+STATIC_ASSERT (sizeof (vl_api_shm_elem_config_t) == 8, "Size must be exactly 8 bytes");
 
 /*
  * Initializers for the (shared-memory) rings
  * _(size, n). Note: each msg has space for a header.
  */
-#define foreach_vl_aring_size                   \
-_(64+sizeof(ring_alloc_t), 1024)                \
-_(256+sizeof(ring_alloc_t), 128)                \
-_(1024+sizeof(ring_alloc_t), 64)
+#define foreach_vl_aring_size                                                                      \
+  _ (64 + sizeof (ring_alloc_t), 1)                                                                \
+  _ (256 + sizeof (ring_alloc_t), 1)                                                               \
+  _ (1024 + sizeof (ring_alloc_t), 1)                                                              \
+  _ (4096 + sizeof (ring_alloc_t), 1)                                                              \
+  _ (16384 + sizeof (ring_alloc_t), 1)                                                             \
+  _ (65536 + sizeof (ring_alloc_t), 1)                                                             \
+  _ (262144 + sizeof (ring_alloc_t), 1)                                                            \
+  _ (1048576 + sizeof (ring_alloc_t), 1)                                                           \
+  _ (4194304 + sizeof (ring_alloc_t), 1)                                                           \
+  _ (16777216 + sizeof (ring_alloc_t), 1)                                                          \
+  _ (67108864 + sizeof (ring_alloc_t), 1)                                                          \
+  _ (268435456 + sizeof (ring_alloc_t), 1)                                                         \
+  _ (1073741824 + sizeof (ring_alloc_t), 1)
 
-#define foreach_clnt_aring_size                 \
- _(1024+sizeof(ring_alloc_t), 1024)             \
- _(2048+sizeof(ring_alloc_t), 128)              \
- _(4096+sizeof(ring_alloc_t), 8)
+#define foreach_clnt_aring_size                                                                    \
+  _ (1024 + sizeof (ring_alloc_t), 1024)                                                           \
+  _ (2048 + sizeof (ring_alloc_t), 128)                                                            \
+  _ (4096 + sizeof (ring_alloc_t), 8)
 
 typedef struct vl_shmem_hdr_
 {
