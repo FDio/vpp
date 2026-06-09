@@ -830,8 +830,6 @@ session_switch_pool (session_switch_pool_args_t *args)
 
   if (!(s->flags & SESSION_F_PROXY))
     {
-      if (svm_fifo_max_dequeue (s->tx_fifo))
-	session_program_tx_io_evt (args->new_sh, SESSION_IO_EVT_TX);
       /* Cleanup fifo segment slice state for fifos */
       segment_manager_detach_fifo (&s->rx_fifo);
       segment_manager_detach_fifo (&s->tx_fifo);
@@ -898,6 +896,19 @@ session_program_thread_migration (session_switch_pool_args_t *args)
     }
 }
 
+void
+session_migrate_accept (session_t *s)
+{
+  s->flags &= ~SESSION_F_IS_MIGRATING;
+  s->flags |= SESSION_F_RX_READY;
+
+  if (s->tx_fifo && svm_fifo_max_dequeue (s->tx_fifo))
+    session_program_tx_io_evt (session_handle (s), SESSION_IO_EVT_TX);
+
+  if (s->flags & SESSION_F_RX_EVT)
+    session_program_rx_io_evt (session_handle (s));
+}
+
 /**
  * Move dgram session to the right thread
  */
@@ -915,6 +926,7 @@ session_dgram_connect_notify (transport_connection_t *tc,
   new_s->listener_handle = SESSION_INVALID_HANDLE;
   session_set_state (new_s, SESSION_STATE_READY);
   new_s->flags |= SESSION_F_IS_MIGRATING;
+  new_s->flags &= ~SESSION_F_RX_READY;
 
   if (!(tc->flags & TRANSPORT_CONNECTION_F_NO_LOOKUP))
     session_lookup_add_connection (tc, session_handle (new_s));

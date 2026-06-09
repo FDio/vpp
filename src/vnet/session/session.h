@@ -596,6 +596,7 @@ int session_stream_connect_notify (transport_connection_t * tc,
 int session_dgram_connect_notify (transport_connection_t *tc,
 				  session_handle_tu_t osh,
 				  session_t **new_session);
+void session_migrate_accept (session_t *s);
 int session_stream_accept_notify (transport_connection_t * tc);
 void session_transport_closing_notify (transport_connection_t * tc);
 void session_transport_delete_notify (transport_connection_t * tc);
