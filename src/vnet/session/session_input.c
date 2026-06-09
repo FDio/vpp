@@ -257,8 +257,12 @@ app_worker_flush_events_inline (app_worker_t *app_wrk,
 	  transport_cleanup (session_get_transport_proto (s),
 			     s->connection_index, s->thread_index);
 	  session_free (s);
-	  /* Notify app that it has data on the new session */
-	  session_program_rx_io_evt (evt->as_u64[1]);
+	  /* External apps accept after migrated evt has been queued. */
+	  if (!is_builtin)
+	    {
+	      s = session_get_from_handle (evt->as_u64[1]);
+	      session_migrate_accept (s);
+	    }
 	  break;
 	case SESSION_CTRL_EVT_TRANSPORT_CLOSED:
 	  s = session_get (evt->session_index, thread_index);
