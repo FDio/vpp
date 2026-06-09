@@ -89,3 +89,28 @@ autoreply define http_static_disable_v5 {
     /* Arbitrary context, so client can match reply to request */
     u32 context;
 };
+
+define http_static_get_v5 {
+    /* Client identifier, set from api_main.my_client_index */
+    u32 client_index;
+
+    /* Arbitrary context, so client can match reply to request */
+    u32 context;
+};
+
+define http_static_get_v5_reply {
+    u32 context;
+
+    u32 retval;
+    u32 fifo_size;
+    u32 cache_size_limit;
+    u32 max_age;
+    u32 keepalive_timeout;
+    u64 max_body_size;
+    u32 rx_buff_thresh;
+
+    /* Root of the html path */
+    string www_root[256];
+    /* The bind URI */
+    string uri[256];
+};
