@@ -271,8 +271,7 @@ trace_apply_filter (vlib_main_t * vm)
 }
 
 static clib_error_t *
-cli_show_trace_buffer (vlib_main_t * vm,
-		       unformat_input_t * input, vlib_cli_command_t * cmd)
+cli_show_trace_buffer (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
 {
   vlib_trace_main_t *tm;
   vlib_trace_header_t **h, **traces;
@@ -280,6 +279,7 @@ cli_show_trace_buffer (vlib_main_t * vm,
   char *fmt;
   u8 *s = 0;
   u32 max;
+  u32 offset = 0; /* Added offset initialization */
 
   /*
    * By default display only this many traces. To display more, explicitly
@@ -290,11 +290,12 @@ cli_show_trace_buffer (vlib_main_t * vm,
     {
       if (unformat (input, "max %d", &max))
 	;
+      else if (unformat (input, "offset %d", &offset))
+	;
       else
-	return clib_error_create ("expected 'max COUNT', got `%U'",
+	return clib_error_create ("expected 'max COUNT' or 'offset COUNT', got `%U'",
 				  format_unformat_error, input);
     }
-
 
   /* Get active traces from pool. */
 
@@ -324,17 +325,21 @@ cli_show_trace_buffer (vlib_main_t * vm,
 
       for (i = 0; i < vec_len (traces); i++)
 	{
-	  if (i == max)
+	  /* Skip packets until the requested offset is reached */
+	  if (i < offset)
+	    continue;
+
+	  /* Limit display to 'max' packets starting from the offset */
+	  if (i - offset == max)
 	    {
-	      char *warn = "Limiting display to %d packets."
-			   " To display more specify max.";
+	      char *warn = "Limiting display to %d packets. To display more specify max or offset.";
 	      vlib_cli_output (vm, warn, max);
 	      s = format (s, warn, max);
 	      goto done;
 	    }
 
-	  s = format (s, "Packet %d\n%U\n\n", i + 1, format_vlib_trace, vm,
-		      traces[i]);
+	  /* Packet numbering (i + 1) remains global/absolute */
+	  s = format (s, "Packet %d\n%U\n\n", i + 1, format_vlib_trace, vm, traces[i]);
 	}
 
     done:
@@ -348,9 +353,9 @@ cli_show_trace_buffer (vlib_main_t * vm,
   return 0;
 }
 
-VLIB_CLI_COMMAND (show_trace_cli,static) = {
+VLIB_CLI_COMMAND (show_trace_cli, static) = {
   .path = "show trace",
-  .short_help = "Show trace buffer [max COUNT]",
+  .short_help = "Show trace buffer [max COUNT] [offset COUNT]",
   .function = cli_show_trace_buffer,
 };
 
