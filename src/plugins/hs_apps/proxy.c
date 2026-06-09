@@ -1142,7 +1142,6 @@ active_open_migrate_rpc (void *arg)
 
   s = session_get_from_handle (ps->ao.session_handle);
   s->opaque = sc->sc_index;
-  s->flags &= ~SESSION_F_IS_MIGRATING;
 
   sc->pair = ps->po;
 
@@ -1151,6 +1150,7 @@ active_open_migrate_rpc (void *arg)
   session_send_rpc_evt_to_thread (
     session_thread_from_handle (sc->pair.session_handle),
     active_open_migrate_po_fixup_rpc, uword_to_pointer (sc->ps_index, void *));
+  session_migrate_accept (s);
 }
 
 static void

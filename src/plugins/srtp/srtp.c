@@ -480,13 +480,12 @@ srtp_migrate_ctx (void *arg)
 
   us = session_get_from_handle (ctx->srtp_session_handle);
   us->opaque = ctx_handle;
-  us->flags &= ~SESSION_F_IS_MIGRATING;
-  if (svm_fifo_max_dequeue (us->tx_fifo))
-    session_program_tx_io_evt (us->handle, SESSION_IO_EVT_TX);
 
   /* Migrate app session as well */
   session_dgram_connect_notify (&ctx->connection, ctx->app_session_handle, &new_app_session);
   ctx->app_session_handle = session_handle (new_app_session);
+  us = session_get_from_handle (ctx->srtp_session_handle);
+  session_migrate_accept (us);
 
   /* Call back original thread and ask for cleanup */
   rargs = uword_to_pointer ((uword) old_ctx_index, void *);

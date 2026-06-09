@@ -1028,7 +1028,6 @@ quic_quicly_connection_migrate_rpc (quic_ctx_t *ctx)
 
   udp_session = session_get_from_handle (new_ctx->udp_session_handle);
   udp_session->opaque = new_ctx_index;
-  udp_session->flags &= ~SESSION_F_IS_MIGRATING;
 
   /* app might detach meanwhile */
   if (session_half_open_migrated_notify (&new_ctx->connection))
@@ -1038,12 +1037,7 @@ quic_quicly_connection_migrate_rpc (quic_ctx_t *ctx)
       quic_quicly_reschedule_ctx (new_ctx);
       return;
     }
-
-  /*  Trigger write on this connection if necessary */
-  if (svm_fifo_max_dequeue (udp_session->tx_fifo))
-    {
-      quic_quicly_set_udp_tx_evt (udp_session);
-    }
+  session_migrate_accept (udp_session);
 }
 
 static void
