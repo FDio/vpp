@@ -33,6 +33,24 @@
       "message": "I don\u0027t think we should validate buffers at this point. Instead, all code paths that lead to this point must make sure buffers are valid and flow hash is applicable.",
       "revId": "099de5cc8955e9d67c71b1e2626777296eb1c011",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ccf58eaf_3ecd9cd2",
+        "filename": "src/vnet/ip/ip4_inlines.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 23,
+      "author": {
+        "id": 2429
+      },
+      "writtenOn": "2026-06-09T09:35:33Z",
+      "side": 1,
+      "message": "Are you thinking that some of the code paths have already validated that the L4 headers are valid and thus can skip the validation? Otherwise, what would be the advantage in splitting out the validation?\n\nMy thinking for initially going with this approach is that the flow hash calculation is commonly done for transit packets where otherwise the L4 headers aren\u0027t validated or even inspected. As an aside, for IPv6 packets there is no validation in ip6-input even for the payload length in the IPv6 header currently, not that that would help much here anyway (since we need to validate the data being accessed doesn\u0027t span across buffers).",
+      "parentUuid": "dae1e95c_d5e3117b",
+      "revId": "099de5cc8955e9d67c71b1e2626777296eb1c011",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
