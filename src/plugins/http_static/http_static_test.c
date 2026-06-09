@@ -28,6 +28,27 @@ http_static_test_main_t http_static_test_main;
 #define __plugin_msg_base http_static_test_main.msg_id_base
 #include <vlibapi/vat_helper_macros.h>
 
+static void
+vl_api_http_static_get_reply_t_handler (vl_api_http_static_get_reply_t *mp)
+{
+}
+
+static int
+api_http_static_get (vat_main_t *vam)
+{
+  vl_api_http_static_get_t *mp;
+  int ret;
+
+  M (HTTP_STATIC_GET, mp);
+  /* send it... */
+  S (mp);
+
+  /* Wait for a reply... */
+  W (ret);
+
+  return ret;
+}
+
 static int
 api_http_static_disable (vat_main_t *vam)
 {
