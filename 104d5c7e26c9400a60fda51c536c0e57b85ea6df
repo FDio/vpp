@@ -1,0 +1,72 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "d4a04065_4825d0a2",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-06-09T03:13:50Z",
+      "side": 1,
+      "message": "looks good, just some nits",
+      "revId": "104d5c7e26c9400a60fda51c536c0e57b85ea6df",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "14c4c7bb_dab4286d",
+        "filename": "src/plugins/quic/quic.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 29,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-06-09T03:13:50Z",
+      "side": 1,
+      "message": "Any reason not to put this in .h?",
+      "revId": "104d5c7e26c9400a60fda51c536c0e57b85ea6df",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "211023af_9501619b",
+        "filename": "src/plugins/quic/quic.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 519,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-06-09T03:13:50Z",
+      "side": 1,
+      "message": "nice!",
+      "revId": "104d5c7e26c9400a60fda51c536c0e57b85ea6df",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f1a83f56_f63f5789",
+        "filename": "src/plugins/quic/quic_timer.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 27,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-06-09T03:13:50Z",
+      "side": 1,
+      "message": "quic_conn_timer_stop/start/update? Soft suggestion, but I\u0027m biased because of tcp ..",
+      "revId": "104d5c7e26c9400a60fda51c536c0e57b85ea6df",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
