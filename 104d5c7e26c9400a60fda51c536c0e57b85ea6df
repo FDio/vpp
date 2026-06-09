@@ -35,6 +35,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "2d687801_0a2778c0",
+        "filename": "src/plugins/quic/quic.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 29,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-06-09T08:28:15Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "14c4c7bb_dab4286d",
+      "revId": "104d5c7e26c9400a60fda51c536c0e57b85ea6df",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "211023af_9501619b",
@@ -52,6 +70,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "07ee08be_dded3d77",
+        "filename": "src/plugins/quic/quic.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 519,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-06-09T08:28:15Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "211023af_9501619b",
+      "revId": "104d5c7e26c9400a60fda51c536c0e57b85ea6df",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "f1a83f56_f63f5789",
@@ -65,6 +101,24 @@
       "writtenOn": "2026-06-09T03:13:50Z",
       "side": 1,
       "message": "quic_conn_timer_stop/start/update? Soft suggestion, but I\u0027m biased because of tcp ..",
+      "revId": "104d5c7e26c9400a60fda51c536c0e57b85ea6df",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ff42fca5_03a752e4",
+        "filename": "src/plugins/quic/quic_timer.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 27,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-06-09T08:28:15Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "f1a83f56_f63f5789",
       "revId": "104d5c7e26c9400a60fda51c536c0e57b85ea6df",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
