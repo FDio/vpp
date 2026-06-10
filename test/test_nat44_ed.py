@@ -7,7 +7,7 @@ from random import randint, choice
 import re
 import scapy.compat
 from framework import VppTestCase, VppLoInterface
-from asfframework import VppTestRunner, tag_fixme_debian12
+from asfframework import VppTestRunner
 from scapy.data import IP_PROTOS
 from scapy.layers.inet import IP, TCP, UDP, ICMP, GRE
 from scapy.layers.inet import IPerror, TCPerror
@@ -2607,7 +2607,6 @@ class TestNAT44ED(VppTestCase):
 
 
 @unittest.skipIf("nat" in config.excluded_plugins, "Exclude NAT plugin tests")
-@tag_fixme_debian12
 class TestNAT44EDMW(TestNAT44ED):
     """NAT44ED MW Test Case"""
 
