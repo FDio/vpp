@@ -52,6 +52,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "a0f5f7a4_ed1ba882",
+        "filename": "test/vpp_pg_interface.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 125,
+      "author": {
+        "id": 3200
+      },
+      "writtenOn": "2026-06-10T19:48:08Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "00a343a6_f5b08bdf",
+      "revId": "aacd1a4680340c3de3d9d1fb46f83a9c08054003",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "61c0599f_b5e49493",
@@ -65,6 +83,24 @@
       "writtenOn": "2026-06-09T05:56:33Z",
       "side": 1,
       "message": "here we use the property... (self.maxframe)",
+      "revId": "aacd1a4680340c3de3d9d1fb46f83a9c08054003",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "75d18781_cb99622e",
+        "filename": "test/vpp_pg_interface.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 126,
+      "author": {
+        "id": 3200
+      },
+      "writtenOn": "2026-06-10T19:48:08Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "61c0599f_b5e49493",
       "revId": "aacd1a4680340c3de3d9d1fb46f83a9c08054003",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -86,6 +122,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "44aa5cb2_c3e22415",
+        "filename": "test/vpp_pg_interface.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 168,
+      "author": {
+        "id": 3200
+      },
+      "writtenOn": "2026-06-10T19:48:08Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "c6d80a7e_4edf34ba",
+      "revId": "aacd1a4680340c3de3d9d1fb46f83a9c08054003",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "596a6d4a_1a76ad8f",
@@ -99,6 +153,24 @@
       "writtenOn": "2026-06-09T05:56:33Z",
       "side": 1,
       "message": "this comment is exactly how we do not want to convey this message, we do it properly:\n\n    @maxframe.setter\n    def maxframe(self, value: str | None) -\u003e None:\n        if value is not None and not isinstance(value, str):\n            raise TypeError(\"expected str or None\")\n        if maxframe in (\"forbidden_value1\", \"forbidden_value2\"):\n            raise ValueError(f\"invalid maxframe value \u0027{value}\u0027\")\n        self._maxframe \u003d value\n        \nthe reason for messing with properties is that it allows us to do validation\n\none more thing to consider here - is str the right type to enforce? I see you used %s above, that\u0027s why I\u0027m assuming str, but given the naming starting with \"max\" it looks like it could be a number, in which case str is inappropriate",
+      "revId": "aacd1a4680340c3de3d9d1fb46f83a9c08054003",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "82a45408_67d7915a",
+        "filename": "test/vpp_pg_interface.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 255,
+      "author": {
+        "id": 3200
+      },
+      "writtenOn": "2026-06-10T19:48:08Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "596a6d4a_1a76ad8f",
       "revId": "aacd1a4680340c3de3d9d1fb46f83a9c08054003",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
