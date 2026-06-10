@@ -192,20 +192,20 @@ typedef enum
   APP_OPTIONS_N_OPTIONS
 } app_attach_options_index_t;
 
-#define foreach_app_options_flags                                             \
-  _ (ACCEPT_REDIRECT, "Use FIFO with redirects")                              \
-  _ (ADD_SEGMENT, "Add segment and signal app if needed")                     \
-  _ (IS_BUILTIN, "Application is builtin")                                    \
-  _ (IS_TRANSPORT_APP, "Application is a transport proto")                    \
-  _ (IS_PROXY, "Application is proxying")                                     \
-  _ (USE_GLOBAL_SCOPE, "App can use global session scope")                    \
-  _ (USE_LOCAL_SCOPE, "App can use local session scope")                      \
-  _ (EVT_MQ_USE_EVENTFD, "Use eventfds for signaling")                        \
-  _ (MEMFD_FOR_BUILTIN, "Use memfd for builtin app segs")                     \
-  _ (USE_HUGE_PAGE, "Use huge page for FIFO")                                 \
-  _ (GET_ORIGINAL_DST, "Get original dst enabled")                            \
-  _ (EVT_COLLECTOR, "App requests event collector")                           \
-  _ (NO_DUMP_SEGMENTS, "Do not dump segments in core dumps")
+#define foreach_app_options_flags                                                                  \
+  _ (ACCEPT_REDIRECT, "accept-redirect")                                                           \
+  _ (ADD_SEGMENT, "add-segment")                                                                   \
+  _ (IS_BUILTIN, "builtin")                                                                        \
+  _ (IS_TRANSPORT_APP, "transport-app")                                                            \
+  _ (IS_PROXY, "proxy")                                                                            \
+  _ (USE_GLOBAL_SCOPE, "global-scope")                                                             \
+  _ (USE_LOCAL_SCOPE, "local-scope")                                                               \
+  _ (EVT_MQ_USE_EVENTFD, "mq-eventfd")                                                             \
+  _ (MEMFD_FOR_BUILTIN, "builtin-memfd")                                                           \
+  _ (USE_HUGE_PAGE, "huge-page")                                                                   \
+  _ (GET_ORIGINAL_DST, "original-dst")                                                             \
+  _ (EVT_COLLECTOR, "evt-collector")                                                               \
+  _ (NO_DUMP_SEGMENTS, "no-dump-segments")
 
 typedef enum _app_options
 {
