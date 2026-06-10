@@ -226,6 +226,16 @@ Use the following **make** command below to build the release version of FD.io V
 
     $ make build-release
 
+Build-time Configuration
+------------------------
+
+The ``make build`` and ``make build-release`` targets accept build-time
+configuration through make variables and CMake cache arguments. For example,
+plugins, drivers, crypto engines, optional tools, and optional tests can be
+selected at configure time.
+
+See :ref:`build_time_options` for the supported variables and examples.
+
 Installing External Dependencies
 -------------------------------------------
 At this point, there are still some VPP external dependencies left to install. They could be installed
