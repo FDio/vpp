@@ -141,11 +141,13 @@ func TestTcpHarnessFlowPacketAssertions(t *testing.T) {
 
 func TestTcpHarnessScriptStepConstructors(t *testing.T) {
 	initial := InitialHolesSackStep(3, 4,
+		WaitForDataSegments(6),
 		DiscardQueuedAcks(),
 		AdvanceScriptToDone())
 	if initial.trigger != nfQueueScriptTriggerInitialHolesReady ||
 		initial.holeCount != 3 ||
 		initial.injectCount != 4 ||
+		initial.minDataSegments != 6 ||
 		!initial.stopIngressDrops ||
 		initial.ackQueueDisposition != nfQueueAckQueueDispositionDiscardQueued ||
 		!initial.advanceToDone {
@@ -156,10 +158,60 @@ func TestTcpHarnessScriptStepConstructors(t *testing.T) {
 	if partial.trigger != nfQueueScriptTriggerRetransmitOfDroppedSeqObserved ||
 		partial.holeCount != 0 ||
 		partial.injectCount != 2 ||
+		partial.minDataSegments != 0 ||
 		partial.stopIngressDrops ||
 		partial.ackQueueDisposition != nfQueueAckQueueDispositionKeepQueued ||
 		partial.advanceToDone {
 		t.Fatalf("unexpected partial ACK step: %+v", partial)
+	}
+}
+
+func TestTcpHarnessScriptInitialHolesWaitsForDataSegments(t *testing.T) {
+	state := newNFQueueScriptState(NFQueueScript([]uint32{2, 4},
+		InitialHolesSackStep(2, 3,
+			WaitForDataSegments(6),
+			KeepQueuedAcks())))
+
+	state.ApplyEvent(nfQueueScriptEvent{
+		Role: nfQueueRoleEgress,
+		Packet: testPacket("10.0.0.2", "10.0.0.1", 1234, 40000,
+			5000, 1000, 0, tcpFlagAck, 0, time.Time{}),
+	})
+
+	events := []nfQueueScriptEvent{
+		{Packet: PcapIPv4TCPPacket{Seq: 1000, PayloadLen: 100}},
+		{Packet: PcapIPv4TCPPacket{Seq: 1100, PayloadLen: 100}, OriginalDrop: true},
+		{Packet: PcapIPv4TCPPacket{Seq: 1200, PayloadLen: 100}},
+		{Packet: PcapIPv4TCPPacket{Seq: 1300, PayloadLen: 100}, OriginalDrop: true},
+		{Packet: PcapIPv4TCPPacket{Seq: 1400, PayloadLen: 100}},
+	}
+	for _, event := range events {
+		action := state.ApplyEvent(event)
+		if len(action.Injections) != 0 || action.StopIngressDrops {
+			t.Fatalf("script fired before minimum data segments: action=%+v", action)
+		}
+	}
+
+	action := state.ApplyEvent(nfQueueScriptEvent{
+		Packet: PcapIPv4TCPPacket{Seq: 1500, PayloadLen: 100},
+	})
+	if !action.StopIngressDrops {
+		t.Fatal("expected script to stop ingress drops after minimum data segments")
+	}
+	if len(action.Injections) != 1 {
+		t.Fatalf("injection count=%d, want 1", len(action.Injections))
+	}
+
+	injection := action.Injections[0]
+	if injection.Ack != 1100 || injection.Count != 3 {
+		t.Fatalf("unexpected injection ack/count: %+v", injection)
+	}
+	if len(injection.SackBlocks) != 2 ||
+		injection.SackBlocks[0].Left != 1200 ||
+		injection.SackBlocks[0].Right != 1300 ||
+		injection.SackBlocks[1].Left != 1400 ||
+		injection.SackBlocks[1].Right != 1600 {
+		t.Fatalf("unexpected SACK blocks: %+v", injection.SackBlocks)
 	}
 }
 

@@ -59,6 +59,7 @@ type NFQueueScriptStep struct {
 	trigger             nfQueueScriptTrigger
 	holeCount           int
 	injectCount         int
+	minDataSegments     int
 	stopIngressDrops    bool
 	ackQueueDisposition nfQueueAckQueueDisposition
 	advanceToDone       bool
@@ -84,6 +85,14 @@ func RetransmitPartialAckStep(injectCount int,
 		injectCount: injectCount,
 	}
 	return applyNFQueueScriptStepOptions(step, opts...)
+}
+
+// WaitForDataSegments delays a script step until at least count data segments
+// have been observed.
+func WaitForDataSegments(count int) NFQueueScriptStepOption {
+	return func(step *NFQueueScriptStep) {
+		step.minDataSegments = count
+	}
 }
 
 func KeepQueuedAcks() NFQueueScriptStepOption {
@@ -423,6 +432,9 @@ func (s *nfQueueScriptState) stepInjections(step NFQueueScriptStep) ([]nfQueueIn
 	switch step.trigger {
 	case nfQueueScriptTriggerInitialHolesReady:
 		if !s.ackState.Valid {
+			return nil, false
+		}
+		if step.minDataSegments > 0 && len(s.dataSegments) < step.minDataSegments {
 			return nil, false
 		}
 
