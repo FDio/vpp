@@ -205,6 +205,9 @@ typedef struct tcp_configuration_
 
   /** Fault-injection. Debug only */
   f64 buffer_fail_fraction;
+
+  /** Enable TCP Fast Open globally for all new listeners */
+  u8 enable_fast_open;
 } tcp_configuration_t;
 
 typedef struct _tcp_main
@@ -255,6 +258,32 @@ typedef struct _tcp_main
   u16 msg_id_base;
 
   tcp_sdl_cb_fn_t sdl_cb;
+
+  /** TCP Fast Open (RFC 7413) */
+  /* Serialize access to the cookie cache, blackhole pool and key rotation */
+  clib_spinlock_t tfo_lock;
+  /* Current secret key for cookie generation */
+  u64 tfo_key[2];
+  /* Previous secret key for dual-key validation during key rotation */
+  u64 tfo_key_prev[2];
+  /* Timestamp of last key rotation */
+  f64 tfo_key_rotate_ts;
+  /* Pending TFO connections in SYN-RCVD (atomic load/store) */
+  u32 tfo_pending;
+  /* Max allowed pending TFO connections */
+  u32 tfo_pending_max;
+
+  /** TFO cookie cache: per-destination cached cookies (tfo_lock) */
+  /* hash: ip_key -> pool index */
+  uword *tfo_cookie_cache;
+  /* pool of cached cookies */
+  struct tcp_tfo_cc_entry_ *tfo_cc_entries;
+
+  /** TFO blackhole detection: per-destination failure tracking (tfo_lock) */
+  /* hash: ip_key -> pool index */
+  uword *tfo_blackhole;
+  /* pool of blackhole entries */
+  struct tcp_tfo_bh_entry_ *tfo_bh_entries;
 } tcp_main_t;
 
 extern tcp_main_t tcp_main;
@@ -343,6 +372,52 @@ int tcp_configure_v6_source_address_range (vlib_main_t * vm,
 					   ip6_address_t * end, u32 table_id);
 
 clib_error_t *vnet_tcp_enable_disable (vlib_main_t * vm, u8 is_en);
+
+/* TFO cookie generation and validation (RFC 7413 Sec 4.1.2) */
+void tcp_tfo_get_cookie (tcp_connection_t *tc, u8 *cookie, u8 *len);
+int tcp_tfo_cookie_is_valid (tcp_connection_t *tc, u8 *cookie, u8 len);
+
+/* TFO cookie cache */
+typedef struct tcp_tfo_cc_entry_
+{
+  uword ip_key; /**< hash key (remote IP) for background sweep */
+  u8 cookie[TCP_TFO_COOKIE_LEN_MAX];
+  u8 cookie_len;
+  f64 timestamp;
+} tcp_tfo_cc_entry_t;
+
+void tcp_tfo_cache_cookie (tcp_connection_t *tc, u8 *cookie, u8 len);
+int tcp_tfo_lookup_cookie (tcp_connection_t *tc, u8 *cookie, u8 *len);
+
+/* TFO blackhole detection */
+typedef struct tcp_tfo_bh_entry_
+{
+  uword ip_key; /**< hash key (remote IP) for background sweep */
+  u8 failures;
+  f64 last_failure;
+} tcp_tfo_bh_entry_t;
+
+void tcp_tfo_blackhole_record (tcp_connection_t *tc);
+int tcp_tfo_blackhole_check (tcp_connection_t *tc);
+void tcp_tfo_blackhole_clear (tcp_connection_t *tc);
+
+/* failures before disabling TFO */
+#define TCP_TFO_BLACKHOLE_THRESH 3
+/* cooldown in seconds (5 min) */
+#define TCP_TFO_BLACKHOLE_TIMEOUT 300
+/* cookie cache entry expiration in seconds (1 hour) */
+#define TCP_TFO_CACHE_EXPIRATION 3600
+/* key rotation interval sec (RFC 7413 Sec 4.1.2) */
+#define TCP_TFO_KEY_ROTATE_INTERVAL 120
+/* sweep interval for cookie cache and blackhole table (seconds) */
+#define TCP_TFO_SWEEP_INTERVAL 900
+
+void tcp_tfo_cache_flush (u32 *n_cache_freed, u32 *n_bh_freed);
+
+#define tcp_tfo_enabled(tc)	((tc)->cfg_flags & TCP_CFG_F_TFO)
+#define tcp_fast_opened(tc)	((tc)->flags & TCP_CONN_FAST_OPENED)
+#define tcp_fast_opened_on(tc)	((tc)->flags |= TCP_CONN_FAST_OPENED)
+#define tcp_fast_opened_off(tc) ((tc)->flags &= ~TCP_CONN_FAST_OPENED)
 
 format_function_t format_tcp_state;
 format_function_t format_tcp_flags;

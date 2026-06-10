@@ -1108,3 +1108,76 @@ tcp_config_fn (vlib_main_t * vm, unformat_input_t * input)
 }
 
 VLIB_CONFIG_FUNCTION (tcp_config_fn, "tcp");
+
+static clib_error_t *
+tcp_fast_open_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+  clib_error_t *error = 0;
+  u8 enable;
+
+  /* No arguments: print current state and return. */
+  if (!unformat_user (input, unformat_line_input, line_input))
+    {
+      vlib_cli_output (vm, "TCP Fast Open is currently %s",
+		       tcp_cfg.enable_fast_open ? "enabled" : "disabled");
+      return 0;
+    }
+
+  enable = tcp_cfg.enable_fast_open;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "on"))
+	enable = 1;
+      else if (unformat (line_input, "off"))
+	enable = 0;
+      else
+	{
+	  error = clib_error_return (0, "unknown input `%U'", format_unformat_error, line_input);
+	  goto done;
+	}
+    }
+
+  tcp_cfg.enable_fast_open = enable;
+  vlib_cli_output (vm, "TCP Fast Open %s", enable ? "enabled" : "disabled");
+
+done:
+  unformat_free (line_input);
+  return error;
+}
+
+VLIB_CLI_COMMAND (tcp_fast_open_command, static) = {
+  .path = "tcp fast-open",
+  .short_help = "tcp fast-open [on|off]",
+  .function = tcp_fast_open_fn,
+};
+
+static clib_error_t *
+tcp_fast_open_clear_cache_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
+{
+  tcp_main_t *tm = &tcp_main;
+  u32 n_cache, n_bh;
+
+  if (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    return clib_error_return (0, "unknown input `%U'", format_unformat_error, input);
+
+  if (!tm->tfo_lock)
+    {
+      vlib_cli_output (vm, "TFO cache not initialized, nothing to flush");
+      return 0;
+    }
+
+  tcp_tfo_cache_flush (&n_cache, &n_bh);
+  vlib_cli_output (vm,
+		   "Flushed %u TFO cookie cache entries and "
+		   "%u blackhole entries",
+		   n_cache, n_bh);
+  return 0;
+}
+
+VLIB_CLI_COMMAND (tcp_fast_open_clear_cache_command, static) = {
+  .path = "tcp fast-open clear-cache",
+  .short_help = "tcp fast-open clear-cache",
+  .function = tcp_fast_open_clear_cache_fn,
+};

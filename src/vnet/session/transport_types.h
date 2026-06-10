@@ -284,6 +284,7 @@ typedef enum transport_endpt_ext_cfg_type_
   TRANSPORT_ENDPT_EXT_CFG_CRYPTO,
   TRANSPORT_ENDPT_EXT_CFG_HTTP,
   TRANSPORT_ENDPT_EXT_CFG_QUIC,
+  TRANSPORT_ENDPT_EXT_CFG_TFO,
 } transport_endpt_ext_cfg_type_t;
 
 #define foreach_tls_verify_cfg                                                                     \

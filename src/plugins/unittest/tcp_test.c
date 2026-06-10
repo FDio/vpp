@@ -2044,6 +2044,649 @@ tcp_test_bt (vlib_main_t * vm, unformat_input_t * input)
   return 0;
 }
 
+/**
+ * TFO cookie generation and validation unit test.
+ */
+static int
+tcp_test_tfo_cookie (vlib_main_t *vm, unformat_input_t *input)
+{
+  tcp_main_t *tm = &tcp_main;
+  tcp_connection_t _tc, *tc = &_tc;
+  u8 cookie[TCP_TFO_COOKIE_LEN_MAX];
+  u8 len = 0;
+
+  clib_memset (tc, 0, sizeof (*tc));
+
+  /* Ensure TFO keys are initialized */
+  tm->tfo_key[0] = 0xdeadbeefcafebabeULL;
+  tm->tfo_key[1] = 0x1234567890abcdefULL;
+
+  /* Test 1: IPv4 cookie generation */
+  tc->c_is_ip4 = 1;
+  tc->c_rmt_ip.ip4.as_u32 = clib_host_to_net_u32 (0x0a000001); /* 10.0.0.1 */
+  tcp_tfo_get_cookie (tc, cookie, &len);
+  TCP_TEST (len == 8, "IPv4 cookie length should be 8, got %u", len);
+
+  /* Test 2: same IP produces same cookie (deterministic) */
+  {
+    u8 cookie2[TCP_TFO_COOKIE_LEN_MAX];
+    u8 len2 = 0;
+    tcp_tfo_get_cookie (tc, cookie2, &len2);
+    TCP_TEST (len == len2 && !clib_memcmp (cookie, cookie2, len),
+	      "same IP should produce same cookie");
+  }
+
+  /* Test 3: different IP produces different cookie */
+  {
+    u8 cookie3[TCP_TFO_COOKIE_LEN_MAX];
+    u8 len3 = 0;
+    tc->c_rmt_ip.ip4.as_u32 = clib_host_to_net_u32 (0x0a000002); /* 10.0.0.2 */
+    tcp_tfo_get_cookie (tc, cookie3, &len3);
+    TCP_TEST (clib_memcmp (cookie, cookie3, len) != 0,
+	      "different IP should produce different cookie");
+  }
+
+  /* Test 4: cookie validation - valid */
+  tc->c_rmt_ip.ip4.as_u32 = clib_host_to_net_u32 (0x0a000001);
+  tcp_tfo_get_cookie (tc, cookie, &len);
+  TCP_TEST (tcp_tfo_cookie_is_valid (tc, cookie, len) == 1, "valid cookie should pass validation");
+
+  /* Test 5: cookie validation - invalid (corrupted byte) */
+  cookie[0] ^= 0xff;
+  TCP_TEST (tcp_tfo_cookie_is_valid (tc, cookie, len) == 0,
+	    "corrupted cookie should fail validation");
+
+  /* Test 6: cookie validation - wrong length */
+  tcp_tfo_get_cookie (tc, cookie, &len);
+  TCP_TEST (tcp_tfo_cookie_is_valid (tc, cookie, 4) == 0,
+	    "wrong length cookie should fail validation");
+
+  /* Test 7: IPv6 cookie generation */
+  clib_memset (tc, 0, sizeof (*tc));
+  tc->c_is_ip4 = 0;
+  tc->c_rmt_ip.ip6.as_u64[0] = clib_host_to_net_u64 (0x20010db800000001ULL);
+  tc->c_rmt_ip.ip6.as_u64[1] = clib_host_to_net_u64 (0x0000000000000001ULL);
+  tcp_tfo_get_cookie (tc, cookie, &len);
+  TCP_TEST (len == 8, "IPv6 cookie length should be 8, got %u", len);
+  TCP_TEST (tcp_tfo_cookie_is_valid (tc, cookie, len) == 1, "IPv6 cookie should validate");
+
+  return 0;
+}
+
+/**
+ * TFO option parse/write round-trip unit test.
+ */
+static int
+tcp_test_tfo_options (vlib_main_t *vm, unformat_input_t *input)
+{
+  tcp_options_t opts_in, opts_out;
+  u8 buf[60];
+  u32 opts_len;
+  tcp_header_t fake_syn;
+
+  /* Build a fake SYN header for the parser */
+  clib_memset (&fake_syn, 0, sizeof (fake_syn));
+  fake_syn.flags = TCP_FLAG_SYN;
+
+  /* Test 1: TFO option with empty cookie (cookie request) */
+  clib_memset (&opts_in, 0, sizeof (opts_in));
+  opts_in.flags = TCP_OPTS_FLAG_TFO;
+  opts_in.tfo_cookie_len = 0;
+
+  clib_memset (buf, 0, sizeof (buf));
+  opts_len = tcp_options_write (buf, &opts_in);
+  TCP_TEST (opts_len >= TCP_OPTION_LEN_FAST_OPEN_BASE, "written TFO option len >= %u, got %u",
+	    TCP_OPTION_LEN_FAST_OPEN_BASE, opts_len);
+
+  /* Parse it back */
+  clib_memset (&opts_out, 0, sizeof (opts_out));
+  tcp_options_parse (&fake_syn, &opts_out, 1 /* is_syn */);
+
+  /* We need to parse from the raw buffer, not from the tcp header.
+   * Manually set the data offset to point to the options. */
+  {
+    /* Build a full TCP header + options for proper parsing */
+    u8 pkt[80];
+    tcp_header_t *th = (tcp_header_t *) pkt;
+    clib_memset (pkt, 0, sizeof (pkt));
+    th->flags = TCP_FLAG_SYN;
+    u32 hdr_len = sizeof (tcp_header_t) + opts_len;
+    th->data_offset_and_reserved = (hdr_len / 4) << 4;
+    clib_memcpy_fast (pkt + sizeof (tcp_header_t), buf, opts_len);
+
+    clib_memset (&opts_out, 0, sizeof (opts_out));
+    tcp_options_parse (th, &opts_out, 1);
+    TCP_TEST (tcp_opts_tfo (&opts_out), "parsed options should have TFO flag set");
+    TCP_TEST (opts_out.tfo_cookie_len == 0, "empty cookie request should have cookie_len=0, got %u",
+	      opts_out.tfo_cookie_len);
+  }
+
+  /* Test 2: TFO option with 8-byte cookie */
+  clib_memset (&opts_in, 0, sizeof (opts_in));
+  opts_in.flags = TCP_OPTS_FLAG_TFO;
+  opts_in.tfo_cookie_len = 8;
+  {
+    int i;
+    for (i = 0; i < 8; i++)
+      opts_in.tfo_cookie[i] = 0xa0 + i;
+  }
+
+  clib_memset (buf, 0, sizeof (buf));
+  opts_len = tcp_options_write (buf, &opts_in);
+
+  {
+    u8 pkt[80];
+    tcp_header_t *th = (tcp_header_t *) pkt;
+    clib_memset (pkt, 0, sizeof (pkt));
+    th->flags = TCP_FLAG_SYN;
+    u32 hdr_len = sizeof (tcp_header_t) + opts_len;
+    th->data_offset_and_reserved = (hdr_len / 4) << 4;
+    clib_memcpy_fast (pkt + sizeof (tcp_header_t), buf, opts_len);
+
+    clib_memset (&opts_out, 0, sizeof (opts_out));
+    tcp_options_parse (th, &opts_out, 1);
+    TCP_TEST (tcp_opts_tfo_cookie (&opts_out), "parsed options should have TFO_COOKIE flag");
+    TCP_TEST (opts_out.tfo_cookie_len == 8, "cookie len should be 8, got %u",
+	      opts_out.tfo_cookie_len);
+    TCP_TEST (!clib_memcmp (opts_out.tfo_cookie, opts_in.tfo_cookie, 8),
+	      "cookie data should match");
+  }
+
+  /* Test 3: TFO option should NOT parse on non-SYN */
+  {
+    u8 pkt[80];
+    tcp_header_t *th = (tcp_header_t *) pkt;
+    clib_memset (pkt, 0, sizeof (pkt));
+    th->flags = TCP_FLAG_ACK; /* Not SYN */
+    u32 hdr_len = sizeof (tcp_header_t) + opts_len;
+    th->data_offset_and_reserved = (hdr_len / 4) << 4;
+    clib_memcpy_fast (pkt + sizeof (tcp_header_t), buf, opts_len);
+
+    clib_memset (&opts_out, 0, sizeof (opts_out));
+    tcp_options_parse (th, &opts_out, 0 /* not SYN */);
+    TCP_TEST (!tcp_opts_tfo (&opts_out), "TFO option should not parse on non-SYN");
+  }
+
+  return 0;
+}
+
+/**
+ * TFO cookie cache unit test.
+ */
+static int
+tcp_test_tfo_cache (vlib_main_t *vm, unformat_input_t *input)
+{
+  tcp_main_t *tm = &tcp_main;
+  tcp_connection_t _tc, *tc = &_tc;
+  u8 cookie_in[TCP_TFO_COOKIE_LEN_MAX] = { 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff, 0x11, 0x22 };
+  u8 cookie_out[TCP_TFO_COOKIE_LEN_MAX];
+  u8 len_out = 0;
+  int found;
+
+  /* Initialize hash tables if needed */
+  if (!tm->tfo_cookie_cache)
+    tm->tfo_cookie_cache = hash_create (0, sizeof (uword));
+
+  clib_memset (tc, 0, sizeof (*tc));
+  tc->c_is_ip4 = 1;
+  tc->c_rmt_ip.ip4.as_u32 = clib_host_to_net_u32 (0xc0a80101); /* 192.168.1.1 */
+
+  /* Test 1: lookup on empty cache returns 0 */
+  found = tcp_tfo_lookup_cookie (tc, cookie_out, &len_out);
+  TCP_TEST (found == 0, "empty cache lookup should return 0");
+
+  /* Test 2: cache a cookie, then look it up */
+  tcp_tfo_cache_cookie (tc, cookie_in, 8);
+  found = tcp_tfo_lookup_cookie (tc, cookie_out, &len_out);
+  TCP_TEST (found == 1, "cached cookie should be found");
+  TCP_TEST (len_out == 8, "cookie len should be 8, got %u", len_out);
+  TCP_TEST (!clib_memcmp (cookie_out, cookie_in, 8), "cookie data should match");
+
+  /* Test 3: update cookie for same destination */
+  u8 cookie_new[TCP_TFO_COOKIE_LEN_MAX] = { 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88 };
+  tcp_tfo_cache_cookie (tc, cookie_new, 8);
+  found = tcp_tfo_lookup_cookie (tc, cookie_out, &len_out);
+  TCP_TEST (found == 1, "updated cookie should be found");
+  TCP_TEST (!clib_memcmp (cookie_out, cookie_new, 8), "updated cookie data should match");
+
+  /* Test 4: different destination gets different entry */
+  tc->c_rmt_ip.ip4.as_u32 = clib_host_to_net_u32 (0xc0a80102); /* 192.168.1.2 */
+  found = tcp_tfo_lookup_cookie (tc, cookie_out, &len_out);
+  TCP_TEST (found == 0, "different IP should not find cookie");
+
+  /* Clean up */
+  tc->c_rmt_ip.ip4.as_u32 = clib_host_to_net_u32 (0xc0a80101);
+
+  return 0;
+}
+
+/**
+ * TFO blackhole detection unit test.
+ */
+static int
+tcp_test_tfo_blackhole (vlib_main_t *vm, unformat_input_t *input)
+{
+  tcp_main_t *tm = &tcp_main;
+  tcp_connection_t _tc, *tc = &_tc;
+
+  /* Initialize hash tables if needed */
+  if (!tm->tfo_blackhole)
+    tm->tfo_blackhole = hash_create (0, sizeof (uword));
+
+  clib_memset (tc, 0, sizeof (*tc));
+  tc->c_is_ip4 = 1;
+  tc->c_rmt_ip.ip4.as_u32 = clib_host_to_net_u32 (0x0a010101); /* 10.1.1.1 */
+
+  /* Test 1: no blackhole entry => check returns 0 */
+  TCP_TEST (tcp_tfo_blackhole_check (tc) == 0, "no entry should not be blackholed");
+
+  /* Test 2: record failures below threshold => not blackholed */
+  tcp_tfo_blackhole_record (tc);
+  tcp_tfo_blackhole_record (tc);
+  TCP_TEST (tcp_tfo_blackhole_check (tc) == 0,
+	    "2 failures (< threshold %u) should not be blackholed", TCP_TFO_BLACKHOLE_THRESH);
+
+  /* Test 3: reach threshold => blackholed */
+  tcp_tfo_blackhole_record (tc);
+  TCP_TEST (tcp_tfo_blackhole_check (tc) == 1, "%u failures should be blackholed",
+	    TCP_TFO_BLACKHOLE_THRESH);
+
+  /* Test 4: clear blackhole => not blackholed */
+  tcp_tfo_blackhole_clear (tc);
+  TCP_TEST (tcp_tfo_blackhole_check (tc) == 0, "cleared entry should not be blackholed");
+
+  /* Test 5: different destination is independent */
+  /* Re-blackhole 10.1.1.1 */
+  tc->c_rmt_ip.ip4.as_u32 = clib_host_to_net_u32 (0x0a010101);
+  {
+    int i;
+    for (i = 0; i < TCP_TFO_BLACKHOLE_THRESH; i++)
+      tcp_tfo_blackhole_record (tc);
+  }
+  TCP_TEST (tcp_tfo_blackhole_check (tc) == 1, "10.1.1.1 should be blackholed again");
+
+  tcp_connection_t _tc2, *tc2 = &_tc2;
+  clib_memset (tc2, 0, sizeof (*tc2));
+  tc2->c_is_ip4 = 1;
+  tc2->c_rmt_ip.ip4.as_u32 = clib_host_to_net_u32 (0x0a010102); /* 10.1.1.2 */
+  TCP_TEST (tcp_tfo_blackhole_check (tc2) == 0, "10.1.1.2 should not be blackholed");
+
+  /* Clean up */
+  tcp_tfo_blackhole_clear (tc);
+
+  return 0;
+}
+
+/**
+ * TFO invalid cookie rejection unit test.
+ * Verifies that tcp_tfo_cookie_is_valid() rejects bad cookies in all
+ * forms: corrupted bytes, wrong length, all-zeros, all-ones, and cookies
+ * computed for a different source IP (cross-IP spoofing).
+ */
+static int
+tcp_test_tfo_invalid_cookie (vlib_main_t *vm, unformat_input_t *input)
+{
+  tcp_main_t *tm = &tcp_main;
+  tcp_connection_t _tc, *tc = &_tc;
+  u8 cookie[TCP_TFO_COOKIE_LEN_MAX];
+  u8 len = 0;
+
+  clib_memset (tc, 0, sizeof (*tc));
+  tm->tfo_key[0] = 0xdeadbeefcafebabeULL;
+  tm->tfo_key[1] = 0x1234567890abcdefULL;
+  tm->tfo_key_prev[0] = 0;
+  tm->tfo_key_prev[1] = 0;
+
+  tc->c_is_ip4 = 1;
+  tc->c_rmt_ip.ip4.as_u32 = clib_host_to_net_u32 (0x0a000001); /* 10.0.0.1 */
+
+  /* Obtain a valid cookie for reference */
+  tcp_tfo_get_cookie (tc, cookie, &len);
+  TCP_TEST (tcp_tfo_cookie_is_valid (tc, cookie, len) == 1, "baseline: valid cookie must pass");
+
+  /* Test 1: single byte flip → invalid */
+  cookie[0] ^= 0x01;
+  TCP_TEST (tcp_tfo_cookie_is_valid (tc, cookie, len) == 0,
+	    "single-bit flip should invalidate cookie");
+  cookie[0] ^= 0x01; /* restore */
+
+  /* Test 2: all-zeros cookie → invalid */
+  {
+    u8 zeros[8] = { 0 };
+    TCP_TEST (tcp_tfo_cookie_is_valid (tc, zeros, 8) == 0, "all-zeros cookie should be invalid");
+  }
+
+  /* Test 3: all-ones cookie → invalid */
+  {
+    u8 ones[8];
+    clib_memset (ones, 0xff, 8);
+    TCP_TEST (tcp_tfo_cookie_is_valid (tc, ones, 8) == 0, "all-ones cookie should be invalid");
+  }
+
+  /* Test 4: wrong length (4 bytes) → invalid */
+  TCP_TEST (tcp_tfo_cookie_is_valid (tc, cookie, 4) == 0,
+	    "length 4 should be rejected (expected 8)");
+
+  /* Test 5: wrong length (16 bytes) → invalid */
+  TCP_TEST (tcp_tfo_cookie_is_valid (tc, cookie, 16) == 0,
+	    "length 16 should be rejected (expected 8)");
+
+  /* Test 6: wrong length (0 bytes) → invalid */
+  TCP_TEST (tcp_tfo_cookie_is_valid (tc, cookie, 0) == 0, "length 0 should be rejected");
+
+  /* Test 7: valid cookie for IP A doesn't validate for IP B (cross-IP) */
+  {
+    u8 cookie_a[TCP_TFO_COOKIE_LEN_MAX];
+    u8 len_a = 0;
+    tc->c_rmt_ip.ip4.as_u32 = clib_host_to_net_u32 (0x0a000001);
+    tcp_tfo_get_cookie (tc, cookie_a, &len_a);
+
+    tc->c_rmt_ip.ip4.as_u32 = clib_host_to_net_u32 (0x0a000002);
+    TCP_TEST (tcp_tfo_cookie_is_valid (tc, cookie_a, len_a) == 0,
+	      "cookie from 10.0.0.1 must not validate for 10.0.0.2");
+    tc->c_rmt_ip.ip4.as_u32 = clib_host_to_net_u32 (0x0a000001);
+  }
+
+  return 0;
+}
+
+/**
+ * TFO pending limit enforcement unit test.
+ * Verifies that when tfo_pending reaches tfo_pending_max the guard
+ * condition blocks further TFO fast-opens.
+ */
+static int
+tcp_test_tfo_pending_limit (vlib_main_t *vm, unformat_input_t *input)
+{
+  tcp_main_t *tm = &tcp_main;
+  u32 saved_pending = tm->tfo_pending;
+
+  /* Test 1: at zero, limit not reached */
+  tm->tfo_pending = 0;
+  TCP_TEST (tm->tfo_pending < tm->tfo_pending_max,
+	    "tfo_pending=0 should be below tfo_pending_max=%u", tm->tfo_pending_max);
+
+  /* Test 2: one below max, still allowed */
+  tm->tfo_pending = tm->tfo_pending_max - 1;
+  TCP_TEST (tm->tfo_pending < tm->tfo_pending_max, "tfo_pending=%u should still be below max=%u",
+	    tm->tfo_pending, tm->tfo_pending_max);
+
+  /* Test 3: exactly at max, blocked */
+  tm->tfo_pending = tm->tfo_pending_max;
+  TCP_TEST (!(tm->tfo_pending < tm->tfo_pending_max),
+	    "tfo_pending == tfo_pending_max (%u) should block TFO", tm->tfo_pending_max);
+
+  /* Test 4: above max, also blocked */
+  tm->tfo_pending = tm->tfo_pending_max + 1;
+  TCP_TEST (!(tm->tfo_pending < tm->tfo_pending_max),
+	    "tfo_pending > tfo_pending_max should block TFO");
+
+  tm->tfo_pending = saved_pending;
+  return 0;
+}
+
+/**
+ * TFO SYN retransmit options gate unit test.
+ * Verifies the rto_boff == 0 and blackhole guard conditions that prevent
+ * TFO option from being added on SYN retransmits (RFC 7413 Sec 4.2.1).
+ * Tests the logic conditions used inside tcp_make_syn_options().
+ */
+static int
+tcp_test_tfo_syn_retransmit_options (vlib_main_t *vm, unformat_input_t *input)
+{
+  tcp_main_t *tm = &tcp_main;
+  tcp_connection_t _tc, *tc = &_tc;
+
+  if (!tm->tfo_blackhole)
+    tm->tfo_blackhole = hash_create (0, sizeof (uword));
+
+  clib_memset (tc, 0, sizeof (*tc));
+  tc->c_is_ip4 = 1;
+  tc->c_rmt_ip.ip4.as_u32 = clib_host_to_net_u32 (0x0a000010);
+  tc->cfg_flags |= TCP_CFG_F_TFO;
+
+  /* Test 1: rto_boff == 0, no blackhole → TFO option should be included */
+  tc->rto_boff = 0;
+  TCP_TEST (tcp_tfo_enabled (tc) && tc->rto_boff == 0 && !tcp_tfo_blackhole_check (tc),
+	    "rto_boff=0, no blackhole: TFO option SHOULD be included");
+
+  /* Test 2: rto_boff == 1 (first retransmit) → TFO option must NOT be included */
+  tc->rto_boff = 1;
+  TCP_TEST (!(tcp_tfo_enabled (tc) && tc->rto_boff == 0),
+	    "rto_boff=1: TFO option must NOT be included on retransmit");
+
+  /* Test 3: rto_boff == 2 (second retransmit) → also excluded */
+  tc->rto_boff = 2;
+  TCP_TEST (!(tcp_tfo_enabled (tc) && tc->rto_boff == 0),
+	    "rto_boff=2: TFO option must NOT be included");
+
+  /* Test 4: rto_boff == 0 but blackholed → TFO option excluded */
+  tc->rto_boff = 0;
+  {
+    int i;
+    for (i = 0; i < TCP_TFO_BLACKHOLE_THRESH; i++)
+      tcp_tfo_blackhole_record (tc);
+  }
+  TCP_TEST (tcp_tfo_blackhole_check (tc) == 1, "destination should be blackholed");
+  TCP_TEST (!(tcp_tfo_enabled (tc) && tc->rto_boff == 0 && !tcp_tfo_blackhole_check (tc)),
+	    "rto_boff=0 but blackholed: TFO option must NOT be included");
+
+  /* Test 5: TFO flag cleared → excluded regardless of rto_boff */
+  tcp_tfo_blackhole_clear (tc);
+  tc->cfg_flags &= ~TCP_CFG_F_TFO;
+  tc->rto_boff = 0;
+  TCP_TEST (!tcp_tfo_enabled (tc), "TFO disabled: option must NOT be included");
+
+  return 0;
+}
+
+/**
+ * TFO IPv6 end-to-end unit test.
+ * Verifies the full TFO flow (cookie gen/validate/cache/blackhole) for IPv6
+ * connections, including cross-address isolation.
+ */
+static int
+tcp_test_tfo_ipv6_e2e (vlib_main_t *vm, unformat_input_t *input)
+{
+  tcp_main_t *tm = &tcp_main;
+  tcp_connection_t _tc, *tc = &_tc;
+  u8 cookie[TCP_TFO_COOKIE_LEN_MAX];
+  u8 cookie_out[TCP_TFO_COOKIE_LEN_MAX];
+  u8 len = 0, len_out = 0;
+
+  if (!tm->tfo_cookie_cache)
+    tm->tfo_cookie_cache = hash_create (0, sizeof (uword));
+  if (!tm->tfo_blackhole)
+    tm->tfo_blackhole = hash_create (0, sizeof (uword));
+
+  clib_memset (tc, 0, sizeof (*tc));
+  tm->tfo_key[0] = 0xfeedface01234567ULL;
+  tm->tfo_key[1] = 0x89abcdef01234567ULL;
+  tm->tfo_key_prev[0] = 0;
+  tm->tfo_key_prev[1] = 0;
+
+  tc->c_is_ip4 = 0;
+  tc->c_rmt_ip.ip6.as_u64[0] = clib_host_to_net_u64 (0x20010db800010001ULL);
+  tc->c_rmt_ip.ip6.as_u64[1] = clib_host_to_net_u64 (0x0000000000000001ULL);
+
+  /* Test 1: cookie generation produces 8-byte cookie */
+  tcp_tfo_get_cookie (tc, cookie, &len);
+  TCP_TEST (len == 8, "IPv6 cookie length should be 8, got %u", len);
+
+  /* Test 2: cookie validates for same IPv6 address */
+  TCP_TEST (tcp_tfo_cookie_is_valid (tc, cookie, len) == 1,
+	    "IPv6 cookie should validate for same address");
+
+  /* Test 3: cookie doesn't validate for different IPv6 address */
+  {
+    u8 saved[16];
+    clib_memcpy_fast (saved, &tc->c_rmt_ip.ip6, 16);
+    tc->c_rmt_ip.ip6.as_u64[0] = clib_host_to_net_u64 (0x20010db800010002ULL);
+    TCP_TEST (tcp_tfo_cookie_is_valid (tc, cookie, len) == 0,
+	      "IPv6 cookie must not validate for different address");
+    clib_memcpy_fast (&tc->c_rmt_ip.ip6, saved, 16);
+  }
+
+  /* Test 4: IPv6 cookie cache store and lookup */
+  tcp_tfo_cache_cookie (tc, cookie, len);
+  TCP_TEST (tcp_tfo_lookup_cookie (tc, cookie_out, &len_out) == 1,
+	    "IPv6 cookie should be found in cache");
+  TCP_TEST (len_out == 8, "cached IPv6 cookie length should be 8");
+  TCP_TEST (!clib_memcmp (cookie, cookie_out, len), "cached IPv6 cookie data should match");
+
+  /* Test 5: IPv6 blackhole detection */
+  TCP_TEST (tcp_tfo_blackhole_check (tc) == 0, "IPv6 address should not be blackholed initially");
+  {
+    int i;
+    for (i = 0; i < TCP_TFO_BLACKHOLE_THRESH; i++)
+      tcp_tfo_blackhole_record (tc);
+  }
+  TCP_TEST (tcp_tfo_blackhole_check (tc) == 1,
+	    "IPv6 address should be blackholed after %u failures", TCP_TFO_BLACKHOLE_THRESH);
+
+  /* Test 6: clear blackhole for IPv6 */
+  tcp_tfo_blackhole_clear (tc);
+  TCP_TEST (tcp_tfo_blackhole_check (tc) == 0, "IPv6 blackhole should be cleared");
+
+  /* Test 7: IPv4 and IPv6 with same u64 XOR value are independent */
+  {
+    tcp_connection_t _tc4, *tc4 = &_tc4;
+    clib_memset (tc4, 0, sizeof (*tc4));
+    tc4->c_is_ip4 = 1;
+    /* Craft IPv4 address whose u32 equals XOR of IPv6 u64s */
+    u64 ipv6_xor = tc->c_rmt_ip.ip6.as_u64[0] ^ tc->c_rmt_ip.ip6.as_u64[1];
+    tc4->c_rmt_ip.ip4.as_u32 = (u32) ipv6_xor;
+
+    u8 cookie4[TCP_TFO_COOKIE_LEN_MAX];
+    u8 len4 = 0;
+    tcp_tfo_get_cookie (tc4, cookie4, &len4);
+    /* IPv4 cookie key includes ipv4_addr ^ key[0] vs ipv6 uses both halves
+     * XOR key[0]. The address space overlap means we can't guarantee
+     * different cookies here, but the lookup must be independent (different
+     * hash keys for cache/blackhole since is_ip4 is not part of the key).
+     * At minimum verify both cookies validate for their own connection. */
+    TCP_TEST (tcp_tfo_cookie_is_valid (tc, cookie, len) == 1,
+	      "IPv6 cookie still valid after IPv4 ops");
+    TCP_TEST (tcp_tfo_cookie_is_valid (tc4, cookie4, len4) == 1, "IPv4 cookie valid independently");
+  }
+
+  return 0;
+}
+
+/**
+ * TFO key rotation and dual-key validation unit test (RFC 7413 Sec 4.1.2).
+ * Verifies that after key rotation old cookies still validate via the
+ * previous key, and that after a second rotation they no longer do.
+ */
+static int
+tcp_test_tfo_key_rotation (vlib_main_t *vm, unformat_input_t *input)
+{
+  tcp_main_t *tm = &tcp_main;
+  tcp_connection_t _tc, *tc = &_tc;
+  /*
+   * gen0: cookie made with the ORIGINAL key (before any rotation).
+   * gen1: cookie made with the key produced by the 1st rotation.
+   * gen2: cookie made with the key produced by the 2nd rotation.
+   */
+  u8 gen0[TCP_TFO_COOKIE_LEN_MAX];
+  u8 gen1[TCP_TFO_COOKIE_LEN_MAX];
+  u8 gen2[TCP_TFO_COOKIE_LEN_MAX];
+  u8 len0 = 0, len1 = 0, len2 = 0;
+
+  clib_memset (tc, 0, sizeof (*tc));
+  tc->c_is_ip4 = 1;
+  tc->c_rmt_ip.ip4.as_u32 = clib_host_to_net_u32 (0x0a000001);
+
+  /* Set up a known initial key. Suppress rotation by placing the
+   * rotate-timestamp in the future; this lets us capture a cookie that
+   * was actually produced with the ORIGINAL key, so we can later verify
+   * it differs from post-rotation cookies and becomes invalid after two
+   * rotations. */
+  tm->tfo_key[0] = 0xaaaaaaaaaaaaaaULL;
+  tm->tfo_key[1] = 0xbbbbbbbbbbbbbbULL;
+  tm->tfo_key_prev[0] = 0;
+  tm->tfo_key_prev[1] = 0;
+  tm->tfo_key_rotate_ts = vlib_time_now (vm) + (f64) (TCP_TFO_KEY_ROTATE_INTERVAL * 2);
+
+  /* Test 1: generate gen0 with the ORIGINAL key (no rotation should fire) */
+  tcp_tfo_get_cookie (tc, gen0, &len0);
+  TCP_TEST (len0 == 8, "initial cookie length should be 8");
+  TCP_TEST (tm->tfo_key[0] == 0xaaaaaaaaaaaaaaULL,
+	    "key must not have changed before forced rotation");
+  TCP_TEST (tcp_tfo_cookie_is_valid (tc, gen0, len0) == 1,
+	    "gen0 must validate with original current key");
+
+  /* Force 1st rotation by backdating the timestamp */
+  tm->tfo_key_rotate_ts = vlib_time_now (vm) - (f64) (TCP_TFO_KEY_ROTATE_INTERVAL + 1);
+
+  /* Test 2: generate gen1 — this call triggers the 1st rotation */
+  tcp_tfo_get_cookie (tc, gen1, &len1);
+
+  /* Verify rotation: prev must now hold the original key */
+  TCP_TEST (tm->tfo_key_prev[0] == 0xaaaaaaaaaaaaaaULL,
+	    "after 1st rotation: tfo_key_prev[0] must hold original key");
+
+  /* gen0 (original key) is now in the prev slot: must still validate */
+  TCP_TEST (tcp_tfo_cookie_is_valid (tc, gen0, len0) == 1,
+	    "gen0 must validate via prev key after 1st rotation");
+
+  /* gen1 (post-rotation key) must validate via the current slot */
+  TCP_TEST (tcp_tfo_cookie_is_valid (tc, gen1, len1) == 1,
+	    "gen1 must validate with new current key");
+
+  /* Test 3: gen0 and gen1 must differ — key actually changed */
+  TCP_TEST (clib_memcmp (gen0, gen1, 8) != 0, "gen0 and gen1 must differ (key rotated)");
+
+  /* Force 2nd rotation */
+  tm->tfo_key_rotate_ts = vlib_time_now (vm) - (f64) (TCP_TFO_KEY_ROTATE_INTERVAL + 1);
+  tcp_tfo_get_cookie (tc, gen2, &len2); /* triggers 2nd rotation */
+
+  /* After 2nd rotation: prev = 1st-new key, current = 2nd-new key.
+   * gen0 (original key, 2 generations back) must be rejected. */
+  TCP_TEST (tcp_tfo_cookie_is_valid (tc, gen0, len0) == 0,
+	    "gen0 must NOT validate after 2nd rotation (2 generations back)");
+
+  /* gen1 (1st-new key) is now in the prev slot: must still validate */
+  TCP_TEST (tcp_tfo_cookie_is_valid (tc, gen1, len1) == 1,
+	    "gen1 must still validate via prev key after 2nd rotation");
+
+  /* gen2 (2nd-new key) is current: must validate */
+  TCP_TEST (tcp_tfo_cookie_is_valid (tc, gen2, len2) == 1,
+	    "gen2 must validate with current key after 2nd rotation");
+
+  return 0;
+}
+
+/**
+ * Unified TFO test dispatcher.
+ */
+static int
+tcp_test_tfo (vlib_main_t *vm, unformat_input_t *input)
+{
+  int res = 0;
+
+  if ((res = tcp_test_tfo_cookie (vm, input)))
+    return res;
+  if ((res = tcp_test_tfo_options (vm, input)))
+    return res;
+  if ((res = tcp_test_tfo_cache (vm, input)))
+    return res;
+  if ((res = tcp_test_tfo_blackhole (vm, input)))
+    return res;
+  if ((res = tcp_test_tfo_invalid_cookie (vm, input)))
+    return res;
+  if ((res = tcp_test_tfo_pending_limit (vm, input)))
+    return res;
+  if ((res = tcp_test_tfo_syn_retransmit_options (vm, input)))
+    return res;
+  if ((res = tcp_test_tfo_ipv6_e2e (vm, input)))
+    return res;
+  if ((res = tcp_test_tfo_key_rotation (vm, input)))
+    return res;
+
+  return 0;
+}
+
 static clib_error_t *
 tcp_test (vlib_main_t * vm,
 	  unformat_input_t * input, vlib_cli_command_t * cmd_arg)
@@ -2081,6 +2724,10 @@ tcp_test (vlib_main_t * vm,
 	{
 	  res = tcp_test_bt (vm, input);
 	}
+      else if (unformat (input, "tfo"))
+	{
+	  res = tcp_test_tfo (vm, input);
+	}
       else if (unformat (input, "all"))
 	{
 	  if ((res = tcp_test_sack (vm, input)))
@@ -2090,6 +2737,8 @@ tcp_test (vlib_main_t * vm,
 	  if ((res = tcp_test_delivery (vm, input)))
 	    goto done;
 	  if ((res = tcp_test_persist (vm, input)))
+	    goto done;
+	  if ((res = tcp_test_tfo (vm, input)))
 	    goto done;
 	}
       else

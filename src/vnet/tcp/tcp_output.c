@@ -177,6 +177,27 @@ tcp_make_syn_options (tcp_connection_t * tc, tcp_options_t * opts)
       len += TCP_OPTION_LEN_SACK_PERMITTED;
     }
 
+  /* RFC 7413: include TFO option only on first SYN attempt (rto_boff == 0).
+   * On retransmit, fall back to a regular SYN without TFO.
+   * Also skip if destination is blackholed for TFO. */
+  if (tcp_tfo_enabled (tc) && tc->rto_boff == 0)
+    {
+      if (PREDICT_FALSE (tcp_tfo_blackhole_check (tc)))
+	{
+	  vlib_node_increment_counter (
+	    vlib_get_main (), tc->c_is_ip4 ? tcp4_output_node.index : tcp6_output_node.index,
+	    TCP_ERROR_TFO_BLACKHOLED, 1);
+	}
+      else
+	{
+	  opts->flags |= TCP_OPTS_FLAG_TFO;
+	  opts->tfo_cookie_len = tc->tfo_cookie_len;
+	  if (tc->tfo_cookie_len)
+	    clib_memcpy_fast (opts->tfo_cookie, tc->tfo_cookie, tc->tfo_cookie_len);
+	  len += TCP_OPTION_LEN_FAST_OPEN (tc->tfo_cookie_len);
+	}
+    }
+
   /* Align to needed boundary */
   len += (TCP_OPTS_ALIGN - len % TCP_OPTS_ALIGN) % TCP_OPTS_ALIGN;
   return len;
@@ -210,6 +231,16 @@ tcp_make_synack_options (tcp_connection_t * tc, tcp_options_t * opts)
     {
       opts->flags |= TCP_OPTS_FLAG_SACK_PERMITTED;
       len += TCP_OPTION_LEN_SACK_PERMITTED;
+    }
+
+  /* RFC 7413: include TFO cookie in SYN-ACK when we have one to send
+   * (either in response to a cookie request or to refresh a valid one). */
+  if (tc->tfo_cookie_len)
+    {
+      opts->flags |= TCP_OPTS_FLAG_TFO;
+      opts->tfo_cookie_len = tc->tfo_cookie_len;
+      clib_memcpy_fast (opts->tfo_cookie, tc->tfo_cookie, tc->tfo_cookie_len);
+      len += TCP_OPTION_LEN_FAST_OPEN (tc->tfo_cookie_len);
     }
 
   /* Align to needed boundary */
@@ -790,7 +821,37 @@ tcp_send_syn (tcp_connection_t * tc)
 
   b = vlib_get_buffer (vm, bi);
   tcp_init_buffer (vm, b);
+
+  /* RFC 7413: if we have a cached TFO cookie and early data,
+   * include data in the SYN. Write data into the buffer first,
+   * then tcp_make_syn() will prepend the TCP header.
+   *
+   * Cap early data so the full packet fits in one MTU (RFC 7413 Sec 4.1.3).
+   * tfo_cookie_len > 0 implies rto_boff == 0 (first SYN, not a retransmit),
+   * so the option set is deterministic. */
+  if (tc->tfo_cookie_len && tc->tfo_syn_data && vec_len (tc->tfo_syn_data))
+    {
+      u32 ip_hdr = tc->c_is_ip4 ? sizeof (ip4_header_t) : sizeof (ip6_header_t);
+      u8 opts_len = TCP_OPTION_LEN_MSS + TCP_OPTION_LEN_WINDOW_SCALE + TCP_OPTION_LEN_TIMESTAMP;
+      if (TCP_USE_SACKS)
+	opts_len += TCP_OPTION_LEN_SACK_PERMITTED;
+      opts_len += TCP_OPTION_LEN_FAST_OPEN (tc->tfo_cookie_len);
+      opts_len += (TCP_OPTS_ALIGN - opts_len % TCP_OPTS_ALIGN) % TCP_OPTS_ALIGN;
+      u16 base_mss =
+	tc->mss ? tc->mss : (u16) (tcp_cfg.default_mtu - ip_hdr - sizeof (tcp_header_t));
+      u16 max_data = (u16) (base_mss - opts_len);
+      u16 data_len = clib_min ((u16) vec_len (tc->tfo_syn_data), max_data);
+      u8 *data = vlib_buffer_get_current (b);
+      clib_memcpy_fast (data, tc->tfo_syn_data, data_len);
+      b->current_length = data_len;
+      tc->tfo_syn_data_len = data_len;
+    }
+
   tcp_make_syn (tc, b);
+
+  /* Advance snd_nxt to account for SYN data in sequence space */
+  if (tc->tfo_syn_data_len)
+    tc->snd_nxt += tc->tfo_syn_data_len;
 
   /* Measure RTT with this */
   tc->rtt_ts = tcp_time_now_us (vlib_num_workers ()? 1 : 0);
@@ -1522,6 +1583,17 @@ tcp_timer_retransmit_syn_handler (tcp_connection_t * tc)
   tc->rto_boff += 1;
   if (tc->rto_boff > TCP_RTO_SYN_RETRIES)
     tc->rto = clib_min (tc->rto << 1, TCP_RTO_MAX);
+
+  /* RFC 7413 blackhole detection: if first retransmit of a TFO SYN
+   * (rto_boff transitions 0->1), record a failure for the destination.
+   * Also free early data since retransmit won't include it. */
+  if (tc->rto_boff == 1 && tcp_tfo_enabled (tc))
+    {
+      if (tc->tfo_cookie_len)
+	tcp_tfo_blackhole_record (tc);
+      vec_free (tc->tfo_syn_data);
+      tc->tfo_syn_data_len = 0;
+    }
 
   b = vlib_get_buffer (vm, bi);
   tcp_init_buffer (vm, b);
