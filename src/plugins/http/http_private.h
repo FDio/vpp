@@ -444,9 +444,9 @@ typedef struct http_ctx_
 	  u32 payload_len;
 	  u8 *payload;
 	  clib_llist_anchor_t stream_sched_list;
-	  void (*dispatch_headers_cb) (struct http_ctx_ *req, struct http_ctx_ *hc, u8 *n_emissions,
-				       clib_llist_index_t *next_ri);
-	  void (*dispatch_data_cb) (struct http_ctx_ *req, struct http_ctx_ *hc, u8 *n_emissions);
+	  int (*dispatch_headers_cb) (struct http_ctx_ *req, struct http_ctx_ *hc, u8 *n_emissions,
+				      clib_llist_index_t *next_ri);
+	  int (*dispatch_data_cb) (struct http_ctx_ *req, struct http_ctx_ *hc, u8 *n_emissions);
 	  u8 capsule_header_tx[HTTP_CAPSULE_HEADER_MAX_SIZE];
 	  http_capsule_tx_ctx_t capsule_ctx_tx;
 	};
@@ -1096,35 +1096,59 @@ http_io_ts_program_rx_evt (http_ctx_t *hc, u32 n_last_deq)
     }
 }
 
-always_inline void
-http_io_ts_write (http_ctx_t *hc, u8 *data, u32 len, transport_send_params_t *sp)
+always_inline int
+http_io_ts_provision_chunks (http_ctx_t *hc, u32 len)
+{
+  session_t *ts = session_get_from_handle (hc->hc_tc_session_handle);
+  return 0 != svm_fifo_provision_chunks (ts->tx_fifo, 0, 0, len);
+}
+
+always_inline u32
+http_io_ts_write (http_ctx_t *hc, u8 *data, u32 len, transport_send_params_t *sp, u8 allow_fail)
 {
   int n_written;
   session_t *ts = session_get_from_handle (hc->hc_tc_session_handle);
 
   n_written = svm_fifo_enqueue (ts->tx_fifo, len, data);
-  ASSERT (n_written == len);
+  if (!allow_fail)
+    ASSERT (n_written == len);
+  else
+    {
+      if (PREDICT_FALSE (n_written <= 0))
+	return 0;
+    }
+
   if (sp)
     {
       ASSERT (sp->max_burst_size >= len);
       sp->bytes_dequeued += len;
       sp->max_burst_size -= len;
     }
+
+  return (u32) n_written;
 }
 
 always_inline u32
 http_io_ts_write_segs (http_ctx_t *hc, const svm_fifo_seg_t segs[], u32 n_segs,
-		       transport_send_params_t *sp)
+		       transport_send_params_t *sp, u8 allow_fail)
 {
   int n_written;
   session_t *ts = session_get_from_handle (hc->hc_tc_session_handle);
   n_written = svm_fifo_enqueue_segments (ts->tx_fifo, segs, n_segs, 0);
-  ASSERT (n_written > 0);
+  if (!allow_fail)
+    ASSERT (n_written > 0);
+  else
+    {
+      if (PREDICT_FALSE (n_written <= 0))
+	return 0;
+    }
+
   if (sp)
     {
       sp->bytes_dequeued += n_written;
       sp->max_burst_size -= n_written;
     }
+
   return (u32) n_written;
 }
 
