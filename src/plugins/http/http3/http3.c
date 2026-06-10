@@ -9,6 +9,9 @@
 
 #define HTTP3_SERVER_MAX_STREAM_ID (HTTP_VARINT_MAX - 3)
 
+/* estimated http response/request overhead, excluded app headers and target */
+#define HTTP3_HEADERS_OVERHEAD 256
+
 static http_token_t http3_ext_connect_proto[] = { { http_token_lit ("bug") },
 #define _(sym, str) { http_token_lit (str) },
 						  foreach_http_upgrade_proto
@@ -244,7 +247,9 @@ http3_conn_init (u32 parent_index, clib_thread_index_t thread_index, http_ctx_t 
   vec_set_len (http_tx_buf (ctrl_stream), (p - http_tx_buf (ctrl_stream)));
   /* write settings frame */
   http3_frame_settings_write (&hm->h3_settings, &http_tx_buf (ctrl_stream));
-  http_io_ts_write (ctrl_stream, http_tx_buf (ctrl_stream), vec_len (http_tx_buf (ctrl_stream)), 0);
+  /* this should not fail, it's fresh fifo with 4kB chunk */
+  http_io_ts_write (ctrl_stream, http_tx_buf (ctrl_stream), vec_len (http_tx_buf (ctrl_stream)), 0,
+		    0);
   http_io_ts_after_write (ctrl_stream, 1);
   return 0;
 }
@@ -259,8 +264,10 @@ http3_send_goaway (http_ctx_t *hc)
   ctrl_stream = http_ctx_get_w_thread (hc->our_ctrl_stream_index, hc->c_thread_index);
   vec_reset_length (http_tx_buf (ctrl_stream));
   http3_frame_goaway_write (stream_or_push_id, &http_tx_buf (ctrl_stream));
-  http_io_ts_write (ctrl_stream, http_tx_buf (ctrl_stream), vec_len (http_tx_buf (ctrl_stream)), 0);
-  http_io_ts_after_write (ctrl_stream, 1);
+  /* we can ommit this one, worst case we just close quic connection */
+  if (PREDICT_TRUE (!http_io_ts_write (ctrl_stream, http_tx_buf (ctrl_stream),
+				       vec_len (http_tx_buf (ctrl_stream)), 0, 1)))
+    http_io_ts_after_write (ctrl_stream, 1);
 }
 
 static void
@@ -375,8 +382,20 @@ http3_req_state_wait_app_reply (http_ctx_t *stream, http_ctx_t *req, transport_s
   http_sm_result_t rv = HTTP_SM_STOP;
   http_req_state_t new_state;
 
-  http_get_app_msg (req, &msg);
+  http_get_app_msg (req, &msg, 1);
   ASSERT (msg.type == HTTP_MSG_REPLY);
+
+  /* make sure ts tx fifo can actually buffer response message, this should be overestimated since
+   * strings are huffman encoded, cap it up to fifo size */
+  if (PREDICT_FALSE (http_io_ts_provision_chunks (
+	stream, clib_min (HTTP3_HEADERS_OVERHEAD + msg.data.headers_len,
+			  http_io_ts_fifo_size (stream, 0)))))
+    {
+      HTTP_DBG (1, "http_io_ts_provision_chunks failed");
+      return HTTP_SM_STOP;
+    }
+
+  http_io_as_drain (req, sizeof (msg));
 
   vec_reset_length (http_tx_buf (stream));
   date = format (0, "%U", format_http_time_now, stream);
@@ -429,7 +448,9 @@ http3_req_state_wait_app_reply (http_ctx_t *stream, http_ctx_t *req, transport_s
     http3_frame_header_write (HTTP3_FRAME_TYPE_HEADERS, headers_len, fh_buf);
 
   svm_fifo_seg_t segs[2] = { { fh_buf, fh_len }, { http_tx_buf (stream), headers_len } };
-  n_written = http_io_ts_write_segs (stream, segs, 2, 0);
+  /* if this assert adjust formula in the beginning where we try to provision ts fifo chunks */
+  ASSERT ((HTTP3_HEADERS_OVERHEAD + msg.data.headers_len) > headers_len);
+  n_written = http_io_ts_write_segs (stream, segs, 2, 0, 0);
   *n_sent += n_written;
   ASSERT (n_written == (fh_len + headers_len));
 
@@ -464,8 +485,20 @@ http3_req_state_wait_app_method (http_ctx_t *stream, http_ctx_t *req, transport_
   u8 fh_len;
   http_req_state_t new_state = HTTP_REQ_STATE_WAIT_TRANSPORT_REPLY;
 
-  http_get_app_msg (req, &msg);
+  http_get_app_msg (req, &msg, 1);
   ASSERT (msg.type == HTTP_MSG_REQUEST);
+
+  /* make sure ts tx fifo can actually buffer request message, this should be overestimated since
+   * strings are huffman encoded, cap it up to fifo size */
+  if (PREDICT_FALSE (http_io_ts_provision_chunks (
+	stream, clib_min (HTTP3_HEADERS_OVERHEAD + msg.data.headers_len + msg.data.target_path_len,
+			  http_io_ts_fifo_size (stream, 0)))))
+    {
+      HTTP_DBG (1, "http_io_ts_provision_chunks failed");
+      return HTTP_SM_STOP;
+    }
+
+  http_io_as_drain (req, sizeof (msg));
 
   vec_reset_length (http_tx_buf (stream));
 
@@ -541,7 +574,9 @@ http3_req_state_wait_app_method (http_ctx_t *stream, http_ctx_t *req, transport_
     http3_frame_header_write (HTTP3_FRAME_TYPE_HEADERS, headers_len, fh_buf);
 
   svm_fifo_seg_t segs[2] = { { fh_buf, fh_len }, { http_tx_buf (stream), headers_len } };
-  n_written = http_io_ts_write_segs (stream, segs, 2, 0);
+  /* if this assert adjust formula in the beginning where we try to provision ts fifo chunks */
+  ASSERT ((HTTP3_HEADERS_OVERHEAD + msg.data.headers_len + msg.data.target_path_len) > headers_len);
+  n_written = http_io_ts_write_segs (stream, segs, 2, 0, 0);
   ASSERT (n_written == (fh_len + headers_len));
 
   if (msg.data.body_len)
@@ -594,12 +629,19 @@ http3_req_state_app_io_more_data (http_ctx_t *stream, http_ctx_t *req, transport
 
   ASSERT (n_read);
 
+  /* make sure ts tx fifo can actually buffer frame */
+  if (PREDICT_FALSE (http_io_ts_provision_chunks (stream, n_read + HTTP3_FRAME_HEADER_MAX_LEN)))
+    {
+      HTTP_DBG (1, "http_io_ts_provision_chunks failed");
+      return HTTP_SM_STOP;
+    }
+
   fh_len = http3_frame_header_write (HTTP3_FRAME_TYPE_DATA, n_read, fh_buf);
   vec_validate (segs, 0);
   segs[0].len = fh_len;
   segs[0].data = fh_buf;
   vec_append (segs, app_segs);
-  n_written = http_io_ts_write_segs (stream, segs, n_segs + 1, sp);
+  n_written = http_io_ts_write_segs (stream, segs, n_segs + 1, sp, 0);
   *n_sent += n_written;
   n_written -= fh_len;
   ASSERT (n_written == n_read);
@@ -653,10 +695,17 @@ http3_req_state_tunnel_tx (http_ctx_t *stream, http_ctx_t *req, transport_send_p
 
   n_read = http_io_as_read_segs (req, segs + 1, &n_segs, max_read);
 
+  /* make sure ts tx fifo can actually buffer frame */
+  if (PREDICT_FALSE (http_io_ts_provision_chunks (stream, n_read + HTTP3_FRAME_HEADER_MAX_LEN)))
+    {
+      HTTP_DBG (1, "http_io_ts_provision_chunks failed");
+      return HTTP_SM_STOP;
+    }
+
   fh_len = http3_frame_header_write (HTTP3_FRAME_TYPE_DATA, n_read, fh_buf);
   segs[0].len = fh_len;
   segs[0].data = fh_buf;
-  n_written = http_io_ts_write_segs (stream, segs, n_segs + 1, sp);
+  n_written = http_io_ts_write_segs (stream, segs, n_segs + 1, sp, 0);
   *n_sent += n_written;
   n_written -= fh_len;
   HTTP_DBG (1, "written %lu", n_written);
@@ -706,6 +755,16 @@ http3_req_state_udp_tunnel_tx_inline (http_ctx_t *stream, http_ctx_t *req,
       http_io_ts_add_want_deq_ntf (stream);
       return HTTP_SM_STOP;
     }
+
+  /* make sure ts tx fifo can actually buffer frame */
+  if (PREDICT_FALSE (
+	http_io_ts_provision_chunks (stream, hdr.data_length + HTTP3_FRAME_HEADER_MAX_LEN +
+					       HTTP_UDP_PROXY_DATAGRAM_CAPSULE_OVERHEAD)))
+    {
+      HTTP_DBG (1, "http_io_ts_provision_chunks failed");
+      return HTTP_SM_STOP;
+    }
+
   http_io_as_drain (req, sizeof (hdr));
   /* create capsule header */
   payload = http_encap_udp_payload_datagram (capsule_header, hdr.data_length, is_draft03);
@@ -719,7 +778,7 @@ http3_req_state_udp_tunnel_tx_inline (http_ctx_t *stream, http_ctx_t *req,
   segs[0].data = fh_buf;
   segs[1].len = capsule_header_len;
   segs[1].data = capsule_header;
-  n_written = http_io_ts_write_segs (stream, segs, n_segs + 2, 0);
+  n_written = http_io_ts_write_segs (stream, segs, n_segs + 2, 0, 0);
   *n_sent += n_written;
   ASSERT (n_written == (fh_len + capsule_size));
   http_io_as_drain (req, hdr.data_length);
@@ -764,7 +823,8 @@ http3_stream_resp_not_implemented (http_ctx_t *stream, http_ctx_t *req)
   headers_len = vec_len (http_tx_buf (stream));
   fh_len = http3_frame_header_write (HTTP3_FRAME_TYPE_HEADERS, headers_len, fh_buf);
   svm_fifo_seg_t segs[2] = { { fh_buf, fh_len }, { http_tx_buf (stream), headers_len } };
-  n_written = http_io_ts_write_segs (stream, segs, 2, 0);
+  /* this should not fail, it's fresh fifo with 4kB chunk and we are sending small response */
+  n_written = http_io_ts_write_segs (stream, segs, 2, 0, 0);
   ASSERT (n_written == (fh_len + headers_len));
   http3_stream_close (stream, req);
   http_io_ts_after_write (stream, 0);
@@ -820,7 +880,8 @@ http3_send_431 (http_ctx_t *stream, http_ctx_t *req)
   headers_len = vec_len (http_tx_buf (stream));
   fh_len = http3_frame_header_write (HTTP3_FRAME_TYPE_HEADERS, headers_len, fh_buf);
   svm_fifo_seg_t segs[2] = { { fh_buf, fh_len }, { http_tx_buf (stream), headers_len } };
-  http_io_ts_write_segs (stream, segs, 2, 0);
+  /* this should not fail, it's fresh fifo with 4kB chunk and we are sending small response */
+  http_io_ts_write_segs (stream, segs, 2, 0, 0);
   http_io_ts_after_write (stream, 0);
   http_stats_responses_sent_inc (stream->c_thread_index);
   /* notify app that nothing will happen */
