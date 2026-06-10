@@ -40,7 +40,7 @@ func init() {
 		HttpPostTpsTlsTest, HttpGetTpsTlsTest)
 	RegisterHttp1SoloTests(HttpClientPostMemLeakTest, HttpInvalidClientRequestMemLeakTest)
 	RegisterHttp1MWTests(HttpClientGetRepeatMWTest, HttpClientPtrGetRepeatMWTest)
-	RegisterNoTopo6SoloTests(HttpClientGetResponseBody6Test, HttpClientGetTlsResponseBody6Test)
+	RegisterNoTopo6Tests(HttpClientGetResponseBody6Test, HttpClientGetTlsResponseBody6Test)
 }
 
 const wwwRootPath = "/tmp/www_root"
@@ -617,14 +617,14 @@ func HttpClientGetTlsNoRespBodyTest(s *Http1Suite) {
 	httpClientGet(s, s.Containers.Vpp.VppInstance, response, 0, "https", s.Ports.Http)
 }
 
-// registered as a solo test and not using generated ports
+// not using generated ports
 func HttpClientGetResponseBody6Test(s *NoTopo6Suite) {
 	response := "<body>hello world</body>"
 	size := len(response)
 	httpClientGet(s, s.Containers.Vpp.VppInstance, response, size, "http", s.Ports.Http)
 }
 
-// registered as a solo test and not using generated ports
+// not using generated ports
 func HttpClientGetTlsResponseBody6Test(s *NoTopo6Suite) {
 	response := "<body>hello world</body>"
 	size := len(response)

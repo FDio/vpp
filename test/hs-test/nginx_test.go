@@ -11,11 +11,10 @@ import (
 )
 
 func init() {
-	RegisterNoTopoTests(NginxHttp3Test, NginxAsServerTest)
-	RegisterNoTopoSoloTests(NginxPerfCpsTest, NginxPerfRpsTest, NginxPerfWrkTest,
+	RegisterNoTopoTests(NginxHttp3Test, NginxAsServerTest, NginxPerfCpsTest, NginxPerfRpsTest, NginxPerfWrkTest,
 		NginxPerfCpsInterruptModeTest, NginxPerfRpsInterruptModeTest, NginxPerfWrkInterruptModeTest)
 	RegisterNoTopoMWTests(NginxPerfRpsMWTest, NginxPerfCpsMWTest)
-	RegisterNoTopo6SoloTests(NginxPerfRps6Test)
+	RegisterNoTopo6Tests(NginxPerfRps6Test)
 }
 
 func NginxHttp3Test(s *NoTopoSuite) {

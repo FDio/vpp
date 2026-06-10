@@ -15,7 +15,7 @@ func init() {
 		EchoBuiltinHttp2ConnectUdpTest, EchoBuiltinHttp3ConnectUdpTest, EchoBuiltinHttp2ConnectUdpBackpressureTest)
 	RegisterEchoMWTests(TcpWithLossMWTest, EchoBuiltinHttp1CpsMWTest, EchoBuiltinHttp2CpsMWTest, EchoBuiltinHttp3CpsMWTest,
 		EchoBuiltinHttp2ConnectUdpBackpressureMWTest)
-	RegisterSoloEcho6Tests(TcpWithLoss6Test)
+	RegisterEcho6Tests(TcpWithLoss6Test)
 }
 
 func EchoBuiltinTest(s *EchoSuite) {
