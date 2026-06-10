@@ -53,6 +53,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "1ff0486a_096d6f11",
+        "filename": "src/plugins/cnat/cnat_inline.h",
+        "patchSetId": 6
+      },
+      "lineNbr": 98,
+      "author": {
+        "id": 2556
+      },
+      "writtenOn": "2026-06-10T12:05:33Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "170d89cf_1c05b4e8",
+      "revId": "2331f681a4ac17ae98eec486bb337c88131b3c42",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "56934556_c8db00b4",
@@ -84,6 +102,24 @@
       "side": 1,
       "message": "`cnat_input_feature_new_flow_inline` is kept static and this one is used in `cnat_feature_hook.c`",
       "parentUuid": "56934556_c8db00b4",
+      "revId": "2331f681a4ac17ae98eec486bb337c88131b3c42",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "9c01bc6a_d5828738",
+        "filename": "src/plugins/cnat/cnat_node_feature.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 134,
+      "author": {
+        "id": 2556
+      },
+      "writtenOn": "2026-06-10T12:05:33Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "1608c773_3194e94a",
       "revId": "2331f681a4ac17ae98eec486bb337c88131b3c42",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -123,6 +159,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "6ceb835d_143590d1",
+        "filename": "src/plugins/cnat/cnat_node_feature.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 174,
+      "author": {
+        "id": 2556
+      },
+      "writtenOn": "2026-06-10T12:05:33Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "5ad0fea0_fbeb781d",
+      "revId": "2331f681a4ac17ae98eec486bb337c88131b3c42",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "43ccb217_72926f7c",
@@ -154,6 +208,24 @@
       "side": 1,
       "message": "actually the original function `cnat_output_feature_new_flow_inline` is kept static, but this one is used in used as a callback in `cnat_feature_hook.c`",
       "parentUuid": "43ccb217_72926f7c",
+      "revId": "2331f681a4ac17ae98eec486bb337c88131b3c42",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "012a4798_cc17da64",
+        "filename": "src/plugins/cnat/cnat_node_feature.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 437,
+      "author": {
+        "id": 2556
+      },
+      "writtenOn": "2026-06-10T12:05:33Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "4a867761_f345878c",
       "revId": "2331f681a4ac17ae98eec486bb337c88131b3c42",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
