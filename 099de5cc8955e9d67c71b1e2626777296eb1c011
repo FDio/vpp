@@ -51,6 +51,24 @@
       "parentUuid": "dae1e95c_d5e3117b",
       "revId": "099de5cc8955e9d67c71b1e2626777296eb1c011",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "123231e9_ed3c15cf",
+        "filename": "src/vnet/ip/ip4_inlines.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 23,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-06-10T01:45:33Z",
+      "side": 1,
+      "message": "Actually, it seems I misremembered the lengths ip-input was validating. I wonder if we should be doing some lightweight validation there to make sure we have at least udp/tcp header worth of bytes for udp/tcp, and quickly drop broken packets.\n\nBut it could be argued that this approach is cheaper, as we compute flow hash only if lb has more than 1 bucket for \"simple\" transit packets. Let\u0027s see if any of the other consumers of the api have opinions.",
+      "parentUuid": "ccf58eaf_3ecd9cd2",
+      "revId": "099de5cc8955e9d67c71b1e2626777296eb1c011",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
