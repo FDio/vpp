@@ -164,20 +164,6 @@ def _is_platform_aarch64():
 is_platform_aarch64 = _is_platform_aarch64()
 
 
-def _is_distro_debian12():
-    try:
-        with open("/etc/os-release") as f:
-            for line in f.readlines():
-                if "bookworm" in line:
-                    return True
-    except (FileNotFoundError, PermissionError):
-        pass
-    return False
-
-
-is_distro_debian12 = _is_distro_debian12()
-
-
 class KeepAliveReporter(object):
     """
     Singleton object which reports test start to parent process
@@ -223,10 +209,8 @@ class TestCaseTag(Enum):
     FIXME_VPP_WORKERS = 2
     # marks the suites broken when ASan is enabled
     FIXME_ASAN = 3
-    # marks suites broken on Debian-12
-    FIXME_DEBIAN12 = 4
     # marks suites broken on debug vpp image
-    FIXME_VPP_DEBUG = 5
+    FIXME_VPP_DEBUG = 4
 
 
 def create_tag_decorator(e):
@@ -244,17 +228,6 @@ tag_run_solo = create_tag_decorator(TestCaseTag.RUN_SOLO)
 tag_fixme_vpp_workers = create_tag_decorator(TestCaseTag.FIXME_VPP_WORKERS)
 tag_fixme_asan = create_tag_decorator(TestCaseTag.FIXME_ASAN)
 tag_fixme_vpp_debug = create_tag_decorator(TestCaseTag.FIXME_VPP_DEBUG)
-
-
-def tag_fixme_debian12(cls):
-    """Decorator to mark test classes that should be skipped on Debian 12"""
-    if is_distro_debian12:
-        try:
-            cls.test_tags.append(TestCaseTag.FIXME_DEBIAN12)
-        except AttributeError:
-            cls.test_tags = [TestCaseTag.FIXME_DEBIAN12]
-        return unittest.skip("Skipping @tag_fixme_debian12 tests on Debian 12")(cls)
-    return cls
 
 
 class DummyVpp:
@@ -1464,9 +1437,6 @@ class VppTestResult(unittest.TestResult):
             if test.has_tag(TestCaseTag.FIXME_ASAN):
                 test_title = colorize(f"FIXME with ASAN: {test_title}", RED)
                 test.skip_fixme_asan()
-
-            if test.has_tag(TestCaseTag.FIXME_DEBIAN12):
-                test_title = colorize(f"FIXME with Debian 12: {test_title}", RED)
 
             if hasattr(test, "vpp_worker_count"):
                 if test.vpp_worker_count == 0:
