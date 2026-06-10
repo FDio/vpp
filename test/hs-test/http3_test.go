@@ -28,7 +28,7 @@ func init() {
 		Http3QpackDecompressionFailedTest, Http3ClientOpenPushStreamTest, Http3DataBeforeHeadersTest,
 		Http3LongerDataThanContentLengthTest, Http3HalfClosedBeforeAllDataTest, Http3StaticGetTest,
 		Http3MaxHeaderListSizeTest)
-	RegisterH3MWTests(Http3ClientFailedConnectMWTest)
+	RegisterH3MWTests(Http3ClientFailedConnectMWTest, Http3TsFifoMemPressureMWTest)
 	RegisterVethTests(Http3CliTest, Http3ClientPostTest, Http3ClientPostPtrTest)
 }
 
@@ -163,8 +163,6 @@ func Http3CliTest(s *VethsSuite) {
 }
 
 func Http3ClientFailedConnectMWTest(s *Http3Suite) {
-	var quicConfig Stanza
-	quicConfig.NewStanza("quic").Append("conn-timeout 8000").Close()
 	s.CpusPerVppContainer = 3
 	s.SetupTest()
 	vpp := s.Containers.Vpp.VppInstance
@@ -677,4 +675,30 @@ func Http3CtrlStreamClosedTest(s *Http3Suite) {
 	case <-time.After(time.Second):
 		AssertNotNil(nil, "timeout")
 	}
+}
+
+func Http3TsFifoMemPressureMWTest(s *Http3Suite) {
+	var httpConfig Stanza
+	httpConfig.NewStanza("http").Append("first-segment-size 4m").Append("add-segment-size 4m").Close()
+	s.CpusPerVppContainer = 2
+
+	s.SetupTest(httpConfig)
+	vpp := s.Containers.Vpp.VppInstance
+	vpp.Container.Exec(false, "mkdir -p "+wwwRootPath)
+	serverAddress := "https://" + s.VppAddr() + ":" + s.Ports.Port1
+	resourceName := "/test_file_10M"
+	url := serverAddress + resourceName
+
+	fileName := wwwRootPath + resourceName
+	Log(vpp.Container.Exec(false, "fallocate -l 10MB "+fileName))
+	Log(vpp.Container.Exec(false, "ls -la "+fileName))
+	Log(vpp.Vppctl("http static server http3 cache-size 128m www-root " + wwwRootPath + " uri " + serverAddress))
+
+	s.Containers.Curl.ExtraRunningArgs = fmt.Sprintf("/usr/bin/slow_reader_h3.sh %s 1M 60", url)
+	s.Containers.Curl.Run()
+	Log(vpp.Vppctl("show session"))
+	stdout, _ := s.Containers.Curl.GetOutput()
+	Log(stdout)
+	// FIXME:
+	// AssertContains(stdout, "all completed successfully")
 }

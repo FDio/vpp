@@ -5,6 +5,7 @@
 #ifndef SRC_PLUGINS_HTTP_HTTP_PRIVATE_H_
 #define SRC_PLUGINS_HTTP_HTTP_PRIVATE_H_
 
+#include <vppinfra/llist.h>
 #include <vppinfra/time_range.h>
 #include <vnet/session/application.h>
 #include <vnet/session/session.h>
@@ -16,6 +17,8 @@
 
 static const http_token_t http2_conn_preface = { http_token_lit (
   "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n") };
+
+#define HTTP2_PING_PAYLOAD_LEN 8
 
 static const http_token_t http_masque_draft03_path = { http_token_lit ("/") };
 
@@ -236,12 +239,6 @@ typedef struct
 
 typedef struct
 {
-  u32 stream_id; /* network order */
-  u32 error;
-} http2_rst_stream_t;
-
-typedef struct
-{
   uword req_insert_count;
   uword delta_base;
   u8 delta_base_sign;
@@ -359,14 +356,13 @@ typedef struct http_ctx_
 	  u32 unsent_headers_offset;
 	  u32 req_num : 30;
 	  u32 rx_expect : 2;
+	  clib_llist_index_t pending_ctrl_frames; /* pending control frames */
 	  clib_llist_index_t new_tx_streams; /* headers */
 	  clib_llist_index_t old_tx_streams; /* data */
 	  clib_llist_anchor_t sched_list;
 	  uword *req_by_stream_id;
 	  u8 *unparsed_headers; /* temporary storing rx fragmented headers */
 	  u8 *unsent_headers;	/* temporary storing tx fragmented headers */
-	  u32 *pending_win_updates;
-	  http2_rst_stream_t *pending_rst_stream;
 	  hpack_dynamic_table_t decoder_dynamic_table;
 	};
 	struct
@@ -444,9 +440,9 @@ typedef struct http_ctx_
 	  u32 payload_len;
 	  u8 *payload;
 	  clib_llist_anchor_t stream_sched_list;
-	  void (*dispatch_headers_cb) (struct http_ctx_ *req, struct http_ctx_ *hc, u8 *n_emissions,
-				       clib_llist_index_t *next_ri);
-	  void (*dispatch_data_cb) (struct http_ctx_ *req, struct http_ctx_ *hc, u8 *n_emissions);
+	  int (*dispatch_headers_cb) (struct http_ctx_ *req, struct http_ctx_ *hc, u8 *n_emissions,
+				      clib_llist_index_t *next_ri);
+	  int (*dispatch_data_cb) (struct http_ctx_ *req, struct http_ctx_ *hc, u8 *n_emissions);
 	  u8 capsule_header_tx[HTTP_CAPSULE_HEADER_MAX_SIZE];
 	  http_capsule_tx_ctx_t capsule_ctx_tx;
 	};
@@ -466,15 +462,33 @@ typedef struct http_ctx_
 #define http_ctx_is_stream(_hc)                                                                    \
   ((_hc)->flags & (HTTP_CONN_F_UNIDIRECTIONAL_STREAM | HTTP_CONN_F_BIDIRECTIONAL_STREAM))
 
-typedef struct http_pending_connect_stream_
+typedef enum http_ctrl_msg_type_ : u8
 {
-  u64 parent_handle;
-  u32 opaque;
-} http_pending_connect_stream_t;
+  HTTP_CTRL_MSG_ACK_SETTINGS,
+  HTTP_CTRL_MSG_PING_RESPONSE,
+  HTTP_CTRL_MSG_WIN_UPDATE,
+  HTTP_CTRL_MSG_RST_STREAM,
+} http_ctrl_msg_type_t;
+
+typedef struct
+{
+  clib_llist_anchor_t sched_list;
+  union
+  {
+    u8 ping_payload[HTTP2_PING_PAYLOAD_LEN];
+    struct
+    {
+      u32 stream_id;
+      u32 error;
+    };
+  };
+  http_ctrl_msg_type_t msg_type;
+} http_ctrl_msg_t;
 
 typedef struct http_worker_
 {
   http_ctx_t *ctx_pool;
+  http_ctrl_msg_t *ctrl_msg_pool;
   u8 *header_list; /* buffer for headers decompression */
   clib_llist_index_t sched_head;
   u32 h2_n_sessions;
@@ -1096,35 +1110,59 @@ http_io_ts_program_rx_evt (http_ctx_t *hc, u32 n_last_deq)
     }
 }
 
-always_inline void
-http_io_ts_write (http_ctx_t *hc, u8 *data, u32 len, transport_send_params_t *sp)
+always_inline int
+http_io_ts_provision_chunks (http_ctx_t *hc, u32 len)
+{
+  session_t *ts = session_get_from_handle (hc->hc_tc_session_handle);
+  return 0 != svm_fifo_provision_chunks (ts->tx_fifo, 0, 0, len);
+}
+
+always_inline u32
+http_io_ts_write (http_ctx_t *hc, u8 *data, u32 len, transport_send_params_t *sp, u8 allow_fail)
 {
   int n_written;
   session_t *ts = session_get_from_handle (hc->hc_tc_session_handle);
 
   n_written = svm_fifo_enqueue (ts->tx_fifo, len, data);
-  ASSERT (n_written == len);
+  if (!allow_fail)
+    ASSERT (n_written == len);
+  else
+    {
+      if (PREDICT_FALSE (n_written <= 0))
+	return 0;
+    }
+
   if (sp)
     {
       ASSERT (sp->max_burst_size >= len);
       sp->bytes_dequeued += len;
       sp->max_burst_size -= len;
     }
+
+  return (u32) n_written;
 }
 
 always_inline u32
 http_io_ts_write_segs (http_ctx_t *hc, const svm_fifo_seg_t segs[], u32 n_segs,
-		       transport_send_params_t *sp)
+		       transport_send_params_t *sp, u8 allow_fail)
 {
   int n_written;
   session_t *ts = session_get_from_handle (hc->hc_tc_session_handle);
   n_written = svm_fifo_enqueue_segments (ts->tx_fifo, segs, n_segs, 0);
-  ASSERT (n_written > 0);
+  if (!allow_fail)
+    ASSERT (n_written > 0);
+  else
+    {
+      if (PREDICT_FALSE (n_written <= 0))
+	return 0;
+    }
+
   if (sp)
     {
       sp->bytes_dequeued += n_written;
       sp->max_burst_size -= n_written;
     }
+
   return (u32) n_written;
 }
 
@@ -1275,6 +1313,17 @@ static_always_inline http_worker_t *
 http_worker_get (clib_thread_index_t thread_index)
 {
   return &http_main.wrk[thread_index];
+}
+
+static_always_inline http_ctrl_msg_t *
+http_conn_alloc_ctrl_msg (http_ctx_t *hc)
+{
+  http_worker_t *wrk = http_worker_get (hc->c_thread_index);
+  http_ctrl_msg_t *msg;
+  clib_llist_get (wrk->ctrl_msg_pool, msg);
+  clib_llist_add_tail (wrk->ctrl_msg_pool, sched_list, msg,
+		       clib_llist_elt (wrk->ctrl_msg_pool, hc->pending_ctrl_frames));
+  return msg;
 }
 
 #define _(name, str)                                                          \
