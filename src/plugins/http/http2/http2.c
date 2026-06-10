@@ -59,7 +59,7 @@ http2_send_client_preface (http_ctx_t *hc)
     http2_frame_write_settings (settings_list, &http_tx_buf (hc));
   /* send also connection window update */
   http2_frame_write_window_update (hc->our_window - HTTP2_INITIAL_WIN_SIZE, 0, &http_tx_buf (hc));
-  http_io_ts_write (hc, http_tx_buf (hc), vec_len (http_tx_buf (hc)), 0);
+  http_io_ts_write (hc, http_tx_buf (hc), vec_len (http_tx_buf (hc)), 0, 0);
   http_io_ts_after_write (hc, 1);
   vec_free (settings_list);
 }
@@ -321,7 +321,7 @@ http2_connection_error (http_ctx_t *hc, http2_error_t error, transport_send_para
     {
       vec_reset_length (http_tx_buf (hc));
       http2_frame_write_goaway (error, hc->last_processed_stream_id, &http_tx_buf (hc));
-      http_io_ts_write (hc, http_tx_buf (hc), vec_len (http_tx_buf (hc)), sp);
+      http_io_ts_write (hc, http_tx_buf (hc), vec_len (http_tx_buf (hc)), sp, 0);
       http_io_ts_after_write (hc, 1);
     }
 
@@ -386,7 +386,7 @@ http2_send_stream_error (http_ctx_t *hc, u32 stream_id, http2_error_t error,
 	    hc->hc_hc_index, stream_id, format_http2_error, error);
   vec_reset_length (http_tx_buf (hc));
   http2_frame_write_rst_stream (error, stream_id, &http_tx_buf (hc));
-  http_io_ts_write (hc, http_tx_buf (hc), vec_len (http_tx_buf (hc)), sp);
+  http_io_ts_write (hc, http_tx_buf (hc), vec_len (http_tx_buf (hc)), sp, 0);
   http_io_ts_after_write (hc, 1);
 }
 
@@ -395,7 +395,7 @@ http2_tunnel_send_close (http_ctx_t *hc, http_ctx_t *req)
 {
   u8 fh[HTTP2_FRAME_HEADER_SIZE];
   http2_frame_write_data_header (0, req->stream_id, HTTP2_FRAME_FLAG_END_STREAM, fh);
-  http_io_ts_write (hc, fh, HTTP2_FRAME_HEADER_SIZE, 0);
+  http_io_ts_write (hc, fh, HTTP2_FRAME_HEADER_SIZE, 0, 0);
   http_io_ts_after_write (hc, 1);
 }
 
@@ -441,7 +441,7 @@ http2_send_window_update (http_ctx_t *hc, u32 increment, u32 stream_id)
 {
   vec_reset_length (http_tx_buf (hc));
   http2_frame_write_window_update (increment, stream_id, &http_tx_buf (hc));
-  http_io_ts_write (hc, http_tx_buf (hc), vec_len (http_tx_buf (hc)), 0);
+  http_io_ts_write (hc, http_tx_buf (hc), vec_len (http_tx_buf (hc)), 0, 0);
   http_io_ts_after_write (hc, 1);
 }
 
@@ -484,7 +484,7 @@ http2_send_server_preface (http_ctx_t *hc)
   http2_frame_write_settings (settings_list, &http_tx_buf (hc));
   /* send also connection window update */
   http2_frame_write_window_update (hc->our_window - HTTP2_INITIAL_WIN_SIZE, 0, &http_tx_buf (hc));
-  http_io_ts_write (hc, http_tx_buf (hc), vec_len (http_tx_buf (hc)), 0);
+  http_io_ts_write (hc, http_tx_buf (hc), vec_len (http_tx_buf (hc)), 0, 0);
   http_io_ts_after_write (hc, 1);
   vec_free (settings_list);
 }
@@ -532,7 +532,7 @@ http2_sched_dispatch_data (http_ctx_t *req, http_ctx_t *hc, u8 *n_emissions)
   segs[0].data = fh;
   vec_append (segs, app_segs);
 
-  n_written = http_io_ts_write_segs (hc, segs, n_segs + 1, 0);
+  n_written = http_io_ts_write_segs (hc, segs, n_segs + 1, 0, 0);
   n_written -= HTTP2_FRAME_HEADER_SIZE;
   vec_free (segs);
   http_buffer_drain (hb, n_written);
@@ -619,7 +619,7 @@ http2_sched_dispatch_tunnel (http_ctx_t *req, http_ctx_t *hc, u8 *n_emissions)
   segs[0].len = HTTP2_FRAME_HEADER_SIZE;
   segs[0].data = fh;
 
-  n_written = http_io_ts_write_segs (hc, segs, n_segs + 1, 0);
+  n_written = http_io_ts_write_segs (hc, segs, n_segs + 1, 0, 0);
   ASSERT (n_written == (HTTP2_FRAME_HEADER_SIZE + n_read));
   n_written -= HTTP2_FRAME_HEADER_SIZE;
   http_io_as_drain (req, n_written);
@@ -777,7 +777,7 @@ http2_sched_dispatch_udp_tunnel_inline (http_ctx_t *req, http_ctx_t *hc, u8 *n_e
   http2_frame_write_data_header (frame_size, req->stream_id, 0, fh);
   segs[0].len = HTTP2_FRAME_HEADER_SIZE;
   segs[0].data = fh;
-  n_written = http_io_ts_write_segs (hc, segs, n_segs, 0);
+  n_written = http_io_ts_write_segs (hc, segs, n_segs, 0, 0);
   ASSERT (n_written == (HTTP2_FRAME_HEADER_SIZE + frame_size));
 
   if (PREDICT_TRUE (n_read))
@@ -835,7 +835,7 @@ http2_sched_dispatch_continuation (http_ctx_t *req, http_ctx_t *hc, u8 *n_emissi
   http2_frame_write_continuation_header (headers_len, stream_id, flags, fh);
   svm_fifo_seg_t segs[2] = { { fh, HTTP2_FRAME_HEADER_SIZE },
 			     { hc->unsent_headers + hc->unsent_headers_offset, headers_len } };
-  n_written = http_io_ts_write_segs (hc, segs, 2, 0);
+  n_written = http_io_ts_write_segs (hc, segs, 2, 0, 0);
   ASSERT (n_written == (HTTP2_FRAME_HEADER_SIZE + headers_len));
 
   if (headers_len == headers_left)
@@ -896,7 +896,7 @@ http_sched_dispatch_431 (http_ctx_t *req, http_ctx_t *hc, u8 *n_emissions,
   http2_frame_write_headers_header (headers_len, req->stream_id,
 				    HTTP2_FRAME_FLAG_END_HEADERS | HTTP2_FRAME_FLAG_END_STREAM, fh);
   svm_fifo_seg_t segs[2] = { { fh, HTTP2_FRAME_HEADER_SIZE }, { http_tx_buf (hc), headers_len } };
-  http_io_ts_write_segs (hc, segs, 2, 0);
+  http_io_ts_write_segs (hc, segs, 2, 0, 0);
   http_stats_responses_sent_inc (hc->c_thread_index);
   /* notify app that nothing will happen and free request */
   if (!(req->req_flags & HTTP_REQ_F_APP_CLOSED))
@@ -1040,7 +1040,7 @@ http2_sched_dispatch_resp_headers (http_ctx_t *req, http_ctx_t *hc, u8 *n_emissi
 
   http2_frame_write_headers_header (headers_len, stream_id, flags, fh);
   svm_fifo_seg_t segs[2] = { { fh, HTTP2_FRAME_HEADER_SIZE }, { http_tx_buf (hc), headers_len } };
-  n_written = http_io_ts_write_segs (hc, segs, 2, 0);
+  n_written = http_io_ts_write_segs (hc, segs, 2, 0, 0);
   ASSERT (n_written == (HTTP2_FRAME_HEADER_SIZE + headers_len));
   http_stats_responses_sent_inc (hc->c_thread_index);
 }
@@ -1217,7 +1217,7 @@ http2_sched_dispatch_req_headers (http_ctx_t *req, http_ctx_t *hc, u8 *n_emissio
 
   http2_frame_write_headers_header (headers_len, req->stream_id, flags, fh);
   svm_fifo_seg_t segs[2] = { { fh, HTTP2_FRAME_HEADER_SIZE }, { http_tx_buf (hc), headers_len } };
-  n_written = http_io_ts_write_segs (hc, segs, 2, 0);
+  n_written = http_io_ts_write_segs (hc, segs, 2, 0, 0);
   ASSERT (n_written == (HTTP2_FRAME_HEADER_SIZE + headers_len));
   http_stats_requests_sent_inc (hc->c_thread_index);
 }
@@ -2490,7 +2490,7 @@ http2_handle_settings_frame (http_ctx_t *hc, http2_frame_header_t *fh)
 
       /* ACK peer settings */
       http2_frame_write_settings_ack (&resp);
-      http_io_ts_write (hc, resp, vec_len (resp), 0);
+      http_io_ts_write (hc, resp, vec_len (resp), 0, 0);
       vec_free (resp);
       http_io_ts_after_write (hc, 0);
 
@@ -2668,7 +2668,7 @@ http2_handle_ping_frame (http_ctx_t *hc, http2_frame_header_t *fh)
     return HTTP2_ERROR_NO_ERROR;
 
   http2_frame_write_ping (1, rx_buf, &resp);
-  http_io_ts_write (hc, resp, vec_len (resp), 0);
+  http_io_ts_write (hc, resp, vec_len (resp), 0, 0);
   vec_free (resp);
   http_io_ts_after_write (hc, 1);
 
@@ -3433,7 +3433,7 @@ http2_transport_conn_reschedule_callback (http_ctx_t *hc)
 					    &http_tx_buf (hc));
 	    }
 	  vec_reset_length (hc->pending_rst_stream);
-	  http_io_ts_write (hc, http_tx_buf (hc), vec_len (http_tx_buf (hc)), 0);
+	  http_io_ts_write (hc, http_tx_buf (hc), vec_len (http_tx_buf (hc)), 0, 0);
 	  http_io_ts_after_write (hc, 1);
 	  max_write -= need_write;
 	}
@@ -3459,7 +3459,7 @@ http2_transport_conn_reschedule_callback (http_ctx_t *hc)
 	      http2_frame_write_window_update (increment, req->stream_id, &http_tx_buf (hc));
 	    }
 	  vec_reset_length (hc->pending_win_updates);
-	  http_io_ts_write (hc, http_tx_buf (hc), vec_len (http_tx_buf (hc)), 0);
+	  http_io_ts_write (hc, http_tx_buf (hc), vec_len (http_tx_buf (hc)), 0, 0);
 	  http_io_ts_after_write (hc, 1);
 	  max_write -= need_write;
 	}
