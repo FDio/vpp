@@ -8,8 +8,6 @@ from scapy.packet import Raw
 from framework import VppTestCase
 from asfframework import (
     tag_run_solo,
-    tag_fixme_debian12,
-    is_distro_debian12,
     VppTestRunner,
 )
 from remote_test import RemoteClass, RemoteVppTestCase
@@ -21,7 +19,6 @@ from config import config
 
 
 @tag_run_solo
-@tag_fixme_debian12
 @unittest.skipIf("memif" in config.excluded_plugins, "Exclude Memif plugin tests")
 class TestMemif(VppTestCase):
     """Memif Test Case"""
@@ -46,9 +43,6 @@ class TestMemif(VppTestCase):
         cls.remote_test.start_remote()
         cls.remote_test.set_request_timeout(10)
         super(TestMemif, cls).setUpClass()
-        if is_distro_debian12 == True and not hasattr(cls, "vpp"):
-            cls.remote_test.quit_remote()
-            return
         cls.remote_test.setUpClass(cls.tempdir)
         cls.create_pg_interfaces(range(1))
         for pg in cls.pg_interfaces:
