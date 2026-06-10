@@ -16,6 +16,9 @@ const char *http1_upgrade_proto_str[] = { "",
 #undef _
 };
 
+/* estimated http response/request overhead, excluded app headers and target */
+#define HTTP1_MESSAGE_OVERHEAD 256
+
 /**
  * http error boilerplate
  */
@@ -123,9 +126,10 @@ http1_send_error (http_ctx_t *hc, http_status_code_t ec, transport_send_params_t
   data = format (0, error_template, http_status_code_str[ec],
 		 format_http_time_now, hc);
   HTTP_DBG (3, "%v", data);
-  http_io_ts_write (hc, data, vec_len (data), sp);
+  /* if ts tx fifo can't buffer bytes we just close connecton */
+  if (PREDICT_TRUE (http_io_ts_write (hc, data, vec_len (data), sp, 1)))
+    http_io_ts_after_write (hc, 0);
   vec_free (data);
-  http_io_ts_after_write (hc, 0);
 }
 
 static u8 *
@@ -1293,27 +1297,23 @@ http1_req_state_wait_app_reply (http_ctx_t *hc, http_ctx_t *req, transport_send_
   http_sm_result_t sm_result = HTTP_SM_ERROR;
   http_req_state_t next_state = HTTP_REQ_STATE_WAIT_TRANSPORT_METHOD;
 
-  http_get_app_msg (req, &msg);
+  http_get_app_msg (req, &msg, 1);
 
-  if (msg.data.type >= HTTP_MSG_DATA_N_TYPES)
+  ASSERT (msg.data.type < HTTP_MSG_DATA_N_TYPES);
+  ASSERT (msg.type == HTTP_MSG_REPLY);
+  ASSERT (msg.code < HTTP_N_STATUS);
+
+  /* make sure ts tx fifo can actually buffer response message, this should be overestimated since
+   * not all app header names are in text format, cap it up to fifo size */
+  if (PREDICT_FALSE (http_io_ts_provision_chunks (
+	hc, clib_min (HTTP1_MESSAGE_OVERHEAD + (msg.data.headers_len << 1),
+		      http_io_ts_fifo_size (hc, 0)))))
     {
-      clib_warning ("no data");
-      sc = HTTP_STATUS_INTERNAL_ERROR;
-      goto error;
+      HTTP_DBG (1, "http_io_ts_provision_chunks failed");
+      return HTTP_SM_STOP;
     }
 
-  if (msg.type != HTTP_MSG_REPLY)
-    {
-      clib_warning ("unexpected message type %d", msg.type);
-      sc = HTTP_STATUS_INTERNAL_ERROR;
-      goto error;
-    }
-
-  if (msg.code >= HTTP_N_STATUS)
-    {
-      clib_warning ("unsupported status code: %d", msg.code);
-      return HTTP_SM_ERROR;
-    }
+  http_io_as_drain (req, sizeof (msg));
 
   vec_reset_length (http_tx_buf (hc));
   /*
@@ -1372,7 +1372,9 @@ http1_req_state_wait_app_reply (http_ctx_t *hc, http_ctx_t *req, transport_send_
       sc = HTTP_STATUS_INTERNAL_ERROR;
       goto error;
     }
-  http_io_ts_write (hc, http_tx_buf (hc), vec_len (http_tx_buf (hc)), sp);
+  /* if this assert adjust formula in the beginning where we try to provision ts fifo chunks */
+  ASSERT ((HTTP1_MESSAGE_OVERHEAD + (msg.data.headers_len << 1)) > vec_len (http_tx_buf (hc)));
+  http_io_ts_write (hc, http_tx_buf (hc), vec_len (http_tx_buf (hc)), sp, 0);
 
   if (msg.data.body_len)
     {
@@ -1410,19 +1412,23 @@ http1_req_state_wait_app_method (http_ctx_t *hc, http_ctx_t *req, transport_send
   http_sm_result_t sm_result = HTTP_SM_ERROR;
   http_req_state_t next_state;
 
-  http_get_app_msg (req, &msg);
+  http_get_app_msg (req, &msg, 1);
 
-  if (msg.data.type >= HTTP_MSG_DATA_N_TYPES)
+  ASSERT (msg.data.type < HTTP_MSG_DATA_N_TYPES);
+  ASSERT (msg.type == HTTP_MSG_REQUEST);
+
+  /* make sure ts tx fifo can actually buffer request message, this should be overestimated since
+   * not all app header names are in text format, cap it up to fifo size */
+  if (PREDICT_FALSE (http_io_ts_provision_chunks (
+	hc,
+	clib_min (HTTP1_MESSAGE_OVERHEAD + (msg.data.headers_len << 1) + msg.data.target_path_len,
+		  http_io_ts_fifo_size (hc, 0)))))
     {
-      clib_warning ("no data");
-      goto error;
+      HTTP_DBG (1, "http_io_ts_provision_chunks failed");
+      return HTTP_SM_STOP;
     }
 
-  if (msg.type != HTTP_MSG_REQUEST)
-    {
-      clib_warning ("unexpected message type %d", msg.type);
-      goto error;
-    }
+  http_io_as_drain (req, sizeof (msg));
 
   /* read request target */
   target = http_get_app_target (req, &msg);
@@ -1546,7 +1552,10 @@ http1_req_state_wait_app_method (http_ctx_t *hc, http_ctx_t *req, transport_send
       sm_result = HTTP_SM_ERROR;
       goto error;
     }
-  http_io_ts_write (hc, http_tx_buf (hc), vec_len (http_tx_buf (hc)), sp);
+  /* if this assert adjust formula in the beginning where we try to provision ts fifo chunks */
+  ASSERT ((HTTP1_MESSAGE_OVERHEAD + (msg.data.headers_len << 1) + msg.data.target_path_len) >
+	  vec_len (http_tx_buf (hc)));
+  http_io_ts_write (hc, http_tx_buf (hc), vec_len (http_tx_buf (hc)), sp, 0);
 
   if (next_state != HTTP_REQ_STATE_WAIT_TRANSPORT_REPLY)
     http_req_tx_buffer_init (req, &msg);
@@ -1591,7 +1600,9 @@ http1_req_state_app_io_more_data (http_ctx_t *hc, http_ctx_t *req, transport_sen
       goto check_fifo;
     }
 
-  n_written = http_io_ts_write_segs (hc, seg, n_segs, sp);
+  n_written = http_io_ts_write_segs (hc, seg, n_segs, sp, 1);
+  if (PREDICT_FALSE (!n_written))
+    goto check_fifo;
 
   http_buffer_drain (hb, n_written);
   finished = http_buffer_bytes_left (hb) == 0;
@@ -1647,17 +1658,19 @@ http1_req_state_app_io_more_streaming_data (http_ctx_t *hc, http_ctx_t *req,
       HTTP_DBG (1, "streaming: no data available");
       return HTTP_SM_STOP;
     }
+  /* make sure ts tx fifo can actually buffer chunk */
+  if (PREDICT_FALSE (http_io_ts_provision_chunks (hc, chunk_size + chunk_sz_value_headroom)))
+    goto check_fifo;
 
   /* Write chunk size in hex */
-  hdr_len =
-    snprintf ((char *) chunk_hdr, sizeof (chunk_hdr), "%x\r\n", chunk_size);
-  http_io_ts_write (hc, chunk_hdr, hdr_len, sp);
+  hdr_len = snprintf ((char *) chunk_hdr, sizeof (chunk_hdr), "%x\r\n", chunk_size);
+  http_io_ts_write (hc, chunk_hdr, hdr_len, sp, 0);
 
   /* Write chunk data */
-  n_written = http_io_ts_write_segs (hc, seg, n_segs, sp);
+  n_written = http_io_ts_write_segs (hc, seg, n_segs, sp, 0);
 
   /* Write chunk trailer */
-  http_io_ts_write (hc, (u8 *) "\r\n", 2, sp);
+  http_io_ts_write (hc, (u8 *) "\r\n", 2, sp, 0);
 
   http_buffer_drain (hb, n_written);
 
@@ -1665,7 +1678,7 @@ http1_req_state_app_io_more_streaming_data (http_ctx_t *hc, http_ctx_t *req,
   if (finished)
     {
       /* Send final chunk (0-sized) */
-      http_io_ts_write (hc, (u8 *) "0\r\n\r\n", 5, sp);
+      http_io_ts_write (hc, (u8 *) "0\r\n\r\n", 5, sp, 0);
 
       /* Finished transaction:
        * server back to HTTP_REQ_STATE_WAIT_TRANSPORT_METHOD
@@ -1704,7 +1717,9 @@ http1_req_state_tunnel_tx (http_ctx_t *hc, http_ctx_t *req, transport_send_param
     }
   max_read = clib_min (max_enq, max_deq);
   http_io_as_read_segs (req, segs, &n_segs, max_read);
-  n_written = http_io_ts_write_segs (hc, segs, n_segs, sp);
+  n_written = http_io_ts_write_segs (hc, segs, n_segs, sp, 1);
+  if (PREDICT_FALSE (!n_written))
+    goto check_fifo;
   http_io_as_drain (req, n_written);
   http_io_ts_after_write (hc, 0);
 
@@ -1746,6 +1761,10 @@ http1_req_state_udp_tunnel_tx_inline (http_ctx_t *hc, http_ctx_t *req, transport
 	  HTTP_DBG (1, "ts tx fifo full");
 	  goto done;
 	}
+      /* make sure ts tx fifo can actually buffer capsule */
+      if (PREDICT_FALSE (http_io_ts_provision_chunks (
+	    hc, hdr.data_length + HTTP_UDP_PROXY_DATAGRAM_CAPSULE_OVERHEAD)))
+	goto done;
 
       /* create capsule header */
       payload = http_encap_udp_payload_datagram (buf, hdr.data_length, is_draft03);
@@ -1754,7 +1773,7 @@ http1_req_state_udp_tunnel_tx_inline (http_ctx_t *hc, http_ctx_t *req, transport
       http_io_as_peek (req, payload, hdr.data_length, sizeof (hdr));
       http_io_as_drain (req, dgram_size);
       /* send capsule */
-      http_io_ts_write (hc, buf, capsule_size, sp);
+      http_io_ts_write (hc, buf, capsule_size, sp, 0);
 
       written = 1;
       to_deq -= dgram_size;
