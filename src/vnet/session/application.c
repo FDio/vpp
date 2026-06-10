@@ -1803,6 +1803,51 @@ application_format_connects (application_t * app, int verbose)
   }
 }
 
+static const char *app_options_flags_str[] = {
+#define _(sym, str) [APP_OPTIONS_##sym] = str,
+  foreach_app_options_flags
+#undef _
+};
+
+static u8 *
+format_app_options_flags (u8 *s, va_list *args)
+{
+  u32 flags = va_arg (*args, u32);
+  const char *sep = "";
+  int i;
+
+  for (i = 0; i < ARRAY_LEN (app_options_flags_str); i++)
+    {
+      if (!app_options_flags_str[i])
+	continue;
+      if (!(flags & (1U << i)))
+	continue;
+      s = format (s, "%s%s", sep, app_options_flags_str[i]);
+      sep = ", ";
+    }
+
+  if (!sep[0])
+    s = format (s, "none");
+
+  return s;
+}
+
+static const char *
+app_segment_type_str (ssvm_segment_type_t segment_type)
+{
+  switch (segment_type)
+    {
+    case SSVM_SEGMENT_SHM:
+      return "shm";
+    case SSVM_SEGMENT_MEMFD:
+      return "memfd";
+    case SSVM_SEGMENT_PRIVATE:
+      return "private";
+    default:
+      return "unknown";
+    }
+}
+
 u8 *
 format_application (u8 * s, va_list * args)
 {
@@ -1831,14 +1876,23 @@ format_application (u8 * s, va_list * args)
       return s;
     }
 
-  s = format (s, "app-name %v app-index %u ns-index %u seg-size %U\n",
-	      app_name, app->app_index, app->ns_index,
-	      format_memory_size, props->add_segment_size);
-  s =
-    format (s, "rx-fifo-size %U tx-fifo-size %U max-fifo-memory %U workers:\n",
-	    format_memory_size, props->rx_fifo_size, format_memory_size,
-	    props->tx_fifo_size, format_memory_size,
-	    props->max_segments * props->segment_size);
+  s = format (s, "app:\t %v app-index %u ns %u:%v\n", app_name, app->app_index, app->ns_index,
+	      app_ns_name);
+  s = format (s, "flags:\t %U\n", format_app_options_flags, (u32) app->flags);
+  s = format (s, "runtime: tls-engine %U evt-collector %u\n", format_crypto_engine,
+	      app->crypto_ctx.tls_engine, app->evt_collector_index);
+  s = format (s, "memory:\t seg-size %U add-seg-size %U mq-size %u max-segments %u\n",
+	      format_memory_size, props->segment_size, format_memory_size, props->add_segment_size,
+	      props->evt_q_size, props->max_segments);
+  s = format (s, "\t rx-fifo-size %U tx-fifo-size %U max-fifo-size %U\n", format_memory_size,
+	      (u64) props->rx_fifo_size, format_memory_size, (u64) props->tx_fifo_size,
+	      format_memory_size, (uword) props->max_fifo_size);
+  s = format (s, "\t segment-type %s prealloc-fifos %u prealloc-fifo-hdrs %u\n",
+	      app_segment_type_str (props->segment_type), props->prealloc_fifos,
+	      props->prealloc_fifo_hdrs);
+  s = format (s, "\t high-watermark %u low-watermark %u pct-first-alloc %u\n",
+	      props->high_watermark, props->low_watermark, props->pct_first_alloc);
+  s = format (s, "workers:\n");
 
   pool_foreach (wrk_map, app->worker_maps)  {
       app_wrk = app_worker_get (wrk_map->wrk_index);
