@@ -11,7 +11,7 @@ import (
 )
 
 func init() {
-	RegisterSoloLdpTests(LdpIperfUdpTest, LdpIperfUdpVppInterruptModeTest, RedisBenchmarkTest,
+	RegisterLdpTests(LdpIperfUdpTest, LdpIperfUdpVppInterruptModeTest, RedisBenchmarkTest,
 		LdpIperfTlsTcpTest, LdpIperfTcpTest, LdpIperfTcpReorderTest, LdpIperfReverseTcpReorderTest,
 		LdpIperfUdpReorderTest, LdpIperfReverseUdpReorderTest)
 	RegisterLdpMWTests(LdpIperfUdpMWTest)
@@ -150,7 +150,7 @@ func RedisBenchmarkTest(s *LdpSuite) {
 		if *NConfiguredCpus == 1 {
 			cmd = "redis-benchmark -q --threads 1 -h " + serverAddress
 		} else {
-			cmd = "redis-benchmark -q --threads " + fmt.Sprint(s.CpusPerContainer) + "-h " + serverAddress
+			cmd = "redis-benchmark -q --threads " + fmt.Sprint(s.CpusPerContainer) + " -h " + serverAddress
 		}
 		StartClientApp(s.Containers.ClientApp, cmd, clnCh, clnRes)
 	}()

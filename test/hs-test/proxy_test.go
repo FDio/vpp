@@ -25,17 +25,15 @@ import (
 func init() {
 	RegisterVppProxyTests(VppProxyHttpGetTcpTest, VppProxyHttpGetTlsTest, VppProxyHttpPutTcpTest, VppProxyHttpPutTlsTest,
 		VppConnectProxyGetTest, VppConnectProxyPutTest, VppHttpsConnectProxyGetTest, VppH2ConnectProxyGetTest,
-		VppH2ConnectProxyPutTest)
+		VppH2ConnectProxyPutTest, VppConnectProxyStressTest)
 	RegisterVppProxyMWTests(VppProxyHttpGetTcpMWTest, VppProxyHttpGetTcpStartupConfigMWTest, VppProxyHttpPutTcpMWTest, VppProxyTcpIperfMWTest,
 		VppProxyUdpIperfMWTest, VppConnectProxyStressMWTest, VppConnectProxyConnectionFailedMWTest)
-	RegisterVppProxySoloTests(VppConnectProxyStressTest)
 	RegisterVppUdpProxyTests(VppProxyUdpTest, VppConnectUdpProxyTest, VppConnectUdpInvalidCapsuleTest,
-		VppConnectUdpUnknownCapsuleTest, VppConnectUdpClientCloseTest, VppConnectUdpInvalidTargetTest, VppConnectUdpServerCloseTest)
-	RegisterVppUdpProxySoloTests(VppConnectUdpStressTest)
+		VppConnectUdpUnknownCapsuleTest, VppConnectUdpClientCloseTest, VppConnectUdpInvalidTargetTest, VppConnectUdpServerCloseTest,
+		VppConnectUdpStressTest)
 	RegisterVppUdpProxyMWTests(VppProxyUdpMigrationMWTest, VppConnectUdpStressMWTest)
 	RegisterEnvoyProxyTests(EnvoyHttpGetTcpTest, EnvoyHttpPutTcpTest)
-	RegisterNginxProxyTests(NginxMirroringTest)
-	RegisterNginxProxySoloTests(MirrorMultiThreadTest)
+	RegisterNginxProxyTests(NginxMirroringTest, MirrorMultiThreadTest)
 	RegisterMasqueTests(VppConnectProxyClientDownloadUdpTest, VppConnectProxyClientUploadUdpTest, VppConnectProxyMemLeakTest,
 		VppConnectProxyIperfTcpTest, VppConnectProxyIperfUdpTest)
 	RegisterMasqueMWTests(VppConnectProxyIperfTcpMWTest, VppConnectProxyIperfUdpMWTest, VppConnectProxyClientUploadTcpMWTest,
@@ -167,7 +165,6 @@ func MirrorMultiThreadTest(s *NginxProxySuite) {
 	nginxMirroring(s, true)
 }
 
-// unstable, registered as solo
 func NginxMirroringTest(s *NginxProxySuite) {
 	nginxMirroring(s, false)
 }

@@ -11,7 +11,7 @@ import (
 )
 
 func init() {
-	RegisterNoTopoSoloTests(RedisCutThruTest, LdpIperfTcpCutThruTest, LdpIperfUdpCutThruTest)
+	RegisterNoTopoTests(RedisCutThruTest, LdpIperfTcpCutThruTest, LdpIperfUdpCutThruTest)
 	RegisterNoTopoMWTests(RedisCutThruMWTest, LdpIperfTcpCutThruMWTest, LdpIperfUdpCutThruMWTest)
 	RegisterVppProxySoloTests(LdpWgetVppProxyNginxCutThruTest, LdpWgetVppProxyNginxCutThruSmallFifoTest)
 }
