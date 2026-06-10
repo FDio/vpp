@@ -294,9 +294,13 @@ func TcpTailLossTimerRecoveryTest(s *TcpHarnessSuite) {
 }
 
 func TcpFastRecoveryTwoHolesPartialAckTest(s *TcpHarnessSuite) {
+	const controlledDataSegments = 5
+
 	dropDataPacketIndices := []uint32{2, 4}
 	scriptCfg := tcpharness.NFQueueScript(dropDataPacketIndices,
-		tcpharness.InitialHolesSackStep(len(dropDataPacketIndices), 3, tcpharness.KeepQueuedAcks()),
+		tcpharness.InitialHolesSackStep(len(dropDataPacketIndices), 3,
+			tcpharness.WaitForDataSegments(controlledDataSegments),
+			tcpharness.KeepQueuedAcks()),
 		tcpharness.RetransmitPartialAckStep(2,
 			tcpharness.DiscardQueuedAcks(),
 			tcpharness.AdvanceScriptToDone()))
@@ -327,7 +331,7 @@ func TcpFastRecoveryTwoHolesPartialAckTest(s *TcpHarnessSuite) {
 	defer state.Close()
 
 	warmupBytes := 2 * mssStats.SndMss
-	controlledBytes := 6 * mssStats.SndMss
+	controlledBytes := controlledDataSegments * mssStats.SndMss
 	sendBytes := warmupBytes + controlledBytes
 
 	RunTcpHarnessScenarioOnState(s, state,
