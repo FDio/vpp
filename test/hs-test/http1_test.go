@@ -39,7 +39,7 @@ func init() {
 		HttpClientRedirectPostMemLeakTest, HttpGetTpsTest, HttpPostTpsTest, HttpGetTpsInterruptModeTest, HttpPostTpsInterruptModeTest,
 		HttpPostTpsTlsTest, HttpGetTpsTlsTest)
 	RegisterHttp1SoloTests(HttpClientPostMemLeakTest, HttpInvalidClientRequestMemLeakTest)
-	RegisterHttp1MWTests(HttpClientGetRepeatMWTest, HttpClientPtrGetRepeatMWTest)
+	RegisterHttp1MWTests(HttpClientGetRepeatMWTest, HttpClientPtrGetRepeatMWTest, HttpSlowReadersMWTest)
 	RegisterNoTopo6SoloTests(HttpClientGetResponseBody6Test, HttpClientGetTlsResponseBody6Test)
 }
 
@@ -1803,4 +1803,29 @@ func HttpSendGetAndCloseTest(s *Http1Suite) {
 	o := vpp.Vppctl("show session verbose proto http")
 	Log(o)
 	AssertNotContains(o, "established")
+}
+
+func HttpSlowReadersMWTest(s *Http1Suite) {
+	var httpConfig Stanza
+	httpConfig.NewStanza("http").Append("first-segment-size 4m").Append("add-segment-size 4m").Close()
+	s.CpusPerVppContainer = 2
+
+	s.SetupTest(httpConfig)
+	vpp := s.Containers.Vpp.VppInstance
+	vpp.Container.Exec(false, "mkdir -p "+wwwRootPath)
+	serverAddress := "http://" + s.VppAddr() + ":" + s.Ports.Http
+	resourceName := "/test_file_30M"
+	url := serverAddress + resourceName
+
+	fileName := wwwRootPath + resourceName
+	Log(vpp.Container.Exec(false, "fallocate -l 30MB "+fileName))
+	Log(vpp.Container.Exec(false, "ls -la "+fileName))
+	Log(vpp.Vppctl("http static server cache-size 256m www-root " + wwwRootPath + " uri " + serverAddress))
+
+	s.Containers.Curl.ExtraRunningArgs = fmt.Sprintf("/usr/bin/slow_reader.sh %s 1M 30", url)
+	s.Containers.Curl.Run()
+	Log(vpp.Vppctl("show session"))
+	stdout, stderr := s.Containers.Curl.GetOutput()
+	Log(stderr)
+	Log(stdout)
 }
