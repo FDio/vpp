@@ -538,6 +538,18 @@ ct_cleanup_ho (u32 ho_index)
   ct_connection_free (ho);
 }
 
+static inline u8
+ct_listener_is_self_proxy (application_t *app, session_t *ll)
+{
+  app_listener_t *al;
+
+  if (!(ll->flags & SESSION_F_PROXY))
+    return 0;
+
+  al = app_listener_get (ll->al_index);
+  return al->app_index == app->app_index;
+}
+
 static int
 ct_session_connect (transport_endpoint_cfg_t * tep)
 {
@@ -546,7 +558,6 @@ ct_session_connect (transport_endpoint_cfg_t * tep)
   app_worker_t *app_wrk;
   session_handle_t lh;
   application_t *app;
-  app_listener_t *al;
   u32 table_index;
   session_t *ll;
   u8 fib_proto;
@@ -566,14 +577,12 @@ ct_session_connect (transport_endpoint_cfg_t * tep)
     goto global_scope;
 
   ll = listen_session_get_from_handle (lh);
-  al = app_listener_get (ll->al_index);
 
   /*
-   * Break loop if rule in local table points to connecting app. This
-   * can happen if client is a generic proxy. Route connect through
-   * global table instead.
+   * Break loop if local lookup found the connecting app's proxy listener.
+   * Route connect through global table instead.
    */
-  if (al->app_index == app->app_index)
+  if (ct_listener_is_self_proxy (app, ll))
     goto global_scope;
 
   return ct_connect (app_wrk, ll, sep_ext);
@@ -594,11 +603,10 @@ global_scope:
   table_index = session_lookup_get_index_for_fib (fib_proto, sep->fib_index);
   ll = session_lookup_listener_wildcard (table_index, sep);
 
-  /* Avoid connecting app to own listener */
+  /* Avoid connecting app to own proxy listener */
   if (ll)
     {
-      al = app_listener_get (ll->al_index);
-      if (al->app_index != app->app_index)
+      if (!ct_listener_is_self_proxy (app, ll))
 	return ct_connect (app_wrk, ll, sep_ext);
     }
 
