@@ -246,7 +246,6 @@ quic_quicly_send_packets (quic_ctx_t *ctx)
   session_t *udp_session;
   quicly_conn_t *conn;
   size_t num_packets, i, max_packets;
-  u32 buf_size;
   quicly_error_t err;
   quicly_address_t quicly_rmt_ip, quicly_lcl_ip;
   u8 *buf = qqm->tx_bufs[ctx->c_thread_index];
@@ -272,11 +271,9 @@ quic_quicly_send_packets (quic_ctx_t *ctx)
       return;
     }
 
-  /* Shrink buf_size if we have less dgrams than QUIC_QUICLY_SEND_PACKET_VEC_SIZE */
-  buf_size = clib_min (vec_len (buf), max_packets * QUIC_MAX_PACKET_SIZE);
-
   /* If under memory pressure and chunks cannot be allocated try reschedule */
-  if (svm_fifo_provision_chunks (udp_session->tx_fifo, 0, 0, buf_size))
+  if (svm_fifo_provision_chunks (udp_session->tx_fifo, 0, 0,
+				 max_packets * (QUIC_MAX_PACKET_SIZE + SESSION_CONN_HDR_LEN)))
     {
       quic_worker_ctx_t *wc = quic_wrk_ctx_get (quic_quicly_main.qm, ctx->c_thread_index);
       quic_mvt.conn_tx_timer_update (wc, ctx, wc->time_now + 1);
@@ -284,7 +281,8 @@ quic_quicly_send_packets (quic_ctx_t *ctx)
     }
 
   num_packets = max_packets;
-  err = quicly_send (conn, &quicly_rmt_ip, &quicly_lcl_ip, packets, &num_packets, buf, buf_size);
+  err =
+    quicly_send (conn, &quicly_rmt_ip, &quicly_lcl_ip, packets, &num_packets, buf, vec_len (buf));
   if (PREDICT_FALSE (err))
     {
       QUIC_DBG (2, "quicly_send error %U'", quic_quicly_format_err, err);
