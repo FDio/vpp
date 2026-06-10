@@ -10,7 +10,6 @@ from asfframework import (
     VppTestRunner,
     Worker,
     tag_fixme_vpp_workers,
-    tag_fixme_debian12,
 )
 from vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath
 
@@ -805,7 +804,6 @@ class QUICNsimKeyUpdateTestCase(_QUICNsimMixin, QUICEchoIntTestCase):
 # ---------------------------------------------------------------------------
 
 
-@tag_fixme_debian12
 class QUICCryptoHandlerSwitchTestCase(QUICEchoIntTestCase):
     """QUIC Crypto Handler Runtime Switch Between Connections"""
 
@@ -822,7 +820,6 @@ class QUICCryptoHandlerSwitchTestCase(QUICEchoIntTestCase):
             self.client("bytes", "2m")
 
 
-@tag_fixme_debian12
 class QUICCryptoHandlerMidTransferSwitchTestCase(QUICEchoExtTestCase):
     """QUIC Crypto Handler Runtime Switch During Active Transfer"""
 
@@ -859,7 +856,6 @@ class QUICCryptoHandlerMidTransferSwitchTestCase(QUICEchoExtTestCase):
         self.validate_ext_test_results()
 
 
-@tag_fixme_debian12
 class QUICCryptoHandlerMidTransferWithKeyUpdateTestCase(QUICEchoExtTestCase):
     """QUIC Crypto Handler Switch Mid-Transfer with Frequent Key Updates
 

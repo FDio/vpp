@@ -16,9 +16,7 @@ from config import config
 from framework import VppTestCase
 from asfframework import (
     tag_fixme_vpp_workers,
-    tag_fixme_debian12,
     tag_run_solo,
-    is_distro_debian12,
     VppTestRunner,
 )
 from vpp_object import VppObject
@@ -181,8 +179,6 @@ class MethodHolder(VppTestCase):
         variables and configure VPP.
         """
         super(MethodHolder, cls).setUpClass()
-        if (is_distro_debian12 == True) and not hasattr(cls, "vpp"):
-            return
         try:
             # Create pg interfaces
             cls.create_pg_interfaces(range(9))
@@ -378,7 +374,6 @@ class MethodHolder(VppTestCase):
         return p
 
 
-@tag_fixme_debian12
 @tag_run_solo
 @tag_fixme_vpp_workers
 @unittest.skipIf(
@@ -684,7 +679,6 @@ class Flowprobe(MethodHolder):
         self.logger.info("FFP_TEST_FINISH_0004")
 
 
-@tag_fixme_debian12
 class DatapathTestsHolder(object):
     """collect information on Ethernet, IP4 and IP6 datapath (no timers)"""
 
