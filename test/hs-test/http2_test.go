@@ -20,7 +20,7 @@ func init() {
 		Http2ServerMemLeakTest, Http2ClientGetTest, Http2ClientPostTest, Http2ClientPostPtrTest, Http2ClientGetRepeatTest,
 		Http2ClientMultiplexingTest, Http2ClientH2cTest, Http2ClientMemLeakTest, Htttp2TlsNoAlpnTest,
 		Http2TcpClientCloseDuringHandshakeTest)
-	RegisterH2MWTests(Http2MultiplexingMWTest, Http2ClientMultiplexingMWTest)
+	RegisterH2MWTests(Http2MultiplexingMWTest, Http2ClientMultiplexingMWTest, Http2TsFifoMemPressureMWTest)
 	RegisterVethTests(Http2CliTlsTest, Http2ClientContinuationTest, Http2ClientPostFormTest, Http2ClientPostFormPtrTest)
 }
 
@@ -471,4 +471,28 @@ func Http2ClientMemLeakTest(s *Http2Suite) {
 	traces2, err := vpp.GetMemoryTrace()
 	AssertNil(err, fmt.Sprint(err))
 	vpp.MemLeakCheck(traces1, traces2)
+}
+
+func Http2TsFifoMemPressureMWTest(s *Http2Suite) {
+	var httpConfig Stanza
+	httpConfig.NewStanza("http").Append("first-segment-size 4m").Append("add-segment-size 4m").Close()
+	s.CpusPerVppContainer = 2
+
+	s.SetupTest(httpConfig)
+	vpp := s.Containers.Vpp.VppInstance
+	vpp.Container.Exec(false, "mkdir -p "+wwwRootPath)
+	serverAddress := "https://" + s.VppAddr() + ":" + s.Ports.Port1
+	resourceName := "/test_file_10M"
+	url := serverAddress + resourceName
+
+	fileName := wwwRootPath + resourceName
+	Log(vpp.Container.Exec(false, "fallocate -l 10MB "+fileName))
+	Log(vpp.Container.Exec(false, "ls -la "+fileName))
+	Log(vpp.Vppctl("http static server cache-size 128m www-root " + wwwRootPath + " uri " + serverAddress))
+
+	s.Containers.Curl.ExtraRunningArgs = fmt.Sprintf("/usr/bin/slow_reader.sh %s 1M 15", url)
+	s.Containers.Curl.Run()
+	Log(vpp.Vppctl("show session"))
+	stdout, _ := s.Containers.Curl.GetOutput()
+	Log(stdout)
 }
