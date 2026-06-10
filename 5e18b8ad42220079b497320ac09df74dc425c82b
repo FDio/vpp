@@ -1,0 +1,157 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "23d8c102_7bcaf960",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 8
+      },
+      "lineNbr": 7,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-06-10T13:19:09Z",
+      "side": 1,
+      "message": "this should use bonding: as title prefix as it is mainly about bond",
+      "revId": "5e18b8ad42220079b497320ac09df74dc425c82b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c9e77e09_c129deb1",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 8
+      },
+      "lineNbr": 9,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-06-10T13:19:09Z",
+      "side": 1,
+      "message": "this is more or less a copy/paste of the doc. The commit message should be concise.",
+      "revId": "5e18b8ad42220079b497320ac09df74dc425c82b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "62fb63f7_49e42717",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 8
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-06-10T13:19:09Z",
+      "side": 1,
+      "message": "Can we factor the L34/flow-hash tuple extraction instead of duplicating the outer hash paths?\nhash_eth_l34_inner_inline() copies most of hash_eth_l34_inline() just to add the inner-peek case. It would be cleaner to split this into an Ethernet wrapper plus IP-only L34 helpers, so the inner-aware path can call the IP helper for IPinIP/IPv6-in-IP and the Ethernet/IP helper for GRE TEB/NVGRE as appropriate.\nSame idea applies to ip4_compute_flow_hash() / ip6_compute_flow_hash(): normalize “outer or resolved inner header” into a small descriptor, then feed that into the existing v4/v6 hash mixing logic. That should reduce drift risk and make fixes like IPv4 IHL/total-length validation live in one place.",
+      "revId": "5e18b8ad42220079b497320ac09df74dc425c82b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7b2876dc_b685c880",
+        "filename": "docs/developer/corearchitecture/inner_aware_hash.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 3,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-06-10T13:19:09Z",
+      "side": 1,
+      "message": "shouldn\u0027t it belong to docs/developer/corefeatures/hash.rst?",
+      "revId": "5e18b8ad42220079b497320ac09df74dc425c82b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e6b3c534_bf5595ae",
+        "filename": "docs/developer/corearchitecture/inner_aware_hash.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 82,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-06-10T13:19:09Z",
+      "side": 1,
+      "message": "is this accurate? I think it fails on IPv4 options for example",
+      "revId": "5e18b8ad42220079b497320ac09df74dc425c82b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "62fc8c45_66b324d3",
+        "filename": "docs/developer/corearchitecture/inner_aware_hash.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 92,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-06-10T13:19:09Z",
+      "side": 1,
+      "message": "Not sure it belongs to the doc tbh - performance is dependent upon the system etc.",
+      "revId": "5e18b8ad42220079b497320ac09df74dc425c82b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6c493803_ab6f449b",
+        "filename": "docs/developer/corearchitecture/inner_aware_hash.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 227,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-06-10T13:19:09Z",
+      "side": 1,
+      "message": "Not sure it belongs to the doc - I do not think we usually mention it",
+      "revId": "5e18b8ad42220079b497320ac09df74dc425c82b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0d96c636_98114b29",
+        "filename": "docs/developer/corearchitecture/inner_aware_hash.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 244,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-06-10T13:19:09Z",
+      "side": 1,
+      "message": "Not sure it belongs to the doc - I do not think we usually mention it",
+      "revId": "5e18b8ad42220079b497320ac09df74dc425c82b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "08dc7772_5af436de",
+        "filename": "src/vnet/ip/ip_inner_aware_hash.h",
+        "patchSetId": 8
+      },
+      "lineNbr": 94,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-06-10T13:19:09Z",
+      "side": 1,
+      "message": "we already have IPv6 extension-header walking helpers (ip6_locate_header(), ip6_ext_header_walk(), ip6_ext_header_find(), and ip6_ext_header_len_s()). Why can\u0027t we use them here?",
+      "revId": "5e18b8ad42220079b497320ac09df74dc425c82b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
