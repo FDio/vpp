@@ -683,10 +683,15 @@ lcp_router_link_addr_add_del (struct rtnl_addr *rla, int is_del)
 	{
 	  if (ip6_address_is_link_local_unicast (&ip_addr_v6 (&nh)))
 	    if (is_del)
-	      ip6_link_disable (sw_if_index);
+	      {
+		// Only disable IPv6 if there are no addresses left.
+		if (0 == lcp_router_count_interface_addresses (sw_if_index, AF_IP6))
+		  ip6_link_disable (sw_if_index);
+	      }
 	    else
 	      {
-		ip6_link_enable (sw_if_index, NULL);
+		if (!ip6_link_is_enabled (sw_if_index))
+		  ip6_link_enable (sw_if_index, NULL);
 		ip6_link_set_local_address (sw_if_index, &ip_addr_v6 (&nh));
 	      }
 	  else
