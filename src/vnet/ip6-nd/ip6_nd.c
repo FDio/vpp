@@ -185,9 +185,11 @@ icmp6_neighbor_solicitation_or_advertisement (vlib_main_t * vm,
 		{
 		  if (ip6_address_is_link_local_unicast (&h0->target_address))
 		    {
-		      fei = ip6_fib_table_lookup_exact_match
-			(ip6_ll_fib_get (sw_if_index0),
-			 &h0->target_address, 128);
+		      u32 ll_fib_index = ip6_ll_fib_get (sw_if_index0);
+		      fei =
+			(~0 == ll_fib_index) ?
+			  FIB_NODE_INDEX_INVALID :
+			  ip6_fib_table_lookup_exact_match (ll_fib_index, &h0->target_address, 128);
 		    }
 		  else
 		    {
