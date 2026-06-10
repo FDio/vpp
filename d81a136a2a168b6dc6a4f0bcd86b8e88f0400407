@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "7667bd0e_c5c8dbe3",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2026-06-10T11:16:39Z",
+      "side": 1,
+      "message": "Yes, this looks like a fix to https://github.com/FDio/vpp/issues/3538\nin the bisect run: https://github.com/FDio/csit/actions/runs/27269473158/job/80534973546",
+      "revId": "d81a136a2a168b6dc6a4f0bcd86b8e88f0400407",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
