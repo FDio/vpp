@@ -76,7 +76,7 @@ func (s *Http2Suite) SetupSuite() {
 	AssertNil(err)
 }
 
-func (s *Http2Suite) SetupTest() {
+func (s *Http2Suite) SetupTest(startupConf ...Stanza) {
 	s.HstSuite.SetupTest()
 
 	// Setup test conditions
@@ -85,7 +85,17 @@ func (s *Http2Suite) SetupTest() {
 	var memoryConfig Stanza
 	memoryConfig.NewStanza("memory").Append("main-heap-size 2G").Close()
 
-	vpp, _ := s.Containers.Vpp.newVppInstance(s.Containers.Vpp.AllocatedCpus, memoryConfig, sessionConfig)
+	var customStartupConf1 Stanza
+	var customStartupConf2 Stanza
+	if len(startupConf) > 0 {
+		customStartupConf1 = startupConf[0]
+		if len(startupConf) > 1 {
+			customStartupConf2 = startupConf[1]
+		}
+	}
+
+	vpp, _ := s.Containers.Vpp.newVppInstance(s.Containers.Vpp.AllocatedCpus, memoryConfig, sessionConfig,
+		customStartupConf1, customStartupConf2)
 
 	AssertNil(vpp.Start())
 	AssertNil(vpp.CreateTap(s.Interfaces.Tap, false, 1), "failed to create tap interface")
