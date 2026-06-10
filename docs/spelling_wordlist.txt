@@ -155,6 +155,7 @@ clib
 Clib
 cmake
 Cmake
+CMake
 CMakeLists
 cmd
 Cn
@@ -531,6 +532,7 @@ Interoperation
 interworkings
 intfc
 intfcs
+invariants
 io
 ioam
 iOAM
