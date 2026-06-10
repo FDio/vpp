@@ -51,6 +51,24 @@
       "parentUuid": "987984b6_b5bd59d1",
       "revId": "7d906aa3cd5231f2f1dfd8666618ce6358da5735",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "7fdd5760_7c573dfb",
+        "filename": "test/hs-test/cut-thru_test.go",
+        "patchSetId": 2
+      },
+      "lineNbr": 15,
+      "author": {
+        "id": 3325
+      },
+      "writtenOn": "2026-06-10T11:38:04Z",
+      "side": 1,
+      "message": "Done and rebased in P4",
+      "parentUuid": "59b69674_7a4371d6",
+      "revId": "7d906aa3cd5231f2f1dfd8666618ce6358da5735",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
