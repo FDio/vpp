@@ -62,6 +62,151 @@ of files: rule/function definitions, and target lists.
       add_subdirectory(${dir})
     endforeach()
 
+.. _build_time_options:
+
+Build-time options
+------------------
+
+The top-level ``make`` targets configure VPP through CMake. Most VPP
+build-time parameters are CMake cache entries, so pass them from the top
+level with ``VPP_EXTRA_CMAKE_ARGS``:
+
+::
+
+   $ make build VPP_EXTRA_CMAKE_ARGS='-DVPP_PLUGINS=dpdk,acl -DVPP_DRIVERS=iavf'
+
+For an existing build directory, use ``make rebuild`` or
+``make rebuild-release`` after changing these options. The build-root
+configure step is timestamp based, and CMake cache values from a previous
+configure can otherwise remain in effect.
+
+The CMake configure summary prints the selected ``Plugins``, ``Drivers``,
+``Crypto engines``, ``Tools``, and ``Tests`` lists. Unknown requested names,
+or names that cannot be registered because their build prerequisites are
+missing, fail the configure step.
+
+Selecting plugins, drivers, crypto engines, tools, and tests
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The allow-list variables below take comma-separated lists. An empty value
+means "build the default discovered set". The special value ``none`` disables
+that whole class. ``VPP_EXCLUDED_PLUGINS`` is a skip list for the default
+plugin set, not an allow-list.
+
+``VPP_PLUGINS``
+    Plugins to include in the build. Names are the first argument to
+    ``add_vpp_plugin()``, normally the subdirectory name under
+    ``src/plugins``. For example:
+
+    ::
+
+       $ make rebuild VPP_EXTRA_CMAKE_ARGS='-DVPP_PLUGINS=dpdk,acl,memif'
+
+``VPP_EXCLUDED_PLUGINS``
+    Plugins to skip when building the default plugin set. This one is also
+    forwarded directly by ``build-data/packages/vpp.mk``, so it can be passed
+    without ``VPP_EXTRA_CMAKE_ARGS``:
+
+    ::
+
+       $ make rebuild VPP_EXCLUDED_PLUGINS=dpdk,rdma
+
+    It can also be passed explicitly as a CMake argument:
+    ``VPP_EXTRA_CMAKE_ARGS='-DVPP_EXCLUDED_PLUGINS=dpdk,rdma'``.
+
+``VPP_DRIVERS``
+    Device drivers to include in the build. Names are the first argument to
+    ``add_vpp_driver()``, normally the subdirectory name under
+    ``src/drivers``:
+
+    ::
+
+       $ make rebuild VPP_EXTRA_CMAKE_ARGS='-DVPP_DRIVERS=iavf,ige'
+
+``VPP_CRYPTO_ENGINES``
+    Crypto engines to include in the build. Names are the first argument to
+    ``add_vpp_crypto_engine()``, normally the subdirectory name under
+    ``src/crypto_engines``:
+
+    ::
+
+       $ make rebuild VPP_EXTRA_CMAKE_ARGS='-DVPP_CRYPTO_ENGINES=native,openssl'
+
+``VPP_TOOLS``
+    Tools registered with ``add_vpp_tool()`` to include in the build. Some
+    tools are also guarded by their own options. For example, ``g2`` requires
+    ``VPP_BUILD_G2=ON``:
+
+    ::
+
+       $ make rebuild VPP_EXTRA_CMAKE_ARGS='-DVPP_BUILD_G2=ON -DVPP_TOOLS=g2,vppctl'
+
+``VPP_TESTS``
+    Test executables registered with ``add_vpp_test()`` to include in the
+    build:
+
+    ::
+
+       $ make rebuild VPP_EXTRA_CMAKE_ARGS='-DVPP_TESTS=test_vat2,vpp_json_test'
+
+``DISABLED_PLUGINS`` is different: it only adds plugin disable entries to
+the generated startup configuration used by ``make run`` and ``make debug``.
+It does not change which plugins are compiled.
+
+Other common VPP CMake options
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+These options are also set with ``VPP_EXTRA_CMAKE_ARGS`` unless noted
+otherwise:
+
+``VPP_PLATFORM``
+    Selects a CMake CPU platform file from ``src/cmake/platform`` or a
+    compiler ``-march`` value supported by the target compiler. The top-level
+    ``PLATFORM`` make variable is a build-root platform selector and is not
+    the same knob.
+
+``VPP_BUILD_NATIVE_ONLY`` and ``VPP_BUILD_NATIVE_ARCH``
+    Build only one native CPU variant, using ``-march=native`` by default.
+
+``VPP_USE_LTO``
+    Enables link-time optimization for release builds when supported by the
+    compiler.
+
+``VPP_ENABLE_SANITIZE_ADDR`` and ``VPP_SANITIZE_ADDR_OPTIONS``
+    Build with AddressSanitizer and configure its runtime options.
+
+``VPP_ENABLE_TRAJECTORY_TRACE``
+    Builds VPP with buffer trajectory tracing enabled.
+
+``VPP_HOST_TOOLS_ONLY``
+    Builds only host tools needed by external projects.
+
+``VPP_BUILD_VCL`` and ``VPP_BUILD_VCL_BAPI``
+    Enable or disable VCL and VCL binary API components.
+
+``VPP_BUILD_PYTHON_API``
+    Enables or disables the Python API package.
+
+``VPP_BUILD_VCL_TESTS``, ``VPP_BUILD_HS_SAPI_APPS``, ``VPP_BUILD_VPPINFRA_TESTS``, and ``VPP_BUILD_TESTS_WITH_COVERAGE``
+    Control optional test and host-stack application builds.
+
+``VPP_BUILD_G2``, ``VPP_BUILD_PERFTOOL``, ``VPP_BUILD_APPIMAGE``, and ``VPP_BUILD_MACTIME_TOP``
+    Control optional tools that are off by default or plugin-specific.
+
+``VPP_USE_SYSTEM_DPDK``
+    Uses the system DPDK installation for the DPDK plugin.
+
+``VPP_USE_CCACHE``
+    Enables or disables ccache use. This is on by default when ccache is
+    available.
+
+``VPP_SET_RPATH``
+    Controls whether installed binaries and libraries receive an rpath.
+
+Use ``ccmake`` or inspect ``CMakeCache.txt`` in the VPP build directory for
+the complete set of CMake cache variables available in a particular build
+tree.
+
 How to write a plugin CMakeLists.txt file
 -----------------------------------------
 
