@@ -21,6 +21,7 @@ type Http1Suite struct {
 		Vpp         *Container
 		NginxServer *Container
 		Wrk         *Container
+		Curl        *Container
 	}
 	Ports struct {
 		NginxServer    string
@@ -47,12 +48,13 @@ func (s *Http1Suite) SetupSuite() {
 	s.Containers.Vpp = s.GetContainerByName("vpp")
 	s.Containers.NginxServer = s.GetTransientContainerByName("nginx-server")
 	s.Containers.Wrk = s.GetContainerByName("wrk")
+	s.Containers.Curl = s.GetContainerByName("curl")
 	s.Ports.Http = s.GeneratePort()
 	s.Ports.NginxServer = s.GeneratePort()
 	s.Ports.NginxServerSsl = s.GeneratePort()
 }
 
-func (s *Http1Suite) SetupTest() {
+func (s *Http1Suite) SetupTest(startupConf ...Stanza) {
 	s.HstSuite.SetupTest()
 
 	// Setup test conditions
@@ -69,7 +71,17 @@ func (s *Http1Suite) SetupTest() {
 		sessionConfig.Close()
 	}
 
-	vpp, _ := s.Containers.Vpp.newVppInstance(s.Containers.Vpp.AllocatedCpus, sessionConfig)
+	var customStartupConf1 Stanza
+	var customStartupConf2 Stanza
+	if len(startupConf) > 0 {
+		customStartupConf1 = startupConf[0]
+		if len(startupConf) > 1 {
+			customStartupConf2 = startupConf[1]
+		}
+	}
+
+	vpp, _ := s.Containers.Vpp.newVppInstance(s.Containers.Vpp.AllocatedCpus, sessionConfig, customStartupConf1,
+		customStartupConf2)
 
 	AssertNil(vpp.Start())
 	AssertNil(vpp.CreateTap(s.Interfaces.Tap, false, 1), "failed to create tap interface")

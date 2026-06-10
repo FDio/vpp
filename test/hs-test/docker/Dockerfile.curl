@@ -4,8 +4,10 @@ FROM localhost:5001/vpp-test-base:latest
 
 # Note: wget and xz-utils are already in the base image
 
-COPY resources/curl/* /tmp/
+COPY script/slow_reader.sh /usr/bin/slow_reader.sh
 RUN fallocate -l 10MB /tmp/testFile
+RUN chmod +x /usr/bin/slow_reader.sh
+COPY resources/curl/* /tmp/
 
 # unset proxy vars to avoid "HTTP/3 is not supported over an HTTP proxy" error
 # (using --noproxy arg doesn't work)
