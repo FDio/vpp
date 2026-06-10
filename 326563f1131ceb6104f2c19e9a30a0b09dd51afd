@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "724ff484_7285e177",
+        "filename": "src/vlib/pool_cache.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 32,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-06-10T14:00:15Z",
+      "side": 1,
+      "message": "Would it make sense to add a unit-test for this per-thread pool cache primitive ?\n\nI\u0027m thinking of a basic test similar to `src/plugins/unittest/pool_test.c`, which could also be tested as part of the CI with one worker thread (`TestVlib.test_pool` running with `vpp_worker_count \u003d 1`)",
+      "revId": "326563f1131ceb6104f2c19e9a30a0b09dd51afd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
