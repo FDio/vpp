@@ -839,6 +839,7 @@ func (vpp *VppInstance) GetMemoryTrace() ([]VppMemTrace, error) {
 var defaultMemLeakReportNoiseFrames = []string{
 	"unix_cli",
 	"vlib_buffer_validate_alloc_free",
+	"tap_device_input_one_inline",
 	"tw_timer_expire_timers_internal",
 }
 
