@@ -34,6 +34,24 @@
       "parentUuid": "755ea0ea_f1b03708",
       "revId": "074cbff06fa45ebe8a1d090b580d7809688415d6",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "5dfdd768_37b240eb",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 62,
+      "author": {
+        "id": 3325
+      },
+      "writtenOn": "2026-06-11T07:56:23Z",
+      "side": 1,
+      "message": "Done and rebased in P6",
+      "parentUuid": "ced3d394_14187e79",
+      "revId": "074cbff06fa45ebe8a1d090b580d7809688415d6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
