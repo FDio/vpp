@@ -55,6 +55,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "a2cf5ea0_1ad3c22d",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3312
+      },
+      "writtenOn": "2026-06-11T02:33:40Z",
+      "side": 1,
+      "message": "We want to have the ability to override it with API. In our SONIC-VPP project, SONiC is running over VPP as dataplane, and it will program default routes, and the class E subnet should follow the default route.",
+      "parentUuid": "784e6860_33234561",
+      "revId": "b26afa828c5f164e21dacf042713be11467d0b1c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "d433f44d_99215686",
         "filename": "src/vnet/fib/ip4_fib.c",
         "patchSetId": 1
