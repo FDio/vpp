@@ -21,6 +21,9 @@ from vpp_session_sdl import SessionSdl
 
 
 @tag_fixme_vpp_workers
+@unittest.skipIf(
+    "vperf" in config.excluded_plugins, "Exclude tests requiring vperf plugin"
+)
 class TestSessionSDL(VppTestCase):
     """Session SDL Test Case"""
 
@@ -93,9 +96,9 @@ class TestSessionSDL(VppTestCase):
 
         # Add inter-table routes
         uri = "tcp://" + self.loop0.local_ip4 + "/1234"
-        server_cmd = "test echo server appns 0 fifo-size 4k " + "uri " + uri
+        server_cmd = "vperf server appns 0 fifo-size 4k " + "uri " + uri
         client_cmd = (
-            "test echo client bytes 100000 appns 1 "
+            "vperf client bytes 100000 appns 1 "
             + "fifo-size 4k "
             + "syn-timeout 2 uri "
             + uri
@@ -202,12 +205,12 @@ class TestSessionSDL(VppTestCase):
         # Add inter-table routes
         uri = "tcp://" + self.loop0.local_ip6 + "/1235"
         client_cmd = (
-            "test echo client bytes 100000 appns 1 "
+            "vperf client bytes 100000 appns 1 "
             + "fifo-size 4k "
             + "syn-timeout 2 uri "
             + uri
         )
-        server_cmd = "test echo server appns 0 fifo-size 4k " + "uri " + uri
+        server_cmd = "vperf server appns 0 fifo-size 4k " + "uri " + uri
 
         ip_t01 = VppIpRoute(
             self,

@@ -1,0 +1,9 @@
+---
+name: VPP Host Stack Performance Apps
+maintainer: Florin Coras <fcoras@cisco.com>
+features:
+  - Built-in host stack performance client and server
+  - VCL performance client and server
+description: "Host stack performance applications for VPP"
+state: experimental
+properties: [CLI, MULTITHREAD]

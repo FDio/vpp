@@ -57,6 +57,7 @@ class QUICAppWorker(Worker):
 
 
 @unittest.skipIf("quic" in config.excluded_plugins, "Exclude QUIC plugin tests")
+@unittest.skipIf("vperf" in config.excluded_plugins, "Exclude tests requiring vperf plugin")
 class QUICTestCase(VppAsfTestCase):
     """QUIC Test Case"""
 
@@ -184,14 +185,14 @@ class QUICEchoIntTestCase(QUICTestCase):
 
     def server(self, *args):
         _args = self.server_args + " ".join(args)
-        error = self.vapi.cli(f"test echo server {_args}")
+        error = self.vapi.cli(f"vperf server {_args}")
         if error:
             self.logger.critical(error)
             self.assertNotIn("failed", error)
 
     def client(self, *args):
         _args = self.client_args + " ".join(args)
-        error = self.vapi.cli(f"test echo client {_args}")
+        error = self.vapi.cli(f"vperf client {_args}")
         if error:
             self.logger.critical(error)
             self.assertNotIn("failed", error)
