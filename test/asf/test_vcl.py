@@ -454,7 +454,7 @@ class LDPCutThruTestCase(VCLTestCase):
 
 
 @unittest.skipIf(
-    "hs_apps" in config.excluded_plugins, "Exclude tests requiring hs_apps plugin"
+    "vperf" in config.excluded_plugins, "Exclude tests requiring vperf plugin"
 )
 class VCLCutThruTestCase(VCLTestCase):
     """VCL Cut Thru Tests"""
@@ -513,9 +513,9 @@ class VCLCutThruTestCase(VCLTestCase):
         """run VCL cut thru echo test"""
 
         self.cut_thru_test(
-            "vcl_test_server",
+            "vperf_server",
             self.server_args,
-            "vcl_test_client",
+            "vperf_client",
             self.client_echo_test_args,
         )
 
@@ -524,9 +524,9 @@ class VCLCutThruTestCase(VCLTestCase):
 
         self.timeout = self.client_uni_dir_nsock_timeout
         self.cut_thru_test(
-            "vcl_test_server",
+            "vperf_server",
             self.server_args,
-            "vcl_test_client",
+            "vperf_client",
             self.client_uni_dir_nsock_test_args,
         )
 
@@ -535,15 +535,15 @@ class VCLCutThruTestCase(VCLTestCase):
 
         self.timeout = self.client_bi_dir_nsock_timeout
         self.cut_thru_test(
-            "vcl_test_server",
+            "vperf_server",
             self.server_args,
-            "vcl_test_client",
+            "vperf_client",
             self.client_bi_dir_nsock_test_args,
         )
 
 
 @unittest.skipIf(
-    "hs_apps" in config.excluded_plugins, "Exclude tests requiring hs_apps plugin"
+    "vperf" in config.excluded_plugins, "Exclude tests requiring vperf plugin"
 )
 class VCLThruHostStackEcho(VCLTestCase):
     """VCL Thru Host Stack Echo"""
@@ -587,9 +587,9 @@ class VCLThruHostStackEcho(VCLTestCase):
         """run VCL IPv4 thru host stack echo test"""
 
         self.thru_host_stack_test(
-            "vcl_test_server",
+            "vperf_server",
             self.server_args,
-            "vcl_test_client",
+            "vperf_client",
             self.client_echo_test_args,
         )
 
@@ -600,7 +600,7 @@ class VCLThruHostStackEcho(VCLTestCase):
 
 
 @unittest.skipIf(
-    "hs_apps" in config.excluded_plugins, "Exclude tests requiring hs_apps plugin"
+    "vperf" in config.excluded_plugins, "Exclude tests requiring vperf plugin"
 )
 class VCLThruHostStackCLUDPEcho(VCLTestCase):
     """VCL Thru Host Stack CL UDP Echo"""
@@ -631,9 +631,9 @@ class VCLThruHostStackCLUDPEcho(VCLTestCase):
         server_args = ["-s", self.loop0.local_ip4]
         client_args = ["-c", self.loop0.local_ip4]
         self.thru_host_stack_test(
-            "vcl_test_cl_udp",
+            "vperf_cl_udp",
             server_args,
-            "vcl_test_cl_udp",
+            "vperf_cl_udp",
             client_args,
         )
 
@@ -642,9 +642,9 @@ class VCLThruHostStackCLUDPEcho(VCLTestCase):
         server_args = ["-s", self.loop0.local_ip4, "-w", "2"]
         client_args = ["-c", self.loop0.local_ip4, "-w", "2"]
         self.thru_host_stack_test(
-            "vcl_test_cl_udp",
+            "vperf_cl_udp",
             server_args,
-            "vcl_test_cl_udp",
+            "vperf_cl_udp",
             client_args,
         )
 
@@ -726,7 +726,7 @@ class VCLProgrammaticConfig(VCLTestCase):
 
 
 @unittest.skipIf(
-    "hs_apps" in config.excluded_plugins, "Exclude tests requiring hs_apps plugin"
+    "vperf" in config.excluded_plugins, "Exclude tests requiring vperf plugin"
 )
 class VCLThruHostStackCLUDPBinds(VCLTestCase):
     """VCL Thru Host Stack CL UDP Binds"""
@@ -772,7 +772,7 @@ class VCLThruHostStackCLUDPBinds(VCLTestCase):
         }
 
         worker_server1 = VCLAppWorker(
-            "vcl_test_cl_udp",
+            "vperf_cl_udp",
             server1_args,
             self.logger,
             self.vcl_app_env,
@@ -783,7 +783,7 @@ class VCLThruHostStackCLUDPBinds(VCLTestCase):
         self.sleep(0.5)
 
         worker_server2 = VCLAppWorker(
-            "vcl_test_cl_udp",
+            "vperf_cl_udp",
             server2_args,
             self.logger,
             self.vcl_app_env,
@@ -817,7 +817,7 @@ class VCLThruHostStackCLUDPBinds(VCLTestCase):
 
 
 @unittest.skipIf(
-    "hs_apps" in config.excluded_plugins, "Exclude tests requiring hs_apps plugin"
+    "vperf" in config.excluded_plugins, "Exclude tests requiring vperf plugin"
 )
 class VCLThruHostStackTLS(VCLTestCase):
     """VCL Thru Host Stack TLS"""
@@ -853,9 +853,9 @@ class VCLThruHostStackTLS(VCLTestCase):
 
         self.timeout = self.client_uni_dir_tls_timeout
         self.thru_host_stack_test(
-            "vcl_test_server",
+            "vperf_server",
             self.server_tls_args,
-            "vcl_test_client",
+            "vperf_client",
             self.client_uni_dir_tls_test_args,
         )
 
@@ -870,7 +870,7 @@ class VCLThruHostStackTLS(VCLTestCase):
 
 
 @unittest.skipIf(
-    "hs_apps" in config.excluded_plugins, "Exclude tests requiring hs_apps plugin"
+    "vperf" in config.excluded_plugins, "Exclude tests requiring vperf plugin"
 )
 class VCLThruHostStackEchoInterruptMode(VCLThruHostStackEcho):
     """VCL Thru Host Stack Echo interrupt mode"""
@@ -887,9 +887,9 @@ class VCLThruHostStackEchoInterruptMode(VCLThruHostStackEcho):
         self.sapi_client_sock = "2"
 
         self.thru_host_stack_test(
-            "vcl_test_server",
+            "vperf_server",
             self.server_args,
-            "vcl_test_client",
+            "vperf_client",
             self.client_echo_test_args,
         )
 
@@ -904,7 +904,7 @@ class VCLThruHostStackTLSInterruptMode(VCLThruHostStackTLS):
 
 
 @unittest.skipIf(
-    "hs_apps" in config.excluded_plugins, "Exclude tests requiring hs_apps plugin"
+    "vperf" in config.excluded_plugins, "Exclude tests requiring vperf plugin"
 )
 class VCLThruHostStackDTLS(VCLTestCase):
     """VCL Thru Host Stack DTLS"""
@@ -940,9 +940,9 @@ class VCLThruHostStackDTLS(VCLTestCase):
 
         self.timeout = self.client_uni_dir_dtls_timeout
         self.thru_host_stack_test(
-            "vcl_test_server",
+            "vperf_server",
             self.server_dtls_args,
-            "vcl_test_client",
+            "vperf_client",
             self.client_uni_dir_dtls_test_args,
         )
 
@@ -957,7 +957,7 @@ class VCLThruHostStackDTLS(VCLTestCase):
 
 
 @unittest.skipIf(
-    "hs_apps" in config.excluded_plugins, "Exclude tests requiring hs_apps plugin"
+    "vperf" in config.excluded_plugins, "Exclude tests requiring vperf plugin"
 )
 class VCLThruHostStackQUIC(VCLTestCase):
     """VCL Thru Host Stack QUIC"""
@@ -1009,9 +1009,9 @@ class VCLThruHostStackQUIC(VCLTestCase):
 
         self.timeout = self.client_uni_dir_quic_timeout
         self.thru_host_stack_test(
-            "vcl_test_server",
+            "vperf_server",
             self.server_quic_args,
-            "vcl_test_client",
+            "vperf_client",
             self.client_uni_dir_quic_test_args,
         )
 
@@ -1021,9 +1021,9 @@ class VCLThruHostStackQUIC(VCLTestCase):
 
         self.timeout = self.client_uni_dir_quic_timeout
         self.thru_host_stack_test(
-            "vcl_test_server",
+            "vperf_server",
             self.server_quic_args,
-            "vcl_test_client",
+            "vperf_client",
             self.client_bi_dir_multi_stream_quic_test_args,
         )
 
@@ -1038,7 +1038,7 @@ class VCLThruHostStackQUIC(VCLTestCase):
 
 
 @unittest.skipIf(
-    "hs_apps" in config.excluded_plugins, "Exclude tests requiring hs_apps plugin"
+    "vperf" in config.excluded_plugins, "Exclude tests requiring vperf plugin"
 )
 class VCLThruHostStackHTTPPost(VCLTestCase):
     """VCL Thru Host Stack HTTP Post"""
@@ -1074,9 +1074,9 @@ class VCLThruHostStackHTTPPost(VCLTestCase):
 
         self.timeout = self.client_uni_dir_http_post_timeout
         self.thru_host_stack_test(
-            "vcl_test_server",
+            "vperf_server",
             self.server_http_post_args,
-            "vcl_test_client",
+            "vperf_client",
             self.client_uni_dir_http_post_test_args,
         )
 
@@ -1091,7 +1091,7 @@ class VCLThruHostStackHTTPPost(VCLTestCase):
 
 
 @unittest.skipIf(
-    "hs_apps" in config.excluded_plugins, "Exclude tests requiring hs_apps plugin"
+    "vperf" in config.excluded_plugins, "Exclude tests requiring vperf plugin"
 )
 class VCLThruHostStackBidirNsock(VCLTestCase):
     """VCL Thru Host Stack Bidir Nsock"""
@@ -1140,9 +1140,9 @@ class VCLThruHostStackBidirNsock(VCLTestCase):
 
         self.timeout = self.client_bi_dir_nsock_timeout
         self.thru_host_stack_test(
-            "vcl_test_server",
+            "vperf_server",
             self.server_args,
-            "vcl_test_client",
+            "vperf_client",
             self.client_bi_dir_nsock_test_args,
         )
 
@@ -1255,7 +1255,7 @@ class LDPThruHostStackNsock(VCLTestCase):
 
 
 @unittest.skipIf(
-    "hs_apps" in config.excluded_plugins, "Exclude tests requiring hs_apps plugin"
+    "vperf" in config.excluded_plugins, "Exclude tests requiring vperf plugin"
 )
 class VCLThruHostStackNsock(VCLTestCase):
     """VCL Thru Host Stack Nsock"""
@@ -1299,9 +1299,9 @@ class VCLThruHostStackNsock(VCLTestCase):
 
         self.timeout = self.client_uni_dir_nsock_timeout
         self.thru_host_stack_test(
-            "vcl_test_server",
+            "vperf_server",
             self.server_args,
-            "vcl_test_client",
+            "vperf_client",
             self.client_uni_dir_nsock_test_args,
         )
 
@@ -1507,7 +1507,7 @@ class LDPIpv6CutThruTestCase(VCLTestCase):
 
 
 @unittest.skipIf(
-    "hs_apps" in config.excluded_plugins, "Exclude tests requiring hs_apps plugin"
+    "vperf" in config.excluded_plugins, "Exclude tests requiring vperf plugin"
 )
 class VCLIpv6CutThruTestCase(VCLTestCase):
     """VCL IPv6 Cut Thru Tests"""
@@ -1573,9 +1573,9 @@ class VCLIpv6CutThruTestCase(VCLTestCase):
         """run VCL IPv6 cut thru echo test"""
 
         self.cut_thru_test(
-            "vcl_test_server",
+            "vperf_server",
             self.server_ipv6_args,
-            "vcl_test_client",
+            "vperf_client",
             self.client_ipv6_echo_test_args,
         )
 
@@ -1585,9 +1585,9 @@ class VCLIpv6CutThruTestCase(VCLTestCase):
 
         self.timeout = self.client_uni_dir_nsock_timeout
         self.cut_thru_test(
-            "vcl_test_server",
+            "vperf_server",
             self.server_ipv6_args,
-            "vcl_test_client",
+            "vperf_client",
             self.client_ipv6_uni_dir_nsock_test_args,
         )
 
@@ -1597,15 +1597,15 @@ class VCLIpv6CutThruTestCase(VCLTestCase):
 
         self.timeout = self.client_bi_dir_nsock_timeout
         self.cut_thru_test(
-            "vcl_test_server",
+            "vperf_server",
             self.server_ipv6_args,
-            "vcl_test_client",
+            "vperf_client",
             self.client_ipv6_bi_dir_nsock_test_args,
         )
 
 
 @unittest.skipIf(
-    "hs_apps" in config.excluded_plugins, "Exclude tests requiring hs_apps plugin"
+    "vperf" in config.excluded_plugins, "Exclude tests requiring vperf plugin"
 )
 class VCLIpv6ThruHostStackEcho(VCLTestCase):
     """VCL IPv6 Thru Host Stack Echo"""
@@ -1639,15 +1639,15 @@ class VCLIpv6ThruHostStackEcho(VCLTestCase):
         """run VCL IPv6 thru host stack echo test"""
 
         self.thru_host_stack_test(
-            "vcl_test_server",
+            "vperf_server",
             self.server_ipv6_args,
-            "vcl_test_client",
+            "vperf_client",
             self.client_ipv6_echo_test_args,
         )
 
 
 @unittest.skipIf(
-    "hs_apps" in config.excluded_plugins, "Exclude tests requiring hs_apps plugin"
+    "vperf" in config.excluded_plugins, "Exclude tests requiring vperf plugin"
 )
 class VCLCutThruTestCaseBAPI(VCLTestCase):
     """VCL Cut Thru BAPI Test"""
@@ -1686,9 +1686,9 @@ class VCLCutThruTestCaseBAPI(VCLTestCase):
 
         # Single binary api test after switching to app socket api as default
         self.cut_thru_test(
-            "vcl_test_server",
+            "vperf_server",
             self.server_args,
-            "vcl_test_client",
+            "vperf_client",
             self.client_uni_dir_test_args,
         )
 

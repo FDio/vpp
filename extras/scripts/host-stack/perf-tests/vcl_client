@@ -5,7 +5,7 @@
 
 VPP_WS=${VPP_WS:-/scratch/fcoras/vpp}
 CFG_WS=$VPP_WS/extras/scripts/host-stack/perf-tests
-BIN=$VPP_WS/build-root/build-vpp-native/vpp/bin/vcl_test_client
+BIN=$VPP_WS/build-root/build-vpp-native/vpp/bin/vperf_client
 GDB_ENV=$CFG_WS/gdb_vcl_env
 VCL_CFG=$CFG_WS/vcl_perf.conf
 PARAMS=$@

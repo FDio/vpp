@@ -12,6 +12,7 @@ ENV DIR=vpp-data/lib/vpp_plugins
 COPY \
    $DIR/af_packet_plugin.so \
    $DIR/hs_apps_plugin.so \
+   $DIR/vperf_plugin.so \
    $DIR/http_plugin.so \
    $DIR/http_unittest_plugin.so \
    $DIR/unittest_plugin.so \
@@ -35,6 +36,7 @@ COPY $CRYPTO_DIR/*.so /usr/lib/$OS_ARCH-linux-gnu/vpp_crypto_engines/
 COPY vpp-data/bin/vpp /usr/bin/
 COPY vpp-data/bin/vppctl /usr/bin/
 COPY vpp-data/bin/vpp_echo /usr/bin/
+COPY vpp-data/bin/vperf_* /usr/bin/
 COPY vpp-data/bin/vcl_* /usr/bin/
 COPY vpp-data/bin/tcp_test_endpoint /usr/bin/
 COPY vpp-data/bin/evt_collector_sink /usr/bin/
