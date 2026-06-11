@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "88b6798a_115ba25e",
+        "filename": "src/vnet/fib/ip4_fib.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 16,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2026-06-11T01:51:35Z",
+      "side": 1,
+      "message": "this should be static, not a global mutable variable.",
+      "revId": "d03f66b0637d1af05d638697db21cc77fce187d1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
