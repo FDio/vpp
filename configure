@@ -33,7 +33,7 @@ OPTIONS:
   --drivers, -D           Specify list of drivers to be built
   --help, -h              This help
   --install-dir, -i       Install directory
-  --minimal, -m           Minimal build (no plugins, tools, tests, crypto_engines)
+  --minimal, -m           Minimal build (no drivers, plugins, tools, tests, crypto_engines)
   --native-only, -n       Only compile for Native CPU (no multiarch)
   --option, -o            Enable specific VPP options (fib8, fib16)
   --platform, -p          Specify target platform
@@ -153,6 +153,7 @@ while (( "$#" )); do
       fi
       ;;
     -m|--minimal)
+      drivers=${drivers:-none}
       plugins=${plugins:-none}
       tools=${tools:-none}
       tests=${tests:-none}
