@@ -26,6 +26,7 @@
 /* lifetime of TCP conn NAT sessions after RST/FIN (seconds) */
 #define CNAT_DEFAULT_TCP_RST_TIMEOUT 5
 #define CNAT_DEFAULT_SCANNER_TIMEOUT (1.0)
+#define CNAT_DEFAULT_SCANNER_MAX_TIME (10e-5)
 /* max number of port retries when in use during reverse session creation */
 #define CNAT_DEFAULT_SESSION_MAX_PORT_RETRIES 100
 
@@ -176,6 +177,9 @@ typedef struct cnat_main_
 
   /* delay in seconds between two scans of session/clients tables */
   f64 scanner_timeout;
+
+  /* max time spent scanning session buckets per scanner wakeup */
+  f64 scanner_max_time;
 
   /* Index of the scanner process node */
   uword scanner_node_index;
