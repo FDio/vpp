@@ -9,8 +9,6 @@
 #include <npol/npol_format.h>
 #include <cnat/cnat_feature_hook.h>
 
-uword unformat_sw_if_index (unformat_input_t *input, va_list *args);
-
 npol_interface_config_t *npol_interface_configs;
 
 /* resolved once on first use */
@@ -177,7 +175,7 @@ npol_interface_clear_cmd_fn (vlib_main_t *vm, unformat_input_t *input,
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (input, "%U", unformat_sw_if_index, NULL, &sw_if_index))
+      if (unformat (input, "%U", unformat_vnet_sw_interface, vnet_get_main (), &sw_if_index))
 	;
       else if (unformat (input, "sw_if_index %d", &sw_if_index))
 	;
@@ -224,7 +222,7 @@ npol_interface_configure_cmd_fn (vlib_main_t *vm, unformat_input_t *input,
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (input, "%U", unformat_sw_if_index, NULL, &sw_if_index))
+      if (unformat (input, "%U", unformat_vnet_sw_interface, vnet_get_main (), &sw_if_index))
 	;
       else if (unformat (input, "sw_if_index %d", &sw_if_index))
 	;
