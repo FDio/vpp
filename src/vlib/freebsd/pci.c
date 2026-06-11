@@ -358,7 +358,7 @@ vlib_pci_get_all_dev_addrs ()
 }
 
 clib_error_t *
-freebsd_pci_init (vlib_main_t *vm)
+pci_bus_init (vlib_main_t *vm)
 {
   vlib_pci_main_t *pm = &pci_main;
   vlib_pci_addr_t *addr = 0, *addrs;
@@ -381,4 +381,4 @@ freebsd_pci_init (vlib_main_t *vm)
   return 0;
 }
 
-VLIB_INIT_FUNCTION (freebsd_pci_init);
+VLIB_INIT_FUNCTION (pci_bus_init);

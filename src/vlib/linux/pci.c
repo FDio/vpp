@@ -191,7 +191,7 @@ vlib_pci_get_num_msi_interrupts (vlib_main_t *vm, vlib_pci_dev_handle_t h)
 /* Call to allocate/initialize the pci subsystem.
    This is not an init function so that users can explicitly enable
    pci only when it's needed. */
-clib_error_t *pci_bus_init (vlib_main_t * vm);
+clib_error_t *pci_bus_init (vlib_main_t *vm);
 
 linux_pci_main_t linux_pci_main;
 
@@ -1711,7 +1711,7 @@ vlib_pci_get_all_dev_addrs ()
 }
 
 clib_error_t *
-linux_pci_init (vlib_main_t * vm)
+pci_bus_init (vlib_main_t *vm)
 {
   vlib_pci_main_t *pm = &pci_main;
   vlib_pci_addr_t *addr = 0, *addrs;
@@ -1737,4 +1737,4 @@ linux_pci_init (vlib_main_t * vm)
   return 0;
 }
 
-VLIB_INIT_FUNCTION (linux_pci_init);
+VLIB_INIT_FUNCTION (pci_bus_init);
