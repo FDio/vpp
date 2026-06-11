@@ -70,6 +70,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "5e81cdf0_73faff22",
+        "filename": "src/vnet/crypto/trace.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 134,
+      "author": {
+        "id": 3200
+      },
+      "writtenOn": "2026-06-11T13:25:50Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "18918869_08fae1ef",
+      "revId": "89084a7b2ff48b3a865030f8983215d93d0a63cf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "78f1aa89_eb054d47",
@@ -83,6 +101,24 @@
       "writtenOn": "2026-06-11T08:51:51Z",
       "side": 1,
       "message": "why not doing this inside already present trace block?",
+      "revId": "89084a7b2ff48b3a865030f8983215d93d0a63cf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "62b61ad8_3fe6f2cf",
+        "filename": "src/vnet/ipsec/esp_encrypt.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 937,
+      "author": {
+        "id": 3200
+      },
+      "writtenOn": "2026-06-11T13:25:50Z",
+      "side": 1,
+      "message": "There are two reasons in favor of placing the vnet_crypto_add_trace() here:\n\n- it is as close as possible to the setting of \u0027op\u0027 and therefore is the most accurate or least susceptible to disruption\n\n- placing it in the existing trace block would require additional lines of code in the caller to keep track of \u0027op\u0027",
+      "parentUuid": "78f1aa89_eb054d47",
       "revId": "89084a7b2ff48b3a865030f8983215d93d0a63cf",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
