@@ -50,6 +50,24 @@
       "message": "can we remove this with typo fix?",
       "revId": "63b38713984f8c9406fb8b05bea14c539774f40e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "2ea78b1f_0434c5ad",
+        "filename": "test/hs-test/ldp_test.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 121,
+      "author": {
+        "id": 3325
+      },
+      "writtenOn": "2026-06-11T09:52:54Z",
+      "side": 1,
+      "message": "I tried removing it and ran RedisBenchmarkTest with CPUS\u003d2. The test reaches the else branch and runs `redis-benchmark -q --threads 2 -h \u003cserver\u003e`, but redis-benchmark exits with 139/segfault in the container. So I kept SkipIfMultiWorker() for now.",
+      "parentUuid": "0b1dc414_953be6e1",
+      "revId": "63b38713984f8c9406fb8b05bea14c539774f40e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
