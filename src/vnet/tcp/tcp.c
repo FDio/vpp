@@ -1337,8 +1337,9 @@ static void
 tcp_update_time (f64 now, u8 thread_index)
 {
   tcp_worker_ctx_t *wrk = tcp_get_worker (thread_index);
+  session_worker_t *session_wrk = session_main_get_worker (thread_index);
 
-  tcp_set_time_now (wrk, now);
+  tcp_set_time_now (wrk, session_wrk);
   tcp_handle_cleanups (wrk, now);
   tcp_timer_expire_timers (&wrk->timer_wheel, now);
   tcp_dispatch_pending_timers (wrk);

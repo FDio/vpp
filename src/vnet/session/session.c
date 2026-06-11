@@ -2050,8 +2050,7 @@ session_manager_main_enable (vlib_main_t *vm,
       wrk->evts_pending_main =
 	clib_llist_make_head (wrk->event_elts, evt_list);
       wrk->vm = vlib_get_main_by_index (i);
-      wrk->last_vlib_time = vlib_time_now (vm);
-      wrk->last_vlib_us_time = wrk->last_vlib_time * CLIB_US_TIME_FREQ;
+      session_wrk_update_time (wrk);
       wrk->timerfd = -1;
       vec_validate (wrk->session_to_enqueue, smm->last_transport_proto_type);
       clib_spinlock_init (&wrk->session_migrate_lock);

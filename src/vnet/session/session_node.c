@@ -2042,7 +2042,7 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 
   SESSION_EVT (SESSION_EVT_DISPATCH_START, wrk);
 
-  session_wrk_update_time (wrk, vlib_time_now (vm));
+  session_wrk_update_time (wrk);
 
   /*
    *  Update transport time

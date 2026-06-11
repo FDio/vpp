@@ -95,6 +95,10 @@ typedef struct session_worker_
   /** vlib_time_now rounded to us precision and as u64 */
   clib_us_time_t last_vlib_us_time;
 
+  /** Raw CPU time sample captured with last_vlib_time. Protocols that need a
+   * process-wide epoch can derive their own time representation from it. */
+  u64 last_cpu_time;
+
   /** Convenience pointer to this worker's vlib_main */
   vlib_main_t *vm;
 
@@ -1109,10 +1113,19 @@ session_add_pending_tx_buffer (clib_thread_index_t thread_index, u32 bi,
 }
 
 always_inline void
-session_wrk_update_time (session_worker_t *wrk, f64 now)
+session_wrk_update_time (session_worker_t *wrk)
 {
-  wrk->last_vlib_time = now;
+  vlib_main_t *vm = wrk->vm;
+  u64 cpu_time_now = clib_cpu_time_now ();
+
+  /* Keep session/transport time and raw protocol time anchored to the same
+   * sample. vlib time remains the offset-adjusted seconds value used by
+   * session/transport; raw CPU time lets protocols derive process-wide
+   * comparable values when needed. */
+  wrk->last_vlib_time =
+    vlib_time_now_ticks (vm, cpu_time_now) + vm->time_offset;
   wrk->last_vlib_us_time = wrk->last_vlib_time * CLIB_US_TIME_FREQ;
+  wrk->last_cpu_time = cpu_time_now;
 }
 
 void session_wrk_enable_adaptive_mode (session_worker_t *wrk);

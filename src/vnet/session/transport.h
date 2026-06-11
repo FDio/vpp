@@ -367,9 +367,7 @@ transport_connection_tx_pacer_update_bytes (transport_connection_t * tc,
  * Request pacer time update
  *
  * @param thread_index	thread for which time is updated
- * @param now		time now
  */
-void transport_update_pacer_time (clib_thread_index_t thread_index,
-				  clib_time_type_t now);
+void transport_update_pacer_time (clib_thread_index_t thread_index);
 
 #endif /* SRC_VNET_SESSION_TRANSPORT_H_ */

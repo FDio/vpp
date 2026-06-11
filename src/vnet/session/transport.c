@@ -1102,10 +1102,11 @@ transport_connection_tx_pacer_update_bytes (transport_connection_t * tc,
 }
 
 void
-transport_update_pacer_time (clib_thread_index_t thread_index,
-			     clib_time_type_t now)
+transport_update_pacer_time (clib_thread_index_t thread_index)
 {
-  session_wrk_update_time (session_main_get_worker (thread_index), now);
+  session_worker_t *wrk = session_main_get_worker (thread_index);
+
+  session_wrk_update_time (wrk);
 }
 
 void

@@ -1049,8 +1049,13 @@ tbt_seq_lt (u32 a, u32 b)
 static void
 tcp_test_set_time (clib_thread_index_t thread_index, u32 val)
 {
+  clib_time_t *ct = &tcp_main.wrk[thread_index].vm->clib_time;
+  u64 cpu_time = ct->init_cpu_time + ((f64) val) / ct->seconds_per_clock;
+
   session_main.wrk[thread_index].last_vlib_time = val;
-  tcp_set_time_now (&tcp_main.wrk[thread_index], val);
+  session_main.wrk[thread_index].last_cpu_time = cpu_time;
+  tcp_set_time_now (&tcp_main.wrk[thread_index],
+		    &session_main.wrk[thread_index]);
 }
 
 static int
@@ -1506,6 +1511,54 @@ static int
 tcp_test_persist (vlib_main_t *vm, unformat_input_t *input)
 {
   return tcp_test_persist_e2e (vm, input);
+}
+
+static int
+tcp_test_tstamp (vlib_main_t *vm, unformat_input_t *input)
+{
+  clib_time_t *ct;
+  session_worker_t sw0 = {}, sw1 = {};
+  tcp_worker_ctx_t tw0 = {}, tw1 = {};
+  u64 cpu_time0, cpu_time1;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      vlib_cli_output (vm, "parse error: '%U'", format_unformat_error, input);
+      return -1;
+    }
+
+  TCP_TEST (vec_len (tcp_main.wrk) > 0, "tcp workers should be initialized");
+
+  ct = &tcp_main.wrk[0].vm->clib_time;
+  cpu_time0 = ct->init_cpu_time + (u64) (10.0 / ct->seconds_per_clock);
+  cpu_time1 = cpu_time0 + (u64) (1.0 / ct->seconds_per_clock);
+
+  sw0.last_vlib_time = 100.0;
+  sw0.last_cpu_time = cpu_time0;
+  sw1.last_vlib_time = 250.0;
+  sw1.last_cpu_time = cpu_time0;
+
+  tcp_set_time_now (&tw0, &sw0);
+  tcp_set_time_now (&tw1, &sw1);
+
+  TCP_TEST (tw0.time_us == sw0.last_vlib_time,
+	    "worker 0 keeps session vlib time");
+  TCP_TEST (tw1.time_us == sw1.last_vlib_time,
+	    "worker 1 keeps session vlib time");
+  TCP_TEST (tw0.time_tstamp == tw1.time_tstamp,
+	    "same process CPU sample gives same TCP TSval");
+  TCP_TEST (tw0.time_tstamp == tcp_time_tstamp_from_cpu (cpu_time0),
+	    "TCP TSval is derived from process CPU epoch");
+
+  sw1.last_cpu_time = cpu_time1;
+  tcp_set_time_now (&tw1, &sw1);
+
+  TCP_TEST (tw1.time_tstamp == tcp_time_tstamp_from_cpu (cpu_time1),
+	    "later CPU sample updates TCP TSval from process epoch");
+  TCP_TEST (timestamp_lt (tw0.time_tstamp, tw1.time_tstamp),
+	    "TCP TSval advances with process CPU time");
+
+  return 0;
 }
 
 static int
@@ -2232,6 +2285,10 @@ tcp_test (vlib_main_t * vm,
 	{
 	  res = tcp_test_persist (vm, input);
 	}
+      else if (unformat (input, "tstamp"))
+	{
+	  res = tcp_test_tstamp (vm, input);
+	}
       else if (unformat (input, "bt"))
 	{
 	  res = tcp_test_bt (vm, input);
@@ -2245,6 +2302,8 @@ tcp_test (vlib_main_t * vm,
 	  if ((res = tcp_test_delivery (vm, input)))
 	    goto done;
 	  if ((res = tcp_test_persist (vm, input)))
+	    goto done;
+	  if ((res = tcp_test_tstamp (vm, input)))
 	    goto done;
 	  if ((res = tcp_test_bt (vm, input)))
 	    goto done;

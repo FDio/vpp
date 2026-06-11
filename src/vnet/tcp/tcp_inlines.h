@@ -243,24 +243,32 @@ tcp_time_now_us (clib_thread_index_t thread_index)
   return tcp_main.wrk[thread_index].time_us;
 }
 
-always_inline void
-tcp_set_time_now (tcp_worker_ctx_t *wrk, f64 now)
+/* Convert raw CPU time to TCP TSval using a process-wide epoch so timestamp
+ * values remain comparable across worker threads. */
+always_inline u32
+tcp_time_tstamp_from_cpu (u64 cpu_time_now)
 {
-  /* TCP internal cache of time reference. Could use @ref transport_time_now
-   * but because @ref tcp_time_now_us is used per packet, caching might
-   * slightly improve efficiency. */
-  wrk->time_us = now;
-  wrk->time_tstamp = (u64) (now * TCP_TSTP_HZ);
+  clib_time_t *ct = &tcp_main.wrk[0].vm->clib_time;
+
+  return (u32) ((f64) (cpu_time_now - ct->init_cpu_time) * TCP_TSTP_HZ *
+		ct->seconds_per_clock);
+}
+
+always_inline void
+tcp_set_time_now (tcp_worker_ctx_t *wrk, session_worker_t *session_wrk)
+{
+  wrk->time_us = session_wrk->last_vlib_time;
+  wrk->time_tstamp = tcp_time_tstamp_from_cpu (session_wrk->last_cpu_time);
 }
 
 always_inline void
 tcp_update_time_now (tcp_worker_ctx_t *wrk)
 {
-  f64 now = vlib_time_now (wrk->vm);
+  session_worker_t *session_wrk;
 
-  /* Both pacer and tcp us time need to be updated */
-  transport_update_pacer_time (wrk->vm->thread_index, now);
-  tcp_set_time_now (wrk, now);
+  session_wrk = session_main_get_worker (wrk->vm->thread_index);
+  transport_update_pacer_time (wrk->vm->thread_index);
+  tcp_set_time_now (wrk, session_wrk);
 }
 
 always_inline tcp_connection_t *
