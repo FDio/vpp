@@ -16,6 +16,23 @@
       "message": "recheck",
       "revId": "70032c5905938fae2c8769993d751f613b99da63",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "00deb69b_453abf00",
+        "filename": "src/vlib/buffer.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 508,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2026-06-11T08:43:15Z",
+      "side": 1,
+      "message": "What is XXX ?",
+      "revId": "70032c5905938fae2c8769993d751f613b99da63",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
