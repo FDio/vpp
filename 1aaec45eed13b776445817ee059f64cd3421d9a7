@@ -1,0 +1,95 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "73f9623b_0030845d",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 9
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-06-11T05:31:02Z",
+      "side": 1,
+      "message": "Quick comments",
+      "revId": "1aaec45eed13b776445817ee059f64cd3421d9a7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9e2f9dfc_05eae83e",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 28,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-06-11T05:31:02Z",
+      "side": 1,
+      "message": "No need to forward declare these, no?",
+      "range": {
+        "startLine": 27,
+        "startChar": 1,
+        "endLine": 28,
+        "endChar": 62
+      },
+      "revId": "1aaec45eed13b776445817ee059f64cd3421d9a7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a60ee4c8_01ea14b1",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 1037,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-06-11T05:31:02Z",
+      "side": 1,
+      "message": "Is is unix_time_now instead of vlib_time_now because you\u0027re worried about inter worker variance?",
+      "revId": "1aaec45eed13b776445817ee059f64cd3421d9a7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "47fd1ee8_f50cd1b8",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 1113,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-06-11T05:31:02Z",
+      "side": 1,
+      "message": "Let\u0027s guard this as well based on config. Basically all clients that inherit this, could resume their sessions?",
+      "revId": "1aaec45eed13b776445817ee059f64cd3421d9a7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "30b5f7e4_6176fcef",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 2205,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-06-11T05:31:02Z",
+      "side": 1,
+      "message": "Let\u0027s gate session resumption with a tls layer config option.",
+      "revId": "1aaec45eed13b776445817ee059f64cd3421d9a7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
