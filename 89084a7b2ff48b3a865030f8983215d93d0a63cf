@@ -53,6 +53,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "35fb15fb_d1838319",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3200
+      },
+      "writtenOn": "2026-06-11T19:18:09Z",
+      "side": 1,
+      "message": "I may have missed this comment earlier - I updated the commit message just now with more details.",
+      "parentUuid": "2dfd72d5_fcc472a8",
+      "revId": "89084a7b2ff48b3a865030f8983215d93d0a63cf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "18918869_08fae1ef",
@@ -119,6 +137,24 @@
       "side": 1,
       "message": "There are two reasons in favor of placing the vnet_crypto_add_trace() here:\n\n- it is as close as possible to the setting of \u0027op\u0027 and therefore is the most accurate or least susceptible to disruption\n\n- placing it in the existing trace block would require additional lines of code in the caller to keep track of \u0027op\u0027",
       "parentUuid": "78f1aa89_eb054d47",
+      "revId": "89084a7b2ff48b3a865030f8983215d93d0a63cf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ee5e6609_3ed84ea3",
+        "filename": "src/vnet/ipsec/esp_encrypt.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 937,
+      "author": {
+        "id": 3200
+      },
+      "writtenOn": "2026-06-11T19:18:09Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "62b61ad8_3fe6f2cf",
       "revId": "89084a7b2ff48b3a865030f8983215d93d0a63cf",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
