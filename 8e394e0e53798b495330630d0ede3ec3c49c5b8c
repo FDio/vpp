@@ -307,6 +307,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "b08ade05_d10b20b4",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 8
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3312
+      },
+      "writtenOn": "2026-06-11T02:30:44Z",
+      "side": 1,
+      "message": "yes, the tunnel needs a local RIF (Vlan, loopback, etc). For our SONiC usecase, we don\u0027t run ACL on the decap tunnel.\n\nP2AP (point-to-any-point) makes sense and I\u0027m happy to rename it.",
+      "parentUuid": "518e7e72_385a02bb",
+      "revId": "8e394e0e53798b495330630d0ede3ec3c49c5b8c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "a598d93f_074b0bd5",
         "filename": "test/test_ipip.py",
         "patchSetId": 8
