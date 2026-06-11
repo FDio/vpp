@@ -431,8 +431,8 @@ cnat_session_scan (vlib_main_t *vm, f64 start_time, int i)
 
   for ( /* caller saves starting point */ ; i < h->nbuckets; i++)
     {
-      /* allow no more than 100us without a pause */
-      if ((vlib_time_now (vm) - start_time) > 10e-5)
+      /* Limit scanner work per wakeup so cleanup remains cooperative. */
+      if ((vlib_time_now (vm) - start_time) > cnat_main.scanner_max_time)
 	goto out;
 
       if (i < (h->nbuckets - 3))

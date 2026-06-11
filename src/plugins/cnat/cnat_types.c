@@ -271,6 +271,7 @@ cnat_config (vlib_main_t * vm, unformat_input_t * input)
   cm->snat_hash_buckets = CNAT_DEFAULT_SNAT_BUCKETS;
   cm->snat_if_map_length = CNAT_DEFAULT_SNAT_IF_MAP_LEN;
   cm->scanner_timeout = CNAT_DEFAULT_SCANNER_TIMEOUT;
+  cm->scanner_max_time = CNAT_DEFAULT_SCANNER_MAX_TIME;
   cm->session_max_age = CNAT_DEFAULT_SESSION_MAX_AGE;
   cm->tcp_max_age = CNAT_DEFAULT_TCP_MAX_AGE;
   cm->session_max_port_retries = CNAT_DEFAULT_SESSION_MAX_PORT_RETRIES;
@@ -300,6 +301,9 @@ cnat_config (vlib_main_t * vm, unformat_input_t * input)
 	;
       else if (unformat (input, "session-cleanup-timeout %f",
 			 &cm->scanner_timeout))
+	;
+      else if (unformat (input, "session-cleanup-max-time %f",
+			 &cm->scanner_max_time))
 	;
       else if (unformat (input, "scanner off"))
 	cm->default_scanner_state = CNAT_SCANNER_OFF;
