@@ -33,6 +33,24 @@
       "message": "I think the change looks correct, but I suggest adding some additional description to the commit log message so its easier for someone reading it to understand why the existing code was broken.\n\nE.g. - \"The value of qpairs_per_thread is passed in to clib_array_hash_to_index_u32() as n_indices, which defines the valid range of qpair indices. The for loop that is intended to map a hash value to a qpair index for each of n_elts packets is incorrectly limited to n_indices - 1 iterations when it should use n_elts.\"",
       "revId": "47779adfa8bf1570a2e0fb7c130f26f85bed9621",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "85f89ba5_2d370314",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2512
+      },
+      "writtenOn": "2026-06-11T16:42:34Z",
+      "side": 1,
+      "message": "Sure, done",
+      "parentUuid": "d5882e33_6d64fadc",
+      "revId": "47779adfa8bf1570a2e0fb7c130f26f85bed9621",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
