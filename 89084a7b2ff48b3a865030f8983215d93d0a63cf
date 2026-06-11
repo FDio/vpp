@@ -34,6 +34,57 @@
       "parentUuid": "1e68509e_397db738",
       "revId": "89084a7b2ff48b3a865030f8983215d93d0a63cf",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "2dfd72d5_fcc472a8",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2026-06-11T08:51:51Z",
+      "side": 1,
+      "message": "can you provide some brief explanation in commit message what this commit introduces. I.e. why this new node is needed...",
+      "revId": "89084a7b2ff48b3a865030f8983215d93d0a63cf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "18918869_08fae1ef",
+        "filename": "src/vnet/crypto/trace.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 134,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2026-06-11T08:51:51Z",
+      "side": 1,
+      "message": "we don\u0027t use _ in node names.",
+      "revId": "89084a7b2ff48b3a865030f8983215d93d0a63cf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "78f1aa89_eb054d47",
+        "filename": "src/vnet/ipsec/esp_encrypt.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 937,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2026-06-11T08:51:51Z",
+      "side": 1,
+      "message": "why not doing this inside already present trace block?",
+      "revId": "89084a7b2ff48b3a865030f8983215d93d0a63cf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
