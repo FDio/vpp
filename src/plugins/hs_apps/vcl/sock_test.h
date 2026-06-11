@@ -10,7 +10,7 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
-#include <hs_apps/vcl/vcl_test.h>
+#include <vperf/vcl/vperf.h>
 
 #define SOCK_TEST_AF_UNIX_FILENAME    "/tmp/ldp_server_af_unix_socket"
 #define SOCK_TEST_MIXED_EPOLL_DATA    "Hello, world! (over an AF_UNIX socket)"
@@ -41,8 +41,7 @@
 }
 
 static inline int
-sock_test_read (int fd, uint8_t * buf, uint32_t nbytes,
-		vcl_test_stats_t * stats)
+sock_test_read (int fd, uint8_t *buf, uint32_t nbytes, vperf_stats_t *stats)
 {
   int rx_bytes;
 
@@ -74,8 +73,7 @@ sock_test_read (int fd, uint8_t * buf, uint32_t nbytes,
 }
 
 static inline int
-sock_test_write (int fd, uint8_t * buf, uint32_t nbytes,
-		 vcl_test_stats_t * stats, uint32_t verbose)
+sock_test_write (int fd, uint8_t *buf, uint32_t nbytes, vperf_stats_t *stats, uint32_t verbose)
 {
   int tx_bytes = 0, nbytes_left = nbytes, rv;
 

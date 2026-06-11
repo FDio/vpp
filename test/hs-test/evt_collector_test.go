@@ -24,7 +24,7 @@ func init() {
 //     to server VPP.  It listens for incoming connections from the evt-collector.
 //  2. server VPP runs the built-in echo server and the app-evt-collector, which
 //     connects to the sink and pushes per-session TCP stats when sessions close.
-//  3. Client VPP runs test echo client to generate traffic.
+//  3. Client VPP runs vperf client to generate traffic.
 //  4. After the run the sink output must contain at least one "[tcp]" stat line.
 //  5. The collector is deleted and must no longer appear in show output.
 func EvtCollectorSinkTest(s *VethsSuite) {
@@ -90,15 +90,15 @@ func EvtCollectorSinkTest(s *VethsSuite) {
 	AssertContains(o, "is ready: 1")
 
 	/* Start the echo server on the server VPP */
-	o = serverVpp.Vppctl("test echo server uri tcp://%s/%s", echoAddr, echoPort)
+	o = serverVpp.Vppctl("vperf server uri tcp://%s/%s", echoAddr, echoPort)
 	Log(o)
 
-	/* Attach echo_server to the collector */
-	o = serverVpp.Vppctl("app evt-collector app echo_server")
+	/* Attach vperf_server to the collector */
+	o = serverVpp.Vppctl("app evt-collector app vperf_server")
 	Log(o)
 
 	/* Run echo client — returns after all sessions close */
-	o = clientVpp.Vppctl("test echo client nclients 2 bytes 1024"+
+	o = clientVpp.Vppctl("vperf client nclients 2 bytes 1024"+
 		" syn-timeout 10 test-timeout 30"+
 		" uri tcp://%s/%s", echoAddr, echoPort)
 	Log(o)

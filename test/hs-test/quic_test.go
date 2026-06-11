@@ -170,10 +170,10 @@ func quicBuiltinEcho(s *QuicSuite, uni bool) {
 	serverVpp := s.Containers.ServerVpp.VppInstance
 	clientVpp := s.Containers.ClientVpp.VppInstance
 
-	Log(serverVpp.Vppctl("test echo server " +
+	Log(serverVpp.Vppctl("vperf server " +
 		" uri quic://" + s.Interfaces.Server.Ip4AddressString() + "/" + s.Ports.Port1))
 
-	cmd := "test echo client run-time 30 report-interval "
+	cmd := "vperf client run-time 30 report-interval "
 	if uni {
 		cmd += "echo-bytes "
 	}
@@ -202,10 +202,10 @@ func QuicBuiltinEchoTestBytesTest(s *QuicSuite) {
 	serverVpp := s.Containers.ServerVpp.VppInstance
 	clientVpp := s.Containers.ClientVpp.VppInstance
 
-	Log(serverVpp.Vppctl("test echo server " +
+	Log(serverVpp.Vppctl("vperf server " +
 		" uri quic://" + s.Interfaces.Server.Ip4AddressString() + "/" + s.Ports.Port1))
 
-	cmd := "test echo client test-bytes bytes 8388601 "
+	cmd := "vperf client test-bytes bytes 8388601 "
 	cmd += "uri quic://" + s.Interfaces.Server.Ip4AddressString() + "/" + s.Ports.Port1
 
 	o := clientVpp.Vppctl(cmd)
@@ -217,10 +217,10 @@ func QuicBuiltinEchoTestBytesBidirectionalTest(s *QuicSuite) {
 	serverVpp := s.Containers.ServerVpp.VppInstance
 	clientVpp := s.Containers.ClientVpp.VppInstance
 
-	Log(serverVpp.Vppctl("test echo server " +
+	Log(serverVpp.Vppctl("vperf server " +
 		" uri quic://" + s.Interfaces.Server.Ip4AddressString() + "/" + s.Ports.Port1))
 
-	cmd := "test echo client echo-bytes test-bytes bytes 8388608 "
+	cmd := "vperf client echo-bytes test-bytes bytes 8388608 "
 	cmd += "uri quic://" + s.Interfaces.Server.Ip4AddressString() + "/" + s.Ports.Port1
 
 	o := clientVpp.Vppctl(cmd)
@@ -239,11 +239,11 @@ func QuicCpsMWTest(s *QuicSuite) {
 	serverVpp := s.Containers.ServerVpp.VppInstance
 	clientVpp := s.Containers.ClientVpp.VppInstance
 
-	Log(serverVpp.Vppctl("test echo server fifo-size 4k" +
+	Log(serverVpp.Vppctl("vperf server fifo-size 4k" +
 		" uri quic://" + s.Interfaces.Server.Ip4AddressString() + "/" + s.Ports.Port1))
 
 	// syn-timeout must be less than quic connection timeout (30 seconds)
-	o := clientVpp.Vppctl("test echo client nclients 10000 bytes 64 syn-timeout 27 fifo-size 4k" +
+	o := clientVpp.Vppctl("vperf client nclients 10000 bytes 64 syn-timeout 27 fifo-size 4k" +
 		" uri quic://" + s.Interfaces.Server.Ip4AddressString() + "/" + s.Ports.Port1)
 	Log(o)
 	// wait a bit to be sure quic do not crash when app detached after syn-timeout

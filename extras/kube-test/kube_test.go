@@ -192,10 +192,10 @@ func EchoBuiltinEchobytesTest(s *KubeSuite) {
 	vppCln := s.Pods.ClientGeneric.InitVpp()
 	vppSrv := s.Pods.ServerGeneric.InitVpp()
 
-	o, err := vppSrv.VppctlBackground(ctx, "test echo server uri tcp://"+s.Pods.ServerGeneric.IpAddress+"/1234")
+	o, err := vppSrv.VppctlBackground(ctx, "vperf server uri tcp://"+s.Pods.ServerGeneric.IpAddress+"/1234")
 	Log(o)
 	AssertNil(err)
-	o, err = vppCln.Vppctl(ctx, "test echo client echo-bytes run-time 10 verbose uri tcp://"+s.Pods.ServerGeneric.IpAddress+"/1234")
+	o, err = vppCln.Vppctl(ctx, "vperf client echo-bytes run-time 10 verbose uri tcp://"+s.Pods.ServerGeneric.IpAddress+"/1234")
 	Log(o)
 	AssertContains(o, "Test started")
 	AssertContains(o, "Test finished")

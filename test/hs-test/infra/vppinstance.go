@@ -62,6 +62,7 @@ plugins {
   plugin quic_quicly_plugin.so { enable }
   plugin af_packet_plugin.so { enable }
   plugin hs_apps_plugin.so { enable }
+  plugin vperf_plugin.so { enable }
   plugin hsi_plugin.so { enable }
   plugin http_plugin.so { enable }
   plugin http_unittest_plugin.so { enable }

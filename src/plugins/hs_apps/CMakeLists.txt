@@ -22,11 +22,6 @@ add_vpp_plugin(hs_apps
   SOURCES
   tls_client.c
   tls_server.c
-  builtin_echo/echo_cli.c
-  builtin_echo/echo_client.c
-  builtin_echo/echo_server.c
-  builtin_echo/echo_stats.c
-  builtin_echo/echo_test_protos.c
   hs_apps.c
   http_cli.c
   http_client_cli.c
@@ -76,23 +71,6 @@ if(VPP_BUILD_VCL_TESTS)
   add_vpp_test(tcp_test_endpoint
     SOURCES vcl/tcp_test_endpoint.c
     LINK_LIBRARIES vppcom pthread
-    NO_INSTALL
-  )
-
-  foreach(test
-    vcl_test_server
-    vcl_test_client
-  )
-    add_vpp_test(${test}
-      SOURCES
-      "vcl/${test}.c"
-      vcl/vcl_test_protos.c
-      LINK_LIBRARIES vppcom pthread ${EPOLL_LIB}
-    )
-  endforeach()
-
-  add_vpp_test(vcl_test_cl_udp SOURCES "vcl/vcl_test_cl_udp.c"
-    LINK_LIBRARIES vppcom pthread ${EPOLL_LIB}
     NO_INSTALL
   )
 

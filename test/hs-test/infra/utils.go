@@ -31,8 +31,8 @@ const containerTopologyDir string = "topo-containers/"
 const HttpCapsuleTypeDatagram = uint64(0)
 const iperfLogFileName = "iperf.log"
 const redisLogFileName = "redis-server.log"
-const vclTestSrvFilename = "vcl_test_server.log"
-const vclTestClnFilename = "vcl_test_client.log"
+const vclTestSrvFilename = "vperf_server.log"
+const vclTestClnFilename = "vperf_client.log"
 const h2loadLogFileName = "h2load.tsv"
 
 var Logger *log.Logger

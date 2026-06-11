@@ -17,7 +17,7 @@ from config import config
 
 @tag_fixme_vpp_workers
 @unittest.skipIf(
-    "hs_apps" in config.excluded_plugins, "Exclude tests requiring hs_apps plugin"
+    "vperf" in config.excluded_plugins, "Exclude tests requiring vperf plugin"
 )
 class TestSession(VppAsfTestCase):
     """Session Test Case"""
@@ -97,16 +97,14 @@ class TestSession(VppAsfTestCase):
         # Start builtin server and client with small private segments
         uri = "tcp://" + self.loop0.local_ip4 + "/1234"
         error = self.vapi.cli(
-            "test echo server appns 0 fifo-size 64k "
-            + "private-segment-size 1m uri "
-            + uri
+            "vperf server appns 0 fifo-size 64k " + "private-segment-size 1m uri " + uri
         )
         if error:
             self.logger.critical(error)
             self.assertNotIn("failed", error)
 
         error = self.vapi.cli(
-            "test echo client nclients 100 appns 1 "
+            "vperf client nclients 100 appns 1 "
             + "fifo-size 64k syn-timeout 2 bytes 8k "
             + "private-segment-size 1m uri "
             + uri
