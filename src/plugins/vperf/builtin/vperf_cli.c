@@ -2,32 +2,32 @@
  * Copyright(c) 2026 Cisco Systems, Inc.
  */
 
-#include <hs_apps/builtin_echo/echo_client.h>
-#include <hs_apps/builtin_echo/echo_server.h>
+#include <vperf/builtin/vperf_client.h>
+#include <vperf/builtin/vperf_server.h>
 #include <vnet/session/application.h>
 
 static clib_error_t *
-echo_server_create_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
+vp_server_create_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
 {
-  echo_server_main_t *esm = &echo_server_main;
+  vp_server_main_t *vpsm = &vp_server_main;
   u8 server_uri_set = 0, *appns_id = 0;
   u64 appns_flags = 0, appns_secret = 0;
   char *default_uri = "tcp://0.0.0.0/1234";
   int rv, is_stop = 0;
   clib_error_t *error = 0;
 
-  echo_server_init (vm);
+  vp_server_init (vm);
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (input, "uri %s", &esm->cfg.uri))
+      if (unformat (input, "uri %s", &vpsm->cfg.uri))
 	server_uri_set = 1;
-      else if (unformat (input, "fifo-size %U", unformat_memory_size, &esm->cfg.fifo_size))
+      else if (unformat (input, "fifo-size %U", unformat_memory_size, &vpsm->cfg.fifo_size))
 	;
-      else if (unformat (input, "prealloc-fifos %d", &esm->cfg.prealloc_fifos))
+      else if (unformat (input, "prealloc-fifos %d", &vpsm->cfg.prealloc_fifos))
 	;
       else if (unformat (input, "private-segment-size %U", unformat_memory_size,
-			 &esm->cfg.private_segment_size))
+			 &vpsm->cfg.private_segment_size))
 	;
       else if (unformat (input, "appns %_%v%_", &appns_id))
 	;
@@ -41,16 +41,16 @@ echo_server_create_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cl
 	;
       else if (unformat (input, "stop"))
 	is_stop = 1;
-      else if (unformat (input, "tls-engine %d", &esm->cfg.tls_engine))
+      else if (unformat (input, "tls-engine %d", &vpsm->cfg.tls_engine))
 	;
-      else if (unformat (input, "report-interval %u", &esm->cfg.report_interval))
+      else if (unformat (input, "report-interval %u", &vpsm->cfg.report_interval))
 	;
       else if (unformat (input, "report-interval"))
-	esm->cfg.report_interval = 1;
+	vpsm->cfg.report_interval = 1;
       else if (unformat (input, "connect-tcp"))
-	esm->cfg.http_connect_proto = ET_HTTP_CONNECT_PROTO_TCP;
+	vpsm->cfg.http_connect_proto = VP_HTTP_CONNECT_PROTO_TCP;
       else if (unformat (input, "connect-udp"))
-	esm->cfg.http_connect_proto = ET_HTTP_CONNECT_PROTO_UDP;
+	vpsm->cfg.http_connect_proto = VP_HTTP_CONNECT_PROTO_UDP;
       else
 	{
 	  error = clib_error_return (0, "failed: unknown input `%U'", format_unformat_error, input);
@@ -60,16 +60,16 @@ echo_server_create_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cl
 
   if (is_stop)
     {
-      if (esm->app_index == APP_INVALID_INDEX)
+      if (vpsm->app_index == APP_INVALID_INDEX)
 	{
-	  echo_cli ("server not running");
+	  vp_cli ("server not running");
 	  error = clib_error_return (0, "failed: server not running");
 	  goto cleanup;
 	}
-      rv = echo_server_detach ();
+      rv = vp_server_detach ();
       if (rv)
 	{
-	  echo_cli ("failed: detach");
+	  vp_cli ("failed: detach");
 	  error = clib_error_return (0, "failed: server detach %d", rv);
 	  goto cleanup;
 	}
@@ -82,28 +82,28 @@ echo_server_create_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cl
 
   if (!server_uri_set)
     {
-      echo_cli ("No uri provided! Using default: %s", default_uri);
-      esm->cfg.uri = (char *) format (0, "%s%c", default_uri, 0);
+      vp_cli ("No uri provided! Using default: %s", default_uri);
+      vpsm->cfg.uri = (char *) format (0, "%s%c", default_uri, 0);
     }
 
-  if ((rv = parse_uri (esm->cfg.uri, &esm->cfg.sep)))
+  if ((rv = parse_uri (vpsm->cfg.uri, &vpsm->cfg.sep)))
     {
       error = clib_error_return (0, "Uri parse error: %d", rv);
       goto cleanup;
     }
-  echo_test_set_proto (&esm->cfg);
+  vp_test_set_proto (&vpsm->cfg);
 
   vlib_worker_thread_barrier_sync (vm);
-  rv = echo_server_create (vm, appns_id, appns_flags, appns_secret);
+  rv = vp_server_create (vm, appns_id, appns_flags, appns_secret);
   vlib_worker_thread_barrier_release (vm);
   if (rv)
     {
-      vec_free (esm->cfg.uri);
+      vec_free (vpsm->cfg.uri);
       error = clib_error_return (0, "failed: server_create returned %d", rv);
       goto cleanup;
     }
 
-  if (!esm->cfg.report_interval)
+  if (!vpsm->cfg.report_interval)
     goto cleanup;
 
   u8 pager_old = vlib_unix_cli_enable_disable_pager (0);
@@ -112,7 +112,7 @@ echo_server_create_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cl
     {
       uword event_type, *event_data = 0;
       if (test_running)
-	vlib_process_wait_for_event_or_clock (vm, (f64) esm->cfg.report_interval);
+	vlib_process_wait_for_event_or_clock (vm, (f64) vpsm->cfg.report_interval);
       else
 	vlib_process_wait_for_event (vm);
       event_type = vlib_process_get_events (vm, &event_data);
@@ -120,25 +120,25 @@ echo_server_create_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cl
       switch (event_type)
 	{
 	case ~0: /* no events => timeout */
-	  echo_print_periodic_stats (vm, print_header, &esm->cfg, &esm->stats, esm->wrk);
+	  vp_print_periodic_stats (vm, print_header, &vpsm->cfg, &vpsm->stats, vpsm->wrk);
 	  if (print_header)
 	    print_header = 0;
 	  break;
-	case ES_CLI_START:
+	case VP_SERVER_CLI_START:
 	  test_running = 1;
 	  print_header = 1;
 	  break;
-	case ES_CLI_STOP:
-	  echo_print_footer (vm, esm->cfg.proto);
-	  echo_print_final_stats (vm, esm->stats.test_end_time - esm->stats.test_start_time,
-				  &esm->cfg, &esm->stats, esm->wrk);
+	case VP_SERVER_CLI_STOP:
+	  vp_print_footer (vm, vpsm->cfg.proto);
+	  vp_print_final_stats (vm, vpsm->stats.test_end_time - vpsm->stats.test_start_time,
+				&vpsm->cfg, &vpsm->stats, vpsm->wrk);
 	  test_running = 0;
 	  break;
 	default:
 	  /* someone pressed a key, abort */
 	  vlib_cli_output (vm, "Aborted due to a keypress.");
 	  vlib_unix_cli_enable_disable_pager (pager_old);
-	  rv = echo_server_detach ();
+	  rv = vp_server_detach ();
 	  if (rv)
 	    error = clib_error_return (0, "failed: server detach %d", rv);
 	  goto cleanup;
@@ -158,31 +158,31 @@ cleanup:
  *
  * @cliexpar
  * Example of how to start server:
- * @cliexcmd{test echo server uri tcp://6.0.1.2:1234}
+ * @cliexcmd{test vperf server uri tcp://6.0.1.2:1234}
  ?*/
-VLIB_CLI_COMMAND (echo_server_create_command, static) = {
-  .path = "test echo server",
-  .short_help = "test echo server [uri <proto://ip:port>] [fifo-size <bytes>[k|m|g]]\n"
+VLIB_CLI_COMMAND (vp_server_create_command, static) = {
+  .path = "test vperf server",
+  .short_help = "test vperf server [uri <proto://ip:port>] [fifo-size <bytes>[k|m|g]]\n"
 		"[private-segment-count <n>] [private-segment-size <bytes>[k|m|g]]\n"
 		"[all-scope|local-scope|global-scope] [secret <n>] [stop] [tls-engine <id>]\n"
 		"[prealloc-fifos <n>] [appns <id>] [report-interval [<seconds>]]",
-  .function = echo_server_create_command_fn,
+  .function = vp_server_create_command_fn,
   .is_mp_safe = 1,
 };
 
 static clib_error_t *
-ec_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
+vp_client_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   char *default_uri = "tcp://6.0.1.1/1234";
-  ec_main_t *ecm = &ec_main;
+  vp_client_main_t *vpcm = &vp_client_main;
   clib_error_t *error = 0;
   int rv, timed_run_conflict = 0, tput_conflict = 0, had_config = 1, use_default_mode = 1;
 
-  if (ecm->test_client_attached)
+  if (vpcm->test_client_attached)
     return clib_error_return (0, "failed: already running!");
 
-  if (ec_init (vm))
+  if (vp_client_init (vm))
     {
       error = clib_error_return (0, "failed init");
       goto cleanup;
@@ -196,82 +196,82 @@ ec_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (line_input, "uri %s", &ecm->cfg.uri))
+      if (unformat (line_input, "uri %s", &vpcm->cfg.uri))
 	;
-      else if (unformat (line_input, "nclients %d", &ecm->cfg.n_clients))
+      else if (unformat (line_input, "nclients %d", &vpcm->cfg.n_clients))
 	;
-      else if (unformat (line_input, "nstreams %d", &ecm->cfg.n_streams))
+      else if (unformat (line_input, "nstreams %d", &vpcm->cfg.n_streams))
 	;
-      else if (unformat (line_input, "bytes %U", unformat_memory_size, &ecm->cfg.bytes_to_send))
+      else if (unformat (line_input, "bytes %U", unformat_memory_size, &vpcm->cfg.bytes_to_send))
 	{
 	  timed_run_conflict++;
 	  use_default_mode = 0;
 	}
-      else if (unformat (line_input, "test-timeout %f", &ecm->test_timeout))
+      else if (unformat (line_input, "test-timeout %f", &vpcm->test_timeout))
 	timed_run_conflict++;
-      else if (unformat (line_input, "syn-timeout %f", &ecm->syn_timeout))
+      else if (unformat (line_input, "syn-timeout %f", &vpcm->syn_timeout))
 	;
-      else if (unformat (line_input, "run-time %f", &ecm->cfg.run_time))
+      else if (unformat (line_input, "run-time %f", &vpcm->cfg.run_time))
 	{
-	  ecm->test_timeout = ecm->cfg.run_time;
+	  vpcm->test_timeout = vpcm->cfg.run_time;
 	  use_default_mode = 0;
 	}
       else if (unformat (line_input, "echo-bytes"))
 	{
-	  ecm->cfg.echo_bytes = 1;
+	  vpcm->cfg.echo_bytes = 1;
 	  use_default_mode = 0;
 	}
-      else if (unformat (line_input, "fifo-size %U", unformat_memory_size, &ecm->cfg.fifo_size))
+      else if (unformat (line_input, "fifo-size %U", unformat_memory_size, &vpcm->cfg.fifo_size))
 	;
       else if (unformat (line_input, "private-segment-size %U", unformat_memory_size,
-			 &ecm->cfg.private_segment_size))
+			 &vpcm->cfg.private_segment_size))
 	;
-      else if (unformat (line_input, "throughput %U", unformat_base10, &ecm->throughput))
-	ecm->throughput /= 8;
+      else if (unformat (line_input, "throughput %U", unformat_base10, &vpcm->throughput))
+	vpcm->throughput /= 8;
       else if (unformat (line_input, "max-tx-chunk %U", unformat_memory_size,
-			 &ecm->max_chunk_bytes))
+			 &vpcm->max_chunk_bytes))
 	tput_conflict = 1;
       else if (unformat (line_input, "preallocate-fifos"))
-	ecm->prealloc_fifos = 1;
+	vpcm->prealloc_fifos = 1;
       else if (unformat (line_input, "preallocate-sessions"))
-	ecm->prealloc_sessions = 1;
-      else if (unformat (line_input, "client-batch %d", &ecm->connections_per_batch))
+	vpcm->prealloc_sessions = 1;
+      else if (unformat (line_input, "client-batch %d", &vpcm->connections_per_batch))
 	;
       else if (unformat (line_input, "report-jitter"))
-	ecm->cfg.report_interval_jitter = 1;
-      else if (unformat (line_input, "report-interval-total %u", &ecm->cfg.report_interval))
-	ecm->cfg.report_interval_total = 1;
-      else if (unformat (line_input, "report-interval %u", &ecm->cfg.report_interval))
+	vpcm->cfg.report_interval_jitter = 1;
+      else if (unformat (line_input, "report-interval-total %u", &vpcm->cfg.report_interval))
+	vpcm->cfg.report_interval_total = 1;
+      else if (unformat (line_input, "report-interval %u", &vpcm->cfg.report_interval))
 	;
       else if (unformat (line_input, "report-interval"))
-	ecm->cfg.report_interval = 1;
-      else if (unformat (line_input, "appns %_%v%_", &ecm->appns_id))
+	vpcm->cfg.report_interval = 1;
+      else if (unformat (line_input, "appns %_%v%_", &vpcm->appns_id))
 	;
       else if (unformat (line_input, "all-scope"))
-	ecm->attach_flags |=
+	vpcm->attach_flags |=
 	  (APP_OPTIONS_FLAGS_USE_GLOBAL_SCOPE | APP_OPTIONS_FLAGS_USE_LOCAL_SCOPE);
       else if (unformat (line_input, "local-scope"))
-	ecm->attach_flags |= APP_OPTIONS_FLAGS_USE_LOCAL_SCOPE;
+	vpcm->attach_flags |= APP_OPTIONS_FLAGS_USE_LOCAL_SCOPE;
       else if (unformat (line_input, "global-scope"))
-	ecm->attach_flags |= APP_OPTIONS_FLAGS_USE_GLOBAL_SCOPE;
-      else if (unformat (line_input, "secret %lu", &ecm->appns_secret))
+	vpcm->attach_flags |= APP_OPTIONS_FLAGS_USE_GLOBAL_SCOPE;
+      else if (unformat (line_input, "secret %lu", &vpcm->appns_secret))
 	;
       else if (unformat (line_input, "verbose"))
-	ecm->cfg.test_cfg.verbose = 1;
+	vpcm->cfg.test_cfg.verbose = 1;
       else if (unformat (line_input, "test-bytes"))
-	ecm->cfg.test_cfg.test_bytes = 1;
-      else if (unformat (line_input, "tls-engine %d", &ecm->cfg.tls_engine))
+	vpcm->cfg.test_cfg.test_bytes = 1;
+      else if (unformat (line_input, "tls-engine %d", &vpcm->cfg.tls_engine))
 	;
       else if (unformat (line_input, "http1"))
-	ecm->cfg.http_version = HTTP_VERSION_1;
+	vpcm->cfg.http_version = HTTP_VERSION_1;
       else if (unformat (line_input, "http2"))
-	ecm->cfg.http_version = HTTP_VERSION_2;
+	vpcm->cfg.http_version = HTTP_VERSION_2;
       else if (unformat (line_input, "http3"))
-	ecm->cfg.http_version = HTTP_VERSION_3;
+	vpcm->cfg.http_version = HTTP_VERSION_3;
       else if (unformat (line_input, "connect-tcp"))
-	ecm->cfg.http_connect_proto = ET_HTTP_CONNECT_PROTO_TCP;
+	vpcm->cfg.http_connect_proto = VP_HTTP_CONNECT_PROTO_TCP;
       else if (unformat (line_input, "connect-udp"))
-	ecm->cfg.http_connect_proto = ET_HTTP_CONNECT_PROTO_UDP;
+	vpcm->cfg.http_connect_proto = VP_HTTP_CONNECT_PROTO_UDP;
       else
 	{
 	  error =
@@ -280,76 +280,76 @@ ec_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd
 	}
     }
 
-  if (ecm->max_chunk_bytes > vec_len (ecm->connect_test_data))
+  if (vpcm->max_chunk_bytes > vec_len (vpcm->connect_test_data))
     {
-      echo_cli ("Provided max-tx-chunk %U too big, using default %U", format_memory_size,
-		ecm->max_chunk_bytes, format_memory_size, vec_len (ecm->connect_test_data));
-      ecm->max_chunk_bytes = vec_len (ecm->connect_test_data);
+      vp_cli ("Provided max-tx-chunk %U too big, using default %U", format_memory_size,
+	      vpcm->max_chunk_bytes, format_memory_size, vec_len (vpcm->connect_test_data));
+      vpcm->max_chunk_bytes = vec_len (vpcm->connect_test_data);
     }
 
   /* if just uri provided do 10 seconds upload test with 1 second report interval */
   if (use_default_mode)
     {
-      ecm->test_timeout = ecm->cfg.run_time = 10.0;
-      ecm->cfg.report_interval = 1;
+      vpcm->test_timeout = vpcm->cfg.run_time = 10.0;
+      vpcm->cfg.report_interval = 1;
     }
   else
     {
-      if (timed_run_conflict && ecm->cfg.run_time)
+      if (timed_run_conflict && vpcm->cfg.run_time)
 	return clib_error_return (0, "failed: invalid arguments for a timed run!");
-      if (ecm->throughput && tput_conflict)
+      if (vpcm->throughput && tput_conflict)
 	return clib_error_return (0, "failed: can't set fixed tx chunk for a throughput run!");
       /* if running for given time do periodic stats by default */
-      if (ecm->cfg.run_time && !ecm->cfg.report_interval)
-	ecm->cfg.report_interval = 1;
+      if (vpcm->cfg.run_time && !vpcm->cfg.report_interval)
+	vpcm->cfg.report_interval = 1;
     }
 
 parse_config:
 
-  ecm->cfg.test_cfg.num_test_sessions = ecm->expected_connections =
-    ecm->cfg.n_clients * ecm->cfg.n_streams;
+  vpcm->cfg.test_cfg.num_test_sessions = vpcm->expected_connections =
+    vpcm->cfg.n_clients * vpcm->cfg.n_streams;
 
-  if (!ecm->cfg.uri)
+  if (!vpcm->cfg.uri)
     {
-      echo_cli ("No uri provided. Using default: %s", default_uri);
-      ecm->cfg.uri = (char *) format (0, "%s%c", default_uri, 0);
+      vp_cli ("No uri provided. Using default: %s", default_uri);
+      vpcm->cfg.uri = (char *) format (0, "%s%c", default_uri, 0);
     }
 
-  if ((rv = parse_uri (ecm->cfg.uri, &ecm->cfg.sep)))
+  if ((rv = parse_uri (vpcm->cfg.uri, &vpcm->cfg.sep)))
     {
       error = clib_error_return (0, "Uri parse error: %d", rv);
       goto cleanup;
     }
-  echo_test_set_proto (&ecm->cfg);
+  vp_test_set_proto (&vpcm->cfg);
 
-  if (ecm->prealloc_sessions)
-    ec_prealloc_sessions (ecm);
+  if (vpcm->prealloc_sessions)
+    vp_client_prealloc_sessions (vpcm);
 
-  if ((error = ec_attach ()))
+  if ((error = vp_client_attach ()))
     {
       clib_error_report (error);
       goto cleanup;
     }
 
-  error = ec_run (vm);
+  error = vp_client_run (vm);
 
 cleanup:
-  ecm->run_test = EC_EXITING;
+  vpcm->run_test = VP_CLIENT_EXITING;
   vlib_process_wait_for_event_or_clock (vm, 10e-3);
 
   /* Detach the application, so we can use different fifo sizes next time */
-  if (ec_detach ())
+  if (vp_client_detach ())
     {
       error = clib_error_return (0, "failed: app detach");
-      echo_cli ("WARNING: app detach failed...");
+      vp_cli ("WARNING: app detach failed...");
     }
 
-  ec_cleanup (ecm);
+  vp_client_cleanup (vpcm);
   if (had_config)
     unformat_free (line_input);
 
   if (error)
-    echo_cli ("test failed");
+    vp_cli ("test failed");
 
   return error;
 }
@@ -362,12 +362,12 @@ cleanup:
  * @cliexpar
  * Example of how to measure upload speed, test duration 10 seconds and measurement interval 1
  * second (zero copy):
- * @cliexcmd{test echo client uri tcp://6.0.1.2:1234}
+ * @cliexcmd{test vperf client uri tcp://6.0.1.2:1234}
  ?*/
-VLIB_CLI_COMMAND (ec_command, static) = {
-  .path = "test echo clients",
+VLIB_CLI_COMMAND (vp_client_command, static) = {
+  .path = "test vperf client",
   .short_help =
-    "test echo clients [nclients <n>] [bytes <bytes>[k|m|g] | run-time <seconds>]\n"
+    "test vperf client [nclients <n>] [bytes <bytes>[k|m|g] | run-time <seconds>]\n"
     "[test-timeout <seconds>] [syn-timeout <seconds>] [echo-bytes]\n"
     "[fifo-size <bytes>[k|m|g]] [appns <id>] [http1|http2|http3] [tls-engine <id>]\n"
     "[private-segment-size <bytes>[k|m|g]] [preallocate-fifos] [preallocate-sessions]\n"
@@ -375,6 +375,6 @@ VLIB_CLI_COMMAND (ec_command, static) = {
     "[throughput <bytes>[k|m|g]] [report-interval[-total] [<seconds>]] [report-jitter]\n"
     "[uri <proto://ip:port>] [test-bytes] [verbose] [all-scope|local-scope|global-scope]\n"
     "[connect-tcp|connect-udp]",
-  .function = ec_command_fn,
+  .function = vp_client_command_fn,
   .is_mp_safe = 1,
 };

@@ -12,6 +12,7 @@ ENV DIR=vpp-data/lib/vpp_plugins
 COPY \
    $DIR/af_packet_plugin.so \
    $DIR/hs_apps_plugin.so \
+   $DIR/vperf_plugin.so \
    $DIR/http_plugin.so \
    $DIR/http_static_plugin.so \
    $DIR/ping_plugin.so \
@@ -23,6 +24,7 @@ COPY \
 COPY vpp-data/bin/vpp /usr/bin/
 COPY vpp-data/bin/vppctl /usr/bin/
 COPY vpp-data/bin/vpp_echo /usr/bin/
+COPY vpp-data/bin/vperf_* /usr/bin/
 COPY vpp-data/bin/vcl_* /usr/bin/
 COPY vpp-data/lib/*.so /usr/lib/
 

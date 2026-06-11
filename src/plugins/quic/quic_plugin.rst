@@ -112,10 +112,10 @@ Internal client
 
 This application is a simple command to be run on the debug cli to test connectivity & throughput on QUIC over the debug cli (vppctl). It does not reflect reality and is mostly used for internal tests.
 
-* Run ``test echo server uri quic://1.1.1.1/1234`` on your first instance
-* Then ``test echo client uri quic://20.20.1.1/1`` on the second one
+* Run ``test vperf server uri quic://1.1.1.1/1234`` on your first instance
+* Then ``test vperf client uri quic://20.20.1.1/1`` on the second one
 
-Source for the internal client lives in ``src/plugins/hs_apps/echo_client.c``
+Source for the internal client lives in ``src/plugins/vperf/builtin/vperf_client.c``
 
 External client
 ^^^^^^^^^^^^^^^
@@ -143,10 +143,10 @@ The hoststack exposes a simplified API call the VCL (blocking posix like calls),
 
 * The binaries can be found in ``./build-root/build-vpp[_debug]-native/vpp/bin/``
 * Create the VCL conf files ``echo "vcl { api-socket-name /vpp.sock }" | tee /tmp/vcl.conf]``
-* For the server ``VCL_CONFIG=/tmp/vcl.conf ; vcl_test_server -p QUIC 1234"``
-* For the client ``VCL_CONFIG=/tmp/vcl.conf ; vcl_test_client -p QUIC 1.1.1.1 1234"``
+* For the server ``VCL_CONFIG=/tmp/vcl.conf ; vperf_server -p QUIC 1234"``
+* For the client ``VCL_CONFIG=/tmp/vcl.conf ; vperf_client -p QUIC 1.1.1.1 1234"``
 
-Source for the internal client lives in ``src/plugins/hs_apps/vcl/vcl_test_client.c``
+Source for the internal client lives in ``src/plugins/vperf/vcl/vperf_client.c``
 
 A basic usage is the following client side
 

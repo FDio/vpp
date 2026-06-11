@@ -31,14 +31,14 @@ Quickstart
 ::
 
    export VT_PATH=$WS/build-root/build-vpp_debug-native/vpp/bin
-   $VT_PATH/vcl_test_server 1234 -p srtp
+   $VT_PATH/vperf_server 1234 -p srtp
 
 On client side:
 
 ::
 
    export VT_PATH=$WS/build-root/build-vpp_debug-native/vpp/bin
-   $VT_PATH/vcl_test_client <server-ip> 1234 -U -X -S -N 10000 -T 128 -p srtp
+   $VT_PATH/vperf_client <server-ip> 1234 -U -X -S -N 10000 -T 128 -p srtp
 
 Custom libsrtp2 build
 ---------------------

@@ -30,13 +30,13 @@ func testAppNsVclEcho(s *VethsSuite, proto, nsId string) {
 	srvAppCont.CreateFile("/vcl.conf", getVclConfig(srvVppCont, nsId))
 	srvAppCont.AddEnvVar("VCL_CONFIG", "/vcl.conf")
 
-	vclSrvCmd := fmt.Sprintf("vcl_test_server -p %s -B %s %s > %s 2>&1",
+	vclSrvCmd := fmt.Sprintf("vperf_server -p %s -B %s %s > %s 2>&1",
 		proto, serverVethAddress, s.Ports.Port1, VclTestSrvLogFileName(srvAppCont))
 	srvAppCont.ExecServer(true, WrapCmdWithLineBuffering(vclSrvCmd))
-	srvVppCont.VppInstance.WaitForApp("vcl_test_server", 3)
+	srvVppCont.VppInstance.WaitForApp("vperf_server", 3)
 
 	defaultNsApps := srvVppCont.VppInstance.Vppctl("show app ns id default")
-	AssertNotContains(defaultNsApps, "vcl_test_server")
+	AssertNotContains(defaultNsApps, "vperf_server")
 
 	clnVppCont := s.Containers.ClientVpp
 	clnVppCont.VppInstance.Vppctl("app ns add id %s secret %s if %s",
@@ -46,7 +46,7 @@ func testAppNsVclEcho(s *VethsSuite, proto, nsId string) {
 	echoClnContainer.CreateFile("/vcl.conf", getVclConfig(echoClnContainer, nsId))
 	echoClnContainer.AddEnvVar("VCL_CONFIG", "/vcl.conf")
 
-	testClientCommand := fmt.Sprintf("vcl_test_client -X -S -p %s %s %s 2>&1 | tee %s",
+	testClientCommand := fmt.Sprintf("vperf_client -X -S -p %s %s %s 2>&1 | tee %s",
 		proto, serverVethAddress, s.Ports.Port1, VclTestClnLogFileName(echoClnContainer))
 
 	o, err := echoClnContainer.Exec(true, WrapCmdWithLineBuffering(testClientCommand))

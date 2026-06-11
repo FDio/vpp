@@ -7,6 +7,7 @@ import subprocess
 
 from asfframework import VppAsfTestCase, VppTestRunner
 from vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath
+from config import config
 
 
 def checkQat():
@@ -52,6 +53,9 @@ def checkAll():
     return ret
 
 
+@unittest.skipIf(
+    "vperf" in config.excluded_plugins, "Exclude tests requiring vperf plugin"
+)
 class TestTLS(VppAsfTestCase):
     """TLS Qat Test Case."""
 
@@ -135,14 +139,14 @@ class TestTLS(VppAsfTestCase):
         # Start builtin server and client
         uri = "tls://" + self.loop0.local_ip4 + "/1234"
         error = self.vapi.cli(
-            "test echo server appns 0 fifo-size 4k tls-engine 1 uri " + uri
+            "test vperf server appns 0 fifo-size 4k tls-engine 1 uri " + uri
         )
         if error:
             self.logger.critical(error)
             self.assertNotIn("failed", error)
 
         error = self.vapi.cli(
-            "test echo client bytes 10m appns 1 "
+            "test vperf client bytes 10m appns 1 "
             "fifo-size 4k test-bytes "
             "tls-engine 1 "
             "syn-timeout 2 uri " + uri

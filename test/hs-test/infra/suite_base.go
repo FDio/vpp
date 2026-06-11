@@ -419,16 +419,16 @@ func (s *HstSuite) WaitForCoreDump() bool {
 					binPath = fmt.Sprintf("../../build-root/build-vpp%s-native/vpp/bin/vpp", debug)
 					libPath = fmt.Sprintf("build-root/build-vpp%s-native/vpp/lib/%s-linux-gnu/vpp_plugins",
 						debug, archStr)
-				} else if strings.Contains(core.binPath, "vcl_test_client") {
-					binPath = fmt.Sprintf("../../build-root/build-vpp%s-native/vpp/bin/vcl_test_client", debug)
+				} else if strings.Contains(core.binPath, "vperf_client") {
+					binPath = fmt.Sprintf("../../build-root/build-vpp%s-native/vpp/bin/vperf_client", debug)
 					libPath = fmt.Sprintf("build-root/build-vpp%s-native/vpp/lib/%s-linux-gnu/vpp_plugins",
 						debug, archStr)
-				} else if strings.Contains(core.binPath, "vcl_test_server") {
-					binPath = fmt.Sprintf("../../build-root/build-vpp%s-native/vpp/bin/vcl_test_server", debug)
+				} else if strings.Contains(core.binPath, "vperf_server") {
+					binPath = fmt.Sprintf("../../build-root/build-vpp%s-native/vpp/bin/vperf_server", debug)
 					libPath = fmt.Sprintf("build-root/build-vpp%s-native/vpp/lib/%s-linux-gnu/vpp_plugins",
 						debug, archStr)
-				} else if strings.Contains(core.binPath, "vcl_test_cl_udp") {
-					binPath = fmt.Sprintf("../../build-root/build-vpp%s-native/vpp/bin/vcl_test_cl_udp", debug)
+				} else if strings.Contains(core.binPath, "vperf_cl_udp") {
+					binPath = fmt.Sprintf("../../build-root/build-vpp%s-native/vpp/bin/vperf_cl_udp", debug)
 					libPath = fmt.Sprintf("build-root/build-vpp%s-native/vpp/lib/%s-linux-gnu/vpp_plugins",
 						debug, archStr)
 				} else if strings.Contains(core.binPath, "vpp_echo") {

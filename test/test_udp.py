@@ -681,7 +681,7 @@ class TestUdpEncap(VppTestCase):
 
 @tag_fixme_vpp_workers
 @unittest.skipIf(
-    "hs_apps" in config.excluded_plugins, "Exclude tests requiring hs_apps plugin"
+    "vperf" in config.excluded_plugins, "Exclude tests requiring vperf plugin"
 )
 class TestUDP(VppTestCase):
     """UDP Test Case"""
@@ -758,13 +758,13 @@ class TestUDP(VppTestCase):
 
         # Start builtin server and client
         uri = "udp://" + self.loop0.local_ip4 + "/1234"
-        error = self.vapi.cli("test echo server appns 0 fifo-size 4k " + "uri " + uri)
+        error = self.vapi.cli("test vperf server appns 0 fifo-size 4k " + "uri " + uri)
         if error:
             self.logger.critical(error)
             self.assertNotIn("failed", error)
 
         error = self.vapi.cli(
-            "test echo client bytes 10m appns 1 "
+            "test vperf client bytes 10m appns 1 "
             + "fifo-size 4k "
             + "syn-timeout 2 uri "
             + uri
