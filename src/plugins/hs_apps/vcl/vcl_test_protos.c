@@ -1188,11 +1188,14 @@ vt_quic_close (vcl_test_session_t *ts, uint32_t events)
 	}
       else
 	{
-	  app_err_code = vt_quic_get_app_proto_err_code (ts);
 	  vtinf ("connection %u closed by client", ts->fd);
-	  if (app_err_code != VT_QUIC_CLIENT_ERROR)
-	    vtwrn ("invalid application error code 0x%lx, expected 0x%lx",
-		   app_err_code, VT_QUIC_CLIENT_ERROR);
+	  if (ts->cfg.test_param == HS_TEST_PARAM_CLIENT_CLOSE_CONN)
+	    {
+	      app_err_code = vt_quic_get_app_proto_err_code (ts);
+	      if (app_err_code != VT_QUIC_CLIENT_ERROR)
+		vtwrn ("invalid application error code 0x%lx, expected 0x%lx",
+		       app_err_code, VT_QUIC_CLIENT_ERROR);
+	    }
 	  ts->stats.close_count = 1;
 	}
       return 1;
@@ -1236,6 +1239,13 @@ vt_quic_close (vcl_test_session_t *ts, uint32_t events)
 		  ts->is_done = 1;
 		  return 1;
 		}
+	    }
+	  else
+	    {
+	      vtinf ("stream %u closed by server", ts->fd);
+	      clock_gettime (CLOCK_REALTIME, &ts->stats.stop);
+	      ts->is_done = 1;
+	      return 1;
 	    }
 	}
       else
