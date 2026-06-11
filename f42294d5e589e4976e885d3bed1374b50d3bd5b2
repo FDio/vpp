@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "c5efc54d_c5b46cc7",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3139
+      },
+      "writtenOn": "2026-06-11T15:31:55Z",
+      "side": 1,
+      "message": "Need to fix the fails in vcl_test csit: https://gerrit.fd.io/r/c/csit/+/45866",
+      "revId": "f42294d5e589e4976e885d3bed1374b50d3bd5b2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
