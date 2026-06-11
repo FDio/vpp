@@ -289,6 +289,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "518e7e72_385a02bb",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 8
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2026-06-11T01:57:57Z",
+      "side": 1,
+      "message": "my question was do you need an interface? Do you need counters? Do you need to run, e.g. an ACL on the MP2P tunnel to ensure that the packets that arrive are probe packets? If they are not probe packets, are you opening a security hole to allow arbitrary hosts to target you do decap their tunnel packets?\n\nregarding the name of the tunnel type.\n - P2P; means that on our side of the tunnel their is one address going 2 one address on the other side.\n - P2MP: means that on our side there is one address going 2 many address on the other.\n in that naming convention, MP2P doesn\u0027t make sense. Perhaps P2AP (point to any point) is better?",
+      "parentUuid": "c63524bf_f49a8336",
+      "revId": "8e394e0e53798b495330630d0ede3ec3c49c5b8c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "a598d93f_074b0bd5",
         "filename": "test/test_ipip.py",
         "patchSetId": 8
