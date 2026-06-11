@@ -1341,6 +1341,7 @@ vnet
 Vnet
 vom
 vpe
+vperf
 vpn
 vpp
 Vpp

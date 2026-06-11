@@ -21,12 +21,12 @@ func init() {
 func EchoBuiltinTest(s *EchoSuite) {
 	serverVpp := s.Containers.ServerVpp.VppInstance
 
-	serverVpp.Vppctl("test echo server " +
+	serverVpp.Vppctl("vperf server " +
 		" uri tcp://" + s.Interfaces.Server.Ip4AddressString() + "/" + s.Ports.Port1)
 
 	clientVpp := s.Containers.ClientVpp.VppInstance
 
-	o := clientVpp.Vppctl("test echo client nclients 100 bytes 1 verbose" +
+	o := clientVpp.Vppctl("vperf client nclients 100 bytes 1 verbose" +
 		" syn-timeout 100 test-timeout 100" +
 		" uri tcp://" + s.Interfaces.Server.Ip4AddressString() + "/" + s.Ports.Port1)
 	Log(o)
@@ -36,12 +36,12 @@ func EchoBuiltinTest(s *EchoSuite) {
 func EchoBuiltinUdpTest(s *EchoSuite) {
 	serverVpp := s.Containers.ServerVpp.VppInstance
 
-	serverVpp.Vppctl("test echo server " +
+	serverVpp.Vppctl("vperf server " +
 		" uri udp://" + s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1)
 
 	clientVpp := s.Containers.ClientVpp.VppInstance
 
-	o := clientVpp.Vppctl("test echo client " +
+	o := clientVpp.Vppctl("vperf client " +
 		" uri udp://" + s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1)
 	Log(o)
 	AssertNotContains(o, "failed:")
@@ -51,12 +51,12 @@ func EchoBuiltinBandwidthTest(s *EchoSuite) {
 	regex := regexp.MustCompile(`gbytes\) in (\d+\.\d+) seconds`)
 	serverVpp := s.Containers.ServerVpp.VppInstance
 
-	serverVpp.Vppctl("test echo server " +
+	serverVpp.Vppctl("vperf server " +
 		" uri tcp://" + s.Interfaces.Server.Ip4AddressString() + "/" + s.Ports.Port1)
 
 	clientVpp := s.Containers.ClientVpp.VppInstance
 
-	o := clientVpp.Vppctl("test echo client nclients 4 bytes 2m throughput 32m" +
+	o := clientVpp.Vppctl("vperf client nclients 4 bytes 2m throughput 32m" +
 		" uri tcp://" + s.Interfaces.Server.Ip4AddressString() + "/" + s.Ports.Port1)
 	Log(o)
 	if regex.MatchString(o) {
@@ -78,12 +78,12 @@ func EchoBuiltinPeriodicReportTotalTest(s *EchoSuite) {
 	regex := regexp.MustCompile(`(\d?\.\d)\s+(\d+\.\d+)M\s+0\s+\d+\.\d+Mb/s\s+(\d?\.\d+)ms`)
 	serverVpp := s.Containers.ServerVpp.VppInstance
 
-	serverVpp.Vppctl("test echo server " +
+	serverVpp.Vppctl("vperf server " +
 		" uri tcp://" + s.Interfaces.Server.Ip4AddressString() + "/" + s.Ports.Port1)
 
 	clientVpp := s.Containers.ClientVpp.VppInstance
 
-	o := clientVpp.Vppctl("test echo client bytes 7900k throughput 16m report-interval-total 1" +
+	o := clientVpp.Vppctl("vperf client bytes 7900k throughput 16m report-interval-total 1" +
 		" uri tcp://" + s.Interfaces.Server.Ip4AddressString() + "/" + s.Ports.Port1)
 	Log(o)
 	if regex.MatchString(o) {
@@ -111,12 +111,12 @@ func EchoBuiltinPeriodicReportUDPTest(s *EchoSuite) {
 	regex := regexp.MustCompile(`(\d?\.\d)-(\d?.\d)\s+(\d+\.\d+)M\s+\d?\.\d+M\s+\d+\.\d+Mb/s\s+(\d?\.\d+)ms\s+(\d+)/(\d+)`)
 	serverVpp := s.Containers.ServerVpp.VppInstance
 
-	serverVpp.Vppctl("test echo server " +
+	serverVpp.Vppctl("vperf server " +
 		" uri udp://" + s.Interfaces.Server.Ip4AddressString() + "/" + s.Ports.Port1)
 
 	clientVpp := s.Containers.ClientVpp.VppInstance
 
-	o := clientVpp.Vppctl("test echo client bytes 6000k throughput 12m report-interval 1 echo-bytes" +
+	o := clientVpp.Vppctl("vperf client bytes 6000k throughput 12m report-interval 1 echo-bytes" +
 		" uri udp://" + s.Interfaces.Server.Ip4AddressString() + "/" + s.Ports.Port1)
 	Log(o)
 	if regex.MatchString(o) {
@@ -152,12 +152,12 @@ func EchoBuiltinPeriodicReportTest(s *EchoSuite) {
 	regex := regexp.MustCompile(`(\d?\.\d)-(\d?.\d)\s+(\d+\.\d+)M\s+0\s+\d+\.\d+Mb/s\s+(\d?\.\d+)ms`)
 	serverVpp := s.Containers.ServerVpp.VppInstance
 
-	serverVpp.Vppctl("test echo server " +
+	serverVpp.Vppctl("vperf server " +
 		" uri tcp://" + s.Interfaces.Server.Ip4AddressString() + "/" + s.Ports.Port1)
 
 	clientVpp := s.Containers.ClientVpp.VppInstance
 
-	o := clientVpp.Vppctl("test echo client bytes 7900k throughput 16m report-interval 1" +
+	o := clientVpp.Vppctl("vperf client bytes 7900k throughput 16m report-interval 1" +
 		" uri tcp://" + s.Interfaces.Server.Ip4AddressString() + "/" + s.Ports.Port1)
 	Log(o)
 	if regex.MatchString(o) {
@@ -189,12 +189,12 @@ func EchoBuiltinRoundtripTest(s *EchoSuite) {
 	regex := regexp.MustCompile(`(\.\d+)ms roundtrip`)
 	serverVpp := s.Containers.ServerVpp.VppInstance
 
-	serverVpp.Vppctl("test echo server " +
+	serverVpp.Vppctl("vperf server " +
 		" uri tcp://" + s.Interfaces.Server.Ip4AddressString() + "/" + s.Ports.Port1)
 
 	clientVpp := s.Containers.ClientVpp.VppInstance
 
-	o := clientVpp.Vppctl("test echo client bytes 8m" +
+	o := clientVpp.Vppctl("vperf client bytes 8m" +
 		" uri tcp://" + s.Interfaces.Server.Ip4AddressString() + "/" + s.Ports.Port1)
 	Log(o)
 	if regex.MatchString(o) {
@@ -214,22 +214,22 @@ func EchoBuiltinRoundtripTest(s *EchoSuite) {
 func EchoBuiltinEchoBytesTest(s *EchoSuite) {
 	serverVpp := s.Containers.ServerVpp.VppInstance
 
-	serverVpp.Vppctl("test echo server " +
+	serverVpp.Vppctl("vperf server " +
 		" uri udp://" + s.Interfaces.Server.Ip4AddressString() + "/" + s.Ports.Port1)
 
 	clientVpp := s.Containers.ClientVpp.VppInstance
 
-	o := clientVpp.Vppctl("test echo client echo-bytes verbose uri" +
+	o := clientVpp.Vppctl("vperf client echo-bytes verbose uri" +
 		" udp://" + s.Interfaces.Server.Ip4AddressString() + "/" + s.Ports.Port1)
 	Log(o)
 	AssertContains(o, "sent total 6 datagrams, received total 6 datagrams")
-	AssertNotContains(o, "test echo clients: failed: timeout with 1 sessions")
+	AssertNotContains(o, "vperf client: failed: timeout with 1 sessions")
 }
 
 func EchoBuiltinUdpLossTest(s *EchoSuite) {
 	serverVpp := s.Containers.ServerVpp.VppInstance
 
-	serverVpp.Vppctl("test echo server " +
+	serverVpp.Vppctl("vperf server " +
 		" uri udp://" + s.Interfaces.Server.Ip4AddressString() + "/" + s.Ports.Port1)
 
 	clientVpp := s.Containers.ClientVpp.VppInstance
@@ -238,7 +238,7 @@ func EchoBuiltinUdpLossTest(s *EchoSuite) {
 	clientVpp.Vppctl("set nsim poll-main-thread delay 0.1 ms bandwidth 10 mbps packet-size 1460 packets-per-drop 125")
 	clientVpp.Vppctl("nsim output-feature enable-disable " + s.Interfaces.Client.VppName())
 
-	o := clientVpp.Vppctl("test echo client echo-bytes test-bytes verbose bytes 32k test-timeout 1 uri" +
+	o := clientVpp.Vppctl("vperf client echo-bytes test-bytes verbose bytes 32k test-timeout 1 uri" +
 		" udp://" + s.Interfaces.Server.Ip4AddressString() + "/" + s.Ports.Port1)
 	Log(o)
 	AssertNotContains(o, "failed")
@@ -252,10 +252,10 @@ type tcpWithLossInterface interface {
 }
 
 func tcpEcho(port string, ip string, clientVpp *VppInstance, serverVpp *VppInstance) string {
-	serverVpp.Vppctl("test echo server fifo-size 64k uri tcp://%s/%s", ip, port)
+	serverVpp.Vppctl("vperf server fifo-size 64k uri tcp://%s/%s", ip, port)
 
 	// Do echo test from client-vpp container
-	output := clientVpp.Vppctl("test echo client fifo-size 64k uri tcp://%s/%s verbose echo-bytes run-time 10",
+	output := clientVpp.Vppctl("vperf client fifo-size 64k uri tcp://%s/%s verbose echo-bytes run-time 10",
 		ip, port)
 	Log(output)
 	AssertNotEqual(len(output), 0)
@@ -322,12 +322,12 @@ func tcpWithLossAndNoLoss(s tcpWithLossInterface, clientVpp *VppInstance,
 func TlsSingleConnectionTest(s *EchoSuite) {
 	serverVpp := s.Containers.ServerVpp.VppInstance
 
-	serverVpp.Vppctl("test echo server " +
+	serverVpp.Vppctl("vperf server " +
 		" uri tls://" + s.Interfaces.Server.Ip4AddressString() + "/" + s.Ports.Port1)
 
 	clientVpp := s.Containers.ClientVpp.VppInstance
 
-	o := clientVpp.Vppctl("test echo client uri tls://%s:%s verbose run-time 5", s.Interfaces.Server.Ip4AddressString(), s.Ports.Port1)
+	o := clientVpp.Vppctl("vperf client uri tls://%s:%s verbose run-time 5", s.Interfaces.Server.Ip4AddressString(), s.Ports.Port1)
 
 	Log(o)
 	throughput, err := ParseEchoClientTransfer(o)
@@ -349,11 +349,11 @@ func httpVerifyPeriodicStats(stats string) {
 func EchoBuiltinHttpTestBytesTest(s *EchoSuite) {
 	serverVpp := s.Containers.ServerVpp.VppInstance
 
-	serverVpp.Vppctl("test echo server uri https://" + s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1)
+	serverVpp.Vppctl("vperf server uri https://" + s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1)
 
 	clientVpp := s.Containers.ClientVpp.VppInstance
 
-	o := clientVpp.Vppctl("test echo client test-bytes run-time 5 http2 uri https://" +
+	o := clientVpp.Vppctl("vperf client test-bytes run-time 5 http2 uri https://" +
 		s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1)
 	Log(o)
 	AssertNotContains(o, "failed:")
@@ -363,11 +363,11 @@ func EchoBuiltinHttpTestBytesTest(s *EchoSuite) {
 func EchoBuiltinHttpTest(s *EchoSuite) {
 	serverVpp := s.Containers.ServerVpp.VppInstance
 
-	serverVpp.Vppctl("test echo server uri http://" + s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1)
+	serverVpp.Vppctl("vperf server uri http://" + s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1)
 
 	clientVpp := s.Containers.ClientVpp.VppInstance
 
-	o := clientVpp.Vppctl("test echo client run-time 5 uri http://" +
+	o := clientVpp.Vppctl("vperf client run-time 5 uri http://" +
 		s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1)
 	Log(o)
 	AssertNotContains(o, "failed:")
@@ -377,11 +377,11 @@ func EchoBuiltinHttpTest(s *EchoSuite) {
 func EchoBuiltinHttpsTest(s *EchoSuite) {
 	serverVpp := s.Containers.ServerVpp.VppInstance
 
-	serverVpp.Vppctl("test echo server uri https://" + s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1)
+	serverVpp.Vppctl("vperf server uri https://" + s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1)
 
 	clientVpp := s.Containers.ClientVpp.VppInstance
 
-	o := clientVpp.Vppctl("test echo client run-time 5 uri https://" +
+	o := clientVpp.Vppctl("vperf client run-time 5 uri https://" +
 		s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1)
 	Log(o)
 	AssertNotContains(o, "failed:")
@@ -391,11 +391,11 @@ func EchoBuiltinHttpsTest(s *EchoSuite) {
 func EchoBuiltinHttp2Test(s *EchoSuite) {
 	serverVpp := s.Containers.ServerVpp.VppInstance
 
-	serverVpp.Vppctl("test echo server uri https://" + s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1)
+	serverVpp.Vppctl("vperf server uri https://" + s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1)
 
 	clientVpp := s.Containers.ClientVpp.VppInstance
 
-	o := clientVpp.Vppctl("test echo client run-time 5 http2 uri https://" +
+	o := clientVpp.Vppctl("vperf client run-time 5 http2 uri https://" +
 		s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1)
 	Log(o)
 	AssertNotContains(o, "failed:")
@@ -405,11 +405,11 @@ func EchoBuiltinHttp2Test(s *EchoSuite) {
 func EchoBuiltinHttp3Test(s *EchoSuite) {
 	serverVpp := s.Containers.ServerVpp.VppInstance
 
-	serverVpp.Vppctl("test echo server uri https://" + s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1)
+	serverVpp.Vppctl("vperf server uri https://" + s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1)
 
 	clientVpp := s.Containers.ClientVpp.VppInstance
 
-	o := clientVpp.Vppctl("test echo client run-time 5 http3 uri https://" +
+	o := clientVpp.Vppctl("vperf client run-time 5 http3 uri https://" +
 		s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1)
 	Log(o)
 	AssertNotContains(o, "failed:")
@@ -445,14 +445,14 @@ func httpTunnelVerifyActivePeriodicStats(stats string) {
 
 func echoBuiltinHttp2ConnectUdp(s *EchoSuite, clientExtraArgs, serverExtraArgs string) string {
 	serverVpp := s.Containers.ServerVpp.VppInstance
-	serverCmd := "test echo server connect-udp uri https://" + s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1
+	serverCmd := "vperf server connect-udp uri https://" + s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1
 	if serverExtraArgs != "" {
 		serverCmd += " " + serverExtraArgs
 	}
 	serverVpp.Vppctl(serverCmd)
 
 	clientVpp := s.Containers.ClientVpp.VppInstance
-	clientCmd := "test echo client run-time 5 echo-bytes http2 connect-udp uri https://" +
+	clientCmd := "vperf client run-time 5 echo-bytes http2 connect-udp uri https://" +
 		s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1
 	if clientExtraArgs != "" {
 		clientCmd += " " + clientExtraArgs
@@ -480,11 +480,11 @@ func EchoBuiltinHttp2ConnectUdpBackpressureMWTest(s *EchoSuite) {
 func EchoBuiltinHttp2ConnectTcpTest(s *EchoSuite) {
 	serverVpp := s.Containers.ServerVpp.VppInstance
 
-	serverVpp.Vppctl("test echo server connect-tcp uri https://" + s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1)
+	serverVpp.Vppctl("vperf server connect-tcp uri https://" + s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1)
 
 	clientVpp := s.Containers.ClientVpp.VppInstance
 
-	o := clientVpp.Vppctl("test echo client run-time 5 echo-bytes http2 connect-tcp uri https://" +
+	o := clientVpp.Vppctl("vperf client run-time 5 echo-bytes http2 connect-tcp uri https://" +
 		s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1)
 	Log(o)
 	AssertNotContains(o, "failed:")
@@ -494,11 +494,11 @@ func EchoBuiltinHttp2ConnectTcpTest(s *EchoSuite) {
 func EchoBuiltinHttp3ConnectTcpTest(s *EchoSuite) {
 	serverVpp := s.Containers.ServerVpp.VppInstance
 
-	serverVpp.Vppctl("test echo server connect-tcp uri https://" + s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1)
+	serverVpp.Vppctl("vperf server connect-tcp uri https://" + s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1)
 
 	clientVpp := s.Containers.ClientVpp.VppInstance
 
-	o := clientVpp.Vppctl("test echo client run-time 5 echo-bytes http3 connect-tcp uri https://" +
+	o := clientVpp.Vppctl("vperf client run-time 5 echo-bytes http3 connect-tcp uri https://" +
 		s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1)
 	Log(o)
 	AssertNotContains(o, "failed:")
@@ -508,11 +508,11 @@ func EchoBuiltinHttp3ConnectTcpTest(s *EchoSuite) {
 func EchoBuiltinHttp2ConnectUdpTest(s *EchoSuite) {
 	serverVpp := s.Containers.ServerVpp.VppInstance
 
-	serverVpp.Vppctl("test echo server connect-udp uri https://" + s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1)
+	serverVpp.Vppctl("vperf server connect-udp uri https://" + s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1)
 
 	clientVpp := s.Containers.ClientVpp.VppInstance
 
-	o := clientVpp.Vppctl("test echo client run-time 5 echo-bytes http2 connect-udp uri https://" +
+	o := clientVpp.Vppctl("vperf client run-time 5 echo-bytes http2 connect-udp uri https://" +
 		s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1)
 	Log(o)
 	AssertNotContains(o, "failed:")
@@ -522,11 +522,11 @@ func EchoBuiltinHttp2ConnectUdpTest(s *EchoSuite) {
 func EchoBuiltinHttp3ConnectUdpTest(s *EchoSuite) {
 	serverVpp := s.Containers.ServerVpp.VppInstance
 
-	serverVpp.Vppctl("test echo server connect-udp uri https://" + s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1)
+	serverVpp.Vppctl("vperf server connect-udp uri https://" + s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1)
 
 	clientVpp := s.Containers.ClientVpp.VppInstance
 
-	o := clientVpp.Vppctl("test echo client run-time 5 echo-bytes http3 connect-udp uri https://" +
+	o := clientVpp.Vppctl("vperf client run-time 5 echo-bytes http3 connect-udp uri https://" +
 		s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1)
 	Log(o)
 	AssertNotContains(o, "failed:")
@@ -541,10 +541,10 @@ func EchoBuiltinHttp1CpsMWTest(s *EchoSuite) {
 	serverVpp := s.Containers.ServerVpp.VppInstance
 	clientVpp := s.Containers.ClientVpp.VppInstance
 
-	Log(serverVpp.Vppctl("test echo server " +
+	Log(serverVpp.Vppctl("vperf server " +
 		" uri https://" + s.Interfaces.Server.Ip4AddressString() + "/" + s.Ports.Port1))
 
-	o := clientVpp.Vppctl("test echo client nclients 4000 bytes 64 syn-timeout 40" +
+	o := clientVpp.Vppctl("vperf client nclients 4000 bytes 64 syn-timeout 40" +
 		" uri https://" + s.Interfaces.Server.Ip4AddressString() + "/" + s.Ports.Port1)
 	Log(o)
 	Log(serverVpp.Vppctl("show http stats"))
@@ -559,10 +559,10 @@ func EchoBuiltinHttp2CpsMWTest(s *EchoSuite) {
 	serverVpp := s.Containers.ServerVpp.VppInstance
 	clientVpp := s.Containers.ClientVpp.VppInstance
 
-	Log(serverVpp.Vppctl("test echo server " +
+	Log(serverVpp.Vppctl("vperf server " +
 		" uri https://" + s.Interfaces.Server.Ip4AddressString() + "/" + s.Ports.Port1))
 
-	o := clientVpp.Vppctl("test echo client http2 nclients 4000 bytes 64 syn-timeout 40" +
+	o := clientVpp.Vppctl("vperf client http2 nclients 4000 bytes 64 syn-timeout 40" +
 		" uri https://" + s.Interfaces.Server.Ip4AddressString() + "/" + s.Ports.Port1)
 	Log(o)
 	Log(serverVpp.Vppctl("show http stats"))
@@ -579,10 +579,10 @@ func EchoBuiltinHttp3CpsMWTest(s *EchoSuite) {
 	serverVpp := s.Containers.ServerVpp.VppInstance
 	clientVpp := s.Containers.ClientVpp.VppInstance
 
-	Log(serverVpp.Vppctl("test echo server " +
+	Log(serverVpp.Vppctl("vperf server " +
 		" uri https://" + s.Interfaces.Server.Ip4AddressString() + "/" + s.Ports.Port1))
 
-	o := clientVpp.Vppctl("test echo client http3 nclients 1000 bytes 64 syn-timeout 40" +
+	o := clientVpp.Vppctl("vperf client http3 nclients 1000 bytes 64 syn-timeout 40" +
 		" uri https://" + s.Interfaces.Server.Ip4AddressString() + "/" + s.Ports.Port1)
 	Log(o)
 	Log(serverVpp.Vppctl("show http stats"))

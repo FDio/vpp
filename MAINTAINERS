@@ -755,6 +755,13 @@ M:	Aloys Augustin <aloaugus@cisco.com>
 M:	Nathan Skrzypczak <nathan.skrzypczak@gmail.com>
 F:	src/plugins/hs_apps/
 
+Plugin - VPP Perf
+I:	vperf
+M:	Florin Coras <fcoras@cisco.com>
+M:	Matus Fabian <matfabia@cisco.com>
+M:	Dave Wallace <dwallacelf@gmail.com>
+F:	src/plugins/hs_apps/
+
 Python binding for the VPP API
 I:	papi
 M:	Ole Troan <otroan@employees.org>

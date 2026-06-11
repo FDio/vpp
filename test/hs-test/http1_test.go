@@ -322,7 +322,7 @@ func HttpCliListenTcpPortInUseTest(s *VethsSuite) {
 	serverVpp := s.Containers.ServerVpp.VppInstance
 
 	serverVpp.Vppctl("http cli server uri http://" + serverAddress)
-	serverVpp.Vppctl("test echo server uri tcp://" +
+	serverVpp.Vppctl("vperf server uri tcp://" +
 		s.Interfaces.Server.Ip4AddressString() + "/" + s.Ports.Port2)
 
 	o := serverVpp.Vppctl("http cli server listener add uri http://" + conflictAddress)

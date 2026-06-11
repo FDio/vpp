@@ -28,17 +28,17 @@
 #include <arpa/inet.h>
 #include <stdlib.h>
 #include <vcl/vppcom.h>
-#include <hs_apps/vcl/vcl_test.h>
+#include <vperf/vcl/vperf.h>
 
-typedef enum vt_clu_type_
+typedef enum vcl_cfg_type_
 {
-  VT_CLU_TYPE_NONE = 0,
-  VT_CLU_TYPE_SERVER,
-} vt_clu_type_t;
+  VCL_CFG_TYPE_NONE = 0,
+  VCL_CFG_TYPE_SERVER,
+} vcl_cfg_type_t;
 
-typedef struct vtclu_main_
+typedef struct vcl_cfg_main_
 {
-  vt_clu_type_t app_type;
+  vcl_cfg_type_t app_type;
   vppcom_endpt_t endpt;
   struct sockaddr_storage srvr_addr;
   uint16_t port;
@@ -46,13 +46,13 @@ typedef struct vtclu_main_
 
   /* VCL configuration structure */
   vppcom_cfg_t vcl_cfg;
-} vt_clu_main_t;
+} vcl_cfg_main_t;
 
-static vt_clu_main_t vt_clu_main;
+static vcl_cfg_main_t vcl_cfg_main;
 
 /* Initialize VCL configuration with default values */
 static void
-vcl_test_config_init (vt_clu_main_t *vclum)
+vcl_cfg_config_init (vcl_cfg_main_t *vclum)
 {
   vppcom_cfg_t *cfg = &vclum->vcl_cfg;
 
@@ -89,27 +89,27 @@ vcl_test_config_init (vt_clu_main_t *vclum)
 }
 
 static void
-vt_clu_parse_args (vt_clu_main_t *vclum, int argc, char **argv)
+vcl_cfg_parse_args (vcl_cfg_main_t *vclum, int argc, char **argv)
 {
   int c;
 
   memset (vclum, 0, sizeof (*vclum));
-  vclum->port = VCL_TEST_SERVER_PORT;
+  vclum->port = VPERF_SERVER_PORT;
   vclum->timeout_seconds = 10; /* Default timeout: 10 seconds */
 
   /* Initialize VCL configuration with defaults */
-  vcl_test_config_init (vclum);
+  vcl_cfg_config_init (vclum);
 
   opterr = 0;
   while ((c = getopt (argc, argv, "s:d:n:a:t:k:")) != -1)
     switch (c)
       {
       case 's':
-	vclum->app_type = VT_CLU_TYPE_SERVER;
+	vclum->app_type = VCL_CFG_TYPE_SERVER;
 	if (inet_pton (
 	      AF_INET, optarg,
 	      &((struct sockaddr_in *) &vclum->srvr_addr)->sin_addr) != 1)
-	  vtwrn ("couldn't parse ipv4 addr %s", optarg);
+	  vperf_warn ("couldn't parse ipv4 addr %s", optarg);
 	break;
       case 'd':
 	/* Set debug level programmatically */
@@ -128,7 +128,7 @@ vt_clu_parse_args (vt_clu_main_t *vclum, int argc, char **argv)
 	vclum->timeout_seconds = atoi (optarg);
 	if (vclum->timeout_seconds <= 0)
 	  {
-	    vtwrn ("invalid timeout %s, using default 10 seconds", optarg);
+	    vperf_warn ("invalid timeout %s, using default 10 seconds", optarg);
 	    vclum->timeout_seconds = 10;
 	  }
 	break;
@@ -138,9 +138,9 @@ vt_clu_parse_args (vt_clu_main_t *vclum, int argc, char **argv)
 	break;
       }
 
-  if (vclum->app_type == VT_CLU_TYPE_NONE)
+  if (vclum->app_type == VCL_CFG_TYPE_NONE)
     {
-      vtwrn ("server must be configured");
+      vperf_warn ("server must be configured");
       exit (1);
     }
 
@@ -151,59 +151,59 @@ vt_clu_parse_args (vt_clu_main_t *vclum, int argc, char **argv)
 }
 
 static void
-vt_clu_server_test (vt_clu_main_t *vclum)
+vcl_cfg_server_test (vcl_cfg_main_t *vclum)
 {
   int rv, vcl_sh;
 
-  vtinf ("Server test starting (delay: %d seconds)", vclum->timeout_seconds);
+  vperf_info ("Server test starting (delay: %d seconds)", vclum->timeout_seconds);
 
   vcl_sh = vppcom_session_create (VPPCOM_PROTO_UDP, 0 /* is_nonblocking */);
   if (vcl_sh < 0)
     {
-      vterr ("vppcom_session_create()", vcl_sh);
+      vperf_err ("vppcom_session_create()", vcl_sh);
       return;
     }
 
   rv = vppcom_session_bind (vcl_sh, &vclum->endpt);
   if (rv < 0)
     {
-      vterr ("vppcom_session_bind()", rv);
+      vperf_err ("vppcom_session_bind()", rv);
       return;
     }
 
-  vtinf ("Server successfully bound to endpoint");
+  vperf_info ("Server successfully bound to endpoint");
   sleep (vclum->timeout_seconds);
   vppcom_session_close (vcl_sh);
-  vtinf ("Server test completed");
+  vperf_info ("Server test completed");
 }
 
 int
 main (int argc, char **argv)
 {
-  vt_clu_main_t *vclum = &vt_clu_main;
+  vcl_cfg_main_t *vclum = &vcl_cfg_main;
   int rv;
 
-  vt_clu_parse_args (vclum, argc, argv);
+  vcl_cfg_parse_args (vclum, argc, argv);
 
   /* Initialize VCL with programmatic configuration using new API */
   rv = vppcom_app_create_with_config (&vclum->vcl_cfg);
   if (rv)
     {
-      vterr ("vppcom_app_create_with_config() failed", rv);
+      vperf_err ("vppcom_app_create_with_config() failed", rv);
       return rv;
     }
 
-  vtinf ("Starting server [using programmatic VCL config]");
+  vperf_info ("Starting server [using programmatic VCL config]");
 
   if (vclum->vcl_cfg.namespace_id)
-    vtinf ("Using namespace: %s", vclum->vcl_cfg.namespace_id);
+    vperf_info ("Using namespace: %s", vclum->vcl_cfg.namespace_id);
   if (vclum->vcl_cfg.vpp_bapi_socket_name)
-    vtinf ("Using VPP API socket: %s", vclum->vcl_cfg.vpp_bapi_socket_name);
+    vperf_info ("Using VPP API socket: %s", vclum->vcl_cfg.vpp_bapi_socket_name);
 
   /* Run the server test */
-  vt_clu_server_test (vclum);
+  vcl_cfg_server_test (vclum);
 
-  vtinf ("Server test completed");
+  vperf_info ("Server test completed");
 
   vppcom_app_destroy ();
   return 0;

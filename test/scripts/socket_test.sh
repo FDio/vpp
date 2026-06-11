@@ -236,16 +236,16 @@ while ! [[ $run_test ]] && (( $# > 0 )) ; do
         "np" | "native-preload")
             run_test="native_preload" ;;
         "nv" | "native-vcl")
-            sock_srvr_app="vcl_test_server"
-            sock_clnt_app="vcl_test_client"
+            sock_srvr_app="vperf_server"
+            sock_clnt_app="vperf_client"
             run_test="native_vcl" ;;
         "dk" | "docker-kernel")
             run_test="docker_kernel" ;;
         "dp" | "docker-preload")
             run_test="docker_preload" ;;
         "dv" | "docker-vcl")
-            sock_srvr_app="vcl_test_server"
-            sock_clnt_app="vcl_test_client"
+            sock_srvr_app="vperf_server"
+            sock_clnt_app="vperf_client"
             run_test="docker_vcl" ;;
         *)
             echo "ERROR: Unknown option '$1'!" >&2
