@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "6ab1c37a_0056571e",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3336
+      },
+      "writtenOn": "2026-06-11T10:14:58Z",
+      "side": 1,
+      "message": "Background / observed issue:\n\nIn a high-rate CNAT SNAT deployment, a VPP restart left existing NATed\nflows on remote peers still sending return traffic while VPP had lost its\nin-memory CNAT session state. As clients re-established connections, the\nnew CNAT session table grew quickly into the multi-million-entry range.\n\nExpired sessions were then not being physically removed fast enough. The\nscanner wakeup interval was already configurable via\nsession-cleanup-timeout, but each scanner wakeup was still capped by a\nhard-coded 100us work budget.\n\nWith a large bihash, reducing session-cleanup-timeout alone was not\nenough: the scanner woke up frequently, but each pass examined too few\nbuckets, so expired TCP FIN/RST and aged sessions accumulated for a long\ntime. This caused the active CNAT session table to keep growing toward\nthe configured session limit even though the real live connection count\nwas much lower.\n\nThis change keeps the existing 100us default behavior, but adds\nsession-cleanup-max-time so large deployments can increase the\nper-wakeup scanner budget cooperatively without changing the default for\nexisting users.",
+      "revId": "4d2bae3d2d834a8f13ce7b0591952339794dd0e4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
