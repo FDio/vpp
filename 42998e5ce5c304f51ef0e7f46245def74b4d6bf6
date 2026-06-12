@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "3d27eb30_b46329f5",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-06-12T05:53:31Z",
+      "side": 1,
+      "message": "Before we start with actual review, let\u0027s push most of the code into tcp_fastopen.c",
+      "revId": "42998e5ce5c304f51ef0e7f46245def74b4d6bf6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "18ec6beb_060f75c4",
+        "filename": "src/vnet/tcp/tcp_packet.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 159,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-06-12T05:53:31Z",
+      "side": 1,
+      "message": "This is pretty expensive/connection. Let\u0027s see if we can find way to avoid it since these are optional and only on syn",
+      "revId": "42998e5ce5c304f51ef0e7f46245def74b4d6bf6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
