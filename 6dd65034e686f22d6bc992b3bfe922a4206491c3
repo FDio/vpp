@@ -1,0 +1,72 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "77653c37_7939725c",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-06-12T08:39:22Z",
+      "side": 1,
+      "message": "Commit description includes:\n\nRe-added accidentally removed requirements-3 file.\n\nbut that file is not part of the changeset.",
+      "revId": "6dd65034e686f22d6bc992b3bfe922a4206491c3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "31d9bf29_124806f4",
+        "filename": "src/plugins/lldp/lldp_api.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 165,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-06-12T08:39:22Z",
+      "side": 1,
+      "message": "All of these (char\\*) casts are suspicious. vec_len reads length from vector header, which is calculated as negative offset of whatever pointer is passed to it. it doesn\u0027t really matter what is the type of the pointer. so the cast is unneeded and confusing. there are multiple instances of this (char\\*) cast which should be removed.",
+      "revId": "6dd65034e686f22d6bc992b3bfe922a4206491c3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "76135e35_5ea3a7ec",
+        "filename": "src/plugins/lldp/lldp_api.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 167,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-06-12T08:39:22Z",
+      "side": 1,
+      "message": "what if mgmt_ip6 is NULL?",
+      "revId": "6dd65034e686f22d6bc992b3bfe922a4206491c3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3616240d_eb3d22ae",
+        "filename": "test/test_lldp.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 16,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-06-12T08:39:22Z",
+      "side": 1,
+      "message": "this import looks unused",
+      "revId": "6dd65034e686f22d6bc992b3bfe922a4206491c3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
