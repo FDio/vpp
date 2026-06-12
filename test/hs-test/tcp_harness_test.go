@@ -391,10 +391,16 @@ func TcpFastRecoveryTwoHolesPartialAckTest(s *TcpHarnessSuite) {
 }
 
 func TcpSackScoreboardRobustnessTest(s *TcpHarnessSuite) {
+	/* Seven segments produce three SACK blocks for drops 2, 4 and 6
+	 * without waiting for sender RTO to release more data.
+	 */
+	const controlledDataSegments = 7
+
 	dropDataPacketIndices := []uint32{2, 4, 6}
 
 	scriptCfg := tcpharness.NFQueueScript(dropDataPacketIndices,
 		tcpharness.InitialHolesSackStep(len(dropDataPacketIndices), 3,
+			tcpharness.WaitForDataSegments(controlledDataSegments),
 			tcpharness.DiscardQueuedAcks(),
 			tcpharness.AdvanceScriptToDone()))
 	var (
@@ -424,7 +430,7 @@ func TcpSackScoreboardRobustnessTest(s *TcpHarnessSuite) {
 	defer state.Close()
 
 	warmupBytes := 4 * mssStats.SndMss
-	controlledBytes := 8 * mssStats.SndMss
+	controlledBytes := controlledDataSegments * mssStats.SndMss
 	sendBytes := warmupBytes + controlledBytes
 
 	RunTcpHarnessScenarioOnState(s, state,
@@ -433,9 +439,13 @@ func TcpSackScoreboardRobustnessTest(s *TcpHarnessSuite) {
 		WaitClientSend(&warmupHandle, 10*time.Second, &warmupResult),
 		EnableServerNFQueueScript(scriptCfg),
 		StartClientSend(controlledBytes, &sendHandle),
-		WaitServerNFQueueScriptDone(10*time.Second, &scriptStats, &scriptTrace),
-		DisableServerNFQueueScript(),
+		WaitServerNFQueueScriptStats(10*time.Second, func(stats tcpharness.NFQueueScriptStats) bool {
+			return stats.Stage == tcpharness.NFQueueScriptStageDone &&
+				stats.RetransmitTriggerCount >= 1
+		}, &scriptStats),
 	)
+	scriptTrace = s.ServerNFQueueScriptTraceGet()
+	s.DisableServerNFQueueScript()
 
 	RunTcpHarnessScenarioOnState(s, state,
 		WaitClientSessionStats(10*time.Second, func(stats TcpHarnessClientSessionStats) bool {
