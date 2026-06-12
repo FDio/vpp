@@ -202,6 +202,7 @@ typedef struct
   vnet_dev_port_caps_t caps;
   vnet_dev_port_rx_offloads_t rx_offloads;
   vnet_dev_port_tx_offloads_t tx_offloads;
+  u32 speed_caps;
 } vnet_dev_port_attr_t;
 
 typedef enum
