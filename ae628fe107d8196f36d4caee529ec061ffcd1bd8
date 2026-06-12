@@ -16,6 +16,40 @@
       "message": "recheck",
       "revId": "ae628fe107d8196f36d4caee529ec061ffcd1bd8",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a3daf425_edc624de",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2026-06-12T08:35:33Z",
+      "side": 1,
+      "message": "Looks good - on the comment about the thread bitmap: I\u0027ve seen a few threads on vpp-dev regarding more workers, but this change can ride on FRAME_QUEUE_MAX_NELTS being 64; and any future refactor will touch this and many other places in VPP where we make the assumption on worker count.",
+      "revId": "ae628fe107d8196f36d4caee529ec061ffcd1bd8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "fb3d85a3_b862d511",
+        "filename": "src/plugins/tracepath/tracepath.api",
+        "patchSetId": 2
+      },
+      "lineNbr": 28,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2026-06-12T08:35:33Z",
+      "side": 1,
+      "message": "I saw the TODO in the API handler; seems fine as src/vlib/threads.c allows for at most 56 workers it seems.",
+      "revId": "ae628fe107d8196f36d4caee529ec061ffcd1bd8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
