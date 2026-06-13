@@ -16,6 +16,23 @@
       "message": "recheck",
       "revId": "26ef4f36b4ac9293f8baf97983588d3abbd3cc2f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "251ad002_f70393c4",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 6
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-06-13T03:10:15Z",
+      "side": 1,
+      "message": "This has consistently passed on debian12 since https://gerrit.fd.io/r/c/vpp/+/46021 was put into production.",
+      "revId": "26ef4f36b4ac9293f8baf97983588d3abbd3cc2f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
