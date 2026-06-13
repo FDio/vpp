@@ -625,12 +625,11 @@ punt_socket_rx (vlib_main_t * vm,
 {
   punt_main_t *pm = &punt_main;
   u32 total_count = 0;
-  int i;
 
-  for (i = 0; i < vec_len (pm->ready_fds); i++)
+  while (vec_len (pm->ready_fds))
     {
-      total_count += punt_socket_rx_fd (vm, node, pm->ready_fds[i]);
-      vec_del1 (pm->ready_fds, i);
+      total_count += punt_socket_rx_fd (vm, node, pm->ready_fds[0]);
+      vec_del1 (pm->ready_fds, 0);
     }
   return total_count;
 }
