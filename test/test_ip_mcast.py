@@ -14,6 +14,7 @@ from vpp_ip_route import (
 )
 from vpp_gre_interface import VppGreInterface
 from vpp_papi import VppEnum
+from vpp_papi_provider import CliFailedCommandError
 from config import config
 
 from scapy.packet import Raw
@@ -1248,6 +1249,60 @@ class TestIPMcast(VppTestCase):
         self.verify_capture_ip4(self.pg2, tx)
         self.verify_capture_ip4(self.pg3, tx)
         self.pg0.assert_nothing_captured(remark="IP multicast packets forwarded on PG0")
+
+    def mfib_groups(self, is_ip6):
+        """Return the set of group-address strings currently in the MFIB."""
+        af = "ip6" if is_ip6 else "ip4"
+        groups = set()
+        for e in self.vapi.ip_mroute_dump(0, is_ip6):
+            groups.add(str(getattr(e.route.prefix.grp_address, af)))
+        return groups
+
+    def test_mroute_bulk_ip4_group(self):
+        """Bulk insert of IPv4 (*,G)/32 groups installs consecutive groups"""
+        self.vapi.cli("ip mroute add gcount 8 232.1.1.1/32 via pg0 Forward")
+
+        groups = self.mfib_groups(is_ip6=False)
+        self.logger.info("installed IPv4 groups: %s" % sorted(groups))
+
+        # clean up before asserting so the table is empty for the next test
+        self.vapi.cli("ip mroute del gcount 8 232.1.1.1/32 via pg0 Forward")
+
+        expected = {"232.1.1.%d" % (1 + i) for i in range(8)}
+        self.assertEqual(expected, expected.intersection(groups))
+
+    def test_mroute_bulk_ip6_group(self):
+        """Bulk insert of IPv6 (*,G)/128 groups installs consecutive groups"""
+        self.vapi.cli("ip mroute add gcount 8 ff05::1/128 via pg0 Forward")
+
+        groups = self.mfib_groups(is_ip6=True)
+        self.logger.info("installed IPv6 groups: %s" % sorted(groups))
+
+        self.vapi.cli("ip mroute del gcount 8 ff05::1/128 via pg0 Forward")
+
+        expected = {"ff05::%d" % (1 + i) for i in range(8)}
+        self.assertEqual(expected, expected.intersection(groups))
+
+    def test_mroute_bulk_ip6_sg(self):
+        """Bulk insert of IPv6 (S,G) state installs consecutive groups"""
+        self.vapi.cli("ip mroute add gcount 8 2001:db8::1 ff05::1 via pg0 Forward")
+
+        groups = self.mfib_groups(is_ip6=True)
+        self.logger.info("installed IPv6 (S,G) groups: %s" % sorted(groups))
+
+        self.vapi.cli("ip mroute del gcount 8 2001:db8::1 ff05::1 via pg0 Forward")
+
+        expected = {"ff05::%d" % (1 + i) for i in range(8)}
+        self.assertEqual(expected, expected.intersection(groups))
+
+    def test_mroute_invalid_prefix_len(self):
+        """An out-of-range mroute prefix length is rejected, not installed"""
+        with self.assertRaises(CliFailedCommandError):
+            self.vapi.cli("ip mroute add 239.1.1.0/33 via pg0 Forward")
+
+        groups = self.mfib_groups(is_ip6=False)
+        self.logger.info("groups after /33 attempt: %s" % sorted(groups))
+        self.assertNotIn("239.1.1.0", groups)
 
 
 if __name__ == "__main__":
