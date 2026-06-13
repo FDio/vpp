@@ -757,7 +757,9 @@ vnet_ip_mroute_cmd (vlib_main_t * vm,
   mfib_prefix_t pfx;
   u32 fib_index;
   mfib_entry_flags_t eflags = 0;
-  u32 gcount, scount, ss, gg, incr;
+  u32 gcount, scount, ss, gg;
+  u64 incr;
+  u32 ip6_bucket = 0;
   f64 timet[2];
   u32 rpf_id = MFIB_RPF_ID_NONE;
 
@@ -859,6 +861,20 @@ vnet_ip_mroute_cmd (vlib_main_t * vm,
 	}
     }
 
+  /*
+   * A multicast group prefix is /0../32 (IPv4) or /0../128 (IPv6); a full
+   * (S,G) host is encoded with the sentinel lengths 64 and 256 respectively
+   * (see mfib_prefix_is_host()). Reject anything else rather than passing an
+   * out-of-range length down to the MFIB - cf. fib_prefix_validate() on the
+   * unicast 'ip route' path.
+   */
+  if ((FIB_PROTOCOL_IP4 == pfx.fp_proto && pfx.fp_len > 32 && 64 != pfx.fp_len) ||
+      (FIB_PROTOCOL_IP6 == pfx.fp_proto && pfx.fp_len > 128 && 256 != pfx.fp_len))
+    {
+      error = clib_error_return (0, "Invalid prefix len: %d", pfx.fp_len);
+      goto done;
+    }
+
   if (~0 == table_id)
     {
       /*
@@ -879,13 +895,30 @@ vnet_ip_mroute_cmd (vlib_main_t * vm,
 
   timet[0] = vlib_time_now (vm);
 
+  /*
+   * The group address is stepped by the size of the group prefix for each
+   * entry inserted, so consecutive entries do not overlap. For a full group
+   * address - a /32 (IPv4) or /128 (IPv6), or the (S,G) sentinel lengths 64
+   * and 256 - the step is 1. The step is computed in 64-bit arithmetic to
+   * avoid an out-of-range shift (undefined behaviour, e.g. 1 << 32). For IPv6
+   * it is applied to whichever 64-bit half of the address holds the prefix
+   * boundary (as_u64[0] is the high half, as_u64[1] the low half).
+   */
   if (FIB_PROTOCOL_IP4 == pfx.fp_proto)
     {
-      incr = 1 << (32 - (pfx.fp_len % 32));
+      u32 len = (pfx.fp_len > 32 ? 32 : pfx.fp_len);
+      incr = ((u64) 1) << (32 - len);
     }
   else
     {
-      incr = 1 << (128 - (pfx.fp_len % 128));
+      u32 len = (pfx.fp_len > 128 ? 128 : pfx.fp_len);
+      if (len > 64)
+	{
+	  ip6_bucket = 1;
+	  incr = ((u64) 1) << (128 - len);
+	}
+      else
+	incr = (0 == len ? 0 : (((u64) 1) << (64 - len)));
     }
 
   for (ss = 0; ss < scount; ss++)
@@ -914,21 +947,13 @@ vnet_ip_mroute_cmd (vlib_main_t * vm,
 
 	  if (FIB_PROTOCOL_IP4 == pfx.fp_proto)
 	    {
-	      pfx.fp_grp_addr.ip4.as_u32 =
-		clib_host_to_net_u32 (incr +
-				      clib_net_to_host_u32 (pfx.
-							    fp_grp_addr.ip4.
-							    as_u32));
+	      pfx.fp_grp_addr.ip4.as_u32 = clib_host_to_net_u32 (
+		(u32) (incr + clib_net_to_host_u32 (pfx.fp_grp_addr.ip4.as_u32)));
 	    }
 	  else
 	    {
-	      int bucket = (incr < 64 ? 0 : 1);
-	      pfx.fp_grp_addr.ip6.as_u64[bucket] =
-		clib_host_to_net_u64 (incr +
-				      clib_net_to_host_u64 (pfx.
-							    fp_grp_addr.ip6.as_u64
-							    [bucket]));
-
+	      pfx.fp_grp_addr.ip6.as_u64[ip6_bucket] = clib_host_to_net_u64 (
+		incr + clib_net_to_host_u64 (pfx.fp_grp_addr.ip6.as_u64[ip6_bucket]));
 	    }
 	}
       if (FIB_PROTOCOL_IP4 == pfx.fp_proto)
