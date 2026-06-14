@@ -51,6 +51,24 @@
       "parentUuid": "00deb69b_453abf00",
       "revId": "70032c5905938fae2c8769993d751f613b99da63",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5bcca900_d34a36fa",
+        "filename": "src/vlib/buffer.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 508,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2026-06-14T16:51:56Z",
+      "side": 1,
+      "message": "i still don\u0027t understand what this whole comment means, can you either make it readable by ordinary people or remove it.",
+      "parentUuid": "eebd53e3_82391b45",
+      "revId": "70032c5905938fae2c8769993d751f613b99da63",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
