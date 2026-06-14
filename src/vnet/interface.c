@@ -831,7 +831,7 @@ vnet_register_interface (vnet_main_t * vnm,
   vlib_main_t *vm = vnm->vlib_main;
   vnet_feature_config_main_t *fcm;
   vnet_config_main_t *cm;
-  u32 hw_index, i;
+  u32 hw_index, i, recycle_index;
   vlib_node_t *if_out_node =
     vlib_get_node (vm, vnet_interface_output_node.index);
 
@@ -883,14 +883,23 @@ vnet_register_interface (vnet_main_t * vnm,
   if (dev_class->tx_function == 0 && dev_class->tx_fn_registrations == 0)
     goto no_output_nodes;	/* No output/tx nodes to create */
 
-  /* If we have previously deleted interface nodes, re-use them. */
-  if (vec_len (im->deleted_hw_interface_nodes) > 0)
+  /* Re-use deleted nodes only from the same device class: classes wire tx
+   * next-node slots differently and a reused node keeps its graph. */
+  recycle_index = ~0;
+  vec_foreach_index (i, im->deleted_hw_interface_nodes)
+    if (im->deleted_hw_interface_nodes[i].dev_class_index == dev_class_index)
+      {
+	recycle_index = i;
+	break;
+      }
+
+  if (recycle_index != ~0)
     {
       vnet_hw_interface_nodes_t *hn;
       vlib_node_t *node;
       vlib_node_runtime_t *nrt;
 
-      hn = vec_end (im->deleted_hw_interface_nodes) - 1;
+      hn = vec_elt_at_index (im->deleted_hw_interface_nodes, recycle_index);
 
       hw->tx_node_index = hn->tx_node_index;
       hw->output_node_index = hn->output_node_index;
@@ -950,7 +959,7 @@ vnet_register_interface (vnet_main_t * vnm,
 					  VLIB_NODE_RUNTIME_PERF_RESET);
 	}
 
-      vec_dec_len (im->deleted_hw_interface_nodes, 1);
+      vec_delete (im->deleted_hw_interface_nodes, 1, recycle_index);
     }
   else
     {
@@ -1112,6 +1121,7 @@ vnet_delete_hw_interface (vnet_main_t * vnm, u32 hw_if_index)
       vec_add2 (im->deleted_hw_interface_nodes, dn, 1);
       dn->tx_node_index = hw->tx_node_index;
       dn->output_node_index = hw->output_node_index;
+      dn->dev_class_index = hw->dev_class_index;
     }
   hash_unset_mem (im->hw_interface_by_name, hw->name);
   vec_free (hw->name);

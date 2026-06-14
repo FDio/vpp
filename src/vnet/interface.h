@@ -1070,6 +1070,7 @@ typedef struct
 {
   u32 output_node_index;
   u32 tx_node_index;
+  u32 dev_class_index;
 } vnet_hw_interface_nodes_t;
 
 typedef struct
