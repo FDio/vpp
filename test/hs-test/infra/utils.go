@@ -233,7 +233,7 @@ CollectNginxLogs save access and error logs to the test execution directory.
 Nginx logging need to be set following way:
 
   - error_log <default-work-dir>/{{.LogPrefix}}-error.log;
-  - access_log <default-work-dir>/{{.LogPrefix}}-accesLog;
+  - access_log <default-work-dir>/{{.LogPrefix}}-access.log;
 
 where LogPrefix is set to nginxContainer.Name
 */
@@ -251,13 +251,14 @@ func CollectNginxLogs(nginxContainer *Container) {
 /*
 CollectEnvoyLogs save access logs to the test execution directory.
 Envoy access log path need to be set following way:
-<default-work-dir>/{{.LogPrefix}}-accesLog
+<default-work-dir>/{{.LogPrefix}}-access.log
 where LogPrefix is set to envoyContainer.Name
 */
 func CollectEnvoyLogs(envoyContainer *Container) {
 	targetDir := envoyContainer.Suite.getLogDirPath()
 	source := envoyContainer.GetHostWorkDir() + "/" + envoyContainer.Name + "-"
-	cmd := exec.Command("cp", "-t", targetDir, source+"accesLog")
+	// keep in sync with envoy/proxy.yaml access_log
+	cmd := exec.Command("cp", "-t", targetDir, source+"access.log")
 	Log(cmd.String())
 	err := cmd.Run()
 	if err != nil {
