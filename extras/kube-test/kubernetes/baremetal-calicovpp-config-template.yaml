@@ -153,8 +153,9 @@ spec:
         envFrom:
         - configMapRef:
             name: calico-vpp-config
-        image: docker.io/calicovpp/agent:${CALICOVPP_VERSION}
+        image: docker.io/calicovpp/vpp:${CALICOVPP_VERSION}
         imagePullPolicy: IfNotPresent
+        command: ["/bin/calico-vpp-agent"]
         livenessProbe:
           failureThreshold: 3
           httpGet:

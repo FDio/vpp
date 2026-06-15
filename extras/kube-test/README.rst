@@ -22,14 +22,20 @@ Running tests
 
 [KinD only] Run ``make test-kind`` to run all tests. Running with ``VERBOSE=true`` is highly recommended. For more options, run ``make help`` .
 
-[Bare-metal only] When running tests for the first time, you must set ``KIND_WRK1``, ``KIND_WRK2``, ``CALICOVPP_VERSION`` and ``CALICOVPP_INTERFACE``
-variables first.
+[Bare-metal only] When running tests for the first time, you must set ``KIND_WRK1``, ``KIND_WRK2``, ``CALICOVPP_VERSION``
+and ``CALICOVPP_INTERFACE`` variables first.
 For example, let's assume that the first node's hostname is ``vpp_node1`` and the second one is ``vpp_node2``.
 We want to test master images, so the version is ``kt-master``, and the cluster uses interface ``ens3f0np0``.
 The final command will look like this:
 ``make test-bm VERBOSE=true KUBE_WRK1=vpp_node1 KUBE_WRK2=vpp_node2 CALICOVPP_VERSION=kt-master CALICOVPP_INTERFACE=ens3f0np0``
 After the first run, you can run tests with just ``make test-bm VERBOSE=true``. The variables are written to ``kubernetes/.vars`` and
 ``kubernetes/pod-definitions.yaml``
+
+The bundled ``kubernetes/baremetal-calicovpp-config-template.yaml`` targets the CalicoVPP unified-image
+layout (``>= v3.33``). To run kube-test against an older release (``<= v3.32``) or to always use the
+authoritative manifest from a specific CalicoVPP checkout, set ``CALICOVPP_DIR`` pointing at a
+``vpp-dataplane`` clone; kube-test will then call ``make -C $CALICOVPP_DIR kube-test-template
+FLAVOR=baremetal`` and use the manifest CalicoVPP returns. This keeps kube-test layout-agnostic.
 
 Filtering test cases
 --------------------

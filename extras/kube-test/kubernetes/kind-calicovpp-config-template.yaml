@@ -267,7 +267,7 @@ spec:
             fieldRef:
               fieldPath: spec.nodeName
         - name: LD_LIBRARY_PATH
-          value: /repo/vpp-manager/vpp_build/build-root/install-vpp-native/vpp/
+          value: /repo/vpp_build/build-root/install-vpp-native/vpp/
         envFrom:
         - configMapRef:
             name: calico-vpp-config
@@ -324,8 +324,9 @@ spec:
         envFrom:
         - configMapRef:
             name: calico-vpp-config
-        image: localhost:5000/calicovpp/agent:${CALICOVPP_VERSION}
+        image: localhost:5000/calicovpp/vpp:${CALICOVPP_VERSION}
         imagePullPolicy: Always
+        command: ["/bin/calico-vpp-agent"]
         livenessProbe:
           failureThreshold: 3
           httpGet:
