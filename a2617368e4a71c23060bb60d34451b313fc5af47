@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "277c8ff9_d941c862",
+        "filename": "test/asf/asfframework.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 327,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-06-15T14:48:08Z",
+      "side": 1,
+      "message": "It would be better to not introduce a default value for his outside of VPP which should retain the \u0027single source of truth\u0027 for the default heap size.  If/when vpp changes the default value, this will override the new vpp default heap size.\n\nPlease conditionally add the memory/main-heap-size stanza to the command line below if this attribute is set by the child testcase instead of hard-coding the default value here.",
+      "revId": "a2617368e4a71c23060bb60d34451b313fc5af47",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
