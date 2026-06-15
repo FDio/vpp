@@ -194,6 +194,34 @@ func (s *BaseSuite) WaitForComponents() {
 	Log("All components are ready")
 }
 
+// refreshCalicoVppManifest tries to refresh the on-disk manifest template
+// from `make -C $CALICOVPP_DIR kube-test-template FLAVOR=<flavor>`. When
+// $CALICOVPP_DIR is set and that target exists in the CalicoVPP checkout,
+// the template is authoritatively owned by CalicoVPP and we just plumb it
+// into the file kube-test consumes. When $CALICOVPP_DIR is unset (or the
+// target doesn't exist), we fall back to the bundled template, which
+// targets the unified-image layout (CalicoVPP master / >= v3.33).
+func refreshCalicoVppManifest(flavor, templatePath string) {
+	calicovppDir := os.Getenv("CALICOVPP_DIR")
+	if calicovppDir == "" {
+		Log("CALICOVPP_DIR not set; using bundled %s template", flavor)
+		return
+	}
+	cmd := exec.Command("make", "-C", calicovppDir, "kube-test-template",
+		fmt.Sprintf("FLAVOR=%s", flavor))
+	Log(cmd.String())
+	out, err := cmd.Output()
+	if err != nil {
+		Log("make kube-test-template failed (%v); falling back to bundled %s template", err, flavor)
+		return
+	}
+	if err := os.WriteFile(templatePath, out, 0644); err != nil {
+		Log("could not refresh %s: %v; falling back to bundled template", templatePath, err)
+		return
+	}
+	Log("Refreshed %s from CalicoVPP (FLAVOR=%s)", templatePath, flavor)
+}
+
 // sets CALICO_NETWORK_CONFIG, ADDITIONAL_VPP_CONFIG, env vars, applies configs and rollout restarts cluster
 func (s *BaseSuite) ReconfigureAndRestart(CALICO_NETWORK_CONFIG string, ADDITIONAL_VPP_CONFIG string, CALICOVPP_ENABLE_MEMIF bool) {
 	if os.Getenv("SKIP_CONFIG") == "true" {
@@ -209,6 +237,10 @@ func (s *BaseSuite) ReconfigureAndRestart(CALICO_NETWORK_CONFIG string, ADDITION
 	// but initialized by kube-test itself when testing on a bare metal cluster.
 	if KindCluster {
 		AssertNil(godotenv.Load("kubernetes/.vars"))
+		// For KinD, the template is normally produced by scripts/setup-cluster.sh
+		// (which already calls `make kube-test-template`). Refresh again here in
+		// case CalicoVPP was updated between setup and test runs.
+		refreshCalicoVppManifest("kind", "kubernetes/kind-calicovpp-config-template.yaml")
 		s.Envsubst("kubernetes/kind-calicovpp-config-template.yaml", "kubernetes/kind-calicovpp-config.yaml")
 
 		cmd := exec.Command("kubectl", "apply", "-f", "kubernetes/kind-calicovpp-config.yaml")
@@ -221,14 +253,16 @@ func (s *BaseSuite) ReconfigureAndRestart(CALICO_NETWORK_CONFIG string, ADDITION
 
 		if err == nil {
 			Log("File '%s' exists. Checking env vars", EnvVarsFile)
-			handleExistingVarsFile(fileValues)
+			AssertNil(handleExistingVarsFile(fileValues))
 		} else if os.IsNotExist(err) {
 			Log("'%s' not found. Checking env vars", EnvVarsFile)
-			handleNewVarsFile()
+			AssertNil(handleNewVarsFile())
 		} else {
 			AssertNil(err)
 		}
 		godotenv.Load("kubernetes/.vars")
+		// Baremetal: same opt-in refresh as KinD.
+		refreshCalicoVppManifest("baremetal", "kubernetes/baremetal-calicovpp-config-template.yaml")
 		s.Envsubst("kubernetes/baremetal-calicovpp-config-template.yaml", "kubernetes/baremetal-calicovpp-config.yaml")
 
 		cmd := exec.Command("kubectl", "apply", "-f", "kubernetes/baremetal-calicovpp-config.yaml")
