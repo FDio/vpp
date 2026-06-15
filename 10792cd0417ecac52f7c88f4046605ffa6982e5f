@@ -16,6 +16,57 @@
       "message": "The commit message misses the \"why\", which is presumably because for compliance with RFC 1812 s5.3.7 and RFC 4291.\n\nI think it\u0027s more likely to be included if the unit tests are added along with the new code.\n\nIn my opinion (and I am just a contributor, not a maintainer), this should be a core feature part of vnet/ip and should be default enabled, not disabled, as per the RFCs.",
       "revId": "10792cd0417ecac52f7c88f4046605ffa6982e5f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ec4dee75_115b62ab",
+        "filename": "src/plugins/ip_validate/ip4_validate_node.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 84,
+      "author": {
+        "id": 2429
+      },
+      "writtenOn": "2026-06-15T19:49:46Z",
+      "side": 1,
+      "message": "What if the interface this was received on wasn\u0027t an ethernet interface?",
+      "revId": "10792cd0417ecac52f7c88f4046605ffa6982e5f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ffe3a4e1_1aa9a71e",
+        "filename": "src/plugins/ip_validate/ip4_validate_node.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 131,
+      "author": {
+        "id": 2429
+      },
+      "writtenOn": "2026-06-15T19:49:46Z",
+      "side": 1,
+      "message": "Generally, destination address checks are a waste of cycles - it\u0027s better to rely on the FIB lookup to drop the packets. Any reason that isn\u0027t a good idea here?",
+      "revId": "10792cd0417ecac52f7c88f4046605ffa6982e5f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5b427506_b9c60d08",
+        "filename": "src/plugins/ip_validate/ip4_validate_node.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 137,
+      "author": {
+        "id": 2429
+      },
+      "writtenOn": "2026-06-15T19:49:46Z",
+      "side": 1,
+      "message": "Ditto here.",
+      "revId": "10792cd0417ecac52f7c88f4046605ffa6982e5f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
