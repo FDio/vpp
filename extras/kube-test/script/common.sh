@@ -15,6 +15,12 @@ STASH_SAVED=0
 red ()   { printf "\e[0;31m$1\e[0m\n" >&2 ; }
 green () { printf "\e[0;32m$1\e[0m\n" >&2 ; }
 
+clone_calicovpp_if_missing() {
+  if [ ! -d "$CALICOVPP_DIR" ]; then
+    git clone https://github.com/projectcalico/vpp-dataplane.git "$CALICOVPP_DIR"
+  fi
+}
+
 save_stash() {
   local prev_dir
   prev_dir=$(pwd)
@@ -40,12 +46,19 @@ restore_repo() {
 }
 
 clean_vpp_build_artifacts() {
-  if [ -d "$CALICOVPP_DIR/vpp-manager" ]; then
-    make -C "$CALICOVPP_DIR/vpp-manager" clean-vpp VPP_DIR="$VPP_BUILD_DIR" || true
+  # CalicoVPP master (>= v3.33) uses pkg/vpp-manager; older releases use vpp-manager.
+  local vpp_mgr_dir=""
+  if [ -d "$CALICOVPP_DIR/pkg/vpp-manager" ]; then
+    vpp_mgr_dir="$CALICOVPP_DIR/pkg/vpp-manager"
+  elif [ -d "$CALICOVPP_DIR/vpp-manager" ]; then
+    vpp_mgr_dir="$CALICOVPP_DIR/vpp-manager"
+  fi
+  if [ -n "$vpp_mgr_dir" ]; then
+    make -C "$vpp_mgr_dir" clean-vpp VPP_DIR="$VPP_BUILD_DIR" || true
     # vpp-manager caches the built VPP artifacts as a tarball. Remove it
     # so the next rebuild path actually re-runs vpp_clone_current.sh and
-    #  produces fresh artifacts even when the hash inputs are unchanged.
-    rm -f "$CALICOVPP_DIR/vpp-manager/"vpp-*.tar || true
+    # produces fresh artifacts even when the hash inputs are unchanged.
+    rm -f "$vpp_mgr_dir/"vpp-*.tar || true
   fi
   rm "$VPP_BUILD_DIR"/build-root/build-vpp*/vpp/CMakeCache.txt || true
 }

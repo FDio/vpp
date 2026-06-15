@@ -3,9 +3,9 @@ set -e
 
 COMMAND=$1
 CALICOVPP_DIR=${CALICOVPP_DIR:-"$HOME/vpp-dataplane"}
-VPP_BUILD_DIR=${VPP_BUILD_DIR:-"$CALICOVPP_DIR/vpp-manager/vpp_build"}
-VPP_REPO_DIR=$(pwd)
-COMMIT_HASH=$(git -C "$VPP_REPO_DIR" rev-parse HEAD)
+SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+VPP_BUILD_DIR=${VPP_BUILD_DIR:-"${SCRIPT_DIR%/extras*}"}
+COMMIT_HASH=$(git -C "$VPP_BUILD_DIR" rev-parse HEAD)
 BASE=${BASE:-"$COMMIT_HASH"}
 # set to false to skip resetting vpp-dataplane directory, useful for testing changes
 RESTORE_CV=${RESTORE_CV:-"true"}
@@ -27,11 +27,9 @@ export TIGERA_VERSION="${TIGERA_VERSION:-"v3.32.0"}"
 export KIND_CALICO_VERSION=$TIGERA_VERSION
 export TIGERA_OPERATOR_VERSION=$KIND_CALICO_VERSION
 export DOCKER_BUILD_PROXY=$HTTP_PROXY
-export DOCKER_BUILD_PROXY=$HTTP_PROXY
 export TAG=$TAG
 export VPP_DIR=$VPP_BUILD_DIR
 
-SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 source "$SCRIPT_DIR/common.sh"
 
 kind_config=$(cat kubernetes/kind-config.yaml)
@@ -72,6 +70,21 @@ connect_registry() {
   fi
 }
 
+write_kube_vars_file() {
+  cat > kubernetes/.vars <<EOF
+CALICOVPP_VERSION=$CALICOVPP_VERSION
+EOF
+}
+
+# Fetch the KinD manifest from CalicoVPP (layout-aware via kustomize), write
+# the vars file, and produce the final kubernetes/kind-calicovpp-config.yaml.
+apply_kind_manifest_from_calicovpp() {
+  make -C "$CALICOVPP_DIR" kube-test-template FLAVOR=kind \
+    > kubernetes/kind-calicovpp-config-template.yaml
+  write_kube_vars_file
+  envsubst < kubernetes/kind-calicovpp-config-template.yaml > kubernetes/kind-calicovpp-config.yaml
+}
+
 help() {
   echo "Usage:"
   echo -e "  make master-cluster | rebuild-master-cluster | release-cluster\n"
@@ -82,7 +95,7 @@ help() {
   echo "'rebuild-master-cluster' stops CalicoVPP pods, rebuilds VPP and restarts CalicoVPP pods. Cluster keeps running."
   echo "'release-cluster' starts up a KinD cluster and uses latest CalicoVPP release (e.g. v3.32.0),
     or you can override versions by using env variables 'CALICOVPP_VERSION' and 'TIGERA_VERSION':
-    CALICOVPP_VERSION: latest | v[x].[y].[z] (default="v3.32.0")
+    CALICOVPP_VERSION: v[x].[y].[z] (default="v3.32.0")
     TIGERA_VERSION:    master | v[x].[y].[z] (default="v3.32.0")"
 
   echo -e "\nTo shut down the cluster, use 'kind delete cluster'"
@@ -102,38 +115,17 @@ push_calico_to_registry() {
   done
 }
 
-push_release_to_registry() {
-  for component in vpp agent multinet-monitor; do
-    docker pull docker.io/calicovpp/$component:$CALICOVPP_VERSION
-    docker image tag docker.io/calicovpp/$component:$CALICOVPP_VERSION localhost:5000/calicovpp/$component:$CALICOVPP_VERSION
-	  docker push localhost:5000/calicovpp/$component:$CALICOVPP_VERSION
-  done
-}
-
-push_tag_to_registry() {
-  for component in vpp agent multinet-monitor; do
-    docker image tag docker.io/calicovpp/$component:$TAG localhost:5000/calicovpp/$component:$TAG
-	  docker push localhost:5000/calicovpp/$component:$TAG
-  done
-}
-
 build_calicovpp() {
-  tmp_path=$(pwd)
-  if [ ! -d "$CALICOVPP_DIR" ]; then
-      git clone https://github.com/projectcalico/vpp-dataplane.git $CALICOVPP_DIR
-  else
-      if [ "$RESTORE_CV" = "true" ]; then
-        echo "Repo found, resetting"
-        cd $CALICOVPP_DIR
-        git fetch --tags --force
-        git reset --hard origin/master
-        cd $tmp_path
-        fi
+  clone_calicovpp_if_missing
+  if [ "$RESTORE_CV" = "true" ]; then
+    echo "Repo found, resetting"
+    git -C "$CALICOVPP_DIR" fetch --tags --force
+    git -C "$CALICOVPP_DIR" reset --hard origin/master
   fi
 
-  make -C $CALICOVPP_DIR/vpp-manager vpp BASE=$BASE && \
-  make -C $CALICOVPP_DIR dev TAG=$TAG && \
-  make -C $CALICOVPP_DIR image-kind TAG=$TAG
+  make -C "$CALICOVPP_DIR" vpp VPP_DIR="$VPP_BUILD_DIR" BASE="$BASE" && \
+  make -C "$CALICOVPP_DIR" dev TAG="$TAG" && \
+  make -C "$CALICOVPP_DIR" image-kind TAG="$TAG"
 }
 
 start_cni() {
@@ -142,10 +134,7 @@ start_cni() {
 
 setup_master() {
   save_stash
-  clean_vpp_build_artifacts
   export CALICOVPP_VERSION=${CALICOVPP_VERSION:-"kt-master"}
-  echo "CALICOVPP_VERSION=$CALICOVPP_VERSION" > kubernetes/.vars
-  envsubst < kubernetes/kind-calicovpp-config-template.yaml > kubernetes/kind-calicovpp-config.yaml
 
   echo -e "$kind_config" | kind create cluster --config=-
   kubectl apply -f kubernetes/registry.yaml
@@ -154,17 +143,13 @@ setup_master() {
   kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/$TIGERA_VERSION/manifests/tigera-operator.yaml
   while [[ "$(kubectl api-resources --api-group=operator.tigera.io | grep Installation)" == "" ]]; do echo "waiting for Installation kubectl resource"; sleep 2; done
 
-  if ! build_calicovpp; then
-    red "*** Build failed. Restoring repo. Try running 'make -C ../.. wipe' and 'make -C ../.. wipe-release' ***"
-    restore_repo
-    exit 1
-  fi
-  if ! verify_vpp_image; then
-    restore_repo
-    exit 1
-  fi
+  build_and_verify_vpp
 
-  push_tag_to_registry
+  # Fetch kube-test KinD manifest from CalicoVPP. CalicoVPP owns all
+  # repo-layout details (image name, VPP build path); kube-test just envsubst's
+  # the runtime placeholders (CALICOVPP_VERSION, HOME, etc.).
+  apply_kind_manifest_from_calicovpp
+
   start_cni
   restore_repo
   done_message
@@ -174,10 +159,9 @@ rebuild_master() {
   save_stash
   build_and_verify_vpp
   export CALICOVPP_VERSION=${CALICOVPP_VERSION:-"kt-master"}
-  echo "CALICOVPP_VERSION=$CALICOVPP_VERSION" > kubernetes/.vars
-  envsubst < kubernetes/kind-calicovpp-config-template.yaml > kubernetes/kind-calicovpp-config.yaml
 
-  push_tag_to_registry
+  apply_kind_manifest_from_calicovpp
+
   start_cni || true
   restore_repo
   kubectl rollout restart -n calico-vpp-dataplane ds/calico-vpp-node
@@ -186,15 +170,26 @@ rebuild_master() {
 
 setup_release() {
   export CALICOVPP_VERSION="${CALICOVPP_VERSION:-"v3.32.0"}"
-  echo "CALICOVPP_VERSION=$CALICOVPP_VERSION" > kubernetes/.vars
-  envsubst < kubernetes/kind-calicovpp-config-template.yaml > kubernetes/kind-calicovpp-config.yaml
   echo "CALICOVPP_VERSION=$CALICOVPP_VERSION"
   echo "TIGERA_VERSION=$TIGERA_VERSION"
   echo -e "$kind_config" | kind create cluster --config=-
   kubectl apply -f kubernetes/registry.yaml
   connect_registry
-  push_release_to_registry
+
+  # Checkout CalicoVPP at the requested release tag.
+  # Each release branch knows its own image names and paths.
+  clone_calicovpp_if_missing
+  git -C "$CALICOVPP_DIR" fetch --tags
+  git -C "$CALICOVPP_DIR" checkout "release/${CALICOVPP_VERSION}" 2>/dev/null || \
+    git -C "$CALICOVPP_DIR" checkout "${CALICOVPP_VERSION}"
+
+  # CalicoVPP knows which images belong to this release; push them to local registry
+  make -C "$CALICOVPP_DIR" kube-test-push-images CALICOVPP_VERSION=$CALICOVPP_VERSION
   push_calico_to_registry
+
+  # Fetch kube-test template from CalicoVPP (image name and paths baked in for this release)
+  apply_kind_manifest_from_calicovpp
+
   kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/$TIGERA_VERSION/manifests/tigera-operator.yaml
 
   while [[ "$(kubectl api-resources --api-group=operator.tigera.io | grep Installation)" == "" ]]; do echo "waiting for Installation kubectl resource"; sleep 2; done
