@@ -2988,10 +2988,12 @@ http2_app_reset_callback (http_ctx_t *hc, u32 req_index, clib_thread_index_t thr
   req = http_ctx_get_w_thread (req_index, thread_index);
   req->req_flags |= HTTP_REQ_F_APP_CLOSED;
   http_stats_stream_reset_by_app_inc (thread_index);
-  http2_send_stream_error (hc, req->stream_id,
-			   (req->req_flags & HTTP_REQ_F_IS_TUNNEL) ? HTTP2_ERROR_CONNECT_ERROR :
-								     HTTP2_ERROR_INTERNAL_ERROR,
-			   0);
+  /* in case client app just open stream and don't send request yet */
+  if (req->stream_state > HTTP2_STREAM_STATE_IDLE)
+    http2_send_stream_error (hc, req->stream_id,
+			     (req->req_flags & HTTP_REQ_F_IS_TUNNEL) ? HTTP2_ERROR_CONNECT_ERROR :
+								       HTTP2_ERROR_INTERNAL_ERROR,
+			     0);
   session_transport_delete_notify (&req->connection);
   if (req->req_flags & HTTP_REQ_F_IS_PARENT)
     {
