@@ -856,12 +856,16 @@ class FilterByTestOption:
             func_name,
         ):
             if filter_file_name:
-                fn_match = fnmatch.fnmatch(file_name, filter_file_name)
+                fn_match = fnmatch.fnmatchcase(file_name, filter_file_name)
                 if not fn_match:
                     return False
-            if filter_class_name and class_name != filter_class_name:
+            if filter_class_name and not fnmatch.fnmatchcase(
+                class_name, filter_class_name
+            ):
                 return False
-            if filter_func_name and func_name != filter_func_name:
+            if filter_func_name and not fnmatch.fnmatchcase(
+                func_name, filter_func_name
+            ):
                 return False
             return True
 
