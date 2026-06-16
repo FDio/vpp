@@ -301,7 +301,7 @@ tcp_update_burst_snd_vars (tcp_connection_t * tc)
   tc->snd_mss = clib_min (tc->mss, tc->rcv_opts.mss) - tc->snd_opts_len;
   ASSERT (tc->snd_mss > 0);
 
-  tcp_options_write (wrk->cached_opts, &tc->snd_opts);
+  tcp_options_write (wrk->cached_opts, &tc->snd_opts, 0);
 
   tcp_update_rcv_wnd (tc);
 
@@ -424,7 +424,7 @@ tcp_make_ack_i (tcp_connection_t * tc, vlib_buffer_t * b, tcp_state_t state,
   th = vlib_buffer_push_tcp (b, tc->c_lcl_port, tc->c_rmt_port, tc->snd_nxt,
 			     tc->rcv_nxt, tcp_hdr_opts_len, flags, wnd);
 
-  tcp_options_write ((u8 *) (th + 1), snd_opts);
+  tcp_options_write ((u8 *) (th + 1), snd_opts, 0);
 
   th->checksum = tcp_compute_checksum (tc, b);
 
@@ -475,16 +475,24 @@ tcp_make_wnd_probe (tcp_connection_t *tc, vlib_buffer_t *b)
   th = vlib_buffer_push_tcp (b, tc->c_lcl_port, tc->c_rmt_port, tc->snd_una - 1, tc->rcv_nxt,
 			     tcp_hdr_opts_len, TCP_FLAG_ACK, wnd);
 
-  tcp_options_write ((u8 *) (th + 1), snd_opts);
+  tcp_options_write ((u8 *) (th + 1), snd_opts, 0);
   th->checksum = tcp_compute_checksum (tc, b);
   vnet_buffer (b)->tcp.connection_index = tc->c_c_index;
 }
 
 /**
  * Convert buffer to SYN
+ *
+ * @param tc            connection
+ * @param b             buffer to fill (data, if any, already at b->data)
+ * @param tfo_cookie    cookie bytes to include in TFO option, NULL for
+ *                      cookie request (empty TFO option)
+ * @param tfo_cookie_len length of @p tfo_cookie (0 => cookie request)
+ * @param tfo_request   nonzero to include TFO option in the SYN
  */
 void
-tcp_make_syn (tcp_connection_t * tc, vlib_buffer_t * b)
+tcp_make_syn (tcp_connection_t *tc, vlib_buffer_t *b, const u8 *tfo_cookie, u8 tfo_cookie_len,
+	      u8 tfo_request)
 {
   u8 tcp_hdr_opts_len, tcp_opts_len;
   tcp_header_t *th;
@@ -496,13 +504,26 @@ tcp_make_syn (tcp_connection_t * tc, vlib_buffer_t * b)
   /* Make and write options */
   clib_memset (&snd_opts, 0, sizeof (snd_opts));
   tcp_opts_len = tcp_make_syn_options (tc, &snd_opts);
+
+  /* RFC 7413: append TFO option (cookie request or cached
+   * cookie) on first SYN attempt only. When tfo_cookie_len == 0
+   * but tfo_request is set, we send an empty TFO option (Kind=34,
+   * Length=2) as a cookie request per RFC 7413 Sec 4.1.1. */
+  if (PREDICT_FALSE (tfo_request))
+    {
+      snd_opts.flags |= TCP_OPTS_FLAG_TFO;
+      snd_opts.tfo_cookie_len = tfo_cookie_len;
+      tcp_opts_len += TCP_OPTION_LEN_FAST_OPEN (tfo_cookie_len);
+      /* Realign after adding the variable-length TFO option. */
+      tcp_opts_len += (TCP_OPTS_ALIGN - tcp_opts_len % TCP_OPTS_ALIGN) % TCP_OPTS_ALIGN;
+    }
   tcp_hdr_opts_len = tcp_opts_len + sizeof (tcp_header_t);
 
   th = vlib_buffer_push_tcp (b, tc->c_lcl_port, tc->c_rmt_port, tc->iss,
 			     tc->rcv_nxt, tcp_hdr_opts_len, TCP_FLAG_SYN,
 			     initial_wnd);
   vnet_buffer (b)->tcp.connection_index = tc->c_c_index;
-  tcp_options_write ((u8 *) (th + 1), &snd_opts);
+  tcp_options_write ((u8 *) (th + 1), &snd_opts, tfo_cookie_len ? tfo_cookie : NULL);
   th->checksum = tcp_compute_checksum (tc, b);
 }
 
@@ -513,6 +534,8 @@ static void
 tcp_make_synack (tcp_connection_t * tc, vlib_buffer_t * b)
 {
   tcp_options_t _snd_opts, *snd_opts = &_snd_opts;
+  u8 tfo_cookie[TCP_TFO_COOKIE_LEN_MAX];
+  u8 *tfo_cookie_p = NULL;
   u8 tcp_opts_len, tcp_hdr_opts_len;
   tcp_header_t *th;
   u16 initial_wnd;
@@ -520,12 +543,17 @@ tcp_make_synack (tcp_connection_t * tc, vlib_buffer_t * b)
   clib_memset (snd_opts, 0, sizeof (*snd_opts));
   initial_wnd = tcp_initial_window_to_advertise (tc);
   tcp_opts_len = tcp_make_synack_options (tc, snd_opts);
+
+  /* RFC 7413: append TFO cookie option if peer sent a TFO option in the
+   * SYN. The OPT_RCVD sticky bit survives SYN-ACK retransmits. */
+  tcp_tfo_synack_options (tc, snd_opts, tfo_cookie, &tfo_cookie_p, &tcp_opts_len);
+
   tcp_hdr_opts_len = tcp_opts_len + sizeof (tcp_header_t);
 
   th = vlib_buffer_push_tcp (b, tc->c_lcl_port, tc->c_rmt_port, tc->iss,
 			     tc->rcv_nxt, tcp_hdr_opts_len,
 			     TCP_FLAG_SYN | TCP_FLAG_ACK, initial_wnd);
-  tcp_options_write ((u8 *) (th + 1), snd_opts);
+  tcp_options_write ((u8 *) (th + 1), snd_opts, tfo_cookie_p);
 
   vnet_buffer (b)->tcp.connection_index = tc->c_c_index;
   th->checksum = tcp_compute_checksum (tc, b);
@@ -747,7 +775,7 @@ tcp_send_reset (tcp_connection_t * tc)
   th = vlib_buffer_push_tcp (b, tc->c_lcl_port, tc->c_rmt_port, tc->snd_nxt,
 			     tc->rcv_nxt, tcp_hdr_opts_len, flags,
 			     advertise_wnd);
-  opts_write_len = tcp_options_write ((u8 *) (th + 1), &tc->snd_opts);
+  opts_write_len = tcp_options_write ((u8 *) (th + 1), &tc->snd_opts, 0);
   th->checksum = tcp_compute_checksum (tc, b);
   ASSERT (opts_write_len == tc->snd_opts_len);
   vnet_buffer (b)->tcp.connection_index = tc->c_c_index;
@@ -772,6 +800,10 @@ tcp_send_syn (tcp_connection_t * tc)
   vlib_main_t *vm = wrk->vm;
   vlib_buffer_t *b;
   u32 bi;
+  u8 tfo_cookie[TCP_TFO_COOKIE_LEN_MAX];
+  u8 tfo_cookie_len = 0;
+  u16 tfo_data_len = 0;
+  u8 tfo_request;
 
   /*
    * Setup retransmit and establish timers before requesting buffer
@@ -790,7 +822,17 @@ tcp_send_syn (tcp_connection_t * tc)
 
   b = vlib_get_buffer (vm, bi);
   tcp_init_buffer (vm, b);
-  tcp_make_syn (tc, b);
+
+  /* RFC 7413: gate TFO on this SYN attempt, look up a cached cookie and
+   * when this is the first attempt, optionally emit early SYN data. */
+  tfo_request = tcp_tfo_prepare_send_syn (tc, vm, tfo_cookie, &tfo_cookie_len);
+  tfo_data_len = tcp_tfo_write_syn_data (tc, b, tfo_cookie_len);
+
+  tcp_make_syn (tc, b, tfo_cookie, tfo_cookie_len, tfo_request);
+
+  /* Advance snd_nxt to account for SYN data in sequence space */
+  if (tfo_data_len)
+    tc->snd_nxt += tfo_data_len;
 
   /* Measure RTT with this */
   tc->rtt_ts = tcp_time_now_us (vlib_num_workers ()? 1 : 0);
@@ -922,7 +964,7 @@ tcp_push_hdr_i (tcp_connection_t * tc, vlib_buffer_t * b, u32 snd_nxt,
     }
   else
     {
-      u8 len = tcp_options_write ((u8 *) (th + 1), &tc->snd_opts);
+      u8 len = tcp_options_write ((u8 *) (th + 1), &tc->snd_opts, 0);
       ASSERT (len == tc->snd_opts_len);
     }
 
@@ -1523,9 +1565,17 @@ tcp_timer_retransmit_syn_handler (tcp_connection_t * tc)
   if (tc->rto_boff > TCP_RTO_SYN_RETRIES)
     tc->rto = clib_min (tc->rto << 1, TCP_RTO_MAX);
 
+  /* RFC 7413: (blackhole detection) if first retransmit of a TFO SYN
+   * (rto_boff transitions 0->1), record a failure for the destination
+   * iff the original SYN actually included a TFO option. Also free
+   * any early data since retransmits do not include any data. */
+  if (tc->rto_boff == 1 && tcp_tfo_enabled (tc))
+    tcp_tfo_syn_retransmit_cleanup (tc);
+
   b = vlib_get_buffer (vm, bi);
   tcp_init_buffer (vm, b);
-  tcp_make_syn (tc, b);
+  /* RFC 7413: Never include TFO option in retransmits (Sec 4.1.3) */
+  tcp_make_syn (tc, b, NULL, 0, 0);
 
   TCP_EVT (TCP_EVT_SYN_RXT, tc, 0);
 

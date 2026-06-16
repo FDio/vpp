@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-option version = "2.0.0";
+option version = "2.1.0";
 
 import "vnet/ip/ip_types.api";
 
@@ -42,3 +42,15 @@ autoreply define tcp_configure_src_addresses {
     vl_api_address_t first_address;
     vl_api_address_t last_address;
  };
+
+/** \brief Flush the TFO cookie cache and blackhole detection table
+
+    Forces all cached TFO cookies and blackhole state to be discarded.
+
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+autoreply define tcp_fast_open_clear_cache {
+    u32 client_index;
+    u32 context;
+};

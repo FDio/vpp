@@ -590,6 +590,7 @@ list(APPEND VNET_SOURCES
   tcp/tcp_bt.c
   tcp/tcp_cli.c
   tcp/tcp_cubic.c
+  tcp/tcp_fastopen.c
   tcp/tcp_debug.c
   tcp/tcp_sack.c
   tcp/tcp_timer.c
@@ -608,6 +609,7 @@ list(APPEND VNET_HEADERS
   tcp/tcp_bt.h
   tcp/tcp_cc.h
   tcp/tcp_debug.h
+  tcp/tcp_fastopen.h
   tcp/tcp_inlines.h
   tcp/tcp_sack.h
   tcp/tcp_sdl.h

@@ -53,6 +53,17 @@ error:
   REPLY_MACRO (VL_API_TCP_CONFIGURE_SRC_ADDRESSES_REPLY);
 }
 
+static void
+vl_api_tcp_fast_open_clear_cache_t_handler (vl_api_tcp_fast_open_clear_cache_t *mp)
+{
+  vl_api_tcp_fast_open_clear_cache_reply_t *rmp;
+  int rv = 0;
+
+  tcp_tfo_cache_flush (0, 0);
+
+  REPLY_MACRO (VL_API_TCP_FAST_OPEN_CLEAR_CACHE_REPLY);
+}
+
 #include <vnet/tcp/tcp.api.c>
 static clib_error_t *
 tcp_api_hookup (vlib_main_t * vm)
