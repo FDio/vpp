@@ -1,0 +1,123 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "154d95ed_3f009c2c",
+        "filename": "src/vnet/tcp/tcp_input.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 2702,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-06-16T17:55:50Z",
+      "side": 1,
+      "message": "Can we move this to tcp_fastopen?",
+      "revId": "cc4b2eb02e9b236ac59f728375b49b301b652e04",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9b4f2219_c61dd720",
+        "filename": "src/vnet/tcp/tcp_input.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 2722,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-06-16T17:55:50Z",
+      "side": 1,
+      "message": "Will this work with lots (\u003e100k) outstanding syns?",
+      "revId": "cc4b2eb02e9b236ac59f728375b49b301b652e04",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1a58e7b9_9dc6d5e6",
+        "filename": "src/vnet/tcp/tcp_output.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 553,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-06-16T17:55:50Z",
+      "side": 1,
+      "message": "Same comment here, let\u0027s move out if we can",
+      "revId": "cc4b2eb02e9b236ac59f728375b49b301b652e04",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "42e0f6ff_315722d9",
+        "filename": "src/vnet/tcp/tcp_output.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 846,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-06-16T17:55:50Z",
+      "side": 1,
+      "message": "can we hide most of the code here under this syn as a function call to something in tcp_fastopen.c? Wonder also if most of it can be moved to tcp_make_syn_options and leverage the fact that the cookie is in the cache, so we can just retrieve it there if tfo flag is on.",
+      "revId": "cc4b2eb02e9b236ac59f728375b49b301b652e04",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "fea21488_4497ae59",
+        "filename": "src/vnet/tcp/tcp_packet.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 153,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-06-16T17:55:50Z",
+      "side": 1,
+      "message": "We could overlap the tfo data here when tfo is on, as we shouldn\u0027t send sacks when handshaking.",
+      "revId": "cc4b2eb02e9b236ac59f728375b49b301b652e04",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "bff77a8d_82b9bf08",
+        "filename": "src/vnet/tcp/tcp_packet.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 159,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-06-16T17:55:50Z",
+      "side": 1,
+      "message": "Let\u0027s make this a union, as syn time options won\u0027t overlap with post handshake options",
+      "revId": "cc4b2eb02e9b236ac59f728375b49b301b652e04",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "61418bc6_c582eeef",
+        "filename": "src/vnet/tcp/tcp_types.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 385,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-06-16T17:55:50Z",
+      "side": 1,
+      "message": "Can we overlap this with some unused pointer during handshake?",
+      "revId": "cc4b2eb02e9b236ac59f728375b49b301b652e04",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
