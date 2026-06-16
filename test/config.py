@@ -355,6 +355,16 @@ parser.add_argument(
 )
 
 parser.add_argument(
+    "--use-smt",
+    action="store_true",
+    default=False,
+    help="allow VPP threads to share physical cores with each other by "
+    "allocating logical CPUs (hyperthread siblings) instead of whole "
+    "physical cores; relaxes core isolation to pack more suites onto an "
+    "SMT box",
+)
+
+parser.add_argument(
     "--vpp-opt-deps-library-path",
     action="store",
     default=None,
@@ -518,7 +528,14 @@ def _physical_cores(cpus):
     return [sorted(cores[key]) for key in order]
 
 
-physical_cores = _physical_cores(available_cpus)
+if config.use_smt:
+    # Relaxed allocation: hand out every logical CPU as its own single-cpu
+    # "core". This collapses the framework to plain logical-CPU allocation, so
+    # VPP threads may land on hyperthread siblings of one another - the same
+    # behaviour we fall back to when topology is unreadable or SMT is off.
+    physical_cores = [[cpu] for cpu in available_cpus]
+else:
+    physical_cores = _physical_cores(available_cpus)
 num_physical_cpus = len(physical_cores)
 
 if config.max_vpp_cpus == "auto":

@@ -273,6 +273,11 @@ else
 ARG20=
 endif
 
+ARG21=
+ifneq ($(findstring $(USE_SMT),1 y yes),)
+ARG21=--use-smt
+endif
+
 EXC_PLUGINS_ARG=
 ifneq ($(VPP_EXCLUDED_PLUGINS),)
 # convert the comma-separated list into N invocations of the argument to exclude a plugin
@@ -281,7 +286,7 @@ endif
 
 
 
-EXTRA_ARGS=$(ARG0) $(ARG1) $(ARG2) $(ARG3) $(ARG4) $(ARG5) $(ARG6) $(ARG7) $(ARG8) $(ARG9) $(ARG10) $(ARG11) $(ARG12) $(ARG13) $(ARG14) $(ARG15) $(ARG16) $(ARG17) $(ARG18) $(ARG19) $(ARG20)
+EXTRA_ARGS=$(ARG0) $(ARG1) $(ARG2) $(ARG3) $(ARG4) $(ARG5) $(ARG6) $(ARG7) $(ARG8) $(ARG9) $(ARG10) $(ARG11) $(ARG12) $(ARG13) $(ARG14) $(ARG15) $(ARG16) $(ARG17) $(ARG18) $(ARG19) $(ARG20) $(ARG21)
 
 RUN_TESTS_ARGS=--failed-dir=$(FAILED_DIR) --verbose=$(V) --jobs=$(TEST_JOBS) --filter=$(TEST) --skip-filter=$(SKIP_TESTS) --retries=$(RETRIES) --venv-dir=$(VENV_PATH) --vpp-ws-dir=$(WS_ROOT) --vpp-tag=$(TAG) --rnd-seed=$(RND_SEED) --vpp-worker-count="$(VPP_WORKER_COUNT)" --keep-pcaps $(PLUGIN_PATH_ARGS) $(EXC_PLUGINS_ARG) $(TEST_PLUGIN_PATH_ARGS) $(EXTRA_ARGS)
 RUN_SCRIPT_ARGS=--python-opts=$(PYTHON_OPTS)
@@ -532,6 +537,13 @@ help:
 	@echo "       use at most <n> cpus for running vpp"
 	@echo "       'auto' sets to number of available cpus"
 	@echo "       (default: auto)"
+	@echo ""
+	@echo "   USE_SMT=[1|y|yes]"
+	@echo "       allow VPP threads to share physical cores by allocating"
+	@echo "       logical CPUs (hyperthread siblings) instead of whole"
+	@echo "       physical cores; relaxes core isolation to fit more"
+	@echo "       suites on an SMT box"
+	@echo "       (default: no)"
 	@echo ""
 	@echo "   CACHE_OUTPUT=[0|n|no]"
 	@echo "       disable caching VPP stdout/stderr and logging it"
