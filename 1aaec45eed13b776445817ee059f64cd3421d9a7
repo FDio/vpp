@@ -102,6 +102,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "fed674e9_21ab25da",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 1037,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-06-16T17:12:03Z",
+      "side": 1,
+      "message": "Let\u0027s store the expiration value in the cache entry and then we can sue vlib_time_now().",
+      "parentUuid": "073a89de_77f65f6f",
+      "revId": "1aaec45eed13b776445817ee059f64cd3421d9a7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "47fd1ee8_f50cd1b8",
         "filename": "src/plugins/tlsopenssl/tls_openssl.c",
         "patchSetId": 9
@@ -131,6 +149,24 @@
       "side": 1,
       "message": "Florin - I read through the code again and i would rather not to change the current approach. Explanation: these two lines are invoked on the client_ssl_ctx object which is a singleton object per worker-thread per protocol (TLS or DTLS), and this client_ssl_ctx object is created inside function openssl_init_client_ctx() via function-call openssl_get_client_ssl_ctx() - so it lazily creates this client_ssl_ctx object for only once per each worker-thread per protocol. If we conditionally enable cache-mode and call-back function based on the enablement-state at the moment when the client_ssl_ctx is being created, then we may have to add extra logic in openssl_get_client_ssl_ctx() to conditional enable/disable the cache-mode and cb-function based on whether the cache-enablement-state has been changed since last access. To me, the current approach is simpler and better: when creating the client_ssl_ctx, we just unconditionally turn on the cache-mode and set the call-back function, however, inside the call-back function and the cache-lookup function, we do a quick check on the max-entries field in the cache object - if it\u0027s zero (meaning the caching is disabled), we\u0027ll just do a quick return without further processing",
       "parentUuid": "47fd1ee8_f50cd1b8",
+      "revId": "1aaec45eed13b776445817ee059f64cd3421d9a7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b3037b93_900e4d6a",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 1113,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-06-16T17:12:03Z",
+      "side": 1,
+      "message": "We can guard this using the global tls-resumption on/off in tls layer. If the cli updates the resumption flag, we should iterate over all workers and free all default_client_ssl_ctx, that will force their re-initialization.",
+      "parentUuid": "00cd2239_6bb5116f",
       "revId": "1aaec45eed13b776445817ee059f64cd3421d9a7",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
