@@ -1809,7 +1809,7 @@ tcp46_syn_sent_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
        *     If SEG.ACK =< ISS, or SEG.ACK > SND.NXT, send a reset (unless
        *     the RST bit is set, if so drop the segment and return)
        *       <SEQ=SEG.ACK><CTL=RST>
-       *     and discard the segment.  Return.
+       *     and discard the segment. Return.
        *     If SND.UNA =< SEG.ACK =< SND.NXT then the ACK is acceptable.
        */
       if (tcp_ack (tcp))
@@ -1889,14 +1889,22 @@ tcp46_syn_sent_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       new_tc->snd_wl1 = seq;
       new_tc->snd_wl2 = ack;
 
+      /* RFC 7413: free any early-SYN data parked in snd_opts.sacks (union)
+       * before post-handshake init flips that slot's semantics back to SACK
+       * pointer. tfo_syn_data was sent from this vec, not from the tx FIFO,
+       * so no FIFO dequeue is needed. */
+      tcp_tfo_syn_data_free (new_tc);
+
       tcp_connection_init_vars (new_tc);
+
+      /* RFC 7413: cache TFO cookie received in SYN-ACK and clear blackhole
+       * state on success. Reads opts directly from the wire buffer. */
+      tcp_tfo_handle_synack_cookie (new_tc, tcp);
 
       /* SYN-ACK: See if we can switch to ESTABLISHED state */
       if (PREDICT_TRUE (tcp_ack (tcp)))
 	{
 	  /* Our SYN is ACKed: we have iss < ack = snd_una */
-
-	  /* TODO Dequeue acknowledged segments if we support Fast Open */
 	  new_tc->snd_una = ack;
 	  new_tc->state = TCP_STATE_ESTABLISHED;
 
@@ -2157,6 +2165,10 @@ tcp46_rcv_process_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 
 	  /* Reset SYN-ACK retransmit and SYN_RCV establish timers */
 	  tcp_retransmit_timer_reset (&wrk->timer_wheel, tc);
+
+	  /* RFC 7413: connection established, release TFO pending slot. */
+	  tcp_tfo_established_release (tc);
+
 	  if (session_stream_accept_notify (&tc->connection))
 	    {
 	      error = TCP_ERROR_MSG_QUEUE_FULL;
@@ -2334,7 +2346,7 @@ tcp46_rcv_process_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	case TCP_STATE_LAST_ACK:
 	case TCP_STATE_TIME_WAIT:
 	  /* This should not occur, since a FIN has been received from the
-	   * remote side.  Ignore the segment text. */
+	   * remote side. Ignore the segment text. */
 	  break;
 	}
 
@@ -2679,6 +2691,32 @@ tcp46_listen_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 
       transport_fifos_init_ooo (&child->connection);
       child->tx_fifo_size = transport_tx_fifo_size (&child->connection);
+
+      /* RFC 7413: TCP Fast Open - requires TFO enabled on listener.
+       * All cookie validation, pending-slot reservation and SYN-data
+       * enqueue logic is encapsulated in tcp_tfo_listen_handle() */
+      if (lc->cfg_flags & TCP_CFG_F_TFO)
+	{
+	  switch (tcp_tfo_listen_handle (lc, child, b[0]))
+	    {
+	    case TCP_TFO_LISTEN_NONE:
+	      break;
+	    case TCP_TFO_LISTEN_COOKIE_SENT:
+	      tcp_inc_counter (listen, TCP_ERROR_TFO_COOKIE_SENT, 1);
+	      break;
+	    case TCP_TFO_LISTEN_FAST_OPEN:
+	      tcp_inc_counter (listen, TCP_ERROR_TFO_FAST_OPENED, 1);
+	      break;
+	    case TCP_TFO_LISTEN_COOKIE_INVALID:
+	      tcp_inc_counter (listen, TCP_ERROR_TFO_COOKIE_INVALID, 1);
+	      tcp_inc_counter (listen, TCP_ERROR_TFO_COOKIE_SENT, 1);
+	      break;
+	    case TCP_TFO_LISTEN_PENDING_FULL:
+	      tcp_inc_counter (listen, TCP_ERROR_TFO_PENDING_FULL, 1);
+	      tcp_inc_counter (listen, TCP_ERROR_TFO_COOKIE_SENT, 1);
+	      break;
+	    }
+	}
 
       tcp_send_synack (child);
       n_syns += 1;

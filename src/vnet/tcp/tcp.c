@@ -126,6 +126,9 @@ tcp_connection_bind (u32 session_index, transport_endpoint_cfg_t *lcl)
   listener->state = TCP_STATE_LISTEN;
   listener->cc_algo = tcp_cc_algo_get (tcp_cfg.cc_algo);
 
+  if (tcp_cfg.enable_fast_open)
+    listener->cfg_flags |= TCP_CFG_F_TFO;
+
   tcp_connection_timers_init (listener);
 
   if (!ip_is_zero (&lcl->ip, lcl->is_ip4))
@@ -249,6 +252,11 @@ tcp_connection_cleanup (tcp_connection_t * tc)
   /* Check if connection is not yet fully established */
   if (tc->state == TCP_STATE_SYN_SENT)
     {
+      /* RFC 7413: free any TFO early-SYN data still parked in snd_opts
+       * (overlapping the SACK pointer slot). It is owned only during
+       * SYN_SENT; release before the slot semantics flip post-handshake. */
+      tcp_tfo_syn_data_free (tc);
+
       /* Try to remove the half-open connection. If this is not the owning
        * thread, tc won't be removed. Retransmit or establish timers will
        * eventually expire and call again cleanup on the right thread. */
@@ -271,6 +279,11 @@ tcp_connection_cleanup (tcp_connection_t * tc)
 
       if (tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE)
 	tcp_bt_cleanup (tc);
+
+      /* RFC 7413: TFO post-handshake cleanup - release pending slot if
+       * fast-opened but never reached ESTABLISHED, etc. Early SYN data
+       * has already been freed at SYN-ACK reception or SYN retransmit. */
+      tcp_tfo_connection_cleanup (tc);
 
       tcp_connection_free (tc);
     }
@@ -843,6 +856,10 @@ tcp_session_open (transport_endpoint_cfg_t * rmt)
     tc->sw_if_index = rmt->peer.sw_if_index;
   tc->next_node_index = rmt->next_node_index;
   tc->next_node_opaque = rmt->next_node_opaque;
+
+  /* RFC 7413: Enable TFO on client connection if globally enabled. */
+  if (tcp_cfg.enable_fast_open)
+    tc->cfg_flags |= TCP_CFG_F_TFO;
 
   TCP_EVT (TCP_EVT_OPEN, tc);
   tc->state = TCP_STATE_SYN_SENT;
@@ -1620,6 +1637,7 @@ tcp_main_enable (vlib_main_t * vm)
   tm->bytes_per_buffer = vlib_buffer_get_default_data_size (vm);
   tm->cc_last_type = TCP_CC_LAST;
 
+  tcp_fastopen_init (vm);
   tcp_counters_init (tm);
 
   return error;
