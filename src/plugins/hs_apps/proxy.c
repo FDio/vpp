@@ -470,13 +470,17 @@ common_fifo_tuning_callback (session_t * s, svm_fifo_t * f,
   proxy_main_t *pm = &proxy_main;
 
   segment_manager_t *sm = segment_manager_get (f->segment_manager);
-  fifo_segment_t *fs = segment_manager_get_segment (sm, f->segment_index);
+  /* New segments may be created in other threads during this callback, have to
+   * get read lock on segment manager. */
+  fifo_segment_t *fs = segment_manager_get_segment_w_lock (sm, f->segment_index);
 
   u8 seg_usage = fifo_segment_get_mem_usage (fs);
   u32 fifo_in_use = svm_fifo_max_dequeue_prod (f);
   u32 fifo_size = svm_fifo_size (f);
   u8 fifo_usage = fifo_in_use * 100 / fifo_size;
   u8 update_size = 0;
+
+  segment_manager_segment_reader_unlock (sm);
 
   ASSERT (act < SESSION_FT_ACTION_N_ACTIONS);
 

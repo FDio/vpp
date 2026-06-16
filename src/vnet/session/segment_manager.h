@@ -131,6 +131,7 @@ u64 segment_manager_make_segment_handle (u32 segment_manager_index,
 					 u32 segment_index);
 u64 segment_manager_segment_handle (segment_manager_t * sm,
 				    fifo_segment_t * segment);
+void segment_manager_segment_reader_lock (segment_manager_t *sm);
 void segment_manager_segment_reader_unlock (segment_manager_t * sm);
 
 int segment_manager_alloc_session_fifos (segment_manager_t *sm,
