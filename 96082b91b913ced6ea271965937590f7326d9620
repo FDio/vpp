@@ -1,4 +1,56 @@
 {
   "pushCert": "certificate version 0.1\npusher 6F6F9D990CCCF059 1781580693 -0700\npushee ssh://gerrit.fd.io:29418/vpp\nnonce 1781580693-F3460D52CE9E2E1E0B4D1199E10DFF4248CBD687\n\n0000000000000000000000000000000000000000 96082b91b913ced6ea271965937590f7326d9620 refs/for/master%topic\u003dram/4ae8dcccfb036ebe7b0c68dfebb394f76ee1b60a\n-----BEGIN PGP SIGNATURE-----\n\niQIzBAABCgAdFiEEyGSwkgkld8+3HGB7b2+dmQzM8FkFAmoww5UACgkQb2+dmQzM\n8FmwvQ//akKgN3nh0j4SoaqVzVxyNerxa4oMbKFVenmNDcHDPZfOiJEl0jSDANn4\nzO/oiDLkIb4iKUO+J05BK+yVRIgJo+bhZa39blKA9QI4TiaY5pp8zg8VFbb/N8CJ\nVY4UQado18lL4/UcHfAR9zw/IorsmxjgsVHGs7xqhlHnrMucyBy89zqkrpyIjsa8\nTvqkA1we11cg0Nwz2r1lpQvw+I/xpFpeNqRV63oU2L4FYBJwHJuRqs3XYe+87r+0\nRB+4w2PE6FkVhgQ9c9+l6a9iMS2iqg4ziV/n56R1Ax+lV46k+Em+17kKrEDJqzGs\nWFA6AKrcnLrsZfnMMwvUP4cV5PAduqKnKKUzqaz+RA9MXRDPVOy5IOpYxO/vTn9U\nYB7F31Lii1rs4vEDnDSLSvzRLQkAwHrK6vakKB+6Kq56EEea6pYx0vTy7VWnxQvq\n0JhS9ag9rTNIBykY9LzBeetVns4gZdwiNTQh9vbhQIq6XQ+YhLB+Aqvd74RU/M2s\n3DOqATXpXZvPThFqP5bGoArrQLZVWtcF5Du7ifBwWRKcuyHkBG7uWIbYnKmiM4gk\nlSL5Rs7VsexXJslJr4OjvJ7oscEOc0vo6YAleWUtVTEkOh/fBrjx+2Inx1DFonNH\n0id1CAx2EwXIFG4CSI9NU6oxCH4xwcR35STpzVUvbDV7HvJtxio\u003d\n\u003d5LPH\n-----END PGP SIGNATURE-----\n",
-  "comments": []
+  "comments": [],
+  "submitRequirementResults": [
+    {
+      "submitRequirement": {
+        "name": "Code-Review",
+        "description": {
+          "value": "A maximum vote is required for the \u0027Code-Review\u0027 label.                         A minumum vote is blocking."
+        },
+        "applicabilityExpression": {},
+        "submittabilityExpression": {
+          "expressionString": "label:Code-Review\u003dMAX AND -label:Code-Review\u003dMIN"
+        },
+        "overrideExpression": {},
+        "allowOverrideInChildProjects": true
+      },
+      "applicabilityExpressionResult": {},
+      "submittabilityExpressionResult": {
+        "value": {"expression":{"expressionString":"label:Code-Review=MAX AND -label:Code-Review=MIN"},"status":"FAIL","errorMessage":{"value":null},"passingAtoms":[],"failingAtoms":["label:Code-Review=MAX","label:Code-Review=MIN"]}
+      },
+      "overrideExpressionResult": {},
+      "patchSetCommitId": "96082b91b913ced6ea271965937590f7326d9620",
+      "legacy": {
+        "value": false
+      },
+      "forced": {},
+      "hidden": {}
+    },
+    {
+      "submitRequirement": {
+        "name": "Verified",
+        "description": {
+          "value": "A maximum \u0027Verified\u0027 vote is required for the \u0027Verified\u0027 label. A minimum vote is blocking."
+        },
+        "applicabilityExpression": {},
+        "submittabilityExpression": {
+          "expressionString": "label:Verified\u003dMAX AND -label:Verified\u003dMIN"
+        },
+        "overrideExpression": {},
+        "allowOverrideInChildProjects": false
+      },
+      "applicabilityExpressionResult": {},
+      "submittabilityExpressionResult": {
+        "value": {"expression":{"expressionString":"label:Verified=MAX AND -label:Verified=MIN"},"status":"FAIL","errorMessage":{"value":null},"passingAtoms":[],"failingAtoms":["label:Verified=MAX","label:Verified=MIN"]}
+      },
+      "overrideExpressionResult": {},
+      "patchSetCommitId": "96082b91b913ced6ea271965937590f7326d9620",
+      "legacy": {
+        "value": false
+      },
+      "forced": {},
+      "hidden": {}
+    }
+  ]
 }
