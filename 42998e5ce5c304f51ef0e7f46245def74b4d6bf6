@@ -33,6 +33,24 @@
       "message": "This is pretty expensive/connection. Let\u0027s see if we can find way to avoid it since these are optional and only on syn",
       "revId": "42998e5ce5c304f51ef0e7f46245def74b4d6bf6",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "4cd27543_906be521",
+        "filename": "src/vnet/tcp/tcp_packet.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 159,
+      "author": {
+        "id": 3121
+      },
+      "writtenOn": "2026-06-16T04:28:35Z",
+      "side": 1,
+      "message": "Yes. I did not realize that `tcp_options_t` is embedded twice in every `tcp_connection_t` as `snd_opts` and `rcv_opts`.\nRemoved the 16-byte cookie from here. Now, we just store a 1-byte `tfo_cookie_len`. The cookie bytes are read from the packet buffer in `tcp46_syn_sent_inline` or from the local stack in `tcp_options_write` during `SYN`/`SYN-ACK` handling.",
+      "parentUuid": "18ec6beb_060f75c4",
+      "revId": "42998e5ce5c304f51ef0e7f46245def74b4d6bf6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
