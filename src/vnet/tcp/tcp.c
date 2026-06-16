@@ -126,6 +126,9 @@ tcp_connection_bind (u32 session_index, transport_endpoint_cfg_t *lcl)
   listener->state = TCP_STATE_LISTEN;
   listener->cc_algo = tcp_cc_algo_get (tcp_cfg.cc_algo);
 
+  if (tcp_cfg.enable_fast_open)
+    listener->cfg_flags |= TCP_CFG_F_TFO;
+
   tcp_connection_timers_init (listener);
 
   if (!ip_is_zero (&lcl->ip, lcl->is_ip4))
@@ -271,6 +274,20 @@ tcp_connection_cleanup (tcp_connection_t * tc)
 
       if (tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE)
 	tcp_bt_cleanup (tc);
+
+      /* TFO cleanup: release pending slot if connection was fast-opened but
+       * never reached ESTABLISHED (e.g., RST or timeout). The flag is per-
+       * connection so the caller of tcp_connection_cleanup is sole owner. */
+      if (tcp_fast_opened (tc))
+	{
+	  tcp_fast_opened_off (tc);
+	  u32 cur = clib_atomic_load_relax_n (&tcp_main.tfo_pending);
+	  while (cur > 0 &&
+		 !clib_atomic_cmp_and_swap_acq_relax_n (&tcp_main.tfo_pending, &cur, cur - 1, 0))
+	    ;
+	}
+
+      vec_free (tc->tfo_syn_data);
 
       tcp_connection_free (tc);
     }
@@ -843,6 +860,10 @@ tcp_session_open (transport_endpoint_cfg_t * rmt)
     tc->sw_if_index = rmt->peer.sw_if_index;
   tc->next_node_index = rmt->next_node_index;
   tc->next_node_opaque = rmt->next_node_opaque;
+
+  /* Enable TFO on client connection if globally enabled. */
+  if (tcp_cfg.enable_fast_open)
+    tc->cfg_flags |= TCP_CFG_F_TFO;
 
   TCP_EVT (TCP_EVT_OPEN, tc);
   tc->state = TCP_STATE_SYN_SENT;
@@ -1620,6 +1641,7 @@ tcp_main_enable (vlib_main_t * vm)
   tm->bytes_per_buffer = vlib_buffer_get_default_data_size (vm);
   tm->cc_last_type = TCP_CC_LAST;
 
+  tcp_fastopen_init (vm);
   tcp_counters_init (tm);
 
   return error;

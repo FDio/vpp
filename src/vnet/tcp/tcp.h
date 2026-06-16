@@ -16,6 +16,7 @@
 #include <vnet/tcp/tcp_bt.h>
 #include <vnet/tcp/tcp_cc.h>
 #include <vnet/tcp/tcp_sdl.h>
+#include <vnet/tcp/tcp_fastopen.h>
 
 typedef void (timer_expiration_handler) (tcp_connection_t * tc);
 
@@ -205,6 +206,9 @@ typedef struct tcp_configuration_
 
   /** Fault-injection. Debug only */
   f64 buffer_fail_fraction;
+
+  /** Enable TCP Fast Open globally for all new listeners */
+  u8 enable_fast_open;
 } tcp_configuration_t;
 
 typedef struct _tcp_main
@@ -255,6 +259,32 @@ typedef struct _tcp_main
   u16 msg_id_base;
 
   tcp_sdl_cb_fn_t sdl_cb;
+
+  /** TCP Fast Open (RFC 7413) */
+  /* Serialize access to the cookie cache, blackhole pool and key rotation */
+  clib_spinlock_t tfo_lock;
+  /* Current secret key for cookie generation */
+  u64 tfo_key[2];
+  /* Previous secret key for dual-key validation during key rotation */
+  u64 tfo_key_prev[2];
+  /* Timestamp of last key rotation */
+  f64 tfo_key_rotate_ts;
+  /* Pending TFO connections in SYN-RCVD (atomic load/store) */
+  u32 tfo_pending;
+  /* Max allowed pending TFO connections */
+  u32 tfo_pending_max;
+
+  /** TFO cookie cache: per-destination cached cookies (tfo_lock) */
+  /* hash: ip_key -> pool index */
+  uword *tfo_cookie_cache;
+  /* pool of cached cookies */
+  struct tcp_tfo_cc_entry_ *tfo_cc_entries;
+
+  /** TFO blackhole detection: per-destination failure tracking (tfo_lock) */
+  /* hash: ip_key -> pool index */
+  uword *tfo_blackhole;
+  /* pool of blackhole entries */
+  struct tcp_tfo_bh_entry_ *tfo_bh_entries;
 } tcp_main_t;
 
 extern tcp_main_t tcp_main;

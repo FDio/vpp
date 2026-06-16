@@ -87,7 +87,8 @@ typedef enum _tcp_timers
   _ (NO_TSO, "TSO off")                                                                            \
   _ (TSO, "TSO")                                                                                   \
   _ (NO_ENDPOINT, "No endpoint")                                                                   \
-  _ (TRACKED, "Tracked connection")
+  _ (TRACKED, "Tracked connection")                                                                \
+  _ (TFO, "TCP Fast Open")
 
 typedef enum tcp_cfg_flag_bits_
 {
@@ -106,20 +107,23 @@ typedef enum tcp_cfg_flag_
 } tcp_cfg_flags_e;
 
 /** TCP connection flags */
-#define foreach_tcp_connection_flag             \
-  _(SNDACK, "Send ACK")                         \
-  _(FINSNT, "FIN sent")				\
-  _(RECOVERY, "Recovery")                    	\
-  _(FAST_RECOVERY, "Fast Recovery")		\
-  _(DCNT_PENDING, "Disconnect pending")		\
-  _(HALF_OPEN_DONE, "Half-open completed")	\
-  _(FINPNDG, "FIN pending")			\
-  _(RXT_PENDING, "Retransmit pending")		\
-  _(FRXT_FIRST, "Retransmit first")		\
-  _(DEQ_PENDING, "Dequeue pending ")		\
-  _(PSH_PENDING, "PSH pending")			\
-  _(FINRCVD, "FIN received")			\
-  _(ZERO_RWND_SENT, "Zero RWND sent")		\
+#define foreach_tcp_connection_flag                                                                \
+  _ (SNDACK, "Send ACK")                                                                           \
+  _ (FINSNT, "FIN sent")                                                                           \
+  _ (RECOVERY, "Recovery")                                                                         \
+  _ (FAST_RECOVERY, "Fast Recovery")                                                               \
+  _ (DCNT_PENDING, "Disconnect pending")                                                           \
+  _ (HALF_OPEN_DONE, "Half-open completed")                                                        \
+  _ (FINPNDG, "FIN pending")                                                                       \
+  _ (RXT_PENDING, "Retransmit pending")                                                            \
+  _ (FRXT_FIRST, "Retransmit first")                                                               \
+  _ (DEQ_PENDING, "Dequeue pending ")                                                              \
+  _ (PSH_PENDING, "PSH pending")                                                                   \
+  _ (FINRCVD, "FIN received")                                                                      \
+  _ (ZERO_RWND_SENT, "Zero RWND sent")                                                             \
+  _ (FAST_OPENED, "TFO fast opened")                                                               \
+  _ (TFO_OPT_RCVD, "TFO option received in SYN")                                                   \
+  _ (TFO_SYN_SENT, "TFO option sent in SYN")
 
 typedef enum tcp_connection_flag_bits_
 {
@@ -376,6 +380,12 @@ typedef struct _tcp_connection
   u32 last_fib_check;	/**< Last time we checked fib route for peer */
   u16 mss;		/**< Our max seg size that includes options */
   u32 ipv6_flow_label;	/**< flow label for ipv6 header */
+
+  /* TCP Fast Open (RFC 7413) */
+  u8 *tfo_syn_data; /**< early data vec for SYN (client only)
+		     * Set by the application at session_open() and consumed by
+		     * tcp_send_syn() across worker dispatches.
+		     * NULL on connections that did not request TFO with data. */
 
 #define rst_state snd_wl1
 } tcp_connection_t;

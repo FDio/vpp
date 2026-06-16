@@ -1801,7 +1801,7 @@ tcp46_syn_sent_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
        *     If SEG.ACK =< ISS, or SEG.ACK > SND.NXT, send a reset (unless
        *     the RST bit is set, if so drop the segment and return)
        *       <SEQ=SEG.ACK><CTL=RST>
-       *     and discard the segment.  Return.
+       *     and discard the segment. Return.
        *     If SND.UNA =< SEG.ACK =< SND.NXT then the ACK is acceptable.
        */
       if (tcp_ack (tcp))
@@ -1883,12 +1883,25 @@ tcp46_syn_sent_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 
       tcp_connection_init_vars (new_tc);
 
+      /* RFC 7413: Cache TFO cookie received in SYN-ACK for
+       * future connections; persistent storage is in the
+       * global per-destination cookie cache */
+      if (tcp_opts_tfo_cookie (&new_tc->rcv_opts))
+	{
+	  u8 *ck = tcp_options_get_tfo_cookie (tcp);
+	  u8 cklen = new_tc->rcv_opts.tfo_cookie_len;
+	  tcp_tfo_cache_cookie (new_tc, ck, cklen);
+	  tcp_tfo_blackhole_clear (new_tc);
+	}
+
       /* SYN-ACK: See if we can switch to ESTABLISHED state */
       if (PREDICT_TRUE (tcp_ack (tcp)))
 	{
 	  /* Our SYN is ACKed: we have iss < ack = snd_una */
 
-	  /* TODO Dequeue acknowledged segments if we support Fast Open */
+	  /* TFO SYN data accounting: data was sent from tfo_syn_data vec,
+	   * not the tx FIFO, so no FIFO dequeue needed. Just free it. */
+	  vec_free (new_tc->tfo_syn_data);
 	  new_tc->snd_una = ack;
 	  new_tc->state = TCP_STATE_ESTABLISHED;
 
@@ -2149,6 +2162,18 @@ tcp46_rcv_process_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 
 	  /* Reset SYN-ACK retransmit and SYN_RCV establish timers */
 	  tcp_retransmit_timer_reset (&wrk->timer_wheel, tc);
+
+	  /* TCP Fast Open: connection established, release TFO pending */
+	  if (tcp_fast_opened (tc))
+	    {
+	      u32 cur;
+	      tcp_fast_opened_off (tc);
+	      cur = clib_atomic_load_relax_n (&tcp_main.tfo_pending);
+	      while (cur > 0 && !clib_atomic_cmp_and_swap_acq_relax_n (&tcp_main.tfo_pending, &cur,
+								       cur - 1, 0))
+		;
+	    }
+
 	  if (session_stream_accept_notify (&tc->connection))
 	    {
 	      error = TCP_ERROR_MSG_QUEUE_FULL;
@@ -2326,7 +2351,7 @@ tcp46_rcv_process_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	case TCP_STATE_LAST_ACK:
 	case TCP_STATE_TIME_WAIT:
 	  /* This should not occur, since a FIN has been received from the
-	   * remote side.  Ignore the segment text. */
+	   * remote side. Ignore the segment text. */
 	  break;
 	}
 
@@ -2671,6 +2696,85 @@ tcp46_listen_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 
       transport_fifos_init_ooo (&child->connection);
       child->tx_fifo_size = transport_tx_fifo_size (&child->connection);
+
+      /* RFC 7413: TCP Fast Open - requires TFO enabled on listener */
+      if (lc->cfg_flags & TCP_CFG_F_TFO)
+	{
+	  if (tcp_opts_tfo (&child->rcv_opts))
+	    {
+	      tcp_tfo_opt_rcvd_on (child);
+
+	      if (!tcp_opts_tfo_cookie (&child->rcv_opts))
+		{
+		  /* Cookie request (empty TFO option): SYN-ACK will carry
+		   * a fresh cookie (RFC 7413 Sec 4.1.1). Regular 3WHS;
+		   * no early data accepted. */
+		  tcp_inc_counter (listen, TCP_ERROR_TFO_COOKIE_SENT, 1);
+		}
+	      else
+		{
+		  u8 *syn_cookie = tcp_options_get_tfo_cookie (tcp_buffer_hdr (b[0]));
+		  u8 cookie_ok =
+		    tcp_tfo_cookie_is_valid (child, syn_cookie, child->rcv_opts.tfo_cookie_len);
+		  /* Reserve a pending slot atomically before committing to
+		   * the fast-open path, otherwise concurrent workers can
+		   * blow past tfo_pending_max under a SYN burst. */
+		  u32 cur = clib_atomic_load_relax_n (&tcp_main.tfo_pending);
+		  u8 reserved = 0;
+		  if (cookie_ok)
+		    {
+		      while (cur < tcp_main.tfo_pending_max)
+			{
+			  if (clib_atomic_cmp_and_swap_acq_relax_n (&tcp_main.tfo_pending, &cur,
+								    cur + 1, 0))
+			    {
+			      reserved = 1;
+			      break;
+			    }
+			}
+		    }
+
+		  if (cookie_ok && reserved)
+		    {
+		      u32 data_len = vnet_buffer (b[0])->tcp.data_len;
+		      int written;
+		      /* Valid cookie + slot reserved: mark as fast-opened and
+		       * buffer SYN data (RFC 7413 Sec 4.1.2). The SYN-ACK
+		       * always refreshes the cookie via the OPT_RCVD flag. */
+		      tcp_fast_opened_on (child);
+		      tcp_inc_counter (listen, TCP_ERROR_TFO_FAST_OPENED, 1);
+
+		      if (data_len)
+			{
+			  /* MUST NOT accept more data than MSS (RFC 7413 Sec 4.2.2). */
+			  data_len = clib_min (data_len, child->snd_mss);
+			  vlib_buffer_advance (b[0], vnet_buffer (b[0])->tcp.data_offset);
+			  if (b[0]->current_length > data_len)
+			    b[0]->current_length = data_len;
+			  written = session_enqueue_stream_connection (&child->connection, b[0], 0,
+								       1 /* queue_event */, 1);
+			  if (written > 0)
+			    {
+			      child->rcv_nxt += written;
+			      child->rcv_las = child->rcv_nxt;
+			    }
+			}
+		    }
+		  else
+		    {
+		      /* Reject: bad cookie or pending limit reached. Fall
+		       * back to a regular 3WHS; SYN data is dropped
+		       * (RFC 7413 Sec 4.1.3). SYN-ACK still refreshes the
+		       * cookie, so subsequent attempts use a fresh one. */
+		      if (!cookie_ok)
+			tcp_inc_counter (listen, TCP_ERROR_TFO_COOKIE_INVALID, 1);
+		      else
+			tcp_inc_counter (listen, TCP_ERROR_TFO_PENDING_FULL, 1);
+		      tcp_inc_counter (listen, TCP_ERROR_TFO_COOKIE_SENT, 1);
+		    }
+		}
+	    }
+	}
 
       tcp_send_synack (child);
       n_syns += 1;

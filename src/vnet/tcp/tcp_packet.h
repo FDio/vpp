@@ -92,23 +92,26 @@ tcp_header_bytes (tcp_header_t * t)
 
 typedef enum tcp_option_type
 {
-  TCP_OPTION_EOL = 0,			/**< End of options. */
-  TCP_OPTION_NOOP = 1,			/**< No operation. */
-  TCP_OPTION_MSS = 2,			/**< Limit MSS. */
-  TCP_OPTION_WINDOW_SCALE = 3,		/**< Window scale. */
-  TCP_OPTION_SACK_PERMITTED = 4,	/**< Selective Ack permitted. */
-  TCP_OPTION_SACK_BLOCK = 5,		/**< Selective Ack block. */
-  TCP_OPTION_TIMESTAMP = 8,		/**< Timestamps. */
-  TCP_OPTION_UTO = 28,			/**< User timeout. */
-  TCP_OPTION_AO = 29,			/**< Authentication Option. */
+  TCP_OPTION_EOL = 0,		 /**< End of options. */
+  TCP_OPTION_NOOP = 1,		 /**< No operation. */
+  TCP_OPTION_MSS = 2,		 /**< Limit MSS. */
+  TCP_OPTION_WINDOW_SCALE = 3,	 /**< Window scale. */
+  TCP_OPTION_SACK_PERMITTED = 4, /**< Selective Ack permitted. */
+  TCP_OPTION_SACK_BLOCK = 5,	 /**< Selective Ack block. */
+  TCP_OPTION_TIMESTAMP = 8,	 /**< Timestamps. */
+  TCP_OPTION_UTO = 28,		 /**< User timeout. */
+  TCP_OPTION_AO = 29,		 /**< Authentication Option. */
+  TCP_OPTION_FAST_OPEN = 34,	 /**< TCP Fast Open (RFC 7413). */
 } tcp_option_type_t;
 
-#define foreach_tcp_options_flag                                        \
-  _ (MSS)               /**< MSS advertised in SYN */                   \
-  _ (TSTAMP)            /**< Timestamp capability advertised in SYN */  \
-  _ (WSCALE)            /**< Wnd scale capability advertised in SYN */  \
-  _ (SACK_PERMITTED)    /**< SACK capability advertised in SYN */       \
-  _ (SACK)		/**< SACK present */
+#define foreach_tcp_options_flag                                                                   \
+  _ (MSS)	     /**< MSS advertised in SYN */                                                 \
+  _ (TSTAMP)	     /**< Timestamp capability advertised in SYN */                                \
+  _ (WSCALE)	     /**< Wnd scale capability advertised in SYN */                                \
+  _ (SACK_PERMITTED) /**< SACK capability advertised in SYN */                                     \
+  _ (SACK)	     /**< SACK present */                                                          \
+  _ (TFO)	     /**< TFO option present */                                                    \
+  _ (TFO_COOKIE)     /**< TFO cookie data present */
 
 enum
 {
@@ -131,6 +134,20 @@ typedef struct _sack_block
   u32 end;		/**< End sequence number (first outside) */
 } sack_block_t;
 
+/* TCP option lengths */
+#define TCP_OPTION_LEN_EOL	      1
+#define TCP_OPTION_LEN_NOOP	      1
+#define TCP_OPTION_LEN_MSS	      4
+#define TCP_OPTION_LEN_WINDOW_SCALE   3
+#define TCP_OPTION_LEN_SACK_PERMITTED 2
+#define TCP_OPTION_LEN_TIMESTAMP      10
+#define TCP_OPTION_LEN_SACK_BLOCK     8
+/* TCP Fast Open TFO cookie size bounds (RFC 7413 Sec 4.1.1) */
+#define TCP_OPTION_LEN_FAST_OPEN_BASE 2 /**< Kind + Length, no cookie */
+#define TCP_TFO_COOKIE_LEN_MIN	      4
+#define TCP_TFO_COOKIE_LEN_MAX	      16
+#define TCP_TFO_COOKIE_LEN_DEFAULT    8
+
 typedef struct
 {
   sack_block_t *sacks;	/**< SACK blocks */
@@ -140,6 +157,7 @@ typedef struct
   u8 flags;		/**< Option flags, see above */
   u8 wscale;		/**< Window scale advertised */
   u8 n_sack_blocks;	/**< Number of SACKs blocks */
+  u8 tfo_cookie_len;	/**< TFO cookie length; 0 = cookie request */
 } tcp_options_t;
 
 /* Flag tests that return 0 or !0 */
@@ -148,15 +166,8 @@ typedef struct
 #define tcp_opts_wscale(_to) ((_to)->flags & TCP_OPTS_FLAG_WSCALE)
 #define tcp_opts_sack(_to) ((_to)->flags & TCP_OPTS_FLAG_SACK)
 #define tcp_opts_sack_permitted(_to) ((_to)->flags & TCP_OPTS_FLAG_SACK_PERMITTED)
-
-/* TCP option lengths */
-#define TCP_OPTION_LEN_EOL              1
-#define TCP_OPTION_LEN_NOOP             1
-#define TCP_OPTION_LEN_MSS              4
-#define TCP_OPTION_LEN_WINDOW_SCALE     3
-#define TCP_OPTION_LEN_SACK_PERMITTED   2
-#define TCP_OPTION_LEN_TIMESTAMP        10
-#define TCP_OPTION_LEN_SACK_BLOCK        8
+#define tcp_opts_tfo(_to)	     ((_to)->flags & TCP_OPTS_FLAG_TFO)
+#define tcp_opts_tfo_cookie(_to)     ((_to)->flags & TCP_OPTS_FLAG_TFO_COOKIE)
 
 #define TCP_HDR_LEN_MAX			60
 #define TCP_WND_MAX                     65535U
@@ -164,6 +175,41 @@ typedef struct
 #define TCP_OPTS_ALIGN                  4
 #define TCP_OPTS_MAX_SACK_BLOCKS        3
 #define TCP_MAX_GSO_SZ 			65536
+
+/* TFO option space: 2 (kind+len) + up to 16 cookie bytes, aligned to 4 */
+#define TCP_OPTION_LEN_FAST_OPEN(clen) (TCP_OPTION_LEN_FAST_OPEN_BASE + (clen))
+
+/**
+ * Locate the TFO cookie bytes in a parsed TCP header.
+ * Returns pointer to cookie data inside the packet buffer, or NULL.
+ * Only valid when tcp_opts_tfo_cookie() is true and tfo_cookie_len > 0.
+ * SYN-path only; not performance-critical.
+ */
+always_inline u8 *
+tcp_options_get_tfo_cookie (tcp_header_t *th)
+{
+  u8 *data = (u8 *) (th + 1);
+  i8 opts_len = (tcp_doff (th) << 2) - sizeof (tcp_header_t);
+  while (opts_len > 0)
+    {
+      u8 kind = data[0];
+      if (kind == TCP_OPTION_EOL)
+	break;
+      if (kind == TCP_OPTION_NOOP)
+	{
+	  data++;
+	  opts_len--;
+	  continue;
+	}
+      if (opts_len < 2 || data[1] < 2)
+	break;
+      if (kind == TCP_OPTION_FAST_OPEN && data[1] > TCP_OPTION_LEN_FAST_OPEN_BASE)
+	return data + 2;
+      opts_len -= data[1];
+      data += data[1];
+    }
+  return 0;
+}
 
 /* Modulo arithmetic for TCP sequence numbers */
 #define seq_lt(_s1, _s2) ((i32)((_s1)-(_s2)) < 0)
@@ -376,6 +422,23 @@ tcp_options_parse (tcp_header_t * th, tcp_options_t * to, u8 is_syn)
 	      vec_add1 (to->sacks, b);
 	    }
 	  break;
+	case TCP_OPTION_FAST_OPEN:
+	  /* RFC 7413 Sec 4.1.1: Only process on SYN or SYN-ACK.
+	   * Options with invalid length or without SYN MUST be ignored. */
+	  if (!is_syn || opt_len < TCP_OPTION_LEN_FAST_OPEN_BASE)
+	    break;
+	  to->flags |= TCP_OPTS_FLAG_TFO;
+	  to->tfo_cookie_len = 0;
+	  if (opt_len > TCP_OPTION_LEN_FAST_OPEN_BASE)
+	    {
+	      u8 clen = opt_len - TCP_OPTION_LEN_FAST_OPEN_BASE;
+	      if (clen >= TCP_TFO_COOKIE_LEN_MIN && clen <= TCP_TFO_COOKIE_LEN_MAX && !(clen & 1))
+		{
+		  to->flags |= TCP_OPTS_FLAG_TFO_COOKIE;
+		  to->tfo_cookie_len = clen;
+		}
+	    }
+	  break;
 	default:
 	  /* Nothing to see here */
 	  continue;
@@ -387,12 +450,13 @@ tcp_options_parse (tcp_header_t * th, tcp_options_t * to, u8 is_syn)
 /**
  * Write TCP options to segment.
  *
- * @param data	buffer where to write the options
- * @param opts	options to write
- * @return	length of options written
+ * @param data		buffer where to write the options
+ * @param opts		options to write
+ * @param tfo_cookie	TFO cookie bytes (NULL when no TFO cookie to write)
+ * @return		length of options written
  */
 always_inline u32
-tcp_options_write (u8 * data, tcp_options_t * opts)
+tcp_options_write (u8 *data, tcp_options_t *opts, const u8 *tfo_cookie)
 {
   u32 opts_len = 0;
   u32 buf, seq_len = 4;
@@ -454,6 +518,18 @@ tcp_options_write (u8 * data, tcp_options_t * opts)
 	    }
 	  opts_len += 2 + opts->n_sack_blocks * TCP_OPTION_LEN_SACK_BLOCK;
 	}
+    }
+
+  if (tcp_opts_tfo (opts))
+    {
+      *data++ = TCP_OPTION_FAST_OPEN;
+      *data++ = TCP_OPTION_LEN_FAST_OPEN_BASE + opts->tfo_cookie_len;
+      if (opts->tfo_cookie_len && tfo_cookie)
+	{
+	  clib_memcpy_fast (data, tfo_cookie, opts->tfo_cookie_len);
+	  data += opts->tfo_cookie_len;
+	}
+      opts_len += TCP_OPTION_LEN_FAST_OPEN_BASE + opts->tfo_cookie_len;
     }
 
   /* Terminate TCP options by padding with NOPs to a u32 boundary. Avoid using
