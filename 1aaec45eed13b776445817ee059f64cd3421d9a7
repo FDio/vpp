@@ -41,6 +41,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "2c8e8cfa_ea6ae884",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 28,
+      "author": {
+        "id": 3331
+      },
+      "writtenOn": "2026-06-16T16:44:20Z",
+      "side": 1,
+      "message": "Correct - both forward declarations are no longer needed - they were added initially when it called cache_store function in multiple functions - now it is centralized in the _cb function. I\u0027ll remove them",
+      "parentUuid": "9e2f9dfc_05eae83e",
+      "range": {
+        "startLine": 27,
+        "startChar": 1,
+        "endLine": 28,
+        "endChar": 62
+      },
+      "revId": "1aaec45eed13b776445817ee059f64cd3421d9a7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "a60ee4c8_01ea14b1",
@@ -54,6 +78,24 @@
       "writtenOn": "2026-06-11T05:31:02Z",
       "side": 1,
       "message": "Is is unix_time_now instead of vlib_time_now because you\u0027re worried about inter worker variance?",
+      "revId": "1aaec45eed13b776445817ee059f64cd3421d9a7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "073a89de_77f65f6f",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 1037,
+      "author": {
+        "id": 3331
+      },
+      "writtenOn": "2026-06-16T16:44:20Z",
+      "side": 1,
+      "message": "Correct. both sess_time and sess_timeout are set inside the SSL_SESSION object which is created by openssl lib",
+      "parentUuid": "a60ee4c8_01ea14b1",
       "revId": "1aaec45eed13b776445817ee059f64cd3421d9a7",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -77,6 +119,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "00cd2239_6bb5116f",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 1113,
+      "author": {
+        "id": 3331
+      },
+      "writtenOn": "2026-06-16T16:44:20Z",
+      "side": 1,
+      "message": "Florin - I read through the code again and i would rather not to change the current approach. Explanation: these two lines are invoked on the client_ssl_ctx object which is a singleton object per worker-thread per protocol (TLS or DTLS), and this client_ssl_ctx object is created inside function openssl_init_client_ctx() via function-call openssl_get_client_ssl_ctx() - so it lazily creates this client_ssl_ctx object for only once per each worker-thread per protocol. If we conditionally enable cache-mode and call-back function based on the enablement-state at the moment when the client_ssl_ctx is being created, then we may have to add extra logic in openssl_get_client_ssl_ctx() to conditional enable/disable the cache-mode and cb-function based on whether the cache-enablement-state has been changed since last access. To me, the current approach is simpler and better: when creating the client_ssl_ctx, we just unconditionally turn on the cache-mode and set the call-back function, however, inside the call-back function and the cache-lookup function, we do a quick check on the max-entries field in the cache object - if it\u0027s zero (meaning the caching is disabled), we\u0027ll just do a quick return without further processing",
+      "parentUuid": "47fd1ee8_f50cd1b8",
+      "revId": "1aaec45eed13b776445817ee059f64cd3421d9a7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "30b5f7e4_6176fcef",
         "filename": "src/plugins/tlsopenssl/tls_openssl.c",
         "patchSetId": 9
@@ -88,6 +148,24 @@
       "writtenOn": "2026-06-11T05:31:02Z",
       "side": 1,
       "message": "Let\u0027s gate session resumption with a tls layer config option.",
+      "revId": "1aaec45eed13b776445817ee059f64cd3421d9a7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "f42bc59d_bcad85cc",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 2205,
+      "author": {
+        "id": 3331
+      },
+      "writtenOn": "2026-06-16T16:44:20Z",
+      "side": 1,
+      "message": "will it hurt to just create an empty hashtable? by default, the max-cache-size\u003d\u003d0 already disables the session-resumption, it\u0027s just with a dangling cache object created.",
+      "parentUuid": "30b5f7e4_6176fcef",
       "revId": "1aaec45eed13b776445817ee059f64cd3421d9a7",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
