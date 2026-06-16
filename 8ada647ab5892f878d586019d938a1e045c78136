@@ -33,6 +33,24 @@
       "message": "I am not sure to understand why we need to replace the command running in the `calicovpp/vpp` container for images post refactoring",
       "revId": "8ada647ab5892f878d586019d938a1e045c78136",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "9f0c1e13_f217a83e",
+        "filename": "extras/kube-test/infra/utils.go",
+        "patchSetId": 8
+      },
+      "lineNbr": 221,
+      "author": {
+        "id": 3121
+      },
+      "writtenOn": "2026-06-16T05:15:53Z",
+      "side": 1,
+      "message": "Removed this in the latest patchset.\nWe now have a `kustomize` based VPP `kube-test` integration - CalicoVPP owns the VPP `kube-test` manifest and exposes a small `Makefile` API so VPP `kube-test` (and other consumers) no longer need to know CalicoVPP internal layout details.\nAlso updated `kind-calicovpp-config-template.yaml` to mirror the baremetal template\u0027s unified-image layout. This is just a fallback measure. The runtime `make kube-test-template` `kustomize`s the templates correctly for all releases.",
+      "parentUuid": "a9cfca92_b0939f33",
+      "revId": "8ada647ab5892f878d586019d938a1e045c78136",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
