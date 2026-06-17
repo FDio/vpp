@@ -3,6 +3,23 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "346cdb79_bb0d3b02",
+        "filename": "src/plugins/dpdk/device/common.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 291,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-06-17T09:20:29Z",
+      "side": 1,
+      "message": "why not use a vector instead?",
+      "revId": "65b9d61fdea60ce3456279765f58647c55537895",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "08e4793b_037adf7e",
         "filename": "src/vnet/flow/flow_cli.c",
         "patchSetId": 4
