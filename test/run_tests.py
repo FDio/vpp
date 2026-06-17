@@ -906,6 +906,117 @@ class FilterByClassList:
         return ".".join([file_name, class_name]) in self.classes_with_filenames
 
 
+# Characters that turn a filter selector into an fnmatch glob.  A selector
+# without any of these matches a single literal name (exact); '*'/'' matches
+# everything at that level (all); anything else globs (wildcard).
+_GLOB_CHARS = set("*?[")
+
+
+def _selector_kind(raw):
+    """Classify one raw filter selector exactly as the matcher treats it."""
+    if raw in ("", "*"):
+        return "all"
+    if any(c in _GLOB_CHARS for c in raw):
+        return "wildcard"
+    return "exact"
+
+
+def _split_raw_selectors(sub_filter):
+    """Split one sub-filter into its raw file/class/function selectors.
+
+    Mirrors parse_test_filter()'s '.' split but keeps the user's text (no
+    'test_' prefixing) for display, padding omitted trailing selectors with ''.
+    """
+    parts = sub_filter.split(".")
+    parts += [""] * (3 - len(parts))
+    return parts[0], parts[1], parts[2]
+
+
+class _CollectAllCallback:
+    """discover_tests callback recording every (file, class, func) it sees."""
+
+    def __init__(self):
+        self.tests = []
+
+    def __call__(self, file_name, cls, method):
+        self.tests.append((file_name, cls.__name__, method))
+
+
+def list_filtered_tests(config):
+    """Explain what config.filter selects, without building or running anything.
+
+    Discovers the whole test universe (just imports the test modules), then
+    shows, per sub-filter, how each file/class/function selector matches (exact
+    / wildcard / all) and which concrete names it resolves to, followed by the
+    list of selected tests.  Because discovery sees the *generated* names of
+    parameterized tests (test_tcp -> test_tcp_0, class Foo -> Foo_0, ...), an
+    exact selector that silently matches nothing becomes obvious here instead of
+    after a full build+run.  Returns the number of matched tests.
+    """
+    filters = [parse_test_filter(f) for f in config.filter.split(",")]
+    skip_filters = [parse_test_filter(f) for f in config.skip_filter.split(",")]
+    skip_filters = [t for t in skip_filters if t != (None, None, None)]
+
+    universe = _CollectAllCallback()
+    for d in config.test_src_dir:
+        discover_tests(d, universe)
+    all_tests = universe.tests
+
+    combined = FilterByTestOption(filters, skip_filters)
+    matched = [t for t in all_tests if combined(*t)]
+
+    sub_filters = config.filter.split(",") if config.filter else [""]
+    print("\n=== TEST filter explanation ===")
+    print(
+        f"expression: {config.filter or '(empty — matches everything)'!r}  "
+        f"({len(sub_filters)} sub-filter(s); {len(all_tests)} tests discovered)\n"
+    )
+
+    for i, sub in enumerate(sub_filters, 1):
+        triple = parse_test_filter(sub)
+        one = FilterByTestOption([triple], skip_filters)
+        sub_matched = [t for t in all_tests if one(*t)]
+        raw = _split_raw_selectors(sub)
+        levels = (
+            ("file    ", raw[0], sorted({t[0] for t in sub_matched})),
+            ("class   ", raw[1], sorted({t[1] for t in sub_matched})),
+            ("function", raw[2], sorted({t[2] for t in sub_matched})),
+        )
+        print(f"sub-filter {i}: {sub!r}")
+        for label, sel, vals in levels:
+            shown = ", ".join(vals[:8]) + (" ..." if len(vals) > 8 else "")
+            print(
+                f"  {label} {sel or '(omitted)':<18} [{_selector_kind(sel):<8}] "
+                f"-> {len(vals):>3} matched: {shown}"
+            )
+        print()
+
+    print(f"total: {len(matched)} test(s) selected out of {len(all_tests)}")
+    if not matched:
+        print(
+            "\n*** 0 tests matched. If you targeted a parameterized test, its real\n"
+            "    name carries an index/param suffix (test_tcp -> test_tcp_0, class\n"
+            "    Foo -> Foo_0). Selectors are fnmatch globs, so an exact name like\n"
+            "    'test_tcp' won't match them — add a trailing '*': test_tcp* / Foo*."
+        )
+        return 0
+
+    tree = {}
+    for f, c, m in matched:
+        tree.setdefault(f, {}).setdefault(c, []).append(m)
+    expand = len(matched) <= 50
+    print("\nmatched tests:")
+    for f in sorted(tree):
+        print(f"  {f}")
+        for c in sorted(tree[f]):
+            funcs = sorted(tree[f][c])
+            if expand:
+                print(f"    {c}: {', '.join(funcs)}")
+            else:
+                print(f"    {c}: {len(funcs)} test(s)")
+    return len(matched)
+
+
 def suite_from_failed(suite, failed):
     failed = {x.rsplit(".", 1)[0] for x in failed}
     filter_cb = FilterByClassList(failed)
@@ -1123,6 +1234,12 @@ def parse_results(results, write_failed_file=True):
 
 if __name__ == "__main__":
     print(f"Config is: {config}")
+
+    if config.list:
+        # Dry-run: explain what --filter selects and exit, touching neither VPP
+        # nor the API (discovery only imports the test modules).
+        list_filtered_tests(config)
+        sys.exit(0)
 
     if config.api_preload:
         VPPApiJSONFiles.load_api(apidir=config.extern_apidir + [config.vpp_install_dir])
