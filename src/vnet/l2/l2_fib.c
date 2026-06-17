@@ -1093,10 +1093,7 @@ l2fib_scan (vlib_main_t * vm, f64 start_time, u8 event_only)
   vec_validate (bd_learn_counts, vec_len (l2input_main.bd_configs) - 1);
 
   if (client)
-    {
-      mp = allocate_mac_evt_buf (client, cl_idx);
-      reg = vl_api_client_index_to_registration (lm->client_index);
-    }
+    mp = allocate_mac_evt_buf (client, cl_idx);
 
   /* Snapshot the data-path's learn counter before the walk below, which suspends and yields the
    * main thread to the data path. Used to detect concurrent learning - see the guarded writeback
@@ -1156,6 +1153,7 @@ l2fib_scan (vlib_main_t * vm, f64 start_time, u8 event_only)
 		  if (PREDICT_FALSE (evt_idx >= fm->max_macs_in_event))
 		    {
 		      /* event message full, send it and start a new one */
+		      reg = vl_api_client_index_to_registration (cl_idx);
 		      if (reg && vl_api_can_send_msg (reg))
 			{
 			  mp->n_macs = htonl (evt_idx);
@@ -1278,6 +1276,7 @@ l2fib_scan (vlib_main_t * vm, f64 start_time, u8 event_only)
       /*  send any outstanding mac event message else free message buffer */
       if (evt_idx)
 	{
+	  reg = vl_api_client_index_to_registration (cl_idx);
 	  if (reg && vl_api_can_send_msg (reg))
 	    {
 	      mp->n_macs = htonl (evt_idx);
