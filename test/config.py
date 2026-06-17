@@ -171,6 +171,15 @@ parser.add_argument(
     help=skip_filter_help_string,
 )
 
+parser.add_argument(
+    "--list",
+    action="store_true",
+    default=False,
+    help="explain which tests the --filter expression selects (per-selector "
+    "match kind + resolved file/class/function names + the concrete tests), "
+    "then exit without building or running anything",
+)
+
 default_retries = 0
 
 parser.add_argument(

@@ -315,6 +315,10 @@ test-dep: $(PAPI_INSTALL_DONE) $(FAILED_DIR)
 test: test-dep sanity
 	$(call retest-func)
 
+.PHONY: test-list
+test-list: test-dep
+	@scripts/run.sh $(RUN_SCRIPT_ARGS) $(RUN_TESTS_ARGS) --list
+
 .PHONY: retest
 retest: verify-env sanity $(FAILED_DIR)
 	$(call retest-func)

@@ -342,6 +342,7 @@ help:
 	@echo " debug                - run debug binary with debugger"
 	@echo " debug-release        - run release binary with debugger"
 	@echo " test                 - build and run tests"
+	@echo " test-list            - explain which tests TEST= selects, then exit (no run)"
 	@echo " test-cov-hs   		 - build and run host stack tests with coverage"
 	@echo " test-cov-both	  	 - build and run python and host stack tests, merge coverage data"
 	@echo " test-help            - show help on test framework"
@@ -592,6 +593,10 @@ test:
 .PHONY: test-debug
 test-debug:
 	$(call test,vpp_debug,test)
+
+.PHONY: test-list
+test-list:
+	$(call test,vpp_debug,test-list)
 
 .PHONY: test-cov
 test-cov:
