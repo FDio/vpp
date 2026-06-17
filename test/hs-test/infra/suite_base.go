@@ -457,14 +457,14 @@ func (s *HstSuite) WaitForCoreDump() bool {
 					}
 					f.Close()
 				}
-				if RunningInCi {
-					err = os.Remove(corePath)
-					if err == nil {
-						Log("removed " + corePath)
-					} else {
-						Log(err)
-					}
-				}
+				// if RunningInCi {
+				// 	err = os.Remove(corePath)
+				// 	if err == nil {
+				// 		Log("removed " + corePath)
+				// 	} else {
+				// 		Log(err)
+				// 	}
+				// }
 				break
 			}
 		}
