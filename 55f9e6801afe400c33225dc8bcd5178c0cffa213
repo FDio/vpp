@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7cde4c8a_9ab0e9fd",
+        "filename": "src/plugins/linux-cp/lcp_router.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 688,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2026-06-17T16:21:34Z",
+      "side": 1,
+      "message": "Have you tried this and confirmed that it has any effect? I think the reason that ip6_link_disable() and ip6_link_enable() are called unconditionally is that there is supposed to be a reference count maintained on the ip6_link_t for the interface and the teardown or setup of IPv6 stuff on the interface only actually happens when the count is transitioning to or from 0.",
+      "revId": "55f9e6801afe400c33225dc8bcd5178c0cffa213",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
