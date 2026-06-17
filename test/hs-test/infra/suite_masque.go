@@ -307,7 +307,7 @@ var _ = Describe("MasqueSoloSuite", Ordered, ContinueOnFailure, Serial, Label("M
 	}
 })
 
-var _ = Describe("MasqueSuite", Ordered, ContinueOnFailure, Serial, Label("Masque", "Proxy", "ConnectProxy", "MW"), func() {
+var _ = Describe("MasqueMWSuite", Ordered, ContinueOnFailure, Serial, Label("Masque", "Proxy", "ConnectProxy", "MW"), func() {
 	var s MasqueSuite
 	BeforeAll(func() {
 		s.SetupSuite()
