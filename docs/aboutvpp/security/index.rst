@@ -8,4 +8,4 @@ Security
 
     security
     security_advisories
-    tsc_vulnerability_management_v2
+    tsc_vulnerability_management_v3
