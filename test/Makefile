@@ -65,6 +65,18 @@ else
 PYTHON_INTERP=$(PYTHON)
 endif
 
+# Use uv (https://docs.astral.sh/uv/) to build the venv when available - it is
+# dramatically faster than python -m venv + pip-tools. Falls back to the
+# stock pip/pip-tools path when uv is not installed, so no environment is
+# required to have it. The checked-in lockfile (requirements-N.txt) is
+# consumed as-is by both paths; only test-refresh-deps regenerates it.
+UV := $(shell command -v uv 2>/dev/null)
+ifeq ($(UV),)
+VENV_BUILDER=pip
+else
+VENV_BUILDER=uv
+endif
+
 ifeq ($(V),)
 V=0
 endif
@@ -84,7 +96,10 @@ SCAPY_SOURCE=$(shell find $(VENV_PATH)/lib/python* -name site-packages)
 SCAPY_VERSION=$(shell grep scapy $(TEST_DIR)/requirements.txt | cut -d'=' -f3 | cut -d';' -f1)
 BUILD_COV_DIR=$(BR)/test-coverage
 
-PIP_TOOLS_INSTALL_DONE=$(VENV_RUN_DIR)/pip-tools-install-$(PYTHON_VERSION)-$(PIP_TOOLS_VERSION).done
+# The builder is part of the stamp name so that switching between the uv and
+# pip paths forces a clean venv rebuild (the rule wipes $(VENV_PATH)) rather
+# than reusing a venv the other path cannot drive.
+PIP_TOOLS_INSTALL_DONE=$(VENV_RUN_DIR)/pip-tools-install-$(VENV_BUILDER)-$(PYTHON_VERSION)-$(PIP_TOOLS_VERSION).done
 PIP_INSTALL_DONE=$(VENV_RUN_DIR)/pip-install-$(PYTHON_VERSION)-$(PIP_VERSION).done
 PIP_PATCH_DONE=$(VENV_RUN_DIR)/pip-patch-$(PYTHON_VERSION).done
 PAPI_INSTALL_DONE=$(VENV_RUN_DIR)/papi-install-$(PYTHON_VERSION).done
@@ -94,6 +109,8 @@ PAPI_WIPE_DIST=$(WS_ROOT)/src/vpp-api/vapi/__pycache__ \
 	$(PAPI_PYTHON_SRC_DIR)/vpp_papi.egg-info \
 	$(PAPI_PYTHON_SRC_DIR)/vpp_papi/__pycache__
 
+ifeq ($(UV),)
+# --- pip / pip-tools path (uv not available) ---
 $(PIP_TOOLS_INSTALL_DONE):
 	@rm -rf $(VENV_PATH)
 	@mkdir -p $(VENV_RUN_DIR)
@@ -117,6 +134,33 @@ $(PIP_INSTALL_DONE): $(PIP_TOOLS_INSTALL_DONE) $(PYTHON_DEPENDS)
 		  python3 -m piptools sync $(PYTHON_DEPENDS)"
 	@touch $@
 
+$(PAPI_INSTALL_DONE): $(PIP_PATCH_DONE)
+	@bash -c "source $(VENV_PATH)/bin/activate && python3 -m pip install -e $(PAPI_PYTHON_SRC_DIR)"
+	@touch $@
+else
+# --- uv path ---
+# uv is a standalone binary, so pip/pip-tools/setuptools are not installed into
+# the venv at all. uv reads the pip-tools-format lockfile directly.
+$(PIP_TOOLS_INSTALL_DONE):
+	@rm -rf $(VENV_PATH)
+	@uv venv --python $(PYTHON_INTERP) $(VENV_PATH)
+	@mkdir -p $(VENV_RUN_DIR)
+	@touch $@
+
+$(PYTHON_DEPENDS): requirements.txt
+	@uv pip compile -q --generate-hashes \
+		--custom-compile-command '$(MAKE) test-refresh-deps (or update requirements.txt)' \
+		--python $(VENV_PATH)/bin/python requirements.txt --output-file $@
+
+$(PIP_INSTALL_DONE): $(PIP_TOOLS_INSTALL_DONE) $(PYTHON_DEPENDS)
+	@uv pip sync --python $(VENV_PATH)/bin/python $(PYTHON_DEPENDS)
+	@touch $@
+
+$(PAPI_INSTALL_DONE): $(PIP_PATCH_DONE)
+	@uv pip install --python $(VENV_PATH)/bin/python -e $(PAPI_PYTHON_SRC_DIR)
+	@touch $@
+endif
+
 $(PIP_PATCH_DONE): $(PIP_INSTALL_DONE)
 	@echo --- patching ---
 	@sleep 1 # Ensure python recompiles patched *.py files -> *.pyc
@@ -127,10 +171,6 @@ $(PIP_PATCH_DONE): $(PIP_INSTALL_DONE)
 		[ $$retCode -gt 1 ] && exit $$retCode; \
 	done; \
 	touch $@
-
-$(PAPI_INSTALL_DONE): $(PIP_PATCH_DONE)
-	@bash -c "source $(VENV_PATH)/bin/activate && python3 -m pip install -e $(PAPI_PYTHON_SRC_DIR)"
-	@touch $@
 
 .PHONY: refresh-deps
 refresh-deps: clean-deps $(PIP_INSTALL_DONE) $(PYTHON_DEPENDS)
