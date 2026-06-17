@@ -118,6 +118,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "9a6ae62c_84b65281",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 1037,
+      "author": {
+        "id": 3331
+      },
+      "writtenOn": "2026-06-17T15:37:21Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "fed674e9_21ab25da",
+      "revId": "1aaec45eed13b776445817ee059f64cd3421d9a7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "47fd1ee8_f50cd1b8",
@@ -167,6 +185,24 @@
       "side": 1,
       "message": "We can guard this using the global tls-resumption on/off in tls layer. If the cli updates the resumption flag, we should iterate over all workers and free all default_client_ssl_ctx, that will force their re-initialization.",
       "parentUuid": "00cd2239_6bb5116f",
+      "revId": "1aaec45eed13b776445817ee059f64cd3421d9a7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "18cc380b_be94f47c",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 1113,
+      "author": {
+        "id": 3331
+      },
+      "writtenOn": "2026-06-17T15:37:21Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "b3037b93_900e4d6a",
       "revId": "1aaec45eed13b776445817ee059f64cd3421d9a7",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },

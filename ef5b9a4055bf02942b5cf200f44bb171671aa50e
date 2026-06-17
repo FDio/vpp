@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "0e87cea4_53ddc51a",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 1339,
+      "author": {
+        "id": 3331
+      },
+      "writtenOn": "2026-06-17T15:37:21Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "d5a0b41e_f942b619",
+      "revId": "ef5b9a4055bf02942b5cf200f44bb171671aa50e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "1f935264_a976b4d5",
@@ -31,6 +49,24 @@
       "writtenOn": "2026-06-16T17:12:03Z",
       "side": 1,
       "message": "This is another place where if tls resumption is off for tls layer, we should not try computing key and looking it up.",
+      "revId": "ef5b9a4055bf02942b5cf200f44bb171671aa50e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "85c60ddc_7157a264",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 1417,
+      "author": {
+        "id": 3331
+      },
+      "writtenOn": "2026-06-17T15:37:21Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "1f935264_a976b4d5",
       "revId": "ef5b9a4055bf02942b5cf200f44bb171671aa50e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }

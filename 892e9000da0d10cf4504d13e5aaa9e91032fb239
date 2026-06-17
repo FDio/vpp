@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "73b93b81_0491fd76",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 14
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3331
+      },
+      "writtenOn": "2026-06-17T15:37:21Z",
+      "side": 1,
+      "message": "Updated the code to: conditionally set client-enable-mode and callback function in each thread-specific ssl-ctx; use vlib_time_now() to calculate relative expiration-time with the cached entries; conditionally set ssl-client-ctx\u0027s cache_key (set only when ssl-caching is enabled); when ssl-caching is being enabled/disabled via VPP cli, clear all the per-thread defaule SSL_CTX",
+      "revId": "892e9000da0d10cf4504d13e5aaa9e91032fb239",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
