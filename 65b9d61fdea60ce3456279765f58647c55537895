@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "01de8b7a_cbff17e3",
+        "filename": "src/plugins/dpdk/device/common.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 291,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2026-06-17T13:44:44Z",
+      "side": 1,
+      "message": "you commented on patchset 4 which is not in the current change",
+      "parentUuid": "346cdb79_bb0d3b02",
+      "revId": "65b9d61fdea60ce3456279765f58647c55537895",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "08e4793b_037adf7e",
