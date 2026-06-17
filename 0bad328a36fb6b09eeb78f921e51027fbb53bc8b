@@ -52,6 +52,24 @@
       "parentUuid": "2787ae8e_58e18181",
       "revId": "0bad328a36fb6b09eeb78f921e51027fbb53bc8b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9706faf6_08ad673d",
+        "filename": "src/vnet/session/segment_manager.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 134,
+      "author": {
+        "id": 3240
+      },
+      "writtenOn": "2026-06-17T08:45:02Z",
+      "side": 1,
+      "message": "No, I don\u0027t really need it yet, I just used it before I realised there is a get_w_lock() alternative. I\u0027ll remove it from my changeset then. Should I add a comment discouraging use of get()?",
+      "parentUuid": "62d2def0_690066bf",
+      "revId": "0bad328a36fb6b09eeb78f921e51027fbb53bc8b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
