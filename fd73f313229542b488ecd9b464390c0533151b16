@@ -1,0 +1,106 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9b63fdd4_a8cd80d2",
+        "filename": "docs/aboutvpp/security/tsc_vulnerability_management_v3.rst",
+        "patchSetId": 1
+      },
+      "lineNbr": 143,
+      "author": {
+        "id": 219
+      },
+      "writtenOn": "2026-06-17T20:24:18Z",
+      "side": 1,
+      "message": "Also LFN staff (or some other entity managing the mailing list) has access, right? The spirit of the text doesn\u0027t change, but it might not be strictly accurate. I\u0027m OK leaving it as is.",
+      "revId": "fd73f313229542b488ecd9b464390c0533151b16",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "fb25a9b6_3eb3cf63",
+        "filename": "docs/aboutvpp/security/tsc_vulnerability_management_v3.rst",
+        "patchSetId": 1
+      },
+      "lineNbr": 187,
+      "author": {
+        "id": 219
+      },
+      "writtenOn": "2026-06-17T20:24:18Z",
+      "side": 1,
+      "message": "You use \"problem\" here but most of the language is changed to \"vulnerability\". I\u0027m OK leaving it as is, but notifying you here in case it was an oversight.",
+      "revId": "fd73f313229542b488ecd9b464390c0533151b16",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4ba5ecbd_1dd95484",
+        "filename": "docs/aboutvpp/security/tsc_vulnerability_management_v3.rst",
+        "patchSetId": 1
+      },
+      "lineNbr": 191,
+      "author": {
+        "id": 219
+      },
+      "writtenOn": "2026-06-17T20:24:18Z",
+      "side": 1,
+      "message": "Should not capitalize \"The\" after \", \"",
+      "revId": "fd73f313229542b488ecd9b464390c0533151b16",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5a81c722_bb1dd7b5",
+        "filename": "docs/aboutvpp/security/tsc_vulnerability_management_v3.rst",
+        "patchSetId": 1
+      },
+      "lineNbr": 293,
+      "author": {
+        "id": 219
+      },
+      "writtenOn": "2026-06-17T20:24:18Z",
+      "side": 1,
+      "message": "Should Mitre be all caps? MITRE. I see it written both ways on the Internet, so your call.",
+      "revId": "fd73f313229542b488ecd9b464390c0533151b16",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3944ea68_0a27c3e2",
+        "filename": "docs/aboutvpp/security/tsc_vulnerability_management_v3.rst",
+        "patchSetId": 1
+      },
+      "lineNbr": 317,
+      "author": {
+        "id": 219
+      },
+      "writtenOn": "2026-06-17T20:24:18Z",
+      "side": 1,
+      "message": "twitter? maybe that example can be removed.",
+      "revId": "fd73f313229542b488ecd9b464390c0533151b16",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "72966436_a219c6c6",
+        "filename": "docs/aboutvpp/security/tsc_vulnerability_management_v3.rst",
+        "patchSetId": 1
+      },
+      "lineNbr": 348,
+      "author": {
+        "id": 219
+      },
+      "writtenOn": "2026-06-17T20:24:18Z",
+      "side": 1,
+      "message": "typo s/calculatedi/calculated/",
+      "revId": "fd73f313229542b488ecd9b464390c0533151b16",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
