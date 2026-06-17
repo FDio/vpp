@@ -16,6 +16,24 @@
       "message": "Is this needed?",
       "revId": "0bad328a36fb6b09eeb78f921e51027fbb53bc8b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2787ae8e_58e18181",
+        "filename": "src/vnet/session/segment_manager.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 134,
+      "author": {
+        "id": 3240
+      },
+      "writtenOn": "2026-06-17T04:28:22Z",
+      "side": 1,
+      "message": "Not sure. May be useful to lock once and iterate over segments, or just as a more natural way to access segment (lock+get+use+unlock). Not strictly required, but it felt strange that we have get(), but can\u0027t really use it as there is no separate lock() function. And it is non-static anyway, so user code could call it even without adding to header.\n\nIf not, then I\u0027d argue get() should be removed to prevent misuse.",
+      "parentUuid": "8d67cec3_8b315fb5",
+      "revId": "0bad328a36fb6b09eeb78f921e51027fbb53bc8b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
