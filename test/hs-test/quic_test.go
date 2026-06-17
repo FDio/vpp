@@ -12,8 +12,8 @@ import (
 
 func init() {
 	RegisterQuicTests(QuicAlpnMatchTest, QuicAlpnOverlapMatchTest, QuicAlpnServerPriorityMatchTest, QuicAlpnMismatchTest,
-		QuicAlpnEmptyServerListTest, QuicAlpnEmptyClientListTest, QuicBuiltinEchoTest,
-		QuicBuiltinEchoBidirectionalTest, QuicBuiltinEchoTestBytesTest, QuicBuiltinEchoTestBytesBidirectionalTest,
+		QuicAlpnEmptyServerListTest, QuicAlpnEmptyClientListTest, QuicBuiltinEchoZeroCopyTest,
+		QuicBuiltinEchoBidirectionalZeroCopyTest, QuicBuiltinEchoTest, QuicBuiltinEchoBidirectionalTest,
 		QuicReorderTest, QuicCrlRejectThenAllowTest)
 	RegisterQuicMWTests(QuicCpsMWTest)
 	RegisterNoTopoTests(QuicFailedHandshakeTest)
@@ -190,15 +190,15 @@ func quicBuiltinEcho(s *QuicSuite, uni bool) {
 	}
 }
 
-func QuicBuiltinEchoTest(s *QuicSuite) {
+func QuicBuiltinEchoZeroCopyTest(s *QuicSuite) {
 	quicBuiltinEcho(s, false)
 }
 
-func QuicBuiltinEchoBidirectionalTest(s *QuicSuite) {
+func QuicBuiltinEchoBidirectionalZeroCopyTest(s *QuicSuite) {
 	quicBuiltinEcho(s, true)
 }
 
-func QuicBuiltinEchoTestBytesTest(s *QuicSuite) {
+func QuicBuiltinEchoTest(s *QuicSuite) {
 	serverVpp := s.Containers.ServerVpp.VppInstance
 	clientVpp := s.Containers.ClientVpp.VppInstance
 
@@ -213,7 +213,7 @@ func QuicBuiltinEchoTestBytesTest(s *QuicSuite) {
 	AssertNotContains(o, "failed")
 }
 
-func QuicBuiltinEchoTestBytesBidirectionalTest(s *QuicSuite) {
+func QuicBuiltinEchoBidirectionalTest(s *QuicSuite) {
 	serverVpp := s.Containers.ServerVpp.VppInstance
 	clientVpp := s.Containers.ClientVpp.VppInstance
 
