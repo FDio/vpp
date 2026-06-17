@@ -34,6 +34,24 @@
       "parentUuid": "8d67cec3_8b315fb5",
       "revId": "0bad328a36fb6b09eeb78f921e51027fbb53bc8b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "62d2def0_690066bf",
+        "filename": "src/vnet/session/segment_manager.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 134,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-06-17T08:03:33Z",
+      "side": 1,
+      "message": "`segment_manager_get_segment` is used in tests, so it\u0027s public for that, and yes, `segment_manager_get_segment_w_lock` should be the one to be used by consumers. We can make `segment_manager_segment_reader_lock` public if we get to a point where we need to iterate over a segment manager\u0027s segments. So I was trying to understand if got to that point, because otherwise the change in proxy.c is independent of it.",
+      "parentUuid": "2787ae8e_58e18181",
+      "revId": "0bad328a36fb6b09eeb78f921e51027fbb53bc8b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
