@@ -14,26 +14,58 @@ The fd.io vulnerability management process is
 `documented here`_.
 
 .. _documented here:
-   tsc_vulnerability_management_v2.rst
+   tsc_vulnerability_management_v3.html
+
+The description of the potential security vulnerability must endeavor to
+accurately depict the nature of the flaw. Information that should be included must
+indicate the attack vector that is exposed by the flaw and the initial access
+level required by the attacker. Where applicable, please advise how an operator may audit
+for abuse of the flaw within their environment.
+
+The FD.io TSC Vulnerability Management process requires that the CVSS v4.0 score be calculated
+and the score and vector / tag string be submitted by the reporter.
+
+Please use the CVSS v4.0 calculator [0], the documented scoring rubrics [1], and the CVSS
+Implementation guide [2] (Threat, Environmental, and Supplemental groups) to evaluate the issue.
+Please include both the numeric CVSS v4.0 score and the complete CVSS vector / tag string to this email.
+
+Note: the Supplemental group is optional and may be elided from the calculation as it has no effect on the CVSS score.
+
+[0] https://nvd.nist.gov/vuln-metrics/cvss/v4-calculator
+[1] https://www.first.org/cvss/v4.0/user-guide#Scoring-Rubrics
+[2] https://www.first.org/cvss/v4.0/implementation-guide
 
 Security Response Team
 ======================
 
-At the `August, 25th 2016 TSC meeting`_,
-the TSC approved the security response team charter
-and initial membership:
+At the `August 25, 2016 TSC meeting`_,
+the FD.io TSC approved the security response team charter
+and initial membership, approved Dave Wallace as chair and
+Maciek Konstantynowicz membership at the `June 4, 2026 TSC meeting`_,
+and approved Florin Coras membership at the `June 11, 2026 TSC meeting`_:
 
-.. _August, 25th 2016 TSC meeting:
+.. _August 25, 2016 TSC meeting:
    http://ircbot.wl.linuxfoundation.org/meetings/fdio-meeting/2016/fdio-meeting.2016-08-25-15.03.html
 
-- David Jorm (elected chair)
-- Ed Warnicke
+.. _June 4, 2026 TSC meeting:
+   https://ircbot.wl.linuxfoundation.org/meetings/fdio-meeting/2026/fd_io_tsc/fdio-meeting-fd_io_tsc.2026-06-04-15.01.html
+
+.. _June 11, 2026 TSC meeting:
+   https://ircbot.wl.linuxfoundation.org/meetings/fdio-meeting/2026/fd_io_tsc/fdio-meeting-fd_io_tsc.2026-06-11-15.00.html
+
+- Dave Wallace (elected chair)
 - Jim Thompson
-- Dave Wallace
-- Mathieu Lemay
+- Maciek Konstantynowicz
+- Florin Coras
 
 The team can be reached at the above private security
 mailing list.
+
+Emeritus SRT Members
+--------------------
+ - David Jorm (chair)
+ - Ed Warnicke
+ - Mathieu Lemay
 
 Security Scope
 ==============
