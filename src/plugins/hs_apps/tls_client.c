@@ -29,6 +29,7 @@ typedef struct
   u8 *negotiated_signature_algo;
   u8 alpn_protos[4];
   vlib_main_t *vlib_main;
+  u8 echo;
 } tls_client_main_t;
 
 typedef enum
@@ -42,6 +43,18 @@ tls_client_main_t tls_client_main;
 static int
 tc_ts_rx_callback (session_t *ts)
 {
+  tls_client_main_t *cm = &tls_client_main;
+  if (cm->echo)
+    {
+      vnet_disconnect_args_t _a = { 0 }, *a = &_a;
+      /* Got echo response — disconnect and signal done */
+      svm_fifo_dequeue_drop_all (ts->rx_fifo);
+      a->handle = session_handle (ts);
+      a->app_index = cm->app_index;
+      vnet_disconnect_session (a);
+      vlib_process_signal_event_mt (cm->vlib_main, cm->cli_node_index, TC_CLI_TEST_DONE, 0);
+      return 0;
+    }
   clib_warning ("called...");
   return -1;
 }
@@ -91,6 +104,17 @@ tc_ts_connected_callback (u32 app_index, u32 api_context, session_t *s, session_
       cm->negotiated_tls_version = 0;
       cm->negotiated_key_agreement = 0;
       cm->negotiated_signature_algo = 0;
+    }
+
+  if (cm->echo)
+    {
+      /* Send a short message; disconnect happens in rx_callback after echo */
+      u8 *msg = format (0, "hello");
+      svm_fifo_enqueue (s->tx_fifo, vec_len (msg), msg);
+      if (svm_fifo_set_event (s->tx_fifo))
+	session_program_tx_io_evt (session_handle (s), SESSION_IO_EVT_TX);
+      vec_free (msg);
+      return 0;
     }
 
   a->handle = session_handle (s);
@@ -384,6 +408,7 @@ tls_client_run_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_co
   cm->verify_cfg = 0;
   cm->ca_cert_file = 0;
   cm->crl_file = 0;
+  cm->echo = 0;
 
   if (!unformat_user (input, unformat_line_input, line_input))
     return clib_error_return (0, "expected URI");
@@ -422,6 +447,8 @@ tls_client_run_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_co
 	cm->cert_type = 1;
       else if (unformat (line_input, "cert-type rsa"))
 	cm->cert_type = 0;
+      else if (unformat (line_input, "echo"))
+	cm->echo = 1;
       else
 	{
 	  error = clib_error_return (0, "failed: unknown input `%U'",
