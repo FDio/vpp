@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5bea7745_3c0b8e09",
+        "filename": "src/vcl/vppcom.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 4734,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-06-18T17:58:43Z",
+      "side": 1,
+      "message": "This we should do, but wonder now if we should be doing it higher in the stack. I\u0027m assuming you\u0027ve hit this with ldp? If that\u0027s the case, we should sanitize the flags there before we call vls.",
+      "revId": "ca3138e3d0a22a03046e0a96f1bf12519f3460d6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
