@@ -759,6 +759,9 @@ application_alloc_and_init (app_init_args_t *a)
 
   app_crypto_ctx_init (&app->crypto_ctx);
 
+  if (opts[APP_OPTIONS_FLAGS] & APP_OPTIONS_FLAGS_TLS_RESUMPTION)
+    app->crypto_ctx.tls_resumption_enabled = 1;
+
   a->app_index = app->app_index;
 
   APP_DBG ("New app name: %v api index: %u index %u", app->name,
