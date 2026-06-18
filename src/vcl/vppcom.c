@@ -4731,6 +4731,9 @@ vppcom_session_recvfrom (uint32_t session_handle, void *buffer,
   vcl_session_t *session;
   int rv = VPPCOM_OK;
 
+  /* Strip ignorable flags */
+  flags &= ~(MSG_DONTWAIT | MSG_NOSIGNAL);
+
   if (flags == 0)
     rv = vppcom_session_read (session_handle, buffer, buflen);
   else if (flags & MSG_PEEK)
