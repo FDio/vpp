@@ -2117,6 +2117,12 @@ vppcom_session_connect (uint32_t session_handle, vppcom_endpt_t * server_ep)
       return VPPCOM_EBADFD;
     }
 
+  /* If NONBLOCK connect already in flight report EINPROGRESS instead.
+   * posix alllows polling connect() to fetch the socket status
+   * would otherwise spawn a fresh VPP session_connect per poll. */
+  if (PREDICT_FALSE (session->session_state == VCL_STATE_UPDATED))
+    return VPPCOM_EINPROGRESS;
+
   if (PREDICT_FALSE (vcl_session_is_ready (session)))
     {
       VDBG (0,
