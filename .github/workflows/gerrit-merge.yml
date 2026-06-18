@@ -86,7 +86,7 @@ jobs:
             echo
             echo "| Field | Value |"
             echo "| --- | --- |"
-            echo "| Gerrit change | ${{ inputs.GERRIT_CHANGE_URL }}/${{ inputs.GERRIT_PATCHSET_NUMBER }} |"
+            echo "| Gerrit change | ${{ inputs.GERRIT_CHANGE_URL }} |"
             echo "| Branch | ${{ inputs.GERRIT_BRANCH }} |"
             echo "| Gerrit Change ID | ${{ inputs.GERRIT_CHANGE_ID }} |"
             echo "| Patchset Revision | ${{ inputs.GERRIT_PATCHSET_REVISION }} |"
