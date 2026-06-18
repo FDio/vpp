@@ -1890,7 +1890,7 @@ session_event_dispatch_io (session_worker_t * wrk, vlib_node_runtime_t * node,
       break;
     case SESSION_IO_EVT_BUILTIN_RX:
       s = session_event_get_session (wrk, e);
-      if (PREDICT_FALSE (!s || s->session_state >= SESSION_STATE_CLOSING))
+      if (PREDICT_FALSE (!s || s->session_state >= SESSION_STATE_TRANSPORT_CLOSING))
 	break;
       svm_fifo_unset_event (s->rx_fifo);
       app_wrk = app_worker_get (s->app_wrk_index);
