@@ -266,6 +266,8 @@ void
 app_crypto_ctx_init (app_crypto_ctx_t *crypto_ctx)
 {
   vec_validate (crypto_ctx->wrk, vlib_num_workers ());
+  vec_validate (crypto_ctx->tls_resumption_data, app_crypto_engine_n_types () - 1);
+  clib_spinlock_init (&crypto_ctx->tls_resumption_lock);
 }
 
 static void
@@ -308,6 +310,22 @@ void
 app_crypto_ctx_free (app_crypto_ctx_t *crypto_ctx)
 {
   app_crypto_wrk_t *crypto_wrk;
+
+  if (crypto_ctx->tls_resumption_data)
+    {
+      app_crypto_engine_data_t **edp;
+      vec_foreach (edp, crypto_ctx->tls_resumption_data)
+	{
+	  if (*edp)
+	    {
+	      if ((*edp)->engine_data_free_cb)
+		(*edp)->engine_data_free_cb ((*edp)->engine_data);
+	      clib_mem_free (*edp);
+	    }
+	}
+      vec_free (crypto_ctx->tls_resumption_data);
+    }
+  clib_spinlock_free (&crypto_ctx->tls_resumption_lock);
 
   if (crypto_ctx->ca_trust_stores)
     {
@@ -642,6 +660,74 @@ VLIB_CLI_COMMAND (show_tls_profile_command, static) = {
   .path = "show app tls-profile",
   .short_help = "show app tls-profile [app <app-name|app-index>]",
   .function = show_tls_profile_command_fn,
+};
+
+static clib_error_t *
+app_crypto_tls_resumption_command_fn (vlib_main_t *vm, unformat_input_t *input,
+				      vlib_cli_command_t *cmd)
+{
+  u32 app_index = ~0;
+  u8 enable = ~0;
+  application_t *app;
+  app_crypto_ctx_t *crypto_ctx;
+
+  session_cli_return_if_not_enabled ();
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "app %U", unformat_app_index, &app_index))
+	;
+      else if (unformat (input, "enabled"))
+	enable = 1;
+      else if (unformat (input, "disabled"))
+	enable = 0;
+      else
+	return clib_error_return (0, "unknown input '%U'", format_unformat_error, input);
+    }
+
+  if (enable == (u8) ~0)
+    return clib_error_return (0, "specify 'enabled' or 'disabled'");
+
+  app = application_get_if_valid (app_index);
+  if (!app)
+    return clib_error_return (0, "invalid application index %u", app_index);
+
+  crypto_ctx = &app->crypto_ctx;
+
+  if (enable)
+    {
+      crypto_ctx->tls_resumption_enabled = 1;
+      vlib_cli_output (vm, "TLS resumption enabled for app %u", app_index);
+    }
+  else
+    {
+      crypto_ctx->tls_resumption_enabled = 0;
+      if (crypto_ctx->tls_resumption_data)
+	{
+	  app_crypto_engine_data_t **edp;
+	  clib_spinlock_lock (&crypto_ctx->tls_resumption_lock);
+	  vec_foreach (edp, crypto_ctx->tls_resumption_data)
+	    {
+	      if (*edp)
+		{
+		  if ((*edp)->engine_data_free_cb)
+		    (*edp)->engine_data_free_cb ((*edp)->engine_data);
+		  clib_mem_free (*edp);
+		  *edp = NULL;
+		}
+	    }
+	  clib_spinlock_unlock (&crypto_ctx->tls_resumption_lock);
+	}
+      vlib_cli_output (vm, "TLS resumption disabled for app %u", app_index);
+    }
+  return 0;
+}
+
+VLIB_CLI_COMMAND (app_crypto_tls_resumption_cmd, static) = {
+  .path = "app crypto tls-resumption",
+  .short_help = "app crypto tls-resumption app <app-name|app-index> "
+		"enabled|disabled",
+  .function = app_crypto_tls_resumption_command_fn,
 };
 
 crypto_engine_type_t
