@@ -309,6 +309,13 @@ app_crypto_ctx_free (app_crypto_ctx_t *crypto_ctx)
 {
   app_crypto_wrk_t *crypto_wrk;
 
+  if (crypto_ctx->engine_data_free)
+    {
+      crypto_ctx->engine_data_free (crypto_ctx->engine_data);
+      crypto_ctx->engine_data = NULL;
+      crypto_ctx->engine_data_free = NULL;
+    }
+
   if (crypto_ctx->ca_trust_stores)
     {
       app_crypto_ca_stores_cleanup (crypto_ctx->ca_trust_stores);

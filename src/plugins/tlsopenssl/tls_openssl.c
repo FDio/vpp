@@ -74,6 +74,7 @@ openssl_ctx_free (tls_ctx_t * ctx)
 	tls_async_evts_free_list (ctx);
 
       SSL_free (oc->ssl);
+      vec_free (oc->sess_cache_key);
       vec_free (ctx->srv_hostname);
     }
 
@@ -913,6 +914,174 @@ openssl_get_int_ca_trust (tls_ctx_t *ctx)
   return cti;
 }
 
+static openssl_sess_cache_t *
+openssl_get_app_sess_cache (tls_ctx_t *ctx)
+{
+  app_worker_t *app_wrk = app_worker_get (ctx->crypto_owner_app_wrk_index);
+  application_t *app = application_get (app_wrk->app_index);
+  return (openssl_sess_cache_t *) app->crypto_ctx.engine_data;
+}
+
+static u8 *
+openssl_sess_cache_make_key (tls_ctx_t *ctx)
+{
+  u8 *key = 0;
+  if (ctx->srv_hostname)
+    {
+      session_t *ts = session_get_from_handle (ctx->tls_session_handle);
+      transport_connection_t *tc = session_get_transport (ts);
+      key = format (key, "%s:%u", ctx->srv_hostname, (u32) tc->rmt_port);
+    }
+  else
+    {
+      session_t *ts = session_get_from_handle (ctx->tls_session_handle);
+      transport_connection_t *tc = session_get_transport (ts);
+      key = format (key, "%U:%u", format_ip46_address, &tc->rmt_ip,
+		    tc->is_ip4 ? IP46_TYPE_IP4 : IP46_TYPE_IP6, (u32) tc->rmt_port);
+    }
+  vec_add1 (key, 0);
+  return key;
+}
+
+static void
+openssl_sess_cache_evict_lru (openssl_sess_cache_t *cache)
+{
+  openssl_sess_cache_entry_t *head, *entry;
+
+  head = clib_llist_elt (cache->entries, cache->lru_head_index);
+  clib_llist_pop_first (cache->entries, lru_anchor, entry, head);
+
+  hash_unset_mem (cache->entry_by_key, entry->key);
+  SSL_SESSION_free (entry->session);
+  vec_free (entry->key);
+  clib_llist_put (cache->entries, entry);
+  cache->n_entries--;
+}
+
+static int
+openssl_sess_cache_store (openssl_sess_cache_t *cache, u8 *cache_key, SSL_SESSION *sess)
+{
+  openssl_sess_cache_entry_t *entry, *head;
+  u8 *key;
+  uword *p;
+
+  if (PREDICT_FALSE (!cache || cache->max_entries == 0))
+    return 0;
+
+  clib_spinlock_lock (&cache->lock);
+
+  if (PREDICT_FALSE (cache->max_entries == 0))
+    {
+      clib_spinlock_unlock (&cache->lock);
+      return 0;
+    }
+
+  key = vec_dup (cache_key);
+  p = hash_get_mem (cache->entry_by_key, key);
+
+  f64 expiration_time = vlib_time_now (vlib_get_main ()) + (f64) SSL_SESSION_get_timeout (sess);
+
+  if (p)
+    {
+      entry = pool_elt_at_index (cache->entries, p[0]);
+      head = clib_llist_elt (cache->entries, cache->lru_head_index);
+      clib_llist_remove (cache->entries, lru_anchor, entry);
+      clib_llist_add_tail (cache->entries, lru_anchor, entry, head);
+      SSL_SESSION_free (entry->session);
+      entry->session = sess;
+      entry->expiration_time = expiration_time;
+      vec_free (key);
+      clib_spinlock_unlock (&cache->lock);
+      return 1;
+    }
+
+  if (cache->n_entries >= cache->max_entries)
+    openssl_sess_cache_evict_lru (cache);
+
+  pool_get_zero (cache->entries, entry);
+  entry->session = sess;
+  entry->key = key;
+  entry->expiration_time = expiration_time;
+  clib_llist_anchor_init (cache->entries, lru_anchor, entry);
+
+  head = clib_llist_elt (cache->entries, cache->lru_head_index);
+  clib_llist_add_tail (cache->entries, lru_anchor, entry, head);
+
+  hash_set_mem (cache->entry_by_key, entry->key, entry - cache->entries);
+  cache->n_entries++;
+
+  clib_spinlock_unlock (&cache->lock);
+  return 1;
+}
+
+static SSL_SESSION *
+openssl_sess_cache_lookup (openssl_sess_cache_t *cache, u8 *cache_key)
+{
+  openssl_sess_cache_entry_t *entry, *head;
+  SSL_SESSION *sess;
+  uword *p;
+
+  if (PREDICT_FALSE (!cache || cache->max_entries == 0))
+    return NULL;
+
+  clib_spinlock_lock (&cache->lock);
+
+  if (PREDICT_FALSE (cache->max_entries == 0))
+    {
+      clib_spinlock_unlock (&cache->lock);
+      return NULL;
+    }
+
+  p = hash_get_mem (cache->entry_by_key, cache_key);
+
+  if (!p)
+    {
+      clib_spinlock_unlock (&cache->lock);
+      return NULL;
+    }
+
+  entry = pool_elt_at_index (cache->entries, p[0]);
+
+  f64 now = vlib_time_now (vlib_get_main ());
+  if (now > entry->expiration_time)
+    {
+      head = clib_llist_elt (cache->entries, cache->lru_head_index);
+      (void) head;
+      clib_llist_remove (cache->entries, lru_anchor, entry);
+      hash_unset_mem (cache->entry_by_key, entry->key);
+      SSL_SESSION_free (entry->session);
+      vec_free (entry->key);
+      clib_llist_put (cache->entries, entry);
+      cache->n_entries--;
+      clib_spinlock_unlock (&cache->lock);
+      return NULL;
+    }
+
+  /* Move to tail (most recently used) */
+  head = clib_llist_elt (cache->entries, cache->lru_head_index);
+  clib_llist_remove (cache->entries, lru_anchor, entry);
+  clib_llist_add_tail (cache->entries, lru_anchor, entry, head);
+
+  sess = entry->session;
+  clib_spinlock_unlock (&cache->lock);
+  return sess;
+}
+
+static int
+openssl_new_session_cb (SSL *ssl, SSL_SESSION *sess)
+{
+  openssl_ctx_t *oc = (openssl_ctx_t *) SSL_get_app_data (ssl);
+  if (!oc || !oc->sess_cache_key)
+    return 0;
+
+  openssl_sess_cache_t *cache = openssl_get_app_sess_cache (&oc->ctx);
+  if (!cache)
+    return 0;
+
+  /* Return 1 = we took ownership, 0 = OpenSSL should free the session */
+  return openssl_sess_cache_store (cache, oc->sess_cache_key, sess);
+}
+
 static int
 openssl_init_client_ctx (clib_thread_index_t thread_index,
 			 transport_proto_t proto)
@@ -952,6 +1121,10 @@ openssl_init_client_ctx (clib_thread_index_t thread_index,
 
   SSL_CTX_set_options (client_ssl_ctx, flags);
   SSL_CTX_set1_cert_store (client_ssl_ctx, om->cert_store);
+
+  /* Always enable session caching; per-app check happens in the callback */
+  SSL_CTX_set_session_cache_mode (client_ssl_ctx, SSL_SESS_CACHE_CLIENT);
+  SSL_CTX_sess_set_new_cb (client_ssl_ctx, openssl_new_session_cb);
 
   /* Set TLS Record size */
   if (om->record_size)
@@ -1163,6 +1336,7 @@ static int
 openssl_ctx_init_client (tls_ctx_t *ctx)
 {
   openssl_ctx_t *oc = (openssl_ctx_t *) ctx;
+  openssl_sess_cache_t *cache;
   SSL_CTX *client_ssl_ctx;
   int rv, err;
 
@@ -1177,6 +1351,10 @@ openssl_ctx_init_client (tls_ctx_t *ctx)
       TLS_DBG (1, "Couldn't initialize ssl struct");
       return -1;
     }
+
+  cache = openssl_get_app_sess_cache (ctx);
+  if (cache)
+    SSL_set_app_data (oc->ssl, oc);
 
   ASSERT (ctx->crypto_owner_app_wrk_index != SESSION_INVALID_INDEX);
 
@@ -1254,6 +1432,16 @@ openssl_ctx_init_client (tls_ctx_t *ctx)
     }
 
   SSL_set_bio (oc->ssl, oc->wbio, oc->rbio);
+
+  /* Try to resume a cached session */
+  if (cache)
+    {
+      oc->sess_cache_key = openssl_sess_cache_make_key (ctx);
+      SSL_SESSION *cached_sess = openssl_sess_cache_lookup (cache, oc->sess_cache_key);
+      if (cached_sess)
+	SSL_set_session (oc->ssl, cached_sess); /* increments refcount */
+    }
+
   SSL_set_connect_state (oc->ssl);
 
   /*
@@ -2029,6 +2217,7 @@ tls_openssl_init (vlib_main_t * vm)
       vec_validate (om->rx_bufs[i], DTLSO_MAX_BUFSIZE);
       vec_validate (om->tx_bufs[i], DTLSO_MAX_BUFSIZE);
     }
+
   tls_register_engine (&openssl_engine, CRYPTO_ENGINE_OPENSSL);
 
   om->engine_init = 0;
@@ -2165,6 +2354,109 @@ VLIB_CLI_COMMAND (tls_openssl_set_tls, static) = {
   .short_help = "tls openssl set-tls [record-size <size>] [record-split-size "
 		"<size>] [max-pipelines <size>]",
   .function = tls_openssl_set_tls_fn,
+};
+
+static void
+openssl_sess_cache_free (void *data)
+{
+  openssl_sess_cache_t *cache = (openssl_sess_cache_t *) data;
+  openssl_sess_cache_entry_t *entry;
+
+  clib_spinlock_lock (&cache->lock);
+  pool_foreach (entry, cache->entries)
+    {
+      SSL_SESSION_free (entry->session);
+      vec_free (entry->key);
+    }
+  pool_free (cache->entries);
+  hash_free (cache->entry_by_key);
+  clib_spinlock_unlock (&cache->lock);
+  clib_spinlock_free (&cache->lock);
+  clib_mem_free (cache);
+}
+
+static openssl_sess_cache_t *
+openssl_sess_cache_alloc (u32 max_entries)
+{
+  openssl_sess_cache_t *cache = clib_mem_alloc (sizeof (*cache));
+  clib_memset (cache, 0, sizeof (*cache));
+  cache->max_entries = max_entries;
+  cache->entry_by_key = hash_create_string (0, sizeof (uword));
+  cache->lru_head_index = clib_llist_make_head (cache->entries, lru_anchor);
+  clib_spinlock_init (&cache->lock);
+  return cache;
+}
+
+static clib_error_t *
+tls_openssl_session_cache_command_fn (vlib_main_t *vm, unformat_input_t *input,
+				      vlib_cli_command_t *cmd)
+{
+  u32 app_index = ~0, max_entries = 0;
+  openssl_sess_cache_t *cache;
+  app_crypto_ctx_t *crypto_ctx;
+  application_t *app;
+
+  session_cli_return_if_not_enabled ();
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "app %U", unformat_app_index, &app_index))
+	;
+      else if (unformat (input, "max-entries %d", &max_entries))
+	;
+      else
+	return clib_error_return (0, "unknown input '%U'", format_unformat_error, input);
+    }
+
+  app = application_get_if_valid (app_index);
+  if (!app)
+    return clib_error_return (0, "invalid application index %u", app_index);
+
+  crypto_ctx = &app->crypto_ctx;
+
+  if (max_entries == 0)
+    {
+      /* Disable: destroy the cache */
+      if (crypto_ctx->engine_data)
+	{
+	  crypto_ctx->engine_data_free (crypto_ctx->engine_data);
+	  crypto_ctx->engine_data = NULL;
+	  crypto_ctx->engine_data_free = NULL;
+	}
+      vlib_cli_output (vm, "Session cache disabled for app %u", app_index);
+    }
+  else if (!crypto_ctx->engine_data)
+    {
+      /* First time: allocate a new cache */
+      cache = openssl_sess_cache_alloc (max_entries);
+      app_crypto_ctx_set_engine_data (crypto_ctx, cache, openssl_sess_cache_free);
+      vlib_cli_output (vm, "Session cache enabled for app %u, max-entries %u", app_index,
+		       max_entries);
+    }
+  else
+    {
+      /* Resize: purge entries if needed */
+      cache = (openssl_sess_cache_t *) crypto_ctx->engine_data;
+      u32 old_max = cache->max_entries;
+
+      clib_spinlock_lock (&cache->lock);
+      cache->max_entries = max_entries;
+      while (cache->n_entries > cache->max_entries)
+	openssl_sess_cache_evict_lru (cache);
+      clib_spinlock_unlock (&cache->lock);
+
+      vlib_cli_output (vm, "Session cache for app %u: max-entries %u -> %u", app_index, old_max,
+		       max_entries);
+    }
+
+  return 0;
+}
+
+VLIB_CLI_COMMAND (tls_openssl_session_cache_cmd, static) = {
+  .path = "tls openssl session-cache",
+  .short_help = "tls openssl session-cache app <app-name|index> "
+		"max-entries <n>",
+  .function = tls_openssl_session_cache_command_fn,
 };
 
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
