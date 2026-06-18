@@ -4,4 +4,7 @@ FROM localhost:5001/vpp-kube-base:latest
 
 # apache2-utils is now installed in the base image
 
+# copy VCL/LDP libraries needed for VCL tests
+COPY vpp-data/lib/* /usr/lib/
+
 ENTRYPOINT ["ab"]
