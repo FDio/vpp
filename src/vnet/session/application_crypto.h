@@ -204,7 +204,17 @@ typedef struct app_crypto_ctx_
   /** quic cid encryptor key */
   char quic_cid_key[16];
   u8 quic_cid_key_set;
+  /** Opaque engine-specific data (e.g., per-app session cache) */
+  void *engine_data;
+  void (*engine_data_free) (void *data);
 } app_crypto_ctx_t;
+
+static inline void
+app_crypto_ctx_set_engine_data (app_crypto_ctx_t *ctx, void *data, void (*free_fn) (void *))
+{
+  ctx->engine_data = data;
+  ctx->engine_data_free = free_fn;
+}
 
 void app_crypto_ctx_init (app_crypto_ctx_t *crypto_ctx);
 void app_crypto_ctx_free (app_crypto_ctx_t *crypto_ctx);

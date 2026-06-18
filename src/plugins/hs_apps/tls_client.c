@@ -29,6 +29,7 @@ typedef struct
   u8 *negotiated_signature_algo;
   u8 alpn_protos[4];
   vlib_main_t *vlib_main;
+  u8 echo;
 } tls_client_main_t;
 
 typedef enum
@@ -42,6 +43,18 @@ tls_client_main_t tls_client_main;
 static int
 tc_ts_rx_callback (session_t *ts)
 {
+  tls_client_main_t *cm = &tls_client_main;
+  if (cm->echo)
+    {
+      vnet_disconnect_args_t _a = { 0 }, *a = &_a;
+      /* Got echo response — disconnect and signal done */
+      svm_fifo_dequeue_drop_all (ts->rx_fifo);
+      a->handle = session_handle (ts);
+      a->app_index = cm->app_index;
+      vnet_disconnect_session (a);
+      vlib_process_signal_event_mt (cm->vlib_main, cm->cli_node_index, TC_CLI_TEST_DONE, 0);
+      return 0;
+    }
   clib_warning ("called...");
   return -1;
 }
@@ -91,6 +104,17 @@ tc_ts_connected_callback (u32 app_index, u32 api_context, session_t *s, session_
       cm->negotiated_tls_version = 0;
       cm->negotiated_key_agreement = 0;
       cm->negotiated_signature_algo = 0;
+    }
+
+  if (cm->echo)
+    {
+      /* Send a short message; disconnect happens in rx_callback after echo */
+      u8 *msg = format (0, "hello");
+      svm_fifo_enqueue (s->tx_fifo, vec_len (msg), msg);
+      if (svm_fifo_set_event (s->tx_fifo))
+	session_program_tx_io_evt (session_handle (s), SESSION_IO_EVT_TX);
+      vec_free (msg);
+      return 0;
     }
 
   a->handle = session_handle (s);
@@ -309,14 +333,11 @@ tc_connect ()
 }
 
 static clib_error_t *
-tc_run (vlib_main_t *vm)
+tc_connect_and_wait (vlib_main_t *vm)
 {
   tls_client_main_t *cm = &tls_client_main;
   uword event_type, *event_data = 0;
   clib_error_t *error = 0;
-
-  if (tc_attach ())
-    return clib_error_return (0, "attach failed");
 
   tc_connect ();
 
@@ -352,6 +373,19 @@ tc_run (vlib_main_t *vm)
   return error;
 }
 
+static clib_error_t *
+tc_run (vlib_main_t *vm)
+{
+  clib_error_t *error = 0;
+
+  if (tc_attach ())
+    return clib_error_return (0, "attach failed");
+
+  error = tc_connect_and_wait (vm);
+
+  return error;
+}
+
 static int
 tc_detach ()
 {
@@ -370,27 +404,30 @@ tc_detach ()
   return rv;
 }
 
+typedef enum
+{
+  TC_ACTION_NONE = 0,
+  TC_ACTION_ATTACH,
+  TC_ACTION_DETACH,
+  TC_ACTION_CONNECT,
+} tc_action_t;
+
 static clib_error_t *
-tls_client_run_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
+tc_parse_options (unformat_input_t *line_input, tc_action_t *action)
 {
   tls_client_main_t *cm = &tls_client_main;
-  unformat_input_t _line_input, *line_input = &_line_input;
-  clib_error_t *error = 0;
 
-  cm->tls_engine = CRYPTO_ENGINE_OPENSSL;
-  cm->tls_profile_index = ~0;
-  cm->ca_trust_index = 0;
-  cm->cert_type = 0;
-  cm->verify_cfg = 0;
-  cm->ca_cert_file = 0;
-  cm->crl_file = 0;
-
-  if (!unformat_user (input, unformat_line_input, line_input))
-    return clib_error_return (0, "expected URI");
+  *action = TC_ACTION_NONE;
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (line_input, "uri %_%v%_", &cm->uri))
+      if (unformat (line_input, "action attach"))
+	*action = TC_ACTION_ATTACH;
+      else if (unformat (line_input, "action detach"))
+	*action = TC_ACTION_DETACH;
+      else if (unformat (line_input, "action connect"))
+	*action = TC_ACTION_CONNECT;
+      else if (unformat (line_input, "uri %_%v%_", &cm->uri))
 	;
       else if (unformat (line_input, "tls-engine %d", &cm->tls_engine))
 	;
@@ -422,16 +459,84 @@ tls_client_run_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_co
 	cm->cert_type = 1;
       else if (unformat (line_input, "cert-type rsa"))
 	cm->cert_type = 0;
+      else if (unformat (line_input, "echo"))
+	cm->echo = 1;
       else
-	{
-	  error = clib_error_return (0, "failed: unknown input `%U'",
-				     format_unformat_error, line_input);
-	  goto done;
-	}
+	return clib_error_return (0, "failed: unknown input `%U'", format_unformat_error,
+				  line_input);
     }
+
+  return 0;
+}
+
+static clib_error_t *
+tls_client_run_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
+{
+  tls_client_main_t *cm = &tls_client_main;
+  unformat_input_t _line_input, *line_input = &_line_input;
+  clib_error_t *error = 0;
+  tc_action_t action;
+
+  cm->tls_engine = CRYPTO_ENGINE_OPENSSL;
+  cm->tls_profile_index = ~0;
+  cm->ca_trust_index = 0;
+  cm->cert_type = 0;
+  cm->verify_cfg = 0;
+  cm->ca_cert_file = 0;
+  cm->crl_file = 0;
+  cm->echo = 0;
+
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return clib_error_return (0, "expected input");
+
+  error = tc_parse_options (line_input, &action);
+  if (error)
+    goto done;
 
   cm->cli_node_index = vlib_get_current_process (vm)->node_runtime.node_index;
 
+  if (action == TC_ACTION_ATTACH)
+    {
+      session_enable_disable_args_t args = { .is_en = 1,
+					     .rt_engine_type = RT_BACKEND_ENGINE_RULE_TABLE };
+      vlib_worker_thread_barrier_sync (vm);
+      vnet_session_enable_disable (vm, &args);
+      vlib_worker_thread_barrier_release (vm);
+
+      if (tc_attach ())
+	error = clib_error_return (0, "attach failed");
+      goto done;
+    }
+
+  if (action == TC_ACTION_DETACH)
+    {
+      if (tc_detach ())
+	error = clib_error_return (0, "detach failed");
+      goto done;
+    }
+
+  if (action == TC_ACTION_CONNECT)
+    {
+      if (cm->app_index == APP_INVALID_INDEX)
+	{
+	  error = clib_error_return (0, "not attached");
+	  goto done;
+	}
+      if (cm->uri == 0)
+	{
+	  error = clib_error_return (0, "uri not defined");
+	  goto done;
+	}
+      if (parse_uri ((char *) cm->uri, &cm->connect_sep))
+	{
+	  error = clib_error_return (0, "invalid uri");
+	  goto done;
+	}
+      error = tc_connect_and_wait (vm);
+      goto done;
+    }
+
+  /* Original behavior: attach, connect, detach */
   if (cm->uri == 0)
     {
       error = clib_error_return (0, "uri not defined");
@@ -479,9 +584,10 @@ done:
 
 VLIB_CLI_COMMAND (tls_client_run_command, static) = {
   .path = "test tls client",
-  .short_help = "test tls client [uri <tls://ip/port>] [tls-engine %d] "
+  .short_help = "test tls client [action <attach|detach|connect>] "
+		"[uri <tls://ip/port>] [tls-engine %d] "
 		"[profile-index %d] [verify <mode>] [ca-cert <ca-cert-file>] "
-		"[crl <crl-file>]",
+		"[crl <crl-file>] [echo]",
   .function = tls_client_run_command_fn,
 };
 
