@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "89db4912_049f0fc3",
+        "filename": "docs/aboutvpp/security/tsc_vulnerability_management_v3.rst",
+        "patchSetId": 3
+      },
+      "lineNbr": 219,
+      "author": {
+        "id": 259
+      },
+      "writtenOn": "2026-06-18T07:32:39Z",
+      "side": 1,
+      "message": "supported versions?",
+      "range": {
+        "startLine": 219,
+        "startChar": 20,
+        "endLine": 219,
+        "endChar": 28
+      },
+      "revId": "5e58f8d90828ab97f6d154b71357da0782bc6d86",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "68bb4f79_506ae977",
+        "filename": "docs/aboutvpp/security/tsc_vulnerability_management_v3.rst",
+        "patchSetId": 3
+      },
+      "lineNbr": 318,
+      "author": {
+        "id": 259
+      },
+      "writtenOn": "2026-06-18T07:32:39Z",
+      "side": 1,
+      "message": "are we talking zero-days here?  \"discloses the details\" seems a big vague.  \"there is a bug in the VPP buffer management code that permits re-use without cleaning\" could be sufficient to be a security issue.",
+      "range": {
+        "startLine": 318,
+        "startChar": 8,
+        "endLine": 318,
+        "endChar": 41
+      },
+      "revId": "5e58f8d90828ab97f6d154b71357da0782bc6d86",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1f9eaff6_b68f7aab",
+        "filename": "docs/aboutvpp/security/tsc_vulnerability_management_v3.rst",
+        "patchSetId": 3
+      },
+      "lineNbr": 453,
+      "author": {
+        "id": 259
+      },
+      "writtenOn": "2026-06-18T07:32:39Z",
+      "side": 1,
+      "message": "these are typically categorized as Arbitrary Code Execution vs. Remote Code Execution (RCE) which is the ability to trigger code execution on a target system over a network without requiring physical access or prior authentication.",
+      "range": {
+        "startLine": 451,
+        "startChar": 3,
+        "endLine": 453,
+        "endChar": 30
+      },
+      "revId": "5e58f8d90828ab97f6d154b71357da0782bc6d86",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
