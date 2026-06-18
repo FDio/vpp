@@ -205,7 +205,8 @@ typedef enum
   _ (USE_HUGE_PAGE, "huge-page")                                                                   \
   _ (GET_ORIGINAL_DST, "original-dst")                                                             \
   _ (EVT_COLLECTOR, "evt-collector")                                                               \
-  _ (NO_DUMP_SEGMENTS, "no-dump-segments")
+  _ (NO_DUMP_SEGMENTS, "no-dump-segments")                                                         \
+  _ (TLS_RESUMPTION, "tls-resumption")
 
 typedef enum _app_options
 {

@@ -7,6 +7,7 @@
 
 #include <vppinfra/types.h>
 #include <vppinfra/format.h>
+#include <vppinfra/lock.h>
 #include <vnet/tls/tls_test.h>
 
 struct app_certkey_int_;
@@ -194,6 +195,12 @@ typedef struct app_crypto_wrk_
   app_crypto_async_req_t *reqs;
 } app_crypto_wrk_t;
 
+typedef struct app_crypto_engine_data_
+{
+  void *engine_data;
+  void (*engine_data_free_cb) (void *data);
+} app_crypto_engine_data_t;
+
 typedef struct app_crypto_ctx_
 {
   app_crypto_wrk_t *wrk;
@@ -204,6 +211,10 @@ typedef struct app_crypto_ctx_
   /** quic cid encryptor key */
   char quic_cid_key[16];
   u8 quic_cid_key_set;
+  /** TLS session resumption */
+  u8 tls_resumption_enabled;
+  app_crypto_engine_data_t **tls_resumption_data;
+  clib_spinlock_t tls_resumption_lock;
 } app_crypto_ctx_t;
 
 void app_crypto_ctx_init (app_crypto_ctx_t *crypto_ctx);
