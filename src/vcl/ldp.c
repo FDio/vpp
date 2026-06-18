@@ -1531,6 +1531,10 @@ recv (int fd, void *buf, size_t n, int flags)
   ldp_init_check ();
 
   vlsh = ldp_fd_to_vlsh (fd);
+
+  /* Strip ignorable flags */
+  flags &= ~(MSG_DONTWAIT | MSG_NOSIGNAL);
+
   if (vlsh != VLS_INVALID_HANDLE)
     {
       size = vls_recvfrom (vlsh, buf, n, flags, NULL);
@@ -1605,6 +1609,9 @@ ldp_vls_recvfrom (vls_handle_t vlsh, void *__restrict buf, size_t n, int flags,
   vppcom_endpt_t ep;
   ssize_t size;
   int rv;
+
+  /* Strip ignorable flags */
+  flags &= ~(MSG_DONTWAIT | MSG_NOSIGNAL);
 
   if (addr)
     {
