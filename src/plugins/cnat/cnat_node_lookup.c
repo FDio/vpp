@@ -107,19 +107,21 @@ cnat_writeback_new_flow (vlib_buffer_t *b, ip_address_family_t af, u16 *next)
   clib_memset_u8 (&session->key, 0, sizeof (session->key));
 
   if (cnat_get_rsession_from_ts (ts, CNAT_IS_FWD, session))
-    /* no rewrite found, fallback to INPUT */
-    cnat_5tuple_copy (&session->key.cs_5tuple,
-		      &ts->cts_rewrites[CNAT_LOCATION_INPUT + CNAT_IS_FWD].tuple, 1 /* swap */);
+    {
+      /* no rewrite found, fallback to INPUT */
+      cnat_5tuple_copy (&session->key.cs_5tuple,
+			&ts->cts_rewrites[CNAT_LOCATION_INPUT + CNAT_IS_FWD].tuple, 1 /* swap */);
 
-  u32 *fib_index_by_sw_if_index =
-    AF_IP6 == af ? ip6_main.fib_index_by_sw_if_index : ip4_main.fib_index_by_sw_if_index;
-  set_buffer_fib_index_from_interface (fib_index_by_sw_if_index, b);
-  session->key.fib_index = vnet_buffer (b)->ip.fib_index;
+      u32 *fib_index_by_sw_if_index =
+	AF_IP6 == af ? ip6_main.fib_index_by_sw_if_index : ip4_main.fib_index_by_sw_if_index;
+      set_buffer_fib_index_from_interface (fib_index_by_sw_if_index, b);
+      session->key.fib_index = vnet_buffer (b)->ip.fib_index;
+    }
   session->value.cs_session_index = b->flow_id;
   session->value.cs_flags = CNAT_SESSION_IS_RETURN;
   /* record the return-direction fib_index; used by cnat_get_rsession_from_ts
    * to reconstruct the reverse session key on deletion */
-  ts->cts_rewrites[CNAT_LOCATION_FIB + CNAT_IS_RETURN].rw_fib_index = vnet_buffer (b)->ip.fib_index;
+  ts->cts_rewrites[CNAT_LOCATION_FIB + CNAT_IS_RETURN].rw_fib_index = session->key.fib_index;
 
   clib_atomic_add_fetch (&ts->ts_session_refcnt, 1);
 

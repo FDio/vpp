@@ -27,6 +27,7 @@ cnat_vip_feature_new_flow_inline (vlib_main_t *vm, vlib_buffer_t *b, ip_address_
   cnat_ep_trk_t *trk0;
   u32 dpoi_index = -1;
   u8 do_snat = 0;
+  u32 fib_index = vnet_buffer (b)->ip.fib_index;
   index_t cti;
   int rv;
 
@@ -54,6 +55,9 @@ cnat_vip_feature_new_flow_inline (vlib_main_t *vm, vlib_buffer_t *b, ip_address_
   /* add the rewrite object */
   rw = &ts->cts_rewrites[CNAT_LOCATION_FIB];
   ts->ts_rw_bm |= 1 << CNAT_LOCATION_FIB;
+  /* Keep the forward VIP rewrite keyed in the ingress FIB. The return
+   * session is keyed in the selected backend's return FIB below. */
+  rw->rw_fib_index = fib_index;
 
   trk0 = cnat_load_balance (ct, af, ip4, ip6, &dpoi_index, cm->maglev_len);
 
@@ -110,6 +114,7 @@ cnat_vip_feature_new_flow_inline (vlib_main_t *vm, vlib_buffer_t *b, ip_address_
   if (!(ct->flags & CNAT_TR_FLAG_NO_RETURN_SESSION))
     {
       cnat_timestamp_rewrite_t *rrw = NULL;
+      u32 ret_fib_index;
 
       rrw = &ts->cts_rewrites[CNAT_LOCATION_FIB + CNAT_IS_RETURN];
       ts->ts_rw_bm |= 1 << (CNAT_LOCATION_FIB + CNAT_IS_RETURN);
@@ -120,10 +125,12 @@ cnat_vip_feature_new_flow_inline (vlib_main_t *vm, vlib_buffer_t *b, ip_address_
       rrw->cts_lbi = (u32) ~0;
 
       cnat_make_buffer_5tuple (b, af, &rrw->tuple, 0 /* iph_offset */, 1 /* swap */);
+      ret_fib_index = cnat_ep_trk_return_fib_index (trk0, af, fib_index);
+      rrw->rw_fib_index = ret_fib_index;
 
       clib_atomic_add_fetch (&ts->ts_session_refcnt, 1);
 
-      cnat_rsession_create (rw, b->flow_id, CNAT_FIB_TABLE, 1 /* add client */, 0, 0, 0);
+      cnat_rsession_create (rw, b->flow_id, ret_fib_index, 1 /* add client */, 0, 0, 0);
     }
 
   return rw;

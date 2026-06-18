@@ -9,11 +9,15 @@
 #include <vlibmemory/api.h>
 #include <vnet/dpo/load_balance.h>
 #include <vnet/dpo/load_balance_map.h>
+#include <vnet/dpo/receive_dpo.h>
+#include <vnet/fib/fib_entry.h>
+#include <vnet/fib/fib_table.h>
 #include <vnet/ip/ip_psh_cksum.h>
 
 #include <cnat/cnat_session.h>
 #include <cnat/cnat_client.h>
 #include <cnat/cnat_inline.h>
+#include <cnat/cnat_snat_policy.h>
 #include <cnat/cnat_translation.h>
 #include "cnat_log.h"
 
@@ -865,6 +869,60 @@ cnat_load_balance (const cnat_translation_t *ct, ip_address_family_t af, ip4_hea
 }
 
 /**
+ * Infer the FIB index in which the selected backend's reply will arrive.
+ *
+ * CNAT session keys include fib_index alongside the 5-tuple, so the return
+ * session must be installed in the FIB where the reply packet will actually
+ * be looked up. For paths that lack an explicit ret_fib_index (i.e. the VIP
+ * path and the input-feature DNAT path), this function derives the correct
+ * FIB by inspecting the backend tracker's forwarding DPO:
+ *
+ *  - DPO_RECEIVE (local backend, e.g. a Kubernetes API-server endpoint on the
+ *    host node): the backend process lives in Linux and its reply re-enters
+ *    VPP through the host tap/punt interface.
+ *
+ *  - Any other DPO (remote backend): the reply arrives on the same physical
+ *    interface VPP would use to reach the backend.
+ *
+ * If neither branch yields a valid interface (unresolved FIB entry, no host
+ * interface configured), fwd_fib_index is returned as a safe fallback.
+ */
+static_always_inline u32
+cnat_ep_trk_return_fib_index (const cnat_ep_trk_t *trk, ip_address_family_t af, u32 fwd_fib_index)
+{
+  fib_protocol_t fproto = ip_address_family_to_fib_proto (af);
+  u32 ret_sw_if_index = (u32) ~0;
+  u32 ret_fib_index = (u32) ~0;
+
+  if (trk->ct_dpo.dpoi_type == DPO_LOAD_BALANCE)
+    {
+      const load_balance_t *lb = load_balance_get (trk->ct_dpo.dpoi_index);
+
+      if (lb->lb_n_buckets)
+	{
+	  const dpo_id_t *dpo = load_balance_get_bucket_i (lb, 0);
+
+	  if (dpo_is_receive (dpo))
+	    {
+	      cnat_snat_policy_entry_t *cpe = cnat_snat_policy_entry_get__ (af, fwd_fib_index);
+
+	      if (cpe)
+		ret_sw_if_index =
+		  clib_bitmap_first_set (cpe->interface_maps[CNAT_SNAT_IF_MAP_INCLUDE_HOST]);
+	    }
+
+	  if (ret_sw_if_index == (u32) ~0)
+	    ret_sw_if_index = fib_entry_get_resolving_interface (trk->ct_fei);
+	}
+    }
+
+  if (ret_sw_if_index != (u32) ~0)
+    ret_fib_index = fib_table_get_index_for_sw_if_index (fproto, ret_sw_if_index);
+
+  return ret_fib_index == (u32) ~0 ? fwd_fib_index : ret_fib_index;
+}
+
+/**
  * Create NAT sessions
  * rsession_location is the location the (return) session will be
  * matched at
@@ -944,7 +1002,7 @@ cnat_rsession_create (cnat_timestamp_rewrite_t *rw, u32 flow_id, u32 ret_fib_ind
   if (add_client)
     {
       rsession->value.cs_flags |= CNAT_SESSION_FLAG_HAS_CLIENT;
-      cnat_rsession_create_client (rw, CNAT_FIB_TABLE);
+      cnat_rsession_create_client (rw, ret_fib_index);
       cnat_client_throttle_pool_process (); /* FIXME */
     }
 
