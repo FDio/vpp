@@ -13,6 +13,8 @@
 
 #include <vnet/dpo/load_balance.h>
 #include <vnet/dpo/load_balance_map.h>
+#include <vnet/dpo/receive_dpo.h>
+#include <vnet/fib/fib_table.h>
 
 #include <vnet/ip/ip4_inlines.h>
 #include <vnet/ip/ip6_inlines.h>
@@ -39,6 +41,8 @@ cnat_input_feature_new_flow_inline (vlib_main_t *vm, vlib_buffer_t *b, ip_addres
   ip6_header_t *ip6 = NULL;
   udp_header_t *udp0;
   index_t cti;
+  u32 fwd_fib_index = vnet_buffer (b)->ip.fib_index;
+  u32 ret_fib_index;
 
   if (AF_IP4 == af)
     {
@@ -74,7 +78,7 @@ cnat_input_feature_new_flow_inline (vlib_main_t *vm, vlib_buffer_t *b, ip_addres
   rw->cts_lbi = (u32) ~0;
   rw->cts_dpoi_next_node = CTS_DPOI_NEXT_UNSET;
   /* record the forward-direction fib_index in the canonical FIB slot */
-  ts->cts_rewrites[CNAT_LOCATION_FIB].rw_fib_index = vnet_buffer (b)->ip.fib_index;
+  ts->cts_rewrites[CNAT_LOCATION_FIB].rw_fib_index = fwd_fib_index;
 
   cnat_make_buffer_5tuple (b, af, &rw->tuple, 0 /* iph_offset */, 0 /* swap */);
 
@@ -88,6 +92,7 @@ cnat_input_feature_new_flow_inline (vlib_main_t *vm, vlib_buffer_t *b, ip_addres
       return (rw);
     }
   trk0_i = trk0 - cnat_ep_trk_pool;
+  ret_fib_index = cnat_ep_trk_return_fib_index (trk0, af, fwd_fib_index);
   /* never source nat in this node */
   ip46_address_copy (&rw->tuple.ip[VLIB_TX], &ip_addr_46 (&trk0->ct_ep[VLIB_TX].ce_ip));
   rw->tuple.port[VLIB_TX] = trk0->ct_ep[VLIB_TX].ce_port ?
@@ -124,6 +129,8 @@ cnat_input_feature_new_flow_inline (vlib_main_t *vm, vlib_buffer_t *b, ip_addres
 
       rrw->cts_lbi = (u32) ~0;
       rrw->cts_dpoi_next_node = CTS_DPOI_NEXT_UNSET;
+      /* Match return traffic where the selected backend sends replies back into VPP. */
+      ts->cts_rewrites[CNAT_LOCATION_FIB + CNAT_IS_RETURN].rw_fib_index = ret_fib_index;
 
       cnat_make_buffer_5tuple (b, af, &rrw->tuple, 0 /* iph_offset */, 1 /* swap */);
     }
