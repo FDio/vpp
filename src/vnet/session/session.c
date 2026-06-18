@@ -118,6 +118,8 @@ session_program_rx_io_evt (session_handle_tu_t sh)
   if (sh.thread_index == vlib_get_thread_index ())
     {
       session_t *s = session_get_from_handle (sh);
+      if (PREDICT_FALSE (s->session_state >= SESSION_STATE_TRANSPORT_CLOSING))
+	return 0;
       return session_enqueue_notify (s);
     }
   else
