@@ -193,6 +193,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "5c909ae1_92eef085",
+        "filename": "src/plugins/cnat/cnat_inline.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 95,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-06-18T08:50:03Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "bcb7b3ba_c870c311",
+      "revId": "89a8610809cb2e62bbb1533cffd8ad840c5ca27e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "0ed6bf1a_5d763c82",
@@ -224,6 +242,24 @@
       "side": 1,
       "message": "The purpose was to avoid polluting the slow_path vecs for cnat users who don\u0027t use `cnat-input-ip4` and `cnat-output-ip4` mode, so I made it feature arc specific. `cnat_lazy_init ()` is more generic.",
       "parentUuid": "0ed6bf1a_5d763c82",
+      "revId": "89a8610809cb2e62bbb1533cffd8ad840c5ca27e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "4f913011_6eb856f9",
+        "filename": "src/plugins/cnat/cnat_types.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 354,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-06-18T08:50:03Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "cf4d624b_6c6db8ca",
       "revId": "89a8610809cb2e62bbb1533cffd8ad840c5ca27e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
