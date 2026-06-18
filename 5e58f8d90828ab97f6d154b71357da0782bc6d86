@@ -3,6 +3,57 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "7407168e_35dc198c",
+        "filename": "docs/aboutvpp/security/tsc_vulnerability_management_v3.rst",
+        "patchSetId": 3
+      },
+      "lineNbr": 97,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2026-06-18T14:51:52Z",
+      "side": 1,
+      "message": "Fetching that link redirects to https://s3-docs.fd.io/vpp/26.06/, which seems to be the main docs page rather than the security section. If I go to https://fd.io/docs/vpp/master/aboutvpp/security/index.html, that takes me to the security section.",
+      "revId": "5e58f8d90828ab97f6d154b71357da0782bc6d86",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "259719b4_03e9fc28",
+        "filename": "docs/aboutvpp/security/tsc_vulnerability_management_v3.rst",
+        "patchSetId": 3
+      },
+      "lineNbr": 108,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2026-06-18T14:51:52Z",
+      "side": 1,
+      "message": "\u0027versions of FD.io\u0027 implies that it\u0027s a monolithic project which has a single version number. It might be better worded as \u0027All versions of any FD.io project which are still supported by the project\u0027.",
+      "revId": "5e58f8d90828ab97f6d154b71357da0782bc6d86",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "73018c8e_8c0eb701",
+        "filename": "docs/aboutvpp/security/tsc_vulnerability_management_v3.rst",
+        "patchSetId": 3
+      },
+      "lineNbr": 172,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2026-06-18T14:51:52Z",
+      "side": 1,
+      "message": "I think this could be clarified. A reporter of a bug (security issue or not) might be someone who just observes that problematic behavior occurs under certain circumstances. It might not be appropriate to instruct them to follow a development process because they might not know anything about it or be capable of doing so.\n\nMaybe state it as \u0027... then inform the reporter to follow the normal development process and cherry-pick the fix to the current supported stable/release branches if they have provided or plan to submit a proposed patch to address the issue. Otherwise they should be directed to follow the standard bug reporting procedures for the project.\u0027 or something.\n\nIt\u0027s possible that \u0027follow the normal development process\u0027 was intended to include submitting a bug report. If so, maybe the mention of cherry-picking should be removed. Telling them to cherry-pick a patch seems to presume that they will be involved in working on the patch or managing it\u0027s review in gerrit and that may not always be possible.",
+      "revId": "5e58f8d90828ab97f6d154b71357da0782bc6d86",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "89db4912_049f0fc3",
         "filename": "docs/aboutvpp/security/tsc_vulnerability_management_v3.rst",
         "patchSetId": 3
@@ -20,6 +71,47 @@
         "endLine": 219,
         "endChar": 28
       },
+      "revId": "5e58f8d90828ab97f6d154b71357da0782bc6d86",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ce69ae91_7d1bdbb7",
+        "filename": "docs/aboutvpp/security/tsc_vulnerability_management_v3.rst",
+        "patchSetId": 3
+      },
+      "lineNbr": 219,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2026-06-18T14:51:52Z",
+      "side": 1,
+      "message": "I think it actually is any version of the project which is affected, not just the ones that are still supported. It is mentioned somewhere else in the doc that this would need to be reported so that downstream consumers of older versions would know that they need to backport patches to the version they are running.",
+      "parentUuid": "89db4912_049f0fc3",
+      "range": {
+        "startLine": 219,
+        "startChar": 20,
+        "endLine": 219,
+        "endChar": 28
+      },
+      "revId": "5e58f8d90828ab97f6d154b71357da0782bc6d86",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "102bbf36_a816a5d3",
+        "filename": "docs/aboutvpp/security/tsc_vulnerability_management_v3.rst",
+        "patchSetId": 3
+      },
+      "lineNbr": 290,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2026-06-18T14:51:52Z",
+      "side": 1,
+      "message": "\u0027merged into the code base\u0027 might be nicer wording.",
       "revId": "5e58f8d90828ab97f6d154b71357da0782bc6d86",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
