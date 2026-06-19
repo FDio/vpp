@@ -18,10 +18,11 @@
 
 #include <http/http.h>
 
-#define foreach_proxy_session_side_state                                      \
-  _ (CREATED, "created")                                                      \
-  _ (CONNECTING, "connecting")                                                \
-  _ (ESTABLISHED, "establiehed")                                              \
+#define foreach_proxy_session_side_state                                                           \
+  _ (CREATED, "created")                                                                           \
+  _ (CONNECTING, "connecting")                                                                     \
+  _ (ESTABLISHED, "establiehed")                                                                   \
+  _ (CLOSING, "closing")                                                                           \
   _ (CLOSED, "closed")
 
 typedef enum proxy_session_side_state_

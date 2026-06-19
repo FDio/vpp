@@ -109,7 +109,8 @@ typedef enum http_target_form_ : u8
   _ (IS_PARENT, "is-parent")                                                                       \
   _ (PENDING_SND_WIN_UPDATE, "pending-snd-win-update")                                             \
   _ (IS_TUNNEL, "is-tunnel")                                                                       \
-  _ (CONNECT_UDP_DRAFT03, "connect-udp-draft03")
+  _ (CONNECT_UDP_DRAFT03, "connect-udp-draft03")                                                   \
+  _ (PEER_CLOSED, "peer-closed")
 
 typedef enum http_req_flags_bit_
 {
