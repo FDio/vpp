@@ -70,6 +70,24 @@
       "parentUuid": "62d2def0_690066bf",
       "revId": "0bad328a36fb6b09eeb78f921e51027fbb53bc8b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ecf2771c_fe4a6509",
+        "filename": "src/vnet/session/segment_manager.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 134,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-06-19T03:39:56Z",
+      "side": 1,
+      "message": "Apologies, missed this. Understood and in theory segment managers shouldn\u0027t be retrieved outside of session layer, so for now it should be fine even without the comment.",
+      "parentUuid": "9706faf6_08ad673d",
+      "revId": "0bad328a36fb6b09eeb78f921e51027fbb53bc8b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
