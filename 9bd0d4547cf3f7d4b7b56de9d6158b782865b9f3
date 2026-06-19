@@ -16,6 +16,24 @@
       "message": "Thanks for the quick review!\n\nWould you mind if I add a testcase to `test/asf/test_vcl.py`, to avoid this issue popping up again?\n\nBy the way, we should probably also do something about the VPP process just throwing a oom segfault when the control queue runs full, so it is a bit more resilient. My idea would be to cut the connection and raise a error in VCL.\nI\u0027d be happy to wire up a CL, once I know what the right approach is.\nWhat would be a good place to discuss this, probably the ML?",
       "revId": "9bd0d4547cf3f7d4b7b56de9d6158b782865b9f3",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "0fb6a244_cc187e2b",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-06-19T17:45:53Z",
+      "side": 1,
+      "message": "Regarding the test, sure. If it gets too complicated test/hs-test. \nRegarding the segfault, if one wants to protect vpp in these types of situations, probably the best option is use-private-rx-mqs in session stanza in vpp\u0027s startup. That creates per app message queues, so apps don\u0027t overrun vpp\u0027s mqs. \nAnd yes, the best place to discuss these things would be the ML.",
+      "parentUuid": "3a7de3df_7a0176d1",
+      "revId": "9bd0d4547cf3f7d4b7b56de9d6158b782865b9f3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
