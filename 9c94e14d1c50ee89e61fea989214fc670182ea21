@@ -37,6 +37,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "d3913e07_9e7a52e0",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 32
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2026-06-19T08:25:36Z",
+      "side": 1,
+      "message": "No, this is just the infra. no driver implement the functionality so you\u0027ll just get an error when calling those function.\nEven with the backend driver implementation, you\u0027ll need a card that support flow offload",
+      "parentUuid": "2cb94c93_016cf7ea",
+      "revId": "9c94e14d1c50ee89e61fea989214fc670182ea21",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "a76ea2b9_94e921a3",
         "filename": "src/vnet/flow/flow_api.c",
         "patchSetId": 32
@@ -48,6 +66,24 @@
       "writtenOn": "2026-06-19T07:52:31Z",
       "side": 1,
       "message": "this should be count-1 and not count, otherwise you\u0027ll have count+1 elements and you\u0027ll overflow mp-\u003eflow_indices",
+      "revId": "9c94e14d1c50ee89e61fea989214fc670182ea21",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "86e07000_d83c0474",
+        "filename": "src/vnet/flow/flow_api.c",
+        "patchSetId": 32
+      },
+      "lineNbr": 496,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2026-06-19T08:25:36Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "a76ea2b9_94e921a3",
       "revId": "9c94e14d1c50ee89e61fea989214fc670182ea21",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -69,6 +105,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "578acf80_e7642337",
+        "filename": "src/vnet/flow/flow_api.c",
+        "patchSetId": 32
+      },
+      "lineNbr": 511,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2026-06-19T08:25:36Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "64b58572_2e6f1f5a",
+      "revId": "9c94e14d1c50ee89e61fea989214fc670182ea21",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "e94d8758_f1bb36ee",
@@ -86,6 +140,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "0e8584a3_7e748d74",
+        "filename": "src/vnet/flow/flow_api.c",
+        "patchSetId": 32
+      },
+      "lineNbr": 524,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2026-06-19T08:25:36Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "e94d8758_f1bb36ee",
+      "revId": "9c94e14d1c50ee89e61fea989214fc670182ea21",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "8b4aa80c_c7bd5cf9",
@@ -99,6 +171,24 @@
       "writtenOn": "2026-06-19T07:52:31Z",
       "side": 1,
       "message": "htonl(success)",
+      "revId": "9c94e14d1c50ee89e61fea989214fc670182ea21",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "9fb74864_63ee6f2f",
+        "filename": "src/vnet/flow/flow_api.c",
+        "patchSetId": 32
+      },
+      "lineNbr": 538,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2026-06-19T08:25:36Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "8b4aa80c_c7bd5cf9",
       "revId": "9c94e14d1c50ee89e61fea989214fc670182ea21",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
