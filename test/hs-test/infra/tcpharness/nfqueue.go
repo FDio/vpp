@@ -152,6 +152,17 @@ type NFQueueConfig struct {
 	DropDataPacketIndices     []uint32
 	DropFirstRetransmitOfDrop bool
 	DropAckOnlyPackets        bool
+	SynOptionRewrite          SynOptionRewriteConfig
+}
+
+type SynOptionRewriteConfig struct {
+	StripSackPermitted    bool
+	StripTimestamps       bool
+	StopAfterFirstRewrite bool
+}
+
+func (cfg SynOptionRewriteConfig) enabled() bool {
+	return cfg.StripSackPermitted || cfg.StripTimestamps
 }
 
 type NFQueueStats struct {
@@ -160,6 +171,7 @@ type NFQueueStats struct {
 	DroppedSeqs     []uint32
 	RetransmitCount uint32
 	RetransmitSeqs  []uint32
+	SynRewriteCount uint32
 }
 
 type NFQueueController struct {
@@ -196,6 +208,7 @@ type NFQueueHelper struct {
 	droppedSeqs     []uint32
 	retransmitCount uint32
 	retransmitSeqs  []uint32
+	synRewriteCount uint32
 	ackState        NFQueueAckState
 	queuedAcks      []queuedAck
 	lastErr         error
@@ -469,6 +482,95 @@ func (c *NFQueueController) onPacket(role nfQueueRole, packet PcapIPv4TCPPacket,
 	})
 }
 
+func cloneTCPOption(option layers.TCPOption) layers.TCPOption {
+	option.OptionData = append([]byte(nil), option.OptionData...)
+	return option
+}
+
+func cloneIPv4Option(option layers.IPv4Option) layers.IPv4Option {
+	option.OptionData = append([]byte(nil), option.OptionData...)
+	return option
+}
+
+func rewriteIPv4TCPSynOptions(raw []byte, cfg SynOptionRewriteConfig) (
+	[]byte, bool, error) {
+	if !cfg.enabled() {
+		return raw, false, nil
+	}
+
+	packet := gopacket.NewPacket(raw, layers.LinkTypeRaw, gopacket.NoCopy)
+	ipLayer := packet.Layer(layers.LayerTypeIPv4)
+	tcpLayer := packet.Layer(layers.LayerTypeTCP)
+	if ipLayer == nil || tcpLayer == nil {
+		return raw, false, nil
+	}
+
+	ipv4, ok := ipLayer.(*layers.IPv4)
+	if !ok {
+		return raw, false, nil
+	}
+	tcp, ok := tcpLayer.(*layers.TCP)
+	if !ok {
+		return raw, false, nil
+	}
+	if !tcp.SYN || tcp.ACK || tcp.FIN || tcp.RST || len(tcp.Payload) != 0 {
+		return raw, false, nil
+	}
+
+	options := make([]layers.TCPOption, 0, len(tcp.Options))
+	changed := false
+	for _, option := range tcp.Options {
+		switch option.OptionType {
+		case layers.TCPOptionKindSACKPermitted:
+			if cfg.StripSackPermitted {
+				changed = true
+				continue
+			}
+		case layers.TCPOptionKindTimestamps:
+			if cfg.StripTimestamps {
+				changed = true
+				continue
+			}
+		}
+		options = append(options, cloneTCPOption(option))
+	}
+	if !changed {
+		return raw, false, nil
+	}
+
+	ipCopy := *ipv4
+	ipCopy.BaseLayer = layers.BaseLayer{}
+	ipCopy.Length = 0
+	ipCopy.Checksum = 0
+	ipCopy.SrcIP = append(net.IP(nil), ipv4.SrcIP...)
+	ipCopy.DstIP = append(net.IP(nil), ipv4.DstIP...)
+	ipCopy.Options = make([]layers.IPv4Option, 0, len(ipv4.Options))
+	for _, option := range ipv4.Options {
+		ipCopy.Options = append(ipCopy.Options, cloneIPv4Option(option))
+	}
+	ipCopy.Padding = append([]byte(nil), ipv4.Padding...)
+
+	tcpCopy := *tcp
+	tcpCopy.BaseLayer = layers.BaseLayer{}
+	tcpCopy.Checksum = 0
+	tcpCopy.Options = options
+	tcpCopy.Padding = nil
+	tcpCopy.Payload = nil
+	if err := tcpCopy.SetNetworkLayerForChecksum(&ipCopy); err != nil {
+		return nil, false, err
+	}
+
+	buffer := gopacket.NewSerializeBuffer()
+	if err := gopacket.SerializeLayers(buffer, gopacket.SerializeOptions{
+		FixLengths:       true,
+		ComputeChecksums: true,
+	}, &ipCopy, &tcpCopy); err != nil {
+		return nil, false, err
+	}
+
+	return buffer.Bytes(), true, nil
+}
+
 func (h *NFQueueHelper) matchPacket(packet PcapIPv4TCPPacket) bool {
 	if packet.SrcIP.String() != h.cfg.SrcIP || packet.DstIP.String() != h.cfg.DstIP {
 		return false
@@ -539,6 +641,20 @@ func (h *NFQueueHelper) StopDrops() {
 	h.mu.Unlock()
 }
 
+func (h *NFQueueHelper) setError(err error) {
+	if err == nil {
+		return
+	}
+	h.mu.Lock()
+	if h.lastErr == nil {
+		h.lastErr = err
+	}
+	h.mu.Unlock()
+	if h.controller != nil {
+		h.controller.setError(err)
+	}
+}
+
 func (h *NFQueueHelper) queueNaturalAck(raw []byte, packet PcapIPv4TCPPacket) error {
 	h.mu.Lock()
 	defer h.mu.Unlock()
@@ -596,6 +712,8 @@ func (h *NFQueueHelper) handlePacket(a nfqueue.Attribute) int {
 		queuedAckRaw     []byte
 		queuedAckPacket  PcapIPv4TCPPacket
 		controller       *NFQueueController
+		modifiedPacket   []byte
+		synRewrite       bool
 	)
 
 	if a.Payload != nil {
@@ -607,6 +725,23 @@ func (h *NFQueueHelper) handlePacket(a nfqueue.Attribute) int {
 				action         nfQueueScriptAction
 			)
 			controller = h.controller
+
+			if h.cfg.SynOptionRewrite.enabled() {
+				h.mu.Lock()
+				rewriteSyn := !h.cfg.SynOptionRewrite.StopAfterFirstRewrite ||
+					h.synRewriteCount == 0
+				h.mu.Unlock()
+				if rewriteSyn {
+					rewritten, changed, err :=
+						rewriteIPv4TCPSynOptions(*a.Payload, h.cfg.SynOptionRewrite)
+					if err != nil {
+						h.setError(err)
+					} else if changed {
+						modifiedPacket = rewritten
+						synRewrite = true
+					}
+				}
+			}
 
 			h.mu.Lock()
 			if h.cfg.OutputIf != "" && packet.Flags&tcpFlagAck != 0 {
@@ -672,16 +807,20 @@ func (h *NFQueueHelper) handlePacket(a nfqueue.Attribute) int {
 		controller.stopIngressDrops()
 	}
 
-	if err := h.nf.SetVerdict(id, verdict); err != nil {
-		h.mu.Lock()
-		if h.lastErr == nil {
-			h.lastErr = err
-		}
-		h.mu.Unlock()
-		if h.controller != nil {
-			h.controller.setError(err)
-		}
+	var err error
+	if modifiedPacket != nil {
+		err = h.nf.SetVerdictModPacket(id, verdict, modifiedPacket)
+	} else {
+		err = h.nf.SetVerdict(id, verdict)
+	}
+	if err != nil {
+		h.setError(err)
 		return -1
+	}
+	if synRewrite {
+		h.mu.Lock()
+		h.synRewriteCount++
+		h.mu.Unlock()
 	}
 
 	for _, action := range controllerActs {
@@ -756,6 +895,7 @@ func (h *NFQueueHelper) CurrentStats() (NFQueueStats, error) {
 		DroppedSeqs:     append([]uint32(nil), h.droppedSeqs...),
 		RetransmitCount: h.retransmitCount,
 		RetransmitSeqs:  append([]uint32(nil), h.retransmitSeqs...),
+		SynRewriteCount: h.synRewriteCount,
 	}, h.lastErr
 }
 

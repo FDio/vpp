@@ -5,10 +5,119 @@
 package tcpharness
 
 import (
+	"bytes"
+	"encoding/binary"
 	"net"
 	"testing"
 	"time"
+
+	"github.com/google/gopacket"
+	"github.com/google/gopacket/layers"
 )
+
+var testSynOptions = []layers.TCPOption{
+	{
+		OptionType: layers.TCPOptionKindMSS,
+		OptionData: []byte{0x05, 0xb4},
+	},
+	{
+		OptionType: layers.TCPOptionKindSACKPermitted,
+	},
+	{
+		OptionType: layers.TCPOptionKindNop,
+	},
+	{
+		OptionType: layers.TCPOptionKindNop,
+	},
+	{
+		OptionType: layers.TCPOptionKindTimestamps,
+		OptionData: []byte{0, 0, 0, 11, 0, 0, 0, 22},
+	},
+	{
+		OptionType: layers.TCPOptionKindWindowScale,
+		OptionData: []byte{7},
+	},
+}
+
+func buildTestIPv4TCPPacket(t *testing.T, flags uint8,
+	options []layers.TCPOption) []byte {
+	t.Helper()
+
+	ipv4 := &layers.IPv4{
+		Version:  4,
+		TTL:      64,
+		Id:       12345,
+		Flags:    layers.IPv4DontFragment,
+		Protocol: layers.IPProtocolTCP,
+		SrcIP:    net.ParseIP("10.0.0.1").To4(),
+		DstIP:    net.ParseIP("10.0.0.2").To4(),
+	}
+	tcp := &layers.TCP{
+		SrcPort: layers.TCPPort(40000),
+		DstPort: layers.TCPPort(1234),
+		Seq:     1000,
+		Ack:     2000,
+		FIN:     flags&tcpFlagFin != 0,
+		SYN:     flags&tcpFlagSyn != 0,
+		RST:     flags&tcpFlagRst != 0,
+		PSH:     flags&tcpFlagPsh != 0,
+		ACK:     flags&tcpFlagAck != 0,
+		URG:     flags&tcpFlagUrg != 0,
+		ECE:     flags&tcpFlagEce != 0,
+		CWR:     flags&tcpFlagCwr != 0,
+		Window:  65535,
+		Options: options,
+	}
+	if err := tcp.SetNetworkLayerForChecksum(ipv4); err != nil {
+		t.Fatalf("SetNetworkLayerForChecksum failed: %v", err)
+	}
+
+	buffer := gopacket.NewSerializeBuffer()
+	if err := gopacket.SerializeLayers(buffer, gopacket.SerializeOptions{
+		FixLengths:       true,
+		ComputeChecksums: true,
+	}, ipv4, tcp); err != nil {
+		t.Fatalf("SerializeLayers failed: %v", err)
+	}
+	return buffer.Bytes()
+}
+
+func decodedTestIPv4TCP(t *testing.T, raw []byte) (*layers.IPv4, *layers.TCP) {
+	t.Helper()
+
+	packet := gopacket.NewPacket(raw, layers.LinkTypeRaw, gopacket.Default)
+	if errLayer := packet.ErrorLayer(); errLayer != nil {
+		t.Fatalf("packet decode failed: %v", errLayer.Error())
+	}
+	ipLayer := packet.Layer(layers.LayerTypeIPv4)
+	tcpLayer := packet.Layer(layers.LayerTypeTCP)
+	if ipLayer == nil || tcpLayer == nil {
+		t.Fatalf("expected IPv4/TCP packet")
+	}
+	return ipLayer.(*layers.IPv4), tcpLayer.(*layers.TCP)
+}
+
+func testTCPOption(tcp *layers.TCP,
+	kind layers.TCPOptionKind) (layers.TCPOption, bool) {
+	for _, option := range tcp.Options {
+		if option.OptionType == kind {
+			return option, true
+		}
+	}
+	return layers.TCPOption{}, false
+}
+
+func assertTestTCPOption(t *testing.T, tcp *layers.TCP, kind layers.TCPOptionKind,
+	data []byte) {
+	t.Helper()
+	option, ok := testTCPOption(tcp, kind)
+	if !ok {
+		t.Fatalf("missing TCP option %s in %v", kind, tcp.Options)
+	}
+	if data != nil && !bytes.Equal(data, option.OptionData) {
+		t.Fatalf("option %s data = %v, want %v", kind, option.OptionData, data)
+	}
+}
 
 func testPacket(src, dst string, srcPort, dstPort uint16, seq, ack uint32,
 	payloadLen int, flags uint8, sackBlocks int, timestamp time.Time) PcapIPv4TCPPacket {
@@ -106,6 +215,142 @@ func TestTcpHarnessBuildIPv4AckPacket(t *testing.T) {
 	}
 }
 
+func TestTcpHarnessRewriteIPv4TCPSynOptionsStripSackAndTimestamps(t *testing.T) {
+	raw := buildTestIPv4TCPPacket(t, tcpFlagSyn, testSynOptions)
+	rewritten, changed, err := rewriteIPv4TCPSynOptions(raw, SynOptionRewriteConfig{
+		StripSackPermitted: true,
+		StripTimestamps:    true,
+	})
+	if err != nil {
+		t.Fatalf("rewrite failed: %v", err)
+	}
+	if !changed {
+		t.Fatalf("expected SYN rewrite")
+	}
+
+	ipv4, tcp := decodedTestIPv4TCP(t, rewritten)
+	if int(ipv4.Length) != len(rewritten) {
+		t.Fatalf("IPv4 length = %d, want %d", ipv4.Length, len(rewritten))
+	}
+	if !tcp.SYN || tcp.ACK || len(tcp.Payload) != 0 {
+		t.Fatalf("unexpected rewritten TCP flags/payload: %+v payload=%d",
+			tcp, len(tcp.Payload))
+	}
+	if _, ok := testTCPOption(tcp, layers.TCPOptionKindSACKPermitted); ok {
+		t.Fatalf("SACK-permitted option still present: %v", tcp.Options)
+	}
+	if _, ok := testTCPOption(tcp, layers.TCPOptionKindTimestamps); ok {
+		t.Fatalf("timestamp option still present: %v", tcp.Options)
+	}
+	assertTestTCPOption(t, tcp, layers.TCPOptionKindMSS, []byte{0x05, 0xb4})
+	assertTestTCPOption(t, tcp, layers.TCPOptionKindWindowScale, []byte{7})
+
+	packet, ok := parseRawIPv4TCPPacket(rewritten)
+	if !ok {
+		t.Fatalf("rewritten packet did not parse")
+	}
+	if packet.Flags != tcpFlagSyn || packet.HasTSOpt || packet.SackBlocks != 0 {
+		t.Fatalf("unexpected rewritten parsed packet: %+v", packet)
+	}
+}
+
+func TestTcpHarnessRewriteIPv4TCPSynOptionsStripSackOnly(t *testing.T) {
+	raw := buildTestIPv4TCPPacket(t, tcpFlagSyn, testSynOptions)
+	rewritten, changed, err := rewriteIPv4TCPSynOptions(raw, SynOptionRewriteConfig{
+		StripSackPermitted: true,
+	})
+	if err != nil {
+		t.Fatalf("rewrite failed: %v", err)
+	}
+	if !changed {
+		t.Fatalf("expected SYN rewrite")
+	}
+
+	_, tcp := decodedTestIPv4TCP(t, rewritten)
+	if _, ok := testTCPOption(tcp, layers.TCPOptionKindSACKPermitted); ok {
+		t.Fatalf("SACK-permitted option still present: %v", tcp.Options)
+	}
+	ts, ok := testTCPOption(tcp, layers.TCPOptionKindTimestamps)
+	if !ok {
+		t.Fatalf("timestamp option missing: %v", tcp.Options)
+	}
+	if got := binary.BigEndian.Uint32(ts.OptionData[:4]); got != 11 {
+		t.Fatalf("timestamp tsval = %d, want 11", got)
+	}
+	assertTestTCPOption(t, tcp, layers.TCPOptionKindMSS, []byte{0x05, 0xb4})
+	assertTestTCPOption(t, tcp, layers.TCPOptionKindWindowScale, []byte{7})
+}
+
+func TestTcpHarnessRewriteIPv4TCPSynOptionsStripTimestampsOnly(t *testing.T) {
+	raw := buildTestIPv4TCPPacket(t, tcpFlagSyn, testSynOptions)
+	rewritten, changed, err := rewriteIPv4TCPSynOptions(raw, SynOptionRewriteConfig{
+		StripTimestamps: true,
+	})
+	if err != nil {
+		t.Fatalf("rewrite failed: %v", err)
+	}
+	if !changed {
+		t.Fatalf("expected SYN rewrite")
+	}
+
+	_, tcp := decodedTestIPv4TCP(t, rewritten)
+	if _, ok := testTCPOption(tcp, layers.TCPOptionKindTimestamps); ok {
+		t.Fatalf("timestamp option still present: %v", tcp.Options)
+	}
+	assertTestTCPOption(t, tcp, layers.TCPOptionKindSACKPermitted, nil)
+	assertTestTCPOption(t, tcp, layers.TCPOptionKindMSS, []byte{0x05, 0xb4})
+	assertTestTCPOption(t, tcp, layers.TCPOptionKindWindowScale, []byte{7})
+}
+
+func TestTcpHarnessRewriteIPv4TCPSynOptionsNoopCases(t *testing.T) {
+	tests := []struct {
+		name string
+		raw  []byte
+		cfg  SynOptionRewriteConfig
+	}{
+		{
+			name: "rewrite disabled",
+			raw:  buildTestIPv4TCPPacket(t, tcpFlagSyn, testSynOptions),
+			cfg:  SynOptionRewriteConfig{},
+		},
+		{
+			name: "non syn",
+			raw:  buildTestIPv4TCPPacket(t, tcpFlagAck, testSynOptions),
+			cfg:  SynOptionRewriteConfig{StripSackPermitted: true, StripTimestamps: true},
+		},
+		{
+			name: "syn ack",
+			raw:  buildTestIPv4TCPPacket(t, tcpFlagSyn|tcpFlagAck, testSynOptions),
+			cfg:  SynOptionRewriteConfig{StripSackPermitted: true, StripTimestamps: true},
+		},
+		{
+			name: "option free syn",
+			raw:  buildTestIPv4TCPPacket(t, tcpFlagSyn, nil),
+			cfg:  SynOptionRewriteConfig{StripSackPermitted: true, StripTimestamps: true},
+		},
+		{
+			name: "malformed",
+			raw:  []byte{0x45, 0x00},
+			cfg:  SynOptionRewriteConfig{StripSackPermitted: true, StripTimestamps: true},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			rewritten, changed, err := rewriteIPv4TCPSynOptions(tt.raw, tt.cfg)
+			if err != nil {
+				t.Fatalf("rewrite failed: %v", err)
+			}
+			if changed {
+				t.Fatalf("unexpected rewrite")
+			}
+			if !bytes.Equal(rewritten, tt.raw) {
+				t.Fatalf("packet changed: got %v want %v", rewritten, tt.raw)
+			}
+		})
+	}
+}
+
 func TestTcpHarnessFlowPacketAssertions(t *testing.T) {
 	flow := NewFlow("10.0.0.1", "10.0.0.2", 1234)
 	ts := time.Unix(0, 0)
@@ -136,6 +381,39 @@ func TestTcpHarnessFlowPacketAssertions(t *testing.T) {
 	}
 	if !flow.HasOldSeqAckOnlyProbe(packets) {
 		t.Fatal("expected old-seq ACK-only probe")
+	}
+}
+
+func TestTcpHarnessFlowTimestampAssertions(t *testing.T) {
+	flow := NewFlow("10.0.0.1", "10.0.0.2", 1234)
+	packets := []PcapIPv4TCPPacket{
+		{
+			SrcIP: net.ParseIP("10.0.0.1"), DstIP: net.ParseIP("10.0.0.2"),
+			SrcPort: 40000, DstPort: 1234, Flags: tcpFlagSyn, HasTSOpt: true,
+		},
+		{
+			SrcIP: net.ParseIP("10.0.0.2"), DstIP: net.ParseIP("10.0.0.1"),
+			SrcPort: 1234, DstPort: 40000, Flags: tcpFlagSyn | tcpFlagAck,
+		},
+		{
+			SrcIP: net.ParseIP("10.0.0.1"), DstIP: net.ParseIP("10.0.0.2"),
+			SrcPort: 40000, DstPort: 1234, Flags: tcpFlagAck, PayloadLen: 100,
+		},
+		{
+			SrcIP: net.ParseIP("10.0.0.2"), DstIP: net.ParseIP("10.0.0.1"),
+			SrcPort: 1234, DstPort: 40000, Flags: tcpFlagAck, HasTSOpt: true,
+		},
+		{
+			SrcIP: net.ParseIP("10.0.0.1"), DstIP: net.ParseIP("10.0.0.2"),
+			SrcPort: 40000, DstPort: 1234, Flags: tcpFlagAck, HasTSOpt: true,
+		},
+	}
+
+	if got := flow.ServerTimestampCount(packets); got != 1 {
+		t.Fatalf("ServerTimestampCount=%d, want 1", got)
+	}
+	if got := flow.ClientEstablishedTimestampCount(packets); got != 1 {
+		t.Fatalf("ClientEstablishedTimestampCount=%d, want 1", got)
 	}
 }
 
