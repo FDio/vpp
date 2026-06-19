@@ -34,6 +34,24 @@
       "parentUuid": "5bea7745_3c0b8e09",
       "revId": "ca3138e3d0a22a03046e0a96f1bf12519f3460d6",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "27445cec_9a498b8e",
+        "filename": "src/vcl/vppcom.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 4734,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-06-19T17:37:28Z",
+      "side": 1,
+      "message": "recv and ldp_vls_recvfrom seem to be the only consumers.",
+      "parentUuid": "0011bf25_5fc7b651",
+      "revId": "ca3138e3d0a22a03046e0a96f1bf12519f3460d6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
