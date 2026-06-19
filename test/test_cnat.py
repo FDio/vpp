@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import time
 import unittest
 
 from framework import VppTestCase
@@ -445,6 +446,20 @@ class TestCNatTranslation(CnatCommonTestCase):
                 enable_disable=enable,
             )
 
+    def wait_for_cnat_session_count(self, expected, timeout=2):
+        end = time.time() + timeout
+        sessions = self.vapi.cnat_session_dump()
+        while len(sessions) != expected and time.time() < end:
+            self.sleep(0.05)
+            sessions = self.vapi.cnat_session_dump()
+
+        self.assertEqual(
+            len(sessions),
+            expected,
+            self.vapi.cli("sh cnat session verbose 2 max 1000"),
+        )
+        return sessions
+
     def get_ip46(self, obj):
         return obj.ip4
 
@@ -660,18 +675,19 @@ class TestCNatTranslation(CnatCommonTestCase):
         sessions = self.vapi.cnat_session_dump()
         assert len(sessions) == N_REMOTE_HOSTS * 2 * len(self.translations) * 2
 
-        for nbr, translation in enumerate(self.translations):
+        n_translations = len(self.translations)
+        for nbr, translation in enumerate(list(self.translations)):
             #
             # Delete translation
             #
             translation.remove_vpp_config()
+            self.translations.remove(translation)
             # deleting translation results in deleting corresponding sessions
             self.vapi.cli("test cnat scanner on")
-            sessions = self.vapi.cnat_session_dump()
             # a virtual sleep here would cause the sessions to expire, we should
             # be good without any.
-            assert len(sessions) == N_REMOTE_HOSTS * 2 * 2 * (
-                len(self.translations) - (nbr + 1)
+            self.wait_for_cnat_session_count(
+                N_REMOTE_HOSTS * 2 * 2 * (n_translations - (nbr + 1))
             )
         self.vapi.cli("test cnat scanner off")
 
@@ -708,9 +724,8 @@ class TestCNatTranslation(CnatCommonTestCase):
             )
             translation.add_vpp_config()
             self.vapi.cli("test cnat scanner on")
-            sessions = self.vapi.cnat_session_dump()
             number_of_sessions -= sessions_per_backend[old_port_1]
-            assert len(sessions) == number_of_sessions
+            self.wait_for_cnat_session_count(number_of_sessions)
         self.vapi.cli("test cnat scanner off")
 
     def cnat_translation(self):
