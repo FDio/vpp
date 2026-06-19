@@ -16,6 +16,74 @@
       "message": "recheck",
       "revId": "9c94e14d1c50ee89e61fea989214fc670182ea21",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a76ea2b9_94e921a3",
+        "filename": "src/vnet/flow/flow_api.c",
+        "patchSetId": 32
+      },
+      "lineNbr": 496,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-06-19T07:52:31Z",
+      "side": 1,
+      "message": "this should be count-1 and not count, otherwise you\u0027ll have count+1 elements and you\u0027ll overflow mp-\u003eflow_indices",
+      "revId": "9c94e14d1c50ee89e61fea989214fc670182ea21",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "64b58572_2e6f1f5a",
+        "filename": "src/vnet/flow/flow_api.c",
+        "patchSetId": 32
+      },
+      "lineNbr": 511,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-06-19T07:52:31Z",
+      "side": 1,
+      "message": "should it be htonl(success)?",
+      "revId": "9c94e14d1c50ee89e61fea989214fc670182ea21",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e94d8758_f1bb36ee",
+        "filename": "src/vnet/flow/flow_api.c",
+        "patchSetId": 32
+      },
+      "lineNbr": 524,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-06-19T07:52:31Z",
+      "side": 1,
+      "message": "count-1",
+      "revId": "9c94e14d1c50ee89e61fea989214fc670182ea21",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8b4aa80c_c7bd5cf9",
+        "filename": "src/vnet/flow/flow_api.c",
+        "patchSetId": 32
+      },
+      "lineNbr": 538,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-06-19T07:52:31Z",
+      "side": 1,
+      "message": "htonl(success)",
+      "revId": "9c94e14d1c50ee89e61fea989214fc670182ea21",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
