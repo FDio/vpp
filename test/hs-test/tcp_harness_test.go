@@ -16,6 +16,9 @@ func init() {
 	RegisterTcpHarnessTests(
 		TcpWindowProbeLinuxTest,
 		TcpFastRecoverySackSingleLossTest,
+		TcpFastRecoveryNoSack5MBLossTest,
+		TcpFastRecoveryNoTimestamp5MBLossTest,
+		TcpFastRecoveryNoSackNoTimestamp5MBLossTest,
 		TcpFastRecoveryLostRetransmitThenRtoTest,
 		TcpTailLossTimerRecoveryTest,
 		TcpFastRecoveryTwoHolesPartialAckTest,
@@ -37,6 +40,51 @@ func assertTcpTestEndpointCommandOKOrPipeClosed(result TcpTestEndpointCommandRes
 	Log("tcp_test_endpoint client send control exited: %v", result.Err)
 	AssertContains(result.Err.Error(), "exit status 141",
 		"expected tcp_test_endpoint control to either succeed or exit with SIGPIPE")
+}
+
+func tcpHarnessDataSegmentCount(bytes, mss uint64) uint64 {
+	AssertGreaterThan(mss, uint64(0), "snd_mss must be known")
+	return (bytes + mss - 1) / mss
+}
+
+func tcpHarnessDropIndicesForLossPercent(bytes, mss uint64, lossPercent uint64) []uint32 {
+	AssertGreaterThan(lossPercent, uint64(0), "loss percent must be non-zero")
+
+	segmentCount := tcpHarnessDataSegmentCount(bytes, mss)
+	dropCount := segmentCount * lossPercent / 100
+	if dropCount == 0 {
+		dropCount = 1
+	}
+	if dropCount > segmentCount {
+		dropCount = segmentCount
+	}
+
+	step := segmentCount / (dropCount + 1)
+	if step == 0 {
+		step = 1
+	}
+
+	indices := make([]uint32, 0, dropCount)
+	var last uint64
+	for i := uint64(1); i <= dropCount; i++ {
+		index := i * step
+		if index <= last {
+			index = last + 1
+		}
+		if index > segmentCount {
+			break
+		}
+		indices = append(indices, uint32(index))
+		last = index
+	}
+	return indices
+}
+
+type tcpHarnessLargeLossConfig struct {
+	SendBytes    uint64
+	LossPercent  uint64
+	NoSack       bool
+	NoTimestamps bool
 }
 
 func TcpWindowProbeLinuxTest(s *TcpHarnessSuite) {
@@ -142,6 +190,142 @@ func TcpFastRecoverySackSingleLossTest(s *TcpHarnessSuite) {
 	AssertGreaterEqual(sackCount, 1, "expected Linux receiver to send at least one SACK")
 	AssertGreaterEqual(nfQueueStats.RetransmitCount, uint32(len(dropDataPacketIndices)),
 		"expected NFQUEUE monitor to observe retransmission of dropped data")
+}
+
+func runTcpHarnessLargeLossTest(s *TcpHarnessSuite, cfg tcpHarnessLargeLossConfig) {
+	var (
+		mssStats              TcpHarnessClientSessionStats
+		serverStats           TcpTestEndpointStats
+		clientStats           TcpTestEndpointStats
+		peerClosed            TcpTestEndpointStats
+		sessionStats          TcpHarnessClientSessionStats
+		nfQueueStats          tcpharness.NFQueueStats
+		synRewriteStats       tcpharness.NFQueueStats
+		sendHandle            TcpHarnessSendHandle
+		sendResult            TcpTestEndpointCommandResult
+		packets               []tcpharness.PcapIPv4TCPPacket
+		dropDataPacketIndices []uint32
+	)
+
+	defer s.StopTcpTestEndpoints()
+	actions := []TcpHarnessAction{
+		StartClientPcap(),
+		StartTcpTestEndpointServer(TcpTestEndpointServerConfig{Port: s.Ports.Port1}),
+	}
+	if cfg.NoSack || cfg.NoTimestamps {
+		actions = append(actions,
+			EnableServerSynOptionRewrite(tcpharness.SynOptionRewriteConfig{
+				StripSackPermitted:    cfg.NoSack,
+				StripTimestamps:       cfg.NoTimestamps,
+				StopAfterFirstRewrite: true,
+			}),
+			StartTcpTestEndpointClient(TcpTestEndpointClientConfig{}),
+			WaitServerSynOptionRewrite(5*time.Second, 1, &synRewriteStats),
+			DisableServerNFQueue(),
+		)
+	} else {
+		actions = append(actions, StartTcpTestEndpointClient(TcpTestEndpointClientConfig{}))
+	}
+	actions = append(actions,
+		WaitServerStats(5*time.Second, IsAccepted, &serverStats),
+		WaitClientSessionStats(5*time.Second, HasSndMss, &mssStats),
+	)
+
+	state := RunTcpHarnessScenario(s, actions...)
+	defer state.Close()
+	if cfg.NoSack || cfg.NoTimestamps {
+		AssertEqual(uint32(1), synRewriteStats.SynRewriteCount,
+			"expected exactly one rewritten client SYN")
+	}
+
+	dropDataPacketIndices = tcpHarnessDropIndicesForLossPercent(
+		cfg.SendBytes, mssStats.SndMss, cfg.LossPercent)
+	Log("configured %d%% loss for %d bytes: dropping %d of %d data segments at indices %v",
+		cfg.LossPercent, cfg.SendBytes, len(dropDataPacketIndices),
+		tcpHarnessDataSegmentCount(cfg.SendBytes, mssStats.SndMss), dropDataPacketIndices)
+
+	RunTcpHarnessScenarioOnState(s, state,
+		EnableServerNFQueue(tcpharness.NFQueueConfig{DropDataPacketIndices: dropDataPacketIndices}),
+		StartClientSend(cfg.SendBytes, &sendHandle),
+		WaitServerNFQueueDrops(60*time.Second, uint32(len(dropDataPacketIndices))),
+		StopServerNFQueueDrops(),
+		WaitServerNFQueueRetransmits(60*time.Second, uint32(len(dropDataPacketIndices)),
+			&nfQueueStats),
+		DisableServerNFQueue(),
+		WaitClientSessionStats(60*time.Second, HasFastRecovery(uint64(len(dropDataPacketIndices))),
+			&sessionStats),
+		WaitServerStats(60*time.Second, BytesReadExactly(cfg.SendBytes), &serverStats),
+		WaitClientSend(&sendHandle, 60*time.Second, &sendResult),
+		WaitClientStats(5*time.Second, BytesSentExactly(cfg.SendBytes), &clientStats),
+	)
+	sessionStats = s.ClientVppSessionStatsGet()
+
+	RunTcpHarnessScenarioOnState(s, state,
+		CloseTcpTestEndpointClient(),
+		WaitServerStats(5*time.Second, IsPeerClosed, &peerClosed),
+		StopClientPcap(),
+		ReadClientPcap(&packets),
+	)
+
+	AssertEqual(cfg.SendBytes, serverStats.BytesRead)
+	AssertEqual(true, peerClosed.PeerClosed)
+	assertTcpTestEndpointCommandOKOrPipeClosed(sendResult)
+	AssertEqual(cfg.SendBytes, clientStats.BytesSent)
+	Log(sessionStats.Output)
+
+	s.LogTcpTestEndpointLogs()
+
+	flow := s.ClientServerFlow()
+	if cfg.NoSack {
+		AssertEqual(0, flow.ServerSackCount(packets),
+			"expected no server SACK blocks when peer SACK support is disabled")
+	} else {
+		AssertGreaterEqual(flow.ServerSackCount(packets), 1,
+			"expected Linux receiver to send at least one SACK")
+	}
+	if cfg.NoTimestamps {
+		AssertEqual(0, flow.ServerTimestampCount(packets),
+			"expected no timestamp options from server after peer omitted them")
+		AssertEqual(0, flow.ClientEstablishedTimestampCount(packets),
+			"expected VPP to stop sending timestamp options after peer omitted them")
+	}
+	AssertGreaterEqual(nfQueueStats.RetransmitCount, uint32(len(dropDataPacketIndices)),
+		"expected NFQUEUE monitor to observe retransmissions of dropped data")
+	AssertGreaterEqual(sessionStats.FastRecoveryCount, uint64(1),
+		"expected client VPP session stats to use fast recovery without SACK")
+	AssertGreaterEqual(sessionStats.RetransmitSegsCount, uint64(len(dropDataPacketIndices)),
+		"expected client VPP session stats to account for dropped segment retransmissions")
+	if cfg.NoSack {
+		AssertEqual(uint64(0), sessionStats.SackedBytes,
+			"expected client VPP session stats to avoid SACK accounting")
+		AssertEqual(uint64(0), sessionStats.ScoreboardHoleCount,
+			"expected client VPP session stats to avoid SACK scoreboard holes")
+	}
+}
+
+func TcpFastRecoveryNoSack5MBLossTest(s *TcpHarnessSuite) {
+	runTcpHarnessLargeLossTest(s, tcpHarnessLargeLossConfig{
+		SendBytes:   5 << 20,
+		LossPercent: 1,
+		NoSack:      true,
+	})
+}
+
+func TcpFastRecoveryNoTimestamp5MBLossTest(s *TcpHarnessSuite) {
+	runTcpHarnessLargeLossTest(s, tcpHarnessLargeLossConfig{
+		SendBytes:    5 << 20,
+		LossPercent:  1,
+		NoTimestamps: true,
+	})
+}
+
+func TcpFastRecoveryNoSackNoTimestamp5MBLossTest(s *TcpHarnessSuite) {
+	runTcpHarnessLargeLossTest(s, tcpHarnessLargeLossConfig{
+		SendBytes:    5 << 20,
+		LossPercent:  1,
+		NoSack:       true,
+		NoTimestamps: true,
+	})
 }
 
 func TcpFastRecoveryLostRetransmitThenRtoTest(s *TcpHarnessSuite) {
