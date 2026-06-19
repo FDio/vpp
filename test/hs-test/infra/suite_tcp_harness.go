@@ -7,6 +7,7 @@ package hst
 import (
 	"fmt"
 	"net"
+	"os/exec"
 	"path/filepath"
 	"reflect"
 	"regexp"
@@ -53,6 +54,8 @@ type TcpHarnessSuite struct {
 	Ports struct {
 		Port1 string
 	}
+	TestNetnsSysctls                 map[string]string
+	TestNetnsSysctlCleanupRegistered bool
 }
 
 type TcpTestEndpointStats struct {
@@ -201,6 +204,13 @@ func HasFastRecoveryOnly(minRxt uint64) func(stats TcpHarnessClientSessionStats)
 	}
 }
 
+func HasFastRecovery(minRxt uint64) func(stats TcpHarnessClientSessionStats) bool {
+	return func(stats TcpHarnessClientSessionStats) bool {
+		return stats.FastRecoveryCount > 0 &&
+			stats.RetransmitSegsCount >= minRxt
+	}
+}
+
 func HasFastAndTimerRecovery(minRxt uint64) func(stats TcpHarnessClientSessionStats) bool {
 	return func(stats TcpHarnessClientSessionStats) bool {
 		return stats.FastRecoveryCount > 0 &&
@@ -275,6 +285,12 @@ func StartTcpTestEndpointServer(cfg TcpTestEndpointServerConfig) TcpHarnessActio
 func StartTcpTestEndpointClient(cfg TcpTestEndpointClientConfig) TcpHarnessAction {
 	return TcpHarnessActionFunc(func(s *TcpHarnessSuite, st *TcpHarnessScenarioState) {
 		s.StartTcpTestEndpointClient(cfg)
+	})
+}
+
+func SetTestNetnsSysctl(key string, value int) TcpHarnessAction {
+	return TcpHarnessActionFunc(func(s *TcpHarnessSuite, st *TcpHarnessScenarioState) {
+		s.SetTestNetnsSysctl(key, value)
 	})
 }
 
@@ -801,6 +817,8 @@ func (s *TcpHarnessSuite) SetupTest() {
 	s.NFQueue.Server = nil
 	s.NFQueue.ServerAckGate = nil
 	s.NFQueue.ServerScript = nil
+	s.TestNetnsSysctls = map[string]string{}
+	s.TestNetnsSysctlCleanupRegistered = false
 	s.TcpTestEndpoint.ControlSock =
 		filepath.Join(s.Containers.ServerApp.GetContainerWorkDir(), "tcp_test_endpoint.sock")
 	s.TcpTestEndpoint.LogPath =
@@ -873,6 +891,7 @@ func (s *TcpHarnessSuite) TeardownTest() {
 	s.DisableServerNFQueueScript()
 	s.DisableServerNFQueue()
 	s.DisableServerAckGate()
+	s.RestoreTestNetnsSysctls()
 	if CurrentSpecReport().Failed() {
 		s.logServerNFQueueScriptFailure()
 		s.logVppFailureState("server", s.Containers.ServerVpp.VppInstance)
@@ -893,6 +912,57 @@ func (s *TcpHarnessSuite) logVppTcpSessionState(role string, vpp *VppInstance) {
 func (s *TcpHarnessSuite) SetupAppContainers() {
 	s.Containers.ClientApp.Run()
 	s.Containers.ServerApp.Run()
+}
+
+func (s *TcpHarnessSuite) SetTestNetnsSysctl(key string, value int) {
+	if s.TestNetnsSysctls == nil {
+		s.TestNetnsSysctls = map[string]string{}
+	}
+	if _, ok := s.TestNetnsSysctls[key]; !ok {
+		out, err := exec.Command("sysctl", "-n", key).CombinedOutput()
+		AssertNil(err, out)
+		s.TestNetnsSysctls[key] = strings.TrimSpace(string(out))
+	}
+
+	s.RegisterTestNetnsSysctlCleanup()
+	s.setTestNetnsSysctl(key, fmt.Sprint(value), true)
+}
+
+func (s *TcpHarnessSuite) RegisterTestNetnsSysctlCleanup() {
+	if s.TestNetnsSysctlCleanupRegistered {
+		return
+	}
+
+	s.TestNetnsSysctlCleanupRegistered = true
+	DeferCleanup(func() {
+		s.RestoreTestNetnsSysctls()
+	})
+}
+
+func (s *TcpHarnessSuite) setTestNetnsSysctl(key, value string, failOnError bool) bool {
+	out, err := exec.Command("sysctl", "-w", fmt.Sprintf("%s=%s", key, value)).CombinedOutput()
+	if err != nil && !failOnError {
+		Log("failed to restore test netns sysctl %s=%s: %v output=%s",
+			key, value, err, strings.TrimSpace(string(out)))
+		return false
+	}
+	AssertNil(err, out)
+	if strings.Contains(string(out), "ignoring") && !failOnError {
+		Log("failed to restore test netns sysctl %s=%s: %s",
+			key, value, strings.TrimSpace(string(out)))
+		return false
+	}
+	AssertNotContains(out, "ignoring", "expected sysctl write to take effect")
+	Log("test netns sysctl: %s", strings.TrimSpace(string(out)))
+	return true
+}
+
+func (s *TcpHarnessSuite) RestoreTestNetnsSysctls() {
+	for key, value := range s.TestNetnsSysctls {
+		s.setTestNetnsSysctl(key, value, false)
+	}
+	s.TestNetnsSysctls = nil
+	s.TestNetnsSysctlCleanupRegistered = false
 }
 
 func (s *TcpHarnessSuite) SetupServerVpp(serverContainer *Container) {

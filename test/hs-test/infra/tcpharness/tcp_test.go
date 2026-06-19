@@ -139,6 +139,39 @@ func TestTcpHarnessFlowPacketAssertions(t *testing.T) {
 	}
 }
 
+func TestTcpHarnessFlowTimestampAssertions(t *testing.T) {
+	flow := NewFlow("10.0.0.1", "10.0.0.2", 1234)
+	packets := []PcapIPv4TCPPacket{
+		{
+			SrcIP: net.ParseIP("10.0.0.1"), DstIP: net.ParseIP("10.0.0.2"),
+			SrcPort: 40000, DstPort: 1234, Flags: tcpFlagSyn, HasTSOpt: true,
+		},
+		{
+			SrcIP: net.ParseIP("10.0.0.2"), DstIP: net.ParseIP("10.0.0.1"),
+			SrcPort: 1234, DstPort: 40000, Flags: tcpFlagSyn | tcpFlagAck,
+		},
+		{
+			SrcIP: net.ParseIP("10.0.0.1"), DstIP: net.ParseIP("10.0.0.2"),
+			SrcPort: 40000, DstPort: 1234, Flags: tcpFlagAck, PayloadLen: 100,
+		},
+		{
+			SrcIP: net.ParseIP("10.0.0.2"), DstIP: net.ParseIP("10.0.0.1"),
+			SrcPort: 1234, DstPort: 40000, Flags: tcpFlagAck, HasTSOpt: true,
+		},
+		{
+			SrcIP: net.ParseIP("10.0.0.1"), DstIP: net.ParseIP("10.0.0.2"),
+			SrcPort: 40000, DstPort: 1234, Flags: tcpFlagAck, HasTSOpt: true,
+		},
+	}
+
+	if got := flow.ServerTimestampCount(packets); got != 1 {
+		t.Fatalf("ServerTimestampCount=%d, want 1", got)
+	}
+	if got := flow.ClientEstablishedTimestampCount(packets); got != 1 {
+		t.Fatalf("ClientEstablishedTimestampCount=%d, want 1", got)
+	}
+}
+
 func TestTcpHarnessScriptStepConstructors(t *testing.T) {
 	initial := InitialHolesSackStep(3, 4,
 		WaitForDataSegments(6),

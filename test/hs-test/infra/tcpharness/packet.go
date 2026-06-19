@@ -128,6 +128,26 @@ func (f Flow) ServerSackCount(packets []PcapIPv4TCPPacket) int {
 	return count
 }
 
+func (f Flow) ServerTimestampCount(packets []PcapIPv4TCPPacket) int {
+	count := 0
+	for _, packet := range packets {
+		if f.ServerToClient(packet) && packet.HasTSOpt {
+			count++
+		}
+	}
+	return count
+}
+
+func (f Flow) ClientEstablishedTimestampCount(packets []PcapIPv4TCPPacket) int {
+	count := 0
+	for _, packet := range packets {
+		if f.ClientToServer(packet) && packet.Flags&tcpFlagSyn == 0 && packet.HasTSOpt {
+			count++
+		}
+	}
+	return count
+}
+
 func (f Flow) HasServerSackWithAtLeastBlocks(packets []PcapIPv4TCPPacket, minBlocks int) bool {
 	for _, packet := range packets {
 		if f.ServerToClient(packet) && packet.SackBlocks >= minBlocks {
