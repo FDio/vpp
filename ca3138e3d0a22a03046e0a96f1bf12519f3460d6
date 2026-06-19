@@ -16,6 +16,24 @@
       "message": "This we should do, but wonder now if we should be doing it higher in the stack. I\u0027m assuming you\u0027ve hit this with ldp? If that\u0027s the case, we should sanitize the flags there before we call vls.",
       "revId": "ca3138e3d0a22a03046e0a96f1bf12519f3460d6",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0011bf25_5fc7b651",
+        "filename": "src/vcl/vppcom.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 4734,
+      "author": {
+        "id": 3338
+      },
+      "writtenOn": "2026-06-19T09:15:01Z",
+      "side": 1,
+      "message": "yup, ran into this with `LD_PRELOAD\u003dlibvcl_ldpreload.so`. I\u0027m not too experienced with the vpp codebase yet, could you point me a the spot you had in mind?\n\nI\u0027m guessing `recv()` and `send()` might work, though I\u0027m not quiet sure how it would interact with e.g. `recvmsg()`, `sendmsg()`, or the other related functions there.",
+      "parentUuid": "5bea7745_3c0b8e09",
+      "revId": "ca3138e3d0a22a03046e0a96f1bf12519f3460d6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
