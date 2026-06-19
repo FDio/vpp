@@ -201,6 +201,13 @@ func HasFastRecoveryOnly(minRxt uint64) func(stats TcpHarnessClientSessionStats)
 	}
 }
 
+func HasFastRecovery(minRxt uint64) func(stats TcpHarnessClientSessionStats) bool {
+	return func(stats TcpHarnessClientSessionStats) bool {
+		return stats.FastRecoveryCount > 0 &&
+			stats.RetransmitSegsCount >= minRxt
+	}
+}
+
 func HasFastAndTimerRecovery(minRxt uint64) func(stats TcpHarnessClientSessionStats) bool {
 	return func(stats TcpHarnessClientSessionStats) bool {
 		return stats.FastRecoveryCount > 0 &&
@@ -917,6 +924,12 @@ func EnableServerNFQueue(cfg tcpharness.NFQueueConfig) TcpHarnessAction {
 	})
 }
 
+func EnableServerSynOptionRewrite(cfg tcpharness.SynOptionRewriteConfig) TcpHarnessAction {
+	return TcpHarnessActionFunc(func(s *TcpHarnessSuite, st *TcpHarnessScenarioState) {
+		s.EnableServerSynOptionRewrite(cfg)
+	})
+}
+
 func DisableServerNFQueue() TcpHarnessAction {
 	return TcpHarnessActionFunc(func(s *TcpHarnessSuite, st *TcpHarnessScenarioState) {
 		s.DisableServerNFQueue()
@@ -939,6 +952,16 @@ func WaitServerNFQueueRetransmits(timeout time.Duration, count uint32,
 	stats *tcpharness.NFQueueStats) TcpHarnessAction {
 	return TcpHarnessActionFunc(func(s *TcpHarnessSuite, st *TcpHarnessScenarioState) {
 		current := s.WaitForServerNFQueueRetransmits(timeout, count)
+		if stats != nil {
+			*stats = current
+		}
+	})
+}
+
+func WaitServerSynOptionRewrite(timeout time.Duration, count uint32,
+	stats *tcpharness.NFQueueStats) TcpHarnessAction {
+	return TcpHarnessActionFunc(func(s *TcpHarnessSuite, st *TcpHarnessScenarioState) {
+		current := s.WaitForServerSynOptionRewrite(timeout, count)
 		if stats != nil {
 			*stats = current
 		}
@@ -1043,6 +1066,11 @@ func (s *TcpHarnessSuite) EnableServerNFQueue(cfg tcpharness.NFQueueConfig) {
 
 	s.NFQueue.Server = helper
 	s.Impairments.ServerNFQueue = true
+}
+
+func (s *TcpHarnessSuite) EnableServerSynOptionRewrite(
+	cfg tcpharness.SynOptionRewriteConfig) {
+	s.EnableServerNFQueue(tcpharness.NFQueueConfig{SynOptionRewrite: cfg})
 }
 
 func (s *TcpHarnessSuite) EnableServerNFQueueScript(cfg tcpharness.NFQueueScriptConfig) {
@@ -1344,6 +1372,28 @@ func (s *TcpHarnessSuite) WaitForServerNFQueueRetransmits(timeout time.Duration,
 
 	Log("last NFQUEUE stats: %+v", stats)
 	AssertFail("timed out waiting for NFQUEUE to observe %d retransmits", count)
+	return tcpharness.NFQueueStats{}
+}
+
+func (s *TcpHarnessSuite) WaitForServerSynOptionRewrite(timeout time.Duration,
+	count uint32) tcpharness.NFQueueStats {
+	AssertNotNil(s.NFQueue.Server)
+
+	var (
+		stats tcpharness.NFQueueStats
+		err   error
+	)
+
+	if waitWithTimeout(timeout, 50*time.Millisecond, func() bool {
+		stats, err = s.NFQueue.Server.CurrentStats()
+		AssertNil(err)
+		return stats.SynRewriteCount >= count
+	}) {
+		return stats
+	}
+
+	Log("last NFQUEUE stats: %+v", stats)
+	AssertFail("timed out waiting for NFQUEUE to rewrite %d SYN packets", count)
 	return tcpharness.NFQueueStats{}
 }
 
