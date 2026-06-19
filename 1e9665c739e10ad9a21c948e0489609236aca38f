@@ -16,6 +16,24 @@
       "message": "needs a `make fixstyle`",
       "revId": "1e9665c739e10ad9a21c948e0489609236aca38f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "3eabec26_1dffb28d",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3338
+      },
+      "writtenOn": "2026-06-19T09:26:41Z",
+      "side": 1,
+      "message": "the formatting seems fine, added a type: to both CL\u0027s commit messages, the ci should get further now.",
+      "parentUuid": "e1586600_59551fb7",
+      "revId": "1e9665c739e10ad9a21c948e0489609236aca38f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
