@@ -1247,7 +1247,25 @@ hcpc_http_session_disconnect_callback (session_t *s)
 static void
 hcpc_http_session_transport_closed_callback (session_t *s)
 {
+  hcpc_main_t *hcpcm = &hcpc_main;
+  hcpc_session_t *ps;
+
   HCPC_DBG ("session [%u]", s->opaque);
+  clib_spinlock_lock_if_init (&hcpcm->sessions_lock);
+  ps = hcpc_session_get (s->opaque);
+  ASSERT (ps);
+  ps->state = HCPC_SESSION_CLOSED;
+  /* stream reset during tunnel shutdown */
+  if (!ps->intercept_diconnected && (ps->flags & HCPC_SESSION_F_INTERCEPT_SHUTDOWN))
+    {
+      ASSERT (ps->intercept.session_handle != SESSION_INVALID_HANDLE);
+      session_send_rpc_evt_to_thread_force (
+	session_thread_from_handle (ps->intercept.session_handle), hcpc_reset_session_rpc,
+	uword_to_pointer (ps->intercept.session_handle, void *));
+      ps->intercept_diconnected = 1;
+    }
+  clib_spinlock_unlock_if_init (&hcpcm->sessions_lock);
+  hcpc_worker_stats_inc (s->thread_index, tunnels_reset_by_target, 1);
 }
 
 static void
@@ -1617,7 +1635,26 @@ hcpc_intercept_session_disconnect_callback (session_t *s)
 static void
 hcpc_intercept_session_transport_closed_callback (session_t *s)
 {
+  hcpc_main_t *hcpcm = &hcpc_main;
+  hcpc_session_t *ps;
+
   HCPC_DBG ("session [%u]", s->opaque);
+  clib_spinlock_lock_if_init (&hcpcm->sessions_lock);
+  ps = hcpc_session_get (s->opaque);
+  ASSERT (ps);
+  ps->state = HCPC_SESSION_CLOSED;
+  /* reset or timeout during tcp session shutdown */
+  if (!ps->http_disconnected && (ps->flags & HCPC_SESSION_F_HTTP_SHUTDOWN))
+    {
+      /* we want stream reset here */
+      ASSERT (ps->http.session_handle != SESSION_INVALID_HANDLE);
+      session_send_rpc_evt_to_thread_force (session_thread_from_handle (ps->http.session_handle),
+					    hcpc_reset_session_rpc,
+					    uword_to_pointer (ps->http.session_handle, void *));
+      ps->http_disconnected = 1;
+    }
+  clib_spinlock_unlock_if_init (&hcpcm->sessions_lock);
+  hcpc_worker_stats_inc (s->thread_index, tunnels_reset_by_client, 1);
 }
 
 static void
@@ -1770,7 +1807,7 @@ hcpc_intercept_write_early_data (session_t *s)
   return 0;
 }
 
-static session_cb_vft_t listener_session_cb_vft = {
+static session_cb_vft_t intercept_session_cb_vft = {
   .session_accept_callback = hcpc_intercept_accept_callback,
   .session_connected_callback = hcpc_intercept_connected_callback,
   .session_disconnect_callback = hcpc_intercept_session_disconnect_callback,
@@ -1840,7 +1877,7 @@ hcpc_attach_intercept_listener ()
 
   a->api_client_index = APP_INVALID_INDEX;
   a->name = format (0, "http-connect-proxy-client-listener");
-  a->session_cb_vft = &listener_session_cb_vft;
+  a->session_cb_vft = &intercept_session_cb_vft;
   a->options = options;
   a->options[APP_OPTIONS_SEGMENT_SIZE] = hcpcm->private_segment_size;
   a->options[APP_OPTIONS_ADD_SEGMENT_SIZE] = hcpcm->private_segment_size;

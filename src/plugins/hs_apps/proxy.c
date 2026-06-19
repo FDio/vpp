@@ -270,6 +270,7 @@ proxy_try_close_session (session_t *s, int is_active_open)
 	  /* Propagate CONNECT TCP FIN as half-close, not full close. */
 	  if (proxy_session_can_shutdown (po_s, ao_tp))
 	    {
+	      sc->state = PROXY_SC_S_CLOSING;
 	      proxy_session_shutdown_po (ps);
 	      clib_spinlock_unlock_if_init (&pm->sessions_lock);
 	      return;
@@ -295,6 +296,7 @@ proxy_try_close_session (session_t *s, int is_active_open)
 	  /* Propagate CONNECT TCP FIN as half-close, not full close. */
 	  if (proxy_session_can_shutdown (ao_s, ao_tp))
 	    {
+	      sc->state = PROXY_SC_S_CLOSING;
 	      proxy_session_shutdown_ao (ps);
 	      clib_spinlock_unlock_if_init (&pm->sessions_lock);
 	      return;
@@ -352,7 +354,6 @@ proxy_reset_session (session_t *s, int is_active_open)
 	    session_thread_from_handle (ps->po.session_handle),
 	    proxy_do_reset_rpc,
 	    uword_to_pointer (ps->po.session_handle, void *));
-	  session_reset (session_get_from_handle (ps->po.session_handle));
 	  ps->po_disconnected = 1;
 	}
     }
@@ -894,6 +895,40 @@ proxy_cleanup_callback (session_t * s, session_cleanup_ntf_t ntf)
   proxy_try_delete_session (s, 0 /* is_active_open */ );
 }
 
+static void
+proxy_transport_closed_callback (session_t *s)
+{
+  proxy_main_t *pm = &proxy_main;
+  proxy_session_side_ctx_t *sc;
+  proxy_worker_t *wrk;
+  proxy_session_t *ps;
+
+  wrk = proxy_worker_get (s->thread_index);
+  sc = proxy_session_side_ctx_get (wrk, s->opaque);
+
+  PROXY_DBG ("[%u] ps %u po transport closed", s->thread_index, sc->ps_index);
+
+  /* stream reset during tunnel shutdown */
+  if (sc->state == PROXY_SC_S_CLOSING && sc->pair.is_http)
+    {
+      clib_spinlock_lock_if_init (&pm->sessions_lock);
+
+      ps = proxy_session_get (sc->ps_index);
+
+      if (!ps->ao_disconnected)
+	{
+	  ASSERT (ps->ao.session_handle != SESSION_INVALID_HANDLE);
+	  sc->state = PROXY_SC_S_CLOSED;
+	  session_send_rpc_evt_to_thread_force (session_thread_from_handle (ps->ao.session_handle),
+						proxy_do_reset_rpc,
+						uword_to_pointer (ps->ao.session_handle, void *));
+	  ps->po_disconnected = 1;
+	}
+
+      clib_spinlock_unlock_if_init (&pm->sessions_lock);
+    }
+}
+
 static session_cb_vft_t proxy_session_cb_vft = {
   .session_accept_callback = proxy_accept_callback,
   .session_disconnect_callback = proxy_disconnect_callback,
@@ -905,6 +940,7 @@ static session_cb_vft_t proxy_session_cb_vft = {
   .session_reset_callback = proxy_reset_callback,
   .session_cleanup_callback = proxy_cleanup_callback,
   .fifo_tuning_callback = common_fifo_tuning_callback,
+  .session_transport_closed_callback = proxy_transport_closed_callback,
 };
 
 static int
@@ -962,7 +998,7 @@ active_open_send_http_resp_rpc (void *arg)
   transport_proto_t ao_tp;
   int connect_failed;
 
-  PROXY_DBG ("ps[%xlu] going to send connect response", ps_index);
+  PROXY_DBG ("ps %u going to send connect response", ps_index);
 
   clib_spinlock_lock_if_init (&pm->sessions_lock);
 
@@ -1272,6 +1308,41 @@ active_open_cleanup_callback (session_t * s, session_cleanup_ntf_t ntf)
   proxy_try_delete_session (s, 1 /* is_active_open */ );
 }
 
+static void
+active_open_transport_closed_callback (session_t *s)
+{
+  proxy_main_t *pm = &proxy_main;
+  proxy_session_side_ctx_t *sc;
+  proxy_worker_t *wrk;
+  proxy_session_t *ps;
+
+  wrk = proxy_worker_get (s->thread_index);
+  sc = proxy_session_side_ctx_get (wrk, s->opaque);
+
+  PROXY_DBG ("[%u] ps %u ao transport closed", s->thread_index, sc->ps_index);
+
+  /* reset or timeout during tcp session shutdown */
+  if (sc->state == PROXY_SC_S_CLOSING)
+    {
+      clib_spinlock_lock_if_init (&pm->sessions_lock);
+
+      ps = proxy_session_get (sc->ps_index);
+
+      if (ps->po.is_http && !ps->po_disconnected)
+	{
+	  /* we want stream reset here */
+	  ASSERT (ps->po.session_handle != SESSION_INVALID_HANDLE);
+	  sc->state = PROXY_SC_S_CLOSED;
+	  session_send_rpc_evt_to_thread_force (session_thread_from_handle (ps->po.session_handle),
+						proxy_do_reset_rpc,
+						uword_to_pointer (ps->po.session_handle, void *));
+	  ps->po_disconnected = 1;
+	}
+
+      clib_spinlock_unlock_if_init (&pm->sessions_lock);
+    }
+}
+
 static session_cb_vft_t active_open_clients = {
   .session_reset_callback = active_open_reset_callback,
   .session_connected_callback = active_open_connected_callback,
@@ -1285,6 +1356,7 @@ static session_cb_vft_t active_open_clients = {
   .proxy_alloc_session_fifos = active_open_alloc_session_fifos,
   .add_segment_callback = proxy_add_segment_callback,
   .del_segment_callback = proxy_del_segment_callback,
+  .session_transport_closed_callback = active_open_transport_closed_callback,
 };
 
 static int

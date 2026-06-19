@@ -217,6 +217,7 @@ http2_conn_reset_req (http_ctx_t *hc, http_ctx_t *req, clib_thread_index_t threa
   if (clib_llist_elt_is_linked (req, stream_sched_list))
     clib_llist_remove (wrk->ctx_pool, stream_sched_list, req);
   http_buffer_free (&req->tx_buf);
+  req->req_flags &= ~HTTP_REQ_F_PEER_CLOSED;
   req->req_flags &= ~HTTP_REQ_F_NEED_WINDOW_UPDATE;
   req->stream_state = HTTP2_STREAM_STATE_IDLE;
   req->peer_stream_window = hc->peer_settings.initial_window_size;
@@ -411,6 +412,9 @@ http2_stream_error (http_ctx_t *hc, http_ctx_t *req, http2_error_t error,
 
   if (!(req->req_flags & HTTP_REQ_F_APP_CLOSED))
     session_transport_reset_notify (&req->connection);
+  else
+    session_transport_closed_notify (&req->connection);
+
   session_transport_delete_notify (&req->connection);
   http2_conn_free_req (hc, req, hc->c_thread_index);
 }
@@ -641,6 +645,7 @@ http2_sched_dispatch_tunnel (http_ctx_t *req, http_ctx_t *hc, u8 *n_emissions)
 
   if (flags & HTTP2_FRAME_FLAG_END_STREAM)
     {
+      req->req_flags |= HTTP_REQ_F_PEER_CLOSED;
       switch (req->stream_state)
 	{
 	case HTTP2_STREAM_STATE_OPEN:
@@ -901,6 +906,8 @@ http_sched_dispatch_431 (http_ctx_t *req, http_ctx_t *hc, u8 *n_emissions,
   /* notify app that nothing will happen and free request */
   if (!(req->req_flags & HTTP_REQ_F_APP_CLOSED))
     session_transport_reset_notify (&req->connection);
+  else
+    session_transport_closed_notify (&req->connection);
   session_transport_delete_notify (&req->connection);
   http2_conn_free_req (hc, req, hc->c_thread_index);
 }
@@ -2140,7 +2147,10 @@ http2_handle_headers_frame (http_ctx_t *hc, http2_frame_header_t *fh)
 				    http2_default_conn_settings.header_table_size);
 	}
       if (fh->flags & HTTP2_FRAME_FLAG_END_STREAM)
-	req->stream_state = HTTP2_STREAM_STATE_HALF_CLOSED;
+	{
+	  req->req_flags |= HTTP_REQ_F_PEER_CLOSED;
+	  req->stream_state = HTTP2_STREAM_STATE_HALF_CLOSED;
+	}
 
       if (!(fh->flags & HTTP2_FRAME_FLAG_END_HEADERS))
 	{
@@ -2189,7 +2199,10 @@ http2_handle_headers_frame (http_ctx_t *hc, http2_frame_header_t *fh)
 	}
 
       if (fh->flags & HTTP2_FRAME_FLAG_END_STREAM)
-	req->stream_state = HTTP2_STREAM_STATE_CLOSED;
+	{
+	  req->req_flags |= HTTP_REQ_F_PEER_CLOSED;
+	  req->stream_state = HTTP2_STREAM_STATE_CLOSED;
+	}
 
       if (!(fh->flags & HTTP2_FRAME_FLAG_END_HEADERS))
 	{
@@ -2293,7 +2306,7 @@ http2_handle_data_frame (http_ctx_t *hc, http2_frame_header_t *fh)
     {
       if (clib_net_to_host_u32 (fh->stream_id) <= hc->last_opened_stream_id)
 	{
-	  HTTP_DBG (1, "stream closed, ignoring frame");
+	  HTTP_DBG (1, "stream %u closed, ignoring frame", clib_net_to_host_u32 (fh->stream_id));
 	  http_io_ts_drain (hc, fh->length);
 	  http2_send_stream_error (hc, fh->stream_id,
 				   HTTP2_ERROR_STREAM_CLOSED, 0);
@@ -2329,6 +2342,7 @@ http2_handle_data_frame (http_ctx_t *hc, http2_frame_header_t *fh)
   if (fh->flags & HTTP2_FRAME_FLAG_END_STREAM)
     {
       HTTP_DBG (1, "END_STREAM flag set");
+      req->req_flags |= HTTP_REQ_F_PEER_CLOSED;
       if (req->req_flags & HTTP_REQ_F_IS_TUNNEL)
 	{
 	  /* peer can initiate or confirm tunnel close */
@@ -2563,7 +2577,7 @@ http2_handle_rst_stream_frame (http_ctx_t *hc, http2_frame_header_t *fh)
       if (clib_net_to_host_u32 (fh->stream_id) <= hc->last_opened_stream_id)
 	{
 	  /* we reset stream, but peer might send something meanwhile */
-	  HTTP_DBG (1, "stream closed, ignoring frame");
+	  HTTP_DBG (1, "stream %u closed, ignoring frame", clib_net_to_host_u32 (fh->stream_id));
 	  return HTTP2_ERROR_NO_ERROR;
 	}
       else
@@ -2578,6 +2592,9 @@ http2_handle_rst_stream_frame (http_ctx_t *hc, http2_frame_header_t *fh)
 
   if (!(req->req_flags & HTTP_REQ_F_APP_CLOSED))
     session_transport_reset_notify (&req->connection);
+  else
+    session_transport_closed_notify (&req->connection);
+
   session_transport_delete_notify (&req->connection);
   http2_conn_free_req (hc, req, hc->c_thread_index);
   return HTTP2_ERROR_NO_ERROR;
@@ -2861,7 +2878,6 @@ http2_app_rx_evt_callback (http_ctx_t *hc, u32 req_index, clib_thread_index_t th
 {
   http_ctx_t *req;
   u32 increment;
-  http2_stream_state_t expected_state;
 
   req = http_ctx_get_w_thread (req_index, thread_index);
   if (!req)
@@ -2871,12 +2887,8 @@ http2_app_rx_evt_callback (http_ctx_t *hc, u32 req_index, clib_thread_index_t th
     }
   HTTP_DBG (1, "received app read notification stream id %u", req->stream_id);
   /* send stream window update if app read data in rx fifo and we expect more
-   * data (stream is still open) */
-  expected_state =
-    ((hc->flags & HTTP_CONN_F_IS_SERVER) || (req->req_flags & HTTP_REQ_F_IS_TUNNEL)) ?
-      HTTP2_STREAM_STATE_OPEN :
-      HTTP2_STREAM_STATE_HALF_CLOSED;
-  if (req->stream_state == expected_state)
+   * data (we don't receive frame with END_STREAM flag set) */
+  if (!(req->req_flags & HTTP_REQ_F_PEER_CLOSED))
     {
       http_io_as_reset_has_read_ntf (req);
       increment = http2_req_get_win_increment (req, hc);
