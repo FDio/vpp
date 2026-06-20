@@ -1005,29 +1005,25 @@ hsi_track_tcp (session_t *s, session_t *peer_s)
   if (!hsi_tcp_track_is_possible (tc0, tc1))
     return -1;
 
+  if (!is_same_thread)
+    {
+      hsi_tcp_drain_start (s, peer_s, tc0, tc1);
+      hsi_tcp_track_send_drain_start (s, peer_s);
+      return 0;
+    }
+
   if (hsi_tcp_track_needs_drain (s, tc0) || hsi_tcp_track_needs_drain (peer_s, tc1))
     {
       hsi_tcp_drain_start (s, peer_s, tc0, tc1);
-      if (is_same_thread)
-	hsi_tcp_drain_start (peer_s, s, tc1, tc0);
-      else
-	hsi_tcp_track_send_drain_start (s, peer_s);
+      hsi_tcp_drain_start (peer_s, s, tc1, tc0);
       return 0;
     }
 
   hsi_tcp_track_snapshot (s, tc0, &snap0);
   hsi_tcp_track_snapshot (peer_s, tc1, &snap1);
 
-  if (is_same_thread)
-    {
-      hsi_tcp_track_commit (s, &snap1);
-      hsi_tcp_track_commit (peer_s, &snap0);
-    }
-  else
-    {
-      hsi_tcp_track_send_commit (peer_s, &snap0);
-      hsi_tcp_track_commit (s, &snap1);
-    }
+  hsi_tcp_track_commit (s, &snap1);
+  hsi_tcp_track_commit (peer_s, &snap0);
 
   return 0;
 }
