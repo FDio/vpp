@@ -1259,34 +1259,26 @@ hsi_track_udp (session_t *s, session_t *peer_s)
   if (!hsi_udp_track_is_possible (uc0, uc1))
     return -1;
 
-  if (hsi_udp_track_needs_drain (s) || hsi_udp_track_needs_drain (peer_s))
+  if (!is_same_thread)
     {
       hsi_udp_drain_start (s, peer_s, uc0, uc1);
-      if (is_same_thread)
-	hsi_udp_drain_start (peer_s, s, uc1, uc0);
-      else if (hsi_udp_track_send_drain_start (s, peer_s))
+      if (hsi_udp_track_send_drain_start (s, peer_s))
 	return -1;
       return 0;
     }
 
-  if (is_same_thread)
+  if (hsi_udp_track_needs_drain (s) || hsi_udp_track_needs_drain (peer_s))
     {
-      hsi_udp_track_snapshot (s, uc0, &snap0);
-      hsi_udp_track_snapshot (peer_s, uc1, &snap1);
-
-      hsi_udp_track_commit (s, &snap1);
-      hsi_udp_track_commit (peer_s, &snap0);
-
+      hsi_udp_drain_start (s, peer_s, uc0, uc1);
+      hsi_udp_drain_start (peer_s, s, uc1, uc0);
       return 0;
     }
 
   hsi_udp_track_snapshot (s, uc0, &snap0);
   hsi_udp_track_snapshot (peer_s, uc1, &snap1);
 
-  if (hsi_udp_track_send_commit (peer_s, &snap0))
-    return -1;
-
   hsi_udp_track_commit (s, &snap1);
+  hsi_udp_track_commit (peer_s, &snap0);
 
   return 0;
 }
