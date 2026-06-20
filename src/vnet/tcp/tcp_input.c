@@ -762,6 +762,8 @@ tcp_cc_handle_event (tcp_connection_t * tc, tcp_rate_sample_t * rs,
 
 	  if (has_sack)
 	    scoreboard_init_rxt (&tc->sack_sb, tc->snd_una);
+	  else
+	    tcp_fastrecovery_first_on (tc);
 
 	  tcp_connection_tx_pacer_reset (tc, tc->cwnd, 0 /* start bucket */ );
 	  tcp_program_retransmit (tc);
