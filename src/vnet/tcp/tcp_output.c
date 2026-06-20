@@ -1899,7 +1899,10 @@ tcp_retransmit_no_sack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
       return 0;
     }
 
-  snd_space = tcp_available_cc_snd_space (tc);
+  if (tcp_in_recovery (tc))
+    snd_space = tcp_available_cc_snd_space (tc);
+  else
+    snd_space = tcp_fastrecovery_prr_snd_space (tc);
   cc_limited = snd_space < burst_bytes;
 
   if (!tcp_fastrecovery_first (tc))
@@ -1927,6 +1930,9 @@ tcp_retransmit_no_sack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
       n_segs += 1;
     }
 
+  if (n_segs)
+    tcp_fastrecovery_first_off (tc);
+
   if (n_segs == burst_size)
     goto done;
 
@@ -1949,8 +1955,6 @@ send_unsent:
     }
 
 done:
-  tcp_fastrecovery_first_off (tc);
-
   sent_bytes = clib_min (n_segs * tc->snd_mss, burst_bytes);
   sent_bytes = cc_limited ? burst_bytes : sent_bytes;
   if (transport_connection_is_tx_paced (&tc->connection))
