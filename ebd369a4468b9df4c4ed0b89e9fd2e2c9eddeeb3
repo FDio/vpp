@@ -16,6 +16,23 @@
       "message": "recheck",
       "revId": "ebd369a4468b9df4c4ed0b89e9fd2e2c9eddeeb3",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1190a3ec_cee83346",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3317
+      },
+      "writtenOn": "2026-06-20T01:56:28Z",
+      "side": 1,
+      "message": "Hi, This is my second contribution to the VPP project. I have followed the contribution guidelines in docs and added you as reviewers.\n\nThis patch introduces support for the Recursive DNS Server (RDNSS) option in IPv6 Router Advertisements, as defined in RFC 8106. It allows VPP to advertise one or more IPv6 DNS servers to hosts on the local link, enabling stateless DNS configuration.\n\nCould you please take a look at it when you have a moment? Please let me know if I need to make any adjustments to align with the project standards.",
+      "revId": "ebd369a4468b9df4c4ed0b89e9fd2e2c9eddeeb3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
