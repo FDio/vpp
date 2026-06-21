@@ -1,0 +1,771 @@
+Release notes for VPP 26.06
+===========================
+
+More than 632 commits since the previous release, including 265 fixes.
+
+Release Highlights
+------------------
+
+With this release, CSIT testing/release strategy for ARM platforms changes quite significantly
+due to a requirement of building custom artifacts in order to maximize the performance benefits
+on some of the platforms. In order to do that, the artifacts are built by CSIT locally, rather
+than pulled from packagecloud.io. This also means that the "generic" ARM artifacts on packagecloud.io
+may not get the same performance test coverage as before. For more details, please refer
+to the CSIT documentation for the VPP 26.06 release.
+
+Features
+--------
+
+- Marvel Scalable mGig NICs Device driver
+
+  - Driver for Marvell (ex Aquantia) Scalable mGig NICs (AQC113-AQC116) (`df4f891b1 <https://github.com/fdio/vpp/commit/df4f891b1>`_)
+
+- Plugins
+
+  - CNat
+
+    - Add SNAT DNAT policy support and egress SNAT (`077619d03 <https://github.com/fdio/vpp/commit/077619d03>`_)
+
+  - Crypto - ipsecmb
+
+    - Bump to ipsecmb v2.0.2 (`c58dd06a9 <https://github.com/fdio/vpp/commit/c58dd06a9>`_)
+
+  - DPDK
+
+    - Add representor device flag (`c5a13fcec <https://github.com/fdio/vpp/commit/c5a13fcec>`_)
+    - Bump to DPDK 26.03 and rdma-core 62.0 (`2e0062c08 <https://github.com/fdio/vpp/commit/2e0062c08>`_)
+
+  - HTTP
+
+    - Http/3 connect method (`a81fb5e0e <https://github.com/fdio/vpp/commit/a81fb5e0e>`_)
+    - Proxying UDP in HTTP/3 (`5f2e00baa <https://github.com/fdio/vpp/commit/5f2e00baa>`_)
+
+  - Host Stack Applications
+
+    - Add http3 support to http static server (`ca39b350c <https://github.com/fdio/vpp/commit/ca39b350c>`_)
+
+  - Internet Key Exchange (IKEv2) Protocol
+
+    - Add null encryption support (`c5908d647 <https://github.com/fdio/vpp/commit/c5908d647>`_)
+    - Add AES-CTR child SA support (`03aaf6e74 <https://github.com/fdio/vpp/commit/03aaf6e74>`_)
+    - Add AES-GMAC child SA support (`a0fac1e70 <https://github.com/fdio/vpp/commit/a0fac1e70>`_)
+    - Add AES-CMAC PRF support (`fd113cdec <https://github.com/fdio/vpp/commit/fd113cdec>`_)
+    - Add AES-CMAC integrity support (`b19d345d1 <https://github.com/fdio/vpp/commit/b19d345d1>`_)
+
+  - QUIC protocol
+
+    - Mtls and cert retrieval apis (`e48f0c542 <https://github.com/fdio/vpp/commit/e48f0c542>`_)
+
+  - Trace path
+
+    - Introduce tracepath plugin (`b2a168b48 <https://github.com/fdio/vpp/commit/b2a168b48>`_)
+
+  - UDP Echo
+
+    - Add udp-echo plugin (`07a3134b7 <https://github.com/fdio/vpp/commit/07a3134b7>`_)
+
+  - Wireguard
+
+    - Support for psk via v2 API messages (`191f96a15 <https://github.com/fdio/vpp/commit/191f96a15>`_)
+
+  - Linux-cp
+
+    - Add support to pass through an OSI proto (`85dddcb53 <https://github.com/fdio/vpp/commit/85dddcb53>`_)
+
+- Plugin StateFul Data Plane Services
+
+  - Add snort service (`21da13734 <https://github.com/fdio/vpp/commit/21da13734>`_)
+
+- VNET
+
+  - - IP6 Neighbor Discovery
+
+    - Add Duplicate Address Detection (DAD) (`1f7348b6d <https://github.com/fdio/vpp/commit/1f7348b6d>`_)
+    - Add automatic duplicate address removal plugin (`6d40e40e3 <https://github.com/fdio/vpp/commit/6d40e40e3>`_)
+
+  - Crypto Infra
+
+    - Per-engine per-alg key data size tracking (`2a0e76584 <https://github.com/fdio/vpp/commit/2a0e76584>`_)
+
+  - Interface Common
+
+    - Add global default rx-mode setting (`757c79e8e <https://github.com/fdio/vpp/commit/757c79e8e>`_)
+
+  - Session Layer
+
+    - Support for tls profile configuration (`1d31732c2 <https://github.com/fdio/vpp/commit/1d31732c2>`_)
+    - Api to do connects from workers (`d8c359359 <https://github.com/fdio/vpp/commit/d8c359359>`_)
+
+  - StateFul Data Plane
+
+    - Add a kill session API/CLI (`e568080c4 <https://github.com/fdio/vpp/commit/e568080c4>`_)
+
+- Vector Library
+
+  - Add API to query PCI BAR region size (`b511aedf1 <https://github.com/fdio/vpp/commit/b511aedf1>`_)
+
+
+Known issues
+------------
+
+For the full list of issues please refer to fd.io `JIRA <https://jira.fd.io>`_.
+
+Fixed issues
+------------
+
+For the full list of fixed issues please refer to:
+- fd.io `GitHub <https://github.com/fdio/vpp/issues>`_
+- git `commit log <https://git.fd.io/vpp/log/?h=master>`_
+
+
+API changes
+-----------
+
+Description of results:
+
+- *Definition changed*: indicates that the API file was modified between releases.
+- *Only in image*: indicates the API is new for this release.
+- *Only in file*: indicates the API has been removed in this release.
+
+============================================================= ==================
+Message Name                                                  Result
+============================================================= ==================
+cnat_session_details                                          definition changed
+cnat_set_snat_addresses_v2                                    only in image
+cnat_set_snat_addresses_v2_reply                              only in image
+cnat_set_snat_policy                                          definition changed
+cnat_snat_addresses_details                                   only in image
+cnat_snat_addresses_dump                                      only in image
+feature_cnat_enable_disable                                   only in image
+feature_cnat_enable_disable_reply                             only in image
+gre_tunnel_v2_details                                         only in image
+gre_tunnel_v2_dump                                            only in image
+gre_tunnel_v2_dump_reply                                      only in image
+ikev2_profile_details                                         definition changed
+ikev2_set_ike_transforms                                      definition changed
+ip6_dad_details                                               only in image
+ip6_dad_dump                                                  only in image
+ip6_dad_enable_disable                                        only in image
+ip6_dad_enable_disable_reply                                  only in image
+ip6_dad_event                                                 only in image
+l2_flags_get                                                  only in image
+l2_flags_get_reply                                            only in image
+l2_flags_set                                                  only in image
+l2_flags_set_reply                                            only in image
+l2_interface_feat_flags_get                                   only in image
+l2_interface_feat_flags_get_reply                             only in image
+l2_interface_feat_flags_set                                   only in image
+l2_interface_feat_flags_set_reply                             only in image
+sfdp_interface_input_set                                      definition changed
+sfdp_kill_session                                             only in image
+sfdp_kill_session_reply                                       only in image
+sfdp_service_details                                          only in image
+sfdp_service_dump                                             only in image
+sfdp_session_details                                          definition changed
+sfdp_tcp_session_details                                      definition changed
+snort_client_v2_details                                       only in image
+snort_client_v2_get                                           only in image
+snort_client_v2_get_reply                                     only in image
+snort_instance_create_v2                                      only in image
+snort_instance_create_v2_reply                                only in image
+snort_instance_v2_details                                     only in image
+snort_instance_v2_details_reply                               only in image
+snort_instance_v2_get                                         only in image
+snort_instance_v2_get_reply                                   only in image
+snort_interface_detach_v2                                     only in image
+snort_interface_detach_v2_reply                               only in image
+snort_interface_v2_details                                    only in image
+snort_interface_v2_get                                        only in image
+snort_interface_v2_get_reply                                  only in image
+snort_set_drop_bitmap                                         only in image
+snort_set_drop_bitmap_reply                                   only in image
+sr_localsid_add_del_v2                                        only in image
+sr_localsid_add_del_v2_reply                                  only in image
+sw_interface_get_default_rx_mode                              only in image
+sw_interface_get_default_rx_mode_reply                        only in image
+sw_interface_set_default_rx_mode                              only in image
+sw_interface_set_default_rx_mode_reply                        only in image
+want_ip6_dad_events                                           only in image
+want_ip6_dad_events_reply                                     only in image
+wireguard_peer_add_v2                                         only in image
+wireguard_peer_add_v2_reply                                   only in image
+wireguard_peers_v2_details                                    only in image
+wireguard_peers_v2_dump                                       only in image
+============================================================= ==================
+
+Found 61 api message signature differences
+
+
+Newly deprecated API messages
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+These messages are still there in the API, but can and probably
+will disappear in the next release.
+
+- gre_tunnel_details
+- gre_tunnel_details_v2
+- gre_tunnel_dump
+- gre_tunnel_dump_reply
+- gre_tunnel_dump_v2
+- gre_tunnel_dump_v2_reply
+- snort_client_details
+- snort_client_get
+- snort_client_get_reply
+- snort_input_mode_get
+- snort_input_mode_get_reply
+- snort_input_mode_set
+- snort_input_mode_set_reply
+- snort_instance_create
+- snort_instance_create_reply
+- snort_instance_details
+- snort_instance_get
+- snort_instance_get_reply
+- snort_interface_detach
+- snort_interface_detach_reply
+- snort_interface_details
+- snort_interface_get
+- snort_interface_get_reply
+- wireguard_peer_add
+- wireguard_peer_add_reply
+- wireguard_peers_details
+- wireguard_peers_dump
+
+In-progress API messages
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+These messages are provided for testing and experimentation only.
+They are *not* subject to any compatibility process,
+and therefore can arbitrarily change or disappear at *any* moment.
+Also they may have less than satisfactory testing, making
+them unsuitable for other use than the technology preview.
+If you are intending to use these messages in production projects,
+please collaborate with the feature maintainer on their productization.
+
+- abf_itf_attach_add_del
+- abf_itf_attach_add_del_reply
+- abf_itf_attach_details
+- abf_itf_attach_dump
+- abf_plugin_get_version
+- abf_plugin_get_version_reply
+- abf_policy_add_del
+- abf_policy_add_del_reply
+- abf_policy_details
+- abf_policy_dump
+- acl_plugin_use_hash_lookup_get
+- acl_plugin_use_hash_lookup_get_reply
+- acl_plugin_use_hash_lookup_set
+- acl_plugin_use_hash_lookup_set_reply
+- bpf_trace_filter_set
+- bpf_trace_filter_set_reply
+- bpf_trace_filter_set_v2
+- bpf_trace_filter_set_v2_reply
+- det44_get_timeouts_reply
+- det44_set_timeouts
+- det44_set_timeouts_reply
+- dev_attach
+- dev_attach_reply
+- dev_create_port_if
+- dev_create_port_if_reply
+- dev_detach
+- dev_detach_reply
+- dev_remove_port_if
+- dev_remove_port_if_reply
+- flowprobe_get_params
+- flowprobe_get_params_reply
+- flowprobe_interface_add_del
+- flowprobe_interface_add_del_reply
+- flowprobe_interface_details
+- flowprobe_interface_dump
+- flowprobe_set_params
+- flowprobe_set_params_reply
+- gbp_bridge_domain_add
+- gbp_bridge_domain_add_reply
+- gbp_bridge_domain_del
+- gbp_bridge_domain_del_reply
+- gbp_bridge_domain_details
+- gbp_bridge_domain_dump
+- gbp_bridge_domain_dump_reply
+- gbp_contract_add_del
+- gbp_contract_add_del_reply
+- gbp_contract_details
+- gbp_contract_dump
+- gbp_endpoint_add
+- gbp_endpoint_add_reply
+- gbp_endpoint_del
+- gbp_endpoint_del_reply
+- gbp_endpoint_details
+- gbp_endpoint_dump
+- gbp_endpoint_group_add
+- gbp_endpoint_group_add_reply
+- gbp_endpoint_group_del
+- gbp_endpoint_group_del_reply
+- gbp_endpoint_group_details
+- gbp_endpoint_group_dump
+- gbp_ext_itf_add_del
+- gbp_ext_itf_add_del_reply
+- gbp_ext_itf_details
+- gbp_ext_itf_dump
+- gbp_recirc_add_del
+- gbp_recirc_add_del_reply
+- gbp_recirc_details
+- gbp_recirc_dump
+- gbp_route_domain_add
+- gbp_route_domain_add_reply
+- gbp_route_domain_del
+- gbp_route_domain_del_reply
+- gbp_route_domain_details
+- gbp_route_domain_dump
+- gbp_route_domain_dump_reply
+- gbp_subnet_add_del
+- gbp_subnet_add_del_reply
+- gbp_subnet_details
+- gbp_subnet_dump
+- gbp_vxlan_tunnel_add
+- gbp_vxlan_tunnel_add_reply
+- gbp_vxlan_tunnel_del
+- gbp_vxlan_tunnel_del_reply
+- gbp_vxlan_tunnel_details
+- gbp_vxlan_tunnel_dump
+- gtpu_add_del_forward
+- gtpu_add_del_forward_reply
+- gtpu_add_del_tunnel_v2
+- gtpu_add_del_tunnel_v2_reply
+- gtpu_get_transfer_counts
+- gtpu_get_transfer_counts_reply
+- gtpu_tunnel_v2_details
+- gtpu_tunnel_v2_dump
+- ikev2_child_sa_v2_details
+- ikev2_child_sa_v2_dump
+- ikev2_initiate_del_child_sa
+- ikev2_initiate_del_child_sa_reply
+- ikev2_initiate_del_ike_sa
+- ikev2_initiate_del_ike_sa_reply
+- ikev2_initiate_rekey_child_sa
+- ikev2_initiate_rekey_child_sa_reply
+- ikev2_initiate_sa_init
+- ikev2_initiate_sa_init_reply
+- ikev2_nonce_get
+- ikev2_nonce_get_reply
+- ikev2_profile_add_del
+- ikev2_profile_add_del_reply
+- ikev2_profile_details
+- ikev2_profile_disable_natt
+- ikev2_profile_disable_natt_reply
+- ikev2_profile_dump
+- ikev2_profile_set_auth
+- ikev2_profile_set_auth_reply
+- ikev2_profile_set_id
+- ikev2_profile_set_id_reply
+- ikev2_profile_set_ipsec_udp_port
+- ikev2_profile_set_ipsec_udp_port_reply
+- ikev2_profile_set_liveness
+- ikev2_profile_set_liveness_reply
+- ikev2_profile_set_ts
+- ikev2_profile_set_ts_reply
+- ikev2_profile_set_udp_encap
+- ikev2_profile_set_udp_encap_reply
+- ikev2_sa_v3_details
+- ikev2_sa_v3_dump
+- ikev2_set_esp_transforms
+- ikev2_set_esp_transforms_reply
+- ikev2_set_ike_transforms
+- ikev2_set_ike_transforms_reply
+- ikev2_set_local_key
+- ikev2_set_local_key_reply
+- ikev2_set_responder
+- ikev2_set_responder_hostname
+- ikev2_set_responder_hostname_reply
+- ikev2_set_responder_reply
+- ikev2_set_sa_lifetime
+- ikev2_set_sa_lifetime_reply
+- ikev2_set_tunnel_interface
+- ikev2_set_tunnel_interface_reply
+- ikev2_traffic_selector_details
+- ikev2_traffic_selector_dump
+- ip_neighbor_config_get
+- ip_neighbor_config_get_reply
+- ip_route_add_del_v2
+- ip_route_add_del_v2_reply
+- ip_route_lookup_v2
+- ip_route_lookup_v2_reply
+- ip_route_v2_details
+- ip_route_v2_dump
+- ip_session_redirect_add
+- ip_session_redirect_add_reply
+- ip_session_redirect_add_v2
+- ip_session_redirect_add_v2_reply
+- ip_session_redirect_del
+- ip_session_redirect_del_reply
+- ip_session_redirect_details
+- ip_session_redirect_dump
+- l2_emulation
+- l2_emulation_reply
+- lcp_default_ns_get_reply
+- lcp_default_ns_set
+- lcp_default_ns_set_reply
+- lcp_itf_pair_add_del_v2
+- lcp_itf_pair_add_del_v2_reply
+- lcp_itf_pair_add_del_v3
+- lcp_itf_pair_add_del_v3_reply
+- lcp_itf_pair_details
+- lldp_details
+- mdata_enable_disable
+- mdata_enable_disable_reply
+- nat44_ed_vrf_tables_v2_details
+- nat44_ed_vrf_tables_v2_dump
+- nat44_ei_add_del_address_range
+- nat44_ei_add_del_address_range_reply
+- nat44_ei_add_del_static_mapping
+- nat44_ei_add_del_static_mapping_reply
+- nat44_ei_address_details
+- nat44_ei_address_dump
+- nat44_ei_del_session
+- nat44_ei_del_session_reply
+- nat44_ei_del_user
+- nat44_ei_del_user_reply
+- nat44_ei_forwarding_enable_disable
+- nat44_ei_forwarding_enable_disable_reply
+- nat44_ei_ha_flush
+- nat44_ei_ha_flush_reply
+- nat44_ei_ha_resync
+- nat44_ei_ha_resync_completed_event
+- nat44_ei_ha_resync_reply
+- nat44_ei_ha_set_failover
+- nat44_ei_ha_set_failover_reply
+- nat44_ei_ha_set_listener
+- nat44_ei_ha_set_listener_reply
+- nat44_ei_interface_add_del_feature
+- nat44_ei_interface_add_del_feature_reply
+- nat44_ei_interface_details
+- nat44_ei_interface_dump
+- nat44_ei_ipfix_enable_disable
+- nat44_ei_ipfix_enable_disable_reply
+- nat44_ei_plugin_enable_disable
+- nat44_ei_plugin_enable_disable_reply
+- nat44_ei_set_addr_and_port_alloc_alg
+- nat44_ei_set_addr_and_port_alloc_alg_reply
+- nat44_ei_set_fq_options
+- nat44_ei_set_fq_options_reply
+- nat44_ei_set_mss_clamping
+- nat44_ei_set_mss_clamping_reply
+- nat44_ei_set_timeouts
+- nat44_ei_set_timeouts_reply
+- nat44_ei_set_workers
+- nat44_ei_set_workers_reply
+- nat44_ei_show_fq_options
+- nat44_ei_show_fq_options_reply
+- nat44_ei_show_running_config
+- nat44_ei_show_running_config_reply
+- nat44_ei_static_mapping_details
+- nat44_ei_static_mapping_dump
+- nat44_ei_user_details
+- nat44_ei_user_dump
+- nat44_ei_user_session_details
+- nat44_ei_user_session_dump
+- nat44_ei_user_session_v2_details
+- nat44_ei_user_session_v2_dump
+- nat44_ei_worker_details
+- nat44_ei_worker_dump
+- nat64_plugin_enable_disable
+- nat64_plugin_enable_disable_reply
+- npol_configure_policies
+- npol_configure_policies_reply
+- npol_get_version
+- npol_get_version_reply
+- npol_ipset_add_del_members
+- npol_ipset_add_del_members_reply
+- npol_ipset_create
+- npol_ipset_create_reply
+- npol_ipset_delete
+- npol_ipset_delete_reply
+- npol_policy_create
+- npol_policy_create_reply
+- npol_policy_delete
+- npol_policy_delete_reply
+- npol_policy_update
+- npol_policy_update_reply
+- npol_rule_create
+- npol_rule_create_reply
+- npol_rule_delete
+- npol_rule_delete_reply
+- npol_rule_update
+- npol_rule_update_reply
+- npt66_binding_add_del
+- npt66_binding_add_del_reply
+- oddbuf_enable_disable
+- oddbuf_enable_disable_reply
+- pg_interface_enable_disable_coalesce
+- pg_interface_enable_disable_coalesce_reply
+- ping_finished_event
+- pnat_binding_add
+- pnat_binding_add_reply
+- pnat_binding_add_v2
+- pnat_binding_add_v2_reply
+- pnat_binding_attach
+- pnat_binding_attach_reply
+- pnat_binding_del
+- pnat_binding_del_reply
+- pnat_binding_detach
+- pnat_binding_detach_reply
+- pnat_bindings_details
+- pnat_bindings_get
+- pnat_bindings_get_reply
+- pnat_flow_lookup
+- pnat_flow_lookup_reply
+- pnat_interfaces_details
+- pnat_interfaces_get
+- pnat_interfaces_get_reply
+- pvti_interface_create
+- pvti_interface_create_reply
+- pvti_interface_delete
+- pvti_interface_delete_reply
+- pvti_interface_details
+- pvti_interface_dump
+- sample_macswap_enable_disable
+- sample_macswap_enable_disable_reply
+- selog_event_type_details
+- selog_event_type_dump
+- selog_event_type_string_details
+- selog_event_type_string_dump
+- selog_get_shm
+- selog_get_shm_reply
+- selog_get_string_table
+- selog_get_string_table_reply
+- selog_track_details
+- selog_track_dump
+- set_ip_flow_hash_v3
+- set_ip_flow_hash_v3_reply
+- sfdp_gateway_geneve_input_enable_disable
+- sfdp_gateway_geneve_input_enable_disable_reply
+- sfdp_gateway_set_geneve_output
+- sfdp_gateway_set_geneve_output_reply
+- sfdp_interface_input_set
+- sfdp_interface_input_set_reply
+- sfdp_kill_session
+- sfdp_kill_session_reply
+- sfdp_nat_alloc_pool_add_del
+- sfdp_nat_alloc_pool_add_del_reply
+- sfdp_nat_set_external_interface
+- sfdp_nat_set_external_interface_reply
+- sfdp_nat_snat_set_unset
+- sfdp_nat_snat_set_unset_reply
+- sfdp_service_details
+- sfdp_service_dump
+- sfdp_session_details
+- sfdp_session_dump
+- sfdp_set_icmp_error_node
+- sfdp_set_icmp_error_node_reply
+- sfdp_set_services
+- sfdp_set_services_reply
+- sfdp_set_sp_node
+- sfdp_set_sp_node_reply
+- sfdp_set_timeout
+- sfdp_set_timeout_reply
+- sfdp_tcp_session_details
+- sfdp_tcp_session_dump
+- sfdp_tenant_add_del
+- sfdp_tenant_add_del_reply
+- sfdp_tenant_details
+- sfdp_tenant_dump
+- sflow_direction_get
+- sflow_direction_get_reply
+- sflow_direction_set
+- sflow_direction_set_reply
+- sflow_drop_monitoring_get
+- sflow_drop_monitoring_get_reply
+- sflow_drop_monitoring_set
+- sflow_drop_monitoring_set_reply
+- sflow_enable_disable
+- sflow_enable_disable_reply
+- sflow_header_bytes_get
+- sflow_header_bytes_get_reply
+- sflow_header_bytes_set
+- sflow_header_bytes_set_reply
+- sflow_interface_details
+- sflow_interface_dump
+- sflow_polling_interval_get
+- sflow_polling_interval_get_reply
+- sflow_polling_interval_set
+- sflow_polling_interval_set_reply
+- sflow_sampling_rate_get
+- sflow_sampling_rate_get_reply
+- sflow_sampling_rate_set
+- sflow_sampling_rate_set_reply
+- sr_localsid_add_del_v2
+- sr_localsid_add_del_v2_reply
+- sr_localsids_with_packet_stats_details
+- sr_localsids_with_packet_stats_dump
+- sr_mobile_localsid_add_del
+- sr_mobile_localsid_add_del_reply
+- sr_mobile_policy_add
+- sr_mobile_policy_add_reply
+- sr_policies_with_sl_index_details
+- sr_policies_with_sl_index_dump
+- sr_policy_add_v2
+- sr_policy_add_v2_reply
+- sr_policy_mod_v2
+- sr_policy_mod_v2_reply
+- sw_interface_ip6nd_ra_details
+- sw_interface_ip6nd_ra_dump
+- sw_interface_set_vxlan_gbp_bypass
+- sw_interface_set_vxlan_gbp_bypass_reply
+- test_addresses
+- test_addresses2
+- test_addresses2_reply
+- test_addresses3
+- test_addresses3_reply
+- test_addresses_reply
+- test_empty
+- test_empty_reply
+- test_enum
+- test_enum_reply
+- test_interface
+- test_interface_reply
+- test_prefix
+- test_prefix_reply
+- test_string
+- test_string2
+- test_string2_reply
+- test_string_reply
+- test_vla
+- test_vla2
+- test_vla2_reply
+- test_vla3
+- test_vla3_reply
+- test_vla4
+- test_vla4_reply
+- test_vla5
+- test_vla5_reply
+- test_vla_reply
+- trace_capture_packets
+- trace_capture_packets_reply
+- trace_clear_cache
+- trace_clear_cache_reply
+- trace_clear_capture
+- trace_clear_capture_reply
+- trace_details
+- trace_dump
+- trace_dump_reply
+- trace_filter_function_details
+- trace_filter_function_dump
+- trace_set_filter_function
+- trace_set_filter_function_reply
+- trace_set_filters
+- trace_set_filters_reply
+- trace_v2_details
+- trace_v2_dump
+- tracenode_enable_disable
+- tracenode_enable_disable_reply
+- vxlan_gbp_tunnel_add_del
+- vxlan_gbp_tunnel_add_del_reply
+- vxlan_gbp_tunnel_details
+- vxlan_gbp_tunnel_dump
+- want_ping_finished_events
+- want_ping_finished_events_reply
+- wireguard_peer_add_v2
+- wireguard_peer_add_v2_reply
+- wireguard_peers_v2_details
+- wireguard_peers_v2_dump
+
+Patches that changed API definitions
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+``src/plugins/snort/snort.api``
+
+* `e83522822 <https://github.com/fdio/vpp/commit/e83522822>`_ snort: upgrade a few snort API and CLI calls
+
+``src/plugins/gre/gre.api``
+
+* `5f7b05abb <https://github.com/fdio/vpp/commit/5f7b05abb>`_ gre: fix tunnel dump issues
+
+``src/plugins/cnat/cnat.api``
+
+* `31d112cb0 <https://github.com/fdio/vpp/commit/31d112cb0>`_ cnat: update api version
+* `0b1590650 <https://github.com/fdio/vpp/commit/0b1590650>`_ cnat: support encapsulation and session cleanup on backend deletion
+* `077619d03 <https://github.com/fdio/vpp/commit/077619d03>`_ cnat: add SNAT DNAT policy support and egress SNAT
+* `ff6e4a562 <https://github.com/fdio/vpp/commit/ff6e4a562>`_ cnat: add snat address dump
+* `abc0aeb1a <https://github.com/fdio/vpp/commit/abc0aeb1a>`_ cnat: add single lookup
+
+``src/plugins/af_xdp/af_xdp.api``
+
+* `67d4bd2af <https://github.com/fdio/vpp/commit/67d4bd2af>`_ af_xdp: add mac-reuse option
+
+``src/plugins/wireguard/wireguard.api``
+
+* `191f96a15 <https://github.com/fdio/vpp/commit/191f96a15>`_ wireguard: support for psk via v2 API messages
+
+``src/plugins/lisp/lisp-cp/lisp_types.api``
+
+* `b84c8091f <https://github.com/fdio/vpp/commit/b84c8091f>`_ vppapigen: union endian generation
+
+``src/plugins/linux-cp/lcp.api``
+
+* `85dddcb53 <https://github.com/fdio/vpp/commit/85dddcb53>`_ linux-cp: add support to pass through an OSI proto
+* `466fb6da7 <https://github.com/fdio/vpp/commit/466fb6da7>`_ linux-cp: allow skipping unnumbered sync to Linux
+
+``src/plugins/policer/policer.api``
+
+* `68c2966f1 <https://github.com/fdio/vpp/commit/68c2966f1>`_ policer: pluginify policer
+
+``src/plugins/policer/policer_types.api``
+
+* `68c2966f1 <https://github.com/fdio/vpp/commit/68c2966f1>`_ policer: pluginify policer
+
+``src/plugins/sfdp_services/base/interface_input/interface_input.api``
+
+* `9dc67ec24 <https://github.com/fdio/vpp/commit/9dc67ec24>`_ sfdp_services: add ip6 support in interface_input
+
+``src/plugins/ikev2/ikev2_types.api``
+
+* `fd113cdec <https://github.com/fdio/vpp/commit/fd113cdec>`_ ikev2: add AES-CMAC PRF support
+
+``src/plugins/npol/npol.api``
+
+* `b84c8091f <https://github.com/fdio/vpp/commit/b84c8091f>`_ vppapigen: union endian generation
+
+``src/vnet/ip6-nd/ip6_dad.api``
+
+* `1f7348b6d <https://github.com/fdio/vpp/commit/1f7348b6d>`_ ip6-nd: add Duplicate Address Detection (DAD)
+
+``src/vnet/flow/flow_types.api``
+
+* `b84c8091f <https://github.com/fdio/vpp/commit/b84c8091f>`_ vppapigen: union endian generation
+
+``src/vnet/flow/flow.api``
+
+* `53f968549 <https://github.com/fdio/vpp/commit/53f968549>`_ flow: rename cli
+
+``src/vnet/srv6/sr.api``
+
+* `3fa8907d3 <https://github.com/fdio/vpp/commit/3fa8907d3>`_ sr: implement sub-int L2 encap and DX2
+* `fdfee1890 <https://github.com/fdio/vpp/commit/fdfee1890>`_ sr: add v2 localsid api.
+
+``src/vnet/l2/l2.api``
+
+* `1bede6f63 <https://github.com/fdio/vpp/commit/1bede6f63>`_ l2: Add API for input/output features
+
+``src/vnet/sfdp/sfdp_types.api``
+
+* `53f640a3c <https://github.com/fdio/vpp/commit/53f640a3c>`_ sfdp: fix format function for session detail
+
+``src/vnet/sfdp/sfdp.api``
+
+* `14cd11e6a <https://github.com/fdio/vpp/commit/14cd11e6a>`_ sfdp: add API to dump services
+* `e568080c4 <https://github.com/fdio/vpp/commit/e568080c4>`_ sfdp: add a kill session API/CLI
+
+``src/vnet/ip/ip.api``
+
+* `68c2966f1 <https://github.com/fdio/vpp/commit/68c2966f1>`_ policer: pluginify policer
+
+``src/vnet/ip/punt.api``
+
+* `b84c8091f <https://github.com/fdio/vpp/commit/b84c8091f>`_ vppapigen: union endian generation
+
+``src/vnet/ip/ip_types.api``
+
+* `b84c8091f <https://github.com/fdio/vpp/commit/b84c8091f>`_ vppapigen: union endian generation
+
+``src/vnet/interface.api``
+
+* `757c79e8e <https://github.com/fdio/vpp/commit/757c79e8e>`_ interface: add global default rx-mode setting
