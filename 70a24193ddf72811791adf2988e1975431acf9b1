@@ -1,0 +1,89 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ce58e434_2c797b9f",
+        "filename": "src/vlib/pool_cache.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 94,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-06-22T13:06:28Z",
+      "side": 1,
+      "message": "If we make the backing pool fixed-size, can we also make the per-thread cache fixed-size and inline here instead of using a `u32 *` vector?\n\nSomething like an inline index array plus `len` would avoid pointer chasing and any vector allocation/reallocation in the fast path. Refill/drain would then just copy bounded batches under the backing-pool lock.",
+      "revId": "70a24193ddf72811791adf2988e1975431acf9b1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e6d2bf97_49b0f9e5",
+        "filename": "src/vlib/pool_cache.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 176,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-06-22T13:06:28Z",
+      "side": 1,
+      "message": "I think we should make this a fixed-size primitive instead of allowing refill to grow the backing pool. `pool_get_aligned()` can reallocate `_pool`, but other workers may already hold element pointers returned by `*_pool_cache_elt_at_index()`. The spinlock only protects the refill/drain operation, not those external users, so growth can invalidate live pointers.\n\nA simpler contract would be: callers preallocate/init a fixed capacity up front, workers only move indices between the fixed backing pool and per-thread caches, and allocation fails/asserts when capacity is exhausted.",
+      "revId": "70a24193ddf72811791adf2988e1975431acf9b1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "44b42ebe_d6adfe78",
+        "filename": "src/vlib/pool_cache.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 233,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-06-22T13:06:28Z",
+      "side": 1,
+      "message": "Same semantic issue as iteration: after `*_pool_cache_free()` pushes an index into a per-thread cache, `pool_is_free_index()` still reports it as allocated in the backing pool. Exposing this as `*_pool_cache_is_free_index()` is likely to mislead callers expecting normal pool semantics.",
+      "revId": "70a24193ddf72811791adf2988e1975431acf9b1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "277b34dc_c5450625",
+        "filename": "src/vlib/pool_cache.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 288,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-06-22T13:06:28Z",
+      "side": 1,
+      "message": "This exposes normal pool iteration semantics, but indices sitting in per-thread caches are still marked allocated in the backing pool. That means `vlib_pool_cache_foreach()` will visit objects that have already been returned to the cache.\n\nIf the cache remains separate from the pool free bitmap, I think we should either remove this helper or make its semantics explicit and safe for cached-free entries.",
+      "revId": "70a24193ddf72811791adf2988e1975431acf9b1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "0065f356_38fd41a0",
+        "filename": "test/test_vlib.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 231,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-06-22T13:06:28Z",
+      "side": 1,
+      "message": "This logs CLI failures but does not fail the unittest. Please assert the retval, or use `self.vapi.cli(\"test pool-cache\")`, so CI actually catches failures in the new pool-cache test.",
+      "revId": "70a24193ddf72811791adf2988e1975431acf9b1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
