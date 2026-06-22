@@ -450,6 +450,38 @@ int vnet_pppoe_add_del_session
   return 0;
 }
 
+/*
+ * Remove the reverse /32 (or /128) client route that
+ * vnet_pppoe_add_del_session() installs on session create.  Kept here so the
+ * file-static pppoe_fib_src is reused, guaranteeing the path-remove exactly
+ * matches the path-add (otherwise the route would leak).
+ */
+void
+pppoe_session_reverse_route_del (u32 decap_fib_index, const ip46_address_t *client_ip, u8 is_ip6,
+				 u32 sw_if_index)
+{
+  fib_prefix_t pfx;
+
+  clib_memset (&pfx, 0, sizeof (pfx));
+  if (!is_ip6)
+    {
+      pfx.fp_addr.ip4.as_u32 = client_ip->ip4.as_u32;
+      pfx.fp_len = 32;
+      pfx.fp_proto = FIB_PROTOCOL_IP4;
+    }
+  else
+    {
+      pfx.fp_addr.ip6.as_u64[0] = client_ip->ip6.as_u64[0];
+      pfx.fp_addr.ip6.as_u64[1] = client_ip->ip6.as_u64[1];
+      pfx.fp_len = 128;
+      pfx.fp_proto = FIB_PROTOCOL_IP6;
+    }
+
+  fib_table_entry_path_remove (decap_fib_index, &pfx, pppoe_fib_src,
+			       fib_proto_to_dpo (pfx.fp_proto), &pfx.fp_addr, sw_if_index, ~0, 1,
+			       FIB_ROUTE_PATH_FLAG_NONE);
+}
+
 static clib_error_t *
 pppoe_add_del_session_command_fn (vlib_main_t * vm,
 				  unformat_input_t * input,

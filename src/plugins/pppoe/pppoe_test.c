@@ -271,4 +271,113 @@ api_pppoe_add_del_cp (vat_main_t * vam)
   return ret;
 }
 
+static void
+vl_api_pppoe_add_sub_session_reply_t_handler (vl_api_pppoe_add_sub_session_reply_t *mp)
+{
+  vat_main_t *vam = &vat_main;
+  i32 retval = ntohl (mp->retval);
+  if (vam->async_mode)
+    {
+      vam->async_errors += (retval < 0);
+    }
+  else
+    {
+      vam->retval = retval;
+      vam->sw_if_index = ntohl (mp->sw_if_index);
+      vam->result_ready = 1;
+    }
+}
+
+static int
+api_pppoe_add_sub_session (vat_main_t *vam)
+{
+  unformat_input_t *line_input = vam->input;
+  vl_api_pppoe_add_sub_session_t *mp;
+  u16 session_id = 0;
+  ip46_address_t client_ip;
+  u8 client_ip_set = 0;
+  u8 ipv4_set = 0;
+  u8 ipv6_set = 0;
+  u32 decap_vrf_id = 0;
+  u32 mtu = 0;
+  u32 unnumbered_sw_if_index = ~0;
+  u8 install_route = 0;
+  u8 client_mac[6] = { 0 };
+  u8 client_mac_set = 0;
+  int ret;
+
+  /* Can't "universally zero init" (={0}) due to GCC bug 53119 */
+  clib_memset (&client_ip, 0, sizeof client_ip);
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "session_id %d", &session_id))
+	;
+      else if (unformat (line_input, "client-ip %U", unformat_ip4_address, &client_ip.ip4))
+	{
+	  client_ip_set = 1;
+	  ipv4_set = 1;
+	}
+      else if (unformat (line_input, "client-ip %U", unformat_ip6_address, &client_ip.ip6))
+	{
+	  client_ip_set = 1;
+	  ipv6_set = 1;
+	}
+      else if (unformat (line_input, "decap-vrf-id %d", &decap_vrf_id))
+	;
+      else if (unformat (line_input, "mtu %d", &mtu))
+	;
+      else if (unformat (line_input, "unnumbered-sw-if-index %d", &unnumbered_sw_if_index))
+	;
+      else if (unformat (line_input, "install-route"))
+	install_route = 1;
+      else if (unformat (line_input, "client-mac %U", unformat_ethernet_address, client_mac))
+	client_mac_set = 1;
+      else
+	{
+	  return -99;
+	}
+    }
+
+  if (client_ip_set == 0)
+    {
+      errmsg ("session client_ip address not specified");
+      return -99;
+    }
+
+  if (ipv4_set && ipv6_set)
+    {
+      errmsg ("both IPv4 and IPv6 addresses specified");
+      return -99;
+    }
+
+  if (client_mac_set == 0)
+    {
+      errmsg ("session client mac not specified");
+      return -99;
+    }
+
+  M (PPPOE_ADD_SUB_SESSION, mp);
+
+  if (ipv6_set)
+    {
+      ip_address_encode (&client_ip, IP46_TYPE_IP6, &mp->client_address);
+    }
+  else
+    {
+      ip_address_encode (&client_ip, IP46_TYPE_IP4, &mp->client_address);
+    }
+
+  mp->session_id = htons (session_id);
+  mp->decap_vrf_id = htonl (decap_vrf_id);
+  mp->mtu = htons ((u16) mtu);
+  mp->unnumbered_sw_if_index = htonl (unnumbered_sw_if_index);
+  mp->install_route = install_route;
+  memcpy (mp->client_mac, client_mac, 6);
+
+  S (mp);
+  W (ret);
+  return ret;
+}
+
 #include <pppoe/pppoe.api_test.c>
