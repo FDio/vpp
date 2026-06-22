@@ -335,6 +335,40 @@ cnat_session_purge (void)
   return (0);
 }
 
+int
+cnat_purge (void)
+{
+  int rv;
+
+  cnat_client_throttle_pool_process ();
+  rv = cnat_session_purge ();
+  rv |= cnat_translation_purge ();
+
+  return (rv);
+}
+
+static clib_error_t *
+cnat_purge_cli (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
+{
+  int rv;
+
+  if (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    return (clib_error_return (0, "unknown input '%U'", format_unformat_error, input));
+
+  rv = cnat_purge ();
+
+  if (rv)
+    return (clib_error_return (0, "cnat purge failed: %d", rv));
+
+  return (NULL);
+}
+
+VLIB_CLI_COMMAND (cnat_purge_cmd_node, static) = {
+  .path = "cnat purge",
+  .function = cnat_purge_cli,
+  .short_help = "cnat purge",
+};
+
 void
 cnat_reverse_session_free (cnat_session_t *session)
 {
