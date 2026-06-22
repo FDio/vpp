@@ -1078,8 +1078,6 @@ l2fib_scan (vlib_main_t * vm, f64 start_time, u8 event_only)
   f64 delta_t = 0;
   u32 evt_idx = 0;
   u32 learn_count = 0;
-  u32 client = lm->client_pid;
-  u32 cl_idx = lm->client_index;
   vl_api_l2_macs_event_t *mp = 0;
   vl_api_registration_t *reg = 0;
   u32 bd_index;
@@ -1092,11 +1090,8 @@ l2fib_scan (vlib_main_t * vm, f64 start_time, u8 event_only)
   vec_reset_length (bd_learn_counts);
   vec_validate (bd_learn_counts, vec_len (l2input_main.bd_configs) - 1);
 
-  if (client)
-    {
-      mp = allocate_mac_evt_buf (client, cl_idx);
-      reg = vl_api_client_index_to_registration (lm->client_index);
-    }
+  if (lm->client_pid)
+    mp = allocate_mac_evt_buf (lm->client_pid, lm->client_index);
 
   /* Snapshot the data-path's learn counter before the walk below, which suspends and yields the
    * main thread to the data path. Used to detect concurrent learning - see the guarded writeback
@@ -1151,28 +1146,29 @@ l2fib_scan (vlib_main_t * vm, f64 start_time, u8 event_only)
 		  vec_elt (bd_learn_counts, key.fields.bd_index)++;
 		}
 
-	      if (client)
+	      if (lm->client_pid)
 		{
 		  if (PREDICT_FALSE (evt_idx >= fm->max_macs_in_event))
 		    {
 		      /* event message full, send it and start a new one */
-		      if (reg && vl_api_can_send_msg (reg))
+		      reg = vl_api_client_index_to_registration (lm->client_index);
+		      if (reg && vl_api_can_send_msg (reg) && mp)
 			{
 			  mp->n_macs = htonl (evt_idx);
 			  vl_api_send_msg (reg, (u8 *) mp);
-			  mp = allocate_mac_evt_buf (client, cl_idx);
+			  mp = allocate_mac_evt_buf (lm->client_pid, lm->client_index);
 			}
 		      else
 			{
 			  if (reg)
 			    clib_warning ("MAC event to pid %d queue stuffed!"
-					  " %d MAC entries lost", client,
-					  evt_idx);
+					  " %d MAC entries lost",
+					  lm->client_pid, evt_idx);
 			}
 		      evt_idx = 0;
 		    }
 
-		  if (l2fib_entry_result_is_set_LRN_EVT (&result))
+		  if (l2fib_entry_result_is_set_LRN_EVT (&result) && mp)
 		    {
 		      /* copy mac entry to event msg */
 		      clib_memcpy_fast (mp->mac[evt_idx].mac_addr,
@@ -1220,7 +1216,7 @@ l2fib_scan (vlib_main_t * vm, f64 start_time, u8 event_only)
 		continue;	/* still valid */
 
 	    age_out:
-	      if (client)
+	      if (lm->client_pid && mp)
 		{
 		  /* copy mac entry to event msg */
 		  clib_memcpy_fast (mp->mac[evt_idx].mac_addr, key.fields.mac,
@@ -1278,6 +1274,7 @@ l2fib_scan (vlib_main_t * vm, f64 start_time, u8 event_only)
       /*  send any outstanding mac event message else free message buffer */
       if (evt_idx)
 	{
+	  reg = vl_api_client_index_to_registration (lm->client_index);
 	  if (reg && vl_api_can_send_msg (reg))
 	    {
 	      mp->n_macs = htonl (evt_idx);
@@ -1287,7 +1284,8 @@ l2fib_scan (vlib_main_t * vm, f64 start_time, u8 event_only)
 	    {
 	      if (reg)
 		clib_warning ("MAC event to pid %d queue stuffed!"
-			      " %d MAC entries lost", client, evt_idx);
+			      " %d MAC entries lost",
+			      lm->client_pid, evt_idx);
 	      vl_msg_api_free (mp);
 	    }
 	}
