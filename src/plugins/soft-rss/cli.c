@@ -36,6 +36,9 @@ soft_rss_config_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	;
       else if (unformat (input, "l2-offset %u", &cfg.l2_hdr_offset))
 	;
+      else if (unformat (input, "handoff-queue-size %u",
+			 &cfg.handoff_queue_size))
+	;
       else if (unformat (input, "with-main-thread"))
 	cfg.with_main_thread = 1;
       else if (unformat (input, "threads %U", unformat_bitmap_list,
@@ -210,6 +213,7 @@ VLIB_CLI_COMMAND (soft_rss_config_command, static) = {
   .path = "soft-rss config",
   .short_help = "soft-rss config <hw-interface> [type <type>] "
 		"[l2-offset <bytes>] [threads <bitmap-list>] "
+		"[handoff-queue-size <size>] "
 		"[rss-key <hex-string>] [ipv4-type <type>] [ipv6-type <type>] "
 		"[with-main-thread]",
   .function = soft_rss_config_command_fn,
