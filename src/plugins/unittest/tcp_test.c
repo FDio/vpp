@@ -6,6 +6,7 @@
 #include <vnet/tcp/tcp.h>
 #include <vnet/tcp/tcp_inlines.h>
 #include <vnet/tcp/tcp_timer.h>
+#include <svm/fifo_segment.h>
 #include <unittest/session/test_session_helpers.h>
 
 #define TCP_TEST_I(_cond, _comment, _args...)			\
@@ -1839,10 +1840,15 @@ tcp_test_bt (vlib_main_t * vm, unformat_input_t * input)
   clib_thread_index_t thread_index = 0;
   tcp_rate_sample_t _rs = { 0 }, *rs = &_rs;
   tcp_connection_t _tc, *tc = &_tc;
-  int __clib_unused verbose = 0, i;
+  fifo_segment_create_args_t _a, *a = &_a;
+  fifo_segment_main_t _fsm = { 0 }, *fsm = &_fsm;
+  int __clib_unused verbose = 0, i, rv;
+  fifo_segment_t *fs;
   tcp_byte_tracker_t *bt;
+  session_t *s;
   tcp_bt_sample_t *bts;
   u32 head;
+  u8 *bt_fmt = 0;
   sack_block_t *blk;
 
   /* Init data structures */
@@ -1852,7 +1858,7 @@ tcp_test_bt (vlib_main_t * vm, unformat_input_t * input)
 
   /* 1) track first burst at time 1 */
   /* [] --> [0:100] */
-  session_main.wrk[thread_index].last_vlib_time = 1;
+  tcp_test_set_time (thread_index, 1);
   tcp_bt_track_tx (tc, 100);
   tc->snd_nxt += 100;
 
@@ -1869,7 +1875,7 @@ tcp_test_bt (vlib_main_t * vm, unformat_input_t * input)
 
   /* 2) track second butst at time 2 */
   /* --> [0:100][100:200] */
-  session_main.wrk[thread_index].last_vlib_time = 2;
+  tcp_test_set_time (thread_index, 2);
   tcp_bt_track_tx (tc, 100);
   tc->snd_nxt += 100;
 
@@ -1883,7 +1889,7 @@ tcp_test_bt (vlib_main_t * vm, unformat_input_t * input)
   /* 3) acked partially at time 3 */
   /* ACK:150 */
   /* --> [150:200] */
-  session_main.wrk[thread_index].last_vlib_time = 3;
+  tcp_test_set_time (thread_index, 3);
   tc->snd_una = 150;
   tc->bytes_acked = 150;
   tc->sack_sb.last_sacked_bytes = 0;
@@ -1899,7 +1905,7 @@ tcp_test_bt (vlib_main_t * vm, unformat_input_t * input)
 
   /* 4) track another burst at time 4 */
   /* --> [150:200][200:300] */
-  session_main.wrk[thread_index].last_vlib_time = 4;
+  tcp_test_set_time (thread_index, 4);
   tcp_bt_track_tx (tc, 100);
   tc->snd_nxt += 100;
 
@@ -1912,7 +1918,7 @@ tcp_test_bt (vlib_main_t * vm, unformat_input_t * input)
 
   /* 5) track another burst at time 5 */
   /* --> [150:200][200:300][300:400] */
-  session_main.wrk[thread_index].last_vlib_time = 5;
+  tcp_test_set_time (thread_index, 5);
   tcp_bt_track_tx (tc, 100);
   tc->snd_nxt += 100;
 
@@ -1926,7 +1932,7 @@ tcp_test_bt (vlib_main_t * vm, unformat_input_t * input)
   /* 6) acked with SACK option at time 6 */
   /* ACK:250 + SACK[350:400] */
   /* --> [250:300][300:350][350:400/sacked] */
-  session_main.wrk[thread_index].last_vlib_time = 6;
+  tcp_test_set_time (thread_index, 6);
   tc->snd_una = 250;
   tc->bytes_acked = 100;
   tc->sack_sb.last_sacked_bytes = 50;
@@ -1952,7 +1958,7 @@ tcp_test_bt (vlib_main_t * vm, unformat_input_t * input)
 
   /* 7) track another burst at time 7 */
   /* --> [250:300][300:350][350:400/sacked][400-500] */
-  session_main.wrk[thread_index].last_vlib_time = 7;
+  tcp_test_set_time (thread_index, 7);
   tcp_bt_track_tx (tc, 100);
   tc->snd_nxt += 100;
 
@@ -1977,7 +1983,7 @@ tcp_test_bt (vlib_main_t * vm, unformat_input_t * input)
   /* 8) retransmit lost one at time 8 */
   /* retransmit [250:300] */
   /* --> [250:300][300:350][350:400/sacked][400-500] */
-  session_main.wrk[thread_index].last_vlib_time = 8;
+  tcp_test_set_time (thread_index, 8);
   tcp_bt_track_rxt (tc, 250, 300);
   tcp_bt_sample_delivery_rate (tc, rs);
 
@@ -2000,7 +2006,7 @@ tcp_test_bt (vlib_main_t * vm, unformat_input_t * input)
   /* 9) acked with SACK option at time 9 */
   /* ACK:350 + SACK[420:450] */
   /* --> [400:420][420:450/sacked][450:400] */
-  session_main.wrk[thread_index].last_vlib_time = 6;
+  tcp_test_set_time (thread_index, 9);
   tc->snd_una = 400;
   tc->bytes_acked = 150;
   tc->sack_sb.last_sacked_bytes = 30;
@@ -2030,7 +2036,7 @@ tcp_test_bt (vlib_main_t * vm, unformat_input_t * input)
   /* 10) acked partially at time 10 */
   /* ACK:500 */
   /* --> [] */
-  session_main.wrk[thread_index].last_vlib_time = 3;
+  tcp_test_set_time (thread_index, 10);
   tc->snd_una = 500;
   tc->bytes_acked = 100;
   tc->sack_sb.last_sacked_bytes = 0;
@@ -2040,6 +2046,155 @@ tcp_test_bt (vlib_main_t * vm, unformat_input_t * input)
   TCP_TEST (pool_elts (bt->samples) == 0, "should have 0 samples");
   TCP_TEST (bt->head == TCP_BTS_INVALID_INDEX, "bt->head is invalidated");
   TCP_TEST (tc->snd_una == tc->snd_nxt, "snd_una == snd_nxt");
+
+  /*
+   * 11) same timestamp tx coalesces with tail
+   */
+  vec_free (tc->rcv_opts.sacks);
+  tcp_bt_cleanup (tc);
+  memset (tc, 0, sizeof (*tc));
+  tcp_bt_init (tc);
+  bt = tc->bt;
+
+  tcp_test_set_time (thread_index, 11);
+  tcp_bt_track_tx (tc, 50);
+  tc->snd_nxt += 50;
+  tcp_bt_track_tx (tc, 75);
+  tc->snd_nxt += 75;
+
+  TCP_TEST (tcp_bt_is_sane (bt), "tracker should be sane after tx merge");
+  TCP_TEST (pool_elts (bt->samples) == 1, "same time tx should coalesce");
+  bts = pool_elt_at_index (bt->samples, bt->head);
+  TCP_TEST (bts->min_seq == 0 && bts->max_seq == 125, "coalesced sample should cover [0:125]");
+
+  bt_fmt = format (0, "%U", format_tcp_bt, tc);
+  TCP_TEST (vec_len (bt_fmt) > 0, "bt format should produce output");
+  vec_free (bt_fmt);
+
+  /*
+   * 12) adjacent SACKed samples merge with previous and next samples
+   */
+  tcp_bt_cleanup (tc);
+  memset (tc, 0, sizeof (*tc));
+  tcp_bt_init (tc);
+  bt = tc->bt;
+  memset (rs, 0, sizeof (*rs));
+
+  for (i = 0; i < 3; i++)
+    {
+      tcp_test_set_time (thread_index, 12 + i);
+      tcp_bt_track_tx (tc, 100);
+      tc->snd_nxt += 100;
+    }
+
+  vec_validate (tc->rcv_opts.sacks, 0);
+  tc->sack_sb.last_sacked_bytes = 100;
+  tc->rcv_opts.sacks[0].start = 100;
+  tc->rcv_opts.sacks[0].end = 200;
+  tcp_bt_sample_delivery_rate (tc, rs);
+  TCP_TEST (tcp_bt_is_sane (bt), "tracker should be sane after first sack");
+  TCP_TEST (pool_elts (bt->samples) == 3, "first sack should not merge");
+
+  tc->sack_sb.last_sacked_bytes = 100;
+  tc->rcv_opts.sacks[0].start = 200;
+  tc->rcv_opts.sacks[0].end = 300;
+  tcp_bt_sample_delivery_rate (tc, rs);
+  TCP_TEST (tcp_bt_is_sane (bt), "tracker should be sane after merge with prev");
+  TCP_TEST (pool_elts (bt->samples) == 2, "adjacent sack should merge with previous");
+  bts = pool_elt_at_index (bt->samples, bt->head);
+  bts = pool_elt_at_index (bt->samples, bts->next);
+  TCP_TEST (bts->min_seq == 100 && bts->max_seq == 300,
+	    "merged previous sack should cover [100:300]");
+  TCP_TEST ((bts->flags & TCP_BTS_IS_SACKED), "merged previous sack should be marked");
+
+  tc->sack_sb.last_sacked_bytes = 100;
+  tc->rcv_opts.sacks[0].start = 0;
+  tc->rcv_opts.sacks[0].end = 100;
+  tcp_bt_sample_delivery_rate (tc, rs);
+  TCP_TEST (tcp_bt_is_sane (bt), "tracker should be sane after merge with next");
+  TCP_TEST (pool_elts (bt->samples) == 1, "adjacent sack should merge with next");
+  bts = pool_elt_at_index (bt->samples, bt->head);
+  TCP_TEST (bts->min_seq == 0 && bts->max_seq == 300, "merged sacks should cover [0:300]");
+  TCP_TEST ((bts->flags & TCP_BTS_IS_SACKED), "merged sacks should be marked");
+
+  /*
+   * 13) contiguous retransmits extend last out-of-order sample and split tail
+   */
+  vec_free (tc->rcv_opts.sacks);
+  tcp_bt_cleanup (tc);
+  memset (tc, 0, sizeof (*tc));
+  tcp_bt_init (tc);
+  bt = tc->bt;
+  memset (rs, 0, sizeof (*rs));
+
+  for (i = 0; i < 3; i++)
+    {
+      tcp_test_set_time (thread_index, 20 + i);
+      tcp_bt_track_tx (tc, 100);
+      tc->snd_nxt += 100;
+    }
+
+  tcp_test_set_time (thread_index, 30);
+  tcp_bt_track_rxt (tc, 0, 100);
+  tcp_bt_track_rxt (tc, 100, 200);
+
+  TCP_TEST (tcp_bt_is_sane (bt), "tracker should be sane after rxt merge");
+  TCP_TEST (pool_elts (bt->samples) == 2, "contiguous rxt should merge");
+  bts = pool_elt_at_index (bt->samples, bt->head);
+  TCP_TEST (bts->min_seq == 0 && bts->max_seq == 200, "merged rxt should cover [0:200]");
+  TCP_TEST ((bts->flags & TCP_BTS_IS_RXT), "merged rxt should be marked");
+
+  tcp_bt_track_rxt (tc, 250, 275);
+  TCP_TEST (tcp_bt_is_sane (bt), "tracker should be sane after rxt split");
+  TCP_TEST (pool_elts (bt->samples) == 4, "rxt in middle should split sample");
+  bts = pool_elt_at_index (bt->samples, bt->head);
+  bts = pool_elt_at_index (bt->samples, bts->next);
+  TCP_TEST (bts->min_seq == 200 && bts->max_seq == 250, "split head should cover [200:250]");
+  bts = pool_elt_at_index (bt->samples, bts->next);
+  TCP_TEST (bts->min_seq == 250 && bts->max_seq == 275, "split rxt should cover [250:275]");
+  TCP_TEST ((bts->flags & TCP_BTS_IS_RXT), "split rxt should be marked");
+
+  tcp_bt_track_rxt (tc, 275, 300);
+  TCP_TEST (tcp_bt_is_sane (bt), "tracker should be sane after tail rxt merge");
+  TCP_TEST (pool_elts (bt->samples) == 3, "tail rxt should merge with previous");
+  bts = pool_elt_at_index (bt->samples, bt->tail);
+  TCP_TEST (bts->min_seq == 250 && bts->max_seq == 300, "tail rxt merge should cover [250:300]");
+  TCP_TEST ((bts->flags & TCP_BTS_IS_RXT), "tail rxt should be marked");
+
+  /*
+   * 14) app-limited detection uses the session tx fifo and in-flight data
+   */
+  clib_memset (a, 0, sizeof (*a));
+  a->segment_name = "tcp-bt-app-limited";
+  a->segment_size = 256 << 10;
+  a->segment_type = SSVM_SEGMENT_PRIVATE;
+  rv = fifo_segment_create (fsm, a);
+  TCP_TEST (!rv, "fifo segment create returned %d", rv);
+  fs = fifo_segment_get_segment (fsm, a->new_segment_indices[0]);
+  TCP_TEST (fs != 0, "fifo segment should be allocated");
+
+  s = session_alloc (thread_index);
+  s->tx_fifo = fifo_segment_alloc_fifo_w_slice (fs, 0, 4096, FIFO_SEGMENT_TX_FIFO);
+  TCP_TEST (s->tx_fifo != 0, "tx fifo should be allocated");
+  tc->connection.s_index = s->session_index;
+  tc->connection.thread_index = thread_index;
+  tc->snd_una = 1000;
+  tc->snd_nxt = 1200;
+  tc->snd_mss = 100;
+  tc->cwnd = 1000;
+  tc->delivered = 300;
+  tc->snd_rxt_bytes = 0;
+  tc->sack_sb.lost_bytes = 0;
+  tc->app_limited = 0;
+
+  tcp_bt_check_app_limited (tc);
+  TCP_TEST (tc->app_limited == 500, "app limited should include delivered and flight bytes");
+
+  fifo_segment_free_fifo (fs, s->tx_fifo);
+  session_free (s);
+  vec_free (a->new_segment_indices);
+  fifo_segment_delete (fsm, fs);
+  tcp_bt_cleanup (tc);
 
   return 0;
 }
@@ -2090,6 +2245,8 @@ tcp_test (vlib_main_t * vm,
 	  if ((res = tcp_test_delivery (vm, input)))
 	    goto done;
 	  if ((res = tcp_test_persist (vm, input)))
+	    goto done;
+	  if ((res = tcp_test_bt (vm, input)))
 	    goto done;
 	}
       else
