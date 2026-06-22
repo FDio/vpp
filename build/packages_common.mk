@@ -45,7 +45,7 @@ $(B)/.$1.download.ok: $(D)/$($1_tarball)
 	(([ "$$$${SHA256SUM}" = "$($1_tarball_sha256sum)" ] && echo "SHA256 OK") || \
 	( echo "==========================================================" && \
 	  echo "Bad Checksum!" && \
-	  echo "Expected SHA256:   $($1_tarball_sha256)" && \
+	  echo "Expected SHA256:   $($1_tarball_sha256sum)" && \
 	  echo "Calculated SHA256: $$$${SHA256SUM}" && \
 	  echo "Please remove $$< and retry" && \
 	  echo "==========================================================" && \
