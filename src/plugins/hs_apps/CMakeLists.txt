@@ -61,6 +61,7 @@ if(VPP_BUILD_VCL_TESTS)
     sock_test_server
     sock_test_client
     sock_test_nonblock_connect
+    sock_test_recv_ignorable_flags
   )
     add_vpp_test(${test}
       SOURCES "vcl/${test}.c"

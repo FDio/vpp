@@ -1724,5 +1724,36 @@ class LDPNonblockConnectPoll(VCLTestCase):
         self.assert_equal(client.result, 0, "client exit code")
 
 
+@unittest.skipIf(
+    "hs_apps" in config.excluded_plugins, "Exclude tests requiring hs_apps plugin"
+)
+class LDPRecvIgnorableFlags(VCLTestCase):
+    """LDP recv()/recvfrom() must strip MSG_DONTWAIT|MSG_NOSIGNAL"""
+
+    def setUp(self):
+        super(LDPRecvIgnorableFlags, self).setUp()
+        self.thru_host_stack_setup()
+
+    def tearDown(self):
+        self.thru_host_stack_tear_down()
+        super(LDPRecvIgnorableFlags, self).tearDown()
+
+    def test_ldp_recv_ignorable_flags(self):
+        """run ldp ignorable flags test"""
+        self.vcl_app_env = {"VCL_APP_SCOPE_GLOBAL": "true"}
+        self.update_vcl_app_env("2", "5678", self.sapi_client_sock)
+        client = VCLAppWorker(
+            "sock_test_recv_ignorable_flags",
+            [],
+            self.logger,
+            self.vcl_app_env,
+            "client",
+            cpus=self.helper_affinity(),
+        )
+        client.start()
+        client.join(self.timeout)
+        self.assert_equal(client.result, 0, "client exit code")
+
+
 if __name__ == "__main__":
     unittest.main(testRunner=VppTestRunner)
