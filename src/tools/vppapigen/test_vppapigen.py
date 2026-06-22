@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+import os
+import tempfile
 import unittest
 from vppapigen import VPPAPI, Option, ParseError, Union, foldup_crcs, global_types
 import vppapigen
@@ -353,6 +355,85 @@ enumflag virtio_flags_ef {
                 break
         else:
             self.fail()
+
+
+class TestDependencies(unittest.TestCase):
+    class Import:
+        def __init__(self, filename):
+            self.filename = filename
+
+    def setUp(self):
+        vppapigen.dirlist.clear()
+
+    def tearDown(self):
+        vppapigen.dirlist.clear()
+
+    def read_dependencies(self, output_file, dependency_file, input_file, imports):
+        vppapigen.write_dependencies(output_file, dependency_file, input_file, imports)
+        with open(dependency_file, encoding="utf8") as f:
+            return f.read()
+
+    def test_no_imports(self):
+        with tempfile.TemporaryDirectory() as directory:
+            input_file = os.path.join(directory, "test.api")
+            dependency_file = os.path.join(directory, "test.api.d")
+            open(input_file, "w", encoding="utf8").close()
+
+            result = self.read_dependencies("test.api.h", dependency_file, input_file, [])
+
+        self.assertEqual(f"test.api.h: \\\n {input_file}\n", result)
+
+    def test_imports(self):
+        with tempfile.TemporaryDirectory() as directory:
+            input_file = os.path.join(directory, "test.api")
+            imported = os.path.join(directory, "imported.api")
+            dependency_file = os.path.join(directory, "test.api.d")
+            open(input_file, "w", encoding="utf8").close()
+            open(imported, "w", encoding="utf8").close()
+            vppapigen.dirlist_add([directory])
+
+            result = self.read_dependencies(
+                "test.api.h",
+                dependency_file,
+                input_file,
+                [self.Import("imported.api")],
+            )
+
+        self.assertEqual(f"test.api.h: \\\n {input_file} \\\n {imported}\n", result)
+
+    def test_duplicate_imports(self):
+        with tempfile.TemporaryDirectory() as directory:
+            input_file = os.path.join(directory, "test.api")
+            imported = os.path.join(directory, "imported.api")
+            dependency_file = os.path.join(directory, "test.api.d")
+            open(input_file, "w", encoding="utf8").close()
+            open(imported, "w", encoding="utf8").close()
+            vppapigen.dirlist_add([directory, directory])
+
+            result = self.read_dependencies(
+                "test.api.h",
+                dependency_file,
+                input_file,
+                [self.Import("imported.api"), self.Import("imported.api")],
+            )
+
+        self.assertEqual(f"test.api.h: \\\n {input_file} \\\n {imported}\n", result)
+
+    def test_missing_imports(self):
+        with tempfile.TemporaryDirectory() as directory:
+            input_file = os.path.join(directory, "test.api")
+            dependency_file = os.path.join(directory, "test.api.d")
+            open(input_file, "w", encoding="utf8").close()
+            vppapigen.dirlist_add([directory])
+
+            result = self.read_dependencies(
+                "test.api.h",
+                dependency_file,
+                input_file,
+                [self.Import("missing.api")],
+            )
+
+        self.assertEqual(f"test.api.h: \\\n {input_file}\n", result)
 
 
 if __name__ == "__main__":
