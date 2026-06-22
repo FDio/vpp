@@ -52,6 +52,24 @@
       "parentUuid": "0011bf25_5fc7b651",
       "revId": "ca3138e3d0a22a03046e0a96f1bf12519f3460d6",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "6f13eb65_16889ce5",
+        "filename": "src/vcl/vppcom.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 4734,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-06-22T22:16:22Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "27445cec_9a498b8e",
+      "revId": "ca3138e3d0a22a03046e0a96f1bf12519f3460d6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
