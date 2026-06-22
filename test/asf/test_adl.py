@@ -24,6 +24,21 @@ class TestAdl(VppAsfTestCase):
     def tearDown(self):
         super(TestAdl, self).tearDown()
 
+    def wait_for_err_counters(self, counters, timeout=5, interval=0.1):
+        remaining = timeout
+        values = {
+            counter: self.statistics.get_err_counter(counter) for counter in counters
+        }
+        while values != counters and remaining > 0:
+            self.sleep(interval, "wait for ADL counters")
+            remaining -= interval
+            values = {
+                counter: self.statistics.get_err_counter(counter)
+                for counter in counters
+            }
+
+        self.assertEqual(values, counters)
+
     def test_adl1_unittest(self):
         """Plugin API Test"""
         cmds = [
@@ -90,20 +105,13 @@ class TestAdl(VppAsfTestCase):
                 else:
                     self.logger.info(cmd + " FAIL retval " + str(r.retval))
 
-        total_pkts = self.statistics.get_err_counter(
-            "/err/adl-input/Allow/Deny packets processed"
+        self.wait_for_err_counters(
+            {
+                "/err/adl-input/Allow/Deny packets processed": 200,
+                "/err/ip4-adl-allowlist/ip4 allowlist allowed": 12,
+                "/err/ip6-adl-allowlist/ip6 allowlist allowed": 50,
+            }
         )
-
-        self.assertEqual(total_pkts, 200)
-
-        ip4_allow = self.statistics.get_err_counter(
-            "/err/ip4-adl-allowlist/ip4 allowlist allowed"
-        )
-        self.assertEqual(ip4_allow, 12)
-        ip6_allow = self.statistics.get_err_counter(
-            "/err/ip6-adl-allowlist/ip6 allowlist allowed"
-        )
-        self.assertEqual(ip6_allow, 50)
 
 
 if __name__ == "__main__":
