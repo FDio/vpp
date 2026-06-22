@@ -346,6 +346,12 @@ int vnet_pppoe_add_del_session
 
       clib_memcpy (t->client_mac, a->client_mac, 6);
 
+      /* No policers attached by default; bound later via
+       * pppoe_session_set_policer.  clib_memset above zeroed these, so set
+       * the "none" sentinel explicitly. */
+      t->rx_policer_index = ~0;
+      t->tx_policer_index = ~0;
+
       /* update pppoe fib with session_index */
       result.fields.session_index = t - pem->sessions;
       pppoe_update_1 (&pem->session_table,

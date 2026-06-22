@@ -7,6 +7,7 @@
 #include <vlib/vlib.h>
 #include <ppp/packet.h>
 #include <pppoe/pppoe.h>
+#include <policer/policer.h>
 
 typedef struct {
   u32 next_index;
@@ -14,6 +15,25 @@ typedef struct {
   u32 session_id;
   u32 error;
 } pppoe_rx_trace_t;
+
+/*
+ * Apply the session's rx (upstream) token-bucket policer inline.  Returns 1 if
+ * the packet must be dropped (policer action DROP), 0 otherwise.  The policer
+ * lives in the policer plugin; pm/counters are resolved once per frame by the
+ * caller via the exported policer_get_main()/policer_get_counters() accessors.
+ */
+static_always_inline u8
+pppoe_rx_police (vlib_main_t *vm, policer_main_t *pm, vlib_combined_counter_main_t *counters,
+		 u64 time, clib_thread_index_t thread_index, vlib_buffer_t *b, u32 policer_index,
+		 u32 len)
+{
+  policer_t *pol = &pm->policers[policer_index];
+  policer_result_e col = vnet_police_packet (pol, len, POLICE_CONFORM, time);
+
+  vlib_increment_combined_counter (&counters[col], thread_index, policer_index, 1, len);
+
+  return (pol->action[col] == QOS_ACTION_DROP);
+}
 
 static u8 * format_pppoe_rx_trace (u8 * s, va_list * args)
 {
@@ -47,6 +67,13 @@ VLIB_NODE_FN (pppoe_input_node) (vlib_main_t * vm,
   u32 stats_sw_if_index, stats_n_packets, stats_n_bytes;
   pppoe_entry_key_t cached_key;
   pppoe_entry_result_t cached_result;
+
+  /* Native rx policing: resolve the policer plugin handles once per frame.
+   * NULL if the policer plugin is not loaded, in which case no session can
+   * carry a policer index and the inline checks below are skipped. */
+  policer_main_t *pol_pm = policer_get_main ();
+  vlib_combined_counter_main_t *pol_counters = policer_get_counters ();
+  u64 pol_time = clib_cpu_time_now () >> POLICER_TICKS_PER_PERIOD_SHIFT;
 
   from = vlib_frame_vector_args (from_frame);
   n_left_from = from_frame->n_vectors;
@@ -175,31 +202,43 @@ VLIB_NODE_FN (pppoe_input_node) (vlib_main_t * vm,
           len0 = vlib_buffer_length_in_chain (vm, b0);
 		  vnet_buffer(b0)->sw_if_index[VLIB_RX] = sw_if_index0;
 
-          pkts_decapsulated ++;
-          stats_n_packets += 1;
-          stats_n_bytes += len0;
+		  /* Native rx (upstream) policing, inline after the session lookup */
+		  if (PREDICT_FALSE (t0->rx_policer_index != ~0 && pol_pm && pol_counters))
+		    {
+		      if (PREDICT_FALSE (pppoe_rx_police (vm, pol_pm, pol_counters, pol_time,
+							  thread_index, b0, t0->rx_policer_index,
+							  len0)))
+			{
+			  next0 = PPPOE_INPUT_NEXT_DROP;
+			  error0 = PPPOE_ERROR_POLICER_DROP;
+			  goto trace0;
+			}
+		    }
 
-	  /* Batch stats increment on the same pppoe session so counter
-	     is not incremented per packet */
-	  if (PREDICT_FALSE (sw_if_index0 != stats_sw_if_index))
+		  pkts_decapsulated++;
+		  stats_n_packets += 1;
+		  stats_n_bytes += len0;
+
+		  /* Batch stats increment on the same pppoe session so counter
+		     is not incremented per packet */
+		  if (PREDICT_FALSE (sw_if_index0 != stats_sw_if_index))
+		    {
+		      stats_n_packets -= 1;
+		      stats_n_bytes -= len0;
+		      if (stats_n_packets)
+			vlib_increment_combined_counter (
+			  im->combined_sw_if_counters + VNET_INTERFACE_COUNTER_RX, thread_index,
+			  stats_sw_if_index, stats_n_packets, stats_n_bytes);
+		      stats_n_packets = 1;
+		      stats_n_bytes = len0;
+		      stats_sw_if_index = sw_if_index0;
+		    }
+
+	trace0:
+	  b0->error = error0 ? node->errors[error0] : 0;
+
+	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 	    {
-	      stats_n_packets -= 1;
-	      stats_n_bytes -= len0;
-	      if (stats_n_packets)
-		vlib_increment_combined_counter
-		  (im->combined_sw_if_counters + VNET_INTERFACE_COUNTER_RX,
-		   thread_index, stats_sw_if_index,
-		   stats_n_packets, stats_n_bytes);
-	      stats_n_packets = 1;
-	      stats_n_bytes = len0;
-	      stats_sw_if_index = sw_if_index0;
-	    }
-
-        trace0:
-          b0->error = error0 ? node->errors[error0] : 0;
-
-          if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED))
-            {
               pppoe_rx_trace_t *tr
                 = vlib_add_trace (vm, node, b0, sizeof (*tr));
               tr->next_index = next0;
@@ -272,31 +311,43 @@ VLIB_NODE_FN (pppoe_input_node) (vlib_main_t * vm,
           len1 = vlib_buffer_length_in_chain (vm, b1);
 		  vnet_buffer(b1)->sw_if_index[VLIB_RX] = sw_if_index1;
 
-          pkts_decapsulated ++;
-          stats_n_packets += 1;
-          stats_n_bytes += len1;
+		  /* Native rx (upstream) policing, inline after the session lookup */
+		  if (PREDICT_FALSE (t1->rx_policer_index != ~0 && pol_pm && pol_counters))
+		    {
+		      if (PREDICT_FALSE (pppoe_rx_police (vm, pol_pm, pol_counters, pol_time,
+							  thread_index, b1, t1->rx_policer_index,
+							  len1)))
+			{
+			  next1 = PPPOE_INPUT_NEXT_DROP;
+			  error1 = PPPOE_ERROR_POLICER_DROP;
+			  goto trace1;
+			}
+		    }
 
-	  /* Batch stats increment on the same pppoe session so counter
-	     is not incremented per packet */
-	  if (PREDICT_FALSE (sw_if_index1 != stats_sw_if_index))
+		  pkts_decapsulated++;
+		  stats_n_packets += 1;
+		  stats_n_bytes += len1;
+
+		  /* Batch stats increment on the same pppoe session so counter
+		     is not incremented per packet */
+		  if (PREDICT_FALSE (sw_if_index1 != stats_sw_if_index))
+		    {
+		      stats_n_packets -= 1;
+		      stats_n_bytes -= len1;
+		      if (stats_n_packets)
+			vlib_increment_combined_counter (
+			  im->combined_sw_if_counters + VNET_INTERFACE_COUNTER_RX, thread_index,
+			  stats_sw_if_index, stats_n_packets, stats_n_bytes);
+		      stats_n_packets = 1;
+		      stats_n_bytes = len1;
+		      stats_sw_if_index = sw_if_index1;
+		    }
+
+	trace1:
+	  b1->error = error1 ? node->errors[error1] : 0;
+
+	  if (PREDICT_FALSE (b1->flags & VLIB_BUFFER_IS_TRACED))
 	    {
-	      stats_n_packets -= 1;
-	      stats_n_bytes -= len1;
-	      if (stats_n_packets)
-		vlib_increment_combined_counter
-		  (im->combined_sw_if_counters + VNET_INTERFACE_COUNTER_RX,
-		   thread_index, stats_sw_if_index,
-		   stats_n_packets, stats_n_bytes);
-	      stats_n_packets = 1;
-	      stats_n_bytes = len1;
-	      stats_sw_if_index = sw_if_index1;
-	    }
-
-        trace1:
-          b1->error = error1 ? node->errors[error1] : 0;
-
-          if (PREDICT_FALSE(b1->flags & VLIB_BUFFER_IS_TRACED))
-            {
               pppoe_rx_trace_t *tr
                 = vlib_add_trace (vm, node, b1, sizeof (*tr));
               tr->next_index = next1;
@@ -400,9 +451,21 @@ VLIB_NODE_FN (pppoe_input_node) (vlib_main_t * vm,
 	  len0 = vlib_buffer_length_in_chain (vm, b0);
 	  vnet_buffer(b0)->sw_if_index[VLIB_RX] = sw_if_index0;
 
-          pkts_decapsulated ++;
-          stats_n_packets += 1;
-          stats_n_bytes += len0;
+	  /* Native rx (upstream) policing, inline after the session lookup */
+	  if (PREDICT_FALSE (t0->rx_policer_index != ~0 && pol_pm && pol_counters))
+	    {
+	      if (PREDICT_FALSE (pppoe_rx_police (vm, pol_pm, pol_counters, pol_time, thread_index,
+						  b0, t0->rx_policer_index, len0)))
+		{
+		  next0 = PPPOE_INPUT_NEXT_DROP;
+		  error0 = PPPOE_ERROR_POLICER_DROP;
+		  goto trace00;
+		}
+	    }
+
+	  pkts_decapsulated++;
+	  stats_n_packets += 1;
+	  stats_n_bytes += len0;
 
 	  /* Batch stats increment on the same pppoe session so counter
 	     is not incremented per packet */
