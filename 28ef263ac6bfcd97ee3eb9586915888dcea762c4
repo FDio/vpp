@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "241a87a7_2cdf64a6",
+        "filename": "src/vnet/flow/flow.c",
+        "patchSetId": 33
+      },
+      "lineNbr": 272,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-06-22T12:52:53Z",
+      "side": 1,
+      "message": "Should we validate the postcondition after the async callback, like the synchronous enable path does? If the backend returns success/count but leaves one of these flows with `driver_data.hw_if_index \u003d\u003d ~0` or set to another interface, the API reports success even though the core flow state says the flow is not enabled correctly.",
+      "revId": "28ef263ac6bfcd97ee3eb9586915888dcea762c4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d93e6d21_c132898c",
+        "filename": "src/vnet/flow/flow_api.c",
+        "patchSetId": 33
+      },
+      "lineNbr": 496,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-06-22T12:52:53Z",
+      "side": 1,
+      "message": "This needs to reject `count \u003d\u003d 0` before `vec_validate()`. With a valid zero-length request, `count - 1` underflows to `UINT_MAX`, so the handler tries to allocate a huge vector before `vnet_flow_async_range_enable()` can return `NO_SUCH_ENTRY`.",
+      "revId": "28ef263ac6bfcd97ee3eb9586915888dcea762c4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "69c194a0_0af9410c",
+        "filename": "src/vnet/flow/flow_api.c",
+        "patchSetId": 33
+      },
+      "lineNbr": 524,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-06-22T12:52:53Z",
+      "side": 1,
+      "message": "Same issue here: please handle `count \u003d\u003d 0` before `vec_validate(flow_indices, count - 1)`, otherwise a zero-length async disable request underflows the vector index and can attempt a massive allocation.",
+      "revId": "28ef263ac6bfcd97ee3eb9586915888dcea762c4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
