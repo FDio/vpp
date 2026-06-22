@@ -136,6 +136,34 @@ vl_api_pppoe_add_del_cp_t_handler (vl_api_pppoe_add_del_cp_t * mp)
   REPLY_MACRO(VL_API_PPPOE_ADD_DEL_CP_REPLY);
 }
 
+static void
+vl_api_pppoe_session_set_policer_t_handler (vl_api_pppoe_session_set_policer_t *mp)
+{
+  vl_api_pppoe_session_set_policer_reply_t *rmp;
+  pppoe_main_t *pem = &pppoe_main;
+  int rv = 0;
+  u32 sw_if_index = ntohl (mp->sw_if_index);
+  pppoe_session_t *t;
+
+  /* Resolve the session interface to a session, mirroring the dump handler. */
+  if ((sw_if_index >= vec_len (pem->session_index_by_sw_if_index)) ||
+      (~0 == pem->session_index_by_sw_if_index[sw_if_index]))
+    {
+      rv = VNET_API_ERROR_NO_SUCH_ENTRY;
+      goto out;
+    }
+
+  t = pool_elt_at_index (pem->sessions,
+			 pem->session_index_by_sw_if_index[sw_if_index]);
+
+  /* Bind (or detach with ~0) the pre-created VPP policer(s). */
+  t->rx_policer_index = ntohl (mp->rx_policer_index);
+  t->tx_policer_index = ntohl (mp->tx_policer_index);
+
+out:
+  REPLY_MACRO (VL_API_PPPOE_SESSION_SET_POLICER_REPLY);
+}
+
 #include <pppoe/pppoe.api.c>
 static clib_error_t *
 pppoe_api_hookup (vlib_main_t * vm)

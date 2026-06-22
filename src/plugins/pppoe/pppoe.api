@@ -110,6 +110,41 @@ define pppoe_add_del_cp_reply
   i32 retval;
 };
 
+/** \brief Attach (or detach) a pre-created VPP policer to a PPPoE session.
+
+    The policer is created out-of-band via the policer plugin (policer_add_del)
+    and bound to a session by its interface index.  The rx policer is applied
+    inline in the pppoe-input/decap node for upstream (subscriber->BNG) traffic;
+    the tx policer index is stored for downstream use but is not yet applied
+    inline.  This replaces the ACL+classify steering chain previously needed to
+    rate-limit a subscriber.
+
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - the PPPoE session interface (from pppoe_add_*_session)
+    @param rx_policer_index - policer index (from policer_add_del); ~0 = detach
+    @param tx_policer_index - reserved downstream policer index; ~0 = detach
+*/
+define pppoe_session_set_policer
+{
+  u32 client_index;
+  u32 context;
+  vl_api_interface_index_t sw_if_index;
+  u32 rx_policer_index;
+  u32 tx_policer_index;
+  option vat_help = "sw_if_index <nn> [rx-policer-index <nn>] [tx-policer-index <nn>]";
+};
+
+/** \brief reply for pppoe_session_set_policer
+    @param context - sender context, to match reply w/ request
+    @param retval - return code
+*/
+define pppoe_session_set_policer_reply
+{
+  u32 context;
+  i32 retval;
+};
+
 /*
  * Local Variables:
  * eval: (c-set-style "gnu")

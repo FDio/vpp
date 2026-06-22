@@ -57,6 +57,13 @@ typedef struct
   u32 sw_if_index;
   u32 hw_if_index;
 
+  /* Native per-session policers (indices into the policer plugin pool).
+   * ~0 means no policer attached.  rx = upstream (subscriber->BNG) and is
+   * applied inline in the pppoe-input/decap node.  tx = downstream
+   * (BNG->subscriber); stored for future use, not yet applied inline. */
+  u32 rx_policer_index;
+  u32 tx_policer_index;
+
 } pppoe_session_t;
 
 #define foreach_pppoe_input_next        \
