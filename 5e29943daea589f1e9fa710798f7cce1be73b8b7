@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "71eaf9ec_773c9208",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-06-22T22:01:22Z",
+      "side": 1,
+      "message": "Although not clearly stated, the sock_* prefix was meant for test apps that are ld-preloaded. \n\nAlso, to avoid spread, let\u0027s rename vcl_cfg_test to vcl_test, and have startup params that 1) test cfg, 2) the connect you have here and 3) for the ignorable flags. The last two can be separate patches, but would like to minimize number of pure test apps.",
+      "revId": "5e29943daea589f1e9fa710798f7cce1be73b8b7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
