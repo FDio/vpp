@@ -190,6 +190,11 @@ typedef struct
 
 int pppoe_add_del_cp (u32 cp_if_index, u8 is_add);
 
+/* Remove the reverse client route installed by vnet_pppoe_add_del_session.
+ * Lives in pppoe.c so it can reuse the file-static pppoe fib source. */
+void pppoe_session_reverse_route_del (u32 decap_fib_index, const ip46_address_t *client_ip,
+				      u8 is_ip6, u32 sw_if_index);
+
 always_inline u64
 pppoe_make_key (u8 * mac_address, u16 session_id)
 {

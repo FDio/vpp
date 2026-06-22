@@ -136,6 +136,103 @@ vl_api_pppoe_add_del_cp_t_handler (vl_api_pppoe_add_del_cp_t * mp)
   REPLY_MACRO(VL_API_PPPOE_ADD_DEL_CP_REPLY);
 }
 
+static void
+vl_api_pppoe_add_sub_session_t_handler (vl_api_pppoe_add_sub_session_t *mp)
+{
+  vl_api_pppoe_add_sub_session_reply_t *rmp;
+  pppoe_main_t *pem = &pppoe_main;
+  vnet_main_t *vnm = vnet_get_main ();
+  int rv = 0;
+  u32 sw_if_index = ~0;
+  u32 decap_vrf_id = ntohl (mp->decap_vrf_id);
+  u32 unnumbered_sw_if_index = ntohl (mp->unnumbered_sw_if_index);
+  u16 mtu = ntohs (mp->mtu);
+  u32 decap_fib_index;
+  fib_protocol_t fproto;
+  ip46_address_t client_ip;
+  u8 is_ip6;
+
+  clib_memset (&client_ip, 0, sizeof (client_ip));
+  ip_address_decode (&mp->client_address, &client_ip);
+  is_ip6 = !ip46_address_is_ip4 (&client_ip);
+  fproto = is_ip6 ? FIB_PROTOCOL_IP6 : FIB_PROTOCOL_IP4;
+
+  /* Resolve the subscriber VRF to a FIB index in the client's family. */
+  decap_fib_index = fib_table_find (fproto, decap_vrf_id);
+  if (~0 == decap_fib_index)
+    {
+      rv = VNET_API_ERROR_NO_SUCH_INNER_FIB;
+      goto out;
+    }
+
+  /*
+   * (a) Create the session.  vnet_pppoe_add_del_session() also brings the
+   *     session interface admin-up and installs the reverse client route
+   *     (/32 or /128) into decap_fib_index.
+   */
+  vnet_pppoe_add_del_session_args_t a = {
+    .is_add = 1,
+    .is_ip6 = is_ip6,
+    .decap_fib_index = decap_fib_index,
+    .session_id = ntohs (mp->session_id),
+    .client_ip = client_ip,
+  };
+  clib_memcpy (a.client_mac, mp->client_mac, 6);
+
+  rv = vnet_pppoe_add_del_session (&a, &sw_if_index);
+  if (rv != 0)
+    goto out;
+
+  /* (b) Ensure the session interface is admin-up (idempotent). */
+  vnet_sw_interface_set_flags (vnm, sw_if_index, VNET_SW_INTERFACE_FLAG_ADMIN_UP);
+
+  /* (f) Drop the auto-installed reverse route if the caller opted out. */
+  if (!mp->install_route)
+    pppoe_session_reverse_route_del (decap_fib_index, &client_ip, is_ip6, sw_if_index);
+
+  /*
+   * (c) Place the session interface in the subscriber VRF for whichever
+   *     address families exist.  Must precede the unnumbered step: once the
+   *     interface borrows an address, ip_table_bind refuses to move it.
+   */
+  if (decap_vrf_id != 0)
+    {
+      if (~0 != fib_table_find (FIB_PROTOCOL_IP4, decap_vrf_id))
+	{
+	  rv = ip_table_bind (FIB_PROTOCOL_IP4, sw_if_index, decap_vrf_id);
+	  if (rv != 0)
+	    goto out;
+	}
+      if (~0 != fib_table_find (FIB_PROTOCOL_IP6, decap_vrf_id))
+	{
+	  rv = ip_table_bind (FIB_PROTOCOL_IP6, sw_if_index, decap_vrf_id);
+	  if (rv != 0)
+	    goto out;
+	}
+    }
+
+  /* (d) Enforce the negotiated PPPoE MRU as the L3 MTU. */
+  if (mtu != 0)
+    vnet_sw_interface_set_mtu (vnm, sw_if_index, mtu);
+
+  /*
+   * (e) Enable L3 input on the session by borrowing the loopback/core
+   *     interface's address.  Without this VPP leaves ip4-not-enabled in the
+   *     arc and blackholes decapsulated subscriber traffic.
+   */
+  if (~0 != unnumbered_sw_if_index)
+    {
+      rv =
+	vnet_sw_interface_update_unnumbered (sw_if_index, unnumbered_sw_if_index, 1 /* enable */);
+      if (rv != 0)
+	goto out;
+    }
+
+out:
+  /* (g) Return the new session interface index. */
+  REPLY_MACRO2 (VL_API_PPPOE_ADD_SUB_SESSION_REPLY, ({ rmp->sw_if_index = ntohl (sw_if_index); }));
+}
+
 #include <pppoe/pppoe.api.c>
 static clib_error_t *
 pppoe_api_hookup (vlib_main_t * vm)
