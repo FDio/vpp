@@ -107,6 +107,7 @@ sasc_calc_key_v4(vlib_buffer_t *b, u32 context_id, enum sasc_lookup_mode_e looku
     b->flags |= VNET_BUFFER_F_L4_HDR_OFFSET_VALID;
     vnet_buffer(b)->l4_hdr_offset = (u8 *)udp - b->data;
 
+    *is_icmp_error = false;
     skey->proto = ip->protocol;
     skey->context_id = context_id;
     ip46_address_set_ip4(&skey->src, &ip->src_address);
@@ -163,6 +164,7 @@ sasc_calc_key_v6(vlib_buffer_t *b, u32 context_id, enum sasc_lookup_mode_e looku
     b->flags |= VNET_BUFFER_F_L4_HDR_OFFSET_VALID;
     vnet_buffer(b)->l4_hdr_offset = (u8 *)udp - b->data;
 
+    *is_icmp_error = false;
     skey->proto = ip->protocol;
     skey->context_id = context_id;
     ip46_address_set_ip6(&skey->src, &ip->src_address);
