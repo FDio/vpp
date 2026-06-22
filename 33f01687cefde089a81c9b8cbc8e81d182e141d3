@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a0404dc0_e145fc82",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-06-22T23:16:02Z",
+      "side": 1,
+      "message": "I think we may need another sync",
+      "revId": "33f01687cefde089a81c9b8cbc8e81d182e141d3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "13614414_fa267d28",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1112,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-06-22T23:16:02Z",
+      "side": 1,
+      "message": "We have openssl_main here, why do we need to pass cache entries as param? But ignoring this for now ...\n\nThe more I look at it, the more it feels like we should be doing this per app, not globally. That is, on line 1425 we should check if ctx has cfg flag (probably `app_tls_profile_t`) that allows caching and that cache should probably be per app such that app1 cannot reuse app2\u0027s previous tls connection to a given server.",
+      "revId": "33f01687cefde089a81c9b8cbc8e81d182e141d3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b4988496_959da9d6",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1344,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-06-22T23:16:02Z",
+      "side": 1,
+      "message": "Any reason why not in if on line 1425?",
+      "revId": "33f01687cefde089a81c9b8cbc8e81d182e141d3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
