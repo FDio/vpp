@@ -60,6 +60,7 @@ if(VPP_BUILD_VCL_TESTS)
   foreach(test
     sock_test_server
     sock_test_client
+    sock_test_nonblock_connect
   )
     add_vpp_test(${test}
       SOURCES "vcl/${test}.c"
