@@ -3,6 +3,7 @@
  */
 
 #include <vlib/vlib.h>
+#include <vlib/handoff.h>
 #include <vnet/vnet.h>
 #include <vnet/plugin/plugin.h>
 #include <vnet/ip/ip4_packet.h>
@@ -94,8 +95,7 @@ soft_rss_add_ip6_match (soft_rss_rt_data_t *rt, int protocol, u8 key_start,
 }
 
 clib_error_t *
-soft_rss_config (vlib_main_t __clib_unused *vm,
-		 const soft_rss_config_t *config, u32 hw_if_index)
+soft_rss_config (vlib_main_t *vm, const soft_rss_config_t *config, u32 hw_if_index)
 {
   soft_rss_main_t *sm = &soft_rss_main;
   vnet_main_t *vnm = vnet_get_main ();
@@ -110,6 +110,7 @@ soft_rss_config (vlib_main_t __clib_unused *vm,
   soft_rss_type_t type6 = config->ipv6_type != SOFT_RSS_TYPE_NOT_SET ?
 			    config->ipv6_type :
 			    config->type;
+  u32 handoff_queue_size = config->handoff_queue_size;
 
   if (type4 == SOFT_RSS_TYPE_NOT_SET || type6 == SOFT_RSS_TYPE_NOT_SET)
     return clib_error_return (0, "RSS type not set");
@@ -129,10 +130,29 @@ soft_rss_config (vlib_main_t __clib_unused *vm,
   if (n_vlib_threads > 256)
     return clib_error_return (0, "not supported: more than 256 vlib threads");
 
+  if (handoff_queue_size &&
+      (handoff_queue_size < VLIB_HANDOFF_QUEUE_SLOT_N_ELTS || !is_pow2 (handoff_queue_size)))
+    return clib_error_return (0,
+			      "handoff-queue-size must be a power of 2 "
+			      "and at least %u",
+			      VLIB_HANDOFF_QUEUE_SLOT_N_ELTS);
+
   if (sm->frame_queue_index == CLIB_U32_MAX)
-    sm->frame_queue_index = vlib_handoff_alloc_queues (&(vlib_handoff_alloc_queues_args_t){
+    sm->frame_queue_index = vlib_handoff_alloc_queues (&(vlib_handoff_alloc_queues_args_t) {
       .node_index = soft_rss_handoff_node.index,
+      .queue_size = handoff_queue_size,
     });
+  else if (handoff_queue_size)
+    {
+      vlib_handoff_queue_main_t *hqm =
+	vec_elt_at_index (vm->handoff_queue_mains, sm->frame_queue_index);
+      if (hqm->size * VLIB_HANDOFF_QUEUE_SLOT_N_ELTS != handoff_queue_size)
+	{
+	  clib_error_t *err = vlib_handoff_queue_resize (sm->frame_queue_index, handoff_queue_size);
+	  if (err)
+	    return err;
+	}
+    }
 
   vec_validate (sm->rt_by_sw_if_index, hi->sw_if_index);
   rt = sm->rt_by_sw_if_index[hi->sw_if_index];
