@@ -271,4 +271,61 @@ api_pppoe_add_del_cp (vat_main_t * vam)
   return ret;
 }
 
+static void
+vl_api_pppoe_session_set_policer_reply_t_handler (vl_api_pppoe_session_set_policer_reply_t *mp)
+{
+  vat_main_t *vam = &vat_main;
+  i32 retval = ntohl (mp->retval);
+  if (vam->async_mode)
+    {
+      vam->async_errors += (retval < 0);
+    }
+  else
+    {
+      vam->retval = retval;
+      vam->result_ready = 1;
+    }
+}
+
+static int
+api_pppoe_session_set_policer (vat_main_t *vam)
+{
+  unformat_input_t *line_input = vam->input;
+  vl_api_pppoe_session_set_policer_t *mp;
+  u32 sw_if_index = ~0;
+  u32 rx_policer_index = ~0;
+  u32 tx_policer_index = ~0;
+  int ret;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "sw_if_index %d", &sw_if_index))
+	;
+      else if (unformat (line_input, "rx-policer-index %d", &rx_policer_index))
+	;
+      else if (unformat (line_input, "tx-policer-index %d", &tx_policer_index))
+	;
+      else
+	{
+	  return -99;
+	}
+    }
+
+  if (sw_if_index == ~0)
+    {
+      errmsg ("session sw_if_index not specified");
+      return -99;
+    }
+
+  M (PPPOE_SESSION_SET_POLICER, mp);
+
+  mp->sw_if_index = htonl (sw_if_index);
+  mp->rx_policer_index = htonl (rx_policer_index);
+  mp->tx_policer_index = htonl (tx_policer_index);
+
+  S (mp);
+  W (ret);
+  return ret;
+}
+
 #include <pppoe/pppoe.api_test.c>
