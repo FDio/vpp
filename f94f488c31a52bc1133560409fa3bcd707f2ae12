@@ -69,6 +69,24 @@
       "parentUuid": "54128a30_99d29cec",
       "revId": "f94f488c31a52bc1133560409fa3bcd707f2ae12",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "4114be59_e3ad48d7",
+        "filename": "src/vppinfra/mem_trace.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 183,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-06-23T14:50:02Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "a846b54b_97230d59",
+      "revId": "f94f488c31a52bc1133560409fa3bcd707f2ae12",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
