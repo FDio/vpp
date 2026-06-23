@@ -20,6 +20,7 @@ import (
 var vethTests = map[string][]func(s *VethsSuite){}
 var vethSoloTests = map[string][]func(s *VethsSuite){}
 var vethMWTests = map[string][]func(s *VethsSuite){}
+var vethStartupTests = map[string][]func(s *VethsSuite){}
 
 type VethsSuite struct {
 	HstSuite
@@ -47,6 +48,9 @@ func RegisterSoloVethTests(tests ...func(s *VethsSuite)) {
 }
 func RegisterVethMWTests(tests ...func(s *VethsSuite)) {
 	vethMWTests[GetTestFilename()] = tests
+}
+func RegisterVethStartupTests(tests ...func(s *VethsSuite)) {
+	vethStartupTests[GetTestFilename()] = tests
 }
 
 type TlsCrlTestArtifacts struct {
@@ -319,6 +323,33 @@ var _ = Describe("VethsSuiteMW", Ordered, ContinueOnFailure, Serial, Label("Veth
 			funcValue := runtime.FuncForPC(pc)
 			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
 			It(testName, Label("SOLO", "VPP Multi-Worker"), func(ctx SpecContext) {
+				Log("[* TEST BEGIN]: " + testName)
+				test(&s)
+			}, SpecTimeout(TestTimeout))
+		}
+	}
+})
+
+var _ = Describe("VethsSuiteStartup", Ordered, ContinueOnFailure, Label("Veth", "StartupConfig"), func() {
+	var s VethsSuite
+	BeforeAll(func() {
+		s.SetupSuite()
+	})
+	AfterAll(func() {
+		s.TeardownSuite()
+	})
+	AfterEach(func() {
+		s.TeardownTest()
+	})
+
+	// https://onsi.github.io/ginkgo/#dynamically-generating-specs
+	for filename, tests := range vethStartupTests {
+		for _, test := range tests {
+			test := test
+			pc := reflect.ValueOf(test).Pointer()
+			funcValue := runtime.FuncForPC(pc)
+			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
+			It(testName, func(ctx SpecContext) {
 				Log("[* TEST BEGIN]: " + testName)
 				test(&s)
 			}, SpecTimeout(TestTimeout))
