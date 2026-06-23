@@ -364,7 +364,7 @@ CLIB_MULTIARCH_FN (dpdk_ops_vpp_dequeue) (struct rte_mempool * mp,
 
       vlib_get_buffers_with_offset (vm, bufs, obj_table + done, batch,
 				    -(i32) sizeof (struct rte_mbuf));
-      dpdk_mbuf_init_from_template ((struct rte_mbuf **) (obj_table + done), &t, batch);
+      dpdk_mbuf_init_from_template (((struct rte_mbuf **) obj_table) + done, &t, batch);
       done += batch;
     }
 
