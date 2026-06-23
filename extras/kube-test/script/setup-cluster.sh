@@ -3,7 +3,9 @@ set -e
 
 COMMAND=$1
 CALICOVPP_DIR=${CALICOVPP_DIR:-"$HOME/vpp-dataplane"}
-VPP_DIR=${VPP_DIR:-"$CALICOVPP_DIR/vpp-manager/vpp_build"}
+VPP_BUILD_DIR=${VPP_BUILD_DIR:-"$CALICOVPP_DIR/vpp-manager/vpp_build"}
+VPP_REPO_DIR=$(pwd)
+COMMIT_HASH=$(git -C "$VPP_REPO_DIR" rev-parse HEAD)
 BASE=${BASE:-"$COMMIT_HASH"}
 # set to false to skip resetting vpp-dataplane directory, useful for testing changes
 RESTORE_CV=${RESTORE_CV:-"true"}
@@ -11,13 +13,12 @@ RESTORE_CV=${RESTORE_CV:-"true"}
 # "kt-master" is then written to .vars, from where kube-test parses it
 TAG=${TAG:-"kt-master"}
 echo "CALICOVPP_DIR=$CALICOVPP_DIR"
-echo "VPP_DIR=$VPP_DIR"
+echo "VPP_BUILD_DIR=$VPP_BUILD_DIR"
 
 reg_name='kind-registry'
 reg_port='5000'
-COMMIT_HASH=$(git rev-parse HEAD)
 [ "$BASE" = "default" ] && BASE=""
-STASH_SAVED=0
+VPP_BASE_REF=$BASE
 
 # [KinD only] sets VPP's mtu. Only works if kind network is configured to use MTU=9000
 export CALICO_NETWORK_CONFIG=${CALICO_NETWORK_CONFIG:-"mtu: 9000"}
@@ -28,7 +29,10 @@ export TIGERA_OPERATOR_VERSION=$KIND_CALICO_VERSION
 export DOCKER_BUILD_PROXY=$HTTP_PROXY
 export DOCKER_BUILD_PROXY=$HTTP_PROXY
 export TAG=$TAG
-export VPP_DIR=$VPP_DIR
+export VPP_DIR=$VPP_BUILD_DIR
+
+SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+source "$SCRIPT_DIR/common.sh"
 
 kind_config=$(cat kubernetes/kind-config.yaml)
 kind_config=$(cat <<EOF
@@ -136,31 +140,10 @@ start_cni() {
   kubectl create --save-config -f kubernetes/kind-calicovpp-config.yaml || true
 }
 
-save_stash() {
-  tmp_path=$(pwd)
-  cd $VPP_DIR
-  git fetch --tags --force
-  if ! git stash -u | grep -q "No local changes to save"; then
-    STASH_SAVED=1
-    git stash apply
-  fi
-  cd $tmp_path
-}
-
-restore_repo() {
-  tmp_path=$(pwd)
-  cd $VPP_DIR
-  git reset --hard $COMMIT_HASH || true
-  if [ "$STASH_SAVED" -eq 1 ]; then
-    git stash pop
-  fi
-  cd $tmp_path
-}
-
 setup_master() {
   save_stash
-  # delete CMakeCache so compiler is re-detected (should avoid compilation errors)
-  rm $VPP_DIR/build-root/build-vpp*/vpp/CMakeCache.txt || true
+  set_expected_vpp_hash
+  clean_vpp_build_artifacts
   export CALICOVPP_VERSION=${CALICOVPP_VERSION:-"kt-master"}
   echo "CALICOVPP_VERSION=$CALICOVPP_VERSION" > kubernetes/.vars
   envsubst < kubernetes/kind-calicovpp-config-template.yaml > kubernetes/kind-calicovpp-config.yaml
@@ -173,7 +156,11 @@ setup_master() {
   while [[ "$(kubectl api-resources --api-group=operator.tigera.io | grep Installation)" == "" ]]; do echo "waiting for Installation kubectl resource"; sleep 2; done
 
   if ! build_calicovpp; then
-    echo -e "\e[31m*** Build failed. Restoring repo. Try running 'make -C ../.. wipe' and 'make -C ../.. wipe-release' ***\e[0m"
+    red "*** Build failed. Restoring repo. Try running 'make -C ../.. wipe' and 'make -C ../.. wipe-release' ***"
+    restore_repo
+    exit 1
+  fi
+  if ! verify_vpp_image; then
     restore_repo
     exit 1
   fi
@@ -186,15 +173,11 @@ setup_master() {
 
 rebuild_master() {
   save_stash
-  rm $VPP_DIR/build-root/build-vpp*/vpp/CMakeCache.txt || true
+  build_and_verify_vpp
   export CALICOVPP_VERSION=${CALICOVPP_VERSION:-"kt-master"}
   echo "CALICOVPP_VERSION=$CALICOVPP_VERSION" > kubernetes/.vars
   envsubst < kubernetes/kind-calicovpp-config-template.yaml > kubernetes/kind-calicovpp-config.yaml
-  if ! build_calicovpp; then
-    red "*** Build failed. Restoring repo. Try running 'make -C ../.. wipe' and 'make -C ../.. wipe-release' ***"
-    restore_repo
-    exit 1
-  fi
+
   push_tag_to_registry
   start_cni || true
   restore_repo
@@ -220,9 +203,6 @@ setup_release() {
   kubectl create --save-config -f kubernetes/kind-calicovpp-config.yaml
   done_message
 }
-
-red () { printf "\e[0;31m$1\e[0m\n" >&2 ; }
-green () { printf "\e[0;32m$1\e[0m\n" >&2 ; }
 
 case "$COMMAND" in
   master-cluster)
