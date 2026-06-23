@@ -20,6 +20,23 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "794ec5cb_b54f9fbb",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3339
+      },
+      "writtenOn": "2026-06-23T15:01:08Z",
+      "side": 1,
+      "message": "Reply to Florin\u0027s comments",
+      "revId": "33f01687cefde089a81c9b8cbc8e81d182e141d3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "13614414_fa267d28",
         "filename": "src/plugins/tlsopenssl/tls_openssl.c",
         "patchSetId": 2
@@ -31,6 +48,24 @@
       "writtenOn": "2026-06-22T23:16:02Z",
       "side": 1,
       "message": "We have openssl_main here, why do we need to pass cache entries as param? But ignoring this for now ...\n\nThe more I look at it, the more it feels like we should be doing this per app, not globally. That is, on line 1425 we should check if ctx has cfg flag (probably `app_tls_profile_t`) that allows caching and that cache should probably be per app such that app1 cannot reuse app2\u0027s previous tls connection to a given server.",
+      "revId": "33f01687cefde089a81c9b8cbc8e81d182e141d3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6b7d42e5_576f6752",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1112,
+      "author": {
+        "id": 3339
+      },
+      "writtenOn": "2026-06-23T15:01:08Z",
+      "side": 1,
+      "message": "Please let me know if this approach works:\n1. Remove the global singleton openssl_sess_cache_t object, instead make it a per app object\n2. There may be two options to add this cache per each application: either add an opaque pointer in app_crypto_ctx_t, or we maintain all the cache objects (by app index) in openssl_main. I will figure out which one is cleaner\n3. If we want to enable/disable tls-resumption-cache per app, then probably we want to keep max-entries with the cache object (still, 0 means disable). Then, we\u0027ll need to add a new CLI like \"app crypto set app \u003cname\u003e session-cache-size \u003cN\u003e\" to re-size it at runtime, or, should we add a new tls-openssl cli to configure the max-entries for a named app. I saw each app may have multiple tls-profiles so it\u0027s more straightforward to make this max-entries app specific not profile specific.\n4. With that approach, we\u0027ll not do conditional setting for lines 1114 and 1115, as the client_ssl_ctx is a per worker thread object across all the apps",
+      "parentUuid": "13614414_fa267d28",
       "revId": "33f01687cefde089a81c9b8cbc8e81d182e141d3",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
