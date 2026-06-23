@@ -20,6 +20,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "a4233ff1_413fc0a9",
+        "filename": "src/vnet/flow/flow.c",
+        "patchSetId": 33
+      },
+      "lineNbr": 272,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2026-06-23T12:11:41Z",
+      "side": 1,
+      "message": "I think so and I would go maybe further: should we rollabck in case of failure?",
+      "parentUuid": "241a87a7_2cdf64a6",
+      "revId": "28ef263ac6bfcd97ee3eb9586915888dcea762c4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "d93e6d21_c132898c",
         "filename": "src/vnet/flow/flow_api.c",
         "patchSetId": 33
@@ -31,6 +49,24 @@
       "writtenOn": "2026-06-22T12:52:53Z",
       "side": 1,
       "message": "This needs to reject `count \u003d\u003d 0` before `vec_validate()`. With a valid zero-length request, `count - 1` underflows to `UINT_MAX`, so the handler tries to allocate a huge vector before `vnet_flow_async_range_enable()` can return `NO_SUCH_ENTRY`.",
+      "revId": "28ef263ac6bfcd97ee3eb9586915888dcea762c4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a1e3ec4b_09a4161b",
+        "filename": "src/vnet/flow/flow_api.c",
+        "patchSetId": 33
+      },
+      "lineNbr": 496,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2026-06-23T12:11:41Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "d93e6d21_c132898c",
       "revId": "28ef263ac6bfcd97ee3eb9586915888dcea762c4",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -48,6 +84,24 @@
       "writtenOn": "2026-06-22T12:52:53Z",
       "side": 1,
       "message": "Same issue here: please handle `count \u003d\u003d 0` before `vec_validate(flow_indices, count - 1)`, otherwise a zero-length async disable request underflows the vector index and can attempt a massive allocation.",
+      "revId": "28ef263ac6bfcd97ee3eb9586915888dcea762c4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "31e4f358_72d6237e",
+        "filename": "src/vnet/flow/flow_api.c",
+        "patchSetId": 33
+      },
+      "lineNbr": 524,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2026-06-23T12:11:41Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "69c194a0_0af9410c",
       "revId": "28ef263ac6bfcd97ee3eb9586915888dcea762c4",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
