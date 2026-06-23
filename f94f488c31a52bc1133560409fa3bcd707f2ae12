@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "77ae555a_46183565",
+        "filename": "src/vppinfra/mem.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 228,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-06-23T13:32:08Z",
+      "side": 1,
+      "message": "Ack. Made necessary changes to switch `n_allocations` to u64 and avoid unused padding.",
+      "parentUuid": "06337c99_b6ee23f5",
+      "revId": "f94f488c31a52bc1133560409fa3bcd707f2ae12",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "54128a30_99d29cec",
@@ -31,6 +49,24 @@
       "writtenOn": "2026-06-23T12:28:48Z",
       "side": 1,
       "message": "Now that n_bytes is u64, this comparator should not subtract and return the result as int. Large differences can truncate or compare equal when returned to qsort, which can misorder the trace list and hide the largest sites from the non-verbose top-50 output. Please switch to explicit comparisons for n_bytes, and do the same for n_allocations if it is widened to u64.",
+      "revId": "f94f488c31a52bc1133560409fa3bcd707f2ae12",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a846b54b_97230d59",
+        "filename": "src/vppinfra/mem_trace.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 183,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-06-23T13:32:08Z",
+      "side": 1,
+      "message": "I\u0027ve modified the comparator function to not perform any subtraction operation, but rather compare each trace\u0027s `n_bytes`/`n_allocations` value and return either `-1/0/1` depending on the comparison result.\n\nThis is fine with the the current usage of clib_mem_trace_sort() output as parameter of qsort(). Do you see any other usage or we can proceed with this approach ?",
+      "parentUuid": "54128a30_99d29cec",
       "revId": "f94f488c31a52bc1133560409fa3bcd707f2ae12",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
