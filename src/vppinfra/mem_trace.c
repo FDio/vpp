@@ -178,12 +178,19 @@ clib_mem_trace_sort (const void *_t1, const void *_t2)
 {
   const clib_mem_trace_t *t1 = _t1;
   const clib_mem_trace_t *t2 = _t2;
-  word cmp;
 
-  cmp = (word) t2->n_bytes - (word) t1->n_bytes;
-  if (!cmp)
-    cmp = (word) t2->n_allocations - (word) t1->n_allocations;
-  return cmp;
+  /* comapres n_bytes/n_allocations of both traces */
+  if (t1->n_bytes > t2->n_bytes)
+    return -1;
+  if (t1->n_bytes < t2->n_bytes)
+    return 1;
+
+  if (t1->n_allocations > t2->n_allocations)
+    return -1;
+  if (t1->n_allocations < t2->n_allocations)
+    return 1;
+
+  return 0;
 }
 
 u8 *
@@ -225,9 +232,9 @@ format_clib_mem_trace (u8 *s, va_list *va)
 	  n++;
 
 	  if (t == traces_copy)
-	    s = format (s, "%=9s%=9s %=10s Traceback\n", "Bytes", "Count",
-			"Sample");
-	  s = format (s, "%9d%9d %p", t->n_bytes, t->n_allocations, t->offset);
+	    s = format (s, "%=10s%=9s %=10s Traceback\n", "Bytes", "Count", "Sample");
+	  s =
+	    format (s, "%10Lu%9d %p", (unsigned long long) t->n_bytes, t->n_allocations, t->offset);
 	  s = format (s, "\n         %U", format_backtrace, t->callers, ARRAY_LEN (t->callers));
 	}
 
