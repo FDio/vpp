@@ -344,6 +344,7 @@ CLIB_MULTIARCH_FN (dpdk_ops_vpp_dequeue) (struct rte_mempool * mp,
   u8 buffer_pool_index = mp->pool_id;
   struct rte_mbuf t = dpdk_mbuf_template_by_pool_index[buffer_pool_index];
   unsigned done = 0;
+  struct rte_mbuf **table_slot = 0;
 
   while (done < n)
     {
@@ -362,9 +363,9 @@ CLIB_MULTIARCH_FN (dpdk_ops_vpp_dequeue) (struct rte_mempool * mp,
 	  return -ENOENT;
 	}
 
-      vlib_get_buffers_with_offset (vm, bufs, obj_table + done, batch,
-				    -(i32) sizeof (struct rte_mbuf));
-      dpdk_mbuf_init_from_template ((struct rte_mbuf **) (obj_table + done), &t, batch);
+      table_slot = ((struct rte_mbuf **) obj_table) + done;
+      vlib_get_buffers_with_offset (vm, bufs, table_slot, batch, -(i32) sizeof (struct rte_mbuf));
+      dpdk_mbuf_init_from_template (table_slot, &t, batch);
       done += batch;
     }
 
