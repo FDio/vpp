@@ -10,7 +10,8 @@ import (
 func init() {
 	RegisterEchoTests(EchoBuiltinTest, EchoBuiltinBandwidthTest, EchoBuiltinEchoBytesTest, EchoBuiltinRoundtripTest,
 		EchoBuiltinUdpLossTest, EchoBuiltinPeriodicReportTest, EchoBuiltinPeriodicReportTotalTest, TlsSingleConnectionTest,
-		EchoBuiltinPeriodicReportUDPTest, EchoBuiltinUdpTest, EchoBuiltinHttpTest, EchoBuiltinHttpsTest, EchoBuiltinHttp2Test,
+		EchoBuiltinPeriodicReportUDPTest, EchoBuiltinUdpTest, EchoBuiltinTcpNoTxCsumOffloadTest,
+		EchoBuiltinUdpNoTxCsumOffloadTest, EchoBuiltinHttpTest, EchoBuiltinHttpsTest, EchoBuiltinHttp2Test,
 		EchoBuiltinHttp3Test, EchoBuiltinHttpTestBytesTest, EchoBuiltinHttp2ConnectTcpTest, EchoBuiltinHttp3ConnectTcpTest,
 		EchoBuiltinHttp2ConnectUdpTest, EchoBuiltinHttp3ConnectUdpTest, EchoBuiltinHttp2ConnectUdpBackpressureTest)
 	RegisterEchoMWTests(TcpWithLossMWTest, EchoBuiltinHttp1CpsMWTest, EchoBuiltinHttp2CpsMWTest, EchoBuiltinHttp3CpsMWTest,
@@ -45,6 +46,49 @@ func EchoBuiltinUdpTest(s *EchoSuite) {
 		" uri udp://" + s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1)
 	Log(o)
 	AssertNotContains(o, "failed:")
+}
+
+func EchoBuiltinTcpNoTxCsumOffloadTest(s *EchoSuite) {
+	serverVpp := s.Containers.ServerVpp.VppInstance
+	clientVpp := s.Containers.ClientVpp.VppInstance
+
+	AssertContains(serverVpp.Vppctl("set tcp csum-offload disable"), "disabled")
+	AssertContains(clientVpp.Vppctl("set tcp csum-offload disable"), "disabled")
+	AssertContains(serverVpp.Vppctl("show tcp config"), "checksum offload: disabled")
+	AssertContains(clientVpp.Vppctl("show tcp config"), "checksum offload: disabled")
+
+	serverVpp.Vppctl("vperf server fifo-size 64k uri tcp://%s/%s",
+		s.Interfaces.Server.Ip4AddressString(), s.Ports.Port1)
+
+	o := clientVpp.Vppctl("vperf client fifo-size 64k bytes 64k echo-bytes test-bytes "+
+		"verbose test-timeout 5 uri tcp://%s/%s", s.Interfaces.Server.Ip4AddressString(), s.Ports.Port1)
+	Log(o)
+	AssertNotContains(o, "failed")
+	AssertContains(o, "65536 bytes")
+	throughput, err := ParseEchoClientTransfer(o)
+	AssertNil(err)
+	AssertGreaterThan(throughput, uint64(0), "throughput must be > 0")
+}
+
+func EchoBuiltinUdpNoTxCsumOffloadTest(s *EchoSuite) {
+	serverVpp := s.Containers.ServerVpp.VppInstance
+	clientVpp := s.Containers.ClientVpp.VppInstance
+
+	AssertContains(serverVpp.Vppctl("set udp csum-offload disable"), "disabled")
+	AssertContains(clientVpp.Vppctl("set udp csum-offload disable"), "disabled")
+
+	serverVpp.Vppctl("vperf server uri udp://%s/%s", s.Interfaces.Server.Ip4AddressString(), s.Ports.Port1)
+	AssertContains(serverVpp.Vppctl("show session verbose 2"), "no-csum-offload")
+
+	o := clientVpp.Vppctl("vperf client bytes 32k echo-bytes test-bytes verbose "+
+		"test-timeout 5 uri udp://%s/%s", s.Interfaces.Server.Ip4AddressString(), s.Ports.Port1)
+	Log(o)
+	AssertNotContains(o, "failed")
+	AssertContains(o, "sent total")
+	AssertContains(o, "received total")
+	throughput, err := ParseEchoClientTransfer(o)
+	AssertNil(err)
+	AssertGreaterThan(throughput, uint64(0), "throughput must be > 0")
 }
 
 func EchoBuiltinBandwidthTest(s *EchoSuite) {
