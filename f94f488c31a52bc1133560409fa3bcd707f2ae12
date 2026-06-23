@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "06337c99_b6ee23f5",
+        "filename": "src/vppinfra/mem.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 228,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-06-23T12:28:48Z",
+      "side": 1,
+      "message": "Changing n_bytes to u64 inserts padding after the existing u32 n_allocations, so keeping the allocation count at 32 bits does not really save space in this struct. Please make n_allocations u64 as well; it keeps both trace counters consistent and avoids retaining a 32-bit limit for allocation count while the struct is already 64-bit aligned.",
+      "revId": "f94f488c31a52bc1133560409fa3bcd707f2ae12",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "54128a30_99d29cec",
+        "filename": "src/vppinfra/mem_trace.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 183,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-06-23T12:28:48Z",
+      "side": 1,
+      "message": "Now that n_bytes is u64, this comparator should not subtract and return the result as int. Large differences can truncate or compare equal when returned to qsort, which can misorder the trace list and hide the largest sites from the non-verbose top-50 output. Please switch to explicit comparisons for n_bytes, and do the same for n_allocations if it is widened to u64.",
+      "revId": "f94f488c31a52bc1133560409fa3bcd707f2ae12",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
