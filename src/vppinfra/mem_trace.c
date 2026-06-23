@@ -225,9 +225,9 @@ format_clib_mem_trace (u8 *s, va_list *va)
 	  n++;
 
 	  if (t == traces_copy)
-	    s = format (s, "%=9s%=9s %=10s Traceback\n", "Bytes", "Count",
-			"Sample");
-	  s = format (s, "%9d%9d %p", t->n_bytes, t->n_allocations, t->offset);
+	    s = format (s, "%=10s%=9s %=10s Traceback\n", "Bytes", "Count", "Sample");
+	  s =
+	    format (s, "%10Lu%9d %p", (unsigned long long) t->n_bytes, t->n_allocations, t->offset);
 	  s = format (s, "\n         %U", format_backtrace, t->callers, ARRAY_LEN (t->callers));
 	}
 

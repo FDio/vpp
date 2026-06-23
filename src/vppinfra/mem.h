@@ -228,7 +228,7 @@ typedef struct
   u32 n_allocations;
 
   /* Count of bytes allocated with this traceback. */
-  u32 n_bytes;
+  u64 n_bytes;
 
   /* Offset of this item */
   uword offset;
