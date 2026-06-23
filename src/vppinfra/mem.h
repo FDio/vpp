@@ -225,10 +225,10 @@ typedef struct
   void *callers[12];
 
   /* Count of allocations with this traceback. */
-  u32 n_allocations;
+  u64 n_allocations;
 
   /* Count of bytes allocated with this traceback. */
-  u32 n_bytes;
+  u64 n_bytes;
 
   /* Offset of this item */
   uword offset;
