@@ -175,6 +175,43 @@ udp_config_fn (vlib_main_t * vm, unformat_input_t * input)
 VLIB_CONFIG_FUNCTION (udp_config_fn, "udp");
 
 static clib_error_t *
+udp_set_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd_arg)
+{
+  udp_main_t *um = vnet_get_udp_main ();
+  u8 csum_offload_set = 0;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "csum-offload"))
+	{
+	  if (unformat (input, "enable") || unformat (input, "on"))
+	    um->csum_offload = 1;
+	  else if (unformat (input, "disable") || unformat (input, "off"))
+	    um->csum_offload = 0;
+	  else
+	    return clib_error_return (0, "expected enable or disable for "
+					 "csum-offload");
+
+	  csum_offload_set = 1;
+	}
+      else
+	return clib_error_return (0, "unknown input `%U'", format_unformat_error, input);
+    }
+
+  if (!csum_offload_set)
+    return clib_error_return (0, "expected csum-offload");
+
+  vlib_cli_output (vm, "UDP checksum offload: %s", um->csum_offload ? "enabled" : "disabled");
+  return 0;
+}
+
+VLIB_CLI_COMMAND (udp_set_command, static) = {
+  .path = "set udp",
+  .short_help = "set udp csum-offload [enable|disable]",
+  .function = udp_set_fn,
+};
+
+static clib_error_t *
 show_udp_punt_fn (vlib_main_t * vm, unformat_input_t * input,
 		  vlib_cli_command_t * cmd_arg)
 {

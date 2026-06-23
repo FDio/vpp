@@ -915,6 +915,42 @@ VLIB_CLI_COMMAND (show_tcp_cfg_command, static) = {
 };
 
 static clib_error_t *
+tcp_set_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
+{
+  u8 csum_offload_set = 0;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "csum-offload"))
+	{
+	  if (unformat (input, "enable") || unformat (input, "on"))
+	    tcp_cfg.csum_offload = 1;
+	  else if (unformat (input, "disable") || unformat (input, "off"))
+	    tcp_cfg.csum_offload = 0;
+	  else
+	    return clib_error_return (0, "expected enable or disable for "
+					 "csum-offload");
+
+	  csum_offload_set = 1;
+	}
+      else
+	return clib_error_return (0, "unknown input `%U'", format_unformat_error, input);
+    }
+
+  if (!csum_offload_set)
+    return clib_error_return (0, "expected csum-offload");
+
+  vlib_cli_output (vm, "TCP checksum offload: %s", tcp_cfg.csum_offload ? "enabled" : "disabled");
+  return 0;
+}
+
+VLIB_CLI_COMMAND (tcp_set_command, static) = {
+  .path = "set tcp",
+  .short_help = "set tcp csum-offload [enable|disable]",
+  .function = tcp_set_fn,
+};
+
+static clib_error_t *
 show_tcp_stats_fn (vlib_main_t * vm, unformat_input_t * input,
 		   vlib_cli_command_t * cmd)
 {
