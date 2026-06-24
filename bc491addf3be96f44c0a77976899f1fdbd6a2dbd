@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2b2a379b_11c7f098",
+        "filename": "src/plugins/lldp/lldp_api.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 149,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-06-24T11:18:35Z",
+      "side": 1,
+      "message": "rmp-\u003echassis_id_len was set to vec_len(n-\u003echassis_id) on line 147, here the clib_min compares it against vec_len(n-\u003echassis_id) thus becoming a noop. If vec_len(chassis_id) \u003e sizeof(rmp-\u003echassis_id), this will overflow. Same is true for port_id logic on lines 150 and 151. Looking at LLDP_MAX_CHASS_ID_LEN/LLDP_MAX_PORT_ID_LEN \u003d 255 the API message is lacking - it only supports 64 bytes. We should increase it (in .api definition) to 255 to be able to hold full peer-received data.\n\nCompare with system_name on line 153-4 correctly using vec_len vs sizeof.",
+      "revId": "bc491addf3be96f44c0a77976899f1fdbd6a2dbd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6189339d_8d9bcfa5",
+        "filename": "src/plugins/lldp/lldp_api.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 159,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-06-24T11:18:35Z",
+      "side": 1,
+      "message": "While these memsets are good, they\u0027re not enough. ﻿﻿REPLY_MACRO_DETAILS4_END allocates via vl_msg_api_alloc which does not zero - so the handler deliberately clib_memsets mgmt_ip4, mgmt_ip6, mgmt_oid, port_desc — but not system_name[256], chassis_id[64], or port_id[64], which are only partially filled (clib_min(vec_len, ...) bytes). The uninitialized remainder leaks prior heap contents to the API client.\n\nI\u0027d zero the whole rmp once up front, to be on the safe side. It\u0027s also simpler and future-proof if any more fields are ever added.",
+      "revId": "bc491addf3be96f44c0a77976899f1fdbd6a2dbd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d1fb91ee_dabc26ac",
+        "filename": "test/test_lldp.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 359,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-06-24T11:18:35Z",
+      "side": 1,
+      "message": "These two add_stream calls should be removed - without a pg_start following them, they don\u0027t really do anything useful.",
+      "revId": "bc491addf3be96f44c0a77976899f1fdbd6a2dbd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
