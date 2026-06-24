@@ -181,6 +181,7 @@ func VclQuicUnidirectionalStreamTest(s *VethsSuite) {
 }
 
 func VclQuicUnidirectionalStreamsMWTest(s *VethsSuite) {
+	s.Skip("Might fail to set veth interface fanout options")
 	s.CpusPerVppContainer = 3
 	s.SetupTest()
 	_, oSrv := testVclEcho(s, "quic", "-s 80 -q 10 -N 1000")

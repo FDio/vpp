@@ -516,6 +516,7 @@ func EchoBuiltinHttp2ConnectUdpBackpressureTest(s *EchoSuite) {
 }
 
 func EchoBuiltinHttp2ConnectUdpBackpressureMWTest(s *EchoSuite) {
+	s.Skip("Might fail to set veth interface fanout options")
 	s.CpusPerVppContainer = 3
 	s.SetupTest()
 	EchoBuiltinHttp2ConnectUdpBackpressureTest(s)
@@ -578,6 +579,7 @@ func EchoBuiltinHttp3ConnectUdpTest(s *EchoSuite) {
 }
 
 func EchoBuiltinHttp1CpsMWTest(s *EchoSuite) {
+	s.Skip("Might fail to set veth interface fanout options")
 	var memoryConfig Stanza
 	memoryConfig.NewStanza("memory").Append("main-heap-size 2G").Close()
 	s.CpusPerVppContainer = 3
@@ -596,6 +598,7 @@ func EchoBuiltinHttp1CpsMWTest(s *EchoSuite) {
 }
 
 func EchoBuiltinHttp2CpsMWTest(s *EchoSuite) {
+	s.Skip("Might fail to set veth interface fanout options")
 	var memoryConfig Stanza
 	memoryConfig.NewStanza("memory").Append("main-heap-size 2G").Close()
 	s.CpusPerVppContainer = 3
@@ -614,6 +617,7 @@ func EchoBuiltinHttp2CpsMWTest(s *EchoSuite) {
 }
 
 func EchoBuiltinHttp3CpsMWTest(s *EchoSuite) {
+	s.Skip("Might fail to set veth interface fanout options")
 	var quicConfig Stanza
 	quicConfig.NewStanza("quic").Append("conn-timeout 60000").Append("fifo-size 32k").Close()
 	var memoryConfig Stanza
