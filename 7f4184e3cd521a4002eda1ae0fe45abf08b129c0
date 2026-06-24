@@ -110,6 +110,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "d1dea4f9_ac4a983a",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 1437,
+      "author": {
+        "id": 3339
+      },
+      "writtenOn": "2026-06-24T17:21:52Z",
+      "side": 1,
+      "message": "How about this:\n1. I\u0027ll add util functions in application_crypto to enable/disable tls-resumption for an attached app\n2. Each app may call this util function to enable/disable it when it needs it. It may even have its own CLI to enable/disable it at runtime if it needs that\n3. I\u0027ll update the tls_client app to have a CLI option to enable/disable tls-resumption during runtime so this is enabled only with the hs test case",
+      "parentUuid": "c2bddd01_ff6f70be",
+      "revId": "7f4184e3cd521a4002eda1ae0fe45abf08b129c0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "23c86a01_40e58763",
         "filename": "src/plugins/tlsopenssl/tls_openssl.c",
         "patchSetId": 5
