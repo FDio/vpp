@@ -1,0 +1,8 @@
+Verified+1: FDio GitHub Actions <releng+fdio-github@linuxfoundation.org>
+Code-Review+2: Andrew Yourtchenko <ayourtch@gmail.com>
+Code-Review+1: Dave Wallace <dwallacelf@gmail.com>
+Submitted-by: Andrew Yourtchenko <ayourtch@gmail.com>
+Submitted-at: Wed, 24 Jun 2026 08:06:39 +0000
+Reviewed-on: https://gerrit.fd.io/r/c/vpp/+/45802
+Project: vpp
+Branch: refs/heads/stable/2606
