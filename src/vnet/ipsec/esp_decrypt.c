@@ -90,12 +90,24 @@ esp_process_ops (vlib_main_t *vm, vlib_node_runtime_t *node, vnet_crypto_op_t *o
 }
 
 always_inline void
+assert_tail (u16 tail, uword lengt)
+{
+  ASSERT (tail <= lengt);
+}
+
+always_inline void
+assert_flags (u32 flags)
+{
+  ASSERT (flags & VLIB_BUFFER_NEXT_PRESENT);
+}
+
+always_inline void
 esp_remove_tail (vlib_main_t * vm, vlib_buffer_t * b, vlib_buffer_t * last,
 		 u16 tail)
 {
   vlib_buffer_t *before_last = b;
 
-  ASSERT (tail <= vlib_buffer_length_in_chain (vm, b));
+  assert_tail (tail, vlib_buffer_length_in_chain (vm, b));
   if (b != last)
     b->total_length_not_including_first_buffer -= tail;
 
@@ -104,7 +116,7 @@ esp_remove_tail (vlib_main_t * vm, vlib_buffer_t * b, vlib_buffer_t * last,
       last->current_length -= tail;
       return;
     }
-  ASSERT (b->flags & VLIB_BUFFER_NEXT_PRESENT);
+  assert_flags (b->flags);
 
   while (b->flags & VLIB_BUFFER_NEXT_PRESENT)
     {
