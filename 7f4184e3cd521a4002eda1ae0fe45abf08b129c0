@@ -92,6 +92,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "c2bddd01_ff6f70be",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 1437,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-06-24T17:07:00Z",
+      "side": 1,
+      "message": "It\u0027s not a matter of flexibility. Apps might not have access to cli in the first place.",
+      "parentUuid": "87c8c547_debc1391",
+      "revId": "7f4184e3cd521a4002eda1ae0fe45abf08b129c0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "23c86a01_40e58763",
         "filename": "src/plugins/tlsopenssl/tls_openssl.c",
         "patchSetId": 5
