@@ -20,6 +20,23 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "b4f20ec2_6258fff4",
+        "filename": "test/host_interface.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 89,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-06-24T16:36:42Z",
+      "side": 1,
+      "message": "terminate() mismatch - a new session group is created but disable_capture only signals the direct child, not the group (killpg), setsid then serves no purpose.",
+      "revId": "794ea106cfa7953e8915fcd7fafcd9ac1d117243",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "83d05565_5eaad522",
         "filename": "test/test_linux_cp.py",
         "patchSetId": 5
