@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "070d10ec_3e2a1be0",
+        "filename": "docs/aboutvpp/security/tsc_vulnerability_management_v3.rst",
+        "patchSetId": 3
+      },
+      "lineNbr": 97,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-06-24T03:51:15Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "7407168e_35dc198c",
+      "revId": "5e58f8d90828ab97f6d154b71357da0782bc6d86",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "259719b4_03e9fc28",
@@ -35,6 +53,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "8779cfa4_35d6dbc4",
+        "filename": "docs/aboutvpp/security/tsc_vulnerability_management_v3.rst",
+        "patchSetId": 3
+      },
+      "lineNbr": 108,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-06-24T03:51:15Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "259719b4_03e9fc28",
+      "revId": "5e58f8d90828ab97f6d154b71357da0782bc6d86",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "73018c8e_8c0eb701",
@@ -48,6 +84,24 @@
       "writtenOn": "2026-06-18T14:51:52Z",
       "side": 1,
       "message": "I think this could be clarified. A reporter of a bug (security issue or not) might be someone who just observes that problematic behavior occurs under certain circumstances. It might not be appropriate to instruct them to follow a development process because they might not know anything about it or be capable of doing so.\n\nMaybe state it as \u0027... then inform the reporter to follow the normal development process and cherry-pick the fix to the current supported stable/release branches if they have provided or plan to submit a proposed patch to address the issue. Otherwise they should be directed to follow the standard bug reporting procedures for the project.\u0027 or something.\n\nIt\u0027s possible that \u0027follow the normal development process\u0027 was intended to include submitting a bug report. If so, maybe the mention of cherry-picking should be removed. Telling them to cherry-pick a patch seems to presume that they will be involved in working on the patch or managing it\u0027s review in gerrit and that may not always be possible.",
+      "revId": "5e58f8d90828ab97f6d154b71357da0782bc6d86",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e1cb9624_16c63330",
+        "filename": "docs/aboutvpp/security/tsc_vulnerability_management_v3.rst",
+        "patchSetId": 3
+      },
+      "lineNbr": 172,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-06-24T03:51:15Z",
+      "side": 1,
+      "message": "I rewrote this section to eliminate the presumption that the reporter is a developer and addressing the availability of a proposed fix separately, without specifying who would be submitting the patch.\n\nI intentionally did not assign SRT the responsibility to ensure the bug is fixed, since the SRT\u0027s job is complete once the report has been declared to not be a security vulnerability.",
+      "parentUuid": "73018c8e_8c0eb701",
       "revId": "5e58f8d90828ab97f6d154b71357da0782bc6d86",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -99,6 +153,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "9b07ac63_bb67692a",
+        "filename": "docs/aboutvpp/security/tsc_vulnerability_management_v3.rst",
+        "patchSetId": 3
+      },
+      "lineNbr": 219,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-06-24T03:51:15Z",
+      "side": 1,
+      "message": "Updated to clarify what Matt said in his comment (which is correct).",
+      "parentUuid": "ce69ae91_7d1bdbb7",
+      "range": {
+        "startLine": 219,
+        "startChar": 20,
+        "endLine": 219,
+        "endChar": 28
+      },
+      "revId": "5e58f8d90828ab97f6d154b71357da0782bc6d86",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "102bbf36_a816a5d3",
@@ -112,6 +190,24 @@
       "writtenOn": "2026-06-18T14:51:52Z",
       "side": 1,
       "message": "\u0027merged into the code base\u0027 might be nicer wording.",
+      "revId": "5e58f8d90828ab97f6d154b71357da0782bc6d86",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "831ecb23_6f8ad9a5",
+        "filename": "docs/aboutvpp/security/tsc_vulnerability_management_v3.rst",
+        "patchSetId": 3
+      },
+      "lineNbr": 290,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-06-24T03:51:15Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "102bbf36_a816a5d3",
       "revId": "5e58f8d90828ab97f6d154b71357da0782bc6d86",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -139,6 +235,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "87f97254_01b028cd",
+        "filename": "docs/aboutvpp/security/tsc_vulnerability_management_v3.rst",
+        "patchSetId": 3
+      },
+      "lineNbr": 318,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-06-24T03:51:15Z",
+      "side": 1,
+      "message": "Since this is the definition of \u0027public\u0027, I think the vagueness is intentional and it is up the SRT to decide if the leaked information is enough to declare the reported security vulnerable as public (thus breaking the embargo).\n\nUpdated the section to clarify this.",
+      "parentUuid": "68bb4f79_506ae977",
+      "range": {
+        "startLine": 318,
+        "startChar": 8,
+        "endLine": 318,
+        "endChar": 41
+      },
+      "revId": "5e58f8d90828ab97f6d154b71357da0782bc6d86",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "1f9eaff6_b68f7aab",
@@ -152,6 +272,30 @@
       "writtenOn": "2026-06-18T07:32:39Z",
       "side": 1,
       "message": "these are typically categorized as Arbitrary Code Execution vs. Remote Code Execution (RCE) which is the ability to trigger code execution on a target system over a network without requiring physical access or prior authentication.",
+      "range": {
+        "startLine": 451,
+        "startChar": 3,
+        "endLine": 453,
+        "endChar": 30
+      },
+      "revId": "5e58f8d90828ab97f6d154b71357da0782bc6d86",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "6f1a3028_eb900dbf",
+        "filename": "docs/aboutvpp/security/tsc_vulnerability_management_v3.rst",
+        "patchSetId": 3
+      },
+      "lineNbr": 453,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-06-24T03:51:15Z",
+      "side": 1,
+      "message": "This is directly quoted from the Red Hat Severity rating definitions:  https://access.redhat.com/security/updates/classification\n\nUpdated the heading to provide a link to this web page.",
+      "parentUuid": "1f9eaff6_b68f7aab",
       "range": {
         "startLine": 451,
         "startChar": 3,
