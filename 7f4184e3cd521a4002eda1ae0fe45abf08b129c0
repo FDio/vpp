@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6c4578cd_07dfeda5",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 1437,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-06-24T03:18:29Z",
+      "side": 1,
+      "message": "Let\u0027s add to app_crypto_ctx_t a flag that indicates if resumption is one for app. Grab that flag in tls_connect and set a flag (tls_conn_flags_t) on ctx and check here if on. If yes, grab cache, and do the lookup. I cache is null, allocate for app.",
+      "revId": "7f4184e3cd521a4002eda1ae0fe45abf08b129c0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "23c86a01_40e58763",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 2220,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-06-24T03:18:29Z",
+      "side": 1,
+      "message": "empty line",
+      "revId": "7f4184e3cd521a4002eda1ae0fe45abf08b129c0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "af5b62f1_7f83f2f6",
+        "filename": "src/vnet/session/application_crypto.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 209,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-06-24T03:18:29Z",
+      "side": 1,
+      "message": "Let\u0027s follow app_certkey_int_ctx_t cleanup_cb pattern and let\u0027s add all the new fields to a new struct.\n\nKeep here a vec of structs, one per engine, to avoid conflicts.",
+      "revId": "7f4184e3cd521a4002eda1ae0fe45abf08b129c0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
