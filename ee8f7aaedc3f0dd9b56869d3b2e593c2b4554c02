@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "50ffd5d4_cf1dafc8",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 6
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3339
+      },
+      "writtenOn": "2026-06-24T15:52:02Z",
+      "side": 1,
+      "message": "Addressed Florin\u0027s comments to add application level tls-resumption-on/off flag and a vec of tls-session-cache for engine-specific tls-caching per app",
+      "revId": "ee8f7aaedc3f0dd9b56869d3b2e593c2b4554c02",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}

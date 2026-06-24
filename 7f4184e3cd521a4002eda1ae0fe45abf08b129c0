@@ -36,6 +36,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "a5594715_6251608a",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 1437,
+      "author": {
+        "id": 3339
+      },
+      "writtenOn": "2026-06-24T15:52:02Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "4bbc5248_18c2d7c3",
+      "revId": "7f4184e3cd521a4002eda1ae0fe45abf08b129c0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "23c86a01_40e58763",
@@ -49,6 +67,24 @@
       "writtenOn": "2026-06-24T03:18:29Z",
       "side": 1,
       "message": "empty line",
+      "revId": "7f4184e3cd521a4002eda1ae0fe45abf08b129c0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "bf9daaf7_004eb0e5",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 2220,
+      "author": {
+        "id": 3339
+      },
+      "writtenOn": "2026-06-24T15:52:02Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "23c86a01_40e58763",
       "revId": "7f4184e3cd521a4002eda1ae0fe45abf08b129c0",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -84,6 +120,24 @@
       "side": 1,
       "message": "Sure, I\u0027ll add this:\n1. A new struct that holds fields data, and a free_data_cb function pointer\n2. Add a vec of this struct to app_crypto_ctx_t",
       "parentUuid": "af5b62f1_7f83f2f6",
+      "revId": "7f4184e3cd521a4002eda1ae0fe45abf08b129c0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "baa99fc9_c64b359e",
+        "filename": "src/vnet/session/application_crypto.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 209,
+      "author": {
+        "id": 3339
+      },
+      "writtenOn": "2026-06-24T15:52:02Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "4f1ff9b0_16a39d9b",
       "revId": "7f4184e3cd521a4002eda1ae0fe45abf08b129c0",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
