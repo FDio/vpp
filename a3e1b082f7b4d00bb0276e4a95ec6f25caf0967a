@@ -16,6 +16,24 @@
       "message": "I\u0027m not sure .log fits the contents. It\u0027s not a log, it\u0027s a list of failed test passable as TEST\u003d argument verbatim.\n\nI think a .txt extension would make more sense. What do you think?",
       "revId": "a3e1b082f7b4d00bb0276e4a95ec6f25caf0967a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "4b402631_579e6f1a",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-06-24T16:18:29Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "35568be7_a5f778a3",
+      "revId": "a3e1b082f7b4d00bb0276e4a95ec6f25caf0967a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
