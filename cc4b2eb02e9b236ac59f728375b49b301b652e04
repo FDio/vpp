@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "73e5e717_781ea9a9",
+        "filename": "src/vnet/tcp/tcp_input.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 2702,
+      "author": {
+        "id": 3121
+      },
+      "writtenOn": "2026-06-24T18:32:41Z",
+      "side": 1,
+      "message": "Done. The entire TFO branch in `tcp46_listen_inline()` has been replaced by a single call to `tcp_tfo_listen_handle(lc, child, b)`. The helper performs the gate check (`TCP_CFG_F_TFO` + `tcp_opts_tfo`), validates the cookie, reserves the pending-fast-open slot via atomic CAS, marks the child `FAST_OPENED` and enqueues SYN data into the session.",
+      "parentUuid": "154d95ed_3f009c2c",
+      "revId": "cc4b2eb02e9b236ac59f728375b49b301b652e04",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "9b4f2219_c61dd720",
@@ -52,6 +70,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "388c7dd5_a36ad529",
+        "filename": "src/vnet/tcp/tcp_output.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 553,
+      "author": {
+        "id": 3121
+      },
+      "writtenOn": "2026-06-24T18:32:41Z",
+      "side": 1,
+      "message": "Done.\n`tcp_make_synack()` now calls `tcp_tfo_synack_options()` immediately after `tcp_make_synack_options()`. The helper consults the sticky `tcp_tfo_opt_rcvd(tc)` flag (set by the listen handler), generates a fresh 8-byte cookie via `tcp_tfo_get_cookie()`, sets `TCP_OPTS_FLAG_TFO` + `tfo_cookie_len`, advances `tcp_opts_len` (with realignment) and hands the pointer back for `tcp_options_write()` to copy the bytes.",
+      "parentUuid": "1a58e7b9_9dc6d5e6",
+      "revId": "cc4b2eb02e9b236ac59f728375b49b301b652e04",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "42e0f6ff_315722d9",
@@ -65,6 +101,24 @@
       "writtenOn": "2026-06-16T17:55:50Z",
       "side": 1,
       "message": "can we hide most of the code here under this syn as a function call to something in tcp_fastopen.c? Wonder also if most of it can be moved to tcp_make_syn_options and leverage the fact that the cookie is in the cache, so we can just retrieve it there if tfo flag is on.",
+      "revId": "cc4b2eb02e9b236ac59f728375b49b301b652e04",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "316773dd_cbc7437c",
+        "filename": "src/vnet/tcp/tcp_output.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 846,
+      "author": {
+        "id": 3121
+      },
+      "writtenOn": "2026-06-24T18:32:41Z",
+      "side": 1,
+      "message": "Done. Split this into 2 helpers in `tcp_fastopen.c`:\n1. `tcp_tfo_prepare_send_syn(tc, vm, cookie_buf, \u0026cookie_len)` — runs the TFO gate check (`tcp_tfo_enabled` + `rto_boff \u003d\u003d 0`), the blackhole check (with `TFO_BLACKHOLED` counter increment) and the cookie-cache lookup (`tcp_tfo_lookup_cookie`).\n2. `tcp_tfo_write_syn_data(tc, b, cookie_len)` — copies application-supplied early-SYN data from `tcp_tfo_syn_data(tc)` (the `snd_opts.tfo_syn_data` union slot).",
+      "parentUuid": "42e0f6ff_315722d9",
       "revId": "cc4b2eb02e9b236ac59f728375b49b301b652e04",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -86,6 +140,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "bb214873_b43a63e7",
+        "filename": "src/vnet/tcp/tcp_packet.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 153,
+      "author": {
+        "id": 3121
+      },
+      "writtenOn": "2026-06-24T18:32:41Z",
+      "side": 1,
+      "message": "Done. `tcp_options_t` now declares the two pointers as members of a union:\n```\nunion {\n  sack_block_t *sacks;  /**\u003c SACK blocks (post-handshake) */\n  u8 *tfo_syn_data;     /**\u003c TFO early SYN data vec (SYN only, client-side) */\n};\n```",
+      "parentUuid": "fea21488_4497ae59",
+      "revId": "cc4b2eb02e9b236ac59f728375b49b301b652e04",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "bff77a8d_82b9bf08",
@@ -103,6 +175,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "4835f305_9222e414",
+        "filename": "src/vnet/tcp/tcp_packet.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 159,
+      "author": {
+        "id": 3121
+      },
+      "writtenOn": "2026-06-24T18:32:41Z",
+      "side": 1,
+      "message": "Done. `tcp_options_t` now declares a union:\n```\nunion {\n  u8 n_sack_blocks;    /**\u003c Number of SACK blocks (post-handshake) */\n  u8 tfo_cookie_len;   /**\u003c TFO cookie length; 0 \u003d cookie request */\n};\n```",
+      "parentUuid": "bff77a8d_82b9bf08",
+      "revId": "cc4b2eb02e9b236ac59f728375b49b301b652e04",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "61418bc6_c582eeef",
@@ -116,6 +206,24 @@
       "writtenOn": "2026-06-16T17:55:50Z",
       "side": 1,
       "message": "Can we overlap this with some unused pointer during handshake?",
+      "revId": "cc4b2eb02e9b236ac59f728375b49b301b652e04",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "3eadafc4_013289e9",
+        "filename": "src/vnet/tcp/tcp_types.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 385,
+      "author": {
+        "id": 3121
+      },
+      "writtenOn": "2026-06-24T18:32:41Z",
+      "side": 1,
+      "message": "Done. `*tfo_syn_data pointer` is removed from `tcp_connection_t` entirely and stored in the `snd_opts.tfo_syn_data` union slot (which overlaps `snd_opts.sacks`). Since the connection already embeds `tcp_options_t snd_opts`, no new pointer is needed.",
+      "parentUuid": "61418bc6_c582eeef",
       "revId": "cc4b2eb02e9b236ac59f728375b49b301b652e04",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
