@@ -89,13 +89,19 @@ esp_process_ops (vlib_main_t *vm, vlib_node_runtime_t *node, vnet_crypto_op_t *o
     }
 }
 
+void
+debug_assert (u16 tail, u16 lengt)
+{
+  ASSERT (tail <= lengt);
+}
+
 always_inline void
 esp_remove_tail (vlib_main_t * vm, vlib_buffer_t * b, vlib_buffer_t * last,
 		 u16 tail)
 {
   vlib_buffer_t *before_last = b;
 
-  ASSERT (tail <= vlib_buffer_length_in_chain (vm, b));
+  debug_assert (tail, vlib_buffer_length_in_chain (vm, b));
   if (b != last)
     b->total_length_not_including_first_buffer -= tail;
 
