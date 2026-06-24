@@ -164,6 +164,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "6d67221f_5e15c555",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 1437,
+      "author": {
+        "id": 3339
+      },
+      "writtenOn": "2026-06-24T18:50:20Z",
+      "side": 1,
+      "message": "Okay I added a new flag APP_OPTIONS_FLAGS_TLS_RESUMPTION and updated the app-init code to optionally enable tls-resumption at app-init time. New code has been pushed to this review. However, I didn\u0027t remove the CLI \"app crypto tls-resumption ...\" - I saw we do have other command like \"app crypto tls-profile ...\" that changes config for an attached app. In case user has access to VPP CLI, as long as an app is attached, user should be able to turn on/off tls-resumption via CLI, for that named app. -- that will make it easier at least for the HS test cases.",
+      "parentUuid": "edcc0e96_c020c64d",
+      "revId": "7f4184e3cd521a4002eda1ae0fe45abf08b129c0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "23c86a01_40e58763",
         "filename": "src/plugins/tlsopenssl/tls_openssl.c",
         "patchSetId": 5
