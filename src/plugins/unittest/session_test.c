@@ -5,7 +5,9 @@
 
 #include <arpa/inet.h>
 #include <vnet/session/application.h>
+#include <vnet/session/application_crypto.h>
 #include <vnet/session/session.h>
+#include <vnet/session/session_sdl.h>
 #include <vnet/session/transport.h>
 #include <vnet/tcp/tcp_inlines.h>
 #include <sys/epoll.h>
@@ -36,6 +38,55 @@
   while (0)
 
 #define ST_DBG(_comment, _args...) fformat (stderr, _comment "\n", ##_args);
+
+static void
+session_test_cli_input (vlib_main_t *vm, char *cmd)
+{
+  unformat_input_t input;
+
+  unformat_init_string (&input, cmd, strlen (cmd));
+  vlib_cli_input (vm, &input, 0, 0);
+  unformat_free (&input);
+}
+
+static u32 session_test_ca_update_count;
+static app_crypto_ca_trust_update_type_t session_test_ca_update_type;
+
+static void
+session_test_ca_update_cb (app_crypto_ca_trust_int_ctx_t *cti, app_crypto_ca_trust_t *ct,
+			   app_crypto_ca_trust_update_type_t type)
+{
+  session_test_ca_update_count++;
+  session_test_ca_update_type = type;
+}
+
+static u32 session_test_crypto_async_count;
+static u32 session_test_crypto_async_reply_count;
+static app_crypto_async_req_t *session_test_crypto_async_last_req;
+static app_crypto_async_req_handle_t session_test_crypto_async_reply_handle;
+
+static int
+session_test_crypto_async_cb (app_crypto_async_req_t *req)
+{
+  session_test_crypto_async_count++;
+  session_test_crypto_async_last_req = req;
+  return 0;
+}
+
+static void
+session_test_crypto_async_reply_cb (app_crypto_async_reply_t *reply)
+{
+  session_test_crypto_async_reply_count++;
+  session_test_crypto_async_reply_handle = reply->handle;
+}
+
+static void
+session_test_sdl_walk_cb (u32 fei, ip46_address_t *rmt_ip, u16 fp_len, u32 action_index,
+			  u32 fp_proto, u8 *tag, void *args)
+{
+  u32 *n_rules = args;
+  *n_rules += 1;
+}
 
 static int
 session_test_basic (vlib_main_t * vm, unformat_input_t * input)
@@ -2270,6 +2321,7 @@ session_test_sdl (vlib_main_t *vm, unformat_input_t *input)
   const char ip_str_1111[] = "1.1.1.1";
   const char ip6_str[] = "2501:0db8:85a3:0000:0000:8a2e:0371:1";
   const char ip6_str2[] = "2501:0db8:85a3:0000:0000:8a2e:0372:1";
+  u32 walk_count;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -2358,6 +2410,38 @@ session_test_sdl (vlib_main_t *vm, unformat_input_t *input)
     session_rules_table_add_del (st->srtg_handle, TRANSPORT_PROTO_TCP, &args);
   SESSION_TEST ((error == SESSION_E_NOROUTE), "Del 0.0.0.0/%d action %d",
 		args.rmt.fp_len, error);
+
+  /*
+   * Add an exact tagged rule and exercise SDL dump, show-one, walk and
+   * duplicate-tag rejection paths.
+   */
+  args.is_add = 1;
+  args.rmt.fp_len = 32;
+  args.rmt.fp_proto = FIB_PROTOCOL_IP4;
+  inet_pton (AF_INET, ip_str_1234, &args.rmt.fp_addr.ip4.as_u32);
+  args.action_index = action_index++;
+  args.tag = format (0, "sdl-exact-ip4");
+  error = session_rules_table_add_del (st->srtg_handle, TRANSPORT_PROTO_TCP, &args);
+  SESSION_TEST ((error == 0), "Add %s/%d tag %v", ip_str_1234, args.rmt.fp_len, args.tag);
+
+  walk_count = 0;
+  session_sdl_table_walk4 (st->srtg_handle, session_test_sdl_walk_cb, &walk_count);
+  SESSION_TEST ((walk_count >= 3), "SDL ip4 walk should find rules: %u", walk_count);
+
+  ip46_address_t show_ip = { .ip4 = args.rmt.fp_addr.ip4 };
+  session_rules_table_show_rule (vm, st->srtg_handle, TRANSPORT_PROTO_TCP, 0, 0, &show_ip, 0, 1);
+  session_rules_table_cli_dump (vm, st->srtg_handle, TRANSPORT_PROTO_TCP, FIB_PROTOCOL_IP4);
+
+  error = session_rules_table_add_del (st->srtg_handle, TRANSPORT_PROTO_TCP, &args);
+  SESSION_TEST ((error == SESSION_E_INVALID), "Add duplicate SDL tag should fail");
+
+  args.is_add = 0;
+  args.rmt.fp_len = 0;
+  args.rmt.fp_addr.ip4.as_u32 = 0;
+  error = session_rules_table_add_del (st->srtg_handle, TRANSPORT_PROTO_TCP, &args);
+  SESSION_TEST ((error == 0), "Del SDL rule by tag %v", args.tag);
+  vec_free (args.tag);
+  args.tag = 0;
   if (verbose)
     session_rules_table_cli_dump (vm, st->srtg_handle, TRANSPORT_PROTO_TCP,
 				  FIB_PROTOCOL_IP4);
@@ -2412,6 +2496,14 @@ session_test_sdl (vlib_main_t *vm, unformat_input_t *input)
 		"Lookup %s action should "
 		"be 3: %d",
 		ip6_str, action_index - 1);
+
+  walk_count = 0;
+  session_sdl_table_walk6 (st->srtg_handle, session_test_sdl_walk_cb, &walk_count);
+  SESSION_TEST ((walk_count >= 1), "SDL ip6 walk should find rules: %u", walk_count);
+
+  show_ip.ip6 = args.rmt.fp_addr.ip6;
+  session_rules_table_show_rule (vm, st->srtg_handle, TRANSPORT_PROTO_TCP, 0, 0, &show_ip, 0, 0);
+  session_rules_table_cli_dump (vm, st->srtg_handle, TRANSPORT_PROTO_TCP, FIB_PROTOCOL_IP6);
 
   /* Lookup 2001:0db8:85a3:0000:0000:8a2e:0372:1 */
   inet_pton (AF_INET6, ip6_str2, &lcl_lkup);
@@ -2480,6 +2572,206 @@ session_test_ext_cfg (vlib_main_t *vm, unformat_input_t *input)
 		"TRANSPORT_ENDPT_EXT_CFG_HTTP opaque value should be 345: %u",
 		ext_cfg->opaque);
   session_endpoint_free_ext_cfgs (&sep);
+
+  return 0;
+}
+
+static int
+session_test_app_crypto (vlib_main_t *vm, unformat_input_t *input)
+{
+  app_crypto_async_req_ticket_t ticket;
+  app_crypto_ca_trust_int_ctx_t *cti;
+  app_crypto_ca_trust_t *ca_trust;
+  app_tls_profile_t *tls_profile;
+  u64 options[APP_OPTIONS_N_OPTIONS];
+  app_worker_t *app_wrk;
+  application_t *app;
+  u32 app_index, ck0, ck1;
+  u8 cert0[] = "cert0";
+  u8 cert1[] = "cert1";
+  u8 key0[] = "key0";
+  u8 key1[] = "key1";
+  u8 *cmd;
+  int error;
+
+  clib_memset (options, 0, sizeof (options));
+  options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_IS_BUILTIN;
+  options[APP_OPTIONS_FLAGS] |= APP_OPTIONS_FLAGS_USE_GLOBAL_SCOPE;
+  options[APP_OPTIONS_FLAGS] |= APP_OPTIONS_FLAGS_USE_LOCAL_SCOPE;
+
+  vnet_app_attach_args_t attach_args = {
+    .api_client_index = ~0,
+    .options = options,
+    .namespace_id = 0,
+    .session_cb_vft = &placeholder_session_cbs,
+    .name = format (0, "session_test_app_crypto"),
+  };
+
+  error = vnet_application_attach (&attach_args);
+  SESSION_TEST ((error == 0), "app crypto test app attached: %U", format_session_error, error);
+  app_index = attach_args.app_index;
+  vec_free (attach_args.name);
+
+  app = application_get (app_index);
+  app_wrk = application_get_worker (app, 0);
+  SESSION_TEST ((app_wrk != 0), "app crypto test worker exists");
+
+  session_test_cli_input (vm, "show session states");
+  session_test_cli_input (vm, "show session protos");
+  session_test_cli_input (vm, "show session transport");
+  session_test_cli_input (vm, "show session rt-backend");
+  session_test_cli_input (vm, "show session lookup");
+  session_test_cli_input (vm, "show session lookup table 0");
+
+  vnet_app_add_cert_key_pair_args_t ck_args = {
+    .cert = cert0,
+    .key = key0,
+    .cert_len = sizeof (cert0),
+    .key_len = sizeof (key0),
+  };
+  error = vnet_app_add_cert_key_pair (&ck_args);
+  SESSION_TEST ((error == 0), "add cert/key pair 0");
+  ck0 = ck_args.index;
+  SESSION_TEST ((app_cert_key_pair_get_default () != 0), "default cert/key pair exists");
+
+  ck_args.cert = cert1;
+  ck_args.key = key1;
+  ck_args.cert_len = sizeof (cert1);
+  ck_args.key_len = sizeof (key1);
+  error = vnet_app_add_cert_key_pair (&ck_args);
+  SESSION_TEST ((error == 0), "add cert/key pair 1");
+  ck1 = ck_args.index;
+
+  session_test_cli_input (vm, "show app certificate");
+
+  error = vnet_app_del_cert_key_pair (ck1);
+  SESSION_TEST ((error == 0), "delete cert/key pair 1");
+  SESSION_TEST ((app_cert_key_pair_get_if_valid (ck1) == 0), "deleted cert/key pair is invalid");
+  error = vnet_app_del_cert_key_pair (ck1);
+  SESSION_TEST ((error == SESSION_E_INVALID), "delete invalid cert/key pair should fail");
+  if (ck0 != 0)
+    {
+      error = vnet_app_del_cert_key_pair (ck0);
+      SESSION_TEST ((error == 0), "delete non-default cert/key pair 0");
+    }
+
+  app_ca_trust_add_args_t ca_args = {
+    .ca_chain = format (0, "test-ca-chain"),
+    .crl = format (0, "old-crl"),
+  };
+  error = app_crypto_add_ca_trust (app_index, &ca_args);
+  SESSION_TEST ((error == 0), "add ca trust store");
+  ca_trust = app_crypto_get_wrk_ca_trust (app_wrk->wrk_index, ca_args.index);
+  SESSION_TEST ((ca_trust != 0), "get worker ca trust store");
+  SESSION_TEST ((app_crypto_get_int_ca_trust (ca_trust, vlib_num_workers () + 1) == 0),
+		"out-of-range ca trust internal context should be invalid");
+
+  session_test_ca_update_count = 0;
+  cti = app_crypto_alloc_int_ca_trust (ca_trust, vlib_get_thread_index ());
+  cti->update_cb = session_test_ca_update_cb;
+
+  app_ca_trust_update_crl_args_t crl_args = {
+    .ca_trust_index = ca_args.index,
+    .crl = format (0, "new-crl"),
+  };
+  error = app_crypto_update_ca_trust_crl (app_index, &crl_args);
+  SESSION_TEST ((error == 0), "update ca trust crl");
+  SESSION_TEST ((session_test_ca_update_count == 1 &&
+		 session_test_ca_update_type == APP_CA_TRUST_UPDATE_TYPE_CRL),
+		"ca trust crl update callback should run");
+
+  crl_args.crl = format (0, "invalid-app-crl");
+  error = app_crypto_update_ca_trust_crl (APP_INVALID_INDEX, &crl_args);
+  SESSION_TEST ((error == SESSION_E_INVALID), "ca trust crl update with invalid app should fail");
+  vec_free (crl_args.crl);
+
+  crl_args.ca_trust_index = ~0;
+  crl_args.crl = format (0, "invalid-index-crl");
+  error = app_crypto_update_ca_trust_crl (app_index, &crl_args);
+  SESSION_TEST ((error == SESSION_E_INVALID),
+		"ca trust crl update with invalid trust index should fail");
+  vec_free (crl_args.crl);
+
+  app_tls_profile_add_args_t profile_args = {
+    .cipher_list = format (0, "AES128-SHA"),
+    .ciphersuites = format (0, "TLS_AES_128_GCM_SHA256"),
+    .groups = format (0, "X25519"),
+    .min_version = APP_TLS_VERSION_SSL3,
+    .max_version = APP_TLS_VERSION_1_3,
+  };
+  error = app_crypto_add_tls_profile (app_index, &profile_args);
+  SESSION_TEST ((error == 0), "add tls profile");
+  tls_profile = app_crypto_get_tls_profile (app_wrk->wrk_index, profile_args.index);
+  SESSION_TEST ((tls_profile != 0 && tls_profile->profile_index == profile_args.index),
+		"get tls profile");
+  app_crypto_del_tls_profile (app_index, profile_args.index + 1);
+
+  cmd = format (0, "show app tls-profile app %u%c", app_index, 0);
+  session_test_cli_input (vm, (char *) cmd);
+  vec_free (cmd);
+
+  cmd = format (0,
+		"app crypto add tls-profile app %u min-version ssl3 "
+		"max-version 1.1%c",
+		app_index, 0);
+  session_test_cli_input (vm, (char *) cmd);
+  vec_free (cmd);
+
+  cmd = format (0, "show app tls-profile app %u%c", app_index, 0);
+  session_test_cli_input (vm, (char *) cmd);
+  vec_free (cmd);
+
+  session_test_crypto_async_count = 0;
+  session_test_crypto_async_reply_count = 0;
+  session_test_crypto_async_last_req = 0;
+  app_crypto_async_req_t async_req = {
+    .req_type = APP_CRYPTO_ASYNC_REQ_TYPE_CERT,
+    .handle = { .opaque = 0xfeedface, .thread_index = vlib_get_thread_index () },
+    .cb = session_test_crypto_async_reply_cb,
+    .app_wrk_index = app_wrk->wrk_index,
+  };
+
+  ticket = app_crypto_async_req (&async_req);
+  SESSION_TEST ((ticket.as_u64 == APP_CRYPTO_ASYNC_INVALID_TICKET.as_u64),
+		"async crypto request without callback should fail");
+
+  app->cb_fns.app_crypto_async = session_test_crypto_async_cb;
+  ticket = app_crypto_async_req (&async_req);
+  SESSION_TEST ((ticket.as_u64 != APP_CRYPTO_ASYNC_INVALID_TICKET.as_u64),
+		"async crypto request should allocate ticket");
+  SESSION_TEST ((session_test_crypto_async_count == 1 && session_test_crypto_async_last_req != 0),
+		"async crypto callback should receive request");
+
+  app_crypto_async_reply_t reply = {
+    .app_index = app_index,
+    .req_index = ticket.req_index,
+    .handle = { .thread_index = vlib_get_thread_index () },
+    .req_type = APP_CRYPTO_ASYNC_REQ_TYPE_CERT,
+  };
+  app_crypto_async_reply (&reply);
+  SESSION_TEST ((session_test_crypto_async_reply_count == 1 &&
+		 session_test_crypto_async_reply_handle.opaque == 0xfeedface),
+		"async crypto reply callback should run");
+
+  async_req.handle.opaque = 0xbaadf00d;
+  ticket = app_crypto_async_req (&async_req);
+  SESSION_TEST ((ticket.as_u64 != APP_CRYPTO_ASYNC_INVALID_TICKET.as_u64),
+		"async crypto request to cancel should allocate ticket");
+  app_crypto_async_cancel_req (ticket);
+  reply.req_index = ticket.req_index;
+  app_crypto_async_reply (&reply);
+  SESSION_TEST ((session_test_crypto_async_reply_count == 1),
+		"cancelled async crypto request should not call reply callback");
+  app_crypto_async_cancel_req (ticket);
+
+  vnet_app_detach_args_t detach_args = {
+    .app_index = app_index,
+    .api_client_index = ~0,
+  };
+  vnet_application_detach (&detach_args);
+  SESSION_TEST ((session_test_ca_update_count == 2 &&
+		 session_test_ca_update_type == APP_CA_TRUST_UPDATE_TYPE_DEL),
+		"ca trust delete callback should run on detach");
 
   return 0;
 }
@@ -2723,6 +3015,8 @@ session_test (vlib_main_t * vm,
 	res = session_test_sdl (vm, input);
       else if (unformat (input, "ext-cfg"))
 	res = session_test_ext_cfg (vm, input);
+      else if (unformat (input, "app-crypto"))
+	res = session_test_app_crypto (vm, input);
       else if (unformat (input, "reconn-while-closed"))
 	res = session_test_reconn_while_closed (vm, input);
       else if (unformat (input, "all"))
@@ -2746,6 +3040,8 @@ session_test (vlib_main_t * vm,
 	  if ((res = session_test_sdl (vm, input)))
 	    goto done;
 	  if ((res = session_test_ext_cfg (vm, input)))
+	    goto done;
+	  if ((res = session_test_app_crypto (vm, input)))
 	    goto done;
 	  if ((res = session_test_enable_disable (vm, input)))
 	    goto done;
