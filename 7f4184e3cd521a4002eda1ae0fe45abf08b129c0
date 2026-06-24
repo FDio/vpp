@@ -146,6 +146,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "edcc0e96_c020c64d",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 1437,
+      "author": {
+        "id": 3339
+      },
+      "writtenOn": "2026-06-24T17:54:13Z",
+      "side": 1,
+      "message": "Okay got it. Looking into that. thx",
+      "parentUuid": "8a28bd0a_d33b663c",
+      "revId": "7f4184e3cd521a4002eda1ae0fe45abf08b129c0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "23c86a01_40e58763",
         "filename": "src/plugins/tlsopenssl/tls_openssl.c",
         "patchSetId": 5
