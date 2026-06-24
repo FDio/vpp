@@ -128,6 +128,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "8a28bd0a_d33b663c",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 1437,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-06-24T17:49:48Z",
+      "side": 1,
+      "message": "Applications don\u0027t necessarily have access to cli when they attach via vcl. So this needs to be attach time flag.",
+      "parentUuid": "d1dea4f9_ac4a983a",
+      "revId": "7f4184e3cd521a4002eda1ae0fe45abf08b129c0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "23c86a01_40e58763",
         "filename": "src/plugins/tlsopenssl/tls_openssl.c",
         "patchSetId": 5
