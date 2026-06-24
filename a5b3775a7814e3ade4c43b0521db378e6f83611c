@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "8d4b665d_5ce3d9e9",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3343
+      },
+      "writtenOn": "2026-06-24T15:08:16Z",
+      "side": 1,
+      "message": "The ITR setting would give around 15% performance gain in L3 workload.",
+      "revId": "a5b3775a7814e3ade4c43b0521db378e6f83611c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
