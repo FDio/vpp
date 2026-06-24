@@ -1178,7 +1178,7 @@ hcpc_read_http_connect_resp (session_t *s)
   ASSERT (msg.type == HTTP_MSG_REPLY);
   /* drop everything up to body */
   svm_fifo_dequeue_drop (s->rx_fifo, msg.data.body_offset);
-  HCPC_DBG ("response: %U %U", format_http_version,
+  HCPC_DBG ("session [%u] response: %U %U", s->opaque, format_http_version,
 	    http_session_get_version (s), format_http_status_code, msg.code);
   if (http_status_code_str[msg.code][0] != '2')
     {
@@ -1255,6 +1255,7 @@ hcpc_http_session_transport_closed_callback (session_t *s)
   ps = hcpc_session_get (s->opaque);
   ASSERT (ps);
   ps->state = HCPC_SESSION_CLOSED;
+  ps->http_disconnected = 1;
   /* stream reset during tunnel shutdown */
   if (!ps->intercept_diconnected && (ps->flags & HCPC_SESSION_F_INTERCEPT_SHUTDOWN))
     {
@@ -1262,6 +1263,7 @@ hcpc_http_session_transport_closed_callback (session_t *s)
       session_send_rpc_evt_to_thread_force (
 	session_thread_from_handle (ps->intercept.session_handle), hcpc_reset_session_rpc,
 	uword_to_pointer (ps->intercept.session_handle, void *));
+      ps->flags &= ~HCPC_SESSION_F_INTERCEPT_SHUTDOWN;
       ps->intercept_diconnected = 1;
     }
   clib_spinlock_unlock_if_init (&hcpcm->sessions_lock);
@@ -1584,6 +1586,7 @@ hcpc_intercept_accept_callback (session_t *s)
   hcpc_session_t *ps;
   hcpc_main_t *hcpcm = &hcpc_main;
   tcp_connection_t *tcp_conn;
+  u32 ps_index;
 
   if (hcpcm->http_connection_handle == SESSION_INVALID_HANDLE)
     return -1;
@@ -1607,13 +1610,14 @@ hcpc_intercept_accept_callback (session_t *s)
       tcp_conn->cwnd = 0;
     }
 
+  ps_index = ps->session_index;
   clib_spinlock_unlock_if_init (&hcpcm->sessions_lock);
 
-  s->opaque = ps->session_index;
+  s->opaque = ps_index;
   s->session_state = SESSION_STATE_READY;
 
-  HCPC_DBG ("going to open stream for new session [%u]", ps->session_index);
-  hcpc_connect_http_stream (ps->session_index);
+  HCPC_DBG ("going to open stream for new session [%u]", ps_index);
+  hcpc_connect_http_stream (ps_index);
 
   return 0;
 }
@@ -1643,6 +1647,7 @@ hcpc_intercept_session_transport_closed_callback (session_t *s)
   ps = hcpc_session_get (s->opaque);
   ASSERT (ps);
   ps->state = HCPC_SESSION_CLOSED;
+  ps->intercept_diconnected = 1;
   /* reset or timeout during tcp session shutdown */
   if (!ps->http_disconnected && (ps->flags & HCPC_SESSION_F_HTTP_SHUTDOWN))
     {
@@ -1651,6 +1656,7 @@ hcpc_intercept_session_transport_closed_callback (session_t *s)
       session_send_rpc_evt_to_thread_force (session_thread_from_handle (ps->http.session_handle),
 					    hcpc_reset_session_rpc,
 					    uword_to_pointer (ps->http.session_handle, void *));
+      ps->flags &= ~HCPC_SESSION_F_HTTP_SHUTDOWN;
       ps->http_disconnected = 1;
     }
   clib_spinlock_unlock_if_init (&hcpcm->sessions_lock);
