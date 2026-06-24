@@ -43,6 +43,8 @@ class serverSocketThread(threading.Thread):
         self.sock = None
         self.rx_pkts = []
         self.stop_running = False
+        self.ready = threading.Event()
+        self.error = None
 
     def rx_packets(self):
         # Wait for some packets on socket
@@ -66,15 +68,21 @@ class serverSocketThread(threading.Thread):
                     raise
 
     def run(self):
-        self.sock = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
         try:
-            os.unlink(self.sockName)
-        except:
-            pass
-        self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, 65536)
-        self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 65536)
-        fcntl.fcntl(self.sock, fcntl.F_SETFL, os.O_NONBLOCK)
-        self.sock.bind(self.sockName)
+            self.sock = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
+            try:
+                os.unlink(self.sockName)
+            except:
+                pass
+            self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, 65536)
+            self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 65536)
+            fcntl.fcntl(self.sock, fcntl.F_SETFL, os.O_NONBLOCK)
+            self.sock.bind(self.sockName)
+            self.ready.set()
+        except Exception as e:
+            self.error = e
+            self.ready.set()
+            raise
 
         self.rx_packets()
 
@@ -129,6 +137,10 @@ class TestPuntSocket(VppTestCase):
         thread = serverSocketThread(id, sock_name)
         self.sock_servers.append(thread)
         thread.start()
+        if not thread.ready.wait(timeout=5):
+            raise TimeoutError("Timed out waiting for punt socket thread")
+        if thread.error:
+            raise thread.error
         return thread
 
     def socket_client_close(self):
