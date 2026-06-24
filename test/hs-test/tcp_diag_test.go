@@ -12,16 +12,24 @@ var tcpEstablishedSessionRE = regexp.MustCompile(`(?m)^\[(\d+):(\d+)\]\[T\]\s+\S
 
 func init() {
 	RegisterVethTests(TcpConfigDiagTest, TcpListenerDiagTest, TcpSessionIndexDiagTest,
-		TcpNoListenerResetTraceTest, TcpEstablishedTraceTest)
+		TcpSrcAddressDiagTest, TcpNoListenerResetTraceTest, TcpEstablishedTraceTest,
+		TcpOutputTraceDiagTest)
 	RegisterVethStartupTests(TcpCubicStartupConfigDiagTest)
 }
 
-func waitForTcpDiagOutput(vpp *VppInstance, command, pattern string) string {
+func waitForTcpDiagOutput(vpp *VppInstance, command string, patterns ...string) string {
 	var o string
 
-	for range 10 {
+	for range 20 {
 		o = vpp.Vppctl(command)
-		if strings.Contains(o, pattern) {
+		matched := true
+		for _, pattern := range patterns {
+			if !strings.Contains(o, pattern) {
+				matched = false
+				break
+			}
+		}
+		if matched {
 			return o
 		}
 		time.Sleep(200 * time.Millisecond)
@@ -120,6 +128,39 @@ func TcpSessionIndexDiagTest(s *VethsSuite) {
 	AssertNotContains(o, "failed")
 }
 
+func TcpSrcAddressDiagTest(s *VethsSuite) {
+	serverVpp := s.Containers.ServerVpp.VppInstance
+	clientVpp := s.Containers.ClientVpp.VppInstance
+	serverAddress := s.Interfaces.Server.Ip4AddressString()
+
+	sourceAddressWithPrefix, err := s.Ip4AddrAllocator.NewIp4InterfaceAddress(
+		s.Interfaces.Client.NetworkNumber)
+	AssertNil(err)
+	sourceAddress := strings.Split(sourceAddressWithPrefix, "/")[0]
+
+	o := clientVpp.Vppctl("tcp src-address %s", sourceAddress)
+	Log(o)
+	AssertNotContains(o, "error")
+
+	serverVpp.Vppctl("vperf server fifo-size 64k uri tcp://%s/%s", serverAddress, s.Ports.Port1)
+
+	done := make(chan string, 1)
+	go func() {
+		done <- clientVpp.Vppctl("vperf client fifo-size 64k run-time 3 verbose uri tcp://%s/%s",
+			serverAddress, s.Ports.Port1)
+	}()
+
+	sessions := waitForTcpDiagOutput(serverVpp, "show session verbose 2 proto tcp",
+		sourceAddress, "ESTABLISHED")
+	Log(sessions)
+	AssertContains(sessions, "ESTABLISHED")
+	AssertContains(sessions, sourceAddress)
+
+	o = <-done
+	Log(o)
+	AssertNotContains(o, "failed")
+}
+
 func TcpNoListenerResetTraceTest(s *VethsSuite) {
 	serverVpp := s.Containers.ServerVpp.VppInstance
 	clientVpp := s.Containers.ClientVpp.VppInstance
@@ -135,6 +176,7 @@ func TcpNoListenerResetTraceTest(s *VethsSuite) {
 	trace := serverVpp.Vppctl("show trace")
 	Log(trace)
 	AssertContains(trace, "tcp4-input")
+	AssertContains(trace, "tcp4-reset")
 	AssertContains(trace, "RST")
 
 	serverErrors := serverVpp.Vppctl("show error")
@@ -173,6 +215,27 @@ func TcpEstablishedTraceTest(s *VethsSuite) {
 	AssertContains(serverErrors, "Packets pushed into rx fifo")
 	AssertContains(clientErrors, "tcp4-output")
 	AssertContains(clientErrors, "Packets sent")
+}
+
+func TcpOutputTraceDiagTest(s *VethsSuite) {
+	serverVpp := s.Containers.ServerVpp.VppInstance
+	clientVpp := s.Containers.ClientVpp.VppInstance
+	serverAddress := s.Interfaces.Server.Ip4AddressString()
+
+	clientVpp.Vppctl("trace add session-queue 20")
+
+	serverVpp.Vppctl("vperf server fifo-size 64k uri tcp://%s/%s", serverAddress, s.Ports.Port1)
+	o := clientVpp.Vppctl("vperf client fifo-size 64k bytes 4k echo-bytes test-bytes "+
+		"verbose test-timeout 5 uri tcp://%s/%s", serverAddress, s.Ports.Port1)
+	Log(o)
+	AssertNotContains(o, "failed")
+	AssertContains(o, "4096 bytes")
+
+	clientTrace := clientVpp.Vppctl("show trace")
+	Log(clientTrace)
+	AssertContains(clientTrace, "tcp4-output")
+	AssertContains(clientTrace, "state ESTABLISHED")
+	AssertContains(clientTrace, "TCP:")
 }
 
 func TcpCubicStartupConfigDiagTest(s *VethsSuite) {
