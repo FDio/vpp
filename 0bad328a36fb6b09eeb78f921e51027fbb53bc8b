@@ -88,6 +88,24 @@
       "parentUuid": "9706faf6_08ad673d",
       "revId": "0bad328a36fb6b09eeb78f921e51027fbb53bc8b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "cf007ef4_8c8ba83e",
+        "filename": "src/vnet/session/segment_manager.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 134,
+      "author": {
+        "id": 3240
+      },
+      "writtenOn": "2026-06-24T09:09:19Z",
+      "side": 1,
+      "message": "I\u0027ve removed extra declaration from header, could you please review my changes?",
+      "parentUuid": "ecf2771c_fe4a6509",
+      "revId": "0bad328a36fb6b09eeb78f921e51027fbb53bc8b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
