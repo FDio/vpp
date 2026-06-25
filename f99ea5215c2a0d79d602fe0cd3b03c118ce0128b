@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a77a574a_bd5629d4",
+        "filename": "test/hs-test/hs_test.sh",
+        "patchSetId": 1
+      },
+      "lineNbr": 141,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-06-25T15:55:15Z",
+      "side": 1,
+      "message": "should this be cpus_per_numa?",
+      "revId": "f99ea5215c2a0d79d602fe0cd3b03c118ce0128b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
