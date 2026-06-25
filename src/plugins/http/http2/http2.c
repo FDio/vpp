@@ -121,7 +121,7 @@ http2_conn_destroy (http_ctx_t *hc)
 {
   http_worker_t *wrk = http_worker_get (hc->c_thread_index);
   u32 cnt;
-  http_ctrl_msg_t *ctrl_he;
+  http_ctrl_msg_t *ctrl_he, *ctrl_e;
 
   ASSERT (hc->hc_parent_req_index == SESSION_INVALID_INDEX);
   ASSERT (!clib_llist_elt_is_linked (hc, sched_list));
@@ -129,7 +129,10 @@ http2_conn_destroy (http_ctx_t *hc)
   http_ctx_free_w_index (hc->new_tx_streams, hc->c_thread_index);
   http_ctx_free_w_index (hc->old_tx_streams, hc->c_thread_index);
   ctrl_he = clib_llist_elt (wrk->ctrl_msg_pool, hc->pending_ctrl_frames);
-  ASSERT (clib_llist_is_empty (wrk->ctrl_msg_pool, sched_list, ctrl_he));
+  clib_llist_foreach_safe (wrk->ctrl_msg_pool, sched_list, ctrl_he, ctrl_e, ({
+			     clib_llist_remove (wrk->ctrl_msg_pool, sched_list, ctrl_e);
+			     clib_llist_put (wrk->ctrl_msg_pool, ctrl_e);
+			   }));
   clib_llist_put (wrk->ctrl_msg_pool, ctrl_he);
   hash_free (hc->req_by_stream_id);
   if (hc->flags & HTTP_CONN_F_HAS_REQUEST)
