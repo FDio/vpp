@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "13cf273a_de024dd7",
+        "filename": "src/plugins/http_static/http_static.api",
+        "patchSetId": 3
+      },
+      "lineNbr": 85,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-06-25T13:55:50Z",
+      "side": 1,
+      "message": "you don\u0027t need _v5 suffix here, this is new api",
+      "range": {
+        "startLine": 85,
+        "startChar": 17,
+        "endLine": 85,
+        "endChar": 40
+      },
+      "revId": "eac96997187edac6ce48d4a7f6820cd4d4400ab1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
