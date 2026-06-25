@@ -84,7 +84,7 @@ var _ = Describe("HttpStaticSrvSuiteSolo", Ordered, ContinueOnFailure, Serial, L
 	}
 })
 
-var _ = Describe("HttpStaticSrvMWSuite", Ordered, ContinueOnFailure, Serial, Label("HTTP", "StaticServer", "MW"), func() {
+var _ = DescribeMWSuite("HttpStaticSrvMWSuite", []string{"HTTP", "StaticServer", "MW"}, func() {
 	var s HttpStaticSrvSuite
 	BeforeAll(func() {
 		s.Http1Suite.SetupSuite()

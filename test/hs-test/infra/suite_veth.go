@@ -300,7 +300,7 @@ var _ = Describe("VethsSuiteSolo", Ordered, ContinueOnFailure, Serial, Label("Ve
 	}
 })
 
-var _ = Describe("VethsSuiteMW", Ordered, ContinueOnFailure, Serial, Label("Veth", "MW"), func() {
+var _ = DescribeMWSuite("VethsSuiteMW", MWWideLabels("Veth", "MW"), func() {
 	var s VethsSuite
 	BeforeAll(func() {
 		s.SetupSuite()

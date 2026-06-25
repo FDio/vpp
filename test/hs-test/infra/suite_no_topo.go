@@ -281,7 +281,7 @@ var _ = Describe("NoTopoSuiteSolo", Ordered, ContinueOnFailure, Serial, Label("G
 	}
 })
 
-var _ = Describe("NoTopoMWSuite", Ordered, ContinueOnFailure, Serial, Label("Generic", "MW"), func() {
+var _ = DescribeMWSuite("NoTopoMWSuite", []string{"Generic", "MW"}, func() {
 	var s NoTopoSuite
 	BeforeAll(func() {
 		s.SetupSuite()
@@ -301,11 +301,21 @@ var _ = Describe("NoTopoMWSuite", Ordered, ContinueOnFailure, Serial, Label("Gen
 			test := test
 			pc := reflect.ValueOf(test).Pointer()
 			funcValue := runtime.FuncForPC(pc)
-			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
-			It(testName, func(ctx SpecContext) {
+			funcName := strings.Split(funcValue.Name(), ".")[2]
+			testName := filename + "/" + funcName
+			decorators := []any{SpecTimeout(TestTimeout)}
+			switch funcName {
+			case "BuiltinEchoVclClientCutThruMWTest",
+				"LdpIperfTcpCutThruMWTest", "LdpIperfUdpCutThruMWTest":
+				if MWParallelEnabled() {
+					decorators = append(decorators, Label(MWWideLabel))
+				}
+			}
+			decorators = append(decorators, func(ctx SpecContext) {
 				Log("[* TEST BEGIN]: " + testName)
 				test(&s)
-			}, SpecTimeout(TestTimeout))
+			})
+			It(testName, decorators...)
 		}
 	}
 })

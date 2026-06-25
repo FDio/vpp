@@ -209,7 +209,7 @@ var _ = Describe("Http2SoloSuite", Ordered, ContinueOnFailure, Serial, Label("HT
 	}
 })
 
-var _ = Describe("Http2MWSuite", Ordered, ContinueOnFailure, Serial, Label("HTTP", "HTTP2", "MW"), func() {
+var _ = DescribeMWSuite("Http2MWSuite", []string{"HTTP", "HTTP2", "MW"}, func() {
 	var s Http2Suite
 	BeforeAll(func() {
 		s.SetupSuite()

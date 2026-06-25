@@ -87,7 +87,7 @@ var _ = Describe("QuicSuiteSolo", Ordered, ContinueOnFailure, Serial, Label("Vet
 	}
 })
 
-var _ = Describe("QuicSuiteMW", Ordered, ContinueOnFailure, Serial, Label("Veth", "Quic", "MW"), func() {
+var _ = DescribeMWSuite("QuicSuiteMW", MWWideLabels("Veth", "Quic", "MW"), func() {
 	var s QuicSuite
 	BeforeAll(func() {
 		s.SetupSuite()

@@ -20,6 +20,7 @@ type CpuContext struct {
 
 type CpuAllocatorT struct {
 	cpus    []int
+	numa    [][]int
 	numa0   []int
 	numa1   []int
 	lastCpu int
@@ -27,6 +28,51 @@ type CpuAllocatorT struct {
 }
 
 var cpuAllocator *CpuAllocatorT = nil
+
+func parseLinuxList(list string) ([]int, error) {
+	var values []int
+	for entry := range strings.SplitSeq(strings.TrimSpace(list), ",") {
+		entry = strings.TrimSpace(entry)
+		if entry == "" {
+			return nil, fmt.Errorf("invalid empty entry in %q", list)
+		}
+
+		firstString, lastString, isRange := strings.Cut(entry, "-")
+		first, err := strconv.Atoi(firstString)
+		if err != nil || first < 0 {
+			return nil, fmt.Errorf("invalid list entry %q", entry)
+		}
+
+		last := first
+		if isRange {
+			last, err = strconv.Atoi(lastString)
+			if err != nil || last < first {
+				return nil, fmt.Errorf("invalid list range %q", entry)
+			}
+		}
+
+		for value := first; value <= last; value++ {
+			values = append(values, value)
+		}
+	}
+
+	if len(values) == 0 {
+		return nil, fmt.Errorf("empty list")
+	}
+	return values, nil
+}
+
+func readLinuxList(path string) ([]int, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	values, err := parseLinuxList(string(data))
+	if err != nil {
+		return nil, fmt.Errorf("parse %s: %w", path, err)
+	}
+	return values, nil
+}
 
 /*
 On a 128 thread, 2 numa system, CPUs will be allocated like this (HT=false):
@@ -43,6 +89,33 @@ func (c *CpuAllocatorT) Allocate(nCpus int, offset int) (*CpuContext, error) {
 
 	minCpu = offset
 	maxCpu = nCpus - 1 + offset
+
+	if *NumaPerProcess {
+		processIndex, err := strconv.Atoi(c.suite.ProcessIndex)
+		if err != nil || processIndex < 1 {
+			return nil, fmt.Errorf("invalid Ginkgo process index %q", c.suite.ProcessIndex)
+		}
+
+		workerCpus, numaIndex, workerIndex, err := c.numaWorkerCpus(processIndex)
+		if err != nil {
+			return nil, err
+		}
+
+		if len(workerCpus)-1 < maxCpu {
+			msg := fmt.Sprintf("could not allocate %d CPUs on numa #%d worker #%d; available count: %d; attempted to allocate cores with index %d-%d; max index: %d; available cores: %v",
+				nCpus, numaIndex, workerIndex, len(workerCpus), minCpu, maxCpu, len(workerCpus)-1, workerCpus)
+			if c.suite.SkipIfNotEnoughCpus {
+				c.suite.Skip("skipping: " + msg)
+			}
+			return nil, fmt.Errorf("%s", msg)
+		}
+
+		Log("Allocating CPUs from numa #%d worker #%d for Ginkgo process %d", numaIndex, workerIndex, processIndex)
+		cpuCtx.cpus = workerCpus[minCpu : minCpu+nCpus]
+		c.lastCpu = minCpu + nCpus
+		cpuCtx.cpuAllocator = c
+		return &cpuCtx, nil
+	}
 
 	if len(c.cpus)-1 < maxCpu {
 		msg := fmt.Sprintf("could not allocate %d CPUs; available count: %d; attempted to allocate cores with index %d-%d; max index: %d;\n"+
@@ -81,6 +154,30 @@ func (c *CpuAllocatorT) Allocate(nCpus int, offset int) (*CpuContext, error) {
 	return &cpuCtx, nil
 }
 
+func (c *CpuAllocatorT) numaWorkerCpus(processIndex int) ([]int, int, int, error) {
+	workersPerNode := *NumaWorkersPerNode
+	if workersPerNode < 1 {
+		return nil, 0, 0, fmt.Errorf("numa_workers_per_node must be at least 1, got %d", workersPerNode)
+	}
+
+	numaIndex := (processIndex - 1) / workersPerNode
+	workerIndex := (processIndex - 1) % workersPerNode
+	if len(c.numa) <= numaIndex {
+		return nil, 0, 0, fmt.Errorf("could not allocate CPUs for Ginkgo process %d; only %d NUMA nodes with %d worker(s) each available",
+			processIndex, len(c.numa), workersPerNode)
+	}
+
+	nodeCpus := c.numa[numaIndex]
+	workerStart := workerIndex * len(nodeCpus) / workersPerNode
+	workerEnd := (workerIndex + 1) * len(nodeCpus) / workersPerNode
+	if workerStart >= workerEnd {
+		return nil, 0, 0, fmt.Errorf("could not allocate CPUs for Ginkgo process %d; numa #%d worker #%d is empty; available cores: %v",
+			processIndex, numaIndex, workerIndex, nodeCpus)
+	}
+
+	return nodeCpus[workerStart:workerEnd], numaIndex, workerIndex, nil
+}
+
 // Helper to get physical cores only
 func getPhysicalCores() (map[int]bool, error) {
 	cmd := exec.Command("lscpu", "-p=CORE,CPU")
@@ -115,7 +212,60 @@ func getPhysicalCores() (map[int]bool, error) {
 	return physicalCpuSet, nil
 }
 
+func (c *CpuAllocatorT) readNumaWorkerCpus() error {
+	var physicalCores map[int]bool
+	var err error
+
+	if !*HyperThreading {
+		physicalCores, err = getPhysicalCores()
+		if err != nil {
+			return fmt.Errorf("failed to get physical cores: %v", err)
+		}
+	}
+
+	numaNodes, err := readLinuxList("/sys/devices/system/node/online")
+	if err != nil {
+		return err
+	}
+
+	for _, nodeID := range numaNodes {
+		nodeCpus, err := readLinuxList(fmt.Sprintf("/sys/devices/system/node/node%d/cpulist", nodeID))
+		if err != nil {
+			return err
+		}
+
+		filteredCpus := make([]int, 0, len(nodeCpus))
+		for _, cpu := range nodeCpus {
+			if !*HyperThreading {
+				if _, isPhysical := physicalCores[cpu]; !isPhysical {
+					continue
+				}
+			}
+			filteredCpus = append(filteredCpus, cpu)
+		}
+
+		if len(filteredCpus) > 0 && filteredCpus[0] == 0 && !*UseCpu0 {
+			filteredCpus = filteredCpus[1:]
+		}
+
+		if nodeID == *CpuOffsetNumaNode && *CpuOffset > 0 {
+			if len(filteredCpus) <= *CpuOffset {
+				filteredCpus = nil
+			} else {
+				filteredCpus = filteredCpus[*CpuOffset:]
+			}
+		}
+
+		c.numa = append(c.numa, filteredCpus)
+	}
+	return nil
+}
+
 func (c *CpuAllocatorT) readCpus() error {
+	if *NumaPerProcess {
+		return c.readNumaWorkerCpus()
+	}
+
 	var first, second int
 	var physicalCores map[int]bool
 	var err error

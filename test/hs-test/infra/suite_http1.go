@@ -200,7 +200,7 @@ var _ = Describe("Http1SuiteSolo", Ordered, ContinueOnFailure, Serial, Label("HT
 	}
 })
 
-var _ = Describe("Http1MWSuite", Ordered, ContinueOnFailure, Serial, Label("HTTP", "HTTP1", "MW"), func() {
+var _ = DescribeMWSuite("Http1MWSuite", MWWideLabels("HTTP", "HTTP1", "MW"), func() {
 	var s Http1Suite
 	BeforeAll(func() {
 		s.SetupSuite()
