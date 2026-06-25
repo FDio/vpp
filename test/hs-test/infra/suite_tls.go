@@ -87,7 +87,7 @@ var _ = Describe("TlsSuiteSolo", Ordered, ContinueOnFailure, Serial, Label("Veth
 	}
 })
 
-var _ = Describe("TlsSuiteMW", Ordered, ContinueOnFailure, Serial, Label("Veth", "Tls", "MW"), func() {
+var _ = DescribeMWSuite("TlsSuiteMW", []string{"Veth", "Tls", "MW"}, func() {
 	var s TlsSuite
 	BeforeAll(func() {
 		s.SetupSuite()

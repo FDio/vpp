@@ -44,9 +44,12 @@ func TestHst(t *testing.T) {
 
 	RunningInCi = os.Getenv("GITHUB_REPO_URL") != ""
 
-	output, err := os.ReadFile("/sys/devices/system/node/online")
-	if err == nil && strings.Contains(string(output), "-") {
-		NumaAwareCpuAlloc = true
+	NumaAwareCpuAlloc = *NumaPerProcess
+	if !NumaAwareCpuAlloc {
+		output, err := os.ReadFile("/sys/devices/system/node/online")
+		if err == nil && strings.Contains(string(output), "-") {
+			NumaAwareCpuAlloc = true
+		}
 	}
 
 	Ppid = fmt.Sprint(*HostPpid)
