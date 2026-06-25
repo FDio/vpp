@@ -918,6 +918,8 @@ static clib_error_t *
 tcp_set_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
 {
   u8 csum_offload_set = 0;
+  u8 mtu_set = 0;
+  u32 mtu, min_mtu = 1280;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -933,20 +935,30 @@ tcp_set_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
 
 	  csum_offload_set = 1;
 	}
+      else if (unformat (input, "mtu %u", &mtu))
+	{
+	  if (mtu < min_mtu)
+	    return clib_error_return (0, "mtu must be at least %u", min_mtu);
+	  tcp_cfg.default_mtu = mtu;
+	  mtu_set = 1;
+	}
       else
 	return clib_error_return (0, "unknown input `%U'", format_unformat_error, input);
     }
 
-  if (!csum_offload_set)
-    return clib_error_return (0, "expected csum-offload");
+  if (!csum_offload_set && !mtu_set)
+    return clib_error_return (0, "expected csum-offload or mtu");
 
-  vlib_cli_output (vm, "TCP checksum offload: %s", tcp_cfg.csum_offload ? "enabled" : "disabled");
+  if (csum_offload_set)
+    vlib_cli_output (vm, "TCP checksum offload: %s", tcp_cfg.csum_offload ? "enabled" : "disabled");
+  if (mtu_set)
+    vlib_cli_output (vm, "TCP default mtu: %u", tcp_cfg.default_mtu);
   return 0;
 }
 
 VLIB_CLI_COMMAND (tcp_set_command, static) = {
   .path = "set tcp",
-  .short_help = "set tcp csum-offload [enable|disable]",
+  .short_help = "set tcp [csum-offload [enable|disable]] [mtu <mtu>]",
   .function = tcp_set_fn,
 };
 
