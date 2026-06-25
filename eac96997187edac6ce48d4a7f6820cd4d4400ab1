@@ -22,6 +22,23 @@
       },
       "revId": "eac96997187edac6ce48d4a7f6820cd4d4400ab1",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5cb60058_2a4f68d0",
+        "filename": "src/plugins/http_static/static_server.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1116,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-06-25T14:31:49Z",
+      "side": 1,
+      "message": "Let\u0027s add a cli for this as well",
+      "revId": "eac96997187edac6ce48d4a7f6820cd4d4400ab1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
