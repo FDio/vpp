@@ -1,0 +1,140 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b03cfa3a_7529a355",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-06-25T22:15:01Z",
+      "side": 1,
+      "message": "In my testbed this drops CPS from 156k/234k to 150k/227k cold/warmed-up setup. So we may need to look for performance improvements",
+      "revId": "58269eaca4ecbb7ec5c727861fa01519964320a6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2e97560b_27d1f1ed",
+        "filename": "src/vnet/tcp/tcp_fastopen.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 21,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-06-25T22:15:01Z",
+      "side": 1,
+      "message": "clib_crc32c?",
+      "revId": "58269eaca4ecbb7ec5c727861fa01519964320a6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3833ef51_48c613ff",
+        "filename": "src/vnet/tcp/tcp_fastopen.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 85,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-06-25T22:15:01Z",
+      "side": 1,
+      "message": "rwlock but only maybe?",
+      "revId": "58269eaca4ecbb7ec5c727861fa01519964320a6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "172da10a_2a2453cd",
+        "filename": "src/vnet/tcp/tcp_fastopen.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 155,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-06-25T22:15:01Z",
+      "side": 1,
+      "message": "transport_time_now?",
+      "revId": "58269eaca4ecbb7ec5c727861fa01519964320a6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "912230c6_c5737e72",
+        "filename": "src/vnet/tcp/tcp_fastopen.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 290,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-06-25T22:15:01Z",
+      "side": 1,
+      "message": "just pass in the vm :)",
+      "revId": "58269eaca4ecbb7ec5c727861fa01519964320a6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "31bcfdbd_57975dab",
+        "filename": "src/vnet/tcp/tcp_fastopen.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 294,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-06-25T22:15:01Z",
+      "side": 1,
+      "message": "All these loops might be pretty expensive. Might be worth using some other data structure like a linked list of structs with the timestamp of the first to be freed",
+      "revId": "58269eaca4ecbb7ec5c727861fa01519964320a6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9eb4753e_032b9d96",
+        "filename": "src/vnet/tcp/tcp_fastopen.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 368,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-06-25T22:15:01Z",
+      "side": 1,
+      "message": "can\u0027t these be just atomic inc/dec?",
+      "revId": "58269eaca4ecbb7ec5c727861fa01519964320a6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c36a25ad_f4de4414",
+        "filename": "src/vnet/tcp/tcp_packet.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 471,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-06-25T22:15:01Z",
+      "side": 1,
+      "message": "can we drop the cookie from the params?",
+      "revId": "58269eaca4ecbb7ec5c727861fa01519964320a6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
