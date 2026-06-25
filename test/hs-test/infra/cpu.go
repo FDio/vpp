@@ -20,6 +20,7 @@ type CpuContext struct {
 
 type CpuAllocatorT struct {
 	cpus    []int
+	numa    [][]int
 	numa0   []int
 	numa1   []int
 	lastCpu int
@@ -43,6 +44,33 @@ func (c *CpuAllocatorT) Allocate(nCpus int, offset int) (*CpuContext, error) {
 
 	minCpu = offset
 	maxCpu = nCpus - 1 + offset
+
+	if NumaAwareCpuAlloc && *NumaPerProcess {
+		processIndex, err := strconv.Atoi(c.suite.ProcessIndex)
+		if err != nil || processIndex < 1 {
+			return nil, fmt.Errorf("invalid Ginkgo process index %q", c.suite.ProcessIndex)
+		}
+
+		slotCpus, numaIndex, slotIndex, err := c.numaSlotCpus(processIndex)
+		if err != nil {
+			return nil, err
+		}
+
+		if len(slotCpus)-1 < maxCpu {
+			msg := fmt.Sprintf("could not allocate %d CPUs on numa #%d slot #%d; available count: %d; attempted to allocate cores with index %d-%d; max index: %d; available cores: %v",
+				nCpus, numaIndex, slotIndex, len(slotCpus), minCpu, maxCpu, len(slotCpus)-1, slotCpus)
+			if c.suite.SkipIfNotEnoughCpus {
+				c.suite.Skip("skipping: " + msg)
+			}
+			return nil, fmt.Errorf("%s", msg)
+		}
+
+		Log("Allocating CPUs from numa #%d slot #%d for Ginkgo process %d", numaIndex, slotIndex, processIndex)
+		cpuCtx.cpus = slotCpus[minCpu : minCpu+nCpus]
+		c.lastCpu = minCpu + nCpus
+		cpuCtx.cpuAllocator = c
+		return &cpuCtx, nil
+	}
 
 	if len(c.cpus)-1 < maxCpu {
 		msg := fmt.Sprintf("could not allocate %d CPUs; available count: %d; attempted to allocate cores with index %d-%d; max index: %d;\n"+
@@ -79,6 +107,30 @@ func (c *CpuAllocatorT) Allocate(nCpus int, offset int) (*CpuContext, error) {
 	c.lastCpu = minCpu + nCpus
 	cpuCtx.cpuAllocator = c
 	return &cpuCtx, nil
+}
+
+func (c *CpuAllocatorT) numaSlotCpus(processIndex int) ([]int, int, int, error) {
+	slotsPerNode := *NumaSlotsPerNode
+	if slotsPerNode < 1 {
+		return nil, 0, 0, fmt.Errorf("numa_slots_per_node must be at least 1, got %d", slotsPerNode)
+	}
+
+	numaIndex := (processIndex - 1) / slotsPerNode
+	slotIndex := (processIndex - 1) % slotsPerNode
+	if len(c.numa) <= numaIndex {
+		return nil, 0, 0, fmt.Errorf("could not allocate CPUs for Ginkgo process %d; only %d NUMA nodes with %d slot(s) each available",
+			processIndex, len(c.numa), slotsPerNode)
+	}
+
+	nodeCpus := c.numa[numaIndex]
+	slotStart := slotIndex * len(nodeCpus) / slotsPerNode
+	slotEnd := (slotIndex + 1) * len(nodeCpus) / slotsPerNode
+	if slotStart >= slotEnd {
+		return nil, 0, 0, fmt.Errorf("could not allocate CPUs for Ginkgo process %d; numa #%d slot #%d is empty; available cores: %v",
+			processIndex, numaIndex, slotIndex, nodeCpus)
+	}
+
+	return nodeCpus[slotStart:slotEnd], numaIndex, slotIndex, nil
 }
 
 // Helper to get physical cores only
@@ -202,6 +254,7 @@ func (c *CpuAllocatorT) readCpus() error {
 			} else {
 				c.numa1 = append(c.numa1, tmpCpus...)
 			}
+			c.numa = append(c.numa, append([]int(nil), tmpCpus...))
 			tmpCpus = tmpCpus[:0]
 		}
 	} else {

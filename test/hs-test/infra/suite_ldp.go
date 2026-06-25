@@ -247,7 +247,7 @@ var _ = Describe("LdpSuiteSolo", Ordered, ContinueOnFailure, Serial, Label("LDP"
 	}
 })
 
-var _ = Describe("LdpMWSuite", Ordered, ContinueOnFailure, Serial, Label("LDP", "VCL", "MW"), func() {
+var _ = DescribeMWSuite("LdpMWSuite", []string{"LDP", "VCL", "MW"}, func() {
 	var s LdpSuite
 	BeforeAll(func() {
 		s.SetupSuite()
@@ -269,7 +269,7 @@ var _ = Describe("LdpMWSuite", Ordered, ContinueOnFailure, Serial, Label("LDP", 
 			pc := reflect.ValueOf(test).Pointer()
 			funcValue := runtime.FuncForPC(pc)
 			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
-			It(testName, Label("SOLO", "VPP Multi-Worker"), func(ctx SpecContext) {
+			It(testName, Label("SOLO", "VPP Multi-Worker", MWWideLabel), func(ctx SpecContext) {
 				Log("[* TEST BEGIN]: " + testName)
 				test(&s)
 			}, SpecTimeout(TestTimeout))

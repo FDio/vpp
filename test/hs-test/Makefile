@@ -89,6 +89,22 @@ ifeq ($(HT),)
 HT=false
 endif
 
+ifeq ($(MW_PARALLEL),)
+MW_PARALLEL=false
+endif
+
+ifeq ($(MW_PARALLEL),true)
+ifeq ($(MW_SLOTS_PER_NUMA),)
+MW_SLOTS_PER_NUMA=auto
+endif
+MW_SLOTS_PER_NUMA_ARG=--mw_slots_per_numa=$(MW_SLOTS_PER_NUMA)
+else
+ifneq ($(MW_SLOTS_PER_NUMA),)
+$(error MW_SLOTS_PER_NUMA requires MW_PARALLEL=true)
+endif
+MW_SLOTS_PER_NUMA_ARG=
+endif
+
 # it's better to omit these if not set
 SEED_ARG := $(if $(SEED),--seed=$(SEED))
 LABEL_ARG := $(if $(LABEL),--label="$(LABEL)")
@@ -108,7 +124,8 @@ DOCKER_COMMON_ARGS:=$(DOCKER_TTY) --rm $(DOCKER_CAPABILITIES) $(DOCKER_DEVICES) 
 		--debug=$(DEBUG) --cpus=$(CPUS) --vppsrc=$(VPPSRC) --parallel=$(PARALLEL) \
 		--repeat=$(REPEAT) --cpu0=$(CPU0) --dryrun=$(DRYRUN) --skip=$(SKIP) --no_color=$(NO_COLOR) \
 		--timeout=$(TIMEOUT) --ginkgo_timeout=$(GINKGO_TIMEOUT) --vpp_cpus=$(VPP_CPUS) --hs_root=$(HS_ROOT) \
-		$(LABEL_ARG) --host_ppid=$$PPID $(SEED_ARG) --hyperthread=$(HT)
+		$(LABEL_ARG) --host_ppid=$$PPID $(SEED_ARG) --hyperthread=$(HT) --mw_parallel=$(MW_PARALLEL) \
+		$(MW_SLOTS_PER_NUMA_ARG)
 
 .PHONY: help
 help:
@@ -138,8 +155,10 @@ help:
 	@echo " GINKGO_TIMEOUT=[Ns/m/h]  - Ginkgo timeout override (3h by default)"
 	@echo " HT=[true|false]          - enable or disable hyperthread allocation (false by default)"
 	@echo " LABEL=[suite labels]     - filter by suite labels, case insensitive (https://onsi.github.io/ginkgo/#spec-labels)"
+	@echo " MW_PARALLEL=[true|false] - allow MW suites to run in parallel workers (false by default)"
+	@echo " MW_SLOTS_PER_NUMA=[n|auto] - MW workers per NUMA node; only valid with MW_PARALLEL=true (auto by default)"
 	@echo " NO_COLOR=[true|false]    - disables colorful Docker and Ginkgo output"
-	@echo " PARALLEL=[n]             - number of test processes to spawn to run in parallel"
+	@echo " PARALLEL=[n|auto|per-numa] - number of test processes; auto splits MW into a NUMA-aware phase when MW_PARALLEL=true"
 	@echo " PERSIST=[true|false]     - whether clean up topology and dockers after test"
 	@echo " REPEAT=[n]               - repeat tests up to N times or until a failure occurs"
 	@echo " SEED=[n]                 - set Ginkgo seed"

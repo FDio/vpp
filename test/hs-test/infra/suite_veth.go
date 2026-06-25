@@ -249,7 +249,6 @@ var _ = Describe("VethsSuite", Ordered, ContinueOnFailure, Label("Veth"), func()
 	})
 	AfterAll(func() {
 		s.TeardownSuite()
-
 	})
 	AfterEach(func() {
 		s.TeardownTest()
@@ -300,7 +299,7 @@ var _ = Describe("VethsSuiteSolo", Ordered, ContinueOnFailure, Serial, Label("Ve
 	}
 })
 
-var _ = Describe("VethsSuiteMW", Ordered, ContinueOnFailure, Serial, Label("Veth", "MW"), func() {
+var _ = DescribeMWSuite("VethsSuiteMW", []string{"Veth", "MW"}, func() {
 	var s VethsSuite
 	BeforeAll(func() {
 		s.SetupSuite()
@@ -322,7 +321,7 @@ var _ = Describe("VethsSuiteMW", Ordered, ContinueOnFailure, Serial, Label("Veth
 			pc := reflect.ValueOf(test).Pointer()
 			funcValue := runtime.FuncForPC(pc)
 			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
-			It(testName, Label("SOLO", "VPP Multi-Worker"), func(ctx SpecContext) {
+			It(testName, Label("SOLO", "VPP Multi-Worker", MWWideLabel), func(ctx SpecContext) {
 				Log("[* TEST BEGIN]: " + testName)
 				test(&s)
 			}, SpecTimeout(TestTimeout))

@@ -200,7 +200,7 @@ var _ = Describe("Http1SuiteSolo", Ordered, ContinueOnFailure, Serial, Label("HT
 	}
 })
 
-var _ = Describe("Http1MWSuite", Ordered, ContinueOnFailure, Serial, Label("HTTP", "HTTP1", "MW"), func() {
+var _ = DescribeMWSuite("Http1MWSuite", []string{"HTTP", "HTTP1", "MW"}, func() {
 	var s Http1Suite
 	BeforeAll(func() {
 		s.SetupSuite()
@@ -221,7 +221,7 @@ var _ = Describe("Http1MWSuite", Ordered, ContinueOnFailure, Serial, Label("HTTP
 			pc := reflect.ValueOf(test).Pointer()
 			funcValue := runtime.FuncForPC(pc)
 			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
-			It(testName, func(ctx SpecContext) {
+			It(testName, Label(MWWideLabel), func(ctx SpecContext) {
 				Log("[* TEST BEGIN]: " + testName)
 				test(&s)
 			}, SpecTimeout(TestTimeout))

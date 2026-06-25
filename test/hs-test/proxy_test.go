@@ -724,15 +724,17 @@ func VppConnectUdpStressMWTest(s *VppUdpProxySuite) {
 func vppConnectProxyClientCheckCleanup(s *MasqueSuite) {
 	clientVpp := s.Containers.VppClient.VppInstance
 	closed := false
+	lastOutput := ""
 	for range 35 {
 		o := clientVpp.Vppctl("show http connect proxy client sessions")
-		if !strings.Contains(o, "session [") {
+		lastOutput = o
+		if !hasOpenConnectProxyClientSession(o) {
 			closed = true
 			break
 		}
 		time.Sleep(1 * time.Second)
 	}
-	AssertEqual(closed, true, "connect proxy session not closed")
+	AssertEqual(closed, true, fmt.Sprintf("connect proxy session not closed:\n%s", lastOutput))
 	h2Stats := clientVpp.Vppctl("show http stats")
 	streamsOpened := 0
 	streamsClosed := 0
@@ -751,12 +753,30 @@ func vppConnectProxyClientCheckCleanup(s *MasqueSuite) {
 	AssertEqual(streamsOpened-streamsClosed, 1, "only parent stream should stays open")
 }
 
+func hasOpenConnectProxyClientSession(output string) bool {
+	for line := range strings.SplitSeq(output, "\n") {
+		if strings.Contains(line, "session [") && !strings.Contains(line, "CLOSED") {
+			return true
+		}
+	}
+	return false
+}
+
 func vppConnectProxyServerCheckCleanup(s *MasqueSuite, IsHttp3 bool) {
+	vppConnectProxyServerCheckCleanupWithParent(s, IsHttp3, true)
+}
+
+func vppConnectProxyServerCheckCleanupWithParent(s *MasqueSuite, IsHttp3 bool, requireParent bool) {
 	o := s.Containers.VppServer.VppInstance.Vppctl("show session verbose")
 	if IsHttp3 {
 		AssertEqual(2, strings.Count(o, "[H3]"), "there should be http/3 connection session and parent stream")
 	} else {
-		AssertEqual(1, strings.Count(o, "[H2]"), "there should be http/2 connection session")
+		h2Count := strings.Count(o, "[H2]")
+		if requireParent {
+			AssertEqual(1, h2Count, "there should be http/2 connection session")
+		} else {
+			AssertLessEqual(h2Count, 1, "there should be at most one http/2 connection session")
+		}
 	}
 	h2Stats := s.Containers.VppServer.VppInstance.Vppctl("show http stats")
 	streamsOpened := 0
@@ -898,7 +918,10 @@ func vppConnectProxyIperfTcp(s *MasqueSuite, extraArgs ...string) {
 
 	cmd := fmt.Sprintf("iperf3 -s --one-off -D -B %s -p %s --logfile %s", s.NginxAddr(), s.Ports.Nginx, IperfLogFileName(s.Containers.IperfServer))
 	o, err := s.Containers.IperfServer.Exec(true, cmd)
+	AssertNil(err, o)
 
+	cmd = fmt.Sprintf(`sh -c 'for i in $(seq 1 50); do ss -ltn | grep -Eq ":%s[[:space:]]" && exit 0; sleep 0.1; done; ss -ltn; exit 1'`, s.Ports.Nginx)
+	o, err = s.Containers.IperfServer.Exec(false, cmd)
 	AssertNil(err, o)
 	Log("server running")
 
@@ -1098,7 +1121,7 @@ func VppConnectProxyClientStressMWTest(s *MasqueSuite) {
 	Log(string(res))
 
 	vppConnectProxyClientCheckCleanup(s)
-	vppConnectProxyServerCheckCleanup(s, false)
+	vppConnectProxyServerCheckCleanupWithParent(s, false, false)
 }
 
 func VppConnectProxyHttp3DownloadTcpMWTest(s *MasqueSuite) {

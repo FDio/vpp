@@ -87,7 +87,7 @@ var _ = Describe("QuicSuiteSolo", Ordered, ContinueOnFailure, Serial, Label("Vet
 	}
 })
 
-var _ = Describe("QuicSuiteMW", Ordered, ContinueOnFailure, Serial, Label("Veth", "Quic", "MW"), func() {
+var _ = DescribeMWSuite("QuicSuiteMW", []string{"Veth", "Quic", "MW"}, func() {
 	var s QuicSuite
 	BeforeAll(func() {
 		s.SetupSuite()
@@ -109,7 +109,7 @@ var _ = Describe("QuicSuiteMW", Ordered, ContinueOnFailure, Serial, Label("Veth"
 			pc := reflect.ValueOf(test).Pointer()
 			funcValue := runtime.FuncForPC(pc)
 			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
-			It(testName, Label("SOLO", "VPP Multi-Worker"), func(ctx SpecContext) {
+			It(testName, Label("SOLO", "VPP Multi-Worker", MWWideLabel), func(ctx SpecContext) {
 				Log("[* TEST BEGIN]: " + testName)
 				test(&s)
 			}, SpecTimeout(TestTimeout))

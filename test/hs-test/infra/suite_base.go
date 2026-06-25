@@ -43,6 +43,8 @@ var Timeout = flag.Int("timeout", 5, "test timeout override (in minutes)")
 var HostPpid = flag.Int("host_ppid", os.Getppid(), "automatically set in Makefile")
 var CpuOffset = flag.Int("cpu_offset", 0, "initial CPU offset")
 var HyperThreading = flag.Bool("hyperthread", false, "whether to use hyperthreads in CPU allocation")
+var NumaPerProcess = flag.Bool("numa_per_process", false, "allocate each Ginkgo process from a separate NUMA node")
+var NumaSlotsPerNode = flag.Int("numa_slots_per_node", 1, "number of Ginkgo processes to allocate on each NUMA node")
 var NumaAwareCpuAlloc bool
 var TestTimeout time.Duration
 var RunningInCi bool
@@ -50,8 +52,9 @@ var TestsThatWillRun int
 var Ppid string
 
 const (
-	LogDir    string = "/tmp/hs-test/"
-	VolumeDir string = "/vol"
+	LogDir      string = "/tmp/hs-test/"
+	VolumeDir   string = "/vol"
+	MWWideLabel string = "MWWide"
 )
 
 type HstSuite struct {
@@ -209,6 +212,20 @@ func (s *HstSuite) Skip(args string) {
 	Skip(args)
 }
 
+func MwParallelEnabled() bool {
+	return strings.EqualFold(os.Getenv("HST_MW_PARALLEL"), "true")
+}
+
+func DescribeMWSuite(text string, labels []string, body func()) bool {
+	decorators := []any{Ordered, ContinueOnFailure}
+	if !MwParallelEnabled() {
+		decorators = append(decorators, Serial)
+	}
+	decorators = append(decorators, Label(labels...))
+	decorators = append(decorators, body)
+	return Describe(text, decorators...)
+}
+
 func (s *HstSuite) SetupSuite() {
 	RegisterFailHandler(func(message string, callerSkip ...int) {
 		s.HstFail()
@@ -252,8 +269,12 @@ func (s *HstSuite) TeardownSuite() {
 func (s *HstSuite) SetupTest() {
 	TestCounterFunc()
 	Log("[* TEST SETUP]")
-	// doesn't impact MW/solo tests
-	s.CpuAllocator.lastCpu = (GinkgoParallelProcess() - 1) * 4
+	if *NumaPerProcess {
+		s.CpuAllocator.lastCpu = 0
+	} else {
+		// doesn't impact MW/solo tests
+		s.CpuAllocator.lastCpu = (GinkgoParallelProcess() - 1) * 4
+	}
 	s.StartedContainers = s.StartedContainers[:0]
 	s.SetupContainers()
 }
@@ -473,6 +494,7 @@ func (s *HstSuite) WaitForCoreDump() bool {
 }
 
 func (s *HstSuite) ResetContainers() {
+	defer s.ReleaseCpuClaims()
 	s.CpuAllocator.lastCpu = 0
 	for _, container := range s.StartedContainers {
 		container.stop()

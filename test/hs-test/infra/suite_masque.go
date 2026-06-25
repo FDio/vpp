@@ -42,6 +42,45 @@ var masqueTests = map[string][]func(s *MasqueSuite){}
 var masqueSoloTests = map[string][]func(s *MasqueSuite){}
 var masqueMWTests = map[string][]func(s *MasqueSuite){}
 
+const (
+	masqueOtherMWSuite = "MasqueOtherMWSuite"
+)
+
+var masqueMWSuites = []string{
+	"MasqueTcpMWSuite",
+	"MasqueUdpMWSuite",
+	"MasqueHttp3TcpMWSuite",
+	"MasqueControlMWSuite",
+	masqueOtherMWSuite,
+}
+
+var masqueMWTestSuites = map[string]string{
+	"VppConnectProxyClientDownloadTcpMWTest":       "MasqueTcpMWSuite",
+	"VppConnectProxyClientServerClosedTcpMWTest":   "MasqueTcpMWSuite",
+	"VppConnectProxyClientTargetUnreachableMWTest": "MasqueTcpMWSuite",
+	"VppConnectProxyClientUploadTcpMWTest":         "MasqueTcpMWSuite",
+	"VppConnectProxyIperfTcpMWTest":                "MasqueTcpMWSuite",
+
+	"VppConnectProxyClientUdpIdleMWTest":    "MasqueUdpMWSuite",
+	"VppConnectProxyHttp3DownloadUdpMWTest": "MasqueUdpMWSuite",
+	"VppConnectProxyHttp3IperfUdpMWTest":    "MasqueUdpMWSuite",
+	"VppConnectProxyHttp3UploadUdpMWTest":   "MasqueUdpMWSuite",
+	"VppConnectProxyIperfUdpMWTest":         "MasqueUdpMWSuite",
+
+	"VppConnectProxyHttp3DownloadTcpMWTest":     "MasqueHttp3TcpMWSuite",
+	"VppConnectProxyHttp3FinDrainTcpMWTest":     "MasqueHttp3TcpMWSuite",
+	"VppConnectProxyHttp3IperfTcpMWTest":        "MasqueHttp3TcpMWSuite",
+	"VppConnectProxyHttp3ServerClosedTcpMWTest": "MasqueHttp3TcpMWSuite",
+	"VppConnectProxyHttp3UploadTcpMWTest":       "MasqueHttp3TcpMWSuite",
+
+	"VppConnectProxyClientStressMWTest":           "MasqueControlMWSuite",
+	"VppConnectProxyDraft03MWTest":                "MasqueControlMWSuite",
+	"VppConnectProxyHttp2FinDrainTcpMWTest":       "MasqueControlMWSuite",
+	"VppConnectProxyHttp3Draft03MWTest":           "MasqueControlMWSuite",
+	"VppConnectProxyHttp3StressMWTest":            "MasqueControlMWSuite",
+	"VppConnectProxyHttp3TargetUnreachableMWTest": "MasqueControlMWSuite",
+}
+
 func RegisterMasqueTests(tests ...func(s *MasqueSuite)) {
 	masqueTests[GetTestFilename()] = tests
 }
@@ -52,6 +91,13 @@ func RegisterMasqueSoloTests(tests ...func(s *MasqueSuite)) {
 
 func RegisterMasqueMWTests(tests ...func(s *MasqueSuite)) {
 	masqueMWTests[GetTestFilename()] = tests
+}
+
+func masqueMWSuiteForTest(testName string) string {
+	if suiteName, ok := masqueMWTestSuites[testName]; ok {
+		return suiteName
+	}
+	return masqueOtherMWSuite
 }
 
 func (s *MasqueSuite) SetupSuite() {
@@ -307,31 +353,52 @@ var _ = Describe("MasqueSoloSuite", Ordered, ContinueOnFailure, Serial, Label("M
 	}
 })
 
-var _ = Describe("MasqueMWSuite", Ordered, ContinueOnFailure, Serial, Label("Masque", "Proxy", "ConnectProxy", "MW"), func() {
-	var s MasqueSuite
-	BeforeAll(func() {
-		s.SetupSuite()
-	})
-	BeforeEach(func() {
-		s.SkipIfNotEnoughCpus = true
-	})
-	AfterAll(func() {
-		s.TeardownSuite()
-	})
-	AfterEach(func() {
-		s.TeardownTest()
-	})
-
-	for filename, tests := range masqueMWTests {
-		for _, test := range tests {
-			test := test
-			pc := reflect.ValueOf(test).Pointer()
-			funcValue := runtime.FuncForPC(pc)
-			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
-			It(testName, func(ctx SpecContext) {
-				Log("[* TEST BEGIN]: " + testName)
-				test(&s)
-			}, SpecTimeout(TestTimeout))
-		}
+func describeMasqueMWSuite(suiteName string) bool {
+	labels := []string{"Masque", "Proxy", "ConnectProxy", "MW"}
+	if suiteName != masqueOtherMWSuite {
+		labels = append(labels, MWWideLabel)
 	}
-})
+
+	return DescribeMWSuite(suiteName, labels, func() {
+		var s MasqueSuite
+		BeforeAll(func() {
+			s.SetupSuite()
+		})
+		BeforeEach(func() {
+			s.SkipIfNotEnoughCpus = true
+		})
+		AfterAll(func() {
+			s.TeardownSuite()
+		})
+		AfterEach(func() {
+			s.TeardownTest()
+		})
+
+		for filename, tests := range masqueMWTests {
+			for _, test := range tests {
+				test := test
+				pc := reflect.ValueOf(test).Pointer()
+				funcValue := runtime.FuncForPC(pc)
+				funcName := strings.Split(funcValue.Name(), ".")[2]
+				if masqueMWSuiteForTest(funcName) != suiteName {
+					continue
+				}
+				testName := filename + "/" + funcName
+				It(testName, func(ctx SpecContext) {
+					Log("[* TEST BEGIN]: " + testName)
+					test(&s)
+				}, SpecTimeout(TestTimeout))
+			}
+		}
+	})
+}
+
+func describeMasqueMWSuites() bool {
+	described := false
+	for _, suiteName := range masqueMWSuites {
+		described = describeMasqueMWSuite(suiteName) || described
+	}
+	return described
+}
+
+var _ = describeMasqueMWSuites()
