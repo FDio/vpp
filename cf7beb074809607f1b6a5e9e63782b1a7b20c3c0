@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "af55793f_319cbcde",
+        "filename": "src/plugins/http_static/http_static.api",
+        "patchSetId": 3
+      },
+      "lineNbr": 93,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-06-25T13:54:30Z",
+      "side": 1,
+      "message": "you don\u0027t need _v5 suffix here, this is new api",
+      "revId": "cf7beb074809607f1b6a5e9e63782b1a7b20c3c0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "08a67fde_e8d84676",
+        "filename": "src/plugins/http_static/http_static.api",
+        "patchSetId": 3
+      },
+      "lineNbr": 101,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-06-25T13:54:30Z",
+      "side": 1,
+      "message": "you don\u0027t need _v5 suffix here, this is new api",
+      "revId": "cf7beb074809607f1b6a5e9e63782b1a7b20c3c0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
