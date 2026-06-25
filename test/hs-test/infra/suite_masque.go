@@ -40,7 +40,36 @@ type MasqueSuite struct {
 
 var masqueTests = map[string][]func(s *MasqueSuite){}
 var masqueSoloTests = map[string][]func(s *MasqueSuite){}
-var masqueMWTests = map[string][]func(s *MasqueSuite){}
+
+type masqueMWGroup uint8
+
+const (
+	masqueMWAll masqueMWGroup = iota
+	masqueMWTcp
+	masqueMWUdp
+	masqueMWHttp3Tcp
+	masqueMWControl
+	masqueMWNarrow
+)
+
+var masqueMWSuiteGroups = []struct {
+	group     masqueMWGroup
+	suiteName string
+}{
+	{masqueMWTcp, "MasqueTcpMWSuite"},
+	{masqueMWUdp, "MasqueUdpMWSuite"},
+	{masqueMWHttp3Tcp, "MasqueHttp3TcpMWSuite"},
+	{masqueMWControl, "MasqueControlMWSuite"},
+	{masqueMWNarrow, "MasqueOtherMWSuite"},
+}
+
+type masqueMWTestRegistration struct {
+	group    masqueMWGroup
+	filename string
+	test     func(s *MasqueSuite)
+}
+
+var masqueMWTests []masqueMWTestRegistration
 
 func RegisterMasqueTests(tests ...func(s *MasqueSuite)) {
 	masqueTests[GetTestFilename()] = tests
@@ -50,8 +79,31 @@ func RegisterMasqueSoloTests(tests ...func(s *MasqueSuite)) {
 	masqueSoloTests[GetTestFilename()] = tests
 }
 
-func RegisterMasqueMWTests(tests ...func(s *MasqueSuite)) {
-	masqueMWTests[GetTestFilename()] = tests
+func registerMasqueMWTests(group masqueMWGroup, tests ...func(s *MasqueSuite)) {
+	filename := GetTestFilename()
+	for _, test := range tests {
+		masqueMWTests = append(masqueMWTests, masqueMWTestRegistration{group, filename, test})
+	}
+}
+
+func RegisterMasqueMWTcpTests(tests ...func(s *MasqueSuite)) {
+	registerMasqueMWTests(masqueMWTcp, tests...)
+}
+
+func RegisterMasqueMWUdpTests(tests ...func(s *MasqueSuite)) {
+	registerMasqueMWTests(masqueMWUdp, tests...)
+}
+
+func RegisterMasqueMWHttp3TcpTests(tests ...func(s *MasqueSuite)) {
+	registerMasqueMWTests(masqueMWHttp3Tcp, tests...)
+}
+
+func RegisterMasqueMWControlTests(tests ...func(s *MasqueSuite)) {
+	registerMasqueMWTests(masqueMWControl, tests...)
+}
+
+func RegisterMasqueMWNarrowTests(tests ...func(s *MasqueSuite)) {
+	registerMasqueMWTests(masqueMWNarrow, tests...)
 }
 
 func (s *MasqueSuite) SetupSuite() {
@@ -307,31 +359,54 @@ var _ = Describe("MasqueSoloSuite", Ordered, ContinueOnFailure, Serial, Label("M
 	}
 })
 
-var _ = Describe("MasqueMWSuite", Ordered, ContinueOnFailure, Serial, Label("Masque", "Proxy", "ConnectProxy", "MW"), func() {
-	var s MasqueSuite
-	BeforeAll(func() {
-		s.SetupSuite()
-	})
-	BeforeEach(func() {
-		s.SkipIfNotEnoughCpus = true
-	})
-	AfterAll(func() {
-		s.TeardownSuite()
-	})
-	AfterEach(func() {
-		s.TeardownTest()
-	})
+func describeMasqueMWSuite(suiteName string, group masqueMWGroup) bool {
+	labels := []string{"Masque", "Proxy", "ConnectProxy", "MW"}
+	if group != masqueMWAll && group != masqueMWNarrow {
+		labels = append(labels, MWWideLabel)
+	}
 
-	for filename, tests := range masqueMWTests {
-		for _, test := range tests {
-			test := test
+	return DescribeMWSuite(suiteName, labels, func() {
+		var s MasqueSuite
+		BeforeAll(func() {
+			s.SetupSuite()
+		})
+		BeforeEach(func() {
+			s.SkipIfNotEnoughCpus = true
+		})
+		AfterAll(func() {
+			s.TeardownSuite()
+		})
+		AfterEach(func() {
+			s.TeardownTest()
+		})
+
+		for _, registration := range masqueMWTests {
+			if group != masqueMWAll && registration.group != group {
+				continue
+			}
+			test := registration.test
 			pc := reflect.ValueOf(test).Pointer()
 			funcValue := runtime.FuncForPC(pc)
-			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
+			funcName := strings.Split(funcValue.Name(), ".")[2]
+			testName := registration.filename + "/" + funcName
 			It(testName, func(ctx SpecContext) {
 				Log("[* TEST BEGIN]: " + testName)
 				test(&s)
 			}, SpecTimeout(TestTimeout))
 		}
+	})
+}
+
+func describeMasqueMWSuites() bool {
+	if !MWParallelEnabled() {
+		return describeMasqueMWSuite("MasqueMWSuite", masqueMWAll)
 	}
-})
+
+	described := false
+	for _, suiteGroup := range masqueMWSuiteGroups {
+		described = describeMasqueMWSuite(suiteGroup.suiteName, suiteGroup.group) || described
+	}
+	return described
+}
+
+var _ = describeMasqueMWSuites()

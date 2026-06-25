@@ -440,7 +440,7 @@ var _ = Describe("HsiSuite", Ordered, ContinueOnFailure, Label("HSI"), func() {
 	}
 })
 
-var _ = Describe("HsiMWSuite", Ordered, ContinueOnFailure, Serial, Label("HSI", "Solo", "MW"), func() {
+var _ = DescribeMWSuite("HsiMWSuite", []string{"HSI", "Solo", "MW"}, func() {
 	var s HsiSuite
 	BeforeAll(func() {
 		s.SetupSuite()
