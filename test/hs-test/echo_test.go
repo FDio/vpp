@@ -1,21 +1,25 @@
 package main
 
 import (
+	"os/exec"
 	"regexp"
 	"strconv"
 
 	. "fd.io/hs-test/infra"
 )
 
+const tcpChainedBufferMTU = 9000
+
 func init() {
 	RegisterEchoTests(EchoBuiltinTest, EchoBuiltinBandwidthTest, EchoBuiltinEchoBytesTest, EchoBuiltinRoundtripTest,
 		EchoBuiltinUdpLossTest, EchoBuiltinPeriodicReportTest, EchoBuiltinPeriodicReportTotalTest, TlsSingleConnectionTest,
 		EchoBuiltinPeriodicReportUDPTest, EchoBuiltinUdpTest, EchoBuiltinTcpNoTxCsumOffloadTest,
+		EchoBuiltinTcpChainedBufferTest,
 		EchoBuiltinUdpNoTxCsumOffloadTest, EchoBuiltinHttpTest, EchoBuiltinHttpsTest, EchoBuiltinHttp2Test,
 		EchoBuiltinHttp3Test, EchoBuiltinHttpTestBytesTest, EchoBuiltinHttp2ConnectTcpTest, EchoBuiltinHttp3ConnectTcpTest,
 		EchoBuiltinHttp2ConnectUdpTest, EchoBuiltinHttp3ConnectUdpTest, EchoBuiltinHttp2ConnectUdpBackpressureTest)
-	RegisterEchoMWTests(TcpWithLossMWTest, EchoBuiltinHttp1CpsMWTest, EchoBuiltinHttp2CpsMWTest, EchoBuiltinHttp3CpsMWTest,
-		EchoBuiltinHttp2ConnectUdpBackpressureMWTest)
+	RegisterEchoMWTests(TcpWithLossMWTest, TcpChainedBufferWithLossMWTest, EchoBuiltinHttp1CpsMWTest,
+		EchoBuiltinHttp2CpsMWTest, EchoBuiltinHttp3CpsMWTest, EchoBuiltinHttp2ConnectUdpBackpressureMWTest)
 	RegisterEcho6Tests(TcpWithLoss6Test)
 }
 
@@ -65,6 +69,26 @@ func EchoBuiltinTcpNoTxCsumOffloadTest(s *EchoSuite) {
 	Log(o)
 	AssertNotContains(o, "failed")
 	AssertContains(o, "65536 bytes")
+	throughput, err := ParseEchoClientTransfer(o)
+	AssertNil(err)
+	AssertGreaterThan(throughput, uint64(0), "throughput must be > 0")
+}
+
+func EchoBuiltinTcpChainedBufferTest(s *EchoSuite) {
+	configureTcpChainedBufferMTU(s)
+
+	serverVpp := s.Containers.ServerVpp.VppInstance
+	clientVpp := s.Containers.ClientVpp.VppInstance
+	serverAddress := s.Interfaces.Server.Ip4AddressString()
+
+	serverVpp.Vppctl("vperf server fifo-size 256k uri tcp://%s/%s", serverAddress, s.Ports.Port1)
+
+	o := clientVpp.Vppctl("vperf client fifo-size 256k bytes 128k max-tx-chunk 64k "+
+		"echo-bytes test-bytes verbose test-timeout 10 uri tcp://%s/%s",
+		serverAddress, s.Ports.Port1)
+	Log(o)
+	AssertNotContains(o, "failed")
+	AssertContains(o, "131072 bytes")
 	throughput, err := ParseEchoClientTransfer(o)
 	AssertNil(err)
 	AssertGreaterThan(throughput, uint64(0), "throughput must be > 0")
@@ -290,9 +314,61 @@ func EchoBuiltinUdpLossTest(s *EchoSuite) {
 	AssertContains(o, " bytes out of 32768 sent (32768 target)")
 }
 
+func setTcpChainedBufferLinuxLinkMTU(ifName string, mtu int) {
+	mtuString := strconv.Itoa(mtu)
+	cmd := exec.Command("ip", "link", "set", "dev", ifName, "mtu", mtuString)
+	Log(cmd.String())
+	o, err := cmd.CombinedOutput()
+	AssertNil(err, string(o))
+}
+
+func setTcpChainedBufferVethMTU(s *VethsSuite, mtu int) {
+	for _, nc := range s.NetConfigs {
+		if nc.Type() == Bridge {
+			setTcpChainedBufferLinuxLinkMTU(nc.Name(), mtu)
+		}
+	}
+
+	for _, intf := range []*NetInterface{s.Interfaces.Server, s.Interfaces.Client} {
+		setTcpChainedBufferLinuxLinkMTU(intf.Name(), mtu)
+		setTcpChainedBufferLinuxLinkMTU(intf.Host.Name(), mtu)
+	}
+}
+
+func setTcpChainedBufferVppInterfaceMTU(vpp *VppInstance, intf *NetInterface, mtu int) {
+	o := vpp.Vppctl("set interface mtu %d %s", mtu, intf.VppName())
+	Log(o)
+	AssertNotContains(o, "unknown input")
+	AssertNotContains(o, "error")
+}
+
+func configureTcpChainedBufferMTU(s *EchoSuite) {
+	expected := "TCP default mtu: " + strconv.Itoa(tcpChainedBufferMTU)
+	serverVpp := s.Containers.ServerVpp.VppInstance
+	clientVpp := s.Containers.ClientVpp.VppInstance
+
+	setTcpChainedBufferVethMTU(&s.VethsSuite, tcpChainedBufferMTU)
+	setTcpChainedBufferVppInterfaceMTU(serverVpp, s.Interfaces.Server, tcpChainedBufferMTU)
+	setTcpChainedBufferVppInterfaceMTU(clientVpp, s.Interfaces.Client, tcpChainedBufferMTU)
+	AssertContains(serverVpp.Vppctl("set tcp mtu %d", tcpChainedBufferMTU), expected)
+	AssertContains(clientVpp.Vppctl("set tcp mtu %d", tcpChainedBufferMTU), expected)
+
+	serverTcpConfig := serverVpp.Vppctl("sh tcp config")
+	clientTcpConfig := clientVpp.Vppctl("sh tcp config")
+	Log(serverTcpConfig)
+	Log(clientTcpConfig)
+	AssertContains(serverTcpConfig, "default mtu: "+strconv.Itoa(tcpChainedBufferMTU))
+	AssertContains(clientTcpConfig, "default mtu: "+strconv.Itoa(tcpChainedBufferMTU))
+}
+
 type tcpWithLossInterface interface {
 	SetupClientVpp()
 	SetupServerVpp()
+}
+
+type tcpWithLossConfig struct {
+	packetSize int
+	setup      func()
 }
 
 func tcpEcho(port string, ip string, clientVpp *VppInstance, serverVpp *VppInstance) string {
@@ -316,6 +392,17 @@ func TcpWithLossMWTest(s *EchoSuite) {
 		s.Interfaces.Client, s.Interfaces.Server, s.Ports.Port1)
 }
 
+func TcpChainedBufferWithLossMWTest(s *EchoSuite) {
+	s.CpusPerVppContainer = 2
+	s.CpusPerContainer = 1
+	s.SetupTest()
+	tcpWithLossAndNoLoss(s, s.Containers.ClientVpp.VppInstance, s.Containers.ServerVpp.VppInstance,
+		s.Interfaces.Client, s.Interfaces.Server, s.Ports.Port1, tcpWithLossConfig{
+			packetSize: tcpChainedBufferMTU,
+			setup:      func() { configureTcpChainedBufferMTU(s) },
+		})
+}
+
 func TcpWithLoss6Test(s *Echo6Suite) {
 	tcpWithLossAndNoLoss(s, s.Containers.ClientVpp.VppInstance, s.Containers.ServerVpp.VppInstance,
 		s.Interfaces.Client, s.Interfaces.Server, s.Ports.Port1)
@@ -323,7 +410,16 @@ func TcpWithLoss6Test(s *Echo6Suite) {
 
 // runs tcp echo without loss, then with loss
 func tcpWithLossAndNoLoss(s tcpWithLossInterface, clientVpp *VppInstance,
-	serverVpp *VppInstance, clientIf *NetInterface, serverIf *NetInterface, port string) {
+	serverVpp *VppInstance, clientIf *NetInterface, serverIf *NetInterface, port string,
+	configs ...tcpWithLossConfig) {
+	config := tcpWithLossConfig{packetSize: 1400}
+	if len(configs) > 0 {
+		config = configs[0]
+		if config.packetSize == 0 {
+			config.packetSize = 1400
+		}
+	}
+
 	Log(clientVpp.Vppctl("set nsim poll-main-thread delay 10 ms bandwidth 40 gbit"))
 	Log(clientVpp.Vppctl("nsim output-feature enable-disable " + clientIf.VppName()))
 
@@ -335,6 +431,9 @@ func tcpWithLossAndNoLoss(s tcpWithLossInterface, clientVpp *VppInstance,
 	}
 
 	Log("  * running TcpWithoutLoss")
+	if config.setup != nil {
+		config.setup()
+	}
 	output := tcpEcho(port, serverAddress, clientVpp, serverVpp)
 	baseline, err := ParseEchoClientTransfer(output)
 	AssertNil(err)
@@ -347,12 +446,15 @@ func tcpWithLossAndNoLoss(s tcpWithLossInterface, clientVpp *VppInstance,
 	s.SetupServerVpp()
 
 	// Add loss of packets with Network Delay Simulator
-	Log(clientVpp.Vppctl("set nsim poll-main-thread delay 10 ms bandwidth 40 gbit" +
-		" packet-size 1400 drop-fraction 0.033"))
+	Log(clientVpp.Vppctl("set nsim poll-main-thread delay 10 ms bandwidth 40 gbit"+
+		" packet-size %d drop-fraction 0.033", config.packetSize))
 
 	Log(clientVpp.Vppctl("nsim output-feature enable-disable " + clientIf.VppName()))
 
 	Log("  * running TcpWithLoss")
+	if config.setup != nil {
+		config.setup()
+	}
 	output = tcpEcho(port, serverAddress, clientVpp, serverVpp)
 
 	withLoss, err := ParseEchoClientTransfer(output)

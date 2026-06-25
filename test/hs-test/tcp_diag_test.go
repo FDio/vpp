@@ -67,6 +67,12 @@ func TcpConfigDiagTest(s *VethsSuite) {
 	AssertContains(serverVpp.Vppctl("show tcp config"), "checksum offload: disabled")
 	AssertContains(serverVpp.Vppctl("set tcp csum-offload enable"), "enabled")
 	AssertContains(serverVpp.Vppctl("show tcp config"), "checksum offload: enabled")
+	AssertContains(serverVpp.Vppctl("set tcp mtu 9000"), "TCP default mtu: 9000")
+	AssertContains(serverVpp.Vppctl("show tcp config"), "default mtu: 9000")
+	AssertContains(serverVpp.Vppctl("set tcp mtu 1280"), "TCP default mtu: 1280")
+	AssertContains(serverVpp.Vppctl("show tcp config"), "default mtu: 1280")
+	AssertContains(serverVpp.Vppctl("set tcp mtu 1500"), "TCP default mtu: 1500")
+	AssertContains(serverVpp.Vppctl("show tcp config"), "default mtu: 1500")
 
 	punt := serverVpp.Vppctl("show tcp punt")
 	Log(punt)
