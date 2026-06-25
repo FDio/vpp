@@ -200,7 +200,7 @@ var _ = Describe("VppUdpProxySuiteSolo", Ordered, ContinueOnFailure, Serial, Lab
 	}
 })
 
-var _ = Describe("VppUdpProxyMWSuite", Ordered, ContinueOnFailure, Serial, Label("Proxy", "UDP", "UDPproxy", "VPPproxy", "MW"), func() {
+var _ = DescribeMWSuite("VppUdpProxyMWSuite", []string{"Proxy", "UDP", "UDPproxy", "VPPproxy", "MW"}, func() {
 	var s VppUdpProxySuite
 	BeforeAll(func() {
 		s.SetupSuite()

@@ -247,7 +247,7 @@ var _ = Describe("LdpSuiteSolo", Ordered, ContinueOnFailure, Serial, Label("LDP"
 	}
 })
 
-var _ = Describe("LdpMWSuite", Ordered, ContinueOnFailure, Serial, Label("LDP", "VCL", "MW"), func() {
+var _ = DescribeMWSuite("LdpMWSuite", MWWideLabels("LDP", "VCL", "MW"), func() {
 	var s LdpSuite
 	BeforeAll(func() {
 		s.SetupSuite()
