@@ -19,6 +19,10 @@
  * 		initialized
  */
 void tcp_bt_init (tcp_connection_t * tc);
+
+/** Initialize a byte tracker with contiguous private extension storage. */
+void tcp_bt_init_opaque (tcp_connection_t *tc, uword opaque_size);
+
 /**
  * Byte tracker cleanup
  *
@@ -44,7 +48,16 @@ void tcp_bt_track_tx (tcp_connection_t * tc, u32 len);
  * @param start	start sequence number
  * @param end	end sequence number
  */
-void tcp_bt_track_rxt (tcp_connection_t * tc, u32 start, u32 end);
+void tcp_bt_track_rxt (tcp_connection_t *tc, u32 start, u32 end);
+
+/** Track active retransmission copies for a RACK connection. */
+u32 tcp_bt_track_rxt_rack (tcp_connection_t *tc, u32 start, u32 end);
+
+/** Mark a byte-tracker sample lost and retire its active retransmission copy. */
+u32 tcp_bt_rack_sample_mark_lost (tcp_connection_t *tc, tcp_bt_sample_t *bts);
+
+/** Derive recovery retransmission delivery from byte-tracker state. */
+void tcp_bt_rack_sync_rxt_delivery (tcp_connection_t *tc);
 /**
  * Generate a delivery rate sample from recently acked bytes
  *
@@ -67,6 +80,15 @@ void tcp_bt_check_app_limited (tcp_connection_t * tc);
  * @param bt	byte tracker
  */
 int tcp_bt_is_sane (tcp_byte_tracker_t * bt);
+
+typedef void (*tcp_bt_walk_fn_t) (tcp_connection_t *tc, tcp_bt_sample_t *bts, void *opaque);
+
+/** Visit byte-tracker samples overlapping [start, end). */
+void tcp_bt_walk_range (tcp_connection_t *tc, u32 start, u32 end, tcp_bt_walk_fn_t fn,
+			void *opaque);
+
+/** Split the sample at seq. */
+void tcp_bt_split_at (tcp_connection_t *tc, u32 seq);
 
 format_function_t format_tcp_bt;
 
