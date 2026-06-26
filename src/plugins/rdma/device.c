@@ -14,6 +14,7 @@
 #include <vlib/pci/pci.h>
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/interface/rx_queue_funcs.h>
+#include <vnet/tcp/tcp.h>
 
 #include <rdma/rdma.h>
 
@@ -1044,8 +1045,11 @@ are explicitly disabled, and if the interface supports it.*/
     }
 
   struct ibv_device_attr_ex attr_ex = {};
-  if (ibv_query_device_ex (rd->ctx, NULL, &attr_ex) == 0 && attr_ex.tso_caps.max_tso > 0 &&
-      (attr_ex.tso_caps.supported_qpts & (1 << IBV_QPT_RAW_PACKET)))
+  if (ibv_query_device_ex (rd->ctx, NULL, &attr_ex) == 0 &&
+      attr_ex.tso_caps.max_tso > 0 &&
+      (attr_ex.tso_caps.supported_qpts & (1 << IBV_QPT_RAW_PACKET)) &&
+      (rd->flags & RDMA_DEVICE_F_MLX5DV) &&
+      tcp_cfg.allow_tso)
     {
       rd->flags |= RDMA_DEVICE_F_TSO;
       rdma_log (VLIB_LOG_LEVEL_DEBUG, rd,
