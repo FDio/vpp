@@ -20,7 +20,8 @@
   _ (4, MLX5DV, "mlx5dv")                                                                          \
   _ (5, STRIDING_RQ, "striding-rq")                                                                \
   _ (6, RX_L4_CKSUM, "rx-l4-cksum")                                                                \
-  _ (7, EMPW, "enhanced-mpw")
+  _ (7, EMPW, "enhanced-mpw")                                                                      \
+  _ (8, TSO, "tso")
 
 enum
 {
@@ -33,6 +34,8 @@ enum
 #define MLX5_ETH_L2_INLINE_HEADER_SIZE 18
 #endif
 
+#define RDMA_MLX5_ETH_L2_MIN_HEADER_SIZE 14
+
 #ifndef MLX5_OPCODE_ENHANCED_MPSW
 #define MLX5_OPCODE_ENHANCED_MPSW 0x29
 #endif
@@ -44,6 +47,16 @@ enum
 #define RDMA_MLX5_EMPW_INLINE_MAX                                                                  \
   ((u32) ((RDMA_MLX5_WQE_DS_MAX - RDMA_MLX5_EMPW_TITLE_DS) * sizeof (struct mlx5_wqe_data_seg) -   \
 	  RDMA_MLX5_EMPW_INLINE_HDR_SIZE))
+
+/*
+ * TSO headers are inlined as the mlx5 Ethernet inline header plus 16-byte
+ * continuation DS. The WQE occupies ceil(ctrl.ds / 4) WQEBBs; callers must
+ * not reserve a fixed WQEBB count.
+ *
+ * Keep the advertised header limit conservative. It covers common TCP options
+ * while avoiding a larger max_tso_header request during QP creation.
+ */
+#define RDMA_MLX5_TSO_HDR_MAX (MLX5_ETH_L2_INLINE_HEADER_SIZE + 8 * 16)
 
 typedef struct
 {
@@ -246,6 +259,7 @@ typedef struct
   u32 sw_if_index;
   u32 hw_if_index;
   u32 lkey;		  /* cache of mr->lkey */
+  u32 max_tso;		  /* maximum TSO payload reported by the device */
   u8 pool;		  /* buffer pool index */
   u16 tx_empw_inline_max; /* inline eMPW packets up to this size; 0 disables */
   u16 tx_empw_inline_cap; /* device-supported eMPW inline packet limit */
@@ -369,7 +383,12 @@ typedef struct
   _ (SUBMISSION, "tx submission errors")                                                           \
   _ (COMPLETION, "tx completion errors")                                                           \
   _ (DEVICE, "device error")                                                                       \
-  _ (PACKET_TOO_SHORT, "packet shorter than required inline header")
+  _ (UNSUPPORTED_GSO, "unsupported non-TCP GSO packet")                                            \
+  _ (PACKET_TOO_SHORT, "packet shorter than required inline header")                               \
+  _ (TSO_HDR_INVALID, "invalid tso header or mss")                                                 \
+  _ (TSO_HDR_TOO_BIG, "tso header exceeds max inline size")                                        \
+  _ (TSO_HDR_SPLIT, "tso header spans multiple buffers")                                           \
+  _ (TSO_PAYLOAD_TOO_BIG, "tso payload exceeds device limit")
 
 typedef enum
 {
