@@ -149,10 +149,14 @@ type NFQueueConfig struct {
 	DstIP                     string
 	SrcPort                   uint16
 	DstPort                   uint16
-	DropDataPacketIndices     []uint32
-	DropFirstRetransmitOfDrop bool
-	DropAckOnlyPackets        bool
-	SynOptionRewrite          SynOptionRewriteConfig
+	DropDataPacketIndices []uint32
+	// DropRetransmitCount, if > 0, drops that many successive retransmits of
+	// each originally-dropped segment in addition to the original. 1 drops just
+	// the first retransmit; higher values exercise repeated loss of the same
+	// segment (e.g. RTO backoff behavior).
+	DropRetransmitCount uint32
+	DropAckOnlyPackets  bool
+	SynOptionRewrite    SynOptionRewriteConfig
 }
 
 type SynOptionRewriteConfig struct {
@@ -195,7 +199,7 @@ type NFQueueHelper struct {
 	nf                    *nfqueue.Nfqueue
 	cancel                context.CancelFunc
 	dropDataPacketIndices map[uint32]struct{}
-	retransmitTargets     map[uint32]struct{}
+	retransmitTargets     map[uint32]uint32
 	seenDataSeqs          map[uint32]struct{}
 	originalDroppedSeqs   map[uint32]struct{}
 	role                  nfQueueRole
@@ -283,7 +287,7 @@ func newNFQueueHelperWithRole(cfg NFQueueConfig,
 		cfg:                   cfg,
 		tableName:             cfg.table(),
 		dropDataPacketIndices: make(map[uint32]struct{}, len(cfg.DropDataPacketIndices)),
-		retransmitTargets:     make(map[uint32]struct{}),
+		retransmitTargets:     make(map[uint32]uint32),
 		seenDataSeqs:          make(map[uint32]struct{}),
 		originalDroppedSeqs:   make(map[uint32]struct{}),
 		role:                  role,
@@ -605,9 +609,13 @@ func (h *NFQueueHelper) recordRetransmitOfDroppedSeqLocked(packet PcapIPv4TCPPac
 
 func (h *NFQueueHelper) dataPacketDropDecisionLocked(packet PcapIPv4TCPPacket) (
 	drop bool, originalDrop bool) {
-	if _, ok := h.retransmitTargets[packet.Seq]; ok {
+	if remaining, ok := h.retransmitTargets[packet.Seq]; ok {
 		h.recordRetransmitOfDroppedSeqLocked(packet)
-		delete(h.retransmitTargets, packet.Seq)
+		if remaining <= 1 {
+			delete(h.retransmitTargets, packet.Seq)
+		} else {
+			h.retransmitTargets[packet.Seq] = remaining - 1
+		}
 		return true, false
 	}
 
@@ -626,8 +634,8 @@ func (h *NFQueueHelper) dataPacketDropDecisionLocked(packet PcapIPv4TCPPacket) (
 		return false, false
 	}
 
-	if h.cfg.DropFirstRetransmitOfDrop {
-		h.retransmitTargets[packet.Seq] = struct{}{}
+	if h.cfg.DropRetransmitCount > 0 {
+		h.retransmitTargets[packet.Seq] = h.cfg.DropRetransmitCount
 	}
 	h.originalDroppedSeqs[packet.Seq] = struct{}{}
 	return true, true

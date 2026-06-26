@@ -358,8 +358,8 @@ func TcpFastRecoveryLostRetransmitThenRtoTest(s *TcpHarnessSuite) {
 
 	RunTcpHarnessScenarioOnState(s, state,
 		EnableServerNFQueue(tcpharness.NFQueueConfig{
-			DropDataPacketIndices:     dropDataPacketIndices,
-			DropFirstRetransmitOfDrop: true,
+			DropDataPacketIndices: dropDataPacketIndices,
+			DropRetransmitCount:   1,
 		}),
 		StartClientSend(sendBytes, &sendHandle),
 		WaitServerNFQueueDrops(20*time.Second, 2),
