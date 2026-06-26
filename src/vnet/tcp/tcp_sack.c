@@ -275,6 +275,68 @@ scoreboard_rxt_mark_lost (sack_scoreboard_t *sb, u32 snd_una, u32 snd_nxt)
   sb->lost_bytes += scoreboard_hole_bytes (hole);
 }
 
+/**
+ * Mark existing holes overlapping [start, end) as lost.
+ *
+ * Adds the newly lost bytes (only holes flipped not-lost -> lost) to
+ * sb->lost_bytes, so the count is current without waiting for the next ack's
+ * scoreboard_update_bytes recount (which would otherwise leave RACK-detected
+ * loss uncounted until then, or indefinitely if no further ack arrives). The
+ * not-lost -> lost guard keeps this consistent with that recount: it sums the
+ * same is_lost holes, so no double counting. Never inserts holes. Returns the
+ * number of bytes newly marked lost.
+ */
+u32
+scoreboard_mark_lost_span (sack_scoreboard_t *sb, u32 start, u32 end)
+{
+  sack_scoreboard_hole_t *hole;
+  u32 lost = 0;
+
+  for (hole = scoreboard_first_hole (sb); hole; hole = scoreboard_next_hole (sb, hole))
+    {
+      if (seq_geq (hole->start, end))
+	break;
+      if (seq_leq (hole->end, start))
+	continue;
+      if (!hole->is_lost)
+	{
+	  hole->is_lost = 1;
+	  lost += scoreboard_hole_bytes (hole);
+	}
+    }
+
+  sb->lost_bytes += lost;
+  return lost;
+}
+
+/**
+ * Rewind the retransmit high-water mark to @seq.
+ *
+ * scoreboard_next_rxt_hole skips holes at or below high_rxt, so a lost
+ * retransmit (whose hole is already below high_rxt) would not be re-sent until
+ * the RTO. Rewinding lets the selector re-pick it. Only ever lowers high_rxt.
+ */
+void
+scoreboard_rxt_rewind (sack_scoreboard_t *sb, u32 seq)
+{
+  sack_scoreboard_hole_t *hole;
+
+  if (seq_geq (seq, sb->high_rxt))
+    return;
+
+  sb->high_rxt = seq;
+
+  /* Point the retransmit walk at the hole covering @seq. */
+  for (hole = scoreboard_first_hole (sb); hole; hole = scoreboard_next_hole (sb, hole))
+    {
+      if (seq_lt (seq, hole->end))
+	{
+	  sb->cur_rxt_hole = scoreboard_hole_index (sb, hole);
+	  return;
+	}
+    }
+}
+
 void
 scoreboard_init (sack_scoreboard_t * sb)
 {

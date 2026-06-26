@@ -97,6 +97,8 @@ void scoreboard_init (sack_scoreboard_t * sb);
 void scoreboard_init_rxt (sack_scoreboard_t * sb, u32 snd_una);
 void scoreboard_rxt_mark_lost (sack_scoreboard_t *sb, u32 snd_una,
 			       u32 snd_nxt);
+u32 scoreboard_mark_lost_span (sack_scoreboard_t *sb, u32 start, u32 end);
+void scoreboard_rxt_rewind (sack_scoreboard_t *sb, u32 seq);
 
 format_function_t format_tcp_scoreboard;
 
