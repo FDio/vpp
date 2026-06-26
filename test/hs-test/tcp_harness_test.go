@@ -20,6 +20,8 @@ func init() {
 		TcpFastRecoveryNoTimestamp5MBLossTest,
 		TcpFastRecoveryNoSackNoTimestamp5MBLossTest,
 		TcpFastRecoveryLostRetransmitThenRtoTest,
+		TcpRackLostRetransmitRecoveryTest,
+		TcpRackMidStreamLossNoRtoTest,
 		TcpTailLossTimerRecoveryTest,
 		TcpFastRecoveryTwoHolesPartialAckTest,
 		TcpSackScoreboardRobustnessTest,
@@ -477,6 +479,86 @@ func TcpTailLossTimerRecoveryTest(s *TcpHarnessSuite) {
 		"expected client VPP session stats to record retransmissions")
 }
 
+// TcpRackLostRetransmitRecoveryTest verifies recovery of a lost retransmission without RTO.
+func TcpRackLostRetransmitRecoveryTest(s *TcpHarnessSuite) {
+	// Keep sending after the drop so later data provides SACK evidence.
+	dropDataPacketIndices := []uint32{8}
+
+	var (
+		mssStats           TcpHarnessClientSessionStats
+		serverStats        TcpTestEndpointStats
+		clientStats        TcpTestEndpointStats
+		peerClosed         TcpTestEndpointStats
+		sessionStats       TcpHarnessClientSessionStats
+		nfQueueStats       tcpharness.NFQueueStats
+		finalSessionOutput string
+		sendHandle         TcpHarnessSendHandle
+		sendResult         TcpTestEndpointCommandResult
+		packets            []tcpharness.PcapIPv4TCPPacket
+	)
+
+	defer s.StopTcpTestEndpoints()
+
+	state := RunTcpHarnessScenario(s,
+		StartClientPcap(),
+		SetClientRack(true),
+		StartTcpTestEndpointServer(TcpTestEndpointServerConfig{Port: s.Ports.Port1}),
+		StartTcpTestEndpointClient(TcpTestEndpointClientConfig{}),
+		WaitServerStats(5*time.Second, IsAccepted, &serverStats),
+		WaitClientSessionStats(5*time.Second, HasSndMss, &mssStats),
+	)
+	defer state.Close()
+
+	sendBytes := 64 * mssStats.SndMss
+
+	RunTcpHarnessScenarioOnState(s, state,
+		EnableServerNFQueue(tcpharness.NFQueueConfig{
+			DropDataPacketIndices: dropDataPacketIndices,
+			DropRetransmitCount:   1,
+		}),
+		StartClientSend(sendBytes, &sendHandle),
+		WaitServerNFQueueDrops(20*time.Second, 2),
+		StopServerNFQueueDrops(),
+		WaitServerNFQueueRetransmits(20*time.Second, 2, &nfQueueStats),
+		DisableServerNFQueue(),
+		WaitServerStats(30*time.Second, BytesReadExactly(sendBytes), &serverStats),
+		WaitClientSend(&sendHandle, 30*time.Second, &sendResult),
+		WaitClientStats(5*time.Second, BytesSentExactly(sendBytes), &clientStats),
+	)
+
+	sessionStats = s.ClientVppSessionStatsGet()
+
+	RunTcpHarnessScenarioOnState(s, state,
+		CloseTcpTestEndpointClient(),
+		WaitServerStats(5*time.Second, IsPeerClosed, &peerClosed),
+		StopClientPcap(),
+		ReadClientPcap(&packets),
+	)
+
+	finalSessionOutput = s.ShowClientVppSessions(2)
+
+	AssertEqual(sendBytes, serverStats.BytesRead)
+	assertTcpTestEndpointCommandOKOrPipeClosed(sendResult)
+	AssertEqual(sendBytes, clientStats.BytesSent)
+	AssertEqual(true, peerClosed.PeerClosed)
+	Log(sessionStats.Output)
+	Log("final client show session verbose 2:\n%s", finalSessionOutput)
+
+	s.LogTcpTestEndpointLogs()
+
+	flow := s.ClientServerFlow()
+	AssertGreaterEqual(flow.ServerSackCount(packets), 1,
+		"expected the Linux receiver to SACK data above the hole")
+	AssertGreaterEqual(nfQueueStats.RetransmitCount, uint32(2),
+		"expected NFQUEUE monitor to observe the dropped segment retransmitted twice")
+	AssertGreaterEqual(sessionStats.FastRecoveryCount, uint64(1),
+		"expected RACK loss to enter (fast) recovery")
+	AssertEqual(uint64(0), sessionStats.TimerRecoveryCount,
+		"expected RACK to recover the lost retransmit without an RTO")
+	AssertGreaterEqual(sessionStats.RetransmitSegsCount, uint64(2),
+		"expected both the original drop and the lost retransmit to be re-sent")
+}
+
 func TcpFastRecoveryTwoHolesPartialAckTest(s *TcpHarnessSuite) {
 	const controlledDataSegments = 5
 
@@ -572,6 +654,80 @@ func TcpFastRecoveryTwoHolesPartialAckTest(s *TcpHarnessSuite) {
 		"expected client VPP session stats to avoid timer recovery")
 	AssertGreaterEqual(sessionStats.RetransmitSegsCount, uint64(2),
 		"expected client VPP session stats to retransmit at least two segments")
+}
+
+// TcpRackMidStreamLossNoRtoTest verifies fast recovery of one loss without RTO.
+func TcpRackMidStreamLossNoRtoTest(s *TcpHarnessSuite) {
+	dropDataPacketIndices := []uint32{8}
+
+	var (
+		mssStats     TcpHarnessClientSessionStats
+		serverStats  TcpTestEndpointStats
+		clientStats  TcpTestEndpointStats
+		peerClosed   TcpTestEndpointStats
+		sessionStats TcpHarnessClientSessionStats
+		nfQueueStats tcpharness.NFQueueStats
+		sendHandle   TcpHarnessSendHandle
+		sendResult   TcpTestEndpointCommandResult
+		packets      []tcpharness.PcapIPv4TCPPacket
+	)
+
+	defer s.StopTcpTestEndpoints()
+
+	state := RunTcpHarnessScenario(s,
+		StartClientPcap(),
+		SetClientRack(true),
+		StartTcpTestEndpointServer(TcpTestEndpointServerConfig{Port: s.Ports.Port1}),
+		StartTcpTestEndpointClient(TcpTestEndpointClientConfig{}),
+		WaitServerStats(5*time.Second, IsAccepted, &serverStats),
+		WaitClientSessionStats(5*time.Second, HasSndMss, &mssStats),
+	)
+	defer state.Close()
+
+	sendBytes := 64 * mssStats.SndMss
+
+	RunTcpHarnessScenarioOnState(s, state,
+		EnableServerNFQueue(tcpharness.NFQueueConfig{DropDataPacketIndices: dropDataPacketIndices}),
+		StartClientSend(sendBytes, &sendHandle),
+		WaitServerNFQueueDrops(20*time.Second, uint32(len(dropDataPacketIndices))),
+		StopServerNFQueueDrops(),
+		WaitServerNFQueueRetransmits(20*time.Second, uint32(len(dropDataPacketIndices)),
+			&nfQueueStats),
+		DisableServerNFQueue(),
+		WaitClientSessionStats(20*time.Second, HasFastRecoveryOnly(1), &sessionStats),
+		WaitServerStats(30*time.Second, BytesReadExactly(sendBytes), &serverStats),
+		WaitClientSend(&sendHandle, 30*time.Second, &sendResult),
+		WaitClientStats(5*time.Second, BytesSentExactly(sendBytes), &clientStats),
+	)
+
+	sessionStats = s.ClientVppSessionStatsGet()
+
+	RunTcpHarnessScenarioOnState(s, state,
+		CloseTcpTestEndpointClient(),
+		WaitServerStats(5*time.Second, IsPeerClosed, &peerClosed),
+		StopClientPcap(),
+		ReadClientPcap(&packets),
+	)
+
+	AssertEqual(sendBytes, serverStats.BytesRead)
+	assertTcpTestEndpointCommandOKOrPipeClosed(sendResult)
+	AssertEqual(sendBytes, clientStats.BytesSent)
+	AssertEqual(true, peerClosed.PeerClosed)
+	Log(sessionStats.Output)
+
+	s.LogTcpTestEndpointLogs()
+
+	flow := s.ClientServerFlow()
+	AssertGreaterEqual(flow.ServerSackCount(packets), 1,
+		"expected the Linux receiver to SACK data above the hole")
+	AssertEqual(uint64(0), sessionStats.TimerRecoveryCount,
+		"expected RACK to recover a single mid-stream loss without an RTO")
+	AssertGreaterEqual(sessionStats.RetransmitSegsCount, uint64(1),
+		"expected the dropped segment to be retransmitted")
+	// Bound retransmissions for one isolated loss.
+	dataSegments := tcpHarnessDataSegmentCount(sendBytes, mssStats.SndMss)
+	AssertLessThan(sessionStats.RetransmitSegsCount, dataSegments/2,
+		"expected RACK not to over-retransmit for a single isolated loss")
 }
 
 func TcpSackScoreboardRobustnessTest(s *TcpHarnessSuite) {
