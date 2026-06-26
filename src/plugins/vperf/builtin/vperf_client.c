@@ -391,7 +391,7 @@ vp_client_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *fra
 
 VLIB_REGISTER_NODE (vperf_clients_node) = {
   .function = vp_client_node_fn,
-  .name = "echo-clients",
+  .name = "vperf-clients",
   .type = VLIB_NODE_TYPE_INPUT,
   .state = VLIB_NODE_STATE_DISABLED,
 };

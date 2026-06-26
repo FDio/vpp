@@ -22,7 +22,7 @@ func init() {
 //
 //  1. evt_collector_sink (VCL app) runs in the server-app container, connected
 //     to server VPP.  It listens for incoming connections from the evt-collector.
-//  2. server VPP runs the built-in echo server and the app-evt-collector, which
+//  2. server VPP runs the built-in vperf server and the app-evt-collector, which
 //     connects to the sink and pushes per-session TCP stats when sessions close.
 //  3. Client VPP runs vperf client to generate traffic.
 //  4. After the run the sink output must contain at least one "[tcp]" stat line.
@@ -35,8 +35,8 @@ func EvtCollectorSinkTest(s *VethsSuite) {
 
 	sinkAddr := s.Interfaces.Server.Ip4AddressString()
 	sinkPort := s.Ports.Port1
-	echoAddr := s.Interfaces.Server.Ip4AddressString()
-	echoPort := s.Ports.Port2
+	vperfAddr := s.Interfaces.Server.Ip4AddressString()
+	vperfPort := s.Ports.Port2
 
 	/* Write VCL config for the sink process (runs against server VPP) */
 	srvAppCont := s.Containers.ServerApp
@@ -89,23 +89,23 @@ func EvtCollectorSinkTest(s *VethsSuite) {
 	Log("evt-collector state:\n" + o)
 	AssertContains(o, "is ready: 1")
 
-	/* Start the echo server on the server VPP */
-	o = serverVpp.Vppctl("vperf server uri tcp://%s/%s", echoAddr, echoPort)
+	/* Start the vperf server on the server VPP */
+	o = serverVpp.Vppctl("vperf server uri tcp://%s/%s", vperfAddr, vperfPort)
 	Log(o)
 
 	/* Attach vperf_server to the collector */
 	o = serverVpp.Vppctl("app evt-collector app vperf_server")
 	Log(o)
 
-	/* Run echo client — returns after all sessions close */
+	/* Run vperf client — returns after all sessions close */
 	o = clientVpp.Vppctl("vperf client nclients 2 bytes 1024"+
 		" syn-timeout 10 test-timeout 30"+
-		" uri tcp://%s/%s", echoAddr, echoPort)
+		" uri tcp://%s/%s", vperfAddr, vperfPort)
 	Log(o)
 	AssertNotContains(o, "failed:")
 
 	o = serverVpp.Vppctl("show app evt-collector")
-	Log("evt-collector state after echo:\n" + o)
+	Log("evt-collector state after vperf run:\n" + o)
 
 	/* Give stats a moment to arrive, then stop the sink */
 	time.Sleep(time.Second)
