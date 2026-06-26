@@ -1,0 +1,157 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ce7aabf4_f3d97144",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-06-26T16:17:39Z",
+      "side": 1,
+      "message": "looks neat ! A few comments inline",
+      "revId": "975b3f04b67fe601f2f85c5a9d13bbfaba7f1453",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a15ffbc9_be928ebd",
+        "filename": "src/plugins/npol/npol.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 239,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-06-26T16:17:39Z",
+      "side": 1,
+      "message": "I think this is ok for this one, but I think we would like \nto mark the npol api as stable and start doing versioned msg\nupgrades",
+      "revId": "975b3f04b67fe601f2f85c5a9d13bbfaba7f1453",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "20169040_9be8d193",
+        "filename": "src/plugins/npol/npol_interface.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 15,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-06-26T16:17:39Z",
+      "side": 1,
+      "message": "Can we name these `rx_policies_prenat` ?\nSo that we do not rely on the assumption that dnat is rx",
+      "revId": "975b3f04b67fe601f2f85c5a9d13bbfaba7f1453",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "76a85a45_9b79f67f",
+        "filename": "src/plugins/npol/npol_match.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 632,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-06-26T16:17:39Z",
+      "side": 1,
+      "message": "I think we should try to make this be the same function of `npol_match` so that we do not have to make the Calico inherited requirements constraints in the code.\ne.g. pre-dnat has no profiles can be enforced in controlplane (forbid action\u003dPASS)",
+      "revId": "975b3f04b67fe601f2f85c5a9d13bbfaba7f1453",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7a577412_af393f54",
+        "filename": "src/plugins/npol/npol_match.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 678,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-06-26T16:17:39Z",
+      "side": 1,
+      "message": "Here `is_inbound` could become `match_location`\nwith lowest bit being rx/tx and upper bits being the scope (`default`, `prenat`, ...)",
+      "revId": "975b3f04b67fe601f2f85c5a9d13bbfaba7f1453",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2bbde0a4_b3dd655e",
+        "filename": "src/plugins/npol/npol_match.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 697,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-06-26T16:17:39Z",
+      "side": 1,
+      "message": "This could be\n```\npolicies \u003d if_config-\u003epolicies[match_location ^ if_config-\u003einvert_rx_tx]\n```",
+      "revId": "975b3f04b67fe601f2f85c5a9d13bbfaba7f1453",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "84d471d5_6912d654",
+        "filename": "src/plugins/npol/npol_match.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 698,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-06-26T16:17:39Z",
+      "side": 1,
+      "message": "We could have \n```\npolicy_default \u003d if_config-\u003epolicy_default[match_location ^ if_config-\u003einvert_rx_tx]\n```",
+      "revId": "975b3f04b67fe601f2f85c5a9d13bbfaba7f1453",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "cbda7ef0_0304185e",
+        "filename": "src/plugins/npol/npol_match.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 789,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-06-26T16:17:39Z",
+      "side": 1,
+      "message": "That\u0027s a good point, could we make the match functions return `void` all the time,\nand rely on the `default_policy_action` ?\nI don\u0027t see why we would need `npol_interface_config_t-\u003eenabled`",
+      "revId": "975b3f04b67fe601f2f85c5a9d13bbfaba7f1453",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e24eab34_8f34cdd8",
+        "filename": "src/plugins/npol/npol_match.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 814,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-06-26T16:17:39Z",
+      "side": 1,
+      "message": "I think we can skip the check `vec_len (npol_interface_configs[in_if].prednat_policies` as it is done later down the line",
+      "revId": "975b3f04b67fe601f2f85c5a9d13bbfaba7f1453",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
