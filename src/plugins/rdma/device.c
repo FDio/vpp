@@ -20,6 +20,7 @@
 #include <vlib/pci/pci.h>
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/interface/rx_queue_funcs.h>
+#include <vnet/tcp/tcp.h>
 
 #include <rdma/rdma.h>
 
@@ -548,9 +549,11 @@ rdma_register_interface (vnet_main_t * vnm, rdma_device_t * rd)
   rd->hw_if_index = vnet_eth_register_interface (vnm, &eir);
   /* Indicate ability to support L3 DMAC filtering and
    * initialize interface to L3 non-promisc mode */
-  vnet_hw_if_set_caps (vnm, rd->hw_if_index, VNET_HW_IF_CAP_MAC_FILTER);
-  ethernet_set_flags (vnm, rd->hw_if_index,
-		      ETHERNET_INTERFACE_FLAG_DEFAULT_L3);
+  vnet_hw_if_caps_t caps = VNET_HW_IF_CAP_MAC_FILTER;
+  if (rd->flags & RDMA_DEVICE_F_TSO)
+    caps |= VNET_HW_IF_CAP_TCP_GSO | VNET_HW_IF_CAP_TX_TCP_CKSUM | VNET_HW_IF_CAP_TX_IP4_CKSUM;
+  vnet_hw_if_set_caps (vnm, rd->hw_if_index, caps);
+  ethernet_set_flags (vnm, rd->hw_if_index, ETHERNET_INTERFACE_FLAG_DEFAULT_L3);
   return 0;
 }
 
@@ -903,10 +906,9 @@ rdma_rxq_finalize (vlib_main_t *vm, rdma_device_t *rd)
 }
 
 static clib_error_t *
-rdma_txq_init (vlib_main_t * vm, rdma_device_t * rd, u16 qid, u32 n_desc)
+rdma_txq_init (vlib_main_t *vm, rdma_device_t *rd, u16 qid, u32 n_desc)
 {
   rdma_txq_t *txq;
-  struct ibv_qp_init_attr qpia;
   struct ibv_qp_attr qpa;
   int qp_flags;
   int is_mlx5dv = !!(rd->flags & RDMA_DEVICE_F_MLX5DV);
@@ -934,20 +936,43 @@ rdma_txq_init (vlib_main_t * vm, rdma_device_t * rd, u16 qid, u32 n_desc)
 	return clib_error_return_unix (0, "Create CQ Failed");
     }
 
-  memset (&qpia, 0, sizeof (qpia));
-  qpia.send_cq = txq->cq;
-  qpia.recv_cq = txq->cq;
-  qpia.cap.max_send_wr = n_desc;
-  qpia.cap.max_send_sge = 1;
-  if (rd->flags & RDMA_DEVICE_F_EMPW)
-    qpia.cap.max_inline_data = rd->tx_empw_inline_max;
-  qpia.qp_type = IBV_QPT_RAW_PACKET;
-
-  if ((txq->qp = ibv_create_qp (rd->pd, &qpia)) == 0)
-    return clib_error_return_unix (0, "Queue Pair create failed");
-  if (qpia.cap.max_inline_data < rd->tx_empw_inline_max)
-    return clib_error_return (0, "Queue Pair inline capacity %u is below requested %u",
-			      qpia.cap.max_inline_data, rd->tx_empw_inline_max);
+  if (rd->flags & RDMA_DEVICE_F_TSO)
+    {
+      /* TSO requires ibv_create_qp_ex with IBV_QP_INIT_ATTR_MAX_TSO_HEADER.
+       * Without this the NIC/provider rejects TSO WQEs. */
+      struct ibv_qp_init_attr_ex qpia_ex = {};
+      qpia_ex.send_cq = txq->cq;
+      qpia_ex.recv_cq = txq->cq;
+      qpia_ex.cap.max_send_wr = n_desc;
+      qpia_ex.cap.max_send_sge = 32;
+      if (rd->flags & RDMA_DEVICE_F_EMPW)
+	qpia_ex.cap.max_inline_data = rd->tx_empw_inline_max;
+      qpia_ex.qp_type = IBV_QPT_RAW_PACKET;
+      qpia_ex.comp_mask = IBV_QP_INIT_ATTR_PD | IBV_QP_INIT_ATTR_MAX_TSO_HEADER;
+      qpia_ex.pd = rd->pd;
+      qpia_ex.max_tso_header = RDMA_MLX5_TSO_HDR_MAX;
+      if ((txq->qp = ibv_create_qp_ex (rd->ctx, &qpia_ex)) == 0)
+	return clib_error_return_unix (0, "Queue Pair (TSO) create failed");
+      if (qpia_ex.cap.max_inline_data < rd->tx_empw_inline_max)
+	return clib_error_return (0, "Queue Pair inline capacity %u is below requested %u",
+				  qpia_ex.cap.max_inline_data, rd->tx_empw_inline_max);
+    }
+  else
+    {
+      struct ibv_qp_init_attr qpia = {};
+      qpia.send_cq = txq->cq;
+      qpia.recv_cq = txq->cq;
+      qpia.cap.max_send_wr = n_desc;
+      qpia.cap.max_send_sge = 32;
+      if (rd->flags & RDMA_DEVICE_F_EMPW)
+	qpia.cap.max_inline_data = rd->tx_empw_inline_max;
+      qpia.qp_type = IBV_QPT_RAW_PACKET;
+      if ((txq->qp = ibv_create_qp (rd->pd, &qpia)) == 0)
+	return clib_error_return_unix (0, "Queue Pair create failed");
+      if (qpia.cap.max_inline_data < rd->tx_empw_inline_max)
+	return clib_error_return (0, "Queue Pair inline capacity %u is below requested %u",
+				  qpia.cap.max_inline_data, rd->tx_empw_inline_max);
+    }
 
   memset (&qpa, 0, sizeof (qpa));
   qp_flags = IBV_QP_STATE | IBV_QP_PORT;
@@ -971,7 +996,7 @@ rdma_txq_init (vlib_main_t * vm, rdma_device_t * rd, u16 qid, u32 n_desc)
   txq->ibv_cq = txq->cq;
   txq->ibv_qp = txq->qp;
 
-  if (rd->flags & RDMA_DEVICE_F_MLX5DV)
+  if (is_mlx5dv)
     {
       rdma_mlx5_wqe_t *tmpl = (void *) txq->dv_wqe_tmpl;
       struct mlx5dv_cq dv_cq;
@@ -992,10 +1017,9 @@ rdma_txq_init (vlib_main_t * vm, rdma_device_t * rd, u16 qid, u32 n_desc)
 	  || (uword) dv_qp.sq.buf % sizeof (rdma_mlx5_wqe_t))
 	return clib_error_return (0, "Unsupported DV SQ parameters");
 
-      if (RDMA_TXQ_BUF_SZ (txq) > dv_cq.cqe_cnt
-	  || !is_pow2 (dv_cq.cqe_cnt)
-	  || sizeof (struct mlx5_cqe64) != dv_cq.cqe_size
-	  || (uword) dv_cq.buf % sizeof (struct mlx5_cqe64))
+      if (RDMA_TXQ_BUF_SZ (txq) > dv_cq.cqe_cnt || !is_pow2 (dv_cq.cqe_cnt) ||
+	  sizeof (struct mlx5_cqe64) != dv_cq.cqe_size ||
+	  (uword) dv_cq.buf % sizeof (struct mlx5_cqe64))
 	return clib_error_return (0, "Unsupported DV CQ parameters");
 
       /* get SQ and doorbell addresses */
@@ -1177,7 +1201,7 @@ rdma_dev_init (vlib_main_t *vm, rdma_device_t *rd, rdma_create_if_args_t *args)
 		      format_clib_error, err);
 	  clib_error_free (err);
 	  rd->flags &= ~(RDMA_DEVICE_F_MLX5DV | RDMA_DEVICE_F_STRIDING_RQ |
-			 RDMA_DEVICE_F_RX_L4_CKSUM | RDMA_DEVICE_F_EMPW);
+			 RDMA_DEVICE_F_RX_L4_CKSUM | RDMA_DEVICE_F_EMPW | RDMA_DEVICE_F_TSO);
 	}
       else
 	{
@@ -1261,6 +1285,7 @@ rdma_create_if (vlib_main_t * vm, rdma_create_if_args_t * args)
   rdma_device_t *rd;
   vlib_pci_addr_t pci_addr;
   char netdev_path[PATH_MAX];
+  struct ibv_device_attr_ex attr_ex = {};
   struct ibv_device **dev_list;
   int n_devs;
   u8 *s;
@@ -1425,6 +1450,21 @@ rdma_create_if (vlib_main_t * vm, rdma_create_if_args_t * args)
 	  args->error = clib_error_return (0, "Direct Verbs mode requires mlx5 CQE v1 support");
 	  goto err2;
 	}
+    }
+
+  if ((rd->flags & RDMA_DEVICE_F_MLX5DV) && tcp_cfg.allow_tso &&
+      ibv_query_device_ex (rd->ctx, NULL, &attr_ex) == 0 && attr_ex.tso_caps.max_tso > 0 &&
+      (attr_ex.tso_caps.supported_qpts & (1 << IBV_QPT_RAW_PACKET)))
+    {
+      rd->flags |= RDMA_DEVICE_F_TSO;
+      rd->max_tso = attr_ex.tso_caps.max_tso;
+      rdma_log (VLIB_LOG_LEVEL_DEBUG, rd,
+		"TSO caps: max_tso=%u supported_qpts=0x%x DV path enabled", rd->max_tso,
+		attr_ex.tso_caps.supported_qpts);
+      if (PREDICT_FALSE (rd->max_tso < tcp_cfg.max_gso_size))
+	rdma_log__ (VLIB_LOG_LEVEL_WARNING, rd,
+		    "TSO max payload %u is below configured TCP max GSO size %u", rd->max_tso,
+		    tcp_cfg.max_gso_size);
     }
 
   if (args->tx_empw_inline_max && !(rd->flags & RDMA_DEVICE_F_EMPW))
