@@ -163,6 +163,8 @@ format_tcp_stats (u8 * s, va_list * args)
 	      format_white_space, indent, tc->fr_occurences,
 	      tc->tr_occurences, tc->segs_retrans, tc->bytes_retrans,
 	      tcp_time_now_us (tc->c_thread_index) - tc->start_ts);
+  s = format (s, "%Udelivered %lu delivery_rate %lu\n", format_white_space, indent, tc->delivered,
+	      tc->delivery_rate);
   s = format (s, "%Uerr wnd data below %u above %u ack below %u above %u",
 	      format_white_space, indent, tc->errors.below_data_wnd,
 	      tc->errors.above_data_wnd, tc->errors.below_ack_wnd,

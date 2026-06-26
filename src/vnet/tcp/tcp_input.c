@@ -946,10 +946,21 @@ tcp_rcv_ack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc, vlib_buffer_t * b,
   tcp_validate_txf_size (tc, tc->bytes_acked);
 
   if (tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE)
-    tcp_bt_sample_delivery_rate (tc, &rs);
+    {
+      tcp_bt_sample_delivery_rate (tc, &rs);
+      /* Byte tracker maintains tc->delivered/delivered_time and computes the
+       * delivery interval per ack; derive the rate directly from it. */
+      if (rs.interval_time > 0.0)
+	tc->delivery_rate = (u64) ((f64) rs.delivered / rs.interval_time);
+    }
   else
-    rs.delivered = tc->bytes_acked + tc->sack_sb.last_sacked_bytes -
-		   tc->sack_sb.last_bytes_delivered;
+    {
+      rs.delivered =
+	tc->bytes_acked + tc->sack_sb.last_sacked_bytes - tc->sack_sb.last_bytes_delivered;
+      /* No byte tracker: maintain delivered counters and a windowed rate
+       * estimate ourselves. */
+      tcp_update_delivery_rate_bt_off (tc, rs.delivered);
+    }
 
   if (tc->bytes_acked + tc->sack_sb.last_sacked_bytes)
     {
