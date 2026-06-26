@@ -362,10 +362,23 @@ typedef struct _tcp_connection
 
   /* Delivery rate estimation */
   u64 delivered;		/**< Total bytes delivered to peer */
-  u64 app_limited;		/**< Delivered when app-limited detected */
   f64 delivered_time;		/**< Time last bytes were acked */
-  f64 first_tx_time;		/**< Send time for recently delivered/sent */
-  u64 lost;			/**< Total bytes lost */
+  u64 delivery_rate;		/**< Measured delivery rate (bytes/s) */
+  union
+  {
+    struct
+    {
+      u64 app_limited;	 /**< Delivered when app-limited detected */
+      f64 first_tx_time; /**< Send time for recently delivered/sent */
+      u64 lost;		 /**< Total bytes lost */
+    };
+    struct
+    {
+      f64 dr_window_start_time;	 /**< Start time of current rate window */
+      u64 dr_delivered_at_start; /**< tc->delivered when window opened */
+      u64 dr_prev_window_rate;	 /**< Rate of previous window (bytes/s) */
+    };
+  };
   tcp_byte_tracker_t *bt;	/**< Tx byte tracker */
 
   tcp_errors_t errors;	/**< Soft connection errors */
