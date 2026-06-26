@@ -137,8 +137,8 @@ nsim_wheel_alloc (nsim_main_t *nsm)
 }
 
 static int
-nsim_configure (nsim_main_t *nsm, f64 bandwidth, f64 delay, u32 packet_size,
-		f64 drop_fraction, f64 reorder_fraction)
+nsim_configure (nsim_main_t *nsm, f64 bandwidth, f64 delay, u32 packet_size, f64 drop_fraction,
+		f64 reorder_fraction, f64 buffer)
 {
   u64 total_buffer_size_in_bytes, per_worker_buffer_size, wheel_slots_per_wrk;
   int i, num_workers = vlib_num_workers ();
@@ -169,9 +169,19 @@ nsim_configure (nsim_main_t *nsm, f64 bandwidth, f64 delay, u32 packet_size,
   nsm->delay = delay;
   nsm->drop_fraction = drop_fraction;
   nsm->reorder_fraction = reorder_fraction;
+  nsm->buffer_time = buffer;
+  /* Per-packet serialization time at the bottleneck rate. Only used by the
+   * queued model (buffer > 0). bandwidth is bits/sec. */
+  nsm->serialization_time = (f64) (packet_size * 8) / bandwidth;
 
-  /* delay in seconds, bandwidth in bits/sec */
-  total_buffer_size_in_bytes = ((delay * bandwidth) / 8.0) + 0.5;
+  /* Size the wheel to hold the configured backlog. In the default fixed-delay
+   * model that backlog is one bandwidth-delay product; in the queued
+   * (bufferbloat) model it is the configured buffer depth, which is decoupled
+   * from the BDP so cwnd can grow well past it before the buffer overflows. */
+  if (buffer > 0.0)
+    total_buffer_size_in_bytes = ((buffer * bandwidth) / 8.0) + 0.5;
+  else
+    total_buffer_size_in_bytes = ((delay * bandwidth) / 8.0) + 0.5;
 
   /*
    * Work out how much buffering each worker needs, assuming decent
@@ -394,8 +404,8 @@ vl_api_nsim_configure_t_handler (vl_api_nsim_configure_t * mp)
   if (packets_per_drop > 0)
     drop_fraction = 1.0 / (f64) (packets_per_drop);
 
-  rv = nsim_configure (nsm, bandwidth, delay, packet_size, drop_fraction,
-		       reorder_rate);
+  rv = nsim_configure (nsm, bandwidth, delay, packet_size, drop_fraction, reorder_rate,
+		       0.0 /* buffer: fixed-delay model */);
 
   REPLY_MACRO (VL_API_NSIM_CONFIGURE_REPLY);
 }
@@ -421,8 +431,8 @@ vl_api_nsim_configure2_t_handler (vl_api_nsim_configure2_t * mp)
   if (packets_per_reorder > 0)
     reorder_rate = 1.0 / (f64) packets_per_reorder;
 
-  rv = nsim_configure (nsm, bandwidth, delay, packet_size, drop_fraction,
-		       reorder_rate);
+  rv = nsim_configure (nsm, bandwidth, delay, packet_size, drop_fraction, reorder_rate,
+		       0.0 /* buffer: fixed-delay model */);
 
   REPLY_MACRO (VL_API_NSIM_CONFIGURE2_REPLY);
 }
@@ -633,6 +643,10 @@ format_nsim_config (u8 * s, va_list * args)
 
   s = format (s, "configuration\n");
   s = format (s, " delay: %U\n", format_delay, nsm->delay);
+  if (nsm->buffer_time > 0.0)
+    s = format (s, " buffer: %U (queued/bufferbloat model)\n", format_delay, nsm->buffer_time);
+  else
+    s = format (s, " buffer: 1 bdp (fixed-delay model)\n");
   if (nsm->drop_fraction)
     s = format (s, " drop fraction: %.5f\n", nsm->drop_fraction);
   else
@@ -685,8 +699,7 @@ static clib_error_t *
 set_nsim_command_fn (vlib_main_t * vm,
 		     unformat_input_t * input, vlib_cli_command_t * cmd)
 {
-  f64 drop_fraction = 0.0, reorder_fraction = 0.0, delay = 0.0,
-      bandwidth = 0.0;
+  f64 drop_fraction = 0.0, reorder_fraction = 0.0, delay = 0.0, bandwidth = 0.0, buffer = 0.0;
   u32 packets_per_drop, packets_per_reorder, packet_size = 1500;
   nsim_main_t *nsm = &nsim_main;
   int rv;
@@ -697,6 +710,8 @@ set_nsim_command_fn (vlib_main_t * vm,
 	;
       else if (unformat (input, "bandwidth %U", unformat_bandwidth,
 			 &bandwidth))
+	;
+      else if (unformat (input, "buffer %U", unformat_delay, &buffer))
 	;
       else if (unformat (input, "packet-size %u", &packet_size))
 	;
@@ -729,8 +744,7 @@ set_nsim_command_fn (vlib_main_t * vm,
 	break;
     }
 
-  rv = nsim_configure (nsm, bandwidth, delay, packet_size, drop_fraction,
-		       reorder_fraction);
+  rv = nsim_configure (nsm, bandwidth, delay, packet_size, drop_fraction, reorder_fraction, buffer);
 
   switch (rv)
     {
@@ -775,14 +789,13 @@ set_nsim_command_fn (vlib_main_t * vm,
  * @cliend
  * @cliexcmd{set nsim delay <nn> bandwidth <bb> packet-size <nn>}
 ?*/
-VLIB_CLI_COMMAND (set_nsim_command, static) =
-{
+VLIB_CLI_COMMAND (set_nsim_command, static) = {
   .path = "set nsim",
   .short_help = "set nsim delay <time> bandwidth <bps> packet-size <nbytes>\n"
-  "    [packets-per-drop <nn>][drop-fraction <f64: 0.0 - 1.0>]",
+		"    [buffer <time>][packets-per-drop <nn>]"
+		"[drop-fraction <f64: 0.0 - 1.0>]",
   .function = set_nsim_command_fn,
 };
-
 
 static clib_error_t *
 show_nsim_command_fn (vlib_main_t * vm,

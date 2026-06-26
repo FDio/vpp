@@ -33,6 +33,9 @@ typedef struct
   u32 cursize;
   u32 head;
   u32 tail;
+  /* Departure time of the most recently enqueued packet. Used by the queued
+   * (bufferbloat) model to serialize packets at the bottleneck rate. */
+  f64 last_tx_time;
   nsim_wheel_entry_t *entries;
     CLIB_CACHE_LINE_ALIGN_MARK (pad);
 } nsim_wheel_t;
@@ -41,6 +44,7 @@ typedef struct nsim_node_ctx
 {
   vnet_feature_config_main_t *fcm;
   f64 expires;
+  f64 now;
   u32 *drop;
   u32 *reord;
   u16 *reord_nexts;
@@ -96,6 +100,13 @@ typedef struct
   f64 bandwidth;
   f64 drop_fraction;
   f64 reorder_fraction;
+  /* Bottleneck buffer, in seconds of bandwidth. When non-zero, nsim models a
+   * rate-limited server with a FIFO buffer of this depth (queued/bufferbloat
+   * model) instead of the default fixed-delay line. */
+  f64 buffer_time;
+  /* Per-packet serialization time at the bottleneck (packet_size/bandwidth),
+   * cached for the datapath. Only used when buffer_time > 0. */
+  f64 serialization_time;
   u32 packet_size;
   u32 wheel_slots_per_wrk;
   u32 poll_main_thread;
