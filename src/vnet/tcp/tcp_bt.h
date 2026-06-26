@@ -68,6 +68,23 @@ void tcp_bt_check_app_limited (tcp_connection_t * tc);
  */
 int tcp_bt_is_sane (tcp_byte_tracker_t * bt);
 
+/** Callback for tcp_bt_walk_outstanding, invoked per outstanding sample. */
+typedef void (tcp_bt_walk_fn) (tcp_connection_t *tc, u32 min_seq, u32 max_seq, f64 tx_time,
+			       u32 flags, void *opaque);
+
+/**
+ * Iterate outstanding (not yet fully acked) byte-tracker samples.
+ *
+ * Provided for RACK loss detection, which needs each outstanding segment's
+ * transmit time and flags. The callback is invoked for every sample currently
+ * held by the tracker, in send order; it must not free or reorder samples.
+ *
+ * @param tc	tcp connection (must have an active byte tracker)
+ * @param fn	callback (tc, min_seq, max_seq, tx_time, flags, opaque)
+ * @param opaque opaque pointer passed to the callback
+ */
+void tcp_bt_walk_outstanding (tcp_connection_t *tc, tcp_bt_walk_fn *fn, void *opaque);
+
 format_function_t format_tcp_bt;
 
 #endif /* SRC_VNET_TCP_TCP_BT_H_ */
