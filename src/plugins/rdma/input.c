@@ -420,6 +420,8 @@ process_mini_cqes (rdma_rxq_t * rxq, u32 skip, u32 n_left, u32 cq_ci,
   u32 mcqe_array_index = (cq_ci + 1) & mask;
   mcqe = (mlx5dv_mini_cqe_t *) (rxq->cqes + mcqe_array_index);
 
+  /* The first mini-CQE lives after the title CQE, but subsequent mini-CQE
+   * groups advance relative to the title CQE index. */
   mcqe_array_index = cq_ci;
 
   if (skip)
