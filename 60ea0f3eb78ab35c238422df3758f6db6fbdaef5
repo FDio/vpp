@@ -16,6 +16,24 @@
       "message": "hsm-\u003eis_init \u003d 0?",
       "revId": "60ea0f3eb78ab35c238422df3758f6db6fbdaef5",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "6aa6b37e_f16d5137",
+        "filename": "src/plugins/http_static/static_server.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 1140,
+      "author": {
+        "id": 3308
+      },
+      "writtenOn": "2026-06-26T14:18:11Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "64e6d3de_2c1bfe37",
+      "revId": "60ea0f3eb78ab35c238422df3758f6db6fbdaef5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
