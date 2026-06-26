@@ -918,6 +918,18 @@ func (s *TcpHarnessSuite) SetupClientVpp(clientContainer *Container) {
 	AssertNil(err, fmt.Sprint(err))
 }
 
+// SetClientRack toggles RACK loss detection on the client VPP. The knob is read
+// when a connection initializes, so this must run before the client connects.
+func SetClientRack(enable bool) TcpHarnessAction {
+	return TcpHarnessActionFunc(func(s *TcpHarnessSuite, st *TcpHarnessScenarioState) {
+		cmd := "set tcp rack"
+		if !enable {
+			cmd = "set tcp no-rack"
+		}
+		Log(s.Containers.ClientVpp.VppInstance.Vppctl(cmd))
+	})
+}
+
 func EnableServerNFQueue(cfg tcpharness.NFQueueConfig) TcpHarnessAction {
 	return TcpHarnessActionFunc(func(s *TcpHarnessSuite, st *TcpHarnessScenarioState) {
 		s.EnableServerNFQueue(cfg)
