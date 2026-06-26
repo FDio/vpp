@@ -1,6 +1,23 @@
 {
   "comments": [
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "520e79a7_9867e717",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3308
+      },
+      "writtenOn": "2026-06-26T08:36:14Z",
+      "side": 1,
+      "message": "Thanks for the feedback.",
+      "revId": "dc46b12b72a22c3aca4abeb64d2f489a85a1055f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "dd0a9430_bb83fb15",
@@ -14,6 +31,24 @@
       "writtenOn": "2026-06-26T05:28:50Z",
       "side": 1,
       "message": "Let\u0027s just add this under \"http static server\" as \"disable\" or \"stop\". I see you used the former for the api.",
+      "revId": "dc46b12b72a22c3aca4abeb64d2f489a85a1055f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "f55f2f5d_7a0cf5d5",
+        "filename": "src/plugins/http_static/static_server.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1469,
+      "author": {
+        "id": 3308
+      },
+      "writtenOn": "2026-06-26T08:36:14Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "dd0a9430_bb83fb15",
       "revId": "dc46b12b72a22c3aca4abeb64d2f489a85a1055f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }

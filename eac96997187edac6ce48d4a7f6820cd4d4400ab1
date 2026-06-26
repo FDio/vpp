@@ -24,6 +24,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "814b01de_23d422a1",
+        "filename": "src/plugins/http_static/http_static.api",
+        "patchSetId": 3
+      },
+      "lineNbr": 85,
+      "author": {
+        "id": 3308
+      },
+      "writtenOn": "2026-06-26T08:36:14Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "13cf273a_de024dd7",
+      "range": {
+        "startLine": 85,
+        "startChar": 17,
+        "endLine": 85,
+        "endChar": 40
+      },
+      "revId": "eac96997187edac6ce48d4a7f6820cd4d4400ab1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "5cb60058_2a4f68d0",
@@ -37,6 +61,24 @@
       "writtenOn": "2026-06-25T14:31:49Z",
       "side": 1,
       "message": "Let\u0027s add a cli for this as well",
+      "revId": "eac96997187edac6ce48d4a7f6820cd4d4400ab1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "df99541b_710d03d3",
+        "filename": "src/plugins/http_static/static_server.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1116,
+      "author": {
+        "id": 3308
+      },
+      "writtenOn": "2026-06-26T08:36:14Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "5cb60058_2a4f68d0",
       "revId": "eac96997187edac6ce48d4a7f6820cd4d4400ab1",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
