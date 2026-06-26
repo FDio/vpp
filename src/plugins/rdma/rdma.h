@@ -200,6 +200,7 @@ typedef struct
   mac_address_t hwaddr;
   u32 async_event_clib_file_index;
   u32 dev_instance;
+  u32 cqe_comp_supported_formats;
   rdma_rss4_t rss4;
   rdma_rss6_t rss6;
 
