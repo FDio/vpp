@@ -8,31 +8,40 @@ import (
 
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/util/retry"
 )
 
 // Helper function to remove finalizers from a specific job in a namespace
-func (s *BaseSuite) CleanupJobFinalizers(ctx context.Context, namespace string, jobName string) {
-	// Get the specific job by name
-	job, err := ClientSet.BatchV1().Jobs(namespace).Get(ctx, jobName, metav1.GetOptions{})
-	if err != nil {
-		Log("Failed to get job %s for finalizer cleanup: %v", jobName, err)
-		return
-	}
-
-	// Remove all finalizers from the job (if the job has them)
-	if len(job.Finalizers) > 0 {
-		job.Finalizers = []string{}
-		_, err := ClientSet.BatchV1().Jobs(namespace).Update(ctx, job, metav1.UpdateOptions{})
-		if err != nil {
-			Log("Failed to remove finalizer from job %s: %v", job.Name, err)
-		} else {
-			Log("Removed finalizers from job %s", job.Name)
+func (s *BaseSuite) CleanupJobFinalizers(ctx context.Context, namespace string, jobName string) error {
+	return retry.RetryOnConflict(retry.DefaultBackoff, func() error {
+		job, err := ClientSet.BatchV1().Jobs(namespace).Get(ctx, jobName, metav1.GetOptions{})
+		if apierrors.IsNotFound(err) {
+			Log("Job %s already removed", jobName)
+			return nil
 		}
-	} else {
-		Log("Job %s has no finalizers to remove", jobName)
-	}
+		if err != nil {
+			return fmt.Errorf("failed to get job %s for finalizer cleanup: %w", jobName, err)
+		}
+
+		if len(job.Finalizers) == 0 {
+			Log("Job %s has no finalizers to remove", jobName)
+			return nil
+		}
+
+		job.Finalizers = nil
+		if _, err := ClientSet.BatchV1().Jobs(namespace).Update(ctx, job, metav1.UpdateOptions{}); err != nil {
+			if apierrors.IsNotFound(err) {
+				Log("Job %s already removed", jobName)
+				return nil
+			}
+			return fmt.Errorf("failed to remove finalizers from job %s: %w", jobName, err)
+		}
+		Log("Removed finalizers from job %s", job.Name)
+		return nil
+	})
 }
 
 // Helper function to create a job with configurable finalizers
@@ -174,7 +183,8 @@ func (s *BaseSuite) RunFinalizerTest(ctx context.Context, testName string, jobFi
 	if len(jobFinalizers) > 0 {
 		AssertEqual(len(job.Items), 1)
 		Log("Checking jobs: Job (%s) remains because of finalizer %v", job.Items[0].Name, job.Items[0].Finalizers)
-		s.CleanupJobFinalizers(ctx, s.Namespace, job.Items[0].Name)
+		err := s.CleanupJobFinalizers(ctx, s.Namespace, job.Items[0].Name)
+		AssertNil(err, "Failed to remove job finalizers")
 	}
 
 	// Log job finalizer status before cleanup
