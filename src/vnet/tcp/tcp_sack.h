@@ -21,6 +21,21 @@ scoreboard_hole_bytes (sack_scoreboard_hole_t * hole)
   return hole->end - hole->start;
 }
 
+/* Mark a hole lost, update lost_bytes, and return the newly lost bytes. */
+always_inline u32
+scoreboard_mark_hole_lost (sack_scoreboard_t *sb, sack_scoreboard_hole_t *hole)
+{
+  u32 bytes;
+
+  if (hole->is_lost)
+    return 0;
+
+  hole->is_lost = 1;
+  bytes = scoreboard_hole_bytes (hole);
+  sb->lost_bytes += bytes;
+  return bytes;
+}
+
 always_inline sack_scoreboard_hole_t *
 scoreboard_get_hole (sack_scoreboard_t * sb, u32 index)
 {
@@ -95,9 +110,12 @@ void scoreboard_clear (sack_scoreboard_t * sb);
 void scoreboard_clear_reneging (sack_scoreboard_t * sb, u32 start, u32 end);
 void scoreboard_init (sack_scoreboard_t * sb);
 void scoreboard_init_rxt (sack_scoreboard_t * sb, u32 snd_una);
+void scoreboard_init_holes (sack_scoreboard_t *sb, u32 snd_una, u32 snd_nxt);
 void scoreboard_rxt_mark_lost (sack_scoreboard_t *sb, u32 snd_una,
 			       u32 snd_nxt);
+u32 scoreboard_mark_range_lost (sack_scoreboard_t *sb, u32 start, u32 end);
 void scoreboard_recompute_sack_loss (sack_scoreboard_t *sb, u32 ack, u32 snd_mss);
+void scoreboard_rxt_rewind (sack_scoreboard_t *sb, u32 seq);
 
 format_function_t format_tcp_scoreboard;
 

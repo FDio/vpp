@@ -15,6 +15,13 @@ tcp_cc_rcv_ack (tcp_connection_t * tc, tcp_rate_sample_t * rs)
   tc->tsecr_last_ack = tc->rcv_opts.tsecr;
 }
 
+always_inline void
+tcp_cc_account_rxt_delivery (tcp_connection_t *tc, u32 delivered)
+{
+  ASSERT (tc->rxt_delivered <= tc->snd_rxt_bytes);
+  tc->rxt_delivered += clib_min (delivered, tc->snd_rxt_bytes - tc->rxt_delivered);
+}
+
 static inline void
 tcp_cc_rcv_cong_ack (tcp_connection_t * tc, tcp_cc_ack_t ack_type,
 		     tcp_rate_sample_t * rs)
@@ -98,7 +105,7 @@ void tcp_cc_algo_register (tcp_cc_algorithm_type_e type,
  */
 tcp_cc_algorithm_type_e tcp_cc_algo_new_type (const tcp_cc_algorithm_t * vft);
 tcp_cc_algorithm_t *tcp_cc_algo_get (tcp_cc_algorithm_type_e type);
-
+void tcp_cc_init_congestion (tcp_connection_t *tc, u32 snd_rxt_bytes);
 
 void newreno_rcv_cong_ack (tcp_connection_t * tc, tcp_cc_ack_t ack_type,
 			   tcp_rate_sample_t * rs);

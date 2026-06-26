@@ -5,6 +5,7 @@
 
 #include <vnet/tcp/tcp.h>
 #include <vnet/tcp/tcp_inlines.h>
+#include <vnet/tcp/tcp_rack.h>
 #include <math.h>
 #include <vnet/ip/ip4_inlines.h>
 #include <vnet/ip/ip6_inlines.h>
@@ -814,8 +815,7 @@ tcp_send_synack (tcp_connection_t * tc)
 
   if (PREDICT_FALSE (!vlib_buffer_alloc (vm, &bi, 1)))
     {
-      tcp_timer_update (&wrk->timer_wheel, tc, TCP_TIMER_RETRANSMIT,
-			tcp_cfg.alloc_err_timeout);
+      tcp_retransmit_timer_update_interval (&wrk->timer_wheel, tc, tcp_cfg.alloc_err_timeout);
       tcp_worker_stats_inc (wrk, no_buffer, 1);
       return;
     }
@@ -847,8 +847,7 @@ tcp_send_fin (tcp_connection_t * tc)
   if (PREDICT_FALSE (!vlib_buffer_alloc (vm, &bi, 1)))
     {
       /* Out of buffers so program fin retransmit ASAP */
-      tcp_timer_update (&wrk->timer_wheel, tc, TCP_TIMER_RETRANSMIT,
-			tcp_cfg.alloc_err_timeout);
+      tcp_retransmit_timer_update_interval (&wrk->timer_wheel, tc, tcp_cfg.alloc_err_timeout);
       tc->snd_nxt += 1;
       /* Make sure retransmit retries a fin not data with right snd_nxt */
       if (!fin_snt)
@@ -1341,6 +1340,12 @@ tcp_timer_retransmit_handler (tcp_connection_t * tc)
   vlib_buffer_t *b = 0;
   u32 bi, n_bytes;
 
+  if (PREDICT_FALSE (tcp_rack_timeout_armed (tc)))
+    {
+      tcp_rack_reorder_timeout (tc);
+      return;
+    }
+
   tcp_worker_stats_inc (wrk, tr_events, 1);
 
   /* Should be handled by a different handler */
@@ -1398,7 +1403,10 @@ tcp_timer_retransmit_handler (tcp_connection_t * tc)
       if (tcp_opts_sack_permitted (&tc->rcv_opts))
 	{
 	  tcp_check_sack_reneging (tc);
-	  scoreboard_rxt_mark_lost (&tc->sack_sb, tc->snd_una, tc->snd_nxt);
+	  if (tcp_rack_is_enabled (tc))
+	    tcp_rack_mark_losses_on_rto (tc);
+	  else
+	    scoreboard_rxt_mark_lost (&tc->sack_sb, tc->snd_una, tc->snd_nxt);
 	}
 
       tcp_cc_rxt_timeout (tc);
@@ -1409,8 +1417,7 @@ tcp_timer_retransmit_handler (tcp_connection_t * tc)
       n_bytes = tcp_prepare_retransmit_segment (wrk, tc, 0, n_bytes, &b);
       if (!n_bytes)
 	{
-	  tcp_timer_update (&wrk->timer_wheel, tc, TCP_TIMER_RETRANSMIT,
-			    tcp_cfg.alloc_err_timeout);
+	  tcp_retransmit_timer_update_interval (&wrk->timer_wheel, tc, tcp_cfg.alloc_err_timeout);
 	  return;
 	}
 
@@ -1447,8 +1454,7 @@ tcp_timer_retransmit_handler (tcp_connection_t * tc)
 
       if (PREDICT_FALSE (!vlib_buffer_alloc (vm, &bi, 1)))
 	{
-	  tcp_timer_update (&wrk->timer_wheel, tc, TCP_TIMER_RETRANSMIT,
-			    tcp_cfg.alloc_err_timeout);
+	  tcp_retransmit_timer_update_interval (&wrk->timer_wheel, tc, tcp_cfg.alloc_err_timeout);
 	  tcp_worker_stats_inc (wrk, no_buffer, 1);
 	  return;
 	}
