@@ -275,6 +275,65 @@ scoreboard_rxt_mark_lost (sack_scoreboard_t *sb, u32 snd_una, u32 snd_nxt)
   sb->lost_bytes += scoreboard_hole_bytes (hole);
 }
 
+u8
+scoreboard_mark_lost_span (sack_scoreboard_t *sb, u32 start, u32 end)
+{
+  sack_scoreboard_hole_t *hole;
+  u8 marked = 0;
+
+  /* Mark every existing hole overlapping [start, end) as lost. Unlike
+   * scoreboard_rxt_mark_lost this does NOT touch sb->lost_bytes: the caller is
+   * expected to recount via scoreboard_update_bytes, which is the single owner
+   * of lost_bytes/sacked_bytes. This keeps the lost/sacked accounting
+   * self-consistent (avoids the double-count that drives flight size negative).
+   * We never insert holes here -- RACK only marks data that is genuinely
+   * outstanding (a real hole below high_sacked). */
+  for (hole = scoreboard_first_hole (sb); hole;
+       hole = scoreboard_next_hole (sb, hole))
+    {
+      if (seq_geq (hole->start, end))
+	break;
+      if (seq_leq (hole->end, start))
+	continue;
+      if (!hole->is_lost)
+	{
+	  hole->is_lost = 1;
+	  marked = 1;
+	}
+    }
+
+  return marked;
+}
+
+void
+scoreboard_rxt_rewind (sack_scoreboard_t *sb, u32 seq)
+{
+  /* Rewind the retransmit high-water mark so the retransmit selector
+   * (scoreboard_next_rxt_hole) will re-pick lost data at or above @seq. Needed
+   * when a *retransmit* is detected lost (e.g. by RACK): the hole already sits
+   * below sb->high_rxt, so without rewinding high_rxt the selector skips it
+   * (end <= high_rxt) and the lost retransmit is never re-sent until an RTO.
+   * Only rewinds (never advances) high_rxt, and never below snd_una's hole. */
+  sack_scoreboard_hole_t *hole;
+
+  if (seq_geq (seq, sb->high_rxt))
+    return;
+
+  sb->high_rxt = seq;
+
+  /* Restart the retransmit walk from the hole covering @seq so the next
+   * tcp_retransmit_sack pass re-selects it. */
+  for (hole = scoreboard_first_hole (sb); hole;
+       hole = scoreboard_next_hole (sb, hole))
+    {
+      if (seq_lt (seq, hole->end))
+	{
+	  sb->cur_rxt_hole = scoreboard_hole_index (sb, hole);
+	  return;
+	}
+    }
+}
+
 void
 scoreboard_init (sack_scoreboard_t * sb)
 {

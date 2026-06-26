@@ -5,6 +5,7 @@
 
 #include <vnet/tcp/tcp.h>
 #include <vnet/tcp/tcp_inlines.h>
+#include <vnet/tcp/tcp_rack.h>
 #include <math.h>
 #include <vnet/ip/ip4_inlines.h>
 #include <vnet/ip/ip6_inlines.h>
@@ -305,7 +306,7 @@ tcp_update_burst_snd_vars (tcp_connection_t * tc)
 
   tcp_update_rcv_wnd (tc);
 
-  if (tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE)
+  if ((tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE))
     tcp_bt_check_app_limited (tc);
 
   if (tc->snd_una == tc->snd_nxt)
@@ -954,7 +955,7 @@ tcp_buffer_len (vlib_buffer_t * b)
 always_inline u32
 tcp_push_one_header (tcp_connection_t *tc, vlib_buffer_t *b)
 {
-  if (tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE)
+  if ((tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE))
     tcp_bt_track_tx (tc, tcp_buffer_len (b));
 
   tcp_push_hdr_i (tc, b, tc->snd_nxt, /* compute opts */ 0, /* burst */ 1,
@@ -1244,7 +1245,7 @@ tcp_prepare_retransmit_segment (tcp_worker_ctx_t * wrk,
 
   tc->snd_rxt_bytes += n_bytes;
 
-  if (tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE)
+  if ((tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE))
     tcp_bt_track_rxt (tc, start, start + n_bytes);
 
   tc->bytes_retrans += n_bytes;
@@ -1321,6 +1322,34 @@ tcp_check_syn_flood (tcp_connection_t *tc)
   tm->sdl_cb (&args);
 }
 
+/**
+ * Arm the retransmit timer for a RACK reorder timeout.
+ *
+ * When RACK has segments suspected lost but not yet past the reordering
+ * window, fire the (shared) retransmit timer at the earliest threshold
+ * crossing rather than waiting for the RTO -- but never later than the RTO.
+ * @ref tcp_timer_retransmit_handler distinguishes the two via
+ * tc->rack_timeout_armed. Called from the ack path after RACK loss detection.
+ */
+void
+tcp_rack_arm_reorder_timer (tcp_connection_t *tc, f64 next_to)
+{
+  tcp_worker_ctx_t *wrk = tcp_get_worker (tc->c_thread_index);
+  u32 reo_ticks, rto_ticks;
+
+  if (next_to <= 0.0 || tc->snd_una == tc->snd_nxt)
+    return;
+
+  /* next_to is seconds until the earliest suspect crosses reo_wnd. */
+  reo_ticks = clib_max ((u32) (next_to * THZ * TCP_TO_TIMER_TICK), 1);
+  rto_ticks = clib_max ((u32) tc->rto * TCP_TO_TIMER_TICK, 1);
+  if (reo_ticks >= rto_ticks)
+    return; /* RTO would fire first; leave the normal RTO arming in place */
+
+  tc->rack_timeout_armed = 1;
+  tcp_timer_update (&wrk->timer_wheel, tc, TCP_TIMER_RETRANSMIT, reo_ticks);
+}
+
 void
 tcp_timer_retransmit_handler (tcp_connection_t * tc)
 {
@@ -1328,6 +1357,28 @@ tcp_timer_retransmit_handler (tcp_connection_t * tc)
   vlib_main_t *vm = wrk->vm;
   vlib_buffer_t *b = 0;
   u32 bi, n_bytes;
+
+  /* RACK reorder timeout (not an RTO): time-detect losses and re-send them via
+   * the normal recovery path, without the RTO's cwnd collapse / backoff. */
+  if (tc->rack_timeout_armed)
+    {
+      f64 next_to = 0.0;
+      tc->rack_timeout_armed = 0;
+      if ((tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE) && tcp_in_cong_recovery (tc))
+	{
+	  if (tcp_rack_detect_loss (tc, &next_to))
+	    tcp_program_retransmit (tc);
+	  /* Re-arm for the next suspect, or fall through to a normal RTO arm. */
+	  if (next_to > 0.0)
+	    {
+	      tcp_rack_arm_reorder_timer (tc, next_to);
+	      return;
+	    }
+	  tcp_retransmit_timer_update (&wrk->timer_wheel, tc);
+	  return;
+	}
+      /* RACK disabled mid-flight or left recovery: fall through to RTO. */
+    }
 
   tcp_worker_stats_inc (wrk, tr_events, 1);
 
@@ -1632,7 +1683,7 @@ tcp_transmit_unsent (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
   available_wnd = tc->snd_wnd - offset;
   burst_size = clib_min (burst_size, available_wnd / tc->snd_mss);
 
-  if (tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE)
+  if ((tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE))
     tcp_bt_check_app_limited (tc);
 
   while (n_segs < burst_size)
@@ -1646,7 +1697,7 @@ tcp_transmit_unsent (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
       offset += n_written;
       n_segs += 1;
 
-      if (tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE)
+      if ((tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE))
 	tcp_bt_track_tx (tc, n_written);
 
       tc->snd_nxt += n_written;
