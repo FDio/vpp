@@ -167,7 +167,18 @@ nsim_dispatch_buffer (vlib_main_t * vm, vlib_node_runtime_t * node,
 	wp->tail = 0;
       wp->cursize++;
 
-      ep->tx_time = ctx->expires;
+      if (PREDICT_FALSE (nsm->buffer_time > 0.0))
+	{
+	  /* Queued (bufferbloat) model: serialize at the bottleneck rate, then
+	   * add propagation delay. Queuing delay (the bloat) is the time a
+	   * packet waits behind already-enqueued packets, i.e. how far
+	   * last_tx_time has run ahead of now. */
+	  f64 depart = clib_max (ctx->now, wp->last_tx_time) + nsm->serialization_time;
+	  wp->last_tx_time = depart;
+	  ep->tx_time = depart + nsm->delay;
+	}
+      else
+	ep->tx_time = ctx->expires;
       ep->rx_sw_if_index = vnet_buffer (b)->sw_if_index[VLIB_RX];
       ep->tx_sw_if_index = vnet_buffer (b)->sw_if_index[VLIB_TX];
       nsim_buffer_fwd_lookup (nsm, b, &ep->output_next_index,
@@ -222,7 +233,8 @@ nsim_inline (vlib_main_t * vm,
   ctx.fwd = fwds;
   ctx.fwd_nexts = fwds_nexts;
   ctx.action = actions;
-  ctx.expires = vlib_time_now (vm) + nsm->delay;
+  ctx.now = vlib_time_now (vm);
+  ctx.expires = ctx.now + nsm->delay;
 
   nsim_set_actions (nsm, b, &ctx, n_left_from);
 
