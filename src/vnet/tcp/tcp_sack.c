@@ -275,6 +275,62 @@ scoreboard_rxt_mark_lost (sack_scoreboard_t *sb, u32 snd_una, u32 snd_nxt)
   sb->lost_bytes += scoreboard_hole_bytes (hole);
 }
 
+/**
+ * Mark existing holes overlapping [start, end) as lost.
+ *
+ * Does not touch sb->lost_bytes; scoreboard_update_bytes recounts it from the
+ * is_lost flags. Never inserts holes. Returns 1 if any hole was newly marked.
+ */
+u8
+scoreboard_mark_lost_span (sack_scoreboard_t *sb, u32 start, u32 end)
+{
+  sack_scoreboard_hole_t *hole;
+  u8 marked = 0;
+
+  for (hole = scoreboard_first_hole (sb); hole; hole = scoreboard_next_hole (sb, hole))
+    {
+      if (seq_geq (hole->start, end))
+	break;
+      if (seq_leq (hole->end, start))
+	continue;
+      if (!hole->is_lost)
+	{
+	  hole->is_lost = 1;
+	  marked = 1;
+	}
+    }
+
+  return marked;
+}
+
+/**
+ * Rewind the retransmit high-water mark to @seq.
+ *
+ * scoreboard_next_rxt_hole skips holes at or below high_rxt, so a lost
+ * retransmit (whose hole is already below high_rxt) would not be re-sent until
+ * the RTO. Rewinding lets the selector re-pick it. Only ever lowers high_rxt.
+ */
+void
+scoreboard_rxt_rewind (sack_scoreboard_t *sb, u32 seq)
+{
+  sack_scoreboard_hole_t *hole;
+
+  if (seq_geq (seq, sb->high_rxt))
+    return;
+
+  sb->high_rxt = seq;
+
+  /* Point the retransmit walk at the hole covering @seq. */
+  for (hole = scoreboard_first_hole (sb); hole; hole = scoreboard_next_hole (sb, hole))
+    {
+      if (seq_lt (seq, hole->end))
+	{
+	  sb->cur_rxt_hole = scoreboard_hole_index (sb, hole);
+	  return;
+	}
+    }
+}
+
 void
 scoreboard_init (sack_scoreboard_t * sb)
 {
