@@ -52,11 +52,11 @@ typedef enum _tcp_state
 } tcp_state_t;
 
 /** TCP timers */
-#define foreach_tcp_timer               \
-  _(RETRANSMIT, "RETRANSMIT")           \
-  _(PERSIST, "PERSIST")                 \
-  _(WAITCLOSE, "WAIT CLOSE")            \
-  _(RETRANSMIT_SYN, "RETRANSMIT SYN")   \
+#define foreach_tcp_timer                                                                          \
+  _ (RETRANSMIT, "RETRANSMIT")                                                                     \
+  _ (PERSIST, "PERSIST")                                                                           \
+  _ (WAITCLOSE, "WAIT CLOSE")                                                                      \
+  _ (RETRANSMIT_SYN, "RETRANSMIT SYN")
 
 typedef enum _tcp_timers
 {
@@ -83,6 +83,7 @@ typedef enum _tcp_timers
 /** Connection configuration flags */
 #define foreach_tcp_cfg_flag                                                                       \
   _ (RATE_SAMPLE, "Rate sampling")                                                                 \
+  _ (RACK, "RACK loss detection")                                                                  \
   _ (NO_CSUM_OFFLOAD, "No csum offload")                                                           \
   _ (NO_TSO, "TSO off")                                                                            \
   _ (TSO, "TSO")                                                                                   \
@@ -106,20 +107,22 @@ typedef enum tcp_cfg_flag_
 } tcp_cfg_flags_e;
 
 /** TCP connection flags */
-#define foreach_tcp_connection_flag             \
-  _(SNDACK, "Send ACK")                         \
-  _(FINSNT, "FIN sent")				\
-  _(RECOVERY, "Recovery")                    	\
-  _(FAST_RECOVERY, "Fast Recovery")		\
-  _(DCNT_PENDING, "Disconnect pending")		\
-  _(HALF_OPEN_DONE, "Half-open completed")	\
-  _(FINPNDG, "FIN pending")			\
-  _(RXT_PENDING, "Retransmit pending")		\
-  _(FRXT_FIRST, "Retransmit first")		\
-  _(DEQ_PENDING, "Dequeue pending ")		\
-  _(PSH_PENDING, "PSH pending")			\
-  _(FINRCVD, "FIN received")			\
-  _(ZERO_RWND_SENT, "Zero RWND sent")		\
+#define foreach_tcp_connection_flag                                                                \
+  _ (SNDACK, "Send ACK")                                                                           \
+  _ (FINSNT, "FIN sent")                                                                           \
+  _ (RECOVERY, "Recovery")                                                                         \
+  _ (FAST_RECOVERY, "Fast Recovery")                                                               \
+  _ (DCNT_PENDING, "Disconnect pending")                                                           \
+  _ (HALF_OPEN_DONE, "Half-open completed")                                                        \
+  _ (FINPNDG, "FIN pending")                                                                       \
+  _ (RXT_PENDING, "Retransmit pending")                                                            \
+  _ (FRXT_FIRST, "Retransmit first")                                                               \
+  _ (DEQ_PENDING, "Dequeue pending ")                                                              \
+  _ (PSH_PENDING, "PSH pending")                                                                   \
+  _ (FINRCVD, "FIN received")                                                                      \
+  _ (ZERO_RWND_SENT, "Zero RWND sent")                                                             \
+  _ (RACK_TIMEOUT, "RACK timeout")                                                                 \
+  _ (RACK_REORDERED, "RACK reordering observed")
 
 typedef enum tcp_connection_flag_bits_
 {
@@ -192,6 +195,7 @@ typedef enum tcp_bts_flags_
   TCP_BTS_IS_APP_LIMITED = 1 << 1,
   TCP_BTS_IS_SACKED = 1 << 2,
   TCP_BTS_IS_RXT_LOST = 1 << 3,
+  TCP_BTS_IS_LOST = 1 << 4,
 } __clib_packed tcp_bts_flags_t;
 
 typedef struct tcp_bt_sample_
@@ -222,8 +226,19 @@ typedef struct tcp_rate_sample_
   u32 acked_and_sacked;		/**< Bytes acked + sacked now */
   u32 last_lost;		/**< Bytes lost now */
   u32 lost;			/**< Number of bytes lost over interval */
+  u32 rack_fack;		/**< ACK-local RACK forward ACK */
   tcp_bts_flags_t flags;	/**< Rate sample flags from bt sample */
 } tcp_rate_sample_t;
+
+typedef struct tcp_rack_state_
+{
+  f64 xmit_ts;	     /**< Transmit time of RACK.segment */
+  f64 rtt;	     /**< RTT of RACK.segment */
+  u32 end_seq;	     /**< End sequence of RACK.segment */
+  u32 loss_segs;     /**< Transmissions declared lost by RACK */
+  u32 rxt_loss_segs; /**< Retransmissions declared lost by RACK */
+  u32 timeouts;	     /**< RACK reordering timer expirations */
+} tcp_rack_state_t;
 
 typedef struct tcp_byte_tracker_
 {
@@ -232,6 +247,9 @@ typedef struct tcp_byte_tracker_
   u32 head;			/**< Head of samples linked list */
   u32 tail;			/**< Tail of samples linked list */
   u32 last_ooo;			/**< Cached last ooo sample */
+  u32 rxt_in_flight;		/**< Active retransmission-copy bytes */
+  f64 min_rtt;			/**< Windowed minimum RTT */
+  f64 min_rtt_ts;		/**< Start of the current min-RTT window */
 } tcp_byte_tracker_t;
 
 typedef enum _tcp_cc_algorithm_type
@@ -426,6 +444,14 @@ tcp_cong_recovery_off (tcp_connection_t * tc)
 #define tcp_zero_rwnd_sent(tc) ((tc)->flags & TCP_CONN_ZERO_RWND_SENT)
 #define tcp_zero_rwnd_sent_on(tc) (tc)->flags |= TCP_CONN_ZERO_RWND_SENT
 #define tcp_zero_rwnd_sent_off(tc) (tc)->flags &= ~TCP_CONN_ZERO_RWND_SENT
+
+/* RTO and RACK share the retransmit timer. */
+#define tcp_rack_timeout_armed(tc)     ((tc)->flags & TCP_CONN_RACK_TIMEOUT)
+#define tcp_rack_timeout_armed_on(tc)  (tc)->flags |= TCP_CONN_RACK_TIMEOUT
+#define tcp_rack_timeout_armed_off(tc) (tc)->flags &= ~TCP_CONN_RACK_TIMEOUT
+#define tcp_rack_reordered(tc)	       ((tc)->flags & TCP_CONN_RACK_REORDERED)
+#define tcp_rack_reordered_on(tc)      (tc)->flags |= TCP_CONN_RACK_REORDERED
+#define tcp_rack_reordered_off(tc)     (tc)->flags &= ~TCP_CONN_RACK_REORDERED
 
 always_inline tcp_connection_t *
 tcp_get_connection_from_transport (transport_connection_t * tconn)

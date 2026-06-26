@@ -5,6 +5,7 @@
 
 #include <vnet/tcp/tcp.h>
 #include <vnet/tcp/tcp_inlines.h>
+#include <vnet/tcp/tcp_rack.h>
 #include <math.h>
 #include <vnet/ip/ip4_inlines.h>
 #include <vnet/ip/ip6_inlines.h>
@@ -814,8 +815,7 @@ tcp_send_synack (tcp_connection_t * tc)
 
   if (PREDICT_FALSE (!vlib_buffer_alloc (vm, &bi, 1)))
     {
-      tcp_timer_update (&wrk->timer_wheel, tc, TCP_TIMER_RETRANSMIT,
-			tcp_cfg.alloc_err_timeout);
+      tcp_retransmit_timer_update_interval (&wrk->timer_wheel, tc, tcp_cfg.alloc_err_timeout);
       tcp_worker_stats_inc (wrk, no_buffer, 1);
       return;
     }
@@ -847,8 +847,7 @@ tcp_send_fin (tcp_connection_t * tc)
   if (PREDICT_FALSE (!vlib_buffer_alloc (vm, &bi, 1)))
     {
       /* Out of buffers so program fin retransmit ASAP */
-      tcp_timer_update (&wrk->timer_wheel, tc, TCP_TIMER_RETRANSMIT,
-			tcp_cfg.alloc_err_timeout);
+      tcp_retransmit_timer_update_interval (&wrk->timer_wheel, tc, tcp_cfg.alloc_err_timeout);
       tc->snd_nxt += 1;
       /* Make sure retransmit retries a fin not data with right snd_nxt */
       if (!fin_snt)
@@ -1217,7 +1216,7 @@ tcp_prepare_retransmit_segment (tcp_worker_ctx_t * wrk,
 				tcp_connection_t * tc, u32 offset,
 				u32 max_deq_bytes, vlib_buffer_t ** b)
 {
-  u32 start, available_bytes;
+  u32 start, available_bytes, replaced = 0;
   int n_bytes = 0;
 
   ASSERT (tc->state >= TCP_STATE_ESTABLISHED);
@@ -1245,7 +1244,10 @@ tcp_prepare_retransmit_segment (tcp_worker_ctx_t * wrk,
   tc->snd_rxt_bytes += n_bytes;
 
   if (tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE)
-    tcp_bt_track_rxt (tc, start, start + n_bytes);
+    replaced = tcp_bt_track_rxt (tc, start, start + n_bytes);
+
+  if (tcp_in_cong_recovery (tc))
+    tc->prr_delivered += replaced;
 
   tc->bytes_retrans += n_bytes;
   tc->segs_retrans += 1;
@@ -1279,21 +1281,32 @@ tcp_cc_rxt_timeout (tcp_connection_t *tc)
 
   TCP_EVT (TCP_EVT_CC_EVT, tc, 6);
 
+  if (!tcp_in_cong_recovery (tc) && tc->bt)
+    {
+      tc->snd_rxt_bytes = tc->bt->rxt_in_flight;
+      tc->rxt_delivered = 0;
+    }
+
   if (tcp_opts_sack_permitted (&tc->rcv_opts))
     {
       n_bytes = clib_min (tc->snd_mss, tc->snd_nxt - tc->snd_una);
 
       /* Snapshot before reneging handling can reset high_rxt. */
-      head_was_rxt =
-	tcp_in_cong_recovery (tc) && seq_geq (tc->sack_sb.high_rxt, tc->snd_una + n_bytes);
+      head_was_rxt = !tc->bt && tcp_in_cong_recovery (tc) &&
+		     seq_geq (tc->sack_sb.high_rxt, tc->snd_una + n_bytes);
 
       tcp_check_sack_reneging (tc);
-      scoreboard_rxt_mark_lost (&tc->sack_sb, tc->snd_una, tc->snd_nxt);
 
-      if (head_was_rxt)
+      if (tcp_rack_is_enabled (tc))
+	tcp_rack_mark_losses_on_rto (tc);
+      else
 	{
-	  tc->rxt_delivered += n_bytes;
-	  ASSERT (tc->rxt_delivered <= tc->snd_rxt_bytes);
+	  scoreboard_rxt_mark_lost (&tc->sack_sb, tc->snd_una, tc->snd_nxt);
+	  if (head_was_rxt)
+	    {
+	      tc->rxt_delivered += n_bytes;
+	      ASSERT (tc->rxt_delivered <= tc->snd_rxt_bytes);
+	    }
 	}
     }
 
@@ -1313,6 +1326,8 @@ tcp_cc_rxt_timeout (tcp_connection_t *tc)
     }
 
   tcp_recovery_on (tc);
+  if (tc->bt)
+    tcp_bt_sync_rxt_delivery (tc);
 
   /* Fresh timeout after progress. rto_boff can be cleared mid-recovery by
    * acks that make some progress (tcp_update_rtt), so this is not necessarily
@@ -1361,6 +1376,12 @@ tcp_timer_retransmit_handler (tcp_connection_t * tc)
   vlib_main_t *vm = wrk->vm;
   vlib_buffer_t *b = 0;
   u32 bi, n_bytes;
+
+  if (PREDICT_FALSE (tcp_rack_timeout_armed (tc)))
+    {
+      tcp_rack_reorder_timeout (tc);
+      return;
+    }
 
   tcp_worker_stats_inc (wrk, tr_events, 1);
 
@@ -1425,10 +1446,9 @@ tcp_timer_retransmit_handler (tcp_connection_t * tc)
       if (!n_bytes)
 	{
 	  /* Allocation failed, do not re-credit again the head to rxt_delivered */
-	  if (tcp_opts_sack_permitted (&tc->rcv_opts))
+	  if (tcp_opts_sack_permitted (&tc->rcv_opts) && !tcp_rack_is_enabled (tc))
 	    scoreboard_init_rxt (&tc->sack_sb, tc->snd_una);
-	  tcp_timer_update (&wrk->timer_wheel, tc, TCP_TIMER_RETRANSMIT,
-			    tcp_cfg.alloc_err_timeout);
+	  tcp_retransmit_timer_update_interval (&wrk->timer_wheel, tc, tcp_cfg.alloc_err_timeout);
 	  return;
 	}
 
@@ -1465,8 +1485,7 @@ tcp_timer_retransmit_handler (tcp_connection_t * tc)
 
       if (PREDICT_FALSE (!vlib_buffer_alloc (vm, &bi, 1)))
 	{
-	  tcp_timer_update (&wrk->timer_wheel, tc, TCP_TIMER_RETRANSMIT,
-			    tcp_cfg.alloc_err_timeout);
+	  tcp_retransmit_timer_update_interval (&wrk->timer_wheel, tc, tcp_cfg.alloc_err_timeout);
 	  tcp_worker_stats_inc (wrk, no_buffer, 1);
 	  return;
 	}
@@ -1797,12 +1816,12 @@ tcp_retransmit_sack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
 	}
       else
 	{
-	  /* Presumed lost head retransmit. snd_rxt_bytes now counts the head twice,
-	   * but the scoreboard credits its single delivery to rxt_sacked only once,
-	   * so account the prior (lost) copy as having left the network here. */
-	  tc->rxt_delivered += n_written;
-	  tc->prr_delivered += n_written;
-	  ASSERT (tc->rxt_delivered <= tc->snd_rxt_bytes);
+	  if (!tc->bt)
+	    {
+	      tc->rxt_delivered += n_written;
+	      tc->prr_delivered += n_written;
+	      ASSERT (tc->rxt_delivered <= tc->snd_rxt_bytes);
+	    }
 	}
       ASSERT (seq_leq (sb->high_rxt, tc->snd_nxt));
     }
