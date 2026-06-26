@@ -13,8 +13,8 @@ import (
 )
 
 func init() {
-	RegisterVethTests(XEchoVclClientUdpTest, XEchoVclClientTcpTest, XEchoVclServerUdpTest, VclQuicUnidirectionalStreamTest,
-		XEchoVclServerTcpTest, VclEchoTcpTest, VclEchoUdpTest, VclHttpPostTest, VclClUdpDscpTest,
+	RegisterVethTests(XVperfVclClientUdpTest, XVperfVclClientTcpTest, XVperfVclServerUdpTest, VclQuicUnidirectionalStreamTest,
+		XVperfVclServerTcpTest, VclVperfTcpTest, VclVperfUdpTest, VclHttpPostTest, VclClUdpDscpTest,
 		VclQuicBidirectionalStreamTest, VclQuicUnidirectionalStreamClientResetTest,
 		VclQuicUnidirectionalStreamServerResetTest, VclQuicBidirectionalStreamClientResetTest,
 		VclQuicBidirectionalStreamServerResetTest, VclQuicClientCloseConnectionTest, VclQuicServerCloseConnectionTest,
@@ -50,44 +50,44 @@ func getVclConfig(c *Container, ns_id_optional ...string) string {
 	return s.Close().ToString()
 }
 
-func XEchoVclClientUdpTest(s *VethsSuite) {
-	testXEchoVclClient(s, "udp")
+func XVperfVclClientUdpTest(s *VethsSuite) {
+	testXVperfVclClient(s, "udp")
 }
 
-func XEchoVclClientTcpTest(s *VethsSuite) {
-	testXEchoVclClient(s, "tcp")
+func XVperfVclClientTcpTest(s *VethsSuite) {
+	testXVperfVclClient(s, "tcp")
 }
 
-func testXEchoVclClient(s *VethsSuite, proto string) {
+func testXVperfVclClient(s *VethsSuite, proto string) {
 	s.SetupAppContainers()
 
 	serverVpp := s.Containers.ServerVpp.VppInstance
 
 	serverVpp.Vppctl("vperf server uri %s://%s/%s fifo-size 64k", proto, s.Interfaces.Server.Ip4AddressString(), s.Ports.Port1)
 
-	echoClnContainer := s.GetTransientContainerByName("client-app")
-	echoClnContainer.CreateFile("/vcl.conf", getVclConfig(echoClnContainer))
+	vperfClnContainer := s.GetTransientContainerByName("client-app")
+	vperfClnContainer.CreateFile("/vcl.conf", getVclConfig(vperfClnContainer))
 
 	testClientCommand := fmt.Sprintf("vperf_client -N 100 -p %s %s %s 2>&1 | tee %s",
-		proto, s.Interfaces.Server.Ip4AddressString(), s.Ports.Port1, VclTestClnLogFileName(echoClnContainer))
+		proto, s.Interfaces.Server.Ip4AddressString(), s.Ports.Port1, VclTestClnLogFileName(vperfClnContainer))
 	Log(testClientCommand)
-	echoClnContainer.AddEnvVar("VCL_CONFIG", "/vcl.conf")
-	o, err := echoClnContainer.Exec(true, WrapCmdWithLineBuffering(testClientCommand))
+	vperfClnContainer.AddEnvVar("VCL_CONFIG", "/vcl.conf")
+	o, err := vperfClnContainer.Exec(true, WrapCmdWithLineBuffering(testClientCommand))
 	AssertNil(err)
 	AssertNotContains(o, "aborting test")
 	Log(o)
 	AssertContains(o, "CLIENT RESULTS")
 }
 
-func XEchoVclServerUdpTest(s *VethsSuite) {
-	testXEchoVclServer(s, "udp")
+func XVperfVclServerUdpTest(s *VethsSuite) {
+	testXVperfVclServer(s, "udp")
 }
 
-func XEchoVclServerTcpTest(s *VethsSuite) {
-	testXEchoVclServer(s, "tcp")
+func XVperfVclServerTcpTest(s *VethsSuite) {
+	testXVperfVclServer(s, "tcp")
 }
 
-func testXEchoVclServer(s *VethsSuite, proto string) {
+func testXVperfVclServer(s *VethsSuite, proto string) {
 	s.SetupAppContainers()
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -117,7 +117,7 @@ func testXEchoVclServer(s *VethsSuite, proto string) {
 	AssertContains(o, "Test finished at")
 }
 
-func testVclEcho(s *VethsSuite, proto string, extraArgs ...string) (string, string) {
+func testVclVperf(s *VethsSuite, proto string, extraArgs ...string) (string, string) {
 	s.SetupAppContainers()
 
 	extras := ""
@@ -143,14 +143,14 @@ func testVclEcho(s *VethsSuite, proto string, extraArgs ...string) (string, stri
 		AssertNotEmpty(o)
 		AssertContains(o, "n_sub: 1")
 	}
-	echoClnContainer := s.GetTransientContainerByName("client-app")
-	echoClnContainer.CreateFile("/vcl.conf", getVclConfig(echoClnContainer))
+	vperfClnContainer := s.GetTransientContainerByName("client-app")
+	vperfClnContainer.CreateFile("/vcl.conf", getVclConfig(vperfClnContainer))
 
 	testClientCommand := fmt.Sprintf("vperf_client -X -S %s-p %s %s %s 2>&1 | tee %s",
-		extras, proto, serverVethAddress, s.Ports.Port1, VclTestClnLogFileName(echoClnContainer))
-	echoClnContainer.AddEnvVar("VCL_CONFIG", "/vcl.conf")
+		extras, proto, serverVethAddress, s.Ports.Port1, VclTestClnLogFileName(vperfClnContainer))
+	vperfClnContainer.AddEnvVar("VCL_CONFIG", "/vcl.conf")
 
-	o, err := echoClnContainer.Exec(true, WrapCmdWithLineBuffering(testClientCommand))
+	o, err := vperfClnContainer.Exec(true, WrapCmdWithLineBuffering(testClientCommand))
 	Log("****** Client output:\n%s\n******", o)
 
 	oSrv, errSrv := srvAppCont.Exec(false, "cat %s", VclTestSrvLogFileName(srvAppCont))
@@ -162,16 +162,16 @@ func testVclEcho(s *VethsSuite, proto string, extraArgs ...string) (string, stri
 	return o, oSrv
 }
 
-func VclEchoTcpTest(s *VethsSuite) {
-	testVclEcho(s, "tcp")
+func VclVperfTcpTest(s *VethsSuite) {
+	testVclVperf(s, "tcp")
 }
 
-func VclEchoUdpTest(s *VethsSuite) {
-	testVclEcho(s, "udp")
+func VclVperfUdpTest(s *VethsSuite) {
+	testVclVperf(s, "udp")
 }
 
 func VclQuicUnidirectionalStreamTest(s *VethsSuite) {
-	_, oSrv := testVclEcho(s, "quic", "-N 1000")
+	_, oSrv := testVclVperf(s, "quic", "-N 1000")
 	AssertNotContains(oSrv, "ERROR: expected unidirectional stream")
 	minBytes, err := vclGetLabelValue(oSrv, "client tx bytes")
 	AssertNil(err)
@@ -184,7 +184,7 @@ func VclQuicUnidirectionalStreamsMWTest(s *VethsSuite) {
 	s.Skip("Might fail to set veth interface fanout options")
 	s.CpusPerVppContainer = 3
 	s.SetupTest()
-	_, oSrv := testVclEcho(s, "quic", "-s 80 -q 10 -N 1000")
+	_, oSrv := testVclVperf(s, "quic", "-s 80 -q 10 -N 1000")
 	AssertNotContains(oSrv, "ERROR: expected unidirectional stream")
 	o := s.Containers.ClientVpp.VppInstance.Vppctl("show quic crypto context")
 	AssertEmpty(o)
@@ -193,7 +193,7 @@ func VclQuicUnidirectionalStreamsMWTest(s *VethsSuite) {
 }
 
 func VclQuicBidirectionalStreamTest(s *VethsSuite) {
-	_, oSrv := testVclEcho(s, "quic", "-B -N 1000")
+	_, oSrv := testVclVperf(s, "quic", "-B -N 1000")
 	minBytes, err := vclGetLabelValue(oSrv, "client tx bytes")
 	AssertNil(err)
 	serverRxBytes, err := vclGetLabelValue(oSrv, "rx bytes")
@@ -205,7 +205,7 @@ func VclQuicBidirectionalStreamTest(s *VethsSuite) {
 }
 
 func VclQuicUnidirectionalStreamClientResetTest(s *VethsSuite) {
-	oCln, oSrv := testVclEcho(s, "quic", "-N 1000 -t client-rst-stream")
+	oCln, oSrv := testVclVperf(s, "quic", "-N 1000 -t client-rst-stream")
 	AssertNotContains(oSrv, "ctrl session went away")
 	AssertNotContains(oSrv, "invalid application error code")
 	serverRstCount, err := vclGetLabelValue(oSrv, "reset count")
@@ -217,7 +217,7 @@ func VclQuicUnidirectionalStreamClientResetTest(s *VethsSuite) {
 }
 
 func VclQuicUnidirectionalStreamServerResetTest(s *VethsSuite) {
-	oCln, oSrv := testVclEcho(s, "quic", "-N 1000 -t server-rst-stream")
+	oCln, oSrv := testVclVperf(s, "quic", "-N 1000 -t server-rst-stream")
 	AssertNotContains(oSrv, "ctrl session went away")
 	AssertNotContains(oCln, "invalid application error code")
 	serverRstCount, err := vclGetLabelValue(oSrv, "reset count")
@@ -229,7 +229,7 @@ func VclQuicUnidirectionalStreamServerResetTest(s *VethsSuite) {
 }
 
 func VclQuicBidirectionalStreamClientResetTest(s *VethsSuite) {
-	oCln, oSrv := testVclEcho(s, "quic", "-B -N 1000 -t client-rst-stream")
+	oCln, oSrv := testVclVperf(s, "quic", "-B -N 1000 -t client-rst-stream")
 	AssertNotContains(oSrv, "ctrl session went away")
 	AssertNotContains(oSrv, "invalid application error code")
 	serverRstCount, err := vclGetLabelValue(oSrv, "reset count")
@@ -241,7 +241,7 @@ func VclQuicBidirectionalStreamClientResetTest(s *VethsSuite) {
 }
 
 func VclQuicBidirectionalStreamServerResetTest(s *VethsSuite) {
-	oCln, oSrv := testVclEcho(s, "quic", "-B -N 1000 -t server-rst-stream")
+	oCln, oSrv := testVclVperf(s, "quic", "-B -N 1000 -t server-rst-stream")
 	AssertNotContains(oSrv, "ctrl session went away")
 	AssertNotContains(oCln, "invalid application error code")
 	serverRstCount, err := vclGetLabelValue(oSrv, "reset count")
@@ -253,7 +253,7 @@ func VclQuicBidirectionalStreamServerResetTest(s *VethsSuite) {
 }
 
 func VclQuicClientCloseConnectionTest(s *VethsSuite) {
-	oCln, oSrv := testVclEcho(s, "quic", "-B -N 1000 -t client-close-conn")
+	oCln, oSrv := testVclVperf(s, "quic", "-B -N 1000 -t client-close-conn")
 	AssertNotContains(oSrv, "ctrl session went away")
 	AssertNotContains(oSrv, "invalid application error code")
 	serverCloseCount, err := vclGetLabelValue(oSrv, "close count")
@@ -265,7 +265,7 @@ func VclQuicClientCloseConnectionTest(s *VethsSuite) {
 }
 
 func VclQuicServerCloseConnectionTest(s *VethsSuite) {
-	oCln, oSrv := testVclEcho(s, "quic", "-B -N 1000 -t server-close-conn")
+	oCln, oSrv := testVclVperf(s, "quic", "-B -N 1000 -t server-close-conn")
 	AssertNotContains(oSrv, "ctrl session went away")
 	AssertNotContains(oCln, "invalid application error code")
 	serverCloseCount, err := vclGetLabelValue(oSrv, "close count")
@@ -277,7 +277,7 @@ func VclQuicServerCloseConnectionTest(s *VethsSuite) {
 }
 
 func VclHttpPostTest(s *VethsSuite) {
-	testVclEcho(s, "http")
+	testVclVperf(s, "http")
 }
 
 func VclDtlsOverMTUTest(s *VethsSuite) {
@@ -293,15 +293,15 @@ func VclDtlsOverMTUTest(s *VethsSuite) {
 	srvAppCont.ExecServer(true, WrapCmdWithLineBuffering(vclSrvCmd))
 	srvVppCont.VppInstance.WaitForApp("vperf_server", 3)
 
-	echoClnContainer := s.GetTransientContainerByName("client-app")
-	echoClnContainer.CreateFile("/vcl.conf", getVclConfig(echoClnContainer))
+	vperfClnContainer := s.GetTransientContainerByName("client-app")
+	vperfClnContainer.CreateFile("/vcl.conf", getVclConfig(vperfClnContainer))
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
 	testClientCommand := fmt.Sprintf("vperf_client -p dtls -N 1 -b 8192 %s %s 2>&1 | tee %s",
-		serverVethAddress, s.Ports.Port1, VclTestClnLogFileName(echoClnContainer))
-	echoClnContainer.AddEnvVar("VCL_CONFIG", "/vcl.conf")
-	_, err := echoClnContainer.ExecContext(ctx, true, WrapCmdWithLineBuffering(testClientCommand))
+		serverVethAddress, s.Ports.Port1, VclTestClnLogFileName(vperfClnContainer))
+	vperfClnContainer.AddEnvVar("VCL_CONFIG", "/vcl.conf")
+	_, err := vperfClnContainer.ExecContext(ctx, true, WrapCmdWithLineBuffering(testClientCommand))
 	AssertNil(err)
 }
 
@@ -313,27 +313,27 @@ func testRetryAttach(s *VethsSuite, proto string) {
 	s.SetupAppContainers()
 
 	srvVppContainer := s.GetTransientContainerByName("server-vpp")
-	echoSrvContainer := s.Containers.ServerApp
+	vperfSrvContainer := s.Containers.ServerApp
 	serverVethAddress := s.Interfaces.Server.Ip4AddressString()
 
-	echoSrvContainer.CreateFile("/vcl.conf", getVclConfig(echoSrvContainer))
-	echoSrvContainer.AddEnvVar("VCL_CONFIG", "/vcl.conf")
+	vperfSrvContainer.CreateFile("/vcl.conf", getVclConfig(vperfSrvContainer))
+	vperfSrvContainer.AddEnvVar("VCL_CONFIG", "/vcl.conf")
 
 	vclSrvCmd := fmt.Sprintf("vperf_server -p %s -B %s %s > %s 2>&1",
-		proto, serverVethAddress, s.Ports.Port1, VclTestSrvLogFileName(echoSrvContainer))
-	echoSrvContainer.ExecServer(true, WrapCmdWithLineBuffering(vclSrvCmd))
+		proto, serverVethAddress, s.Ports.Port1, VclTestSrvLogFileName(vperfSrvContainer))
+	vperfSrvContainer.ExecServer(true, WrapCmdWithLineBuffering(vclSrvCmd))
 	srvVppContainer.VppInstance.WaitForApp("vperf_server", 3)
 
 	Log("This whole test case can take around 3 minutes to run. Please be patient.")
-	Log("... Running first echo client test, before disconnect.")
+	Log("... Running first vperf client test, before disconnect.")
 
-	echoClnContainer := s.GetTransientContainerByName("client-app")
-	echoClnContainer.CreateFile("/vcl.conf", getVclConfig(echoClnContainer))
+	vperfClnContainer := s.GetTransientContainerByName("client-app")
+	vperfClnContainer.CreateFile("/vcl.conf", getVclConfig(vperfClnContainer))
 
 	testClientCommand := fmt.Sprintf("vperf_client -U -p %s %s %s 2>&1 | tee %s",
-		proto, serverVethAddress, s.Ports.Port1, VclTestClnLogFileName(echoClnContainer))
-	echoClnContainer.AddEnvVar("VCL_CONFIG", "/vcl.conf")
-	o, err := echoClnContainer.Exec(true, WrapCmdWithLineBuffering(testClientCommand))
+		proto, serverVethAddress, s.Ports.Port1, VclTestClnLogFileName(vperfClnContainer))
+	vperfClnContainer.AddEnvVar("VCL_CONFIG", "/vcl.conf")
+	o, err := vperfClnContainer.Exec(true, WrapCmdWithLineBuffering(testClientCommand))
 	AssertNil(err)
 	AssertNotContains(o, "aborting test")
 	Log(o)
@@ -348,13 +348,13 @@ func testRetryAttach(s *VethsSuite, proto string) {
 	Log("... VPP server is starting again, so waiting for a bit.")
 	time.Sleep(30 * time.Second) // Wait a moment for the re-attachment to happen
 
-	Log("... Running second echo client test, after disconnect and re-attachment.")
+	Log("... Running second vperf client test, after disconnect and re-attachment.")
 	testClientCommand = fmt.Sprintf("vperf_client -U -X -p %s %s %s 2>&1 | tee %s",
-		proto, serverVethAddress, s.Ports.Port1, VclTestClnLogFileName(echoClnContainer))
-	o, err = echoClnContainer.Exec(true, WrapCmdWithLineBuffering(testClientCommand))
+		proto, serverVethAddress, s.Ports.Port1, VclTestClnLogFileName(vperfClnContainer))
+	o, err = vperfClnContainer.Exec(true, WrapCmdWithLineBuffering(testClientCommand))
 	Log("****** Client output:\n%s\n******", o)
 
-	oSrv, errSrv := echoSrvContainer.Exec(false, "cat %s", VclTestSrvLogFileName(echoSrvContainer))
+	oSrv, errSrv := vperfSrvContainer.Exec(false, "cat %s", VclTestSrvLogFileName(vperfSrvContainer))
 	Log("****** Server output:\n%s\n******", oSrv)
 
 	AssertNil(err, o)
