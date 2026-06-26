@@ -10,6 +10,7 @@
 #include <vnet/tcp/tcp_bt.h>
 #include <vnet/tcp/tcp.h>
 #include <vnet/tcp/tcp_inlines.h>
+#include <vnet/tcp/tcp_rack.h>
 
 static tcp_bt_sample_t *
 bt_get_sample (tcp_byte_tracker_t * bt, u32 bts_index)
@@ -270,6 +271,7 @@ tcp_bt_alloc_tx_sample (tcp_connection_t * tc, u32 min_seq, u32 max_seq)
   bts->flags |= tc->app_limited ? TCP_BTS_IS_APP_LIMITED : 0;
   bts->tx_in_flight = tcp_flight_size (tc);
   bts->tx_lost = tc->lost;
+  bts->tx_tsval = tcp_tstamp (tc);
   return bts;
 }
 
@@ -460,12 +462,47 @@ tcp_bt_track_rxt (tcp_connection_t * tc, u32 start, u32 end)
     }
 }
 
+void
+tcp_bt_walk_range (tcp_connection_t *tc, u32 start, u32 end, tcp_bt_walk_fn_t fn, void *opaque)
+{
+  tcp_byte_tracker_t *bt = tc->bt;
+  tcp_bt_sample_t *bts, *next;
+
+  if (!bt || !seq_lt (start, end))
+    return;
+
+  bts = bt_lookup_seq (bt, start);
+  while (bts && seq_lt (bts->min_seq, end))
+    {
+      next = bt_next_sample (bt, bts);
+      if (seq_gt (bts->max_seq, start))
+	fn (tc, bts, opaque);
+      bts = next;
+    }
+}
+
+void
+tcp_bt_split_at (tcp_connection_t *tc, u32 seq)
+{
+  tcp_bt_sample_t *bts;
+
+  if (!tc->bt)
+    return;
+
+  bts = bt_lookup_seq (tc->bt, seq);
+  if (bts && seq_gt (seq, bts->min_seq) && seq_lt (seq, bts->max_seq))
+    bt_split_sample (tc->bt, bts, seq);
+}
+
 static void
-tcp_bt_sample_to_rate_sample (tcp_connection_t * tc, tcp_bt_sample_t * bts,
-			      tcp_rate_sample_t * rs)
+tcp_bt_sample_to_rate_sample (tcp_connection_t *tc, tcp_bt_sample_t *bts, u32 delivered_end,
+			      tcp_rate_sample_t *rs)
 {
   if (bts->flags & TCP_BTS_IS_SACKED)
     return;
+
+  if (tcp_rack_is_enabled (tc))
+    tcp_rack_sample_acked (tc, bts, delivered_end);
 
   if (rs->prior_delivered && rs->prior_delivered >= bts->delivered)
     return;
@@ -490,7 +527,7 @@ tcp_bt_walk_samples (tcp_connection_t * tc, tcp_rate_sample_t * rs)
   while (cur && seq_leq (cur->max_seq, tc->snd_una))
     {
       next = bt_next_sample (bt, cur);
-      tcp_bt_sample_to_rate_sample (tc, cur, rs);
+      tcp_bt_sample_to_rate_sample (tc, cur, cur->max_seq, rs);
       bt_free_sample (bt, cur);
       cur = next;
     }
@@ -498,7 +535,7 @@ tcp_bt_walk_samples (tcp_connection_t * tc, tcp_rate_sample_t * rs)
   if (cur && seq_lt (cur->min_seq, tc->snd_una))
     {
       bt_update_sample (bt, cur, tc->snd_una);
-      tcp_bt_sample_to_rate_sample (tc, cur, rs);
+      tcp_bt_sample_to_rate_sample (tc, cur, tc->snd_una, rs);
     }
 }
 
@@ -538,7 +575,7 @@ tcp_bt_walk_samples_ooo (tcp_connection_t * tc, tcp_rate_sample_t * rs)
 	{
 	  if (!(cur->flags & TCP_BTS_IS_SACKED))
 	    {
-	      tcp_bt_sample_to_rate_sample (tc, cur, rs);
+	      tcp_bt_sample_to_rate_sample (tc, cur, cur->max_seq, rs);
 	      cur->flags |= TCP_BTS_IS_SACKED;
 	      if (prev && (prev->flags & TCP_BTS_IS_SACKED))
 		{
@@ -564,7 +601,7 @@ tcp_bt_walk_samples_ooo (tcp_connection_t * tc, tcp_rate_sample_t * rs)
 
       if (cur && seq_lt (cur->min_seq, blk->end))
 	{
-	  tcp_bt_sample_to_rate_sample (tc, cur, rs);
+	  tcp_bt_sample_to_rate_sample (tc, cur, blk->end, rs);
 	  prev = bt_prev_sample (bt, cur);
 	  /* Extend previous to include the newly sacked bytes */
 	  if (prev && (prev->flags & TCP_BTS_IS_SACKED))

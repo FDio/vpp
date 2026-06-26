@@ -159,8 +159,13 @@ scoreboard_update_loss (sack_scoreboard_t *sb, u32 ack, u32 snd_mss, u8 clear_lo
 	  break;
 	}
 
-      sacked += right->start - left->end;
-      blks++;
+      /* RACK can split a hole at a loss boundary. Adjacent holes do not
+       * enclose SACKed data and therefore do not count as SACK blocks. */
+      if (seq_gt (right->start, left->end))
+	{
+	  sacked += right->start - left->end;
+	  blks++;
+	}
       right = left;
     }
 
@@ -286,6 +291,19 @@ scoreboard_init_rxt (sack_scoreboard_t * sb, u32 snd_una)
 }
 
 void
+scoreboard_init_holes (sack_scoreboard_t *sb, u32 snd_una, u32 snd_nxt)
+{
+  sack_scoreboard_hole_t *hole;
+
+  if (scoreboard_first_hole (sb))
+    return;
+
+  hole = scoreboard_insert_hole (sb, TCP_INVALID_SACK_HOLE_INDEX, snd_una, snd_nxt);
+  sb->tail = scoreboard_hole_index (sb, hole);
+  sb->high_sacked = snd_una;
+}
+
+void
 scoreboard_rxt_mark_lost (sack_scoreboard_t *sb, u32 snd_una, u32 snd_nxt)
 {
   sack_scoreboard_hole_t *hole;
@@ -293,17 +311,93 @@ scoreboard_rxt_mark_lost (sack_scoreboard_t *sb, u32 snd_una, u32 snd_nxt)
   hole = scoreboard_first_hole (sb);
   if (!hole)
     {
-      hole = scoreboard_insert_hole (sb, TCP_INVALID_SACK_HOLE_INDEX, snd_una,
-				     snd_nxt);
-      sb->tail = scoreboard_hole_index (sb, hole);
-      sb->high_sacked = snd_una;
+      scoreboard_init_holes (sb, snd_una, snd_nxt);
+      hole = scoreboard_first_hole (sb);
     }
 
-  if (hole->is_lost)
-    return;
+  scoreboard_mark_hole_lost (sb, hole);
+}
 
-  hole->is_lost = 1;
-  sb->lost_bytes += scoreboard_hole_bytes (hole);
+/** Mark only the scoreboard bytes in [start, end) lost. */
+u32
+scoreboard_mark_range_lost (sack_scoreboard_t *sb, u32 start, u32 end)
+{
+  sack_scoreboard_hole_t *hole, *tail;
+  u32 hole_index, next_index, old_end, lost = 0;
+
+  if (!seq_lt (start, end))
+    return 0;
+
+  hole = scoreboard_first_hole (sb);
+  while (hole)
+    {
+      next_index = hole->next;
+
+      if (seq_leq (hole->end, start))
+	goto next;
+      if (seq_geq (hole->start, end))
+	break;
+      if (hole->is_lost)
+	goto next;
+
+      /* Preserve the prefix that precedes the range. Pool growth may move
+       * holes, so reacquire pointers after every insertion. */
+      if (seq_lt (hole->start, start))
+	{
+	  hole_index = scoreboard_hole_index (sb, hole);
+	  old_end = hole->end;
+	  tail = scoreboard_insert_hole (sb, hole_index, start, old_end);
+	  hole = scoreboard_get_hole (sb, hole_index);
+	  hole->end = start;
+	  hole = tail;
+	}
+
+      /* Preserve the suffix that follows the range. */
+      if (seq_lt (end, hole->end))
+	{
+	  hole_index = scoreboard_hole_index (sb, hole);
+	  old_end = hole->end;
+	  scoreboard_insert_hole (sb, hole_index, end, old_end);
+	  hole = scoreboard_get_hole (sb, hole_index);
+	  hole->end = end;
+	}
+
+      next_index = hole->next;
+      lost += scoreboard_mark_hole_lost (sb, hole);
+
+    next:
+      hole = scoreboard_get_hole (sb, next_index);
+    }
+
+  return lost;
+}
+
+/**
+ * Reposition the retransmit walk at @seq and, if needed, rewind high_rxt.
+ *
+ * scoreboard_next_rxt_hole skips holes at or below high_rxt, so a lost
+ * retransmit (whose hole is already below high_rxt) would not be re-sent until
+ * the RTO. RACK may also mark a later subrange while an earlier retransmission
+ * is still pending, so cur_rxt_hole must point directly at the first new loss.
+ * This function only ever lowers high_rxt.
+ */
+void
+scoreboard_rxt_rewind (sack_scoreboard_t *sb, u32 seq)
+{
+  sack_scoreboard_hole_t *hole;
+
+  if (seq_lt (seq, sb->high_rxt))
+    sb->high_rxt = seq;
+
+  /* Point the retransmit walk at the hole covering @seq. */
+  for (hole = scoreboard_first_hole (sb); hole; hole = scoreboard_next_hole (sb, hole))
+    {
+      if (seq_geq (seq, hole->start) && seq_lt (seq, hole->end))
+	{
+	  sb->cur_rxt_hole = scoreboard_hole_index (sb, hole);
+	  return;
+	}
+    }
 }
 
 void

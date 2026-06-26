@@ -94,8 +94,10 @@ tcp_retransmit_timer_update (tcp_timer_wheel_t * tw, tcp_connection_t * tc)
 	tcp_persist_timer_set (tw, tc);
     }
   else
-    tcp_timer_update (tw, tc, TCP_TIMER_RETRANSMIT,
-		      clib_max ((u32) tc->rto * TCP_TO_TIMER_TICK, 1));
+    {
+      tcp_timer_update (tw, tc, TCP_TIMER_RETRANSMIT,
+			clib_max ((u32) tc->rto * TCP_TO_TIMER_TICK, 1));
+    }
 }
 
 always_inline void

@@ -22,6 +22,7 @@ typedef void (timer_expiration_handler) (tcp_connection_t * tc);
 extern timer_expiration_handler tcp_timer_retransmit_handler;
 extern timer_expiration_handler tcp_timer_persist_handler;
 extern timer_expiration_handler tcp_timer_retransmit_syn_handler;
+extern timer_expiration_handler tcp_timer_rack_handler;
 
 typedef enum _tcp_error
 {
@@ -152,6 +153,9 @@ typedef struct tcp_configuration_
 
   /** Enable tx pacing for new connections */
   u8 enable_tx_pacing;
+
+  /** Enable RACK loss detection (RFC 8985) for new connections */
+  u8 enable_rack;
 
   /** Allow use of TSO whenever available */
   u8 allow_tso;
@@ -313,6 +317,8 @@ void tcp_send_window_update_ack (tcp_connection_t * tc);
 void tcp_program_ack (tcp_connection_t * tc);
 void tcp_program_dupack (tcp_connection_t * tc);
 void tcp_program_retransmit (tcp_connection_t * tc);
+void tcp_cc_init_congestion (tcp_connection_t *tc);
+void tcp_rack_recovery_start (tcp_connection_t *tc);
 
 void tcp_update_burst_snd_vars (tcp_connection_t * tc);
 u32 tcp_snd_space (tcp_connection_t * tc);

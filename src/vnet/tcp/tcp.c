@@ -10,6 +10,7 @@
 
 #include <vnet/tcp/tcp.h>
 #include <vnet/tcp/tcp_inlines.h>
+#include <vnet/tcp/tcp_rack.h>
 #include <vnet/session/session.h>
 #include <vnet/fib/fib.h>
 #include <vnet/dpo/load_balance.h>
@@ -752,6 +753,30 @@ tcp_enable_pacing (tcp_connection_t * tc)
   tc->mrtt_us = (u32) ~ 0;
 }
 
+/** Initialize fast recovery for a new congestion event. */
+void
+tcp_cc_init_congestion (tcp_connection_t *tc)
+{
+  tcp_fastrecovery_on (tc);
+  tc->snd_congestion = tc->snd_nxt;
+  tc->cwnd_acc_bytes = 0;
+  tc->snd_rxt_bytes = 0;
+  tc->rxt_delivered = 0;
+  tc->prr_delivered = 0;
+  tc->prr_start = tc->snd_una;
+  tc->prev_ssthresh = tc->ssthresh;
+  tc->prev_cwnd = tc->cwnd;
+
+  tc->snd_rxt_ts = tcp_tstamp (tc);
+  tcp_cc_congestion (tc);
+
+  if (!tcp_opts_sack_permitted (&tc->rcv_opts))
+    tc->cwnd += TCP_DUPACK_THRESHOLD * tc->snd_mss;
+
+  tc->fr_occurences += 1;
+  TCP_EVT (TCP_EVT_CC_EVT, tc, 4);
+}
+
 /** Initialize tcp connection variables
  *
  * Should be called after having received a msg from the peer, i.e., a SYN or
@@ -775,6 +800,11 @@ tcp_connection_init_vars (tcp_connection_t * tc)
   if (transport_connection_is_tx_paced (&tc->connection)
       || tcp_cfg.enable_tx_pacing)
     tcp_enable_pacing (tc);
+
+  /* RACK requires SACK and the byte tracker's transmit-time samples. Rate
+   * sampling by itself does not opt a connection into RACK. */
+  if (tcp_cfg.enable_rack && tcp_opts_sack_permitted (&tc->rcv_opts))
+    tc->cfg_flags |= TCP_CFG_F_RACK | TCP_CFG_F_RATE_SAMPLE;
 
   if (tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE)
     tcp_bt_init (tc);
@@ -1004,6 +1034,11 @@ tcp_set_attribute (tcp_connection_t *tc, transport_endpt_attr_t *attr)
 	}
       else
 	{
+	  if (tc->cfg_flags & TCP_CFG_F_RACK)
+	    {
+	      tc->cfg_flags &= ~TCP_CFG_F_RACK;
+	      tcp_rack_timer_reset (tc);
+	    }
 	  if (tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE)
 	    tcp_bt_cleanup (tc);
 	  tc->cfg_flags &= ~TCP_CFG_F_RATE_SAMPLE;
@@ -1269,12 +1304,9 @@ tcp_timer_waitclose_handler (tcp_connection_t * tc)
     }
 }
 
-static timer_expiration_handler *timer_expiration_handlers[TCP_N_TIMERS] =
-{
-    tcp_timer_retransmit_handler,
-    tcp_timer_persist_handler,
-    tcp_timer_waitclose_handler,
-    tcp_timer_retransmit_syn_handler,
+static timer_expiration_handler *timer_expiration_handlers[TCP_N_TIMERS] = {
+  tcp_timer_retransmit_handler,	    tcp_timer_persist_handler, tcp_timer_waitclose_handler,
+  tcp_timer_retransmit_syn_handler, tcp_timer_rack_handler,
 };
 
 static void
@@ -1688,6 +1720,7 @@ tcp_configuration_init (void)
   tcp_cfg.default_mtu = 1500;
   tcp_cfg.initial_cwnd_multiplier = 0;
   tcp_cfg.enable_tx_pacing = 1;
+  tcp_cfg.enable_rack = 0;
   tcp_cfg.allow_tso = 0;
   tcp_cfg.csum_offload = 1;
   tcp_cfg.cc_algo = TCP_CC_CUBIC;
