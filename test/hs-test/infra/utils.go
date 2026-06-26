@@ -500,7 +500,7 @@ func StartUdpEchoServer(addr string, port int) *net.UDPConn {
 }
 
 // Parses transfer speed ("NBps full-duplex")
-func ParseEchoClientTransfer(stats string) (uint64, error) {
+func ParseVperfClientTransfer(stats string) (uint64, error) {
 	pattern := regexp.MustCompile(`(?i)(\d+)\s+bytes/second\s+(?:half|full)-duplex`)
 	match := pattern.FindStringSubmatch(stats)
 	if len(match) == 0 {
