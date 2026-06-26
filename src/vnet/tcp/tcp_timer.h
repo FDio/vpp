@@ -60,6 +60,7 @@ always_inline void
 tcp_retransmit_timer_set (tcp_timer_wheel_t * tw, tcp_connection_t * tc)
 {
   ASSERT (tc->snd_una != tc->snd_nxt);
+  tcp_rack_timeout_armed_off (tc);
   tcp_timer_set (tw, tc, TCP_TIMER_RETRANSMIT,
 		 clib_max ((u32) tc->rto * TCP_TO_TIMER_TICK, 1));
 }
@@ -67,7 +68,15 @@ tcp_retransmit_timer_set (tcp_timer_wheel_t * tw, tcp_connection_t * tc)
 always_inline void
 tcp_retransmit_timer_reset (tcp_timer_wheel_t * tw, tcp_connection_t * tc)
 {
+  tcp_rack_timeout_armed_off (tc);
   tcp_timer_reset (tw, tc, TCP_TIMER_RETRANSMIT);
+}
+
+always_inline void
+tcp_retransmit_timer_update_interval (tcp_timer_wheel_t *tw, tcp_connection_t *tc, u32 interval)
+{
+  tcp_rack_timeout_armed_off (tc);
+  tcp_timer_update (tw, tc, TCP_TIMER_RETRANSMIT, interval);
 }
 
 always_inline void
@@ -94,8 +103,12 @@ tcp_retransmit_timer_update (tcp_timer_wheel_t * tw, tcp_connection_t * tc)
 	tcp_persist_timer_set (tw, tc);
     }
   else
-    tcp_timer_update (tw, tc, TCP_TIMER_RETRANSMIT,
-		      clib_max ((u32) tc->rto * TCP_TO_TIMER_TICK, 1));
+    {
+      /* Preserve an earlier RACK deadline. */
+      if (!tcp_rack_timeout_armed (tc))
+	tcp_timer_update (tw, tc, TCP_TIMER_RETRANSMIT,
+			  clib_max ((u32) tc->rto * TCP_TO_TIMER_TICK, 1));
+    }
 }
 
 always_inline void
