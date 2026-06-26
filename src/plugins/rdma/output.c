@@ -106,8 +106,7 @@ rdma_device_output_free_mlx5 (vlib_main_t *vm, const vlib_node_runtime_t *node, 
 
   /* retrieve completion target for the WQEBB reported by the CQE */
   u16 cqe_wqe_counter = be16toh (cur->wqe_counter);
-  rdma_mlx5_wqe_t *wqe = txq->dv_sq_wqes + (cqe_wqe_counter & sq_mask);
-  u16 comp_tail = wqe->ctrl.imm;
+  u16 comp_tail = txq->dv_comp_tails[cqe_wqe_counter & sq_mask];
 
   if (PREDICT_FALSE (RDMA_TXQ_USED_SZ (txq->head, comp_tail) > buf_sz ||
 		     RDMA_TXQ_USED_SZ (comp_tail, txq->tail) >= buf_sz))
@@ -131,7 +130,9 @@ static_always_inline void
 rdma_device_output_tx_mlx5_doorbell (rdma_txq_t * txq, rdma_mlx5_wqe_t * last,
 				     const u16 tail, u32 sq_mask)
 {
-  last->ctrl.imm = tail;	/* register item to free */
+  u16 wqe_idx = ((u16) last->wqe_index_hi << 8) | last->wqe_index_lo;
+  txq->dv_comp_tails[wqe_idx & sq_mask] = tail;
+  last->ctrl.imm = 0;	/* SEND/TSO do not use immediate data. */
   last->ctrl.fm_ce_se = MLX5_WQE_CTRL_CQ_UPDATE;	/* generate a CQE so we can free buffers */
 
   ASSERT (tail != txq->tail &&
@@ -242,7 +243,7 @@ rdma_mlx5_wqe_init_tso (rdma_txq_t *txq, vlib_buffer_t *b, const u16 tail, const
     clib_memset_u8 (txq->dv_sq_wqes + ((tail + i) & sq_mask), 0, RDMA_MLX5_WQE_SZ);
 
   mlx5dv_set_ctrl_seg (&wqe0->ctrl, tail, MLX5_OPCODE_TSO, 0, txq->qp->qp_num, 0, total_ds, 0,
-		       RDMA_TXQ_DV_INVALID_ID);
+		       0);
 
   wqe0->eseg.cs_flags = MLX5_ETH_WQE_L3_CSUM | MLX5_ETH_WQE_L4_CSUM;
   wqe0->eseg.mss = htobe16 (mss);
