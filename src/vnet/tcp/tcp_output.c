@@ -6,6 +6,7 @@
 #include <vnet/tcp/tcp.h>
 #include <vnet/tcp/tcp_inlines.h>
 #include <vnet/tcp/tcp_rack.h>
+#include <vnet/tcp/tcp_tlp.h>
 #include <math.h>
 #include <vnet/ip/ip4_inlines.h>
 #include <vnet/ip/ip6_inlines.h>
@@ -1005,6 +1006,12 @@ tcp_session_push_header (transport_connection_t *tconn, vlib_buffer_t **bs,
       tcp_retransmit_timer_set (&wrk->timer_wheel, tc);
       tc->rto_boff = 0;
     }
+  /* If the flow just went idle at the tail, override the RTO with a tail loss
+   * probe timeout so a lost tail is repaired in ~2*srtt rather than at the
+   * RTO. Gated here so the common (TLP-disabled) path stays on the hot send
+   * path; arm_pto itself also no-ops unless the tail is idle. */
+  if (PREDICT_FALSE (tcp_tlp_is_enabled (tc)))
+    tcp_tlp_arm_pto (tc);
   return 0;
 }
 
@@ -1277,6 +1284,11 @@ tcp_cc_init_rxt_timeout (tcp_connection_t * tc)
 {
   TCP_EVT (TCP_EVT_CC_EVT, tc, 6);
 
+  /* RTO backstop fired: any outstanding tail loss probe is moot, and cc cuts
+   * the window here, so the probe-ack path must not also apply its one-time
+   * cut. */
+  tc->flags &= ~TCP_CONN_TLP;
+
   tc->prev_ssthresh = tc->ssthresh;
   tc->prev_cwnd = tc->cwnd;
 
@@ -1322,6 +1334,72 @@ tcp_check_syn_flood (tcp_connection_t *tc)
   tm->sdl_cb (&args);
 }
 
+/**
+ * Send a tail loss probe (RFC 8985 sec 7).
+ *
+ * Called from the retransmit timer handler when the timer was armed as a PTO.
+ * Sends a single segment -- new unsent data if any is available, otherwise a
+ * retransmit of the tail -- then marks the probe outstanding and arms a real
+ * RTO as a backstop in case the probe itself is lost. Unlike an RTO this does
+ * not collapse cwnd or back off: the probe's ack drives recovery (cumulative
+ * ack -> tcp_tlp_rcv_ack; SACK/dup-ack -> normal fast recovery).
+ */
+void
+tcp_tlp_send_probe (tcp_worker_ctx_t *wrk, tcp_connection_t *tc)
+{
+  u32 offset, n_bytes = 0, max_deq;
+  vlib_main_t *vm = wrk->vm;
+  vlib_buffer_t *b = 0;
+  u32 bi;
+
+  if (tc->snd_una == tc->snd_nxt)
+    return;
+
+  max_deq = transport_max_tx_dequeue (&tc->connection);
+
+  /* Prefer probing with new data sitting beyond snd_nxt. */
+  if (max_deq > tc->snd_nxt - tc->snd_una)
+    {
+      offset = tc->snd_nxt - tc->snd_una;
+      n_bytes = tcp_prepare_segment (wrk, tc, offset, tc->snd_mss, &b);
+      if (n_bytes)
+	{
+	  bi = vlib_get_buffer_index (vm, b);
+	  tcp_enqueue_to_output (wrk, b, bi, tc->c_is_ip4);
+	  if (tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE)
+	    tcp_bt_track_tx (tc, n_bytes);
+	  tc->snd_nxt += n_bytes;
+	}
+    }
+  else
+    {
+      /* Idle tail: retransmit the last segment. Probe from a segment boundary
+       * so its ack is unambiguous. */
+      u32 tail = tc->snd_nxt - tc->snd_una;
+      u32 probe_len = clib_min (tc->snd_mss, tail);
+      offset = tail - probe_len;
+      n_bytes = tcp_prepare_retransmit_segment (wrk, tc, offset, probe_len, &b);
+      if (n_bytes)
+	{
+	  bi = vlib_get_buffer_index (vm, b);
+	  tcp_enqueue_to_output (wrk, b, bi, tc->c_is_ip4);
+	}
+    }
+
+  if (!n_bytes)
+    {
+      /* Couldn't build a probe; fall back to a normal RTO arm. */
+      tcp_retransmit_timer_set (&wrk->timer_wheel, tc);
+      return;
+    }
+
+  /* Mark the probe outstanding and arm a real RTO backstop. */
+  tc->flags |= TCP_CONN_TLP;
+  tc->tlp_end_seq = tc->snd_nxt;
+  tcp_retransmit_timer_set (&wrk->timer_wheel, tc);
+  tcp_worker_stats_inc (wrk, tr_events, 1);
+}
+
 void
 tcp_timer_retransmit_handler (tcp_connection_t * tc)
 {
@@ -1350,6 +1428,28 @@ tcp_timer_retransmit_handler (tcp_connection_t * tc)
 	  return;
 	}
       /* Recovery already exited before this fired: treat as a normal RTO. */
+    }
+
+  /* Tail loss probe (not an RTO): the timer was armed at the PTO because the
+   * flow went idle with unacked data. Send a single probe and arm an RTO
+   * backstop, without the RTO's cwnd collapse / backoff. */
+  if (tc->tlp_pto_armed)
+    {
+      tc->tlp_pto_armed = 0;
+      if (tcp_tlp_is_enabled (tc) && !tcp_in_cong_recovery (tc) &&
+	  tc->state >= TCP_STATE_ESTABLISHED && !(tc->flags & TCP_CONN_FINSNT) &&
+	  tc->snd_una != tc->snd_nxt)
+	{
+	  tcp_tlp_send_probe (wrk, tc);
+	  return;
+	}
+      /* PTO fired but a probe is no longer appropriate (entered recovery, all
+       * acked, closing, TLP disabled mid-flight). The PTO always precedes the
+       * real RTO, so do NOT run a timeout retransmit here -- that would be a
+       * premature RTO collapsing cwnd. Just restore the proper RTO and return;
+       * recovery's own machinery (or the RTO) handles retransmits. */
+      tcp_retransmit_timer_update (&wrk->timer_wheel, tc);
+      return;
     }
 
   tcp_worker_stats_inc (wrk, tr_events, 1);
