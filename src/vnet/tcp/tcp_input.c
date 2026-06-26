@@ -8,6 +8,7 @@
 #include <vnet/fib/ip6_fib.h>
 #include <vnet/tcp/tcp.h>
 #include <vnet/tcp/tcp_inlines.h>
+#include <vnet/tcp/tcp_rack.h>
 #include <vnet/session/session.h>
 #include <math.h>
 
@@ -406,8 +407,7 @@ tcp_update_rtt (tcp_connection_t * tc, tcp_rate_sample_t * rs, u32 ack)
   if (tcp_in_cong_recovery (tc))
     {
       /* Accept rtt estimates for samples that have not been retransmitted */
-      if (!(tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE)
-	  || (rs->flags & TCP_BTS_IS_RXT))
+      if (!tcp_bt_is_enabled (tc) || (rs->flags & TCP_BTS_IS_RXT))
 	goto done;
       if (rs->rtt_time)
 	tcp_estimate_rtt_us (tc, rs->rtt_time);
@@ -683,6 +683,10 @@ tcp_cc_try_recover (tcp_connection_t *tc)
       is_spurious = 1;
     }
 
+  /* Leaving recovery: any pending retransmit-timer fire is a real RTO now, not
+   * a RACK reorder timeout. */
+  tc->rack_timeout_armed = 0;
+
   tcp_connection_tx_pacer_reset (tc, tc->cwnd, 0 /* start bucket */ );
   tc->rcv_dupacks = 0;
   tcp_recovery_off (tc);
@@ -857,8 +861,19 @@ tcp_handle_old_ack (tcp_connection_t * tc, tcp_rate_sample_t * rs)
 
   tc->bytes_acked = 0;
 
-  if (tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE)
+  if (tcp_bt_is_enabled (tc))
     tcp_bt_sample_delivery_rate (tc, rs);
+
+  /* A dup/old ack during recovery carries SACK info -- let RACK time-detect
+   * losses (e.g. a lost retransmit) so they are re-sent without an RTO. */
+  if (tcp_rack_is_enabled (tc))
+    {
+      f64 rack_next_to = 0.0;
+      tcp_rack_update (tc);
+      if (tcp_rack_detect_loss (tc, &rack_next_to))
+	tcp_program_retransmit (tc);
+      tcp_rack_arm_reorder_timer (tc, rack_next_to);
+    }
 
   tcp_cc_handle_event (tc, rs, 1);
 }
@@ -945,8 +960,10 @@ tcp_rcv_ack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc, vlib_buffer_t * b,
   tc->snd_una = vnet_buffer (b)->tcp.ack_number;
   tcp_validate_txf_size (tc, tc->bytes_acked);
 
-  if (tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE)
+  if (tcp_bt_is_enabled (tc))
     {
+      /* Walks the byte tracker over the newly (s)acked bytes. Also drives RACK
+       * (tcp_rack_sample_acked is called per sample during the walk). */
       tcp_bt_sample_delivery_rate (tc, &rs);
       /* Byte tracker maintains tc->delivered/delivered_time and computes the
        * delivery interval per ack; derive the rate directly from it. */
@@ -960,6 +977,21 @@ tcp_rcv_ack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc, vlib_buffer_t * b,
       /* No byte tracker: maintain delivered counters and a windowed rate
        * estimate ourselves. */
       tcp_update_delivery_rate_bt_off (tc, rs.delivered);
+    }
+
+  /* RACK: now that the scoreboard and byte tracker have processed this ack,
+   * refresh the reordering window and time-detect losses (including lost
+   * retransmits), marking them in the scoreboard for the retransmit path. Arm
+   * the reorder timer for any suspect not yet past the window, so losses are
+   * caught even if no further ack arrives (collapsed-window case). */
+  if (tcp_rack_is_enabled (tc))
+    {
+      f64 rack_next_to = 0.0;
+      tcp_rack_update (tc);
+      if (tcp_rack_detect_loss (tc, &rack_next_to))
+	tcp_program_retransmit (tc);
+      if (tcp_in_cong_recovery (tc))
+	tcp_rack_arm_reorder_timer (tc, rack_next_to);
     }
 
   if (tc->bytes_acked + tc->sack_sb.last_sacked_bytes)

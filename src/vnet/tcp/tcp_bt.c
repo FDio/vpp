@@ -10,6 +10,7 @@
 #include <vnet/tcp/tcp_bt.h>
 #include <vnet/tcp/tcp.h>
 #include <vnet/tcp/tcp_inlines.h>
+#include <vnet/tcp/tcp_rack.h>
 
 static tcp_bt_sample_t *
 bt_get_sample (tcp_byte_tracker_t * bt, u32 bts_index)
@@ -460,10 +461,37 @@ tcp_bt_track_rxt (tcp_connection_t * tc, u32 start, u32 end)
     }
 }
 
+void
+tcp_bt_walk_outstanding (tcp_connection_t *tc,
+			 void (*fn) (tcp_connection_t *tc, u32 min_seq, u32 max_seq, f64 tx_time,
+				     u32 flags, void *opaque),
+			 void *opaque)
+{
+  tcp_byte_tracker_t *bt = tc->bt;
+  tcp_bt_sample_t *cur, *next;
+
+  if (!bt)
+    return;
+
+  cur = bt_get_sample (bt, bt->head);
+  while (cur)
+    {
+      /* Cache next: the callback must not free samples, but be defensive. */
+      next = bt_next_sample (bt, cur);
+      fn (tc, cur->min_seq, cur->max_seq, cur->tx_time, cur->flags, opaque);
+      cur = next;
+    }
+}
+
 static void
 tcp_bt_sample_to_rate_sample (tcp_connection_t * tc, tcp_bt_sample_t * bts,
 			      tcp_rate_sample_t * rs)
 {
+  /* Feed RACK before the rate-sample early-outs below: RACK must see every
+   * newly (s)acked segment's transmit time, including re-sacked ones. */
+  if (tc->flags & TCP_CONN_RACK)
+    tcp_rack_sample_acked (tc, bts->max_seq, bts->tx_time, bts->flags);
+
   if (bts->flags & TCP_BTS_IS_SACKED)
     return;
 

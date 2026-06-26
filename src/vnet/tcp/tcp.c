@@ -269,7 +269,7 @@ tcp_connection_cleanup (tcp_connection_t * tc)
       vec_free (tc->rcv_opts.sacks);
       pool_free (tc->sack_sb.holes);
 
-      if (tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE)
+      if ((tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE) || (tc->flags & TCP_CONN_RACK))
 	tcp_bt_cleanup (tc);
 
       tcp_connection_free (tc);
@@ -535,6 +535,9 @@ tcp_connection_timers_reset (tcp_connection_t * tc)
 
   for (i = 0; i < TCP_N_TIMERS; i++)
     tcp_timer_reset (&wrk->timer_wheel, tc, i);
+
+  /* No retransmit timer pending -> no RACK reorder timeout pending either. */
+  tc->rack_timeout_armed = 0;
 }
 
 #if 0
@@ -764,7 +767,13 @@ tcp_connection_init_vars (tcp_connection_t * tc)
       || tcp_cfg.enable_tx_pacing)
     tcp_enable_pacing (tc);
 
-  if (tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE)
+  /* RACK needs per-segment transmit times from the byte tracker. Enable the
+   * tracker for RACK connections even if the app didn't request rate sampling;
+   * avoid double init if it already asked for it. */
+  if (tcp_cfg.enable_rack)
+    tc->flags |= TCP_CONN_RACK;
+
+  if ((tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE) || (tc->flags & TCP_CONN_RACK))
     tcp_bt_init (tc);
 
   if (!tcp_cfg.allow_tso)
@@ -1676,6 +1685,7 @@ tcp_configuration_init (void)
   tcp_cfg.default_mtu = 1500;
   tcp_cfg.initial_cwnd_multiplier = 0;
   tcp_cfg.enable_tx_pacing = 1;
+  tcp_cfg.enable_rack = 0;
   tcp_cfg.allow_tso = 0;
   tcp_cfg.csum_offload = 1;
   tcp_cfg.cc_algo = TCP_CC_CUBIC;
