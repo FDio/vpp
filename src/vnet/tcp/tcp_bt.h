@@ -68,6 +68,21 @@ void tcp_bt_check_app_limited (tcp_connection_t * tc);
  */
 int tcp_bt_is_sane (tcp_byte_tracker_t * bt);
 
+/**
+ * Look up the transmit time of the byte-tracker sample covering @c seq.
+ *
+ * Provided for RACK loss detection, which walks the SACK scoreboard holes and
+ * needs each hole's send time to apply the reordering-window test. Returns the
+ * covering sample's transmit time and end sequence via the out params.
+ *
+ * @param tc		tcp connection (must have an active byte tracker)
+ * @param seq		sequence number to look up
+ * @param[out] tx_time	transmit time of the covering sample
+ * @param[out] end_seq	end sequence of the covering sample
+ * @return 1 if a covering sample was found, 0 otherwise
+ */
+int tcp_bt_seq_tx_time (tcp_connection_t *tc, u32 seq, f64 *tx_time, u32 *end_seq);
+
 format_function_t format_tcp_bt;
 
 #endif /* SRC_VNET_TCP_TCP_BT_H_ */
