@@ -764,6 +764,12 @@ tcp_connection_init_vars (tcp_connection_t * tc)
       || tcp_cfg.enable_tx_pacing)
     tcp_enable_pacing (tc);
 
+  /* RACK loss detection needs the byte tracker's per-segment transmit times,
+   * so enabling RACK enables rate sampling (the byte tracker). The two are
+   * equivalent: rate sampling on => RACK on, and vice versa. */
+  if (tcp_cfg.enable_rack)
+    tc->cfg_flags |= TCP_CFG_F_RATE_SAMPLE;
+
   if (tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE)
     tcp_bt_init (tc);
 
@@ -995,6 +1001,14 @@ tcp_set_attribute (tcp_connection_t *tc, transport_endpt_attr_t *attr)
 	  if (tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE)
 	    tcp_bt_cleanup (tc);
 	  tc->cfg_flags &= ~TCP_CFG_F_RATE_SAMPLE;
+	  /* Disables RACK too (it requires the byte tracker). If a RACK reorder
+	   * timeout was armed on the retransmit timer, restore a normal RTO so it
+	   * does not fire early as a spurious one (the update clears the flag). */
+	  if (tcp_rack_timeout_armed (tc))
+	    {
+	      tcp_worker_ctx_t *wrk = tcp_get_worker (tc->c_thread_index);
+	      tcp_retransmit_timer_update (&wrk->timer_wheel, tc);
+	    }
 	}
       break;
     case TRANSPORT_ENDPT_ATTR_CC_ALGO:
@@ -1676,6 +1690,7 @@ tcp_configuration_init (void)
   tcp_cfg.default_mtu = 1500;
   tcp_cfg.initial_cwnd_multiplier = 0;
   tcp_cfg.enable_tx_pacing = 1;
+  tcp_cfg.enable_rack = 0;
   tcp_cfg.allow_tso = 0;
   tcp_cfg.csum_offload = 1;
   tcp_cfg.cc_algo = TCP_CC_CUBIC;

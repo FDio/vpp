@@ -8,6 +8,7 @@
 #include <vnet/fib/ip6_fib.h>
 #include <vnet/tcp/tcp.h>
 #include <vnet/tcp/tcp_inlines.h>
+#include <vnet/tcp/tcp_rack.h>
 #include <vnet/session/session.h>
 #include <math.h>
 
@@ -406,8 +407,7 @@ tcp_update_rtt (tcp_connection_t * tc, tcp_rate_sample_t * rs, u32 ack)
   if (tcp_in_cong_recovery (tc))
     {
       /* Accept rtt estimates for samples that have not been retransmitted */
-      if (!(tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE)
-	  || (rs->flags & TCP_BTS_IS_RXT))
+      if (!(tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE) || (rs->flags & TCP_BTS_IS_RXT))
 	goto done;
       if (rs->rtt_time)
 	tcp_estimate_rtt_us (tc, rs->rtt_time);
@@ -617,6 +617,49 @@ tcp_cc_init_congestion (tcp_connection_t * tc)
   TCP_EVT (TCP_EVT_CC_EVT, tc, 4);
 }
 
+/* Enter congestion recovery on a RACK-detected loss. Per RFC 8985 RACK can
+ * declare loss before the dupack threshold, so this is the recovery entry for
+ * that case; no-op if already in recovery. */
+static void
+tcp_rack_enter_recovery (tcp_connection_t *tc)
+{
+  if (tcp_in_cong_recovery (tc))
+    return;
+
+  tcp_cc_init_congestion (tc);
+  if (tcp_opts_sack_permitted (&tc->rcv_opts))
+    scoreboard_init_rxt (&tc->sack_sb, tc->snd_una);
+  tcp_connection_tx_pacer_reset (tc, tc->cwnd, 0 /* start bucket */);
+  tc->rcv_dupacks = 0;
+}
+
+/* Drive RACK from an ack the byte tracker has just processed: time-detect
+ * losses (including lost retransmits) and mark them in the scoreboard for the
+ * retransmit path. A first detected loss enters recovery. Arm the reorder timer
+ * for any suspect not yet past the window, so losses are caught even if no
+ * further ack arrives. Caller must have rate sampling (the byte tracker) on. */
+static void
+tcp_rack_handle_ack (tcp_connection_t *tc)
+{
+  f64 rack_next_to = 0.0;
+
+  /* Only re-scan for losses if a newer-sent segment was delivered on this ack
+   * (rack_xmit_ts advanced); otherwise no segment can have newly become a loss
+   * candidate. A suspect crossing reo_wnd purely by elapsed time is caught by
+   * the reorder timer, which scans unconditionally. */
+  if (!tc->bt->rack_advanced)
+    return;
+  tc->bt->rack_advanced = 0;
+
+  if (tcp_rack_detect_loss (tc, &rack_next_to))
+    {
+      tcp_rack_enter_recovery (tc);
+      tcp_program_retransmit (tc);
+    }
+  if (tcp_in_cong_recovery (tc))
+    tcp_rack_arm_reorder_timer (tc, rack_next_to);
+}
+
 static void
 tcp_cc_congestion_undo (tcp_connection_t * tc)
 {
@@ -686,6 +729,10 @@ tcp_cc_exit_recovery (tcp_connection_t *tc)
       tcp_cc_congestion_undo (tc);
       is_spurious = 1;
     }
+
+  /* Leaving recovery: any pending retransmit-timer fire is a real RTO now, not
+   * a RACK reorder timeout. */
+  tcp_rack_timeout_armed_off (tc);
 
   tcp_connection_tx_pacer_reset (tc, tc->cwnd, 0 /* start bucket */ );
   tc->rcv_dupacks = 0;
@@ -862,7 +909,12 @@ tcp_handle_old_ack (tcp_connection_t * tc, tcp_rate_sample_t * rs)
   tc->bytes_acked = 0;
 
   if (tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE)
-    tcp_bt_sample_delivery_rate (tc, rs);
+    {
+      /* Old/dup ack carries SACK info; let RACK time-detect losses from it.
+       * Already in recovery here, so handle_ack's recovery entry is a no-op. */
+      tcp_bt_sample_delivery_rate (tc, rs);
+      tcp_rack_handle_ack (tc);
+    }
   else
     rs->acked_and_sacked = tc->sack_sb.last_sacked_bytes;
 
@@ -952,7 +1004,10 @@ tcp_rcv_ack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc, vlib_buffer_t * b,
   tcp_validate_txf_size (tc, tc->bytes_acked);
 
   if (tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE)
-    tcp_bt_sample_delivery_rate (tc, &rs);
+    {
+      tcp_bt_sample_delivery_rate (tc, &rs);
+      tcp_rack_handle_ack (tc);
+    }
   else
     rs.acked_and_sacked =
       tc->bytes_acked + tc->sack_sb.last_sacked_bytes - tc->sack_sb.last_bytes_delivered;

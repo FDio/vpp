@@ -153,6 +153,9 @@ typedef struct tcp_configuration_
   /** Enable tx pacing for new connections */
   u8 enable_tx_pacing;
 
+  /** Enable RACK loss detection (RFC 8985) for new connections */
+  u8 enable_rack;
+
   /** Allow use of TSO whenever available */
   u8 allow_tso;
 

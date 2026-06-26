@@ -860,6 +860,7 @@ format_tcp_cfg (u8 *s, va_list *args)
 	      tm_cfg.initial_cwnd_multiplier);
   s = format (s, "tx pacing: %s\n",
 	      tm_cfg.enable_tx_pacing ? "enabled" : "disabled");
+  s = format (s, "rack loss detection: %s\n", tm_cfg.enable_rack ? "enabled" : "disabled");
   s = format (s, "tso: %s\n", tm_cfg.allow_tso ? "allowed" : "disallowed");
   s = format (s, "checksum offload: %s\n",
 	      tm_cfg.csum_offload ? "enabled" : "disabled");
@@ -917,8 +918,6 @@ VLIB_CLI_COMMAND (show_tcp_cfg_command, static) = {
 static clib_error_t *
 tcp_set_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
 {
-  u8 csum_offload_set = 0;
-  u8 mtu_set = 0;
   u32 mtu, min_mtu = 1280;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
@@ -932,33 +931,37 @@ tcp_set_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
 	  else
 	    return clib_error_return (0, "expected enable or disable for "
 					 "csum-offload");
-
-	  csum_offload_set = 1;
+	  vlib_cli_output (vm, "TCP checksum offload: %s",
+			   tcp_cfg.csum_offload ? "enabled" : "disabled");
+	}
+      else if (unformat (input, "rack"))
+	{
+	  /* Only affects connections opened after this point. */
+	  tcp_cfg.enable_rack = 1;
+	  vlib_cli_output (vm, "TCP RACK loss detection: enabled");
+	}
+      else if (unformat (input, "no-rack"))
+	{
+	  tcp_cfg.enable_rack = 0;
+	  vlib_cli_output (vm, "TCP RACK loss detection: disabled");
 	}
       else if (unformat (input, "mtu %u", &mtu))
 	{
 	  if (mtu < min_mtu)
 	    return clib_error_return (0, "mtu must be at least %u", min_mtu);
 	  tcp_cfg.default_mtu = mtu;
-	  mtu_set = 1;
+	  vlib_cli_output (vm, "TCP default mtu: %u", tcp_cfg.default_mtu);
 	}
       else
 	return clib_error_return (0, "unknown input `%U'", format_unformat_error, input);
     }
 
-  if (!csum_offload_set && !mtu_set)
-    return clib_error_return (0, "expected csum-offload or mtu");
-
-  if (csum_offload_set)
-    vlib_cli_output (vm, "TCP checksum offload: %s", tcp_cfg.csum_offload ? "enabled" : "disabled");
-  if (mtu_set)
-    vlib_cli_output (vm, "TCP default mtu: %u", tcp_cfg.default_mtu);
   return 0;
 }
 
 VLIB_CLI_COMMAND (tcp_set_command, static) = {
   .path = "set tcp",
-  .short_help = "set tcp [csum-offload [enable|disable]] [mtu <mtu>]",
+  .short_help = "set tcp [csum-offload [enable|disable]] [mtu <mtu>] | [no-]rack",
   .function = tcp_set_fn,
 };
 
@@ -1119,6 +1122,10 @@ tcp_config_fn (vlib_main_t * vm, unformat_input_t * input)
 	tcp_cfg.initial_cwnd_multiplier = cwnd_multiplier;
       else if (unformat (input, "no-tx-pacing"))
 	tcp_cfg.enable_tx_pacing = 0;
+      else if (unformat (input, "rack"))
+	tcp_cfg.enable_rack = 1;
+      else if (unformat (input, "no-rack"))
+	tcp_cfg.enable_rack = 0;
       else if (unformat (input, "tso"))
 	tcp_cfg.allow_tso = 1;
       else if (unformat (input, "no-csum-offload"))
