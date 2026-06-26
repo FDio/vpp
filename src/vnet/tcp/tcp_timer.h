@@ -60,6 +60,8 @@ always_inline void
 tcp_retransmit_timer_set (tcp_timer_wheel_t * tw, tcp_connection_t * tc)
 {
   ASSERT (tc->snd_una != tc->snd_nxt);
+  /* Arming a plain RTO: any RACK reorder timeout on this timer is superseded. */
+  tcp_rack_timeout_armed_off (tc);
   tcp_timer_set (tw, tc, TCP_TIMER_RETRANSMIT,
 		 clib_max ((u32) tc->rto * TCP_TO_TIMER_TICK, 1));
 }
@@ -67,6 +69,8 @@ tcp_retransmit_timer_set (tcp_timer_wheel_t * tw, tcp_connection_t * tc)
 always_inline void
 tcp_retransmit_timer_reset (tcp_timer_wheel_t * tw, tcp_connection_t * tc)
 {
+  /* No retransmit timer -> no RACK reorder timeout on it either. */
+  tcp_rack_timeout_armed_off (tc);
   tcp_timer_reset (tw, tc, TCP_TIMER_RETRANSMIT);
 }
 
@@ -94,8 +98,14 @@ tcp_retransmit_timer_update (tcp_timer_wheel_t * tw, tcp_connection_t * tc)
 	tcp_persist_timer_set (tw, tc);
     }
   else
-    tcp_timer_update (tw, tc, TCP_TIMER_RETRANSMIT,
-		      clib_max ((u32) tc->rto * TCP_TO_TIMER_TICK, 1));
+    {
+      /* Re-arming a plain RTO: supersedes any RACK reorder timeout, so the
+       * timer is not mistaken for one when it fires (and is not held to the
+       * shorter reorder interval). */
+      tcp_rack_timeout_armed_off (tc);
+      tcp_timer_update (tw, tc, TCP_TIMER_RETRANSMIT,
+			clib_max ((u32) tc->rto * TCP_TO_TIMER_TICK, 1));
+    }
 }
 
 always_inline void

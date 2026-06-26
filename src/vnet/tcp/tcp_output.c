@@ -5,6 +5,7 @@
 
 #include <vnet/tcp/tcp.h>
 #include <vnet/tcp/tcp_inlines.h>
+#include <vnet/tcp/tcp_rack.h>
 #include <math.h>
 #include <vnet/ip/ip4_inlines.h>
 #include <vnet/ip/ip6_inlines.h>
@@ -1328,6 +1329,28 @@ tcp_timer_retransmit_handler (tcp_connection_t * tc)
   vlib_main_t *vm = wrk->vm;
   vlib_buffer_t *b = 0;
   u32 bi, n_bytes;
+
+  /* RACK reorder timeout (not an RTO): time-detect losses and re-send them via
+   * the normal recovery path, without the RTO's cwnd collapse / backoff. */
+  if (tcp_rack_timeout_armed (tc))
+    {
+      f64 next_to = 0.0;
+      tcp_rack_timeout_armed_off (tc);
+      if (tcp_in_cong_recovery (tc))
+	{
+	  if (tcp_rack_detect_loss (tc, &next_to))
+	    tcp_program_retransmit (tc);
+	  /* Re-arm for the next suspect, or fall through to a normal RTO arm. */
+	  if (next_to > 0.0)
+	    {
+	      tcp_rack_arm_reorder_timer (tc, next_to);
+	      return;
+	    }
+	  tcp_retransmit_timer_update (&wrk->timer_wheel, tc);
+	  return;
+	}
+      /* Recovery already exited before this fired: treat as a normal RTO. */
+    }
 
   tcp_worker_stats_inc (wrk, tr_events, 1);
 
