@@ -1590,6 +1590,9 @@ quic_quicly_format_connection_stats (u8 *s, va_list *args)
   s = format (s, " cwnd-init %u cwnd-min %u cwnd-max %u\n",
 	      quicly_stats.cc.cwnd_initial, quicly_stats.cc.cwnd_minimum,
 	      quicly_stats.cc.cwnd_maximum);
+  s = format (s, " delivery-rate: latest %lu smoothed %lu stdev %lu\n",
+	      quicly_stats.delivery_rate.latest, quicly_stats.delivery_rate.smoothed,
+	      quicly_stats.delivery_rate.stdev);
   s = format (s, " rx frames: %U", quic_quicly_format_rx_frame_stats, &quicly_stats);
   s = format (s, " tx frames: %U", quic_quicly_format_tx_frame_stats, &quicly_stats);
   return s;
