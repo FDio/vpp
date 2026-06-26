@@ -1640,11 +1640,12 @@ session_detach_app (session_t *s)
 void
 session_transport_half_close (session_t *s)
 {
-  /* Only READY session can be half-closed */
-  if (s->session_state != SESSION_STATE_READY)
-    {
-      return;
-    }
+  /* A half-close may also be requested after the peer has already sent FIN.
+   * In that case the session is transport-closing and the transport must be
+   * allowed to send its FIN to complete the passive close. */
+  if (s->session_state != SESSION_STATE_READY &&
+      s->session_state != SESSION_STATE_TRANSPORT_CLOSING)
+    return;
 
   transport_half_close (session_get_transport_proto (s), s->connection_index,
 			s->thread_index);
