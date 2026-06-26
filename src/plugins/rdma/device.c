@@ -59,7 +59,7 @@ rdma_rxq_init_flow (const rdma_device_t * rd, struct ibv_qp *qp,
 
   memset (&fa, 0, sizeof (fa));
   fa.attr.num_of_specs = 1;
-  fa.attr.port = 1;
+  fa.attr.port = rd->port_num;
   fa.attr.flags = flags;
   fa.spec_eth.type = IBV_FLOW_SPEC_ETH;
   fa.spec_eth.size = sizeof (struct ibv_flow_spec_eth);
@@ -741,7 +741,7 @@ rdma_txq_init (vlib_main_t * vm, rdma_device_t * rd, u16 qid, u32 n_desc)
   memset (&qpa, 0, sizeof (qpa));
   qp_flags = IBV_QP_STATE | IBV_QP_PORT;
   qpa.qp_state = IBV_QPS_INIT;
-  qpa.port_num = 1;
+  qpa.port_num = rd->port_num;
   if (ibv_modify_qp (txq->qp, &qpa, qp_flags) != 0)
     return clib_error_return_unix (0, "Modify QP (init) Failed");
 
@@ -929,6 +929,7 @@ rdma_create_if (vlib_main_t * vm, rdma_create_if_args_t * args)
   rd->dev_instance = rd - rm->devices;
   rd->per_interface_next_index = VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT;
   rd->linux_ifname = format (0, "%s", args->ifname);
+  rd->port_num = args->port_num ? args->port_num : 1;
 
   if (!args->name || 0 == args->name[0])
     rd->name = format (0, "%s/%d", args->ifname, rd->dev_instance);
@@ -1022,7 +1023,7 @@ are explicitly disabled, and if the interface supports it.*/
   if ((args->error = rdma_async_event_init (rd)))
     goto err3;
 
-  rdma_update_state (vnm, rd, 1);
+  rdma_update_state (vnm, rd, rd->port_num);
 
   vnet_sw_interface_t *sw = vnet_get_hw_sw_interface (vnm, rd->hw_if_index);
   args->sw_if_index = rd->sw_if_index = sw->sw_if_index;
