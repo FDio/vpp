@@ -432,9 +432,17 @@ rdma_rxq_init (vlib_main_t * vm, rdma_device_t * rd, u16 qid, u32 n_desc,
   if (is_mlx5dv)
     {
       struct mlx5dv_cq_init_attr dvcq = { };
-      dvcq.comp_mask = MLX5DV_CQ_INIT_ATTR_MASK_COMPRESSED_CQE |
-		       MLX5DV_CQ_INIT_ATTR_MASK_CQE_SIZE;
-      dvcq.cqe_comp_res_format = MLX5DV_CQE_RES_FORMAT_HASH;
+      uword stridx_supported =
+	(rd->cqe_comp_supported_formats & MLX5DV_CQE_RES_FORMAT_CSUM_STRIDX) != 0;
+
+      dvcq.comp_mask = MLX5DV_CQ_INIT_ATTR_MASK_CQE_SIZE;
+      if (!is_striding || stridx_supported)
+	{
+	  dvcq.comp_mask |= MLX5DV_CQ_INIT_ATTR_MASK_COMPRESSED_CQE;
+	  /* Striding RQ mini-CQEs must carry consumed-stride metadata. */
+	  dvcq.cqe_comp_res_format =
+	    is_striding ? MLX5DV_CQE_RES_FORMAT_CSUM_STRIDX : MLX5DV_CQE_RES_FORMAT_HASH;
+	}
       dvcq.cqe_size = 64;
       if ((cqex = mlx5dv_create_cq (rd->ctx, &cqa, &dvcq)) == 0)
 	return clib_error_return_unix (0, "Create mlx5dv rx CQ Failed");
@@ -975,12 +983,14 @@ rdma_create_if (vlib_main_t * vm, rdma_create_if_args_t * args)
   if (args->mode != RDMA_MODE_IBV)
     {
       struct mlx5dv_context mlx5dv_attrs = { };
-      mlx5dv_attrs.comp_mask |= MLX5DV_CONTEXT_MASK_STRIDING_RQ;
+      mlx5dv_attrs.comp_mask |=
+	MLX5DV_CONTEXT_MASK_STRIDING_RQ | MLX5DV_CONTEXT_MASK_CQE_COMPRESION;
 
       if (mlx5dv_query_device (rd->ctx, &mlx5dv_attrs) == 0)
 	{
 	  uword data_seg_log2_sz =
 	    min_log2 (vlib_buffer_get_default_data_size (vm));
+	  rd->cqe_comp_supported_formats = mlx5dv_attrs.cqe_comp_caps.supported_format;
 
 	  if ((mlx5dv_attrs.flags & MLX5DV_CONTEXT_FLAGS_CQE_V1))
 	    {
