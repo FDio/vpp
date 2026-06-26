@@ -404,8 +404,7 @@ tcp_connection_close (tcp_connection_t * tc)
       /* Set a timer in case the peer stops responding. Otherwise the
        * connection will be stuck here forever. */
       ASSERT (tc->timers[TCP_TIMER_WAITCLOSE] == TCP_TIMER_HANDLE_INVALID);
-      tcp_timer_set (&wrk->timer_wheel, tc, TCP_TIMER_WAITCLOSE,
-		     tcp_cfg.finwait1_time);
+      tcp_timer_set (&wrk->timer_wheel, tc, TCP_TIMER_WAITCLOSE, tcp_cfg.finwait1_time);
       break;
     case TCP_STATE_CLOSE_WAIT:
       if (!transport_max_tx_dequeue (&tc->connection))
@@ -413,8 +412,7 @@ tcp_connection_close (tcp_connection_t * tc)
 	  tcp_connection_timers_reset (tc);
 	  tcp_send_fin (tc);
 	  tcp_connection_set_state (tc, TCP_STATE_LAST_ACK);
-	  tcp_timer_update (&wrk->timer_wheel, tc, TCP_TIMER_WAITCLOSE,
-			    tcp_cfg.lastack_time);
+	  tcp_timer_update (&wrk->timer_wheel, tc, TCP_TIMER_WAITCLOSE, tcp_cfg.lastack_time);
 	}
       else
 	tc->flags |= TCP_CONN_FINPNDG;
@@ -440,19 +438,33 @@ tcp_session_half_close (u32 conn_index, clib_thread_index_t thread_index)
   wrk = tcp_get_worker (thread_index);
   tc = tcp_worker_connection_get (wrk, conn_index);
 
-  /* If the connection is not in ESTABLISHED state, ignore it */
-  if (tc->state != TCP_STATE_ESTABLISHED)
-    return;
-  if (!transport_max_tx_dequeue (&tc->connection))
-    tcp_send_fin (tc);
-  else
-    tc->flags |= TCP_CONN_FINPNDG;
-  tcp_connection_set_state (tc, TCP_STATE_FIN_WAIT_1);
-  /* Set a timer in case the peer stops responding. Otherwise the
-   * connection will be stuck here forever. */
-  ASSERT (tc->timers[TCP_TIMER_WAITCLOSE] == TCP_TIMER_HANDLE_INVALID);
-  tcp_timer_set (&wrk->timer_wheel, tc, TCP_TIMER_WAITCLOSE,
-		 tcp_cfg.finwait1_time);
+  switch (tc->state)
+    {
+    case TCP_STATE_ESTABLISHED:
+      if (!transport_max_tx_dequeue (&tc->connection))
+	tcp_send_fin (tc);
+      else
+	tc->flags |= TCP_CONN_FINPNDG;
+      tcp_connection_set_state (tc, TCP_STATE_FIN_WAIT_1);
+      /* Set a timer in case the peer stops responding. Otherwise the
+       * connection will be stuck here forever. */
+      ASSERT (tc->timers[TCP_TIMER_WAITCLOSE] == TCP_TIMER_HANDLE_INVALID);
+      tcp_timer_set (&wrk->timer_wheel, tc, TCP_TIMER_WAITCLOSE, tcp_cfg.finwait1_time);
+      break;
+    case TCP_STATE_CLOSE_WAIT:
+      if (!transport_max_tx_dequeue (&tc->connection))
+	{
+	  tcp_connection_timers_reset (tc);
+	  tcp_send_fin (tc);
+	  tcp_connection_set_state (tc, TCP_STATE_LAST_ACK);
+	  tcp_timer_update (&wrk->timer_wheel, tc, TCP_TIMER_WAITCLOSE, tcp_cfg.lastack_time);
+	}
+      else
+	tc->flags |= TCP_CONN_FINPNDG;
+      break;
+    default:
+      break;
+    }
 }
 
 static void
