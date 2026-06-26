@@ -139,13 +139,8 @@ func (s *BaseSuite) CleanupJobsWithFinalizers(ctx context.Context, namespace str
 
 	for _, job := range jobs.Items {
 		if len(job.Finalizers) > 0 {
-			// Remove the finalizer
-			job.Finalizers = []string{}
-			_, err := ClientSet.BatchV1().Jobs(namespace).Update(ctx, &job, metav1.UpdateOptions{})
-			if err != nil {
-				Log("Failed to remove finalizer from job %s: %v", job.Name, err)
-			} else {
-				Log("Removed finalizer from job %s", job.Name)
+			if err := s.CleanupJobFinalizers(ctx, namespace, job.Name); err != nil {
+				return err
 			}
 		}
 	}
