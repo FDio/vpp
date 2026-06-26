@@ -147,8 +147,9 @@ format_tcp_congestion (u8 * s, va_list * args)
 	      format_white_space, indent, tc->prr_start - tc->iss,
 	      tc->prr_delivered, prr_space);
   if (tc->flags & TCP_CONN_RACK)
-    s = format (s, "%Urack reo_seen %u timeout_armed %u\n", format_white_space, indent,
-		tc->rack_reo_seen, tc->rack_timeout_armed);
+    s = format (s, "%Urack reo_seen %u timeout_armed %u tlp pto_armed %u in_flight %u\n",
+		format_white_space, indent, tc->rack_reo_seen, tc->rack_timeout_armed,
+		tc->tlp_pto_armed, (tc->flags & TCP_CONN_TLP) != 0);
   return s;
 }
 
