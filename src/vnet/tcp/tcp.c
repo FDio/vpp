@@ -10,6 +10,7 @@
 
 #include <vnet/tcp/tcp.h>
 #include <vnet/tcp/tcp_inlines.h>
+#include <vnet/tcp/tcp_rack.h>
 #include <vnet/session/session.h>
 #include <vnet/fib/fib.h>
 #include <vnet/dpo/load_balance.h>
@@ -533,6 +534,7 @@ tcp_connection_timers_init (tcp_connection_t * tc)
       tc->timers[i] = TCP_TIMER_HANDLE_INVALID;
     }
 
+  tcp_rack_timeout_armed_off (tc);
   tc->rto = TCP_RTO_INIT;
 }
 
@@ -547,6 +549,7 @@ tcp_connection_timers_reset (tcp_connection_t * tc)
 
   for (i = 0; i < TCP_N_TIMERS; i++)
     tcp_timer_reset (&wrk->timer_wheel, tc, i);
+  tcp_rack_timeout_armed_off (tc);
 }
 
 #if 0
@@ -764,6 +767,7 @@ tcp_connection_init_vars (tcp_connection_t * tc)
   scoreboard_init (&tc->sack_sb);
   if (tc->state == TCP_STATE_SYN_RCVD)
     tcp_init_snd_vars (tc);
+  tc->sack_sb.high_sacked = tc->snd_una;
 
   tcp_cc_init (tc);
 
@@ -775,6 +779,10 @@ tcp_connection_init_vars (tcp_connection_t * tc)
   if (transport_connection_is_tx_paced (&tc->connection)
       || tcp_cfg.enable_tx_pacing)
     tcp_enable_pacing (tc);
+
+  /* RACK requires SACK and byte-tracker transmit timestamps. */
+  if (tcp_cfg.enable_rack && tcp_opts_sack_permitted (&tc->rcv_opts))
+    tc->cfg_flags |= TCP_CFG_F_RACK | TCP_CFG_F_RATE_SAMPLE;
 
   if (tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE)
     tcp_bt_init (tc);
@@ -1004,6 +1012,11 @@ tcp_set_attribute (tcp_connection_t *tc, transport_endpt_attr_t *attr)
 	}
       else
 	{
+	  if (tc->cfg_flags & TCP_CFG_F_RACK)
+	    {
+	      tc->cfg_flags &= ~TCP_CFG_F_RACK;
+	      tcp_rack_timer_reset (tc);
+	    }
 	  if (tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE)
 	    tcp_bt_cleanup (tc);
 	  tc->cfg_flags &= ~TCP_CFG_F_RATE_SAMPLE;
@@ -1269,12 +1282,11 @@ tcp_timer_waitclose_handler (tcp_connection_t * tc)
     }
 }
 
-static timer_expiration_handler *timer_expiration_handlers[TCP_N_TIMERS] =
-{
-    tcp_timer_retransmit_handler,
-    tcp_timer_persist_handler,
-    tcp_timer_waitclose_handler,
-    tcp_timer_retransmit_syn_handler,
+static timer_expiration_handler *timer_expiration_handlers[TCP_N_TIMERS] = {
+  tcp_timer_retransmit_handler,
+  tcp_timer_persist_handler,
+  tcp_timer_waitclose_handler,
+  tcp_timer_retransmit_syn_handler,
 };
 
 static void
@@ -1688,6 +1700,7 @@ tcp_configuration_init (void)
   tcp_cfg.default_mtu = 1500;
   tcp_cfg.initial_cwnd_multiplier = 0;
   tcp_cfg.enable_tx_pacing = 1;
+  tcp_cfg.enable_rack = 0;
   tcp_cfg.allow_tso = 0;
   tcp_cfg.csum_offload = 1;
   tcp_cfg.cc_algo = TCP_CC_CUBIC;

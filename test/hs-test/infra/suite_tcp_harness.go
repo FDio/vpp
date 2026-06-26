@@ -918,6 +918,17 @@ func (s *TcpHarnessSuite) SetupClientVpp(clientContainer *Container) {
 	AssertNil(err, fmt.Sprint(err))
 }
 
+// SetClientRack configures RACK before the client connection is created.
+func SetClientRack(enable bool) TcpHarnessAction {
+	return TcpHarnessActionFunc(func(s *TcpHarnessSuite, st *TcpHarnessScenarioState) {
+		cmd := "set tcp rack"
+		if !enable {
+			cmd = "set tcp no-rack"
+		}
+		Log(s.Containers.ClientVpp.VppInstance.Vppctl(cmd))
+	})
+}
+
 func EnableServerNFQueue(cfg tcpharness.NFQueueConfig) TcpHarnessAction {
 	return TcpHarnessActionFunc(func(s *TcpHarnessSuite, st *TcpHarnessScenarioState) {
 		s.EnableServerNFQueue(cfg)
