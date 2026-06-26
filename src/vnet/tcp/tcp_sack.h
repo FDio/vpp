@@ -21,6 +21,24 @@ scoreboard_hole_bytes (sack_scoreboard_hole_t * hole)
   return hole->end - hole->start;
 }
 
+/* Mark a single hole lost, keeping sb->lost_bytes in step. No-op if already
+ * lost. Returns the bytes newly marked lost (0 if it was already lost), so the
+ * count is current without waiting for the next scoreboard_update_bytes recount
+ * -- which sums the same is_lost holes, so there is no double counting. */
+always_inline u32
+scoreboard_mark_hole_lost (sack_scoreboard_t *sb, sack_scoreboard_hole_t *hole)
+{
+  u32 bytes;
+
+  if (hole->is_lost)
+    return 0;
+
+  hole->is_lost = 1;
+  bytes = scoreboard_hole_bytes (hole);
+  sb->lost_bytes += bytes;
+  return bytes;
+}
+
 always_inline sack_scoreboard_hole_t *
 scoreboard_get_hole (sack_scoreboard_t * sb, u32 index)
 {
@@ -97,6 +115,7 @@ void scoreboard_init (sack_scoreboard_t * sb);
 void scoreboard_init_rxt (sack_scoreboard_t * sb, u32 snd_una);
 void scoreboard_rxt_mark_lost (sack_scoreboard_t *sb, u32 snd_una,
 			       u32 snd_nxt);
+void scoreboard_rxt_rewind (sack_scoreboard_t *sb, u32 seq);
 
 format_function_t format_tcp_scoreboard;
 

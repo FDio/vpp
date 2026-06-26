@@ -106,20 +106,21 @@ typedef enum tcp_cfg_flag_
 } tcp_cfg_flags_e;
 
 /** TCP connection flags */
-#define foreach_tcp_connection_flag             \
-  _(SNDACK, "Send ACK")                         \
-  _(FINSNT, "FIN sent")				\
-  _(RECOVERY, "Recovery")                    	\
-  _(FAST_RECOVERY, "Fast Recovery")		\
-  _(DCNT_PENDING, "Disconnect pending")		\
-  _(HALF_OPEN_DONE, "Half-open completed")	\
-  _(FINPNDG, "FIN pending")			\
-  _(RXT_PENDING, "Retransmit pending")		\
-  _(FRXT_FIRST, "Retransmit first")		\
-  _(DEQ_PENDING, "Dequeue pending ")		\
-  _(PSH_PENDING, "PSH pending")			\
-  _(FINRCVD, "FIN received")			\
-  _(ZERO_RWND_SENT, "Zero RWND sent")		\
+#define foreach_tcp_connection_flag                                                                \
+  _ (SNDACK, "Send ACK")                                                                           \
+  _ (FINSNT, "FIN sent")                                                                           \
+  _ (RECOVERY, "Recovery")                                                                         \
+  _ (FAST_RECOVERY, "Fast Recovery")                                                               \
+  _ (DCNT_PENDING, "Disconnect pending")                                                           \
+  _ (HALF_OPEN_DONE, "Half-open completed")                                                        \
+  _ (FINPNDG, "FIN pending")                                                                       \
+  _ (RXT_PENDING, "Retransmit pending")                                                            \
+  _ (FRXT_FIRST, "Retransmit first")                                                               \
+  _ (DEQ_PENDING, "Dequeue pending ")                                                              \
+  _ (PSH_PENDING, "PSH pending")                                                                   \
+  _ (FINRCVD, "FIN received")                                                                      \
+  _ (ZERO_RWND_SENT, "Zero RWND sent")                                                             \
+  _ (RACK_TIMEOUT, "RACK timeout")
 
 typedef enum tcp_connection_flag_bits_
 {
@@ -232,6 +233,7 @@ typedef struct tcp_byte_tracker_
   u32 head;			/**< Head of samples linked list */
   u32 tail;			/**< Tail of samples linked list */
   u32 last_ooo;			/**< Cached last ooo sample */
+  u8 rack_advanced;		/**< rack_xmit_ts advanced since last loss scan */
 } tcp_byte_tracker_t;
 
 typedef enum _tcp_cc_algorithm_type
@@ -354,6 +356,12 @@ typedef struct _tcp_connection
   f64 rtt_ts;		/**< Timestamp for tracked ACK */
   f64 mrtt_us;		/**< High precision mrtt from tracked acks */
 
+  /* RACK loss detection (RFC 8985). Active when rate sampling (the byte
+   * tracker) is enabled; relies on it for per-segment transmit times. */
+  f64 rack_xmit_ts; /**< tx_time of most recent (re)transmitted segment
+			 that has since been (s)acked */
+  u32 rack_end_seq; /**< snd_nxt of that segment (tie-break for xmit_ts) */
+
   u32 psh_seq;		/**< Add psh header for seg that includes this */
   u32 next_node_index;	/**< Can be used to control next node in output */
   u32 next_node_opaque;	/**< Opaque to pass to next node */
@@ -426,6 +434,11 @@ tcp_cong_recovery_off (tcp_connection_t * tc)
 #define tcp_zero_rwnd_sent(tc) ((tc)->flags & TCP_CONN_ZERO_RWND_SENT)
 #define tcp_zero_rwnd_sent_on(tc) (tc)->flags |= TCP_CONN_ZERO_RWND_SENT
 #define tcp_zero_rwnd_sent_off(tc) (tc)->flags &= ~TCP_CONN_ZERO_RWND_SENT
+
+/* Retransmit timer is armed for a RACK reorder timeout (not an RTO). */
+#define tcp_rack_timeout_armed(tc)     ((tc)->flags & TCP_CONN_RACK_TIMEOUT)
+#define tcp_rack_timeout_armed_on(tc)  (tc)->flags |= TCP_CONN_RACK_TIMEOUT
+#define tcp_rack_timeout_armed_off(tc) (tc)->flags &= ~TCP_CONN_RACK_TIMEOUT
 
 always_inline tcp_connection_t *
 tcp_get_connection_from_transport (transport_connection_t * tconn)

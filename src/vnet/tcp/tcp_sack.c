@@ -268,11 +268,35 @@ scoreboard_rxt_mark_lost (sack_scoreboard_t *sb, u32 snd_una, u32 snd_nxt)
       sb->high_sacked = snd_una;
     }
 
-  if (hole->is_lost)
+  scoreboard_mark_hole_lost (sb, hole);
+}
+
+/**
+ * Rewind the retransmit high-water mark to @seq.
+ *
+ * scoreboard_next_rxt_hole skips holes at or below high_rxt, so a lost
+ * retransmit (whose hole is already below high_rxt) would not be re-sent until
+ * the RTO. Rewinding lets the selector re-pick it. Only ever lowers high_rxt.
+ */
+void
+scoreboard_rxt_rewind (sack_scoreboard_t *sb, u32 seq)
+{
+  sack_scoreboard_hole_t *hole;
+
+  if (seq_geq (seq, sb->high_rxt))
     return;
 
-  hole->is_lost = 1;
-  sb->lost_bytes += scoreboard_hole_bytes (hole);
+  sb->high_rxt = seq;
+
+  /* Point the retransmit walk at the hole covering @seq. */
+  for (hole = scoreboard_first_hole (sb); hole; hole = scoreboard_next_hole (sb, hole))
+    {
+      if (seq_lt (seq, hole->end))
+	{
+	  sb->cur_rxt_hole = scoreboard_hole_index (sb, hole);
+	  return;
+	}
+    }
 }
 
 void
