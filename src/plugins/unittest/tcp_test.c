@@ -5,6 +5,7 @@
 
 #include <vnet/tcp/tcp.h>
 #include <vnet/tcp/tcp_inlines.h>
+#include <vnet/tcp/tcp_rack.h>
 #include <vnet/tcp/tcp_timer.h>
 #include <svm/fifo_segment.h>
 #include <unittest/session/test_session_helpers.h>
@@ -1466,7 +1467,7 @@ tbt_seq_lt (u32 a, u32 b)
 }
 
 static void
-tcp_test_set_time (clib_thread_index_t thread_index, u32 val)
+tcp_test_set_time (clib_thread_index_t thread_index, f64 val)
 {
   session_main.wrk[thread_index].last_vlib_time = val;
   tcp_set_time_now (&tcp_main.wrk[thread_index], val);
@@ -4685,6 +4686,262 @@ tcp_test_bt (vlib_main_t * vm, unformat_input_t * input)
   return 0;
 }
 
+static void
+tcp_test_rack_cleanup (tcp_connection_t *tc)
+{
+  vec_free (tc->rcv_opts.sacks);
+  scoreboard_clear (&tc->sack_sb);
+  pool_free (tc->sack_sb.holes);
+  tcp_bt_cleanup (tc);
+}
+
+static void
+tcp_test_rack_init (tcp_connection_t *tc, clib_thread_index_t thread_index)
+{
+  clib_memset (tc, 0, sizeof (*tc));
+  tc->c_thread_index = thread_index;
+  tc->cfg_flags = TCP_CFG_F_RACK | TCP_CFG_F_RATE_SAMPLE;
+  tc->rcv_opts.flags = TCP_OPTS_FLAG_SACK_PERMITTED | TCP_OPTS_FLAG_SACK;
+  tc->snd_mss = 100;
+  tc->srtt = 0.1 * THZ;
+  scoreboard_init (&tc->sack_sb);
+  tc->sack_sb.high_sacked = tc->snd_una;
+  tcp_bt_init (tc);
+}
+
+static int
+tcp_test_rack (vlib_main_t *vm, unformat_input_t *input)
+{
+  clib_thread_index_t thread_index = vm->thread_index;
+  tcp_connection_t _tc, *tc = &_tc;
+  tcp_rack_state_t *rack;
+  sack_scoreboard_hole_t *hole;
+  tcp_bt_sample_t *bts;
+  tcp_rate_sample_t rs;
+  sack_block_t block;
+  f64 next_to;
+  u32 lost, tx_tsval, rack_fack;
+
+  /* Verify that each transmission has an independent RACK deadline. */
+  tcp_test_rack_init (tc, thread_index);
+  rack = tcp_rack_get_state (tc);
+  rack_fack = tc->sack_sb.high_sacked;
+  tcp_test_set_time (thread_index, 1.0);
+  tcp_bt_track_tx (tc, 100);
+  tc->snd_nxt += 100;
+  tcp_test_set_time (thread_index, 1.08);
+  tcp_bt_track_tx (tc, 100);
+  tc->snd_nxt += 100;
+  tcp_test_set_time (thread_index, 1.10);
+  tcp_bt_track_tx (tc, 100);
+  tc->snd_nxt += 100;
+
+  block = (sack_block_t) { 200, 300 };
+  vec_add1 (tc->rcv_opts.sacks, block);
+  tcp_rcv_sacks (tc, tc->snd_una);
+  bts = pool_elt_at_index (tc->bt->samples, tc->bt->tail);
+  tcp_test_set_time (thread_index, 1.20);
+  tcp_rack_sample_acked (tc, bts, bts->max_seq, &rack_fack);
+
+  lost = tcp_rack_detect_loss (tc, &next_to);
+  TCP_TEST (lost == 100, "RACK marks only expired sample, lost %u", lost);
+  TCP_TEST (next_to > 0.004 && next_to < 0.006, "next RACK timeout is RTT+reo based, %.6f",
+	    next_to);
+  hole = scoreboard_first_hole (&tc->sack_sb);
+  TCP_TEST (hole && hole->start == 0 && hole->end == 100 && hole->is_lost,
+	    "first sample split into a lost scoreboard range");
+  hole = scoreboard_next_hole (&tc->sack_sb, hole);
+  TCP_TEST (hole && hole->start == 100 && hole->end == 200 && !hole->is_lost,
+	    "unexpired sample remains an adjacent non-lost range");
+
+  tcp_test_set_time (thread_index, 1.206);
+  lost = tcp_rack_detect_loss (tc, &next_to);
+  TCP_TEST (lost == 100 && tc->sack_sb.lost_bytes == 200,
+	    "second sample expires at its own deadline");
+  tcp_test_rack_cleanup (tc);
+
+  /* Verify that a lost retransmission is counted and rewinds high_rxt. */
+  tcp_test_rack_init (tc, thread_index);
+  rack = tcp_rack_get_state (tc);
+  rack_fack = tc->sack_sb.high_sacked;
+  tcp_test_set_time (thread_index, 2.0);
+  tcp_bt_track_tx (tc, 100);
+  tc->snd_nxt += 100;
+  tcp_test_set_time (thread_index, 2.10);
+  tcp_bt_track_tx (tc, 100);
+  tc->snd_nxt += 100;
+  block = (sack_block_t) { 100, 200 };
+  vec_add1 (tc->rcv_opts.sacks, block);
+  tcp_rcv_sacks (tc, tc->snd_una);
+  bts = pool_elt_at_index (tc->bt->samples, tc->bt->tail);
+  tcp_test_set_time (thread_index, 2.20);
+  tcp_rack_sample_acked (tc, bts, bts->max_seq, &rack_fack);
+  lost = tcp_rack_detect_loss (tc, &next_to);
+  TCP_TEST (lost == 100, "original transmission declared lost");
+
+  tcp_test_set_time (thread_index, 2.21);
+  tcp_bt_track_rxt (tc, 0, 100);
+  tc->sack_sb.high_rxt = 100;
+  tcp_test_set_time (thread_index, 2.22);
+  tcp_bt_track_tx (tc, 100);
+  tc->snd_nxt += 100;
+  vec_reset_length (tc->rcv_opts.sacks);
+  block = (sack_block_t) { 200, 300 };
+  vec_add1 (tc->rcv_opts.sacks, block);
+  tcp_rcv_sacks (tc, tc->snd_una);
+  bts = pool_elt_at_index (tc->bt->samples, tc->bt->tail);
+  tcp_test_set_time (thread_index, 2.32);
+  tcp_rack_sample_acked (tc, bts, bts->max_seq, &rack_fack);
+
+  tcp_test_set_time (thread_index, 2.334);
+  lost = tcp_rack_detect_loss (tc, &next_to);
+  TCP_TEST (lost == 0 && next_to > 0.0, "retransmission is retained until RTT+reo deadline");
+  tcp_test_set_time (thread_index, 2.336);
+  lost = tcp_rack_detect_loss (tc, &next_to);
+  TCP_TEST (lost == 100 && rack->rxt_loss_segs == 1, "lost retransmission counted as a new loss");
+  TCP_TEST (tc->sack_sb.high_rxt == 0, "lost retransmission rewinds high_rxt");
+  tcp_test_rack_cleanup (tc);
+
+  /* Verify that RTO marks one segment before RACK has an RTT sample. */
+  tcp_test_rack_init (tc, thread_index);
+  rack = tcp_rack_get_state (tc);
+  rack_fack = tc->sack_sb.high_sacked;
+  tcp_test_set_time (thread_index, 3.0);
+  tcp_bt_track_tx (tc, 200);
+  tc->snd_nxt += 200;
+  tcp_test_set_time (thread_index, 3.20);
+  lost = tcp_rack_mark_losses_on_rto (tc);
+  TCP_TEST (lost == 100 && tc->sack_sb.lost_bytes == 100,
+	    "RTO marks first sample only without a RACK RTT");
+  hole = scoreboard_first_hole (&tc->sack_sb);
+  TCP_TEST (hole && hole->is_lost && hole->end == 100, "RTO first loss has segment granularity");
+  hole = scoreboard_next_hole (&tc->sack_sb, hole);
+  TCP_TEST (hole && !hole->is_lost && hole->start == 100, "RTO leaves later sample outstanding");
+  tcp_test_rack_cleanup (tc);
+
+  /* Verify that timestamp echoes disambiguate retransmission ACKs. */
+  tcp_test_rack_init (tc, thread_index);
+  rack = tcp_rack_get_state (tc);
+  rack_fack = tc->sack_sb.high_sacked;
+  tc->rcv_opts.flags |= TCP_OPTS_FLAG_TSTAMP;
+  tcp_test_set_time (thread_index, 4.0);
+  tcp_bt_track_tx (tc, 100);
+  tc->snd_nxt += 100;
+  tcp_test_set_time (thread_index, 4.01);
+  tcp_bt_track_rxt (tc, 0, 100);
+  tx_tsval = tcp_tstamp (tc);
+  bts = pool_elt_at_index (tc->bt->samples, tc->bt->head);
+  tc->rcv_opts.tsecr = tx_tsval - 1;
+  tcp_test_set_time (thread_index, 4.10);
+  tcp_rack_sample_acked (tc, bts, bts->max_seq, &rack_fack);
+  TCP_TEST (rack->rtt == 0.0, "ambiguous retransmission ACK does not advance RACK");
+  tc->rcv_opts.tsecr = tx_tsval;
+  tcp_rack_sample_acked (tc, bts, bts->max_seq, &rack_fack);
+  TCP_TEST (rack->rtt > 0.0, "matching timestamp echo accepts retransmission ACK");
+  tcp_test_rack_cleanup (tc);
+
+  /* Verify that ACK-local FACK detects reordered original data. */
+  tcp_test_rack_init (tc, thread_index);
+  rack_fack = tc->sack_sb.high_sacked;
+  tcp_test_set_time (thread_index, 5.0);
+  tcp_bt_track_tx (tc, 100);
+  tc->snd_nxt += 100;
+  tcp_test_set_time (thread_index, 5.01);
+  tcp_bt_track_tx (tc, 100);
+  tc->snd_nxt += 100;
+  bts = pool_elt_at_index (tc->bt->samples, tc->bt->tail);
+  tcp_test_set_time (thread_index, 5.10);
+  tcp_rack_sample_acked (tc, bts, bts->max_seq, &rack_fack);
+  TCP_TEST (!tcp_rack_reordered (tc), "forward-most delivery is not reordered");
+  bts = pool_elt_at_index (tc->bt->samples, tc->bt->head);
+  tcp_rack_sample_acked (tc, bts, bts->max_seq, &rack_fack);
+  TCP_TEST (tcp_rack_reordered (tc), "original data below FACK is reordered");
+  tcp_test_rack_cleanup (tc);
+
+  /* Rebuild outstanding retransmission state from byte-tracker samples. */
+  tcp_test_rack_init (tc, thread_index);
+  tcp_test_set_time (thread_index, 6.0);
+  tcp_bt_track_tx (tc, 300);
+  tc->snd_nxt += 300;
+  tcp_test_set_time (thread_index, 6.1);
+  tcp_bt_track_rxt (tc, 0, 100);
+  tcp_test_set_time (thread_index, 6.2);
+  tcp_bt_track_rxt (tc, 100, 200);
+
+  tc->cc_algo = tcp_cc_algo_get (TCP_CC_NEWRENO);
+  tc->cwnd = 2000;
+  tc->ssthresh = 1500;
+  tc->mrtt_us = 0.1;
+  tc->sack_sb.high_rxt = 200;
+  tc->flags |= TCP_CONN_RXT_PENDING;
+  tcp_rack_recovery_start (tc);
+  TCP_TEST (tc->snd_rxt_bytes == 200, "RACK carries retransmission flight into the new recovery");
+  TCP_TEST (tc->sack_sb.high_rxt == 200, "RACK preserves the carried retransmission frontier");
+  TCP_TEST (tcp_fastrecovery_prr_snd_space (tc) == 0,
+	    "carried retransmissions initially constrain PRR");
+
+  bts = pool_elt_at_index (tc->bt->samples, tc->bt->head);
+  bts->flags |= TCP_BTS_IS_LOST;
+  bts = pool_elt_at_index (tc->bt->samples, bts->next);
+  bts->flags |= TCP_BTS_IS_SACKED;
+  tcp_cong_recovery_off (tc);
+  tcp_rack_recovery_start (tc);
+  TCP_TEST (tc->snd_rxt_bytes == 0, "RACK excludes lost and SACKed retransmissions from recovery");
+  tcp_test_rack_cleanup (tc);
+
+  /* Derive retransmission delivery from byte-tracker samples. */
+  tcp_test_rack_init (tc, thread_index);
+  tcp_test_set_time (thread_index, 7.0);
+  tcp_bt_track_tx (tc, 300);
+  tc->snd_nxt += 300;
+  tcp_test_set_time (thread_index, 7.1);
+  tcp_bt_track_rxt (tc, 0, 100);
+  tcp_test_set_time (thread_index, 7.2);
+  tcp_bt_track_rxt (tc, 100, 200);
+
+  scoreboard_init_holes (&tc->sack_sb, tc->snd_una, tc->snd_nxt);
+  scoreboard_init_rxt (&tc->sack_sb, tc->snd_una);
+  tc->sack_sb.high_rxt = tc->snd_nxt;
+  tcp_fastrecovery_on (tc);
+  tc->snd_rxt_bytes = 200;
+  tc->rxt_delivered = 100;
+  bts = pool_elt_at_index (tc->bt->samples, tc->bt->head);
+  bts->flags |= TCP_BTS_IS_LOST;
+
+  tcp_rcv_sacks (tc, 100);
+  TCP_TEST (tc->sack_sb.rxt_sacked == 100, "scoreboard identifies retransmission delivery");
+  tc->bytes_acked = 100;
+  tc->snd_una = 100;
+  clib_memset (&rs, 0, sizeof (rs));
+  tcp_bt_sample_delivery_rate (tc, &rs);
+  TCP_TEST (tc->sack_sb.rxt_sacked == 0, "lost retransmission is not credited twice");
+  TCP_TEST (tc->rxt_delivered == 100, "active retransmission remains in flight");
+
+  vec_reset_length (tc->rcv_opts.sacks);
+  tcp_rcv_sacks (tc, 200);
+  tc->bytes_acked = 100;
+  tc->snd_una = 200;
+  clib_memset (&rs, 0, sizeof (rs));
+  tcp_bt_sample_delivery_rate (tc, &rs);
+  TCP_TEST (tc->sack_sb.rxt_sacked == 100, "active retransmission receives delivery credit");
+  tc->rxt_delivered += tc->sack_sb.rxt_sacked;
+  TCP_TEST (tc->rxt_delivered == tc->snd_rxt_bytes, "retransmission flight is fully delivered");
+
+  vec_reset_length (tc->rcv_opts.sacks);
+  tcp_rcv_sacks (tc, 300);
+  TCP_TEST (tc->sack_sb.rxt_sacked == 100,
+	    "scoreboard classifies original data below high_rxt as retransmitted");
+  tc->bytes_acked = 100;
+  tc->snd_una = 300;
+  clib_memset (&rs, 0, sizeof (rs));
+  tcp_bt_sample_delivery_rate (tc, &rs);
+  TCP_TEST (tc->sack_sb.rxt_sacked == 0, "original transmission receives no retransmission credit");
+  TCP_TEST (tc->rxt_delivered == tc->snd_rxt_bytes, "retransmission delivery remains bounded");
+  tcp_test_rack_cleanup (tc);
+
+  return 0;
+}
+
 static clib_error_t *
 tcp_test (vlib_main_t * vm,
 	  unformat_input_t * input, vlib_cli_command_t * cmd_arg)
@@ -4730,6 +4987,10 @@ tcp_test (vlib_main_t * vm,
 	{
 	  res = tcp_test_bt (vm, input);
 	}
+      else if (unformat (input, "rack"))
+	{
+	  res = tcp_test_rack (vm, input);
+	}
       else if (unformat (input, "tamper"))
 	{
 	  res = tcp_test_tamper (vm, input);
@@ -4749,6 +5010,8 @@ tcp_test (vlib_main_t * vm,
 	  if ((res = tcp_test_cubic (vm, input)))
 	    goto done;
 	  if ((res = tcp_test_bt (vm, input)))
+	    goto done;
+	  if ((res = tcp_test_rack (vm, input)))
 	    goto done;
 	  if ((res = tcp_test_tamper (vm, input)))
 	    goto done;
