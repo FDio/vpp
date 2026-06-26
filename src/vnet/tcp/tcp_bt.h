@@ -13,6 +13,19 @@
 #include <vnet/tcp/tcp_types.h>
 
 /**
+ * True if the byte tracker is active for this connection.
+ *
+ * The tracker runs when the app requested rate sampling (TCP_CFG_F_RATE_SAMPLE)
+ * or when RACK loss detection is enabled (TCP_CONN_RACK) -- RACK reuses the
+ * tracker's per-segment transmit times.
+ */
+always_inline int
+tcp_bt_is_enabled (tcp_connection_t *tc)
+{
+  return (tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE) || (tc->flags & TCP_CONN_RACK);
+}
+
+/**
  * Byte tracker initialize
  *
  * @param tc	connection for which the byte tracker should be allocated and
@@ -67,6 +80,22 @@ void tcp_bt_check_app_limited (tcp_connection_t * tc);
  * @param bt	byte tracker
  */
 int tcp_bt_is_sane (tcp_byte_tracker_t * bt);
+
+/**
+ * Iterate outstanding (not yet fully acked) byte-tracker samples.
+ *
+ * Provided for RACK loss detection, which needs each outstanding segment's
+ * transmit time and flags. The callback is invoked for every sample currently
+ * held by the tracker, in send order; it must not free or reorder samples.
+ *
+ * @param tc	tcp connection (must have an active byte tracker)
+ * @param fn	callback (tc, min_seq, max_seq, tx_time, flags, opaque)
+ * @param opaque opaque pointer passed to the callback
+ */
+void tcp_bt_walk_outstanding (tcp_connection_t *tc,
+			      void (*fn) (tcp_connection_t *tc, u32 min_seq, u32 max_seq,
+					  f64 tx_time, u32 flags, void *opaque),
+			      void *opaque);
 
 format_function_t format_tcp_bt;
 
