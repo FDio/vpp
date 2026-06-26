@@ -16,6 +16,114 @@
       "message": "should this be cpus_per_numa?",
       "revId": "f99ea5215c2a0d79d602fe0cd3b03c118ce0128b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6bdf45a9_5a5ef71a",
+        "filename": "test/hs-test/hs_test.sh",
+        "patchSetId": 1
+      },
+      "lineNbr": 465,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-06-26T14:56:51Z",
+      "side": 1,
+      "message": "I guess repeat option have now slightly different behavior?",
+      "revId": "f99ea5215c2a0d79d602fe0cd3b03c118ce0128b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "61de6a71_45646709",
+        "filename": "test/hs-test/hs_test.sh",
+        "patchSetId": 1
+      },
+      "lineNbr": 533,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-06-26T14:56:51Z",
+      "side": 1,
+      "message": "can we print some aggregated stats since we have now multiple ginkgo outputs with number of passed and executed tests and if possible include total time too",
+      "revId": "f99ea5215c2a0d79d602fe0cd3b03c118ce0128b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "63de4484_b8abd51f",
+        "filename": "test/hs-test/infra/suite_echo.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 119,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-06-26T14:56:51Z",
+      "side": 1,
+      "message": "can you plese document how to use new labels in README?",
+      "range": {
+        "startLine": 119,
+        "startChar": 28,
+        "endLine": 119,
+        "endChar": 39
+      },
+      "revId": "f99ea5215c2a0d79d602fe0cd3b03c118ce0128b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c79544e9_e423e842",
+        "filename": "test/hs-test/infra/suite_masque.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 57,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-06-26T14:56:51Z",
+      "side": 1,
+      "message": "I guess this is because you want to do more stuff in parallel?",
+      "revId": "f99ea5215c2a0d79d602fe0cd3b03c118ce0128b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7adca913_6e224d2a",
+        "filename": "test/hs-test/proxy_test.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 758,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-06-26T14:56:51Z",
+      "side": 1,
+      "message": "please don\u0027t change this. in vppConnectProxyClientCheckCleanup we want to validate that all proxy client sessions are cleanup not in closed state. there was bug in cleanup and should be fixed now, if not we need to fail if some session is still in closed state within timeout",
+      "revId": "f99ea5215c2a0d79d602fe0cd3b03c118ce0128b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4f737a37_0d47f0e6",
+        "filename": "test/hs-test/proxy_test.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 769,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-06-26T14:56:51Z",
+      "side": 1,
+      "message": "why we need this? in VppConnectProxyClientStressMWTest parent h2 session should stay open otherwise it\u0027s error",
+      "revId": "f99ea5215c2a0d79d602fe0cd3b03c118ce0128b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
