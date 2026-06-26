@@ -20,10 +20,21 @@
 #define RDMA_TXQ_DV_DSEG_SZ(txq) (RDMA_MLX5_WQE_DS * RDMA_TXQ_DV_SQ_SZ (txq))
 #define RDMA_TXQ_DV_DSEG2WQE(d)	 (((d) + RDMA_MLX5_WQE_DS - 1) / RDMA_MLX5_WQE_DS)
 
-/* DS count lives in the low 8 bits of mlx5 ctrl.qpn_ds. */
-#define RDMA_MLX5_WQE_DS_MAX 0xff
+/* Keep mlx5 SEND/TSO WQEs below the hardware WQE size limit. */
+#define RDMA_MLX5_WQE_DS_MAX 60
 /* Sentinel used for WQEBB slots that do not own a buffer index. */
 #define RDMA_TXQ_INVALID_BUF ((u32) ~0)
+
+static_always_inline u32
+rdma_mlx5_wqe_chained_dseg_max (u32 n_wqebb, u32 base_ds)
+{
+  u32 available_ds = RDMA_MLX5_WQE_DS * n_wqebb;
+
+  if (base_ds >= RDMA_MLX5_WQE_DS_MAX || available_ds <= base_ds)
+    return 0;
+
+  return clib_min (available_ds - base_ds, RDMA_MLX5_WQE_DS_MAX - base_ds);
+}
 
 typedef enum
 {
@@ -315,8 +326,7 @@ rdma_mlx5_tso_append_chain (vlib_main_t *vm, const vlib_node_runtime_t *node, rd
   u32 total_wqebb = *total_wqebb_p;
   vlib_buffer_t *chained_b = b;
   u32 chained_n = 0;
-  const u32 dseg_max =
-    clib_min (RDMA_MLX5_WQE_DS * (*wqe_n_p) - base_ds, RDMA_MLX5_WQE_DS_MAX - base_ds);
+  const u32 dseg_max = rdma_mlx5_wqe_chained_dseg_max (*wqe_n_p, base_ds);
 
   while (chained_n < dseg_max && chained_b->flags & VLIB_BUFFER_NEXT_PRESENT)
     {
@@ -484,12 +494,9 @@ rdma_device_output_tx_mlx5_chained (vlib_main_t *vm,
 
       if (b[0]->flags & VLIB_BUFFER_NEXT_PRESENT)
 	{
-	  /*
-	   * max number of available dseg:
-	   *  - 4 dseg per WQEBB available
-	   *  - max 32 dseg per WQE (5-bits length field in WQE ctrl)
-	   */
-	  const u32 dseg_max = clib_min (RDMA_MLX5_WQE_DS * (wqe_n - 1), RDMA_MLX5_WQE_DS_MAX);
+	  /* Additional dseg are bounded by available WQEBBs and by
+	   * the mlx5 WQE size limit. */
+	  const u32 dseg_max = rdma_mlx5_wqe_chained_dseg_max (wqe_n, RDMA_MLX5_WQE_DS);
 	  vlib_buffer_t *chained_b = b[0];
 	  u32 chained_n = 0;
 
