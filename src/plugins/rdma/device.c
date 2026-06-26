@@ -434,7 +434,9 @@ rdma_rxq_init (vlib_main_t * vm, rdma_device_t * rd, u16 qid, u32 n_desc,
       struct mlx5dv_cq_init_attr dvcq = { };
       dvcq.comp_mask = MLX5DV_CQ_INIT_ATTR_MASK_COMPRESSED_CQE |
 		       MLX5DV_CQ_INIT_ATTR_MASK_CQE_SIZE;
-      dvcq.cqe_comp_res_format = MLX5DV_CQE_RES_FORMAT_HASH;
+      /* Striding RQ mini-CQEs must carry consumed-stride metadata. */
+      dvcq.cqe_comp_res_format =
+	is_striding ? MLX5DV_CQE_RES_FORMAT_CSUM_STRIDX : MLX5DV_CQE_RES_FORMAT_HASH;
       dvcq.cqe_size = 64;
       if ((cqex = mlx5dv_create_cq (rd->ctx, &cqa, &dvcq)) == 0)
 	return clib_error_return_unix (0, "Create mlx5dv rx CQ Failed");
