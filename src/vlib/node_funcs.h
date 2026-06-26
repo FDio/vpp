@@ -1128,7 +1128,7 @@ vlib_process_signal_event_at_time (vlib_main_t * vm,
       ASSERT (te->n_data_elt_bytes == n_data_elt_bytes);
       ASSERT (te->n_data_bytes == n_data_elts * n_data_elt_bytes);
 
-      te->process_node_index = n->runtime_index;
+      te->process_node_index = n->index;
       te->event_type_index = t;
 
       p->stop_timer_handle =
