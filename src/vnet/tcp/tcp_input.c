@@ -8,6 +8,7 @@
 #include <vnet/fib/ip6_fib.h>
 #include <vnet/tcp/tcp.h>
 #include <vnet/tcp/tcp_inlines.h>
+#include <vnet/tcp/tcp_rack.h>
 #include <vnet/session/session.h>
 #include <math.h>
 
@@ -406,8 +407,7 @@ tcp_update_rtt (tcp_connection_t * tc, tcp_rate_sample_t * rs, u32 ack)
   if (tcp_in_cong_recovery (tc))
     {
       /* Accept rtt estimates for samples that have not been retransmitted */
-      if (!(tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE)
-	  || (rs->flags & TCP_BTS_IS_RXT))
+      if (!(tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE) || (rs->flags & TCP_BTS_IS_RXT))
 	goto done;
       if (rs->rtt_time)
 	tcp_estimate_rtt_us (tc, rs->rtt_time);
@@ -589,37 +589,24 @@ tcp_update_snd_wnd (tcp_connection_t * tc, u32 seq, u32 ack, u32 snd_wnd)
     }
 }
 
-/**
- * Init loss recovery/fast recovery.
- *
- * Triggered by dup acks as opposed to timer timeout. Note that cwnd is
- * updated in @ref tcp_cc_handle_event after fast retransmit
- */
-static void
-tcp_cc_init_congestion (tcp_connection_t * tc)
+/* Detect losses from an ACK and maintain any loss-model-specific timer. */
+static_always_inline void
+tcp_loss_handle_ack (tcp_connection_t *tc, tcp_rate_sample_t *rs)
 {
-  tcp_fastrecovery_on (tc);
-  tc->snd_congestion = tc->snd_nxt;
-  tc->cwnd_acc_bytes = 0;
-  tc->snd_rxt_bytes = 0;
-  tc->rxt_delivered = 0;
-  tc->prr_delivered = 0;
-  tc->prev_prr_delivered = 0;
-  tc->prr_start = tc->snd_una;
-  tc->prev_ssthresh = tc->ssthresh;
-  tc->prev_cwnd = tc->cwnd;
+  f64 rack_next_to = 0.0;
+  u32 lost;
 
-  tc->snd_rxt_ts = tcp_tstamp (tc);
-  tcp_cc_congestion (tc);
+  if (PREDICT_TRUE (!tcp_rack_is_enabled (tc)))
+    return;
 
-  /* Post retransmit update cwnd to ssthresh and account for the
-   * three segments that have left the network and should've been
-   * buffered at the receiver XXX */
-  if (!tcp_opts_sack_permitted (&tc->rcv_opts))
-    tc->cwnd += TCP_DUPACK_THRESHOLD * tc->snd_mss;
-
-  tc->fr_occurences += 1;
-  TCP_EVT (TCP_EVT_CC_EVT, tc, 4);
+  lost = tcp_rack_detect_loss (tc, &rack_next_to);
+  if (lost)
+    {
+      tc->sack_sb.last_lost_bytes += lost;
+      rs->last_lost += lost;
+      rs->lost += lost;
+    }
+  tcp_rack_arm_reorder_timer (tc, rack_next_to);
 }
 
 static void
@@ -704,32 +691,30 @@ tcp_cc_exit_recovery (tcp_connection_t *tc)
   ASSERT (tcp_scoreboard_is_sane_post_recovery (tc));
 }
 
-/* Enter congestion recovery: reduce the window, snapshot the recovery point and
- * program a retransmit. Caller must have decided recovery is warranted and must
- * not already be in recovery. */
-static void
-tcp_cc_enter_recovery (tcp_connection_t *tc, u8 has_sack)
+static_always_inline void
+tcp_cc_account_rxt_ack (tcp_connection_t *tc)
 {
-  ASSERT (!tcp_in_cong_recovery (tc));
-  tcp_cc_init_congestion (tc);
+  tcp_rack_state_t *rack;
 
-  if (has_sack)
-    scoreboard_init_rxt (&tc->sack_sb, tc->snd_una);
-  else
-    tcp_fastrecovery_first_on (tc);
+  if (!tcp_rack_is_enabled (tc) || !tcp_in_cong_recovery (tc))
+    return;
 
-  tcp_connection_tx_pacer_reset (tc, tc->cwnd, 0 /* start bucket */);
-  tcp_program_retransmit (tc);
+  rack = tcp_rack_get_state (tc);
+  ASSERT (tc->rxt_delivered + tc->sack_sb.rxt_sacked <= tc->snd_rxt_bytes);
+  tc->rxt_delivered += tc->sack_sb.rxt_sacked;
+  ASSERT (tc->snd_rxt_bytes - tc->rxt_delivered == rack->rxt_in_flight);
 }
 
-/* Process (re)transmit feedback. Output path uses this to decide how much more data to release into
- * the network */
-always_inline void
-tcp_cc_account_recovery_ack (tcp_connection_t *tc, tcp_rate_sample_t *rs, u32 is_dack, u8 has_sack)
+/* Account recovery feedback without exposing the active loss model to the ACK path. */
+static_always_inline void
+tcp_cc_account_recovery_ack (tcp_connection_t *tc, tcp_rate_sample_t *rs, u32 is_dack)
 {
-  if (has_sack)
+  tcp_loss_mode_t mode = tcp_loss_mode (tc);
+
+  if (mode != TCP_LOSS_NO_SACK)
     {
-      tc->rxt_delivered += tc->sack_sb.rxt_sacked;
+      if (mode == TCP_LOSS_SACK)
+	tc->rxt_delivered += tc->sack_sb.rxt_sacked;
       tc->prr_delivered += rs->acked_and_sacked;
     }
   else
@@ -739,7 +724,6 @@ tcp_cc_account_recovery_ack (tcp_connection_t *tc, tcp_rate_sample_t *rs, u32 is
 	  tc->rcv_dupacks += 1;
 	  TCP_EVT (TCP_EVT_DUPACK_RCVD, tc, 1);
 	}
-      tc->rxt_delivered = clib_min (tc->rxt_delivered + tc->bytes_acked, tc->snd_rxt_bytes);
       if (is_dack)
 	tc->prr_delivered += clib_min (tc->snd_mss, tc->snd_nxt - tc->snd_una);
       else
@@ -752,6 +736,8 @@ tcp_cc_account_recovery_ack (tcp_connection_t *tc, tcp_rate_sample_t *rs, u32 is
     }
 
   ASSERT (tc->rxt_delivered <= tc->snd_rxt_bytes);
+  if (PREDICT_FALSE (mode == TCP_LOSS_RACK))
+    ASSERT (tc->snd_rxt_bytes - tc->rxt_delivered == tcp_rack_get_state (tc)->rxt_in_flight);
 }
 
 /* Exit recovery and re-enter if loss remains. */
@@ -764,7 +750,7 @@ tcp_cc_try_exit_recovery (tcp_connection_t *tc, tcp_rate_sample_t *rs, u8 has_sa
   tcp_cc_exit_recovery (tc);
 
   if (tcp_should_fastrecover (tc, has_sack))
-    tcp_cc_enter_recovery (tc, has_sack);
+    tcp_cc_enter_recovery (tc);
   else
     tcp_cc_rcv_ack (tc, rs);
 }
@@ -785,10 +771,11 @@ tcp_cc_update (tcp_connection_t * tc, tcp_rate_sample_t * rs)
  * One function to rule them all ... and in the darkness bind them
  */
 static void
-tcp_cc_handle_event (tcp_connection_t * tc, tcp_rate_sample_t * rs,
-		     u32 is_dack)
+tcp_cc_handle_event (tcp_connection_t *tc, tcp_rate_sample_t *rs, u32 is_dack)
 {
   u8 has_sack = tcp_opts_sack_permitted (&tc->rcv_opts);
+
+  tcp_cc_account_rxt_ack (tc);
 
   /* If reneging, wait for timer based retransmits */
   if (PREDICT_FALSE (tcp_is_lost_fin (tc) || tc->sack_sb.is_reneging))
@@ -799,14 +786,21 @@ tcp_cc_handle_event (tcp_connection_t * tc, tcp_rate_sample_t * rs,
    */
   if (!tcp_in_cong_recovery (tc))
     {
-      ASSERT (is_dack);
+      ASSERT (is_dack || tc->sack_sb.last_lost_bytes);
 
-      tc->rcv_dupacks++;
-      TCP_EVT (TCP_EVT_DUPACK_RCVD, tc, 1);
-      tcp_cc_rcv_cong_ack (tc, TCP_CC_DUPACK, rs);
-
-      if (tcp_should_fastrecover (tc, has_sack))
-	tcp_cc_enter_recovery (tc, has_sack);
+      if (is_dack)
+	{
+	  tc->rcv_dupacks++;
+	  TCP_EVT (TCP_EVT_DUPACK_RCVD, tc, 1);
+	  tcp_cc_rcv_cong_ack (tc, TCP_CC_DUPACK, rs);
+	}
+      else
+	{
+	  tcp_cc_rcv_ack (tc, rs);
+	  tc->rcv_dupacks = 0;
+	}
+      if (tc->sack_sb.last_lost_bytes || tcp_should_fastrecover (tc, has_sack))
+	tcp_cc_enter_recovery (tc);
 
       return;
     }
@@ -823,7 +817,7 @@ tcp_cc_handle_event (tcp_connection_t * tc, tcp_rate_sample_t * rs,
       return;
     }
 
-  tcp_cc_account_recovery_ack (tc, rs, is_dack, has_sack);
+  tcp_cc_account_recovery_ack (tc, rs, is_dack);
 
   tcp_program_retransmit (tc);
 
@@ -861,7 +855,7 @@ tcp_cc_handle_event (tcp_connection_t * tc, tcp_rate_sample_t * rs,
 static void
 tcp_handle_old_ack (tcp_connection_t * tc, tcp_rate_sample_t * rs)
 {
-  if (!tcp_in_cong_recovery (tc))
+  if (!tcp_in_cong_recovery (tc) && !tcp_rack_is_enabled (tc))
     return;
 
   if (tcp_opts_sack_permitted (&tc->rcv_opts))
@@ -870,11 +864,16 @@ tcp_handle_old_ack (tcp_connection_t * tc, tcp_rate_sample_t * rs)
   tc->bytes_acked = 0;
 
   if (tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE)
-    tcp_bt_sample_delivery_rate (tc, rs);
+    {
+      /* Process new SACK information carried by duplicate ACKs. */
+      tcp_bt_sample_delivery_rate (tc, rs);
+      tcp_loss_handle_ack (tc, rs);
+    }
   else
     rs->acked_and_sacked = tc->sack_sb.last_sacked_bytes;
 
-  tcp_cc_handle_event (tc, rs, 1);
+  if (tcp_in_cong_recovery (tc) || tc->sack_sb.last_lost_bytes)
+    tcp_cc_handle_event (tc, rs, 1);
 }
 
 /**
@@ -894,15 +893,15 @@ tcp_ack_is_dupack (tcp_connection_t * tc, vlib_buffer_t * b, u32 prev_snd_wnd,
  * Checks if ack is a congestion control event.
  */
 static u8
-tcp_ack_is_cc_event (tcp_connection_t * tc, vlib_buffer_t * b,
-		     u32 prev_snd_wnd, u32 prev_snd_una, u8 * is_dack)
+tcp_ack_is_cc_event (tcp_connection_t *tc, vlib_buffer_t *b, u32 prev_snd_wnd, u32 prev_snd_una,
+		     u8 *is_dack)
 {
   /* Check if ack is duplicate. Per RFC 6675, ACKs that SACK new data are
    * defined to be 'duplicate' as well */
   *is_dack = tc->sack_sb.last_sacked_bytes
     || tcp_ack_is_dupack (tc, b, prev_snd_wnd, prev_snd_una);
 
-  return (*is_dack || tcp_in_cong_recovery (tc));
+  return (*is_dack || tc->sack_sb.last_lost_bytes || tcp_in_cong_recovery (tc));
 }
 
 /**
@@ -960,7 +959,10 @@ tcp_rcv_ack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc, vlib_buffer_t * b,
   tcp_validate_txf_size (tc, tc->bytes_acked);
 
   if (tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE)
-    tcp_bt_sample_delivery_rate (tc, &rs);
+    {
+      tcp_bt_sample_delivery_rate (tc, &rs);
+      tcp_loss_handle_ack (tc, &rs);
+    }
   else
     rs.acked_and_sacked =
       tc->bytes_acked + tc->sack_sb.last_sacked_bytes - tc->sack_sb.last_bytes_delivered;
