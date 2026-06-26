@@ -243,6 +243,50 @@ tcp_time_now_us (clib_thread_index_t thread_index)
   return tcp_main.wrk[thread_index].time_us;
 }
 
+/**
+ * Update windowed delivery-rate estimate (used when byte tracker is off)
+ *
+ * Accumulates bytes delivered over one-RTT windows and reports the max rate
+ * across the current and previous window (a small windowed-max that resists
+ * the transient dips seen during loss recovery).
+ *
+ * @param delivered	bytes newly delivered (acked + sacked) for this ack
+ */
+always_inline void
+tcp_update_delivery_rate_bt_off (tcp_connection_t *tc, u32 delivered)
+{
+  f64 now = tcp_time_now_us (tc->c_thread_index);
+  f64 srtt = clib_max ((f64) tc->srtt * TCP_TICK, tc->mrtt_us);
+  f64 elapsed;
+
+  tc->delivered += delivered;
+
+  /* No usable RTT estimate yet; open the first window. delivered_time is only
+   * consumed by the byte tracker (off here), so we only need to stamp it when
+   * a window closes, which lets us share the single tcp_time_now_us() read. */
+  if (srtt <= 0.0 || tc->dr_window_start_time == 0.0)
+    {
+      tc->dr_window_start_time = now;
+      tc->dr_delivered_at_start = tc->delivered;
+      return;
+    }
+
+  elapsed = now - tc->dr_window_start_time;
+  if (elapsed < srtt)
+    return;
+
+  /* Window closed: compute its rate (bytes/s) and report the windowed max. */
+  if (elapsed > 0.0)
+    {
+      u64 rate = (u64) ((f64) (tc->delivered - tc->dr_delivered_at_start) / elapsed);
+      tc->delivery_rate = clib_max (rate, tc->dr_prev_window_rate);
+      tc->dr_prev_window_rate = rate;
+    }
+  tc->delivered_time = now;
+  tc->dr_window_start_time = now;
+  tc->dr_delivered_at_start = tc->delivered;
+}
+
 always_inline void
 tcp_set_time_now (tcp_worker_ctx_t *wrk, f64 now)
 {

@@ -948,10 +948,17 @@ tcp_rcv_ack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc, vlib_buffer_t * b,
   tcp_validate_txf_size (tc, tc->bytes_acked);
 
   if (tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE)
-    tcp_bt_sample_delivery_rate (tc, &rs);
+    {
+      tcp_bt_sample_delivery_rate (tc, &rs);
+      if (rs.interval_time > 0.0)
+	tc->delivery_rate = (u64) ((f64) rs.delivered / rs.interval_time);
+    }
   else
-    rs.acked_and_sacked =
-      tc->bytes_acked + tc->sack_sb.last_sacked_bytes - tc->sack_sb.last_bytes_delivered;
+    {
+      rs.acked_and_sacked =
+	tc->bytes_acked + tc->sack_sb.last_sacked_bytes - tc->sack_sb.last_bytes_delivered;
+      tcp_update_delivery_rate_bt_off (tc, rs.acked_and_sacked);
+    }
 
   if (tc->bytes_acked + tc->sack_sb.last_sacked_bytes)
     {
