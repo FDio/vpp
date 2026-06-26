@@ -9,10 +9,6 @@
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/devices/devices.h>
 #include <vnet/buffer.h>
-#include <vnet/ip/ip4_packet.h>
-#include <vnet/ip/ip6_packet.h>
-#include <vnet/ip/ip_psh_cksum.h>
-#include <vnet/tcp/tcp_packet.h>
 #include <rdma/rdma.h>
 
 #define RDMA_TX_RETRIES 5
@@ -258,22 +254,6 @@ rdma_mlx5_wqe_init_tso (rdma_txq_t *txq, vlib_buffer_t *b, const u16 tail, const
   wqe0->eseg.cs_flags = MLX5_ETH_WQE_L3_CSUM | MLX5_ETH_WQE_L4_CSUM;
   wqe0->eseg.mss = htobe16 (mss);
   wqe0->eseg.inline_hdr_sz = htobe16 (hdr_sz);
-
-  /* TSO checksum offload expects the TCP checksum field to contain the
-   * pseudo-header checksum, not the full checksum of the super-packet. */
-  if (b->flags & VNET_BUFFER_F_IS_IP4)
-    {
-      ip4_header_t *ip4 = (ip4_header_t *) (b->data + vnet_buffer (b)->l3_hdr_offset);
-      tcp_header_t *tcp = (tcp_header_t *) (b->data + vnet_buffer (b)->l4_hdr_offset);
-      ip4->checksum = ip4_header_checksum (ip4);
-      tcp->checksum = ip4_pseudo_header_cksum (ip4);
-    }
-  else if (b->flags & VNET_BUFFER_F_IS_IP6)
-    {
-      ip6_header_t *ip6 = (ip6_header_t *) (b->data + vnet_buffer (b)->l3_hdr_offset);
-      tcp_header_t *tcp = (tcp_header_t *) (b->data + vnet_buffer (b)->l4_hdr_offset);
-      tcp->checksum = ip6_pseudo_header_cksum (ip6);
-    }
 
   clib_memcpy_fast (wqe0->eseg.inline_hdr_start, pkt,
 		    clib_min (hdr_sz, MLX5_ETH_L2_INLINE_HEADER_SIZE));
