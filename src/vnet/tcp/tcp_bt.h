@@ -43,8 +43,15 @@ void tcp_bt_track_tx (tcp_connection_t * tc, u32 len);
  * @param tc	tcp connection
  * @param start	start sequence number
  * @param end	end sequence number
+ * @return	active retransmission bytes replaced by the new copy
  */
-void tcp_bt_track_rxt (tcp_connection_t * tc, u32 start, u32 end);
+u32 tcp_bt_track_rxt (tcp_connection_t *tc, u32 start, u32 end);
+
+/** Mark a byte-tracker sample lost and retire its active retransmission copy. */
+u32 tcp_bt_sample_mark_lost (tcp_connection_t *tc, tcp_bt_sample_t *bts);
+
+/** Derive recovery retransmission delivery from byte-tracker state. */
+void tcp_bt_sync_rxt_delivery (tcp_connection_t *tc);
 /**
  * Generate a delivery rate sample from recently acked bytes
  *
@@ -67,6 +74,15 @@ void tcp_bt_check_app_limited (tcp_connection_t * tc);
  * @param bt	byte tracker
  */
 int tcp_bt_is_sane (tcp_byte_tracker_t * bt);
+
+typedef void (*tcp_bt_walk_fn_t) (tcp_connection_t *tc, tcp_bt_sample_t *bts, void *opaque);
+
+/** Visit byte-tracker samples overlapping [start, end). */
+void tcp_bt_walk_range (tcp_connection_t *tc, u32 start, u32 end, tcp_bt_walk_fn_t fn,
+			void *opaque);
+
+/** Split the sample at seq. */
+void tcp_bt_split_at (tcp_connection_t *tc, u32 seq);
 
 format_function_t format_tcp_bt;
 
