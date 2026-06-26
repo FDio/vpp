@@ -387,6 +387,7 @@ rdma_dev_cleanup (rdma_device_t * rd)
   _(ibv_dereg_mr, rd->mr);
   vec_foreach (txq, rd->txqs)
   {
+    vec_free (txq->dv_comp_tails);
     _(ibv_destroy_qp, txq->qp);
     _(ibv_destroy_cq, txq->cq);
   }
@@ -814,6 +815,7 @@ rdma_txq_init (vlib_main_t *vm, rdma_device_t *rd, u16 qid, u32 n_desc)
       txq->dv_sq_dbrec = dv_qp.dbrec;
       txq->dv_sq_db = dv_qp.bf.reg;
       txq->dv_sq_log2sz = min_log2 (dv_qp.sq.wqe_cnt);
+      vec_validate_aligned (txq->dv_comp_tails, dv_qp.sq.wqe_cnt - 1, CLIB_CACHE_LINE_BYTES);
 
       /* get CQ and doorbell addresses */
       txq->dv_cq_cqes = dv_cq.buf;
@@ -822,9 +824,8 @@ rdma_txq_init (vlib_main_t *vm, rdma_device_t *rd, u16 qid, u32 n_desc)
 
       /* init tx desc template */
       STATIC_ASSERT_SIZEOF (txq->dv_wqe_tmpl, sizeof (*tmpl));
-      mlx5dv_set_ctrl_seg (&tmpl->ctrl, 0, MLX5_OPCODE_SEND, 0,
-			   txq->qp->qp_num, 0, RDMA_MLX5_WQE_DS, 0,
-			   RDMA_TXQ_DV_INVALID_ID);
+      mlx5dv_set_ctrl_seg (&tmpl->ctrl, 0, MLX5_OPCODE_SEND, 0, txq->qp->qp_num, 0,
+			   RDMA_MLX5_WQE_DS, 0, 0);
       tmpl->eseg.inline_hdr_sz = htobe16 (MLX5_ETH_L2_INLINE_HEADER_SIZE);
       mlx5dv_set_data_seg (&tmpl->dseg, 0, rd->lkey, 0);
     }
