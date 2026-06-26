@@ -453,6 +453,28 @@ rdma_rxq_init (vlib_main_t * vm, rdma_device_t * rd, u16 qid, u32 n_desc,
   wqia.max_sge = 1;
   wqia.pd = rd->pd;
   wqia.cq = rxq->cq;
+  if (!is_striding)
+    {
+      /* In non-striding mode, each receive WQE can scatter a
+       * packet over multiple vlib buffers. This is required for MTU
+       * 9K in both DV and plain IBV modes. */
+      if (no_multi_seg)
+	{
+	  wqia.max_sge = 1;
+	  rxq->log_wqe_sz = 0;
+	  rxq->n_ds_per_wqe = 1;
+	}
+      else
+	{
+	  int max_chain_sz =
+	    max_pktlen ? (max_pktlen / rxq->buf_sz) + 1 : RDMA_RXQ_LEGACY_MODE_MAX_CHAIN_SZ;
+	  max_chain_sz = clib_min (max_chain_sz, RDMA_RXQ_MAX_CHAIN_SZ);
+	  int max_chain_log_sz = max_log2 (max_chain_sz);
+	  wqia.max_sge = 1 << max_chain_log_sz;
+	  rxq->log_wqe_sz = max_chain_log_sz;
+	  rxq->n_ds_per_wqe = max_chain_sz;
+	}
+    }
   if (is_mlx5dv)
     {
       if (is_striding)
@@ -487,30 +509,6 @@ rdma_rxq_init (vlib_main_t * vm, rdma_device_t * rd, u16 qid, u32 n_desc,
 	  rxq->log_wqe_sz = max_chain_log_sz + 1;
 	  rxq->log_stride_per_wqe = max_chain_log_sz;
 	}
-      else
-	{
-	  /* In non STRIDING_RQ mode and if multiseg is not disabled, each WQE is a SG list of data
-	     segments, each pointing to a vlib_buffer.  */
-	  if (no_multi_seg)
-	    {
-	      wqia.max_sge = 1;
-	      rxq->log_wqe_sz = 0;
-	      rxq->n_ds_per_wqe = 1;
-	    }
-	  else
-	    {
-	      int max_chain_sz =
-		max_pktlen ? (max_pktlen /
-			      (rxq->buf_sz)) +
-		1 : RDMA_RXQ_LEGACY_MODE_MAX_CHAIN_SZ;
-	      int max_chain_log_sz = max_log2 (max_chain_sz);
-	      wqia.max_sge = 1 << max_chain_log_sz;
-	      rxq->log_wqe_sz = max_chain_log_sz;
-	      rxq->n_ds_per_wqe = max_chain_sz;
-	    }
-
-	}
-
       if ((rxq->wq = mlx5dv_create_wq (rd->ctx, &wqia, &dv_wqia)))
 	{
 	  rxq->wq->events_completed = 0;
@@ -583,17 +581,15 @@ rdma_rxq_init (vlib_main_t * vm, rdma_device_t * rd, u16 qid, u32 n_desc,
 
       for (int i = 0; i < (1 << rxq->log2_cq_size); i++)
 	rxq->cqes[i].opcode_cqefmt_se_owner = 0xff;
+    }
 
-      if (!is_striding)
-	{
-	  vec_validate_aligned (rxq->second_bufs, n_desc - 1,
-				CLIB_CACHE_LINE_BYTES);
-	  vec_validate_aligned (rxq->n_used_per_chain, n_desc - 1,
-				CLIB_CACHE_LINE_BYTES);
-	  rxq->n_total_additional_segs = n_desc * (rxq->n_ds_per_wqe - 1);
-	  for (int i = 0; i < n_desc; i++)
-	    rxq->n_used_per_chain[i] = rxq->n_ds_per_wqe - 1;
-	}
+  if (!is_striding && rxq->n_ds_per_wqe > 1)
+    {
+      vec_validate_aligned (rxq->second_bufs, n_desc - 1, CLIB_CACHE_LINE_BYTES);
+      vec_validate_aligned (rxq->n_used_per_chain, n_desc - 1, CLIB_CACHE_LINE_BYTES);
+      rxq->n_total_additional_segs = n_desc * (rxq->n_ds_per_wqe - 1);
+      for (int i = 0; i < n_desc; i++)
+	rxq->n_used_per_chain[i] = rxq->n_ds_per_wqe - 1;
     }
 
   return 0;

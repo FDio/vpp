@@ -41,6 +41,60 @@ ibv_set_recv_wr_and_sge (struct ibv_recv_wr *w, struct ibv_sge *s, u64 va,
   w[0].num_sge = 1;
 }
 
+static_always_inline void
+ibv_set_recv_wr_and_sge_chain (vlib_main_t *vm, struct ibv_recv_wr *w, struct ibv_sge *s,
+			       u32 head_bi, u32 next_bi, u32 n_sge, u32 data_size, u32 lkey)
+{
+  u32 bi = head_bi;
+
+  for (u32 i = 0; i < n_sge; i++)
+    {
+      vlib_buffer_t *b = vlib_get_buffer (vm, bi);
+      u64 va = pointer_to_uword (b) + sizeof (vlib_buffer_t);
+
+      s[i].addr = va;
+      s[i].length = data_size;
+      s[i].lkey = lkey;
+
+      if (i == 0)
+	bi = next_bi;
+      else if (i + 1 < n_sge)
+	bi = b->next_buffer;
+    }
+
+  w[0].next = w + 1;
+  w[0].sg_list = s;
+  w[0].num_sge = n_sge;
+}
+
+static_always_inline u32
+rdma_device_legacy_input_post_ibv (vlib_main_t *vm, rdma_rxq_t *rxq, u32 first_slot, u32 n,
+				   struct ibv_recv_wr *wr, struct ibv_sge *sge, u32 data_size,
+				   u32 lkey)
+{
+  struct ibv_recv_wr *w = wr;
+  struct ibv_sge *s = sge;
+  u32 mask = rxq->size - 1;
+
+  if (n == 0)
+    return 0;
+
+  for (u32 i = 0; i < n; i++)
+    {
+      u32 slot = (first_slot + i) & mask;
+      ibv_set_recv_wr_and_sge_chain (vm, w++, s, rxq->bufs[slot], rxq->second_bufs[slot],
+				     rxq->n_ds_per_wqe, rxq->buf_sz, lkey);
+      s += rxq->n_ds_per_wqe;
+    }
+
+  w[-1].next = 0;
+
+  if (ibv_post_wq_recv (rxq->wq, wr, &w) != 0)
+    return w - wr;
+
+  return n;
+}
+
 static_always_inline u32
 rdma_device_legacy_input_refill_additional (vlib_main_t * vm,
 					    rdma_device_t * rd,
@@ -58,8 +112,7 @@ rdma_device_legacy_input_refill_additional (vlib_main_t * vm,
     {
       u8 chain_sz = rxq->n_used_per_chain[first_slot + i];
       u8 chain_sz_alloc;
-      mlx5dv_wqe_ds_t *current_wqe =
-	rxq->wqes + ((first_slot + i) << log_wqe_sz);
+      mlx5dv_wqe_ds_t *current_wqe = rxq->wqes ? rxq->wqes + ((first_slot + i) << log_wqe_sz) : 0;
       if (chain_sz == 0)
 	continue;
       if (PREDICT_FALSE ((chain_sz_alloc =
@@ -91,14 +144,16 @@ rdma_device_legacy_input_refill_additional (vlib_main_t * vm,
 	  bufs[chain_sz - 1]->flags &= ~VLIB_BUFFER_NEXT_PRESENT;
 	}
 
-      /* Update the wqes */
-      for (int j = 0; j < chain_sz; j++)
+      if (current_wqe)
 	{
-	  u64 addr;
-	  vlib_get_buffers_with_offset (vm, bi + j,
-					(void *) &addr, 1,
-					sizeof (vlib_buffer_t));
-	  current_wqe[j + 1].addr = clib_host_to_net_u64 (addr);
+	  /* Update mlx5dv WQEs. Plain IBV copied the SG list when
+	   * ibv_post_wq_recv() was called. */
+	  for (int j = 0; j < chain_sz; j++)
+	    {
+	      u64 addr;
+	      vlib_get_buffers_with_offset (vm, bi + j, (void *) &addr, 1, sizeof (vlib_buffer_t));
+	      current_wqe[j + 1].addr = clib_host_to_net_u64 (addr);
+	    }
 	}
       rxq->n_used_per_chain[first_slot + i] = 0;
       rxq->n_total_additional_segs -= chain_sz;
@@ -115,7 +170,7 @@ rdma_device_input_refill (vlib_main_t * vm, rdma_device_t * rd,
   u32 n_alloc, n;
   u16 ring_space;
   struct ibv_recv_wr wr[VLIB_FRAME_SIZE], *w = wr;
-  struct ibv_sge sge[VLIB_FRAME_SIZE], *s = sge;
+  struct ibv_sge sge[VLIB_FRAME_SIZE * RDMA_RXQ_MAX_CHAIN_SZ], *s = sge;
   rdma_per_thread_data_t *ptd =
     &rdma_main.per_thread_data[vlib_get_thread_index ()];
   u32 mask = rxq->size - 1;
@@ -124,19 +179,30 @@ rdma_device_input_refill (vlib_main_t * vm, rdma_device_t * rd,
   u32 data_size = rxq->buf_sz;
   u32 lkey = rd->lkey;
   const int log_stride_per_wqe = is_striding ? rxq->log_stride_per_wqe : 0;
+  const int is_legacy_multiseg = !is_striding && rxq->n_ds_per_wqe > 1;
   const int log_wqe_sz = rxq->log_wqe_sz;
 
   /*In legacy mode, maybe some buffers chains are incomplete? */
-  if (PREDICT_FALSE
-      (is_mlx5dv && !is_striding && (rxq->incomplete_tail != rxq->tail)))
+  if (PREDICT_FALSE (is_legacy_multiseg && (rxq->incomplete_tail != rxq->tail)))
     {
       int n_incomplete = rxq->incomplete_tail - rxq->tail;
       int n_completed =
-	rdma_device_legacy_input_refill_additional (vm, rd, rxq, ptd, bt,
-						    slot,
-						    n_incomplete);
-      rxq->tail += n_completed;
+	rdma_device_legacy_input_refill_additional (vm, rd, rxq, ptd, bt, slot, n_incomplete);
+      if (is_mlx5dv)
+	{
+	  rxq->tail += n_completed;
+	  if (n_completed)
+	    rxq->wq_db[MLX5_RCV_DBR] = clib_host_to_net_u32 (rxq->tail);
+	}
+      else
+	{
+	  u32 n_posted = rdma_device_legacy_input_post_ibv (vm, rxq, slot, n_completed, wr, sge,
+							    data_size, lkey);
+	  rxq->tail += n_posted;
+	  n_completed = n_posted;
+	}
       slot = rxq->tail & mask;
+      bufs = rxq->bufs + slot;
       /* Don't start recycling head buffers if there are incomplete chains */
       if (n_completed != n_incomplete)
 	return;
@@ -269,40 +335,58 @@ rdma_device_input_refill (vlib_main_t * vm, rdma_device_t * rd,
       return;
     }
 
-  while (n >= 8)
+  if (is_legacy_multiseg)
     {
-      u64 va[8];
-      if (PREDICT_TRUE (n >= 16))
+      u32 first_slot = slot;
+
+      rxq->incomplete_tail += n_alloc;
+      if (PREDICT_FALSE (rxq->n_total_additional_segs))
+	n_alloc =
+	  rdma_device_legacy_input_refill_additional (vm, rd, rxq, ptd, bt, first_slot, n_alloc);
+      if (PREDICT_FALSE (n_alloc == 0))
+	return;
+
+      n =
+	rdma_device_legacy_input_post_ibv (vm, rxq, first_slot, n_alloc, wr, sge, data_size, lkey);
+    }
+  else
+    {
+      while (n >= 8)
 	{
-	  clib_prefetch_store (s + 16);
-	  clib_prefetch_store (w + 16);
+	  u64 va[8];
+	  if (PREDICT_TRUE (n >= 16))
+	    {
+	      clib_prefetch_store (s + 16);
+	      clib_prefetch_store (w + 16);
+	    }
+
+	  vlib_get_buffers_with_offset (vm, bufs, (void **) va, 8, sizeof (vlib_buffer_t));
+
+	  ibv_set_recv_wr_and_sge (w++, s++, va[0], data_size, lkey);
+	  ibv_set_recv_wr_and_sge (w++, s++, va[1], data_size, lkey);
+	  ibv_set_recv_wr_and_sge (w++, s++, va[2], data_size, lkey);
+	  ibv_set_recv_wr_and_sge (w++, s++, va[3], data_size, lkey);
+	  ibv_set_recv_wr_and_sge (w++, s++, va[4], data_size, lkey);
+	  ibv_set_recv_wr_and_sge (w++, s++, va[5], data_size, lkey);
+	  ibv_set_recv_wr_and_sge (w++, s++, va[6], data_size, lkey);
+	  ibv_set_recv_wr_and_sge (w++, s++, va[7], data_size, lkey);
+
+	  bufs += 8;
+	  n -= 8;
 	}
-
-      vlib_get_buffers_with_offset (vm, bufs, (void **) va, 8,
-				    sizeof (vlib_buffer_t));
-
-      ibv_set_recv_wr_and_sge (w++, s++, va[0], data_size, lkey);
-      ibv_set_recv_wr_and_sge (w++, s++, va[1], data_size, lkey);
-      ibv_set_recv_wr_and_sge (w++, s++, va[2], data_size, lkey);
-      ibv_set_recv_wr_and_sge (w++, s++, va[3], data_size, lkey);
-      ibv_set_recv_wr_and_sge (w++, s++, va[4], data_size, lkey);
-      ibv_set_recv_wr_and_sge (w++, s++, va[5], data_size, lkey);
-      ibv_set_recv_wr_and_sge (w++, s++, va[6], data_size, lkey);
-      ibv_set_recv_wr_and_sge (w++, s++, va[7], data_size, lkey);
-
-      bufs += 8;
-      n -= 8;
     }
 
-  w[-1].next = 0;		/* fix next pointer in WR linked-list last item */
-
-  n = n_alloc;
-  if (ibv_post_wq_recv (rxq->wq, wr, &w) != 0)
+  if (!is_legacy_multiseg)
     {
-      n = w - wr;
-      vlib_buffer_free_from_ring (vm, rxq->bufs, slot + n, rxq->size,
-				  n_alloc - n);
+      w[-1].next = 0; /* fix next pointer in WR linked-list last item */
+
+      n = n_alloc;
+      if (ibv_post_wq_recv (rxq->wq, wr, &w) != 0)
+	n = w - wr;
     }
+
+  if (PREDICT_FALSE (n != n_alloc) && !is_legacy_multiseg)
+    vlib_buffer_free_from_ring (vm, rxq->bufs, slot + n, rxq->size, n_alloc - n);
 
   rxq->tail += n;
 }
@@ -363,6 +447,9 @@ rdma_device_input_ethernet (vlib_main_t * vm, vlib_node_runtime_t * node,
   ef->hw_if_index = rd->hw_if_index;
 }
 
+static_always_inline void rdma_device_legacy_rq_fix_chain_one (vlib_main_t *vm, rdma_rxq_t *rxq,
+							       vlib_buffer_t *b, u32 slot);
+
 static_always_inline u32
 rdma_device_input_bufs (vlib_main_t * vm, const rdma_device_t * rd,
 			vlib_buffer_t ** b, struct ibv_wc *wc,
@@ -406,6 +493,66 @@ rdma_device_input_bufs (vlib_main_t * vm, const rdma_device_t * rd,
 
       b += 1;
       wc += 1;
+      n_left_from -= 1;
+    }
+
+  return n_rx_bytes;
+}
+
+static_always_inline u32
+rdma_device_input_bufs_legacy_multiseg (vlib_main_t *vm, rdma_rxq_t *rxq, vlib_buffer_t **b,
+					struct ibv_wc *wc, u32 n_left_from, vlib_buffer_t *bt)
+{
+  u32 mask = rxq->size - 1;
+  u32 slot = (rxq->head - n_left_from) & mask;
+  u32 buf_sz = rxq->buf_sz;
+  u32 n_rx_bytes = 0;
+
+  while (n_left_from >= 4)
+    {
+      if (PREDICT_FALSE (wc[0].byte_len > buf_sz || wc[1].byte_len > buf_sz ||
+			 wc[2].byte_len > buf_sz || wc[3].byte_len > buf_sz))
+	break;
+
+      if (PREDICT_TRUE (n_left_from >= 8))
+	{
+	  clib_prefetch_load (&wc[4 + 0]);
+	  clib_prefetch_load (&wc[4 + 1]);
+	  clib_prefetch_load (&wc[4 + 2]);
+	  clib_prefetch_load (&wc[4 + 3]);
+	  vlib_prefetch_buffer_header (b[4 + 0], STORE);
+	  vlib_prefetch_buffer_header (b[4 + 1], STORE);
+	  vlib_prefetch_buffer_header (b[4 + 2], STORE);
+	  vlib_prefetch_buffer_header (b[4 + 3], STORE);
+	}
+
+      vlib_buffer_copy_template (b[0], bt);
+      vlib_buffer_copy_template (b[1], bt);
+      vlib_buffer_copy_template (b[2], bt);
+      vlib_buffer_copy_template (b[3], bt);
+
+      n_rx_bytes += b[0]->current_length = wc[0].byte_len;
+      n_rx_bytes += b[1]->current_length = wc[1].byte_len;
+      n_rx_bytes += b[2]->current_length = wc[2].byte_len;
+      n_rx_bytes += b[3]->current_length = wc[3].byte_len;
+
+      b += 4;
+      wc += 4;
+      slot = (slot + 4) & mask;
+      n_left_from -= 4;
+    }
+
+  while (n_left_from >= 1)
+    {
+      vlib_buffer_copy_template (b[0], bt);
+      n_rx_bytes += b[0]->current_length = wc[0].byte_len;
+
+      if (PREDICT_FALSE (wc[0].byte_len > buf_sz))
+	rdma_device_legacy_rq_fix_chain_one (vm, rxq, b[0], slot);
+
+      b += 1;
+      wc += 1;
+      slot = (slot + 1) & mask;
       n_left_from -= 1;
     }
 
@@ -625,33 +772,6 @@ rdma_device_mlx5dv_striding_rq_parse_bc (int n_rx_packets, int *n_rx_segs,
 }
 
 static_always_inline int
-rdma_device_mlx5dv_legacy_rq_slow_path_needed (u32 buf_sz, int n_rx_packets,
-					       u32 * bc)
-{
-#if defined CLIB_HAVE_VEC256
-  u32x8 thresh8 = u32x8_splat (buf_sz);
-  for (int i = 0; i < n_rx_packets; i += 8)
-    if (!u32x8_is_all_zero (*(u32x8 *) (bc + i) > thresh8))
-      return 1;
-#elif defined CLIB_HAVE_VEC128
-  u32x4 thresh4 = u32x4_splat (buf_sz);
-  for (int i = 0; i < n_rx_packets; i += 4)
-    if (!u32x4_is_all_zero (*(u32x4 *) (bc + i) > thresh4))
-      return 1;
-#else
-  while (n_rx_packets)
-    {
-      if (*bc > buf_sz)
-	return 1;
-      bc++;
-      n_rx_packets--;
-    }
-#endif
-
-  return 0;
-}
-
-static_always_inline int
 rdma_device_mlx5dv_l3_validate_and_swap_bc (rdma_per_thread_data_t *ptd, int n_rx_packets, u32 *bc,
 					    const int check_l4, int *l4_ok_all)
 {
@@ -823,56 +943,96 @@ rdma_device_mlx5dv_fast_input (vlib_main_t * vm, rdma_rxq_t * rxq,
   return n_rx_bytes;
 }
 
+static_always_inline u32
+rdma_device_mlx5dv_legacy_rq_input (vlib_main_t *vm, rdma_rxq_t *rxq, vlib_buffer_t **bufs,
+				    u32 qs_mask, vlib_buffer_t *bt, u32 *to_next, u32 n_rx_segs,
+				    u32 *bc)
+{
+  vlib_buffer_t **b = bufs;
+  u32 n_left = n_rx_segs;
+  u32 n_rx_bytes = 0;
+  u32 slot = rxq->head & qs_mask;
+  u32 buf_sz = rxq->buf_sz;
+
+  vlib_buffer_copy_indices_from_ring (to_next, rxq->bufs, slot, rxq->size, n_rx_segs);
+  rxq->head += n_rx_segs;
+  vlib_get_buffers (vm, to_next, bufs, n_rx_segs);
+
+  while (n_left >= 4)
+    {
+      if (PREDICT_FALSE (bc[0] > buf_sz || bc[1] > buf_sz || bc[2] > buf_sz || bc[3] > buf_sz))
+	break;
+
+      if (PREDICT_TRUE (n_left >= 8))
+	{
+	  clib_prefetch_store (b[4]);
+	  clib_prefetch_store (b[5]);
+	  clib_prefetch_store (b[6]);
+	  clib_prefetch_store (b[7]);
+	}
+
+      vlib_buffer_copy_template (b[0], bt);
+      n_rx_bytes += b[0]->current_length = bc[0];
+      vlib_buffer_copy_template (b[1], bt);
+      n_rx_bytes += b[1]->current_length = bc[1];
+      vlib_buffer_copy_template (b[2], bt);
+      n_rx_bytes += b[2]->current_length = bc[2];
+      vlib_buffer_copy_template (b[3], bt);
+      n_rx_bytes += b[3]->current_length = bc[3];
+
+      bc += 4;
+      b += 4;
+      slot = (slot + 4) & qs_mask;
+      n_left -= 4;
+    }
+
+  while (n_left)
+    {
+      vlib_buffer_copy_template (b[0], bt);
+      n_rx_bytes += b[0]->current_length = bc[0];
+
+      if (PREDICT_FALSE (bc[0] > buf_sz))
+	rdma_device_legacy_rq_fix_chain_one (vm, rxq, b[0], slot);
+
+      bc++;
+      b++;
+      slot = (slot + 1) & qs_mask;
+      n_left--;
+    }
+
+  return n_rx_bytes;
+}
+
 static_always_inline void
-rdma_device_mlx5dv_legacy_rq_fix_chains (vlib_main_t * vm, rdma_rxq_t * rxq,
-					 vlib_buffer_t ** bufs, u32 qs_mask,
-					 u32 n)
+rdma_device_legacy_rq_fix_chain_one (vlib_main_t *vm, rdma_rxq_t *rxq, vlib_buffer_t *b, u32 slot)
 {
   u32 buf_sz = rxq->buf_sz;
-  uword slot = (rxq->head - n) & qs_mask;
   u32 *second = &rxq->second_bufs[slot];
-  u32 n_wrap_around = (slot + n) & (qs_mask + 1) ? (slot + n) & qs_mask : 0;
   u8 *n_used_per_chain = &rxq->n_used_per_chain[slot];
-  n -= n_wrap_around;
-wrap_around:
-  while (n > 0)
+  u16 total_length = b->current_length;
+
+  if (total_length > buf_sz)
     {
-      u16 total_length = bufs[0]->current_length;
-      if (total_length > buf_sz)
+      vlib_buffer_t *current_buf = b;
+      u8 current_chain_sz = 0;
+      current_buf->current_length = buf_sz;
+      total_length -= buf_sz;
+      current_buf->total_length_not_including_first_buffer = total_length;
+      current_buf->flags |= VLIB_BUFFER_NEXT_PRESENT;
+      current_buf->next_buffer = second[0];
+      do
 	{
-	  vlib_buffer_t *current_buf = bufs[0];
-	  u8 current_chain_sz = 0;
-	  current_buf->current_length = buf_sz;
-	  total_length -= buf_sz;
-	  current_buf->total_length_not_including_first_buffer = total_length;
-	  current_buf->flags |= VLIB_BUFFER_NEXT_PRESENT;
-	  current_buf->next_buffer = second[0];
-	  do
-	    {
-	      current_buf = vlib_get_buffer (vm, current_buf->next_buffer);
-	      current_buf->current_length = clib_min (buf_sz, total_length);
-	      total_length -= current_buf->current_length;
-	      current_chain_sz++;
-	    }
-	  while (total_length > 0);
-	  current_buf->flags &= ~VLIB_BUFFER_NEXT_PRESENT;
-	  second[0] = current_buf->next_buffer;
-	  current_buf->next_buffer = 0;
-	  rxq->n_total_additional_segs += current_chain_sz;
-	  n_used_per_chain[0] = current_chain_sz;
+	  current_buf = vlib_get_buffer (vm, current_buf->next_buffer);
+	  current_buf->current_length = clib_min (buf_sz, total_length);
+	  total_length -= current_buf->current_length;
+	  current_chain_sz++;
 	}
-      bufs++;
-      second++;
-      n_used_per_chain++;
-      n--;
-    }
-  if (PREDICT_FALSE (n_wrap_around))
-    {
-      n = n_wrap_around;
-      n_wrap_around = 0;
-      second = rxq->second_bufs;
-      n_used_per_chain = rxq->n_used_per_chain;
-      goto wrap_around;
+      while (total_length > 0);
+      current_buf->flags &= ~VLIB_BUFFER_NEXT_PRESENT;
+      second[0] = current_buf->next_buffer;
+      current_buf->next_buffer = 0;
+      rxq->n_total_additional_segs += current_chain_sz;
+      n_used_per_chain[0] = current_chain_sz;
     }
 }
 
@@ -1047,17 +1207,12 @@ rdma_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       else
 	{
 	  vlib_buffer_t *bufs[VLIB_FRAME_SIZE];
-	  slow_path_needed =
-	    rdma_device_mlx5dv_legacy_rq_slow_path_needed (rxq->buf_sz,
-							   n_rx_packets, bc);
-	  n_rx_bytes = rdma_device_mlx5dv_fast_input (
-	    vm, rxq, bufs, mask, &bt, to_next, n_rx_packets, bc, ~0);
-
-	  /* If there are chained buffers, some of the head buffers have a current length
-	     higher than buf_sz: it needs to be fixed */
-	  if (PREDICT_FALSE (slow_path_needed))
-	    rdma_device_mlx5dv_legacy_rq_fix_chains (vm, rxq, bufs, mask,
-						     n_rx_packets);
+	  if (PREDICT_FALSE (rxq->n_ds_per_wqe > 1))
+	    n_rx_bytes = rdma_device_mlx5dv_legacy_rq_input (vm, rxq, bufs, mask, &bt, to_next,
+							     n_rx_packets, bc);
+	  else
+	    n_rx_bytes = rdma_device_mlx5dv_fast_input (vm, rxq, bufs, mask, &bt, to_next,
+							n_rx_packets, bc, ~0);
 	}
 
       /* Reset L4 checksum flags on bt to avoid leaking into next poll. */
@@ -1071,9 +1226,10 @@ rdma_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 					  rxq->size, n_rx_packets);
       vlib_get_buffers (vm, to_next, bufs, n_rx_packets);
       rxq->head += n_rx_packets;
-      n_rx_bytes =
-	rdma_device_input_bufs (vm, rd, bufs, wc, n_rx_packets, &bt);
-
+      if (PREDICT_FALSE (rxq->n_ds_per_wqe > 1))
+	n_rx_bytes = rdma_device_input_bufs_legacy_multiseg (vm, rxq, bufs, wc, n_rx_packets, &bt);
+      else
+	n_rx_bytes = rdma_device_input_bufs (vm, rd, bufs, wc, n_rx_packets, &bt);
     }
 
   rdma_device_input_ethernet (vm, node, rd, next_index, skip_ip4_cksum);

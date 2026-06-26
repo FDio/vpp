@@ -79,6 +79,8 @@ typedef struct
   u32 wq_stride;
   u32 buf_sz;
   u32 queue_index;
+  u8 n_ds_per_wqe;		/* Legacy RQ: number of nonnull data segs per WQE */
+  u8 log_wqe_sz;		/* log-size of a single WQE (in data segments) */
   union
   {
     struct
@@ -95,11 +97,9 @@ typedef struct
       u32 incomplete_tail;	/* Legacy RQ: tail index in bufs,
 				   corresponds to buffer chains with recycled valid head buffer,
 				   but whose other buffers are not yet recycled (due to pool exhaustion). */
-      u16 n_total_additional_segs;
-      u8 n_ds_per_wqe;		/* Legacy RQ: number of nonnull data segs per WQE */
+      u32 n_total_additional_segs;
     };
   };
-  u8 log_wqe_sz;		/* log-size of a single WQE (in data segments) */
 } rdma_rxq_t;
 
 typedef struct
