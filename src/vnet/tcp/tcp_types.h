@@ -120,7 +120,8 @@ typedef enum tcp_cfg_flag_
   _ (PSH_PENDING, "PSH pending")                                                                   \
   _ (FINRCVD, "FIN received")                                                                      \
   _ (ZERO_RWND_SENT, "Zero RWND sent")                                                             \
-  _ (RACK_TIMEOUT, "RACK timeout")
+  _ (RACK_TIMEOUT, "RACK timeout")                                                                 \
+  _ (TLP, "Tail loss probe in flight")
 
 typedef enum tcp_connection_flag_bits_
 {
@@ -361,6 +362,12 @@ typedef struct _tcp_connection
   f64 rack_xmit_ts; /**< tx_time of most recent (re)transmitted segment
 			 that has since been (s)acked */
   u32 rack_end_seq; /**< snd_nxt of that segment (tie-break for xmit_ts) */
+
+  /* Tail Loss Probe (RFC 8985). Shares the RACK enable knob/byte tracker. */
+  u8 tlp_pto_armed; /**< Retransmit timer holds a PTO (not an RTO) */
+  u32 tlp_end_seq;  /**< snd_nxt when the probe was sent; a cumulative ack
+			 past this confirms the probe repaired a tail loss
+			 (TCP_CONN_TLP marks the probe outstanding) */
 
   u32 psh_seq;		/**< Add psh header for seg that includes this */
   u32 next_node_index;	/**< Can be used to control next node in output */

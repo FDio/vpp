@@ -535,6 +535,13 @@ tcp_connection_timers_reset (tcp_connection_t * tc)
 
   for (i = 0; i < TCP_N_TIMERS; i++)
     tcp_timer_reset (&wrk->timer_wheel, tc, i);
+
+  /* No retransmit timer pending -> no RACK reorder timeout / TLP probe timeout
+   * pending either. Drop any outstanding-probe state as well. */
+  tcp_rack_timeout_armed_off (tc);
+  tc->tlp_pto_armed = 0;
+  tc->flags &= ~TCP_CONN_TLP;
+  tc->tlp_end_seq = 0;
 }
 
 #if 0

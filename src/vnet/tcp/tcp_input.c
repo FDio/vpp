@@ -9,6 +9,7 @@
 #include <vnet/tcp/tcp.h>
 #include <vnet/tcp/tcp_inlines.h>
 #include <vnet/tcp/tcp_rack.h>
+#include <vnet/tcp/tcp_tlp.h>
 #include <vnet/session/session.h>
 #include <math.h>
 
@@ -515,6 +516,10 @@ tcp_handle_postponed_dequeues (tcp_worker_ctx_t * wrk)
        * otherwise update. */
       tcp_retransmit_timer_update (&wrk->timer_wheel, tc);
 
+      /* If data is still outstanding but the tail is now idle, override the
+       * RTO with a tail loss probe timeout. */
+      tcp_tlp_arm_pto (tc);
+
       /* Update pacer based on our new cwnd estimate */
       tcp_connection_tx_pacer_update (tc);
 
@@ -595,6 +600,9 @@ static void
 tcp_cc_init_congestion (tcp_connection_t * tc)
 {
   tcp_fastrecovery_on (tc);
+  /* Entering recovery subsumes any outstanding tail loss probe: cc reduces the
+   * window here, so the probe-ack path must not also apply its one-time cut. */
+  tc->flags &= ~TCP_CONN_TLP;
   tc->snd_congestion = tc->snd_nxt;
   tc->cwnd_acc_bytes = 0;
   tc->snd_rxt_bytes = 0;
@@ -1039,6 +1047,15 @@ tcp_rcv_ack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc, vlib_buffer_t * b,
 	return 0;
       return -1;
     }
+
+  /* Healthy (non-cc-event) ack. If a tail loss probe is outstanding and this
+   * ack cumulatively covers it, the probe repaired the tail: apply a one-time
+   * congestion response before the normal cwnd update below. (A probe ack that
+   * instead drove us into recovery took the cc-event branch above, where
+   * tcp_cc_init_congestion already cleared the probe state and cut the window.)
+   */
+  if (PREDICT_FALSE (tc->flags & TCP_CONN_TLP))
+    tcp_tlp_rcv_ack (tc);
 
   /*
    * Update congestion control (slow start/congestion avoidance)
