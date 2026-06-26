@@ -13,19 +13,19 @@ import (
 const tcpChainedBufferMTU = 9000
 
 func init() {
-	RegisterEchoTests(EchoBuiltinTest, EchoBuiltinClientSessionDisconnectTest, EchoBuiltinBandwidthTest,
-		EchoBuiltinEchoBytesTest, EchoBuiltinRoundtripTest, EchoBuiltinUdpLossTest, EchoBuiltinPeriodicReportTest,
-		EchoBuiltinPeriodicReportTotalTest, TlsSingleConnectionTest, EchoBuiltinPeriodicReportUDPTest, EchoBuiltinUdpTest,
-		EchoBuiltinTcpNoTxCsumOffloadTest, EchoBuiltinTcpChainedBufferTest,
-		EchoBuiltinUdpNoTxCsumOffloadTest, EchoBuiltinHttpTest, EchoBuiltinHttpsTest, EchoBuiltinHttp2Test,
-		EchoBuiltinHttp3Test, EchoBuiltinHttpTestBytesTest, EchoBuiltinHttp2ConnectTcpTest, EchoBuiltinHttp3ConnectTcpTest,
-		EchoBuiltinHttp2ConnectUdpTest, EchoBuiltinHttp3ConnectUdpTest, EchoBuiltinHttp2ConnectUdpBackpressureTest)
-	RegisterEchoMWTests(TcpWithLossMWTest, TcpChainedBufferWithLossMWTest, EchoBuiltinHttp1CpsMWTest,
-		EchoBuiltinHttp2CpsMWTest, EchoBuiltinHttp3CpsMWTest, EchoBuiltinHttp2ConnectUdpBackpressureMWTest)
-	RegisterEcho6Tests(TcpWithLoss6Test)
+	RegisterVperfTests(VperfBuiltinTest, VperfBuiltinClientSessionDisconnectTest, VperfBuiltinBandwidthTest,
+		VperfBuiltinEchoBytesTest, VperfBuiltinRoundtripTest, VperfBuiltinUdpLossTest, VperfBuiltinPeriodicReportTest,
+		VperfBuiltinPeriodicReportTotalTest, TlsSingleConnectionTest, VperfBuiltinPeriodicReportUDPTest, VperfBuiltinUdpTest,
+		VperfBuiltinTcpNoTxCsumOffloadTest, VperfBuiltinTcpChainedBufferTest,
+		VperfBuiltinUdpNoTxCsumOffloadTest, VperfBuiltinHttpTest, VperfBuiltinHttpsTest, VperfBuiltinHttp2Test,
+		VperfBuiltinHttp3Test, VperfBuiltinHttpTestBytesTest, VperfBuiltinHttp2ConnectTcpTest, VperfBuiltinHttp3ConnectTcpTest,
+		VperfBuiltinHttp2ConnectUdpTest, VperfBuiltinHttp3ConnectUdpTest, VperfBuiltinHttp2ConnectUdpBackpressureTest)
+	RegisterVperfMWTests(TcpWithLossMWTest, TcpChainedBufferWithLossMWTest, VperfBuiltinHttp1CpsMWTest,
+		VperfBuiltinHttp2CpsMWTest, VperfBuiltinHttp3CpsMWTest, VperfBuiltinHttp2ConnectUdpBackpressureMWTest)
+	RegisterVperf6Tests(TcpWithLoss6Test)
 }
 
-func EchoBuiltinTest(s *EchoSuite) {
+func VperfBuiltinTest(s *VperfSuite) {
 	serverVpp := s.Containers.ServerVpp.VppInstance
 
 	serverVpp.Vppctl("vperf server " +
@@ -40,7 +40,7 @@ func EchoBuiltinTest(s *EchoSuite) {
 	AssertNotContains(o, "failed:")
 }
 
-func EchoBuiltinClientSessionDisconnectTest(s *EchoSuite) {
+func VperfBuiltinClientSessionDisconnectTest(s *VperfSuite) {
 	serverVpp := s.Containers.ServerVpp.VppInstance
 	serverVpp.Vppctl("vperf server " +
 		" uri tcp://" + s.Interfaces.Server.Ip4AddressString() + "/" + s.Ports.Port1)
@@ -78,7 +78,7 @@ func EchoBuiltinClientSessionDisconnectTest(s *EchoSuite) {
 		}
 		time.Sleep(100 * time.Millisecond)
 	}
-	AssertGreaterEqual(len(dataSessions), 2, "echo client data sessions did not become ready")
+	AssertGreaterEqual(len(dataSessions), 2, "vperf client data sessions did not become ready")
 
 	time.Sleep(500 * time.Millisecond)
 
@@ -87,13 +87,13 @@ func EchoBuiltinClientSessionDisconnectTest(s *EchoSuite) {
 	result := <-done
 	Log(result.output)
 	if result.err != nil {
-		Log("echo client command returned: %v", result.err)
+		Log("vperf client command returned: %v", result.err)
 	}
-	AssertNotEqual(context.DeadlineExceeded, ctx.Err(), "echo client did not return after session disconnect")
+	AssertNotEqual(context.DeadlineExceeded, ctx.Err(), "vperf client did not return after session disconnect")
 	AssertContains(result.output, "session close")
 }
 
-func EchoBuiltinUdpTest(s *EchoSuite) {
+func VperfBuiltinUdpTest(s *VperfSuite) {
 	serverVpp := s.Containers.ServerVpp.VppInstance
 
 	serverVpp.Vppctl("vperf server " +
@@ -107,7 +107,7 @@ func EchoBuiltinUdpTest(s *EchoSuite) {
 	AssertNotContains(o, "failed:")
 }
 
-func EchoBuiltinTcpNoTxCsumOffloadTest(s *EchoSuite) {
+func VperfBuiltinTcpNoTxCsumOffloadTest(s *VperfSuite) {
 	serverVpp := s.Containers.ServerVpp.VppInstance
 	clientVpp := s.Containers.ClientVpp.VppInstance
 
@@ -124,12 +124,12 @@ func EchoBuiltinTcpNoTxCsumOffloadTest(s *EchoSuite) {
 	Log(o)
 	AssertNotContains(o, "failed")
 	AssertContains(o, "65536 bytes")
-	throughput, err := ParseEchoClientTransfer(o)
+	throughput, err := ParseVperfClientTransfer(o)
 	AssertNil(err)
 	AssertGreaterThan(throughput, uint64(0), "throughput must be > 0")
 }
 
-func EchoBuiltinTcpChainedBufferTest(s *EchoSuite) {
+func VperfBuiltinTcpChainedBufferTest(s *VperfSuite) {
 	configureTcpChainedBufferMTU(s)
 
 	serverVpp := s.Containers.ServerVpp.VppInstance
@@ -144,12 +144,12 @@ func EchoBuiltinTcpChainedBufferTest(s *EchoSuite) {
 	Log(o)
 	AssertNotContains(o, "failed")
 	AssertContains(o, "131072 bytes")
-	throughput, err := ParseEchoClientTransfer(o)
+	throughput, err := ParseVperfClientTransfer(o)
 	AssertNil(err)
 	AssertGreaterThan(throughput, uint64(0), "throughput must be > 0")
 }
 
-func EchoBuiltinUdpNoTxCsumOffloadTest(s *EchoSuite) {
+func VperfBuiltinUdpNoTxCsumOffloadTest(s *VperfSuite) {
 	serverVpp := s.Containers.ServerVpp.VppInstance
 	clientVpp := s.Containers.ClientVpp.VppInstance
 
@@ -165,12 +165,12 @@ func EchoBuiltinUdpNoTxCsumOffloadTest(s *EchoSuite) {
 	AssertNotContains(o, "failed")
 	AssertContains(o, "sent total")
 	AssertContains(o, "received total")
-	throughput, err := ParseEchoClientTransfer(o)
+	throughput, err := ParseVperfClientTransfer(o)
 	AssertNil(err)
 	AssertGreaterThan(throughput, uint64(0), "throughput must be > 0")
 }
 
-func EchoBuiltinBandwidthTest(s *EchoSuite) {
+func VperfBuiltinBandwidthTest(s *VperfSuite) {
 	regex := regexp.MustCompile(`gbytes\) in (\d+\.\d+) seconds`)
 	serverVpp := s.Containers.ServerVpp.VppInstance
 
@@ -190,14 +190,14 @@ func EchoBuiltinBandwidthTest(s *EchoSuite) {
 			// 2 seconds of runtime
 			AssertEqualWithinThreshold(seconds, 2, 0.25)
 		} else {
-			AssertEmpty("invalid echo test client output")
+			AssertEmpty("invalid vperf client output")
 		}
 	} else {
-		AssertEmpty("invalid echo test client output")
+		AssertEmpty("invalid vperf client output")
 	}
 }
 
-func EchoBuiltinPeriodicReportTotalTest(s *EchoSuite) {
+func VperfBuiltinPeriodicReportTotalTest(s *VperfSuite) {
 	regex := regexp.MustCompile(`(\d+\.\d)\s+(\d+(?:\.\d+)?)M\s+0\s+\d+(?:\.\d+)?Mb/s\s+(\d*\.?\d+)ms`)
 	serverVpp := s.Containers.ServerVpp.VppInstance
 
@@ -232,11 +232,11 @@ func EchoBuiltinPeriodicReportTotalTest(s *EchoSuite) {
 		AssertNil(err)
 		AssertEqualWithinThreshold(end, 4.0, 0.15, "invalid report time")
 	} else {
-		AssertEmpty("invalid echo test client output")
+		AssertEmpty("invalid vperf client output")
 	}
 }
 
-func EchoBuiltinPeriodicReportUDPTest(s *EchoSuite) {
+func VperfBuiltinPeriodicReportUDPTest(s *VperfSuite) {
 	regex := regexp.MustCompile(`(\d+\.\d)-(\d+\.\d)\s+(\d+(?:\.\d+)?)M\s+(\d+(?:\.\d+)?)M\s+\d+(?:\.\d+)?Mb/s\s+(\d*\.?\d+)ms\s+(\d+)/(\d+)`)
 	totalRegex := regexp.MustCompile(`sent total (\d+) datagrams, received total (\d+) datagrams, lost (\d+) datagrams`)
 	serverVpp := s.Containers.ServerVpp.VppInstance
@@ -261,7 +261,7 @@ func EchoBuiltinPeriodicReportUDPTest(s *EchoSuite) {
 			AssertGreaterEqual(rtt, 0.0, "roundtrip time must not be negative")
 		}
 		totalMatches := totalRegex.FindStringSubmatch(o)
-		AssertNotEmpty(totalMatches, "invalid echo test client output")
+		AssertNotEmpty(totalMatches, "invalid vperf client output")
 		dgramsSentTotal, _ := strconv.ParseUint(totalMatches[1], 10, 32)
 		dgramsReceivedTotal, _ := strconv.ParseUint(totalMatches[2], 10, 32)
 		dgramsLost, _ := strconv.ParseUint(totalMatches[3], 10, 32)
@@ -282,11 +282,11 @@ func EchoBuiltinPeriodicReportUDPTest(s *EchoSuite) {
 			}
 		}
 	} else {
-		AssertEmpty("invalid echo test client output")
+		AssertEmpty("invalid vperf client output")
 	}
 }
 
-func EchoBuiltinPeriodicReportTest(s *EchoSuite) {
+func VperfBuiltinPeriodicReportTest(s *VperfSuite) {
 	regex := regexp.MustCompile(`(\d+\.\d)-(\d+\.\d)\s+(\d+(?:\.\d+)?)M\s+0\s+\d+(?:\.\d+)?Mb/s\s+(\d*\.?\d+)ms`)
 	serverVpp := s.Containers.ServerVpp.VppInstance
 
@@ -324,11 +324,11 @@ func EchoBuiltinPeriodicReportTest(s *EchoSuite) {
 			}
 		}
 	} else {
-		AssertEmpty("invalid echo test client output")
+		AssertEmpty("invalid vperf client output")
 	}
 }
 
-func EchoBuiltinRoundtripTest(s *EchoSuite) {
+func VperfBuiltinRoundtripTest(s *VperfSuite) {
 	regex := regexp.MustCompile(`(\.\d+)ms roundtrip`)
 	serverVpp := s.Containers.ServerVpp.VppInstance
 
@@ -347,14 +347,14 @@ func EchoBuiltinRoundtripTest(s *EchoSuite) {
 			// Make sure that we are within ms range
 			AssertEqualWithinThreshold(seconds, 0.5, 0.5)
 		} else {
-			AssertEmpty("invalid echo test client output")
+			AssertEmpty("invalid vperf client output")
 		}
 	} else {
-		AssertEmpty("invalid echo test client output")
+		AssertEmpty("invalid vperf client output")
 	}
 }
 
-func EchoBuiltinEchoBytesTest(s *EchoSuite) {
+func VperfBuiltinEchoBytesTest(s *VperfSuite) {
 	serverVpp := s.Containers.ServerVpp.VppInstance
 
 	serverVpp.Vppctl("vperf server " +
@@ -369,7 +369,7 @@ func EchoBuiltinEchoBytesTest(s *EchoSuite) {
 	AssertNotContains(o, "vperf client: failed: timeout with 1 sessions")
 }
 
-func EchoBuiltinUdpLossTest(s *EchoSuite) {
+func VperfBuiltinUdpLossTest(s *VperfSuite) {
 	serverVpp := s.Containers.ServerVpp.VppInstance
 
 	serverVpp.Vppctl("vperf server " +
@@ -417,7 +417,7 @@ func setTcpChainedBufferVppInterfaceMTU(vpp *VppInstance, intf *NetInterface, mt
 	AssertNotContains(o, "error")
 }
 
-func configureTcpChainedBufferMTU(s *EchoSuite) {
+func configureTcpChainedBufferMTU(s *VperfSuite) {
 	expected := "TCP default mtu: " + strconv.Itoa(tcpChainedBufferMTU)
 	serverVpp := s.Containers.ServerVpp.VppInstance
 	clientVpp := s.Containers.ClientVpp.VppInstance
@@ -446,10 +446,10 @@ type tcpWithLossConfig struct {
 	setup      func()
 }
 
-func tcpEcho(port string, ip string, clientVpp *VppInstance, serverVpp *VppInstance) string {
+func tcpVperf(port string, ip string, clientVpp *VppInstance, serverVpp *VppInstance) string {
 	serverVpp.Vppctl("vperf server fifo-size 64k uri tcp://%s/%s", ip, port)
 
-	// Do echo test from client-vpp container
+	// Run a TCP vperf test (echo-bytes/full-duplex) from the client-vpp container
 	output := clientVpp.Vppctl("vperf client fifo-size 64k uri tcp://%s/%s verbose echo-bytes run-time 10",
 		ip, port)
 	Log(output)
@@ -459,7 +459,7 @@ func tcpEcho(port string, ip string, clientVpp *VppInstance, serverVpp *VppInsta
 	return output
 }
 
-func TcpWithLossMWTest(s *EchoSuite) {
+func TcpWithLossMWTest(s *VperfSuite) {
 	s.CpusPerVppContainer = 2
 	s.CpusPerContainer = 1
 	s.SetupTest()
@@ -467,7 +467,7 @@ func TcpWithLossMWTest(s *EchoSuite) {
 		s.Interfaces.Client, s.Interfaces.Server, s.Ports.Port1)
 }
 
-func TcpChainedBufferWithLossMWTest(s *EchoSuite) {
+func TcpChainedBufferWithLossMWTest(s *VperfSuite) {
 	s.CpusPerVppContainer = 2
 	s.CpusPerContainer = 1
 	s.SetupTest()
@@ -478,12 +478,12 @@ func TcpChainedBufferWithLossMWTest(s *EchoSuite) {
 		})
 }
 
-func TcpWithLoss6Test(s *Echo6Suite) {
+func TcpWithLoss6Test(s *Vperf6Suite) {
 	tcpWithLossAndNoLoss(s, s.Containers.ClientVpp.VppInstance, s.Containers.ServerVpp.VppInstance,
 		s.Interfaces.Client, s.Interfaces.Server, s.Ports.Port1)
 }
 
-// runs tcp echo without loss, then with loss
+// runs tcp vperf without loss, then with loss
 func tcpWithLossAndNoLoss(s tcpWithLossInterface, clientVpp *VppInstance,
 	serverVpp *VppInstance, clientIf *NetInterface, serverIf *NetInterface, port string,
 	configs ...tcpWithLossConfig) {
@@ -509,8 +509,8 @@ func tcpWithLossAndNoLoss(s tcpWithLossInterface, clientVpp *VppInstance,
 	if config.setup != nil {
 		config.setup()
 	}
-	output := tcpEcho(port, serverAddress, clientVpp, serverVpp)
-	baseline, err := ParseEchoClientTransfer(output)
+	output := tcpVperf(port, serverAddress, clientVpp, serverVpp)
+	baseline, err := ParseVperfClientTransfer(output)
 	AssertNil(err)
 
 	clientVpp.Disconnect()
@@ -530,17 +530,17 @@ func tcpWithLossAndNoLoss(s tcpWithLossInterface, clientVpp *VppInstance,
 	if config.setup != nil {
 		config.setup()
 	}
-	output = tcpEcho(port, serverAddress, clientVpp, serverVpp)
+	output = tcpVperf(port, serverAddress, clientVpp, serverVpp)
 
-	withLoss, err := ParseEchoClientTransfer(output)
+	withLoss, err := ParseVperfClientTransfer(output)
 	AssertNil(err)
 
 	Log("\nBaseline:  %d bytes/s\nWith loss: %d bytes/s", baseline, withLoss)
-	AssertGreaterEqualUnlessCoverageBuild(baseline, withLoss, "Tcp echo: baseline bitrate is lower than bitrate with loss applied")
-	AssertGreaterEqualUnlessCoverageBuild(withLoss, uint64(float64(baseline)*0.15), "Tcp echo: bitrate below threshold")
+	AssertGreaterEqualUnlessCoverageBuild(baseline, withLoss, "Tcp vperf: baseline bitrate is lower than bitrate with loss applied")
+	AssertGreaterEqualUnlessCoverageBuild(withLoss, uint64(float64(baseline)*0.15), "Tcp vperf: bitrate below threshold")
 }
 
-func TlsSingleConnectionTest(s *EchoSuite) {
+func TlsSingleConnectionTest(s *VperfSuite) {
 	serverVpp := s.Containers.ServerVpp.VppInstance
 
 	serverVpp.Vppctl("vperf server " +
@@ -551,7 +551,7 @@ func TlsSingleConnectionTest(s *EchoSuite) {
 	o := clientVpp.Vppctl("vperf client uri tls://%s:%s verbose run-time 5", s.Interfaces.Server.Ip4AddressString(), s.Ports.Port1)
 
 	Log(o)
-	throughput, err := ParseEchoClientTransfer(o)
+	throughput, err := ParseVperfClientTransfer(o)
 	AssertNil(err)
 	AssertGreaterThan(throughput, uint64(0), "throughput must be > 0")
 }
@@ -563,11 +563,11 @@ func httpVerifyPeriodicStats(stats string) {
 		// Check we got a correct number of reports
 		AssertEqual(5, len(matches))
 	} else {
-		AssertEmpty("invalid echo test client output")
+		AssertEmpty("invalid vperf client output")
 	}
 }
 
-func EchoBuiltinHttpTestBytesTest(s *EchoSuite) {
+func VperfBuiltinHttpTestBytesTest(s *VperfSuite) {
 	serverVpp := s.Containers.ServerVpp.VppInstance
 
 	serverVpp.Vppctl("vperf server uri https://" + s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1)
@@ -581,7 +581,7 @@ func EchoBuiltinHttpTestBytesTest(s *EchoSuite) {
 	httpVerifyPeriodicStats(o)
 }
 
-func EchoBuiltinHttpTest(s *EchoSuite) {
+func VperfBuiltinHttpTest(s *VperfSuite) {
 	serverVpp := s.Containers.ServerVpp.VppInstance
 
 	serverVpp.Vppctl("vperf server uri http://" + s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1)
@@ -595,7 +595,7 @@ func EchoBuiltinHttpTest(s *EchoSuite) {
 	httpVerifyPeriodicStats(o)
 }
 
-func EchoBuiltinHttpsTest(s *EchoSuite) {
+func VperfBuiltinHttpsTest(s *VperfSuite) {
 	serverVpp := s.Containers.ServerVpp.VppInstance
 
 	serverVpp.Vppctl("vperf server uri https://" + s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1)
@@ -609,7 +609,7 @@ func EchoBuiltinHttpsTest(s *EchoSuite) {
 	httpVerifyPeriodicStats(o)
 }
 
-func EchoBuiltinHttp2Test(s *EchoSuite) {
+func VperfBuiltinHttp2Test(s *VperfSuite) {
 	serverVpp := s.Containers.ServerVpp.VppInstance
 
 	serverVpp.Vppctl("vperf server uri https://" + s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1)
@@ -623,7 +623,7 @@ func EchoBuiltinHttp2Test(s *EchoSuite) {
 	httpVerifyPeriodicStats(o)
 }
 
-func EchoBuiltinHttp3Test(s *EchoSuite) {
+func VperfBuiltinHttp3Test(s *VperfSuite) {
 	serverVpp := s.Containers.ServerVpp.VppInstance
 
 	serverVpp.Vppctl("vperf server uri https://" + s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1)
@@ -644,7 +644,7 @@ func httpTunnelVerifyPeriodicStats(stats string) {
 		// Check we got a correct number of reports
 		AssertEqual(5, len(matches))
 	} else {
-		AssertEmpty("invalid echo test client output")
+		AssertEmpty("invalid vperf client output")
 	}
 }
 
@@ -660,11 +660,11 @@ func httpTunnelVerifyActivePeriodicStats(stats string) {
 			AssertGreaterThan(rx, 0.0)
 		}
 	} else {
-		AssertEmpty("invalid echo test client output")
+		AssertEmpty("invalid vperf client output")
 	}
 }
 
-func echoBuiltinHttp2ConnectUdp(s *EchoSuite, clientExtraArgs, serverExtraArgs string) string {
+func vperfBuiltinHttp2ConnectUdp(s *VperfSuite, clientExtraArgs, serverExtraArgs string) string {
 	serverVpp := s.Containers.ServerVpp.VppInstance
 	serverCmd := "vperf server connect-udp uri https://" + s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1
 	if serverExtraArgs != "" {
@@ -685,21 +685,21 @@ func echoBuiltinHttp2ConnectUdp(s *EchoSuite, clientExtraArgs, serverExtraArgs s
 	return o
 }
 
-func EchoBuiltinHttp2ConnectUdpBackpressureTest(s *EchoSuite) {
+func VperfBuiltinHttp2ConnectUdpBackpressureTest(s *VperfSuite) {
 	// Small fifos keep the tunnel close to backpressure and exercise the
 	// postponed RX/TX paths fixed for HTTP/2 CONNECT-UDP.
-	o := echoBuiltinHttp2ConnectUdp(s, "nclients 2 fifo-size 16k", "fifo-size 16k")
+	o := vperfBuiltinHttp2ConnectUdp(s, "nclients 2 fifo-size 16k", "fifo-size 16k")
 	httpTunnelVerifyActivePeriodicStats(o)
 }
 
-func EchoBuiltinHttp2ConnectUdpBackpressureMWTest(s *EchoSuite) {
+func VperfBuiltinHttp2ConnectUdpBackpressureMWTest(s *VperfSuite) {
 	s.Skip("Might fail to set veth interface fanout options")
 	s.CpusPerVppContainer = 3
 	s.SetupTest()
-	EchoBuiltinHttp2ConnectUdpBackpressureTest(s)
+	VperfBuiltinHttp2ConnectUdpBackpressureTest(s)
 }
 
-func EchoBuiltinHttp2ConnectTcpTest(s *EchoSuite) {
+func VperfBuiltinHttp2ConnectTcpTest(s *VperfSuite) {
 	serverVpp := s.Containers.ServerVpp.VppInstance
 
 	serverVpp.Vppctl("vperf server connect-tcp uri https://" + s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1)
@@ -713,7 +713,7 @@ func EchoBuiltinHttp2ConnectTcpTest(s *EchoSuite) {
 	httpTunnelVerifyPeriodicStats(o)
 }
 
-func EchoBuiltinHttp3ConnectTcpTest(s *EchoSuite) {
+func VperfBuiltinHttp3ConnectTcpTest(s *VperfSuite) {
 	serverVpp := s.Containers.ServerVpp.VppInstance
 
 	serverVpp.Vppctl("vperf server connect-tcp uri https://" + s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1)
@@ -727,7 +727,7 @@ func EchoBuiltinHttp3ConnectTcpTest(s *EchoSuite) {
 	httpTunnelVerifyPeriodicStats(o)
 }
 
-func EchoBuiltinHttp2ConnectUdpTest(s *EchoSuite) {
+func VperfBuiltinHttp2ConnectUdpTest(s *VperfSuite) {
 	serverVpp := s.Containers.ServerVpp.VppInstance
 
 	serverVpp.Vppctl("vperf server connect-udp uri https://" + s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1)
@@ -741,7 +741,7 @@ func EchoBuiltinHttp2ConnectUdpTest(s *EchoSuite) {
 	httpTunnelVerifyPeriodicStats(o)
 }
 
-func EchoBuiltinHttp3ConnectUdpTest(s *EchoSuite) {
+func VperfBuiltinHttp3ConnectUdpTest(s *VperfSuite) {
 	serverVpp := s.Containers.ServerVpp.VppInstance
 
 	serverVpp.Vppctl("vperf server connect-udp uri https://" + s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1)
@@ -755,7 +755,7 @@ func EchoBuiltinHttp3ConnectUdpTest(s *EchoSuite) {
 	httpTunnelVerifyPeriodicStats(o)
 }
 
-func EchoBuiltinHttp1CpsMWTest(s *EchoSuite) {
+func VperfBuiltinHttp1CpsMWTest(s *VperfSuite) {
 	s.Skip("Might fail to set veth interface fanout options")
 	var memoryConfig Stanza
 	memoryConfig.NewStanza("memory").Append("main-heap-size 2G").Close()
@@ -774,7 +774,7 @@ func EchoBuiltinHttp1CpsMWTest(s *EchoSuite) {
 	Log(clientVpp.Vppctl("show http stats"))
 }
 
-func EchoBuiltinHttp2CpsMWTest(s *EchoSuite) {
+func VperfBuiltinHttp2CpsMWTest(s *VperfSuite) {
 	s.Skip("Might fail to set veth interface fanout options")
 	var memoryConfig Stanza
 	memoryConfig.NewStanza("memory").Append("main-heap-size 2G").Close()
@@ -793,7 +793,7 @@ func EchoBuiltinHttp2CpsMWTest(s *EchoSuite) {
 	Log(clientVpp.Vppctl("show http stats"))
 }
 
-func EchoBuiltinHttp3CpsMWTest(s *EchoSuite) {
+func VperfBuiltinHttp3CpsMWTest(s *VperfSuite) {
 	s.Skip("Might fail to set veth interface fanout options")
 	var quicConfig Stanza
 	quicConfig.NewStanza("quic").Append("conn-timeout 60000").Append("fifo-size 32k").Close()

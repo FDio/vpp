@@ -8,26 +8,26 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 )
 
-var echoTests = map[string][]func(s *EchoSuite){}
-var echoSoloTests = map[string][]func(s *EchoSuite){}
-var echoMWTests = map[string][]func(s *EchoSuite){}
+var vperfTests = map[string][]func(s *VperfSuite){}
+var vperfSoloTests = map[string][]func(s *VperfSuite){}
+var vperfMWTests = map[string][]func(s *VperfSuite){}
 
-type EchoSuite struct {
+type VperfSuite struct {
 	VethsSuite
 }
 
-func RegisterEchoTests(tests ...func(s *EchoSuite)) {
-	echoTests[GetTestFilename()] = tests
+func RegisterVperfTests(tests ...func(s *VperfSuite)) {
+	vperfTests[GetTestFilename()] = tests
 }
-func RegisterSoloEchoTests(tests ...func(s *EchoSuite)) {
-	echoSoloTests[GetTestFilename()] = tests
+func RegisterSoloVperfTests(tests ...func(s *VperfSuite)) {
+	vperfSoloTests[GetTestFilename()] = tests
 }
-func RegisterEchoMWTests(tests ...func(s *EchoSuite)) {
-	echoMWTests[GetTestFilename()] = tests
+func RegisterVperfMWTests(tests ...func(s *VperfSuite)) {
+	vperfMWTests[GetTestFilename()] = tests
 }
 
-var _ = Describe("EchoSuite", Ordered, ContinueOnFailure, Label("Veth", "Echo"), func() {
-	var s EchoSuite
+var _ = Describe("VperfSuite", Ordered, ContinueOnFailure, Label("Veth", "Vperf"), func() {
+	var s VperfSuite
 	BeforeAll(func() {
 		s.SetupSuite()
 	})
@@ -43,7 +43,7 @@ var _ = Describe("EchoSuite", Ordered, ContinueOnFailure, Label("Veth", "Echo"),
 	})
 
 	// https://onsi.github.io/ginkgo/#dynamically-generating-specs
-	for filename, tests := range echoTests {
+	for filename, tests := range vperfTests {
 		for _, test := range tests {
 			test := test
 			pc := reflect.ValueOf(test).Pointer()
@@ -57,8 +57,8 @@ var _ = Describe("EchoSuite", Ordered, ContinueOnFailure, Label("Veth", "Echo"),
 	}
 })
 
-var _ = Describe("EchoSuiteSolo", Ordered, ContinueOnFailure, Serial, Label("Veth", "Echo"), func() {
-	var s EchoSuite
+var _ = Describe("VperfSuiteSolo", Ordered, ContinueOnFailure, Serial, Label("Veth", "Vperf"), func() {
+	var s VperfSuite
 	BeforeAll(func() {
 		s.SetupSuite()
 	})
@@ -73,7 +73,7 @@ var _ = Describe("EchoSuiteSolo", Ordered, ContinueOnFailure, Serial, Label("Vet
 	})
 
 	// https://onsi.github.io/ginkgo/#dynamically-generating-specs
-	for filename, tests := range echoSoloTests {
+	for filename, tests := range vperfSoloTests {
 		for _, test := range tests {
 			test := test
 			pc := reflect.ValueOf(test).Pointer()
@@ -87,8 +87,8 @@ var _ = Describe("EchoSuiteSolo", Ordered, ContinueOnFailure, Serial, Label("Vet
 	}
 })
 
-var _ = Describe("EchoSuiteMW", Ordered, ContinueOnFailure, Serial, Label("Veth", "Echo", "MW"), func() {
-	var s EchoSuite
+var _ = Describe("VperfSuiteMW", Ordered, ContinueOnFailure, Serial, Label("Veth", "Vperf", "MW"), func() {
+	var s VperfSuite
 	BeforeAll(func() {
 		s.SetupSuite()
 	})
@@ -103,7 +103,7 @@ var _ = Describe("EchoSuiteMW", Ordered, ContinueOnFailure, Serial, Label("Veth"
 	})
 
 	// https://onsi.github.io/ginkgo/#dynamically-generating-specs
-	for filename, tests := range echoMWTests {
+	for filename, tests := range vperfMWTests {
 		for _, test := range tests {
 			test := test
 			pc := reflect.ValueOf(test).Pointer()
