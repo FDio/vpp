@@ -138,10 +138,10 @@ func testPacket(src, dst string, srcPort, dstPort uint16, seq, ack uint32,
 func TestTcpHarnessNFQueueDropIndicesUseFirstSeenDataSeq(t *testing.T) {
 	h := &NFQueueHelper{
 		cfg: NFQueueConfig{
-			DropFirstRetransmitOfDrop: true,
+			DropRetransmitCount: 1,
 		},
 		dropDataPacketIndices: map[uint32]struct{}{2: {}},
-		retransmitTargets:     make(map[uint32]struct{}),
+		retransmitTargets:     make(map[uint32]uint32),
 		seenDataSeqs:          make(map[uint32]struct{}),
 		originalDroppedSeqs:   make(map[uint32]struct{}),
 	}
@@ -183,6 +183,43 @@ func TestTcpHarnessNFQueueDropIndicesUseFirstSeenDataSeq(t *testing.T) {
 	if drop || originalDrop || h.dataSeen != 3 || h.retransmitCount != 2 {
 		t.Fatalf("accepted retransmit of dropped segment: drop=%v original=%v dataSeen=%d retransmits=%d",
 			drop, originalDrop, h.dataSeen, h.retransmitCount)
+	}
+}
+
+func TestTcpHarnessNFQueueDropRetransmitCount(t *testing.T) {
+	h := &NFQueueHelper{
+		cfg: NFQueueConfig{
+			DropRetransmitCount: 3,
+		},
+		dropDataPacketIndices: map[uint32]struct{}{1: {}},
+		retransmitTargets:     make(map[uint32]uint32),
+		seenDataSeqs:          make(map[uint32]struct{}),
+		originalDroppedSeqs:   make(map[uint32]struct{}),
+	}
+
+	seg := PcapIPv4TCPPacket{Seq: 1000, PayloadLen: 100}
+
+	// Original transmission is dropped and arms the retransmit counter.
+	drop, originalDrop := h.dataPacketDropDecisionLocked(seg)
+	if !drop || !originalDrop {
+		t.Fatalf("original segment: drop=%v original=%v", drop, originalDrop)
+	}
+
+	// The next 3 retransmits of the same segment are dropped too.
+	for i := 1; i <= 3; i++ {
+		drop, originalDrop = h.dataPacketDropDecisionLocked(seg)
+		if !drop || originalDrop {
+			t.Fatalf("retransmit %d: drop=%v original=%v", i, drop, originalDrop)
+		}
+	}
+
+	// The 4th retransmit is allowed through (counter exhausted).
+	drop, originalDrop = h.dataPacketDropDecisionLocked(seg)
+	if drop || originalDrop {
+		t.Fatalf("retransmit past count should pass: drop=%v original=%v", drop, originalDrop)
+	}
+	if h.retransmitCount != 4 {
+		t.Fatalf("expected 4 recorded retransmits, got %d", h.retransmitCount)
 	}
 }
 
