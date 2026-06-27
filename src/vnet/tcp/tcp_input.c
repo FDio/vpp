@@ -800,7 +800,10 @@ tcp_cc_handle_event (tcp_connection_t * tc, tcp_rate_sample_t * rs,
 	tcp_fastrecovery_first_on (tc);
 
       tc->rxt_delivered += tc->sack_sb.rxt_sacked;
-      tc->prr_delivered += rs->delivered;
+      /* PRR (RFC 6937) accumulates bytes delivered by THIS ack. Use the per-ack
+       * acked_and_sacked, not rs->delivered, which on the rate-sample path is
+       * the bytes delivered over the whole rate-sample interval. */
+      tc->prr_delivered += rs->acked_and_sacked;
     }
   else
     {
@@ -859,6 +862,13 @@ tcp_handle_old_ack (tcp_connection_t * tc, tcp_rate_sample_t * rs)
 
   if (tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE)
     tcp_bt_sample_delivery_rate (tc, rs);
+  else
+    /* bytes_acked is 0 on an old/dup ack, so the bytes (re)sacked by this ack
+     * are the newly sacked bytes. cc/PRR consume this via rs->acked_and_sacked
+     * (the byte-tracker path fills it itself); keep the no-rate-sample path
+     * consistent so PRR accounting is not starved during recovery. */
+    rs->acked_and_sacked =
+      tc->sack_sb.last_sacked_bytes - tc->sack_sb.last_bytes_delivered;
 
   tcp_cc_handle_event (tc, rs, 1);
 }
@@ -948,8 +958,14 @@ tcp_rcv_ack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc, vlib_buffer_t * b,
   if (tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE)
     tcp_bt_sample_delivery_rate (tc, &rs);
   else
-    rs.delivered = tc->bytes_acked + tc->sack_sb.last_sacked_bytes -
-		   tc->sack_sb.last_bytes_delivered;
+    {
+      rs.delivered = tc->bytes_acked + tc->sack_sb.last_sacked_bytes -
+		     tc->sack_sb.last_bytes_delivered;
+      /* No rate sampling: rs.delivered already holds the bytes acked+sacked by
+       * this ack. Mirror it into acked_and_sacked, the per-ack quantity the
+       * byte-tracker path fills and that cc/PRR consume. */
+      rs.acked_and_sacked = rs.delivered;
+    }
 
   if (tc->bytes_acked + tc->sack_sb.last_sacked_bytes)
     {
