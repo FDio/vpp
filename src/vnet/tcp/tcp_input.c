@@ -800,7 +800,7 @@ tcp_cc_handle_event (tcp_connection_t * tc, tcp_rate_sample_t * rs,
 	tcp_fastrecovery_first_on (tc);
 
       tc->rxt_delivered += tc->sack_sb.rxt_sacked;
-      tc->prr_delivered += rs->delivered;
+      tc->prr_delivered += rs->acked_and_sacked;
     }
   else
     {
@@ -859,6 +859,8 @@ tcp_handle_old_ack (tcp_connection_t * tc, tcp_rate_sample_t * rs)
 
   if (tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE)
     tcp_bt_sample_delivery_rate (tc, rs);
+  else
+    rs->acked_and_sacked = tc->sack_sb.last_sacked_bytes;
 
   tcp_cc_handle_event (tc, rs, 1);
 }
@@ -948,8 +950,8 @@ tcp_rcv_ack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc, vlib_buffer_t * b,
   if (tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE)
     tcp_bt_sample_delivery_rate (tc, &rs);
   else
-    rs.delivered = tc->bytes_acked + tc->sack_sb.last_sacked_bytes -
-		   tc->sack_sb.last_bytes_delivered;
+    rs.acked_and_sacked =
+      tc->bytes_acked + tc->sack_sb.last_sacked_bytes - tc->sack_sb.last_bytes_delivered;
 
   if (tc->bytes_acked + tc->sack_sb.last_sacked_bytes)
     {
