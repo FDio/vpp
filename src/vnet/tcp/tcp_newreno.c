@@ -39,12 +39,12 @@ newreno_rcv_ack (tcp_connection_t * tc, tcp_rate_sample_t * rs)
 {
   if (tcp_in_slowstart (tc))
     {
-      tc->cwnd += clib_min (tc->snd_mss, rs->delivered);
+      tc->cwnd += clib_min (tc->snd_mss, rs->acked_and_sacked);
     }
   else
     {
       /* tc->cwnd += clib_max ((tc->snd_mss * tc->snd_mss) / tc->cwnd, 1); */
-      tcp_cwnd_accumulate (tc, tc->cwnd, rs->delivered);
+      tcp_cwnd_accumulate (tc, tc->cwnd, rs->acked_and_sacked);
     }
 }
 
