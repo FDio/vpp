@@ -295,6 +295,11 @@ http3_stream_app_close (http_ctx_t *req, http_ctx_t *stream, u8 is_shutdown)
   HTTP_DBG (1, "nothing more to send, confirm close");
   session_transport_closed_notify (&req->connection);
   http_stats_app_streams_closed_inc (stream->c_thread_index);
+  if (!is_shutdown && stream->http_req_index != SESSION_INVALID_INDEX)
+    {
+      HTTP_DBG (1, "closing stream");
+      http_close_transport_stream (stream);
+    }
 }
 
 static void
