@@ -295,6 +295,11 @@ http3_stream_app_close (http_ctx_t *req, http_ctx_t *stream, u8 is_shutdown)
   HTTP_DBG (1, "nothing more to send, confirm close");
   session_transport_closed_notify (&req->connection);
   http_stats_app_streams_closed_inc (stream->c_thread_index);
+  if (!is_shutdown && stream->http_req_index != SESSION_INVALID_INDEX)
+    {
+      HTTP_DBG (1, "closing stream");
+      http_close_transport_stream (stream);
+    }
 }
 
 static void
@@ -2410,9 +2415,11 @@ static void
 http3_transport_stream_reset_callback (http_ctx_t *stream)
 {
   http_ctx_t *req;
+  int error_code;
 
+  error_code = http3_get_application_error_code (stream);
   HTTP_DBG (1, "stream [%u]%x req %x, error code: %U", stream->c_thread_index, stream->hc_hc_index,
-	    stream->http_req_index, format_http3_error, http3_get_application_error_code (stream));
+	    stream->http_req_index, format_http3_error, error_code);
   req = http_ctx_get_w_thread (stream->http_req_index, stream->c_thread_index);
   if (stream->flags & HTTP_CONN_F_UNIDIRECTIONAL_STREAM)
     {
@@ -2422,6 +2429,14 @@ http3_transport_stream_reset_callback (http_ctx_t *stream)
     }
   else
     {
+      /* this might happen when client is doing multiplexing because we open quic stream for
+       * next request in advance */
+      if (req->req_state == HTTP_REQ_STATE_WAIT_APP_METHOD &&
+	  (error_code == HTTP3_ERROR_NO_ERROR || error_code == HTTP3_ERROR_REQUEST_REJECTED))
+	{
+	  http_stats_app_streams_closed_inc (stream->c_thread_index);
+	  return;
+	}
       http_stats_stream_reset_by_peer_inc (stream->c_thread_index);
       if (!(req->req_flags & HTTP_REQ_F_APP_CLOSED))
 	session_transport_reset_notify (&req->connection);
