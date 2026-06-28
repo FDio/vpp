@@ -301,10 +301,10 @@ ifneq ($(DECODE_PCAPS),)
 ARG18=--decode-pcaps=$(DECODE_PCAPS)
 endif
 
-ifneq ($(findstring $(API_PRELOAD),1 y yes),)
-ARG19=--api-preload
+ifneq ($(findstring $(API_PRELOAD),0 n no),)
+ARG19=--no-api-preload
 else
-ARG19=
+ARG19=--api-preload
 endif
 
 ifneq ($(VPP_OPT_DEPS_LIBRARY_PATH),)
@@ -633,6 +633,10 @@ help:
 	@echo "   SANITY=[0|n|no]"
 	@echo "       disable sanity import of vpp-api/vpp sanity"
 	@echo "       run before running tests"
+	@echo "       (default: yes)"
+	@echo ""
+	@echo "   API_PRELOAD=[0|n|no]"
+	@echo "       disable parsing the API once before forking workers"
 	@echo "       (default: yes)"
 	@echo ""
 	@echo "   EXTENDED_TESTS=[1|y|yes]"

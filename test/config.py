@@ -230,7 +230,13 @@ parser.add_argument(
 parser.add_argument(
     "--sanity", action="store_true", help="perform sanity vpp run before running tests"
 )
-parser.add_argument("--api-preload", action="store_true", help="preload API files")
+parser.add_argument(
+    "--api-preload",
+    action=argparse.BooleanOptionalAction,
+    default=True,
+    help="parse the API once before forking workers so they inherit it "
+    "via copy-on-write instead of each re-parsing it",
+)
 
 parser.add_argument(
     "--force-foreground",
