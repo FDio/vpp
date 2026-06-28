@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "964890b9_a3e1992e",
+        "filename": "src/plugins/http_static/static_server.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 1469,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-06-28T23:08:10Z",
+      "side": 1,
+      "message": "Sorry, I completely missed this, could you move it into cli on line 1293?",
+      "revId": "b498d02cac6cda41246cc3a599857776875321c6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
