@@ -669,8 +669,12 @@ tcp_should_fastrecover (tcp_connection_t * tc, u8 has_sack)
   return tc->sack_sb.lost_bytes || tc->rcv_dupacks >= tc->sack_sb.reorder;
 }
 
-static int
-tcp_cc_try_recover (tcp_connection_t *tc)
+/* Recovery ends when the recovery point (snd_congestion) is cumulatively
+ * acked, as per RFC 6675. Any loss still outstanding above it was sent at the
+ * already-reduced rate, so it is a fresh congestion event: exit here and let
+ * the next loss detection re-enter recovery with its own window reduction. */
+static void
+tcp_cc_exit_recovery (tcp_connection_t *tc)
 {
   sack_scoreboard_hole_t *hole;
   u8 is_spurious = 0;
@@ -686,14 +690,6 @@ tcp_cc_try_recover (tcp_connection_t *tc)
   tcp_connection_tx_pacer_reset (tc, tc->cwnd, 0 /* start bucket */ );
   tc->rcv_dupacks = 0;
   tcp_recovery_off (tc);
-
-  /* Previous recovery left us congested. Continue sending as part
-   * of the current recovery event with an updated snd_congestion */
-  if (tc->sack_sb.sacked_bytes && tcp_in_fastrecovery (tc))
-    {
-      tc->snd_congestion = tc->snd_nxt;
-      return -1;
-    }
 
   tc->rxt_delivered = 0;
   tc->snd_rxt_bytes = 0;
@@ -716,8 +712,24 @@ tcp_cc_try_recover (tcp_connection_t *tc)
   ASSERT (tc->rto_boff == 0);
   ASSERT (!tcp_in_cong_recovery (tc));
   ASSERT (tcp_scoreboard_is_sane_post_recovery (tc));
+}
 
-  return 0;
+/* Enter congestion recovery: reduce the window, snapshot the recovery point and
+ * program a retransmit. Caller must have decided recovery is warranted and must
+ * not already be in recovery. */
+static void
+tcp_cc_enter_recovery (tcp_connection_t *tc, u8 has_sack)
+{
+  ASSERT (!tcp_in_cong_recovery (tc));
+  tcp_cc_init_congestion (tc);
+
+  if (has_sack)
+    scoreboard_init_rxt (&tc->sack_sb, tc->snd_una);
+  else
+    tcp_fastrecovery_first_on (tc);
+
+  tcp_connection_tx_pacer_reset (tc, tc->cwnd, 0 /* start bucket */);
+  tcp_program_retransmit (tc);
 }
 
 static void
@@ -757,17 +769,7 @@ tcp_cc_handle_event (tcp_connection_t * tc, tcp_rate_sample_t * rs,
       tcp_cc_rcv_cong_ack (tc, TCP_CC_DUPACK, rs);
 
       if (tcp_should_fastrecover (tc, has_sack))
-	{
-	  tcp_cc_init_congestion (tc);
-
-	  if (has_sack)
-	    scoreboard_init_rxt (&tc->sack_sb, tc->snd_una);
-	  else
-	    tcp_fastrecovery_first_on (tc);
-
-	  tcp_connection_tx_pacer_reset (tc, tc->cwnd, 0 /* start bucket */ );
-	  tcp_program_retransmit (tc);
-	}
+	tcp_cc_enter_recovery (tc, has_sack);
 
       return;
     }
@@ -777,17 +779,19 @@ tcp_cc_handle_event (tcp_connection_t * tc, tcp_rate_sample_t * rs,
    */
 
   /*
-   * See if we can exit and stop retransmitting
+   * Exit recovery once the recovery point is cumulatively acked. If loss above
+   * the old recovery point is already evident, re-enter immediately for that
+   * fresh congestion event (a new window reduction); otherwise treat the ack as
+   * a congestion-avoidance ack.
    */
   if (seq_geq (tc->snd_una, tc->snd_congestion))
     {
-      /* If successfully recovered, treat ack as congestion avoidance ack
-       * and return. Otherwise, we're still congested so process feedback */
-      if (!tcp_cc_try_recover (tc))
-	{
-	  tcp_cc_rcv_ack (tc, rs);
-	  return;
-	}
+      tcp_cc_exit_recovery (tc);
+      if (tcp_should_fastrecover (tc, has_sack))
+	tcp_cc_enter_recovery (tc, has_sack);
+      else
+	tcp_cc_rcv_ack (tc, rs);
+      return;
     }
 
   /*
