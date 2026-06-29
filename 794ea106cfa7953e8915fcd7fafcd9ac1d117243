@@ -35,6 +35,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "13e9fd8a_e1dce57d",
+        "filename": "test/host_interface.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 89,
+      "author": {
+        "id": 2220
+      },
+      "writtenOn": "2026-06-29T10:54:20Z",
+      "side": 1,
+      "message": "yeah, this is leftover from my initial attempt to do it via killpg. removed.",
+      "parentUuid": "b4f20ec2_6258fff4",
+      "revId": "794ea106cfa7953e8915fcd7fafcd9ac1d117243",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "ecdde4a4_4b6acba6",
@@ -52,6 +70,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "3029c6e3_dc90d7d8",
+        "filename": "test/host_interface.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 147,
+      "author": {
+        "id": 2220
+      },
+      "writtenOn": "2026-06-29T10:54:20Z",
+      "side": 1,
+      "message": "147-150 are only to catch a capture that was never started. the rest should be handled below.",
+      "parentUuid": "ecdde4a4_4b6acba6",
+      "revId": "794ea106cfa7953e8915fcd7fafcd9ac1d117243",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "83d05565_5eaad522",
@@ -65,6 +101,24 @@
       "writtenOn": "2026-06-24T16:32:16Z",
       "side": 1,
       "message": "Without import time this is a sure crash place.\nSo the test either works by luck or is not executed at all.",
+      "revId": "794ea106cfa7953e8915fcd7fafcd9ac1d117243",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e9b2864d_46c9c4ad",
+        "filename": "test/test_linux_cp.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 1681,
+      "author": {
+        "id": 2220
+      },
+      "writtenOn": "2026-06-29T10:54:20Z",
+      "side": 1,
+      "message": "fixed",
+      "parentUuid": "83d05565_5eaad522",
       "revId": "794ea106cfa7953e8915fcd7fafcd9ac1d117243",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }

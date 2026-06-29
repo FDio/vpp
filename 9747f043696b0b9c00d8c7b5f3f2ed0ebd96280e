@@ -16,6 +16,23 @@
       "message": "recheck",
       "revId": "9747f043696b0b9c00d8c7b5f3f2ed0ebd96280e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "20351b05_e4cc98a7",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 6
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2220
+      },
+      "writtenOn": "2026-06-29T10:54:20Z",
+      "side": 1,
+      "message": "Hi Klement, thank you for the review. I\u0027ve addressed your comments, could you take another look on the patch?",
+      "revId": "9747f043696b0b9c00d8c7b5f3f2ed0ebd96280e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
