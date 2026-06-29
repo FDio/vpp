@@ -1,0 +1,72 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2ed4e7f2_0e58bb0c",
+        "filename": "src/plugins/rdma/output.c",
+        "patchSetId": 31
+      },
+      "lineNbr": 120,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-06-29T09:13:23Z",
+      "side": 1,
+      "message": "This sentinel-aware free path is only needed when TSO is enabled, because only TSO creates extra WQEBB slots marked RDMA_TXQ_INVALID_BUF. For non-TSO mlx5 TX, every completed ring slot should still contain a real buffer index, so we should keep the old vlib_buffer_free_from_ring() fast path there.\n\nCan we select the free helper based on TSO support, ideally in a way that lets the non-TSO path compile down to the old behavior?",
+      "revId": "df30104bf8c489cbe0c7bf53c188518f826a25bb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "19afc1ba_1a7429a7",
+        "filename": "src/plugins/rdma/output.c",
+        "patchSetId": 31
+      },
+      "lineNbr": 612,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-06-29T09:13:23Z",
+      "side": 1,
+      "message": "Can we isolate the TSO checks from the non-TSO hot path? This adds VNET_BUFFER_F_GSO checks to the mlx5 fast loop, the chained path, and the ibverbs fast/slow paths even when the device/path is not using TSO.\n\nA common VPP pattern would be to split these into static_always_inline helpers with a compile-time is_tso parameter, then select once from rdma_device_output_tx_try() / rdma_device_output_free() based on rd-\u003eflags \u0026 RDMA_DEVICE_F_TSO. The is_tso \u003d\u003d 0 clone would compile out the GSO checks, TSO helper calls, and sentinel-aware freeing, preserving the existing non-TSO datapath.",
+      "revId": "df30104bf8c489cbe0c7bf53c188518f826a25bb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "82a1510c_14f10aa0",
+        "filename": "src/plugins/rdma/output.c",
+        "patchSetId": 31
+      },
+      "lineNbr": 724,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-06-29T09:13:23Z",
+      "side": 1,
+      "message": "I think the ibverbs TSO path is missing the same preparation done by the DV TSO path: setting the TCP checksum field to the pseudo-header checksum, and rejecting/falling back when hdr_sz exceeds RDMA_MLX5_TSO_HDR_MAX.\n\ninterface-output returns early for VNET_BUFFER_F_GSO, so it will not calculate this before the driver. That means IBV_WR_TSO can be submitted with a stale/full TCP checksum, and with a header larger than the max_tso_header used when creating the QP.",
+      "revId": "df30104bf8c489cbe0c7bf53c188518f826a25bb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1d11893b_f80d8071",
+        "filename": "src/plugins/rdma/output.c",
+        "patchSetId": 31
+      },
+      "lineNbr": 748,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-06-29T09:13:23Z",
+      "side": 1,
+      "message": "The slow ibverbs path allows up to ARRAY_LEN(sge) entries here, but the TX QP is created with max_send_sge \u003d 32. So a chained packet with 33-64 SGEs passes this local limit and only fails later at ibv_post_send(), likely as a local QP operation error.\n\nCan we use the actual QP SGE limit here, or raise max_send_sge if that is the intended supported limit?",
+      "revId": "df30104bf8c489cbe0c7bf53c188518f826a25bb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
