@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6ae1ab60_f87a01f9",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-06-29T08:57:35Z",
+      "side": 1,
+      "message": "This patch is stacked over other patches but it does not seem really dependent and is a simple bugfix. Can you make it independent (rebase on master) so it can be merged independently?",
+      "revId": "0a262d09c25244438df42eb1ffec577d4296c565",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
