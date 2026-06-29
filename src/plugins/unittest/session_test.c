@@ -156,6 +156,54 @@ session_test_basic (vlib_main_t * vm, unformat_input_t * input)
 }
 
 static int
+session_test_connect_app_validation (vlib_main_t *vm, unformat_input_t *input)
+{
+  session_endpoint_cfg_t sep = SESSION_ENDPOINT_CFG_NULL;
+  u64 options[APP_OPTIONS_N_OPTIONS] = {};
+  vnet_app_attach_args_t attach_args = {
+    .api_client_index = APP_INVALID_INDEX,
+    .options = options,
+    .namespace_id = 0,
+    .session_cb_vft = &placeholder_session_cbs,
+    .name = format (0, "session_test_connect_app_validation"),
+  };
+  vnet_connect_args_t connect_args = {
+    .sep_ext = sep,
+  };
+  vnet_app_detach_args_t detach_args;
+  u32 app_index;
+  int error;
+
+  options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_IS_BUILTIN;
+  options[APP_OPTIONS_FLAGS] |= APP_OPTIONS_FLAGS_USE_GLOBAL_SCOPE;
+
+  error = vnet_application_attach (&attach_args);
+  SESSION_TEST (error == 0, "client app attached");
+  app_index = attach_args.app_index;
+  vec_free (attach_args.name);
+
+  connect_args.sep.is_ip4 = 1;
+  connect_args.sep.ip.ip4.as_u32 = clib_host_to_net_u32 (0x7f000001);
+  connect_args.sep.port = clib_host_to_net_u16 (1);
+  connect_args.sep.transport_proto = TRANSPORT_PROTO_TCP;
+  connect_args.app_index = app_index;
+  connect_args.wrk_map_index = 1;
+
+  error = vnet_connect (&connect_args);
+  SESSION_TEST (error == SESSION_E_INVALID_APPWRK, "connect with invalid app worker rejected");
+
+  detach_args.app_index = app_index;
+  detach_args.api_client_index = APP_INVALID_INDEX;
+  vnet_application_detach (&detach_args);
+
+  connect_args.wrk_map_index = 0;
+  error = vnet_connect (&connect_args);
+  SESSION_TEST (error == SESSION_E_NOAPP, "connect with detached app rejected");
+
+  return 0;
+}
+
+static int
 session_test_endpoint_cfg (vlib_main_t * vm, unformat_input_t * input)
 {
   session_endpoint_cfg_t client_sep = SESSION_ENDPOINT_CFG_NULL;
@@ -2995,6 +3043,8 @@ session_test (vlib_main_t * vm,
     {
       if (unformat (input, "basic"))
 	res = session_test_basic (vm, input);
+      else if (unformat (input, "connect-app-validation"))
+	res = session_test_connect_app_validation (vm, input);
       else if (unformat (input, "namespace"))
 	res = session_test_namespace (vm, input);
       else if (unformat (input, "rules-table"))
@@ -3022,6 +3072,8 @@ session_test (vlib_main_t * vm,
       else if (unformat (input, "all"))
 	{
 	  if ((res = session_test_basic (vm, input)))
+	    goto done;
+	  if ((res = session_test_connect_app_validation (vm, input)))
 	    goto done;
 	  if ((res = session_test_namespace (vm, input)))
 	    goto done;
