@@ -146,12 +146,11 @@ typedef struct
   /* fields below are not accessed in datapath */
   struct ibv_cq *cq;
   struct ibv_qp *qp;
+  u16 *dv_comp_tails;		/* CQE wqe_counter -> tx buffer ring tail */
 
 } rdma_txq_t;
 STATIC_ASSERT_OFFSET_OF (rdma_txq_t, cacheline1, 64);
 STATIC_ASSERT_OFFSET_OF (rdma_txq_t, cacheline2, 128);
-
-#define RDMA_TXQ_DV_INVALID_ID  0xffffffff
 
 #define RDMA_TXQ_BUF_SZ(txq)    (1U << (txq)->bufs_log2sz)
 #define RDMA_TXQ_DV_SQ_SZ(txq)  (1U << (txq)->dv_sq_log2sz)

@@ -32,7 +32,7 @@ rdma_device_output_free_mlx5 (vlib_main_t * vm,
   u32 log2_cq_sz = txq->dv_cq_log2sz;
   struct mlx5_cqe64 *cqes = txq->dv_cq_cqes, *cur = cqes + (idx & cq_mask);
   u8 op_own, saved;
-  const rdma_mlx5_wqe_t *wqe;
+  u16 cqe_wqe_counter, comp_tail;
 
   for (;;)
     {
@@ -55,19 +55,23 @@ rdma_device_output_free_mlx5 (vlib_main_t * vm,
   cur->op_own = 0xf0;
   txq->dv_cq_idx = idx;
 
-  /* retrieve original WQE and get new tail counter */
-  wqe = txq->dv_sq_wqes + (be16toh (cur->wqe_counter) & sq_mask);
-  if (PREDICT_FALSE (wqe->ctrl.imm == RDMA_TXQ_DV_INVALID_ID))
-    return;			/* can happen if CQE reports error for an intermediate WQE */
+  /* retrieve completion target for the WQEBB reported by the CQE */
+  cqe_wqe_counter = be16toh (cur->wqe_counter);
+  comp_tail = txq->dv_comp_tails[cqe_wqe_counter & sq_mask];
 
-  ASSERT (RDMA_TXQ_USED_SZ (txq->head, wqe->ctrl.imm) <= buf_sz &&
-	  RDMA_TXQ_USED_SZ (wqe->ctrl.imm, txq->tail) < buf_sz);
+  if (PREDICT_FALSE (RDMA_TXQ_USED_SZ (txq->head, comp_tail) > buf_sz ||
+		     RDMA_TXQ_USED_SZ (comp_tail, txq->tail) >= buf_sz))
+    {
+      vlib_error_count (vm, node->node_index, RDMA_TX_ERROR_COMPLETION, 1);
+      goto done;
+    }
 
   /* free sent buffers and update txq head */
   vlib_buffer_free_from_ring (vm, txq->bufs, txq->head & mask, buf_sz,
-			      RDMA_TXQ_USED_SZ (txq->head, wqe->ctrl.imm));
-  txq->head = wqe->ctrl.imm;
+			      RDMA_TXQ_USED_SZ (txq->head, comp_tail));
+  txq->head = comp_tail;
 
+done:
   /* ring doorbell */
   CLIB_MEMORY_STORE_BARRIER ();
   txq->dv_cq_dbrec[0] = htobe32 (idx);
@@ -77,7 +81,9 @@ static_always_inline void
 rdma_device_output_tx_mlx5_doorbell (rdma_txq_t * txq, rdma_mlx5_wqe_t * last,
 				     const u16 tail, u32 sq_mask)
 {
-  last->ctrl.imm = tail;	/* register item to free */
+  u16 wqe_idx = ((u16) last->wqe_index_hi << 8) | last->wqe_index_lo;
+  txq->dv_comp_tails[wqe_idx & sq_mask] = tail;
+  last->ctrl.imm = 0;		/* SEND does not use immediate data. */
   last->ctrl.fm_ce_se = MLX5_WQE_CTRL_CQ_UPDATE;	/* generate a CQE so we can free buffers */
 
   ASSERT (tail != txq->tail &&
