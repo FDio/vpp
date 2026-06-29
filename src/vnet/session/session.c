@@ -498,11 +498,11 @@ session_alloc_for_connection (transport_connection_t * tc)
 
   s = session_alloc (thread_index);
   s->session_type = session_type_from_proto_and_ip (tc->proto, tc->is_ip4);
-  session_set_state (s, SESSION_STATE_CLOSED);
 
   /* Attach transport to session and vice versa */
   s->connection_index = tc->c_index;
   tc->s_index = s->session_index;
+  session_set_state (s, SESSION_STATE_CLOSED);
   return s;
 }
 
@@ -523,7 +523,10 @@ session_alloc_for_stream (session_handle_t parent_handle)
       return 0;
     }
   s->session_type = ps->session_type;
-  session_set_state (s, SESSION_STATE_CLOSED);
+  s->connection_index = SESSION_INVALID_INDEX;
+  /* don't use session_set_state() here because connection index is not valid and elog might assert
+   */
+  s->session_state = SESSION_STATE_CLOSED;
 
   return s;
 }
@@ -1432,8 +1435,6 @@ session_open_stream (session_endpoint_cfg_t *sep, session_handle_t *rsh)
       return app_worker_connect_notify (app_wrk, 0, rv, sep->opaque);
     }
 
-  session_set_state (s, SESSION_STATE_READY);
-
   tc =
     transport_get_connection (sep->transport_proto, conn_index,
 			      session_thread_from_handle (sep->parent_handle));
@@ -1441,6 +1442,8 @@ session_open_stream (session_endpoint_cfg_t *sep, session_handle_t *rsh)
   /* Attach transport to session and vice versa */
   s->connection_index = tc->c_index;
   tc->s_index = s->session_index;
+
+  session_set_state (s, SESSION_STATE_READY);
 
   /* builtin apps are synchronous */
   if (app_worker_application_is_builtin (app_wrk))
