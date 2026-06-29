@@ -16,6 +16,24 @@
       "message": "Sorry, I completely missed this, could you move it into cli on line 1293?",
       "revId": "b498d02cac6cda41246cc3a599857776875321c6",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "76eab258_64437784",
+        "filename": "src/plugins/http_static/static_server.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 1469,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-06-29T08:45:14Z",
+      "side": 1,
+      "message": "I actually meant removing this cli, and just handling everything under hss_create_command_fn. It\u0027s a misnomer, probably it should be hss_command_fn.",
+      "parentUuid": "964890b9_a3e1992e",
+      "revId": "b498d02cac6cda41246cc3a599857776875321c6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
