@@ -1331,9 +1331,14 @@ vnet_connect (vnet_connect_args_t *a)
   if (session_endpoint_is_zero (&a->sep))
     return SESSION_E_INVALID_RMT_IP;
 
-  client = application_get (a->app_index);
+  client = application_get_if_valid (a->app_index);
+  if (!client)
+    return SESSION_E_NOAPP;
+
   session_endpoint_update_for_app (&a->sep_ext, client, 1 /* is_connect */ );
   client_wrk = application_get_worker (client, a->wrk_map_index);
+  if (!client_wrk)
+    return SESSION_E_INVALID_APPWRK;
 
   a->sep_ext.opaque = a->api_context;
 
@@ -1370,9 +1375,14 @@ vnet_connect2_do_connect (vnet_connect_args_t *a)
   session_endpoint_free_ext_cfgs (&a->sep_ext);
   if (rv)
     {
-      app_worker_t *app_wrk;
-      app_wrk = application_get_worker (application_get (a->app_index), a->wrk_map_index);
-      app_worker_connect_notify (app_wrk, 0, rv, a->api_context);
+      application_t *app;
+      app_worker_t *app_wrk = 0;
+
+      app = application_get_if_valid (a->app_index);
+      if (app)
+	app_wrk = application_get_worker (app, a->wrk_map_index);
+      if (app_wrk)
+	app_worker_connect_notify (app_wrk, 0, rv, a->api_context);
     }
 }
 
