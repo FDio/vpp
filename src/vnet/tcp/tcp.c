@@ -217,6 +217,7 @@ tcp_half_open_connection_cleanup (tcp_connection_t * tc)
 
   wrk = tcp_get_worker (tc->c_thread_index);
   tcp_timer_reset (&wrk->timer_wheel, tc, TCP_TIMER_RETRANSMIT_SYN);
+  tc->flags |= TCP_CONN_HALF_OPEN_DONE;
 
   /* If connect failed, postpone cleanup to allow app to handle the error */
   if (tc->c_flags & TRANSPORT_CONNECTION_F_ERROR)
@@ -499,6 +500,7 @@ tcp_session_cleanup_ho (u32 conn_index)
   tc = tcp_ho_connection_get (conn_index);
   wrk = tcp_get_worker (tc->c_thread_index);
   tcp_timer_reset (&wrk->timer_wheel, tc, TCP_TIMER_RETRANSMIT_SYN);
+  tc->flags |= TCP_CONN_HALF_OPEN_DONE;
   tcp_half_open_connection_free (tc);
 }
 
