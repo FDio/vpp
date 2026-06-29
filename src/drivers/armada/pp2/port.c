@@ -232,7 +232,7 @@ mvpp2_port_start (vlib_main_t *vm, vnet_dev_port_t *port)
   foreach_vnet_dev_port_rx_queue (q, port)
     {
       mvpp2_rxq_t *prq = vnet_dev_get_rx_queue_data (q);
-      prq->n_bpool_refill = VLIB_FRAME_SIZE;
+      prq->n_bpool_refill = q->size;
       mrvl_pp2_bpool_put_no_inline (vm, q);
       if (prq->n_bpool_refill)
 	log_warn (port->dev, "mrvl_pp2_bpool_put failed to fill %u buffers",
