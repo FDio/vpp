@@ -244,6 +244,9 @@ alc_more_connects_cb_fn (void *arg)
   int rv;
 
   c = app_evt_collector_get (c_index);
+  if (PREDICT_FALSE (!c))
+    return;
+
   a->sep_ext = c->cfg.sep;
   a->app_index = alm->app_index;
   a->api_context = c->collector_index;
@@ -340,11 +343,15 @@ app_evt_collector_accept_callback (session_t *s)
 static void
 app_evt_collector_disconnect_callback (session_t *s)
 {
-  app_evt_collector_t *c = app_evt_collector_get (s->opaque >> 16);
+  u32 c_index = s->opaque >> 16;
+  app_evt_collector_t *c = app_evt_collector_get (c_index);
   vnet_disconnect_args_t a = { session_handle (s), app_evt_main.app_index };
   app_evt_collector_wrk_t *cwrk;
 
   vnet_disconnect_session (&a);
+
+  if (PREDICT_FALSE (!c))
+    return;
 
   CLIB_SPINLOCK_LOCK (c->session_map_lock);
   c->session_map &= ~(1 << s->thread_index);
@@ -377,7 +384,12 @@ app_evt_collector_tx_callback (session_t *s)
   app_worker_t *app_wrk = app_worker_get (s->app_wrk_index);
   application_t *app = application_get (app_wrk->app_index);
   app_evt_collector_t *c = app_evt_collector_get (app->evt_collector_index);
-  app_evt_collector_wrk_t *cwrk = &c->wrk[s->thread_index];
+  app_evt_collector_wrk_t *cwrk;
+
+  if (PREDICT_FALSE (!c))
+    return 0;
+
+  cwrk = &c->wrk[s->thread_index];
 
   /* If we have data buffered, try to send it now */
   if (cwrk->buf.len)
