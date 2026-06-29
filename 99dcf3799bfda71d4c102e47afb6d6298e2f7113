@@ -3,6 +3,23 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "684eafd0_62009650",
+        "filename": "src/drivers/iavf/tx_node.c",
+        "patchSetId": 36
+      },
+      "lineNbr": 429,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-06-29T12:56:07Z",
+      "side": 1,
+      "message": "I think this big branch would benefit to be in a separate inline function to keep the main loop readable",
+      "revId": "99dcf3799bfda71d4c102e47afb6d6298e2f7113",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "ac30eb0f_8a7a20f8",
         "filename": "src/drivers/iavf/tx_node.c",
         "patchSetId": 36
