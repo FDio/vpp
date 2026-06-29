@@ -389,7 +389,7 @@ mvpp2_init (vlib_main_t *vm, vnet_dev_t *dev)
         .default_size = 512,
         .multiplier = 32,
         .min_size = 32,
-        .max_size = 4096,
+        .max_size = 8192,
 	.size_is_power_of_two = 1,
       },
       .ops = {
@@ -402,7 +402,7 @@ mvpp2_init (vlib_main_t *vm, vnet_dev_t *dev)
         .default_size = 512,
         .multiplier = 32,
         .min_size = 32,
-        .max_size = 4096,
+        .max_size = 8192,
 	.size_is_power_of_two = 1,
           },
       .ops = {
