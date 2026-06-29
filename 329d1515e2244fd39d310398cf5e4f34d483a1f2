@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8e1bff3c_6b15ec5b",
+        "filename": "src/plugins/af_xdp/device.c",
+        "patchSetId": 39
+      },
+      "lineNbr": 188,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-06-29T12:51:29Z",
+      "side": 1,
+      "message": "There is a bit of overlap with af_xdp_device_input_drain_rxq(): both walk AF_XDP descriptors, convert UMEM addresses to buffer indices, batch them, and free them. I would keep the RX-ring and fill-ring mechanics separate because the ownership/release rules differ, but maybe factor the small addr-to-bi/batched-free pattern into a helper. That would also make it harder to accidentally use vlib_buffer_free() here while the RX drain path uses vlib_buffer_free_no_next().",
+      "revId": "329d1515e2244fd39d310398cf5e4f34d483a1f2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5f8dfbb5_0c4c6675",
+        "filename": "src/plugins/af_xdp/device.c",
+        "patchSetId": 39
+      },
+      "lineNbr": 203,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-06-29T12:51:29Z",
+      "side": 1,
+      "message": "I think this should use vlib_buffer_free_no_next(). The buffers in the fill queue were allocated and handed to AF_XDP, but they are not reinitialized with the af_xdp buffer template until RX consumes them. If one of those buffers still has stale VLIB_BUFFER_NEXT_PRESENT/next_buffer from a previous use, vlib_buffer_free() can follow that stale chain during interface delete and free unrelated buffers. The RX drain path already uses vlib_buffer_free_no_next() for this kind of raw descriptor buffer cleanup.",
+      "revId": "329d1515e2244fd39d310398cf5e4f34d483a1f2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b7f9d798_d117652b",
+        "filename": "src/plugins/af_xdp/output.c",
+        "patchSetId": 39
+      },
+      "lineNbr": 86,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-06-29T12:51:29Z",
+      "side": 1,
+      "message": "This looks like a good candidate for a single constant-folded helper. af_xdp_device_output_free() and af_xdp_device_output_free_mb() have the same completion-ring walk; the semantic difference is only the final free operation: vlib_buffer_free() for single-buffer completions, vlib_buffer_free_no_next() for multi-buffer descriptor completions. Could we use one static_always_inline function with a const int is_mb parameter here?",
+      "revId": "329d1515e2244fd39d310398cf5e4f34d483a1f2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
