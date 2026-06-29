@@ -1,0 +1,112 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "93ca5540_a7fc160e",
+        "filename": "docs/aboutvpp/security/tsc_vulnerability_management_v3.rst",
+        "patchSetId": 6
+      },
+      "lineNbr": 176,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-06-29T20:09:12Z",
+      "side": 1,
+      "message": "Example starts with \"{\" and ends with \")\"",
+      "revId": "19afafce93be1a8e5b12420216afa105ef50db77",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5f8aa173_ca07cd6b",
+        "filename": "docs/aboutvpp/security/tsc_vulnerability_management_v3.rst",
+        "patchSetId": 6
+      },
+      "lineNbr": 247,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-06-29T20:09:12Z",
+      "side": 1,
+      "message": "Does this risk creating an advisory looking record for a normal bug?",
+      "revId": "19afafce93be1a8e5b12420216afa105ef50db77",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "be78949e_80c77c44",
+        "filename": "docs/aboutvpp/security/tsc_vulnerability_management_v3.rst",
+        "patchSetId": 6
+      },
+      "lineNbr": 301,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-06-29T20:09:12Z",
+      "side": 1,
+      "message": "Does this conflict with step 2?",
+      "revId": "19afafce93be1a8e5b12420216afa105ef50db77",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d6197341_9dba537c",
+        "filename": "docs/aboutvpp/security/tsc_vulnerability_management_v3.rst",
+        "patchSetId": 6
+      },
+      "lineNbr": 315,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-06-29T20:09:12Z",
+      "side": 1,
+      "message": "\"a static\"",
+      "revId": "19afafce93be1a8e5b12420216afa105ef50db77",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "42464f0a_cf9f6050",
+        "filename": "docs/aboutvpp/security/tsc_vulnerability_management_v3.rst",
+        "patchSetId": 6
+      },
+      "lineNbr": 369,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-06-29T20:09:12Z",
+      "side": 1,
+      "message": "s/determiniation/determination\ns/vulnerabilty/vulnerability",
+      "revId": "19afafce93be1a8e5b12420216afa105ef50db77",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "dbc55562_e2d3d9ea",
+        "filename": "docs/aboutvpp/security/tsc_vulnerability_management_v3.rst",
+        "patchSetId": 6
+      },
+      "lineNbr": 493,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-06-29T20:09:12Z",
+      "side": 1,
+      "message": "where applicable \"provide?\" advice",
+      "range": {
+        "startLine": 493,
+        "startChar": 38,
+        "endLine": 493,
+        "endChar": 55
+      },
+      "revId": "19afafce93be1a8e5b12420216afa105ef50db77",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
