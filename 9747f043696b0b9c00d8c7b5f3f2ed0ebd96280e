@@ -33,6 +33,23 @@
       "message": "Hi Klement, thank you for the review. I\u0027ve addressed your comments, could you take another look on the patch?",
       "revId": "9747f043696b0b9c00d8c7b5f3f2ed0ebd96280e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9771b174_e713c7fc",
+        "filename": "test/host_interface.py",
+        "patchSetId": 6
+      },
+      "lineNbr": 153,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-06-29T19:03:12Z",
+      "side": 1,
+      "message": "OK so if pcap is not None on 146, it means the capture started. What if no packets arrived and expected_count is 0? Code at 148 suggests it should return empty PacketList which I agree with. But here, the isfile check will never be True (if no packets arrive) and I believe it\u0027ll result in a CaptureTimeoutError on line 174.",
+      "revId": "9747f043696b0b9c00d8c7b5f3f2ed0ebd96280e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
