@@ -365,6 +365,8 @@ show_devices_cmd_fn (vlib_main_t *vm, unformat_input_t *input,
 	      vlib_cli_output (vm, "    RX queue %u:", q->queue_id);
 	      vlib_cli_output (vm, "      %U", format_vnet_dev_rx_queue_info,
 			       a, q);
+	      if (fa.counters)
+		vlib_cli_output (vm, "      %U", format_vnet_dev_counters, a, q->counter_main);
 	    }
 
 	  foreach_vnet_dev_port_tx_queue (q, p)
@@ -372,6 +374,8 @@ show_devices_cmd_fn (vlib_main_t *vm, unformat_input_t *input,
 	      vlib_cli_output (vm, "    TX queue %u:", q->queue_id);
 	      vlib_cli_output (vm, "      %U", format_vnet_dev_tx_queue_info,
 			       a, q);
+	      if (fa.counters)
+		vlib_cli_output (vm, "      %U", format_vnet_dev_counters, a, q->counter_main);
 	    }
 	}
     }
