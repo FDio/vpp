@@ -1165,6 +1165,7 @@ hss_create_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	{
 	  error = clib_error_return (0, "failed to disable server %d", rv);
 	}
+	goto done;
     }
 
   if (hsm->app_index != (u32) ~0)
