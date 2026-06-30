@@ -17,13 +17,11 @@ VNET_DEV_NODE_FN (mvpp2_tx_node)
   vnet_dev_port_t *port = txq->port;
   vnet_dev_t *dev = port->dev;
   mvpp2_txq_t *mtq = vnet_dev_get_tx_queue_data (txq);
-  mvpp2_port_t *mp = vnet_dev_get_port_data (port);
   mvpp2_device_t *md = vnet_dev_get_data (dev);
   u8 qid = txq->queue_id;
   u32 *buffers = vlib_frame_vector_args (frame);
   u32 n_vectors = frame->n_vectors, n_left;
   u16 n_sent;
-  struct pp2_ppio *ppio = mp->ppio;
   struct pp2_hif *hif = md->hif[vm->thread_index];
   struct pp2_ppio_desc descs[VLIB_FRAME_SIZE], *d = descs;
   u16 sz = txq->size;
@@ -50,7 +48,7 @@ VNET_DEV_NODE_FN (mvpp2_tx_node)
   if (mtq->n_enq)
     {
       u16 n_done = 0;
-      if (PREDICT_FALSE (pp2_ppio_get_num_outq_done (ppio, hif, qid, &n_done)))
+      if (PREDICT_FALSE (pp2_ppio_get_num_outq_done (port, hif, qid, &n_done)))
 	vlib_error_count (vm, node->node_index,
 			  MVPP2_TX_NODE_CTR_PPIO_GET_NUM_OUTQ_DONE, 1);
 
@@ -77,7 +75,7 @@ VNET_DEV_NODE_FN (mvpp2_tx_node)
 
   buffers = vlib_frame_vector_args (frame);
 
-  if (pp2_ppio_send (ppio, hif, qid, descs, &n_sent))
+  if (pp2_ppio_send (port, hif, qid, descs, &n_sent))
     {
       n_sent = 0;
       vlib_error_count (vm, node->node_index, MVPP2_TX_NODE_CTR_PPIO_SEND, 1);

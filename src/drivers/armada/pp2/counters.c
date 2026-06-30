@@ -106,33 +106,29 @@ mvpp2_port_add_counters (vlib_main_t *vm, vnet_dev_port_t *port)
 void
 mvpp2_port_clear_counters (vlib_main_t *vm, vnet_dev_port_t *port)
 {
-  mvpp2_port_t *mp = vnet_dev_get_port_data (port);
   struct pp2_ppio_statistics stats;
-  pp2_ppio_get_statistics (mp->ppio, &stats, 1);
+  pp2_ppio_get_statistics (port, &stats, 1);
 }
 
 void
 mvpp2_rxq_clear_counters (vlib_main_t *vm, vnet_dev_rx_queue_t *q)
 {
-  mvpp2_port_t *mp = vnet_dev_get_port_data (q->port);
   struct pp2_ppio_inq_statistics stats;
-  pp2_ppio_inq_get_statistics (mp->ppio, 0, q->queue_id, &stats, 1);
+  pp2_ppio_inq_get_statistics (q->port, 0, q->queue_id, &stats, 1);
 }
 
 void
 mvpp2_txq_clear_counters (vlib_main_t *vm, vnet_dev_tx_queue_t *q)
 {
-  mvpp2_port_t *mp = vnet_dev_get_port_data (q->port);
   struct pp2_ppio_inq_statistics stats;
-  pp2_ppio_inq_get_statistics (mp->ppio, 0, q->queue_id, &stats, 1);
+  pp2_ppio_inq_get_statistics (q->port, 0, q->queue_id, &stats, 1);
 }
 
 vnet_dev_rv_t
 mvpp2_port_get_stats (vlib_main_t *vm, vnet_dev_port_t *port)
 {
-  mvpp2_port_t *mp = vnet_dev_get_port_data (port);
   struct pp2_ppio_statistics stats;
-  pp2_ppio_get_statistics (mp->ppio, &stats, 0);
+  pp2_ppio_get_statistics (port, &stats, 0);
 
   foreach_vnet_dev_counter (c, port->counter_main)
     {
@@ -186,7 +182,7 @@ mvpp2_port_get_stats (vlib_main_t *vm, vnet_dev_port_t *port)
   foreach_vnet_dev_port_rx_queue (q, port)
     {
       struct pp2_ppio_inq_statistics stats;
-      pp2_ppio_inq_get_statistics (mp->ppio, 0, q->queue_id, &stats, 0);
+      pp2_ppio_inq_get_statistics (port, 0, q->queue_id, &stats, 0);
 
       foreach_vnet_dev_counter (c, q->counter_main)
 	{
@@ -213,7 +209,7 @@ mvpp2_port_get_stats (vlib_main_t *vm, vnet_dev_port_t *port)
   foreach_vnet_dev_port_tx_queue (q, port)
     {
       struct pp2_ppio_outq_statistics stats;
-      pp2_ppio_outq_get_statistics (mp->ppio, q->queue_id, &stats, 0);
+      pp2_ppio_outq_get_statistics (port, q->queue_id, &stats, 0);
 
       foreach_vnet_dev_counter (c, q->counter_main)
 	{

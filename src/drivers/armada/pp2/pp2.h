@@ -12,6 +12,8 @@
 #include <vnet/vnet.h>
 #include <vnet/dev/dev.h>
 
+#include <musdk.h>
+
 #define MVCONF_DBG_LEVEL	       0
 #define MVCONF_PP2_BPOOL_COOKIE_SIZE   32
 #define MVCONF_PP2_BPOOL_DMA_ADDR_SIZE 64
@@ -19,9 +21,6 @@
 #define MVCONF_SYS_DMA_UIO
 #define MVCONF_TYPES_PUBLIC
 #define MVCONF_DMA_PHYS_ADDR_T_PUBLIC
-
-#include <drivers/mv_pp2_bpool.h>
-#include <drivers/mv_pp2_ppio.h>
 
 #define MVPP2_NUM_HIFS	       9
 #define MVPP2_NUM_BPOOLS       16

@@ -104,8 +104,7 @@ mrvl_pp2_rx_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   vlib_buffer_t *b;
   u32 i;
 
-  if (PREDICT_FALSE (
-	pp2_ppio_recv (mp->ppio, 0, rxq->queue_id, mrq->descs, &n_desc)))
+  if (PREDICT_FALSE (pp2_ppio_recv (port, 0, rxq->queue_id, mrq->descs, &n_desc)))
     {
       vlib_error_count (vm, node->node_index, MVPP2_RX_NODE_CTR_PPIO_RECV, 1);
       return 0;

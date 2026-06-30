@@ -74,7 +74,7 @@ format_mvpp2_port_status (u8 *s, va_list *args)
   mvpp2_port_t *mp = vnet_dev_get_port_data (port);
   struct pp2_ppio_link_info li = {};
 
-  if (mp->ppio == 0 || pp2_ppio_get_link_info (mp->ppio, &li))
+  if (mp->ppio == 0 || pp2_ppio_get_link_info (port, &li))
     return format (s, "link info not available");
 
   return format (s, "%U", format_pp2_ppio_link_info, &li);

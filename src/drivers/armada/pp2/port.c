@@ -123,7 +123,7 @@ mvpp2_port_init (vlib_main_t *vm, vnet_dev_port_t *port)
     }
   log_debug (dev, "port %u ppio '%s' init ok", port->port_id, match);
 
-  mrv = pp2_ppio_get_link_info (mp->ppio, &li);
+  mrv = pp2_ppio_get_link_info (port, &li);
   if (mrv)
     {
       rv = VNET_DEV_ERR_INIT_FAILED;
@@ -151,7 +151,7 @@ mvpp2_port_deinit (vlib_main_t *vm, vnet_dev_port_t *port)
 
   if (mp->ppio)
     {
-      pp2_ppio_deinit (mp->ppio);
+      pp2_ppio_deinit (port);
       mp->ppio = 0;
     }
 
@@ -171,7 +171,7 @@ mvpp2_port_poll (vlib_main_t *vm, vnet_dev_port_t *port)
   struct pp2_ppio_link_info li;
   int mrv;
 
-  mrv = pp2_ppio_get_link_info (mp->ppio, &li);
+  mrv = pp2_ppio_get_link_info (port, &li);
 
   if (mrv)
     {
@@ -239,7 +239,7 @@ mvpp2_port_start (vlib_main_t *vm, vnet_dev_port_t *port)
 		  prq->n_bpool_refill);
     }
 
-  mrv = pp2_ppio_enable (mp->ppio);
+  mrv = pp2_ppio_enable (port);
   if (mrv)
     {
       log_err (port->dev, "pp2_ppio_enable() failed, rv %d", mrv);
@@ -268,7 +268,7 @@ mvpp2_port_stop (vlib_main_t *vm, vnet_dev_port_t *port)
     {
       vnet_dev_poll_port_remove (vm, port, mvpp2_port_poll);
 
-      rv = pp2_ppio_disable (mp->ppio);
+      rv = pp2_ppio_disable (port);
       if (rv)
 	log_err (dev, "pp2_ppio_disable() failed, rv %d", rv);
 
@@ -360,7 +360,6 @@ vnet_dev_rv_t
 mvpp2_port_cfg_change (vlib_main_t *vm, vnet_dev_port_t *port,
 		       vnet_dev_port_cfg_change_req_t *req)
 {
-  mvpp2_port_t *mp = vnet_dev_get_port_data (port);
   vnet_dev_rv_t rv = VNET_DEV_OK;
   eth_addr_t addr;
   int mrv;
@@ -369,7 +368,7 @@ mvpp2_port_cfg_change (vlib_main_t *vm, vnet_dev_port_t *port,
     {
 
     case VNET_DEV_PORT_CFG_PROMISC_MODE:
-      mrv = pp2_ppio_set_promisc (mp->ppio, req->promisc);
+      mrv = pp2_ppio_set_promisc (port, req->promisc);
       if (mrv)
 	{
 	  log_err (port->dev, "pp2_ppio_set_promisc: failed, rv %d", mrv);
@@ -382,7 +381,7 @@ mvpp2_port_cfg_change (vlib_main_t *vm, vnet_dev_port_t *port,
 
     case VNET_DEV_PORT_CFG_CHANGE_PRIMARY_HW_ADDR:
       clib_memcpy (&addr, req->addr.eth_mac, sizeof (addr));
-      mrv = pp2_ppio_set_mac_addr (mp->ppio, addr);
+      mrv = pp2_ppio_set_mac_addr (port, addr);
       if (mrv)
 	{
 	  log_err (port->dev, "pp2_ppio_set_mac_addr: failed, rv %d", mrv);
@@ -395,7 +394,7 @@ mvpp2_port_cfg_change (vlib_main_t *vm, vnet_dev_port_t *port,
 
     case VNET_DEV_PORT_CFG_ADD_SECONDARY_HW_ADDR:
       clib_memcpy (&addr, req->addr.eth_mac, sizeof (addr));
-      mrv = pp2_ppio_add_mac_addr (mp->ppio, addr);
+      mrv = pp2_ppio_add_mac_addr (port, addr);
       if (mrv)
 	{
 	  log_err (port->dev, "pp2_ppio_add_mac_addr: failed, rv %d", mrv);
@@ -408,7 +407,7 @@ mvpp2_port_cfg_change (vlib_main_t *vm, vnet_dev_port_t *port,
 
     case VNET_DEV_PORT_CFG_REMOVE_SECONDARY_HW_ADDR:
       clib_memcpy (&addr, req->addr.eth_mac, sizeof (addr));
-      mrv = pp2_ppio_remove_mac_addr (mp->ppio, addr);
+      mrv = pp2_ppio_remove_mac_addr (port, addr);
       if (mrv)
 	{
 	  log_err (port->dev, "pp2_ppio_remove_mac_addr: failed, rv %d", mrv);
