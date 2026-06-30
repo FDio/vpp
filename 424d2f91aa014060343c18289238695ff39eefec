@@ -52,6 +52,24 @@
       "parentUuid": "7901461e_87feec2a",
       "revId": "424d2f91aa014060343c18289238695ff39eefec",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "1769c1bf_4f652785",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3286
+      },
+      "writtenOn": "2026-06-30T06:57:39Z",
+      "side": 1,
+      "message": "I reproduced the PAWS failure and collected per-drop state with temporary instrumentation.\n\nThe test was a TCP connect-bench closed workload:\n- VPP#0 client -\u003e VPP#1 server\n- 100k connections\n- max-inflight 100k\n- nports 16\n- client source range 192.0.2.10 - 192.0.2.250\n\nIn the reproduced run, the client completed all 100k connections:\nsubmitted 100000, connected 100000, failed 0, reset 0.\n\nOn the server side, tcp4-rcv-process reported 630 PAWS check failed errors.\nThe instrumentation captured 630 PAWS records, matching the error counter.\n\nAll captured PAWS drops were in SYN_RCVD. Also, rx-thread \u003d\u003d connection thread for all records, so this does not look like a wrong-thread receive issue.\n\nThe dropped packets were:\n- 346 ACK-only packets\n- 284 FIN+ACK packets\n\nIn all records, the received TSval was smaller than tsval_recent. The observed delta was between -1 and -4.\n\nThe server accepted counter was 99654, which is exactly 100000 - 346. So the ACK-only PAWS drops correspond to connections where the final ACK was rejected before the server moved out of SYN_RCVD.\n\nThis seems to confirm that the problem is timestamp regression during active open, not port reuse or misclassified PAWS.",
+      "parentUuid": "f8332f43_f66b29bf",
+      "revId": "424d2f91aa014060343c18289238695ff39eefec",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
