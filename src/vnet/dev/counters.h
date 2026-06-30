@@ -122,6 +122,32 @@ vnet_dev_counter_value_update (vlib_main_t *vm, vnet_dev_counter_t *counter,
   cm->counter_data[counter->index] = val - cm->counter_start[counter->index];
 }
 
+static_always_inline vnet_dev_counter_t *
+vnet_dev_port_get_counter_by_index (vlib_main_t *vm __clib_unused, vnet_dev_port_t *port, u32 index)
+{
+  ASSERT (port->counter_main);
+  ASSERT (index < port->counter_main->n_counters);
+  return port->counter_main->counters + index;
+}
+
+static_always_inline vnet_dev_counter_t *
+vnet_dev_rx_queue_get_counter_by_index (vlib_main_t *vm __clib_unused, vnet_dev_rx_queue_t *rxq,
+					u32 index)
+{
+  ASSERT (rxq->counter_main);
+  ASSERT (index < rxq->counter_main->n_counters);
+  return rxq->counter_main->counters + index;
+}
+
+static_always_inline vnet_dev_counter_t *
+vnet_dev_tx_queue_get_counter_by_index (vlib_main_t *vm __clib_unused, vnet_dev_tx_queue_t *txq,
+					u32 index)
+{
+  ASSERT (txq->counter_main);
+  ASSERT (index < txq->counter_main->n_counters);
+  return txq->counter_main->counters + index;
+}
+
 #define foreach_vnet_dev_counter(c, cm)                                       \
   if (cm)                                                                     \
     for (typeof (*(cm)->counters) *(c) = (cm)->counters;                      \
