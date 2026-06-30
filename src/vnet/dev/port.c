@@ -753,7 +753,9 @@ vnet_dev_port_if_create (vlib_main_t *vm, vnet_dev_port_t *port, void *ptr)
       caps |= port->attr.caps.interrupt_mode ? VNET_HW_IF_CAP_INT_MODE : 0;
       caps |= port->attr.caps.mac_filter ? VNET_HW_IF_CAP_MAC_FILTER : 0;
       caps |= port->attr.tx_offloads.tcp_gso ? VNET_HW_IF_CAP_TCP_GSO : 0;
-      caps |= port->attr.tx_offloads.ip4_cksum ? VNET_HW_IF_CAP_TX_CKSUM : 0;
+      caps |= port->attr.tx_offloads.ip4_cksum ? VNET_HW_IF_CAP_TX_IP4_CKSUM : 0;
+      caps |= port->attr.tx_offloads.tcp_cksum ? VNET_HW_IF_CAP_TX_TCP_CKSUM : 0;
+      caps |= port->attr.tx_offloads.udp_cksum ? VNET_HW_IF_CAP_TX_UDP_CKSUM : 0;
 
       if (caps)
 	vnet_hw_if_set_caps (vnm, hw_if_index, caps);
@@ -997,7 +999,9 @@ vnet_dev_port_add_sec_if (vlib_main_t *vm, vnet_dev_port_t *port, void *ptr)
       caps |= port->attr.caps.interrupt_mode ? VNET_HW_IF_CAP_INT_MODE : 0;
       caps |= port->attr.caps.mac_filter ? VNET_HW_IF_CAP_MAC_FILTER : 0;
       caps |= port->attr.tx_offloads.tcp_gso ? VNET_HW_IF_CAP_TCP_GSO : 0;
-      caps |= port->attr.tx_offloads.ip4_cksum ? VNET_HW_IF_CAP_TX_CKSUM : 0;
+      caps |= port->attr.tx_offloads.ip4_cksum ? VNET_HW_IF_CAP_TX_IP4_CKSUM : 0;
+      caps |= port->attr.tx_offloads.tcp_cksum ? VNET_HW_IF_CAP_TX_TCP_CKSUM : 0;
+      caps |= port->attr.tx_offloads.udp_cksum ? VNET_HW_IF_CAP_TX_UDP_CKSUM : 0;
 
       if (caps)
 	vnet_hw_if_set_caps (vnm, sif->hw_if_index, caps);
