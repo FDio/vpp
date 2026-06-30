@@ -70,6 +70,24 @@
       "parentUuid": "f8332f43_f66b29bf",
       "revId": "424d2f91aa014060343c18289238695ff39eefec",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "80ba67cb_3d6c7582",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3286
+      },
+      "writtenOn": "2026-06-30T09:35:09Z",
+      "side": 1,
+      "message": "The test was run on bare metal, not VMs.\n\nMore specifically, it was a two-VPP-process setup on the same bare-metal host:\n- VPP#0 was the client\n- VPP#1 was the server\n- each VPP instance used a physical NIC port through DPDK/vfio-pci\n- no VM was involved\n\nI also captured `show clock verbose` after a clean VPP start and before starting the benchmark traffic.\n\nClient VPP#0:\n- main Time now: 28.557248\n- Time last barrier release: 28.556805885\n- worker offsets:\n  - thread 1 offset 1.842949788 error -0.000000020\n  - thread 2 offset 1.842084112 error -0.000000090\n  - thread 3 offset 1.842949744 error -0.000000010\n  - thread 4 offset 1.842686356 error -0.000000090\n\nServer VPP#1:\n- main Time now: 38.660219\n- Time last barrier release: 38.659889752\n- worker offsets:\n  - thread 1 offset 1.745989152 error -0.000000100\n  - thread 2 offset 1.747939194 error -0.000000020\n  - thread 3 offset 1.745509414 error -0.004220219\n  - thread 4 offset 1.747438728 error -0.000000020\n\nNo test traffic had been started when these values were collected.\n\nThe PAWS reproducer then runs immediately after this clean-start setup.",
+      "parentUuid": "1769c1bf_4f652785",
+      "revId": "424d2f91aa014060343c18289238695ff39eefec",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
