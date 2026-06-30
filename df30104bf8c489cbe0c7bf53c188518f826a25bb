@@ -1,6 +1,78 @@
 {
   "comments": [
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "550f63c1_4a6b4b82",
+        "filename": "src/plugins/rdma/output.c",
+        "patchSetId": 31
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-06-30T16:15:24Z",
+      "side": 1,
+      "message": "Done in PS33/PS36 by removing ibverbs TSO support. TSO is now enabled only for the mlx5 DV path, so ibverbs no longer submits IBV_WR_TSO and does not need the DV TSO pseudo-header preparation path.",
+      "parentUuid": "82a1510c_14f10aa0",
+      "revId": "df30104bf8c489cbe0c7bf53c188518f826a25bb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b95c229e_53427d03",
+        "filename": "src/plugins/rdma/output.c",
+        "patchSetId": 31
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-06-30T16:15:24Z",
+      "side": 1,
+      "message": "Done in PS33/PS36. The ibverbs slow path now uses a 32-entry SGE array, matching the QP max_send_sge value, and drops/frees chains that exceed that limit before posting.",
+      "parentUuid": "1d11893b_f80d8071",
+      "revId": "df30104bf8c489cbe0c7bf53c188518f826a25bb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "77d925da_a7244fe4",
+        "filename": "src/plugins/rdma/output.c",
+        "patchSetId": 31
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-06-30T16:15:24Z",
+      "side": 1,
+      "message": "Done in PS33/PS36. The mlx5 completion free helper now takes a compile-time is_tso parameter: TSO uses the sentinel-aware free path, while non-TSO keeps vlib_buffer_free_from_ring().",
+      "parentUuid": "2ed4e7f2_0e58bb0c",
+      "revId": "df30104bf8c489cbe0c7bf53c188518f826a25bb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "d71d8a78_f4062bd8",
+        "filename": "src/plugins/rdma/output.c",
+        "patchSetId": 31
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-06-30T16:15:24Z",
+      "side": 1,
+      "message": "Done in PS33/PS36. The mlx5 TX helpers now take a compile-time is_tso parameter and rdma_device_output_tx_try() selects the TSO/non-TSO clone once from RDMA_DEVICE_F_TSO, so the non-TSO path compiles out the GSO checks and TSO calls.",
+      "parentUuid": "19afc1ba_1a7429a7",
+      "revId": "df30104bf8c489cbe0c7bf53c188518f826a25bb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "2ed4e7f2_0e58bb0c",
