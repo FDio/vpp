@@ -378,7 +378,8 @@ typedef enum _tcp_cc_algorithm_type
 {
   TCP_CC_NEWRENO,
   TCP_CC_CUBIC,
-  TCP_CC_LAST = TCP_CC_CUBIC
+  TCP_CC_BBR,
+  TCP_CC_LAST = TCP_CC_BBR
 } tcp_cc_algorithm_type_e;
 
 typedef struct _tcp_cc_algorithm tcp_cc_algorithm_t;
@@ -531,18 +532,22 @@ typedef struct _tcp_connection
 struct _tcp_cc_algorithm
 {
   const char *name;
-  uword (*unformat_cfg) (unformat_input_t * input);
-  void (*init) (tcp_connection_t * tc);
+  uword (*unformat_cfg) (unformat_input_t *input);
+  /* On failure, init must not retain per-connection state. */
+  int (*init) (tcp_connection_t *tc);
   void (*cleanup) (tcp_connection_t * tc);
   void (*rcv_ack) (tcp_connection_t *tc, tcp_ack_ctx_t *ac);
   void (*rcv_cong_ack) (tcp_connection_t *tc, tcp_cc_ack_t ack, tcp_ack_ctx_t *ac);
   void (*congestion) (tcp_connection_t * tc);
   void (*loss) (tcp_connection_t * tc);
   void (*recovered) (tcp_connection_t * tc);
+  void (*tlp_recovery) (tcp_connection_t *tc, tcp_ack_ctx_t *ac);
   void (*undo_recovery) (tcp_connection_t * tc);
   void (*event) (tcp_connection_t *tc, tcp_cc_event_t evt);
   void (*lost_sample) (tcp_connection_t *tc, const tcp_cc_loss_sample_t *sample);
   u64 (*get_pacing_rate) (tcp_connection_t *tc);
+  /* Optional paced fast-recovery send-space override. */
+  u32 (*get_recovery_snd_space) (tcp_connection_t *tc);
 };
 
 #define tcp_fastrecovery_on(tc) (tc)->flags |= TCP_CONN_FAST_RECOVERY
