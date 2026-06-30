@@ -15,6 +15,13 @@
 #define TRANSPORT_PACER_MAX_BURST	(43 * TRANSPORT_PACER_MIN_MSS)
 #define TRANSPORT_PACER_MAX_BURST_PKTS	43
 #define TRANSPORT_PACER_BURSTS_PER_RTT	20
+/* Lower bound on a burst's time-length when sizing the token bucket. The bucket
+ * caps at rate * max_time; on a low-RTT link rtt/BURSTS_PER_RTT can shrink to a
+ * sub-microsecond burst, leaving a rate-paced flow too small a reservoir to
+ * absorb scheduler dispatch jitter (it then sends below its paced rate and
+ * starves itself). Floor the burst time so the reservoir stays usable; high
+ * rate flows remain bounded by TRANSPORT_PACER_MAX_BURST. */
+#define TRANSPORT_PACER_MIN_BURST_TIME	50 /* microseconds */
 #define TRANSPORT_PACER_MIN_IDLE	100
 #define TRANSPORT_PACER_IDLE_FACTOR	0.05
 
