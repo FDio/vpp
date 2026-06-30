@@ -16,6 +16,24 @@
       "message": "This patch is stacked over other patches but it does not seem really dependent and is a simple bugfix. Can you make it independent (rebase on master) so it can be merged independently?",
       "revId": "0a262d09c25244438df42eb1ffec577d4296c565",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "9497b561_de680338",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-06-30T15:55:52Z",
+      "side": 1,
+      "message": "Done in PS4/PS5: rebased directly on current master, so this change no longer depends on the TSO stack and can be merged independently. PS5 is Verified+1.",
+      "parentUuid": "6ae1ab60_f87a01f9",
+      "revId": "0a262d09c25244438df42eb1ffec577d4296c565",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
