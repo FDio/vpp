@@ -16,6 +16,24 @@
       "message": "This is pretty invasive and the only place where they would be comparable across threads is in case of active opens, i.e., syn and syn-ack. So could you provide more information about the issue you\u0027re hitting?",
       "revId": "424d2f91aa014060343c18289238695ff39eefec",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "7901461e_87feec2a",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3286
+      },
+      "writtenOn": "2026-06-30T03:34:53Z",
+      "side": 1,
+      "message": "The issue was observed while running a local TCP session benchmark. The benchmark\ncompleted, but the server side reported \"PAWS check failed\" drops in show errors\n(PAWS \u003d Protection Against Wrapped Sequence numbers, the TCP timestamp check).\n\nI agree active open is the currently observed path where timestamps from\ndifferent workers are compared. However, I think the root issue is more general:\nTCP TSval is protocol-visible per-connection state, but today it is derived from\nworker-local cached vlib time. If a connection\u0027s packet generation path crosses\nworkers, TSval can go backwards for that connection.\n\nThis change keeps session/transport time in the existing vlib-time form, but\nalso caches the raw CPU sample taken at the same update point. TCP derives TSval\nfrom that process-wide CPU epoch, so TSval is comparable across workers without\nadding a second independent time sampling path.\n\nIf this is considered too broad for the observed failure mode, I can rework it\ninto a narrower active-open-only fix that preserves TSval monotonicity when the\nhalf-open connection moves to the established worker.",
+      "parentUuid": "3aa1a165_05e9ebdd",
+      "revId": "424d2f91aa014060343c18289238695ff39eefec",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
