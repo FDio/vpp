@@ -369,7 +369,8 @@ typedef enum _tcp_cc_algorithm_type
 {
   TCP_CC_NEWRENO,
   TCP_CC_CUBIC,
-  TCP_CC_LAST = TCP_CC_CUBIC
+  TCP_CC_BBR,
+  TCP_CC_LAST = TCP_CC_BBR
 } tcp_cc_algorithm_type_e;
 
 typedef struct _tcp_cc_algorithm tcp_cc_algorithm_t;
@@ -533,6 +534,12 @@ struct _tcp_cc_algorithm
   void (*undo_recovery) (tcp_connection_t * tc);
   void (*event) (tcp_connection_t *tc, tcp_cc_event_t evt);
   u64 (*get_pacing_rate) (tcp_connection_t *tc);
+  /* Optional. If set, the algorithm owns the congestion window directly
+   * (it is not reduced multiplicatively on loss), so the fast-recovery send
+   * path takes the send space from here instead of from proportional rate
+   * reduction. Only rate/model-based algorithms (BBR) set this; for the
+   * others it stays null and the PRR path is unchanged. */
+  int (*cong_control) (tcp_connection_t *tc);
 };
 
 #define tcp_fastrecovery_on(tc) (tc)->flags |= TCP_CONN_FAST_RECOVERY
