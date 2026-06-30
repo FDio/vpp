@@ -140,4 +140,101 @@ clib_pmalloc_get_pa (clib_pmalloc_main_t * pm, void *va)
   return pointer_to_uword (va) - pm->lookup_table[index];
 }
 
+always_inline void
+clib_pmalloc_convert_to_phys_addrs_with_offset (clib_pmalloc_main_t *pm, uword *a, u32 n_addrs,
+						i32 offset)
+{
+  uword base = pointer_to_uword (pm->base);
+  uword *lookup_table = pm->lookup_table;
+  u32 shift = pm->lookup_log2_page_sz;
+
+#if defined(CLIB_HAVE_VEC128) && uword_bits == 64
+  u64x2 base2 = u64x2_splat (base);
+  u64x2 offset2 = u64x2_splat (offset);
+  u64x2u *av = (u64x2u *) a;
+
+  while (n_addrs >= 8)
+    {
+      u64x2 va0 = av[0];
+      u64x2 va1 = av[1];
+      u64x2 va2 = av[2];
+      u64x2 va3 = av[3];
+      u64x2 index0 = (va0 - base2) >> shift;
+      u64x2 index1 = (va1 - base2) >> shift;
+      u64x2 index2 = (va2 - base2) >> shift;
+      u64x2 index3 = (va3 - base2) >> shift;
+
+      u64x2 lookup0 = {
+	lookup_table[index0[0]],
+	lookup_table[index0[1]],
+      };
+      u64x2 lookup1 = {
+	lookup_table[index1[0]],
+	lookup_table[index1[1]],
+      };
+      u64x2 lookup2 = {
+	lookup_table[index2[0]],
+	lookup_table[index2[1]],
+      };
+      u64x2 lookup3 = {
+	lookup_table[index3[0]],
+	lookup_table[index3[1]],
+      };
+
+      av[0] = va0 - lookup0 + offset2;
+      av[1] = va1 - lookup1 + offset2;
+      av[2] = va2 - lookup2 + offset2;
+      av[3] = va3 - lookup3 + offset2;
+      av += 4;
+      n_addrs -= 8;
+    }
+
+  while (n_addrs >= 2)
+    {
+      u64x2 va = av[0];
+      u64x2 index = (va - base2) >> shift;
+      u64x2 lookup = {
+	lookup_table[index[0]],
+	lookup_table[index[1]],
+      };
+
+      av[0] = va - lookup + offset2;
+      av += 1;
+      n_addrs -= 2;
+    }
+
+  a = (uword *) av;
+#else
+  while (n_addrs >= 4)
+    {
+      uword va0 = a[0];
+      uword va1 = a[1];
+      uword va2 = a[2];
+      uword va3 = a[3];
+
+      a[0] = va0 - lookup_table[(va0 - base) >> shift] + offset;
+      a[1] = va1 - lookup_table[(va1 - base) >> shift] + offset;
+      a[2] = va2 - lookup_table[(va2 - base) >> shift] + offset;
+      a[3] = va3 - lookup_table[(va3 - base) >> shift] + offset;
+      a += 4;
+      n_addrs -= 4;
+    }
+#endif
+
+  while (n_addrs)
+    {
+      uword va = a[0];
+
+      a[0] = va - lookup_table[(va - base) >> shift] + offset;
+      a++;
+      n_addrs--;
+    }
+}
+
+always_inline void
+clib_pmalloc_convert_to_phys_addrs (clib_pmalloc_main_t *pm, uword *a, u32 n_addrs)
+{
+  clib_pmalloc_convert_to_phys_addrs_with_offset (pm, a, n_addrs, 0);
+}
+
 #endif /* included_palloc_h */
