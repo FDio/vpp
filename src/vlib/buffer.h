@@ -469,6 +469,12 @@ typedef struct
 
 #define VLIB_BUFFER_MAX_NUMA_NODES 32
 
+typedef enum
+{
+  VLIB_BUFFER_LAYOUT_PACKED,
+  VLIB_BUFFER_LAYOUT_NATURAL,
+} vlib_buffer_layout_t;
+
 typedef u32 (vlib_buffer_alloc_free_callback_t) (struct vlib_main_t *vm,
 						 u8 buffer_pool_index,
 						 u32 *buffers, u32 n_buffers);
@@ -493,6 +499,7 @@ typedef struct
   u16 ext_hdr_size;
   u32 default_data_size;
   clib_mem_page_sz_t log2_page_size;
+  vlib_buffer_layout_t layout;
 
   /* Hash table mapping buffer index into number
      0 => allocated but free, 1 => allocated and not-free.
