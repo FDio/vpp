@@ -1024,6 +1024,11 @@ tcp_set_attribute (tcp_connection_t *tc, transport_endpt_attr_t *attr)
       tcp_cc_cleanup (tc);
       tc->cc_algo = tcp_cc_algo_get (attr->cc_algo);
       tcp_cc_init (tc);
+      /* The algorithm's init may have enabled rate sampling (BBR needs the
+       * byte tracker). On the normal connection-setup path the tracker is
+       * allocated right after tcp_cc_init; here we must do it ourselves. */
+      if ((tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE) && !tc->bt)
+	tcp_bt_init (tc);
       break;
     default:
       rv = -1;
