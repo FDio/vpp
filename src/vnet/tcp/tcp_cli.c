@@ -8,6 +8,8 @@
 #include <vnet/dpo/receive_dpo.h>
 #include <vnet/ip-neighbor/ip_neighbor.h>
 
+uword unformat_tcp_cc_algo (unformat_input_t *input, va_list *va);
+
 const char *tcp_fsm_states[] = {
 #define _(sym, str) str,
   foreach_tcp_fsm_state
@@ -949,6 +951,12 @@ tcp_set_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
 	  tcp_cfg.enable_rack = 0;
 	  vlib_cli_output (vm, "TCP RACK loss detection: disabled");
 	}
+      else if (unformat (input, "cc-algo %U", unformat_tcp_cc_algo, &tcp_cfg.cc_algo))
+	{
+	  /* Only affects connections opened after this point. */
+	  vlib_cli_output (vm, "TCP congestion control: %s",
+			   tcp_cc_algo_get (tcp_cfg.cc_algo)->name);
+	}
       else if (unformat (input, "mtu %u", &mtu))
 	{
 	  if (mtu < min_mtu)
@@ -965,7 +973,8 @@ tcp_set_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
 
 VLIB_CLI_COMMAND (tcp_set_command, static) = {
   .path = "set tcp",
-  .short_help = "set tcp [csum-offload [enable|disable]] [mtu <mtu>] | [no-]rack",
+  .short_help = "set tcp [csum-offload [enable|disable]] [mtu <mtu>] | "
+		"[no-]rack | [cc-algo <name>]",
   .function = tcp_set_fn,
 };
 

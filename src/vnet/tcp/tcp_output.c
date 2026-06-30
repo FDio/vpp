@@ -1806,6 +1806,27 @@ tcp_fastrecovery_prr_snd_space (tcp_connection_t * tc)
   return space;
 }
 
+/**
+ * Send space available while in congestion recovery.
+ *
+ * Timer (RTO) recovery uses the plain cwnd-based estimate. Fast recovery uses
+ * proportional rate reduction, unless the congestion-control algorithm owns the
+ * window directly (cong_control set, e.g. BBR): such algorithms do not reduce
+ * cwnd on loss, so PRR's ssthresh/prev_cwnd ratio would wrongly throttle them.
+ * They release up to their model cwnd and rely on the tx pacer to spread it.
+ */
+static inline int
+tcp_recovery_snd_space (tcp_connection_t *tc)
+{
+  if (tcp_in_recovery (tc))
+    return tcp_available_cc_snd_space (tc);
+
+  if (PREDICT_FALSE (tc->cc_algo->cong_control != 0))
+    return tc->cc_algo->cong_control (tc);
+
+  return tcp_fastrecovery_prr_snd_space (tc);
+}
+
 static inline u8
 tcp_retransmit_should_retry_head (tcp_connection_t * tc,
 				  sack_scoreboard_t * sb)
@@ -1859,10 +1880,7 @@ tcp_retransmit_sack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
       return 0;
     }
 
-  if (tcp_in_recovery (tc))
-    snd_space = tcp_available_cc_snd_space (tc);
-  else
-    snd_space = tcp_fastrecovery_prr_snd_space (tc);
+  snd_space = tcp_recovery_snd_space (tc);
 
   if (snd_space < tc->snd_mss)
     goto done;
@@ -1923,7 +1941,13 @@ tcp_retransmit_sack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
 		clib_min (clib_max (max_deq, tc->snd_mss), snd_space);
 	      burst_size = clib_min (burst_size - n_segs,
 				     snd_space / tc->snd_mss);
-	      burst_size = clib_min (burst_size, TCP_RXT_MAX_BURST);
+	      /* Cap the new-data burst so a single recovery visit cannot dump the
+	       * whole window. A window-owning algorithm (BBR) does not do PRR and
+	       * is already rate-limited by the tx pacer, so the small fixed cap
+	       * would needlessly ack-clock it through recovery; let the pacer
+	       * bound it instead. */
+	      if (!tc->cc_algo->cong_control)
+		burst_size = clib_min (burst_size, TCP_RXT_MAX_BURST);
 	      n_segs_new = tcp_transmit_unsent (wrk, tc, burst_size);
 	      if (max_deq > n_segs_new * tc->snd_mss)
 		tcp_program_retransmit (tc);
@@ -2022,10 +2046,7 @@ tcp_retransmit_no_sack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
       return 0;
     }
 
-  if (tcp_in_recovery (tc))
-    snd_space = tcp_available_cc_snd_space (tc);
-  else
-    snd_space = tcp_fastrecovery_prr_snd_space (tc);
+  snd_space = tcp_recovery_snd_space (tc);
   cc_limited = snd_space < burst_bytes;
 
   if (!tcp_fastrecovery_first (tc))
