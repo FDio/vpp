@@ -40,6 +40,13 @@ tcp_cc_recovered (tcp_connection_t * tc)
 }
 
 static inline void
+tcp_cc_tlp_recovery (tcp_connection_t *tc, tcp_ack_ctx_t *ac)
+{
+  if (tc->cc_algo->tlp_recovery)
+    tc->cc_algo->tlp_recovery (tc, ac);
+}
+
+static inline void
 tcp_cc_undo_recovery (tcp_connection_t * tc)
 {
   if (tc->cc_algo->undo_recovery)
