@@ -58,29 +58,28 @@ static const u8 ciphertext256[64] = {
   0xC3, 0x9B, 0xE9, 0xFC, 0xDA, 0x6C, 0x19, 0x07, 0x8C, 0x6A, 0x9D, 0x1B,
 };
 
-#define _(b)                                                                  \
-  static clib_error_t *test_clib_aes##b##_cbc_encrypt (clib_error_t *err)     \
-  {                                                                           \
-    aes_cbc_key_data_t k;                                                     \
-    u8 data[512];                                                             \
-    clib_aes##b##_cbc_key_expand (&k, key##b);                                \
-    clib_aes##b##_cbc_encrypt (&k, plaintext, sizeof (plaintext), iv, data);  \
-    if (memcmp (ciphertext##b, data, sizeof (ciphertext##b)) != 0)            \
-      err =                                                                   \
-	clib_error_return (err, "encrypted data doesn't match plaintext");    \
-    return err;                                                               \
-  }                                                                           \
-  void __test_perf_fn perftest_aes##b##_enc_var_sz (test_perf_t *tp)          \
-  {                                                                           \
-    u32 n = tp->n_ops;                                                        \
-    aes_cbc_key_data_t *kd = test_mem_alloc (sizeof (*kd));                   \
-    u8 *dst = test_mem_alloc (n + 16);                                        \
-    u8 *src = test_mem_alloc_and_fill_inc_u8 (n + 16, 0, 0);                  \
-    clib_aes##b##_cbc_key_expand (kd, key##b);                                \
-                                                                              \
-    test_perf_event_enable (tp);                                              \
-    clib_aes##b##_cbc_encrypt (kd, src, n, iv, dst);                          \
-    test_perf_event_disable (tp);                                             \
+#define _(b)                                                                                       \
+  static clib_error_t *test_clib_aes##b##_cbc_encrypt (clib_error_t *err)                          \
+  {                                                                                                \
+    aes_cbc_key_data_t k = {};                                                                     \
+    u8 data[512];                                                                                  \
+    clib_aes##b##_cbc_key_expand (&k, key##b);                                                     \
+    clib_aes##b##_cbc_encrypt (&k, plaintext, sizeof (plaintext), iv, data);                       \
+    if (memcmp (ciphertext##b, data, sizeof (ciphertext##b)) != 0)                                 \
+      err = clib_error_return (err, "encrypted data doesn't match plaintext");                     \
+    return err;                                                                                    \
+  }                                                                                                \
+  void __test_perf_fn perftest_aes##b##_enc_var_sz (test_perf_t *tp)                               \
+  {                                                                                                \
+    u32 n = tp->n_ops;                                                                             \
+    aes_cbc_key_data_t *kd = test_mem_alloc (sizeof (*kd));                                        \
+    u8 *dst = test_mem_alloc (n + 16);                                                             \
+    u8 *src = test_mem_alloc_and_fill_inc_u8 (n + 16, 0, 0);                                       \
+    clib_aes##b##_cbc_key_expand (kd, key##b);                                                     \
+                                                                                                   \
+    test_perf_event_enable (tp);                                                                   \
+    clib_aes##b##_cbc_encrypt (kd, src, n, iv, dst);                                               \
+    test_perf_event_disable (tp);                                                                  \
   }
 _ (128)
 _ (192)
@@ -120,30 +119,28 @@ REGISTER_TEST (clib_aes256_cbc_encrypt) = {
 			      .fn = perftest_aes256_enc_var_sz }),
 };
 
-#define _(b)                                                                  \
-  static clib_error_t *test_clib_aes##b##_cbc_decrypt (clib_error_t *err)     \
-  {                                                                           \
-    aes_cbc_key_data_t k;                                                     \
-    u8 data[512];                                                             \
-    clib_aes##b##_cbc_key_expand (&k, key##b);                                \
-    clib_aes##b##_cbc_decrypt (&k, ciphertext##b, sizeof (ciphertext##b), iv, \
-			       data);                                         \
-    if (memcmp (plaintext, data, sizeof (plaintext)) != 0)                    \
-      err =                                                                   \
-	clib_error_return (err, "decrypted data doesn't match plaintext");    \
-    return err;                                                               \
-  }                                                                           \
-  void __test_perf_fn perftest_aes##b##_dec_var_sz (test_perf_t *tp)          \
-  {                                                                           \
-    u32 n = tp->n_ops;                                                        \
-    aes_cbc_key_data_t *kd = test_mem_alloc (sizeof (*kd));                   \
-    u8 *dst = test_mem_alloc (n + 16);                                        \
-    u8 *src = test_mem_alloc_and_fill_inc_u8 (n + 16, 0, 0);                  \
-    clib_aes##b##_cbc_key_expand (kd, key##b);                                \
-                                                                              \
-    test_perf_event_enable (tp);                                              \
-    clib_aes##b##_cbc_decrypt (kd, src, n, iv, dst);                          \
-    test_perf_event_disable (tp);                                             \
+#define _(b)                                                                                       \
+  static clib_error_t *test_clib_aes##b##_cbc_decrypt (clib_error_t *err)                          \
+  {                                                                                                \
+    aes_cbc_key_data_t k = {};                                                                     \
+    u8 data[512];                                                                                  \
+    clib_aes##b##_cbc_key_expand (&k, key##b);                                                     \
+    clib_aes##b##_cbc_decrypt (&k, ciphertext##b, sizeof (ciphertext##b), iv, data);               \
+    if (memcmp (plaintext, data, sizeof (plaintext)) != 0)                                         \
+      err = clib_error_return (err, "decrypted data doesn't match plaintext");                     \
+    return err;                                                                                    \
+  }                                                                                                \
+  void __test_perf_fn perftest_aes##b##_dec_var_sz (test_perf_t *tp)                               \
+  {                                                                                                \
+    u32 n = tp->n_ops;                                                                             \
+    aes_cbc_key_data_t *kd = test_mem_alloc (sizeof (*kd));                                        \
+    u8 *dst = test_mem_alloc (n + 16);                                                             \
+    u8 *src = test_mem_alloc_and_fill_inc_u8 (n + 16, 0, 0);                                       \
+    clib_aes##b##_cbc_key_expand (kd, key##b);                                                     \
+                                                                                                   \
+    test_perf_event_enable (tp);                                                                   \
+    clib_aes##b##_cbc_decrypt (kd, src, n, iv, dst);                                               \
+    test_perf_event_disable (tp);                                                                  \
   }
 
 _ (128)

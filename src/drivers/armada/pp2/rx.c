@@ -1,4 +1,5 @@
-/* SPDX-License-Identifier: Apache-2.0
+/* SPDX-License-Identifier: BSD-3-Clause AND Apache-2.0
+ * Copyright (c) 2025 Marvell.
  * Copyright (c) 2024 Cisco Systems, Inc.
  */
 
@@ -9,25 +10,61 @@
 #include <vppinfra/vector/compress.h>
 
 #include <pp2/pp2.h>
+#include <pp2/pp2_hw.h>
+
+static_always_inline u32
+mvpp2_rx_reg_read (uintptr_t hif_base, u32 reg)
+{
+  u32 value;
+
+  asm volatile ("ldr %w0, [%1]" : "=r"(value) : "r"(hif_base + reg));
+  asm volatile ("dsb ld" : : : "memory");
+  return le32toh (value);
+}
+
+static_always_inline void
+mvpp2_rx_reg_write_relaxed (uintptr_t hif_base, u32 reg, u32 value)
+{
+  value = htole32 (value);
+  asm volatile ("str %w0, [%1]" : : "r"(value), "r"(hif_base + reg));
+}
+
+static_always_inline void
+mvpp2_rx_reg_write (uintptr_t hif_base, u32 reg, u32 value)
+{
+  asm volatile ("dsb st" : : : "memory");
+  mvpp2_rx_reg_write_relaxed (hif_base, reg, value);
+}
+
+static_always_inline u64
+mvpp2_rx_desc_get_cookie (mvpp2_rx_desc_t *desc)
+{
+  return ((u64) desc->buf_virt_ptr_hi << 32) | desc->buf_virt_ptr_lo;
+}
+
+static_always_inline u16
+mvpp2_rx_desc_get_pkt_len (mvpp2_rx_desc_t *desc)
+{
+  return desc->byte_count - MV_MH_SIZE;
+}
 
 static_always_inline vlib_buffer_t *
-desc_to_vlib_buffer (vlib_main_t *vm, struct pp2_ppio_desc *d)
+desc_to_vlib_buffer (vlib_main_t *vm, mvpp2_rx_desc_t *d)
 {
-  return vlib_get_buffer (vm, pp2_ppio_inq_desc_get_cookie (d));
+  return vlib_get_buffer (vm, mvpp2_rx_desc_get_cookie (d));
 }
 
 static_always_inline u64
 mrvl_pp2_rx_one_if (vlib_main_t *vm, vlib_node_runtime_t *node,
-		    vnet_dev_rx_queue_if_rt_data_t *if_rt_data,
-		    struct pp2_ppio_desc **desc_ptrs, u32 n_desc,
-		    i32 current_data, i32 len_adj, mv_dsa_tag_t tag)
+		    vnet_dev_rx_queue_if_rt_data_t *if_rt_data, mvpp2_rx_desc_t **desc_ptrs,
+		    u32 n_desc, i32 current_data, i32 len_adj, mv_dsa_tag_t tag)
 {
   vnet_main_t *vnm = vnet_get_main ();
   u64 n_rx_bytes = 0;
   vlib_buffer_t *b0, *b1;
   u32 n_trace, n_left = n_desc;
   u32 buffer_indices[VLIB_FRAME_SIZE], *bi = buffer_indices;
-  struct pp2_ppio_desc **dp = desc_ptrs;
+  mvpp2_rx_desc_t **dp = desc_ptrs;
   u32 next_index = if_rt_data->next_index;
   vlib_buffer_template_t bt = if_rt_data->buffer_template;
   u32 sw_if_index = if_rt_data->sw_if_index;
@@ -40,25 +77,22 @@ mrvl_pp2_rx_one_if (vlib_main_t *vm, vlib_node_runtime_t *node,
       clib_prefetch_store (desc_to_vlib_buffer (vm, dp[3]));
       b0 = desc_to_vlib_buffer (vm, dp[0]);
       b1 = desc_to_vlib_buffer (vm, dp[1]);
-      bi[0] = pp2_ppio_inq_desc_get_cookie (dp[0]);
-      bi[1] = pp2_ppio_inq_desc_get_cookie (dp[1]);
+      bi[0] = mvpp2_rx_desc_get_cookie (dp[0]);
+      bi[1] = mvpp2_rx_desc_get_cookie (dp[1]);
       b0->template = bt;
       b1->template = bt;
 
-      n_rx_bytes += b0->current_length =
-	pp2_ppio_inq_desc_get_pkt_len (dp[0]) + len_adj;
-      n_rx_bytes += b1->current_length =
-	pp2_ppio_inq_desc_get_pkt_len (dp[1]) + len_adj;
+      n_rx_bytes += b0->current_length = mvpp2_rx_desc_get_pkt_len (dp[0]) + len_adj;
+      n_rx_bytes += b1->current_length = mvpp2_rx_desc_get_pkt_len (dp[1]) + len_adj;
     }
 
   for (; n_left; dp++, bi++, n_left--)
     {
       b0 = desc_to_vlib_buffer (vm, dp[0]);
-      bi[0] = pp2_ppio_inq_desc_get_cookie (dp[0]);
+      bi[0] = mvpp2_rx_desc_get_cookie (dp[0]);
       b0->template = bt;
 
-      n_rx_bytes += b0->current_length =
-	pp2_ppio_inq_desc_get_pkt_len (dp[0]) + len_adj;
+      n_rx_bytes += b0->current_length = mvpp2_rx_desc_get_pkt_len (dp[0]) + len_adj;
     }
 
   /* trace */
@@ -102,14 +136,25 @@ mrvl_pp2_rx_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   mv_dsa_tag_t dsa_tags[VLIB_FRAME_SIZE];
   u16 n_desc = VLIB_FRAME_SIZE;
   vlib_buffer_t *b;
+  u32 first;
   u32 i;
 
-  if (PREDICT_FALSE (
-	pp2_ppio_recv (mp->ppio, 0, rxq->queue_id, mrq->descs, &n_desc)))
+  if (n_desc > mrq->desc_received)
     {
-      vlib_error_count (vm, node->node_index, MVPP2_RX_NODE_CTR_PPIO_RECV, 1);
-      return 0;
+      mrq->desc_received = mvpp2_rx_reg_read (mp->hif_base, MVPP2_RXQ_STATUS_REG (mrq->hw_id)) &
+			   MVPP2_RXQ_OCCUPIED_MASK;
+      n_desc = clib_min (n_desc, mrq->desc_received);
     }
+
+  first = clib_min (n_desc, mrq->desc_total - mrq->desc_next_idx);
+  clib_memcpy (mrq->descs, mrq->hw_descs + mrq->desc_next_idx, first * sizeof (*mrq->descs));
+  if (n_desc > first)
+    clib_memcpy (mrq->descs + first, mrq->hw_descs, (n_desc - first) * sizeof (*mrq->descs));
+
+  mrq->desc_next_idx = (mrq->desc_next_idx + n_desc) % mrq->desc_total;
+  mvpp2_rx_reg_write (mp->hif_base, MVPP2_RXQ_STATUS_UPDATE_REG (mrq->hw_id),
+		      n_desc | (n_desc << MVPP2_RXQ_NUM_NEW_OFFSET));
+  mrq->desc_received -= n_desc;
 
   if (mp->is_dsa)
     {
@@ -129,7 +174,7 @@ mrvl_pp2_rx_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       while (n_avail)
 	{
 	  vlib_frame_bitmap_t selected_bmp = {};
-	  struct pp2_ppio_desc *sel_descs[VLIB_FRAME_SIZE];
+	  mvpp2_rx_desc_t *sel_descs[VLIB_FRAME_SIZE];
 	  mv_dsa_tag_t tag;
 	  u32 n_sel, index;
 
@@ -156,8 +201,7 @@ mrvl_pp2_rx_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	      u32 n_free = 0, buffer_indices[VLIB_FRAME_SIZE];
 
 	      foreach_vlib_frame_bitmap_set_bit_index (i, selected_bmp)
-		buffer_indices[n_free++] =
-		  pp2_ppio_inq_desc_get_cookie (mrq->descs + i);
+		buffer_indices[n_free++] = mvpp2_rx_desc_get_cookie (mrq->descs + i);
 
 	      u32 n_trace = vlib_get_trace_count (vm, node);
 	      if (PREDICT_FALSE (n_trace > 0))
@@ -171,8 +215,7 @@ mrvl_pp2_rx_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 			    vm, node, VNET_DEV_ETH_RX_PORT_NEXT_DROP, b,
 			    /* follow_chain */ 0)))
 			{
-			  mvpp2_rx_trace_t *tr;
-			  tr = vlib_add_trace (vm, node, b, sizeof (*tr));
+			  mvpp2_rx_trace_t *tr = vlib_add_trace (vm, node, b, sizeof (*tr));
 			  tr->desc = mrq->descs[i];
 			  tr->next_index = VNET_DEV_ETH_RX_PORT_NEXT_DROP;
 			  tr->sw_if_index = CLIB_U32_MAX;
@@ -204,53 +247,79 @@ mrvl_pp2_rx_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 static_always_inline u32
 mrvl_pp2_bpool_put (vlib_main_t *vm, u32 node_index, vnet_dev_rx_queue_t *rxq)
 {
-  mvpp2_rxq_t *mrq = vnet_dev_get_rx_queue_data (rxq);
   mvpp2_device_t *md = vnet_dev_get_data (rxq->port->dev);
-  struct pp2_hif *hif = md->hif[vm->thread_index];
-  struct buff_release_entry *bre = mrq->bre;
+  mvpp2_rxq_t *mrq = vnet_dev_get_rx_queue_data (rxq);
+  mvpp2_tx_desc_t desc = mrq->bpool_desc_template;
+  mvpp2_dev_thread_t *thread = md->threads + vm->thread_index;
+  mvpp2_dm_if_t *dm_if = &thread->dm_if;
+  u32 *desc_rsrvd = md->lbk_desc_rsrvd + vm->thread_index;
+  u32 free_count = dm_if->free_count;
+  u32 desc_total = dm_if->desc_total;
+  u32 desc_next_idx = dm_if->desc_next_idx;
   u32 buffer_indices[MRVL_PP2_BUFF_BATCH_SZ];
   vlib_buffer_t *buffers[MRVL_PP2_BUFF_BATCH_SZ];
+  u8 buffer_pool_index = vnet_dev_get_rx_queue_buffer_pool_index (rxq);
   u32 i, n_put = 0;
   u32 n_bufs = mrq->n_bpool_refill;
 
-  while (n_bufs >= MRVL_PP2_BUFF_BATCH_SZ)
+  if (n_bufs >= MRVL_PP2_BUFF_BATCH_SZ && free_count < MRVL_PP2_BUFF_BATCH_SZ)
     {
-      u16 n_alloc;
-      struct buff_release_entry *e = bre;
+      u32 occ_desc =
+	mvpp2_rx_reg_read (thread->hif_base, MVPP2_AGGR_TXQ_STATUS_REG (thread->hif_id));
 
-      n_alloc = vlib_buffer_alloc (vm, buffer_indices, MRVL_PP2_BUFF_BATCH_SZ);
+      free_count = desc_total - (occ_desc & MVPP2_AGGR_TXQ_PENDING_MASK);
+    }
 
-      if (PREDICT_FALSE (n_alloc < MRVL_PP2_BUFF_BATCH_SZ))
+  while (n_bufs >= MRVL_PP2_BUFF_BATCH_SZ && free_count >= MRVL_PP2_BUFF_BATCH_SZ)
+    {
+      if (PREDICT_FALSE (!vlib_buffer_strict_alloc_from_pool (
+	    vm, buffer_indices, MRVL_PP2_BUFF_BATCH_SZ, buffer_pool_index)))
 	{
-	  if (n_alloc > 0)
-	    vlib_buffer_free (vm, buffer_indices, n_alloc);
 	  if (node_index != CLIB_U32_MAX)
-	    vlib_error_count (vm, node_index, MVPP2_RX_NODE_CTR_BUFFER_ALLOC,
-			      1);
+	    vlib_error_count (vm, node_index, MVPP2_RX_NODE_CTR_BUFFER_ALLOC, 1);
 
 	  break;
 	}
 
       vlib_get_buffers (vm, buffer_indices, buffers, MRVL_PP2_BUFF_BATCH_SZ);
 
-      for (i = 0, e = bre; i < MRVL_PP2_BUFF_BATCH_SZ; i++, e++)
+      for (i = 0; i < MRVL_PP2_BUFF_BATCH_SZ; i++)
 	{
-	  e->buff.addr = vlib_buffer_get_pa (vm, buffers[i]) - 64;
-	  e->buff.cookie = buffer_indices[i];
+	  u32 index = desc_next_idx + i;
+	  u64 addr = vlib_buffer_get_pa (vm, buffers[i]) - 64;
+
+	  if (index >= desc_total)
+	    index -= desc_total;
+	  desc.cmds[4] = addr;
+	  desc.cmds[5] = addr >> 32 & TXD_BUF_PHYS_HI_MASK;
+	  desc.cmds[6] = buffer_indices[i];
+	  dm_if->desc_virt_arr[index] = desc;
 	}
 
-      if (PREDICT_FALSE (pp2_bpool_put_buffs (hif, bre, &n_alloc)))
+      while (*desc_rsrvd < MRVL_PP2_BUFF_BATCH_SZ)
 	{
-	  vlib_buffer_free (vm, buffer_indices, n_alloc);
-	  if (node_index != CLIB_U32_MAX)
-	    vlib_error_count (vm, node_index,
-			      MVPP2_RX_NODE_CTR_BPOOL_PUT_BUFFS, 1);
-	  break;
-	}
+	  u32 needed = MRVL_PP2_BUFF_BATCH_SZ - *desc_rsrvd;
+	  u32 res_req = clib_max (needed, MVPP2_CPU_DESC_CHUNK);
+	  u32 req_val = MVPP2_LOOPBACK_TXQ_ID << MVPP2_TXQ_RSVD_REQ_Q_OFFSET | res_req;
 
+	  mvpp2_rx_reg_write_relaxed (thread->hif_base, MVPP2_TXQ_RSVD_REQ_REG, req_val);
+	  asm volatile ("dsb sy" : : : "memory");
+	  *desc_rsrvd += mvpp2_rx_reg_read (thread->hif_base, MVPP2_TXQ_RSVD_RSLT_REG) &
+			 MVPP2_TXQ_RSVD_RSLT_MASK;
+	}
+      desc_next_idx += MRVL_PP2_BUFF_BATCH_SZ;
+      if (desc_next_idx >= desc_total)
+	desc_next_idx -= desc_total;
+      free_count -= MRVL_PP2_BUFF_BATCH_SZ;
+      *desc_rsrvd -= MRVL_PP2_BUFF_BATCH_SZ;
       n_put += MRVL_PP2_BUFF_BATCH_SZ;
-      n_bufs -= n_alloc;
+      n_bufs -= MRVL_PP2_BUFF_BATCH_SZ;
     }
+
+  dm_if->free_count = free_count;
+  dm_if->desc_next_idx = desc_next_idx;
+  if (n_put)
+    mvpp2_rx_reg_write (thread->hif_base, MVPP2_AGGR_TXQ_UPDATE_REG, n_put);
 
   mrq->n_bpool_refill -= n_put;
   return n_put;

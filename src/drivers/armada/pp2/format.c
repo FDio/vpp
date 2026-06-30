@@ -9,17 +9,6 @@
 #include <musdk.h>
 #include <pp2/pp2.h>
 
-static inline u32
-mrvl_get_u32_bits (void *start, int offset, int first, int last)
-{
-  u32 value = *(u32 *) (((u8 *) start) + offset);
-  if ((last == 0) && (first == 31))
-    return value;
-  value >>= last;
-  value &= (1 << (first - last + 1)) - 1;
-  return value;
-}
-
 u8 *
 format_pp2_ppio_link_info (u8 *s, va_list *args)
 {
@@ -74,7 +63,7 @@ format_mvpp2_port_status (u8 *s, va_list *args)
   mvpp2_port_t *mp = vnet_dev_get_port_data (port);
   struct pp2_ppio_link_info li = {};
 
-  if (mp->ppio == 0 || pp2_ppio_get_link_info (mp->ppio, &li))
+  if (!mp->is_open || mvpp2_gop_get_link_info (port, &li))
     return format (s, "link info not available");
 
   return format (s, "%U", format_pp2_ppio_link_info, &li);
@@ -92,66 +81,28 @@ format_mvpp2_dev_info (u8 *s, va_list *args)
   return s;
 }
 
-#define foreach_pp2_rx_desc_field                                             \
-  _ (0x00, 6, 0, l3_offset)                                                   \
-  _ (0x00, 12, 8, ip_hdlen)                                                   \
-  _ (0x00, 14, 13, ec)                                                        \
-  _ (0x00, 15, 15, es)                                                        \
-  _ (0x00, 19, 16, pool_id)                                                   \
-  _ (0x00, 21, 21, hwf_sync)                                                  \
-  _ (0x00, 22, 22, l4_chk_ok)                                                 \
-  _ (0x00, 23, 23, ip_frg)                                                    \
-  _ (0x00, 24, 24, ipv4_hdr_err)                                              \
-  _ (0x00, 27, 25, l4_info)                                                   \
-  _ (0x00, 30, 28, l3_info)                                                   \
-  _ (0x00, 31, 31, buf_header)                                                \
-  _ (0x04, 5, 0, lookup_id)                                                   \
-  _ (0x04, 8, 6, cpu_code)                                                    \
-  _ (0x04, 9, 9, pppoe)                                                       \
-  _ (0x04, 11, 10, l3_cast_info)                                              \
-  _ (0x04, 13, 12, l2_cast_info)                                              \
-  _ (0x04, 15, 14, vlan_info)                                                 \
-  _ (0x04, 31, 16, byte_count)                                                \
-  _ (0x08, 11, 0, gem_port_id)                                                \
-  _ (0x08, 13, 12, color)                                                     \
-  _ (0x08, 14, 14, gop_sop_u)                                                 \
-  _ (0x08, 15, 15, key_hash_enable)                                           \
-  _ (0x08, 31, 16, l4chk)                                                     \
-  _ (0x0c, 31, 0, timestamp)                                                  \
-  _ (0x10, 31, 0, buf_phys_ptr_lo)                                            \
-  _ (0x14, 7, 0, buf_phys_ptr_hi)                                             \
-  _ (0x14, 31, 8, key_hash)                                                   \
-  _ (0x18, 31, 0, buf_virt_ptr_lo)                                            \
-  _ (0x1c, 7, 0, buf_virt_ptr_hi)                                             \
-  _ (0x1c, 14, 8, buf_qset_no)                                                \
-  _ (0x1c, 15, 15, buf_type)                                                  \
-  _ (0x1c, 21, 16, mod_dscp)                                                  \
-  _ (0x1c, 24, 22, mod_pri)                                                   \
-  _ (0x1c, 25, 25, mdscp)                                                     \
-  _ (0x1c, 26, 26, mpri)                                                      \
-  _ (0x1c, 27, 27, mgpid)                                                     \
-  _ (0x1c, 31, 29, port_num)
-
 u8 *
 format_mvpp2_rx_desc (u8 *s, va_list *args)
 
 {
-  struct pp2_ppio_desc *d = va_arg (*args, struct pp2_ppio_desc *);
+  mvpp2_rx_desc_t *d = va_arg (*args, mvpp2_rx_desc_t *);
   u32 indent = format_get_indent (s);
   u32 r32;
 
-#define _(a, b, c, n)                                                         \
-  r32 = mrvl_get_u32_bits (d, a, b, c);                                       \
-  if (r32 > 9)                                                                \
-    s = format (s, "%s %u (0x%x)", #n, r32, r32);                             \
-  else                                                                        \
-    s = format (s, "%s %u", #n, r32);                                         \
-  if (format_get_indent (s) > 72)                                             \
-    s = format (s, "\n%U", format_white_space, indent + 2);                   \
-  else                                                                        \
+#define _(n, w)                                                                                    \
+  r32 = d->n;                                                                                      \
+  if (r32 > 9)                                                                                     \
+    s = format (s, "%s %u (0x%x)", #n, r32, r32);                                                  \
+  else                                                                                             \
+    s = format (s, "%s %u", #n, r32);                                                              \
+  if (format_get_indent (s) > 72)                                                                  \
+    s = format (s, "\n%U", format_white_space, indent + 2);                                        \
+  else                                                                                             \
     s = format (s, " ");
 
-  foreach_pp2_rx_desc_field;
+#define R(w)
+  foreach_mvpp2_rx_desc_field;
+#undef R
 #undef _
   return s;
 }
@@ -178,7 +129,7 @@ format_mvpp2_rx_trace (u8 *s, va_list *args)
   mvpp2_rx_trace_t *t = va_arg (*args, mvpp2_rx_trace_t *);
   vnet_main_t *vnm = vnet_get_main ();
   u32 indent = format_get_indent (s);
-  struct pp2_ppio_desc *d = &t->desc;
+  mvpp2_rx_desc_t *d = &t->desc;
 
   if (t->sw_if_index != CLIB_U32_MAX)
     s = format (s, "pp2: %U (%d) next-node %U", format_vnet_sw_if_index_name,
