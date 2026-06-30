@@ -68,6 +68,9 @@ tcp_cc_init (tcp_connection_t * tc)
   if (tcp_opts_sack_permitted (&tc->rcv_opts))
     tc->snd_congestion = tc->iss;
 
+  if (tc->cc_algo->flags & TCP_CC_ALGO_F_BYTE_TRACKER)
+    tc->cfg_flags |= TCP_CFG_F_BYTE_TRACKER;
+
   tc->cc_algo->init (tc);
 }
 
@@ -782,8 +785,8 @@ tcp_connection_init_vars (tcp_connection_t * tc)
 
   /*  tcp_connection_fib_attach (tc); */
 
-  if (transport_connection_is_tx_paced (&tc->connection)
-      || tcp_cfg.enable_tx_pacing)
+  if (transport_connection_is_tx_paced (&tc->connection) || tcp_cfg.enable_tx_pacing ||
+      tc->cc_algo->get_pacing_rate)
     tcp_enable_pacing (tc);
 
   use_rack = (tcp_cfg.enable_rack || (tc->cfg_flags & TCP_CFG_F_RACK)) &&
@@ -989,6 +992,7 @@ tcp_half_open_session_get_transport (u32 conn_index)
 static int
 tcp_set_attribute (tcp_connection_t *tc, transport_endpt_attr_t *attr)
 {
+  tcp_cc_algorithm_t *cc_algo;
   int rv = 0;
 
   switch (attr->type)
@@ -1022,11 +1026,22 @@ tcp_set_attribute (tcp_connection_t *tc, transport_endpt_attr_t *attr)
 	}
       break;
     case TRANSPORT_ENDPT_ATTR_CC_ALGO:
-      if (tc->cc_algo == tcp_cc_algo_get (attr->cc_algo))
+      cc_algo = tcp_cc_algo_get (attr->cc_algo);
+      if (tc->cc_algo == cc_algo)
 	break;
+      if ((cc_algo->flags & TCP_CC_ALGO_F_BYTE_TRACKER) && !tc->bt && tc->snd_una != tc->snd_nxt)
+	{
+	  rv = -1;
+	  break;
+	}
       tcp_cc_cleanup (tc);
-      tc->cc_algo = tcp_cc_algo_get (attr->cc_algo);
+      tc->cc_algo = cc_algo;
       tcp_cc_init (tc);
+      if (tc->cc_algo->get_pacing_rate && !transport_connection_is_tx_paced (&tc->connection))
+	tcp_enable_pacing (tc);
+      /* Connection setup allocates a required tracker after tcp_cc_init. */
+      if ((tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER) && !tc->bt)
+	tcp_bt_init (tc);
       break;
     default:
       rv = -1;
