@@ -362,6 +362,15 @@ always_inline void *
 vlib_buffer_make_headroom (vlib_buffer_t * b, u8 size)
 {
   b->current_data += size;
+  /* Reserving headroom only moves current_data forward; it must land on a
+   * valid offset inside the buffer's data area (the matching lower-bound
+   * check lives in vlib_buffer_get_current()).  This catches current_data
+   * being pushed out of range -- e.g. a negative offset accidentally
+   * widened through this u8 'size' argument.  DEFAULT_DATA_SIZE is used as
+   * a sanity ceiling: real headroom reservations are at most a few header
+   * lengths. */
+  ASSERT (b->current_data >= 0 &&
+	  b->current_data <= VLIB_BUFFER_DEFAULT_DATA_SIZE);
   return vlib_buffer_get_current (b);
 }
 

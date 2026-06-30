@@ -28,6 +28,7 @@ from scapy.layers.inet6 import (
 )
 from scapy.layers.l2 import Ether, Dot1Q, GRE
 from scapy.packet import Raw
+from scapy.all import defragment6
 from scapy.utils6 import (
     in6_getnsma,
     in6_getnsmac,
@@ -3791,6 +3792,43 @@ class TestIPv6PathMTU(VppTestCase):
 
         self.send_and_expect(self.pg0, [p_2k], self.pg1, n_rx=2)
         self.send_and_expect(self.pg0, [p_1k], self.pg1)
+
+    def test_path_mtu_frag_payload(self):
+        """Tunnel fragmentation preserves payload bytes"""
+        #
+        # Tunnelled packets are fragmented post-encap; the encapsulated
+        # packet's L3 data sits inside the buffer pre-data headroom
+        # (current_data < 0). Each fragment must carry the correct payload
+        # bytes. Use a NON-uniform payload: a uniform one (as in
+        # test_path_mtu_local) hides bytes copied from the wrong place.
+        #
+        tun = VppIpIpTunInterface(
+            self, self.pg1, self.pg1.local_ip6, self.pg1.remote_ip6
+        )
+        tun.add_vpp_config()
+        tun.admin_up()
+        tun.config_ip6()
+        self.vapi.sw_interface_set_mtu(self.pg1.sw_if_index, [2800, 0, 0, 0])
+        VppNeighbor(
+            self, self.pg1.sw_if_index, self.pg1.remote_mac, self.pg1.remote_ip6
+        ).add_vpp_config()
+
+        payload = bytes([(i * 173 + 11) & 0xFF for i in range(6000)])
+        p = (
+            Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac)
+            / IPv6(src=self.pg0.remote_ip6, dst=tun.remote_ip6)
+            / UDP(sport=1234, dport=5678)
+            / Raw(payload)
+        )
+        rxs = self.send_and_expect(self.pg0, [p], self.pg1, n_rx=4)
+
+        reasm = defragment6([rx[IPv6] for rx in rxs])
+        if isinstance(reasm, list):
+            reasm = reasm[0]
+        # reasm is the OUTER (tunnel) IPv6 packet; its payload is the
+        # encapsulated inner IPv6 packet, which scapy leaves as Raw.
+        inner = IPv6(bytes(reasm[Raw].load))
+        self.assertEqual(bytes(inner[Raw].load), payload)
 
     def test_path_mtu_remote(self):
         """Path MTU for remote neighbour"""

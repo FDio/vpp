@@ -163,7 +163,15 @@ ip4_frag_do_fragment (vlib_main_t * vm, u32 from_bi, u16 mtu,
 
       /* Make sure we have as much space for headers as the original and copy
        * ip4 header */
-      to_data = vlib_buffer_make_headroom (to_b, org_from_b->current_data);
+      /* current_data is a signed i16 and is NEGATIVE when the packet's L3
+       * data sits in the pre-data headroom (e.g. after tunnel encap
+       * prepends an outer header). Copy it directly onto the fragment:
+       * routing through vlib_buffer_make_headroom() would truncate it
+       * via that function's u8 size argument (e.g. -26 -> 230),
+       * mislaying the fragment payload and overflowing the fragment
+       * buffer. */
+      to_b->current_data = org_from_b->current_data;
+      to_data = vlib_buffer_get_current (to_b);
       clib_memcpy_fast (to_data, org_from_packet, head_bytes);
       to_ip4 = (ip4_header_t *) (to_data + l2unfragmentablesize);
       to_data = (void *) (to_ip4 + 1);
@@ -433,7 +441,15 @@ ip6_frag_do_fragment (vlib_main_t * vm, u32 from_bi, u16 mtu,
 
       /* Make sure we have as much space for headers as the original and copy
        * ip6 header */
-      to_data = vlib_buffer_make_headroom (to_b, org_from_b->current_data);
+      /* current_data is a signed i16 and is NEGATIVE when the packet's L3
+       * data sits in the pre-data headroom (e.g. after tunnel encap
+       * prepends an outer header). Copy it directly onto the fragment:
+       * routing through vlib_buffer_make_headroom() would truncate it
+       * via that function's u8 size argument (e.g. -26 -> 230),
+       * mislaying the fragment payload and overflowing the fragment
+       * buffer. */
+      to_b->current_data = org_from_b->current_data;
+      to_data = vlib_buffer_get_current (to_b);
       clib_memcpy_fast (to_data, org_from_packet,
 			l2unfragmentablesize + sizeof (ip6_header_t));
       to_ip6 = vlib_buffer_get_current (to_b) + l2unfragmentablesize;
