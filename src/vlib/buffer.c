@@ -458,8 +458,8 @@ vlib_buffer_pool_create (vlib_main_t *vm, u32 data_size, u32 physmem_map_index,
   vlib_physmem_map_t *m = vlib_physmem_get_map (vm, physmem_map_index);
   uword start = pointer_to_uword (m->base);
   uword size = (uword) m->n_pages << m->log2_page_size;
-  uword page_mask = ~pow2_mask (m->log2_page_size);
-  u8 *p;
+  uword page_size = (uword) 1 << m->log2_page_size;
+  u8 *page_start, *page, *p, *end;
   u32 alloc_size;
   va_list va;
 
@@ -520,33 +520,31 @@ vlib_buffer_pool_create (vlib_main_t *vm, u32 data_size, u32 physmem_map_index,
 
   clib_spinlock_init (&bp->lock);
 
-  p = m->base;
-
-  /* start with naturally aligned address */
-  p += alloc_size - (uword) p % alloc_size;
-
   /*
    * Waste 1 buffer (maximum) so that 0 is never a valid buffer index.
    * Allows various places to ASSERT (bi != 0). Much easier
    * than debugging downstream crashes in successor nodes.
    */
-  if (p == m->base)
-    p += alloc_size;
+  page_start = m->base + alloc_size;
 
-  for (; p < (u8 *) m->base + size - alloc_size; p += alloc_size)
+  end = (u8 *) m->base + size;
+  for (page = m->base; page < end; page += page_size)
     {
-      vlib_buffer_t *b;
-      u32 bi;
+      u8 *page_end = page + page_size;
 
-      /* skip if buffer spans across page boundary */
-      if (((uword) p & page_mask) != ((uword) (p + alloc_size) & page_mask))
-	continue;
+      for (p = page_start; p + alloc_size <= page_end; p += alloc_size)
+	{
+	  vlib_buffer_t *b;
+	  u32 bi;
+	  b = (vlib_buffer_t *) (p + bm->ext_hdr_size);
+	  b->template = bp->buffer_template;
+	  bi = vlib_get_buffer_index (vm, b);
+	  ASSERT (bi != 0);
+	  bp->buffers[bp->n_avail++] = bi;
+	  vlib_get_buffer (vm, bi);
+	}
 
-      b = (vlib_buffer_t *) (p + bm->ext_hdr_size);
-      b->template = bp->buffer_template;
-      bi = vlib_get_buffer_index (vm, b);
-      bp->buffers[bp->n_avail++] = bi;
-      vlib_get_buffer (vm, bi);
+      page_start = page_end;
     }
 
   bp->n_buffers = bp->n_avail;
