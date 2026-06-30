@@ -53,6 +53,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "a8bc5a7b_b9ad726b",
+        "filename": "src/vnet/tcp/tcp_input.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 2722,
+      "author": {
+        "id": 3121
+      },
+      "writtenOn": "2026-06-30T18:27:47Z",
+      "side": 1,
+      "message": "Looks like this is fine based on the CPS test on your testbed.",
+      "parentUuid": "9b4f2219_c61dd720",
+      "revId": "cc4b2eb02e9b236ac59f728375b49b301b652e04",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "1a58e7b9_9dc6d5e6",

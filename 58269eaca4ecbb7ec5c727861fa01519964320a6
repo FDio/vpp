@@ -35,6 +35,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "85d2d738_45bea787",
+        "filename": "src/vnet/tcp/tcp_fastopen.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 21,
+      "author": {
+        "id": 3121
+      },
+      "writtenOn": "2026-06-30T18:27:47Z",
+      "side": 1,
+      "message": "Ack, done.",
+      "parentUuid": "2e97560b_27d1f1ed",
+      "revId": "58269eaca4ecbb7ec5c727861fa01519964320a6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "3833ef51_48c613ff",
@@ -48,6 +66,24 @@
       "writtenOn": "2026-06-25T22:15:01Z",
       "side": 1,
       "message": "rwlock but only maybe?",
+      "revId": "58269eaca4ecbb7ec5c727861fa01519964320a6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "dac0fa29_1e063e29",
+        "filename": "src/vnet/tcp/tcp_fastopen.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 85,
+      "author": {
+        "id": 3121
+      },
+      "writtenOn": "2026-06-30T18:27:47Z",
+      "side": 1,
+      "message": "Ack, done.",
+      "parentUuid": "3833ef51_48c613ff",
       "revId": "58269eaca4ecbb7ec5c727861fa01519964320a6",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -69,6 +105,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "a1c20b79_184b7cbd",
+        "filename": "src/vnet/tcp/tcp_fastopen.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 155,
+      "author": {
+        "id": 3121
+      },
+      "writtenOn": "2026-06-30T18:27:47Z",
+      "side": 1,
+      "message": "Ack, fixed.",
+      "parentUuid": "172da10a_2a2453cd",
+      "revId": "58269eaca4ecbb7ec5c727861fa01519964320a6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "912230c6_c5737e72",
@@ -82,6 +136,24 @@
       "writtenOn": "2026-06-25T22:15:01Z",
       "side": 1,
       "message": "just pass in the vm :)",
+      "revId": "58269eaca4ecbb7ec5c727861fa01519964320a6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "0035cd3f_175d44e4",
+        "filename": "src/vnet/tcp/tcp_fastopen.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 290,
+      "author": {
+        "id": 3121
+      },
+      "writtenOn": "2026-06-30T18:27:47Z",
+      "side": 1,
+      "message": "Ack, fixed.",
+      "parentUuid": "912230c6_c5737e72",
       "revId": "58269eaca4ecbb7ec5c727861fa01519964320a6",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -103,6 +175,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "33951711_a97d55f8",
+        "filename": "src/vnet/tcp/tcp_fastopen.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 294,
+      "author": {
+        "id": 3121
+      },
+      "writtenOn": "2026-06-30T18:27:47Z",
+      "side": 1,
+      "message": "Ack, replaced with vppinfra\u0027s `clib_llist`.",
+      "parentUuid": "31bcfdbd_57975dab",
+      "revId": "58269eaca4ecbb7ec5c727861fa01519964320a6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "9eb4753e_032b9d96",
@@ -120,6 +210,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "3c8edbe8_3ffaa858",
+        "filename": "src/vnet/tcp/tcp_fastopen.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 368,
+      "author": {
+        "id": 3121
+      },
+      "writtenOn": "2026-06-30T18:27:47Z",
+      "side": 1,
+      "message": "Ack, done.",
+      "parentUuid": "9eb4753e_032b9d96",
+      "revId": "58269eaca4ecbb7ec5c727861fa01519964320a6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "c36a25ad_f4de4414",
@@ -133,6 +241,24 @@
       "writtenOn": "2026-06-25T22:15:01Z",
       "side": 1,
       "message": "can we drop the cookie from the params?",
+      "revId": "58269eaca4ecbb7ec5c727861fa01519964320a6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ec834543_f219ab57",
+        "filename": "src/vnet/tcp/tcp_packet.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 471,
+      "author": {
+        "id": 3121
+      },
+      "writtenOn": "2026-06-30T18:27:47Z",
+      "side": 1,
+      "message": "Ack, done.",
+      "parentUuid": "c36a25ad_f4de4414",
       "revId": "58269eaca4ecbb7ec5c727861fa01519964320a6",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
