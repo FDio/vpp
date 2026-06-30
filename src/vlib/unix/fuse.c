@@ -35,6 +35,7 @@ VLIB_REGISTER_LOG_CLASS (fuse_log, static) = {
 static u32 fuse_process_node_index;
 
 #define VLIB_FUSE_MAX_WRITE (4 * 4096)
+#define VLIB_FUSE_MAX_MSGS_PER_READ 64
 
 typedef struct vlib_fuse_node_t
 {
@@ -58,6 +59,7 @@ struct vlib_fuse_handle_t
   u32 uid;
   u32 gid;
   u32 blksize;
+  u32 max_msgs_per_read;
   int fd;
   u64 private_data;
   u8 *mountpoint;
@@ -868,7 +870,7 @@ done:
 static void
 vlib_fuse_read (vlib_main_t *vm, vlib_fuse_handle_t h)
 {
-  int msgs_left = 64;
+  u32 msgs_left = h->max_msgs_per_read;
   static u8 __clib_aligned (4096)
   buf[VLIB_FUSE_MAX_WRITE + 4096]; /* 3 pages */
   struct fuse_in_header *in = (struct fuse_in_header *) buf;
@@ -1114,6 +1116,9 @@ vlib_fuse_create (vlib_fuse_handle_t *hp, vlib_fuse_create_args_t *args,
   vlib_fuse_handle_t h = clib_mem_alloc (sizeof (*h));
   *h = (struct vlib_fuse_handle_t){
     .blksize = args->blksize ? args->blksize : 4096,
+    .max_msgs_per_read = args->max_msgs_per_read ?
+				 clib_min (args->max_msgs_per_read, VLIB_FUSE_MAX_MSGS_PER_READ) :
+				 VLIB_FUSE_MAX_MSGS_PER_READ,
     .fd = fd,
     .uid = getuid (),
     .gid = getgid (),
