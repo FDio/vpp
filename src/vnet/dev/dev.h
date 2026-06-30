@@ -34,9 +34,11 @@ typedef enum
 
 #define foreach_vnet_dev_port_rx_offloads _ (ip4_cksum) _ (l4_cksum)
 
-#define foreach_vnet_dev_port_tx_offloads                                     \
-  _ (ip4_cksum)                                                               \
-  _ (tcp_gso)                                                                 \
+#define foreach_vnet_dev_port_tx_offloads                                                          \
+  _ (ip4_cksum)                                                                                    \
+  _ (tcp_cksum)                                                                                    \
+  _ (udp_cksum)                                                                                    \
+  _ (tcp_gso)                                                                                      \
   _ (udp_gso)
 
 typedef union
