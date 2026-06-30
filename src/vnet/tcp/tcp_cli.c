@@ -4,10 +4,13 @@
  */
 
 #include <vnet/tcp/tcp.h>
+#include <vnet/tcp/tcp_bbr.h>
 #include <vnet/tcp/tcp_inlines.h>
 #include <vnet/tcp/tcp_rack.h>
 #include <vnet/dpo/receive_dpo.h>
 #include <vnet/ip-neighbor/ip_neighbor.h>
+
+uword unformat_tcp_cc_algo (unformat_input_t *input, va_list *va);
 
 const char *tcp_fsm_states[] = {
 #define _(sym, str) str,
@@ -202,6 +205,8 @@ format_tcp_vars (u8 * s, va_list * args)
 	      tc->next_node_index, tc->next_node_opaque, tc->c_fib_index,
 	      tc->sw_if_index);
   s = format (s, " cong:   %U", format_tcp_congestion, tc);
+  if (tc->cc_algo == tcp_cc_algo_get (TCP_CC_BBR))
+    s = format (s, " bbr:    %U\n", format_tcp_bbr, tc);
 
   if (tc->state >= TCP_STATE_ESTABLISHED)
     {
@@ -945,6 +950,7 @@ tcp_set_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
   u8 mtu_set = 0;
   u8 initial_cwnd_set = 0;
   u8 rack_set = 0;
+  u8 cc_algo_set = 0;
   u32 mtu, min_mtu = 1280, initial_cwnd_multiplier;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
@@ -995,6 +1001,10 @@ tcp_set_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
 
 	  dsack_set = 1;
 	}
+      else if (unformat (input, "cc-algo %U", unformat_tcp_cc_algo, &tcp_cfg.cc_algo))
+	{
+	  cc_algo_set = 1;
+	}
       else if (unformat (input, "mtu %u", &mtu))
 	{
 	  if (mtu < min_mtu)
@@ -1019,9 +1029,10 @@ tcp_set_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
     }
 
   if (!byte_tracker_set && !csum_offload_set && !dsack_set && !mtu_set && !initial_cwnd_set &&
-      !rack_set)
+      !rack_set && !cc_algo_set)
     return clib_error_return (0, "expected byte-tracker, csum-offload, "
-				 "dsack, mtu, initial-cwnd-multiplier or [no-]rack");
+				 "dsack, mtu, initial-cwnd-multiplier, [no-]rack "
+				 "or cc-algo");
 
   if (byte_tracker_set)
     vlib_cli_output (vm, "TCP byte tracker for new connections: %s",
@@ -1039,6 +1050,9 @@ tcp_set_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
   if (rack_set)
     vlib_cli_output (vm, "TCP RACK loss detection: %s",
 		     tcp_cfg.enable_rack ? "enabled" : "disabled");
+  if (cc_algo_set)
+    vlib_cli_output (vm, "TCP congestion control for new connections: %s",
+		     tcp_cc_algo_get (tcp_cfg.cc_algo)->name);
   return 0;
 }
 
@@ -1046,7 +1060,8 @@ VLIB_CLI_COMMAND (tcp_set_command, static) = {
   .path = "set tcp",
   .short_help = "set tcp [byte-tracker [enable|disable]] "
 		"[csum-offload [enable|disable]] [dsack [enable|disable]] "
-		"[mtu <mtu>] [initial-cwnd-multiplier <n>] [rack|no-rack]",
+		"[mtu <mtu>] [initial-cwnd-multiplier <n>] [rack|no-rack] "
+		"[cc-algo <name>]",
   .function = tcp_set_fn,
 };
 
