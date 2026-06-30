@@ -7,24 +7,24 @@
 #include <vnet/dev/counters.h>
 #include <vnet/dev/bus/platform.h>
 #include <vppinfra/ring.h>
+#include <vppinfra/linux/sysfs.h>
 #include <musdk.h>
 #include <pp2/pp2.h>
 #include <vnet/ethernet/ethernet.h>
 
-#include <linux/if.h>
+#include <net/if.h>
 #include <netinet/in.h>
+#include <dirent.h>
+#include <errno.h>
+#include <limits.h>
 #include <sys/ioctl.h>
-
-#define MV_SYS_DMA_MEM_SZ (2 << 21)
+#include <sys/mman.h>
+#include <unistd.h>
 
 VLIB_REGISTER_LOG_CLASS (mvpp2_log, static) = {
   .class_name = "armada",
   .subclass_name = "init",
 };
-
-static int num_pp2_in_use = 0;
-static int dma_mem_initialized = 0;
-static int global_pp2_initialized = 0;
 
 #define _(f, n, s, d)                                                         \
   { .name = #n, .desc = (d), .severity = VL_COUNTER_SEVERITY_##s },
@@ -54,90 +54,120 @@ mvpp2_probe (vlib_main_t *vm, vnet_dev_probe_args_t *args)
   return 0;
 }
 static void
-mvpp2_global_deinit (vlib_main_t *vm, vnet_dev_t *dev)
-{
-  mvpp2_device_t *md = vnet_dev_get_data (dev);
-  log_debug (dev, "");
-  if (--num_pp2_in_use == 0)
-    {
-      if (md->dummy_short_bpool)
-	{
-	  pp2_bpool_deinit (md->dummy_short_bpool);
-	  md->dummy_short_bpool = 0;
-	}
-
-      if (global_pp2_initialized)
-	{
-	  for (u32 i = 0; i < ARRAY_LEN (md->hif); i++)
-	    if (md->hif[i])
-	      {
-		pp2_hif_deinit (md->hif[i]);
-		md->hif[i] = 0;
-	      }
-
-	  pp2_deinit ();
-	  global_pp2_initialized = 0;
-	}
-      if (dma_mem_initialized)
-	{
-	  mv_sys_dma_mem_destroy ();
-	  log_debug (0, "mv_sys_dma_mem_destroy()");
-	  dma_mem_initialized = 0;
-	}
-    }
-}
-
-static void
 mvpp2_deinit (vlib_main_t *vm, vnet_dev_t *dev)
 {
+  mvpp2_device_t *md = vnet_dev_get_data (dev);
+
   log_debug (dev, "");
-  mvpp2_global_deinit (vm, dev);
+  if (!md->is_initialized)
+    return;
+
+  if (md->dummy_short_bpool.is_initialized)
+    {
+      pp2_bpool_deinit (vm, dev, &md->dummy_short_bpool);
+    }
+
+  for (u32 i = 0; i < ARRAY_LEN (md->threads); i++)
+    if (md->threads[i].dm_if.desc_virt_arr)
+      pp2_hif_deinit (vm, dev, i);
+
+  pp2_loopback_deinit (md);
+  if (md->pp_base)
+    munmap ((void *) md->pp_base, md->pp_map_size);
+  if (md->gop_hw_mspg)
+    munmap ((void *) md->gop_hw_mspg, md->mspg_map_size);
+  if (md->cm3_base)
+    munmap ((void *) md->cm3_base, md->cm3_map_size);
+  if (md->uio_fd >= 0)
+    close (md->uio_fd);
+  md->uio_fd = -1;
+  md->is_initialized = 0;
 }
 
-static vnet_dev_rv_t
-mvpp2_global_init (vlib_main_t *vm, vnet_dev_t *dev)
+static u32
+mvpp2_port_get_if_index (vnet_dev_t *dev, clib_dt_node_t *port_node, u8 ppio_id)
+{
+  char net_path[PATH_MAX];
+  char real_path[PATH_MAX];
+  char path[PATH_MAX];
+  u8 *port_node_path;
+  struct dirent *e;
+  clib_error_t *err;
+  DIR *dir;
+  u32 dev_port;
+  u32 if_index = 0;
+
+  port_node_path = format (0, CLIB_DT_LINUX_PREFIX "%v%c", port_node->path, 0);
+  snprintf (net_path, sizeof (net_path), "/sys/bus/platform/devices/%s/net",
+	    dev->device_id + sizeof (PLATFORM_BUS_NAME));
+  dir = opendir (net_path);
+  if (!dir)
+    {
+      log_warn (dev, "cannot open %s: %s", net_path, strerror (errno));
+      vec_free (port_node_path);
+      return 0;
+    }
+
+  while ((e = readdir (dir)))
+    {
+      if (e->d_name[0] == '.')
+	continue;
+
+      snprintf (path, sizeof (path), "%s/%s/dev_port", net_path, e->d_name);
+      err = clib_sysfs_read (path, "%u", &dev_port);
+
+      if (!err && dev_port == ppio_id)
+	if_index = if_nametoindex (e->d_name);
+      if (err)
+	{
+	  clib_error_free (err);
+	}
+      if (if_index)
+	break;
+
+      snprintf (path, sizeof (path), "%s/%s/of_node", net_path, e->d_name);
+      if (realpath (path, real_path) && strcmp (real_path, (char *) port_node_path) == 0)
+	{
+	  if_index = if_nametoindex (e->d_name);
+	  break;
+	}
+    }
+
+  closedir (dir);
+  vec_free (port_node_path);
+  return if_index;
+}
+
+vnet_dev_rv_t
+mvpp2_device_lazy_init (vlib_main_t *vm, vnet_dev_t *dev)
 {
   mvpp2_device_t *md = vnet_dev_get_data (dev);
   vnet_dev_rv_t rv = VNET_DEV_OK;
-  char match[16];
-  int mrv;
+  vnet_dev_rv_t mrv;
   u8 index;
   u16 free_hifs;
   u16 n_threads = vlib_get_n_threads ();
 
-  struct pp2_init_params init_params = {
-    .hif_reserved_map = 0xf,
-    .bm_pool_reserved_map = 0x7,
-  };
-
-  if (num_pp2_in_use++)
+  if (md->is_initialized)
     return rv;
 
-  mrv = mv_sys_dma_mem_init (MV_SYS_DMA_MEM_SZ);
-  if (mrv < 0)
+  md->hif_reserved_map = 0xf;
+  md->bm_pool_reserved_map = 0x7;
+
+  if ((mrv = pp2_device_init (dev)))
     {
-      log_err (0, "mv_sys_dma_mem_init failed, err %d", mrv);
+      log_err (dev, "pp2_device_init failed, err %d", mrv);
       rv = VNET_DEV_ERR_INIT_FAILED;
       goto done;
     }
 
-  dma_mem_initialized = 1;
-  log_debug (0, "mv_sys_dma_mem_init(%u) ok", MV_SYS_DMA_MEM_SZ);
+  md->is_initialized = 1;
+  log_debug (dev, "pp2_device_init() ok");
 
-  if ((mrv = pp2_init (&init_params)))
-    {
-      log_err (dev, "pp2_init failed, err %d", mrv);
-      rv = VNET_DEV_ERR_INIT_FAILED;
-      goto done;
-    }
+  free_hifs = pow2_mask (MVPP2_NUM_HIFS) ^ md->hif_reserved_map;
+  md->free_bpools = pow2_mask (MVPP2_NUM_BPOOLS) ^ md->bm_pool_reserved_map;
 
-  log_debug (dev, "pp2_init() ok");
-
-  free_hifs = pow2_mask (MVPP2_NUM_HIFS) ^ init_params.hif_reserved_map;
-  md->free_bpools =
-    pow2_mask (MVPP2_NUM_BPOOLS) ^ init_params.bm_pool_reserved_map;
-
-  if (n_threads > count_set_bits (free_hifs))
+  if (n_threads > MVPP2_MAX_THREADS || n_threads > count_set_bits (free_hifs))
     {
       log_err (dev, "no enough HIFs (needed %u available %u)", n_threads,
 	       count_set_bits (free_hifs));
@@ -147,16 +177,10 @@ mvpp2_global_init (vlib_main_t *vm, vnet_dev_t *dev)
 
   for (u32 i = 0; i < n_threads; i++)
     {
-      struct pp2_hif_params hif_params = {
-	.match = match,
-	.out_size = 2048,
-      };
-
       index = get_lowest_set_bit_index (free_hifs);
       free_hifs ^= 1 << index;
-      snprintf (match, sizeof (match), "hif-%u", index);
 
-      mrv = pp2_hif_init (&hif_params, md->hif + i);
+      mrv = pp2_hif_init (vm, dev, i, index, 2048);
       if (mrv < 0)
 	{
 	  log_err (dev, "pp2_hif_init failed for hif %u thread %u, err %d",
@@ -169,24 +193,26 @@ mvpp2_global_init (vlib_main_t *vm, vnet_dev_t *dev)
 
   index = get_lowest_set_bit_index (md->free_bpools);
   md->free_bpools ^= 1 << index;
-  snprintf (match, sizeof (match), "pool-%u:%u", md->pp_id, index);
 
   mrv = pp2_bpool_init (
-    &(struct pp2_bpool_params){
-      .match = match,
+    &(struct pp2_bpool_params) {
+      .vm = vm,
+      .dev = dev,
+      .id = index,
       .buff_len = 64,
       .dummy_short_pool = 1,
     },
     &md->dummy_short_bpool);
   if (mrv < 0)
     {
-      log_err (dev, "pp2_bpool_init failed for bpool %s, err %d", match, mrv);
+      log_err (dev, "pp2_bpool_init failed for bpool %u:%u, err %d", md->pp_id, index, mrv);
       rv = VNET_DEV_ERR_INIT_FAILED;
       goto done;
     }
-  log_debug (dev, "pp2_bpool_init(bpool %u) %s ok", index, match);
-
+  log_debug (dev, "pp2_bpool_init(bpool %u:%u) ok", md->pp_id, index);
 done:
+  if (rv != VNET_DEV_OK)
+    mvpp2_deinit (vm, dev);
   return rv;
 }
 
@@ -259,9 +285,6 @@ mvpp2_init (vlib_main_t *vm, vnet_dev_t *dev)
 	  }
       }
 
-  if ((mvpp2_global_init (vm, dev)) != VNET_DEV_OK)
-    return rv;
-
   md->pp_id = pp_id;
 
   foreach_clib_dt_child_node (cn, dd->node)
@@ -269,6 +292,7 @@ mvpp2_init (vlib_main_t *vm, vnet_dev_t *dev)
       clib_dt_property_t *p;
       char netdev_name[IFNAMSIZ];
       struct ifreq s = {};
+      u32 if_index;
       u8 ppio_id;
       int fd, srv;
 
@@ -280,12 +304,17 @@ mvpp2_init (vlib_main_t *vm, vnet_dev_t *dev)
       ppio_id = clib_dt_property_get_u32 (p);
       log_debug (dev, "found port with ppio id %u", ppio_id);
 
-      if (pp2_ppio_available (md->pp_id, ppio_id) == 0)
+      if (ppio_id >= ARRAY_LEN (md->mac_data))
 	continue;
 
-      if (pp2_netdev_get_ifname (md->pp_id, ppio_id, netdev_name) < 0)
+      p = clib_dt_get_node_property_by_name (cn, "status");
+      if (p && strcmp (clib_dt_property_get_string (p), "disabled") == 0)
+	continue;
+
+      if_index = mvpp2_port_get_if_index (dev, cn, ppio_id);
+      if (if_index == 0 || if_indextoname (if_index, netdev_name) == 0)
 	{
-	  log_warn (dev, "failed to get ifname, skipping port %u ", ppio_id);
+	  log_warn (dev, "failed to get netdev, skipping port %u ", ppio_id);
 	  continue;
 	}
 
@@ -308,7 +337,8 @@ mvpp2_init (vlib_main_t *vm, vnet_dev_t *dev)
 		 netdev_name, format_ethernet_address, s.ifr_addr.sa_data);
 
       mvpp2_port_t mvpp2_port = {
-	.ppio_id = ppio_id,
+	.id = ppio_id,
+	.if_index = if_index,
       };
 
       if (sw)

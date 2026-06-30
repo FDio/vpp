@@ -12,22 +12,124 @@
 #include <vnet/vnet.h>
 #include <vnet/dev/dev.h>
 
+#include <net/if.h>
+
+#include <musdk.h>
+
+struct ethtool_gstrings;
+struct pp2_dm_if;
+struct pp2_cls_db_t;
+struct mv_pp2x_prs_shadow;
+struct pp2_ppio_sg_pkts;
+
 #define MVCONF_DBG_LEVEL	       0
 #define MVCONF_PP2_BPOOL_COOKIE_SIZE   32
 #define MVCONF_PP2_BPOOL_DMA_ADDR_SIZE 64
 #define MVCONF_DMA_PHYS_ADDR_T_SIZE    64
 #define MVCONF_SYS_DMA_UIO
+#define MVPP2_MAX_NUM_DEVICES 4
 #define MVCONF_TYPES_PUBLIC
 #define MVCONF_DMA_PHYS_ADDR_T_PUBLIC
 
-#include <drivers/mv_pp2_bpool.h>
-#include <drivers/mv_pp2_ppio.h>
-
 #define MVPP2_NUM_HIFS	       9
+#define MVPP2_REGSPACE_SIZE	    0x10000
 #define MVPP2_NUM_BPOOLS       16
 #define MVPP2_MAX_THREADS      4
 #define MRVL_PP2_BUFF_BATCH_SZ 32
 #define MV_DSA_N_SRC	       32
+#define PP2_HW_PORT_NUM_RXQS	    32
+#define PP2_MAX_NUM_USED_INTERRUPTS 4
+
+enum pp2_phy_interface
+{
+  PP2_PHY_INTERFACE_MODE_NA,
+  PP2_PHY_INTERFACE_MODE_MII,
+  PP2_PHY_INTERFACE_MODE_GMII,
+  PP2_PHY_INTERFACE_MODE_SGMII,
+  PP2_PHY_INTERFACE_MODE_TBI,
+  PP2_PHY_INTERFACE_MODE_REVMII,
+  PP2_PHY_INTERFACE_MODE_RMII,
+  PP2_PHY_INTERFACE_MODE_RGMII,
+  PP2_PHY_INTERFACE_MODE_RGMII_ID,
+  PP2_PHY_INTERFACE_MODE_RGMII_RXID,
+  PP2_PHY_INTERFACE_MODE_RGMII_TXID,
+  PP2_PHY_INTERFACE_MODE_RTBI,
+  PP2_PHY_INTERFACE_MODE_SMII,
+  PP2_PHY_INTERFACE_MODE_XGMII,
+  PP2_PHY_INTERFACE_MODE_MOCA,
+  PP2_PHY_INTERFACE_MODE_QSGMII,
+  PP2_PHY_INTERFACE_MODE_XAUI,
+  PP2_PHY_INTERFACE_MODE_RXAUI,
+  PP2_PHY_INTERFACE_MODE_KR,
+  PP2_PHY_INTERFACE_MODE_MAX,
+};
+
+struct pp2_mac_data
+{
+  u8 gop_index;
+  unsigned long flags;
+  int phy_addr;
+  enum pp2_phy_interface phy_mode;
+  u8 force_link;
+  unsigned int autoneg;
+  unsigned int link;
+  unsigned int duplex;
+  unsigned int speed;
+  u8 mac[MV_ETH_ALEN];
+};
+
+struct pp2_mac_unit_desc
+{
+  uintptr_t base;
+  unsigned int obj_size;
+};
+
+struct pp2_ppio_tc_config
+{
+  u16 pkt_offset;
+  u8 num_in_qs;
+  u8 first_rxq;
+  mvpp2_bpool_t *pools[MV_SYS_DMA_MAX_NUM_MEM_ID][PP2_PPIO_TC_CLUSTER_MAX_POOLS];
+  enum pp2_ppio_color default_color;
+};
+
+struct pp2_rxq
+{
+  u32 ring_size;
+  u8 tc_pools_mem_id_index;
+};
+
+struct pp2_tc
+{
+  u32 first_log_rxq;
+  struct pp2_rxq rx_qs[PP2_HW_PORT_NUM_RXQS];
+  struct pp2_ppio_tc_config tc_config;
+};
+
+struct pp2_txq_config
+{
+  u16 size;
+  enum pp2_ppio_outq_sched_mode sched_mode;
+  u16 weight;
+};
+
+struct pp2_desc
+{
+  u32 cmd0;
+  u32 cmd1;
+  u32 cmd2;
+  u32 cmd3;
+  u32 cmd4;
+  u32 cmd5;
+  u32 cmd6;
+  u32 cmd7;
+};
+
+struct pp2_ppio_sg_pkts
+{
+  u16 num;
+  u8 *frags;
+};
 
 #define foreach_mv_dsa_tag_field                                              \
   _ (12, vid)                                                                 \
@@ -83,33 +185,60 @@ mv_dsa_tag_write (void *p, mv_dsa_tag_t tag)
 
 typedef struct
 {
-  u8 pp_id;
-  u16 free_bpools;
-  struct pp2_bpool *dummy_short_bpool;
-  struct pp2_hif *hif[MVPP2_NUM_HIFS];
-} mvpp2_device_t;
+  u64 rx_bytes;
+  u64 rx_packets;
+  u64 rx_unicast_packets;
+  u64 rx_errors;
+  u64 rx_fullq_dropped;
+  u32 rx_bm_dropped;
+  u32 rx_early_dropped;
+  u32 rx_fifo_dropped;
+  u32 rx_cls_dropped;
+  u64 tx_bytes;
+  u64 tx_packets;
+  u64 tx_unicast_packets;
+  u64 tx_errors;
+} mvpp2_port_statistics_t;
 
 typedef struct
 {
-  u8 is_enabled : 1;
-  u8 is_dsa : 1;
-  struct pp2_ppio *ppio;
-  u8 ppio_id;
-  struct pp2_ppio_link_info last_link_info;
-  struct pp2_bpool *bpool;
-  clib_dt_node_t *switch_node;
-  clib_dt_node_t *switch_port_node;
+  u64 enq_desc;
+  u32 drop_fullq;
+  u16 drop_early;
+  u16 drop_bm;
+} mvpp2_rxq_statistics_t;
 
-  uword valid_dsa_src_bitmap[1024 / uword_bits];
-  u16 dsa_to_sec_if[1024];
-} mvpp2_port_t;
+typedef struct
+{
+  u64 enq_desc;
+  u64 enq_dec_to_ddr;
+  u64 enq_buf_to_ddr;
+  u64 deq_desc;
+} mvpp2_txq_statistics_t;
 
 typedef struct
 {
   u16 next;
   u16 n_enq;
   u32 *buffers;
+  u32 id;
+  u32 log_id;
+  u32 desc_total;
+  uintptr_t desc_phys_arr;
+  uintptr_t hif_base;
+  struct pp2_desc *desc_virt_arr;
+  u32 desc_rsrvd[MVPP2_MAX_THREADS];
+  int disabled;
+  mvpp2_txq_statistics_t stats;
 } mvpp2_txq_t;
+
+struct pp2_dm_if
+{
+  u32 desc_total;
+  u32 free_count;
+  u32 desc_next_idx;
+  struct pp2_desc *desc_virt_arr;
+};
 
 typedef struct
 {
@@ -117,7 +246,109 @@ typedef struct
   struct pp2_ppio_desc *desc_ptrs[VLIB_FRAME_SIZE];
   struct buff_release_entry bre[MRVL_PP2_BUFF_BATCH_SZ];
   u16 n_bpool_refill;
+  u32 id;
+  u32 log_id;
+  u32 desc_total;
+  uintptr_t desc_phys_arr;
+  u32 bm_pool_id[PP2_PPIO_TC_CLUSTER_MAX_POOLS];
+  u32 desc_received;
+  u32 desc_next_idx;
+  struct pp2_ppio_desc *hw_descs;
+  mvpp2_rxq_statistics_t stats;
 } mvpp2_rxq_t;
+
+typedef struct
+{
+  u32 hif_id;
+  uintptr_t hif_base;
+  struct pp2_dm_if dm_if;
+} mvpp2_dev_thread_t;
+
+typedef struct
+{
+  u8 pp_id;
+  u8 is_initialized : 1;
+  u8 lbk_is_initialized : 1;
+  u16 free_bpools;
+  u16 hif_reserved_map;
+  u16 bm_pool_reserved_map;
+  uintptr_t pp_base;
+  struct pp2_mac_unit_desc gop_hw_gmac;
+  struct pp2_mac_unit_desc gop_hw_xlg_mac;
+  uintptr_t gop_hw_mspg;
+  uintptr_t cm3_base;
+  struct pp2_desc *lbk_desc_virt_arr;
+  u32 lbk_desc_rsrvd[MVPP2_MAX_THREADS];
+  struct pp2_mac_data mac_data[3];
+  int uio_fd;
+  u32 pp_map_size;
+  u32 mspg_map_size;
+  u32 cm3_map_size;
+  struct pp2_cls_db_t *cls_db;
+  mvpp2_bpool_t dummy_short_bpool;
+  struct pp2_ppio_desc *rel_descs[MVPP2_MAX_THREADS];
+  mvpp2_dev_thread_t threads[MVPP2_MAX_THREADS];
+} mvpp2_device_t;
+
+static_always_inline uintptr_t
+mvpp2_hif_base (mvpp2_device_t *md, u32 id)
+{
+  ASSERT (id < MVPP2_NUM_HIFS);
+  return md->pp_base + id * MVPP2_REGSPACE_SIZE;
+}
+
+typedef struct
+{
+  u8 addr[6];
+} mvpp2_uc_addr_t;
+
+typedef struct
+{
+  u8 is_enabled : 1;
+  u8 is_dsa : 1;
+  u8 rss_en : 1;
+  u8 tx_pause_en : 1;
+  u8 rx_pause_en : 1;
+  u8 is_open;
+  u32 id;
+  u32 if_index;
+  struct pp2_txq_config txq_config[PP2_PPIO_MAX_NUM_OUTQS];
+  u32 num_tcs;
+  u32 first_rxq;
+  u32 t_mode;
+  u16 port_mru;
+  u16 port_mtu;
+  mvpp2_port_statistics_t stats;
+  uintptr_t hif_base;
+  struct pp2_tc tc;
+  enum pp2_ppio_hash_type hash_type;
+  struct pp2_mac_data mac_data;
+  mvpp2_uc_addr_t *added_uc_addrs;
+  u32 num_added_mc_addr;
+  u32 saved_rx_isr[PP2_MAX_NUM_USED_INTERRUPTS];
+  struct ethtool_gstrings *stats_name;
+  struct pp2_ppio_link_info last_link_info;
+  mvpp2_bpool_t bpool;
+  clib_dt_node_t *switch_node;
+  clib_dt_node_t *switch_port_node;
+
+  uword valid_dsa_src_bitmap[1024 / uword_bits];
+  u16 dsa_to_sec_if[1024];
+} mvpp2_port_t;
+
+static_always_inline char *
+mvpp2_port_ifname (vnet_dev_port_t *port, char ifname[IFNAMSIZ])
+{
+  mvpp2_port_t *mp = vnet_dev_get_port_data (port);
+
+  if (if_indextoname (mp->if_index, ifname) == 0)
+    ifname[0] = 0;
+  return ifname;
+}
+
+vnet_dev_rv_t pp2_device_init (vnet_dev_t *);
+void pp2_loopback_deinit (mvpp2_device_t *);
+vnet_dev_rv_t mvpp2_device_lazy_init (vlib_main_t *, vnet_dev_t *);
 
 typedef struct
 {
@@ -129,6 +360,8 @@ typedef struct
 
 /* counters.c */
 void mvpp2_port_add_counters (vlib_main_t *, vnet_dev_port_t *);
+void mvpp2_port_counters_init (vnet_dev_port_t *);
+void mvpp2_port_counters_deinit (vnet_dev_port_t *);
 void mvpp2_port_clear_counters (vlib_main_t *, vnet_dev_port_t *);
 void mvpp2_rxq_clear_counters (vlib_main_t *, vnet_dev_rx_queue_t *);
 void mvpp2_txq_clear_counters (vlib_main_t *, vnet_dev_tx_queue_t *);

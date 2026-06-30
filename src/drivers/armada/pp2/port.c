@@ -26,12 +26,15 @@ mvpp2_port_init (vlib_main_t *vm, vnet_dev_port_t *port)
   struct pp2_ppio_link_info li;
   enum pp2_ppio_hash_type hash_type = PP2_PPIO_HASH_T_5_TUPLE;
   struct pp2_ppio_inq_params *inqs_params = 0;
-  char match[16];
-  int mrv;
+  vnet_dev_rv_t mrv;
   u16 n_rxq = 0;
   u8 index;
 
   log_debug (port->dev, "");
+
+  rv = mvpp2_device_lazy_init (vm, dev);
+  if (rv != VNET_DEV_OK)
+    goto done;
 
   foreach_vnet_dev_port_rx_queue (q, port)
     {
@@ -59,11 +62,12 @@ mvpp2_port_init (vlib_main_t *vm, vnet_dev_port_t *port)
 
   index = get_lowest_set_bit_index (md->free_bpools);
   md->free_bpools ^= 1 << index;
-  snprintf (match, sizeof (match), "pool-%u:%u", md->pp_id, index);
 
   mrv = pp2_bpool_init (
-    &(struct pp2_bpool_params){
-      .match = match,
+    &(struct pp2_bpool_params) {
+      .vm = vm,
+      .dev = dev,
+      .id = index,
       .buff_len = vlib_buffer_get_default_data_size (vm),
     },
     &mp->bpool);
@@ -73,25 +77,22 @@ mvpp2_port_init (vlib_main_t *vm, vnet_dev_port_t *port)
       rv = VNET_DEV_ERR_INIT_FAILED;
       goto done;
     }
-  log_debug (dev, "pp2_bpool_init(bpool %u) pool-%u:%u ok", index,
-	     mp->bpool->pp2_id, mp->bpool->id);
+  log_debug (dev, "pp2_bpool_init(bpool %u) pool-%u:%u ok", index, md->pp_id, mp->bpool.id);
 
   foreach_vnet_dev_port_rx_queue (q, port)
     {
       mvpp2_rxq_t *prq = vnet_dev_get_rx_queue_data (q);
 
       for (u32 j = 0; j < ARRAY_LEN (prq->bre); j++)
-	prq->bre[j].bpool = mp->bpool;
+	prq->bre[j].bpool = &mp->bpool;
 
       for (u32 i = 0; i < VLIB_FRAME_SIZE; i++)
 	prq->desc_ptrs[i] = prq->descs + i;
     }
 
-  snprintf (match, sizeof (match), "ppio-%d:%d", md->pp_id, port->port_id);
-
   struct pp2_ppio_params ppio_params = {
-    .match = match,
-    .type = PP2_PPIO_T_NIC,
+    .pp2_id = md->pp_id,
+    .id = port->port_id,
     .eth_start_hdr = mp->is_dsa ? PP2_PPIO_HDR_ETH_DSA : PP2_PPIO_HDR_ETH,
     .inqs_params = {
       .num_tcs = 1,
@@ -99,8 +100,8 @@ mvpp2_port_init (vlib_main_t *vm, vnet_dev_port_t *port)
       .tcs_params[0] = {
 	.num_in_qs = n_rxq,
 	.inqs_params = inqs_params,
-	.pools[0][0] = mp->bpool,
-	.pools[0][1] = md->dummy_short_bpool,
+	.pools[0][0] = &mp->bpool,
+	.pools[0][1] = &md->dummy_short_bpool,
       },
     },
   };
@@ -113,17 +114,18 @@ mvpp2_port_init (vlib_main_t *vm, vnet_dev_port_t *port)
       oqs->num_outqs++;
     }
 
-  mrv = pp2_ppio_init (&ppio_params, &mp->ppio);
+  mrv = pp2_ppio_init (port, &ppio_params);
   if (mrv)
     {
       rv = VNET_DEV_ERR_INIT_FAILED;
-      log_err (dev, "port %u ppio '%s' init failed, rv %d", port->port_id,
-	       match, mrv);
+      log_err (dev, "port %u ppio %u:%u init failed, rv %d", port->port_id, md->pp_id,
+	       port->port_id, mrv);
       goto done;
     }
-  log_debug (dev, "port %u ppio '%s' init ok", port->port_id, match);
+  log_debug (dev, "port %u ppio %u:%u init ok", port->port_id, md->pp_id, port->port_id);
+  mvpp2_port_counters_init (port);
 
-  mrv = pp2_ppio_get_link_info (mp->ppio, &li);
+  mrv = pp2_ppio_get_link_info (port, &li);
   if (mrv)
     {
       rv = VNET_DEV_ERR_INIT_FAILED;
@@ -149,16 +151,19 @@ mvpp2_port_deinit (vlib_main_t *vm, vnet_dev_port_t *port)
 
   log_debug (port->dev, "");
 
-  if (mp->ppio)
+  if (mp->is_open)
     {
-      pp2_ppio_deinit (mp->ppio);
-      mp->ppio = 0;
+      mvpp2_port_counters_deinit (port);
+      pp2_ppio_set_loopback (port, 0);
+      pp2_ppio_set_promisc (port, 0);
+      pp2_port_deinit (port);
+      pp2_port_set_priv_flags (port, 0);
+      mp->is_open = 0;
     }
 
-  if (mp->bpool)
+  if (mp->bpool.is_initialized)
     {
-      pp2_bpool_deinit (mp->bpool);
-      mp->bpool = 0;
+      pp2_bpool_deinit (vm, port->dev, &mp->bpool);
     }
 }
 
@@ -169,9 +174,9 @@ mvpp2_port_poll (vlib_main_t *vm, vnet_dev_port_t *port)
   vnet_dev_t *dev = port->dev;
   vnet_dev_port_state_changes_t changes = {};
   struct pp2_ppio_link_info li;
-  int mrv;
+  vnet_dev_rv_t mrv;
 
-  mrv = pp2_ppio_get_link_info (mp->ppio, &li);
+  mrv = pp2_ppio_get_link_info (port, &li);
 
   if (mrv)
     {
@@ -225,7 +230,7 @@ vnet_dev_rv_t
 mvpp2_port_start (vlib_main_t *vm, vnet_dev_port_t *port)
 {
   mvpp2_port_t *mp = vnet_dev_get_port_data (port);
-  int mrv;
+  vnet_dev_rv_t mrv;
 
   log_debug (port->dev, "");
 
@@ -239,7 +244,7 @@ mvpp2_port_start (vlib_main_t *vm, vnet_dev_port_t *port)
 		  prq->n_bpool_refill);
     }
 
-  mrv = pp2_ppio_enable (mp->ppio);
+  mrv = pp2_ppio_enable (vm, port);
   if (mrv)
     {
       log_err (port->dev, "pp2_ppio_enable() failed, rv %d", mrv);
@@ -257,10 +262,9 @@ void
 mvpp2_port_stop (vlib_main_t *vm, vnet_dev_port_t *port)
 {
   vnet_dev_t *dev = port->dev;
-  mvpp2_device_t *md = vnet_dev_get_data (dev);
   mvpp2_port_t *mp = vnet_dev_get_port_data (port);
   struct pp2_buff_inf bi;
-  int rv;
+  vnet_dev_rv_t rv;
 
   log_debug (port->dev, "");
 
@@ -268,7 +272,7 @@ mvpp2_port_stop (vlib_main_t *vm, vnet_dev_port_t *port)
     {
       vnet_dev_poll_port_remove (vm, port, mvpp2_port_poll);
 
-      rv = pp2_ppio_disable (mp->ppio);
+      rv = pp2_ppio_disable (vm, port);
       if (rv)
 	log_err (dev, "pp2_ppio_disable() failed, rv %d", rv);
 
@@ -282,7 +286,7 @@ mvpp2_port_stop (vlib_main_t *vm, vnet_dev_port_t *port)
       mp->is_enabled = 0;
     }
 
-  while (pp2_bpool_get_buff (md->hif[vm->thread_index], mp->bpool, &bi) == 0)
+  while (pp2_bpool_get_buff (vm, port->dev, &mp->bpool, &bi) == 0)
     vlib_buffer_free (vm, &(u32){ bi.cookie }, 1);
 }
 
@@ -360,16 +364,15 @@ vnet_dev_rv_t
 mvpp2_port_cfg_change (vlib_main_t *vm, vnet_dev_port_t *port,
 		       vnet_dev_port_cfg_change_req_t *req)
 {
-  mvpp2_port_t *mp = vnet_dev_get_port_data (port);
   vnet_dev_rv_t rv = VNET_DEV_OK;
   eth_addr_t addr;
-  int mrv;
+  vnet_dev_rv_t mrv;
 
   switch (req->type)
     {
 
     case VNET_DEV_PORT_CFG_PROMISC_MODE:
-      mrv = pp2_ppio_set_promisc (mp->ppio, req->promisc);
+      mrv = pp2_ppio_set_promisc (port, req->promisc);
       if (mrv)
 	{
 	  log_err (port->dev, "pp2_ppio_set_promisc: failed, rv %d", mrv);
@@ -382,7 +385,7 @@ mvpp2_port_cfg_change (vlib_main_t *vm, vnet_dev_port_t *port,
 
     case VNET_DEV_PORT_CFG_CHANGE_PRIMARY_HW_ADDR:
       clib_memcpy (&addr, req->addr.eth_mac, sizeof (addr));
-      mrv = pp2_ppio_set_mac_addr (mp->ppio, addr);
+      mrv = pp2_ppio_set_mac_addr (port, addr);
       if (mrv)
 	{
 	  log_err (port->dev, "pp2_ppio_set_mac_addr: failed, rv %d", mrv);
@@ -395,7 +398,7 @@ mvpp2_port_cfg_change (vlib_main_t *vm, vnet_dev_port_t *port,
 
     case VNET_DEV_PORT_CFG_ADD_SECONDARY_HW_ADDR:
       clib_memcpy (&addr, req->addr.eth_mac, sizeof (addr));
-      mrv = pp2_ppio_add_mac_addr (mp->ppio, addr);
+      mrv = pp2_ppio_add_mac_addr (port, addr);
       if (mrv)
 	{
 	  log_err (port->dev, "pp2_ppio_add_mac_addr: failed, rv %d", mrv);
@@ -408,7 +411,7 @@ mvpp2_port_cfg_change (vlib_main_t *vm, vnet_dev_port_t *port,
 
     case VNET_DEV_PORT_CFG_REMOVE_SECONDARY_HW_ADDR:
       clib_memcpy (&addr, req->addr.eth_mac, sizeof (addr));
-      mrv = pp2_ppio_remove_mac_addr (mp->ppio, addr);
+      mrv = pp2_ppio_remove_mac_addr (port, addr);
       if (mrv)
 	{
 	  log_err (port->dev, "pp2_ppio_remove_mac_addr: failed, rv %d", mrv);

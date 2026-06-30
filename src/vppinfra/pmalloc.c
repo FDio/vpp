@@ -17,6 +17,10 @@
 #include <vppinfra/format.h>
 #ifdef __linux__
 #include <vppinfra/linux/sysfs.h>
+
+#ifndef MAP_HUGE_SHIFT
+#define MAP_HUGE_SHIFT 26
+#endif
 #endif
 #include <vppinfra/mem.h>
 #include <vppinfra/hash.h>
@@ -313,7 +317,7 @@ pmalloc_map_pages (clib_pmalloc_main_t * pm, clib_pmalloc_arena_t * a,
     {
 #ifdef __linux__
       if (a->log2_subpage_sz != clib_mem_get_log2_page_size ())
-	mmap_flags |= MAP_HUGETLB;
+	mmap_flags |= MAP_HUGETLB | (a->log2_subpage_sz << MAP_HUGE_SHIFT);
 #endif /* __linux__ */
 
       mmap_flags |= MAP_PRIVATE | MAP_ANONYMOUS;
