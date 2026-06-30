@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "3aa1a165_05e9ebdd",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-06-30T01:27:04Z",
+      "side": 1,
+      "message": "This is pretty invasive and the only place where they would be comparable across threads is in case of active opens, i.e., syn and syn-ack. So could you provide more information about the issue you\u0027re hitting?",
+      "revId": "424d2f91aa014060343c18289238695ff39eefec",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
