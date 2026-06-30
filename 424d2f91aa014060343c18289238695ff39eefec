@@ -34,6 +34,24 @@
       "parentUuid": "3aa1a165_05e9ebdd",
       "revId": "424d2f91aa014060343c18289238695ff39eefec",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "f8332f43_f66b29bf",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-06-30T04:08:01Z",
+      "side": 1,
+      "message": "I would like to understand more about that paws check failure. If handshake acks are going backwards with the tsval, that is definitely wrong. Having said that, vpp should keep workers time in sync. We\u0027ve had some changes in that area and I think we have an issue with main vs worker time differences (as opposed to across workers) but \n\nRegarding your second point, connections (and sessions) are pinned to workers. In fact, we drop packets that are received on the wrong thread. So the only scenario where we could have a genuine issue is the one above, i.e., first worker sends syn, syn-ack pins the established connection on another worker and now that worker\u0027s time goes backwards and the ack leads to a paws error. Would it be possible for you to check if this is what happens or just a misclassified paws because of port reuse?\n\nSo yes, if this is confirmed, we should look into ways of guaranteeing tsval monotonicity.",
+      "parentUuid": "7901461e_87feec2a",
+      "revId": "424d2f91aa014060343c18289238695ff39eefec",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
