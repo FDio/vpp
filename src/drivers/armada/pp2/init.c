@@ -308,8 +308,9 @@ mvpp2_init (vlib_main_t *vm, vnet_dev_t *dev)
 		 netdev_name, format_ethernet_address, s.ifr_addr.sa_data);
 
       mvpp2_port_t mvpp2_port = {
-	.ppio_id = ppio_id,
+	.id = ppio_id,
       };
+      strcpy (mvpp2_port.linux_name, netdev_name);
 
       if (sw)
 	{

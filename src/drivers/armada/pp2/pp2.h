@@ -12,6 +12,10 @@
 #include <vnet/vnet.h>
 #include <vnet/dev/dev.h>
 
+#include <musdk.h>
+
+struct ethtool_gstrings;
+
 #define MVCONF_DBG_LEVEL	       0
 #define MVCONF_PP2_BPOOL_COOKIE_SIZE   32
 #define MVCONF_PP2_BPOOL_DMA_ADDR_SIZE 64
@@ -19,9 +23,6 @@
 #define MVCONF_SYS_DMA_UIO
 #define MVCONF_TYPES_PUBLIC
 #define MVCONF_DMA_PHYS_ADDR_T_PUBLIC
-
-#include <drivers/mv_pp2_bpool.h>
-#include <drivers/mv_pp2_ppio.h>
 
 #define MVPP2_NUM_HIFS	       9
 #define MVPP2_NUM_BPOOLS       16
@@ -91,10 +92,50 @@ typedef struct
 
 typedef struct
 {
+  u64 rx_bytes;
+  u64 rx_packets;
+  u64 rx_unicast_packets;
+  u64 rx_errors;
+  u64 rx_fullq_dropped;
+  u32 rx_bm_dropped;
+  u32 rx_early_dropped;
+  u32 rx_fifo_dropped;
+  u32 rx_cls_dropped;
+  u64 tx_bytes;
+  u64 tx_packets;
+  u64 tx_unicast_packets;
+  u64 tx_errors;
+} mvpp2_port_statistics_t;
+
+typedef struct
+{
+  u64 enq_desc;
+  u32 drop_fullq;
+  u16 drop_early;
+  u16 drop_bm;
+} mvpp2_rxq_statistics_t;
+
+typedef struct
+{
+  u64 enq_desc;
+  u64 enq_dec_to_ddr;
+  u64 enq_buf_to_ddr;
+  u64 deq_desc;
+} mvpp2_txq_statistics_t;
+
+typedef struct
+{
   u8 is_enabled : 1;
   u8 is_dsa : 1;
-  struct pp2_ppio *ppio;
-  u8 ppio_id;
+  struct pp2_port *pp_port;
+  u32 id;
+  u16 port_mru;
+  u16 port_mtu;
+  mvpp2_port_statistics_t stats;
+  enum pp2_ppio_type type;
+  uintptr_t cpu_slot;
+  char linux_name[16];
+  struct ethtool_gstrings *stats_name;
   struct pp2_ppio_link_info last_link_info;
   struct pp2_bpool *bpool;
   clib_dt_node_t *switch_node;
@@ -109,6 +150,8 @@ typedef struct
   u16 next;
   u16 n_enq;
   u32 *buffers;
+  u32 log_id;
+  mvpp2_txq_statistics_t stats;
 } mvpp2_txq_t;
 
 typedef struct
@@ -117,6 +160,12 @@ typedef struct
   struct pp2_ppio_desc *desc_ptrs[VLIB_FRAME_SIZE];
   struct buff_release_entry bre[MRVL_PP2_BUFF_BATCH_SZ];
   u16 n_bpool_refill;
+  u32 hw_id;
+  u32 desc_total;
+  u32 desc_received;
+  u32 desc_next_idx;
+  struct pp2_ppio_desc *hw_descs;
+  mvpp2_rxq_statistics_t stats;
 } mvpp2_rxq_t;
 
 typedef struct
@@ -129,6 +178,8 @@ typedef struct
 
 /* counters.c */
 void mvpp2_port_add_counters (vlib_main_t *, vnet_dev_port_t *);
+void mvpp2_port_counters_init (vnet_dev_port_t *);
+void mvpp2_port_counters_deinit (vnet_dev_port_t *);
 void mvpp2_port_clear_counters (vlib_main_t *, vnet_dev_port_t *);
 void mvpp2_rxq_clear_counters (vlib_main_t *, vnet_dev_rx_queue_t *);
 void mvpp2_txq_clear_counters (vlib_main_t *, vnet_dev_tx_queue_t *);
