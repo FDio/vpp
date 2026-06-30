@@ -98,3 +98,14 @@ Alternatively, use a BPF filter (from ``bpf_trace_filter`` plugin):
    vpp# trace add pg-input 1000 filter
    vpp# show trace paths
    ...
+
+Graphviz Output
+---------------
+
+Command ``show trace paths graphviz`` can be used to dump paths in graphviz dot format.
+
+.. figure:: /_images/tracepath_graphviz.svg
+   :align: center
+
+   Example Graphviz output.
+
