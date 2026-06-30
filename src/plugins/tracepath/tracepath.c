@@ -52,6 +52,38 @@ format_thread_list (u8 *s, va_list *va)
   return s;
 }
 
+static u8 *
+format_tracepath_graphviz_path (u8 *s, va_list *va)
+{
+  vlib_main_t *vm = va_arg (*va, vlib_main_t *);
+  trace_path_t *p = va_arg (*va, trace_path_t *);
+  u32 i;
+  vlib_node_t *node;
+
+  s = format (s, "[");
+  for (i = 0; i < vec_len (p->path_indices); i++)
+    {
+      if (i > 0)
+	s = format (s, ", ");
+
+      node = vlib_get_node (vm, p->path_indices[i]);
+      s = format (s, "%v", node->name);
+    }
+  s = format (s, "]");
+  return s;
+}
+
+static const char *
+tracepath_graphviz_path_color (u32 path_index)
+{
+  static const char *colors[] = {
+    "#1f77b4", "#d62728", "#2ca02c", "#ff7f0e", "#9467bd",
+    "#17becf", "#8c564b", "#e377c2", "#7f7f7f", "#bcbd22",
+  };
+
+  return colors[path_index % ARRAY_LEN (colors)];
+}
+
 static inline u64
 trace_path_id (u32 *path_indices)
 {
@@ -282,6 +314,163 @@ VLIB_CLI_COMMAND (show_trace_paths_cli, static) = {
   .path = "show trace paths",
   .short_help = "show trace paths [max COUNT]",
   .function = show_trace_paths_fn,
+};
+
+static clib_error_t *
+show_trace_paths_graphviz_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
+{
+  u32 max_paths = ~0, path_index;
+  u32 *displayed_path_indices = 0, *displayed_path_index;
+  u8 *chroot_filename = 0;
+  u8 *s = 0;
+  int fd = -1;
+  trace_path_t *merged_paths = 0, *p, *tmp_path;
+  uword *path_filter = 0;
+  clib_bitmap_t *displayed_trace_nodes = 0;
+  clib_error_t *error = 0;
+  u32 display_count, i;
+
+  while (unformat_check_input (input) != (uword) UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "max %d", &max_paths))
+	;
+      else if (unformat (input, "file %U", unformat_vlib_tmpfile, &chroot_filename))
+	;
+      else if (unformat (input, "%d", &path_index))
+	hash_set (path_filter, path_index, 1); /* create path filter with user-requested paths */
+      else
+	{
+	  error = clib_error_create ("expected '<INDEX>', 'path <INDEX>', 'max COUNT' or "
+				     "'file <filename>', got `%U'",
+				     format_unformat_error, input);
+	  goto done;
+	}
+    }
+
+  if (chroot_filename)
+    {
+      fd = open ((char *) chroot_filename, O_CREAT | O_TRUNC | O_WRONLY, 0664);
+      if (fd < 0)
+	{
+	  error = clib_error_return_unix (0, "open `%s'", chroot_filename);
+	  goto done;
+	}
+    }
+
+  merged_paths = trace_paths_collect_all ();
+
+  for (i = 0; i < vec_len (merged_paths); i++)
+    {
+      if (path_filter && !hash_get (path_filter, i))
+	continue;
+      if (vec_len (displayed_path_indices) >= max_paths)
+	break;
+
+      vec_add1 (displayed_path_indices, i);
+      p = vec_elt_at_index (merged_paths, i);
+
+      for (u32 j = 0; j < vec_len (p->path_indices); j++)
+	displayed_trace_nodes = clib_bitmap_set (displayed_trace_nodes, p->path_indices[j], 1);
+    }
+
+  display_count = vec_len (displayed_path_indices);
+
+  s = format (s, "digraph trace_paths {\n");
+  s = format (s, "  rankdir=\"LR\";\n");
+  s = format (s, "  splines=true;\n");
+  s = format (s, "  node [shape=box, style=\"rounded,filled\", fillcolor=\"#f7f7f7\"];\n");
+  s = format (s, "  edge [fontsize=10, arrowsize=0.7];\n");
+
+  if (display_count == 0)
+    s = format (s, "  empty [label=\"No matching trace paths found\"];\n");
+  else
+    {
+      clib_bitmap_foreach (i, displayed_trace_nodes)
+	{
+	  vlib_node_t *node = vlib_get_node (vm, i);
+	  s = format (s, "  n%u [label=\"%v\"];\n", i, node->name);
+	}
+
+      s = format (s, "  labelloc=\"b\";\n");
+      s = format (s, "  labeljust=\"l\";\n");
+      s = format (s, "  label=<\n");
+      s = format (
+	s, "    <TABLE BORDER=\"0\" CELLBORDER=\"1\" CELLSPACING=\"0\" CELLPADDING=\"4\">\n");
+      s = format (s, "      <TR><TD><B>Paths</B></TD></TR>\n");
+
+      vec_foreach (displayed_path_index, displayed_path_indices)
+	{
+	  p = vec_elt_at_index (merged_paths, *displayed_path_index);
+	  s = format (s,
+		      "      <TR><TD ALIGN=\"LEFT\">Path %u: %u pkts, threads "
+		      "%U<BR/>%U</TD></TR>\n",
+		      *displayed_path_index, p->n_pkts, format_thread_list, p->thread_bitmap,
+		      format_tracepath_graphviz_path, vm, p);
+	}
+
+      s = format (s, "    </TABLE>\n");
+      s = format (s, "  >;\n");
+
+      vec_foreach (displayed_path_index, displayed_path_indices)
+	{
+	  const char *color = tracepath_graphviz_path_color (*displayed_path_index);
+	  u32 penwidth;
+
+	  p = vec_elt_at_index (merged_paths, *displayed_path_index);
+	  penwidth = clib_min (8, 1 + (p->n_pkts / 32));
+
+	  for (u32 j = 1; j < vec_len (p->path_indices); j++)
+	    {
+	      /* only print path indicator on first path edge */
+	      if (j == 1)
+		s = format (s,
+			    "  n%u -> n%u [label=\"P%u\", color=\"%s\", "
+			    "fontcolor=\"%s\", penwidth=%u];\n",
+			    p->path_indices[j - 1], p->path_indices[j], *displayed_path_index,
+			    color, color, penwidth);
+	      else
+		s = format (s,
+			    "  n%u -> n%u [color=\"%s\", fontcolor=\"%s\", "
+			    "penwidth=%u];\n",
+			    p->path_indices[j - 1], p->path_indices[j], color, color, penwidth);
+	    }
+	}
+    }
+
+  s = format (s, "}\n");
+
+  if (fd < 0)
+    vlib_cli_output (vm, "%v", s);
+  else
+    {
+      fdformat (fd, "%v", s);
+      vlib_cli_output (vm,
+		       "trace paths graph dumped into `%s'. Run eg. "
+		       "`dot -Tsvg -O %s'.",
+		       chroot_filename, chroot_filename);
+    }
+
+done:
+  if (fd >= 0)
+    close (fd);
+  vec_free (s);
+  hash_free (path_filter);
+  clib_bitmap_free (displayed_trace_nodes);
+  vec_free (displayed_path_indices);
+  vec_foreach (tmp_path, merged_paths)
+    {
+      vec_free (tmp_path->path_indices);
+      clib_bitmap_free (tmp_path->thread_bitmap);
+    }
+  vec_free (merged_paths);
+  vec_free (chroot_filename);
+  return error;
+}
+
+VLIB_CLI_COMMAND (show_trace_paths_graphviz_cli, static) = {
+  .path = "show trace paths graphviz",
+  .short_help = "show trace paths graphviz [<INDEX>...] [max COUNT] [file <filename>]",
+  .function = show_trace_paths_graphviz_fn,
 };
 
 static clib_error_t *
