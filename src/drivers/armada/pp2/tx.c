@@ -7,6 +7,195 @@
 #include <vnet/ethernet/ethernet.h>
 
 #include <pp2/pp2.h>
+#include <pp2/pp2_regs.h>
+
+#define TXD_DEST_QID_MASK 0x0000ff00
+
+static_always_inline u32
+pp2_tx_reg_read_relaxed (uintptr_t cpu_slot, u32 offset)
+{
+  uintptr_t addr = cpu_slot + offset;
+  u32 value;
+
+  asm volatile ("ldr %w0, [%1]" : "=r"(value) : "r"(addr));
+  return value;
+}
+
+static_always_inline void
+pp2_tx_reg_write_relaxed (uintptr_t cpu_slot, u32 offset, u32 value)
+{
+  uintptr_t addr = cpu_slot + offset;
+
+  asm volatile ("str %w0, [%1]" : : "r"(value), "r"(addr));
+}
+
+static_always_inline void
+pp2_tx_reg_write (uintptr_t cpu_slot, u32 offset, u32 value)
+{
+  asm volatile ("dsb st" : : : "memory");
+  pp2_tx_reg_write_relaxed (cpu_slot, offset, value);
+}
+
+static_always_inline void
+pp2_ppio_outq_desc_reset (struct pp2_ppio_desc *desc)
+{
+  desc->cmds[0] = desc->cmds[1] = desc->cmds[2] = desc->cmds[3] = desc->cmds[5] = desc->cmds[7] = 0;
+  desc->cmds[0] =
+    (desc->cmds[0] & ~TXD_GEN_IP_CHK_MASK) | (TXD_IP_CHK_DISABLE << 15 & TXD_GEN_IP_CHK_MASK);
+  desc->cmds[0] =
+    (desc->cmds[0] & ~TXD_GEN_L4_CHK_MASK) | (TXD_L4_CHK_DISABLE << 13 & TXD_GEN_L4_CHK_MASK);
+  desc->cmds[0] = (desc->cmds[0] & ~TXD_FL_MASK) | (TXD_FIRST_LAST << 28 & TXD_FL_MASK);
+}
+
+static_always_inline void
+pp2_ppio_outq_desc_set_phys_addr (struct pp2_ppio_desc *desc, dma_addr_t addr)
+{
+  desc->cmds[4] = addr;
+  desc->cmds[5] = (desc->cmds[5] & ~TXD_BUF_PHYS_HI_MASK) | (addr >> 32 & TXD_BUF_PHYS_HI_MASK);
+}
+
+static_always_inline void
+pp2_ppio_outq_desc_set_pkt_offset (struct pp2_ppio_desc *desc, u8 offset)
+{
+  desc->cmds[1] = offset;
+}
+
+static_always_inline void
+pp2_ppio_outq_desc_set_pkt_len (struct pp2_ppio_desc *desc, u16 len)
+{
+  desc->cmds[1] = (desc->cmds[1] & ~TXD_BYTE_COUNT_MASK) | (len << 16 & TXD_BYTE_COUNT_MASK);
+}
+
+static_always_inline struct pp2_desc *
+pp2_dm_if_next_desc_block_get (struct pp2_dm_if *dm_if, u16 num_desc, u16 *cont_desc)
+{
+  u32 tx_desc = dm_if->desc_next_idx;
+
+  if (PREDICT_FALSE (num_desc >= (dm_if->desc_total - dm_if->desc_next_idx)))
+    {
+      *cont_desc = dm_if->desc_total - dm_if->desc_next_idx;
+      dm_if->desc_next_idx = 0;
+    }
+  else
+    {
+      dm_if->desc_next_idx = tx_desc + num_desc;
+      *cont_desc = num_desc;
+    }
+
+  return dm_if->desc_virt_arr + tx_desc;
+}
+
+u16
+pp2_port_enqueue (struct pp2_port *port, struct pp2_dm_if *dm_if, u8 out_qid, u16 num_txds,
+		  struct pp2_ppio_desc desc[], struct pp2_ppio_sg_pkts *pkts)
+{
+  struct pp2_tx_queue *txq = pp2_port_txq_get (port, out_qid);
+  struct pp2_txq_dm_if *txq_dm_if;
+  struct pp2_desc *tx_desc;
+  uintptr_t cpu_slot = dm_if->cpu_slot;
+  u16 block_size, to_send = num_txds;
+  int i;
+
+  if (PREDICT_FALSE (txq->disabled))
+    goto error;
+
+  if (PREDICT_FALSE (dm_if->free_count < num_txds))
+    {
+      u32 occ_desc =
+	pp2_tx_reg_read_relaxed (dm_if->cpu_slot, MVPP2_AGGR_TXQ_STATUS_REG (dm_if->id)) &
+	MVPP2_AGGR_TXQ_PENDING_MASK;
+
+      dm_if->free_count = dm_if->desc_total - occ_desc;
+      if (PREDICT_FALSE (dm_if->free_count < num_txds))
+	num_txds = dm_if->free_count;
+    }
+
+  txq_dm_if = &txq->txq_dm_if[dm_if->id];
+  if (PREDICT_FALSE (txq_dm_if->desc_rsrvd < num_txds))
+    {
+      u32 needed = num_txds - txq_dm_if->desc_rsrvd;
+      u32 res_req = needed > MVPP2_CPU_DESC_CHUNK ? needed : MVPP2_CPU_DESC_CHUNK;
+      u32 req_val = txq->id << MVPP2_TXQ_RSVD_REQ_Q_OFFSET | res_req;
+      u32 result_val;
+
+      pp2_tx_reg_write_relaxed (cpu_slot, MVPP2_TXQ_RSVD_REQ_REG, req_val);
+      asm volatile ("dsb sy" : : : "memory");
+      result_val =
+	pp2_tx_reg_read_relaxed (cpu_slot, MVPP2_TXQ_RSVD_RSLT_REG) & MVPP2_TXQ_RSVD_RSLT_MASK;
+      txq_dm_if->desc_rsrvd += result_val;
+
+      if (PREDICT_FALSE (txq_dm_if->desc_rsrvd < num_txds))
+	num_txds = txq_dm_if->desc_rsrvd;
+    }
+
+  if (pkts && to_send > num_txds)
+    {
+      u16 curr_txds = 0;
+
+      for (i = 0; i < pkts->num; i++)
+	{
+	  if (curr_txds + pkts->frags[i] > num_txds)
+	    break;
+	  curr_txds += pkts->frags[i];
+	}
+
+      num_txds = curr_txds;
+      pkts->num = i;
+    }
+
+  if (!num_txds)
+    goto error;
+
+  tx_desc = pp2_dm_if_next_desc_block_get (dm_if, num_txds, &block_size);
+  for (i = 0; i < block_size; i++)
+    {
+      desc[i].cmds[1] = (desc[i].cmds[1] & ~TXD_DEST_QID_MASK) | (txq->id << 8 & TXD_DEST_QID_MASK);
+      __builtin_memcpy (&tx_desc[i], &desc[i], sizeof (*tx_desc));
+    }
+
+  if (block_size < num_txds)
+    {
+      u16 index = block_size;
+      u16 txds_remaining = num_txds - block_size;
+
+      tx_desc = pp2_dm_if_next_desc_block_get (dm_if, txds_remaining, &block_size);
+      if (PREDICT_FALSE (index + block_size != num_txds))
+	num_txds = index + block_size;
+
+      for (i = 0; i < block_size; i++)
+	{
+	  desc[index + i].cmds[1] =
+	    (desc[index + i].cmds[1] & ~TXD_DEST_QID_MASK) | (txq->id << 8 & TXD_DEST_QID_MASK);
+	  __builtin_memcpy (&tx_desc[i], &desc[index + i], sizeof (*tx_desc));
+	}
+    }
+
+  pp2_tx_reg_write (cpu_slot, MVPP2_AGGR_TXQ_UPDATE_REG, num_txds);
+  dm_if->free_count -= num_txds;
+  txq_dm_if->desc_rsrvd -= num_txds;
+  return num_txds;
+
+error:
+  if (pkts)
+    pkts->num = 0;
+  return 0;
+}
+
+static_always_inline int
+pp2_ppio_send (vnet_dev_port_t *port, struct pp2_hif *hif, u8 qid, struct pp2_ppio_desc *descs,
+	       u16 *num)
+{
+  mvpp2_port_t *mp = vnet_dev_get_port_data (port);
+  struct pp2_port *pp_port = mp->pp_port;
+  u16 desc_req = *num;
+  u16 desc_sent;
+
+  desc_sent = pp2_port_enqueue (pp_port, pp2_dm_if_get (pp_port, hif), qid, desc_req, descs, 0);
+  if (PREDICT_FALSE (desc_sent < desc_req))
+    *num = desc_sent;
+
+  return 0;
+}
 
 VNET_DEV_NODE_FN (mvpp2_tx_node)
 (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
@@ -17,13 +206,11 @@ VNET_DEV_NODE_FN (mvpp2_tx_node)
   vnet_dev_port_t *port = txq->port;
   vnet_dev_t *dev = port->dev;
   mvpp2_txq_t *mtq = vnet_dev_get_tx_queue_data (txq);
-  mvpp2_port_t *mp = vnet_dev_get_port_data (port);
   mvpp2_device_t *md = vnet_dev_get_data (dev);
   u8 qid = txq->queue_id;
   u32 *buffers = vlib_frame_vector_args (frame);
   u32 n_vectors = frame->n_vectors, n_left;
   u16 n_sent;
-  struct pp2_ppio *ppio = mp->ppio;
   struct pp2_hif *hif = md->hif[vm->thread_index];
   struct pp2_ppio_desc descs[VLIB_FRAME_SIZE], *d = descs;
   u16 sz = txq->size;
@@ -50,7 +237,7 @@ VNET_DEV_NODE_FN (mvpp2_tx_node)
   if (mtq->n_enq)
     {
       u16 n_done = 0;
-      if (PREDICT_FALSE (pp2_ppio_get_num_outq_done (ppio, hif, qid, &n_done)))
+      if (PREDICT_FALSE (pp2_ppio_get_num_outq_done (port, hif, qid, &n_done)))
 	vlib_error_count (vm, node->node_index,
 			  MVPP2_TX_NODE_CTR_PPIO_GET_NUM_OUTQ_DONE, 1);
 
@@ -77,7 +264,7 @@ VNET_DEV_NODE_FN (mvpp2_tx_node)
 
   buffers = vlib_frame_vector_args (frame);
 
-  if (pp2_ppio_send (ppio, hif, qid, descs, &n_sent))
+  if (pp2_ppio_send (port, hif, qid, descs, &n_sent))
     {
       n_sent = 0;
       vlib_error_count (vm, node->node_index, MVPP2_TX_NODE_CTR_PPIO_SEND, 1);

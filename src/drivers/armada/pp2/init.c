@@ -15,15 +15,12 @@
 #include <netinet/in.h>
 #include <sys/ioctl.h>
 
-#define MV_SYS_DMA_MEM_SZ (2 << 21)
-
 VLIB_REGISTER_LOG_CLASS (mvpp2_log, static) = {
   .class_name = "armada",
   .subclass_name = "init",
 };
 
 static int num_pp2_in_use = 0;
-static int dma_mem_initialized = 0;
 static int global_pp2_initialized = 0;
 
 #define _(f, n, s, d)                                                         \
@@ -78,12 +75,6 @@ mvpp2_global_deinit (vlib_main_t *vm, vnet_dev_t *dev)
 	  pp2_deinit ();
 	  global_pp2_initialized = 0;
 	}
-      if (dma_mem_initialized)
-	{
-	  mv_sys_dma_mem_destroy ();
-	  log_debug (0, "mv_sys_dma_mem_destroy()");
-	  dma_mem_initialized = 0;
-	}
     }
 }
 
@@ -99,7 +90,6 @@ mvpp2_global_init (vlib_main_t *vm, vnet_dev_t *dev)
 {
   mvpp2_device_t *md = vnet_dev_get_data (dev);
   vnet_dev_rv_t rv = VNET_DEV_OK;
-  char match[16];
   int mrv;
   u8 index;
   u16 free_hifs;
@@ -112,17 +102,6 @@ mvpp2_global_init (vlib_main_t *vm, vnet_dev_t *dev)
 
   if (num_pp2_in_use++)
     return rv;
-
-  mrv = mv_sys_dma_mem_init (MV_SYS_DMA_MEM_SZ);
-  if (mrv < 0)
-    {
-      log_err (0, "mv_sys_dma_mem_init failed, err %d", mrv);
-      rv = VNET_DEV_ERR_INIT_FAILED;
-      goto done;
-    }
-
-  dma_mem_initialized = 1;
-  log_debug (0, "mv_sys_dma_mem_init(%u) ok", MV_SYS_DMA_MEM_SZ);
 
   if ((mrv = pp2_init (&init_params)))
     {
@@ -148,13 +127,13 @@ mvpp2_global_init (vlib_main_t *vm, vnet_dev_t *dev)
   for (u32 i = 0; i < n_threads; i++)
     {
       struct pp2_hif_params hif_params = {
-	.match = match,
+	.vm = vm,
 	.out_size = 2048,
       };
 
       index = get_lowest_set_bit_index (free_hifs);
       free_hifs ^= 1 << index;
-      snprintf (match, sizeof (match), "hif-%u", index);
+      hif_params.id = index;
 
       mrv = pp2_hif_init (&hif_params, md->hif + i);
       if (mrv < 0)
@@ -169,22 +148,23 @@ mvpp2_global_init (vlib_main_t *vm, vnet_dev_t *dev)
 
   index = get_lowest_set_bit_index (md->free_bpools);
   md->free_bpools ^= 1 << index;
-  snprintf (match, sizeof (match), "pool-%u:%u", md->pp_id, index);
 
   mrv = pp2_bpool_init (
-    &(struct pp2_bpool_params){
-      .match = match,
+    &(struct pp2_bpool_params) {
+      .vm = vm,
+      .pp2_id = md->pp_id,
+      .id = index,
       .buff_len = 64,
       .dummy_short_pool = 1,
     },
     &md->dummy_short_bpool);
   if (mrv < 0)
     {
-      log_err (dev, "pp2_bpool_init failed for bpool %s, err %d", match, mrv);
+      log_err (dev, "pp2_bpool_init failed for bpool %u:%u, err %d", md->pp_id, index, mrv);
       rv = VNET_DEV_ERR_INIT_FAILED;
       goto done;
     }
-  log_debug (dev, "pp2_bpool_init(bpool %u) %s ok", index, match);
+  log_debug (dev, "pp2_bpool_init(bpool %u:%u) ok", md->pp_id, index);
 
 done:
   return rv;
@@ -308,8 +288,9 @@ mvpp2_init (vlib_main_t *vm, vnet_dev_t *dev)
 		 netdev_name, format_ethernet_address, s.ifr_addr.sa_data);
 
       mvpp2_port_t mvpp2_port = {
-	.ppio_id = ppio_id,
+	.id = ppio_id,
       };
+      strcpy (mvpp2_port.linux_name, netdev_name);
 
       if (sw)
 	{
