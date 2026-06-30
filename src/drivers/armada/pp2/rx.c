@@ -1,4 +1,5 @@
-/* SPDX-License-Identifier: Apache-2.0
+/* SPDX-License-Identifier: BSD-3-Clause AND Apache-2.0
+ * Copyright (c) 2025 Marvell.
  * Copyright (c) 2024 Cisco Systems, Inc.
  */
 
@@ -9,6 +10,73 @@
 #include <vppinfra/vector/compress.h>
 
 #include <pp2/pp2.h>
+#include <pp2/pp2_hw.h>
+
+static_always_inline u32
+mvpp2_rx_reg_read (uintptr_t hif_base, u32 reg)
+{
+  u32 value;
+
+  asm volatile ("ldr %w0, [%1]" : "=r"(value) : "r"(hif_base + reg));
+  asm volatile ("dsb ld" : : : "memory");
+  return le32toh (value);
+}
+
+static_always_inline void
+mvpp2_rx_reg_write (uintptr_t hif_base, u32 reg, u32 value)
+{
+  value = htole32 (value);
+  asm volatile ("dsb st" : : : "memory");
+  asm volatile ("str %w0, [%1]" : : "r"(value), "r"(hif_base + reg));
+}
+
+static_always_inline u64
+pp2_ppio_inq_desc_get_cookie (struct pp2_ppio_desc *desc)
+{
+  return ((u64) (desc->cmds[7] & RXD_BUF_VIRT_HI_MASK) << 32) |
+	 (desc->cmds[6] & RXD_BUF_VIRT_LO_MASK);
+}
+
+static_always_inline u16
+pp2_ppio_inq_desc_get_pkt_len (struct pp2_ppio_desc *desc)
+{
+  return ((desc->cmds[1] & RXD_BYTE_COUNT_MASK) >> 16) - MV_MH_SIZE;
+}
+
+static_always_inline int
+pp2_ppio_recv (vnet_dev_port_t *port, u8 tc, u8 qid, struct pp2_ppio_desc *descs, u16 *num)
+{
+  mvpp2_port_t *mp = vnet_dev_get_port_data (port);
+  vnet_dev_rx_queue_t *q = vnet_dev_get_port_rx_queue_by_id (port, qid);
+  mvpp2_rxq_t *mrq = vnet_dev_get_rx_queue_data (q);
+  u32 recv_req = *num;
+  u32 first;
+
+  ASSERT (tc == 0);
+
+  if (recv_req > mrq->desc_received)
+    {
+      mrq->desc_received = mvpp2_rx_reg_read (mp->hif_base, MVPP2_RXQ_STATUS_REG (mrq->hw_id)) &
+			   MVPP2_RXQ_OCCUPIED_MASK;
+      if (recv_req > mrq->desc_received)
+	{
+	  recv_req = mrq->desc_received;
+	  *num = recv_req;
+	}
+    }
+
+  first = clib_min (recv_req, mrq->desc_total - mrq->desc_next_idx);
+  clib_memcpy (descs, mrq->hw_descs + mrq->desc_next_idx, first * sizeof (*descs));
+  if (recv_req > first)
+    clib_memcpy (descs + first, mrq->hw_descs, (recv_req - first) * sizeof (*descs));
+
+  mrq->desc_next_idx = (mrq->desc_next_idx + recv_req) % mrq->desc_total;
+  mvpp2_rx_reg_write (mp->hif_base, MVPP2_RXQ_STATUS_UPDATE_REG (mrq->hw_id),
+		      recv_req | (recv_req << MVPP2_RXQ_NUM_NEW_OFFSET));
+  mrq->desc_received -= recv_req;
+
+  return 0;
+}
 
 static_always_inline vlib_buffer_t *
 desc_to_vlib_buffer (vlib_main_t *vm, struct pp2_ppio_desc *d)
@@ -104,8 +172,7 @@ mrvl_pp2_rx_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   vlib_buffer_t *b;
   u32 i;
 
-  if (PREDICT_FALSE (
-	pp2_ppio_recv (mp->ppio, 0, rxq->queue_id, mrq->descs, &n_desc)))
+  if (PREDICT_FALSE (pp2_ppio_recv (port, 0, rxq->queue_id, mrq->descs, &n_desc)))
     {
       vlib_error_count (vm, node->node_index, MVPP2_RX_NODE_CTR_PPIO_RECV, 1);
       return 0;
@@ -205,9 +272,7 @@ static_always_inline u32
 mrvl_pp2_bpool_put (vlib_main_t *vm, u32 node_index, vnet_dev_rx_queue_t *rxq)
 {
   mvpp2_rxq_t *mrq = vnet_dev_get_rx_queue_data (rxq);
-  mvpp2_device_t *md = vnet_dev_get_data (rxq->port->dev);
-  struct pp2_hif *hif = md->hif[vm->thread_index];
-  struct buff_release_entry *bre = mrq->bre;
+  mvpp2_buff_release_entry_t *bre = mrq->bre;
   u32 buffer_indices[MRVL_PP2_BUFF_BATCH_SZ];
   vlib_buffer_t *buffers[MRVL_PP2_BUFF_BATCH_SZ];
   u32 i, n_put = 0;
@@ -216,7 +281,7 @@ mrvl_pp2_bpool_put (vlib_main_t *vm, u32 node_index, vnet_dev_rx_queue_t *rxq)
   while (n_bufs >= MRVL_PP2_BUFF_BATCH_SZ)
     {
       u16 n_alloc;
-      struct buff_release_entry *e = bre;
+      mvpp2_buff_release_entry_t *e = bre;
 
       n_alloc = vlib_buffer_alloc (vm, buffer_indices, MRVL_PP2_BUFF_BATCH_SZ);
 
@@ -239,7 +304,7 @@ mrvl_pp2_bpool_put (vlib_main_t *vm, u32 node_index, vnet_dev_rx_queue_t *rxq)
 	  e->buff.cookie = buffer_indices[i];
 	}
 
-      if (PREDICT_FALSE (pp2_bpool_put_buffs (hif, bre, &n_alloc)))
+      if (PREDICT_FALSE (mvpp2_bpool_put_buffs (vm, rxq->port->dev, bre, &n_alloc)))
 	{
 	  vlib_buffer_free (vm, buffer_indices, n_alloc);
 	  if (node_index != CLIB_U32_MAX)
