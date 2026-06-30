@@ -16,6 +16,24 @@
       "message": "Looks that one of the apis is really failing in this extra test",
       "revId": "633d126ba9b6a7a197abe9f0d9a654a41f9cfa7e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "dbd031a5_8e70a27d",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 9
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3308
+      },
+      "writtenOn": "2026-06-30T07:21:26Z",
+      "side": 1,
+      "message": "I\u0027ll see what I can find.\n\nI\u0027ve been trying to debug this, and I think I\u0027ve reproduced it exactly once and now it refuses to fail again. Let me prod it a bit more.",
+      "parentUuid": "90b00613_aef7a32b",
+      "revId": "633d126ba9b6a7a197abe9f0d9a654a41f9cfa7e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
