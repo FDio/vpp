@@ -760,7 +760,7 @@ I:	vperf
 M:	Florin Coras <fcoras@cisco.com>
 M:	Matus Fabian <matfabia@cisco.com>
 M:	Dave Wallace <dwallacelf@gmail.com>
-F:	src/plugins/hs_apps/
+F:	src/plugins/vperf/
 
 Python binding for the VPP API
 I:	papi
@@ -885,6 +885,7 @@ F:	src/plugins/hsi/
 Plugin - HTTP
 I:	http
 M:	Florin Coras <fcoras@cisco.com>
+M:	Matus Fabian <matfabia@cisco.com>
 F:	src/plugins/http
 
 Plugin - UDP Echo
