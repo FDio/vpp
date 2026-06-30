@@ -8,7 +8,6 @@
 #include <vnet/dev/counters.h>
 #include <vnet/dev/bus/platform.h>
 #include <vppinfra/ring.h>
-#include <musdk.h>
 #include <pp2/pp2.h>
 
 VLIB_REGISTER_LOG_CLASS (mvpp2_log, static) = {
