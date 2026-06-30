@@ -1119,8 +1119,9 @@ hss_destroy (vlib_main_t *vm)
   hss_listener_t *l;
   int ret;
 
-  pool_foreach (l, hsm->listeners)
+  while (pool_elts (hsm->listeners))
     {
+      l = pool_elt_at_index (hsm->listeners, pool_get_first_index (hsm->listeners));
       ret = hss_listener_del (l);
       if (ret != 0)
 	{
@@ -1128,6 +1129,9 @@ hss_destroy (vlib_main_t *vm)
 	  return -1;
 	}
     }
+
+  clib_memset (&hsm->default_listener, 0, sizeof (hsm->default_listener));
+  hsm->have_default_listener = 0;
 
   vnet_app_detach_args_t _da = {}, *da = &_da;
   da->app_index = hsm->app_index;
@@ -1161,14 +1165,17 @@ hss_create_command_fn (vlib_main_t *vm, unformat_input_t *input,
   if (unformat (line_input, "disable"))
     {
       rv = hss_destroy (vm);
+      unformat_free (line_input);
       if (rv != 0)
-	{
-	  error = clib_error_return (0, "failed to disable server %d", rv);
-	}
+	return clib_error_return (0, "failed to disable server %d", rv);
+      return 0;
     }
 
   if (hsm->app_index != (u32) ~0)
-    return clib_error_return (0, "http static server already initialized...");
+    {
+      unformat_free (line_input);
+      return clib_error_return (0, "http static server already initialized...");
+    }
 
   hsm->prealloc_fifos = 0;
   hsm->private_segment_size = 0;
