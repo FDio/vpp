@@ -1020,7 +1020,7 @@ spacer_set_pace_rate (spacer_t * pacer, u64 rate_bytes_per_sec,
    */
   max_time = clib_max (rtt / TRANSPORT_PACER_BURSTS_PER_RTT,
 		       (clib_us_time_t) (sec_per_loop * CLIB_US_TIME_FREQ));
-  max_time = clib_clamp (max_time, 1 /* 1us */ , 1000 /* 1ms */ );
+  max_time = clib_clamp (max_time, TRANSPORT_PACER_MIN_BURST_TIME, 1000 /* 1ms */);
   pacer->max_burst = (rate_bytes_per_sec * max_time) * CLIB_US_TIME_PERIOD;
   pacer->max_burst = clib_clamp (pacer->max_burst, pacer->min_burst, TRANSPORT_PACER_MAX_BURST);
 }
