@@ -478,7 +478,6 @@ quic_udp_session_connected_callback (u32 quic_app_index, u32 ctx_index,
   quic_build_sockaddr (sa, &tc->rmt_ip, tc->rmt_port, tc->is_ip4);
 
   ret = quic_eng_connect (ctx, ctx_index, thread_index, sa);
-  quic_eng_send_packets (ctx);
 
   return ret;
 }
