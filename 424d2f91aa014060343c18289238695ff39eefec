@@ -106,6 +106,24 @@
       "parentUuid": "80ba67cb_3d6c7582",
       "revId": "424d2f91aa014060343c18289238695ff39eefec",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "3c60d0a6_7fb5b52f",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3286
+      },
+      "writtenOn": "2026-07-01T11:42:04Z",
+      "side": 1,
+      "message": "I re-ran the benchmark with a wider flow space to check the PAWS failures.\n\nWith 4096 client source IPs and 64 server ports, i.e. 262144 flow patterns,\n100k closed connections completed without PAWS failures.\n\nI then reduced the flow space to 64 client source IPs and 16 server ports,\ni.e. 1024 flow patterns. In that case PAWS failures were reproduced easily\n(2115 PAWS failures in one fresh run).\n\nSo my previous interpretation was likely wrong. The PAWS failures I observed\nwere most likely caused by flow/port reuse in the benchmark, not by a proven\ncross-worker timestamp monotonicity issue.\n\nGiven this, I do not think this change has enough justification as-is. I will\nnot push this patch further unless I can produce a clean reproduction that does\nnot involve flow reuse.",
+      "parentUuid": "b843e735_1dea351a",
+      "revId": "424d2f91aa014060343c18289238695ff39eefec",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
