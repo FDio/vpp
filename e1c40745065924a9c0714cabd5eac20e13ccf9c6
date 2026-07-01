@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "6236ef83_55947dcf",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 11
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3308
+      },
+      "writtenOn": "2026-07-01T11:34:39Z",
+      "side": 1,
+      "message": "(Rebased to re-kick the automation now that https://gerrit.fd.io/r/c/vpp/+/46181 landed)",
+      "revId": "e1c40745065924a9c0714cabd5eac20e13ccf9c6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
