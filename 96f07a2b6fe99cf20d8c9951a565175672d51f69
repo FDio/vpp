@@ -33,6 +33,24 @@
       "message": "shouldn\u0027t we validate this at the beginning of the function to avoid doing a useless bihash search?",
       "revId": "96f07a2b6fe99cf20d8c9951a565175672d51f69",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "5545ef08_7e0501dc",
+        "filename": "src/vnet/sfdp/sfdp.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 311,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-07-01T10:01:13Z",
+      "side": 1,
+      "message": "Good point. Made the change.",
+      "parentUuid": "3d61e2ff_37f8b53f",
+      "revId": "96f07a2b6fe99cf20d8c9951a565175672d51f69",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
