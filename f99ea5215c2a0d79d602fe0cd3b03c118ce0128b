@@ -36,6 +36,23 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "f997bc88_7d1eff92",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3325
+      },
+      "writtenOn": "2026-07-01T13:57:51Z",
+      "side": 1,
+      "message": "Patch set 2 addresses the review comments and hardens the opt-in path.\n\nThe per-NUMA setting now clearly represents Ginkgo workers rather than\nCPUs. Wide MW suites use one worker per NUMA node, while narrow suites\nuse an automatically selected worker count based on the smallest node.\n\nCPU allocation now handles Linux CPU lists directly, respects reserved\ncores, keeps allocations NUMA-local, and rejects overlaps. Parser unit\ntests were added.\n\nMASQUE MW tests are now registered through explicit TCP, UDP,\nHTTP/3 TCP, and control helpers. Each group becomes an independent\nOrdered suite when MW parallelism is enabled. A separate narrow helper\nis available for lightweight tests, while disabled mode still creates\none Serial Ordered suite containing all MASQUE MW tests.\n\nSplit repeats now rerun the complete phase sequence. Phase reports are\nmerged and aggregate counts and elapsed time are printed. Labels,\ngrouping, worker selection, and repeat behavior are documented.\n\nThe HST CI action enables MW parallelism for release and debug jobs\nusing TEST_JOBS\u003dauto. Fixed-count jobs retain serial MW execution.",
+      "revId": "f99ea5215c2a0d79d602fe0cd3b03c118ce0128b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "a77a574a_bd5629d4",
@@ -49,6 +66,24 @@
       "writtenOn": "2026-06-25T15:55:15Z",
       "side": 1,
       "message": "should this be cpus_per_numa?",
+      "revId": "f99ea5215c2a0d79d602fe0cd3b03c118ce0128b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1bb7c792_31d87ff8",
+        "filename": "test/hs-test/hs_test.sh",
+        "patchSetId": 1
+      },
+      "lineNbr": 141,
+      "author": {
+        "id": 3325
+      },
+      "writtenOn": "2026-07-01T13:57:51Z",
+      "side": 1,
+      "message": "Renamed it to MW_WORKERS_PER_NUMA and numa_workers_per_node. It controls the number of Ginkgo workers placed on each NUMA node",
+      "parentUuid": "a77a574a_bd5629d4",
       "revId": "f99ea5215c2a0d79d602fe0cd3b03c118ce0128b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -72,6 +107,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "976e9260_853e1740",
+        "filename": "test/hs-test/hs_test.sh",
+        "patchSetId": 1
+      },
+      "lineNbr": 465,
+      "author": {
+        "id": 3325
+      },
+      "writtenOn": "2026-07-01T13:57:51Z",
+      "side": 1,
+      "message": "Yes. In split MW mode, REPEAT\u003dN now repeats the complete selected phase sequence N additional times and stops on the first failed phase. With MW_PARALLEL\u003dfalse, native Ginkgo repeat behavior remains unchanged. This is now documented.",
+      "parentUuid": "6bdf45a9_5a5ef71a",
+      "revId": "f99ea5215c2a0d79d602fe0cd3b03c118ce0128b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "61de6a71_45646709",
         "filename": "test/hs-test/hs_test.sh",
         "patchSetId": 1
@@ -83,6 +136,24 @@
       "writtenOn": "2026-06-26T14:56:51Z",
       "side": 1,
       "message": "can we print some aggregated stats since we have now multiple ginkgo outputs with number of passed and executed tests and if possible include total time too",
+      "revId": "f99ea5215c2a0d79d602fe0cd3b03c118ce0128b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "31cadba7_ac6fec88",
+        "filename": "test/hs-test/hs_test.sh",
+        "patchSetId": 1
+      },
+      "lineNbr": 533,
+      "author": {
+        "id": 3325
+      },
+      "writtenOn": "2026-07-01T13:57:51Z",
+      "side": 1,
+      "message": "Added. Split runs merge all completed phase reports and print selected, executed, passed, failed, and skipped counts together with total elapsed time.",
+      "parentUuid": "61de6a71_45646709",
       "revId": "f99ea5215c2a0d79d602fe0cd3b03c118ce0128b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -112,6 +183,30 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "db57b290_8816f3cd",
+        "filename": "test/hs-test/infra/suite_echo.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 119,
+      "author": {
+        "id": 3325
+      },
+      "writtenOn": "2026-07-01T13:57:51Z",
+      "side": 1,
+      "message": "Added a README section covering MW, MWWide, worker selection, MASQUE registration, and repeat behavior.",
+      "parentUuid": "63de4484_b8abd51f",
+      "range": {
+        "startLine": 119,
+        "startChar": 28,
+        "endLine": 119,
+        "endChar": 39
+      },
+      "revId": "f99ea5215c2a0d79d602fe0cd3b03c118ce0128b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "c79544e9_e423e842",
         "filename": "test/hs-test/infra/suite_masque.go",
         "patchSetId": 1
@@ -123,6 +218,24 @@
       "writtenOn": "2026-06-26T14:56:51Z",
       "side": 1,
       "message": "I guess this is because you want to do more stuff in parallel?",
+      "revId": "f99ea5215c2a0d79d602fe0cd3b03c118ce0128b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4d1e8e44_c7dae351",
+        "filename": "test/hs-test/infra/suite_masque.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 57,
+      "author": {
+        "id": 3325
+      },
+      "writtenOn": "2026-07-01T13:57:51Z",
+      "side": 1,
+      "message": "Yes. MASQUE was one Ordered scheduling unit. But now, it is now split into independent protocol-specific Ordered suites when MW parallelism is enabled. Disabled mode still uses one Serial Ordered suite.",
+      "parentUuid": "c79544e9_e423e842",
       "revId": "f99ea5215c2a0d79d602fe0cd3b03c118ce0128b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -146,6 +259,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "7ef6cb02_4db44dca",
+        "filename": "test/hs-test/proxy_test.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 758,
+      "author": {
+        "id": 3325
+      },
+      "writtenOn": "2026-07-01T13:57:51Z",
+      "side": 1,
+      "message": "Reverted. The test again waits until no proxy client session remains and fails if any session, including a CLOSED session, is still present after the timeout.",
+      "parentUuid": "7adca913_6e224d2a",
+      "revId": "f99ea5215c2a0d79d602fe0cd3b03c118ce0128b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "4f737a37_0d47f0e6",
         "filename": "test/hs-test/proxy_test.go",
         "patchSetId": 1
@@ -157,6 +288,24 @@
       "writtenOn": "2026-06-26T14:56:51Z",
       "side": 1,
       "message": "why we need this? in VppConnectProxyClientStressMWTest parent h2 session should stay open otherwise it\u0027s error",
+      "revId": "f99ea5215c2a0d79d602fe0cd3b03c118ce0128b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0b920c68_23a7de27",
+        "filename": "test/hs-test/proxy_test.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 769,
+      "author": {
+        "id": 3325
+      },
+      "writtenOn": "2026-07-01T13:57:51Z",
+      "side": 1,
+      "message": "Reverted. VppConnectProxyClientStressMWTest again requires the parent HTTP/2 session to remain open.",
+      "parentUuid": "4f737a37_0d47f0e6",
       "revId": "f99ea5215c2a0d79d602fe0cd3b03c118ce0128b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
