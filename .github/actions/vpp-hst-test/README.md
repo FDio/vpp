@@ -9,7 +9,7 @@ Builds and runs HostStack tests from a VPP workspace that was already built in H
 | `WORKSPACE` | Yes | none | Absolute path to the checked out VPP tree |
 | `BUILD_TYPE` | Yes | none | `debug` uses `build-debug` and `test-debug`, otherwise `build` and `test` |
 | `HS_TEST_DIR` | Yes | none | Directory that contains the HST makefile |
-| `TEST_JOBS` | Yes | none | Passed as `PARALLEL=<n>` |
+| `TEST_JOBS` | Yes | none | Passed as `PARALLEL=<n>`; `auto` also enables NUMA-aware MW parallelism |
 | `LOG_DIR` | No | `/scratch/docker-build/vpp/logs/hst` | Directory used for `hst.log` |
 | `TUI_LINE` | No | `*******************************************************************` | Log separator |
 
@@ -19,15 +19,19 @@ For `BUILD_TYPE=debug`:
 
 ```bash
 make VERBOSE=true VPPSRC="$WORKSPACE" PARALLEL="$TEST_JOBS" -C "$HS_TEST_DIR" build-debug
-make VERBOSE=true VPPSRC="$WORKSPACE" PARALLEL="$TEST_JOBS" -C "$HS_TEST_DIR" test-debug
+make VERBOSE=true VPPSRC="$WORKSPACE" PARALLEL="$TEST_JOBS" MW_PARALLEL="$MW_PARALLEL" -C "$HS_TEST_DIR" test-debug
 ```
 
 For any other build type:
 
 ```bash
 make VERBOSE=true VPPSRC="$WORKSPACE" PARALLEL="$TEST_JOBS" -C "$HS_TEST_DIR" build
-make VERBOSE=true VPPSRC="$WORKSPACE" PARALLEL="$TEST_JOBS" -C "$HS_TEST_DIR" test
+make VERBOSE=true VPPSRC="$WORKSPACE" PARALLEL="$TEST_JOBS" MW_PARALLEL="$MW_PARALLEL" -C "$HS_TEST_DIR" test
 ```
+
+The action sets `MW_PARALLEL=true` when `TEST_JOBS=auto`. Fixed process counts
+use `MW_PARALLEL=false` because NUMA-aware MW execution requires
+`PARALLEL=auto`.
 
 ## Usage
 
@@ -42,4 +46,3 @@ make VERBOSE=true VPPSRC="$WORKSPACE" PARALLEL="$TEST_JOBS" -C "$HS_TEST_DIR" te
     TEST_JOBS: '1'
     LOG_DIR: ${{ github.workspace }}/logs/hst
 ```
-
