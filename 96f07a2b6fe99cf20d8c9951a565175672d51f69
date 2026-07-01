@@ -16,6 +16,23 @@
       "message": "In hindsight, I decided to modify the api enum from `sfdp_timeout` to `sfdp_timeout_type`, which makes more sense within this context.",
       "revId": "96f07a2b6fe99cf20d8c9951a565175672d51f69",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3d61e2ff_37f8b53f",
+        "filename": "src/vnet/sfdp/sfdp.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 311,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-07-01T08:11:20Z",
+      "side": 1,
+      "message": "shouldn\u0027t we validate this at the beginning of the function to avoid doing a useless bihash search?",
+      "revId": "96f07a2b6fe99cf20d8c9951a565175672d51f69",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
