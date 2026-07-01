@@ -1,0 +1,72 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6da2a50a_6b2ab623",
+        "filename": ".github/actions/vpp-hst-test/action.yml",
+        "patchSetId": 3
+      },
+      "lineNbr": 56,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-07-01T15:51:29Z",
+      "side": 1,
+      "message": "git hub action files should be modified in another patch, lets keep only hst changes here",
+      "revId": "581d4639d0f0ff63700802057a6800abfed7bf37",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "4c2d284c_a3ec08b8",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-07-01T15:51:29Z",
+      "side": 1,
+      "message": "looks good, just some nits",
+      "revId": "581d4639d0f0ff63700802057a6800abfed7bf37",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ff791135_a5f24186",
+        "filename": "test/hs-test/infra/suite_masque.go",
+        "patchSetId": 3
+      },
+      "lineNbr": 105,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-07-01T15:51:29Z",
+      "side": 1,
+      "message": "this one is not used. remove?",
+      "revId": "581d4639d0f0ff63700802057a6800abfed7bf37",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "bd1dd8b5_c086cbe2",
+        "filename": "test/hs-test/proxy_test.go",
+        "patchSetId": 3
+      },
+      "lineNbr": 908,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-07-01T15:51:29Z",
+      "side": 1,
+      "message": "why we need this?",
+      "revId": "581d4639d0f0ff63700802057a6800abfed7bf37",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}

@@ -88,6 +88,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "a2742179_826d3ccf",
+        "filename": "test/hs-test/hs_test.sh",
+        "patchSetId": 1
+      },
+      "lineNbr": 141,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-07-01T15:51:29Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "1bb7c792_31d87ff8",
+      "revId": "f99ea5215c2a0d79d602fe0cd3b03c118ce0128b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "6bdf45a9_5a5ef71a",
@@ -123,6 +141,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "970c6e85_a4d6360d",
+        "filename": "test/hs-test/hs_test.sh",
+        "patchSetId": 1
+      },
+      "lineNbr": 465,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-07-01T15:51:29Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "976e9260_853e1740",
+      "revId": "f99ea5215c2a0d79d602fe0cd3b03c118ce0128b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "61de6a71_45646709",
@@ -154,6 +190,24 @@
       "side": 1,
       "message": "Added. Split runs merge all completed phase reports and print selected, executed, passed, failed, and skipped counts together with total elapsed time.",
       "parentUuid": "61de6a71_45646709",
+      "revId": "f99ea5215c2a0d79d602fe0cd3b03c118ce0128b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ea4c9e9d_5a10cf4f",
+        "filename": "test/hs-test/hs_test.sh",
+        "patchSetId": 1
+      },
+      "lineNbr": 533,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-07-01T15:51:29Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "31cadba7_ac6fec88",
       "revId": "f99ea5215c2a0d79d602fe0cd3b03c118ce0128b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -205,6 +259,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "b9bd2138_cfe53166",
+        "filename": "test/hs-test/infra/suite_echo.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 119,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-07-01T15:51:29Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "db57b290_8816f3cd",
+      "range": {
+        "startLine": 119,
+        "startChar": 28,
+        "endLine": 119,
+        "endChar": 39
+      },
+      "revId": "f99ea5215c2a0d79d602fe0cd3b03c118ce0128b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "c79544e9_e423e842",
@@ -236,6 +314,24 @@
       "side": 1,
       "message": "Yes. MASQUE was one Ordered scheduling unit. But now, it is now split into independent protocol-specific Ordered suites when MW parallelism is enabled. Disabled mode still uses one Serial Ordered suite.",
       "parentUuid": "c79544e9_e423e842",
+      "revId": "f99ea5215c2a0d79d602fe0cd3b03c118ce0128b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "32dd9476_edb3359e",
+        "filename": "test/hs-test/infra/suite_masque.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 57,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-07-01T15:51:29Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "4d1e8e44_c7dae351",
       "revId": "f99ea5215c2a0d79d602fe0cd3b03c118ce0128b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -275,6 +371,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "8c932fc3_d27dbbd6",
+        "filename": "test/hs-test/proxy_test.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 758,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-07-01T15:51:29Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "7ef6cb02_4db44dca",
+      "revId": "f99ea5215c2a0d79d602fe0cd3b03c118ce0128b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "4f737a37_0d47f0e6",
@@ -306,6 +420,24 @@
       "side": 1,
       "message": "Reverted. VppConnectProxyClientStressMWTest again requires the parent HTTP/2 session to remain open.",
       "parentUuid": "4f737a37_0d47f0e6",
+      "revId": "f99ea5215c2a0d79d602fe0cd3b03c118ce0128b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "0413c219_ab439975",
+        "filename": "test/hs-test/proxy_test.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 769,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-07-01T15:51:29Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "0b920c68_23a7de27",
       "revId": "f99ea5215c2a0d79d602fe0cd3b03c118ce0128b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
