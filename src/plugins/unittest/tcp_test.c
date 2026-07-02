@@ -1515,12 +1515,8 @@ tcp_test_persist (vlib_main_t *vm, unformat_input_t *input)
  * reduction (ssthresh via tcp_cc_congestion, the prev_cwnd/prev_ssthresh undo
  * snapshot, and the snd_rxt_ts Eifel reference) must run only for the rto that
  * starts the event. It must NOT re-run for a subsequent rto of the same,
- * still-unrecovered event -- even though rto_boff can be cleared to 0
- * mid-recovery by tcp_update_rtt on an ack that makes progress. Here we set up
- * a real connection, force it into rto recovery, then emulate that
- * clear-and-refire and assert ssthresh is not cut again and prev_cwnd is not
- * re-snapshotted. A complementary case checks that an rto escalating out of
- * fast recovery still sets the loss cwnd while preserving the entry snapshot.
+ * still-unrecovered event even though rto_boff can be cleared to 0
+ * mid-recovery by tcp_update_rtt on an ack that makes progress.
  */
 static int
 tcp_test_rto_reduce_once_e2e (vlib_main_t *vm, unformat_input_t *input)
