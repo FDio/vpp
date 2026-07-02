@@ -20,6 +20,24 @@
     {
       "unresolved": false,
       "key": {
+        "uuid": "1993dc07_a52d4af4",
+        "filename": ".github/actions/vpp-hst-test/action.yml",
+        "patchSetId": 3
+      },
+      "lineNbr": 56,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-07-02T16:04:42Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "6da2a50a_6b2ab623",
+      "revId": "581d4639d0f0ff63700802057a6800abfed7bf37",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
         "uuid": "4c2d284c_a3ec08b8",
         "filename": "/PATCHSET_LEVEL",
         "patchSetId": 3
@@ -52,6 +70,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "2a0d6eaa_790ec0f8",
+        "filename": "test/hs-test/infra/suite_masque.go",
+        "patchSetId": 3
+      },
+      "lineNbr": 105,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-07-02T16:04:42Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "ff791135_a5f24186",
+      "revId": "581d4639d0f0ff63700802057a6800abfed7bf37",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "bd1dd8b5_c086cbe2",
@@ -65,6 +101,24 @@
       "writtenOn": "2026-07-01T15:51:29Z",
       "side": 1,
       "message": "why we need this?",
+      "revId": "581d4639d0f0ff63700802057a6800abfed7bf37",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "126aa4e8_8ebe2740",
+        "filename": "test/hs-test/proxy_test.go",
+        "patchSetId": 3
+      },
+      "lineNbr": 908,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-07-02T16:04:42Z",
+      "side": 1,
+      "message": "if this is true it can probably happen always but more likely when host is under load during parallel testing, so maybe we should run listener validation always",
+      "parentUuid": "bd1dd8b5_c086cbe2",
       "revId": "581d4639d0f0ff63700802057a6800abfed7bf37",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
