@@ -16,6 +16,23 @@
       "message": "recheck",
       "revId": "4f1e903cc8a8f888a2e5f4396035fb8b08954966",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9aa6041c_9032ebc4",
+        "filename": "src/vnet/sfdp/sfdp.api",
+        "patchSetId": 5
+      },
+      "lineNbr": 97,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-07-02T08:34:47Z",
+      "side": 1,
+      "message": "Maybe you should change the API version too?",
+      "revId": "4f1e903cc8a8f888a2e5f4396035fb8b08954966",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
