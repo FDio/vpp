@@ -68,6 +68,24 @@
       "parentUuid": "9771b174_e713c7fc",
       "revId": "9747f043696b0b9c00d8c7b5f3f2ed0ebd96280e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "70acd519_9ea6069a",
+        "filename": "test/host_interface.py",
+        "patchSetId": 6
+      },
+      "lineNbr": 153,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-07-02T11:16:36Z",
+      "side": 1,
+      "message": "I think early exit wouldn\u0027t cover the case where capture started, but packets arrived say after .1s. I\u0027d handle this case after the timeout has expired. get_capture(expected_count\u003d0) is akin to assert_nothing_captured() - and since this is active sniffing case, we cannot really assert that in any other meaningful way than waiting a bit and declaring \"Oh we\u0027ve waited enough to assume no packets are coming\".\n\nI think this simply needs a:\n\n        raise CaptureTimeoutError(\n            \"Captured %d packets, expected %d on %s (timeout %ss)\"\n            % (len(last_pkts), expected_count, name, timeout)\n        )\n        \n\u003d\u003d\u003e\n\n    if 0 \u003d\u003d expected_count:\n        return PacketList()\n\n    raise CaptureTimeoutError(\n        \"Captured %d packets, expected %d on %s (timeout %ss)\"\n        % (len(last_pkts), expected_count, name, timeout)\n    )",
+      "parentUuid": "cef8e1c4_f902ea4a",
+      "revId": "9747f043696b0b9c00d8c7b5f3f2ed0ebd96280e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
