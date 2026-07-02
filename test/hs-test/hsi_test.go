@@ -515,7 +515,7 @@ func HsiProxyLiteDrainTimeoutTest(s *HsiSuite) {
 
 	uri := fmt.Sprintf("http://%s:%d/upload/hsi-proxy-lite-timeout", s.ServerAddr(), s.Ports.Server)
 	finished := startCurlHttpRequest(uri, s.NetNamespaces.Client, "201", 20,
-		"-T", uploadFileName, "-H", "Expect:", "--limit-rate", "256k")
+		"-T", uploadFileName, "-H", "Expect:", "--limit-rate", "64k")
 
 	WaitProxyLiteTracked(vpp, func() {})
 
