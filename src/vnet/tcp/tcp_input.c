@@ -699,7 +699,7 @@ tcp_cc_exit_recovery (tcp_connection_t *tc)
   tc->flags &= ~TCP_CONN_RXT_PENDING;
 
   hole = scoreboard_first_hole (&tc->sack_sb);
-  if (hole && hole->start == tc->snd_una && hole->end == tc->snd_nxt)
+  if (hole && seq_leq (tc->sack_sb.high_sacked, hole->end) && !tc->sack_sb.lost_bytes)
     scoreboard_clear (&tc->sack_sb);
 
   if (tcp_in_fastrecovery (tc) && !is_spurious)
