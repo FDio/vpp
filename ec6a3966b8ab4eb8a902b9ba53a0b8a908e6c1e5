@@ -1,0 +1,58 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e4476225_d690b722",
+        "filename": "src/plugins/af_xdp/device.c",
+        "patchSetId": 40
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-07-02T20:44:30Z",
+      "side": 1,
+      "message": "Done in PS40. The fill queue reclaim path now frees those raw descriptor buffers with vlib_buffer_free_no_next().",
+      "parentUuid": "5f8dfbb5_0c4c6675",
+      "revId": "ec6a3966b8ab4eb8a902b9ba53a0b8a908e6c1e5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "58a7e5bd_9a34dfd6",
+        "filename": "src/plugins/af_xdp/device.c",
+        "patchSetId": 40
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-07-02T20:44:30Z",
+      "side": 1,
+      "message": "Done in PS40. I kept the RX-ring and fill-ring mechanics separate, but factored the raw XDP address-to-buffer-index plus batched free pattern into shared helpers used by both cleanup paths.",
+      "parentUuid": "8e1bff3c_6b15ec5b",
+      "revId": "ec6a3966b8ab4eb8a902b9ba53a0b8a908e6c1e5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "0bf77584_e3ef1f5d",
+        "filename": "src/plugins/af_xdp/output.c",
+        "patchSetId": 40
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-07-02T20:44:30Z",
+      "side": 1,
+      "message": "Done in PS40. af_xdp_device_output_free() is now a single static_always_inline helper with const int is_mb; the completion-ring walk is shared and only the final free operation differs.",
+      "parentUuid": "b7f9d798_d117652b",
+      "revId": "ec6a3966b8ab4eb8a902b9ba53a0b8a908e6c1e5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
