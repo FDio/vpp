@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3683f9a7_5d87ed03",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-07-02T14:35:27Z",
+      "side": 1,
+      "message": "Please ensure this gerrit change is not merged\nwithout verifying that the git hash did not\nchange when the parent change was merged.",
+      "revId": "5a17bf738a72cd64bb3ccae45cef41d10e7fd007",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
