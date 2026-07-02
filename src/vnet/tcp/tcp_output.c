@@ -1719,8 +1719,8 @@ tcp_retransmit_sack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
 		     u32 burst_size)
 {
   u32 n_written = 0, offset, max_bytes, n_segs = 0;
-  u8 snd_limited = 0, can_rescue = 0;
-  u32 bi, max_deq, burst_bytes;
+  u8 snd_limited = 0, can_rescue = 0, cc_limited = 0;
+  u32 bi, max_deq, burst_bytes, sent_bytes = 0;
   sack_scoreboard_hole_t *hole;
   vlib_main_t *vm = wrk->vm;
   vlib_buffer_t *b = 0;
@@ -1744,6 +1744,7 @@ tcp_retransmit_sack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
     snd_space = tcp_available_cc_snd_space (tc);
   else
     snd_space = tcp_fastrecovery_prr_snd_space (tc);
+  cc_limited = snd_space < burst_bytes;
 
   if (snd_space < tc->snd_mss)
     goto done;
@@ -1766,6 +1767,7 @@ tcp_retransmit_sack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
       bi = vlib_get_buffer_index (vm, b);
       tcp_enqueue_to_output (wrk, b, bi, tc->c_is_ip4);
       n_segs = 1;
+      sent_bytes += n_written;
 
       tc->rxt_head = tc->snd_una;
       tc->rxt_delivered += n_written;
@@ -1790,7 +1792,7 @@ tcp_retransmit_sack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
 	  /* We are out of lost holes to retransmit so send some new data. */
 	  if (max_deq)
 	    {
-	      u32 n_segs_new;
+	      u32 n_segs_new, n_bytes_new;
 	      int av_wnd;
 
 	      /* Make sure we don't exceed available window and leave space
@@ -1806,7 +1808,9 @@ tcp_retransmit_sack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
 				     snd_space / tc->snd_mss);
 	      burst_size = clib_min (burst_size, TCP_RXT_MAX_BURST);
 	      n_segs_new = tcp_transmit_unsent (wrk, tc, burst_size);
-	      if (max_deq > n_segs_new * tc->snd_mss)
+	      n_bytes_new = n_segs_new * tc->snd_mss;
+	      sent_bytes += clib_min (max_deq, n_bytes_new);
+	      if (max_deq > n_bytes_new)
 		tcp_program_retransmit (tc);
 
 	      n_segs += n_segs_new;
@@ -1834,6 +1838,7 @@ tcp_retransmit_sack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
 	  bi = vlib_get_buffer_index (vm, b);
 	  tcp_enqueue_to_output (wrk, b, bi, tc->c_is_ip4);
 	  n_segs += 1;
+	  sent_bytes += n_written;
 	  break;
 	}
 
@@ -1857,6 +1862,7 @@ tcp_retransmit_sack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
 
       bi = vlib_get_buffer_index (vm, b);
       tcp_enqueue_to_output (wrk, b, bi, tc->c_is_ip4);
+      sent_bytes += n_written;
 
       sb->high_rxt += n_written;
       ASSERT (seq_leq (sb->high_rxt, tc->snd_nxt));
@@ -1870,8 +1876,10 @@ tcp_retransmit_sack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
 
 done:
 
+  sent_bytes = clib_min (sent_bytes, burst_bytes);
+  sent_bytes = cc_limited ? burst_bytes : sent_bytes;
   if (transport_connection_is_tx_paced (&tc->connection))
-    transport_connection_tx_pacer_reset_bucket (&tc->connection, 0);
+    transport_connection_tx_pacer_update_bytes (&tc->connection, sent_bytes);
   return n_segs;
 }
 
