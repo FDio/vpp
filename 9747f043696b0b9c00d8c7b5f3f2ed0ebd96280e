@@ -50,6 +50,24 @@
       "message": "OK so if pcap is not None on 146, it means the capture started. What if no packets arrived and expected_count is 0? Code at 148 suggests it should return empty PacketList which I agree with. But here, the isfile check will never be True (if no packets arrive) and I believe it\u0027ll result in a CaptureTimeoutError on line 174.",
       "revId": "9747f043696b0b9c00d8c7b5f3f2ed0ebd96280e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "cef8e1c4_f902ea4a",
+        "filename": "test/host_interface.py",
+        "patchSetId": 6
+      },
+      "lineNbr": 153,
+      "author": {
+        "id": 2220
+      },
+      "writtenOn": "2026-07-02T08:02:57Z",
+      "side": 1,
+      "message": "I think now I see what you meant. Perhaps early exit when we don\u0027t expect packets is good enough here, what do you think?",
+      "parentUuid": "9771b174_e713c7fc",
+      "revId": "9747f043696b0b9c00d8c7b5f3f2ed0ebd96280e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
