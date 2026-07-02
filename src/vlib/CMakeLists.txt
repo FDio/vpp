@@ -107,6 +107,7 @@ add_vpp_library(vlib
   pci/pci.c
   pci/pci_types_api.c
   physmem.c
+  pool_cache.c
   punt.c
   punt_node.c
   stats/cli.c
@@ -161,6 +162,7 @@ add_vpp_library(vlib
   pci/pci_types_api.h
   physmem_funcs.h
   physmem.h
+  pool_cache.h
   punt.h
   stats/shared.h
   stats/stats.h
