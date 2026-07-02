@@ -16,6 +16,24 @@
       "message": "Please ensure this gerrit change is not merged\nwithout verifying that the git hash did not\nchange when the parent change was merged.",
       "revId": "5a17bf738a72cd64bb3ccae45cef41d10e7fd007",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f43bddf4_cbc8bf2f",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3325
+      },
+      "writtenOn": "2026-07-02T16:04:59Z",
+      "side": 1,
+      "message": "I will abandon this change and recreate it using the final merged SHA.",
+      "parentUuid": "3683f9a7_5d87ed03",
+      "revId": "5a17bf738a72cd64bb3ccae45cef41d10e7fd007",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ],
   "submitRequirementResults": [
