@@ -121,6 +121,24 @@
       "parentUuid": "bd1dd8b5_c086cbe2",
       "revId": "581d4639d0f0ff63700802057a6800abfed7bf37",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "56c1ab18_d69e0010",
+        "filename": "test/hs-test/proxy_test.go",
+        "patchSetId": 3
+      },
+      "lineNbr": 908,
+      "author": {
+        "id": 3325
+      },
+      "writtenOn": "2026-07-02T16:29:04Z",
+      "side": 1,
+      "message": "Done. The listener readiness check now runs for all.\nParallel load only seemed to make the existing iperf3 startup race more likely.",
+      "parentUuid": "126aa4e8_8ebe2740",
+      "revId": "581d4639d0f0ff63700802057a6800abfed7bf37",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
