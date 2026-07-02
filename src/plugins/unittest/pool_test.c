@@ -5,8 +5,7 @@
 #include <vlib/vlib.h>
 
 static clib_error_t *
-test_pool_command_fn (vlib_main_t *vm, unformat_input_t *input,
-		      vlib_cli_command_t *cmd)
+test_pool_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
 {
   static int sizes[] = { 3, 31, 2042, 2048 };
 
