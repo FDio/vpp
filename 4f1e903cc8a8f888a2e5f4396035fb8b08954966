@@ -51,6 +51,24 @@
       "parentUuid": "9aa6041c_9032ebc4",
       "revId": "4f1e903cc8a8f888a2e5f4396035fb8b08954966",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "391f7447_6f063c36",
+        "filename": "src/vnet/sfdp/sfdp.api",
+        "patchSetId": 5
+      },
+      "lineNbr": 97,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-07-02T09:17:36Z",
+      "side": 1,
+      "message": "\u003e The current API version in sfdp.api (\u00270.0.1\u0027) marks it as in-progress, and AFAIK we currently allow breaking changes for SFDP APIs.\n\nYes but this does not prevent you to raise it to 0.0.2 :)\nAs to whether you want to mark it as stable later, I think it would be good.",
+      "parentUuid": "602e1008_a913000a",
+      "revId": "4f1e903cc8a8f888a2e5f4396035fb8b08954966",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
