@@ -139,6 +139,24 @@
       "parentUuid": "126aa4e8_8ebe2740",
       "revId": "581d4639d0f0ff63700802057a6800abfed7bf37",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "f61a17cd_e2fb2755",
+        "filename": "test/hs-test/proxy_test.go",
+        "patchSetId": 3
+      },
+      "lineNbr": 908,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-07-03T10:53:08Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "56c1ab18_d69e0010",
+      "revId": "581d4639d0f0ff63700802057a6800abfed7bf37",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
