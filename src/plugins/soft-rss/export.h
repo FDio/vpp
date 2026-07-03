@@ -31,6 +31,7 @@ typedef struct
   soft_rss_type_t ipv6_type;
   u8 with_main_thread : 1;
   u16 l2_hdr_offset; /* typically 0, used if another header exists (e.g. DSA */
+  u32 handoff_queue_size; /* 0 means default */
   clib_bitmap_t *threads; /* bitmap of RSS threads, NULL means all */
   u8 *key;		  /* vector, NULL means default */
 } soft_rss_config_t;

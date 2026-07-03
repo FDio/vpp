@@ -1112,6 +1112,40 @@ hss_create (vlib_main_t *vm)
   return 0;
 }
 
+int
+hss_destroy (vlib_main_t *vm)
+{
+  hss_main_t *hsm = &hss_main;
+  hss_listener_t *l;
+  int ret;
+
+  while (pool_elts (hsm->listeners))
+    {
+      l = pool_elt_at_index (hsm->listeners, pool_get_first_index (hsm->listeners));
+      ret = hss_listener_del (l);
+      if (ret != 0)
+	{
+	  clib_warning ("failed to delete a listener: %d", ret);
+	  return -1;
+	}
+    }
+
+  clib_memset (&hsm->default_listener, 0, sizeof (hsm->default_listener));
+  hsm->have_default_listener = 0;
+
+  vnet_app_detach_args_t _da = {}, *da = &_da;
+  da->app_index = hsm->app_index;
+  if (vnet_application_detach (da))
+    {
+      clib_warning ("failed to detach http_static app");
+      return -1;
+    }
+  hsm->app_index = ~0;
+  hsm->is_init = 0;
+
+  return 0;
+}
+
 static clib_error_t *
 hss_create_command_fn (vlib_main_t *vm, unformat_input_t *input,
 		       vlib_cli_command_t *cmd)
@@ -1124,8 +1158,24 @@ hss_create_command_fn (vlib_main_t *vm, unformat_input_t *input,
   u64 seg_size;
   int rv;
 
+  /* Get a line of input. */
+  if (!unformat_user (input, unformat_line_input, line_input))
+    goto no_input;
+
+  if (unformat (line_input, "disable"))
+    {
+      rv = hss_destroy (vm);
+      unformat_free (line_input);
+      if (rv != 0)
+	return clib_error_return (0, "failed to disable server %d", rv);
+      return 0;
+    }
+
   if (hsm->app_index != (u32) ~0)
-    return clib_error_return (0, "http static server already initialized...");
+    {
+      unformat_free (line_input);
+      return clib_error_return (0, "http static server already initialized...");
+    }
 
   hsm->prealloc_fifos = 0;
   hsm->private_segment_size = 0;
@@ -1137,10 +1187,6 @@ hss_create_command_fn (vlib_main_t *vm, unformat_input_t *input,
   l->rx_buff_thresh = HSS_DEFAULT_RX_BUFFER_THRESH;
   l->keepalive_timeout = HSS_DEFAULT_KEEPALIVE_TIMEOUT;
   l->flags = 0;
-
-  /* Get a line of input. */
-  if (!unformat_user (input, unformat_line_input, line_input))
-    goto no_input;
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
@@ -1257,7 +1303,7 @@ done:
  * [fifo-size <nbytes>] [prealloc-fifos <nn>] [debug <nn>] [uri <uri>]
  * [www-root <path>] [url-handlers] [cache-size <nn>] [max-age <nseconds>]
  * [max-req-body-size <nn>] [rx-buff-thresh <nn>] [keepalive-timeout <nn>]
- * [ptr-thresh <nn>] [http1-only] [http3]}
+ * [ptr-thresh <nn>] [http1-only] [http3] [disable]}
 ?*/
 VLIB_CLI_COMMAND (hss_create_command, static) = {
   .path = "http static server",
