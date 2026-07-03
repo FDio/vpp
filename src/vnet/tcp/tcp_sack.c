@@ -320,17 +320,29 @@ scoreboard_clear_reneging (sack_scoreboard_t * sb, u32 start, u32 end)
 
 /**
  * Test that scoreboard is sane after recovery
- *
- * Returns 1 if scoreboard is empty or if first hole beyond
- * snd_una.
  */
 u8
-tcp_scoreboard_is_sane_post_recovery (tcp_connection_t * tc)
+tcp_scoreboard_is_sane_post_recovery (tcp_connection_t *tc)
 {
-  sack_scoreboard_hole_t *hole;
-  hole = scoreboard_first_hole (&tc->sack_sb);
-  return (!hole || (seq_geq (hole->start, tc->snd_una)
-		    && seq_lt (hole->end, tc->snd_nxt)));
+  sack_scoreboard_hole_t *hole = scoreboard_first_hole (&tc->sack_sb);
+
+  /* Empty scoreboard is always sane */
+  if (!hole)
+    return 1;
+
+  /* Hole must be within the outstanding send range. Loss detected above the
+   * recovery point is left behind as a fresh congestion event for the next
+   * recovery, but it can never fall outside [snd_una, snd_nxt]. */
+  if (seq_lt (hole->start, tc->snd_una) || seq_gt (hole->end, tc->snd_nxt))
+    return 0;
+
+  /* A hole may only reach snd_nxt if it is lost. A non-lost hole at snd_nxt
+   * has nothing sacked above it, so recovery exit would have cleared it;
+   * seeing one means is_lost/lost_bytes accounting drifted. */
+  if (hole->end == tc->snd_nxt && !hole->is_lost)
+    return 0;
+
+  return 1;
 }
 
 void
