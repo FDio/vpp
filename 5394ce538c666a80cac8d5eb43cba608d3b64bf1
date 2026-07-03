@@ -1,6 +1,23 @@
 {
   "comments": [
     {
+      "unresolved": true,
+      "key": {
+        "uuid": "cbf2881d_3d0c9620",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 10
+      },
+      "lineNbr": 22,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-07-03T10:16:54Z",
+      "side": 1,
+      "message": "Patchset 10 no longer contains the static results visualizer. Please remove it from the commit message.",
+      "revId": "5394ce538c666a80cac8d5eb43cba608d3b64bf1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": false,
       "key": {
         "uuid": "08a549bd_0744a4d8",
@@ -14,6 +31,91 @@
       "writtenOn": "2026-07-03T07:56:28Z",
       "side": 1,
       "message": "recheck",
+      "revId": "5394ce538c666a80cac8d5eb43cba608d3b64bf1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2db04e16_8d702868",
+        "filename": "src/plugins/unittest/pool_cache_perf_test.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 533,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-07-03T10:16:54Z",
+      "side": 1,
+      "message": "The worker path resets and checks `ptm-\u003eerrors`, but the zero-worker path does neither. For example, local mode with `warmup-rounds 0` detects a refill during the measured loop but still reports success. Please apply the same error handling to main-thread samples.",
+      "revId": "5394ce538c666a80cac8d5eb43cba608d3b64bf1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4107e7d4_7a0bb1ca",
+        "filename": "src/plugins/unittest/pool_cache_perf_test.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 574,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-07-03T10:16:54Z",
+      "side": 1,
+      "message": "Can we reject concurrent invocations, as `test pool-cache` does? This command uses shared static state and suspends while waiting for workers, so another invocation can overwrite the pool and vector pointers while the first command is still using them.",
+      "revId": "5394ce538c666a80cac8d5eb43cba608d3b64bf1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ede67449_28aff91c",
+        "filename": "src/vlib/pool_cache.h",
+        "patchSetId": 10
+      },
+      "lineNbr": 71,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-07-03T10:16:54Z",
+      "side": 1,
+      "message": "What are the intended production consumers of `get_if_live()`, `retire()`, and `reclaim()`? Understanding the concrete use case would help determine whether the additional slot state and lifecycle API belong in this primitive.",
+      "revId": "5394ce538c666a80cac8d5eb43cba608d3b64bf1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7ff60f27_a586b224",
+        "filename": "src/vlib/pool_cache.h",
+        "patchSetId": 10
+      },
+      "lineNbr": 83,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-07-03T10:16:54Z",
+      "side": 1,
+      "message": "`CLIB_DEBUG` is always defined, defaulting to `0` in `clib.h`, so this `#ifdef` also selects the CAS path in production builds. Please use `#if CLIB_DEBUG \u003e 0`; otherwise every allocation performs the atomic RMW that the comment says should be avoided.",
+      "revId": "5394ce538c666a80cac8d5eb43cba608d3b64bf1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b5fb54da_e00fc2bc",
+        "filename": "src/vlib/pool_cache.h",
+        "patchSetId": 10
+      },
+      "lineNbr": 255,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-07-03T10:16:54Z",
+      "side": 1,
+      "message": "Could we keep this macro limited to registration, type/name generation, and thin typed wrappers, with the common implementation in generic `vlib_pool_cache_*()` functions? In particular, refill, flush, and growth are slow paths but are currently `static_always_inline`, potentially duplicating substantial code through every typed allocation/free call site.",
       "revId": "5394ce538c666a80cac8d5eb43cba608d3b64bf1",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
