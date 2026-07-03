@@ -1,6 +1,6 @@
 /*
  * SPDX-License-Identifier: Apache-2.0
- * Copyright (c) 2011-2016 Cisco and/or its affiliates.
+ * Copyright (c) 2011-2016,2026 Cisco and/or its affiliates.
  */
 
 #ifndef __included_bfd_protocol_h__
@@ -12,14 +12,15 @@
 
 #include <vppinfra/types.h>
 #include <vppinfra/clib.h>
+#include <vnet/bfd/bfd_public.h>
 
 /* auth type value, max key length, name, description */
-#define foreach_bfd_auth_type(F)                          \
-  F (0, 0, reserved, "Reserved")                          \
-  F (1, 16, simple_password, "Simple Password")           \
-  F (2, 16, keyed_md5, "Keyed MD5")                       \
-  F (3, 16, meticulous_keyed_md5, "Meticulous Keyed MD5") \
-  F (4, 20, keyed_sha1, "Keyed SHA1")                     \
+#define foreach_bfd_auth_type(F)                                                                   \
+  F (0, 0, reserved, "Reserved")                                                                   \
+  F (1, 16, simple_password, "Simple Password")                                                    \
+  F (2, 16, keyed_md5, "Keyed MD5")                                                                \
+  F (3, 16, meticulous_keyed_md5, "Meticulous Keyed MD5")                                          \
+  F (4, 20, keyed_sha1, "Keyed SHA1")                                                              \
   F (5, 20, meticulous_keyed_sha1, "Meticulous Keyed SHA1")
 
 #define BFD_AUTH_TYPE_NAME(t) BFD_AUTH_TYPE_##t
@@ -122,35 +123,35 @@ typedef CLIB_PACKED (struct {
   bfd_auth_sha1_t sha1_auth;
 }) bfd_pkt_with_sha1_auth_t;
 
-u8 bfd_pkt_get_version (const bfd_pkt_t * pkt);
-void bfd_pkt_set_version (bfd_pkt_t * pkt, int version);
-u8 bfd_pkt_get_diag_code (const bfd_pkt_t * pkt);
-void bfd_pkt_set_diag_code (bfd_pkt_t * pkt, int value);
-u8 bfd_pkt_get_state (const bfd_pkt_t * pkt);
-void bfd_pkt_set_state (bfd_pkt_t * pkt, int value);
-u8 bfd_pkt_get_poll (const bfd_pkt_t * pkt);
-void bfd_pkt_set_final (bfd_pkt_t * pkt);
-u8 bfd_pkt_get_final (const bfd_pkt_t * pkt);
-void bfd_pkt_set_poll (bfd_pkt_t * pkt);
-u8 bfd_pkt_get_control_plane_independent (const bfd_pkt_t * pkt);
-void bfd_pkt_set_control_plane_independent (bfd_pkt_t * pkt);
-u8 bfd_pkt_get_auth_present (const bfd_pkt_t * pkt);
-void bfd_pkt_set_auth_present (bfd_pkt_t * pkt);
-u8 bfd_pkt_get_demand (const bfd_pkt_t * pkt);
-void bfd_pkt_set_demand (bfd_pkt_t * pkt);
-u8 bfd_pkt_get_multipoint (const bfd_pkt_t * pkt);
-void bfd_pkt_set_multipoint (bfd_pkt_t * pkt);
+u8 bfd_pkt_get_version (const bfd_pkt_t *pkt);
+void bfd_pkt_set_version (bfd_pkt_t *pkt, int version);
+u8 bfd_pkt_get_diag_code (const bfd_pkt_t *pkt);
+void bfd_pkt_set_diag_code (bfd_pkt_t *pkt, int value);
+u8 bfd_pkt_get_state (const bfd_pkt_t *pkt);
+void bfd_pkt_set_state (bfd_pkt_t *pkt, int value);
+u8 bfd_pkt_get_poll (const bfd_pkt_t *pkt);
+void bfd_pkt_set_final (bfd_pkt_t *pkt);
+u8 bfd_pkt_get_final (const bfd_pkt_t *pkt);
+void bfd_pkt_set_poll (bfd_pkt_t *pkt);
+u8 bfd_pkt_get_control_plane_independent (const bfd_pkt_t *pkt);
+void bfd_pkt_set_control_plane_independent (bfd_pkt_t *pkt);
+u8 bfd_pkt_get_auth_present (const bfd_pkt_t *pkt);
+void bfd_pkt_set_auth_present (bfd_pkt_t *pkt);
+u8 bfd_pkt_get_demand (const bfd_pkt_t *pkt);
+void bfd_pkt_set_demand (bfd_pkt_t *pkt);
+u8 bfd_pkt_get_multipoint (const bfd_pkt_t *pkt);
+void bfd_pkt_set_multipoint (bfd_pkt_t *pkt);
 
 /* BFD diagnostic codes */
-#define foreach_bfd_diag_code(F)                             \
-  F (0, no_diag, "No Diagnostic")                            \
-  F (1, det_time_exp, "Control Detection Time Expired")      \
-  F (2, echo_failed, "Echo Function Failed")                 \
-  F (3, neighbor_sig_down, "Neighbor Signaled Session Down") \
-  F (4, fwd_plain_reset, "Forwarding Plane Reset")           \
-  F (5, path_down, "Path Down")                              \
-  F (6, concat_path_down, "Concatenated Path Down")          \
-  F (7, admin_down, "Administratively Down")                 \
+#define foreach_bfd_diag_code(F)                                                                   \
+  F (0, no_diag, "No Diagnostic")                                                                  \
+  F (1, det_time_exp, "Control Detection Time Expired")                                            \
+  F (2, echo_failed, "Echo Function Failed")                                                       \
+  F (3, neighbor_sig_down, "Neighbor Signaled Session Down")                                       \
+  F (4, fwd_plain_reset, "Forwarding Plane Reset")                                                 \
+  F (5, path_down, "Path Down")                                                                    \
+  F (6, concat_path_down, "Concatenated Path Down")                                                \
+  F (7, admin_down, "Administratively Down")                                                       \
   F (8, reverse_concat_path_down, "Reverse Concatenated Path Down")
 
 #define BFD_DIAG_CODE_NAME(t) BFD_DIAG_CODE_##t
@@ -163,23 +164,6 @@ typedef enum
 } bfd_diag_code_e;
 
 const char *bfd_diag_code_string (bfd_diag_code_e diag);
-
-/* BFD state values */
-#define foreach_bfd_state(F)     \
-  F (0, admin_down, "AdminDown") \
-  F (1, down, "Down")            \
-  F (2, init, "Init")            \
-  F (3, up, "Up")
-
-#define BFD_STATE_NAME(t) BFD_STATE_##t
-
-typedef enum
-{
-#define F(n, t, s) BFD_STATE_NAME (t) = n,
-  foreach_bfd_state (F)
-#undef F
-} bfd_state_e;
-
 const char *bfd_state_string (bfd_state_e state);
 
 #endif /* __included_bfd_protocol_h__ */
