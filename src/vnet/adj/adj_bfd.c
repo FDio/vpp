@@ -1,10 +1,11 @@
 /*
  * SPDX-License-Identifier: Apache-2.0
- * Copyright (c) 2016 Cisco and/or its affiliates.
+ * Copyright (c) 2016,2026 Cisco and/or its affiliates.
  */
 
-#include <vnet/bfd/bfd_main.h>
+#include <vnet/bfd/bfd_vnet_notifier.h>
 
+#include <vlib/vlib.h>
 #include <vnet/adj/adj_delegate.h>
 #include <vnet/adj/adj_nbr.h>
 #include <vnet/fib/fib_walk.h>
@@ -96,19 +97,24 @@ adj_bfd_update_walk (adj_index_t ai)
 }
 
 /**
- * @brief Callback function registered with BFD module to receive notifications
- * of the CRUD of BFD sessions
+ * @brief Callback function registered with BFD vnet notifier to receive
+ * notifications of the CRUD of BFD sessions
  * would be static but for the fact it's called from the unit-tests
  */
 void
-adj_bfd_notify (bfd_listen_event_e event,
-                const bfd_session_t *session)
+adj_bfd_notify (CLIB_UNUSED (bfd_vnet_notifier_listener_t *listener),
+		bfd_vnet_notifier_args_t *args)
 {
     adj_bfd_delegate_t *abd;
+    const vnet_bfd_event_t *payload;
     adj_delegate_t *aed;
     adj_index_t ai;
 
-    if (BFD_HOP_TYPE_SINGLE != session->hop_type)
+    ASSERT(args);
+    payload = args->payload;
+    ASSERT(payload);
+
+    if (BFD_HOP_TYPE_SINGLE != payload->hop_type)
     {
         /*
          * multi-hop BFD sessions attach directly to the FIB entry
@@ -117,7 +123,7 @@ adj_bfd_notify (bfd_listen_event_e event,
         return;
     }
 
-    switch (session->transport)
+    switch (payload->transport)
     {
     case BFD_TRANSPORT_UDP4:
     case BFD_TRANSPORT_UDP6:
@@ -125,7 +131,7 @@ adj_bfd_notify (bfd_listen_event_e event,
          * pick up the same adjacency that the BFD session is using
          * to send. The BFD session is holding a lock on this adj.
          */
-        ai = session->udp.adj_index;
+        ai = payload->adj_index;
         break;
     default:
         /*
@@ -140,7 +146,7 @@ adj_bfd_notify (bfd_listen_event_e event,
         return;
     }
 
-    switch (event)
+    switch (args->event)
     {
     case BFD_LISTEN_EVENT_CREATE:
         /*
@@ -169,7 +175,7 @@ adj_bfd_notify (bfd_listen_event_e event,
              * unresponsive. So we have to assume down and wait for up.
              */
             abd->abd_state = ADJ_BFD_STATE_DOWN;
-            abd->abd_index = session->bs_idx;
+            abd->abd_index = payload->session_index;
 
             adj_delegate_add(adj_get(ai), ADJ_DELEGATE_BFD, abd - abd_pool);
             adj_bfd_update_walk(ai);
@@ -184,7 +190,7 @@ adj_bfd_notify (bfd_listen_event_e event,
 
         if (NULL != abd)
         {
-            abd->abd_state = adj_bfd_bfd_state_to_fib(session->local_state);
+            abd->abd_state = adj_bfd_bfd_state_to_fib(payload->state);
             adj_bfd_update_walk(ai);
         }
         /*
@@ -261,9 +267,17 @@ const static adj_delegate_vft_t adj_delegate_vft = {
 };
 
 static clib_error_t *
-adj_bfd_main_init (vlib_main_t * vm)
+adj_bfd_main_init (CLIB_UNUSED (vlib_main_t * vm))
 {
-    bfd_register_listener(adj_bfd_notify);
+    /*
+     * ADJ subscribes to public BFD snapshots through the vnet notifier rather
+     * than registering directly with the BFD implementation.
+     */
+    bfd_vnet_notifier_listener_t listener = {
+        .fp = adj_bfd_notify,
+    };
+
+    bfd_vnet_notifier_register_listener(listener);
 
     adj_delegate_register_type (ADJ_DELEGATE_BFD, &adj_delegate_vft);
 
@@ -272,5 +286,5 @@ adj_bfd_main_init (vlib_main_t * vm)
 
 VLIB_INIT_FUNCTION (adj_bfd_main_init)=
 {
-    .runs_after = VLIB_INITS("bfd_main_init"),
+    .runs_after = VLIB_INITS("bfd_vnet_notifier_init", "bfd_main_init"),
 };

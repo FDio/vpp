@@ -1,6 +1,6 @@
 /*
  * SPDX-License-Identifier: Apache-2.0
- * Copyright (c) 2011-2016 Cisco and/or its affiliates.
+ * Copyright (c) 2011-2016,2026 Cisco and/or its affiliates.
  */
 
 /**
@@ -11,6 +11,7 @@
 #define __included_bfd_main_h__
 
 #include <vnet/vnet.h>
+#include <vnet/bfd/bfd_public.h>
 #include <vnet/bfd/bfd_protocol.h>
 #include <vnet/bfd/bfd_udp.h>
 #include <vlib/log.h>
@@ -58,20 +59,6 @@ typedef enum
   foreach_bfd_poll_state (F)
 #undef F
 } bfd_poll_state_e;
-
-/**
- * hop types
- */
-#define foreach_bfd_hop(F)                                                    \
-  F (SINGLE)                                                                  \
-  F (MULTI)
-
-typedef enum
-{
-#define F(sym) BFD_HOP_TYPE_##sym,
-  foreach_bfd_hop (F)
-#undef F
-} bfd_hop_type_e;
 
 typedef struct bfd_session_s
 {
@@ -233,26 +220,6 @@ typedef struct bfd_session_s
   };
 } bfd_session_t;
 
-/**
- * listener events
- */
-#define foreach_bfd_listen_event(F)            \
-  F (CREATE, "sesion-created")                 \
-  F (UPDATE, "session-updated")                \
-  F (DELETE, "session-deleted")
-
-typedef enum
-{
-#define F(sym, str) BFD_LISTEN_EVENT_##sym,
-  foreach_bfd_listen_event (F)
-#undef F
-} bfd_listen_event_e;
-
-/**
- * session notification call back function type
- */
-typedef void (*bfd_notify_fn_t) (bfd_listen_event_e, const bfd_session_t *);
-
 typedef struct
 {
   /** lock to protect data structures */
@@ -305,9 +272,6 @@ typedef struct
 
   /** hashmap - index in pool auth_keys by conf_key_id */
   u32 *auth_key_by_conf_key_id;
-
-  /** vector of callback notification functions */
-  bfd_notify_fn_t *listeners;
 
   /**
    * true if multihop support is enabled so sw_if_index of ~0
@@ -469,11 +433,6 @@ const char *bfd_hop_type_string (bfd_hop_type_e state);
  * should be set to at least 1s
  */
 #define BFD_REQUIRED_MIN_RX_USEC_WHILE_ECHO USEC_PER_SEC
-
-/**
- * Register a callback function to receive session notifications.
- */
-void bfd_register_listener (bfd_notify_fn_t fn);
 
 typedef enum
 {
