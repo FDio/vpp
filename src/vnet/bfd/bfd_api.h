@@ -1,6 +1,6 @@
 /*
  * SPDX-License-Identifier: Apache-2.0
- * Copyright (c) 2011-2016 Cisco and/or its affiliates.
+ * Copyright (c) 2011-2016,2026 Cisco and/or its affiliates.
  */
 
 /**
@@ -13,17 +13,7 @@
 #include <vnet/api_errno.h>
 #include <vnet/vnet.h>
 #include <vnet/ip/ip46_address.h>
-
-#define foreach_bfd_transport(F) \
-  F (UDP4, "ip4-rewrite")        \
-  F (UDP6, "ip6-rewrite")
-
-typedef enum
-{
-#define F(t, n) BFD_TRANSPORT_##t,
-  foreach_bfd_transport (F)
-#undef F
-} bfd_transport_e;
+#include <vnet/bfd/bfd_public.h>
 
 /**
  * @brief create a new bfd session

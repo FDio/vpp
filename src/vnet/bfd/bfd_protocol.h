@@ -1,6 +1,6 @@
 /*
  * SPDX-License-Identifier: Apache-2.0
- * Copyright (c) 2011-2016 Cisco and/or its affiliates.
+ * Copyright (c) 2011-2016,2026 Cisco and/or its affiliates.
  */
 
 #ifndef __included_bfd_protocol_h__
@@ -12,6 +12,7 @@
 
 #include <vppinfra/types.h>
 #include <vppinfra/clib.h>
+#include <vnet/bfd/bfd_public.h>
 
 /* auth type value, max key length, name, description */
 #define foreach_bfd_auth_type(F)                          \
@@ -163,23 +164,6 @@ typedef enum
 } bfd_diag_code_e;
 
 const char *bfd_diag_code_string (bfd_diag_code_e diag);
-
-/* BFD state values */
-#define foreach_bfd_state(F)     \
-  F (0, admin_down, "AdminDown") \
-  F (1, down, "Down")            \
-  F (2, init, "Init")            \
-  F (3, up, "Up")
-
-#define BFD_STATE_NAME(t) BFD_STATE_##t
-
-typedef enum
-{
-#define F(n, t, s) BFD_STATE_NAME (t) = n,
-  foreach_bfd_state (F)
-#undef F
-} bfd_state_e;
-
 const char *bfd_state_string (bfd_state_e state);
 
 #endif /* __included_bfd_protocol_h__ */
