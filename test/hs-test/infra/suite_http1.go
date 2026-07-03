@@ -27,6 +27,7 @@ type Http1Suite struct {
 		NginxServer    string
 		NginxServerSsl string
 		Http           string
+		Https          string
 	}
 }
 
@@ -50,6 +51,7 @@ func (s *Http1Suite) SetupSuite() {
 	s.Containers.Wrk = s.GetContainerByName("wrk")
 	s.Containers.Curl = s.GetContainerByName("curl")
 	s.Ports.Http = s.GeneratePort()
+	s.Ports.Https = s.GeneratePort()
 	s.Ports.NginxServer = s.GeneratePort()
 	s.Ports.NginxServerSsl = s.GeneratePort()
 }

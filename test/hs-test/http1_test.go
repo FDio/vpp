@@ -37,8 +37,8 @@ func init() {
 		HttpClientNoPrintTest, HttpClientChunkedDownloadTest, HttpClientPutStreamingTest, HttpClientPostRejectedTest,
 		HttpClientRedirect302Test, HttpClientRedirect308Test, HttpSendGetAndCloseTest, HttpClientRedirectLimitTest, HttpClientRedirectGetMemLeakTest,
 		HttpClientRedirectPostMemLeakTest, HttpGetTpsTest, HttpPostTpsTest, HttpGetTpsInterruptModeTest, HttpPostTpsInterruptModeTest,
-		HttpPostTpsTlsTest, HttpGetTpsTlsTest)
-	RegisterHttp1SoloTests(HttpClientPostMemLeakTest, HttpInvalidClientRequestMemLeakTest)
+		HttpPostTpsTlsTest, HttpGetTpsTlsTest, HttpTpsTest)
+	RegisterHttp1SoloTests(HttpClientPostMemLeakTest, HttpInvalidClientRequestMemLeakTest, HttpTpsMemLeakTest)
 	RegisterHttp1MWTests(HttpClientGetRepeatMWTest, HttpClientPtrGetRepeatMWTest, HttpTsFifoMemPressureMWTest)
 	RegisterNoTopo6SoloTests(HttpClientGetResponseBody6Test, HttpClientGetTlsResponseBody6Test)
 }
@@ -1827,4 +1827,126 @@ func HttpTsFifoMemPressureMWTest(s *Http1Suite) {
 	Log(vpp.Vppctl("show session"))
 	stdout, _ := s.Containers.Curl.GetOutput()
 	Log(stdout)
+}
+
+func HttpTpsTest(s *Http1Suite) {
+	vpp := s.Containers.Vpp.VppInstance
+	serverUri := "http://" + s.VppAddr() + ":" + s.Ports.Http
+	serverUriHttps := "https://" + s.VppAddr() + ":" + s.Ports.Https
+	url := serverUri + "/test_file_10M"
+
+	Log(vpp.Vppctl("http tps uri %s", serverUri))
+	o := vpp.Vppctl("show http tps")
+	Log(o)
+	AssertContains(o, "listeners: 1")
+	o = vpp.Vppctl("show http tps listeners")
+	Log(o)
+	AssertContains(o, serverUri)
+	Log(vpp.Vppctl("http tps listener add uri %s", serverUriHttps))
+	o = vpp.Vppctl("show http tps")
+	Log(o)
+	AssertContains(o, "listeners: 2")
+	o = vpp.Vppctl("show http tps listeners")
+	Log(o)
+	AssertContains(o, serverUriHttps)
+	Log(vpp.Vppctl("http tps listener add uri %s h3", serverUriHttps))
+	o = vpp.Vppctl("show http tps")
+	Log(o)
+	AssertContains(o, "listeners: 3")
+	o = vpp.Vppctl("show http tps listeners")
+	Log(o)
+	AssertContains(o, serverUriHttps+"[h3]")
+	Log(vpp.Vppctl("http tps listener del uri %s h3", serverUriHttps))
+	o = vpp.Vppctl("show http tps")
+	Log(o)
+	AssertContains(o, "listeners: 2")
+	o = vpp.Vppctl("show http tps listeners")
+	Log(o)
+	AssertNotContains(o, serverUriHttps+"[h3]")
+	AssertContains(o, serverUriHttps)
+	Log(vpp.Vppctl("http tps listener del uri %s", serverUriHttps))
+	o = vpp.Vppctl("show http tps")
+	Log(o)
+	AssertContains(o, "listeners: 1")
+	o = vpp.Vppctl("show http tps listeners")
+	Log(o)
+	AssertContains(o, serverUri)
+	AssertNotContains(o, serverUriHttps)
+
+	client := NewHttpClient(defaultHttpTimeout, false)
+	req, err := http.NewRequest("GET", url, nil)
+	AssertNil(err, fmt.Sprint(err))
+	resp, err := client.Do(req)
+	AssertNil(err, fmt.Sprint(err))
+	defer resp.Body.Close()
+	Log(DumpHttpResp(resp, true))
+	AssertHttpStatus(resp, 200)
+	AssertHttpContentLength(resp, 10<<20)
+	AssertHttpHeaderWithValue(resp, "Content-Type", "application/octet-stream")
+	AssertHttpHeaderWithValue(resp, "Cache-Control", "no-store, no-cache, max-age=0, no-transform")
+	_, err = io.ReadAll(resp.Body)
+	AssertNil(err, fmt.Sprint(err))
+
+	Log(vpp.Vppctl("http tps disable"))
+	o = vpp.Vppctl("show app")
+	AssertNotContains(o, "http_tps")
+	o = vpp.Vppctl("show session")
+	Log(o)
+	AssertContains(o, "no sessions")
+
+	Log(vpp.Vppctl("http tps fifo-size 4M private-segment-size 256M"))
+	o = vpp.Vppctl("show http tps")
+	Log(o)
+	AssertContains(o, "listeners: 0")
+}
+
+func tpsReq(url string, timeout time.Duration) {
+	client := NewHttpClient(timeout, false)
+	req, err := http.NewRequest("GET", url, nil)
+	AssertNil(err, fmt.Sprint(err))
+	resp, err := client.Do(req)
+	AssertNil(err, fmt.Sprint(err))
+	defer resp.Body.Close()
+	AssertHttpStatus(resp, 200)
+	_, err = io.ReadAll(resp.Body)
+	AssertNil(err, fmt.Sprint(err))
+}
+
+func HttpTpsMemLeakTest(s *Http1Suite) {
+	s.SkipUnlessLeakCheck()
+
+	vpp := s.Containers.Vpp.VppInstance
+	serverUri := "http://" + s.VppAddr() + ":" + s.Ports.Http
+	url := serverUri + "/test_file_10M"
+
+	/* no goVPP less noise */
+	vpp.Disconnect()
+
+	Log(vpp.Vppctl("http tps uri %s", serverUri))
+
+	/* warmup requests (FIB, pool allocations) */
+	for range 5 {
+		time.Sleep(time.Second * 1)
+		tpsReq(url, defaultHttpTimeout)
+	}
+
+	/* let's give it some time to clean up sessions, so pool elements can be reused and we have less noise */
+	time.Sleep(time.Second * 12)
+
+	vpp.EnableMemoryTrace()
+	traces1, err := vpp.GetMemoryTrace()
+	AssertNil(err, fmt.Sprint(err))
+
+	/* do couple of requests */
+	for range 5 {
+		time.Sleep(time.Second * 1)
+		tpsReq(url, defaultHttpTimeout)
+	}
+
+	/* let's give it some time to clean up sessions */
+	time.Sleep(time.Second * 12)
+
+	traces2, err := vpp.GetMemoryTrace()
+	AssertNil(err, fmt.Sprint(err))
+	vpp.MemLeakCheck(traces1, traces2)
 }
