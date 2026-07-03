@@ -16,6 +16,23 @@
       "message": "Hi, I noticed you reviewed the initial RISC-V patch years ago. Could you also please take a look at this LoongArch bootstrap patch?",
       "revId": "256780fc38dbc95a8a9d4f4c4272a4141bf60567",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9e5b08c8_1499bdc1",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3335
+      },
+      "writtenOn": "2026-07-03T09:35:45Z",
+      "side": 1,
+      "message": "Ping. Any chance to get a review on this?",
+      "revId": "256780fc38dbc95a8a9d4f4c4272a4141bf60567",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
