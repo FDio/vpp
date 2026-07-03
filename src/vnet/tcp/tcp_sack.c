@@ -321,16 +321,18 @@ scoreboard_clear_reneging (sack_scoreboard_t * sb, u32 start, u32 end)
 /**
  * Test that scoreboard is sane after recovery
  *
- * Returns 1 if scoreboard is empty or if first hole beyond
- * snd_una.
+ * Returns 1 if scoreboard is empty or if the first hole is within the
+ * outstanding send range. A lost tail may end at snd_nxt because it belongs
+ * to the next recovery event.
  */
 u8
-tcp_scoreboard_is_sane_post_recovery (tcp_connection_t * tc)
+tcp_scoreboard_is_sane_post_recovery (tcp_connection_t *tc)
 {
   sack_scoreboard_hole_t *hole;
   hole = scoreboard_first_hole (&tc->sack_sb);
-  return (!hole || (seq_geq (hole->start, tc->snd_una)
-		    && seq_lt (hole->end, tc->snd_nxt)));
+  return (!hole || (seq_geq (hole->start, tc->snd_una) &&
+		    (seq_lt (hole->end, tc->snd_nxt) ||
+		     (hole->is_lost && seq_leq (hole->end, tc->snd_nxt)))));
 }
 
 void
