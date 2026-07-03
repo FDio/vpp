@@ -20,6 +20,24 @@
     {
       "unresolved": false,
       "key": {
+        "uuid": "7afe8c89_9df6ddc6",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 10
+      },
+      "lineNbr": 22,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2026-07-03T14:37:23Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "cbf2881d_3d0c9620",
+      "revId": "5394ce538c666a80cac8d5eb43cba608d3b64bf1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
         "uuid": "08a549bd_0744a4d8",
         "filename": "/PATCHSET_LEVEL",
         "patchSetId": 10
@@ -52,6 +70,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "28ba87d8_4f28a388",
+        "filename": "src/plugins/unittest/pool_cache_perf_test.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 533,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2026-07-03T14:37:23Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "2db04e16_8d702868",
+      "revId": "5394ce538c666a80cac8d5eb43cba608d3b64bf1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "4107e7d4_7a0bb1ca",
@@ -65,6 +101,24 @@
       "writtenOn": "2026-07-03T10:16:54Z",
       "side": 1,
       "message": "Can we reject concurrent invocations, as `test pool-cache` does? This command uses shared static state and suspends while waiting for workers, so another invocation can overwrite the pool and vector pointers while the first command is still using them.",
+      "revId": "5394ce538c666a80cac8d5eb43cba608d3b64bf1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "26f745a0_8538950b",
+        "filename": "src/plugins/unittest/pool_cache_perf_test.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 574,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2026-07-03T14:37:23Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "4107e7d4_7a0bb1ca",
       "revId": "5394ce538c666a80cac8d5eb43cba608d3b64bf1",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -86,6 +140,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "0dfef7b6_94f46904",
+        "filename": "src/vlib/pool_cache.h",
+        "patchSetId": 10
+      },
+      "lineNbr": 71,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2026-07-03T14:37:23Z",
+      "side": 1,
+      "message": "As we discussed offline, in the case of SFDP:\n- one thread could have a session in its deletion list and instead of really deleting the associated vnet flows (but actually disabling them in the hardware). It would mark them \u0027retired\u0027 for a grace period (e.g. time based or main loop based)\n- packets in RX queues already marked by the hardware would lookup for the associated vnet flows, see that they are \u0027retired\u0027 and would follow the slow software path (recreate a session etc).\n- the thread would eventually reclaim the slots once the grace period ended",
+      "parentUuid": "ede67449_28aff91c",
+      "revId": "5394ce538c666a80cac8d5eb43cba608d3b64bf1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "7ff60f27_a586b224",
@@ -103,6 +175,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "c6f83d19_b22cb748",
+        "filename": "src/vlib/pool_cache.h",
+        "patchSetId": 10
+      },
+      "lineNbr": 83,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2026-07-03T14:37:23Z",
+      "side": 1,
+      "message": "Deleting this function",
+      "parentUuid": "7ff60f27_a586b224",
+      "revId": "5394ce538c666a80cac8d5eb43cba608d3b64bf1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "b5fb54da_e00fc2bc",
@@ -116,6 +206,24 @@
       "writtenOn": "2026-07-03T10:16:54Z",
       "side": 1,
       "message": "Could we keep this macro limited to registration, type/name generation, and thin typed wrappers, with the common implementation in generic `vlib_pool_cache_*()` functions? In particular, refill, flush, and growth are slow paths but are currently `static_always_inline`, potentially duplicating substantial code through every typed allocation/free call site.",
+      "revId": "5394ce538c666a80cac8d5eb43cba608d3b64bf1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "d5a420c3_3e2da37d",
+        "filename": "src/vlib/pool_cache.h",
+        "patchSetId": 10
+      },
+      "lineNbr": 255,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2026-07-03T14:37:23Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "b5fb54da_e00fc2bc",
       "revId": "5394ce538c666a80cac8d5eb43cba608d3b64bf1",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
