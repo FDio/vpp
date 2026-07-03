@@ -1,6 +1,6 @@
 /*
  * SPDX-License-Identifier: Apache-2.0
- * Copyright (c) 2016 Cisco and/or its affiliates.
+ * Copyright (c) 2016,2026 Cisco and/or its affiliates.
  */
 
 #include <vnet/fib/fib_test.h>
@@ -15,7 +15,7 @@
 #include <vnet/dpo/drop_dpo.h>
 #include <vnet/dpo/receive_dpo.h>
 #include <vnet/dpo/ip_null_dpo.h>
-#include <vnet/bfd/bfd_main.h>
+#include <vnet/bfd/bfd_vnet_notifier.h>
 #include <vnet/dpo/interface_rx_dpo.h>
 #include <vnet/dpo/replicate_dpo.h>
 #include <vnet/dpo/dvr_dpo.h>
@@ -8054,11 +8054,51 @@ fib_test_walk (void)
 
 /*
  * declaration of the otherwise static callback functions
+ *
+ * The production listeners receive public BFD notifier payloads, so the tests use
+ * the same event contract instead of constructing private bfd_session_t objects.
  */
-void fib_bfd_notify (bfd_listen_event_e event,
-                     const bfd_session_t *session);
-void adj_bfd_notify (bfd_listen_event_e event,
-                     const bfd_session_t *session);
+void fib_bfd_notify (bfd_vnet_notifier_listener_t *listener,
+                     bfd_vnet_notifier_args_t *args);
+void adj_bfd_notify (bfd_vnet_notifier_listener_t *listener,
+                     bfd_vnet_notifier_args_t *args);
+
+/**
+ * @brief Invoke a BFD notifier listener directly from unit tests.
+ */
+static void
+transient_bfd_notify (void (*fn) (bfd_vnet_notifier_listener_t *,
+                                      bfd_vnet_notifier_args_t *),
+                          bfd_listen_event_e event,
+                          const vnet_bfd_event_t *payload)
+{
+    bfd_vnet_notifier_args_t args = {
+        .event = event,
+        .payload = payload,
+    };
+
+    fn (NULL, &args);
+}
+
+/**
+ * @brief Deliver a synthetic BFD event to the FIB listener under test.
+ */
+static void
+transient_fib_bfd_notify (bfd_listen_event_e event,
+                              const vnet_bfd_event_t *payload)
+{
+    transient_bfd_notify (fib_bfd_notify, event, payload);
+}
+
+/**
+ * @brief Deliver a synthetic BFD event to the ADJ listener under test.
+ */
+static void
+transient_adj_bfd_notify (bfd_listen_event_e event,
+                              const vnet_bfd_event_t *payload)
+{
+    transient_bfd_notify (adj_bfd_notify, event, payload);
+}
 
 /**
  * Test BFD session interaction with FIB
@@ -8128,18 +8168,15 @@ fib_test_bfd (void)
     /*
      * A BFD session via a neighbour we do not yet know
      */
-    bfd_session_t bfd_10_10_10_1 = {
-        .udp = {
-            .key = {
-                .fib_index = 0,
-                .peer_addr = nh_10_10_10_1,
-            },
-        },
+    vnet_bfd_event_t bfd_10_10_10_1 = {
+        .fib_index = 0,
+        .peer_addr = nh_10_10_10_1,
         .hop_type = BFD_HOP_TYPE_MULTI,
-        .local_state = BFD_STATE_init,
+        .transport = BFD_TRANSPORT_UDP4,
+        .state = BFD_STATE_init,
     };
 
-    fib_bfd_notify (BFD_LISTEN_EVENT_CREATE, &bfd_10_10_10_1);
+    transient_fib_bfd_notify (BFD_LISTEN_EVENT_CREATE, &bfd_10_10_10_1);
 
     /*
      * A new entry will be created that forwards via the adj
@@ -8172,7 +8209,7 @@ fib_test_bfd (void)
     /*
      * Delete the BFD session. Expect the fib_entry to be removed
      */
-    fib_bfd_notify (BFD_LISTEN_EVENT_DELETE, &bfd_10_10_10_1);
+    transient_fib_bfd_notify (BFD_LISTEN_EVENT_DELETE, &bfd_10_10_10_1);
 
     fei = fib_table_lookup_exact_match(0, &pfx_10_10_10_1_s_32);
     FIB_TEST(FIB_NODE_INDEX_INVALID == fei,
@@ -8182,7 +8219,7 @@ fib_test_bfd (void)
     /*
      * Add the BFD source back
      */
-    fib_bfd_notify (BFD_LISTEN_EVENT_CREATE, &bfd_10_10_10_1);
+    transient_fib_bfd_notify (BFD_LISTEN_EVENT_CREATE, &bfd_10_10_10_1);
 
     /*
      * source the entry via the ADJ fib
@@ -8202,7 +8239,7 @@ fib_test_bfd (void)
     /*
      * Delete the BFD session. Expect the fib_entry to remain
      */
-    fib_bfd_notify (BFD_LISTEN_EVENT_DELETE, &bfd_10_10_10_1);
+    transient_fib_bfd_notify (BFD_LISTEN_EVENT_DELETE, &bfd_10_10_10_1);
 
     fei = fib_table_lookup_exact_match(0, &pfx_10_10_10_1_s_32);
     FIB_TEST(!fib_test_validate_entry(fei,
@@ -8216,7 +8253,7 @@ fib_test_bfd (void)
     /*
      * Add the BFD source back
      */
-    fib_bfd_notify (BFD_LISTEN_EVENT_CREATE, &bfd_10_10_10_1);
+    transient_fib_bfd_notify (BFD_LISTEN_EVENT_CREATE, &bfd_10_10_10_1);
 
     /*
      * Create another ADJ FIB
@@ -8240,18 +8277,15 @@ fib_test_bfd (void)
     /*
      * A BFD session for the new ADJ FIB
      */
-    bfd_session_t bfd_10_10_10_2 = {
-        .udp = {
-            .key = {
-                .fib_index = 0,
-                .peer_addr = nh_10_10_10_2,
-            },
-        },
+    vnet_bfd_event_t bfd_10_10_10_2 = {
+        .fib_index = 0,
+        .peer_addr = nh_10_10_10_2,
         .hop_type = BFD_HOP_TYPE_MULTI,
-        .local_state = BFD_STATE_init,
+        .transport = BFD_TRANSPORT_UDP4,
+        .state = BFD_STATE_init,
     };
 
-    fib_bfd_notify (BFD_LISTEN_EVENT_CREATE, &bfd_10_10_10_2);
+    transient_fib_bfd_notify (BFD_LISTEN_EVENT_CREATE, &bfd_10_10_10_2);
 
     /*
      * remove the adj-fib source whilst the session is present
@@ -8274,10 +8308,10 @@ fib_test_bfd (void)
      * Before adding a recursive via the BFD tracked ADJ-FIBs,
      * bring one of the sessions UP, leave the other down
      */
-    bfd_10_10_10_1.local_state = BFD_STATE_up;
-    fib_bfd_notify (BFD_LISTEN_EVENT_UPDATE, &bfd_10_10_10_1);
-    bfd_10_10_10_2.local_state = BFD_STATE_down;
-    fib_bfd_notify (BFD_LISTEN_EVENT_UPDATE, &bfd_10_10_10_2);
+    bfd_10_10_10_1.state = BFD_STATE_up;
+    transient_fib_bfd_notify (BFD_LISTEN_EVENT_UPDATE, &bfd_10_10_10_1);
+    bfd_10_10_10_2.state = BFD_STATE_down;
+    transient_fib_bfd_notify (BFD_LISTEN_EVENT_UPDATE, &bfd_10_10_10_2);
 
     /*
      * A recursive prefix via both of the ADJ FIBs
@@ -8356,8 +8390,8 @@ fib_test_bfd (void)
      * Send a BFD state change to UP - both sessions are now up
      *  the recursive prefix should LB over both
      */
-    bfd_10_10_10_2.local_state = BFD_STATE_up;
-    fib_bfd_notify (BFD_LISTEN_EVENT_UPDATE, &bfd_10_10_10_2);
+    bfd_10_10_10_2.state = BFD_STATE_up;
+    transient_fib_bfd_notify (BFD_LISTEN_EVENT_UPDATE, &bfd_10_10_10_2);
 
 
     FIB_TEST(!fib_test_validate_entry(fei,
@@ -8372,8 +8406,8 @@ fib_test_bfd (void)
      * Send a BFD state change to DOWN
      *  the recursive prefix should exclude the down
      */
-    bfd_10_10_10_2.local_state = BFD_STATE_down;
-    fib_bfd_notify (BFD_LISTEN_EVENT_UPDATE, &bfd_10_10_10_2);
+    bfd_10_10_10_2.state = BFD_STATE_down;
+    transient_fib_bfd_notify (BFD_LISTEN_EVENT_UPDATE, &bfd_10_10_10_2);
 
 
     FIB_TEST(!fib_test_validate_entry(fei,
@@ -8387,7 +8421,7 @@ fib_test_bfd (void)
      * Delete the BFD session while it is in the DOWN state.
      *  FIB should consider the entry's state as back up
      */
-    fib_bfd_notify (BFD_LISTEN_EVENT_DELETE, &bfd_10_10_10_2);
+    transient_fib_bfd_notify (BFD_LISTEN_EVENT_DELETE, &bfd_10_10_10_2);
 
     FIB_TEST(!fib_test_validate_entry(fei,
                                       FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
@@ -8400,7 +8434,7 @@ fib_test_bfd (void)
     /*
      * Delete the BFD other session while it is in the UP state.
      */
-    fib_bfd_notify (BFD_LISTEN_EVENT_DELETE, &bfd_10_10_10_1);
+    transient_fib_bfd_notify (BFD_LISTEN_EVENT_DELETE, &bfd_10_10_10_1);
 
     FIB_TEST(!fib_test_validate_entry(fei,
                                       FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
@@ -8431,15 +8465,15 @@ fib_test_bfd (void)
      * Single-hop BFD tests
      */
     bfd_10_10_10_1.hop_type = BFD_HOP_TYPE_SINGLE;
-    bfd_10_10_10_1.udp.key.sw_if_index = tm->hw[0]->sw_if_index;
+    bfd_10_10_10_1.transport = BFD_TRANSPORT_UDP4;
 
     ai_10_10_10_1 = adj_nbr_add_or_lock(FIB_PROTOCOL_IP4,
                                         VNET_LINK_IP4,
                                         &nh_10_10_10_1,
                                         tm->hw[0]->sw_if_index);
-    bfd_10_10_10_1.udp.adj_index = ai_10_10_10_1;
+    bfd_10_10_10_1.adj_index = ai_10_10_10_1;
 
-    adj_bfd_notify(BFD_LISTEN_EVENT_CREATE, &bfd_10_10_10_1);
+    transient_adj_bfd_notify(BFD_LISTEN_EVENT_CREATE, &bfd_10_10_10_1);
 
     /*
      * whilst the BFD session is not signalled, the adj is up
@@ -8449,15 +8483,15 @@ fib_test_bfd (void)
     /*
      * bring the BFD session up
      */
-    bfd_10_10_10_1.local_state = BFD_STATE_up;
-    adj_bfd_notify(BFD_LISTEN_EVENT_UPDATE, &bfd_10_10_10_1);
+    bfd_10_10_10_1.state = BFD_STATE_up;
+    transient_adj_bfd_notify(BFD_LISTEN_EVENT_UPDATE, &bfd_10_10_10_1);
     FIB_TEST(adj_is_up(ai_10_10_10_1), "Adj state up on UP session");
 
     /*
      * bring the BFD session down
      */
-    bfd_10_10_10_1.local_state = BFD_STATE_down;
-    adj_bfd_notify(BFD_LISTEN_EVENT_UPDATE, &bfd_10_10_10_1);
+    bfd_10_10_10_1.state = BFD_STATE_down;
+    transient_adj_bfd_notify(BFD_LISTEN_EVENT_UPDATE, &bfd_10_10_10_1);
     FIB_TEST(!adj_is_up(ai_10_10_10_1), "Adj state down on DOWN session");
 
     /*
@@ -8527,8 +8561,8 @@ fib_test_bfd (void)
     /*
      * Bring up the down session - should now LB
      */
-    bfd_10_10_10_1.local_state = BFD_STATE_up;
-    adj_bfd_notify(BFD_LISTEN_EVENT_UPDATE, &bfd_10_10_10_1);
+    bfd_10_10_10_1.state = BFD_STATE_up;
+    transient_adj_bfd_notify(BFD_LISTEN_EVENT_UPDATE, &bfd_10_10_10_1);
     FIB_TEST(!fib_test_validate_entry(fei,
                                       FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
                                       2,
@@ -8540,7 +8574,7 @@ fib_test_bfd (void)
     /*
      * remove the BFD session state from the adj
      */
-    adj_bfd_notify(BFD_LISTEN_EVENT_DELETE, &bfd_10_10_10_1);
+    transient_adj_bfd_notify(BFD_LISTEN_EVENT_DELETE, &bfd_10_10_10_1);
 
     /*
      * clean-up
@@ -10538,7 +10572,7 @@ fib_test_sticky (void)
 #define N_PATHS 16
 
     fib_test_lb_bucket_t buckets[N_PATHS];
-    bfd_session_t bfds[N_PATHS] = {{0}};
+    vnet_bfd_event_t bfds[N_PATHS] = {{0}};
 
     lb_count = pool_elts(load_balance_pool);
     pl_count = fib_path_list_pool_size();
@@ -10557,13 +10591,15 @@ fib_test_sticky (void)
         buckets[ii].type = FT_LB_ADJ;
         buckets[ii].adj.adj = ai;
 
-        bfds[ii].udp.key.peer_addr = nh;
-        bfds[ii].udp.key.sw_if_index = tm->hw[0]->sw_if_index;
+        bfds[ii].peer_addr = nh;
+        bfds[ii].adj_index = ai;
+        bfds[ii].session_index = ii;
         bfds[ii].hop_type = BFD_HOP_TYPE_SINGLE;
-        bfds[ii].local_state = BFD_STATE_init;
-        adj_bfd_notify(BFD_LISTEN_EVENT_CREATE, &bfds[ii]);
-        bfds[ii].local_state = BFD_STATE_up;
-        adj_bfd_notify(BFD_LISTEN_EVENT_UPDATE, &bfds[ii]);
+        bfds[ii].transport = BFD_TRANSPORT_UDP4;
+        bfds[ii].state = BFD_STATE_init;
+        transient_adj_bfd_notify(BFD_LISTEN_EVENT_CREATE, &bfds[ii]);
+        bfds[ii].state = BFD_STATE_up;
+        transient_adj_bfd_notify(BFD_LISTEN_EVENT_UPDATE, &bfds[ii]);
     }
 
     for (ii = 0; ii < N_PATHS; ii++)
@@ -10609,8 +10645,8 @@ fib_test_sticky (void)
              "Setup OK");
 
     /* take down paths */
-    bfds[0].local_state = BFD_STATE_down;
-    adj_bfd_notify(BFD_LISTEN_EVENT_UPDATE, &bfds[0]);
+    bfds[0].state = BFD_STATE_down;
+    transient_adj_bfd_notify(BFD_LISTEN_EVENT_UPDATE, &bfds[0]);
 
     fib_path_list_contribute_forwarding(pl_index,
                                         FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
@@ -10637,8 +10673,8 @@ fib_test_sticky (void)
                                    &buckets[15]),
              "Failed at shut-down path 0");
 
-    bfds[7].local_state = BFD_STATE_down;
-    adj_bfd_notify(BFD_LISTEN_EVENT_UPDATE, &bfds[7]);
+    bfds[7].state = BFD_STATE_down;
+    transient_adj_bfd_notify(BFD_LISTEN_EVENT_UPDATE, &bfds[7]);
 
     fib_path_list_contribute_forwarding(pl_index,
                                         FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
@@ -10666,10 +10702,10 @@ fib_test_sticky (void)
              "Failed at shut-down path 7");
 
     /* paths back up */
-    bfds[0].local_state = BFD_STATE_up;
-    adj_bfd_notify(BFD_LISTEN_EVENT_UPDATE, &bfds[0]);
-    bfds[7].local_state = BFD_STATE_up;
-    adj_bfd_notify(BFD_LISTEN_EVENT_UPDATE, &bfds[7]);
+    bfds[0].state = BFD_STATE_up;
+    transient_adj_bfd_notify(BFD_LISTEN_EVENT_UPDATE, &bfds[0]);
+    bfds[7].state = BFD_STATE_up;
+    transient_adj_bfd_notify(BFD_LISTEN_EVENT_UPDATE, &bfds[7]);
 
     fib_path_list_contribute_forwarding(pl_index,
                                         FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
@@ -10734,8 +10770,8 @@ fib_test_sticky (void)
                                    &buckets[2]),
              "non-power of 2");
 
-    bfds[1].local_state = BFD_STATE_down;
-    adj_bfd_notify(BFD_LISTEN_EVENT_UPDATE, &bfds[1]);
+    bfds[1].state = BFD_STATE_down;
+    transient_adj_bfd_notify(BFD_LISTEN_EVENT_UPDATE, &bfds[1]);
 
     fib_path_list_contribute_forwarding(pl_index,
                                         FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
@@ -10764,8 +10800,8 @@ fib_test_sticky (void)
                                    &buckets[2],
                                    &buckets[2]),
              "non-power of 2");
-    bfds[1].local_state = BFD_STATE_up;
-    adj_bfd_notify(BFD_LISTEN_EVENT_UPDATE, &bfds[1]);
+    bfds[1].state = BFD_STATE_up;
+    transient_adj_bfd_notify(BFD_LISTEN_EVENT_UPDATE, &bfds[1]);
 
     fib_path_list_unlock(pl_index);
 
@@ -10807,8 +10843,8 @@ fib_test_sticky (void)
                                    &buckets[0]),
              "UCMP");
 
-    bfds[1].local_state = BFD_STATE_down;
-    adj_bfd_notify(BFD_LISTEN_EVENT_UPDATE, &bfds[1]);
+    bfds[1].state = BFD_STATE_down;
+    transient_adj_bfd_notify(BFD_LISTEN_EVENT_UPDATE, &bfds[1]);
 
     fib_path_list_contribute_forwarding(pl_index,
                                         FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
@@ -10834,8 +10870,8 @@ fib_test_sticky (void)
                                    &buckets[0],
                                    &buckets[0]),
              "UCMP");
-    bfds[1].local_state = BFD_STATE_up;
-    adj_bfd_notify(BFD_LISTEN_EVENT_UPDATE, &bfds[1]);
+    bfds[1].state = BFD_STATE_up;
+    transient_adj_bfd_notify(BFD_LISTEN_EVENT_UPDATE, &bfds[1]);
 
     dpo_reset(&dpo);
     fib_path_list_unlock(pl_index);

@@ -64,6 +64,7 @@ add_vpp_plugin(unittest
   counter_test.c
   ring_buffer_test.c
   histogram_test.c
+  adj_test.c
 
   COMPONENT
   vpp-plugin-devtools
