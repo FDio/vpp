@@ -1,6 +1,6 @@
 /*
  * SPDX-License-Identifier: Apache-2.0
- * Copyright (c) 2011-2016 Cisco and/or its affiliates.
+ * Copyright (c) 2011-2016,2026 Cisco and/or its affiliates.
  */
 
 /**
@@ -18,6 +18,7 @@
 #include <vnet/bfd/bfd_debug.h>
 #include <vnet/bfd/bfd_protocol.h>
 #include <vnet/bfd/bfd_main.h>
+#include <vnet/bfd/bfd_vnet_notifier.h>
 #include <vlib/log.h>
 #include <vnet/crypto/crypto.h>
 
@@ -446,15 +447,36 @@ bfd_set_remote_required_min_echo_rx (bfd_session_t *bs,
     }
 }
 
+/**
+ * Publish the public vnet view of a BFD session.
+ *
+ * The notifier payload deliberately contains only the fields used by vnet
+ * consumers. This keeps FIB and ADJ independent of bfd_session_t and avoids
+ * exposing BFD-private storage across a future plugin boundary.
+ */
 static void
-bfd_notify_listeners (bfd_main_t * bm,
-		      bfd_listen_event_e event, const bfd_session_t * bs)
+bfd_publish_vnet_event (bfd_listen_event_e event, const bfd_session_t *bs)
 {
-  bfd_notify_fn_t *fn;
-  vec_foreach (fn, bm->listeners)
-  {
-    (*fn) (event, bs);
-  }
+  vnet_bfd_event_t payload = {
+    .session_index = bs->bs_idx,
+    .adj_index = ADJ_INDEX_INVALID,
+    .fib_index = ~0,
+    .state = bs->local_state,
+    .hop_type = bs->hop_type,
+    .transport = bs->transport,
+  };
+
+  switch (bs->transport)
+    {
+    case BFD_TRANSPORT_UDP4:
+    case BFD_TRANSPORT_UDP6:
+      payload.adj_index = bs->udp.adj_index;
+      payload.fib_index = bs->udp.key.fib_index;
+      payload.peer_addr = bs->udp.key.peer_addr;
+      break;
+    }
+
+  bfd_vnet_notifier_publish (event, &payload);
 }
 
 void
@@ -467,14 +489,14 @@ bfd_session_start (bfd_main_t * bm, bfd_session_t * bs)
   bfd_recalc_tx_interval (bs);
   vlib_process_signal_event (bm->vlib_main, bm->bfd_process_node_index,
 			     BFD_EVENT_NEW_SESSION, bs->bs_idx);
-  bfd_notify_listeners (bm, BFD_LISTEN_EVENT_CREATE, bs);
+  bfd_publish_vnet_event (BFD_LISTEN_EVENT_CREATE, bs);
 }
 
 void
-bfd_session_stop (bfd_main_t *bm, bfd_session_t *bs)
+bfd_session_stop (CLIB_UNUSED (bfd_main_t *bm), bfd_session_t *bs)
 {
   BFD_DBG ("\nStopping session: %U", format_bfd_session, bs);
-  bfd_notify_listeners (bm, BFD_LISTEN_EVENT_DELETE, bs);
+  bfd_publish_vnet_event (BFD_LISTEN_EVENT_DELETE, bs);
 }
 
 void
@@ -600,8 +622,7 @@ bfd_rpc_event_cb (const bfd_rpc_event_t * a)
     }
   else
     {
-      BFD_DBG ("Ignoring event RPC for non-existent session index %u",
-	       bs_idx);
+      BFD_DBG ("Ignoring event RPC for non-existent session index %u", bs_idx);
     }
   bfd_unlock (bm);
 
@@ -623,37 +644,54 @@ bfd_event_rpc (u32 bs_idx)
 typedef struct
 {
   u32 bs_idx;
-} bfd_rpc_notify_listeners_t;
+} bfd_rpc_vnet_event_t;
 
+/**
+ * Main-thread RPC callback for BFD vnet UPDATE events.
+ *
+ * The session is looked up again under the BFD lock so a worker never passes a
+ * stale bfd_session_t pointer to the notifier.
+ */
 static void
-bfd_rpc_notify_listeners_cb (const bfd_rpc_notify_listeners_t * a)
+bfd_rpc_vnet_event_cb (const bfd_rpc_vnet_event_t *a)
 {
   bfd_main_t *bm = &bfd_main;
   u32 bs_idx = a->bs_idx;
+
   bfd_lock (bm);
   if (!pool_is_free_index (bm->sessions, bs_idx))
     {
       bfd_session_t *bs = pool_elt_at_index (bm->sessions, bs_idx);
-      bfd_notify_listeners (bm, BFD_LISTEN_EVENT_UPDATE, bs);
+      bfd_publish_vnet_event (BFD_LISTEN_EVENT_UPDATE, bs);
     }
   else
     {
-      BFD_DBG ("Ignoring notify RPC for non-existent session index %u",
-	       bs_idx);
+      BFD_DBG ("Ignoring vnet event RPC for non-existent session index %u", bs_idx);
     }
   bfd_unlock (bm);
 }
 
+/**
+ * Queue a BFD vnet UPDATE notification to the main thread.
+ */
 static void
-bfd_notify_listeners_rpc (u32 bs_idx)
+bfd_vnet_event_rpc (u32 bs_idx)
 {
-  const u32 data_size = sizeof (bfd_rpc_notify_listeners_t);
+  const u32 data_size = sizeof (bfd_rpc_vnet_event_t);
   u8 data[data_size];
-  bfd_rpc_notify_listeners_t *notify = (bfd_rpc_notify_listeners_t *) data;
-  notify->bs_idx = bs_idx;
-  vlib_rpc_call_main_thread (bfd_rpc_notify_listeners_cb, data, data_size);
+  bfd_rpc_vnet_event_t *event = (bfd_rpc_vnet_event_t *) data;
+
+  event->bs_idx = bs_idx;
+  vlib_rpc_call_main_thread (bfd_rpc_vnet_event_cb, data, data_size);
 }
 
+/**
+ * Handle local BFD state changes and publish the resulting notifications.
+ *
+ * Existing BFD API events and the vnet notifier notifications are both preserved.
+ * Worker-originated changes use RPC so consumers continue to observe updates on
+ * the main thread.
+ */
 static void
 bfd_on_state_change (bfd_main_t * bm, bfd_session_t * bs, u64 now,
 		     int handling_wakeup)
@@ -709,12 +747,12 @@ bfd_on_state_change (bfd_main_t * bm, bfd_session_t * bs, u64 now,
     }
   if (vlib_get_thread_index () == 0)
     {
-      bfd_notify_listeners (bm, BFD_LISTEN_EVENT_UPDATE, bs);
+      bfd_publish_vnet_event (BFD_LISTEN_EVENT_UPDATE, bs);
     }
   else
     {
       /* without RPC - a REGRESSION: state changes are not propagated */
-      bfd_notify_listeners_rpc (bs->bs_idx);
+      bfd_vnet_event_rpc (bs->bs_idx);
     }
 }
 
@@ -1397,14 +1435,6 @@ bfd_hw_interface_up_down (CLIB_UNUSED (vnet_main_t *vnm),
 }
 
 VNET_HW_INTERFACE_LINK_UP_DOWN_FUNCTION (bfd_hw_interface_up_down);
-
-void
-bfd_register_listener (bfd_notify_fn_t fn)
-{
-  bfd_main_t *bm = &bfd_main;
-
-  vec_add1 (bm->listeners, fn);
-}
 
 /*
  * setup function

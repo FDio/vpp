@@ -1,10 +1,11 @@
 /*
  * SPDX-License-Identifier: Apache-2.0
- * Copyright (c) 2016 Cisco and/or its affiliates.
+ * Copyright (c) 2016,2026 Cisco and/or its affiliates.
  */
 
-#include <vnet/bfd/bfd_main.h>
+#include <vnet/bfd/bfd_vnet_notifier.h>
 
+#include <vlib/vlib.h>
 #include <vnet/fib/fib_entry_delegate.h>
 #include <vnet/fib/fib_entry.h>
 #include <vnet/fib/fib_table.h>
@@ -39,19 +40,23 @@ fib_bfd_update_walk (fib_node_index_t fei)
 }
 
 /**
- * @brief Callback function registered with BFD module to receive notifications
- * of the CRUD of BFD sessions
+ * @brief Callback function registered with BFD vnet notifier to receive
+ * notifications of the CRUD of BFD sessions
  * would be static but for the fact it's called from the unit-tests
  */
 void
-fib_bfd_notify (bfd_listen_event_e event,
-                const bfd_session_t *session)
+fib_bfd_notify (CLIB_UNUSED (bfd_vnet_notifier_listener_t *listener),
+		bfd_vnet_notifier_args_t *args)
 {
     fib_entry_delegate_t *fed;
-    const bfd_udp_key_t *key;
+    const vnet_bfd_event_t *payload;
     fib_node_index_t fei;
 
-    if (BFD_HOP_TYPE_MULTI != session->hop_type)
+    ASSERT(args);
+    payload = args->payload;
+    ASSERT(payload);
+
+    if (BFD_HOP_TYPE_MULTI != payload->hop_type)
     {
         /*
          * multi-hop BFD sessions attach directly to the FIB entry
@@ -60,14 +65,12 @@ fib_bfd_notify (bfd_listen_event_e event,
         return;
     }
 
-    key = &session->udp.key;
-
     fib_prefix_t pfx = {
-        .fp_addr = key->peer_addr,
-        .fp_proto = (ip46_address_is_ip4 (&key->peer_addr) ?
+        .fp_addr = payload->peer_addr,
+        .fp_proto = (ip46_address_is_ip4 (&payload->peer_addr) ?
                      FIB_PROTOCOL_IP4:
                      FIB_PROTOCOL_IP6),
-        .fp_len = (ip46_address_is_ip4 (&key->peer_addr) ?
+        .fp_len = (ip46_address_is_ip4 (&payload->peer_addr) ?
                    32:
                    128),
     };
@@ -75,9 +78,9 @@ fib_bfd_notify (bfd_listen_event_e event,
     /*
      * get the FIB entry
      */
-    fei = fib_table_lookup_exact_match(key->fib_index, &pfx);
+    fei = fib_table_lookup_exact_match(payload->fib_index, &pfx);
 
-    switch (event)
+    switch (args->event)
     {
     case BFD_LISTEN_EVENT_CREATE:
         /*
@@ -96,7 +99,7 @@ fib_bfd_notify (bfd_listen_event_e event,
             /*
              * source and lock the entry. add the delegate
              */
-            fei = fib_table_entry_special_add(key->fib_index,
+            fei = fib_table_entry_special_add(payload->fib_index,
                                               &pfx,
                                               FIB_SOURCE_RR,
                                               FIB_ENTRY_FLAG_NONE);
@@ -127,7 +130,7 @@ fib_bfd_notify (bfd_listen_event_e event,
 
         if (NULL != fed)
         {
-            fed->fd_bfd_state = fib_bfd_bfd_state_to_fib(session->local_state);
+            fed->fd_bfd_state = fib_bfd_bfd_state_to_fib(payload->state);
             fib_bfd_update_walk(fei);
         }
         /*
@@ -157,7 +160,7 @@ fib_bfd_notify (bfd_listen_event_e event,
                                       FIB_ENTRY_DELEGATE_BFD);
             fib_bfd_update_walk(fei);
 
-            fib_table_entry_special_remove(key->fib_index,
+            fib_table_entry_special_remove(payload->fib_index,
                                            &pfx,
                                            FIB_SOURCE_RR);
             fib_entry_unlock(fei);
@@ -171,14 +174,22 @@ fib_bfd_notify (bfd_listen_event_e event,
 }
 
 static clib_error_t *
-fib_bfd_main_init (vlib_main_t * vm)
+fib_bfd_main_init (CLIB_UNUSED (vlib_main_t * vm))
 {
-    bfd_register_listener(fib_bfd_notify);
+    /*
+     * FIB subscribes to public BFD snapshots through the vnet notifier rather
+     * than registering directly with the BFD implementation.
+     */
+    bfd_vnet_notifier_listener_t listener = {
+        .fp = fib_bfd_notify,
+    };
+
+    bfd_vnet_notifier_register_listener(listener);
 
     return (NULL);
 }
 
 VLIB_INIT_FUNCTION (fib_bfd_main_init) =
 {
-    .runs_after = VLIB_INITS("bfd_main_init"),
+    .runs_after = VLIB_INITS("bfd_vnet_notifier_init", "bfd_main_init"),
 };

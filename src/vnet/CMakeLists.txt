@@ -478,7 +478,9 @@ list(APPEND VNET_API_FILES
 ##############################################################################
 
 list(APPEND VNET_HEADERS
+  bfd/bfd_public.h
   bfd/bfd_protocol.h
+  bfd/bfd_vnet_notifier.h
   bfd/bfd_main.h
   bfd/bfd_api.h
   bfd/bfd_udp.h
@@ -486,6 +488,7 @@ list(APPEND VNET_HEADERS
 
 list(APPEND VNET_SOURCES
   bfd/bfd_api.h
+  bfd/bfd_vnet_notifier.c
   bfd/bfd_udp.c
   bfd/bfd_main.c
   bfd/bfd_protocol.c
