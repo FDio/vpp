@@ -1,0 +1,72 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "343750fc_5a921c01",
+        "filename": "src/plugins/dpdk/device/flow.c",
+        "patchSetId": 22
+      },
+      "lineNbr": 1592,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-07-03T09:01:33Z",
+      "side": 1,
+      "message": "It seems like we don\u0027t check the results of async operations (in `q-\u003eresults`) to check whether it was successful or might have failed, leading to potentially inconsistent state ?",
+      "revId": "9a6a1f1b728ebe10b2ee052d460337f74fe10950",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a9d018e9_589b1346",
+        "filename": "src/plugins/dpdk/device/flow.c",
+        "patchSetId": 22
+      },
+      "lineNbr": 1693,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-07-03T09:01:33Z",
+      "side": 1,
+      "message": "We currently set `user_data` to NULL. Could we specify it, and then leverage it to identify affected flows in case an async operation fails ?",
+      "revId": "9a6a1f1b728ebe10b2ee052d460337f74fe10950",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "02edea1a_f762b44b",
+        "filename": "src/plugins/dpdk/device/flow.c",
+        "patchSetId": 22
+      },
+      "lineNbr": 1762,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-07-03T09:01:33Z",
+      "side": 1,
+      "message": "Same comment as `rte_flow_async_create`, could we set non-null \u0027user_data` ?",
+      "revId": "9a6a1f1b728ebe10b2ee052d460337f74fe10950",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "20c060ef_d3913e1a",
+        "filename": "src/plugins/dpdk/device/init.c",
+        "patchSetId": 22
+      },
+      "lineNbr": 628,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-07-03T09:01:33Z",
+      "side": 1,
+      "message": "Could we document or print a warning log that the configured number of async offload queues is rounded down to a power of two ?",
+      "revId": "9a6a1f1b728ebe10b2ee052d460337f74fe10950",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
