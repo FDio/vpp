@@ -604,6 +604,7 @@ tcp_cc_init_congestion (tcp_connection_t * tc)
   tc->snd_rxt_bytes = 0;
   tc->rxt_delivered = 0;
   tc->prr_delivered = 0;
+  tc->prev_prr_delivered = 0;
   tc->prr_start = tc->snd_una;
   tc->prev_ssthresh = tc->ssthresh;
   tc->prev_cwnd = tc->cwnd;
@@ -683,6 +684,7 @@ tcp_cc_exit_recovery (tcp_connection_t *tc)
   tc->snd_rxt_bytes = 0;
   tc->snd_rxt_ts = 0;
   tc->prr_delivered = 0;
+  tc->prev_prr_delivered = 0;
   tc->rtt_ts = 0;
   tc->flags &= ~TCP_CONN_RXT_PENDING;
 

@@ -138,9 +138,9 @@ format_tcp_congestion (u8 * s, va_list * args)
   s = format (s, "%Usnd_cong %u dupack %u limited_tx %u\n",
 	      format_white_space, indent, tc->snd_congestion - tc->iss,
 	      tc->rcv_dupacks, tc->limited_transmit - tc->iss);
-  s = format (s, "%Urxt_bytes %u rxt_delivered %u rxt_head %u rxt_ts %u\n",
+  s = format (s, "%Urxt_bytes %u rxt_delivered %u prev_prr_delivered %u rxt_ts %u\n",
 	      format_white_space, indent, tc->snd_rxt_bytes, tc->rxt_delivered,
-	      tc->rxt_head - tc->iss, tcp_tstamp (tc) - tc->snd_rxt_ts);
+	      tc->prev_prr_delivered, tcp_tstamp (tc) - tc->snd_rxt_ts);
   if (tcp_in_fastrecovery (tc))
     prr_space = tcp_fastrecovery_prr_snd_space (tc);
   s = format (s, "%Uprr_start %u prr_delivered %u prr space %u\n",

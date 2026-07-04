@@ -1713,9 +1713,12 @@ tcp_fastrecovery_prr_snd_space (tcp_connection_t * tc)
     }
   else
     {
-      int limit;
-      limit = clib_max ((int) (tc->prr_delivered - prr_out), 0) + tc->snd_mss;
-      space = clib_min (tc->ssthresh - pipe, limit);
+      /* Slow start reduction bound (RFC 6937): allow one extra segment per data delivered since
+       * last time we sent, on top of packet conservation, so the pipe re-inflates to ssthresh after
+       * heavy loss */
+      int delivered_data = tc->prr_delivered - tc->prev_prr_delivered;
+      int limit = clib_max ((int) (tc->prr_delivered - prr_out), delivered_data) + tc->snd_mss;
+      space = clib_min ((int) tc->ssthresh - pipe, limit);
     }
   space = clib_max (space, prr_out ? 0 : tc->snd_mss);
   return space;
@@ -1875,6 +1878,10 @@ done:
   sent_bytes = cc_limited ? burst_bytes : sent_bytes;
   if (transport_connection_is_tx_paced (&tc->connection))
     transport_connection_tx_pacer_update_bytes (&tc->connection, sent_bytes);
+  /* Snapshot delivered so the next prr send only credits data delivered
+   * since we actually put bytes on the wire this round */
+  if (n_segs)
+    tc->prev_prr_delivered = tc->prr_delivered;
   return n_segs;
 }
 
@@ -1966,6 +1973,10 @@ done:
   sent_bytes = cc_limited ? burst_bytes : sent_bytes;
   if (transport_connection_is_tx_paced (&tc->connection))
     transport_connection_tx_pacer_update_bytes (&tc->connection, sent_bytes);
+  /* Snapshot delivered so the next prr send only credits data delivered
+   * since we actually put bytes on the wire this round */
+  if (n_segs)
+    tc->prev_prr_delivered = tc->prr_delivered;
 
   return n_segs;
 }
