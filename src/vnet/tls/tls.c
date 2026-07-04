@@ -1309,7 +1309,12 @@ dtls_connect (transport_endpoint_cfg_t *tep)
   cargs->sep_ext.ns_index = app->ns_index;
   cargs->sep_ext.transport_flags = TRANSPORT_CFG_F_CONNECTED;
   if ((rv = vnet_connect (cargs)))
-    return rv;
+    {
+      tls_ctx_half_open_free (ctx_handle);
+      return rv;
+    }
+
+  ctx->tls_session_handle = cargs->sh;
 
   TLS_DBG (1, "New DTLS connect request %x engine %d", ctx_handle,
 	   engine_type);
