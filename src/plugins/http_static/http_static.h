@@ -220,6 +220,7 @@ typedef struct
 extern hss_main_t hss_main;
 
 int hss_create (vlib_main_t *vm);
+int hss_destroy (vlib_main_t *vm);
 
 static inline hss_listener_t *
 hss_listener_get (u32 l_index)

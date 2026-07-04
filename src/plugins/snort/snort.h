@@ -278,12 +278,12 @@ snort_qpair_empty_buf_alloc_buffers (vlib_main_t *vm, snort_qpair_t *qp)
       daq_vpp_empty_buf_desc_t *empty_buf_desc =
 	&qp->empty_buf_ring[head & mask];
       vlib_buffer_t *b = vlib_get_buffer (vm, qp->empty_buffers[head & mask]);
+      u8 buffer_pool = b->buffer_pool_index;
       b->current_data = 0;
       *empty_buf_desc = (daq_vpp_empty_buf_desc_t){
-	.buffer_pool = b->buffer_pool_index,
+	.buffer_pool = buffer_pool,
 	.length = vlib_buffer_get_default_data_size (vm),
-	.offset = (u8 *) b->data -
-		  sm->buffer_pool_base_addrs[empty_buf_desc->buffer_pool],
+	.offset = (u8 *) b->data - sm->buffer_pool_base_addrs[buffer_pool],
       };
       head++;
       i++;

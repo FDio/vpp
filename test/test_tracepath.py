@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+import os
 import unittest
 from scapy.layers.inet import IP, UDP
 from scapy.layers.l2 import Ether
@@ -123,6 +124,13 @@ class TestTracePath(VppTestCase):
         # Seen on main thread only (thread_index 0 = bit 0)
         self.assertEqual(drop_path.thread_bitmap, 1)
         self.assertEqual(fwd_path.thread_bitmap, 1)
+
+        # Verify that graphviz command creates a file under /tmp
+        graphviz_filename = "vpp_tracepath_graphviz_test.dot"
+        graphviz_tmpfile = f"/tmp/{graphviz_filename}"
+        self.vapi.cli(f"show trace paths graphviz file {graphviz_filename}")
+        self.assertTrue(os.path.exists(graphviz_tmpfile))
+        os.remove(graphviz_tmpfile)
 
         # Cleanup
         drop_route.remove_vpp_config()

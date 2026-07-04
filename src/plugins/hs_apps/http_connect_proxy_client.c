@@ -259,6 +259,7 @@ hcpc_session_close_http (hcpc_session_t *ps)
     clib_warning ("session %u disconnect returned: %U", ps->session_index,
 		  format_session_error, rv);
   ps->http_disconnected = 1;
+  ps->flags &= ~HCPC_SESSION_F_INTERCEPT_SHUTDOWN;
 }
 
 static void
@@ -299,6 +300,7 @@ hcpc_session_close_intercept (hcpc_session_t *ps)
     clib_warning ("session %u disconnect returned: %U", ps->session_index,
 		  format_session_error, rv);
   ps->intercept_diconnected = 1;
+  ps->flags &= ~HCPC_SESSION_F_HTTP_SHUTDOWN;
 }
 
 static void
@@ -896,15 +898,20 @@ hcpc_open_http_stream (u32 session_index)
       ps->state = HCPC_SESSION_CLOSED;
       ps->http_disconnected = 1;
       ps->http_establishing = 0;
+      if (rv == SESSION_E_ALLOC)
+	{
+	  clib_spinlock_unlock_if_init (&hcpcm->sessions_lock);
+	  return;
+	}
+
+      ps->intercept.rx_fifo->master_thread_index = ps->intercept.tx_fifo->master_thread_index;
+
       if (!ps->intercept_diconnected)
 	{
-	  ps->intercept.rx_fifo->master_thread_index =
-	    ps->intercept.tx_fifo->master_thread_index;
 	  if (ps->intercept.session_handle != SESSION_INVALID_HANDLE)
 	    {
 	      session_send_rpc_evt_to_thread_force (
-		session_thread_from_handle (ps->intercept.session_handle),
-		hcpc_reset_session_rpc,
+		session_thread_from_handle (ps->intercept.session_handle), hcpc_reset_session_rpc,
 		uword_to_pointer (ps->intercept.session_handle, void *));
 	      ps->intercept_diconnected = 1;
 	    }
@@ -913,17 +920,15 @@ hcpc_open_http_stream (u32 session_index)
 	      if (session_thread_from_handle (hcpcm->http_connection_handle) !=
 		  ps->intercept.tx_fifo->master_thread_index)
 		{
-		  session_send_rpc_evt_to_thread (
-		    ps->intercept.tx_fifo->master_thread_index,
-		    hcpc_session_postponed_free_rpc,
-		    uword_to_pointer (ps->session_index, void *));
+		  session_send_rpc_evt_to_thread (ps->intercept.tx_fifo->master_thread_index,
+						  hcpc_session_postponed_free_rpc,
+						  uword_to_pointer (ps->session_index, void *));
 		}
 	      else
 		hcpc_session_free (ps);
 	    }
 	  if (rv == SESSION_E_MAX_STREAMS_HIT)
-	    hcpc_worker_stats_inc (vlib_get_thread_index (), max_streams_hit,
-				   1);
+	    hcpc_worker_stats_inc (vlib_get_thread_index (), max_streams_hit, 1);
 	}
       clib_spinlock_unlock_if_init (&hcpcm->sessions_lock);
       return;
@@ -1254,20 +1259,21 @@ hcpc_http_session_transport_closed_callback (session_t *s)
   clib_spinlock_lock_if_init (&hcpcm->sessions_lock);
   ps = hcpc_session_get (s->opaque);
   ASSERT (ps);
-  ps->state = HCPC_SESSION_CLOSED;
-  ps->http_disconnected = 1;
   /* stream reset during tunnel shutdown */
   if (!ps->intercept_diconnected && (ps->flags & HCPC_SESSION_F_INTERCEPT_SHUTDOWN))
     {
+      if (!ps->http_disconnected)
+	hcpc_session_close_http (ps);
       ASSERT (ps->intercept.session_handle != SESSION_INVALID_HANDLE);
       session_send_rpc_evt_to_thread_force (
 	session_thread_from_handle (ps->intercept.session_handle), hcpc_reset_session_rpc,
 	uword_to_pointer (ps->intercept.session_handle, void *));
       ps->flags &= ~HCPC_SESSION_F_INTERCEPT_SHUTDOWN;
       ps->intercept_diconnected = 1;
+      ps->state = HCPC_SESSION_CLOSED;
+      hcpc_worker_stats_inc (s->thread_index, tunnels_reset_by_target, 1);
     }
   clib_spinlock_unlock_if_init (&hcpcm->sessions_lock);
-  hcpc_worker_stats_inc (s->thread_index, tunnels_reset_by_target, 1);
 }
 
 static void
@@ -1530,6 +1536,7 @@ hcpc_http_alloc_session_fifos (session_t *s)
       if (ps->intercept_diconnected)
 	{
 	  clib_spinlock_unlock_if_init (&hcpcm->sessions_lock);
+	  hcpc_worker_stats_inc (s->thread_index, client_closed_before_stream_opened, 1);
 	  return SESSION_E_ALLOC;
 	}
       ls = session_get_from_handle (ps->intercept.session_handle);
@@ -1646,11 +1653,11 @@ hcpc_intercept_session_transport_closed_callback (session_t *s)
   clib_spinlock_lock_if_init (&hcpcm->sessions_lock);
   ps = hcpc_session_get (s->opaque);
   ASSERT (ps);
-  ps->state = HCPC_SESSION_CLOSED;
-  ps->intercept_diconnected = 1;
   /* reset or timeout during tcp session shutdown */
   if (!ps->http_disconnected && (ps->flags & HCPC_SESSION_F_HTTP_SHUTDOWN))
     {
+      if (!ps->intercept_diconnected)
+	hcpc_session_close_intercept (ps);
       /* we want stream reset here */
       ASSERT (ps->http.session_handle != SESSION_INVALID_HANDLE);
       session_send_rpc_evt_to_thread_force (session_thread_from_handle (ps->http.session_handle),
@@ -1658,9 +1665,10 @@ hcpc_intercept_session_transport_closed_callback (session_t *s)
 					    uword_to_pointer (ps->http.session_handle, void *));
       ps->flags &= ~HCPC_SESSION_F_HTTP_SHUTDOWN;
       ps->http_disconnected = 1;
+      ps->state = HCPC_SESSION_CLOSED;
+      hcpc_worker_stats_inc (s->thread_index, tunnels_reset_by_client, 1);
     }
   clib_spinlock_unlock_if_init (&hcpcm->sessions_lock);
-  hcpc_worker_stats_inc (s->thread_index, tunnels_reset_by_client, 1);
 }
 
 static void

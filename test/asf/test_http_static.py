@@ -66,7 +66,7 @@ class TestHttpStaticVapi(VppAsfTestCase):
     def test_http_static_vapi(self):
         self.vapi.http_static_enable_v5(
             www_root="/tmp",
-            uri="tcp://0.0.0.0/80",
+            uri="tcp://0.0.0.0:80",
         )
         # move file pointer to the beginning
         self.temp.seek(0)
@@ -109,6 +109,48 @@ class TestHttpStaticVapi(VppAsfTestCase):
             capture_output=True,
         )
         self.assertIn(b"Hello world2", process.stdout)
+
+        self.vapi.http_static_disable()
+        self.temp2.seek(0)
+        process = subprocess.run(
+            [
+                "ip",
+                "netns",
+                "exec",
+                self.ns_name,
+                "curl",
+                "--noproxy",
+                "10.10.1.2",
+                f"10.10.1.2/{self.temp2.name[5:]}",
+            ],
+            capture_output=True,
+        )
+        self.assertNotIn(b"Hello world2", process.stdout)
+
+        # Now enable again
+        self.vapi.http_static_enable_v5(
+            www_root="/tmp",
+            uri="http://0.0.0.0:80",
+        )
+        self.temp2.seek(0)
+        process = subprocess.run(
+            [
+                "ip",
+                "netns",
+                "exec",
+                self.ns_name,
+                "curl",
+                "--noproxy",
+                "10.10.1.2",
+                f"10.10.1.2/{self.temp2.name[5:]}",
+            ],
+            capture_output=True,
+        )
+        self.assertIn(b"Hello world2", process.stdout)
+
+        reply = self.vapi.http_static_get()
+        self.assertEqual(reply.www_root, "/tmp")
+        self.assertEqual(reply.uri, "http://0.0.0.0:80")
 
 
 @unittest.skipIf(
@@ -197,6 +239,21 @@ class TestHttpStaticCli(VppAsfTestCase):
         self.logger.info(self.vapi.cli("show http static server cache"))
         self.logger.info(self.vapi.cli("clear http static cache"))
         self.logger.info(self.vapi.cli("show http static server sessions"))
+
+        # Now turn the server off again
+        self.vapi.cli("http static server disable")
+        process = subprocess.run(
+            [
+                "ip",
+                "netns",
+                "exec",
+                self.ns_name,
+                "curl",
+                f"10.10.1.2/{self.temp2.name[5:]}",
+            ],
+            capture_output=True,
+        )
+        self.assertNotIn(b"Hello world2", process.stdout)
 
 
 if __name__ == "__main__":

@@ -255,7 +255,7 @@ static int
 http1_parse_request_line (http_ctx_t *hc, http_ctx_t *req, u8 *rx_buf, http_status_code_t *ec)
 {
   int i, target_len;
-  u32 next_line_offset, method_offset;
+  u32 next_line_offset, method_len, method_offset;
 
   /* request-line = method SP request-target SP HTTP-version CRLF */
   i = http_v_find_index (rx_buf, 8, 0, "\r\n");
@@ -282,28 +282,29 @@ http1_parse_request_line (http_ctx_t *hc, http_ctx_t *req, u8 *rx_buf, http_stat
    * In the interest of robustness, a server that is expecting to receive and
    * parse a request-line SHOULD ignore at least one empty line (CRLF)
    * received prior to the request-line.
-   */
+  */
   method_offset = rx_buf[0] == '\r' && rx_buf[1] == '\n' ? 2 : 0;
+  method_len = i - method_offset;
   /* parse method */
-  if (!memcmp (rx_buf + method_offset, "GET ", 4))
+  if (method_len >= 4 && !memcmp (rx_buf + method_offset, "GET ", 4))
     {
       HTTP_DBG (1, "GET method");
       req->method = HTTP_REQ_GET;
       req->target_path_offset = method_offset + 4;
     }
-  else if (!memcmp (rx_buf + method_offset, "POST ", 5))
+  else if (method_len >= 5 && !memcmp (rx_buf + method_offset, "POST ", 5))
     {
       HTTP_DBG (1, "POST method");
       req->method = HTTP_REQ_POST;
       req->target_path_offset = method_offset + 5;
     }
-  else if (!memcmp (rx_buf + method_offset, "PUT ", 4))
+  else if (method_len >= 4 && !memcmp (rx_buf + method_offset, "PUT ", 4))
     {
       HTTP_DBG (1, "PUT method");
       req->method = HTTP_REQ_PUT;
       req->target_path_offset = method_offset + 4;
     }
-  else if (!memcmp (rx_buf + method_offset, "CONNECT ", 8))
+  else if (method_len >= 8 && !memcmp (rx_buf + method_offset, "CONNECT ", 8))
     {
       HTTP_DBG (1, "CONNECT method");
       req->method = HTTP_REQ_CONNECT;
@@ -311,7 +312,7 @@ http1_parse_request_line (http_ctx_t *hc, http_ctx_t *req, u8 *rx_buf, http_stat
       req->target_path_offset = method_offset + 8;
       req->req_flags |= HTTP_REQ_F_IS_TUNNEL;
     }
-  else if (!memcmp (rx_buf + method_offset, "CONNECT-UDP ", 12) &&
+  else if (method_len >= 12 && !memcmp (rx_buf + method_offset, "CONNECT-UDP ", 12) &&
 	   (hc->flags & HTTP_CONN_F_CONNECT_UDP_DRAFT03))
     {
       HTTP_DBG (1, "CONNECT-UDP method");
@@ -321,7 +322,7 @@ http1_parse_request_line (http_ctx_t *hc, http_ctx_t *req, u8 *rx_buf, http_stat
       req->req_flags |= HTTP_REQ_F_IS_TUNNEL;
       req->req_flags |= HTTP_REQ_F_CONNECT_UDP_DRAFT03;
     }
-  else if (!memcmp (rx_buf + method_offset, "PRI ", 4))
+  else if (method_len >= 4 && !memcmp (rx_buf + method_offset, "PRI ", 4))
     {
       HTTP_DBG (1, "request start with PRI, upgrading to http/2");
       return 2;

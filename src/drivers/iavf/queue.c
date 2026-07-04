@@ -60,6 +60,9 @@ iavf_tx_queue_alloc (vlib_main_t *vm, vnet_dev_tx_queue_t *txq)
   vnet_dev_t *dev = txq->port->dev;
   iavf_device_t *ad = vnet_dev_get_data (dev);
   iavf_txq_t *atq = vnet_dev_get_tx_queue_data (txq);
+  u8 bpi = vlib_buffer_pool_get_default_for_numa (vm, dev->numa_node);
+  u16 n_ph_bufs = (txq->size / 510) + 1;
+  u32 n_alloc;
   vnet_dev_rv_t rv;
 
   if ((rv =
@@ -68,6 +71,22 @@ iavf_tx_queue_alloc (vlib_main_t *vm, vnet_dev_tx_queue_t *txq)
     return rv;
 
   clib_ring_new_aligned (atq->rs_slots, 32, CLIB_CACHE_LINE_BYTES);
+  atq->ph_bufs =
+    clib_mem_alloc_aligned (n_ph_bufs * sizeof (atq->ph_bufs[0]), CLIB_CACHE_LINE_BYTES);
+  if (atq->ph_bufs == 0)
+    {
+      rv = VNET_DEV_ERR_BUFFER_ALLOC_FAIL;
+      goto error;
+    }
+  n_alloc = vlib_buffer_alloc_from_pool (vm, atq->ph_bufs, n_ph_bufs, bpi);
+  if (n_alloc != n_ph_bufs)
+    {
+      if (n_alloc)
+	vlib_buffer_free (vm, atq->ph_bufs, n_alloc);
+      rv = VNET_DEV_ERR_BUFFER_ALLOC_FAIL;
+      goto error;
+    }
+
   atq->buffer_indices = clib_mem_alloc_aligned (
     txq->size * sizeof (atq->buffer_indices[0]), CLIB_CACHE_LINE_BYTES);
   atq->tmp_descs = clib_mem_alloc_aligned (
@@ -79,6 +98,16 @@ iavf_tx_queue_alloc (vlib_main_t *vm, vnet_dev_tx_queue_t *txq)
 
   log_debug (dev, "queue %u alocated", txq->queue_id);
   return VNET_DEV_OK;
+
+error:
+  if (atq->ph_bufs)
+    {
+      clib_mem_free (atq->ph_bufs);
+      atq->ph_bufs = 0;
+    }
+  clib_ring_free (atq->rs_slots);
+  vnet_dev_dma_mem_free (vm, dev, atq->descs);
+  return rv;
 }
 
 void
@@ -87,12 +116,16 @@ iavf_tx_queue_free (vlib_main_t *vm, vnet_dev_tx_queue_t *txq)
   vnet_dev_t *dev = txq->port->dev;
   iavf_txq_t *atq = vnet_dev_get_tx_queue_data (txq);
   iavf_txq_t *aq = vnet_dev_get_tx_queue_data (txq);
+  u16 n_ph_bufs = (txq->size / 510) + 1;
 
   log_debug (dev, "queue %u", txq->queue_id);
   vnet_dev_dma_mem_free (vm, dev, aq->descs);
   clib_ring_free (atq->rs_slots);
 
-  foreach_pointer (p, aq->tmp_descs, aq->tmp_bufs, aq->buffer_indices)
+  if (atq->ph_bufs)
+    vlib_buffer_free (vm, atq->ph_bufs, n_ph_bufs);
+
+  foreach_pointer (p, aq->ph_bufs, aq->tmp_descs, aq->tmp_bufs, aq->buffer_indices)
     if (p)
       clib_mem_free (p);
 }
