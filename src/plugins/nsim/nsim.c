@@ -167,7 +167,9 @@ nsim_configure (nsim_main_t *nsm, f64 bandwidth, f64 delay, u32 packet_size, f64
     }
 
   nsm->delay = delay;
-  nsm->drop_fraction = drop_fraction;
+  /* Uniform drop is the default loss model; the CLI may override it with a
+   * richer model (burst/one-shot/targeted) after nsim_configure returns. */
+  nsim_loss_model_uniform (&nsm->loss, drop_fraction);
   nsm->reorder_fraction = reorder_fraction;
   nsm->buffer_time = buffer;
   /* Per-packet serialization time at the bottleneck rate. Only used by the
@@ -647,10 +649,7 @@ format_nsim_config (u8 * s, va_list * args)
     s = format (s, " buffer: %U (queued/bufferbloat model)\n", format_delay, nsm->buffer_time);
   else
     s = format (s, " buffer: 1 bdp (fixed-delay model)\n");
-  if (nsm->drop_fraction)
-    s = format (s, " drop fraction: %.5f\n", nsm->drop_fraction);
-  else
-    s = format (s, " drop fraction: 0\n");
+  s = format (s, " loss model: %U\n", format_nsim_loss_model, &nsm->loss);
   if (nsm->reorder_fraction)
     s = format (s, " reorder fraction: %.5f\n", nsm->reorder_fraction);
   else
@@ -700,7 +699,10 @@ set_nsim_command_fn (vlib_main_t * vm,
 		     unformat_input_t * input, vlib_cli_command_t * cmd)
 {
   f64 drop_fraction = 0.0, reorder_fraction = 0.0, delay = 0.0, bandwidth = 0.0, buffer = 0.0;
+  f64 burst_prob = 0.0, burst_dur = 0.0, drop_once_at = 0.0, drop_once_dur = 0.0;
   u32 packets_per_drop, packets_per_reorder, packet_size = 1500;
+  u32 drop_seq_offset = 0, drop_seq_rxt = 0;
+  u8 drop_seq_set = 0;
   nsim_main_t *nsm = &nsim_main;
   int rv;
 
@@ -738,6 +740,21 @@ set_nsim_command_fn (vlib_main_t * vm,
 	    return clib_error_return
 	      (0, "reorder fraction must be between zero and 1");
 	}
+      else if (unformat (input, "burst-loss-prob %f", &burst_prob))
+	{
+	  if (burst_prob < 0.0 || burst_prob > 1.0)
+	    return clib_error_return (0, "burst loss probability must be between zero and 1");
+	}
+      else if (unformat (input, "burst-duration %U", unformat_delay, &burst_dur))
+	;
+      else if (unformat (input, "drop-once after %U for %U", unformat_delay, &drop_once_at,
+			 unformat_delay, &drop_once_dur))
+	;
+      else if (unformat (input, "drop-seq %u retransmits %u", &drop_seq_offset,
+			 &drop_seq_rxt))
+	drop_seq_set = 1;
+      else if (unformat (input, "drop-seq %u", &drop_seq_offset))
+	drop_seq_set = 1;
       else if (unformat (input, "poll-main-thread"))
 	nsm->poll_main_thread = 1;
       else
@@ -767,6 +784,17 @@ set_nsim_command_fn (vlib_main_t * vm,
     case 0:
       break;
     }
+
+  /* Select the loss model. nsim_configure already installed uniform drop from
+   * drop_fraction; a richer model specified on the same line overrides it. Only
+   * one model is active; pick the most specific requested. */
+  if (drop_seq_set)
+    nsim_loss_model_target_seq (&nsm->loss, drop_seq_offset, drop_seq_rxt);
+  else if (drop_once_dur > 0.0)
+    nsim_loss_model_once (&nsm->loss, drop_once_at, drop_once_dur);
+  else if (burst_prob > 0.0)
+    nsim_loss_model_burst (&nsm->loss, burst_prob, burst_dur);
+  /* else: keep the uniform model from nsim_configure. */
 
   vlib_cli_output (vm, "%U", format_nsim_config, 1);
 
