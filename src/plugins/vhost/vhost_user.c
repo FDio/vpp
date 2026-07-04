@@ -398,6 +398,7 @@ vhost_user_socket_read (clib_file_t * uf)
   int n, i, j;
   int fd, number_of_fds = 0;
   int fds[VHOST_MEMORY_MAX_NREGIONS];
+  u8 fd_is_owned[VHOST_MEMORY_MAX_NREGIONS] = {};
   vhost_user_msg_t msg;
   struct msghdr mh;
   struct iovec iov[1];
@@ -578,6 +579,7 @@ vhost_user_socket_read (clib_file_t * uf)
 
       /* Do the mmap without barrier sync */
       void *region_mmap_addr[VHOST_MEMORY_MAX_NREGIONS];
+      ssize_t region_mmap_sz[VHOST_MEMORY_MAX_NREGIONS];
       for (i = 0; i < msg.memory.nregions; i++)
 	{
 	  long page_sz = get_huge_page_size (fds[i]);
@@ -593,9 +595,10 @@ vhost_user_socket_read (clib_file_t * uf)
 	    {
 	      vu_log_err (vui, "failed to map memory. errno is %d", errno);
 	      for (j = 0; j < i; j++)
-		munmap (region_mmap_addr[j], map_sz);
+		munmap (region_mmap_addr[j], region_mmap_sz[j]);
 	      goto close_socket;
 	    }
+	  region_mmap_sz[i] = map_sz;
 	  vu_log_debug (vui, "map memory region %d addr 0 len 0x%lx fd %d "
 			"mapped 0x%lx page_sz 0x%x", i, map_sz, fds[i],
 			region_mmap_addr[i], page_sz);
@@ -615,6 +618,7 @@ vhost_user_socket_read (clib_file_t * uf)
 
 	  vui->region_mmap_addr[i] += vui->regions[i].mmap_offset;
 	  vui->region_mmap_fd[i] = fds[i];
+	  fd_is_owned[i] = 1;
 
 	  vui->nregions++;
 	}
@@ -791,6 +795,7 @@ vhost_user_socket_read (clib_file_t * uf)
 	    ((vui - vhost_user_main.vhost_user_interfaces) << 8) + q;
 	  template.description = format (0, "vhost user");
 	  vui->vrings[q].callfd_idx = clib_file_add (&file_main, &template);
+	  fd_is_owned[0] = 1;
 	}
       else
 	vui->vrings[q].callfd_idx = ~0;
@@ -830,6 +835,7 @@ vhost_user_socket_read (clib_file_t * uf)
 	    (((uword) (vui - vhost_user_main.vhost_user_interfaces)) << 8) +
 	    q;
 	  vui->vrings[q].kickfd_idx = clib_file_add (&file_main, &template);
+	  fd_is_owned[0] = 1;
 	}
       else
 	{
@@ -862,6 +868,7 @@ vhost_user_socket_read (clib_file_t * uf)
 	    goto close_socket;
 
 	  vui->vrings[q].errfd = fds[0];
+	  fd_is_owned[0] = 1;
 	}
       else
 	vui->vrings[q].errfd = -1;
@@ -1011,6 +1018,8 @@ vhost_user_socket_read (clib_file_t * uf)
       vui->log_base_addr = log_base_addr;
       vui->log_base_addr += msg.log.offset;
       vui->log_size = msg.log.size;
+      close (fd);
+      fds[0] = -1;
       vlib_worker_thread_barrier_release (vm);
 
       msg.flags |= 4;
@@ -1090,6 +1099,9 @@ vhost_user_socket_read (clib_file_t * uf)
   return 0;
 
 close_socket:
+  for (i = 0; i < number_of_fds; i++)
+    if (!fd_is_owned[i] && fds[i] != -1)
+      close (fds[i]);
   vlib_worker_thread_barrier_sync (vm);
   vhost_user_if_disconnect (vui);
   vlib_worker_thread_barrier_release (vm);
