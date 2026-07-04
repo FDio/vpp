@@ -71,8 +71,8 @@ iavf_tx_queue_alloc (vlib_main_t *vm, vnet_dev_tx_queue_t *txq)
     return rv;
 
   clib_ring_new_aligned (atq->rs_slots, 32, CLIB_CACHE_LINE_BYTES);
-  atq->ph_bufs = clib_mem_alloc_aligned (n_ph_bufs * sizeof (atq->ph_bufs[0]),
-					 CLIB_CACHE_LINE_BYTES);
+  atq->ph_bufs =
+    clib_mem_alloc_aligned (n_ph_bufs * sizeof (atq->ph_bufs[0]), CLIB_CACHE_LINE_BYTES);
   if (atq->ph_bufs == 0)
     {
       rv = VNET_DEV_ERR_BUFFER_ALLOC_FAIL;
