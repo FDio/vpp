@@ -77,7 +77,7 @@ class BaseSfdpTest(VppTestCase):
 
     def set_timeout(self, timeout_id, value):
         self.vapi.sfdp_set_timeout(
-            tenant_id=1, timeout_id=timeout_id, timeout_value=value
+            tenant_id=1, timeout_type=timeout_id, timeout_value=value
         )
 
     def sessions(self):
