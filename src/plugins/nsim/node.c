@@ -76,12 +76,9 @@ nsim_set_actions (nsim_main_t * nsm, vlib_buffer_t ** b,
 
   memset (ctx->action, 0, n_actions * sizeof (ctx->action[0]));
 
-  if (PREDICT_FALSE (nsm->drop_fraction != 0.0))
-    {
-      for (i = 0; i < n_actions; i++)
-	if (random_f64 (&nsm->seed) <= nsm->drop_fraction)
-	  ctx->action[i] |= NSIM_ACTION_DROP;
-    }
+  if (PREDICT_FALSE (nsm->loss.type != NSIM_LOSS_NONE))
+    nsim_loss_apply (&nsm->loss, &nsm->seed, ctx->now, b, ctx->action,
+		     n_actions);
 
   if (PREDICT_FALSE (nsm->reorder_fraction != 0.0))
     {
