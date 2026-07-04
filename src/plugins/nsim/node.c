@@ -76,12 +76,8 @@ nsim_set_actions (nsim_main_t * nsm, vlib_buffer_t ** b,
 
   memset (ctx->action, 0, n_actions * sizeof (ctx->action[0]));
 
-  if (PREDICT_FALSE (nsm->drop_fraction != 0.0))
-    {
-      for (i = 0; i < n_actions; i++)
-	if (random_f64 (&nsm->seed) <= nsm->drop_fraction)
-	  ctx->action[i] |= NSIM_ACTION_DROP;
-    }
+  if (PREDICT_FALSE (nsm->loss.type != NSIM_LOSS_NONE))
+    nsim_loss_apply (&nsm->loss, &nsm->seed, ctx->now, b, ctx->action, n_actions);
 
   if (PREDICT_FALSE (nsm->reorder_fraction != 0.0))
     {
@@ -157,7 +153,10 @@ nsim_dispatch_buffer (vlib_main_t * vm, vlib_node_runtime_t * node,
 	   * add propagation delay. Queuing delay (the bloat) is the time a
 	   * packet waits behind already-enqueued packets, i.e. how far
 	   * last_tx_time has run ahead of now. */
-	  f64 depart = clib_max (ctx->now, wp->last_tx_time) + nsm->serialization_time;
+	  f64 ser = nsm->serialization_time;
+	  if (PREDICT_FALSE (nsm->rate.type != NSIM_RATE_NONE))
+	    ser = nsim_rate_serialization_time (&nsm->rate, &nsm->seed, ctx->now);
+	  f64 depart = clib_max (ctx->now, wp->last_tx_time) + ser;
 	  wp->last_tx_time = depart;
 	  ep->tx_time = depart + nsm->delay;
 	}
