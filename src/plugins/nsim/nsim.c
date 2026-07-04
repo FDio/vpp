@@ -172,12 +172,17 @@ nsim_configure (nsim_main_t *nsm, f64 bandwidth, f64 delay, u32 packet_size, f64
     }
 
   nsm->delay = delay;
-  nsm->drop_fraction = drop_fraction;
+  /* Uniform drop is the default loss model; the CLI may override it with a
+   * richer model (burst/one-shot/targeted) after nsim_configure returns. */
+  nsim_loss_model_uniform (&nsm->loss, drop_fraction);
   nsm->reorder_fraction = reorder_fraction;
   nsm->buffer_time = buffer;
   /* Per-packet serialization time at the bottleneck rate. Only used by the
    * queued model (buffer > 0). bandwidth is bits/sec. */
   nsm->serialization_time = (f64) (packet_size * 8) / bandwidth;
+  /* Constant rate by default; the CLI may install a time-varying rate model
+   * after nsim_configure returns (queued model only). */
+  nsim_rate_model_reset (&nsm->rate);
 
   /* Size the wheel to hold the configured backlog. In the default fixed-delay
    * model that backlog is one bandwidth-delay product; in the queued
@@ -652,10 +657,9 @@ format_nsim_config (u8 * s, va_list * args)
     s = format (s, " buffer: %U (queued/bufferbloat model)\n", format_delay, nsm->buffer_time);
   else
     s = format (s, " buffer: 1 bdp (fixed-delay model)\n");
-  if (nsm->drop_fraction)
-    s = format (s, " drop fraction: %.5f\n", nsm->drop_fraction);
-  else
-    s = format (s, " drop fraction: 0\n");
+  s = format (s, " loss model: %U\n", format_nsim_loss_model, &nsm->loss);
+  if (nsm->rate.type != NSIM_RATE_NONE)
+    s = format (s, " rate model: %U\n", format_nsim_rate_model, &nsm->rate, nsm->packet_size);
   if (nsm->reorder_fraction)
     s = format (s, " reorder fraction: %.5f\n", nsm->reorder_fraction);
   else
@@ -705,7 +709,11 @@ set_nsim_command_fn (vlib_main_t * vm,
 		     unformat_input_t * input, vlib_cli_command_t * cmd)
 {
   f64 drop_fraction = 0.0, reorder_fraction = 0.0, delay = 0.0, bandwidth = 0.0, buffer = 0.0;
+  f64 burst_prob = 0.0, burst_dur = 0.0, drop_once_at = 0.0, drop_once_dur = 0.0;
+  f64 rate_stall_bw = 0.0, rate_good_dwell = 0.0, rate_stall_dwell = 0.0;
   u32 packets_per_drop, packets_per_reorder, packet_size = 1500;
+  u32 drop_seq_offset = 0, drop_seq_rxt = 0;
+  u8 drop_seq_set = 0, wifi_preset = 0;
   nsim_main_t *nsm = &nsim_main;
   int rv;
 
@@ -743,6 +751,26 @@ set_nsim_command_fn (vlib_main_t * vm,
 	    return clib_error_return
 	      (0, "reorder fraction must be between zero and 1");
 	}
+      else if (unformat (input, "burst-loss-prob %f", &burst_prob))
+	{
+	  if (burst_prob < 0.0 || burst_prob > 1.0)
+	    return clib_error_return (0, "burst loss probability must be between zero and 1");
+	}
+      else if (unformat (input, "burst-duration %U", unformat_delay, &burst_dur))
+	;
+      else if (unformat (input, "drop-once after %U for %U", unformat_delay, &drop_once_at,
+			 unformat_delay, &drop_once_dur))
+	;
+      else if (unformat (input, "drop-seq %u retransmits %u", &drop_seq_offset, &drop_seq_rxt))
+	drop_seq_set = 1;
+      else if (unformat (input, "drop-seq %u", &drop_seq_offset))
+	drop_seq_set = 1;
+      else if (unformat (input, "rate-stall bandwidth %U every %U for %U", unformat_bandwidth,
+			 &rate_stall_bw, unformat_delay, &rate_good_dwell, unformat_delay,
+			 &rate_stall_dwell))
+	;
+      else if (unformat (input, "wifi"))
+	wifi_preset = 1;
       else if (unformat (input, "poll-main-thread"))
 	nsm->poll_main_thread = 1;
       else
@@ -773,6 +801,42 @@ set_nsim_command_fn (vlib_main_t * vm,
       break;
     }
 
+  /* Select the loss model. nsim_configure already installed uniform drop from
+   * drop_fraction; a richer model specified on the same line overrides it. Only
+   * one model is active; pick the most specific requested. */
+  if (drop_seq_set)
+    nsim_loss_model_target_seq (&nsm->loss, drop_seq_offset, drop_seq_rxt);
+  else if (drop_once_dur > 0.0)
+    nsim_loss_model_once (&nsm->loss, drop_once_at, drop_once_dur);
+  else if (burst_prob > 0.0)
+    nsim_loss_model_burst (&nsm->loss, burst_prob, burst_dur);
+  /* else: keep the uniform model from nsim_configure. */
+
+  /* Time-varying bottleneck rate (queued model only). The `wifi` preset fills
+   * defaults characteristic of a wireless link -- long good stretches broken by
+   * occasional multi-hundred-ms rate collapses -- which an explicit rate-stall
+   * spec then overrides. */
+  if (wifi_preset || rate_stall_bw > 0.0)
+    {
+      /* wifi preset: mostly at full rate (~8 s good stretches) with brief
+       * (~250 ms) collapses to a low MCS / heavy-retransmit rate (6 mbps) --
+       * ~3% stalled. A stall bottoms out at a few mbps, not ~0, so the queue
+       * still drains and the induced RTT spike stays bounded to a few seconds
+       * for a typical window. Any field may be overridden on the same line. */
+      f64 good_dwell = rate_good_dwell > 0.0 ? rate_good_dwell : 8.0;
+      f64 stall_dwell = rate_stall_dwell > 0.0 ? rate_stall_dwell : 0.25;
+      f64 stall_bw = rate_stall_bw > 0.0 ? rate_stall_bw : 6e6;
+
+      if (nsm->buffer_time <= 0.0)
+	return clib_error_return (0, "rate model requires the queued model; set 'buffer <time>'");
+      if (stall_bw >= bandwidth)
+	return clib_error_return (0, "stall bandwidth %.0f must be below link bandwidth %.0f",
+				  stall_bw, bandwidth);
+
+      nsim_rate_model_markov (&nsm->rate, nsm->serialization_time,
+			      (f64) (packet_size * 8) / stall_bw, good_dwell, stall_dwell);
+    }
+
   vlib_cli_output (vm, "%U", format_nsim_config, 1);
 
   return 0;
@@ -798,7 +862,8 @@ VLIB_CLI_COMMAND (set_nsim_command, static) = {
   .path = "set nsim",
   .short_help = "set nsim delay <time> bandwidth <bps> packet-size <nbytes>\n"
 		"    [buffer <time>][packets-per-drop <nn>]"
-		"[drop-fraction <f64: 0.0 - 1.0>]",
+		"[drop-fraction <f64: 0.0 - 1.0>]\n"
+		"    [wifi | rate-stall bandwidth <bps> every <time> for <time>]",
   .function = set_nsim_command_fn,
 };
 
