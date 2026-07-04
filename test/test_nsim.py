@@ -144,7 +144,7 @@ class TestNsimCli(VppTestCase):
         self.pg_start()
         self.pg1.assert_nothing_captured()
         reply = self.vapi.cli("show nsim")
-        self.assertIn("drop fraction: 1.0", reply)
+        self.assertIn("uniform: drop fraction 1", reply)
         reply = self.vapi.cli("show trace")
         self.assertIn("sw_if_index -1", reply)
 
@@ -258,7 +258,7 @@ class TestNsimApi2(VppTestCase):
         self.pg_start()
         self.pg1.assert_nothing_captured()
         reply = self.vapi.cli("show nsim")
-        self.assertIn("drop fraction: 1.0", reply)
+        self.assertIn("uniform: drop fraction 1", reply)
         reply = self.vapi.cli("show trace")
         self.assertIn("sw_if_index -1", reply)
 
