@@ -45,8 +45,8 @@ typedef struct hsi_tcp_tracker_
   hsi_tracker_flags_t flags;
   u32 peer_fin_ack;
   u32 peer_conn_index;
-  tcp_cc_algorithm_t *cc_algo;
   u32 tx_fib_index;
+  tcp_cc_algorithm_t *cc_algo;
   i32 seq_delta;
   i32 ack_delta;
   i32 tsval_delta;
