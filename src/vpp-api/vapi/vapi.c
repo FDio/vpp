@@ -55,6 +55,7 @@ typedef struct
 } vapi_req_t;
 
 static const u32 context_counter_mask = (1 << 31);
+static const u32 vapi_sock_max_msg_size = 64 << 20;
 
 typedef struct
 {
@@ -516,6 +517,12 @@ vapi_sock_recv_internal (vapi_ctx_t ctx, u8 **vec_msg, u32 timeout)
 
       mbp = (msgbuf_t *) (sock->rx_buffer);
       data_len = ntohl (mbp->data_len);
+      if (data_len > vapi_sock_max_msg_size ||
+	  data_len > UINT32_MAX - sizeof (*mbp))
+	{
+	  vec_reset_length (sock->rx_buffer);
+	  return VAPI_EINVAL;
+	}
       current_rx_index = vec_len (sock->rx_buffer);
       vec_validate (sock->rx_buffer, current_rx_index + data_len);
       mbp = (msgbuf_t *) (sock->rx_buffer);
@@ -753,7 +760,8 @@ vapi_sock_client_connect (vapi_ctx_t ctx, char *path, const char *name)
 
   if (vapi_sock_send (ctx, (void *) mp) != VAPI_OK)
     {
-      return VAPI_ECON_FAIL;
+      rv = VAPI_ECON_FAIL;
+      goto fail;
     }
 
   while (1)
@@ -771,7 +779,10 @@ vapi_sock_client_connect (vapi_ctx_t ctx, char *path, const char *name)
 	    goto read_one_msg;
 
 	  if (qstatus != VAPI_EAGAIN)
-	    return VAPI_ECON_FAIL;
+	    {
+	      rv = VAPI_ECON_FAIL;
+	      goto fail;
+	    }
 
 	  ts.tv_sec = 0;
 	  ts.tv_nsec = 10000 * 1000; /* 10 ms */
@@ -779,7 +790,8 @@ vapi_sock_client_connect (vapi_ctx_t ctx, char *path, const char *name)
 	    ts = tsrem;
 	}
       /* Timeout... */
-      return VAPI_ECON_FAIL;
+      rv = VAPI_ECON_FAIL;
+      goto fail;
 
     read_one_msg:
       if (vec_len (msg) == 0)
@@ -796,6 +808,12 @@ vapi_sock_client_connect (vapi_ctx_t ctx, char *path, const char *name)
       break;
     }
   return (rv);
+
+fail:
+  clib_socket_close (sock);
+  clib_memset (sock, 0, sizeof (*sock));
+  vec_free (msg);
+  return rv;
 }
 
 static void
