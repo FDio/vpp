@@ -245,7 +245,7 @@ show_trace_paths_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_
 
   while (unformat_check_input (input) != (uword) UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (input, "max %d", &max_paths))
+      if (unformat (input, "max %u", &max_paths))
 	;
       else
 	return clib_error_create ("expected 'max COUNT', got `%U'", format_unformat_error, input);
@@ -332,7 +332,7 @@ show_trace_paths_graphviz_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli
 
   while (unformat_check_input (input) != (uword) UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (input, "max %d", &max_paths))
+      if (unformat (input, "max %u", &max_paths))
 	;
       else if (unformat (input, "file %U", unformat_vlib_tmpfile, &tmp_filename))
 	{
@@ -340,7 +340,7 @@ show_trace_paths_graphviz_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli
 	  chroot_filename = tmp_filename;
 	  tmp_filename = 0;
 	}
-      else if (unformat (input, "%d", &path_index))
+      else if (unformat (input, "%u", &path_index))
 	hash_set (path_filter, path_index, 1); /* create path filter with user-requested paths */
       else
 	{
@@ -490,9 +490,9 @@ show_trace_path_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t
 
   while (unformat_check_input (input) != (uword) UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (input, "%d", &path_index))
+      if (unformat (input, "%u", &path_index))
 	hash_set (path_filter, path_index, 1);
-      else if (unformat (input, "max %d", &max_traces))
+      else if (unformat (input, "max %u", &max_traces))
 	;
       else
 	{
