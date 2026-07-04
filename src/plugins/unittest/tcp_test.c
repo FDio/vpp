@@ -2202,7 +2202,6 @@ tcp_test_rto_rpc (void *argp)
   scoreboard_init_rxt (&tc->sack_sb, tc->snd_una);
   tc->snd_rxt_bytes = 0;
   tc->rxt_delivered = 0;
-  tc->rxt_head = tc->snd_una - 1;
   tc->tr_occurences = 0;
   tc->rto_boff = 0;
   a->mss = tc->snd_mss;
@@ -2308,7 +2307,6 @@ tcp_test_headrtx_setup_rpc (void *argp)
   tc->snd_rxt_bytes = 0;
   tc->rxt_delivered = 0;
   tc->prr_delivered = 0;
-  tc->rxt_head = tc->snd_una - 1;
 
   pool_get (sb->holes, hole);
   clib_memset (hole, 0, sizeof (*hole));
