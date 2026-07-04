@@ -1119,6 +1119,9 @@ hss_destroy (vlib_main_t *vm)
   hss_listener_t *l;
   int ret;
 
+  if (!hsm->is_init)
+    return 0;
+
   while (pool_elts (hsm->listeners))
     {
       l = pool_elt_at_index (hsm->listeners, pool_get_first_index (hsm->listeners));

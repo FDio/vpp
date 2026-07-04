@@ -155,19 +155,11 @@ vl_api_http_static_get_t_handler (vl_api_http_static_get_t *mp)
 {
   hss_main_t *hsm = &hss_main;
   vl_api_http_static_get_reply_t *rmp;
-  u8 *addr = NULL;
   int rv = 0;
 
-  if (hsm->default_listener.sep.is_ip4)
-    {
-      addr = format (addr, "%U", format_ip4_address, &hsm->default_listener.sep.ip);
-    }
-  else
-    {
-      addr = format (addr, "[%U]", format_ip6_address, &hsm->default_listener.sep.ip);
-    }
-
   REPLY_MACRO2 (VL_API_HTTP_STATIC_GET_REPLY, {
+    u8 *addr = 0;
+
     if (pool_elts (hsm->listeners) == 0)
       {
 	rmp->fifo_size = 0;
@@ -181,6 +173,11 @@ vl_api_http_static_get_t_handler (vl_api_http_static_get_t *mp)
       }
     else
       {
+	if (hsm->default_listener.sep.is_ip4)
+	  addr = format (addr, "%U", format_ip4_address, &hsm->default_listener.sep.ip);
+	else
+	  addr = format (addr, "[%U]", format_ip6_address, &hsm->default_listener.sep.ip);
+
 	rmp->fifo_size = htonl (hsm->fifo_size);
 	rmp->cache_size_limit = htonl (hsm->default_listener.cache.cache_limit);
 	strncpy ((char *) rmp->www_root, (const char *) hsm->default_listener.www_root,
@@ -192,9 +189,9 @@ vl_api_http_static_get_t_handler (vl_api_http_static_get_t *mp)
 	rmp->keepalive_timeout = htonl (hsm->default_listener.keepalive_timeout);
 	rmp->max_body_size = htonl (hsm->default_listener.max_req_body_size);
 	rmp->rx_buff_thresh = htonl (hsm->default_listener.rx_buff_thresh);
-	      }
+	vec_free (addr);
+      }
   });
-  vec_free (addr);
 }
 
 #include <http_static/http_static.api.c>
