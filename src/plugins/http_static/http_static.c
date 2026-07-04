@@ -192,8 +192,9 @@ vl_api_http_static_get_t_handler (vl_api_http_static_get_t *mp)
 	rmp->keepalive_timeout = htonl (hsm->default_listener.keepalive_timeout);
 	rmp->max_body_size = htonl (hsm->default_listener.max_req_body_size);
 	rmp->rx_buff_thresh = htonl (hsm->default_listener.rx_buff_thresh);
-      }
+	      }
   });
+  vec_free (addr);
 }
 
 #include <http_static/http_static.api.c>
