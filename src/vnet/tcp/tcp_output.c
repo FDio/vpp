@@ -1279,9 +1279,11 @@ tcp_cc_init_rxt_timeout (tcp_connection_t * tc)
   tc->prev_ssthresh = tc->ssthresh;
   tc->prev_cwnd = tc->cwnd;
 
-  /* If we entrered loss without fast recovery, notify cc algo of the
-   * congestion event such that it can update ssthresh and its state */
-  if (!tcp_in_fastrecovery (tc))
+  /* RFC 5681 Sec. 3.1 / RFC 9438 Sec. 4.6. Notify cc of the congestion event so it can reduce
+   * ssthresh, but only if this is a new episode. If we are already in congestion recovery (fast
+   * recovery, or a prior RTO for a loss not yet recovered) cc was already notified and ssthresh
+   * already reduced. tcp_cc_loss below still sets the loss cwnd. */
+  if (!tcp_in_cong_recovery (tc))
     tcp_cc_congestion (tc);
 
   /* Let cc algo decide loss cwnd and ssthresh post unrecovered loss */
