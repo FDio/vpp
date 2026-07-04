@@ -651,6 +651,8 @@ vlib_handoff_queue_resize (u32 index, u32 queue_size)
   hqm = vec_elt_at_index (vm->handoff_queue_mains, index);
   old_queue_size = hqm->size * VLIB_HANDOFF_QUEUE_SLOT_N_ELTS;
 
+  vlib_worker_thread_barrier_sync (vm);
+
   vec_foreach_index (thread_index, hqm->vlib_handoff_queues)
     {
       vlib_handoff_queue_t *old_hq = hqm->vlib_handoff_queues[thread_index];
@@ -664,6 +666,7 @@ vlib_handoff_queue_resize (u32 index, u32 queue_size)
 	  vec_foreach (q, new_queues)
 	    clib_mem_free (q[0]);
 	  vec_free (new_queues);
+	  vlib_worker_thread_barrier_release (vm);
 	  return clib_error_return (0,
 				    "queue has pending buffers using %u elements, "
 				    "size %u is too small",
@@ -691,6 +694,8 @@ vlib_handoff_queue_resize (u32 index, u32 queue_size)
       if (vm != this_vm)
 	vm->handoff_queue_mains = this_vm->handoff_queue_mains;
     }
+
+  vlib_worker_thread_barrier_release (this_vm);
 
   return 0;
 }
