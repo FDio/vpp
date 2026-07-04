@@ -330,6 +330,7 @@ typedef struct _tcp_connection
   u32 snd_rxt_bytes;	/**< Retransmitted bytes during current cc event */
   u32 snd_rxt_ts;	/**< Timestamp when first packet is retransmitted */
   u32 prr_delivered;	/**< RFC6937 bytes delivered during current event */
+  u32 prev_prr_delivered; /**< prr_delivered snapshot at last prr send */
   u32 prr_start;	/**< snd_una when prr starts */
   u32 rxt_delivered;	/**< Rxt bytes delivered during current cc event */
   u32 rxt_head;		/**< snd_una last time we re rxted the head */
