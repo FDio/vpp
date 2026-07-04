@@ -293,8 +293,7 @@ sfdp_set_services (sfdp_main_t *sfdp, u32 tenant_id, sfdp_bitmap_t bitmap,
   clib_bihash_kv_8_8_t kv = { .key = tenant_id, .value = 0 };
   sfdp_tenant_t *tenant;
   if (clib_bihash_search_inline_8_8 (&sfdp->tenant_idx_by_id, &kv))
-    return clib_error_return (
-      0, "Can't assign service map: tenant id %d not found", tenant_id);
+    return clib_error_return (0, "Can't assign service map: tenant id %u not found", tenant_id);
 
   tenant = sfdp_tenant_at_index (sfdp, kv.value);
   tenant->bitmaps[direction] = bitmap;
@@ -309,11 +308,10 @@ sfdp_set_timeout (sfdp_main_t *sfdp, u32 tenant_id, u32 timeout_idx,
   clib_bihash_kv_8_8_t kv = { .key = tenant_id, .value = 0 };
   sfdp_tenant_t *tenant;
   if (timeout_idx >= SFDP_N_TIMEOUT)
-    return clib_error_return (0, "Can't configure timeout: timeout index %d outside valid range",
+    return clib_error_return (0, "Can't configure timeout: timeout index %u outside valid range",
 			      timeout_idx);
   if (clib_bihash_search_inline_8_8 (&sfdp->tenant_idx_by_id, &kv))
-    return clib_error_return (
-      0, "Can't configure timeout: tenant id %d not found", tenant_id);
+    return clib_error_return (0, "Can't configure timeout: tenant id %u not found", tenant_id);
   tenant = sfdp_tenant_at_index (sfdp, kv.value);
   tenant->timeouts[timeout_idx] = timeout_val;
   return 0;
@@ -327,8 +325,8 @@ sfdp_set_sp_node (sfdp_main_t *sfdp, u32 tenant_id, u32 sp_index,
   clib_bihash_kv_8_8_t kv = { .key = tenant_id, .value = 0 };
   sfdp_tenant_t *tenant;
   if (clib_bihash_search_inline_8_8 (&sfdp->tenant_idx_by_id, &kv))
-    return clib_error_return (
-      0, "Can't configure slow path node: tenant id %d not found", tenant_id);
+    return clib_error_return (0, "Can't configure slow path node: tenant id %u not found",
+			      tenant_id);
   tenant = sfdp_tenant_at_index (sfdp, kv.value);
   tenant->sp_node_indices[sp_index] = node_index;
   return 0;
@@ -344,8 +342,8 @@ sfdp_set_icmp_error_node (sfdp_main_t *sfdp, u32 tenant_id, u8 is_ip6,
   sfdp_tenant_t *tenant;
   uword next_index;
   if (clib_bihash_search_inline_8_8 (&sfdp->tenant_idx_by_id, &kv))
-    return clib_error_return (
-      0, "Can't configure icmp error node: tenant id %d not found", tenant_id);
+    return clib_error_return (0, "Can't configure icmp error node: tenant id %u not found",
+			      tenant_id);
   tenant = sfdp_tenant_at_index (sfdp, kv.value);
   if (is_ip6)
     {
