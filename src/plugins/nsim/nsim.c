@@ -655,6 +655,12 @@ format_nsim_config (u8 * s, va_list * args)
     s = format (s, " reorder fraction: %.5f\n", nsm->reorder_fraction);
   else
     s = format (s, " reorder fraction: 0\n");
+  if (nsm->burst_prob)
+    s = format (s, " burst loss: prob %.5f/pkt duration %U\n", nsm->burst_prob, format_delay,
+		nsm->burst_dur);
+  if (nsm->drop_once_dur)
+    s = format (s, " drop-once: after %U for %U (%u pkts dropped)\n", format_delay,
+		nsm->drop_once_at, format_delay, nsm->drop_once_dur, nsm->drop_once_count);
   s = format (s, " packet size: %u\n", nsm->packet_size);
   s = format (s, " worker wheel size: %u\n", nsm->wheel_slots_per_wrk);
   s = format (s, " throughput: %U\n", format_bandwidth, nsm->bandwidth);
@@ -700,6 +706,7 @@ set_nsim_command_fn (vlib_main_t * vm,
 		     unformat_input_t * input, vlib_cli_command_t * cmd)
 {
   f64 drop_fraction = 0.0, reorder_fraction = 0.0, delay = 0.0, bandwidth = 0.0, buffer = 0.0;
+  f64 burst_prob = 0.0, burst_dur = 0.0, drop_once_at = 0.0, drop_once_dur = 0.0;
   u32 packets_per_drop, packets_per_reorder, packet_size = 1500;
   nsim_main_t *nsm = &nsim_main;
   int rv;
@@ -738,6 +745,16 @@ set_nsim_command_fn (vlib_main_t * vm,
 	    return clib_error_return
 	      (0, "reorder fraction must be between zero and 1");
 	}
+      else if (unformat (input, "burst-loss-prob %f", &burst_prob))
+	{
+	  if (burst_prob < 0.0 || burst_prob > 1.0)
+	    return clib_error_return (0, "burst loss probability must be between zero and 1");
+	}
+      else if (unformat (input, "burst-duration %U", unformat_delay, &burst_dur))
+	;
+      else if (unformat (input, "drop-once after %U for %U", unformat_delay, &drop_once_at,
+			 unformat_delay, &drop_once_dur))
+	;
       else if (unformat (input, "poll-main-thread"))
 	nsm->poll_main_thread = 1;
       else
@@ -767,6 +784,22 @@ set_nsim_command_fn (vlib_main_t * vm,
     case 0:
       break;
     }
+
+  /* Bursty loss lives outside nsim_configure (it doesn't touch the wheel).
+   * Default the burst duration to ~2 ms if a probability was given without one
+   * -- short vs any realistic RTT so retransmits sent a round later survive. */
+  if (burst_prob > 0.0 && burst_dur == 0.0)
+    burst_dur = 0.002;
+  nsm->burst_prob = burst_prob;
+  nsm->burst_dur = burst_dur;
+  nsm->burst_until = 0.0;
+
+  /* One-shot loss event (also outside nsim_configure). */
+  nsm->drop_once_at = drop_once_at;
+  nsm->drop_once_dur = drop_once_dur;
+  nsm->drop_once_done = 0;
+  nsm->drop_once_start = 0.0;
+  nsm->drop_once_count = 0;
 
   vlib_cli_output (vm, "%U", format_nsim_config, 1);
 

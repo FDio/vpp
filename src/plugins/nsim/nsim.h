@@ -100,6 +100,32 @@ typedef struct
   f64 bandwidth;
   f64 drop_fraction;
   f64 reorder_fraction;
+  /* Bursty (correlated) loss model. When burst_prob > 0, loss arrives in
+   * TIME-BOUNDED bursts: with probability burst_prob per packet a burst starts
+   * that drops every packet for the next burst_dur seconds, then clears. Making
+   * the burst duration-based (not packet-count-based) is deliberate: a real
+   * buffer-overflow burst clears in well under an RTT, so a retransmit sent ~1
+   * RTT later survives (matching real captures where a segment is retransmitted
+   * only a few times) -- a packet-count burst on a flow that has collapsed to a
+   * few segs/RTT would instead span many RTTs and re-drop the retransmit and
+   * its retries, manufacturing a false RTO-backoff cascade. burst_until is the
+   * wall-clock time the current burst ends (0 => not bursting). burst_prob == 0
+   * => model disabled, uniform drop_fraction used instead. */
+  f64 burst_prob;
+  f64 burst_dur;
+  f64 burst_until;
+  /* One-shot loss event. drop_once_at seconds after the first datapath packet,
+   * drop everything for a drop_once_dur-second window (once), then disable.
+   * Models a single slow-start-overshoot buffer overflow (real captures: one
+   * big burst loss, then a long clean reconvergence) without the chronic
+   * per-RTT tail-drop a static buffer produces once the flow parks above it.
+   * drop_once_dur == 0 => disabled. drop_once_start is stamped on the first
+   * datapath packet so the trigger is relative to traffic, not config time. */
+  f64 drop_once_at;
+  f64 drop_once_dur;
+  u8 drop_once_done;
+  f64 drop_once_start;
+  u32 drop_once_count;
   /* Bottleneck buffer, in seconds of bandwidth. When non-zero, nsim models a
    * rate-limited server with a FIFO buffer of this depth (queued/bufferbloat
    * model) instead of the default fixed-delay line. */

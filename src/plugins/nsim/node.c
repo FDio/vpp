@@ -76,7 +76,47 @@ nsim_set_actions (nsim_main_t * nsm, vlib_buffer_t ** b,
 
   memset (ctx->action, 0, n_actions * sizeof (ctx->action[0]));
 
-  if (PREDICT_FALSE (nsm->drop_fraction != 0.0))
+  if (PREDICT_FALSE (nsm->drop_once_dur != 0.0 && !nsm->drop_once_done))
+    {
+      /* One-shot loss event: stamp the traffic start on the first packet, then
+       * once drop_once_at seconds have elapsed, drop everything for a short
+       * drop_once_dur window (once), then disable forever. A time window (not a
+       * packet count) drops one contiguous burst regardless of the flow's
+       * current rate -- reproduces a single slow-start-overshoot buffer overflow
+       * without the chronic per-RTT tail-drop a static buffer produces. */
+      if (nsm->drop_once_start == 0.0)
+	nsm->drop_once_start = ctx->now;
+      f64 elapsed = ctx->now - nsm->drop_once_start;
+      if (elapsed >= nsm->drop_once_at && elapsed < nsm->drop_once_at + nsm->drop_once_dur)
+	{
+	  for (i = 0; i < n_actions; i++)
+	    {
+	      ctx->action[i] |= NSIM_ACTION_DROP;
+	      nsm->drop_once_count++;
+	    }
+	}
+      else if (elapsed >= nsm->drop_once_at + nsm->drop_once_dur)
+	nsm->drop_once_done = 1;
+    }
+
+  if (PREDICT_FALSE (nsm->burst_prob != 0.0))
+    {
+      /* Time-bounded correlated loss: drop while inside an active burst, else
+       * start a new burst with prob burst_prob. A burst lasts burst_dur seconds
+       * (wall-clock), short relative to the RTT, so it drops a contiguous run
+       * but clears before a retransmit sent ~1 RTT later arrives. */
+      for (i = 0; i < n_actions; i++)
+	{
+	  if (ctx->now < nsm->burst_until)
+	    ctx->action[i] |= NSIM_ACTION_DROP;
+	  else if (random_f64 (&nsm->seed) <= nsm->burst_prob)
+	    {
+	      nsm->burst_until = ctx->now + nsm->burst_dur;
+	      ctx->action[i] |= NSIM_ACTION_DROP;
+	    }
+	}
+    }
+  else if (PREDICT_FALSE (nsm->drop_fraction != 0.0))
     {
       for (i = 0; i < n_actions; i++)
 	if (random_f64 (&nsm->seed) <= nsm->drop_fraction)
