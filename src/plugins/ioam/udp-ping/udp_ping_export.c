@@ -3,7 +3,7 @@
  * Copyright (c) 2016 Cisco and/or its affiliates.
  */
 
-#include <vnet/ipfix-export/flow_report.h>
+#include <ipfix-export/flow_report.h>
 #include <ioam/analyse/ioam_summary_export.h>
 #include <vnet/api_errno.h>
 #include <vnet/ip/ip4.h>
@@ -214,8 +214,14 @@ udp_ping_flow_create (u8 del)
   vnet_flow_report_add_del_args_t args;
   int rv;
   u32 domain_id = 0;
-  ipfix_exporter_t *exp = &flow_report_main.exporters[0];
+  flow_report_main_t *frm = vnet_flow_report_get_main ();
+  ipfix_exporter_t *exp;
   u16 template_id;
+
+  if (!frm)
+    return del ? 0 : clib_error_return (0, "ipfix-export plugin not loaded");
+
+  exp = pool_elt_at_index (frm->exporters, 0);
 
   clib_memset (&args, 0, sizeof (args));
   args.rewrite_callback = udp_ping_template_rewrite;
@@ -257,26 +263,11 @@ set_udp_ping_export_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	break;
     }
 
-  if (is_add)
-    (void) udp_ping_flow_create (0);
-  else
-    (void) udp_ping_flow_create (1);
-
-  return 0;
+  return udp_ping_flow_create (!is_add);
 }
 
 VLIB_CLI_COMMAND (set_udp_ping_export_command, static) = {
-    .path = "set udp-ping export-ipfix",
-    .short_help = "set udp-ping export-ipfix [disable]",
-    .function = set_udp_ping_export_command_fn,
-};
-
-clib_error_t *
-udp_ping_flow_report_init (vlib_main_t * vm)
-{
-  return 0;
-}
-
-VLIB_INIT_FUNCTION (udp_ping_flow_report_init) = {
-  .runs_after = VLIB_INITS ("flow_report_init"),
+  .path = "set udp-ping export-ipfix",
+  .short_help = "set udp-ping export-ipfix [disable]",
+  .function = set_udp_ping_export_command_fn,
 };

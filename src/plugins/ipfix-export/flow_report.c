@@ -7,11 +7,17 @@
  * flow_report.c
  */
 #include <vppinfra/atomics.h>
-#include <vnet/ipfix-export/flow_report.h>
+#include <ipfix-export/internal.h>
 #include <vnet/api_errno.h>
 #include <vnet/udp/udp.h>
 
 flow_report_main_t flow_report_main;
+
+__clib_export flow_report_main_t *
+vnet_flow_report_get_main (void)
+{
+  return &flow_report_main;
+}
 
 static_always_inline u8
 stream_index_valid (ipfix_exporter_t *exp, u32 index)
@@ -215,11 +221,10 @@ ipfix_write_headers (ipfix_exporter_t *exp, void *data, void **ip,
     }
 }
 
-u8 *
-vnet_flow_rewrite_generic_callback (ipfix_exporter_t *exp, flow_report_t *fr,
-				    u16 collector_port,
-				    ipfix_report_element_t *report_elts,
-				    u32 n_elts, u32 *stream_indexp)
+__clib_export u8 *
+vnet_flow_rewrite_generic_callback (ipfix_exporter_t *exp, flow_report_t *fr, u16 collector_port,
+				    ipfix_report_element_t *report_elts, u32 n_elts,
+				    u32 *stream_indexp)
 {
   ip4_header_t *ip4;
   ip6_header_t *ip6;
@@ -301,9 +306,9 @@ vnet_flow_rewrite_generic_callback (ipfix_exporter_t *exp, flow_report_t *fr,
   return rewrite;
 }
 
-vlib_buffer_t *
-vnet_ipfix_exp_get_buffer (vlib_main_t *vm, ipfix_exporter_t *exp,
-			   flow_report_t *fr, clib_thread_index_t thread_index)
+__clib_export vlib_buffer_t *
+vnet_ipfix_exp_get_buffer (vlib_main_t *vm, ipfix_exporter_t *exp, flow_report_t *fr,
+			   clib_thread_index_t thread_index)
 {
   u32 bi0;
   vlib_buffer_t *b0;
@@ -331,10 +336,9 @@ vnet_ipfix_exp_get_buffer (vlib_main_t *vm, ipfix_exporter_t *exp,
  * Send a buffer that is mostly populated. Has flow records but needs some
  * header fields updated.
  */
-void
-vnet_ipfix_exp_send_buffer (vlib_main_t *vm, ipfix_exporter_t *exp,
-			    flow_report_t *fr, flow_report_stream_t *stream,
-			    clib_thread_index_t thread_index,
+__clib_export void
+vnet_ipfix_exp_send_buffer (vlib_main_t *vm, ipfix_exporter_t *exp, flow_report_t *fr,
+			    flow_report_stream_t *stream, clib_thread_index_t thread_index,
 			    vlib_buffer_t *b0)
 {
   flow_report_main_t *frm = &flow_report_main;
@@ -577,9 +581,9 @@ VLIB_REGISTER_NODE (flow_report_process_node) = {
     .name = "flow-report-process",
 };
 
-int
-vnet_flow_report_add_del (ipfix_exporter_t *exp,
-			  vnet_flow_report_add_del_args_t *a, u16 *template_id)
+__clib_export int
+vnet_flow_report_add_del (ipfix_exporter_t *exp, vnet_flow_report_add_del_args_t *a,
+			  u16 *template_id)
 {
   int i;
   int found_index = ~0;
@@ -681,7 +685,7 @@ vnet_flow_report_add_del (ipfix_exporter_t *exp,
   return 0;
 }
 
-clib_error_t *
+__clib_export clib_error_t *
 flow_report_add_del_error_to_clib_error (int error)
 {
   switch (error)
@@ -702,7 +706,7 @@ flow_report_add_del_error_to_clib_error (int error)
     }
 }
 
-void
+__clib_export void
 vnet_flow_reports_reset (ipfix_exporter_t *exp)
 {
   flow_report_t *fr;
@@ -719,7 +723,7 @@ vnet_flow_reports_reset (ipfix_exporter_t *exp)
     }
 }
 
-void
+__clib_export void
 vnet_stream_reset (ipfix_exporter_t *exp, u32 stream_index)
 {
   flow_report_t *fr;
@@ -734,9 +738,9 @@ vnet_stream_reset (ipfix_exporter_t *exp, u32 stream_index)
       }
 }
 
-int
-vnet_stream_change (ipfix_exporter_t *exp, u32 old_domain_id, u16 old_src_port,
-		    u32 new_domain_id, u16 new_src_port)
+__clib_export int
+vnet_stream_change (ipfix_exporter_t *exp, u32 old_domain_id, u16 old_src_port, u32 new_domain_id,
+		    u16 new_src_port)
 {
   i32 stream_index = find_stream (exp, old_domain_id, old_src_port);
 

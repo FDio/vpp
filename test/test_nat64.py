@@ -1808,6 +1808,10 @@ class TestNAT64(VppTestCase):
         self.assertEqual(0, len(addresses))
 
     @unittest.skipUnless(config.extended, "part of extended tests")
+    @unittest.skipIf(
+        "ipfix-export" in config.excluded_plugins,
+        "Exclude IPFIX export plugin tests",
+    )
     def test_ipfix_max_bibs_sessions(self):
         """IPFIX logging maximum session and BIB entries exceeded"""
         max_bibs = 1280
@@ -1914,6 +1918,10 @@ class TestNAT64(VppTestCase):
                 event_count += self.verify_ipfix_max_bibs(data, max_bibs)
         self.assertEqual(event_count, 1)
 
+    @unittest.skipIf(
+        "ipfix-export" in config.excluded_plugins,
+        "Exclude IPFIX export plugin tests",
+    )
     def test_ipfix_bib_ses(self):
         """IPFIX logging NAT64 BIB/session create and delete events"""
         self.tcp_port_in = random.randint(1025, 65535)

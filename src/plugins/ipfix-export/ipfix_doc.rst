@@ -18,7 +18,7 @@ vnet_flow_report_add_del.
 
 .. code:: c
 
-      #include <vnet/ipfix-export/flow_report.h>
+      #include <ipfix-export/flow_report.h>
       /* Defined in flow_report.h, of interest when constructing reports */
 
       /* ipfix field definitions for a particular report */
@@ -98,7 +98,10 @@ vnet_flow_report_add_del.
       ...
 
       /* Recitations */
-      flow_report_main_t *frm = &flow_report_main;
+      flow_report_main_t *frm = vnet_flow_report_get_main ();
+      if (!frm)
+        return clib_error_return (0, "ipfix-export plugin not loaded");
+      ipfix_exporter_t *exp = pool_elt_at_index (frm->exporters, 0);
       my_logging_main_t *mlm = &my_logging_main;
       vnet_flow_report_add_del_args_t a;
       int rv;
@@ -130,7 +133,7 @@ vnet_flow_report_add_del.
       a.flow_data_callback = my_flow_data_callback;
 
       /* Create the report */
-      rv = vnet_flow_report_add_del (frm, &a, &template_id);
+      rv = vnet_flow_report_add_del (exp, &a, &template_id);
       if (rv)
         oops...
 
@@ -180,7 +183,7 @@ This function creates the packet header for an ipfix data packet
 
       static inline void
       my_flow_report_header (flow_report_main_t * frm,
-                 vlib_buffer_t * b0, u32 * offset)
+                 ipfix_exporter_t * exp, vlib_buffer_t * b0, u32 * offset)
       {
          my_logging_main_t *mlm = &my_logging_main;
          flow_report_stream_t *stream;
@@ -192,14 +195,14 @@ This function creates the packet header for an ipfix data packet
          ip4_header_t *ip;
          udp_header_t *udp;
 
-         stream = &frm->streams[mlm->stream_index];
+         stream = &exp->streams[mlm->stream_index];
 
          b0->current_data = 0;
          b0->current_length = sizeof (*ip) + sizeof (*udp) + sizeof (*h) +
            sizeof (*s);
          b0->flags |= (VLIB_BUFFER_TOTAL_LENGTH_VALID | VNET_BUFFER_F_FLOW_REPORT);
          vnet_buffer (b0)->sw_if_index[VLIB_RX] = 0;
-         vnet_buffer (b0)->sw_if_index[VLIB_TX] = frm->fib_index;
+         vnet_buffer (b0)->sw_if_index[VLIB_TX] = exp->fib_index;
          tp = vlib_buffer_get_current (b0);
          ip = (ip4_header_t *) & tp->ip4;
          udp = (udp_header_t *) (ip + 1);
@@ -210,10 +213,10 @@ This function creates the packet header for an ipfix data packet
          ip->ttl = 254;
          ip->protocol = IP_PROTOCOL_UDP;
          ip->flags_and_fragment_offset = 0;
-         ip->src_address.as_u32 = frm->src_address.as_u32;
-         ip->dst_address.as_u32 = frm->ipfix_collector.as_u32;
+         ip->src_address.as_u32 = exp->src_address.ip.ip4.as_u32;
+         ip->dst_address.as_u32 = exp->ipfix_collector.ip.ip4.as_u32;
          udp->src_port = clib_host_to_net_u16 (stream->src_port);
-         udp->dst_port = clib_host_to_net_u16 (frm->collector_port);
+         udp->dst_port = clib_host_to_net_u16 (exp->collector_port);
          udp->checksum = 0;
 
          h->export_time = clib_host_to_net_u32 ((u32)
@@ -232,7 +235,7 @@ This function creates the packet header for an ipfix data packet
 
 
       static inline void
-      my_send_ipfix_pkt (flow_report_main_t * frm,
+      my_send_ipfix_pkt (flow_report_main_t * frm, ipfix_exporter_t * exp,
                  vlib_frame_t * f, vlib_buffer_t * b0, u16 template_id)
       {
         ip4_ipfix_template_packet_t *tp;
@@ -259,7 +262,7 @@ This function creates the packet header for an ipfix data packet
         ip->checksum = ip4_header_checksum (ip);
         udp->length = clib_host_to_net_u16 (b0->current_length - sizeof (*ip));
 
-        if (frm->udp_checksum)
+        if (exp->udp_checksum)
           {
             udp->checksum = ip4_tcp_udp_compute_checksum (vm, b0, ip);
             if (udp->checksum == 0)
@@ -286,11 +289,17 @@ construction.
    {
      vlib_main_t *vm = vlib_mains[thread_index];
      my_logging_main_t *mlm = &jvp_ipfix_main;
-     flow_report_main_t *frm = &flow_report_main;
+     flow_report_main_t *frm = vnet_flow_report_get_main ();
+     ipfix_exporter_t *exp;
      vlib_frame_t *f;
      vlib_buffer_t *b0 = 0;
      u32 bi0 = ~0;
      u32 offset;
+
+     if (!frm)
+       return;
+
+     exp = pool_elt_at_index (frm->exporters, 0);
 
      b0 = mlm->buffers_by_thread[thread_index];
 
@@ -328,7 +337,7 @@ construction.
        }
 
      if (PREDICT_FALSE (offset == 0))
-       my_flow_report_header (frm, b0, &offset);
+       my_flow_report_header (frm, exp, b0, &offset);
 
      if (PREDICT_TRUE (do_flush == 0))
        {
@@ -338,13 +347,13 @@ construction.
          b0->current_length += sizeof (*rp);
        }
 
-     if (PREDICT_FALSE (do_flush || (offset + sizeof (*rp)) > frm->path_mtu))
+     if (PREDICT_FALSE (do_flush || (offset + sizeof (*rp)) > exp->path_mtu))
        {
          /* Nothing to send? */
          if (offset == 0)
     return;
 
-         send_ipfix_pkt (frm, f, b0, mlm->template_ids[0]);
+         my_send_ipfix_pkt (frm, exp, f, b0, mlm->template_ids[0]);
          mlm->buffers_by_thread[thread_index] = 0;
          mlm->frames_by_thread[thread_index] = 0;
          offset = 0;

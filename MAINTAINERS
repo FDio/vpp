@@ -939,11 +939,11 @@ I:	vat2
 M:	Ole Troan <otroan@employees.org>
 F:	src/vat2/
 
-VNET Ipfix Export
+Plugin - ipfix-export
 I:	ipfix-export
 M:	Ole Troan <otroan@employees.org>
 M:	Paul Atkins <patkins@graphiant.com>
-F:	src/vnet/ipfix-export/
+F:	src/plugins/ipfix-export/
 
 RPM packaging on openSUSE
 I:	rpm-packaging

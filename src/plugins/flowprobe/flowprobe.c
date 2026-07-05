@@ -416,7 +416,7 @@ flowprobe_template_add_del (u32 domain_id, u16 src_port,
 			    vnet_flow_rewrite_callback_t * rewrite_callback,
 			    bool is_add, u16 * template_id)
 {
-  ipfix_exporter_t *exp = &flow_report_main.exporters[0];
+  ipfix_exporter_t *exp = flowprobe_get_exporter ();
   vnet_flow_report_add_del_args_t a = {
     .rewrite_callback = rewrite_callback,
     .flow_data_callback = flow_data_callback,
@@ -425,6 +425,9 @@ flowprobe_template_add_del (u32 domain_id, u16 src_port,
     .src_port = src_port,
     .opaque.as_uword = flags,
   };
+  if (!exp)
+    return VNET_API_ERROR_FEATURE_DISABLED;
+
   return vnet_flow_report_add_del (exp, &a, template_id);
 }
 
@@ -565,6 +568,9 @@ flowprobe_interface_add_del_feature (flowprobe_main_t *fm, u32 sw_if_index,
   int rv = 0;
   u16 template_id = 0;
   flowprobe_record_t flags = fm->record;
+
+  if (is_add && !flowprobe_get_exporter ())
+    return VNET_API_ERROR_FEATURE_DISABLED;
 
   fm->flow_per_interface[sw_if_index] = (is_add) ? which : (u8) ~ 0;
   fm->direction_per_interface[sw_if_index] = (is_add) ? direction : (u8) ~0;
@@ -1203,6 +1209,10 @@ flowprobe_interface_add_del_feature_command_fn (vlib_main_t *vm,
 
     case VNET_API_ERROR_UNIMPLEMENTED:
       return clib_error_return (0, "ip6 not supported");
+      break;
+
+    case VNET_API_ERROR_FEATURE_DISABLED:
+      return clib_error_return (0, "ipfix-export plugin not loaded");
       break;
 
     default:

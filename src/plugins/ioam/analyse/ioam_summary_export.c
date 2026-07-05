@@ -385,8 +385,18 @@ ioam_flow_create (u8 del)
   vnet_flow_report_add_del_args_t args;
   int rv;
   u32 domain_id = 0;
-  ipfix_exporter_t *exp = &flow_report_main.exporters[0];
+  flow_report_main_t *frm = vnet_flow_report_get_main ();
+  ipfix_exporter_t *exp;
   u16 template_id;
+
+  if (!frm)
+    {
+      if (del)
+	return 0;
+      return clib_error_return (0, "ipfix-export plugin not loaded");
+    }
+
+  exp = pool_elt_at_index (frm->exporters, 0);
 
   clib_memset (&args, 0, sizeof (args));
   args.rewrite_callback = ioam_template_rewrite;
@@ -409,13 +419,3 @@ ioam_flow_create (u8 del)
 
   return 0;
 }
-
-clib_error_t *
-ioam_flow_report_init (vlib_main_t * vm)
-{
-  return 0;
-}
-
-VLIB_INIT_FUNCTION (ioam_flow_report_init) = {
-  .runs_after = VLIB_INITS ("flow_report_init"),
-};
