@@ -16,6 +16,7 @@
 #include <vpp/app/version.h>
 #include <vnet/plugin/plugin.h>
 #include <vnet/udp/udp_local.h>
+#include <vlib/unix/plugin.h>
 #include <flowprobe/flowprobe.h>
 
 #include <vlibapi/api.h>
@@ -206,17 +207,16 @@ flowprobe_template_l4_fields (ipfix_field_specifier_t * f)
 
 /**
  * @brief Create an IPFIX template packet rewrite string
- * @param frm flow_report_main_t *
- * @param fr flow_report_t *
+ * @param im ipfix_main_t *
+ * @param report ipfix_report_t *
  * @param collector_address ip4_address_t * the IPFIX collector address
  * @param src_address ip4_address_t * the source address we should use
  * @param collector_port u16 the collector port we should use, host byte order
  * @returns u8 * vector containing the indicated IPFIX template packet
  */
 static inline u8 *
-flowprobe_template_rewrite_inline (ipfix_exporter_t *exp, flow_report_t *fr,
-				   u16 collector_port,
-				   flowprobe_variant_t which)
+flowprobe_template_rewrite_inline (ipfix_exporter_t *exp, ipfix_report_t *report,
+				   u16 collector_port, flowprobe_variant_t which)
 {
   ip4_header_t *ip;
   udp_header_t *udp;
@@ -226,15 +226,15 @@ flowprobe_template_rewrite_inline (ipfix_exporter_t *exp, flow_report_t *fr,
   ipfix_field_specifier_t *f;
   ipfix_field_specifier_t *first_field;
   u8 *rewrite = 0;
-  ip4_ipfix_template_packet_t *tp;
+  ipfix_ip4_template_packet_t *tp;
   u32 field_count = 0;
-  flow_report_stream_t *stream;
+  ipfix_stream_t *stream;
   flowprobe_main_t *fm = &flowprobe_main;
-  flowprobe_record_t flags = fr->opaque.as_uword;
+  flowprobe_record_t flags = report->opaque.as_uword;
   bool collect_ip4 = false, collect_ip6 = false;
   bool collect_l4 = false;
 
-  stream = &exp->streams[fr->stream_index];
+  stream = &exp->streams[report->stream_index];
 
   if (flags & FLOW_RECORD_L3)
     {
@@ -261,12 +261,12 @@ flowprobe_template_rewrite_inline (ipfix_exporter_t *exp, flow_report_t *fr,
     field_count += flowprobe_template_l4_field_count ();
 
   /* allocate rewrite space */
-  vec_validate_aligned
-    (rewrite, sizeof (ip4_ipfix_template_packet_t)
-     + field_count * sizeof (ipfix_field_specifier_t) - 1,
-     CLIB_CACHE_LINE_BYTES);
+  vec_validate_aligned (rewrite,
+			sizeof (ipfix_ip4_template_packet_t) +
+			  field_count * sizeof (ipfix_field_specifier_t) - 1,
+			CLIB_CACHE_LINE_BYTES);
 
-  tp = (ip4_ipfix_template_packet_t *) rewrite;
+  tp = (ipfix_ip4_template_packet_t *) rewrite;
   ip = (ip4_header_t *) & tp->ip4;
   udp = (udp_header_t *) (ip + 1);
   h = (ipfix_message_header_t *) (udp + 1);
@@ -305,7 +305,7 @@ flowprobe_template_rewrite_inline (ipfix_exporter_t *exp, flow_report_t *fr,
 
   ASSERT (f - first_field);
   /* Field count in this template */
-  t->id_count = ipfix_id_count (fr->template_id, f - first_field);
+  t->id_count = ipfix_id_count (report->template_id, f - first_field);
 
   fm->template_size[flags] = (u8 *) f - (u8 *) s;
 
@@ -314,7 +314,7 @@ flowprobe_template_rewrite_inline (ipfix_exporter_t *exp, flow_report_t *fr,
     ipfix_set_id_length (2 /* set_id */ , (u8 *) f - (u8 *) s);
 
   /* message length in octets */
-  h->version_length = version_length ((u8 *) f - (u8 *) h);
+  h->version_length = ipfix_version_length ((u8 *) f - (u8 *) h);
 
   ip->length = clib_host_to_net_u16 ((u8 *) f - (u8 *) ip);
   ip->checksum = ip4_header_checksum (ip);
@@ -323,59 +323,46 @@ flowprobe_template_rewrite_inline (ipfix_exporter_t *exp, flow_report_t *fr,
 }
 
 static u8 *
-flowprobe_template_rewrite_ip6 (ipfix_exporter_t *exp, flow_report_t *fr,
-				u16 collector_port,
-				ipfix_report_element_t *elts, u32 n_elts,
-				u32 *stream_index)
+flowprobe_template_rewrite_ip6 (ipfix_exporter_t *exp, ipfix_report_t *report, u16 collector_port,
+				ipfix_report_element_t *elts, u32 n_elts, u32 *stream_index)
 {
-  return flowprobe_template_rewrite_inline (exp, fr, collector_port,
-					    FLOW_VARIANT_IP6);
+  return flowprobe_template_rewrite_inline (exp, report, collector_port, FLOW_VARIANT_IP6);
 }
 
 static u8 *
-flowprobe_template_rewrite_ip4 (ipfix_exporter_t *exp, flow_report_t *fr,
-				u16 collector_port,
-				ipfix_report_element_t *elts, u32 n_elts,
-				u32 *stream_index)
+flowprobe_template_rewrite_ip4 (ipfix_exporter_t *exp, ipfix_report_t *report, u16 collector_port,
+				ipfix_report_element_t *elts, u32 n_elts, u32 *stream_index)
 {
-  return flowprobe_template_rewrite_inline (exp, fr, collector_port,
-					    FLOW_VARIANT_IP4);
+  return flowprobe_template_rewrite_inline (exp, report, collector_port, FLOW_VARIANT_IP4);
 }
 
 static u8 *
-flowprobe_template_rewrite_l2 (ipfix_exporter_t *exp, flow_report_t *fr,
-			       u16 collector_port,
-			       ipfix_report_element_t *elts, u32 n_elts,
-			       u32 *stream_index)
+flowprobe_template_rewrite_l2 (ipfix_exporter_t *exp, ipfix_report_t *report, u16 collector_port,
+			       ipfix_report_element_t *elts, u32 n_elts, u32 *stream_index)
 {
-  return flowprobe_template_rewrite_inline (exp, fr, collector_port,
-					    FLOW_VARIANT_L2);
+  return flowprobe_template_rewrite_inline (exp, report, collector_port, FLOW_VARIANT_L2);
 }
 
 static u8 *
-flowprobe_template_rewrite_l2_ip4 (ipfix_exporter_t *exp, flow_report_t *fr,
-				   u16 collector_port,
-				   ipfix_report_element_t *elts, u32 n_elts,
+flowprobe_template_rewrite_l2_ip4 (ipfix_exporter_t *exp, ipfix_report_t *report,
+				   u16 collector_port, ipfix_report_element_t *elts, u32 n_elts,
 				   u32 *stream_index)
 {
-  return flowprobe_template_rewrite_inline (exp, fr, collector_port,
-					    FLOW_VARIANT_L2_IP4);
+  return flowprobe_template_rewrite_inline (exp, report, collector_port, FLOW_VARIANT_L2_IP4);
 }
 
 static u8 *
-flowprobe_template_rewrite_l2_ip6 (ipfix_exporter_t *exp, flow_report_t *fr,
-				   u16 collector_port,
-				   ipfix_report_element_t *elts, u32 n_elts,
+flowprobe_template_rewrite_l2_ip6 (ipfix_exporter_t *exp, ipfix_report_t *report,
+				   u16 collector_port, ipfix_report_element_t *elts, u32 n_elts,
 				   u32 *stream_index)
 {
-  return flowprobe_template_rewrite_inline (exp, fr, collector_port,
-					    FLOW_VARIANT_L2_IP6);
+  return flowprobe_template_rewrite_inline (exp, report, collector_port, FLOW_VARIANT_L2_IP6);
 }
 
 /**
  * @brief Flush accumulated data
- * @param frm flow_report_main_t *
- * @param fr flow_report_t *
+ * @param im ipfix_main_t *
+ * @param report ipfix_report_t *
  * @param f vlib_frame_t *
  *
  * <em>Notes:</em>
@@ -383,49 +370,49 @@ flowprobe_template_rewrite_l2_ip6 (ipfix_exporter_t *exp, flow_report_t *fr,
  * will be sent.
  */
 vlib_frame_t *
-flowprobe_data_callback_ip4 (flow_report_main_t *frm, ipfix_exporter_t *exp,
-			     flow_report_t *fr, vlib_frame_t *f, u32 *to_next,
-			     u32 node_index)
+flowprobe_data_callback_ip4 (ipfix_main_t *im, ipfix_exporter_t *exp, ipfix_report_t *report,
+			     vlib_frame_t *f, u32 *to_next, u32 node_index)
 {
   flowprobe_flush_callback_ip4 ();
   return f;
 }
 
 vlib_frame_t *
-flowprobe_data_callback_ip6 (flow_report_main_t *frm, ipfix_exporter_t *exp,
-			     flow_report_t *fr, vlib_frame_t *f, u32 *to_next,
-			     u32 node_index)
+flowprobe_data_callback_ip6 (ipfix_main_t *im, ipfix_exporter_t *exp, ipfix_report_t *report,
+			     vlib_frame_t *f, u32 *to_next, u32 node_index)
 {
   flowprobe_flush_callback_ip6 ();
   return f;
 }
 
 vlib_frame_t *
-flowprobe_data_callback_l2 (flow_report_main_t *frm, ipfix_exporter_t *exp,
-			    flow_report_t *fr, vlib_frame_t *f, u32 *to_next,
-			    u32 node_index)
+flowprobe_data_callback_l2 (ipfix_main_t *im, ipfix_exporter_t *exp, ipfix_report_t *report,
+			    vlib_frame_t *f, u32 *to_next, u32 node_index)
 {
   flowprobe_flush_callback_l2 ();
   return f;
 }
 
 static int
-flowprobe_template_add_del (u32 domain_id, u16 src_port,
-			    flowprobe_record_t flags,
-			    vnet_flow_data_callback_t * flow_data_callback,
-			    vnet_flow_rewrite_callback_t * rewrite_callback,
-			    bool is_add, u16 * template_id)
+flowprobe_template_add_del (u32 domain_id, u16 src_port, flowprobe_record_t flags,
+			    ipfix_data_callback_t *data_callback,
+			    ipfix_rewrite_callback_t *rewrite_callback, bool is_add,
+			    u16 *template_id)
 {
-  ipfix_exporter_t *exp = &flow_report_main.exporters[0];
-  vnet_flow_report_add_del_args_t a = {
+  flowprobe_main_t *fm = &flowprobe_main;
+  ipfix_exporter_t *exp = flowprobe_get_exporter ();
+  ipfix_report_add_del_args_t a = {
     .rewrite_callback = rewrite_callback,
-    .flow_data_callback = flow_data_callback,
+    .data_callback = data_callback,
     .is_add = is_add,
     .domain_id = domain_id,
     .src_port = src_port,
     .opaque.as_uword = flags,
   };
-  return vnet_flow_report_add_del (exp, &a, template_id);
+  if (!exp)
+    return VNET_API_ERROR_FEATURE_DISABLED;
+
+  return fm->ipfix_report_add_del (exp, &a, template_id);
 }
 
 static void
@@ -566,6 +553,9 @@ flowprobe_interface_add_del_feature (flowprobe_main_t *fm, u32 sw_if_index,
   u16 template_id = 0;
   flowprobe_record_t flags = fm->record;
 
+  if (is_add && !flowprobe_get_exporter ())
+    return VNET_API_ERROR_FEATURE_DISABLED;
+
   fm->flow_per_interface[sw_if_index] = (is_add) ? which : (u8) ~ 0;
   fm->direction_per_interface[sw_if_index] = (is_add) ? direction : (u8) ~0;
   fm->template_per_flow[which] += (is_add) ? 1 : -1;
@@ -637,7 +627,7 @@ flowprobe_interface_add_del_feature (flowprobe_main_t *fm, u32 sw_if_index,
     }
   if (rv && rv != VNET_API_ERROR_VALUE_EXIST)
     {
-      clib_warning ("vnet_flow_report_add_del returned %d", rv);
+      clib_warning ("ipfix_report_add_del returned %d", rv);
       return -1;
     }
 
@@ -1205,6 +1195,10 @@ flowprobe_interface_add_del_feature_command_fn (vlib_main_t *vm,
       return clib_error_return (0, "ip6 not supported");
       break;
 
+    case VNET_API_ERROR_FEATURE_DISABLED:
+      return clib_error_return (0, "ipfix plugin not loaded");
+      break;
+
     default:
       return clib_error_return (0, "flowprobe_enable_disable returned %d",
 				rv);
@@ -1418,6 +1412,15 @@ flowprobe_init (vlib_main_t * vm)
   int i;
 
   fm->vnet_main = vnet_get_main ();
+
+  fm->ipfix_main = vlib_get_plugin_symbol (IPFIX_PLUGIN_SO, IPFIX_MAIN_SYMBOL);
+  fm->ipfix_report_add_del = vlib_get_plugin_symbol (IPFIX_PLUGIN_SO, IPFIX_REPORT_ADD_DEL_SYMBOL);
+  if (!!fm->ipfix_main != !!fm->ipfix_report_add_del)
+    {
+      clib_warning ("ipfix plugin symbols are inconsistent");
+      fm->ipfix_main = 0;
+      fm->ipfix_report_add_del = 0;
+    }
 
   /* Ask for a correctly-sized block of API message decode slots */
   fm->msg_id_base = setup_message_id_table ();

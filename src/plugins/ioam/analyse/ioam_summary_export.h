@@ -3,11 +3,11 @@
  * Copyright (c) 2017 Cisco and/or its affiliates.
  */
 
-#ifndef __included_ip6_ioam_flow_report_h__
-#define __included_ip6_ioam_flow_report_h__
+#ifndef included_ioam_summary_export_h
+#define included_ioam_summary_export_h
 
 #include <ioam/analyse/ioam_analyse.h>
-#include <vnet/ipfix-export/flow_report.h>
+#include <ipfix/ipfix.h>
 
 #define foreach_ioam_ipfix_info_element           \
 _(ioamPacketSent, 5239, u32)                     \
@@ -41,8 +41,6 @@ _(seqno_data.lost_packets, 0xffffffff, ioamSeqnoLostCount, 4) \
 _(seqno_data.reordered_packets, 0xffffffff, ioamSeqnoReorderedCount, 4) \
 _(seqno_data.dup_packets, 0xffffffff, ioamSeqnoDupCount, 4)
 
-clib_error_t *ioam_flow_report_init (vlib_main_t * vm);
-
 typedef struct
 {
   u8 num_nodes;
@@ -54,16 +52,21 @@ typedef struct
   ioam_path_map_t path[0];
 } ioam_path;
 
+typedef struct
+{
+  ipfix_main_t *main;
+  ipfix_report_add_del_fn_t *report_add_del;
+} ioam_ipfix_main_t;
+
+extern ioam_ipfix_main_t ioam_ipfix_main;
+
 clib_error_t *ioam_flow_create (u8 del);
 
-u8 *ioam_template_rewrite (ipfix_exporter_t *exp, flow_report_t *fr,
-			   u16 collector_port, ipfix_report_element_t *elts,
-			   u32 n_elts, u32 *stream_index);
+u8 *ioam_template_rewrite (ipfix_exporter_t *exp, ipfix_report_t *report, u16 collector_port,
+			   ipfix_report_element_t *elts, u32 n_elts, u32 *stream_index);
 
-u16 ioam_analyse_add_ipfix_record (flow_report_t * fr,
-				   ioam_analyser_data_t * record,
-				   vlib_buffer_t * b0, u16 offset,
-				   ip6_address_t * src, ip6_address_t * dst,
-				   u16 src_port, u16 dst_port);
+u16 ioam_analyse_add_ipfix_record (ipfix_report_t *report, ioam_analyser_data_t *record,
+				   vlib_buffer_t *b0, u16 offset, ip6_address_t *src,
+				   ip6_address_t *dst, u16 src_port, u16 dst_port);
 
-#endif /* __included_ip6_ioam_flow_report_h__ */
+#endif /* included_ioam_summary_export_h */

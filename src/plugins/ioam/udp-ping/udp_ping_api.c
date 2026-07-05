@@ -12,7 +12,9 @@
 
 #include <vnet/vnet.h>
 #include <vnet/ip/ip.h>
+#include <vnet/api_errno.h>
 #include <ioam/udp-ping/udp_ping.h>
+#include <ioam/analyse/ioam_summary_export.h>
 
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
@@ -58,12 +60,24 @@ static void
 vl_api_udp_ping_export_t_handler (vl_api_udp_ping_export_t * mp)
 {
   udp_ping_main_t *sm = &udp_ping_main;
+  clib_error_t *error;
   int rv = 0;
   vl_api_udp_ping_export_reply_t *rmp;
 
-  (void) udp_ping_flow_create (!mp->enable);
-  rv = 0;			//FIXME
+  if (mp->enable && (!ioam_ipfix_main.main || !ioam_ipfix_main.report_add_del))
+    {
+      rv = VNET_API_ERROR_FEATURE_DISABLED;
+      goto reply;
+    }
 
+  error = udp_ping_flow_create (!mp->enable);
+  if (error)
+    {
+      clib_error_free (error);
+      rv = VNET_API_ERROR_UNSPECIFIED;
+    }
+
+reply:
   REPLY_MACRO (VL_API_UDP_PING_EXPORT_REPLY);
 }
 

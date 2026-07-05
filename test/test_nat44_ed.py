@@ -4892,5 +4892,35 @@ class TestNAT44EDMW(TestNAT44ED):
         self.assertGreaterEqual(err, sessions_per_batch)
 
 
+@unittest.skipIf("nat" in config.excluded_plugins, "Exclude NAT plugin tests")
+class TestNAT44EDWithoutIpfix(VppTestCase):
+    """NAT44-ED behavior without the IPFIX plugin."""
+
+    extra_vpp_plugin_config = [
+        "plugin nat_plugin.so { enable }",
+        "plugin ipfix_plugin.so { disable }",
+    ]
+
+    VNET_API_ERROR_FEATURE_DISABLED = -30
+
+    def test_enable_without_ipfix(self):
+        for _ in range(2):
+            with self.vapi.assert_negative_api_retval():
+                reply = self.vapi.nat_ipfix_enable_disable(
+                    domain_id=1,
+                    src_port=4739,
+                    enable=True,
+                )
+
+            self.assertEqual(reply.retval, self.VNET_API_ERROR_FEATURE_DISABLED)
+
+        reply = self.vapi.nat_ipfix_enable_disable(
+            domain_id=1,
+            src_port=4739,
+            enable=False,
+        )
+        self.assertEqual(reply.retval, 0)
+
+
 if __name__ == "__main__":
     unittest.main(testRunner=VppTestRunner)

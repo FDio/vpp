@@ -293,9 +293,6 @@ nat64_init (vlib_main_t * vm)
       nm->port_per_thread = (0xffff - 1024) / _vec_len (nm->workers);
     }
 
-  /* Init IPFIX logging */
-  nat_ipfix_logging_init (vm);
-
 #define _(x)                                                     \
   nm->counters.in2out.x.name = #x;                               \
   nm->counters.in2out.x.stat_segment_name = "/nat64/in2out/" #x; \

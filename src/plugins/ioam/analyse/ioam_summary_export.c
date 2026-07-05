@@ -4,15 +4,17 @@
  */
 
 #include <vlib/vlib.h>
+#include <vlib/unix/plugin.h>
 #include <vnet/ip/ip6_packet.h>
 #include <vnet/udp/udp_local.h>
 #include <ioam/analyse/ioam_summary_export.h>
 #include <ioam/analyse/ip6/ip6_ioam_analyse.h>
 
+ioam_ipfix_main_t ioam_ipfix_main;
+
 u8 *
-ioam_template_rewrite (ipfix_exporter_t *exp, flow_report_t *fr,
-		       u16 collector_port, ipfix_report_element_t *elts,
-		       u32 n_elts, u32 *stream_index)
+ioam_template_rewrite (ipfix_exporter_t *exp, ipfix_report_t *report, u16 collector_port,
+		       ipfix_report_element_t *elts, u32 n_elts, u32 *stream_index)
 {
   ip4_header_t *ip;
   udp_header_t *udp;
@@ -22,21 +24,20 @@ ioam_template_rewrite (ipfix_exporter_t *exp, flow_report_t *fr,
   ipfix_field_specifier_t *f;
   ipfix_field_specifier_t *first_field;
   u8 *rewrite = 0;
-  ip4_ipfix_template_packet_t *tp;
+  ipfix_ip4_template_packet_t *tp;
   u32 field_count = 0;
   u32 field_index = 0;
-  flow_report_stream_t *stream;
+  ipfix_stream_t *stream;
 
-  stream = &exp->streams[fr->stream_index];
+  stream = &exp->streams[report->stream_index];
 
   /* Determine field count */
-#define _(field,mask,item,length)                                   \
-    {                                                               \
-  field_count++;                                                    \
-  fr->fields_to_send = clib_bitmap_set (fr->fields_to_send,         \
-                                        field_index, 1);            \
-    }                                                               \
-    field_index++;
+#define _(field, mask, item, length)                                                               \
+  {                                                                                                \
+    field_count++;                                                                                 \
+    report->fields_to_send = clib_bitmap_set (report->fields_to_send, field_index, 1);             \
+  }                                                                                                \
+  field_index++;
 
   foreach_ioam_ipfix_field;
 #undef _
@@ -47,11 +48,11 @@ ioam_template_rewrite (ipfix_exporter_t *exp, flow_report_t *fr,
 
   /* allocate rewrite space */
   vec_validate_aligned (rewrite,
-			sizeof (ip4_ipfix_template_packet_t)
-			+ field_count * sizeof (ipfix_field_specifier_t) - 1,
+			sizeof (ipfix_ip4_template_packet_t) +
+			  field_count * sizeof (ipfix_field_specifier_t) - 1,
 			CLIB_CACHE_LINE_BYTES);
 
-  tp = (ip4_ipfix_template_packet_t *) rewrite;
+  tp = (ipfix_ip4_template_packet_t *) rewrite;
   ip = (ip4_header_t *) & tp->ip4;
   udp = (udp_header_t *) (ip + 1);
   h = (ipfix_message_header_t *) (udp + 1);
@@ -68,7 +69,7 @@ ioam_template_rewrite (ipfix_exporter_t *exp, flow_report_t *fr,
   udp->dst_port = clib_host_to_net_u16 (UDP_DST_PORT_ipfix);
   udp->length = clib_host_to_net_u16 (vec_len (rewrite) - sizeof (*ip));
 
-  h->domain_id = clib_host_to_net_u32 (stream->domain_id);	//fr->domain_id);
+  h->domain_id = clib_host_to_net_u32 (stream->domain_id);
 
   /* Add Src address, dest address, src port, dest port
    * path map,  number of paths manually */
@@ -124,7 +125,7 @@ ioam_template_rewrite (ipfix_exporter_t *exp, flow_report_t *fr,
     ipfix_set_id_length (2 /* set_id */ , (u8 *) f - (u8 *) s);
 
   /* message length in octets */
-  h->version_length = version_length ((u8 *) f - (u8 *) h);
+  h->version_length = ipfix_version_length ((u8 *) f - (u8 *) h);
 
   ip->length = clib_host_to_net_u16 ((u8 *) f - (u8 *) ip);
   ip->checksum = ip4_header_checksum (ip);
@@ -133,11 +134,9 @@ ioam_template_rewrite (ipfix_exporter_t *exp, flow_report_t *fr,
 }
 
 u16
-ioam_analyse_add_ipfix_record (flow_report_t * fr,
-			       ioam_analyser_data_t * record,
-			       vlib_buffer_t * b0, u16 offset,
-			       ip6_address_t * src, ip6_address_t * dst,
-			       u16 src_port, u16 dst_port)
+ioam_analyse_add_ipfix_record (ipfix_report_t *report, ioam_analyser_data_t *record,
+			       vlib_buffer_t *b0, u16 offset, ip6_address_t *src,
+			       ip6_address_t *dst, u16 src_port, u16 dst_port)
 {
   clib_spinlock_lock (&record->writer_lock);
 
@@ -170,14 +169,14 @@ ioam_analyse_add_ipfix_record (flow_report_t * fr,
   memcpy (b0->data + offset, &tmp, sizeof (u16));
   offset += sizeof (u16);
 
-#define _(field,mask,item,length)                            \
-    if (clib_bitmap_get (fr->fields_to_send, field_index))   \
-    {                                                        \
-      /* Expect only 4 bytes */               \
-      u32 tmp;                                             \
-      tmp = clib_host_to_net_u32((u32)record->field - (u32)record->chached_data_list->field);\
-      memcpy (b0->data + offset, &tmp, length);       \
-      offset += length;                                 \
+#define _(field, mask, item, length)                                                               \
+  if (clib_bitmap_get (report->fields_to_send, field_index))                                       \
+    {                                                                                              \
+      /* Expect only 4 bytes */                                                                    \
+      u32 tmp;                                                                                     \
+      tmp = clib_host_to_net_u32 ((u32) record->field - (u32) record->chached_data_list->field);   \
+      memcpy (b0->data + offset, &tmp, length);                                                    \
+      offset += length;                                                                            \
     }
   field_index++;
   foreach_ioam_ipfix_field;
@@ -252,15 +251,14 @@ ioam_analyse_add_ipfix_record (flow_report_t * fr,
 }
 
 vlib_frame_t *
-ioam_send_flows (flow_report_main_t *frm, ipfix_exporter_t *exp,
-		 flow_report_t *fr, vlib_frame_t *f, u32 *to_next,
-		 u32 node_index)
+ioam_send_flows (ipfix_main_t *im, ipfix_exporter_t *exp, ipfix_report_t *report, vlib_frame_t *f,
+		 u32 *to_next, u32 node_index)
 {
   vlib_buffer_t *b0 = NULL;
   u32 next_offset = 0;
   u32 bi0 = ~0;
   int i;
-  ip4_ipfix_template_packet_t *tp;
+  ipfix_ip4_template_packet_t *tp;
   ipfix_message_header_t *h;
   ipfix_set_header_t *s = NULL;
   ip4_header_t *ip;
@@ -270,11 +268,11 @@ ioam_send_flows (flow_report_main_t *frm, ipfix_exporter_t *exp,
   vlib_main_t *vm = vlib_get_main ();
   ip6_address_t temp;
   ioam_analyser_data_t *record = NULL;
-  flow_report_stream_t *stream;
+  ipfix_stream_t *stream;
   ioam_analyser_data_t *aggregated_data;
   u16 data_len;
 
-  stream = &exp->streams[fr->stream_index];
+  stream = &exp->streams[report->stream_index];
 
   clib_memset (&temp, 0, sizeof (ip6_address_t));
 
@@ -299,9 +297,9 @@ ioam_send_flows (flow_report_main_t *frm, ipfix_exporter_t *exp,
 	      break;
 
 	    b0 = vlib_get_buffer (vm, bi0);
-	    memcpy (b0->data, fr->rewrite, vec_len (fr->rewrite));
+	    memcpy (b0->data, report->rewrite, vec_len (report->rewrite));
 	    b0->current_data = 0;
-	    b0->current_length = vec_len (fr->rewrite);
+	    b0->current_length = vec_len (report->rewrite);
 	    b0->flags |= VLIB_BUFFER_TOTAL_LENGTH_VALID;
 	    vnet_buffer (b0)->sw_if_index[VLIB_RX] = 0;
 	    vnet_buffer (b0)->sw_if_index[VLIB_TX] = ~0;
@@ -320,9 +318,8 @@ ioam_send_flows (flow_report_main_t *frm, ipfix_exporter_t *exp,
 	    next_offset = (u32) (((u8 *) (s + 1)) - (u8 *) tp);
 	  }
 
-	next_offset = ioam_analyse_add_ipfix_record (fr, record,
-						     b0, next_offset,
-						     &temp, &temp, 0, 0);
+	next_offset =
+	  ioam_analyse_add_ipfix_record (report, record, b0, next_offset, &temp, &temp, 0, 0);
 
 	/* Flush data if packet len is about to reach path mtu */
 	if (next_offset > (exp->path_mtu - 250))
@@ -382,19 +379,29 @@ ioam_send_flows (flow_report_main_t *frm, ipfix_exporter_t *exp,
 clib_error_t *
 ioam_flow_create (u8 del)
 {
-  vnet_flow_report_add_del_args_t args;
+  ioam_ipfix_main_t *iim = &ioam_ipfix_main;
+  ipfix_report_add_del_args_t args;
   int rv;
   u32 domain_id = 0;
-  ipfix_exporter_t *exp = &flow_report_main.exporters[0];
+  ipfix_exporter_t *exp;
   u16 template_id;
+
+  if (!iim->main || !iim->report_add_del)
+    {
+      if (del)
+	return 0;
+      return clib_error_return (0, "ipfix plugin not loaded");
+    }
+
+  exp = pool_elt_at_index (iim->main->exporters, 0);
 
   clib_memset (&args, 0, sizeof (args));
   args.rewrite_callback = ioam_template_rewrite;
-  args.flow_data_callback = ioam_send_flows;
+  args.data_callback = ioam_send_flows;
   del ? (args.is_add = 0) : (args.is_add = 1);
   args.domain_id = domain_id;
 
-  rv = vnet_flow_report_add_del (exp, &args, &template_id);
+  rv = iim->report_add_del (exp, &args, &template_id);
 
   switch (rv)
     {
@@ -403,19 +410,28 @@ ioam_flow_create (u8 del)
     case VNET_API_ERROR_NO_SUCH_ENTRY:
       return clib_error_return (0, "registration not found...");
     default:
-      return clib_error_return (0, "vnet_flow_report_add_del returned %d",
-				rv);
+      return clib_error_return (0, "ipfix_report_add_del returned %d", rv);
     }
 
   return 0;
 }
 
-clib_error_t *
-ioam_flow_report_init (vlib_main_t * vm)
+static clib_error_t *
+ioam_ipfix_init (vlib_main_t *vm)
 {
+  ioam_ipfix_main_t *iim = &ioam_ipfix_main;
+
+  (void) vm;
+  iim->main = vlib_get_plugin_symbol (IPFIX_PLUGIN_SO, IPFIX_MAIN_SYMBOL);
+  iim->report_add_del = vlib_get_plugin_symbol (IPFIX_PLUGIN_SO, IPFIX_REPORT_ADD_DEL_SYMBOL);
+  if (!!iim->main != !!iim->report_add_del)
+    {
+      clib_warning ("ipfix plugin symbols are inconsistent");
+      iim->main = 0;
+      iim->report_add_del = 0;
+    }
+
   return 0;
 }
 
-VLIB_INIT_FUNCTION (ioam_flow_report_init) = {
-  .runs_after = VLIB_INITS ("flow_report_init"),
-};
+VLIB_INIT_FUNCTION (ioam_ipfix_init);

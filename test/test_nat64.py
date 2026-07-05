@@ -111,6 +111,11 @@ class TestNAT64(VppTestCase):
     def tearDown(self):
         super(TestNAT64, self).tearDown()
         if not self.vpp_dead:
+            self.vapi.nat_ipfix_enable_disable(
+                domain_id=self.ipfix_domain_id,
+                src_port=self.ipfix_src_port,
+                enable=0,
+            )
             self.vapi.nat64_plugin_enable_disable(enable=0)
 
     def show_commands_at_teardown(self):
@@ -1808,6 +1813,10 @@ class TestNAT64(VppTestCase):
         self.assertEqual(0, len(addresses))
 
     @unittest.skipUnless(config.extended, "part of extended tests")
+    @unittest.skipIf(
+        "ipfix" in config.excluded_plugins,
+        "Exclude IPFIX plugin tests",
+    )
     def test_ipfix_max_bibs_sessions(self):
         """IPFIX logging maximum session and BIB entries exceeded"""
         max_bibs = 1280
@@ -1914,6 +1923,10 @@ class TestNAT64(VppTestCase):
                 event_count += self.verify_ipfix_max_bibs(data, max_bibs)
         self.assertEqual(event_count, 1)
 
+    @unittest.skipIf(
+        "ipfix" in config.excluded_plugins,
+        "Exclude IPFIX plugin tests",
+    )
     def test_ipfix_bib_ses(self):
         """IPFIX logging NAT64 BIB/session create and delete events"""
         self.tcp_port_in = random.randint(1025, 65535)

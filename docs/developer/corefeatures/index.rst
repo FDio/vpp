@@ -13,7 +13,6 @@ Core Features
     ipsec
     bfd_doc
     reassembly
-    ipfix_doc
     span_doc
     mtu
     gso

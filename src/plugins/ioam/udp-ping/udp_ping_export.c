@@ -3,7 +3,6 @@
  * Copyright (c) 2016 Cisco and/or its affiliates.
  */
 
-#include <vnet/ipfix-export/flow_report.h>
 #include <ioam/analyse/ioam_summary_export.h>
 #include <vnet/api_errno.h>
 #include <vnet/ip/ip4.h>
@@ -13,24 +12,21 @@
 #define UDP_PING_EXPORT_RECORD_SIZE 400
 
 static u8 *
-udp_ping_template_rewrite (ipfix_exporter_t *exp, flow_report_t *fr,
-			   u16 collector_port, ipfix_report_element_t *elts,
-			   u32 n_elts, u32 *stream_index)
+udp_ping_template_rewrite (ipfix_exporter_t *exp, ipfix_report_t *report, u16 collector_port,
+			   ipfix_report_element_t *elts, u32 n_elts, u32 *stream_index)
 {
-  return ioam_template_rewrite (exp, fr, collector_port, elts, n_elts,
-				stream_index);
+  return ioam_template_rewrite (exp, report, collector_port, elts, n_elts, stream_index);
 }
 
 static vlib_frame_t *
-udp_ping_send_flows (flow_report_main_t *frm, ipfix_exporter_t *exp,
-		     flow_report_t *fr, vlib_frame_t *f, u32 *to_next,
-		     u32 node_index)
+udp_ping_send_flows (ipfix_main_t *im, ipfix_exporter_t *exp, ipfix_report_t *report,
+		     vlib_frame_t *f, u32 *to_next, u32 node_index)
 {
   vlib_buffer_t *b0 = NULL;
   u32 next_offset = 0;
   u32 bi0 = ~0;
   int i, j;
-  ip4_ipfix_template_packet_t *tp;
+  ipfix_ip4_template_packet_t *tp;
   ipfix_message_header_t *h;
   ipfix_set_header_t *s = NULL;
   ip4_header_t *ip;
@@ -38,13 +34,13 @@ udp_ping_send_flows (flow_report_main_t *frm, ipfix_exporter_t *exp,
   u16 new_l0, old_l0;
   ip_csum_t sum0;
   vlib_main_t *vm = vlib_get_main ();
-  flow_report_stream_t *stream;
+  ipfix_stream_t *stream;
   udp_ping_flow_data *stats;
   ip46_udp_ping_flow *ip46_flow;
   u16 src_port, dst_port;
   u16 data_len;
 
-  stream = &exp->streams[fr->stream_index];
+  stream = &exp->streams[report->stream_index];
   data_len = vec_len (udp_ping_main.ip46_flow);
 
   for (i = 0; i < data_len; i++)
@@ -68,9 +64,9 @@ udp_ping_send_flows (flow_report_main_t *frm, ipfix_exporter_t *exp,
 
 
 		  b0 = vlib_get_buffer (vm, bi0);
-		  memcpy (b0->data, fr->rewrite, vec_len (fr->rewrite));
+		  memcpy (b0->data, report->rewrite, vec_len (report->rewrite));
 		  b0->current_data = 0;
-		  b0->current_length = vec_len (fr->rewrite);
+		  b0->current_length = vec_len (report->rewrite);
 		  b0->flags |= VLIB_BUFFER_TOTAL_LENGTH_VALID;
 		  vnet_buffer (b0)->sw_if_index[VLIB_RX] = 0;
 		  vnet_buffer (b0)->sw_if_index[VLIB_TX] = ~0;
@@ -90,14 +86,9 @@ udp_ping_send_flows (flow_report_main_t *frm, ipfix_exporter_t *exp,
 		  next_offset = (u32) (((u8 *) (s + 1)) - (u8 *) tp);
 		}
 
-	      next_offset = ioam_analyse_add_ipfix_record (fr,
-							   &stats->analyse_data,
-							   b0, next_offset,
-							   &ip46_flow->
-							   src.ip6,
-							   &ip46_flow->
-							   dst.ip6, src_port,
-							   dst_port);
+	      next_offset = ioam_analyse_add_ipfix_record (report, &stats->analyse_data, b0,
+							   next_offset, &ip46_flow->src.ip6,
+							   &ip46_flow->dst.ip6, src_port, dst_port);
 
 	      //u32 pak_sent = clib_host_to_net_u32(stats->pak_sent);
 	      //memcpy (b0->data + next_offset, &pak_sent, sizeof(u32));
@@ -120,8 +111,7 @@ udp_ping_send_flows (flow_report_main_t *frm, ipfix_exporter_t *exp,
 							sizeof (*udp) +
 							sizeof (*h)));
 		  h->version_length =
-		    version_length (next_offset -
-				    (sizeof (*ip) + sizeof (*udp)));
+		    ipfix_version_length (next_offset - (sizeof (*ip) + sizeof (*udp)));
 
 		  sum0 = ip->checksum;
 		  old_l0 = ip->length;
@@ -172,8 +162,7 @@ udp_ping_send_flows (flow_report_main_t *frm, ipfix_exporter_t *exp,
 					      next_offset - (sizeof (*ip) +
 							     sizeof (*udp) +
 							     sizeof (*h)));
-      h->version_length =
-	version_length (next_offset - (sizeof (*ip) + sizeof (*udp)));
+      h->version_length = ipfix_version_length (next_offset - (sizeof (*ip) + sizeof (*udp)));
 
       sum0 = ip->checksum;
       old_l0 = ip->length;
@@ -211,20 +200,26 @@ udp_ping_send_flows (flow_report_main_t *frm, ipfix_exporter_t *exp,
 clib_error_t *
 udp_ping_flow_create (u8 del)
 {
-  vnet_flow_report_add_del_args_t args;
+  ioam_ipfix_main_t *iim = &ioam_ipfix_main;
+  ipfix_report_add_del_args_t args;
   int rv;
   u32 domain_id = 0;
-  ipfix_exporter_t *exp = &flow_report_main.exporters[0];
+  ipfix_exporter_t *exp;
   u16 template_id;
+
+  if (!iim->main || !iim->report_add_del)
+    return del ? 0 : clib_error_return (0, "ipfix plugin not loaded");
+
+  exp = pool_elt_at_index (iim->main->exporters, 0);
 
   clib_memset (&args, 0, sizeof (args));
   args.rewrite_callback = udp_ping_template_rewrite;
-  args.flow_data_callback = udp_ping_send_flows;
+  args.data_callback = udp_ping_send_flows;
   del ? (args.is_add = 0) : (args.is_add = 1);
   args.domain_id = domain_id;
   args.src_port = UDP_DST_PORT_ipfix;
 
-  rv = vnet_flow_report_add_del (exp, &args, &template_id);
+  rv = iim->report_add_del (exp, &args, &template_id);
 
   switch (rv)
     {
@@ -233,8 +228,7 @@ udp_ping_flow_create (u8 del)
     case VNET_API_ERROR_NO_SUCH_ENTRY:
       return clib_error_return (0, "registration not found...");
     default:
-      return clib_error_return (0, "vnet_flow_report_add_del returned %d",
-				rv);
+      return clib_error_return (0, "ipfix_report_add_del returned %d", rv);
     }
 
   return 0;
@@ -257,26 +251,11 @@ set_udp_ping_export_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	break;
     }
 
-  if (is_add)
-    (void) udp_ping_flow_create (0);
-  else
-    (void) udp_ping_flow_create (1);
-
-  return 0;
+  return udp_ping_flow_create (!is_add);
 }
 
 VLIB_CLI_COMMAND (set_udp_ping_export_command, static) = {
-    .path = "set udp-ping export-ipfix",
-    .short_help = "set udp-ping export-ipfix [disable]",
-    .function = set_udp_ping_export_command_fn,
-};
-
-clib_error_t *
-udp_ping_flow_report_init (vlib_main_t * vm)
-{
-  return 0;
-}
-
-VLIB_INIT_FUNCTION (udp_ping_flow_report_init) = {
-  .runs_after = VLIB_INITS ("flow_report_init"),
+  .path = "set udp-ping export-ipfix",
+  .short_help = "set udp-ping export-ipfix [disable]",
+  .function = set_udp_ping_export_command_fn,
 };

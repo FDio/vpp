@@ -377,7 +377,8 @@ class MethodHolder(VppTestCase):
 @tag_run_solo
 @tag_fixme_vpp_workers
 @unittest.skipIf(
-    "flowprobe" in config.excluded_plugins, "Exclude Flowprobe plugin tests"
+    "flowprobe" in config.excluded_plugins or "ipfix" in config.excluded_plugins,
+    "Exclude Flowprobe plugin tests",
 )
 class Flowprobe(MethodHolder):
     """Template verification, timer tests"""
@@ -1222,7 +1223,8 @@ class DatapathTestsHolder(object):
 
 
 @unittest.skipIf(
-    "flowprobe" in config.excluded_plugins, "Exclude Flowprobe plugin tests"
+    "flowprobe" in config.excluded_plugins or "ipfix" in config.excluded_plugins,
+    "Exclude Flowprobe plugin tests",
 )
 class DatapathTx(MethodHolder, DatapathTestsHolder):
     """Collect info on Ethernet, IP4 and IP6 datapath (TX) (no timers)"""
@@ -1305,7 +1307,8 @@ class DatapathTx(MethodHolder, DatapathTestsHolder):
 
 
 @unittest.skipIf(
-    "flowprobe" in config.excluded_plugins, "Exclude Flowprobe plugin tests"
+    "flowprobe" in config.excluded_plugins or "ipfix" in config.excluded_plugins,
+    "Exclude Flowprobe plugin tests",
 )
 class DatapathRx(MethodHolder, DatapathTestsHolder):
     """Collect info on Ethernet, IP4 and IP6 datapath (RX) (no timers)"""
@@ -1318,7 +1321,8 @@ class DatapathRx(MethodHolder, DatapathTestsHolder):
 
 @unittest.skipUnless(config.extended, "part of extended tests")
 @unittest.skipIf(
-    "flowprobe" in config.excluded_plugins, "Exclude Flowprobe plugin tests"
+    "flowprobe" in config.excluded_plugins or "ipfix" in config.excluded_plugins,
+    "Exclude Flowprobe plugin tests",
 )
 class DisableIPFIX(MethodHolder):
     """Disable IPFIX"""
@@ -1369,7 +1373,8 @@ class DisableIPFIX(MethodHolder):
 
 @unittest.skipUnless(config.extended, "part of extended tests")
 @unittest.skipIf(
-    "flowprobe" in config.excluded_plugins, "Exclude Flowprobe plugin tests"
+    "flowprobe" in config.excluded_plugins or "ipfix" in config.excluded_plugins,
+    "Exclude Flowprobe plugin tests",
 )
 class ReenableIPFIX(MethodHolder):
     """Re-enable IPFIX"""
@@ -1439,7 +1444,8 @@ class ReenableIPFIX(MethodHolder):
 
 @unittest.skipUnless(config.extended, "part of extended tests")
 @unittest.skipIf(
-    "flowprobe" in config.excluded_plugins, "Exclude Flowprobe plugin tests"
+    "flowprobe" in config.excluded_plugins or "ipfix" in config.excluded_plugins,
+    "Exclude Flowprobe plugin tests",
 )
 class DisableFP(MethodHolder):
     """Disable Flowprobe feature"""
@@ -1550,7 +1556,8 @@ class DisableFP(MethodHolder):
 
 @unittest.skipUnless(config.extended, "part of extended tests")
 @unittest.skipIf(
-    "flowprobe" in config.excluded_plugins, "Exclude Flowprobe plugin tests"
+    "flowprobe" in config.excluded_plugins or "ipfix" in config.excluded_plugins,
+    "Exclude Flowprobe plugin tests",
 )
 class ReenableFP(MethodHolder):
     """Re-enable Flowprobe feature"""
@@ -1612,6 +1619,51 @@ class ReenableFP(MethodHolder):
 
         ipfix.remove_vpp_config()
         self.logger.info("FFP_TEST_FINISH_0001")
+
+
+@unittest.skipIf(
+    "flowprobe" in config.excluded_plugins,
+    "Exclude Flowprobe plugin tests",
+)
+class TestFlowprobeWithoutIpfix(VppTestCase):
+    """Flowprobe behavior without the IPFIX plugin"""
+
+    extra_vpp_plugin_config = [
+        "plugin flowprobe_plugin.so { enable }",
+        "plugin ipfix_plugin.so { disable }",
+    ]
+
+    VNET_API_ERROR_FEATURE_DISABLED = -30
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestFlowprobeWithoutIpfix, cls).setUpClass()
+        cls.create_pg_interfaces(range(1))
+        cls.pg0.admin_up()
+
+    def test_enable_without_ipfix(self):
+        """Flowprobe reports that its IPFIX provider is unavailable"""
+
+        record_flag = VppEnum.vl_api_flowprobe_record_flags_t.FLOWPROBE_RECORD_FLAG_L3
+        self.vapi.flowprobe_set_params(
+            record_flags=record_flag,
+            active_timer=0,
+            passive_timer=0,
+        )
+
+        for _ in range(2):
+            with self.vapi.assert_negative_api_retval():
+                reply = self.vapi.flowprobe_interface_add_del(
+                    is_add=True,
+                    which=VppEnum.vl_api_flowprobe_which_t.FLOWPROBE_WHICH_IP4,
+                    direction=(
+                        VppEnum.vl_api_flowprobe_direction_t.FLOWPROBE_DIRECTION_RX
+                    ),
+                    sw_if_index=self.pg0.sw_if_index,
+                )
+
+            self.assertEqual(reply.retval, self.VNET_API_ERROR_FEATURE_DISABLED)
+            self.assertEqual(len(self.vapi.flowprobe_interface_dump()), 0)
 
 
 if __name__ == "__main__":

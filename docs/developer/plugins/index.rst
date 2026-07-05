@@ -30,6 +30,7 @@ For more on plugins please refer to :ref:`add_plugin`.
     lb
     lacp
     flowprobe
+    ipfix
     sflow
     map_lw4o6
     mdata
