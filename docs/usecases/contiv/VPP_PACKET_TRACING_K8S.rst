@@ -60,7 +60,7 @@ command
     error-drop                       active                 12              14               0          6.67e3            1.17
     ethernet-input                   active                 60              74               0          5.81e3            1.23
     fib-walk                        any wait                 0               0          513322          1.59e4            0.00
-    flow-report-process             any wait                 0               0               1          1.45e3            0.00
+    ipfix-process                   any wait                 0               0               1          1.45e3            0.00
     flowprobe-timer-process         any wait                 0               0               1          6.34e3            0.00
     ikev2-manager-process           any wait                 0               0         1026484          1.18e4            0.00
     interface-output                 active                  2               2               0          3.23e3            1.00

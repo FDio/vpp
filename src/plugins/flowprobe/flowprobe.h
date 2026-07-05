@@ -13,8 +13,7 @@
 
 #include <vppinfra/hash.h>
 #include <vppinfra/error.h>
-#include <vnet/ipfix-export/flow_report.h>
-#include <vnet/ipfix-export/flow_report_classify.h>
+#include <ipfix/ipfix.h>
 #include <vppinfra/tw_timer_2t_1w_2048sl.h>
 
 /* Default timers in seconds */
@@ -147,10 +146,25 @@ typedef struct
   vlib_main_t *vlib_main;
   /** convenience vnet_main_t pointer */
   vnet_main_t *vnet_main;
+
+  /** Optional IPFIX provider, resolved once during initialization. */
+  ipfix_main_t *ipfix_main;
+  ipfix_report_add_del_fn_t *ipfix_report_add_del;
 } flowprobe_main_t;
 
 extern flowprobe_main_t flowprobe_main;
 extern vlib_node_registration_t flowprobe_walker_node;
+
+static_always_inline ipfix_exporter_t *
+flowprobe_get_exporter (void)
+{
+  flowprobe_main_t *fm = &flowprobe_main;
+
+  if (!fm->ipfix_main || !fm->ipfix_report_add_del)
+    return 0;
+
+  return pool_elt_at_index (fm->ipfix_main->exporters, 0);
+}
 
 void flowprobe_delete_by_index (u32 my_cpu_number, u32 poolindex);
 

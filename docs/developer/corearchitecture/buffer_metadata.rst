@@ -56,7 +56,7 @@ Important fields:
       -  VNET_BUFFER_F_L2_HDR_OFFSET_VALID: L2 header offset valid
       -  VNET_BUFFER_F_L3_HDR_OFFSET_VALID: L3 header offset valid
       -  VNET_BUFFER_F_L4_HDR_OFFSET_VALID: L4 header offset valid
-      -  VNET_BUFFER_F_FLOW_REPORT: packet is an ipfix packet
+      -  VNET_BUFFER_F_IPFIX: packet is an IPFIX packet
       -  VNET_BUFFER_F_IS_DVR: packet to be reinjected into the l2
          output path
       -  VNET_BUFFER_F_QOS_DATA_VALID: QoS data valid in

@@ -540,10 +540,10 @@ flowprobe_export_send (vlib_main_t * vm, vlib_buffer_t * b0,
 		       flowprobe_variant_t which)
 {
   flowprobe_main_t *fm = &flowprobe_main;
-  flow_report_main_t *frm = &flow_report_main;
-  ipfix_exporter_t *exp = pool_elt_at_index (frm->exporters, 0);
+  ipfix_main_t *im = fm->ipfix_main;
+  ipfix_exporter_t *exp = im ? pool_elt_at_index (im->exporters, 0) : 0;
   vlib_frame_t *f;
-  ip4_ipfix_template_packet_t *tp;
+  ipfix_ip4_template_packet_t *tp;
   ipfix_set_header_t *s;
   ipfix_message_header_t *h;
   ip4_header_t *ip;
@@ -551,8 +551,11 @@ flowprobe_export_send (vlib_main_t * vm, vlib_buffer_t * b0,
   flowprobe_record_t flags = fm->context[which].flags;
   u32 my_cpu_number = vm->thread_index;
 
+  if (!exp)
+    return;
+
   /* Fill in header */
-  flow_report_stream_t *stream;
+  ipfix_stream_t *stream;
 
   /* Nothing to send */
   if (fm->context[which].next_record_offset_per_worker[my_cpu_number] <=
@@ -590,8 +593,7 @@ flowprobe_export_send (vlib_main_t * vm, vlib_buffer_t * b0,
   udp->checksum = 0;
 
   /* FIXUP: message header export_time */
-  h->export_time =
-    (u32) (((f64) frm->unix_time_0) + (vlib_time_now (vm) - frm->vlib_time_0));
+  h->export_time = (u32) (((f64) im->unix_time_0) + (vlib_time_now (vm) - im->vlib_time_0));
   h->export_time = clib_host_to_net_u32 (h->export_time);
   h->domain_id = clib_host_to_net_u32 (stream->domain_id);
 
@@ -603,8 +605,7 @@ flowprobe_export_send (vlib_main_t * vm, vlib_buffer_t * b0,
 					  b0->current_length -
 					  (sizeof (*ip) + sizeof (*udp) +
 					   sizeof (*h)));
-  h->version_length = version_length (b0->current_length -
-				      (sizeof (*ip) + sizeof (*udp)));
+  h->version_length = ipfix_version_length (b0->current_length - (sizeof (*ip) + sizeof (*udp)));
 
   ip->length = clib_host_to_net_u16 (b0->current_length);
 
@@ -650,10 +651,13 @@ static vlib_buffer_t *
 flowprobe_get_buffer (vlib_main_t * vm, flowprobe_variant_t which)
 {
   flowprobe_main_t *fm = &flowprobe_main;
-  ipfix_exporter_t *exp = pool_elt_at_index (flow_report_main.exporters, 0);
+  ipfix_exporter_t *exp = flowprobe_get_exporter ();
   vlib_buffer_t *b0;
   u32 bi0;
   u32 my_cpu_number = vm->thread_index;
+
+  if (!exp)
+    return 0;
 
   /* Find or allocate a buffer */
   b0 = fm->context[which].buffers_per_worker[my_cpu_number];
@@ -674,8 +678,7 @@ flowprobe_get_buffer (vlib_main_t * vm, flowprobe_variant_t which)
 
       b0->current_data = 0;
       b0->current_length = flowprobe_get_headersize ();
-      b0->flags |=
-	(VLIB_BUFFER_TOTAL_LENGTH_VALID | VNET_BUFFER_F_FLOW_REPORT);
+      b0->flags |= (VLIB_BUFFER_TOTAL_LENGTH_VALID | VNET_BUFFER_F_IPFIX);
       vnet_buffer (b0)->sw_if_index[VLIB_RX] = 0;
       vnet_buffer (b0)->sw_if_index[VLIB_TX] = exp->fib_index;
       fm->context[which].next_record_offset_per_worker[my_cpu_number] =
@@ -690,7 +693,7 @@ flowprobe_export_entry (vlib_main_t * vm, flowprobe_entry_t * e)
 {
   u32 my_cpu_number = vm->thread_index;
   flowprobe_main_t *fm = &flowprobe_main;
-  ipfix_exporter_t *exp = pool_elt_at_index (flow_report_main.exporters, 0);
+  ipfix_exporter_t *exp = flowprobe_get_exporter ();
   vlib_buffer_t *b0;
   bool collect_ip4 = false, collect_ip6 = false;
   bool collect_l4 = false;
@@ -698,6 +701,9 @@ flowprobe_export_entry (vlib_main_t * vm, flowprobe_entry_t * e)
   flowprobe_record_t flags = fm->context[which].flags;
   u16 offset =
     fm->context[which].next_record_offset_per_worker[my_cpu_number];
+
+  if (!exp)
+    return;
 
   if (offset < flowprobe_get_headersize ())
     offset = flowprobe_get_headersize ();
@@ -804,7 +810,7 @@ flowprobe_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  ethernet_header_t *eh0 = vlib_buffer_get_current (b0);
 	  u16 ethertype0 = clib_net_to_host_u16 (eh0->type);
 
-	  if (PREDICT_TRUE ((b0->flags & VNET_BUFFER_F_FLOW_REPORT) == 0))
+	  if (PREDICT_TRUE ((b0->flags & VNET_BUFFER_F_IPFIX) == 0))
 	    add_to_flow_record_state (
 	      vm, node, fm, b0, timestamp, len0,
 	      flowprobe_get_variant (which, fm->context[which].flags,
@@ -815,7 +821,7 @@ flowprobe_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  ethernet_header_t *eh1 = vlib_buffer_get_current (b1);
 	  u16 ethertype1 = clib_net_to_host_u16 (eh1->type);
 
-	  if (PREDICT_TRUE ((b1->flags & VNET_BUFFER_F_FLOW_REPORT) == 0))
+	  if (PREDICT_TRUE ((b1->flags & VNET_BUFFER_F_IPFIX) == 0))
 	    add_to_flow_record_state (
 	      vm, node, fm, b1, timestamp, len1,
 	      flowprobe_get_variant (which, fm->context[which].flags,
@@ -851,7 +857,7 @@ flowprobe_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  ethernet_header_t *eh0 = vlib_buffer_get_current (b0);
 	  u16 ethertype0 = clib_net_to_host_u16 (eh0->type);
 
-	  if (PREDICT_TRUE ((b0->flags & VNET_BUFFER_F_FLOW_REPORT) == 0))
+	  if (PREDICT_TRUE ((b0->flags & VNET_BUFFER_F_IPFIX) == 0))
 	    {
 	      flowprobe_trace_t *t = 0;
 	      if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
@@ -1018,7 +1024,10 @@ flowprobe_walker_process (vlib_main_t * vm,
 {
   flowprobe_main_t *fm = &flowprobe_main;
   flowprobe_entry_t *e;
-  ipfix_exporter_t *exp = pool_elt_at_index (flow_report_main.exporters, 0);
+  ipfix_exporter_t *exp = flowprobe_get_exporter ();
+
+  if (!exp)
+    return 0;
 
   /*
    * $$$$ Remove this check from here and track FRM status and disable

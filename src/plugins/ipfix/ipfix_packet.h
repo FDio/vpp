@@ -6,7 +6,7 @@
 #ifndef __included_ipfix_packet_h__
 #define __included_ipfix_packet_h__
 
-#include <vnet/ipfix-export/ipfix_info_elements.h>
+#include <ipfix/ipfix_info_elements.h>
 
 /* From RFC-7011:
  * https://tools.ietf.org/html/rfc7011
@@ -21,7 +21,7 @@ typedef struct
 } ipfix_message_header_t;
 
 static inline u32
-version_length (u16 length)
+ipfix_version_length (u16 length)
 {
   return clib_host_to_net_u32 (0x000a0000 | length);
 }

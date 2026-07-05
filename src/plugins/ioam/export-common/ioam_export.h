@@ -14,7 +14,7 @@
 #include <vnet/ip/ip6_hop_by_hop.h>
 #include <vnet/udp/udp_local.h>
 #include <vnet/udp/udp_packet.h>
-#include <vnet/ipfix-export/ipfix_packet.h>
+#include <ipfix/ipfix_packet.h>
 
 #include <vppinfra/pool.h>
 #include <vppinfra/hash.h>
@@ -208,8 +208,9 @@ typedef struct
   ip4_header_t ip4;
   udp_header_t udp;
   ipfix_data_packet_t ipfix;
-} ip4_ipfix_data_packet_t;
+} ipfix_ip4_data_packet_t;
 
+typedef ipfix_ip4_data_packet_t ip4_ipfix_data_packet_t;
 
 inline static void
 ioam_export_header_cleanup (ioam_export_main_t * em,
@@ -230,15 +231,12 @@ ioam_export_header_create (ioam_export_main_t * em,
   ipfix_message_header_t *h;
   ipfix_set_header_t *s;
   u8 *rewrite = 0;
-  ip4_ipfix_data_packet_t *tp;
-
+  ipfix_ip4_data_packet_t *tp;
 
   /* allocate rewrite space */
-  vec_validate_aligned (rewrite,
-			sizeof (ip4_ipfix_data_packet_t) - 1,
-			CLIB_CACHE_LINE_BYTES);
+  vec_validate_aligned (rewrite, sizeof (ipfix_ip4_data_packet_t) - 1, CLIB_CACHE_LINE_BYTES);
 
-  tp = (ip4_ipfix_data_packet_t *) rewrite;
+  tp = (ipfix_ip4_data_packet_t *) rewrite;
   ip = (ip4_header_t *) & tp->ip4;
   udp = (udp_header_t *) (ip + 1);
   h = (ipfix_message_header_t *) (udp + 1);
@@ -267,10 +265,8 @@ ioam_export_header_create (ioam_export_main_t * em,
 					    DEFAULT_EXPORT_SIZE)));
 
   /* FIXUP: h version and length length in octets if records exported are not default */
-  h->version_length = version_length (sizeof (*h) +
-				      (sizeof (*s) +
-				       (DEFAULT_EXPORT_RECORDS *
-					DEFAULT_EXPORT_SIZE)));
+  h->version_length = ipfix_version_length (
+    sizeof (*h) + (sizeof (*s) + (DEFAULT_EXPORT_RECORDS * DEFAULT_EXPORT_SIZE)));
 
   /* FIXUP: ip length if records exported are not default */
   /* FIXUP: ip checksum if records exported are not default */
@@ -278,7 +274,7 @@ ioam_export_header_create (ioam_export_main_t * em,
 				     (DEFAULT_EXPORT_RECORDS *
 				      DEFAULT_EXPORT_SIZE));
   ip->checksum = ip4_header_checksum (ip);
-  vec_set_len (rewrite, sizeof (ip4_ipfix_data_packet_t));
+  vec_set_len (rewrite, sizeof (ipfix_ip4_data_packet_t));
   em->record_header = rewrite;
   return (1);
 }
@@ -291,7 +287,7 @@ ioam_export_send_buffer (ioam_export_main_t * em, vlib_main_t * vm,
   udp_header_t *udp;
   ipfix_message_header_t *h;
   ipfix_set_header_t *s;
-  ip4_ipfix_data_packet_t *tp;
+  ipfix_ip4_data_packet_t *tp;
   vlib_buffer_t *b0;
   u16 new_l0, old_l0;
   ip_csum_t sum0;
@@ -322,7 +318,7 @@ ioam_export_send_buffer (ioam_export_main_t * em, vlib_main_t * vm,
 					      (sizeof (*ip) + sizeof (*udp) +
 					       sizeof (*h)));
       h->version_length =
-	version_length (b0->current_length - (sizeof (*ip) + sizeof (*udp)));
+	ipfix_version_length (b0->current_length - (sizeof (*ip) + sizeof (*udp)));
       sum0 = ip->checksum;
       old_l0 = ip->length;
       new_l0 = clib_host_to_net_u16 ((u16) b0->current_length);

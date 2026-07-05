@@ -2,9 +2,7 @@
  * Copyright (c) 2016 Cisco and/or its affiliates.
  */
 
-/*
- * flow_api.c - flow api
- */
+/* IPFIX binary API handlers. */
 
 #include <vnet/vnet.h>
 #include <vlibmemory/api.h>
@@ -15,23 +13,22 @@
 #include <vnet/api_errno.h>
 
 #include <vnet/fib/fib_table.h>
-#include <vnet/ipfix-export/flow_report.h>
-#include <vnet/ipfix-export/flow_report_classify.h>
+#include <ipfix/internal.h>
 
 #include <vnet/format_fns.h>
-#include <vnet/ipfix-export/ipfix_export.api_enum.h>
-#include <vnet/ipfix-export/ipfix_export.api_types.h>
+#include <ipfix/ipfix_export.api_enum.h>
+#include <ipfix/ipfix_export.api_types.h>
 
-#define REPLY_MSG_ID_BASE frm->msg_id_base
+#define REPLY_MSG_ID_BASE im->msg_id_base
 #include <vlibapi/api_helper_macros.h>
 
 ipfix_exporter_t *
-vnet_ipfix_exporter_lookup (const ip_address_t *ipfix_collector)
+ipfix_exporter_lookup (const ip_address_t *ipfix_collector)
 {
-  flow_report_main_t *frm = &flow_report_main;
-  ipfix_exporter_t *exp;
+  ipfix_main_t *im = &ipfix_main;
+  ipfix_exporter_t *exp = 0;
 
-  pool_foreach (exp, frm->exporters)
+  pool_foreach (exp, im->exporters)
     {
       if (ip_address_cmp (&exp->ipfix_collector, ipfix_collector) == 0)
 	return exp;
@@ -56,7 +53,7 @@ vl_api_set_ipfix_exporter_t_internal (
   bool use_index_0, bool is_create)
 {
   vlib_main_t *vm = vlib_get_main ();
-  flow_report_main_t *frm = &flow_report_main;
+  ipfix_main_t *im = &ipfix_main;
   ipfix_exporter_t *exp;
   vl_api_registration_t *reg;
   ip_address_t collector, src;
@@ -78,7 +75,7 @@ vl_api_set_ipfix_exporter_t_internal (
        * In this case we update the existing exporter. There is no delete
        * for exp[0]
        */
-      exp = &frm->exporters[0];
+      exp = &im->exporters[0];
 
       /* Collector address must be IPv4 for exp[0] */
       collector.version = AF_IP4;
@@ -89,23 +86,23 @@ vl_api_set_ipfix_exporter_t_internal (
       ip_address_decode2 (mp_collector_address, &collector);
       if (is_create)
 	{
-	  exp = vnet_ipfix_exporter_lookup (&collector);
+	  exp = ipfix_exporter_lookup (&collector);
 	  if (!exp)
 	    {
 	      /* Create a new exporter instead of updating an existing one */
-	      if (pool_elts (frm->exporters) >= IPFIX_EXPORTERS_MAX)
+	      if (pool_elts (im->exporters) >= IPFIX_EXPORTERS_MAX)
 		return VNET_API_ERROR_INVALID_VALUE;
-	      pool_get (frm->exporters, exp);
+	      pool_get (im->exporters, exp);
 	    }
 	}
       else
 	{
 	  /* Delete the exporter */
-	  exp = vnet_ipfix_exporter_lookup (&collector);
+	  exp = ipfix_exporter_lookup (&collector);
 	  if (!exp)
 	    return VNET_API_ERROR_NO_SUCH_ENTRY;
 
-	  pool_put (frm->exporters, exp);
+	  pool_put (im->exporters, exp);
 	  return 0;
 	}
     }
@@ -116,14 +113,14 @@ vl_api_set_ipfix_exporter_t_internal (
   ip_address_decode2 (mp_src_address, &src);
   fib_id = ntohl (mp_vrf_id);
 
-  ip4_main_t *im = &ip4_main;
+  ip4_main_t *ip4m = &ip4_main;
   if (fib_id == ~0)
     {
       fib_index = ~0;
     }
   else
     {
-      uword *p = hash_get (im->fib_index_by_table_id, fib_id);
+      uword *p = hash_get (ip4m->fib_index_by_table_id, fib_id);
       if (!p)
 	return VNET_API_ERROR_NO_SUCH_FIB;
       fib_index = p[0];
@@ -165,7 +162,7 @@ vl_api_set_ipfix_exporter_t_internal (
   if (ip_address_cmp (&exp->ipfix_collector, &collector) ||
       ip_address_cmp (&exp->src_address, &src) ||
       exp->collector_port != collector_port)
-    vnet_flow_reports_reset (exp);
+    ipfix_reports_reset (exp);
 
   exp->ipfix_collector = collector;
   exp->collector_port = collector_port;
@@ -175,8 +172,8 @@ vl_api_set_ipfix_exporter_t_internal (
   exp->template_interval = template_interval;
   exp->udp_checksum = udp_checksum;
 
-  /* Turn on the flow reporting process */
-  vlib_process_signal_event (vm, flow_report_process_node.index, 1, 0);
+  /* Turn on the IPFIX process. */
+  vlib_process_signal_event (vm, ipfix_process_node.index, 1, 0);
 
   return 0;
 }
@@ -185,7 +182,7 @@ static void
 vl_api_set_ipfix_exporter_t_handler (vl_api_set_ipfix_exporter_t *mp)
 {
   vl_api_set_ipfix_exporter_reply_t *rmp;
-  flow_report_main_t *frm = &flow_report_main;
+  ipfix_main_t *im = &ipfix_main;
   int rv = vl_api_set_ipfix_exporter_t_internal (
     mp->client_index, &mp->collector_address, mp->collector_port,
     &mp->src_address, mp->vrf_id, mp->path_mtu, mp->template_interval,
@@ -199,7 +196,7 @@ vl_api_ipfix_exporter_create_delete_t_handler (
   vl_api_ipfix_exporter_create_delete_t *mp)
 {
   vl_api_ipfix_exporter_create_delete_reply_t *rmp;
-  flow_report_main_t *frm = &flow_report_main;
+  ipfix_main_t *im = &ipfix_main;
   int rv = vl_api_set_ipfix_exporter_t_internal (
     mp->client_index, &mp->collector_address, mp->collector_port,
     &mp->src_address, mp->vrf_id, mp->path_mtu, mp->template_interval,
@@ -211,11 +208,11 @@ vl_api_ipfix_exporter_create_delete_t_handler (
 static void
 vl_api_ipfix_exporter_dump_t_handler (vl_api_ipfix_exporter_dump_t * mp)
 {
-  flow_report_main_t *frm = &flow_report_main;
-  ipfix_exporter_t *exp = pool_elt_at_index (flow_report_main.exporters, 0);
+  ipfix_main_t *im = &ipfix_main;
+  ipfix_exporter_t *exp = pool_elt_at_index (ipfix_main.exporters, 0);
   vl_api_registration_t *reg;
   vl_api_ipfix_exporter_details_t *rmp;
-  ip4_main_t *im = &ip4_main;
+  ip4_main_t *ip4m = &ip4_main;
   u32 vrf_id;
 
   reg = vl_api_client_index_to_registration (mp->client_index);
@@ -235,7 +232,7 @@ vl_api_ipfix_exporter_dump_t_handler (vl_api_ipfix_exporter_dump_t * mp)
   if (exp->fib_index == ~0)
     vrf_id = ~0;
   else
-    vrf_id = im->fibs[exp->fib_index].ft_table_id;
+    vrf_id = ip4m->fibs[exp->fib_index].ft_table_id;
   rmp->vrf_id = htonl (vrf_id);
   rmp->path_mtu = htonl (exp->path_mtu);
   rmp->template_interval = htonl (exp->template_interval);
@@ -266,10 +263,9 @@ ipfix_all_fill_details (vl_api_ipfix_all_exporter_details_t *rmp,
 }
 
 static void
-ipfix_all_exporter_details (flow_report_main_t *frm, u32 index,
-			    vl_api_registration_t *rp, u32 context)
+ipfix_all_exporter_details (ipfix_main_t *im, u32 index, vl_api_registration_t *rp, u32 context)
 {
-  ipfix_exporter_t *exp = pool_elt_at_index (frm->exporters, index);
+  ipfix_exporter_t *exp = pool_elt_at_index (im->exporters, index);
 
   vl_api_ipfix_all_exporter_details_t *rmp;
 
@@ -280,13 +276,12 @@ ipfix_all_exporter_details (flow_report_main_t *frm, u32 index,
 static void
 vl_api_ipfix_all_exporter_get_t_handler (vl_api_ipfix_all_exporter_get_t *mp)
 {
-  flow_report_main_t *frm = &flow_report_main;
+  ipfix_main_t *im = &ipfix_main;
   vl_api_ipfix_all_exporter_get_reply_t *rmp;
   int rv = 0;
 
-  REPLY_AND_DETAILS_MACRO (
-    VL_API_IPFIX_ALL_EXPORTER_GET_REPLY, frm->exporters,
-    ({ ipfix_all_exporter_details (frm, cursor, rp, mp->context); }));
+  REPLY_AND_DETAILS_MACRO (VL_API_IPFIX_ALL_EXPORTER_GET_REPLY, im->exporters,
+			   ({ ipfix_all_exporter_details (im, cursor, rp, mp->context); }));
 }
 
 static void
@@ -294,9 +289,9 @@ static void
   (vl_api_set_ipfix_classify_stream_t * mp)
 {
   vl_api_set_ipfix_classify_stream_reply_t *rmp;
-  flow_report_classify_main_t *fcm = &flow_report_classify_main;
-  flow_report_main_t *frm = &flow_report_main;
-  ipfix_exporter_t *exp = &frm->exporters[0];
+  ipfix_classify_main_t *fcm = &ipfix_classify_main;
+  ipfix_main_t *im = &ipfix_main;
+  ipfix_exporter_t *exp = &im->exporters[0];
   u32 domain_id = 0;
   u32 src_port = UDP_DST_PORT_ipfix;
   int rv = 0;
@@ -307,8 +302,7 @@ static void
   if (fcm->src_port != 0 &&
       (fcm->domain_id != domain_id || fcm->src_port != (u16) src_port))
     {
-      int rv = vnet_stream_change (exp, fcm->domain_id, fcm->src_port,
-				   domain_id, (u16) src_port);
+      int rv = ipfix_stream_change (exp, fcm->domain_id, fcm->src_port, domain_id, (u16) src_port);
       ASSERT (rv == 0);
     }
 
@@ -322,7 +316,8 @@ static void
   vl_api_ipfix_classify_stream_dump_t_handler
   (vl_api_ipfix_classify_stream_dump_t * mp)
 {
-  flow_report_classify_main_t *fcm = &flow_report_classify_main;
+  ipfix_classify_main_t *fcm = &ipfix_classify_main;
+  ipfix_main_t *im = &ipfix_main;
   vl_api_registration_t *reg;
   vl_api_ipfix_classify_stream_details_t *rmp;
 
@@ -332,7 +327,7 @@ static void
 
   rmp = vl_msg_api_alloc (sizeof (*rmp));
   clib_memset (rmp, 0, sizeof (*rmp));
-  rmp->_vl_msg_id = ntohs (VL_API_IPFIX_CLASSIFY_STREAM_DETAILS);
+  rmp->_vl_msg_id = ntohs (REPLY_MSG_ID_BASE + VL_API_IPFIX_CLASSIFY_STREAM_DETAILS);
   rmp->context = mp->context;
   rmp->domain_id = htonl (fcm->domain_id);
   rmp->src_port = htons (fcm->src_port);
@@ -346,10 +341,10 @@ static void
 {
   vl_api_ipfix_classify_table_add_del_reply_t *rmp;
   vl_api_registration_t *reg;
-  flow_report_classify_main_t *fcm = &flow_report_classify_main;
-  flow_report_main_t *frm = &flow_report_main;
-  ipfix_exporter_t *exp = &frm->exporters[0];
-  vnet_flow_report_add_del_args_t args;
+  ipfix_classify_main_t *fcm = &ipfix_classify_main;
+  ipfix_main_t *im = &ipfix_main;
+  ipfix_exporter_t *exp = &im->exporters[0];
+  ipfix_report_add_del_args_t args;
   ipfix_classify_table_t *table;
   int is_add;
   u32 classify_table_index;
@@ -409,33 +404,34 @@ static void
 
   args.opaque.as_uword = table - fcm->tables;
   args.rewrite_callback = ipfix_classify_template_rewrite;
-  args.flow_data_callback = ipfix_classify_send_flows;
+  args.data_callback = ipfix_classify_send_flows;
   args.is_add = is_add;
   args.domain_id = fcm->domain_id;
   args.src_port = fcm->src_port;
 
-  rv = vnet_flow_report_add_del (exp, &args, NULL);
+  rv = ipfix_report_add_del (exp, &args, NULL);
 
   /* If deleting, or add failed */
   if (is_add == 0 || (rv && is_add))
     ipfix_classify_delete_table (table - fcm->tables);
 
 out:
-  REPLY_MACRO (VL_API_SET_IPFIX_CLASSIFY_STREAM_REPLY);
+  REPLY_MACRO (VL_API_IPFIX_CLASSIFY_TABLE_ADD_DEL_REPLY);
 }
 
 static void
 send_ipfix_classify_table_details (u32 table_index,
 				   vl_api_registration_t * reg, u32 context)
 {
-  flow_report_classify_main_t *fcm = &flow_report_classify_main;
+  ipfix_classify_main_t *fcm = &ipfix_classify_main;
+  ipfix_main_t *im = &ipfix_main;
   vl_api_ipfix_classify_table_details_t *mp;
 
   ipfix_classify_table_t *table = &fcm->tables[table_index];
 
   mp = vl_msg_api_alloc (sizeof (*mp));
   clib_memset (mp, 0, sizeof (*mp));
-  mp->_vl_msg_id = ntohs (VL_API_IPFIX_CLASSIFY_TABLE_DETAILS);
+  mp->_vl_msg_id = ntohs (REPLY_MSG_ID_BASE + VL_API_IPFIX_CLASSIFY_TABLE_DETAILS);
   mp->context = context;
   mp->table_id = htonl (table->classify_table_index);
   mp->ip_version = (table->ip_version == 4) ? ADDRESS_IP4 : ADDRESS_IP6;
@@ -448,7 +444,7 @@ static void
   vl_api_ipfix_classify_table_dump_t_handler
   (vl_api_ipfix_classify_table_dump_t * mp)
 {
-  flow_report_classify_main_t *fcm = &flow_report_classify_main;
+  ipfix_classify_main_t *fcm = &ipfix_classify_main;
   vl_api_registration_t *reg;
   u32 i;
 
@@ -464,7 +460,7 @@ static void
 static void
 vl_api_ipfix_flush_t_handler (vl_api_ipfix_flush_t * mp)
 {
-  flow_report_main_t *frm = &flow_report_main;
+  ipfix_main_t *im = &ipfix_main;
   vl_api_ipfix_flush_reply_t *rmp;
   vl_api_registration_t *reg;
   vlib_main_t *vm = vlib_get_main ();
@@ -474,18 +470,17 @@ vl_api_ipfix_flush_t_handler (vl_api_ipfix_flush_t * mp)
   if (!reg)
     return;
 
-  /* poke the flow reporting process */
-  vlib_process_signal_event (vm, flow_report_process_node.index,
-			     1 /* type_opaque */ , 0 /* data */ );
+  /* Wake the IPFIX process. */
+  vlib_process_signal_event (vm, ipfix_process_node.index, 1 /* type_opaque */, 0 /* data */);
 
   REPLY_MACRO (VL_API_IPFIX_FLUSH_REPLY);
 }
 
-#include <vnet/ipfix-export/ipfix_export.api.c>
+#include <ipfix/ipfix_export.api.c>
 static clib_error_t *
-flow_api_hookup (vlib_main_t * vm)
+ipfix_api_hookup (vlib_main_t *vm)
 {
-  flow_report_main_t *frm = &flow_report_main;
+  ipfix_main_t *im = &ipfix_main;
   /*
    * Set up the (msg_name, crc, message-id) table
    */
@@ -494,4 +489,4 @@ flow_api_hookup (vlib_main_t * vm)
   return 0;
 }
 
-VLIB_API_INIT_FUNCTION (flow_api_hookup);
+VLIB_API_INIT_FUNCTION (ipfix_api_hookup);

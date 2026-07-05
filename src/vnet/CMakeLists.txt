@@ -759,22 +759,6 @@ list(APPEND VNET_API_FILES
 )
 
 ##############################################################################
-# IPFIX / netflow v10
-##############################################################################
-list(APPEND VNET_SOURCES
-  ipfix-export/flow_report.c
-  ipfix-export/flow_api.c
-)
-
-list(APPEND VNET_HEADERS
-  ipfix-export/flow_report.h
-  ipfix-export/ipfix_info_elements.h
-  ipfix-export/ipfix_packet.h
-)
-
-list(APPEND VNET_API_FILES ipfix-export/ipfix_export.api)
-
-##############################################################################
 # HASH
 ##############################################################################
 list(APPEND VNET_SOURCES
@@ -808,18 +792,6 @@ list(APPEND VNET_HEADERS
 
 list(APPEND VNET_API_FILES
   gso/gso.api
-)
-
-##############################################################################
-# IPFIX classify code
-##############################################################################
-
-list(APPEND VNET_SOURCES
-  ipfix-export/flow_report_classify.c
-)
-
-list(APPEND VNET_HEADERS
-  ipfix-export/flow_report_classify.h
 )
 
 ##############################################################################

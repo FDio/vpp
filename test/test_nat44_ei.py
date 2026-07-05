@@ -2390,6 +2390,10 @@ class TestNAT44EI(MethodHolder):
         self.assertEqual(1, len(identity_mappings))
         self.assertEqual(self.pg7.sw_if_index, identity_mappings[0].sw_if_index)
 
+    @unittest.skipIf(
+        "ipfix" in config.excluded_plugins,
+        "Exclude IPFIX plugin tests",
+    )
     def test_ipfix_nat44_sess(self):
         """NAT44EI IPFIX logging NAT44EI session created/deleted"""
         self.ipfix_domain_id = 10
@@ -2441,6 +2445,10 @@ class TestNAT44EI(MethodHolder):
                 data = ipfix.decode_data_set(p.getlayer(Set))
                 self.verify_ipfix_nat44_ses(data)
 
+    @unittest.skipIf(
+        "ipfix" in config.excluded_plugins,
+        "Exclude IPFIX plugin tests",
+    )
     def test_ipfix_addr_exhausted(self):
         """NAT44EI IPFIX logging NAT addresses exhausted"""
         flags = self.config_flags.NAT44_EI_IF_INSIDE
@@ -2490,6 +2498,10 @@ class TestNAT44EI(MethodHolder):
                 event_count += self.verify_ipfix_addr_exhausted(data)
         self.assertEqual(event_count, 1)
 
+    @unittest.skipIf(
+        "ipfix" in config.excluded_plugins,
+        "Exclude IPFIX plugin tests",
+    )
     def test_ipfix_max_sessions(self):
         """NAT44EI IPFIX logging maximum session entries exceeded"""
         self.nat44_add_address(self.nat_addr)
@@ -4634,6 +4646,38 @@ class TestNAT44EIMW(MethodHolder):
             except:
                 self.logger.error(ppp("Unexpected or invalid packet:", packet))
                 raise
+
+
+@unittest.skipIf("nat" in config.excluded_plugins, "Exclude NAT plugin tests")
+class TestNAT44EIWithoutIpfix(VppTestCase):
+    """NAT44-EI behavior without the IPFIX plugin"""
+
+    extra_vpp_plugin_config = [
+        "plugin nat44_ei_plugin.so { enable }",
+        "plugin ipfix_plugin.so { disable }",
+    ]
+
+    VNET_API_ERROR_FEATURE_DISABLED = -30
+
+    def test_enable_without_ipfix(self):
+        """NAT44-EI reports that its IPFIX provider is unavailable"""
+
+        for _ in range(2):
+            with self.vapi.assert_negative_api_retval():
+                reply = self.vapi.nat44_ei_ipfix_enable_disable(
+                    domain_id=1,
+                    src_port=4739,
+                    enable=True,
+                )
+
+            self.assertEqual(reply.retval, self.VNET_API_ERROR_FEATURE_DISABLED)
+
+        reply = self.vapi.nat44_ei_ipfix_enable_disable(
+            domain_id=1,
+            src_port=4739,
+            enable=False,
+        )
+        self.assertEqual(reply.retval, 0)
 
 
 if __name__ == "__main__":

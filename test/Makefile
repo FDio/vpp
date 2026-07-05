@@ -436,7 +436,7 @@ COV_REM_TODO_NO_TEST="*/vpp-api/client/*" \
 					 "*/vppinfra/vector/toeplitz.c" "*/plugins/vrrp/vrrp_packet.h" \
 					 "*/vnet/srv6/sr.h" "*/vlibapi/api_format.c" \
 					 "*/vlibapi/node_serialize.c" "*/plugins/quic/error.c" \
-					 "*/vnet/ipfix-export/flow_report_classify.h" \
+					 "*/plugins/ipfix/ipfix_classify.h" \
 					 "*/vnet/ip/ip6_ll_types.c" "*/vnet/ip/ip_psh_cksum.h" \
 					 "*/vnet/ip/ip6_hop_by_hop.h" "*/vnet/ip/ip_format_fns.h" \
 					 "*/vnet/dpo/classify_dpo.h" "*/vnet/dpo/l3_proxy_dpo.h" \
@@ -448,7 +448,7 @@ COV_REM_TODO_NO_TEST="*/vpp-api/client/*" \
 ifeq ($(HS_TEST),1)
 COV_REM_HST_UNUSED_FEAT= "*/plugins/ping/*" "*/plugins/unittest/mpcap_node.c" "*/vnet/bfd/*" \
 			                 "*/vnet/bier/*" "*/vnet/bonding/*" "*/vnet/classify/*" \
-					 "*/vnet/gso/*" "*/vnet/ipfix-export/*" "*/vnet/ipip/*" \
+					 "*/vnet/gso/*" "*/plugins/ipfix/*" "*/vnet/ipip/*" \
 					 "*/vnet/ipsec/*" "*/vnet/l2/*" "*/vnet/mpls/*" \
 					 "*/vnet/pg/*" "*/vnet/policer/*" "*/vnet/snap/*" \
 					 "*/vnet/span/*" "*/vnet/srv6/*" "*/vnet/teib/*" \

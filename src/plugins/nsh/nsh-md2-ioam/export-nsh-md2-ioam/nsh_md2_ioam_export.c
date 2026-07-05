@@ -115,9 +115,6 @@ set_nsh_md2_ioam_export_ipfix_command_fn (vlib_main_t * vm,
 		   format_ip4_address, &em->ipfix_collector,
 		   format_ip4_address, &em->src_address);
 
-  /* Turn on the export timer process */
-  // vlib_process_signal_event (vm, flow_report_process_node.index,
-  //1, 0);
   if (0 !=
       nsh_md2_ioam_export_enable_disable (em, is_disable, &collector, &src))
     {

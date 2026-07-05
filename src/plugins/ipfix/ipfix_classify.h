@@ -3,8 +3,8 @@
  * Copyright (c) 2015 Cisco and/or its affiliates.
  */
 
-#ifndef __included_flow_report_classify_h__
-#define __included_flow_report_classify_h__
+#ifndef included_ipfix_classify_h
+#define included_ipfix_classify_h
 
 #define foreach_ipfix_ip4_field                                             \
 _(ip->src_address.as_u32, ((u32[]){0xFFFFFFFF}), sourceIPv4Address, 4)      \
@@ -69,14 +69,14 @@ typedef struct
   u32 domain_id;
   u16 src_port;
   ipfix_classify_table_t *tables;
-} flow_report_classify_main_t;
+} ipfix_classify_main_t;
 
-extern flow_report_classify_main_t flow_report_classify_main;
+extern ipfix_classify_main_t ipfix_classify_main;
 
 static_always_inline u8
 ipfix_classify_table_index_valid (u32 index)
 {
-  flow_report_classify_main_t *fcm = &flow_report_classify_main;
+  ipfix_classify_main_t *fcm = &ipfix_classify_main;
   return index < vec_len (fcm->tables) &&
     fcm->tables[index].classify_table_index != ~0;
 }
@@ -84,7 +84,7 @@ ipfix_classify_table_index_valid (u32 index)
 static_always_inline ipfix_classify_table_t *
 ipfix_classify_add_table (void)
 {
-  flow_report_classify_main_t *fcm = &flow_report_classify_main;
+  ipfix_classify_main_t *fcm = &ipfix_classify_main;
   u32 i;
   for (i = 0; i < vec_len (fcm->tables); i++)
     if (!ipfix_classify_table_index_valid (i))
@@ -97,20 +97,18 @@ ipfix_classify_add_table (void)
 static_always_inline void
 ipfix_classify_delete_table (u32 index)
 {
-  flow_report_classify_main_t *fcm = &flow_report_classify_main;
+  ipfix_classify_main_t *fcm = &ipfix_classify_main;
   ASSERT (index < vec_len (fcm->tables));
   ASSERT (fcm->tables[index].classify_table_index != ~0);
   fcm->tables[index].classify_table_index = ~0;
 }
 
-u8 *ipfix_classify_template_rewrite (ipfix_exporter_t *exp, flow_report_t *fr,
-				     u16 collector_port,
-				     ipfix_report_element_t *elts, u32 n_elts,
+u8 *ipfix_classify_template_rewrite (ipfix_exporter_t *exp, ipfix_report_t *report,
+				     u16 collector_port, ipfix_report_element_t *elts, u32 n_elts,
 				     u32 *stream_index);
 
-vlib_frame_t *ipfix_classify_send_flows (flow_report_main_t *frm,
-					 ipfix_exporter_t *exp,
-					 flow_report_t *fr, vlib_frame_t *f,
-					 u32 *to_next, u32 node_index);
+vlib_frame_t *ipfix_classify_send_flows (ipfix_main_t *im, ipfix_exporter_t *exp,
+					 ipfix_report_t *report, vlib_frame_t *f, u32 *to_next,
+					 u32 node_index);
 
-#endif /* __included_flow_report_classify_h__ */
+#endif /* included_ipfix_classify_h */

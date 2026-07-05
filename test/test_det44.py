@@ -659,7 +659,10 @@ class TestDET44(VppTestCase):
         dms = self.vapi.det44_map_dump()
         self.assertEqual(0, dms[0].ses_num)
 
-    # TODO: ipfix needs to be separated from NAT base plugin
+    @unittest.skipIf(
+        "ipfix" in config.excluded_plugins,
+        "Exclude IPFIX plugin tests",
+    )
     @unittest.skipUnless(config.extended, "part of extended tests")
     def test_session_limit_per_user(self):
         """Deterministic NAT maximum sessions per user limit"""
