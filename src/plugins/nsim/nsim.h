@@ -48,8 +48,6 @@ typedef struct nsim_node_ctx
   u32 *drop;
   u32 *reord;
   u16 *reord_nexts;
-  u32 *fwd;
-  u16 *fwd_nexts;
   u8 *action;
   u32 n_buffered;
   u32 n_loss;
