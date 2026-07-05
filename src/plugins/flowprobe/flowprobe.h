@@ -13,9 +13,19 @@
 
 #include <vppinfra/hash.h>
 #include <vppinfra/error.h>
-#include <vnet/ipfix-export/flow_report.h>
-#include <vnet/ipfix-export/flow_report_classify.h>
+#include <ipfix-export/flow_report.h>
 #include <vppinfra/tw_timer_2t_1w_2048sl.h>
+
+static_always_inline ipfix_exporter_t *
+flowprobe_get_exporter (void)
+{
+  flow_report_main_t *frm = vnet_flow_report_get_main ();
+
+  if (!frm)
+    return 0;
+
+  return pool_elt_at_index (frm->exporters, 0);
+}
 
 /* Default timers in seconds */
 #define FLOWPROBE_TIMER_ACTIVE   (15)

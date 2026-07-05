@@ -3,8 +3,7 @@
  * Copyright (c) 2015 Cisco and/or its affiliates.
  */
 
-#include <vnet/ipfix-export/flow_report.h>
-#include <vnet/ipfix-export/flow_report_classify.h>
+#include <ipfix-export/internal.h>
 #include <vnet/api_errno.h>
 #include <vnet/classify/vnet_classify.h>
 #include <vnet/ip/ip4.h>

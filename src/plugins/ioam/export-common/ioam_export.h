@@ -14,7 +14,7 @@
 #include <vnet/ip/ip6_hop_by_hop.h>
 #include <vnet/udp/udp_local.h>
 #include <vnet/udp/udp_packet.h>
-#include <vnet/ipfix-export/ipfix_packet.h>
+#include <ipfix-export/ipfix_packet.h>
 
 #include <vppinfra/pool.h>
 #include <vppinfra/hash.h>

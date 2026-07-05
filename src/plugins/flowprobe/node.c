@@ -540,8 +540,8 @@ flowprobe_export_send (vlib_main_t * vm, vlib_buffer_t * b0,
 		       flowprobe_variant_t which)
 {
   flowprobe_main_t *fm = &flowprobe_main;
-  flow_report_main_t *frm = &flow_report_main;
-  ipfix_exporter_t *exp = pool_elt_at_index (frm->exporters, 0);
+  flow_report_main_t *frm = vnet_flow_report_get_main ();
+  ipfix_exporter_t *exp = frm ? pool_elt_at_index (frm->exporters, 0) : 0;
   vlib_frame_t *f;
   ip4_ipfix_template_packet_t *tp;
   ipfix_set_header_t *s;
@@ -550,6 +550,9 @@ flowprobe_export_send (vlib_main_t * vm, vlib_buffer_t * b0,
   udp_header_t *udp;
   flowprobe_record_t flags = fm->context[which].flags;
   u32 my_cpu_number = vm->thread_index;
+
+  if (!exp)
+    return;
 
   /* Fill in header */
   flow_report_stream_t *stream;
@@ -650,10 +653,13 @@ static vlib_buffer_t *
 flowprobe_get_buffer (vlib_main_t * vm, flowprobe_variant_t which)
 {
   flowprobe_main_t *fm = &flowprobe_main;
-  ipfix_exporter_t *exp = pool_elt_at_index (flow_report_main.exporters, 0);
+  ipfix_exporter_t *exp = flowprobe_get_exporter ();
   vlib_buffer_t *b0;
   u32 bi0;
   u32 my_cpu_number = vm->thread_index;
+
+  if (!exp)
+    return 0;
 
   /* Find or allocate a buffer */
   b0 = fm->context[which].buffers_per_worker[my_cpu_number];
@@ -690,7 +696,7 @@ flowprobe_export_entry (vlib_main_t * vm, flowprobe_entry_t * e)
 {
   u32 my_cpu_number = vm->thread_index;
   flowprobe_main_t *fm = &flowprobe_main;
-  ipfix_exporter_t *exp = pool_elt_at_index (flow_report_main.exporters, 0);
+  ipfix_exporter_t *exp = flowprobe_get_exporter ();
   vlib_buffer_t *b0;
   bool collect_ip4 = false, collect_ip6 = false;
   bool collect_l4 = false;
@@ -698,6 +704,9 @@ flowprobe_export_entry (vlib_main_t * vm, flowprobe_entry_t * e)
   flowprobe_record_t flags = fm->context[which].flags;
   u16 offset =
     fm->context[which].next_record_offset_per_worker[my_cpu_number];
+
+  if (!exp)
+    return;
 
   if (offset < flowprobe_get_headersize ())
     offset = flowprobe_get_headersize ();
@@ -1018,7 +1027,10 @@ flowprobe_walker_process (vlib_main_t * vm,
 {
   flowprobe_main_t *fm = &flowprobe_main;
   flowprobe_entry_t *e;
-  ipfix_exporter_t *exp = pool_elt_at_index (flow_report_main.exporters, 0);
+  ipfix_exporter_t *exp = flowprobe_get_exporter ();
+
+  if (!exp)
+    return 0;
 
   /*
    * $$$$ Remove this check from here and track FRM status and disable

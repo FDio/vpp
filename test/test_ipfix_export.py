@@ -1,8 +1,14 @@
 #!/usr/bin/env python3
+import unittest
+from config import config
 from framework import VppTestCase
 from ipaddress import IPv4Address
 
 
+@unittest.skipIf(
+    "ipfix-export" in config.excluded_plugins,
+    "Exclude IPFIX export plugin tests",
+)
 class TestIpfixExporter(VppTestCase):
     """Ipfix Exporter Tests"""
 
@@ -63,13 +69,11 @@ class TestIpfixExporter(VppTestCase):
         self.verify_exporter_detail(
             exp, IPv4Address(self.pg1.remote_ip4), IPv4Address(self.pg0.local_ip4)
         )
-
         exporters = list(self.vapi.vpp.details_iter(self.vapi.ipfix_all_exporter_get))
         exp = self.find_exp_by_collector_addr(exporters, self.pg1.remote_ip4)
         self.verify_exporter_detail(
             exp, IPv4Address(self.pg1.remote_ip4), IPv4Address(self.pg0.local_ip4)
         )
-
         # create a 2nd exporter
         self.vapi.ipfix_exporter_create_delete(
             collector_address=self.pg2.remote_ip4,
@@ -182,3 +186,30 @@ class TestIpfixExporter(VppTestCase):
         self.verify_exporter_detail(
             exp, IPv4Address(self.pg1.remote_ip4), IPv4Address(self.pg0.local_ip4)
         )
+
+
+@unittest.skipIf("ioam" in config.excluded_plugins, "Exclude IOAM plugin tests")
+class TestIOAMWithoutIpfixExport(VppTestCase):
+    """IOAM behavior without the IPFIX export plugin"""
+
+    extra_vpp_plugin_config = [
+        "plugin ioam_plugin.so { enable }",
+        "plugin ipfix-export_plugin.so { disable }",
+    ]
+
+    VNET_API_ERROR_FEATURE_DISABLED = -30
+
+    def test_analyse_export_without_ipfix_export(self):
+        """IOAM analyse reports that its IPFIX provider is unavailable"""
+
+        reply = self.vapi.cli_return_response("set ioam analyse export-ipfix-collector")
+        self.assertNotEqual(reply.retval, 0)
+        self.assertIn("ipfix-export plugin not loaded", reply.reply)
+
+    def test_udp_ping_export_without_ipfix_export(self):
+        """UDP ping export reports that its IPFIX provider is unavailable"""
+
+        with self.vapi.assert_negative_api_retval():
+            reply = self.vapi.udp_ping_export(enable=True)
+
+        self.assertEqual(reply.retval, self.VNET_API_ERROR_FEATURE_DISABLED)

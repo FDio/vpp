@@ -15,17 +15,16 @@
 #include <vnet/api_errno.h>
 
 #include <vnet/fib/fib_table.h>
-#include <vnet/ipfix-export/flow_report.h>
-#include <vnet/ipfix-export/flow_report_classify.h>
+#include <ipfix-export/internal.h>
 
 #include <vnet/format_fns.h>
-#include <vnet/ipfix-export/ipfix_export.api_enum.h>
-#include <vnet/ipfix-export/ipfix_export.api_types.h>
+#include <ipfix-export/ipfix_export.api_enum.h>
+#include <ipfix-export/ipfix_export.api_types.h>
 
 #define REPLY_MSG_ID_BASE frm->msg_id_base
 #include <vlibapi/api_helper_macros.h>
 
-ipfix_exporter_t *
+__clib_export ipfix_exporter_t *
 vnet_ipfix_exporter_lookup (const ip_address_t *ipfix_collector)
 {
   flow_report_main_t *frm = &flow_report_main;
@@ -481,7 +480,7 @@ vl_api_ipfix_flush_t_handler (vl_api_ipfix_flush_t * mp)
   REPLY_MACRO (VL_API_IPFIX_FLUSH_REPLY);
 }
 
-#include <vnet/ipfix-export/ipfix_export.api.c>
+#include <ipfix-export/ipfix_export.api.c>
 static clib_error_t *
 flow_api_hookup (vlib_main_t * vm)
 {

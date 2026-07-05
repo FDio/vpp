@@ -16,11 +16,13 @@
 #include <vnet/ip/ip6_packet.h>
 #include <vnet/udp/udp_packet.h>
 #include <vlib/cli.h>
+#include <vlib/unix/plugin.h>
+#include <vnet/api_errno.h>
 #include <vppinfra/error.h>
 #include <vppinfra/hash.h>
 #include <vppinfra/cache.h>
 
-#include <vnet/ipfix-export/ipfix_packet.h>
+#include <ipfix-export/ipfix_packet.h>
 
 /* ipfix field definitions for a particular report */
 typedef struct
@@ -57,11 +59,6 @@ typedef u8 *(vnet_flow_rewrite_callback_t) (struct ipfix_exporter *exp,
 					    struct flow_report *,
 					    u16, ipfix_report_element_t *elts,
 					    u32 n_elts, u32 *stream_index);
-
-u8 *vnet_flow_rewrite_generic_callback (struct ipfix_exporter *exp,
-					struct flow_report *, u16,
-					ipfix_report_element_t *elts,
-					u32 n_elts, u32 *stream_index);
 
 typedef union
 {
@@ -196,9 +193,31 @@ typedef struct flow_report_main
   u16 msg_id_base;
 } flow_report_main_t;
 
+#define IPFIX_EXPORT_PLUGIN_SO "ipfix-export_plugin.so"
+
+#ifdef IPFIX_EXPORT_PLUGIN_INTERNAL
+
 extern flow_report_main_t flow_report_main;
 
 extern vlib_node_registration_t flow_report_process_node;
+
+flow_report_main_t *vnet_flow_report_get_main (void);
+
+#else /* IPFIX_EXPORT_PLUGIN_INTERNAL */
+
+typedef flow_report_main_t *(vnet_flow_report_get_main_fn_t) (void);
+
+static inline flow_report_main_t *
+vnet_flow_report_get_main (void)
+{
+  vnet_flow_report_get_main_fn_t *fn = (vnet_flow_report_get_main_fn_t *) vlib_get_plugin_symbol (
+    IPFIX_EXPORT_PLUGIN_SO, "vnet_flow_report_get_main");
+  if (!fn)
+    return 0;
+  return fn ();
+}
+
+#endif /* IPFIX_EXPORT_PLUGIN_INTERNAL */
 
 typedef struct
 {
@@ -217,6 +236,12 @@ typedef struct
    */
   u32 flow_report_index;
 } vnet_flow_report_add_del_args_t;
+
+#ifdef IPFIX_EXPORT_PLUGIN_INTERNAL
+
+u8 *vnet_flow_rewrite_generic_callback (struct ipfix_exporter *exp, struct flow_report *, u16,
+					ipfix_report_element_t *elts, u32 n_elts,
+					u32 *stream_index);
 
 int vnet_flow_report_add_del (ipfix_exporter_t *exp,
 			      vnet_flow_report_add_del_args_t *a,
@@ -259,5 +284,133 @@ void vnet_ipfix_exp_send_buffer (vlib_main_t *vm, ipfix_exporter_t *exp,
 				 flow_report_stream_t *stream,
 				 clib_thread_index_t thread_index,
 				 vlib_buffer_t *b0);
+
+#else /* IPFIX_EXPORT_PLUGIN_INTERNAL */
+
+typedef u8 *(vnet_flow_rewrite_generic_callback_fn_t) (struct ipfix_exporter *exp,
+						       struct flow_report *, u16,
+						       ipfix_report_element_t *elts, u32 n_elts,
+						       u32 *stream_index);
+
+static inline u8 *
+vnet_flow_rewrite_generic_callback (struct ipfix_exporter *exp, struct flow_report *fr,
+				    u16 collector_port, ipfix_report_element_t *elts, u32 n_elts,
+				    u32 *stream_index)
+{
+  vnet_flow_rewrite_generic_callback_fn_t *fn =
+    (vnet_flow_rewrite_generic_callback_fn_t *) vlib_get_plugin_symbol (
+      IPFIX_EXPORT_PLUGIN_SO, "vnet_flow_rewrite_generic_callback");
+  if (!fn)
+    return 0;
+  return fn (exp, fr, collector_port, elts, n_elts, stream_index);
+}
+
+typedef int (vnet_flow_report_add_del_fn_t) (ipfix_exporter_t *exp,
+					     vnet_flow_report_add_del_args_t *a, u16 *template_id);
+
+static inline int
+vnet_flow_report_add_del (ipfix_exporter_t *exp, vnet_flow_report_add_del_args_t *a,
+			  u16 *template_id)
+{
+  vnet_flow_report_add_del_fn_t *fn = (vnet_flow_report_add_del_fn_t *) vlib_get_plugin_symbol (
+    IPFIX_EXPORT_PLUGIN_SO, "vnet_flow_report_add_del");
+  if (!fn)
+    return VNET_API_ERROR_FEATURE_DISABLED;
+  return fn (exp, a, template_id);
+}
+
+typedef clib_error_t *(flow_report_add_del_error_to_clib_error_fn_t) (int error);
+
+static inline clib_error_t *
+flow_report_add_del_error_to_clib_error (int error)
+{
+  flow_report_add_del_error_to_clib_error_fn_t *fn =
+    (flow_report_add_del_error_to_clib_error_fn_t *) vlib_get_plugin_symbol (
+      IPFIX_EXPORT_PLUGIN_SO, "flow_report_add_del_error_to_clib_error");
+  if (!fn)
+    return clib_error_return (0, "ipfix-export plugin not loaded");
+  return fn (error);
+}
+
+typedef void (vnet_flow_reports_reset_fn_t) (ipfix_exporter_t *exp);
+
+static inline void
+vnet_flow_reports_reset (ipfix_exporter_t *exp)
+{
+  vnet_flow_reports_reset_fn_t *fn = (vnet_flow_reports_reset_fn_t *) vlib_get_plugin_symbol (
+    IPFIX_EXPORT_PLUGIN_SO, "vnet_flow_reports_reset");
+  if (fn)
+    fn (exp);
+}
+
+typedef void (vnet_stream_reset_fn_t) (ipfix_exporter_t *exp, u32 stream_index);
+
+static inline void
+vnet_stream_reset (ipfix_exporter_t *exp, u32 stream_index)
+{
+  vnet_stream_reset_fn_t *fn =
+    (vnet_stream_reset_fn_t *) vlib_get_plugin_symbol (IPFIX_EXPORT_PLUGIN_SO, "vnet_stream_reset");
+  if (fn)
+    fn (exp, stream_index);
+}
+
+typedef int (vnet_stream_change_fn_t) (ipfix_exporter_t *exp, u32 old_domain_id, u16 old_src_port,
+				       u32 new_domain_id, u16 new_src_port);
+
+static inline int
+vnet_stream_change (ipfix_exporter_t *exp, u32 old_domain_id, u16 old_src_port, u32 new_domain_id,
+		    u16 new_src_port)
+{
+  vnet_stream_change_fn_t *fn = (vnet_stream_change_fn_t *) vlib_get_plugin_symbol (
+    IPFIX_EXPORT_PLUGIN_SO, "vnet_stream_change");
+  if (!fn)
+    return VNET_API_ERROR_FEATURE_DISABLED;
+  return fn (exp, old_domain_id, old_src_port, new_domain_id, new_src_port);
+}
+
+typedef ipfix_exporter_t *(vnet_ipfix_exporter_lookup_fn_t) (const ip_address_t *ipfix_collector);
+
+static inline ipfix_exporter_t *
+vnet_ipfix_exporter_lookup (const ip_address_t *ipfix_collector)
+{
+  vnet_ipfix_exporter_lookup_fn_t *fn = (vnet_ipfix_exporter_lookup_fn_t *) vlib_get_plugin_symbol (
+    IPFIX_EXPORT_PLUGIN_SO, "vnet_ipfix_exporter_lookup");
+  if (!fn)
+    return 0;
+  return fn (ipfix_collector);
+}
+
+typedef vlib_buffer_t *(vnet_ipfix_exp_get_buffer_fn_t) (vlib_main_t *vm, ipfix_exporter_t *exp,
+							 flow_report_t *fr,
+							 clib_thread_index_t thread_index);
+
+static inline vlib_buffer_t *
+vnet_ipfix_exp_get_buffer (vlib_main_t *vm, ipfix_exporter_t *exp, flow_report_t *fr,
+			   clib_thread_index_t thread_index)
+{
+  vnet_ipfix_exp_get_buffer_fn_t *fn = (vnet_ipfix_exp_get_buffer_fn_t *) vlib_get_plugin_symbol (
+    IPFIX_EXPORT_PLUGIN_SO, "vnet_ipfix_exp_get_buffer");
+  if (!fn)
+    return 0;
+  return fn (vm, exp, fr, thread_index);
+}
+
+typedef void (vnet_ipfix_exp_send_buffer_fn_t) (vlib_main_t *vm, ipfix_exporter_t *exp,
+						flow_report_t *fr, flow_report_stream_t *stream,
+						clib_thread_index_t thread_index,
+						vlib_buffer_t *b0);
+
+static inline void
+vnet_ipfix_exp_send_buffer (vlib_main_t *vm, ipfix_exporter_t *exp, flow_report_t *fr,
+			    flow_report_stream_t *stream, clib_thread_index_t thread_index,
+			    vlib_buffer_t *b0)
+{
+  vnet_ipfix_exp_send_buffer_fn_t *fn = (vnet_ipfix_exp_send_buffer_fn_t *) vlib_get_plugin_symbol (
+    IPFIX_EXPORT_PLUGIN_SO, "vnet_ipfix_exp_send_buffer");
+  if (fn)
+    fn (vm, exp, fr, stream, thread_index, b0);
+}
+
+#endif /* IPFIX_EXPORT_PLUGIN_INTERNAL */
 
 #endif /* __included_vnet_flow_report_h__ */

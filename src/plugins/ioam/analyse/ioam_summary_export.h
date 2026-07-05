@@ -7,7 +7,7 @@
 #define __included_ip6_ioam_flow_report_h__
 
 #include <ioam/analyse/ioam_analyse.h>
-#include <vnet/ipfix-export/flow_report.h>
+#include <ipfix-export/flow_report.h>
 
 #define foreach_ioam_ipfix_info_element           \
 _(ioamPacketSent, 5239, u32)                     \
@@ -40,8 +40,6 @@ _(seqno_data.rx_packets, 0xffffffff, ioamSeqnoRxCount, 4) \
 _(seqno_data.lost_packets, 0xffffffff, ioamSeqnoLostCount, 4) \
 _(seqno_data.reordered_packets, 0xffffffff, ioamSeqnoReorderedCount, 4) \
 _(seqno_data.dup_packets, 0xffffffff, ioamSeqnoDupCount, 4)
-
-clib_error_t *ioam_flow_report_init (vlib_main_t * vm);
 
 typedef struct
 {
