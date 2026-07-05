@@ -85,7 +85,6 @@ nsim_output_feature_enable_disable (nsim_main_t * nsm, u32 sw_if_index,
 				    int enable_disable)
 {
   vnet_sw_interface_t *sw;
-  vnet_hw_interface_t *hw;
   int rv = 0;
 
   if (nsm->is_configured == 0)
@@ -101,12 +100,18 @@ nsim_output_feature_enable_disable (nsim_main_t * nsm, u32 sw_if_index,
   if (sw->type != VNET_SW_INTERFACE_TYPE_HARDWARE)
     return VNET_API_ERROR_INVALID_SW_IF_INDEX;
 
-  /* Add a graph arc for the input / wheel scraper node */
-  hw = vnet_get_hw_interface (nsm->vnet_main, sw_if_index);
+  /* Add a graph arc from the wheel scraper to "interface-output-arc-end". The
+   * delayed packet has already traversed "<ifname>-output" (the arc start node,
+   * where TX offload ran and the pcap TX hook fired) on its way into nsim, so we
+   * reinject past it, straight to the arc-end node that does the per-buffer TX
+   * demux and populates the driver tx-frame scalar. This avoids re-running the
+   * output arc -- in particular the pcap TX hook, which would otherwise capture
+   * every shaped packet a second time. */
   vec_validate_init_empty (nsm->output_next_index_by_sw_if_index, sw_if_index,
 			   ~0);
   nsm->output_next_index_by_sw_if_index[sw_if_index] = vlib_node_add_next (
-    nsm->vlib_main, nsim_input_node.index, hw->output_node_index);
+    nsm->vlib_main, nsim_input_node.index,
+    vlib_get_node_by_name (nsm->vlib_main, (u8 *) "interface-output-arc-end")->index);
 
   vnet_feature_enable_disable ("interface-output", "nsim-output-feature",
 			       sw_if_index, enable_disable, 0, 0);
