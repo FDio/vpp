@@ -1412,7 +1412,13 @@ tcp_timer_retransmit_handler (tcp_connection_t * tc)
       tcp_retransmit_timer_update (&wrk->timer_wheel, tc);
 
       tc->rto_boff += 1;
-      if (tc->rto_boff == 1)
+      /* Do the loss window reduction only on the rto that STARTS a congestion
+       * episode. rto_boff can be cleared mid-recovery by acks that make some
+       * progress (tcp_update_rtt), so it is not a reliable "first rto" flag; a
+       * subsequent rto for the same unrecovered episode would otherwise re-run
+       * the loss handler and re-cut cwnd/w_max. Gate on not-already-in-recovery
+       * so cc is notified once per event (RFC 5681 Sec. 3.1). */
+      if (tc->rto_boff == 1 && !tcp_in_recovery (tc))
 	{
 	  tcp_cc_init_rxt_timeout (tc);
 	  /* Record timestamp. Eifel detection algorithm RFC3522 */
