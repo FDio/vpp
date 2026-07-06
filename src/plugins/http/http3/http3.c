@@ -60,6 +60,15 @@ http3_stream_alloc_req (u32 stream_index, clib_thread_index_t thread_index, u8 i
 }
 
 static_always_inline void
+http3_req_free (http_ctx_t *req)
+{
+  vec_free (req->headers);
+  vec_free (req->target);
+  http_buffer_free (&req->tx_buf);
+  http_ctx_free (req);
+}
+
+static_always_inline void
 http3_stream_free_req (http_ctx_t *stream)
 {
   http_ctx_t *req;
@@ -68,16 +77,13 @@ http3_stream_free_req (http_ctx_t *stream)
   req = http_ctx_get_w_thread (stream->http_req_index, stream->c_thread_index);
   HTTP_DBG (1, "req [%u]%x", stream->c_thread_index,
 	    ((http_req_handle_t) req->hr_req_handle).req_index);
-  vec_free (req->headers);
-  vec_free (req->target);
-  http_buffer_free (&req->tx_buf);
   stream->http_req_index = SESSION_INVALID_INDEX;
   if (req->req_flags & HTTP_REQ_F_IS_PARENT)
     {
       hc = http_ctx_get_w_thread (stream->hc_http_conn_index, stream->c_thread_index);
       hc->hc_parent_req_index = SESSION_INVALID_INDEX;
     }
-  http_ctx_free (req);
+  http3_req_free (req);
 }
 
 static_always_inline void
@@ -92,7 +98,7 @@ http3_stream_free_req_w_index (u32 req_index, clib_thread_index_t thread_index, 
       hc = http_ctx_get_w_thread (stream->hc_http_conn_index, stream->c_thread_index);
       hc->hc_parent_req_index = SESSION_INVALID_INDEX;
     }
-  http_ctx_free (req);
+  http3_req_free (req);
 }
 
 static_always_inline void
