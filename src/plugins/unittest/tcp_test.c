@@ -1508,6 +1508,429 @@ tcp_test_persist (vlib_main_t *vm, unformat_input_t *input)
   return tcp_test_persist_e2e (vm, input);
 }
 
+/*
+ * Regression test for "reduce loss window once per rto congestion event".
+ *
+ * On each rto tcp_cc_rxt_timeout re-sets the loss cwnd, but the once-per-event
+ * reduction (ssthresh via tcp_cc_congestion, the prev_cwnd/prev_ssthresh undo
+ * snapshot, and the snd_rxt_ts Eifel reference) must run only for the rto that
+ * starts the event. It must NOT re-run for a subsequent rto of the same,
+ * still-unrecovered event -- even though rto_boff can be cleared to 0
+ * mid-recovery by tcp_update_rtt on an ack that makes progress. Here we set up
+ * a real connection, force it into rto recovery, then emulate that
+ * clear-and-refire and assert ssthresh is not cut again and prev_cwnd is not
+ * re-snapshotted. A complementary case checks that an rto escalating out of
+ * fast recovery still sets the loss cwnd while preserving the entry snapshot.
+ */
+static int
+tcp_test_rto_reduce_once_e2e (vlib_main_t *vm, unformat_input_t *input)
+{
+  session_endpoint_cfg_t client_sep = SESSION_ENDPOINT_CFG_NULL;
+  session_endpoint_cfg_t server_sep = SESSION_ENDPOINT_CFG_NULL;
+  session_handle_t listen_handle = SESSION_INVALID_HANDLE;
+  u64 options[APP_OPTIONS_N_OPTIONS], placeholder_secret = 2236;
+  u32 client_index = ~0, server_index = ~0, sw_if_index[2] = { ~0, ~0 };
+  u32 client_vrf = 0, server_vrf = 2, tries = 0;
+  u32 total_bytes = 16 << 10;
+  u32 client_fifo_size = 32 << 10, i;
+  u16 placeholder_server_port = 2237, placeholder_client_port = 6681;
+  ip4_address_t intf_addr[2];
+  session_t *client_s = 0;
+  tcp_connection_t *client_tc = 0;
+  tcp_worker_ctx_t *client_wrk;
+  transport_connection_t *tc;
+  u8 *appns_id = 0, *data = 0;
+  u32 cwnd_after_first, prev_cwnd_after_first, ssthresh_after_first, boff_after_first;
+  int error, rv = 0, routes_added = 0, ns_added = 0;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      vlib_cli_output (vm, "parse error: '%U'", format_unformat_error, input);
+      return -1;
+    }
+
+  session_test_reset_placeholder_state ();
+
+  intf_addr[0].as_u32 = clib_host_to_net_u32 (0x08080801);
+  if (session_create_lookpback (client_vrf, &sw_if_index[0], &intf_addr[0]))
+    return 1;
+
+  intf_addr[1].as_u32 = clib_host_to_net_u32 (0x09090901);
+  if (session_create_lookpback (server_vrf, &sw_if_index[1], &intf_addr[1]))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+  session_add_del_route_via_lookup_in_table (client_vrf, server_vrf, &intf_addr[1], 32,
+					     1 /* is_add */);
+  session_add_del_route_via_lookup_in_table (server_vrf, client_vrf, &intf_addr[0], 32,
+					     1 /* is_add */);
+  routes_added = 1;
+
+  appns_id = format (0, "appns_rto_once_server");
+  vnet_app_namespace_add_del_args_t ns_args = {
+    .ns_id = appns_id,
+    .secret = placeholder_secret,
+    .sw_if_index = sw_if_index[1],
+    .is_add = 1,
+  };
+  error = vnet_app_namespace_add_del (&ns_args);
+  if (!TCP_TEST_I ((error == 0), "app ns insertion should succeed: %d", error))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  ns_added = 1;
+
+  clib_memset (options, 0, sizeof (options));
+  options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_IS_BUILTIN;
+  options[APP_OPTIONS_FLAGS] |= APP_OPTIONS_FLAGS_USE_GLOBAL_SCOPE;
+  options[APP_OPTIONS_RX_FIFO_SIZE] = 4 << 10;
+  options[APP_OPTIONS_TX_FIFO_SIZE] = client_fifo_size;
+
+  vnet_app_attach_args_t attach_args = {
+    .api_client_index = ~0,
+    .options = options,
+    .namespace_id = 0,
+    .session_cb_vft = &placeholder_session_cbs,
+    .name = format (0, "tcp_test_rto_once_client"),
+  };
+
+  error = vnet_application_attach (&attach_args);
+  if (!TCP_TEST_I ((error == 0), "client app attached"))
+    {
+      vec_free (attach_args.name);
+      rv = 1;
+      goto cleanup;
+    }
+  client_index = attach_args.app_index;
+  vec_free (attach_args.name);
+
+  options[APP_OPTIONS_RX_FIFO_SIZE] = 4 << 10;
+  options[APP_OPTIONS_TX_FIFO_SIZE] = 4 << 10;
+  options[APP_OPTIONS_ADD_SEGMENT_SIZE] = 32 << 20;
+
+  attach_args.name = format (0, "tcp_test_rto_once_server");
+  attach_args.namespace_id = appns_id;
+  attach_args.options[APP_OPTIONS_NAMESPACE_SECRET] = placeholder_secret;
+  error = vnet_application_attach (&attach_args);
+  if (!TCP_TEST_I ((error == 0), "server app attached"))
+    {
+      vec_free (attach_args.name);
+      rv = 1;
+      goto cleanup;
+    }
+  server_index = attach_args.app_index;
+  vec_free (attach_args.name);
+
+  server_sep.is_ip4 = 1;
+  server_sep.port = placeholder_server_port;
+  vnet_listen_args_t bind_args = {
+    .sep_ext = server_sep,
+    .app_index = server_index,
+  };
+  error = vnet_listen (&bind_args);
+  if (!TCP_TEST_I ((error == 0), "server bind should work"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  listen_handle = bind_args.handle;
+
+  client_sep.is_ip4 = 1;
+  client_sep.ip.ip4.as_u32 = intf_addr[1].as_u32;
+  client_sep.port = placeholder_server_port;
+  client_sep.peer.is_ip4 = 1;
+  client_sep.peer.ip.ip4.as_u32 = intf_addr[0].as_u32;
+  client_sep.peer.port = placeholder_client_port;
+  client_sep.transport_proto = TRANSPORT_PROTO_TCP;
+
+  vnet_connect_args_t connect_args = {
+    .sep_ext = client_sep,
+    .app_index = client_index,
+  };
+  error = vnet_connect (&connect_args);
+  if (!TCP_TEST_I ((error == 0), "connect should work"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+  tries = 0;
+  while (connected_session_index == ~0 && ++tries < 100)
+    {
+      vlib_worker_thread_barrier_release (vm);
+      vlib_process_suspend (vm, 10e-3);
+      vlib_worker_thread_barrier_sync (vm);
+    }
+  while (accepted_session_index == ~0 && ++tries < 100)
+    {
+      vlib_worker_thread_barrier_release (vm);
+      vlib_process_suspend (vm, 10e-3);
+      vlib_worker_thread_barrier_sync (vm);
+    }
+
+  if (!TCP_TEST_I ((connected_session_index != ~0), "client session should exist"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  if (!TCP_TEST_I ((accepted_session_index != ~0), "server session should exist"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+  client_s = session_get (connected_session_index, connected_session_thread);
+  tc = session_get_transport (client_s);
+  if (!TCP_TEST_I ((tc != 0), "client transport should exist"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  client_tc = (tcp_connection_t *) tc;
+  client_wrk = tcp_get_worker (client_tc->c_thread_index);
+
+  /*
+   * Build a deterministic flight of unacked data to time out on, without
+   * depending on peer ack timing (over loopback the peer would ack instantly).
+   * Queue data in the tx fifo and mark it as sent-but-unacked by advancing
+   * snd_nxt past snd_una; snd_congestion is the recovery point. The rto handler
+   * retransmits from the fifo at snd_una.
+   */
+  vec_validate (data, total_bytes - 1);
+  for (i = 0; i < total_bytes; i++)
+    data[i] = i & 0xff;
+
+  error = svm_fifo_enqueue (client_s->tx_fifo, total_bytes, data);
+  if (!TCP_TEST_I ((error == (int) total_bytes), "client queued %u bytes", total_bytes))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+  /* Freeze the peer window wide and mark the queued data as in flight. */
+  client_tc->snd_wnd = total_bytes;
+  client_tc->snd_nxt = client_tc->snd_una + total_bytes;
+  client_tc->snd_congestion = client_tc->snd_nxt;
+  client_tc->rcv_dupacks = 0;
+
+  if (!TCP_TEST_I ((client_tc->snd_nxt != client_tc->snd_una), "client has data in flight"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+  /*
+   * First rto: starts the congestion event, enters rto recovery.
+   */
+  tcp_timer_reset (&client_wrk->timer_wheel, client_tc, TCP_TIMER_RETRANSMIT);
+  client_tc->tr_occurences = 0;
+  client_tc->rto_boff = 0;
+  tcp_timer_retransmit_handler (client_tc);
+
+  if (!TCP_TEST_I (tcp_in_recovery (client_tc), "first rto enters recovery"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  if (!TCP_TEST_I ((client_tc->tr_occurences == 1),
+		   "first rto counts as one timeout (tr_occurences %u)", client_tc->tr_occurences))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  cwnd_after_first = client_tc->cwnd;
+  prev_cwnd_after_first = client_tc->prev_cwnd;
+  ssthresh_after_first = client_tc->ssthresh;
+  boff_after_first = client_tc->rto_boff;
+  if (!TCP_TEST_I ((boff_after_first >= 1), "first rto backed off"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+  /*
+   * Emulate an ack that makes progress mid-recovery: it clears rto_boff (as
+   * tcp_update_rtt does), but does NOT end the event (snd_una still below
+   * snd_congestion, still in recovery). Then a second rto fires for the same
+   * congestion event.
+   */
+  client_tc->rto_boff = 0;
+  if (!TCP_TEST_I (tcp_in_recovery (client_tc), "still in recovery before second rto"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+  tcp_timer_reset (&client_wrk->timer_wheel, client_tc, TCP_TIMER_RETRANSMIT);
+  tcp_timer_retransmit_handler (client_tc);
+
+  /*
+   * The second rto of the same event must NOT re-run the once-per-event
+   * reduction. ssthresh is not cut again (RFC 5681 Sec. 3.1) and prev_cwnd (the
+   * undo snapshot, and the peak cubic_loss anchors w_max on) is not overwritten
+   * with the already-reduced window. The loss cwnd (tcp_cc_loss) and the
+   * per-rto backoff mechanics (tr_occurences etc.) do still run, so neither
+   * cwnd nor tr_occurences is the invariant here.
+   */
+  if (!TCP_TEST_I ((client_tc->ssthresh == ssthresh_after_first),
+		   "second rto does not re-reduce ssthresh (%u -> %u)", ssthresh_after_first,
+		   client_tc->ssthresh))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  if (!TCP_TEST_I ((client_tc->prev_cwnd == prev_cwnd_after_first),
+		   "second rto does not re-snapshot prev_cwnd (%u -> %u)", prev_cwnd_after_first,
+		   client_tc->prev_cwnd))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+  /*
+   * Complementary case: an rto that fires while in FAST recovery (not rto
+   * recovery) is a congestion event escalation. The loss cwnd MUST still be
+   * reduced (tcp_cc_loss runs on every rto), but the once-per-event state
+   * (prev_cwnd/prev_ssthresh undo snapshot, snd_rxt_ts Eifel reference) was
+   * already taken at fast-recovery entry and MUST NOT be overwritten with the
+   * already-reduced window. The snapshot guard is !tcp_in_cong_recovery, which
+   * is false in fast recovery, so the snapshot is skipped here.
+   */
+  tcp_recovery_off (client_tc);
+  tcp_fastrecovery_off (client_tc);
+  client_tc->rto_boff = 0;
+  client_tc->snd_una = client_tc->snd_nxt;
+  error = svm_fifo_enqueue (client_s->tx_fifo, total_bytes, data);
+  if (!TCP_TEST_I ((error == (int) total_bytes), "client requeued %u bytes", total_bytes))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  client_tc->snd_wnd = total_bytes;
+  client_tc->snd_nxt = client_tc->snd_una + total_bytes;
+  client_tc->snd_congestion = client_tc->snd_nxt;
+  client_tc->rcv_dupacks = 0;
+
+  /* Enter fast recovery (not rto recovery). */
+  tcp_fastrecovery_on (client_tc);
+  if (!TCP_TEST_I ((tcp_in_fastrecovery (client_tc) && !tcp_in_recovery (client_tc)),
+		   "in fast recovery, not rto recovery"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+  /* prev_cwnd stands in for the undo snapshot taken at fast-recovery entry; the
+   * escalating rto must preserve it (snapshot skipped). cwnd is set to a
+   * sentinel the loss window (flight + 1 mss) cannot reach, so a changed cwnd
+   * proves tcp_cc_loss ran and was not gated by the fast-recovery state. */
+  prev_cwnd_after_first = client_tc->cwnd + 12345;
+  client_tc->prev_cwnd = prev_cwnd_after_first;
+  cwnd_after_first = 0x40000000;
+  client_tc->cwnd = cwnd_after_first;
+
+  tcp_timer_reset (&client_wrk->timer_wheel, client_tc, TCP_TIMER_RETRANSMIT);
+  client_tc->rto_boff = 0;
+  tcp_timer_retransmit_handler (client_tc);
+
+  if (!TCP_TEST_I ((client_tc->prev_cwnd == prev_cwnd_after_first),
+		   "rto during fast recovery preserves the entry undo snapshot "
+		   "(prev_cwnd %u, expected %u)",
+		   client_tc->prev_cwnd, prev_cwnd_after_first))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  /* tcp_cc_loss ran: cwnd was recomputed to the loss window, off the
+   * sentinel. */
+  if (!TCP_TEST_I ((client_tc->cwnd < cwnd_after_first),
+		   "rto during fast recovery sets loss cwnd (%u, was sentinel %u)", client_tc->cwnd,
+		   cwnd_after_first))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+cleanup:
+  if (accepted_session_index != ~0)
+    {
+      vnet_disconnect_args_t disconnect_args = {
+	.handle = session_make_handle (accepted_session_index, accepted_session_thread),
+	.app_index = server_index,
+      };
+      (void) vnet_disconnect_session (&disconnect_args);
+    }
+  else if (connected_session_index != ~0)
+    {
+      vnet_disconnect_args_t disconnect_args = {
+	.handle = session_make_handle (connected_session_index, connected_session_thread),
+	.app_index = client_index,
+      };
+      (void) vnet_disconnect_session (&disconnect_args);
+    }
+
+  if (listen_handle != SESSION_INVALID_HANDLE)
+    {
+      vnet_unlisten_args_t unbind_args = {
+	.handle = listen_handle,
+	.app_index = server_index,
+      };
+      (void) vnet_unlisten (&unbind_args);
+    }
+
+  if (server_index != ~0)
+    {
+      vnet_app_detach_args_t detach_args = {
+	.app_index = server_index,
+	.api_client_index = ~0,
+      };
+      vnet_application_detach (&detach_args);
+    }
+  if (client_index != ~0)
+    {
+      vnet_app_detach_args_t detach_args = {
+	.app_index = client_index,
+	.api_client_index = ~0,
+      };
+      vnet_application_detach (&detach_args);
+    }
+
+  if (ns_added)
+    {
+      ns_args.is_add = 0;
+      (void) vnet_app_namespace_add_del (&ns_args);
+    }
+
+  vlib_process_suspend (vm, 10e-3);
+
+  if (routes_added)
+    {
+      session_add_del_route_via_lookup_in_table (client_vrf, server_vrf, &intf_addr[1], 32,
+						 0 /* is_add */);
+      session_add_del_route_via_lookup_in_table (server_vrf, client_vrf, &intf_addr[0], 32,
+						 0 /* is_add */);
+    }
+
+  if (sw_if_index[0] != ~0)
+    session_delete_loopback (sw_if_index[0]);
+  if (sw_if_index[1] != ~0)
+    session_delete_loopback (sw_if_index[1]);
+
+  vec_free (data);
+  vec_free (appns_id);
+
+  return rv;
+}
+
+static int
+tcp_test_rto (vlib_main_t *vm, unformat_input_t *input)
+{
+  return tcp_test_rto_reduce_once_e2e (vm, input);
+}
+
 static int
 tcp_test_delivery (vlib_main_t * vm, unformat_input_t * input)
 {
@@ -2232,6 +2655,10 @@ tcp_test (vlib_main_t * vm,
 	{
 	  res = tcp_test_persist (vm, input);
 	}
+      else if (unformat (input, "rto"))
+	{
+	  res = tcp_test_rto (vm, input);
+	}
       else if (unformat (input, "bt"))
 	{
 	  res = tcp_test_bt (vm, input);
@@ -2245,6 +2672,8 @@ tcp_test (vlib_main_t * vm,
 	  if ((res = tcp_test_delivery (vm, input)))
 	    goto done;
 	  if ((res = tcp_test_persist (vm, input)))
+	    goto done;
+	  if ((res = tcp_test_rto (vm, input)))
 	    goto done;
 	  if ((res = tcp_test_bt (vm, input)))
 	    goto done;
