@@ -107,7 +107,10 @@ cubic_loss (tcp_connection_t * tc)
   tc->cwnd = tcp_loss_wnd (tc);
   cd->t_start = cubic_time (tc->c_thread_index);
   cd->K = 0;
-  cd->w_max = tc->cwnd / tc->snd_mss;
+  /* Anchor w_max on the pre-loss window (RFC 9438 Sec. 4.8), not the just
+   * collapsed cwnd. prev_cwnd is snapshotted once per congestion event, so
+   * w_max stays at the real peak even though loss can run on every rto. */
+  cd->w_max = tc->prev_cwnd / tc->snd_mss;
 }
 
 static void

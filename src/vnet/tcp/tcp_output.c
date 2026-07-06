@@ -1272,29 +1272,39 @@ tcp_check_sack_reneging (tcp_connection_t * tc)
  * Reset congestion control, switch cwnd to loss window and try again.
  */
 static void
-tcp_cc_init_rxt_timeout (tcp_connection_t * tc)
+tcp_cc_rxt_timeout (tcp_connection_t *tc)
 {
   TCP_EVT (TCP_EVT_CC_EVT, tc, 6);
 
-  tc->prev_ssthresh = tc->ssthresh;
-  tc->prev_cwnd = tc->cwnd;
+  /* Advance the recovery point to snd_nxt on every rto (RFC 6675) */
+  tc->snd_congestion = tc->snd_nxt;
 
-  /* RFC 5681 Sec. 3.1 / RFC 9438 Sec. 4.6. Notify cc of the congestion event so it can reduce
-   * ssthresh, but only if this is a new episode. If we are already in congestion recovery (fast
-   * recovery, or a prior RTO for a loss not yet recovered) cc was already notified and ssthresh
-   * already reduced. tcp_cc_loss below still sets the loss cwnd. */
+  /* State snapshotted once per congestion event, when the event starts. If we
+   * are already in congestion recovery these were taken on entry and must not
+   * be overwritten */
   if (!tcp_in_cong_recovery (tc))
-    tcp_cc_congestion (tc);
+    {
+      tc->prev_ssthresh = tc->ssthresh;
+      tc->prev_cwnd = tc->cwnd;
+      /* Record timestamp. Eifel detection algorithm RFC3522 */
+      tc->snd_rxt_ts = tcp_tstamp (tc);
+      tcp_cc_congestion (tc);
+    }
 
-  /* Let cc algo decide loss cwnd and ssthresh post unrecovered loss */
-  tcp_cc_loss (tc);
-
-  tc->rtt_ts = 0;
-  tc->cwnd_acc_bytes = 0;
-  tc->tr_occurences += 1;
-  tc->sack_sb.reorder = TCP_DUPACK_THRESHOLD;
-  tc->sack_sb.rescue_rxt = tc->snd_una - 1;
   tcp_recovery_on (tc);
+
+  /* Fresh timeout after progress. rto_boff can be cleared mid-recovery by
+   * acks that make some progress (tcp_update_rtt), so this is not necessarily
+   * the first timeout of the congestion event. */
+  if (!tc->rto_boff)
+    {
+      tc->rtt_ts = 0;
+      tc->cwnd_acc_bytes = 0;
+      tc->tr_occurences += 1;
+      tc->sack_sb.reorder = TCP_DUPACK_THRESHOLD;
+    }
+
+  tcp_cc_loss (tc);
 }
 
 static void
@@ -1391,8 +1401,7 @@ tcp_timer_retransmit_handler (tcp_connection_t * tc)
 	  scoreboard_rxt_mark_lost (&tc->sack_sb, tc->snd_una, tc->snd_nxt);
 	}
 
-      /* Update send congestion to make sure that rxt has data to send */
-      tc->snd_congestion = tc->snd_nxt;
+      tcp_cc_rxt_timeout (tc);
 
       /* Send the first unacked segment. If we're short on buffers, return
        * as soon as possible */
@@ -1410,14 +1419,7 @@ tcp_timer_retransmit_handler (tcp_connection_t * tc)
 
       tc->rto = clib_min (tc->rto << 1, TCP_RTO_MAX);
       tcp_retransmit_timer_update (&wrk->timer_wheel, tc);
-
       tc->rto_boff += 1;
-      if (tc->rto_boff == 1)
-	{
-	  tcp_cc_init_rxt_timeout (tc);
-	  /* Record timestamp. Eifel detection algorithm RFC3522 */
-	  tc->snd_rxt_ts = tcp_tstamp (tc);
-	}
 
       if (tcp_opts_sack_permitted (&tc->rcv_opts))
 	scoreboard_init_rxt (&tc->sack_sb, tc->snd_una + n_bytes);
