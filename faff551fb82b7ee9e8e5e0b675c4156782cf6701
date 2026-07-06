@@ -20,6 +20,23 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "835fd3b2_5f7cbb52",
+        "filename": "src/plugins/rdma/output.c",
+        "patchSetId": 39
+      },
+      "lineNbr": 455,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-07-06T13:16:01Z",
+      "side": 1,
+      "message": "This is hard to follow because the three outcomes use three different control-flow mechanisms: `break`, `goto`, and `continue`. Could we encapsulate the TSO-versus-regular decision in a helper and keep packet advancement and loop termination in one place?",
+      "revId": "faff551fb82b7ee9e8e5e0b675c4156782cf6701",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "d59bfc47_2bda9d8a",
         "filename": "src/plugins/rdma/output.c",
         "patchSetId": 39
