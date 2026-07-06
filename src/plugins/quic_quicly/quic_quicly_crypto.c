@@ -201,6 +201,11 @@ quic_quicly_crypto_context_free_if_needed (quic_quicly_crypto_ctx_t *crctx)
       qqcm->free_cid_encryptor (crctx->quicly_ctx.cid_encryptor);
       crctx->quicly_ctx.cid_encryptor = NULL;
     }
+  if (crctx->quicly_ctx.tls)
+    {
+      ptls_release_private_key (crctx->quicly_ctx.tls);
+      ptls_free_certificate_chain (crctx->quicly_ctx.tls);
+    }
   if (CLIB_DEBUG)
     memset (crctx, 0xfe, sizeof (*crctx));
   pool_put_index (qqcm->crypto_ctx_pool, idx);
@@ -434,7 +439,10 @@ quic_quicly_certkey_init_ctx (app_cert_key_pair_t *ckpair,
 
   cl = ptls_load_certificate_chain ((char *) ckpair->cert);
   if (!cl)
-    return 0;
+    {
+      EVP_PKEY_free (pkey);
+      return 0;
+    }
 
   cki =
     app_certkey_alloc_int_ctx (ckpair, thread_index, CRYPTO_ENGINE_PICOTLS);

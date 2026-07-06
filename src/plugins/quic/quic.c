@@ -508,6 +508,7 @@ quic_udp_session_cleanup_callback (session_t *udp_session,
 			QUIC_TIMER_TX);
   quic_eng_crypto_context_release (ctx->crypto_context_index,
 				   ctx->c_thread_index);
+  vec_free (ctx->srv_hostname);
   quic_ctx_free (qm, ctx);
 }
 

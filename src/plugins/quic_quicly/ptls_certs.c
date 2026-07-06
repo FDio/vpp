@@ -222,7 +222,10 @@ ptls_load_certificate_chain (const char *cert_data)
 				  PTLS_MAX_CERTS_IN_CONTEXT, &cl->count);
   BIO_free (cert_bio);
   if (rv)
-    return 0;
+    {
+      clib_mem_free (cl);
+      return 0;
+    }
 
   return cl;
 }
@@ -236,6 +239,14 @@ ptls_assign_private_key (ptls_context_t *ctx, EVP_PKEY *pkey)
 
   ctx->sign_certificate = &sc.super;
   return 0;
+}
+
+void
+ptls_release_private_key (ptls_context_t *ctx)
+{
+  if (ctx->sign_certificate == NULL)
+    return;
+  ptls_openssl_dispose_sign_certificate ((ptls_openssl_sign_certificate_t *) ctx->sign_certificate);
 }
 
 int
@@ -254,4 +265,22 @@ ptls_assign_certificate_chain (ptls_context_t *ctx,
   ctx->certificates.count = cl->count;
 
   return 0;
+}
+
+void
+ptls_free_certificate_chain (ptls_context_t *ctx)
+{
+  int i;
+
+  if (ctx->certificates.count == 0)
+    return;
+
+  for (i = 0; i < ctx->certificates.count; i++)
+    {
+      if (ctx->certificates.list[i].base)
+	free (ctx->certificates.list[i].base);
+    }
+  free (ctx->certificates.list);
+  ctx->certificates.list = NULL;
+  ctx->certificates.count = 0;
 }

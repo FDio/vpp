@@ -34,7 +34,9 @@ EVP_PKEY *ptls_load_private_key (const char *pk_data);
 quic_quicly_ptls_cert_list_t *
 ptls_load_certificate_chain (const char *cert_data);
 int ptls_assign_private_key (ptls_context_t *ctx, EVP_PKEY *pkey);
+void ptls_release_private_key (ptls_context_t *ctx);
 int ptls_assign_certificate_chain (ptls_context_t *ctx,
 				   quic_quicly_ptls_cert_list_t *cl);
+void ptls_free_certificate_chain (ptls_context_t *ctx);
 
 #endif /* __included_ptls_certs_h__ */
