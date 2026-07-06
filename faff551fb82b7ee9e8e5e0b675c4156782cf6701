@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d00267ab_22873397",
+        "filename": "src/plugins/rdma/output.c",
+        "patchSetId": 39
+      },
+      "lineNbr": 388,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-07-06T13:14:27Z",
+      "side": 1,
+      "message": "Clearing `VNET_BUFFER_F_GSO` and falling through to regular SEND does not actually segment the packet. Since the interface advertises TCP GSO, software segmentation has already been bypassed, so this can transmit the GSO super-packet as one oversized frame. Should these fallback cases be dropped or explicitly software-segmented instead?",
+      "revId": "faff551fb82b7ee9e8e5e0b675c4156782cf6701",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d59bfc47_2bda9d8a",
+        "filename": "src/plugins/rdma/output.c",
+        "patchSetId": 39
+      },
+      "lineNbr": 521,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-07-06T13:14:27Z",
+      "side": 1,
+      "message": "Skipping a zero-length fragment here can leak it when `dseg` is at a WQEBB boundary. The preceding code removes the parent\u0027s `NEXT` link and records the child in `txq-\u003ebufs`; because `chained_n` is not incremented, the next iteration reuses that slot and can overwrite the zero-length child\u0027s index. Can we skip empty fragments without changing the ownership chain, or otherwise preserve their buffer index for completion cleanup?",
+      "revId": "faff551fb82b7ee9e8e5e0b675c4156782cf6701",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
