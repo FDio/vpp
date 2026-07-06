@@ -1142,6 +1142,7 @@ hss_destroy (vlib_main_t *vm)
     }
   hsm->app_index = ~0;
   hsm->is_init = 0;
+  vnet_app_del_cert_key_pair (hsm->ckpair_index);
 
   return 0;
 }
