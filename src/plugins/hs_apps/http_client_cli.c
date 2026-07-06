@@ -534,6 +534,7 @@ hcc_detach ()
   rv = vnet_application_detach (da);
   hcm->test_client_attached = 0;
   hcm->app_index = ~0;
+  vnet_app_del_cert_key_pair (hcm->ckpair_index);
 
   return rv;
 }

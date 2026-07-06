@@ -1239,6 +1239,7 @@ hc_detach ()
   rv = vnet_application_detach (da);
   hcm->attached = 0;
   hcm->app_index = APP_INVALID_INDEX;
+  vnet_app_del_cert_key_pair (hcm->ckpair_index);
 
   return rv;
 }

@@ -366,6 +366,7 @@ tc_detach ()
   da->api_client_index = ~0;
   rv = vnet_application_detach (da);
   cm->app_index = APP_INVALID_INDEX;
+  vnet_app_del_cert_key_pair (cm->ckpair_index);
 
   return rv;
 }
