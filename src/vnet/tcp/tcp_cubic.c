@@ -107,7 +107,8 @@ cubic_loss (tcp_connection_t * tc)
   tc->cwnd = tcp_loss_wnd (tc);
   cd->t_start = cubic_time (tc->c_thread_index);
   cd->K = 0;
-  cd->w_max = tc->cwnd / tc->snd_mss;
+  /* loss is called after congestion state is initialized */
+  cd->w_max = tc->prev_cwnd / tc->snd_mss;
 }
 
 static void
