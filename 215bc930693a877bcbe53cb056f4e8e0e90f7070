@@ -1,0 +1,58 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "36ec6e19_3fa91f0f",
+        "filename": "src/plugins/rdma/output.c",
+        "patchSetId": 40
+      },
+      "lineNbr": 388,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-07-06T19:05:54Z",
+      "side": 1,
+      "message": "Fixed in PS40: these fallback cases now drop/free the unencodable GSO packet and account the TSO error instead of clearing VNET_BUFFER_F_GSO and falling through to regular SEND.",
+      "parentUuid": "d00267ab_22873397",
+      "revId": "215bc930693a877bcbe53cb056f4e8e0e90f7070",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "c006cfd8_7a43239d",
+        "filename": "src/plugins/rdma/output.c",
+        "patchSetId": 40
+      },
+      "lineNbr": 455,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-07-06T19:05:54Z",
+      "side": 1,
+      "message": "Fixed in PS40: the TSO-versus-regular decision is now isolated in rdma_mlx5_try_tso_or_regular(), and packet advancement/loop termination stays in one place in the caller.",
+      "parentUuid": "835fd3b2_5f7cbb52",
+      "revId": "215bc930693a877bcbe53cb056f4e8e0e90f7070",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "708fa6eb_82ea3ac3",
+        "filename": "src/plugins/rdma/output.c",
+        "patchSetId": 40
+      },
+      "lineNbr": 521,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-07-06T19:05:54Z",
+      "side": 1,
+      "message": "Fixed in PS40: zero-length fragments are skipped before changing the parent NEXT link or recording the child in txq-\u003ebufs, so ownership is not lost or overwritten at WQEBB boundaries.",
+      "parentUuid": "d59bfc47_2bda9d8a",
+      "revId": "215bc930693a877bcbe53cb056f4e8e0e90f7070",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
