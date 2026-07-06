@@ -86,6 +86,24 @@
       "parentUuid": "cef8e1c4_f902ea4a",
       "revId": "9747f043696b0b9c00d8c7b5f3f2ed0ebd96280e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a8d26635_5ac4ab1c",
+        "filename": "test/host_interface.py",
+        "patchSetId": 6
+      },
+      "lineNbr": 153,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2026-07-06T21:51:02Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "70acd519_9ea6069a",
+      "revId": "9747f043696b0b9c00d8c7b5f3f2ed0ebd96280e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }

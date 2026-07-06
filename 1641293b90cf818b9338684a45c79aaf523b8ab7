@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "4700364c_e75a40bb",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2026-07-06T21:51:02Z",
+      "side": 1,
+      "message": "Thanks Stanislav! Thanks for implementing Klement\u0027s suggestions, this will help a lot with adding more unit tests that validate packet flow between VPP and linux in the future.",
+      "parentUuid": "21e9c022_6a72648b",
+      "revId": "1641293b90cf818b9338684a45c79aaf523b8ab7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "48cadf63_06f0be16",
