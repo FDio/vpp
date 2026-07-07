@@ -112,6 +112,7 @@ npol_configure_policies (u32 sw_if_index, npol_interface_config_t *new_conf)
     }
 
   *conf = *new_conf;
+  npol_flow_counters_validate (sw_if_index);
   conf->enabled = 1;
   return 0;
 
