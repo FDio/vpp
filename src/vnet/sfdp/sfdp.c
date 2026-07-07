@@ -53,6 +53,41 @@ SFDP_SERVICE_DECLARE (drop)
 
 sfdp_main_t sfdp_main;
 
+void
+sfdp_timeout_add_registration (sfdp_timeout_registration_t *registration)
+{
+  sfdp_main_t *sfdp = &sfdp_main;
+
+  if (PREDICT_FALSE (sfdp->timeouts_initialized))
+    clib_panic ("SFDP timeout '%s' registered after initialization", registration->timeout.name);
+
+  registration->next = sfdp->next_timeout_registration;
+  sfdp->next_timeout_registration = registration;
+}
+
+clib_error_t *
+sfdp_timeout_register (sfdp_main_t *sfdp, sfdp_timeout_t *timeout)
+{
+  u32 i, timeout_index;
+
+  if (timeout == 0 || timeout->name == 0 || timeout->name[0] == 0 ||
+      strnlen (timeout->name, SFDP_TIMEOUT_NAME_LEN) == SFDP_TIMEOUT_NAME_LEN)
+    return clib_error_return (0, "invalid SFDP timeout name");
+
+  timeout_index = SFDP_N_BASE_TIMEOUTS + sfdp->n_custom_timeouts;
+  if (timeout_index >= SFDP_MAX_TIMEOUTS)
+    return clib_error_return (0, "too many SFDP timeouts (maximum is %u)", SFDP_MAX_TIMEOUTS);
+
+  for (i = 0; i < timeout_index; i++)
+    if (!strcmp (sfdp->timeouts[i].name, timeout->name))
+      return clib_error_return (0, "SFDP timeout '%s' already registered", timeout->name);
+
+  timeout->index = timeout_index;
+  sfdp->timeouts[timeout_index] = *timeout;
+  sfdp->n_custom_timeouts++;
+  return 0;
+}
+
 static void
 sfdp_init_ptd_counters ()
 {
@@ -162,6 +197,7 @@ sfdp_init (vlib_main_t *vm)
 {
   sfdp_main_t *sfdp = &sfdp_main;
   clib_error_t *err;
+  u32 timeout_index = 0;
 #define _(val, default) sfdp->val = sfdp->val ? sfdp->val : default;
 
   _ (log2_sessions, SFDP_DEFAULT_LOG2_SESSIONS)
@@ -177,7 +213,14 @@ sfdp_init (vlib_main_t *vm)
 	 sfdp->eviction_sessions_margin)) != 0)
     return err;
 
-  // vlib_call_init_function (vm, sfdp_service_init);
+#define _(id, value, string)                                                                       \
+  sfdp_timeout_registration_##id.timeout.index = timeout_index;                                    \
+  sfdp->timeouts[timeout_index++] = sfdp_timeout_registration_##id.timeout;
+  foreach_sfdp_timeout
+#undef _
+
+    ASSERT (timeout_index == SFDP_N_BASE_TIMEOUTS);
+
   return 0;
 }
 
@@ -207,7 +250,7 @@ sfdp_tenant_clear_counters (sfdp_main_t *sfdp, u32 tenant_idx)
 static void
 sfdp_tenant_init_timeouts (sfdp_tenant_t *tenant)
 {
-  for (u32 idx = 0; idx < SFDP_MAX_TIMEOUTS; idx++)
+  for (u32 idx = 0; idx < SFDP_N_REGISTERED_TIMEOUTS; idx++)
     {
       tenant->timeouts[idx] = sfdp_main.timeouts[idx].val;
     }
@@ -308,7 +351,7 @@ sfdp_set_timeout (sfdp_main_t *sfdp, u32 tenant_id, u32 timeout_idx,
   sfdp_init_main_if_needed (sfdp);
   clib_bihash_kv_8_8_t kv = { .key = tenant_id, .value = 0 };
   sfdp_tenant_t *tenant;
-  if (timeout_idx >= SFDP_N_TIMEOUT)
+  if (timeout_idx >= SFDP_N_REGISTERED_TIMEOUTS)
     return clib_error_return (0, "Can't configure timeout: timeout index %d outside valid range",
 			      timeout_idx);
   if (clib_bihash_search_inline_8_8 (&sfdp->tenant_idx_by_id, &kv))

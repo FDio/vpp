@@ -254,11 +254,11 @@ out:
   if (remove_session)
     next_timeout = 0;
   else if (nsf[0] & SFDP_TCP_CHECK_SESSION_FLAG_ESTABLISHED)
-    next_timeout = tenant->timeouts[SFDP_TIMEOUT_TCP_ESTABLISHED];
+    next_timeout = tenant->timeouts[SFDP_TIMEOUT_INDEX (TCP_ESTABLISHED)];
   else if (nsf[0] & SFDP_TCP_CHECK_SESSION_FLAG_BLOCKED)
-    next_timeout = tenant->timeouts[SFDP_TIMEOUT_SECURITY];
+    next_timeout = tenant->timeouts[SFDP_TIMEOUT_INDEX (SECURITY)];
   else
-    next_timeout = tenant->timeouts[SFDP_TIMEOUT_EMBRYONIC];
+    next_timeout = tenant->timeouts[SFDP_TIMEOUT_INDEX (EMBRYONIC)];
 
   sfdp_session_timer_update_maybe_past (tw, SFDP_SESSION_TIMER (session),
 					current_time, next_timeout);
