@@ -2,7 +2,7 @@
  * Copyright (c) 2025 Cisco Systems, Inc.
  */
 
-option version = "0.0.2";
+option version = "1.0.0";
 import "vnet/ip/ip_types.api";
 
 enum sfdp_session_direction : u8
