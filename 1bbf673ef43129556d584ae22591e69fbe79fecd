@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "92052371_2a6cf3af",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 660
+      },
+      "writtenOn": "2026-07-07T08:52:15Z",
+      "side": 1,
+      "message": "Guys, pls take a look. Pls consider as first draft.",
+      "revId": "1bbf673ef43129556d584ae22591e69fbe79fecd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
