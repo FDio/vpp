@@ -2199,6 +2199,84 @@ tcp_test_bt (vlib_main_t * vm, unformat_input_t * input)
   return 0;
 }
 
+static u8
+tcp_test_established_opts_len (u8 sacks_len, u8 *snd_sack_pos)
+{
+  u8 n_sack_blocks, len = 0;
+
+  len += TCP_OPTION_LEN_TIMESTAMP;
+
+  if (sacks_len)
+    {
+      if (*snd_sack_pos >= sacks_len)
+	*snd_sack_pos = 0;
+
+      n_sack_blocks = clib_min (sacks_len - *snd_sack_pos,
+				TCP_OPTS_MAX_SACK_BLOCKS);
+      *snd_sack_pos += n_sack_blocks;
+      len += 2 + TCP_OPTION_LEN_SACK_BLOCK * n_sack_blocks;
+    }
+
+  len += (TCP_OPTS_ALIGN - len % TCP_OPTS_ALIGN) % TCP_OPTS_ALIGN;
+  return len;
+}
+
+static void
+tcp_test_tx_buffer_init (vlib_buffer_t *b, u16 l4_off, u16 tcp_hdr_len,
+			 u32 payload_len)
+{
+  clib_memset (b, 0, sizeof (*b));
+  b->current_data = 0;
+  b->current_length = l4_off + tcp_hdr_len + payload_len;
+  vnet_buffer (b)->l4_hdr_offset = l4_off;
+}
+
+static int
+tcp_test_gso (CLIB_UNUSED (vlib_main_t *vm),
+	      CLIB_UNUSED (unformat_input_t *input))
+{
+  u8 snd_sack_pos = 0, data_opts_len, ack_opts_len;
+  u16 l4_off = sizeof (ip4_header_t);
+  u16 data_tcp_hdr_len, ack_tcp_hdr_len;
+  u16 old_data_len, snd_mss = 1460;
+  vlib_buffer_t b = {};
+  u32 data_len = ~0;
+
+  /*
+   * With more than TCP_OPTS_MAX_SACK_BLOCKS, two consecutive packets can
+   * carry a different number of SACK blocks. The old GSO check used the
+   * connection's last snd_opts_len for all packet types, so an ACK carrying
+   * fewer SACK blocks could underflow data_len and be marked GSO.
+   */
+  data_opts_len = tcp_test_established_opts_len (4, &snd_sack_pos);
+  ack_opts_len = tcp_test_established_opts_len (4, &snd_sack_pos);
+
+  TCP_TEST (data_opts_len == 36, "data opts len is %u", data_opts_len);
+  TCP_TEST (ack_opts_len == 20, "ack opts len is %u", ack_opts_len);
+
+  data_tcp_hdr_len = sizeof (tcp_header_t) + data_opts_len;
+  ack_tcp_hdr_len = sizeof (tcp_header_t) + ack_opts_len;
+  tcp_test_tx_buffer_init (&b, l4_off, ack_tcp_hdr_len, 0);
+
+  old_data_len = b.current_length - l4_off - data_tcp_hdr_len;
+  TCP_TEST (old_data_len > snd_mss, "old gso data len underflows to %u",
+	    old_data_len);
+  TCP_TEST (!tcp_buffer_tx_payload_len (&b, data_tcp_hdr_len, &data_len),
+	    "guard rejects ack shorter than estimated data header");
+
+  TCP_TEST (tcp_buffer_tx_payload_len (&b, ack_tcp_hdr_len, &data_len),
+	    "actual ack header fits");
+  TCP_TEST (data_len == 0, "ack payload len is %u", data_len);
+
+  tcp_test_tx_buffer_init (&b, l4_off, data_tcp_hdr_len, 2 * snd_mss);
+  TCP_TEST (tcp_buffer_tx_payload_len (&b, data_tcp_hdr_len, &data_len),
+	    "data header fits");
+  TCP_TEST (data_len == 2 * snd_mss, "data payload len is %u", data_len);
+  TCP_TEST (data_len > snd_mss, "data packet is gso eligible");
+
+  return 0;
+}
+
 static clib_error_t *
 tcp_test (vlib_main_t * vm,
 	  unformat_input_t * input, vlib_cli_command_t * cmd_arg)
@@ -2236,6 +2314,10 @@ tcp_test (vlib_main_t * vm,
 	{
 	  res = tcp_test_bt (vm, input);
 	}
+      else if (unformat (input, "gso"))
+	{
+	  res = tcp_test_gso (vm, input);
+	}
       else if (unformat (input, "all"))
 	{
 	  if ((res = tcp_test_sack (vm, input)))
@@ -2247,6 +2329,8 @@ tcp_test (vlib_main_t * vm,
 	  if ((res = tcp_test_persist (vm, input)))
 	    goto done;
 	  if ((res = tcp_test_bt (vm, input)))
+	    goto done;
+	  if ((res = tcp_test_gso (vm, input)))
 	    goto done;
 	}
       else
