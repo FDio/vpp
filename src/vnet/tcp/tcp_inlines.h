@@ -59,6 +59,22 @@ tcp_buffer_hdr (vlib_buffer_t * b)
 			   + vnet_buffer (b)->tcp.hdr_offset);
 }
 
+always_inline u8
+tcp_buffer_tx_payload_len (vlib_buffer_t *b, u16 tcp_hdr_len,
+			   u32 *payload_len)
+{
+  u16 l4_off = vnet_buffer (b)->l4_hdr_offset - b->current_data;
+
+  if (PREDICT_FALSE (b->current_length < l4_off + tcp_hdr_len))
+    return 0;
+
+  *payload_len = b->current_length - l4_off - tcp_hdr_len;
+  if (PREDICT_FALSE (b->flags & VLIB_BUFFER_TOTAL_LENGTH_VALID))
+    *payload_len += b->total_length_not_including_first_buffer;
+
+  return 1;
+}
+
 always_inline tcp_connection_t *
 tcp_worker_connection_get (tcp_worker_ctx_t *wrk, u32 conn_index)
 {
