@@ -9,6 +9,11 @@
 
 #define foreach_sample_terminal_error _ (DROP, "drop")
 
+/* A service that needs a custom timeout can declare it at file scope:
+ *
+ * SFDP_TIMEOUT_DEFINE (sample_timeout, "sample-timeout", 120);
+ */
+
 typedef enum
 {
 #define _(sym, str) SAMPLE_TERMINAL_ERROR_##sym,
@@ -147,10 +152,10 @@ VLIB_NODE_FN (sample_non_terminal_node)
       /* Set the state of the session to established */
       session->state = SFDP_SESSION_STATE_ESTABLISHED;
       /* Rearm the session timeout to
-       * tenant->timeouts[SFDP_TIMEOUT_ESTABLISHED] from now */
+       * tenant->timeouts[SFDP_TIMEOUT_INDEX (ESTABLISHED)] from now */
       sfdp_session_timer_update_maybe_past (&tptd->wheel, SFDP_SESSION_TIMER (session),
 					    tptd->current_time,
-					    tenant->timeouts[SFDP_TIMEOUT_ESTABLISHED]);
+					    tenant->timeouts[SFDP_TIMEOUT_INDEX (ESTABLISHED)]);
       /* Next service in chain for this packet */
       sfdp_next (b[0], to_next);
 
