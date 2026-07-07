@@ -2147,11 +2147,23 @@ tcp_output_push_ip (vlib_main_t * vm, vlib_buffer_t * b0,
 always_inline void
 tcp_check_if_gso (tcp_connection_t * tc, vlib_buffer_t * b)
 {
+  tcp_header_t *th;
+  u16 tcp_hdr_len;
+  u32 data_len;
+  u16 l4_off;
+
   if (PREDICT_TRUE (!(tc->cfg_flags & TCP_CFG_F_TSO)))
     return;
 
-  u16 l4_off = vnet_buffer (b)->l4_hdr_offset - b->current_data;
-  u16 data_len = b->current_length - l4_off - sizeof (tcp_header_t) - tc->snd_opts_len;
+  l4_off = vnet_buffer (b)->l4_hdr_offset - b->current_data;
+  th = (tcp_header_t *) (b->data + vnet_buffer (b)->l4_hdr_offset);
+  tcp_hdr_len = tcp_header_bytes (th);
+
+  ASSERT (b->current_length >= l4_off + tcp_hdr_len);
+  if (PREDICT_FALSE (b->current_length < l4_off + tcp_hdr_len))
+    return;
+
+  data_len = b->current_length - l4_off - tcp_hdr_len;
 
   if (PREDICT_FALSE (b->flags & VLIB_BUFFER_TOTAL_LENGTH_VALID))
     data_len += b->total_length_not_including_first_buffer;
@@ -2163,8 +2175,7 @@ tcp_check_if_gso (tcp_connection_t * tc, vlib_buffer_t * b)
       ASSERT ((b->flags & VNET_BUFFER_F_L3_HDR_OFFSET_VALID) != 0);
       ASSERT ((b->flags & VNET_BUFFER_F_L4_HDR_OFFSET_VALID) != 0);
       b->flags |= VNET_BUFFER_F_GSO;
-      vnet_buffer2 (b)->gso_l4_hdr_sz =
-	sizeof (tcp_header_t) + tc->snd_opts_len;
+      vnet_buffer2 (b)->gso_l4_hdr_sz = tcp_hdr_len;
       vnet_buffer2 (b)->gso_size = tc->snd_mss;
     }
 }
