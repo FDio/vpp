@@ -39,18 +39,14 @@ typedef struct
   _ (TCP_ESTABLISHED, 3600, "tcp-established")                                \
   _ (SECURITY, 30, "security")
 
-typedef enum
-{
-#define _(name, val, str) SFDP_TIMEOUT_##name,
-  foreach_sfdp_timeout
+#define _(name, val, str) SFDP_TIMEOUT_DECLARE (name);
+foreach_sfdp_timeout
 #undef _
-    SFDP_N_TIMEOUT
-} sfdp_timeout_type_t;
 
 #define SFDP_SESSION_TIMER(session)                                           \
   SFDP_EXPIRY_SESSION (session, sfdp_session_timer_t)
 
-SFDP_EXPIRY_STATIC_ASSERT_FITS_IN_EXPIRY_OPAQUE (sfdp_session_timer_t);
+  SFDP_EXPIRY_STATIC_ASSERT_FITS_IN_EXPIRY_OPAQUE (sfdp_session_timer_t);
 
 #define sfdp_timer_start_internal  tw_timer_start_2t_1w_2048sl
 #define sfdp_timer_stop_internal   tw_timer_stop_2t_1w_2048sl

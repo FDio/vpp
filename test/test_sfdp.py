@@ -75,9 +75,26 @@ class BaseSfdpTest(VppTestCase):
             / Raw(b"\xa5" * 100)
         )
 
-    def set_timeout(self, timeout_id, value):
+    def get_timeout_index(self, timeout_name):
+
+        # Get timeout entries matching provided timeout_name
+        timeouts = [
+            timeout
+            for timeout in self.vapi.sfdp_timeout_dump()
+            if timeout.name == timeout_name
+        ]
+
+        # Verify there is only one entry matching this timeout_name
+        self.assertEqual(
+            1, len(timeouts), f"Expected exactly one timeout named {timeout_name}"
+        )
+        return timeouts[0].index
+
+    def set_timeout(self, timeout_name, value):
         self.vapi.sfdp_set_timeout(
-            tenant_id=1, timeout_type=timeout_id, timeout_value=value
+            tenant_id=1,
+            timeout_id=self.get_timeout_index(timeout_name),
+            timeout_value=value,
         )
 
     def sessions(self):
@@ -327,6 +344,18 @@ class TestSfdp(BaseSfdpTest):
                 svc.scope, "default", "Service does not have 'default' scope"
             )
 
+        # Verify default timeouts are registered with their initial values
+        expected_timeouts = {
+            "embryonic": 5,
+            "established": 120,
+            "tcp-established": 3600,
+            "security": 30,
+        }
+        timeouts = {timeout.name: timeout for timeout in self.vapi.sfdp_timeout_dump()}
+        for name, timeout_value in expected_timeouts.items():
+            self.assertIn(name, timeouts)
+            self.assertEqual(timeouts[name].timeout_value, timeout_value)
+
         # Test tenant add
         reply = self.vapi.sfdp_tenant_add_del(
             tenant_id=100,
@@ -389,32 +418,36 @@ class TestSfdp(BaseSfdpTest):
         # Test timeout configuration
         reply = self.vapi.sfdp_set_timeout(
             tenant_id=100,
-            timeout_type=VppEnum.vl_api_sfdp_timeout_type_t.SFDP_API_TIMEOUT_EMBRYONIC,
+            timeout_id=self.get_timeout_index("embryonic"),
             timeout_value=31,
         )
         self.assertEqual(reply.retval, 0)
 
         reply = self.vapi.sfdp_set_timeout(
             tenant_id=100,
-            timeout_type=VppEnum.vl_api_sfdp_timeout_type_t.SFDP_API_TIMEOUT_ESTABLISHED,
+            timeout_id=self.get_timeout_index("established"),
             timeout_value=3601,
         )
         self.assertEqual(reply.retval, 0)
+
+        # Get timeouts values configured for this specific tenant
+        current_timeouts = {
+            timeout.name: timeout
+            for timeout in self.vapi.sfdp_timeout_dump(tenant_id=100)
+        }
+        self.assertEqual(current_timeouts["embryonic"].timeout_value, 31)
+        self.assertEqual(current_timeouts["established"].timeout_value, 3601)
 
         # Verify timeouts are set correctly via tenant dump
         tenants = self.vapi.sfdp_tenant_dump()
         tenant = tenants[0]
         self.assertEqual(
-            tenant.timeout[
-                VppEnum.vl_api_sfdp_timeout_type_t.SFDP_API_TIMEOUT_EMBRYONIC
-            ],
+            tenant.timeout[self.get_timeout_index("embryonic")],
             31,
             "embryonic timeout should be 31 seconds",
         )
         self.assertEqual(
-            tenant.timeout[
-                VppEnum.vl_api_sfdp_timeout_type_t.SFDP_API_TIMEOUT_ESTABLISHED
-            ],
+            tenant.timeout[self.get_timeout_index("established")],
             3601,
             "established timeout should be 3601 seconds",
         )
@@ -423,7 +456,7 @@ class TestSfdp(BaseSfdpTest):
         with self.vapi.assert_negative_api_retval():
             rv = self.vapi.sfdp_set_timeout(
                 tenant_id=100,
-                timeout_type=0xFF,
+                timeout_id=0xFF,
                 timeout_value=30,
             )
         self.assertEqual(rv.retval, -1)
@@ -496,9 +529,7 @@ class TestSfdp(BaseSfdpTest):
         tenants = self.vapi.sfdp_tenant_dump()
         tenant = tenants[0]
         self.assertEqual(
-            tenant.timeout[
-                VppEnum.vl_api_sfdp_timeout_type_t.SFDP_API_TIMEOUT_EMBRYONIC
-            ],
+            tenant.timeout[self.get_timeout_index("embryonic")],
             35,
             "embryonic timeout should be 35 seconds",
         )
@@ -1109,7 +1140,7 @@ class TestSfdpTimer(BaseSfdpTest):
         """Session still expires after a rearm beyond one wheel turn"""
         self.vapi.sfdp_set_timeout(
             tenant_id=1,
-            timeout_type=VppEnum.vl_api_sfdp_timeout_type_t.SFDP_API_TIMEOUT_EMBRYONIC,
+            timeout_id=self.get_timeout_index("embryonic"),
             timeout_value=50,
         )
 
@@ -1122,7 +1153,7 @@ class TestSfdpTimer(BaseSfdpTest):
         # Very long timeout so natural expiry won't interfere
         self.vapi.sfdp_set_timeout(
             tenant_id=1,
-            timeout_type=VppEnum.vl_api_sfdp_timeout_type_t.SFDP_API_TIMEOUT_EMBRYONIC,
+            timeout_id=self.get_timeout_index("embryonic"),
             timeout_value=3600,
         )
 
@@ -1142,7 +1173,7 @@ class TestSfdpTimer(BaseSfdpTest):
         """kill_all expires all sessions within one tick"""
         self.vapi.sfdp_set_timeout(
             tenant_id=1,
-            timeout_type=VppEnum.vl_api_sfdp_timeout_type_t.SFDP_API_TIMEOUT_EMBRYONIC,
+            timeout_id=self.get_timeout_index("embryonic"),
             timeout_value=3600,
         )
 
@@ -1162,7 +1193,7 @@ class TestSfdpTimer(BaseSfdpTest):
         # Timeout > one wheel turn (2048 * 0.02 = 40.96s) to force a rearm
         self.vapi.sfdp_set_timeout(
             tenant_id=1,
-            timeout_type=VppEnum.vl_api_sfdp_timeout_type_t.SFDP_API_TIMEOUT_EMBRYONIC,
+            timeout_id=self.get_timeout_index("embryonic"),
             timeout_value=50,
         )
 

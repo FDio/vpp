@@ -22,19 +22,6 @@ sfdp_set_expiry_callbacks (const sfdp_expiry_callbacks_t *callbacks)
   return 0;
 }
 
-int
-sfdp_init_timeouts (const sfdp_timeout_t *timeouts, u32 n)
-{
-  sfdp_main_t *sfdp = &sfdp_main;
-  if (expiry_is_enabled)
-    {
-      return -1;
-    }
-  clib_memset (sfdp->timeouts, 0, sizeof (sfdp->timeouts));
-  clib_memcpy (sfdp->timeouts, timeouts, sizeof (*timeouts) * n);
-  return 0;
-}
-
 void
 sfdp_enable_disable_expiry_node (u8 is_disable, int skip_main)
 {
