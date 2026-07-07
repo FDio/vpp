@@ -217,6 +217,33 @@ sfdp_service_init_nodes_for_scope (vlib_main_t *vm, u32 scope_index)
 }
 
 static clib_error_t *
+sfdp_service_init_timeouts (void)
+{
+  sfdp_main_t *sfdp = &sfdp_main;
+  sfdp_timeout_registration_t *registration;
+  sfdp_timeout_registration_t **registrations = 0;
+  clib_error_t *err = 0;
+
+  for (registration = sfdp->next_timeout_registration; registration;
+       registration = registration->next)
+    vec_add1 (registrations, registration);
+
+  if (SFDP_N_REGISTERED_TIMEOUTS + vec_len (registrations) > SFDP_MAX_TIMEOUTS)
+    err = clib_error_return (0, "too many SFDP timeouts (maximum is %u)", SFDP_MAX_TIMEOUTS);
+
+  for (uword i = 0; err == 0 && i < vec_len (registrations); i++)
+    err = sfdp_timeout_register (sfdp, &registrations[i]->timeout);
+
+  vec_free (registrations);
+
+  if (err)
+    return err;
+
+  sfdp->timeouts_initialized = 1;
+  return 0;
+}
+
+static clib_error_t *
 sfdp_service_init (vlib_main_t *vm)
 {
   sfdp_service_main_t *sm = &sfdp_service_main;
@@ -227,6 +254,10 @@ sfdp_service_init (vlib_main_t *vm)
   uword *scope_index_by_name = hash_create_string (0, sizeof (uword));
   u32 n_scopes = 1;
   const char **scope_names = 0;
+  clib_error_t *err;
+
+  if ((err = sfdp_service_init_timeouts ()))
+    return err;
 
   vec_validate (services_per_scope_index, 0);
   vec_validate (scope_names, 0);
@@ -345,5 +376,7 @@ sfdp_service_next_indices_init (vlib_main_t *vm, uword node_index,
     }
 }
 
-VLIB_INIT_FUNCTION (sfdp_service_init);
+VLIB_INIT_FUNCTION (sfdp_service_init) = {
+  .runs_after = VLIB_INITS ("sfdp_init"),
+};
 sfdp_service_main_t sfdp_service_main;

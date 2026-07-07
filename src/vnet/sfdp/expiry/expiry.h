@@ -13,7 +13,6 @@
 
 /* Defined in sfdp.h, but needed in callback functions definitions */
 typedef struct sfdp_session sfdp_session_t;
-typedef struct sfdp_timeout sfdp_timeout_t;
 
 /* Defines callbacks used by sfdp to call expiry module. */
 typedef struct
@@ -80,13 +79,6 @@ typedef struct
  *  already enabled.
  */
 int sfdp_set_expiry_callbacks (const sfdp_expiry_callbacks_t *callbacks);
-
-/** Provides initial timeout names and defaults to sfdp-core.
- *
- *  Returns 0 upon success, or a different value if called while sfdp is
- *  already enabled.
- */
-int sfdp_init_timeouts (const sfdp_timeout_t *timeouts, u32 n);
 
 /** Called by sfdp when enabling/disabling expiry. */
 void sfdp_enable_disable_expiry (u8 is_disable);
