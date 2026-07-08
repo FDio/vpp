@@ -135,11 +135,12 @@ static_always_inline void
 quic_quicly_crypto_context_make_key_from_crctx (clib_bihash_kv_40_8_t *kv,
 						quic_quicly_crypto_ctx_t *crctx)
 {
-  kv->key[0] = ((u64) crctx->ctx.ckpair_index) << 32 | (u64) (crctx->verify_cfg << 24) |
-	       ((u64) (crctx->tls_profile_index & 0xFFFF)) << 8 | (u64) crctx->ctx.crypto_engine;
+  kv->key[0] = ((u64) crctx->ctx.ckpair_index) << 32 | (u64) (crctx->ctx.verify_cfg << 24) |
+	       ((u64) (crctx->ctx.tls_profile_index & 0xFFFF)) << 8 |
+	       (u64) crctx->ctx.crypto_engine;
   kv->key[1] = ((u64) crctx->quicly_ctx.transport_params.max_stream_data.bidi_remote << 32) |
 	       crctx->quicly_ctx.transport_params.max_stream_data.bidi_local;
-  kv->key[2] = ((u64) crctx->crypto_owner_app_wrk_id << 32) | crctx->ca_trust_index;
+  kv->key[2] = ((u64) crctx->ctx.crypto_owner_app_wrk_id << 32) | crctx->ctx.ca_trust_index;
   kv->key[3] = ((u64) crctx->quicly_ctx.transport_params.max_streams_bidi << 32) |
 	       crctx->quicly_ctx.transport_params.max_streams_uni;
   kv->key[4] = crctx->quicly_ctx.transport_params.max_idle_timeout;
@@ -191,7 +192,7 @@ quic_quicly_crypto_context_free_if_needed (quic_quicly_crypto_ctx_t *crctx)
       clib_mem_free (crctx->filtered_key_exchanges);
       crctx->filtered_key_exchanges = NULL;
     }
-  if (crctx->verify_cfg)
+  if (crctx->ctx.verify_cfg)
     {
       ptls_openssl_dispose_verify_certificate (&crctx->verify_cert.super);
       crctx->ptls_ctx.verify_certificate = NULL;
@@ -578,6 +579,14 @@ quic_quicly_apply_tls_profile (quic_quicly_crypto_ctx_t *crctx, quic_ctx_t *ctx)
     }
 }
 
+static uint64_t
+quic_quicly_crypto_get_time (ptls_get_time_t *self)
+{
+  return (uint64_t) quic_wrk_ctx_get (quic_quicly_main.qm, vlib_get_thread_index ())->time_now;
+}
+
+ptls_get_time_t quic_quicly_crypto_get_time_cb = { quic_quicly_crypto_get_time };
+
 static int
 quic_quicly_crypto_context_init_data (quic_quicly_crypto_ctx_t *crctx, quic_ctx_t *ctx)
 {
@@ -602,7 +611,7 @@ quic_quicly_crypto_context_init_data (quic_quicly_crypto_ctx_t *crctx, quic_ctx_
   crctx->client_hello_ctx.lctx_index = ctx->listener_ctx_id;
 
   ptls_ctx->random_bytes = ptls_openssl_random_bytes;
-  ptls_ctx->get_time = &ptls_get_time;
+  ptls_ctx->get_time = &quic_quicly_crypto_get_time_cb;
   /* Use the full key exchange list so that x25519 and other modern groups are
    * available by default; a TLS profile can restrict to a subset. */
   ptls_ctx->key_exchanges = ptls_openssl_key_exchanges_all;
@@ -618,7 +627,7 @@ quic_quicly_crypto_context_init_data (quic_quicly_crypto_ctx_t *crctx, quic_ctx_
   /* Apply TLS profile restrictions (cipher suites, key exchanges) */
   quic_quicly_apply_tls_profile (crctx, ctx);
 
-  if (crctx->verify_cfg)
+  if (crctx->ctx.verify_cfg)
     {
       X509_STORE *ca_store = NULL;
 
@@ -648,7 +657,8 @@ quic_quicly_crypto_context_init_data (quic_quicly_crypto_ctx_t *crctx, quic_ctx_
       ptls_ctx->verify_certificate = &verify_cert->super.super;
 
       /* Enable mutual TLS: server will request client certificates */
-      ptls_ctx->require_client_authentication = (crctx->verify_cfg & TLS_VERIFY_F_PEER_CERT) != 0;
+      ptls_ctx->require_client_authentication =
+	(crctx->ctx.verify_cfg & TLS_VERIFY_F_PEER_CERT) != 0;
     }
   ptls_ctx->ticket_lifetime = 0;
   ptls_ctx->max_early_data_size = 8192;
@@ -764,10 +774,10 @@ quic_quicly_crypto_context_get_or_alloc (quic_ctx_t *ctx)
   kv.value = crctx->ctx.ctx_index;
   crctx->ctx.crypto_engine = ctx->crypto_engine;
   crctx->ctx.ckpair_index = ctx->ckpair_index;
-  crctx->verify_cfg = ctx->verify_cfg;
-  crctx->ca_trust_index = ctx->ca_trust_index;
-  crctx->crypto_owner_app_wrk_id = ctx->crypto_owner_app_wrk_id;
-  crctx->tls_profile_index = ctx->tls_profile_index;
+  crctx->ctx.verify_cfg = ctx->verify_cfg;
+  crctx->ctx.ca_trust_index = ctx->ca_trust_index;
+  crctx->ctx.crypto_owner_app_wrk_id = ctx->crypto_owner_app_wrk_id;
+  crctx->ctx.tls_profile_index = ctx->tls_profile_index;
   clib_bihash_add_del_40_8 (&qqcm->crypto_ctx_hash, &kv, 1 /* is_add */);
   quic_quicly_crypto_context_init_data (crctx, ctx);
   clib_atomic_add_fetch (&crctx->ctx.n_subscribers, 1);

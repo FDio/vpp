@@ -6,6 +6,7 @@
 #define __included_quic_h__
 
 #include <vlib/unix/plugin.h>
+#include <vnet/session/application.h>
 #include <vnet/session/application_interface.h>
 #include <vnet/session/session.h>
 
@@ -290,6 +291,10 @@ typedef struct crypto_ctx_
   u32 ctx_index;     /**< index in crypto context pool */
   volatile u32 n_subscribers; /**< refcount of sessions using said context */
   u32 ckpair_index;  /**< certificate & key */
+  u32 ca_trust_index;
+  u32 crypto_owner_app_wrk_id;
+  u32 tls_profile_index; /**< TLS profile index baked into this context (~0 = defaults) */
+  tls_verify_cfg_t verify_cfg;
   u8 crypto_engine;
 } quic_crypto_context_t;
 
@@ -481,8 +486,23 @@ static_always_inline u8 *
 format_quic_crypto_context (u8 *s, va_list *args)
 {
   quic_crypto_context_t *crctx = va_arg (*args, quic_crypto_context_t *);
-  s = format (s, "[0x%x][n_sub: %d, ckpair: 0x%x]", crctx->ctx_index, crctx->n_subscribers,
-	      crctx->ckpair_index);
+  app_worker_t *app_wrk;
+  application_t *app;
+  app_tls_profile_t *prof;
+
+  app_wrk = app_worker_get (crctx->crypto_owner_app_wrk_id);
+  app = application_get (app_wrk->app_index);
+  prof =
+    app_crypto_get_tls_profile_if_valid (crctx->crypto_owner_app_wrk_id, crctx->tls_profile_index);
+
+  s = format (s, "[0x%x][n_sub: %d, ckpair: 0x%x, app: %v]", crctx->ctx_index, crctx->n_subscribers,
+	      crctx->ckpair_index, app->name);
+  if (crctx->verify_cfg)
+    s = format (s, "[verify: %U]", format_tls_verify_cfg, crctx->verify_cfg);
+  if (crctx->tls_profile_index == ~0 || !prof)
+    s = format (s, "[tls_profile: default]");
+  else
+    s = format (s, "[tls_profile: 0x%x]", crctx->tls_profile_index);
   s = format (s, "[engine: %U]", format_crypto_engine, crctx->crypto_engine);
   return s;
 }
