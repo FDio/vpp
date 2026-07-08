@@ -55,21 +55,14 @@ typedef enum
 } nsim_next_t;
 
 always_inline uword
-nsim_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
-		   vlib_frame_t * f, int is_trace)
+nsim_drain_wheel (vlib_main_t *vm, vlib_node_runtime_t *node, nsim_wheel_t *wp, f64 now)
 {
-  nsim_main_t *nsm = &nsim_main;
-  nsim_wheel_t *wp = nsm->wheel_by_thread[vm->thread_index];
   nsim_wheel_entry_t *ep;
-  f64 now;
 
-  /* Nothing on the scheduler wheel? */
   if (wp->cursize == 0)
     return 0;
 
-  /* First entry on the wheel isn't expired? */
   ep = wp->entries + wp->head;
-  now = vlib_time_now (vm);
   if (ep->tx_time > now)
     return 0;
 
@@ -103,6 +96,27 @@ nsim_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   vlib_node_increment_counter (vm, node->node_index,
 			       NSIM_TX_ERROR_TRANSMITTED, n_tx_packets);
   return n_tx_packets;
+}
+
+always_inline uword
+nsim_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *f, int is_trace)
+{
+  nsim_main_t *nsm = &nsim_main;
+  nsim_wheel_t *wp = nsm->wheel_by_thread[vm->thread_index];
+  f64 now = vlib_time_now (vm);
+  uword n_tx;
+
+  n_tx = nsim_drain_wheel (vm, node, wp, now);
+
+  /* Also drain the side wheel of late-reordered packets, if present. */
+  if (PREDICT_FALSE (nsm->reorder_wheel_by_thread != 0))
+    {
+      nsim_wheel_t *rwp = nsm->reorder_wheel_by_thread[vm->thread_index];
+      if (rwp)
+	n_tx += nsim_drain_wheel (vm, node, rwp, now);
+    }
+
+  return n_tx;
 }
 
 VLIB_NODE_FN (nsim_input_node) (vlib_main_t * vm, vlib_node_runtime_t * node,

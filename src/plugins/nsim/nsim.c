@@ -143,7 +143,7 @@ nsim_wheel_alloc (nsim_main_t *nsm)
 
 static int
 nsim_configure (nsim_main_t *nsm, f64 bandwidth, f64 delay, u32 packet_size, f64 drop_fraction,
-		f64 reorder_fraction, f64 buffer)
+		f64 reorder_fraction, f64 reorder_delay, f64 buffer)
 {
   u64 total_buffer_size_in_bytes, per_worker_buffer_size, wheel_slots_per_wrk;
   int i, num_workers = vlib_num_workers ();
@@ -168,6 +168,11 @@ nsim_configure (nsim_main_t *nsm, f64 bandwidth, f64 delay, u32 packet_size, f64
 	{
 	  clib_mem_vm_free (nsm->wheel_by_thread[i], nsm->mmap_size);
 	  nsm->wheel_by_thread[i] = 0;
+	  if (nsm->reorder_wheel_by_thread && nsm->reorder_wheel_by_thread[i])
+	    {
+	      clib_mem_vm_free (nsm->reorder_wheel_by_thread[i], nsm->mmap_size);
+	      nsm->reorder_wheel_by_thread[i] = 0;
+	    }
 	}
     }
 
@@ -176,6 +181,7 @@ nsim_configure (nsim_main_t *nsm, f64 bandwidth, f64 delay, u32 packet_size, f64
    * richer model (burst/one-shot/targeted) after nsim_configure returns. */
   nsim_loss_model_uniform (&nsm->loss, drop_fraction);
   nsm->reorder_fraction = reorder_fraction;
+  nsm->reorder_delay = reorder_delay;
   nsm->buffer_time = buffer;
   /* Per-packet serialization time at the bottleneck rate. Only used by the
    * queued model (buffer > 0). bandwidth is bits/sec. */
@@ -211,11 +217,18 @@ nsim_configure (nsim_main_t *nsm, f64 bandwidth, f64 delay, u32 packet_size, f64
   nsm->wheel_slots_per_wrk = wheel_slots_per_wrk;
 
   vec_validate (nsm->wheel_by_thread, num_workers);
+  if (reorder_fraction > 0.0)
+    vec_validate (nsm->reorder_wheel_by_thread, num_workers);
 
   /* Initialize the output scheduler wheels */
   i = (!nsm->poll_main_thread && num_workers) ? 1 : 0;
   for (; i < num_workers + 1; i++)
-    nsm->wheel_by_thread[i] = nsim_wheel_alloc (nsm);
+    {
+      nsm->wheel_by_thread[i] = nsim_wheel_alloc (nsm);
+      /* Side wheel for late-reordered packets, same geometry */
+      if (reorder_fraction > 0.0)
+	nsm->reorder_wheel_by_thread[i] = nsim_wheel_alloc (nsm);
+    }
 
   vlib_worker_thread_barrier_sync (vm);
 
@@ -415,6 +428,7 @@ vl_api_nsim_configure_t_handler (vl_api_nsim_configure_t * mp)
     drop_fraction = 1.0 / (f64) (packets_per_drop);
 
   rv = nsim_configure (nsm, bandwidth, delay, packet_size, drop_fraction, reorder_rate,
+		       reorder_rate > 0.0 ? delay : 0.0 /* reorder_delay */,
 		       0.0 /* buffer: fixed-delay model */);
 
   REPLY_MACRO (VL_API_NSIM_CONFIGURE_REPLY);
@@ -442,6 +456,7 @@ vl_api_nsim_configure2_t_handler (vl_api_nsim_configure2_t * mp)
     reorder_rate = 1.0 / (f64) packets_per_reorder;
 
   rv = nsim_configure (nsm, bandwidth, delay, packet_size, drop_fraction, reorder_rate,
+		       reorder_rate > 0.0 ? delay : 0.0 /* reorder_delay */,
 		       0.0 /* buffer: fixed-delay model */);
 
   REPLY_MACRO (VL_API_NSIM_CONFIGURE2_REPLY);
@@ -661,7 +676,8 @@ format_nsim_config (u8 * s, va_list * args)
   if (nsm->rate.type != NSIM_RATE_NONE)
     s = format (s, " rate model: %U\n", format_nsim_rate_model, &nsm->rate, nsm->packet_size);
   if (nsm->reorder_fraction)
-    s = format (s, " reorder fraction: %.5f\n", nsm->reorder_fraction);
+    s = format (s, " reorder fraction: %.5f delay up to %U\n", nsm->reorder_fraction, format_delay,
+		nsm->reorder_delay);
   else
     s = format (s, " reorder fraction: 0\n");
   s = format (s, " packet size: %u\n", nsm->packet_size);
@@ -708,7 +724,8 @@ static clib_error_t *
 set_nsim_command_fn (vlib_main_t * vm,
 		     unformat_input_t * input, vlib_cli_command_t * cmd)
 {
-  f64 drop_fraction = 0.0, reorder_fraction = 0.0, delay = 0.0, bandwidth = 0.0, buffer = 0.0;
+  f64 drop_fraction = 0.0, reorder_fraction = 0.0, reorder_delay = 0.0;
+  f64 delay = 0.0, bandwidth = 0.0, buffer = 0.0;
   f64 burst_prob = 0.0, burst_dur = 0.0, drop_once_at = 0.0, drop_once_dur = 0.0;
   f64 rate_stall_bw = 0.0, rate_good_dwell = 0.0, rate_stall_dwell = 0.0;
   u32 packets_per_drop, packets_per_reorder, packet_size = 1500;
@@ -751,6 +768,8 @@ set_nsim_command_fn (vlib_main_t * vm,
 	    return clib_error_return
 	      (0, "reorder fraction must be between zero and 1");
 	}
+      else if (unformat (input, "reorder-delay %U", unformat_delay, &reorder_delay))
+	;
       else if (unformat (input, "burst-loss-prob %f", &burst_prob))
 	{
 	  if (burst_prob < 0.0 || burst_prob > 1.0)
@@ -777,7 +796,13 @@ set_nsim_command_fn (vlib_main_t * vm,
 	break;
     }
 
-  rv = nsim_configure (nsm, bandwidth, delay, packet_size, drop_fraction, reorder_fraction, buffer);
+  /* Default the reorder displacement to the base delay if reorder is on but no
+   * explicit reorder-delay was given */
+  if (reorder_fraction > 0.0 && reorder_delay == 0.0)
+    reorder_delay = delay;
+
+  rv = nsim_configure (nsm, bandwidth, delay, packet_size, drop_fraction, reorder_fraction,
+		       reorder_delay, buffer);
 
   switch (rv)
     {
