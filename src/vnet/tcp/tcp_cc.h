@@ -73,6 +73,20 @@ tcp_cc_data (tcp_connection_t * tc)
   return (void *) tc->cc_data;
 }
 
+/* Eifel spurious-retransmit detection (RFC 3522 Sec. 3.2). Spurious if the ack
+ * echoes a timestamp older than the first retransmit (tsecr < snd_rxt_ts) and
+ * leaves part of the flight outstanding (snd_una < snd_congestion). A
+ * full-flight ack is ambiguous (e.g. an rto from losing all acks) and needs
+ * dsack to disambiguate. Other outstanding loss is handled as a new recovery
+ * event. Must be called on a cumulative ack in recovery. */
+static inline u8
+tcp_cc_is_spurious_retransmit (tcp_connection_t *tc)
+{
+  ASSERT (tcp_in_cong_recovery (tc) && tc->bytes_acked);
+  return (tc->snd_rxt_ts && seq_lt (tc->snd_una, tc->snd_congestion) &&
+	  tcp_opts_tstamp (&tc->rcv_opts) && timestamp_lt (tc->rcv_opts.tsecr, tc->snd_rxt_ts));
+}
+
 /**
  * Register exiting cc algo type
  */
