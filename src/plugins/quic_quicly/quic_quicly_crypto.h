@@ -40,7 +40,11 @@ struct cipher_context_t
 typedef struct quic_quicly_on_client_hello_
 {
   ptls_on_client_hello_t super;
-  u32 lctx_index;
+  union
+  {
+    u8 alpn_protos[4];
+    u32 alpn_protos_as_u32;
+  };
 } quic_quicly_on_client_hello_t;
 
 /* Custom verify certificate callback that stores the peer certificate */
@@ -54,17 +58,14 @@ typedef struct st_quic_quicly_verify_certificate_t
 
 typedef struct quic_quicly_crypto_ctx_
 {
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   quic_crypto_context_t ctx; /* first */
   quicly_context_t quicly_ctx;
   char cid_key[QUIC_CID_KEY_LEN];
   ptls_context_t ptls_ctx;
-  tls_verify_cfg_t verify_cfg;
   ptls_openssl_sign_certificate_t sc;
-  u32 ca_trust_index;
-  u32 crypto_owner_app_wrk_id;
   quic_quicly_verify_certificate_t verify_cert;
   quic_quicly_on_client_hello_t client_hello_ctx;
-  u32 tls_profile_index; /**< TLS profile index baked into this context (~0 = defaults) */
   /* Profile-filtered arrays (NULL if no profile applied, freed on context free) */
   ptls_cipher_suite_t **filtered_cipher_suites;
   ptls_key_exchange_algorithm_t **filtered_key_exchanges;

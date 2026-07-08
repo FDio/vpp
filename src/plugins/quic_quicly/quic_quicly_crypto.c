@@ -105,6 +105,33 @@ quic_quicly_crypto_init (quic_quicly_main_t *qqm)
     }
 }
 
+u8 *
+format_quic_quicly_crypto_context_alpn_list (u8 *s, va_list *args)
+{
+  quic_quicly_crypto_ctx_t *crctx = va_arg (*args, quic_quicly_crypto_ctx_t *);
+
+  s = format (s, "alpn-list: %U", format_tls_alpn_proto, crctx->client_hello_ctx.alpn_protos[0]);
+  if (crctx->client_hello_ctx.alpn_protos[1])
+    s = format (s, " %U", format_tls_alpn_proto, crctx->client_hello_ctx.alpn_protos[1]);
+  if (crctx->client_hello_ctx.alpn_protos[2])
+    s = format (s, " %U", format_tls_alpn_proto, crctx->client_hello_ctx.alpn_protos[2]);
+  if (crctx->client_hello_ctx.alpn_protos[3])
+    s = format (s, " %U", format_tls_alpn_proto, crctx->client_hello_ctx.alpn_protos[3]);
+  return s;
+}
+
+static u8 *
+format_quic_quicly_crypto_context (u8 *s, va_list *args)
+{
+  quic_quicly_crypto_ctx_t *crctx = va_arg (*args, quic_quicly_crypto_ctx_t *);
+
+  s = format (s, "%U", format_quic_crypto_context, &crctx->ctx);
+  s = format (s, "[idle-timeout: %u]", crctx->quicly_ctx.transport_params.max_idle_timeout);
+  if (crctx->client_hello_ctx.alpn_protos[0] != TLS_ALPN_PROTO_NONE)
+    s = format (s, "[%U]", format_quic_quicly_crypto_context_alpn_list, crctx);
+  return s;
+}
+
 void
 quic_quicly_crypto_context_list (vlib_main_t *vm)
 {
@@ -113,36 +140,37 @@ quic_quicly_crypto_context_list (vlib_main_t *vm)
 
   pool_foreach (crctx, qqcm->crypto_ctx_pool)
     {
-      vlib_cli_output (vm, "%U", format_quic_crypto_context, *crctx);
+      vlib_cli_output (vm, "%U", format_quic_quicly_crypto_context, *crctx);
     }
 }
 
 static_always_inline void
 quic_quicly_crypto_context_make_key_from_ctx (clib_bihash_kv_40_8_t *kv, quic_ctx_t *ctx)
 {
-  application_t *app = application_get (ctx->parent_app_id);
   ASSERT (ctx->crypto_owner_app_wrk_id != SESSION_INVALID_INDEX);
 
   kv->key[0] = ((u64) ctx->ckpair_index) << 32 | (u64) (ctx->verify_cfg << 24) |
 	       ((u64) (ctx->tls_profile_index & 0xFFFF)) << 8 | (u64) ctx->crypto_engine;
-  kv->key[1] = ((u64) app->sm_properties.tx_fifo_size << 32) | app->sm_properties.rx_fifo_size;
+  kv->key[1] = ((u64) ctx->parent_app_id) << 32 | ctx->connection_timeout;
   kv->key[2] = ((u64) ctx->crypto_owner_app_wrk_id << 32) | ctx->ca_trust_index;
   kv->key[3] = ((u64) ctx->max_streams_bidi << 32) | ctx->max_streams_uni;
-  kv->key[4] = ctx->connection_timeout;
+  /* for server we must include alpn list */
+  kv->key[4] = ctx->listener_ctx_id == QUIC_CTX_INVALID_INDEX ? 0 : ctx->alpn_protos_as_u32;
 }
 
 static_always_inline void
 quic_quicly_crypto_context_make_key_from_crctx (clib_bihash_kv_40_8_t *kv,
 						quic_quicly_crypto_ctx_t *crctx)
 {
-  kv->key[0] = ((u64) crctx->ctx.ckpair_index) << 32 | (u64) (crctx->verify_cfg << 24) |
-	       ((u64) (crctx->tls_profile_index & 0xFFFF)) << 8 | (u64) crctx->ctx.crypto_engine;
-  kv->key[1] = ((u64) crctx->quicly_ctx.transport_params.max_stream_data.bidi_remote << 32) |
-	       crctx->quicly_ctx.transport_params.max_stream_data.bidi_local;
-  kv->key[2] = ((u64) crctx->crypto_owner_app_wrk_id << 32) | crctx->ca_trust_index;
+  kv->key[0] = ((u64) crctx->ctx.ckpair_index) << 32 | (u64) (crctx->ctx.verify_cfg << 24) |
+	       ((u64) (crctx->ctx.tls_profile_index & 0xFFFF)) << 8 |
+	       (u64) crctx->ctx.crypto_engine;
+  kv->key[1] =
+    ((u64) crctx->ctx.parent_app_id << 32) | crctx->quicly_ctx.transport_params.max_idle_timeout;
+  kv->key[2] = ((u64) crctx->ctx.crypto_owner_app_wrk_id << 32) | crctx->ctx.ca_trust_index;
   kv->key[3] = ((u64) crctx->quicly_ctx.transport_params.max_streams_bidi << 32) |
 	       crctx->quicly_ctx.transport_params.max_streams_uni;
-  kv->key[4] = crctx->quicly_ctx.transport_params.max_idle_timeout;
+  kv->key[4] = crctx->client_hello_ctx.alpn_protos_as_u32;
 }
 
 static quic_quicly_crypto_ctx_t *
@@ -191,7 +219,7 @@ quic_quicly_crypto_context_free_if_needed (quic_quicly_crypto_ctx_t *crctx)
       clib_mem_free (crctx->filtered_key_exchanges);
       crctx->filtered_key_exchanges = NULL;
     }
-  if (crctx->verify_cfg)
+  if (crctx->ctx.verify_cfg)
     {
       ptls_openssl_dispose_verify_certificate (&crctx->verify_cert.super);
       crctx->ptls_ctx.verify_certificate = NULL;
@@ -217,18 +245,15 @@ quic_quicly_on_client_hello_ptls (ptls_on_client_hello_t *self, ptls_t *tls,
 {
   quic_quicly_on_client_hello_t *ch_ctx =
     (quic_quicly_on_client_hello_t *) self;
-  quic_ctx_t *lctx;
   const tls_alpn_proto_id_t *alpn_proto;
   int i, j, ret;
 
-  lctx = quic_quicly_get_quic_ctx (ch_ctx->lctx_index, 0);
-
   /* handle ALPN, both sides need to offer something */
-  if (params->negotiated_protocols.count && lctx->alpn_protos[0])
+  if (params->negotiated_protocols.count && ch_ctx->alpn_protos[0])
     {
-      for (i = 0; i < sizeof (lctx->alpn_protos) && lctx->alpn_protos[i]; i++)
+      for (i = 0; i < sizeof (ch_ctx->alpn_protos) && ch_ctx->alpn_protos[i]; i++)
 	{
-	  alpn_proto = &tls_alpn_proto_ids[lctx->alpn_protos[i]];
+	  alpn_proto = &tls_alpn_proto_ids[ch_ctx->alpn_protos[i]];
 	  for (j = 0; j < params->negotiated_protocols.count; j++)
 	    {
 	      if (alpn_proto->len != params->negotiated_protocols.list[j].len)
@@ -248,26 +273,19 @@ quic_quicly_on_client_hello_ptls (ptls_on_client_hello_t *self, ptls_t *tls,
 	  vec_add (client_alpn_list, params->negotiated_protocols.list[j].base,
 		   params->negotiated_protocols.list[j].len);
 	}
-      clib_warning (
-	"unsupported alpn proto(s) requested by client: proto [%U], "
-	"ctx_index %u, thread %u",
-	format_ascii_bytes, client_alpn_list,
-	(uword) vec_len (client_alpn_list), lctx->c_c_index,
-	lctx->c_thread_index);
+      clib_warning ("unsupported alpn proto(s) requested by client: proto [%U]", format_ascii_bytes,
+		    client_alpn_list, (uword) vec_len (client_alpn_list));
 #endif
       return PTLS_ALERT_NO_APPLICATION_PROTOCOL;
     alpn_proto_match:
       if ((ret = ptls_set_negotiated_protocol (tls, (char *) alpn_proto->base,
 					       alpn_proto->len)) != 0)
 	{
-	  QUIC_ERR ("ptls_set_negotiated_protocol failed: error %d, ctx_index "
-		    "%u, thread %u",
-		    ret, lctx->c_c_index, lctx->c_thread_index);
+	  QUIC_ERR ("ptls_set_negotiated_protocol failed: error %d", ret);
 	  return ret;
 	}
-      QUIC_DBG (2, "alpn proto selected %U, ctx_index %u, thread %u",
-		format_ascii_bytes, alpn_proto->base, (uword) alpn_proto->len,
-		lctx->c_c_index, lctx->c_thread_index);
+      QUIC_DBG (2, "alpn proto selected %U", format_ascii_bytes, alpn_proto->base,
+		(uword) alpn_proto->len);
     }
   return 0;
 }
@@ -578,6 +596,14 @@ quic_quicly_apply_tls_profile (quic_quicly_crypto_ctx_t *crctx, quic_ctx_t *ctx)
     }
 }
 
+static uint64_t
+quic_quicly_crypto_get_time (ptls_get_time_t *self)
+{
+  return (uint64_t) quic_wrk_ctx_get (quic_quicly_main.qm, vlib_get_thread_index ())->time_now;
+}
+
+ptls_get_time_t quic_quicly_crypto_get_time_cb = { quic_quicly_crypto_get_time };
+
 static int
 quic_quicly_crypto_context_init_data (quic_quicly_crypto_ctx_t *crctx, quic_ctx_t *ctx)
 {
@@ -599,10 +625,12 @@ quic_quicly_crypto_context_init_data (quic_quicly_crypto_ctx_t *crctx, quic_ctx_
   ptls_ctx = &crctx->ptls_ctx;
 
   crctx->client_hello_ctx.super.cb = quic_quicly_on_client_hello_ptls;
-  crctx->client_hello_ctx.lctx_index = ctx->listener_ctx_id;
+  /* we want this to be set only for server, because it is used in crypto ctx key */
+  crctx->client_hello_ctx.alpn_protos_as_u32 =
+    ctx->listener_ctx_id == QUIC_CTX_INVALID_INDEX ? 0 : ctx->alpn_protos_as_u32;
 
   ptls_ctx->random_bytes = ptls_openssl_random_bytes;
-  ptls_ctx->get_time = &ptls_get_time;
+  ptls_ctx->get_time = &quic_quicly_crypto_get_time_cb;
   /* Use the full key exchange list so that x25519 and other modern groups are
    * available by default; a TLS profile can restrict to a subset. */
   ptls_ctx->key_exchanges = ptls_openssl_key_exchanges_all;
@@ -618,7 +646,7 @@ quic_quicly_crypto_context_init_data (quic_quicly_crypto_ctx_t *crctx, quic_ctx_
   /* Apply TLS profile restrictions (cipher suites, key exchanges) */
   quic_quicly_apply_tls_profile (crctx, ctx);
 
-  if (crctx->verify_cfg)
+  if (crctx->ctx.verify_cfg)
     {
       X509_STORE *ca_store = NULL;
 
@@ -648,7 +676,8 @@ quic_quicly_crypto_context_init_data (quic_quicly_crypto_ctx_t *crctx, quic_ctx_
       ptls_ctx->verify_certificate = &verify_cert->super.super;
 
       /* Enable mutual TLS: server will request client certificates */
-      ptls_ctx->require_client_authentication = (crctx->verify_cfg & TLS_VERIFY_F_PEER_CERT) != 0;
+      ptls_ctx->require_client_authentication =
+	(crctx->ctx.verify_cfg & TLS_VERIFY_F_PEER_CERT) != 0;
     }
   ptls_ctx->ticket_lifetime = 0;
   ptls_ctx->max_early_data_size = 8192;
@@ -764,10 +793,11 @@ quic_quicly_crypto_context_get_or_alloc (quic_ctx_t *ctx)
   kv.value = crctx->ctx.ctx_index;
   crctx->ctx.crypto_engine = ctx->crypto_engine;
   crctx->ctx.ckpair_index = ctx->ckpair_index;
-  crctx->verify_cfg = ctx->verify_cfg;
-  crctx->ca_trust_index = ctx->ca_trust_index;
-  crctx->crypto_owner_app_wrk_id = ctx->crypto_owner_app_wrk_id;
-  crctx->tls_profile_index = ctx->tls_profile_index;
+  crctx->ctx.verify_cfg = ctx->verify_cfg;
+  crctx->ctx.ca_trust_index = ctx->ca_trust_index;
+  crctx->ctx.crypto_owner_app_wrk_id = ctx->crypto_owner_app_wrk_id;
+  crctx->ctx.tls_profile_index = ctx->tls_profile_index;
+  crctx->ctx.parent_app_id = ctx->parent_app_id;
   clib_bihash_add_del_40_8 (&qqcm->crypto_ctx_hash, &kv, 1 /* is_add */);
   quic_quicly_crypto_context_init_data (crctx, ctx);
   clib_atomic_add_fetch (&crctx->ctx.n_subscribers, 1);

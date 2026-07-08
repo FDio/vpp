@@ -18,6 +18,7 @@ typedef struct
   u8 cert_type; /* 0 = RSA (default), 1 = ECDSA */
   u8 *cert_file;
   u8 *key_file;
+  u8 use_last_ckpair;
   u8 alpn_protos[4];
   vlib_main_t *vlib_main;
   u32 accepted_count;
@@ -161,6 +162,12 @@ ts_attach ()
   sm->app_index = a->app_index;
 
 add_ckpair:
+  if (sm->use_last_ckpair)
+    {
+      if (sm->ckpair_index != SESSION_INVALID_INDEX)
+	return 0;
+    }
+
   clib_memset (ck_pair, 0, sizeof (*ck_pair));
   if ((sm->cert_file && !sm->key_file) || (!sm->cert_file && sm->key_file))
     return -1;
@@ -266,6 +273,9 @@ tls_server_create_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli
   sm->cert_type = 0;
   sm->cert_file = 0;
   sm->key_file = 0;
+  sm->use_last_ckpair = 0;
+  sm->alpn_protos[0] = sm->alpn_protos[1] = sm->alpn_protos[2] = sm->alpn_protos[3] =
+    TLS_ALPN_PROTO_NONE;
 
   if (!unformat_user (input, unformat_line_input, line_input))
     return clib_error_return (0, "expected URI");
@@ -294,6 +304,8 @@ tls_server_create_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli
 	;
       else if (unformat (line_input, "key %s", &sm->key_file))
 	;
+      else if (unformat (line_input, "use-last-ckpair"))
+	sm->use_last_ckpair = 1;
       else
 	{
 	  error = clib_error_return (0, "failed: unknown input `%U'",
@@ -360,6 +372,7 @@ tls_server_main_init (vlib_main_t *vm)
 {
   tls_server_main_t *sm = &tls_server_main;
   sm->vlib_main = vm;
+  sm->ckpair_index = SESSION_INVALID_INDEX;
   return 0;
 }
 

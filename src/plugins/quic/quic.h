@@ -6,6 +6,7 @@
 #define __included_quic_h__
 
 #include <vlib/unix/plugin.h>
+#include <vnet/session/application.h>
 #include <vnet/session/application_interface.h>
 #include <vnet/session/session.h>
 
@@ -232,7 +233,11 @@ typedef struct quic_ctx_
   /* 2-byte hole */
   u32 ca_trust_index;
   u32 crypto_context_index;
-  u8 alpn_protos[4];
+  union
+  {
+    u8 alpn_protos[4];
+    u32 alpn_protos_as_u32;
+  };
   u32 connection_timeout;
   u32 max_streams_bidi;
   u32 max_streams_uni;
@@ -288,8 +293,13 @@ typedef struct quic_stats_
 typedef struct crypto_ctx_
 {
   u32 ctx_index;     /**< index in crypto context pool */
+  u32 parent_app_id; /**< parent app id is key for quic transport parameters */
   volatile u32 n_subscribers; /**< refcount of sessions using said context */
   u32 ckpair_index;  /**< certificate & key */
+  u32 ca_trust_index;
+  u32 crypto_owner_app_wrk_id;
+  u32 tls_profile_index; /**< TLS profile index baked into this context (~0 = defaults) */
+  tls_verify_cfg_t verify_cfg;
   u8 crypto_engine;
 } quic_crypto_context_t;
 
@@ -481,9 +491,21 @@ static_always_inline u8 *
 format_quic_crypto_context (u8 *s, va_list *args)
 {
   quic_crypto_context_t *crctx = va_arg (*args, quic_crypto_context_t *);
-  s = format (s, "[0x%x][n_sub: %d, ckpair: 0x%x]", crctx->ctx_index, crctx->n_subscribers,
-	      crctx->ckpair_index);
-  s = format (s, "[engine: %U]", format_crypto_engine, crctx->crypto_engine);
+  application_t *app;
+  app_tls_profile_t *prof = 0;
+
+  app = app_worker_get_app (crctx->crypto_owner_app_wrk_id);
+  if (app)
+    prof = app_crypto_get_tls_profile_if_valid (crctx->crypto_owner_app_wrk_id,
+						crctx->tls_profile_index);
+
+  s = format (s, "[%u][%v n_sub: %u, ckpair: %u]", crctx->ctx_index, app ? app->name : 0,
+	      crctx->n_subscribers, crctx->ckpair_index);
+  if (crctx->verify_cfg)
+    s = format (s, "[verify: %U]", format_tls_verify_cfg, crctx->verify_cfg);
+  if (crctx->tls_profile_index != SESSION_INVALID_INDEX && prof)
+    s = format (s, "[tls_profile: %u]", crctx->tls_profile_index);
+  s = format (s, "[crypto-engine: %U]", format_crypto_engine, crctx->crypto_engine);
   return s;
 }
 

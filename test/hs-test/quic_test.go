@@ -16,7 +16,7 @@ func init() {
 		QuicBuiltinEchoBidirectionalZeroCopyTest, QuicBuiltinEchoTest, QuicBuiltinEchoBidirectionalTest,
 		QuicReorderTest, QuicCrlRejectThenAllowTest)
 	RegisterQuicMWTests(QuicCpsMWTest)
-	RegisterNoTopoTests(QuicFailedHandshakeTest)
+	RegisterNoTopoTests(QuicFailedHandshakeTest, QuicCryptoContextTest)
 }
 
 func QuicCrlRejectThenAllowTest(s *QuicSuite) {
@@ -50,6 +50,7 @@ func QuicCrlRejectThenAllowTest(s *QuicSuite) {
 func QuicAlpnMatchTest(s *QuicSuite) {
 	serverAddress := s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1
 	Log(s.Containers.ServerVpp.VppInstance.Vppctl("test tls server alpn-proto1 3 uri quic://" + serverAddress))
+	Log(s.Containers.ServerVpp.VppInstance.Vppctl("show session verbose 2"))
 
 	uri := "quic://" + serverAddress
 	o := s.Containers.ClientVpp.VppInstance.Vppctl("test tls client alpn-proto1 3 uri " + uri)
@@ -76,6 +77,7 @@ func QuicAlpnOverlapMatchTest(s *QuicSuite) {
 func QuicAlpnServerPriorityMatchTest(s *QuicSuite) {
 	serverAddress := s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1
 	Log(s.Containers.ServerVpp.VppInstance.Vppctl("test tls server alpn-proto1 3 alpn-proto2 1 uri quic://" + serverAddress))
+	Log(s.Containers.ServerVpp.VppInstance.Vppctl("show session verbose 2"))
 
 	uri := "quic://" + serverAddress
 	o := s.Containers.ClientVpp.VppInstance.Vppctl("test tls client alpn-proto1 1 alpn-proto2 3 uri " + uri)
@@ -91,6 +93,7 @@ func QuicAlpnMismatchTest(s *QuicSuite) {
 	clientVpp := s.Containers.ClientVpp.VppInstance
 	serverAddress := s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1
 	Log(serverVpp.Vppctl("test tls server alpn-proto1 2 alpn-proto2 1 uri quic://" + serverAddress))
+	Log(s.Containers.ServerVpp.VppInstance.Vppctl("show session verbose 2"))
 
 	uri := "quic://" + serverAddress
 	o := clientVpp.Vppctl("test tls client alpn-proto1 3 alpn-proto2 4 uri " + uri)
@@ -116,6 +119,7 @@ func QuicAlpnMismatchTest(s *QuicSuite) {
 func QuicAlpnEmptyServerListTest(s *QuicSuite) {
 	serverAddress := s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1
 	Log(s.Containers.ServerVpp.VppInstance.Vppctl("test tls server uri quic://" + serverAddress))
+	Log(s.Containers.ServerVpp.VppInstance.Vppctl("show session verbose 2"))
 
 	uri := "quic://" + serverAddress
 	o := s.Containers.ClientVpp.VppInstance.Vppctl("test tls client alpn-proto1 3 alpn-proto2 2 uri " + uri)
@@ -129,6 +133,7 @@ func QuicAlpnEmptyServerListTest(s *QuicSuite) {
 func QuicAlpnEmptyClientListTest(s *QuicSuite) {
 	serverAddress := s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1
 	Log(s.Containers.ServerVpp.VppInstance.Vppctl("test tls server alpn-proto1 3 alpn-proto2 1 uri quic://" + serverAddress))
+	Log(s.Containers.ServerVpp.VppInstance.Vppctl("show session verbose 2"))
 
 	uri := "quic://" + serverAddress
 	o := s.Containers.ClientVpp.VppInstance.Vppctl("test tls client uri " + uri)
@@ -159,6 +164,78 @@ func QuicFailedHandshakeTest(s *NoTopoSuite) {
 	o := s.Containers.Vpp.VppInstance.Vppctl("show session verbose")
 	Log(o)
 	AssertContains(o, "active sessions 2", "expected only listeners")
+}
+
+func QuicCryptoContextTest(s *NoTopoSuite) {
+	vpp := s.Containers.Vpp.VppInstance
+	Log(vpp.Vppctl("show quic"))
+	serverAddress := s.Interfaces.Tap.Ip4AddressString() + ":" + s.Ports.Http
+	Log(vpp.Vppctl("test tls server uri quic://" + serverAddress))
+	o := vpp.Vppctl("show quic crypto context")
+	Log(o)
+	AssertContains(o, "[0][test_tls_server n_sub: 1, ckpair: 1]")
+	AssertNotContains(o, "[verify: ")
+	AssertNotContains(o, "[tls_profile: ")
+
+	// add second listener which should use same quic crypto context
+	serverAddress2 := s.Interfaces.Tap.Ip4AddressString() + ":" + s.Ports.NginxServer
+	Log(vpp.Vppctl("test tls server use-last-ckpair uri quic://" + serverAddress2))
+	o = vpp.Vppctl("show quic crypto context")
+	Log(o)
+	AssertContains(o, "[0][test_tls_server n_sub: 2, ckpair: 1]")
+
+	// add third listener with alpn proto set which should use new quic crypto context
+	serverAddress3 := s.Interfaces.Tap.Ip4AddressString() + ":" + s.Ports.CutThru
+	Log(vpp.Vppctl("test tls server use-last-ckpair alpn-proto1 3 uri quic://" + serverAddress3))
+	o = vpp.Vppctl("show quic crypto context")
+	Log(o)
+	AssertContains(o, "[0][test_tls_server n_sub: 2, ckpair: 1]")
+	AssertContains(o, "[1][test_tls_server n_sub: 1, ckpair: 1]")
+
+	// add fourth listener with tls profile which should use new quic crypto context
+	o = vpp.Vppctl("app crypto add tls-profile app test_tls_server " +
+		"ciphersuites TLS_AES_256_GCM_SHA384")
+	Log(o)
+	AssertNotContains(o, "error")
+	AssertContains(o, "profile 0")
+	serverAddress4 := s.Interfaces.Tap.Ip4AddressString() + ":" + s.Ports.NginxServerSsl
+	Log(vpp.Vppctl("test tls server profile-index 0 uri quic://" + serverAddress4))
+	o = vpp.Vppctl("show quic crypto context")
+	Log(o)
+	AssertContains(o, "[0][test_tls_server n_sub: 2, ckpair: 1]")
+	AssertContains(o, "[1][test_tls_server n_sub: 1, ckpair: 1]")
+	AssertContains(o, "[2][test_tls_server n_sub: 1, ckpair: 2][tls_profile: 0]")
+
+	// start anonther app which should use it own quic crypto context
+	serverAddress5 := s.Interfaces.Tap.Ip4AddressString() + ":" + s.Ports.NginxHttp3
+	Log(vpp.Vppctl("vperf server fifo-size 8k uri quic://" + serverAddress5))
+	o = vpp.Vppctl("show quic crypto context")
+	Log(o)
+	AssertContains(o, "[3][vperf_server n_sub: 1")
+
+	// remove app to test cleanup
+	Log(vpp.Vppctl("vperf server stop"))
+	o = vpp.Vppctl("show quic crypto context")
+	Log(o)
+	AssertNotContains(o, "[3][vperf_server n_sub: 1")
+	AssertContains(o, "[0][test_tls_server n_sub: 2, ckpair: 1]")
+	AssertContains(o, "[1][test_tls_server n_sub: 1, ckpair: 1]")
+	AssertContains(o, "[2][test_tls_server n_sub: 1, ckpair: 2][tls_profile: 0]")
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	_, err := quic.DialAddr(
+		ctx,
+		serverAddress3,
+		&tls.Config{InsecureSkipVerify: true, NextProtos: []string{"h3"}, SessionTicketsDisabled: true},
+		&quic.Config{},
+	)
+	AssertNil(err)
+	o = vpp.Vppctl("show session proto quic state ready verbose 2")
+	Log(o)
+	AssertContains(o, "1 sessions matched filter")
+	AssertContains(o, "alpn-selected: h3")
+	AssertContains(o, "crctx: 1")
 }
 
 func quicBuiltinEcho(s *QuicSuite, uni bool) {
