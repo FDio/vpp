@@ -20,6 +20,23 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "36698903_253c0945",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3342
+      },
+      "writtenOn": "2026-07-08T15:11:12Z",
+      "side": 1,
+      "message": "./MAINTAINERS file still contains former path to infix-export from src/vnet.\n\nIt would need to be switched to src/plugins and its namespace switched from VNET to Plugins - there and examples",
+      "revId": "bbc8ec90ef34db45d34264d935cf5602fc91d3e5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "fdede1a5_64ff3891",
         "filename": "src/plugins/ipfix-export/CMakeLists.txt",
         "patchSetId": 2
