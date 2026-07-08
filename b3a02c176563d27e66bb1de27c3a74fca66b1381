@@ -16,6 +16,23 @@
       "message": "CL is ready for inspection",
       "revId": "b3a02c176563d27e66bb1de27c3a74fca66b1381",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b742b885_2c320196",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 15
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3342
+      },
+      "writtenOn": "2026-07-08T10:03:51Z",
+      "side": 1,
+      "message": "Tagging FIB/ADJ/BFD modules maintainers from MAINTAINERS file",
+      "revId": "b3a02c176563d27e66bb1de27c3a74fca66b1381",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
