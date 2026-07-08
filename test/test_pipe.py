@@ -65,6 +65,7 @@ class VppPipe(VppInterface):
 
 
 @unittest.skipIf("acl" in config.excluded_plugins, "Exclude tests requiring ACL plugin")
+@unittest.skipIf("pipe" in config.excluded_plugins, "Exclude Pipe plugin tests")
 class TestPipe(VppTestCase):
     """Pipes"""
 
