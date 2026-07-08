@@ -1775,7 +1775,6 @@ quic_quicly_engine_init (quic_main_t *qm)
   qm->default_crypto_engine = CRYPTO_ENGINE_PICOTLS;
   qm->default_quic_cc = QUIC_CC_RENO;
   qm->max_packets_per_key = DEFAULT_MAX_PACKETS_PER_KEY;
-  qqm->session_cache.super.cb = quic_quicly_encrypt_ticket_cb;
   qqm->qm = qm;
 
   vec_validate (qqm->next_cid, qm->num_threads - 1);
