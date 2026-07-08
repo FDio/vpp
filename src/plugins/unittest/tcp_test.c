@@ -699,6 +699,49 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
   TCP_TEST ((!sb->is_reneging), "is not reneging");
 
   /*
+   * Reclassify an rto-forced loss using only SACK evidence. With no SACKed
+   * data, the rto mark must be removed without discarding the hole.
+   */
+  scoreboard_clear (sb);
+  vec_reset_length (tc->rcv_opts.sacks);
+  tc->flags = TCP_CONN_RECOVERY;
+  tc->snd_una = 0;
+  tc->snd_nxt = 1000;
+  tc->snd_mss = 100;
+  scoreboard_rxt_mark_lost (sb, tc->snd_una, tc->snd_nxt);
+  TCP_TEST ((sb->lost_bytes == 1000), "rto marks bytes lost %u", sb->lost_bytes);
+
+  scoreboard_recompute_sack_loss (sb, tc->snd_una, tc->snd_mss);
+  hole = scoreboard_first_hole (sb);
+  TCP_TEST ((sb->lost_bytes == 0), "rto-only loss removed %u", sb->lost_bytes);
+  TCP_TEST ((hole && !hole->is_lost), "rto-only hole is no longer lost");
+
+  /* SACK-derived loss must survive the same reclassification. */
+  scoreboard_clear (sb);
+  vec_reset_length (tc->rcv_opts.sacks);
+  tc->flags = TCP_CONN_FAST_RECOVERY;
+  block.start = 300;
+  block.end = 600;
+  vec_add1 (tc->rcv_opts.sacks, block);
+  tc->rcv_opts.flags |= TCP_OPTS_FLAG_SACK;
+  tc->rcv_opts.n_sack_blocks = vec_len (tc->rcv_opts.sacks);
+  tcp_rcv_sacks (tc, tc->snd_una);
+  TCP_TEST ((sb->lost_bytes == 300), "SACK marks bytes lost %u", sb->lost_bytes);
+
+  scoreboard_recompute_sack_loss (sb, tc->snd_una, tc->snd_mss);
+  TCP_TEST ((sb->lost_bytes == 300), "SACK-derived loss preserved %u", sb->lost_bytes);
+
+  /* A clean scoreboard does not track cumulative ACK progress. Recovery undo
+   * may reclassify loss after snd_una advances, so a stale high_sacked below
+   * the ACK must still describe zero SACKed bytes. */
+  scoreboard_clear (sb);
+  sb->high_sacked = tc->snd_una;
+  tc->snd_una += tc->snd_mss;
+  scoreboard_recompute_sack_loss (sb, tc->snd_una, tc->snd_mss);
+  TCP_TEST ((sb->sacked_bytes == 0), "empty scoreboard has no sacked bytes %u", sb->sacked_bytes);
+  TCP_TEST ((sb->lost_bytes == 0), "empty scoreboard has no lost bytes %u", sb->lost_bytes);
+
+  /*
    * Clear
    */
   scoreboard_clear (sb);
@@ -1849,6 +1892,122 @@ tcp_test_rto_reduce_once_e2e (vlib_main_t *vm, unformat_input_t *input)
       rv = 1;
       goto cleanup;
     }
+
+  /*
+   * Spurious-retransmit detection predicate (RFC 3522 Sec. 3.2 Eifel),
+   * tcp_cc_is_spurious_retransmit: on a cumulative ack in recovery, decides
+   * whether the window reduction was spurious (reordered/delayed data, not real
+   * loss) and should be undone. Base state below is spurious; each case flips
+   * one term. Spurious requires: retransmit stamped, part of the flight still
+   * outstanding (snd_una < snd_congestion), timestamp option present, and tsecr
+   * older than the first retransmit. Other outstanding loss is handled as a
+   * separate recovery event.
+   */
+  {
+    tcp_connection_t _stc, *stc = &_stc;
+    u32 mss = 1460;
+
+#define ARM_SPURIOUS()                                                                             \
+  do                                                                                               \
+    {                                                                                              \
+      clib_memset (stc, 0, sizeof (*stc));                                                         \
+      stc->snd_mss = mss;                                                                          \
+      stc->flags |= TCP_CONN_FAST_RECOVERY;                                                        \
+      stc->bytes_acked = 2 * mss;                                                                  \
+      stc->snd_una = 10000;                                                                        \
+      stc->snd_congestion = stc->snd_una + 10 * mss;                                               \
+      stc->snd_rxt_ts = 1000;                                                                      \
+      stc->sack_sb.lost_bytes = 0;                                                                 \
+      stc->rcv_opts.flags = TCP_OPTS_FLAG_TSTAMP;                                                  \
+      stc->rcv_opts.tsecr = stc->snd_rxt_ts - 1;                                                   \
+    }                                                                                              \
+  while (0)
+
+    /* Base: all conditions met -> spurious. */
+    ARM_SPURIOUS ();
+    if (!TCP_TEST_I ((tcp_cc_is_spurious_retransmit (stc)),
+		     "eifel: spurious on partial cumulative ack, tsecr < snd_rxt_ts, "
+		     "no loss"))
+      {
+	rv = 1;
+	goto cleanup;
+      }
+
+    /* Also valid for rto recovery (TCP_CONN_RECOVERY), not just fast recovery. */
+    ARM_SPURIOUS ();
+    stc->flags = TCP_CONN_RECOVERY;
+    if (!TCP_TEST_I ((tcp_cc_is_spurious_retransmit (stc)), "eifel: also fires for rto recovery"))
+      {
+	rv = 1;
+	goto cleanup;
+      }
+
+    /* Detection is independent of other outstanding loss. Rto recovery may
+     * carry speculative loss marks. */
+    ARM_SPURIOUS ();
+    stc->flags = TCP_CONN_RECOVERY;
+    stc->sack_sb.lost_bytes = mss;
+    if (!TCP_TEST_I ((tcp_cc_is_spurious_retransmit (stc)),
+		     "eifel: rto retransmit spurious despite outstanding loss"))
+      {
+	rv = 1;
+	goto cleanup;
+      }
+
+    /* Negative: no retransmit stamped (snd_rxt_ts == 0), nothing to undo. */
+    ARM_SPURIOUS ();
+    stc->snd_rxt_ts = 0;
+    if (!TCP_TEST_I ((!tcp_cc_is_spurious_retransmit (stc)),
+		     "eifel: not spurious without a retransmit timestamp"))
+      {
+	rv = 1;
+	goto cleanup;
+      }
+
+    /* The initiating fast retransmit can be spurious while another SACK-derived
+     * loss remains outstanding. The response handles that as a fresh event. */
+    ARM_SPURIOUS ();
+    stc->sack_sb.lost_bytes = mss;
+    if (!TCP_TEST_I ((tcp_cc_is_spurious_retransmit (stc)),
+		     "eifel: fast retransmit spurious despite other outstanding loss"))
+      {
+	rv = 1;
+	goto cleanup;
+      }
+
+    /* Negative: full-flight ack (snd_una reached snd_congestion). Ambiguous per
+     * RFC 3522 Sec. 3.2 (e.g. rto from losing all acks) -> keep the reduction. */
+    ARM_SPURIOUS ();
+    stc->snd_una = stc->snd_congestion;
+    if (!TCP_TEST_I ((!tcp_cc_is_spurious_retransmit (stc)),
+		     "eifel: not spurious on a full-flight ack"))
+      {
+	rv = 1;
+	goto cleanup;
+      }
+
+    /* Negative: echoed tsecr not older than snd_rxt_ts (ack post-dates the
+     * retransmit -> the retransmit was needed). */
+    ARM_SPURIOUS ();
+    stc->rcv_opts.tsecr = stc->snd_rxt_ts;
+    if (!TCP_TEST_I ((!tcp_cc_is_spurious_retransmit (stc)),
+		     "eifel: not spurious when tsecr >= snd_rxt_ts"))
+      {
+	rv = 1;
+	goto cleanup;
+      }
+
+    /* Negative: no timestamp option -> Eifel not applicable. */
+    ARM_SPURIOUS ();
+    stc->rcv_opts.flags = 0;
+    if (!TCP_TEST_I ((!tcp_cc_is_spurious_retransmit (stc)),
+		     "eifel: not spurious without the timestamp option"))
+      {
+	rv = 1;
+	goto cleanup;
+      }
+#undef ARM_SPURIOUS
+  }
 
 cleanup:
   if (accepted_session_index != ~0)

@@ -101,26 +101,28 @@ scoreboard_update_sacked (sack_scoreboard_t * sb, u32 start, u32 end,
     seq_lt (end, sb->high_rxt) ? (end - start) : (sb->high_rxt - start);
 }
 
-always_inline void
-scoreboard_update_bytes (sack_scoreboard_t * sb, u32 ack, u32 snd_mss)
+always_inline u32
+scoreboard_update_loss (sack_scoreboard_t *sb, u32 ack, u32 snd_mss, u8 clear_lost)
 {
-  sack_scoreboard_hole_t *left, *right;
-  u32 sacked = 0, blks = 0, old_sacked;
+  sack_scoreboard_hole_t *hole, *left, *right;
+  u32 sacked = 0, blks = 0;
 
-  old_sacked = sb->sacked_bytes;
+  if (clear_lost)
+    {
+      hole = scoreboard_first_hole (sb);
+      while (hole)
+	{
+	  hole->is_lost = 0;
+	  hole = scoreboard_next_hole (sb, hole);
+	}
+    }
 
   sb->last_lost_bytes = 0;
   sb->lost_bytes = 0;
-  sb->sacked_bytes = 0;
 
   right = scoreboard_last_hole (sb);
   if (!right)
-    {
-      sb->sacked_bytes = sb->high_sacked - ack;
-      sb->last_sacked_bytes = sb->sacked_bytes
-	- (old_sacked - sb->last_bytes_delivered);
-      return;
-    }
+    return seq_gt (sb->high_sacked, ack) ? sb->high_sacked - ack : 0;
 
   if (seq_gt (sb->high_sacked, right->end))
     {
@@ -171,8 +173,29 @@ scoreboard_update_bytes (sack_scoreboard_t * sb, u32 ack, u32 snd_mss)
       right = left;
     }
 
-  sb->sacked_bytes = sacked;
-  sb->last_sacked_bytes = sacked - (old_sacked - sb->last_bytes_delivered);
+  return sacked;
+}
+
+always_inline void
+scoreboard_update_bytes (sack_scoreboard_t *sb, u32 ack, u32 snd_mss)
+{
+  u32 old_sacked = sb->sacked_bytes;
+
+  sb->sacked_bytes = scoreboard_update_loss (sb, ack, snd_mss, 0);
+  sb->last_sacked_bytes = sb->sacked_bytes - (old_sacked - sb->last_bytes_delivered);
+}
+
+void
+scoreboard_recompute_sack_loss (sack_scoreboard_t *sb, u32 ack, u32 snd_mss)
+{
+  u32 last_lost_bytes = sb->last_lost_bytes;
+  u32 sacked;
+
+  /* Discard loss classification inherited from an rto and infer it again
+   * solely from the SACK scoreboard. Keep per-ack accounting unchanged. */
+  sacked = scoreboard_update_loss (sb, ack, snd_mss, 1);
+  ASSERT (sacked == sb->sacked_bytes);
+  sb->last_lost_bytes = last_lost_bytes;
 }
 
 /**
