@@ -459,6 +459,8 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
    * the lowest part
    */
   scoreboard_clear (sb);
+  /* scoreboard_clear does not floor reorder (path property) */
+  sb->reorder = TCP_DUPACK_THRESHOLD;
   tc->snd_una = 0;
   tc->snd_nxt = 1000;
 
@@ -628,10 +630,115 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
 	    sb->rxt_sacked);
 
   /*
+   * Reorder estimate must keep learning during congestion recovery. A segment
+   * that was never retransmitted (start at/above high_rxt) but arrives out of
+   * order below the sack frontier is unambiguous reordering, so it should grow
+   * sb->reorder even though has_rxt (in recovery) is set. Without this the
+   * estimate stays pinned at the dupack floor and the connection re-enters
+   * spurious fast recoveries on a reordering path.
+   */
+  scoreboard_clear (sb);
+  sb->reorder = TCP_DUPACK_THRESHOLD;
+  vec_reset_length (tc->rcv_opts.sacks);
+  tc->flags |= TCP_CONN_FAST_RECOVERY | TCP_CONN_RECOVERY;
+  tc->snd_una = 0;
+  tc->snd_nxt = 3000;
+  sb->high_rxt = 0;
+  /* scoreboard_init_rxt sentinel: no rescue retransmit fired this episode */
+  sb->rescue_rxt = tc->snd_una - 1;
+  TCP_TEST ((sb->reorder == TCP_DUPACK_THRESHOLD), "reorder at floor %u", sb->reorder);
+
+  /* Establish a high sack frontier first (extends it, does not grow reorder) */
+  block.start = 2400;
+  block.end = 3000;
+  vec_add1 (tc->rcv_opts.sacks, block);
+  tc->rcv_opts.n_sack_blocks = vec_len (tc->rcv_opts.sacks);
+  tcp_rcv_sacks (tc, 0);
+  TCP_TEST ((sb->high_sacked == 3000), "high sacked %u", sb->high_sacked);
+  TCP_TEST ((sb->reorder == TCP_DUPACK_THRESHOLD), "reorder still floor %u", sb->reorder);
+
+  /* A never-retransmitted low block arrives out of order below the frontier:
+   * reord = ceil((3000 - 300) / 150) = 18 */
+  vec_reset_length (tc->rcv_opts.sacks);
+  block.start = 300;
+  block.end = 450;
+  vec_add1 (tc->rcv_opts.sacks, block);
+  tc->rcv_opts.n_sack_blocks = vec_len (tc->rcv_opts.sacks);
+  tcp_rcv_sacks (tc, 0);
+  TCP_TEST ((sb->reorder == 18), "reorder grew in recovery %u", sb->reorder);
+
+  /*
+   * A sack below high_rxt during recovery is ambiguous (it could be a
+   * retransmit arriving rather than the original delayed segment) and must not
+   * grow the reorder estimate.
+   */
+  scoreboard_clear (sb);
+  sb->reorder = TCP_DUPACK_THRESHOLD;
+  vec_reset_length (tc->rcv_opts.sacks);
+  tc->flags |= TCP_CONN_FAST_RECOVERY | TCP_CONN_RECOVERY;
+  tc->snd_una = 0;
+  tc->snd_nxt = 3000;
+  sb->high_rxt = 0;
+  sb->rescue_rxt = tc->snd_una - 1;
+
+  block.start = 2400;
+  block.end = 3000;
+  vec_add1 (tc->rcv_opts.sacks, block);
+  tc->rcv_opts.n_sack_blocks = vec_len (tc->rcv_opts.sacks);
+  tcp_rcv_sacks (tc, 0);
+  TCP_TEST ((sb->reorder == TCP_DUPACK_THRESHOLD), "reorder floor %u", sb->reorder);
+
+  /* Everything below the frontier has now been retransmitted */
+  sb->high_rxt = 2400;
+  vec_reset_length (tc->rcv_opts.sacks);
+  block.start = 300;
+  block.end = 450;
+  vec_add1 (tc->rcv_opts.sacks, block);
+  tc->rcv_opts.n_sack_blocks = vec_len (tc->rcv_opts.sacks);
+  tcp_rcv_sacks (tc, 0);
+  TCP_TEST ((sb->reorder == TCP_DUPACK_THRESHOLD), "reorder unchanged below high_rxt %u",
+	    sb->reorder);
+
+  /*
+   * After a rescue retransmit (RFC 6675) the re-sent segment sits at/above
+   * high_rxt but is NOT reordering. rescue_rxt advanced to snd_congestion marks
+   * it, so a later out-of-order sack at/above high_rxt must NOT grow reorder
+   * (else a delayed rescue + advancing frontier would inflate it toward 300 and
+   * strand real loss until rto).
+   */
+  scoreboard_clear (sb);
+  sb->reorder = TCP_DUPACK_THRESHOLD;
+  vec_reset_length (tc->rcv_opts.sacks);
+  tc->flags |= TCP_CONN_FAST_RECOVERY | TCP_CONN_RECOVERY;
+  tc->snd_una = 0;
+  tc->snd_nxt = 3000;
+  tc->snd_congestion = 3000;
+  sb->high_rxt = 0;
+  /* A rescue fired: rescue_rxt was set to snd_congestion (>= snd_una) */
+  sb->rescue_rxt = tc->snd_congestion;
+
+  block.start = 2400;
+  block.end = 3000;
+  vec_add1 (tc->rcv_opts.sacks, block);
+  tc->rcv_opts.n_sack_blocks = vec_len (tc->rcv_opts.sacks);
+  tcp_rcv_sacks (tc, 0);
+  TCP_TEST ((sb->high_sacked == 3000), "high sacked %u", sb->high_sacked);
+
+  vec_reset_length (tc->rcv_opts.sacks);
+  block.start = 300;
+  block.end = 450;
+  vec_add1 (tc->rcv_opts.sacks, block);
+  tc->rcv_opts.n_sack_blocks = vec_len (tc->rcv_opts.sacks);
+  tcp_rcv_sacks (tc, 0);
+  TCP_TEST ((sb->reorder == TCP_DUPACK_THRESHOLD), "reorder unchanged after rescue rxt %u",
+	    sb->reorder);
+
+  /*
    * Restart
    */
   scoreboard_clear (sb);
   vec_reset_length (tc->rcv_opts.sacks);
+  tc->snd_congestion = 0;
 
   /*
    * Broken sacks:
