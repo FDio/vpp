@@ -196,6 +196,25 @@ format_quic_half_open (u8 *s, va_list *args)
 }
 
 u8 *
+format_quic_listener_alpn_protos (u8 *s, va_list *args)
+{
+  quic_ctx_t *ctx = va_arg (*args, quic_ctx_t *);
+
+  if (ctx->alpn_protos[0] == TLS_ALPN_PROTO_NONE)
+    return s;
+
+  s = format (s, " alpn-protos: %U", format_tls_alpn_proto, ctx->alpn_protos[0]);
+  if (ctx->alpn_protos[1])
+    s = format (s, " %U", format_tls_alpn_proto, ctx->alpn_protos[1]);
+  if (ctx->alpn_protos[2])
+    s = format (s, " %U", format_tls_alpn_proto, ctx->alpn_protos[2]);
+  if (ctx->alpn_protos[3])
+    s = format (s, " %U", format_tls_alpn_proto, ctx->alpn_protos[3]);
+  s = format (s, "\n");
+  return s;
+}
+
+u8 *
 format_quic_listener (u8 *s, va_list *args)
 {
   u32 tci = va_arg (*args, u32);
@@ -207,7 +226,11 @@ format_quic_listener (u8 *s, va_list *args)
     {
       s = format (s, "%-" SESSION_CLI_ID_LEN "U", format_quic_ctx_listener, ctx);
       if (fmt.level)
-	s = format (s, "%-" SESSION_CLI_STATE_LEN "U", format_quic_ctx_state, ctx);
+	{
+	  s = format (s, "%-" SESSION_CLI_STATE_LEN "U", format_quic_ctx_state, ctx);
+	  if (fmt.level > 1)
+	    s = format (s, "\n%U", format_quic_listener_alpn_protos, ctx);
+	}
       return s;
     }
 
@@ -220,7 +243,7 @@ format_quic_listener (u8 *s, va_list *args)
       s = format (s, "%U", format_quic_ctx_state, ctx);
     }
   if (fmt.transport_detail)
-    s = format (s, "\n");
+    s = format (s, "\n%U", format_quic_listener_alpn_protos, ctx);
   return s;
 }
 
@@ -473,8 +496,7 @@ quic_show_aggregated_stats (vlib_main_t *vm)
 }
 
 static clib_error_t *
-quic_show_connections_command_fn (vlib_main_t *vm, unformat_input_t *input,
-				  vlib_cli_command_t *cmd)
+quic_show_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   clib_error_t *error = 0;
@@ -498,11 +520,20 @@ quic_show_connections_command_fn (vlib_main_t *vm, unformat_input_t *input,
 
   vlib_cli_output (vm, "quic engine: %s",
 		   quic_engine_type_str (qm->engine_type));
-  vlib_cli_output (
-    vm, "crypto engine: %s",
-    qm->default_crypto_engine == CRYPTO_ENGINE_PICOTLS ?
-      "picotls" :
-      (qm->default_crypto_engine == CRYPTO_ENGINE_VPP ? "vpp" : "none"));
+  vlib_cli_output (vm, "default crypto engine: %s",
+		   qm->default_crypto_engine == CRYPTO_ENGINE_PICOTLS ?
+		     "picotls" :
+		     (qm->default_crypto_engine == CRYPTO_ENGINE_VPP ? "vpp" : "none"));
+  vlib_cli_output (vm, "default connection timeout: %u", qm->connection_timeout);
+  vlib_cli_output (vm, "default cc algo: %s",
+		   qm->default_quic_cc == QUIC_CC_CUBIC ? "cubic" : "reno");
+  vlib_cli_output (vm, "udp fifo size: %U", format_memory_size, qm->udp_fifo_size);
+  vlib_cli_output (vm, "first segment size: %U", format_memory_size, qm->first_seg_size);
+  vlib_cli_output (vm, "add segment size: %U", format_memory_size, qm->add_seg_size);
+  vlib_cli_output (vm, "fifo prealloc: %u", qm->udp_fifo_prealloc);
+  vlib_cli_output (vm, "max packets per key: %U", format_memory_size, qm->max_packets_per_key);
+  vlib_cli_output (vm, "tx-pacing: %s", qm->enable_tx_pacing ? "enabled" : "disabled");
+  vlib_cli_output (vm, "respect-app-limited: %s", qm->respect_app_limited ? "enabled" : "disabled");
 
   num_threads = 1 /* main thread */ + vtm->n_threads;
 
@@ -541,13 +572,13 @@ VLIB_CLI_COMMAND (quic_plugin_crypto_command, static) = {
 };
 VLIB_CLI_COMMAND (quic_plugin_set_fifo_size_command, static) = {
   .path = "quic set fifo-size",
-  .short_help = "quic set fifo-size N[K|M|G] (default 64K)",
+  .short_help = "quic set fifo-size N[K|M|G] (default 512K)",
   .function = quic_plugin_set_fifo_size_command_fn,
 };
 VLIB_CLI_COMMAND (quic_show_ctx_command, static) = {
   .path = "show quic",
   .short_help = "show quic",
-  .function = quic_show_connections_command_fn,
+  .function = quic_show_command_fn,
 };
 VLIB_CLI_COMMAND (quic_list_crypto_context_command, static) = {
   .path = "show quic crypto context",
