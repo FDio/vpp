@@ -121,52 +121,75 @@ nsim_buffer_fwd_lookup (nsim_main_t * nsm, vlib_buffer_t * b,
     }
 }
 
+/* Enqueue a buffer onto a wheel with the given departure time, filling the
+ * entry's forwarding info. Caller guarantees space. */
+always_inline void
+nsim_wheel_enqueue (nsim_main_t *nsm, nsim_wheel_t *wp, vlib_buffer_t *b, u32 bi, f64 tx_time,
+		    u8 is_cross_connect)
+{
+  nsim_wheel_entry_t *ep = wp->entries + wp->tail;
+  wp->tail++;
+  if (wp->tail == wp->wheel_size)
+    wp->tail = 0;
+  wp->cursize++;
+
+  ep->tx_time = tx_time;
+  ep->rx_sw_if_index = vnet_buffer (b)->sw_if_index[VLIB_RX];
+  ep->tx_sw_if_index = vnet_buffer (b)->sw_if_index[VLIB_TX];
+  nsim_buffer_fwd_lookup (nsm, b, &ep->output_next_index, is_cross_connect);
+  ep->buffer_index = bi;
+}
+
 always_inline void
 nsim_dispatch_buffer (vlib_main_t * vm, vlib_node_runtime_t * node,
 		      nsim_main_t * nsm, nsim_wheel_t * wp, vlib_buffer_t * b,
 		      u32 bi, nsim_node_ctx_t * ctx, u8 is_cross_connect,
 		      u8 is_trace)
 {
+  f64 tx_time;
+
   if (PREDICT_TRUE (!(ctx->action[0] & NSIM_ACTION_DROP)))
     {
-      if (PREDICT_FALSE (ctx->action[0] & NSIM_ACTION_REORDER))
-	{
-	  u32 next;
-	  vnet_get_config_data (&ctx->fcm->config_main,
-				&b->current_config_index, &next, 0);
-	  ctx->reord[0] = bi;
-	  ctx->reord_nexts[0] = next;
-	  ctx->reord += 1;
-	  ctx->reord_nexts += 1;
-	  goto trace;
-	}
-
-      nsim_wheel_entry_t *ep = wp->entries + wp->tail;
-      wp->tail++;
-      if (wp->tail == wp->wheel_size)
-	wp->tail = 0;
-      wp->cursize++;
-
+      /* Base departure time: fixed-delay line, or queued (bufferbloat) model
+       * serializing at the bottleneck rate then adding propagation delay. */
       if (PREDICT_FALSE (nsm->buffer_time > 0.0))
 	{
-	  /* Queued (bufferbloat) model: serialize at the bottleneck rate, then
-	   * add propagation delay. Queuing delay (the bloat) is the time a
-	   * packet waits behind already-enqueued packets, i.e. how far
-	   * last_tx_time has run ahead of now. */
 	  f64 ser = nsm->serialization_time;
 	  if (PREDICT_FALSE (nsm->rate.type != NSIM_RATE_NONE))
 	    ser = nsim_rate_serialization_time (&nsm->rate, &nsm->seed, ctx->now);
 	  f64 depart = clib_max (ctx->now, wp->last_tx_time) + ser;
 	  wp->last_tx_time = depart;
-	  ep->tx_time = depart + nsm->delay;
+	  tx_time = depart + nsm->delay;
 	}
       else
-	ep->tx_time = ctx->expires;
-      ep->rx_sw_if_index = vnet_buffer (b)->sw_if_index[VLIB_RX];
-      ep->tx_sw_if_index = vnet_buffer (b)->sw_if_index[VLIB_TX];
-      nsim_buffer_fwd_lookup (nsm, b, &ep->output_next_index,
-			      is_cross_connect);
-      ep->buffer_index = bi;
+	tx_time = ctx->expires;
+
+      if (PREDICT_FALSE (ctx->action[0] & NSIM_ACTION_REORDER))
+	{
+	  /* Late reorder: push onto the side wheel with an extra delay drawn
+	   * uniformly in [0, reorder_delay], so the packet departs behind the
+	   * ones that followed it here. Clamp to the reorder wheel's last
+	   * departure to keep that wheel's ring monotonic (as the queued model
+	   * does for the main wheel). Drop if the side wheel is full. */
+	  nsim_wheel_t *rwp = nsm->reorder_wheel_by_thread[vm->thread_index];
+	  if (PREDICT_TRUE (rwp->cursize < rwp->wheel_size))
+	    {
+	      f64 extra = random_f64 (&nsm->seed) * nsm->reorder_delay;
+	      tx_time = clib_max (tx_time + extra, rwp->last_tx_time);
+	      rwp->last_tx_time = tx_time;
+	      nsim_wheel_enqueue (nsm, rwp, b, bi, tx_time, is_cross_connect);
+	      ctx->n_reordered += 1;
+	    }
+	  else
+	    {
+	      ctx->n_loss += 1;
+	      ctx->drop[0] = bi;
+	      ctx->drop += 1;
+	    }
+	  goto trace;
+	}
+
+      nsim_wheel_enqueue (nsm, wp, b, bi, tx_time, is_cross_connect);
       ctx->n_buffered += 1;
     }
   else
@@ -190,10 +213,9 @@ nsim_inline (vlib_main_t * vm,
 	     int is_cross_connect)
 {
   nsim_main_t *nsm = &nsim_main;
-  u32 n_left_from, *from, drops[VLIB_FRAME_SIZE], reorders[VLIB_FRAME_SIZE];
+  u32 n_left_from, *from, drops[VLIB_FRAME_SIZE];
   nsim_wheel_t *wp = nsm->wheel_by_thread[vm->thread_index];
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
-  u16 reorders_nexts[VLIB_FRAME_SIZE];
   u8 actions[VLIB_FRAME_SIZE];
   nsim_node_ctx_t ctx;
 
@@ -208,9 +230,8 @@ nsim_inline (vlib_main_t * vm,
   ctx.fcm = vnet_feature_get_config_main (nsm->arc_index);
   ctx.n_loss = 0;
   ctx.n_buffered = 0;
+  ctx.n_reordered = 0;
   ctx.drop = drops;
-  ctx.reord = reorders;
-  ctx.reord_nexts = reorders_nexts;
   ctx.action = actions;
   ctx.now = vlib_time_now (vm);
   ctx.expires = ctx.now + nsm->delay;
@@ -276,14 +297,8 @@ slow_path:
       vlib_node_increment_counter (vm, node->node_index, NSIM_ERROR_DROPPED,
 				   n_left_to_drop - ctx.n_loss);
     }
-  if (PREDICT_FALSE (ctx.reord > reorders))
-    {
-      u32 n_reordered = ctx.reord - reorders;
-      vlib_buffer_enqueue_to_next (vm, node, reorders, reorders_nexts,
-				   n_reordered);
-      vlib_node_increment_counter (vm, node->node_index, NSIM_ERROR_REORDERED,
-				   n_reordered);
-    }
+  if (PREDICT_FALSE (ctx.n_reordered))
+    vlib_node_increment_counter (vm, node->node_index, NSIM_ERROR_REORDERED, ctx.n_reordered);
   vlib_node_increment_counter (vm, node->node_index,
 			       NSIM_ERROR_BUFFERED, ctx.n_buffered);
   return frame->n_vectors;
