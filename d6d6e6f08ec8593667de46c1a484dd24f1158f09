@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "34f146fe_24d3b684",
+        "filename": "src/vnet/sfdp/sfdp.api",
+        "patchSetId": 3
+      },
+      "lineNbr": 114,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-07-08T11:28:17Z",
+      "side": 1,
+      "message": "Sure, bumped version in sfdp.api and sfdp_types.api",
+      "parentUuid": "d623bed1_b63311e3",
+      "revId": "d6d6e6f08ec8593667de46c1a484dd24f1158f09",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "381bf02c_11b6a37f",
@@ -31,6 +49,24 @@
       "writtenOn": "2026-07-07T16:43:45Z",
       "side": 1,
       "message": "Could we exercise SFDP_TIMEOUT_DEFINE with a custom timeout in a test or sample plugin? The current tests cover only built-in timeouts, leaving constructor registration, custom index assignment, dumping, and tenant default initialization untested.",
+      "revId": "d6d6e6f08ec8593667de46c1a484dd24f1158f09",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a591bd26_eb87b7f8",
+        "filename": "test/test_sfdp.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 344,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-07-08T11:28:17Z",
+      "side": 1,
+      "message": "Agreed. I\u0027ve added a test in test_sfdp.py that assesses that custom timeouts can be registered/configured properly, and verifies that custom timeouts can be applied to traffic in SFDP services.\n\nThe approach taken was to update the plugin sfdp_services_sample, which is disabled/not loaded by default, and load it within the scope of the test so that a custom timeout is registered only in the test scope.",
+      "parentUuid": "381bf02c_11b6a37f",
       "revId": "d6d6e6f08ec8593667de46c1a484dd24f1158f09",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
