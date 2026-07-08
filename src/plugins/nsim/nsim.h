@@ -46,8 +46,6 @@ typedef struct nsim_node_ctx
   f64 expires;
   f64 now;
   u32 *drop;
-  u32 *reord;
-  u16 *reord_nexts;
   u8 *action;
   u32 n_buffered;
   u32 n_loss;
@@ -98,6 +96,12 @@ typedef struct
 
   /* Per-thread scheduler wheels */
   nsim_wheel_t **wheel_by_thread;
+  /* Per-thread side wheels for late-reordered packets. Only allocated when
+   * reorder_fraction > 0. A reorder-marked packet is enqueued here with an
+   * extra (randomized) delay so it departs behind the packets that followed it
+   * on the main wheel, i.e. it arrives late -- the impairment that trips a
+   * sender's dupack fast-retransmit. Drained by the same input node. */
+  nsim_wheel_t **reorder_wheel_by_thread;
 
   /* Config parameters */
   f64 delay;
@@ -108,6 +112,11 @@ typedef struct
   /* Reorder is an impairment orthogonal to the loss model; it composes with any
    * of them. Fraction of packets delayed out of order. */
   f64 reorder_fraction;
+  /* Max extra delay (seconds) applied to a reordered packet, on top of the base
+   * delay. The actual displacement is drawn uniformly in [0, reorder_delay] per
+   * packet, so most reorders are small (harmless) and a tail slips far enough to
+   * span the dupack threshold -- the realistic wifi distribution. */
+  f64 reorder_delay;
   /* Bottleneck buffer, in seconds of bandwidth. When non-zero, nsim models a
    * rate-limited server with a FIFO buffer of this depth (queued/bufferbloat
    * model) instead of the default fixed-delay line. */
