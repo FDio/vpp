@@ -3,7 +3,7 @@
  * Copyright (c) 2018 Cisco and/or its affiliates.
  */
 
-#include <vnet/devices/pipe/pipe.h>
+#include <pipe/pipe.h>
 
 #include <vppinfra/sparse_vec.h>
 
