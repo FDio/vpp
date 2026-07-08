@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "c22a6ef4_79d4dcb2",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 15
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3342
+      },
+      "writtenOn": "2026-07-08T09:58:25Z",
+      "side": 1,
+      "message": "CL is ready for inspection",
+      "revId": "b3a02c176563d27e66bb1de27c3a74fca66b1381",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
