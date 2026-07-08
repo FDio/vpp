@@ -16,6 +16,94 @@
       "message": "recheck",
       "revId": "2c91346ff0a0dc73258ffe29c5fda2cac0a486d6",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "101c1ced_521c453b",
+        "filename": "src/vnet/flow/flow.c",
+        "patchSetId": 34
+      },
+      "lineNbr": 247,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-07-08T09:31:42Z",
+      "side": 1,
+      "message": "Should duplicate flow indices be rejected during pre-validation? Since state changes happen only inside the backend callback, the same index can pass this loop multiple times. On enable this may create multiple hardware rules while `driver_data` can retain only one handle; on disable it may attempt to destroy the same rule more than once.",
+      "revId": "2c91346ff0a0dc73258ffe29c5fda2cac0a486d6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3d2b03a3_ef780f2a",
+        "filename": "src/vnet/flow/flow.c",
+        "patchSetId": 34
+      },
+      "lineNbr": 257,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-07-08T09:31:42Z",
+      "side": 1,
+      "message": "Should we validate that every flow is compatible with the selected template before invoking the backend? Currently an arbitrary flow type and action layout can be passed with any template. A driver using the template\u0027s pattern/action layout may then interpret the flow union incorrectly or program unintended actions. At minimum, I think the flow type and action layout should be checked against the template.",
+      "revId": "2c91346ff0a0dc73258ffe29c5fda2cac0a486d6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "955e9b3f_5dc54c8b",
+        "filename": "src/vnet/flow/flow.c",
+        "patchSetId": 34
+      },
+      "lineNbr": 272,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-07-08T09:31:42Z",
+      "side": 1,
+      "message": "As discussed offline, the contract is that the backend returns an error if any operation in the batch fails. Successfully processed flows must still update `driver_data`: set `hw_if_index` on enable and clear it on disable. Since a batch may be partially completed, callers requiring per-flow results must iterate over the requested flows and inspect their state. Therefore, no additional core postcondition loop is needed here.",
+      "parentUuid": "241a87a7_2cdf64a6",
+      "revId": "2c91346ff0a0dc73258ffe29c5fda2cac0a486d6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2e04557d_a7d92d53",
+        "filename": "src/vnet/flow/flow_api.c",
+        "patchSetId": 34
+      },
+      "lineNbr": 496,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-07-08T09:31:42Z",
+      "side": 1,
+      "message": "This still appears unfixed in patchset 34: `count \u003d\u003d 0` reaches `vec_validate(flow_indices, count - 1)`, so the index underflows to `UINT_MAX`. Please reject a zero count before this call.",
+      "parentUuid": "d93e6d21_c132898c",
+      "revId": "2c91346ff0a0dc73258ffe29c5fda2cac0a486d6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a7d1d9cc_18e67c17",
+        "filename": "src/vnet/flow/flow_api.c",
+        "patchSetId": 34
+      },
+      "lineNbr": 524,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-07-08T09:31:42Z",
+      "side": 1,
+      "message": "This also still appears unfixed in patchset 34. Please reject `count \u003d\u003d 0` before `vec_validate(flow_indices, count - 1)`.",
+      "parentUuid": "69c194a0_0af9410c",
+      "revId": "2c91346ff0a0dc73258ffe29c5fda2cac0a486d6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
