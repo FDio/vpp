@@ -687,7 +687,17 @@ tcp_cc_exit_recovery (tcp_connection_t *tc)
 
   hole = scoreboard_first_hole (&tc->sack_sb);
   if (hole && seq_leq (tc->sack_sb.high_sacked, hole->end) && !tc->sack_sb.lost_bytes)
-    scoreboard_clear (&tc->sack_sb);
+    {
+      /* Draining the residual hole must not discard the learned reordering
+       * estimate: it is a property of the path, not of this episode. Resetting
+       * it here would drop the threshold back to the dupack floor on every
+       * clean recovery exit and re-arm the spurious fast recoveries that the
+       * estimate exists to prevent. Only connection init and rto (over-estimate
+       * evidence) reset it. */
+      u32 reorder = tc->sack_sb.reorder;
+      scoreboard_clear (&tc->sack_sb);
+      tc->sack_sb.reorder = reorder;
+    }
 
   if (tcp_in_fastrecovery (tc) && !is_spurious)
     tcp_cc_recovered (tc);

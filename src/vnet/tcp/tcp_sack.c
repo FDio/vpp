@@ -77,22 +77,30 @@ scoreboard_insert_hole (sack_scoreboard_t * sb, u32 prev_index,
   return hole;
 }
 
-always_inline void
-scoreboard_update_sacked (sack_scoreboard_t * sb, u32 start, u32 end,
-			  u8 has_rxt, u16 snd_mss)
+typedef enum
 {
-  if (!has_rxt)
+  TCP_SB_SACK_OOO,
+  TCP_SB_SACK_RXT,
+  TCP_SB_SACK_RXT_RESCUED,
+} tcp_sb_sack_mode_e;
+
+always_inline void
+scoreboard_update_sacked (sack_scoreboard_t *sb, u32 start, u32 end, tcp_sb_sack_mode_e mode,
+			  u16 snd_mss)
+{
+  /* A newly sacked segment below the sack frontier arrived out of order. Use it to grow the reorder
+   * estimate when its late arrival is unambiguous reordering. Segments below high_rxt (or after
+   * rescue has fired) are excluded because they're ambiguous */
+  if (seq_lt (start, sb->high_sacked) &&
+      (mode == TCP_SB_SACK_OOO || (mode == TCP_SB_SACK_RXT && seq_geq (start, sb->high_rxt))))
     {
-      /* Sequence was not retransmitted but it was sacked. Estimate reorder
-       * only if not in congestion recovery */
-      if (seq_lt (start, sb->high_sacked))
-	{
-	  u32 reord = (sb->high_sacked - start + snd_mss - 1) / snd_mss;
-	  reord = clib_min (reord, TCP_MAX_SACK_REORDER);
-	  sb->reorder = clib_max (sb->reorder, reord);
-	}
-      return;
+      u32 reord = (sb->high_sacked - start + snd_mss - 1) / snd_mss;
+      reord = clib_min (reord, TCP_MAX_SACK_REORDER);
+      sb->reorder = clib_max (sb->reorder, reord);
     }
+
+  if (mode == TCP_SB_SACK_OOO)
+    return;
 
   if (seq_geq (start, sb->high_rxt))
     return;
@@ -375,7 +383,7 @@ tcp_rcv_sacks (tcp_connection_t * tc, u32 ack)
   sack_scoreboard_t *sb = &tc->sack_sb;
   sack_block_t *blk, *rcv_sacks;
   u32 blk_index = 0, i, j, high_sacked;
-  u8 has_rxt;
+  tcp_sb_sack_mode_e mode;
 
   sb->last_sacked_bytes = 0;
   sb->last_bytes_delivered = 0;
@@ -385,7 +393,9 @@ tcp_rcv_sacks (tcp_connection_t * tc, u32 ack)
       && sb->head == TCP_INVALID_SACK_HOLE_INDEX)
     return;
 
-  has_rxt = tcp_in_cong_recovery (tc);
+  mode = !tcp_in_cong_recovery (tc)	       ? TCP_SB_SACK_OOO :
+	 seq_geq (sb->rescue_rxt, tc->snd_una) ? TCP_SB_SACK_RXT_RESCUED :
+						 TCP_SB_SACK_RXT;
 
   /* Remove invalid blocks */
   blk = tc->rcv_opts.sacks;
@@ -523,8 +533,7 @@ tcp_rcv_sacks (tcp_connection_t * tc, u32 ack)
 		      sb->is_reneging = 0;
 		    }
 		}
-	      scoreboard_update_sacked (sb, hole->start, hole->end,
-					has_rxt, tc->snd_mss);
+	      scoreboard_update_sacked (sb, hole->start, hole->end, mode, tc->snd_mss);
 	      scoreboard_remove_hole (sb, hole);
 	      hole = next_hole;
 	    }
@@ -533,8 +542,7 @@ tcp_rcv_sacks (tcp_connection_t * tc, u32 ack)
 	    {
 	      if (seq_gt (blk->end, hole->start))
 		{
-		  scoreboard_update_sacked (sb, hole->start, blk->end,
-					    has_rxt, tc->snd_mss);
+		  scoreboard_update_sacked (sb, hole->start, blk->end, mode, tc->snd_mss);
 		  hole->start = blk->end;
 		}
 	      blk_index++;
@@ -553,16 +561,14 @@ tcp_rcv_sacks (tcp_connection_t * tc, u32 ack)
 	      hole->end = blk->start;
 	      next_hole->is_lost = hole->is_lost;
 
-	      scoreboard_update_sacked (sb, blk->start, blk->end,
-					has_rxt, tc->snd_mss);
+	      scoreboard_update_sacked (sb, blk->start, blk->end, mode, tc->snd_mss);
 
 	      blk_index++;
 	      ASSERT (hole->next == scoreboard_hole_index (sb, next_hole));
 	    }
 	  else if (seq_lt (blk->start, hole->end))
 	    {
-	      scoreboard_update_sacked (sb, blk->start, hole->end,
-					has_rxt, tc->snd_mss);
+	      scoreboard_update_sacked (sb, blk->start, hole->end, mode, tc->snd_mss);
 	      hole->end = blk->start;
 	    }
 	  hole = scoreboard_next_hole (sb, hole);
