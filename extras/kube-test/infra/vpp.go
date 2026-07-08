@@ -9,6 +9,8 @@ type VppInstance struct {
 	Pod *Pod
 }
 
+const vppInitTimeout = 20 * time.Second
+
 const VppStartupConf string = `"unix {
   log /tmp/vpp.log
   full-coredump
@@ -75,7 +77,7 @@ create interface memif socket-id 1 id 0 slave buffer-size 4096 rx-queues 1 tx-qu
 set int ip addr memif1/0 3.3.3.3/32
 ip neighbor memif1/0 127.0.0.1 02:fe:e6:5b:3a:44
 set int st memif1/0 up
-create tap id 2 host-ip4-addr  $(ip addr show dev eth0 | grep 'inet '| awk '{print $2}') host-if-name eth8 tun
+create tap id 2 host-ip4-addr  $(ip addr show dev eth0 | grep 'inet '| awk '{print $2}') host-if-name eth8 host-mtu-size $(cat /sys/class/net/eth0/mtu) tun
 ip table add 1
 set interface ip table tun2 1
 set in ip address tun2 $(ip addr show dev eth0 | grep 'inet '| awk '{print $2}')
@@ -108,7 +110,7 @@ func (pod *Pod) InitVpp() *VppInstance {
 	vpp.Pod = pod
 	pod.Vpp = &vpp
 
-	ctx, cancel := context.WithTimeout(pod.suite.MainContext, time.Second*10)
+	ctx, cancel := context.WithTimeout(pod.suite.MainContext, vppInitTimeout)
 	defer cancel()
 
 	o, err := pod.Exec(ctx, []string{"/bin/bash", "-c", "echo " + VppCliConf + " > /vppcliconf.conf"})
@@ -142,7 +144,7 @@ func (pod *Pod) InitMemifVpp() *VppInstance {
 	vpp := VppInstance{}
 	vpp.Pod = pod
 	pod.Vpp = &vpp
-	ctx, cancel := context.WithTimeout(pod.suite.MainContext, time.Second*10)
+	ctx, cancel := context.WithTimeout(pod.suite.MainContext, vppInitTimeout)
 	defer cancel()
 
 	o, err := pod.Exec(ctx, []string{"/bin/bash", "-c", "echo " + VppMemifConf + " > /vppcliconf.conf"})
