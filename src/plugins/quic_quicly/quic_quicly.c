@@ -1633,6 +1633,7 @@ quic_quicly_format_connection_stats (u8 *s, va_list *args)
 	      quicly_stats.delivery_rate.stdev);
   s = format (s, " rx frames: %U", quic_quicly_format_rx_frame_stats, &quicly_stats);
   s = format (s, " tx frames: %U", quic_quicly_format_tx_frame_stats, &quicly_stats);
+  s = format (s, " alpn-selected: %U\n", format_tls_alpn_proto, ctx->alpn_selected);
   return s;
 }
 

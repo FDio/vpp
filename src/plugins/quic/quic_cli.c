@@ -196,6 +196,25 @@ format_quic_half_open (u8 *s, va_list *args)
 }
 
 u8 *
+format_quic_lsitener_alpn_protos (u8 *s, va_list *args)
+{
+  quic_ctx_t *ctx = va_arg (*args, quic_ctx_t *);
+
+  if (ctx->alpn_protos[0] == TLS_ALPN_PROTO_NONE)
+    return s;
+
+  s = format (s, " alpn-protos: %U", format_tls_alpn_proto, ctx->alpn_protos[0]);
+  if (ctx->alpn_protos[1])
+    s = format (s, " %U", format_tls_alpn_proto, ctx->alpn_protos[1]);
+  if (ctx->alpn_protos[2])
+    s = format (s, " %U", format_tls_alpn_proto, ctx->alpn_protos[2]);
+  if (ctx->alpn_protos[3])
+    s = format (s, " %U", format_tls_alpn_proto, ctx->alpn_protos[3]);
+  s = format (s, "\n");
+  return s;
+}
+
+u8 *
 format_quic_listener (u8 *s, va_list *args)
 {
   u32 tci = va_arg (*args, u32);
@@ -207,7 +226,11 @@ format_quic_listener (u8 *s, va_list *args)
     {
       s = format (s, "%-" SESSION_CLI_ID_LEN "U", format_quic_ctx_listener, ctx);
       if (fmt.level)
-	s = format (s, "%-" SESSION_CLI_STATE_LEN "U", format_quic_ctx_state, ctx);
+	{
+	  s = format (s, "%-" SESSION_CLI_STATE_LEN "U", format_quic_ctx_state, ctx);
+	  if (fmt.level > 1)
+	    s = format (s, "\n%U", format_quic_lsitener_alpn_protos, ctx);
+	}
       return s;
     }
 
@@ -220,7 +243,7 @@ format_quic_listener (u8 *s, va_list *args)
       s = format (s, "%U", format_quic_ctx_state, ctx);
     }
   if (fmt.transport_detail)
-    s = format (s, "\n");
+    s = format (s, "\n%U", format_quic_lsitener_alpn_protos, ctx);
   return s;
 }
 

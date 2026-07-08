@@ -1125,6 +1125,35 @@ transport_connection_reschedule (transport_connection_t * tc)
     }
 }
 
+const char *tls_verify_cfg_str[] = {
+#define _(sym, str) str,
+  foreach_tls_verify_cfg
+#undef _
+};
+
+u8 *
+format_tls_verify_cfg (u8 *s, va_list *args)
+{
+  tls_verify_cfg_t verify_cfg = va_arg (*args, int);
+  int i, last = -1;
+
+  for (i = 0; i < TLS_VERIFY_CFG_N_BITS; i++)
+    {
+      if (verify_cfg & (1 << i))
+	last = i;
+    }
+
+  for (i = 0; i < last; i++)
+    {
+      if (verify_cfg & (1 << i))
+	s = format (s, "%s | ", tls_verify_cfg_str[i]);
+    }
+  if (last >= 0)
+    s = format (s, "%s", tls_verify_cfg_str[i]);
+
+  return s;
+}
+
 tls_alpn_proto_t
 tls_alpn_proto_by_str (tls_alpn_proto_id_t *alpn_id)
 {

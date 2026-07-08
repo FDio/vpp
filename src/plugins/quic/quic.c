@@ -555,7 +555,8 @@ quic_udp_session_accepted_callback (session_t * udp_session)
   ctx->c_c_index = ctx_index;
   ctx->c_s_index = QUIC_SESSION_INVALID;
   ctx->udp_session_handle = session_handle (udp_session);
-  QUIC_DBG (2, "ACCEPTED UDP 0x%lx", ctx->udp_session_handle);
+  QUIC_DBG (2, "ACCEPTED UDP 0x%lx, listener %u", ctx->udp_session_handle,
+	    udp_listen_session->opaque);
   ctx->listener_ctx_id = udp_listen_session->opaque;
   lctx = quic_ctx_get (udp_listen_session->opaque,
 		       udp_listen_session->thread_index);
