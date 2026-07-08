@@ -915,21 +915,6 @@ list(APPEND VNET_HEADERS
 endif()
 
 ##############################################################################
-# tap interface (with virtio backend)
-##############################################################################
-
-list(APPEND VNET_SOURCES
-  devices/pipe/pipe_api.c
-  devices/pipe/pipe.c
-)
-
-list(APPEND VNET_HEADERS
-  devices/pipe/pipe.h
-)
-
-list(APPEND VNET_API_FILES devices/pipe/pipe.api)
-
-##############################################################################
 # session managmeent
 ##############################################################################
 
