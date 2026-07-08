@@ -37,6 +37,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "ca500468_cc4b3ba8",
+        "filename": "src/vnet/flow/flow.c",
+        "patchSetId": 34
+      },
+      "lineNbr": 247,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2026-07-08T14:36:30Z",
+      "side": 1,
+      "message": "not sure we want to do that as you\u0027ll need potentially an atomic state per flow (to prevent also multi-workers from acting on the same flow). the simpliest is to let the user be sure of what it is doing.",
+      "parentUuid": "101c1ced_521c453b",
+      "revId": "2c91346ff0a0dc73258ffe29c5fda2cac0a486d6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "3d2b03a3_ef780f2a",
         "filename": "src/vnet/flow/flow.c",
         "patchSetId": 34
@@ -48,6 +66,24 @@
       "writtenOn": "2026-07-08T09:31:42Z",
       "side": 1,
       "message": "Should we validate that every flow is compatible with the selected template before invoking the backend? Currently an arbitrary flow type and action layout can be passed with any template. A driver using the template\u0027s pattern/action layout may then interpret the flow union incorrectly or program unintended actions. At minimum, I think the flow type and action layout should be checked against the template.",
+      "revId": "2c91346ff0a0dc73258ffe29c5fda2cac0a486d6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c124279d_b735d946",
+        "filename": "src/vnet/flow/flow.c",
+        "patchSetId": 34
+      },
+      "lineNbr": 257,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2026-07-08T14:36:30Z",
+      "side": 1,
+      "message": "it should be done at the backend level, when preparing the memory layout to push flow rules to the hardware we can detect an inconsistent flow compared to its template. not sure we want to do that in vnet flow as is purely a descriptive layer of the flow rules.",
+      "parentUuid": "3d2b03a3_ef780f2a",
       "revId": "2c91346ff0a0dc73258ffe29c5fda2cac0a486d6",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -88,6 +124,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "f270d911_64709442",
+        "filename": "src/vnet/flow/flow_api.c",
+        "patchSetId": 34
+      },
+      "lineNbr": 496,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2026-07-08T14:36:30Z",
+      "side": 1,
+      "message": "sorry I fixed it locally but forgot to push the new patch ...",
+      "parentUuid": "2e04557d_a7d92d53",
+      "revId": "2c91346ff0a0dc73258ffe29c5fda2cac0a486d6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "a7d1d9cc_18e67c17",
@@ -102,6 +156,24 @@
       "side": 1,
       "message": "This also still appears unfixed in patchset 34. Please reject `count \u003d\u003d 0` before `vec_validate(flow_indices, count - 1)`.",
       "parentUuid": "69c194a0_0af9410c",
+      "revId": "2c91346ff0a0dc73258ffe29c5fda2cac0a486d6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b0967c2d_c4b38f26",
+        "filename": "src/vnet/flow/flow_api.c",
+        "patchSetId": 34
+      },
+      "lineNbr": 524,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2026-07-08T14:36:30Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "a7d1d9cc_18e67c17",
       "revId": "2c91346ff0a0dc73258ffe29c5fda2cac0a486d6",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
