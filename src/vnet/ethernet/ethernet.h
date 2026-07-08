@@ -560,4 +560,14 @@ void ethernet_input_init (vlib_main_t * vm, ethernet_main_t * em);
 
 extern vlib_node_registration_t ethernet_input_node;
 
+// Subinterface configuration functions
+
+typedef subint_config_t *(*ethernet_subint_config_fn_t) (vnet_main_t *vnm, u32 sw_if_index,
+							 u32 *match_flags);
+
+void ethernet_register_subint_config_fn (vnet_sw_interface_type_t type,
+					 ethernet_subint_config_fn_t fn);
+
+subint_config_t *ethernet_subint_config_get (vnet_main_t *vnm, vnet_sw_interface_type_t type,
+					     u32 sw_if_index, u32 *match_flags);
 #endif /* included_ethernet_h */
