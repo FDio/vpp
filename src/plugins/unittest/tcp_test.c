@@ -1850,6 +1850,92 @@ tcp_test_rto_reduce_once_e2e (vlib_main_t *vm, unformat_input_t *input)
       goto cleanup;
     }
 
+  /*
+   * Spurious-retransmit detection predicate (RFC 3522 Eifel),
+   * tcp_cc_is_spurious_retransmit: decides, on a cumulative ack, whether the window reduction
+   * was spurious (a reordered/delayed segment, not real loss) and should be undone.
+   */
+  {
+    tcp_connection_t _stc, *stc = &_stc;
+    u32 mss = 1460;
+
+#define ARM_SPURIOUS()                                                                             \
+  do                                                                                               \
+    {                                                                                              \
+      clib_memset (stc, 0, sizeof (*stc));                                                         \
+      stc->snd_mss = mss;                                                                          \
+      stc->flags |= TCP_CONN_FAST_RECOVERY;                                                        \
+      stc->bytes_acked = 2 * mss;                                                                  \
+      stc->snd_rxt_ts = 1000;                                                                      \
+      stc->sack_sb.lost_bytes = 0;                                                                 \
+      stc->rcv_opts.flags = TCP_OPTS_FLAG_TSTAMP;                                                  \
+      stc->rcv_opts.tsecr = stc->snd_rxt_ts - 1;                                                   \
+    }                                                                                              \
+  while (0)
+
+    /* Base: all conditions met -> spurious. */
+    ARM_SPURIOUS ();
+    if (!TCP_TEST_I ((tcp_cc_is_spurious_retransmit (stc)),
+		     "eifel: spurious when cumulative-acked, in recovery, tsecr < "
+		     "snd_rxt_ts, no loss"))
+      {
+	rv = 1;
+	goto cleanup;
+      }
+
+    /* Also valid for rto recovery (TCP_CONN_RECOVERY), not just fast recovery. */
+    ARM_SPURIOUS ();
+    stc->flags = TCP_CONN_RECOVERY;
+    if (!TCP_TEST_I ((tcp_cc_is_spurious_retransmit (stc)), "eifel: also fires for rto recovery"))
+      {
+	rv = 1;
+	goto cleanup;
+      }
+
+    /* Negative: no retransmit stamped (snd_rxt_ts == 0), nothing to undo. */
+    ARM_SPURIOUS ();
+    stc->snd_rxt_ts = 0;
+    if (!TCP_TEST_I ((!tcp_cc_is_spurious_retransmit (stc)),
+		     "eifel: not spurious without a retransmit timestamp"))
+      {
+	rv = 1;
+	goto cleanup;
+      }
+
+    /* Negative: loss still outstanding this episode -> real congestion, keep the
+     * reduction (guards the mixed delayed-head + later-real-drop case). */
+    ARM_SPURIOUS ();
+    stc->sack_sb.lost_bytes = mss;
+    if (!TCP_TEST_I ((!tcp_cc_is_spurious_retransmit (stc)),
+		     "eifel: not spurious while loss is outstanding"))
+      {
+	rv = 1;
+	goto cleanup;
+      }
+
+    /* Negative: echoed tsecr not older than snd_rxt_ts (ack post-dates the
+     * retransmit -> the retransmit was needed). */
+    ARM_SPURIOUS ();
+    stc->rcv_opts.tsecr = stc->snd_rxt_ts;
+    if (!TCP_TEST_I ((!tcp_cc_is_spurious_retransmit (stc)),
+		     "eifel: not spurious when tsecr >= snd_rxt_ts"))
+      {
+	rv = 1;
+	goto cleanup;
+      }
+
+    /* Negative: no timestamp option -> Eifel not applicable. */
+    ARM_SPURIOUS ();
+    stc->rcv_opts.flags = 0;
+    if (!TCP_TEST_I ((!tcp_cc_is_spurious_retransmit (stc)),
+		     "eifel: not spurious without the timestamp option"))
+      {
+	rv = 1;
+	goto cleanup;
+      }
+#undef ARM_SPURIOUS
+  }
+
 cleanup:
   if (accepted_session_index != ~0)
     {
