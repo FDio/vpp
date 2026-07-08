@@ -1217,3 +1217,34 @@ ethernet_config (vlib_main_t * vm, unformat_input_t * input)
 }
 
 VLIB_CONFIG_FUNCTION (ethernet_config, "ethernet");
+
+/*----------------------------------------------------------------------------*/
+/* Subinterface configuration functions                                       */
+/*----------------------------------------------------------------------------*/
+/* Indexed by vnet_sw_interface_type_t; size must match enum count. */
+#define ETHERNET_SUBINT_CONFIG_FNS_COUNT 4
+
+static ethernet_subint_config_fn_t subint_config_fns[ETHERNET_SUBINT_CONFIG_FNS_COUNT];
+
+void
+ethernet_register_subint_config_fn (vnet_sw_interface_type_t type, ethernet_subint_config_fn_t fn)
+{
+  if (type >= ETHERNET_SUBINT_CONFIG_FNS_COUNT)
+    return;
+  subint_config_fns[type] = fn;
+}
+
+subint_config_t *
+ethernet_subint_config_get (vnet_main_t *vnm, vnet_sw_interface_type_t type, u32 sw_if_index,
+			    u32 *match_flags)
+{
+  if (type >= ETHERNET_SUBINT_CONFIG_FNS_COUNT)
+    return 0;
+
+  ethernet_subint_config_fn_t fn;
+  fn = subint_config_fns[type];
+  if (!fn)
+    return 0;
+
+  return fn (vnm, sw_if_index, match_flags);
+}
