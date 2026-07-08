@@ -78,21 +78,31 @@ scoreboard_insert_hole (sack_scoreboard_t * sb, u32 prev_index,
 }
 
 always_inline void
-scoreboard_update_sacked (sack_scoreboard_t * sb, u32 start, u32 end,
-			  u8 has_rxt, u16 snd_mss)
+scoreboard_update_sacked (sack_scoreboard_t *sb, u32 start, u32 end, u8 has_rxt, u8 has_rescued,
+			  u16 snd_mss)
 {
-  if (!has_rxt)
+  /* A newly sacked segment below the sack frontier arrived out of order. Use it
+   * to grow the reorder estimate, but only when its late arrival is unambiguous
+   * reordering rather than a sacked retransmit: either we are not in recovery,
+   * or the segment sits at/above high_rxt so it was never retransmitted. This
+   * lets the estimate keep adapting on a reordering path during recovery,
+   * instead of staying pinned at the dupack floor and re-entering spurious fast
+   * recoveries. Segments below high_rxt are excluded: a sack there could be the
+   * retransmit arriving rather than the original delayed, which we cannot tell
+   * apart without per-segment transmit timing. A rescue retransmit (RFC 6675)
+   * re-sends the top of the last hole WITHOUT advancing high_rxt, so once one
+   * has fired this episode the at/above-high_rxt range is no longer proof of a
+   * never-retransmitted segment either; stop trusting it. */
+  if (seq_lt (start, sb->high_sacked) &&
+      (!has_rxt || (seq_geq (start, sb->high_rxt) && !has_rescued)))
     {
-      /* Sequence was not retransmitted but it was sacked. Estimate reorder
-       * only if not in congestion recovery */
-      if (seq_lt (start, sb->high_sacked))
-	{
-	  u32 reord = (sb->high_sacked - start + snd_mss - 1) / snd_mss;
-	  reord = clib_min (reord, TCP_MAX_SACK_REORDER);
-	  sb->reorder = clib_max (sb->reorder, reord);
-	}
-      return;
+      u32 reord = (sb->high_sacked - start + snd_mss - 1) / snd_mss;
+      reord = clib_min (reord, TCP_MAX_SACK_REORDER);
+      sb->reorder = clib_max (sb->reorder, reord);
     }
+
+  if (!has_rxt)
+    return;
 
   if (seq_geq (start, sb->high_rxt))
     return;
@@ -375,7 +385,7 @@ tcp_rcv_sacks (tcp_connection_t * tc, u32 ack)
   sack_scoreboard_t *sb = &tc->sack_sb;
   sack_block_t *blk, *rcv_sacks;
   u32 blk_index = 0, i, j, high_sacked;
-  u8 has_rxt;
+  u8 has_rxt, has_rescued;
 
   sb->last_sacked_bytes = 0;
   sb->last_bytes_delivered = 0;
@@ -386,6 +396,11 @@ tcp_rcv_sacks (tcp_connection_t * tc, u32 ack)
     return;
 
   has_rxt = tcp_in_cong_recovery (tc);
+  /* A rescue retransmit bumps rescue_rxt from its scoreboard_init_rxt sentinel
+   * (snd_una - 1) up to snd_congestion (>= snd_una). Use that as a per-episode
+   * "a rescue fired" flag: its re-sent range sits at/above high_rxt and would
+   * otherwise be mistaken for never-retransmitted reordering. */
+  has_rescued = has_rxt && seq_geq (sb->rescue_rxt, tc->snd_una);
 
   /* Remove invalid blocks */
   blk = tc->rcv_opts.sacks;
@@ -523,8 +538,8 @@ tcp_rcv_sacks (tcp_connection_t * tc, u32 ack)
 		      sb->is_reneging = 0;
 		    }
 		}
-	      scoreboard_update_sacked (sb, hole->start, hole->end,
-					has_rxt, tc->snd_mss);
+	      scoreboard_update_sacked (sb, hole->start, hole->end, has_rxt, has_rescued,
+					tc->snd_mss);
 	      scoreboard_remove_hole (sb, hole);
 	      hole = next_hole;
 	    }
@@ -533,8 +548,8 @@ tcp_rcv_sacks (tcp_connection_t * tc, u32 ack)
 	    {
 	      if (seq_gt (blk->end, hole->start))
 		{
-		  scoreboard_update_sacked (sb, hole->start, blk->end,
-					    has_rxt, tc->snd_mss);
+		  scoreboard_update_sacked (sb, hole->start, blk->end, has_rxt, has_rescued,
+					    tc->snd_mss);
 		  hole->start = blk->end;
 		}
 	      blk_index++;
@@ -553,16 +568,16 @@ tcp_rcv_sacks (tcp_connection_t * tc, u32 ack)
 	      hole->end = blk->start;
 	      next_hole->is_lost = hole->is_lost;
 
-	      scoreboard_update_sacked (sb, blk->start, blk->end,
-					has_rxt, tc->snd_mss);
+	      scoreboard_update_sacked (sb, blk->start, blk->end, has_rxt, has_rescued,
+					tc->snd_mss);
 
 	      blk_index++;
 	      ASSERT (hole->next == scoreboard_hole_index (sb, next_hole));
 	    }
 	  else if (seq_lt (blk->start, hole->end))
 	    {
-	      scoreboard_update_sacked (sb, blk->start, hole->end,
-					has_rxt, tc->snd_mss);
+	      scoreboard_update_sacked (sb, blk->start, hole->end, has_rxt, has_rescued,
+					tc->snd_mss);
 	      hole->end = blk->start;
 	    }
 	  hole = scoreboard_next_hole (sb, hole);
