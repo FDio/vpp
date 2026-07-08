@@ -116,9 +116,9 @@ F:	src/vnet/dev/
 
 VNET Device Drivers
 I:	devices
-Y:	src/vnet/devices/pipe/FEATURE.yaml
+Y:	src/plugins/pipe/FEATURE.yaml
 M:	Damjan Marion <damarion@cisco.com>
-F:	src/vnet/devices/
+F:	src/plugins/pipe/
 
 AF PACKET Drivers
 I:	af_packet
