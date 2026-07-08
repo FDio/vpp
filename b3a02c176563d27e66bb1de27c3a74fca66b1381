@@ -33,6 +33,40 @@
       "message": "Tagging FIB/ADJ/BFD modules maintainers from MAINTAINERS file",
       "revId": "b3a02c176563d27e66bb1de27c3a74fca66b1381",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4c248a7f_d52db65d",
+        "filename": "src/vnet/bfd/bfd_vnet_bridge.c",
+        "patchSetId": 15
+      },
+      "lineNbr": 15,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-07-08T13:00:07Z",
+      "side": 1,
+      "message": "What requirement calls for a dynamic event dispatcher here? Once BFD is a plugin, it can still call public VNET APIs directly—for example, an ADJ API for single-hop events and a FIB API for multi-hop events—using the same public snapshot type. Since these are currently the only two fixed consumers, direct calls would avoid listener lifecycle, synchronization, and registration machinery while still removing the `bfd_session_t` dependency. If future dynamic consumers or fan-out are expected, could that requirement be documented?",
+      "revId": "b3a02c176563d27e66bb1de27c3a74fca66b1381",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "af4138a0_72236332",
+        "filename": "src/vnet/bfd/bfd_vnet_bridge.h",
+        "patchSetId": 15
+      },
+      "lineNbr": 11,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-07-08T13:00:07Z",
+      "side": 1,
+      "message": "Could we use ‘notifier’ or ‘event dispatcher’ instead of ‘bridge’ in this API’s names? In VPP, ‘bridge’ strongly suggests L2 bridging or bridge domains, whereas this component dispatches BFD notifications between in-process modules. A name such as `bfd_vnet_notifier` would make the role clearer.",
+      "revId": "b3a02c176563d27e66bb1de27c3a74fca66b1381",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
