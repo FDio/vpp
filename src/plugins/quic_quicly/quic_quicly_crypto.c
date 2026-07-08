@@ -650,11 +650,11 @@ quic_quicly_crypto_context_init_data (quic_quicly_crypto_ctx_t *crctx, quic_ctx_
       /* Enable mutual TLS: server will request client certificates */
       ptls_ctx->require_client_authentication = (crctx->verify_cfg & TLS_VERIFY_F_PEER_CERT) != 0;
     }
-  ptls_ctx->ticket_lifetime = 86400;
+  ptls_ctx->ticket_lifetime = 0;
   ptls_ctx->max_early_data_size = 8192;
   ptls_ctx->hkdf_label_prefix__obsolete = NULL;
   ptls_ctx->require_dhe_on_psk = 1;
-  ptls_ctx->encrypt_ticket = &qqm->session_cache.super;
+  ptls_ctx->encrypt_ticket = NULL;
   clib_memcpy (quicly_ctx, &quicly_spec_context, sizeof (quicly_context_t));
 
   quicly_ctx->max_packets_per_key = qm->max_packets_per_key;
@@ -1148,51 +1148,6 @@ quic_quicly_crypto_aead_aes256gcm_setup_crypto (ptls_aead_context_t *ctx,
 {
   return quic_quicly_crypto_aead_setup_crypto (ctx, is_enc, key, iv,
 					       EVP_aes_256_gcm ());
-}
-
-int
-quic_quicly_encrypt_ticket_cb (ptls_encrypt_ticket_t *_self, ptls_t *tls,
-			       int is_encrypt, ptls_buffer_t *dst,
-			       ptls_iovec_t src)
-{
-  quic_quicly_session_cache_t *self = (void *) _self;
-  int ret;
-
-  if (is_encrypt)
-    {
-
-      /* replace the cached entry along with a newly generated session id */
-      if (self->data.base)
-	clib_mem_free (self->data.base);
-      if ((self->data.base = clib_mem_alloc (src.len)) == NULL)
-	return PTLS_ERROR_NO_MEMORY;
-
-      ptls_get_context (tls)->random_bytes (self->id, sizeof (self->id));
-      clib_memcpy (self->data.base, src.base, src.len);
-      self->data.len = src.len;
-
-      /* store the session id in buffer */
-      if ((ret = ptls_buffer_reserve (dst, sizeof (self->id))) != 0)
-	return ret;
-      clib_memcpy (dst->base + dst->off, self->id, sizeof (self->id));
-      dst->off += sizeof (self->id);
-    }
-  else
-    {
-      /* check if session id is the one stored in cache */
-      if (src.len != sizeof (self->id))
-	return PTLS_ERROR_SESSION_NOT_FOUND;
-      if (clib_memcmp (self->id, src.base, sizeof (self->id)) != 0)
-	return PTLS_ERROR_SESSION_NOT_FOUND;
-
-      /* return the cached value */
-      if ((ret = ptls_buffer_reserve (dst, self->data.len)) != 0)
-	return ret;
-      clib_memcpy (dst->base + dst->off, self->data.base, self->data.len);
-      dst->off += self->data.len;
-    }
-
-  return 0;
 }
 
 ptls_cipher_algorithm_t quic_quicly_crypto_aes128ctr = {

@@ -109,10 +109,6 @@ void quic_quicly_crypto_init (quic_quicly_main_t *qqm);
 void quic_quicly_crypto_context_list (vlib_main_t *vm);
 quic_quicly_crypto_ctx_t *quic_quicly_crypto_context_get_or_alloc (quic_ctx_t *ctx);
 void quic_quicly_crypto_context_free (u32 crypto_context_index);
-extern int quic_quicly_encrypt_ticket_cb (ptls_encrypt_ticket_t *_self,
-					  ptls_t *tls, int is_encrypt,
-					  ptls_buffer_t *dst,
-					  ptls_iovec_t src);
 extern void
 quic_quicly_crypto_decrypt_packet (quic_ctx_t *qctx,
 				   quic_quicly_rx_packet_ctx_t *pctx);

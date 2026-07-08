@@ -49,18 +49,9 @@ typedef struct quic_quicly_rx_dgram_ctx_
   u8 data[QUIC_MAX_PACKET_SIZE];
 } quic_quicly_rx_dgram_ctx_t;
 
-/* single-entry session cache */
-typedef struct quic_quicly_session_cache_
-{
-  ptls_encrypt_ticket_t super;
-  uint8_t id[32];
-  ptls_iovec_t data;
-} quic_quicly_session_cache_t;
-
 typedef struct quic_quicly_main_
 {
   quic_main_t *qm;
-  quic_quicly_session_cache_t session_cache;
   quicly_cid_plaintext_t *next_cid;
   quic_quicly_rx_packet_ctx_t **rx_packets;
   quic_quicly_rx_dgram_ctx_t **rx_dgrams;
