@@ -88,6 +88,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "b5fafc97_a6bb8ea2",
+        "filename": "src/plugins/lldp/lldp_api.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 137,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-07-09T15:29:12Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "8ac307f9_c6e18990",
+      "revId": "8fa4800559150931da2de53c96858f02b9ae0734",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "a65dce19_5f1f6c98",

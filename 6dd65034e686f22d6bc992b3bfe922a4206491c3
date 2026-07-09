@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "6a2c687a_4a916ff6",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-07-09T15:29:12Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "77653c37_7939725c",
+      "revId": "6dd65034e686f22d6bc992b3bfe922a4206491c3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "31d9bf29_124806f4",
@@ -31,6 +49,24 @@
       "writtenOn": "2026-06-12T08:39:22Z",
       "side": 1,
       "message": "All of these (char\\*) casts are suspicious. vec_len reads length from vector header, which is calculated as negative offset of whatever pointer is passed to it. it doesn\u0027t really matter what is the type of the pointer. so the cast is unneeded and confusing. there are multiple instances of this (char\\*) cast which should be removed.",
+      "revId": "6dd65034e686f22d6bc992b3bfe922a4206491c3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "1efd9c78_59dfbc5a",
+        "filename": "src/plugins/lldp/lldp_api.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 165,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-07-09T15:29:12Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "31d9bf29_124806f4",
       "revId": "6dd65034e686f22d6bc992b3bfe922a4206491c3",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -52,6 +88,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "e3d70265_57e335d2",
+        "filename": "src/plugins/lldp/lldp_api.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 167,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-07-09T15:29:12Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "76135e35_5ea3a7ec",
+      "revId": "6dd65034e686f22d6bc992b3bfe922a4206491c3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "3616240d_eb3d22ae",
@@ -65,6 +119,24 @@
       "writtenOn": "2026-06-12T08:39:22Z",
       "side": 1,
       "message": "this import looks unused",
+      "revId": "6dd65034e686f22d6bc992b3bfe922a4206491c3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a1df675f_060b467d",
+        "filename": "test/test_lldp.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 16,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-07-09T15:29:12Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3616240d_eb3d22ae",
       "revId": "6dd65034e686f22d6bc992b3bfe922a4206491c3",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }

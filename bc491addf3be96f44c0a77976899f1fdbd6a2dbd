@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "96436799_89624f01",
+        "filename": "src/plugins/lldp/lldp_api.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 149,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-07-09T15:29:12Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "2b2a379b_11c7f098",
+      "revId": "bc491addf3be96f44c0a77976899f1fdbd6a2dbd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "6189339d_8d9bcfa5",
@@ -35,6 +53,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "95b696f2_ea18669e",
+        "filename": "src/plugins/lldp/lldp_api.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 159,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-07-09T15:29:12Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "6189339d_8d9bcfa5",
+      "revId": "bc491addf3be96f44c0a77976899f1fdbd6a2dbd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "d1fb91ee_dabc26ac",
@@ -48,6 +84,24 @@
       "writtenOn": "2026-06-24T11:18:35Z",
       "side": 1,
       "message": "These two add_stream calls should be removed - without a pg_start following them, they don\u0027t really do anything useful.",
+      "revId": "bc491addf3be96f44c0a77976899f1fdbd6a2dbd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "82523508_eea046cf",
+        "filename": "test/test_lldp.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 359,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-07-09T15:29:12Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "d1fb91ee_dabc26ac",
       "revId": "bc491addf3be96f44c0a77976899f1fdbd6a2dbd",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
