@@ -355,20 +355,20 @@ quic_quicly_on_stream_destroy (quicly_stream_t *stream, quicly_error_t err)
   quic_ctx_t *sctx =
     quic_quicly_get_quic_ctx (stream_data->ctx_id, stream_data->thread_index);
 
-  QUIC_DBG (
-    2,
-    "DESTROYED_STREAM: stream_session handle 0x%lx, sctx_index %u, "
-    "thread %u, err %U",
-    session_handle (session_get (sctx->c_s_index, sctx->c_thread_index)),
-    sctx->c_c_index, sctx->c_thread_index, quic_quicly_format_err, err);
+  QUIC_DBG (2,
+	    "DESTROYED_STREAM: stream_session handle 0x%lx, sctx_index %u, "
+	    "thread %u, flags 0x%x, err %U",
+	    session_handle (session_get (sctx->c_s_index, sctx->c_thread_index)), sctx->c_c_index,
+	    sctx->c_thread_index, quic_quicly_format_err, err);
 
   sctx->flags |= QUIC_F_STREAM_TX_CLOSED;
   sctx->stream = 0;
   sctx->udp_session_handle = SESSION_INVALID_HANDLE;
 
   /* free stream only when app already closed, otherwise it might has unread
-   * data */
-  if (sctx->flags & QUIC_F_APP_CLOSED)
+   * data, or if we have unsend data (we receive stop sending) */
+  if ((sctx->flags & QUIC_F_APP_CLOSED) ||
+      svm_fifo_max_dequeue_cons (get_stream_session_and_ctx_from_stream (stream, &sctx)->tx_fifo))
     {
       session_transport_closed_notify (&sctx->connection);
       session_transport_delete_notify (&sctx->connection);
@@ -482,10 +482,9 @@ quic_quicly_on_stop_sending (quicly_stream_t *stream, quicly_error_t quicly_erro
   quic_ctx_t *sctx =
     quic_quicly_get_quic_ctx (stream_data->ctx_id, stream_data->thread_index);
 
-  QUIC_DBG (
-    2, "STOP_SENDING: session 0x%lx (%U)",
-    session_handle (session_get (sctx->c_s_index, sctx->c_thread_index)),
-    quic_quicly_format_err, quicly_error);
+  QUIC_DBG (2, "STOP_SENDING: session 0x%lx, sctx_index %u, thread %u, flags 0x%x, err %U",
+	    session_handle (session_get (sctx->c_s_index, sctx->c_thread_index)), sctx->c_c_index,
+	    sctx->c_thread_index, sctx->flags, quic_quicly_format_err, quicly_error);
 
   if (!(sctx->flags & QUIC_F_APP_CLOSED))
     {
@@ -639,7 +638,10 @@ check_eos:
   if (!(sctx->flags & QUIC_F_APP_CLOSED_TX) &&
       quicly_recvstate_transfer_complete (&stream->recvstate))
     {
-      QUIC_DBG (2, "stream half-close: rcv side closed, ctx_index %u, thread_index %u",
+      QUIC_DBG (2,
+		"stream half-close: rcv side closed, stream_session handle 0x%lx, ctx_index "
+		"%u, thread_index %u",
+		session_handle (session_get (sctx->c_s_index, sctx->c_thread_index)),
 		sctx->c_c_index, sctx->c_thread_index);
       session_transport_closing_notify (&sctx->connection);
     }
@@ -652,10 +654,11 @@ quic_quicly_on_receive_reset (quicly_stream_t *stream, quicly_error_t quicly_err
   quic_ctx_t *sctx =
     quic_quicly_get_quic_ctx (stream_data->ctx_id, stream_data->thread_index);
 
-  QUIC_DBG (
-    2, "RESET_STREAM: session 0x%lx (%U)",
-    session_handle (session_get (sctx->c_s_index, sctx->c_thread_index)),
-    quic_quicly_format_err, quicly_error);
+  QUIC_DBG (2,
+	    "RESET_STREAM: stream_session handle 0x%lx, sctx_index %u, "
+	    "thread %u, flags 0x%x, err %U",
+	    session_handle (session_get (sctx->c_s_index, sctx->c_thread_index)), sctx->c_c_index,
+	    sctx->c_thread_index, sctx->flags, quic_quicly_format_err, quicly_error);
 
   if (!(sctx->flags & QUIC_F_APP_CLOSED))
     {
@@ -1104,10 +1107,12 @@ quic_quicly_on_app_closed (u32 ctx_index, clib_thread_index_t thread_index)
     {
       if (!ctx->stream)
 	{
-	  QUIC_DBG (2,
-		    "App confirm stream close going to free ctx, ctx_index %u "
-		    "thread_index %u",
-		    ctx->c_c_index, ctx->c_thread_index);
+	  QUIC_DBG (
+	    2,
+	    "App confirm stream close going to free ctx: stream_session handle 0x%lx, ctx_index %u "
+	    "thread_index %u",
+	    session_handle (session_get (ctx->c_s_index, ctx->c_thread_index)), ctx->c_c_index,
+	    ctx->c_thread_index);
 	  session_transport_closed_notify (&ctx->connection);
 	  session_transport_delete_notify (&ctx->connection);
 	  quic_ctx_free (quic_quicly_main.qm, ctx);

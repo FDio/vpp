@@ -817,7 +817,7 @@ quic_expired_timers_dispatch (u32 *expired_timers)
   u32 conn_index;
   quic_timers_t timer_id;
   int i;
-#if QUIC_DEBUG >= 2
+#if QUIC_DEBUG
   int64_t time_now = quic_wrk_ctx_get (&quic_main, vlib_get_thread_index ())->time_now;
 #endif
 
