@@ -70,6 +70,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "68b89569_290987a3",
+        "filename": "src/plugins/ipfix-export/CMakeLists.txt",
+        "patchSetId": 2
+      },
+      "lineNbr": 14,
+      "author": {
+        "id": 3346
+      },
+      "writtenOn": "2026-07-09T00:48:17Z",
+      "side": 1,
+      "message": "Addressed in PS3. Standardized the plugin on `ipfix` throughout: directory, CMake target, source files, types, symbols, lookup strings, include guards, call sites, documentation, and tests. I kept the `ipfix_export.api` basename and message CRCs for API compatibility.",
+      "parentUuid": "fdede1a5_64ff3891",
+      "revId": "bbc8ec90ef34db45d34264d935cf5602fc91d3e5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "4903853e_3d2d14a6",
@@ -83,6 +101,24 @@
       "writtenOn": "2026-07-08T12:47:41Z",
       "side": 1,
       "message": "Could we remove the per-call symbol lookup wrappers and let each consumer resolve and cache its IPFIX dependencies during initialization? Flowprobe, NAT, and IOAM currently need only the IPFIX main pointer and report add/delete function. In particular, NAT reaches `vlib_get_plugin_symbol()` for every exported event, causing repeated plugin hash lookups and `dlsym()` calls in the datapath. Resolving those two `ipfix_*` symbols once per consumer follows the existing DNS pattern and preserves the optional dependency. The other wrappers have no external in-tree users; if the consumer API grows later, they could be consolidated behind an `ipfix_get_api()` table.",
+      "revId": "bbc8ec90ef34db45d34264d935cf5602fc91d3e5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a25eb529_5771e874",
+        "filename": "src/plugins/ipfix-export/flow_report.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 213,
+      "author": {
+        "id": 3346
+      },
+      "writtenOn": "2026-07-09T00:48:17Z",
+      "side": 1,
+      "message": "Addressed in PS3. Flowprobe, NAT, and IOAM now resolve and cache `ipfix_main` and `ipfix_report_add_del` during initialization. The per-call lookup wrappers were removed, so no symbol lookup remains in the export path. Optional-plugin behavior is preserved and tested.",
+      "parentUuid": "4903853e_3d2d14a6",
       "revId": "bbc8ec90ef34db45d34264d935cf5602fc91d3e5",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
