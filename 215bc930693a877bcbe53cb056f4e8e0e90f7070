@@ -1,6 +1,40 @@
 {
   "comments": [
     {
+      "unresolved": true,
+      "key": {
+        "uuid": "4f74cea8_4059deae",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 40
+      },
+      "lineNbr": 14,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-07-09T15:12:34Z",
+      "side": 1,
+      "message": "PS40 now drops GSO packets whose headers are too large or split across buffers, rather than falling back to regular SEND. Could we update the commit message to describe the final behavior?",
+      "revId": "215bc930693a877bcbe53cb056f4e8e0e90f7070",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7cc840bd_d2334f43",
+        "filename": "src/plugins/rdma/device.c",
+        "patchSetId": 40
+      },
+      "lineNbr": 1048,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-07-09T15:12:34Z",
+      "side": 1,
+      "message": "max_tso is the device\u0027s maximum TSO payload, but currently it is only checked for being nonzero. Could we store it and validate the payload in rdma_mlx5_try_tso() before posting the WQE? This remains outside the regular TX fast path. Allowing an oversized WQE to fail may put the QP into an error state, and the current completion path does not recover the queue. It would also be useful to log a warning at initialization when the device limit is below VPP\u0027s maximum GSO size.",
+      "revId": "215bc930693a877bcbe53cb056f4e8e0e90f7070",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": false,
       "key": {
         "uuid": "36ec6e19_3fa91f0f",
@@ -33,6 +67,23 @@
       "side": 1,
       "message": "Fixed in PS40: the TSO-versus-regular decision is now isolated in rdma_mlx5_try_tso_or_regular(), and packet advancement/loop termination stays in one place in the caller.",
       "parentUuid": "835fd3b2_5f7cbb52",
+      "revId": "215bc930693a877bcbe53cb056f4e8e0e90f7070",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7686cff2_12598c1a",
+        "filename": "src/plugins/rdma/output.c",
+        "patchSetId": 40
+      },
+      "lineNbr": 470,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-07-09T15:12:34Z",
+      "side": 1,
+      "message": "This is still difficult to reason about because rdma_mlx5_try_tso_or_regular() does not handle the regular case: REGULAR tells the caller to execute the large block below, while DONE can mean either posted or dropped.\n\nCould we extract the regular block into rdma_mlx5_tx_regular() and have one per-packet helper fully handle either path? The loop would then only need to distinguish CONSUMED from NO_SLOTS, keeping ownership, packet advancement, and tail accounting in one place.",
       "revId": "215bc930693a877bcbe53cb056f4e8e0e90f7070",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
