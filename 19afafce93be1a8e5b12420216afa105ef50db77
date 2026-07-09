@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "60026d16_a84d8937",
+        "filename": "docs/aboutvpp/security/tsc_vulnerability_management_v3.rst",
+        "patchSetId": 6
+      },
+      "lineNbr": 176,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-07-09T14:59:06Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "93ca5540_a7fc160e",
+      "revId": "19afafce93be1a8e5b12420216afa105ef50db77",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "5f8aa173_ca07cd6b",
@@ -31,6 +49,24 @@
       "writtenOn": "2026-06-29T20:09:12Z",
       "side": 1,
       "message": "Does this risk creating an advisory looking record for a normal bug?",
+      "revId": "19afafce93be1a8e5b12420216afa105ef50db77",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "d26b1528_b41c449a",
+        "filename": "docs/aboutvpp/security/tsc_vulnerability_management_v3.rst",
+        "patchSetId": 6
+      },
+      "lineNbr": 247,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-07-09T14:59:06Z",
+      "side": 1,
+      "message": "This is for the case of the issue being made public, i.e. broken embargo.  This could be due to a change in the vulnerability evaluation after the creation of the GHSA (e.g. [0]), or the vulnerability being made public by other means (e.g. made public by an independent researcher or developer).  I changed the title of this section to make this more clear.\n\nIn the case of [0], this was done intentionally to understand how the GHSA tools work to create this updated process documentation.\n\n[0] https://github.com/FDio/vpp/security/advisories/GHSA-rc9p-89wj-mx7h",
+      "parentUuid": "5f8aa173_ca07cd6b",
       "revId": "19afafce93be1a8e5b12420216afa105ef50db77",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -52,6 +88,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "d0012339_bd49b813",
+        "filename": "docs/aboutvpp/security/tsc_vulnerability_management_v3.rst",
+        "patchSetId": 6
+      },
+      "lineNbr": 301,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-07-09T14:59:06Z",
+      "side": 1,
+      "message": "Yep, good catch!\n\nRemoved step 2.",
+      "parentUuid": "be78949e_80c77c44",
+      "revId": "19afafce93be1a8e5b12420216afa105ef50db77",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "d6197341_9dba537c",
@@ -65,6 +119,24 @@
       "writtenOn": "2026-06-29T20:09:12Z",
       "side": 1,
       "message": "\"a static\"",
+      "revId": "19afafce93be1a8e5b12420216afa105ef50db77",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "c5cbec15_862e4ddf",
+        "filename": "docs/aboutvpp/security/tsc_vulnerability_management_v3.rst",
+        "patchSetId": 6
+      },
+      "lineNbr": 315,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-07-09T14:59:06Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "d6197341_9dba537c",
       "revId": "19afafce93be1a8e5b12420216afa105ef50db77",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -86,6 +158,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "74273e2f_abedde3e",
+        "filename": "docs/aboutvpp/security/tsc_vulnerability_management_v3.rst",
+        "patchSetId": 6
+      },
+      "lineNbr": 369,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-07-09T14:59:06Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "42464f0a_cf9f6050",
+      "revId": "19afafce93be1a8e5b12420216afa105ef50db77",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "dbc55562_e2d3d9ea",
@@ -99,6 +189,30 @@
       "writtenOn": "2026-06-29T20:09:12Z",
       "side": 1,
       "message": "where applicable \"provide?\" advice",
+      "range": {
+        "startLine": 493,
+        "startChar": 38,
+        "endLine": 493,
+        "endChar": 55
+      },
+      "revId": "19afafce93be1a8e5b12420216afa105ef50db77",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "47d8f9cc_97cfa9a8",
+        "filename": "docs/aboutvpp/security/tsc_vulnerability_management_v3.rst",
+        "patchSetId": 6
+      },
+      "lineNbr": 493,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-07-09T14:59:06Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "dbc55562_e2d3d9ea",
       "range": {
         "startLine": 493,
         "startChar": 38,
