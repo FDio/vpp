@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "85046e04_79519cdd",
+        "filename": "src/vnet/tcp/tcp_sack.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 198,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-07-09T11:37:54Z",
+      "side": 1,
+      "message": "this assert in https://gerrit.fd.io/r/c/vpp/+/46235\n\nhttps://logs.fd.io/vex-yul-rot-jenkins-1/gha-vpp-gerrit-patchset/verify-master-2026_07_09_091331_UTC-gerrit-46235-4/verify-hst-debug-hst-ubuntu2404-prod-x86_64/summary/Http2TsFifoMemPressureMWTest/260709_094436/backtrace.log.gz",
+      "revId": "09c90c201ae15bc4673c0bf0c109664d713b865d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
