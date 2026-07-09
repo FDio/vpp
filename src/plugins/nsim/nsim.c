@@ -143,7 +143,8 @@ nsim_wheel_alloc (nsim_main_t *nsm)
 
 static int
 nsim_configure (nsim_main_t *nsm, f64 bandwidth, f64 delay, u32 packet_size, f64 drop_fraction,
-		f64 reorder_fraction, f64 reorder_delay, f64 buffer)
+		f64 reorder_fraction, f64 reorder_delay, f64 buffer, f64 ack_compress_interval,
+		u32 ack_compress_max_bytes)
 {
   u64 total_buffer_size_in_bytes, per_worker_buffer_size, wheel_slots_per_wrk;
   int i, num_workers = vlib_num_workers ();
@@ -183,6 +184,12 @@ nsim_configure (nsim_main_t *nsm, f64 bandwidth, f64 delay, u32 packet_size, f64
   nsm->reorder_fraction = reorder_fraction;
   nsm->reorder_delay = reorder_delay;
   nsm->buffer_time = buffer;
+  nsm->ack_compress_interval = ack_compress_interval;
+  /* Default the ack-size threshold to 256 B when compression is on but no
+   * explicit cap was given -- covers a TCP ack with a full set of SACK blocks
+   * while staying well below an MSS data segment. */
+  nsm->ack_compress_max_bytes =
+    ack_compress_interval > 0.0 ? (ack_compress_max_bytes ? ack_compress_max_bytes : 256) : 0;
   /* Per-packet serialization time at the bottleneck rate. Only used by the
    * queued model (buffer > 0). bandwidth is bits/sec. */
   nsm->serialization_time = (f64) (packet_size * 8) / bandwidth;
@@ -429,7 +436,8 @@ vl_api_nsim_configure_t_handler (vl_api_nsim_configure_t * mp)
 
   rv = nsim_configure (nsm, bandwidth, delay, packet_size, drop_fraction, reorder_rate,
 		       reorder_rate > 0.0 ? delay : 0.0 /* reorder_delay */,
-		       0.0 /* buffer: fixed-delay model */);
+		       0.0 /* buffer: fixed-delay model */, 0.0 /* ack_compress_interval */,
+		       0 /* ack_compress_max_bytes */);
 
   REPLY_MACRO (VL_API_NSIM_CONFIGURE_REPLY);
 }
@@ -457,7 +465,8 @@ vl_api_nsim_configure2_t_handler (vl_api_nsim_configure2_t * mp)
 
   rv = nsim_configure (nsm, bandwidth, delay, packet_size, drop_fraction, reorder_rate,
 		       reorder_rate > 0.0 ? delay : 0.0 /* reorder_delay */,
-		       0.0 /* buffer: fixed-delay model */);
+		       0.0 /* buffer: fixed-delay model */, 0.0 /* ack_compress_interval */,
+		       0 /* ack_compress_max_bytes */);
 
   REPLY_MACRO (VL_API_NSIM_CONFIGURE2_REPLY);
 }
@@ -680,6 +689,9 @@ format_nsim_config (u8 * s, va_list * args)
 		nsm->reorder_delay);
   else
     s = format (s, " reorder fraction: 0\n");
+  if (nsm->ack_compress_interval > 0.0)
+    s = format (s, " ack compression: interval %U, max %u bytes\n", format_delay,
+		nsm->ack_compress_interval, nsm->ack_compress_max_bytes);
   s = format (s, " packet size: %u\n", nsm->packet_size);
   s = format (s, " worker wheel size: %u\n", nsm->wheel_slots_per_wrk);
   s = format (s, " throughput: %U\n", format_bandwidth, nsm->bandwidth);
@@ -728,8 +740,9 @@ set_nsim_command_fn (vlib_main_t * vm,
   f64 delay = 0.0, bandwidth = 0.0, buffer = 0.0;
   f64 burst_prob = 0.0, burst_dur = 0.0, drop_once_at = 0.0, drop_once_dur = 0.0;
   f64 rate_stall_bw = 0.0, rate_good_dwell = 0.0, rate_stall_dwell = 0.0;
+  f64 ack_compress_interval = 0.0;
   u32 packets_per_drop, packets_per_reorder, packet_size = 1500;
-  u32 drop_seq_offset = 0, drop_seq_rxt = 0;
+  u32 drop_seq_offset = 0, drop_seq_rxt = 0, ack_compress_max_bytes = 0;
   u8 drop_seq_set = 0, wifi_preset = 0;
   nsim_main_t *nsm = &nsim_main;
   int rv;
@@ -788,6 +801,10 @@ set_nsim_command_fn (vlib_main_t * vm,
 			 &rate_stall_bw, unformat_delay, &rate_good_dwell, unformat_delay,
 			 &rate_stall_dwell))
 	;
+      else if (unformat (input, "ack-compress-interval %U", unformat_delay, &ack_compress_interval))
+	;
+      else if (unformat (input, "ack-compress-max-bytes %u", &ack_compress_max_bytes))
+	;
       else if (unformat (input, "wifi"))
 	wifi_preset = 1;
       else if (unformat (input, "poll-main-thread"))
@@ -802,7 +819,7 @@ set_nsim_command_fn (vlib_main_t * vm,
     reorder_delay = delay;
 
   rv = nsim_configure (nsm, bandwidth, delay, packet_size, drop_fraction, reorder_fraction,
-		       reorder_delay, buffer);
+		       reorder_delay, buffer, ack_compress_interval, ack_compress_max_bytes);
 
   switch (rv)
     {
@@ -888,7 +905,8 @@ VLIB_CLI_COMMAND (set_nsim_command, static) = {
   .short_help = "set nsim delay <time> bandwidth <bps> packet-size <nbytes>\n"
 		"    [buffer <time>][packets-per-drop <nn>]"
 		"[drop-fraction <f64: 0.0 - 1.0>]\n"
-		"    [wifi | rate-stall bandwidth <bps> every <time> for <time>]",
+		"    [wifi | rate-stall bandwidth <bps> every <time> for <time>]\n"
+		"    [ack-compress-interval <time> [ack-compress-max-bytes <n>]]",
   .function = set_nsim_command_fn,
 };
 

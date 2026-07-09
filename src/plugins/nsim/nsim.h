@@ -114,6 +114,20 @@ typedef struct
    * rate-limited server with a FIFO buffer of this depth (queued/bufferbloat
    * model) instead of the default fixed-delay line. */
   f64 buffer_time;
+  /* ACK compression: emulate a reverse path that releases ACKs in bunched
+   * batches (queue drain, low-frequency ACK clock, wifi burst) rather than
+   * evenly spaced. When non-zero, a qualifying packet's departure time is
+   * quantized UP to the next multiple of this interval, so every ACK landing
+   * in the same quantum departs together and arrives at the sender
+   * back-to-back -- the compressed-ACK input that drives a paced sender into a
+   * line-rate microburst. Orthogonal to the loss/reorder/rate models; composes
+   * with fixed-delay or queued. */
+  f64 ack_compress_interval;
+  /* Only packets no larger than this (bytes) are compressed -- an ACK proxy so
+   * the gate can be enabled on a symmetric/cross-connect path without bunching
+   * bulk data segments. A pure TCP ACK, even with SACK blocks, is well under a
+   * few hundred bytes; data segments are ~MSS. */
+  u32 ack_compress_max_bytes;
   /* Per-packet serialization time at the bottleneck (packet_size/bandwidth),
    * cached for the datapath. Only used when buffer_time > 0. */
   f64 serialization_time;
