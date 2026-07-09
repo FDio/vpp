@@ -16,6 +16,23 @@
       "message": "Can you please run `make fixstyle \u0026\u0026 make checkstyle`?\nCI failed with `CHECKSTYLE FAILED` error.",
       "revId": "6ab9593192fe6a5dc5ce5ff4ae8ae831615f7977",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b8f4d645_ace6c2e3",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2026-07-09T16:42:19Z",
+      "side": 1,
+      "message": "Lgtm, it is probably missing a fixstyle thought",
+      "revId": "6ab9593192fe6a5dc5ce5ff4ae8ae831615f7977",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
