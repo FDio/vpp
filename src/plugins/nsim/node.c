@@ -140,6 +140,20 @@ nsim_wheel_enqueue (nsim_main_t *nsm, nsim_wheel_t *wp, vlib_buffer_t *b, u32 bi
   ep->buffer_index = bi;
 }
 
+/* ACK compression: quantize a departure time UP to the next multiple of the
+ * configured interval, so every (ack-sized) packet landing in the same quantum
+ * departs together and arrives at the sender back-to-back. Monotonic in t, so
+ * the wheel stays FIFO-ordered. Only applied to packets no larger than
+ * ack_compress_max_bytes (an ACK proxy). */
+always_inline f64
+nsim_ack_compress_tx_time (vlib_main_t *vm, nsim_main_t *nsm, vlib_buffer_t *b, f64 tx_time)
+{
+  f64 iv = nsm->ack_compress_interval;
+  if (vlib_buffer_length_in_chain (vm, b) <= nsm->ack_compress_max_bytes)
+    tx_time = ceil (tx_time / iv) * iv;
+  return tx_time;
+}
+
 always_inline void
 nsim_dispatch_buffer (vlib_main_t * vm, vlib_node_runtime_t * node,
 		      nsim_main_t * nsm, nsim_wheel_t * wp, vlib_buffer_t * b,
@@ -163,6 +177,11 @@ nsim_dispatch_buffer (vlib_main_t * vm, vlib_node_runtime_t * node,
 	}
       else
 	tx_time = ctx->expires;
+
+      /* Bunch ack-sized packets onto a coarse release grid (reverse-path ACK
+       * compression). Composes with either base model and with reorder. */
+      if (PREDICT_FALSE (nsm->ack_compress_interval > 0.0))
+	tx_time = nsim_ack_compress_tx_time (vm, nsm, b, tx_time);
 
       if (PREDICT_FALSE (ctx->action[0] & NSIM_ACTION_REORDER))
 	{
