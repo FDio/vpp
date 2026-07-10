@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5de01695_e1291972",
+        "filename": "src/vnet/tcp/tcp_output.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1773,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-07-10T09:00:54Z",
+      "side": 1,
+      "message": "one test assert because flight size is negative\n\nhttps://logs.fd.io/vex-yul-rot-jenkins-1/gha-vpp-gerrit-patchset/verify-master-2026_07_10_073523_UTC-gerrit-46246-2/verify-hst-debug-hst-ubuntu2404-prod-x86_64/summary/Http2TsFifoMemPressureMWTest/260710_080105/backtrace.log.gz",
+      "revId": "876d1f0c09d8bf14feadb2b68358f3420b543b5b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
