@@ -228,17 +228,22 @@ void
 cubic_event (tcp_connection_t *tc, tcp_cc_event_t evt)
 {
   cubic_data_t *cd;
-  f64 now;
+  f64 idle, now;
 
   if (evt != TCP_CC_EVT_START_TX)
     return;
 
-  /* App was idle so update t_start to avoid artificially
-   * inflating cwnd if nothing recently sent and acked */
+  /* App was idle so update t_start to avoid artificially inflating cwnd. Shift the cubic epoch
+   * forward by that idle time (RFC 9438 Sec. 4.2: t MUST NOT include application-limited periods).
+   * tsval_recent_age tracks the last ack, which stops advancing once idle. With timestamps off
+   * clamp falls back to t_start = now. */
   cd = (cubic_data_t *) tcp_cc_data (tc);
-  now = cubic_time (tc->c_thread_index);
-  if (now > tc->mrtt_us + 1)
-    cd->t_start = now;
+  idle = (f64) (tcp_time_tstamp (tc->c_thread_index) - tc->tsval_recent_age) * TCP_TSTP_TICK;
+  if (idle > 0)
+    {
+      now = cubic_time (tc->c_thread_index);
+      cd->t_start = clib_min (cd->t_start + idle, now);
+    }
 }
 
 const static tcp_cc_algorithm_t tcp_cubic = {
