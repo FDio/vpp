@@ -1770,9 +1770,21 @@ tcp_retransmit_sack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
       sent_bytes += n_written;
 
       tc->rxt_head = tc->snd_una;
-      tc->rxt_delivered += n_written;
-      tc->prr_delivered += n_written;
-      ASSERT (tc->rxt_delivered <= tc->snd_rxt_bytes);
+      if (seq_lt (sb->high_rxt, tc->snd_una + n_written))
+	{
+	  /* First retransmit of the head this event. Advance high_rxt over it */
+	  sb->high_rxt = tc->snd_una + n_written;
+	}
+      else
+	{
+	  /* Presumed lost head retransmit. snd_rxt_bytes now counts the head twice,
+	   * but the scoreboard credits its single delivery to rxt_sacked only once,
+	   * so account the prior (lost) copy as having left the network here. */
+	  tc->rxt_delivered += n_written;
+	  tc->prr_delivered += n_written;
+	  ASSERT (tc->rxt_delivered <= tc->snd_rxt_bytes);
+	}
+      ASSERT (seq_leq (sb->high_rxt, tc->snd_nxt));
     }
 
   tcp_fastrecovery_first_off (tc);
