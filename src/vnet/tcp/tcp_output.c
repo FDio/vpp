@@ -1770,8 +1770,10 @@ tcp_retransmit_sack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
       sent_bytes += n_written;
 
       tc->rxt_head = tc->snd_una;
+      sb->high_rxt = seq_max (sb->high_rxt, tc->snd_una + n_written);
       tc->rxt_delivered += n_written;
       tc->prr_delivered += n_written;
+      ASSERT (seq_leq (sb->high_rxt, tc->snd_nxt));
       ASSERT (tc->rxt_delivered <= tc->snd_rxt_bytes);
     }
 
