@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "12dd908d_75fe04be",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3007
+      },
+      "writtenOn": "2026-07-10T09:23:01Z",
+      "side": 1,
+      "message": "This will break the Octeon driver, which requires naturally aligned addresses for packet buffers.",
+      "revId": "30268de9c13d7bec99f1312ea9f2d88ff5d1b6aa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
