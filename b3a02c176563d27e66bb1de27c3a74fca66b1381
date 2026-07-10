@@ -54,6 +54,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "63ac67f8_05a4a134",
+        "filename": "src/vnet/bfd/bfd_vnet_bridge.c",
+        "patchSetId": 15
+      },
+      "lineNbr": 15,
+      "author": {
+        "id": 3342
+      },
+      "writtenOn": "2026-07-10T08:51:11Z",
+      "side": 1,
+      "message": "The requirement is less about arbitrary third-party fan-out and more about keeping the BFD-to-VNET notification boundary owned by VNET once BFD becomes plugin code. Direct calls from the BFD plugin into ADJ and FIB public functions would solve the immediate `bfd_session_t` dependency, but it would also make the plugin know the complete set of VNET consumers and encode a fixed one-to-many relationship in the BFD implementation. Imagine, later new consumer will be a plugin too - then we\u0027d need to use symbol lookup on dynamic library side, so we could invoke its function directly from BFD, through a saved callback pointer, which is not great for isolation.\n\nThe bridge gives BFD a single stable VNET-facing contract: publish a public snapshot event. ADJ and FIB remain responsible for deciding whether and how they consume that event, which keeps consumer policy out of the plugin and avoids growing direct dependencies if another in-tree consumer appears later. \n\nUsing `callback_data` is meant to avoid a hand-rolled function-pointer registry, not to introduce a custom dispatcher for its own sake. It is an existing VPP (part of vppinfra) mechanism for callback-list ownership, safe callback iteration/mutation semantics, and lifecycle handling, and the bridge also centralizes the thread-handoff behavior that BFD notifications already needed to preserve. So the extra layer gives architectural isolation, one public notification surface, and VPP-native listener management, while still using the same compact public snapshot type and avoiding exposure of `bfd_session_t`. \n\nIf we want to make this clearer, I agree the bridge header/comment should explicitly state that the intended requirement is a stable VNET notification boundary between the optional BFD plugin and in-tree consumers, not arbitrary external plugin subscription as the primary goal.",
+      "parentUuid": "4c248a7f_d52db65d",
+      "revId": "b3a02c176563d27e66bb1de27c3a74fca66b1381",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "af4138a0_72236332",
         "filename": "src/vnet/bfd/bfd_vnet_bridge.h",
         "patchSetId": 15
@@ -65,6 +83,24 @@
       "writtenOn": "2026-07-08T13:00:07Z",
       "side": 1,
       "message": "Could we use ‘notifier’ or ‘event dispatcher’ instead of ‘bridge’ in this API’s names? In VPP, ‘bridge’ strongly suggests L2 bridging or bridge domains, whereas this component dispatches BFD notifications between in-process modules. A name such as `bfd_vnet_notifier` would make the role clearer.",
+      "revId": "b3a02c176563d27e66bb1de27c3a74fca66b1381",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "38322ace_7c8301d6",
+        "filename": "src/vnet/bfd/bfd_vnet_bridge.h",
+        "patchSetId": 15
+      },
+      "lineNbr": 11,
+      "author": {
+        "id": 3342
+      },
+      "writtenOn": "2026-07-10T08:51:11Z",
+      "side": 1,
+      "message": "Agree, in current domain `notifier` would look more organic, so renaming it to avoid confusion and shifting focus to actual role.\nThe `bridge` name was chosen as it reflects architectural pattern.",
+      "parentUuid": "af4138a0_72236332",
       "revId": "b3a02c176563d27e66bb1de27c3a74fca66b1381",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }

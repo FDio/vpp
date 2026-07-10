@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "064360e7_1dae3e84",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 18
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3342
+      },
+      "writtenOn": "2026-07-10T08:51:11Z",
+      "side": 1,
+      "message": "Extra comments were added to the code. The `bridge` has been renamed to `notifier` to avoid confusion and bring more clarity.\nPR is ready for another pass.",
+      "revId": "b88a06c4583c1153461e3f51fa5391a6b179cbb6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
