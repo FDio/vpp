@@ -171,8 +171,9 @@ mvpp2_port_get_if_index (vnet_dev_t *dev, clib_dt_node_t *port_node)
       if (e->d_name[0] == '.')
 	continue;
 
-      snprintf (path, sizeof (path), "%s/%s/of_node", net_path, e->d_name);
-      if (realpath (path, real_path) && strcmp (real_path, (char *) port_node_path) == 0)
+      if ((unsigned) snprintf (path, sizeof (path), "%s/%s/of_node", net_path, e->d_name) <
+	    PATH_MAX &&
+	  realpath (path, real_path) && strcmp (real_path, (char *) port_node_path) == 0)
 	{
 	  if_index = if_nametoindex (e->d_name);
 	  if (if_index)
