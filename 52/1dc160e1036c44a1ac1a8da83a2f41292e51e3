@@ -1,0 +1,8 @@
+Code-Review+2: Damjan Marion <dmarion@0xa5.net>
+Code-Review+1: preethi.raksha.thorali.gobinath@intel.com <preethi.raksha.thorali.gobinath@intel.com>
+Verified+1: FDio GitHub Actions <releng+fdio-github@linuxfoundation.org>
+Submitted-by: Damjan Marion <dmarion@0xa5.net>
+Submitted-at: Fri, 10 Jul 2026 10:28:23 +0000
+Reviewed-on: https://gerrit.fd.io/r/c/vpp/+/46140
+Project: vpp
+Branch: refs/heads/master
