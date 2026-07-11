@@ -1203,6 +1203,204 @@ tcp_test_set_time (clib_thread_index_t thread_index, u32 val)
   tcp_set_time_now (&tcp_main.wrk[thread_index], val);
 }
 
+/* Build a deterministic CUBIC avoidance epoch through the registered
+ * callbacks.  This deliberately avoids depending on cubic_data_t's private
+ * layout. */
+static void
+tcp_test_cubic_init_epoch (tcp_connection_t *tc, clib_thread_index_t thread_index, u32 snd_mss,
+			   u32 w_max_segs)
+{
+  clib_memset (tc, 0, sizeof (*tc));
+  tc->c_thread_index = thread_index;
+  tc->snd_mss = snd_mss;
+  tc->tx_fifo_size = 1 << 30;
+  tc->mrtt_us = 0.1;
+  tc->srtt = 0.1 / TCP_TICK;
+  tc->cc_algo = tcp_cc_algo_get (TCP_CC_CUBIC);
+  tc->cc_algo->init (tc);
+
+  tc->cwnd = w_max_segs * snd_mss;
+  tc->ssthresh = tc->cwnd;
+  tc->cc_algo->congestion (tc);
+  tc->cc_algo->recovered (tc);
+}
+
+/* An undone connection must follow the same window trajectory as a reference
+ * connection restarted at the restored window with the pre-congestion w_max. */
+static int
+tcp_test_cubic_compare_growth (tcp_connection_t *tc, tcp_connection_t *ref, u32 n_acks)
+{
+  tcp_rate_sample_t rs = { .acked_and_sacked = tc->snd_mss };
+  u32 i;
+
+  for (i = 0; i < n_acks; i++)
+    {
+      tc->cc_algo->rcv_ack (tc, &rs);
+      ref->cc_algo->rcv_ack (ref, &rs);
+      if (tc->cwnd != ref->cwnd || tc->cwnd_acc_bytes != ref->cwnd_acc_bytes)
+	{
+	  fformat (stderr,
+		   "FAIL:%d: cubic growth diverged at ack %u: cwnd %u expected %u, "
+		   "accumulator %u expected %u\n",
+		   __LINE__, i, tc->cwnd, ref->cwnd, tc->cwnd_acc_bytes, ref->cwnd_acc_bytes);
+	  return 1;
+	}
+    }
+  return 0;
+}
+
+static int
+tcp_test_cubic_undo (vlib_main_t *vm, unformat_input_t *input)
+{
+  const clib_thread_index_t thread_index = 0;
+  const u32 snd_mss = 1000, restored_cwnd = 60 * snd_mss;
+  const u32 restored_ssthresh = 50 * snd_mss;
+  tcp_connection_t _tc, *tc = &_tc, _ref, *ref = &_ref;
+  tcp_cc_algorithm_t *cubic = tcp_cc_algo_get (TCP_CC_CUBIC);
+  u32 i;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      vlib_cli_output (vm, "parse error: '%U'", format_unformat_error, input);
+      return -1;
+    }
+
+  TCP_TEST ((cubic->undo_recovery != 0), "cubic has undo recovery callback");
+
+  /* Fast recovery changes w_max through fast convergence. */
+  tcp_test_set_time (thread_index, 1);
+  tcp_test_cubic_init_epoch (tc, thread_index, snd_mss, 100);
+  clib_memcpy_fast (ref, tc, sizeof (*ref));
+  tc->cwnd = restored_cwnd;
+  tc->ssthresh = restored_ssthresh;
+  tc->cc_algo->congestion (tc);
+  tc->cwnd = restored_cwnd;
+  tc->ssthresh = restored_ssthresh;
+
+  tcp_test_set_time (thread_index, 2);
+  tc->cc_algo->undo_recovery (tc);
+  TCP_TEST ((tc->cwnd == restored_cwnd && tc->ssthresh == restored_ssthresh),
+	    "cubic fast undo leaves restored generic state unchanged");
+  ref->ssthresh = restored_cwnd;
+  ref->cc_algo->recovered (ref);
+  ref->ssthresh = restored_ssthresh;
+
+  tcp_test_set_time (thread_index, 3);
+  TCP_TEST ((tcp_test_cubic_compare_growth (tc, ref, 96) == 0),
+	    "cubic fast recovery undo restores coherent growth");
+  TCP_TEST ((tc->cwnd > restored_cwnd), "cubic fast recovery undo resumes growth (%u > %u)",
+	    tc->cwnd, restored_cwnd);
+
+  /* loss() resets K/t_start/w_max and may run repeatedly during one RTO
+   * congestion event; the entry snapshot must survive every call. */
+  tcp_test_set_time (thread_index, 10);
+  tcp_test_cubic_init_epoch (tc, thread_index, snd_mss, 100);
+  clib_memcpy_fast (ref, tc, sizeof (*ref));
+  tc->cwnd = restored_cwnd;
+  tc->ssthresh = restored_ssthresh;
+  tc->cc_algo->congestion (tc);
+  for (i = 0; i < 3; i++)
+    tc->cc_algo->loss (tc);
+  tc->cwnd = restored_cwnd;
+  tc->ssthresh = restored_ssthresh;
+
+  tcp_test_set_time (thread_index, 11);
+  tc->cc_algo->undo_recovery (tc);
+  TCP_TEST ((tc->cwnd == restored_cwnd && tc->ssthresh == restored_ssthresh),
+	    "cubic rto undo leaves restored generic state unchanged");
+  ref->ssthresh = restored_cwnd;
+  ref->cc_algo->recovered (ref);
+  ref->ssthresh = restored_ssthresh;
+
+  tcp_test_set_time (thread_index, 12);
+  TCP_TEST ((tcp_test_cubic_compare_growth (tc, ref, 96) == 0),
+	    "cubic rto undo restores coherent growth after repeated loss callbacks");
+  TCP_TEST ((tc->cwnd > restored_cwnd), "cubic rto undo resumes growth (%u > %u)", tc->cwnd,
+	    restored_cwnd);
+
+  /* Restored cwnd at/above saved w_max exercises the K=0 branch. */
+  tcp_test_set_time (thread_index, 20);
+  tcp_test_cubic_init_epoch (tc, thread_index, snd_mss, 50);
+  clib_memcpy_fast (ref, tc, sizeof (*ref));
+  tc->cwnd = restored_cwnd;
+  tc->ssthresh = restored_ssthresh;
+  tc->cc_algo->congestion (tc);
+  tc->cwnd = restored_cwnd;
+  tc->ssthresh = restored_ssthresh;
+
+  tcp_test_set_time (thread_index, 21);
+  tc->cc_algo->undo_recovery (tc);
+  TCP_TEST ((tc->cwnd == restored_cwnd && tc->ssthresh == restored_ssthresh),
+	    "cubic K=0 undo leaves restored generic state unchanged");
+  ref->ssthresh = restored_ssthresh;
+  ref->cc_algo->loss (ref);
+  ref->cwnd = restored_cwnd;
+  ref->ssthresh = restored_ssthresh;
+
+  tcp_test_set_time (thread_index, 22);
+  TCP_TEST ((tcp_test_cubic_compare_growth (tc, ref, 32) == 0),
+	    "cubic undo handles restored window at or above w_max");
+  TCP_TEST ((tc->cwnd <= restored_cwnd + snd_mss), "cubic K=0 epoch does not jump cwnd (%u)",
+	    tc->cwnd);
+
+  return 0;
+}
+
+/* Reverse-direction data updates tsval_recent_age even while the local sender
+ * is idle.  CUBIC's local-sender epoch must therefore be invariant to that
+ * receive-side timestamp state. */
+static int
+tcp_test_cubic_idle_reverse (vlib_main_t *vm, unformat_input_t *input)
+{
+  const clib_thread_index_t thread_index = 0;
+  tcp_connection_t _tc, *tc = &_tc, _ref, *ref = &_ref;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      vlib_cli_output (vm, "parse error: '%U'", format_unformat_error, input);
+      return -1;
+    }
+
+  tcp_test_set_time (thread_index, 1);
+  tcp_test_cubic_init_epoch (tc, thread_index, 1000, 100);
+  clib_memcpy_fast (ref, tc, sizeof (*ref));
+
+  /* Both local senders become idle at the same time. */
+  tcp_test_set_time (thread_index, 2);
+  tc->delivered_time = tcp_time_now_us (thread_index);
+  ref->delivered_time = tc->delivered_time;
+  tc->tsval_recent_age = tcp_time_tstamp (thread_index);
+  ref->tsval_recent_age = tc->tsval_recent_age;
+
+  /* Only tc receives reverse-direction data.  This refreshes PAWS state but
+   * must not shorten the local sender's idle interval. */
+  tcp_test_set_time (thread_index, 9);
+  tc->tsval_recent_age = tcp_time_tstamp (thread_index);
+
+  tcp_test_set_time (thread_index, 10);
+  tc->cc_algo->event (tc, TCP_CC_EVT_START_TX);
+  ref->cc_algo->event (ref, TCP_CC_EVT_START_TX);
+  /* Byte tracking starts a new delivery-rate interval after congestion
+   * control consumes the drain time.  That reset must not affect CUBIC. */
+  tc->delivered_time = tcp_time_now_us (thread_index);
+
+  tcp_test_set_time (thread_index, 11);
+  TCP_TEST ((tcp_test_cubic_compare_growth (tc, ref, 64) == 0),
+	    "cubic sender idle is independent of reverse traffic timestamps");
+
+  /* Before the first delivered flight there is no delivery-rate baseline.
+   * Starting transmission must begin a fresh epoch at the current time. */
+  tcp_test_set_time (thread_index, 20);
+  tcp_test_cubic_init_epoch (tc, thread_index, 1000, 100);
+  tcp_test_set_time (thread_index, 30);
+  tc->cc_algo->event (tc, TCP_CC_EVT_START_TX);
+  tcp_test_cubic_init_epoch (ref, thread_index, 1000, 100);
+  tcp_test_set_time (thread_index, 31);
+  TCP_TEST ((tcp_test_cubic_compare_growth (tc, ref, 32) == 0),
+	    "cubic first transmission starts a fresh epoch");
+  return 0;
+}
+
 static int
 tcp_test_persist_e2e (vlib_main_t *vm, unformat_input_t *input)
 {
@@ -1551,6 +1749,11 @@ tcp_test_persist_e2e (vlib_main_t *vm, unformat_input_t *input)
     }
   if (!TCP_TEST_I ((client_tc->snd_una == client_tc->snd_nxt),
 		   "client drained all outstanding data"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  if (!TCP_TEST_I ((client_tc->delivered_time > 0), "flight drain records delivery time"))
     {
       rv = 1;
       goto cleanup;
@@ -2921,6 +3124,14 @@ tcp_test (vlib_main_t * vm,
 	{
 	  res = tcp_test_rto (vm, input);
 	}
+      else if (unformat (input, "cubic_idle_reverse"))
+	{
+	  res = tcp_test_cubic_idle_reverse (vm, input);
+	}
+      else if (unformat (input, "cubic"))
+	{
+	  res = tcp_test_cubic_undo (vm, input);
+	}
       else if (unformat (input, "bt"))
 	{
 	  res = tcp_test_bt (vm, input);
@@ -2936,6 +3147,10 @@ tcp_test (vlib_main_t * vm,
 	  if ((res = tcp_test_persist (vm, input)))
 	    goto done;
 	  if ((res = tcp_test_rto (vm, input)))
+	    goto done;
+	  if ((res = tcp_test_cubic_undo (vm, input)))
+	    goto done;
+	  if ((res = tcp_test_cubic_idle_reverse (vm, input)))
 	    goto done;
 	  if ((res = tcp_test_bt (vm, input)))
 	    goto done;
