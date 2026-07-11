@@ -939,6 +939,8 @@ tcp_set_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
 	{
 	  if (mtu < min_mtu)
 	    return clib_error_return (0, "mtu must be at least %u", min_mtu);
+	  if (mtu > CLIB_U16_MAX)
+	    return clib_error_return (0, "mtu must not exceed %u", CLIB_U16_MAX);
 	  tcp_cfg.default_mtu = mtu;
 	  mtu_set = 1;
 	}
@@ -1110,7 +1112,11 @@ tcp_config_fn (vlib_main_t * vm, unformat_input_t * input)
 	  tcp_cfg.min_rx_fifo = memory_size;
 	}
       else if (unformat (input, "mtu %u", &mtu))
-	tcp_cfg.default_mtu = mtu;
+	{
+	  if (mtu > CLIB_U16_MAX)
+	    return clib_error_return (0, "mtu must not exceed %u", CLIB_U16_MAX);
+	  tcp_cfg.default_mtu = mtu;
+	}
       else if (unformat (input, "rwnd-min-update-ack %d",
 			 &tcp_cfg.rwnd_min_update_ack))
 	;
