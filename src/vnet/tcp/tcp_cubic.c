@@ -260,12 +260,11 @@ cubic_event (tcp_connection_t *tc, tcp_cc_event_t evt)
   if (evt != TCP_CC_EVT_START_TX)
     return;
 
-  /* App was idle so update t_start to avoid artificially inflating cwnd.
-   * Shift the cubic epoch forward by that idle time (RFC 9438 Sec. 4.2:
-   * t MUST NOT include application-limited periods).  delivered_time is
-   * recorded when the local flight drains and is not affected by reverse
-   * traffic.  A zero value means no delivery baseline is available, so start
-   * a fresh epoch. */
+  /* App was idle so update t_start to avoid artificially inflating cwnd. Shift
+   * the cubic epoch forward by that idle time (RFC 9438 Sec. 4.2: t MUST NOT
+   * include application-limited periods). delivered_time is recorded when the
+   * local flight drains and is not affected by reverse traffic. A zero value
+   * means no delivery baseline is available, so start a fresh epoch. */
   cd = (cubic_data_t *) tcp_cc_data (tc);
   now = cubic_time (tc->c_thread_index);
   if (tc->delivered_time == 0)
