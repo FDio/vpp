@@ -1764,6 +1764,8 @@ tcp_retransmit_sack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
 	  tcp_program_retransmit (tc);
 	  goto done;
 	}
+      ASSERT (n_written <= snd_space);
+      snd_space -= n_written;
       bi = vlib_get_buffer_index (vm, b);
       tcp_enqueue_to_output (wrk, b, bi, tc->c_is_ip4);
       n_segs = 1;
