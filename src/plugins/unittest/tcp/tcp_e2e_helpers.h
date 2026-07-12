@@ -7,7 +7,7 @@
  * Shared setup/teardown for in-process TCP end-to-end unit tests.
  *
  * Builds a client and server application in two loopback-backed VRFs, connects
- * them, and resolves the client's session and transport.  Because the session
+ * them, and resolves the client's session and transport. Because the session
  * callbacks and the connected/accepted index globals in test_session_helpers.h
  * are translation-unit static, this helper is header-only and must be included
  * from the same file as those helpers (after test_session_helpers.h).
@@ -60,10 +60,38 @@ tcp_e2e_pump (vlib_main_t *vm, f64 secs)
   vlib_worker_thread_barrier_sync (vm);
 }
 
+/* Return wait iterations covering at least eight RTOs, with a two-second
+ * minimum. The connection RTO is expressed in TCP_TICK units. */
+static inline u32
+tcp_e2e_rxt_wait_iters (tcp_connection_t *tc, f64 step)
+{
+  f64 rto_secs = (f64) tc->rto / (f64) THZ;
+  f64 budget = clib_max (8.0 * rto_secs, 2.0);
+  return (u32) (budget / step) + 1;
+}
+
+/* Sum waitclose timeout counters across all TCP workers. TIME_WAIT expiration
+ * is excluded because it is part of a normal active close. */
+static inline u64
+tcp_e2e_teardown_timeouts (void)
+{
+  tcp_main_t *tm = vnet_get_tcp_main ();
+  u64 total = 0;
+  u32 i;
+
+  for (i = 0; i < vec_len (tm->wrk); i++)
+    {
+      tcp_worker_ctx_t *wrk = tcp_get_worker (i);
+      total += wrk->stats.to_closewait + wrk->stats.to_closewait2 + wrk->stats.to_finwait1 +
+	       wrk->stats.to_finwait2 + wrk->stats.to_lastack + wrk->stats.to_closing;
+    }
+  return total;
+}
+
 static inline void tcp_e2e_teardown (vlib_main_t *vm, tcp_e2e_ctx_t *ctx);
 
-/* Bring up client+server apps over loopbacks and connect them.  Fills ctx
- * incrementally so a failure can be unwound by tcp_e2e_teardown.  Returns 0 on
+/* Bring up client+server apps over loopbacks and connect them. Fills ctx
+ * incrementally so a failure can be unwound by tcp_e2e_teardown. Returns 0 on
  * success; on failure logs the failing step and returns non-zero (the caller
  * should still call tcp_e2e_teardown). */
 static inline int
@@ -272,11 +300,7 @@ tcp_e2e_teardown (vlib_main_t *vm, tcp_e2e_ctx_t *ctx)
 						 &ctx->intf_addr[0], 32, 0 /* is_add */);
     }
 
-  /* Remove the interface addresses (added with a /24 in session_create_lookpback)
-   * and delete the loopbacks so the same addresses can be reused by a later
-   * setup in the same process.  session_delete_loopback only administratively
-   * downs the interface and leaves the address configured, which makes a repeat
-   * setup fail to reassign the address, so do the teardown explicitly here. */
+  /* Remove interface addresses and stop the loopbacks before draining. */
   for (int i = 0; i < 2; i++)
     {
       if (ctx->sw_if_index[i] == ~0)
@@ -284,6 +308,16 @@ tcp_e2e_teardown (vlib_main_t *vm, tcp_e2e_ctx_t *ctx)
       (void) ip4_add_del_interface_address (vm, ctx->sw_if_index[i], &ctx->intf_addr[i], 24,
 					    1 /* is_del */);
       vnet_sw_interface_set_flags (vnet_get_main (), ctx->sw_if_index[i], 0);
+    }
+
+  /* Drain graph frames that may still reference the loopbacks before deletion. */
+  for (int i = 0; i < 5; i++)
+    tcp_e2e_pump (vm, 1e-3);
+
+  for (int i = 0; i < 2; i++)
+    {
+      if (ctx->sw_if_index[i] == ~0)
+	continue;
       (void) vnet_delete_loopback_interface (ctx->sw_if_index[i]);
     }
 

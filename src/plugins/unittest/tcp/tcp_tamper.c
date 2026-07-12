@@ -10,6 +10,7 @@
 #include <vnet/ip/ip4_packet.h>
 #include <vnet/ip/ip6_packet.h>
 #include <vnet/tcp/tcp_packet.h>
+#include <vnet/tcp/tcp_inlines.h>
 #include <unittest/tcp/tcp_tamper.h>
 
 tcp_tamper_main_t tcp_tamper_main = {
@@ -71,10 +72,10 @@ typedef enum
   TCP_TAMPER_N_NEXT,
 } tcp_tamper_next_t;
 
-/* Read the host-order seq and flags from an egress TCP segment.  The node is
+/* Read the host-order seq and flags from an egress TCP segment. The node is
  * only ever a next node of tcp4/6-output, which records the TCP header location
  * in l4_hdr_offset when it pushes the header (before IP), so use that directly
- * rather than assuming a fixed IP header size.  The IP version comes from the
+ * rather than assuming a fixed IP header size. The IP version comes from the
  * buffer flag. */
 static_always_inline void
 tcp_tamper_parse (vlib_buffer_t *b, u32 *seq, u8 *flags, u8 *is_ip4)
@@ -96,6 +97,8 @@ static_always_inline int
 tcp_tamper_should_drop (u32 thread_index, u32 conn_index, u32 seq, u8 flags)
 {
   tcp_tamper_main_t *im = &tcp_tamper_main;
+  /* The connection may be gone during teardown. */
+  tcp_connection_t *tc = tcp_connection_get_if_valid (conn_index, thread_index);
   tcp_tamper_rule_t *r;
 
   vec_foreach (r, im->rules)
@@ -107,11 +110,30 @@ tcp_tamper_should_drop (u32 thread_index, u32 conn_index, u32 seq, u8 flags)
 	continue;
       if ((flags & r->flags_mask) != r->flags_match)
 	continue;
-      if (r->seq != ~0u && r->seq != seq)
+      if (r->above_rp_in_recovery)
+	{
+	  /* Only while in recovery and at/above the current recovery point. */
+	  if (!tc || !tcp_in_cong_recovery (tc) || seq_lt (seq, tc->snd_congestion))
+	    continue;
+	}
+      else if (r->seq_is_min)
+	{
+	  /* Wraparound-safe lower-bound match. */
+	  if (seq_lt (seq, r->min_seq))
+	    continue;
+	}
+      else if (r->seq != ~0u && r->seq != seq)
 	continue;
       r->n_matched += 1;
       if (r->n_drop)
 	{
+	  /* Record sender state at the first drop. */
+	  if (r->n_dropped == 0 && tc)
+	    {
+	      r->drop_in_recovery = tcp_in_cong_recovery (tc);
+	      r->drop_snd_una = tc->snd_una;
+	      r->drop_snd_congestion = tc->snd_congestion;
+	    }
 	  r->n_drop -= 1;
 	  r->n_dropped += 1;
 	  return 1;
@@ -238,6 +260,27 @@ tcp_tamper_drop_seq (tcp_connection_t *tc, u32 seq, u32 n_drop)
   tcp_tamper_rule_t *r = tcp_tamper_add_rule ();
   tcp_tamper_rule_set_conn (r, tc);
   r->seq = seq;
+  r->n_drop = n_drop;
+  return r;
+}
+
+tcp_tamper_rule_t *
+tcp_tamper_drop_from_seq (tcp_connection_t *tc, u32 min_seq, u32 n_drop)
+{
+  tcp_tamper_rule_t *r = tcp_tamper_add_rule ();
+  tcp_tamper_rule_set_conn (r, tc);
+  r->seq_is_min = 1;
+  r->min_seq = min_seq;
+  r->n_drop = n_drop;
+  return r;
+}
+
+tcp_tamper_rule_t *
+tcp_tamper_drop_above_rp (tcp_connection_t *tc, u32 n_drop)
+{
+  tcp_tamper_rule_t *r = tcp_tamper_add_rule ();
+  tcp_tamper_rule_set_conn (r, tc);
+  r->above_rp_in_recovery = 1;
   r->n_drop = n_drop;
   return r;
 }
