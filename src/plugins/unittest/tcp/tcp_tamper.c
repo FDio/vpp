@@ -107,7 +107,13 @@ tcp_tamper_should_drop (u32 thread_index, u32 conn_index, u32 seq, u8 flags)
 	continue;
       if ((flags & r->flags_mask) != r->flags_match)
 	continue;
-      if (r->seq != ~0u && r->seq != seq)
+      if (r->seq_is_min)
+	{
+	  /* Wraparound-safe lower-bound match. */
+	  if (seq_lt (seq, r->min_seq))
+	    continue;
+	}
+      else if (r->seq != ~0u && r->seq != seq)
 	continue;
       r->n_matched += 1;
       if (r->n_drop)
@@ -238,6 +244,17 @@ tcp_tamper_drop_seq (tcp_connection_t *tc, u32 seq, u32 n_drop)
   tcp_tamper_rule_t *r = tcp_tamper_add_rule ();
   tcp_tamper_rule_set_conn (r, tc);
   r->seq = seq;
+  r->n_drop = n_drop;
+  return r;
+}
+
+tcp_tamper_rule_t *
+tcp_tamper_drop_from_seq (tcp_connection_t *tc, u32 min_seq, u32 n_drop)
+{
+  tcp_tamper_rule_t *r = tcp_tamper_add_rule ();
+  tcp_tamper_rule_set_conn (r, tc);
+  r->seq_is_min = 1;
+  r->min_seq = min_seq;
   r->n_drop = n_drop;
   return r;
 }

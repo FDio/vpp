@@ -2780,6 +2780,7 @@ tcp_test_tamper_lost_fin (vlib_main_t *vm)
   tcp_e2e_ctx_t _ctx, *ctx = &_ctx;
   tcp_connection_t *client_tc;
   tcp_tamper_rule_t *fin_rule;
+  u64 to_before;
   u32 tries;
   int rv = 0;
 
@@ -2801,6 +2802,7 @@ tcp_test_tamper_lost_fin (vlib_main_t *vm)
     }
 
   /* Arm the drop, route the client's egress through the tamper node, close. */
+  to_before = tcp_e2e_teardown_timeouts ();
   fin_rule = tcp_tamper_drop_fin (client_tc, 1);
   tcp_tamper_enable (client_tc);
   session_close (ctx->client_s);
@@ -2872,6 +2874,15 @@ tcp_test_tamper_lost_fin (vlib_main_t *vm)
       }
   }
 
+  /* The transition must be driven by the retransmitted FIN being acked, not by
+   * a waitclose timeout falling back to a forced close. */
+  if (!TCP_TEST_I ((tcp_e2e_teardown_timeouts () == to_before),
+		   "lost_fin: teardown was protocol-driven, no waitclose timeout"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
 cleanup:
   tcp_tamper_reset ();
   tcp_e2e_teardown (vm, ctx);
@@ -2898,6 +2909,7 @@ tcp_test_tamper_lost_final_ack (vlib_main_t *vm)
   tcp_connection_t *client_tc, *server_tc;
   tcp_tamper_rule_t *ack_rule;
   session_t *server_s;
+  u64 to_before;
   u32 tries, server_si, server_st;
   u8 advanced = 0;
   int rv = 0;
@@ -2926,6 +2938,7 @@ tcp_test_tamper_lost_final_ack (vlib_main_t *vm)
    * so its first pure ack once closing is the ack of the server's FIN.  Route
    * the client's egress through the tamper node and actively close it.
    */
+  to_before = tcp_e2e_teardown_timeouts ();
   ack_rule = tcp_tamper_drop_pure_ack (client_tc, 1);
   tcp_tamper_enable (client_tc);
   session_close (ctx->client_s);
@@ -2996,6 +3009,14 @@ tcp_test_tamper_lost_final_ack (vlib_main_t *vm)
       rv = 1;
       goto cleanup;
     }
+  /* Recovery is the server RTO-retransmitting its FIN and the client re-acking,
+   * not the LAST_ACK waitclose timer firing. */
+  if (!TCP_TEST_I ((tcp_e2e_teardown_timeouts () == to_before),
+		   "lost_ack: teardown was protocol-driven, no waitclose timeout"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
 
 cleanup:
   tcp_tamper_reset ();
@@ -3003,52 +3024,701 @@ cleanup:
   return rv;
 }
 
+/* Server closes first: drop the server's first FIN and confirm the passive
+ * close still completes.  The server's FIN is retransmitted, the client moves
+ * to CLOSE_WAIT once it arrives, and the client-side close then proceeds.
+ * Exercises tampering the server (accepted) connection's egress. */
+static int
+tcp_test_tamper_peer_fin_first (vlib_main_t *vm)
+{
+  tcp_e2e_params_t params = {
+    .name = "peer_fin",
+    .client_addr = 0x0e0e0e01,
+    .server_addr = 0x0f0f0f01,
+    .client_vrf = 0,
+    .server_vrf = 2,
+    .server_port = 2243,
+    .client_port = 0, /* ephemeral: rerun-safe */
+    .secret = 2242,
+  };
+  tcp_e2e_ctx_t _ctx, *ctx = &_ctx;
+  tcp_connection_t *client_tc, *server_tc;
+  tcp_tamper_rule_t *fin_rule;
+  session_t *server_s;
+  u64 to_before;
+  u32 tries, server_si, server_st;
+  u8 advanced = 0;
+  int rv = 0;
+
+  tcp_tamper_reset ();
+
+  if (!TCP_TEST_I ((tcp_e2e_setup (vm, ctx, &params) == 0), "peer_fin: e2e setup"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  client_tc = ctx->client_tc;
+
+  server_si = accepted_session_index;
+  server_st = accepted_session_thread;
+  server_s = session_get_if_valid (server_si, server_st);
+  if (!TCP_TEST_I ((server_s != 0), "peer_fin: server session resolvable"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  server_tc = (tcp_connection_t *) session_get_transport (server_s);
+
+  /* Drop the server's first FIN, route the server's egress through the tamper
+   * node, and have the server close first. */
+  to_before = tcp_e2e_teardown_timeouts ();
+  fin_rule = tcp_tamper_drop_fin (server_tc, 1);
+  tcp_tamper_enable (server_tc);
+  session_close (server_s);
+
+  tries = 0;
+  while (fin_rule->n_dropped == 0 && ++tries < 200)
+    tcp_e2e_pump (vm, 10e-3);
+  if (!TCP_TEST_I ((fin_rule->n_dropped == 1),
+		   "peer_fin: tamper node dropped the server's first FIN (dropped %u)",
+		   fin_rule->n_dropped))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+  /*
+   * The server retransmits its FIN; once it reaches the client, the client
+   * leaves ESTABLISHED (it received the peer FIN).  The placeholder app closes
+   * on the disconnect notification, so the client races through CLOSE_WAIT to
+   * LAST_ACK/CLOSED; the race-free signal is simply that it is no longer
+   * ESTABLISHED (or the session is gone).  Require the retransmitted FIN too.
+   * Re-fetch the client transport by index each iteration since it may be freed
+   * once its own close completes.
+   */
+  for (tries = 0; tries < 400; tries++)
+    {
+      session_t *s = session_get_if_valid (connected_session_index, connected_session_thread);
+      tcp_connection_t *cur;
+
+      if (connected_session_index == ~0 || !s)
+	{
+	  advanced = 1; /* client closed and cleaned up */
+	  break;
+	}
+      cur = (tcp_connection_t *) session_get_transport (s);
+      if ((!cur || cur->state != TCP_STATE_ESTABLISHED) && fin_rule->n_matched >= 2)
+	{
+	  advanced = 1; /* left ESTABLISHED after the retransmitted FIN landed */
+	  break;
+	}
+      tcp_e2e_pump (vm, 10e-3);
+    }
+  if (!TCP_TEST_I ((fin_rule->n_matched >= 2),
+		   "peer_fin: server retransmitted its FIN (matched %u)", fin_rule->n_matched))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  if (!TCP_TEST_I ((advanced != 0),
+		   "peer_fin: client leaves ESTABLISHED after the retransmitted FIN"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  /* The client moved out of ESTABLISHED because the retransmitted FIN arrived,
+   * not because a waitclose timer forced it. */
+  if (!TCP_TEST_I ((tcp_e2e_teardown_timeouts () == to_before),
+		   "peer_fin: teardown was protocol-driven, no waitclose timeout"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  (void) client_tc;
+
+cleanup:
+  tcp_tamper_reset ();
+  tcp_e2e_teardown (vm, ctx);
+  return rv;
+}
+
+/* Drop one specific mid-stream data segment and confirm reliable delivery
+ * still completes: the dropped segment is retransmitted and the server
+ * receives every byte. */
+static int
+tcp_test_tamper_chained_rxt (vlib_main_t *vm)
+{
+  tcp_e2e_params_t params = {
+    .name = "chain_rxt",
+    .client_addr = 0x10101001,
+    .server_addr = 0x11111101,
+    .client_vrf = 0,
+    .server_vrf = 2,
+    .server_port = 2245,
+    .client_port = 0, /* ephemeral: rerun-safe */
+    .secret = 2244,
+    .rx_fifo_size = 128 << 10,
+    .tx_fifo_size = 128 << 10,
+  };
+  tcp_e2e_ctx_t _ctx, *ctx = &_ctx;
+  tcp_connection_t *client_tc;
+  tcp_tamper_rule_t *seg_rule;
+  session_t *client_s, *server_s;
+  u32 tries, drop_seq, total_bytes = 32 << 10, drained = 0;
+  u8 *data = 0;
+  int error, rv = 0, i;
+
+  tcp_tamper_reset ();
+
+  if (!TCP_TEST_I ((tcp_e2e_setup (vm, ctx, &params) == 0), "chain_rxt: e2e setup"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  client_tc = ctx->client_tc;
+  client_s = ctx->client_s;
+  server_s = session_get_if_valid (accepted_session_index, accepted_session_thread);
+  if (!TCP_TEST_I ((server_s != 0), "chain_rxt: server session resolvable"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+  /* Target a segment a few MSS into the stream so it is genuinely mid-stream
+   * (not the first or last segment). snd_una is the initial send sequence. */
+  drop_seq = client_tc->snd_una + 3 * client_tc->snd_mss;
+  seg_rule = tcp_tamper_drop_seq (client_tc, drop_seq, 1);
+  tcp_tamper_enable (client_tc);
+
+  vec_validate (data, total_bytes - 1);
+  for (i = 0; i < (int) total_bytes; i++)
+    data[i] = i & 0xff;
+
+  error = svm_fifo_enqueue (client_s->tx_fifo, total_bytes, data);
+  if (!TCP_TEST_I ((error == (int) total_bytes), "chain_rxt: client queued %u bytes", total_bytes))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  error = session_program_tx_io_evt (client_s->handle, SESSION_IO_EVT_TX);
+  if (!TCP_TEST_I ((error == 0), "chain_rxt: client tx event programmed"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+  /* Drive the transfer, draining the server so the window stays open, until all
+   * bytes are received or we give up. */
+  for (tries = 0; drained < total_bytes && tries < 600; tries++)
+    {
+      drained += session_test_drain_rx_fifo (server_s);
+      if (drained >= total_bytes)
+	break;
+      tcp_e2e_pump (vm, 10e-3);
+    }
+
+  if (!TCP_TEST_I ((seg_rule->n_dropped == 1),
+		   "chain_rxt: tamper node dropped the target segment (dropped %u)",
+		   seg_rule->n_dropped))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  if (!TCP_TEST_I ((seg_rule->n_matched >= 2),
+		   "chain_rxt: dropped segment was retransmitted (matched %u)",
+		   seg_rule->n_matched))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  if (!TCP_TEST_I ((drained == total_bytes),
+		   "chain_rxt: all %u bytes delivered despite the drop (got %u)", total_bytes,
+		   drained))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+cleanup:
+  tcp_tamper_reset ();
+  vec_free (data);
+  tcp_e2e_teardown (vm, ctx);
+  return rv;
+}
+
+/* Close with TX data still queued so the FIN is pending behind it
+ * (TCP_CONN_FINPNDG).  Drop that deferred FIN once it is finally sent, and
+ * confirm all data is delivered and the FIN is retransmitted so teardown still
+ * completes. */
+static int
+tcp_test_tamper_queued_fin (vlib_main_t *vm)
+{
+  tcp_e2e_params_t params = {
+    .name = "queued_fin",
+    .client_addr = 0x12121201,
+    .server_addr = 0x13131301,
+    .client_vrf = 0,
+    .server_vrf = 2,
+    .server_port = 2247,
+    .client_port = 0, /* ephemeral: rerun-safe */
+    .secret = 2246,
+    /* Small rx fifo -> small peer window so the queued data cannot all flush at
+     * once; it stays in the tx fifo, keeping the deferred FIN pending (FINPNDG)
+     * across several drain iterations rather than clearing within one pump. */
+    .rx_fifo_size = 4 << 10,
+    .tx_fifo_size = 128 << 10,
+  };
+  tcp_e2e_ctx_t _ctx, *ctx = &_ctx;
+  tcp_connection_t *client_tc;
+  tcp_tamper_rule_t *fin_rule;
+  session_t *client_s, *server_s;
+  u64 to_before;
+  u32 tries, total_bytes = 32 << 10, drained = 0;
+  u8 *data = 0, saw_finpndg = 0;
+  int error, rv = 0, i;
+
+  tcp_tamper_reset ();
+
+  if (!TCP_TEST_I ((tcp_e2e_setup (vm, ctx, &params) == 0), "queued_fin: e2e setup"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  client_tc = ctx->client_tc;
+  client_s = ctx->client_s;
+  server_s = session_get_if_valid (accepted_session_index, accepted_session_thread);
+  if (!TCP_TEST_I ((server_s != 0), "queued_fin: server session resolvable"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+  /* Drop the client's first FIN, route egress through the tamper node. */
+  to_before = tcp_e2e_teardown_timeouts ();
+  fin_rule = tcp_tamper_drop_fin (client_tc, 1);
+  tcp_tamper_enable (client_tc);
+
+  /* Queue data and close immediately: the FIN is deferred behind the unsent
+   * data, so the connection should be in FIN_WAIT_1 with FINPNDG set. */
+  vec_validate (data, total_bytes - 1);
+  for (i = 0; i < (int) total_bytes; i++)
+    data[i] = i & 0xff;
+  error = svm_fifo_enqueue (client_s->tx_fifo, total_bytes, data);
+  if (!TCP_TEST_I ((error == (int) total_bytes), "queued_fin: client queued %u bytes", total_bytes))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+  /* Close with the data still queued, then start the transfer.  The close is
+   * processed asynchronously: when the close handler runs with data still
+   * outstanding it defers the FIN (FINPNDG) rather than sending it.  Both the
+   * close event and the tx event are pending; drive the wheel and observe the
+   * FINPNDG window while the data is draining. */
+  session_close (client_s);
+  error = session_program_tx_io_evt (client_s->handle, SESSION_IO_EVT_TX);
+  if (!TCP_TEST_I ((error == 0), "queued_fin: client tx event programmed"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+  /* Drive delivery, draining the server so the window stays open, and catch the
+   * FINPNDG window (FIN deferred behind not-yet-sent data). */
+  for (tries = 0; drained < total_bytes && tries < 600; tries++)
+    {
+      if (client_tc->flags & TCP_CONN_FINPNDG)
+	saw_finpndg = 1;
+      drained += session_test_drain_rx_fifo (server_s);
+      if (drained >= total_bytes)
+	break;
+      tcp_e2e_pump (vm, 10e-3);
+    }
+  if (!TCP_TEST_I ((saw_finpndg != 0), "queued_fin: FIN is pending behind queued data (FINPNDG)"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  if (!TCP_TEST_I ((drained == total_bytes),
+		   "queued_fin: all %u bytes delivered before the FIN (got %u)", total_bytes,
+		   drained))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+  /* The deferred FIN follows the data, is dropped once, then retransmitted so
+   * the client still leaves ESTABLISHED/FIN_WAIT_1. */
+  for (tries = 0; tries < 400; tries++)
+    {
+      session_t *s = session_get_if_valid (connected_session_index, connected_session_thread);
+      if (connected_session_index == ~0 || !s)
+	break;
+      if (fin_rule->n_matched >= 2)
+	break;
+      tcp_e2e_pump (vm, 10e-3);
+    }
+  if (!TCP_TEST_I ((fin_rule->n_dropped == 1),
+		   "queued_fin: tamper node dropped the deferred FIN (dropped %u)",
+		   fin_rule->n_dropped))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  if (!TCP_TEST_I ((fin_rule->n_matched >= 2),
+		   "queued_fin: deferred FIN was retransmitted (matched %u)", fin_rule->n_matched))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  /* The deferred FIN went out after the data drained and was recovered by
+   * retransmission, not by a waitclose timeout forcing the close. */
+  if (!TCP_TEST_I ((tcp_e2e_teardown_timeouts () == to_before),
+		   "queued_fin: teardown was protocol-driven, no waitclose timeout"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+cleanup:
+  tcp_tamper_reset ();
+  vec_free (data);
+  tcp_e2e_teardown (vm, ctx);
+  return rv;
+}
+
+/* Close with data queued so the FIN is deferred (FINPNDG), then drop a data
+ * segment while the FIN is pending.  Confirm the data loss is recovered by
+ * retransmission, all data is delivered, and the deferred FIN is then sent and
+ * the teardown completes cleanly (protocol-driven, no waitclose timeout). */
+static int
+tcp_test_tamper_queued_data_loss (vlib_main_t *vm)
+{
+  tcp_e2e_params_t params = {
+    .name = "queued_dl",
+    .client_addr = 0x16161601,
+    .server_addr = 0x17171701,
+    .client_vrf = 0,
+    .server_vrf = 2,
+    .server_port = 2251,
+    .client_port = 0, /* ephemeral: rerun-safe */
+    .secret = 2250,
+    /* Small rx fifo -> small peer window so the queued data drains over many
+     * iterations, keeping the FIN deferred (FINPNDG) while a data segment is
+     * dropped and recovered. */
+    .rx_fifo_size = 4 << 10,
+    .tx_fifo_size = 128 << 10,
+  };
+  tcp_e2e_ctx_t _ctx, *ctx = &_ctx;
+  tcp_connection_t *client_tc;
+  tcp_tamper_rule_t *seg_rule;
+  session_t *client_s, *server_s;
+  u64 to_before;
+  u32 tries, mss, drop_seq, total_bytes = 32 << 10, drained = 0;
+  u8 *data = 0, saw_finpndg = 0;
+  int error, rv = 0, i;
+
+  tcp_tamper_reset ();
+
+  if (!TCP_TEST_I ((tcp_e2e_setup (vm, ctx, &params) == 0), "queued_dl: e2e setup"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  client_tc = ctx->client_tc;
+  client_s = ctx->client_s;
+  server_s = session_get_if_valid (accepted_session_index, accepted_session_thread);
+  if (!TCP_TEST_I ((server_s != 0), "queued_dl: server session resolvable"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  mss = client_tc->snd_mss;
+
+  /* Drop a mid-stream data segment (not the FIN), route egress through the
+   * tamper node. */
+  to_before = tcp_e2e_teardown_timeouts ();
+  drop_seq = client_tc->snd_una + 3 * mss;
+  seg_rule = tcp_tamper_drop_seq (client_tc, drop_seq, 1);
+  tcp_tamper_enable (client_tc);
+
+  vec_validate (data, total_bytes - 1);
+  for (i = 0; i < (int) total_bytes; i++)
+    data[i] = i & 0xff;
+  error = svm_fifo_enqueue (client_s->tx_fifo, total_bytes, data);
+  if (!TCP_TEST_I ((error == (int) total_bytes), "queued_dl: client queued %u bytes", total_bytes))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+  /* Close with data queued so the FIN is deferred, then start the transfer. */
+  session_close (client_s);
+  error = session_program_tx_io_evt (client_s->handle, SESSION_IO_EVT_TX);
+  if (!TCP_TEST_I ((error == 0), "queued_dl: client tx event programmed"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+  /* Drive delivery, draining the server, observing the FINPNDG window. */
+  for (tries = 0; drained < total_bytes && tries < 800; tries++)
+    {
+      if (client_tc->flags & TCP_CONN_FINPNDG)
+	saw_finpndg = 1;
+      drained += session_test_drain_rx_fifo (server_s);
+      if (drained >= total_bytes)
+	break;
+      tcp_e2e_pump (vm, 10e-3);
+    }
+
+  if (!TCP_TEST_I ((saw_finpndg != 0), "queued_dl: FIN was pending behind queued data (FINPNDG)"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  if (!TCP_TEST_I (
+	(seg_rule->n_dropped == 1 && seg_rule->n_matched >= 2),
+	"queued_dl: data segment dropped once and retransmitted (dropped %u, matched %u)",
+	seg_rule->n_dropped, seg_rule->n_matched))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  if (!TCP_TEST_I ((drained == total_bytes),
+		   "queued_dl: all %u bytes delivered despite the data loss (got %u)", total_bytes,
+		   drained))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+  /* After the data drains, the deferred FIN goes out and teardown completes. */
+  for (tries = 0; tries < 400; tries++)
+    {
+      session_t *s = session_get_if_valid (connected_session_index, connected_session_thread);
+      tcp_connection_t *cur;
+
+      if (connected_session_index == ~0 || !s)
+	break;
+      cur = (tcp_connection_t *) session_get_transport (s);
+      if (!cur || cur->state != TCP_STATE_ESTABLISHED)
+	break;
+      tcp_e2e_pump (vm, 10e-3);
+    }
+  {
+    session_t *s = session_get_if_valid (connected_session_index, connected_session_thread);
+    tcp_connection_t *cur = s ? (tcp_connection_t *) session_get_transport (s) : 0;
+    if (!TCP_TEST_I ((connected_session_index == ~0 || !cur || cur->state != TCP_STATE_ESTABLISHED),
+		     "queued_dl: deferred FIN sent, client left ESTABLISHED after data recovery"))
+      {
+	rv = 1;
+	goto cleanup;
+      }
+  }
+  if (!TCP_TEST_I ((tcp_e2e_teardown_timeouts () == to_before),
+		   "queued_dl: teardown was protocol-driven, no waitclose timeout"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+cleanup:
+  tcp_tamper_reset ();
+  vec_free (data);
+  tcp_e2e_teardown (vm, ctx);
+  return rv;
+}
+
+/* Drop two widely separated segments in one transfer so that a second loss
+ * sits above the first recovery point.  When the first recovery point is
+ * cumulatively acked, the still-outstanding second loss forces recovery to
+ * exit and immediately re-enter for a fresh congestion event, producing a
+ * second fast-recovery episode.  Confirm two episodes occur and all data is
+ * delivered. */
+static int
+tcp_test_tamper_recovery_point (vlib_main_t *vm)
+{
+  tcp_e2e_params_t params = {
+    .name = "recov_pt",
+    .client_addr = 0x14141401,
+    .server_addr = 0x15151501,
+    .client_vrf = 0,
+    .server_vrf = 2,
+    .server_port = 2249,
+    .client_port = 0, /* ephemeral: rerun-safe */
+    .secret = 2248,
+    /* Large windows so a wide flight is outstanding and the sender keeps
+     * emitting fresh segments above the recovery point during recovery. */
+    .rx_fifo_size = 256 << 10,
+    .tx_fifo_size = 256 << 10,
+  };
+  tcp_e2e_ctx_t _ctx, *ctx = &_ctx;
+  tcp_connection_t *client_tc;
+  tcp_tamper_rule_t *r1, *r2;
+  session_t *client_s, *server_s;
+  u32 tries, mss, seq1, min_seq2, total_bytes = 256 << 10, drained = 0;
+  u32 fr_before;
+  u8 *data = 0;
+  int error, rv = 0, i;
+
+  tcp_tamper_reset ();
+
+  if (!TCP_TEST_I ((tcp_e2e_setup (vm, ctx, &params) == 0), "recov_pt: e2e setup"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  client_tc = ctx->client_tc;
+  client_s = ctx->client_s;
+  server_s = session_get_if_valid (accepted_session_index, accepted_session_thread);
+  if (!TCP_TEST_I ((server_s != 0), "recov_pt: server session resolvable"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  mss = client_tc->snd_mss;
+  fr_before = client_tc->fr_occurences;
+
+  /*
+   * Two losses that force recovery to exit at the first recovery point and
+   * immediately re-enter for a fresh loss above it.  The first loss is early;
+   * the second is armed as a "drop the first segment at or above min_seq" rule
+   * with min_seq set far enough out that it lands above the recovery point
+   * snapshotted at episode-1 entry (recovery-point = snd_nxt at entry, which is
+   * bounded by the initial window, well below min_seq).  The tamper node sees
+   * every segment in the datapath, so it catches that segment deterministically
+   * as the sender emits it during recovery -- no polling race.  When snd_una
+   * reaches the first recovery point, the still-outstanding second loss forces
+   * exit-and-immediate-reentry, a second fast-recovery episode.
+   */
+  seq1 = client_tc->snd_una + 4 * mss;
+  min_seq2 = client_tc->snd_una + 40 * mss;
+  tcp_tamper_drop_seq (client_tc, seq1, 1);
+  tcp_tamper_drop_from_seq (client_tc, min_seq2, 1);
+  r1 = &tcp_tamper_main.rules[0];
+  r2 = &tcp_tamper_main.rules[1];
+  tcp_tamper_enable (client_tc);
+
+  vec_validate (data, total_bytes - 1);
+  for (i = 0; i < (int) total_bytes; i++)
+    data[i] = i & 0xff;
+  error = svm_fifo_enqueue (client_s->tx_fifo, total_bytes, data);
+  if (!TCP_TEST_I ((error == (int) total_bytes), "recov_pt: client queued %u bytes", total_bytes))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  error = session_program_tx_io_evt (client_s->handle, SESSION_IO_EVT_TX);
+  if (!TCP_TEST_I ((error == 0), "recov_pt: client tx event programmed"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+  for (tries = 0; drained < total_bytes && tries < 2000; tries++)
+    {
+      drained += session_test_drain_rx_fifo (server_s);
+      if (drained >= total_bytes)
+	break;
+      tcp_e2e_pump (vm, 5e-3);
+    }
+
+  if (!TCP_TEST_I ((r1->n_dropped == 1 && r2->n_dropped == 1),
+		   "recov_pt: both losses dropped (%u, %u)", r1->n_dropped, r2->n_dropped))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  /* The first loss is at seq1 (a few mss in), so episode 1's recovery point is
+   * bounded by the early window there.  The second loss is forced at or above
+   * min_seq2 (40 mss in), well above it.  So the two recovery episodes have
+   * distinct, ordered recovery points: the second is a fresh event above the
+   * first, not part of episode 1. */
+  if (!TCP_TEST_I ((seq_lt (seq1, min_seq2)), "recov_pt: second loss is above the first (%u < %u)",
+		   seq1 - client_tc->iss, min_seq2 - client_tc->iss))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  if (!TCP_TEST_I ((drained == total_bytes),
+		   "recov_pt: all %u bytes delivered despite two losses (got %u)", total_bytes,
+		   drained))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  /* Exit at the first recovery point plus immediate re-entry for the fresh
+   * loss above it is a second fast-recovery episode. */
+  if (!TCP_TEST_I (((client_tc->fr_occurences - fr_before) >= 2),
+		   "recov_pt: recovery exits and re-enters for loss above the point "
+		   "(fr delta %u)",
+		   client_tc->fr_occurences - fr_before))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+cleanup:
+  tcp_tamper_reset ();
+  vec_free (data);
+  tcp_e2e_teardown (vm, ctx);
+  return rv;
+}
+
 static int
 tcp_test_tamper (vlib_main_t *vm, unformat_input_t *input)
 {
-  int res = 0, ran = 0;
+  struct
+  {
+    const char *name;
+    int (*fn) (vlib_main_t *);
+  } cases[] = {
+    { "fin", tcp_test_tamper_lost_fin },
+    { "lost-ack", tcp_test_tamper_lost_final_ack },
+    { "peer-fin", tcp_test_tamper_peer_fin_first },
+    { "chain-rxt", tcp_test_tamper_chained_rxt },
+    { "queued-fin", tcp_test_tamper_queued_fin },
+    { "queued-data-loss", tcp_test_tamper_queued_data_loss },
+    { "recov-pt", tcp_test_tamper_recovery_point },
+  };
+  int res = 0, i;
 
+  /* No argument: run every case. */
   if (unformat_check_input (input) == UNFORMAT_END_OF_INPUT)
     {
-      if ((res = tcp_test_tamper_lost_fin (vm)))
-	return res;
-      return tcp_test_tamper_lost_final_ack (vm);
+      for (i = 0; i < ARRAY_LEN (cases); i++)
+	if ((res = cases[i].fn (vm)))
+	  return res;
+      return 0;
     }
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (input, "fin"))
+      u8 matched = 0;
+
+      if (unformat (input, "all"))
 	{
-	  ran = 1;
-	  if ((res = tcp_test_tamper_lost_fin (vm)))
-	    return res;
+	  for (i = 0; i < ARRAY_LEN (cases); i++)
+	    if ((res = cases[i].fn (vm)))
+	      return res;
+	  continue;
 	}
-      else if (unformat (input, "lost-ack"))
+      for (i = 0; i < ARRAY_LEN (cases); i++)
 	{
-	  ran = 1;
-	  if ((res = tcp_test_tamper_lost_final_ack (vm)))
-	    return res;
+	  if (unformat (input, cases[i].name))
+	    {
+	      matched = 1;
+	      if ((res = cases[i].fn (vm)))
+		return res;
+	      break;
+	    }
 	}
-      else if (unformat (input, "all"))
-	{
-	  ran = 1;
-	  if ((res = tcp_test_tamper_lost_fin (vm)))
-	    return res;
-	  if ((res = tcp_test_tamper_lost_final_ack (vm)))
-	    return res;
-	}
-      else
+      if (!matched)
 	{
 	  vlib_cli_output (vm, "unknown tamper case: '%U'", format_unformat_error, input);
 	  return -1;
 	}
-    }
-
-  if (!ran)
-    {
-      if ((res = tcp_test_tamper_lost_fin (vm)))
-	return res;
-      return tcp_test_tamper_lost_final_ack (vm);
     }
   return res;
 }

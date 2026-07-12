@@ -60,6 +60,30 @@ tcp_e2e_pump (vlib_main_t *vm, f64 secs)
   vlib_worker_thread_barrier_sync (vm);
 }
 
+/* Sum of the connection-teardown timeout stats across all tcp workers.  Each
+ * of these is bumped only when the waitclose timer forces a state transition
+ * because the protocol exchange did not complete in time (see
+ * tcp_timer_waitclose_handler).  A test that expects a clean, protocol-driven
+ * teardown can snapshot this before closing and assert it is unchanged after,
+ * proving the connection transitioned as required rather than timing out.
+ * (TIME_WAIT expiry is the normal end of an active close and bumps no stat, so
+ * it is intentionally excluded.) */
+static inline u64
+tcp_e2e_teardown_timeouts (void)
+{
+  tcp_main_t *tm = vnet_get_tcp_main ();
+  u64 total = 0;
+  u32 i;
+
+  for (i = 0; i < vec_len (tm->wrk); i++)
+    {
+      tcp_worker_ctx_t *wrk = tcp_get_worker (i);
+      total += wrk->stats.to_closewait + wrk->stats.to_closewait2 + wrk->stats.to_finwait1 +
+	       wrk->stats.to_finwait2 + wrk->stats.to_lastack + wrk->stats.to_closing;
+    }
+  return total;
+}
+
 static inline void tcp_e2e_teardown (vlib_main_t *vm, tcp_e2e_ctx_t *ctx);
 
 /* Bring up client+server apps over loopbacks and connect them.  Fills ctx
@@ -273,10 +297,13 @@ tcp_e2e_teardown (vlib_main_t *vm, tcp_e2e_ctx_t *ctx)
     }
 
   /* Remove the interface addresses (added with a /24 in session_create_lookpback)
-   * and delete the loopbacks so the same addresses can be reused by a later
-   * setup in the same process.  session_delete_loopback only administratively
-   * downs the interface and leaves the address configured, which makes a repeat
-   * setup fail to reassign the address, so do the teardown explicitly here. */
+   * and administratively down the loopbacks.  The loopbacks are intentionally
+   * NOT deleted: a tampered-away segment is enqueued to error-drop carrying the
+   * loopback's sw_if_index, and deleting the interface while such a buffer is
+   * still queued makes interface_drop_punt dereference a freed interface and
+   * abort.  Removing the address is enough to let a later setup reuse the same
+   * address (each case uses a distinct subnet anyway); the downed loopback is
+   * left allocated for the life of the process. */
   for (int i = 0; i < 2; i++)
     {
       if (ctx->sw_if_index[i] == ~0)
@@ -284,7 +311,6 @@ tcp_e2e_teardown (vlib_main_t *vm, tcp_e2e_ctx_t *ctx)
       (void) ip4_add_del_interface_address (vm, ctx->sw_if_index[i], &ctx->intf_addr[i], 24,
 					    1 /* is_del */);
       vnet_sw_interface_set_flags (vnet_get_main (), ctx->sw_if_index[i], 0);
-      (void) vnet_delete_loopback_interface (ctx->sw_if_index[i]);
     }
 
   vec_free (ctx->appns_id);
