@@ -28,12 +28,20 @@ typedef struct
 {
   u8 flags_mask;    /**< TCP flag bits to test (0 = ignore flags) */
   u8 flags_match;   /**< required value of the masked flag bits */
+  u8 seq_is_min;    /**< if set, match seq >= min_seq instead of seq == exact */
+  u8 above_rp_in_recovery; /**< match only in recovery and seq >= snd_congestion */
   u32 seq;	    /**< exact host-order seq to match, or ~0 for any */
+  u32 min_seq;	    /**< lower bound (host order) when seq_is_min is set */
   u32 conn_index;   /**< only match this connection (c_c_index), or ~0 for any */
   u32 thread_index; /**< worker the conn_index is local to, or ~0 for any */
   u32 n_drop;	    /**< number of matching segments left to drop */
   u32 n_matched;    /**< total segments that matched this rule */
   u32 n_dropped;    /**< total segments dropped by this rule */
+  /* Connection state sampled at the moment of the first drop by this rule.
+   * Lets a test assert what the sender was doing when the segment was lost. */
+  u8 drop_in_recovery;	   /**< in fast/rto recovery at first drop */
+  u32 drop_snd_una;	   /**< snd_una at first drop */
+  u32 drop_snd_congestion; /**< snd_congestion (recovery point) at first drop */
 } tcp_tamper_rule_t;
 
 typedef struct
@@ -58,6 +66,19 @@ tcp_tamper_rule_t *tcp_tamper_drop_fin (tcp_connection_t *tc, u32 n_drop);
 /* Convenience: drop the first n_drop segments on connection tc whose seq
  * equals the given host-order sequence number (e.g. a specific retransmit). */
 tcp_tamper_rule_t *tcp_tamper_drop_seq (tcp_connection_t *tc, u32 seq, u32 n_drop);
+
+/* Convenience: drop the first n_drop segments on connection tc whose seq is at
+ * or above min_seq (host order).  Matches the first segment sent beyond a
+ * threshold, e.g. the first segment above a recovery point, regardless of exact
+ * segmentation. */
+tcp_tamper_rule_t *tcp_tamper_drop_from_seq (tcp_connection_t *tc, u32 min_seq, u32 n_drop);
+
+/* Convenience: drop the first n_drop segments on connection tc that are sent
+ * while it is in congestion recovery with a sequence at or above the current
+ * recovery point (snd_congestion).  Deterministically targets the first fresh
+ * segment above the recovery point during an ongoing recovery episode, the
+ * loss needed to force a recovery-point exit and immediate re-entry. */
+tcp_tamper_rule_t *tcp_tamper_drop_above_rp (tcp_connection_t *tc, u32 n_drop);
 
 /* Convenience: drop the first n_drop pure-ACK segments (ACK set, FIN/SYN/RST
  * clear) on connection tc.  Used for the lost-final-ack teardown case. */
