@@ -709,6 +709,7 @@ tcp_scoreboard_replay (u8 * s, tcp_connection_t * tc, u8 verbose)
   scoreboard_trace_elt_t *trace;
   u32 next_ack, left, group, has_new_ack = 0;
   tcp_connection_t _placeholder_tc, *placeholder_tc = &_placeholder_tc;
+  tcp_rate_sample_t rs = {};
   sack_block_t *block;
 
   if (!TCP_SCOREBOARD_TRACE)
@@ -769,7 +770,7 @@ tcp_scoreboard_replay (u8 * s, tcp_connection_t * tc, u8 verbose)
 	}
 
       /* Push segments */
-      tcp_rcv_sacks (placeholder_tc, next_ack);
+      tcp_rcv_sacks (placeholder_tc, next_ack, &rs);
       if (has_new_ack)
 	placeholder_tc->snd_una = next_ack;
 
