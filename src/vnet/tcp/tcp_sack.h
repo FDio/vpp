@@ -101,10 +101,19 @@ void scoreboard_recompute_sack_loss (sack_scoreboard_t *sb, u32 ack, u32 snd_mss
 
 format_function_t format_tcp_scoreboard;
 
+typedef enum tcp_sack_rcv_flag_
+{
+  TCP_SACK_RCVD_DSACK = 1,
+  TCP_SACK_RCVD_DSACK_SPURIOUS = 1 << 1,
+} tcp_sack_rcv_flag_t;
+
 /* Made public for unit testing only */
 void tcp_update_sack_list (tcp_connection_t * tc, u32 start, u32 end);
+void tcp_dsack_recovery_start (tcp_connection_t *tc);
+void tcp_dsack_recovery_done (tcp_connection_t *tc);
+void tcp_dsack_track_retransmit (tcp_connection_t *tc, u32 start, u32 end);
 u32 tcp_sack_list_bytes (tcp_connection_t * tc);
-void tcp_rcv_sacks (tcp_connection_t * tc, u32 ack);
+u8 tcp_rcv_sacks (tcp_connection_t *tc, u32 ack);
 u8 *tcp_scoreboard_replay (u8 * s, tcp_connection_t * tc, u8 verbose);
 u8 tcp_scoreboard_is_sane_post_recovery (tcp_connection_t * tc);
 

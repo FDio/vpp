@@ -380,21 +380,299 @@ tcp_scoreboard_is_sane_post_recovery (tcp_connection_t *tc)
 }
 
 void
-tcp_rcv_sacks (tcp_connection_t * tc, u32 ack)
+tcp_dsack_recovery_start (tcp_connection_t *tc)
+{
+  vec_free (tc->dsack_rxt);
+  tc->dsack_recovery_ack = 0;
+  tcp_dsack_ineligible_off (tc);
+}
+
+void
+tcp_dsack_recovery_done (tcp_connection_t *tc)
+{
+  vec_free (tc->dsack_rxt);
+  tc->dsack_recovery_ack = 0;
+  tcp_dsack_ineligible_off (tc);
+}
+
+/* Once an episode is ineligible for undo, keep the union of its retransmitted
+ * ranges only to distinguish a late D-SACK from network duplication. */
+static void
+tcp_dsack_track_range_union (tcp_connection_t *tc, u32 start, u32 end)
+{
+  tcp_dsack_rxt_t rxt = { .start = start, .end = end };
+  u32 i = 0;
+
+  while (i < vec_len (tc->dsack_rxt))
+    {
+      if (seq_lt (rxt.end, tc->dsack_rxt[i].start))
+	break;
+      if (seq_gt (rxt.start, tc->dsack_rxt[i].end))
+	{
+	  i++;
+	  continue;
+	}
+
+      rxt.start = seq_lt (tc->dsack_rxt[i].start, rxt.start) ? tc->dsack_rxt[i].start : rxt.start;
+      rxt.end = seq_max (rxt.end, tc->dsack_rxt[i].end);
+      vec_del1 (tc->dsack_rxt, i);
+    }
+
+  vec_insert_elts (tc->dsack_rxt, &rxt, 1, i);
+}
+
+void
+tcp_dsack_track_retransmit (tcp_connection_t *tc, u32 start, u32 end)
+{
+  tcp_dsack_rxt_t rxt;
+  u32 i;
+
+  if (!tcp_opts_sack_permitted (&tc->rcv_opts) || !tcp_in_cong_recovery (tc) ||
+      !seq_lt (start, end) || tcp_dsack_undo_disabled (tc))
+    return;
+
+  if (tcp_dsack_ineligible (tc))
+    {
+      tcp_dsack_track_range_union (tc, start, end);
+      return;
+    }
+
+  /* A second retransmission of any byte makes this episode ambiguous. */
+  for (i = 0; i < vec_len (tc->dsack_rxt); i++)
+    if (seq_lt (start, tc->dsack_rxt[i].end) && seq_gt (end, tc->dsack_rxt[i].start))
+      {
+	tcp_dsack_ineligible_on (tc);
+	tcp_dsack_track_range_union (tc, start, end);
+	return;
+      }
+
+  rxt.start = start;
+  rxt.end = end;
+  rxt.flags = 0;
+
+  for (i = 0; i < vec_len (tc->dsack_rxt); i++)
+    if (seq_lt (start, tc->dsack_rxt[i].start))
+      {
+	vec_insert_elts (tc->dsack_rxt, &rxt, 1, i);
+	return;
+      }
+  vec_add1 (tc->dsack_rxt, rxt);
+}
+
+/* Mark the intersection of [start,end) with the retained retransmission
+ * ranges. Entries are split so ACK and duplicate coverage can be accumulated
+ * independently for partial D-SACKs. Returns the number of marked bytes. */
+static u32
+tcp_dsack_mark_range (tcp_connection_t *tc, u32 start, u32 end, tcp_dsack_rxt_flag_t flag)
+{
+  tcp_dsack_rxt_t cur, parts[2];
+  u32 overlap_start, overlap_end, marked = 0, i = 0;
+
+  if (!seq_lt (start, end))
+    return 0;
+
+  while (i < vec_len (tc->dsack_rxt))
+    {
+      cur = tc->dsack_rxt[i];
+      if (seq_leq (end, cur.start))
+	break;
+      if (seq_geq (start, cur.end))
+	{
+	  i++;
+	  continue;
+	}
+
+      overlap_start = seq_gt (start, cur.start) ? start : cur.start;
+      overlap_end = seq_lt (end, cur.end) ? end : cur.end;
+      marked += overlap_end - overlap_start;
+
+      if (overlap_start == cur.start && overlap_end == cur.end)
+	{
+	  tc->dsack_rxt[i].flags |= flag;
+	  i++;
+	}
+      else if (overlap_start == cur.start)
+	{
+	  parts[0] = cur;
+	  parts[0].start = overlap_end;
+	  tc->dsack_rxt[i].end = overlap_end;
+	  tc->dsack_rxt[i].flags |= flag;
+	  vec_insert_elts (tc->dsack_rxt, parts, 1, i + 1);
+	  i += 2;
+	}
+      else if (overlap_end == cur.end)
+	{
+	  parts[0] = cur;
+	  parts[0].start = overlap_start;
+	  parts[0].flags |= flag;
+	  tc->dsack_rxt[i].end = overlap_start;
+	  vec_insert_elts (tc->dsack_rxt, parts, 1, i + 1);
+	  i += 2;
+	}
+      else
+	{
+	  parts[0] = cur;
+	  parts[0].start = overlap_start;
+	  parts[0].end = overlap_end;
+	  parts[0].flags |= flag;
+	  parts[1] = cur;
+	  parts[1].start = overlap_end;
+	  tc->dsack_rxt[i].end = overlap_start;
+	  vec_insert_elts (tc->dsack_rxt, parts, 2, i + 1);
+	  i += 3;
+	}
+    }
+
+  return marked;
+}
+
+static_always_inline u8
+tcp_sack_detect_dsack (tcp_connection_t *tc, u32 ack, sack_block_t *dsack)
+{
+  sack_block_t *sacks = tc->rcv_opts.sacks;
+
+  if (PREDICT_TRUE (!tcp_opts_sack (&tc->rcv_opts)) || !vec_len (sacks) ||
+      !seq_lt (sacks[0].start, sacks[0].end))
+    return 0;
+
+  /* RFC 2883: compare against the ACK in this packet, never snd_una. */
+  if (seq_leq (sacks[0].end, ack))
+    {
+      *dsack = sacks[0];
+      return 1;
+    }
+
+  if (vec_len (sacks) > 1 && seq_gt (sacks[0].start, ack) &&
+      seq_leq (sacks[1].start, sacks[0].start) && seq_geq (sacks[1].end, sacks[0].end))
+    {
+      *dsack = sacks[0];
+      return 1;
+    }
+
+  return 0;
+}
+
+static u8
+tcp_dsack_update_retransmits (tcp_connection_t *tc, u32 ack, sack_block_t *dsack, u8 has_dsack)
+{
+  tcp_dsack_rxt_t *rxt;
+  sack_block_t *blk;
+  u32 cum_ack, duplicate_bytes, i;
+
+  if (!vec_len (tc->dsack_rxt))
+    {
+      /* RFC 3708 A.4: duplicate notification for data not retained as a
+       * retransmission indicates network duplication. Do not use D-SACK for
+       * congestion undo again on this connection. */
+      if (has_dsack)
+	tcp_dsack_undo_disabled_on (tc);
+      return 0;
+    }
+
+  cum_ack = seq_max (tc->snd_una, ack);
+
+  /* After recovery, an ACK without a D-SACK either leaves the short trailing
+   * history untouched or retires it on the first cumulative advance. Avoid
+   * walking the range vector on ordinary ACKs. */
+  if (!tcp_in_cong_recovery (tc) && !has_dsack)
+    {
+      if (seq_gt (cum_ack, tc->dsack_recovery_ack))
+	tcp_dsack_recovery_done (tc);
+      return 0;
+    }
+
+  /* Record cumulative ACK coverage, including partial retransmit ranges. */
+  for (i = 0; i < vec_len (tc->dsack_rxt); i++)
+    {
+      rxt = &tc->dsack_rxt[i];
+      if (seq_leq (rxt->end, cum_ack))
+	rxt->flags |= TCP_DSACK_RXT_ACKED;
+      else if (seq_lt (rxt->start, cum_ack))
+	{
+	  tcp_dsack_mark_range (tc, rxt->start, cum_ack, TCP_DSACK_RXT_ACKED);
+	  break;
+	}
+    }
+
+  /* Record valid ordinary SACK coverage. The D-SACK block has already been
+   * removed, so an above-ACK D-SACK is acknowledged by its containing block. */
+  vec_foreach (blk, tc->rcv_opts.sacks)
+    if (seq_lt (blk->start, blk->end) && seq_gt (blk->start, tc->snd_una) &&
+	seq_gt (blk->start, ack) && seq_lt (blk->start, tc->snd_nxt) &&
+	seq_leq (blk->end, tc->snd_nxt))
+      tcp_dsack_mark_range (tc, blk->start, blk->end, TCP_DSACK_RXT_ACKED);
+
+  if (has_dsack)
+    {
+      /* RFC 3708 A.1: an empty SACK history and a D-SACK beginning at
+       * snd_una is indistinguishable from loss of the whole ACK window. */
+      if (!tc->sack_sb.sacked_bytes && dsack->start == tc->snd_una)
+	tcp_dsack_ineligible_on (tc);
+      else
+	{
+	  duplicate_bytes =
+	    tcp_dsack_mark_range (tc, dsack->start, dsack->end, TCP_DSACK_RXT_DUPLICATE);
+	  if (duplicate_bytes != dsack->end - dsack->start)
+	    {
+	      tcp_dsack_undo_disabled_on (tc);
+	      tcp_dsack_ineligible_on (tc);
+	    }
+	}
+    }
+
+  if (tc->sack_sb.is_reneging)
+    tcp_dsack_ineligible_on (tc);
+
+  if (tcp_dsack_ineligible (tc) || tcp_dsack_undo_disabled (tc) ||
+      seq_lt (cum_ack, tc->snd_congestion))
+    goto not_ready;
+
+  vec_foreach (rxt, tc->dsack_rxt)
+    if ((rxt->flags & (TCP_DSACK_RXT_ACKED | TCP_DSACK_RXT_DUPLICATE)) !=
+	(TCP_DSACK_RXT_ACKED | TCP_DSACK_RXT_DUPLICATE))
+      goto not_ready;
+
+  return 1;
+
+not_ready:
+  return 0;
+}
+
+u8
+tcp_rcv_sacks (tcp_connection_t *tc, u32 ack)
 {
   sack_scoreboard_hole_t *hole, *next_hole;
   sack_scoreboard_t *sb = &tc->sack_sb;
-  sack_block_t *blk, *rcv_sacks;
-  u32 blk_index = 0, i, j, high_sacked;
+  sack_block_t *blk, *rcv_sacks, dsack = {};
+  u32 blk_index = 0, i, j, high_sacked, packet_ack = ack;
   tcp_sb_sack_mode_e mode;
+  u8 has_dsack, flags = 0;
 
   sb->last_sacked_bytes = 0;
   sb->last_bytes_delivered = 0;
   sb->rxt_sacked = 0;
 
+  has_dsack = tcp_sack_detect_dsack (tc, packet_ack, &dsack);
+  if (has_dsack)
+    {
+      flags |= TCP_SACK_RCVD_DSACK;
+      vec_del1 (tc->rcv_opts.sacks, 0);
+      tc->rcv_opts.n_sack_blocks -= tc->rcv_opts.n_sack_blocks != 0;
+    }
+
+  /* Outside recovery, old ACKs are inspected only for retained D-SACK undo
+   * evidence. Do not let their ordinary SACK blocks rewind the scoreboard. */
+  if (seq_lt (packet_ack, tc->snd_una) && !tcp_in_cong_recovery (tc))
+    goto done;
+
+  /* The D-SACK check needs the ACK from the wire. The scoreboard has always
+   * treated an old ACK as snd_una so its unsigned delivery accounting cannot
+   * run backwards. */
+  ack = seq_max (packet_ack, tc->snd_una);
+
   if (!tcp_opts_sack (&tc->rcv_opts) && !sb->sacked_bytes
       && sb->head == TCP_INVALID_SACK_HOLE_INDEX)
-    return;
+    goto done;
 
   mode = !tcp_in_cong_recovery (tc)	       ? TCP_SB_SACK_OOO :
 	 seq_geq (sb->rescue_rxt, tc->snd_una) ? TCP_SB_SACK_RXT_RESCUED :
@@ -425,7 +703,7 @@ tcp_rcv_sacks (tcp_connection_t * tc, u32 ack)
     }
 
   if (vec_len (tc->rcv_opts.sacks) == 0)
-    return;
+    goto done;
 
   tcp_scoreboard_trace_add (tc, ack);
 
@@ -456,13 +734,13 @@ tcp_rcv_sacks (tcp_connection_t * tc, u32 ack)
 	    {
 	      /* No progress made so return */
 	      if (seq_leq (ack, tc->snd_una))
-		return;
+		goto done;
 
 	      /* Update sacked bytes delivered and return */
 	      sb->last_bytes_delivered = ack - tc->snd_una;
 	      sb->sacked_bytes -= sb->last_bytes_delivered;
 	      sb->is_reneging = seq_lt (ack, sb->high_sacked);
-	      return;
+	      goto done;
 	    }
 
 	  /* New hole above high sacked. Add it and process normally */
@@ -595,6 +873,12 @@ tcp_rcv_sacks (tcp_connection_t * tc, u32 ack)
 	  || (tc->flags & TCP_CONN_FINSNT));
 
   TCP_EVT (TCP_EVT_CC_SCOREBOARD, tc);
+
+done:
+  if (PREDICT_FALSE (has_dsack || vec_len (tc->dsack_rxt)) &&
+      tcp_dsack_update_retransmits (tc, packet_ack, &dsack, has_dsack))
+    flags |= TCP_SACK_RCVD_DSACK_SPURIOUS;
+  return flags;
 }
 
 static u8
