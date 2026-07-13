@@ -768,12 +768,28 @@ openssl_ctx_cipher_add (const u8 *key_bytes, u8 *key_data, const EVP_CIPHER *cip
     }
   else
     {
+      /* EVP_CIPHER_CTX_new() allocates via OpenSSL's allocator (the default
+       * libc malloc; VPP does not override it with CRYPTO_set_mem_functions),
+       * outside the VPP heap, and returns NULL on failure. The subsequent
+       * *Init_ex()/ctrl() calls are also fallible (allocation, provider/FIPS
+       * fetch, bad key len). key_change_fn is void and cannot signal an error to
+       * ipsec_sa_add_and_lock, and the data path (openssl_ops_enc_*) dereferences
+       * kd->evp_cipher_enc_ctx and calls Init on it with no status check — so
+       * storing either a NULL or a half-initialized ctx only defers the crash /
+       * silent corruption to first packet. Matching VPP's alloc convention
+       * (clib_mem_alloc panics on OOM), fail loudly and publish the ctx into kd
+       * ONLY after every step succeeds. */
       ctx = EVP_CIPHER_CTX_new ();
+      if (PREDICT_FALSE (ctx == NULL))
+	os_out_of_memory ();
       EVP_CIPHER_CTX_set_padding (ctx, 0);
-      EVP_EncryptInit_ex (ctx, cipher, NULL, NULL, NULL);
-      if (is_gcm)
-	EVP_CIPHER_CTX_ctrl (ctx, EVP_CTRL_GCM_SET_IVLEN, 12, NULL);
-      EVP_EncryptInit_ex (ctx, 0, 0, key_bytes, 0);
+      if (PREDICT_FALSE (EVP_EncryptInit_ex (ctx, cipher, NULL, NULL, NULL) != 1))
+	clib_panic ("openssl EVP_EncryptInit_ex (cipher) failed");
+      if (is_gcm &&
+	  PREDICT_FALSE (EVP_CIPHER_CTX_ctrl (ctx, EVP_CTRL_GCM_SET_IVLEN, 12, NULL) != 1))
+	clib_panic ("openssl EVP_CTRL_GCM_SET_IVLEN failed");
+      if (PREDICT_FALSE (EVP_EncryptInit_ex (ctx, 0, 0, key_bytes, 0) != 1))
+	clib_panic ("openssl EVP_EncryptInit_ex (key) failed");
       kd->evp_cipher_enc_ctx = ctx;
     }
 
@@ -788,11 +804,15 @@ openssl_ctx_cipher_add (const u8 *key_bytes, u8 *key_data, const EVP_CIPHER *cip
   else
     {
       ctx = EVP_CIPHER_CTX_new ();
+      if (PREDICT_FALSE (ctx == NULL))
+	os_out_of_memory ();
       EVP_CIPHER_CTX_set_padding (ctx, 0);
-      EVP_DecryptInit_ex (ctx, cipher, 0, 0, 0);
-      if (is_gcm)
-	EVP_CIPHER_CTX_ctrl (ctx, EVP_CTRL_GCM_SET_IVLEN, 12, 0);
-      EVP_DecryptInit_ex (ctx, 0, 0, key_bytes, 0);
+      if (PREDICT_FALSE (EVP_DecryptInit_ex (ctx, cipher, 0, 0, 0) != 1))
+	clib_panic ("openssl EVP_DecryptInit_ex (cipher) failed");
+      if (is_gcm && PREDICT_FALSE (EVP_CIPHER_CTX_ctrl (ctx, EVP_CTRL_GCM_SET_IVLEN, 12, 0) != 1))
+	clib_panic ("openssl EVP_CTRL_GCM_SET_IVLEN failed");
+      if (PREDICT_FALSE (EVP_DecryptInit_ex (ctx, 0, 0, key_bytes, 0) != 1))
+	clib_panic ("openssl EVP_DecryptInit_ex (key) failed");
       kd->evp_cipher_dec_ctx = ctx;
     }
 }
@@ -829,7 +849,15 @@ openssl_ctx_hmac_add (const u8 *key_bytes, u16 key_len, u8 *key_data, const EVP_
 
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
   ctx = HMAC_CTX_new ();
-  HMAC_Init_ex (ctx, key_bytes, key_len, md, NULL);
+  /* NULL on OpenSSL alloc failure; fatal here rather than a deferred NULL deref
+   * on the data path (see openssl_ctx_cipher_add). HMAC_Init_ex is also fallible
+   * (alloc / MD fetch) and its result is unchecked on the data path, so publish
+   * into kd only after it succeeds. The pre-1.1.0 branch below uses
+   * clib_mem_alloc_aligned, which already panics on OOM. */
+  if (PREDICT_FALSE (ctx == NULL))
+    os_out_of_memory ();
+  if (PREDICT_FALSE (HMAC_Init_ex (ctx, key_bytes, key_len, md, NULL) != 1))
+    clib_panic ("openssl HMAC_Init_ex failed");
   kd->hmac_ctx = ctx;
 #else
   ctx = clib_mem_alloc_aligned (sizeof (*ctx), CLIB_CACHE_LINE_BYTES);
@@ -872,7 +900,13 @@ openssl_ctx_combined_hmac_add (const u8 *key_bytes, u16 key_len, u8 *key_data, c
 
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
   ctx = HMAC_CTX_new ();
-  HMAC_Init_ex (ctx, key_bytes, key_len, md, NULL);
+  /* NULL on OpenSSL alloc failure; fatal here rather than a deferred NULL deref
+   * on the data path (see openssl_ctx_cipher_add). Publish into kd only after a
+   * successful HMAC_Init_ex. */
+  if (PREDICT_FALSE (ctx == NULL))
+    os_out_of_memory ();
+  if (PREDICT_FALSE (HMAC_Init_ex (ctx, key_bytes, key_len, md, NULL) != 1))
+    clib_panic ("openssl HMAC_Init_ex failed");
   kd->hmac_ctx = ctx;
 #else
   ctx = clib_mem_alloc_aligned (sizeof (*ctx), CLIB_CACHE_LINE_BYTES);
