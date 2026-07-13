@@ -233,6 +233,8 @@ tcp_segment_validate (tcp_worker_ctx_t * wrk, tcp_connection_t * tc0,
        * SEG.TSval */
       else if (!tcp_rst (th0))
 	{
+	  tcp_update_dsack_list (tc0, vnet_buffer (b0)->tcp.seq_number,
+				 vnet_buffer (b0)->tcp.seq_number + vnet_buffer (b0)->tcp.data_len);
 	  tcp_program_ack (tc0);
 	  TCP_EVT (TCP_EVT_DUPACK_SENT, tc0, vnet_buffer (b0)->tcp);
 	  goto error;
@@ -294,6 +296,8 @@ tcp_segment_validate (tcp_worker_ctx_t * wrk, tcp_connection_t * tc0,
       /* If not RST, send dup ack */
       if (!tcp_rst (th0))
 	{
+	  tcp_update_dsack_list (tc0, vnet_buffer (b0)->tcp.seq_number,
+				 vnet_buffer (b0)->tcp.seq_number + vnet_buffer (b0)->tcp.data_len);
 	  tcp_program_dupack (tc0);
 	  TCP_EVT (TCP_EVT_DUPACK_SENT, tc0, vnet_buffer (b0)->tcp);
 	}
@@ -1232,6 +1236,10 @@ tcp_segment_rcv (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
   /* Handle out-of-order data */
   if (PREDICT_FALSE (vnet_buffer (b)->tcp.seq_number != tc->rcv_nxt))
     {
+      /* Duplicate detection belongs to this already-cold path. */
+      tcp_update_dsack_list (tc, vnet_buffer (b)->tcp.seq_number,
+			     vnet_buffer (b)->tcp.seq_number + n_data_bytes);
+
       /* Old sequence numbers allowed through because they overlapped
        * the rx window */
       if (seq_lt (vnet_buffer (b)->tcp.seq_number, tc->rcv_nxt))
@@ -1267,6 +1275,11 @@ tcp_segment_rcv (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
 					   tc->rcv_las + tc->rcv_wnd);
       goto done;
     }
+
+  /* An in-order segment may overlap bytes already queued out of order. */
+  if (PREDICT_FALSE (vec_len (tc->snd_sacks)))
+    tcp_update_dsack_list (tc, vnet_buffer (b)->tcp.seq_number,
+			   vnet_buffer (b)->tcp.seq_number + n_data_bytes);
 
 in_order:
 

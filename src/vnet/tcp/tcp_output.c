@@ -252,6 +252,42 @@ tcp_make_established_options (tcp_connection_t * tc, tcp_options_t * opts)
   return len;
 }
 
+/* Build ACK options with a pending D-SACK. Kept separate from the established
+ * data path so ordinary data output does not pay for D-SACK handling. */
+static int
+tcp_make_ack_options (tcp_connection_t *tc, tcp_options_t *opts, sack_block_t *sacks)
+{
+  u8 len = 0;
+
+  if (PREDICT_TRUE (!tcp_dsack_pending (tc)))
+    return tcp_make_established_options (tc, opts);
+
+  opts->flags = 0;
+
+  if (tcp_opts_tstamp (&tc->rcv_opts))
+    {
+      opts->flags |= TCP_OPTS_FLAG_TSTAMP;
+      opts->tsval = tcp_tstamp (tc);
+      opts->tsecr = tc->tsval_recent;
+      len += TCP_OPTION_LEN_TIMESTAMP;
+    }
+
+  if (tcp_opts_sack_permitted (&tc->rcv_opts))
+    {
+      opts->n_sack_blocks = tcp_prepare_dsack_option (tc, sacks, TCP_OPTS_MAX_SACK_BLOCKS);
+      if (opts->n_sack_blocks)
+	{
+	  opts->flags |= TCP_OPTS_FLAG_SACK;
+	  opts->sacks = sacks;
+	  len += 2 + TCP_OPTION_LEN_SACK_BLOCK * opts->n_sack_blocks;
+	}
+    }
+
+  /* Align to needed boundary */
+  len += (TCP_OPTS_ALIGN - len % TCP_OPTS_ALIGN) % TCP_OPTS_ALIGN;
+  return len;
+}
+
 always_inline int
 tcp_make_options (tcp_connection_t * tc, tcp_options_t * opts,
 		  tcp_state_t state)
@@ -411,6 +447,7 @@ tcp_make_ack_i (tcp_connection_t * tc, vlib_buffer_t * b, tcp_state_t state,
 		u8 flags)
 {
   tcp_options_t _snd_opts = {}, *snd_opts = &_snd_opts;
+  sack_block_t sacks[TCP_OPTS_MAX_SACK_BLOCKS];
   u8 tcp_opts_len, tcp_hdr_opts_len;
   tcp_header_t *th;
   u16 wnd;
@@ -418,13 +455,15 @@ tcp_make_ack_i (tcp_connection_t * tc, vlib_buffer_t * b, tcp_state_t state,
   wnd = tcp_window_to_advertise (tc, state);
 
   /* Make and write options */
-  tcp_opts_len = tcp_make_established_options (tc, snd_opts);
+  tcp_opts_len = tcp_make_ack_options (tc, snd_opts, sacks);
   tcp_hdr_opts_len = tcp_opts_len + sizeof (tcp_header_t);
 
   th = vlib_buffer_push_tcp (b, tc->c_lcl_port, tc->c_rmt_port, tc->snd_nxt,
 			     tc->rcv_nxt, tcp_hdr_opts_len, flags, wnd);
 
   tcp_options_write ((u8 *) (th + 1), snd_opts);
+  if (tcp_dsack_pending (tc) && (snd_opts->flags & TCP_OPTS_FLAG_SACK))
+    tcp_dsack_pending_off (tc);
 
   th->checksum = tcp_compute_checksum (tc, b);
 
@@ -1996,8 +2035,9 @@ tcp_send_acks (tcp_connection_t * tc, u32 max_burst_size)
 
   if (!tc->pending_dupacks)
     {
-      if (tcp_in_cong_recovery (tc) || !tcp_max_tx_deq (tc)
-	  || tc->state != TCP_STATE_ESTABLISHED)
+      /* D-SACK must not be lost to ACK suppression/piggybacking. */
+      if (PREDICT_FALSE (tcp_dsack_pending (tc)) || tcp_in_cong_recovery (tc) ||
+	  !tcp_max_tx_deq (tc) || tc->state != TCP_STATE_ESTABLISHED)
 	{
 	  tcp_send_ack (tc);
 	  return 1;

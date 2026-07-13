@@ -1127,6 +1127,86 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
 }
 
 static int
+tcp_test_dsack_tx (vlib_main_t *vm, u8 verbose)
+{
+  tcp_connection_t _tc, *tc = &_tc;
+  sack_block_t sacks[TCP_OPTS_MAX_SACK_BLOCKS], block;
+  u8 n_sacks;
+
+  clib_memset (tc, 0, sizeof (*tc));
+  tc->rcv_opts.flags |= TCP_OPTS_FLAG_SACK_PERMITTED;
+  tc->rcv_nxt = 1000;
+
+  TCP_TEST (tcp_update_dsack_list (tc, 800, 900), "record fully cumulatively acked duplicate");
+  TCP_TEST (tcp_dsack_pending (tc), "D-SACK marked pending");
+  TCP_TEST (tc->dsack_block.start == 800 && tc->dsack_block.end == 900,
+	    "D-SACK block [%u, %u] expected [800, 900]", tc->dsack_block.start,
+	    tc->dsack_block.end);
+
+  tcp_dsack_pending_off (tc);
+  TCP_TEST (tcp_update_dsack_list (tc, 900, 1100), "record duplicate prefix below cumulative ACK");
+  TCP_TEST (tc->dsack_block.start == 900 && tc->dsack_block.end == 1000,
+	    "partial D-SACK block [%u, %u] expected [900, 1000]", tc->dsack_block.start,
+	    tc->dsack_block.end);
+
+  tcp_dsack_pending_off (tc);
+  TCP_TEST (!tcp_update_dsack_list (tc, 1000, 1100),
+	    "new in-order data is not reported as duplicate");
+  TCP_TEST (!tcp_dsack_pending (tc), "D-SACK remains clear for new data");
+
+  block.start = 1500;
+  block.end = 1600;
+  vec_add1 (tc->snd_sacks, block);
+  block.start = 1200;
+  block.end = 1400;
+  vec_add1 (tc->snd_sacks, block);
+
+  TCP_TEST (tcp_update_dsack_list (tc, 1300, 1350),
+	    "record duplicate overlapping receiver SACK block");
+  TCP_TEST (tc->dsack_block.start == 1300 && tc->dsack_block.end == 1350,
+	    "above-ACK D-SACK block [%u, %u] expected [1300, 1350]", tc->dsack_block.start,
+	    tc->dsack_block.end);
+
+  n_sacks = tcp_prepare_dsack_option (tc, sacks, ARRAY_LEN (sacks));
+  TCP_TEST (n_sacks == 3, "D-SACK option blocks %u expected 3", n_sacks);
+  TCP_TEST (sacks[0].start == 1300 && sacks[0].end == 1350,
+	    "first option block is the duplicate range");
+  TCP_TEST (sacks[1].start == 1200 && sacks[1].end == 1400,
+	    "second option block contains above-ACK D-SACK");
+  TCP_TEST (sacks[2].start == 1500 && sacks[2].end == 1600,
+	    "remaining option slot preserves regular SACK block");
+
+  tcp_dsack_pending_off (tc);
+  tc->snd_sacks[1].end = 1300;
+  TCP_TEST (tcp_update_dsack_list (tc, 1250, 1550),
+	    "find duplicate across multiple receiver SACK blocks");
+  TCP_TEST (tc->dsack_block.start == 1250 && tc->dsack_block.end == 1300,
+	    "first duplicate sub-range [%u, %u] expected [1250, 1300]", tc->dsack_block.start,
+	    tc->dsack_block.end);
+
+  tcp_dsack_pending_off (tc);
+  TCP_TEST (tcp_update_dsack_list (tc, 900, 1550), "prefer duplicate prefix below cumulative ACK");
+  TCP_TEST (tc->dsack_block.start == 900 && tc->dsack_block.end == 1000,
+	    "first duplicate prefix [%u, %u] expected [900, 1000]", tc->dsack_block.start,
+	    tc->dsack_block.end);
+
+  tcp_dsack_pending_off (tc);
+  vec_reset_length (tc->snd_sacks);
+  tc->rcv_nxt = 0x20;
+  TCP_TEST (tcp_update_dsack_list (tc, 0xfffffff0, 0x10),
+	    "record duplicate range across sequence wrap");
+  TCP_TEST (tc->dsack_block.start == 0xfffffff0 && tc->dsack_block.end == 0x10,
+	    "wrapped D-SACK block [0x%x, 0x%x] expected [0xfffffff0, 0x10]", tc->dsack_block.start,
+	    tc->dsack_block.end);
+
+  if (verbose)
+    vlib_cli_output (vm, "D-SACK receiver tests passed");
+
+  vec_free (tc->snd_sacks);
+  return 0;
+}
+
+static int
 tcp_test_sack_tx (vlib_main_t * vm, unformat_input_t * input)
 {
   tcp_connection_t _tc, *tc = &_tc;
@@ -1262,7 +1342,10 @@ tcp_test_sack_tx (vlib_main_t * vm, unformat_input_t * input)
   TCP_TEST ((tc->snd_sacks[0].start == 300),
 	    "first sack block start %u expected %u", tc->snd_sacks[0].start,
 	    300);
-  return 0;
+
+  vec_free (tc->snd_sacks);
+  vec_free (tc->snd_sacks_fl);
+  return tcp_test_dsack_tx (vm, verbose);
 }
 
 static int
