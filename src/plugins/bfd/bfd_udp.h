@@ -13,7 +13,7 @@
 #include <vppinfra/clib.h>
 #include <vnet/adj/adj_types.h>
 #include <vnet/ip/ip6_packet.h>
-#include <vnet/bfd/bfd_api.h>
+#include <bfd/bfd_api.h>
 
 /** identifier of BFD session based on UDP transport only */
 typedef CLIB_PACKED (struct {

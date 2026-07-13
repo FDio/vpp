@@ -12,8 +12,8 @@
 
 #include <vnet/vnet.h>
 #include <vnet/bfd/bfd_public.h>
-#include <vnet/bfd/bfd_protocol.h>
-#include <vnet/bfd/bfd_udp.h>
+#include <bfd/bfd_protocol.h>
+#include <bfd/bfd_udp.h>
 #include <vlib/log.h>
 #include <vppinfra/os.h>
 #include <vppinfra/tw_timer_1t_3w_1024sl_ov.h>

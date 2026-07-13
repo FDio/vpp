@@ -16,13 +16,13 @@
 
 #include <vnet/interface.h>
 #include <vnet/api_errno.h>
-#include <vnet/bfd/bfd_main.h>
-#include <vnet/bfd/bfd_api.h>
+#include <bfd/bfd_main.h>
+#include <bfd/bfd_api.h>
 #include <vnet/ip/ip_types_api.h>
 
 #include <vnet/format_fns.h>
-#include <vnet/bfd/bfd.api_enum.h>
-#include <vnet/bfd/bfd.api_types.h>
+#include <bfd/bfd.api_enum.h>
+#include <bfd/bfd.api_types.h>
 
 #define REPLY_MSG_ID_BASE bfd_main.msg_id_base
 #include <vlibapi/api_helper_macros.h>
@@ -474,7 +474,7 @@ vl_api_bfd_udp_get_tos_t_handler (vl_api_bfd_udp_get_tos_t *mp)
   REPLY_MACRO2 (VL_API_BFD_UDP_GET_TOS_REPLY, ({ rmp->tos = bfd_main.tos; }));
 }
 
-#include <vnet/bfd/bfd.api.c>
+#include <bfd/bfd.api.c>
 static clib_error_t *
 bfd_api_hookup (vlib_main_t * vm)
 {
