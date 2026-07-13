@@ -1259,6 +1259,8 @@ tcp_prepare_retransmit_segment (tcp_worker_ctx_t * wrk,
     return 0;
 
   tc->snd_rxt_bytes += n_bytes;
+  if (tcp_opts_sack_permitted (&tc->rcv_opts))
+    tcp_dsack_track_retransmit (tc, start, start + n_bytes);
 
   if (tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE)
     tcp_bt_track_rxt (tc, start, start + n_bytes);
@@ -1271,17 +1273,18 @@ tcp_prepare_retransmit_segment (tcp_worker_ctx_t * wrk,
   return n_bytes;
 }
 
-static void
-tcp_check_sack_reneging (tcp_connection_t * tc)
+static u8
+tcp_check_sack_reneging (tcp_connection_t *tc)
 {
   sack_scoreboard_t *sb = &tc->sack_sb;
   sack_scoreboard_hole_t *hole;
 
   hole = scoreboard_first_hole (sb);
   if (!sb->is_reneging && (!hole || hole->start == tc->snd_una))
-    return;
+    return 0;
 
   scoreboard_clear_reneging (sb, tc->snd_una, tc->snd_nxt);
+  return 1;
 }
 
 /**
@@ -1291,7 +1294,7 @@ static void
 tcp_cc_rxt_timeout (tcp_connection_t *tc)
 {
   u32 n_bytes;
-  u8 head_was_rxt;
+  u8 head_overlaps_rxt = 0, head_was_rxt = 0, sack_reneged = 0;
 
   TCP_EVT (TCP_EVT_CC_EVT, tc, 6);
 
@@ -1302,8 +1305,9 @@ tcp_cc_rxt_timeout (tcp_connection_t *tc)
       /* Snapshot before reneging handling can reset high_rxt. */
       head_was_rxt =
 	tcp_in_cong_recovery (tc) && seq_geq (tc->sack_sb.high_rxt, tc->snd_una + n_bytes);
+      head_overlaps_rxt = tcp_in_cong_recovery (tc) && seq_gt (tc->sack_sb.high_rxt, tc->snd_una);
 
-      tcp_check_sack_reneging (tc);
+      sack_reneged = tcp_check_sack_reneging (tc);
       scoreboard_rxt_mark_lost (&tc->sack_sb, tc->snd_una, tc->snd_nxt);
 
       if (head_was_rxt)
@@ -1321,12 +1325,16 @@ tcp_cc_rxt_timeout (tcp_connection_t *tc)
    * be overwritten */
   if (!tcp_in_cong_recovery (tc))
     {
+      tcp_dsack_recovery_start (tc);
       tc->prev_ssthresh = tc->ssthresh;
       tc->prev_cwnd = tc->cwnd;
       /* Record timestamp. Eifel detection algorithm RFC3522 */
       tc->snd_rxt_ts = tcp_tstamp (tc);
       tcp_cc_congestion (tc);
     }
+
+  if (head_overlaps_rxt || sack_reneged)
+    tcp_dsack_ineligible_on (tc);
 
   tcp_recovery_on (tc);
 
@@ -1832,6 +1840,8 @@ tcp_retransmit_sack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
 	  if (!n_written)
 	    goto done;
 
+	  /* A rescue retransmission can overlap bytes below HighRxt. */
+	  tcp_dsack_ineligible_on (tc);
 	  sb->rescue_rxt = tc->snd_congestion;
 	  bi = vlib_get_buffer_index (vm, b);
 	  tcp_enqueue_to_output (wrk, b, bi, tc->c_is_ip4);
