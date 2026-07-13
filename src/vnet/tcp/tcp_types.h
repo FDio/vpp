@@ -180,9 +180,32 @@ typedef struct _sack_scoreboard
 
 } sack_scoreboard_t;
 
+typedef enum tcp_dsack_rxt_flag_
+{
+  TCP_DSACK_RXT_DUPLICATE = 1,
+} __clib_packed tcp_dsack_rxt_flag_t;
+
+typedef enum tcp_dsack_state_flag_
+{
+  TCP_DSACK_INELIGIBLE = 1,
+  TCP_DSACK_UNDO_DISABLED = 1 << 1,
+} __clib_packed tcp_dsack_state_flag_t;
+
+/** Retransmitted byte range retained for conservative D-SACK undo. */
+typedef struct tcp_dsack_rxt_
+{
+  u32 start;
+  u32 end;
+  tcp_dsack_rxt_flag_t flags;
+} tcp_dsack_rxt_t;
+
 typedef enum tcp_ack_flag_
 {
   TCP_ACK_F_DUPACK = 1,
+  TCP_ACK_F_DSACK = 1 << 1,
+  TCP_ACK_F_DSACK_SPURIOUS = 1 << 2,
+  TCP_ACK_F_EIFEL_SPURIOUS = 1 << 3,
+  TCP_ACK_F_SPURIOUS = TCP_ACK_F_DSACK_SPURIOUS | TCP_ACK_F_EIFEL_SPURIOUS,
 } __clib_packed tcp_ack_flag_t;
 
 #define TCP_BTS_INVALID_INDEX	((u32)~0)
@@ -375,6 +398,10 @@ typedef struct _tcp_connection
 
   tcp_errors_t errors;	/**< Soft connection errors */
 
+  tcp_dsack_rxt_t *dsack_rxt;	      /**< Retransmits retained for D-SACK undo */
+  u32 dsack_recovery_ack;	      /**< ACK at recovery exit; bounds retained history */
+  tcp_dsack_state_flag_t dsack_flags; /**< D-SACK undo state */
+
   u32 iss;		/**< initial sent sequence */
   u32 irs;		/**< initial remote sequence */
   f64 start_ts;		/**< Timestamp when connection initialized */
@@ -431,6 +458,8 @@ tcp_cong_recovery_off (tcp_connection_t * tc)
 #define tcp_zero_rwnd_sent(tc) ((tc)->flags & TCP_CONN_ZERO_RWND_SENT)
 #define tcp_zero_rwnd_sent_on(tc) (tc)->flags |= TCP_CONN_ZERO_RWND_SENT
 #define tcp_zero_rwnd_sent_off(tc) (tc)->flags &= ~TCP_CONN_ZERO_RWND_SENT
+
+#define tcp_dsack_has_history(tc) ((tc)->dsack_rxt != 0)
 
 always_inline tcp_connection_t *
 tcp_get_connection_from_transport (transport_connection_t * tconn)
