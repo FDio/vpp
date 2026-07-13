@@ -103,8 +103,12 @@ format_function_t format_tcp_scoreboard;
 
 /* Made public for unit testing only */
 void tcp_update_sack_list (tcp_connection_t * tc, u32 start, u32 end);
+void tcp_dsack_recovery_start (tcp_connection_t *tc);
+void tcp_dsack_recovery_done (tcp_connection_t *tc);
+void tcp_dsack_track_retransmit (tcp_connection_t *tc, u32 start, u32 end);
 u32 tcp_sack_list_bytes (tcp_connection_t * tc);
-void tcp_rcv_sacks (tcp_connection_t * tc, u32 ack);
+void tcp_rcv_dsack (tcp_connection_t *tc, u32 ack, tcp_rate_sample_t *rs);
+void tcp_rcv_sacks (tcp_connection_t *tc, u32 ack, tcp_rate_sample_t *rs);
 u8 *tcp_scoreboard_replay (u8 * s, tcp_connection_t * tc, u8 verbose);
 u8 tcp_scoreboard_is_sane_post_recovery (tcp_connection_t * tc);
 

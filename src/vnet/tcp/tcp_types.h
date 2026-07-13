@@ -184,6 +184,33 @@ typedef struct _sack_scoreboard
 
 } sack_scoreboard_t;
 
+typedef enum tcp_dsack_rxt_flag_
+{
+  TCP_DSACK_RXT_ACKED = 1,
+  TCP_DSACK_RXT_DUPLICATE = 1 << 1,
+} __clib_packed tcp_dsack_rxt_flag_t;
+
+typedef enum tcp_dsack_state_flag_
+{
+  TCP_DSACK_INELIGIBLE = 1,
+  TCP_DSACK_UNDO_DISABLED = 1 << 1,
+} __clib_packed tcp_dsack_state_flag_t;
+
+typedef enum tcp_ack_flag_
+{
+  TCP_ACK_F_DUPACK = 1,
+  TCP_ACK_F_DSACK = 1 << 1,
+  TCP_ACK_F_DSACK_SPURIOUS = 1 << 2,
+} __clib_packed tcp_ack_flag_t;
+
+/** Retransmitted byte range retained for conservative D-SACK undo. */
+typedef struct tcp_dsack_rxt_
+{
+  u32 start;
+  u32 end;
+  tcp_dsack_rxt_flag_t flags;
+} tcp_dsack_rxt_t;
+
 #define TCP_BTS_INVALID_INDEX	((u32)~0)
 
 typedef enum tcp_bts_flags_
@@ -223,6 +250,7 @@ typedef struct tcp_rate_sample_
   u32 last_lost;		/**< Bytes lost now */
   u32 lost;			/**< Number of bytes lost over interval */
   tcp_bts_flags_t flags;	/**< Rate sample flags from bt sample */
+  tcp_ack_flag_t ack_flags;	/**< Flags describing the current ACK */
 } tcp_rate_sample_t;
 
 typedef struct tcp_byte_tracker_
@@ -370,6 +398,10 @@ typedef struct _tcp_connection
 
   tcp_errors_t errors;	/**< Soft connection errors */
 
+  tcp_dsack_rxt_t *dsack_rxt;		  /**< Retransmits retained for D-SACK undo */
+  u32 dsack_recovery_ack;		  /**< ACK at recovery exit; bounds retained history */
+  tcp_dsack_state_flag_t dsack_rxt_flags; /**< D-SACK undo state */
+
   u32 iss;		/**< initial sent sequence */
   u32 irs;		/**< initial remote sequence */
   f64 start_ts;		/**< Timestamp when connection initialized */
@@ -426,6 +458,13 @@ tcp_cong_recovery_off (tcp_connection_t * tc)
 #define tcp_zero_rwnd_sent(tc) ((tc)->flags & TCP_CONN_ZERO_RWND_SENT)
 #define tcp_zero_rwnd_sent_on(tc) (tc)->flags |= TCP_CONN_ZERO_RWND_SENT
 #define tcp_zero_rwnd_sent_off(tc) (tc)->flags &= ~TCP_CONN_ZERO_RWND_SENT
+
+#define tcp_dsack_ineligible(tc)     ((tc)->dsack_rxt_flags & TCP_DSACK_INELIGIBLE)
+#define tcp_dsack_ineligible_on(tc)  (tc)->dsack_rxt_flags |= TCP_DSACK_INELIGIBLE
+#define tcp_dsack_ineligible_off(tc) (tc)->dsack_rxt_flags &= ~TCP_DSACK_INELIGIBLE
+
+#define tcp_dsack_undo_disabled(tc)    ((tc)->dsack_rxt_flags & TCP_DSACK_UNDO_DISABLED)
+#define tcp_dsack_undo_disabled_on(tc) (tc)->dsack_rxt_flags |= TCP_DSACK_UNDO_DISABLED
 
 always_inline tcp_connection_t *
 tcp_get_connection_from_transport (transport_connection_t * tconn)
