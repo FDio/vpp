@@ -380,25 +380,189 @@ tcp_scoreboard_is_sane_post_recovery (tcp_connection_t *tc)
 }
 
 void
-tcp_rcv_sacks (tcp_connection_t * tc, u32 ack)
+tcp_dsack_recovery_start (tcp_connection_t *tc)
+{
+  tc->dsack_flags &= TCP_DSACK_UNDO_DISABLED;
+  tc->dsack_undo_marker = tc->snd_una;
+  tc->dsack_recovery_ack = 0;
+  tc->dsack_retrans_bytes = 0;
+}
+
+void
+tcp_dsack_recovery_done (tcp_connection_t *tc)
+{
+  tc->dsack_flags &= TCP_DSACK_UNDO_DISABLED;
+  tc->dsack_undo_marker = 0;
+  tc->dsack_recovery_ack = 0;
+  tc->dsack_retrans_bytes = 0;
+}
+
+void
+tcp_dsack_recovery_save (tcp_connection_t *tc)
+{
+  if (tcp_dsack_has_history (tc))
+    tc->dsack_recovery_ack = tc->snd_una;
+}
+
+void
+tcp_dsack_track_retransmit (tcp_connection_t *tc, u32 start, u32 end)
+{
+  if (!tcp_opts_sack_permitted (&tc->rcv_opts) || !tcp_in_cong_recovery (tc) ||
+      !seq_lt (start, end) || tcp_dsack_undo_disabled (tc))
+    return;
+
+  /* HighRxt keeps normal RFC 6675 retransmissions disjoint. Rescue,
+   * repeated-RTO and reneging paths mark the episode ineligible at source. */
+  tc->dsack_flags |= TCP_DSACK_HAS_HISTORY;
+  if (!tcp_dsack_ineligible (tc))
+    tc->dsack_retrans_bytes += end - start;
+}
+
+static_always_inline u8
+tcp_sack_detect_dsack (tcp_connection_t *tc, u32 ack, sack_block_t *dsack)
+{
+  sack_block_t *sacks = tc->rcv_opts.sacks;
+
+  ASSERT (vec_len (sacks));
+
+  if (PREDICT_FALSE (!seq_lt (sacks[0].start, sacks[0].end)))
+    return 0;
+
+  /* RFC 2883: compare against the ACK in this packet, never snd_una. */
+  if (seq_leq (sacks[0].end, ack))
+    {
+      *dsack = sacks[0];
+      return 1;
+    }
+
+  if (vec_len (sacks) > 1 && seq_gt (sacks[0].start, ack) &&
+      seq_leq (sacks[1].start, sacks[0].start) && seq_geq (sacks[1].end, sacks[0].end))
+    {
+      *dsack = sacks[0];
+      return 1;
+    }
+
+  return 0;
+}
+
+static u8
+tcp_sack_extract_dsack (tcp_connection_t *tc, u32 ack, sack_block_t *dsack)
+{
+  ASSERT (tcp_opts_sack (&tc->rcv_opts) && vec_len (tc->rcv_opts.sacks));
+
+  if (!tcp_sack_detect_dsack (tc, ack, dsack))
+    return 0;
+
+  vec_del1 (tc->rcv_opts.sacks, 0);
+  tc->rcv_opts.n_sack_blocks -= tc->rcv_opts.n_sack_blocks != 0;
+  return 1;
+}
+
+static u8
+tcp_dsack_update (tcp_connection_t *tc, u32 packet_ack, const sack_block_t *dsack,
+		  u8 had_sack_history)
+{
+  u32 cum_ack, duplicate_bytes, start, end;
+
+  if (!tcp_dsack_has_history (tc))
+    {
+      if (dsack)
+	tcp_dsack_undo_disabled_on (tc);
+      return 0;
+    }
+
+  cum_ack = seq_max (tc->snd_una, packet_ack);
+
+  /* Keep one ACK of trailing history for a late D-SACK. */
+  if (!tcp_in_cong_recovery (tc) && !dsack)
+    {
+      if (seq_gt (cum_ack, tc->dsack_recovery_ack))
+	tcp_dsack_recovery_done (tc);
+      return 0;
+    }
+
+  if (dsack && !tcp_dsack_ineligible (tc))
+    {
+      /* RFC 3708 A.1: an empty SACK history and a D-SACK beginning at
+       * snd_una is indistinguishable from loss of the whole ACK window. */
+      if (!had_sack_history && dsack->start == tc->snd_una)
+	tcp_dsack_ineligible_on (tc);
+      else
+	{
+	  start =
+	    seq_lt (dsack->start, tc->dsack_undo_marker) ? tc->dsack_undo_marker : dsack->start;
+	  end = seq_gt (dsack->end, tc->snd_congestion) ? tc->snd_congestion : dsack->end;
+
+	  if (seq_lt (start, end))
+	    {
+	      duplicate_bytes = end - start;
+	      if (duplicate_bytes > tc->dsack_retrans_bytes)
+		{
+		  tcp_dsack_undo_disabled_on (tc);
+		  tcp_dsack_ineligible_on (tc);
+		}
+	      else
+		tc->dsack_retrans_bytes -= duplicate_bytes;
+	    }
+	}
+    }
+
+  if (tc->sack_sb.is_reneging)
+    tcp_dsack_ineligible_on (tc);
+
+  return !(tc->dsack_flags & (TCP_DSACK_INELIGIBLE | TCP_DSACK_UNDO_DISABLED)) &&
+	 !tc->dsack_retrans_bytes && seq_geq (cum_ack, tc->snd_congestion);
+}
+
+void
+tcp_rcv_dsack (tcp_connection_t *tc, u32 ack, tcp_rate_sample_t *rs)
+{
+  sack_block_t dsack;
+
+  if (tcp_opts_sack (&tc->rcv_opts) && vec_len (tc->rcv_opts.sacks) &&
+      tcp_sack_extract_dsack (tc, ack, &dsack))
+    {
+      rs->ack_flags |= TCP_ACK_F_DSACK;
+      rs->ack_flags |= tcp_dsack_update (tc, ack, &dsack, tc->sack_sb.sacked_bytes != 0) *
+		       TCP_ACK_F_DSACK_SPURIOUS;
+    }
+}
+
+void
+tcp_rcv_sacks (tcp_connection_t *tc, u32 ack, tcp_rate_sample_t *rs)
 {
   sack_scoreboard_hole_t *hole, *next_hole;
   sack_scoreboard_t *sb = &tc->sack_sb;
-  sack_block_t *blk, *rcv_sacks;
-  u32 blk_index = 0, i, j, high_sacked;
+  sack_block_t dsack, *blk, *rcv_sacks;
+  u32 blk_index = 0, i, j, high_sacked, packet_ack = ack;
+  u8 had_sack_history, has_dsack, has_sack, has_scoreboard, needs_update;
   tcp_sb_sack_mode_e mode;
 
   sb->last_sacked_bytes = 0;
   sb->last_bytes_delivered = 0;
   sb->rxt_sacked = 0;
 
-  if (!tcp_opts_sack (&tc->rcv_opts) && !sb->sacked_bytes
-      && sb->head == TCP_INVALID_SACK_HOLE_INDEX)
+  has_sack = tcp_opts_sack (&tc->rcv_opts) && vec_len (tc->rcv_opts.sacks);
+  has_dsack = PREDICT_FALSE (has_sack) && tcp_sack_extract_dsack (tc, packet_ack, &dsack);
+  rs->ack_flags |= has_dsack * TCP_ACK_F_DSACK;
+  has_sack &= vec_len (tc->rcv_opts.sacks) != 0;
+  had_sack_history = sb->sacked_bytes != 0;
+  has_scoreboard = had_sack_history || sb->head != TCP_INVALID_SACK_HOLE_INDEX;
+  needs_update = has_dsack | (tcp_dsack_has_history (tc) & seq_gt (packet_ack, tc->snd_una));
+
+  if (PREDICT_TRUE (!(has_sack | has_scoreboard | needs_update)))
     return;
+
+  if (!(has_sack | has_scoreboard))
+    goto done;
 
   mode = !tcp_in_cong_recovery (tc)	       ? TCP_SB_SACK_OOO :
 	 seq_geq (sb->rescue_rxt, tc->snd_una) ? TCP_SB_SACK_RXT_RESCUED :
 						 TCP_SB_SACK_RXT;
+
+  /* The D-SACK check needs the ACK from the wire. The scoreboard treats
+   * an old ack as snd_una */
+  ack = seq_max (packet_ack, tc->snd_una);
 
   /* Remove invalid blocks */
   blk = tc->rcv_opts.sacks;
@@ -425,7 +589,7 @@ tcp_rcv_sacks (tcp_connection_t * tc, u32 ack)
     }
 
   if (vec_len (tc->rcv_opts.sacks) == 0)
-    return;
+    goto done;
 
   tcp_scoreboard_trace_add (tc, ack);
 
@@ -456,13 +620,13 @@ tcp_rcv_sacks (tcp_connection_t * tc, u32 ack)
 	    {
 	      /* No progress made so return */
 	      if (seq_leq (ack, tc->snd_una))
-		return;
+		goto done;
 
 	      /* Update sacked bytes delivered and return */
 	      sb->last_bytes_delivered = ack - tc->snd_una;
 	      sb->sacked_bytes -= sb->last_bytes_delivered;
 	      sb->is_reneging = seq_lt (ack, sb->high_sacked);
-	      return;
+	      goto done;
 	    }
 
 	  /* New hole above high sacked. Add it and process normally */
@@ -595,6 +759,11 @@ tcp_rcv_sacks (tcp_connection_t * tc, u32 ack)
 	  || (tc->flags & TCP_CONN_FINSNT));
 
   TCP_EVT (TCP_EVT_CC_SCOREBOARD, tc);
+
+done:
+  if (PREDICT_FALSE (needs_update))
+    rs->ack_flags |= tcp_dsack_update (tc, packet_ack, has_dsack ? &dsack : 0, had_sack_history) *
+		     TCP_ACK_F_DSACK_SPURIOUS;
 }
 
 static u8
