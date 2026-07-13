@@ -62,11 +62,16 @@ func TcpConfigDiagTest(s *VethsSuite) {
 	AssertContains(config, "max rx fifo size:")
 	AssertContains(config, "congestion control algorithm:")
 	AssertContains(config, "checksum offload:")
+	AssertContains(config, "dsack: enabled")
 
 	AssertContains(serverVpp.Vppctl("set tcp csum-offload disable"), "disabled")
 	AssertContains(serverVpp.Vppctl("show tcp config"), "checksum offload: disabled")
 	AssertContains(serverVpp.Vppctl("set tcp csum-offload enable"), "enabled")
 	AssertContains(serverVpp.Vppctl("show tcp config"), "checksum offload: enabled")
+	AssertContains(serverVpp.Vppctl("set tcp dsack disable"), "disabled")
+	AssertContains(serverVpp.Vppctl("show tcp config"), "dsack: disabled")
+	AssertContains(serverVpp.Vppctl("set tcp dsack enable"), "enabled")
+	AssertContains(serverVpp.Vppctl("show tcp config"), "dsack: enabled")
 	AssertContains(serverVpp.Vppctl("set tcp mtu 9000"), "TCP default mtu: 9000")
 	AssertContains(serverVpp.Vppctl("show tcp config"), "default mtu: 9000")
 	AssertContains(serverVpp.Vppctl("set tcp mtu 1280"), "TCP default mtu: 1280")
@@ -248,6 +253,7 @@ func TcpCubicStartupConfigDiagTest(s *VethsSuite) {
 	var tcpConfig Stanza
 	tcpConfig.NewStanza("tcp").
 		Append("cc-algo cubic").
+		Append("no-dsack").
 		NewStanza("cubic").
 		Append("no-fast-convergence").
 		Append("ssthresh 12345").
@@ -266,6 +272,7 @@ func TcpCubicStartupConfigDiagTest(s *VethsSuite) {
 	config := serverVpp.Vppctl("show tcp config")
 	Log(config)
 	AssertContains(config, "congestion control algorithm: cubic")
+	AssertContains(config, "dsack: disabled")
 
 	serverVpp.Vppctl("vperf server fifo-size 64k uri tcp://%s/%s", serverAddress, s.Ports.Port1)
 	listenerDetail := serverVpp.Vppctl("show session verbose 2 proto tcp state listening")
