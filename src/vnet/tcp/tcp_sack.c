@@ -669,6 +669,108 @@ tcp_update_sack_list (tcp_connection_t * tc, u32 start, u32 end)
   ASSERT (tcp_sack_vector_is_sane (tc->snd_sacks));
 }
 
+/**
+ * Record the first known duplicate range in a received segment.
+ *
+ * Duplicate bytes are either below rcv_nxt or overlap an existing receiver
+ * SACK block. Per RFC 2883, only the first duplicate sub-range in the segment
+ * is reported.
+ *
+ * @return 1 if a duplicate range was recorded, 0 otherwise
+ */
+u8
+tcp_update_dsack_list (tcp_connection_t *tc, u32 start, u32 end)
+{
+  sack_block_t *block;
+  u32 dsack_start = 0, dsack_end = 0;
+  u8 found = 0;
+  int i;
+
+  if (!tcp_opts_sack_permitted (&tc->rcv_opts) || !seq_lt (start, end))
+    return 0;
+
+  /* Bytes below rcv_nxt are cumulatively acknowledged. */
+  if (seq_lt (start, tc->rcv_nxt))
+    {
+      dsack_start = start;
+      dsack_end = seq_lt (end, tc->rcv_nxt) ? end : tc->rcv_nxt;
+      found = seq_lt (dsack_start, dsack_end);
+    }
+  else
+    {
+      /* Find the first overlap in sequence space, not vector order. */
+      for (i = 0; i < vec_len (tc->snd_sacks); i++)
+	{
+	  u32 overlap_start, overlap_end;
+
+	  block = &tc->snd_sacks[i];
+	  overlap_start = seq_gt (start, block->start) ? start : block->start;
+	  overlap_end = seq_lt (end, block->end) ? end : block->end;
+	  if (!seq_lt (overlap_start, overlap_end))
+	    continue;
+
+	  if (!found || seq_lt (overlap_start, dsack_start))
+	    {
+	      dsack_start = overlap_start;
+	      dsack_end = overlap_end;
+	      found = 1;
+	    }
+	}
+    }
+
+  if (!found)
+    return 0;
+
+  tc->dsack_block.start = dsack_start;
+  tc->dsack_block.end = dsack_end;
+  tcp_dsack_pending_on (tc);
+  return 1;
+}
+
+/**
+ * Build the SACK blocks for an ACK carrying a pending D-SACK.
+ *
+ * The first block reports the duplicate range. If that range is above the
+ * cumulative ACK, RFC 2883 requires the second block to contain it. Remaining
+ * slots are filled from the regular receiver SACK list.
+ */
+u8
+tcp_prepare_dsack_option (tcp_connection_t *tc, sack_block_t *sacks, u8 max_sacks)
+{
+  int containing = -1, i;
+  u8 n_sacks = 0;
+
+  if (!tcp_dsack_pending (tc) || !max_sacks)
+    return 0;
+
+  sacks[n_sacks++] = tc->dsack_block;
+
+  if (seq_geq (tc->dsack_block.start, tc->rcv_nxt))
+    {
+      for (i = 0; i < vec_len (tc->snd_sacks); i++)
+	{
+	  if (seq_leq (tc->snd_sacks[i].start, tc->dsack_block.start) &&
+	      seq_geq (tc->snd_sacks[i].end, tc->dsack_block.end))
+	    {
+	      containing = i;
+	      break;
+	    }
+	}
+
+      if (containing >= 0 && n_sacks < max_sacks)
+	sacks[n_sacks++] = tc->snd_sacks[containing];
+    }
+
+  for (i = 0; i < vec_len (tc->snd_sacks) && n_sacks < max_sacks; i++)
+    {
+      if (i == containing)
+	continue;
+      sacks[n_sacks++] = tc->snd_sacks[i];
+    }
+
+  return n_sacks;
+}
+
 u32
 tcp_sack_list_bytes (tcp_connection_t * tc)
 {
