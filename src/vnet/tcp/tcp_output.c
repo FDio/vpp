@@ -1282,6 +1282,7 @@ tcp_prepare_retransmit_segment (tcp_worker_ctx_t * wrk,
     return 0;
 
   tc->snd_rxt_bytes += n_bytes;
+  tcp_dsack_track_retransmit (tc, start, start + n_bytes);
 
   if (tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE)
     tcp_bt_track_rxt (tc, start, start + n_bytes);
@@ -1323,6 +1324,7 @@ tcp_cc_rxt_timeout (tcp_connection_t *tc)
    * be overwritten */
   if (!tcp_in_cong_recovery (tc))
     {
+      tcp_dsack_recovery_start (tc);
       tc->prev_ssthresh = tc->ssthresh;
       tc->prev_cwnd = tc->cwnd;
       /* Record timestamp. Eifel detection algorithm RFC3522 */

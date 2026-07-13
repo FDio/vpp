@@ -185,6 +185,26 @@ typedef struct _sack_scoreboard
 
 } sack_scoreboard_t;
 
+typedef enum tcp_dsack_rxt_flag_
+{
+  TCP_DSACK_RXT_ACKED = 1,
+  TCP_DSACK_RXT_DUPLICATE = 1 << 1,
+} __clib_packed tcp_dsack_rxt_flag_t;
+
+typedef enum tcp_dsack_state_flag_
+{
+  TCP_DSACK_INELIGIBLE = 1,
+  TCP_DSACK_UNDO_DISABLED = 1 << 1,
+} __clib_packed tcp_dsack_state_flag_t;
+
+/** Retransmitted byte range retained for conservative D-SACK undo. */
+typedef struct tcp_dsack_rxt_
+{
+  u32 start;
+  u32 end;
+  tcp_dsack_rxt_flag_t flags;
+} tcp_dsack_rxt_t;
+
 #define TCP_BTS_INVALID_INDEX	((u32)~0)
 
 typedef enum tcp_bts_flags_
@@ -377,7 +397,10 @@ typedef struct _tcp_connection
   u32 last_fib_check;	/**< Last time we checked fib route for peer */
   u16 mss;		/**< Our max seg size that includes options */
   u32 ipv6_flow_label;	/**< flow label for ipv6 header */
-  sack_block_t dsack_block; /**< Duplicate range to report in next ACK */
+  sack_block_t dsack_block;		  /**< Duplicate range to report in next ACK */
+  tcp_dsack_rxt_t *dsack_rxt;		  /**< Retransmits retained for D-SACK undo */
+  u32 dsack_recovery_ack;		  /**< ACK at recovery exit; bounds retained history */
+  tcp_dsack_state_flag_t dsack_rxt_flags; /**< D-SACK undo state */
 
 #define rst_state snd_wl1
 } tcp_connection_t;
@@ -432,6 +455,13 @@ tcp_cong_recovery_off (tcp_connection_t * tc)
 #define tcp_dsack_pending(tc)	  ((tc)->flags & TCP_CONN_DSACK_PENDING)
 #define tcp_dsack_pending_on(tc)  (tc)->flags |= TCP_CONN_DSACK_PENDING
 #define tcp_dsack_pending_off(tc) (tc)->flags &= ~TCP_CONN_DSACK_PENDING
+
+#define tcp_dsack_ineligible(tc)     ((tc)->dsack_rxt_flags & TCP_DSACK_INELIGIBLE)
+#define tcp_dsack_ineligible_on(tc)  (tc)->dsack_rxt_flags |= TCP_DSACK_INELIGIBLE
+#define tcp_dsack_ineligible_off(tc) (tc)->dsack_rxt_flags &= ~TCP_DSACK_INELIGIBLE
+
+#define tcp_dsack_undo_disabled(tc)    ((tc)->dsack_rxt_flags & TCP_DSACK_UNDO_DISABLED)
+#define tcp_dsack_undo_disabled_on(tc) (tc)->dsack_rxt_flags |= TCP_DSACK_UNDO_DISABLED
 
 always_inline tcp_connection_t *
 tcp_get_connection_from_transport (transport_connection_t * tconn)
