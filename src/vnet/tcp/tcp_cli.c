@@ -724,7 +724,6 @@ tcp_scoreboard_replay (u8 * s, tcp_connection_t * tc, u8 verbose)
   clib_memset (placeholder_tc, 0, sizeof (*placeholder_tc));
   tcp_connection_timers_init (placeholder_tc);
   scoreboard_init (&placeholder_tc->sack_sb);
-  placeholder_tc->rcv_opts.flags |= TCP_OPTS_FLAG_SACK;
 
 #if TCP_SCOREBOARD_TRACE
   trace = tc->sack_sb.trace;
@@ -770,6 +769,11 @@ tcp_scoreboard_replay (u8 * s, tcp_connection_t * tc, u8 verbose)
 	}
 
       /* Push segments */
+      if (vec_len (placeholder_tc->rcv_opts.sacks))
+	placeholder_tc->rcv_opts.flags |= TCP_OPTS_FLAG_SACK;
+      else
+	placeholder_tc->rcv_opts.flags &= ~TCP_OPTS_FLAG_SACK;
+      placeholder_tc->rcv_opts.n_sack_blocks = vec_len (placeholder_tc->rcv_opts.sacks);
       tcp_rcv_sacks (placeholder_tc, next_ack, &rs);
       if (has_new_ack)
 	placeholder_tc->snd_una = next_ack;
