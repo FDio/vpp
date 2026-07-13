@@ -31,6 +31,7 @@ typedef struct
   u8 flags_match;   /**< required value of the masked flag bits */
   u8 seq_is_min;    /**< if set, match seq >= min_seq instead of seq == exact */
   u8 above_rp_in_recovery; /**< match only in recovery and seq >= snd_congestion */
+  u8 data_only;		   /**< match only segments with nonzero TCP payload */
   u32 seq;	    /**< exact host-order seq to match, or ~0 for any */
   u32 min_seq;	    /**< lower bound (host order) when seq_is_min is set */
   u32 conn_index;   /**< only match this connection (c_c_index), or ~0 for any */

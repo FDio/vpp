@@ -103,7 +103,12 @@ format_function_t format_tcp_scoreboard;
 
 /* Made public for unit testing only */
 void tcp_update_sack_list (tcp_connection_t * tc, u32 start, u32 end);
+void tcp_dsack_recovery_start (tcp_connection_t *tc);
+void tcp_dsack_recovery_done (tcp_connection_t *tc);
+void tcp_dsack_recovery_save (tcp_connection_t *tc);
+void tcp_dsack_track_retransmit (tcp_connection_t *tc, u32 start, u32 end);
 u32 tcp_sack_list_bytes (tcp_connection_t * tc);
+void tcp_rcv_dsack (tcp_connection_t *tc, u32 ack, tcp_rate_sample_t *rs);
 void tcp_rcv_sacks_slow (tcp_connection_t *tc, u32 ack,
 			 tcp_rate_sample_t *rs);
 
@@ -111,14 +116,14 @@ always_inline void
 tcp_rcv_sacks (tcp_connection_t *tc, u32 ack, tcp_rate_sample_t *rs)
 {
   sack_scoreboard_t *sb = &tc->sack_sb;
+  u8 has_sack, has_scoreboard, needs_update;
 
-  rs->last_sacked_bytes = 0;
-  rs->last_bytes_delivered = 0;
-  rs->rxt_sacked = 0;
-  rs->last_lost = 0;
+  has_sack = tcp_opts_sack (&tc->rcv_opts) != 0;
+  has_scoreboard =
+    sb->sacked_bytes != 0 || sb->head != TCP_INVALID_SACK_HOLE_INDEX;
+  needs_update = tcp_dsack_has_history (tc) & seq_gt (ack, tc->snd_una);
 
-  if (PREDICT_TRUE (!tcp_opts_sack (&tc->rcv_opts) && !sb->sacked_bytes &&
-		    sb->head == TCP_INVALID_SACK_HOLE_INDEX))
+  if (PREDICT_TRUE (!(has_sack | has_scoreboard | needs_update)))
     return;
 
   tcp_rcv_sacks_slow (tc, ack, rs);
