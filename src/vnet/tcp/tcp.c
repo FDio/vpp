@@ -267,6 +267,7 @@ tcp_connection_cleanup (tcp_connection_t * tc)
       vec_free (tc->snd_sacks);
       vec_free (tc->snd_sacks_fl);
       vec_free (tc->rcv_opts.sacks);
+      vec_free (tc->dsack_rxt);
       pool_free (tc->sack_sb.holes);
 
       if (tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE)
