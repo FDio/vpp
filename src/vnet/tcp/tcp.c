@@ -267,6 +267,7 @@ tcp_connection_cleanup (tcp_connection_t * tc)
       vec_free (tc->snd_sacks);
       vec_free (tc->snd_sacks_fl);
       vec_free (tc->rcv_opts.sacks);
+      vec_free (tc->dsack_rxt);
       pool_free (tc->sack_sb.holes);
 
       if (tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE)
@@ -762,6 +763,9 @@ tcp_connection_init_vars (tcp_connection_t * tc)
   tcp_connection_timers_init (tc);
   tcp_init_mss (tc);
   scoreboard_init (&tc->sack_sb);
+  if (!tcp_cfg.enable_dsack)
+    tc->dsack_flags |= TCP_DSACK_UNDO_DISABLED;
+
   if (tc->state == TCP_STATE_SYN_RCVD)
     tcp_init_snd_vars (tc);
 
@@ -1690,6 +1694,7 @@ tcp_configuration_init (void)
   tcp_cfg.enable_tx_pacing = 1;
   tcp_cfg.allow_tso = 0;
   tcp_cfg.csum_offload = 1;
+  tcp_cfg.enable_dsack = 1;
   tcp_cfg.cc_algo = TCP_CC_CUBIC;
   tcp_cfg.rwnd_min_update_ack = 1;
   tcp_cfg.max_gso_size = TCP_MAX_GSO_SZ;

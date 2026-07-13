@@ -159,6 +159,9 @@ typedef struct tcp_configuration_
   /** Set if csum offloading is enabled */
   u8 csum_offload;
 
+  /** Enable D-SACK processing for new connections */
+  u8 enable_dsack;
+
   /** Default congestion control algorithm type */
   tcp_cc_algorithm_type_e cc_algo;
 
