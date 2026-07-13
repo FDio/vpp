@@ -15,9 +15,9 @@
 #include <vppinfra/xxhash.h>
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/ethernet/packet.h>
-#include <vnet/bfd/bfd_debug.h>
-#include <vnet/bfd/bfd_protocol.h>
-#include <vnet/bfd/bfd_main.h>
+#include <bfd/bfd_debug.h>
+#include <bfd/bfd_protocol.h>
+#include <bfd/bfd_main.h>
 #include <vnet/bfd/bfd_vnet_notifier.h>
 #include <vlib/log.h>
 #include <vnet/crypto/crypto.h>

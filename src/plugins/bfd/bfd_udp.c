@@ -27,11 +27,11 @@
 #include <vnet/fib/fib_entry.h>
 #include <vnet/fib/fib_table.h>
 #include <vlib/stats/stats.h>
-#include <vnet/bfd/bfd_debug.h>
-#include <vnet/bfd/bfd_udp.h>
-#include <vnet/bfd/bfd_main.h>
-#include <vnet/bfd/bfd_api.h>
-#include <vnet/bfd/bfd.api_enum.h>
+#include <bfd/bfd_debug.h>
+#include <bfd/bfd_udp.h>
+#include <bfd/bfd_main.h>
+#include <bfd/bfd_api.h>
+#include <bfd/bfd.api_enum.h>
 
 #define F(sym, str)                                                           \
   STATIC_ASSERT ((int) BFD_ERROR_##sym == (int) BFD_UDP_ERROR_##sym,          \
@@ -1809,6 +1809,7 @@ bfd_udp_init (vlib_main_t * vm)
 
   bfd_udp_main.log_class = vlib_log_register_class ("bfd", "udp");
   vlib_log_debug (bfd_udp_main.log_class, "initialized");
+
   return 0;
 }
 

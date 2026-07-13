@@ -192,5 +192,5 @@ fib_bfd_main_init (CLIB_UNUSED (vlib_main_t * vm))
 
 VLIB_INIT_FUNCTION (fib_bfd_main_init) =
 {
-    .runs_after = VLIB_INITS("bfd_vnet_notifier_init", "bfd_main_init"),
+    .runs_after = VLIB_INITS("bfd_vnet_notifier_init"),
 };

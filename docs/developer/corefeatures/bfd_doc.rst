@@ -1,1 +1,1 @@
-../../../src/vnet/bfd/bfd_doc.rst
+../../../src/plugins/bfd/bfd_doc.rst

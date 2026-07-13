@@ -134,6 +134,7 @@ class AuthKeyFactory(object):
         {"multihop": True},
     ]
 )
+@unittest.skipIf("bfd" in config.excluded_plugins, "Exclude BFD plugin tests")
 class BFDAPITestCase(VppTestCase):
     """BFD API test"""
 
@@ -1079,6 +1080,7 @@ def bfd_stats_diff(stats_before, stats_after):
     ]
 )
 @tag_run_solo
+@unittest.skipIf("bfd" in config.excluded_plugins, "Exclude BFD plugin tests")
 class BFD4TestCase(VppTestCase):
     """BFD v4 test"""
 
@@ -2128,6 +2130,7 @@ class BFD4TestCase(VppTestCase):
 )
 @tag_run_solo
 @tag_fixme_vpp_workers
+@unittest.skipIf("bfd" in config.excluded_plugins, "Exclude BFD plugin tests")
 class BFD6TestCase(VppTestCase):
     """BFD v6 test"""
 
@@ -2471,6 +2474,7 @@ class BFD6TestCase(VppTestCase):
     ]
 )
 @tag_run_solo
+@unittest.skipIf("bfd" in config.excluded_plugins, "Exclude BFD plugin tests")
 class BFDFIBTestCase(VppTestCase):
     """BFD-FIB interactions (IPv6)"""
 
@@ -2611,6 +2615,7 @@ class BFDFIBTestCase(VppTestCase):
 
 
 @unittest.skipUnless(config.extended, "part of extended tests")
+@unittest.skipIf("bfd" in config.excluded_plugins, "Exclude BFD plugin tests")
 class BFDTunTestCase(VppTestCase):
     """BFD over GRE tunnel"""
 
@@ -2700,6 +2705,7 @@ class BFDTunTestCase(VppTestCase):
     ]
 )
 @tag_run_solo
+@unittest.skipIf("bfd" in config.excluded_plugins, "Exclude BFD plugin tests")
 class BFDSHA1TestCase(VppTestCase):
     """BFD SHA1 test"""
 
@@ -3085,6 +3091,7 @@ class BFDSHA1TestCase(VppTestCase):
     ]
 )
 @tag_run_solo
+@unittest.skipIf("bfd" in config.excluded_plugins, "Exclude BFD plugin tests")
 class BFDAuthOnOffTestCase(VppTestCase):
     """BFD Auth On/Off test"""
 
@@ -3382,6 +3389,7 @@ class BFDAuthOnOffTestCase(VppTestCase):
     ]
 )
 @tag_run_solo
+@unittest.skipIf("bfd" in config.excluded_plugins, "Exclude BFD plugin tests")
 class BFDCLITestCase(VppTestCase):
     """Bidirectional Forwarding Detection (BFD) (CLI)"""
 
