@@ -14,8 +14,8 @@
 #include <vppinfra/warnings.h>
 #include <vnet/api_errno.h>
 #include <vnet/ip/format.h>
-#include <vnet/bfd/bfd_api.h>
-#include <vnet/bfd/bfd_main.h>
+#include <bfd/bfd_api.h>
+#include <bfd/bfd_main.h>
 
 #define BFD_MULTIHOP_CLI_CHECK                                                \
   do                                                                          \
