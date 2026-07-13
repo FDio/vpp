@@ -27,7 +27,6 @@ static dpdk_driver_t dpdk_drivers[] = {
     .enable_rxq_int = 1,
     .supported_flow_actions = DPDK_VNET_FLOW_SUPPORTED_ACTIONS,
     .use_intel_phdr_cksum = 1,
-    .int_unmaskable = 1,
   },
   {
     .drivers = DPDK_DRIVERS ({ "net_ixgbe", "Intel 82599" }),
