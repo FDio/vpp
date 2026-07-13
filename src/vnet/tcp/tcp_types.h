@@ -106,20 +106,21 @@ typedef enum tcp_cfg_flag_
 } tcp_cfg_flags_e;
 
 /** TCP connection flags */
-#define foreach_tcp_connection_flag             \
-  _(SNDACK, "Send ACK")                         \
-  _(FINSNT, "FIN sent")				\
-  _(RECOVERY, "Recovery")                    	\
-  _(FAST_RECOVERY, "Fast Recovery")		\
-  _(DCNT_PENDING, "Disconnect pending")		\
-  _(HALF_OPEN_DONE, "Half-open completed")	\
-  _(FINPNDG, "FIN pending")			\
-  _(RXT_PENDING, "Retransmit pending")		\
-  _(FRXT_FIRST, "Retransmit first")		\
-  _(DEQ_PENDING, "Dequeue pending ")		\
-  _(PSH_PENDING, "PSH pending")			\
-  _(FINRCVD, "FIN received")			\
-  _(ZERO_RWND_SENT, "Zero RWND sent")		\
+#define foreach_tcp_connection_flag                                                                \
+  _ (SNDACK, "Send ACK")                                                                           \
+  _ (FINSNT, "FIN sent")                                                                           \
+  _ (RECOVERY, "Recovery")                                                                         \
+  _ (FAST_RECOVERY, "Fast Recovery")                                                               \
+  _ (DCNT_PENDING, "Disconnect pending")                                                           \
+  _ (HALF_OPEN_DONE, "Half-open completed")                                                        \
+  _ (FINPNDG, "FIN pending")                                                                       \
+  _ (RXT_PENDING, "Retransmit pending")                                                            \
+  _ (FRXT_FIRST, "Retransmit first")                                                               \
+  _ (DEQ_PENDING, "Dequeue pending ")                                                              \
+  _ (PSH_PENDING, "PSH pending")                                                                   \
+  _ (FINRCVD, "FIN received")                                                                      \
+  _ (ZERO_RWND_SENT, "Zero RWND sent")                                                             \
+  _ (DSACK_PENDING, "D-SACK pending")
 
 typedef enum tcp_connection_flag_bits_
 {
@@ -396,6 +397,7 @@ typedef struct _tcp_connection
   u32 last_fib_check;	/**< Last time we checked fib route for peer */
   u16 mss;		/**< Our max seg size that includes options */
   u32 ipv6_flow_label;	/**< flow label for ipv6 header */
+  sack_block_t dsack_block;		  /**< Duplicate range to report in next ACK */
   tcp_dsack_rxt_t *dsack_rxt;		  /**< Retransmits retained for D-SACK undo */
   u32 dsack_recovery_ack;		  /**< ACK at recovery exit; bounds retained history */
   tcp_dsack_state_flag_t dsack_rxt_flags; /**< D-SACK undo state */
@@ -449,6 +451,10 @@ tcp_cong_recovery_off (tcp_connection_t * tc)
 #define tcp_zero_rwnd_sent(tc) ((tc)->flags & TCP_CONN_ZERO_RWND_SENT)
 #define tcp_zero_rwnd_sent_on(tc) (tc)->flags |= TCP_CONN_ZERO_RWND_SENT
 #define tcp_zero_rwnd_sent_off(tc) (tc)->flags &= ~TCP_CONN_ZERO_RWND_SENT
+
+#define tcp_dsack_pending(tc)	  ((tc)->flags & TCP_CONN_DSACK_PENDING)
+#define tcp_dsack_pending_on(tc)  (tc)->flags |= TCP_CONN_DSACK_PENDING
+#define tcp_dsack_pending_off(tc) (tc)->flags &= ~TCP_CONN_DSACK_PENDING
 
 #define tcp_dsack_ineligible(tc)     ((tc)->dsack_rxt_flags & TCP_DSACK_INELIGIBLE)
 #define tcp_dsack_ineligible_on(tc)  (tc)->dsack_rxt_flags |= TCP_DSACK_INELIGIBLE

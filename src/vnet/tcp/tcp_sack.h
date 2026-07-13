@@ -109,6 +109,8 @@ typedef enum tcp_sack_rcv_flag_
 
 /* Made public for unit testing only */
 void tcp_update_sack_list (tcp_connection_t * tc, u32 start, u32 end);
+u8 tcp_update_dsack_list (tcp_connection_t *tc, u32 start, u32 end);
+u8 tcp_prepare_dsack_option (tcp_connection_t *tc, sack_block_t *sacks, u8 max_sacks);
 void tcp_dsack_recovery_start (tcp_connection_t *tc);
 void tcp_dsack_recovery_done (tcp_connection_t *tc);
 void tcp_dsack_track_retransmit (tcp_connection_t *tc, u32 start, u32 end);
