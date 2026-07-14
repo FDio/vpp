@@ -343,11 +343,11 @@ I:	vxlan-gpe
 M:	Hongjun Ni <hongjun.ni@intel.com>
 F:	src/vnet/vxlan-gpe/
 
-VNET IPIP
+Plugin - IPIP
 I:	ipip
-Y:	src/vnet/ipip/FEATURE.yaml
+Y:	src/plugins/ipip/FEATURE.yaml
 M:	Ole Troan <otroan@employees.org>
-F:	src/vnet/ipip/
+F:	src/plugins/ipip/
 
 VNET tunnel
 I:	tunnel
