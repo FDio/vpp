@@ -2135,6 +2135,9 @@ class TestApi(VppTestCase):
             self.assertEqual(ap.tun_itf, 0xFFFFFFFF)
 
 
+@unittest.skipIf(
+    "ipip" in config.excluded_plugins, "Exclude tests requiring IPIP plugin"
+)
 class TestResponderBehindNAT(TemplateResponder, Ikev2Params):
     """test responder - responder behind NAT"""
 
@@ -2210,6 +2213,9 @@ class TestInitiatorPsk(TemplateInitiator, Ikev2Params):
         )
 
 
+@unittest.skipIf(
+    "ipip" in config.excluded_plugins, "Exclude tests requiring IPIP plugin"
+)
 class TestInitiatorRequestWindowSize(TestInitiatorPsk):
     """test initiator - request window size (1)"""
 
@@ -2260,6 +2266,9 @@ class TestInitiatorRequestWindowSize(TestInitiatorPsk):
         self.verify_ipsec_sas(is_rekey=True)
 
 
+@unittest.skipIf(
+    "ipip" in config.excluded_plugins, "Exclude tests requiring IPIP plugin"
+)
 class TestInitiatorRekey(TestInitiatorPsk):
     """test ikev2 initiator - rekey"""
 
@@ -2340,6 +2349,9 @@ class TestInitiatorDelSAFromResponder(TemplateInitiator, Ikev2Params):
         )
 
 
+@unittest.skipIf(
+    "ipip" in config.excluded_plugins, "Exclude tests requiring IPIP plugin"
+)
 class TestResponderInitBehindNATT(TemplateResponder, Ikev2Params):
     """test ikev2 responder - initiator behind NAT"""
 
@@ -2350,6 +2362,9 @@ class TestResponderInitBehindNATT(TemplateResponder, Ikev2Params):
         self.config_params({"i_natt": True})
 
 
+@unittest.skipIf(
+    "ipip" in config.excluded_plugins, "Exclude tests requiring IPIP plugin"
+)
 class TestResponderPsk(TemplateResponder, Ikev2Params):
     """test ikev2 responder - pre shared key auth"""
 
@@ -2359,6 +2374,9 @@ class TestResponderPsk(TemplateResponder, Ikev2Params):
         self.config_params()
 
 
+@unittest.skipIf(
+    "ipip" in config.excluded_plugins, "Exclude tests requiring IPIP plugin"
+)
 class TestResponderPskNullEsp(TestResponderPsk):
     """test ikev2 responder - ESP null encryption"""
 
@@ -2366,6 +2384,9 @@ class TestResponderPskNullEsp(TestResponderPsk):
         self.config_params({"esp-crypto": ("NULL", 0), "esp-integ": "SHA2-256-128"})
 
 
+@unittest.skipIf(
+    "ipip" in config.excluded_plugins, "Exclude tests requiring IPIP plugin"
+)
 class TestResponderPskAesCtrEsp(TestResponderPsk):
     """test ikev2 responder - ESP AES-CTR encryption"""
 
@@ -2373,6 +2394,9 @@ class TestResponderPskAesCtrEsp(TestResponderPsk):
         self.config_params({"esp-crypto": ("AES-CTR", 32), "esp-integ": "SHA2-256-128"})
 
 
+@unittest.skipIf(
+    "ipip" in config.excluded_plugins, "Exclude tests requiring IPIP plugin"
+)
 class TestResponderPskAesGmacEsp(TestResponderPsk):
     """test ikev2 responder - ESP AES-GMAC authentication"""
 
@@ -2387,6 +2411,9 @@ class TestResponderPskPrfAesCmac(TestResponderPsk):
         self.config_params({"ike-prf": "PRF_AES128_CMAC"})
 
 
+@unittest.skipIf(
+    "ipip" in config.excluded_plugins, "Exclude tests requiring IPIP plugin"
+)
 class TestResponderPskIntegAesCmac(TestResponderPsk):
     """test ikev2 responder - integrity AES-CMAC"""
 
@@ -2394,6 +2421,9 @@ class TestResponderPskIntegAesCmac(TestResponderPsk):
         self.config_params({"ike-integ": "AES-CMAC-96"})
 
 
+@unittest.skipIf(
+    "ipip" in config.excluded_plugins, "Exclude tests requiring IPIP plugin"
+)
 class TestResponderDpd(TestResponderPsk):
     """
     Dead peer detection test
@@ -2428,6 +2458,9 @@ class TestResponderDpd(TestResponderPsk):
         self.assertEqual(len(ipsec_sas), 0)
 
 
+@unittest.skipIf(
+    "ipip" in config.excluded_plugins, "Exclude tests requiring IPIP plugin"
+)
 class TestResponderRekey(TestResponderPsk):
     """test ikev2 responder - rekey"""
 
@@ -2470,6 +2503,9 @@ class TestResponderRekey(TestResponderPsk):
         self.assertEqual(r[0].sa.stats.n_rekey_req, 1)
 
 
+@unittest.skipIf(
+    "ipip" in config.excluded_plugins, "Exclude tests requiring IPIP plugin"
+)
 class TestResponderRekeyRepeat(TestResponderRekey):
     """test ikev2 responder - rekey repeat"""
 
@@ -2520,6 +2556,9 @@ class TestResponderRekeyKEX(TestResponderRekey):
     vpp_worker_count = 2
 
 
+@unittest.skipIf(
+    "ipip" in config.excluded_plugins, "Exclude tests requiring IPIP plugin"
+)
 class TestResponderRekeyRepeatKEX(TestResponderRekeyRepeat):
     """test ikev2 responder - rekey repeat with key exchange"""
 
@@ -2527,6 +2566,9 @@ class TestResponderRekeyRepeatKEX(TestResponderRekeyRepeat):
     vpp_worker_count = 2
 
 
+@unittest.skipIf(
+    "ipip" in config.excluded_plugins, "Exclude tests requiring IPIP plugin"
+)
 class TestResponderRekeySA(TestResponderPsk):
     """test ikev2 responder - rekey IKE SA"""
 
@@ -2572,6 +2614,9 @@ class TestResponderRekeySA(TestResponderPsk):
         self.verify_ike_sas()
 
 
+@unittest.skipIf(
+    "ipip" in config.excluded_plugins, "Exclude tests requiring IPIP plugin"
+)
 class TestResponderVrf(TestResponderPsk, Ikev2Params):
     """test ikev2 responder - non-default table id"""
 
@@ -2609,6 +2654,9 @@ class TestResponderVrf(TestResponderPsk, Ikev2Params):
         self.assertEqual(plain, b"")
 
 
+@unittest.skipIf(
+    "ipip" in config.excluded_plugins, "Exclude tests requiring IPIP plugin"
+)
 class TestResponderRsaSign(TemplateResponder, Ikev2Params):
     """test ikev2 responder - cert based auth"""
 
@@ -2627,6 +2675,9 @@ class TestResponderRsaSign(TemplateResponder, Ikev2Params):
         )
 
 
+@unittest.skipIf(
+    "ipip" in config.excluded_plugins, "Exclude tests requiring IPIP plugin"
+)
 class Test_IKE_AES_CBC_128_SHA256_128_MODP2048_ESP_AES_CBC_192_SHA_384_192(
     TemplateResponder, Ikev2Params
 ):
@@ -2650,6 +2701,9 @@ class Test_IKE_AES_CBC_128_SHA256_128_MODP2048_ESP_AES_CBC_192_SHA_384_192(
         )
 
 
+@unittest.skipIf(
+    "ipip" in config.excluded_plugins, "Exclude tests requiring IPIP plugin"
+)
 class TestAES_CBC_128_SHA256_128_MODP3072_ESP_AES_GCM_16(
     TemplateResponder, Ikev2Params
 ):
@@ -2671,6 +2725,9 @@ class TestAES_CBC_128_SHA256_128_MODP3072_ESP_AES_GCM_16(
         )
 
 
+@unittest.skipIf(
+    "ipip" in config.excluded_plugins, "Exclude tests requiring IPIP plugin"
+)
 class TestAES_CBC_128_SHA256_128_MODP3072_ESP_CHACHA20_POLY1305(
     TemplateResponder, Ikev2Params
 ):
@@ -2697,6 +2754,9 @@ class TestAES_CBC_128_SHA256_128_MODP3072_ESP_CHACHA20_POLY1305(
         )
 
 
+@unittest.skipIf(
+    "ipip" in config.excluded_plugins, "Exclude tests requiring IPIP plugin"
+)
 class Test_IKE_AES_GCM_16_256(TemplateResponder, Ikev2Params):
     """
     IKE:AES_GCM_16_256
@@ -2720,6 +2780,9 @@ class Test_IKE_AES_GCM_16_256(TemplateResponder, Ikev2Params):
         )
 
 
+@unittest.skipIf(
+    "ipip" in config.excluded_plugins, "Exclude tests requiring IPIP plugin"
+)
 class Test_IKE_CHACHA20_POLY1305_256(TemplateResponder, Ikev2Params):
     """
     IKE:CHACHA20_POLY1305_256
@@ -2747,6 +2810,34 @@ class Test_IKE_CHACHA20_POLY1305_256(TemplateResponder, Ikev2Params):
                 "rem_ts": {"start_addr": "11::0", "end_addr": "11::100"},
             }
         )
+
+
+class TestIKEv2IpipDisabledNoCrash(TestInitiatorPsk):
+    """test ikev2 - Child SA rekey with ipip plugin disabled"""
+    # disable ipip plugin
+    extra_vpp_plugin_config = ["plugin ipip_plugin.so { disable }"]
+    vpp_worker_count = 2
+
+    def test_initiator(self):
+        # Complete normal IKE SA + initial Child SA setup.
+        # It does not require the ipip plugin at this stage.
+        super(TestIKEv2IpipDisabledNoCrash, self).test_initiator()
+
+        # Snapshot IPsec SA count before rekey attempt.
+        sas_before = self.vapi.ipsec_sa_dump()
+
+        # Trigger a Child SA rekey. Internally VPP will attempt to create
+        # a new ipip tunnel interface for the new Child SA - this should
+        # fail gracefully because ipip is disabled.
+        ispi = int.from_bytes(self.sa.child_sas[0].ispi, "little")
+        self.vapi.ikev2_initiate_rekey_child_sa(ispi=ispi)
+
+        # VPP must still be alive - no coredump.
+        self.assertFalse(self.vpp_dead)
+
+        # tunnel creation failed, SA count must be unchanged.
+        sas_after = self.vapi.ipsec_sa_dump()
+        self.assertEqual(len(sas_before), len(sas_after))
 
 
 class TestInitiatorKeepaliveMsg(TestInitiatorPsk):

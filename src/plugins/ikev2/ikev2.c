@@ -13,10 +13,10 @@
 #include <vnet/udp/udp.h>
 #include <vnet/ipsec/ipsec.h>
 #include <vnet/ipsec/ipsec_tun.h>
-#include <vnet/ipip/ipip.h>
 #include <plugins/ikev2/ikev2.h>
 #include <plugins/ikev2/ikev2_priv.h>
 #include <plugins/dns/dns.h>
+#include <plugins/ipip/ipip_types.h>
 #include <openssl/sha.h>
 #include <vnet/ipsec/ipsec_punt.h>
 #include <plugins/ikev2/ikev2.api_enum.h>
@@ -2278,10 +2278,14 @@ ikev2_add_tunnel_from_main (ikev2_add_ipsec_tunnel_args_t * a)
   if (~0 == a->sw_if_index)
     {
       /* no tunnel associated with the SA/profile - create a new one */
-      rv = ipip_add_tunnel (IPIP_TRANSPORT_IP4, ~0, &ip_addr_46 (&a->local_ip),
-			    &ip_addr_46 (&a->remote_ip), 0,
-			    TUNNEL_ENCAP_DECAP_FLAG_NONE, IP_DSCP_CS0,
-			    TUNNEL_MODE_P2P, &sw_if_index);
+      if (!km->ipip_add_tunnel_fn_ptr)
+	{
+	  log_err ("ipip plugin is not loaded; function is not available");
+	  return;
+	}
+      rv = km->ipip_add_tunnel_fn_ptr (IPIP_TRANSPORT_IP4, ~0, &ip_addr_46 (&a->local_ip),
+				       &ip_addr_46 (&a->remote_ip), 0, TUNNEL_ENCAP_DECAP_FLAG_NONE,
+				       IP_DSCP_CS0, TUNNEL_MODE_P2P, &sw_if_index);
 
       if (rv == VNET_API_ERROR_IF_ALREADY_EXISTS)
 	{
@@ -2696,7 +2700,7 @@ static void
 ikev2_del_tunnel_from_main (ikev2_del_ipsec_tunnel_args_t * a)
 {
   ikev2_main_t *km = &ikev2_main;
-  ipip_tunnel_t *ipip = NULL;
+  const u32 *ipip_sw_if_index = NULL;
   u32 sw_if_index;
 
   if (~0 == a->sw_if_index)
@@ -2708,13 +2712,18 @@ ikev2_del_tunnel_from_main (ikev2_del_ipsec_tunnel_args_t * a)
       .fib_index = 0,
     };
 
-      ipip = ipip_tunnel_db_find (&key);
+    if (!km->ipip_tunnel_db_find_sw_if_index_fn_ptr || !km->ipip_del_tunnel_fn_ptr)
+      {
+	log_err ("ipip plugin is not loaded; function is not available");
+	return;
+      }
+    ipip_sw_if_index = km->ipip_tunnel_db_find_sw_if_index_fn_ptr (&key);
 
-      if (ipip)
-	{
-	  sw_if_index = ipip->sw_if_index;
-	  hash_unset (km->sw_if_indices, ipip->sw_if_index);
-	}
+    if (ipip_sw_if_index)
+      {
+	sw_if_index = *ipip_sw_if_index;
+	hash_unset (km->sw_if_indices, *ipip_sw_if_index);
+      }
       else
 	sw_if_index = ~0;
     }
@@ -2731,8 +2740,8 @@ ikev2_del_tunnel_from_main (ikev2_del_ipsec_tunnel_args_t * a)
   ipsec_sa_unlock_id (a->local_sa_id);
   ipsec_sa_unlock_id (ikev2_flip_alternate_sa_bit (a->remote_sa_id));
 
-  if (ipip)
-    ipip_del_tunnel (ipip->sw_if_index);
+  if (ipip_sw_if_index)
+    km->ipip_del_tunnel_fn_ptr (*ipip_sw_if_index);
 }
 
 static int
@@ -5352,7 +5361,7 @@ ikev2_init (vlib_main_t * vm)
 }
 
 VLIB_INIT_FUNCTION (ikev2_init) = {
-  .runs_after = VLIB_INITS ("ipsec_init", "ipsec_punt_init"),
+  .runs_after = VLIB_INITS ("ipsec_init", "ipsec_punt_init", "ipip_init"),
 };
 
 static u8
@@ -5401,7 +5410,7 @@ ikev2_mngr_process_child_sa (vlib_main_t *vm, ikev2_sa_t *sa, ikev2_child_sa_t *
 
   if (del_old_ids)
     {
-      ipip_tunnel_t *ipip = NULL;
+      const u32 *ipip_sw_if_index = NULL;
       u32 sw_if_index = sa->is_tun_itf_set ? sa->tun_itf : ~0;
       if (~0 == sw_if_index)
 	{
@@ -5429,12 +5438,17 @@ ikev2_mngr_process_child_sa (vlib_main_t *vm, ikev2_sa_t *sa, ikev2_child_sa_t *
          .fib_index = 0,
        };
 
-	  ipip = ipip_tunnel_db_find (&key);
+       if (!km->ipip_tunnel_db_find_sw_if_index_fn_ptr)
+	 {
+	   log_err ("ipip plugin is not loaded; cannot find ipip tunnel");
+	   return res;
+	 }
+       ipip_sw_if_index = km->ipip_tunnel_db_find_sw_if_index_fn_ptr (&key);
 
-	  if (ipip)
-	    sw_if_index = ipip->sw_if_index;
-	  else
-	    return res;
+       if (ipip_sw_if_index)
+	 sw_if_index = *ipip_sw_if_index;
+       else
+	 return res;
 	}
 
       u32 *sas_in = NULL;
@@ -5827,6 +5841,19 @@ ikev2_lazy_init (ikev2_main_t *km)
     vlib_get_plugin_symbol ("dns_plugin.so", "dns_resolve_name");
   if (!km->dns_resolve_name_ptr)
     log_err ("cannot load symbols from dns plugin");
+
+  km->ipip_add_tunnel_fn_ptr = vlib_get_plugin_symbol ("ipip_plugin.so", "ipip_add_tunnel");
+  if (!km->ipip_add_tunnel_fn_ptr)
+    log_err ("cannot load symbols from ipip plugin");
+
+  km->ipip_del_tunnel_fn_ptr = vlib_get_plugin_symbol ("ipip_plugin.so", "ipip_del_tunnel");
+  if (!km->ipip_del_tunnel_fn_ptr)
+    log_err ("cannot load symbols from ipip plugin");
+
+  km->ipip_tunnel_db_find_sw_if_index_fn_ptr =
+    vlib_get_plugin_symbol ("ipip_plugin.so", "ipip_tunnel_db_find_sw_if_index");
+  if (!km->ipip_tunnel_db_find_sw_if_index_fn_ptr)
+    log_err ("cannot load symbols from ipip plugin");
 
   km->handoff_ip4_fq_index = vlib_handoff_alloc_queues (&(vlib_handoff_alloc_queues_args_t){
     .node_index = ikev2_node_ip4.index,
