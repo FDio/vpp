@@ -100,6 +100,23 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "0171bc36_94395233",
+        "filename": "src/vnet/bfd/bfd_vnet_notifier.h",
+        "patchSetId": 18
+      },
+      "lineNbr": 61,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-07-14T20:11:43Z",
+      "side": 1,
+      "message": "What\u0027s the point of this context? I mean I get that it\u0027s the usual \"callback context\" mechanism, but it feels pointless here - clib_callback_data_ensure deduplicates based on fp, so you can\u0027t have two listeners with same fp, but different context pointers anyway.",
+      "revId": "b88a06c4583c1153461e3f51fa5391a6b179cbb6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "162cae95_4f2f98e3",
         "filename": "test/asf/test_adj.py",
         "patchSetId": 18
