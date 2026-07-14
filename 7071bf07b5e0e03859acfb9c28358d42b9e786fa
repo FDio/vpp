@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "06a1fd6e_9bc13027",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1628
+      },
+      "writtenOn": "2026-07-14T07:52:58Z",
+      "side": 1,
+      "message": "overall I\u0027m not sure this patch will be useful, because if we have no more free memory, even if crypto engine handle these case, we will crash later on others subsystem",
+      "revId": "7071bf07b5e0e03859acfb9c28358d42b9e786fa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "dc6e0c5c_6136cb37",
+        "filename": "src/crypto_engines/openssl/main.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 764,
+      "author": {
+        "id": 1628
+      },
+      "writtenOn": "2026-07-14T07:52:58Z",
+      "side": 1,
+      "message": "why not checking here as well ?",
+      "revId": "7071bf07b5e0e03859acfb9c28358d42b9e786fa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
