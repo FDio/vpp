@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "cf1501f9_b5e4be43",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-07-14T03:47:56Z",
+      "side": 1,
+      "message": "Docker executor images have been updated with post 26.06 release updates and golang version 1.26.5 installed in them.",
+      "revId": "2c92c5b2a8bd4f4511c20c415956f07bc96d5a2f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
