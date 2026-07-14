@@ -89,7 +89,8 @@ if [[ -z "$DPDK_DISABLE" ]]; then
              	}                                               \
 		$SOCK_MEM_CFG					\
 		$DPDK_CSUM					\
-        }"
+        }                                                       \
+	buffers { $CFG_MBUFS }"
 else
   DPDK_PLUGIN_DISABLE="plugin dpdk_plugin.so {disable}"
 fi
@@ -136,13 +137,13 @@ function start_vpp
 		main-core $MAIN_CORE				\
                 $CFG_CORELIST_WKS                               \
   	}							\
-	buffers { $CFG_MBUFS }					\
 	$DPDK_CFG						\
 	$SESSION_CFG						\
 	$TCP_CFG						\
 	$UDP_CFG						\
 	$SOCK_CFG						\
 	$TLS_CFG						\
+        $QUIC_CFG                                               \
 	plugins {						\
 	  plugin unittest_plugin.so {enable}			\
 	  plugin http_unittest_plugin.so {enable}		\

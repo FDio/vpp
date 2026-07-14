@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright (c) 2025 Cisco Systems, Inc.
+# Copyright (c) 2026 Cisco Systems, Inc.
 
 set -e
 
@@ -14,19 +14,15 @@ if [[ -z "$VPP_WS" ]]; then
   fi
 fi
 
-CFG_FILE=vpp_dpdk.cli
+CFG_FILE=vpp_iavf.cli
 CUSTOM_CLI=""  # User-provided CLI config file
 BIN_FLAVOR=release
 
 # Network configuration
 LOCAL_IP="6.0.1.1"
 
-# DPDK configuration
-DPDK_DEV=0000:16:00.0
-IF_RX_DESC=512
-IF_TX_DESC=256
-DPDK_CSUM=enable-tcp-udp-checksum
-NUM_MBUFS=16536
+# IAVF configuration
+IAVF_DEV=0000:16:11.0
 
 # VPP resource configuration
 HEAP_SIZE=4g
@@ -41,30 +37,29 @@ CFG_CORELIST_WKS="corelist-workers 2"
 
 # Socket and session configuration
 SOCK=/run/vpp-api.sock
-CLI_SOCK=/run/vpp/cli.sock
+CLI_SOCK=localhost:5002
 SESSION_CFG="session { event-queue-length 100000 use-app-socket-api }"
 
 # Protocol configuration
 TCP_CFG="tcp { max-rx-fifo 128m }"
 TLS_CFG="tls { fifo-size 1m }"
-#QUIC_ENABLE=1
-#LOCAL_OSSL=/scratch/fcoras/openssl
+QUIC_CFG="quic { enable-vnet-crypto no-tx-pacing fifo-size 1m }"
 
 function usage() {
   cat <<EOF
 Usage: $0 [OPTIONS]
 
-VPP DPDK Setup Script (vpp_dpdk)
+VPP IAVF Setup Script (iavf_dpdk)
 
-Configures and starts VPP with DPDK for host stack performance testing.
+Configures and starts VPP with IAVF device for host stack performance testing.
 
 OPTIONS:
   -a IP            Local IP address (default: 6.0.1.1)
-  -d DEVICE        DPDK device PCI address (default: 0000:16:00.0)
+  -d DEVICE        IAVF device PCI address (default: 0000:16:11.0)
   -s SCRIPT        Custom CLI config file (absolute path or relative to conf/)
                    If not specified, configuration will be auto-generated
   -f FLAVOR        Build flavor: 'release' or 'debug' (default: release)
-  -w WORKSPACE     VPP workspace path (default: /scratch/fcoras/vpp)
+  -w WORKSPACE     VPP workspace path (default: detected from script location)
   -c CORES         Number of worker cores (default: 1)
   -h               Show this help message
 
@@ -78,8 +73,8 @@ EXAMPLES:
   # With 4 worker cores
   $0 -a 6.0.1.2 -c 4
 
-  # Custom DPDK device
-  $0 -a 6.0.1.1 -d 0000:17:00.0
+  # Custom VF device
+  $0 -a 6.0.1.1 -d 0000:17:11.0
 
   # Use custom CLI config
   $0 -s /path/to/custom.cli
@@ -88,7 +83,7 @@ EXAMPLES:
   $0 -a 6.0.1.1 -f debug
 
 NOTES:
-  - Ensure DPDK device is properly bound to DPDK driver (vfio-pci or uio_pci_generic)
+  - Ensure IAVF device is properly bound to vfio-pci driver
   - Script requires root privileges to run VPP
   - Default configuration uses /24 subnet mask
   - CLI configuration will be auto-generated in ${CFG_DIR}/${CFG_FILE}
@@ -96,76 +91,22 @@ NOTES:
 EOF
 }
 
-function detect_interface_prefix() {
-  local pci_dev=$1
-  local pci_path="/sys/bus/pci/devices/${pci_dev}"
-
-  # Try to detect interface type from PCI device info
-  if [[ -f "${pci_path}/current_link_speed" ]]; then
-    local speed
-    speed=$(grep -oP '^\d+' "${pci_path}/current_link_speed" 2>/dev/null || echo "")
-    case $speed in
-      2.5|5) echo "GigabitEthernet" ;;
-      10) echo "TenGigabitEthernet" ;;
-      25) echo "TwentyFiveGigabitEthernet" ;;
-      40) echo "FortyGigabitEthernet" ;;
-      50) echo "FiftyGigabitEthernet" ;;
-      100) echo "HundredGigabitEthernet" ;;
-      200) echo "TwoHundredGigabitEthernet" ;;
-      *) echo "HundredGigabitEthernet" ;;  # Default fallback
-    esac
-  else
-    # Fallback: check max_link_speed
-    if [[ -f "${pci_path}/max_link_speed" ]]; then
-      local speed
-      speed=$(grep -oP '^\d+' "${pci_path}/max_link_speed" 2>/dev/null || echo "")
-      case $speed in
-        2.5|5) echo "GigabitEthernet" ;;
-        10) echo "TenGigabitEthernet" ;;
-        25) echo "TwentyFiveGigabitEthernet" ;;
-        40) echo "FortyGigabitEthernet" ;;
-        50) echo "FiftyGigabitEthernet" ;;
-        100) echo "HundredGigabitEthernet" ;;
-        200) echo "TwoHundredGigabitEthernet" ;;
-        *) echo "HundredGigabitEthernet" ;;  # Default fallback
-      esac
-    else
-      echo "HundredGigabitEthernet"  # Default fallback
-    fi
-  fi
-}
-
 function generate_cli_config() {
   local config_file="${CFG_DIR}/${CFG_FILE}"
-
-  # Convert PCI address to interface naming components
-  # e.g., 0000:16:00.0 -> 16/0/0
-  local pci_parts
-  IFS=':.' read -ra pci_parts <<< "$DPDK_DEV"
-
-  # Remove leading zeros but keep at least one digit
-  local bus=$((10#${pci_parts[1]}))
-  local slot=$((10#${pci_parts[2]}))
-  local func=$((10#${pci_parts[3]}))
-
-  # Auto-detect interface type from PCI device
-  local detected_prefix
-  detected_prefix=$(detect_interface_prefix "$DPDK_DEV")
-  local iface_name="${detected_prefix}${bus}/${slot}/${func}"
 
   cat > "${config_file}" <<EOF
 comment {SPDX-License-Identifier: Apache-2.0}
 comment {Copyright (c) 2025 Cisco Systems, Inc.}
 comment {Auto-generated configuration}
-comment {PCI Device: ${DPDK_DEV}}
-comment {Interface: ${iface_name}}
-set int ip address ${iface_name} ${LOCAL_IP}/24
-set int state ${iface_name} up
+comment {PCI Device: ${IAVF_DEV}}
+device attach pci/${IAVF_DEV} driver iavf
+device create-interface pci/${IAVF_DEV}
+set int ip address iavf0/0 ${LOCAL_IP}/24
+set int state iavf0/0 up
 session enable
 EOF
 
   echo "Generated configuration in ${config_file}"
-  echo "Interface: ${iface_name} (auto-detected: ${detected_prefix})"
 }
 
 # Parse command line arguments
@@ -176,7 +117,7 @@ while getopts "a:d:s:f:w:c:h" opt; do
         ;;
     a)  LOCAL_IP=$OPTARG
         ;;
-    d)  DPDK_DEV=$OPTARG
+    d)  IAVF_DEV=$OPTARG
         ;;
     s)  CUSTOM_CLI=$OPTARG
         ;;
@@ -233,10 +174,10 @@ fi
 
 # Display configuration
 echo "========================================"
-echo "VPP DPDK Configuration (vpp_dpdk)"
+echo "VPP IAVF Configuration (vpp_iavf)"
 echo "========================================"
 echo "Local IP:        $LOCAL_IP"
-echo "DPDK Device:     $DPDK_DEV"
+echo "IAVF Device:     $IAVF_DEV"
 echo "Build Flavor:    $BIN_FLAVOR"
 echo "Worker Cores:    $WORKERS"
 echo "VPP Workspace:   $VPP_WS"
@@ -244,7 +185,7 @@ echo "========================================"
 echo ""
 
 # Adjust CPU configuration based on device NUMA node
-adjust_cpus_for_numa "$DPDK_DEV" "$WORKERS"
+adjust_cpus_for_numa "$IAVF_DEV" "$WORKERS"
 
 echo ""
 
@@ -269,6 +210,8 @@ fi
 echo "Starting VPP..."
 echo "Press Ctrl+C to stop VPP"
 echo ""
+
+DPDK_DISABLE=1
 
 # shellcheck source=start_vpp.sh
 source "${CFG_WS}/start_vpp.sh"
