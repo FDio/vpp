@@ -139,7 +139,7 @@ iavf_port_init_vsi_queues (vlib_main_t *vm, vnet_dev_port_t *port)
   u16 vsi_id = ap->vsi_id;
   u32 default_data_size = vlib_buffer_get_default_data_size (vm);
   u32 data_size = clib_min (default_data_size, IAVF_RX_MAX_DATA_BUF_SIZE);
-  u16 max_frame_size = port->max_rx_frame_size;
+  u16 max_frame_size = port->max_rx_frame_size + IAVF_FCS_LEN;
   u8 buffer[VIRTCHNL_MSG_SZ (virtchnl_vsi_queue_config_info_t, qpair,
 			     ap->num_qp)];
   virtchnl_vsi_queue_config_info_t *ci =
