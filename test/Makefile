@@ -448,7 +448,7 @@ COV_REM_TODO_NO_TEST="*/vpp-api/client/*" \
 ifeq ($(HS_TEST),1)
 COV_REM_HST_UNUSED_FEAT= "*/plugins/ping/*" "*/plugins/unittest/mpcap_node.c" "*/vnet/bfd/*" \
 			                 "*/vnet/bier/*" "*/vnet/bonding/*" "*/vnet/classify/*" \
-					 "*/vnet/gso/*" "*/vnet/ipfix-export/*" "*/vnet/ipip/*" \
+					 "*/vnet/gso/*" "*/vnet/ipfix-export/*" "*/plugins/ipip/*" \
 					 "*/vnet/ipsec/*" "*/vnet/l2/*" "*/vnet/mpls/*" \
 					 "*/vnet/pg/*" "*/vnet/policer/*" "*/vnet/snap/*" \
 					 "*/vnet/span/*" "*/vnet/srv6/*" "*/vnet/teib/*" \

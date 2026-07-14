@@ -5,7 +5,7 @@
 /* node.c: ipip packet processing */
 
 #include <vlib/vlib.h>
-#include <vnet/ipip/ipip.h>
+#include <ipip/ipip.h>
 #include <vnet/ip/ip6_packet.h>
 #include <vnet/mpls/mpls.h>
 #include <vnet/tunnel/tunnel_dp.h>
