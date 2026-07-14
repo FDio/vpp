@@ -2367,3 +2367,21 @@ vls_register_vcl_worker (void)
 {
   vls_mt_add ();
 }
+
+int
+vls_unregister_vcl_worker (void)
+{
+  void *wrk = pthread_getspecific (vls_mt_pthread_stop_key);
+
+  if (!wrk)
+    return 0;
+
+  /* Clear the pthread destructor key before tearing down the worker.
+   * vls_mt_del frees the worker; if the key were still set, the
+   * destructor would later dereference the freed pointer. */
+  if (pthread_setspecific (vls_mt_pthread_stop_key, NULL))
+    return -1;
+
+  vls_mt_del (wrk);
+  return 0;
+}
