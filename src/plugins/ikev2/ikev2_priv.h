@@ -401,6 +401,15 @@ typedef struct
   /* pointer to name resolver function in dns plugin */
   void *dns_resolve_name_ptr;
 
+  /* pointer to add tunnel function in ipip plugin */
+  void *ipip_add_tunnel_fn_ptr;
+
+  /* pointer to delete tunnel function in ipip plugin */
+  void *ipip_del_tunnel_fn_ptr;
+
+  /* pointer to find tunnel by ipip tunnel key function in ipip plugin */
+  void *ipip_tunnel_db_find_fn_ptr;
+
   /* flag indicating whether lazy init is done or not */
   int lazy_init_done;
 
