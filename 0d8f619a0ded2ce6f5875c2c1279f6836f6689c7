@@ -16,6 +16,24 @@
       "message": "This variable seems to be redundant, why l is not initialized with this value and simply returned?",
       "revId": "0d8f619a0ded2ce6f5875c2c1279f6836f6689c7",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "091edf71_1040df0c",
+        "filename": "src/vlib/buffer.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 37,
+      "author": {
+        "id": 3200
+      },
+      "writtenOn": "2026-07-14T14:01:28Z",
+      "side": 1,
+      "message": "This line is not part of the commit; but to answer your question, I believe that l is used below to set total_length_not_including_first_buffer, so l_first is kept separate until the end.",
+      "parentUuid": "b751471a_3cb4447a",
+      "revId": "0d8f619a0ded2ce6f5875c2c1279f6836f6689c7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
