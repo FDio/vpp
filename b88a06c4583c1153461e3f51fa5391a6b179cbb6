@@ -16,6 +16,86 @@
       "message": "Extra comments were added to the code. The `bridge` has been renamed to `notifier` to avoid confusion and bring more clarity.\nPR is ready for another pass.",
       "revId": "b88a06c4583c1153461e3f51fa5391a6b179cbb6",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6a4a7b7a_66621ac5",
+        "filename": "src/plugins/unittest/adj_test.c",
+        "patchSetId": 18
+      },
+      "lineNbr": 17,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-07-14T18:59:01Z",
+      "side": 1,
+      "message": "typo",
+      "revId": "b88a06c4583c1153461e3f51fa5391a6b179cbb6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0e7f6efd_a433a0f1",
+        "filename": "src/plugins/unittest/adj_test.c",
+        "patchSetId": 18
+      },
+      "lineNbr": 342,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-07-14T18:59:01Z",
+      "side": 1,
+      "message": "should these be ADJ_INDEX_INVALID for consistency sake?",
+      "range": {
+        "startLine": 342,
+        "startChar": 30,
+        "endLine": 342,
+        "endChar": 39
+      },
+      "revId": "b88a06c4583c1153461e3f51fa5391a6b179cbb6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "60d3d465_5aae7c1e",
+        "filename": "src/vnet/bfd/bfd_vnet_notifier.c",
+        "patchSetId": 18
+      },
+      "lineNbr": 136,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-07-14T18:59:01Z",
+      "side": 1,
+      "message": "I don\u0027t think the else branch is ever taken.\n\n- bfd_session_start / bfd_session_stop are only reached from bfd_udp.c:861 and bfd_udp.c:773, i.e. the API/CLI paths.\n- bfd_on_state_change (bfd_main.c:748) does its own thread check and, on a worker, defers via bfd_vnet_event_rpc(bs-\u003ebs_idx), whose callback re-publishes from the main thread.\n\nIf it was taken - is there a possible race here? Neither adj_bfd_notify nor fib_bfd_notify validate bfd session_idx (which bfd_vnet_event_rpc does), so a session might be removed while an update is in flight and then the callback is called with stale data?",
+      "revId": "b88a06c4583c1153461e3f51fa5391a6b179cbb6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "162cae95_4f2f98e3",
+        "filename": "test/asf/test_adj.py",
+        "patchSetId": 18
+      },
+      "lineNbr": 22,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-07-14T18:59:01Z",
+      "side": 1,
+      "message": "these methods are empty and can be removed",
+      "range": {
+        "startLine": 16,
+        "startChar": 0,
+        "endLine": 22,
+        "endChar": 43
+      },
+      "revId": "b88a06c4583c1153461e3f51fa5391a6b179cbb6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
