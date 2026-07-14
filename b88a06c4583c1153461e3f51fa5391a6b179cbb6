@@ -60,6 +60,29 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "db64324e_f8f85132",
+        "filename": "src/plugins/unittest/adj_test.c",
+        "patchSetId": 18
+      },
+      "lineNbr": 456,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-07-14T19:04:37Z",
+      "side": 1,
+      "message": "is this empty init function needed?",
+      "range": {
+        "startLine": 450,
+        "startChar": 0,
+        "endLine": 456,
+        "endChar": 35
+      },
+      "revId": "b88a06c4583c1153461e3f51fa5391a6b179cbb6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "60d3d465_5aae7c1e",
         "filename": "src/vnet/bfd/bfd_vnet_notifier.c",
         "patchSetId": 18
