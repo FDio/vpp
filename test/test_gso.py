@@ -698,6 +698,7 @@ class TestGSO(VppTestCase):
             sw_if_index=self.pg1.sw_if_index, enable_disable=0
         )
 
+    @unittest.skipIf("ipip" in config.excluded_plugins, "Exclude tests requiring IPIP plugin")
     def test_gso_ipip(self):
         """GSO IPIP test"""
         #
@@ -1274,6 +1275,7 @@ class TestGSO(VppTestCase):
         self.ip6_via_gre6_tunnel.remove_vpp_config()
         self.gre6.remove_vpp_config()
 
+    @unittest.skipIf("ipip" in config.excluded_plugins, "Exclude tests requiring IPIP plugin")
     def test_gso_ipsec(self):
         """GSO IPSEC test"""
         #
