@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b751471a_3cb4447a",
+        "filename": "src/vlib/buffer.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 37,
+      "author": {
+        "id": 2770
+      },
+      "writtenOn": "2026-07-14T09:47:18Z",
+      "side": 1,
+      "message": "This variable seems to be redundant, why l is not initialized with this value and simply returned?",
+      "revId": "0d8f619a0ded2ce6f5875c2c1279f6836f6689c7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
