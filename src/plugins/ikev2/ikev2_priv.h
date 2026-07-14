@@ -15,6 +15,8 @@
 #include <vppinfra/hash.h>
 #include <vppinfra/error.h>
 
+#include <plugins/ipip/ipip_types.h>
+
 #include <openssl/rand.h>
 #include <openssl/dh.h>
 #include <openssl/hmac.h>
@@ -400,6 +402,15 @@ typedef struct
 
   /* pointer to name resolver function in dns plugin */
   void *dns_resolve_name_ptr;
+
+  /* pointer to add tunnel function in ipip plugin */
+  __typeof__ (ipip_add_tunnel) *ipip_add_tunnel_fn_ptr;
+
+  /* pointer to delete tunnel function in ipip plugin */
+  __typeof__ (ipip_del_tunnel) *ipip_del_tunnel_fn_ptr;
+
+  /* pointer to find tunnel by ipip tunnel key function in ipip plugin */
+  __typeof__ (ipip_tunnel_db_find_sw_if_index) *ipip_tunnel_db_find_sw_if_index_fn_ptr;
 
   /* flag indicating whether lazy init is done or not */
   int lazy_init_done;

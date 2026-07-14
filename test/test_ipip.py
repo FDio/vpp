@@ -2,6 +2,7 @@
 """IP{4,6} over IP{v,6} tunnel functional tests"""
 
 import unittest
+from config import config
 from scapy.layers.inet6 import IPv6, Ether, IP, UDP, IPv6ExtHdrFragment, Raw
 from scapy.contrib.mpls import MPLS
 from scapy.all import fragment, fragment6, RandShort, defragment6
@@ -47,6 +48,7 @@ def ipip_add_tunnel(test, src, dst, table_id=0, dscp=0x0, flags=0):
 N_PACKETS = 64 - 1
 
 
+@unittest.skipIf("ipip" in config.excluded_plugins, "Exclude IPIP plugin tests")
 class TestIPIP(VppTestCase):
     """IPIP Test Case"""
 
@@ -688,6 +690,7 @@ class TestIPIP(VppTestCase):
             ipip_if.set_table_ip4(0)
 
 
+@unittest.skipIf("ipip" in config.excluded_plugins, "Exclude IPIP plugin tests")
 class TestIPIP6(VppTestCase):
     """IPIP6 Test Case"""
 
@@ -1332,6 +1335,7 @@ class TestIPIP6(VppTestCase):
         return "x" * len
 
 
+@unittest.skipIf("ipip" in config.excluded_plugins, "Exclude IPIP plugin tests")
 class TestIPIPMPLS(VppTestCase):
     """MPLS Test Case"""
 
