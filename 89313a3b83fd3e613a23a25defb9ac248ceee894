@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "95c03c5b_840af7f8",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2026-07-14T11:52:35Z",
+      "side": 1,
+      "message": "Not sure which change needs this comment, so copying to both.\n\n@Jeff this also affected NDR tests (dpdk plugin and E810CQ NIC) in a way that looks very similar to the issue I fixed in https://gerrit.fd.io/r/c/vpp/+/45953\nBasically, without any interrupt/timeout there was no mechanism to flush the final 1-3 packets after a test ended. The difference is that in iavf it affected all directions/queues equally, in dpdk only one direction for some reason. I suspect the same fix (one interrupt that \"does nothing\" but indirectly flushes trailing packets) will work, assuming the action happens at low enough frequency (microseconds?) to not have a big effect during peak traffic.",
+      "revId": "89313a3b83fd3e613a23a25defb9ac248ceee894",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
