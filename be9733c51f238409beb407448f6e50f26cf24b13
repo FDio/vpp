@@ -16,6 +16,23 @@
       "message": "PR is ready for review",
       "revId": "be9733c51f238409beb407448f6e50f26cf24b13",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1d4c1710_2f2dfc39",
+        "filename": "src/plugins/bfd/bfd_udp.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1812,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-07-14T19:01:51Z",
+      "side": 1,
+      "message": "empty whitespace change",
+      "revId": "be9733c51f238409beb407448f6e50f26cf24b13",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
