@@ -6,14 +6,13 @@
 
 #include <stddef.h>
 #include <vnet/adj/adj_midchain.h>
-#include <vnet/ipip/ipip.h>
+#include <ipip/ipip.h>
 #include <vnet/vnet.h>
 #include <vnet/adj/adj_nbr.h>
 #include <vnet/adj/adj_midchain.h>
 #include <vnet/fib/ip4_fib.h>
 #include <vnet/fib/ip6_fib.h>
 #include <vnet/ip/format.h>
-#include <vnet/ipip/ipip.h>
 #include <vnet/teib/teib.h>
 #include <vnet/tunnel/tunnel_dp.h>
 
@@ -569,7 +568,7 @@ VNET_HW_INTERFACE_CLASS(mipip_hw_interface_class) = {
     .flags = VNET_HW_INTERFACE_CLASS_FLAG_NBMA,
 };
 
-ipip_tunnel_t *
+__clib_export ipip_tunnel_t *
 ipip_tunnel_db_find (const ipip_tunnel_key_t * key)
 {
   ipip_main_t *gm = &ipip_main;
@@ -740,7 +739,7 @@ ipip_tunnel_add_teib_walk (index_t nei, void *ctx)
   return (WALK_CONTINUE);
 }
 
-int
+__clib_export int
 ipip_add_tunnel (ipip_transport_t transport,
 		 u32 instance, ip46_address_t * src, ip46_address_t * dst,
 		 u32 fib_index, tunnel_encap_decap_flags_t flags,
@@ -846,7 +845,7 @@ ipip_add_tunnel (ipip_transport_t transport,
   return 0;
 }
 
-int
+__clib_export int
 ipip_del_tunnel (u32 sw_if_index)
 {
   ipip_main_t *gm = &ipip_main;
