@@ -659,29 +659,6 @@ list(APPEND VNET_HEADERS
 )
 
 ##############################################################################
-# Tunnel protocol: ipip
-##############################################################################
-list(APPEND VNET_SOURCES
-  ipip/ipip.c
-  ipip/node.c
-  ipip/sixrd.c
-  ipip/ipip_api.c
-  ipip/ipip_cli.c
-)
-
-list(APPEND VNET_MULTIARCH_SOURCES
-  ipip/node.c
-)
-
-list(APPEND VNET_HEADERS
-  ipip/ipip.h
-)
-
-list(APPEND VNET_API_FILES
-  ipip/ipip.api
-)
-
-##############################################################################
 # Tunnel infra
 ##############################################################################
 list(APPEND VNET_SOURCES
