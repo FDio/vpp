@@ -12,3 +12,4 @@ Device drivers
     rdma
     vmxnet3
     af_xdp
+    iavf
