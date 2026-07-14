@@ -20,6 +20,10 @@
 #define IIAVF_AQ_POLL_INTERVAL	  0.2
 #define IIAVF_AQ_BUF_SIZE	  4096
 
+#define IAVF_FCS_LEN	  4
+#define IAVF_VLAN_HLEN	  4
+#define IAVF_PKT_OVERHEAD (IAVF_FCS_LEN + (2 * IAVF_VLAN_HLEN))
+
 typedef struct iavf_adminq_dma_mem iavf_adminq_dma_mem_t;
 
 typedef struct
