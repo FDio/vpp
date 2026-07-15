@@ -3752,9 +3752,9 @@ VLIB_CLI_COMMAND (aclplugin_clear_command, static) = {
  * @cliexend
  ?*/
 VLIB_CLI_COMMAND (aclplugin_set_interface_command, static) = {
-    .path = "set acl-plugin interface",
-    .short_help = "set acl-plugin interface <interface> <input|output> <acl INDEX> [del] ",
-    .function = acl_set_aclplugin_interface_fn,
+  .path = "set acl-plugin interface",
+  .short_help = "set acl-plugin interface <interface> <input|output> acl <INDEX> [del] ",
+  .function = acl_set_aclplugin_interface_fn,
 };
 
 /*?
@@ -3808,13 +3808,13 @@ VLIB_CLI_COMMAND (aclplugin_macip_set_acl_command, static) = {
  * The ACL being applied must already exist.
  *
  * @cliexpar
- * <b><em> set acl-plugin macip interface <interface> <acl INDEX> [del]
+ * <b><em> set acl-plugin macip interface <interface> acl <INDEX> [del]
  </b></em>
  * @cliexend
  ?*/
 VLIB_CLI_COMMAND (aclplugin_macip_set_interface_command, static) = {
   .path = "set acl-plugin macip interface",
-  .short_help = "set acl-plugin macip interface <interface> <acl INDEX> [del]",
+  .short_help = "set acl-plugin macip interface <interface> acl <INDEX> [del]",
   .function = acl_set_aclplugin_macip_interface_fn,
 };
 
