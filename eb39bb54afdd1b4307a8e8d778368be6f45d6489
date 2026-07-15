@@ -1,0 +1,40 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "d5e77fe6_e1fb6b7b",
+        "filename": "src/plugins/af_xdp/af_xdp.api",
+        "patchSetId": 43
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-07-15T19:18:41Z",
+      "side": 1,
+      "message": "Done in PS43. Removed the extra blank line.",
+      "parentUuid": "e9384b6d_21e73b69",
+      "revId": "eb39bb54afdd1b4307a8e8d778368be6f45d6489",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "89def6b5_1559cfd2",
+        "filename": "src/plugins/af_xdp/device.c",
+        "patchSetId": 43
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-07-15T19:18:41Z",
+      "side": 1,
+      "message": "Done in PS43. The detach-failure path no longer drains RX or reclaims fill-ring buffers unless af_xdp_remove_program() succeeds, so kernel-owned buffers are not reclaimed unless quiescence is confirmed.",
+      "parentUuid": "11261f50_0104b156",
+      "revId": "eb39bb54afdd1b4307a8e8d778368be6f45d6489",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
