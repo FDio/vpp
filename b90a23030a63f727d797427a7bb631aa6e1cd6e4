@@ -1,0 +1,89 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "939cb96e_653aefde",
+        "filename": "src/plugins/ikev2/ikev2.c",
+        "patchSetId": 12
+      },
+      "lineNbr": 5845,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-07-15T15:35:08Z",
+      "side": 1,
+      "message": "Since IPIP is required for IKEv2-managed tunnels, could we resolve these symbols during `ikev2_init()` and return an initialization error if any are unavailable? `ikev2_init` already runs after `ipip_init`, so failing early would let us remove the runtime null checks and prevent successful IKE negotiation without a dataplane tunnel.",
+      "revId": "b90a23030a63f727d797427a7bb631aa6e1cd6e4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4ac7bda1_1b21225c",
+        "filename": "src/plugins/ikev2/ikev2_priv.h",
+        "patchSetId": 12
+      },
+      "lineNbr": 405,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-07-15T15:35:08Z",
+      "side": 1,
+      "message": "Could these members use typed function pointers instead of `void *`? For example, `__typeof__ (ipip_add_tunnel) *ipip_add_tunnel_fn_ptr`. This preserves compile-time signature checking and removes the casts from every call site.",
+      "revId": "b90a23030a63f727d797427a7bb631aa6e1cd6e4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f1f67158_4f6680a8",
+        "filename": "src/plugins/ipip/ipip.c",
+        "patchSetId": 12
+      },
+      "lineNbr": 571,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-07-15T15:35:08Z",
+      "side": 1,
+      "message": "Could the exported lookup return only the value required by IKEv2 rather than an internal pool object? For example, an `ipip_tunnel_find_sw_if_index(const ipip_tunnel_key_t *, u32 *)` wrapper would avoid coupling IKEv2 to `ipip_tunnel_t`\u0027s layout and lifetime.",
+      "revId": "b90a23030a63f727d797427a7bb631aa6e1cd6e4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "af812323_b13e765e",
+        "filename": "src/plugins/ipip/ipip_types.h",
+        "patchSetId": 12
+      },
+      "lineNbr": 41,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-07-15T15:35:08Z",
+      "side": 1,
+      "message": "Should `ipip_tunnel_t` remain private to the IPIP plugin? Installing this structure makes its complete layout—including cache alignment, device state, and 6RD internals—a cross-plugin ABI. Could we keep only the public key/enums and function declarations here, and move the tunnel object into a private header?",
+      "revId": "b90a23030a63f727d797427a7bb631aa6e1cd6e4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7807213b_4afc1ad0",
+        "filename": "src/plugins/ipip/ipip_types.h",
+        "patchSetId": 12
+      },
+      "lineNbr": 72,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-07-15T15:35:08Z",
+      "side": 1,
+      "message": "Could we declare the exported IPIP functions in the public header and use `__typeof__ (ipip_add_tunnel) *` directly in IKEv2? These duplicated function-pointer typedefs are unnecessary and could drift from the actual function signatures.",
+      "revId": "b90a23030a63f727d797427a7bb631aa6e1cd6e4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
