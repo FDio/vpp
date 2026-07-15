@@ -33,6 +33,23 @@
       "message": "why not checking here as well ?",
       "revId": "7071bf07b5e0e03859acfb9c28358d42b9e786fa",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3b1d6c73_0e475393",
+        "filename": "src/crypto_engines/openssl/main.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 787,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-07-15T09:42:34Z",
+      "side": 1,
+      "message": "Please propagate this failure instead of terminating VPP. The required API change is reasonably contained: make `vnet_crypto_key_change_fn_t`, `vnet_crypto_key_call()`, and the context engine setters return an error. `vnet_crypto_ctx_set_*_key()` already returns a status, and `ipsec_sa_add_and_lock()` already handles key-setup failure by destroying the unpublished context and rejecting the SA. Existing backend callbacks can initially return success. OpenSSL should free any partially created contexts and return an initialization error through this path.",
+      "revId": "7071bf07b5e0e03859acfb9c28358d42b9e786fa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
