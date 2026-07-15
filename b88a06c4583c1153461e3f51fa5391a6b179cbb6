@@ -83,6 +83,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "d9aeec79_ad8e16ef",
+        "filename": "src/vnet/bfd/bfd_vnet_notifier.c",
+        "patchSetId": 18
+      },
+      "lineNbr": 15,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-07-15T11:59:28Z",
+      "side": 1,
+      "message": "Thanks for the explanation, but I still see this as premature abstraction. ADJ and FIB are the only long-standing consumers, and the public event type already removes their dependency on BFD’s private session structure. A fixed VNET entry point could notify both without dynamic registration and lifecycle machinery. I’d add a dynamic notifier when a concrete new consumer requires it.",
+      "parentUuid": "63ac67f8_05a4a134",
+      "revId": "b88a06c4583c1153461e3f51fa5391a6b179cbb6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "60d3d465_5aae7c1e",
         "filename": "src/vnet/bfd/bfd_vnet_notifier.c",
         "patchSetId": 18
