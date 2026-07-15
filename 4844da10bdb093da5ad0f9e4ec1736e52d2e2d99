@@ -1,6 +1,23 @@
 {
   "comments": [
     {
+      "unresolved": true,
+      "key": {
+        "uuid": "e9384b6d_21e73b69",
+        "filename": "src/plugins/af_xdp/af_xdp.api",
+        "patchSetId": 41
+      },
+      "lineNbr": 85,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-07-15T16:32:20Z",
+      "side": 1,
+      "message": "Why this newline?",
+      "revId": "4844da10bdb093da5ad0f9e4ec1736e52d2e2d99",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": false,
       "key": {
         "uuid": "70ce0520_b83ceeba",
