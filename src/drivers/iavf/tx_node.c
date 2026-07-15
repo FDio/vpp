@@ -123,6 +123,11 @@ iavf_tx_fill_ctx_desc (vlib_main_t *vm, vnet_dev_tx_queue_t *txq,
   u32 *bi = atq->ph_bufs;
 
 next:
+  if (PREDICT_FALSE (bi[0] == ~0))
+    {
+      if (PREDICT_FALSE (vlib_buffer_alloc (vm, bi, 1)) != 1)
+	return ~0;
+    }
   ctx_ph = vlib_get_buffer (vm, bi[0]);
   if (PREDICT_FALSE (ctx_ph->ref_count == 255))
     {
@@ -368,6 +373,14 @@ iavf_tx_prepare (vlib_main_t *vm, vlib_node_runtime_t *node,
 	      /* Enqueue a context descriptor */
 	      tb[1] = tb[0];
 	      tb[0] = iavf_tx_fill_ctx_desc (vm, txq, d, b[0]);
+	      if (PREDICT_FALSE (tb[0] == ~0))
+		{
+		  vlib_buffer_free_one (vm, buffers[0]);
+		  vlib_error_count (vm, node->node_index, IAVF_TX_NODE_CTR_PH_BUF_ALLOC, 1);
+		  n_packets_left -= 1;
+		  buffers += 1;
+		  continue;
+		}
 	      n_desc_left -= 1;
 	      d += 1;
 	      tb += 1;
