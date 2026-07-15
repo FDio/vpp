@@ -41,6 +41,9 @@ typedef struct
 
   /* stats segment entry index */
   u32 stats_err_entry_index;
+
+  /* Error severity metadata, indexed like the error counter vector. */
+  u8 **stats_err_severity;
 } vlib_error_main_t;
 
 /* Per node error registration. */

@@ -2,7 +2,7 @@
 
 import unittest
 import psutil
-from vpp_papi.vpp_stats import VPPStats
+from vpp_papi.vpp_stats import VPPStats, StatsVector, get_string
 
 from framework import VppTestCase
 from asfframework import VppTestRunner
@@ -43,6 +43,28 @@ class StatsClientTestCase(VppTestCase):
         self.assertEqual(
             self.statistics.get_counter("/err/ethernet-input/no error"),
             [0] * (1 + self.get_vpp_worker_count()),
+        )
+
+    def test_error_severity(self):
+        """Test error severity metadata"""
+        self.statistics.get_counter("/node/error-severity")
+        severity_entry = self.statistics.directory["/node/error-severity"]
+        severities = StatsVector(self.statistics, severity_entry.value, "P")
+
+        def get_severity(error_name):
+            error_entry = self.statistics.directory[error_name]
+            packed = error_entry.SYMLINK_FMT2.pack(error_entry.value)
+            _, error_index = error_entry.SYMLINK_FMT1.unpack(packed)
+            severity_ptr = severities[error_index]
+            return get_string(self.statistics, severity_ptr)
+
+        self.assertEqual(
+            get_severity("/err/mpls-input/none"),
+            "info",
+        )
+        self.assertEqual(
+            get_severity("/err/mpls-input/unknown_protocol"),
+            "error",
         )
 
     def test_client_fd_leak(self):
