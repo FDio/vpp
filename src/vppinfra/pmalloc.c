@@ -203,7 +203,7 @@ pmalloc_update_lookup_table (clib_pmalloc_main_t *pm, u32 first, u32 count)
 	    (p << pm->lookup_log2_page_sz);
 	  p++;
 	}
-      return;
+      goto done;
     }
 
   fd = open ((char *) "/proc/self/pagemap", O_RDONLY);
@@ -243,12 +243,12 @@ pmalloc_update_lookup_table (clib_pmalloc_main_t *pm, u32 first, u32 count)
 	    pointer_to_uword (pm->base) + (p << pm->lookup_log2_page_sz);
 	  p++;
 	}
-      return;
+      goto done;
     }
 
   fd = open ((char *) "/dev/mem", O_RDONLY);
   if (fd == -1)
-    return;
+    goto done;
 
   while (p < (uword) elts_per_page * count)
     {
@@ -259,10 +259,19 @@ pmalloc_update_lookup_table (clib_pmalloc_main_t *pm, u32 first, u32 count)
       pm->lookup_table[p] = meme.me_vaddr - meme.me_paddr;
       p++;
     }
-  return;
 #else
 #error "Unsupported OS"
 #endif
+
+done:
+  pm->linear_pa_offset = pm->lookup_table[0];
+  pm->linear_pa = 1;
+  for (p = 1; p < vec_len (pm->lookup_table); p++)
+    if (pm->lookup_table[p] != pm->linear_pa_offset)
+      {
+	pm->linear_pa = 0;
+	break;
+      }
 }
 
 static inline clib_pmalloc_page_t *
@@ -274,6 +283,7 @@ pmalloc_map_pages (clib_pmalloc_main_t * pm, clib_pmalloc_arena_t * a,
   int rv, i, mmap_flags;
   void *va = MAP_FAILED;
   uword size = (uword) n_pages << pm->def_log2_page_sz;
+  uword page;
 
   clib_error_free (pm->error);
 
@@ -284,6 +294,7 @@ pmalloc_map_pages (clib_pmalloc_main_t * pm, clib_pmalloc_arena_t * a,
     }
 
 #ifdef __linux__
+  /* Reverse prefault to obtain ascending PAs from a LIFO hugepage pool. */
   if (a->log2_subpage_sz != clib_mem_get_log2_page_size ())
     {
       pm->error = clib_sysfs_prealloc_hugepages (numa_node,
@@ -341,6 +352,10 @@ pmalloc_map_pages (clib_pmalloc_main_t * pm, clib_pmalloc_arena_t * a,
       pm->error = clib_error_return_unix (0, "Unable to lock pages");
       goto error;
     }
+
+  if (a->log2_subpage_sz != clib_mem_get_log2_page_size ())
+    for (page = size >> a->log2_subpage_sz; page > 0; page--)
+      *((volatile u8 *) va + ((page - 1) << a->log2_subpage_sz)) = 0;
 
   clib_memset (va, 0, size);
 
@@ -658,12 +673,13 @@ format_pmalloc (u8 * s, va_list * va)
   clib_pmalloc_page_t *pp;
   clib_pmalloc_arena_t *a;
 
-  s = format (s, "used-pages %u reserved-pages %u default-page-size %U "
-	      "lookup-page-size %U%s", vec_len (pm->pages), pm->max_pages,
-	      format_log2_page_size, pm->def_log2_page_sz,
+  s = format (s,
+	      "used-pages %u reserved-pages %u default-page-size %U "
+	      "lookup-page-size %U%s%s",
+	      vec_len (pm->pages), pm->max_pages, format_log2_page_size, pm->def_log2_page_sz,
 	      format_log2_page_size, pm->lookup_log2_page_sz,
-	      pm->flags & CLIB_PMALLOC_F_NO_PAGEMAP ? " no-pagemap" : "");
-
+	      pm->flags & CLIB_PMALLOC_F_NO_PAGEMAP ? " no-pagemap" : "",
+	      pm->linear_pa ? " linear-pa" : "");
 
   if (verbose >= 2)
     s = format (s, " va-start %p", pm->base);
