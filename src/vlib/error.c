@@ -91,6 +91,22 @@ format_stats_counter_name (u8 *s, va_list *va)
   return s;
 }
 
+static char *
+sev2str (enum vl_counter_severity_e s)
+{
+  switch (s)
+    {
+    case VL_COUNTER_SEVERITY_ERROR:
+      return "error";
+    case VL_COUNTER_SEVERITY_WARN:
+      return "warn";
+    case VL_COUNTER_SEVERITY_INFO:
+      return "info";
+    default:
+      return "unknown";
+    }
+}
+
 void
 vlib_unregister_errors (vlib_main_t *vm, u32 node_index)
 {
@@ -102,7 +118,10 @@ vlib_unregister_errors (vlib_main_t *vm, u32 node_index)
     {
       cd = vec_elt_at_index (em->counters_heap, n->error_heap_index);
       for (u32 i = 0; i < n->n_errors; i++)
-	vlib_stats_remove_entry (cd[i].stats_entry_index);
+	{
+	  vlib_stats_remove_entry (cd[i].stats_entry_index);
+	  vlib_stats_set_string_vector (&em->stats_err_severity, n->error_heap_index + i, "");
+	}
       heap_dealloc (em->counters_heap, n->error_heap_handle);
       n->n_errors = 0;
     }
@@ -156,9 +175,13 @@ vlib_register_errors (vlib_main_t *vm, u32 node_index, u32 n_errors,
   vec_validate (vm->error_elog_event_types, l - 1);
 
   if (em->stats_err_entry_index == 0)
-    em->stats_err_entry_index = vlib_stats_add_counter_vector ("/node/errors");
+    {
+      em->stats_err_entry_index = vlib_stats_add_counter_vector ("/node/errors");
+      em->stats_err_severity = vlib_stats_add_string_vector ("/node/error-severity");
+    }
 
-  ASSERT (em->stats_err_entry_index != 0 && em->stats_err_entry_index != ~0);
+  ASSERT (em->stats_err_entry_index != 0 && em->stats_err_entry_index != ~0 &&
+	  em->stats_err_severity != 0);
 
   vlib_stats_validate (em->stats_err_entry_index, n_threads - 1, l - 1);
   sc = vlib_stats_get_entry_data_pointer (em->stats_err_entry_index);
@@ -181,9 +204,14 @@ vlib_register_errors (vlib_main_t *vm, u32 node_index, u32 n_errors,
 
   /* Register counter indices in the stat segment directory */
   for (int i = 0; i < n_errors; i++)
-    cd[i].stats_entry_index = vlib_stats_add_symlink (
-      em->stats_err_entry_index, n->error_heap_index + i, "/err/%v/%U",
-      n->name, format_stats_counter_name, cd[i].name);
+    {
+      cd[i].stats_entry_index =
+	vlib_stats_add_symlink (em->stats_err_entry_index, n->error_heap_index + i, "/err/%v/%U",
+				n->name, format_stats_counter_name, cd[i].name);
+
+      vlib_stats_set_string_vector (&em->stats_err_severity, n->error_heap_index + i, "%s",
+				    sev2str (cd[i].severity));
+    }
 
   vec_validate (nm->node_by_error, n->error_heap_index + n_errors - 1);
 
@@ -228,22 +256,6 @@ unformat_vlib_error (unformat_input_t *input, va_list *args)
 
   vec_free (error_name);
   return 0;
-}
-
-static char *
-sev2str (enum vl_counter_severity_e s)
-{
-  switch (s)
-    {
-    case VL_COUNTER_SEVERITY_ERROR:
-      return "error";
-    case VL_COUNTER_SEVERITY_WARN:
-      return "warn";
-    case VL_COUNTER_SEVERITY_INFO:
-      return "info";
-    default:
-      return "unknown";
-    }
 }
 
 static clib_error_t *
