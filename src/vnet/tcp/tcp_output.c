@@ -1290,7 +1290,28 @@ tcp_check_sack_reneging (tcp_connection_t * tc)
 static void
 tcp_cc_rxt_timeout (tcp_connection_t *tc)
 {
+  u32 n_bytes;
+  u8 head_was_rxt;
+
   TCP_EVT (TCP_EVT_CC_EVT, tc, 6);
+
+  if (tcp_opts_sack_permitted (&tc->rcv_opts))
+    {
+      n_bytes = clib_min (tc->snd_mss, tc->snd_nxt - tc->snd_una);
+
+      /* Snapshot before reneging handling can reset high_rxt. */
+      head_was_rxt =
+	tcp_in_cong_recovery (tc) && seq_geq (tc->sack_sb.high_rxt, tc->snd_una + n_bytes);
+
+      tcp_check_sack_reneging (tc);
+      scoreboard_rxt_mark_lost (&tc->sack_sb, tc->snd_una, tc->snd_nxt);
+
+      if (head_was_rxt)
+	{
+	  tc->rxt_delivered += n_bytes;
+	  ASSERT (tc->rxt_delivered <= tc->snd_rxt_bytes);
+	}
+    }
 
   /* Advance the recovery point to snd_nxt on every rto (RFC 6675) */
   tc->snd_congestion = tc->snd_nxt;
@@ -1411,12 +1432,6 @@ tcp_timer_retransmit_handler (tcp_connection_t * tc)
 	  return;
 	}
 
-      if (tcp_opts_sack_permitted (&tc->rcv_opts))
-	{
-	  tcp_check_sack_reneging (tc);
-	  scoreboard_rxt_mark_lost (&tc->sack_sb, tc->snd_una, tc->snd_nxt);
-	}
-
       tcp_cc_rxt_timeout (tc);
 
       /* Send the first unacked segment. If we're short on buffers, return
@@ -1425,6 +1440,9 @@ tcp_timer_retransmit_handler (tcp_connection_t * tc)
       n_bytes = tcp_prepare_retransmit_segment (wrk, tc, 0, n_bytes, &b);
       if (!n_bytes)
 	{
+	  /* Allocation failed, do not re-credit again the head to rxt_delivered */
+	  if (tcp_opts_sack_permitted (&tc->rcv_opts))
+	    scoreboard_init_rxt (&tc->sack_sb, tc->snd_una);
 	  tcp_timer_update (&wrk->timer_wheel, tc, TCP_TIMER_RETRANSMIT,
 			    tcp_cfg.alloc_err_timeout);
 	  return;

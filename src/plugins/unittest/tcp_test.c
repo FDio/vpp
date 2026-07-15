@@ -2163,11 +2163,21 @@ typedef struct
   u32 first_tr_occurences;
   u32 first_rto_boff;
   u32 cwnd_after_first;
+  u32 flight_after_first;
+  u32 cc_space_after_first;
+  u32 snd_rxt_after_first;
+  u32 rxt_delivered_after_first;
   u32 prev_cwnd_after_first;
   u32 ssthresh_after_first;
   u8 second_still_in_recovery;
+  u32 cwnd_after_second;
+  u32 flight_after_second;
+  u32 cc_space_after_second;
+  u32 snd_rxt_after_second;
+  u32 rxt_delivered_after_second;
   u32 second_ssthresh;
   u32 second_prev_cwnd;
+  u32 mss;
   u8 fr_in_fastrecovery;
   u32 fr_prev_cwnd_sentinel;
   u32 fr_prev_cwnd_after;
@@ -2188,14 +2198,24 @@ tcp_test_rto_rpc (void *argp)
 
   /* First rto: starts the congestion event, enters rto recovery. */
   tcp_timer_reset (&wrk->timer_wheel, tc, TCP_TIMER_RETRANSMIT);
+  scoreboard_clear (&tc->sack_sb);
+  scoreboard_init_rxt (&tc->sack_sb, tc->snd_una);
+  tc->snd_rxt_bytes = 0;
+  tc->rxt_delivered = 0;
+  tc->rxt_head = tc->snd_una - 1;
   tc->tr_occurences = 0;
   tc->rto_boff = 0;
+  a->mss = tc->snd_mss;
   tcp_timer_retransmit_handler (tc);
 
   a->first_in_recovery = tcp_in_recovery (tc);
   a->first_tr_occurences = tc->tr_occurences;
   a->first_rto_boff = tc->rto_boff;
   a->cwnd_after_first = tc->cwnd;
+  a->flight_after_first = tcp_flight_size (tc);
+  a->cc_space_after_first = tcp_available_cc_snd_space (tc);
+  a->snd_rxt_after_first = tc->snd_rxt_bytes;
+  a->rxt_delivered_after_first = tc->rxt_delivered;
   a->prev_cwnd_after_first = tc->prev_cwnd;
   a->ssthresh_after_first = tc->ssthresh;
 
@@ -2205,6 +2225,11 @@ tcp_test_rto_rpc (void *argp)
 
   tcp_timer_reset (&wrk->timer_wheel, tc, TCP_TIMER_RETRANSMIT);
   tcp_timer_retransmit_handler (tc);
+  a->cwnd_after_second = tc->cwnd;
+  a->flight_after_second = tcp_flight_size (tc);
+  a->cc_space_after_second = tcp_available_cc_snd_space (tc);
+  a->snd_rxt_after_second = tc->snd_rxt_bytes;
+  a->rxt_delivered_after_second = tc->rxt_delivered;
   a->second_ssthresh = tc->ssthresh;
   a->second_prev_cwnd = tc->prev_cwnd;
 
@@ -2570,6 +2595,22 @@ tcp_test_rto_reduce_once_e2e (vlib_main_t *vm, unformat_input_t *input)
 	rv = 1;
 	goto cleanup;
       }
+    if (!TCP_TEST_I ((a->cwnd_after_first == a->mss && a->flight_after_first == a->mss &&
+		      a->cc_space_after_first == 0),
+		     "first rto leaves one mss in flight with no send space "
+		     "(cwnd %u flight %u space %u mss %u)",
+		     a->cwnd_after_first, a->flight_after_first, a->cc_space_after_first, a->mss))
+      {
+	rv = 1;
+	goto cleanup;
+      }
+    if (!TCP_TEST_I ((a->snd_rxt_after_first == a->mss && a->rxt_delivered_after_first == 0),
+		     "first rto accounts one live retransmission (sent %u delivered %u)",
+		     a->snd_rxt_after_first, a->rxt_delivered_after_first))
+      {
+	rv = 1;
+	goto cleanup;
+      }
 
     /* A repeated RTO in one recovery event preserves ssthresh and prev_cwnd. */
     if (!TCP_TEST_I ((a->second_still_in_recovery != 0), "still in recovery before second rto"))
@@ -2587,6 +2628,24 @@ tcp_test_rto_reduce_once_e2e (vlib_main_t *vm, unformat_input_t *input)
     if (!TCP_TEST_I ((a->second_prev_cwnd == a->prev_cwnd_after_first),
 		     "second rto does not re-snapshot prev_cwnd (%u -> %u)",
 		     a->prev_cwnd_after_first, a->second_prev_cwnd))
+      {
+	rv = 1;
+	goto cleanup;
+      }
+    if (!TCP_TEST_I ((a->cwnd_after_second == a->mss && a->flight_after_second == a->mss &&
+		      a->cc_space_after_second == 0),
+		     "second rto replaces the timed-out copy without opening send space "
+		     "(cwnd %u flight %u space %u mss %u)",
+		     a->cwnd_after_second, a->flight_after_second, a->cc_space_after_second,
+		     a->mss))
+      {
+	rv = 1;
+	goto cleanup;
+      }
+    if (!TCP_TEST_I (
+	  (a->snd_rxt_after_second == 2 * a->mss && a->rxt_delivered_after_second == a->mss),
+	  "second rto retires the prior retransmission (sent %u delivered %u)",
+	  a->snd_rxt_after_second, a->rxt_delivered_after_second))
       {
 	rv = 1;
 	goto cleanup;
