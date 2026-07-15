@@ -16,6 +16,23 @@
       "message": "Switching to review state on behalf Anton",
       "revId": "6e74125cb7cbfc3018924c7976855f3102092806",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2f89f3c1_f296d4b1",
+        "filename": "src/vnet/ethernet/node.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 1784,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-07-15T09:59:19Z",
+      "side": 1,
+      "message": "This creates a dependency from vnet core to the PIPE plugin, which is not an allowed layering direction: plugins may depend on vnet, but vnet must never depend on a plugin. Moving the implementation does not resolve that while vnet still owns `VNET_SW_INTERFACE_TYPE_PIPE` and contains PIPE-specific branches.\n\nCould this use a generic device-owned child-interface abstraction instead? Parent resolution and lifecycle should use generic child-interface semantics, P2P behavior can come from `VNET_HW_INTERFACE_CLASS_FLAG_P2P`, and a generic device-class L2-mode operation would let PIPE own its state without the Ethernet callback registry.\n\nThe existing `IF_API_TYPE_PIPE` value may remain solely as wire-API compatibility metadata, but there should be no PIPE-specific runtime type or control flow in vnet.",
+      "revId": "6e74125cb7cbfc3018924c7976855f3102092806",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
