@@ -16,6 +16,24 @@
       "message": "This will break the Octeon driver, which requires naturally aligned addresses for packet buffers.",
       "revId": "30268de9c13d7bec99f1312ea9f2d88ff5d1b6aa",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d60185e2_97910c35",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-07-15T08:52:20Z",
+      "side": 1,
+      "message": "What is the natural alignment here? Does it mean buffers must be paged-aligned ie 1 buffer per page? Or does it mean seomthing else?",
+      "parentUuid": "12dd908d_75fe04be",
+      "revId": "30268de9c13d7bec99f1312ea9f2d88ff5d1b6aa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
