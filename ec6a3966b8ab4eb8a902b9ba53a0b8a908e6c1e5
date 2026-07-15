@@ -37,6 +37,57 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": true,
+      "key": {
+        "uuid": "e1064925_8876c7a6",
+        "filename": "src/plugins/af_xdp/device.c",
+        "patchSetId": 40
+      },
+      "lineNbr": 225,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-07-15T12:11:31Z",
+      "side": 1,
+      "message": "These fill-ring buffers are still kernel-owned: the socket and XDP program remain active, and the producer/consumer values are only a snapshot. The kernel can consume an address after we return its buffer to VPP, potentially writing into a buffer that has already been reused. Could we first quiesce/detach the kernel path, then drain RX/partial-chain state and reclaim the remaining fill entries?",
+      "revId": "ec6a3966b8ab4eb8a902b9ba53a0b8a908e6c1e5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "01afcfef_6f954722",
+        "filename": "src/plugins/af_xdp/device.c",
+        "patchSetId": 40
+      },
+      "lineNbr": 307,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-07-15T12:11:31Z",
+      "side": 1,
+      "message": "Could we make this failure fatal when multi-buffer mode was requested? Without BPF_F_XDP_HAS_FRAGS, the socket is still created with XDP_USE_SG, but the XDP program cannot process fragmented packets, so the interface appears successfully configured while multi-buffer traffic is dropped.",
+      "revId": "ec6a3966b8ab4eb8a902b9ba53a0b8a908e6c1e5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d8592fa5_44b6d0b1",
+        "filename": "src/plugins/af_xdp/device.c",
+        "patchSetId": 40
+      },
+      "lineNbr": 326,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-07-15T12:11:31Z",
+      "side": 1,
+      "message": "XDP_FLAGS_UPDATE_IF_NOEXIST is being passed as the mode argument here. Its value maps to XDP_MODE_NATIVE, so this unintentionally forces native XDP and breaks interfaces that require generic/SKB mode. Could we pass XDP_MODE_UNSPEC instead? The fourth argument only accepts libxdp XDP_ATTACH_* flags.",
+      "revId": "ec6a3966b8ab4eb8a902b9ba53a0b8a908e6c1e5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": false,
       "key": {
         "uuid": "0bf77584_e3ef1f5d",
