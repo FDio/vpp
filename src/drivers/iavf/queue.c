@@ -61,6 +61,7 @@ iavf_tx_queue_alloc (vlib_main_t *vm, vnet_dev_tx_queue_t *txq)
   iavf_device_t *ad = vnet_dev_get_data (dev);
   iavf_txq_t *atq = vnet_dev_get_tx_queue_data (txq);
   vnet_dev_rv_t rv;
+  u16 n;
 
   if ((rv =
 	 vnet_dev_dma_mem_alloc (vm, dev, sizeof (iavf_tx_desc_t) * txq->size, 0,
@@ -74,6 +75,9 @@ iavf_tx_queue_alloc (vlib_main_t *vm, vnet_dev_tx_queue_t *txq)
     sizeof (atq->tmp_descs[0]) * txq->size, CLIB_CACHE_LINE_BYTES);
   atq->tmp_bufs = clib_mem_alloc_aligned (
     sizeof (atq->tmp_bufs[0]) * txq->size, CLIB_CACHE_LINE_BYTES);
+  n = (txq->size / 255) + 1;
+  atq->ph_bufs = clib_mem_alloc_aligned (sizeof (atq->ph_bufs[0]) * n, CLIB_CACHE_LINE_BYTES);
+  clib_memset_u32 (atq->ph_bufs, ~0, n);
 
   atq->qtx_tail = ad->bar0 + IAVF_QTX_TAIL (txq->queue_id);
 
@@ -87,11 +91,17 @@ iavf_tx_queue_free (vlib_main_t *vm, vnet_dev_tx_queue_t *txq)
   vnet_dev_t *dev = txq->port->dev;
   iavf_txq_t *atq = vnet_dev_get_tx_queue_data (txq);
   iavf_txq_t *aq = vnet_dev_get_tx_queue_data (txq);
+  u32 *bi = atq->ph_bufs;
 
   log_debug (dev, "queue %u", txq->queue_id);
   vnet_dev_dma_mem_free (vm, dev, aq->descs);
   clib_ring_free (atq->rs_slots);
 
+  while (bi[0] != ~0)
+    {
+      vlib_buffer_free_one (vm, bi[0]);
+      bi++;
+    }
   foreach_pointer (p, aq->tmp_descs, aq->tmp_bufs, aq->buffer_indices)
     if (p)
       clib_mem_free (p);

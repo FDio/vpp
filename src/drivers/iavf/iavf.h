@@ -194,9 +194,10 @@ typedef struct
   iavf_rx_tail_t tails[IAVF_RX_VECTOR_SZ];
 } iavf_rt_data_t;
 
-#define foreach_iavf_tx_node_counter                                          \
-  _ (SEG_SZ_EXCEEDED, seg_sz_exceeded, ERROR, "segment size exceeded")        \
-  _ (NO_FREE_SLOTS, no_free_slots, ERROR, "no free tx slots")
+#define foreach_iavf_tx_node_counter                                                               \
+  _ (SEG_SZ_EXCEEDED, seg_sz_exceeded, ERROR, "segment size exceeded")                             \
+  _ (NO_FREE_SLOTS, no_free_slots, ERROR, "no free tx slots")                                      \
+  _ (PH_BUF_ALLOC, ph_buf_alloc, ERROR, "ph buf alloc")
 
 typedef enum
 {
