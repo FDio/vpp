@@ -15,6 +15,7 @@
 #include <sched.h>
 
 #include <vppinfra/format.h>
+#include <vppinfra/format_table.h>
 #ifdef __linux__
 #include <vppinfra/linux/sysfs.h>
 
@@ -44,6 +45,68 @@ pmalloc_size2pages (uword size, u32 log2_page_sz)
 {
   return round_pow2 (size, 1ULL << log2_page_sz) >> log2_page_sz;
 }
+
+#ifdef __linux__
+typedef struct
+{
+  void *va;
+  uword pa;
+} pmalloc_hugepage_t;
+
+static int
+pmalloc_hugepage_cmp (void *a1, void *a2)
+{
+  pmalloc_hugepage_t *p1 = a1;
+  pmalloc_hugepage_t *p2 = a2;
+
+  if (p1->pa < p2->pa)
+    return -1;
+  if (p1->pa > p2->pa)
+    return 1;
+  return 0;
+}
+
+static void
+pmalloc_order_hugepages (u32 log2_page_sz, u32 n_pages)
+{
+  pmalloc_hugepage_t *pages = 0, *p;
+  pmalloc_hugepage_t page;
+  u64 *pa = 0;
+  uword page_size = 1ULL << log2_page_sz;
+  int mmap_flags = MAP_PRIVATE | MAP_ANONYMOUS | MAP_HUGETLB | (log2_page_sz << MAP_HUGE_SHIFT);
+  void *va;
+  u32 i;
+
+  for (i = 0; i < n_pages; i++)
+    {
+      va = mmap (0, page_size, PROT_READ | PROT_WRITE, mmap_flags, -1, 0);
+      if (va == MAP_FAILED)
+	break;
+
+      *(volatile u8 *) va = 0;
+      pa = clib_mem_vm_get_paddr (va, log2_page_sz, 1);
+      if (pa == 0)
+	{
+	  munmap (va, page_size);
+	  break;
+	}
+
+      page = (pmalloc_hugepage_t) {
+	.va = va,
+	.pa = pa[0],
+      };
+      vec_add1 (pages, page);
+      vec_free (pa);
+    }
+
+  vec_sort_with_function (pages, pmalloc_hugepage_cmp);
+
+  /* LIFO allocation returns pages in reverse release order. */
+  vec_foreach (p, pages)
+    munmap (p->va, page_size);
+  vec_free (pages);
+}
+#endif /* __linux__ */
 
 __clib_export int
 clib_pmalloc_init (clib_pmalloc_main_t * pm, uword base_addr, uword size)
@@ -186,6 +249,8 @@ next_chunk:
 static void
 pmalloc_update_lookup_table (clib_pmalloc_main_t *pm, u32 first, u32 count)
 {
+  uword linear_pa_offset;
+  u8 linear_pa = 1;
 #ifdef __linux
   uword seek, va, pa, p;
   int fd;
@@ -203,7 +268,7 @@ pmalloc_update_lookup_table (clib_pmalloc_main_t *pm, u32 first, u32 count)
 	    (p << pm->lookup_log2_page_sz);
 	  p++;
 	}
-      return;
+      goto done;
     }
 
   fd = open ((char *) "/proc/self/pagemap", O_RDONLY);
@@ -243,12 +308,12 @@ pmalloc_update_lookup_table (clib_pmalloc_main_t *pm, u32 first, u32 count)
 	    pointer_to_uword (pm->base) + (p << pm->lookup_log2_page_sz);
 	  p++;
 	}
-      return;
+      goto done;
     }
 
   fd = open ((char *) "/dev/mem", O_RDONLY);
   if (fd == -1)
-    return;
+    goto done;
 
   while (p < (uword) elts_per_page * count)
     {
@@ -259,10 +324,22 @@ pmalloc_update_lookup_table (clib_pmalloc_main_t *pm, u32 first, u32 count)
       pm->lookup_table[p] = meme.me_vaddr - meme.me_paddr;
       p++;
     }
-  return;
 #else
 #error "Unsupported OS"
 #endif
+
+done:
+  linear_pa_offset = pm->lookup_table[0];
+  for (p = 1; p < vec_len (pm->lookup_table); p++)
+    if (pm->lookup_table[p] != linear_pa_offset)
+      {
+	linear_pa = 0;
+	break;
+      }
+
+  if (linear_pa)
+    pm->linear_pa_offset = linear_pa_offset;
+  pm->linear_pa = linear_pa;
 }
 
 static inline clib_pmalloc_page_t *
@@ -274,6 +351,7 @@ pmalloc_map_pages (clib_pmalloc_main_t * pm, clib_pmalloc_arena_t * a,
   int rv, i, mmap_flags;
   void *va = MAP_FAILED;
   uword size = (uword) n_pages << pm->def_log2_page_sz;
+  uword page;
 
   clib_error_free (pm->error);
 
@@ -303,6 +381,12 @@ pmalloc_map_pages (clib_pmalloc_main_t * pm, clib_pmalloc_arena_t * a,
     }
 
   mmap_flags = MAP_FIXED;
+
+#ifdef __linux__
+  if (!(pm->flags & CLIB_PMALLOC_F_NO_PAGEMAP) &&
+      a->log2_subpage_sz != clib_mem_get_log2_page_size ())
+    pmalloc_order_hugepages (a->log2_subpage_sz, size >> a->log2_subpage_sz);
+#endif /* __linux__ */
 
   if (a->flags & CLIB_PMALLOC_ARENA_F_SHARED_MEM)
     {
@@ -334,6 +418,12 @@ pmalloc_map_pages (clib_pmalloc_main_t * pm, clib_pmalloc_arena_t * a,
       va = MAP_FAILED;
       goto error;
     }
+
+  /* Reverse prefault to obtain ascending PAs from a LIFO hugepage pool. */
+  if (!(pm->flags & CLIB_PMALLOC_F_NO_PAGEMAP) &&
+      a->log2_subpage_sz != clib_mem_get_log2_page_size ())
+    for (page = size >> a->log2_subpage_sz; page > 0; page--)
+      *((volatile u8 *) va + ((page - 1) << a->log2_subpage_sz)) = 0;
 
   if (a->log2_subpage_sz != clib_mem_get_log2_page_size () &&
       mlock (va, size) != 0)
@@ -482,7 +572,8 @@ clib_pmalloc_alloc_inline (clib_pmalloc_main_t * pm, clib_pmalloc_arena_t * a,
       if (pm->default_arena_for_numa_node[numa_node] == ~0)
 	{
 	  pool_get (pm->arenas, a);
-	  pm->default_arena_for_numa_node[numa_node] = a - pm->arenas;
+	  a->index = a - pm->arenas;
+	  pm->default_arena_for_numa_node[numa_node] = a->index;
 	  a->name = format (0, "default-numa-%u%c", numa_node, 0);
 	  a->numa_node = numa_node;
 	  a->log2_subpage_sz = pm->def_log2_page_sz;
@@ -658,12 +749,12 @@ format_pmalloc (u8 * s, va_list * va)
   clib_pmalloc_page_t *pp;
   clib_pmalloc_arena_t *a;
 
-  s = format (s, "used-pages %u reserved-pages %u default-page-size %U "
-	      "lookup-page-size %U%s", vec_len (pm->pages), pm->max_pages,
-	      format_log2_page_size, pm->def_log2_page_sz,
+  s = format (s,
+	      "used-pages %u reserved-pages %u default-page-size %U "
+	      "lookup-page-size %U%s linear-pa %u",
+	      vec_len (pm->pages), pm->max_pages, format_log2_page_size, pm->def_log2_page_sz,
 	      format_log2_page_size, pm->lookup_log2_page_sz,
-	      pm->flags & CLIB_PMALLOC_F_NO_PAGEMAP ? " no-pagemap" : "");
-
+	      pm->flags & CLIB_PMALLOC_F_NO_PAGEMAP ? " no-pagemap" : "", pm->linear_pa);
 
   if (verbose >= 2)
     s = format (s, " va-start %p", pm->base);
@@ -686,8 +777,9 @@ format_pmalloc (u8 * s, va_list * va)
 	vec_foreach (page_index, a->page_indices)
 	  {
 	    pp = vec_elt_at_index (pm->pages, *page_index);
-	    s = format (s, "\n%U%U", format_white_space, indent + 4,
-			format_pmalloc_page, pp, verbose);
+	    if (pp->chunks)
+	      s = format (s, "\n%U%U", format_white_space, indent + 4, format_pmalloc_page, pp,
+			  verbose);
 	  }
     }
 
@@ -698,21 +790,40 @@ __clib_export u8 *
 format_pmalloc_map (u8 * s, va_list * va)
 {
   clib_pmalloc_main_t *pm = va_arg (*va, clib_pmalloc_main_t *);
+  clib_pmalloc_arena_t *a;
+  table_t table = {};
+  uword pa, map_va;
+  u32 *page_index;
+  u32 elts_per_page, index, row = 0, subpage;
+  u8 first;
+  int col;
 
-  u32 index;
-  s = format (s, "%16s %13s %8s", "virtual-addr", "physical-addr", "size");
-  vec_foreach_index (index, pm->lookup_table)
-  {
-    uword *lookup_val, pa, va;
-    lookup_val = vec_elt_at_index (pm->lookup_table, index);
-    va =
-      pointer_to_uword (pm->base) +
-      ((uword) index << pm->lookup_log2_page_sz);
-    pa = va - *lookup_val;
-    s =
-      format (s, "\n %16p %13p %8U", uword_to_pointer (va, u64),
-	      uword_to_pointer (pa, u64), format_log2_page_size,
-	      pm->lookup_log2_page_sz);
-  }
+  table_add_hdr_row (&table, 5, "Arena", "NUMA", "Virtual address", "Physical address", "Size");
+  elts_per_page = 1U << (pm->def_log2_page_sz - pm->lookup_log2_page_sz);
+  pool_foreach (a, pm->arenas)
+    {
+      first = 1;
+      vec_foreach (page_index, a->page_indices)
+	for (subpage = 0; subpage < elts_per_page; subpage++)
+	  {
+	    index = *page_index * elts_per_page + subpage;
+	    map_va = pointer_to_uword (pm->base) + ((uword) index << pm->lookup_log2_page_sz);
+	    pa = map_va - pm->lookup_table[index];
+
+	    col = 0;
+	    table_format_cell (&table, row, col, "%s", first ? a->name : (u8 *) "");
+	    table_set_cell_align (&table, row, col++, TTAA_LEFT);
+	    table_format_cell (&table, row, col++, "%u", a->numa_node);
+	    table_format_cell (&table, row, col++, "%p", uword_to_pointer (map_va, u64));
+	    table_format_cell (&table, row, col++, "%p", uword_to_pointer (pa, u64));
+	    table_format_cell (&table, row, col, "%U", format_log2_page_size,
+			       pm->lookup_log2_page_sz);
+	    first = 0;
+	    row++;
+	  }
+    }
+
+  s = format (s, "%U", format_table, &table);
+  table_free (&table);
   return s;
 }
