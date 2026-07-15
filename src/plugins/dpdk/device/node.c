@@ -36,8 +36,8 @@ STATIC_ASSERT (RTE_MBUF_F_RX_L4_CKSUM_BAD == (1ULL << 3),
 	       "bit number of RTE_MBUF_F_RX_L4_CKSUM_BAD is no longer 3!");
 
 static_always_inline uword
-dpdk_process_subseq_segs (vlib_main_t * vm, vlib_buffer_t * b,
-			  struct rte_mbuf *mb, vlib_buffer_t * bt)
+dpdk_process_subseq_segs (vlib_main_t *vm, vlib_buffer_t *b, struct rte_mbuf *mb,
+			  const vlib_buffer_template_t *bt)
 {
   u8 nb_seg = 1;
   struct rte_mbuf *mb_seg = 0;
@@ -170,7 +170,7 @@ dpdk_process_rx_burst (vlib_main_t *vm, dpdk_per_thread_data_t *ptd,
   flags = ptd->flags;
 
   /* copy template into local variable - will save per packet load */
-  vlib_buffer_copy_template (&bt, &ptd->buffer_template);
+  vlib_buffer_copy_template (&bt, &ptd->buffer_template.template);
   while (n_left >= 8)
     {
       dpdk_prefetch_buffer_x4 (mb + 4);
@@ -180,10 +180,10 @@ dpdk_process_rx_burst (vlib_main_t *vm, dpdk_per_thread_data_t *ptd,
       b[2] = vlib_buffer_from_rte_mbuf (mb[2]);
       b[3] = vlib_buffer_from_rte_mbuf (mb[3]);
 
-      vlib_buffer_copy_template (b[0], &bt);
-      vlib_buffer_copy_template (b[1], &bt);
-      vlib_buffer_copy_template (b[2], &bt);
-      vlib_buffer_copy_template (b[3], &bt);
+      vlib_buffer_copy_template (b[0], &bt.template);
+      vlib_buffer_copy_template (b[1], &bt.template);
+      vlib_buffer_copy_template (b[2], &bt.template);
+      vlib_buffer_copy_template (b[3], &bt.template);
 
       dpdk_prefetch_mbuf_x4 (mb + 4);
 
@@ -204,10 +204,10 @@ dpdk_process_rx_burst (vlib_main_t *vm, dpdk_per_thread_data_t *ptd,
 
       if (maybe_multiseg)
 	{
-	  n_bytes += dpdk_process_subseq_segs (vm, b[0], mb[0], &bt);
-	  n_bytes += dpdk_process_subseq_segs (vm, b[1], mb[1], &bt);
-	  n_bytes += dpdk_process_subseq_segs (vm, b[2], mb[2], &bt);
-	  n_bytes += dpdk_process_subseq_segs (vm, b[3], mb[3], &bt);
+	  n_bytes += dpdk_process_subseq_segs (vm, b[0], mb[0], &bt.template);
+	  n_bytes += dpdk_process_subseq_segs (vm, b[1], mb[1], &bt.template);
+	  n_bytes += dpdk_process_subseq_segs (vm, b[2], mb[2], &bt.template);
+	  n_bytes += dpdk_process_subseq_segs (vm, b[3], mb[3], &bt.template);
 	}
 
       /* next */
@@ -218,7 +218,7 @@ dpdk_process_rx_burst (vlib_main_t *vm, dpdk_per_thread_data_t *ptd,
   while (n_left)
     {
       b[0] = vlib_buffer_from_rte_mbuf (mb[0]);
-      vlib_buffer_copy_template (b[0], &bt);
+      vlib_buffer_copy_template (b[0], &bt.template);
       or_flags |= dpdk_ol_flags_extract (mb, flags, 1);
       flags += 1;
 
@@ -226,7 +226,7 @@ dpdk_process_rx_burst (vlib_main_t *vm, dpdk_per_thread_data_t *ptd,
       n_bytes += b[0]->current_length = mb[0]->data_len;
 
       if (maybe_multiseg)
-	n_bytes += dpdk_process_subseq_segs (vm, b[0], mb[0], &bt);
+	n_bytes += dpdk_process_subseq_segs (vm, b[0], mb[0], &bt.template);
 
       /* next */
       mb += 1;

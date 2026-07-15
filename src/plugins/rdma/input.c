@@ -74,12 +74,12 @@ rdma_device_legacy_input_refill_additional (vlib_main_t * vm,
       vlib_get_buffers (vm, bi, bufs, chain_sz);
       for (int j = 0; j < chain_sz - 1; j++)
 	{
-	  vlib_buffer_copy_template (bufs[j], bt);
+	  vlib_buffer_copy_template (bufs[j], &bt->template);
 	  bufs[j]->next_buffer = bi[j + 1];
 	  bufs[j]->flags |= VLIB_BUFFER_NEXT_PRESENT;
 	}
       /* The chain starting at the second buffer is pre-initialised */
-      vlib_buffer_copy_template (bufs[chain_sz - 1], bt);
+      vlib_buffer_copy_template (bufs[chain_sz - 1], &bt->template);
       /* Stick with the already existing chain */
       if (chain_sz < rxq->n_ds_per_wqe - 1)
 	{
@@ -384,10 +384,10 @@ rdma_device_input_bufs (vlib_main_t * vm, const rdma_device_t * rd,
 	  vlib_prefetch_buffer_header (b[4 + 3], STORE);
 	}
 
-      vlib_buffer_copy_template (b[0], bt);
-      vlib_buffer_copy_template (b[1], bt);
-      vlib_buffer_copy_template (b[2], bt);
-      vlib_buffer_copy_template (b[3], bt);
+      vlib_buffer_copy_template (b[0], &bt->template);
+      vlib_buffer_copy_template (b[1], &bt->template);
+      vlib_buffer_copy_template (b[2], &bt->template);
+      vlib_buffer_copy_template (b[3], &bt->template);
 
       n_rx_bytes += b[0]->current_length = wc[0].byte_len;
       n_rx_bytes += b[1]->current_length = wc[1].byte_len;
@@ -401,7 +401,7 @@ rdma_device_input_bufs (vlib_main_t * vm, const rdma_device_t * rd,
 
   while (n_left_from >= 1)
     {
-      vlib_buffer_copy_template (b[0], bt);
+      vlib_buffer_copy_template (b[0], &bt->template);
       n_rx_bytes += b[0]->current_length = wc[0].byte_len;
 
       b += 1;
@@ -795,16 +795,16 @@ rdma_device_mlx5dv_fast_input (vlib_main_t * vm, rdma_rxq_t * rxq,
   while (n_left >= 8)
     {
       clib_prefetch_store (b[4]);
-      vlib_buffer_copy_template (b[0], bt);
+      vlib_buffer_copy_template (b[0], &bt->template);
       n_rx_bytes += b[0]->current_length = bc[0] & bc_mask;
       clib_prefetch_store (b[5]);
-      vlib_buffer_copy_template (b[1], bt);
+      vlib_buffer_copy_template (b[1], &bt->template);
       n_rx_bytes += b[1]->current_length = bc[1] & bc_mask;
       clib_prefetch_store (b[6]);
-      vlib_buffer_copy_template (b[2], bt);
+      vlib_buffer_copy_template (b[2], &bt->template);
       n_rx_bytes += b[2]->current_length = bc[2] & bc_mask;
       clib_prefetch_store (b[7]);
-      vlib_buffer_copy_template (b[3], bt);
+      vlib_buffer_copy_template (b[3], &bt->template);
       n_rx_bytes += b[3]->current_length = bc[3] & bc_mask;
       /* next */
       bc += 4;
@@ -813,7 +813,7 @@ rdma_device_mlx5dv_fast_input (vlib_main_t * vm, rdma_rxq_t * rxq,
     }
   while (n_left)
     {
-      vlib_buffer_copy_template (b[0], bt);
+      vlib_buffer_copy_template (b[0], &bt->template);
       n_rx_bytes += b[0]->current_length = bc[0] & bc_mask;
       /* next */
       bc++;
@@ -918,7 +918,7 @@ rdma_device_mlx5dv_striding_rq_input (vlib_main_t * vm,
 	  while (n_left > 0)
 	    {
 	      /* Initialize the current buffer as full size */
-	      vlib_buffer_copy_template (pkt[0], bt);
+	      vlib_buffer_copy_template (pkt[0], &bt->template);
 	      if (!n_segs_remaining)	/* No pending chain */
 		{
 		  n_segs_remaining =
@@ -999,7 +999,7 @@ rdma_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
     n_rx_packets = ibv_poll_cq (rxq->cq, VLIB_FRAME_SIZE, wc);
 
   /* init buffer template */
-  vlib_buffer_copy_template (&bt, &ptd->buffer_template);
+  vlib_buffer_copy_template (&bt, &ptd->buffer_template.template);
   vnet_buffer (&bt)->sw_if_index[VLIB_RX] = rd->sw_if_index;
   bt.buffer_pool_index = rd->pool;
 

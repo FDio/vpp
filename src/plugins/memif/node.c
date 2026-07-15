@@ -313,7 +313,7 @@ memif_fill_buffer_mdata_simple (vlib_node_runtime_t *node,
   u32 n_left = ptd->n_packets;
 
   /* copy template into local variable - will save per packet load */
-  vlib_buffer_copy_template (&bt, &ptd->buffer_template);
+  vlib_buffer_copy_template (&bt, &ptd->buffer_template.template);
 
   while (n_left >= 8)
     {
@@ -322,10 +322,10 @@ memif_fill_buffer_mdata_simple (vlib_node_runtime_t *node,
       vlib_prefetch_buffer_header (b[6], STORE);
       vlib_prefetch_buffer_header (b[7], STORE);
 
-      vlib_buffer_copy_template (b[0], &bt);
-      vlib_buffer_copy_template (b[1], &bt);
-      vlib_buffer_copy_template (b[2], &bt);
-      vlib_buffer_copy_template (b[3], &bt);
+      vlib_buffer_copy_template (b[0], &bt.template);
+      vlib_buffer_copy_template (b[1], &bt.template);
+      vlib_buffer_copy_template (b[2], &bt.template);
+      vlib_buffer_copy_template (b[3], &bt.template);
 
       b[0]->current_length = dl[0];
       b[1]->current_length = dl[1];
@@ -350,7 +350,7 @@ memif_fill_buffer_mdata_simple (vlib_node_runtime_t *node,
   while (n_left)
     {
       /* enqueue buffer */
-      vlib_buffer_copy_template (b[0], &bt);
+      vlib_buffer_copy_template (b[0], &bt.template);
       b[0]->current_length = dl[0];
       if (is_ip)
 	next[0] = memif_next_from_ip_hdr (node, b[0]);
@@ -377,7 +377,7 @@ memif_fill_buffer_mdata (vlib_main_t *vm, vlib_node_runtime_t *node,
   po = ptd->packet_ops;
 
   /* copy template into local variable - will save per packet load */
-  vlib_buffer_copy_template (&bt, &ptd->buffer_template);
+  vlib_buffer_copy_template (&bt, &ptd->buffer_template.template);
 
   while (n_from >= 8)
     {
@@ -408,10 +408,10 @@ memif_fill_buffer_mdata (vlib_main_t *vm, vlib_node_runtime_t *node,
       b2 = vlib_get_buffer (vm, bi[2]);
       b3 = vlib_get_buffer (vm, bi[3]);
 
-      vlib_buffer_copy_template (b0, &bt);
-      vlib_buffer_copy_template (b1, &bt);
-      vlib_buffer_copy_template (b2, &bt);
-      vlib_buffer_copy_template (b3, &bt);
+      vlib_buffer_copy_template (b0, &bt.template);
+      vlib_buffer_copy_template (b1, &bt.template);
+      vlib_buffer_copy_template (b2, &bt.template);
+      vlib_buffer_copy_template (b3, &bt.template);
 
       b0->current_length = po[0].packet_len;
       b1->current_length = po[1].packet_len;
@@ -444,7 +444,7 @@ memif_fill_buffer_mdata (vlib_main_t *vm, vlib_node_runtime_t *node,
       fbvi[0] = po[0].first_buffer_vec_index;
       bi[0] = ptd->buffers[fbvi[0]];
       b0 = vlib_get_buffer (vm, bi[0]);
-      vlib_buffer_copy_template (b0, &bt);
+      vlib_buffer_copy_template (b0, &bt.template);
       b0->current_length = po->packet_len;
 
       memif_add_to_chain (vm, b0, ptd->buffers + fbvi[0] + 1, buffer_size);

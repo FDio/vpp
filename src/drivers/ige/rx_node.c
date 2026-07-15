@@ -86,7 +86,7 @@ ige_rx_deq_64_desc (vlib_main_t *vm, vlib_node_runtime_t *node,
   for (int i = 0; i < n_descs; i++)
     {
       u32 len = dc[i].pkt_len;
-      buffers[i]->template = bt;
+      vlib_buffer_copy_template (buffers[i], &bt);
       buffers[i]->current_length = len;
       *n_rx_bytes += len;
     }

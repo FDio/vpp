@@ -173,7 +173,7 @@ vlib_buffer_copy_indices_to_ring (u32 * ring, u32 * src, u32 start,
 }
 
 static_always_inline void
-vlib_buffer_copy_template (vlib_buffer_t * b, vlib_buffer_t * bt)
+vlib_buffer_copy_template (vlib_buffer_t *b, const vlib_buffer_template_t *bt)
 {
 #if defined CLIB_HAVE_VEC512
   b->as_u8x64[0] = bt->as_u8x64[0];

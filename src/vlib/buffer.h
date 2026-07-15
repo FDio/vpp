@@ -121,10 +121,22 @@ enum
   /** Opaque data used by sub-graphs for their own purposes. */               \
   u32 opaque[10];
 
-typedef struct
+typedef union
 {
-  CLIB_ALIGN_MARK (align_mark, 64);
-  vlib_buffer_template_fields
+  struct
+  {
+    CLIB_ALIGN_MARK (align_mark, 64);
+    vlib_buffer_template_fields
+  };
+#ifdef CLIB_HAVE_VEC128
+  u8x16 as_u8x16[4];
+#endif
+#ifdef CLIB_HAVE_VEC256
+  u8x32 as_u8x32[2];
+#endif
+#ifdef CLIB_HAVE_VEC512
+  u8x64 as_u8x64[1];
+#endif
 } vlib_buffer_template_t;
 
 STATIC_ASSERT_SIZEOF (vlib_buffer_template_t, 64);
