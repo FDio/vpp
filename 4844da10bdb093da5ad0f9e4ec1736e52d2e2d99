@@ -1,0 +1,58 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "70ce0520_b83ceeba",
+        "filename": "src/plugins/af_xdp/device.c",
+        "patchSetId": 41
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-07-15T16:29:59Z",
+      "side": 1,
+      "message": "Addressed in PS41. Failure to enable XDP fragment support is now fatal, and the program handle is closed before returning.",
+      "parentUuid": "01afcfef_6f954722",
+      "revId": "4844da10bdb093da5ad0f9e4ec1736e52d2e2d99",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "11261f50_0104b156",
+        "filename": "src/plugins/af_xdp/device.c",
+        "patchSetId": 41
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-07-15T16:29:59Z",
+      "side": 1,
+      "message": "The successful path now detaches before reclaiming the fill ring, but the detach-failure path still continues with RX draining, fill-ring reclamation, and socket/UMEM destruction while the XDP program may remain active. Could we avoid reclaiming kernel-owned buffers unless quiescence is confirmed, or otherwise make the failure path safe?",
+      "parentUuid": "e1064925_8876c7a6",
+      "revId": "4844da10bdb093da5ad0f9e4ec1736e52d2e2d99",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "cf69eaa7_256eba98",
+        "filename": "src/plugins/af_xdp/device.c",
+        "patchSetId": 41
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-07-15T16:29:59Z",
+      "side": 1,
+      "message": "Addressed in PS41. The attach call now passes XDP_MODE_UNSPEC, allowing libxdp to select the appropriate mode.",
+      "parentUuid": "d8592fa5_44b6d0b1",
+      "revId": "4844da10bdb093da5ad0f9e4ec1736e52d2e2d99",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
