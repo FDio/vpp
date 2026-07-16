@@ -1,6 +1,42 @@
 {
   "comments": [
     {
+      "unresolved": true,
+      "key": {
+        "uuid": "56604972_93fe4f57",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 44
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-07-16T12:31:14Z",
+      "side": 1,
+      "message": "This change needs to be rebased onto current master.",
+      "parentUuid": "d863cb30_3525bb80",
+      "revId": "a9dfe92cfabc0e97a5a1f6dc0203d4c8e7f0e2b4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "952675d5_7b32532a",
+        "filename": "src/plugins/af_xdp/device.c",
+        "patchSetId": 44
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-07-16T12:31:14Z",
+      "side": 1,
+      "message": "Skipping reclamation avoids returning kernel-owned buffers prematurely, but deletion then discards the partial-chain, RX-ring, and fill-ring buffer references, as well as the libxdp program handle. Repeated detach failures can therefore exhaust the VPP buffer pool. Could we retain the device on failure, or quiesce through socket teardown while preserving enough ownership state to reclaim the buffers afterward?",
+      "parentUuid": "89def6b5_1559cfd2",
+      "revId": "a9dfe92cfabc0e97a5a1f6dc0203d4c8e7f0e2b4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": false,
       "key": {
         "uuid": "f95fce74_5f2f94e3",
@@ -33,6 +69,24 @@
       "side": 1,
       "message": "Done in PS44. The multi-buffer TX pre-scan now rejects packets with more than 18 segments before reserving descriptors, frees those chains, and counts them with a dedicated too-many-segments error.",
       "parentUuid": "a03d5312_9b6a9f97",
+      "revId": "a9dfe92cfabc0e97a5a1f6dc0203d4c8e7f0e2b4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c33f3c11_0b30b99b",
+        "filename": "src/plugins/af_xdp/output.c",
+        "patchSetId": 44
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-07-16T12:31:14Z",
+      "side": 1,
+      "message": "The 18-segment check covers copy mode, but zero-copy validates against the device-specific `xdp_zc_max_segs`, which can be lower. A chain exceeding that limit is consumed as invalid without completion entries, so VPP never frees its buffers. Could we also handle the zero-copy limit, or reject multi-buffer zero-copy when it cannot be enforced safely?",
+      "parentUuid": "ce7a1e81_c18408ae",
       "revId": "a9dfe92cfabc0e97a5a1f6dc0203d4c8e7f0e2b4",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
