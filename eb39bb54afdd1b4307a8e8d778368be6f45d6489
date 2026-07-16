@@ -35,6 +35,40 @@
       "parentUuid": "11261f50_0104b156",
       "revId": "eb39bb54afdd1b4307a8e8d778368be6f45d6489",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "35eaa5d0_22908460",
+        "filename": "src/plugins/af_xdp/input.c",
+        "patchSetId": 43
+      },
+      "lineNbr": 234,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-07-16T08:10:39Z",
+      "side": 1,
+      "message": "Each fragment copies `bt`, which includes `VLIB_BUFFER_TOTAL_LENGTH_VALID`, but only the packet head receives `total_length_not_including_first_buffer`. Once a continuation buffer is linked to another fragment, `vlib_buffer_length_in_chain()` on that subchain will incorrectly return only its own `current_length`. Could we clear `VLIB_BUFFER_TOTAL_LENGTH_VALID` on every appended continuation buffer, as the other multi-segment RX implementations do?",
+      "revId": "eb39bb54afdd1b4307a8e8d778368be6f45d6489",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a03d5312_9b6a9f97",
+        "filename": "src/plugins/af_xdp/output.c",
+        "patchSetId": 43
+      },
+      "lineNbr": 152,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-07-16T08:10:39Z",
+      "side": 1,
+      "message": "Could we validate the number of segments before enqueueing this packet? AF_XDP copy mode supports at most `CONFIG_MAX_SKB_FRAGS + 1` frames—18 for portable applications—and zero-copy has a device-specific limit. When that limit is exceeded, the descriptors are invalidated without completion entries, so VPP will never free these buffers and repeated oversized chains can exhaust the buffer pool. The limit should be enforced before reserving descriptors, with unsupported packets dropped and freed.\n\nhttps://docs.kernel.org/networking/af_xdp.html#multi-buffer-support",
+      "revId": "eb39bb54afdd1b4307a8e8d778368be6f45d6489",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
