@@ -78,6 +78,7 @@ wg_init (vlib_main_t * vm)
   vec_validate_aligned (wmp->per_thread_data, tm->n_vlib_mains,
 			CLIB_CACHE_LINE_BYTES);
 
+  wg_index_table_init (&wmp->index_table);
   wg_timer_wheel_init ();
   wireguard_register_post_node (vm);
   wmp->op_mode_flags = 0;

@@ -78,12 +78,16 @@ wg_handoff (vlib_main_t * vm,
       else if (mode == WG_HANDOFF_INP_DATA)
 	{
 	  message_data_t *data = vlib_buffer_get_current (b[0]);
-	  u32 *entry =
-	    wg_index_table_lookup (&wmp->index_table, data->receiver_index);
-	  peeri = *entry;
-	  peer = wg_peer_get (peeri);
+	  peeri = wg_index_table_lookup (&wmp->index_table, data->receiver_index);
 
-	  ti[0] = peer->input_thread_index;
+	  if (PREDICT_TRUE (peeri != INDEX_INVALID))
+	    {
+	      peer = wg_peer_get (peeri);
+	      ti[0] = peer->input_thread_index;
+	    }
+	  else
+	    /* unknown receiver index, let wg-input drop it */
+	    ti[0] = 0;
 	}
       else
 	{

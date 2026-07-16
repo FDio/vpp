@@ -160,10 +160,9 @@ wg_handshake_process (vlib_main_t *vm, wg_main_t *wmp, vlib_buffer_t *b,
     {
       message_handshake_cookie_t *packet =
 	(message_handshake_cookie_t *) current_b_data;
-      u32 *entry =
-	wg_index_table_lookup (&wmp->index_table, packet->receiver_index);
-      if (entry)
-	peer = wg_peer_get (*entry);
+      index_t peeri = wg_index_table_lookup (&wmp->index_table, packet->receiver_index);
+      if (peeri != INDEX_INVALID)
+	peer = wg_peer_get (peeri);
       else
 	return WG_INPUT_ERROR_PEER;
 
@@ -273,13 +272,10 @@ wg_handshake_process (vlib_main_t *vm, wg_main_t *wmp, vlib_buffer_t *b,
 	    return WG_INPUT_ERROR_NONE;
 	  }
 
-	index_t peeri = INDEX_INVALID;
-	u32 *entry =
-	  wg_index_table_lookup (&wmp->index_table, resp->receiver_index);
+	index_t peeri = wg_index_table_lookup (&wmp->index_table, resp->receiver_index);
 
-	if (PREDICT_TRUE (entry != NULL))
+	if (PREDICT_TRUE (peeri != INDEX_INVALID))
 	  {
-	    peeri = *entry;
 	    peer = wg_peer_get (peeri);
 	    if (wg_peer_is_dead (peer))
 	      return WG_INPUT_ERROR_PEER;
@@ -649,11 +645,10 @@ wg_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   f64 time = clib_time_now (&vm->clib_time) + vm->time_offset;
 
   wg_peer_t *peer = NULL;
-  u32 *last_peer_time_idx = NULL;
+  index_t last_peer_time_peeri = INDEX_INVALID;
   u32 last_rec_idx = ~0;
 
   bool is_keepalive = false;
-  u32 *peer_idx = NULL;
   index_t peeri = INDEX_INVALID;
 
   while (n_left_from > 0)
@@ -680,16 +675,12 @@ wg_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  u8 *iv_data = b[0]->pre_data;
 	  u32 buf_idx = from[b - bufs];
 	  u32 n_bufs;
-	  peer_idx = wg_index_table_lookup (&wmp->index_table,
-					    data->receiver_index);
 
 	  if (data->receiver_index != last_rec_idx)
 	    {
-	      peer_idx = wg_index_table_lookup (&wmp->index_table,
-						data->receiver_index);
-	      if (PREDICT_TRUE (peer_idx != NULL))
+	      peeri = wg_index_table_lookup (&wmp->index_table, data->receiver_index);
+	      if (PREDICT_TRUE (peeri != INDEX_INVALID))
 		{
-		  peeri = *peer_idx;
 		  peer = wg_peer_get (peeri);
 		  last_rec_idx = data->receiver_index;
 		}
@@ -700,7 +691,7 @@ wg_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 		}
 	    }
 
-	  if (PREDICT_FALSE (!peer_idx))
+	  if (PREDICT_FALSE (peeri == INDEX_INVALID))
 	    {
 	      other_next[n_other] = WG_INPUT_NEXT_ERROR;
 	      b[0]->error = node->errors[WG_INPUT_ERROR_PEER];
@@ -784,7 +775,7 @@ wg_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 
 	  if (PREDICT_FALSE (state_cr == SC_FAILED))
 	    {
-	      wg_peer_update_flags (*peer_idx, WG_PEER_ESTABLISHED, false);
+	      wg_peer_update_flags (peeri, WG_PEER_ESTABLISHED, false);
 	      other_next[n_other] = WG_INPUT_NEXT_ERROR;
 	      b[0]->error = node->errors[WG_INPUT_ERROR_DECRYPTION];
 	      other_bi[n_other] = buf_idx;
@@ -850,7 +841,7 @@ wg_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  t->type = header_type;
 	  t->current_length = b[0]->current_length;
 	  t->is_keepalive = is_keepalive;
-	  t->peer = peer_idx ? peeri : INDEX_INVALID;
+	  t->peer = peeri;
 	}
 
     next:
@@ -867,12 +858,12 @@ wg_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   b = data_bufs;
   n_left_from = n_data;
   last_rec_idx = ~0;
-  last_peer_time_idx = NULL;
+  last_peer_time_peeri = INDEX_INVALID;
 
   while (n_left_from > 0)
     {
       bool is_keepalive = false;
-      u32 *peer_idx = NULL;
+      index_t iter_peeri = INDEX_INVALID;
 
       if (PREDICT_FALSE (data_next[0] == WG_INPUT_NEXT_PUNT))
 	{
@@ -896,11 +887,10 @@ wg_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 
       if (data->receiver_index != last_rec_idx)
 	{
-	  peer_idx =
-	    wg_index_table_lookup (&wmp->index_table, data->receiver_index);
-	  if (PREDICT_TRUE (peer_idx != NULL))
+	  iter_peeri = wg_index_table_lookup (&wmp->index_table, data->receiver_index);
+	  if (PREDICT_TRUE (iter_peeri != INDEX_INVALID))
 	    {
-	      peeri = *peer_idx;
+	      peeri = iter_peeri;
 	      peer = wg_peer_get (peeri);
 	      last_rec_idx = data->receiver_index;
 	    }
@@ -923,7 +913,7 @@ wg_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  goto trace;
 	}
 
-      if (PREDICT_FALSE (peer_idx && (last_peer_time_idx != peer_idx)))
+      if (PREDICT_FALSE ((iter_peeri != INDEX_INVALID) && (last_peer_time_peeri != iter_peeri)))
 	{
 	  if (PREDICT_FALSE (
 		!ip46_address_is_equal (&peer->dst.addr, &out_src_ip) ||
@@ -932,8 +922,8 @@ wg_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 					     out_udp_src_port);
 	  wg_timers_any_authenticated_packet_received_opt (peer, time);
 	  wg_timers_any_authenticated_packet_traversal (peer);
-	  wg_peer_update_flags (*peer_idx, WG_PEER_ESTABLISHED, true);
-	  last_peer_time_idx = peer_idx;
+	  wg_peer_update_flags (iter_peeri, WG_PEER_ESTABLISHED, true);
+	  last_peer_time_peeri = iter_peeri;
 	}
 
       vlib_increment_combined_counter (im->combined_sw_if_counters +
@@ -949,7 +939,7 @@ wg_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  t->type = header_type;
 	  t->current_length = b[0]->current_length;
 	  t->is_keepalive = is_keepalive;
-	  t->peer = peer_idx ? peeri : INDEX_INVALID;
+	  t->peer = iter_peeri;
 	}
 
       b += 1;
@@ -991,8 +981,8 @@ wg_input_post (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame,
   u32 *from = vlib_frame_vector_args (frame);
   u32 n_left = frame->n_vectors;
   wg_peer_t *peer = NULL;
-  u32 *peer_idx = NULL;
-  u32 *last_peer_time_idx = NULL;
+  index_t last_lookup_peeri = INDEX_INVALID;
+  index_t last_peer_time_peeri = INDEX_INVALID;
   index_t peeri = INDEX_INVALID;
   u32 last_rec_idx = ~0;
   f64 time = clib_time_now (&vm->clib_time) + vm->time_offset;
@@ -1024,12 +1014,11 @@ wg_input_post (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame,
 
       if (data->receiver_index != last_rec_idx)
 	{
-	  peer_idx =
-	    wg_index_table_lookup (&wmp->index_table, data->receiver_index);
+	  last_lookup_peeri = wg_index_table_lookup (&wmp->index_table, data->receiver_index);
 
-	  if (PREDICT_TRUE (peer_idx != NULL))
+	  if (PREDICT_TRUE (last_lookup_peeri != INDEX_INVALID))
 	    {
-	      peeri = *peer_idx;
+	      peeri = last_lookup_peeri;
 	      peer = wg_peer_get (peeri);
 	      last_rec_idx = data->receiver_index;
 	    }
@@ -1052,7 +1041,8 @@ wg_input_post (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame,
 	  goto trace;
 	}
 
-      if (PREDICT_FALSE (peer_idx && (last_peer_time_idx != peer_idx)))
+      if (PREDICT_FALSE ((last_lookup_peeri != INDEX_INVALID) &&
+			 (last_peer_time_peeri != last_lookup_peeri)))
 	{
 	  if (PREDICT_FALSE (
 		!ip46_address_is_equal (&peer->dst.addr, &out_src_ip) ||
@@ -1061,8 +1051,8 @@ wg_input_post (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame,
 					     out_udp_src_port);
 	  wg_timers_any_authenticated_packet_received_opt (peer, time);
 	  wg_timers_any_authenticated_packet_traversal (peer);
-	  wg_peer_update_flags (*peer_idx, WG_PEER_ESTABLISHED, true);
-	  last_peer_time_idx = peer_idx;
+	  wg_peer_update_flags (last_lookup_peeri, WG_PEER_ESTABLISHED, true);
+	  last_peer_time_peeri = last_lookup_peeri;
 	}
 
       vlib_increment_combined_counter (im->combined_sw_if_counters +
@@ -1077,7 +1067,7 @@ wg_input_post (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame,
 	  wg_input_post_trace_t *t =
 	    vlib_add_trace (vm, node, b[0], sizeof (*t));
 	  t->next = next[0];
-	  t->peer = peer_idx ? peeri : INDEX_INVALID;
+	  t->peer = last_lookup_peeri;
 	}
 
       b += 1;
