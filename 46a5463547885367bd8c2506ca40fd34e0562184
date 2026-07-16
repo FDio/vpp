@@ -1,0 +1,40 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "4884b9fc_7a3599e0",
+        "filename": "src/plugins/af_xdp/device.c",
+        "patchSetId": 49
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-07-16T22:08:09Z",
+      "side": 1,
+      "message": "Done in PS49. Creation now registers the VPP interface before queue setup, and rollback propagates af_xdp_delete_if() failures. If detach fails during rollback, the retained device remains associated with a registered interface so deletion can be retried.",
+      "parentUuid": "321930d6_3af9c203",
+      "revId": "46a5463547885367bd8c2506ca40fd34e0562184",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "aeb2d3a6_69409826",
+        "filename": "src/plugins/af_xdp/device.c",
+        "patchSetId": 49
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-07-16T22:08:09Z",
+      "side": 1,
+      "message": "Done in PS49. The copy-mode default tx_max_segs is initialized before queue creation, so af_xdp_update_tx_max_segs() can preserve a device-specific zero-copy limit queried during queue setup.",
+      "parentUuid": "92806344_86ad352c",
+      "revId": "46a5463547885367bd8c2506ca40fd34e0562184",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
