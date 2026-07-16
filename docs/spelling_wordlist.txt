@@ -1294,6 +1294,9 @@ va
 Vagrantfile
 Vagrantfiles
 Valgrind
+Valkey
+Valscale
+valscale
 vapi
 Vbox
 vcl

@@ -994,6 +994,12 @@ M:	Ole Troan <otroan@employees.org>
 M:	Mohammed Hawari <mohammed@hawari.fr>
 F:	src/plugins/sasc/
 
+ValScale Plugin
+I:	valscale
+Y:	src/plugins/valscale/FEATURE.yaml
+M:	Jerome Tollet <jtollet@cisco.com>
+F:	src/plugins/valscale/
+
 GitHub Actions
 I: gha
 M: Dave Wallace <dwallacelf@gmail.com>
