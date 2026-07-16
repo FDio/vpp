@@ -35,6 +35,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "12c95884_3399c32b",
+        "filename": "src/plugins/ikev2/ikev2_priv.h",
+        "patchSetId": 12
+      },
+      "lineNbr": 405,
+      "author": {
+        "id": 3349
+      },
+      "writtenOn": "2026-07-16T21:03:47Z",
+      "side": 1,
+      "message": "Thank You, changed, Done",
+      "parentUuid": "4ac7bda1_1b21225c",
+      "revId": "b90a23030a63f727d797427a7bb631aa6e1cd6e4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "f1f67158_4f6680a8",
@@ -48,6 +66,24 @@
       "writtenOn": "2026-07-15T15:35:08Z",
       "side": 1,
       "message": "Could the exported lookup return only the value required by IKEv2 rather than an internal pool object? For example, an `ipip_tunnel_find_sw_if_index(const ipip_tunnel_key_t *, u32 *)` wrapper would avoid coupling IKEv2 to `ipip_tunnel_t`\u0027s layout and lifetime.",
+      "revId": "b90a23030a63f727d797427a7bb631aa6e1cd6e4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "bd42178e_29e88802",
+        "filename": "src/plugins/ipip/ipip.c",
+        "patchSetId": 12
+      },
+      "lineNbr": 571,
+      "author": {
+        "id": 3349
+      },
+      "writtenOn": "2026-07-16T21:03:47Z",
+      "side": 1,
+      "message": "Thank You, changed",
+      "parentUuid": "f1f67158_4f6680a8",
       "revId": "b90a23030a63f727d797427a7bb631aa6e1cd6e4",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -69,6 +105,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "46517c08_25ae8c55",
+        "filename": "src/plugins/ipip/ipip_types.h",
+        "patchSetId": 12
+      },
+      "lineNbr": 41,
+      "author": {
+        "id": 3349
+      },
+      "writtenOn": "2026-07-16T21:03:47Z",
+      "side": 1,
+      "message": "Changed, thank You",
+      "parentUuid": "af812323_b13e765e",
+      "revId": "b90a23030a63f727d797427a7bb631aa6e1cd6e4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "7807213b_4afc1ad0",
@@ -82,6 +136,24 @@
       "writtenOn": "2026-07-15T15:35:08Z",
       "side": 1,
       "message": "Could we declare the exported IPIP functions in the public header and use `__typeof__ (ipip_add_tunnel) *` directly in IKEv2? These duplicated function-pointer typedefs are unnecessary and could drift from the actual function signatures.",
+      "revId": "b90a23030a63f727d797427a7bb631aa6e1cd6e4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "953075ee_85c81275",
+        "filename": "src/plugins/ipip/ipip_types.h",
+        "patchSetId": 12
+      },
+      "lineNbr": 72,
+      "author": {
+        "id": 3349
+      },
+      "writtenOn": "2026-07-16T21:03:47Z",
+      "side": 1,
+      "message": "Changed, thank You",
+      "parentUuid": "7807213b_4afc1ad0",
       "revId": "b90a23030a63f727d797427a7bb631aa6e1cd6e4",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
