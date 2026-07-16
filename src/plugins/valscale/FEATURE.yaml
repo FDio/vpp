@@ -1,0 +1,9 @@
+---
+name: Valscale
+maintainer: Jerome Tollet <jtollet@cisco.com>
+features:
+  - RESP-aware TCP to AF_UNIX proxy for Valkey
+  - Connection-level backend selection from the first command key
+description: "Connects VPP HostStack TCP clients to local Valkey Unix sockets"
+state: experimental
+properties: [MULTITHREAD]
