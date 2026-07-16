@@ -35,6 +35,41 @@
       "parentUuid": "be7b5462_62e5dbfc",
       "revId": "b58ff3cace203cf768236ca2808d50e2de20b9c3",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "321930d6_3af9c203",
+        "filename": "src/plugins/af_xdp/device.c",
+        "patchSetId": 48
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-07-16T17:47:10Z",
+      "side": 1,
+      "message": "The PS48 changes handle `if_nametoindex()` and the initial `af_xdp_remove_program()` failure, but later failures after the program is attached still reach `err2`, where the return from `af_xdp_delete_if()` is ignored. If detach fails there, the device is retained without a registered interface through which deletion can be retried. Could we also handle the rollback result on this path?",
+      "parentUuid": "505d527a_8143d3e3",
+      "revId": "b58ff3cace203cf768236ca2808d50e2de20b9c3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "92806344_86ad352c",
+        "filename": "src/plugins/af_xdp/device.c",
+        "patchSetId": 48
+      },
+      "lineNbr": 924,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-07-16T17:47:10Z",
+      "side": 1,
+      "message": "This overwrites the device-specific `xdp_zc_max_segs` stored by `af_xdp_update_tx_max_segs()` during queue creation. Zero-copy devices with a limit below 18 will therefore still accept invalid chains and may lose completions/leak buffers. Could we initialize the copy-mode default before creating the queues, so a queried zero-copy limit is preserved?",
+      "revId": "b58ff3cace203cf768236ca2808d50e2de20b9c3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
