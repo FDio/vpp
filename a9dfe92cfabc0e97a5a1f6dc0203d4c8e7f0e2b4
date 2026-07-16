@@ -1,0 +1,40 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "f95fce74_5f2f94e3",
+        "filename": "src/plugins/af_xdp/input.c",
+        "patchSetId": 44
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-07-16T12:14:36Z",
+      "side": 1,
+      "message": "Done in PS44. Continuation buffers now clear VLIB_BUFFER_TOTAL_LENGTH_VALID after being linked, so only the packet head carries the valid total length metadata.",
+      "parentUuid": "35eaa5d0_22908460",
+      "revId": "a9dfe92cfabc0e97a5a1f6dc0203d4c8e7f0e2b4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ce7a1e81_c18408ae",
+        "filename": "src/plugins/af_xdp/output.c",
+        "patchSetId": 44
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-07-16T12:14:36Z",
+      "side": 1,
+      "message": "Done in PS44. The multi-buffer TX pre-scan now rejects packets with more than 18 segments before reserving descriptors, frees those chains, and counts them with a dedicated too-many-segments error.",
+      "parentUuid": "a03d5312_9b6a9f97",
+      "revId": "a9dfe92cfabc0e97a5a1f6dc0203d4c8e7f0e2b4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
