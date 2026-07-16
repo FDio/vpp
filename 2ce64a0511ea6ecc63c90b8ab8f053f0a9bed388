@@ -1,0 +1,94 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "15d697ea_80ecb69d",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 46
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-07-16T13:37:15Z",
+      "side": 1,
+      "message": "Done in PS45/PS46. The change is now rebased onto current master c399babd5, and the AF_XDP multi-buffer RX path is adapted to vlib_buffer_template_t.",
+      "parentUuid": "56604972_93fe4f57",
+      "revId": "2ce64a0511ea6ecc63c90b8ab8f053f0a9bed388",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "6c97a008_5635fe71",
+        "filename": "src/plugins/af_xdp/device.c",
+        "patchSetId": 46
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-07-16T13:37:15Z",
+      "side": 1,
+      "message": "Done in PS46. af_xdp_delete_if() now detaches/quiesces before deleting the VPP interface or freeing socket/UMEM/ring state. If XDP detach fails, it returns an error and keeps the AF_XDP device intact so the buffer ownership state is preserved for a later delete retry.",
+      "parentUuid": "952675d5_7b32532a",
+      "revId": "2ce64a0511ea6ecc63c90b8ab8f053f0a9bed388",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "773d0ace_5710199b",
+        "filename": "src/plugins/af_xdp/output.c",
+        "patchSetId": 46
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-07-16T13:37:15Z",
+      "side": 1,
+      "message": "Done in PS46. The effective TX segment limit is now per-device: copy mode uses the portable 18-segment limit, while multi-buffer zero-copy queries bpf_xdp_query().xdp_zc_max_segs and uses that device-specific limit. If the limit cannot be queried/enforced, multi-buffer zero-copy creation fails instead of risking invalid TX descriptors without completions.",
+      "parentUuid": "c33f3c11_0b30b99b",
+      "revId": "2ce64a0511ea6ecc63c90b8ab8f053f0a9bed388",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "77bda4d4_2f8f4775",
+        "filename": "test/asf/asfframework.py",
+        "patchSetId": 46
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-07-16T13:37:15Z",
+      "side": 1,
+      "message": "Done in PS46. Removed the unused Debian 12 detection.",
+      "parentUuid": "618a0270_1346607b",
+      "revId": "2ce64a0511ea6ecc63c90b8ab8f053f0a9bed388",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b5029a8e_f84bfac9",
+        "filename": "test/test_vm_af_xdp_mb_l2.py",
+        "patchSetId": 46
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-07-16T13:37:15Z",
+      "side": 1,
+      "message": "Done in PS46. The AF_XDP test lock setup/cleanup is now factored into AfXDPTestLockMixin in vm_vpp_interfaces.py and reused by the existing and multi-buffer L2/L3 AF_XDP VM tests.",
+      "parentUuid": "c39e9867_376664cd",
+      "revId": "2ce64a0511ea6ecc63c90b8ab8f053f0a9bed388",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
