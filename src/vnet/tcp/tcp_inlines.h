@@ -51,6 +51,14 @@ tcp_store_err_counters (vlib_main_t *vm, tcp_error_counters_t *c, u32 node_index
     }
 }
 
+always_inline void
+tcp_ack_to_rate_sample (tcp_connection_t *tc, tcp_rate_sample_t *rs)
+{
+  rs->acked_and_sacked =
+    tc->bytes_acked + tc->sack_sb.last_sacked_bytes - tc->sack_sb.last_bytes_delivered;
+  rs->last_lost = tc->sack_sb.last_lost_bytes;
+}
+
 always_inline tcp_header_t *
 tcp_buffer_hdr (vlib_buffer_t * b)
 {

@@ -586,16 +586,12 @@ tcp_bt_walk_samples_ooo (tcp_connection_t * tc, tcp_rate_sample_t * rs)
 void
 tcp_bt_sample_delivery_rate (tcp_connection_t * tc, tcp_rate_sample_t * rs)
 {
-  u32 delivered;
+  u32 delivered = rs->acked_and_sacked;
 
   if (PREDICT_FALSE (tc->flags & TCP_CONN_FINSNT))
     return;
 
-  tc->lost += tc->sack_sb.last_lost_bytes;
-
-  delivered = tc->bytes_acked + tc->sack_sb.last_sacked_bytes;
-  /* Do not count bytes that were previously sacked again */
-  delivered -= tc->sack_sb.last_bytes_delivered;
+  tc->lost += rs->last_lost;
   if (!delivered || tc->bt->head == TCP_BTS_INVALID_INDEX)
     return;
 
@@ -614,8 +610,6 @@ tcp_bt_sample_delivery_rate (tcp_connection_t * tc, tcp_rate_sample_t * rs)
   rs->interval_time = clib_max ((tc->delivered_time - rs->prior_time),
 				rs->interval_time);
   rs->delivered = tc->delivered - rs->prior_delivered;
-  rs->acked_and_sacked = delivered;
-  rs->last_lost = tc->sack_sb.last_lost_bytes;
   rs->lost = tc->lost - rs->tx_lost;
 }
 

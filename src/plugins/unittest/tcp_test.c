@@ -33,6 +33,13 @@
 
 scoreboard_trace_elt_t sb_trace[] = {};
 
+static void
+tcp_test_bt_sample_delivery_rate (tcp_connection_t *tc, tcp_rate_sample_t *rs)
+{
+  tcp_ack_to_rate_sample (tc, rs);
+  tcp_bt_sample_delivery_rate (tc, rs);
+}
+
 static int
 tcp_test_scoreboard_replay (vlib_main_t * vm, unformat_input_t * input)
 {
@@ -4050,7 +4057,7 @@ tcp_test_delivery (vlib_main_t * vm, unformat_input_t * input)
   tc->snd_una = tc->snd_nxt = burst;
   tc->bytes_acked = burst;
 
-  tcp_bt_sample_delivery_rate (tc, rs);
+  tcp_test_bt_sample_delivery_rate (tc, rs);
 
   TCP_TEST (tcp_bt_is_sane (bt), "tracker should be sane");
   TCP_TEST (pool_elts (bt->samples) == 0, "sample should've been consumed");
@@ -4088,7 +4095,7 @@ tcp_test_delivery (vlib_main_t * vm, unformat_input_t * input)
   tc->snd_una = tc->snd_nxt;
   tc->bytes_acked = 2 * burst;
 
-  tcp_bt_sample_delivery_rate (tc, rs);
+  tcp_test_bt_sample_delivery_rate (tc, rs);
 
   TCP_TEST (tcp_bt_is_sane (bt), "tracker should be sane");
   TCP_TEST (pool_elts (bt->samples) == 0, "sample should've been consumed");
@@ -4151,7 +4158,7 @@ tcp_test_delivery (vlib_main_t * vm, unformat_input_t * input)
   sacks[1].end = snd_una + 2 * burst + 20;
   tc->rcv_opts.sacks = sacks;
 
-  tcp_bt_sample_delivery_rate (tc, rs);
+  tcp_test_bt_sample_delivery_rate (tc, rs);
 
   TCP_TEST (tcp_bt_is_sane (bt), "tracker should be sane");
   TCP_TEST (pool_elts (bt->samples) == 7, "there should be 7 samples %u",
@@ -4238,7 +4245,7 @@ tcp_test_delivery (vlib_main_t * vm, unformat_input_t * input)
   sacks[1].start = snd_una + 2 * burst + 50;
   sacks[1].end = snd_una + 2 * burst + 60;
 
-  tcp_bt_sample_delivery_rate (tc, rs);
+  tcp_test_bt_sample_delivery_rate (tc, rs);
 
   TCP_TEST (tcp_bt_is_sane (bt), "tracker should be sane");
   TCP_TEST (pool_elts (bt->samples) == 5, "num samples should be 5 is %u",
@@ -4273,7 +4280,7 @@ tcp_test_delivery (vlib_main_t * vm, unformat_input_t * input)
   sb->last_bytes_delivered = 40;
 
   memset (rs, 0, sizeof (*rs));
-  tcp_bt_sample_delivery_rate (tc, rs);
+  tcp_test_bt_sample_delivery_rate (tc, rs);
 
   TCP_TEST (tcp_bt_is_sane (bt), "tracker should be sane");
   TCP_TEST (pool_elts (bt->samples) == 0, "num samples should be 0 is %u",
@@ -4378,7 +4385,7 @@ tcp_test_bt (vlib_main_t * vm, unformat_input_t * input)
   tc->snd_una = 150;
   tc->bytes_acked = 150;
   tc->sack_sb.last_sacked_bytes = 0;
-  tcp_bt_sample_delivery_rate (tc, rs);
+  tcp_test_bt_sample_delivery_rate (tc, rs);
 
   TCP_TEST (tcp_bt_is_sane (bt), "tracker should be sane");
   TCP_TEST (pool_elts (bt->samples) == 1, "should have 1 sample");
@@ -4424,7 +4431,7 @@ tcp_test_bt (vlib_main_t * vm, unformat_input_t * input)
   vec_add2 (tc->rcv_opts.sacks, blk, 1);
   blk->start = 350;
   blk->end = 400;
-  tcp_bt_sample_delivery_rate (tc, rs);
+  tcp_test_bt_sample_delivery_rate (tc, rs);
 
   TCP_TEST (tcp_bt_is_sane (bt), "tracker should be sane");
   TCP_TEST (pool_elts (bt->samples) == 3, "should have 3 samples");
@@ -4470,7 +4477,7 @@ tcp_test_bt (vlib_main_t * vm, unformat_input_t * input)
   /* --> [250:300][300:350][350:400/sacked][400-500] */
   tcp_test_set_time (thread_index, 8);
   tcp_bt_track_rxt (tc, 250, 300);
-  tcp_bt_sample_delivery_rate (tc, rs);
+  tcp_test_bt_sample_delivery_rate (tc, rs);
 
   TCP_TEST (tcp_bt_is_sane (bt), "tracker should be sane");
   TCP_TEST (pool_elts (bt->samples) == 4, "should have 4 samples");
@@ -4498,7 +4505,7 @@ tcp_test_bt (vlib_main_t * vm, unformat_input_t * input)
   vec_add2 (tc->rcv_opts.sacks, blk, 1);
   blk->start = 420;
   blk->end = 450;
-  tcp_bt_sample_delivery_rate (tc, rs);
+  tcp_test_bt_sample_delivery_rate (tc, rs);
 
   TCP_TEST (tcp_bt_is_sane (bt), "tracker should be sane");
   TCP_TEST (pool_elts (bt->samples) == 3, "should have 3 samples");
@@ -4525,7 +4532,7 @@ tcp_test_bt (vlib_main_t * vm, unformat_input_t * input)
   tc->snd_una = 500;
   tc->bytes_acked = 100;
   tc->sack_sb.last_sacked_bytes = 0;
-  tcp_bt_sample_delivery_rate (tc, rs);
+  tcp_test_bt_sample_delivery_rate (tc, rs);
 
   TCP_TEST (tcp_bt_is_sane (bt), "tracker should be sane");
   TCP_TEST (pool_elts (bt->samples) == 0, "should have 0 samples");
@@ -4576,14 +4583,14 @@ tcp_test_bt (vlib_main_t * vm, unformat_input_t * input)
   tc->sack_sb.last_sacked_bytes = 100;
   tc->rcv_opts.sacks[0].start = 100;
   tc->rcv_opts.sacks[0].end = 200;
-  tcp_bt_sample_delivery_rate (tc, rs);
+  tcp_test_bt_sample_delivery_rate (tc, rs);
   TCP_TEST (tcp_bt_is_sane (bt), "tracker should be sane after first sack");
   TCP_TEST (pool_elts (bt->samples) == 3, "first sack should not merge");
 
   tc->sack_sb.last_sacked_bytes = 100;
   tc->rcv_opts.sacks[0].start = 200;
   tc->rcv_opts.sacks[0].end = 300;
-  tcp_bt_sample_delivery_rate (tc, rs);
+  tcp_test_bt_sample_delivery_rate (tc, rs);
   TCP_TEST (tcp_bt_is_sane (bt), "tracker should be sane after merge with prev");
   TCP_TEST (pool_elts (bt->samples) == 2, "adjacent sack should merge with previous");
   bts = pool_elt_at_index (bt->samples, bt->head);
@@ -4595,7 +4602,7 @@ tcp_test_bt (vlib_main_t * vm, unformat_input_t * input)
   tc->sack_sb.last_sacked_bytes = 100;
   tc->rcv_opts.sacks[0].start = 0;
   tc->rcv_opts.sacks[0].end = 100;
-  tcp_bt_sample_delivery_rate (tc, rs);
+  tcp_test_bt_sample_delivery_rate (tc, rs);
   TCP_TEST (tcp_bt_is_sane (bt), "tracker should be sane after merge with next");
   TCP_TEST (pool_elts (bt->samples) == 1, "adjacent sack should merge with next");
   bts = pool_elt_at_index (bt->samples, bt->head);
