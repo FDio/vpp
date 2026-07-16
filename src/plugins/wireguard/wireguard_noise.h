@@ -34,6 +34,11 @@
 #define REKEY_AFTER_TIME	120
 #define REKEY_AFTER_TIME_RECV	165
 #define REJECT_AFTER_TIME	180
+/* Retired keypairs are kept on a graveyard for this long before their
+ * memory is reclaimed. Dataplane threads dereference keypair pointers
+ * lock-free but only within a single node dispatch, so anything well
+ * beyond a worker frame lifetime is safe. */
+#define NOISE_KEYPAIR_GRACE_PERIOD (2.0)
 #define REJECT_INTERVAL		(0.02)	/* fifty times per sec */
 /* 24 = floor(log2(REJECT_INTERVAL)) */
 #define REJECT_INTERVAL_MASK	(~((1ull<<24)-1))
@@ -244,19 +249,8 @@ error:
   return ret;
 }
 
-static_always_inline void
-noise_remote_keypair_free (vlib_main_t *vm, noise_remote_t *r,
-			   noise_keypair_t **kp)
-{
-  noise_local_t *local = noise_local_get (r->r_local_idx);
-  struct noise_upcall *u = &local->l_upcall;
-  if (*kp)
-    {
-      u->u_index_drop (vm, (*kp)->kp_local_index);
-      vnet_crypto_ctx_destroy (vm, (*kp)->send_ctx);
-      vnet_crypto_ctx_destroy (vm, (*kp)->recv_ctx);
-      clib_mem_free (*kp);
-    }
-}
+void noise_remote_keypair_free (vlib_main_t *vm, noise_remote_t *r, noise_keypair_t **kp);
+void noise_keypair_graveyard_init (void);
+void noise_keypair_graveyard_flush (vlib_main_t *vm);
 
 #endif /* __included_wg_noise_h__ */

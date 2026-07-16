@@ -79,6 +79,7 @@ wg_init (vlib_main_t * vm)
 			CLIB_CACHE_LINE_BYTES);
 
   wg_index_table_init (&wmp->index_table);
+  noise_keypair_graveyard_init ();
   wg_timer_wheel_init ();
   wireguard_register_post_node (vm);
   wmp->op_mode_flags = 0;

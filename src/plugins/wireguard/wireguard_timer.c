@@ -403,6 +403,8 @@ wg_timer_mngr_fn (vlib_main_t * vm, vlib_node_runtime_t * rt,
 
       tw_timer_expire_timers_16t_2w_512sl (&wmp->timer_wheel,
 					   vlib_time_now (vm));
+
+      noise_keypair_graveyard_flush (vm);
     }
 
   return 0;

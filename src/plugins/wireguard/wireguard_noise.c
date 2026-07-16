@@ -19,10 +19,80 @@
 
 noise_local_t *noise_local_pool;
 
+/* Retired keypairs, kept until no dataplane thread can still hold a
+ * pointer to them (NOISE_KEYPAIR_GRACE_PERIOD). Pushed from the main
+ * thread (handshake processing, timers) and from a peer's input worker
+ * (keypair rotation on key-confirmation), flushed by the wg timer
+ * process. This replaces a worker-thread barrier sync per rekey. */
+typedef struct
+{
+  noise_keypair_t *kp;
+  f64 retired_at;
+} noise_keypair_grave_t;
+
+static noise_keypair_grave_t *noise_keypair_graveyard;
+static clib_spinlock_t noise_keypair_graveyard_lock;
+
+void
+noise_keypair_graveyard_init (void)
+{
+  clib_spinlock_init (&noise_keypair_graveyard_lock);
+}
+
+static void
+noise_keypair_retire (vlib_main_t *vm, noise_keypair_t *kp)
+{
+  noise_keypair_grave_t grave = {
+    .kp = kp,
+    .retired_at = vlib_time_now (vm),
+  };
+
+  clib_spinlock_lock (&noise_keypair_graveyard_lock);
+  vec_add1 (noise_keypair_graveyard, grave);
+  clib_spinlock_unlock (&noise_keypair_graveyard_lock);
+}
+
+void
+noise_keypair_graveyard_flush (vlib_main_t *vm)
+{
+  f64 now = vlib_time_now (vm);
+  noise_keypair_grave_t *grave;
+  u32 n_freed = 0;
+
+  clib_spinlock_lock (&noise_keypair_graveyard_lock);
+  /* entries are pushed in (near) retire-time order */
+  vec_foreach (grave, noise_keypair_graveyard)
+    {
+      if (grave->retired_at + NOISE_KEYPAIR_GRACE_PERIOD > now)
+	break;
+      wg_secure_zero_memory (grave->kp, sizeof (*grave->kp));
+      clib_mem_free (grave->kp);
+      n_freed++;
+    }
+  if (n_freed)
+    vec_delete (noise_keypair_graveyard, n_freed, 0);
+  clib_spinlock_unlock (&noise_keypair_graveyard_lock);
+}
+
+void
+noise_remote_keypair_free (vlib_main_t *vm, noise_remote_t *r, noise_keypair_t **kp)
+{
+  noise_local_t *local = noise_local_get (r->r_local_idx);
+  struct noise_upcall *u = &local->l_upcall;
+  if (*kp)
+    {
+      u->u_index_drop (vm, (*kp)->kp_local_index);
+      /* ctx destruction is already deferred to the next barrier release
+       * by vnet_crypto_ctx_destroy() */
+      vnet_crypto_ctx_destroy (vm, (*kp)->send_ctx);
+      vnet_crypto_ctx_destroy (vm, (*kp)->recv_ctx);
+      noise_keypair_retire (vm, *kp);
+      *kp = NULL;
+    }
+}
+
 /* Private functions */
 static noise_keypair_t *noise_remote_keypair_allocate (noise_remote_t *);
-static void noise_remote_keypair_free (vlib_main_t * vm, noise_remote_t *,
-				       noise_keypair_t **);
 static uint32_t noise_remote_handshake_index_get (vlib_main_t *vm,
 						  noise_remote_t *);
 static void noise_remote_handshake_index_drop (vlib_main_t *vm,
@@ -388,8 +458,6 @@ noise_remote_begin_session (vlib_main_t * vm, noise_remote_t * r)
 
   /* Now we need to add_new_keypair */
   clib_rwlock_writer_lock (&r->r_keypair_lock);
-  /* Activate barrier to synchronization keys between threads */
-  vlib_worker_thread_barrier_sync (vm);
   next = r->r_next;
   current = r->r_current;
   previous = r->r_previous;
@@ -421,7 +489,6 @@ noise_remote_begin_session (vlib_main_t * vm, noise_remote_t * r)
       r->r_next = noise_remote_keypair_allocate (r);
       *r->r_next = kp;
     }
-  vlib_worker_thread_barrier_release (vm);
   clib_rwlock_writer_unlock (&r->r_keypair_lock);
 
   wg_secure_zero_memory (&r->r_handshake, sizeof (r->r_handshake));
