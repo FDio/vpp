@@ -2160,6 +2160,174 @@ class TestWg(VppTestCase):
         wg0.remove_vpp_config()
         wg1.remove_vpp_config()
 
+    def test_wg_rekey_churn(self):
+        """Rekey and index churn with active tunnels"""
+        port = 12800
+        NUM_PEERS = 8
+        NUM_ROUNDS = 3
+
+        def filter_out_init_and_keepalive(p):
+            if is_ipv6_misc(p):
+                return True
+            wg_p = Wireguard(bytes(p[Raw]))
+            if wg_p[Wireguard].message_type == 1:
+                return True
+            # keepalive: transport packet with only the auth tag as payload
+            return (
+                wg_p[Wireguard].message_type == 4
+                and len(wg_p[WireguardTransport].encrypted_encapsulated_packet) == 16
+            )
+
+        def establish(peer, idx):
+            """handshake + key-confirming data packet.
+
+            The confirming data packet drives the keypair rotation in
+            wg4-input (next -> current), i.e. the worker-side keypair
+            retire path; the handshake itself churns the sender-index
+            table (add + del) and, on re-handshake, retires the
+            previous keypair.
+            """
+            peer.noise_reset()
+            init = peer.mk_handshake(self.pg1)
+            rx = self.send_and_expect(
+                self.pg1,
+                [init],
+                self.pg1,
+                filter_out_fn=filter_out_init_and_keepalive,
+            )
+            peer.consume_response(rx[0])
+
+            p = (
+                IP(src="10.30.%d.1" % idx, dst=self.pg0.remote_ip4, ttl=20)
+                / UDP(sport=222, dport=223)
+                / Raw()
+            )
+            d = peer.encrypt_transport(p)
+            p = peer.mk_tunnel_header(self.pg1) / (
+                Wireguard(message_type=4, reserved_zero=0)
+                / WireguardTransport(
+                    receiver_index=peer.sender,
+                    counter=0,
+                    encrypted_encapsulated_packet=d,
+                )
+            )
+            self.send_and_expect(self.pg1, [p], self.pg0)
+
+        # Create interface with many peers
+        wg0 = VppWgInterface(self, self.pg1.local_ip4, port).add_vpp_config()
+        wg0.admin_up()
+        wg0.config_ip4()
+
+        self.pg1.generate_remote_hosts(NUM_PEERS)
+        self.pg1.configure_ipv4_neighbors()
+
+        peers = []
+        routes = []
+        # explicit cleanup in finally: a peer deleted and re-added with a
+        # reused pool index gets the same object_id, which confuses the
+        # registry teardown and would leak the re-added peer into the
+        # tests that follow if this test fails mid-way
+        try:
+            for i in range(NUM_PEERS):
+                peers.append(
+                    VppWgPeer(
+                        self,
+                        wg0,
+                        self.pg1.remote_hosts[i].ip4,
+                        port + 1 + i,
+                        ["10.30.%d.0/24" % i],
+                    ).add_vpp_config()
+                )
+                routes.append(
+                    VppIpRoute(
+                        self,
+                        "10.30.%d.0" % i,
+                        24,
+                        [VppRoutePath("10.30.%d.1" % i, wg0.sw_if_index)],
+                    ).add_vpp_config()
+                )
+
+            for i, peer in enumerate(peers):
+                establish(peer, i)
+
+            # Churn: re-handshake every peer (retiring its keypairs) while
+            # traffic keeps flowing, and delete/re-add one peer per round.
+            for round in range(NUM_ROUNDS):
+                for i, peer in enumerate(peers):
+                    establish(peer, i)
+
+                    # tunnel -> inner: decrypted with the new keypair
+                    ps = [
+                        peer.mk_tunnel_header(self.pg1)
+                        / Wireguard(message_type=4, reserved_zero=0)
+                        / WireguardTransport(
+                            receiver_index=peer.sender,
+                            counter=ii + 1,
+                            encrypted_encapsulated_packet=peer.encrypt_transport(
+                                IP(
+                                    src="10.30.%d.1" % i,
+                                    dst=self.pg0.remote_ip4,
+                                    ttl=20,
+                                )
+                                / UDP(sport=222, dport=223)
+                                / Raw()
+                            ),
+                        )
+                        for ii in range(16)
+                    ]
+                    rxs = self.send_and_expect(self.pg1, ps, self.pg0)
+                    for rx in rxs:
+                        self.assertEqual(rx[IP].dst, self.pg0.remote_ip4)
+                        self.assertEqual(rx[IP].ttl, 19)
+
+                    # inner -> tunnel: encrypted with the new keypair
+                    p = (
+                        Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac)
+                        / IP(src=self.pg0.remote_ip4, dst="10.30.%d.2" % i)
+                        / UDP(sport=555, dport=556)
+                        / Raw(b"\x00" * 80)
+                    )
+                    rxs = self.send_and_expect(
+                        self.pg0,
+                        p * 16,
+                        self.pg1,
+                        filter_out_fn=filter_out_init_and_keepalive,
+                    )
+                    for rx in rxs:
+                        rx = IP(peer.decrypt_transport(rx))
+                        self.assertEqual(rx[IP].dst, p[IP].dst)
+                        self.assertEqual(rx[IP].ttl, p[IP].ttl - 1)
+
+                # delete and re-create one peer: churns the peer pool,
+                # adjacencies and the sender-index table. Never pick
+                # peers[0]: the next round re-handshakes it first, and
+                # two initiations for the same peer within
+                # REJECT_INTERVAL (20ms) trip the flood protection and
+                # the second one is dropped.
+                victim = 1 + (round % (NUM_PEERS - 1))
+                routes[victim].remove_vpp_config()
+                peers[victim].remove_vpp_config()
+                peers[victim] = VppWgPeer(
+                    self,
+                    wg0,
+                    self.pg1.remote_hosts[victim].ip4,
+                    port + 1 + victim,
+                    ["10.30.%d.0/24" % victim],
+                ).add_vpp_config()
+                routes[victim] = VppIpRoute(
+                    self,
+                    "10.30.%d.0" % victim,
+                    24,
+                    [VppRoutePath("10.30.%d.1" % victim, wg0.sw_if_index)],
+                ).add_vpp_config()
+                establish(peers[victim], victim)
+        finally:
+            for r in routes:
+                r.remove_vpp_config()
+            for p in peers:
+                p.remove_vpp_config()
+            wg0.remove_vpp_config()
+
     def test_wg_multi_interface(self):
         """Multi-tunnel on the same port"""
         port = 12500
