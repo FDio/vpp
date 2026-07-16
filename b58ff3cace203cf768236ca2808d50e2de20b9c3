@@ -1,0 +1,40 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "505d527a_8143d3e3",
+        "filename": "src/plugins/af_xdp/device.c",
+        "patchSetId": 48
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-07-16T16:31:35Z",
+      "side": 1,
+      "message": "Done in PS48. The create path now handles af_xdp_remove_program() failure separately: it sets args-\u003erv/args-\u003eerror, frees the partially allocated device directly, and skips the err2 rollback path that could retain an unregistered device. I also moved the if_nametoindex() failure path to the same direct partial-device cleanup so it does not call af_xdp_delete_if() with an invalid ifindex.",
+      "parentUuid": "37087c42_45e84d39",
+      "revId": "b58ff3cace203cf768236ca2808d50e2de20b9c3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "f246f104_6657f009",
+        "filename": "src/plugins/af_xdp/device.c",
+        "patchSetId": 48
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-07-16T16:31:35Z",
+      "side": 1,
+      "message": "Done in PS48. af_xdp_remove_program() now checks the return value from af_xdp_enter_netns() and returns before bpf_xdp_query_id(), bpf_xdp_detach(), or xdp_program__detach() can run in the caller\u0027s namespace.",
+      "parentUuid": "be7b5462_62e5dbfc",
+      "revId": "b58ff3cace203cf768236ca2808d50e2de20b9c3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
