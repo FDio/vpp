@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "be7b5462_62e5dbfc",
+        "filename": "src/plugins/af_xdp/device.c",
+        "patchSetId": 47
+      },
+      "lineNbr": 147,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-07-16T15:56:04Z",
+      "side": 1,
+      "message": "Could we check the return value from `af_xdp_enter_netns()` before querying or detaching the program? If the target namespace cannot be entered, this continues in the caller\u0027s namespace using `ad-\u003elinux_ifindex`, which could detach an unrelated XDP program with the same numeric ifindex.",
+      "revId": "9b462ba935bb6505004a6c5c489042f4cbbb4376",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "37087c42_45e84d39",
+        "filename": "src/plugins/af_xdp/device.c",
+        "patchSetId": 47
+      },
+      "lineNbr": 838,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-07-16T15:56:04Z",
+      "side": 1,
+      "message": "`af_xdp_remove_program()` only returns an error code, so this path leaves `args-\u003erv` and `args-\u003eerror` unchanged. Since multi-buffer creation always selects a default program, a detach failure can make the CLI/API report success even though creation aborted. Also, if the rollback at `err2` fails, the unregistered device is retained with no way to retry deletion. Could we propagate the detach error and handle the rollback result here?",
+      "revId": "9b462ba935bb6505004a6c5c489042f4cbbb4376",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
