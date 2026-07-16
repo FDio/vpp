@@ -89,6 +89,40 @@
       "parentUuid": "ce7a1e81_c18408ae",
       "revId": "a9dfe92cfabc0e97a5a1f6dc0203d4c8e7f0e2b4",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "618a0270_1346607b",
+        "filename": "test/asf/asfframework.py",
+        "patchSetId": 44
+      },
+      "lineNbr": 167,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-07-16T12:40:34Z",
+      "side": 1,
+      "message": "Why is Debian 12 detection added here? It is unused and unrelated to AF_XDP multi-buffer support. Could we remove it?",
+      "revId": "a9dfe92cfabc0e97a5a1f6dc0203d4c8e7f0e2b4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c39e9867_376664cd",
+        "filename": "test/test_vm_af_xdp_mb_l2.py",
+        "patchSetId": 44
+      },
+      "lineNbr": 28,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-07-16T12:40:34Z",
+      "side": 1,
+      "message": "Could we factor the AF_XDP lock setup and cleanup into a shared test base or mixin? This duplicates the same logic across the existing and new L2/L3 AF_XDP tests, so future fixes would need to be synchronized across four files.",
+      "revId": "a9dfe92cfabc0e97a5a1f6dc0203d4c8e7f0e2b4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
