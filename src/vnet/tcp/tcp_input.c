@@ -727,9 +727,6 @@ tcp_cc_account_recovery_ack (tcp_connection_t *tc, tcp_rate_sample_t *rs, u32 is
 {
   if (has_sack)
     {
-      if (!tc->bytes_acked && tc->sack_sb.rxt_sacked)
-	tcp_fastrecovery_first_on (tc);
-
       tc->rxt_delivered += tc->sack_sb.rxt_sacked;
       tc->prr_delivered += rs->acked_and_sacked;
     }
