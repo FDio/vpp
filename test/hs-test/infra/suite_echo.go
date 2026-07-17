@@ -13,7 +13,7 @@ var echoSoloTests = map[string][]func(s *EchoSuite){}
 var echoMWTests = map[string][]func(s *EchoSuite){}
 
 type EchoSuite struct {
-	VethsSuite
+	TapSuite
 }
 
 func RegisterEchoTests(tests ...func(s *EchoSuite)) {
@@ -26,7 +26,7 @@ func RegisterEchoMWTests(tests ...func(s *EchoSuite)) {
 	echoMWTests[GetTestFilename()] = tests
 }
 
-var _ = Describe("EchoSuite", Ordered, ContinueOnFailure, Label("Veth", "Echo"), func() {
+var _ = Describe("EchoSuite", Ordered, ContinueOnFailure, Label("Tap", "Echo"), func() {
 	var s EchoSuite
 	BeforeAll(func() {
 		s.SetupSuite()
@@ -57,7 +57,7 @@ var _ = Describe("EchoSuite", Ordered, ContinueOnFailure, Label("Veth", "Echo"),
 	}
 })
 
-var _ = Describe("EchoSuiteSolo", Ordered, ContinueOnFailure, Serial, Label("Veth", "Echo"), func() {
+var _ = Describe("EchoSuiteSolo", Ordered, ContinueOnFailure, Serial, Label("Tap", "Echo"), func() {
 	var s EchoSuite
 	BeforeAll(func() {
 		s.SetupSuite()
@@ -87,7 +87,7 @@ var _ = Describe("EchoSuiteSolo", Ordered, ContinueOnFailure, Serial, Label("Vet
 	}
 })
 
-var _ = DescribeMWSuite("EchoSuiteMW", []string{"Veth", "Echo", "MW"}, func() {
+var _ = DescribeMWSuite("EchoSuiteMW", []string{"Tap", "Echo", "MW"}, func() {
 	var s EchoSuite
 	BeforeAll(func() {
 		s.SetupSuite()
