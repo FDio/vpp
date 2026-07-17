@@ -30,6 +30,7 @@ typedef enum transport_snd_flags_
 {
   TRANSPORT_SND_F_DESCHED = 1 << 0,
   TRANSPORT_SND_F_POSTPONE = 1 << 1,
+  TRANSPORT_SND_F_GSO = 1 << 2,
   TRANSPORT_SND_N_FLAGS
 } __clib_packed transport_snd_flags_t;
 
