@@ -69,6 +69,24 @@
       "parentUuid": "c4f18adf_a32e43aa",
       "revId": "0d8f619a0ded2ce6f5875c2c1279f6836f6689c7",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "951ef1d0_26764cf7",
+        "filename": "src/vlib/buffer_funcs.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 395,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-07-17T15:04:29Z",
+      "side": 1,
+      "message": "yes I think it would be better: both functions are marked as always_inline so GCC/clang constant propagation will eliminate the branches entirely. This is used extensively in VPP.",
+      "parentUuid": "cd3b1a6f_5dd6a257",
+      "revId": "0d8f619a0ded2ce6f5875c2c1279f6836f6689c7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
