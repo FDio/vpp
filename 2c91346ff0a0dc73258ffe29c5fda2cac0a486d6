@@ -53,6 +53,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "f99ec83b_069c1240",
+        "filename": "src/vnet/flow/flow.c",
+        "patchSetId": 34
+      },
+      "lineNbr": 247,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2026-07-17T08:48:26Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "ca500468_cc4b3ba8",
+      "revId": "2c91346ff0a0dc73258ffe29c5fda2cac0a486d6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "3d2b03a3_ef780f2a",
@@ -84,6 +102,24 @@
       "side": 1,
       "message": "it should be done at the backend level, when preparing the memory layout to push flow rules to the hardware we can detect an inconsistent flow compared to its template. not sure we want to do that in vnet flow as is purely a descriptive layer of the flow rules.",
       "parentUuid": "3d2b03a3_ef780f2a",
+      "revId": "2c91346ff0a0dc73258ffe29c5fda2cac0a486d6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "7cafa279_f5bcca31",
+        "filename": "src/vnet/flow/flow.c",
+        "patchSetId": 34
+      },
+      "lineNbr": 257,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2026-07-17T08:48:26Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "c124279d_b735d946",
       "revId": "2c91346ff0a0dc73258ffe29c5fda2cac0a486d6",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
