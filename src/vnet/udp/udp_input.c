@@ -307,6 +307,8 @@ udp46_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  u8 queue_event = 1;
 	  uc0 = udp_connection_from_transport (session_get_transport (s0));
 	  uc0->sw_if_index = vnet_buffer (b[0])->sw_if_index[VLIB_RX];
+	  if (!(uc0->cfg_flags & UDP_CFG_F_NO_USO))
+	    udp_check_tx_offload (uc0);
 	  if (uc0->flags & UDP_CONN_F_CONNECTED)
 	    {
 	      error0 = UDP_ERROR_CONNECTED;
@@ -369,6 +371,8 @@ udp46_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 		}
 	      s0 = session_get (uc0->c_s_index, uc0->c_thread_index);
 	      uc0->sw_if_index = vnet_buffer (b[0])->sw_if_index[VLIB_RX];
+	      if (!(uc0->cfg_flags & UDP_CFG_F_NO_USO))
+		udp_check_tx_offload (uc0);
 	      error0 = UDP_ERROR_ACCEPT;
 	    }
 	  udp_connection_enqueue (uc0, s0, &hdr0, thread_index, b[0], 1,
