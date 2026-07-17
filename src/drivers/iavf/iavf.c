@@ -45,6 +45,7 @@ static const u32 driver_cap_flags =
   /**/ VIRTCHNL_VF_OFFLOAD_VLAN |
   /**/ VIRTCHNL_VF_OFFLOAD_VLAN_V2 |
   /**/ VIRTCHNL_VF_OFFLOAD_WB_ON_ITR |
+  /**/ VIRTCHNL_VF_OFFLOAD_USO |
   /**/ 0;
 
 static const virtchnl_version_info_t driver_virtchnl_version = {
@@ -345,6 +346,7 @@ iavf_init (vlib_main_t *vm, vnet_dev_t *dev)
           .tcp_cksum = 1,
           .udp_cksum = 1,
           .tcp_gso = 1,
+          .udp_gso = !!(res.vf_cap_flags & VIRTCHNL_VF_OFFLOAD_USO),
         },
       },
       .ops = {

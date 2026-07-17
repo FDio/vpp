@@ -39,15 +39,15 @@ struct iavf_ip6_psh
 };
 
 static_always_inline u64
-iavf_tx_prepare_cksum (vlib_buffer_t *b, u8 is_tso)
+iavf_tx_prepare_cksum (vlib_buffer_t *b, u8 is_gso)
 {
   u64 flags = 0;
-  if (!is_tso && !(b->flags & VNET_BUFFER_F_OFFLOAD))
+  if (!is_gso && !(b->flags & VNET_BUFFER_F_OFFLOAD))
     return 0;
 
   vnet_buffer_oflags_t oflags = vnet_buffer (b)->oflags;
-  u32 is_tcp = is_tso || oflags & VNET_BUFFER_OFFLOAD_F_TCP_CKSUM;
-  u32 is_udp = !is_tso && oflags & VNET_BUFFER_OFFLOAD_F_UDP_CKSUM;
+  u32 is_tcp = oflags & VNET_BUFFER_OFFLOAD_F_TCP_CKSUM;
+  u32 is_udp = oflags & VNET_BUFFER_OFFLOAD_F_UDP_CKSUM;
 
   if (!is_tcp && !is_udp)
     return 0;
@@ -77,7 +77,7 @@ iavf_tx_prepare_cksum (vlib_buffer_t *b, u8 is_tso)
   if (is_ip4)
     ip4->checksum = 0;
 
-  if (is_tso)
+  if (is_gso)
     {
       if (is_ip4)
 	ip4->length = 0;
@@ -91,10 +91,9 @@ iavf_tx_prepare_cksum (vlib_buffer_t *b, u8 is_tso)
       psh.src = ip4->src_address.as_u32;
       psh.dst = ip4->dst_address.as_u32;
       psh.proto = ip4->protocol;
-      psh.l4len = is_tso ?
-			  0 :
-			  clib_host_to_net_u16 (clib_net_to_host_u16 (ip4->length) -
-					  (l4_hdr_offset - l3_hdr_offset));
+      psh.l4len = is_gso ? 0 :
+			   clib_host_to_net_u16 (clib_net_to_host_u16 (ip4->length) -
+						 (l4_hdr_offset - l3_hdr_offset));
       sum = ~clib_ip_csum ((u8 *) &psh, sizeof (psh));
     }
   else
@@ -103,7 +102,7 @@ iavf_tx_prepare_cksum (vlib_buffer_t *b, u8 is_tso)
       psh.src = ip6->src_address;
       psh.dst = ip6->dst_address;
       psh.proto = clib_host_to_net_u32 ((u32) ip6->protocol);
-      psh.l4len = is_tso ? 0 : ip6->payload_length;
+      psh.l4len = is_gso ? 0 : ip6->payload_length;
       sum = ~clib_ip_csum ((u8 *) &psh, sizeof (psh));
     }
 
@@ -214,6 +213,28 @@ iavf_tx_fill_data_desc (vlib_main_t *vm, iavf_tx_desc_t *d, vlib_buffer_t *b,
     d->qword[0] = vlib_buffer_get_current_pa (vm, b);
   d->qword[1] = (((u64) b->current_length) << 34 | cmd | IAVF_TXD_CMD_RSV);
 }
+
+static_always_inline int
+iavf_tx_prepare_gso (vnet_dev_tx_queue_t *txq, vlib_buffer_t *b)
+{
+  u32 is_ip4 = b->flags & VNET_BUFFER_F_IS_IP4;
+  i16 l3_hdr_offset = vnet_buffer (b)->l3_hdr_offset;
+  ip4_header_t *ip4 = (void *) (b->data + l3_hdr_offset);
+  ip6_header_t *ip6 = (void *) (b->data + l3_hdr_offset);
+  u8 l4_proto = is_ip4 ? ip4->protocol : ip6->protocol;
+
+  if (l4_proto == IP_PROTOCOL_UDP)
+    {
+      if (PREDICT_FALSE (!(txq->port->attr.tx_offloads.udp_gso)))
+	return -1;
+      vnet_buffer (b)->oflags |= VNET_BUFFER_OFFLOAD_F_UDP_CKSUM;
+    }
+  else
+    vnet_buffer (b)->oflags |= VNET_BUFFER_OFFLOAD_F_TCP_CKSUM;
+
+  return 0;
+}
+
 static_always_inline u16
 iavf_tx_prepare (vlib_main_t *vm, vlib_node_runtime_t *node,
 		 vnet_dev_tx_queue_t *txq, u32 *buffers, u32 n_packets,
@@ -331,7 +352,7 @@ iavf_tx_prepare (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  u64 cmd = cmd_eop;
 
 	  if (PREDICT_FALSE (flags & VNET_BUFFER_F_OFFLOAD))
-	    cmd |= iavf_tx_prepare_cksum (b[0], 0 /* is_tso */);
+	    cmd |= iavf_tx_prepare_cksum (b[0], 0 /* is_gso */);
 
 	  iavf_tx_fill_data_desc (vm, d, b[0], cmd, use_va_dma);
 	}
@@ -370,6 +391,14 @@ iavf_tx_prepare (vlib_main_t *vm, vlib_node_runtime_t *node,
 
 	  if (flags & VNET_BUFFER_F_GSO)
 	    {
+	      if (PREDICT_FALSE (iavf_tx_prepare_gso (txq, b[0])))
+		{
+		  vlib_buffer_free_one (vm, buffers[0]);
+		  vlib_error_count (vm, node->node_index, IAVF_TX_NODE_CTR_GSO_PACKET_DROP, 1);
+		  n_packets_left -= 1;
+		  buffers += 1;
+		  continue;
+		}
 	      /* Enqueue a context descriptor */
 	      tb[1] = tb[0];
 	      tb[0] = iavf_tx_fill_ctx_desc (vm, txq, d, b[0]);
@@ -384,11 +413,11 @@ iavf_tx_prepare (vlib_main_t *vm, vlib_node_runtime_t *node,
 	      n_desc_left -= 1;
 	      d += 1;
 	      tb += 1;
-	      cmd = iavf_tx_prepare_cksum (b[0], 1 /* is_tso */);
+	      cmd = iavf_tx_prepare_cksum (b[0], 1 /* is_gso */);
 	    }
 	  else if (flags & VNET_BUFFER_F_OFFLOAD)
 	    {
-	      cmd = iavf_tx_prepare_cksum (b[0], 0 /* is_tso */);
+	      cmd = iavf_tx_prepare_cksum (b[0], 0 /* is_gso */);
 	    }
 
 	  /* Deal with chain buffer if present */
