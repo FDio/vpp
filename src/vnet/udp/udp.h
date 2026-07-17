@@ -19,6 +19,8 @@
 
 #define UDP_NO_NODE_SET ((u16) ~0)
 
+#define UDP_MAX_GSO_SZ ((u16) ~0)
+
 typedef enum
 {
 #define udp_error(f, n, s, d) UDP_ERROR_##f,
@@ -51,6 +53,8 @@ typedef enum udp_conn_flags_
 
 #define foreach_udp_cfg_flag                                                                       \
   _ (NO_CSUM_OFFLOAD, "no-csum-offload")                                                           \
+  _ (NO_USO, "USO off")                                                                            \
+  _ (USO, "USO")                                                                                   \
   _ (TRACKED, "tracked")
 
 typedef enum udp_cfg_flag_bits_
@@ -157,6 +161,9 @@ typedef struct
   u8 is_init;
 
   u8 icmp_send_unreachable_disabled;
+  u8 allow_uso;
+
+  u16 max_gso_size;
 } udp_main_t;
 
 extern udp_main_t udp_main;
@@ -283,6 +290,17 @@ udp_get_dst_port_info (udp_main_t * um, udp_dst_port_t dst_port, u8 is_ip4)
 {
   uword *p = hash_get (um->dst_port_info_by_dst_port[is_ip4], dst_port);
   return p ? vec_elt_at_index (um->dst_port_infos[is_ip4], p[0]) : 0;
+}
+
+always_inline void
+udp_check_tx_offload (udp_connection_t *uc)
+{
+  vnet_main_t *vnm = vnet_get_main ();
+  vnet_hw_interface_t *hw_if;
+
+  hw_if = vnet_get_sup_hw_interface (vnm, uc->sw_if_index);
+  if (hw_if->caps & VNET_HW_IF_CAP_UDP_GSO)
+    uc->cfg_flags |= UDP_CFG_F_USO;
 }
 
 format_function_t format_udp_header;

@@ -186,6 +186,8 @@ udp_session_bind (u32 session_index, transport_endpoint_cfg_t *lcl)
   clib_spinlock_init (&listener->rx_lock);
   if (!um->csum_offload)
     listener->cfg_flags |= UDP_CFG_F_NO_CSUM_OFFLOAD;
+  if (!um->allow_uso)
+    listener->cfg_flags |= UDP_CFG_F_NO_USO;
   listener->start_ts = transport_time_now (listener->c_thread_index);
 
   udp_connection_register_port (listener->c_lcl_port, lcl->is_ip4);
@@ -391,9 +393,17 @@ udp_session_send_params (transport_connection_t * tconn,
   /* No constraint on TX window */
   sp->snd_space = ~0;
   /* TODO figure out MTU of output interface */
-  sp->snd_mss = uc->mss;
+  if (PREDICT_FALSE (uc->cfg_flags & UDP_CFG_F_USO))
+    {
+      sp->snd_mss = udp_main.max_gso_size;
+      sp->flags = TRANSPORT_SND_F_GSO;
+    }
+  else
+    {
+      sp->snd_mss = uc->mss;
+      sp->flags = 0;
+    }
   sp->tx_offset = 0;
-  sp->flags = 0;
   return 0;
 }
 
@@ -449,8 +459,14 @@ udp_open_connection (transport_endpoint_cfg_t * rmt)
   uc->c_fib_index = rmt->fib_index;
   uc->c_dscp = rmt->dscp;
   uc->mss = rmt->mss ? rmt->mss : udp_default_mtu (um, uc->c_is_ip4);
+  if (!um->allow_uso)
+    uc->cfg_flags |= UDP_CFG_F_NO_USO;
   if (rmt->peer.sw_if_index != ENDPOINT_INVALID_INDEX)
-    uc->sw_if_index = rmt->peer.sw_if_index;
+    {
+      uc->sw_if_index = rmt->peer.sw_if_index;
+      if (!(uc->cfg_flags & UDP_CFG_F_NO_USO))
+	udp_check_tx_offload (uc);
+    }
   uc->flags |= UDP_CONN_F_OWNS_PORT | UDP_CONN_F_CONNECTED;
   if (!um->csum_offload)
     uc->cfg_flags |= UDP_CFG_F_NO_CSUM_OFFLOAD;
@@ -608,6 +624,43 @@ udp_enable_disable (vlib_main_t *vm, u8 is_en)
   return 0;
 }
 
+static int
+udp_session_attribute (u32 conn_index, clib_thread_index_t thread_index, u8 is_get,
+		       transport_endpt_attr_t *attr)
+{
+  udp_connection_t *uc;
+  u64 non;
+
+  if (!is_get)
+    return -1;
+
+  uc = udp_connection_get (conn_index, thread_index);
+  if (PREDICT_FALSE (!uc))
+    return -1;
+
+  switch (attr->type)
+    {
+    case TRANSPORT_ENDPT_ATTR_NEXT_OUTPUT_NODE:
+      non = (u64) uc->next_node_opaque << 32 | uc->next_node_index;
+      attr->next_output_node = non;
+      break;
+    case TRANSPORT_ENDPT_ATTR_MSS:
+      attr->mss = uc->mss;
+      break;
+    case TRANSPORT_ENDPT_ATTR_FLAGS:
+      attr->flags = 0;
+      if (!(uc->cfg_flags & UDP_CFG_F_NO_CSUM_OFFLOAD))
+	attr->flags |= TRANSPORT_ENDPT_ATTR_F_CSUM_OFFLOAD;
+      if (uc->cfg_flags & UDP_CFG_F_USO)
+	attr->flags |= TRANSPORT_ENDPT_ATTR_F_GSO;
+      break;
+    default:
+      return -1;
+    }
+
+  return 0;
+}
+
 static const transport_proto_vft_t udp_proto = {
   .enable = udp_enable_disable,
   .start_listen = udp_session_bind,
@@ -617,6 +670,7 @@ static const transport_proto_vft_t udp_proto = {
   .get_connection = udp_session_get,
   .get_listener = udp_session_get_listener,
   .get_half_open = udp_session_get_half_open,
+  .attribute = udp_session_attribute,
   .close = udp_session_close,
   .cleanup = udp_session_cleanup,
   .send_params = udp_session_send_params,
@@ -671,6 +725,7 @@ udp_init (vlib_main_t * vm)
 
   um->default_mtu = 1500;
   um->csum_offload = 1;
+  um->max_gso_size = UDP_MAX_GSO_SZ;
   return 0;
 }
 
