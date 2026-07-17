@@ -40,8 +40,8 @@ atl_rx_queue_alloc (vlib_main_t *vm, vnet_dev_rx_queue_t *rxq)
 
   clib_memset_u32 (aq->buffer_indices, 0, rxq->size);
 
-  rv =
-    vnet_dev_dma_mem_alloc (vm, dev, sizeof (atl_rx_desc_t) * rxq->size, 128, (void **) &aq->descs);
+  rv = vnet_dev_dma_mem_alloc (vm, dev, sizeof (atl_rx_desc_t) * rxq->size, 128,
+			       (void **) &aq->descs, "RX queue %u descriptors", rxq->queue_id);
   if (rv != VNET_DEV_OK)
     {
       clib_mem_free (aq->buffer_indices);
@@ -85,14 +85,14 @@ atl_tx_queue_alloc (vlib_main_t *vm, vnet_dev_tx_queue_t *txq)
       goto done;
     }
 
-  rv =
-    vnet_dev_dma_mem_alloc (vm, dev, sizeof (atl_tx_desc_t) * txq->size, 128, (void **) &aq->descs);
+  rv = vnet_dev_dma_mem_alloc (vm, dev, sizeof (atl_tx_desc_t) * txq->size, 128,
+			       (void **) &aq->descs, "TX queue %u descriptors", txq->queue_id);
 
   if (rv != VNET_DEV_OK)
     goto done;
 
   rv = vnet_dev_dma_mem_alloc (vm, dev, CLIB_CACHE_LINE_BYTES, CLIB_CACHE_LINE_BYTES,
-			       (void **) &aq->wb);
+			       (void **) &aq->wb, "TX queue %u writeback", txq->queue_id);
 
   if (rv != VNET_DEV_OK)
     goto done;

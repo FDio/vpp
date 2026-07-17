@@ -6,6 +6,7 @@
 #include <vnet/dev/dev.h>
 #include <vnet/dev/counters.h>
 #include <vnet/ethernet/ethernet.h>
+#include <vppinfra/format_table.h>
 
 u8 *
 format_vnet_dev_rv (u8 *s, va_list *args)
@@ -97,6 +98,31 @@ format_vnet_dev_info (u8 *s, va_list *args)
     s = format (s, "\n%UDevice Specific Arguments:\n%U%U", format_white_space,
 		indent, format_white_space, indent + 2, format_clib_args,
 		dev->args);
+  if (a->debug && vec_len (dev->dma_allocs))
+    {
+      table_t t = {};
+      vnet_dev_dma_mem_alloc_t *alloc;
+      u32 row = 0;
+
+      table_add_hdr_row (&t, 5, "Virtual Addr", "DMA Addr", "Size", "Alignment", "Description");
+      table_set_cell_align (&t, -1, 4, TTAA_LEFT);
+      vec_foreach (alloc, dev->dma_allocs)
+	{
+	  if (alloc->va == 0)
+	    continue;
+	  table_format_cell (&t, row, 0, "%p", alloc->va);
+	  table_format_cell (&t, row, 1, "0x%lx", alloc->pa);
+	  table_format_cell (&t, row, 2, "%u", alloc->size);
+	  table_format_cell (&t, row, 3, "%u", alloc->align);
+	  table_format_cell (&t, row, 4, "%v", alloc->description);
+	  table_set_cell_align (&t, row, 4, TTAA_LEFT);
+	  row++;
+	}
+      if (row)
+	s = format (s, "\n%UDMA Memory Allocations:\n%U%U", format_white_space, indent,
+		    format_white_space, indent + 2, format_table, &t);
+      table_free (&t);
+    }
   if (dev->ops.format_info)
     s =
       format (s, "\n%UDevice Specific Info:\n%U%U", format_white_space, indent,

@@ -409,6 +409,15 @@ typedef struct vnet_dev_port
   u8 data[];
 } vnet_dev_port_t;
 
+typedef struct
+{
+  void *va;
+  u64 pa;
+  u32 size;
+  u32 align;
+  u8 *description;
+} vnet_dev_dma_mem_alloc_t;
+
 typedef struct vnet_dev
 {
   vnet_dev_device_id_t device_id;
@@ -432,7 +441,7 @@ typedef struct vnet_dev
   vnet_dev_periodic_op_t *periodic_ops;
   u8 *description;
   clib_args_handle_t args;
-  void **dma_allocs;
+  vnet_dev_dma_mem_alloc_t *dma_allocs;
   u8 __clib_aligned (16)
   data[];
 } vnet_dev_t;
@@ -610,8 +619,7 @@ vnet_dev_op_no_rv_t vnet_dev_detach;
 vnet_dev_rv_t vnet_dev_port_add (vlib_main_t *, vnet_dev_t *,
 				 vnet_dev_port_id_t,
 				 vnet_dev_port_add_args_t *);
-vnet_dev_rv_t vnet_dev_dma_mem_alloc (vlib_main_t *, vnet_dev_t *, u32, u32,
-				      void **);
+vnet_dev_rv_t vnet_dev_dma_mem_alloc (vlib_main_t *, vnet_dev_t *, u32, u32, void **, char *, ...);
 void vnet_dev_dma_mem_free (vlib_main_t *, vnet_dev_t *, void *);
 vnet_dev_bus_t *vnet_dev_find_device_bus (vlib_main_t *, vnet_dev_device_id_t);
 void *vnet_dev_get_device_info (vlib_main_t *, vnet_dev_device_id_t);

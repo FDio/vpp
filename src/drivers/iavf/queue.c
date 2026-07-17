@@ -29,8 +29,8 @@ iavf_rx_queue_alloc (vlib_main_t *vm, vnet_dev_rx_queue_t *rxq)
     rxq->size * sizeof (arq->buffer_indices[0]), CLIB_CACHE_LINE_BYTES);
 
   if ((rv =
-	 vnet_dev_dma_mem_alloc (vm, dev, sizeof (iavf_rx_desc_t) * rxq->size,
-				 0, (void **) &arq->descs)))
+	 vnet_dev_dma_mem_alloc (vm, dev, sizeof (iavf_rx_desc_t) * rxq->size, 0,
+				 (void **) &arq->descs, "RX queue %u descriptors", rxq->queue_id)))
     return rv;
 
   arq->qrx_tail = ad->bar0 + IAVF_QRX_TAIL (rxq->queue_id);
@@ -63,8 +63,8 @@ iavf_tx_queue_alloc (vlib_main_t *vm, vnet_dev_tx_queue_t *txq)
   vnet_dev_rv_t rv;
 
   if ((rv =
-	 vnet_dev_dma_mem_alloc (vm, dev, sizeof (iavf_tx_desc_t) * txq->size,
-				 0, (void **) &atq->descs)))
+	 vnet_dev_dma_mem_alloc (vm, dev, sizeof (iavf_tx_desc_t) * txq->size, 0,
+				 (void **) &atq->descs, "TX queue %u descriptors", txq->queue_id)))
     return rv;
 
   clib_ring_new_aligned (atq->rs_slots, 32, CLIB_CACHE_LINE_BYTES);
