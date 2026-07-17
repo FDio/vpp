@@ -1912,6 +1912,77 @@ sfifo_test_fifo_shrink (vlib_main_t * vm, unformat_input_t * input)
 }
 
 static int
+sfifo_test_fifo_reservation (vlib_main_t *vm, unformat_input_t *input)
+{
+  fifo_segment_main_t _fsm = { 0 }, *fsm = &_fsm;
+  const u32 first_len = 3000, second_len = 6000;
+  svm_fifo_seg_t segs[8];
+  u8 *expected = 0, *actual = 0;
+  fifo_segment_t *fs;
+  svm_fifo_t *f;
+  u32 copied, i;
+  int n_segs, rv;
+
+  (void) input;
+
+  fs = fifo_segment_prepare (fsm, "fifo-reservation", 0);
+  SFIFO_TEST (fs != 0, "fifo segment allocated");
+
+  /* Start with one 4K chunk and let provisioning grow the chunk list. */
+  f = fifo_prepare (fs, 4096);
+  SFIFO_TEST (f != 0, "fifo allocated");
+  svm_fifo_set_size (f, 16 << 10);
+
+  vec_validate (expected, first_len + second_len - 1);
+  vec_validate (actual, first_len + second_len - 1);
+  for (i = 0; i < vec_len (expected); i++)
+    expected[i] = (i * 17 + 3) & 0xff;
+
+  /* Provision and complete the second asynchronous operation first. */
+  n_segs = svm_fifo_provision_chunks_at_offset (f, first_len, segs, ARRAY_LEN (segs), second_len);
+  SFIFO_TEST (n_segs > 0, "second reservation provisioned in %d segments", n_segs);
+  copied = 0;
+  for (i = 0; i < n_segs; i++)
+    {
+      clib_memcpy_fast (segs[i].data, expected + first_len + copied, segs[i].len);
+      copied += segs[i].len;
+    }
+  SFIFO_TEST (copied == second_len, "second reservation mapped %u bytes", copied);
+  SFIFO_TEST (svm_fifo_max_dequeue_cons (f) == 0, "uncommitted reservation is not visible");
+
+  n_segs = svm_fifo_provision_chunks_at_offset (f, 0, segs, ARRAY_LEN (segs), first_len);
+  SFIFO_TEST (n_segs > 0, "first reservation provisioned in %d segments", n_segs);
+  copied = 0;
+  for (i = 0; i < n_segs; i++)
+    {
+      clib_memcpy_fast (segs[i].data, expected + copied, segs[i].len);
+      copied += segs[i].len;
+    }
+  SFIFO_TEST (copied == first_len, "first reservation mapped %u bytes", copied);
+
+  /* The producer publishes completed reservations in stream order. */
+  svm_fifo_enqueue_nocopy (f, first_len);
+  SFIFO_TEST (svm_fifo_max_dequeue_cons (f) == first_len, "only first reservation is visible");
+  svm_fifo_enqueue_nocopy (f, second_len);
+  SFIFO_TEST (svm_fifo_max_dequeue_cons (f) == first_len + second_len,
+	      "both reservations are visible");
+
+  rv = svm_fifo_dequeue (f, first_len + second_len, actual);
+  SFIFO_TEST (rv == first_len + second_len, "dequeued %d reserved bytes", rv);
+  SFIFO_TEST (!memcmp (actual, expected, first_len + second_len),
+	      "reserved data preserved across chunk boundaries");
+
+  rv = svm_fifo_provision_chunks_at_offset (f, 16 << 10, segs, ARRAY_LEN (segs), 1);
+  SFIFO_TEST (rv == SVM_FIFO_EFULL, "reservation beyond fifo size rejected");
+
+  ft_fifo_free (fs, f);
+  ft_fifo_segment_free (fsm, fs);
+  vec_free (expected);
+  vec_free (actual);
+  return 0;
+}
+
+static int
 sfifo_test_fifo_indirect (vlib_main_t * vm, unformat_input_t * input)
 {
   int __clib_unused verbose = 0, fifo_size = 4096, deq_chunk;
@@ -2840,6 +2911,8 @@ svm_fifo_test (vlib_main_t * vm, unformat_input_t * input,
 	res = sfifo_test_fifo_grow (vm, input);
       else if (unformat (input, "shrink"))
 	res = sfifo_test_fifo_shrink (vm, input);
+      else if (unformat (input, "reservation"))
+	res = sfifo_test_fifo_reservation (vm, input);
       else if (unformat (input, "indirect"))
 	res = sfifo_test_fifo_indirect (vm, input);
       else if (unformat (input, "zero"))
@@ -2903,6 +2976,9 @@ svm_fifo_test (vlib_main_t * vm, unformat_input_t * input,
 	    goto done;
 
 	  if ((res = sfifo_test_fifo_shrink (vm, input)))
+	    goto done;
+
+	  if ((res = sfifo_test_fifo_reservation (vm, input)))
 	    goto done;
 
 	  if ((res = sfifo_test_fifo_indirect (vm, input)))
