@@ -165,6 +165,10 @@ udp_config_fn (vlib_main_t * vm, unformat_input_t * input)
 	um->icmp_send_unreachable_disabled = 1;
       else if (unformat (input, "no-csum-offload"))
 	um->csum_offload = 0;
+      else if (unformat (input, "uso"))
+	um->allow_uso = 1;
+      else if (unformat (input, "max-gso-size %u", &tmp))
+	um->max_gso_size = clib_min (tmp, UDP_MAX_GSO_SZ);
       else
 	return clib_error_return (0, "unknown input `%U'",
 				  format_unformat_error, input);
