@@ -170,7 +170,8 @@ mvpp2_bm_pool_create (vlib_main_t *vm, vnet_dev_t *dev, mvpp2_bpool_t *pool)
 
   bppe_num = MVPP2_BM_POOL_SIZE_MAX;
   bppe_region_size = bppe_num * 2 * sizeof (u64);
-  rv = vnet_dev_dma_mem_alloc (vm, dev, bppe_region_size, MVPP2_BM_POOL_PTR_ALIGN, &mem);
+  rv = vnet_dev_dma_mem_alloc (vm, dev, bppe_region_size, MVPP2_BM_POOL_PTR_ALIGN, &mem,
+			       "Buffer pool %u pointers", pool->id);
   if (rv != VNET_DEV_OK)
     return rv;
 

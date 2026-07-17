@@ -145,8 +145,9 @@ mvpp2_txq_init (vlib_main_t *vm, vnet_dev_tx_queue_t *q)
 
   /* FS_A8K Table 1542: The SWF ring size + a prefetch size for HWF */
   txq->desc_total = q->size;
-  rv = vnet_dev_dma_mem_alloc (vm, dev, txq->desc_total * MVPP2_DESC_ALIGNED_SIZE,
-			       MVPP2_DESC_Q_ALIGN, &desc_mem);
+  rv =
+    vnet_dev_dma_mem_alloc (vm, dev, txq->desc_total * MVPP2_DESC_ALIGNED_SIZE, MVPP2_DESC_Q_ALIGN,
+			    &desc_mem, "TX queue %u descriptors", q->queue_id);
   if (rv != VNET_DEV_OK)
     {
       log_err (dev, "PP: cannot allocate egress descriptor array\n");

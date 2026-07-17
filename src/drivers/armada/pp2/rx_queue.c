@@ -73,7 +73,7 @@ mvpp2_rxq_init (vlib_main_t *vm, vnet_dev_rx_queue_t *q)
   void *desc_mem;
 
   rv = vnet_dev_dma_mem_alloc (vm, dev, q->size * MVPP2_DESC_ALIGNED_SIZE, MVPP2_DESC_Q_ALIGN,
-			       &desc_mem);
+			       &desc_mem, "RX queue %u descriptors", q->queue_id);
   if (rv != VNET_DEV_OK)
     {
       log_err (dev, "PP: cannot allocate ingress descriptor array\n");

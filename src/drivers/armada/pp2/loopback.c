@@ -101,7 +101,7 @@ mvpp2_loopback_init (vlib_main_t *vm, vnet_dev_t *dev)
   mvpp2_dev_reg_wr (dev, MVPP2_RX_CTRL_REG (MVPP2_LOOPBACK_PORT), rx_ctrl.as_u32);
 
   rv = vnet_dev_dma_mem_alloc (vm, dev, MVPP2_LOOPBACK_TXQ_SIZE * MVPP2_DESC_ALIGNED_SIZE,
-			       MVPP2_DESC_Q_ALIGN, &desc_mem);
+			       MVPP2_DESC_Q_ALIGN, &desc_mem, "Loopback TX queue descriptors");
   if (rv != VNET_DEV_OK)
     return rv;
   md->lbk_desc_virt_arr = desc_mem;

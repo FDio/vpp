@@ -48,8 +48,8 @@ mvpp2_hif_alloc (vlib_main_t *vm, vnet_dev_t *dev, mvpp2_hif_t *hif, u32 sz)
     .base = md->pp_base + hif_slot * MVPP2_REGSPACE_SIZE,
     .n_desc = sz,
   };
-  rv =
-    vnet_dev_dma_mem_alloc (vm, dev, sz * MVPP2_DESC_ALIGNED_SIZE, MVPP2_DESC_Q_ALIGN, &desc_mem);
+  rv = vnet_dev_dma_mem_alloc (vm, dev, sz * MVPP2_DESC_ALIGNED_SIZE, MVPP2_DESC_Q_ALIGN, &desc_mem,
+			       "HIF %u descriptors", hif_slot);
   if (rv != VNET_DEV_OK)
     {
       log_err (dev, "cannot allocate descriptor ring");
