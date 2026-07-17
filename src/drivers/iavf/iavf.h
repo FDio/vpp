@@ -197,7 +197,8 @@ typedef struct
 #define foreach_iavf_tx_node_counter                                                               \
   _ (SEG_SZ_EXCEEDED, seg_sz_exceeded, ERROR, "segment size exceeded")                             \
   _ (NO_FREE_SLOTS, no_free_slots, ERROR, "no free tx slots")                                      \
-  _ (PH_BUF_ALLOC, ph_buf_alloc, ERROR, "ph buf alloc")
+  _ (PH_BUF_ALLOC, ph_buf_alloc, ERROR, "ph buf alloc")                                            \
+  _ (GSO_PACKET_DROP, gso_packet_drop, ERROR, "gso packet drop")
 
 typedef enum
 {
