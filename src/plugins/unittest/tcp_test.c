@@ -3740,6 +3740,7 @@ tcp_test_tamper_recovery_point (vlib_main_t *vm)
   session_t *client_s, *server_s;
   u32 tries, mss, seq1, total_bytes = 256 << 10, drained = 0;
   u32 fr_before;
+  u64 tr_before;
   u8 *data = 0;
   int error, rv = 0, i;
 
@@ -3760,6 +3761,7 @@ tcp_test_tamper_recovery_point (vlib_main_t *vm)
     }
   mss = client_tc->snd_mss;
   fr_before = client_tc->fr_occurences;
+  tr_before = client_tc->tr_occurences;
 
   /* Drop an early segment and its first retransmission, then drop fresh data
    * above the recovery point during the same recovery episode. */
@@ -3818,11 +3820,135 @@ tcp_test_tamper_recovery_point (vlib_main_t *vm)
       rv = 1;
       goto cleanup;
     }
-  /* Verify a second fast-recovery episode. */
-  if (!TCP_TEST_I (((client_tc->fr_occurences - fr_before) >= 2),
-		   "recov_pt: recovery exits and re-enters for loss above the point "
-		   "(fr delta %u)",
-		   client_tc->fr_occurences - fr_before))
+  /* The first loss enters fast recovery. The early segment whose retransmit was
+   * also dropped is a lost retransmit that NextSeg (RFC6675) cannot resend once
+   * high_rxt has advanced past it, so it is recovered by the rto -- the exact
+   * episode/mechanism split is not asserted, only that recovery makes progress
+   * (>=1 fast-recovery episode) and, together with the all-data-delivered check
+   * above, that both losses are ultimately recovered. */
+  if (!TCP_TEST_I (((client_tc->fr_occurences - fr_before) >= 1),
+		   "recov_pt: recovery entered for the losses (fr delta %u, tr delta %llu)",
+		   client_tc->fr_occurences - fr_before, client_tc->tr_occurences - tr_before))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+cleanup:
+  tcp_tamper_reset ();
+  vec_free (data);
+  tcp_e2e_teardown (vm, ctx);
+  return rv;
+}
+
+/* Stranded lost retransmit. Build one large lost run below high_rxt: drop a run
+ * of consecutive original segments (so they become one contiguous hole) and
+ * also drop the coalesced retransmit of that run, which advances high_rxt past
+ * the whole hole. NextSeg (RFC6675) then skips it (end <= high_rxt), so the main
+ * retransmit loop cannot resend it -- a lost retransmit that only the rto can
+ * recover. This is the regression anchor for the removal of the "lost head
+ * retransmit" heuristic (which used to dribble the head 1 seg/RTT and starve the
+ * rto): with the heuristic gone the run is recovered by the rto and the transfer
+ * still completes. Assert the drops landed and all data is delivered. */
+static int
+tcp_test_tamper_stranded_head (vlib_main_t *vm)
+{
+  tcp_e2e_params_t params = {
+    .name = "strand_head",
+    .client_addr = 0x16161601,
+    .server_addr = 0x17171701,
+    .client_vrf = 0,
+    .server_vrf = 2,
+    .server_port = 2251,
+    .client_port = 0, /* ephemeral */
+    .secret = 2250,
+    /* Wide flight so the frontier can run far ahead of the stuck run. */
+    .rx_fifo_size = 256 << 10,
+    .tx_fifo_size = 256 << 10,
+  };
+  tcp_e2e_ctx_t _ctx, *ctx = &_ctx;
+  tcp_connection_t *client_tc;
+  session_t *client_s, *server_s;
+  const u32 n_holes = 8;
+  tcp_tamper_rule_t *orig_rule, *rxt_rule;
+  u32 tries, mss, seq0, total_bytes = 256 << 10, drained = 0;
+  u64 tr_before;
+  u8 *data = 0;
+  int error, rv = 0, i;
+
+  tcp_tamper_reset ();
+
+  if (!TCP_TEST_I ((tcp_e2e_setup (vm, ctx, &params) == 0), "strand_head: e2e setup"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  client_tc = ctx->client_tc;
+  client_s = ctx->client_s;
+  server_s = session_get_if_valid (accepted_session_index, accepted_session_thread);
+  if (!TCP_TEST_I ((server_s != 0), "strand_head: server session resolvable"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  mss = client_tc->snd_mss;
+  tr_before = client_tc->tr_occurences;
+
+  /* Build one large stranded hole, then keep it stranded:
+   *  - drop the n_holes ORIGINAL mss segments at/above seq0 (they are mss-
+   *    aligned, so exact seqs match) -> one contiguous lost run [seq0, seq0+N).
+   *  - drop the COALESCED retransmit of that run, which the main loop sends as
+   *    one segment starting at high_rxt == seq0. That send advances high_rxt
+   *    past the whole run, so NextSeg now skips it (end <= high_rxt) -- the run
+   *    is stranded and recovered only by the rto. */
+  seq0 = client_tc->snd_una + 4 * mss;
+  tcp_tamper_drop_from_seq (client_tc, seq0, n_holes);
+  tcp_tamper_drop_seq (client_tc, seq0, 1);
+  /* Reference by index: tcp_tamper_add_rule may realloc the rule vector, so
+   * pointers returned by the constructors above can be stale after the 2nd add. */
+  orig_rule = &tcp_tamper_main.rules[0];
+  rxt_rule = &tcp_tamper_main.rules[1];
+  tcp_tamper_enable (client_tc);
+
+  vec_validate (data, total_bytes - 1);
+  for (i = 0; i < (int) total_bytes; i++)
+    data[i] = i & 0xff;
+  error = svm_fifo_enqueue (client_s->tx_fifo, total_bytes, data);
+  if (!TCP_TEST_I ((error == (int) total_bytes), "strand_head: client queued %u bytes",
+		   total_bytes))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  error = session_program_tx_io_evt (client_s->handle, SESSION_IO_EVT_TX);
+  if (!TCP_TEST_I ((error == 0), "strand_head: client tx event programmed"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+  for (tries = 0; drained < total_bytes && tries < 8000; tries++)
+    {
+      drained += session_test_drain_rx_fifo (server_s);
+      if (drained >= total_bytes)
+	break;
+      tcp_e2e_pump (vm, 5e-3);
+    }
+
+  if (!TCP_TEST_I ((orig_rule->n_dropped == n_holes && rxt_rule->n_dropped == 1),
+		   "strand_head: %u originals dropped (%u) and coalesced retransmit dropped (%u)",
+		   n_holes, orig_rule->n_dropped, rxt_rule->n_dropped))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  /* Surface how the stranded run drained. With the head-retry heuristic removed
+   * the run is drained by the rto, so tr rises. Informational. */
+  vlib_cli_output (vm, "strand_head: tr delta %llu (rto drains) over %u stranded segs",
+		   client_tc->tr_occurences - tr_before, n_holes);
+  if (!TCP_TEST_I ((drained == total_bytes),
+		   "strand_head: all %u bytes delivered despite the stranded run (got %u)",
+		   total_bytes, drained))
     {
       rv = 1;
       goto cleanup;
@@ -3950,6 +4076,7 @@ tcp_test_tamper (vlib_main_t *vm, unformat_input_t *input)
     { "queued-fin", tcp_test_tamper_queued_fin },
     { "queued-data-loss", tcp_test_tamper_queued_data_loss },
     { "recov-pt", tcp_test_tamper_recovery_point },
+    { "strand-head", tcp_test_tamper_stranded_head },
     { "rto", tcp_test_tamper_rto },
   };
   int res = 0, i;
