@@ -16,6 +16,24 @@
       "message": "port-\u003emax_rx_frame_size is as it name says is l2 frame size, and vpp infra should set it properly including eventually vlan(s) tag size or some bigger headers like macsec. So it is not driver job to assume that there will be 2 vlan tags.\n\nStill adding FCS might be right thing to do.",
       "revId": "e7da1f2263d77dbb78a59bfac5ddb2502442ec9e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "6aa21668_6fe12de6",
+        "filename": "src/drivers/iavf/port.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 141,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-07-17T04:56:33Z",
+      "side": 1,
+      "message": "make sense, only FCS added",
+      "parentUuid": "990e6701_1d79d29c",
+      "revId": "e7da1f2263d77dbb78a59bfac5ddb2502442ec9e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
