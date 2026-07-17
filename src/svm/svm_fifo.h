@@ -259,6 +259,31 @@ int svm_fifo_fill_chunk_list (svm_fifo_t * f);
 int svm_fifo_provision_chunks (svm_fifo_t *f, svm_fifo_seg_t *fs, u32 n_segs,
 			       u32 len);
 /**
+ * Provision and return chunks at an offset from the producer tail
+ *
+ * This is equivalent to @ref svm_fifo_provision_chunks but maps writable
+ * memory starting at tail + offset. It does not publish any bytes. The
+ * producer must publish completed regions in order with
+ * @ref svm_fifo_enqueue_nocopy.
+ *
+ * This is intended for asynchronous producers that reserve several FIFO
+ * regions before the operations filling those regions complete. The caller
+ * is responsible for tracking reservations and preventing overlaps.
+ *
+ * This is a producer-side API and must only be called by the FIFO's single
+ * producer.
+ *
+ * @param f		fifo
+ * @param offset	offset from the current producer tail
+ * @param fs		array of fifo segments
+ * @param n_segs	length of fifo segments array
+ * @param len		number of bytes to preallocate and map
+ * @return		number of fifo segments provisioned or error
+ */
+int svm_fifo_provision_chunks_at_offset (svm_fifo_t *f, u32 offset,
+					 svm_fifo_seg_t *fs, u32 n_segs,
+					 u32 len);
+/**
  * Initialize rbtrees used for ooo lookups
  *
  * @param f		fifo
