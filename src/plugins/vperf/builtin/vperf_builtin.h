@@ -19,6 +19,7 @@ typedef enum
 #undef _
     VP_PROTO_HTTP_CONNECT_TCP,
   VP_PROTO_HTTP_CONNECT_UDP,
+  VP_PROTO_UDP_USO,
   VP_N_PROTOS,
 } vp_test_proto_t;
 
@@ -50,6 +51,7 @@ typedef struct
   u8 report_interval_total;   /**< Shown data are totals since the start of the test */
   u8 report_interval_jitter;  /**< Report jitter in periodic reports */
   u8 is_server;		      /**< Server side app */
+  u8 uso;		      /**< UDP segmentation offload */
   u64 report_interval;	      /**< Time between periodic reports (s) */
   f64 run_time;		      /**< Length of a test (s) */
 } vp_test_cfg_t;
@@ -171,7 +173,10 @@ vp_test_set_proto (vp_test_cfg_t *cfg)
       cfg->proto = VP_PROTO_TCP;
       break;
     case TRANSPORT_PROTO_UDP:
-      cfg->proto = VP_PROTO_UDP;
+      if (cfg->uso)
+	cfg->proto = VP_PROTO_UDP_USO;
+      else
+	cfg->proto = VP_PROTO_UDP;
       break;
     case TRANSPORT_PROTO_TLS:
       cfg->proto = VP_PROTO_TLS;

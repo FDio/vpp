@@ -442,6 +442,7 @@ vp_client_reset_runtime_config (vp_client_main_t *vpcm)
   vpcm->cfg.report_interval_jitter = 0;
   vpcm->include_buffer_offset = 0;
   vpcm->cfg.is_server = 0;
+  vpcm->cfg.uso = 0;
   clib_memset (&vpcm->stats.rtt_stats, 0, sizeof (vp_rtt_stat_t));
   vpcm->stats.rtt_stats.min_rtt = CLIB_F64_MAX;
   if (vpcm->stats.rtt_stats.w_lock == NULL)
