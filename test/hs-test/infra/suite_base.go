@@ -613,6 +613,9 @@ func (s *HstSuite) loadNetworkTopology(topologyName string) bool {
 		if _, ok := elem["netns"]; ok {
 			elem["netns"] = s.ProcessIndex + elem["netns"].(string) + Ppid
 		}
+		if _, ok := elem["bridge"]; ok {
+			elem["bridge"] = s.ProcessIndex + elem["bridge"].(string) + Ppid
+		}
 
 		if _, ok := elem["interfaces"]; ok {
 			interfaceCount := len(elem["interfaces"].([]any))

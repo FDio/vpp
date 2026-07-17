@@ -787,7 +787,7 @@ func (s *TcpHarnessSuite) SetupSuite() {
 	time.Sleep(1 * time.Second)
 	s.HstSuite.SetupSuite()
 	s.ConfigureNetworkTopology("2taps")
-	s.LoadContainerTopology("2peerVeth")
+	s.LoadContainerTopology("2peerVpps")
 	s.Interfaces.Client = s.GetInterfaceByName("hstcln")
 	s.Interfaces.Server = s.GetInterfaceByName("hstsrv")
 	s.Containers.ServerVpp = s.GetContainerByName("server-vpp")
