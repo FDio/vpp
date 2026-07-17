@@ -1228,29 +1228,38 @@ svm_fifo_fill_chunk_list (svm_fifo_t * f)
 }
 
 int
-svm_fifo_provision_chunks (svm_fifo_t *f, svm_fifo_seg_t *fs, u32 n_segs,
-			   u32 len)
+svm_fifo_provision_chunks_at_offset (svm_fifo_t *f, u32 offset, svm_fifo_seg_t *fs, u32 n_segs,
+				     u32 len)
 {
-  u32 head, tail, n_avail, head_pos, n_bytes, fs_index = 1, clen;
+  u32 head, tail, n_avail, start, start_pos, n_bytes, fs_index = 1, clen;
   svm_fifo_chunk_t *c;
 
   f_load_head_tail_prod (f, &head, &tail);
 
-  if (f_free_count (f, head, tail) < len)
+  n_avail = f_free_count (f, head, tail);
+  if (offset > n_avail || len > n_avail - offset)
     return SVM_FIFO_EFULL;
+
+  if (!len)
+    return 0;
 
   n_avail = f_chunk_end (f_end_cptr (f)) - tail;
 
-  if (n_avail < len && f_try_chunk_alloc (f, head, tail, len))
+  if (n_avail < offset + len && f_try_chunk_alloc (f, head, tail, offset + len))
     return SVM_FIFO_EGROW;
 
   if (!fs || !n_segs)
     return 0;
 
+  start = tail + offset;
   c = f_tail_cptr (f);
-  head_pos = (tail - c->start_byte);
-  fs[0].data = c->data + head_pos;
-  fs[0].len = clib_min (c->length - head_pos, len);
+  while (c && !f_chunk_includes_pos (c, start))
+    c = f_cptr (f, c->next);
+  ASSERT (c != 0);
+
+  start_pos = start - c->start_byte;
+  fs[0].data = c->data + start_pos;
+  fs[0].len = clib_min (c->length - start_pos, len);
   n_bytes = fs[0].len;
 
   while (n_bytes < len && fs_index < n_segs)
@@ -1264,6 +1273,12 @@ svm_fifo_provision_chunks (svm_fifo_t *f, svm_fifo_seg_t *fs, u32 n_segs,
     }
 
   return fs_index;
+}
+
+int
+svm_fifo_provision_chunks (svm_fifo_t *f, svm_fifo_seg_t *fs, u32 n_segs, u32 len)
+{
+  return svm_fifo_provision_chunks_at_offset (f, 0, fs, n_segs, len);
 }
 
 int
