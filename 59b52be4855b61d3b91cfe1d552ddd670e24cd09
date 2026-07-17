@@ -1,0 +1,40 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "2a3fb080_97401563",
+        "filename": "src/plugins/af_xdp/af_xdp.h",
+        "patchSetId": 50
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-07-17T16:33:44Z",
+      "side": 1,
+      "message": "Done in PS50. Removed AF_XDP_DEVICE_F_VPP_IF; af_xdp_delete_if() now deletes the VPP interface unconditionally after successful XDP detach. Paths that can fail before vnet_eth_register_interface() still free the partial device directly.",
+      "parentUuid": "6900eb37_aef59f4c",
+      "revId": "59b52be4855b61d3b91cfe1d552ddd670e24cd09",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "fba578b2_ab916857",
+        "filename": "src/plugins/af_xdp/output.c",
+        "patchSetId": 50
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-07-17T16:33:44Z",
+      "side": 1,
+      "message": "Done in PS50. The multi-buffer TX pre-scan now rejects chains containing any zero-length segment before descriptor reservation, frees the chain, and reports AF_XDP_TX_ERROR_ZERO_LENGTH_SEG.",
+      "parentUuid": "541e14ce_cb5d6cb3",
+      "revId": "59b52be4855b61d3b91cfe1d552ddd670e24cd09",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
