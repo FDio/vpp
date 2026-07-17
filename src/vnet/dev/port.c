@@ -780,6 +780,7 @@ vnet_dev_port_if_create (vlib_main_t *vm, vnet_dev_port_t *port, void *ptr)
       caps |= port->attr.caps.interrupt_mode ? VNET_HW_IF_CAP_INT_MODE : 0;
       caps |= port->attr.caps.mac_filter ? VNET_HW_IF_CAP_MAC_FILTER : 0;
       caps |= port->attr.tx_offloads.tcp_gso ? VNET_HW_IF_CAP_TCP_GSO : 0;
+      caps |= port->attr.tx_offloads.udp_gso ? VNET_HW_IF_CAP_UDP_GSO : 0;
       caps |= port->attr.tx_offloads.ip4_cksum ? VNET_HW_IF_CAP_TX_IP4_CKSUM : 0;
       caps |= port->attr.tx_offloads.tcp_cksum ? VNET_HW_IF_CAP_TX_TCP_CKSUM : 0;
       caps |= port->attr.tx_offloads.udp_cksum ? VNET_HW_IF_CAP_TX_UDP_CKSUM : 0;
