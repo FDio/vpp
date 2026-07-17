@@ -397,7 +397,7 @@ func setTcpChainedBufferLinuxLinkMTU(ifName string, mtu int) {
 	AssertNil(err, string(o))
 }
 
-func setTcpChainedBufferVethMTU(s *VethsSuite, mtu int) {
+func setTcpChainedBufferLinuxMTU(s *VethsSuite, mtu int) {
 	for _, nc := range s.NetConfigs {
 		if nc.Type() == Bridge {
 			setTcpChainedBufferLinuxLinkMTU(nc.Name(), mtu)
@@ -405,7 +405,9 @@ func setTcpChainedBufferVethMTU(s *VethsSuite, mtu int) {
 	}
 
 	for _, intf := range []*NetInterface{s.Interfaces.Server, s.Interfaces.Client} {
-		setTcpChainedBufferLinuxLinkMTU(intf.Name(), mtu)
+		if intf.Type() == Veth {
+			setTcpChainedBufferLinuxLinkMTU(intf.Name(), mtu)
+		}
 		setTcpChainedBufferLinuxLinkMTU(intf.Host.Name(), mtu)
 	}
 }
@@ -422,7 +424,7 @@ func configureTcpChainedBufferMTU(s *EchoSuite) {
 	serverVpp := s.Containers.ServerVpp.VppInstance
 	clientVpp := s.Containers.ClientVpp.VppInstance
 
-	setTcpChainedBufferVethMTU(&s.VethsSuite, tcpChainedBufferMTU)
+	setTcpChainedBufferLinuxMTU(&s.VethsSuite, tcpChainedBufferMTU)
 	setTcpChainedBufferVppInterfaceMTU(serverVpp, s.Interfaces.Server, tcpChainedBufferMTU)
 	setTcpChainedBufferVppInterfaceMTU(clientVpp, s.Interfaces.Client, tcpChainedBufferMTU)
 	AssertContains(serverVpp.Vppctl("set tcp mtu %d", tcpChainedBufferMTU), expected)
@@ -693,7 +695,6 @@ func EchoBuiltinHttp2ConnectUdpBackpressureTest(s *EchoSuite) {
 }
 
 func EchoBuiltinHttp2ConnectUdpBackpressureMWTest(s *EchoSuite) {
-	s.Skip("Might fail to set veth interface fanout options")
 	s.CpusPerVppContainer = 3
 	s.SetupTest()
 	EchoBuiltinHttp2ConnectUdpBackpressureTest(s)
@@ -756,7 +757,6 @@ func EchoBuiltinHttp3ConnectUdpTest(s *EchoSuite) {
 }
 
 func EchoBuiltinHttp1CpsMWTest(s *EchoSuite) {
-	s.Skip("Might fail to set veth interface fanout options")
 	var memoryConfig Stanza
 	memoryConfig.NewStanza("memory").Append("main-heap-size 2G").Close()
 	s.CpusPerVppContainer = 3
@@ -775,7 +775,6 @@ func EchoBuiltinHttp1CpsMWTest(s *EchoSuite) {
 }
 
 func EchoBuiltinHttp2CpsMWTest(s *EchoSuite) {
-	s.Skip("Might fail to set veth interface fanout options")
 	var memoryConfig Stanza
 	memoryConfig.NewStanza("memory").Append("main-heap-size 2G").Close()
 	s.CpusPerVppContainer = 3
@@ -794,7 +793,6 @@ func EchoBuiltinHttp2CpsMWTest(s *EchoSuite) {
 }
 
 func EchoBuiltinHttp3CpsMWTest(s *EchoSuite) {
-	s.Skip("Might fail to set veth interface fanout options")
 	var quicConfig Stanza
 	quicConfig.NewStanza("quic").Append("conn-timeout 60000").Append("fifo-size 32k").Close()
 	var memoryConfig Stanza

@@ -13,13 +13,13 @@ import (
 )
 
 func init() {
-	RegisterVethTests(XEchoVclClientUdpTest, XEchoVclClientTcpTest, XEchoVclServerUdpTest, VclQuicUnidirectionalStreamTest,
+	RegisterVclTests(XEchoVclClientUdpTest, XEchoVclClientTcpTest, XEchoVclServerUdpTest, VclQuicUnidirectionalStreamTest,
 		XEchoVclServerTcpTest, VclEchoTcpTest, VclEchoUdpTest, VclHttpPostTest, VclClUdpDscpTest,
 		VclQuicBidirectionalStreamTest, VclQuicUnidirectionalStreamClientResetTest,
 		VclQuicUnidirectionalStreamServerResetTest, VclQuicBidirectionalStreamClientResetTest,
 		VclQuicBidirectionalStreamServerResetTest, VclQuicClientCloseConnectionTest, VclQuicServerCloseConnectionTest,
 		VclDtlsOverMTUTest, VclRetryAttachTest)
-	RegisterVethMWTests(VclQuicUnidirectionalStreamsMWTest)
+	RegisterVclMWTests(VclQuicUnidirectionalStreamsMWTest)
 }
 
 func vclGetLabelValue(output, label string) (int, error) {
@@ -50,15 +50,15 @@ func getVclConfig(c *Container, ns_id_optional ...string) string {
 	return s.Close().ToString()
 }
 
-func XEchoVclClientUdpTest(s *VethsSuite) {
+func XEchoVclClientUdpTest(s *VclSuite) {
 	testXEchoVclClient(s, "udp")
 }
 
-func XEchoVclClientTcpTest(s *VethsSuite) {
+func XEchoVclClientTcpTest(s *VclSuite) {
 	testXEchoVclClient(s, "tcp")
 }
 
-func testXEchoVclClient(s *VethsSuite, proto string) {
+func testXEchoVclClient(s *VclSuite, proto string) {
 	s.SetupAppContainers()
 
 	serverVpp := s.Containers.ServerVpp.VppInstance
@@ -79,15 +79,15 @@ func testXEchoVclClient(s *VethsSuite, proto string) {
 	AssertContains(o, "CLIENT RESULTS")
 }
 
-func XEchoVclServerUdpTest(s *VethsSuite) {
+func XEchoVclServerUdpTest(s *VclSuite) {
 	testXEchoVclServer(s, "udp")
 }
 
-func XEchoVclServerTcpTest(s *VethsSuite) {
+func XEchoVclServerTcpTest(s *VclSuite) {
 	testXEchoVclServer(s, "tcp")
 }
 
-func testXEchoVclServer(s *VethsSuite, proto string) {
+func testXEchoVclServer(s *VclSuite, proto string) {
 	s.SetupAppContainers()
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -117,7 +117,7 @@ func testXEchoVclServer(s *VethsSuite, proto string) {
 	AssertContains(o, "Test finished at")
 }
 
-func testVclEcho(s *VethsSuite, proto string, extraArgs ...string) (string, string) {
+func testVclEcho(s *VclSuite, proto string, extraArgs ...string) (string, string) {
 	s.SetupAppContainers()
 
 	extras := ""
@@ -162,15 +162,15 @@ func testVclEcho(s *VethsSuite, proto string, extraArgs ...string) (string, stri
 	return o, oSrv
 }
 
-func VclEchoTcpTest(s *VethsSuite) {
+func VclEchoTcpTest(s *VclSuite) {
 	testVclEcho(s, "tcp")
 }
 
-func VclEchoUdpTest(s *VethsSuite) {
+func VclEchoUdpTest(s *VclSuite) {
 	testVclEcho(s, "udp")
 }
 
-func VclQuicUnidirectionalStreamTest(s *VethsSuite) {
+func VclQuicUnidirectionalStreamTest(s *VclSuite) {
 	_, oSrv := testVclEcho(s, "quic", "-N 1000")
 	AssertNotContains(oSrv, "ERROR: expected unidirectional stream")
 	minBytes, err := vclGetLabelValue(oSrv, "client tx bytes")
@@ -180,8 +180,7 @@ func VclQuicUnidirectionalStreamTest(s *VethsSuite) {
 	AssertGreaterEqual(serverRxBytes, minBytes, "server receive less data")
 }
 
-func VclQuicUnidirectionalStreamsMWTest(s *VethsSuite) {
-	s.Skip("Might fail to set veth interface fanout options")
+func VclQuicUnidirectionalStreamsMWTest(s *VclSuite) {
 	s.CpusPerVppContainer = 3
 	s.SetupTest()
 	_, oSrv := testVclEcho(s, "quic", "-s 80 -q 10 -N 1000")
@@ -192,7 +191,7 @@ func VclQuicUnidirectionalStreamsMWTest(s *VethsSuite) {
 	AssertEmpty(o)
 }
 
-func VclQuicBidirectionalStreamTest(s *VethsSuite) {
+func VclQuicBidirectionalStreamTest(s *VclSuite) {
 	_, oSrv := testVclEcho(s, "quic", "-B -N 1000")
 	minBytes, err := vclGetLabelValue(oSrv, "client tx bytes")
 	AssertNil(err)
@@ -204,7 +203,7 @@ func VclQuicBidirectionalStreamTest(s *VethsSuite) {
 	AssertGreaterEqual(serverTxBytes, minBytes, "server send less data")
 }
 
-func VclQuicUnidirectionalStreamClientResetTest(s *VethsSuite) {
+func VclQuicUnidirectionalStreamClientResetTest(s *VclSuite) {
 	oCln, oSrv := testVclEcho(s, "quic", "-N 1000 -t client-rst-stream")
 	AssertNotContains(oSrv, "ctrl session went away")
 	AssertNotContains(oSrv, "invalid application error code")
@@ -216,7 +215,7 @@ func VclQuicUnidirectionalStreamClientResetTest(s *VethsSuite) {
 	AssertEqual(clientRstCount, 0, "client stream should not receive reset")
 }
 
-func VclQuicUnidirectionalStreamServerResetTest(s *VethsSuite) {
+func VclQuicUnidirectionalStreamServerResetTest(s *VclSuite) {
 	oCln, oSrv := testVclEcho(s, "quic", "-N 1000 -t server-rst-stream")
 	AssertNotContains(oSrv, "ctrl session went away")
 	AssertNotContains(oCln, "invalid application error code")
@@ -228,7 +227,7 @@ func VclQuicUnidirectionalStreamServerResetTest(s *VethsSuite) {
 	AssertEqual(clientRstCount, 1, "client stream should receive reset")
 }
 
-func VclQuicBidirectionalStreamClientResetTest(s *VethsSuite) {
+func VclQuicBidirectionalStreamClientResetTest(s *VclSuite) {
 	oCln, oSrv := testVclEcho(s, "quic", "-B -N 1000 -t client-rst-stream")
 	AssertNotContains(oSrv, "ctrl session went away")
 	AssertNotContains(oSrv, "invalid application error code")
@@ -240,7 +239,7 @@ func VclQuicBidirectionalStreamClientResetTest(s *VethsSuite) {
 	AssertEqual(clientRstCount, 0, "client stream should not receive reset")
 }
 
-func VclQuicBidirectionalStreamServerResetTest(s *VethsSuite) {
+func VclQuicBidirectionalStreamServerResetTest(s *VclSuite) {
 	oCln, oSrv := testVclEcho(s, "quic", "-B -N 1000 -t server-rst-stream")
 	AssertNotContains(oSrv, "ctrl session went away")
 	AssertNotContains(oCln, "invalid application error code")
@@ -252,7 +251,7 @@ func VclQuicBidirectionalStreamServerResetTest(s *VethsSuite) {
 	AssertEqual(clientRstCount, 1, "client stream should receive reset")
 }
 
-func VclQuicClientCloseConnectionTest(s *VethsSuite) {
+func VclQuicClientCloseConnectionTest(s *VclSuite) {
 	oCln, oSrv := testVclEcho(s, "quic", "-B -N 1000 -t client-close-conn")
 	AssertNotContains(oSrv, "ctrl session went away")
 	AssertNotContains(oSrv, "invalid application error code")
@@ -264,7 +263,7 @@ func VclQuicClientCloseConnectionTest(s *VethsSuite) {
 	AssertEqual(clientCloseCount, 0, "client connection shloud not be closed by server")
 }
 
-func VclQuicServerCloseConnectionTest(s *VethsSuite) {
+func VclQuicServerCloseConnectionTest(s *VclSuite) {
 	oCln, oSrv := testVclEcho(s, "quic", "-B -N 1000 -t server-close-conn")
 	AssertNotContains(oSrv, "ctrl session went away")
 	AssertNotContains(oCln, "invalid application error code")
@@ -276,11 +275,11 @@ func VclQuicServerCloseConnectionTest(s *VethsSuite) {
 	AssertEqual(clientCloseCount, 1, "client connection shloud be closed by server")
 }
 
-func VclHttpPostTest(s *VethsSuite) {
+func VclHttpPostTest(s *VclSuite) {
 	testVclEcho(s, "http")
 }
 
-func VclDtlsOverMTUTest(s *VethsSuite) {
+func VclDtlsOverMTUTest(s *VclSuite) {
 	s.SetupAppContainers()
 	srvVppCont := s.Containers.ServerVpp
 	srvAppCont := s.Containers.ServerApp
@@ -305,11 +304,11 @@ func VclDtlsOverMTUTest(s *VethsSuite) {
 	AssertNil(err)
 }
 
-func VclRetryAttachTest(s *VethsSuite) {
+func VclRetryAttachTest(s *VclSuite) {
 	testRetryAttach(s, "tcp")
 }
 
-func testRetryAttach(s *VethsSuite, proto string) {
+func testRetryAttach(s *VclSuite, proto string) {
 	s.SetupAppContainers()
 
 	srvVppContainer := s.GetTransientContainerByName("server-vpp")
@@ -363,7 +362,7 @@ func testRetryAttach(s *VethsSuite, proto string) {
 	Log("Done.")
 }
 
-func VclClUdpDscpTest(s *VethsSuite) {
+func VclClUdpDscpTest(s *VclSuite) {
 	s.SetupAppContainers()
 
 	srvVppCont := s.Containers.ServerVpp
@@ -383,8 +382,8 @@ func VclClUdpDscpTest(s *VethsSuite) {
 	cliAppCont.AddEnvVar("VCL_CONFIG", "/vcl.conf")
 	cliVppCont.VppInstance.Vppctl("arping %s %s", serverVethAddress, s.Interfaces.Client.VppName())
 
-	cliVppCont.VppInstance.Vppctl("trace add af-packet-input 10")
-	srvVppCont.VppInstance.Vppctl("trace add af-packet-input 10")
+	cliVppCont.VppInstance.Vppctl("trace add tap-input 10")
+	srvVppCont.VppInstance.Vppctl("trace add tap-input 10")
 
 	// DSCP 16 - Class selector 2 - Network operations
 	cliSrvCmd := fmt.Sprintf("vperf_cl_udp -c %s -d 16", serverVethAddress)

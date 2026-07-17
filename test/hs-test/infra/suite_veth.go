@@ -24,7 +24,8 @@ var vethStartupTests = map[string][]func(s *VethsSuite){}
 
 type VethsSuite struct {
 	HstSuite
-	Interfaces struct {
+	NetworkBridge string
+	Interfaces    struct {
 		Server *NetInterface
 		Client *NetInterface
 	}
@@ -138,10 +139,17 @@ func (s *VethsSuite) CreateTlsCrlTestArtifacts(name string) TlsCrlTestArtifacts 
 }
 
 func (s *VethsSuite) SetupSuite() {
+	s.setupSuite("2peerVeth", "")
+}
+
+func (s *VethsSuite) setupSuite(networkTopology, networkBridge string) {
 	time.Sleep(1 * time.Second)
 	s.HstSuite.SetupSuite()
-	s.ConfigureNetworkTopology("2peerVeth")
+	s.ConfigureNetworkTopology(networkTopology)
 	s.LoadContainerTopology("2peerVeth")
+	if networkBridge != "" {
+		s.NetworkBridge = s.ProcessIndex + networkBridge + Ppid
+	}
 	s.Interfaces.Client = s.GetInterfaceByName("cln")
 	s.Interfaces.Server = s.GetInterfaceByName("srv")
 	s.Containers.ServerVpp = s.GetContainerByName("server-vpp")
@@ -216,20 +224,29 @@ func (s *VethsSuite) SetupServerVpp() {
 	serverVpp := s.Containers.ServerVpp.VppInstance
 	AssertNil(serverVpp.Start())
 
-	numCpus := uint16(len(serverVpp.Container.AllocatedCpus))
-	numWorkers := uint16(max(numCpus-1, 1))
-	idx, err := serverVpp.createAfPacket(s.Interfaces.Server, false, WithNumRxQueues(numWorkers), WithNumTxQueues(numCpus))
-	AssertNil(err, fmt.Sprint(err))
-	AssertNotEqual(0, idx)
+	s.setupVppInterface(serverVpp, s.Interfaces.Server)
 }
 
 func (s *VethsSuite) SetupClientVpp() {
 	clientVpp := s.Containers.ClientVpp.VppInstance
 	AssertNil(clientVpp.Start())
 
-	numCpus := uint16(len(clientVpp.Container.AllocatedCpus))
+	s.setupVppInterface(clientVpp, s.Interfaces.Client)
+}
+
+func (s *VethsSuite) setupVppInterface(vpp *VppInstance, netInterface *NetInterface) {
+	if netInterface.Type() == Tap {
+		AssertNil(vpp.CreateTap(netInterface, false, 1), "failed to create tap interface")
+		if !*DryRun {
+			AssertNil(addInterfaceToBridge(s.NetworkBridge, netInterface.Host.Name(), ""),
+				"failed to add tap interface to bridge")
+		}
+		return
+	}
+
+	numCpus := uint16(len(vpp.Container.AllocatedCpus))
 	numWorkers := uint16(max(numCpus-1, 1))
-	idx, err := clientVpp.createAfPacket(s.Interfaces.Client, false, WithNumRxQueues(numWorkers), WithNumTxQueues(numCpus))
+	idx, err := vpp.createAfPacket(netInterface, false, WithNumRxQueues(numWorkers), WithNumTxQueues(numCpus))
 	AssertNil(err, fmt.Sprint(err))
 	AssertNotEqual(0, idx)
 }

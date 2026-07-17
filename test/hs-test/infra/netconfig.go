@@ -497,3 +497,13 @@ func addBridge(brName string, ifs []string, ns string) error {
 	}
 	return nil
 }
+
+func addInterfaceToBridge(brName, ifName, ns string) error {
+	c := []string{"brctl", "addif", brName, ifName}
+	cmd := appendNetns(c, ns)
+	Log(cmd.String())
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("error adding %s to bridge %s: %s", ifName, brName, err)
+	}
+	return nil
+}
