@@ -1722,19 +1722,6 @@ tcp_fastrecovery_prr_snd_space (tcp_connection_t * tc)
 }
 
 static inline u8
-tcp_retransmit_should_retry_head (tcp_connection_t * tc,
-				  sack_scoreboard_t * sb)
-{
-  u32 tx_adv_sack = sb->high_sacked - tc->snd_congestion;
-  f64 rr = (f64) tc->ssthresh / tc->prev_cwnd;
-
-  if (tcp_fastrecovery_first (tc))
-    return 1;
-
-  return (tx_adv_sack > (tc->snd_una - tc->prr_start) * rr);
-}
-
-static inline u8
 tcp_max_tx_deq (tcp_connection_t * tc)
 {
   return (transport_max_tx_dequeue (&tc->connection)
@@ -1784,46 +1771,6 @@ tcp_retransmit_sack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
     goto done;
 
   sb = &tc->sack_sb;
-
-  /* Check if snd_una is a lost retransmit */
-  if (pool_elts (sb->holes)
-      && seq_gt (sb->high_sacked, tc->snd_congestion)
-      && tc->rxt_head != tc->snd_una
-      && tcp_retransmit_should_retry_head (tc, sb))
-    {
-      max_bytes = clib_min (tc->snd_mss, tc->snd_nxt - tc->snd_una);
-      n_written = tcp_prepare_retransmit_segment (wrk, tc, 0, max_bytes, &b);
-      if (!n_written)
-	{
-	  tcp_program_retransmit (tc);
-	  goto done;
-	}
-      ASSERT (n_written <= snd_space);
-      snd_space -= n_written;
-      bi = vlib_get_buffer_index (vm, b);
-      tcp_enqueue_to_output (wrk, b, bi, tc->c_is_ip4);
-      n_segs = 1;
-      sent_bytes += n_written;
-
-      tc->rxt_head = tc->snd_una;
-      if (seq_lt (sb->high_rxt, tc->snd_una + n_written))
-	{
-	  /* First retransmit of the head this event. Advance high_rxt over it */
-	  sb->high_rxt = tc->snd_una + n_written;
-	}
-      else
-	{
-	  /* Presumed lost head retransmit. snd_rxt_bytes now counts the head twice,
-	   * but the scoreboard credits its single delivery to rxt_sacked only once,
-	   * so account the prior (lost) copy as having left the network here. */
-	  tc->rxt_delivered += n_written;
-	  tc->prr_delivered += n_written;
-	  ASSERT (tc->rxt_delivered <= tc->snd_rxt_bytes);
-	}
-      ASSERT (seq_leq (sb->high_rxt, tc->snd_nxt));
-    }
-
-  tcp_fastrecovery_first_off (tc);
 
   TCP_EVT (TCP_EVT_CC_EVT, tc, 0);
   hole = scoreboard_get_hole (sb, sb->cur_rxt_hole);
