@@ -1196,6 +1196,13 @@ session_tx_fill_buffer (session_worker_t *wrk, session_tx_context_t *ctx,
 	  n_bytes_read = svm_fifo_peek (f, offset, deq_now, data0);
 	  ASSERT (n_bytes_read > 0);
 
+	  if (hdr->gso_size)
+	    {
+	      b->flags |= VNET_BUFFER_F_GSO;
+	      vnet_buffer2 (b)->gso_size = hdr->gso_size;
+	      vnet_buffer2 (b)->gso_l4_hdr_sz = sizeof (udp_header_t);
+	    }
+
 	  if (transport_connection_is_cless (ctx->tc))
 	    {
 	      clib_memcpy_fast (data0 - sizeof (session_dgram_hdr_t), hdr,
