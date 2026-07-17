@@ -1,0 +1,26 @@
+---
+extra-config:
+  - configured-by-host: false
+devices:
+  - name: "srv"
+    type: "tap"
+    bridge: "br"
+    preset-hw-address: "00:00:5e:00:53:01"
+    ip4:
+      network: 1
+    host:
+      name: "srv_tap"
+
+  - name: "cln"
+    type: "tap"
+    bridge: "br"
+    ip4:
+      network: 1
+    host:
+      name: "cln_tap"
+
+  # VPP creates the host-side tap interfaces for every test. The bridge is
+  # created once per suite and each tap is attached as it is created.
+  - name: "br"
+    type: "bridge"
+    interfaces: []

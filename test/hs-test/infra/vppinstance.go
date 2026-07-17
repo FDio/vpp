@@ -537,34 +537,43 @@ func (vpp *VppInstance) addAppNamespace(
 func (vpp *VppInstance) CreateTap(tap *NetInterface, IPv6 bool, tapId uint32) error {
 	numRxQueues := uint16(max(1, vpp.CpuConfig.NumWorkers))
 	tapFlags := Consistent_qp
-	// manually set here because of dryrun mode - otherwise dryrun uses host name (until vpp.CreateTap finishes)
-	// name is properly overwritten (just in case) on normal runs
+	// Set the VPP interface name up front because dry-run does not receive an API reply.
 	tap.name = fmt.Sprintf("tap%d", tapId)
+	tap.vppName = tap.name
 
 	if *DryRun {
 		flagsCli := "consistent-qp"
 		ipAddressVpp := ""
 		ipAddressHost := ""
 		hwAddressCmd := ""
+		hostBridgeCmd := ""
 
 		if IPv6 {
-			ipAddressHost = "host-ip6-addr " + tap.Host.Ip6Address
+			if tap.Host.Ip6Address != "" {
+				ipAddressHost = "host-ip6-addr " + tap.Host.Ip6Address
+			}
 			ipAddressVpp = tap.Ip6Address
 		} else {
-			ipAddressHost = "host-ip4-addr " + tap.Host.Ip4Address
+			if tap.Host.Ip4Address != "" {
+				ipAddressHost = "host-ip4-addr " + tap.Host.Ip4Address
+			}
 			ipAddressVpp = tap.Ip4Address
 		}
 
 		if tap.HwAddress != (MacAddress{}) {
 			hwAddressCmd = "hw-addr " + tap.HwAddress.String()
 		}
+		if tap.Bridge != "" {
+			hostBridgeCmd = "host-bridge " + tap.Bridge
+		}
 
-		vppCliConfig := fmt.Sprintf("create tap id %d host-if-name %s %s num-rx-queues %d num-tx-queues %d hw-addr %s %s\n"+
+		vppCliConfig := fmt.Sprintf("create tap id %d host-if-name %s %s %s num-rx-queues %d num-tx-queues %d %s %s\n"+
 			"set int ip addr tap%d %s\n"+
 			"set int state tap%d up\n",
 			tapId,
-			tap.name,
+			tap.Host.Name(),
 			ipAddressHost,
+			hostBridgeCmd,
 			numRxQueues,
 			numRxQueues+1,
 			hwAddressCmd,
@@ -579,17 +588,25 @@ func (vpp *VppInstance) CreateTap(tap *NetInterface, IPv6 bool, tapId uint32) er
 	}
 
 	createTapReq := &tapv2.TapCreateV3{
-		ID:               tapId,
-		HostIfNameSet:    true,
-		HostIfName:       tap.Host.Name(),
-		HostIP4PrefixSet: true,
-		HostIP4Prefix:    tap.Host.Ip4AddressWithPrefix(),
-		HostIP6PrefixSet: true,
-		HostIP6Prefix:    tap.Host.Ip6AddressWithPrefix(),
-		NumRxQueues:      numRxQueues,
-		NumTxQueues:      numRxQueues + 1,
-		TapFlags:         tapv2.TapFlags(tapFlags),
-		UseRandomMac:     true,
+		ID:            tapId,
+		HostIfNameSet: true,
+		HostIfName:    tap.Host.Name(),
+		NumRxQueues:   numRxQueues,
+		NumTxQueues:   numRxQueues + 1,
+		TapFlags:      tapv2.TapFlags(tapFlags),
+		UseRandomMac:  true,
+	}
+	if tap.Host.Ip4Address != "" {
+		createTapReq.HostIP4PrefixSet = true
+		createTapReq.HostIP4Prefix = tap.Host.Ip4AddressWithPrefix()
+	}
+	if tap.Host.Ip6Address != "" {
+		createTapReq.HostIP6PrefixSet = true
+		createTapReq.HostIP6Prefix = tap.Host.Ip6AddressWithPrefix()
+	}
+	if tap.Bridge != "" {
+		createTapReq.HostBridgeSet = true
+		createTapReq.HostBridge = tap.Bridge
 	}
 
 	if tap.HwAddress != (MacAddress{}) {
@@ -624,6 +641,7 @@ func (vpp *VppInstance) CreateTap(tap *NetInterface, IPv6 bool, tapId uint32) er
 	}
 	ifDetails := replymsg.(*interfaces.SwInterfaceDetails)
 	tap.name = ifDetails.InterfaceName
+	tap.vppName = ifDetails.InterfaceName
 	tap.HwAddress = ifDetails.L2Address
 
 	// Add address
