@@ -1,6 +1,23 @@
 {
   "comments": [
     {
+      "unresolved": true,
+      "key": {
+        "uuid": "6900eb37_aef59f4c",
+        "filename": "src/plugins/af_xdp/af_xdp.h",
+        "patchSetId": 49
+      },
+      "lineNbr": 57,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-07-17T08:50:11Z",
+      "side": 1,
+      "message": "Do we need this flag? Failures before `vnet_eth_register_interface()` call `af_xdp_free_device()` directly, while every path calling `af_xdp_delete_if()` appears to have already registered the interface. It looks like we could delete the interface unconditionally and avoid maintaining another device-state bit.",
+      "revId": "46a5463547885367bd8c2506ca40fd34e0562184",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": false,
       "key": {
         "uuid": "4884b9fc_7a3599e0",
@@ -33,6 +50,23 @@
       "side": 1,
       "message": "Done in PS49. The copy-mode default tx_max_segs is initialized before queue creation, so af_xdp_update_tx_max_segs() can preserve a device-specific zero-copy limit queried during queue setup.",
       "parentUuid": "92806344_86ad352c",
+      "revId": "46a5463547885367bd8c2506ca40fd34e0562184",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "541e14ce_cb5d6cb3",
+        "filename": "src/plugins/af_xdp/output.c",
+        "patchSetId": 49
+      },
+      "lineNbr": 195,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-07-17T08:50:11Z",
+      "side": 1,
+      "message": "Could we reject chains containing a zero-length segment during the pre-scan? VPP only asserts that the head is non-empty; empty continuation buffers can exist. AF_XDP treats a zero-length descriptor as invalid and does not produce completions for that packet, so these buffers would leak and repeated packets could exhaust the pool.",
       "revId": "46a5463547885367bd8c2506ca40fd34e0562184",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
