@@ -34,6 +34,24 @@
       "parentUuid": "12dd908d_75fe04be",
       "revId": "30268de9c13d7bec99f1312ea9f2d88ff5d1b6aa",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e79427a4_2638ecba",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3007
+      },
+      "writtenOn": "2026-07-17T08:09:34Z",
+      "side": 1,
+      "message": "Natural alignment on OCTEON means each packet buffer\u0027s base address is a multiple of its own size (e.g., a 2 KB buffer starts at a 2 KB-aligned address)",
+      "parentUuid": "d60185e2_97910c35",
+      "revId": "30268de9c13d7bec99f1312ea9f2d88ff5d1b6aa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
