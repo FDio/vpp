@@ -272,6 +272,8 @@ vp_client_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command
 	vpcm->cfg.http_connect_proto = VP_HTTP_CONNECT_PROTO_TCP;
       else if (unformat (line_input, "connect-udp"))
 	vpcm->cfg.http_connect_proto = VP_HTTP_CONNECT_PROTO_UDP;
+      else if (unformat (line_input, "uso"))
+	vpcm->cfg.uso = 1;
       else
 	{
 	  error =
