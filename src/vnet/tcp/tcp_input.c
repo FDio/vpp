@@ -604,8 +604,8 @@ tcp_cc_init_congestion (tcp_connection_t * tc)
   tc->snd_rxt_bytes = 0;
   tc->rxt_delivered = 0;
   tc->prr_delivered = 0;
-  tc->prev_prr_delivered = 0;
-  tc->prr_start = tc->snd_una;
+  tc->prr_recover_fs = 0;
+  tc->prr_sndcnt = 0;
   tc->prev_ssthresh = tc->ssthresh;
   tc->prev_cwnd = tc->cwnd;
 
@@ -684,7 +684,8 @@ tcp_cc_exit_recovery (tcp_connection_t *tc)
   tc->snd_rxt_bytes = 0;
   tc->snd_rxt_ts = 0;
   tc->prr_delivered = 0;
-  tc->prev_prr_delivered = 0;
+  tc->prr_recover_fs = 0;
+  tc->prr_sndcnt = 0;
   tc->rtt_ts = 0;
   tc->flags &= ~TCP_CONN_RXT_PENDING;
 
@@ -704,19 +705,98 @@ tcp_cc_exit_recovery (tcp_connection_t *tc)
   ASSERT (tcp_scoreboard_is_sane_post_recovery (tc));
 }
 
-/* Enter congestion recovery: reduce the window, snapshot the recovery point and
- * program a retransmit. Caller must have decided recovery is warranted and must
- * not already be in recovery. */
-static void
-tcp_cc_enter_recovery (tcp_connection_t *tc, u8 has_sack)
+static_always_inline u32
+tcp_prr_delivered_data (tcp_connection_t *tc, tcp_rate_sample_t *rs, u32 is_dack, u8 has_sack)
 {
+  u32 delivered_data;
+
+  if (has_sack)
+    return rs->acked_and_sacked;
+
+  if (is_dack)
+    delivered_data = clib_min (tc->snd_mss, tc->snd_nxt - tc->snd_una);
+  else
+    delivered_data = tc->bytes_acked - clib_min (tc->bytes_acked, tc->snd_mss * tc->rcv_dupacks);
+
+  /* RFC 9937 limits estimated non-SACK delivery to RecoverFS. */
+  if (tc->prr_delivered >= tc->prr_recover_fs)
+    return 0;
+
+  return clib_min (delivered_data, tc->prr_recover_fs - tc->prr_delivered);
+}
+
+/* Compute RFC 9937 SndCnt once per ACK. Output only consumes it. */
+static void
+tcp_prr_account_ack (tcp_connection_t *tc, tcp_rate_sample_t *rs, u32 is_dack, u8 has_sack)
+{
+  u32 delivered_data, pipe, prr_out;
+  i64 sndcnt;
+  u8 safe_ack;
+
+  delivered_data = tcp_prr_delivered_data (tc, rs, is_dack, has_sack);
+  if (!delivered_data)
+    {
+      tc->prr_sndcnt = 0;
+      return;
+    }
+
+  tc->prr_delivered += delivered_data;
+  pipe = tcp_flight_size (tc);
+  prr_out = tc->snd_rxt_bytes + (tc->snd_nxt - tc->snd_congestion);
+  /* Rate-sample flags describe the selected byte-tracker sample, not loss
+   * newly indicated by this ACK. Use only ACK-scoped loss feedback here. */
+  safe_ack =
+    tc->bytes_acked && !tc->sack_sb.last_lost_bytes && (has_sack || !tcp_fastrecovery_first (tc));
+
+  if (pipe > tc->ssthresh)
+    {
+      u64 out =
+	((u64) tc->prr_delivered * tc->ssthresh + tc->prr_recover_fs - 1) / tc->prr_recover_fs;
+      sndcnt = (i64) out - prr_out;
+    }
+  else
+    {
+      sndcnt = clib_max ((i64) tc->prr_delivered - prr_out, (i64) delivered_data);
+      if (safe_ack)
+	sndcnt += tc->snd_mss;
+      sndcnt = clib_min ((i64) tc->ssthresh - pipe, sndcnt);
+    }
+
+  /* VPP packetizes PRR in SMSS units. Round a sub-SMSS initial allowance
+   * up once to ensure that recovery starts with a full fast retransmit. */
+  if (!prr_out && sndcnt < tc->snd_mss)
+    sndcnt = tc->snd_mss;
+  tc->prr_sndcnt = clib_max (sndcnt, 0);
+}
+
+/* Enter congestion recovery: reduce the window, snapshot the recovery point
+ * and program a retransmit. Caller must have decided recovery is warranted and
+ * must not already be in recovery. */
+static void
+tcp_cc_enter_recovery (tcp_connection_t *tc, tcp_rate_sample_t *rs, u32 is_dack, u8 has_sack)
+{
+  u32 recover_fs;
+
   ASSERT (!tcp_in_cong_recovery (tc));
   tcp_cc_init_congestion (tc);
+
+  recover_fs = tc->snd_nxt - tc->snd_una;
+  if (has_sack)
+    recover_fs -= clib_min (recover_fs, tc->sack_sb.sacked_bytes);
+  recover_fs += rs->acked_and_sacked;
+  /* Recovery entry normally guarantees outstanding or newly delivered data.
+   * A zero value also implies an empty pipe, so this defensive denominator
+   * cannot inflate the proportional allowance. */
+  tc->prr_recover_fs = clib_max (recover_fs, 1);
 
   if (has_sack)
     scoreboard_init_rxt (&tc->sack_sb, tc->snd_una);
   else
     tcp_fastrecovery_first_on (tc);
+
+  /* Account the ACK that starts recovery here. The caller returns after this
+   * function, so the ACK is not processed again by the recovery path. */
+  tcp_prr_account_ack (tc, rs, is_dack, has_sack);
 
   tcp_connection_tx_pacer_reset (tc, tc->cwnd, 0 /* start bucket */);
   tcp_program_retransmit (tc);
@@ -728,10 +808,7 @@ always_inline void
 tcp_cc_account_recovery_ack (tcp_connection_t *tc, tcp_rate_sample_t *rs, u32 is_dack, u8 has_sack)
 {
   if (has_sack)
-    {
-      tc->rxt_delivered += tc->sack_sb.rxt_sacked;
-      tc->prr_delivered += rs->acked_and_sacked;
-    }
+    tc->rxt_delivered += tc->sack_sb.rxt_sacked;
   else
     {
       if (is_dack)
@@ -740,23 +817,19 @@ tcp_cc_account_recovery_ack (tcp_connection_t *tc, tcp_rate_sample_t *rs, u32 is
 	  TCP_EVT (TCP_EVT_DUPACK_RCVD, tc, 1);
 	}
       tc->rxt_delivered = clib_min (tc->rxt_delivered + tc->bytes_acked, tc->snd_rxt_bytes);
-      if (is_dack)
-	tc->prr_delivered += clib_min (tc->snd_mss, tc->snd_nxt - tc->snd_una);
-      else
-	tc->prr_delivered +=
-	  tc->bytes_acked - clib_min (tc->bytes_acked, tc->snd_mss * tc->rcv_dupacks);
 
       /* If partial ack, assume that the first un-acked segment was lost */
       if (tc->bytes_acked || tc->rcv_dupacks == TCP_DUPACK_THRESHOLD)
 	tcp_fastrecovery_first_on (tc);
     }
 
+  tcp_prr_account_ack (tc, rs, is_dack, has_sack);
   ASSERT (tc->rxt_delivered <= tc->snd_rxt_bytes);
 }
 
 /* Exit recovery and re-enter if loss remains. */
 static void
-tcp_cc_try_exit_recovery (tcp_connection_t *tc, tcp_rate_sample_t *rs, u8 has_sack)
+tcp_cc_try_exit_recovery (tcp_connection_t *tc, tcp_rate_sample_t *rs, u32 is_dack, u8 has_sack)
 {
   /* Any loss still outstanding above snd_congestion was sent at the
    * already-reduced rate, so it is a fresh congestion event: exit here and let
@@ -764,7 +837,7 @@ tcp_cc_try_exit_recovery (tcp_connection_t *tc, tcp_rate_sample_t *rs, u8 has_sa
   tcp_cc_exit_recovery (tc);
 
   if (tcp_should_fastrecover (tc, has_sack))
-    tcp_cc_enter_recovery (tc, has_sack);
+    tcp_cc_enter_recovery (tc, rs, is_dack, has_sack);
   else
     tcp_cc_rcv_ack (tc, rs);
 }
@@ -806,7 +879,7 @@ tcp_cc_handle_event (tcp_connection_t * tc, tcp_rate_sample_t * rs,
       tcp_cc_rcv_cong_ack (tc, TCP_CC_DUPACK, rs);
 
       if (tcp_should_fastrecover (tc, has_sack))
-	tcp_cc_enter_recovery (tc, has_sack);
+	tcp_cc_enter_recovery (tc, rs, is_dack, has_sack);
 
       return;
     }
@@ -819,7 +892,7 @@ tcp_cc_handle_event (tcp_connection_t * tc, tcp_rate_sample_t * rs,
    * acked, as per RFC 6675. */
   if (seq_geq (tc->snd_una, tc->snd_congestion))
     {
-      tcp_cc_try_exit_recovery (tc, rs, has_sack);
+      tcp_cc_try_exit_recovery (tc, rs, is_dack, has_sack);
       return;
     }
 
@@ -846,7 +919,7 @@ tcp_cc_handle_event (tcp_connection_t * tc, tcp_rate_sample_t * rs,
     {
       if (tcp_cc_is_spurious_retransmit (tc))
 	{
-	  tcp_cc_try_exit_recovery (tc, rs, has_sack);
+	  tcp_cc_try_exit_recovery (tc, rs, is_dack, has_sack);
 	  return;
 	}
       tc->snd_rxt_ts = 0;

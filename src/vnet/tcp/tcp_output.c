@@ -1260,6 +1260,9 @@ tcp_prepare_retransmit_segment (tcp_worker_ctx_t * wrk,
 
   tc->snd_rxt_bytes += n_bytes;
 
+  if (tcp_in_fastrecovery (tc) && !tcp_in_recovery (tc))
+    tc->prr_sndcnt -= clib_min (tc->prr_sndcnt, (u32) n_bytes);
+
   if (tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE)
     tcp_bt_track_rxt (tc, start, start + n_bytes);
 
@@ -1688,6 +1691,9 @@ tcp_transmit_unsent (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
 	tcp_bt_track_tx (tc, n_written);
 
       tc->snd_nxt += n_written;
+
+      if (tcp_in_fastrecovery (tc) && !tcp_in_recovery (tc))
+	tc->prr_sndcnt -= clib_min (tc->prr_sndcnt, n_written);
     }
 
 done:
@@ -1695,33 +1701,12 @@ done:
 }
 
 /**
- * Estimate send space using proportional rate reduction (RFC6937)
+ * Return the send allowance computed while processing the latest recovery ACK.
  */
 int
 tcp_fastrecovery_prr_snd_space (tcp_connection_t * tc)
 {
-  u32 pipe, prr_out;
-  int space;
-
-  pipe = tcp_flight_size (tc);
-  prr_out = tc->snd_rxt_bytes + (tc->snd_nxt - tc->snd_congestion);
-
-  if (pipe > tc->ssthresh)
-    {
-      space = ((int) tc->prr_delivered * ((f64) tc->ssthresh / tc->prev_cwnd))
-	- prr_out;
-    }
-  else
-    {
-      /* Slow start reduction bound (RFC 6937): allow one extra segment per data delivered since
-       * last time we sent, on top of packet conservation, so the pipe re-inflates to ssthresh after
-       * heavy loss */
-      int delivered_data = tc->prr_delivered - tc->prev_prr_delivered;
-      int limit = clib_max ((int) (tc->prr_delivered - prr_out), delivered_data) + tc->snd_mss;
-      space = clib_min ((int) tc->ssthresh - pipe, limit);
-    }
-  space = clib_max (space, prr_out ? 0 : tc->snd_mss);
-  return space;
+  return tc->prr_sndcnt;
 }
 
 static inline u8
@@ -1843,7 +1828,7 @@ tcp_retransmit_sack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
 	}
 
       max_bytes = hole->end - sb->high_rxt;
-      /* Avoid retransmitting segment less than mss if possible */
+      /* Bank sub-MSS PRR credit unless it can finish the current hole. */
       if (snd_space < tc->snd_mss && max_bytes > snd_space)
 	break;
       max_bytes = clib_min (max_bytes, snd_space);
@@ -1880,10 +1865,6 @@ done:
   sent_bytes = cc_limited ? burst_bytes : sent_bytes;
   if (transport_connection_is_tx_paced (&tc->connection))
     transport_connection_tx_pacer_update_bytes (&tc->connection, sent_bytes);
-  /* Snapshot delivered so the next prr send only credits data delivered
-   * since we actually put bytes on the wire this round */
-  if (n_segs)
-    tc->prev_prr_delivered = tc->prr_delivered;
   return n_segs;
 }
 
@@ -1926,7 +1907,7 @@ tcp_retransmit_no_sack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
 
   /* RFC 6582: [If a partial ack], retransmit the first unacknowledged
    * segment. */
-  while (snd_space > 0 && n_segs < burst_size)
+  while ((tcp_in_recovery (tc) ? snd_space > 0 : snd_space >= tc->snd_mss) && n_segs < burst_size)
     {
       max_bytes = clib_min (tc->snd_mss,
 			    tc->snd_congestion - tc->snd_una - offset);
@@ -1975,11 +1956,6 @@ done:
   sent_bytes = cc_limited ? burst_bytes : sent_bytes;
   if (transport_connection_is_tx_paced (&tc->connection))
     transport_connection_tx_pacer_update_bytes (&tc->connection, sent_bytes);
-  /* Snapshot delivered so the next prr send only credits data delivered
-   * since we actually put bytes on the wire this round */
-  if (n_segs)
-    tc->prev_prr_delivered = tc->prr_delivered;
-
   return n_segs;
 }
 
