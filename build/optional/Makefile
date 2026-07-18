@@ -14,10 +14,17 @@
 include ../build_common.mk
 include ../packages_common.mk
 
-PKG_SUFFIX ?= $(shell git log --oneline v$(PKG_VERSION)-rc0.. . | wc -l)
+# Distinguish packages with SPDK from an already installed OpenSSL-only build.
+PKG_SUFFIX ?= $(shell git log --oneline v$(PKG_VERSION)-rc0.. . | wc -l)$(if $(filter y,$(VPP_WITH_SPDK)),+spdk)
 
 ifneq ($(shell uname), FreeBSD)
 include packages/openssl.mk
+VPP_WITH_SPDK ?= n
+ifeq ($(VPP_WITH_SPDK),y)
+include packages/spdk.mk
+spdk_install_target := spdk-install
+spdk_config_target := spdk-config
+endif
 endif	# ! FreeBSD
 
 .PHONY: clean
@@ -28,14 +35,14 @@ clean:
 ifeq ($(shell uname), FreeBSD)
 install:
 else
-install: openssl-install
+install: openssl-install $(spdk_install_target)
 endif	# FreeBSD
 
 .PHONY: config
 ifeq ($(shell uname), FreeBSD)
 config:
 else
-config: openssl-config
+config: openssl-config $(spdk_config_target)
 endif	# FreeBSD
 
 ##############################################################################
