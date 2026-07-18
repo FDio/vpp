@@ -1,0 +1,80 @@
+From 914f965df319cdaa004b37845362ea87b88623d8 Mon Sep 17 00:00:00 2001
+From: Jerome Tollet <jtollet@cisco.com>
+Date: Thu, 16 Jul 2026 18:23:02 +0200
+Subject: [PATCH 3/3] build: allow disabling ISA-L dependencies
+
+Signed-off-by: Jerome Tollet <jtollet@cisco.com>
+---
+ configure | 21 +++++++++++++++++++--
+ 1 file changed, 19 insertions(+), 2 deletions(-)
+
+diff --git a/configure b/configure
+index 80acf55..6e1bbe9 100755
+--- a/configure
++++ b/configure
+@@ -65,7 +65,9 @@ function usage() {
+ 	echo " --with-crypto             Build isa-l-crypto and vbdev crypto module. No path required."
+ 	echo " --without-crypto          Disable isa-l-crypto and vbdev crypto module."
+ 	echo " --with-isal[=DIR]         Don't build isa-l, use external library instead."
++	echo " --without-isal            Disable isa-l and dependent features."
+ 	echo " --with-isal-crypto[=DIR]  Don't build isa-l_crypto, use external library instead."
++	echo " --without-isal-crypto     Disable isa-l_crypto."
+ 	echo " --with-fio[=DIR]          Build fio_plugin."
+ 	echo " --without-fio             default: /usr/src/fio"
+ 	echo " --with-cuda               Enable the CUDA accel module."
+@@ -158,6 +160,9 @@ declare -A CONFIG
+ source $rootdir/CONFIG.sh
+ rm $rootdir/CONFIG.sh
+ 
++disable_isal=n
++disable_isal_crypto=n
++
+ # Try to expand literal ~ that might have been passed as an option via --long-opt=~/dir.
+ set -- "${@//\~/~}"
+ 
+@@ -584,6 +589,10 @@ for i in "$@"; do
+ 			CONFIG[ISAL]=y
+ 			CONFIG[ISAL_INSTALLED]=y
+ 			;;
++		--without-isal)
++			disable_isal=y
++			CONFIG[ISAL]=n
++			;;
+ 		--with-isal-crypto) ;&
+ 		--with-isal-crypto=*)
+ 			# if set, set a default value
+@@ -595,6 +604,10 @@ for i in "$@"; do
+ 			CONFIG[ISAL_CRYPTO]=y
+ 			CONFIG[ISAL_CRYPTO_INSTALLED]=y
+ 			;;
++		--without-isal-crypto)
++			disable_isal_crypto=y
++			CONFIG[ISAL_CRYPTO]=n
++			;;
+ 		--with-fio) ;&
+ 		--with-fio=*)
+ 			if [[ ${i#*=} != "$i" ]]; then
+@@ -1231,7 +1244,9 @@ if [[ "${CONFIG[FUZZER]}" = "y" && "$CC_TYPE" != "clang" ]]; then
+ 	exit 1
+ fi
+ 
+-if [[ "${CONFIG[ISAL_INSTALLED]}" = "y" ]]; then
++if [[ "$disable_isal" = "y" ]]; then
++	CONFIG[ISAL]=n
++elif [[ "${CONFIG[ISAL_INSTALLED]}" = "y" ]]; then
+ 	if [[ "${CONFIG[SHARED]}" != "y" ]]; then
+ 		echo "External isa-l only supported with --with-shared"
+ 		exit 1
+@@ -1304,7 +1319,9 @@ if [[ ! "${CONFIG[ISAL_INSTALLED]}" = "y" ]]; then
+ fi
+ 
+ # ISA-L-crypto complements ISA-L functionality, it is only enabled together with ISA-L
+-if [[ "${CONFIG[ISAL_CRYPTO_INSTALLED]}" = "y" ]]; then
++if [[ "$disable_isal_crypto" = "y" ]]; then
++	CONFIG[ISAL_CRYPTO]=n
++elif [[ "${CONFIG[ISAL_CRYPTO_INSTALLED]}" = "y" ]]; then
+ 	if [[ "${CONFIG[SHARED]}" != "y" ]]; then
+ 		echo "External isa-l_crypto only supported with --with-shared"
+ 		exit 1
+-- 
+2.55.0
