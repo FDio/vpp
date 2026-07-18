@@ -115,7 +115,7 @@ DEB_DEPENDS += libpcap-dev
 DEB_DEPENDS += tshark
 DEB_DEPENDS += jq # for extracting test summary from .json report (hs-test)
 DEB_DEPENDS += libiberty-dev
-DEB_DEPENDS += nasm libnuma-dev # for make-ext-deps
+DEB_DEPENDS += nasm libnuma-dev libaio-dev uuid-dev # for make-ext-deps
 
 LIBFFI=libffi6 # works on all but 20.04 and debian-testing
 ifeq ($(OS_VERSION_ID),26.04)
@@ -178,6 +178,7 @@ RPM_DEPENDS += ccache
 RPM_DEPENDS += xmlto
 RPM_DEPENDS += elfutils-libelf-devel libpcap-devel
 RPM_DEPENDS += libnl3-devel libmnl-devel
+RPM_DEPENDS += libaio-devel libuuid-devel
 RPM_DEPENDS += nasm
 RPM_DEPENDS += socat
 
