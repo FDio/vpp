@@ -26,6 +26,15 @@ include packages/xdp-tools.mk
 include packages/octeon-roc.mk
 endif	# ! FreeBSD
 include packages/dpdk.mk
+VPP_WITH_SPDK ?= n
+ifneq ($(shell uname), FreeBSD)
+include packages/spdk.mk
+endif
+
+ifeq ($(VPP_WITH_SPDK),y)
+spdk_install_target := spdk-install
+spdk_config_target := spdk-config
+endif
 
 .PHONY: clean
 clean:
@@ -35,14 +44,14 @@ clean:
 ifeq ($(shell uname), FreeBSD)
 install: $(if $(ARCH_X86_64), ipsec-mb-install) daq-install dpdk-install quicly-install libcbor-install
 else
-install: $(if $(ARCH_X86_64), ipsec-mb-install) daq-install dpdk-install rdma-core-install quicly-install xdp-tools-install libcbor-install $(if $(AARCH64), octeon-roc-install)
+install: $(if $(ARCH_X86_64), ipsec-mb-install) daq-install dpdk-install $(spdk_install_target) rdma-core-install quicly-install xdp-tools-install libcbor-install $(if $(AARCH64), octeon-roc-install)
 endif	# FreeBSD
 
 .PHONY: config
 ifeq ($(shell uname), FreeBSD)
 config: daq-config $(if $(ARCH_X86_64), ipsec-mb-config) dpdk-config quicly-build libcbor-build
 else
-config: daq-config $(if $(ARCH_X86_64), ipsec-mb-config) dpdk-config rdma-core-config quicly-build libcbor-build
+config: daq-config $(if $(ARCH_X86_64), ipsec-mb-config) dpdk-config $(spdk_config_target) rdma-core-config quicly-build libcbor-build
 endif	# FreeBSD
 
 ##############################################################################
