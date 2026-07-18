@@ -1,0 +1,392 @@
+From 8894c608a61428d6c63ea35e7057deadd83a27d2 Mon Sep 17 00:00:00 2001
+From: Jerome Tollet <jtollet@cisco.com>
+Date: Thu, 16 Jul 2026 18:02:46 +0200
+Subject: [PATCH 2/3] nvmf/tcp: read C2H data into reserved socket buffers
+
+Expose c2h_direct_sock in both the RPC schema and the Python CLI so it can
+also be enabled when the NVMe/TCP target is configured at runtime.
+
+Co-authored-by: Moshe Shahar <mooshons@gmail.com>
+Co-authored-by: Claude Opus 5 (1M context) <noreply@anthropic.com>
+Signed-off-by: Jerome Tollet <jtollet@cisco.com>
+---
+ lib/nvmf/tcp.c          | 249 ++++++++++++++++++++++++++++++++++++++++-
+ python/spdk/cli/nvmf.py |   1 +
+ schema/schema.json      |   5 +
+ 3 files changed, 253 insertions(+), 2 deletions(-)
+
+diff --git a/lib/nvmf/tcp.c b/lib/nvmf/tcp.c
+index 8819b93..769ac0d 100644
+--- a/lib/nvmf/tcp.c
++++ b/lib/nvmf/tcp.c
+@@ -258,6 +258,15 @@ struct spdk_nvmf_tcp_req  {
+ 	 */
+ 	uint32_t				h2c_offset;
+ 
++	/* Optional socket transmit-buffer reservation.  For controller-to-host
++	 * I/O the bdev writes the payload directly into detached socket buffers,
++	 * which are appended to the byte stream only after I/O completion. */
++	void					*tx_reservation;
++	uint32_t				tx_reservation_len;
++	uint32_t				tx_data_offset;
++	uint8_t					tx_iovcnt;
++	struct iovec				tx_iov[NVMF_REQ_MAX_BUFFERS + 1];
++
+ 	STAILQ_ENTRY(spdk_nvmf_tcp_req)		link;
+ 	TAILQ_ENTRY(spdk_nvmf_tcp_req)		state_link;
+ 	STAILQ_ENTRY(spdk_nvmf_tcp_req)		control_msg_link;
+@@ -363,6 +372,7 @@ struct spdk_nvmf_tcp_port {
+ 
+ struct tcp_transport_opts {
+ 	bool		c2h_success;
++	bool		c2h_direct_sock;
+ 	uint16_t	control_msg_num;
+ 	uint32_t	sock_priority;
+ };
+@@ -400,6 +410,10 @@ static const struct spdk_json_object_decoder tcp_transport_opts_decoder[] = {
+ 		"c2h_success", offsetof(struct tcp_transport_opts, c2h_success),
+ 		spdk_json_decode_bool, true
+ 	},
++	{
++		"c2h_direct_sock", offsetof(struct tcp_transport_opts, c2h_direct_sock),
++		spdk_json_decode_bool, true
++	},
+ 	{
+ 		"control_msg_num", offsetof(struct tcp_transport_opts, control_msg_num),
+ 		spdk_json_decode_uint16, true
+@@ -459,6 +473,10 @@ nvmf_tcp_req_get(struct spdk_nvmf_tcp_qpair *tqpair)
+ 	memset(&tcp_req->rsp, 0, sizeof(tcp_req->rsp));
+ 	tcp_req->h2c_offset = 0;
+ 	tcp_req->has_in_capsule_data = false;
++	assert(tcp_req->tx_reservation == NULL);
++	tcp_req->tx_reservation_len = 0;
++	tcp_req->tx_data_offset = 0;
++	tcp_req->tx_iovcnt = 0;
+ 	tcp_req->req.raw = 0; /* clear all flags */
+ 	tcp_req->req.zcopy_phase = NVMF_ZCOPY_PHASE_NONE;
+ 	tcp_req->req.cmd_cb_fn = NULL;
+@@ -688,6 +706,7 @@ nvmf_tcp_dump_opts(struct spdk_nvmf_transport *transport, struct spdk_json_write
+ 
+ 	ttransport = SPDK_CONTAINEROF(transport, struct spdk_nvmf_tcp_transport, transport);
+ 	spdk_json_write_named_bool(w, "c2h_success", ttransport->tcp_opts.c2h_success);
++	spdk_json_write_named_bool(w, "c2h_direct_sock", ttransport->tcp_opts.c2h_direct_sock);
+ 	spdk_json_write_named_uint32(w, "sock_priority", ttransport->tcp_opts.sock_priority);
+ }
+ 
+@@ -758,6 +777,7 @@ nvmf_tcp_create(struct spdk_nvmf_transport_opts *opts)
+ 	ttransport->transport.ops = &spdk_nvmf_transport_tcp;
+ 
+ 	ttransport->tcp_opts.c2h_success = SPDK_NVMF_TCP_DEFAULT_SUCCESS_OPTIMIZATION;
++	ttransport->tcp_opts.c2h_direct_sock = false;
+ 	ttransport->tcp_opts.sock_priority = SPDK_NVMF_TCP_DEFAULT_SOCK_PRIORITY;
+ 	ttransport->tcp_opts.control_msg_num = SPDK_NVMF_TCP_DEFAULT_CONTROL_MSG_NUM;
+ 	if (opts->transport_specific != NULL &&
+@@ -775,7 +795,7 @@ nvmf_tcp_create(struct spdk_nvmf_transport_opts *opts)
+ 		     "  Transport opts:  max_ioq_depth=%d, max_io_size=%d,\n"
+ 		     "  max_io_qpairs_per_ctrlr=%d,\n"
+ 		     "  in_capsule_data_size=%d, max_aq_depth=%d\n"
+-		     "  c2h_success=%d,\n"
++		     "  c2h_success=%d, c2h_direct_sock=%d,\n"
+ 		     "  dif_insert_or_strip=%d, sock_priority=%d\n"
+ 		     "  abort_timeout_sec=%d, control_msg_num=%hu\n"
+ 		     "  ack_timeout=%d\n",
+@@ -785,6 +805,7 @@ nvmf_tcp_create(struct spdk_nvmf_transport_opts *opts)
+ 		     opts->in_capsule_data_size,
+ 		     opts->max_aq_depth,
+ 		     ttransport->tcp_opts.c2h_success,
++		     ttransport->tcp_opts.c2h_direct_sock,
+ 		     opts->dif_insert_or_strip,
+ 		     ttransport->tcp_opts.sock_priority,
+ 		     opts->abort_timeout_sec,
+@@ -2688,6 +2709,93 @@ nvmf_tcp_control_msg_put(struct spdk_nvmf_tcp_control_msg_list *list, void *_msg
+ 	}
+ }
+ 
++static int
++nvmf_tcp_req_reserve_c2h(struct spdk_nvmf_tcp_req *tcp_req, uint32_t data_len)
++{
++	struct spdk_nvmf_tcp_qpair *tqpair = SPDK_CONTAINEROF(tcp_req->req.qpair,
++							struct spdk_nvmf_tcp_qpair, qpair);
++	struct spdk_nvmf_tcp_transport *ttransport = SPDK_CONTAINEROF(
++			tqpair->qpair.transport, struct spdk_nvmf_tcp_transport, transport);
++	struct spdk_nvmf_request *req = &tcp_req->req;
++	uint32_t alignment, data_offset, reservation_len, skip, remaining;
++	int i, rc, tx_iovcnt, req_iovcnt = 0;
++
++	/* First functional step: use a single C2H PDU without DIF or digests.
++	 * Other configurations retain the normal SPDK iobuf path. */
++	if (!ttransport->tcp_opts.c2h_direct_sock ||
++	    req->xfer != SPDK_NVME_DATA_CONTROLLER_TO_HOST || tqpair->qpair.qid == 0 ||
++	    req->dif_enabled || tqpair->host_hdgst_enable || tqpair->host_ddgst_enable) {
++		return -ENOTSUP;
++	}
++
++	data_offset = sizeof(struct spdk_nvme_tcp_c2h_data_hdr);
++	if (tqpair->cpda) {
++		alignment = (tqpair->cpda + 1) << 2;
++		data_offset = SPDK_ALIGN_CEIL(data_offset, alignment);
++	}
++	if (data_len > UINT32_MAX - data_offset) {
++		return -E2BIG;
++	}
++	reservation_len = data_offset + data_len;
++	if (!ttransport->tcp_opts.c2h_success) {
++		if (reservation_len > UINT32_MAX - sizeof(struct spdk_nvme_tcp_rsp)) {
++			return -E2BIG;
++		}
++		reservation_len += sizeof(struct spdk_nvme_tcp_rsp);
++	}
++	tx_iovcnt = SPDK_COUNTOF(tcp_req->tx_iov);
++	rc = spdk_sock_tx_reserve(tqpair->sock, reservation_len,
++				  tcp_req->tx_iov, &tx_iovcnt, &tcp_req->tx_reservation);
++	if (rc != 0) {
++		return rc;
++	}
++
++	/* Expose only the payload portion of the reservation to the bdev. */
++	skip = data_offset;
++	remaining = data_len;
++	for (i = 0; i < tx_iovcnt && remaining > 0; i++) {
++		uint8_t *base = tcp_req->tx_iov[i].iov_base;
++		uint32_t len = tcp_req->tx_iov[i].iov_len;
++
++		if (skip >= len) {
++			skip -= len;
++			continue;
++		}
++
++		if (req_iovcnt == NVMF_REQ_MAX_BUFFERS) {
++			rc = -ENOBUFS;
++			goto abort;
++		}
++
++		base += skip;
++		len -= skip;
++		skip = 0;
++		len = spdk_min(len, remaining);
++		req->iov[req_iovcnt].iov_base = base;
++		req->iov[req_iovcnt].iov_len = len;
++		req_iovcnt++;
++		remaining -= len;
++	}
++	if (remaining != 0) {
++		rc = -ENOBUFS;
++		goto abort;
++	}
++
++	req->iovcnt = req_iovcnt;
++	req->data_from_pool = false;
++	tcp_req->tx_iovcnt = tx_iovcnt;
++	tcp_req->tx_data_offset = data_offset;
++	tcp_req->tx_reservation_len = reservation_len;
++	return 0;
++
++abort:
++	if (spdk_sock_tx_abort(tqpair->sock, tcp_req->tx_reservation) != 0) {
++		nvmf_tcp_qpair_set_recv_state(tqpair, NVME_TCP_PDU_RECV_STATE_QUIESCING);
++	}
++	tcp_req->tx_reservation = NULL;
++	return rc;
++}
++
+ static void
+ nvmf_tcp_req_parse_sgl(struct spdk_nvmf_tcp_req *tcp_req,
+ 		       struct spdk_nvmf_transport *transport,
+@@ -2727,6 +2835,14 @@ nvmf_tcp_req_parse_sgl(struct spdk_nvmf_tcp_req *tcp_req,
+ 			req->dif.elba_length = length;
+ 		}
+ 
++		if (nvmf_tcp_req_reserve_c2h(tcp_req, length) == 0) {
++			nvmf_tcp_req_set_state(tcp_req, TCP_REQUEST_STATE_HAVE_BUFFER);
++			SPDK_DEBUGLOG(nvmf_tcp,
++				      "Request %p uses %u direct socket TX buffer(s), data=%p\n",
++				      tcp_req, req->iovcnt, req->iov[0].iov_base);
++			return;
++		}
++
+ 		if (nvmf_ctrlr_use_zcopy(req)) {
+ 			SPDK_DEBUGLOG(nvmf_tcp, "Using zero-copy to execute request %p\n", tcp_req);
+ 			req->data_from_pool = false;
+@@ -2854,6 +2970,120 @@ nvmf_tcp_dif_error_to_compl_status(uint8_t err_type) {
+ 	return result;
+ }
+ 
++static int
++nvmf_tcp_req_abort_tx_reservation(struct spdk_nvmf_tcp_req *tcp_req)
++{
++	struct spdk_nvmf_tcp_qpair *tqpair;
++	int rc;
++
++	if (tcp_req->tx_reservation == NULL) {
++		return 0;
++	}
++
++	tqpair = SPDK_CONTAINEROF(tcp_req->req.qpair, struct spdk_nvmf_tcp_qpair, qpair);
++	rc = spdk_sock_tx_abort(tqpair->sock, tcp_req->tx_reservation);
++	tcp_req->tx_reservation = NULL;
++	tcp_req->tx_iovcnt = 0;
++	return rc;
++}
++
++static int
++nvmf_tcp_req_copy_tx(struct spdk_nvmf_tcp_req *tcp_req, uint32_t offset,
++		     const void *src, uint32_t len)
++{
++	const uint8_t *input = src;
++	uint32_t copied = 0;
++	int i;
++
++	for (i = 0; i < tcp_req->tx_iovcnt && copied < len; i++) {
++		uint8_t *output = tcp_req->tx_iov[i].iov_base;
++		uint32_t iov_len = tcp_req->tx_iov[i].iov_len;
++		uint32_t count;
++
++		if (offset >= iov_len) {
++			offset -= iov_len;
++			continue;
++		}
++		output += offset;
++		iov_len -= offset;
++		offset = 0;
++		count = spdk_min(iov_len, len - copied);
++
++		if (input != NULL) {
++			memcpy(output, input + copied, count);
++		} else {
++			memset(output, 0, count);
++		}
++		copied += count;
++	}
++
++	return copied == len ? 0 : -ENOBUFS;
++}
++
++static int
++nvmf_tcp_send_reserved_c2h_data(struct spdk_nvmf_tcp_qpair *tqpair,
++				struct spdk_nvmf_tcp_req *tcp_req)
++{
++	struct nvme_tcp_pdu *rsp_pdu;
++	struct spdk_nvme_tcp_c2h_data_hdr *c2h_data;
++	struct spdk_nvme_tcp_rsp capsule_resp = {};
++	struct spdk_nvmf_tcp_transport *ttransport = SPDK_CONTAINEROF(
++			tqpair->qpair.transport, struct spdk_nvmf_tcp_transport, transport);
++	uint32_t c2h_plen;
++	int rc;
++
++	assert(tcp_req->tx_reservation != NULL);
++	assert(!tqpair->host_hdgst_enable && !tqpair->host_ddgst_enable);
++
++	rsp_pdu = nvmf_tcp_req_pdu_init(tcp_req);
++	c2h_data = &rsp_pdu->hdr.c2h_data;
++	c2h_data->common.pdu_type = SPDK_NVME_TCP_PDU_TYPE_C2H_DATA;
++	c2h_data->common.hlen = sizeof(*c2h_data);
++	c2h_data->common.pdo = tcp_req->tx_data_offset;
++	c2h_plen = tcp_req->tx_data_offset + tcp_req->req.length;
++	c2h_data->common.plen = c2h_plen;
++	c2h_data->common.flags = SPDK_NVME_TCP_C2H_DATA_FLAGS_LAST_PDU;
++	if (ttransport->tcp_opts.c2h_success) {
++		c2h_data->common.flags |= SPDK_NVME_TCP_C2H_DATA_FLAGS_SUCCESS;
++	}
++	c2h_data->cccid = tcp_req->req.cmd->nvme_cmd.cid;
++	c2h_data->datao = 0;
++	c2h_data->datal = tcp_req->req.length;
++
++	rsp_pdu->rw_offset = tcp_req->req.length;
++	rc = nvmf_tcp_req_copy_tx(tcp_req, 0, NULL, tcp_req->tx_data_offset);
++	if (rc == 0) {
++		rc = nvmf_tcp_req_copy_tx(tcp_req, 0, c2h_data, sizeof(*c2h_data));
++	}
++	if (rc == 0 && !ttransport->tcp_opts.c2h_success) {
++		capsule_resp.common.pdu_type = SPDK_NVME_TCP_PDU_TYPE_CAPSULE_RESP;
++		capsule_resp.common.plen = capsule_resp.common.hlen = sizeof(capsule_resp);
++		capsule_resp.rccqe = tcp_req->req.rsp->nvme_cpl;
++		rc = nvmf_tcp_req_copy_tx(tcp_req, c2h_plen, &capsule_resp,
++					  sizeof(capsule_resp));
++	}
++	if (rc == 0) {
++		rc = spdk_sock_tx_commit(tqpair->sock, tcp_req->tx_reservation);
++	}
++
++	if (rc != 0) {
++		SPDK_ERRLOG("Failed to commit direct C2H transmit buffers: %d\n", rc);
++		if (nvmf_tcp_req_abort_tx_reservation(tcp_req) != 0) {
++			nvmf_tcp_qpair_set_recv_state(tqpair, NVME_TCP_PDU_RECV_STATE_QUIESCING);
++		}
++		return rc;
++	}
++
++	tcp_req->tx_reservation = NULL;
++	tcp_req->tx_iovcnt = 0;
++	if (ttransport->tcp_opts.c2h_success) {
++		nvmf_tcp_pdu_c2h_data_complete(tcp_req);
++	} else {
++		nvmf_tcp_request_free(tcp_req);
++	}
++	return 0;
++}
++
+ static void
+ _nvmf_tcp_send_c2h_data(struct spdk_nvmf_tcp_qpair *tqpair,
+ 			struct spdk_nvmf_tcp_req *tcp_req)
+@@ -3007,8 +3237,18 @@ request_transfer_out(struct spdk_nvmf_request *req)
+ 	tqpair = SPDK_CONTAINEROF(tcp_req->req.qpair, struct spdk_nvmf_tcp_qpair, qpair);
+ 	nvmf_tcp_req_set_state(tcp_req, TCP_REQUEST_STATE_TRANSFERRING_CONTROLLER_TO_HOST);
+ 	if (spdk_nvme_cpl_is_success(rsp) && req->xfer == SPDK_NVME_DATA_CONTROLLER_TO_HOST) {
+-		nvmf_tcp_send_c2h_data(tqpair, tcp_req);
++		if (tcp_req->tx_reservation != NULL) {
++			if (nvmf_tcp_send_reserved_c2h_data(tqpair, tcp_req) != 0) {
++				nvmf_tcp_qpair_set_recv_state(tqpair, NVME_TCP_PDU_RECV_STATE_QUIESCING);
++			}
++		} else {
++			nvmf_tcp_send_c2h_data(tqpair, tcp_req);
++		}
+ 	} else {
++		if (nvmf_tcp_req_abort_tx_reservation(tcp_req) != 0) {
++			nvmf_tcp_qpair_set_recv_state(tqpair, NVME_TCP_PDU_RECV_STATE_QUIESCING);
++			return 0;
++		}
+ 		nvmf_tcp_send_capsule_resp_pdu(tcp_req, tqpair);
+ 	}
+ 
+@@ -3354,6 +3594,11 @@ nvmf_tcp_req_process(struct spdk_nvmf_tcp_transport *ttransport,
+ 				break;
+ 			}
+ 
++			if (tcp_req->tx_reservation != NULL &&
++			    nvmf_tcp_req_abort_tx_reservation(tcp_req) != 0) {
++				SPDK_ERRLOG("Unable to abort direct C2H transmit buffers during request cleanup\n");
++			}
++
+ 			if (tcp_req->req.data_from_pool) {
+ 				spdk_nvmf_request_free_buffers(&tcp_req->req, group, transport);
+ 			} else if (spdk_unlikely(tcp_req->has_in_capsule_data &&
+diff --git a/python/spdk/cli/nvmf.py b/python/spdk/cli/nvmf.py
+index dddd4c6aa..75717ed9d 100644
+--- a/python/spdk/cli/nvmf.py
++++ b/python/spdk/cli/nvmf.py
+@@ -108,6 +108,7 @@ def add_parser(subparsers):
+     p.add_argument('-s', '--max-srq-depth', help='Max number of outstanding I/O per SRQ. Relevant only for RDMA transport', type=int)
+     p.add_argument('-r', '--no-srq', action='store_true', help='Disable per-thread shared receive queue. Relevant only for RDMA transport')
+     p.add_argument('-o', '--c2h-success', action='store_false', help='Disable C2H success optimization. Relevant only for TCP transport')
++    p.add_argument('--c2h-direct-sock', action='store_true', help='Read C2H data into reserved socket transmit buffers. TCP only')
+     p.add_argument('-f', '--dif-insert-or-strip', action='store_true', help='Enable DIF insert/strip. Relevant only for TCP transport')
+     p.add_argument('-y', '--sock-priority', help='The sock priority of the tcp connection. Relevant only for TCP transport', type=int)
+     p.add_argument('-l', '--acceptor-backlog', help='Pending connections allowed at one time. Relevant only for RDMA transport', type=int)
+diff --git a/schema/schema.json b/schema/schema.json
+index 0760dee98..3e62d20ee 100644
+--- a/schema/schema.json
++++ b/schema/schema.json
+@@ -3941,6 +3941,11 @@
+           "type": "boolean",
+           "description": "Disable C2H success optimization (TCP only)"
+         },
++        {
++          "name": "c2h_direct_sock",
++          "type": "boolean",
++          "description": "Read C2H data directly into reserved socket transmit buffers (TCP only)"
++        },
+         {
+           "name": "dif_insert_or_strip",
+           "type": "boolean",
+-- 
+2.55.0
