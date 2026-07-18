@@ -143,8 +143,8 @@ foreach_vec
   (u16x8) __builtin_shufflevector ((u16x8) (v1), (u16x8) (v1), __VA_ARGS__)
 #define u16x16_shuffle(v1, ...)                                               \
   (u16x16) __builtin_shufflevector ((u16x16) (v1), (u16x16) (v1), __VA_ARGS__)
-#define u16x32_shuffle(v1, ...)                                               \
-  (u16u32) __builtin_shufflevector ((u16x32) (v1), (u16x32) (v1), __VA_ARGS__);
+#define u16x32_shuffle(v1, ...)                                                                    \
+  (u16x32) __builtin_shufflevector ((u16x32) (v1), (u16x32) (v1), __VA_ARGS__)
 
 #define u32x4_shuffle(v1, ...)                                                \
   (u32x4) __builtin_shufflevector ((u32x4) (v1), (u32x4) (v1), __VA_ARGS__)
@@ -171,8 +171,8 @@ foreach_vec
   (u16x8) __builtin_shufflevector ((u16x8) (v1), (u16x8) (v2), __VA_ARGS__)
 #define u16x16_shuffle2(v1, v2, ...)                                          \
   (u16x16) __builtin_shufflevector ((u16x16) (v1), (u16x16) (v2), __VA_ARGS__)
-#define u16x32_shuffle2(v1, v2, ...)                                          \
-  (u16u32) __builtin_shufflevector ((u16x32) (v1), (u16x32) (v2), __VA_ARGS__);
+#define u16x32_shuffle2(v1, v2, ...)                                                               \
+  (u16x32) __builtin_shufflevector ((u16x32) (v1), (u16x32) (v2), __VA_ARGS__)
 
 #define u32x4_shuffle2(v1, v2, ...)                                           \
   (u32x4) __builtin_shufflevector ((u32x4) (v1), (u32x4) (v2), __VA_ARGS__)

@@ -446,7 +446,7 @@ __clib_export void vnet_hw_if_update_runtime_data (vnet_main_t *vnm, u32 hw_if_i
 /* Formats sw/hw interface. */
 format_function_t format_vnet_hw_interface;
 __clib_export format_function_t format_vnet_hw_if_rx_mode;
-format_function_t format_vnet_hw_interface_link_speed;
+__clib_export format_function_t format_vnet_hw_interface_link_speed;
 __clib_export format_function_t format_vnet_hw_if_index_name;
 format_function_t format_vnet_sw_interface;
 __clib_export format_function_t format_vnet_sw_interface_name;
