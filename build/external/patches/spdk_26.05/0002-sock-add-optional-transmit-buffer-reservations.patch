@@ -1,0 +1,172 @@
+From 6756e849f392a851bd6e7834f44e907450346346 Mon Sep 17 00:00:00 2001
+From: Jerome Tollet <jtollet@cisco.com>
+Date: Thu, 16 Jul 2026 18:02:39 +0200
+Subject: [PATCH 2/4] sock: add optional transmit buffer reservations
+
+Signed-off-by: Jerome Tollet <jtollet@cisco.com>
+---
+ include/spdk/sock.h                 | 49 +++++++++++++++++++++++++
+ include/spdk_internal/sock_module.h |  5 +++
+ lib/sock/sock.c                     | 55 +++++++++++++++++++++++++++++
+ lib/sock/spdk_sock.map              |  3 ++
+ 4 files changed, 112 insertions(+)
+
+diff --git a/include/spdk/sock.h b/include/spdk/sock.h
+index fdf54b0..6f5c016 100644
+--- a/include/spdk/sock.h
++++ b/include/spdk/sock.h
+@@ -512,6 +512,55 @@ ssize_t spdk_sock_writev(struct spdk_sock *sock, struct iovec *iov, int iovcnt);
+  */
+ void spdk_sock_writev_async(struct spdk_sock *sock, struct spdk_sock_request *req);
+ 
++/**
++ * Reserve writable buffers for a socket transmission.
++ *
++ * The returned buffers do not become visible to the peer until they are
++ * committed.  Several reservations may be outstanding and may complete in any
++ * order.  An implementation may assign stream positions when reservations are
++ * created; in that case it publishes only a contiguous committed prefix and
++ * may defer regular writes until earlier reservations have completed.
++ *
++ * This API is optional and returns -ENOTSUP when the selected socket
++ * implementation cannot expose writable transmit buffers.
++ *
++ * \param sock Socket whose transmit stream is reserved.
++ * \param len Number of bytes to reserve.
++ * \param iov Array that receives the writable buffers.
++ * \param iovcnt Input: capacity of iov. Output: number of buffers returned.
++ * \param ctx Opaque reservation handle used to commit or abort.
++ *
++ * \return 0 on success, negative errno value on failure.
++ */
++int spdk_sock_tx_reserve(struct spdk_sock *sock, size_t len,
++			 struct iovec *iov, int *iovcnt, void **ctx);
++
++/**
++ * Mark a transmit reservation complete after its buffers have been filled.
++ * The implementation may defer making it visible until earlier reservations
++ * have also been committed.
++ *
++ * \param sock Socket used to create the reservation.
++ * \param ctx Opaque reservation handle returned by spdk_sock_tx_reserve().
++ *
++ * \return 0 on success, negative errno value on failure.
++ */
++int spdk_sock_tx_commit(struct spdk_sock *sock, void *ctx);
++
++/**
++ * Abort an outstanding transmit reservation.
++ *
++ * An implementation may reject an abort when removing the reservation would
++ * leave a hole in an already-reserved stream region.  Callers must treat an
++ * abort failure as a terminal error for the socket stream.
++ *
++ * \param sock Socket used to create the reservation.
++ * \param ctx Opaque reservation handle returned by spdk_sock_tx_reserve().
++ *
++ * \return 0 on success, negative errno value on failure.
++ */
++int spdk_sock_tx_abort(struct spdk_sock *sock, void *ctx);
++
+ /**
+  * Read message from the given socket to the I/O vector array.
+  *
+diff --git a/include/spdk_internal/sock_module.h b/include/spdk_internal/sock_module.h
+index 8cacca3..c8fe4e9 100644
+--- a/include/spdk_internal/sock_module.h
++++ b/include/spdk_internal/sock_module.h
+@@ -120,6 +120,11 @@ struct spdk_net_impl {
+ 	int (*get_opts)(struct spdk_sock_impl_opts *opts, size_t *len);
+ 	int (*set_opts)(const struct spdk_sock_impl_opts *opts, size_t len);
+ 
++	int (*tx_reserve)(struct spdk_sock *sock, size_t len, struct iovec *iov,
++			  int *iovcnt, void **ctx);
++	int (*tx_commit)(struct spdk_sock *sock, void *ctx);
++	int (*tx_abort)(struct spdk_sock *sock, void *ctx);
++
+ 	STAILQ_ENTRY(spdk_net_impl) link;
+ };
+ 
+diff --git a/lib/sock/sock.c b/lib/sock/sock.c
+index ca84311..d4c5fa5 100644
+--- a/lib/sock/sock.c
++++ b/lib/sock/sock.c
+@@ -858,6 +858,61 @@ spdk_sock_writev_async(struct spdk_sock *sock, struct spdk_sock_request *req)
+ 	sock->net_impl->writev_async(sock, req);
+ }
+ 
++int
++spdk_sock_tx_reserve(struct spdk_sock *sock, size_t len, struct iovec *iov,
++		     int *iovcnt, void **ctx)
++{
++	if (sock == NULL || sock->flags.closed) {
++		return -EBADF;
++	}
++
++	if (len == 0 || iov == NULL || iovcnt == NULL || *iovcnt <= 0 || ctx == NULL) {
++		return -EINVAL;
++	}
++
++	if (sock->net_impl->tx_reserve == NULL) {
++		return -ENOTSUP;
++	}
++
++	return sock->net_impl->tx_reserve(sock, len, iov, iovcnt, ctx);
++}
++
++int
++spdk_sock_tx_commit(struct spdk_sock *sock, void *ctx)
++{
++	if (sock == NULL || sock->flags.closed) {
++		return -EBADF;
++	}
++
++	if (ctx == NULL) {
++		return -EINVAL;
++	}
++
++	if (sock->net_impl->tx_commit == NULL) {
++		return -ENOTSUP;
++	}
++
++	return sock->net_impl->tx_commit(sock, ctx);
++}
++
++int
++spdk_sock_tx_abort(struct spdk_sock *sock, void *ctx)
++{
++	if (sock == NULL || sock->flags.closed) {
++		return -EBADF;
++	}
++
++	if (ctx == NULL) {
++		return -EINVAL;
++	}
++
++	if (sock->net_impl->tx_abort == NULL) {
++		return -ENOTSUP;
++	}
++
++	return sock->net_impl->tx_abort(sock, ctx);
++}
++
+ SPDK_LOG_DEPRECATION_REGISTER(spdk_sock_recv_next,
+ 			      "upcoming zero-copy receive API should be used instead",
+ 			      "v26.09", SPDK_LOG_DEPRECATION_EVERY_24H);
+diff --git a/lib/sock/spdk_sock.map b/lib/sock/spdk_sock.map
+index ecb7d6b..8d71214 100644
+--- a/lib/sock/spdk_sock.map
++++ b/lib/sock/spdk_sock.map
+@@ -20,6 +20,9 @@
+ 	spdk_sock_recv_next;
+ 	spdk_sock_writev;
+ 	spdk_sock_writev_async;
++	spdk_sock_tx_reserve;
++	spdk_sock_tx_commit;
++	spdk_sock_tx_abort;
+ 	spdk_sock_readv;
+ 	spdk_sock_set_recvlowat;
+ 	spdk_sock_set_recvbuf;
+-- 
+2.55.0
+
