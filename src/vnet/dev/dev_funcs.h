@@ -158,6 +158,36 @@ vnet_dev_get_dma_addr (vlib_main_t *vm, vnet_dev_t *dev, void *p)
   return dev->va_dma ? pointer_to_uword (p) : vlib_physmem_get_pa (vm, p);
 }
 
+static_always_inline void
+vnet_dev_va_to_iova (vnet_dev_t *dev, void *dst[], void *src[], u32 n_ptrs, i32 offset)
+{
+  u64 *d = (u64 *) dst;
+  u64 *s = (u64 *) src;
+  u32 n = n_ptrs;
+
+  if (offset)
+    {
+#if defined(CLIB_HAVE_VEC512)
+      u64x8 off8 = u64x8_splat ((u64) offset);
+      for (; n >= 8; n -= 8, d += 8, s += 8)
+	*(u64x8u *) d = *(u64x8u *) s + off8;
+#elif defined(CLIB_HAVE_VEC256)
+      u64x4 off4 = u64x4_splat ((u64) offset);
+      for (; n >= 4; n -= 4, d += 4, s += 4)
+	*(u64x4u *) d = *(u64x4u *) s + off4;
+#elif defined(CLIB_HAVE_VEC128)
+      u64x2 off2 = u64x2_splat ((u64) offset);
+      for (; n >= 2; n -= 2, d += 2, s += 2)
+	*(u64x2u *) d = *(u64x2u *) s + off2;
+#endif
+      for (; n > 0; n--, d++, s++)
+	*d = *s + (u64) offset;
+    }
+
+  if (!dev->va_dma)
+    vlib_physmem_convert_to_phys_addrs (vlib_get_main (), (uword *) dst, n_ptrs);
+}
+
 static_always_inline void *
 vnet_dev_get_bus_data (vnet_dev_t *dev)
 {
