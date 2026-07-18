@@ -349,29 +349,20 @@ vnet_dev_port_module_eeprom_read (vlib_main_t *vm, vnet_dev_port_t *p, u8 i2c_ad
   return vnet_dev_process_call_port_op_with_ptr (vm, p, p->port_ops.get_module_eeprom, &req);
 }
 
-clib_error_t *
-vnet_dev_port_eeprom_read (vnet_main_t *__clib_unused vnm, vnet_hw_interface_t *hi,
-			   vnet_interface_eeprom_t **eeprom)
+vnet_dev_rv_t
+vnet_dev_port_get_module_eeprom (vlib_main_t *vm, vnet_dev_port_t *p, vnet_interface_eeprom_t *e)
 {
-  vlib_main_t *vm = vlib_get_main ();
-  vnet_dev_instance_t *di = vnet_dev_get_dev_instance (hi->dev_instance);
-  vnet_dev_port_t *p = di->port;
-  vnet_interface_eeprom_t *e;
   vnet_dev_rv_t rv;
   u8 id;
 
   if (!p->port_ops.get_module_eeprom)
-    return vnet_dev_port_err (vm, p, VNET_DEV_ERR_NOT_SUPPORTED,
-			      "module EEPROM reading is not supported by this driver");
+    return VNET_DEV_ERR_NOT_SUPPORTED;
 
   rv = vnet_dev_port_module_eeprom_read (vm, p, 0x50, 0, 0, 1, &id);
   if (rv != VNET_DEV_OK)
-    return vnet_dev_port_err (vm, p, rv, "failed to read module identifier");
+    return rv;
 
   log_debug (p->dev, "module identifier 0x%02x", id);
-
-  e = clib_mem_alloc (sizeof (*e));
-  *e = (vnet_interface_eeprom_t) {};
 
   switch (id)
     {
@@ -383,35 +374,53 @@ vnet_dev_port_eeprom_read (vnet_main_t *__clib_unused vnm, vnet_hw_interface_t *
       if (rv == VNET_DEV_OK && vnet_dev_port_module_eeprom_read (
 				 vm, p, 0x51, 0, 0, 256, e->eeprom_raw + 256) == VNET_DEV_OK)
 	e->eeprom_len = 512;
-      break;
+      return rv;
 
     case 0x0c: /* QSFP */
     case 0x0d: /* QSFP+ */
     case 0x11: /* QSFP28 */
-      e->eeprom_type = VNET_INTERFACE_EEPROM_TYPE_SFF8636;
-      e->eeprom_len = 256;
-      rv = vnet_dev_port_module_eeprom_read (vm, p, 0x50, 0, 0, 256, e->eeprom_raw);
-      /* upper pages 1-3 hold channel/module alarm thresholds and need page
-       * select support in the module - skip them for flat-memory modules
-       * (e.g. most passive DACs) which only have page 0 and may not behave
-       * as a page select - stop at whichever page the driver can't give us */
-      sff8636_status_t status = { .as_u8 = e->eeprom_raw[2] };
-      if (rv == VNET_DEV_OK && !status.flat_mem)
-	for (u8 pg = 1; rv == VNET_DEV_OK && pg <= 3; pg++)
-	  {
-	    if (vnet_dev_port_module_eeprom_read (vm, p, 0x50, pg, 128, 128,
-						  e->eeprom_raw + 128 * (pg + 1)) != VNET_DEV_OK)
-	      break;
-	    e->eeprom_len = 128 * (pg + 2);
-	  }
-      break;
+      {
+	sff8636_status_t status;
+
+	e->eeprom_type = VNET_INTERFACE_EEPROM_TYPE_SFF8636;
+	e->eeprom_len = 256;
+	rv = vnet_dev_port_module_eeprom_read (vm, p, 0x50, 0, 0, 256, e->eeprom_raw);
+	/* upper pages 1-3 hold channel/module alarm thresholds and need page
+	 * select support in the module - skip them for flat-memory modules
+	 * (e.g. most passive DACs) which only have page 0 and may not behave
+	 * as a page select - stop at whichever page the driver can't give us */
+	status.as_u8 = e->eeprom_raw[2];
+	if (rv == VNET_DEV_OK && !status.flat_mem)
+	  for (u8 pg = 1; rv == VNET_DEV_OK && pg <= 3; pg++)
+	    {
+	      if (vnet_dev_port_module_eeprom_read (vm, p, 0x50, pg, 128, 128,
+						    e->eeprom_raw + 128 * (pg + 1)) != VNET_DEV_OK)
+		break;
+	      e->eeprom_len = 128 * (pg + 2);
+	    }
+	return rv;
+      }
 
     default:
-      clib_mem_free (e);
-      return vnet_dev_port_err (vm, p, VNET_DEV_ERR_NOT_SUPPORTED,
-				"unsupported module identifier 0x%02x", id);
+      log_debug (p->dev, "unsupported module identifier 0x%02x", id);
+      return VNET_DEV_ERR_NOT_SUPPORTED;
     }
+}
 
+clib_error_t *
+vnet_dev_port_eeprom_read (vnet_main_t *__clib_unused vnm, vnet_hw_interface_t *hi,
+			   vnet_interface_eeprom_t **eeprom)
+{
+  vlib_main_t *vm = vlib_get_main ();
+  vnet_dev_instance_t *di = vnet_dev_get_dev_instance (hi->dev_instance);
+  vnet_dev_port_t *p = di->port;
+  vnet_interface_eeprom_t *e;
+  vnet_dev_rv_t rv;
+
+  e = clib_mem_alloc (sizeof (*e));
+  *e = (vnet_interface_eeprom_t) {};
+
+  rv = vnet_dev_port_get_module_eeprom (vm, p, e);
   if (rv != VNET_DEV_OK)
     {
       clib_mem_free (e);

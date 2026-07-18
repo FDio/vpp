@@ -2755,14 +2755,12 @@ show_interface_transceiver_output (vlib_main_t *vm, vnet_hw_interface_t *hi,
     }
 
   if (show_module)
-    {
-      sfp_eeprom_module (vm, eeprom, is_terse);
-    }
+    vlib_cli_output (vm, "  Module Base Information:\n%U%U", format_white_space, 4,
+		     format_sfp_eeprom_module, eeprom, is_terse);
 
   if (show_diag)
-    {
-      sfp_eeprom_diagnostics (vm, eeprom, is_terse);
-    }
+    vlib_cli_output (vm, "  Module Diagnostics:\n%U%U", format_white_space, 4,
+		     format_sfp_eeprom_diagnostics, eeprom, is_terse);
 
 done:
   if (eeprom)

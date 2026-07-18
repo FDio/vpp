@@ -4,21 +4,7 @@
  */
 
 #include <vnet/ethernet/sfp.h>
-#include <vnet/ethernet/sfp_sff8472.h>
-#include <vnet/ethernet/sfp_sff8636.h>
-
-static u8 *
-format_space_terminated (u8 * s, va_list * args)
-{
-  u32 l = va_arg (*args, u32);
-  u8 *v = va_arg (*args, u8 *);
-  u8 *p;
-
-  for (p = v + l - 1; p >= v && p[0] == ' '; p--)
-    ;
-  vec_add (s, v, clib_min (p - v + 1, l));
-  return s;
-}
+#include <vppinfra/format_table.h>
 
 u8 *
 format_sfp_id (u8 *s, va_list *args)
@@ -27,7 +13,10 @@ format_sfp_id (u8 *s, va_list *args)
   char *t = 0;
   switch (id)
     {
-#define _(f,str) case SFP_ID_##f: t = str; break;
+#define _(v, f, str)                                                                               \
+  case SFP_ID_##f:                                                                                 \
+    t = str;                                                                                       \
+    break;
       foreach_sfp_id
 #undef _
     default:
@@ -72,77 +61,14 @@ format_sfp_encoding (u8 *s, va_list *args)
   return format (s, "%s", t);
 }
 
-static u8 *
-format_sfp_compatibility (u8 * s, va_list * args)
-{
-  u32 c = va_arg (*args, u32);
-  char *t = 0;
-  switch (c)
-    {
-#define _(a,b,f) case SFP_COMPATIBILITY_##f: t = #f; break;
-      foreach_sfp_compatibility
-#undef _
-    default:
-      return format (s, "unknown 0x%x", c);
-    }
-  return format (s, "%s", t);
-}
-
-static u32
-sfp_is_compatible (sfp_eeprom_t *e, sfp_compatibility_t c)
-{
-  static struct
-  {
-    u8 byte, bit;
-  } t[] =
-  {
-#define _(a,b,f) { .byte = a, .bit = b, },
-    foreach_sfp_compatibility
-#undef _
-  };
-
-  ASSERT (c < ARRAY_LEN (t));
-  return (e->compatibility[t[c].byte] & (1 << t[c].bit)) != 0;
-}
-
 u8 *
-format_sfp_eeprom (u8 * s, va_list * args)
+format_sfp_eeprom_base (u8 *s, va_list *args)
 {
-  sfp_eeprom_t *e = va_arg (*args, sfp_eeprom_t *);
-  u32 indent = format_get_indent (s);
-  int i;
-
-  s = format (s, "id %U, ", format_sfp_id, e->id);
-
-  s = format (s, "compatibility:");
-  for (i = 0; i < SFP_N_COMPATIBILITY; i++)
-    if (sfp_is_compatible (e, i))
-      s = format (s, " %U", format_sfp_compatibility, i);
-
-  s = format (s, "\n%Uvendor: %U, part %U",
-	      format_white_space, indent,
-	      format_space_terminated, sizeof (e->vendor_name),
-	      e->vendor_name, format_space_terminated,
-	      sizeof (e->vendor_part_number), e->vendor_part_number);
-  s =
-    format (s, "\n%Urevision: %U, serial: %U, date code: %U",
-	    format_white_space, indent, format_space_terminated,
-	    sizeof (e->vendor_revision), e->vendor_revision,
-	    format_space_terminated, sizeof (e->vendor_serial_number),
-	    e->vendor_serial_number, format_space_terminated,
-	    sizeof (e->vendor_date_code), e->vendor_date_code);
-
-  if (e->length[4])
-    s = format (s, "\n%Ucable length: %um", format_white_space, indent,
-		e->length[4]);
-
-  return s;
-}
-
-void
-sfp_eeprom_decode_base (vlib_main_t *vm, sfp_eeprom_t *se, u8 is_terse,
-			vnet_interface_eeprom_type_t eeprom_type)
-{
+  sfp_eeprom_t *se = va_arg (*args, sfp_eeprom_t *);
+  u8 is_terse = va_arg (*args, u32);
+  vnet_interface_eeprom_type_t eeprom_type = va_arg (*args, u32);
+  table_t table = {};
+  u32 row = 0;
   u8 vendor_name[17] = { 0 };
   u8 vendor_pn[17] = { 0 };
   u8 vendor_rev[5] = { 0 };
@@ -150,116 +76,218 @@ sfp_eeprom_decode_base (vlib_main_t *vm, sfp_eeprom_t *se, u8 is_terse,
   u8 date_code[9] = { 0 };
   u16 wavelength;
 
-  vlib_cli_output (vm, "  Module Base Information:");
+  table_add_hdr_col (&table, 0);
+
   /* Vendor information */
   clib_memcpy (vendor_name, se->vendor_name, 16);
   /* Trim trailing spaces */
   for (int i = 15; i >= 0 && vendor_name[i] == ' '; i--)
     vendor_name[i] = '\0';
-  vlib_cli_output (vm, "    Vendor Name: %s", vendor_name);
+  table_format_cell (&table, row, -1, "Vendor Name");
+  table_format_cell (&table, row, 0, "%s", vendor_name);
+  table_set_cell_align (&table, row, 0, TTAA_LEFT);
+  row++;
 
-  vlib_cli_output (vm, "    Vendor OUI: %02x:%02x:%02x", se->vendor_oui[0],
-		   se->vendor_oui[1], se->vendor_oui[2]);
+  table_format_cell (&table, row, -1, "Vendor OUI");
+  table_format_cell (&table, row, 0, "%02x:%02x:%02x", se->vendor_oui[0], se->vendor_oui[1],
+		     se->vendor_oui[2]);
+  table_set_cell_align (&table, row, 0, TTAA_LEFT);
+  row++;
 
   clib_memcpy (vendor_pn, se->vendor_part_number, 16);
   /* Trim trailing spaces */
   for (int i = 15; i >= 0 && vendor_pn[i] == ' '; i--)
     vendor_pn[i] = '\0';
-  vlib_cli_output (vm, "    Vendor Part Number: %s", vendor_pn);
+  table_format_cell (&table, row, -1, "Vendor Part Number");
+  table_format_cell (&table, row, 0, "%s", vendor_pn);
+  table_set_cell_align (&table, row, 0, TTAA_LEFT);
+  row++;
 
   clib_memcpy (vendor_sn, se->vendor_serial_number, 16);
   /* Trim trailing spaces */
   for (int i = 15; i >= 0 && vendor_sn[i] == ' '; i--)
     vendor_sn[i] = '\0';
-  vlib_cli_output (vm, "    Vendor Serial Number: %s", vendor_sn);
+  table_format_cell (&table, row, -1, "Vendor Serial Number");
+  table_format_cell (&table, row, 0, "%s", vendor_sn);
+  table_set_cell_align (&table, row, 0, TTAA_LEFT);
+  row++;
 
-  if (is_terse)
-    return;
-
-  vlib_cli_output (vm, "    Identifier: 0x%02x (%U)", se->id, format_sfp_id,
-		   se->id);
-  vlib_cli_output (vm, "    Extended Identifier: 0x%02x", se->extended_id);
-  vlib_cli_output (vm, "    Connector: 0x%02x (%U)", se->connector_type,
-		   format_sfp_connector, se->connector_type);
-  vlib_cli_output (vm, "    Encoding: 0x%02x (%U)", se->encoding,
-		   format_sfp_encoding, se->encoding);
-  vlib_cli_output (vm, "    Nominal Bit Rate: %u00 Mbps",
-		   se->nominal_bit_rate_100mbits_per_sec);
-
-  /* Length information */
-  if (se->length[0])
-    vlib_cli_output (vm, "    Length (SMF): %u km", se->length[0]);
-  if (se->length[1])
-    vlib_cli_output (vm, "    Length (SMF): %u00 m", se->length[1]);
-  if (se->length[2])
-    vlib_cli_output (vm, "    Length (OM2 50um): %u0 m", se->length[2]);
-  if (se->length[3])
-    vlib_cli_output (vm, "    Length (OM1 62.5um): %u0 m", se->length[3]);
-  if (se->length[4])
-    vlib_cli_output (vm, "    Length (Copper/OM3): %u m", se->length[4]);
-
-  /* NOTE(pim): SFF8472 specifies a 4 byte vendor revision followed by a 2-byte
-   * wavelength_or_att. However SFF8636 specifies a 2 byte vendor revision
-   * followed by a 2 byte wavelength_or_att, followed by a 2 byte
-   * wavelength_tolerance */
-  if (eeprom_type == VNET_INTERFACE_EEPROM_TYPE_SFF8472)
+  if (!is_terse)
     {
-      clib_memcpy (vendor_rev, se->vendor_revision, 4);
-      /* Trim trailing spaces */
-      for (int i = 3; i >= 0 && vendor_rev[i] == ' '; i--)
-	vendor_rev[i] = '\0';
-      vlib_cli_output (vm, "    Vendor Revision: %s", vendor_rev);
+      table_format_cell (&table, row, -1, "Identifier");
+      table_format_cell (&table, row, 0, "0x%02x (%U)", se->id, format_sfp_id, se->id);
+      table_set_cell_align (&table, row, 0, TTAA_LEFT);
+      row++;
 
-      wavelength = clib_net_to_host_u16 (se->wavelength_or_att);
-      if (wavelength)
-	vlib_cli_output (vm, "    Wavelength: %u nm", wavelength);
+      table_format_cell (&table, row, -1, "Extended Identifier");
+      table_format_cell (&table, row, 0, "0x%02x", se->extended_id);
+      table_set_cell_align (&table, row, 0, TTAA_LEFT);
+      row++;
+
+      table_format_cell (&table, row, -1, "Connector");
+      table_format_cell (&table, row, 0, "0x%02x (%U)", se->connector_type, format_sfp_connector,
+			 se->connector_type);
+      table_set_cell_align (&table, row, 0, TTAA_LEFT);
+      row++;
+
+      table_format_cell (&table, row, -1, "Compliance");
+      if (eeprom_type == VNET_INTERFACE_EEPROM_TYPE_SFF8472)
+	table_format_cell (&table, row, 0, "%U", format_sff8472_compliance, se->compatibility);
+      else
+	table_format_cell (&table, row, 0, "%U", format_sff8636_compliance, se->compatibility);
+      table_set_cell_align (&table, row, 0, TTAA_LEFT);
+      row++;
+
+      table_format_cell (&table, row, -1, "Encoding");
+      table_format_cell (&table, row, 0, "0x%02x (%U)", se->encoding, format_sfp_encoding,
+			 se->encoding);
+      table_set_cell_align (&table, row, 0, TTAA_LEFT);
+      row++;
+
+      table_format_cell (&table, row, -1, "Nominal Bit Rate");
+      table_format_cell (&table, row, 0, "%u00 Mbps", se->nominal_bit_rate_100mbits_per_sec);
+      table_set_cell_align (&table, row, 0, TTAA_LEFT);
+      row++;
+
+      /* Length information */
+      if (se->length[0])
+	{
+	  table_format_cell (&table, row, -1, "Length (SMF)");
+	  table_format_cell (&table, row, 0, "%u km", se->length[0]);
+	  table_set_cell_align (&table, row, 0, TTAA_LEFT);
+	  row++;
+	}
+      if (se->length[1])
+	{
+	  table_format_cell (&table, row, -1, "Length (SMF)");
+	  table_format_cell (&table, row, 0, "%u00 m", se->length[1]);
+	  table_set_cell_align (&table, row, 0, TTAA_LEFT);
+	  row++;
+	}
+      if (se->length[2])
+	{
+	  table_format_cell (&table, row, -1, "Length (OM2 50um)");
+	  table_format_cell (&table, row, 0, "%u0 m", se->length[2]);
+	  table_set_cell_align (&table, row, 0, TTAA_LEFT);
+	  row++;
+	}
+      if (se->length[3])
+	{
+	  table_format_cell (&table, row, -1, "Length (OM1 62.5um)");
+	  table_format_cell (&table, row, 0, "%u0 m", se->length[3]);
+	  table_set_cell_align (&table, row, 0, TTAA_LEFT);
+	  row++;
+	}
+      if (se->length[4])
+	{
+	  table_format_cell (&table, row, -1, "Length (Copper/OM3)");
+	  table_format_cell (&table, row, 0, "%u m", se->length[4]);
+	  table_set_cell_align (&table, row, 0, TTAA_LEFT);
+	  row++;
+	}
+
+      /* NOTE(pim): SFF8472 specifies a 4 byte vendor revision followed by a
+       * 2-byte wavelength_or_att. However SFF8636 specifies a 2 byte vendor
+       * revision followed by a 2 byte wavelength_or_att, followed by a 2
+       * byte wavelength_tolerance */
+      if (eeprom_type == VNET_INTERFACE_EEPROM_TYPE_SFF8472)
+	{
+	  clib_memcpy (vendor_rev, se->vendor_revision, 4);
+	  /* Trim trailing spaces */
+	  for (int i = 3; i >= 0 && vendor_rev[i] == ' '; i--)
+	    vendor_rev[i] = '\0';
+	  table_format_cell (&table, row, -1, "Vendor Revision");
+	  table_format_cell (&table, row, 0, "%s", vendor_rev);
+	  table_set_cell_align (&table, row, 0, TTAA_LEFT);
+	  row++;
+
+	  wavelength = clib_net_to_host_u16 (se->wavelength_or_att);
+	  if (wavelength)
+	    {
+	      table_format_cell (&table, row, -1, "Wavelength");
+	      table_format_cell (&table, row, 0, "%u nm", wavelength);
+	      table_set_cell_align (&table, row, 0, TTAA_LEFT);
+	      row++;
+	    }
+	}
+      if (eeprom_type == VNET_INTERFACE_EEPROM_TYPE_SFF8636 ||
+	  eeprom_type == VNET_INTERFACE_EEPROM_TYPE_SFF8436)
+	{
+	  clib_memcpy (vendor_rev, se->vendor_revision, 2);
+	  /* Trim trailing spaces */
+	  for (int i = 1; i >= 0 && vendor_rev[i] == ' '; i--)
+	    vendor_rev[i] = '\0';
+	  table_format_cell (&table, row, -1, "Vendor Revision");
+	  table_format_cell (&table, row, 0, "%s", vendor_rev);
+	  table_set_cell_align (&table, row, 0, TTAA_LEFT);
+	  row++;
+
+	  u8 transmitter_tech = se->device_tech >> 4;
+	  table_format_cell (&table, row, -1, "Transmitter Technology");
+	  table_format_cell (&table, row, 0, "0x%x (%U)", transmitter_tech,
+			     format_sff8636_transmitter_tech, transmitter_tech);
+	  table_set_cell_align (&table, row, 0, TTAA_LEFT);
+	  row++;
+
+	  if (sff8636_transmitter_tech_is_copper (se->device_tech))
+	    {
+	      table_format_cell (&table, row, -1, "Copper Cable Attenuation");
+	      table_format_cell (&table, row, 0, "%u dB at 2.5 GHz, %u dB at 5.0 GHz",
+				 se->vendor_revision[2], se->vendor_revision[3]);
+	      table_set_cell_align (&table, row, 0, TTAA_LEFT);
+	      row++;
+	    }
+	  else
+	    {
+	      u16 sff8636_wavelength_or_att =
+		(se->vendor_revision[2] << 8) + se->vendor_revision[3];
+	      f64 wl_nm = ((f64) sff8636_wavelength_or_att) * 0.05;
+	      table_format_cell (&table, row, -1, "Wavelength");
+	      table_format_cell (&table, row, 0, "%.3f nm", wl_nm);
+	      table_set_cell_align (&table, row, 0, TTAA_LEFT);
+	      row++;
+	    }
+	}
+
+      clib_memcpy (date_code, se->vendor_date_code, 8);
+      table_format_cell (&table, row, -1, "Date Code");
+      table_format_cell (&table, row, 0, "%.8s", date_code);
+      table_set_cell_align (&table, row, 0, TTAA_LEFT);
+      row++;
     }
-  if (eeprom_type == VNET_INTERFACE_EEPROM_TYPE_SFF8636 ||
-      eeprom_type == VNET_INTERFACE_EEPROM_TYPE_SFF8436)
-    {
 
-      clib_memcpy (vendor_rev, se->vendor_revision, 2);
-      /* Trim trailing spaces */
-      for (int i = 1; i >= 0 && vendor_rev[i] == ' '; i--)
-	vendor_rev[i] = '\0';
-      vlib_cli_output (vm, "    Vendor Revision: %s", vendor_rev);
-
-      u16 sff8636_wavelength_or_att =
-	(se->vendor_revision[2] << 8) + se->vendor_revision[3];
-      f64 wl_nm = ((f64) sff8636_wavelength_or_att) * 0.05;
-      vlib_cli_output (vm, "    Wavelength: %.3f nm", wl_nm);
-    }
-
-  clib_memcpy (date_code, se->vendor_date_code, 8);
-  vlib_cli_output (vm, "    Date Code: %.8s", date_code);
+  s = format (s, "%U", format_table, &table);
+  table_free (&table);
+  return s;
 }
 
-void
-sfp_eeprom_module (vlib_main_t *vm, vnet_interface_eeprom_t *eeprom,
-		   u8 is_terse)
+u8 *
+format_sfp_eeprom_module (u8 *s, va_list *args)
 {
+  vnet_interface_eeprom_t *eeprom = va_arg (*args, vnet_interface_eeprom_t *);
+  u8 is_terse = va_arg (*args, u32);
   sfp_eeprom_t *se = (sfp_eeprom_t *) eeprom->eeprom_raw;
   if (eeprom->eeprom_type == VNET_INTERFACE_EEPROM_TYPE_SFF8636 ||
       eeprom->eeprom_type == VNET_INTERFACE_EEPROM_TYPE_SFF8436)
-    {
-      se = (sfp_eeprom_t *) (eeprom->eeprom_raw + 0x80);
-    }
+    se = (sfp_eeprom_t *) (eeprom->eeprom_raw + 0x80);
 
-  return sfp_eeprom_decode_base (vm, se, is_terse, eeprom->eeprom_type);
+  return format (s, "%U", format_sfp_eeprom_base, se, is_terse, eeprom->eeprom_type);
 }
 
-void
-sfp_eeprom_diagnostics (vlib_main_t *vm, vnet_interface_eeprom_t *eeprom,
-			u8 is_terse)
+u8 *
+format_sfp_eeprom_diagnostics (u8 *s, va_list *args)
 {
+  vnet_interface_eeprom_t *eeprom = va_arg (*args, vnet_interface_eeprom_t *);
+  u8 is_terse = va_arg (*args, u32);
+
   switch (eeprom->eeprom_type)
     {
     case VNET_INTERFACE_EEPROM_TYPE_SFF8472:
-      return sff8472_decode_diagnostics (vm, eeprom, is_terse);
+      return format (s, "%U", format_sff8472_diagnostics, eeprom, is_terse);
     case VNET_INTERFACE_EEPROM_TYPE_SFF8436:
     case VNET_INTERFACE_EEPROM_TYPE_SFF8636:
-      return sff8636_decode_diagnostics (vm, eeprom, is_terse);
+      return format (s, "%U", format_sff8636_diagnostics, eeprom, is_terse);
     default:
-      vlib_cli_output (vm, "  Module Diagnostics: not availalbe");
+      return format (s, "not available");
     }
 }

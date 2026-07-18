@@ -6,6 +6,7 @@
 #include <vnet/dev/dev.h>
 #include <vnet/dev/counters.h>
 #include <vnet/ethernet/ethernet.h>
+#include <vnet/ethernet/sfp.h>
 #include <vppinfra/format_table.h>
 
 u8 *
@@ -195,6 +196,19 @@ format_vnet_dev_port_info (u8 *s, va_list *args)
     s = format (s, "\n%UDevice Specific Port Status:\n%U%U",
 		format_white_space, indent, format_white_space, indent + 2,
 		port->port_ops.format_status, a, port);
+  if (port->port_ops.get_module_eeprom)
+    {
+      vnet_interface_eeprom_t eeprom = {};
+      vnet_dev_rv_t rv = vnet_dev_port_get_module_eeprom (vm, port, &eeprom);
+
+      if (rv == VNET_DEV_OK)
+	s = format (s, "\n%UModule Base Information:\n%U%U", format_white_space, indent,
+		    format_white_space, indent + 2, format_sfp_eeprom_module, &eeprom,
+		    /* is_terse */ 1);
+      else
+	s = format (s, "\n%UTransceiver not present or unreadable: %U", format_white_space, indent,
+		    format_vnet_dev_rv, rv);
+    }
   if (port->args)
     s = format (s, "\n%UDevice Specific Port Arguments:\n%U%U",
 		format_white_space, indent, format_white_space, indent + 2,
