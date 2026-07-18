@@ -1088,6 +1088,8 @@ socksvr
 sourceNATing
 sp
 spd
+spdk
+Spdk
 Specialisations
 spinlock
 spinlocks
