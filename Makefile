@@ -102,6 +102,7 @@ DEB_DEPENDS += clang gcovr lcov chrpath
 DEB_DEPENDS += python3-all python3-setuptools check
 DEB_DEPENDS += python3-ply libunwind-dev
 DEB_DEPENDS += cmake ninja-build python3-jsonschema python3-yaml
+DEB_DEPENDS += python3-tabulate # for SPDK scripts/genrpc.py
 DEB_DEPENDS += python3-venv  # ensurepip
 DEB_DEPENDS += python3-dev python3-pip
 DEB_DEPENDS += libnl-3-dev libnl-route-3-dev libmnl-dev
@@ -115,7 +116,7 @@ DEB_DEPENDS += libpcap-dev
 DEB_DEPENDS += tshark
 DEB_DEPENDS += jq # for extracting test summary from .json report (hs-test)
 DEB_DEPENDS += libiberty-dev
-DEB_DEPENDS += nasm libnuma-dev # for make-ext-deps
+DEB_DEPENDS += nasm libnuma-dev libaio-dev uuid-dev # for make-ext-deps
 
 LIBFFI=libffi6 # works on all but 20.04 and debian-testing
 ifeq ($(OS_VERSION_ID),26.04)
@@ -178,8 +179,10 @@ RPM_DEPENDS += ccache
 RPM_DEPENDS += xmlto
 RPM_DEPENDS += elfutils-libelf-devel libpcap-devel
 RPM_DEPENDS += libnl3-devel libmnl-devel
+RPM_DEPENDS += libaio-devel libuuid-devel
 RPM_DEPENDS += nasm
 RPM_DEPENDS += socat
+RPM_DEPENDS += python3-tabulate # for SPDK scripts/genrpc.py
 
 ifeq ($(OS_ID),fedora)
 	RPM_DEPENDS += dnf-utils
