@@ -329,10 +329,10 @@ typedef struct _tcp_connection
   u32 burst_acked;	/**< Bytes acknowledged in current burst */
   u32 snd_rxt_bytes;	/**< Retransmitted bytes during current cc event */
   u32 snd_rxt_ts;	/**< Timestamp when first packet is retransmitted */
-  u32 prr_delivered;	/**< RFC6937 bytes delivered during current event */
-  u32 prr_start;	/**< snd_una when prr starts */
+  u32 prr_delivered;	/**< RFC9937 bytes delivered during current event */
+  u32 prr_recover_fs;	/**< RFC9937 recovery flight size */
   u32 rxt_delivered;	/**< Rxt bytes delivered during current cc event */
-  u32 prev_prr_delivered; /**< prr_delivered snapshot at last prr send */
+  u32 prr_sndcnt;	/**< RFC9937 bytes currently permitted for transmission */
   u32 tsecr_last_ack;	/**< Timestamp echoed to us in last healthy ACK */
   u32 snd_congestion;	/**< snd_nxt when congestion is detected */
   u32 tx_fifo_size;	/**< Tx fifo size. Used to constrain cwnd */
