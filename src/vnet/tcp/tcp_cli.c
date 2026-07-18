@@ -138,14 +138,15 @@ format_tcp_congestion (u8 * s, va_list * args)
   s = format (s, "%Usnd_cong %u dupack %u limited_tx %u\n",
 	      format_white_space, indent, tc->snd_congestion - tc->iss,
 	      tc->rcv_dupacks, tc->limited_transmit - tc->iss);
-  s = format (s, "%Urxt_bytes %u rxt_delivered %u prev_prr_delivered %u rxt_ts %u\n",
-	      format_white_space, indent, tc->snd_rxt_bytes, tc->rxt_delivered,
-	      tc->prev_prr_delivered, tcp_tstamp (tc) - tc->snd_rxt_ts);
+  s = format (s, "%Urxt_bytes %u rxt_delivered %u rxt_ts %u\n", format_white_space, indent,
+	      tc->snd_rxt_bytes, tc->rxt_delivered, tcp_tstamp (tc) - tc->snd_rxt_ts);
   if (tcp_in_fastrecovery (tc))
     prr_space = tcp_fastrecovery_prr_snd_space (tc);
-  s = format (s, "%Uprr_start %u prr_delivered %u prr space %u\n",
-	      format_white_space, indent, tc->prr_start - tc->iss,
-	      tc->prr_delivered, prr_space);
+  s = format (s,
+	      "%Uprr_recover_fs %u prr_delivered %u "
+	      "prr_sndcnt %u prr space %u\n",
+	      format_white_space, indent, tc->prr_recover_fs, tc->prr_delivered, tc->prr_sndcnt,
+	      prr_space);
   return s;
 }
 
