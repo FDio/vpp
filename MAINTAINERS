@@ -755,6 +755,14 @@ M:	Aloys Augustin <aloaugus@cisco.com>
 M:	Nathan Skrzypczak <nathan.skrzypczak@gmail.com>
 F:	src/plugins/hs_apps/
 
+Plugin - SPDK NVMe/TCP Target
+I:	spdk
+M:	Jerome Tollet <jtollet@cisco.com>
+F:	src/plugins/spdk/
+F:	build/external/packages/spdk.mk
+F:	build/external/patches/spdk_*/
+F:	build/external/spdk-env-vpp/
+
 Plugin - VPP Perf
 I:	vperf
 M:	Florin Coras <fcoras@cisco.com>
