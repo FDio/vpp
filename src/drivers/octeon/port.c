@@ -215,7 +215,7 @@ oct_port_init (vlib_main_t *vm, vnet_dev_port_t *port)
       return oct_roc_err (dev, rrv, "roc_nix_rss_default_setup() failed");
     }
 
-  roc_nix_rss_key_set (nix, port->rss_key.key);
+  roc_nix_rss_key_set (nix, port->rss_config.key);
 
   cp->npc.roc_nix = nix;
   cp->npc.flow_prealloc_size = OCT_FLOW_PREALLOC_SIZE;
@@ -680,14 +680,26 @@ oct_op_config_max_rx_len (vlib_main_t *vm, vnet_dev_port_t *port,
 }
 
 vnet_dev_rv_t
-oct_op_config_set_rss_key (vlib_main_t *vm, vnet_dev_port_t *port,
-			   vnet_dev_rss_key_t *k)
+oct_op_config_set_rss_config (vlib_main_t *vm, vnet_dev_port_t *port, vnet_dev_rss_config_t *config)
 {
   vnet_dev_t *dev = port->dev;
   oct_device_t *cd = vnet_dev_get_data (dev);
   vnet_dev_rv_t rv = VNET_DEV_OK;
+  i32 rrv;
 
-  roc_nix_rss_key_set (cd->nix, k->key);
+  if (config->set_key)
+    roc_nix_rss_key_set (cd->nix, config->key);
+
+  if (config->set_lut)
+    {
+      rrv = roc_nix_rss_reta_set (cd->nix, 0, config->lut);
+      if (rrv)
+	{
+	  if (config->set_key)
+	    roc_nix_rss_key_set (cd->nix, port->rss_config.key);
+	  rv = oct_roc_err (dev, rrv, "roc_nix_rss_reta_set() failed");
+	}
+    }
 
   return rv;
 }
@@ -711,7 +723,10 @@ oct_port_cfg_change_validate (vlib_main_t *vm, vnet_dev_port_t *port,
     case VNET_DEV_PORT_CFG_CHANGE_PRIMARY_HW_ADDR:
     case VNET_DEV_PORT_CFG_ADD_SECONDARY_HW_ADDR:
     case VNET_DEV_PORT_CFG_REMOVE_SECONDARY_HW_ADDR:
-    case VNET_DEV_PORT_CFG_SET_RSS_KEY:
+    case VNET_DEV_PORT_CFG_SET_RSS_CONFIG:
+      if ((req->rss_config.set_key && req->rss_config.key_len != ROC_NIX_RSS_KEY_LEN) ||
+	  (req->rss_config.set_lut && req->rss_config.lut_len != ROC_NIX_RSS_RETA_MAX))
+	rv = VNET_DEV_ERR_INVALID_DATA;
       break;
 
     case VNET_DEV_PORT_CFG_ADD_RX_FLOW:
@@ -756,8 +771,8 @@ oct_port_cfg_change (vlib_main_t *vm, vnet_dev_port_t *port,
       rv = oct_op_config_max_rx_len (vm, port, req->max_rx_frame_size);
       break;
 
-    case VNET_DEV_PORT_CFG_SET_RSS_KEY:
-      rv = oct_op_config_set_rss_key (vm, port, &req->rss_key);
+    case VNET_DEV_PORT_CFG_SET_RSS_CONFIG:
+      rv = oct_op_config_set_rss_config (vm, port, &req->rss_config);
       break;
 
     case VNET_DEV_PORT_CFG_ADD_RX_FLOW:
