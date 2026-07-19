@@ -320,8 +320,8 @@ vnet_dev_port_add (vlib_main_t *vm, vnet_dev_t *dev, vnet_dev_port_id_t id,
   port->rx_node = *args->rx_node;
   port->tx_node = *args->tx_node;
 
-  if (port->attr.caps.rss && args->port.default_rss_key.length)
-    port->rss_key = args->port.default_rss_key;
+  if (port->attr.caps.rss)
+    port->rss_config = args->port.default_rss_config;
 
   if (args->port.args)
     port->args = clib_args_init (args->port.args);
@@ -396,9 +396,25 @@ vnet_dev_port_cfg_change_req_validate (vlib_main_t *vm, vnet_dev_port_t *port,
 	return VNET_DEV_ERR_NO_SUCH_ENTRY;
       break;
 
-    case VNET_DEV_PORT_CFG_SET_RSS_KEY:
+    case VNET_DEV_PORT_CFG_SET_RSS_CONFIG:
       if (!port->attr.caps.rss)
 	return VNET_DEV_ERR_NOT_SUPPORTED;
+      if (req->rss_config.set_key == 0 && req->rss_config.set_lut == 0)
+	return VNET_DEV_ERR_INVALID_DATA;
+      if ((req->rss_config.set_key &&
+	   (req->rss_config.key_len == 0 ||
+	    req->rss_config.key_len > ARRAY_LEN (req->rss_config.key))) ||
+	  (req->rss_config.set_lut && (req->rss_config.lut_len == 0 ||
+				       req->rss_config.lut_len > ARRAY_LEN (req->rss_config.lut))))
+	return VNET_DEV_ERR_INVALID_DATA;
+      if (req->rss_config.set_lut)
+	for (u32 i = 0; i < req->rss_config.lut_len; i++)
+	  {
+	    vnet_dev_rx_queue_t *rxq;
+	    rxq = vnet_dev_get_port_rx_queue_by_id (port, req->rss_config.lut[i]);
+	    if (rxq == 0 || rxq->enabled == 0)
+	      return VNET_DEV_ERR_INVALID_VALUE;
+	  }
       break;
 
     default:
@@ -517,8 +533,19 @@ vnet_dev_port_cfg_change (vlib_main_t *vm, vnet_dev_port_t *port,
 	  }
       break;
 
-    case VNET_DEV_PORT_CFG_SET_RSS_KEY:
-      port->rss_key = req->rss_key;
+    case VNET_DEV_PORT_CFG_SET_RSS_CONFIG:
+      if (req->rss_config.set_key)
+	{
+	  clib_memcpy (port->rss_config.key, req->rss_config.key, sizeof (port->rss_config.key));
+	  port->rss_config.key_len = req->rss_config.key_len;
+	  port->rss_config.set_key = 1;
+	}
+      if (req->rss_config.set_lut)
+	{
+	  clib_memcpy (port->rss_config.lut, req->rss_config.lut, sizeof (port->rss_config.lut));
+	  port->rss_config.lut_len = req->rss_config.lut_len;
+	  port->rss_config.set_lut = 1;
+	}
       break;
 
     default:

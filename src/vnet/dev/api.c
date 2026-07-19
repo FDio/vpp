@@ -378,23 +378,24 @@ vnet_dev_api_port_del_sec_if (vlib_main_t *vm,
 }
 
 vnet_dev_rv_t
-vnet_dev_api_port_set_rss_key (vlib_main_t *vm,
-			       vnet_dev_api_port_set_rss_key_args_t *args)
+vnet_dev_api_port_set_rss_config (vlib_main_t *vm, vnet_dev_api_port_set_rss_config_args_t *args)
 {
   vnet_dev_port_t *port = 0;
   vnet_dev_t *dev = vnet_dev_by_index (args->dev_index);
   vnet_dev_rv_t rv = VNET_DEV_OK;
   vnet_dev_port_cfg_change_req_t req = {
-    .type = VNET_DEV_PORT_CFG_SET_RSS_KEY,
-    .rss_key = args->rss_key,
+    .type = VNET_DEV_PORT_CFG_SET_RSS_CONFIG,
+    .rss_config = args->rss_config,
   };
 
   if (!dev)
     return VNET_DEV_ERR_UNKNOWN_DEVICE;
 
-  log_debug (dev, "port %u rss_key %U", args->port_id,
-	     format_hex_bytes_no_wrap, args->rss_key.key,
-	     args->rss_key.length);
+  if (args->rss_config.set_key)
+    log_debug (dev, "port %u RSS key %U", args->port_id, format_hex_bytes_no_wrap,
+	       args->rss_config.key, args->rss_config.key_len);
+  if (args->rss_config.set_lut)
+    log_debug (dev, "port %u RSS LUT with %u entries", args->port_id, args->rss_config.lut_len);
 
   port = vnet_dev_get_port_by_id (dev, args->port_id);
   if (!port)
@@ -403,14 +404,14 @@ vnet_dev_api_port_set_rss_key (vlib_main_t *vm,
   rv = vnet_dev_port_cfg_change_req_validate (vm, port, &req);
   if (rv != VNET_DEV_OK)
     {
-      log_err (dev, "RSS key cannot be set");
+      log_err (dev, "RSS configuration is invalid");
       return rv;
     }
 
   rv = vnet_dev_process_port_cfg_change_req (vm, port, &req);
   if (rv != VNET_DEV_OK)
     {
-      log_err (dev, "device failed to set RSS key");
+      log_err (dev, "device failed to set RSS configuration");
       return rv;
     }
 
