@@ -92,10 +92,14 @@ format_vnet_hw_interface_link_speed (u8 * s, va_list * args)
     return format (s, "unknown");
 
   if (link_speed >= 1000000)
-    return format (s, "%f Gbps", (f64) link_speed / 1000000);
+    {
+      if (link_speed % 1000000 == 0)
+	return format (s, "%u Gbps", link_speed / 1000000);
+      return format (s, "%u.%u Gbps", link_speed / 1000000, link_speed % 1000000 / 100000);
+    }
 
   if (link_speed >= 1000)
-    return format (s, "%f Mbps", (f64) link_speed / 1000);
+    return format (s, "%u Mbps", link_speed / 1000);
 
   return format (s, "%u Kbps", link_speed);
 }

@@ -126,6 +126,8 @@ format_vnet_dev_port_info (u8 *s, va_list *args)
   s = format (s, ", %u RX queues (max %u), %u TX queues (max %u)",
 	      pool_elts (port->rx_queues), port->attr.max_rx_queues,
 	      pool_elts (port->tx_queues), port->attr.max_tx_queues);
+  s = format (s, "\n%ULink state is %s, speed is %U", format_white_space, indent,
+	      port->link_up ? "up" : "down", format_vnet_hw_interface_link_speed, port->speed);
   if (pool_elts (port->secondary_hw_addr))
     {
       u32 i = 0;
