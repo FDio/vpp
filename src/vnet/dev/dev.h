@@ -761,6 +761,7 @@ typedef struct
 {
   u8 counters : 1;
   u8 show_zero_counters : 1;
+  u8 clear : 1;
   u8 debug : 3;
 } vnet_dev_format_args_t;
 

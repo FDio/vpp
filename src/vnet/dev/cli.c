@@ -333,6 +333,8 @@ show_devices_cmd_fn (vlib_main_t *vm, unformat_input_t *input,
 	fa.counters = 1;
       else if (unformat (input, "zero-counters"))
 	fa.show_zero_counters = fa.counters = 1;
+      else if (unformat (input, "clear"))
+	fa.clear = 1;
       else if (unformat (input, "debug-level %u", &v))
 	fa.debug = v;
       else if (unformat (input, "debug"))
@@ -383,6 +385,8 @@ show_devices_cmd_fn (vlib_main_t *vm, unformat_input_t *input,
 		  vlib_cli_output (vm, "        %U", format_vnet_dev_counters, a, q->counter_main);
 		}
 	    }
+	  if (fa.clear)
+	    vnet_dev_process_call_port_op_no_rv (vm, p, vnet_dev_port_clear_counters);
 	}
     }
   return 0;
@@ -390,9 +394,8 @@ show_devices_cmd_fn (vlib_main_t *vm, unformat_input_t *input,
 
 VLIB_CLI_COMMAND (show_devices_cmd, static) = {
   .path = "show device",
-  .short_help =
-    "show device [counters] [zero-counters] [debug] [debug-level <n>] "
-    "[<device-id> ...]",
+  .short_help = "show device [counters] [zero-counters] [clear] [debug] [debug-level <n>] "
+		"[<device-id> ...]",
   .function = show_devices_cmd_fn,
   .is_mp_safe = 1,
 };
