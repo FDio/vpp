@@ -162,7 +162,7 @@ typedef struct
   _ (DEL_RX_FLOW)                                                                                  \
   _ (GET_RX_FLOW_COUNTER)                                                                          \
   _ (RESET_RX_FLOW_COUNTER)                                                                        \
-  _ (SET_RSS_KEY)                                                                                  \
+  _ (SET_RSS_CONFIG)                                                                               \
   _ (SET_LINK_SPEED)
 
 typedef enum
@@ -185,7 +185,7 @@ typedef struct vnet_dev_port_cfg_change_req
     vnet_dev_hw_addr_t addr;
     u16 max_rx_frame_size;
     vnet_dev_queue_id_t queue_id;
-    vnet_dev_rss_key_t rss_key;
+    vnet_dev_rss_config_t rss_config;
     u32 link_speed;
     u32 flow_index;
   };
@@ -403,7 +403,7 @@ typedef struct vnet_dev_port
   vnet_dev_node_t rx_node;
   vnet_dev_node_t tx_node;
   vnet_dev_port_interfaces_t *interfaces;
-  vnet_dev_rss_key_t rss_key;
+  vnet_dev_rss_config_t rss_config;
 
   CLIB_CACHE_LINE_ALIGN_MARK (data0);
   u8 data[];
@@ -569,7 +569,7 @@ typedef struct
     clib_arg_t *sec_if_args;
     u16 data_size;
     void *initial_data;
-    vnet_dev_rss_key_t default_rss_key;
+    vnet_dev_rss_config_t default_rss_config;
   } port;
 
   vnet_dev_node_t *rx_node;
@@ -794,6 +794,7 @@ unformat_function_t unformat_vnet_dev_flags;
 unformat_function_t unformat_vnet_dev_port_flags;
 unformat_function_t unformat_vnet_dev_rx_queue_assignment;
 unformat_function_t unformat_vnet_dev_rss_key;
+unformat_function_t unformat_vnet_dev_rss_lut;
 
 typedef struct
 {
