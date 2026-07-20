@@ -2829,6 +2829,12 @@ fib_path_module_init (void)
 {
     fib_node_register_type (FIB_NODE_TYPE_PATH, &fib_path_vft);
     fib_path_logger = vlib_log_register_class ("fib", "path");
+
+    /*
+     * paths are read by workers (e.g. adj resolution on arp/nd reply)
+     * while the pool grows on the main thread
+     */
+    pool_mark_mt_safe(fib_path_pool);
 }
 
 static clib_error_t *

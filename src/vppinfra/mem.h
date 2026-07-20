@@ -164,6 +164,25 @@ void clib_mem_heap_free (void *heap, void *p);
 uword clib_mem_size (void *p);
 void clib_mem_free_s (void *p);
 
+/* Delayed free support.
+ *
+ * A structure with a single writer thread and multiple concurrent reader
+ * threads must not immediately free memory the readers may still be
+ * referencing (e.g. the old allocation after a vector grew, see
+ * VEC_FLAG_MT_SAFE). The functions below route such frees through a
+ * callback (registered by vlib) which defers the actual free until all
+ * worker threads have moved past the point where they could hold a stale
+ * reference. When no callback is registered (no vlib, no worker threads),
+ * they degrade to immediate frees. */
+
+typedef void (clib_mem_delayed_free_cb_t) (clib_mem_heap_t *heap, void *p);
+
+void clib_mem_set_delayed_free_cb (clib_mem_delayed_free_cb_t *cb);
+void clib_mem_heap_free_delayed (void *heap, void *p);
+void clib_mem_free_delayed (void *p);
+void *clib_mem_heap_realloc_aligned_delayed (void *heap, void *p, uword new_size, uword align);
+void *clib_mem_realloc_delayed (void *p, uword new_size);
+
 /* Memory allocator which panics when it fails.
    Use macro so that clib_panic macro can expand __func__ and __LINE__. */
 #define clib_mem_alloc_aligned_no_fail(size,align)				\

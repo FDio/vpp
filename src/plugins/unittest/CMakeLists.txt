@@ -33,6 +33,7 @@ add_vpp_plugin(unittest
   crypto/rfc4231.c
   crypto/sha.c
   crypto_test.c
+  delayed_free_test.c
   fib_test.c
   gso_test.c
   hash_test.c

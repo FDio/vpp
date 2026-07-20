@@ -191,6 +191,13 @@ void *_hash_set3 (void *v, uword key, void *value, void *old_value);
 /* Resize a hash table */
 void *hash_resize (void *old, uword new_size);
 
+/* Mark hash as single-writer/multi-reader (see vec_mark_mt_safe): stale
+   memory (old table on resize, indirect pair arrays, the table on free)
+   is released via delayed free so lock-less readers never see freed
+   memory. Call right after hash_create*(); the mark is inherited across
+   resizes. Writer mutations must still come from a single thread. */
+void hash_mark_mt_safe (void *v);
+
 /* duplicate a hash table */
 void *hash_dup (void *old);
 

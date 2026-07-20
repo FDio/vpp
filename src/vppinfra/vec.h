@@ -351,11 +351,58 @@ _vec_free (void **vp)
 {
   if (vp[0] == 0)
     return;
-  clib_mem_heap_free (vec_get_heap (vp[0]), vec_header (vp[0]));
+  if (PREDICT_FALSE (_vec_find (vp[0])->flags & VEC_FLAG_MT_SAFE))
+    clib_mem_heap_free_delayed (vec_get_heap (vp[0]), vec_header (vp[0]));
+  else
+    clib_mem_heap_free (vec_get_heap (vp[0]), vec_header (vp[0]));
   vp[0] = 0;
 }
 
 #define vec_free(V) _vec_free ((void **) &(V))
+
+/** \brief Mark vector as single-writer/multi-reader (mt-safe).
+
+    The vector is owned by a single writer thread (typically main); other
+    threads may read it concurrently without locking. From now on, memory
+    that readers may still reference (the old allocation when the vector
+    grows, the vector itself on vec_free()) is released via
+    clib_mem_heap_free_delayed() and only actually freed after all worker
+    threads have passed a main-loop iteration boundary.
+
+    The flag lives in the vector header, so it survives reallocation and
+    is honored by everything built on top of vectors (pools, bitmaps,
+    hashes, ...) without dedicated mt-safe variants of their APIs.
+
+    Notes:
+    - Only the grow/free paths are made safe. Operations that move
+      existing elements (vec_insert, vec_delete, vec_prepend, ...) are
+      still unsafe with concurrent readers.
+    - A NULL vector is allocated (zero length) so that the mark is not
+      lost; mark again after any operation that can leave V == NULL.
+    - vec_dup() of a marked vector returns an unmarked private copy.
+
+    @param V pointer to a vector (value-result macro parameter)
+*/
+
+static_always_inline void
+_vec_mark_mt_safe (void **vp, uword hdr_sz, uword align, uword elt_sz)
+{
+  if (vp[0] == 0)
+    {
+      const vec_attr_t va = { .elt_sz = elt_sz, .align = align, .hdr_sz = hdr_sz };
+      _vec_update_pointer (vp, _vec_alloc_internal (0, &va));
+    }
+  _vec_find (vp[0])->flags |= VEC_FLAG_MT_SAFE;
+}
+
+#define vec_mark_mt_safe(V)                                                                        \
+  _vec_mark_mt_safe ((void **) &(V), 0, _vec_align (V, 0), _vec_elt_sz (V))
+
+/** \brief Check if vector is marked mt-safe (see vec_mark_mt_safe).
+    @param V pointer to a vector
+    @return 1 if marked, 0 otherwise
+*/
+#define vec_is_mt_safe(V) ((V) != 0 && (_vec_find (V)->flags & VEC_FLAG_MT_SAFE) != 0)
 
 void vec_free_not_inline (void *v);
 

@@ -315,6 +315,36 @@ _pool_alloc (void **pp, uword n_elts, uword align, void *heap, uword elt_sz)
 #define pool_alloc_aligned(P, N, A) pool_alloc_aligned_heap (P, N, A, 0)
 #define pool_alloc(P, N)	    pool_alloc_aligned_heap (P, N, 0, 0)
 
+/** Mark pool as single-writer/multi-reader (see vec_mark_mt_safe).
+
+    Marks the pool vector as well as the free-element bookkeeping
+    (free_indices vector and free bitmap, which readers traverse via
+    pool_foreach / pool_is_free_index), allocating them empty first if
+    needed so the mark cannot be lost. A NULL pool is allocated empty;
+    use the _aligned variant for pools grown with pool_get_aligned so
+    the initial allocation gets the correct alignment. */
+
+static_always_inline void
+_pool_mark_mt_safe (void **pp, uword align, uword elt_sz)
+{
+  pool_header_t *ph;
+
+  if (pp[0] == 0)
+    {
+      const vec_attr_t va = { .hdr_sz = sizeof (pool_header_t), .elt_sz = elt_sz, .align = align };
+      _vec_update_pointer (pp, _vec_alloc_internal (0, &va));
+    }
+  _vec_find (pp[0])->flags |= VEC_FLAG_MT_SAFE;
+
+  ph = pool_header (pp[0]);
+  vec_mark_mt_safe (ph->free_indices);
+  vec_mark_mt_safe (ph->free_bitmap);
+}
+
+#define pool_mark_mt_safe_aligned(P, A)                                                            \
+  _pool_mark_mt_safe ((void **) &(P), _vec_align (P, A), _vec_elt_sz (P))
+#define pool_mark_mt_safe(P) pool_mark_mt_safe_aligned (P, 0)
+
 static_always_inline void *
 _pool_dup (void *p, uword align, uword elt_sz)
 {

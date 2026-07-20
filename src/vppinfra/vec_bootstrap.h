@@ -27,9 +27,16 @@ typedef struct
   u8 log2_align : 7;  /**< data alignment */
   u8 default_heap : 1; /**< vector uses default heap */
   u8 grow_elts;	       /**< number of elts vector can grow without realloc */
-  u8 vpad[1];	       /**< pad to 8 bytes */
+  u8 flags;	       /**< flags (VEC_FLAG_*), pads to 8 bytes */
   u8 vector_data[0];  /**< Vector data . */
 } vec_header_t;
+
+/** Vector is modified by a single writer thread (typically main) while
+    being read by other threads without any locking. Memory the readers
+    may still be referencing (the old allocation on grow, the vector
+    itself on free) is released via clib_mem_heap_free_delayed() instead
+    of being freed immediately. See vec_mark_mt_safe(). */
+#define VEC_FLAG_MT_SAFE (1 << 0)
 
 #define VEC_MIN_ALIGN 8
 
