@@ -204,7 +204,7 @@ vlib_handoff_queue_dequeue_inline (vlib_main_t *vm, vlib_handoff_queue_main_t *h
   if (n_deq)
     {
       hq->n_vectors += n_deq;
-      __atomic_store_n (&hq->head, head, __ATOMIC_RELAXED);
+      __atomic_store_n (&hq->head, head, __ATOMIC_RELEASE);
       if (n_deq >= dequeue_vector_limit)
 	__atomic_fetch_or (&vm->handoff_queue_pending_bmp, hqm->queue_bit, __ATOMIC_RELAXED);
     }
@@ -355,7 +355,7 @@ vlib_handoff_enqueue_one_thread (vlib_main_t *vm, vlib_node_runtime_t *node,
 
 retry:
   tail = __atomic_load_n (&hq->tail, __ATOMIC_RELAXED);
-  head = __atomic_load_n (&hq->head, __ATOMIC_RELAXED);
+  head = __atomic_load_n (&hq->head, __ATOMIC_ACQUIRE);
   n_avail = head + size - tail;
 
   if (n_avail < n_req)
@@ -739,6 +739,7 @@ vlib_handoff_alloc_queues (vlib_handoff_alloc_queues_args_t *a)
     }
 
   hqm_index = vec_len (vm->handoff_queue_mains);
+  vlib_worker_thread_barrier_sync (this_vm);
   vec_add2 (vm->handoff_queue_mains, hqm_at_index, 1);
   hqm_at_index[0] = hqm;
 
@@ -752,6 +753,8 @@ vlib_handoff_alloc_queues (vlib_handoff_alloc_queues_args_t *a)
       if (vm != this_vm)
 	vm->handoff_queue_mains = this_vm->handoff_queue_mains;
     }
+
+  vlib_worker_thread_barrier_release (this_vm);
 
   return hqm_index;
 }

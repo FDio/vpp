@@ -1419,11 +1419,18 @@ vlib_buffer_clone_at_offset (vlib_main_t * vm, u32 src_buffer, u32 * buffers,
   while (n_buffers > VLIB_BUFFER_MAX_CLONE)
     {
       vlib_buffer_t *copy;
+      u16 n_cloned_batch;
+
       copy = vlib_buffer_copy (vm, s);
       if (copy)
-	n_cloned +=
-	  vlib_buffer_clone_255 (vm, vlib_get_buffer_index (vm, copy), (buffers + n_cloned),
-				 VLIB_BUFFER_MAX_CLONE, head_end_offset, offset);
+	{
+	  n_cloned_batch = vlib_buffer_clone_255 (
+	    vm, vlib_get_buffer_index (vm, copy), buffers + n_cloned,
+	    VLIB_BUFFER_MAX_CLONE, head_end_offset, offset);
+	  if (n_cloned_batch == 0)
+	    vlib_buffer_free_one (vm, vlib_get_buffer_index (vm, copy));
+	  n_cloned += n_cloned_batch;
+	}
       n_buffers -= VLIB_BUFFER_MAX_CLONE;
     }
   n_cloned += vlib_buffer_clone_255 (vm, src_buffer, buffers + n_cloned,
