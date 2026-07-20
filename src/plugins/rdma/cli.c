@@ -21,8 +21,12 @@ rdma_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
   rdma_create_if_args_t args;
 
   if (!unformat_user (input, unformat_rdma_create_if_args, &args))
-    return clib_error_return (0, "unknown input `%U'",
-			      format_unformat_error, input);
+    {
+      vec_free (args.ifname);
+      vec_free (args.name);
+      return clib_error_return (0, "unknown input `%U'",
+				format_unformat_error, input);
+    }
 
   rdma_create_if (vm, &args);
 
@@ -65,8 +69,12 @@ rdma_delete_command_fn (vlib_main_t * vm, unformat_input_t * input,
 			 vnm, &sw_if_index))
 	;
       else
-	return clib_error_return (0, "unknown input `%U'",
-				  format_unformat_error, input);
+	{
+	  clib_error_t *error = clib_error_return (
+	    0, "unknown input `%U'", format_unformat_error, input);
+	  unformat_free (line_input);
+	  return error;
+	}
     }
   unformat_free (line_input);
 
@@ -116,8 +124,12 @@ test_rdma_dump_command_fn (vlib_main_t * vm, unformat_input_t * input,
 			 vnm, &sw_if_index))
 	;
       else
-	return clib_error_return (0, "unknown input `%U'",
-				  format_unformat_error, input);
+	{
+	  clib_error_t *error = clib_error_return (
+	    0, "unknown input `%U'", format_unformat_error, input);
+	  unformat_free (line_input);
+	  return error;
+	}
     }
   unformat_free (line_input);
 

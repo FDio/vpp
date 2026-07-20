@@ -530,15 +530,21 @@ rdma_device_poll_cq_mlx5dv (rdma_device_t * rd, rdma_rxq_t * rxq,
       /* partially processed mini-cqe array */
       u32 n_mini_cqes = rxq->n_mini_cqes;
       u32 n_mini_cqes_left = rxq->n_mini_cqes_left;
+      u32 n_process = clib_min (n_mini_cqes_left, VLIB_FRAME_SIZE);
+
       process_mini_cqes (rxq, n_mini_cqes - n_mini_cqes_left,
-			 n_mini_cqes_left, cq_ci, mask, byte_cnt);
+			 n_process, cq_ci, mask, byte_cnt);
+      clib_memset_u16 (cqe_flags, rxq->last_cqe_flags, n_process);
+      n_rx_packets = n_process;
+      byte_cnt += n_process;
+      cqe_flags += n_process;
+      rxq->n_mini_cqes_left -= n_process;
+
+      if (rxq->n_mini_cqes_left)
+	return n_rx_packets;
+
       compressed_cqe_reset_owner (rxq, n_mini_cqes, cq_ci, mask,
 				  log2_cq_size);
-      clib_memset_u16 (cqe_flags, rxq->last_cqe_flags, n_mini_cqes_left);
-      n_rx_packets = n_mini_cqes_left;
-      byte_cnt += n_mini_cqes_left;
-      cqe_flags += n_mini_cqes_left;
-      rxq->n_mini_cqes_left = 0;
       rxq->cq_ci = cq_ci = cq_ci + n_mini_cqes;
     }
 

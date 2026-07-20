@@ -364,9 +364,42 @@ rdma_unregister_interface (vnet_main_t * vnm, rdma_device_t * rd)
 }
 
 static void
+rdma_rxq_free_buffers (vlib_main_t *vm, rdma_rxq_t *rxq)
+{
+  u32 owner_tail = clib_max (rxq->tail, rxq->incomplete_tail);
+  u32 n_owned = owner_tail - rxq->head;
+
+  if (rxq->bufs && n_owned <= rxq->size)
+    vlib_buffer_free_from_ring (vm, rxq->bufs, rxq->head & (rxq->size - 1),
+				rxq->size, n_owned);
+
+  if (rxq->second_bufs)
+    for (u32 i = 0; i < rxq->size; i++)
+      if (rxq->n_used_per_chain[i] < rxq->n_ds_per_wqe - 1)
+	vlib_buffer_free (vm, rxq->second_bufs + i, 1);
+
+  vec_free (rxq->bufs);
+  vec_free (rxq->second_bufs);
+  vec_free (rxq->n_used_per_chain);
+}
+
+static void
+rdma_txq_free_buffers (vlib_main_t *vm, rdma_txq_t *txq)
+{
+  u32 n_owned = RDMA_TXQ_USED_SZ (txq->head, txq->tail);
+  u32 size = RDMA_TXQ_BUF_SZ (txq);
+
+  if (txq->bufs && n_owned <= size)
+    vlib_buffer_free_from_ring (vm, txq->bufs, txq->head & (size - 1),
+				size, n_owned);
+  vec_free (txq->bufs);
+}
+
+static void
 rdma_dev_cleanup (rdma_device_t * rd)
 {
   rdma_main_t *rm = &rdma_main;
+  vlib_main_t *vm = vlib_get_main ();
   rdma_rxq_t *rxq;
   rdma_txq_t *txq;
 
@@ -381,20 +414,24 @@ rdma_dev_cleanup (rdma_device_t * rd)
   _(ibv_destroy_flow, rd->flow_ucast6);
   _(ibv_destroy_flow, rd->flow_mcast4);
   _(ibv_destroy_flow, rd->flow_ucast4);
-  _(ibv_dereg_mr, rd->mr);
-  vec_foreach (txq, rd->txqs)
-  {
-    _(ibv_destroy_qp, txq->qp);
-    _(ibv_destroy_cq, txq->cq);
-  }
-  vec_foreach (rxq, rd->rxqs)
-  {
-    _(ibv_destroy_wq, rxq->wq);
-    _(ibv_destroy_cq, rxq->cq);
-  }
-  _(ibv_destroy_rwq_ind_table, rd->rx_rwq_ind_tbl);
   _(ibv_destroy_qp, rd->rx_qp6);
   _(ibv_destroy_qp, rd->rx_qp4);
+  _(ibv_destroy_rwq_ind_table, rd->rx_rwq_ind_tbl);
+  vec_foreach (txq, rd->txqs)
+    _(ibv_destroy_qp, txq->qp);
+  vec_foreach (rxq, rd->rxqs)
+    _(ibv_destroy_wq, rxq->wq);
+
+  vec_foreach (rxq, rd->rxqs)
+    rdma_rxq_free_buffers (vm, rxq);
+  vec_foreach (txq, rd->txqs)
+    rdma_txq_free_buffers (vm, txq);
+
+  vec_foreach (txq, rd->txqs)
+    _(ibv_destroy_cq, txq->cq);
+  vec_foreach (rxq, rd->rxqs)
+    _(ibv_destroy_cq, rxq->cq);
+  _(ibv_dereg_mr, rd->mr);
   _(ibv_dealloc_pd, rd->pd);
   _(ibv_close_device, rd->ctx);
 #undef _
@@ -404,6 +441,7 @@ rdma_dev_cleanup (rdma_device_t * rd)
   vec_free (rd->rxqs);
   vec_free (rd->txqs);
   vec_free (rd->name);
+  vec_free (rd->linux_ifname);
   vlib_pci_free_device_info (rd->pci);
   pool_put (rm->devices, rd);
 }
@@ -669,7 +707,11 @@ rdma_rxq_finalize (vlib_main_t *vm, rdma_device_t *rd)
   rwqia.log_ind_tbl_size = min_log2 (vec_len (ind_tbl));
   rwqia.ind_tbl = ind_tbl;
   if ((rd->rx_rwq_ind_tbl = ibv_create_rwq_ind_table (rd->ctx, &rwqia)) == 0)
-    return clib_error_return_unix (0, "RWQ indirection table create failed");
+    {
+      vec_free (ind_tbl);
+      return clib_error_return_unix (0,
+				     "RWQ indirection table create failed");
+    }
   vec_free (ind_tbl);
 
   memset (&qpia, 0, sizeof (qpia));
@@ -910,12 +952,17 @@ rdma_create_if (vlib_main_t * vm, rdma_create_if_args_t * args)
     }
 
   dev_list = ibv_get_device_list (&n_devs);
+  if (!dev_list)
+    {
+      args->error = clib_error_return_unix (0, "failed to get RDMA device list");
+      goto err0;
+    }
   if (n_devs == 0)
     {
       args->error =
 	clib_error_return_unix (0,
 				"no RDMA devices available. Is the ib_uverbs module loaded?");
-      goto err0;
+	goto err1;
     }
 
   /* get PCI address */
@@ -970,6 +1017,12 @@ rdma_create_if (vlib_main_t * vm, rdma_create_if_args_t * args)
 
       if ((rd->ctx = ibv_open_device (dev_list[i])))
 	break;
+    }
+
+  if (!rd->ctx)
+    {
+      args->error = clib_error_return_unix (0, "failed to open RDMA device");
+      goto err2;
     }
 
   if (args->mode != RDMA_MODE_IBV)
@@ -1042,6 +1095,7 @@ are explicitly disabled, and if the interface supports it.*/
       rd->rxqs[qid].queue_index = queue_index;
     }
   vnet_hw_if_update_runtime_data (vnm, rd->hw_if_index);
+  ibv_free_device_list (dev_list);
   vec_free (s);
   return;
 
