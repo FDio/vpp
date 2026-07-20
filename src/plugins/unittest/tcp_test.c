@@ -1697,7 +1697,7 @@ tcp_test_persist_e2e (vlib_main_t *vm, unformat_input_t *input)
   u8 *appns_id = 0, *data = 0;
   u32 bi = ~0, old_rto, old_snd_nxt;
   u32 pending_bufs_len, pending_nexts_len;
-  int error, rv = 0, routes_added = 0, ns_added = 0;
+  int error, rv = 0, routes_added = 0, ns_added = 0, sessions_cleaned;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -2062,22 +2062,7 @@ tcp_test_persist_e2e (vlib_main_t *vm, unformat_input_t *input)
     }
 
 cleanup:
-  if (accepted_session_index != ~0)
-    {
-      vnet_disconnect_args_t disconnect_args = {
-	.handle = session_make_handle (accepted_session_index, accepted_session_thread),
-	.app_index = server_index,
-      };
-      (void) vnet_disconnect_session (&disconnect_args);
-    }
-  else if (connected_session_index != ~0)
-    {
-      vnet_disconnect_args_t disconnect_args = {
-	.handle = session_make_handle (connected_session_index, connected_session_thread),
-	.app_index = client_index,
-      };
-      (void) vnet_disconnect_session (&disconnect_args);
-    }
+  sessions_cleaned = tcp_e2e_force_session_cleanup (vm);
 
   if (listen_handle != SESSION_INVALID_HANDLE)
     {
@@ -2129,15 +2114,14 @@ cleanup:
       (void) ip4_add_del_interface_address (vm, sw_if_index[j], &intf_addr[j], 24, 1 /* is_del */);
       vnet_sw_interface_set_flags (vnet_get_main (), sw_if_index[j], 0);
     }
-  for (int j = 0; j < 5; j++)
+  if (sessions_cleaned && tcp_e2e_drain_graph_frames (vm))
     {
-      vlib_worker_thread_barrier_release (vm);
-      vlib_process_suspend (vm, 1e-3);
-      vlib_worker_thread_barrier_sync (vm);
+      for (int j = 0; j < 2; j++)
+	if (sw_if_index[j] != ~0)
+	  (void) vnet_delete_loopback_interface (sw_if_index[j]);
     }
-  for (int j = 0; j < 2; j++)
-    if (sw_if_index[j] != ~0)
-      (void) vnet_delete_loopback_interface (sw_if_index[j]);
+  else
+    clib_warning ("graph frames did not quiesce; preserving test loopbacks");
 
   vec_free (data);
   vec_free (appns_id);
@@ -2363,7 +2347,7 @@ tcp_test_rto_reduce_once_e2e (vlib_main_t *vm, unformat_input_t *input)
   tcp_connection_t *client_tc = 0;
   transport_connection_t *tc;
   u8 *appns_id = 0, *data = 0;
-  int error, rv = 0, routes_added = 0, ns_added = 0;
+  int error, rv = 0, routes_added = 0, ns_added = 0, sessions_cleaned;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -2850,22 +2834,7 @@ tcp_test_rto_reduce_once_e2e (vlib_main_t *vm, unformat_input_t *input)
   }
 
 cleanup:
-  if (accepted_session_index != ~0)
-    {
-      vnet_disconnect_args_t disconnect_args = {
-	.handle = session_make_handle (accepted_session_index, accepted_session_thread),
-	.app_index = server_index,
-      };
-      (void) vnet_disconnect_session (&disconnect_args);
-    }
-  else if (connected_session_index != ~0)
-    {
-      vnet_disconnect_args_t disconnect_args = {
-	.handle = session_make_handle (connected_session_index, connected_session_thread),
-	.app_index = client_index,
-      };
-      (void) vnet_disconnect_session (&disconnect_args);
-    }
+  sessions_cleaned = tcp_e2e_force_session_cleanup (vm);
 
   if (listen_handle != SESSION_INVALID_HANDLE)
     {
@@ -2917,15 +2886,14 @@ cleanup:
       (void) ip4_add_del_interface_address (vm, sw_if_index[j], &intf_addr[j], 24, 1 /* is_del */);
       vnet_sw_interface_set_flags (vnet_get_main (), sw_if_index[j], 0);
     }
-  for (int j = 0; j < 5; j++)
+  if (sessions_cleaned && tcp_e2e_drain_graph_frames (vm))
     {
-      vlib_worker_thread_barrier_release (vm);
-      vlib_process_suspend (vm, 1e-3);
-      vlib_worker_thread_barrier_sync (vm);
+      for (int j = 0; j < 2; j++)
+	if (sw_if_index[j] != ~0)
+	  (void) vnet_delete_loopback_interface (sw_if_index[j]);
     }
-  for (int j = 0; j < 2; j++)
-    if (sw_if_index[j] != ~0)
-      (void) vnet_delete_loopback_interface (sw_if_index[j]);
+  else
+    clib_warning ("graph frames did not quiesce; preserving test loopbacks");
 
   vec_free (data);
   vec_free (appns_id);
