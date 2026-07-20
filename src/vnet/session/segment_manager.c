@@ -965,21 +965,24 @@ segment_manager_detach_fifo (svm_fifo_t **f)
   segment_manager_segment_reader_unlock (sm);
 }
 
-void
+int
 segment_manager_attach_fifo (svm_fifo_t **f, session_t *s)
 {
   segment_manager_t *sm;
   fifo_segment_t *fs;
+  int rv;
 
   sm = segment_manager_get_if_valid ((*f)->segment_manager);
   if (PREDICT_FALSE (!sm))
-    return;
+    return -1;
 
   fs = segment_manager_get_segment_w_lock (sm, (*f)->segment_index);
-  fifo_segment_attach_fifo (fs, f, s->thread_index);
+  rv = fifo_segment_attach_fifo (fs, f, s->thread_index);
   segment_manager_segment_reader_unlock (sm);
 
-  (*f)->vpp_sh = s->handle;
+  if (rv == 0)
+    (*f)->vpp_sh = s->handle;
+  return rv;
 }
 
 u32
@@ -1465,6 +1468,7 @@ sm_lookup_free_custom_segment (segment_manager_t *sm, u32 seg_ctx_index)
   seg_ctx = pool_elt_at_index (smm->custom_seg_ctxs, seg_ctx_index);
   max_free_bytes = seg_ctx->fifo_pair_bytes;
 
+  segment_manager_segment_reader_lock (sm);
   pool_foreach (ct_seg, seg_ctx->segments)
     {
       /* Client or server has detached so segment cannot be used */
@@ -1480,6 +1484,7 @@ sm_lookup_free_custom_segment (segment_manager_t *sm, u32 seg_ctx_index)
 	  res = ct_seg;
 	}
     }
+  segment_manager_segment_reader_unlock (sm);
 
   return res;
 }
