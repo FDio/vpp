@@ -79,11 +79,24 @@ clib_mem_create_heap_internal (void *base, uword size,
   h.size = size;
   h.log2_page_sz = log2_page_sz;
   h.mspace = create_mspace_with_base (base, size, is_locked);
+  if (h.mspace == 0)
+    {
+      if (h.unmap_on_destroy)
+	clib_mem_vm_unmap (base);
+      return 0;
+    }
   mspace_disable_expand (h.mspace);
   clib_mem_poison (mspace_least_addr (h.mspace), mspace_footprint (h.mspace));
 
   sz = round_pow2 (sizeof (clib_mem_heap_t) + strlen (name) + 1, align);
   hp = mspace_memalign (h.mspace, align, sz);
+  if (hp == 0)
+    {
+      destroy_mspace (h.mspace);
+      if (h.unmap_on_destroy)
+	clib_mem_vm_unmap (base);
+      return 0;
+    }
   clib_mem_unpoison (hp, sz);
   *hp = h;
 

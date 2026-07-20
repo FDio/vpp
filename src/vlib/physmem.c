@@ -57,14 +57,14 @@ vlib_physmem_shared_map_create (vlib_main_t * vm, char *name, uword size,
   map->log2_page_size = a->log2_subpage_sz;
   map->numa_node = a->numa_node;
 
-  for (i = 0; i < a->n_pages; i++)
+  for (i = 0; i < map->n_pages; i++)
     {
-      uword pa =
-	clib_pmalloc_get_pa (pm, (u8 *) va + (i << a->log2_subpage_sz));
+      void *page_va = (u8 *) va + (i << a->log2_subpage_sz);
+      uword pa = clib_pmalloc_get_pa (pm, page_va);
 
       /* maybe iova */
       if (pa == 0)
-	pa = pointer_to_uword (va);
+	pa = pointer_to_uword (page_va);
 
       vec_add1 (map->page_table, pa);
     }

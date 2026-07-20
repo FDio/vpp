@@ -311,6 +311,7 @@ clib_mem_vm_map_internal (void *base, clib_mem_page_sz_t log2_page_sz,
 {
   clib_mem_main_t *mm = &clib_mem_main;
   clib_mem_vm_map_hdr_t *hdr;
+  void *reserved_base;
   uword sys_page_sz = 1ULL << mm->log2_page_sz;
   int mmap_flags = MAP_FIXED, is_huge = 0;
 
@@ -353,21 +354,21 @@ clib_mem_vm_map_internal (void *base, clib_mem_page_sz_t log2_page_sz,
 
   size = round_pow2 (size, 1ULL << log2_page_sz);
 
-  base = (void *) clib_mem_vm_reserve ((uword) base, size,
-				       clib_max (log2_page_sz, log2_align));
+  reserved_base = (void *) clib_mem_vm_reserve (
+    (uword) base, size, clib_max (log2_page_sz, log2_align));
 
-  if (base == (void *) ~0)
+  if (reserved_base == (void *) ~0)
     return CLIB_MEM_VM_MAP_FAILED;
 
-  base = mmap (base, size, PROT_READ | PROT_WRITE, mmap_flags, fd, offset);
+  base = mmap (reserved_base, size, PROT_READ | PROT_WRITE, mmap_flags, fd,
+	       offset);
 
   if (base == MAP_FAILED)
-    return CLIB_MEM_VM_MAP_FAILED;
+    goto error;
 
   if (is_huge && (mlock (base, size) != 0))
     {
-      munmap (base, size);
-      return CLIB_MEM_VM_MAP_FAILED;
+      goto error;
     }
 
   hdr = mmap (base - sys_page_sz, sys_page_sz, PROT_READ | PROT_WRITE,
@@ -375,8 +376,7 @@ clib_mem_vm_map_internal (void *base, clib_mem_page_sz_t log2_page_sz,
 
   if (hdr != base - sys_page_sz)
     {
-      munmap (base, size);
-      return CLIB_MEM_VM_MAP_FAILED;
+      goto error;
     }
 
   map_lock ();
@@ -408,6 +408,10 @@ clib_mem_vm_map_internal (void *base, clib_mem_page_sz_t log2_page_sz,
 
   clib_mem_unpoison (base, size);
   return base;
+
+error:
+  munmap (reserved_base - sys_page_sz, size + sys_page_sz);
+  return CLIB_MEM_VM_MAP_FAILED;
 }
 
 __clib_export int
