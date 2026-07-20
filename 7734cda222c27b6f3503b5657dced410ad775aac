@@ -16,6 +16,24 @@
       "message": "Could this return the `u32` directly, using `INDEX_INVALID` when the tunnel is not found? That seems more idiomatic for a VPP interface index and avoids exposing a pointer into the tunnel pool:\n\n```c\nu32 ipip_tunnel_db_find_sw_if_index (const ipip_tunnel_key_t *key);\n```\n\nThe IKEv2 call sites could then compare the result with `INDEX_INVALID` without null checks or dereferences.",
       "revId": "7734cda222c27b6f3503b5657dced410ad775aac",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "0db2a5f9_f53d17e3",
+        "filename": "src/plugins/ipip/ipip.c",
+        "patchSetId": 18
+      },
+      "lineNbr": 875,
+      "author": {
+        "id": 3349
+      },
+      "writtenOn": "2026-07-20T12:18:50Z",
+      "side": 1,
+      "message": "Thank You so much , changed.",
+      "parentUuid": "85d2abd2_7b510ad9",
+      "revId": "7734cda222c27b6f3503b5657dced410ad775aac",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
