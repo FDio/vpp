@@ -589,39 +589,6 @@ tcp_update_snd_wnd (tcp_connection_t * tc, u32 seq, u32 ack, u32 snd_wnd)
     }
 }
 
-/**
- * Init loss recovery/fast recovery.
- *
- * Triggered by dup acks as opposed to timer timeout. Note that cwnd is
- * updated in @ref tcp_cc_handle_event after fast retransmit
- */
-static void
-tcp_cc_init_congestion (tcp_connection_t * tc)
-{
-  tcp_fastrecovery_on (tc);
-  tc->snd_congestion = tc->snd_nxt;
-  tc->cwnd_acc_bytes = 0;
-  tc->snd_rxt_bytes = 0;
-  tc->rxt_delivered = 0;
-  tc->prr_delivered = 0;
-  tc->prev_prr_delivered = 0;
-  tc->prr_start = tc->snd_una;
-  tc->prev_ssthresh = tc->ssthresh;
-  tc->prev_cwnd = tc->cwnd;
-
-  tc->snd_rxt_ts = tcp_tstamp (tc);
-  tcp_cc_congestion (tc);
-
-  /* Post retransmit update cwnd to ssthresh and account for the
-   * three segments that have left the network and should've been
-   * buffered at the receiver XXX */
-  if (!tcp_opts_sack_permitted (&tc->rcv_opts))
-    tc->cwnd += TCP_DUPACK_THRESHOLD * tc->snd_mss;
-
-  tc->fr_occurences += 1;
-  TCP_EVT (TCP_EVT_CC_EVT, tc, 4);
-}
-
 static void
 tcp_cc_congestion_undo (tcp_connection_t * tc)
 {
@@ -704,24 +671,6 @@ tcp_cc_exit_recovery (tcp_connection_t *tc)
   ASSERT (tcp_scoreboard_is_sane_post_recovery (tc));
 }
 
-/* Enter congestion recovery: reduce the window, snapshot the recovery point and
- * program a retransmit. Caller must have decided recovery is warranted and must
- * not already be in recovery. */
-static void
-tcp_cc_enter_recovery (tcp_connection_t *tc, u8 has_sack)
-{
-  ASSERT (!tcp_in_cong_recovery (tc));
-  tcp_cc_init_congestion (tc);
-
-  if (has_sack)
-    scoreboard_init_rxt (&tc->sack_sb, tc->snd_una);
-  else
-    tcp_fastrecovery_first_on (tc);
-
-  tcp_connection_tx_pacer_reset (tc, tc->cwnd, 0 /* start bucket */);
-  tcp_program_retransmit (tc);
-}
-
 /* Process (re)transmit feedback. Output path uses this to decide how much more data to release into
  * the network */
 always_inline void
@@ -764,7 +713,7 @@ tcp_cc_try_exit_recovery (tcp_connection_t *tc, tcp_rate_sample_t *rs, u8 has_sa
   tcp_cc_exit_recovery (tc);
 
   if (tcp_should_fastrecover (tc, has_sack))
-    tcp_cc_enter_recovery (tc, has_sack);
+    tcp_cc_enter_recovery (tc);
   else
     tcp_cc_rcv_ack (tc, rs);
 }
@@ -806,7 +755,7 @@ tcp_cc_handle_event (tcp_connection_t * tc, tcp_rate_sample_t * rs,
       tcp_cc_rcv_cong_ack (tc, TCP_CC_DUPACK, rs);
 
       if (tcp_should_fastrecover (tc, has_sack))
-	tcp_cc_enter_recovery (tc, has_sack);
+	tcp_cc_enter_recovery (tc);
 
       return;
     }
