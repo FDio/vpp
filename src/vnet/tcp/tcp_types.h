@@ -52,11 +52,11 @@ typedef enum _tcp_state
 } tcp_state_t;
 
 /** TCP timers */
-#define foreach_tcp_timer               \
-  _(RETRANSMIT, "RETRANSMIT")           \
-  _(PERSIST, "PERSIST")                 \
-  _(WAITCLOSE, "WAIT CLOSE")            \
-  _(RETRANSMIT_SYN, "RETRANSMIT SYN")   \
+#define foreach_tcp_timer                                                                          \
+  _ (RETRANSMIT, "RETRANSMIT")                                                                     \
+  _ (PERSIST, "PERSIST")                                                                           \
+  _ (WAITCLOSE, "WAIT CLOSE")                                                                      \
+  _ (RETRANSMIT_SYN, "RETRANSMIT SYN")
 
 typedef enum _tcp_timers
 {
@@ -106,20 +106,21 @@ typedef enum tcp_cfg_flag_
 } tcp_cfg_flags_e;
 
 /** TCP connection flags */
-#define foreach_tcp_connection_flag             \
-  _(SNDACK, "Send ACK")                         \
-  _(FINSNT, "FIN sent")				\
-  _(RECOVERY, "Recovery")                    	\
-  _(FAST_RECOVERY, "Fast Recovery")		\
-  _(DCNT_PENDING, "Disconnect pending")		\
-  _(HALF_OPEN_DONE, "Half-open completed")	\
-  _(FINPNDG, "FIN pending")			\
-  _(RXT_PENDING, "Retransmit pending")		\
-  _(FRXT_FIRST, "Retransmit first")		\
-  _(DEQ_PENDING, "Dequeue pending ")		\
-  _(PSH_PENDING, "PSH pending")			\
-  _(FINRCVD, "FIN received")			\
-  _(ZERO_RWND_SENT, "Zero RWND sent")		\
+#define foreach_tcp_connection_flag                                                                \
+  _ (SNDACK, "Send ACK")                                                                           \
+  _ (FINSNT, "FIN sent")                                                                           \
+  _ (RECOVERY, "Recovery")                                                                         \
+  _ (FAST_RECOVERY, "Fast Recovery")                                                               \
+  _ (DCNT_PENDING, "Disconnect pending")                                                           \
+  _ (HALF_OPEN_DONE, "Half-open completed")                                                        \
+  _ (FINPNDG, "FIN pending")                                                                       \
+  _ (RXT_PENDING, "Retransmit pending")                                                            \
+  _ (FRXT_FIRST, "Retransmit first")                                                               \
+  _ (DEQ_PENDING, "Dequeue pending ")                                                              \
+  _ (PSH_PENDING, "PSH pending")                                                                   \
+  _ (FINRCVD, "FIN received")                                                                      \
+  _ (ZERO_RWND_SENT, "Zero RWND sent")                                                             \
+  _ (LOSS_TIMER_REORDER, "Loss timer reordering")
 
 typedef enum tcp_connection_flag_bits_
 {
@@ -168,12 +169,12 @@ typedef struct _sack_scoreboard
   u32 sacked_bytes;			/**< Number of bytes sacked in sb */
   u32 last_sacked_bytes;		/**< Number of bytes last sacked */
   u32 last_bytes_delivered;		/**< Sack bytes delivered to app */
-  u32 rxt_sacked;			/**< Rxt bytes last delivered */
+  u32 rxt_sacked;			/**< Rxt bytes delivered by last ACK */
   u32 high_sacked;			/**< Highest byte sacked (fack) */
   u32 high_rxt;				/**< Highest retransmitted sequence */
   u32 rescue_rxt;			/**< Rescue sequence number */
   u32 lost_bytes;			/**< Bytes lost as per RFC6675 */
-  u32 last_lost_bytes;			/**< Number of bytes last lost */
+  u32 last_lost_bytes;			/**< Loss bytes reported by last event */
   u32 cur_rxt_hole;			/**< Retransmitting from this hole */
   u32 reorder;				/**< Estimate of segment reordering */
   u8 is_reneging;			/**< Flag set if peer is reneging*/
@@ -212,6 +213,7 @@ typedef enum tcp_bts_flags_
   TCP_BTS_IS_APP_LIMITED = 1 << 1,
   TCP_BTS_IS_SACKED = 1 << 2,
   TCP_BTS_IS_RXT_LOST = 1 << 3,
+  TCP_BTS_IS_LOST = 1 << 4,
 } __clib_packed tcp_bts_flags_t;
 
 typedef struct tcp_bt_sample_
@@ -456,6 +458,11 @@ tcp_cong_recovery_off (tcp_connection_t * tc)
 
 #define tcp_dsack_undo_disabled(tc)    ((tc)->dsack_rxt_flags & TCP_DSACK_UNDO_DISABLED)
 #define tcp_dsack_undo_disabled_on(tc) (tc)->dsack_rxt_flags |= TCP_DSACK_UNDO_DISABLED
+
+/* The retransmit timer represents either RTO or a reordering deadline. */
+#define tcp_rack_loss_timer_is_reordering(tc)  ((tc)->flags & TCP_CONN_LOSS_TIMER_REORDER)
+#define tcp_rack_loss_timer_set_reordering(tc) (tc)->flags |= TCP_CONN_LOSS_TIMER_REORDER
+#define tcp_rack_loss_timer_set_rto(tc)	       (tc)->flags &= ~TCP_CONN_LOSS_TIMER_REORDER
 
 always_inline tcp_connection_t *
 tcp_get_connection_from_transport (transport_connection_t * tconn)
