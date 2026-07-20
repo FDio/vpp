@@ -926,6 +926,7 @@ cnat_rsession_create (cnat_timestamp_rewrite_t *rw, u32 flow_id, u32 ret_fib_ind
 {
   cnat_bihash_kv_t rkey = { 0 };
   cnat_session_t *rsession = (cnat_session_t *) &rkey;
+  cnat_session_stale_cleanup_t cleanup = { 0 };
 
   /* For ICMP echo, the echo identifier is a single field mapped to both
    * ports in the 5-tuple. Sync port[VLIB_TX] with port[VLIB_RX] (which
@@ -993,9 +994,11 @@ cnat_rsession_create (cnat_timestamp_rewrite_t *rw, u32 flow_id, u32 ret_fib_ind
       (*sport_failures)++;
     }
 
-  cnat_bihash_add_with_overwrite_cb (&cnat_session_db, &rkey, cnat_session_free_stale_cb, NULL);
+  cnat_bihash_add_with_overwrite_cb (&cnat_session_db, &rkey, cnat_session_free_stale_cb,
+				     &cleanup);
 
 out:
+  cnat_session_cleanup_stale (&cleanup);
   cnat_log_session_create (rsession);
 }
 

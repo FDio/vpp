@@ -88,6 +88,7 @@ cnat_writeback_new_flow (vlib_buffer_t *b, ip_address_family_t af, u16 *next)
   cnat_bihash_kv_t bkey;
   cnat_timestamp_t *ts;
   cnat_session_t *session = (cnat_session_t *) &bkey;
+  cnat_session_stale_cleanup_t cleanup = { 0 };
   u32 n_retries = 0, rv, port_seed = 0;
   cnat_main_t *cm = &cnat_main;
 
@@ -130,9 +131,11 @@ cnat_writeback_new_flow (vlib_buffer_t *b, ip_address_family_t af, u16 *next)
   vnet_buffer2 (b)->session.state = CNAT_LOOKUP_IS_DONE;
 
 retry_add_session:
+  cleanup.found = false;
   rv = cnat_bihash_add_with_overwrite_cb (
     &cnat_session_db, &bkey,
-    n_retries < cm->session_max_port_retries ? NULL : cnat_session_free_stale_cb, NULL);
+    n_retries < cm->session_max_port_retries ? NULL : cnat_session_free_stale_cb, &cleanup);
+  cnat_session_cleanup_stale (&cleanup);
   if (rv && n_retries++ < cm->session_max_port_retries)
     {
       random_u32 (&port_seed);
