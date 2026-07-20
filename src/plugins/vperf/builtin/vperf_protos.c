@@ -282,7 +282,7 @@ vp_proto_udp_listen (vnet_listen_args_t *args, vp_test_cfg_t *cfg)
 always_inline int
 vp_proto_server_dgram_rx (vp_test_session_t *es, session_t *s, u8 *rx_buf, u8 test_bytes)
 {
-  u32 max_dequeue, max_enqueue, max_transfer;
+  u32 dgram_bytes, fifo_bytes, max_enqueue;
   int actual_transfer;
   clib_thread_index_t thread_index = s->thread_index;
   svm_fifo_t *tx_fifo, *rx_fifo;
@@ -294,43 +294,35 @@ vp_proto_server_dgram_rx (vp_test_session_t *es, session_t *s, u8 *rx_buf, u8 te
   ASSERT (rx_fifo->master_thread_index == thread_index);
   ASSERT (tx_fifo->master_thread_index == thread_index);
 
-  max_enqueue = svm_fifo_max_enqueue_prod (tx_fifo);
+  /* RX notifications may be stale, so wait for a complete datagram. */
+  fifo_bytes = svm_fifo_max_dequeue_cons (rx_fifo);
+  if (PREDICT_FALSE (fifo_bytes < sizeof (session_dgram_hdr_t)))
+    goto rx_stale;
 
   svm_fifo_peek (rx_fifo, 0, sizeof (ph), (u8 *) &ph);
-  max_dequeue = ph.data_length - ph.data_offset;
-  if (PREDICT_FALSE (max_dequeue == 0))
-    return 0;
-  max_enqueue -= sizeof (session_dgram_hdr_t);
+  ASSERT (ph.data_length >= ph.data_offset);
 
-  /* Number of bytes we're going to copy */
-  max_transfer = clib_min (max_dequeue, max_enqueue);
+  if (PREDICT_FALSE (ph.data_length > fifo_bytes - SESSION_CONN_HDR_LEN))
+    goto rx_stale;
 
-  /* No space in tx fifo */
-  if (PREDICT_FALSE (max_transfer == 0))
+  dgram_bytes = ph.data_length - ph.data_offset;
+  if (PREDICT_FALSE (dgram_bytes == 0))
     {
-    rx_event:
-      /* Program self-tap to retry */
-      if (svm_fifo_set_event (rx_fifo))
-	{
-	  if (session_enqueue_notify (s))
-	    vp_proto_err ("failed to enqueue self-tap");
-
-#if CLIB_DEBUG > 0
-	  if (es->rx_retries == 500000)
-	    {
-	      vp_proto_err ("session stuck: %U", format_session, s, 2);
-	    }
-	  if (es->rx_retries < 500001)
-	    es->rx_retries++;
-#endif
-	}
-
-      return 0;
+      /* Consume to make progress; session TX does not support zero-length dgrams. */
+      svm_fifo_unset_event (rx_fifo);
+      svm_fifo_dequeue_drop (rx_fifo, SESSION_CONN_HDR_LEN + ph.data_length);
+      es->dgrams_received++;
+      goto rx_done;
     }
 
-  ASSERT (vec_len (rx_buf) >= max_transfer);
-  actual_transfer = app_recv_dgram ((app_session_t *) es, rx_buf, max_transfer);
-  ASSERT (actual_transfer == max_transfer);
+  max_enqueue = svm_fifo_max_enqueue_prod (tx_fifo);
+  if (PREDICT_FALSE (max_enqueue < sizeof (session_dgram_hdr_t) + dgram_bytes))
+    goto rx_event;
+
+  ASSERT (vec_len (rx_buf) >= dgram_bytes);
+  actual_transfer = app_recv_dgram ((app_session_t *) es, rx_buf, dgram_bytes);
+  ASSERT (actual_transfer == dgram_bytes);
+
   es->bytes_received += actual_transfer;
   es->dgrams_received++;
 
@@ -344,15 +336,39 @@ vp_proto_server_dgram_rx (vp_test_session_t *es, session_t *s, u8 *rx_buf, u8 te
     }
 
   /* Echo back */
-  actual_transfer = app_send_dgram ((app_session_t *) es, rx_buf, max_transfer, 0);
+  actual_transfer = app_send_dgram ((app_session_t *) es, rx_buf, dgram_bytes, 0);
   if (actual_transfer > 0)
     {
       es->bytes_sent += actual_transfer;
       es->dgrams_sent++;
     }
 
+rx_done:
   if (PREDICT_FALSE (svm_fifo_max_dequeue_cons (rx_fifo)))
     goto rx_event;
+
+  return 0;
+
+rx_stale:
+  svm_fifo_unset_event (rx_fifo);
+  return 0;
+
+rx_event:
+  /* Program self-tap to retry */
+  if (svm_fifo_set_event (rx_fifo))
+    {
+      if (session_enqueue_notify (s))
+	vp_proto_err ("failed to enqueue self-tap");
+
+#if CLIB_DEBUG > 0
+      if (es->rx_retries == 500000)
+	{
+	  vp_proto_err ("session stuck: %U", format_session, s, 2);
+	}
+      if (es->rx_retries < 500001)
+	es->rx_retries++;
+#endif
+    }
 
   return 0;
 }
