@@ -644,6 +644,7 @@ int session_enqueue_dgram_connection_cl (session_t *s,
 					 u8 queue_event);
 void session_fifo_tuning (session_t *s, svm_fifo_t *f, session_ft_action_t act,
 			  u32 len);
+int app_worker_rx_buffer_notify (session_t *s, vlib_buffer_t *b, u32 n_bytes);
 
 /**
  * Discards bytes from buffer chain
@@ -786,6 +787,16 @@ session_enqueue_stream_connection (transport_connection_t *tc,
 
   if (is_in_order)
     {
+      if (PREDICT_FALSE ((s->flags & SESSION_F_RX_BUFFER) &&
+			 svm_fifo_max_dequeue_cons (s->rx_fifo) == 0 &&
+			 !svm_fifo_has_ooo_data (s->rx_fifo)))
+	{
+	  u32 n_bytes = vlib_buffer_length_in_chain (vlib_get_main (), b);
+
+	  if (app_worker_rx_buffer_notify (s, b, n_bytes) > 0)
+	    return n_bytes;
+	}
+
       enqueued = svm_fifo_enqueue (s->rx_fifo, b->current_length,
 				   vlib_buffer_get_current (b));
       if (PREDICT_FALSE ((b->flags & VLIB_BUFFER_NEXT_PRESENT) &&
