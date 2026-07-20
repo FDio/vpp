@@ -54,6 +54,14 @@ typedef struct
 
 tw_timer_test_main_t tw_timer_test_main;
 
+static u32 safety_expired_count;
+
+static void
+expired_timer_safety_callback (u32 * expired_timers)
+{
+  safety_expired_count += vec_len (expired_timers);
+}
+
 static void
 run_single_wheel (tw_timer_wheel_2t_1w_2048sl_t * tw, u32 n_ticks)
 {
@@ -1319,6 +1327,60 @@ test5_double (tw_timer_test_main_t * tm)
 }
 
 static clib_error_t *
+test6_safety (tw_timer_test_main_t * tm)
+{
+  tw_timer_wheel_2t_1w_2048sl_t tw;
+  f64 first_run, large_gap;
+
+  (void) tm;
+
+  tw_timer_wheel_init_2t_1w_2048sl (&tw, expired_timer_safety_callback, 1.0,
+                                    1 /* max expirations */);
+
+  /* Prime the wheel, then make a gap much larger than the wheel geometry. */
+  tw_timer_expire_timers_2t_1w_2048sl (&tw, 1.0);
+  first_run = tw.last_run_time;
+  large_gap = first_run + 1e10;
+  tw_timer_expire_timers_2t_1w_2048sl (&tw, large_gap);
+
+  if (tw.last_run_time != large_gap)
+    {
+      tw_timer_wheel_free_2t_1w_2048sl (&tw);
+      return clib_error_return (0, "empty wheel did not re-anchor after large gap");
+    }
+
+  safety_expired_count = 0;
+  tw_timer_start_2t_1w_2048sl (&tw, 0, 0, 1);
+  tw_timer_start_2t_1w_2048sl (&tw, 1, 0, 1);
+  tw_timer_expire_timers_2t_1w_2048sl (&tw, large_gap + 2.0);
+
+  if (safety_expired_count != 1)
+    {
+      tw_timer_wheel_free_2t_1w_2048sl (&tw);
+      return clib_error_return (0, "max_expirations was not enforced: %u",
+				safety_expired_count);
+    }
+
+  if (tw.last_run_time >= large_gap + 2.0)
+    {
+      tw_timer_wheel_free_2t_1w_2048sl (&tw);
+      return clib_error_return (0, "active timer backlog was discarded");
+    }
+
+  tw_timer_expire_timers_2t_1w_2048sl (&tw, large_gap + 2.0);
+
+  if (safety_expired_count != 2)
+    {
+      tw_timer_wheel_free_2t_1w_2048sl (&tw);
+      return clib_error_return (0, "same-slot backlog was not preserved: %u",
+				safety_expired_count);
+    }
+
+  tw_timer_wheel_free_2t_1w_2048sl (&tw);
+  return 0;
+}
+
+static clib_error_t *
 timer_test_command_fn (tw_timer_test_main_t * tm, unformat_input_t * input)
 {
 
@@ -1328,6 +1390,7 @@ timer_test_command_fn (tw_timer_test_main_t * tm, unformat_input_t * input)
   int is_test3 = 0;
   int is_test4 = 0;
   int is_test5 = 0;
+  int is_test6 = 0;
   int overflow = 0;
 
   clib_memset (tm, 0, sizeof (*tm));
@@ -1353,6 +1416,8 @@ timer_test_command_fn (tw_timer_test_main_t * tm, unformat_input_t * input)
 	is_test4 = 1;
       else if (unformat (input, "linear"))
 	is_test5 = 1;
+      else if (unformat (input, "safety"))
+	is_test6 = 1;
       else if (unformat (input, "updates"))
 	is_updates = 1;
       else if (unformat (input, "wheels %d", &num_wheels))
@@ -1367,7 +1432,7 @@ timer_test_command_fn (tw_timer_test_main_t * tm, unformat_input_t * input)
 	break;
     }
 
-  if (is_test1 + is_test2 + is_test3 + is_test4 + is_test5 == 0)
+  if (is_test1 + is_test2 + is_test3 + is_test4 + is_test5 + is_test6 == 0)
     return clib_error_return (0, "No test specified [test1..n]");
 
   if (num_wheels < 1 || num_wheels > 3)
@@ -1408,6 +1473,9 @@ timer_test_command_fn (tw_timer_test_main_t * tm, unformat_input_t * input)
 
   if (is_test5)
     return test5_double (tm);
+
+  if (is_test6)
+    return test6_safety (tm);
 
   /* NOTREACHED */
   return 0;

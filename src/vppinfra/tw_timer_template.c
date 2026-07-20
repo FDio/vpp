@@ -495,7 +495,8 @@ static inline
 					      f64 now,
 					      u32 * callback_vector_arg)
 {
-  u32 nticks, i;
+  u32 nticks, i, ticks_processed = 0, expirations_processed = 0;
+  f64 elapsed_ticks;
   tw_timer_wheel_slot_t *ts;
   TWT (tw_timer) * t, *head;
   u32 *callback_vector;
@@ -508,21 +509,38 @@ static inline
   if (PREDICT_FALSE (now < tw->next_run_time))
     return callback_vector_arg;
 
-  /* Number of ticks which have occurred */
-  nticks = tw->ticks_per_second * (now - tw->last_run_time);
-  if (nticks == 0)
-    return callback_vector_arg;
-
-  /* Remember when we ran, compute next runtime */
-  tw->next_run_time = (now + tw->timer_interval);
-
   /* First call, or time jumped backwards? */
   if (PREDICT_FALSE
       ((tw->last_run_time == 0.0) || (now <= tw->last_run_time)))
     {
       tw->last_run_time = now;
+      tw->next_run_time = now + tw->timer_interval;
       return callback_vector_arg;
     }
+
+  /* An empty wheel has no expiration backlog to preserve. */
+  if (pool_elts (tw->timers) == TW_TIMER_WHEELS * TW_SLOTS_PER_RING
+#if TW_OVERFLOW_VECTOR > 0
+      + 1
+#endif
+      )
+    {
+      tw->last_run_time = now;
+      tw->next_run_time = now + tw->timer_interval;
+      return callback_vector_arg;
+    }
+
+  /* Number of ticks which have occurred. Validate before converting to u32. */
+  elapsed_ticks = tw->ticks_per_second * (now - tw->last_run_time);
+  if (!(elapsed_ticks > 0.0))
+    return callback_vector_arg;
+
+  if (elapsed_ticks >= (f64) (2 * TW_SLOTS_PER_RING))
+    nticks = 2 * TW_SLOTS_PER_RING;
+  else
+    nticks = (u32) elapsed_ticks;
+  if (nticks == 0)
+    return callback_vector_arg;
 
   if (callback_vector_arg == 0)
     {
@@ -554,17 +572,13 @@ static inline
 	  head = pool_elt_at_index (tw->timers, ts->head_index);
 	  next_index = head->next;
 
-	  /* Make slot empty */
-	  head->next = head->prev = ts->head_index;
-
 	  /* traverse slot, place timers wherever they go */
 	  while (next_index != head - tw->timers)
 	    {
 	      t = pool_elt_at_index (tw->timers, next_index);
 	      next_index = t->next;
 
-	      /* Remove from the overflow vector (hammer) */
-	      t->next = t->prev = ~0;
+	      timer_remove (tw->timers, t);
 
 	      ASSERT (t->expiration_time >= tw->current_tick);
 
@@ -589,12 +603,19 @@ static inline
 	      t->slow_ring_offset = new_slow_ring_offset;
 	      t->fast_ring_offset = new_fast_ring_offset;
 
-	      /* Timer expires Right Now */
-	      if (PREDICT_FALSE (t->slow_ring_offset == 0 &&
-				 t->fast_ring_offset == 0 &&
-				 new_glacier_ring_offset == 0))
-		{
-		  vec_add1 (callback_vector, t->user_handle);
+	/* Timer expires Right Now */
+	if (PREDICT_FALSE (t->slow_ring_offset == 0 &&
+				   t->fast_ring_offset == 0 &&
+				   new_glacier_ring_offset == 0))
+	  {
+		if (expirations_processed + vec_len (callback_vector) >=
+		    tw->max_expirations)
+		  {
+		    ts = &tw->w[TW_TIMER_RING_FAST][0];
+		timer_addhead (tw->timers, ts->head_index, t - tw->timers);
+		break;
+	      }
+	    vec_add1 (callback_vector, t->user_handle);
 #if TW_START_STOP_TRACE_SIZE > 0
 		  TW (tw_timer_trace) (tw, 0xfe, t->user_handle,
 				       t - tw->timers);
@@ -642,23 +663,26 @@ static inline
 	  head = pool_elt_at_index (tw->timers, ts->head_index);
 	  next_index = head->next;
 
-	  /* Make slot empty */
-	  head->next = head->prev = ts->head_index;
-
 	  /* traverse slot, deal timers into slow ring */
 	  while (next_index != head - tw->timers)
 	    {
 	      t = pool_elt_at_index (tw->timers, next_index);
 	      next_index = t->next;
 
-	      /* Remove from glacier ring slot (hammer) */
-	      t->next = t->prev = ~0;
+	      timer_remove (tw->timers, t);
 
-	      /* Timer expires Right Now */
-	      if (PREDICT_FALSE (t->slow_ring_offset == 0 &&
-				 t->fast_ring_offset == 0))
-		{
-		  vec_add1 (callback_vector, t->user_handle);
+	/* Timer expires Right Now */
+	if (PREDICT_FALSE (t->slow_ring_offset == 0 &&
+				   t->fast_ring_offset == 0))
+	  {
+		if (expirations_processed + vec_len (callback_vector) >=
+		    tw->max_expirations)
+		  {
+		    ts = &tw->w[TW_TIMER_RING_FAST][0];
+		timer_addhead (tw->timers, ts->head_index, t - tw->timers);
+		break;
+	      }
+	    vec_add1 (callback_vector, t->user_handle);
 #if TW_START_STOP_TRACE_SIZE > 0
 		  TW (tw_timer_trace) (tw, 0xfe, t->user_handle,
 				       t - tw->timers);
@@ -698,22 +722,25 @@ static inline
 	  head = pool_elt_at_index (tw->timers, ts->head_index);
 	  next_index = head->next;
 
-	  /* Make slot empty */
-	  head->next = head->prev = ts->head_index;
-
 	  /* traverse slot, deal timers into fast ring */
 	  while (next_index != head - tw->timers)
 	    {
 	      t = pool_elt_at_index (tw->timers, next_index);
 	      next_index = t->next;
 
-	      /* Remove from sloe ring slot (hammer) */
-	      t->next = t->prev = ~0;
+	      timer_remove (tw->timers, t);
 
-	      /* Timer expires Right Now */
-	      if (PREDICT_FALSE (t->fast_ring_offset == 0))
-		{
-		  vec_add1 (callback_vector, t->user_handle);
+	/* Timer expires Right Now */
+	if (PREDICT_FALSE (t->fast_ring_offset == 0))
+	  {
+		if (expirations_processed + vec_len (callback_vector) >=
+		    tw->max_expirations)
+		  {
+		    ts = &tw->w[TW_TIMER_RING_FAST][0];
+		timer_addhead (tw->timers, ts->head_index, t - tw->timers);
+		break;
+	      }
+	    vec_add1 (callback_vector, t->user_handle);
 #if TW_START_STOP_TRACE_SIZE > 0
 		  TW (tw_timer_trace) (tw, 0xfe, t->user_handle,
 				       t - tw->timers);
@@ -742,14 +769,14 @@ static inline
       head = pool_elt_at_index (tw->timers, ts->head_index);
       next_index = head->next;
 
-      /* Make slot empty */
-      head->next = head->prev = ts->head_index;
-
       /* Construct vector of expired timer handles to give the user */
-      while (next_index != ts->head_index)
+      while (next_index != ts->head_index &&
+	     expirations_processed + vec_len (callback_vector) <
+	       tw->max_expirations)
 	{
 	  t = pool_elt_at_index (tw->timers, next_index);
 	  next_index = t->next;
+	  timer_remove (tw->timers, t);
 	  vec_add1 (callback_vector, t->user_handle);
 #if TW_START_STOP_TRACE_SIZE > 0
 	  TW (tw_timer_trace) (tw, 0xfe, t->user_handle, t - tw->timers);
@@ -763,11 +790,16 @@ static inline
 	  /* The callback is optional. We return the u32 * handle vector */
 	  if (tw->expired_timer_callback)
 	    {
+	      expirations_processed += vec_len (callback_vector);
 	      tw->expired_timer_callback (callback_vector);
 	      vec_reset_length (callback_vector);
 	    }
 	  tw->expired_timer_handles = callback_vector;
 	}
+
+      /* Do not advance past a partially drained slot. */
+      if (head->next != ts->head_index)
+	break;
 
 #if TW_FAST_WHEEL_BITMAP
       tw->fast_slot_bitmap = clib_bitmap_set (tw->fast_slot_bitmap,
@@ -790,14 +822,19 @@ static inline
       tw->current_index[TW_TIMER_RING_GLACIER] = glacier_wheel_index;
 #endif
 
-      if (vec_len (callback_vector) >= tw->max_expirations)
+      ticks_processed++;
+
+      if (expirations_processed + vec_len (callback_vector) >=
+	  tw->max_expirations)
 	break;
     }
 
   if (callback_vector_arg == 0)
     tw->expired_timer_handles = callback_vector;
 
-  tw->last_run_time += i * tw->timer_interval;
+  /* Keep elapsed time as backlog while active timers remain. */
+  tw->last_run_time += ticks_processed * tw->timer_interval;
+  tw->next_run_time = tw->last_run_time + tw->timer_interval;
   return callback_vector;
 }
 
