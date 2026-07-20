@@ -4866,6 +4866,28 @@ tcp_test_bt (vlib_main_t * vm, unformat_input_t * input)
   fifo_segment_delete (fsm, fs);
   tcp_bt_cleanup (tc);
 
+  /* Delivery sampling continues after FIN and excludes the FIN sequence. */
+  memset (tc, 0, sizeof (*tc));
+  memset (rs, 0, sizeof (*rs));
+  tcp_bt_init (tc);
+  tcp_test_set_time (thread_index, 50);
+  tcp_bt_track_tx (tc, 100);
+  tc->snd_nxt = 101;
+  tc->flags |= TCP_CONN_FINSNT;
+  tc->snd_una = 100;
+  tc->bytes_acked = 100;
+  tcp_test_set_time (thread_index, 51);
+  tcp_bt_sample_delivery_rate (tc, rs);
+  TCP_TEST (tc->delivered == 100 && rs->acked_and_sacked == 100,
+	    "data delivery remains sampled after FIN is sent");
+  tc->snd_una = 101;
+  tc->bytes_acked = 1;
+  memset (rs, 0, sizeof (*rs));
+  tcp_bt_sample_delivery_rate (tc, rs);
+  TCP_TEST (tc->delivered == 100 && rs->acked_and_sacked == 0,
+	    "FIN acknowledgment is excluded from delivered bytes");
+  tcp_bt_cleanup (tc);
+
   return 0;
 }
 
