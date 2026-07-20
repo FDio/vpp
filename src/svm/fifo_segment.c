@@ -1038,10 +1038,11 @@ fifo_segment_detach_fifo (fifo_segment_t *fs, svm_fifo_t **f)
   *f = 0;
 }
 
-void
+int
 fifo_segment_attach_fifo (fifo_segment_t *fs, svm_fifo_t **f, u32 slice_index)
 {
-  svm_fifo_chunk_t *c, *nc, *pc = 0;
+  svm_fifo_chunk_t *c, *nc, *pc = 0, *attach_chunks = 0;
+  svm_fifo_shared_t *attach_hdr = 0;
   fifo_slice_private_t *pfss;
   fifo_segment_slice_t *fss;
   svm_fifo_t *nf, *of;
@@ -1059,21 +1060,39 @@ fifo_segment_attach_fifo (fifo_segment_t *fs, svm_fifo_t **f, u32 slice_index)
   /* Allocate shared hdr and chunks to be collected at detach in return
    * for those that are being attached now */
   of = *f;
-  svm_fifo_hdr_at_attach (of) = fsh_try_alloc_fifo_hdr (fs->h, fss);
+  attach_hdr = fsh_try_alloc_fifo_hdr (fs->h, fss);
+  if (!attach_hdr)
+    goto error;
 
   c = fs_chunk_ptr (fs->h, nf->shr->start_chunk);
-  svm_fifo_chunks_at_attach (of) = pc =
-    fsh_try_alloc_chunk (fs->h, fss, c->length);
+  attach_chunks = pc = fsh_try_alloc_chunk (fs->h, fss, c->length);
+  if (!attach_chunks)
+    goto error;
 
   while ((c = fs_chunk_ptr (fs->h, c->next)))
     {
       nc = fsh_try_alloc_chunk (fs->h, fss, c->length);
+      if (!nc)
+	goto error;
       pc->next = fs_chunk_sptr (fs->h, nc);
       pc = nc;
     }
 
+  svm_fifo_hdr_at_attach (of) = attach_hdr;
+  svm_fifo_chunks_at_attach (of) = attach_chunks;
   nf->shr->slice_index = slice_index;
   *f = nf;
+  return 0;
+
+error:
+  fsh_slice_collect_chunks (fs->h, fss, attach_chunks);
+  if (attach_hdr)
+    fss_fifo_free_list_push (fs->h, fss, attach_hdr);
+  if (nf->flags & SVM_FIFO_F_LL_TRACKED)
+    pfss_fifo_del_active_list (pfss, nf);
+  fss->virtual_mem -= svm_fifo_size (nf);
+  fs_fifo_free (fs, nf, slice_index);
+  return -1;
 }
 
 uword
