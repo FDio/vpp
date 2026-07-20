@@ -33,19 +33,17 @@ cnat_ep_trk_delete_notify (index_t *trk_index)
 
 void (*cnat_free_port_cb) (u32 fib_index, u16 port, ip_protocol_t iproto);
 
-typedef struct cnat_session_walk_ctx_t_
+typedef struct cnat_session_snapshot_ctx_t_
 {
-  cnat_session_walk_cb_t cb;
-  void *ctx;
-} cnat_session_walk_ctx_t;
+  cnat_bihash_kv_t *sessions;
+} cnat_session_snapshot_ctx_t;
 
 static int
-cnat_session_walk_cb (BVT (clib_bihash_kv) * kv, void *arg)
+cnat_session_snapshot_cb (BVT (clib_bihash_kv) * kv, void *arg)
 {
-  cnat_session_t *session = (cnat_session_t *) kv;
-  cnat_session_walk_ctx_t *ctx = arg;
+  cnat_session_snapshot_ctx_t *ctx = arg;
 
-  ctx->cb (session, ctx->ctx);
+  vec_add1 (ctx->sessions, *kv);
 
   return (BIHASH_WALK_CONTINUE);
 }
@@ -53,27 +51,20 @@ cnat_session_walk_cb (BVT (clib_bihash_kv) * kv, void *arg)
 void
 cnat_session_walk (cnat_session_walk_cb_t cb, void *ctx)
 {
-  cnat_session_walk_ctx_t wctx = {
-    .cb = cb,
-    .ctx = ctx,
-  };
+  cnat_session_snapshot_ctx_t snapshot = { 0 };
+  cnat_bihash_kv_t *kv;
+  vlib_main_t *vm = vlib_get_main ();
+
+  vlib_worker_thread_barrier_sync (vm);
   BV (clib_bihash_foreach_key_value_pair) (&cnat_session_db,
-					   cnat_session_walk_cb, &wctx);
-}
+					   cnat_session_snapshot_cb, &snapshot);
+  vlib_worker_thread_barrier_release (vm);
 
-typedef struct cnat_session_purge_walk_t_
-{
-  cnat_bihash_kv_t *keys;
-} cnat_session_purge_walk_ctx_t;
+  vec_foreach (kv, snapshot.sessions)
+    if (WALK_STOP == cb ((cnat_session_t *) kv, ctx))
+      break;
 
-static int
-cnat_session_purge_walk (BVT (clib_bihash_kv) * key, void *arg)
-{
-  cnat_session_purge_walk_ctx_t *ctx = arg;
-
-  vec_add1 (ctx->keys, *key);
-
-  return (BIHASH_WALK_CONTINUE);
+  vec_free (snapshot.sessions);
 }
 
 u8 *
@@ -124,21 +115,28 @@ format_cnat_timestamp (u8 *s, va_list *args)
   return (s);
 }
 
-u8 *
-format_cnat_session (u8 * s, va_list * args)
+static u8 *
+format_cnat_session_data (u8 *s, const cnat_session_t *sess, const cnat_timestamp_t *ts,
+			  int verbose)
 {
-  cnat_session_t *sess = va_arg (*args, cnat_session_t *);
-  int verbose = va_arg (*args, int);
   u32 indent = format_get_indent (s);
-  cnat_timestamp_t *ts = NULL;
 
-  ts = cnat_timestamp_get (sess->value.cs_session_index);
   s = format (s, "%U => [%U]\n%Uindex:%d fib:%d\n%U%U", format_cnat_5tuple, &sess->key.cs_5tuple,
 	      format_cnat_session_flags, sess->value.cs_flags, format_white_space, indent + 2,
 	      sess->value.cs_session_index, sess->key.fib_index, format_white_space, indent + 2,
 	      format_cnat_timestamp, ts, indent + 2, verbose);
 
   return (s);
+}
+
+u8 *
+format_cnat_session (u8 * s, va_list * args)
+{
+  cnat_session_t *sess = va_arg (*args, cnat_session_t *);
+  int verbose = va_arg (*args, int);
+  cnat_timestamp_t *ts = cnat_timestamp_get (sess->value.cs_session_index);
+
+  return format_cnat_session_data (s, sess, ts, verbose);
 }
 
 static int
@@ -159,6 +157,17 @@ cnat_show_yield (vlib_main_t *vm, f64 *start)
 
 typedef struct
 {
+  cnat_session_t session;
+  cnat_timestamp_t timestamp;
+} cnat_session_show_snapshot_t;
+
+typedef struct
+{
+  cnat_session_show_snapshot_t *sessions;
+} cnat_session_show_snapshot_ctx_t;
+
+typedef struct
+{
   vlib_main_t *vm;
   ip46_address_t ip;
   f64 start;
@@ -172,9 +181,31 @@ typedef struct
 } cnat_session_show_cbak_arg_t;
 
 static int
-cnat_session_show_cbak (BVT (clib_bihash_kv) * kvp, void *arg)
+cnat_session_show_snapshot_cb (BVT (clib_bihash_kv) * kvp, void *arg)
 {
-  const cnat_session_t *s = (void *) kvp;
+  cnat_session_show_snapshot_ctx_t *ctx = arg;
+  cnat_session_show_snapshot_t snapshot;
+
+  snapshot.session = *(cnat_session_t *) kvp;
+  snapshot.timestamp = *cnat_timestamp_get (snapshot.session.value.cs_session_index);
+  vec_add1 (ctx->sessions, snapshot);
+
+  return BIHASH_WALK_CONTINUE;
+}
+
+static u8 *
+format_cnat_session_show_snapshot (u8 *s, va_list *args)
+{
+  cnat_session_show_snapshot_t *snapshot = va_arg (*args, cnat_session_show_snapshot_t *);
+  int verbose = va_arg (*args, int);
+
+  return format_cnat_session_data (s, &snapshot->session, &snapshot->timestamp, verbose);
+}
+
+static int
+cnat_session_show_snapshot_entry (cnat_session_show_snapshot_t *snapshot, void *arg)
+{
+  const cnat_session_t *s = &snapshot->session;
   cnat_session_show_cbak_arg_t *a = arg;
 
   cnat_show_yield (a->vm, &a->start);
@@ -199,12 +230,11 @@ cnat_session_show_cbak (BVT (clib_bihash_kv) * kvp, void *arg)
 
   if (a->refcount)
     {
-      const cnat_timestamp_t *ts = cnat_timestamp_get (s->value.cs_session_index);
-      if (a->refcount != ts->ts_session_refcnt)
+	if (a->refcount != snapshot->timestamp.ts_session_refcnt)
 	return BIHASH_WALK_CONTINUE;
     }
 
-  vlib_cli_output (a->vm, "%U\n", format_cnat_session, s, a->verbose);
+  vlib_cli_output (a->vm, "%U\n", format_cnat_session_show_snapshot, snapshot, a->verbose);
 
   if (a->max-- <= 0)
     {
@@ -221,6 +251,8 @@ cnat_session_show (vlib_main_t * vm,
 		   unformat_input_t * input, vlib_cli_command_t * cmd)
 {
   cnat_session_show_cbak_arg_t arg = {};
+  cnat_session_show_snapshot_ctx_t snapshot = { 0 };
+  cnat_session_show_snapshot_t *session;
   int v;
 
   arg.vm = vm;
@@ -257,11 +289,18 @@ cnat_session_show (vlib_main_t * vm,
 	}
     }
 
+  vlib_worker_thread_barrier_sync (vm);
   vlib_cli_output (vm, "CNat Sessions: now:%f\n%U\n", vlib_time_now (vm), BV (format_bihash),
 		   &cnat_session_db, 0 /* verbose */);
   if (arg.verbose)
-    BV (clib_bihash_foreach_key_value_pair)
-  (&cnat_session_db, cnat_session_show_cbak, &arg);
+    BV (clib_bihash_foreach_key_value_pair) (&cnat_session_db,
+					     cnat_session_show_snapshot_cb, &snapshot);
+  vlib_worker_thread_barrier_release (vm);
+
+  vec_foreach (session, snapshot.sessions)
+    if (BIHASH_WALK_STOP == cnat_session_show_snapshot_entry (session, &arg))
+      break;
+  vec_free (snapshot.sessions);
 
   return (NULL);
 }
@@ -305,32 +344,56 @@ cnat_session_free__ (cnat_session_t *session)
 void
 cnat_session_free_stale_cb (cnat_bihash_kv_t *kv, void *opaque)
 {
-  cnat_session_t *session = (cnat_session_t *) kv;
+  cnat_session_stale_cleanup_t *cleanup = opaque;
+
+  cleanup->session = *kv;
+  cleanup->found = true;
+}
+
+void
+cnat_session_cleanup_stale (cnat_session_stale_cleanup_t *cleanup)
+{
+  if (!cleanup->found)
+    return;
+
+  cnat_session_t *session = (cnat_session_t *) &cleanup->session;
   cnat_log_session_overwrite (session);
   cnat_session_free__ (session);
+  cleanup->found = false;
 }
 
 void
 cnat_session_free (cnat_session_t * session)
 {
-  cnat_bihash_kv_t *bkey = (cnat_bihash_kv_t *) session;
-  cnat_session_free__ (session);
-  cnat_bihash_add_del (&cnat_session_db, bkey, 0 /* is_add */);
+  cnat_bihash_kv_t current;
+  cnat_session_t copy = *session;
+
+  if (cnat_bihash_search_i2 (&cnat_session_db, (cnat_bihash_kv_t *) &copy, &current) ||
+      memcmp (&copy, &current, sizeof (copy)))
+    return;
+
+  if (cnat_bihash_add_del (&cnat_session_db, (cnat_bihash_kv_t *) &copy, 0 /* is_add */))
+    return;
+
+  cnat_session_free__ (&copy);
 }
 
 int
 cnat_session_purge (void)
 {
   /* flush all the session from the DB */
-  cnat_session_purge_walk_ctx_t ctx = { };
+  cnat_session_snapshot_ctx_t snapshot = { 0 };
   cnat_bihash_kv_t *key;
+  vlib_main_t *vm = vlib_get_main ();
 
+  vlib_worker_thread_barrier_sync (vm);
   BV (clib_bihash_foreach_key_value_pair) (&cnat_session_db,
-					   cnat_session_purge_walk, &ctx);
+					   cnat_session_snapshot_cb, &snapshot);
 
-  vec_foreach (key, ctx.keys) cnat_session_free ((cnat_session_t *) key);
+  vec_foreach (key, snapshot.sessions) cnat_session_free ((cnat_session_t *) key);
+  vlib_worker_thread_barrier_release (vm);
 
-  vec_free (ctx.keys);
+  vec_free (snapshot.sessions);
 
   return (0);
 }
@@ -436,6 +499,13 @@ cnat_session_is_stale (cnat_session_t *session, f64 start_time)
 u64
 cnat_session_scan (vlib_main_t *vm, f64 start_time, int i)
 {
+  cnat_bihash_kv_t *stale = NULL, *key;
+  BVT (clib_bihash) * h = &cnat_session_db;
+  int j, k;
+
+  cnat_log_scanner_start (i);
+  vlib_worker_thread_barrier_sync (vm);
+
   if (!i)
     {
       /* delete confirmed deleted backends from previous scan
@@ -455,19 +525,15 @@ cnat_session_scan (vlib_main_t *vm, f64 start_time, int i)
        */
       ep_trk_del_state ^= 1;
     }
-  BVT (clib_bihash) * h = &cnat_session_db;
-  int j, k;
-
-  cnat_log_scanner_start (i);
 
   if (!h->instantiated)
-    goto out;
+	goto remove_stale;
 
   for ( /* caller saves starting point */ ; i < h->nbuckets; i++)
     {
       /* allow no more than 100us without a pause */
       if ((vlib_time_now (vm) - start_time) > 10e-5)
-	goto out;
+	goto remove_stale;
 
       if (i < (h->nbuckets - 3))
 	{
@@ -496,29 +562,27 @@ cnat_session_scan (vlib_main_t *vm, f64 start_time, int i)
 
 	      cnat_session_t *session = (cnat_session_t *) & v->kvp[k];
 	      if (cnat_session_is_stale (session, start_time))
-		{
-		  /* age it */
-		  cnat_log_session_expire (session);
-		  cnat_reverse_session_free (session);
-		  /* this should be last as deleting the session memset it to
-		   * 0xff */
-		  cnat_session_free (session);
-
-		  /*
-		   * Note: we may have just freed the bucket's backing
-		   * storage, so check right here...
-		   */
-		  if (BV (clib_bihash_bucket_is_empty) (b))
-		    goto doublebreak;
-		}
+		vec_add1 (stale, v->kvp[k]);
 	    }
 	  v++;
 	}
-    doublebreak:
-      ;
     }
 
-out:
+remove_stale:
+  vec_foreach (key, stale)
+    {
+      cnat_bihash_kv_t current;
+      if (cnat_bihash_search_i2 (&cnat_session_db, key, &current) ||
+	  memcmp (key, &current, sizeof (*key)))
+	continue;
+
+      cnat_session_t *session = (cnat_session_t *) &current;
+      cnat_log_session_expire (session);
+      cnat_reverse_session_free (session);
+      cnat_session_free (session);
+    }
+  vec_free (stale);
+  vlib_worker_thread_barrier_release (vm);
   cnat_log_scanner_stop (i);
   /* if at the end, return 0 to start again */
   return i < h->nbuckets ? i : 0;

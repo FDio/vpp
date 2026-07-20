@@ -122,6 +122,12 @@ STATIC_ASSERT (sizeof (cnat_session_t) == sizeof (cnat_bihash_kv_t),
  */
 extern cnat_bihash_t cnat_session_db;
 
+typedef struct cnat_session_stale_cleanup_t_
+{
+  cnat_bihash_kv_t session;
+  bool found;
+} cnat_session_stale_cleanup_t;
+
 /**
  * Callback function invoked during a walk of all sessions
  */
@@ -157,6 +163,11 @@ extern void cnat_session_free (cnat_session_t * session);
  * Hash callback for session overwrite
  */
 extern void cnat_session_free_stale_cb (cnat_bihash_kv_t *kv, void *opaque);
+
+/**
+ * Release resources recorded by cnat_session_free_stale_cb
+ */
+extern void cnat_session_cleanup_stale (cnat_session_stale_cleanup_t *cleanup);
 
 /**
  * Port cleanup callback
