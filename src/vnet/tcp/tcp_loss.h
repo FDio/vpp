@@ -9,12 +9,21 @@
 #include <vnet/tcp/tcp_types.h>
 
 void tcp_loss_on_ack (tcp_connection_t *tc, tcp_ack_ctx_t *ac);
+u8 tcp_loss_old_ack_needs_feedback (tcp_connection_t *tc);
 void tcp_loss_on_rto (tcp_connection_t *tc);
-void tcp_loss_recovery_enter (tcp_connection_t *tc);
 
-/* Eifel spurious-retransmit detection (RFC 3522 Sec. 3.2). Spurious if the ACK
- * echoes a timestamp older than the first retransmit and leaves part of the
- * flight outstanding. A full-flight ACK remains ambiguous and requires
+void tcp_loss_recovery_enter (tcp_connection_t *tc);
+void tcp_loss_recovery_backend_init (tcp_connection_t *tc);
+void tcp_loss_recovery_backend_exit (tcp_connection_t *tc, tcp_ack_ctx_t *ac);
+void tcp_loss_recovery_backend_sync (tcp_connection_t *tc);
+u8 tcp_loss_recovery_backend_is_sane (tcp_connection_t *tc);
+u8 tcp_loss_prepare_rto (tcp_connection_t *tc, u8 *sack_reneged);
+u8 tcp_loss_retransmit_timer_expired (tcp_connection_t *tc);
+void tcp_loss_rto_retransmit_failed (tcp_connection_t *tc);
+
+/* Eifel spurious-retransmit detection (RFC 3522 Sec. 3.2). Spurious if the
+ * ACK echoes a timestamp older than the first retransmit and leaves part of
+ * the flight outstanding. A full-flight ACK remains ambiguous and requires
  * D-SACK evidence. */
 static inline u8
 tcp_loss_is_eifel_spurious (tcp_connection_t *tc, tcp_ack_ctx_t *ac)
@@ -22,6 +31,28 @@ tcp_loss_is_eifel_spurious (tcp_connection_t *tc, tcp_ack_ctx_t *ac)
   ASSERT (tcp_in_cong_recovery (tc) && ac->bytes_acked);
   return (tc->snd_rxt_ts && seq_lt (tc->snd_una, tc->snd_congestion) &&
 	  tcp_opts_tstamp (&tc->rcv_opts) && timestamp_lt (tc->rcv_opts.tsecr, tc->snd_rxt_ts));
+}
+
+static_always_inline u8
+tcp_loss_recovery_should_enter (tcp_connection_t *tc, tcp_ack_ctx_t *ac, u8 has_sack,
+				u8 after_recovery)
+{
+  if (PREDICT_FALSE (tc->cfg_flags & TCP_CFG_F_RACK))
+    return after_recovery ? tc->sack_sb.lost_bytes != 0 : ac->last_lost != 0;
+
+  if (!after_recovery && !(ac->ack_flags & TCP_ACK_F_DUPACK))
+    return 0;
+
+  if (!has_sack && seq_leq (tc->snd_una, tc->snd_congestion) &&
+      ((!(tc->cwnd > tc->snd_mss && ac->bytes_acked <= 4 * tc->snd_mss)) ||
+       (tc->rcv_opts.tsecr != tc->tsecr_last_ack)))
+    {
+      /* RFC 6582 heuristic: this duplicate ACK probably followed an RTO. */
+      tc->rcv_dupacks = 0;
+      return 0;
+    }
+
+  return tc->sack_sb.lost_bytes || tc->rcv_dupacks >= tc->sack_sb.reorder;
 }
 
 #endif /* SRC_VNET_TCP_TCP_LOSS_H_ */
