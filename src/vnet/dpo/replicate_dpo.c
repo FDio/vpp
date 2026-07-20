@@ -751,7 +751,7 @@ replicate_inline (vlib_main_t * vm,
             const replicate_t *rep0;
             vlib_buffer_t * b0, *c0;
             const dpo_id_t *dpo0;
-	    u8 num_cloned;
+	    u16 num_cloned;
 
             bi0 = from[0];
             from += 1;
