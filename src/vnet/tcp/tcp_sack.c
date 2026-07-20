@@ -575,7 +575,7 @@ tcp_sack_recovery_exit (tcp_connection_t *tc, tcp_ack_flag_t spurious_flags)
 {
   sack_scoreboard_hole_t *hole;
 
-  if (spurious_flags)
+  if (spurious_flags && !(tc->cfg_flags & TCP_CFG_F_RACK))
     tcp_sack_recompute_loss (tc);
 
   if (!(tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER))
