@@ -981,6 +981,12 @@ tcp_set_attribute (tcp_connection_t *tc, transport_endpt_attr_t *attr)
       tc->snd_mss = clib_min (tc->snd_mss, tc->mss);
       break;
     case TRANSPORT_ENDPT_ATTR_FLAGS:
+      if (!!(attr->flags & TRANSPORT_ENDPT_ATTR_F_RATE_SAMPLING) !=
+	  !!(tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE))
+	{
+	  if (tc->snd_una != tc->snd_nxt || tcp_in_cong_recovery (tc))
+	    return -1;
+	}
       if (attr->flags & TRANSPORT_ENDPT_ATTR_F_CSUM_OFFLOAD)
 	tc->cfg_flags |= TCP_CFG_F_NO_CSUM_OFFLOAD;
       else
