@@ -16,6 +16,23 @@
       "message": "Done!",
       "revId": "3e4236d7e9e71753b603a26ab6dae92ff3368f1a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a378679f_e5d5034e",
+        "filename": "src/vlib/buffer.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 304,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-07-20T17:09:26Z",
+      "side": 1,
+      "message": "What actionable information are the flags expected to provide here? When `known \u003d\u003d VLIB_BUFFER_UNKNOWN`, `bi` may not reference mapped buffer memory, so reading `buffer-\u003eflags` can fault before the panic is emitted. Unless the flags address a specific diagnostic need, I suggest retaining the existing message without dereferencing the buffer.",
+      "revId": "3e4236d7e9e71753b603a26ab6dae92ff3368f1a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
