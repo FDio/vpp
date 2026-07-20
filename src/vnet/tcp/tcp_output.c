@@ -824,8 +824,7 @@ tcp_send_synack (tcp_connection_t * tc)
 
   if (PREDICT_FALSE (!vlib_buffer_alloc (vm, &bi, 1)))
     {
-      tcp_timer_update (&wrk->timer_wheel, tc, TCP_TIMER_RETRANSMIT,
-			tcp_cfg.alloc_err_timeout);
+      tcp_retransmit_timer_update_interval (&wrk->timer_wheel, tc, tcp_cfg.alloc_err_timeout);
       tcp_worker_stats_inc (wrk, no_buffer, 1);
       return;
     }
@@ -857,8 +856,7 @@ tcp_send_fin (tcp_connection_t * tc)
   if (PREDICT_FALSE (!vlib_buffer_alloc (vm, &bi, 1)))
     {
       /* Out of buffers so program fin retransmit ASAP */
-      tcp_timer_update (&wrk->timer_wheel, tc, TCP_TIMER_RETRANSMIT,
-			tcp_cfg.alloc_err_timeout);
+      tcp_retransmit_timer_update_interval (&wrk->timer_wheel, tc, tcp_cfg.alloc_err_timeout);
       tc->snd_nxt += 1;
       /* Make sure retransmit retries a fin not data with right snd_nxt */
       if (!fin_snt)
@@ -1311,6 +1309,9 @@ tcp_timer_retransmit_handler (tcp_connection_t * tc)
   vlib_buffer_t *b = 0;
   u32 bi, n_bytes;
 
+  if (PREDICT_FALSE (tcp_loss_retransmit_timer_expired (tc)))
+    return;
+
   tcp_worker_stats_inc (wrk, tr_events, 1);
 
   /* Should be handled by a different handler */
@@ -1374,10 +1375,8 @@ tcp_timer_retransmit_handler (tcp_connection_t * tc)
       if (!n_bytes)
 	{
 	  /* Allocation failed, do not re-credit again the head to rxt_delivered */
-	  if (tcp_opts_sack_permitted (&tc->rcv_opts))
-	    tcp_sack_init_rxt (tc, tc->snd_una);
-	  tcp_timer_update (&wrk->timer_wheel, tc, TCP_TIMER_RETRANSMIT,
-			    tcp_cfg.alloc_err_timeout);
+	  tcp_loss_rto_retransmit_failed (tc);
+	  tcp_retransmit_timer_update_interval (&wrk->timer_wheel, tc, tcp_cfg.alloc_err_timeout);
 	  return;
 	}
 
@@ -1414,8 +1413,7 @@ tcp_timer_retransmit_handler (tcp_connection_t * tc)
 
       if (PREDICT_FALSE (!vlib_buffer_alloc (vm, &bi, 1)))
 	{
-	  tcp_timer_update (&wrk->timer_wheel, tc, TCP_TIMER_RETRANSMIT,
-			    tcp_cfg.alloc_err_timeout);
+	  tcp_retransmit_timer_update_interval (&wrk->timer_wheel, tc, tcp_cfg.alloc_err_timeout);
 	  tcp_worker_stats_inc (wrk, no_buffer, 1);
 	  return;
 	}
@@ -1675,6 +1673,7 @@ typedef enum
 {
   TCP_RXT_BACKEND_SCOREBOARD,
   TCP_RXT_BACKEND_BT,
+  TCP_RXT_BACKEND_RACK,
 } tcp_rxt_backend_t;
 
 typedef struct
@@ -1690,6 +1689,12 @@ tcp_rxt_next_range (tcp_connection_t *tc, tcp_rxt_backend_t backend, tcp_rxt_cur
   if (backend == TCP_RXT_BACKEND_BT)
     {
       if (!tcp_bt_next_rxt_range (tc, have_unsent, can_rescue, snd_limited, &cursor->bt_range))
+	return 0;
+      return &cursor->bt_range;
+    }
+  if (backend == TCP_RXT_BACKEND_RACK)
+    {
+      if (!tcp_bt_next_rack_rxt_range (tc, &cursor->bt_range))
 	return 0;
       return &cursor->bt_range;
     }
@@ -1881,6 +1886,12 @@ tcp_retransmit_bt (tcp_worker_ctx_t *wrk, tcp_connection_t *tc, u32 burst_size)
   return tcp_retransmit_sack_inline (wrk, tc, burst_size, TCP_RXT_BACKEND_BT);
 }
 
+static int
+tcp_retransmit_rack (tcp_worker_ctx_t *wrk, tcp_connection_t *tc, u32 burst_size)
+{
+  return tcp_retransmit_sack_inline (wrk, tc, burst_size, TCP_RXT_BACKEND_RACK);
+}
+
 /**
  * Fast retransmit without SACK info
  */
@@ -2046,7 +2057,12 @@ tcp_do_retransmit (tcp_connection_t * tc, u32 max_burst_size)
   if (tcp_opts_sack_permitted (&tc->rcv_opts))
     {
       if (PREDICT_FALSE (tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER))
-	n_segs = tcp_retransmit_bt (wrk, tc, max_burst_size);
+	{
+	  if (PREDICT_FALSE (tc->cfg_flags & TCP_CFG_F_RACK))
+	    n_segs = tcp_retransmit_rack (wrk, tc, max_burst_size);
+	  else
+	    n_segs = tcp_retransmit_bt (wrk, tc, max_burst_size);
+	}
       else
 	n_segs = tcp_retransmit_sack (wrk, tc, max_burst_size);
     }
