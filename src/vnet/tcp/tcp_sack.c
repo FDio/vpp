@@ -5,6 +5,7 @@
 
 #include <vnet/tcp/tcp_sack.h>
 #include <vnet/tcp/tcp_bt.h>
+#include <vnet/tcp/tcp_rack.h>
 
 static void
 scoreboard_remove_hole (sack_scoreboard_t * sb, sack_scoreboard_hole_t * hole)
@@ -575,7 +576,7 @@ tcp_sack_recovery_exit (tcp_connection_t *tc, tcp_ack_flag_t spurious_flags)
 {
   sack_scoreboard_hole_t *hole;
 
-  if (spurious_flags)
+  if (spurious_flags && !(tc->cfg_flags & TCP_CFG_F_RACK))
     tcp_sack_recompute_loss (tc);
 
   if (!(tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER))
@@ -1140,7 +1141,10 @@ tcp_loss_on_ack (tcp_connection_t *tc, tcp_ack_ctx_t *ac)
   ASSERT (ac->ack_flags & TCP_ACK_F_DETECT_LOSS);
   ASSERT (tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER);
 
-  tcp_bt_loss_on_ack (tc, ac);
+  if (tcp_rack_enabled (tc))
+    tcp_rack_loss_on_ack (tc, ac);
+  else
+    tcp_bt_loss_on_ack (tc, ac);
 }
 
 static void
@@ -1212,7 +1216,8 @@ tcp_ack_handle_full_feedback (tcp_connection_t *tc, u32 packet_ack, u32 ack, tcp
 	  ac->ack_flags |= tcp_dsack_finalize (tc);
 	}
     }
-  if (!(ac->bytes_acked | (ac->ack_flags & TCP_ACK_F_SACK)))
+
+  if (!(ac->bytes_acked | (ac->ack_flags & (TCP_ACK_F_SACK | TCP_ACK_F_DSACK))))
     return;
 
   tcp_sack_trace (tc, ack);
