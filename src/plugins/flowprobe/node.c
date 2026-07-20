@@ -925,18 +925,37 @@ flowprobe_output_l2_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
 }
 
 static inline void
-flush_record (flowprobe_variant_t which)
+flush_record (vlib_main_t *vm, flowprobe_variant_t which)
 {
-  vlib_main_t *vm = vlib_get_main ();
   vlib_buffer_t *b = flowprobe_get_buffer (vm, which);
   if (b)
     flowprobe_export_send (vm, b, which);
 }
 
-void
+static u64
+flowprobe_flush_generation_next (flowprobe_variant_t which)
+{
+  flowprobe_main_t *fm = &flowprobe_main;
+
+  return clib_atomic_add_fetch (&fm->flush_generation[which], 1);
+}
+
+static void
+flowprobe_flush_complete (vlib_main_t *vm, flowprobe_variant_t which)
+{
+  flowprobe_main_t *fm = &flowprobe_main;
+  u64 generation = clib_atomic_load_acq_n (&fm->flush_generation[which]);
+
+  clib_atomic_store_rel_n (&fm->flush_completed_generation_per_worker[which][vm->thread_index],
+			   generation);
+}
+
+u64
 flowprobe_flush_callback_ip4 (void)
 {
+  vlib_main_t *vm = vlib_get_main ();
   vlib_main_t *worker_vm;
+  u64 generation = flowprobe_flush_generation_next (FLOW_VARIANT_IP4);
   u32 i;
 
   /* Flush for each worker thread */
@@ -949,13 +968,16 @@ flowprobe_flush_callback_ip4 (void)
     }
 
   /* Flush for the main thread */
-  flush_record (FLOW_VARIANT_IP4);
+  flush_record (vm, FLOW_VARIANT_IP4);
+  return generation;
 }
 
-void
+u64
 flowprobe_flush_callback_ip6 (void)
 {
+  vlib_main_t *vm = vlib_get_main ();
   vlib_main_t *worker_vm;
+  u64 generation = flowprobe_flush_generation_next (FLOW_VARIANT_IP6);
   u32 i;
 
   /* Flush for each worker thread */
@@ -968,13 +990,16 @@ flowprobe_flush_callback_ip6 (void)
     }
 
   /* Flush for the main thread */
-  flush_record (FLOW_VARIANT_IP6);
+  flush_record (vm, FLOW_VARIANT_IP6);
+  return generation;
 }
 
-void
+u64
 flowprobe_flush_callback_l2 (void)
 {
+  vlib_main_t *vm = vlib_get_main ();
   vlib_main_t *worker_vm;
+  u64 generation = flowprobe_flush_generation_next (FLOW_VARIANT_L2);
   u32 i;
 
   /* Flush for each worker thread */
@@ -987,9 +1012,10 @@ flowprobe_flush_callback_l2 (void)
     }
 
   /* Flush for the main thread */
-  flush_record (FLOW_VARIANT_L2);
-  flush_record (FLOW_VARIANT_L2_IP4);
-  flush_record (FLOW_VARIANT_L2_IP6);
+  flush_record (vm, FLOW_VARIANT_L2);
+  flush_record (vm, FLOW_VARIANT_L2_IP4);
+  flush_record (vm, FLOW_VARIANT_L2_IP6);
+  return generation;
 }
 
 void
@@ -1019,6 +1045,9 @@ flowprobe_walker_process (vlib_main_t * vm,
   flowprobe_main_t *fm = &flowprobe_main;
   flowprobe_entry_t *e;
   ipfix_exporter_t *exp = pool_elt_at_index (flow_report_main.exporters, 0);
+
+  if (clib_atomic_load_acq_n (&fm->flush_in_progress))
+    return 0;
 
   /*
    * $$$$ Remove this check from here and track FRM status and disable
@@ -1095,7 +1124,8 @@ flowprobe_walker_process (vlib_main_t * vm,
 static uword
 flowprobe_flush_ip4 (vlib_main_t *vm, vlib_node_runtime_t *rt, vlib_frame_t *f)
 {
-  flush_record (FLOW_VARIANT_IP4);
+  flush_record (vm, FLOW_VARIANT_IP4);
+  flowprobe_flush_complete (vm, FLOW_VARIANT_IP4);
 
   return 0;
 }
@@ -1103,7 +1133,8 @@ flowprobe_flush_ip4 (vlib_main_t *vm, vlib_node_runtime_t *rt, vlib_frame_t *f)
 static uword
 flowprobe_flush_ip6 (vlib_main_t *vm, vlib_node_runtime_t *rt, vlib_frame_t *f)
 {
-  flush_record (FLOW_VARIANT_IP6);
+  flush_record (vm, FLOW_VARIANT_IP6);
+  flowprobe_flush_complete (vm, FLOW_VARIANT_IP6);
 
   return 0;
 }
@@ -1111,9 +1142,10 @@ flowprobe_flush_ip6 (vlib_main_t *vm, vlib_node_runtime_t *rt, vlib_frame_t *f)
 static uword
 flowprobe_flush_l2 (vlib_main_t *vm, vlib_node_runtime_t *rt, vlib_frame_t *f)
 {
-  flush_record (FLOW_VARIANT_L2);
-  flush_record (FLOW_VARIANT_L2_IP4);
-  flush_record (FLOW_VARIANT_L2_IP6);
+  flush_record (vm, FLOW_VARIANT_L2);
+  flush_record (vm, FLOW_VARIANT_L2_IP4);
+  flush_record (vm, FLOW_VARIANT_L2_IP6);
+  flowprobe_flush_complete (vm, FLOW_VARIANT_L2);
 
   return 0;
 }

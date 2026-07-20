@@ -428,6 +428,115 @@ flowprobe_template_add_del (u32 domain_id, u16 src_port,
   return vnet_flow_report_add_del (exp, &a, template_id);
 }
 
+typedef struct
+{
+  flowprobe_record_t report_flags;
+  vnet_flow_data_callback_t *flow_data_callback;
+  vnet_flow_rewrite_callback_t *rewrite_callback;
+} flowprobe_template_spec_t;
+
+static u32
+flowprobe_get_template_specs (flowprobe_variant_t which, flowprobe_record_t flags,
+			      flowprobe_template_spec_t specs[3])
+{
+  u32 n_specs = 0;
+
+  if (which == FLOW_VARIANT_L2)
+    {
+      if (flags & FLOW_RECORD_L2)
+	specs[n_specs++] = (flowprobe_template_spec_t) {
+	  .report_flags = flags,
+	  .flow_data_callback = flowprobe_data_callback_l2,
+	  .rewrite_callback = flowprobe_template_rewrite_l2,
+	};
+      if (flags & FLOW_RECORD_L3 || flags & FLOW_RECORD_L4)
+	{
+	  specs[n_specs++] = (flowprobe_template_spec_t) {
+	    .report_flags = flags | FLOW_RECORD_L2_IP4,
+	    .flow_data_callback = flowprobe_data_callback_l2,
+	    .rewrite_callback = flowprobe_template_rewrite_l2_ip4,
+	  };
+	  specs[n_specs++] = (flowprobe_template_spec_t) {
+	    .report_flags = flags | FLOW_RECORD_L2_IP6,
+	    .flow_data_callback = flowprobe_data_callback_l2,
+	    .rewrite_callback = flowprobe_template_rewrite_l2_ip6,
+	  };
+	}
+    }
+  else if (which == FLOW_VARIANT_IP4)
+    specs[n_specs++] = (flowprobe_template_spec_t) {
+      .report_flags = flags,
+      .flow_data_callback = flowprobe_data_callback_ip4,
+      .rewrite_callback = flowprobe_template_rewrite_ip4,
+    };
+  else if (which == FLOW_VARIANT_IP6)
+    specs[n_specs++] = (flowprobe_template_spec_t) {
+      .report_flags = flags,
+      .flow_data_callback = flowprobe_data_callback_ip6,
+      .rewrite_callback = flowprobe_template_rewrite_ip6,
+    };
+
+  return n_specs;
+}
+
+static int
+flowprobe_templates_add_del (flowprobe_main_t *fm, flowprobe_variant_t which,
+			     flowprobe_record_t flags, bool is_add, bool *state_restored)
+{
+  flowprobe_template_spec_t specs[3];
+  bool changed[3] = { 0 };
+  u16 old_template_ids[3];
+  u16 template_id;
+  u32 n_specs;
+  u32 i;
+  int rv;
+
+  *state_restored = true;
+  n_specs = flowprobe_get_template_specs (which, flags, specs);
+  ASSERT (n_specs > 0);
+
+  for (i = 0; i < n_specs; i++)
+    {
+      old_template_ids[i] = fm->template_reports[specs[i].report_flags];
+      template_id = old_template_ids[i];
+      rv = flowprobe_template_add_del (1, UDP_DST_PORT_ipfix, flags, specs[i].flow_data_callback,
+				       specs[i].rewrite_callback, is_add, &template_id);
+      if (rv && !(is_add && rv == VNET_API_ERROR_VALUE_EXIST))
+	goto rollback;
+
+      changed[i] = rv == 0;
+      fm->template_reports[specs[i].report_flags] = is_add ? template_id : 0;
+    }
+
+  return 0;
+
+rollback:
+  while (i > 0)
+    {
+      int rollback_rv;
+
+      i--;
+      if (!changed[i])
+	{
+	  fm->template_reports[specs[i].report_flags] = old_template_ids[i];
+	  continue;
+	}
+
+      template_id = old_template_ids[i];
+      rollback_rv =
+	flowprobe_template_add_del (1, UDP_DST_PORT_ipfix, flags, specs[i].flow_data_callback,
+				    specs[i].rewrite_callback, !is_add, &template_id);
+      if (rollback_rv && !(!is_add && rollback_rv == VNET_API_ERROR_VALUE_EXIST))
+	{
+	  *state_restored = false;
+	  continue;
+	}
+      fm->template_reports[specs[i].report_flags] = is_add ? old_template_ids[i] : template_id;
+    }
+
+  return rv;
+}
+
 static void
 flowprobe_expired_timer_callback (u32 * expired_timers)
 {
@@ -532,6 +641,87 @@ flowprobe_clear_state_if_index (u32 sw_if_index)
   return error;
 }
 
+static bool
+flowprobe_wait_for_flush (vlib_main_t *vm, flowprobe_variant_t which, u64 generation)
+{
+  flowprobe_main_t *fm = &flowprobe_main;
+  f64 deadline = vlib_time_now (vm) + BARRIER_SYNC_TIMEOUT;
+  bool complete;
+  u32 i;
+
+  vlib_worker_thread_barrier_release (vm);
+  do
+    {
+      complete = true;
+      for (i = 1; i < vlib_get_n_threads (); i++)
+	{
+	  if (!vlib_get_main_by_index (i))
+	    continue;
+	  if (clib_atomic_load_acq_n (&fm->flush_completed_generation_per_worker[which][i]) <
+	      generation)
+	    {
+	      complete = false;
+	      break;
+	    }
+	}
+      if (!complete)
+	CLIB_PAUSE ();
+    }
+  while (!complete && vlib_time_now (vm) < deadline);
+  vlib_worker_thread_barrier_sync (vm);
+
+  return complete;
+}
+
+static u64
+flowprobe_flush_callback (flowprobe_variant_t which)
+{
+  if (which == FLOW_VARIANT_IP4)
+    return flowprobe_flush_callback_ip4 ();
+  if (which == FLOW_VARIANT_IP6)
+    return flowprobe_flush_callback_ip6 ();
+
+  return flowprobe_flush_callback_l2 ();
+}
+
+static void
+flowprobe_feature_enable_disable (u32 sw_if_index, u8 which, u8 direction, int enable)
+{
+  if (direction == FLOW_DIRECTION_RX || direction == FLOW_DIRECTION_BOTH)
+    {
+      if (which == FLOW_VARIANT_IP4)
+	{
+	  vnet_feature_enable_disable ("ip4-unicast", "flowprobe-input-ip4", sw_if_index, enable, 0,
+				       0);
+	  vnet_feature_enable_disable ("ip4-multicast", "flowprobe-input-ip4", sw_if_index, enable,
+				       0, 0);
+	}
+      else if (which == FLOW_VARIANT_IP6)
+	{
+	  vnet_feature_enable_disable ("ip6-unicast", "flowprobe-input-ip6", sw_if_index, enable, 0,
+				       0);
+	  vnet_feature_enable_disable ("ip6-multicast", "flowprobe-input-ip6", sw_if_index, enable,
+				       0, 0);
+	}
+      else if (which == FLOW_VARIANT_L2)
+	vnet_feature_enable_disable ("device-input", "flowprobe-input-l2", sw_if_index, enable, 0,
+				     0);
+    }
+
+  if (direction == FLOW_DIRECTION_TX || direction == FLOW_DIRECTION_BOTH)
+    {
+      if (which == FLOW_VARIANT_IP4)
+	vnet_feature_enable_disable ("ip4-output", "flowprobe-output-ip4", sw_if_index, enable, 0,
+				     0);
+      else if (which == FLOW_VARIANT_IP6)
+	vnet_feature_enable_disable ("ip6-output", "flowprobe-output-ip6", sw_if_index, enable, 0,
+				     0);
+      else if (which == FLOW_VARIANT_L2)
+	vnet_feature_enable_disable ("interface-output", "flowprobe-output-l2", sw_if_index, enable,
+				     0, 0);
+    }
+}
+
 static int
 validate_feature_on_interface (flowprobe_main_t * fm, u32 sw_if_index,
 			       u8 which)
@@ -562,138 +752,92 @@ flowprobe_interface_add_del_feature (flowprobe_main_t *fm, u32 sw_if_index,
 				     u8 which, u8 direction, int is_add)
 {
   vlib_main_t *vm = vlib_get_main ();
+  bool template_state_restored = true;
+  bool update_template;
   int rv = 0;
-  u16 template_id = 0;
   flowprobe_record_t flags = fm->record;
+  u64 flush_generation;
 
-  fm->flow_per_interface[sw_if_index] = (is_add) ? which : (u8) ~ 0;
-  fm->direction_per_interface[sw_if_index] = (is_add) ? direction : (u8) ~0;
-  fm->template_per_flow[which] += (is_add) ? 1 : -1;
-  if (is_add && fm->template_per_flow[which] > 1)
-    template_id = fm->template_reports[flags];
+  if (!is_add)
+    direction = fm->direction_per_interface[sw_if_index];
 
-  if ((is_add && fm->template_per_flow[which] == 1) ||
-      (!is_add && fm->template_per_flow[which] == 0))
+  vlib_worker_thread_barrier_sync (vm);
+
+  update_template =
+    (is_add && fm->template_per_flow[which] == 0) || (!is_add && fm->template_per_flow[which] == 1);
+
+  if (!is_add)
     {
-      if (which == FLOW_VARIANT_L2)
+      flowprobe_feature_enable_disable (sw_if_index, which, direction, 0);
+      if (update_template)
 	{
-	  if (!is_add)
+	  clib_atomic_store_rel_n (&fm->flush_in_progress, 1);
+	  flush_generation = flowprobe_flush_callback (which);
+	  if (!flowprobe_wait_for_flush (vm, which, flush_generation))
 	    {
-	      flowprobe_flush_callback_l2 ();
+	      clib_warning ("timed out waiting for flowprobe worker flush");
+	      clib_atomic_store_rel_n (&fm->flush_in_progress, 0);
+	      flowprobe_feature_enable_disable (sw_if_index, which, direction, 1);
+	      rv = VNET_API_ERROR_BUSY;
+	      goto out;
 	    }
-	  if (fm->record & FLOW_RECORD_L2)
-	    {
-	      rv = flowprobe_template_add_del (1, UDP_DST_PORT_ipfix, flags,
-					       flowprobe_data_callback_l2,
-					       flowprobe_template_rewrite_l2,
-					       is_add, &template_id);
-	      fm->template_reports[flags] = (is_add) ? template_id : 0;
-	    }
-	  if (fm->record & FLOW_RECORD_L3 || fm->record & FLOW_RECORD_L4)
-	    {
-	      rv = flowprobe_template_add_del (1, UDP_DST_PORT_ipfix, flags,
-					       flowprobe_data_callback_l2,
-					       flowprobe_template_rewrite_l2_ip4,
-					       is_add, &template_id);
-	      fm->template_reports[flags | FLOW_RECORD_L2_IP4] =
-		(is_add) ? template_id : 0;
-	      rv =
-		flowprobe_template_add_del (1, UDP_DST_PORT_ipfix, flags,
-					    flowprobe_data_callback_l2,
-					    flowprobe_template_rewrite_l2_ip6,
-					    is_add, &template_id);
-	      fm->template_reports[flags | FLOW_RECORD_L2_IP6] =
-		(is_add) ? template_id : 0;
-
-	      /* Special case L2 */
-	      fm->context[FLOW_VARIANT_L2_IP4].flags =
-		flags | FLOW_RECORD_L2_IP4;
-	      fm->context[FLOW_VARIANT_L2_IP6].flags =
-		flags | FLOW_RECORD_L2_IP6;
-	    }
-	}
-      else if (which == FLOW_VARIANT_IP4)
-	{
-	  if (!is_add)
-	    {
-	      flowprobe_flush_callback_ip4 ();
-	    }
-	  rv = flowprobe_template_add_del (
-	    1, UDP_DST_PORT_ipfix, flags, flowprobe_data_callback_ip4,
-	    flowprobe_template_rewrite_ip4, is_add, &template_id);
-	  fm->template_reports[flags] = (is_add) ? template_id : 0;
-	}
-      else if (which == FLOW_VARIANT_IP6)
-	{
-	  if (!is_add)
-	    {
-	      flowprobe_flush_callback_ip6 ();
-	    }
-	  rv = flowprobe_template_add_del (
-	    1, UDP_DST_PORT_ipfix, flags, flowprobe_data_callback_ip6,
-	    flowprobe_template_rewrite_ip6, is_add, &template_id);
-	  fm->template_reports[flags] = (is_add) ? template_id : 0;
 	}
     }
-  if (rv && rv != VNET_API_ERROR_VALUE_EXIST)
+
+  if (update_template)
+    rv = flowprobe_templates_add_del (fm, which, flags, is_add, &template_state_restored);
+  if (rv)
     {
       clib_warning ("vnet_flow_report_add_del returned %d", rv);
-      return -1;
-    }
-
-  if (which != (u8) ~ 0)
-    {
-      fm->context[which].flags = fm->record;
-    }
-
-  if (direction == FLOW_DIRECTION_RX || direction == FLOW_DIRECTION_BOTH)
-    {
-      if (which == FLOW_VARIANT_IP4)
+      if (!is_add)
 	{
-	  vnet_feature_enable_disable ("ip4-unicast", "flowprobe-input-ip4",
-				       sw_if_index, is_add, 0, 0);
-	  vnet_feature_enable_disable ("ip4-multicast", "flowprobe-input-ip4",
-				       sw_if_index, is_add, 0, 0);
+	  if (template_state_restored)
+	    flowprobe_feature_enable_disable (sw_if_index, which, direction, 1);
+	  else
+	    {
+	      fm->flow_per_interface[sw_if_index] = (u8) ~0;
+	      fm->direction_per_interface[sw_if_index] = (u8) ~0;
+	      fm->template_per_flow[which]--;
+	      flowprobe_clear_state_if_index (sw_if_index);
+	    }
+	  clib_atomic_store_rel_n (&fm->flush_in_progress, 0);
 	}
-      else if (which == FLOW_VARIANT_IP6)
-	{
-	  vnet_feature_enable_disable ("ip6-unicast", "flowprobe-input-ip6",
-				       sw_if_index, is_add, 0, 0);
-	  vnet_feature_enable_disable ("ip6-multicast", "flowprobe-input-ip6",
-				       sw_if_index, is_add, 0, 0);
-	}
-      else if (which == FLOW_VARIANT_L2)
-	vnet_feature_enable_disable ("device-input", "flowprobe-input-l2",
-				     sw_if_index, is_add, 0, 0);
+      rv = -1;
+      goto out;
     }
 
-  if (direction == FLOW_DIRECTION_TX || direction == FLOW_DIRECTION_BOTH)
+  fm->flow_per_interface[sw_if_index] = is_add ? which : (u8) ~0;
+  fm->direction_per_interface[sw_if_index] = is_add ? direction : (u8) ~0;
+  fm->template_per_flow[which] += is_add ? 1 : -1;
+  fm->context[which].flags = fm->record;
+  if (which == FLOW_VARIANT_L2 && (flags & FLOW_RECORD_L3 || flags & FLOW_RECORD_L4))
     {
-      if (which == FLOW_VARIANT_IP4)
-	vnet_feature_enable_disable ("ip4-output", "flowprobe-output-ip4",
-				     sw_if_index, is_add, 0, 0);
-      else if (which == FLOW_VARIANT_IP6)
-	vnet_feature_enable_disable ("ip6-output", "flowprobe-output-ip6",
-				     sw_if_index, is_add, 0, 0);
-      else if (which == FLOW_VARIANT_L2)
-	vnet_feature_enable_disable ("interface-output", "flowprobe-output-l2",
-				     sw_if_index, is_add, 0, 0);
+      fm->context[FLOW_VARIANT_L2_IP4].flags = flags | FLOW_RECORD_L2_IP4;
+      fm->context[FLOW_VARIANT_L2_IP6].flags = flags | FLOW_RECORD_L2_IP6;
     }
 
-  /* Stateful flow collection */
-  if (is_add && !fm->initialized)
+  if (is_add)
     {
-      flowprobe_create_state_tables (fm->active_timer);
-      if (fm->active_timer)
-	vlib_process_signal_event (vm, flowprobe_timer_node.index, 1, 0);
+	  if (!fm->initialized || (fm->active_timer && !fm->hash_per_worker))
+	    {
+	  flowprobe_create_state_tables (fm->active_timer);
+	  if (fm->active_timer)
+	    vlib_process_signal_event (vm, flowprobe_timer_node.index, 1, 0);
+	    }
+      flowprobe_feature_enable_disable (sw_if_index, which, direction, 1);
     }
-
-  if (!is_add && fm->initialized)
+  else
     {
       flowprobe_clear_state_if_index (sw_if_index);
+      if (update_template)
+	clib_atomic_store_rel_n (&fm->flush_in_progress, 0);
     }
 
-  return 0;
+  rv = 0;
+
+out:
+  vlib_worker_thread_barrier_release (vm);
+  return rv;
 }
 
 /**
@@ -718,7 +862,7 @@ void vl_api_flowprobe_tx_interface_add_del_t_handler
     }
 
   rv = validate_feature_on_interface (fm, sw_if_index, mp->which);
-  if ((rv == 1 && mp->is_add == 1) || rv == 0)
+  if ((rv == 1 && mp->is_add == 1) || rv == 0 || (rv == -1 && mp->is_add == 0))
     {
       rv = VNET_API_ERROR_CANNOT_ENABLE_DISABLE_FEATURE;
       goto out;
@@ -1312,6 +1456,7 @@ VLIB_CLI_COMMAND (flowprobe_enable_disable_command, static) = {
   .short_help = "flowprobe feature add-del <interface-name> [(l2|ip4|ip6)] "
 		"[(rx|tx|both)] [disable]",
   .function = flowprobe_interface_add_del_feature_command_fn,
+  .is_mp_safe = 1,
 };
 VLIB_CLI_COMMAND (flowprobe_params_command, static) = {
   .path = "flowprobe params",
@@ -1413,6 +1558,7 @@ flowprobe_init (vlib_main_t * vm)
 {
   flowprobe_main_t *fm = &flowprobe_main;
   vlib_thread_main_t *tm = &vlib_thread_main;
+  api_main_t *am = vlibapi_get_main ();
   clib_error_t *error = 0;
   u32 num_threads;
   int i;
@@ -1421,6 +1567,8 @@ flowprobe_init (vlib_main_t * vm)
 
   /* Ask for a correctly-sized block of API message decode slots */
   fm->msg_id_base = setup_message_id_table ();
+  vl_api_set_msg_thread_safe (am, fm->msg_id_base + VL_API_FLOWPROBE_TX_INTERFACE_ADD_DEL, 1);
+  vl_api_set_msg_thread_safe (am, fm->msg_id_base + VL_API_FLOWPROBE_INTERFACE_ADD_DEL, 1);
 
   /* Set up time reference pair */
   fm->vlib_time_0 = vlib_time_now (vm);
@@ -1436,6 +1584,7 @@ flowprobe_init (vlib_main_t * vm)
   /* Allocate per worker thread vectors per flavour */
   for (i = 0; i < FLOW_N_VARIANTS; i++)
     {
+      vec_validate (fm->flush_completed_generation_per_worker[i], num_threads - 1);
       vec_validate (fm->context[i].buffers_per_worker, num_threads - 1);
       vec_validate (fm->context[i].frames_per_worker, num_threads - 1);
       vec_validate (fm->context[i].next_record_offset_per_worker,

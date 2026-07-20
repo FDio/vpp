@@ -130,6 +130,8 @@ typedef struct
   flowprobe_entry_t **pool_per_worker;
   TWT (tw_timer_wheel) ** timers_per_worker;
   u32 **expired_passive_per_worker;
+  u64 *flush_completed_generation_per_worker[FLOW_N_VARIANTS];
+  u64 flush_generation[FLOW_N_VARIANTS];
 
   flowprobe_record_t record;
   u32 active_timer;
@@ -138,6 +140,7 @@ typedef struct
 
   bool initialized;
   bool disabled;
+  u32 flush_in_progress;
 
   u16 template_per_flow[FLOW_N_VARIANTS];
   u8 *flow_per_interface;
@@ -154,9 +157,9 @@ extern vlib_node_registration_t flowprobe_walker_node;
 
 void flowprobe_delete_by_index (u32 my_cpu_number, u32 poolindex);
 
-void flowprobe_flush_callback_ip4 (void);
-void flowprobe_flush_callback_ip6 (void);
-void flowprobe_flush_callback_l2 (void);
+u64 flowprobe_flush_callback_ip4 (void);
+u64 flowprobe_flush_callback_ip6 (void);
+u64 flowprobe_flush_callback_l2 (void);
 u8 *format_flowprobe_entry (u8 * s, va_list * args);
 
 #endif
