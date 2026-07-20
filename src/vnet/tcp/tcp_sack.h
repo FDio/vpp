@@ -117,11 +117,12 @@ void tcp_update_sack_list (tcp_connection_t * tc, u32 start, u32 end);
 void tcp_dsack_cleanup (tcp_connection_t *tc);
 void tcp_dsack_recovery_clear (tcp_connection_t *tc);
 void tcp_dsack_recovery_init (tcp_connection_t *tc);
-void tcp_sack_recovery_exit (tcp_connection_t *tc, tcp_ack_flag_t spurious_flags);
+void tcp_sack_recovery_exit (tcp_connection_t *tc, tcp_ack_ctx_t *ac);
 void tcp_dsack_track_retransmit (tcp_connection_t *tc, u32 start, u32 end);
 u32 tcp_sack_list_bytes (tcp_connection_t * tc);
 void tcp_rcv_dsack (tcp_connection_t *tc, u32 ack, tcp_ack_ctx_t *ac);
 void tcp_loss_on_ack (tcp_connection_t *tc, tcp_ack_ctx_t *ac);
+u8 tcp_loss_old_ack_needs_feedback (tcp_connection_t *tc);
 void tcp_ack_handle_full_feedback (tcp_connection_t *tc, u32 packet_ack, u32 ack,
 				   tcp_ack_ctx_t *ac);
 
@@ -130,14 +131,14 @@ tcp_ack_handle_feedback (tcp_connection_t *tc, u32 packet_ack, tcp_ack_ctx_t *ac
 {
   sack_scoreboard_t *sb = &tc->sack_sb;
   u32 ack = seq_max (packet_ack, tc->snd_una);
-  u8 has_ack_state, needs_full_feedback;
+  u8 has_ack_state, has_byte_tracker, needs_full_feedback;
 
   ac->bytes_acked = ack - tc->snd_una;
   has_ack_state = ((sb->flags & TCP_DSACK_RXT_ACTIVE) != 0) | (sb->sacked_bytes != 0) |
 		  (sb->head != TCP_INVALID_SACK_HOLE_INDEX);
-  needs_full_feedback = ((tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER) != 0) |
-			(tcp_opts_sack (&tc->rcv_opts) != 0) |
-			((ac->bytes_acked != 0) & has_ack_state);
+  has_byte_tracker = (tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER) != 0;
+  needs_full_feedback = (tcp_opts_sack (&tc->rcv_opts) != 0) |
+			((ac->bytes_acked != 0) & (has_byte_tracker | has_ack_state));
 
   if (PREDICT_FALSE (needs_full_feedback))
     {

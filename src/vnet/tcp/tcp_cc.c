@@ -5,6 +5,7 @@
 
 #include <vnet/tcp/tcp.h>
 #include <vnet/tcp/tcp_inlines.h>
+#include <vnet/tcp/tcp_rack.h>
 
 static void
 tcp_cc_init_congestion (tcp_connection_t *tc)
@@ -21,11 +22,19 @@ tcp_cc_init_congestion (tcp_connection_t *tc)
   tc->prev_cwnd = tc->cwnd;
   tc->snd_rxt_ts = tcp_tstamp (tc);
 
-  tc->snd_rxt_bytes = 0;
   if (tcp_opts_sack_permitted (&tc->rcv_opts))
-    tcp_sack_init_rxt (tc, tc->snd_una);
+    {
+      if (!tcp_rack_recovery_init (tc))
+	{
+	  tc->snd_rxt_bytes = 0;
+	  tcp_sack_init_rxt (tc, tc->snd_una);
+	}
+    }
   else
-    tcp_fastrecovery_first_on (tc);
+    {
+      tc->snd_rxt_bytes = 0;
+      tcp_fastrecovery_first_on (tc);
+    }
 
   tcp_cc_congestion (tc);
 

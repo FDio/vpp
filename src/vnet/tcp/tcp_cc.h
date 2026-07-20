@@ -129,6 +129,28 @@ tcp_cc_is_spurious_retransmit (tcp_connection_t *tc, tcp_ack_ctx_t *ac)
 	  tcp_opts_tstamp (&tc->rcv_opts) && timestamp_lt (tc->rcv_opts.tsecr, tc->snd_rxt_ts));
 }
 
+static_always_inline u8
+tcp_cc_should_enter_recovery (tcp_connection_t *tc, tcp_ack_ctx_t *ac, u8 has_sack,
+			      u8 after_recovery)
+{
+  if (tc->cfg_flags & TCP_CFG_F_RACK)
+    return after_recovery ? tc->sack_sb.lost_bytes != 0 : ac->last_lost != 0;
+
+  if (!after_recovery && !(ac->ack_flags & TCP_ACK_F_DUPACK))
+    return 0;
+
+  if (!has_sack && seq_leq (tc->snd_una, tc->snd_congestion) &&
+      ((!(tc->cwnd > tc->snd_mss && ac->bytes_acked <= 4 * tc->snd_mss)) ||
+       (tc->rcv_opts.tsecr != tc->tsecr_last_ack)))
+    {
+      /* RFC 6582 heuristic: this duplicate ACK probably followed an RTO. */
+      tc->rcv_dupacks = 0;
+      return 0;
+    }
+
+  return tc->sack_sb.lost_bytes || tc->rcv_dupacks >= tc->sack_sb.reorder;
+}
+
 /**
  * Register exiting cc algo type
  */

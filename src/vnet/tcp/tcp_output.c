@@ -5,6 +5,7 @@
 
 #include <vnet/tcp/tcp.h>
 #include <vnet/tcp/tcp_inlines.h>
+#include <vnet/tcp/tcp_rack.h>
 #include <math.h>
 #include <vnet/ip/ip4_inlines.h>
 #include <vnet/ip/ip6_inlines.h>
@@ -824,8 +825,7 @@ tcp_send_synack (tcp_connection_t * tc)
 
   if (PREDICT_FALSE (!vlib_buffer_alloc (vm, &bi, 1)))
     {
-      tcp_timer_update (&wrk->timer_wheel, tc, TCP_TIMER_RETRANSMIT,
-			tcp_cfg.alloc_err_timeout);
+      tcp_retransmit_timer_update_interval (&wrk->timer_wheel, tc, tcp_cfg.alloc_err_timeout);
       tcp_worker_stats_inc (wrk, no_buffer, 1);
       return;
     }
@@ -857,8 +857,7 @@ tcp_send_fin (tcp_connection_t * tc)
   if (PREDICT_FALSE (!vlib_buffer_alloc (vm, &bi, 1)))
     {
       /* Out of buffers so program fin retransmit ASAP */
-      tcp_timer_update (&wrk->timer_wheel, tc, TCP_TIMER_RETRANSMIT,
-			tcp_cfg.alloc_err_timeout);
+      tcp_retransmit_timer_update_interval (&wrk->timer_wheel, tc, tcp_cfg.alloc_err_timeout);
       tc->snd_nxt += 1;
       /* Make sure retransmit retries a fin not data with right snd_nxt */
       if (!fin_snt)
@@ -1283,30 +1282,33 @@ tcp_prepare_retransmit_segment (tcp_worker_ctx_t * wrk,
 static void
 tcp_cc_rxt_timeout (tcp_connection_t *tc)
 {
-  u32 n_bytes;
-  u8 head_overlaps_rxt = 0, head_was_rxt = 0, sack_reneged = 0;
+  u8 head_overlaps_rxt = 0, sack_reneged = 0;
 
   TCP_EVT (TCP_EVT_CC_EVT, tc, 6);
 
   if (tcp_opts_sack_permitted (&tc->rcv_opts))
     {
-      n_bytes = clib_min (tc->snd_mss, tc->snd_nxt - tc->snd_una);
-
       /* Snapshot before reneging handling can reset high_rxt. */
-      head_was_rxt =
-	tcp_in_cong_recovery (tc) && seq_geq (tc->sack_sb.high_rxt, tc->snd_una + n_bytes);
       head_overlaps_rxt = tcp_in_cong_recovery (tc) && seq_gt (tc->sack_sb.high_rxt, tc->snd_una);
 
-      sack_reneged = tcp_sack_handle_reneging (tc);
-      tcp_sack_rxt_mark_lost (tc);
-
-      if (head_was_rxt)
+      if (!tcp_rack_prepare_rto (tc, &sack_reneged))
 	{
-	  /* rxt_delivered is aggregate state and can already include part of the range below
-	   * high_rxt. Retire no more than the retransmitted bytes still accounted in flight */
-	  ASSERT (tc->rxt_delivered <= tc->snd_rxt_bytes);
-	  n_bytes = clib_min (n_bytes, tc->snd_rxt_bytes - tc->rxt_delivered);
-	  tc->rxt_delivered += n_bytes;
+	  u32 n_bytes = clib_min (tc->snd_mss, tc->snd_nxt - tc->snd_una);
+
+	  /* Snapshot before reneging handling can reset high_rxt. */
+	  u8 head_was_rxt =
+	    tcp_in_cong_recovery (tc) && seq_geq (tc->sack_sb.high_rxt, tc->snd_una + n_bytes);
+
+	  sack_reneged = tcp_sack_handle_reneging (tc);
+	  tcp_sack_rxt_mark_lost (tc);
+	  if (head_was_rxt)
+	    {
+	      /* rxt_delivered can already include part of the range below
+	       * high_rxt. Retire only bytes still accounted in flight. */
+	      ASSERT (tc->rxt_delivered <= tc->snd_rxt_bytes);
+	      n_bytes = clib_min (n_bytes, tc->snd_rxt_bytes - tc->rxt_delivered);
+	      tc->rxt_delivered += n_bytes;
+	    }
 	}
     }
 
@@ -1333,6 +1335,7 @@ tcp_cc_rxt_timeout (tcp_connection_t *tc)
     tc->sack_sb.flags |= TCP_DSACK_INELIGIBLE;
 
   tcp_recovery_on (tc);
+  tcp_rack_recovery_sync (tc);
 
   /* Fresh timeout after progress. rto_boff can be cleared mid-recovery by
    * acks that make some progress (tcp_update_rtt), so this is not necessarily
@@ -1381,6 +1384,9 @@ tcp_timer_retransmit_handler (tcp_connection_t * tc)
   vlib_main_t *vm = wrk->vm;
   vlib_buffer_t *b = 0;
   u32 bi, n_bytes;
+
+  if (tcp_rack_enabled (tc) && PREDICT_FALSE (tcp_rack_retransmit_timer_expired (tc)))
+    return;
 
   tcp_worker_stats_inc (wrk, tr_events, 1);
 
@@ -1445,10 +1451,9 @@ tcp_timer_retransmit_handler (tcp_connection_t * tc)
       if (!n_bytes)
 	{
 	  /* Allocation failed, do not re-credit again the head to rxt_delivered */
-	  if (tcp_opts_sack_permitted (&tc->rcv_opts))
+	  if (tcp_opts_sack_permitted (&tc->rcv_opts) && !tcp_rack_enabled (tc))
 	    tcp_sack_init_rxt (tc, tc->snd_una);
-	  tcp_timer_update (&wrk->timer_wheel, tc, TCP_TIMER_RETRANSMIT,
-			    tcp_cfg.alloc_err_timeout);
+	  tcp_retransmit_timer_update_interval (&wrk->timer_wheel, tc, tcp_cfg.alloc_err_timeout);
 	  return;
 	}
 
@@ -1485,8 +1490,7 @@ tcp_timer_retransmit_handler (tcp_connection_t * tc)
 
       if (PREDICT_FALSE (!vlib_buffer_alloc (vm, &bi, 1)))
 	{
-	  tcp_timer_update (&wrk->timer_wheel, tc, TCP_TIMER_RETRANSMIT,
-			    tcp_cfg.alloc_err_timeout);
+	  tcp_retransmit_timer_update_interval (&wrk->timer_wheel, tc, tcp_cfg.alloc_err_timeout);
 	  tcp_worker_stats_inc (wrk, no_buffer, 1);
 	  return;
 	}
