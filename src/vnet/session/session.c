@@ -921,6 +921,7 @@ session_dgram_connect_notify (transport_connection_t *tc,
 			      session_handle_tu_t osh, session_t **new_session)
 {
   session_t *new_s;
+  int rx_attached = 0;
 
   /*
    * Clone half-open session to the right thread.
@@ -937,8 +938,11 @@ session_dgram_connect_notify (transport_connection_t *tc,
   if (!(new_s->flags & SESSION_F_PROXY))
     {
       /* New set of fifos attached to the same shared memory */
-      segment_manager_attach_fifo (&new_s->rx_fifo, new_s);
-      segment_manager_attach_fifo (&new_s->tx_fifo, new_s);
+      if (segment_manager_attach_fifo (&new_s->rx_fifo, new_s) < 0)
+	goto attach_error;
+      rx_attached = 1;
+      if (segment_manager_attach_fifo (&new_s->tx_fifo, new_s) < 0)
+	goto attach_error;
     }
 
   /*
@@ -952,6 +956,14 @@ session_dgram_connect_notify (transport_connection_t *tc,
   new_s->connection_index = tc->c_index;
   *new_session = new_s;
   return 0;
+
+attach_error:
+  if (rx_attached)
+    segment_manager_detach_fifo (&new_s->rx_fifo);
+  if (!(tc->flags & TRANSPORT_CONNECTION_F_NO_LOOKUP))
+    session_lookup_del_connection (tc);
+  session_free (new_s);
+  return -1;
 }
 
 /**
