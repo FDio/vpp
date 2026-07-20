@@ -10,6 +10,7 @@
 
 #include <vnet/tcp/tcp.h>
 #include <vnet/tcp/tcp_inlines.h>
+#include <vnet/tcp/tcp_rack.h>
 #include <vnet/session/session.h>
 #include <vnet/fib/fib.h>
 #include <vnet/dpo/load_balance.h>
@@ -534,6 +535,7 @@ tcp_connection_timers_init (tcp_connection_t * tc)
       tc->timers[i] = TCP_TIMER_HANDLE_INVALID;
     }
 
+  tcp_rack_loss_timer_set_rto (tc);
   tc->rto = TCP_RTO_INIT;
 }
 
@@ -548,6 +550,12 @@ tcp_connection_timers_reset (tcp_connection_t * tc)
 
   for (i = 0; i < TCP_N_TIMERS; i++)
     tcp_timer_reset (&wrk->timer_wheel, tc, i);
+  if (tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER)
+    {
+      tcp_rack_get_state (tc)->rto_deadline = 0;
+      tcp_rack_get_state (tc)->reo_deadline = 0;
+    }
+  tcp_rack_loss_timer_set_rto (tc);
 }
 
 #if 0
@@ -768,6 +776,7 @@ tcp_connection_init_vars (tcp_connection_t * tc)
 
   if (tc->state == TCP_STATE_SYN_RCVD)
     tcp_init_snd_vars (tc);
+  tc->sack_sb.high_sacked = tc->snd_una;
 
   tcp_cc_init (tc);
 
@@ -780,8 +789,14 @@ tcp_connection_init_vars (tcp_connection_t * tc)
       || tcp_cfg.enable_tx_pacing)
     tcp_enable_pacing (tc);
 
-  if (tcp_cfg.enable_byte_tracker || (tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER))
-    tcp_bt_init (tc);
+  if (!tcp_opts_sack_permitted (&tc->rcv_opts))
+    tc->cfg_flags &= ~TCP_CFG_F_BYTE_TRACKER;
+  else if (tcp_cfg.enable_rack || tcp_cfg.enable_byte_tracker ||
+	   (tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER))
+    {
+      tc->cfg_flags |= TCP_CFG_F_BYTE_TRACKER;
+      tcp_rack_init (tc);
+    }
 
   if (!tcp_cfg.allow_tso)
     tc->cfg_flags |= TCP_CFG_F_NO_TSO;
@@ -986,11 +1001,13 @@ tcp_set_attribute (tcp_connection_t *tc, transport_endpt_attr_t *attr)
       break;
     case TRANSPORT_ENDPT_ATTR_FLAGS:
       if (!!(attr->flags & TRANSPORT_ENDPT_ATTR_F_RATE_SAMPLING) !=
-	    !!(tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER) &&
-	  tc->snd_una != tc->snd_nxt)
+	  !!(tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER))
 	{
-	  rv = -1;
-	  break;
+	  if ((attr->flags & TRANSPORT_ENDPT_ATTR_F_RATE_SAMPLING) &&
+	      !tcp_opts_sack_permitted (&tc->rcv_opts))
+	    return -1;
+	  if (tc->snd_una != tc->snd_nxt || tcp_in_cong_recovery (tc))
+	    return -1;
 	}
       if (attr->flags & TRANSPORT_ENDPT_ATTR_F_CSUM_OFFLOAD)
 	tc->cfg_flags |= TCP_CFG_F_NO_CSUM_OFFLOAD;
@@ -1010,12 +1027,18 @@ tcp_set_attribute (tcp_connection_t *tc, transport_endpt_attr_t *attr)
       if (attr->flags & TRANSPORT_ENDPT_ATTR_F_RATE_SAMPLING)
 	{
 	  if (!(tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER))
-	    tcp_bt_init (tc);
+	    {
+	      tc->cfg_flags |= TCP_CFG_F_BYTE_TRACKER;
+	      tcp_rack_init (tc);
+	    }
 	}
       else
 	{
 	  if (tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER)
-	    tcp_bt_cleanup (tc);
+	    {
+	      tcp_rack_loss_timer_restore_rto (tc);
+	      tcp_bt_cleanup (tc);
+	    }
 	}
       break;
     case TRANSPORT_ENDPT_ATTR_CC_ALGO:
@@ -1278,12 +1301,11 @@ tcp_timer_waitclose_handler (tcp_connection_t * tc)
     }
 }
 
-static timer_expiration_handler *timer_expiration_handlers[TCP_N_TIMERS] =
-{
-    tcp_timer_retransmit_handler,
-    tcp_timer_persist_handler,
-    tcp_timer_waitclose_handler,
-    tcp_timer_retransmit_syn_handler,
+static timer_expiration_handler *timer_expiration_handlers[TCP_N_TIMERS] = {
+  tcp_timer_retransmit_handler,
+  tcp_timer_persist_handler,
+  tcp_timer_waitclose_handler,
+  tcp_timer_retransmit_syn_handler,
 };
 
 static void
@@ -1697,6 +1719,7 @@ tcp_configuration_init (void)
   tcp_cfg.default_mtu = 1500;
   tcp_cfg.initial_cwnd_multiplier = 0;
   tcp_cfg.enable_tx_pacing = 1;
+  tcp_cfg.enable_rack = 0;
   tcp_cfg.allow_tso = 0;
   tcp_cfg.csum_offload = 1;
   tcp_cfg.enable_dsack = 1;
