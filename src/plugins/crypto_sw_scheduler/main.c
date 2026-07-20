@@ -575,11 +575,13 @@ crypto_sw_scheduler_config (vlib_main_t *vm, unformat_input_t *input)
       if (unformat (input, "crypto-sw-scheduler-queue-size %d",
 		    &crypto_sw_scheduler_queue_size))
 	{
-	  if (!is_pow2 (crypto_sw_scheduler_queue_size))
+	  if (!crypto_sw_scheduler_queue_size ||
+	      !is_pow2 (crypto_sw_scheduler_queue_size) ||
+	      crypto_sw_scheduler_queue_size > VNET_CRYPTO_FRAME_POOL_SIZE)
 	    {
-	      return clib_error_return (0, "input %d is not pow2",
-					format_unformat_error,
-					crypto_sw_scheduler_queue_size);
+	      return clib_error_return (
+		0, "queue size must be a power of 2 between 1 and %u",
+		VNET_CRYPTO_FRAME_POOL_SIZE);
 	    }
 	}
       else
@@ -606,7 +608,7 @@ crypto_sw_scheduler_config (vlib_main_t *vm, unformat_input_t *input)
 
       vec_validate_aligned (
 	ptd->queue[CRYPTO_SW_SCHED_QUEUE_TYPE_DECRYPT].jobs,
-	CRYPTO_SW_SCHEDULER_QUEUE_SIZE - 1, CLIB_CACHE_LINE_BYTES);
+	crypto_sw_scheduler_queue_size - 1, CLIB_CACHE_LINE_BYTES);
 
       ptd->queue[CRYPTO_SW_SCHED_QUEUE_TYPE_ENCRYPT].head = 0;
       ptd->queue[CRYPTO_SW_SCHED_QUEUE_TYPE_ENCRYPT].tail = 0;
@@ -616,7 +618,7 @@ crypto_sw_scheduler_config (vlib_main_t *vm, unformat_input_t *input)
 
       vec_validate_aligned (
 	ptd->queue[CRYPTO_SW_SCHED_QUEUE_TYPE_ENCRYPT].jobs,
-	CRYPTO_SW_SCHEDULER_QUEUE_SIZE - 1, CLIB_CACHE_LINE_BYTES);
+	crypto_sw_scheduler_queue_size - 1, CLIB_CACHE_LINE_BYTES);
     }
 
   if (error)
