@@ -89,6 +89,8 @@ vp_server_session_accept_callback (session_t *s)
     return vp_server_ctrl_session_accept_callback (s);
 
   s->session_state = SESSION_STATE_READY;
+  if (vpsm->cfg.rx_buffer)
+    s->flags |= SESSION_F_RX_BUFFER;
   vp_server_session_alloc_and_init (s);
   return 0;
 }
@@ -405,6 +407,22 @@ vp_server_rx_callback_common (session_t *s)
   return vpsm->rx_callback (s);
 }
 
+static int
+vp_server_rx_buffer_callback (session_t *s, CLIB_UNUSED (vlib_buffer_t *b), u32 n_bytes)
+{
+  vp_server_main_t *vpsm = &vp_server_main;
+  vp_test_worker_t *wrk;
+  vp_test_session_t *es;
+
+  if (vpsm->cfg.test_cfg.test != VPERF_TEST_TYPE_UNI)
+    return 0;
+
+  wrk = vp_server_worker_get (s->thread_index);
+  es = vp_server_session_get (wrk, s->opaque);
+  es->bytes_received += n_bytes;
+  return 1;
+}
+
 static session_cb_vft_t vp_server_session_cb_vft = {
   .session_accept_callback = vp_server_session_accept_callback,
   .session_disconnect_callback = vp_server_session_disconnect_callback,
@@ -412,6 +430,7 @@ static session_cb_vft_t vp_server_session_cb_vft = {
   .add_segment_callback = vp_server_add_segment_callback,
   .del_segment_callback = vp_server_del_segment_callback,
   .builtin_app_rx_callback = vp_server_rx_callback_common,
+  .builtin_app_rx_buffer_callback = vp_server_rx_buffer_callback,
   .session_reset_callback = vp_server_session_reset_callback
 };
 
