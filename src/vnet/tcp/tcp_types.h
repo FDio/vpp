@@ -51,12 +51,14 @@ typedef enum _tcp_state
   TCP_N_STATES
 } tcp_state_t;
 
+/* clang-format off */
 /** TCP timers */
 #define foreach_tcp_timer               \
   _(RETRANSMIT, "RETRANSMIT")           \
   _(PERSIST, "PERSIST")                 \
   _(WAITCLOSE, "WAIT CLOSE")            \
-  _(RETRANSMIT_SYN, "RETRANSMIT SYN")   \
+  _(RETRANSMIT_SYN, "RETRANSMIT SYN")
+/* clang-format on */
 
 typedef enum _tcp_timers
 {
@@ -87,7 +89,8 @@ typedef enum _tcp_timers
   _ (NO_TSO, "TSO off")                                                                            \
   _ (TSO, "TSO")                                                                                   \
   _ (NO_ENDPOINT, "No endpoint")                                                                   \
-  _ (TRACKED, "Tracked connection")
+  _ (TRACKED, "Tracked connection")                                                                \
+  _ (RACK, "RACK")
 
 typedef enum tcp_cfg_flag_bits_
 {
@@ -105,6 +108,7 @@ typedef enum tcp_cfg_flag_
   TCP_CFG_N_FLAGS
 } tcp_cfg_flags_e;
 
+/* clang-format off */
 /** TCP connection flags */
 #define foreach_tcp_connection_flag             \
   _(SNDACK, "Send ACK")                         \
@@ -120,6 +124,9 @@ typedef enum tcp_cfg_flag_
   _(PSH_PENDING, "PSH pending")			\
   _(FINRCVD, "FIN received")			\
   _(ZERO_RWND_SENT, "Zero RWND sent")		\
+  _(LOSS_TIMER_REORDER, "Loss timer reordering")	\
+  _(LOSS_TIMER_PROBE, "Loss timer probe")
+/* clang-format on */
 
 typedef enum tcp_connection_flag_bits_
 {
@@ -136,6 +143,17 @@ typedef enum tcp_connection_flag_
 #undef _
   TCP_CONN_N_FLAGS
 } tcp_connection_flags_e;
+
+STATIC_ASSERT (TCP_CONN_N_FLAG_BITS <= 16, "tcp connection flags exceed storage");
+
+typedef enum
+{
+  TCP_LOSS_TIMER_RTO = 0,
+  TCP_LOSS_TIMER_REO = TCP_CONN_LOSS_TIMER_REORDER,
+  TCP_LOSS_TIMER_PTO = TCP_CONN_LOSS_TIMER_PROBE,
+} tcp_loss_timer_type_t;
+
+#define TCP_CONN_LOSS_TIMER_MASK (TCP_CONN_LOSS_TIMER_REORDER | TCP_CONN_LOSS_TIMER_PROBE)
 
 #define TCP_SCOREBOARD_TRACE (0)
 #define TCP_MAX_SACK_BLOCKS 255	/**< Max number of SACK blocks stored */
@@ -255,6 +273,7 @@ typedef enum tcp_ack_flag_
   TCP_ACK_F_SACK = 1 << 4,
   TCP_ACK_F_DETECT_LOSS = 1 << 5,
   TCP_ACK_F_DSACK_MATCHED = 1 << 6,
+  TCP_ACK_F_REO_WND_UPDATED = 1 << 7,
   TCP_ACK_F_SPURIOUS = TCP_ACK_F_DSACK_SPURIOUS | TCP_ACK_F_EIFEL_SPURIOUS,
 } __clib_packed tcp_ack_flag_t;
 
@@ -268,6 +287,7 @@ typedef enum tcp_bts_flags_
   TCP_BTS_IS_RXT_LOST = 1 << 3,
   TCP_BTS_IS_DELIVERED = 1 << 4,
   TCP_BTS_IS_LOST = 1 << 5,
+  TCP_BTS_RACK_LOST = 1 << 6,
 } __clib_packed tcp_bts_flags_t;
 
 typedef struct tcp_bt_sample_
