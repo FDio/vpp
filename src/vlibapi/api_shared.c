@@ -58,19 +58,29 @@ vl_msg_api_tx_trace_enabled (api_main_t * am)
 /*
  * vl_msg_api_trace
  */
-void
-vl_msg_api_trace (api_main_t * am, vl_api_trace_t * tp, void *msg)
+static void
+vl_msg_api_trace_with_size (api_main_t *am, vl_api_trace_t *tp, void *msg,
+			    uword msg_len)
 {
   u8 **this_trace;
   u8 **old_trace;
   u8 *msg_copy;
-  u32 length;
-  u16 msg_id = clib_net_to_host_u16 (*((u16 *) msg));
-  vl_api_msg_data_t *m = vl_api_get_msg_data (am, msg_id);
-  msgbuf_t *header = (msgbuf_t *) (((u8 *) msg) - offsetof (msgbuf_t, data));
+  uword length;
+  u16 msg_id;
+  vl_api_msg_data_t *m;
 
+  if (PREDICT_FALSE (msg_len < sizeof (u16)))
+    return;
+
+  msg_id = clib_net_to_host_u16 (*((u16 *) msg));
+  m = vl_api_get_msg_data (am, msg_id);
   if (!m || !m->trace_enable)
     return;
+
+  length = msg_len;
+  if (m->trace_size >= (int) sizeof (u16) &&
+      length > (uword) m->trace_size)
+    length = m->trace_size;
 
   msg_copy = 0;
 
@@ -97,11 +107,18 @@ vl_msg_api_trace (api_main_t * am, vl_api_trace_t * tp, void *msg)
       this_trace = old_trace;
     }
 
-  length = clib_net_to_host_u32 (header->data_len);
-
   vec_validate (msg_copy, length - 1);
   clib_memcpy_fast (msg_copy, msg, length);
   *this_trace = msg_copy;
+}
+
+void
+vl_msg_api_trace (api_main_t *am, vl_api_trace_t *tp, void *msg)
+{
+  msgbuf_t *header = (msgbuf_t *) (((u8 *) msg) - offsetof (msgbuf_t, data));
+  u32 msg_len = clib_net_to_host_u32 (header->data_len);
+
+  vl_msg_api_trace_with_size (am, tp, msg, msg_len);
 }
 
 int
@@ -211,6 +228,8 @@ vl_msg_api_trace_write_one (api_main_t *am, u8 *msg, FILE *fp)
   int tlen, slen;
 
   u32 msg_length = vec_len (msg);
+  if (PREDICT_FALSE (msg_length < sizeof (u16)))
+    return -1;
   vec_validate (tmpmem, msg_length - 1);
   clib_memcpy_fast (tmpmem, msg, msg_length);
   u16 id = clib_net_to_host_u16 (*((u16 *) msg));
@@ -484,8 +503,18 @@ always_inline void
 msg_handler_internal (api_main_t *am, void *the_msg, uword msg_len,
 		      int trace_it, int do_it, int free_it)
 {
-  u16 id = clib_net_to_host_u16 (*((u16 *) the_msg));
-  vl_api_msg_data_t *m = vl_api_get_msg_data (am, id);
+  u16 id;
+  vl_api_msg_data_t *m;
+
+  if (PREDICT_FALSE (msg_len < sizeof (u16)))
+    {
+      if (free_it)
+	vl_msg_api_free (the_msg);
+      return;
+    }
+
+  id = clib_net_to_host_u16 (*((u16 *) the_msg));
+  m = vl_api_get_msg_data (am, id);
 
   if (PREDICT_FALSE (am->elog_trace_api_messages))
     {
@@ -508,7 +537,7 @@ msg_handler_internal (api_main_t *am, void *the_msg, uword msg_len,
   if (m && m->handler)
     {
       if (trace_it)
-	vl_msg_api_trace (am, am->rx_trace, the_msg);
+	vl_msg_api_trace_with_size (am, am->rx_trace, the_msg, msg_len);
 
       if (am->msg_print_flag)
 	{
