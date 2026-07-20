@@ -586,6 +586,7 @@ list(APPEND VNET_SOURCES
   tcp/tcp_syn_filter4.c
   tcp/tcp_output.c
   tcp/tcp_input.c
+  tcp/tcp_cc.c
   tcp/tcp_newreno.c
   tcp/tcp_bt.c
   tcp/tcp_cli.c
