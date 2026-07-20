@@ -95,6 +95,7 @@ typedef struct
   u32 queue_index;
   int efd;
   uword clib_file_index;
+  u8 clib_file_registered;
 } dpdk_rx_queue_t;
 
 typedef struct

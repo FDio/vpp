@@ -252,6 +252,9 @@ retry:
 			CLIB_CACHE_LINE_BYTES);
   for (j = 0; j < xd->conf.n_tx_queues; j++)
     {
+      dpdk_tx_queue_t *txq = vec_elt_at_index (xd->tx_queues, j);
+
+      clib_spinlock_free (&txq->lock);
       rv = rte_eth_tx_queue_setup (xd->port_id, j, xd->conf.n_tx_desc,
 				   xd->cpu_socket, 0);
 
@@ -262,7 +265,7 @@ retry:
       if (rv < 0)
 	dpdk_device_error (xd, "rte_eth_tx_queue_setup", rv);
 
-      clib_spinlock_init (&vec_elt (xd->tx_queues, j).lock);
+      clib_spinlock_init (&txq->lock);
     }
 
   vec_validate_aligned (xd->rx_queues, xd->conf.n_rx_queues - 1,
@@ -365,6 +368,34 @@ dpdk_rx_read_ready (clib_file_t *uf)
 }
 
 static void
+dpdk_remove_interrupt_files (dpdk_device_t *xd)
+{
+  clib_file_main_t *fm = &file_main;
+
+  for (int q = 0; q < vec_len (xd->rx_queues); q++)
+    {
+      dpdk_rx_queue_t *rxq = vec_elt_at_index (xd->rx_queues, q);
+      clib_file_t *f;
+
+      if (rxq->clib_file_index == (uword) ~0)
+	continue;
+
+      f = clib_file_get (fm, rxq->clib_file_index);
+      if (f && !rxq->clib_file_registered)
+	{
+	  fm->file_update (f, UNIX_FILE_UPDATE_ADD);
+	  rxq->clib_file_registered = 1;
+	}
+      clib_file_del_by_index (fm, rxq->clib_file_index);
+      rxq->clib_file_index = ~0;
+      rxq->clib_file_registered = 0;
+      rxq->efd = -1;
+    }
+
+  xd->flags &= ~DPDK_DEVICE_FLAG_INT_SUPPORTED;
+}
+
+static void
 dpdk_setup_interrupts (dpdk_device_t *xd)
 {
   vnet_main_t *vnm = vnet_get_main ();
@@ -372,6 +403,8 @@ dpdk_setup_interrupts (dpdk_device_t *xd)
   int int_mode = 0;
   if (!hi)
     return;
+
+  dpdk_remove_interrupt_files (xd);
 
   if (!xd->conf.enable_rxq_int)
     return;
@@ -408,10 +441,12 @@ dpdk_setup_interrupts (dpdk_device_t *xd)
 	  f.read_function = dpdk_rx_read_ready;
 	  f.flags = UNIX_FILE_EVENT_EDGE_TRIGGERED;
 	  f.file_descriptor = rxq->efd;
+	  f.dont_close = 1;
 	  f.private_data = rxq->queue_index;
 	  f.description = format (0, "%U queue %u", format_dpdk_device_name,
 				  xd->device_index, q);
 	  rxq->clib_file_index = clib_file_add (&file_main, &f);
+	  rxq->clib_file_registered = 1;
 	  vnet_hw_if_set_rx_queue_file_index (vnm, rxq->queue_index,
 					      rxq->clib_file_index);
 	  if (xd->flags & DPDK_DEVICE_FLAG_INT_UNMASKABLE)
@@ -419,9 +454,13 @@ dpdk_setup_interrupts (dpdk_device_t *xd)
 	      clib_file_main_t *fm = &file_main;
 	      clib_file_t *f = clib_file_get (fm, rxq->clib_file_index);
 	      fm->file_update (f, UNIX_FILE_UPDATE_DELETE);
+	      rxq->clib_file_registered = 0;
 	    }
 	}
     }
+
+  if (!int_mode)
+    dpdk_remove_interrupt_files (xd);
 
   if (int_mode)
     vnet_hw_if_set_caps (vnm, hi->hw_if_index, VNET_HW_IF_CAP_INT_MODE);
@@ -474,9 +513,14 @@ dpdk_device_start (dpdk_device_t * xd)
 void
 dpdk_device_stop (dpdk_device_t * xd)
 {
+  vnet_main_t *vnm = vnet_get_main ();
+
   if (xd->flags & DPDK_DEVICE_FLAG_PMD_INIT_FAIL)
     return;
 
+  dpdk_remove_interrupt_files (xd);
+  vnet_hw_if_unset_caps (vnm, xd->hw_if_index, VNET_HW_IF_CAP_INT_MODE);
+  vnet_hw_if_update_runtime_data (vnm, xd->hw_if_index);
   rte_eth_allmulticast_disable (xd->port_id);
   rte_eth_dev_stop (xd->port_id);
   clib_memset (&xd->link, 0, sizeof (struct rte_eth_link));

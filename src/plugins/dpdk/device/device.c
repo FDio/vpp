@@ -738,6 +738,7 @@ dpdk_interface_rx_mode_change (vnet_main_t *vnm, u32 hw_if_index, u32 qid,
       rxq = vec_elt_at_index (xd->rx_queues, qid);
       f = clib_file_get (fm, rxq->clib_file_index);
       fm->file_update (f, UNIX_FILE_UPDATE_DELETE);
+      rxq->clib_file_registered = 0;
     }
   else if (!(xd->flags & DPDK_DEVICE_FLAG_INT_UNMASKABLE))
     rv = rte_eth_dev_rx_intr_enable (xd->port_id, qid);
@@ -746,6 +747,7 @@ dpdk_interface_rx_mode_change (vnet_main_t *vnm, u32 hw_if_index, u32 qid,
       rxq = vec_elt_at_index (xd->rx_queues, qid);
       f = clib_file_get (fm, rxq->clib_file_index);
       fm->file_update (f, UNIX_FILE_UPDATE_ADD);
+      rxq->clib_file_registered = 1;
     }
   if (rv)
     return clib_error_return (0, "dpdk_interface_rx_mode_change: %U", format_dpdk_rte_err, rv);

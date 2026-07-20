@@ -547,6 +547,14 @@ dpdk_lib_init (dpdk_main_t * dm)
       vec_validate_aligned (xd->tx_queues, xd->conf.n_tx_queues - 1,
 			    CLIB_CACHE_LINE_BYTES);
 
+      for (u32 q = 0; q < vec_len (xd->rx_queues); q++)
+	{
+	  dpdk_rx_queue_t *rxq = vec_elt_at_index (xd->rx_queues, q);
+	  rxq->efd = -1;
+	  rxq->clib_file_index = ~0;
+	  rxq->clib_file_registered = 0;
+	}
+
       rte_eth_macaddr_get (port_id, (void *) addr);
 
       /* create interface */
