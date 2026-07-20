@@ -35,6 +35,23 @@
       "parentUuid": "541e14ce_cb5d6cb3",
       "revId": "59b52be4855b61d3b91cfe1d552ddd670e24cd09",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "11f4dcf4_8fb72e7d",
+        "filename": "test/asf/asfframework.py",
+        "patchSetId": 50
+      },
+      "lineNbr": 168,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-07-20T08:43:17Z",
+      "side": 1,
+      "message": "Core XDP multi-buffer support started in 5.18, but upstream AF_XDP multi-buffer support (`XDP_USE_SG`/`XDP_PKT_CONTD`) landed in 6.6. This enables the tests on upstream 6.1-6.5 kernels, where socket creation will fail. Could we require kernel \u003e\u003d 6.6 here, or preferably probe the AF_XDP capability directly?",
+      "revId": "59b52be4855b61d3b91cfe1d552ddd670e24cd09",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
