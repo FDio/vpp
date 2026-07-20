@@ -55,6 +55,25 @@ typedef struct session_cb_vft_
   /** Direct RX callback for built-in application */
   int (*builtin_app_rx_callback) (session_t * session);
 
+  /**
+   * Direct payload callback for built-in applications.
+   *
+   * Called synchronously on the session owner worker for in-order stream data
+   * when the RX fifo and its out-of-order queue are empty. The buffer chain is
+   * borrowed from the transport and is valid only until the callback returns.
+   * Its current data spans @p n_bytes of transport payload.
+   *
+   * The application must consume the full payload during the callback. It
+   * must not retain buffer or data pointers, modify or free the chain, or
+   * change session or transport state. A positive return value consumes the
+   * payload without queueing an RX event. Otherwise, the transport copies it
+   * to the RX fifo and applies the regular fifo flow control.
+   *
+   * This path does not queue or retain vlib buffers: at most the chain passed
+   * to the active callback is borrowed by the application.
+   */
+  int (*builtin_app_rx_buffer_callback) (session_t *session, vlib_buffer_t *b, u32 n_bytes);
+
   /** Direct TX callback for built-in application */
   int (*builtin_app_tx_callback) (session_t * session);
 
