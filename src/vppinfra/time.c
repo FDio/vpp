@@ -218,6 +218,7 @@ clib_time_verify_frequency (clib_time_t * c)
 {
   f64 now_reference, delta_reference, delta_reference_max;
   f64 delta_clock_in_seconds;
+  f64 elapsed_time;
   u64 now_clock, delta_clock;
   f64 new_clocks_per_second, delta;
 
@@ -230,7 +231,8 @@ clib_time_verify_frequency (clib_time_t * c)
    * lower TSC). In this case, skip frequency estimation and just resync
    * timestamps to current values.
    */
-  if (PREDICT_FALSE (now_clock < c->last_verify_cpu_time))
+  if (PREDICT_FALSE (now_clock < c->last_verify_cpu_time ||
+		     now_clock < c->last_cpu_time))
     {
       c->last_cpu_time = now_clock;
       c->last_verify_cpu_time = now_clock;
@@ -246,15 +248,11 @@ clib_time_verify_frequency (clib_time_t * c)
   delta_clock_in_seconds = (f64) (now_clock - c->last_verify_cpu_time) *
     c->seconds_per_clock;
 
-  /*
-   * Recompute vpp start time reference, and total clocks
-   * using the current clock rate.
-   * Ensure total_cpu_time never decreases to guarantee monotonicity.
-   */
+  /* Recompute vpp start time reference using the current clock rate. */
   c->init_reference_time += (delta_reference - delta_clock_in_seconds);
-  c->total_cpu_time = clib_max (
-    c->total_cpu_time, (u64) ((now_reference - c->init_reference_time) * c->clocks_per_second));
 
+  /* Account for elapsed clocks before advancing the sample baseline. */
+  c->total_cpu_time += now_clock - c->last_cpu_time;
   c->last_cpu_time = now_clock;
 
   /* Calculate a new clock rate sample */
@@ -295,18 +293,16 @@ clib_time_verify_frequency (clib_time_t * c)
       return;
     }
 
+  elapsed_time = c->total_cpu_time * c->seconds_per_clock;
+
   /* Add sample to the exponentially-smoothed rate */
   c->clocks_per_second = c->clocks_per_second * c->damping_constant +
     (1.0 - c->damping_constant) * new_clocks_per_second;
   c->seconds_per_clock = 1.0 / c->clocks_per_second;
 
-  /*
-   * Recalculate total_cpu_time based on the kernel timebase, and
-   * the calculated clock rate.
-   * Ensure total_cpu_time never decreases to guarantee monotonicity.
-   */
+  /* Keep reported elapsed time continuous across the frequency change. */
   c->total_cpu_time = clib_max (
-    c->total_cpu_time, (u64) ((now_reference - c->init_reference_time) * c->clocks_per_second));
+    c->total_cpu_time, (u64) (elapsed_time * c->clocks_per_second));
 }
 
 

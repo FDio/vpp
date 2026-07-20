@@ -47,6 +47,30 @@ test_time_monotonicity (vlib_main_t *vm)
   return 0;
 }
 
+static clib_error_t *
+test_time_rejected_frequency_sample (vlib_main_t *vm)
+{
+  clib_time_t ct;
+  u64 before, elapsed;
+
+  clib_time_init (&ct);
+  elapsed = (u64) ct.clocks_per_second;
+  ct.total_cpu_time += 1000 * elapsed;
+  before = ct.total_cpu_time;
+  ct.last_cpu_time -= elapsed;
+  ct.last_verify_cpu_time -= 100 * elapsed;
+
+  clib_time_verify_frequency (&ct);
+
+  if (ct.total_cpu_time < before + elapsed / 2)
+    return clib_error_return (
+      0, "rejected sample lost elapsed CPU ticks: before %llu, now %llu",
+      before, ct.total_cpu_time);
+
+  vlib_cli_output (vm, "Rejected frequency sample preserved elapsed ticks");
+  return 0;
+}
+
 /*
  * Test that large CPU time discontinuities (e.g., from CPU migration)
  * are handled correctly and don't cause integer underflow.
@@ -203,6 +227,7 @@ test_time_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command
   clib_error_t *error = 0;
   int test_monotonicity = 0;
   int test_discontinuity = 0;
+  int test_rejected_frequency = 0;
   int test_barrier = 0;
   int test_all = 0;
 
@@ -212,6 +237,8 @@ test_time_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command
 	test_monotonicity = 1;
       else if (unformat (input, "discontinuity"))
 	test_discontinuity = 1;
+      else if (unformat (input, "rejected-frequency"))
+	test_rejected_frequency = 1;
       else if (unformat (input, "barrier"))
 	test_barrier = 1;
       else if (unformat (input, "all"))
@@ -221,10 +248,14 @@ test_time_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command
     }
 
   if (test_all)
-    test_monotonicity = test_discontinuity = test_barrier = 1;
+    test_monotonicity = test_discontinuity = test_rejected_frequency =
+      test_barrier = 1;
 
-  if (!test_monotonicity && !test_discontinuity && !test_barrier)
-    return clib_error_return (0, "specify test: monotonicity | discontinuity | barrier | all");
+  if (!test_monotonicity && !test_discontinuity && !test_rejected_frequency &&
+      !test_barrier)
+    return clib_error_return (
+      0, "specify test: monotonicity | discontinuity | rejected-frequency | "
+	 "barrier | all");
 
   if (test_monotonicity)
     {
@@ -236,6 +267,13 @@ test_time_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command
   if (test_discontinuity)
     {
       error = test_time_discontinuity (vm);
+      if (error)
+	return error;
+    }
+
+  if (test_rejected_frequency)
+    {
+      error = test_time_rejected_frequency_sample (vm);
       if (error)
 	return error;
     }
@@ -253,7 +291,8 @@ test_time_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command
 
 VLIB_CLI_COMMAND (test_time_command, static) = {
   .path = "test time",
-  .short_help = "test time [monotonicity | discontinuity | barrier | all]",
+  .short_help = "test time [monotonicity | discontinuity | "
+		"rejected-frequency | barrier | all]",
   .function = test_time_command_fn,
   .is_mp_safe = 1,
 };
