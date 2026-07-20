@@ -51,12 +51,14 @@ typedef enum _tcp_state
   TCP_N_STATES
 } tcp_state_t;
 
+/* clang-format off */
 /** TCP timers */
 #define foreach_tcp_timer               \
   _(RETRANSMIT, "RETRANSMIT")           \
   _(PERSIST, "PERSIST")                 \
   _(WAITCLOSE, "WAIT CLOSE")            \
-  _(RETRANSMIT_SYN, "RETRANSMIT SYN")   \
+  _(RETRANSMIT_SYN, "RETRANSMIT SYN")
+/* clang-format on */
 
 typedef enum _tcp_timers
 {
@@ -87,7 +89,8 @@ typedef enum _tcp_timers
   _ (NO_TSO, "TSO off")                                                                            \
   _ (TSO, "TSO")                                                                                   \
   _ (NO_ENDPOINT, "No endpoint")                                                                   \
-  _ (TRACKED, "Tracked connection")
+  _ (TRACKED, "Tracked connection")                                                                \
+  _ (RACK, "RACK")
 
 typedef enum tcp_cfg_flag_bits_
 {
@@ -105,6 +108,7 @@ typedef enum tcp_cfg_flag_
   TCP_CFG_N_FLAGS
 } tcp_cfg_flags_e;
 
+/* clang-format off */
 /** TCP connection flags */
 #define foreach_tcp_connection_flag             \
   _(SNDACK, "Send ACK")                         \
@@ -120,6 +124,8 @@ typedef enum tcp_cfg_flag_
   _(PSH_PENDING, "PSH pending")			\
   _(FINRCVD, "FIN received")			\
   _(ZERO_RWND_SENT, "Zero RWND sent")		\
+  _(LOSS_TIMER_REORDER, "Loss timer reordering")
+/* clang-format on */
 
 typedef enum tcp_connection_flag_bits_
 {
@@ -267,6 +273,7 @@ typedef enum tcp_bts_flags_
   TCP_BTS_IS_RXT_LOST = 1 << 3,
   TCP_BTS_IS_DELIVERED = 1 << 4,
   TCP_BTS_IS_LOST = 1 << 5,
+  TCP_BTS_RACK_LOST = 1 << 6,
 } __clib_packed tcp_bts_flags_t;
 
 typedef struct tcp_bt_sample_
