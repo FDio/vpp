@@ -52,11 +52,11 @@ typedef enum _tcp_state
 } tcp_state_t;
 
 /** TCP timers */
-#define foreach_tcp_timer               \
-  _(RETRANSMIT, "RETRANSMIT")           \
-  _(PERSIST, "PERSIST")                 \
-  _(WAITCLOSE, "WAIT CLOSE")            \
-  _(RETRANSMIT_SYN, "RETRANSMIT SYN")   \
+#define foreach_tcp_timer                                                                          \
+  _ (RETRANSMIT, "RETRANSMIT")                                                                     \
+  _ (PERSIST, "PERSIST")                                                                           \
+  _ (WAITCLOSE, "WAIT CLOSE")                                                                      \
+  _ (RETRANSMIT_SYN, "RETRANSMIT SYN")
 
 typedef enum _tcp_timers
 {
@@ -106,20 +106,21 @@ typedef enum tcp_cfg_flag_
 } tcp_cfg_flags_e;
 
 /** TCP connection flags */
-#define foreach_tcp_connection_flag             \
-  _(SNDACK, "Send ACK")                         \
-  _(FINSNT, "FIN sent")				\
-  _(RECOVERY, "Recovery")                    	\
-  _(FAST_RECOVERY, "Fast Recovery")		\
-  _(DCNT_PENDING, "Disconnect pending")		\
-  _(HALF_OPEN_DONE, "Half-open completed")	\
-  _(FINPNDG, "FIN pending")			\
-  _(RXT_PENDING, "Retransmit pending")		\
-  _(FRXT_FIRST, "Retransmit first")		\
-  _(DEQ_PENDING, "Dequeue pending ")		\
-  _(PSH_PENDING, "PSH pending")			\
-  _(FINRCVD, "FIN received")			\
-  _(ZERO_RWND_SENT, "Zero RWND sent")		\
+#define foreach_tcp_connection_flag                                                                \
+  _ (SNDACK, "Send ACK")                                                                           \
+  _ (FINSNT, "FIN sent")                                                                           \
+  _ (RECOVERY, "Recovery")                                                                         \
+  _ (FAST_RECOVERY, "Fast Recovery")                                                               \
+  _ (DCNT_PENDING, "Disconnect pending")                                                           \
+  _ (HALF_OPEN_DONE, "Half-open completed")                                                        \
+  _ (FINPNDG, "FIN pending")                                                                       \
+  _ (RXT_PENDING, "Retransmit pending")                                                            \
+  _ (FRXT_FIRST, "Retransmit first")                                                               \
+  _ (DEQ_PENDING, "Dequeue pending ")                                                              \
+  _ (PSH_PENDING, "PSH pending")                                                                   \
+  _ (FINRCVD, "FIN received")                                                                      \
+  _ (ZERO_RWND_SENT, "Zero RWND sent")                                                             \
+  _ (LOSS_TIMER_REORDER, "Loss timer reordering")
 
 typedef enum tcp_connection_flag_bits_
 {
@@ -218,6 +219,7 @@ typedef enum tcp_bts_flags_
   TCP_BTS_IS_APP_LIMITED = 1 << 1,
   TCP_BTS_IS_SACKED = 1 << 2,
   TCP_BTS_IS_RXT_LOST = 1 << 3,
+  TCP_BTS_IS_LOST = 1 << 4,
 } __clib_packed tcp_bts_flags_t;
 
 typedef struct tcp_bt_sample_
@@ -463,6 +465,11 @@ tcp_cong_recovery_off (tcp_connection_t * tc)
 
 #define tcp_dsack_has_history(tc)                                                                  \
   ((tc)->dsack_rxt != 0 || ((tc)->dsack_flags & TCP_DSACK_RXT_OVERFLOW))
+
+/* The retransmit timer represents either RTO or a reordering deadline. */
+#define tcp_rack_loss_timer_is_reordering(tc)  ((tc)->flags & TCP_CONN_LOSS_TIMER_REORDER)
+#define tcp_rack_loss_timer_set_reordering(tc) (tc)->flags |= TCP_CONN_LOSS_TIMER_REORDER
+#define tcp_rack_loss_timer_set_rto(tc)	       (tc)->flags &= ~TCP_CONN_LOSS_TIMER_REORDER
 
 always_inline tcp_connection_t *
 tcp_get_connection_from_transport (transport_connection_t * tconn)

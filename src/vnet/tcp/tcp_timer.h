@@ -7,6 +7,7 @@
 #define __included_tcp_timer_h__
 
 #include <vnet/tcp/tcp_types.h>
+#include <vnet/tcp/tcp_rack.h>
 
 static inline u8
 tcp_timer_thread_is_valid (tcp_connection_t *tc)
@@ -59,15 +60,46 @@ tcp_timer_is_active (tcp_connection_t *tc, tcp_timers_e timer)
 always_inline void
 tcp_retransmit_timer_set (tcp_timer_wheel_t * tw, tcp_connection_t * tc)
 {
+  u32 interval = clib_max ((u32) tc->rto * TCP_TO_TIMER_TICK, 1);
+
   ASSERT (tc->snd_una != tc->snd_nxt);
-  tcp_timer_set (tw, tc, TCP_TIMER_RETRANSMIT,
-		 clib_max ((u32) tc->rto * TCP_TO_TIMER_TICK, 1));
+  if (PREDICT_FALSE (tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE))
+    {
+      tcp_rack_state_t *rack = tcp_rack_get_state (tc);
+
+      tcp_rack_loss_timer_set_rto (tc);
+      rack->rto_deadline = tw->current_tick + interval;
+      rack->reo_deadline = 0;
+    }
+  tcp_timer_set (tw, tc, TCP_TIMER_RETRANSMIT, interval);
 }
 
 always_inline void
 tcp_retransmit_timer_reset (tcp_timer_wheel_t * tw, tcp_connection_t * tc)
 {
+  if (PREDICT_FALSE (tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE))
+    {
+      tcp_rack_state_t *rack = tcp_rack_get_state (tc);
+
+      tcp_rack_loss_timer_set_rto (tc);
+      rack->rto_deadline = 0;
+      rack->reo_deadline = 0;
+    }
   tcp_timer_reset (tw, tc, TCP_TIMER_RETRANSMIT);
+}
+
+always_inline void
+tcp_retransmit_timer_update_interval (tcp_timer_wheel_t *tw, tcp_connection_t *tc, u32 interval)
+{
+  if (PREDICT_FALSE (tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE))
+    {
+      tcp_rack_state_t *rack = tcp_rack_get_state (tc);
+
+      tcp_rack_loss_timer_set_rto (tc);
+      rack->rto_deadline = tw->current_tick + interval;
+      rack->reo_deadline = 0;
+    }
+  tcp_timer_update (tw, tc, TCP_TIMER_RETRANSMIT, interval);
 }
 
 always_inline void
@@ -94,8 +126,29 @@ tcp_retransmit_timer_update (tcp_timer_wheel_t * tw, tcp_connection_t * tc)
 	tcp_persist_timer_set (tw, tc);
     }
   else
-    tcp_timer_update (tw, tc, TCP_TIMER_RETRANSMIT,
-		      clib_max ((u32) tc->rto * TCP_TO_TIMER_TICK, 1));
+    {
+      u32 interval = clib_max ((u32) tc->rto * TCP_TO_TIMER_TICK, 1);
+
+      /* ACK progress restarts the logical RTO. Keep the physical reordering
+       * expiry only while it remains the earlier logical deadline. */
+      if (PREDICT_FALSE (tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE))
+	{
+	  tcp_rack_state_t *rack = tcp_rack_get_state (tc);
+
+	  rack->rto_deadline = tw->current_tick + interval;
+	  if (tcp_rack_loss_timer_is_reordering (tc))
+	    {
+	      if (!rack->reo_deadline || rack->rto_deadline <= rack->reo_deadline)
+		{
+		  tcp_rack_loss_timer_set_rto (tc);
+		  rack->reo_deadline = 0;
+		}
+	      else
+		return;
+	    }
+	}
+      tcp_timer_update (tw, tc, TCP_TIMER_RETRANSMIT, interval);
+    }
 }
 
 always_inline void
