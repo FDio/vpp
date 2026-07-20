@@ -67,7 +67,13 @@ void tcp_bt_track_tx (tcp_connection_t * tc, u32 len);
  * @param start	start sequence number
  * @param end	end sequence number
  */
-void tcp_bt_track_rxt (tcp_connection_t * tc, u32 start, u32 end);
+void tcp_bt_track_rxt (tcp_connection_t *tc, u32 start, u32 end);
+
+/** Mark a byte-tracker sample lost and retire its active retransmission copy. */
+u32 tcp_bt_rack_sample_mark_lost (tcp_connection_t *tc, tcp_bt_sample_t *bts);
+
+/** Derive recovery retransmission delivery from byte-tracker state. */
+void tcp_bt_rack_sync_rxt_delivery (tcp_connection_t *tc);
 /**
  * Apply cumulative ACK and prepared SACK ranges to the byte tracker
  *
@@ -88,6 +94,7 @@ u8 tcp_bt_handle_sack_reneging (tcp_connection_t *tc);
 u8 tcp_bt_is_sane_post_recovery (tcp_connection_t *tc);
 u8 tcp_bt_next_rxt_range (tcp_connection_t *tc, u8 have_unsent, u8 *can_rescue, u8 *snd_limited,
 			  tcp_rxt_range_t *range);
+u8 tcp_bt_next_rack_rxt_range (tcp_connection_t *tc, tcp_rxt_range_t *range);
 u8 tcp_bt_last_rxt_range (tcp_connection_t *tc, tcp_rxt_range_t *range);
 /**
  * Check if sample to be generated is app limited
@@ -103,6 +110,12 @@ void tcp_bt_check_app_limited (tcp_connection_t * tc);
  * @param bt	byte tracker
  */
 int tcp_bt_is_sane (tcp_byte_tracker_t * bt);
+
+/** Split the sample at seq. */
+void tcp_bt_split_at (tcp_connection_t *tc, u32 seq);
+
+/** Rewind retransmission selection to the sample covering seq. */
+void tcp_bt_rxt_rewind (tcp_connection_t *tc, u32 seq);
 
 format_function_t format_tcp_bt;
 format_function_t format_tcp_bt_stats;
