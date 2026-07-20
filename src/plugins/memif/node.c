@@ -220,6 +220,29 @@ memif_validate_desc_data (memif_per_thread_data_t *ptd, memif_if_t *mif,
   ptd->n_rx_bytes = n_rx_bytes;
 }
 
+static_always_inline int
+memif_zc_rx_packet_valid (memif_ring_t *ring, u16 cur_slot, u16 n_slots,
+			  u16 mask, u32 buffer_length, u16 *packet_slots)
+{
+  int valid = 1;
+
+  *packet_slots = 0;
+  while (*packet_slots < n_slots)
+    {
+      memif_desc_t *d = &ring->desc[(cur_slot + *packet_slots) & mask];
+
+      (*packet_slots)++;
+      if (d->length == 0 || d->length > buffer_length ||
+	  (d->flags & ~MEMIF_DESC_FLAG_NEXT))
+	valid = 0;
+
+      if ((d->flags & MEMIF_DESC_FLAG_NEXT) == 0)
+	return valid;
+    }
+
+  return 0;
+}
+
 static_always_inline u32
 memif_process_desc (vlib_main_t *vm, vlib_node_runtime_t *node,
 		    memif_per_thread_data_t *ptd, memif_if_t *mif)
@@ -784,12 +807,29 @@ memif_device_input_zc_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
     goto refill;
   n_slots = last_slot - cur_slot;
 
+  if (PREDICT_FALSE (n_slots > ring_size))
+    {
+      vlib_error_count (vm, node->node_index, MEMIF_INPUT_ERROR_BAD_DESC, 1);
+      goto done;
+    }
+
   /* process ring slots */
   vec_validate_aligned (ptd->buffers, MEMIF_RX_VECTOR_SZ,
 			CLIB_CACHE_LINE_BYTES);
   while (n_slots && n_rx_packets < MEMIF_RX_VECTOR_SZ)
     {
       vlib_buffer_t *hb;
+      u16 packet_slots;
+
+      if (PREDICT_FALSE (!memif_zc_rx_packet_valid (
+	    ring, cur_slot, n_slots, mask, buffer_length, &packet_slots)))
+	{
+	  cur_slot += packet_slots;
+	  n_slots -= packet_slots;
+	  vlib_error_count (vm, node->node_index, MEMIF_INPUT_ERROR_BAD_DESC,
+			    1);
+	  continue;
+	}
 
       s0 = cur_slot & mask;
       bi0 = mq->buffers[s0];

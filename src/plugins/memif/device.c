@@ -17,7 +17,8 @@
 
 #define foreach_memif_tx_func_error                                           \
   _ (NO_FREE_SLOTS, no_free_slots, ERROR, "no free tx slots")                 \
-  _ (ROLLBACK, rollback, ERROR, "no enough space in tx buffers")
+  _ (ROLLBACK, rollback, ERROR, "no enough space in tx buffers")              \
+  _ (BAD_RING, bad_ring, ERROR, "invalid ring metadata")
 
 typedef enum
 {
@@ -308,7 +309,7 @@ memif_interface_tx_zc_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 			      memif_per_thread_data_t *ptd, u32 n_left)
 {
   memif_ring_t *ring = mq->ring;
-  u16 slot, free_slots, n_free;
+  u16 slot, free_slots, n_free, n_used;
   u16 ring_size = 1 << mq->log2_ring_size;
   u16 mask = ring_size - 1;
   int n_retries = 5;
@@ -322,6 +323,13 @@ retry:
   slot = head = ring->head;
 
   n_free = tail - mq->last_tail;
+  n_used = head - mq->last_tail;
+  if (PREDICT_FALSE (n_used > ring_size || n_free > n_used))
+    {
+      vlib_error_count (vm, node->node_index, MEMIF_TX_ERROR_BAD_RING, 1);
+      return n_left;
+    }
+
   if (n_free >= 16)
     {
       vlib_buffer_free_from_ring_no_next (vm, mq->buffers,
