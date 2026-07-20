@@ -598,6 +598,7 @@ tcp_loss_account_recovery_ack (tcp_connection_t *tc, tcp_ack_ctx_t *ac, u8 has_s
     {
       tc->rxt_delivered += ac->rxt_sacked;
       tc->prr_delivered += ac->acked_and_sacked;
+      ASSERT (tcp_loss_recovery_state_is_sane (tc));
     }
   else
     {
@@ -656,9 +657,12 @@ tcp_cc_handle_event (tcp_connection_t *tc, tcp_ack_ctx_t *ac)
 {
   u8 has_sack = tcp_opts_sack_permitted (&tc->rcv_opts);
 
-  /* If reneging, wait for timer based retransmits */
+  /* Lost FINs and SACK reneging require timer based retransmits. */
   if (PREDICT_FALSE (tcp_is_lost_fin (tc) || tcp_scoreboard_is_reneging (&tc->sack_sb)))
-    return;
+    {
+      tcp_loss_recovery_state_sync (tc);
+      return;
+    }
 
   /*
    * If not in recovery, figure out if we should enter
@@ -734,7 +738,7 @@ tcp_cc_handle_event (tcp_connection_t *tc, tcp_ack_ctx_t *ac)
 static void
 tcp_handle_old_ack (tcp_connection_t *tc, tcp_ack_ctx_t *ac, u32 ack)
 {
-  if (!tcp_in_cong_recovery (tc))
+  if (!tcp_in_cong_recovery (tc) && !tcp_loss_old_ack_needs_feedback (tc))
     {
       /* An old ACK can still expose network duplication. RFC 3708 requires
        * disabling D-SACK undo if the reported range was never retransmitted. */
@@ -750,11 +754,15 @@ tcp_handle_old_ack (tcp_connection_t *tc, tcp_ack_ctx_t *ac, u32 ack)
   if (ac->ack_flags & TCP_ACK_F_DETECT_LOSS)
     tcp_loss_on_ack (tc, ac);
 
-  if ((ac->ack_flags & TCP_ACK_F_DSACK) && !ac->last_sacked_bytes &&
-      !(ac->ack_flags & TCP_ACK_F_DSACK_SPURIOUS))
+  ac->ack_flags |= ac->last_sacked_bytes != 0;
+
+  if (!tcp_in_cong_recovery (tc) && !ac->last_lost && !(ac->ack_flags & TCP_ACK_F_DSACK_SPURIOUS))
     return;
 
-  ac->ack_flags |= ac->last_sacked_bytes != 0;
+  if ((ac->ack_flags & TCP_ACK_F_DSACK) && !ac->last_sacked_bytes &&
+      !(ac->ack_flags & TCP_ACK_F_DSACK_SPURIOUS) && !ac->last_lost)
+    return;
+
   tcp_cc_handle_event (tc, ac);
 }
 
@@ -780,7 +788,7 @@ tcp_ack_is_cc_event (tcp_connection_t *tc, vlib_buffer_t *b, u32 prev_snd_wnd, t
    * boolean result can be ORed into ack_flags directly. */
   ac->ack_flags |= ac->last_sacked_bytes || tcp_ack_is_dupack (tc, b, prev_snd_wnd, ac);
 
-  return ((ac->ack_flags & (TCP_ACK_F_DUPACK | TCP_ACK_F_DSACK_SPURIOUS)) ||
+  return ((ac->ack_flags & (TCP_ACK_F_DUPACK | TCP_ACK_F_DSACK_SPURIOUS)) || ac->last_lost ||
 	  tcp_in_cong_recovery (tc));
 }
 
