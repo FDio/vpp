@@ -713,6 +713,18 @@ app_worker_rx_notify (app_worker_t *app_wrk, session_t *s)
 }
 
 int
+app_worker_rx_buffer_notify (session_t *s, vlib_buffer_t *b, u32 n_bytes)
+{
+  application_t *app = app_worker_get_app (s->app_wrk_index);
+
+  if (PREDICT_FALSE (!app || !application_is_builtin (app) ||
+		     !app->cb_fns.builtin_app_rx_buffer_callback))
+    return 0;
+
+  return app->cb_fns.builtin_app_rx_buffer_callback (s, b, n_bytes);
+}
+
+int
 app_worker_migrate_notify (app_worker_t * app_wrk, session_t * s,
 			   session_handle_t new_sh)
 {
