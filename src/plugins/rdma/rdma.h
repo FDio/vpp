@@ -95,7 +95,7 @@ typedef struct
       u32 incomplete_tail;	/* Legacy RQ: tail index in bufs,
 				   corresponds to buffer chains with recycled valid head buffer,
 				   but whose other buffers are not yet recycled (due to pool exhaustion). */
-      u16 n_total_additional_segs;
+      u32 n_total_additional_segs;
       u8 n_ds_per_wqe;		/* Legacy RQ: number of nonnull data segs per WQE */
     };
   };

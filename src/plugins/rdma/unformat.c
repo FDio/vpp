@@ -64,5 +64,10 @@ unformat_rdma_create_if_args (unformat_input_t * input, va_list * vargs)
     }
 
   unformat_free (line_input);
+  if (!ret)
+    {
+      vec_free (args->ifname);
+      vec_free (args->name);
+    }
   return ret;
 }
