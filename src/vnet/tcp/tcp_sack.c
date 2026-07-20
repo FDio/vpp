@@ -5,6 +5,8 @@
 
 #include <vnet/tcp/tcp_sack.h>
 #include <vnet/tcp/tcp_bt.h>
+#include <vnet/tcp/tcp_loss.h>
+#include <vnet/tcp/tcp_rack.h>
 
 static void
 scoreboard_remove_hole (sack_scoreboard_t * sb, sack_scoreboard_hole_t * hole)
@@ -571,11 +573,38 @@ tcp_dsack_recovery_init (tcp_connection_t *tc)
 }
 
 void
-tcp_sack_recovery_exit (tcp_connection_t *tc, tcp_ack_flag_t spurious_flags)
+tcp_loss_recovery_backend_init (tcp_connection_t *tc)
 {
+  if (tcp_opts_sack_permitted (&tc->rcv_opts))
+    {
+      if (tcp_rack_enabled (tc))
+	tcp_rack_recovery_init (tc);
+      else
+	{
+	  tc->snd_rxt_bytes = 0;
+	  tcp_sack_init_rxt (tc, tc->snd_una);
+	}
+    }
+  else
+    {
+      tc->snd_rxt_bytes = 0;
+      tcp_fastrecovery_first_on (tc);
+    }
+}
+
+void
+tcp_loss_recovery_backend_exit (tcp_connection_t *tc, tcp_ack_ctx_t *ac)
+{
+  tcp_ack_flag_t spurious_flags = ac->ack_flags & TCP_ACK_F_SPURIOUS;
   sack_scoreboard_hole_t *hole;
 
-  if (spurious_flags)
+  if (!tcp_opts_sack_permitted (&tc->rcv_opts))
+    return;
+
+  if (tcp_rack_enabled (tc))
+    tcp_rack_recovery_exit (tc, ac);
+
+  if (spurious_flags && !(tc->cfg_flags & TCP_CFG_F_RACK))
     tcp_sack_recompute_loss (tc);
 
   if (!(tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER))
@@ -598,6 +627,67 @@ tcp_sack_recovery_exit (tcp_connection_t *tc, tcp_ack_flag_t spurious_flags)
     tcp_dsack_recovery_clear (tc);
 
   ASSERT (tcp_sack_is_sane_post_recovery (tc));
+}
+
+void
+tcp_loss_recovery_backend_sync (tcp_connection_t *tc)
+{
+  if (tcp_rack_enabled (tc) && tcp_in_cong_recovery (tc))
+    tcp_rack_recovery_sync (tc);
+}
+
+u8
+tcp_loss_recovery_backend_is_sane (tcp_connection_t *tc)
+{
+  return !tcp_rack_enabled (tc) || tcp_rack_recovery_account_is_sane (tc);
+}
+
+u8
+tcp_loss_prepare_rto (tcp_connection_t *tc, u8 *sack_reneged)
+{
+  u8 head_overlaps_rxt = 0;
+  u8 head_was_rxt;
+  u32 n_bytes;
+
+  *sack_reneged = 0;
+  if (!tcp_opts_sack_permitted (&tc->rcv_opts))
+    return 0;
+
+  /* Snapshot before reneging handling can reset high_rxt. */
+  head_overlaps_rxt = tcp_in_cong_recovery (tc) && seq_gt (tc->sack_sb.high_rxt, tc->snd_una);
+  if (tcp_rack_enabled (tc))
+    {
+      tcp_rack_prepare_rto (tc, sack_reneged);
+      return head_overlaps_rxt;
+    }
+
+  n_bytes = clib_min (tc->snd_mss, tc->snd_nxt - tc->snd_una);
+  head_was_rxt = tcp_in_cong_recovery (tc) && seq_geq (tc->sack_sb.high_rxt, tc->snd_una + n_bytes);
+
+  *sack_reneged = tcp_sack_handle_reneging (tc);
+  tcp_sack_rxt_mark_lost (tc);
+  if (head_was_rxt)
+    {
+      /* rxt_delivered can already include part of the range below high_rxt.
+       * Retire only bytes still accounted in flight. */
+      ASSERT (tc->rxt_delivered <= tc->snd_rxt_bytes);
+      n_bytes = clib_min (n_bytes, tc->snd_rxt_bytes - tc->rxt_delivered);
+      tc->rxt_delivered += n_bytes;
+    }
+  return head_overlaps_rxt;
+}
+
+u8
+tcp_loss_retransmit_timer_expired (tcp_connection_t *tc)
+{
+  return tcp_rack_enabled (tc) && tcp_rack_retransmit_timer_expired (tc);
+}
+
+void
+tcp_loss_rto_retransmit_failed (tcp_connection_t *tc)
+{
+  if (tcp_opts_sack_permitted (&tc->rcv_opts) && !tcp_rack_enabled (tc))
+    tcp_sack_init_rxt (tc, tc->snd_una);
 }
 
 /* Prepare to add retained ranges. On overflow, discard range history and make
@@ -1140,7 +1230,16 @@ tcp_loss_on_ack (tcp_connection_t *tc, tcp_ack_ctx_t *ac)
   ASSERT (ac->ack_flags & TCP_ACK_F_DETECT_LOSS);
   ASSERT (tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER);
 
-  tcp_bt_loss_on_ack (tc, ac);
+  if (tcp_rack_enabled (tc))
+    tcp_rack_loss_on_ack (tc, ac);
+  else
+    tcp_bt_loss_on_ack (tc, ac);
+}
+
+u8
+tcp_loss_old_ack_needs_feedback (tcp_connection_t *tc)
+{
+  return tcp_rack_enabled (tc) && tcp_opts_sack (&tc->rcv_opts);
 }
 
 static void
@@ -1212,7 +1311,8 @@ tcp_ack_handle_full_feedback (tcp_connection_t *tc, u32 packet_ack, u32 ack, tcp
 	  ac->ack_flags |= tcp_dsack_finalize (tc);
 	}
     }
-  if (!(ac->bytes_acked | (ac->ack_flags & TCP_ACK_F_SACK)))
+
+  if (!(ac->bytes_acked | (ac->ack_flags & (TCP_ACK_F_SACK | TCP_ACK_F_DSACK))))
     return;
 
   tcp_sack_trace (tc, ack);

@@ -10,6 +10,7 @@
 #include <vnet/ip/ip.h>
 #include <vnet/session/session.h>
 #include <vnet/tcp/tcp_types.h>
+#include <vnet/tcp/tcp_loss.h>
 #include <vnet/tcp/tcp_timer.h>
 #include <vnet/tcp/tcp_debug.h>
 #include <vnet/tcp/tcp_sack.h>
@@ -152,6 +153,9 @@ typedef struct tcp_configuration_
 
   /** Enable tx pacing for new connections */
   u8 enable_tx_pacing;
+
+  /** Enable RACK loss detection (RFC 8985) */
+  u8 enable_rack;
 
   /** Allow use of TSO whenever available */
   u8 allow_tso;
