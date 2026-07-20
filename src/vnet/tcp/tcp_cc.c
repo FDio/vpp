@@ -5,6 +5,7 @@
 
 #include <vnet/tcp/tcp.h>
 #include <vnet/tcp/tcp_inlines.h>
+#include <vnet/tcp/tcp_rack.h>
 
 static void
 tcp_cc_init_congestion (tcp_connection_t *tc)
@@ -21,11 +22,25 @@ tcp_cc_init_congestion (tcp_connection_t *tc)
   tc->prev_cwnd = tc->cwnd;
   tc->snd_rxt_ts = tcp_tstamp (tc);
 
-  tc->snd_rxt_bytes = 0;
   if (tcp_opts_sack_permitted (&tc->rcv_opts))
-    scoreboard_init_rxt (&tc->sack_sb, tc->snd_una);
+    {
+      if (tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE)
+	{
+	  tc->snd_rxt_bytes = tcp_rack_get_state (tc)->rxt_in_flight;
+	  scoreboard_init_rxt (&tc->sack_sb,
+			       tc->snd_rxt_bytes ? tc->sack_sb.high_rxt : tc->snd_una);
+	}
+      else
+	{
+	  tc->snd_rxt_bytes = 0;
+	  scoreboard_init_rxt (&tc->sack_sb, tc->snd_una);
+	}
+    }
   else
-    tcp_fastrecovery_first_on (tc);
+    {
+      tc->snd_rxt_bytes = 0;
+      tcp_fastrecovery_first_on (tc);
+    }
 
   tcp_cc_congestion (tc);
 
