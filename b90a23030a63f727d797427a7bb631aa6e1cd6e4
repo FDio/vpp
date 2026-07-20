@@ -72,6 +72,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "a31f613e_b8a484cf",
+        "filename": "src/plugins/ikev2/ikev2.c",
+        "patchSetId": 12
+      },
+      "lineNbr": 5845,
+      "author": {
+        "id": 3349
+      },
+      "writtenOn": "2026-07-20T04:12:52Z",
+      "side": 1,
+      "message": "Changed as you suggest to resolve symbols in ikev2_init and trigger error in case failed set pointers. Stop checking pointers in other parts of code.",
+      "parentUuid": "cf6be7fb_953f6abb",
+      "revId": "b90a23030a63f727d797427a7bb631aa6e1cd6e4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "4ac7bda1_1b21225c",
