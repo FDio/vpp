@@ -1181,7 +1181,8 @@ tcp_ack_handle_full_feedback (tcp_connection_t *tc, u32 packet_ack, u32 ack, tcp
 	  tcp_dsack_update (tc, &dsack, ac);
 	}
     }
-  if (!(ac->bytes_acked | (ac->ack_flags & TCP_ACK_F_SACK)))
+
+  if (!(ac->bytes_acked | (ac->ack_flags & (TCP_ACK_F_SACK | TCP_ACK_F_DSACK))))
     return;
 
   tcp_sack_trace (tc, ack);

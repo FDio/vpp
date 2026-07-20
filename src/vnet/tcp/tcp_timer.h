@@ -8,6 +8,11 @@
 
 #include <vnet/tcp/tcp_types.h>
 
+/* RACK timer hooks. All callers are guarded by TCP_CFG_F_RACK. */
+void tcp_rack_timer_rto_set (tcp_timer_wheel_t *tw, tcp_connection_t *tc, u32 interval);
+void tcp_rack_timer_reset (tcp_connection_t *tc);
+u8 tcp_rack_timer_rto_update (tcp_timer_wheel_t *tw, tcp_connection_t *tc, u32 interval);
+
 always_inline tcp_loss_timer_type_t
 tcp_loss_timer_type (tcp_connection_t *tc)
 {
@@ -78,20 +83,27 @@ tcp_timer_is_active (tcp_connection_t *tc, tcp_timers_e timer)
 always_inline void
 tcp_retransmit_timer_set (tcp_timer_wheel_t * tw, tcp_connection_t * tc)
 {
+  u32 interval = clib_max ((u32) tc->rto * TCP_TO_TIMER_TICK, 1);
+
   ASSERT (tc->snd_una != tc->snd_nxt);
-  tcp_timer_set (tw, tc, TCP_TIMER_RETRANSMIT,
-		 clib_max ((u32) tc->rto * TCP_TO_TIMER_TICK, 1));
+  if (PREDICT_FALSE (tc->cfg_flags & TCP_CFG_F_RACK))
+    tcp_rack_timer_rto_set (tw, tc, interval);
+  tcp_timer_set (tw, tc, TCP_TIMER_RETRANSMIT, interval);
 }
 
 always_inline void
 tcp_retransmit_timer_reset (tcp_timer_wheel_t * tw, tcp_connection_t * tc)
 {
+  if (PREDICT_FALSE (tc->cfg_flags & TCP_CFG_F_RACK))
+    tcp_rack_timer_reset (tc);
   tcp_timer_reset (tw, tc, TCP_TIMER_RETRANSMIT);
 }
 
 always_inline void
 tcp_retransmit_timer_reschedule (tcp_timer_wheel_t *tw, tcp_connection_t *tc, u32 interval)
 {
+  if (PREDICT_FALSE (tc->cfg_flags & TCP_CFG_F_RACK))
+    tcp_rack_timer_rto_set (tw, tc, interval);
   tcp_timer_update (tw, tc, TCP_TIMER_RETRANSMIT, interval);
 }
 
@@ -119,7 +131,14 @@ tcp_retransmit_timer_update (tcp_timer_wheel_t * tw, tcp_connection_t * tc)
 	tcp_persist_timer_set (tw, tc);
     }
   else
-    tcp_retransmit_timer_reschedule (tw, tc, clib_max ((u32) tc->rto * TCP_TO_TIMER_TICK, 1));
+    {
+      u32 interval = clib_max ((u32) tc->rto * TCP_TO_TIMER_TICK, 1);
+
+      if (PREDICT_FALSE (tc->cfg_flags & TCP_CFG_F_RACK) &&
+	  tcp_rack_timer_rto_update (tw, tc, interval))
+	return;
+      tcp_timer_update (tw, tc, TCP_TIMER_RETRANSMIT, interval);
+    }
 }
 
 always_inline void
