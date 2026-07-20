@@ -3082,7 +3082,8 @@ nat44_ed_get_out2in_worker_index (vlib_buffer_t *b, ip4_header_t *ip,
   snat_main_t *sm = &snat_main;
   clib_bihash_kv_16_8_t kv16, value16;
 
-  u8 proto, next_worker_index = 0;
+  u8 proto;
+  u32 next_worker_index = 0;
   u16 port;
   snat_static_mapping_t *m;
   u32 hash;
