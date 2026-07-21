@@ -82,7 +82,7 @@ sparse_vec_index_internal (void *v,
 
   /* count_trailing_zeros(0) == 0, take care of that case */
   if (PREDICT_FALSE (maybe_range == 0 && insert == 0 && w == 0))
-    return 0;
+    return SPARSE_VEC_INVALID_INDEX;
 
   if (PREDICT_TRUE (maybe_range == 0 && insert == 0 &&
 		    count_trailing_zeros (w) == b))
@@ -117,9 +117,7 @@ sparse_vec_index_internal (void *v,
       return 1 + d;
     }
 
-  d = is_member ? d : 0;
-
-  return is_member + d;
+  return is_member ? d + 1 : SPARSE_VEC_INVALID_INDEX;
 }
 
 always_inline uword
@@ -181,11 +179,8 @@ sparse_vec_index2 (void *v,
   is_member0 = (w0 & (1ULL << b0)) != 0;
   is_member1 = (w1 & (1ULL << b1)) != 0;
 
-  d0 = is_member0 ? d0 : 0;
-  d1 = is_member1 ? d1 : 0;
-
-  *i0_return = is_member0 + d0;
-  *i1_return = is_member1 + d1;
+  *i0_return = is_member0 ? d0 + 1 : SPARSE_VEC_INVALID_INDEX;
+  *i1_return = is_member1 ? d1 + 1 : SPARSE_VEC_INVALID_INDEX;
 }
 
 #define sparse_vec_free(V)                                                    \
