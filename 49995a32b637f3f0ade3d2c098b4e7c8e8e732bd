@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "9883fd5b_f908e139",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2026-07-21T11:41:18Z",
+      "side": 1,
+      "message": "Looking at test results: https://github.com/FDio/csit/actions/runs/29736666588/job/88333532531\nI think this does prevent some failures, but decreases the average performance. I suspect that combining with the new logic in https://gerrit.fd.io/r/c/vpp/+/46297 would remove the need for a trade-off.",
+      "revId": "49995a32b637f3f0ade3d2c098b4e7c8e8e732bd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
