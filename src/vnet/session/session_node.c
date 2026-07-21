@@ -2244,37 +2244,30 @@ session_queue_run_on_main (vlib_main_t * vm)
   return session_queue_node_fn (vm, node, 0);
 }
 
+/* Process wait times in seconds. */
+#define SESSION_Q_PROCESS_TIMEOUT	   1.0
+#define SESSION_Q_PROCESS_DISABLED_TIMEOUT 100000.0
+
 static uword
 session_queue_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
 		       vlib_frame_t * f)
 {
   uword *event_data = 0;
-  f64 timeout = 1.0;
-  uword event_type;
+  f64 timeout = SESSION_Q_PROCESS_TIMEOUT;
 
   while (1)
     {
       vlib_process_wait_for_event_or_clock (vm, timeout);
-      event_type = vlib_process_get_events (vm, (uword **) & event_data);
+      vlib_process_get_events (vm, (uword **) &event_data);
 
-      switch (event_type)
+      if (session_main_is_enabled ())
 	{
-	case SESSION_Q_PROCESS_RUN_ON_MAIN:
-	  /* Run session queue node on main thread */
+	  timeout = SESSION_Q_PROCESS_TIMEOUT;
 	  session_queue_run_on_main (vm);
-	  break;
-	case SESSION_Q_PROCESS_STOP:
-	  /* Free event_data, the node will be restarted if needed */
-	  vec_free (event_data);
-	  vlib_node_set_state (vm, session_queue_process_node.index,
-			       VLIB_NODE_STATE_DISABLED);
-	  timeout = 100000.0;
-	  break;
-	case ~0:
-	  /* Timed out. Run on main to ensure all events are handled */
-	  session_queue_run_on_main (vm);
-	  break;
 	}
+      else
+	timeout = SESSION_Q_PROCESS_DISABLED_TIMEOUT;
+
       vec_reset_length (event_data);
     }
   return 0;

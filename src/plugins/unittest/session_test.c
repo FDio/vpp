@@ -2282,6 +2282,60 @@ session_test_enable_disable (vlib_main_t *vm, unformat_input_t *input)
   return 0;
 }
 
+static unsigned
+session_test_process_restore_count (vlib_main_t *vm, u32 runtime_index)
+{
+  vlib_process_restore_t *restore;
+  unsigned count = 0;
+
+  vec_foreach (restore, vm->node_main.process_restore_current)
+    if (restore->reason == VLIB_PROCESS_RESTORE_REASON_EVENT &&
+	restore->runtime_index == runtime_index)
+      count++;
+
+  return count;
+}
+
+static int
+session_test_queue_process (vlib_main_t *vm)
+{
+  vlib_process_t *process;
+  vlib_node_t *node;
+  unsigned restore_count;
+
+  SESSION_TEST (vlib_num_workers () > 0, "queue process requires a worker");
+
+  node = vlib_get_node (vm, session_queue_process_node.index);
+  process = vec_elt (vm->node_main.processes, node->runtime_index);
+
+  session_test_disable_rt_backend_engine (vm);
+  vlib_process_suspend (vm, 10e-3);
+
+  SESSION_TEST (node->state == VLIB_NODE_STATE_POLLING,
+		"queue process remains enabled while sessions are disabled");
+  SESSION_TEST (process->resume_clock_interval > VLIB_TW_TICKS_PER_SECOND,
+		"queue process uses disabled timeout");
+
+  session_test_enable_rule_table_engine (vm);
+  vlib_process_suspend (vm, 10e-3);
+
+  SESSION_TEST (process->resume_clock_interval == VLIB_TW_TICKS_PER_SECOND,
+		"enable HUP restores queue process timeout");
+
+  restore_count = session_test_process_restore_count (vm, node->runtime_index);
+  session_test_disable_rt_backend_engine (vm);
+  session_test_enable_rule_table_engine (vm);
+
+  SESSION_TEST (session_test_process_restore_count (vm, node->runtime_index) == restore_count + 1,
+		"queued HUPs schedule one process resume");
+  vlib_process_suspend (vm, 10e-3);
+
+  SESSION_TEST (process->resume_clock_interval == VLIB_TW_TICKS_PER_SECOND,
+		"queue process follows current state after queued HUPs");
+
+  return 0;
+}
+
 static int
 session_test_sdl (vlib_main_t *vm, unformat_input_t *input)
 {
@@ -3011,6 +3065,8 @@ session_test (vlib_main_t * vm,
 	res = session_test_mq_basic (vm, input);
       else if (unformat (input, "enable-disable"))
 	res = session_test_enable_disable (vm, input);
+      else if (unformat (input, "queue-process"))
+	res = session_test_queue_process (vm);
       else if (unformat (input, "sdl"))
 	res = session_test_sdl (vm, input);
       else if (unformat (input, "ext-cfg"))

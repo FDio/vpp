@@ -402,6 +402,28 @@ class TestSessionUnitTests(VppAsfTestCase):
         self.vapi.session_enable_disable(is_enable=0)
 
 
+class TestSessionQueueProcess(VppAsfTestCase):
+    """Session queue process tests"""
+
+    vpp_worker_count = 1
+
+    def setUp(self):
+        super(TestSessionQueueProcess, self).setUp()
+        self.vapi.session_enable_disable(is_enable=1)
+
+    def test_queue_process_hup(self):
+        """Queue process follows session enable state on HUP"""
+        error = self.vapi.cli("test session queue-process")
+
+        if error:
+            self.logger.critical(error)
+        self.assertNotIn("failed", error)
+
+    def tearDown(self):
+        self.vapi.session_enable_disable(is_enable=0)
+        super(TestSessionQueueProcess, self).tearDown()
+
+
 @tag_fixme_vpp_workers
 class TestSessionRuleTableTests(VppAsfTestCase):
     """Session Rule Table Tests Case"""

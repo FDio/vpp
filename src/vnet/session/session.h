@@ -315,8 +315,7 @@ extern vlib_node_registration_t session_queue_pre_input_node;
 
 typedef enum session_q_process_evt_
 {
-  SESSION_Q_PROCESS_RUN_ON_MAIN = 1,
-  SESSION_Q_PROCESS_STOP
+  SESSION_Q_PROCESS_HUP = 1,
 } session_q_process_evt_t;
 
 typedef struct _session_enable_disable_args_t
