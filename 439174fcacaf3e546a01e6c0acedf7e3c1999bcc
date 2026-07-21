@@ -1,0 +1,112 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2287a361_94cb88c8",
+        "filename": "test/hs-test/echo_test.go",
+        "patchSetId": 2
+      },
+      "lineNbr": 410,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-07-21T09:15:55Z",
+      "side": 1,
+      "message": "can we remove this? we use taps now",
+      "range": {
+        "startLine": 408,
+        "startChar": 0,
+        "endLine": 410,
+        "endChar": 3
+      },
+      "revId": "439174fcacaf3e546a01e6c0acedf7e3c1999bcc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c93a57c7_8f4c521c",
+        "filename": "test/hs-test/infra/suite_tap.go",
+        "patchSetId": 2
+      },
+      "lineNbr": 4,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-07-21T09:15:55Z",
+      "side": 1,
+      "message": "can we avoid this? is it because CreateTlsCrlTestArtifacts in suite_veth.go? can we move CreateTlsCrlTestArtifacts here if not needed in veth suite? otherwise make it generic in utils.go",
+      "revId": "439174fcacaf3e546a01e6c0acedf7e3c1999bcc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "50ed39f7_134a16ed",
+        "filename": "test/hs-test/infra/suite_veth.go",
+        "patchSetId": 2
+      },
+      "lineNbr": 24,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-07-21T09:15:55Z",
+      "side": 1,
+      "message": "can we keep this as it is and don\u0027t do changes here?",
+      "revId": "439174fcacaf3e546a01e6c0acedf7e3c1999bcc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "af0c4829_5786b4c3",
+        "filename": "test/hs-test/infra/suite_veth.go",
+        "patchSetId": 2
+      },
+      "lineNbr": 238,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-07-21T09:15:55Z",
+      "side": 1,
+      "message": "you should be able to assign tap interface to bridge directly via api when you create it, of course bridge need to exists at that time",
+      "revId": "439174fcacaf3e546a01e6c0acedf7e3c1999bcc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "03c03a85_bb61aed1",
+        "filename": "test/hs-test/topo-network/2peerTap.yaml",
+        "patchSetId": 2
+      },
+      "lineNbr": 20,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-07-21T09:15:55Z",
+      "side": 1,
+      "message": "can we have bridge property in interface so we can assign it to the bridge in CreateTap? or do we really need to create bridge at all?",
+      "revId": "439174fcacaf3e546a01e6c0acedf7e3c1999bcc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "bf6980e6_a791a373",
+        "filename": "test/hs-test/vcl_test.go",
+        "patchSetId": 2
+      },
+      "lineNbr": 115,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-07-21T09:15:55Z",
+      "side": 1,
+      "message": "why we need this?",
+      "revId": "439174fcacaf3e546a01e6c0acedf7e3c1999bcc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
