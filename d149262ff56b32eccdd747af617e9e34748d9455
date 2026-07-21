@@ -1,0 +1,107 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e02fe37a_0b149a35",
+        "filename": "src/plugins/vperf/builtin/vperf_protos.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 299,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-07-21T08:44:12Z",
+      "side": 1,
+      "message": "\u0027\u003c\u0027 only, if you receive dgram with 0 payload you will never make progress",
+      "range": {
+        "startLine": 299,
+        "startChar": 32,
+        "endLine": 299,
+        "endChar": 34
+      },
+      "revId": "d149262ff56b32eccdd747af617e9e34748d9455",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9457cb66_43c01017",
+        "filename": "src/plugins/vperf/builtin/vperf_protos.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 302,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-07-21T08:44:12Z",
+      "side": 1,
+      "message": "you don\u0027t need to check return value if you did check on line #299 (session_dgram_pre_hdr_t is less than session_dgram_hdr_t)",
+      "revId": "d149262ff56b32eccdd747af617e9e34748d9455",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7e445c1a_9a37ad08",
+        "filename": "src/plugins/vperf/builtin/vperf_protos.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 305,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-07-21T08:44:12Z",
+      "side": 1,
+      "message": "this should not happen, if yes we have bug. so remove it or just ASSERT()",
+      "range": {
+        "startLine": 305,
+        "startChar": 21,
+        "endLine": 305,
+        "endChar": 52
+      },
+      "revId": "d149262ff56b32eccdd747af617e9e34748d9455",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "db5f429c_07015231",
+        "filename": "src/plugins/vperf/builtin/vperf_protos.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 310,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-07-21T08:44:12Z",
+      "side": 1,
+      "message": "this is \"valid\" scenario, but should not happen, not incomplete dgram",
+      "revId": "d149262ff56b32eccdd747af617e9e34748d9455",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4415f1fc_6c16a1f8",
+        "filename": "src/plugins/vperf/builtin/vperf_protos.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 318,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-07-21T08:44:12Z",
+      "side": 1,
+      "message": "we can check it in one if\n if (PREDICT_FALSE (max_enqueue \u003c (sizeof (session_dgram_hdr_t) + dgram_bytes)))",
+      "range": {
+        "startLine": 314,
+        "startChar": 0,
+        "endLine": 318,
+        "endChar": 18
+      },
+      "revId": "d149262ff56b32eccdd747af617e9e34748d9455",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
