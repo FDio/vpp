@@ -9,6 +9,8 @@
 #include <vppinfra/types.h>
 #include <http/http_private.h>
 
+#define HTTP2_WIN_SIZE_MAX 0x7FFFFFFF
+
 /* RFC9113 section 7 */
 #define foreach_http2_error                                                                        \
   _ (NO_ERROR, "NO_ERROR", 0x00)                                                                   \

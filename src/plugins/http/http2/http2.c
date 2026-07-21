@@ -4,12 +4,12 @@
 
 #include <vppinfra/llist.h>
 #include <vppinfra/ring.h>
+#include <http/http2/http2_inlines.h>
 #include <http/http2/hpack.h>
 #include <http/http2/frame.h>
 #include <http/http_timer.h>
 #include <http/http_status_codes.h>
 
-#define HTTP2_WIN_SIZE_MAX     0x7FFFFFFF
 #define HTTP2_INITIAL_WIN_SIZE 65535
 /* connection-level flow control window kind of mirrors TCP flow control */
 /* TODO: configurable? */
@@ -266,14 +266,7 @@ http2_conn_get_next_stream_id (http_ctx_t *hc)
 always_inline void
 http2_conn_schedule (http_ctx_t *hc, clib_thread_index_t thread_index)
 {
-  http_worker_t *wrk = http_worker_get (thread_index);
-  http_ctx_t *he;
-
-  if (!clib_llist_elt_is_linked (hc, sched_list) && !(hc->flags & HTTP_CONN_F_TS_DESCHED))
-    {
-      he = clib_llist_elt (wrk->ctx_pool, wrk->sched_head);
-      clib_llist_add_tail (wrk->ctx_pool, sched_list, hc, he);
-    }
+  http2_conn_schedule_w_worker (http_worker_get (thread_index), hc);
 }
 
 always_inline void
@@ -318,42 +311,7 @@ http2_schedule_ping_response (http_ctx_t *hc, u8 *payload)
 always_inline void
 http2_req_schedule_data_tx (http_ctx_t *hc, http_ctx_t *req)
 {
-  http_worker_t *wrk = http_worker_get (hc->c_thread_index);
-  http_ctx_t *he;
-
-  ASSERT (!clib_llist_elt_is_linked (req, stream_sched_list));
-  he = clib_llist_elt (wrk->ctx_pool, hc->old_tx_streams);
-  clib_llist_add_tail (wrk->ctx_pool, stream_sched_list, req, he);
-}
-
-always_inline int
-http2_req_update_peer_window (http_ctx_t *hc, http_ctx_t *req, i64 delta)
-{
-  http_worker_t *wrk = http_worker_get (hc->c_thread_index);
-  i64 new_value;
-
-  new_value = (i64) req->peer_stream_window + delta;
-  if (new_value > HTTP2_WIN_SIZE_MAX)
-    return -1;
-  req->peer_stream_window = (i32) new_value;
-  HTTP_DBG (1, "new window size %ld", req->peer_stream_window);
-  /* settings change can make stream window negative */
-  if (req->peer_stream_window <= 0)
-    {
-      HTTP_DBG (1, "descheduling need stream window update");
-      req->req_flags |= HTTP_REQ_F_NEED_WINDOW_UPDATE;
-      if (clib_llist_elt_is_linked (req, stream_sched_list))
-	clib_llist_remove (wrk->ctx_pool, stream_sched_list, req);
-      return 0;
-    }
-  if (req->req_flags & HTTP_REQ_F_NEED_WINDOW_UPDATE)
-    {
-      req->req_flags &= ~HTTP_REQ_F_NEED_WINDOW_UPDATE;
-      http2_req_schedule_data_tx (hc, req);
-      if (hc->peer_window > 0)
-	http2_conn_schedule (hc, hc->c_thread_index);
-    }
-  return 0;
+  http2_req_schedule_data_tx_w_worker (http_worker_get (hc->c_thread_index), hc, req);
 }
 
 /* send GOAWAY frame and close TCP connection */
@@ -2792,7 +2750,7 @@ http2_handle_window_update_frame (http_ctx_t *hc, http2_frame_header_t *fh)
 	}
       if (req->stream_state != HTTP2_STREAM_STATE_CLOSED)
 	{
-	  if (http2_req_update_peer_window (hc, req, win_increment))
+	  if (http2_req_update_peer_window (wrk, hc, req, win_increment))
 	    {
 	      http2_stream_error (hc, req, HTTP2_ERROR_FLOW_CONTROL_ERROR);
 	      return HTTP2_ERROR_NO_ERROR;
@@ -2806,6 +2764,7 @@ http2_handle_window_update_frame (http_ctx_t *hc, http2_frame_header_t *fh)
 static http2_error_t
 http2_handle_settings_frame (http_ctx_t *hc, http2_frame_header_t *fh)
 {
+  http_worker_t *wrk = http_worker_get (hc->c_thread_index);
   u8 *rx_buf;
   http2_error_t rv;
   http_conn_settings_t new_settings;
@@ -2850,7 +2809,7 @@ http2_handle_settings_frame (http_ctx_t *hc, http2_frame_header_t *fh)
 			  req = http_ctx_get_w_thread (req_index, hc->c_thread_index);
 			  if (req->stream_state != HTTP2_STREAM_STATE_CLOSED)
 			    {
-			      if (http2_req_update_peer_window (hc, req, win_size_delta))
+			      if (http2_req_update_peer_window (wrk, hc, req, win_size_delta))
 				http2_stream_error (hc, req, HTTP2_ERROR_FLOW_CONTROL_ERROR);
 			    }
 			}));
