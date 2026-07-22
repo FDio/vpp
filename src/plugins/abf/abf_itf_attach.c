@@ -162,7 +162,11 @@ abf_itf_attach (fib_protocol_t fproto,
 
   api = abf_policy_find (policy_id);
 
-  ASSERT (INDEX_INVALID != api);
+  if (INDEX_INVALID == api)
+    {
+      return (VNET_API_ERROR_NO_SUCH_ENTRY);
+    }
+
   ap = abf_policy_get (api);
 
   /*
@@ -336,6 +340,7 @@ abf_itf_attach_cmd (vlib_main_t * vm,
   fib_protocol_t fproto;
   u32 is_del, priority;
   vnet_main_t *vnm;
+  int rv;
 
   is_del = 0;
   sw_if_index = policy_id = ~0;
@@ -378,13 +383,13 @@ abf_itf_attach_cmd (vlib_main_t * vm,
       return (clib_error_return (0, "Specify either ip4 or ip6"));
     }
 
-  if (~0 == abf_policy_find (policy_id))
-    return (clib_error_return (0, "invalid policy ID:%d", policy_id));
-
   if (is_del)
-    abf_itf_detach (fproto, policy_id, sw_if_index);
+    rv = abf_itf_detach (fproto, policy_id, sw_if_index);
   else
-    abf_itf_attach (fproto, policy_id, priority, sw_if_index);
+    rv = abf_itf_attach (fproto, policy_id, priority, sw_if_index);
+
+  if (rv)
+    return (clib_error_return (0, "%U", format_vnet_api_errno, rv));
 
   return (NULL);
 }
