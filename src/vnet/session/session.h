@@ -19,6 +19,42 @@ typedef struct session_wrk_stats_
   u32 errors[SESSION_N_ERRORS];
 } session_wrk_stats_t;
 
+/** Read-only application view of one retained RX buffer span. */
+typedef struct
+{
+  const u8 *data;
+  u32 len;
+} session_rx_data_segment_t;
+
+/** Read-only scatter/gather view of retained in-order stream data. */
+typedef struct
+{
+  const session_rx_data_segment_t *segments;
+  u32 n_segments;
+  u32 data_len;
+} session_rx_data_t;
+
+/**
+ * Consume all data in a retained RX view.
+ *
+ * The view and its segments are valid only during this call. The consumer may
+ * inspect the data and update application-owned state, but must not retain or
+ * modify the spans, free their storage, or invoke session APIs. A non-zero
+ * return value consumes the complete view; zero requests FIFO fallback.
+ */
+typedef int (*session_rx_data_consume_fn_t) (const session_rx_data_t *data, void *ctx);
+
+typedef struct
+{
+  u32 next;
+  u32 buffer_index;
+  u32 tail;
+  u32 data_len;
+} session_rx_buffer_desc_t;
+
+#define SESSION_RX_DATA_DISABLED SESSION_INVALID_INDEX
+#define SESSION_RX_DATA_EMPTY	 (SESSION_INVALID_INDEX - 1)
+
 typedef struct session_tx_context_
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
@@ -153,6 +189,9 @@ typedef struct session_worker_
   uword *app_wrks_pending_ntf;
 
   svm_fifo_seg_t *rx_segs;
+  session_rx_data_segment_t *rx_data_segments;
+  session_rx_buffer_desc_t *rx_buffers;
+  u32 rx_buffer_bytes;
 
   session_switch_pool_args_t *session_migrate_requests;
   session_switch_pool_args_t *session_migrate_requests_handling;
@@ -644,6 +683,44 @@ int session_enqueue_dgram_connection_cl (session_t *s,
 					 u8 queue_event);
 void session_fifo_tuning (session_t *s, svm_fifo_t *f, session_ft_action_t act,
 			  u32 len);
+/**
+ * Enable retained RX data for a built-in stream session.
+ *
+ * Data remains bounded per worker and is exposed only from the regular
+ * asynchronous built-in RX callback. If the application does not consume it
+ * there, the session layer copies it to the RX FIFO and schedules another RX
+ * notification.
+ */
+void session_rx_data_enable (session_t *s);
+
+/**
+ * Offer retained RX data to a built-in application's consumer.
+ *
+ * Must be called from the session's regular built-in RX callback on its owner
+ * worker. Returns the number of bytes consumed, or zero when no retained data
+ * exists or the consumer requests FIFO fallback.
+ */
+u32 session_rx_data_consume (session_t *s, session_rx_data_consume_fn_t fn, void *ctx);
+u32 session_rx_buffers_to_fifo (session_t *s);
+u32 session_rx_buffers_enqueue (session_t *s, vlib_buffer_t *b, u32 n_bytes);
+
+always_inline u32
+session_rx_buffers_bytes (session_t *s)
+{
+  session_worker_t *wrk;
+
+  if (PREDICT_TRUE (s->rx_buffer_index >= SESSION_RX_DATA_EMPTY))
+    return 0;
+
+  wrk = session_main_get_worker (s->thread_index);
+  return pool_elt_at_index (wrk->rx_buffers, s->rx_buffer_index)->data_len;
+}
+
+always_inline u8
+session_rx_data_is_enabled (session_t *s)
+{
+  return s->rx_buffer_index != SESSION_RX_DATA_DISABLED;
+}
 
 /**
  * Discards bytes from buffer chain
@@ -786,6 +863,25 @@ session_enqueue_stream_connection (transport_connection_t *tc,
 
   if (is_in_order)
     {
+      if (PREDICT_FALSE (session_rx_data_is_enabled (s) &&
+			 svm_fifo_max_dequeue_cons (s->rx_fifo) == 0 &&
+			 !svm_fifo_has_ooo_data (s->rx_fifo)))
+	{
+	  u32 n_bytes = vlib_buffer_length_in_chain (vlib_get_main (), b);
+
+	  if (session_rx_buffers_enqueue (s, b, n_bytes))
+	    {
+	      enqueued = n_bytes;
+	      goto queue_event;
+	    }
+	}
+
+      if (PREDICT_FALSE (session_rx_buffers_bytes (s)))
+	{
+	  if (!session_rx_buffers_to_fifo (s))
+	    return 0;
+	}
+
       enqueued = svm_fifo_enqueue (s->rx_fifo, b->current_length,
 				   vlib_buffer_get_current (b));
       if (PREDICT_FALSE ((b->flags & VLIB_BUFFER_NEXT_PRESENT) &&
@@ -799,6 +895,9 @@ session_enqueue_stream_connection (transport_connection_t *tc,
     }
   else
     {
+      if (PREDICT_FALSE (session_rx_buffers_bytes (s)))
+	session_rx_buffers_to_fifo (s);
+
       rv = svm_fifo_enqueue_with_offset (s->rx_fifo, offset, b->current_length,
 					 vlib_buffer_get_current (b));
       if (PREDICT_FALSE ((b->flags & VLIB_BUFFER_NEXT_PRESENT) && !rv))
@@ -808,6 +907,7 @@ session_enqueue_stream_connection (transport_connection_t *tc,
       return rv;
     }
 
+queue_event:
   if (queue_event)
     {
       /* Queue RX event on this fifo. Eventually these will need to be
@@ -917,7 +1017,10 @@ always_inline u32
 transport_max_rx_enqueue (transport_connection_t * tc)
 {
   session_t *s = session_get (tc->s_index, tc->thread_index);
-  return svm_fifo_max_enqueue_prod (s->rx_fifo);
+  u32 max_enqueue = svm_fifo_max_enqueue_prod (s->rx_fifo);
+  u32 rx_buffer_bytes = session_rx_buffers_bytes (s);
+
+  return max_enqueue > rx_buffer_bytes ? max_enqueue - rx_buffer_bytes : 0;
 }
 
 always_inline u32
