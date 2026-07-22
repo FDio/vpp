@@ -16,6 +16,24 @@
       "message": "Is there any particular issue you\u0027re hitting? This code is probably mostly unused outside vpp with 0 workers testing scenarios.",
       "revId": "00c6a49f345f7e248689b2ed47cf0bf9f6f7c6aa",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "989f90fc_31500b8a",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3286
+      },
+      "writtenOn": "2026-07-22T08:13:37Z",
+      "side": 1,
+      "message": "No particular production issue. I noticed this while reviewing the session disable/enable lifecycle and testing the transition with a worker.\n\nThe existing code switches the queue process to a long timeout when sessions are disabled, but re-enabling sessions does not wake an already started process. This change only makes that lifecycle internally consistent and adds regression coverage.\n\nI agree that this path is probably limited to tests and uncommon zero-worker scenarios. If supporting disable followed by re-enable is not considered useful, I am fine with dropping the change.",
+      "parentUuid": "6cf704df_4b8ccc28",
+      "revId": "00c6a49f345f7e248689b2ed47cf0bf9f6f7c6aa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
