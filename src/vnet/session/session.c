@@ -253,8 +253,210 @@ session_alloc (clib_thread_index_t thread_index)
   s->thread_index = thread_index;
   s->al_index = APP_INVALID_INDEX;
   s->listener_handle = SESSION_INVALID_HANDLE;
+  s->rx_buffer_index = SESSION_RX_DATA_DISABLED;
 
   return s;
+}
+
+static void
+session_rx_buffer_retain (vlib_main_t *vm, vlib_buffer_t *b)
+{
+  while (1)
+    {
+      ASSERT (b->ref_count < VLIB_BUFFER_MAX_CLONE);
+      clib_atomic_add_fetch (&b->ref_count, 1);
+
+      if (!(b->flags & VLIB_BUFFER_NEXT_PRESENT))
+	break;
+      b = vlib_get_buffer (vm, b->next_buffer);
+    }
+}
+
+void
+session_rx_data_enable (session_t *s)
+{
+  application_t *app = app_worker_get_app (s->app_wrk_index);
+
+  ASSERT (s->thread_index == vlib_get_thread_index ());
+  ASSERT (app && application_is_builtin (app) &&
+	  session_transport_service_type (s) == TRANSPORT_SERVICE_VC);
+  ASSERT (s->rx_buffer_index == SESSION_RX_DATA_DISABLED);
+  s->rx_buffer_index = SESSION_RX_DATA_EMPTY;
+}
+
+#define SESSION_RX_BUFFER_MAX_WORKER_BYTES (1 << 20)
+
+u32
+session_rx_buffers_enqueue (session_t *s, vlib_buffer_t *b, u32 n_bytes)
+{
+  session_worker_t *wrk = session_main_get_worker (s->thread_index);
+  session_rx_buffer_desc_t *head, *tail, *d;
+  u32 max_enqueue, pending, di;
+
+  ASSERT (s->thread_index == vlib_get_thread_index ());
+
+  max_enqueue = svm_fifo_max_enqueue_prod (s->rx_fifo);
+  pending = session_rx_buffers_bytes (s);
+  if (n_bytes > max_enqueue - clib_min (max_enqueue, pending) ||
+      n_bytes > SESSION_RX_BUFFER_MAX_WORKER_BYTES -
+		  clib_min (SESSION_RX_BUFFER_MAX_WORKER_BYTES, wrk->rx_buffer_bytes))
+    return 0;
+
+  pool_get (wrk->rx_buffers, d);
+  di = d - wrk->rx_buffers;
+  d->next = SESSION_INVALID_INDEX;
+  d->buffer_index = vlib_get_buffer_index (wrk->vm, b);
+  d->tail = di;
+  d->data_len = n_bytes;
+  session_rx_buffer_retain (wrk->vm, b);
+  wrk->rx_buffer_bytes += n_bytes;
+
+  if (s->rx_buffer_index == SESSION_RX_DATA_EMPTY)
+    {
+      s->rx_buffer_index = di;
+      return n_bytes;
+    }
+
+  head = pool_elt_at_index (wrk->rx_buffers, s->rx_buffer_index);
+  tail = pool_elt_at_index (wrk->rx_buffers, head->tail);
+  tail->next = di;
+  head->tail = di;
+  head->data_len += n_bytes;
+
+  return n_bytes;
+}
+
+static void
+session_rx_buffers_free (session_t *s)
+{
+  session_worker_t *wrk;
+  session_rx_buffer_desc_t *d;
+  u32 di, next, bi, n_bytes;
+
+  if (s->rx_buffer_index >= SESSION_RX_DATA_EMPTY)
+    return;
+
+  wrk = session_main_get_worker (s->thread_index);
+  di = s->rx_buffer_index;
+  n_bytes = session_rx_buffers_bytes (s);
+  s->rx_buffer_index = SESSION_RX_DATA_EMPTY;
+  ASSERT (wrk->rx_buffer_bytes >= n_bytes);
+  wrk->rx_buffer_bytes -= n_bytes;
+
+  while (di != SESSION_INVALID_INDEX)
+    {
+      d = pool_elt_at_index (wrk->rx_buffers, di);
+      next = d->next;
+      bi = d->buffer_index;
+      pool_put (wrk->rx_buffers, d);
+      vlib_buffer_free_one (wrk->vm, bi);
+      di = next;
+    }
+}
+
+u32
+session_rx_buffers_to_fifo (session_t *s)
+{
+  session_worker_t *wrk;
+  session_rx_buffer_desc_t *d;
+  vlib_buffer_t *b;
+  svm_fifo_seg_t *seg;
+  u32 di, n_bytes;
+  int n_enqueued;
+
+  ASSERT (s->thread_index == vlib_get_thread_index ());
+  n_bytes = session_rx_buffers_bytes (s);
+  if (!n_bytes)
+    return 0;
+
+  wrk = session_main_get_worker (s->thread_index);
+  vec_reset_length (wrk->rx_segs);
+  di = s->rx_buffer_index;
+
+  while (di != SESSION_INVALID_INDEX)
+    {
+      d = pool_elt_at_index (wrk->rx_buffers, di);
+      b = vlib_get_buffer (wrk->vm, d->buffer_index);
+      while (1)
+	{
+	  vec_add2 (wrk->rx_segs, seg, 1);
+	  seg->data = vlib_buffer_get_current (b);
+	  seg->len = b->current_length;
+	  if (!(b->flags & VLIB_BUFFER_NEXT_PRESENT))
+	    break;
+	  b = vlib_get_buffer (wrk->vm, b->next_buffer);
+	}
+      di = d->next;
+    }
+
+  n_enqueued = svm_fifo_enqueue_segments (s->rx_fifo, wrk->rx_segs, vec_len (wrk->rx_segs),
+					  0 /* allow partial */);
+  vec_reset_length (wrk->rx_segs);
+
+  ASSERT (n_enqueued == n_bytes);
+  if (PREDICT_FALSE (n_enqueued != n_bytes))
+    return 0;
+
+  session_rx_buffers_free (s);
+  return n_bytes;
+}
+
+u32
+session_rx_data_consume (session_t *s, session_rx_data_consume_fn_t fn, void *ctx)
+{
+  session_worker_t *wrk;
+  session_rx_buffer_desc_t *d;
+  session_rx_data_segment_t *seg;
+  session_rx_data_t data;
+  vlib_buffer_t *b;
+  u32 di, n_bytes;
+
+  ASSERT (s->thread_index == vlib_get_thread_index ());
+  ASSERT (fn != 0);
+  n_bytes = session_rx_buffers_bytes (s);
+  if (!n_bytes)
+    return 0;
+
+  wrk = session_main_get_worker (s->thread_index);
+  vec_reset_length (wrk->rx_data_segments);
+  di = s->rx_buffer_index;
+
+  while (di != SESSION_INVALID_INDEX)
+    {
+      d = pool_elt_at_index (wrk->rx_buffers, di);
+      b = vlib_get_buffer (wrk->vm, d->buffer_index);
+      while (1)
+	{
+	  vec_add2 (wrk->rx_data_segments, seg, 1);
+	  seg->data = vlib_buffer_get_current (b);
+	  seg->len = b->current_length;
+	  if (!(b->flags & VLIB_BUFFER_NEXT_PRESENT))
+	    break;
+	  b = vlib_get_buffer (wrk->vm, b->next_buffer);
+	}
+      di = d->next;
+    }
+
+  data.segments = wrk->rx_data_segments;
+  data.n_segments = vec_len (wrk->rx_data_segments);
+  data.data_len = n_bytes;
+  if (!fn (&data, ctx))
+    {
+      vec_reset_length (wrk->rx_data_segments);
+      return 0;
+    }
+
+  session_rx_buffers_free (s);
+  vec_reset_length (wrk->rx_data_segments);
+  session_fifo_tuning (s, s->rx_fifo, SESSION_FT_ACTION_DEQUEUED, n_bytes);
+
+  if (svm_fifo_needs_deq_ntf (s->rx_fifo, n_bytes))
+    {
+      svm_fifo_clear_deq_ntf (s->rx_fifo);
+      session_program_transport_io_evt (s->handle, SESSION_IO_EVT_RX);
+    }
+
+  return n_bytes;
 }
 
 void
@@ -263,6 +465,7 @@ session_free (session_t * s)
   session_worker_t *wrk = &session_main.wrk[s->thread_index];
 
   SESSION_EVT (SESSION_EVT_FREE, s);
+  session_rx_buffers_free (s);
   if (CLIB_DEBUG)
     clib_memset (s, 0xFA, sizeof (*s));
   pool_put (wrk->sessions, s);
