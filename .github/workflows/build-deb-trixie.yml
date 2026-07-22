@@ -25,6 +25,17 @@ jobs:
       CCACHE_COMPRESS: "true"
       CCACHE_MAXSIZE: 2G
     steps:
+      - name: Disable APT cache cleanup
+        run: rm -f /etc/apt/apt.conf.d/docker-clean
+
+      - name: Restore apt archive cache
+        uses: actions/cache/restore@v4
+        with:
+          path: /var/cache/apt/archives
+          key: apt-debian13-${{ runner.arch }}-${{ github.run_id }}
+          restore-keys: |
+            apt-debian13-${{ runner.arch }}-
+
       - name: Install base tools
         run: |
           apt-get update -qq
@@ -42,24 +53,17 @@ jobs:
           git config --global --add safe.directory "$PWD"
           echo "short_sha=$(git rev-parse --short=7 HEAD)" >> $GITHUB_OUTPUT
 
-      - name: Restore apt cache
-        uses: actions/cache/restore@v4
-        with:
-          path: /var/cache/apt
-          key: apt-debian13-${{ runner.arch }}
-          restore-keys: |
-            apt-debian13-
-
       - name: Install VPP build dependencies
         run: |
           sed -i '/^\s*git config commit\.template/s/^\(\s*\)/\1-/' Makefile
           make UNATTENDED=yes install-dep
 
-      - name: Save apt cache
+      - name: Save apt archive cache
+        if: always()
         uses: actions/cache/save@v4
         with:
-          path: /var/cache/apt
-          key: apt-debian13-${{ runner.arch }}
+          path: /var/cache/apt/archives
+          key: apt-debian13-${{ runner.arch }}-${{ github.run_id }}
 
       - name: Restore ccache
         uses: actions/cache/restore@v4
