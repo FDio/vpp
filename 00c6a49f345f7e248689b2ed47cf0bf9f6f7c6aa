@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "6cf704df_4b8ccc28",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-07-22T08:05:14Z",
+      "side": 1,
+      "message": "Is there any particular issue you\u0027re hitting? This code is probably mostly unused outside vpp with 0 workers testing scenarios.",
+      "revId": "00c6a49f345f7e248689b2ed47cf0bf9f6f7c6aa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
