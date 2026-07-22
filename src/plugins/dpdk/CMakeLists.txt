@@ -112,10 +112,6 @@ else()
       endif()
     endif()
 
-    if(DPDK_RTE_NET_HINIC AND NOT DPDK_IS_SHARED_LIB)
-      vpp_plugin_find_library(dpdk HINIC_LIB "librte_net_hinic.a")
-      string_append(DPDK_LINK_FLAGS "-Wl,--whole-archive,${HINIC_LIB},--no-whole-archive,--exclude-libs,ALL")
-    endif()
 endif()
 
 ##############################################################################
