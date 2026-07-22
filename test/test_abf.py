@@ -505,6 +505,26 @@ class TestAbf(VppTestCase):
         self.assertEqual(rv.retval, 0)
         self.assertFalse(find_abf_policy(self, 20))
 
+    def test_abf_attach_unknown_policy(self):
+        """Attachment to an unknown policy is rejected"""
+
+        #
+        # The CLI validates the policy id, the binary API used to
+        # assert instead of failing the request.
+        #
+        rv = self.vapi.papi.abf_itf_attach_add_del(
+            is_add=1,
+            attach={
+                "policy_id": 4242,
+                "sw_if_index": self.pg0.sw_if_index,
+                "priority": 100,
+                "is_ipv6": 0,
+            },
+        )
+        # VNET_API_ERROR_NO_SUCH_ENTRY
+        self.assertEqual(rv.retval, -6)
+        self.assertFalse(find_abf_itf_attach(self, 4242, self.pg0.sw_if_index))
+
 
 if __name__ == "__main__":
     unittest.main(testRunner=VppTestRunner)
