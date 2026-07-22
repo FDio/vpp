@@ -8,7 +8,6 @@
 #include <vnet/pg/pg.h>
 #include <vnet/udp/udp.h>
 #include <vnet/udp/udp_packet.h>
-#include <vppinfra/sparse_vec.h>
 
 typedef enum
 {
@@ -98,6 +97,7 @@ udp46_local_inline (vlib_main_t * vm,
   __attribute__ ((unused)) u32 n_left_from, next_index, *from, *to_next;
   u16 *next_by_dst_port = (is_ip4 ?
 			   um->next_by_dst_port4 : um->next_by_dst_port6);
+  u8 next_by_dst_port_is_dense = um->next_by_dst_port_is_dense;
   from = vlib_frame_vector_args (from_frame);
   n_left_from = from_frame->n_vectors;
 
@@ -114,7 +114,7 @@ udp46_local_inline (vlib_main_t * vm,
 	  u32 bi0, bi1;
 	  vlib_buffer_t *b0, *b1;
 	  udp_header_t *h0 = 0, *h1 = 0;
-	  u32 i0, i1, next0, next1;
+	  u32 next0, next1;
 	  u32 advance0, advance1;
 
 	  /* Prefetch next iteration. */
@@ -191,17 +191,14 @@ udp46_local_inline (vlib_main_t * vm,
 		}
 	    }
 
-	  /* Index sparse array with network byte order. */
+	  /* Index the port table with network byte order. */
 	  if (PREDICT_TRUE (next0 == UDP_LOCAL_NEXT_PUNT &&
 			    next1 == UDP_LOCAL_NEXT_PUNT))
 	    {
-	      sparse_vec_index2 (next_by_dst_port, h0->dst_port, h1->dst_port,
-				 &i0, &i1);
-	      next0 = vec_elt (next_by_dst_port, i0);
-	      next1 = vec_elt (next_by_dst_port, i1);
+	      udp_dst_port_lookup2 (next_by_dst_port, h0->dst_port, h1->dst_port,
+				    next_by_dst_port_is_dense, &next0, &next1);
 
-	      if (PREDICT_FALSE (i0 == SPARSE_VEC_INVALID_INDEX ||
-				 next0 == UDP_NO_NODE_SET))
+	      if (PREDICT_FALSE (next0 == UDP_NO_NODE_SET))
 		{
 		  udp_dispatch_error (node, b0, advance0, is_ip4, &next0);
 		}
@@ -212,8 +209,7 @@ udp46_local_inline (vlib_main_t * vm,
 		  vlib_buffer_advance (b0, sizeof (*h0));
 		}
 
-	      if (PREDICT_FALSE (i1 == SPARSE_VEC_INVALID_INDEX ||
-				 next1 == UDP_NO_NODE_SET))
+	      if (PREDICT_FALSE (next1 == UDP_NO_NODE_SET))
 		{
 		  udp_dispatch_error (node, b1, advance1, is_ip4, &next1);
 		}
@@ -226,11 +222,10 @@ udp46_local_inline (vlib_main_t * vm,
 	    }
 	  else if (next0 == UDP_LOCAL_NEXT_PUNT)
 	    {
-	      i0 = sparse_vec_index (next_by_dst_port, h0->dst_port);
-	      next0 = vec_elt (next_by_dst_port, i0);
+	      next0 =
+		udp_dst_port_lookup (next_by_dst_port, h0->dst_port, next_by_dst_port_is_dense);
 
-	      if (PREDICT_FALSE (i0 == SPARSE_VEC_INVALID_INDEX ||
-				 next0 == UDP_NO_NODE_SET))
+	      if (PREDICT_FALSE (next0 == UDP_NO_NODE_SET))
 		{
 		  udp_dispatch_error (node, b0, advance0, is_ip4, &next0);
 		}
@@ -243,11 +238,10 @@ udp46_local_inline (vlib_main_t * vm,
 	    }
 	  else if (next1 == UDP_LOCAL_NEXT_PUNT)
 	    {
-	      i1 = sparse_vec_index (next_by_dst_port, h1->dst_port);
-	      next1 = vec_elt (next_by_dst_port, i1);
+	      next1 =
+		udp_dst_port_lookup (next_by_dst_port, h1->dst_port, next_by_dst_port_is_dense);
 
-	      if (PREDICT_FALSE (i1 == SPARSE_VEC_INVALID_INDEX ||
-				 next1 == UDP_NO_NODE_SET))
+	      if (PREDICT_FALSE (next1 == UDP_NO_NODE_SET))
 		{
 		  udp_dispatch_error (node, b1, advance1, is_ip4, &next1);
 		}
@@ -292,7 +286,7 @@ udp46_local_inline (vlib_main_t * vm,
 	  u32 bi0;
 	  vlib_buffer_t *b0;
 	  udp_header_t *h0 = 0;
-	  u32 i0, next0;
+	  u32 next0;
 	  u32 advance0;
 
 	  bi0 = from[0];
@@ -324,11 +318,10 @@ udp46_local_inline (vlib_main_t * vm,
 	  if (PREDICT_TRUE (clib_net_to_host_u16 (h0->length) <=
 			    vlib_buffer_length_in_chain (vm, b0)))
 	    {
-	      i0 = sparse_vec_index (next_by_dst_port, h0->dst_port);
-	      next0 = vec_elt (next_by_dst_port, i0);
+	      next0 =
+		udp_dst_port_lookup (next_by_dst_port, h0->dst_port, next_by_dst_port_is_dense);
 
-	      if (PREDICT_FALSE ((i0 == SPARSE_VEC_INVALID_INDEX) ||
-				 next0 == UDP_NO_NODE_SET))
+	      if (PREDICT_FALSE (next0 == UDP_NO_NODE_SET))
 		{
 		  udp_dispatch_error (node, b0, advance0, is_ip4, &next0);
 		}
@@ -470,13 +463,8 @@ udp_register_dst_port (vlib_main_t * vm,
 				       is_ip4 ? udp4_local_node.index
 				       : udp6_local_node.index, node_index);
 
-  /* Setup udp protocol -> next index sparse vector mapping. */
-  if (is_ip4)
-    n = sparse_vec_validate (um->next_by_dst_port4,
-			     clib_host_to_net_u16 (dst_port));
-  else
-    n = sparse_vec_validate (um->next_by_dst_port6,
-			     clib_host_to_net_u16 (dst_port));
+  /* Setup udp protocol -> next index mapping. */
+  n = udp_dst_port_get_slot (um, clib_host_to_net_u16 (dst_port), is_ip4);
 
   n[0] = pi->next_index;
 }
@@ -494,12 +482,7 @@ udp_unregister_dst_port (vlib_main_t * vm, udp_dst_port_t dst_port, u8 is_ip4)
     return;
 
   /* Kill the mapping. Don't bother killing the pi, it may be back. */
-  if (is_ip4)
-    n = sparse_vec_validate (um->next_by_dst_port4,
-			     clib_host_to_net_u16 (dst_port));
-  else
-    n = sparse_vec_validate (um->next_by_dst_port6,
-			     clib_host_to_net_u16 (dst_port));
+  n = udp_dst_port_get_slot (um, clib_host_to_net_u16 (dst_port), is_ip4);
 
   n[0] = UDP_NO_NODE_SET;
 }
@@ -508,12 +491,10 @@ u8
 udp_is_valid_dst_port (udp_dst_port_t dst_port, u8 is_ip4)
 {
   udp_main_t *um = &udp_main;
-  u16 *next_by_dst_port =
-    is_ip4 ? um->next_by_dst_port4 : um->next_by_dst_port6;
-  uword index =
-    sparse_vec_index (next_by_dst_port, clib_host_to_net_u16 (dst_port));
-  return (index != SPARSE_VEC_INVALID_INDEX &&
-	  vec_elt (next_by_dst_port, index) != UDP_NO_NODE_SET);
+  u16 *table = udp_dst_port_table (um, is_ip4);
+
+  return udp_dst_port_lookup (table, clib_host_to_net_u16 (dst_port),
+			      um->next_by_dst_port_is_dense) != UDP_NO_NODE_SET;
 }
 
 void
