@@ -286,8 +286,13 @@ typedef struct session_
   /** Opaque, for general use */
   u32 opaque;
 
-    CLIB_CACHE_LINE_ALIGN_MARK (pad);
+  /** Head of retained RX buffers */
+  u32 rx_buffer_index;
+
+  CLIB_CACHE_LINE_ALIGN_MARK (pad);
 } session_t;
+
+STATIC_ASSERT_SIZEOF (session_t, CLIB_CACHE_LINE_BYTES);
 
 always_inline session_type_t
 session_type_from_proto_and_ip (transport_proto_t proto, u8 is_ip4)

@@ -30,6 +30,26 @@ mq_event_ring_index (session_evt_type_t et)
 					     SESSION_MQ_IO_EVT_RING);
 }
 
+static inline void
+app_worker_builtin_rx_callback (app_worker_t *app_wrk, application_t *app, session_t *s)
+{
+  session_handle_t sh = session_handle (s);
+
+  app->cb_fns.builtin_app_rx_callback (s);
+
+  /* The callback may grow the session pool. */
+  s = session_get_from_handle_if_valid (sh);
+  if (!s || !session_rx_buffers_bytes (s))
+    return;
+
+  /* The application declined direct data. Materialize it and notify again. */
+  if (session_rx_buffers_to_fifo (s))
+    {
+      s->flags |= SESSION_F_RX_EVT;
+      app_worker_add_event (app_wrk, s, SESSION_IO_EVT_RX);
+    }
+}
+
 void
 app_worker_del_all_events (app_worker_t *app_wrk)
 {
@@ -124,7 +144,7 @@ app_worker_flush_events_inline (app_worker_t *app_wrk,
 	  /* App is unaware of the session or closing notification provided */
 	  if (PREDICT_FALSE (!(s->flags & SESSION_F_RX_READY)))
 	    break;
-	  app->cb_fns.builtin_app_rx_callback (s);
+	  app_worker_builtin_rx_callback (app_wrk, app, s);
 	  break;
 	/* Handle sessions that might not be on current thread */
 	case SESSION_IO_EVT_BUILTIN_RX:
@@ -134,7 +154,7 @@ app_worker_flush_events_inline (app_worker_t *app_wrk,
 	  s->flags &= ~SESSION_F_RX_EVT;
 	  if (PREDICT_FALSE (!(s->flags & SESSION_F_RX_READY)))
 	    break;
-	  app->cb_fns.builtin_app_rx_callback (s);
+	  app_worker_builtin_rx_callback (app_wrk, app, s);
 	  break;
 	case SESSION_IO_EVT_TX:
 	  s = session_get (evt->session_index, thread_index);
@@ -171,8 +191,8 @@ app_worker_flush_events_inline (app_worker_t *app_wrk,
 		  s = session_get_from_handle (
 		    session_make_handle (evt->session_index, thread_index));
 		  session_set_state (s, clib_max (old_state, s->session_state));
-		  if (svm_fifo_max_dequeue (s->rx_fifo))
-		    app->cb_fns.builtin_app_rx_callback (s);
+		  if (svm_fifo_max_dequeue (s->rx_fifo) || session_rx_buffers_bytes (s))
+		    app_worker_builtin_rx_callback (app_wrk, app, s);
 		  if (!(s->flags & SESSION_F_APP_CLOSED))
 		    {
 		      s->flags |= SESSION_F_TPT_INIT_CLOSE;
@@ -215,8 +235,8 @@ app_worker_flush_events_inline (app_worker_t *app_wrk,
 	  if (old_state >= SESSION_STATE_TRANSPORT_CLOSING)
 	    {
 	      session_set_state (s, clib_max (old_state, s->session_state));
-	      if (svm_fifo_max_dequeue (s->rx_fifo))
-		app->cb_fns.builtin_app_rx_callback (s);
+	      if (svm_fifo_max_dequeue (s->rx_fifo) || session_rx_buffers_bytes (s))
+		app_worker_builtin_rx_callback (app_wrk, app, s);
 	      if (!(s->flags & SESSION_F_APP_CLOSED))
 		{
 		  s->flags |= SESSION_F_TPT_INIT_CLOSE;
