@@ -162,7 +162,11 @@ abf_itf_attach (fib_protocol_t fproto,
 
   api = abf_policy_find (policy_id);
 
-  ASSERT (INDEX_INVALID != api);
+  if (INDEX_INVALID == api)
+    {
+      return (VNET_API_ERROR_NO_SUCH_ENTRY);
+    }
+
   ap = abf_policy_get (api);
 
   /*
