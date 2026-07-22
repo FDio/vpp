@@ -175,6 +175,7 @@ typedef enum quic_ctx_flags_
   QUIC_F_APP_CLOSED = (1 << 5),
   QUIC_F_APP_CLOSED_TX = (1 << 6),
   QUIC_F_STREAM_TX_CLOSED = (1 << 7),
+  QUIC_F_UDP_GSO = (1 << 8),
 } quic_ctx_flags_t;
 
 typedef enum quic_cc_type
@@ -322,6 +323,7 @@ typedef struct quic_main_
   u8 default_quic_cc;
   u8 enable_tx_pacing; /**< enable tx pacing for connections */
   u8 respect_app_limited; /**< if CC should take app-limited into consideration */
+  u8 allow_uso;		  /**< allow use of UDP segmentation offload */
 
   u64 first_seg_size;
   u64 add_seg_size;
@@ -442,6 +444,17 @@ quic_disconnect_transport (quic_ctx_t *ctx, u32 app_index)
   if (vnet_disconnect_session (&a))
     clib_warning ("UDP session 0x%lx disconnect errored",
 		  ctx->udp_session_handle);
+}
+
+static_always_inline void
+quic_check_udp_gso (quic_ctx_t *ctx)
+{
+  transport_endpt_attr_t attr = { .type = TRANSPORT_ENDPT_ATTR_FLAGS };
+  session_transport_attribute (session_get_from_handle (ctx->udp_session_handle), 1 /* is_get */,
+			       &attr);
+  ctx->flags |= (attr.flags & TRANSPORT_ENDPT_ATTR_F_GSO) ? QUIC_F_UDP_GSO : 0;
+  QUIC_DBG (2, "udp-gso %s",
+	    (attr.flags & TRANSPORT_ENDPT_ATTR_F_GSO) ? "supported" : "not supported");
 }
 
 /* TODO: Define appropriate QUIC return values for quic_engine_vft functions!
