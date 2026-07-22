@@ -531,6 +531,7 @@ quic_show_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command
   vlib_cli_output (vm, "first segment size: %U", format_memory_size, qm->first_seg_size);
   vlib_cli_output (vm, "add segment size: %U", format_memory_size, qm->add_seg_size);
   vlib_cli_output (vm, "fifo prealloc: %u", qm->udp_fifo_prealloc);
+  vlib_cli_output (vm, "uso: %s", qm->allow_uso ? "allowed" : "disallowed");
   vlib_cli_output (vm, "max packets per key: %U", format_memory_size, qm->max_packets_per_key);
   vlib_cli_output (vm, "tx-pacing: %s", qm->enable_tx_pacing ? "enabled" : "disabled");
   vlib_cli_output (vm, "respect-app-limited: %s", qm->respect_app_limited ? "enabled" : "disabled");
@@ -612,6 +613,7 @@ quic_config_fn (vlib_main_t *vm, unformat_input_t *input)
   qm->respect_app_limited = 0;
   qm->first_seg_size = 32 << 20;
   qm->add_seg_size = 256 << 20;
+  qm->allow_uso = 0;
 
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
@@ -644,6 +646,8 @@ quic_config_fn (vlib_main_t *vm, unformat_input_t *input)
 	qm->respect_app_limited = 1;
       else if (unformat (line_input, "enable-vnet-crypto"))
 	qm->enable_vnet_crypto = 1;
+      else if (unformat (line_input, "uso"))
+	qm->allow_uso = 1;
       /* TODO: add cli selection of quic_eng_<types> */
       else
 	{

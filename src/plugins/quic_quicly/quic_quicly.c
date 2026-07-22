@@ -253,6 +253,7 @@ quic_quicly_send_packets (quic_ctx_t *ctx)
   u8 *buf = qqm->tx_bufs[ctx->c_thread_index];
   session_dgram_hdr_t hdr;
   int ret;
+  u32 len;
 
   ASSERT (vec_len (buf) >= (QUIC_QUICLY_SEND_PACKET_VEC_SIZE * QUIC_MAX_PACKET_SIZE));
   ASSERT (vec_len (packets) >= QUIC_QUICLY_SEND_PACKET_VEC_SIZE);
@@ -298,14 +299,26 @@ quic_quicly_send_packets (quic_ctx_t *ctx)
     goto reschedule;
 
   hdr.data_offset = 0;
-  hdr.gso_size = 0;
-  for (i = 0; i < num_packets; i++)
+  if (num_packets > 1 && (ctx->flags & QUIC_F_UDP_GSO))
     {
-      hdr.data_length = packets[i].iov_len;
-      svm_fifo_seg_t segs[2] = { { (u8 *) &hdr, sizeof (hdr) },
-				 { packets[i].iov_base, packets[i].iov_len } };
+      hdr.gso_size = packets[0].iov_len;
+      len = hdr.data_length =
+	packets[num_packets - 1].iov_base + packets[num_packets - 1].iov_len - packets[0].iov_base;
+      svm_fifo_seg_t segs[2] = { { (u8 *) &hdr, sizeof (hdr) }, { packets[0].iov_base, len } };
       ret = svm_fifo_enqueue_segments (udp_session->tx_fifo, segs, 2, 0 /* allow partial */);
       ASSERT (ret > 0);
+    }
+  else
+    {
+      hdr.gso_size = 0;
+      for (i = 0; i < num_packets; i++)
+	{
+	  hdr.data_length = packets[i].iov_len;
+	  svm_fifo_seg_t segs[2] = { { (u8 *) &hdr, sizeof (hdr) },
+				     { packets[i].iov_base, packets[i].iov_len } };
+	  ret = svm_fifo_enqueue_segments (udp_session->tx_fifo, segs, 2, 0 /* allow partial */);
+	  ASSERT (ret > 0);
+	}
     }
 
   quic_increment_counter (quic_quicly_main.qm, QUIC_ERROR_TX_PACKETS, num_packets);
@@ -1333,6 +1346,10 @@ quic_quicly_accept_connection (quic_ctx_t *ctx, quic_quicly_rx_packet_ctx_t *pct
       ctx->conn_state = QUIC_CONN_STATE_ACTIVE_CLOSING;
       return QUIC_QUICLY_RX_ERROR_WARNING;
     }
+
+  if (qm->allow_uso)
+    quic_check_udp_gso (ctx);
+
   if (!quic_quicly_handshake_is_complete (conn))
     {
       QUIC_DBG (2, "Handshake not yet completed: ctx_index %u, thread %u", ctx->c_c_index,
@@ -1477,6 +1494,10 @@ quic_quicly_connect (quic_ctx_t *ctx, u32 ctx_index,
   quic_quicly_reschedule_ctx (ctx);
 
   quic_increment_counter (qqm->qm, QUIC_ERROR_OPENED_CONNECTION, 1);
+
+  if (qqm->qm->allow_uso)
+    quic_check_udp_gso (ctx);
+
   return 0;
 }
 
