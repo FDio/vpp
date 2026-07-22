@@ -4859,6 +4859,21 @@ tcp_test_bt (vlib_main_t * vm, unformat_input_t * input)
   return 0;
 }
 
+static int
+tcp_test_dispatch (void)
+{
+  tcp_main_t *tm = vnet_get_tcp_main ();
+  tcp_lookup_dispatch_t *ack, *syn_ack;
+
+  ack = &tm->dispatch_table[TCP_STATE_TIME_WAIT][TCP_FLAG_ACK];
+  syn_ack = &tm->dispatch_table[TCP_STATE_TIME_WAIT][TCP_FLAG_SYN | TCP_FLAG_ACK];
+
+  TCP_TEST (syn_ack->next == ack->next, "TIME-WAIT SYN-ACK receive dispatch");
+  TCP_TEST (syn_ack->error == TCP_ERROR_NONE,
+	    "TIME-WAIT SYN-ACK dispatch should not report an error");
+  return 0;
+}
+
 static clib_error_t *
 tcp_test (vlib_main_t * vm,
 	  unformat_input_t * input, vlib_cli_command_t * cmd_arg)
@@ -4908,6 +4923,10 @@ tcp_test (vlib_main_t * vm,
 	{
 	  res = tcp_test_tamper (vm, input);
 	}
+      else if (unformat (input, "dispatch"))
+	{
+	  res = tcp_test_dispatch ();
+	}
       else if (unformat (input, "all"))
 	{
 	  if ((res = tcp_test_sack (vm, input)))
@@ -4925,6 +4944,8 @@ tcp_test (vlib_main_t * vm,
 	  if ((res = tcp_test_bt (vm, input)))
 	    goto done;
 	  if ((res = tcp_test_tamper (vm, input)))
+	    goto done;
+	  if ((res = tcp_test_dispatch ()))
 	    goto done;
 	}
       else
