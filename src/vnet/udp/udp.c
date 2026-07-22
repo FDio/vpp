@@ -9,7 +9,6 @@
 #include <vnet/ip/icmp46_packet.h>
 #include <vnet/ip/ip4_inlines.h>
 #include <vnet/ip/ip6_inlines.h>
-#include <vppinfra/sparse_vec.h>
 
 udp_main_t udp_main;
 
@@ -23,10 +22,7 @@ udp_connection_register_port (u16 lcl_port, u8 is_ip4)
    * udp_dst_port_info_t as that is used to distinguish between external
    * and transport consumed ports */
 
-  if (is_ip4)
-    n = sparse_vec_validate (um->next_by_dst_port4, lcl_port);
-  else
-    n = sparse_vec_validate (um->next_by_dst_port6, lcl_port);
+  n = udp_dst_port_get_slot (um, lcl_port, is_ip4);
 
   n[0] = um->local_to_input_edge[is_ip4];
 
@@ -53,10 +49,7 @@ udp_connection_unregister_port (u16 lcl_port, u8 is_ip4)
 			  __ATOMIC_RELAXED))
     return;
 
-  if (is_ip4)
-    n = sparse_vec_validate (um->next_by_dst_port4, lcl_port);
-  else
-    n = sparse_vec_validate (um->next_by_dst_port6, lcl_port);
+  n = udp_dst_port_get_slot (um, lcl_port, is_ip4);
 
   n[0] = UDP_NO_NODE_SET;
 }
@@ -574,56 +567,23 @@ udp_connection_handle_icmp (transport_connection_t *tc, u8 icmp_type,
 }
 
 static void
-udp_realloc_ports_sv (u16 **ports_nh_svp)
+udp_dst_port_table_to_dense (u16 **tablep)
 {
-  u16 port, port_no, *ports_nh_sv, *mc;
-  u32 *ports = 0, *nh = 0, msum, i;
-  sparse_vec_header_t *h;
-  uword sv_index, *mb;
+  u16 *sparse_table = *tablep;
+  u16 *dense_table = 0;
 
-  ports_nh_sv = *ports_nh_svp;
+  vec_validate_init_empty (dense_table, (u16) ~0, UDP_NO_NODE_SET);
 
-  for (port = 1; port < 65535; port++)
+  for (u32 port = 0; port <= (u16) ~0; port++)
     {
-      port_no = clib_host_to_net_u16 (port);
+      uword index = sparse_vec_index (sparse_table, port);
 
-      sv_index = sparse_vec_index (ports_nh_sv, port_no);
-      if (sv_index != SPARSE_VEC_INVALID_INDEX)
-	{
-	  vec_add1 (ports, port_no);
-	  vec_add1 (nh, ports_nh_sv[sv_index]);
-	}
+      if (index != SPARSE_VEC_INVALID_INDEX)
+	dense_table[port] = sparse_table[index];
     }
 
-  sparse_vec_free (ports_nh_sv);
-
-  ports_nh_sv =
-    sparse_vec_new (/* elt bytes */ sizeof (ports_nh_sv[0]),
-		    /* bits in index */ BITS (((udp_header_t *) 0)->dst_port));
-
-  vec_resize (ports_nh_sv, 65535);
-
-  for (port = 1; port < 65535; port++)
-    ports_nh_sv[port] = UDP_NO_NODE_SET;
-
-  for (i = 0; i < vec_len (ports); i++)
-    ports_nh_sv[ports[i]] = nh[i];
-
-  h = sparse_vec_header (ports_nh_sv);
-  vec_foreach (mb, h->is_member_bitmap)
-    *mb = (uword) ~0;
-
-  msum = 0;
-  vec_foreach (mc, h->member_counts)
-    {
-      *mc = msum;
-      msum += msum == 0 ? 63 : 64;
-    }
-
-  vec_free (ports);
-  vec_free (nh);
-
-  *ports_nh_svp = ports_nh_sv;
+  sparse_vec_free (sparse_table);
+  *tablep = dense_table;
 }
 
 static clib_error_t *
@@ -634,23 +594,12 @@ udp_enable_disable (vlib_main_t *vm, u8 is_en)
   if (!is_en || um->is_init)
     return 0;
 
-  /* Not ideal. The sparse vector used to map ports to next nodes assumes
-   * only a few ports are ever used. When udp transport is enabled this does
-   * not hold and, to make matters worse, ports are consumed in a random
-   * order.
-   *
-   * This can lead to a lot of slow updates to internal data structures
-   * which in turn can slow udp connection allocations until all ports are
-   * eventually consumed.
-   *
-   * Consequently, reallocate sparse vector, preallocate all ports and have
-   * them point to UDP_NO_NODE_SET. We could consider switching the sparse
-   * vector to a preallocated vector but that would increase memory
-   * consumption for vpp deployments that do not rely on host stack.
-   */
-
-  udp_realloc_ports_sv (&um->next_by_dst_port4);
-  udp_realloc_ports_sv (&um->next_by_dst_port6);
+  /* Keep the small sparse tables for deployments that do not use the host
+   * stack. UDP transport can consume every port in a non-monotonic order, so
+   * switch once to direct-indexed tables when it is enabled. */
+  udp_dst_port_table_to_dense (&um->next_by_dst_port4);
+  udp_dst_port_table_to_dense (&um->next_by_dst_port6);
+  um->next_by_dst_port_is_dense = 1;
 
   vec_validate (um->transport_ports_refcnt[0], 65535);
   vec_validate (um->transport_ports_refcnt[1], 65535);
