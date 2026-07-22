@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3d3e8cc3_c55017b9",
+        "filename": "src/vlib/pool_cache.h",
+        "patchSetId": 13
+      },
+      "lineNbr": 73,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-07-22T16:48:16Z",
+      "side": 1,
+      "message": "Do we need separate parallel directories for payload and metadata? The payload and bookkeeping allocations should remain separate so free payloads can be ASan-poisoned, but their pointers could share one subpool descriptor:\n\n```c\ntypedef struct\n{\n  u8 *pool;\n  u8 *slot_state;\n  u32 *next_free;\n} vlib_pool_cache_subpool_t;\n\nvlib_pool_cache_subpool_t **subpool_chunks;\n```\n\nLookup could then resolve the subpool once:\n\n```c\nsp \u003d pool_cache_subpool_at (c, pidx);\nstate \u003d sp-\u003eslot_state[eidx];\nelt \u003d sp-\u003epool + (uword) eidx * c-\u003eelt_size;\n```\n\nThis preserves separate payload/metadata storage while removing one directory and the need to keep two directory entries synchronized.",
+      "revId": "53db9de5a6031b8973e9c3e5b681829dd2adb9d9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "00786b68_7da38e4b",
+        "filename": "src/vlib/pool_cache.h",
+        "patchSetId": 13
+      },
+      "lineNbr": 76,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-07-22T16:48:16Z",
+      "side": 1,
+      "message": "This seems to bring back the pointer-chasing per-thread representation discussed on an earlier patchset. Could we compare it with fixed backing pools plus bounded per-thread index stacks? Each backing pool would be permanently fixed-size, so its payload pointers remain stable, and its native freelist would only serve as the locked global depot.\n\nThe common path would be a contiguous stack push/pop:\n\n```c\nalloc (c):\n  pt \u003d \u0026c-\u003eper_thread[thread_index]\n  if (pt-\u003elen \u003d\u003d 0)\n    refill (c, pt)\n  index \u003d pt-\u003eindices[--pt-\u003elen]\n  slot_state[index] \u003d ALLOCATED\n  return index\n\nfree (c, index):\n  if (!CAS (slot_state[index], ALLOCATED, FREE))\n    reject_double_free ()\n  pt \u003d \u0026c-\u003eper_thread[thread_index]\n  pt-\u003eindices[pt-\u003elen++] \u003d index\n  if (pt-\u003elen \u003e 2 * c-\u003ebatch_size)\n    flush (c, pt)\n```\n\nThe slow paths would transfer batches through the backing pools:\n\n```c\nrefill (c, pt):\n  lock (c)\n  while (pt-\u003elen \u003c c-\u003ebatch_size):\n    sp \u003d find_subpool_with_free_elements (c)\n    if (sp \u003d\u003d NULL)\n      sp \u003d add_fixed_subpool (c)\n    eidx \u003d pool_get_index (sp-\u003epool)\n    pt-\u003eindices[pt-\u003elen++] \u003d encode (sp-\u003eindex, eidx)\n  unlock (c)\n\nflush (c, pt):\n  lock (c)\n  while (pt-\u003elen \u003e c-\u003ebatch_size):\n    index \u003d pt-\u003eindices[--pt-\u003elen]\n    sp \u003d subpool (index)\n    pool_put_index (sp-\u003epool, element (index))\n  unlock (c)\n```\n\n`slot_state` would still be required because an index held in a thread cache appears allocated to the backing pool despite being logically free. If type-erased pool integration proves too complicated, bounded local stacks may still be useful with the existing fixed payload chunks. This seems worth comparing for steady-state and refill/growth performance.",
+      "revId": "53db9de5a6031b8973e9c3e5b681829dd2adb9d9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "663cf13b_04946a84",
+        "filename": "src/vlib/pool_cache.h",
+        "patchSetId": 13
+      },
+      "lineNbr": 79,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-07-22T16:48:16Z",
+      "side": 1,
+      "message": "Could we organize this as two explicit cache lines? `clib_spinlock_t` is only an 8-byte pointer—the lock object itself is separately cache-line aligned—but the current layout mixes fields read by every allocation/free with counters modified during refill and flush.\n\nFor example:\n\n```c\ntypedef struct vlib_pool_cache_t_\n{\n  CLIB_CACHE_LINE_ALIGN_MARK (hot);\n  vlib_pool_cache_thread_t *per_thread;\n  vlib_pool_cache_subpool_meta_t **subpool_meta_chunks;\n  u8 ***pool_chunks;\n  uword elt_size;\n  u32 log2_subpool_size;\n  u32 subpool_size;\n  u32 subpool_mask;\n  u32 max_subpools;\n  u32 max_subpool_chunks;\n  u32 n_subpools;\n  u32 batch_size;\n  u32 align;\n\n  CLIB_CACHE_LINE_ALIGN_MARK (slow);\n  clib_spinlock_t lock;\n  u32 global_free_list;\n  u32 n_global_free;\n  u64 global_lock_acquisitions;\n  u64 growths;\n  char *name;\n  format_function_t *format_element;\n  struct vlib_pool_cache_t_ *next_instance;\n} vlib_pool_cache_t;\n```\n\nThis should keep the common path on one read-mostly line and isolate the locked mutable state. The resulting structure would be about 128 bytes.",
+      "revId": "53db9de5a6031b8973e9c3e5b681829dd2adb9d9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
