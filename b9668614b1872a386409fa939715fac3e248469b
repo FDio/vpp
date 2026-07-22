@@ -24,6 +24,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": true,
+      "key": {
+        "uuid": "743d435b_32358b9a",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 3
+      },
+      "lineNbr": 9,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-07-22T11:24:43Z",
+      "side": 1,
+      "message": "new draft version was published few days ago, it includes \"Precautionary Bandwidth Probing\" mechanism, which is in linux implementation for longer time and show improvements",
+      "parentUuid": "c18e48fd_8fc4049a",
+      "range": {
+        "startLine": 9,
+        "startChar": 11,
+        "endLine": 9,
+        "endChar": 57
+      },
+      "revId": "b9668614b1872a386409fa939715fac3e248469b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": false,
       "key": {
         "uuid": "fa99bcca_da81cd89",
