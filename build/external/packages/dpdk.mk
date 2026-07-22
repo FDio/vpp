@@ -179,7 +179,7 @@ fi
 endef
 
 DPDK_MESON_ARGS = \
-	--default-library shared \
+	--default-library static \
 	--libdir lib \
 	--prefix $(dpdk_install_dir) \
 	-Dtests=false \
@@ -231,7 +231,8 @@ define dpdk_install_cmds
 	source ../dpdk-meson-venv/bin/activate && \
 	meson install && \
 	cd $(dpdk_install_dir)/lib && \
-	echo "GROUP ( $$(ls librte*.a 2>/dev/null) )" > libdpdk.a && \
+	echo "GROUP ( $$(ls librte*.a ) )" > libdpdk.a && \
+	rm -rf librte*.so librte*.so.* dpdk/*/librte*.so dpdk/*/librte*.so.* && \
 	deactivate
 endef
 
