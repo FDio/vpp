@@ -16,6 +16,24 @@
       "message": "The zero-bitmap case handled by `sparse_vec_index_internal()` is still missing here. For example, after inserting only index 42, `sparse_vec_index2(spv, 64, 42, ...)` sees `count_trailing_zeros(0) \u003d\u003d 0` and returns a non-zero, potentially out-of-bounds index for 64. Could we require `w0 !\u003d 0 \u0026\u0026 w1 !\u003d 0` for this fast path and add that pair to `sparse_vec_test.c`?",
       "revId": "9189be3f6c290bc7f40d54236bdfce3ea4fb0232",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "3ccd7353_2ec6d21e",
+        "filename": "src/vppinfra/sparse_vec.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 157,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2026-07-22T08:14:23Z",
+      "side": 1,
+      "message": "actually `count_trailing_zeroes(0)` is undefined, I changed the comment and updated the index2 function",
+      "parentUuid": "dd497525_89a5c7ca",
+      "revId": "9189be3f6c290bc7f40d54236bdfce3ea4fb0232",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
