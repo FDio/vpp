@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "fa308e51_3fc2fb0f",
+        "filename": "src/plugins/abf/abf_itf_attach.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 165,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2026-07-23T16:37:06Z",
+      "side": 1,
+      "message": "If this condition is already tested in `abf_itf_attach_cmd()`, then doing it here will be redundant when the function is called because it was initiated by a CLI command.\n\nThis could be avoided by either removing the check from `abf_itf_attach_cmd()` or putting it in `vl_api_abf_itf_attach_add_del_t_handler()` instead of `abf_itf_attach_cmd()`.",
+      "revId": "a1e0e7c4dc3a01b63b3891f808b7578fbe898e11",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
