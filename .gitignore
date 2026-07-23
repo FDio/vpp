@@ -169,6 +169,7 @@ calicovppversion
 
 # hs perf script
 /extras/scripts/host-stack/perf-tests/vpp_dpdk.cli
+/extras/scripts/host-stack/perf-tests/vpp_iavf.cli
 
 # ./configure
 /CMakeFiles

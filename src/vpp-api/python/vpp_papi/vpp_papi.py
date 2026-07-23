@@ -33,7 +33,7 @@ import importlib.resources as resources
 
 from .vpp_format import verify_enum_hint
 from .vpp_serializer import VPPType, VPPEnumType, VPPEnumFlagType, VPPUnionType
-from .vpp_serializer import VPPMessage, vpp_get_type, VPPTypeAlias
+from .vpp_serializer import vpp_get_type, VPPTypeAlias, get_message
 
 try:
     import VppTransport
@@ -385,7 +385,7 @@ class VPPApiJSONFiles:
         try:
             for m in api["messages"]:
                 try:
-                    messages[m[0]] = VPPMessage(m[0], m[1:])
+                    messages[m[0]] = get_message(m[0], m[1:])
                 except VPPNotImplementedError:
                     logger.error("Not implemented error for {}".format(m[0]))
         except KeyError:

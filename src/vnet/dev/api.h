@@ -93,11 +93,10 @@ typedef struct
 {
   u32 dev_index;
   vnet_dev_port_id_t port_id;
-  vnet_dev_rss_key_t rss_key;
-} vnet_dev_api_port_set_rss_key_args_t;
+  vnet_dev_rss_config_t rss_config;
+} vnet_dev_api_port_set_rss_config_args_t;
 
-vnet_dev_rv_t
-vnet_dev_api_port_set_rss_key (vlib_main_t *,
-			       vnet_dev_api_port_set_rss_key_args_t *);
+vnet_dev_rv_t vnet_dev_api_port_set_rss_config (vlib_main_t *,
+						vnet_dev_api_port_set_rss_config_args_t *);
 
 #endif /* _VNET_DEV_API_H_ */

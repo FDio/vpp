@@ -180,7 +180,7 @@ var _ = Describe("Http3SoloSuite", Ordered, ContinueOnFailure, Serial, Label("HT
 	}
 })
 
-var _ = Describe("Http3MWSuite", Ordered, ContinueOnFailure, Serial, Label("HTTP", "HTTP3", "MW"), func() {
+var _ = DescribeMWSuite("Http3MWSuite", []string{"HTTP", "HTTP3", "MW"}, func() {
 	var s Http3Suite
 	BeforeAll(func() {
 		s.SetupSuite()

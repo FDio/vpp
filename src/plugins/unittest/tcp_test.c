@@ -8,6 +8,8 @@
 #include <vnet/tcp/tcp_timer.h>
 #include <svm/fifo_segment.h>
 #include <unittest/session/test_session_helpers.h>
+#include <unittest/tcp/tcp_tamper.h>
+#include <unittest/tcp/tcp_e2e_helpers.h>
 
 #define TCP_TEST_I(_cond, _comment, _args...)			\
 ({								\
@@ -59,6 +61,267 @@ tcp_test_scoreboard_replay (vlib_main_t * vm, unformat_input_t * input)
   return 0;
 }
 
+typedef enum
+{
+  TCP_TEST_REORDER_OOO,
+  TCP_TEST_REORDER_RECOVERY,
+  TCP_TEST_REORDER_RXT,
+  TCP_TEST_REORDER_RESCUE,
+} tcp_test_reorder_mode_t;
+
+typedef struct
+{
+  const char *name;
+  tcp_test_reorder_mode_t mode;
+  u16 snd_mss;
+  u32 snd_nxt;
+  u32 frontier_start;
+  u32 delayed_start;
+  u32 delayed_end;
+  u32 initial_reorder;
+  u32 expected_reorder;
+} tcp_test_reorder_case_t;
+
+static const tcp_test_reorder_case_t tcp_test_reorder_cases[] = {
+  { "round fractional mss up", TCP_TEST_REORDER_OOO, 150, 3000, 2850, 2549, 2699,
+    TCP_DUPACK_THRESHOLD, 4 },
+  { "keep exact mss distance exact", TCP_TEST_REORDER_OOO, 150, 3000, 2850, 2400, 2550,
+    TCP_DUPACK_THRESHOLD, 4 },
+  { "clamp to maximum", TCP_TEST_REORDER_OOO, 150, 60000, 59850, 1, 151, TCP_DUPACK_THRESHOLD,
+    TCP_MAX_SACK_REORDER },
+  { "preserve a larger learned estimate", TCP_TEST_REORDER_OOO, 150, 3000, 2850, 2400, 2550, 20,
+    20 },
+  { "learn unretransmitted data in recovery", TCP_TEST_REORDER_RECOVERY, 150, 3000, 2400, 300, 450,
+    TCP_DUPACK_THRESHOLD, 18 },
+  { "ignore retransmitted data", TCP_TEST_REORDER_RXT, 150, 3000, 2400, 300, 450,
+    TCP_DUPACK_THRESHOLD, TCP_DUPACK_THRESHOLD },
+  { "ignore rescue retransmits", TCP_TEST_REORDER_RESCUE, 150, 3000, 2400, 300, 450,
+    TCP_DUPACK_THRESHOLD, TCP_DUPACK_THRESHOLD },
+};
+
+static int
+tcp_test_sack_reordering (void)
+{
+  tcp_connection_t _tc, *tc = &_tc;
+  sack_scoreboard_t *sb = &tc->sack_sb;
+  sack_block_t block;
+  u32 i;
+
+  for (i = 0; i < ARRAY_LEN (tcp_test_reorder_cases); i++)
+    {
+      const tcp_test_reorder_case_t *t = &tcp_test_reorder_cases[i];
+      int ok;
+
+      clib_memset (tc, 0, sizeof (*tc));
+      tc->snd_nxt = t->snd_nxt;
+      tc->snd_mss = t->snd_mss;
+      tc->rcv_opts.flags = TCP_OPTS_FLAG_SACK;
+      scoreboard_init (sb);
+      sb->reorder = t->initial_reorder;
+      sb->rescue_rxt = tc->snd_una - 1;
+
+      if (t->mode != TCP_TEST_REORDER_OOO)
+	tc->flags = TCP_CONN_FAST_RECOVERY | TCP_CONN_RECOVERY;
+      if (t->mode == TCP_TEST_REORDER_RECOVERY)
+	sb->high_rxt = t->delayed_start;
+      else if (t->mode == TCP_TEST_REORDER_RXT)
+	sb->high_rxt = t->delayed_end;
+      else if (t->mode == TCP_TEST_REORDER_RESCUE)
+	{
+	  tc->snd_congestion = tc->snd_nxt;
+	  sb->rescue_rxt = tc->snd_congestion;
+	}
+
+      block.start = t->frontier_start;
+      block.end = tc->snd_nxt;
+      vec_add1 (tc->rcv_opts.sacks, block);
+      tc->rcv_opts.n_sack_blocks = 1;
+      tcp_rcv_sacks (tc, tc->snd_una);
+      ok = TCP_TEST_I ((sb->reorder == t->initial_reorder),
+		       "sack reorder %s: frontier keeps %u, got %u", t->name, t->initial_reorder,
+		       sb->reorder);
+
+      if (ok)
+	{
+	  vec_reset_length (tc->rcv_opts.sacks);
+	  block.start = t->delayed_start;
+	  block.end = t->delayed_end;
+	  vec_add1 (tc->rcv_opts.sacks, block);
+	  tcp_rcv_sacks (tc, tc->snd_una);
+	  ok = TCP_TEST_I ((sb->reorder == t->expected_reorder),
+			   "sack reorder %s: expected %u, got %u", t->name, t->expected_reorder,
+			   sb->reorder);
+	}
+
+      scoreboard_clear (sb);
+      pool_free (sb->holes);
+      vec_free (tc->rcv_opts.sacks);
+      if (!ok)
+	return 1;
+    }
+
+  return 0;
+}
+
+/* Drive one out-of-order reorder observation and return the learned estimate.
+ * Establishes the sack frontier at snd_nxt, then sacks a single delayed mss
+ * whose start is 'distance' bytes below the frontier. */
+static u32
+tcp_test_reorder_observe (tcp_connection_t *tc, u16 mss, u32 snd_nxt, u32 distance,
+			  u32 initial_reorder)
+{
+  sack_scoreboard_t *sb = &tc->sack_sb;
+  sack_block_t block;
+  u32 reorder;
+
+  clib_memset (tc, 0, sizeof (*tc));
+  tc->snd_nxt = snd_nxt;
+  tc->snd_mss = mss;
+  tc->rcv_opts.flags = TCP_OPTS_FLAG_SACK;
+  scoreboard_init (sb);
+  sb->reorder = initial_reorder;
+  sb->rescue_rxt = tc->snd_una - 1;
+
+  /* Establish the frontier at snd_nxt. */
+  block.start = snd_nxt - mss;
+  block.end = snd_nxt;
+  vec_add1 (tc->rcv_opts.sacks, block);
+  tc->rcv_opts.n_sack_blocks = 1;
+  tcp_rcv_sacks (tc, tc->snd_una);
+
+  /* Sack a delayed segment 'distance' bytes below the frontier. */
+  vec_reset_length (tc->rcv_opts.sacks);
+  block.start = snd_nxt - distance;
+  block.end = block.start + mss;
+  vec_add1 (tc->rcv_opts.sacks, block);
+  tc->rcv_opts.n_sack_blocks = 1;
+  tcp_rcv_sacks (tc, tc->snd_una);
+
+  reorder = sb->reorder;
+
+  scoreboard_clear (sb);
+  pool_free (sb->holes);
+  vec_free (tc->rcv_opts.sacks);
+  return reorder;
+}
+
+/* The reorder estimate must equal ceil(reordering_distance / mss) exactly,
+ * neither under- nor over-estimating, and must track the maximum observed
+ * distance rather than summing successive observations. */
+static int
+tcp_test_sack_reorder_accuracy (void)
+{
+  tcp_connection_t _tc, *tc = &_tc;
+  sack_scoreboard_t *sb = &tc->sack_sb;
+  sack_block_t block;
+  const u16 mss = 150;
+  const u32 snd_nxt = 60000;
+  u32 dist_mss;
+  int ok = 1;
+
+  /* Accuracy sweep: for each whole-segment distance, test an exact multiple,
+   * one byte over (must round the partial segment up) and one byte under (must
+   * not round an almost-full extra segment up). Start above the floor
+   * (TCP_DUPACK_THRESHOLD) so every point exercises the ceil rounding rather
+   * than the clamp, and keep every distance >= mss so the delayed segment is a
+   * valid block below the frontier (end <= snd_nxt). */
+  for (dist_mss = TCP_DUPACK_THRESHOLD + 1; dist_mss <= 40 && ok; dist_mss++)
+    {
+      u32 s;
+      const int offs[] = { 0, 1, -1 };
+
+      for (s = 0; s < ARRAY_LEN (offs) && ok; s++)
+	{
+	  u32 distance = dist_mss * mss + offs[s];
+	  u32 expected = (distance + mss - 1) / mss;
+	  u32 got = tcp_test_reorder_observe (tc, mss, snd_nxt, distance, TCP_DUPACK_THRESHOLD);
+
+	  ok = TCP_TEST_I ((got == expected),
+			   "reorder accuracy: distance %u (mss %u) expected %u, got %u", distance,
+			   mss, expected, got);
+	}
+    }
+  if (!ok)
+    return 1;
+
+  /* Floor: a reordering shorter than the dupack threshold must clamp to
+   * TCP_DUPACK_THRESHOLD, not report the (smaller) measured distance. Distances
+   * stay >= mss so the block is still a valid observation below the frontier. */
+  {
+    u32 floor_dists[] = { mss + 1, 2 * mss };
+
+    for (dist_mss = 0; dist_mss < ARRAY_LEN (floor_dists) && ok; dist_mss++)
+      {
+	u32 distance = floor_dists[dist_mss];
+	u32 got = tcp_test_reorder_observe (tc, mss, snd_nxt, distance, TCP_DUPACK_THRESHOLD);
+
+	ok = TCP_TEST_I ((got == TCP_DUPACK_THRESHOLD),
+			 "reorder floor: distance %u clamps to %u, got %u", distance,
+			 TCP_DUPACK_THRESHOLD, got);
+      }
+  }
+  if (!ok)
+    return 1;
+
+  /* Max-semantics: a larger observation raises the estimate; a subsequent
+   * smaller one neither lowers it (under-estimate) nor adds to it
+   * (over-estimate). */
+  {
+    u32 big = 10, small = 4, got;
+
+    clib_memset (tc, 0, sizeof (*tc));
+    tc->snd_nxt = snd_nxt;
+    tc->snd_mss = mss;
+    tc->rcv_opts.flags = TCP_OPTS_FLAG_SACK;
+    scoreboard_init (sb);
+    sb->rescue_rxt = tc->snd_una - 1;
+
+    block.start = snd_nxt - mss;
+    block.end = snd_nxt;
+    vec_add1 (tc->rcv_opts.sacks, block);
+    tc->rcv_opts.n_sack_blocks = 1;
+    tcp_rcv_sacks (tc, tc->snd_una);
+
+    /* Large reorder first. */
+    vec_reset_length (tc->rcv_opts.sacks);
+    block.start = snd_nxt - big * mss;
+    block.end = block.start + mss;
+    vec_add1 (tc->rcv_opts.sacks, block);
+    tc->rcv_opts.n_sack_blocks = 1;
+    tcp_rcv_sacks (tc, tc->snd_una);
+    ok = TCP_TEST_I ((sb->reorder == big), "reorder max: large observation sets %u, got %u", big,
+		     sb->reorder);
+
+    /* Smaller reorder after: must stay at big, not drop to small, not sum. */
+    if (ok)
+      {
+	vec_reset_length (tc->rcv_opts.sacks);
+	block.start = snd_nxt - small * mss;
+	block.end = block.start + mss;
+	vec_add1 (tc->rcv_opts.sacks, block);
+	tc->rcv_opts.n_sack_blocks = 1;
+	tcp_rcv_sacks (tc, tc->snd_una);
+	ok = TCP_TEST_I ((sb->reorder == big), "reorder max: smaller observation keeps %u, got %u",
+			 big, sb->reorder);
+      }
+
+    scoreboard_clear (sb);
+    pool_free (sb->holes);
+    vec_free (tc->rcv_opts.sacks);
+    if (!ok)
+      return 1;
+
+    /* Reverse order grows the estimate to the larger observation. */
+    got = tcp_test_reorder_observe (tc, mss, snd_nxt, big * mss, small);
+    ok = TCP_TEST_I ((got == big), "reorder max: grows past a smaller prior estimate to %u, got %u",
+		     big, got);
+    if (!ok)
+      return 1;
+  }
+
+  return 0;
+}
+
 static int
 tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
 {
@@ -75,6 +338,12 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
       else if (unformat (input, "replay"))
 	return tcp_test_scoreboard_replay (vm, input);
     }
+
+  if (tcp_test_sack_reordering ())
+    return 1;
+
+  if (tcp_test_sack_reorder_accuracy ())
+    return 1;
 
   clib_memset (tc, 0, sizeof (*tc));
 
@@ -459,6 +728,8 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
    * the lowest part
    */
   scoreboard_clear (sb);
+  /* scoreboard_clear does not floor reorder (path property) */
+  sb->reorder = TCP_DUPACK_THRESHOLD;
   tc->snd_una = 0;
   tc->snd_nxt = 1000;
 
@@ -628,10 +899,115 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
 	    sb->rxt_sacked);
 
   /*
+   * Reorder estimate must keep learning during congestion recovery. A segment
+   * that was never retransmitted (start at/above high_rxt) but arrives out of
+   * order below the sack frontier is unambiguous reordering, so it should grow
+   * sb->reorder even though has_rxt (in recovery) is set. Without this the
+   * estimate stays pinned at the dupack floor and the connection re-enters
+   * spurious fast recoveries on a reordering path.
+   */
+  scoreboard_clear (sb);
+  sb->reorder = TCP_DUPACK_THRESHOLD;
+  vec_reset_length (tc->rcv_opts.sacks);
+  tc->flags |= TCP_CONN_FAST_RECOVERY | TCP_CONN_RECOVERY;
+  tc->snd_una = 0;
+  tc->snd_nxt = 3000;
+  sb->high_rxt = 0;
+  /* scoreboard_init_rxt sentinel: no rescue retransmit fired this episode */
+  sb->rescue_rxt = tc->snd_una - 1;
+  TCP_TEST ((sb->reorder == TCP_DUPACK_THRESHOLD), "reorder at floor %u", sb->reorder);
+
+  /* Establish a high sack frontier first (extends it, does not grow reorder) */
+  block.start = 2400;
+  block.end = 3000;
+  vec_add1 (tc->rcv_opts.sacks, block);
+  tc->rcv_opts.n_sack_blocks = vec_len (tc->rcv_opts.sacks);
+  tcp_rcv_sacks (tc, 0);
+  TCP_TEST ((sb->high_sacked == 3000), "high sacked %u", sb->high_sacked);
+  TCP_TEST ((sb->reorder == TCP_DUPACK_THRESHOLD), "reorder still floor %u", sb->reorder);
+
+  /* A never-retransmitted low block arrives out of order below the frontier:
+   * reord = ceil((3000 - 300) / 150) = 18 */
+  vec_reset_length (tc->rcv_opts.sacks);
+  block.start = 300;
+  block.end = 450;
+  vec_add1 (tc->rcv_opts.sacks, block);
+  tc->rcv_opts.n_sack_blocks = vec_len (tc->rcv_opts.sacks);
+  tcp_rcv_sacks (tc, 0);
+  TCP_TEST ((sb->reorder == 18), "reorder grew in recovery %u", sb->reorder);
+
+  /*
+   * A sack below high_rxt during recovery is ambiguous (it could be a
+   * retransmit arriving rather than the original delayed segment) and must not
+   * grow the reorder estimate.
+   */
+  scoreboard_clear (sb);
+  sb->reorder = TCP_DUPACK_THRESHOLD;
+  vec_reset_length (tc->rcv_opts.sacks);
+  tc->flags |= TCP_CONN_FAST_RECOVERY | TCP_CONN_RECOVERY;
+  tc->snd_una = 0;
+  tc->snd_nxt = 3000;
+  sb->high_rxt = 0;
+  sb->rescue_rxt = tc->snd_una - 1;
+
+  block.start = 2400;
+  block.end = 3000;
+  vec_add1 (tc->rcv_opts.sacks, block);
+  tc->rcv_opts.n_sack_blocks = vec_len (tc->rcv_opts.sacks);
+  tcp_rcv_sacks (tc, 0);
+  TCP_TEST ((sb->reorder == TCP_DUPACK_THRESHOLD), "reorder floor %u", sb->reorder);
+
+  /* Everything below the frontier has now been retransmitted */
+  sb->high_rxt = 2400;
+  vec_reset_length (tc->rcv_opts.sacks);
+  block.start = 300;
+  block.end = 450;
+  vec_add1 (tc->rcv_opts.sacks, block);
+  tc->rcv_opts.n_sack_blocks = vec_len (tc->rcv_opts.sacks);
+  tcp_rcv_sacks (tc, 0);
+  TCP_TEST ((sb->reorder == TCP_DUPACK_THRESHOLD), "reorder unchanged below high_rxt %u",
+	    sb->reorder);
+
+  /*
+   * After a rescue retransmit (RFC 6675) the re-sent segment sits at/above
+   * high_rxt but is NOT reordering. rescue_rxt advanced to snd_congestion marks
+   * it, so a later out-of-order sack at/above high_rxt must NOT grow reorder
+   * (else a delayed rescue + advancing frontier would inflate it toward 300 and
+   * strand real loss until rto).
+   */
+  scoreboard_clear (sb);
+  sb->reorder = TCP_DUPACK_THRESHOLD;
+  vec_reset_length (tc->rcv_opts.sacks);
+  tc->flags |= TCP_CONN_FAST_RECOVERY | TCP_CONN_RECOVERY;
+  tc->snd_una = 0;
+  tc->snd_nxt = 3000;
+  tc->snd_congestion = 3000;
+  sb->high_rxt = 0;
+  /* A rescue fired: rescue_rxt was set to snd_congestion (>= snd_una) */
+  sb->rescue_rxt = tc->snd_congestion;
+
+  block.start = 2400;
+  block.end = 3000;
+  vec_add1 (tc->rcv_opts.sacks, block);
+  tc->rcv_opts.n_sack_blocks = vec_len (tc->rcv_opts.sacks);
+  tcp_rcv_sacks (tc, 0);
+  TCP_TEST ((sb->high_sacked == 3000), "high sacked %u", sb->high_sacked);
+
+  vec_reset_length (tc->rcv_opts.sacks);
+  block.start = 300;
+  block.end = 450;
+  vec_add1 (tc->rcv_opts.sacks, block);
+  tc->rcv_opts.n_sack_blocks = vec_len (tc->rcv_opts.sacks);
+  tcp_rcv_sacks (tc, 0);
+  TCP_TEST ((sb->reorder == TCP_DUPACK_THRESHOLD), "reorder unchanged after rescue rxt %u",
+	    sb->reorder);
+
+  /*
    * Restart
    */
   scoreboard_clear (sb);
   vec_reset_length (tc->rcv_opts.sacks);
+  tc->snd_congestion = 0;
 
   /*
    * Broken sacks:
@@ -697,6 +1073,49 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
   TCP_TEST ((sb->last_sacked_bytes == 400), "last sacked bytes %u", sb->last_sacked_bytes);
   TCP_TEST ((sb->lost_bytes == 35200), "lost bytes %u", sb->lost_bytes);
   TCP_TEST ((!sb->is_reneging), "is not reneging");
+
+  /*
+   * Reclassify an rto-forced loss using only SACK evidence. With no SACKed
+   * data, the rto mark must be removed without discarding the hole.
+   */
+  scoreboard_clear (sb);
+  vec_reset_length (tc->rcv_opts.sacks);
+  tc->flags = TCP_CONN_RECOVERY;
+  tc->snd_una = 0;
+  tc->snd_nxt = 1000;
+  tc->snd_mss = 100;
+  scoreboard_rxt_mark_lost (sb, tc->snd_una, tc->snd_nxt);
+  TCP_TEST ((sb->lost_bytes == 1000), "rto marks bytes lost %u", sb->lost_bytes);
+
+  scoreboard_recompute_sack_loss (sb, tc->snd_una, tc->snd_mss);
+  hole = scoreboard_first_hole (sb);
+  TCP_TEST ((sb->lost_bytes == 0), "rto-only loss removed %u", sb->lost_bytes);
+  TCP_TEST ((hole && !hole->is_lost), "rto-only hole is no longer lost");
+
+  /* SACK-derived loss must survive the same reclassification. */
+  scoreboard_clear (sb);
+  vec_reset_length (tc->rcv_opts.sacks);
+  tc->flags = TCP_CONN_FAST_RECOVERY;
+  block.start = 300;
+  block.end = 600;
+  vec_add1 (tc->rcv_opts.sacks, block);
+  tc->rcv_opts.flags |= TCP_OPTS_FLAG_SACK;
+  tc->rcv_opts.n_sack_blocks = vec_len (tc->rcv_opts.sacks);
+  tcp_rcv_sacks (tc, tc->snd_una);
+  TCP_TEST ((sb->lost_bytes == 300), "SACK marks bytes lost %u", sb->lost_bytes);
+
+  scoreboard_recompute_sack_loss (sb, tc->snd_una, tc->snd_mss);
+  TCP_TEST ((sb->lost_bytes == 300), "SACK-derived loss preserved %u", sb->lost_bytes);
+
+  /* A clean scoreboard does not track cumulative ACK progress. Recovery undo
+   * may reclassify loss after snd_una advances, so a stale high_sacked below
+   * the ACK must still describe zero SACKed bytes. */
+  scoreboard_clear (sb);
+  sb->high_sacked = tc->snd_una;
+  tc->snd_una += tc->snd_mss;
+  scoreboard_recompute_sack_loss (sb, tc->snd_una, tc->snd_mss);
+  TCP_TEST ((sb->sacked_bytes == 0), "empty scoreboard has no sacked bytes %u", sb->sacked_bytes);
+  TCP_TEST ((sb->lost_bytes == 0), "empty scoreboard has no lost bytes %u", sb->lost_bytes);
 
   /*
    * Clear
@@ -1053,6 +1472,208 @@ tcp_test_set_time (clib_thread_index_t thread_index, u32 val)
   tcp_set_time_now (&tcp_main.wrk[thread_index], val);
 }
 
+/* Build a deterministic CUBIC avoidance epoch through the registered
+ * callbacks.  This deliberately avoids depending on cubic_data_t's private
+ * layout. */
+static void
+tcp_test_cubic_init_epoch (tcp_connection_t *tc, clib_thread_index_t thread_index, u32 snd_mss,
+			   u32 w_max_segs)
+{
+  clib_memset (tc, 0, sizeof (*tc));
+  tc->c_thread_index = thread_index;
+  tc->snd_mss = snd_mss;
+  tc->tx_fifo_size = 1 << 30;
+  tc->mrtt_us = 0.1;
+  tc->srtt = 0.1 / TCP_TICK;
+  tc->cc_algo = tcp_cc_algo_get (TCP_CC_CUBIC);
+  tc->cc_algo->init (tc);
+
+  tc->cwnd = w_max_segs * snd_mss;
+  tc->ssthresh = tc->cwnd;
+  tc->cc_algo->congestion (tc);
+  tc->cc_algo->recovered (tc);
+}
+
+/* Compare the congestion-window and accumulator trajectories of two CUBIC
+ * avoidance epochs. */
+static int
+tcp_test_cubic_compare_growth (tcp_connection_t *tc, tcp_connection_t *ref, u32 n_acks)
+{
+  tcp_rate_sample_t rs = { .acked_and_sacked = tc->snd_mss };
+  u32 i;
+
+  for (i = 0; i < n_acks; i++)
+    {
+      tc->cc_algo->rcv_ack (tc, &rs);
+      ref->cc_algo->rcv_ack (ref, &rs);
+      if (tc->cwnd != ref->cwnd || tc->cwnd_acc_bytes != ref->cwnd_acc_bytes)
+	{
+	  fformat (stderr,
+		   "FAIL:%d: cubic growth diverged at ack %u: cwnd %u expected %u, "
+		   "accumulator %u expected %u\n",
+		   __LINE__, i, tc->cwnd, ref->cwnd, tc->cwnd_acc_bytes, ref->cwnd_acc_bytes);
+	  return 1;
+	}
+    }
+  return 0;
+}
+
+static int
+tcp_test_cubic_undo (vlib_main_t *vm)
+{
+  const clib_thread_index_t thread_index = 0;
+  const u32 snd_mss = 1000, restored_cwnd = 60 * snd_mss;
+  const u32 restored_ssthresh = 50 * snd_mss;
+  tcp_connection_t _tc, *tc = &_tc, _ref, *ref = &_ref;
+  tcp_cc_algorithm_t *cubic = tcp_cc_algo_get (TCP_CC_CUBIC);
+  u32 i;
+
+  TCP_TEST ((cubic->undo_recovery != 0), "cubic has undo recovery callback");
+
+  /* Undo after fast recovery reconstructs an avoidance epoch at the restored
+   * window and pre-event w_max. */
+  tcp_test_set_time (thread_index, 1);
+  tcp_test_cubic_init_epoch (tc, thread_index, snd_mss, 100);
+  clib_memcpy_fast (ref, tc, sizeof (*ref));
+  tc->cwnd = restored_cwnd;
+  tc->ssthresh = restored_ssthresh;
+  tc->cc_algo->congestion (tc);
+  tc->cwnd = restored_cwnd;
+  tc->ssthresh = restored_ssthresh;
+
+  tcp_test_set_time (thread_index, 2);
+  tc->cc_algo->undo_recovery (tc);
+  TCP_TEST ((tc->cwnd == restored_cwnd && tc->ssthresh == restored_ssthresh),
+	    "cubic fast undo leaves restored generic state unchanged");
+  ref->ssthresh = restored_cwnd;
+  ref->cc_algo->recovered (ref);
+  ref->ssthresh = restored_ssthresh;
+
+  tcp_test_set_time (thread_index, 3);
+  TCP_TEST ((tcp_test_cubic_compare_growth (tc, ref, 96) == 0),
+	    "cubic fast recovery undo restores coherent growth");
+  TCP_TEST ((tc->cwnd > restored_cwnd), "cubic fast recovery undo resumes growth (%u > %u)",
+	    tc->cwnd, restored_cwnd);
+
+  /* Repeated loss notifications in one RTO recovery event retain the entry
+   * state needed to reconstruct the epoch on undo. */
+  tcp_test_set_time (thread_index, 10);
+  tcp_test_cubic_init_epoch (tc, thread_index, snd_mss, 100);
+  clib_memcpy_fast (ref, tc, sizeof (*ref));
+  tc->cwnd = restored_cwnd;
+  tc->ssthresh = restored_ssthresh;
+  tc->cc_algo->congestion (tc);
+  for (i = 0; i < 3; i++)
+    tc->cc_algo->loss (tc);
+  tc->cwnd = restored_cwnd;
+  tc->ssthresh = restored_ssthresh;
+
+  tcp_test_set_time (thread_index, 11);
+  tc->cc_algo->undo_recovery (tc);
+  TCP_TEST ((tc->cwnd == restored_cwnd && tc->ssthresh == restored_ssthresh),
+	    "cubic rto undo leaves restored generic state unchanged");
+  ref->ssthresh = restored_cwnd;
+  ref->cc_algo->recovered (ref);
+  ref->ssthresh = restored_ssthresh;
+
+  tcp_test_set_time (thread_index, 12);
+  TCP_TEST ((tcp_test_cubic_compare_growth (tc, ref, 96) == 0),
+	    "cubic rto undo restores coherent growth after repeated loss callbacks");
+  TCP_TEST ((tc->cwnd > restored_cwnd), "cubic rto undo resumes growth (%u > %u)", tc->cwnd,
+	    restored_cwnd);
+
+  /* A restored window at or above w_max starts a convex epoch with K = 0. */
+  tcp_test_set_time (thread_index, 20);
+  tcp_test_cubic_init_epoch (tc, thread_index, snd_mss, 50);
+  clib_memcpy_fast (ref, tc, sizeof (*ref));
+  tc->cwnd = restored_cwnd;
+  tc->ssthresh = restored_ssthresh;
+  tc->cc_algo->congestion (tc);
+  tc->cwnd = restored_cwnd;
+  tc->ssthresh = restored_ssthresh;
+
+  tcp_test_set_time (thread_index, 21);
+  tc->cc_algo->undo_recovery (tc);
+  TCP_TEST ((tc->cwnd == restored_cwnd && tc->ssthresh == restored_ssthresh),
+	    "cubic K=0 undo leaves restored generic state unchanged");
+  ref->ssthresh = restored_ssthresh;
+  ref->cc_algo->loss (ref);
+  ref->cwnd = restored_cwnd;
+  ref->ssthresh = restored_ssthresh;
+
+  tcp_test_set_time (thread_index, 22);
+  TCP_TEST ((tcp_test_cubic_compare_growth (tc, ref, 32) == 0),
+	    "cubic undo handles restored window at or above w_max");
+  TCP_TEST ((tc->cwnd <= restored_cwnd + snd_mss), "cubic K=0 epoch does not jump cwnd (%u)",
+	    tc->cwnd);
+
+  return 0;
+}
+
+/* CUBIC shifts its epoch by the local sender's idle interval, recorded when
+ * the flight drains.  Receive-side PAWS state advances independently and must
+ * not affect that interval. */
+static int
+tcp_test_cubic_idle (vlib_main_t *vm)
+{
+  const clib_thread_index_t thread_index = 0;
+  tcp_connection_t _tc, *tc = &_tc, _ref, *ref = &_ref;
+
+  tcp_test_set_time (thread_index, 1);
+  tcp_test_cubic_init_epoch (tc, thread_index, 1000, 100);
+
+  /* The flight drains at time 2 and starts the local sender's idle interval. */
+  tcp_test_set_time (thread_index, 2);
+  tc->delivered_time = tcp_time_now_us (thread_index);
+  tc->tsval_recent_age = tcp_time_tstamp (thread_index);
+
+  /* Receive-side PAWS state may advance while the local sender remains idle.
+   * The expected epoch starts at time 9: the original time 1 epoch shifted by
+   * the eight time units since the flight drained. */
+  tcp_test_set_time (thread_index, 9);
+  tc->tsval_recent_age = tcp_time_tstamp (thread_index);
+  tcp_test_cubic_init_epoch (ref, thread_index, 1000, 100);
+
+  tcp_test_set_time (thread_index, 10);
+  tc->cc_algo->event (tc, TCP_CC_EVT_START_TX);
+  /* Byte tracking starts a new delivery-rate interval after congestion
+   * control consumes the drain time.  That reset must not affect CUBIC. */
+  tc->delivered_time = tcp_time_now_us (thread_index);
+
+  tcp_test_set_time (thread_index, 11);
+  TCP_TEST ((tcp_test_cubic_compare_growth (tc, ref, 64) == 0),
+	    "cubic sender idle shifts the epoch by the local idle time");
+
+  /* Before the first delivered flight there is no delivery-rate baseline.
+   * Starting transmission must begin a fresh epoch at the current time. */
+  tcp_test_set_time (thread_index, 20);
+  tcp_test_cubic_init_epoch (tc, thread_index, 1000, 100);
+  tcp_test_set_time (thread_index, 30);
+  tc->cc_algo->event (tc, TCP_CC_EVT_START_TX);
+  tcp_test_cubic_init_epoch (ref, thread_index, 1000, 100);
+  tcp_test_set_time (thread_index, 31);
+  TCP_TEST ((tcp_test_cubic_compare_growth (tc, ref, 32) == 0),
+	    "cubic first transmission starts a fresh epoch");
+  return 0;
+}
+
+static int
+tcp_test_cubic (vlib_main_t *vm, unformat_input_t *input)
+{
+  int rv;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      vlib_cli_output (vm, "parse error: '%U'", format_unformat_error, input);
+      return -1;
+    }
+
+  if ((rv = tcp_test_cubic_undo (vm)))
+    return rv;
+
+  return tcp_test_cubic_idle (vm);
+}
+
 static int
 tcp_test_persist_e2e (vlib_main_t *vm, unformat_input_t *input)
 {
@@ -1076,7 +1697,7 @@ tcp_test_persist_e2e (vlib_main_t *vm, unformat_input_t *input)
   u8 *appns_id = 0, *data = 0;
   u32 bi = ~0, old_rto, old_snd_nxt;
   u32 pending_bufs_len, pending_nexts_len;
-  int error, rv = 0, routes_added = 0, ns_added = 0;
+  int error, rv = 0, routes_added = 0, ns_added = 0, sessions_cleaned;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -1372,6 +1993,10 @@ tcp_test_persist_e2e (vlib_main_t *vm, unformat_input_t *input)
 	}
     }
 
+  /* The empty-flight transition records the local delivery baseline even
+   * when delivery-rate sampling is disabled. */
+  client_tc->cfg_flags &= ~TCP_CFG_F_RATE_SAMPLE;
+  client_tc->delivered_time = 0;
   server_bytes_drained += session_test_drain_rx_fifo (server_s);
 
   tries = 0;
@@ -1405,6 +2030,11 @@ tcp_test_persist_e2e (vlib_main_t *vm, unformat_input_t *input)
       rv = 1;
       goto cleanup;
     }
+  if (!TCP_TEST_I ((client_tc->delivered_time > 0), "flight drain records delivery time"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
   if (!TCP_TEST_I ((server_bytes_drained == total_bytes), "server received all queued bytes"))
     {
       rv = 1;
@@ -1432,22 +2062,7 @@ tcp_test_persist_e2e (vlib_main_t *vm, unformat_input_t *input)
     }
 
 cleanup:
-  if (accepted_session_index != ~0)
-    {
-      vnet_disconnect_args_t disconnect_args = {
-	.handle = session_make_handle (accepted_session_index, accepted_session_thread),
-	.app_index = server_index,
-      };
-      (void) vnet_disconnect_session (&disconnect_args);
-    }
-  else if (connected_session_index != ~0)
-    {
-      vnet_disconnect_args_t disconnect_args = {
-	.handle = session_make_handle (connected_session_index, connected_session_thread),
-	.app_index = client_index,
-      };
-      (void) vnet_disconnect_session (&disconnect_args);
-    }
+  sessions_cleaned = tcp_e2e_force_session_cleanup (vm);
 
   if (listen_handle != SESSION_INVALID_HANDLE)
     {
@@ -1491,10 +2106,22 @@ cleanup:
 						 0 /* is_add */);
     }
 
-  if (sw_if_index[0] != ~0)
-    session_delete_loopback (sw_if_index[0]);
-  if (sw_if_index[1] != ~0)
-    session_delete_loopback (sw_if_index[1]);
+  /* Stop the loopbacks and drain referencing graph frames before deletion. */
+  for (int j = 0; j < 2; j++)
+    {
+      if (sw_if_index[j] == ~0)
+	continue;
+      (void) ip4_add_del_interface_address (vm, sw_if_index[j], &intf_addr[j], 24, 1 /* is_del */);
+      vnet_sw_interface_set_flags (vnet_get_main (), sw_if_index[j], 0);
+    }
+  if (sessions_cleaned && tcp_e2e_drain_graph_frames (vm))
+    {
+      for (int j = 0; j < 2; j++)
+	if (sw_if_index[j] != ~0)
+	  (void) vnet_delete_loopback_interface (sw_if_index[j]);
+    }
+  else
+    clib_warning ("graph frames did not quiesce; preserving test loopbacks");
 
   vec_free (data);
   vec_free (appns_id);
@@ -1506,6 +2133,1957 @@ static int
 tcp_test_persist (vlib_main_t *vm, unformat_input_t *input)
 {
   return tcp_test_persist_e2e (vm, input);
+}
+
+/* Run the RTO sequence on the connection owner and record its outcomes. */
+typedef struct
+{
+  tcp_connection_t *tc;
+  session_t *s;
+  u8 *data;
+  u32 total_bytes;
+  /* Recorded outcomes. */
+  u8 first_in_recovery;
+  u32 first_tr_occurences;
+  u32 first_rto_boff;
+  u32 cwnd_after_first;
+  u32 flight_after_first;
+  u32 cc_space_after_first;
+  u32 snd_rxt_after_first;
+  u32 rxt_delivered_after_first;
+  u32 prev_cwnd_after_first;
+  u32 ssthresh_after_first;
+  u8 second_still_in_recovery;
+  u32 cwnd_after_second;
+  u32 flight_after_second;
+  u32 cc_space_after_second;
+  u32 snd_rxt_after_second;
+  u32 rxt_delivered_after_second;
+  u32 second_ssthresh;
+  u32 second_prev_cwnd;
+  u32 mss;
+  u8 fr_in_fastrecovery;
+  u32 fr_prev_cwnd_sentinel;
+  u32 fr_prev_cwnd_after;
+  u32 fr_cwnd_sentinel;
+  u32 fr_cwnd_after;
+  volatile u8 done;
+  volatile u8 in_flight; /**< set while a callback is queued/running */
+} tcp_test_rto_rpc_args_t;
+
+static tcp_test_rto_rpc_args_t tcp_test_rto_rpc_args;
+
+static void
+tcp_test_rto_rpc (void *argp)
+{
+  tcp_test_rto_rpc_args_t *a = argp;
+  tcp_connection_t *tc = a->tc;
+  tcp_worker_ctx_t *wrk = tcp_get_worker (tc->c_thread_index);
+
+  /* First rto: starts the congestion event, enters rto recovery. */
+  tcp_timer_reset (&wrk->timer_wheel, tc, TCP_TIMER_RETRANSMIT);
+  scoreboard_clear (&tc->sack_sb);
+  scoreboard_init_rxt (&tc->sack_sb, tc->snd_una);
+  tc->snd_rxt_bytes = 0;
+  tc->rxt_delivered = 0;
+  tc->tr_occurences = 0;
+  tc->rto_boff = 0;
+  a->mss = tc->snd_mss;
+  tcp_timer_retransmit_handler (tc);
+
+  a->first_in_recovery = tcp_in_recovery (tc);
+  a->first_tr_occurences = tc->tr_occurences;
+  a->first_rto_boff = tc->rto_boff;
+  a->cwnd_after_first = tc->cwnd;
+  a->flight_after_first = tcp_flight_size (tc);
+  a->cc_space_after_first = tcp_available_cc_snd_space (tc);
+  a->snd_rxt_after_first = tc->snd_rxt_bytes;
+  a->rxt_delivered_after_first = tc->rxt_delivered;
+  a->prev_cwnd_after_first = tc->prev_cwnd;
+  a->ssthresh_after_first = tc->ssthresh;
+
+  /* Emulate ACK progress without ending recovery, then fire a second RTO. */
+  tc->rto_boff = 0;
+  a->second_still_in_recovery = tcp_in_recovery (tc);
+
+  tcp_timer_reset (&wrk->timer_wheel, tc, TCP_TIMER_RETRANSMIT);
+  tcp_timer_retransmit_handler (tc);
+  a->cwnd_after_second = tc->cwnd;
+  a->flight_after_second = tcp_flight_size (tc);
+  a->cc_space_after_second = tcp_available_cc_snd_space (tc);
+  a->snd_rxt_after_second = tc->snd_rxt_bytes;
+  a->rxt_delivered_after_second = tc->rxt_delivered;
+  a->second_ssthresh = tc->ssthresh;
+  a->second_prev_cwnd = tc->prev_cwnd;
+
+  /* Fire an RTO during fast recovery and preserve its entry snapshot. */
+  tcp_recovery_off (tc);
+  tcp_fastrecovery_off (tc);
+  tc->rto_boff = 0;
+  tc->snd_una = tc->snd_nxt;
+  (void) svm_fifo_enqueue (a->s->tx_fifo, a->total_bytes, a->data);
+  tc->snd_wnd = a->total_bytes;
+  tc->snd_nxt = tc->snd_una + a->total_bytes;
+  tc->snd_congestion = tc->snd_nxt;
+  tc->rcv_dupacks = 0;
+
+  tcp_fastrecovery_on (tc);
+  a->fr_in_fastrecovery = tcp_in_fastrecovery (tc) && !tcp_in_recovery (tc);
+
+  /* Use sentinels to verify snapshot preservation and loss-window reduction. */
+  a->fr_prev_cwnd_sentinel = tc->cwnd + 12345;
+  tc->prev_cwnd = a->fr_prev_cwnd_sentinel;
+  a->fr_cwnd_sentinel = 0x40000000;
+  tc->cwnd = a->fr_cwnd_sentinel;
+
+  tcp_timer_reset (&wrk->timer_wheel, tc, TCP_TIMER_RETRANSMIT);
+  tc->rto_boff = 0;
+  tcp_timer_retransmit_handler (tc);
+  a->fr_prev_cwnd_after = tc->prev_cwnd;
+  a->fr_cwnd_after = tc->cwnd;
+
+  a->done = 1;
+  a->in_flight = 0;
+}
+
+/* Set up SACK head-retry state and schedule TX on the connection owner. */
+typedef struct
+{
+  tcp_connection_t *tc;
+  session_t *s;
+  u8 *data;
+  u32 mss;
+  transport_connection_flags_t saved_flags;
+  u8 budget_ok; /**< tcp_available_cc_snd_space == mss after setup */
+  u64 old_bytes_retrans;
+  volatile u8 done;
+  volatile u8 in_flight; /**< set while a callback is queued/running */
+} tcp_test_headrtx_rpc_args_t;
+
+static tcp_test_headrtx_rpc_args_t tcp_test_headrtx_rpc_args;
+
+static void
+tcp_test_headrtx_setup_rpc (void *argp)
+{
+  tcp_test_headrtx_rpc_args_t *a = argp;
+  tcp_connection_t *tc = a->tc;
+  tcp_worker_ctx_t *wrk = tcp_get_worker (tc->c_thread_index);
+  sack_scoreboard_t *sb = &tc->sack_sb;
+  sack_scoreboard_hole_t *hole;
+  u32 mss = a->mss;
+
+  a->saved_flags = tc->connection.flags;
+
+  tcp_timer_reset (&wrk->timer_wheel, tc, TCP_TIMER_RETRANSMIT);
+  scoreboard_clear (sb);
+
+  /* Build an isolated four-MSS flight with no pending custom TX work. */
+  svm_fifo_dequeue_drop_all (a->s->tx_fifo);
+  tc->flags &= ~TCP_CONN_RXT_PENDING;
+  a->s->flags &= ~SESSION_F_CUSTOM_TX;
+  (void) svm_fifo_enqueue (a->s->tx_fifo, 4 * mss, a->data);
+
+  tc->connection.flags &= ~TRANSPORT_CONNECTION_F_IS_TX_PACED;
+  tc->flags |= TCP_CONN_RECOVERY | TCP_CONN_FRXT_FIRST | TCP_CONN_RXT_PENDING;
+  tc->rcv_opts.flags |= TCP_OPTS_FLAG_SACK;
+  tc->snd_nxt = tc->snd_una + 4 * mss;
+  tc->snd_congestion = tc->snd_nxt - mss;
+  tc->snd_rxt_bytes = 0;
+  tc->rxt_delivered = 0;
+  tc->prr_delivered = 0;
+
+  pool_get (sb->holes, hole);
+  clib_memset (hole, 0, sizeof (*hole));
+  hole->start = tc->snd_una;
+  hole->end = tc->snd_una + 2 * mss;
+  hole->next = TCP_INVALID_SACK_HOLE_INDEX;
+  hole->prev = TCP_INVALID_SACK_HOLE_INDEX;
+  hole->is_lost = 1;
+  sb->head = sb->tail = scoreboard_hole_index (sb, hole);
+  sb->cur_rxt_hole = TCP_INVALID_SACK_HOLE_INDEX;
+  sb->high_rxt = tc->snd_una;
+  sb->high_sacked = tc->snd_nxt;
+  sb->rescue_rxt = tc->snd_una - 1;
+  sb->lost_bytes = scoreboard_hole_bytes (hole);
+
+  /* Leave exactly one MSS of congestion-control send space. */
+  tc->cwnd = tcp_flight_size (tc) + mss;
+  tc->snd_wnd = tc->cwnd;
+  a->budget_ok = (tcp_available_cc_snd_space (tc) == mss);
+
+  a->old_bytes_retrans = tc->bytes_retrans;
+  a->s->flags |= SESSION_F_CUSTOM_TX;
+  (void) session_program_tx_io_evt (a->s->handle, SESSION_IO_EVT_TX);
+
+  a->done = 1;
+  a->in_flight = 0;
+}
+
+/*
+ * Regression test for "reduce loss window once per rto congestion event".
+ *
+ * On each rto tcp_cc_rxt_timeout re-sets the loss cwnd, but the once-per-event
+ * reduction (ssthresh via tcp_cc_congestion, the prev_cwnd/prev_ssthresh undo
+ * snapshot, and the snd_rxt_ts Eifel reference) must run only for the rto that
+ * starts the event. It must NOT re-run for a subsequent rto of the same,
+ * still-unrecovered event even though rto_boff can be cleared to 0
+ * mid-recovery by tcp_update_rtt on an ack that makes progress.
+ */
+static int
+tcp_test_rto_reduce_once_e2e (vlib_main_t *vm, unformat_input_t *input)
+{
+  session_endpoint_cfg_t client_sep = SESSION_ENDPOINT_CFG_NULL;
+  session_endpoint_cfg_t server_sep = SESSION_ENDPOINT_CFG_NULL;
+  session_handle_t listen_handle = SESSION_INVALID_HANDLE;
+  u64 options[APP_OPTIONS_N_OPTIONS], placeholder_secret = 2236;
+  u32 client_index = ~0, server_index = ~0, sw_if_index[2] = { ~0, ~0 };
+  u32 client_vrf = 0, server_vrf = 2, tries = 0;
+  u32 total_bytes = 16 << 10;
+  u32 client_fifo_size = 32 << 10, i;
+  /* Use an ephemeral client port. */
+  u16 placeholder_server_port = 2237, placeholder_client_port = 0;
+  ip4_address_t intf_addr[2];
+  session_t *client_s = 0;
+  tcp_connection_t *client_tc = 0;
+  transport_connection_t *tc;
+  u8 *appns_id = 0, *data = 0;
+  int error, rv = 0, routes_added = 0, ns_added = 0, sessions_cleaned;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      vlib_cli_output (vm, "parse error: '%U'", format_unformat_error, input);
+      return -1;
+    }
+
+  session_test_reset_placeholder_state ();
+
+  intf_addr[0].as_u32 = clib_host_to_net_u32 (0x08080801);
+  if (session_create_lookpback (client_vrf, &sw_if_index[0], &intf_addr[0]))
+    return 1;
+
+  intf_addr[1].as_u32 = clib_host_to_net_u32 (0x09090901);
+  if (session_create_lookpback (server_vrf, &sw_if_index[1], &intf_addr[1]))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+  session_add_del_route_via_lookup_in_table (client_vrf, server_vrf, &intf_addr[1], 32,
+					     1 /* is_add */);
+  session_add_del_route_via_lookup_in_table (server_vrf, client_vrf, &intf_addr[0], 32,
+					     1 /* is_add */);
+  routes_added = 1;
+
+  appns_id = format (0, "appns_rto_once_server");
+  vnet_app_namespace_add_del_args_t ns_args = {
+    .ns_id = appns_id,
+    .secret = placeholder_secret,
+    .sw_if_index = sw_if_index[1],
+    .is_add = 1,
+  };
+  error = vnet_app_namespace_add_del (&ns_args);
+  if (!TCP_TEST_I ((error == 0), "app ns insertion should succeed: %d", error))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  ns_added = 1;
+
+  clib_memset (options, 0, sizeof (options));
+  options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_IS_BUILTIN;
+  options[APP_OPTIONS_FLAGS] |= APP_OPTIONS_FLAGS_USE_GLOBAL_SCOPE;
+  options[APP_OPTIONS_RX_FIFO_SIZE] = 4 << 10;
+  options[APP_OPTIONS_TX_FIFO_SIZE] = client_fifo_size;
+
+  vnet_app_attach_args_t attach_args = {
+    .api_client_index = ~0,
+    .options = options,
+    .namespace_id = 0,
+    .session_cb_vft = &placeholder_session_cbs,
+    .name = format (0, "tcp_test_rto_once_client"),
+  };
+
+  error = vnet_application_attach (&attach_args);
+  if (!TCP_TEST_I ((error == 0), "client app attached"))
+    {
+      vec_free (attach_args.name);
+      rv = 1;
+      goto cleanup;
+    }
+  client_index = attach_args.app_index;
+  vec_free (attach_args.name);
+
+  options[APP_OPTIONS_RX_FIFO_SIZE] = 4 << 10;
+  options[APP_OPTIONS_TX_FIFO_SIZE] = 4 << 10;
+  options[APP_OPTIONS_ADD_SEGMENT_SIZE] = 32 << 20;
+
+  attach_args.name = format (0, "tcp_test_rto_once_server");
+  attach_args.namespace_id = appns_id;
+  attach_args.options[APP_OPTIONS_NAMESPACE_SECRET] = placeholder_secret;
+  error = vnet_application_attach (&attach_args);
+  if (!TCP_TEST_I ((error == 0), "server app attached"))
+    {
+      vec_free (attach_args.name);
+      rv = 1;
+      goto cleanup;
+    }
+  server_index = attach_args.app_index;
+  vec_free (attach_args.name);
+
+  server_sep.is_ip4 = 1;
+  server_sep.port = placeholder_server_port;
+  vnet_listen_args_t bind_args = {
+    .sep_ext = server_sep,
+    .app_index = server_index,
+  };
+  error = vnet_listen (&bind_args);
+  if (!TCP_TEST_I ((error == 0), "server bind should work"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  listen_handle = bind_args.handle;
+
+  client_sep.is_ip4 = 1;
+  client_sep.ip.ip4.as_u32 = intf_addr[1].as_u32;
+  client_sep.port = placeholder_server_port;
+  client_sep.peer.is_ip4 = 1;
+  client_sep.peer.ip.ip4.as_u32 = intf_addr[0].as_u32;
+  client_sep.peer.port = placeholder_client_port;
+  client_sep.transport_proto = TRANSPORT_PROTO_TCP;
+
+  vnet_connect_args_t connect_args = {
+    .sep_ext = client_sep,
+    .app_index = client_index,
+  };
+  error = vnet_connect (&connect_args);
+  if (!TCP_TEST_I ((error == 0), "connect should work"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+  tries = 0;
+  while (connected_session_index == ~0 && ++tries < 100)
+    {
+      vlib_worker_thread_barrier_release (vm);
+      vlib_process_suspend (vm, 10e-3);
+      vlib_worker_thread_barrier_sync (vm);
+    }
+  while (accepted_session_index == ~0 && ++tries < 100)
+    {
+      vlib_worker_thread_barrier_release (vm);
+      vlib_process_suspend (vm, 10e-3);
+      vlib_worker_thread_barrier_sync (vm);
+    }
+
+  if (!TCP_TEST_I ((connected_session_index != ~0), "client session should exist"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  if (!TCP_TEST_I ((accepted_session_index != ~0), "server session should exist"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+  client_s = session_get (connected_session_index, connected_session_thread);
+  tc = session_get_transport (client_s);
+  if (!TCP_TEST_I ((tc != 0), "client transport should exist"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  client_tc = (tcp_connection_t *) tc;
+
+  /*
+   * Build a deterministic flight of unacked data to time out on, without
+   * depending on peer ack timing (over loopback the peer would ack instantly).
+   * Queue data in the tx fifo and mark it as sent-but-unacked by advancing
+   * snd_nxt past snd_una; snd_congestion is the recovery point. The rto handler
+   * retransmits from the fifo at snd_una.
+   */
+  vec_validate (data, total_bytes - 1);
+  for (i = 0; i < total_bytes; i++)
+    data[i] = i & 0xff;
+
+  error = svm_fifo_enqueue (client_s->tx_fifo, total_bytes, data);
+  if (!TCP_TEST_I ((error == (int) total_bytes), "client queued %u bytes", total_bytes))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+  /* Freeze the peer window wide and mark the queued data as in flight. */
+  client_tc->snd_wnd = total_bytes;
+  client_tc->snd_nxt = client_tc->snd_una + total_bytes;
+  client_tc->snd_congestion = client_tc->snd_nxt;
+  client_tc->rcv_dupacks = 0;
+
+  if (!TCP_TEST_I ((client_tc->snd_nxt != client_tc->snd_una), "client has data in flight"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+  /* Run connection mutations on the owning thread. Static arguments keep the
+   * RPC state valid until completion. */
+  {
+    tcp_test_rto_rpc_args_t *a = &tcp_test_rto_rpc_args;
+
+    /* Allow only one RPC to reference the static arguments. */
+    if (!TCP_TEST_I ((a->in_flight == 0), "rto rpc slot available"))
+      return 1;
+
+    clib_memset (a, 0, sizeof (*a));
+    a->tc = client_tc;
+    a->s = client_s;
+    a->data = data;
+    a->total_bytes = total_bytes;
+    a->in_flight = 1;
+
+    session_send_rpc_evt_to_thread (client_tc->c_thread_index, tcp_test_rto_rpc, a);
+
+    /* Wait for the owning thread to finish mutating the connection. */
+    tries = 0;
+    while (!a->done && ++tries < 2000)
+      tcp_e2e_pump (vm, 1e-3);
+    if (!TCP_TEST_I ((a->done != 0), "rto sequence ran on the connection thread"))
+      {
+	rv = 1;
+	/* Keep referenced state alive until the callback completes. */
+	for (tries = 0; a->in_flight && tries < 2000; tries++)
+	  tcp_e2e_pump (vm, 1e-3);
+	if (a->in_flight)
+	  return 1;
+	goto cleanup;
+      }
+
+    /* First rto: enters recovery, counts once, backs off. */
+    if (!TCP_TEST_I ((a->first_in_recovery != 0), "first rto enters recovery"))
+      {
+	rv = 1;
+	goto cleanup;
+      }
+    if (!TCP_TEST_I ((a->first_tr_occurences == 1),
+		     "first rto counts as one timeout (tr_occurences %u)", a->first_tr_occurences))
+      {
+	rv = 1;
+	goto cleanup;
+      }
+    if (!TCP_TEST_I ((a->first_rto_boff >= 1), "first rto backed off"))
+      {
+	rv = 1;
+	goto cleanup;
+      }
+    if (!TCP_TEST_I ((a->cwnd_after_first == a->mss && a->flight_after_first == a->mss &&
+		      a->cc_space_after_first == 0),
+		     "first rto leaves one mss in flight with no send space "
+		     "(cwnd %u flight %u space %u mss %u)",
+		     a->cwnd_after_first, a->flight_after_first, a->cc_space_after_first, a->mss))
+      {
+	rv = 1;
+	goto cleanup;
+      }
+    if (!TCP_TEST_I ((a->snd_rxt_after_first == a->mss && a->rxt_delivered_after_first == 0),
+		     "first rto accounts one live retransmission (sent %u delivered %u)",
+		     a->snd_rxt_after_first, a->rxt_delivered_after_first))
+      {
+	rv = 1;
+	goto cleanup;
+      }
+
+    /* A repeated RTO in one recovery event preserves ssthresh and prev_cwnd. */
+    if (!TCP_TEST_I ((a->second_still_in_recovery != 0), "still in recovery before second rto"))
+      {
+	rv = 1;
+	goto cleanup;
+      }
+    if (!TCP_TEST_I ((a->second_ssthresh == a->ssthresh_after_first),
+		     "second rto does not re-reduce ssthresh (%u -> %u)", a->ssthresh_after_first,
+		     a->second_ssthresh))
+      {
+	rv = 1;
+	goto cleanup;
+      }
+    if (!TCP_TEST_I ((a->second_prev_cwnd == a->prev_cwnd_after_first),
+		     "second rto does not re-snapshot prev_cwnd (%u -> %u)",
+		     a->prev_cwnd_after_first, a->second_prev_cwnd))
+      {
+	rv = 1;
+	goto cleanup;
+      }
+    if (!TCP_TEST_I ((a->cwnd_after_second == a->mss && a->flight_after_second == a->mss &&
+		      a->cc_space_after_second == 0),
+		     "second rto replaces the timed-out copy without opening send space "
+		     "(cwnd %u flight %u space %u mss %u)",
+		     a->cwnd_after_second, a->flight_after_second, a->cc_space_after_second,
+		     a->mss))
+      {
+	rv = 1;
+	goto cleanup;
+      }
+    if (!TCP_TEST_I (
+	  (a->snd_rxt_after_second == 2 * a->mss && a->rxt_delivered_after_second == a->mss),
+	  "second rto retires the prior retransmission (sent %u delivered %u)",
+	  a->snd_rxt_after_second, a->rxt_delivered_after_second))
+      {
+	rv = 1;
+	goto cleanup;
+      }
+
+    /* An RTO during fast recovery reduces cwnd and preserves prev_cwnd. */
+    if (!TCP_TEST_I ((a->fr_in_fastrecovery != 0), "in fast recovery, not rto recovery"))
+      {
+	rv = 1;
+	goto cleanup;
+      }
+    if (!TCP_TEST_I ((a->fr_prev_cwnd_after == a->fr_prev_cwnd_sentinel),
+		     "rto during fast recovery preserves the entry undo snapshot "
+		     "(prev_cwnd %u, expected %u)",
+		     a->fr_prev_cwnd_after, a->fr_prev_cwnd_sentinel))
+      {
+	rv = 1;
+	goto cleanup;
+      }
+    if (!TCP_TEST_I ((a->fr_cwnd_after < a->fr_cwnd_sentinel),
+		     "rto during fast recovery sets loss cwnd (%u, was sentinel %u)",
+		     a->fr_cwnd_after, a->fr_cwnd_sentinel))
+      {
+	rv = 1;
+	goto cleanup;
+      }
+  }
+
+  /*
+   * Spurious-retransmit detection predicate (RFC 3522 Sec. 3.2 Eifel),
+   * tcp_cc_is_spurious_retransmit: on a cumulative ack in recovery, decides
+   * whether the window reduction was spurious (reordered/delayed data, not real
+   * loss) and should be undone. Base state below is spurious; each case flips
+   * one term. Spurious requires: retransmit stamped, part of the flight still
+   * outstanding (snd_una < snd_congestion), timestamp option present, and tsecr
+   * older than the first retransmit. Other outstanding loss is handled as a
+   * separate recovery event.
+   */
+  {
+    tcp_connection_t _stc, *stc = &_stc;
+    u32 mss = 1460;
+
+#define ARM_SPURIOUS()                                                                             \
+  do                                                                                               \
+    {                                                                                              \
+      clib_memset (stc, 0, sizeof (*stc));                                                         \
+      stc->snd_mss = mss;                                                                          \
+      stc->flags |= TCP_CONN_FAST_RECOVERY;                                                        \
+      stc->bytes_acked = 2 * mss;                                                                  \
+      stc->snd_una = 10000;                                                                        \
+      stc->snd_congestion = stc->snd_una + 10 * mss;                                               \
+      stc->snd_rxt_ts = 1000;                                                                      \
+      stc->sack_sb.lost_bytes = 0;                                                                 \
+      stc->rcv_opts.flags = TCP_OPTS_FLAG_TSTAMP;                                                  \
+      stc->rcv_opts.tsecr = stc->snd_rxt_ts - 1;                                                   \
+    }                                                                                              \
+  while (0)
+
+    /* Base: all conditions met -> spurious. */
+    ARM_SPURIOUS ();
+    if (!TCP_TEST_I ((tcp_cc_is_spurious_retransmit (stc)),
+		     "eifel: spurious on partial cumulative ack, tsecr < snd_rxt_ts, "
+		     "no loss"))
+      {
+	rv = 1;
+	goto cleanup;
+      }
+
+    /* Also valid for rto recovery (TCP_CONN_RECOVERY), not just fast recovery. */
+    ARM_SPURIOUS ();
+    stc->flags = TCP_CONN_RECOVERY;
+    if (!TCP_TEST_I ((tcp_cc_is_spurious_retransmit (stc)), "eifel: also fires for rto recovery"))
+      {
+	rv = 1;
+	goto cleanup;
+      }
+
+    /* Detection is independent of other outstanding loss. Rto recovery may
+     * carry speculative loss marks. */
+    ARM_SPURIOUS ();
+    stc->flags = TCP_CONN_RECOVERY;
+    stc->sack_sb.lost_bytes = mss;
+    if (!TCP_TEST_I ((tcp_cc_is_spurious_retransmit (stc)),
+		     "eifel: rto retransmit spurious despite outstanding loss"))
+      {
+	rv = 1;
+	goto cleanup;
+      }
+
+    /* Negative: no retransmit stamped (snd_rxt_ts == 0), nothing to undo. */
+    ARM_SPURIOUS ();
+    stc->snd_rxt_ts = 0;
+    if (!TCP_TEST_I ((!tcp_cc_is_spurious_retransmit (stc)),
+		     "eifel: not spurious without a retransmit timestamp"))
+      {
+	rv = 1;
+	goto cleanup;
+      }
+
+    /* The initiating fast retransmit can be spurious while another SACK-derived
+     * loss remains outstanding. The response handles that as a fresh event. */
+    ARM_SPURIOUS ();
+    stc->sack_sb.lost_bytes = mss;
+    if (!TCP_TEST_I ((tcp_cc_is_spurious_retransmit (stc)),
+		     "eifel: fast retransmit spurious despite other outstanding loss"))
+      {
+	rv = 1;
+	goto cleanup;
+      }
+
+    /* Negative: full-flight ack (snd_una reached snd_congestion). Ambiguous per
+     * RFC 3522 Sec. 3.2 (e.g. rto from losing all acks) -> keep the reduction. */
+    ARM_SPURIOUS ();
+    stc->snd_una = stc->snd_congestion;
+    if (!TCP_TEST_I ((!tcp_cc_is_spurious_retransmit (stc)),
+		     "eifel: not spurious on a full-flight ack"))
+      {
+	rv = 1;
+	goto cleanup;
+      }
+
+    /* Negative: echoed tsecr not older than snd_rxt_ts (ack post-dates the
+     * retransmit -> the retransmit was needed). */
+    ARM_SPURIOUS ();
+    stc->rcv_opts.tsecr = stc->snd_rxt_ts;
+    if (!TCP_TEST_I ((!tcp_cc_is_spurious_retransmit (stc)),
+		     "eifel: not spurious when tsecr >= snd_rxt_ts"))
+      {
+	rv = 1;
+	goto cleanup;
+      }
+
+    /* Negative: no timestamp option -> Eifel not applicable. */
+    ARM_SPURIOUS ();
+    stc->rcv_opts.flags = 0;
+    if (!TCP_TEST_I ((!tcp_cc_is_spurious_retransmit (stc)),
+		     "eifel: not spurious without the timestamp option"))
+      {
+	rv = 1;
+	goto cleanup;
+      }
+#undef ARM_SPURIOUS
+  }
+
+  /*
+   * When SACK advances beyond the recovery point, retransmitting snd_una
+   * consumes the same congestion-control send budget as every other
+   * retransmission. Leave one MSS of send space and a two-MSS lost hole; only
+   * the head segment may be emitted.
+   */
+  {
+    tcp_test_headrtx_rpc_args_t *h = &tcp_test_headrtx_rpc_args;
+    u32 rxt_tries;
+
+    /* Allow only one RPC to reference the static arguments. */
+    if (!TCP_TEST_I ((h->in_flight == 0), "head-retry rpc slot available"))
+      return 1;
+
+    clib_memset (h, 0, sizeof (*h));
+    h->tc = client_tc;
+    h->s = client_s;
+    h->data = data;
+    h->mss = client_tc->snd_mss;
+    h->in_flight = 1;
+
+    session_send_rpc_evt_to_thread (client_tc->c_thread_index, tcp_test_headrtx_setup_rpc, h);
+    /* Wait for the owning thread to complete setup. */
+    tries = 0;
+    while (!h->done && ++tries < 2000)
+      tcp_e2e_pump (vm, 1e-3);
+    if (!TCP_TEST_I ((h->done != 0), "sack head retry setup ran on the connection thread"))
+      {
+	rv = 1;
+	for (tries = 0; h->in_flight && tries < 2000; tries++)
+	  tcp_e2e_pump (vm, 1e-3);
+	if (h->in_flight)
+	  return 1;
+	goto cleanup;
+      }
+    if (!TCP_TEST_I ((h->budget_ok != 0), "sack head retry starts with one mss send budget"))
+      {
+	rv = 1;
+	goto cleanup;
+      }
+
+    /* Wait for the worker to dispatch the programmed tx event. */
+    for (rxt_tries = 0; (client_tc->flags & TCP_CONN_RXT_PENDING) && rxt_tries < 100; rxt_tries++)
+      tcp_e2e_pump (vm, 1e-3);
+
+    client_tc->connection.flags = h->saved_flags;
+    if (!TCP_TEST_I (!(client_tc->flags & TCP_CONN_RXT_PENDING),
+		     "sack head retry tx event dispatched"))
+      {
+	rv = 1;
+	goto cleanup;
+      }
+    if (!TCP_TEST_I ((client_tc->bytes_retrans == h->old_bytes_retrans + h->mss),
+		     "sack head retry consumes one mss, retransmitted %llu bytes",
+		     client_tc->bytes_retrans - h->old_bytes_retrans))
+      {
+	rv = 1;
+	goto cleanup;
+      }
+  }
+
+cleanup:
+  sessions_cleaned = tcp_e2e_force_session_cleanup (vm);
+
+  if (listen_handle != SESSION_INVALID_HANDLE)
+    {
+      vnet_unlisten_args_t unbind_args = {
+	.handle = listen_handle,
+	.app_index = server_index,
+      };
+      (void) vnet_unlisten (&unbind_args);
+    }
+
+  if (server_index != ~0)
+    {
+      vnet_app_detach_args_t detach_args = {
+	.app_index = server_index,
+	.api_client_index = ~0,
+      };
+      vnet_application_detach (&detach_args);
+    }
+  if (client_index != ~0)
+    {
+      vnet_app_detach_args_t detach_args = {
+	.app_index = client_index,
+	.api_client_index = ~0,
+      };
+      vnet_application_detach (&detach_args);
+    }
+
+  if (ns_added)
+    {
+      ns_args.is_add = 0;
+      (void) vnet_app_namespace_add_del (&ns_args);
+    }
+
+  vlib_process_suspend (vm, 10e-3);
+
+  if (routes_added)
+    {
+      session_add_del_route_via_lookup_in_table (client_vrf, server_vrf, &intf_addr[1], 32,
+						 0 /* is_add */);
+      session_add_del_route_via_lookup_in_table (server_vrf, client_vrf, &intf_addr[0], 32,
+						 0 /* is_add */);
+    }
+
+  /* Stop the loopbacks and drain referencing graph frames before deletion. */
+  for (int j = 0; j < 2; j++)
+    {
+      if (sw_if_index[j] == ~0)
+	continue;
+      (void) ip4_add_del_interface_address (vm, sw_if_index[j], &intf_addr[j], 24, 1 /* is_del */);
+      vnet_sw_interface_set_flags (vnet_get_main (), sw_if_index[j], 0);
+    }
+  if (sessions_cleaned && tcp_e2e_drain_graph_frames (vm))
+    {
+      for (int j = 0; j < 2; j++)
+	if (sw_if_index[j] != ~0)
+	  (void) vnet_delete_loopback_interface (sw_if_index[j]);
+    }
+  else
+    clib_warning ("graph frames did not quiesce; preserving test loopbacks");
+
+  vec_free (data);
+  vec_free (appns_id);
+
+  return rv;
+}
+
+static int
+tcp_test_rto (vlib_main_t *vm, unformat_input_t *input)
+{
+  return tcp_test_rto_reduce_once_e2e (vm, input);
+}
+
+/*
+ * Tampering-based end-to-end cases. Each drives a real connection through the
+ * test tampering node and asserts the connection tolerates a specific dropped
+ * segment. Sub-cases are selected with "test tcp tamper <name>"; no argument
+ * (or "all") runs them all.
+ */
+
+/* Drop the client's first FIN and confirm the connection still tears down: the
+ * FIN is retransmitted and acknowledged (snd_una reaches snd_nxt). */
+static int
+tcp_test_tamper_lost_fin (vlib_main_t *vm)
+{
+  tcp_e2e_params_t params = {
+    .name = "lost_fin",
+    .client_addr = 0x0a0a0a01,
+    .server_addr = 0x0b0b0b01,
+    .client_vrf = 0,
+    .server_vrf = 2,
+    .server_port = 2239,
+    .client_port = 0, /* ephemeral */
+    .secret = 2238,
+  };
+  tcp_e2e_ctx_t _ctx, *ctx = &_ctx;
+  tcp_connection_t *client_tc;
+  tcp_tamper_rule_t *fin_rule;
+  u64 to_before;
+  u32 tries;
+  int rv = 0;
+
+  tcp_tamper_reset ();
+
+  if (!TCP_TEST_I ((tcp_e2e_setup (vm, ctx, &params) == 0), "lost_fin: e2e setup"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  client_tc = ctx->client_tc;
+
+  if (!TCP_TEST_I ((client_tc->state == TCP_STATE_ESTABLISHED),
+		   "lost_fin: client established before close (state %U)", format_tcp_state,
+		   client_tc->state))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+  /* Arm the drop, route the client's egress through the tamper node, close. */
+  to_before = tcp_e2e_teardown_timeouts ();
+  fin_rule = tcp_tamper_drop_fin (client_tc, 1);
+  tcp_tamper_enable (client_tc);
+  session_close (ctx->client_s);
+
+  tries = 0;
+  while (fin_rule->n_dropped == 0 && ++tries < 100)
+    tcp_e2e_pump (vm, 10e-3);
+  if (!TCP_TEST_I ((fin_rule->n_dropped == 1),
+		   "lost_fin: tamper node dropped the first FIN (dropped %u, matched %u)",
+		   fin_rule->n_dropped, fin_rule->n_matched))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+  /* Wait for the FIN retransmission using an RTO-derived deadline. */
+  {
+    u32 max_iters = tcp_e2e_rxt_wait_iters (client_tc, 10e-3);
+    tries = 0;
+    while (connected_session_index != ~0 && fin_rule->n_matched < 2 && ++tries < max_iters)
+      tcp_e2e_pump (vm, 10e-3);
+  }
+  if (!TCP_TEST_I ((fin_rule->n_matched >= 2),
+		   "lost_fin: FIN retransmitted after the drop (matched %u)", fin_rule->n_matched))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  if (!TCP_TEST_I ((fin_rule->n_dropped == 1),
+		   "lost_fin: only the first FIN was dropped (dropped %u of %u)",
+		   fin_rule->n_dropped, fin_rule->n_matched))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+  /* Wait for FIN acknowledgment, reacquiring the transport each iteration. */
+  {
+    u32 csi = connected_session_index, cst = connected_session_thread;
+    u32 max_iters = tcp_e2e_rxt_wait_iters (client_tc, 10e-3);
+    u8 advanced = 0;
+
+    for (tries = 0; tries < max_iters; tries++)
+      {
+	session_t *s = session_get_if_valid (csi, cst);
+	tcp_connection_t *cur;
+
+	if (connected_session_index == ~0 || !s)
+	  {
+	    advanced = 1; /* fully closed and cleaned up */
+	    break;
+	  }
+	cur = (tcp_connection_t *) session_get_transport (s);
+	/* FIN acknowledgment advances snd_una to snd_nxt. */
+	if (!cur || cur->snd_una == cur->snd_nxt)
+	  {
+	    advanced = 1; /* retransmitted FIN acknowledged */
+	    break;
+	  }
+	tcp_e2e_pump (vm, 10e-3);
+      }
+    if (!TCP_TEST_I ((advanced != 0),
+		     "lost_fin: retransmitted FIN acknowledged (snd_una reached snd_nxt)"))
+      {
+	rv = 1;
+	goto cleanup;
+      }
+  }
+
+  /* Require protocol-driven teardown. */
+  if (!TCP_TEST_I ((tcp_e2e_teardown_timeouts () == to_before),
+		   "lost_fin: teardown was protocol-driven, no waitclose timeout"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+cleanup:
+  tcp_tamper_reset ();
+  tcp_e2e_teardown (vm, ctx);
+  return rv;
+}
+
+/* Drop the client's ACK of the server's FIN and confirm the teardown still
+ * completes: the server stays in LAST_ACK, retransmits its FIN, the client
+ * (in TIME_WAIT) re-acks it, and the server leaves LAST_ACK. */
+static int
+tcp_test_tamper_lost_final_ack (vlib_main_t *vm)
+{
+  tcp_e2e_params_t params = {
+    .name = "lost_ack",
+    .client_addr = 0x0c0c0c01,
+    .server_addr = 0x0d0d0d01,
+    .client_vrf = 0,
+    .server_vrf = 2,
+    .server_port = 2241,
+    .client_port = 0, /* ephemeral */
+    .secret = 2240,
+  };
+  tcp_e2e_ctx_t _ctx, *ctx = &_ctx;
+  tcp_connection_t *client_tc, *server_tc;
+  tcp_tamper_rule_t *ack_rule;
+  session_t *server_s;
+  u64 to_before;
+  u32 tries, server_si, server_st;
+  u8 advanced = 0;
+  int rv = 0;
+
+  tcp_tamper_reset ();
+
+  if (!TCP_TEST_I ((tcp_e2e_setup (vm, ctx, &params) == 0), "lost_ack: e2e setup"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  client_tc = ctx->client_tc;
+
+  server_si = accepted_session_index;
+  server_st = accepted_session_thread;
+  server_s = session_get_if_valid (server_si, server_st);
+  if (!TCP_TEST_I ((server_s != 0), "lost_ack: server session resolvable"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  server_tc = (tcp_connection_t *) session_get_transport (server_s);
+
+  /* Drop the client's ACK of the server's FIN. */
+  to_before = tcp_e2e_teardown_timeouts ();
+  ack_rule = tcp_tamper_drop_pure_ack (client_tc, 1);
+  tcp_tamper_enable (client_tc);
+  session_close (ctx->client_s);
+
+  tries = 0;
+  while (ack_rule->n_dropped == 0 && ++tries < 200)
+    tcp_e2e_pump (vm, 10e-3);
+  if (!TCP_TEST_I ((ack_rule->n_dropped == 1),
+		   "lost_ack: tamper node dropped the client's final ack (dropped %u)",
+		   ack_rule->n_dropped))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+  /* Confirm the server waits in LAST_ACK. */
+  if (!TCP_TEST_I ((server_tc->state == TCP_STATE_LAST_ACK),
+		   "lost_ack: server is in LAST_ACK after its ack was dropped (state %U)",
+		   format_tcp_state, server_tc->state))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+  /* Wait for the client to re-ACK the FIN and the server to leave LAST_ACK. */
+  {
+    u32 max_iters = tcp_e2e_rxt_wait_iters (server_tc, 10e-3);
+    for (tries = 0; tries < max_iters; tries++)
+      {
+	session_t *s = session_get_if_valid (server_si, server_st);
+	tcp_connection_t *cur;
+
+	if (accepted_session_index == ~0 || !s)
+	  {
+	    advanced = 1; /* server closed and cleaned up */
+	    break;
+	  }
+	cur = (tcp_connection_t *) session_get_transport (s);
+	if ((!cur || cur->state != TCP_STATE_LAST_ACK) && ack_rule->n_matched >= 2)
+	  {
+	    advanced = 1; /* left LAST_ACK after the client re-acked */
+	    break;
+	  }
+	tcp_e2e_pump (vm, 10e-3);
+      }
+  }
+  if (!TCP_TEST_I ((ack_rule->n_matched >= 2),
+		   "lost_ack: client re-acked the retransmitted FIN (matched %u)",
+		   ack_rule->n_matched))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  if (!TCP_TEST_I ((advanced != 0),
+		   "lost_ack: server leaves LAST_ACK after retransmitting its FIN"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  if (!TCP_TEST_I ((ack_rule->n_dropped == 1),
+		   "lost_ack: only the first ack was dropped (dropped %u of %u)",
+		   ack_rule->n_dropped, ack_rule->n_matched))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  /* Require protocol-driven recovery from the lost ACK. */
+  if (!TCP_TEST_I ((tcp_e2e_teardown_timeouts () == to_before),
+		   "lost_ack: teardown was protocol-driven, no waitclose timeout"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+cleanup:
+  tcp_tamper_reset ();
+  tcp_e2e_teardown (vm, ctx);
+  return rv;
+}
+
+/* Drop the server's first FIN and verify retransmission and acknowledgment. */
+static int
+tcp_test_tamper_peer_fin_first (vlib_main_t *vm)
+{
+  tcp_e2e_params_t params = {
+    .name = "peer_fin",
+    .client_addr = 0x0e0e0e01,
+    .server_addr = 0x0f0f0f01,
+    .client_vrf = 0,
+    .server_vrf = 2,
+    .server_port = 2243,
+    .client_port = 0, /* ephemeral */
+    .secret = 2242,
+  };
+  tcp_e2e_ctx_t _ctx, *ctx = &_ctx;
+  tcp_connection_t *client_tc, *server_tc;
+  tcp_tamper_rule_t *fin_rule;
+  session_t *server_s;
+  u64 to_before;
+  u32 tries, server_si, server_st;
+  u8 advanced = 0;
+  int rv = 0;
+
+  tcp_tamper_reset ();
+
+  if (!TCP_TEST_I ((tcp_e2e_setup (vm, ctx, &params) == 0), "peer_fin: e2e setup"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  client_tc = ctx->client_tc;
+
+  server_si = accepted_session_index;
+  server_st = accepted_session_thread;
+  server_s = session_get_if_valid (server_si, server_st);
+  if (!TCP_TEST_I ((server_s != 0), "peer_fin: server session resolvable"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  server_tc = (tcp_connection_t *) session_get_transport (server_s);
+
+  /* Drop the server's first FIN while it closes first. */
+  to_before = tcp_e2e_teardown_timeouts ();
+  fin_rule = tcp_tamper_drop_fin (server_tc, 1);
+  tcp_tamper_enable (server_tc);
+  session_close (server_s);
+
+  tries = 0;
+  while (fin_rule->n_dropped == 0 && ++tries < 200)
+    tcp_e2e_pump (vm, 10e-3);
+  if (!TCP_TEST_I ((fin_rule->n_dropped == 1),
+		   "peer_fin: tamper node dropped the server's first FIN (dropped %u)",
+		   fin_rule->n_dropped))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+  /* Wait for the client to leave ESTABLISHED and acknowledge the server's FIN. */
+  {
+    u32 max_iters = tcp_e2e_rxt_wait_iters (server_tc, 10e-3);
+    u8 client_done = 0, server_done = 0;
+
+    for (tries = 0; tries < max_iters; tries++)
+      {
+	session_t *cs = session_get_if_valid (connected_session_index, connected_session_thread);
+	session_t *ss = session_get_if_valid (server_si, server_st);
+	tcp_connection_t *cc, *sc;
+
+	if (connected_session_index == ~0 || !cs)
+	  client_done = 1;
+	else
+	  {
+	    cc = (tcp_connection_t *) session_get_transport (cs);
+	    if (!cc || cc->state != TCP_STATE_ESTABLISHED)
+	      client_done = 1;
+	  }
+
+	/* FIN acknowledgment advances snd_una to snd_nxt. */
+	if (accepted_session_index == ~0 || !ss)
+	  server_done = 1;
+	else
+	  {
+	    sc = (tcp_connection_t *) session_get_transport (ss);
+	    if (!sc || sc->snd_una == sc->snd_nxt)
+	      server_done = 1;
+	  }
+
+	if (client_done && server_done && fin_rule->n_matched >= 2)
+	  {
+	    advanced = 1;
+	    break;
+	  }
+	tcp_e2e_pump (vm, 10e-3);
+      }
+  }
+  if (!TCP_TEST_I ((fin_rule->n_matched >= 2),
+		   "peer_fin: server retransmitted its FIN (matched %u)", fin_rule->n_matched))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  if (!TCP_TEST_I ((advanced != 0),
+		   "peer_fin: client left ESTABLISHED and server FIN acknowledged after "
+		   "the retransmitted FIN"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  /* Require protocol-driven teardown. */
+  if (!TCP_TEST_I ((tcp_e2e_teardown_timeouts () == to_before),
+		   "peer_fin: teardown was protocol-driven, no waitclose timeout"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  (void) client_tc;
+
+cleanup:
+  tcp_tamper_reset ();
+  tcp_e2e_teardown (vm, ctx);
+  return rv;
+}
+
+/* Drop a mid-stream segment and verify retransmission and delivery. */
+static int
+tcp_test_tamper_chained_rxt (vlib_main_t *vm)
+{
+  tcp_e2e_params_t params = {
+    .name = "chain_rxt",
+    .client_addr = 0x10101001,
+    .server_addr = 0x11111101,
+    .client_vrf = 0,
+    .server_vrf = 2,
+    .server_port = 2245,
+    .client_port = 0, /* ephemeral */
+    .secret = 2244,
+    .rx_fifo_size = 128 << 10,
+    .tx_fifo_size = 128 << 10,
+  };
+  tcp_e2e_ctx_t _ctx, *ctx = &_ctx;
+  tcp_connection_t *client_tc;
+  tcp_tamper_rule_t *seg_rule;
+  session_t *client_s, *server_s;
+  u32 tries, drop_seq, total_bytes = 32 << 10, drained = 0;
+  u8 *data = 0;
+  int error, rv = 0, i;
+
+  tcp_tamper_reset ();
+
+  if (!TCP_TEST_I ((tcp_e2e_setup (vm, ctx, &params) == 0), "chain_rxt: e2e setup"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  client_tc = ctx->client_tc;
+  client_s = ctx->client_s;
+  server_s = session_get_if_valid (accepted_session_index, accepted_session_thread);
+  if (!TCP_TEST_I ((server_s != 0), "chain_rxt: server session resolvable"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+  /* Target a segment a few MSS into the stream so it is genuinely mid-stream
+   * (not the first or last segment). snd_una is the initial send sequence. */
+  drop_seq = client_tc->snd_una + 3 * client_tc->snd_mss;
+  seg_rule = tcp_tamper_drop_seq (client_tc, drop_seq, 1);
+  tcp_tamper_enable (client_tc);
+
+  vec_validate (data, total_bytes - 1);
+  for (i = 0; i < (int) total_bytes; i++)
+    data[i] = i & 0xff;
+
+  error = svm_fifo_enqueue (client_s->tx_fifo, total_bytes, data);
+  if (!TCP_TEST_I ((error == (int) total_bytes), "chain_rxt: client queued %u bytes", total_bytes))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  error = session_program_tx_io_evt (client_s->handle, SESSION_IO_EVT_TX);
+  if (!TCP_TEST_I ((error == 0), "chain_rxt: client tx event programmed"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+  /* Drain the server while the transfer progresses. */
+  for (tries = 0; drained < total_bytes && tries < 600; tries++)
+    {
+      drained += session_test_drain_rx_fifo (server_s);
+      if (drained >= total_bytes)
+	break;
+      tcp_e2e_pump (vm, 10e-3);
+    }
+
+  if (!TCP_TEST_I ((seg_rule->n_dropped == 1),
+		   "chain_rxt: tamper node dropped the target segment (dropped %u)",
+		   seg_rule->n_dropped))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  if (!TCP_TEST_I ((seg_rule->n_matched >= 2),
+		   "chain_rxt: dropped segment was retransmitted (matched %u)",
+		   seg_rule->n_matched))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  if (!TCP_TEST_I ((drained == total_bytes),
+		   "chain_rxt: all %u bytes delivered despite the drop (got %u)", total_bytes,
+		   drained))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+cleanup:
+  tcp_tamper_reset ();
+  vec_free (data);
+  tcp_e2e_teardown (vm, ctx);
+  return rv;
+}
+
+/* Drop a FIN deferred behind queued data and verify clean delivery and close. */
+static int
+tcp_test_tamper_queued_fin (vlib_main_t *vm)
+{
+  tcp_e2e_params_t params = {
+    .name = "queued_fin",
+    .client_addr = 0x12121201,
+    .server_addr = 0x13131301,
+    .client_vrf = 0,
+    .server_vrf = 2,
+    .server_port = 2247,
+    .client_port = 0, /* ephemeral */
+    .secret = 2246,
+    /* Bound the peer window to keep the FIN pending during transfer. */
+    .rx_fifo_size = 4 << 10,
+    .tx_fifo_size = 128 << 10,
+  };
+  tcp_e2e_ctx_t _ctx, *ctx = &_ctx;
+  tcp_connection_t *client_tc;
+  tcp_tamper_rule_t *fin_rule;
+  session_t *client_s, *server_s;
+  u64 to_before;
+  u32 tries, total_bytes = 32 << 10, drained = 0;
+  u8 *data = 0, saw_finpndg = 0;
+  int error, rv = 0, i;
+
+  tcp_tamper_reset ();
+
+  if (!TCP_TEST_I ((tcp_e2e_setup (vm, ctx, &params) == 0), "queued_fin: e2e setup"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  client_tc = ctx->client_tc;
+  client_s = ctx->client_s;
+  server_s = session_get_if_valid (accepted_session_index, accepted_session_thread);
+  if (!TCP_TEST_I ((server_s != 0), "queued_fin: server session resolvable"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+  /* Drop the client's first FIN, route egress through the tamper node. */
+  to_before = tcp_e2e_teardown_timeouts ();
+  fin_rule = tcp_tamper_drop_fin (client_tc, 1);
+  tcp_tamper_enable (client_tc);
+
+  /* Queue data before closing to defer the FIN. */
+  vec_validate (data, total_bytes - 1);
+  for (i = 0; i < (int) total_bytes; i++)
+    data[i] = i & 0xff;
+  error = svm_fifo_enqueue (client_s->tx_fifo, total_bytes, data);
+  if (!TCP_TEST_I ((error == (int) total_bytes), "queued_fin: client queued %u bytes", total_bytes))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+  /* Close before starting TX so the FIN remains pending behind the data. */
+  session_close (client_s);
+  error = session_program_tx_io_evt (client_s->handle, SESSION_IO_EVT_TX);
+  if (!TCP_TEST_I ((error == 0), "queued_fin: client tx event programmed"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+  /* Drain the server and observe the pending FIN. */
+  for (tries = 0; drained < total_bytes && tries < 600; tries++)
+    {
+      if (client_tc->flags & TCP_CONN_FINPNDG)
+	saw_finpndg = 1;
+      drained += session_test_drain_rx_fifo (server_s);
+      if (drained >= total_bytes)
+	break;
+      tcp_e2e_pump (vm, 10e-3);
+    }
+  if (!TCP_TEST_I ((saw_finpndg != 0), "queued_fin: FIN is pending behind queued data (FINPNDG)"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  if (!TCP_TEST_I ((drained == total_bytes),
+		   "queued_fin: all %u bytes delivered before the FIN (got %u)", total_bytes,
+		   drained))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+  /* Wait for the deferred FIN retransmission and acknowledgment. */
+  {
+    u32 max_iters = tcp_e2e_rxt_wait_iters (client_tc, 10e-3);
+    u8 done = 0;
+
+    for (tries = 0; tries < max_iters; tries++)
+      {
+	session_t *s = session_get_if_valid (connected_session_index, connected_session_thread);
+	tcp_connection_t *cur;
+
+	if (connected_session_index == ~0 || !s)
+	  {
+	    done = 1;
+	    break;
+	  }
+	cur = (tcp_connection_t *) session_get_transport (s);
+	/* Require the deferred FIN to be sent and acknowledged. */
+	if (fin_rule->n_matched >= 2 && cur && !(cur->flags & TCP_CONN_FINPNDG) &&
+	    cur->snd_una == cur->snd_nxt)
+	  {
+	    done = 1;
+	    break;
+	  }
+	tcp_e2e_pump (vm, 10e-3);
+      }
+    if (!TCP_TEST_I ((done != 0),
+		     "queued_fin: deferred FIN acknowledged (snd_una reached snd_nxt)"))
+      {
+	rv = 1;
+	goto cleanup;
+      }
+  }
+  if (!TCP_TEST_I ((fin_rule->n_dropped == 1),
+		   "queued_fin: tamper node dropped the deferred FIN (dropped %u)",
+		   fin_rule->n_dropped))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  if (!TCP_TEST_I ((fin_rule->n_matched >= 2),
+		   "queued_fin: deferred FIN was retransmitted (matched %u)", fin_rule->n_matched))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  /* Require protocol-driven teardown. */
+  if (!TCP_TEST_I ((tcp_e2e_teardown_timeouts () == to_before),
+		   "queued_fin: teardown was protocol-driven, no waitclose timeout"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+cleanup:
+  tcp_tamper_reset ();
+  vec_free (data);
+  tcp_e2e_teardown (vm, ctx);
+  return rv;
+}
+
+/* Drop data while a FIN is pending, then verify delivery and clean close. */
+static int
+tcp_test_tamper_queued_data_loss (vlib_main_t *vm)
+{
+  tcp_e2e_params_t params = {
+    .name = "queued_dl",
+    .client_addr = 0x16161601,
+    .server_addr = 0x17171701,
+    .client_vrf = 0,
+    .server_vrf = 2,
+    .server_port = 2251,
+    .client_port = 0, /* ephemeral */
+    .secret = 2250,
+    /* Bound the peer window to keep the FIN pending during recovery. */
+    .rx_fifo_size = 4 << 10,
+    .tx_fifo_size = 128 << 10,
+  };
+  tcp_e2e_ctx_t _ctx, *ctx = &_ctx;
+  tcp_connection_t *client_tc;
+  tcp_tamper_rule_t *seg_rule;
+  session_t *client_s, *server_s;
+  u64 to_before;
+  u32 tries, mss, drop_seq, total_bytes = 32 << 10, drained = 0;
+  u8 *data = 0, saw_finpndg = 0;
+  int error, rv = 0, i;
+
+  tcp_tamper_reset ();
+
+  if (!TCP_TEST_I ((tcp_e2e_setup (vm, ctx, &params) == 0), "queued_dl: e2e setup"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  client_tc = ctx->client_tc;
+  client_s = ctx->client_s;
+  server_s = session_get_if_valid (accepted_session_index, accepted_session_thread);
+  if (!TCP_TEST_I ((server_s != 0), "queued_dl: server session resolvable"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  mss = client_tc->snd_mss;
+
+  /* Drop a mid-stream data segment. */
+  to_before = tcp_e2e_teardown_timeouts ();
+  drop_seq = client_tc->snd_una + 3 * mss;
+  seg_rule = tcp_tamper_drop_seq (client_tc, drop_seq, 1);
+  tcp_tamper_enable (client_tc);
+
+  vec_validate (data, total_bytes - 1);
+  for (i = 0; i < (int) total_bytes; i++)
+    data[i] = i & 0xff;
+  error = svm_fifo_enqueue (client_s->tx_fifo, total_bytes, data);
+  if (!TCP_TEST_I ((error == (int) total_bytes), "queued_dl: client queued %u bytes", total_bytes))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+  /* Close with data queued so the FIN is deferred, then start the transfer. */
+  session_close (client_s);
+  error = session_program_tx_io_evt (client_s->handle, SESSION_IO_EVT_TX);
+  if (!TCP_TEST_I ((error == 0), "queued_dl: client tx event programmed"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+  /* Drain the server and observe the pending FIN. */
+  for (tries = 0; drained < total_bytes && tries < 800; tries++)
+    {
+      if (client_tc->flags & TCP_CONN_FINPNDG)
+	saw_finpndg = 1;
+      drained += session_test_drain_rx_fifo (server_s);
+      if (drained >= total_bytes)
+	break;
+      tcp_e2e_pump (vm, 10e-3);
+    }
+
+  if (!TCP_TEST_I ((saw_finpndg != 0), "queued_dl: FIN was pending behind queued data (FINPNDG)"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  if (!TCP_TEST_I (
+	(seg_rule->n_dropped == 1 && seg_rule->n_matched >= 2),
+	"queued_dl: data segment dropped once and retransmitted (dropped %u, matched %u)",
+	seg_rule->n_dropped, seg_rule->n_matched))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  if (!TCP_TEST_I ((drained == total_bytes),
+		   "queued_dl: all %u bytes delivered despite the data loss (got %u)", total_bytes,
+		   drained))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+  /* Wait for the deferred FIN to be sent and acknowledged. */
+  {
+    u32 max_iters = tcp_e2e_rxt_wait_iters (client_tc, 10e-3);
+    u8 done = 0;
+
+    for (tries = 0; tries < max_iters; tries++)
+      {
+	session_t *s = session_get_if_valid (connected_session_index, connected_session_thread);
+	tcp_connection_t *cur;
+
+	if (connected_session_index == ~0 || !s)
+	  {
+	    done = 1;
+	    break;
+	  }
+	cur = (tcp_connection_t *) session_get_transport (s);
+	if (cur && !(cur->flags & TCP_CONN_FINPNDG) && cur->snd_una == cur->snd_nxt)
+	  {
+	    done = 1;
+	    break;
+	  }
+	tcp_e2e_pump (vm, 10e-3);
+      }
+    if (!TCP_TEST_I ((done != 0), "queued_dl: deferred FIN acknowledged (snd_una reached snd_nxt)"))
+      {
+	rv = 1;
+	goto cleanup;
+      }
+  }
+  if (!TCP_TEST_I ((tcp_e2e_teardown_timeouts () == to_before),
+		   "queued_dl: teardown was protocol-driven, no waitclose timeout"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+cleanup:
+  tcp_tamper_reset ();
+  vec_free (data);
+  tcp_e2e_teardown (vm, ctx);
+  return rv;
+}
+
+/* Lose data above the recovery point and verify recovery exit and re-entry. */
+static int
+tcp_test_tamper_recovery_point (vlib_main_t *vm)
+{
+  tcp_e2e_params_t params = {
+    .name = "recov_pt",
+    .client_addr = 0x14141401,
+    .server_addr = 0x15151501,
+    .client_vrf = 0,
+    .server_vrf = 2,
+    .server_port = 2249,
+    .client_port = 0, /* ephemeral */
+    .secret = 2248,
+    /* Keep a wide flight outstanding during recovery. */
+    .rx_fifo_size = 256 << 10,
+    .tx_fifo_size = 256 << 10,
+  };
+  tcp_e2e_ctx_t _ctx, *ctx = &_ctx;
+  tcp_connection_t *client_tc;
+  tcp_tamper_rule_t *r1, *r2;
+  session_t *client_s, *server_s;
+  u32 tries, mss, seq1, total_bytes = 256 << 10, drained = 0;
+  u32 fr_before;
+  u64 tr_before;
+  u8 *data = 0;
+  int error, rv = 0, i;
+
+  tcp_tamper_reset ();
+
+  if (!TCP_TEST_I ((tcp_e2e_setup (vm, ctx, &params) == 0), "recov_pt: e2e setup"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  client_tc = ctx->client_tc;
+  client_s = ctx->client_s;
+  server_s = session_get_if_valid (accepted_session_index, accepted_session_thread);
+  if (!TCP_TEST_I ((server_s != 0), "recov_pt: server session resolvable"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  mss = client_tc->snd_mss;
+  fr_before = client_tc->fr_occurences;
+  tr_before = client_tc->tr_occurences;
+
+  /* Drop an early segment and its first retransmission, then drop fresh data
+   * above the recovery point during the same recovery episode. */
+  seq1 = client_tc->snd_una + 4 * mss;
+  tcp_tamper_drop_seq (client_tc, seq1, 2);
+  tcp_tamper_drop_above_rp (client_tc, 1);
+  r1 = &tcp_tamper_main.rules[0];
+  r2 = &tcp_tamper_main.rules[1];
+  tcp_tamper_enable (client_tc);
+
+  vec_validate (data, total_bytes - 1);
+  for (i = 0; i < (int) total_bytes; i++)
+    data[i] = i & 0xff;
+  error = svm_fifo_enqueue (client_s->tx_fifo, total_bytes, data);
+  if (!TCP_TEST_I ((error == (int) total_bytes), "recov_pt: client queued %u bytes", total_bytes))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  error = session_program_tx_io_evt (client_s->handle, SESSION_IO_EVT_TX);
+  if (!TCP_TEST_I ((error == 0), "recov_pt: client tx event programmed"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+  for (tries = 0; drained < total_bytes && tries < 2000; tries++)
+    {
+      drained += session_test_drain_rx_fifo (server_s);
+      if (drained >= total_bytes)
+	break;
+      tcp_e2e_pump (vm, 5e-3);
+    }
+
+  if (!TCP_TEST_I ((r1->n_dropped == 2 && r2->n_dropped == 1),
+		   "recov_pt: early segment + its retransmit dropped (%u) and one segment "
+		   "above the recovery point dropped (%u)",
+		   r1->n_dropped, r2->n_dropped))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  /* Confirm the second loss occurred before the first recovery point. */
+  if (!TCP_TEST_I ((r2->drop_in_recovery && seq_lt (r2->drop_snd_una, r2->drop_snd_congestion)),
+		   "recov_pt: second loss dropped during the first recovery "
+		   "(snd_una %u < recovery point %u)",
+		   r2->drop_snd_una - client_tc->iss, r2->drop_snd_congestion - client_tc->iss))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  if (!TCP_TEST_I ((drained == total_bytes),
+		   "recov_pt: all %u bytes delivered despite two losses (got %u)", total_bytes,
+		   drained))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  /* The first loss enters fast recovery. The early segment whose retransmit was
+   * also dropped is a lost retransmit that NextSeg (RFC6675) cannot resend once
+   * high_rxt has advanced past it, so it is recovered by the rto -- the exact
+   * episode/mechanism split is not asserted, only that recovery makes progress
+   * (>=1 fast-recovery episode) and, together with the all-data-delivered check
+   * above, that both losses are ultimately recovered. */
+  if (!TCP_TEST_I (((client_tc->fr_occurences - fr_before) >= 1),
+		   "recov_pt: recovery entered for the losses (fr delta %u, tr delta %llu)",
+		   client_tc->fr_occurences - fr_before, client_tc->tr_occurences - tr_before))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+cleanup:
+  tcp_tamper_reset ();
+  vec_free (data);
+  tcp_e2e_teardown (vm, ctx);
+  return rv;
+}
+
+/* Stranded lost retransmit. Build one large lost run below high_rxt: drop a run
+ * of consecutive original segments (so they become one contiguous hole) and
+ * also drop the coalesced retransmit of that run, which advances high_rxt past
+ * the whole hole. NextSeg (RFC6675) then skips it (end <= high_rxt), so the main
+ * retransmit loop cannot resend it -- a lost retransmit that only the rto can
+ * recover. This is the regression anchor for the removal of the "lost head
+ * retransmit" heuristic (which used to dribble the head 1 seg/RTT and starve the
+ * rto): with the heuristic gone the run is recovered by the rto and the transfer
+ * still completes. Assert the drops landed and all data is delivered. */
+static int
+tcp_test_tamper_stranded_head (vlib_main_t *vm)
+{
+  tcp_e2e_params_t params = {
+    .name = "strand_head",
+    .client_addr = 0x16161601,
+    .server_addr = 0x17171701,
+    .client_vrf = 0,
+    .server_vrf = 2,
+    .server_port = 2251,
+    .client_port = 0, /* ephemeral */
+    .secret = 2250,
+    /* Wide flight so the frontier can run far ahead of the stuck run. */
+    .rx_fifo_size = 256 << 10,
+    .tx_fifo_size = 256 << 10,
+  };
+  tcp_e2e_ctx_t _ctx, *ctx = &_ctx;
+  tcp_connection_t *client_tc;
+  session_t *client_s, *server_s;
+  const u32 n_holes = 8;
+  tcp_tamper_rule_t *orig_rule, *rxt_rule;
+  u32 tries, mss, seq0, total_bytes = 256 << 10, drained = 0;
+  u64 tr_before;
+  u8 *data = 0;
+  int error, rv = 0, i;
+
+  tcp_tamper_reset ();
+
+  if (!TCP_TEST_I ((tcp_e2e_setup (vm, ctx, &params) == 0), "strand_head: e2e setup"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  client_tc = ctx->client_tc;
+  client_s = ctx->client_s;
+  server_s = session_get_if_valid (accepted_session_index, accepted_session_thread);
+  if (!TCP_TEST_I ((server_s != 0), "strand_head: server session resolvable"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  mss = client_tc->snd_mss;
+  tr_before = client_tc->tr_occurences;
+
+  /* Build one large stranded hole, then keep it stranded:
+   *  - drop the n_holes ORIGINAL mss segments at/above seq0 (they are mss-
+   *    aligned, so exact seqs match) -> one contiguous lost run [seq0, seq0+N).
+   *  - drop the COALESCED retransmit of that run, which the main loop sends as
+   *    one segment starting at high_rxt == seq0. That send advances high_rxt
+   *    past the whole run, so NextSeg now skips it (end <= high_rxt) -- the run
+   *    is stranded and recovered only by the rto. */
+  seq0 = client_tc->snd_una + 4 * mss;
+  tcp_tamper_drop_from_seq (client_tc, seq0, n_holes);
+  tcp_tamper_drop_seq (client_tc, seq0, 1);
+  /* Reference by index: tcp_tamper_add_rule may realloc the rule vector, so
+   * pointers returned by the constructors above can be stale after the 2nd add. */
+  orig_rule = &tcp_tamper_main.rules[0];
+  rxt_rule = &tcp_tamper_main.rules[1];
+  tcp_tamper_enable (client_tc);
+
+  vec_validate (data, total_bytes - 1);
+  for (i = 0; i < (int) total_bytes; i++)
+    data[i] = i & 0xff;
+  error = svm_fifo_enqueue (client_s->tx_fifo, total_bytes, data);
+  if (!TCP_TEST_I ((error == (int) total_bytes), "strand_head: client queued %u bytes",
+		   total_bytes))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  error = session_program_tx_io_evt (client_s->handle, SESSION_IO_EVT_TX);
+  if (!TCP_TEST_I ((error == 0), "strand_head: client tx event programmed"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+  for (tries = 0; drained < total_bytes && tries < 8000; tries++)
+    {
+      drained += session_test_drain_rx_fifo (server_s);
+      if (drained >= total_bytes)
+	break;
+      tcp_e2e_pump (vm, 5e-3);
+    }
+
+  if (!TCP_TEST_I ((orig_rule->n_dropped == n_holes && rxt_rule->n_dropped == 1),
+		   "strand_head: %u originals dropped (%u) and coalesced retransmit dropped (%u)",
+		   n_holes, orig_rule->n_dropped, rxt_rule->n_dropped))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  /* Surface how the stranded run drained. With the head-retry heuristic removed
+   * the run is drained by the rto, so tr rises. Informational. */
+  vlib_cli_output (vm, "strand_head: tr delta %llu (rto drains) over %u stranded segs",
+		   client_tc->tr_occurences - tr_before, n_holes);
+  if (!TCP_TEST_I ((drained == total_bytes),
+		   "strand_head: all %u bytes delivered despite the stranded run (got %u)",
+		   total_bytes, drained))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+cleanup:
+  tcp_tamper_reset ();
+  vec_free (data);
+  tcp_e2e_teardown (vm, ctx);
+  return rv;
+}
+
+/* Drop the only in-flight segment and verify recovery through one RTO. */
+static int
+tcp_test_tamper_rto (vlib_main_t *vm)
+{
+  tcp_e2e_params_t params = {
+    .name = "rto",
+    .client_addr = 0x18181801,
+    .server_addr = 0x19191901,
+    .client_vrf = 0,
+    .server_vrf = 2,
+    .server_port = 2253,
+    .client_port = 0, /* ephemeral */
+    .secret = 2252,
+  };
+  tcp_e2e_ctx_t _ctx, *ctx = &_ctx;
+  tcp_connection_t *client_tc;
+  tcp_tamper_rule_t *seg_rule;
+  session_t *client_s, *server_s;
+  u32 tries, tr_before, drained = 0, total_bytes;
+  u8 *data = 0;
+  int error, rv = 0, i;
+
+  tcp_tamper_reset ();
+
+  if (!TCP_TEST_I ((tcp_e2e_setup (vm, ctx, &params) == 0), "rto: e2e setup"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  client_tc = ctx->client_tc;
+  client_s = ctx->client_s;
+  server_s = session_get_if_valid (accepted_session_index, accepted_session_thread);
+  if (!TCP_TEST_I ((server_s != 0), "rto: server session resolvable"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+  /* Drop the only in-flight segment so recovery requires an RTO. */
+  total_bytes = client_tc->snd_mss;
+  tr_before = client_tc->tr_occurences;
+  seg_rule = tcp_tamper_drop_seq (client_tc, client_tc->snd_una, 1);
+  tcp_tamper_enable (client_tc);
+  client_tc->rto = TCP_RTO_MIN;
+
+  vec_validate (data, total_bytes - 1);
+  for (i = 0; i < (int) total_bytes; i++)
+    data[i] = i & 0xff;
+  error = svm_fifo_enqueue (client_s->tx_fifo, total_bytes, data);
+  if (!TCP_TEST_I ((error == (int) total_bytes), "rto: client queued %u bytes", total_bytes))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  error = session_program_tx_io_evt (client_s->handle, SESSION_IO_EVT_TX);
+  if (!TCP_TEST_I ((error == 0), "rto: client tx event programmed"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+  /* Wait for delivery with an RTO-derived deadline. */
+  {
+    u32 max_iters = tcp_e2e_rxt_wait_iters (client_tc, 10e-3);
+    for (tries = 0; drained < total_bytes && tries < max_iters; tries++)
+      {
+	drained += session_test_drain_rx_fifo (server_s);
+	if (drained >= total_bytes)
+	  break;
+	tcp_e2e_pump (vm, 10e-3);
+      }
+  }
+
+  if (!TCP_TEST_I ((seg_rule->n_dropped == 1), "rto: the lone segment was dropped (dropped %u)",
+		   seg_rule->n_dropped))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  if (!TCP_TEST_I (((client_tc->tr_occurences - tr_before) == 1),
+		   "rto: recovered via a single retransmit timeout (tr delta %u)",
+		   client_tc->tr_occurences - tr_before))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  if (!TCP_TEST_I ((drained == total_bytes), "rto: data delivered after the timeout (got %u of %u)",
+		   drained, total_bytes))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+cleanup:
+  tcp_tamper_reset ();
+  vec_free (data);
+  tcp_e2e_teardown (vm, ctx);
+  return rv;
+}
+
+static int
+tcp_test_tamper (vlib_main_t *vm, unformat_input_t *input)
+{
+  struct
+  {
+    const char *name;
+    int (*fn) (vlib_main_t *);
+  } cases[] = {
+    { "fin", tcp_test_tamper_lost_fin },
+    { "lost-ack", tcp_test_tamper_lost_final_ack },
+    { "peer-fin", tcp_test_tamper_peer_fin_first },
+    { "chain-rxt", tcp_test_tamper_chained_rxt },
+    { "queued-fin", tcp_test_tamper_queued_fin },
+    { "queued-data-loss", tcp_test_tamper_queued_data_loss },
+    { "recov-pt", tcp_test_tamper_recovery_point },
+    { "strand-head", tcp_test_tamper_stranded_head },
+    { "rto", tcp_test_tamper_rto },
+  };
+  int res = 0, i;
+
+  /* No argument: run every case. */
+  if (unformat_check_input (input) == UNFORMAT_END_OF_INPUT)
+    {
+      for (i = 0; i < ARRAY_LEN (cases); i++)
+	if ((res = cases[i].fn (vm)))
+	  return res;
+      return 0;
+    }
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      u8 matched = 0;
+
+      if (unformat (input, "all"))
+	{
+	  for (i = 0; i < ARRAY_LEN (cases); i++)
+	    if ((res = cases[i].fn (vm)))
+	      return res;
+	  continue;
+	}
+      for (i = 0; i < ARRAY_LEN (cases); i++)
+	{
+	  if (unformat (input, cases[i].name))
+	    {
+	      matched = 1;
+	      if ((res = cases[i].fn (vm)))
+		return res;
+	      break;
+	    }
+	}
+      if (!matched)
+	{
+	  vlib_cli_output (vm, "unknown tamper case: '%U'", format_unformat_error, input);
+	  return -1;
+	}
+    }
+  return res;
 }
 
 static int
@@ -2162,6 +4740,66 @@ tcp_test_bt (vlib_main_t * vm, unformat_input_t * input)
   TCP_TEST ((bts->flags & TCP_BTS_IS_RXT), "tail rxt should be marked");
 
   /*
+   * 15) a mid-sample retransmit preserves the original tx metadata on the
+   * unretransmitted remainder, and re-retransmitting a retransmit marks it
+   * as a lost retransmit.
+   */
+  vec_free (tc->rcv_opts.sacks);
+  tcp_bt_cleanup (tc);
+  memset (tc, 0, sizeof (*tc));
+  tcp_bt_init (tc);
+  bt = tc->bt;
+  memset (rs, 0, sizeof (*rs));
+
+  /* One 300-byte burst at time 40, delivered baseline set by the tx. */
+  tcp_test_set_time (thread_index, 40);
+  tcp_bt_track_tx (tc, 300);
+  tc->snd_nxt += 300;
+  {
+    tcp_bt_sample_t *rem, *mid;
+
+    /* Retransmit the middle [100:200] at time 41, splitting into three. */
+    tcp_test_set_time (thread_index, 41);
+    tcp_bt_track_rxt (tc, 100, 200);
+    TCP_TEST (tcp_bt_is_sane (bt), "tracker should be sane after mid rxt");
+    TCP_TEST (pool_elts (bt->samples) == 3, "mid rxt should split into 3 is %u",
+	      pool_elts (bt->samples));
+
+    /* head [0:100] keeps the original tx time */
+    bts = pool_elt_at_index (bt->samples, bt->head);
+    TCP_TEST (bts->min_seq == 0 && bts->max_seq == 100, "split head [0:100]");
+    TCP_TEST (bts->tx_time == 40 && !(bts->flags & TCP_BTS_IS_RXT),
+	      "split head keeps original tx time and is not rxt");
+
+    /* middle [100:200] is the retransmit at time 41 */
+    mid = pool_elt_at_index (bt->samples, bts->next);
+    TCP_TEST (mid->min_seq == 100 && mid->max_seq == 200, "split middle [100:200]");
+    TCP_TEST (mid->tx_time == 41 && (mid->flags & TCP_BTS_IS_RXT),
+	      "split middle carries the rxt time and rxt flag");
+    TCP_TEST (!(mid->flags & TCP_BTS_IS_RXT_LOST), "first rxt of the middle is not yet a lost rxt");
+
+    /* remainder [200:300] must keep the ORIGINAL tx metadata, not the rxt's */
+    rem = pool_elt_at_index (bt->samples, mid->next);
+    TCP_TEST (rem->min_seq == 200 && rem->max_seq == 300, "split remainder [200:300]");
+    TCP_TEST (rem->tx_time == 40 && rem->first_tx_time == mid->first_tx_time,
+	      "remainder preserves original tx time %.0f is %.0f", 40.0, rem->tx_time);
+    TCP_TEST (!(rem->flags & TCP_BTS_IS_RXT), "remainder is not a retransmit");
+
+    /* Retransmit the middle again at time 42: an already-rxt sample being
+     * retransmitted must be flagged as a lost retransmit. */
+    tcp_test_set_time (thread_index, 42);
+    tcp_bt_track_rxt (tc, 100, 200);
+    TCP_TEST (tcp_bt_is_sane (bt), "tracker should be sane after re-rxt");
+    bts = pool_elt_at_index (bt->samples, bt->head);
+    mid = pool_elt_at_index (bt->samples, bts->next);
+    TCP_TEST (mid->min_seq == 100 && mid->max_seq == 200, "re-rxt middle still [100:200]");
+    TCP_TEST (mid->tx_time == 42 && (mid->flags & TCP_BTS_IS_RXT),
+	      "re-rxt carries the newer rxt time");
+    TCP_TEST ((mid->flags & TCP_BTS_IS_RXT_LOST),
+	      "re-retransmitted sample is marked as a lost retransmit");
+  }
+
+  /*
    * 14) app-limited detection uses the session tx fifo and in-flight data
    */
   clib_memset (a, 0, sizeof (*a));
@@ -2194,6 +4832,28 @@ tcp_test_bt (vlib_main_t * vm, unformat_input_t * input)
   session_free (s);
   vec_free (a->new_segment_indices);
   fifo_segment_delete (fsm, fs);
+  tcp_bt_cleanup (tc);
+
+  /* Delivery sampling continues after FIN and excludes the FIN sequence. */
+  memset (tc, 0, sizeof (*tc));
+  memset (rs, 0, sizeof (*rs));
+  tcp_bt_init (tc);
+  tcp_test_set_time (thread_index, 50);
+  tcp_bt_track_tx (tc, 100);
+  tc->snd_nxt = 101;
+  tc->flags |= TCP_CONN_FINSNT;
+  tc->snd_una = 100;
+  tc->bytes_acked = 100;
+  tcp_test_set_time (thread_index, 51);
+  tcp_bt_sample_delivery_rate (tc, rs);
+  TCP_TEST (tc->delivered == 100 && rs->acked_and_sacked == 100,
+	    "data delivery remains sampled after FIN is sent");
+  tc->snd_una = 101;
+  tc->bytes_acked = 1;
+  memset (rs, 0, sizeof (*rs));
+  tcp_bt_sample_delivery_rate (tc, rs);
+  TCP_TEST (tc->delivered == 100 && rs->acked_and_sacked == 0,
+	    "FIN acknowledgment is excluded from delivered bytes");
   tcp_bt_cleanup (tc);
 
   return 0;
@@ -2232,9 +4892,21 @@ tcp_test (vlib_main_t * vm,
 	{
 	  res = tcp_test_persist (vm, input);
 	}
+      else if (unformat (input, "rto"))
+	{
+	  res = tcp_test_rto (vm, input);
+	}
+      else if (unformat (input, "cubic"))
+	{
+	  res = tcp_test_cubic (vm, input);
+	}
       else if (unformat (input, "bt"))
 	{
 	  res = tcp_test_bt (vm, input);
+	}
+      else if (unformat (input, "tamper"))
+	{
+	  res = tcp_test_tamper (vm, input);
 	}
       else if (unformat (input, "all"))
 	{
@@ -2246,7 +4918,13 @@ tcp_test (vlib_main_t * vm,
 	    goto done;
 	  if ((res = tcp_test_persist (vm, input)))
 	    goto done;
+	  if ((res = tcp_test_rto (vm, input)))
+	    goto done;
+	  if ((res = tcp_test_cubic (vm, input)))
+	    goto done;
 	  if ((res = tcp_test_bt (vm, input)))
+	    goto done;
+	  if ((res = tcp_test_tamper (vm, input)))
 	    goto done;
 	}
       else

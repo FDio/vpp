@@ -348,19 +348,65 @@ typedef struct
 // TODO: Find a way to abstract, or share, timeout definition.
 //       They should be either private to timer.h, or sharable between them.
 
+#define foreach_sfdp_timeout                                                                       \
+  _ (EMBRYONIC, 5, "embryonic")                                                                    \
+  _ (ESTABLISHED, 120, "established")                                                              \
+  _ (TCP_ESTABLISHED, 3600, "tcp-established")                                                     \
+  _ (SECURITY, 30, "security")
+
+enum
+{
+  SFDP_N_BASE_TIMEOUTS = 0
+#define _(id, value, string) +1
+  foreach_sfdp_timeout
+#undef _
+};
+
 /* Per-tenant timeout type */
 
 typedef struct sfdp_timeout
 {
   const char *name; // Timeout name used to parse config and display
-  u32 val;	    // Timeout value used when creating a new tenant
+  u32 val;	    // Default timeout value used when creating a new tenant
+  u32 index;	    // Index assigned during timeout registration
 } sfdp_timeout_t;
 
 STATIC_ASSERT_SIZEOF (sfdp_timeout_t[8], 16 * 8);
 
+typedef struct sfdp_timeout_registration
+{
+  struct sfdp_timeout_registration *next;
+  sfdp_timeout_t timeout;
+} sfdp_timeout_registration_t;
+
+void sfdp_timeout_add_registration (sfdp_timeout_registration_t *registration);
+
+#define SFDP_TIMEOUT_DECLARE(x) extern sfdp_timeout_registration_t sfdp_timeout_registration_##x
+#define SFDP_TIMEOUT_INDEX(x)	(sfdp_timeout_registration_##x.timeout.index)
+
+#ifndef CLIB_MARCH_VARIANT
+#define SFDP_TIMEOUT_DEFINE(x, timeout_name, timeout_val)                                           \
+  sfdp_timeout_registration_t sfdp_timeout_registration_##x = {                                   \
+    .timeout = {                                                                                    \
+      .name = timeout_name,                                                                        \
+      .val = timeout_val,                                                                          \
+    },                                                                                             \
+  }; \
+  static void __sfdp_timeout_add_registration_##x (void) __attribute__ ((__constructor__));         \
+  static void __sfdp_timeout_add_registration_##x (void)                                            \
+  {                                                                                                 \
+    sfdp_timeout_add_registration (&sfdp_timeout_registration_##x);                                 \
+  }
+#else
+#define SFDP_TIMEOUT_DEFINE(x, timeout_name, timeout_val) SFDP_TIMEOUT_DECLARE (x)
+#endif
+
 /* Maximum number of tenant timers configurable */
 #define SFDP_MAX_TIMEOUTS 8
+#define SFDP_TIMEOUT_NAME_LEN	      32
 #define SFDP_DEFAULT_TIMER_INTERVAL_S ((f64) 1.0)
+
+STATIC_ASSERT (SFDP_N_BASE_TIMEOUTS <= SFDP_MAX_TIMEOUTS, "too many built-in SFDP timeouts");
 
 typedef struct
 {
@@ -413,6 +459,9 @@ typedef struct
   /* Timer names and defaults.
    * Timers with name equal to NULL are not configured. */
   sfdp_timeout_t timeouts[SFDP_MAX_TIMEOUTS];
+  sfdp_timeout_registration_t *next_timeout_registration;
+  u32 n_custom_timeouts;
+  u8 timeouts_initialized;
 
   u32 log2_sessions;
   u32 log2_sessions_cache_per_thread;
@@ -434,15 +483,20 @@ typedef struct
   u32 scope_index;
 } sfdp_lookup_node_runtime_data_t;
 
-#define sfdp_foreach_timeout(sfdp, timeout)                                   \
-  for (timeout = (sfdp)->timeouts;                                            \
-       timeout < (sfdp)->timeouts + SFDP_MAX_TIMEOUTS; timeout++)
-
 #define sfdp_foreach_session(sfdp, i, s)                                      \
   pool_foreach_index (i, (sfdp)->sessions)                                    \
     if ((s = sfdp_session_at_index (i)) && s->state != SFDP_SESSION_STATE_FREE)
 
 extern sfdp_main_t sfdp_main;
+
+clib_error_t *sfdp_timeout_register (sfdp_main_t *sfdp, sfdp_timeout_t *timeout);
+
+#define SFDP_N_REGISTERED_TIMEOUTS (SFDP_N_BASE_TIMEOUTS + sfdp_main.n_custom_timeouts)
+
+#define sfdp_foreach_timeout(sfdp, timeout)                                                        \
+  for ((timeout) = (sfdp)->timeouts; (timeout) < (sfdp)->timeouts + SFDP_N_REGISTERED_TIMEOUTS;    \
+       (timeout)++)
+
 extern vlib_node_registration_t sfdp_handoff_node;
 extern vlib_node_registration_t sfdp_lookup_ip4_icmp_node;
 extern vlib_node_registration_t sfdp_lookup_ip6_icmp_node;

@@ -146,8 +146,8 @@ vnet_dev_rv_t
 iavf_aq_alloc (vlib_main_t *vm, vnet_dev_t *dev)
 {
   iavf_device_t *ad = vnet_dev_get_data (dev);
-  return vnet_dev_dma_mem_alloc (vm, dev, sizeof (iavf_adminq_dma_mem_t), 0,
-				 (void **) &ad->aq_mem);
+  return vnet_dev_dma_mem_alloc (vm, dev, sizeof (iavf_adminq_dma_mem_t), 0, (void **) &ad->aq_mem,
+				 "AdminQ rings and buffers");
 }
 
 void

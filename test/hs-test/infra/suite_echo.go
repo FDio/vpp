@@ -87,7 +87,7 @@ var _ = Describe("EchoSuiteSolo", Ordered, ContinueOnFailure, Serial, Label("Vet
 	}
 })
 
-var _ = Describe("EchoSuiteMW", Ordered, ContinueOnFailure, Serial, Label("Veth", "Echo", "MW"), func() {
+var _ = DescribeMWSuite("EchoSuiteMW", []string{"Veth", "Echo", "MW"}, func() {
 	var s EchoSuite
 	BeforeAll(func() {
 		s.SetupSuite()
@@ -108,8 +108,17 @@ var _ = Describe("EchoSuiteMW", Ordered, ContinueOnFailure, Serial, Label("Veth"
 			test := test
 			pc := reflect.ValueOf(test).Pointer()
 			funcValue := runtime.FuncForPC(pc)
-			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
-			It(testName, Label("SOLO", "VPP Multi-Worker"), func(ctx SpecContext) {
+			funcName := strings.Split(funcValue.Name(), ".")[2]
+			testName := filename + "/" + funcName
+			labels := []string{"SOLO", "VPP Multi-Worker"}
+			switch funcName {
+			case "EchoBuiltinHttp1CpsMWTest",
+				"EchoBuiltinHttp2CpsMWTest",
+				"EchoBuiltinHttp3CpsMWTest",
+				"EchoBuiltinHttp2ConnectUdpBackpressureMWTest":
+				labels = MWWideLabels(labels...)
+			}
+			It(testName, Label(labels...), func(ctx SpecContext) {
 				Log("[* TEST BEGIN]: " + testName)
 				test(&s)
 			}, SpecTimeout(TestTimeout))

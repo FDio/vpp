@@ -9,9 +9,13 @@
 
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/mman.h>
 #include <fcntl.h>
 #include <dirent.h>
+#include <errno.h>
 #include <limits.h>
+#include <stdio.h>
+#include <unistd.h>
 
 VLIB_REGISTER_LOG_CLASS (dev_log, static) = {
   .class_name = "dev",
@@ -28,6 +32,7 @@ VLIB_REGISTER_LOG_CLASS (dev_log, static) = {
 	    dev, 0, ##__VA_ARGS__)
 
 #define PLATFORM_DEV_PATH "/sys/bus/platform/devices"
+#define PLATFORM_UIO_PATH "/sys/class/uio"
 
 clib_dt_main_t vnet_dev_bus_platform_dt_main;
 
@@ -124,6 +129,196 @@ static void
 vnet_dev_bus_platform_close (vlib_main_t *vm, vnet_dev_t *dev)
 {
   log_debug (dev, "");
+  vnet_dev_platform_unmap_regions (dev);
+}
+
+void
+vnet_dev_platform_unmap_regions (vnet_dev_t *dev)
+{
+  vnet_dev_bus_platform_device_data_t *dd = vnet_dev_get_bus_data (dev);
+  vnet_dev_bus_platform_mapping_t *m;
+
+  vec_foreach (m, dd->mappings)
+    munmap (m->base, m->size);
+  vec_free (dd->mappings);
+}
+
+static int
+vnet_dev_bus_platform_read_u64 (char *path, u64 *value)
+{
+  FILE *f = fopen (path, "r");
+  int rv;
+
+  if (!f)
+    return -1;
+  rv = fscanf (f, "0x%lx", value);
+  fclose (f);
+  return rv == 1 ? 0 : -1;
+}
+
+static int
+vnet_dev_bus_platform_read_string (char *path, char *value, uword size)
+{
+  FILE *f = fopen (path, "r");
+  char *p;
+
+  if (!f)
+    return -1;
+  p = fgets (value, size, f);
+  fclose (f);
+  if (!p)
+    return -1;
+  p = strchr (value, '\n');
+  if (p)
+    *p = 0;
+  return 0;
+}
+
+static int
+vnet_dev_bus_platform_uio_is_sibling (char *uio_name, char *parent_path)
+{
+  char path[PATH_MAX];
+  char real_path[PATH_MAX];
+  char *last;
+
+  snprintf (path, sizeof (path), "%s/%s/device/of_node", PLATFORM_UIO_PATH, uio_name);
+  if (!realpath (path, real_path))
+    return 0;
+  last = strrchr (real_path, '/');
+  if (!last)
+    return 0;
+  *last = 0;
+  return strcmp (real_path, parent_path) == 0;
+}
+
+static vnet_dev_rv_t
+vnet_dev_bus_platform_find_uio_map (vnet_dev_bus_platform_device_data_t *dd, char *name,
+				    u32 *uio_num, u32 *map_index, u64 *map_offset, u64 *map_size)
+{
+  char maps_path[PATH_MAX];
+  struct dirent *uio_entry;
+  DIR *uio_dir;
+  u8 *path = 0;
+  u8 *parent_path = format (0, CLIB_DT_LINUX_PREFIX "%v%c", dd->node->parent->path, 0);
+
+  uio_dir = opendir (PLATFORM_UIO_PATH);
+  if (!uio_dir)
+    {
+      vec_free (parent_path);
+      return VNET_DEV_ERR_NOT_FOUND;
+    }
+
+  while ((uio_entry = readdir (uio_dir)))
+    {
+      struct dirent *map_entry;
+      DIR *map_dir;
+      char extra;
+      int n;
+
+      if (sscanf (uio_entry->d_name, "uio%d%c", &n, &extra) != 1)
+	continue;
+      if (!vnet_dev_bus_platform_uio_is_sibling (uio_entry->d_name, (char *) parent_path))
+	continue;
+      snprintf (maps_path, sizeof (maps_path), "%s/%s/maps", PLATFORM_UIO_PATH, uio_entry->d_name);
+      map_dir = opendir (maps_path);
+      if (!map_dir)
+	continue;
+
+      while ((map_entry = readdir (map_dir)))
+	{
+	  u64 uio_offset;
+	  u64 uio_size;
+	  char map_name[64];
+	  int index;
+
+	  if (sscanf (map_entry->d_name, "map%d%c", &index, &extra) != 1)
+	    continue;
+	  vec_reset_length (path);
+	  path = format (path, "%s/%s/name%c", maps_path, map_entry->d_name, 0);
+	  if (vnet_dev_bus_platform_read_string ((char *) path, map_name, sizeof (map_name)) ||
+	      strcmp (name, map_name))
+	    continue;
+	  vec_reset_length (path);
+	  path = format (path, "%s/%s/offset%c", maps_path, map_entry->d_name, 0);
+	  if (vnet_dev_bus_platform_read_u64 ((char *) path, &uio_offset))
+	    continue;
+	  vec_reset_length (path);
+	  path = format (path, "%s/%s/size%c", maps_path, map_entry->d_name, 0);
+	  if (vnet_dev_bus_platform_read_u64 ((char *) path, &uio_size))
+	    continue;
+
+	  *uio_num = n;
+	  *map_index = index;
+	  *map_offset = uio_offset;
+	  *map_size = uio_size;
+	  closedir (map_dir);
+	  closedir (uio_dir);
+	  vec_free (path);
+	  vec_free (parent_path);
+	  return VNET_DEV_OK;
+	}
+      closedir (map_dir);
+    }
+
+  closedir (uio_dir);
+  vec_free (path);
+  vec_free (parent_path);
+  return VNET_DEV_ERR_NOT_FOUND;
+}
+
+vnet_dev_rv_t
+vnet_dev_platform_map_uio_region (vnet_dev_t *dev, char *name, void **va)
+{
+  vnet_dev_bus_platform_device_data_t *dd = vnet_dev_get_bus_data (dev);
+  u64 uio_offset;
+  u64 uio_size;
+  u64 page_offset;
+  u64 map_size;
+  uword page_size = getpagesize ();
+  char path[PATH_MAX];
+  u32 map_index;
+  u32 uio_num;
+  int fd;
+  void *base;
+  vnet_dev_rv_t rv;
+
+  rv = vnet_dev_bus_platform_find_uio_map (dd, name, &uio_num, &map_index, &uio_offset, &uio_size);
+  if (rv != VNET_DEV_OK)
+    {
+      log_err (dev, "cannot find UIO region '%s'", name);
+      return rv;
+    }
+
+  snprintf (path, sizeof (path), "/dev/uio%u", uio_num);
+  fd = open (path, O_RDWR | O_CLOEXEC);
+  if (fd < 0)
+    {
+      log_err (dev, "cannot open %s: %s", path, strerror (errno));
+      return VNET_DEV_ERR_BUS;
+    }
+
+  page_offset = uio_offset & (page_size - 1);
+  map_size = round_pow2 (page_offset + uio_size, page_size);
+  if (map_size > CLIB_UWORD_MAX)
+    {
+      close (fd);
+      return VNET_DEV_ERR_INVALID_ARG;
+    }
+
+  base = mmap (0, map_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, map_index * page_size);
+  close (fd);
+  if (base == MAP_FAILED)
+    {
+      log_err (dev, "cannot map UIO region '%s': %s", name, strerror (errno));
+      return VNET_DEV_ERR_BUS;
+    }
+
+  vec_add1 (dd->mappings, ((vnet_dev_bus_platform_mapping_t) {
+			    .base = base,
+			    .size = map_size,
+			  }));
+  *va = base + uio_offset;
+  return VNET_DEV_OK;
 }
 
 static vnet_dev_rv_t
@@ -170,7 +365,9 @@ vnet_dev_bus_platform_open (vlib_main_t *vm, vnet_dev_t *dev)
   if (rv != VNET_DEV_OK)
     return rv;
 
-  dd->node = n;
+  *dd = (vnet_dev_bus_platform_device_data_t) {
+    .node = n,
+  };
   return VNET_DEV_OK;
 }
 
@@ -193,7 +390,7 @@ format_dev_bus_platform_device_addr (u8 *s, va_list *args)
 
 VNET_DEV_REGISTER_BUS (pp2) = {
   .name = PLATFORM_BUS_NAME,
-  .device_data_size = sizeof (vnet_dev_bus_platform_device_info_t),
+  .device_data_size = sizeof (vnet_dev_bus_platform_device_data_t),
   .ops = {
     .get_device_info = vnet_dev_bus_platform_get_device_info,
     .free_device_info = vnet_dev_bus_platform_free_device_info,

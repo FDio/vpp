@@ -11,8 +11,18 @@
 
 sfdp_timer_main_t sfdp_timer_main;
 
-static void
-expired_timer_callback (u32 *expired)
+#define _(id, value, string)                                                                       \
+  sfdp_timeout_registration_t sfdp_timeout_registration_##id = {              \
+    .timeout = {                                                                \
+      .name = string,                                                           \
+      .val = value,                                                             \
+    },                                                                           \
+  };
+foreach_sfdp_timeout
+#undef _
+
+  static void
+  expired_timer_callback (u32 *expired)
 {
   u32 *e;
   uword thread_index = vlib_get_thread_index ();
@@ -110,7 +120,7 @@ timer_expiry_cb_notify_new_sessions (const u32 *new_sessions, u32 len)
       sfdp_session_timer_t *timer = SFDP_SESSION_TIMER (session);
       sfdp_tenant_t *tenant = sfdp_tenant_at_index (sfdp, session->tenant_idx);
       sfdp_session_timer_start (&ptd->wheel, timer, *session_index, time_now,
-				tenant->timeouts[SFDP_TIMEOUT_EMBRYONIC]);
+				tenant->timeouts[SFDP_TIMEOUT_INDEX (EMBRYONIC)]);
 
       len--;
       session_index++;
@@ -137,20 +147,6 @@ timer_expiry_cb_format_session_details (u8 *s, va_list *args)
 u32
 sfdp_timer_register_as_expiry_module ()
 {
-  sfdp_timeout_t timeouts[SFDP_MAX_TIMEOUTS] = {};
-  int ret;
-  u32 i = 0;
-#define _(n, v, str)                                                          \
-  timeouts[i].name = str;                                                     \
-  timeouts[i].val = v;                                                        \
-  i++;
-  foreach_sfdp_timeout
-#undef _
-
-    if ((ret = sfdp_init_timeouts (timeouts, i)))
-  {
-    return ret;
-  }
 
   sfdp_expiry_callbacks_t cbs = {
     .enable = timer_expiry_cb_enable,

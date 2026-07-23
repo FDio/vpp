@@ -841,6 +841,7 @@ var defaultMemLeakReportNoiseFrames = []string{
 	"vlib_buffer_validate_alloc_free",
 	"tap_device_input_one_inline",
 	"tw_timer_expire_timers_internal",
+	"http_add_postponed_ho_cleanups",
 }
 
 func memTraceContainsAnyFrame(trace VppMemTrace, tracebackFrames []string) bool {

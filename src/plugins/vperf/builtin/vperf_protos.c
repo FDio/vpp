@@ -643,6 +643,108 @@ static vp_test_proto_vft_t vp_test_udp = {
 
 VP_TEST_REGISTER_PROTO (VP_PROTO_UDP, vp_test_udp);
 
+static u32
+vp_proto_client_udp_uso_tx (vp_test_session_t *es, u32 max_send)
+{
+  app_session_transport_t *at = &es->transport;
+  svm_fifo_t *f = es->tx_fifo;
+  u32 max_enqueue, to_send = 0;
+  int rv;
+
+  rv = svm_fifo_fill_chunk_list (f);
+  if (rv < 0)
+    return 0;
+
+  max_enqueue = svm_fifo_max_enqueue_prod (f);
+
+  if (max_enqueue <= sizeof (session_dgram_hdr_t))
+    return 0;
+
+  to_send = clib_min (max_enqueue - sizeof (session_dgram_hdr_t), max_send);
+
+  session_dgram_hdr_t hdr = {
+    .data_length = to_send,
+    .data_offset = 0,
+    .gso_size = to_send > TRANSPORT_PACER_MIN_MSS ? TRANSPORT_PACER_MIN_MSS : 0,
+    .rmt_ip = at->rmt_ip,
+    .rmt_port = at->rmt_port,
+    .is_ip4 = at->is_ip4,
+    .lcl_ip = at->lcl_ip,
+    .lcl_port = at->lcl_port,
+  };
+
+  svm_fifo_enqueue (f, sizeof (hdr), (u8 *) &hdr);
+  svm_fifo_enqueue_nocopy (f, to_send);
+
+  if (svm_fifo_set_event (es->tx_fifo))
+    session_program_tx_io_evt (es->tx_fifo->vpp_sh, SESSION_IO_EVT_TX);
+  es->dgrams_sent += (to_send + TRANSPORT_PACER_MIN_MSS - 1) / TRANSPORT_PACER_MIN_MSS;
+  es->bytes_sent += to_send;
+  return to_send;
+}
+
+static u32
+vp_proto_client_udp_uso_tx_test_bytes (vp_test_session_t *es, u8 *test_data, u32 max_send)
+{
+  u32 test_buf_len, test_buf_offset, n_transfer;
+  svm_fifo_t *f = es->tx_fifo;
+  app_session_transport_t *at = &es->transport;
+  u32 max_enqueue = svm_fifo_max_enqueue_prod (f);
+
+  if (max_enqueue <= (sizeof (session_dgram_hdr_t) + sizeof (u32)))
+    return 0;
+
+  test_buf_len = vec_len (test_data);
+  ASSERT (test_buf_len > 0);
+
+  max_enqueue -= sizeof (session_dgram_hdr_t);
+  n_transfer = clib_min (max_enqueue, max_send);
+  ASSERT (n_transfer);
+  ASSERT (n_transfer <= test_buf_len);
+
+  /* make sure we're sending evenly sized dgrams */
+  test_buf_offset = es->bytes_sent % test_buf_len;
+  if ((test_buf_len - test_buf_offset) < n_transfer)
+    test_buf_offset = 0;
+
+  session_dgram_hdr_t hdr = {
+    .data_length = n_transfer,
+    .data_offset = 0,
+    .gso_size = n_transfer > TRANSPORT_PACER_MIN_MSS ? TRANSPORT_PACER_MIN_MSS : 0,
+    .rmt_ip = at->rmt_ip,
+    .rmt_port = at->rmt_port,
+    .is_ip4 = at->is_ip4,
+    .lcl_ip = at->lcl_ip,
+    .lcl_port = at->lcl_port,
+  };
+
+  svm_fifo_seg_t data_segs[2] = { { (u8 *) &hdr, sizeof (hdr) },
+				  { test_data + test_buf_offset, n_transfer } };
+
+  svm_fifo_enqueue_segments (f, data_segs, 2, 0 /* allow partial */);
+  if (svm_fifo_set_event (es->tx_fifo))
+    session_program_tx_io_evt (es->tx_fifo->vpp_sh, SESSION_IO_EVT_TX);
+
+  es->dgrams_sent += (n_transfer + TRANSPORT_PACER_MIN_MSS - 1) / TRANSPORT_PACER_MIN_MSS;
+  es->bytes_sent += n_transfer;
+  return n_transfer;
+}
+
+static vp_test_proto_vft_t vp_test_udp_uso = {
+  .listen = vp_proto_udp_listen,
+  .server_rx = vp_proto_udp_server_rx,
+  .server_rx_test_bytes = vp_proto_udp_server_rx_test_bytes,
+  .server_rx_no_echo = vp_proto_udp_server_rx_no_echo,
+  .connect = vp_proto_udp_connect,
+  .connected = vp_proto_connected,
+  .client_rx = vp_proto_client_dgram_rx,
+  .client_rx_test_bytes = vp_proto_client_dgram_rx_test_bytes,
+  .client_tx = vp_proto_client_udp_uso_tx,
+  .client_tx_test_bytes = vp_proto_client_udp_uso_tx_test_bytes,
+};
+
+VP_TEST_REGISTER_PROTO (VP_PROTO_UDP_USO, vp_test_udp_uso);
+
 static int
 vp_proto_tls_listen (vnet_listen_args_t *args, vp_test_cfg_t *cfg)
 {

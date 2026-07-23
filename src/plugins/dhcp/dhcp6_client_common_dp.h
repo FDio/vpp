@@ -9,6 +9,11 @@
 #include <vlib/vlib.h>
 #include <dhcp/dhcp6_packet.h>
 
+/* Max DNS servers (RFC 3646) we learn from a DHCPv6 IA_NA reply. Two is
+ * sufficient for typical operator deployments; extras are dropped with a
+ * debug log. */
+#define DHCP6_MAX_LEARNED_DNS_SERVERS 2
+
 typedef struct
 {
   u32 sw_if_index;

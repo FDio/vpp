@@ -18,7 +18,7 @@ VLIB_REGISTER_LOG_CLASS (dev_log, static) = {
 typedef struct
 {
   vnet_dev_api_create_port_if_args_t intf;
-  vnet_dev_api_port_set_rss_key_args_t rss_key_args;
+  vnet_dev_api_port_set_rss_config_args_t rss_config_args;
 } port_config_t;
 
 static clib_error_t *
@@ -46,7 +46,10 @@ vnet_dev_config_one_interface (vlib_main_t *vm, unformat_input_t *input,
       else if (unformat (input, "tx-queue-size %u", &n))
 	args->intf.tx_queue_size = n;
       else if (unformat (input, "rss-key %U", unformat_vnet_dev_rss_key,
-			 &args->rss_key_args.rss_key))
+			 &args->rss_config_args.rss_config))
+	;
+      else if (unformat (input, "rss-lut %U", unformat_vnet_dev_rss_lut,
+			 &args->rss_config_args.rss_config))
 	;
       else if (unformat (input, "rx-queue-assignment %U", unformat_vnet_dev_rx_queue_assignment,
 			 &args->intf.rx_queue_assignment))
@@ -188,12 +191,12 @@ vnet_dev_config_one_device (vlib_main_t *vm, unformat_input_t *input,
 	      rv = vnet_dev_api_create_port_if (vm, &p->intf);
 	      if (rv != VNET_DEV_OK)
 		break;
-	      if (p->rss_key_args.rss_key.length)
+	      if (p->rss_config_args.rss_config.set_key || p->rss_config_args.rss_config.set_lut)
 		{
-		  vnet_dev_api_port_set_rss_key_args_t *rka = &p->rss_key_args;
-		  rka->port_id = p->intf.port_id;
-		  rka->dev_index = p->intf.dev_index;
-		  rv = vnet_dev_api_port_set_rss_key (vm, rka);
+		  vnet_dev_api_port_set_rss_config_args_t *rca = &p->rss_config_args;
+		  rca->port_id = p->intf.port_id;
+		  rca->dev_index = p->intf.dev_index;
+		  rv = vnet_dev_api_port_set_rss_config (vm, rca);
 		  if (rv != VNET_DEV_OK)
 		    break;
 		}

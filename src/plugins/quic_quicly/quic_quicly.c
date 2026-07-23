@@ -22,6 +22,7 @@ quic_plugin_methods_t quic_mvt;
 
 #define QUIC_QUICLY_RCV_MAX_DGRAMS  16
 #define QUIC_QUICLY_RCV_MAX_PACKETS 64
+#define QUIC_QUICLY_TX_FIFO_MIN_ALLOC_CAP (16 << 10)
 
 VLIB_PLUGIN_REGISTER () = {
   .version = VPP_BUILD_VER,
@@ -354,20 +355,20 @@ quic_quicly_on_stream_destroy (quicly_stream_t *stream, quicly_error_t err)
   quic_ctx_t *sctx =
     quic_quicly_get_quic_ctx (stream_data->ctx_id, stream_data->thread_index);
 
-  QUIC_DBG (
-    2,
-    "DESTROYED_STREAM: stream_session handle 0x%lx, sctx_index %u, "
-    "thread %u, err %U",
-    session_handle (session_get (sctx->c_s_index, sctx->c_thread_index)),
-    sctx->c_c_index, sctx->c_thread_index, quic_quicly_format_err, err);
+  QUIC_DBG (2,
+	    "DESTROYED_STREAM: stream_session handle 0x%lx, sctx_index %u, "
+	    "thread %u, flags 0x%x, err %U",
+	    session_handle (session_get (sctx->c_s_index, sctx->c_thread_index)), sctx->c_c_index,
+	    sctx->c_thread_index, quic_quicly_format_err, err);
 
   sctx->flags |= QUIC_F_STREAM_TX_CLOSED;
   sctx->stream = 0;
   sctx->udp_session_handle = SESSION_INVALID_HANDLE;
 
   /* free stream only when app already closed, otherwise it might has unread
-   * data */
-  if (sctx->flags & QUIC_F_APP_CLOSED)
+   * data, or if we have unsend data (we receive stop sending) */
+  if ((sctx->flags & QUIC_F_APP_CLOSED) ||
+      svm_fifo_max_dequeue_cons (get_stream_session_and_ctx_from_stream (stream, &sctx)->tx_fifo))
     {
       session_transport_closed_notify (&sctx->connection);
       session_transport_delete_notify (&sctx->connection);
@@ -481,10 +482,9 @@ quic_quicly_on_stop_sending (quicly_stream_t *stream, quicly_error_t quicly_erro
   quic_ctx_t *sctx =
     quic_quicly_get_quic_ctx (stream_data->ctx_id, stream_data->thread_index);
 
-  QUIC_DBG (
-    2, "STOP_SENDING: session 0x%lx (%U)",
-    session_handle (session_get (sctx->c_s_index, sctx->c_thread_index)),
-    quic_quicly_format_err, quicly_error);
+  QUIC_DBG (2, "STOP_SENDING: session 0x%lx, sctx_index %u, thread %u, flags 0x%x, err %U",
+	    session_handle (session_get (sctx->c_s_index, sctx->c_thread_index)), sctx->c_c_index,
+	    sctx->c_thread_index, sctx->flags, quic_quicly_format_err, quicly_error);
 
   if (!(sctx->flags & QUIC_F_APP_CLOSED))
     {
@@ -638,7 +638,10 @@ check_eos:
   if (!(sctx->flags & QUIC_F_APP_CLOSED_TX) &&
       quicly_recvstate_transfer_complete (&stream->recvstate))
     {
-      QUIC_DBG (2, "stream half-close: rcv side closed, ctx_index %u, thread_index %u",
+      QUIC_DBG (2,
+		"stream half-close: rcv side closed, stream_session handle 0x%lx, ctx_index "
+		"%u, thread_index %u",
+		session_handle (session_get (sctx->c_s_index, sctx->c_thread_index)),
 		sctx->c_c_index, sctx->c_thread_index);
       session_transport_closing_notify (&sctx->connection);
     }
@@ -651,10 +654,11 @@ quic_quicly_on_receive_reset (quicly_stream_t *stream, quicly_error_t quicly_err
   quic_ctx_t *sctx =
     quic_quicly_get_quic_ctx (stream_data->ctx_id, stream_data->thread_index);
 
-  QUIC_DBG (
-    2, "RESET_STREAM: session 0x%lx (%U)",
-    session_handle (session_get (sctx->c_s_index, sctx->c_thread_index)),
-    quic_quicly_format_err, quicly_error);
+  QUIC_DBG (2,
+	    "RESET_STREAM: stream_session handle 0x%lx, sctx_index %u, "
+	    "thread %u, flags 0x%x, err %U",
+	    session_handle (session_get (sctx->c_s_index, sctx->c_thread_index)), sctx->c_c_index,
+	    sctx->c_thread_index, sctx->flags, quic_quicly_format_err, quicly_error);
 
   if (!(sctx->flags & QUIC_F_APP_CLOSED))
     {
@@ -1026,6 +1030,8 @@ quic_quicly_connection_migrate_rpc (quic_ctx_t *ctx)
 
   udp_session = session_get_from_handle (new_ctx->udp_session_handle);
   udp_session->opaque = new_ctx_index;
+  udp_session->tx_fifo->shr->min_alloc =
+    clib_min (QUIC_QUICLY_TX_FIFO_MIN_ALLOC_CAP, udp_session->tx_fifo->shr->min_alloc);
 
   /* app might detach meanwhile */
   if (session_half_open_migrated_notify (&new_ctx->connection))
@@ -1101,10 +1107,12 @@ quic_quicly_on_app_closed (u32 ctx_index, clib_thread_index_t thread_index)
     {
       if (!ctx->stream)
 	{
-	  QUIC_DBG (2,
-		    "App confirm stream close going to free ctx, ctx_index %u "
-		    "thread_index %u",
-		    ctx->c_c_index, ctx->c_thread_index);
+	  QUIC_DBG (
+	    2,
+	    "App confirm stream close going to free ctx: stream_session handle 0x%lx, ctx_index %u "
+	    "thread_index %u",
+	    session_handle (session_get (ctx->c_s_index, ctx->c_thread_index)), ctx->c_c_index,
+	    ctx->c_thread_index);
 	  session_transport_closed_notify (&ctx->connection);
 	  session_transport_delete_notify (&ctx->connection);
 	  quic_ctx_free (quic_quicly_main.qm, ctx);
@@ -1276,11 +1284,16 @@ quic_quicly_accept_connection (quic_ctx_t *ctx, quic_quicly_rx_packet_ctx_t *pct
   quicly_error_t rv;
   quic_quicly_main_t *qqm = &quic_quicly_main;
   quic_main_t *qm = qqm->qm;
+  session_t *udp_session;
 
   QUIC_DBG (2, "Accept connection: pkt ctx_index %u, thread %u", ctx->c_c_index,
 	    ctx->c_thread_index);
 
   ASSERT (ctx->c_s_index == QUIC_SESSION_INVALID);
+
+  udp_session = session_get_from_handle (ctx->udp_session_handle);
+  udp_session->tx_fifo->shr->min_alloc =
+    clib_min (QUIC_QUICLY_TX_FIFO_MIN_ALLOC_CAP, udp_session->tx_fifo->shr->min_alloc);
 
   quicly_ctx = quic_quicly_get_quicly_ctx_from_ctx (ctx);
   rv = quicly_accept (&conn, quicly_ctx, NULL, src_addr, &pctx->packet, NULL,
@@ -1411,6 +1424,14 @@ quic_quicly_connect (quic_ctx_t *ctx, u32 ctx_index,
   quic_quicly_main_t *qqm = &quic_quicly_main;
   int i;
   quicly_error_t ret;
+  session_t *udp_session;
+  size_t num_packets = 1;
+  quicly_error_t err;
+  quicly_conn_t *conn;
+  quicly_address_t quicly_rmt_ip, quicly_lcl_ip;
+  session_dgram_hdr_t hdr;
+  struct iovec *packets = qqm->tx_packets[ctx->c_thread_index];
+  u8 *buf = qqm->tx_bufs[ctx->c_thread_index];
 
   ctx->opaque = quic_quicly_crypto_engine_is_vpp () ? QUIC_QUICLY_RX_STATE_HANDSHAKE_VPP_CRYPTO :
 						      QUIC_QUICLY_RX_STATE_HANDSHAKE;
@@ -1422,15 +1443,37 @@ quic_quicly_connect (quic_ctx_t *ctx, u32 ctx_index,
       alpn_list[i].len = (size_t) alpn_proto->len;
       hs_properties.client.negotiated_protocols.count++;
     }
+
+  udp_session = session_get_from_handle (ctx->udp_session_handle);
+  udp_session->tx_fifo->shr->min_alloc =
+    clib_min (QUIC_QUICLY_TX_FIFO_MIN_ALLOC_CAP, udp_session->tx_fifo->shr->min_alloc);
+
   quicly_ctx = quic_quicly_get_quicly_ctx_from_ctx (ctx);
-  ret = quicly_connect ((quicly_conn_t **) &ctx->conn, quicly_ctx,
-			(char *) ctx->srv_hostname, sa, NULL,
-			&qqm->next_cid[thread_index],
-			ptls_iovec_init (NULL, 0), &hs_properties, NULL, NULL);
+  ret =
+    quicly_connect ((quicly_conn_t **) &ctx->conn, quicly_ctx, (char *) ctx->srv_hostname, sa, NULL,
+		    &qqm->next_cid[thread_index], ptls_iovec_init (NULL, 0), &hs_properties, NULL,
+		    (void *) (((u64) ctx->c_thread_index) << 32 | (u64) ctx->c_c_index));
   ++qqm->next_cid[thread_index].master_id;
-  /*  save context handle in quicly connection */
-  quic_quicly_store_conn_ctx (ctx->conn, ctx);
   ASSERT (ret == 0);
+
+  conn = ctx->conn;
+
+  err = quicly_send (conn, &quicly_rmt_ip, &quicly_lcl_ip, packets, &num_packets, buf,
+		     QUIC_MAX_PACKET_SIZE);
+  ASSERT (!err);
+  ASSERT (num_packets);
+  hdr.data_offset = 0;
+  hdr.gso_size = 0;
+  hdr.data_length = packets[0].iov_len;
+  svm_fifo_seg_t segs[2] = { { (u8 *) &hdr, sizeof (hdr) },
+			     { packets[0].iov_base, packets[0].iov_len } };
+  /* this should not fail, it's fresh fifo with 4kB chunk and we send only one datagram with 1280B
+   * payload */
+  ret = svm_fifo_enqueue_segments (udp_session->tx_fifo, segs, 2, 0 /* allow partial */);
+  ASSERT (ret > 0);
+  quic_increment_counter (quic_quicly_main.qm, QUIC_ERROR_TX_PACKETS, 1);
+  quic_quicly_set_udp_tx_evt (udp_session);
+  quic_quicly_reschedule_ctx (ctx);
 
   quic_increment_counter (qqm->qm, QUIC_ERROR_OPENED_CONNECTION, 1);
   return 0;
@@ -1595,6 +1638,8 @@ quic_quicly_format_connection_stats (u8 *s, va_list *args)
 	      quicly_stats.delivery_rate.stdev);
   s = format (s, " rx frames: %U", quic_quicly_format_rx_frame_stats, &quicly_stats);
   s = format (s, " tx frames: %U", quic_quicly_format_tx_frame_stats, &quicly_stats);
+  s = format (s, " alpn-selected: %U crctx: %u\n", format_tls_alpn_proto, ctx->alpn_selected,
+	      ctx->crypto_context_index);
   return s;
 }
 
@@ -1696,7 +1741,7 @@ quic_quicly_stream_tx (quic_ctx_t *ctx, session_t *stream_session)
 
   if (ctx->flags & QUIC_F_STREAM_TX_CLOSED)
     {
-      QUIC_ERR ("tried to send on tx-closed stream");
+      QUIC_DBG (1, "tried to send on tx-closed stream");
       return 0;
     }
 
@@ -1737,7 +1782,6 @@ quic_quicly_engine_init (quic_main_t *qm)
   qm->default_crypto_engine = CRYPTO_ENGINE_PICOTLS;
   qm->default_quic_cc = QUIC_CC_RENO;
   qm->max_packets_per_key = DEFAULT_MAX_PACKETS_PER_KEY;
-  qqm->session_cache.super.cb = quic_quicly_encrypt_ticket_cb;
   qqm->qm = qm;
 
   vec_validate (qqm->next_cid, qm->num_threads - 1);

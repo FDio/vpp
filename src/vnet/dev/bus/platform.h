@@ -21,7 +21,17 @@ typedef struct
 
 typedef struct
 {
+  void *base;
+  uword size;
+} vnet_dev_bus_platform_mapping_t;
+
+typedef struct
+{
   clib_dt_node_t *node;
+  vnet_dev_bus_platform_mapping_t *mappings;
 } vnet_dev_bus_platform_device_data_t;
+
+vnet_dev_rv_t vnet_dev_platform_map_uio_region (vnet_dev_t *, char *, void **);
+void vnet_dev_platform_unmap_regions (vnet_dev_t *);
 
 #endif /* _VNET_DEV_BUS_PLATFORM_H_ */

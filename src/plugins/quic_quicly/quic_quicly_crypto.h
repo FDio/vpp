@@ -40,7 +40,11 @@ struct cipher_context_t
 typedef struct quic_quicly_on_client_hello_
 {
   ptls_on_client_hello_t super;
-  u32 lctx_index;
+  union
+  {
+    u8 alpn_protos[4];
+    u32 alpn_protos_as_u32;
+  };
 } quic_quicly_on_client_hello_t;
 
 /* Custom verify certificate callback that stores the peer certificate */
@@ -54,16 +58,14 @@ typedef struct st_quic_quicly_verify_certificate_t
 
 typedef struct quic_quicly_crypto_ctx_
 {
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   quic_crypto_context_t ctx; /* first */
   quicly_context_t quicly_ctx;
   char cid_key[QUIC_CID_KEY_LEN];
   ptls_context_t ptls_ctx;
-  tls_verify_cfg_t verify_cfg;
-  u32 ca_trust_index;
-  u32 crypto_owner_app_wrk_id;
+  ptls_openssl_sign_certificate_t sc;
   quic_quicly_verify_certificate_t verify_cert;
   quic_quicly_on_client_hello_t client_hello_ctx;
-  u32 tls_profile_index; /**< TLS profile index baked into this context (~0 = defaults) */
   /* Profile-filtered arrays (NULL if no profile applied, freed on context free) */
   ptls_cipher_suite_t **filtered_cipher_suites;
   ptls_key_exchange_algorithm_t **filtered_key_exchanges;
@@ -108,10 +110,6 @@ void quic_quicly_crypto_init (quic_quicly_main_t *qqm);
 void quic_quicly_crypto_context_list (vlib_main_t *vm);
 quic_quicly_crypto_ctx_t *quic_quicly_crypto_context_get_or_alloc (quic_ctx_t *ctx);
 void quic_quicly_crypto_context_free (u32 crypto_context_index);
-extern int quic_quicly_encrypt_ticket_cb (ptls_encrypt_ticket_t *_self,
-					  ptls_t *tls, int is_encrypt,
-					  ptls_buffer_t *dst,
-					  ptls_iovec_t src);
 extern void
 quic_quicly_crypto_decrypt_packet (quic_ctx_t *qctx,
 				   quic_quicly_rx_packet_ctx_t *pctx);

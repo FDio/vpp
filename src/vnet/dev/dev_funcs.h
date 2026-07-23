@@ -195,6 +195,18 @@ vnet_dev_get_port_by_id (vnet_dev_t *dev, vnet_dev_port_id_t port_id)
   return 0;
 }
 
+static_always_inline u32
+vnet_dev_get_port_num_rx_queues (vnet_dev_port_t *port)
+{
+  return pool_elts (port->rx_queues);
+}
+
+static_always_inline u32
+vnet_dev_get_port_num_tx_queues (vnet_dev_port_t *port)
+{
+  return pool_elts (port->tx_queues);
+}
+
 static_always_inline vnet_dev_rx_queue_t *
 vnet_dev_get_port_rx_queue_by_id (vnet_dev_port_t *port,
 				  vnet_dev_queue_id_t queue_id)

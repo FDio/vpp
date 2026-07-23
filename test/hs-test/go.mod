@@ -1,6 +1,6 @@
 module fd.io/hs-test
 
-go 1.26.1
+go 1.26.5
 
 require (
 	github.com/docker/docker v28.5.2+incompatible

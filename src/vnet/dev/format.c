@@ -6,6 +6,7 @@
 #include <vnet/dev/dev.h>
 #include <vnet/dev/counters.h>
 #include <vnet/ethernet/ethernet.h>
+#include <vppinfra/format_table.h>
 
 u8 *
 format_vnet_dev_rv (u8 *s, va_list *args)
@@ -97,6 +98,31 @@ format_vnet_dev_info (u8 *s, va_list *args)
     s = format (s, "\n%UDevice Specific Arguments:\n%U%U", format_white_space,
 		indent, format_white_space, indent + 2, format_clib_args,
 		dev->args);
+  if (a->debug && vec_len (dev->dma_allocs))
+    {
+      table_t t = {};
+      vnet_dev_dma_mem_alloc_t *alloc;
+      u32 row = 0;
+
+      table_add_hdr_row (&t, 5, "Virtual Addr", "DMA Addr", "Size", "Alignment", "Description");
+      table_set_cell_align (&t, -1, 4, TTAA_LEFT);
+      vec_foreach (alloc, dev->dma_allocs)
+	{
+	  if (alloc->va == 0)
+	    continue;
+	  table_format_cell (&t, row, 0, "%p", alloc->va);
+	  table_format_cell (&t, row, 1, "0x%lx", alloc->pa);
+	  table_format_cell (&t, row, 2, "%u", alloc->size);
+	  table_format_cell (&t, row, 3, "%u", alloc->align);
+	  table_format_cell (&t, row, 4, "%v", alloc->description);
+	  table_set_cell_align (&t, row, 4, TTAA_LEFT);
+	  row++;
+	}
+      if (row)
+	s = format (s, "\n%UDMA Memory Allocations:\n%U%U", format_white_space, indent,
+		    format_white_space, indent + 2, format_table, &t);
+      table_free (&t);
+    }
   if (dev->ops.format_info)
     s =
       format (s, "\n%UDevice Specific Info:\n%U%U", format_white_space, indent,
@@ -126,6 +152,8 @@ format_vnet_dev_port_info (u8 *s, va_list *args)
   s = format (s, ", %u RX queues (max %u), %u TX queues (max %u)",
 	      pool_elts (port->rx_queues), port->attr.max_rx_queues,
 	      pool_elts (port->tx_queues), port->attr.max_tx_queues);
+  s = format (s, "\n%ULink state is %s, speed is %U", format_white_space, indent,
+	      port->link_up ? "up" : "down", format_vnet_hw_interface_link_speed, port->speed);
   if (pool_elts (port->secondary_hw_addr))
     {
       u32 i = 0;
@@ -140,10 +168,20 @@ format_vnet_dev_port_info (u8 *s, va_list *args)
 	  s = format (s, " %U", format_vnet_dev_hw_addr, a);
 	}
     }
-  if (port->rss_key.length)
-    s = format (s, "\n%URSS Key is %U", format_white_space, indent,
-		format_hex_bytes_no_wrap, port->rss_key.key,
-		port->rss_key.length);
+  if (port->rss_config.set_key)
+    s = format (s, "\n%URSS Key is %U", format_white_space, indent, format_hex_bytes_no_wrap,
+		port->rss_config.key, port->rss_config.key_len);
+  if (port->rss_config.set_lut)
+    {
+      table_t table = {};
+
+      for (u32 row = 0; row * 16 < port->rss_config.lut_len; row++)
+	for (u32 column = 0; column < 16 && row * 16 + column < port->rss_config.lut_len; column++)
+	  table_format_cell (&table, row, column, "%u", port->rss_config.lut[row * 16 + column]);
+      s = format (s, "\n%URSS LUT:\n%U%U", format_white_space, indent, format_white_space,
+		  indent + 2, format_table, &table);
+      table_free (&table);
+    }
   s = format (s, "\n%UMax RX frame size is %u (max supported %u)",
 	      format_white_space, indent, port->max_rx_frame_size,
 	      port->attr.max_supported_rx_frame_size);
@@ -562,7 +600,7 @@ format_vnet_dev_flow (u8 *s, va_list *args)
 uword
 unformat_vnet_dev_rss_key (unformat_input_t *input, va_list *args)
 {
-  vnet_dev_rss_key_t *k = va_arg (*args, vnet_dev_rss_key_t *);
+  vnet_dev_rss_config_t *config = va_arg (*args, vnet_dev_rss_config_t *);
   u8 *v;
   u32 len;
 
@@ -570,14 +608,37 @@ unformat_vnet_dev_rss_key (unformat_input_t *input, va_list *args)
     return 0;
 
   len = vec_len (v);
-  if (len > sizeof (k->key))
+  if (len > sizeof (config->key))
     {
       vec_free (v);
       return 0;
     }
 
-  clib_memcpy (k->key, v, len);
-  k->length = len;
+  clib_memcpy (config->key, v, len);
+  config->key_len = len;
+  config->set_key = 1;
+  vec_free (v);
+  return 1;
+}
+
+uword
+unformat_vnet_dev_rss_lut (unformat_input_t *input, va_list *args)
+{
+  vnet_dev_rss_config_t *config = va_arg (*args, vnet_dev_rss_config_t *);
+  u32 entry;
+
+  if (!unformat (input, "%u", &entry))
+    return 0;
+
+  while (1)
+    {
+      if (entry > CLIB_U16_MAX || config->lut_len == ARRAY_LEN (config->lut))
+	return 0;
+      config->lut[config->lut_len++] = entry;
+      if (!unformat (input, ",%u", &entry))
+	break;
+    }
+  config->set_lut = 1;
   return 1;
 }
 uword

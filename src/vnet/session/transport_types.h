@@ -299,6 +299,7 @@ enum tls_verify_cfg_bit_
 #define _(sym, name) TLS_VERIFY_CFG_BIT_##sym,
   foreach_tls_verify_cfg
 #undef _
+    TLS_VERIFY_CFG_N_BITS
 };
 
 typedef enum tls_verify_cfg_
@@ -307,6 +308,8 @@ typedef enum tls_verify_cfg_
   foreach_tls_verify_cfg
 #undef _
 } tls_verify_cfg_t;
+
+format_function_t format_tls_verify_cfg;
 
 #define foreach_tls_alpn_protos                                               \
   _ (NONE, "none")                                                            \

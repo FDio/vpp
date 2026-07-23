@@ -1004,7 +1004,7 @@ show_session_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	    continue;
 	  app_wrk = app_worker_get (s->app_wrk_index);
 	  app_name = application_name_from_index (app_wrk->app_index);
-	  vlib_cli_output (vm, "%U%-25v%", format_session, s, 0, app_name);
+	  vlib_cli_output (vm, "%-" SESSION_CLI_ID_LEN "U%-25v%", format_session, s, 0, app_name);
 	}
       goto done;
     }

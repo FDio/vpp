@@ -42,7 +42,10 @@ var DryRun = flag.Bool("dryrun", false, "set up containers but don't run tests")
 var Timeout = flag.Int("timeout", 5, "test timeout override (in minutes)")
 var HostPpid = flag.Int("host_ppid", os.Getppid(), "automatically set in Makefile")
 var CpuOffset = flag.Int("cpu_offset", 0, "initial CPU offset")
+var CpuOffsetNumaNode = flag.Int("cpu_offset_numa_node", 0, "NUMA node containing the initial CPU offset")
 var HyperThreading = flag.Bool("hyperthread", false, "whether to use hyperthreads in CPU allocation")
+var NumaPerProcess = flag.Bool("numa_per_process", false, "allocate each Ginkgo process from a separate NUMA node")
+var NumaWorkersPerNode = flag.Int("numa_workers_per_node", 1, "number of Ginkgo processes to allocate on each NUMA node")
 var NumaAwareCpuAlloc bool
 var TestTimeout time.Duration
 var RunningInCi bool
@@ -50,8 +53,9 @@ var TestsThatWillRun int
 var Ppid string
 
 const (
-	LogDir    string = "/tmp/hs-test/"
-	VolumeDir string = "/vol"
+	LogDir      string = "/tmp/hs-test/"
+	VolumeDir   string = "/vol"
+	MWWideLabel string = "MWWide"
 )
 
 type HstSuite struct {
@@ -186,7 +190,7 @@ func (s *HstSuite) AllocateCpus(containerName string) []int {
 
 	if strings.Contains(containerName, "vpp") {
 		// CPUs are allocated sequentially using 'lastCpu' as the offset.
-		// Each parallel Ginkgo process gets a non-overlapping slot via
+		// Each parallel Ginkgo process gets a non-overlapping CPU block via
 		// lastCpu = (GinkgoParallelProcess() - 1) * 4 set in SetupTest().
 		// In the NUMA-aware path, if the allocation doesn't fit in numa0,
 		// it falls back to numa1 with an independent offset.
@@ -207,6 +211,27 @@ func (s *HstSuite) AddCpuContext(cpuCtx *CpuContext) {
 
 func (s *HstSuite) Skip(args string) {
 	Skip(args)
+}
+
+func MWParallelEnabled() bool {
+	return strings.EqualFold(os.Getenv("HST_MW_PARALLEL"), "true")
+}
+
+func MWWideLabels(labels ...string) []string {
+	if MWParallelEnabled() {
+		return append(labels, MWWideLabel)
+	}
+	return labels
+}
+
+func DescribeMWSuite(text string, labels []string, body func()) bool {
+	decorators := []any{Ordered, ContinueOnFailure}
+	if !MWParallelEnabled() {
+		decorators = append(decorators, Serial)
+	}
+	decorators = append(decorators, Label(labels...))
+	decorators = append(decorators, body)
+	return Describe(text, decorators...)
 }
 
 func (s *HstSuite) SetupSuite() {
@@ -252,8 +277,12 @@ func (s *HstSuite) TeardownSuite() {
 func (s *HstSuite) SetupTest() {
 	TestCounterFunc()
 	Log("[* TEST SETUP]")
-	// doesn't impact MW/solo tests
-	s.CpuAllocator.lastCpu = (GinkgoParallelProcess() - 1) * 4
+	if *NumaPerProcess {
+		s.CpuAllocator.lastCpu = 0
+	} else {
+		// doesn't impact MW/solo tests
+		s.CpuAllocator.lastCpu = (GinkgoParallelProcess() - 1) * 4
+	}
 	s.StartedContainers = s.StartedContainers[:0]
 	s.SetupContainers()
 }
@@ -473,6 +502,7 @@ func (s *HstSuite) WaitForCoreDump() bool {
 }
 
 func (s *HstSuite) ResetContainers() {
+	defer s.ReleaseCpuClaims()
 	s.CpuAllocator.lastCpu = 0
 	for _, container := range s.StartedContainers {
 		container.stop()

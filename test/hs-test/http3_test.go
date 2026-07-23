@@ -27,7 +27,7 @@ func init() {
 		Http3SecondQpackDecoderStreamTest, Http3SecondQpackEncoderStreamTest, Http3CtrlStreamClosedTest,
 		Http3QpackDecompressionFailedTest, Http3ClientOpenPushStreamTest, Http3DataBeforeHeadersTest,
 		Http3LongerDataThanContentLengthTest, Http3HalfClosedBeforeAllDataTest, Http3StaticGetTest,
-		Http3MaxHeaderListSizeTest)
+		Http3MaxHeaderListSizeTest, Http3ServerMemLeakTest, Http3ClientMemLeakTest)
 	RegisterH3MWTests(Http3ClientFailedConnectMWTest, Http3TsFifoMemPressureMWTest)
 	RegisterVethTests(Http3CliTest, Http3ClientPostTest, Http3ClientPostPtrTest)
 }
@@ -699,4 +699,84 @@ func Http3TsFifoMemPressureMWTest(s *Http3Suite) {
 	Log(vpp.Vppctl("show session"))
 	stdout, _ := s.Containers.Curl.GetOutput()
 	Log(stdout)
+}
+
+func Http3ServerMemLeakTest(s *Http3Suite) {
+	s.SkipUnlessLeakCheck()
+
+	vpp := s.Containers.Vpp.VppInstance
+	serverAddress := s.VppAddr() + ":" + s.Ports.Port1
+	vpp.Vppctl("http cli server http3-enabled uri https://" + serverAddress)
+	target := fmt.Sprintf("https://%s/show/version", serverAddress)
+
+	/* no goVPP less noise */
+	vpp.Disconnect()
+
+	/* warmup requests (FIB, pools) */
+	args := fmt.Sprintf("-k --max-time 10 --noproxy '*' --http3-only -z %s %s %s %s", target, target, target, target)
+	_, log := RunCurlContainer(s.Containers.Curl, args)
+	AssertContains(log, "HTTP/3 200")
+	for range 10 {
+		time.Sleep(time.Second * 1)
+		AssertNil(s.Containers.Curl.Start())
+	}
+
+	/* let's give it some time to clean up sessions, so pool elements can be reused and we have less noise */
+	time.Sleep(time.Second * 15)
+
+	vpp.EnableMemoryTrace()
+	traces1, err := vpp.GetMemoryTrace()
+	AssertNil(err, fmt.Sprint(err))
+
+	for range 10 {
+		time.Sleep(time.Second * 1)
+		AssertNil(s.Containers.Curl.Start())
+	}
+
+	/* let's give it some time to clean up sessions */
+	time.Sleep(time.Second * 15)
+
+	traces2, err := vpp.GetMemoryTrace()
+	AssertNil(err, fmt.Sprint(err))
+	vpp.MemLeakCheck(traces1, traces2)
+}
+
+func Http3ClientMemLeakTest(s *Http3Suite) {
+	s.SkipUnlessLeakCheck()
+
+	vpp := s.Containers.Vpp.VppInstance
+	serverAddress := s.HostAddr() + ":" + s.Ports.Port1
+
+	s.StartNginx()
+
+	uri := "https://" + serverAddress + "/64B"
+
+	/* no goVPP less noise */
+	vpp.Disconnect()
+
+	/* warmup requests (FIB, pools) */
+	cmd := fmt.Sprintf("http client verbose http3 uri %s", uri)
+	o := vpp.Vppctl(cmd)
+	AssertContains(o, "HTTP/3 200 OK")
+
+	/* let's give it some time to clean up sessions, so pool elements can be reused and we have less noise */
+	time.Sleep(time.Second * 15)
+
+	vpp.EnableMemoryTrace()
+	traces1, err := vpp.GetMemoryTrace()
+	AssertNil(err, fmt.Sprint(err))
+
+	o = vpp.Vppctl(cmd)
+	AssertContains(o, "HTTP/3 200 OK")
+
+	/* let's give it some time to clean up sessions */
+	time.Sleep(time.Second * 15)
+
+	traces2, err := vpp.GetMemoryTrace()
+	Log(vpp.Vppctl("show http"))
+	Log(vpp.Vppctl("show quic"))
+	Log(vpp.Vppctl("show quic crypto context"))
+	Log(vpp.Vppctl("show session verbose 2"))
+	AssertNil(err, fmt.Sprint(err))
+	vpp.MemLeakCheck(traces1, traces2)
 }

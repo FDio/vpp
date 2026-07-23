@@ -74,6 +74,20 @@ vlib_physmem_get_pa (vlib_main_t * vm, void *mem)
   return clib_pmalloc_get_pa (pm, mem);
 }
 
+always_inline void
+vlib_physmem_convert_to_phys_addrs_with_offset (vlib_main_t *vm, uword *vas, u32 n_addrs,
+						i32 offset)
+{
+  clib_pmalloc_main_t *pm = vm->physmem_main.pmalloc_main;
+  clib_pmalloc_convert_to_phys_addrs_with_offset (pm, vas, n_addrs, offset);
+}
+
+always_inline void
+vlib_physmem_convert_to_phys_addrs (vlib_main_t *vm, uword *vas, u32 n_addrs)
+{
+  vlib_physmem_convert_to_phys_addrs_with_offset (vm, vas, n_addrs, 0);
+}
+
 always_inline clib_error_t *
 vlib_physmem_last_error (struct vlib_main_t * vm)
 {

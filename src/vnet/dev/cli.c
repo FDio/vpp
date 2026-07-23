@@ -333,6 +333,8 @@ show_devices_cmd_fn (vlib_main_t *vm, unformat_input_t *input,
 	fa.counters = 1;
       else if (unformat (input, "zero-counters"))
 	fa.show_zero_counters = fa.counters = 1;
+      else if (unformat (input, "clear"))
+	fa.clear = 1;
       else if (unformat (input, "debug-level %u", &v))
 	fa.debug = v;
       else if (unformat (input, "debug"))
@@ -365,6 +367,11 @@ show_devices_cmd_fn (vlib_main_t *vm, unformat_input_t *input,
 	      vlib_cli_output (vm, "    RX queue %u:", q->queue_id);
 	      vlib_cli_output (vm, "      %U", format_vnet_dev_rx_queue_info,
 			       a, q);
+	      if (fa.counters)
+		{
+		  vlib_cli_output (vm, "      Counters:");
+		  vlib_cli_output (vm, "        %U", format_vnet_dev_counters, a, q->counter_main);
+		}
 	    }
 
 	  foreach_vnet_dev_port_tx_queue (q, p)
@@ -372,7 +379,14 @@ show_devices_cmd_fn (vlib_main_t *vm, unformat_input_t *input,
 	      vlib_cli_output (vm, "    TX queue %u:", q->queue_id);
 	      vlib_cli_output (vm, "      %U", format_vnet_dev_tx_queue_info,
 			       a, q);
+	      if (fa.counters)
+		{
+		  vlib_cli_output (vm, "      Counters:");
+		  vlib_cli_output (vm, "        %U", format_vnet_dev_counters, a, q->counter_main);
+		}
 	    }
+	  if (fa.clear)
+	    vnet_dev_process_call_port_op_no_rv (vm, p, vnet_dev_port_clear_counters);
 	}
     }
   return 0;
@@ -380,9 +394,8 @@ show_devices_cmd_fn (vlib_main_t *vm, unformat_input_t *input,
 
 VLIB_CLI_COMMAND (show_devices_cmd, static) = {
   .path = "show device",
-  .short_help =
-    "show device [counters] [zero-counters] [debug] [debug-level <n>] "
-    "[<device-id> ...]",
+  .short_help = "show device [counters] [zero-counters] [clear] [debug] [debug-level <n>] "
+		"[<device-id> ...]",
   .function = show_devices_cmd_fn,
   .is_mp_safe = 1,
 };
@@ -453,10 +466,9 @@ VLIB_CLI_COMMAND (show_device_drivers_cmd, static) = {
 };
 
 static clib_error_t *
-device_set_rss_key_cmd_fn (vlib_main_t *vm, unformat_input_t *input,
-			   vlib_cli_command_t *cmd)
+device_set_rss_config_cmd_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
 {
-  vnet_dev_api_port_set_rss_key_args_t a = {};
+  vnet_dev_api_port_set_rss_config_args_t a = {};
   vnet_dev_rv_t rv;
   int device_id_set = 0;
   int sw_if_index_set = 0;
@@ -470,8 +482,9 @@ device_set_rss_key_cmd_fn (vlib_main_t *vm, unformat_input_t *input,
       else if (unformat (input, "dev %U", unformat_c_string_array, &device_id,
 			 sizeof (device_id)))
 	device_id_set = 1;
-      else if (unformat (input, "key %U", unformat_vnet_dev_rss_key,
-			 &a.rss_key))
+      else if (unformat (input, "key %U", unformat_vnet_dev_rss_key, &a.rss_config))
+	;
+      else if (unformat (input, "lut %U", unformat_vnet_dev_rss_lut, &a.rss_config))
 	;
       else if (unformat (input, "%U", unformat_vnet_sw_interface,
 			 vnet_get_main (), &sw_if_index))
@@ -502,19 +515,18 @@ device_set_rss_key_cmd_fn (vlib_main_t *vm, unformat_input_t *input,
       a.dev_index = dev->index;
     }
 
-  rv = vnet_dev_api_port_set_rss_key (vm, &a);
+  rv = vnet_dev_api_port_set_rss_config (vm, &a);
 
   if (rv != VNET_DEV_OK)
-    return clib_error_return (0, "unable to set_rss_key: %U",
-			      format_vnet_dev_rv, rv);
+    return clib_error_return (0, "unable to set RSS configuration: %U", format_vnet_dev_rv, rv);
 
   return 0;
 }
 
-VLIB_CLI_COMMAND (device_set_rss_key_cmd, static) = {
-  .path = "device set-rss-key",
-  .short_help = "device set-rss-key [<intf>] [port <port-id>] [dev "
-		"<device-id>] [key <rss-key>]",
-  .function = device_set_rss_key_cmd_fn,
+VLIB_CLI_COMMAND (device_set_rss_config_cmd, static) = {
+  .path = "device set-rss-config",
+  .short_help = "device set-rss-config [<intf>] [port <port-id>] [dev "
+		"<device-id>] [key <rss-key>] [lut <queue-id,...>]",
+  .function = device_set_rss_config_cmd_fn,
   .is_mp_safe = 1,
 };

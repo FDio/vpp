@@ -36,14 +36,18 @@ func init() {
 	RegisterNginxProxyTests(NginxMirroringTest, MirrorMultiThreadTest)
 	RegisterMasqueTests(VppConnectProxyClientDownloadUdpTest, VppConnectProxyClientUploadUdpTest, VppConnectProxyMemLeakTest,
 		VppConnectProxyIperfTcpTest, VppConnectProxyIperfUdpTest)
-	RegisterMasqueMWTests(VppConnectProxyIperfTcpMWTest, VppConnectProxyIperfUdpMWTest, VppConnectProxyClientUploadTcpMWTest,
-		VppConnectProxyClientTargetUnreachableMWTest, VppConnectProxyClientDownloadTcpMWTest, VppConnectProxyDraft03MWTest,
-		VppConnectProxyClientStressMWTest, VppConnectProxyClientUdpIdleMWTest, VppConnectProxyClientServerClosedTcpMWTest,
-		VppConnectProxyHttp3DownloadTcpMWTest, VppConnectProxyHttp3UploadTcpMWTest,
-		VppConnectProxyHttp3Draft03MWTest, VppConnectProxyHttp3IperfTcpMWTest, VppConnectProxyHttp3TargetUnreachableMWTest,
-		VppConnectProxyHttp3ServerClosedTcpMWTest, VppConnectProxyHttp3StressMWTest, VppConnectProxyHttp3DownloadUdpMWTest,
-		VppConnectProxyHttp3UploadUdpMWTest, VppConnectProxyHttp3IperfUdpMWTest, VppConnectProxyHttp2FinDrainTcpMWTest,
+	RegisterMasqueMWTcpTests(VppConnectProxyIperfTcpMWTest, VppConnectProxyClientUploadTcpMWTest,
+		VppConnectProxyClientTargetUnreachableMWTest, VppConnectProxyClientDownloadTcpMWTest,
+		VppConnectProxyClientServerClosedTcpMWTest)
+	RegisterMasqueMWUdpTests(VppConnectProxyIperfUdpMWTest, VppConnectProxyClientUdpIdleMWTest,
+		VppConnectProxyHttp3DownloadUdpMWTest, VppConnectProxyHttp3UploadUdpMWTest,
+		VppConnectProxyHttp3IperfUdpMWTest)
+	RegisterMasqueMWHttp3TcpTests(VppConnectProxyHttp3DownloadTcpMWTest, VppConnectProxyHttp3UploadTcpMWTest,
+		VppConnectProxyHttp3IperfTcpMWTest, VppConnectProxyHttp3ServerClosedTcpMWTest,
 		VppConnectProxyHttp3FinDrainTcpMWTest)
+	RegisterMasqueMWControlTests(VppConnectProxyDraft03MWTest, VppConnectProxyClientStressMWTest,
+		VppConnectProxyHttp3Draft03MWTest, VppConnectProxyHttp3TargetUnreachableMWTest,
+		VppConnectProxyHttp3StressMWTest, VppConnectProxyHttp2FinDrainTcpMWTest)
 }
 
 func VppProxyHttpGetTcpMWTest(s *VppProxySuite) {
@@ -899,6 +903,11 @@ func vppConnectProxyIperfTcp(s *MasqueSuite, extraArgs ...string) {
 	cmd := fmt.Sprintf("iperf3 -s --one-off -D -B %s -p %s --logfile %s", s.NginxAddr(), s.Ports.Nginx, IperfLogFileName(s.Containers.IperfServer))
 	o, err := s.Containers.IperfServer.Exec(true, cmd)
 
+	AssertNil(err, o)
+
+	// iperf3 may daemonize before its listener is ready.
+	cmd = fmt.Sprintf(`sh -c 'for i in $(seq 1 50); do ss -ltn | grep -Eq ":%s[[:space:]]" && exit 0; sleep 0.1; done; ss -ltn; exit 1'`, s.Ports.Nginx)
+	o, err = s.Containers.IperfServer.Exec(false, cmd)
 	AssertNil(err, o)
 	Log("server running")
 

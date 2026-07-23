@@ -34,9 +34,11 @@ typedef enum
 
 #define foreach_vnet_dev_port_rx_offloads _ (ip4_cksum) _ (l4_cksum)
 
-#define foreach_vnet_dev_port_tx_offloads                                     \
-  _ (ip4_cksum)                                                               \
-  _ (tcp_gso)                                                                 \
+#define foreach_vnet_dev_port_tx_offloads                                                          \
+  _ (ip4_cksum)                                                                                    \
+  _ (tcp_cksum)                                                                                    \
+  _ (udp_cksum)                                                                                    \
+  _ (tcp_gso)                                                                                      \
   _ (udp_gso)
 
 typedef union
@@ -160,7 +162,7 @@ typedef struct
   _ (DEL_RX_FLOW)                                                                                  \
   _ (GET_RX_FLOW_COUNTER)                                                                          \
   _ (RESET_RX_FLOW_COUNTER)                                                                        \
-  _ (SET_RSS_KEY)                                                                                  \
+  _ (SET_RSS_CONFIG)                                                                               \
   _ (SET_LINK_SPEED)
 
 typedef enum
@@ -183,7 +185,7 @@ typedef struct vnet_dev_port_cfg_change_req
     vnet_dev_hw_addr_t addr;
     u16 max_rx_frame_size;
     vnet_dev_queue_id_t queue_id;
-    vnet_dev_rss_key_t rss_key;
+    vnet_dev_rss_config_t rss_config;
     u32 link_speed;
     u32 flow_index;
   };
@@ -401,11 +403,20 @@ typedef struct vnet_dev_port
   vnet_dev_node_t rx_node;
   vnet_dev_node_t tx_node;
   vnet_dev_port_interfaces_t *interfaces;
-  vnet_dev_rss_key_t rss_key;
+  vnet_dev_rss_config_t rss_config;
 
   CLIB_CACHE_LINE_ALIGN_MARK (data0);
   u8 data[];
 } vnet_dev_port_t;
+
+typedef struct
+{
+  void *va;
+  u64 pa;
+  u32 size;
+  u32 align;
+  u8 *description;
+} vnet_dev_dma_mem_alloc_t;
 
 typedef struct vnet_dev
 {
@@ -430,7 +441,7 @@ typedef struct vnet_dev
   vnet_dev_periodic_op_t *periodic_ops;
   u8 *description;
   clib_args_handle_t args;
-  void **dma_allocs;
+  vnet_dev_dma_mem_alloc_t *dma_allocs;
   u8 __clib_aligned (16)
   data[];
 } vnet_dev_t;
@@ -558,7 +569,7 @@ typedef struct
     clib_arg_t *sec_if_args;
     u16 data_size;
     void *initial_data;
-    vnet_dev_rss_key_t default_rss_key;
+    vnet_dev_rss_config_t default_rss_config;
   } port;
 
   vnet_dev_node_t *rx_node;
@@ -608,8 +619,7 @@ vnet_dev_op_no_rv_t vnet_dev_detach;
 vnet_dev_rv_t vnet_dev_port_add (vlib_main_t *, vnet_dev_t *,
 				 vnet_dev_port_id_t,
 				 vnet_dev_port_add_args_t *);
-vnet_dev_rv_t vnet_dev_dma_mem_alloc (vlib_main_t *, vnet_dev_t *, u32, u32,
-				      void **);
+vnet_dev_rv_t vnet_dev_dma_mem_alloc (vlib_main_t *, vnet_dev_t *, u32, u32, void **, char *, ...);
 void vnet_dev_dma_mem_free (vlib_main_t *, vnet_dev_t *, void *);
 vnet_dev_bus_t *vnet_dev_find_device_bus (vlib_main_t *, vnet_dev_device_id_t);
 void *vnet_dev_get_device_info (vlib_main_t *, vnet_dev_device_id_t);
@@ -759,6 +769,7 @@ typedef struct
 {
   u8 counters : 1;
   u8 show_zero_counters : 1;
+  u8 clear : 1;
   u8 debug : 3;
 } vnet_dev_format_args_t;
 
@@ -784,6 +795,7 @@ unformat_function_t unformat_vnet_dev_flags;
 unformat_function_t unformat_vnet_dev_port_flags;
 unformat_function_t unformat_vnet_dev_rx_queue_assignment;
 unformat_function_t unformat_vnet_dev_rss_key;
+unformat_function_t unformat_vnet_dev_rss_lut;
 
 typedef struct
 {

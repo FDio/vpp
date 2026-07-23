@@ -399,6 +399,7 @@ func QuicTlsProfileNegotiatedParamsTest(s *QuicSuite) {
 
 	// Start QUIC server (no profile — use defaults)
 	Log(serverVpp.Vppctl("test tls server uri quic://" + serverAddress))
+	Log(serverVpp.Vppctl("show quic crypto context"))
 
 	// Connect QUIC client
 	uri := "quic://" + serverAddress
@@ -477,6 +478,7 @@ func QuicTlsProfileCipherFilterTest(s *QuicSuite) {
 	// Start a second listener with the profile
 	serverAddress2 := s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port2
 	Log(serverVpp.Vppctl("test tls server profile-index 0 uri quic://" + serverAddress2))
+	Log(serverVpp.Vppctl("show quic crypto context"))
 
 	// Client connects
 	uri := "quic://" + serverAddress2
@@ -520,6 +522,7 @@ func QuicTlsProfileGroupRestrictionTest(s *QuicSuite) {
 	// Start a second listener with the X25519-only profile
 	serverAddress2 := s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port2
 	Log(serverVpp.Vppctl("test tls server profile-index 0 uri quic://" + serverAddress2))
+	Log(serverVpp.Vppctl("show quic crypto context"))
 
 	// Client connects (uses ptls_openssl_key_exchanges_all which includes x25519)
 	uri := "quic://" + serverAddress2

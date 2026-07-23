@@ -34,6 +34,9 @@ typedef struct cubic_data_
   /** Inflection point of the cubic function (in snd_mss segments) */
   u32 w_max;
 
+  /** w_max snapshot taken at congestion entry, restored on spurious undo */
+  u32 prev_w_max;
+
 } __clib_packed cubic_data_t;
 
 STATIC_ASSERT (sizeof (cubic_data_t) <= TCP_CC_DATA_SZ, "cubic data len");
@@ -90,6 +93,12 @@ cubic_congestion (tcp_connection_t * tc)
   cubic_data_t *cd = (cubic_data_t *) tcp_cc_data (tc);
   u32 w_max;
 
+  /* Snapshot the pre-congestion inflection point so a spurious retransmit can
+   * be undone (RFC 9438 Sec. 4.9.2). cubic_congestion runs once per congestion
+   * event, at entry, before any window reduction, on both fast recovery and
+   * rto, so this is the right place to save it. */
+  cd->prev_w_max = cd->w_max;
+
   w_max = tc->cwnd / tc->snd_mss;
   if (cubic_cfg.fast_convergence && w_max < cd->w_max)
     w_max = w_max * ((1.0 + beta_cubic) / 2.0);
@@ -107,7 +116,9 @@ cubic_loss (tcp_connection_t * tc)
   tc->cwnd = tcp_loss_wnd (tc);
   cd->t_start = cubic_time (tc->c_thread_index);
   cd->K = 0;
-  cd->w_max = tc->cwnd / tc->snd_mss;
+  /* Use the once-per-event slow-start threshold as the post-timeout w_max so
+   * consecutive RTOs do not collapse it further with the loss window. */
+  cd->w_max = tc->ssthresh / tc->snd_mss;
 }
 
 static void
@@ -117,6 +128,23 @@ cubic_recovered (tcp_connection_t * tc)
   cd->t_start = cubic_time (tc->c_thread_index);
   tc->cwnd = tc->ssthresh;
   cd->K = K_cubic (cd, tc->cwnd / tc->snd_mss);
+}
+
+/* Spurious retransmit detected: the cc layer has already restored
+ * cwnd/ssthresh to their pre-congestion values, so also undo the cubic
+ * state changed on congestion entry (RFC 9438 Sec. 4.9.2). */
+static void
+cubic_undo_recovery (tcp_connection_t *tc)
+{
+  cubic_data_t *cd = (cubic_data_t *) tcp_cc_data (tc);
+  u32 wnd = tc->cwnd / tc->snd_mss;
+
+  cd->w_max = cd->prev_w_max;
+  cd->t_start = cubic_time (tc->c_thread_index);
+  /* K_cubic assumes w_max >= wnd; if the restored window is already at/above
+   * the old inflection point there is nothing to ramp back up to, so start a
+   * fresh convex epoch from now (K = 0). */
+  cd->K = (wnd < cd->w_max) ? K_cubic (cd, wnd) : 0;
 }
 
 static void
@@ -196,6 +224,7 @@ cubic_conn_init (tcp_connection_t * tc)
   tc->ssthresh = cubic_cfg.ssthresh;
   tc->cwnd = tcp_initial_cwnd (tc);
   cd->w_max = 0;
+  cd->prev_w_max = 0;
   cd->K = 0;
   cd->t_start = cubic_time (tc->c_thread_index);
 }
@@ -226,17 +255,27 @@ void
 cubic_event (tcp_connection_t *tc, tcp_cc_event_t evt)
 {
   cubic_data_t *cd;
-  f64 now;
+  f64 idle, now;
 
   if (evt != TCP_CC_EVT_START_TX)
     return;
 
-  /* App was idle so update t_start to avoid artificially
-   * inflating cwnd if nothing recently sent and acked */
+  /* App was idle so update t_start to avoid artificially inflating cwnd. Shift
+   * the cubic epoch forward by that idle time (RFC 9438 Sec. 4.2: t MUST NOT
+   * include application-limited periods). delivered_time is recorded when the
+   * local flight drains and is not affected by reverse traffic. A zero value
+   * means no delivery baseline is available, so start a fresh epoch. */
   cd = (cubic_data_t *) tcp_cc_data (tc);
   now = cubic_time (tc->c_thread_index);
-  if (now > tc->mrtt_us + 1)
-    cd->t_start = now;
+  if (tc->delivered_time == 0)
+    {
+      cd->t_start = now;
+      return;
+    }
+
+  idle = now - tc->delivered_time;
+  if (idle > 0)
+    cd->t_start = clib_min (cd->t_start + idle, now);
 }
 
 const static tcp_cc_algorithm_t tcp_cubic = {
@@ -245,6 +284,7 @@ const static tcp_cc_algorithm_t tcp_cubic = {
   .congestion = cubic_congestion,
   .loss = cubic_loss,
   .recovered = cubic_recovered,
+  .undo_recovery = cubic_undo_recovery,
   .rcv_ack = cubic_rcv_ack,
   .rcv_cong_ack = newreno_rcv_cong_ack,
   .event = cubic_event,

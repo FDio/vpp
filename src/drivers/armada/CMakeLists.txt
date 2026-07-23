@@ -1,30 +1,28 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright(c) 2022 Cisco Systems, Inc.
+# Copyright(c) 2026 Cisco Systems, Inc.
 
-
-find_path(MUSDK_INCLUDE_DIR NAMES mv_std.h)
-find_library(MUSDK_LIB NAMES libmusdk.a)
-
-if(NOT MUSDK_INCLUDE_DIR OR NOT MUSDK_LIB)
-  message(WARNING "Marvell MUSDK not found - dev_armada disabled")
+if (NOT CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64.*|AARCH64.*)")
   return()
 endif()
 
-get_filename_component(MUSDK_LIB_DIR ${MUSDK_LIB} DIRECTORY)
-set(MUSDK_LINK_FLAGS "-Wl,--whole-archive,${MUSDK_LIB_DIR}/libmusdk.a,--no-whole-archive")
-
 add_vpp_driver(armada
   SOURCES
+  pp2/bpool.c
+  pp2/classifier.c
   pp2/counters.c
-  pp2/init.c
+  pp2/flow_control.c
   pp2/format.c
+  pp2/gop.c
+  pp2/hif.c
+  pp2/init.c
+  pp2/loopback.c
+  pp2/netdev.c
+  pp2/parser.c
   pp2/port.c
-  pp2/queue.c
   pp2/rx.c
+  pp2/rx_queue.c
+  pp2/rss.c
   pp2/tx.c
-
-  LINK_FLAGS
-  ${MUSDK_LINK_FLAGS}
+  pp2/tx_queue.c
+  pp2/tx_sched.c
 )
-include_directories(${MUSDK_INCLUDE_DIR})
-

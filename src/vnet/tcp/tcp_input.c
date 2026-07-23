@@ -504,6 +504,10 @@ tcp_handle_postponed_dequeues (tcp_worker_ctx_t * wrk)
       if (PREDICT_FALSE (!tc->burst_acked))
 	continue;
 
+      /* Preserve the time at which the local flight drained */
+      if (tc->snd_una == tc->snd_nxt)
+	tc->delivered_time = tcp_time_now_us (tc->c_thread_index);
+
       /* Dequeue the newly ACKed bytes */
       session_tx_fifo_dequeue_drop (&tc->connection, tc->burst_acked);
       tcp_validate_txf_size (tc, tc->snd_nxt - tc->snd_una);
@@ -585,38 +589,6 @@ tcp_update_snd_wnd (tcp_connection_t * tc, u32 seq, u32 ack, u32 snd_wnd)
     }
 }
 
-/**
- * Init loss recovery/fast recovery.
- *
- * Triggered by dup acks as opposed to timer timeout. Note that cwnd is
- * updated in @ref tcp_cc_handle_event after fast retransmit
- */
-static void
-tcp_cc_init_congestion (tcp_connection_t * tc)
-{
-  tcp_fastrecovery_on (tc);
-  tc->snd_congestion = tc->snd_nxt;
-  tc->cwnd_acc_bytes = 0;
-  tc->snd_rxt_bytes = 0;
-  tc->rxt_delivered = 0;
-  tc->prr_delivered = 0;
-  tc->prr_start = tc->snd_una;
-  tc->prev_ssthresh = tc->ssthresh;
-  tc->prev_cwnd = tc->cwnd;
-
-  tc->snd_rxt_ts = tcp_tstamp (tc);
-  tcp_cc_congestion (tc);
-
-  /* Post retransmit update cwnd to ssthresh and account for the
-   * three segments that have left the network and should've been
-   * buffered at the receiver XXX */
-  if (!tcp_opts_sack_permitted (&tc->rcv_opts))
-    tc->cwnd += TCP_DUPACK_THRESHOLD * tc->snd_mss;
-
-  tc->fr_occurences += 1;
-  TCP_EVT (TCP_EVT_CC_EVT, tc, 4);
-}
-
 static void
 tcp_cc_congestion_undo (tcp_connection_t * tc)
 {
@@ -625,21 +597,6 @@ tcp_cc_congestion_undo (tcp_connection_t * tc)
   tcp_cc_undo_recovery (tc);
   ASSERT (tc->rto_boff == 0);
   TCP_EVT (TCP_EVT_CC_EVT, tc, 5);
-}
-
-static inline u8
-tcp_cc_is_spurious_timeout_rxt (tcp_connection_t * tc)
-{
-  return (tcp_in_recovery (tc) && tc->rto_boff == 1
-	  && tc->snd_rxt_ts
-	  && tcp_opts_tstamp (&tc->rcv_opts)
-	  && timestamp_lt (tc->rcv_opts.tsecr, tc->snd_rxt_ts));
-}
-
-static inline u8
-tcp_cc_is_spurious_retransmit (tcp_connection_t * tc)
-{
-  return (tcp_cc_is_spurious_timeout_rxt (tc));
 }
 
 static inline u8
@@ -669,22 +626,21 @@ tcp_should_fastrecover (tcp_connection_t * tc, u8 has_sack)
   return tc->sack_sb.lost_bytes || tc->rcv_dupacks >= tc->sack_sb.reorder;
 }
 
-/* Recovery ends when the recovery point (snd_congestion) is cumulatively
- * acked, as per RFC 6675. Any loss still outstanding above it was sent at the
- * already-reduced rate, so it is a fresh congestion event: exit here and let
- * the next loss detection re-enter recovery with its own window reduction. */
+/* Tear down current recovery episode and notify cc algo. If spurious, undo congestion */
 static void
 tcp_cc_exit_recovery (tcp_connection_t *tc)
 {
   sack_scoreboard_hole_t *hole;
-  u8 is_spurious = 0;
+  u8 is_spurious;
 
   ASSERT (tcp_in_cong_recovery (tc));
+  is_spurious = tcp_cc_is_spurious_retransmit (tc);
 
-  if (tcp_cc_is_spurious_retransmit (tc))
+  if (is_spurious)
     {
+      if (tcp_opts_sack_permitted (&tc->rcv_opts))
+	scoreboard_recompute_sack_loss (&tc->sack_sb, tc->snd_una, tc->snd_mss);
       tcp_cc_congestion_undo (tc);
-      is_spurious = 1;
     }
 
   tcp_connection_tx_pacer_reset (tc, tc->cwnd, 0 /* start bucket */ );
@@ -695,6 +651,7 @@ tcp_cc_exit_recovery (tcp_connection_t *tc)
   tc->snd_rxt_bytes = 0;
   tc->snd_rxt_ts = 0;
   tc->prr_delivered = 0;
+  tc->prev_prr_delivered = 0;
   tc->rtt_ts = 0;
   tc->flags &= ~TCP_CONN_RXT_PENDING;
 
@@ -714,22 +671,51 @@ tcp_cc_exit_recovery (tcp_connection_t *tc)
   ASSERT (tcp_scoreboard_is_sane_post_recovery (tc));
 }
 
-/* Enter congestion recovery: reduce the window, snapshot the recovery point and
- * program a retransmit. Caller must have decided recovery is warranted and must
- * not already be in recovery. */
-static void
-tcp_cc_enter_recovery (tcp_connection_t *tc, u8 has_sack)
+/* Process (re)transmit feedback. Output path uses this to decide how much more data to release into
+ * the network */
+always_inline void
+tcp_cc_account_recovery_ack (tcp_connection_t *tc, tcp_rate_sample_t *rs, u32 is_dack, u8 has_sack)
 {
-  ASSERT (!tcp_in_cong_recovery (tc));
-  tcp_cc_init_congestion (tc);
-
   if (has_sack)
-    scoreboard_init_rxt (&tc->sack_sb, tc->snd_una);
+    {
+      tc->rxt_delivered += tc->sack_sb.rxt_sacked;
+      tc->prr_delivered += rs->acked_and_sacked;
+    }
   else
-    tcp_fastrecovery_first_on (tc);
+    {
+      if (is_dack)
+	{
+	  tc->rcv_dupacks += 1;
+	  TCP_EVT (TCP_EVT_DUPACK_RCVD, tc, 1);
+	}
+      tc->rxt_delivered = clib_min (tc->rxt_delivered + tc->bytes_acked, tc->snd_rxt_bytes);
+      if (is_dack)
+	tc->prr_delivered += clib_min (tc->snd_mss, tc->snd_nxt - tc->snd_una);
+      else
+	tc->prr_delivered +=
+	  tc->bytes_acked - clib_min (tc->bytes_acked, tc->snd_mss * tc->rcv_dupacks);
 
-  tcp_connection_tx_pacer_reset (tc, tc->cwnd, 0 /* start bucket */);
-  tcp_program_retransmit (tc);
+      /* If partial ack, assume that the first un-acked segment was lost */
+      if (tc->bytes_acked || tc->rcv_dupacks == TCP_DUPACK_THRESHOLD)
+	tcp_fastrecovery_first_on (tc);
+    }
+
+  ASSERT (tc->rxt_delivered <= tc->snd_rxt_bytes);
+}
+
+/* Exit recovery and re-enter if loss remains. */
+static void
+tcp_cc_try_exit_recovery (tcp_connection_t *tc, tcp_rate_sample_t *rs, u8 has_sack)
+{
+  /* Any loss still outstanding above snd_congestion was sent at the
+   * already-reduced rate, so it is a fresh congestion event: exit here and let
+   * the next loss detection re-enter recovery with its own window reduction */
+  tcp_cc_exit_recovery (tc);
+
+  if (tcp_should_fastrecover (tc, has_sack))
+    tcp_cc_enter_recovery (tc);
+  else
+    tcp_cc_rcv_ack (tc, rs);
 }
 
 static void
@@ -769,7 +755,7 @@ tcp_cc_handle_event (tcp_connection_t * tc, tcp_rate_sample_t * rs,
       tcp_cc_rcv_cong_ack (tc, TCP_CC_DUPACK, rs);
 
       if (tcp_should_fastrecover (tc, has_sack))
-	tcp_cc_enter_recovery (tc, has_sack);
+	tcp_cc_enter_recovery (tc);
 
       return;
     }
@@ -778,55 +764,15 @@ tcp_cc_handle_event (tcp_connection_t * tc, tcp_rate_sample_t * rs,
    * Already in recovery
    */
 
-  /*
-   * Exit recovery once the recovery point is cumulatively acked. If loss above
-   * the old recovery point is already evident, re-enter immediately for that
-   * fresh congestion event (a new window reduction); otherwise treat the ack as
-   * a congestion-avoidance ack.
-   */
+  /* Recovery ends when the recovery point (snd_congestion) is cumulatively
+   * acked, as per RFC 6675. */
   if (seq_geq (tc->snd_una, tc->snd_congestion))
     {
-      tcp_cc_exit_recovery (tc);
-      if (tcp_should_fastrecover (tc, has_sack))
-	tcp_cc_enter_recovery (tc, has_sack);
-      else
-	tcp_cc_rcv_ack (tc, rs);
+      tcp_cc_try_exit_recovery (tc, rs, has_sack);
       return;
     }
 
-  /*
-   * Process (re)transmit feedback. Output path uses this to decide how much
-   * more data to release into the network
-   */
-  if (has_sack)
-    {
-      if (!tc->bytes_acked && tc->sack_sb.rxt_sacked)
-	tcp_fastrecovery_first_on (tc);
-
-      tc->rxt_delivered += tc->sack_sb.rxt_sacked;
-      tc->prr_delivered += rs->acked_and_sacked;
-    }
-  else
-    {
-      if (is_dack)
-	{
-	  tc->rcv_dupacks += 1;
-	  TCP_EVT (TCP_EVT_DUPACK_RCVD, tc, 1);
-	}
-      tc->rxt_delivered = clib_min (tc->rxt_delivered + tc->bytes_acked,
-				    tc->snd_rxt_bytes);
-      if (is_dack)
-	tc->prr_delivered += clib_min (tc->snd_mss,
-				       tc->snd_nxt - tc->snd_una);
-      else
-	tc->prr_delivered += tc->bytes_acked - clib_min (tc->bytes_acked,
-							 tc->snd_mss *
-							 tc->rcv_dupacks);
-
-      /* If partial ack, assume that the first un-acked segment was lost */
-      if (tc->bytes_acked || tc->rcv_dupacks == TCP_DUPACK_THRESHOLD)
-	tcp_fastrecovery_first_on (tc);
-    }
+  tcp_cc_account_recovery_ack (tc, rs, is_dack, has_sack);
 
   tcp_program_retransmit (tc);
 
@@ -843,6 +789,17 @@ tcp_cc_handle_event (tcp_connection_t * tc, tcp_rate_sample_t * rs,
   /* RFC6675: If the incoming ACK is a cumulative acknowledgment,
    * reset dupacks to 0. Also needed if in congestion recovery */
   tc->rcv_dupacks = 0;
+
+  /* RFC 3522: Eifel spurious retransmit check */
+  if (PREDICT_FALSE (tc->snd_rxt_ts))
+    {
+      if (tcp_cc_is_spurious_retransmit (tc))
+	{
+	  tcp_cc_try_exit_recovery (tc, rs, has_sack);
+	  return;
+	}
+      tc->snd_rxt_ts = 0;
+    }
 
   if (tcp_in_recovery (tc))
     tcp_cc_rcv_ack (tc, rs);

@@ -686,6 +686,7 @@ hcs_detach ()
   a->api_client_index = APP_INVALID_INDEX;
   hcm->app_index = ~0;
   vnet_application_detach (a);
+  vnet_app_del_cert_key_pair (hcm->ckpair_index);
 }
 
 static int

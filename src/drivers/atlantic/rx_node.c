@@ -134,7 +134,7 @@ atl_rx_one_queue (vlib_main_t *vm, vlib_node_runtime_t *node, vnet_dev_rx_queue_
 	pkt_head_slot = slot;
       pkt_desc_or.as_u64x2 |= d.as_u64x2;
       pkt_buffer_indices[n_pkt_descs] = bi;
-      b->template = bt;
+      vlib_buffer_copy_template (b, &bt);
       b->current_length = d.qw1.pkt_len;
       n_pkt_descs++;
       n_left--;

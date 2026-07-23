@@ -191,6 +191,19 @@ types = {
 
 class_types = {}
 
+# Process-global cache of parsed messages, keyed by (name, crc).
+#
+# The set of messages a given VPP binary exposes is immutable, but a fresh
+# VPPApiClient - and thus a fresh parse of the API - is created for every
+# connection (e.g. once per test class). Building a VPPMessage constructs a
+# collections.namedtuple via eval(), which is the single largest cost of
+# connecting. Cache the parsed VPPMessage objects so that repeated connections
+# in the same process reuse them, and so that forked workers inherit an
+# already-populated cache via copy-on-write (see VPPApiJSONFiles.load_api and
+# the --api-preload option). Keyed by crc as well as name so a binary with a
+# changed message definition can never silently reuse a stale parse.
+message_cache = {}
+
 
 def vpp_get_type(name):
     try:
@@ -693,3 +706,21 @@ class VPPType(Packer):
 
 class VPPMessage(VPPType):
     pass
+
+
+def get_message(name, msgdef):
+    """Return a VPPMessage for name/msgdef, reusing a cached parse if possible.
+
+    msgdef is the message definition tail (everything after the name), in which
+    the crc is carried as a trailing dict element. Building the message has the
+    side effect of registering it in the global `types` table, exactly as a
+    direct VPPMessage() call would, so a cache hit and a cache miss are
+    observationally identical apart from the saved namedtuple construction.
+    """
+    crc = next((f["crc"] for f in msgdef if isinstance(f, dict) and "crc" in f), None)
+    key = (name, crc)
+    msg = message_cache.get(key)
+    if msg is None:
+        msg = VPPMessage(name, msgdef)
+        message_cache[key] = msg
+    return msg

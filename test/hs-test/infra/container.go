@@ -167,6 +167,9 @@ func (c *Container) Create() error {
 
 	c.allocateCpus()
 	cpuSet := fmt.Sprintf("%d-%d", c.AllocatedCpus[0], c.AllocatedCpus[len(c.AllocatedCpus)-1])
+	if *NumaPerProcess {
+		cpuSet = formatCpuSet(c.AllocatedCpus)
+	}
 	resp, err := c.Suite.Docker.ContainerCreate(
 		c.ctx,
 		&containerTypes.Config{
@@ -209,9 +212,18 @@ func (c *Container) Create() error {
 	return err
 }
 
+func formatCpuSet(cpus []int) string {
+	cpuIds := make([]string, 0, len(cpus))
+	for _, cpu := range cpus {
+		cpuIds = append(cpuIds, strconv.Itoa(cpu))
+	}
+	return strings.Join(cpuIds, ",")
+}
+
 func (c *Container) allocateCpus() {
 	c.Suite.StartedContainers = append(c.Suite.StartedContainers, c)
 	c.AllocatedCpus = c.Suite.AllocateCpus(c.Name)
+	c.Suite.ClaimCpus(c.Name, c.AllocatedCpus)
 	Log("Allocated CPUs " + fmt.Sprint(c.AllocatedCpus) + " to container " + c.Name)
 }
 

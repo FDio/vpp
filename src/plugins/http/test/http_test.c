@@ -7,6 +7,7 @@
 #include <http/http.h>
 #include <http/http_header_names.h>
 #include <http/http_private.h>
+#include <http/http2/http2_inlines.h>
 #include <http/http2/hpack_inlines.h>
 #include <http/http2/hpack.h>
 #include <http/http2/frame.h>
@@ -2210,6 +2211,190 @@ http_test_parse_content_length (vlib_main_t *vm)
 }
 
 static int
+http_test_h2_window_update_scheduling (vlib_main_t *vm)
+{
+  typedef struct
+  {
+    const char *name;
+    i32 initial_window;
+    i64 delta;
+    i32 connection_window;
+    int expected_rv;
+    i32 expected_window;
+    u8 initial_flags;
+    u8 expected_flags;
+    u8 request_linked;
+    u8 expected_request_linked;
+    u8 expected_connection_linked;
+  } http2_window_update_test_t;
+  static const http2_window_update_test_t tests[] = {
+    {
+      .name = "linked request resumes without duplicate",
+      .initial_window = 0,
+      .delta = 1,
+      .initial_flags = HTTP_REQ_F_NEED_WINDOW_UPDATE,
+      .request_linked = 1,
+      .expected_window = 1,
+      .expected_request_linked = 1,
+    },
+    {
+      .name = "unlinked request resumes and schedules",
+      .initial_window = 0,
+      .delta = 1,
+      .initial_flags = HTTP_REQ_F_NEED_WINDOW_UPDATE,
+      .expected_window = 1,
+      .expected_request_linked = 1,
+    },
+    {
+      .name = "partial recovery remains blocked",
+      .initial_window = -2,
+      .delta = 1,
+      .initial_flags = HTTP_REQ_F_NEED_WINDOW_UPDATE,
+      .expected_window = -1,
+      .expected_flags = HTTP_REQ_F_NEED_WINDOW_UPDATE,
+    },
+    {
+      .name = "zero window deschedules linked request",
+      .initial_window = 1,
+      .delta = -1,
+      .request_linked = 1,
+      .expected_flags = HTTP_REQ_F_NEED_WINDOW_UPDATE,
+    },
+    {
+      .name = "negative window leaves unlinked request blocked",
+      .initial_window = 1,
+      .delta = -2,
+      .expected_window = -1,
+      .expected_flags = HTTP_REQ_F_NEED_WINDOW_UPDATE,
+    },
+    {
+      .name = "overflow preserves state",
+      .initial_window = HTTP2_WIN_SIZE_MAX,
+      .delta = 1,
+      .connection_window = 1,
+      .expected_rv = -1,
+      .expected_window = HTTP2_WIN_SIZE_MAX,
+      .initial_flags = HTTP_REQ_F_NEED_WINDOW_UPDATE,
+      .expected_flags = HTTP_REQ_F_NEED_WINDOW_UPDATE,
+      .request_linked = 1,
+      .expected_request_linked = 1,
+    },
+    {
+      .name = "exact maximum is accepted",
+      .initial_window = HTTP2_WIN_SIZE_MAX - 1,
+      .delta = 1,
+      .connection_window = 1,
+      .expected_window = HTTP2_WIN_SIZE_MAX,
+      .request_linked = 1,
+      .expected_request_linked = 1,
+    },
+    {
+      .name = "positive update without blocked flag leaves scheduler unchanged",
+      .initial_window = 1,
+      .delta = 1,
+      .connection_window = 1,
+      .expected_window = 2,
+    },
+    {
+      .name = "stream recovery schedules connection",
+      .initial_window = 0,
+      .delta = 1,
+      .connection_window = 1,
+      .initial_flags = HTTP_REQ_F_NEED_WINDOW_UPDATE,
+      .expected_window = 1,
+      .expected_request_linked = 1,
+      .expected_connection_linked = 1,
+    },
+  };
+  const http2_window_update_test_t *tc;
+  u32 i;
+
+  for (i = 0; i < ARRAY_LEN (tests); i++)
+    {
+      http_worker_t wrk = {};
+      http_ctx_t *ctx_pool = 0;
+      http_ctx_t *hc, *stream_head, *sched_head, *req;
+      u32 hc_index, stream_head_index, sched_head_index, req_index;
+      i32 stream_window;
+      int rv;
+      u8 flags, request_linked, request_list_valid, connection_linked, connection_list_valid;
+
+      tc = &tests[i];
+
+      pool_get_zero (ctx_pool, hc);
+      hc_index = hc - ctx_pool;
+      pool_get_zero (ctx_pool, stream_head);
+      stream_head_index = stream_head - ctx_pool;
+      pool_get_zero (ctx_pool, sched_head);
+      sched_head_index = sched_head - ctx_pool;
+      pool_get_zero (ctx_pool, req);
+      req_index = req - ctx_pool;
+      hc = pool_elt_at_index (ctx_pool, hc_index);
+      stream_head = pool_elt_at_index (ctx_pool, stream_head_index);
+      sched_head = pool_elt_at_index (ctx_pool, sched_head_index);
+      req = pool_elt_at_index (ctx_pool, req_index);
+      wrk.ctx_pool = ctx_pool;
+      wrk.sched_head = sched_head_index;
+
+      hc->old_tx_streams = stream_head_index;
+      hc->peer_window = tc->connection_window;
+      hc->sched_list.next = CLIB_LLIST_INVALID_INDEX;
+      hc->sched_list.prev = CLIB_LLIST_INVALID_INDEX;
+      clib_llist_anchor_init (wrk.ctx_pool, stream_sched_list, stream_head);
+      clib_llist_anchor_init (wrk.ctx_pool, sched_list, sched_head);
+      req->stream_sched_list.next = CLIB_LLIST_INVALID_INDEX;
+      req->stream_sched_list.prev = CLIB_LLIST_INVALID_INDEX;
+      if (tc->request_linked)
+	clib_llist_add_tail (wrk.ctx_pool, stream_sched_list, req, stream_head);
+      req->req_flags = tc->initial_flags;
+      req->peer_stream_window = tc->initial_window;
+
+      rv = http2_req_update_peer_window (&wrk, hc, req, tc->delta);
+      request_linked = clib_llist_elt_is_linked (req, stream_sched_list);
+      request_list_valid = request_linked ?
+			     (stream_head->stream_sched_list.next == req_index &&
+			      stream_head->stream_sched_list.prev == req_index &&
+			      req->stream_sched_list.next == stream_head_index &&
+			      req->stream_sched_list.prev == stream_head_index) :
+			     (stream_head->stream_sched_list.next == stream_head_index &&
+			      stream_head->stream_sched_list.prev == stream_head_index &&
+			      req->stream_sched_list.next == CLIB_LLIST_INVALID_INDEX &&
+			      req->stream_sched_list.prev == CLIB_LLIST_INVALID_INDEX);
+      connection_linked = clib_llist_elt_is_linked (hc, sched_list);
+      connection_list_valid =
+	connection_linked ?
+	  (sched_head->sched_list.next == hc_index && sched_head->sched_list.prev == hc_index &&
+	   hc->sched_list.next == sched_head_index && hc->sched_list.prev == sched_head_index) :
+	  (sched_head->sched_list.next == sched_head_index &&
+	   sched_head->sched_list.prev == sched_head_index &&
+	   hc->sched_list.next == CLIB_LLIST_INVALID_INDEX &&
+	   hc->sched_list.prev == CLIB_LLIST_INVALID_INDEX);
+      stream_window = req->peer_stream_window;
+      flags = req->req_flags;
+
+      if (request_linked)
+	clib_llist_remove (wrk.ctx_pool, stream_sched_list, req);
+      if (connection_linked)
+	clib_llist_remove (wrk.ctx_pool, sched_list, hc);
+      pool_free (ctx_pool);
+
+      HTTP_TEST (rv == tc->expected_rv, "%s: return value %d should be %d", tc->name, rv,
+		 tc->expected_rv);
+      HTTP_TEST (stream_window == tc->expected_window, "%s: stream window %d should be %d",
+		 tc->name, stream_window, tc->expected_window);
+      HTTP_TEST (flags == tc->expected_flags, "%s: flags 0x%x should be 0x%x", tc->name, flags,
+		 tc->expected_flags);
+      HTTP_TEST (request_list_valid && request_linked == tc->expected_request_linked,
+		 "%s: request scheduler state should be linked=%u", tc->name,
+		 tc->expected_request_linked);
+      HTTP_TEST (connection_list_valid && connection_linked == tc->expected_connection_linked,
+		 "%s: connection scheduler state should be linked=%u", tc->name,
+		 tc->expected_connection_linked);
+    }
+  return 0;
+}
+
+static int
 http_test_decode_varint (vlib_main_t *vm)
 {
   u8 *p, *end;
@@ -2281,6 +2466,8 @@ test_http_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	res = http_test_hpack (vm);
       else if (unformat (input, "h2-frame"))
 	res = http_test_h2_frame (vm);
+      else if (unformat (input, "h2-window-update-scheduling"))
+	res = http_test_h2_window_update_scheduling (vm);
       else if (unformat (input, "qpack"))
 	res = http_test_qpack (vm);
       else if (unformat (input, "h3-frame"))
@@ -2310,6 +2497,8 @@ test_http_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	  if ((res = http_test_hpack (vm)))
 	    goto done;
 	  if ((res = http_test_h2_frame (vm)))
+	    goto done;
+	  if ((res = http_test_h2_window_update_scheduling (vm)))
 	    goto done;
 	  if ((res = http_test_qpack (vm)))
 	    goto done;

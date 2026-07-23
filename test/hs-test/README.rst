@@ -136,6 +136,52 @@ Tests can also be filtered using labels. In our case, operators have to be escap
 See `<https://onsi.github.io/ginkgo/#spec-labels>`_ for more information.
 
 
+Parallel multi-worker test execution
+------------------------------------
+
+Multi-worker (MW) suites run serially by default. To opt in to NUMA-aware MW
+parallelism, use ``MW_PARALLEL=true`` together with ``PARALLEL=auto``::
+
+        make test PARALLEL=auto MW_PARALLEL=true
+
+For a full run, non-MW tests keep the process count selected by
+``PARALLEL=auto``. MW tests then run in separate NUMA-aware phases:
+
+* The ``MWWide`` phase uses one Ginkgo worker per NUMA node. Add this label to
+  CPU-heavy MW suites or tests that need the full per-worker CPU budget.
+* The narrow phase runs MW tests without the ``MWWide`` label. It may use
+  multiple Ginkgo workers per NUMA node when enough CPUs are available.
+
+``MW_WORKERS_PER_NUMA`` controls the narrow-phase worker count. Its default,
+``auto``, derives a safe value from the smallest NUMA node and caps it at two.
+An explicit positive integer can be used for experiments. The option is valid
+only when ``MW_PARALLEL=true``.
+
+For non-MASQUE suites, Ginkgo labels select the phase. An MW test without the
+``MWWide`` label runs in the narrow phase. If every MW test in a suite needs a
+full NUMA worker, pass ``MWWideLabels(...)`` to ``DescribeMWSuite``. If only
+some tests need it, build those tests' label lists with ``MWWideLabels(...)``.
+This helper adds ``MWWideLabel`` only when MW parallelism is enabled.
+
+MASQUE placement is selected by the registration function. Register the test
+with the function matching its protocol, for example::
+
+        RegisterMasqueMWTcpTests(MyConnectTcpMWTest)
+
+``RegisterMasqueMWTcpTests``, ``RegisterMasqueMWUdpTests``,
+``RegisterMasqueMWHttp3TcpTests``, and ``RegisterMasqueMWControlTests`` create
+independent wide Ordered suites. No separate test-name map needs to be updated.
+
+``REPEAT=N`` runs the selected sequence once and then repeats it ``N`` more
+times, stopping at the first failed phase. A full run repeats the complete
+non-MW/wide/narrow sequence; ``LABEL=MW`` or ``TEST=MW`` repeats the wide/narrow
+sequence. For these split MW runs, hs-test writes every completed phase and
+attempt to ``summary/report.json`` and prints aggregate selected, executed,
+passed, failed, skipped, and elapsed-time statistics. With
+``MW_PARALLEL=false``, repeat remains native Ginkgo behavior and its JSON report
+contains the final attempt.
+
+
 Modifying the framework
 -----------------------
 

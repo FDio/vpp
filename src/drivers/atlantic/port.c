@@ -131,7 +131,7 @@ aq2_filter_art_set (vnet_dev_t *dev, u32 idx, atl_aq2_art_tag_t tag, atl_aq2_art
 }
 
 static vnet_dev_rv_t
-atl_rss_init (vnet_dev_port_t *port, vnet_dev_rss_key_t *rss_key, u32 n_rxq)
+atl_rss_init (vnet_dev_port_t *port, u32 n_rxq)
 {
   vnet_dev_t *dev = port->dev;
   vlib_main_t *vm = vlib_get_main ();
@@ -139,12 +139,9 @@ atl_rss_init (vnet_dev_port_t *port, vnet_dev_rss_key_t *rss_key, u32 n_rxq)
   u32 key_len;
   u32 i;
 
-  if (rss_key == 0)
-    rss_key = &port->rss_key;
-
-  key_len = clib_min ((u32) rss_key->length, (u32) sizeof (key));
+  key_len = clib_min ((u32) port->rss_config.key_len, (u32) sizeof (key));
   ASSERT (key_len > 0);
-  clib_memcpy_fast (key, rss_key->key, key_len);
+  clib_memcpy_fast (key, port->rss_config.key, key_len);
 
   for (i = 0; i < 10; i++)
     {
@@ -781,7 +778,7 @@ atl_port_start (vlib_main_t *vm, vnet_dev_port_t *port)
       }
 
   n_rxq = atl_enabled_rxq_count (port);
-  rv = atl_rss_init (port, 0, n_rxq);
+  rv = atl_rss_init (port, n_rxq);
   if (rv != VNET_DEV_OK)
     goto done;
 

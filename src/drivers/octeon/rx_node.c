@@ -129,10 +129,10 @@ oct_rx_batch (vlib_main_t *vm, oct_rx_node_ctx_t *ctx,
       ctx->to_next[1] = vlib_get_buffer_index (vm, b[1]);
       ctx->to_next[2] = vlib_get_buffer_index (vm, b[2]);
       ctx->to_next[3] = vlib_get_buffer_index (vm, b[3]);
-      b[0]->template = bt;
-      b[1]->template = bt;
-      b[2]->template = bt;
-      b[3]->template = bt;
+      vlib_buffer_copy_template (b[0], &bt);
+      vlib_buffer_copy_template (b[1], &bt);
+      vlib_buffer_copy_template (b[2], &bt);
+      vlib_buffer_copy_template (b[3], &bt);
       ctx->n_rx_bytes += b[0]->current_length = d[0].sg0.seg1_size;
       ctx->n_rx_bytes += b[1]->current_length = d[1].sg0.seg1_size;
       ctx->n_rx_bytes += b[2]->current_length = d[2].sg0.seg1_size;
@@ -181,7 +181,7 @@ oct_rx_batch (vlib_main_t *vm, oct_rx_node_ctx_t *ctx,
     {
       b[0] = (vlib_buffer_t *) d->segs0[0] - 1;
       ctx->to_next[0] = vlib_get_buffer_index (vm, b[0]);
-      b[0]->template = bt;
+      vlib_buffer_copy_template (b[0], &bt);
       ctx->n_rx_bytes += b[0]->current_length = d[0].sg0.seg1_size;
       b[0]->flow_id = d[0].parse.w[3] >> 48;
       ctx->n_segs += 1;

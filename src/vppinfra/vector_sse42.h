@@ -419,6 +419,12 @@ u16x8_from_u8x16_high (u8x16 v)
   return u16x8_from_u8x16 (u8x16_word_shift_right (v, 8));
 }
 
+static_always_inline u32x4
+u32x4_from_u16x8_high (u16x8 v)
+{
+  return u32x4_from_u16x8 ((u16x8) u8x16_word_shift_right ((u8x16) v, 8));
+}
+
 static_always_inline u64x2
 u64x2_gather (void *p0, void *p1)
 {

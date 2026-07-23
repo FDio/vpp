@@ -17,11 +17,19 @@ typedef struct vnet_dev vnet_dev_t;
 typedef struct vnet_dev_port vnet_dev_port_t;
 typedef struct vnet_dev_rx_queue vnet_dev_rx_queue_t;
 typedef struct vnet_dev_tx_queue vnet_dev_tx_queue_t;
+
+#define VNET_DEV_RSS_KEY_MAX_SIZE 64
+#define VNET_DEV_RSS_LUT_MAX_SIZE 256
+
 typedef struct
 {
-  u8 key[48];
-  u8 length;
-} vnet_dev_rss_key_t;
+  u8 key[VNET_DEV_RSS_KEY_MAX_SIZE];
+  u16 lut[VNET_DEV_RSS_LUT_MAX_SIZE];
+  u16 lut_len;
+  u8 key_len;
+  u8 set_key : 1;
+  u8 set_lut : 1;
+} vnet_dev_rss_config_t;
 
 typedef enum
 {

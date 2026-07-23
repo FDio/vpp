@@ -19,6 +19,10 @@ verbose=0
 hyperthread=false
 parallel=
 use_cpu0=false
+mw_parallel=false
+mw_workers_per_numa=auto
+mw_workers_per_numa_set=0
+repeat=0
 
 for i in "$@"
 do
@@ -80,7 +84,7 @@ case "${i}" in
         ginkgo_args="$ginkgo_args --timeout=${i#*=}"
         ;;
     --repeat=*)
-        ginkgo_args="$ginkgo_args --repeat=${i#*=}"
+        repeat="${i#*=}"
         ;;
     --cpu0=*)
         cpu0="${i#*=}"
@@ -119,7 +123,6 @@ case "${i}" in
     --label=*)
         label="${i#*=}"
         focused_test=1
-        ginkgo_args="$ginkgo_args --label-filter="$label""
         ;;
     --host_ppid=*)
         args="$args -host_ppid ${i#*=}"
@@ -132,8 +135,45 @@ case "${i}" in
         args="$args -hyperthread=${i#*=}"
         hyperthread=${i#*=}
         ;;
+    --mw_parallel=*)
+        mw_parallel="${i#*=}"
+        ;;
+    --mw_workers_per_numa=*)
+        mw_workers_per_numa="${i#*=}"
+        mw_workers_per_numa_set=1
+        ;;
 esac
 done
+
+if [ "$mw_parallel" != "true" ] && [ "$mw_parallel" != "false" ]; then
+    echo -e "\e[1;31mMW_PARALLEL must be true or false\e[1;0m"
+    exit 2
+fi
+
+if [ "$mw_workers_per_numa_set" -eq 1 ] && [ "$mw_parallel" != "true" ]; then
+    echo -e "\e[1;31mMW_WORKERS_PER_NUMA requires MW_PARALLEL=true\e[1;0m"
+    exit 2
+fi
+
+if [ "$mw_workers_per_numa" != "auto" ] && ! [[ "$mw_workers_per_numa" =~ ^[1-9][0-9]*$ ]]; then
+    echo -e "\e[1;31mMW_WORKERS_PER_NUMA must be 'auto' or a positive integer\e[1;0m"
+    exit 2
+fi
+
+if ! [[ "$repeat" =~ ^[0-9]+$ ]]; then
+    echo -e "\e[1;31mREPEAT must be a non-negative integer\e[1;0m"
+    exit 2
+fi
+
+if [ -n "$parallel" ] && [ "$parallel" != "auto" ] && ! [[ "$parallel" =~ ^[1-9][0-9]*$ ]]; then
+    echo -e "\e[1;31mPARALLEL must be 'auto' or a positive integer\e[1;0m"
+    exit 2
+fi
+
+if [ "$mw_parallel" = "true" ] && [ "$parallel" != "auto" ]; then
+    echo -e "\e[1;31mMW_PARALLEL=true requires PARALLEL=auto\e[1;0m"
+    exit 2
+fi
 
 if [ ${#tc_names[@]} -gt 1 ]
 then
@@ -189,11 +229,17 @@ fi
 
 mkdir -p .go_cache
 
+if [ "$mw_parallel" = "true" ]; then
+    mkdir -p /tmp/hs-test
+    rm -f /tmp/hs-test/cpu-claims /tmp/hs-test/cpu-claims.lock
+fi
+
 mkdir -p summary
 rm -f summary/*
 # shellcheck disable=SC2086
 
-CPUS_PER_SLOT=4
+CPUS_PER_WORKER=4
+MW_AUTO_MAX_WORKERS_PER_NUMA=2
 REQUIRED_PHYSICAL_CORES=20
 CORES_TO_USE=10
 
@@ -243,9 +289,69 @@ get_numa_nodes() {
 
 # Determine available cores and set up taskset
 taskset_cmd=""
+taskset_node_id=""
 total_usable_cores=0
 
 mapfile -t numa_nodes < <(get_numa_nodes)
+
+numa_process_count() {
+    local count=${#numa_nodes[@]}
+    if [ "$count" -lt 1 ]; then
+        count=1
+    fi
+    echo "$count"
+}
+
+mw_usable_cores_on_node() {
+    local node_id=$1
+
+    mapfile -t node_cores < <(get_cores_on_node "$node_id")
+    local usable=${#node_cores[@]}
+
+    if [ "$usable" -gt 0 ] && [ "${node_cores[0]}" = "0" ] && [ "$use_cpu0" != true ]; then
+        usable=$((usable - 1))
+    fi
+
+    if [ -n "$taskset_cmd" ] && [ "$node_id" = "$taskset_node_id" ] && [ "$usable" -gt "$CORES_TO_USE" ]; then
+        usable=$((usable - CORES_TO_USE))
+    fi
+
+    if [ "$usable" -lt 0 ]; then
+        usable=0
+    fi
+
+    echo "$usable"
+}
+
+resolve_mw_workers_per_numa() {
+    if [ "$mw_workers_per_numa" != "auto" ]; then
+        return
+    fi
+
+    if [ "$mw_parallel" != "true" ] || [ "$parallel" != "auto" ]; then
+        mw_workers_per_numa=1
+        return
+    fi
+
+    local min_usable=
+    local node_id
+    local usable
+    for node_id in "${numa_nodes[@]}"; do
+        usable=$(mw_usable_cores_on_node "$node_id")
+        if [ -z "$min_usable" ] || [ "$usable" -lt "$min_usable" ]; then
+            min_usable=$usable
+        fi
+    done
+
+    mw_workers_per_numa=$((min_usable / CPUS_PER_WORKER))
+    if [ "$mw_workers_per_numa" -lt 1 ]; then
+        mw_workers_per_numa=1
+    elif [ "$mw_workers_per_numa" -gt "$MW_AUTO_MAX_WORKERS_PER_NUMA" ]; then
+        mw_workers_per_numa=$MW_AUTO_MAX_WORKERS_PER_NUMA
+    fi
+
+    echo "* MW_WORKERS_PER_NUMA=auto resolved to $mw_workers_per_numa worker(s) per NUMA node (smallest NUMA node has $min_usable usable cores, cap $MW_AUTO_MAX_WORKERS_PER_NUMA)"
+}
 
 for node_id in "${numa_nodes[@]}"; do
     mapfile -t phys_cores < <(get_cores_on_node "$node_id")
@@ -264,7 +370,11 @@ for node_id in "${numa_nodes[@]}"; do
 
         cpu_list=$(IFS=,; echo "${selected_cores[*]}")
         taskset_cmd="taskset -c $cpu_list"
+        taskset_node_id=$node_id
         args="$args -cpu_offset=$CORES_TO_USE"
+        if [ "$mw_parallel" = "true" ]; then
+            args="$args -cpu_offset_numa_node=$node_id"
+        fi
 
         total_usable_cores=$((total_usable_cores + node_usable))
         echo "* Node $node_id: $count cores, $node_usable usable for tests"
@@ -285,44 +395,248 @@ for node_id in "${numa_nodes[@]}"; do
     fi
 done
 
-# Resolve parallel process count
-if [ "$parallel" = "auto" ]; then
-    if [ "$total_usable_cores" -gt 0 ]; then
-        auto_procs=$((total_usable_cores / CPUS_PER_SLOT))
-    else
+resolve_auto_process_count() {
+    if [ "$total_usable_cores" -le 0 ]; then
         # No taskset / small system fallback: count all physical cores,
-        # no offset reservation since taskset is not used
+        # no offset reservation since taskset is not used.
         if [ "$hyperthread" = true ]; then
             total_cores=$(lscpu -p=CPU | grep -vc '^#')
         else
             total_cores=$(lscpu -p=CORE,CPU | grep -v '^#' | sort -u -t, -k1,1 | wc -l)
         fi
+
         if [ "$use_cpu0" = true ]; then
-            usable_cores=$total_cores
+            total_usable_cores=$total_cores
         else
-            usable_cores=$((total_cores - 1))
+            total_usable_cores=$((total_cores - 1))
         fi
-        auto_procs=$((usable_cores / CPUS_PER_SLOT))
-        total_usable_cores=$usable_cores
     fi
+
+    auto_procs=$((total_usable_cores / CPUS_PER_WORKER))
     if [ "$auto_procs" -lt 1 ]; then
         auto_procs=1
     fi
-    echo "* PARALLEL=auto resolved to $auto_procs processes ($total_usable_cores usable cores / $CPUS_PER_SLOT CPUs per slot)"
-    ginkgo_args="$ginkgo_args -procs=$auto_procs"
-elif [ -n "$parallel" ]; then
-    ginkgo_args="$ginkgo_args -procs=$parallel"
+}
+
+auto_procs=1
+numa_procs=1
+mw_procs=1
+if [ "$mw_parallel" = "true" ]; then
+    numa_procs=$(numa_process_count)
+    resolve_mw_workers_per_numa
+    mw_procs=$((numa_procs * mw_workers_per_numa))
+fi
+parallel_ginkgo_args=
+label_ginkgo_arg=
+
+if [ -n "$label" ]; then
+    label_ginkgo_arg="--label-filter=$label"
 fi
 
-CMD="go run github.com/onsi/ginkgo/v2/ginkgo --json-report=summary/report.json $ginkgo_args -- $args"
+case "$parallel" in
+    auto)
+        resolve_auto_process_count
+        echo "* PARALLEL=auto resolved to $auto_procs processes ($total_usable_cores usable cores / $CPUS_PER_WORKER CPUs per worker)"
+        parallel_ginkgo_args="-procs=$auto_procs"
+        ;;
+    "")
+        ;;
+    *)
+        parallel_ginkgo_args="-procs=$parallel"
+        ;;
+esac
 
-if [ -n "$taskset_cmd" ]; then
-    CMD="$taskset_cmd $CMD"
+run_ginkgo() {
+    local report_path=$1
+    local extra_ginkgo_args=$2
+    local extra_test_args=$3
+
+    local cmd="go run github.com/onsi/ginkgo/v2/ginkgo --json-report=$report_path $ginkgo_args $extra_ginkgo_args -- $args $extra_test_args"
+
+    if [ -n "$taskset_cmd" ]; then
+        cmd="$taskset_cmd $cmd"
+    fi
+
+    echo "$cmd"
+    $cmd
+    local status=$?
+    if [ -f "$report_path" ]; then
+        generated_reports+=("$report_path")
+    fi
+    return $status
+}
+
+combine_ginkgo_reports() {
+    local reports=()
+    local report
+
+    for report in "${generated_reports[@]}"; do
+        if [ -f "$report" ]; then
+            reports+=("$report")
+        fi
+    done
+
+    if [ ${#reports[@]} -eq 1 ]; then
+        cp "${reports[0]}" summary/report.json
+    elif [ ${#reports[@]} -gt 1 ]; then
+        jq -s 'add' "${reports[@]}" > summary/report.json.tmp &&
+            mv summary/report.json.tmp summary/report.json
+    fi
+}
+
+format_elapsed_time() {
+    local elapsed=$1
+    printf '%02d:%02d:%02d' "$((elapsed / 3600))" "$(((elapsed % 3600) / 60))" "$((elapsed % 60))"
+}
+
+print_aggregate_summary() {
+    local elapsed=$1
+    local passed
+    local failed
+    local skipped
+    local executed
+    local selected
+
+    read -r passed failed skipped < <(jq -r '
+        [.[].SpecReports[] |
+            select(.LeafNodeType == "It" and .NumAttempts > 0) |
+            .State] as $states |
+        [
+            ($states | map(select(. == "passed")) | length),
+            ($states | map(select(
+                . == "failed" or . == "timedout" or . == "panicked" or
+                . == "aborted" or . == "interrupted"
+            )) | length),
+            ($states | map(select(. == "skipped")) | length)
+        ] | @tsv
+    ' summary/report.json)
+    executed=$((passed + failed))
+    selected=$((executed + skipped))
+
+    echo "*************************** AGGREGATE SUMMARY ***************************"
+    echo "Selected: $selected | Executed: $executed | Passed: $passed | Failed: $failed | Skipped: $skipped"
+    echo "Total time: $(format_elapsed_time "$elapsed")"
+}
+
+should_split_auto_mw_run() {
+    [ "$parallel" = "auto" ] && [ "$mw_parallel" = "true" ] && [ "${tc_list:-all}" = "all" ] && [ -z "$label" ]
+}
+
+should_run_mw_only_numa() {
+    [ "$parallel" = "auto" ] && [ "$mw_parallel" = "true" ] && \
+        { [ "$label" = "MW" ] || [ "${tc_list:-all}" = "MW" ]; }
+}
+
+validate_auto_mw_run() {
+    if [ "$parallel" = "auto" ] && [ "$mw_parallel" = "true" ] &&
+        ! should_split_auto_mw_run && ! should_run_mw_only_numa; then
+        echo -e "\e[1;31mMW_PARALLEL=true with PARALLEL=auto supports a full run, LABEL=MW, or TEST=MW\e[1;0m"
+        return 2
+    fi
+}
+
+run_mw_numa_ginkgo() {
+    local report_path=$1
+    local label_filter=$2
+    local workers_per_numa=$3
+    local filter_arg=
+    local procs=$((numa_procs * workers_per_numa))
+
+    if [ -n "$label_filter" ]; then
+        filter_arg="--label-filter=$label_filter"
+    fi
+
+    export HST_MW_PARALLEL=true
+    run_ginkgo "$report_path" "-procs=$procs $filter_arg" "-numa_per_process -numa_workers_per_node=$workers_per_numa"
+}
+
+run_mw_ginkgo_phases() {
+    local report_suffix=$1
+    local wide_status
+    local narrow_status
+
+    if [ "$mw_workers_per_numa" -eq 1 ]; then
+        echo "* MW phase: $numa_procs NUMA-aware process(es) (${#numa_nodes[@]} NUMA node(s), 1 worker per NUMA node)"
+        run_mw_numa_ginkgo "summary/report-mw${report_suffix}.json" "MW" 1
+        return $?
+    fi
+
+    local wide_procs=$numa_procs
+    local narrow_procs=$mw_procs
+    echo "* MW wide phase: $wide_procs NUMA-aware process(es) (${#numa_nodes[@]} NUMA node(s), 1 worker per NUMA node)"
+    run_mw_numa_ginkgo "summary/report-mw-wide${report_suffix}.json" "MW&&MWWide" 1
+    wide_status=$?
+    if [ $wide_status -ne 0 ]; then
+        return $wide_status
+    fi
+
+    echo "* MW narrow phase: $narrow_procs NUMA-aware process(es) (${#numa_nodes[@]} NUMA node(s), $mw_workers_per_numa worker(s) per NUMA node)"
+    run_mw_numa_ginkgo "summary/report-mw-narrow${report_suffix}.json" "MW&&!MWWide" "$mw_workers_per_numa"
+    narrow_status=$?
+
+    return $narrow_status
+}
+
+run_repeated_split_ginkgo() {
+    local run_non_mw=$1
+    local attempts=$((repeat + 1))
+    local attempt
+    local report_suffix
+    local phase_status
+
+    for ((attempt = 1; attempt <= attempts; attempt++)); do
+        report_suffix=
+        if [ "$attempts" -gt 1 ]; then
+            report_suffix="-attempt-$attempt"
+            echo "* Split run attempt $attempt of $attempts"
+        fi
+
+        if [ "$run_non_mw" = "true" ]; then
+            export HST_MW_PARALLEL=false
+            run_ginkgo "summary/report-non-mw${report_suffix}.json" "$parallel_ginkgo_args --label-filter=!MW" ""
+            phase_status=$?
+            if [ $phase_status -ne 0 ]; then
+                return $phase_status
+            fi
+        fi
+
+        run_mw_ginkgo_phases "$report_suffix"
+        phase_status=$?
+        if [ $phase_status -ne 0 ]; then
+            return $phase_status
+        fi
+    done
+}
+
+exit_status=0
+run_start_seconds=$SECONDS
+generated_reports=()
+
+validate_auto_mw_run || exit $?
+
+if should_split_auto_mw_run; then
+    echo "* PARALLEL=auto with MW_PARALLEL=true: running non-MW specs with auto parallelism, then MW specs with NUMA-aware parallelism"
+    echo "* non-MW phase: $auto_procs process(es)"
+
+    run_repeated_split_ginkgo true
+    exit_status=$?
+    combine_ginkgo_reports
+    if [ -f summary/report.json ]; then
+        print_aggregate_summary "$((SECONDS - run_start_seconds))"
+    fi
+elif should_run_mw_only_numa; then
+    echo "* PARALLEL=auto with MW_PARALLEL=true: running the MW-only selection with NUMA-aware parallelism"
+    run_repeated_split_ginkgo false
+    exit_status=$?
+    combine_ginkgo_reports
+    if [ -f summary/report.json ]; then
+        print_aggregate_summary "$((SECONDS - run_start_seconds))"
+    fi
+else
+    export HST_MW_PARALLEL="$mw_parallel"
+    run_ginkgo "summary/report.json" "$parallel_ginkgo_args $label_ginkgo_arg --repeat=$repeat" ""
+    exit_status=$?
 fi
-
-echo $CMD
-$CMD
-exit_status=$?
 
 # Ginkgo container stops and is removed when this script finishes.
 # Some tests use network namespaces, and to access them when debugging,
@@ -334,7 +648,7 @@ if [ "$dryrun_set" = "1" ] || [ "$persist_set" = "1" ]; then
 fi
 
 if [ $exit_status != 0 ]; then
-    jq -r '.[0] | .SpecReports[] | select((.State == "failed") or (.State == "timedout") or (.State == "panicked")) | select(.Failure != null) |
+    jq -r '.[] | .SpecReports[] | select((.State == "failed") or (.State == "timedout") or (.State == "panicked") or (.State == "aborted") or (.State == "interrupted")) | select(.Failure != null) |
 "TestName:
     \(.LeafNodeText)
 Suite:

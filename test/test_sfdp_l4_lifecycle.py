@@ -66,9 +66,9 @@ class TestSfdpL4LifecycleBase(BaseSfdpTest):
         # This exceeds default timeout value set in wait_no_sessions (5s)
         # which is used to verify that sessions have been killed/reaped
         # outside of the expected timeout process.
-        self.set_timeout(0, 10)  # SFDP_TIMEOUT_EMBRYONIC       = 10s
-        self.set_timeout(1, 10)  # SFDP_TIMEOUT_ESTABLISHED     = 10s
-        self.set_timeout(2, 10)  # SFDP_TIMEOUT_TCP_ESTABLISHED = 10s
+        self.set_timeout("embryonic", 10)  # SFDP_TIMEOUT_EMBRYONIC       = 10s
+        self.set_timeout("established", 10)  # SFDP_TIMEOUT_ESTABLISHED     = 10s
+        self.set_timeout("tcp-established", 10)  # SFDP_TIMEOUT_TCP_ESTABLISHED = 10s
 
         # Enable sfdp on pg0/pg1 interfaces
         self.vapi.sfdp_interface_input_set(

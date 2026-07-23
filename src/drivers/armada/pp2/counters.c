@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright (c) 2023 Cisco Systems, Inc.
+/* SPDX-License-Identifier: BSD-3-Clause AND Apache-2.0
+ * Copyright (c) 2025 Marvell.
+ * Copyright (c) 2026 Cisco Systems, Inc.
  */
 
 #include <vnet/vnet.h>
@@ -8,30 +9,34 @@
 #include <vnet/dev/counters.h>
 #include <vnet/dev/bus/platform.h>
 #include <vppinfra/ring.h>
-#include <musdk.h>
 #include <pp2/pp2.h>
+#include <pp2/pp2_hw.h>
 
 VLIB_REGISTER_LOG_CLASS (mvpp2_log, static) = {
   .class_name = "armada",
   .subclass_name = "pp2-counters",
 };
 
+#define foreach_mvpp2_port_counter                                                                 \
+  _ (RX_PACKETS, RX_PACKETS (0))                                                                   \
+  _ (TX_PACKETS, TX_PACKETS (0))                                                                   \
+  _ (RX_DROP_FULLQ, VENDOR (0, NA, PACKETS, "drop fullQ"))                                         \
+  _ (RX_DROP_EARLY, VENDOR (0, NA, PACKETS, "drop early"))                                         \
+  _ (RX_DROP_BM, VENDOR (0, NA, PACKETS, "drop BM"))                                               \
+  _ (RX_CLS_LKP_HIT, VENDOR (0, NA, PACKETS, "cls lkp hit"))                                       \
+  _ (RX_CLS_FLOW_HIT, VENDOR (0, NA, PACKETS, "cls flow hit"))                                     \
+  _ (RX_CLS4_HIT, VENDOR (0, NA, PACKETS, "cls4 hit"))                                             \
+  _ (RX_MC_OVF_DROP, VENDOR (0, NA, PACKETS, "drop MC overflow"))                                  \
+  _ (TX_DROP_FULLQ, VENDOR (0, NA, PACKETS, "drop fullQ"))                                         \
+  _ (TX_DROP_EARLY, VENDOR (0, NA, PACKETS, "drop early"))                                         \
+  _ (TX_DROP_BM, VENDOR (0, NA, PACKETS, "drop BM"))                                               \
+  _ (TX_DROP_BM_MC, VENDOR (0, NA, PACKETS, "drop BM MC"))
+
 typedef enum
 {
-  MVPP2_PORT_CTR_RX_BYTES,
-  MVPP2_PORT_CTR_RX_PACKETS,
-  MVPP2_PORT_CTR_RX_UCAST,
-  MVPP2_PORT_CTR_RX_ERRORS,
-  MVPP2_PORT_CTR_RX_FULLQ_DROPPED,
-  MVPP2_PORT_CTR_RX_BM_DROPPED,
-  MVPP2_PORT_CTR_RX_EARLY_DROPPED,
-  MVPP2_PORT_CTR_RX_FIFO_DROPPED,
-  MVPP2_PORT_CTR_RX_CLS_DROPPED,
-
-  MVPP2_PORT_CTR_TX_BYTES,
-  MVPP2_PORT_CTR_TX_PACKETS,
-  MVPP2_PORT_CTR_TX_UCAST,
-  MVPP2_PORT_CTR_TX_ERRORS,
+#define _(f, c) MVPP2_PORT_CTR_##f,
+  foreach_mvpp2_port_counter
+#undef _
 } mvpp2_port_counter_id_t;
 
 typedef enum
@@ -40,6 +45,10 @@ typedef enum
   MVPP2_RXQ_CTR_DROP_FULLQ,
   MVPP2_RXQ_CTR_DROP_EARLY,
   MVPP2_RXQ_CTR_DROP_BM,
+  MVPP2_RXQ_CTR_CLS_LKP_HIT,
+  MVPP2_RXQ_CTR_CLS_FLOW_HIT,
+  MVPP2_RXQ_CTR_CLS4_HIT,
+  MVPP2_RXQ_CTR_MC_OVF_DROP,
 } mvpp2_rxq_counter_id_t;
 
 typedef enum
@@ -48,45 +57,148 @@ typedef enum
   MVPP2_TXQ_CTR_ENQ_DEC_TO_DDR,
   MVPP2_TXQ_CTR_ENQ_BUF_TO_DDR,
   MVPP2_TXQ_CTR_DEQ_DESC,
+  MVPP2_TXQ_CTR_DROP_FULLQ,
+  MVPP2_TXQ_CTR_DROP_EARLY,
+  MVPP2_TXQ_CTR_DROP_BM,
+  MVPP2_TXQ_CTR_DROP_BM_MC,
 } mvpp2_txq_counter_id_t;
 
 static vnet_dev_counter_t mvpp2_port_counters[] = {
-  VNET_DEV_CTR_RX_BYTES (MVPP2_PORT_CTR_RX_BYTES),
-  VNET_DEV_CTR_RX_PACKETS (MVPP2_PORT_CTR_RX_PACKETS),
-  VNET_DEV_CTR_RX_DROPS (MVPP2_PORT_CTR_RX_ERRORS),
-  VNET_DEV_CTR_VENDOR (MVPP2_PORT_CTR_RX_UCAST, RX, PACKETS, "unicast"),
-  VNET_DEV_CTR_VENDOR (MVPP2_PORT_CTR_RX_FULLQ_DROPPED, RX, PACKETS,
-		       "fullq dropped"),
-  VNET_DEV_CTR_VENDOR (MVPP2_PORT_CTR_RX_BM_DROPPED, RX, PACKETS,
-		       "bm dropped"),
-  VNET_DEV_CTR_VENDOR (MVPP2_PORT_CTR_RX_EARLY_DROPPED, RX, PACKETS,
-		       "early dropped"),
-  VNET_DEV_CTR_VENDOR (MVPP2_PORT_CTR_RX_FIFO_DROPPED, RX, PACKETS,
-		       "fifo dropped"),
-  VNET_DEV_CTR_VENDOR (MVPP2_PORT_CTR_RX_CLS_DROPPED, RX, PACKETS,
-		       "cls dropped"),
-
-  VNET_DEV_CTR_TX_BYTES (MVPP2_PORT_CTR_TX_BYTES),
-  VNET_DEV_CTR_TX_PACKETS (MVPP2_PORT_CTR_TX_PACKETS),
-  VNET_DEV_CTR_TX_DROPS (MVPP2_PORT_CTR_TX_ERRORS),
-  VNET_DEV_CTR_VENDOR (MVPP2_PORT_CTR_TX_UCAST, TX, PACKETS, "unicast"),
+#define _(f, c) [MVPP2_PORT_CTR_##f] = VNET_DEV_CTR_##c,
+  foreach_mvpp2_port_counter
+#undef _
 };
 
 static vnet_dev_counter_t mvpp2_rxq_counters[] = {
-  VNET_DEV_CTR_VENDOR (MVPP2_RXQ_CTR_ENQ_DESC, RX, DESCRIPTORS, "enqueued"),
-  VNET_DEV_CTR_VENDOR (MVPP2_RXQ_CTR_DROP_FULLQ, RX, PACKETS, "drop fullQ"),
-  VNET_DEV_CTR_VENDOR (MVPP2_RXQ_CTR_DROP_EARLY, RX, PACKETS, "drop early"),
-  VNET_DEV_CTR_VENDOR (MVPP2_RXQ_CTR_DROP_BM, RX, PACKETS, "drop BM"),
+  [MVPP2_RXQ_CTR_ENQ_DESC] = VNET_DEV_CTR_VENDOR (0, NA, DESCRIPTORS, "enqueued"),
+  [MVPP2_RXQ_CTR_DROP_FULLQ] = VNET_DEV_CTR_VENDOR (0, NA, PACKETS, "drop fullQ"),
+  [MVPP2_RXQ_CTR_DROP_EARLY] = VNET_DEV_CTR_VENDOR (0, NA, PACKETS, "drop early"),
+  [MVPP2_RXQ_CTR_DROP_BM] = VNET_DEV_CTR_VENDOR (0, NA, PACKETS, "drop BM"),
+  [MVPP2_RXQ_CTR_CLS_LKP_HIT] = VNET_DEV_CTR_VENDOR (0, NA, PACKETS, "cls lkp hit"),
+  [MVPP2_RXQ_CTR_CLS_FLOW_HIT] = VNET_DEV_CTR_VENDOR (0, NA, PACKETS, "cls flow hit"),
+  [MVPP2_RXQ_CTR_CLS4_HIT] = VNET_DEV_CTR_VENDOR (0, NA, PACKETS, "cls4 hit"),
+  [MVPP2_RXQ_CTR_MC_OVF_DROP] = VNET_DEV_CTR_VENDOR (0, NA, PACKETS, "drop MC overflow"),
 };
 
 static vnet_dev_counter_t mvpp2_txq_counters[] = {
-  VNET_DEV_CTR_VENDOR (MVPP2_TXQ_CTR_ENQ_DESC, TX, DESCRIPTORS, "enqueued"),
-  VNET_DEV_CTR_VENDOR (MVPP2_TXQ_CTR_DEQ_DESC, TX, PACKETS, "dequeued"),
-  VNET_DEV_CTR_VENDOR (MVPP2_TXQ_CTR_ENQ_BUF_TO_DDR, TX, BUFFERS,
-		       "enq to DDR"),
-  VNET_DEV_CTR_VENDOR (MVPP2_TXQ_CTR_ENQ_DEC_TO_DDR, TX, DESCRIPTORS,
-		       "enq to DDR"),
+  [MVPP2_TXQ_CTR_ENQ_DESC] = VNET_DEV_CTR_VENDOR (0, NA, DESCRIPTORS, "enqueued"),
+  [MVPP2_TXQ_CTR_ENQ_DEC_TO_DDR] = VNET_DEV_CTR_VENDOR (0, NA, DESCRIPTORS, "enq to DDR"),
+  [MVPP2_TXQ_CTR_ENQ_BUF_TO_DDR] = VNET_DEV_CTR_VENDOR (0, NA, BUFFERS, "enq to DDR"),
+  [MVPP2_TXQ_CTR_DEQ_DESC] = VNET_DEV_CTR_VENDOR (0, NA, PACKETS, "dequeued"),
+  [MVPP2_TXQ_CTR_DROP_FULLQ] = VNET_DEV_CTR_VENDOR (0, NA, PACKETS, "drop fullQ"),
+  [MVPP2_TXQ_CTR_DROP_EARLY] = VNET_DEV_CTR_VENDOR (0, NA, PACKETS, "drop early"),
+  [MVPP2_TXQ_CTR_DROP_BM] = VNET_DEV_CTR_VENDOR (0, NA, PACKETS, "drop BM"),
+  [MVPP2_TXQ_CTR_DROP_BM_MC] = VNET_DEV_CTR_VENDOR (0, NA, PACKETS, "drop BM MC"),
 };
+
+static_always_inline void
+mvpp2_port_counter_add (vlib_main_t *vm, vnet_dev_port_t *port, u32 index, u64 v)
+{
+  vnet_dev_counter_t *c = vnet_dev_port_get_counter_by_index (vm, port, index);
+
+  vnet_dev_counter_value_add (vm, c, v);
+}
+
+static void
+mvpp2_rxq_update_counters (vlib_main_t *vm, vnet_dev_rx_queue_t *q)
+{
+  vnet_dev_port_t *port = q->port;
+  vnet_dev_t *dev = port->dev;
+  mvpp2_rxq_t *mrq = vnet_dev_get_rx_queue_data (q);
+  u64 v;
+  vnet_dev_counter_t *c;
+
+  mvpp2_dev_reg_wr_relax (dev, MVPP2_CNT_IDX_REG, mrq->hw_id);
+
+  v = mvpp2_dev_reg_rd_relax (dev, MVPP2_RX_DESC_ENQ_REG);
+  c = vnet_dev_rx_queue_get_counter_by_index (vm, q, MVPP2_RXQ_CTR_ENQ_DESC);
+  vnet_dev_counter_value_add (vm, c, v);
+  mvpp2_port_counter_add (vm, port, MVPP2_PORT_CTR_RX_PACKETS, v);
+
+  v = mvpp2_dev_reg_rd_relax (dev, MVPP2_RX_PKT_BM_DROP_REG);
+  c = vnet_dev_rx_queue_get_counter_by_index (vm, q, MVPP2_RXQ_CTR_DROP_BM);
+  vnet_dev_counter_value_add (vm, c, v);
+  mvpp2_port_counter_add (vm, port, MVPP2_PORT_CTR_RX_DROP_BM, v);
+
+  v = mvpp2_dev_reg_rd_relax (dev, MVPP2_RX_PKT_EARLY_DROP_REG);
+  c = vnet_dev_rx_queue_get_counter_by_index (vm, q, MVPP2_RXQ_CTR_DROP_EARLY);
+  vnet_dev_counter_value_add (vm, c, v);
+  mvpp2_port_counter_add (vm, port, MVPP2_PORT_CTR_RX_DROP_EARLY, v);
+
+  v = mvpp2_dev_reg_rd_relax (dev, MVPP2_RX_PKT_FULLQ_DROP_REG);
+  c = vnet_dev_rx_queue_get_counter_by_index (vm, q, MVPP2_RXQ_CTR_DROP_FULLQ);
+  vnet_dev_counter_value_add (vm, c, v);
+  mvpp2_port_counter_add (vm, port, MVPP2_PORT_CTR_RX_DROP_FULLQ, v);
+
+  v = mvpp2_dev_reg_rd_relax (dev, MVPP2_CLS_LKP_TBL_HIT_REG);
+  c = vnet_dev_rx_queue_get_counter_by_index (vm, q, MVPP2_RXQ_CTR_CLS_LKP_HIT);
+  vnet_dev_counter_value_add (vm, c, v);
+  mvpp2_port_counter_add (vm, port, MVPP2_PORT_CTR_RX_CLS_LKP_HIT, v);
+
+  v = mvpp2_dev_reg_rd_relax (dev, MVPP2_CLS_FLOW_TBL_HIT_REG);
+  c = vnet_dev_rx_queue_get_counter_by_index (vm, q, MVPP2_RXQ_CTR_CLS_FLOW_HIT);
+  vnet_dev_counter_value_add (vm, c, v);
+  mvpp2_port_counter_add (vm, port, MVPP2_PORT_CTR_RX_CLS_FLOW_HIT, v);
+
+  v = mvpp2_dev_reg_rd_relax (dev, MVPP2_CLS4_TBL_HIT_REG);
+  c = vnet_dev_rx_queue_get_counter_by_index (vm, q, MVPP2_RXQ_CTR_CLS4_HIT);
+  vnet_dev_counter_value_add (vm, c, v);
+  mvpp2_port_counter_add (vm, port, MVPP2_PORT_CTR_RX_CLS4_HIT, v);
+
+  v = mvpp2_dev_reg_rd_relax (dev, MVPP2_MC_OVF_DROP_REG);
+  c = vnet_dev_rx_queue_get_counter_by_index (vm, q, MVPP2_RXQ_CTR_MC_OVF_DROP);
+  vnet_dev_counter_value_add (vm, c, v);
+  mvpp2_port_counter_add (vm, port, MVPP2_PORT_CTR_RX_MC_OVF_DROP, v);
+}
+
+static void
+mvpp2_txq_update_counters (vlib_main_t *vm, vnet_dev_tx_queue_t *q)
+{
+  vnet_dev_port_t *port = q->port;
+  vnet_dev_t *dev = port->dev;
+  mvpp2_port_t *mp = vnet_dev_get_port_data (port);
+  u64 v;
+  vnet_dev_counter_t *c;
+
+  mvpp2_dev_reg_wr_relax (dev, MVPP2_CNT_IDX_REG, MVPP2_CNT_IDX_TX (mp->id, q->queue_id));
+
+  v = mvpp2_dev_reg_rd_relax (dev, MVPP2_TX_DESC_ENQ_REG);
+  c = vnet_dev_tx_queue_get_counter_by_index (vm, q, MVPP2_TXQ_CTR_ENQ_DESC);
+  vnet_dev_counter_value_add (vm, c, v);
+
+  v = mvpp2_dev_reg_rd_relax (dev, MVPP2_TX_PKT_DQ_REG);
+  c = vnet_dev_tx_queue_get_counter_by_index (vm, q, MVPP2_TXQ_CTR_DEQ_DESC);
+  vnet_dev_counter_value_add (vm, c, v);
+  mvpp2_port_counter_add (vm, port, MVPP2_PORT_CTR_TX_PACKETS, v);
+
+  v = mvpp2_dev_reg_rd_relax (dev, MVPP2_TX_BUF_ENQ_TO_DRAM_REG);
+  c = vnet_dev_tx_queue_get_counter_by_index (vm, q, MVPP2_TXQ_CTR_ENQ_BUF_TO_DDR);
+  vnet_dev_counter_value_add (vm, c, v);
+
+  v = mvpp2_dev_reg_rd_relax (dev, MVPP2_TX_DESC_ENQ_TO_DRAM_REG);
+  c = vnet_dev_tx_queue_get_counter_by_index (vm, q, MVPP2_TXQ_CTR_ENQ_DEC_TO_DDR);
+  vnet_dev_counter_value_add (vm, c, v);
+
+  v = mvpp2_dev_reg_rd_relax (dev, MVPP2_TX_PKT_FULLQ_DROP_REG);
+  c = vnet_dev_tx_queue_get_counter_by_index (vm, q, MVPP2_TXQ_CTR_DROP_FULLQ);
+  vnet_dev_counter_value_add (vm, c, v);
+  mvpp2_port_counter_add (vm, port, MVPP2_PORT_CTR_TX_DROP_FULLQ, v);
+
+  v = mvpp2_dev_reg_rd_relax (dev, MVPP2_TX_PKT_EARLY_DROP_REG);
+  c = vnet_dev_tx_queue_get_counter_by_index (vm, q, MVPP2_TXQ_CTR_DROP_EARLY);
+  vnet_dev_counter_value_add (vm, c, v);
+  mvpp2_port_counter_add (vm, port, MVPP2_PORT_CTR_TX_DROP_EARLY, v);
+
+  v = mvpp2_dev_reg_rd_relax (dev, MVPP2_TX_PKT_BM_DROP_REG);
+  c = vnet_dev_tx_queue_get_counter_by_index (vm, q, MVPP2_TXQ_CTR_DROP_BM);
+  vnet_dev_counter_value_add (vm, c, v);
+  mvpp2_port_counter_add (vm, port, MVPP2_PORT_CTR_TX_DROP_BM, v);
+
+  v = mvpp2_dev_reg_rd_relax (dev, MVPP2_TX_PKT_BM_MC_DROP_REG);
+  c = vnet_dev_tx_queue_get_counter_by_index (vm, q, MVPP2_TXQ_CTR_DROP_BM_MC);
+  vnet_dev_counter_value_add (vm, c, v);
+  mvpp2_port_counter_add (vm, port, MVPP2_PORT_CTR_TX_DROP_BM_MC, v);
+}
 
 void
 mvpp2_port_add_counters (vlib_main_t *vm, vnet_dev_port_t *port)
@@ -106,136 +218,49 @@ mvpp2_port_add_counters (vlib_main_t *vm, vnet_dev_port_t *port)
 void
 mvpp2_port_clear_counters (vlib_main_t *vm, vnet_dev_port_t *port)
 {
-  mvpp2_port_t *mp = vnet_dev_get_port_data (port);
-  struct pp2_ppio_statistics stats;
-  pp2_ppio_get_statistics (mp->ppio, &stats, 1);
+  mvpp2_port_get_stats (vm, port);
+  if (port->counter_main)
+    vnet_dev_counters_clear (vm, port->counter_main);
 }
 
 void
 mvpp2_rxq_clear_counters (vlib_main_t *vm, vnet_dev_rx_queue_t *q)
 {
-  mvpp2_port_t *mp = vnet_dev_get_port_data (q->port);
-  struct pp2_ppio_inq_statistics stats;
-  pp2_ppio_inq_get_statistics (mp->ppio, 0, q->queue_id, &stats, 1);
+  mvpp2_rxq_update_counters (vm, q);
+  vnet_dev_counters_clear (vm, q->counter_main);
 }
 
 void
 mvpp2_txq_clear_counters (vlib_main_t *vm, vnet_dev_tx_queue_t *q)
 {
-  mvpp2_port_t *mp = vnet_dev_get_port_data (q->port);
-  struct pp2_ppio_inq_statistics stats;
-  pp2_ppio_inq_get_statistics (mp->ppio, 0, q->queue_id, &stats, 1);
+  mvpp2_txq_update_counters (vm, q);
+  vnet_dev_counters_clear (vm, q->counter_main);
 }
 
 vnet_dev_rv_t
 mvpp2_port_get_stats (vlib_main_t *vm, vnet_dev_port_t *port)
 {
-  mvpp2_port_t *mp = vnet_dev_get_port_data (port);
-  struct pp2_ppio_statistics stats;
-  pp2_ppio_get_statistics (mp->ppio, &stats, 0);
-
-  foreach_vnet_dev_counter (c, port->counter_main)
-    {
-      switch (c->user_data)
-	{
-	case MVPP2_PORT_CTR_RX_BYTES:
-	  vnet_dev_counter_value_update (vm, c, stats.rx_bytes);
-	  break;
-	case MVPP2_PORT_CTR_RX_PACKETS:
-	  vnet_dev_counter_value_update (vm, c, stats.rx_packets);
-	  break;
-	case MVPP2_PORT_CTR_RX_UCAST:
-	  vnet_dev_counter_value_update (vm, c, stats.rx_unicast_packets);
-	  break;
-	case MVPP2_PORT_CTR_RX_ERRORS:
-	  vnet_dev_counter_value_update (vm, c, stats.rx_errors);
-	  break;
-	case MVPP2_PORT_CTR_TX_BYTES:
-	  vnet_dev_counter_value_update (vm, c, stats.tx_bytes);
-	  break;
-	case MVPP2_PORT_CTR_TX_PACKETS:
-	  vnet_dev_counter_value_update (vm, c, stats.tx_packets);
-	  break;
-	case MVPP2_PORT_CTR_TX_UCAST:
-	  vnet_dev_counter_value_update (vm, c, stats.tx_unicast_packets);
-	  break;
-	case MVPP2_PORT_CTR_TX_ERRORS:
-	  vnet_dev_counter_value_update (vm, c, stats.tx_errors);
-	  break;
-	case MVPP2_PORT_CTR_RX_FULLQ_DROPPED:
-	  vnet_dev_counter_value_update (vm, c, stats.rx_fullq_dropped);
-	  break;
-	case MVPP2_PORT_CTR_RX_BM_DROPPED:
-	  vnet_dev_counter_value_update (vm, c, stats.rx_bm_dropped);
-	  break;
-	case MVPP2_PORT_CTR_RX_EARLY_DROPPED:
-	  vnet_dev_counter_value_update (vm, c, stats.rx_early_dropped);
-	  break;
-	case MVPP2_PORT_CTR_RX_FIFO_DROPPED:
-	  vnet_dev_counter_value_update (vm, c, stats.rx_fifo_dropped);
-	  break;
-	case MVPP2_PORT_CTR_RX_CLS_DROPPED:
-	  vnet_dev_counter_value_update (vm, c, stats.rx_cls_dropped);
-	  break;
-
-	default:
-	  ASSERT (0);
-	}
-    }
-
   foreach_vnet_dev_port_rx_queue (q, port)
-    {
-      struct pp2_ppio_inq_statistics stats;
-      pp2_ppio_inq_get_statistics (mp->ppio, 0, q->queue_id, &stats, 0);
-
-      foreach_vnet_dev_counter (c, q->counter_main)
-	{
-	  switch (c->user_data)
-	    {
-	    case MVPP2_RXQ_CTR_ENQ_DESC:
-	      vnet_dev_counter_value_update (vm, c, stats.enq_desc);
-	      break;
-	    case MVPP2_RXQ_CTR_DROP_BM:
-	      vnet_dev_counter_value_update (vm, c, stats.drop_bm);
-	      break;
-	    case MVPP2_RXQ_CTR_DROP_EARLY:
-	      vnet_dev_counter_value_update (vm, c, stats.drop_early);
-	      break;
-	    case MVPP2_RXQ_CTR_DROP_FULLQ:
-	      vnet_dev_counter_value_update (vm, c, stats.drop_fullq);
-	      break;
-	    default:
-	      ASSERT (0);
-	    }
-	}
-    }
+    mvpp2_rxq_update_counters (vm, q);
 
   foreach_vnet_dev_port_tx_queue (q, port)
-    {
-      struct pp2_ppio_outq_statistics stats;
-      pp2_ppio_outq_get_statistics (mp->ppio, q->queue_id, &stats, 0);
-
-      foreach_vnet_dev_counter (c, q->counter_main)
-	{
-	  switch (c->user_data)
-	    {
-	    case MVPP2_TXQ_CTR_ENQ_DESC:
-	      vnet_dev_counter_value_update (vm, c, stats.enq_desc);
-	      break;
-	    case MVPP2_TXQ_CTR_DEQ_DESC:
-	      vnet_dev_counter_value_update (vm, c, stats.deq_desc);
-	      break;
-	    case MVPP2_TXQ_CTR_ENQ_BUF_TO_DDR:
-	      vnet_dev_counter_value_update (vm, c, stats.enq_buf_to_ddr);
-	      break;
-	    case MVPP2_TXQ_CTR_ENQ_DEC_TO_DDR:
-	      vnet_dev_counter_value_update (vm, c, stats.enq_dec_to_ddr);
-	      break;
-	    default:
-	      ASSERT (0);
-	    }
-	}
-    }
+    mvpp2_txq_update_counters (vm, q);
 
   return VNET_DEV_OK;
+}
+
+void
+mvpp2_port_counters_init (vlib_main_t *vm, vnet_dev_port_t *port)
+{
+  mvpp2_port_get_stats (vm, port);
+  if (port->counter_main)
+    vnet_dev_counters_clear (vm, port->counter_main);
+
+  foreach_vnet_dev_port_rx_queue (q, port)
+    if (q->counter_main)
+      vnet_dev_counters_clear (vm, q->counter_main);
+
+  foreach_vnet_dev_port_tx_queue (q, port)
+    if (q->counter_main)
+      vnet_dev_counters_clear (vm, q->counter_main);
 }

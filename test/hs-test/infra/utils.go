@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"mime"
 	"net"
 	"net/http"
 	"net/http/httputil"
@@ -156,11 +157,60 @@ func NewHttpClient(timeout time.Duration, enableHTTP2 bool) *http.Client {
 }
 
 func DumpHttpResp(resp *http.Response, body bool) string {
-	dump, err := httputil.DumpResponse(resp, body)
+	printBody := body
+	binaryBody := body && httpResponseHasBody(resp) &&
+		!isPrintableHTTPContentType(resp.Header.Get("Content-Type"))
+	if binaryBody {
+		printBody = false
+	}
+
+	dump, err := httputil.DumpResponse(resp, printBody)
 	if err != nil {
 		return ""
 	}
+	if binaryBody {
+		return string(dump) + "* binary response body, not printing!\n"
+	}
 	return string(dump)
+}
+
+func httpResponseHasBody(resp *http.Response) bool {
+	if resp.Body == nil || resp.Body == http.NoBody || resp.ContentLength == 0 {
+		return false
+	}
+	if resp.Request != nil && resp.Request.Method == http.MethodHead {
+		return false
+	}
+	if resp.StatusCode >= 100 && resp.StatusCode <= 199 {
+		return false
+	}
+	return resp.StatusCode != http.StatusNoContent && resp.StatusCode != http.StatusNotModified
+}
+
+func isPrintableHTTPContentType(contentType string) bool {
+	mediaType, _, err := mime.ParseMediaType(contentType)
+	if err != nil {
+		return false
+	}
+	if strings.HasPrefix(mediaType, "text/") || strings.HasSuffix(mediaType, "+json") ||
+		strings.HasSuffix(mediaType, "+xml") {
+		return true
+	}
+
+	switch mediaType {
+	case "application/json",
+		"application/javascript",
+		"application/x-yaml",
+		"application/x-www-form-urlencoded",
+		"application/xml",
+		"application/x-sh",
+		"application/x-tex",
+		"application/x-javascript",
+		"application/x-powershell":
+		return true
+	default:
+		return false
+	}
 }
 
 func TcpSendReceive(address, data string) (string, error) {

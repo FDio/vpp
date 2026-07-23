@@ -196,7 +196,8 @@ vp_print_final_stats (vlib_main_t *vm, f64 total_delta, vp_test_cfg_t *cfg, vp_s
       else
 	vp_cli ("error measuring roundtrip time");
     }
-  if (cfg->proto == VP_PROTO_UDP || cfg->proto == VP_PROTO_HTTP_CONNECT_UDP)
+  if (cfg->proto == VP_PROTO_UDP || cfg->proto == VP_PROTO_HTTP_CONNECT_UDP ||
+      cfg->proto == VP_PROTO_UDP_USO)
     {
       if (cfg->echo_bytes)
 	{

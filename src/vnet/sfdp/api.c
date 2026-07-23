@@ -67,7 +67,7 @@ vl_api_sfdp_set_timeout_t_handler (vl_api_sfdp_set_timeout_t *mp)
 {
   sfdp_main_t *sfdp = &sfdp_main;
   u32 tenant_id = clib_net_to_host_u32 (mp->tenant_id);
-  sfdp_timeout_type_t timeout_idx = sfdp_timeout_decode (mp->timeout_type);
+  u32 timeout_idx = clib_net_to_host_u32 (mp->timeout_id);
   u32 timeout_value = clib_net_to_host_u32 (mp->timeout_value);
   clib_error_t *err = sfdp_set_timeout (sfdp, tenant_id, timeout_idx, timeout_value);
   vl_api_sfdp_set_timeout_reply_t *rmp;
@@ -219,7 +219,7 @@ sfdp_send_tenant_details (vl_api_registration_t *rp, u32 context,
   sfdp_timeout_t *timeout;
 
   size_t msg_size;
-  msg_size = sizeof (*mp) + SFDP_MAX_TIMEOUTS * sizeof (mp->timeout[0]);
+  msg_size = sizeof (*mp) + SFDP_N_REGISTERED_TIMEOUTS * sizeof (mp->timeout[0]);
 
   mp = vl_msg_api_alloc_zero (msg_size);
   mp->_vl_msg_id = ntohs (VL_API_SFDP_TENANT_DETAILS + sfdp->msg_id_base);
@@ -232,7 +232,7 @@ sfdp_send_tenant_details (vl_api_registration_t *rp, u32 context,
     clib_host_to_net_u64 (tenant->bitmaps[SFDP_FLOW_FORWARD]);
   mp->reverse_bitmap =
     clib_host_to_net_u64 (tenant->bitmaps[SFDP_FLOW_REVERSE]);
-  mp->n_timeout = clib_host_to_net_u32 (SFDP_MAX_TIMEOUTS);
+  mp->n_timeout = clib_host_to_net_u32 (SFDP_N_REGISTERED_TIMEOUTS);
   sfdp_foreach_timeout (sfdp, timeout)
   {
     u32 idx = timeout - sfdp->timeouts;
@@ -257,6 +257,51 @@ vl_api_sfdp_tenant_dump_t_handler (vl_api_sfdp_tenant_dump_t *mp)
     {
       tenant = sfdp_tenant_at_index (sfdp, tenant_index);
       sfdp_send_tenant_details (rp, mp->context, tenant_index, tenant);
+    }
+}
+
+static void
+sfdp_send_timeout_details (vl_api_registration_t *rp, u32 context, sfdp_tenant_t *tenant, u32 index)
+{
+  sfdp_main_t *sfdp = &sfdp_main;
+  sfdp_timeout_t *timeout = &sfdp->timeouts[index];
+  vl_api_sfdp_timeout_details_t *mp;
+
+  mp = vl_msg_api_alloc_zero (sizeof (*mp));
+  mp->_vl_msg_id = ntohs (VL_API_SFDP_TIMEOUT_DETAILS + sfdp->msg_id_base);
+
+  mp->context = context;
+  mp->index = clib_host_to_net_u32 (index);
+  mp->timeout_value = clib_host_to_net_u32 (tenant ? tenant->timeouts[index] : timeout->val);
+  strncpy ((char *) mp->name, timeout->name, ARRAY_LEN (mp->name) - 1);
+
+  vl_api_send_msg (rp, (u8 *) mp);
+}
+
+static void
+vl_api_sfdp_timeout_dump_t_handler (vl_api_sfdp_timeout_dump_t *mp)
+{
+  sfdp_main_t *sfdp = &sfdp_main;
+  sfdp_tenant_t *tenant = 0;
+  vl_api_registration_t *rp;
+  u32 tenant_id = clib_net_to_host_u32 (mp->tenant_id);
+
+  rp = vl_api_client_index_to_registration (mp->client_index);
+  if (rp == 0)
+    return;
+
+  if (tenant_id != ~0)
+    {
+      clib_bihash_kv_8_8_t kv = { .key = tenant_id, .value = 0 };
+
+      if (sfdp->tenants == 0 || clib_bihash_search_inline_8_8 (&sfdp->tenant_idx_by_id, &kv))
+	return;
+      tenant = sfdp_tenant_at_index (sfdp, kv.value);
+    }
+
+  for (u32 index = 0; index < SFDP_N_REGISTERED_TIMEOUTS; index++)
+    {
+      sfdp_send_timeout_details (rp, mp->context, tenant, index);
     }
 }
 

@@ -269,7 +269,7 @@ tc_connect_rpc (void *rpc_args)
 
   rv = vnet_connect (a);
   if (rv)
-    clib_warning (0, "connect returned: %U", format_session_error, rv);
+    clib_warning ("connect returned: %U", format_session_error, rv);
 
   session_endpoint_free_ext_cfgs (&a->sep_ext);
   vec_free (a);
@@ -366,6 +366,7 @@ tc_detach ()
   da->api_client_index = ~0;
   rv = vnet_application_detach (da);
   cm->app_index = APP_INVALID_INDEX;
+  vnet_app_del_cert_key_pair (cm->ckpair_index);
 
   return rv;
 }

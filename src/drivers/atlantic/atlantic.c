@@ -252,8 +252,9 @@ atl_init (vlib_main_t *vm, vnet_dev_t *dev)
 	.config_change_validate = atl_port_cfg_change_validate,
       },
       .data_size = sizeof (atl_port_t),
-      .default_rss_key = {
-	.length = sizeof (atl_default_rss_key),
+      .default_rss_config = {
+	.key_len = sizeof (atl_default_rss_key),
+	.set_key = 1,
       },
     },
     .rx_node = &atl_rx_node,
@@ -287,7 +288,7 @@ atl_init (vlib_main_t *vm, vnet_dev_t *dev)
   };
 
   clib_memcpy (port.port.attr.hw_addr.eth_mac, ad->mac, 6);
-  clib_memcpy (port.port.default_rss_key.key, atl_default_rss_key, sizeof (atl_default_rss_key));
+  clib_memcpy (port.port.default_rss_config.key, atl_default_rss_key, sizeof (atl_default_rss_key));
 
   ad->avail_rxq_bmp = pow2_mask (port.port.attr.max_rx_queues);
   ad->avail_txq_bmp = pow2_mask (port.port.attr.max_tx_queues);

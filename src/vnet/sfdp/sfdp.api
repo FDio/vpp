@@ -2,7 +2,7 @@
  * Copyright (c) 2025 Cisco Systems, Inc.
  */
 
-option version = "0.0.2";
+option version = "1.0.0";
 import "vnet/ip/ip_types.api";
 import "vnet/sfdp/sfdp_types.api";
 
@@ -87,6 +87,23 @@ define sfdp_tenant_details
   u32 timeout[n_timeout];
 };
 
+define sfdp_timeout_dump
+{
+  u32 client_index;
+  u32 context;
+
+  u32 tenant_id [default=0xffffffff];
+};
+
+define sfdp_timeout_details
+{
+  u32 context;
+
+  u32 index;
+  string name[32];
+  u32 timeout_value;
+};
+
 autoreply define sfdp_set_timeout
 {
   u32 client_index;
@@ -94,7 +111,7 @@ autoreply define sfdp_set_timeout
 
   u32 tenant_id;
   u32 timeout_value;
-  vl_api_sfdp_timeout_type_t timeout_type;
+  u32 timeout_id;
 };
 
 autoreply define sfdp_set_sp_node

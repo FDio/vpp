@@ -46,10 +46,6 @@ typedef struct nsim_node_ctx
   f64 expires;
   f64 now;
   u32 *drop;
-  u32 *reord;
-  u16 *reord_nexts;
-  u32 *fwd;
-  u16 *fwd_nexts;
   u8 *action;
   u32 n_buffered;
   u32 n_loss;
@@ -74,6 +70,12 @@ typedef enum nsm_action
 #undef _
 } nsm_action_e;
 
+/* Loss models. Included after NSIM_ACTION_* so the datapath-inline appliers can
+ * set the DROP action bit. */
+#include <nsim/nsim_loss.h>
+/* Time-varying bottleneck-rate models (only used by the queued model). */
+#include <nsim/nsim_rate.h>
+
 typedef struct
 {
   /* API message ID base */
@@ -94,12 +96,20 @@ typedef struct
 
   /* Per-thread scheduler wheels */
   nsim_wheel_t **wheel_by_thread;
+  /* Per-thread side wheels for late-reordered packets if reorder_fraction > 0 */
+  nsim_wheel_t **reorder_wheel_by_thread;
 
   /* Config parameters */
   f64 delay;
   f64 bandwidth;
-  f64 drop_fraction;
+  /* Active packet-loss model (uniform/burst/one-shot/targeted). See
+   * nsim_loss.h. A single model is active at a time. */
+  nsim_loss_model_t loss;
+  /* Reorder is an impairment orthogonal to the loss model; it composes with any
+   * of them. Fraction of packets delayed out of order. */
   f64 reorder_fraction;
+  /* Max extra delay (seconds) applied to a reordered packet, on top of the base delay */
+  f64 reorder_delay;
   /* Bottleneck buffer, in seconds of bandwidth. When non-zero, nsim models a
    * rate-limited server with a FIFO buffer of this depth (queued/bufferbloat
    * model) instead of the default fixed-delay line. */
@@ -107,6 +117,9 @@ typedef struct
   /* Per-packet serialization time at the bottleneck (packet_size/bandwidth),
    * cached for the datapath. Only used when buffer_time > 0. */
   f64 serialization_time;
+  /* Optional time-varying bottleneck rate (queued model only). When active it
+   * modulates serialization_time per departure; type NONE => constant rate. */
+  nsim_rate_model_t rate;
   u32 packet_size;
   u32 wheel_slots_per_wrk;
   u32 poll_main_thread;

@@ -9,6 +9,9 @@
 
 #define foreach_sample_terminal_error _ (DROP, "drop")
 
+/* Declare custom timeout associated with the service */
+SFDP_TIMEOUT_DEFINE (sample_timeout, "sample-timeout", 120);
+
 typedef enum
 {
 #define _(sym, str) SAMPLE_TERMINAL_ERROR_##sym,
@@ -146,11 +149,10 @@ VLIB_NODE_FN (sample_non_terminal_node)
 	sfdp_direction_from_flow_index (b[0]->flow_id);
       /* Set the state of the session to established */
       session->state = SFDP_SESSION_STATE_ESTABLISHED;
-      /* Rearm the session timeout to
-       * tenant->timeouts[SFDP_TIMEOUT_ESTABLISHED] from now */
+      /* Rearm the session timeout to the sample service's custom timeout. */
       sfdp_session_timer_update_maybe_past (&tptd->wheel, SFDP_SESSION_TIMER (session),
 					    tptd->current_time,
-					    tenant->timeouts[SFDP_TIMEOUT_ESTABLISHED]);
+					    tenant->timeouts[SFDP_TIMEOUT_INDEX (sample_timeout)]);
       /* Next service in chain for this packet */
       sfdp_next (b[0], to_next);
 
@@ -226,9 +228,8 @@ VLIB_REGISTER_NODE (sample_non_terminal_node) = {
 
 };
 
-SFDP_SERVICE_DEFINE (sample_non_terminal) = {
-  .node_name = "sample-non-terminal",
-  .runs_before = SFDP_SERVICES (0),
-  .runs_after = SFDP_SERVICES ("sfdp-drop"),
-  .is_terminal = 0
-};
+SFDP_SERVICE_DEFINE (sample_non_terminal) = { .node_name = "sample-non-terminal",
+					      .runs_before = SFDP_SERVICES ("ip4-lookup",
+									    "ip6-lookup"),
+					      .runs_after = SFDP_SERVICES ("sfdp-drop"),
+					      .is_terminal = 0 };

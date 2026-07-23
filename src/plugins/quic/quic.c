@@ -478,7 +478,6 @@ quic_udp_session_connected_callback (u32 quic_app_index, u32 ctx_index,
   quic_build_sockaddr (sa, &tc->rmt_ip, tc->rmt_port, tc->is_ip4);
 
   ret = quic_eng_connect (ctx, ctx_index, thread_index, sa);
-  quic_eng_send_packets (ctx);
 
   return ret;
 }
@@ -508,6 +507,7 @@ quic_udp_session_cleanup_callback (session_t *udp_session,
 			QUIC_TIMER_TX);
   quic_eng_crypto_context_release (ctx->crypto_context_index,
 				   ctx->c_thread_index);
+  vec_free (ctx->srv_hostname);
   quic_ctx_free (qm, ctx);
 }
 
@@ -555,7 +555,8 @@ quic_udp_session_accepted_callback (session_t * udp_session)
   ctx->c_c_index = ctx_index;
   ctx->c_s_index = QUIC_SESSION_INVALID;
   ctx->udp_session_handle = session_handle (udp_session);
-  QUIC_DBG (2, "ACCEPTED UDP 0x%lx", ctx->udp_session_handle);
+  QUIC_DBG (2, "ACCEPTED UDP 0x%lx, listener %u", ctx->udp_session_handle,
+	    udp_listen_session->opaque);
   ctx->listener_ctx_id = udp_listen_session->opaque;
   lctx = quic_ctx_get (udp_listen_session->opaque,
 		       udp_listen_session->thread_index);
@@ -817,7 +818,7 @@ quic_expired_timers_dispatch (u32 *expired_timers)
   u32 conn_index;
   quic_timers_t timer_id;
   int i;
-#if QUIC_DEBUG >= 2
+#if QUIC_DEBUG
   int64_t time_now = quic_wrk_ctx_get (&quic_main, vlib_get_thread_index ())->time_now;
 #endif
 
