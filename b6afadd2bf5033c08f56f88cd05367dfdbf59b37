@@ -16,6 +16,57 @@
       "message": "recheck",
       "revId": "b6afadd2bf5033c08f56f88cd05367dfdbf59b37",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1d90bd5a_42578819",
+        "filename": "src/vnet/flow/flow.c",
+        "patchSetId": 36
+      },
+      "lineNbr": 282,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-07-23T08:06:48Z",
+      "side": 1,
+      "message": "For the comment here, wouldn\u0027t it be more accurate to say \u0027if not, we return an error and consider the batch of flows as not installed\u0027, since the error is returned for the entire batch ?",
+      "revId": "b6afadd2bf5033c08f56f88cd05367dfdbf59b37",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "72b470a2_558a109a",
+        "filename": "src/vnet/flow/flow.c",
+        "patchSetId": 36
+      },
+      "lineNbr": 284,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-07-23T08:06:48Z",
+      "side": 1,
+      "message": "From a user perspective, how should vnet_flow_async_range_enable() failures be handled ?\n\nI assume that if the user wants to identify which flows failed installation / attempt to re-install them, it needs to iterate using `vec_for_each(fi, flow_indices)` and verify which flows are not marked as enabled, and re-submit a new vector to vnet_flow_async_range_enable() with the flow indices that have not being enabled.\n\nMaybe we could document a recommendation for usage ?",
+      "revId": "b6afadd2bf5033c08f56f88cd05367dfdbf59b37",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e0f9c9f7_220b51f9",
+        "filename": "src/vnet/flow/flow.c",
+        "patchSetId": 36
+      },
+      "lineNbr": 342,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-07-23T08:06:48Z",
+      "side": 1,
+      "message": "Same comment as for `vnet_flow_async_range_enable()`",
+      "revId": "b6afadd2bf5033c08f56f88cd05367dfdbf59b37",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
