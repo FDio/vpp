@@ -26,6 +26,30 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "ba486c6f_1621f19a",
+        "filename": "test/hs-test/echo_test.go",
+        "patchSetId": 2
+      },
+      "lineNbr": 410,
+      "author": {
+        "id": 3325
+      },
+      "writtenOn": "2026-07-23T06:42:35Z",
+      "side": 1,
+      "message": "Yea, made the helper use TapSuite directly.",
+      "parentUuid": "2287a361_94cb88c8",
+      "range": {
+        "startLine": 408,
+        "startChar": 0,
+        "endLine": 410,
+        "endChar": 3
+      },
+      "revId": "439174fcacaf3e546a01e6c0acedf7e3c1999bcc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "c93a57c7_8f4c521c",
         "filename": "test/hs-test/infra/suite_tap.go",
         "patchSetId": 2
@@ -37,6 +61,24 @@
       "writtenOn": "2026-07-21T09:15:55Z",
       "side": 1,
       "message": "can we avoid this? is it because CreateTlsCrlTestArtifacts in suite_veth.go? can we move CreateTlsCrlTestArtifacts here if not needed in veth suite? otherwise make it generic in utils.go",
+      "revId": "439174fcacaf3e546a01e6c0acedf7e3c1999bcc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8f73dd42_46a6ccb3",
+        "filename": "test/hs-test/infra/suite_tap.go",
+        "patchSetId": 2
+      },
+      "lineNbr": 4,
+      "author": {
+        "id": 3325
+      },
+      "writtenOn": "2026-07-23T06:42:35Z",
+      "side": 1,
+      "message": "I made TapSuite standalone and restored suite_veth.go.",
+      "parentUuid": "c93a57c7_8f4c521c",
       "revId": "439174fcacaf3e546a01e6c0acedf7e3c1999bcc",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -60,6 +102,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "bf14ade5_abf8397d",
+        "filename": "test/hs-test/infra/suite_veth.go",
+        "patchSetId": 2
+      },
+      "lineNbr": 24,
+      "author": {
+        "id": 3325
+      },
+      "writtenOn": "2026-07-23T06:42:35Z",
+      "side": 1,
+      "message": "Done, the TAP-specific setup lives in TapSuite.",
+      "parentUuid": "50ed39f7_134a16ed",
+      "revId": "439174fcacaf3e546a01e6c0acedf7e3c1999bcc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "af0c4829_5786b4c3",
         "filename": "test/hs-test/infra/suite_veth.go",
         "patchSetId": 2
@@ -71,6 +131,24 @@
       "writtenOn": "2026-07-21T09:15:55Z",
       "side": 1,
       "message": "you should be able to assign tap interface to bridge directly via api when you create it, of course bridge need to exists at that time",
+      "revId": "439174fcacaf3e546a01e6c0acedf7e3c1999bcc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "75dbea89_85481281",
+        "filename": "test/hs-test/infra/suite_veth.go",
+        "patchSetId": 2
+      },
+      "lineNbr": 238,
+      "author": {
+        "id": 3325
+      },
+      "writtenOn": "2026-07-23T06:42:35Z",
+      "side": 1,
+      "message": "Yep, switched this to tap_create_v3’s host-bridge fields and removed the manual brctl addif.",
+      "parentUuid": "af0c4829_5786b4c3",
       "revId": "439174fcacaf3e546a01e6c0acedf7e3c1999bcc",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -94,6 +172,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "4227eba9_6fb57bbe",
+        "filename": "test/hs-test/topo-network/2peerTap.yaml",
+        "patchSetId": 2
+      },
+      "lineNbr": 20,
+      "author": {
+        "id": 3325
+      },
+      "writtenOn": "2026-07-23T06:42:35Z",
+      "side": 1,
+      "message": "Yea, we still need it because these are separate TAPs owned by two VPP nodes, without it their host sides aren’t connected. Added a bridge property to both TAPs and pass it through CreateTap.",
+      "parentUuid": "03c03a85_bb61aed1",
+      "revId": "439174fcacaf3e546a01e6c0acedf7e3c1999bcc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "bf6980e6_a791a373",
         "filename": "test/hs-test/vcl_test.go",
         "patchSetId": 2
@@ -105,6 +201,24 @@
       "writtenOn": "2026-07-21T09:15:55Z",
       "side": 1,
       "message": "why we need this?",
+      "revId": "439174fcacaf3e546a01e6c0acedf7e3c1999bcc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "210b21b8_34fd0ab6",
+        "filename": "test/hs-test/vcl_test.go",
+        "patchSetId": 2
+      },
+      "lineNbr": 115,
+      "author": {
+        "id": 3325
+      },
+      "writtenOn": "2026-07-23T06:42:35Z",
+      "side": 1,
+      "message": "The VCL UDP server sends a one-byte migration probe on accept unless test-byte mode is enabled. It can race the unidirectional builtin client’s teardown, so this suppresses it here. Added a comment.",
+      "parentUuid": "bf6980e6_a791a373",
       "revId": "439174fcacaf3e546a01e6c0acedf7e3c1999bcc",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
