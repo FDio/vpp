@@ -499,7 +499,7 @@ oct_add_sg_list (union nix_send_sg_s *sg, vlib_buffer_t *b, u64 n_segs)
       if (seg3->flags & VLIB_BUFFER_NEXT_PRESENT)
 	{
 	  seg1 = vlib_get_buffer (vm, seg3->next_buffer);
-	  sg += 4;
+	  sg += 3;
 	}
       n_segs -= 3;
     }
