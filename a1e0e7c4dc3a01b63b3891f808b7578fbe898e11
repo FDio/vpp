@@ -16,6 +16,24 @@
       "message": "If this condition is already tested in `abf_itf_attach_cmd()`, then doing it here will be redundant when the function is called because it was initiated by a CLI command.\n\nThis could be avoided by either removing the check from `abf_itf_attach_cmd()` or putting it in `vl_api_abf_itf_attach_add_del_t_handler()` instead of `abf_itf_attach_cmd()`.",
       "revId": "a1e0e7c4dc3a01b63b3891f808b7578fbe898e11",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "9dfbd5fd_ca92c90e",
+        "filename": "src/plugins/abf/abf_itf_attach.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 165,
+      "author": {
+        "id": 2267
+      },
+      "writtenOn": "2026-07-23T19:48:01Z",
+      "side": 1,
+      "message": "Good point, thanks. Went with the first option in patch set 3: the check stays in abf_itf_attach() so that every caller is covered (including any future ones), and the redundant pre-check in abf_itf_attach_cmd() is removed.\n\nThat also required making the CLI look at the attach/detach return values, which it previously ignored, otherwise dropping the pre-check would have made abf attach with a bad policy id fail silently. It now reports the error via format_vnet_api_errno().",
+      "parentUuid": "fa308e51_3fc2fb0f",
+      "revId": "a1e0e7c4dc3a01b63b3891f808b7578fbe898e11",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
