@@ -1,0 +1,44 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "50aa1ab6_ec97b00c",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-07-23T07:09:04Z",
+      "side": 1,
+      "message": "looks good now, just one minor change",
+      "revId": "c9a8ddb572f6a5be94819ce05396b40ebbdd8993",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "00dff6ed_6a32b6e8",
+        "filename": "test/hs-test/infra/suite_tap.go",
+        "patchSetId": 3
+      },
+      "lineNbr": 33,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-07-23T07:09:04Z",
+      "side": 1,
+      "message": "can you please rename this container topology file so it doesn\u0027t have interface type in name? maybe something like 2peerVpps",
+      "range": {
+        "startLine": 33,
+        "startChar": 26,
+        "endLine": 33,
+        "endChar": 35
+      },
+      "revId": "c9a8ddb572f6a5be94819ce05396b40ebbdd8993",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
