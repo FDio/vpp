@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "56b9d693_9ca28b60",
+        "filename": "src/plugins/unittest/udp_test.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 277,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-07-23T09:31:01Z",
+      "side": 1,
+      "message": "The new assertions look good, but `UdpUnitTest` is not included in `RegisterNoTopoTests(...)` in `test/hs-test/unittests_test.go`, so `test udp all` is never invoked. Could we register it there? Also, `SkipIfNotCoverage()` means the normal Gerrit HST job will still skip it; please remove that guard or add a regular Python wrapper so this regression is exercised by CI.",
+      "revId": "f360f7565a4c6df290aa57b96de7d8ca0f1aea09",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
