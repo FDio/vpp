@@ -53,6 +53,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "301f421c_4c31ed73",
+        "filename": "src/vnet/flow/flow.c",
+        "patchSetId": 36
+      },
+      "lineNbr": 282,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2026-07-23T08:49:08Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "76a81ce1_a9991207",
+      "revId": "b6afadd2bf5033c08f56f88cd05367dfdbf59b37",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "72b470a2_558a109a",
@@ -84,6 +102,24 @@
       "side": 1,
       "message": "This postcondition loop appears to mask partial completion. If the backend processes only part of the batch, the first untouched flow changes the result to `VNET_FLOW_ERROR_INTERNAL`, losing the backend error or success count. Since the contract requires callers to inspect each flow after an error, could we remove this loop or preserve the original callback result?",
       "parentUuid": "72b470a2_558a109a",
+      "revId": "b6afadd2bf5033c08f56f88cd05367dfdbf59b37",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "bda57891_9b969bde",
+        "filename": "src/vnet/flow/flow.c",
+        "patchSetId": 36
+      },
+      "lineNbr": 284,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2026-07-23T08:49:08Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "fc36d351_d8efbfd8",
       "revId": "b6afadd2bf5033c08f56f88cd05367dfdbf59b37",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -123,6 +159,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "f72d2424_513adea7",
+        "filename": "src/vnet/flow/flow.c",
+        "patchSetId": 36
+      },
+      "lineNbr": 342,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2026-07-23T08:49:08Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "d4c8dc57_33a2ce27",
+      "revId": "b6afadd2bf5033c08f56f88cd05367dfdbf59b37",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "5d6cc5fb_9dc41965",
@@ -140,6 +194,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "0f2c1323_e9497304",
+        "filename": "src/vnet/flow/flow_cli.c",
+        "patchSetId": 36
+      },
+      "lineNbr": 298,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2026-07-23T08:49:08Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "5d6cc5fb_9dc41965",
+      "revId": "b6afadd2bf5033c08f56f88cd05367dfdbf59b37",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "8703934c_53fe3182",
@@ -153,6 +225,24 @@
       "writtenOn": "2026-07-23T08:23:11Z",
       "side": 1,
       "message": "Could we document the caller contract here? `flow_indices` must contain unique indices, and operations affecting the same flow must be serialized by the caller. The latter also applies to the synchronous flow API because its state check and backend callback are not atomic.",
+      "revId": "b6afadd2bf5033c08f56f88cd05367dfdbf59b37",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "9645694c_b047777f",
+        "filename": "src/vnet/interface.h",
+        "patchSetId": 36
+      },
+      "lineNbr": 167,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2026-07-23T08:49:08Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "8703934c_53fe3182",
       "revId": "b6afadd2bf5033c08f56f88cd05367dfdbf59b37",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
