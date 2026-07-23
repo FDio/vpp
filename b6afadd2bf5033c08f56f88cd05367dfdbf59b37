@@ -37,6 +37,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "76a81ce1_a9991207",
+        "filename": "src/vnet/flow/flow.c",
+        "patchSetId": 36
+      },
+      "lineNbr": 282,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-07-23T08:23:11Z",
+      "side": 1,
+      "message": "I would avoid saying that the batch is \"not installed,\" since the backend may have completed part of it. Perhaps: \"If the callback fails, some operations may already have completed. Successfully processed flows must update `driver_data`; callers should inspect each requested flow to determine the remaining work.\"",
+      "parentUuid": "1d90bd5a_42578819",
+      "revId": "b6afadd2bf5033c08f56f88cd05367dfdbf59b37",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "72b470a2_558a109a",
         "filename": "src/vnet/flow/flow.c",
         "patchSetId": 36
@@ -54,6 +72,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "fc36d351_d8efbfd8",
+        "filename": "src/vnet/flow/flow.c",
+        "patchSetId": 36
+      },
+      "lineNbr": 284,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-07-23T08:23:11Z",
+      "side": 1,
+      "message": "This postcondition loop appears to mask partial completion. If the backend processes only part of the batch, the first untouched flow changes the result to `VNET_FLOW_ERROR_INTERNAL`, losing the backend error or success count. Since the contract requires callers to inspect each flow after an error, could we remove this loop or preserve the original callback result?",
+      "parentUuid": "72b470a2_558a109a",
+      "revId": "b6afadd2bf5033c08f56f88cd05367dfdbf59b37",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "e0f9c9f7_220b51f9",
         "filename": "src/vnet/flow/flow.c",
         "patchSetId": 36
@@ -65,6 +101,58 @@
       "writtenOn": "2026-07-23T08:06:48Z",
       "side": 1,
       "message": "Same comment as for `vnet_flow_async_range_enable()`",
+      "revId": "b6afadd2bf5033c08f56f88cd05367dfdbf59b37",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d4c8dc57_33a2ce27",
+        "filename": "src/vnet/flow/flow.c",
+        "patchSetId": 36
+      },
+      "lineNbr": 342,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-07-23T08:23:11Z",
+      "side": 1,
+      "message": "Same issue as in the enable path: this loop can replace a partial-disable result with `VNET_FLOW_ERROR_INTERNAL`.",
+      "parentUuid": "e0f9c9f7_220b51f9",
+      "revId": "b6afadd2bf5033c08f56f88cd05367dfdbf59b37",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5d6cc5fb_9dc41965",
+        "filename": "src/vnet/flow/flow_cli.c",
+        "patchSetId": 36
+      },
+      "lineNbr": 298,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-07-23T08:23:11Z",
+      "side": 1,
+      "message": "`line_input` is freed immediately before it is passed to `format_unformat_error`. Could we construct the error before calling `unformat_free()` to avoid accessing freed vector storage?",
+      "revId": "b6afadd2bf5033c08f56f88cd05367dfdbf59b37",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8703934c_53fe3182",
+        "filename": "src/vnet/interface.h",
+        "patchSetId": 36
+      },
+      "lineNbr": 167,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-07-23T08:23:11Z",
+      "side": 1,
+      "message": "Could we document the caller contract here? `flow_indices` must contain unique indices, and operations affecting the same flow must be serialized by the caller. The latter also applies to the synchronous flow API because its state check and backend callback are not atomic.",
       "revId": "b6afadd2bf5033c08f56f88cd05367dfdbf59b37",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
