@@ -1,0 +1,94 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "2457a0dc_5bcbf9d8",
+        "filename": "src/drivers/iavf/port.c",
+        "patchSetId": 37
+      },
+      "lineNbr": 144,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-07-24T15:48:51Z",
+      "side": 1,
+      "message": "Done. The frame overhead now uses named IAVF_RX_FRAME_FCS_SIZE and IAVF_RX_FRAME_VLAN_TAGS constants instead of inline numbers.",
+      "parentUuid": "737993c8_d2993577",
+      "revId": "0db8a0e679b0257ab76628dd6bdeb726d22f846a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "994ee74e_d98f5592",
+        "filename": "src/drivers/iavf/queue.c",
+        "patchSetId": 37
+      },
+      "lineNbr": 63,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-07-24T15:48:51Z",
+      "side": 1,
+      "message": "Done. The TX RS slot ring size now uses IAVF_TX_RS_SLOT_RING_SIZE.",
+      "parentUuid": "f9034ad6_1fd8a976",
+      "revId": "0db8a0e679b0257ab76628dd6bdeb726d22f846a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a7fdaa70_e2d6c37e",
+        "filename": "src/drivers/iavf/tx_node.c",
+        "patchSetId": 37
+      },
+      "lineNbr": 141,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-07-24T15:48:51Z",
+      "side": 1,
+      "message": "Done. The header-size variable is now named hdr_sz.",
+      "parentUuid": "9f806aed_12d9bc8b",
+      "revId": "0db8a0e679b0257ab76628dd6bdeb726d22f846a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "f9fe2567_a9f8f173",
+        "filename": "src/drivers/iavf/tx_node.c",
+        "patchSetId": 37
+      },
+      "lineNbr": 429,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-07-24T15:48:51Z",
+      "side": 1,
+      "message": "Done. The GSO preparation branch has been moved into iavf_tx_prepare_gso() to keep the main loop focused.",
+      "parentUuid": "684eafd0_62009650",
+      "revId": "0db8a0e679b0257ab76628dd6bdeb726d22f846a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "7904a4f6_cd621d1b",
+        "filename": "src/drivers/iavf/tx_node.c",
+        "patchSetId": 37
+      },
+      "lineNbr": 656,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-07-24T15:48:51Z",
+      "side": 1,
+      "message": "Done. iavf_tx_node() now advances buffers and n_left for every packet consumed by iavf_tx_prepare(), independently from descriptor production.",
+      "parentUuid": "ac30eb0f_8a7a20f8",
+      "revId": "0db8a0e679b0257ab76628dd6bdeb726d22f846a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
