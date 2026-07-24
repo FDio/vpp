@@ -19,7 +19,7 @@ typedef struct
   vp_test_worker_t *wrk;   /**< Per-thread state */
   u8 *connect_test_data;   /**< Pre-computed test data */
 
-  volatile u32 ready_connections;
+  volatile u32 ready_sessions;
   volatile u32 failed_session_closes;
   volatile u32 reset_count;
   volatile u32 disconnect_count;
@@ -46,7 +46,7 @@ typedef struct
    * Configuration params
    */
   vp_test_cfg_t cfg;
-  u32 expected_connections;  /**< Number of clients/connections */
+  u32 expected_sessions;     /**< Number of test sessions */
   u32 connections_per_batch; /**< Connections to rx/tx at once */
   u64 throughput;	     /**< Target bytes per second */
   u64 attach_flags;	     /**< App attach flags */
