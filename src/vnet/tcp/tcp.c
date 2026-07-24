@@ -307,19 +307,14 @@ tcp_connection_t *
 tcp_connection_alloc_w_base (u8 thread_index, tcp_connection_t **base)
 {
   tcp_worker_ctx_t *wrk = tcp_get_worker (thread_index);
+  clib_thread_index_t base_thread_index;
   tcp_connection_t *tc;
+  u32 base_index;
 
-  /* Make sure connection is still valid if pool moves */
-  if ((*base)->c_thread_index == thread_index)
-    {
-      u32 base_index = (*base)->c_c_index;
-      pool_get_aligned_safe (wrk->connections, tc, CLIB_CACHE_LINE_BYTES);
-      *base = tcp_worker_connection_get (wrk, base_index);
-    }
-  else
-    {
-      pool_get_aligned_safe (wrk->connections, tc, CLIB_CACHE_LINE_BYTES);
-    }
+  base_index = (*base)->c_c_index;
+  base_thread_index = (*base)->c_thread_index;
+  pool_get_aligned_safe (wrk->connections, tc, CLIB_CACHE_LINE_BYTES);
+  *base = tcp_connection_get (base_index, base_thread_index);
   clib_memcpy_fast (tc, *base, sizeof (*tc));
   tc->c_c_index = tc - wrk->connections;
   tc->c_thread_index = thread_index;
