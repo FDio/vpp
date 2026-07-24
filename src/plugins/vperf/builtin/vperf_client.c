@@ -144,7 +144,7 @@ vp_client_session_peer_close (session_t *s, u8 is_reset)
 
   if (was_running)
     {
-      clib_atomic_sub_fetch (&vpcm->ready_connections, 1);
+      clib_atomic_sub_fetch (&vpcm->ready_sessions, 1);
       signal_evt_to_cli (VP_CLIENT_CLI_TEST_DONE);
     }
 }
@@ -375,7 +375,7 @@ vp_client_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *fra
 
 	  vec_delete (conns_this_batch, 1, i);
 	  i--;
-	  n_active_conn = clib_atomic_sub_fetch (&vpcm->ready_connections, 1);
+	  n_active_conn = clib_atomic_sub_fetch (&vpcm->ready_sessions, 1);
 	  /* Kick the debug CLI process */
 	  if (n_active_conn == 0)
 	    {
@@ -415,7 +415,7 @@ vp_client_reset_runtime_config (vp_client_main_t *vpcm)
   vpcm->cfg.http_connect_proto = VP_HTTP_CONNECT_PROTO_NONE;
   vpcm->run_test = VP_CLIENT_STARTING;
   vpcm->end_test = false;
-  vpcm->ready_connections = 0;
+  vpcm->ready_sessions = 0;
   vpcm->failed_session_closes = 0;
   vpcm->reset_count = 0;
   vpcm->disconnect_count = 0;
@@ -523,7 +523,7 @@ vp_client_prealloc_sessions (vp_client_main_t *vpcm)
 
   n_wrks = vlib_num_workers () ? vlib_num_workers () : 1;
 
-  sessions_per_wrk = vpcm->cfg.n_clients / n_wrks;
+  sessions_per_wrk = vpcm->expected_sessions / n_wrks;
   vec_foreach (wrk, vpcm->wrk)
     pool_init_fixed (wrk->sessions, 1.1 * sessions_per_wrk);
 }
@@ -674,8 +674,8 @@ vp_client_session_connected_callback (u32 app_index, u32 api_context, session_t 
   tp = &vp_test_main.protos[vpcm->cfg.proto];
   n_connected = tp->connected (s, &vpcm->cfg, wrk, vpcm->app_index);
 
-  n_ready = clib_atomic_add_fetch (&vpcm->ready_connections, n_connected);
-  if (n_ready == vpcm->expected_connections)
+  n_ready = clib_atomic_add_fetch (&vpcm->ready_sessions, n_connected);
+  if (n_ready == vpcm->expected_sessions)
     {
       /* Signal the CLI process that the action is starting... */
       signal_evt_to_cli (VP_CLIENT_CLI_CONNECTS_DONE);
@@ -734,17 +734,6 @@ vp_client_session_disconnect_callback (session_t *s)
   a->app_index = vpcm->app_index;
   vnet_disconnect_session (a);
   return;
-}
-
-void
-vp_client_session_disconnect (session_t *s)
-{
-  vp_client_main_t *vpcm = &vp_client_main;
-  vnet_disconnect_args_t _a = { 0 }, *a = &_a;
-
-  a->handle = session_handle (s);
-  a->app_index = vpcm->app_index;
-  vnet_disconnect_session (a);
 }
 
 static int
@@ -868,7 +857,7 @@ vp_client_attach ()
   a->name = format (0, "vperf_client");
   a->session_cb_vft = &vp_client_cb_vft;
 
-  prealloc_fifos = vpcm->prealloc_fifos ? vpcm->expected_connections : 1;
+  prealloc_fifos = vpcm->prealloc_fifos ? vpcm->expected_sessions : 1;
 
   options[APP_OPTIONS_SEGMENT_SIZE] = vpcm->cfg.private_segment_size;
   options[APP_OPTIONS_ADD_SEGMENT_SIZE] = vpcm->cfg.private_segment_size;
@@ -952,7 +941,7 @@ vp_client_connect_rpc (void *args)
   while (ci < n_clients)
     {
       /* Crude pacing for call setups  */
-      if (ci - clib_atomic_load_relax_n (&vpcm->ready_connections) > 128)
+      if (ci - clib_atomic_load_relax_n (&vpcm->ready_sessions) > 128)
 	{
 	  vpcm->connect_conn_index = ci;
 	  break;
@@ -971,7 +960,7 @@ vp_client_connect_rpc (void *args)
       ci += 1;
     }
 
-  if (ci < vpcm->expected_connections && vpcm->run_test != VP_CLIENT_EXITING)
+  if (ci < n_clients && vpcm->run_test != VP_CLIENT_EXITING)
     vp_client_program_connects ();
 
   return 0;
@@ -1085,11 +1074,11 @@ vp_client_print_timeout_stats (vlib_main_t *vm)
 	}
     }
   vp_cli ("Timeout at %.6f with %d sessions still active...", vlib_time_now (vm),
-	  vpcm->ready_connections);
+	  vpcm->ready_sessions);
   if (vpcm->cfg.echo_bytes)
     {
       vp_cli ("Received %llu bytes out of %llu sent (%llu target)", received_bytes, sent_bytes,
-	      vpcm->cfg.bytes_to_send * vpcm->cfg.n_clients);
+	      vpcm->cfg.bytes_to_send * vpcm->expected_sessions);
     }
 }
 
@@ -1182,9 +1171,8 @@ vp_client_run (vlib_main_t *vm)
   switch (event_type)
     {
     case ~0:
-      vp_cli ("Timeout with only %u sessions active...", vpcm->ready_connections);
-      error =
-	clib_error_return (0, "failed: syn timeout with %u sessions", vpcm->ready_connections);
+      vp_cli ("Timeout with only %u sessions active...", vpcm->ready_sessions);
+      error = clib_error_return (0, "failed: syn timeout with %u sessions", vpcm->ready_sessions);
       goto stop_test;
 
     case VP_CLIENT_CLI_CONNECTS_DONE:
@@ -1196,11 +1184,11 @@ vp_client_run (vlib_main_t *vm)
 	    clib_atomic_load_relax_n (&vpcm->disconnect_count));
 	  goto stop_test;
 	}
-      vpcm->ready_connections = vpcm->expected_connections;
+      vpcm->ready_sessions = vpcm->expected_sessions;
       if (vpcm->throughput)
 	vp_client_calc_tput (vpcm);
       vpcm->run_test = VP_CLIENT_RUNNING;
-      if (!vp_client_transport_proto_is_cless () && vpcm->expected_connections > 1)
+      if (!vp_client_transport_proto_is_cless () && vpcm->expected_sessions > 1)
 	{
 	  delta = vlib_time_now (vm) - vpcm->syn_start_time;
 	  if (delta != 0.0)
@@ -1220,11 +1208,11 @@ vp_client_run (vlib_main_t *vm)
 	      0,
 	      "failed: connect failed (%u sessions connected, %u session close events "
 	      "while connecting: %u reset, %u disconnected)",
-	      vpcm->ready_connections, close_count, reset_count, disconnect_count);
+	      vpcm->ready_sessions, close_count, reset_count, disconnect_count);
 	  }
 	else
 	  error = clib_error_return (0, "failed: connect failed (%u sessions connected)",
-				     vpcm->ready_connections);
+				     vpcm->ready_sessions);
       }
       goto stop_test;
 
