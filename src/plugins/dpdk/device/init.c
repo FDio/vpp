@@ -258,18 +258,20 @@ dpdk_counters_xstats_init (dpdk_device_t *xd)
     {
       vec_foreach_index (i, xstats_names)
 	{
+	  /* Keep xstats separate from interface counters whose packet and byte
+	   * components are exported as suffixed metric names. */
 	  /* There is a bug in the ENA driver where the xstats names are not
 	   * unique. */
-	  xd->xstats_symlinks[i] = vlib_stats_add_symlink (
-	    xd->xstats_counters.stats_entry_index, i, "/interfaces/%U/%s%c",
-	    format_vnet_sw_if_index_name, vnet_get_main (), xd->sw_if_index,
-	    xstats_names[i].name, 0);
+	  xd->xstats_symlinks[i] =
+	    vlib_stats_add_symlink (xd->xstats_counters.stats_entry_index, i,
+				    "/interfaces/%U/xstats-%s%c", format_vnet_sw_if_index_name,
+				    vnet_get_main (), xd->sw_if_index, xstats_names[i].name, 0);
 	  if (xd->xstats_symlinks[i] == STAT_SEGMENT_INDEX_INVALID)
 	    {
 	      xd->xstats_symlinks[i] = vlib_stats_add_symlink (
-		xd->xstats_counters.stats_entry_index, i,
-		"/interfaces/%U/%s_%d%c", format_vnet_sw_if_index_name,
-		vnet_get_main (), xd->sw_if_index, xstats_names[i].name, i, 0);
+		xd->xstats_counters.stats_entry_index, i, "/interfaces/%U/xstats-%s_%d%c",
+		format_vnet_sw_if_index_name, vnet_get_main (), xd->sw_if_index,
+		xstats_names[i].name, i, 0);
 	    }
 	}
     }
