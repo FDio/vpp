@@ -1113,7 +1113,11 @@ static u32
 vp_proto_http_connected (session_t *s, vp_test_cfg_t *cfg, vp_test_worker_t *wrk, u32 app_index)
 {
   vp_test_session_t *es;
+  session_endpoint_cfg_t sep = SESSION_ENDPOINT_CFG_NULL;
+  vnet_connect_args_t _a, *a = &_a;
+  session_t *stream_session;
   http_msg_t msg;
+  u32 stream_n;
   int rv;
 
   ASSERT (http_session_get_version (s) == cfg->http_version);
@@ -1152,8 +1156,42 @@ vp_proto_http_connected (session_t *s, vp_test_cfg_t *cfg, vp_test_worker_t *wrk
   if (svm_fifo_set_event (s->tx_fifo))
     session_program_tx_io_evt (s->handle, SESSION_IO_EVT_TX);
 
-  /* TODO: multiplexing support for h2/h3 */
-  return 1;
+  if (cfg->http_version == HTTP_VERSION_1 || cfg->n_streams == 1)
+    return 1;
+
+  clib_memset (a, 0, sizeof (*a));
+  a->app_index = app_index;
+  sep.parent_handle = session_handle (s);
+  sep.transport_proto = TRANSPORT_PROTO_HTTP;
+  clib_memcpy (&a->sep_ext, &sep, sizeof (sep));
+
+  for (stream_n = 1; stream_n < cfg->n_streams; stream_n++)
+    {
+      es = vp_test_session_alloc (wrk);
+      a->api_context = es->session_index;
+      if ((rv = vnet_connect_stream (a)))
+	{
+	  vp_proto_err ("Stream session #%d opening failed: %U", stream_n, format_session_error,
+			rv);
+	  break;
+	}
+      stream_session = session_get_from_handle (a->sh);
+      vperf_app_session_init (es, stream_session);
+
+      es->bytes_to_send = cfg->bytes_to_send;
+      es->bytes_to_receive = 0ULL; /* only unidirectional (upload) test supported */
+      es->bytes_paced_target = ~0;
+      es->bytes_paced_current = ~0;
+      es->vpp_session_handle = a->sh;
+      vec_add1 (wrk->conn_indices, es->session_index);
+      rv = svm_fifo_enqueue_segments (stream_session->tx_fifo, segs, 2, 0);
+      if (rv < (sizeof (msg) + msg.data.target_path_len))
+	return -1;
+      if (svm_fifo_set_event (stream_session->tx_fifo))
+	session_program_tx_io_evt (stream_session->handle, SESSION_IO_EVT_TX);
+    }
+
+  return stream_n;
 }
 
 always_inline int
