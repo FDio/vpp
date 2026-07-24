@@ -1,0 +1,22 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "9b52a506_908b456a",
+        "filename": "src/plugins/rdma/device.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 165,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-07-24T15:48:18Z",
+      "side": 1,
+      "message": "Done. The port selection now uses a single RDMA_NLDEV_CMD_PORT_GET dump, matching DEV_NAME and NDEV_INDEX to select the actual PORT_INDEX; the device lookup and per-port request path is gone.",
+      "parentUuid": "8b0befe2_3f513e1f",
+      "revId": "23762d82b8fd135d49dab42467506e7609dd2a80",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
