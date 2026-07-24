@@ -484,6 +484,7 @@ VLIB_CLI_COMMAND (tls_client_run_command, static) = {
 		"[profile-index %d] [verify <mode>] [ca-cert <ca-cert-file>] "
 		"[crl <crl-file>]",
   .function = tls_client_run_command_fn,
+  .is_mp_safe = 1,
 };
 
 clib_error_t *

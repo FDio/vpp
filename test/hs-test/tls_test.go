@@ -16,6 +16,7 @@ func init() {
 	RegisterTlsTests(TlsAlpMatchTest, TlsAlpnOverlapMatchTest, TlsAlpnServerPriorityMatchTest, TlsAlpnMismatchTest,
 		TlsAlpnEmptyServerListTest, TlsAlpnEmptyClientListTest, TlsCrlRejectThenAllowTest,
 		TlsPicotlsAlpnEmptyServerListTest, TlsPicotlsAlpnEmptyClientListTest)
+	RegisterTlsMWTests(TlsAlpnEmptyClientListMWTest, TlsPicotlsAlpnEmptyClientListMWTest)
 }
 
 func tlsCmd(cmd string, engine tlsTestEngine) string {
@@ -131,6 +132,18 @@ func TlsAlpnEmptyClientListTest(s *TlsSuite) {
 }
 
 func TlsPicotlsAlpnEmptyClientListTest(s *TlsSuite) {
+	tlsAlpnEmptyClientListTest(s, tlsEnginePicotls)
+}
+
+func TlsAlpnEmptyClientListMWTest(s *TlsSuite) {
+	s.CpusPerVppContainer = 3
+	s.SetupTest()
+	tlsAlpnEmptyClientListTest(s, tlsTestEngine{})
+}
+
+func TlsPicotlsAlpnEmptyClientListMWTest(s *TlsSuite) {
+	s.CpusPerVppContainer = 3
+	s.SetupTest()
 	tlsAlpnEmptyClientListTest(s, tlsEnginePicotls)
 }
 
