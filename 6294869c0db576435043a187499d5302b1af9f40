@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1461fbda_ef18eb9b",
+        "filename": "src/plugins/rdma/input.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 158,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-07-24T13:43:19Z",
+      "side": 1,
+      "message": "This retry path also runs for plain IBV now, but after allocating the missing chain segments it only advances `rxq-\u003etail`; it never constructs or submits the corresponding receive WRs. After buffer-pool exhaustion—or a partial `ibv_post_wq_recv()` failure—the software ring can therefore advance past unposted entries, causing later completions to be matched with the wrong buffers. Could we retain the DV-only behavior here and add an IBV retry path that explicitly posts the recovered chains and handles partial posting correctly?",
+      "revId": "6294869c0db576435043a187499d5302b1af9f40",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "faf1a654_280677c6",
+        "filename": "src/plugins/rdma/input.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1127,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-07-24T13:43:19Z",
+      "side": 1,
+      "message": "Could we handle multisegment packets using the usual VPP fast-loop/slow-path pattern instead of rescanning the complete batch here? With multiseg enabled, plain IBV currently walks every received buffer twice even when all packets fit in one buffer.\n\nSomething along these lines:\n\n```c\nwhile (n_left \u003e\u003d 4)\n  {\n    if (PREDICT_FALSE (wc[0].byte_len \u003e buf_sz ||\n                       wc[1].byte_len \u003e buf_sz ||\n                       wc[2].byte_len \u003e buf_sz ||\n                       wc[3].byte_len \u003e buf_sz))\n      break;\n\n    /* Existing vectorized single-buffer processing. */\n    process_four_buffers (...);\n    b +\u003d 4;\n    wc +\u003d 4;\n    slot \u003d (slot + 4) \u0026 mask;\n    n_left -\u003d 4;\n  }\n\nwhile (n_left)\n  {\n    initialize_buffer (b[0], bt, wc[0].byte_len);\n\n    if (PREDICT_FALSE (wc[0].byte_len \u003e buf_sz))\n      rdma_device_legacy_rq_fix_chain_one (vm, rxq, b[0], slot);\n\n    b++;\n    wc++;\n    slot \u003d (slot + 1) \u0026 mask;\n    n_left--;\n  }\n```\n\nThe same single-packet chain helper could be used by the mlx5 legacy loop. This keeps the common path vectorized, visits ordinary packets only once, and keeps multisegment policy out of the input-node control flow.",
+      "revId": "6294869c0db576435043a187499d5302b1af9f40",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
