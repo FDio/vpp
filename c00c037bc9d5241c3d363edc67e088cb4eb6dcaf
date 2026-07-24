@@ -1,0 +1,40 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ad31c467_c2246350",
+        "filename": "src/plugins/rdma/input.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 158,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-07-24T15:47:47Z",
+      "side": 1,
+      "message": "Done. The DV retry path keeps the doorbell-only behavior, while the IBV retry path now rebuilds and posts the recovered WR chains and only advances tail by the number actually posted.",
+      "parentUuid": "1461fbda_ef18eb9b",
+      "revId": "c00c037bc9d5241c3d363edc67e088cb4eb6dcaf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a2ed5fcd_e99fe7d8",
+        "filename": "src/plugins/rdma/input.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 1127,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-07-24T15:47:47Z",
+      "side": 1,
+      "message": "Done. Multisegment legacy RX now uses vectorized single-buffer fast loops with a per-packet slow path helper for jumbo chains, shared by the mlx5 legacy path.",
+      "parentUuid": "faf1a654_280677c6",
+      "revId": "c00c037bc9d5241c3d363edc67e088cb4eb6dcaf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
