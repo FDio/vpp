@@ -1,0 +1,58 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "7bd51a53_44ff6f0f",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 41
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-07-24T14:07:12Z",
+      "side": 1,
+      "message": "Done in PS41: the commit message now describes the drop/free behavior for unencodable GSO packets, including oversized/split headers and payloads exceeding max_tso.",
+      "parentUuid": "4f74cea8_4059deae",
+      "revId": "01fc16cfb1defc82cc95661791a837adbfe0daa9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "299f1325_e5b55cb3",
+        "filename": "src/plugins/rdma/device.c",
+        "patchSetId": 41
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-07-24T14:07:12Z",
+      "side": 1,
+      "message": "Done in PS41: max_tso is stored on the device, initialization warns when it is below tcp_cfg.max_gso_size, and rdma_mlx5_try_tso() drops/frees GSO packets whose payload exceeds the device limit before posting.",
+      "parentUuid": "7cc840bd_d2334f43",
+      "revId": "01fc16cfb1defc82cc95661791a837adbfe0daa9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "fd7ee6f9_23729b09",
+        "filename": "src/plugins/rdma/output.c",
+        "patchSetId": 41
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-07-24T14:07:12Z",
+      "side": 1,
+      "message": "Done in PS41: regular SEND handling is now in rdma_mlx5_tx_regular(), and rdma_mlx5_tx_one() fully handles either TSO or regular TX. The loop now only distinguishes CONSUMED from NO_SLOTS.",
+      "parentUuid": "7686cff2_12598c1a",
+      "revId": "01fc16cfb1defc82cc95661791a837adbfe0daa9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
