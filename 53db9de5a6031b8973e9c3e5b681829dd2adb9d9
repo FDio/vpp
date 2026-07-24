@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "99a818f9_ecc99d4c",
+        "filename": "src/vlib/pool_cache.h",
+        "patchSetId": 13
+      },
+      "lineNbr": 73,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2026-07-24T13:20:46Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3d3e8cc3_c55017b9",
+      "revId": "53db9de5a6031b8973e9c3e5b681829dd2adb9d9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "00786b68_7da38e4b",
@@ -37,6 +55,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "6e32784e_4de4d526",
+        "filename": "src/vlib/pool_cache.h",
+        "patchSetId": 13
+      },
+      "lineNbr": 76,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2026-07-24T13:20:46Z",
+      "side": 1,
+      "message": "actually, I think we cannot do without a per slot next index as we need a global free list that is unbounded. moreover, it offer a simple way to flush indices back to the global free list.",
+      "parentUuid": "00786b68_7da38e4b",
+      "revId": "53db9de5a6031b8973e9c3e5b681829dd2adb9d9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "663cf13b_04946a84",
         "filename": "src/vlib/pool_cache.h",
         "patchSetId": 13
@@ -48,6 +84,24 @@
       "writtenOn": "2026-07-22T16:48:16Z",
       "side": 1,
       "message": "Could we organize this as two explicit cache lines? `clib_spinlock_t` is only an 8-byte pointer—the lock object itself is separately cache-line aligned—but the current layout mixes fields read by every allocation/free with counters modified during refill and flush.\n\nFor example:\n\n```c\ntypedef struct vlib_pool_cache_t_\n{\n  CLIB_CACHE_LINE_ALIGN_MARK (hot);\n  vlib_pool_cache_thread_t *per_thread;\n  vlib_pool_cache_subpool_meta_t **subpool_meta_chunks;\n  u8 ***pool_chunks;\n  uword elt_size;\n  u32 log2_subpool_size;\n  u32 subpool_size;\n  u32 subpool_mask;\n  u32 max_subpools;\n  u32 max_subpool_chunks;\n  u32 n_subpools;\n  u32 batch_size;\n  u32 align;\n\n  CLIB_CACHE_LINE_ALIGN_MARK (slow);\n  clib_spinlock_t lock;\n  u32 global_free_list;\n  u32 n_global_free;\n  u64 global_lock_acquisitions;\n  u64 growths;\n  char *name;\n  format_function_t *format_element;\n  struct vlib_pool_cache_t_ *next_instance;\n} vlib_pool_cache_t;\n```\n\nThis should keep the common path on one read-mostly line and isolate the locked mutable state. The resulting structure would be about 128 bytes.",
+      "revId": "53db9de5a6031b8973e9c3e5b681829dd2adb9d9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "00d10c67_15044cb2",
+        "filename": "src/vlib/pool_cache.h",
+        "patchSetId": 13
+      },
+      "lineNbr": 79,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2026-07-24T13:20:46Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "663cf13b_04946a84",
       "revId": "53db9de5a6031b8973e9c3e5b681829dd2adb9d9",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
