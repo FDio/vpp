@@ -1,0 +1,40 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "6b9f41bf_64a16864",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 6
+      },
+      "lineNbr": 3,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-07-24T15:48:35Z",
+      "side": 1,
+      "message": "Done. The commit body is wrapped to 72 columns.",
+      "parentUuid": "aee3a9aa_047dc2c0",
+      "revId": "8fad0e2d4e141c29b48ab3f57f3d1e81a621a5f1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "471e5d11_ceb5ba55",
+        "filename": "src/plugins/rdma/output.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 178,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-07-24T15:48:35Z",
+      "side": 1,
+      "message": "Done. The chained WQE path now keeps the hardware DS limit separate from the available WQEBB slot limit and selects SEGMENT_SIZE_EXCEEDED only when the DS limit is reached.",
+      "parentUuid": "2636eb9f_a55bd3e6",
+      "revId": "8fad0e2d4e141c29b48ab3f57f3d1e81a621a5f1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
