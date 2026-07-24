@@ -380,13 +380,15 @@ tcp_scoreboard_is_sane_post_recovery (tcp_connection_t *tc)
 }
 
 void
-tcp_rcv_sacks (tcp_connection_t * tc, u32 ack)
+tcp_rcv_sacks (tcp_connection_t *tc, u32 ack, tcp_rate_sample_t *rs)
 {
   sack_scoreboard_hole_t *hole, *next_hole;
   sack_scoreboard_t *sb = &tc->sack_sb;
   sack_block_t *blk, *rcv_sacks;
   u32 blk_index = 0, i, j, high_sacked;
   tcp_sb_sack_mode_e mode;
+
+  (void) rs;
 
   sb->last_sacked_bytes = 0;
   sb->last_bytes_delivered = 0;

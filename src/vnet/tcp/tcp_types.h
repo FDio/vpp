@@ -184,6 +184,11 @@ typedef struct _sack_scoreboard
 
 } sack_scoreboard_t;
 
+typedef enum tcp_ack_flag_
+{
+  TCP_ACK_F_DUPACK = 1,
+} __clib_packed tcp_ack_flag_t;
+
 #define TCP_BTS_INVALID_INDEX	((u32)~0)
 
 typedef enum tcp_bts_flags_
@@ -223,6 +228,7 @@ typedef struct tcp_rate_sample_
   u32 last_lost;		/**< Bytes lost now */
   u32 lost;			/**< Number of bytes lost over interval */
   tcp_bts_flags_t flags;	/**< Rate sample flags from bt sample */
+  tcp_ack_flag_t ack_flags;	/**< Flags describing the current ACK */
 } tcp_rate_sample_t;
 
 typedef struct tcp_byte_tracker_

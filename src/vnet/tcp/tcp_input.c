@@ -674,7 +674,7 @@ tcp_cc_exit_recovery (tcp_connection_t *tc)
 /* Process (re)transmit feedback. Output path uses this to decide how much more data to release into
  * the network */
 always_inline void
-tcp_cc_account_recovery_ack (tcp_connection_t *tc, tcp_rate_sample_t *rs, u32 is_dack, u8 has_sack)
+tcp_cc_account_recovery_ack (tcp_connection_t *tc, tcp_rate_sample_t *rs, u8 has_sack)
 {
   if (has_sack)
     {
@@ -683,13 +683,13 @@ tcp_cc_account_recovery_ack (tcp_connection_t *tc, tcp_rate_sample_t *rs, u32 is
     }
   else
     {
-      if (is_dack)
+      if (rs->ack_flags & TCP_ACK_F_DUPACK)
 	{
 	  tc->rcv_dupacks += 1;
 	  TCP_EVT (TCP_EVT_DUPACK_RCVD, tc, 1);
 	}
       tc->rxt_delivered = clib_min (tc->rxt_delivered + tc->bytes_acked, tc->snd_rxt_bytes);
-      if (is_dack)
+      if (rs->ack_flags & TCP_ACK_F_DUPACK)
 	tc->prr_delivered += clib_min (tc->snd_mss, tc->snd_nxt - tc->snd_una);
       else
 	tc->prr_delivered +=
@@ -734,8 +734,7 @@ tcp_cc_update (tcp_connection_t * tc, tcp_rate_sample_t * rs)
  * One function to rule them all ... and in the darkness bind them
  */
 static void
-tcp_cc_handle_event (tcp_connection_t * tc, tcp_rate_sample_t * rs,
-		     u32 is_dack)
+tcp_cc_handle_event (tcp_connection_t *tc, tcp_rate_sample_t *rs)
 {
   u8 has_sack = tcp_opts_sack_permitted (&tc->rcv_opts);
 
@@ -748,7 +747,7 @@ tcp_cc_handle_event (tcp_connection_t * tc, tcp_rate_sample_t * rs,
    */
   if (!tcp_in_cong_recovery (tc))
     {
-      ASSERT (is_dack);
+      ASSERT (rs->ack_flags & TCP_ACK_F_DUPACK);
 
       tc->rcv_dupacks++;
       TCP_EVT (TCP_EVT_DUPACK_RCVD, tc, 1);
@@ -772,7 +771,7 @@ tcp_cc_handle_event (tcp_connection_t * tc, tcp_rate_sample_t * rs,
       return;
     }
 
-  tcp_cc_account_recovery_ack (tc, rs, is_dack, has_sack);
+  tcp_cc_account_recovery_ack (tc, rs, has_sack);
 
   tcp_program_retransmit (tc);
 
@@ -814,7 +813,7 @@ tcp_handle_old_ack (tcp_connection_t * tc, tcp_rate_sample_t * rs)
     return;
 
   if (tcp_opts_sack_permitted (&tc->rcv_opts))
-    tcp_rcv_sacks (tc, tc->snd_una);
+    tcp_rcv_sacks (tc, tc->snd_una, rs);
 
   tc->bytes_acked = 0;
 
@@ -823,7 +822,8 @@ tcp_handle_old_ack (tcp_connection_t * tc, tcp_rate_sample_t * rs)
   else
     rs->acked_and_sacked = tc->sack_sb.last_sacked_bytes;
 
-  tcp_cc_handle_event (tc, rs, 1);
+  rs->ack_flags |= TCP_ACK_F_DUPACK;
+  tcp_cc_handle_event (tc, rs);
 }
 
 /**
@@ -843,15 +843,16 @@ tcp_ack_is_dupack (tcp_connection_t * tc, vlib_buffer_t * b, u32 prev_snd_wnd,
  * Checks if ack is a congestion control event.
  */
 static u8
-tcp_ack_is_cc_event (tcp_connection_t * tc, vlib_buffer_t * b,
-		     u32 prev_snd_wnd, u32 prev_snd_una, u8 * is_dack)
+tcp_ack_is_cc_event (tcp_connection_t *tc, vlib_buffer_t *b, u32 prev_snd_wnd, u32 prev_snd_una,
+		     tcp_rate_sample_t *rs)
 {
   /* Check if ack is duplicate. Per RFC 6675, ACKs that SACK new data are
-   * defined to be 'duplicate' as well */
-  *is_dack = tc->sack_sb.last_sacked_bytes
-    || tcp_ack_is_dupack (tc, b, prev_snd_wnd, prev_snd_una);
+   * defined to be 'duplicate' as well. TCP_ACK_F_DUPACK is bit zero, so the
+   * boolean result can be ORed into ack_flags directly. */
+  rs->ack_flags |=
+    tc->sack_sb.last_sacked_bytes || tcp_ack_is_dupack (tc, b, prev_snd_wnd, prev_snd_una);
 
-  return (*is_dack || tcp_in_cong_recovery (tc));
+  return ((rs->ack_flags & TCP_ACK_F_DUPACK) || tcp_in_cong_recovery (tc));
 }
 
 /**
@@ -863,7 +864,6 @@ tcp_rcv_ack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc, vlib_buffer_t * b,
 {
   u32 prev_snd_wnd, prev_snd_una;
   tcp_rate_sample_t rs = { 0 };
-  u8 is_dack;
 
   TCP_EVT (TCP_EVT_CC_STAT, tc);
 
@@ -897,7 +897,7 @@ tcp_rcv_ack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc, vlib_buffer_t * b,
    */
 
   if (tcp_opts_sack_permitted (&tc->rcv_opts))
-    tcp_rcv_sacks (tc, vnet_buffer (b)->tcp.ack_number);
+    tcp_rcv_sacks (tc, vnet_buffer (b)->tcp.ack_number, &rs);
 
   prev_snd_wnd = tc->snd_wnd;
   prev_snd_una = tc->snd_una;
@@ -927,10 +927,10 @@ tcp_rcv_ack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc, vlib_buffer_t * b,
    * Check if we have congestion event
    */
 
-  if (tcp_ack_is_cc_event (tc, b, prev_snd_wnd, prev_snd_una, &is_dack))
+  if (tcp_ack_is_cc_event (tc, b, prev_snd_wnd, prev_snd_una, &rs))
     {
-      tcp_cc_handle_event (tc, &rs, is_dack);
-      tc->dupacks_in += is_dack;
+      tcp_cc_handle_event (tc, &rs);
+      tc->dupacks_in += !!(rs.ack_flags & TCP_ACK_F_DUPACK);
       if (!tcp_in_cong_recovery (tc))
 	{
 	  *error = TCP_ERROR_ACK_OK;
