@@ -33,6 +33,24 @@
       "message": "What actionable information are the flags expected to provide here? When `known \u003d\u003d VLIB_BUFFER_UNKNOWN`, `bi` may not reference mapped buffer memory, so reading `buffer-\u003eflags` can fault before the panic is emitted. Unless the flags address a specific diagnostic need, I suggest retaining the existing message without dereferencing the buffer.",
       "revId": "3e4236d7e9e71753b603a26ab6dae92ff3368f1a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "58ab2994_fc39818f",
+        "filename": "src/vlib/buffer.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 304,
+      "author": {
+        "id": 3200
+      },
+      "writtenOn": "2026-07-24T15:38:29Z",
+      "side": 1,
+      "message": "I agree this dereference is potentially bad; I don\u0027t remember the original issue we were trying to find, so rather than trying to further complicate this part, I will revert these lines.",
+      "parentUuid": "a378679f_e5d5034e",
+      "revId": "3e4236d7e9e71753b603a26ab6dae92ff3368f1a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
