@@ -1,0 +1,22 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "92c405d5_9c00d094",
+        "filename": "test/asf/asfframework.py",
+        "patchSetId": 51
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-07-24T13:55:32Z",
+      "side": 1,
+      "message": "Done in PS51. The guard now requires kernel \u003e\u003d 6.6 for the AF_XDP multi-buffer VM tests, which matches upstream AF_XDP XDP_USE_SG/XDP_PKT_CONTD support. I also renamed the guard and updated the skip message to make the AF_XDP-specific requirement explicit.",
+      "parentUuid": "11f4dcf4_8fb72e7d",
+      "revId": "48c23d1fe5314fd5ab8b7c8f5dfbcf188414e898",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
