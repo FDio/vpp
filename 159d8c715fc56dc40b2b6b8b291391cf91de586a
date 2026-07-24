@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1da6c072_df810e4e",
+        "filename": "src/plugins/unittest/pool_cache_perf_test.c",
+        "patchSetId": 14
+      },
+      "lineNbr": 508,
+      "author": {
+        "id": 1628
+      },
+      "writtenOn": "2026-07-24T15:20:48Z",
+      "side": 1,
+      "message": "shall will return an error, even when POOL_CACHE_PERF_MODE_ALL is enabled ? (and less than 2 workers)",
+      "revId": "159d8c715fc56dc40b2b6b8b291391cf91de586a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "89a6f196_ef50c1ed",
+        "filename": "src/plugins/unittest/pool_cache_test.c",
+        "patchSetId": 14
+      },
+      "lineNbr": 940,
+      "author": {
+        "id": 1628
+      },
+      "writtenOn": "2026-07-24T15:20:48Z",
+      "side": 1,
+      "message": "you need to put \"free-all\" before hitting the match with \"free\" to avoid parsing issue",
+      "revId": "159d8c715fc56dc40b2b6b8b291391cf91de586a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
