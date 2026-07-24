@@ -261,9 +261,24 @@ func HsiProxyLiteUdpIpv6ConnectedTest(s *HsiSuite) {
 	Log(hsi)
 }
 
-func HsiProxyLiteUdpConnectedMWTest(s *HsiSuite) {
+func setupHsiUdpMigrationTest(s *HsiSuite) {
 	s.CpusPerVppContainer = 3
 	s.SetupTest()
+
+	vpp := s.Containers.Vpp.VppInstance
+	numWorkers := len(s.Containers.Vpp.AllocatedCpus) - 1
+	AssertGreaterEqual(numWorkers, 2)
+	for queueID := range numWorkers {
+		Log(vpp.Vppctl("set interface rx-placement %s queue %d worker 0",
+			s.Interfaces.Client.VppName(), queueID))
+		Log(vpp.Vppctl("set interface rx-placement %s queue %d worker 1",
+			s.Interfaces.Server.VppName(), queueID))
+	}
+	Log(vpp.Vppctl("show interface rx-placement"))
+}
+
+func HsiProxyLiteUdpConnectedMWTest(s *HsiSuite) {
+	setupHsiUdpMigrationTest(s)
 
 	remoteServerConn := StartUdpEchoServer(s.ServerAddr(), int(s.Ports.Server))
 	defer remoteServerConn.Close()
@@ -453,8 +468,7 @@ func HsiProxyLiteUdpIdleTimeoutMWTest(s *HsiSuite) {
 }
 
 func HsiProxyLiteUdpRepeatedMigrationIdleMWTest(s *HsiSuite) {
-	s.CpusPerVppContainer = 3
-	s.SetupTest()
+	setupHsiUdpMigrationTest(s)
 
 	remoteServerConn := StartUdpEchoServer(s.ServerAddr(), int(s.Ports.Server))
 	defer remoteServerConn.Close()
