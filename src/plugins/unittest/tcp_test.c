@@ -103,6 +103,7 @@ static int
 tcp_test_sack_reordering (void)
 {
   tcp_connection_t _tc, *tc = &_tc;
+  tcp_rate_sample_t rs = {};
   sack_scoreboard_t *sb = &tc->sack_sb;
   sack_block_t block;
   u32 i;
@@ -136,7 +137,7 @@ tcp_test_sack_reordering (void)
       block.end = tc->snd_nxt;
       vec_add1 (tc->rcv_opts.sacks, block);
       tc->rcv_opts.n_sack_blocks = 1;
-      tcp_rcv_sacks (tc, tc->snd_una);
+      tcp_rcv_sacks (tc, tc->snd_una, &rs);
       ok = TCP_TEST_I ((sb->reorder == t->initial_reorder),
 		       "sack reorder %s: frontier keeps %u, got %u", t->name, t->initial_reorder,
 		       sb->reorder);
@@ -147,7 +148,7 @@ tcp_test_sack_reordering (void)
 	  block.start = t->delayed_start;
 	  block.end = t->delayed_end;
 	  vec_add1 (tc->rcv_opts.sacks, block);
-	  tcp_rcv_sacks (tc, tc->snd_una);
+	  tcp_rcv_sacks (tc, tc->snd_una, &rs);
 	  ok = TCP_TEST_I ((sb->reorder == t->expected_reorder),
 			   "sack reorder %s: expected %u, got %u", t->name, t->expected_reorder,
 			   sb->reorder);
@@ -170,6 +171,7 @@ static u32
 tcp_test_reorder_observe (tcp_connection_t *tc, u16 mss, u32 snd_nxt, u32 distance,
 			  u32 initial_reorder)
 {
+  tcp_rate_sample_t rs = {};
   sack_scoreboard_t *sb = &tc->sack_sb;
   sack_block_t block;
   u32 reorder;
@@ -187,7 +189,7 @@ tcp_test_reorder_observe (tcp_connection_t *tc, u16 mss, u32 snd_nxt, u32 distan
   block.end = snd_nxt;
   vec_add1 (tc->rcv_opts.sacks, block);
   tc->rcv_opts.n_sack_blocks = 1;
-  tcp_rcv_sacks (tc, tc->snd_una);
+  tcp_rcv_sacks (tc, tc->snd_una, &rs);
 
   /* Sack a delayed segment 'distance' bytes below the frontier. */
   vec_reset_length (tc->rcv_opts.sacks);
@@ -195,7 +197,7 @@ tcp_test_reorder_observe (tcp_connection_t *tc, u16 mss, u32 snd_nxt, u32 distan
   block.end = block.start + mss;
   vec_add1 (tc->rcv_opts.sacks, block);
   tc->rcv_opts.n_sack_blocks = 1;
-  tcp_rcv_sacks (tc, tc->snd_una);
+  tcp_rcv_sacks (tc, tc->snd_una, &rs);
 
   reorder = sb->reorder;
 
@@ -212,6 +214,7 @@ static int
 tcp_test_sack_reorder_accuracy (void)
 {
   tcp_connection_t _tc, *tc = &_tc;
+  tcp_rate_sample_t rs = {};
   sack_scoreboard_t *sb = &tc->sack_sb;
   sack_block_t block;
   const u16 mss = 150;
@@ -280,7 +283,7 @@ tcp_test_sack_reorder_accuracy (void)
     block.end = snd_nxt;
     vec_add1 (tc->rcv_opts.sacks, block);
     tc->rcv_opts.n_sack_blocks = 1;
-    tcp_rcv_sacks (tc, tc->snd_una);
+    tcp_rcv_sacks (tc, tc->snd_una, &rs);
 
     /* Large reorder first. */
     vec_reset_length (tc->rcv_opts.sacks);
@@ -288,7 +291,7 @@ tcp_test_sack_reorder_accuracy (void)
     block.end = block.start + mss;
     vec_add1 (tc->rcv_opts.sacks, block);
     tc->rcv_opts.n_sack_blocks = 1;
-    tcp_rcv_sacks (tc, tc->snd_una);
+    tcp_rcv_sacks (tc, tc->snd_una, &rs);
     ok = TCP_TEST_I ((sb->reorder == big), "reorder max: large observation sets %u, got %u", big,
 		     sb->reorder);
 
@@ -300,7 +303,7 @@ tcp_test_sack_reorder_accuracy (void)
 	block.end = block.start + mss;
 	vec_add1 (tc->rcv_opts.sacks, block);
 	tc->rcv_opts.n_sack_blocks = 1;
-	tcp_rcv_sacks (tc, tc->snd_una);
+	tcp_rcv_sacks (tc, tc->snd_una, &rs);
 	ok = TCP_TEST_I ((sb->reorder == big), "reorder max: smaller observation keeps %u, got %u",
 			 big, sb->reorder);
       }
@@ -326,6 +329,7 @@ static int
 tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
 {
   tcp_connection_t _tc, *tc = &_tc;
+  tcp_rate_sample_t rs = {};
   sack_scoreboard_t *sb = &tc->sack_sb;
   sack_block_t *sacks = 0, block;
   sack_scoreboard_hole_t *hole;
@@ -370,7 +374,7 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
       vec_add1 (tc->rcv_opts.sacks, sacks[i * 2]);
     }
   tc->rcv_opts.n_sack_blocks = vec_len (tc->rcv_opts.sacks);
-  tcp_rcv_sacks (tc, 0);
+  tcp_rcv_sacks (tc, 0, &rs);
 
   if (verbose)
     vlib_cli_output (vm, "sb after even blocks (mss %u):\n%U",
@@ -404,7 +408,7 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
       vec_add1 (tc->rcv_opts.sacks, sacks[i * 2 + 1]);
     }
   tc->rcv_opts.n_sack_blocks = vec_len (tc->rcv_opts.sacks);
-  tcp_rcv_sacks (tc, 0);
+  tcp_rcv_sacks (tc, 0, &rs);
 
   if (verbose)
     vlib_cli_output (vm, "\nsb after odd blocks:\n%U", format_tcp_scoreboard,
@@ -425,7 +429,7 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
   /*
    *  Ack until byte 100 - this is reneging because we should ack until 900
    */
-  tcp_rcv_sacks (tc, 100);
+  tcp_rcv_sacks (tc, 100, &rs);
   if (verbose)
     vlib_cli_output (vm, "\nack until byte 100:\n%U", format_tcp_scoreboard,
 		     sb, tc);
@@ -444,7 +448,7 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
   block.end = 950;
   vec_add1 (tc->rcv_opts.sacks, block);
 
-  tcp_rcv_sacks (tc, 100);
+  tcp_rcv_sacks (tc, 100, &rs);
   TCP_TEST ((pool_elts (sb->holes) == 1), "scoreboard has %d elements",
 	    pool_elts (sb->holes));
   TCP_TEST ((sb->is_reneging), "is reneging");
@@ -456,7 +460,7 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
   /*
    * Sack all up to 950
    */
-  tcp_rcv_sacks (tc, 950);
+  tcp_rcv_sacks (tc, 950, &rs);
   TCP_TEST ((sb->high_sacked == 950), "max sacked byte %u", sb->high_sacked);
   TCP_TEST ((sb->sacked_bytes == 0), "sacked bytes %d", sb->sacked_bytes);
   TCP_TEST ((sb->last_sacked_bytes == 0),
@@ -479,7 +483,7 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
   block.end = 990;
   vec_add1 (tc->rcv_opts.sacks, block);
 
-  tcp_rcv_sacks (tc, 950);
+  tcp_rcv_sacks (tc, 950, &rs);
   TCP_TEST ((sb->high_sacked == 990), "max sacked byte %u", sb->high_sacked);
   TCP_TEST ((sb->sacked_bytes == 20), "sacked bytes %d", sb->sacked_bytes);
   TCP_TEST ((sb->last_sacked_bytes == 20),
@@ -495,7 +499,7 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
   tc->rcv_opts.sacks[0].start = 961;
   tc->rcv_opts.sacks[0].end = 971;
 
-  tcp_rcv_sacks (tc, 960);
+  tcp_rcv_sacks (tc, 960, &rs);
 
   TCP_TEST ((sb->is_reneging), "is reneging");
   TCP_TEST ((sb->sacked_bytes == 21), "sacked bytes %d", sb->sacked_bytes);
@@ -513,7 +517,7 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
   tc->rcv_opts.sacks[0].start = 961;
   tc->rcv_opts.sacks[0].end = 990;
 
-  tcp_rcv_sacks (tc, 960);
+  tcp_rcv_sacks (tc, 960, &rs);
 
   TCP_TEST ((sb->is_reneging), "is reneging");
   TCP_TEST ((sb->sacked_bytes == 30), "sacked bytes %d", sb->sacked_bytes);
@@ -528,7 +532,7 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
   tc->rcv_opts.sacks[0].start = 990;
   tc->rcv_opts.sacks[0].end = 1000;
 
-  tcp_rcv_sacks (tc, 960);
+  tcp_rcv_sacks (tc, 960, &rs);
 
   TCP_TEST ((sb->is_reneging), "is reneging");
   TCP_TEST ((sb->sacked_bytes == 40), "sacked bytes %d", sb->sacked_bytes);
@@ -543,7 +547,7 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
    */
   vec_reset_length (tc->rcv_opts.sacks);
   tc->rcv_opts.flags &= ~TCP_OPTS_FLAG_SACK;
-  tcp_rcv_sacks (tc, 970);
+  tcp_rcv_sacks (tc, 970, &rs);
 
   TCP_TEST ((sb->is_reneging), "is reneging");
   TCP_TEST ((sb->sacked_bytes == 30), "sacked bytes %d", sb->sacked_bytes);
@@ -556,7 +560,7 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
    * Ack all up to 1000
    */
   tc->snd_una = 970;
-  tcp_rcv_sacks (tc, 1000);
+  tcp_rcv_sacks (tc, 1000, &rs);
   TCP_TEST ((sb->high_sacked == 1000), "max sacked byte %u", sb->high_sacked);
   TCP_TEST ((sb->sacked_bytes == 0), "sacked bytes %d", sb->sacked_bytes);
   TCP_TEST (sb->last_bytes_delivered == 30, "last bytes delivered %d",
@@ -579,7 +583,7 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
 
   tc->snd_una = 1000;
   tc->snd_nxt = 1500;
-  tcp_rcv_sacks (tc, 1000);
+  tcp_rcv_sacks (tc, 1000, &rs);
 
   if (verbose)
     vlib_cli_output (vm, "\nadd [1200, 1300] snd_una_max 1500, snd_una 1000:"
@@ -604,7 +608,7 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
 
   vec_reset_length (tc->rcv_opts.sacks);
   /* Ack up to 1300 to avoid reneging */
-  tcp_rcv_sacks (tc, 1300);
+  tcp_rcv_sacks (tc, 1300, &rs);
 
   if (verbose)
     vlib_cli_output (vm, "\nsb ack up to byte 1300:\n%U",
@@ -632,7 +636,7 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
       block.end = (i + 1) * 100 + 1200;
       vec_add1 (tc->rcv_opts.sacks, block);
     }
-  tcp_rcv_sacks (tc, 1900);
+  tcp_rcv_sacks (tc, 1900, &rs);
 
   scoreboard_clear (sb);
   if (verbose)
@@ -656,7 +660,7 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
       vec_add1 (tc->rcv_opts.sacks, sacks[i * 2 + 1]);
     }
   tc->rcv_opts.n_sack_blocks = vec_len (tc->rcv_opts.sacks);
-  tcp_rcv_sacks (tc, 0);
+  tcp_rcv_sacks (tc, 0, &rs);
   if (verbose)
     vlib_cli_output (vm, "\nsb added odd blocks snd_una 0 snd_una_max 1000:"
 		     "\n%U", format_tcp_scoreboard, sb, tc);
@@ -670,7 +674,7 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
   /*
    * Renege bytes from 950 to 1000
    */
-  tcp_rcv_sacks (tc, 950);
+  tcp_rcv_sacks (tc, 950, &rs);
 
   if (verbose)
     vlib_cli_output (vm, "\nack [0, 950]:\n%U", format_tcp_scoreboard, sb,
@@ -699,13 +703,13 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
   vec_add1 (tc->rcv_opts.sacks, block);
   tc->rcv_opts.n_sack_blocks = vec_len (tc->rcv_opts.sacks);
 
-  tcp_rcv_sacks (tc, 0);
+  tcp_rcv_sacks (tc, 0, &rs);
 
   if (verbose)
     vlib_cli_output (vm, "\nsb added [100, 500] snd_una 0 snd_una_max 1000:"
 		     "\n%U", format_tcp_scoreboard, sb, tc);
 
-  tcp_rcv_sacks (tc, 800);
+  tcp_rcv_sacks (tc, 800, &rs);
 
   if (verbose)
     vlib_cli_output (vm, "\nsb ack [0, 800]:\n%U", format_tcp_scoreboard, sb,
@@ -738,7 +742,7 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
   vec_add1 (tc->rcv_opts.sacks, block);
   tc->rcv_opts.n_sack_blocks = vec_len (tc->rcv_opts.sacks);
 
-  tcp_rcv_sacks (tc, 0);
+  tcp_rcv_sacks (tc, 0, &rs);
   if (verbose)
     vlib_cli_output (vm, "\nsb added [500, 1000]:\n%U",
 		     format_tcp_scoreboard, sb, tc);
@@ -752,7 +756,7 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
   block.end = 400;
   vec_add1 (tc->rcv_opts.sacks, block);
   tc->rcv_opts.n_sack_blocks = vec_len (tc->rcv_opts.sacks);
-  tcp_rcv_sacks (tc, 100);
+  tcp_rcv_sacks (tc, 100, &rs);
   if (verbose)
     vlib_cli_output (vm, "\nsb added [0, 100] [300, 400]:\n%U",
 		     format_tcp_scoreboard, sb, tc);
@@ -773,7 +777,7 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
    * Step 1. Ack [100 200] which delivers 100 of the bytes lost
    */
   tc->snd_una = 100;
-  tcp_rcv_sacks (tc, 200);
+  tcp_rcv_sacks (tc, 200, &rs);
   TCP_TEST ((sb->sacked_bytes == 600), "sacked bytes %d", sb->sacked_bytes);
   TCP_TEST ((sb->last_bytes_delivered == 0), "last bytes delivered %d",
 	    sb->last_bytes_delivered);
@@ -784,7 +788,7 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
    * as reneging.
    */
   tc->snd_una = 200;
-  tcp_rcv_sacks (tc, 300);
+  tcp_rcv_sacks (tc, 300, &rs);
   if (verbose)
     vlib_cli_output (vm, "\nacked [100, 300] in two steps:\n%U",
 		     format_tcp_scoreboard, sb, tc);
@@ -799,7 +803,7 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
    * above 500
    */
   tc->snd_una = 300;
-  tcp_rcv_sacks (tc, 500);
+  tcp_rcv_sacks (tc, 500, &rs);
   if (verbose)
     vlib_cli_output (vm, "\nacked [400, 500]:\n%U", format_tcp_scoreboard, sb,
 		     tc);
@@ -818,7 +822,7 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
    * Ack up to 1000 to deliver all bytes
    */
   tc->snd_una = 500;
-  tcp_rcv_sacks (tc, 1000);
+  tcp_rcv_sacks (tc, 1000, &rs);
   if (verbose)
     vlib_cli_output (vm, "\nAck high sacked:\n%U", format_tcp_scoreboard, sb,
 		     tc);
@@ -839,7 +843,7 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
   block.end = 1500;
   vec_add1 (tc->rcv_opts.sacks, block);
   tc->rcv_opts.n_sack_blocks = vec_len (tc->rcv_opts.sacks);
-  tcp_rcv_sacks (tc, 1000);
+  tcp_rcv_sacks (tc, 1000, &rs);
   if (verbose)
     vlib_cli_output (vm, "\nacked [1200, 1500] test first hole is lost:\n%U",
 		     format_tcp_scoreboard, sb, tc);
@@ -875,7 +879,7 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
   vec_add1 (tc->rcv_opts.sacks, block);
   tc->rcv_opts.n_sack_blocks = vec_len (tc->rcv_opts.sacks);
 
-  tcp_rcv_sacks (tc, 0);
+  tcp_rcv_sacks (tc, 0, &rs);
 
   TCP_TEST ((sb->sacked_bytes == 400), "sacked bytes %d", sb->sacked_bytes);
   TCP_TEST ((sb->last_sacked_bytes == 400), "last sacked bytes %d",
@@ -889,7 +893,7 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
   tc->rcv_opts.sacks[0].start = 500;
   tc->rcv_opts.sacks[0].end = 1000;
 
-  tcp_rcv_sacks (tc, 100);
+  tcp_rcv_sacks (tc, 100, &rs);
 
   TCP_TEST ((sb->sacked_bytes == 900), "sacked bytes %d", sb->sacked_bytes);
   TCP_TEST ((sb->last_sacked_bytes == 500), "last sacked bytes %d",
@@ -922,7 +926,7 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
   block.end = 3000;
   vec_add1 (tc->rcv_opts.sacks, block);
   tc->rcv_opts.n_sack_blocks = vec_len (tc->rcv_opts.sacks);
-  tcp_rcv_sacks (tc, 0);
+  tcp_rcv_sacks (tc, 0, &rs);
   TCP_TEST ((sb->high_sacked == 3000), "high sacked %u", sb->high_sacked);
   TCP_TEST ((sb->reorder == TCP_DUPACK_THRESHOLD), "reorder still floor %u", sb->reorder);
 
@@ -933,7 +937,7 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
   block.end = 450;
   vec_add1 (tc->rcv_opts.sacks, block);
   tc->rcv_opts.n_sack_blocks = vec_len (tc->rcv_opts.sacks);
-  tcp_rcv_sacks (tc, 0);
+  tcp_rcv_sacks (tc, 0, &rs);
   TCP_TEST ((sb->reorder == 18), "reorder grew in recovery %u", sb->reorder);
 
   /*
@@ -954,7 +958,7 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
   block.end = 3000;
   vec_add1 (tc->rcv_opts.sacks, block);
   tc->rcv_opts.n_sack_blocks = vec_len (tc->rcv_opts.sacks);
-  tcp_rcv_sacks (tc, 0);
+  tcp_rcv_sacks (tc, 0, &rs);
   TCP_TEST ((sb->reorder == TCP_DUPACK_THRESHOLD), "reorder floor %u", sb->reorder);
 
   /* Everything below the frontier has now been retransmitted */
@@ -964,7 +968,7 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
   block.end = 450;
   vec_add1 (tc->rcv_opts.sacks, block);
   tc->rcv_opts.n_sack_blocks = vec_len (tc->rcv_opts.sacks);
-  tcp_rcv_sacks (tc, 0);
+  tcp_rcv_sacks (tc, 0, &rs);
   TCP_TEST ((sb->reorder == TCP_DUPACK_THRESHOLD), "reorder unchanged below high_rxt %u",
 	    sb->reorder);
 
@@ -990,7 +994,7 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
   block.end = 3000;
   vec_add1 (tc->rcv_opts.sacks, block);
   tc->rcv_opts.n_sack_blocks = vec_len (tc->rcv_opts.sacks);
-  tcp_rcv_sacks (tc, 0);
+  tcp_rcv_sacks (tc, 0, &rs);
   TCP_TEST ((sb->high_sacked == 3000), "high sacked %u", sb->high_sacked);
 
   vec_reset_length (tc->rcv_opts.sacks);
@@ -998,7 +1002,7 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
   block.end = 450;
   vec_add1 (tc->rcv_opts.sacks, block);
   tc->rcv_opts.n_sack_blocks = vec_len (tc->rcv_opts.sacks);
-  tcp_rcv_sacks (tc, 0);
+  tcp_rcv_sacks (tc, 0, &rs);
   TCP_TEST ((sb->reorder == TCP_DUPACK_THRESHOLD), "reorder unchanged after rescue rxt %u",
 	    sb->reorder);
 
@@ -1021,7 +1025,7 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
   vec_add1 (tc->rcv_opts.sacks, block);
   tc->snd_una = tc->snd_nxt = 1969067947;
 
-  tcp_rcv_sacks (tc, tc->snd_una);
+  tcp_rcv_sacks (tc, tc->snd_una, &rs);
 
   /*
    * Exercise nested received SACK blocks:
@@ -1066,7 +1070,7 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
   sb->rescue_rxt = tc->snd_nxt;
   sb->sacked_bytes = 67000;
 
-  tcp_rcv_sacks (tc, tc->snd_una);
+  tcp_rcv_sacks (tc, tc->snd_una, &rs);
 
   TCP_TEST ((sb->high_sacked == 102700), "high sacked %u", sb->high_sacked);
   TCP_TEST ((sb->sacked_bytes == 67400), "sacked bytes %u", sb->sacked_bytes);
@@ -1101,7 +1105,7 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
   vec_add1 (tc->rcv_opts.sacks, block);
   tc->rcv_opts.flags |= TCP_OPTS_FLAG_SACK;
   tc->rcv_opts.n_sack_blocks = vec_len (tc->rcv_opts.sacks);
-  tcp_rcv_sacks (tc, tc->snd_una);
+  tcp_rcv_sacks (tc, tc->snd_una, &rs);
   TCP_TEST ((sb->lost_bytes == 300), "SACK marks bytes lost %u", sb->lost_bytes);
 
   scoreboard_recompute_sack_loss (sb, tc->snd_una, tc->snd_mss);
