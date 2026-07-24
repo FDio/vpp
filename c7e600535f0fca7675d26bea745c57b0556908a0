@@ -1,0 +1,22 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a433b536_877bc4dd",
+        "filename": "src/plugins/rdma/device.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 439,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-07-24T15:47:24Z",
+      "side": 1,
+      "message": "Done. The mlx5 DV CQ setup now records supported CQE compression formats and only requests CSUM_STRIDX when advertised; the striding path falls back to an uncompressed CQ otherwise.",
+      "parentUuid": "8709cc3e_fcc6facd",
+      "revId": "c7e600535f0fca7675d26bea745c57b0556908a0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
