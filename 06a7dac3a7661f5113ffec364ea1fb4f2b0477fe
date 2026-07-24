@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "aee3a9aa_047dc2c0",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 5
+      },
+      "lineNbr": 3,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-07-24T13:32:34Z",
+      "side": 1,
+      "message": "Please wrap the commit message body to the usual 72-column width; the two prose lines are currently 221 and 116 characters.",
+      "revId": "06a7dac3a7661f5113ffec364ea1fb4f2b0477fe",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2636eb9f_a55bd3e6",
+        "filename": "src/plugins/rdma/output.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 178,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-07-24T13:32:34Z",
+      "side": 1,
+      "message": "`dseg_max` combines the hardware DS limit with the currently available WQEBBs. If the loop leaves part of the chain unprocessed, `chained_n \u003d\u003d dseg_max` is therefore always true, so the later error selection never reports `NO_FREE_SLOTS`. A packet that fits the 60-DS limit but exceeds the available SQ space is reported as `SEGMENT_SIZE_EXCEEDED`. Could we preserve which limit was reached and select the corresponding error counter?",
+      "revId": "06a7dac3a7661f5113ffec364ea1fb4f2b0477fe",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
