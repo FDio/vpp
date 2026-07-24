@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8709cc3e_fcc6facd",
+        "filename": "src/plugins/rdma/device.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 439,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-07-24T13:18:50Z",
+      "side": 1,
+      "message": "Could we check `cqe_comp_caps.supported_format` before requesting `MLX5DV_CQE_RES_FORMAT_CSUM_STRIDX`? Striding RQ capability does not imply stride-index mini-CQE support, and rdma-core returns `EINVAL` when this format is unavailable, causing interface creation to fail. For unsupported devices, creating an uncompressed CQ for the striding path would preserve the required consumed-stride metadata.",
+      "revId": "be6a9ea955850fa8fc3e15f93c02cfa6ccc21424",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
