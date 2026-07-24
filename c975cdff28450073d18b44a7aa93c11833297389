@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8b0befe2_3f513e1f",
+        "filename": "src/plugins/rdma/device.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 165,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-07-24T13:25:57Z",
+      "side": 1,
+      "message": "Could we simplify this by issuing a single `RDMA_NLDEV_CMD_PORT_GET` dump and selecting the entry matching the verbs device and host netdev? Besides reducing the netlink implementation substantially, this avoids treating the device-level `PORT_INDEX`—which represents the port count/end—as a specific port.\n\n```c\nfd \u003d socket(AF_NETLINK, SOCK_RAW, NETLINK_RDMA);\n\nsend_dump(fd, RDMA_NLDEV_CMD_PORT_GET);\n\nwhile ((n \u003d recv(fd, buf, sizeof(buf), 0)) \u003e 0)\n  for_each_nlmsg(h, buf, n) {\n    if (h-\u003enlmsg_type \u003d\u003d NLMSG_ERROR)\n      return netlink_error(h);\n\n    if (h-\u003enlmsg_type \u003d\u003d NLMSG_DONE)\n      return error(\"host-if has no matching RDMA port\");\n\n    parse_attrs(h, tb);\n\n    if (attr_str_eq(tb[DEV_NAME], ibdev_name) \u0026\u0026\n        attr_u32_eq(tb[NDEV_INDEX], if_nametoindex(ifname)) \u0026\u0026\n        attr_u32(tb[PORT_INDEX], \u0026port)) {\n      *port_num \u003d port;\n      return 0;\n    }\n  }\n```\n\nThis would remove the device lookup, request-attribute builder, and per-port request/ACK handling, leaving only one multipart dump parser.",
+      "revId": "c975cdff28450073d18b44a7aa93c11833297389",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
