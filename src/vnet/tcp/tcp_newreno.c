@@ -72,10 +72,9 @@ newreno_rcv_cong_ack (tcp_connection_t * tc, tcp_cc_ack_t ack_type,
        * window deflation" attempts to ensure that, when fast recovery
        * eventually ends, approximately ssthresh amount of data will be
        * outstanding in the network. */
-      tc->cwnd = (tc->cwnd > tc->bytes_acked + tc->snd_mss) ?
-		   tc->cwnd - tc->bytes_acked :
-		   tc->snd_mss;
-      if (tc->bytes_acked > tc->snd_mss)
+      tc->cwnd =
+	(tc->cwnd > rs->bytes_acked + tc->snd_mss) ? tc->cwnd - rs->bytes_acked : tc->snd_mss;
+      if (rs->bytes_acked > tc->snd_mss)
 	tc->cwnd += tc->snd_mss;
     }
 }

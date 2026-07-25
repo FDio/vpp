@@ -220,6 +220,7 @@ typedef struct tcp_rate_sample_
   u64 tx_in_flight;		/**< In flight at (re)transmit time */
   u64 tx_lost;			/**< Lost over interval */
   u32 delivered;		/**< Bytes delivered in interval_time */
+  u32 bytes_acked;		/**< Bytes cumulatively acknowledged now */
   u32 acked_and_sacked;		/**< Bytes acked + sacked now */
   u32 last_sacked_bytes;	/**< Number of bytes newly sacked */
   u32 last_bytes_delivered;	/**< Previously sacked bytes cumulatively acked */
@@ -330,7 +331,6 @@ typedef struct _tcp_connection
   u32 ssthresh;		/**< Slow-start threshold */
   u32 prev_ssthresh;	/**< ssthresh before congestion */
   u32 prev_cwnd;	/**< ssthresh before congestion */
-  u32 bytes_acked;	/**< Bytes acknowledged by current segment */
   u32 burst_acked;	/**< Bytes acknowledged in current burst */
   u32 snd_rxt_bytes;	/**< Retransmitted bytes during current cc event */
   u32 snd_rxt_ts;	/**< Timestamp when first packet is retransmitted */

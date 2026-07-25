@@ -597,20 +597,19 @@ if (_av > 0) 								\
   ed->data[4] = _tc->snd_wnd;						\
 }
 
-#define TCP_EVT_ACK_RCVD_HANDLER(_tc, ...)				\
-{									\
-  ELOG_TYPE_DECLARE (_e) =						\
-  {									\
-    .format = "ack-rx: %u snd_una %u snd_wnd %u cwnd %u inflight %u",	\
-    .format_args = "i4i4i4i4i4",					\
-  };									\
-  TCP_DECLARE_ETD(_tc, _e, 5);						\
-  ed->data[0] = _tc->bytes_acked;					\
-  ed->data[1] = _tc->snd_una - _tc->iss;				\
-  ed->data[2] = _tc->snd_wnd;						\
-  ed->data[3] = _tc->cwnd;						\
-  ed->data[4] = tcp_flight_size(_tc);					\
-}
+#define TCP_EVT_ACK_RCVD_HANDLER(_tc, _rs, ...)                                                    \
+  {                                                                                                \
+    ELOG_TYPE_DECLARE (_e) = {                                                                     \
+      .format = "ack-rx: %u snd_una %u snd_wnd %u cwnd %u inflight %u",                            \
+      .format_args = "i4i4i4i4i4",                                                                 \
+    };                                                                                             \
+    TCP_DECLARE_ETD (_tc, _e, 5);                                                                  \
+    ed->data[0] = _rs->bytes_acked;                                                                \
+    ed->data[1] = _tc->snd_una - _tc->iss;                                                         \
+    ed->data[2] = _tc->snd_wnd;                                                                    \
+    ed->data[3] = _tc->cwnd;                                                                       \
+    ed->data[4] = tcp_flight_size (_tc);                                                           \
+  }
 
 #define TCP_EVT_PKTIZE_HANDLER(_tc, ...)				\
 {									\

@@ -2638,15 +2638,17 @@ tcp_test_rto_reduce_once_e2e (vlib_main_t *vm, unformat_input_t *input)
    */
   {
     tcp_connection_t _stc, *stc = &_stc;
+    tcp_rate_sample_t _srs, *srs = &_srs;
     u32 mss = 1460;
 
 #define ARM_SPURIOUS()                                                                             \
   do                                                                                               \
     {                                                                                              \
       clib_memset (stc, 0, sizeof (*stc));                                                         \
+      clib_memset (srs, 0, sizeof (*srs));                                                         \
       stc->snd_mss = mss;                                                                          \
       stc->flags |= TCP_CONN_FAST_RECOVERY;                                                        \
-      stc->bytes_acked = 2 * mss;                                                                  \
+      srs->bytes_acked = 2 * mss;                                                                  \
       stc->snd_una = 10000;                                                                        \
       stc->snd_congestion = stc->snd_una + 10 * mss;                                               \
       stc->snd_rxt_ts = 1000;                                                                      \
@@ -2658,7 +2660,7 @@ tcp_test_rto_reduce_once_e2e (vlib_main_t *vm, unformat_input_t *input)
 
     /* Base: all conditions met -> spurious. */
     ARM_SPURIOUS ();
-    if (!TCP_TEST_I ((tcp_cc_is_spurious_retransmit (stc)),
+    if (!TCP_TEST_I ((tcp_cc_is_spurious_retransmit (stc, srs)),
 		     "eifel: spurious on partial cumulative ack, tsecr < snd_rxt_ts, "
 		     "no loss"))
       {
@@ -2669,7 +2671,8 @@ tcp_test_rto_reduce_once_e2e (vlib_main_t *vm, unformat_input_t *input)
     /* Also valid for rto recovery (TCP_CONN_RECOVERY), not just fast recovery. */
     ARM_SPURIOUS ();
     stc->flags = TCP_CONN_RECOVERY;
-    if (!TCP_TEST_I ((tcp_cc_is_spurious_retransmit (stc)), "eifel: also fires for rto recovery"))
+    if (!TCP_TEST_I ((tcp_cc_is_spurious_retransmit (stc, srs)),
+		     "eifel: also fires for rto recovery"))
       {
 	rv = 1;
 	goto cleanup;
@@ -2680,7 +2683,7 @@ tcp_test_rto_reduce_once_e2e (vlib_main_t *vm, unformat_input_t *input)
     ARM_SPURIOUS ();
     stc->flags = TCP_CONN_RECOVERY;
     stc->sack_sb.lost_bytes = mss;
-    if (!TCP_TEST_I ((tcp_cc_is_spurious_retransmit (stc)),
+    if (!TCP_TEST_I ((tcp_cc_is_spurious_retransmit (stc, srs)),
 		     "eifel: rto retransmit spurious despite outstanding loss"))
       {
 	rv = 1;
@@ -2690,7 +2693,7 @@ tcp_test_rto_reduce_once_e2e (vlib_main_t *vm, unformat_input_t *input)
     /* Negative: no retransmit stamped (snd_rxt_ts == 0), nothing to undo. */
     ARM_SPURIOUS ();
     stc->snd_rxt_ts = 0;
-    if (!TCP_TEST_I ((!tcp_cc_is_spurious_retransmit (stc)),
+    if (!TCP_TEST_I ((!tcp_cc_is_spurious_retransmit (stc, srs)),
 		     "eifel: not spurious without a retransmit timestamp"))
       {
 	rv = 1;
@@ -2701,7 +2704,7 @@ tcp_test_rto_reduce_once_e2e (vlib_main_t *vm, unformat_input_t *input)
      * loss remains outstanding. The response handles that as a fresh event. */
     ARM_SPURIOUS ();
     stc->sack_sb.lost_bytes = mss;
-    if (!TCP_TEST_I ((tcp_cc_is_spurious_retransmit (stc)),
+    if (!TCP_TEST_I ((tcp_cc_is_spurious_retransmit (stc, srs)),
 		     "eifel: fast retransmit spurious despite other outstanding loss"))
       {
 	rv = 1;
@@ -2712,7 +2715,7 @@ tcp_test_rto_reduce_once_e2e (vlib_main_t *vm, unformat_input_t *input)
      * RFC 3522 Sec. 3.2 (e.g. rto from losing all acks) -> keep the reduction. */
     ARM_SPURIOUS ();
     stc->snd_una = stc->snd_congestion;
-    if (!TCP_TEST_I ((!tcp_cc_is_spurious_retransmit (stc)),
+    if (!TCP_TEST_I ((!tcp_cc_is_spurious_retransmit (stc, srs)),
 		     "eifel: not spurious on a full-flight ack"))
       {
 	rv = 1;
@@ -2723,7 +2726,7 @@ tcp_test_rto_reduce_once_e2e (vlib_main_t *vm, unformat_input_t *input)
      * retransmit -> the retransmit was needed). */
     ARM_SPURIOUS ();
     stc->rcv_opts.tsecr = stc->snd_rxt_ts;
-    if (!TCP_TEST_I ((!tcp_cc_is_spurious_retransmit (stc)),
+    if (!TCP_TEST_I ((!tcp_cc_is_spurious_retransmit (stc, srs)),
 		     "eifel: not spurious when tsecr >= snd_rxt_ts"))
       {
 	rv = 1;
@@ -2733,7 +2736,7 @@ tcp_test_rto_reduce_once_e2e (vlib_main_t *vm, unformat_input_t *input)
     /* Negative: no timestamp option -> Eifel not applicable. */
     ARM_SPURIOUS ();
     stc->rcv_opts.flags = 0;
-    if (!TCP_TEST_I ((!tcp_cc_is_spurious_retransmit (stc)),
+    if (!TCP_TEST_I ((!tcp_cc_is_spurious_retransmit (stc, srs)),
 		     "eifel: not spurious without the timestamp option"))
       {
 	rv = 1;
@@ -4110,7 +4113,7 @@ tcp_test_delivery (vlib_main_t * vm, unformat_input_t * input)
   /* 2) check delivery rate at time 2 */
   tcp_test_set_time (thread_index, 2);
   tc->snd_una = tc->snd_nxt = burst;
-  tc->bytes_acked = burst;
+  rs->bytes_acked = burst;
 
   tcp_bt_sample_delivery_rate (tc, rs);
 
@@ -4148,7 +4151,7 @@ tcp_test_delivery (vlib_main_t * vm, unformat_input_t * input)
   /* 5) check delivery rate at time 4 */
   tcp_test_set_time (thread_index, 4);
   tc->snd_una = tc->snd_nxt;
-  tc->bytes_acked = 2 * burst;
+  rs->bytes_acked = 2 * burst;
 
   tcp_bt_sample_delivery_rate (tc, rs);
 
@@ -4201,7 +4204,7 @@ tcp_test_delivery (vlib_main_t * vm, unformat_input_t * input)
    */
   tcp_test_set_time (thread_index, 8);
   tc->snd_una += 10;
-  tc->bytes_acked = 10;
+  rs->bytes_acked = 10;
   rs->last_sacked_bytes = 20;
 
   TCP_TEST (pool_elts (bt->samples) == 4, "there should be 4 samples");
@@ -4292,7 +4295,7 @@ tcp_test_delivery (vlib_main_t * vm, unformat_input_t * input)
    */
   tcp_test_set_time (thread_index, 10);
   tc->snd_una = snd_una + 2 * burst;
-  tc->bytes_acked = 2 * burst - 10;
+  rs->bytes_acked = 2 * burst - 10;
   rs->last_sacked_bytes = 20;
 
   sacks[0].start = snd_una + 2 * burst + 20;
@@ -4330,8 +4333,8 @@ tcp_test_delivery (vlib_main_t * vm, unformat_input_t * input)
    */
   tcp_test_set_time (thread_index, 11);
   tc->snd_una = tc->snd_nxt;
-  tc->bytes_acked = 2 * burst;
   memset (rs, 0, sizeof (*rs));
+  rs->bytes_acked = 2 * burst;
   rs->last_sacked_bytes = 0;
   rs->last_bytes_delivered = 40;
 
@@ -4438,7 +4441,7 @@ tcp_test_bt (vlib_main_t * vm, unformat_input_t * input)
   /* --> [150:200] */
   tcp_test_set_time (thread_index, 3);
   tc->snd_una = 150;
-  tc->bytes_acked = 150;
+  rs->bytes_acked = 150;
   rs->last_sacked_bytes = 0;
   tcp_bt_sample_delivery_rate (tc, rs);
 
@@ -4481,7 +4484,7 @@ tcp_test_bt (vlib_main_t * vm, unformat_input_t * input)
   /* --> [250:300][300:350][350:400/sacked] */
   tcp_test_set_time (thread_index, 6);
   tc->snd_una = 250;
-  tc->bytes_acked = 100;
+  rs->bytes_acked = 100;
   rs->last_sacked_bytes = 50;
   vec_add2 (tc->rcv_opts.sacks, blk, 1);
   blk->start = 350;
@@ -4555,7 +4558,7 @@ tcp_test_bt (vlib_main_t * vm, unformat_input_t * input)
   /* --> [400:420][420:450/sacked][450:400] */
   tcp_test_set_time (thread_index, 9);
   tc->snd_una = 400;
-  tc->bytes_acked = 150;
+  rs->bytes_acked = 150;
   rs->last_sacked_bytes = 30;
   vec_add2 (tc->rcv_opts.sacks, blk, 1);
   blk->start = 420;
@@ -4585,7 +4588,7 @@ tcp_test_bt (vlib_main_t * vm, unformat_input_t * input)
   /* --> [] */
   tcp_test_set_time (thread_index, 10);
   tc->snd_una = 500;
-  tc->bytes_acked = 100;
+  rs->bytes_acked = 100;
   rs->last_sacked_bytes = 0;
   tcp_bt_sample_delivery_rate (tc, rs);
 
@@ -4812,14 +4815,14 @@ tcp_test_bt (vlib_main_t * vm, unformat_input_t * input)
   tc->snd_nxt = 101;
   tc->flags |= TCP_CONN_FINSNT;
   tc->snd_una = 100;
-  tc->bytes_acked = 100;
+  rs->bytes_acked = 100;
   tcp_test_set_time (thread_index, 51);
   tcp_bt_sample_delivery_rate (tc, rs);
   TCP_TEST (tc->delivered == 100 && rs->acked_and_sacked == 100,
 	    "data delivery remains sampled after FIN is sent");
   tc->snd_una = 101;
-  tc->bytes_acked = 1;
   memset (rs, 0, sizeof (*rs));
+  rs->bytes_acked = 1;
   tcp_bt_sample_delivery_rate (tc, rs);
   TCP_TEST (tc->delivered == 100 && rs->acked_and_sacked == 0,
 	    "FIN acknowledgment is excluded from delivered bytes");
