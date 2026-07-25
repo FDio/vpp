@@ -130,8 +130,7 @@ format_tcp_congestion (u8 * s, va_list * args)
   u32 indent = format_get_indent (s), prr_space = 0;
 
   s = format (s, "%U ", format_tcp_congestion_status, tc);
-  s = format (s, "algo %s cwnd %u ssthresh %u bytes_acked %u\n",
-	      tc->cc_algo->name, tc->cwnd, tc->ssthresh, tc->bytes_acked);
+  s = format (s, "algo %s cwnd %u ssthresh %u\n", tc->cc_algo->name, tc->cwnd, tc->ssthresh);
   s = format (s, "%Ucc space %u prev_cwnd %u prev_ssthresh %u\n",
 	      format_white_space, indent, tcp_available_cc_snd_space (tc),
 	      tc->prev_cwnd, tc->prev_ssthresh);

@@ -584,15 +584,15 @@ tcp_bt_walk_samples_ooo (tcp_connection_t * tc, tcp_rate_sample_t * rs)
 }
 
 static_always_inline u32
-tcp_bt_data_acked (tcp_connection_t *tc)
+tcp_bt_data_acked (tcp_connection_t *tc, tcp_rate_sample_t *rs)
 {
   u32 ack_end, data_end, prev_una;
 
   if (PREDICT_TRUE (!(tc->flags & TCP_CONN_FINSNT)))
-    return tc->bytes_acked;
+    return rs->bytes_acked;
 
   data_end = tc->snd_nxt - 1;
-  prev_una = tc->snd_una - tc->bytes_acked;
+  prev_una = tc->snd_una - rs->bytes_acked;
   ack_end = seq_lt (tc->snd_una, data_end) ? tc->snd_una : data_end;
   return seq_gt (ack_end, prev_una) ? ack_end - prev_una : 0;
 }
@@ -604,7 +604,7 @@ tcp_bt_sample_delivery_rate (tcp_connection_t * tc, tcp_rate_sample_t * rs)
 
   tc->lost += rs->last_lost;
 
-  data_acked = tcp_bt_data_acked (tc);
+  data_acked = tcp_bt_data_acked (tc, rs);
   delivered = data_acked + rs->last_sacked_bytes;
   delivered -= rs->last_bytes_delivered;
   if (tc->bt->head == TCP_BTS_INVALID_INDEX)

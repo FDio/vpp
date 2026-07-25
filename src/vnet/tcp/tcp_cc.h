@@ -80,9 +80,9 @@ tcp_cc_data (tcp_connection_t * tc)
  * dsack to disambiguate. Other outstanding loss is handled as a new recovery
  * event. Must be called on a cumulative ack in recovery. */
 static inline u8
-tcp_cc_is_spurious_retransmit (tcp_connection_t *tc)
+tcp_cc_is_spurious_retransmit (tcp_connection_t *tc, tcp_rate_sample_t *rs)
 {
-  ASSERT (tcp_in_cong_recovery (tc) && tc->bytes_acked);
+  ASSERT (tcp_in_cong_recovery (tc) && rs->bytes_acked);
   return (tc->snd_rxt_ts && seq_lt (tc->snd_una, tc->snd_congestion) &&
 	  tcp_opts_tstamp (&tc->rcv_opts) && timestamp_lt (tc->rcv_opts.tsecr, tc->snd_rxt_ts));
 }
