@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5b80cb99_453b0da6",
+        "filename": "src/vnet/tcp/tcp.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 321,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-07-25T05:38:43Z",
+      "side": 0,
+      "message": "There\u0027s no reallocation on this branch until the current worker is parked at barrier. So base cannot change until then. The code on the branch above is meant to avoid current thread growing its own pool and invalidating base, which can happen from current thread perspective after all other workers stopped and waited for this pool event.",
+      "revId": "d0ee8e578698e0350177da5ebe0f946b54627d8a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
