@@ -395,6 +395,7 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
   TCP_TEST ((rs.last_sacked_bytes == 400), "last sacked bytes %d", rs.last_sacked_bytes);
   TCP_TEST ((sb->high_sacked == 900), "high sacked %u", sb->high_sacked);
   TCP_TEST ((sb->lost_bytes == 300), "lost bytes %u", sb->lost_bytes);
+  TCP_TEST ((rs.last_lost == 300), "last lost bytes %u", rs.last_lost);
 
   /*
    * Inject odd blocks except the last
@@ -423,6 +424,7 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
   TCP_TEST ((sb->high_sacked == 900), "high sacked %u", sb->high_sacked);
   TCP_TEST ((rs.last_sacked_bytes == 400), "last sacked bytes %d", rs.last_sacked_bytes);
   TCP_TEST ((sb->lost_bytes == 100), "lost bytes %u", sb->lost_bytes);
+  TCP_TEST ((rs.last_lost == 0), "last lost bytes %u", rs.last_lost);
 
   /*
    *  Ack until byte 100 - this is reneging because we should ack until 900
