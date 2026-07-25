@@ -16,6 +16,24 @@
       "message": "There\u0027s no reallocation on this branch until the current worker is parked at barrier. So base cannot change until then. The code on the branch above is meant to avoid current thread growing its own pool and invalidating base, which can happen from current thread perspective after all other workers stopped and waited for this pool event.",
       "revId": "d0ee8e578698e0350177da5ebe0f946b54627d8a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c49c4fc2_744594c3",
+        "filename": "src/vnet/tcp/tcp.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 321,
+      "author": {
+        "id": 3286
+      },
+      "writtenOn": "2026-07-25T06:47:58Z",
+      "side": 0,
+      "message": "You\u0027re right. After re-reading the barrier and safe pool allocation paths, I found that the premise of this change is incorrect.\n\nBefore preparing this change, I had already been evaluating a chunked-pool implementation locally to avoid pool relocation and barrier overhead. That work biased my analysis, and I incorrectly generalized the same-pool relocation case to this different-worker branch.\n\nIn this branch, the source and destination pools are distinct, and the source pool cannot be reallocated before the current worker reaches the barrier. The existing same-pool branch already refreshes the base pointer where it is actually required.\n\nI also treated successful workload tests after the change as confirmation, although those tests did not directly demonstrate that the base pointer had moved. I apologize for the incorrect analysis, the misleading report, and the unnecessary review work. I will abandon this change.",
+      "parentUuid": "5b80cb99_453b0da6",
+      "revId": "d0ee8e578698e0350177da5ebe0f946b54627d8a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
