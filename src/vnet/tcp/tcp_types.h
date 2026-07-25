@@ -166,9 +166,6 @@ typedef struct _sack_scoreboard
   u32 head;				/**< Index of first entry */
   u32 tail;				/**< Index of last entry */
   u32 sacked_bytes;			/**< Number of bytes sacked in sb */
-  u32 last_sacked_bytes;		/**< Number of bytes last sacked */
-  u32 last_bytes_delivered;		/**< Sack bytes delivered to app */
-  u32 rxt_sacked;			/**< Rxt bytes last delivered */
   u32 high_sacked;			/**< Highest byte sacked (fack) */
   u32 high_rxt;				/**< Highest retransmitted sequence */
   u32 rescue_rxt;			/**< Rescue sequence number */
@@ -225,6 +222,9 @@ typedef struct tcp_rate_sample_
   u64 tx_lost;			/**< Lost over interval */
   u32 delivered;		/**< Bytes delivered in interval_time */
   u32 acked_and_sacked;		/**< Bytes acked + sacked now */
+  u32 last_sacked_bytes;	/**< Number of bytes newly sacked */
+  u32 last_bytes_delivered;	/**< Previously sacked bytes cumulatively acked */
+  u32 rxt_sacked;		/**< Retransmitted bytes newly delivered */
   u32 last_lost;		/**< Bytes lost now */
   u32 lost;			/**< Number of bytes lost over interval */
   tcp_bts_flags_t flags;	/**< Rate sample flags from bt sample */

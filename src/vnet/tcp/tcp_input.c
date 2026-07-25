@@ -678,7 +678,7 @@ tcp_cc_account_recovery_ack (tcp_connection_t *tc, tcp_rate_sample_t *rs, u8 has
 {
   if (has_sack)
     {
-      tc->rxt_delivered += tc->sack_sb.rxt_sacked;
+      tc->rxt_delivered += rs->rxt_sacked;
       tc->prr_delivered += rs->acked_and_sacked;
     }
   else
@@ -820,7 +820,7 @@ tcp_handle_old_ack (tcp_connection_t * tc, tcp_rate_sample_t * rs)
   if (tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE)
     tcp_bt_sample_delivery_rate (tc, rs);
   else
-    rs->acked_and_sacked = tc->sack_sb.last_sacked_bytes;
+    rs->acked_and_sacked = rs->last_sacked_bytes;
 
   rs->ack_flags |= TCP_ACK_F_DUPACK;
   tcp_cc_handle_event (tc, rs);
@@ -849,8 +849,7 @@ tcp_ack_is_cc_event (tcp_connection_t *tc, vlib_buffer_t *b, u32 prev_snd_wnd, u
   /* Check if ack is duplicate. Per RFC 6675, ACKs that SACK new data are
    * defined to be 'duplicate' as well. TCP_ACK_F_DUPACK is bit zero, so the
    * boolean result can be ORed into ack_flags directly. */
-  rs->ack_flags |=
-    tc->sack_sb.last_sacked_bytes || tcp_ack_is_dupack (tc, b, prev_snd_wnd, prev_snd_una);
+  rs->ack_flags |= rs->last_sacked_bytes || tcp_ack_is_dupack (tc, b, prev_snd_wnd, prev_snd_una);
 
   return ((rs->ack_flags & TCP_ACK_F_DUPACK) || tcp_in_cong_recovery (tc));
 }
@@ -911,10 +910,9 @@ tcp_rcv_ack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc, vlib_buffer_t * b,
   if (tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE)
     tcp_bt_sample_delivery_rate (tc, &rs);
   else
-    rs.acked_and_sacked =
-      tc->bytes_acked + tc->sack_sb.last_sacked_bytes - tc->sack_sb.last_bytes_delivered;
+    rs.acked_and_sacked = tc->bytes_acked + rs.last_sacked_bytes - rs.last_bytes_delivered;
 
-  if (tc->bytes_acked + tc->sack_sb.last_sacked_bytes)
+  if (tc->bytes_acked + rs.last_sacked_bytes)
     {
       tcp_update_rtt (tc, &rs, vnet_buffer (b)->tcp.ack_number);
       if (tc->bytes_acked)

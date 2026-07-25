@@ -785,39 +785,37 @@ if (_av > 0) 								\
   ed->data[0] = _tc->snd_una - _tc->iss;				\
   ed->data[1] = _tc->snd_nxt - _tc->iss;				\
 }
-#define TCP_EVT_CC_SCOREBOARD_HANDLER(_tc, ...)				\
-{									\
-if (TCP_DEBUG_CC > 1 && _tc->sack_sb.last_sacked_bytes)			\
-  {									\
-    ELOG_TYPE_DECLARE (_e) =						\
-    {									\
-      .format = "sb1: holes %u lost %u sacked %u high %u highrxt %u",	\
-      .format_args = "i4i4i4i4i4",					\
-    };									\
-    TCP_DECLARE_ETD(_tc, _e, 5);					\
-    ed->data[0] = pool_elts(_tc->sack_sb.holes);			\
-    ed->data[1] = _tc->sack_sb.lost_bytes;				\
-    ed->data[2] = _tc->sack_sb.sacked_bytes;				\
-    ed->data[3] = _tc->sack_sb.high_sacked - _tc->iss;			\
-    ed->data[4] = _tc->sack_sb.high_rxt - _tc->iss;			\
-  }									\
-if (TCP_DEBUG_CC > 1 && _tc->sack_sb.last_sacked_bytes)			\
-  {									\
-    sack_scoreboard_hole_t *hole;					\
-    hole = scoreboard_first_hole (&_tc->sack_sb);			\
-    ELOG_TYPE_DECLARE (_e) =						\
-    {									\
-      .format = "sb2: first start: %u end %u last start %u end %u",	\
-      .format_args = "i4i4i4i4",					\
-    };									\
-    TCP_DECLARE_ETD(_tc, _e, 4);					\
-    ed->data[0] = hole ? hole->start - _tc->iss : 0;			\
-    ed->data[1] = hole ? hole->end - _tc->iss : 0;			\
-    hole = scoreboard_last_hole (&_tc->sack_sb);			\
-    ed->data[2] = hole ? hole->start - _tc->iss : 0;			\
-    ed->data[3] = hole ? hole->end - _tc->iss : 0;			\
-  }									\
-}
+#define TCP_EVT_CC_SCOREBOARD_HANDLER(_tc, _rs, ...)                                               \
+  {                                                                                                \
+    if (TCP_DEBUG_CC > 1 && _rs->last_sacked_bytes)                                                \
+      {                                                                                            \
+	ELOG_TYPE_DECLARE (_e) = {                                                                 \
+	  .format = "sb1: holes %u lost %u sacked %u high %u highrxt %u",                          \
+	  .format_args = "i4i4i4i4i4",                                                             \
+	};                                                                                         \
+	TCP_DECLARE_ETD (_tc, _e, 5);                                                              \
+	ed->data[0] = pool_elts (_tc->sack_sb.holes);                                              \
+	ed->data[1] = _tc->sack_sb.lost_bytes;                                                     \
+	ed->data[2] = _tc->sack_sb.sacked_bytes;                                                   \
+	ed->data[3] = _tc->sack_sb.high_sacked - _tc->iss;                                         \
+	ed->data[4] = _tc->sack_sb.high_rxt - _tc->iss;                                            \
+      }                                                                                            \
+    if (TCP_DEBUG_CC > 1 && _rs->last_sacked_bytes)                                                \
+      {                                                                                            \
+	sack_scoreboard_hole_t *hole;                                                              \
+	hole = scoreboard_first_hole (&_tc->sack_sb);                                              \
+	ELOG_TYPE_DECLARE (_e) = {                                                                 \
+	  .format = "sb2: first start: %u end %u last start %u end %u",                            \
+	  .format_args = "i4i4i4i4",                                                               \
+	};                                                                                         \
+	TCP_DECLARE_ETD (_tc, _e, 4);                                                              \
+	ed->data[0] = hole ? hole->start - _tc->iss : 0;                                           \
+	ed->data[1] = hole ? hole->end - _tc->iss : 0;                                             \
+	hole = scoreboard_last_hole (&_tc->sack_sb);                                               \
+	ed->data[2] = hole ? hole->start - _tc->iss : 0;                                           \
+	ed->data[3] = hole ? hole->end - _tc->iss : 0;                                             \
+      }                                                                                            \
+  }
 #define TCP_EVT_CC_SACKS_HANDLER(_tc, ...)				\
 {									\
 if (TCP_DEBUG_CC > 1)							\
