@@ -602,7 +602,7 @@ tcp_bt_sample_delivery_rate (tcp_connection_t * tc, tcp_rate_sample_t * rs)
 {
   u32 delivered, data_acked;
 
-  tc->lost += tc->sack_sb.last_lost_bytes;
+  tc->lost += rs->last_lost;
 
   data_acked = tcp_bt_data_acked (tc);
   delivered = data_acked + rs->last_sacked_bytes;
@@ -635,7 +635,6 @@ tcp_bt_sample_delivery_rate (tcp_connection_t * tc, tcp_rate_sample_t * rs)
 
 done:
   rs->acked_and_sacked = delivered;
-  rs->last_lost = tc->sack_sb.last_lost_bytes;
   rs->lost = tc->lost - rs->tx_lost;
 }
 
