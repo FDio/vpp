@@ -605,8 +605,8 @@ tcp_bt_sample_delivery_rate (tcp_connection_t * tc, tcp_rate_sample_t * rs)
   tc->lost += tc->sack_sb.last_lost_bytes;
 
   data_acked = tcp_bt_data_acked (tc);
-  delivered = data_acked + tc->sack_sb.last_sacked_bytes;
-  delivered -= tc->sack_sb.last_bytes_delivered;
+  delivered = data_acked + rs->last_sacked_bytes;
+  delivered -= rs->last_bytes_delivered;
   if (tc->bt->head == TCP_BTS_INVALID_INDEX)
     goto done;
 
@@ -626,7 +626,7 @@ tcp_bt_sample_delivery_rate (tcp_connection_t * tc, tcp_rate_sample_t * rs)
   if (data_acked)
     tcp_bt_walk_samples (tc, rs);
 
-  if (tc->sack_sb.last_sacked_bytes)
+  if (rs->last_sacked_bytes)
     tcp_bt_walk_samples_ooo (tc, rs);
 
   rs->interval_time = clib_max ((tc->delivered_time - rs->prior_time),
