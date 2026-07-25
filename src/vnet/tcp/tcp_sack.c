@@ -109,10 +109,10 @@ scoreboard_update_sacked (sack_scoreboard_t *sb, tcp_rate_sample_t *rs, u32 star
 }
 
 always_inline u32
-scoreboard_update_loss (sack_scoreboard_t *sb, u32 ack, u32 snd_mss, u8 clear_lost)
+scoreboard_update_loss (sack_scoreboard_t *sb, u32 ack, u32 snd_mss, u8 clear_lost, u32 *last_lost)
 {
   sack_scoreboard_hole_t *hole, *left, *right;
-  u32 sacked = 0, blks = 0;
+  u32 sacked = 0, blks = 0, newly_lost = 0;
 
   if (clear_lost)
     {
@@ -124,7 +124,6 @@ scoreboard_update_loss (sack_scoreboard_t *sb, u32 ack, u32 snd_mss, u8 clear_lo
 	}
     }
 
-  sb->last_lost_bytes = 0;
   sb->lost_bytes = 0;
 
   right = scoreboard_last_hole (sb);
@@ -167,7 +166,8 @@ scoreboard_update_loss (sack_scoreboard_t *sb, u32 ack, u32 snd_mss, u8 clear_lo
   while (right)
     {
       sb->lost_bytes += scoreboard_hole_bytes (right);
-      sb->last_lost_bytes += right->is_lost ? 0 : (right->end - right->start);
+      if (!right->is_lost)
+	newly_lost += right->end - right->start;
       right->is_lost = 1;
       left = scoreboard_prev_hole (sb, right);
       if (!left)
@@ -180,6 +180,8 @@ scoreboard_update_loss (sack_scoreboard_t *sb, u32 ack, u32 snd_mss, u8 clear_lo
       right = left;
     }
 
+  if (last_lost)
+    *last_lost = newly_lost;
   return sacked;
 }
 
@@ -188,21 +190,20 @@ scoreboard_update_bytes (sack_scoreboard_t *sb, tcp_rate_sample_t *rs, u32 ack, 
 {
   u32 old_sacked = sb->sacked_bytes;
 
-  sb->sacked_bytes = scoreboard_update_loss (sb, ack, snd_mss, 0);
+  sb->sacked_bytes = scoreboard_update_loss (sb, ack, snd_mss, 0, &rs->last_lost);
   rs->last_sacked_bytes = sb->sacked_bytes - (old_sacked - rs->last_bytes_delivered);
 }
 
 void
 scoreboard_recompute_sack_loss (sack_scoreboard_t *sb, u32 ack, u32 snd_mss)
 {
-  u32 last_lost_bytes = sb->last_lost_bytes;
   u32 sacked;
 
   /* Discard loss classification inherited from an rto and infer it again
-   * solely from the SACK scoreboard. Keep per-ack accounting unchanged. */
-  sacked = scoreboard_update_loss (sb, ack, snd_mss, 1);
+   * solely from the SACK scoreboard. Reclassification is not newly detected
+   * loss for the current ACK, so discard the delta. */
+  sacked = scoreboard_update_loss (sb, ack, snd_mss, 1, 0);
   ASSERT (sacked == sb->sacked_bytes);
-  sb->last_lost_bytes = last_lost_bytes;
 }
 
 /**
@@ -326,7 +327,6 @@ scoreboard_clear (sack_scoreboard_t * sb)
   ASSERT (pool_elts (sb->holes) == 0);
   sb->sacked_bytes = 0;
   sb->lost_bytes = 0;
-  sb->last_lost_bytes = 0;
   sb->cur_rxt_hole = TCP_INVALID_SACK_HOLE_INDEX;
   sb->is_reneging = 0;
   /* reorder is a learned path property, not episode state, so it is NOT reset here */
@@ -388,6 +388,7 @@ tcp_rcv_sacks (tcp_connection_t *tc, u32 ack, tcp_rate_sample_t *rs)
   rs->last_sacked_bytes = 0;
   rs->last_bytes_delivered = 0;
   rs->rxt_sacked = 0;
+  rs->last_lost = 0;
 
   if (!tcp_opts_sack (&tc->rcv_opts) && !sb->sacked_bytes
       && sb->head == TCP_INVALID_SACK_HOLE_INDEX)
@@ -584,7 +585,7 @@ tcp_rcv_sacks (tcp_connection_t *tc, u32 ack, tcp_rate_sample_t *rs)
 	  tcp_in_recovery (tc));
   ASSERT (sb->head == TCP_INVALID_SACK_HOLE_INDEX || tcp_in_recovery (tc)
 	  || sb->is_reneging || sb->holes[sb->head].start == ack);
-  ASSERT (sb->last_lost_bytes <= sb->lost_bytes);
+  ASSERT (rs->last_lost <= sb->lost_bytes);
   ASSERT ((ack - tc->snd_una) + rs->last_sacked_bytes - rs->last_bytes_delivered >= rs->rxt_sacked);
   ASSERT ((ack - tc->snd_una) >= rs->last_bytes_delivered || (tc->flags & TCP_CONN_FINSNT));
 

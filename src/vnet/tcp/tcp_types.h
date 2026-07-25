@@ -170,7 +170,6 @@ typedef struct _sack_scoreboard
   u32 high_rxt;				/**< Highest retransmitted sequence */
   u32 rescue_rxt;			/**< Rescue sequence number */
   u32 lost_bytes;			/**< Bytes lost as per RFC6675 */
-  u32 last_lost_bytes;			/**< Number of bytes last lost */
   u32 cur_rxt_hole;			/**< Retransmitting from this hole */
   u32 reorder;				/**< Estimate of segment reordering */
   u8 is_reneging;			/**< Flag set if peer is reneging*/
