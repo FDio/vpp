@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "52d8ba96_7e2e8eca",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-07-26T21:59:37Z",
+      "side": 1,
+      "message": "Wonder if we should move these as well to tap ..",
+      "revId": "2139ebbcb281f9395b227f133b0d9c7c1ef9f059",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d05fb5fe_da319197",
+        "filename": "test/hs-test/hsi_test.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 271,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-07-26T21:59:37Z",
+      "side": 1,
+      "message": "should we assert equal 2 at this point, since workers are 0 and 1 in the cli?",
+      "revId": "2139ebbcb281f9395b227f133b0d9c7c1ef9f059",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
