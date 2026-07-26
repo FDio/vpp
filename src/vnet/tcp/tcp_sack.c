@@ -377,22 +377,13 @@ tcp_scoreboard_is_sane_post_recovery (tcp_connection_t *tc)
 }
 
 void
-tcp_rcv_sacks (tcp_connection_t *tc, u32 ack, tcp_rate_sample_t *rs)
+tcp_rcv_sacks_slow (tcp_connection_t *tc, u32 ack, tcp_rate_sample_t *rs)
 {
   sack_scoreboard_hole_t *hole, *next_hole;
   sack_scoreboard_t *sb = &tc->sack_sb;
   sack_block_t *blk, *rcv_sacks;
   u32 blk_index = 0, i, j, high_sacked;
   tcp_sb_sack_mode_e mode;
-
-  rs->last_sacked_bytes = 0;
-  rs->last_bytes_delivered = 0;
-  rs->rxt_sacked = 0;
-  rs->last_lost = 0;
-
-  if (!tcp_opts_sack (&tc->rcv_opts) && !sb->sacked_bytes
-      && sb->head == TCP_INVALID_SACK_HOLE_INDEX)
-    return;
 
   mode = !tcp_in_cong_recovery (tc)	       ? TCP_SB_SACK_OOO :
 	 seq_geq (sb->rescue_rxt, tc->snd_una) ? TCP_SB_SACK_RXT_RESCUED :
