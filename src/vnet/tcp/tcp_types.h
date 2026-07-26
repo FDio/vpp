@@ -212,6 +212,12 @@ typedef struct tcp_bt_sample_
 
 typedef struct tcp_rate_sample_
 {
+  u32 bytes_acked;		/**< Bytes cumulatively acknowledged now */
+  u32 last_sacked_bytes;	/**< Number of bytes newly sacked */
+  u32 last_bytes_delivered;	/**< Previously sacked bytes cumulatively acked */
+  u32 rxt_sacked;		/**< Retransmitted bytes newly delivered */
+  u32 last_lost;		/**< Bytes lost now */
+  tcp_ack_flag_t ack_flags;	/**< Flags describing the current ACK */
   u64 prior_delivered;		/**< Delivered of sample used for rate, i.e.,
 				     total bytes delivered at prior_time */
   f64 prior_time;		/**< Delivered time of sample used for rate */
@@ -220,15 +226,9 @@ typedef struct tcp_rate_sample_
   u64 tx_in_flight;		/**< In flight at (re)transmit time */
   u64 tx_lost;			/**< Lost over interval */
   u32 delivered;		/**< Bytes delivered in interval_time */
-  u32 bytes_acked;		/**< Bytes cumulatively acknowledged now */
   u32 acked_and_sacked;		/**< Bytes acked + sacked now */
-  u32 last_sacked_bytes;	/**< Number of bytes newly sacked */
-  u32 last_bytes_delivered;	/**< Previously sacked bytes cumulatively acked */
-  u32 rxt_sacked;		/**< Retransmitted bytes newly delivered */
-  u32 last_lost;		/**< Bytes lost now */
   u32 lost;			/**< Number of bytes lost over interval */
   tcp_bts_flags_t flags;	/**< Rate sample flags from bt sample */
-  tcp_ack_flag_t ack_flags;	/**< Flags describing the current ACK */
 } tcp_rate_sample_t;
 
 typedef struct tcp_byte_tracker_

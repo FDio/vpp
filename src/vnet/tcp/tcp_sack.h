@@ -104,7 +104,20 @@ format_function_t format_tcp_scoreboard;
 /* Made public for unit testing only */
 void tcp_update_sack_list (tcp_connection_t * tc, u32 start, u32 end);
 u32 tcp_sack_list_bytes (tcp_connection_t * tc);
-void tcp_rcv_sacks (tcp_connection_t *tc, u32 ack, tcp_rate_sample_t *rs);
+void tcp_rcv_sacks_slow (tcp_connection_t *tc, u32 ack, tcp_rate_sample_t *rs);
+
+always_inline void
+tcp_rcv_sacks (tcp_connection_t *tc, u32 ack, tcp_rate_sample_t *rs)
+{
+  sack_scoreboard_t *sb = &tc->sack_sb;
+
+  if (PREDICT_TRUE (!tcp_opts_sack (&tc->rcv_opts) && !sb->sacked_bytes &&
+		    sb->head == TCP_INVALID_SACK_HOLE_INDEX))
+    return;
+
+  tcp_rcv_sacks_slow (tc, ack, rs);
+}
+
 u8 *tcp_scoreboard_replay (u8 * s, tcp_connection_t * tc, u8 verbose);
 u8 tcp_scoreboard_is_sane_post_recovery (tcp_connection_t * tc);
 
