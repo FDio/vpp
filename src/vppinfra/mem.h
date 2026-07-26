@@ -317,6 +317,7 @@ void *clib_mem_vm_map_shared (void *start, uword size, int fd, uword offset,
 int clib_mem_vm_unmap (void *base);
 clib_mem_vm_map_hdr_t *clib_mem_vm_get_next_map_hdr (clib_mem_vm_map_hdr_t *
 						     hdr);
+clib_mem_page_sz_t clib_mem_vm_get_log2_page_size (void *base);
 
 static_always_inline clib_mem_page_sz_t
 clib_mem_get_log2_page_size (void)

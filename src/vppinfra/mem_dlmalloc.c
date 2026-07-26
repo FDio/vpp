@@ -61,15 +61,7 @@ clib_mem_create_heap_internal (void *base, uword size,
     }
   else
     {
-      clib_mem_vm_map_hdr_t *hdr = 0;
-      log2_page_sz = clib_mem_get_log2_page_size ();
-      while ((hdr = clib_mem_vm_get_next_map_hdr (hdr)))
-	{
-	  if (pointer_to_uword (base) >= hdr->base_addr &&
-	      pointer_to_uword (base) <
-		hdr->base_addr + (hdr->num_pages << hdr->log2_page_sz))
-	    log2_page_sz = hdr->log2_page_sz;
-	}
+      log2_page_sz = clib_mem_vm_get_log2_page_size (base);
     }
 
   if (is_locked)
