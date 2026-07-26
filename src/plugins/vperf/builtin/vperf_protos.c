@@ -1353,8 +1353,8 @@ typedef struct
 {
   vlib_main_t *vlib_main;
   u32 cli_node_index;
-  u32 expected_connections;
-  u32 ready_connections;
+  u32 expected_tunnels;
+  u32 ready_tunnels;
 } vp_proto_http_masque_main_t;
 
 vp_proto_http_masque_main_t vp_proto_http_masque_main;
@@ -1366,8 +1366,8 @@ vp_proto_http_masque_init_test (vlib_main_t *vm, u32 cli_node_index, vp_test_cfg
 {
   vp_proto_http_masque_main.vlib_main = vm;
   vp_proto_http_masque_main.cli_node_index = cli_node_index;
-  vp_proto_http_masque_main.expected_connections = cfg->test_cfg.num_test_sessions;
-  vp_proto_http_masque_main.ready_connections = 0;
+  vp_proto_http_masque_main.expected_tunnels = cfg->test_cfg.num_test_sessions;
+  vp_proto_http_masque_main.ready_tunnels = 0;
 }
 
 static int
@@ -1501,8 +1501,8 @@ vp_proto_http_connect_read_resp (vp_test_session_t *es, session_t *s, u8 *rx_buf
   svm_fifo_dequeue_drop (s->rx_fifo, msg.data.body_offset);
   es->opaque = 1;
 
-  u32 cnt = clib_atomic_add_fetch (&vp_proto_http_masque_main.ready_connections, 1);
-  if (cnt == vp_proto_http_masque_main.expected_connections)
+  u32 cnt = clib_atomic_add_fetch (&vp_proto_http_masque_main.ready_tunnels, 1);
+  if (cnt == vp_proto_http_masque_main.expected_tunnels)
     {
       if (s->thread_index != 0)
 	session_send_rpc_evt_to_thread_force (0, vp_proto_signal_evt_to_cli,
@@ -1582,7 +1582,11 @@ vp_proto_http_connect_tcp_connected (session_t *s, vp_test_cfg_t *cfg, vp_test_w
 				     u32 app_index)
 {
   vp_test_session_t *es;
+  session_endpoint_cfg_t sep = SESSION_ENDPOINT_CFG_NULL;
+  vnet_connect_args_t _a, *a = &_a;
+  session_t *stream_session;
   http_msg_t msg;
+  u32 stream_n;
   int rv;
 
   ASSERT (http_session_get_version (s) == cfg->http_version);
@@ -1621,7 +1625,40 @@ vp_proto_http_connect_tcp_connected (session_t *s, vp_test_cfg_t *cfg, vp_test_w
   if (svm_fifo_set_event (s->tx_fifo))
     session_program_tx_io_evt (s->handle, SESSION_IO_EVT_TX);
 
-  /* TODO: multiplexing */
+  if (cfg->n_streams == 1)
+    return 0;
+
+  clib_memset (a, 0, sizeof (*a));
+  a->app_index = app_index;
+  sep.parent_handle = session_handle (s);
+  sep.transport_proto = TRANSPORT_PROTO_HTTP;
+  clib_memcpy (&a->sep_ext, &sep, sizeof (sep));
+
+  for (stream_n = 1; stream_n < cfg->n_streams; stream_n++)
+    {
+      es = vp_test_session_alloc (wrk);
+      a->api_context = es->session_index;
+      if ((rv = vnet_connect_stream (a)))
+	{
+	  vp_proto_err ("Stream session #%d opening failed: %U", stream_n, format_session_error,
+			rv);
+	  break;
+	}
+      stream_session = session_get_from_handle (a->sh);
+      vperf_app_session_init (es, stream_session);
+
+      es->bytes_to_send = cfg->bytes_to_send;
+      es->bytes_to_receive = cfg->echo_bytes ? cfg->bytes_to_send : 0ULL;
+      es->bytes_paced_target = ~0;
+      es->bytes_paced_current = ~0;
+      es->vpp_session_handle = a->sh;
+      vec_add1 (wrk->conn_indices, es->session_index);
+      rv = svm_fifo_enqueue_segments (stream_session->tx_fifo, segs, 2, 0);
+      if (rv < (sizeof (msg) + msg.data.target_path_len))
+	return -1;
+      if (svm_fifo_set_event (stream_session->tx_fifo))
+	session_program_tx_io_evt (stream_session->handle, SESSION_IO_EVT_TX);
+    }
 
   /* connect is done when tunnel is fully established */
   return 0;
@@ -1874,7 +1911,11 @@ vp_proto_http_connect_udp_connected (session_t *s, vp_test_cfg_t *cfg, vp_test_w
 				     u32 app_index)
 {
   vp_test_session_t *es;
+  session_endpoint_cfg_t sep = SESSION_ENDPOINT_CFG_NULL;
+  vnet_connect_args_t _a, *a = &_a;
+  session_t *stream_session;
   http_msg_t msg;
+  u32 stream_n;
   int rv;
 
   ASSERT (http_session_get_version (s) == cfg->http_version);
@@ -1913,7 +1954,40 @@ vp_proto_http_connect_udp_connected (session_t *s, vp_test_cfg_t *cfg, vp_test_w
   if (svm_fifo_set_event (s->tx_fifo))
     session_program_tx_io_evt (s->handle, SESSION_IO_EVT_TX);
 
-  /* TODO: multiplexing */
+  if (cfg->n_streams == 1)
+    return 0;
+
+  clib_memset (a, 0, sizeof (*a));
+  a->app_index = app_index;
+  sep.parent_handle = session_handle (s);
+  sep.transport_proto = TRANSPORT_PROTO_HTTP;
+  clib_memcpy (&a->sep_ext, &sep, sizeof (sep));
+
+  for (stream_n = 1; stream_n < cfg->n_streams; stream_n++)
+    {
+      es = vp_test_session_alloc (wrk);
+      a->api_context = es->session_index;
+      if ((rv = vnet_connect_stream (a)))
+	{
+	  vp_proto_err ("Stream session #%d opening failed: %U", stream_n, format_session_error,
+			rv);
+	  break;
+	}
+      stream_session = session_get_from_handle (a->sh);
+      vperf_app_session_init (es, stream_session);
+
+      es->bytes_to_send = cfg->bytes_to_send;
+      es->bytes_to_receive = cfg->echo_bytes ? cfg->bytes_to_send : 0ULL;
+      es->bytes_paced_target = ~0;
+      es->bytes_paced_current = ~0;
+      es->vpp_session_handle = a->sh;
+      vec_add1 (wrk->conn_indices, es->session_index);
+      rv = svm_fifo_enqueue_segments (stream_session->tx_fifo, segs, 2, 0);
+      if (rv < (sizeof (msg) + msg.data.target_path_len))
+	return -1;
+      if (svm_fifo_set_event (stream_session->tx_fifo))
+	session_program_tx_io_evt (stream_session->handle, SESSION_IO_EVT_TX);
+    }
 
   /* connect is done when tunnel is fully established */
   return 0;
