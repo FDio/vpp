@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "22cf764d_701e0bd3",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3325
+      },
+      "writtenOn": "2026-07-27T10:40:58Z",
+      "side": 1,
+      "message": "It tried it, it is feasible, but not a just a \"createAfPacket -\u003e createTap\" swap because TAPs are recreated per test, requiring IPv6 lifecycle handling and deterministic MW RX placement. With those changes, all 30 hsi tests passed, so I could prepare a patch",
+      "parentUuid": "52d8ba96_7e2e8eca",
+      "revId": "2139ebbcb281f9395b227f133b0d9c7c1ef9f059",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "d05fb5fe_da319197",
@@ -31,6 +49,24 @@
       "writtenOn": "2026-07-26T21:59:37Z",
       "side": 1,
       "message": "should we assert equal 2 at this point, since workers are 0 and 1 in the cli?",
+      "revId": "2139ebbcb281f9395b227f133b0d9c7c1ef9f059",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "dc866d1c_4cd0e783",
+        "filename": "test/hs-test/hsi_test.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 271,
+      "author": {
+        "id": 3325
+      },
+      "writtenOn": "2026-07-27T10:40:58Z",
+      "side": 1,
+      "message": "true, changed to AssertEqual",
+      "parentUuid": "d05fb5fe_da319197",
       "revId": "2139ebbcb281f9395b227f133b0d9c7c1ef9f059",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
