@@ -35,6 +35,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "23d728da_d350bdb0",
+        "filename": "src/vnet/tcp/tcp_sack.c",
+        "patchSetId": 19
+      },
+      "lineNbr": 388,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-07-27T17:40:35Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "63a720d5_3ac127a0",
+      "revId": "72cfef26f47dc3ca2f71e5dbe8327e5b541f4ae0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "23c1d710_900ba3ad",
@@ -52,6 +70,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "596c0ac8_41d007ce",
+        "filename": "src/vnet/tcp/tcp_sack.c",
+        "patchSetId": 19
+      },
+      "lineNbr": 403,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-07-27T17:40:35Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "23c1d710_900ba3ad",
+      "revId": "72cfef26f47dc3ca2f71e5dbe8327e5b541f4ae0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "ac0dab32_e85f5a73",
@@ -65,6 +101,30 @@
       "writtenOn": "2026-07-27T08:40:54Z",
       "side": 1,
       "message": "this should be most likely \u0026\u0026",
+      "range": {
+        "startLine": 697,
+        "startChar": 44,
+        "endLine": 697,
+        "endChar": 45
+      },
+      "revId": "72cfef26f47dc3ca2f71e5dbe8327e5b541f4ae0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e3c4f4b3_e6273c91",
+        "filename": "src/vnet/tcp/tcp_sack.c",
+        "patchSetId": 19
+      },
+      "lineNbr": 697,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-07-27T17:40:35Z",
+      "side": 1,
+      "message": "this is accurate, i.e., both produce booleans, but maybe not clear. So pushing another patch for it.",
+      "parentUuid": "ac0dab32_e85f5a73",
       "range": {
         "startLine": 697,
         "startChar": 44,
