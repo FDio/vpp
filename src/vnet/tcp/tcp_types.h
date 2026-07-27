@@ -152,13 +152,27 @@ typedef struct _scoreboard_trace_elt
   u32 group;
 } scoreboard_trace_elt_t;
 
+typedef struct tcp_rxt_range_
+{
+  u32 start;  /**< Start sequence number */
+  u32 end;    /**< End sequence number */
+  u8 is_lost; /**< Range is considered lost */
+} tcp_rxt_range_t;
+
 typedef struct _sack_scoreboard_hole
 {
+  union
+  {
+    tcp_rxt_range_t range; /**< Retransmission range */
+    struct
+    {
+      u32 start;
+      u32 end;
+      u8 is_lost;
+    };
+  };
   u32 next;		/**< Index for next entry in linked list */
   u32 prev;		/**< Index for previous entry in linked list */
-  u32 start;		/**< Start sequence number */
-  u32 end;		/**< End sequence number */
-  u8 is_lost;		/**< Mark hole as lost */
 } sack_scoreboard_hole_t;
 
 typedef struct _sack_scoreboard
@@ -218,6 +232,10 @@ typedef enum tcp_bts_flags_
   TCP_BTS_IS_APP_LIMITED = 1 << 1,
   TCP_BTS_IS_SACKED = 1 << 2,
   TCP_BTS_IS_RXT_LOST = 1 << 3,
+  TCP_BTS_IS_DELIVERED = 1 << 4,
+  TCP_BTS_IS_LOST = 1 << 5,
+  TCP_BTS_DSACK_TRACKED = 1 << 6,
+  TCP_BTS_DSACK_DUPLICATE = 1 << 7,
 } __clib_packed tcp_bts_flags_t;
 
 typedef struct tcp_bt_sample_
@@ -254,6 +272,7 @@ typedef struct tcp_rate_sample_
   u32 lost;			/**< Number of bytes lost over interval */
   tcp_bts_flags_t flags;	/**< Rate sample flags from bt sample */
   tcp_ack_flag_t ack_flags;	/**< Flags describing the current ACK */
+  u8 bt_processed;		/**< Byte tracker ranges processed for ACK */
 } tcp_rate_sample_t;
 
 typedef struct tcp_byte_tracker_
@@ -263,6 +282,14 @@ typedef struct tcp_byte_tracker_
   u32 head;			/**< Head of samples linked list */
   u32 tail;			/**< Tail of samples linked list */
   u32 last_ooo;			/**< Cached last ooo sample */
+  u32 cur_rxt;			/**< Current retransmission sample */
+  u32 dsack_head;		/**< Head of retired D-SACK ranges */
+  u32 dsack_tail;		/**< Tail of retired D-SACK ranges */
+  u32 dsack_rxt_bytes;		/**< Bytes retransmitted in recovery */
+  u32 dsack_dup_bytes;		/**< Retransmitted bytes reported duplicate */
+  u32 dsack_rxt_ranges;		/**< Disjoint retransmission ranges */
+  u32 dsack_fragments;		/**< Retained D-SACK range fragments */
+  u32 dsack_high;		/**< End of most recent retransmission range */
 } tcp_byte_tracker_t;
 
 typedef enum _tcp_cc_algorithm_type
@@ -462,7 +489,9 @@ tcp_cong_recovery_off (tcp_connection_t * tc)
 #define tcp_zero_rwnd_sent_off(tc) (tc)->flags &= ~TCP_CONN_ZERO_RWND_SENT
 
 #define tcp_dsack_has_history(tc)                                                                  \
-  ((tc)->dsack_rxt != 0 || ((tc)->dsack_flags & TCP_DSACK_RXT_OVERFLOW))
+  (((tc)->cfg_flags & TCP_CFG_F_RATE_SAMPLE) ?                                                     \
+     ((tc)->bt->dsack_rxt_bytes != 0 || ((tc)->dsack_flags & TCP_DSACK_RXT_OVERFLOW)) :            \
+     ((tc)->dsack_rxt != 0 || ((tc)->dsack_flags & TCP_DSACK_RXT_OVERFLOW)))
 
 always_inline tcp_connection_t *
 tcp_get_connection_from_transport (transport_connection_t * tconn)
