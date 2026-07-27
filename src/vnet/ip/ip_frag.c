@@ -84,7 +84,7 @@ ip4_frag_do_fragment (vlib_main_t * vm, u32 from_bi, u16 mtu,
 {
   vlib_buffer_t *from_b;
   ip4_header_t *ip4;
-  u16 len, max, rem, ip_frag_id, ip_frag_offset, head_bytes;
+  u16 len, max, rem, ip_frag_id, ip_frag_offset, head_bytes, headroom;
   u8 *org_from_packet, more;
 
   from_b = vlib_get_buffer (vm, from_bi);
@@ -102,8 +102,9 @@ ip4_frag_do_fragment (vlib_main_t * vm, u32 from_bi, u16 mtu,
 
   rem = clib_net_to_host_u16 (ip4->length) - sizeof (ip4_header_t);
   head_bytes = sizeof (ip4_header_t) + l2unfragmentablesize;
-  max = (clib_min (mtu, vlib_buffer_get_default_data_size (vm)) - head_bytes) &
-	~0x7;
+  /* Make sure fragments have at least as much space for headers as the
+   * original buffer. */
+  headroom = clib_max (from_b->current_data, 0);
 
   if (rem >
       (vlib_buffer_length_in_chain (vm, from_b) - sizeof (ip4_header_t)))
@@ -111,10 +112,14 @@ ip4_frag_do_fragment (vlib_main_t * vm, u32 from_bi, u16 mtu,
       return IP_FRAG_ERROR_MALFORMED;
     }
 
-  if (mtu < sizeof (ip4_header_t))
+  if (mtu < head_bytes || headroom + head_bytes > vlib_buffer_get_default_data_size (vm))
     {
       return IP_FRAG_ERROR_CANT_FRAGMENT_HEADER;
     }
+
+  max = (clib_min (mtu, vlib_buffer_get_default_data_size (vm) - headroom) - head_bytes) & ~0x7;
+  if (PREDICT_FALSE (max == 0))
+    return IP_FRAG_ERROR_CANT_FRAGMENT_HEADER;
 
   if (ip4->flags_and_fragment_offset &
       clib_host_to_net_u16 (IP4_HEADER_FLAG_DONT_FRAGMENT))
@@ -161,9 +166,9 @@ ip4_frag_do_fragment (vlib_main_t * vm, u32 from_bi, u16 mtu,
       vec_add1 (*buffer, to_bi);
       frag_set_sw_if_index (to_b, org_from_b);
 
-      /* Make sure we have as much space for headers as the original and copy
-       * ip4 header */
-      to_data = vlib_buffer_make_headroom (to_b, org_from_b->current_data);
+      /* Copy ip4 header */
+      to_b->current_data = headroom;
+      to_data = vlib_buffer_get_current (to_b);
       clib_memcpy_fast (to_data, org_from_packet, head_bytes);
       to_ip4 = (ip4_header_t *) (to_data + l2unfragmentablesize);
       to_data = (void *) (to_ip4 + 1);
@@ -370,7 +375,7 @@ ip6_frag_do_fragment (vlib_main_t * vm, u32 from_bi, u16 mtu,
   u16 len, max, rem;
   u32 ip_frag_id;
   u8 *org_from_packet;
-  u16 head_bytes;
+  u16 head_bytes, headroom;
 
   from_b = vlib_get_buffer (vm, from_bi);
 
@@ -387,15 +392,23 @@ ip6_frag_do_fragment (vlib_main_t * vm, u32 from_bi, u16 mtu,
 
   head_bytes =
     (sizeof (ip6_header_t) + sizeof (ip6_frag_hdr_t) + l2unfragmentablesize);
+  /* Make sure fragments have at least as much space for headers as the
+   * original buffer. */
+  headroom = clib_max (from_b->current_data, 0);
   rem = clib_net_to_host_u16 (ip6->payload_length);
-  max = (clib_min (mtu, vlib_buffer_get_default_data_size (vm)) - head_bytes) &
-	~0x7;
 
   if (rem >
       (vlib_buffer_length_in_chain (vm, from_b) - sizeof (ip6_header_t)))
     {
       return IP_FRAG_ERROR_MALFORMED;
     }
+
+  if (mtu < head_bytes || headroom + head_bytes > vlib_buffer_get_default_data_size (vm))
+    return IP_FRAG_ERROR_CANT_FRAGMENT_HEADER;
+
+  max = (clib_min (mtu, vlib_buffer_get_default_data_size (vm) - headroom) - head_bytes) & ~0x7;
+  if (PREDICT_FALSE (max == 0))
+    return IP_FRAG_ERROR_CANT_FRAGMENT_HEADER;
 
   /* TODO: Look through header chain for fragmentation header */
   if (ip6->protocol == IP_PROTOCOL_IPV6_FRAGMENTATION)
@@ -431,9 +444,9 @@ ip6_frag_do_fragment (vlib_main_t * vm, u32 from_bi, u16 mtu,
       vec_add1 (*buffer, to_bi);
       frag_set_sw_if_index (to_b, org_from_b);
 
-      /* Make sure we have as much space for headers as the original and copy
-       * ip6 header */
-      to_data = vlib_buffer_make_headroom (to_b, org_from_b->current_data);
+      /* Copy ip6 header */
+      to_b->current_data = headroom;
+      to_data = vlib_buffer_get_current (to_b);
       clib_memcpy_fast (to_data, org_from_packet,
 			l2unfragmentablesize + sizeof (ip6_header_t));
       to_ip6 = vlib_buffer_get_current (to_b) + l2unfragmentablesize;
