@@ -343,9 +343,9 @@ format_tcp_sack_hole (u8 * s, va_list * args)
   sack_scoreboard_hole_t *hole = va_arg (*args, sack_scoreboard_hole_t *);
   tcp_connection_t *tc = va_arg (*args, tcp_connection_t *);
   if (tc)
-    s = format (s, "  [%u, %u]", hole->start - tc->iss, hole->end - tc->iss);
+    s = format (s, "  [%u, %u]", hole->range.start - tc->iss, hole->range.end - tc->iss);
   else
-    s = format (s, "  [%u, %u]", hole->start, hole->end);
+    s = format (s, "  [%u, %u]", hole->range.start, hole->range.end);
   return s;
 }
 

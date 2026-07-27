@@ -808,11 +808,11 @@ if (_av > 0) 								\
 	  .format_args = "i4i4i4i4",                                                               \
 	};                                                                                         \
 	TCP_DECLARE_ETD (_tc, _e, 4);                                                              \
-	ed->data[0] = hole ? hole->start - _tc->iss : 0;                                           \
-	ed->data[1] = hole ? hole->end - _tc->iss : 0;                                             \
+	ed->data[0] = hole ? hole->range.start - _tc->iss : 0;                                     \
+	ed->data[1] = hole ? hole->range.end - _tc->iss : 0;                                       \
 	hole = scoreboard_last_hole (&_tc->sack_sb);                                               \
-	ed->data[2] = hole ? hole->start - _tc->iss : 0;                                           \
-	ed->data[3] = hole ? hole->end - _tc->iss : 0;                                             \
+	ed->data[2] = hole ? hole->range.start - _tc->iss : 0;                                     \
+	ed->data[3] = hole ? hole->range.end - _tc->iss : 0;                                       \
       }                                                                                            \
   }
 #define TCP_EVT_CC_SACKS_HANDLER(_tc, ...)				\

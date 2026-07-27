@@ -645,7 +645,7 @@ tcp_cc_exit_recovery (tcp_connection_t *tc, tcp_rate_sample_t *rs)
   if (spurious_flags)
     {
       if (tcp_opts_sack_permitted (&tc->rcv_opts))
-	scoreboard_recompute_sack_loss (&tc->sack_sb, tc->snd_una, tc->snd_mss);
+	tcp_sack_recompute_loss (tc);
       tcp_cc_congestion_undo (tc);
       if ((spurious_flags & TCP_ACK_F_DSACK_SPURIOUS) || !tcp_dsack_has_history (tc))
 	tcp_dsack_recovery_done (tc);
@@ -667,9 +667,12 @@ tcp_cc_exit_recovery (tcp_connection_t *tc, tcp_rate_sample_t *rs)
   tc->rtt_ts = 0;
   tc->flags &= ~TCP_CONN_RXT_PENDING;
 
-  hole = scoreboard_first_hole (&tc->sack_sb);
-  if (hole && seq_leq (tc->sack_sb.high_sacked, hole->end) && !tc->sack_sb.lost_bytes)
-    scoreboard_clear (&tc->sack_sb);
+  if (!(tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE))
+    {
+      hole = scoreboard_first_hole (&tc->sack_sb);
+      if (hole && seq_leq (tc->sack_sb.high_sacked, hole->range.end) && !tc->sack_sb.lost_bytes)
+	scoreboard_clear (&tc->sack_sb);
+    }
 
   if (tcp_in_fastrecovery (tc) && !spurious_flags)
     tcp_cc_recovered (tc);
@@ -686,7 +689,7 @@ tcp_cc_exit_recovery (tcp_connection_t *tc, tcp_rate_sample_t *rs)
 
   ASSERT (tc->rto_boff == 0);
   ASSERT (!tcp_in_cong_recovery (tc));
-  ASSERT (tcp_scoreboard_is_sane_post_recovery (tc));
+  ASSERT (tcp_sack_is_sane_post_recovery (tc));
 }
 
 /* Process (re)transmit feedback. Output path uses this to decide how much more data to release into
