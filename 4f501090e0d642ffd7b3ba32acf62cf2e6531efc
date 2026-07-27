@@ -1,0 +1,400 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "893ea92a_1abec137",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 44
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-07-27T13:48:10Z",
+      "side": 1,
+      "message": "Addressed in PS44; marking resolved after final validation.",
+      "parentUuid": "4f74cea8_4059deae",
+      "revId": "4f501090e0d642ffd7b3ba32acf62cf2e6531efc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ea1a0f2e_b6df17c2",
+        "filename": "src/plugins/rdma/device.c",
+        "patchSetId": 44
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-07-27T13:48:10Z",
+      "side": 1,
+      "message": "Addressed in PS44; marking resolved after final validation.",
+      "parentUuid": "7cc840bd_d2334f43",
+      "revId": "4f501090e0d642ffd7b3ba32acf62cf2e6531efc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "c155da0f_a9d19d9f",
+        "filename": "src/plugins/rdma/device.c",
+        "patchSetId": 44
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-07-27T13:48:10Z",
+      "side": 1,
+      "message": "Addressed in PS44; marking resolved after final validation.",
+      "parentUuid": "450daa8b_55695dbf",
+      "revId": "4f501090e0d642ffd7b3ba32acf62cf2e6531efc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "cd6a2898_e0c2876c",
+        "filename": "src/plugins/rdma/output.c",
+        "patchSetId": 44
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-07-27T13:48:10Z",
+      "side": 1,
+      "message": "Addressed in PS44; marking resolved after final validation.",
+      "parentUuid": "aed596fa_0a7fa7a4",
+      "revId": "4f501090e0d642ffd7b3ba32acf62cf2e6531efc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "acfc7dee_079fe088",
+        "filename": "src/plugins/rdma/output.c",
+        "patchSetId": 44
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-07-27T13:48:10Z",
+      "side": 1,
+      "message": "Addressed in PS44; marking resolved after final validation.",
+      "parentUuid": "4d150c96_5df63874",
+      "revId": "4f501090e0d642ffd7b3ba32acf62cf2e6531efc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "0b17b1ad_1313cab3",
+        "filename": "src/plugins/rdma/output.c",
+        "patchSetId": 44
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-07-27T13:48:10Z",
+      "side": 1,
+      "message": "Addressed in PS44; marking resolved after final validation.",
+      "parentUuid": "2ed4e7f2_0e58bb0c",
+      "revId": "4f501090e0d642ffd7b3ba32acf62cf2e6531efc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "7264c621_f8499402",
+        "filename": "src/plugins/rdma/output.c",
+        "patchSetId": 44
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-07-27T13:48:10Z",
+      "side": 1,
+      "message": "Addressed in PS44; marking resolved after final validation.",
+      "parentUuid": "82a1510c_14f10aa0",
+      "revId": "4f501090e0d642ffd7b3ba32acf62cf2e6531efc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "4fd16535_66688326",
+        "filename": "src/plugins/rdma/output.c",
+        "patchSetId": 44
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-07-27T13:48:10Z",
+      "side": 1,
+      "message": "Addressed in PS44; marking resolved after final validation.",
+      "parentUuid": "b1c5763d_fd1d7f0f",
+      "revId": "4f501090e0d642ffd7b3ba32acf62cf2e6531efc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "0d0e786c_9c96004b",
+        "filename": "src/plugins/rdma/output.c",
+        "patchSetId": 44
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-07-27T13:48:10Z",
+      "side": 1,
+      "message": "Addressed in PS44; marking resolved after final validation.",
+      "parentUuid": "19afc1ba_1a7429a7",
+      "revId": "4f501090e0d642ffd7b3ba32acf62cf2e6531efc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a869c773_7f6b58c2",
+        "filename": "src/plugins/rdma/output.c",
+        "patchSetId": 44
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-07-27T13:48:10Z",
+      "side": 1,
+      "message": "Addressed in PS44; marking resolved after final validation.",
+      "parentUuid": "7efd3819_e3b25f9c",
+      "revId": "4f501090e0d642ffd7b3ba32acf62cf2e6531efc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "86481a83_c5c6088a",
+        "filename": "src/plugins/rdma/output.c",
+        "patchSetId": 44
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-07-27T13:48:10Z",
+      "side": 1,
+      "message": "Addressed in PS44; marking resolved after final validation.",
+      "parentUuid": "a4151c28_e4dd8478",
+      "revId": "4f501090e0d642ffd7b3ba32acf62cf2e6531efc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "6d4d9d93_cfa67802",
+        "filename": "src/plugins/rdma/output.c",
+        "patchSetId": 44
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-07-27T13:48:10Z",
+      "side": 1,
+      "message": "Addressed in PS44; marking resolved after final validation.",
+      "parentUuid": "d59bfc47_2bda9d8a",
+      "revId": "4f501090e0d642ffd7b3ba32acf62cf2e6531efc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "959364ea_0c756220",
+        "filename": "src/plugins/rdma/output.c",
+        "patchSetId": 44
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-07-27T13:48:10Z",
+      "side": 1,
+      "message": "Addressed in PS44; marking resolved after final validation.",
+      "parentUuid": "074f0f22_a8cb9d71",
+      "revId": "4f501090e0d642ffd7b3ba32acf62cf2e6531efc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b7ada028_f524390a",
+        "filename": "src/plugins/rdma/output.c",
+        "patchSetId": 44
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-07-27T13:48:10Z",
+      "side": 1,
+      "message": "Addressed in PS44; marking resolved after final validation.",
+      "parentUuid": "7ee4653b_b253cd27",
+      "revId": "4f501090e0d642ffd7b3ba32acf62cf2e6531efc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "f1f6f53b_e6fae829",
+        "filename": "src/plugins/rdma/output.c",
+        "patchSetId": 44
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-07-27T13:48:10Z",
+      "side": 1,
+      "message": "Addressed in PS44; marking resolved after final validation.",
+      "parentUuid": "835fd3b2_5f7cbb52",
+      "revId": "4f501090e0d642ffd7b3ba32acf62cf2e6531efc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "2ac0237f_a8ffec07",
+        "filename": "src/plugins/rdma/output.c",
+        "patchSetId": 44
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-07-27T13:48:10Z",
+      "side": 1,
+      "message": "Addressed in PS44; marking resolved after final validation.",
+      "parentUuid": "fd390481_461fd54a",
+      "revId": "4f501090e0d642ffd7b3ba32acf62cf2e6531efc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b5d75ecd_6e40db8b",
+        "filename": "src/plugins/rdma/output.c",
+        "patchSetId": 44
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-07-27T13:48:10Z",
+      "side": 1,
+      "message": "Addressed in PS44; marking resolved after final validation.",
+      "parentUuid": "89e826e0_0340463d",
+      "revId": "4f501090e0d642ffd7b3ba32acf62cf2e6531efc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "975ce490_ea1093d5",
+        "filename": "src/plugins/rdma/output.c",
+        "patchSetId": 44
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-07-27T13:48:10Z",
+      "side": 1,
+      "message": "Addressed in PS44; marking resolved after final validation.",
+      "parentUuid": "167702ec_a6f9b76f",
+      "revId": "4f501090e0d642ffd7b3ba32acf62cf2e6531efc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "f9a545ca_750b7e30",
+        "filename": "src/plugins/rdma/output.c",
+        "patchSetId": 44
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-07-27T13:48:10Z",
+      "side": 1,
+      "message": "Addressed in PS44; marking resolved after final validation.",
+      "parentUuid": "d00267ab_22873397",
+      "revId": "4f501090e0d642ffd7b3ba32acf62cf2e6531efc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "14303c0d_23b6d5e5",
+        "filename": "src/plugins/rdma/output.c",
+        "patchSetId": 44
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-07-27T13:48:10Z",
+      "side": 1,
+      "message": "Addressed in PS44; marking resolved after final validation.",
+      "parentUuid": "1d11893b_f80d8071",
+      "revId": "4f501090e0d642ffd7b3ba32acf62cf2e6531efc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "11cdb4ab_68b83262",
+        "filename": "src/plugins/rdma/output.c",
+        "patchSetId": 44
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-07-27T13:48:10Z",
+      "side": 1,
+      "message": "Addressed in PS44; marking resolved after final validation.",
+      "parentUuid": "a097a9ae_36eb433f",
+      "revId": "4f501090e0d642ffd7b3ba32acf62cf2e6531efc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "fcb70414_d376a50c",
+        "filename": "src/plugins/rdma/output.c",
+        "patchSetId": 44
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-07-27T13:48:10Z",
+      "side": 1,
+      "message": "Addressed in PS44; marking resolved after final validation.",
+      "parentUuid": "7686cff2_12598c1a",
+      "revId": "4f501090e0d642ffd7b3ba32acf62cf2e6531efc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
