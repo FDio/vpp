@@ -35,6 +35,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "a3a84f02_e8954648",
+        "filename": "src/vnet/bfd/bfd_udp.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 262,
+      "author": {
+        "id": 3122
+      },
+      "writtenOn": "2026-07-27T16:05:08Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "ce86ff05_0d8a4589",
+      "revId": "4d7f1e03c2159033d006f93a0cd94c2d8c017d69",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "8eaf1b46_a42d5cef",
@@ -52,6 +70,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "ad0237cf_cf48f909",
+        "filename": "test/test_bfd.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 2141,
+      "author": {
+        "id": 3122
+      },
+      "writtenOn": "2026-07-27T16:05:08Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "8eaf1b46_a42d5cef",
+      "revId": "4d7f1e03c2159033d006f93a0cd94c2d8c017d69",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "89ae4670_214a1226",
@@ -65,6 +101,30 @@
       "writtenOn": "2026-07-27T13:57:19Z",
       "side": 1,
       "message": "this could be simplified to:\n\nwhile time.time() \u003c deadline:\n   ...\n\nreturn None",
+      "range": {
+        "startLine": 2164,
+        "startChar": 0,
+        "endLine": 2168,
+        "endChar": 27
+      },
+      "revId": "4d7f1e03c2159033d006f93a0cd94c2d8c017d69",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "5253e792_acae2de1",
+        "filename": "test/test_bfd.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 2168,
+      "author": {
+        "id": 3122
+      },
+      "writtenOn": "2026-07-27T16:05:08Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "89ae4670_214a1226",
       "range": {
         "startLine": 2164,
         "startChar": 0,
