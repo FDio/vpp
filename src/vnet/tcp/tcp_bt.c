@@ -60,8 +60,13 @@ bt_alloc_sample (tcp_byte_tracker_t * bt, u32 min_seq, u32 max_seq)
 }
 
 static void
-bt_free_sample (tcp_byte_tracker_t * bt, tcp_bt_sample_t * bts)
+bt_unlink_sample (tcp_byte_tracker_t *bt, tcp_bt_sample_t *bts)
 {
+  if (bt->last_ooo == bt_sample_index (bt, bts))
+    bt->last_ooo = TCP_BTS_INVALID_INDEX;
+  if (bt->cur_rxt == bt_sample_index (bt, bts))
+    bt->cur_rxt = TCP_BTS_INVALID_INDEX;
+
   if (bts->prev != TCP_BTS_INVALID_INDEX)
     {
       tcp_bt_sample_t *prev = bt_prev_sample (bt, bts);
@@ -79,9 +84,70 @@ bt_free_sample (tcp_byte_tracker_t * bt, tcp_bt_sample_t * bts)
     bt->tail = bts->prev;
 
   rb_tree_del_custom (&bt->sample_lookup, bts->min_seq, bt_seq_lt);
+}
+
+static void
+bt_free_sample (tcp_byte_tracker_t *bt, tcp_bt_sample_t *bts)
+{
+  bt_unlink_sample (bt, bts);
+  bt->dsack_fragments -= !!(bts->flags & TCP_BTS_DSACK_TRACKED);
   if (CLIB_DEBUG)
     memset (bts, 0xfc, sizeof (*bts));
   pool_put (bt->samples, bts);
+}
+
+static void
+bt_retire_sample (tcp_byte_tracker_t *bt, tcp_bt_sample_t *bts)
+{
+  tcp_bt_sample_t *tail;
+  u32 bts_index = bt_sample_index (bt, bts);
+
+  bt_unlink_sample (bt, bts);
+  bts->next = TCP_BTS_INVALID_INDEX;
+  bts->prev = bt->dsack_tail;
+
+  tail = bt_get_sample (bt, bt->dsack_tail);
+  if (tail)
+    tail->next = bts_index;
+  else
+    bt->dsack_head = bts_index;
+  bt->dsack_tail = bts_index;
+}
+
+static void
+bt_free_retired_sample (tcp_byte_tracker_t *bt, tcp_bt_sample_t *bts)
+{
+  tcp_bt_sample_t *next, *prev;
+
+  next = bt_get_sample (bt, bts->next);
+  prev = bt_get_sample (bt, bts->prev);
+  if (next)
+    next->prev = bts->prev;
+  else
+    bt->dsack_tail = bts->prev;
+  if (prev)
+    prev->next = bts->next;
+  else
+    bt->dsack_head = bts->next;
+
+  bt->dsack_fragments -= !!(bts->flags & TCP_BTS_DSACK_TRACKED);
+  if (CLIB_DEBUG)
+    memset (bts, 0xfc, sizeof (*bts));
+  pool_put (bt->samples, bts);
+}
+
+static void
+bt_free_retired_samples (tcp_byte_tracker_t *bt)
+{
+  tcp_bt_sample_t *cur, *next;
+
+  cur = bt_get_sample (bt, bt->dsack_head);
+  while (cur)
+    {
+      next = bt_get_sample (bt, cur->next);
+      bt_free_retired_sample (bt, cur);
+      cur = next;
+    }
 }
 
 static tcp_bt_sample_t *
@@ -100,6 +166,7 @@ bt_split_sample (tcp_byte_tracker_t * bt, tcp_bt_sample_t * bts, u32 seq)
   *ns = *bts;
   ns->min_seq = seq;
   bts->max_seq = seq;
+  bt->dsack_fragments += !!(ns->flags & TCP_BTS_DSACK_TRACKED);
 
   next = bt_next_sample (bt, bts);
   if (next)
@@ -123,6 +190,12 @@ bt_merge_sample (tcp_byte_tracker_t * bt, tcp_bt_sample_t * prev,
     bt->tail = bt_sample_index (bt, prev);
   bt_free_sample (bt, cur);
   return prev;
+}
+
+static_always_inline u8
+bt_sacked_samples_can_merge (tcp_bt_sample_t *left, tcp_bt_sample_t *right)
+{
+  return left->flags == right->flags;
 }
 
 static tcp_bt_sample_t *
@@ -206,55 +279,77 @@ int
 tcp_bt_is_sane (tcp_byte_tracker_t * bt)
 {
   tcp_bt_sample_t *bts, *tmp;
-
-  if (pool_elts (bt->samples) != pool_elts (bt->sample_lookup.nodes) - 1)
-    return 0;
+  u32 active = 0, retired = 0, dsack_fragments = 0;
 
   if (bt->head == TCP_BTS_INVALID_INDEX)
     {
       if (bt->tail != TCP_BTS_INVALID_INDEX)
 	return 0;
-      if (pool_elts (bt->samples) != 0)
+    }
+  else
+    {
+      bts = bt_get_sample (bt, bt->tail);
+      if (!bts)
 	return 0;
-      return 1;
+
+      bts = bt_get_sample (bt, bt->head);
+      if (!bts || bts->prev != TCP_BTS_INVALID_INDEX)
+	return 0;
+
+      while (bts)
+	{
+	  active++;
+	  dsack_fragments += !!(bts->flags & TCP_BTS_DSACK_TRACKED);
+	  tmp = bt_lookup_seq (bt, bts->min_seq);
+	  if (!tmp || tmp != bts)
+	    return 0;
+	  tmp = bt_next_sample (bt, bts);
+	  if (tmp)
+	    {
+	      if (tmp->prev != bt_sample_index (bt, bts))
+		{
+		  clib_warning ("next %u thinks prev is %u should be %u", bts->next, tmp->prev,
+				bt_sample_index (bt, bts));
+		  return 0;
+		}
+	      if (!seq_lt (bts->min_seq, tmp->min_seq))
+		return 0;
+	    }
+	  else
+	    {
+	      if (bt->tail != bt_sample_index (bt, bts))
+		return 0;
+	      if (bts->next != TCP_BTS_INVALID_INDEX)
+		return 0;
+	    }
+	  bts = tmp;
+	}
     }
 
-  bts = bt_get_sample (bt, bt->tail);
-  if (!bts)
+  bts = bt_get_sample (bt, bt->dsack_head);
+  if (bts && bts->prev != TCP_BTS_INVALID_INDEX)
     return 0;
-
-  bts = bt_get_sample (bt, bt->head);
-  if (!bts || bts->prev != TCP_BTS_INVALID_INDEX)
-    return 0;
-
   while (bts)
     {
-      tmp = bt_lookup_seq (bt, bts->min_seq);
-      if (!tmp)
+      retired++;
+      dsack_fragments++;
+      if (!(bts->flags & TCP_BTS_DSACK_TRACKED))
 	return 0;
-      if (tmp != bts)
+      tmp = bt_get_sample (bt, bts->next);
+      if (tmp && tmp->prev != bt_sample_index (bt, bts))
 	return 0;
-      tmp = bt_next_sample (bt, bts);
-      if (tmp)
-	{
-	  if (tmp->prev != bt_sample_index (bt, bts))
-	    {
-	      clib_warning ("next %u thinks prev is %u should be %u",
-			    bts->next, tmp->prev, bt_sample_index (bt, bts));
-	      return 0;
-	    }
-	  if (!seq_lt (bts->min_seq, tmp->min_seq))
-	    return 0;
-	}
-      else
-	{
-	  if (bt->tail != bt_sample_index (bt, bts))
-	    return 0;
-	  if (bts->next != TCP_BTS_INVALID_INDEX)
-	    return 0;
-	}
+      if (!tmp && bt->dsack_tail != bt_sample_index (bt, bts))
+	return 0;
       bts = tmp;
     }
+
+  if (active != pool_elts (bt->sample_lookup.nodes) - 1)
+    return 0;
+  if (active + retired != pool_elts (bt->samples))
+    return 0;
+  if (dsack_fragments != bt->dsack_fragments)
+    return 0;
+
   return 1;
 }
 
@@ -293,12 +388,12 @@ tcp_bt_track_tx (tcp_connection_t * tc, u32 len)
 {
   tcp_byte_tracker_t *bt = tc->bt;
   tcp_bt_sample_t *bts, *tail;
+  tcp_bts_flags_t tx_flags = tc->app_limited ? TCP_BTS_IS_APP_LIMITED : 0;
   u32 bts_index;
 
   tail = bt_get_sample (bt, bt->tail);
-  if (tail && tail->max_seq == tc->snd_nxt
-      && !(tail->flags & TCP_BTS_IS_SACKED)
-      && tail->tx_time == tcp_time_now_us (tc->c_thread_index))
+  if (tail && tail->max_seq == tc->snd_nxt && tail->flags == tx_flags &&
+      tail->tx_time == tcp_time_now_us (tc->c_thread_index))
     {
       tail->max_seq += len;
       return;
@@ -325,22 +420,111 @@ tcp_bt_track_tx (tcp_connection_t * tc, u32 len)
     }
 }
 
+static void
+bt_dsack_clear_ranges (tcp_connection_t *tc)
+{
+  tcp_byte_tracker_t *bt = tc->bt;
+  tcp_bt_sample_t *cur;
+
+  cur = bt_get_sample (bt, bt->head);
+  while (cur)
+    {
+      cur->flags &= ~(TCP_BTS_DSACK_TRACKED | TCP_BTS_DSACK_DUPLICATE);
+      cur = bt_next_sample (bt, cur);
+    }
+  bt_free_retired_samples (bt);
+  bt->dsack_rxt_bytes = 0;
+  bt->dsack_dup_bytes = 0;
+  bt->dsack_rxt_ranges = 0;
+  bt->dsack_fragments = 0;
+  bt->dsack_high = 0;
+}
+
+static void
+bt_dsack_abandon_history (tcp_connection_t *tc)
+{
+  bt_dsack_clear_ranges (tc);
+  tc->dsack_flags |= TCP_DSACK_INELIGIBLE | TCP_DSACK_RXT_OVERFLOW;
+}
+
+static_always_inline u8
+bt_dsack_can_split (tcp_connection_t *tc, u32 n_splits)
+{
+  if (tc->bt->dsack_fragments <= TCP_MAX_DSACK_RXT_RANGES - n_splits)
+    return 1;
+
+  bt_dsack_abandon_history (tc);
+  return 0;
+}
+
+static u8
+bt_dsack_track_retransmit (tcp_connection_t *tc, u32 start, u32 end, u8 overlaps)
+{
+  tcp_byte_tracker_t *bt = tc->bt;
+
+  if (tc->dsack_flags & TCP_DSACK_RXT_OVERFLOW)
+    return 0;
+
+  if (overlaps)
+    tc->dsack_flags |= TCP_DSACK_INELIGIBLE;
+
+  if (!bt->dsack_rxt_bytes || start != bt->dsack_high)
+    {
+      if (bt->dsack_rxt_ranges == TCP_MAX_DSACK_RXT_RANGES ||
+	  bt->dsack_fragments == TCP_MAX_DSACK_RXT_RANGES)
+	{
+	  bt_dsack_abandon_history (tc);
+	  return 0;
+	}
+      bt->dsack_rxt_ranges++;
+    }
+
+  if (!overlaps)
+    bt->dsack_rxt_bytes += end - start;
+  bt->dsack_high = end;
+  return 1;
+}
+
+static_always_inline void
+bt_dsack_track_sample (tcp_byte_tracker_t *bt, tcp_bt_sample_t *bts)
+{
+  if (!(bts->flags & TCP_BTS_DSACK_TRACKED))
+    {
+      bts->flags |= TCP_BTS_DSACK_TRACKED;
+      bt->dsack_fragments++;
+    }
+}
+
 void
 tcp_bt_track_rxt (tcp_connection_t * tc, u32 start, u32 end)
 {
   tcp_byte_tracker_t *bt = tc->bt;
-  tcp_bt_sample_t *bts, *next, *cur, *prev, *nbts;
+  tcp_bt_sample_t *bts, *next, *cur, *prev, *nbts, *scan;
   u32 bts_index, cur_index, next_index, prev_index, max_seq;
   u8 is_end = end == tc->snd_nxt;
-  tcp_bts_flags_t bts_flags;
+  u8 track_dsack = tcp_opts_sack_permitted (&tc->rcv_opts) && tcp_in_cong_recovery (tc);
+  u8 dsack_overlap = 0, was_cur_rxt;
+  tcp_bts_flags_t bts_flags, merge_flags;
 
   /* Contiguous blocks retransmitted at the same time */
   bts = bt_get_sample (bt, bt->last_ooo);
-  if (bts && bts->max_seq == start
-      && bts->tx_time == tcp_time_now_us (tc->c_thread_index))
+  next = bts ? bt_next_sample (bt, bts) : 0;
+  merge_flags = TCP_BTS_IS_RXT;
+  if (next)
+    {
+      merge_flags |= next->flags & (TCP_BTS_IS_LOST | TCP_BTS_IS_DELIVERED);
+      merge_flags |= (next->flags & TCP_BTS_IS_RXT) ? TCP_BTS_IS_RXT_LOST : 0;
+    }
+  merge_flags |= tc->app_limited ? TCP_BTS_IS_APP_LIMITED : 0;
+  merge_flags |= track_dsack ? TCP_BTS_DSACK_TRACKED : 0;
+  if (bts && next && bts->max_seq == start && bts->flags == merge_flags &&
+      bts->tx_time == tcp_time_now_us (tc->c_thread_index))
     {
       bts->max_seq = end;
-      next = bt_next_sample (bt, bts);
+      if (track_dsack && bt_dsack_track_retransmit (tc, start, end, 0 /* overlaps */))
+	{
+	  bt_dsack_track_sample (bt, bts);
+	}
       if (next)
 	bt_fix_overlapped (bt, next, end, is_end);
 
@@ -350,9 +534,20 @@ tcp_bt_track_rxt (tcp_connection_t * tc, u32 start, u32 end)
   /* Find original tx sample and cache flags in case the sample
    * is freed or the pool moves */
   bts = bt_lookup_seq (bt, start);
+  ASSERT (bts != 0 && seq_geq (start, bts->min_seq));
+  was_cur_rxt = bt_sample_index (bt, bts) == bt->cur_rxt;
   bts_flags = bts->flags;
 
-  ASSERT (bts != 0 && seq_geq (start, bts->min_seq));
+  if (track_dsack)
+    {
+      scan = bts;
+      while (scan && seq_lt (scan->min_seq, end))
+	{
+	  dsack_overlap |= !!(scan->flags & TCP_BTS_DSACK_TRACKED);
+	  scan = bt_next_sample (bt, scan);
+	}
+      track_dsack = bt_dsack_track_retransmit (tc, start, end, dsack_overlap);
+    }
 
   /* Head in the past */
   if (seq_lt (bts->min_seq, tc->snd_una))
@@ -370,6 +565,9 @@ tcp_bt_track_rxt (tcp_connection_t * tc, u32 start, u32 end)
       cur->flags |= TCP_BTS_IS_RXT;
       if (bts_flags & TCP_BTS_IS_RXT)
 	cur->flags |= TCP_BTS_IS_RXT_LOST;
+      cur->flags |= bts_flags & (TCP_BTS_IS_LOST | TCP_BTS_IS_DELIVERED);
+      if (track_dsack)
+	bt_dsack_track_sample (bt, cur);
       cur->next = next_index;
       cur->prev = prev_index;
 
@@ -396,6 +594,8 @@ tcp_bt_track_rxt (tcp_connection_t * tc, u32 start, u32 end)
 	}
 
       bt->last_ooo = cur_index;
+      if (was_cur_rxt)
+	bt->cur_rxt = cur_index;
       return;
     }
 
@@ -412,6 +612,9 @@ tcp_bt_track_rxt (tcp_connection_t * tc, u32 start, u32 end)
   cur->flags |= TCP_BTS_IS_RXT;
   if (bts_flags & TCP_BTS_IS_RXT)
     cur->flags |= TCP_BTS_IS_RXT_LOST;
+  cur->flags |= bts_flags & (TCP_BTS_IS_LOST | TCP_BTS_IS_DELIVERED);
+  if (track_dsack)
+    bt_dsack_track_sample (bt, cur);
   cur->prev = bts_index;
   cur_index = bt_sample_index (bt, cur);
 
@@ -424,6 +627,7 @@ tcp_bt_track_rxt (tcp_connection_t * tc, u32 start, u32 end)
 
       *nbts = *bts;
       nbts->min_seq = end;
+      bt->dsack_fragments += !!(nbts->flags & TCP_BTS_DSACK_TRACKED);
 
       if (nbts->next != TCP_BTS_INVALID_INDEX)
 	{
@@ -438,6 +642,8 @@ tcp_bt_track_rxt (tcp_connection_t * tc, u32 start, u32 end)
 
       bts->max_seq = start;
       bt->last_ooo = cur_index;
+      if (was_cur_rxt)
+	bt->cur_rxt = cur_index;
     }
   /* Tail completely overlapped */
   else
@@ -457,14 +663,19 @@ tcp_bt_track_rxt (tcp_connection_t * tc, u32 start, u32 end)
       bts->next = cur_index;
 
       bt->last_ooo = cur_index;
+      if (was_cur_rxt)
+	bt->cur_rxt = cur_index;
     }
+
+  if (PREDICT_FALSE (bt->dsack_fragments > TCP_MAX_DSACK_RXT_RANGES))
+    bt_dsack_abandon_history (tc);
 }
 
 static void
-tcp_bt_sample_to_rate_sample (tcp_connection_t * tc, tcp_bt_sample_t * bts,
-			      tcp_rate_sample_t * rs)
+tcp_bt_sample_to_rate_sample (tcp_connection_t *tc, tcp_bt_sample_t *bts, tcp_rate_sample_t *rs,
+			      f64 now)
 {
-  if (bts->flags & TCP_BTS_IS_SACKED)
+  if (bts->flags & TCP_BTS_IS_DELIVERED)
     return;
 
   if (rs->prior_delivered && rs->prior_delivered >= bts->delivered)
@@ -473,37 +684,96 @@ tcp_bt_sample_to_rate_sample (tcp_connection_t * tc, tcp_bt_sample_t * bts,
   rs->prior_delivered = bts->delivered;
   rs->prior_time = bts->delivered_time;
   rs->interval_time = bts->tx_time - bts->first_tx_time;
-  rs->rtt_time = tc->delivered_time - bts->tx_time;
+  rs->rtt_time = now - bts->tx_time;
   rs->flags = bts->flags;
   rs->tx_in_flight = bts->tx_in_flight;
   rs->tx_lost = bts->tx_lost;
   tc->first_tx_time = bts->tx_time;
 }
 
+static void tcp_bt_update_reorder (tcp_connection_t *tc, u32 start, u32 high_sacked);
+
+static_always_inline void
+tcp_bt_update_rxt_delivered (tcp_connection_t *tc, tcp_rate_sample_t *rs, tcp_bts_flags_t flags,
+			     u32 start, u32 end)
+{
+  u32 high_rxt = tc->sack_sb.high_rxt;
+
+  if (!(flags & TCP_BTS_IS_RXT) || !tcp_in_cong_recovery (tc) || seq_geq (start, high_rxt))
+    return;
+
+  rs->rxt_sacked += seq_lt (end, high_rxt) ? end - start : high_rxt - start;
+}
+
 static void
-tcp_bt_walk_samples (tcp_connection_t * tc, tcp_rate_sample_t * rs)
+tcp_bt_walk_samples (tcp_connection_t *tc, u32 ack, tcp_rate_sample_t *rs, f64 now, u32 high_sacked,
+		     u8 account)
 {
   tcp_byte_tracker_t *bt = tc->bt;
   tcp_bt_sample_t *next, *cur;
 
   cur = bt_get_sample (bt, bt->head);
-  while (cur && seq_leq (cur->max_seq, tc->snd_una))
+  while (cur && seq_leq (cur->max_seq, ack))
     {
       next = bt_next_sample (bt, cur);
-      tcp_bt_sample_to_rate_sample (tc, cur, rs);
-      bt_free_sample (bt, cur);
+      if (account)
+	{
+	  u32 len = cur->max_seq - cur->min_seq;
+	  if (!(cur->flags & TCP_BTS_IS_SACKED))
+	    tcp_bt_update_reorder (tc, cur->min_seq, high_sacked);
+	  if (cur->flags & TCP_BTS_IS_SACKED)
+	    {
+	      rs->last_bytes_delivered += len;
+	      tc->sack_sb.sacked_bytes -= len;
+	    }
+	  if (cur->flags & TCP_BTS_IS_LOST)
+	    tc->sack_sb.lost_bytes -= len;
+	  if (!(cur->flags & TCP_BTS_IS_SACKED))
+	    tcp_bt_update_rxt_delivered (tc, rs, cur->flags, cur->min_seq, cur->max_seq);
+	}
+      tcp_bt_sample_to_rate_sample (tc, cur, rs, now);
+      if (account && (cur->flags & TCP_BTS_DSACK_TRACKED))
+	bt_retire_sample (bt, cur);
+      else
+	bt_free_sample (bt, cur);
       cur = next;
     }
 
-  if (cur && seq_lt (cur->min_seq, tc->snd_una))
+  if (cur && seq_lt (cur->min_seq, ack))
     {
-      bt_update_sample (bt, cur, tc->snd_una);
-      tcp_bt_sample_to_rate_sample (tc, cur, rs);
+      u32 len = ack - cur->min_seq;
+      tcp_bt_sample_t *acked = cur;
+
+      if (account && (cur->flags & TCP_BTS_DSACK_TRACKED))
+	{
+	  cur = bt_split_sample (bt, cur, ack);
+	  acked = bt_prev_sample (bt, cur);
+	}
+      if (account)
+	{
+	  if (!(acked->flags & TCP_BTS_IS_SACKED))
+	    tcp_bt_update_reorder (tc, acked->min_seq, high_sacked);
+	  if (acked->flags & TCP_BTS_IS_SACKED)
+	    {
+	      rs->last_bytes_delivered += len;
+	      tc->sack_sb.sacked_bytes -= len;
+	    }
+	  if (acked->flags & TCP_BTS_IS_LOST)
+	    tc->sack_sb.lost_bytes -= len;
+	  if (!(acked->flags & TCP_BTS_IS_SACKED))
+	    tcp_bt_update_rxt_delivered (tc, rs, acked->flags, acked->min_seq, ack);
+	}
+      tcp_bt_sample_to_rate_sample (tc, acked, rs, now);
+      if (acked != cur)
+	bt_retire_sample (bt, acked);
+      else
+	bt_update_sample (bt, cur, ack);
     }
 }
 
 static void
-tcp_bt_walk_samples_ooo (tcp_connection_t * tc, tcp_rate_sample_t * rs)
+tcp_bt_walk_samples_ooo (tcp_connection_t *tc, tcp_rate_sample_t *rs, f64 now, u32 high_sacked,
+			 u8 account)
 {
   sack_block_t *blks = tc->rcv_opts.sacks, *blk;
   tcp_byte_tracker_t *bt = tc->bt;
@@ -538,9 +808,21 @@ tcp_bt_walk_samples_ooo (tcp_connection_t * tc, tcp_rate_sample_t * rs)
 	{
 	  if (!(cur->flags & TCP_BTS_IS_SACKED))
 	    {
-	      tcp_bt_sample_to_rate_sample (tc, cur, rs);
-	      cur->flags |= TCP_BTS_IS_SACKED;
-	      if (prev && (prev->flags & TCP_BTS_IS_SACKED))
+	      if (account)
+		{
+		  u32 len = cur->max_seq - cur->min_seq;
+		  tcp_bt_update_reorder (tc, cur->min_seq, high_sacked);
+		  tc->sack_sb.sacked_bytes += len;
+		  rs->last_sacked_bytes += len;
+		  if (cur->flags & TCP_BTS_IS_LOST)
+		    tc->sack_sb.lost_bytes -= len;
+		  tcp_bt_update_rxt_delivered (tc, rs, cur->flags, cur->min_seq, cur->max_seq);
+		}
+	      tcp_bt_sample_to_rate_sample (tc, cur, rs, now);
+	      cur->flags &= ~TCP_BTS_IS_LOST;
+	      cur->flags |= TCP_BTS_IS_SACKED | TCP_BTS_IS_DELIVERED;
+	      if (prev && (prev->flags & TCP_BTS_IS_SACKED) &&
+		  (!account || bt_sacked_samples_can_merge (prev, cur)))
 		{
 		  cur = bt_merge_sample (bt, prev, cur);
 		  next = bt_next_sample (bt, cur);
@@ -548,7 +830,8 @@ tcp_bt_walk_samples_ooo (tcp_connection_t * tc, tcp_rate_sample_t * rs)
 	      else
 		{
 		  next = bt_next_sample (bt, cur);
-		  if (next && (next->flags & TCP_BTS_IS_SACKED))
+		  if (next && (next->flags & TCP_BTS_IS_SACKED) &&
+		      (!account || bt_sacked_samples_can_merge (cur, next)))
 		    {
 		      cur = bt_merge_sample (bt, cur, next);
 		      next = bt_next_sample (bt, cur);
@@ -564,20 +847,45 @@ tcp_bt_walk_samples_ooo (tcp_connection_t * tc, tcp_rate_sample_t * rs)
 
       if (cur && seq_lt (cur->min_seq, blk->end))
 	{
-	  tcp_bt_sample_to_rate_sample (tc, cur, rs);
-	  prev = bt_prev_sample (bt, cur);
-	  /* Extend previous to include the newly sacked bytes */
-	  if (prev && (prev->flags & TCP_BTS_IS_SACKED))
+	  if (!account)
 	    {
-	      prev->max_seq = blk->end;
-	      bt_update_sample (bt, cur, blk->end);
+	      tcp_bt_sample_to_rate_sample (tc, cur, rs, now);
+	      prev = bt_prev_sample (bt, cur);
+	      if (prev && (prev->flags & TCP_BTS_IS_SACKED))
+		{
+		  prev->max_seq = blk->end;
+		  bt_update_sample (bt, cur, blk->end);
+		}
+	      else
+		{
+		  next = bt_split_sample (bt, cur, blk->end);
+		  cur = bt_prev_sample (bt, next);
+		  cur->flags &= ~TCP_BTS_IS_LOST;
+		  cur->flags |= TCP_BTS_IS_SACKED | TCP_BTS_IS_DELIVERED;
+		}
+	      continue;
 	    }
-	  /* Split sample into two. First part is consumed */
-	  else
+
+	  if (cur->flags & TCP_BTS_IS_SACKED)
+	    continue;
+
+	  u32 len = blk->end - cur->min_seq;
+	  tcp_bt_update_reorder (tc, cur->min_seq, high_sacked);
+	  tc->sack_sb.sacked_bytes += len;
+	  rs->last_sacked_bytes += len;
+	  if (cur->flags & TCP_BTS_IS_LOST)
+	    tc->sack_sb.lost_bytes -= len;
+	  tcp_bt_update_rxt_delivered (tc, rs, cur->flags, cur->min_seq, blk->end);
+	  tcp_bt_sample_to_rate_sample (tc, cur, rs, now);
+	  next = bt_split_sample (bt, cur, blk->end);
+	  cur = bt_prev_sample (bt, next);
+	  cur->flags &= ~TCP_BTS_IS_LOST;
+	  cur->flags |= TCP_BTS_IS_SACKED | TCP_BTS_IS_DELIVERED;
+
+	  prev = bt_prev_sample (bt, cur);
+	  if (prev && (prev->flags & TCP_BTS_IS_SACKED) && bt_sacked_samples_can_merge (prev, cur))
 	    {
-	      next = bt_split_sample (bt, cur, blk->end);
-	      cur = bt_prev_sample (bt, next);
-	      cur->flags |= TCP_BTS_IS_SACKED;
+	      bt_merge_sample (bt, prev, cur);
 	    }
 	}
     }
@@ -597,10 +905,526 @@ tcp_bt_data_acked (tcp_connection_t *tc, tcp_rate_sample_t *rs)
   return seq_gt (ack_end, prev_una) ? ack_end - prev_una : 0;
 }
 
+static void
+tcp_bt_update_sack_loss (tcp_connection_t *tc, tcp_rate_sample_t *rs, u8 clear_lost)
+{
+  tcp_byte_tracker_t *bt = tc->bt;
+  tcp_bt_sample_t *cur;
+  sack_scoreboard_t *sb = &tc->sack_sb;
+  u32 sacked = 0, lost = 0, newly_lost = 0, blocks = 0;
+  u32 loss_thresh = (sb->reorder - 1) * tc->snd_mss;
+  u8 in_sacked = 0;
+
+  cur = bt_get_sample (bt, bt->tail);
+  while (cur)
+    {
+      u32 len = cur->max_seq - cur->min_seq;
+
+      if (clear_lost)
+	cur->flags &= ~TCP_BTS_IS_LOST;
+
+      if (cur->flags & TCP_BTS_IS_SACKED)
+	{
+	  sacked += len;
+	  if (!in_sacked)
+	    blocks++;
+	  in_sacked = 1;
+	}
+      else
+	{
+	  in_sacked = 0;
+	  if (seq_lt (cur->min_seq, sb->high_sacked) &&
+	      (sacked > loss_thresh || blocks >= sb->reorder) && !(cur->flags & TCP_BTS_IS_LOST))
+	    {
+	      cur->flags |= TCP_BTS_IS_LOST;
+	      newly_lost += len;
+	    }
+	  if (cur->flags & TCP_BTS_IS_LOST)
+	    lost += len;
+	}
+
+      cur = bt_prev_sample (bt, cur);
+    }
+
+  ASSERT (sacked == sb->sacked_bytes);
+  sb->lost_bytes = lost;
+  if (rs)
+    rs->last_lost += newly_lost;
+}
+
+static void
+tcp_bt_update_reorder (tcp_connection_t *tc, u32 start, u32 high_sacked)
+{
+  sack_scoreboard_t *sb = &tc->sack_sb;
+  u32 reord;
+
+  if (!seq_lt (start, high_sacked))
+    return;
+
+  if (tcp_in_cong_recovery (tc) &&
+      (seq_geq (sb->rescue_rxt, tc->snd_una) || seq_lt (start, sb->high_rxt)))
+    return;
+
+  reord = (high_sacked - start + tc->snd_mss - 1) / tc->snd_mss;
+  reord = clib_min (reord, TCP_MAX_SACK_REORDER);
+  sb->reorder = clib_max (sb->reorder, reord);
+}
+
+void
+tcp_bt_apply_sacks (tcp_connection_t *tc, u32 ack, u32 high_sacked, tcp_rate_sample_t *rs)
+{
+  sack_scoreboard_t *sb = &tc->sack_sb;
+  u32 old_high_sacked;
+  f64 now;
+
+  now = tcp_time_now_us (tc->c_thread_index);
+  old_high_sacked = (sb->sacked_bytes || sb->is_reneging) ? sb->high_sacked : tc->snd_una;
+
+  if (seq_gt (ack, tc->snd_una))
+    tcp_bt_walk_samples (tc, ack, rs, now, old_high_sacked, 1 /* account */);
+
+  tcp_bt_walk_samples_ooo (tc, rs, now, old_high_sacked, 1 /* account */);
+  if (PREDICT_FALSE (tc->bt->dsack_fragments > TCP_MAX_DSACK_RXT_RANGES))
+    bt_dsack_abandon_history (tc);
+  sb->high_sacked = high_sacked;
+  tcp_bt_update_sack_loss (tc, rs, 0 /* clear_lost */);
+
+  if (bt_get_sample (tc->bt, tc->bt->head))
+    sb->is_reneging = !!(bt_get_sample (tc->bt, tc->bt->head)->flags & TCP_BTS_IS_SACKED);
+  else
+    sb->is_reneging = 0;
+
+  rs->bt_processed = 1;
+}
+
+void
+tcp_bt_recompute_sack_loss (tcp_connection_t *tc)
+{
+  tcp_bt_update_sack_loss (tc, 0, 1 /* clear_lost */);
+}
+
+void
+tcp_bt_init_rxt (tcp_connection_t *tc, u32 snd_una)
+{
+  tcp_byte_tracker_t *bt = tc->bt;
+  tcp_bt_sample_t *cur;
+
+  cur = bt_get_sample (bt, bt->head);
+  while (cur && (cur->flags & TCP_BTS_IS_SACKED))
+    cur = bt_next_sample (bt, cur);
+  if (cur)
+    {
+      snd_una = seq_max (snd_una, cur->min_seq);
+      bt->cur_rxt = bt_sample_index (bt, cur);
+    }
+  else
+    bt->cur_rxt = TCP_BTS_INVALID_INDEX;
+
+  tc->sack_sb.high_rxt = snd_una;
+  tc->sack_sb.rescue_rxt = snd_una - 1;
+}
+
+void
+tcp_bt_rxt_mark_lost (tcp_connection_t *tc)
+{
+  tcp_byte_tracker_t *bt = tc->bt;
+  tcp_bt_sample_t *cur;
+  sack_scoreboard_t *sb = &tc->sack_sb;
+
+  cur = bt_get_sample (bt, bt->head);
+  while (cur && (cur->flags & TCP_BTS_IS_SACKED))
+    cur = bt_next_sample (bt, cur);
+
+  while (cur && !(cur->flags & TCP_BTS_IS_SACKED))
+    {
+      if (!(cur->flags & TCP_BTS_IS_LOST))
+	{
+	  cur->flags |= TCP_BTS_IS_LOST;
+	  sb->lost_bytes += cur->max_seq - cur->min_seq;
+	}
+      cur = bt_next_sample (bt, cur);
+    }
+}
+
+u8
+tcp_bt_handle_sack_reneging (tcp_connection_t *tc)
+{
+  tcp_byte_tracker_t *bt = tc->bt;
+  tcp_bt_sample_t *cur;
+  sack_scoreboard_t *sb = &tc->sack_sb;
+  u32 lost = 0;
+
+  cur = bt_get_sample (bt, bt->head);
+  if (!sb->is_reneging && (!cur || !(cur->flags & TCP_BTS_IS_SACKED)))
+    return 0;
+
+  while (cur)
+    {
+      cur->flags &= ~TCP_BTS_IS_SACKED;
+      cur->flags |= TCP_BTS_IS_LOST;
+      lost += cur->max_seq - cur->min_seq;
+      cur = bt_next_sample (bt, cur);
+    }
+
+  sb->sacked_bytes = 0;
+  sb->lost_bytes = lost;
+  sb->high_sacked = tc->snd_una;
+  sb->is_reneging = 0;
+  sb->reorder = TCP_DUPACK_THRESHOLD;
+  tcp_bt_init_rxt (tc, tc->snd_una);
+  return 1;
+}
+
+u8
+tcp_bt_is_sane_post_recovery (tcp_connection_t *tc)
+{
+  tcp_byte_tracker_t *bt = tc->bt;
+  tcp_bt_sample_t *cur;
+  u32 lost = 0, sacked = 0;
+
+  cur = bt_get_sample (bt, bt->head);
+  if (cur && seq_lt (cur->min_seq, tc->snd_una))
+    return 0;
+
+  while (cur)
+    {
+      u32 len = cur->max_seq - cur->min_seq;
+      if (seq_gt (cur->max_seq, tc->snd_nxt))
+	return 0;
+      if (cur->flags & TCP_BTS_IS_SACKED)
+	sacked += len;
+      else if (cur->flags & TCP_BTS_IS_LOST)
+	lost += len;
+      cur = bt_next_sample (bt, cur);
+    }
+
+  return sacked == tc->sack_sb.sacked_bytes && lost == tc->sack_sb.lost_bytes;
+}
+
+static u8
+bt_next_rxt_range (tcp_byte_tracker_t *bt, tcp_bt_sample_t *cur, tcp_rxt_range_t *range,
+		   tcp_bt_sample_t **next_range)
+{
+  tcp_bt_sample_t *next;
+  tcp_bts_flags_t lost;
+
+  while (cur && (cur->flags & TCP_BTS_IS_SACKED))
+    cur = bt_next_sample (bt, cur);
+  if (!cur)
+    {
+      *next_range = 0;
+      return 0;
+    }
+
+  lost = cur->flags & TCP_BTS_IS_LOST;
+  range->start = cur->min_seq;
+  range->end = cur->max_seq;
+  range->is_lost = !!lost;
+
+  next = bt_next_sample (bt, cur);
+  while (next && !(next->flags & TCP_BTS_IS_SACKED) && !!(next->flags & TCP_BTS_IS_LOST) == !!lost)
+    {
+      range->end = next->max_seq;
+      next = bt_next_sample (bt, next);
+    }
+  *next_range = next;
+  return 1;
+}
+
+u8
+tcp_bt_next_rxt_range (tcp_connection_t *tc, u8 have_unsent, u8 *can_rescue, u8 *snd_limited,
+		       tcp_rxt_range_t *range)
+{
+  tcp_byte_tracker_t *bt = tc->bt;
+  sack_scoreboard_t *sb = &tc->sack_sb;
+  tcp_bt_sample_t *cur, *next;
+
+  cur = bt_get_sample (bt, bt->cur_rxt);
+  if (!cur)
+    cur = bt_get_sample (bt, bt->head);
+  while (cur)
+    {
+      if (!bt_next_rxt_range (bt, cur, range, &next))
+	{
+	  bt->cur_rxt = TCP_BTS_INVALID_INDEX;
+	  return 0;
+	}
+      if (!range->is_lost || seq_gt (range->end, sb->high_rxt))
+	break;
+      cur = next;
+    }
+
+  if (!cur)
+    {
+      bt->cur_rxt = TCP_BTS_INVALID_INDEX;
+      return 0;
+    }
+
+  if (range->is_lost && seq_lt (range->start, sb->high_sacked))
+    ;
+  else if (have_unsent)
+    {
+      bt->cur_rxt = TCP_BTS_INVALID_INDEX;
+      return 0;
+    }
+  else if (seq_lt (range->start, sb->high_sacked))
+    {
+      if (seq_leq (range->end, sb->high_rxt))
+	{
+	  bt->cur_rxt = TCP_BTS_INVALID_INDEX;
+	  return 0;
+	}
+      *snd_limited = 0;
+    }
+  else
+    {
+      *snd_limited = 1;
+      *can_rescue = 1;
+      return 0;
+    }
+
+  bt->cur_rxt = bt_sample_index (bt, cur);
+  if (seq_lt (sb->high_rxt, range->start))
+    sb->high_rxt = range->start;
+  range->start = sb->high_rxt;
+  return seq_lt (range->start, range->end);
+}
+
+u8
+tcp_bt_last_rxt_range (tcp_connection_t *tc, tcp_rxt_range_t *range)
+{
+  tcp_byte_tracker_t *bt = tc->bt;
+  tcp_bt_sample_t *cur, *prev;
+  tcp_bts_flags_t lost;
+
+  cur = bt_get_sample (bt, bt->tail);
+  while (cur && (cur->flags & TCP_BTS_IS_SACKED))
+    cur = bt_prev_sample (bt, cur);
+  if (!cur)
+    return 0;
+
+  lost = cur->flags & TCP_BTS_IS_LOST;
+  range->start = cur->min_seq;
+  range->end = cur->max_seq;
+  range->is_lost = !!lost;
+
+  prev = bt_prev_sample (bt, cur);
+  while (prev && !(prev->flags & TCP_BTS_IS_SACKED) && !!(prev->flags & TCP_BTS_IS_LOST) == !!lost)
+    {
+      range->start = prev->min_seq;
+      prev = bt_prev_sample (bt, prev);
+    }
+  return 1;
+}
+
+static u32
+bt_dsack_mark_active (tcp_connection_t *tc, u32 start, u32 end)
+{
+  tcp_byte_tracker_t *bt = tc->bt;
+  tcp_bt_sample_t *cur, *next;
+  u32 overlap_start, overlap_end, matched = 0, n_splits;
+
+  cur = bt_lookup_seq (bt, start);
+  if (!cur)
+    cur = bt_get_sample (bt, bt->head);
+  if (cur && seq_geq (start, cur->max_seq))
+    cur = bt_next_sample (bt, cur);
+
+  while (cur && seq_lt (cur->min_seq, end))
+    {
+      next = bt_next_sample (bt, cur);
+      if (!(cur->flags & TCP_BTS_DSACK_TRACKED))
+	{
+	  cur = next;
+	  continue;
+	}
+
+      overlap_start = seq_max (start, cur->min_seq);
+      overlap_end = seq_lt (end, cur->max_seq) ? end : cur->max_seq;
+      if (!seq_lt (overlap_start, overlap_end))
+	{
+	  cur = next;
+	  continue;
+	}
+
+      n_splits = seq_gt (overlap_start, cur->min_seq) + seq_lt (overlap_end, cur->max_seq);
+      if (!bt_dsack_can_split (tc, n_splits))
+	return matched;
+
+      if (seq_gt (overlap_start, cur->min_seq))
+	cur = bt_split_sample (bt, cur, overlap_start);
+      if (seq_lt (overlap_end, cur->max_seq))
+	next = bt_split_sample (bt, cur, overlap_end);
+      else
+	next = bt_next_sample (bt, cur);
+
+      matched += overlap_end - overlap_start;
+      if (!(cur->flags & TCP_BTS_DSACK_DUPLICATE))
+	{
+	  cur->flags |= TCP_BTS_DSACK_DUPLICATE;
+	  bt->dsack_dup_bytes += overlap_end - overlap_start;
+	}
+      cur = next;
+    }
+
+  return matched;
+}
+
+static tcp_bt_sample_t *
+bt_split_retired_sample (tcp_byte_tracker_t *bt, tcp_bt_sample_t *cur, u32 seq)
+{
+  tcp_bt_sample_t *next, *right;
+  u32 cur_index = bt_sample_index (bt, cur);
+
+  ASSERT (seq_lt (cur->min_seq, seq) && seq_lt (seq, cur->max_seq));
+
+  pool_get_zero (bt->samples, right);
+  cur = bt_get_sample (bt, cur_index);
+  *right = *cur;
+  right->min_seq = seq;
+  cur->max_seq = seq;
+  bt->dsack_fragments++;
+
+  next = bt_get_sample (bt, right->next);
+  if (next)
+    next->prev = bt_sample_index (bt, right);
+  else
+    bt->dsack_tail = bt_sample_index (bt, right);
+  cur->next = bt_sample_index (bt, right);
+  right->prev = cur_index;
+  return right;
+}
+
+static u32
+bt_dsack_mark_retired (tcp_connection_t *tc, u32 start, u32 end)
+{
+  tcp_byte_tracker_t *bt = tc->bt;
+  tcp_bt_sample_t *cur, *next;
+  u32 overlap_start, overlap_end, matched = 0, n_splits;
+
+  cur = bt_get_sample (bt, bt->dsack_head);
+  while (cur && seq_leq (cur->max_seq, start))
+    cur = bt_get_sample (bt, cur->next);
+
+  while (cur && seq_lt (cur->min_seq, end))
+    {
+      next = bt_get_sample (bt, cur->next);
+      overlap_start = seq_max (start, cur->min_seq);
+      overlap_end = seq_lt (end, cur->max_seq) ? end : cur->max_seq;
+      if (!seq_lt (overlap_start, overlap_end))
+	{
+	  cur = next;
+	  continue;
+	}
+
+      n_splits = seq_gt (overlap_start, cur->min_seq) + seq_lt (overlap_end, cur->max_seq);
+      if (!bt_dsack_can_split (tc, n_splits))
+	return matched;
+
+      if (seq_gt (overlap_start, cur->min_seq))
+	cur = bt_split_retired_sample (bt, cur, overlap_start);
+      if (seq_lt (overlap_end, cur->max_seq))
+	next = bt_split_retired_sample (bt, cur, overlap_end);
+      else
+	next = bt_get_sample (bt, cur->next);
+
+      matched += overlap_end - overlap_start;
+      if (!(cur->flags & TCP_BTS_DSACK_DUPLICATE))
+	{
+	  cur->flags |= TCP_BTS_DSACK_DUPLICATE;
+	  bt->dsack_dup_bytes += overlap_end - overlap_start;
+	}
+      cur = next;
+    }
+
+  return matched;
+}
+
+void
+tcp_bt_dsack_recovery_start (tcp_connection_t *tc)
+{
+  bt_dsack_clear_ranges (tc);
+  tc->dsack_flags &= TCP_DSACK_UNDO_DISABLED;
+  tc->dsack_recovery_ack = 0;
+}
+
+void
+tcp_bt_dsack_recovery_done (tcp_connection_t *tc)
+{
+  bt_dsack_clear_ranges (tc);
+  tc->dsack_flags &= TCP_DSACK_UNDO_DISABLED;
+  tc->dsack_recovery_ack = 0;
+}
+
+u8
+tcp_bt_dsack_has_history (tcp_connection_t *tc)
+{
+  return tc->bt->dsack_rxt_bytes != 0 || (tc->dsack_flags & TCP_DSACK_RXT_OVERFLOW);
+}
+
+tcp_ack_flag_t
+tcp_bt_dsack_update (tcp_connection_t *tc, u32 packet_ack, const sack_block_t *dsack,
+		     u8 had_sack_history)
+{
+  tcp_byte_tracker_t *bt = tc->bt;
+  u32 matched;
+
+  if (!tcp_bt_dsack_has_history (tc))
+    {
+      if (dsack)
+	{
+	  tc->dsack_flags |= TCP_DSACK_UNDO_DISABLED;
+	  tcp_bt_dsack_recovery_done (tc);
+	}
+      return 0;
+    }
+
+  if (!tcp_in_cong_recovery (tc) && !dsack)
+    {
+      u32 new_snd_una = seq_max (tc->snd_una, packet_ack);
+      if (seq_gt (new_snd_una, tc->dsack_recovery_ack))
+	tcp_bt_dsack_recovery_done (tc);
+      return 0;
+    }
+
+  if (tc->dsack_flags & TCP_DSACK_RXT_OVERFLOW)
+    return 0;
+
+  if (dsack)
+    {
+      if (!had_sack_history && dsack->start == tc->snd_una)
+	tc->dsack_flags |= TCP_DSACK_INELIGIBLE;
+      else
+	{
+	  matched = bt_dsack_mark_active (tc, dsack->start, dsack->end);
+	  if (tc->dsack_flags & TCP_DSACK_RXT_OVERFLOW)
+	    return 0;
+	  matched += bt_dsack_mark_retired (tc, dsack->start, dsack->end);
+	  if (tc->dsack_flags & TCP_DSACK_RXT_OVERFLOW)
+	    return 0;
+	  if (matched != dsack->end - dsack->start)
+	    {
+	      tc->dsack_flags |= TCP_DSACK_UNDO_DISABLED;
+	      tcp_bt_dsack_recovery_done (tc);
+	      return 0;
+	    }
+	}
+    }
+
+  if (tc->sack_sb.is_reneging)
+    tc->dsack_flags |= TCP_DSACK_INELIGIBLE;
+
+  if (tc->dsack_flags & (TCP_DSACK_INELIGIBLE | TCP_DSACK_UNDO_DISABLED))
+    return 0;
+
+  return bt->dsack_dup_bytes == bt->dsack_rxt_bytes ? TCP_ACK_F_DSACK_SPURIOUS : 0;
+}
+
 void
 tcp_bt_sample_delivery_rate (tcp_connection_t * tc, tcp_rate_sample_t * rs)
 {
   u32 delivered, data_acked;
+  f64 now;
 
   tc->lost += rs->last_lost;
 
@@ -610,24 +1434,26 @@ tcp_bt_sample_delivery_rate (tcp_connection_t * tc, tcp_rate_sample_t * rs)
   if (tc->bt->head == TCP_BTS_INVALID_INDEX)
     goto done;
 
+  now = tcp_time_now_us (tc->c_thread_index);
+
   if (!delivered)
     {
-      if (data_acked)
-	tcp_bt_walk_samples (tc, rs);
+      if (data_acked && !rs->bt_processed)
+	tcp_bt_walk_samples (tc, tc->snd_una, rs, now, tc->sack_sb.high_sacked, 0 /* account */);
       goto done;
     }
 
   tc->delivered += delivered;
-  tc->delivered_time = tcp_time_now_us (tc->c_thread_index);
+  tc->delivered_time = now;
 
   if (tc->app_limited && tc->delivered > tc->app_limited)
     tc->app_limited = 0;
 
-  if (data_acked)
-    tcp_bt_walk_samples (tc, rs);
+  if (data_acked && !rs->bt_processed)
+    tcp_bt_walk_samples (tc, tc->snd_una, rs, now, tc->sack_sb.high_sacked, 0 /* account */);
 
-  if (rs->last_sacked_bytes)
-    tcp_bt_walk_samples_ooo (tc, rs);
+  if (rs->last_sacked_bytes && !rs->bt_processed)
+    tcp_bt_walk_samples_ooo (tc, rs, now, tc->sack_sb.high_sacked, 0 /* account */);
 
   rs->interval_time = clib_max ((tc->delivered_time - rs->prior_time),
 				rs->interval_time);
@@ -642,25 +1468,18 @@ void
 tcp_bt_flush_samples (tcp_connection_t * tc)
 {
   tcp_byte_tracker_t *bt = tc->bt;
-  tcp_bt_sample_t *bts;
-  u32 *samples = 0, *si;
+  tcp_bt_sample_t *bts, *next;
 
   ASSERT (pool_elts (bt->samples) != 0);
 
-  vec_validate (samples, pool_elts (bt->samples) - 1);
-  vec_reset_length (samples);
-
-  pool_foreach (bts, bt->samples)  {
-    vec_add1 (samples, bts - bt->samples);
-  }
-
-  vec_foreach (si, samples)
-  {
-    bts = bt_get_sample (bt, *si);
-    bt_free_sample (bt, bts);
-  }
-
-  vec_free (samples);
+  bts = bt_get_sample (bt, bt->head);
+  while (bts)
+    {
+      next = bt_next_sample (bt, bts);
+      bt_free_sample (bt, bts);
+      bts = next;
+    }
+  bt_free_retired_samples (bt);
 }
 
 void
@@ -672,6 +1491,7 @@ tcp_bt_cleanup (tcp_connection_t * tc)
   pool_free (bt->samples);
   clib_mem_free (bt);
   tc->bt = 0;
+  tc->cfg_flags &= ~TCP_CFG_F_RATE_SAMPLE;
 }
 
 void
@@ -684,7 +1504,11 @@ tcp_bt_init (tcp_connection_t * tc)
 
   rb_tree_init (&bt->sample_lookup);
   bt->head = bt->tail = TCP_BTS_INVALID_INDEX;
+  bt->last_ooo = TCP_BTS_INVALID_INDEX;
+  bt->cur_rxt = TCP_BTS_INVALID_INDEX;
+  bt->dsack_head = bt->dsack_tail = TCP_BTS_INVALID_INDEX;
   tc->bt = bt;
+  tc->cfg_flags |= TCP_CFG_F_RATE_SAMPLE;
 }
 
 u8 *
