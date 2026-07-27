@@ -780,7 +780,7 @@ tcp_connection_init_vars (tcp_connection_t * tc)
       || tcp_cfg.enable_tx_pacing)
     tcp_enable_pacing (tc);
 
-  if (tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE)
+  if (tcp_cfg.enable_byte_tracker || (tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE))
     tcp_bt_init (tc);
 
   if (!tcp_cfg.allow_tso)
@@ -985,6 +985,13 @@ tcp_set_attribute (tcp_connection_t *tc, transport_endpt_attr_t *attr)
       tc->snd_mss = clib_min (tc->snd_mss, tc->mss);
       break;
     case TRANSPORT_ENDPT_ATTR_FLAGS:
+      if (!!(attr->flags & TRANSPORT_ENDPT_ATTR_F_RATE_SAMPLING) !=
+	    !!(tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE) &&
+	  tc->snd_una != tc->snd_nxt)
+	{
+	  rv = -1;
+	  break;
+	}
       if (attr->flags & TRANSPORT_ENDPT_ATTR_F_CSUM_OFFLOAD)
 	tc->cfg_flags |= TCP_CFG_F_NO_CSUM_OFFLOAD;
       else
@@ -1695,6 +1702,7 @@ tcp_configuration_init (void)
   tcp_cfg.allow_tso = 0;
   tcp_cfg.csum_offload = 1;
   tcp_cfg.enable_dsack = 1;
+  tcp_cfg.enable_byte_tracker = 0;
   tcp_cfg.cc_algo = TCP_CC_CUBIC;
   tcp_cfg.rwnd_min_update_ack = 1;
   tcp_cfg.max_gso_size = TCP_MAX_GSO_SZ;
