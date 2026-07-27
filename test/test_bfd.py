@@ -41,7 +41,7 @@ from asfframework import (
 )
 from util import ppp
 from vpp_ip import DpoProto
-from vpp_ip_route import VppIpRoute, VppRoutePath
+from vpp_ip_route import VppIpRoute, VppRoutePath, VppIpTable
 from vpp_lo_interface import VppLoInterface
 from vpp_papi_provider import UnexpectedApiReturnValueError, CliFailedCommandError
 from vpp_pg_interface import CaptureTimeoutError, is_ipv6_misc
@@ -2118,6 +2118,138 @@ class BFD4TestCase(VppTestCase):
                 self.test_session.send_packet()
                 # Brief pause between tests
                 self.sleep(0.2, "brief pause between TOS tests")
+
+
+@tag_run_solo
+class BFDPollFinalVrfTestCase(VppTestCase):
+    """BFD single-hop Poll/Final with default and non-default FIB tables"""
+
+    VRF_ID = 10
+
+    @classmethod
+    def setUpClass(cls):
+        super(BFDPollFinalVrfTestCase, cls).setUpClass()
+        cls.vapi.cli("set log class bfd level debug")
+        try:
+            cls.create_pg_interfaces([0])
+        except Exception:
+            super(BFDPollFinalVrfTestCase, cls).tearDownClass()
+            raise
+
+    def setUp(self):
+        super(BFDPollFinalVrfTestCase, self).setUp()
+        self.vpp_session = None
+        self.configured_af = None
+        self.vapi.want_bfd_events()
+
+    def tearDown(self):
+        if not self.vpp_dead:
+            self.vapi.want_bfd_events(enable_disable=0)
+            self.vapi.collect_events()
+            # take pg0 out of the VRF so the registry can free the table
+            if self.configured_af == AF_INET6:
+                self.pg0.unconfig_ip6()
+                self.pg0.set_table_ip6(0)
+            elif self.configured_af == AF_INET:
+                self.pg0.unconfig_ip4()
+                self.pg0.set_table_ip4(0)
+            self.pg0.admin_down()
+        super(BFDPollFinalVrfTestCase, self).tearDown()
+
+    def _wait_for_final(self, timeout=2):
+        # raw capture on pg0 (deliberately NOT wait_for_bfd_packet, whose
+        # verify_bfd would trip on unrelated frames): return the first BFD
+        # frame carrying the Final(F) bit, or None if none arrives in time
+        deadline = time.time() + timeout
+        while time.time() < deadline:
+            try:
+                p = self.pg0.wait_for_packet(max(0.0001, deadline - time.time()))
+            except CaptureTimeoutError:
+                return None
+            if p.haslayer(BFD) and "F" in p[BFD].sprintf("%BFD.flags%"):
+                return p
+        return None
+
+    def _poll_final(self, af, table_id):
+        is_ip6 = af == AF_INET6
+        lookup_node = "ip6-lookup" if is_ip6 else "ip4-lookup"
+        rewrite_node = "ip6-rewrite" if is_ip6 else "ip4-rewrite"
+
+        # put pg0 in the requested table and bring the single-hop session up
+        if table_id != 0:
+            VppIpTable(self, table_id, is_ip6=is_ip6).add_vpp_config()
+            if is_ip6:
+                self.pg0.set_table_ip6(table_id)
+            else:
+                self.pg0.set_table_ip4(table_id)
+        self.configured_af = af
+        if is_ip6:
+            self.pg0.config_ip6()
+            self.pg0.configure_ipv6_neighbors()
+            self.pg0.admin_up()
+            self.pg0.resolve_ndp()
+            local_addr = self.pg0.local_ip6
+            peer_addr = self.pg0.remote_ip6
+        else:
+            self.pg0.config_ip4()
+            self.pg0.configure_ipv4_neighbors()
+            self.pg0.admin_up()
+            self.pg0.resolve_arp()
+            local_addr = self.pg0.local_ip4
+            peer_addr = self.pg0.remote_ip4
+        self.pg0.enable_capture()
+
+        self.vpp_session = VppBFDUDPSession(
+            self, self.pg0, peer_addr, local_addr=local_addr, af=af
+        )
+        self.vpp_session.add_vpp_config()
+        self.vpp_session.admin_up()
+        self.test_session = BFDTestSession(
+            self,
+            self.pg0,
+            af,
+            local_addr=local_addr,
+            peer_addr=peer_addr,
+        )
+        bfd_session_up(self)
+        wait_for_bfd_packet(self)  # drain the queued periodic frame
+
+        # trace the Final reply through the graph so its fate is visible: the
+        # reply reuses the incoming Poll buffer and is sent to ipX-lookup, which
+        # picks the FIB table from fib_index_by_sw_if_index[rx sw_if_index]
+        self.vapi.cli("clear trace")
+        self.vapi.cli("trace add pg-input 50")
+        poll = self.test_session.create_packet()
+        poll[BFD].flags = "P"
+        self.test_session.send_packet(poll)
+
+        final = self._wait_for_final()
+        trace = self.vapi.cli("show trace")
+        self.logger.info("Final reply path (fib table %d):\n%s" % (table_id, trace))
+        # with the fix the trace ends in <rewrite_node> -> pg0 output; without
+        # it the lookup happens in table 0, finds no route and drops the reply
+        self.assertIsNotNone(
+            final,
+            "VPP did not forward a Final(F) after the Poll: the reply was "
+            "dropped in %s (wrong FIB table). Expected the trace to end in "
+            "%s. Trace:\n%s" % (lookup_node, rewrite_node, trace),
+        )
+
+    def test_poll_final_default_table4(self):
+        """IPv4 single-hop in the default table: Final is forwarded out pg0"""
+        self._poll_final(AF_INET, 0)
+
+    def test_poll_final_non_default_vrf4(self):
+        """IPv4 single-hop in a non-default VRF: Final forwarded with the fix"""
+        self._poll_final(AF_INET, self.VRF_ID)
+
+    def test_poll_final_default_table6(self):
+        """IPv6 single-hop in the default table: Final is forwarded out pg0"""
+        self._poll_final(AF_INET6, 0)
+
+    def test_poll_final_non_default_vrf6(self):
+        """IPv6 single-hop in a non-default VRF: Final forwarded with the fix"""
+        self._poll_final(AF_INET6, self.VRF_ID)
 
 
 @parameterized_class(
