@@ -1102,8 +1102,7 @@ vp_proto_http_connect (vnet_connect_args_t *args, vp_test_cfg_t *cfg)
     }
 
   int rv = vnet_connect (args);
-  if (vp_test_transport_needs_crypto (&args->sep_ext))
-    session_endpoint_free_ext_cfgs (&args->sep_ext);
+  session_endpoint_free_ext_cfgs (&args->sep_ext);
   return rv;
 }
 
