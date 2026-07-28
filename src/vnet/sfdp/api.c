@@ -211,6 +211,17 @@ vl_api_sfdp_kill_session_t_handler (vl_api_sfdp_kill_session_t *mp)
 }
 
 static void
+vl_api_sfdp_kill_session_batch_t_handler (vl_api_sfdp_kill_session_batch_t *mp)
+{
+  sfdp_main_t *sfdp = &sfdp_main;
+  u32 max = clib_net_to_host_u32 (mp->max);
+  clib_error_t *err = sfdp_kill_session_batch (sfdp, max);
+  vl_api_sfdp_kill_session_batch_reply_t *rmp;
+  int rv = err ? -1 : 0;
+  REPLY_MACRO (VL_API_SFDP_KILL_SESSION_BATCH_REPLY);
+}
+
+static void
 sfdp_send_tenant_details (vl_api_registration_t *rp, u32 context,
 			  u16 tenant_index, sfdp_tenant_t *tenant)
 {
