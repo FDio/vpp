@@ -1,6 +1,23 @@
 {
   "comments": [
     {
+      "unresolved": true,
+      "key": {
+        "uuid": "563a816f_823596c3",
+        "filename": "src/plugins/rdma/device.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 590,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-07-28T08:03:26Z",
+      "side": 1,
+      "message": "`n_total_additional_segs` can overflow because it is a `u16`, while it stores `n_desc * (n_ds_per_wqe - 1)`. For example, the supported `rxq_size\u003d16384` with the default five-segment chain initializes it to zero, causing refill to skip allocation of the additional buffers and the IBV path to follow uninitialized `second_bufs`.\n\nCould we widen it to `u32` and reorder the trailing fields to preserve cache locality? A plain widening would push `n_ds_per_wqe` into the next cache line, but both small fields can use the padding before the union:\n\n```c\nu32 queue_index;\nu8 n_ds_per_wqe;\nu8 log_wqe_sz;\n\nunion\n{\n  struct\n  {\n    u32 striding_wqe_tail;\n    u8 log_stride_per_wqe;\n  };\n\n  struct\n  {\n    u8 *n_used_per_chain;\n    u32 *second_bufs;\n    u32 incomplete_tail;\n    u32 n_total_additional_segs;\n  };\n};\n```\n\nThis avoids imposing an implementation-driven queue-size restriction and should have no datapath cost; native-width counter operations may even be marginally cheaper.",
+      "revId": "c00c037bc9d5241c3d363edc67e088cb4eb6dcaf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": false,
       "key": {
         "uuid": "ad31c467_c2246350",
