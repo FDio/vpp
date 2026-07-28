@@ -284,7 +284,8 @@ class TestSfdpKillMultiWorker(VppTestCase):
         """
         # No sessions exist yet — kill index 0 must fail gracefully
         with self.vapi.assert_negative_api_retval():
-            self.vapi.sfdp_kill_session(session_index=0, is_all=False)
+            reply = self.vapi.sfdp_kill_session(session_index=0, is_all=False)
+        self.assertEqual(reply.retval, -6)
 
         # Create a real session and verify the table is still intact
         self._send_syns(self._make_syn("198.51.100.2", 30001), worker=0)

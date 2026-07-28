@@ -803,6 +803,90 @@ class TestSfdp(BaseSfdpTest):
 
         self._cleanup_sfdp()
 
+    def test_sfdp_kill_session_batch(self):
+        """Test api to kill sfdp sessions in batches"""
+        self._configure_sfdp()
+        self.vapi.sfdp_set_timeout(
+            tenant_id=1,
+            timeout_id=self.get_timeout_index("embryonic"),
+            timeout_value=3600,
+        )
+
+        # Create 10 sessions
+        for sport in range(12346, 12356):
+            self.send_and_expect(
+                self.pg0,
+                self.create_tcp_packet(
+                    src_mac=self.pg0.remote_mac,
+                    dst_mac=self.pg0.local_mac,
+                    src_ip=self.pg0.remote_ip4,
+                    dst_ip=self.pg1.remote_ip4,
+                    sport=sport,
+                    dport=80,
+                ),
+                self.pg1,
+            )
+
+        # Verify 10 sessions are active
+        self.assertEqual(len(self.sessions()), 10)
+
+        # Expire two consecutive batches of 5 sessions
+        # can be killed, and verify state is as expected
+        self.vapi.sfdp_kill_session_batch(max=5)
+        self.virtual_sleep(2)
+        self.assertEqual(len(self.sessions()), 5)
+
+        self.vapi.sfdp_kill_session_batch(max=5)
+        self.virtual_sleep(2)
+        self.assertEqual(len(self.sessions()), 0)
+
+        self._cleanup_sfdp()
+
+    def test_sfdp_kill_session_batch_consecutive(self):
+        """Test api to kill sfdp sessions in consecutive batches"""
+        self._configure_sfdp()
+        self.vapi.sfdp_set_timeout(
+            tenant_id=1,
+            timeout_id=self.get_timeout_index("embryonic"),
+            timeout_value=3600,
+        )
+
+        # Create 10 sessions
+        for sport in range(12346, 12356):
+            self.send_and_expect(
+                self.pg0,
+                self.create_tcp_packet(
+                    src_mac=self.pg0.remote_mac,
+                    dst_mac=self.pg0.local_mac,
+                    src_ip=self.pg0.remote_ip4,
+                    dst_ip=self.pg1.remote_ip4,
+                    sport=sport,
+                    dport=80,
+                ),
+                self.pg1,
+            )
+
+        # Verify 10 sessions are active
+        self.assertEqual(len(self.sessions()), 10)
+
+        # Disable sfdp expiry node and then 'stack' two batches of sessions for expiry.
+        # Since sfdp expiry is disabled, all sessions in the 'stack' will not be expired until
+        # we re-enable the sfdp-expire node.
+        self.vapi.cli("test sfdp expiry disable")
+        self.vapi.sfdp_kill_session_batch(max=3)
+        self.vapi.sfdp_kill_session_batch(max=7)
+
+        # Sessions should remain present until we re-enable the expiry node
+        self.virtual_sleep(2)
+        self.assertEqual(len(self.sessions()), 10)
+
+        # Re-enable expiry node and verify that sessions marked for expiry
+        # are removed
+        self.vapi.cli("test sfdp expiry enable")
+        self.wait_no_sessions()
+
+        self._cleanup_sfdp()
+
     def test_sfdp_multiple_tenants_flows(self):
         """Test multiple tenants each handling one flow in parallel"""
         # Configure tenant 1 on pg0
