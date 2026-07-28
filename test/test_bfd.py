@@ -932,7 +932,7 @@ def verify_bfd_session_config(test, session, state=None):
     test.assertIsNotNone(dump)
     # since dump is not none, we have verified that sw_if_index and addresses
     # are valid (in get_bfd_udp_session_dump_entry)
-    if state:
+    if state is not None:
         test.assert_equal(dump.state, state, "session state")
     test.assert_equal(
         dump.required_min_rx, session.required_min_rx, "required min rx interval"
@@ -1981,15 +1981,20 @@ class BFD4TestCase(VppTestCase):
         self.pg0.enable_capture()
         e = self.vapi.wait_for_event(1, "bfd_udp_session_event")
         verify_event(self, e, expected_state=BFDState.admin_down)
-        for dummy in range(2):
-            p = wait_for_bfd_packet(self)
-            self.assert_equal(p[BFD].state, BFDState.admin_down, BFDState)
+        p = wait_for_bfd_packet(self, timeout=2)
+        self.assert_equal(p[BFD].state, BFDState.admin_down, BFDState)
         # try to bring session up - shouldn't be possible
         self.test_session.update(state=BFDState.init)
         self.test_session.send_packet()
-        for dummy in range(2):
-            p = wait_for_bfd_packet(self)
-            self.assert_equal(p[BFD].state, BFDState.admin_down, BFDState)
+        # Only accept a packet captured after the peer's Init. PCAP timestamps
+        # use VPP's clock, so translate the current wall-clock time.
+        p = wait_for_bfd_packet(
+            self,
+            timeout=2,
+            pcap_time_min=time.time() - self.vpp_clock_offset,
+        )
+        self.assert_equal(p[BFD].state, BFDState.admin_down, BFDState)
+        verify_bfd_session_config(self, self.vpp_session, state=BFDState.admin_down)
         self.vpp_session.admin_up()
         self.test_session.update(state=BFDState.down)
         e = self.vapi.wait_for_event(1, "bfd_udp_session_event")
