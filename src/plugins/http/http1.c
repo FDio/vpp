@@ -2101,6 +2101,7 @@ static void
 http1_transport_conn_reschedule_callback (http_ctx_t *hc)
 {
   ASSERT (hc->flags & HTTP_CONN_F_HAS_REQUEST);
+  http_conn_timer_update (hc);
   http_ctx_t *req = http1_conn_get_req (hc);
   transport_connection_reschedule (&req->connection);
 }

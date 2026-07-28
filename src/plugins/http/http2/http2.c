@@ -3716,6 +3716,7 @@ http2_transport_conn_reschedule_callback (http_ctx_t *hc)
 
   HTTP_DBG (1, "hc [%u]%x", hc->c_thread_index, hc->hc_hc_index);
   ASSERT (hc->flags & HTTP_CONN_F_HAS_REQUEST);
+  http_conn_timer_update (hc);
 
   /* maybe we need to update also connection window */
   if ((hc->our_window < HTTP2_CONNECTION_WINDOW_SIZE / 2))
