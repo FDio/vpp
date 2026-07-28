@@ -407,6 +407,7 @@ sfdp_kill_session_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli
   unformat_input_t line_input_, *line_input = &line_input_;
   clib_error_t *err = 0;
   sfdp_main_t *sfdp = &sfdp_main;
+  int rv;
   u32 session_index = ~0;
   bool is_all = false;
   bool has_index = false;
@@ -439,7 +440,10 @@ sfdp_kill_session_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli
       goto done;
     }
 
-  err = sfdp_kill_session (sfdp, session_index, is_all);
+  rv = sfdp_kill_session (sfdp, session_index, is_all);
+  if (rv)
+    err = clib_error_return_code (0, rv, 0, "failed to kill SFDP session: %U",
+				  format_vnet_api_errno, rv);
 
 done:
   unformat_free (line_input);

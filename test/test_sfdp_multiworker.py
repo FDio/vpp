@@ -286,7 +286,8 @@ class TestSfdpKillMultiWorker(VppTestCase):
         """
         # No sessions exist yet — kill index 0 must fail gracefully
         with self.vapi.assert_negative_api_retval():
-            self.vapi.sfdp_kill_session(session_index=0, is_all=False)
+            reply = self.vapi.sfdp_kill_session(session_index=0, is_all=False)
+        self.assertEqual(reply.retval, -6)
 
         # Create a real session and verify the table is still intact
         self._send_syns(self._make_syn("198.51.100.2", 30001), worker=0)
@@ -476,6 +477,40 @@ class TestSfdpKillTwoWorkers(VppTestCase):
             f"Sessions not killed across workers: "
             f"{[(s.thread_index, s.session_idx) for s in remaining]}",
         )
+
+    def test_kill_session_batch_across_two_workers(self):
+        """Test api to kill sfdp sessions in batches with multiple workers"""
+        # Create four sessions: two across worker 0 and two across worker 1
+        for worker, sport in ((0, 61001), (0, 61002), (1, 61003), (1, 61004)):
+            self._send_syns(self._make_syn("198.51.100.2", sport), worker=worker)
+            self.pg_enable_capture(self.pg_interfaces)
+            self.pg_start()
+
+        # Verify that sessions have been created, with two sessions on each worker thread
+        sessions = self._sessions()
+        self.assertEqual(len(sessions), 4)
+
+        # Verify that there are two sessions associated with each worker thread
+        self.assertEqual(sum(s.thread_index == 1 for s in sessions), 2)
+        self.assertEqual(sum(s.thread_index == 2 for s in sessions), 2)
+
+        # Pause expiry so that batching occurs before either worker removes a flow.
+        self.vapi.cli("test sfdp expiry disable")
+        self.vapi.sfdp_kill_session_batch(max=3)
+        self.virtual_sleep(0.2)
+        self.assertEqual(len(self._sessions()), 4)
+
+        # Re-enable expiry, three sessions should have been removed globally across workers
+        self.vapi.cli("test sfdp expiry enable")
+        self.virtual_sleep(0.2)
+        remaining = self._sessions()
+        self.assertEqual(len(remaining), 1)
+
+        # Kill the last remaining session
+        self.vapi.sfdp_kill_session_batch(max=1)
+        self.virtual_sleep(0.2)
+        remaining = self._sessions()
+        self.assertEqual(len(remaining), 0)
 
     def test_kill_individual_sessions_on_different_workers(self):
         """Killing sessions individually works regardless of owning worker

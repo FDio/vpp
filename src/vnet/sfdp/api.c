@@ -204,10 +204,19 @@ vl_api_sfdp_kill_session_t_handler (vl_api_sfdp_kill_session_t *mp)
   sfdp_main_t *sfdp = &sfdp_main;
   u32 session_index = clib_net_to_host_u32 (mp->session_index);
   u8 is_all = mp->is_all;
-  clib_error_t *err = sfdp_kill_session (sfdp, session_index, is_all);
   vl_api_sfdp_kill_session_reply_t *rmp;
-  int rv = err ? -1 : 0;
+  int rv = sfdp_kill_session (sfdp, session_index, is_all);
   REPLY_MACRO (VL_API_SFDP_KILL_SESSION_REPLY);
+}
+
+static void
+vl_api_sfdp_kill_session_batch_t_handler (vl_api_sfdp_kill_session_batch_t *mp)
+{
+  sfdp_main_t *sfdp = &sfdp_main;
+  u32 max = clib_net_to_host_u32 (mp->max);
+  vl_api_sfdp_kill_session_batch_reply_t *rmp;
+  int rv = sfdp_kill_session_batch (sfdp, max);
+  REPLY_MACRO (VL_API_SFDP_KILL_SESSION_BATCH_REPLY);
 }
 
 static void
