@@ -1,0 +1,22 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a181e3b0_e8f8f00c",
+        "filename": "src/plugins/rdma/device.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 590,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-07-28T08:39:16Z",
+      "side": 1,
+      "message": "Done. `n_total_additional_segs` is now a `u32`, so a 16384-entry queue with five-segment chains initializes it to 65536 instead of wrapping to zero. `n_ds_per_wqe` and `log_wqe_sz` now use the padding after `queue_index`, keeping `rdma_rxq_t` within the same two cache lines. Verified with `make checkstyle` and a clean x86_64 release build.",
+      "parentUuid": "563a816f_823596c3",
+      "revId": "c2002adb052f455ced4198c49e75ed3d33b63e43",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
