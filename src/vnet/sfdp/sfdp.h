@@ -919,7 +919,8 @@ clib_error_t *sfdp_set_sp_node (sfdp_main_t *sfdp, u32 tenant_id, u32 sp_index,
 				u32 node_index);
 clib_error_t *sfdp_set_icmp_error_node (sfdp_main_t *sfdp, u32 tenant_id,
 					u8 is_ip6, u32 node_index);
-clib_error_t *sfdp_kill_session (sfdp_main_t *sfdp, u32 session_index, u8 is_all);
+int sfdp_kill_session (sfdp_main_t *sfdp, u32 session_index, u8 is_all);
+int sfdp_kill_session_batch (sfdp_main_t *sfdp, u32 max);
 void sfdp_normalise_ip4_key (sfdp_session_t *session,
 			     sfdp_session_ip4_key_t *result, u8 key_idx);
 
