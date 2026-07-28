@@ -44,6 +44,7 @@ foreach_sfdp_timeout
 
 #define sfdp_timer_start_internal  tw_timer_start_2t_1w_2048sl
 #define sfdp_timer_stop_internal   tw_timer_stop_2t_1w_2048sl
+#define sfdp_timer_is_free_internal tw_timer_handle_is_free_2t_1w_2048sl
 #define sfdp_timer_update_internal tw_timer_update_2t_1w_2048sl
 #define sfdp_expire_timers	   tw_timer_expire_timers_2t_1w_2048sl
 #define SFDP_TIMER_SI_MASK	   (0x7fffffff)
