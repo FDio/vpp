@@ -1,0 +1,40 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "c76ecce8_72a8a582",
+        "filename": "src/plugins/rdma/device.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 121,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-07-28T08:50:51Z",
+      "side": 1,
+      "message": "Done. Removed the patch set 7 fallback entirely. Port autodetection now uses one `RDMA_NLDEV_CMD_PORT_GET` multipart dump and selects the entry matching `DEV_NAME` and `NDEV_INDEX`; the device dump, request-attribute builder, and targeted per-port requests are gone.",
+      "parentUuid": "c580dc3d_04aa42ea",
+      "revId": "a7d89e5c68945d7041c0ba84231eb6ad4ce768e6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "4bce9a20_58efd51b",
+        "filename": "src/plugins/rdma/device.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 444,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-07-28T08:50:51Z",
+      "side": 1,
+      "message": "Done. `IBV_EVENT_PORT_ACTIVE` and `IBV_EVENT_PORT_ERR` now update interface state only when `event.element.port_num` matches `rd-\u003eport_num`; events for other ports are ignored. Verified with `make checkstyle` and a clean x86_64 release build.",
+      "parentUuid": "83a9370c_2d7d4968",
+      "revId": "a7d89e5c68945d7041c0ba84231eb6ad4ce768e6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
