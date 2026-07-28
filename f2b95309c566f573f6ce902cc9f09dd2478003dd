@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4838da90_dd37c424",
+        "filename": "src/vnet/sfdp/sfdp.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 494,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-07-28T09:48:41Z",
+      "side": 1,
+      "message": "Could we make this path idempotent before stopping the timer? A second batch request can arrive after the first API reply but before `sfdp-expire` runs, so it may select the same sessions, enqueue duplicate indices, and stop already-stopped timers. Duplicate stops are disabled for this timer wheel, and duplicate expiry entries may also cause double removal. Please mark sessions as pending expiry or skip sessions whose timer is already stopped, and add a back-to-back batch-call test without an intervening sleep.",
+      "revId": "f2b95309c566f573f6ce902cc9f09dd2478003dd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
