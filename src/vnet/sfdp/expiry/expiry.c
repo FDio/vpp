@@ -25,6 +25,7 @@ sfdp_set_expiry_callbacks (const sfdp_expiry_callbacks_t *callbacks)
 void
 sfdp_enable_disable_expiry_node (u8 is_disable, int skip_main)
 {
+  expiry_is_enabled = !is_disable;
   u32 n_vms = vlib_num_workers () + 1;
   for (int i = !!skip_main; i < n_vms; i++)
     {
@@ -45,7 +46,6 @@ sfdp_enable_disable_expiry (u8 is_disable)
 
   if (!is_disable)
     { /* Init module first */
-      expiry_is_enabled = true;
       sfdp->expiry_callbacks.enable ();
     }
 
@@ -55,7 +55,6 @@ sfdp_enable_disable_expiry (u8 is_disable)
   if (is_disable)
     { /* De-init module last */
       sfdp->expiry_callbacks.disable ();
-      expiry_is_enabled = false;
     }
 }
 

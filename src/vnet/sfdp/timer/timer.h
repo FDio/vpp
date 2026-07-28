@@ -30,7 +30,8 @@ typedef struct
 {
   f64 next_expiration;
   u32 handle;
-  u32 __unused;
+  u8 expiry_pending;
+  u8 __pad[3];
 } __attribute__ ((may_alias)) sfdp_session_timer_t;
 
 #define _(name, val, str) SFDP_TIMEOUT_DECLARE (name);
@@ -104,6 +105,7 @@ sfdp_session_timer_start (sfdp_tw_t *tw, sfdp_session_timer_t *timer, u32 sessio
   u32 ticks = SFDP_SECONDS_TO_TICKS (timeout_seconds);
   timer->handle = sfdp_timer_start_internal (tw, session_index, 0, ticks);
   timer->next_expiration = now + SFDP_TICKS_TO_SECONDS (ticks);
+  timer->expiry_pending = 0;
 }
 
 static_always_inline void
@@ -127,22 +129,15 @@ static_always_inline void
 sfdp_session_timer_update_maybe_past (sfdp_tw_t *tw, sfdp_session_timer_t *timer, f64 now,
 				      f64 timeout_seconds)
 {
+
+  /* Do not update timer for packets marked for expiry */
+  if (PREDICT_FALSE (timer->expiry_pending))
+    return;
+
   u32 timeout_ticks = SFDP_SECONDS_TO_TICKS (timeout_seconds);
   if (timer->next_expiration > now + SFDP_TICKS_TO_SECONDS (timeout_ticks))
     sfdp_timer_update_internal (tw, timer->handle, timeout_ticks);
 
-  sfdp_session_timer_update (timer, now, timeout_seconds);
-}
-
-static_always_inline void
-sfdp_session_timer_update_unlikely_past (sfdp_tw_t *tw, sfdp_session_timer_t *timer, f64 now,
-					 f64 timeout_seconds)
-{
-  u32 timeout_ticks = SFDP_SECONDS_TO_TICKS (timeout_seconds);
-  if (PREDICT_FALSE (timer->next_expiration > now + SFDP_TICKS_TO_SECONDS (timeout_ticks)))
-    {
-      sfdp_timer_update_internal (tw, timer->handle, timeout_ticks);
-    }
   sfdp_session_timer_update (timer, now, timeout_seconds);
 }
 
