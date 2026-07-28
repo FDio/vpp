@@ -922,6 +922,8 @@ http_ts_builtin_tx_callback (session_t *ts)
   ASSERT (http_hc_is_valid (hc_handle.conn_index, ts->thread_index));
   hc = http_ctx_get_w_thread (hc_handle.conn_index, ts->thread_index);
   HTTP_DBG (1, "transport connection reschedule");
+  if (hc->version != HTTP_VERSION_3)
+    http_conn_timer_update (hc);
   http_vfts[hc->version].transport_conn_reschedule_callback (hc);
 
   return 0;
