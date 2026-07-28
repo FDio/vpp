@@ -637,57 +637,33 @@ tcp_should_fastrecover (tcp_connection_t *tc, tcp_rate_sample_t *rs, u8 has_sack
 static void
 tcp_cc_exit_recovery (tcp_connection_t *tc, tcp_rate_sample_t *rs)
 {
-  sack_scoreboard_hole_t *hole;
   tcp_ack_flag_t spurious_flags = rs->ack_flags & TCP_ACK_F_SPURIOUS;
 
   ASSERT (tcp_in_cong_recovery (tc));
 
+  if (tcp_opts_sack_permitted (&tc->rcv_opts))
+    tcp_sack_recovery_exit (tc, spurious_flags);
+
   if (spurious_flags)
-    {
-      if (tcp_opts_sack_permitted (&tc->rcv_opts))
-	scoreboard_recompute_sack_loss (&tc->sack_sb, tc->snd_una, tc->snd_mss);
-      tcp_cc_congestion_undo (tc);
-      if ((spurious_flags & TCP_ACK_F_DSACK_SPURIOUS) || !tcp_dsack_has_history (tc))
-	tcp_dsack_recovery_clear (tc);
-      else
-	/* Retain enough history to recognize the later D-SACK without
-	 * misclassifying it as network duplication, but never undo twice. */
-	tc->dsack_flags |= TCP_DSACK_INELIGIBLE;
-    }
+    tcp_cc_congestion_undo (tc);
+  else if (tcp_in_fastrecovery (tc))
+    tcp_cc_recovered (tc);
 
   tcp_connection_tx_pacer_reset (tc, tc->cwnd, 0 /* start bucket */ );
   tc->rcv_dupacks = 0;
-  tcp_recovery_off (tc);
-
   tc->rxt_delivered = 0;
   tc->snd_rxt_bytes = 0;
   tc->snd_rxt_ts = 0;
   tc->prr_delivered = 0;
   tc->prev_prr_delivered = 0;
   tc->rtt_ts = 0;
-  tc->flags &= ~TCP_CONN_RXT_PENDING;
+  tc->flags &=
+    ~(TCP_CONN_RECOVERY | TCP_CONN_FAST_RECOVERY | TCP_CONN_FRXT_FIRST | TCP_CONN_RXT_PENDING);
 
-  hole = scoreboard_first_hole (&tc->sack_sb);
-  if (hole && seq_leq (tc->sack_sb.high_sacked, hole->end) && !tc->sack_sb.lost_bytes)
-    scoreboard_clear (&tc->sack_sb);
-
-  if (!spurious_flags)
-    {
-      if (tcp_in_fastrecovery (tc))
-	tcp_cc_recovered (tc);
-      if ((tc->dsack_flags & TCP_DSACK_UNDO_DISABLED) || !tcp_dsack_has_history (tc))
-	tcp_dsack_recovery_clear (tc);
-    }
-
-  tcp_dsack_recovery_save (tc);
-
-  tcp_fastrecovery_off (tc);
-  tcp_fastrecovery_first_off (tc);
   TCP_EVT (TCP_EVT_CC_EVT, tc, 3);
 
   ASSERT (tc->rto_boff == 0);
   ASSERT (!tcp_in_cong_recovery (tc));
-  ASSERT (tcp_scoreboard_is_sane_post_recovery (tc));
 }
 
 /* Process (re)transmit feedback. Output path uses this to decide how much more data to release into

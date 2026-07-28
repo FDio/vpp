@@ -357,13 +357,10 @@ format_tcp_scoreboard (u8 * s, va_list * args)
   sack_scoreboard_hole_t *hole;
   u32 indent = format_get_indent (s);
 
-  s = format (s, "sacked %u lost %u\n", sb->sacked_bytes, sb->lost_bytes);
-  s = format (s, "%Uhigh_sacked %u is_reneging %u", format_white_space, indent,
-	      sb->high_sacked - tc->iss, sb->is_reneging);
-  s = format (s, " reorder %u\n", sb->reorder);
-  s = format (s, "%Ucur_rxt_hole %u high_rxt %u rescue_rxt %u",
-	      format_white_space, indent, sb->cur_rxt_hole,
-	      sb->high_rxt - tc->iss, sb->rescue_rxt - tc->iss);
+  s = format (s, "sacked %u lost %u high_sacked %u is_reneging %u reorder %u\n", sb->sacked_bytes,
+	      sb->lost_bytes, sb->high_sacked - tc->iss, sb->is_reneging, sb->reorder);
+  s = format (s, "%Ucur_rxt_hole %u high_rxt %u rescue_rxt %u", format_white_space, indent,
+	      sb->cur_rxt_hole, sb->high_rxt - tc->iss, sb->rescue_rxt - tc->iss);
 
   hole = scoreboard_first_hole (sb);
   if (hole)

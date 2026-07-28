@@ -1273,20 +1273,6 @@ tcp_prepare_retransmit_segment (tcp_worker_ctx_t * wrk,
   return n_bytes;
 }
 
-static u8
-tcp_check_sack_reneging (tcp_connection_t *tc)
-{
-  sack_scoreboard_t *sb = &tc->sack_sb;
-  sack_scoreboard_hole_t *hole;
-
-  hole = scoreboard_first_hole (sb);
-  if (!sb->is_reneging && (!hole || hole->start == tc->snd_una))
-    return 0;
-
-  scoreboard_clear_reneging (sb, tc->snd_una, tc->snd_nxt);
-  return 1;
-}
-
 /**
  * Reset congestion control, switch cwnd to loss window and try again.
  */
@@ -1307,7 +1293,7 @@ tcp_cc_rxt_timeout (tcp_connection_t *tc)
 	tcp_in_cong_recovery (tc) && seq_geq (tc->sack_sb.high_rxt, tc->snd_una + n_bytes);
       head_overlaps_rxt = tcp_in_cong_recovery (tc) && seq_gt (tc->sack_sb.high_rxt, tc->snd_una);
 
-      sack_reneged = tcp_check_sack_reneging (tc);
+      sack_reneged = tcp_sack_handle_reneging (tc);
       scoreboard_rxt_mark_lost (&tc->sack_sb, tc->snd_una, tc->snd_nxt);
 
       if (head_was_rxt)
