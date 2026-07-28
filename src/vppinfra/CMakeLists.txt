@@ -337,6 +337,7 @@ set(test_files
   test/memcpy_x86_64.c
   test/sha2.c
   test/toeplitz.c
+  test/vec.c
 )
 
 add_vpp_test(test_infra
