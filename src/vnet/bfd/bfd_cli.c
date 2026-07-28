@@ -83,19 +83,19 @@ format_bfd_session_cli (u8 * s, va_list * args)
   s =
     format (s, "%10s %-32s %20u\n", "", "Transmit interval",
 	    bfd_nsec_to_usec (bs->transmit_interval_nsec));
-  u64 now = clib_cpu_time_now ();
+  u64 now = (u64) (vlib_time_now (vm) * NSEC_PER_SEC);
   u8 *tmp = NULL;
   if (bs->last_tx_nsec > 0)
     {
-      tmp = format (tmp, "%.2fs ago", (now - bs->last_tx_nsec) *
-		    vm->clib_time.seconds_per_clock);
+      tmp = format (tmp, "%.2fs ago",
+                   (f64) (now - bs->last_tx_nsec) / NSEC_PER_SEC);
       s = format (s, "%10s %-32s %20v\n", "", "Last control frame tx", tmp);
       vec_reset_length (tmp);
     }
   if (bs->last_rx_nsec)
     {
-      tmp = format (tmp, "%.2fs ago", (now - bs->last_rx_nsec) *
-		    vm->clib_time.seconds_per_clock);
+      tmp = format (tmp, "%.2fs ago",
+                   (f64) (now - bs->last_rx_nsec) / NSEC_PER_SEC);
       s = format (s, "%10s %-32s %20v\n", "", "Last control frame rx", tmp);
       vec_reset_length (tmp);
     }
@@ -109,13 +109,12 @@ format_bfd_session_cli (u8 * s, va_list * args)
 		bfd_nsec_to_usec (bs->echo_transmit_interval_nsec));
       tmp =
 	format (tmp, "%.2fs ago",
-		(now -
-		 bs->echo_last_tx_nsec) * vm->clib_time.seconds_per_clock);
+		(f64) (now - bs->echo_last_tx_nsec) / NSEC_PER_SEC);
       s = format (s, "%10s %-32s %20v\n", "", "Last echo frame tx", tmp);
       vec_reset_length (tmp);
       tmp = format (tmp, "%.6fs",
-		    (bs->echo_last_rx_nsec - bs->echo_last_tx_nsec) *
-		    vm->clib_time.seconds_per_clock);
+		    (f64) (bs->echo_last_rx_nsec -
+			   bs->echo_last_tx_nsec) / NSEC_PER_SEC);
       s =
 	format (s, "%10s %-32s %20v\n", "", "Last echo frame roundtrip time",
 		tmp);
