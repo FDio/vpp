@@ -803,6 +803,44 @@ class TestSfdp(BaseSfdpTest):
 
         self._cleanup_sfdp()
 
+    def test_sfdp_kill_session_batch(self):
+        """Test api to kill sfdp sessions in batches"""
+        self._configure_sfdp()
+        self.vapi.sfdp_set_timeout(
+            tenant_id=1,
+            timeout_id=self.get_timeout_index("embryonic"),
+            timeout_value=3600,
+        )
+
+        # Create 10 sessions
+        for sport in range(12346, 12356):
+            self.send_and_expect(
+                self.pg0,
+                self.create_tcp_packet(
+                    src_mac=self.pg0.remote_mac,
+                    dst_mac=self.pg0.local_mac,
+                    src_ip=self.pg0.remote_ip4,
+                    dst_ip=self.pg1.remote_ip4,
+                    sport=sport,
+                    dport=80,
+                ),
+                self.pg1,
+            )
+
+        # Verify 10 sessions have been created
+        self.assertEqual(len(self.sessions()), 10)
+
+        # Expire batch of 3 sessions
+        self.vapi.sfdp_kill_session_batch(max=3)
+        self.virtual_sleep(2)
+        self.assertEqual(len(self.sessions()), 7)
+
+        # Expire batch of 7 sessions
+        self.vapi.sfdp_kill_session_batch(max=7)
+        self.virtual_sleep(2)
+        self.assertEqual(len(self.sessions()), 0)
+        self._cleanup_sfdp()
+
     def test_sfdp_multiple_tenants_flows(self):
         """Test multiple tenants each handling one flow in parallel"""
         # Configure tenant 1 on pg0

@@ -411,7 +411,8 @@ sfdp_set_icmp_error_node (sfdp_main_t *sfdp, u32 tenant_id, u8 is_ip6,
  * Both call sites guarantee this:
  *   - CLI:  vlib/cli.c dispatches non-is_mp_safe commands under barrier_sync
  *   - API:  vlibmemory/memory_api.c acquires vl_msg_api_barrier_sync() for
- *           non-is_mp_safe messages, which includes sfdp_kill_session
+ *           non-is_mp_safe messages, which include sfdp_kill_session and
+ *           sfdp_kill_session_batch
  *
  * With workers stopped it is safe to:
  *   - write directly into the worker-owned ptd->expired_sessions vector
@@ -470,6 +471,30 @@ sfdp_kill_session (sfdp_main_t *sfdp, u32 session_index, u8 is_all)
     return clib_error_return (0, "Session index %u not found", session_index);
 
   sfdp_expire_session_now (session, now);
+  return 0;
+}
+
+clib_error_t *
+sfdp_kill_session_batch (sfdp_main_t *sfdp, u32 max)
+{
+  vlib_main_t *vm = vlib_get_main ();
+  f64 now = vlib_time_now (vm);
+  sfdp_session_t *session;
+  uword index;
+  u32 expired = 0;
+
+  if (vec_len (sfdp_timer_main.per_thread_data) == 0)
+    return clib_error_return (0, "sfdp timer module is not initialized");
+
+  sfdp_foreach_session (sfdp, index, session)
+  {
+    if (expired == max)
+      break;
+
+    sfdp_expire_session_now (session, now);
+    expired++;
+  }
+
   return 0;
 }
 
