@@ -22,4 +22,8 @@ __clib_export void hsi_intercept_proto (transport_proto_t proto, u8 is_ip4,
  */
 __clib_export int hsi_track_session_pair (session_t *s, session_handle_t peer_session_handle);
 
+/* Test helper for applications that need to exercise stalled drain handling. */
+__clib_export int hsi_track_session_pair_no_tx_wakeup (session_t *s,
+						       session_handle_t peer_session_handle);
+
 #endif /* SRC_PLUGINS_HSI_HSI_H_ */

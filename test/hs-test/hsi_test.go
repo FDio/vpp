@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"strconv"
 	"time"
 
@@ -27,7 +28,7 @@ func init() {
 		HsiProxyLiteUdpDrainCacheOverflowTest,
 		HsiProxyLiteUdpDrainTimeoutTest)
 	RegisterHsiMWTests(HsiProxyLiteOffloadMWTest, HsiProxyLiteRepeatedOffloadMWTest,
-		HsiProxyLiteDrainOffloadMWTest,
+		HsiProxyLiteDrainOffloadMWTest, HsiProxyLitePendingDataOffloadMWTest,
 		HsiProxyLiteUdpConnectedMWTest, HsiProxyLiteUdpDrainOffloadMWTest,
 		HsiProxyLiteUdpIdleTimeoutMWTest, HsiProxyLiteUdpRepeatedMigrationIdleMWTest)
 }
@@ -130,6 +131,38 @@ func HsiProxyLiteRepeatedOffloadMWTest(s *HsiSuite) {
 	s.CpusPerVppContainer = 3
 	s.SetupTest()
 	runHsiProxyLiteRepeatedOffloadTest(s)
+}
+
+func HsiProxyLitePendingDataOffloadMWTest(s *HsiSuite) {
+	s.CpusPerVppContainer = 3
+	s.SetupTest()
+	s.SetupNginxServer()
+
+	serverIf := s.Interfaces.Server.Host.Name()
+	delQdisc := exec.Command("tc", "qdisc", "del", "dev", serverIf, "root")
+	defer delQdisc.Run()
+
+	addQdisc := exec.Command("tc", "qdisc", "add", "dev", serverIf,
+		"root", "netem", "delay", "250ms")
+	output, err := addQdisc.CombinedOutput()
+	AssertNil(err, string(output))
+
+	vpp := s.Containers.Vpp.VppInstance
+	s.StartProxyLiteTcp4("hsi-offload")
+	uri := fmt.Sprintf("http://%s:%d/64B", s.ServerAddr(), s.Ports.Server)
+	finished := startCurlHttpRequest(uri, s.NetNamespaces.Client, "200 OK", 20)
+
+	WaitProxyLiteTracked(vpp, func() {})
+	AssertNil(<-finished)
+
+	proxy := vpp.Vppctl("show proxy-lite")
+	Log(proxy)
+	AssertContains(proxy, "hsi tracked 1")
+	AssertContains(proxy, "failed 0")
+
+	hsi := WaitHsiCounterAtLeast(vpp, "tcp-drain-completed", 2)
+	Log(hsi)
+	AssertProxyLiteSessionsCleaned(s)
 }
 
 func HsiProxyLiteIpv6OffloadTest(s *HsiSuite) {

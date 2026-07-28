@@ -992,7 +992,7 @@ hsi_tcp_drain_update_time (f64 time_now, u8 thread_index)
 }
 
 int
-hsi_track_tcp (session_t *s, session_t *peer_s)
+hsi_track_tcp (session_t *s, session_t *peer_s, u8 program_tx)
 {
   tcp_connection_t *tc0, *tc1;
   hsi_tcp_track_snapshot_t snap0, snap1;
@@ -1009,6 +1009,8 @@ hsi_track_tcp (session_t *s, session_t *peer_s)
     {
       hsi_tcp_drain_start (s, peer_s, tc0, tc1);
       hsi_tcp_track_send_drain_start (s, peer_s);
+      if (program_tx)
+	hsi_drain_program_tx_pair (s, peer_s);
       return 0;
     }
 
@@ -1016,6 +1018,8 @@ hsi_track_tcp (session_t *s, session_t *peer_s)
     {
       hsi_tcp_drain_start (s, peer_s, tc0, tc1);
       hsi_tcp_drain_start (peer_s, s, tc1, tc0);
+      if (program_tx)
+	hsi_drain_program_tx_pair (s, peer_s);
       return 0;
     }
 

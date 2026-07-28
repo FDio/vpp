@@ -216,8 +216,8 @@ hsi_track_sessions_compatible (session_t *s, session_t *peer_s)
   return 1;
 }
 
-__clib_export int
-hsi_track_session_pair (session_t *s, session_handle_t peer_session_handle)
+static int
+hsi_track_session_pair_internal (session_t *s, session_handle_t peer_session_handle, u8 program_tx)
 {
   session_handle_tu_t peer_handle = { .handle = peer_session_handle };
   clib_thread_index_t thread_index = vlib_get_thread_index ();
@@ -249,10 +249,10 @@ hsi_track_session_pair (session_t *s, session_handle_t peer_session_handle)
   switch (proto)
     {
     case TRANSPORT_PROTO_TCP:
-      rv = hsi_track_tcp (s, peer_s);
+      rv = hsi_track_tcp (s, peer_s, program_tx);
       break;
     case TRANSPORT_PROTO_UDP:
-      rv = hsi_track_udp (s, peer_s);
+      rv = hsi_track_udp (s, peer_s, program_tx);
       break;
     default:
       rv = -1;
@@ -266,8 +266,19 @@ hsi_track_session_pair (session_t *s, session_handle_t peer_session_handle)
     }
 
   hsi_worker_proto_counter_inc (wrk, proto, track_accepted);
-
   return 0;
+}
+
+__clib_export int
+hsi_track_session_pair (session_t *s, session_handle_t peer_session_handle)
+{
+  return hsi_track_session_pair_internal (s, peer_session_handle, 1);
+}
+
+__clib_export int
+hsi_track_session_pair_no_tx_wakeup (session_t *s, session_handle_t peer_session_handle)
+{
+  return hsi_track_session_pair_internal (s, peer_session_handle, 0);
 }
 
 void
