@@ -1,0 +1,39 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c580dc3d_04aa42ea",
+        "filename": "src/plugins/rdma/device.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 381,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-07-28T08:08:14Z",
+      "side": 1,
+      "message": "Patchset 7 reintroduces the device lookup and per-port request fallback, so the original concern is no longer resolved. The goal is a minimal netlink implementation: issue one `RDMA_NLDEV_CMD_PORT_GET` dump and select the entry matching `DEV_NAME` and `NDEV_INDEX`. Please remove the device dump, request-attribute builder, per-port requests, and fallback path.",
+      "parentUuid": "8b0befe2_3f513e1f",
+      "revId": "94fb61db47f1af0774ec7404b58ebf2997c66a52",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "83a9370c_2d7d4968",
+        "filename": "src/plugins/rdma/device.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 628,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-07-28T08:08:14Z",
+      "side": 1,
+      "message": "Could we ignore port events that do not match `rd-\u003eport_num`? A verbs context receives events for the device, so on a multi-port device an event for another port currently updates this interface\u0027s link state and speed using the wrong port.",
+      "revId": "94fb61db47f1af0774ec7404b58ebf2997c66a52",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
