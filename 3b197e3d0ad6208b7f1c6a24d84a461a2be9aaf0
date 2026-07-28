@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "78735899_2569ed0c",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 6
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2220
+      },
+      "writtenOn": "2026-07-28T14:33:47Z",
+      "side": 1,
+      "message": "Hi Matthew,\nI rebased this change and all the test are passing (and therefore mcast forwarding is not broken). This one should fix some stale mcast fib entries. Do you mind to take a look once again?",
+      "revId": "3b197e3d0ad6208b7f1c6a24d84a461a2be9aaf0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
