@@ -191,18 +191,6 @@ proxy_lite_hsi_symbols_init (void)
   return pm->hsi_track_session_pair != 0;
 }
 
-static_always_inline u8
-proxy_lite_session_has_pending (session_t *s)
-{
-  if (svm_fifo_max_dequeue (s->rx_fifo))
-    return 1;
-  if (svm_fifo_max_dequeue_cons (s->tx_fifo))
-    return 1;
-  if (session_get_transport_proto (s) == TRANSPORT_PROTO_TCP && svm_fifo_has_ooo_data (s->rx_fifo))
-    return 1;
-  return 0;
-}
-
 static void
 proxy_lite_session_finish_hsi (proxy_lite_session_t *ps)
 {
@@ -303,42 +291,15 @@ proxy_lite_start_hsi_offload (session_t *s, session_handle_t peer_handle, u32 ps
 {
   proxy_lite_main_t *pm = &proxy_lite_main;
   proxy_lite_session_t *ps;
-  session_handle_tu_t sh = { .handle = peer_handle };
-  session_t *peer_s;
-  u8 pending, flush_pending = 0;
 
-  peer_s = session_get_from_handle_safe (sh);
-  if (!peer_s)
-    goto fail;
-
-  pending = proxy_lite_session_has_pending (s) || proxy_lite_session_has_pending (peer_s);
   if (pm->hsi_track_session_pair (s, peer_handle))
     goto fail;
 
   clib_spinlock_lock_if_init (&pm->sessions_lock);
   ps = proxy_lite_session_get (ps_index);
-  if (pending)
-    {
-      if (ps->hsi_offload_stall)
-	proxy_lite_session_finish_hsi (ps);
-      else
-	{
-	  ps->state = PROXY_LITE_S_PROXYING;
-	  flush_pending = 1;
-	}
-    }
-  else
-    proxy_lite_session_finish_hsi (ps);
+  proxy_lite_session_finish_hsi (ps);
   pm->hsi_tracked++;
   clib_spinlock_unlock_if_init (&pm->sessions_lock);
-
-  if (flush_pending)
-    {
-      if (svm_fifo_set_event (s->tx_fifo))
-	session_program_tx_io_evt (session_handle (s), SESSION_IO_EVT_TX);
-      if (svm_fifo_set_event (peer_s->tx_fifo))
-	session_program_tx_io_evt (peer_handle, SESSION_IO_EVT_TX);
-    }
 
   return 0;
 

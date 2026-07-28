@@ -1264,6 +1264,7 @@ hsi_track_udp (session_t *s, session_t *peer_s)
       hsi_udp_drain_start (s, peer_s, uc0, uc1);
       if (hsi_udp_track_send_drain_start (s, peer_s))
 	return -1;
+      hsi_drain_program_tx_pair (s, peer_s);
       return 0;
     }
 
@@ -1271,6 +1272,7 @@ hsi_track_udp (session_t *s, session_t *peer_s)
     {
       hsi_udp_drain_start (s, peer_s, uc0, uc1);
       hsi_udp_drain_start (peer_s, s, uc1, uc0);
+      hsi_drain_program_tx_pair (s, peer_s);
       return 0;
     }
 

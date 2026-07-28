@@ -1009,6 +1009,7 @@ hsi_track_tcp (session_t *s, session_t *peer_s)
     {
       hsi_tcp_drain_start (s, peer_s, tc0, tc1);
       hsi_tcp_track_send_drain_start (s, peer_s);
+      hsi_drain_program_tx_pair (s, peer_s);
       return 0;
     }
 
@@ -1016,6 +1017,7 @@ hsi_track_tcp (session_t *s, session_t *peer_s)
     {
       hsi_tcp_drain_start (s, peer_s, tc0, tc1);
       hsi_tcp_drain_start (peer_s, s, tc1, tc0);
+      hsi_drain_program_tx_pair (s, peer_s);
       return 0;
     }
 

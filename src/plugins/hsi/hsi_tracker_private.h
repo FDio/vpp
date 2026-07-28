@@ -358,6 +358,20 @@ hsi_drain_sample_fifos (session_t *s, u32 *rx_deq, u32 *tx_deq)
   *tx_deq = svm_fifo_max_dequeue_cons (s->tx_fifo);
 }
 
+static_always_inline void
+hsi_drain_program_tx (session_t *s)
+{
+  if (svm_fifo_set_event (s->tx_fifo))
+    session_program_tx_io_evt (session_handle (s), SESSION_IO_EVT_TX);
+}
+
+static_always_inline void
+hsi_drain_program_tx_pair (session_t *s, session_t *peer_s)
+{
+  hsi_drain_program_tx (s);
+  hsi_drain_program_tx (peer_s);
+}
+
 static_always_inline u8
 hsi_drain_cache_has_room (u32 *cached_buffers, u32 cached_bytes, u32 len, u32 max_packets,
 			  u32 max_bytes)
