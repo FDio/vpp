@@ -2,7 +2,7 @@
  * Copyright (c) 2025 Cisco Systems, Inc.
  */
 
-option version = "1.0.0";
+option version = "1.0.1";
 import "vnet/ip/ip_types.api";
 import "vnet/sfdp/sfdp_types.api";
 
@@ -67,6 +67,17 @@ autoreply define sfdp_kill_session
 
   u32 session_index;
   bool is_all;
+};
+
+/** \brief Force expiry of sfdp sessions, up-to specified max
+    @param max - maximum number of sfdp sessions to expire
+*/
+autoreply define sfdp_kill_session_batch
+{
+  u32 client_index;
+  u32 context;
+
+  u32 max [default=1000];
 };
 
 define sfdp_tenant_dump

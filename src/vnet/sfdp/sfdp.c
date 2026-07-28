@@ -411,18 +411,15 @@ sfdp_set_icmp_error_node (sfdp_main_t *sfdp, u32 tenant_id, u8 is_ip6,
  * Both call sites guarantee this:
  *   - CLI:  vlib/cli.c dispatches non-is_mp_safe commands under barrier_sync
  *   - API:  vlibmemory/memory_api.c acquires vl_msg_api_barrier_sync() for
- *           non-is_mp_safe messages, which includes sfdp_kill_session
+ *           non-is_mp_safe messages, which include sfdp_kill_session and
+ *           sfdp_kill_session_batch
  *
  * With workers stopped it is safe to:
  *   - write directly into the worker-owned ptd->expired_sessions vector
  *     without a lock (no concurrent reader/writer),
- *   - call sfdp_session_timer_stop() on the worker-owned timer wheel
- *     (the wheel cannot advance while the worker is paused, so the handle
- *     is always valid: a session that had already naturally expired would
- *     have been fully removed in the previous dispatch and would not reach
- *     this function because sfdp_session_at_index_if_valid() returns NULL).
+ *   - call sfdp_session_timer_stop() on the worker-owned timer wheel.
  */
-static void
+static int
 sfdp_expire_session_now (sfdp_session_t *session, f64 now)
 {
   u16 thread_index = session->owning_thread_index;
@@ -433,6 +430,12 @@ sfdp_expire_session_now (sfdp_session_t *session, f64 now)
   u32 session_index = session - sfdp->sessions;
   sfdp_timer_per_thread_data_t *tptd = sfdp_timer_get_per_thread_data (thread_index);
   sfdp_session_timer_t *timer = SFDP_SESSION_TIMER (session);
+
+  /* Check if session has already been marked for expiry */
+  if (timer->expiry_pending)
+    return 0;
+
+  timer->expiry_pending = 1;
 
   /* Directly add session to the expired list, bypassing the timing wheel's
    * nticks >= 1 constraint (tw_timer_template.c). The session is processed
@@ -446,6 +449,8 @@ sfdp_expire_session_now (sfdp_session_t *session, f64 now)
 
   /* Wake up sfdp-expire on the owning worker. */
   vlib_node_set_interrupt_pending (vlib_get_main_by_index (thread_index), sfdp_expire_node.index);
+
+  return 1;
 }
 
 clib_error_t *
@@ -470,6 +475,30 @@ sfdp_kill_session (sfdp_main_t *sfdp, u32 session_index, u8 is_all)
     return clib_error_return (0, "Session index %u not found", session_index);
 
   sfdp_expire_session_now (session, now);
+  return 0;
+}
+
+clib_error_t *
+sfdp_kill_session_batch (sfdp_main_t *sfdp, u32 max)
+{
+  vlib_main_t *vm = vlib_get_main ();
+  f64 now = vlib_time_now (vm);
+  sfdp_session_t *session;
+  uword index;
+  u32 expired = 0;
+
+  if (vec_len (sfdp_timer_main.per_thread_data) == 0)
+    return clib_error_return (0, "sfdp timer module is not initialized");
+
+  sfdp_foreach_session (sfdp, index, session)
+  {
+    if (expired == max)
+      break;
+
+    if (sfdp_expire_session_now (session, now))
+      expired++;
+  }
+
   return 0;
 }
 
