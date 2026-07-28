@@ -17,6 +17,23 @@
       "parentUuid": "8709cc3e_fcc6facd",
       "revId": "c7e600535f0fca7675d26bea745c57b0556908a0",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b24d4f5c_e436ae1c",
+        "filename": "src/plugins/rdma/device.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 992,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-07-28T07:53:20Z",
+      "side": 1,
+      "message": "Could we also request `MLX5DV_CONTEXT_MASK_CQE_COMPRESION` in `mlx5dv_attrs.comp_mask` before calling `mlx5dv_query_device()`? rdma-core only populates `cqe_comp_caps` when that mask is requested. With only `MLX5DV_CONTEXT_MASK_STRIDING_RQ`, `supported_format` remains zero, so the striding path always falls back to an uncompressed CQ even when `CSUM_STRIDX` is supported.",
+      "revId": "c7e600535f0fca7675d26bea745c57b0556908a0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
