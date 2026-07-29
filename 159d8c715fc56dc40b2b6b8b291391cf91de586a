@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "ac65b708_4a47c2de",
+        "filename": "src/plugins/unittest/pool_cache_perf_test.c",
+        "patchSetId": 14
+      },
+      "lineNbr": 508,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2026-07-29T07:12:23Z",
+      "side": 1,
+      "message": "it will return one, `POOL_CACHE_PERF_MODE_ALL` is bitwise union of all other testing mode, and we iterate over each bit to start a test:\n```c\nfor (i \u003d 0; i \u003c ARRAY_LEN (modes); i++)\n{\n    if ((mode_flags \u0026 modes[i]) \u003d\u003d 0)\n        continue;\n\n    error \u003d pool_cache_perf_run_mode (vm, ptm, modes[i]);\n    if (error)\n        goto done;\n}\n```",
+      "parentUuid": "1da6c072_df810e4e",
+      "revId": "159d8c715fc56dc40b2b6b8b291391cf91de586a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "89a6f196_ef50c1ed",
@@ -31,6 +49,24 @@
       "writtenOn": "2026-07-24T15:20:48Z",
       "side": 1,
       "message": "you need to put \"free-all\" before hitting the match with \"free\" to avoid parsing issue",
+      "revId": "159d8c715fc56dc40b2b6b8b291391cf91de586a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "c2194d43_6ae88451",
+        "filename": "src/plugins/unittest/pool_cache_test.c",
+        "patchSetId": 14
+      },
+      "lineNbr": 940,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2026-07-29T07:12:23Z",
+      "side": 1,
+      "message": "right thanks",
+      "parentUuid": "89a6f196_ef50c1ed",
       "revId": "159d8c715fc56dc40b2b6b8b291391cf91de586a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
