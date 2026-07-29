@@ -250,6 +250,7 @@ unix_cli_file_free (unix_cli_file_t * f)
   vec_free (f->output_vector);
   vec_free (f->input_vector);
   vec_free (f->name);
+  vec_free (f->current_command);
   unix_cli_pager_reset (f);
 }
 
@@ -2537,6 +2538,7 @@ more:
   if (cf->line_mode)
     {
       /* just treat whatever we got as a complete line of input */
+      vec_free (cf->current_command);
       cf->current_command = cf->input_vector;
     }
   else
