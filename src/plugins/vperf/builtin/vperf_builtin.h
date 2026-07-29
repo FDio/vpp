@@ -54,6 +54,7 @@ typedef struct
   u8 uso;		      /**< UDP segmentation offload */
   u64 report_interval;	      /**< Time between periodic reports (s) */
   f64 run_time;		      /**< Length of a test (s) */
+  u8 rx_buffer;		      /**< Consume TCP RX buffers directly */
 } vp_test_cfg_t;
 
 typedef enum vp_proto_rtt_stat_ : u8

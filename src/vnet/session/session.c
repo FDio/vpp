@@ -257,12 +257,313 @@ session_alloc (clib_thread_index_t thread_index)
   return s;
 }
 
+static void
+session_rx_buffer_retain (vlib_main_t *vm, vlib_buffer_t *b)
+{
+  while (1)
+    {
+      ASSERT (b->ref_count < VLIB_BUFFER_MAX_CLONE);
+      clib_atomic_add_fetch (&b->ref_count, 1);
+
+      if (!(b->flags & VLIB_BUFFER_NEXT_PRESENT))
+	break;
+      b = vlib_get_buffer (vm, b->next_buffer);
+    }
+}
+
+void
+session_rx_data_enable (session_t *s)
+{
+  session_rx_buffer_page_t *page;
+  session_worker_t *wrk;
+  u32 map_index, page_index;
+  application_t *app = app_worker_get_app (s->app_wrk_index);
+
+  ASSERT (s->thread_index == vlib_get_thread_index ());
+  ASSERT (app && application_is_builtin (app) &&
+	  session_transport_service_type (s) == TRANSPORT_SERVICE_VC);
+  ASSERT (!(s->flags & SESSION_F_RX_DATA));
+
+  wrk = session_main_get_worker (s->thread_index);
+  map_index = s->session_index >> SESSION_RX_BUFFER_PAGE_LOG2;
+  vec_validate_init_empty (wrk->rx_buffer_page_by_session, map_index, SESSION_INVALID_INDEX);
+  page_index = wrk->rx_buffer_page_by_session[map_index];
+  if (page_index == SESSION_INVALID_INDEX)
+    {
+      pool_get (wrk->rx_buffer_pages, page);
+      page_index = page - wrk->rx_buffer_pages;
+      page->n_sessions = 0;
+      clib_memset (page->head, 0xff, sizeof (page->head));
+      wrk->rx_buffer_page_by_session[map_index] = page_index;
+    }
+  else
+    page = pool_elt_at_index (wrk->rx_buffer_pages, page_index);
+
+  /* pool_get may move the pool, so always refresh the cached slot. */
+  wrk->rx_buffer_cached_session_key = s->session_index + 1;
+  wrk->rx_buffer_cached_head = &page->head[s->session_index & (SESSION_RX_BUFFER_PAGE_SIZE - 1)];
+  ASSERT (*wrk->rx_buffer_cached_head == SESSION_INVALID_INDEX);
+  page->n_sessions++;
+  s->flags |= SESSION_F_RX_DATA;
+}
+
+#define SESSION_RX_BUFFER_MAX_WORKER_BYTES (1 << 20)
+
+u32
+session_rx_buffers_enqueue (session_t *s, vlib_buffer_t *b, u32 n_bytes)
+{
+  session_worker_t *wrk = session_main_get_worker (s->thread_index);
+  session_rx_buffer_desc_t *head, *tail, *d;
+  u32 *head_slot;
+  u32 head_index, fifo_space, pending, worker_space, di;
+
+  ASSERT (s->thread_index == vlib_get_thread_index ());
+  ASSERT (s->flags & SESSION_F_RX_DATA);
+  head_slot = session_rx_buffer_head_slot (wrk, s->session_index);
+  ASSERT (head_slot != 0);
+  head_index = *head_slot;
+
+  pending = 0;
+  if (head_index != SESSION_INVALID_INDEX)
+    pending = pool_elt_at_index (wrk->rx_buffers, head_index)->data_len;
+
+  fifo_space = svm_fifo_max_enqueue_prod (s->rx_fifo);
+  fifo_space -= clib_min (fifo_space, pending);
+  worker_space = SESSION_RX_BUFFER_MAX_WORKER_BYTES;
+  worker_space -= clib_min (worker_space, wrk->rx_buffer_bytes);
+  if (n_bytes > fifo_space || n_bytes > worker_space)
+    return 0;
+
+  pool_get (wrk->rx_buffers, d);
+  di = d - wrk->rx_buffers;
+  d->next = SESSION_INVALID_INDEX;
+  d->buffer_index = vlib_get_buffer_index (wrk->vm, b);
+  d->tail = di;
+  d->data_len = n_bytes;
+  session_rx_buffer_retain (wrk->vm, b);
+  wrk->rx_buffer_bytes += n_bytes;
+
+  if (head_index == SESSION_INVALID_INDEX)
+    {
+      *head_slot = di;
+      return n_bytes;
+    }
+
+  head = pool_elt_at_index (wrk->rx_buffers, head_index);
+  tail = pool_elt_at_index (wrk->rx_buffers, head->tail);
+  tail->next = di;
+  head->tail = di;
+  head->data_len += n_bytes;
+
+  return n_bytes;
+}
+
+static void
+session_rx_buffers_release (session_worker_t *wrk, u32 *head_slot, u32 di, u32 n_bytes)
+{
+  session_rx_buffer_desc_t *d;
+  u32 buffer_indices[VLIB_FRAME_SIZE];
+  u32 next, n_buffers = 0;
+
+  *head_slot = SESSION_INVALID_INDEX;
+  ASSERT (wrk->rx_buffer_bytes >= n_bytes);
+  wrk->rx_buffer_bytes -= n_bytes;
+
+  while (di != SESSION_INVALID_INDEX)
+    {
+      d = pool_elt_at_index (wrk->rx_buffers, di);
+      next = d->next;
+      buffer_indices[n_buffers++] = d->buffer_index;
+      pool_put (wrk->rx_buffers, d);
+
+      if (n_buffers == ARRAY_LEN (buffer_indices))
+	{
+	  vlib_buffer_free (wrk->vm, buffer_indices, n_buffers);
+	  n_buffers = 0;
+	}
+
+      di = next;
+    }
+
+  if (n_buffers)
+    vlib_buffer_free (wrk->vm, buffer_indices, n_buffers);
+}
+
+static void
+session_rx_buffers_discard (session_t *s)
+{
+  session_worker_t *wrk;
+  u32 *head_slot;
+  u32 di, n_bytes;
+
+  if (!(s->flags & SESSION_F_RX_DATA))
+    return;
+
+  wrk = session_main_get_worker (s->thread_index);
+  head_slot = session_rx_buffer_head_slot (wrk, s->session_index);
+  ASSERT (head_slot != 0);
+  di = *head_slot;
+  if (di == SESSION_INVALID_INDEX)
+    return;
+
+  n_bytes = pool_elt_at_index (wrk->rx_buffers, di)->data_len;
+  session_rx_buffers_release (wrk, head_slot, di, n_bytes);
+}
+
+u32
+session_rx_buffers_to_fifo (session_t *s)
+{
+  session_worker_t *wrk;
+  session_rx_buffer_desc_t *d;
+  vlib_buffer_t *b;
+  svm_fifo_seg_t *seg;
+  u32 *head_slot;
+  u32 di, head_index, n_bytes;
+  int n_enqueued;
+
+  ASSERT (s->thread_index == vlib_get_thread_index ());
+  wrk = session_main_get_worker (s->thread_index);
+  head_slot = session_rx_buffer_head_slot (wrk, s->session_index);
+  ASSERT (head_slot != 0);
+  head_index = *head_slot;
+  if (head_index == SESSION_INVALID_INDEX)
+    return 0;
+
+  n_bytes = pool_elt_at_index (wrk->rx_buffers, head_index)->data_len;
+  vec_reset_length (wrk->rx_segs);
+  di = head_index;
+
+  while (di != SESSION_INVALID_INDEX)
+    {
+      d = pool_elt_at_index (wrk->rx_buffers, di);
+      b = vlib_get_buffer (wrk->vm, d->buffer_index);
+      while (1)
+	{
+	  vec_add2 (wrk->rx_segs, seg, 1);
+	  seg->data = vlib_buffer_get_current (b);
+	  seg->len = b->current_length;
+	  if (!(b->flags & VLIB_BUFFER_NEXT_PRESENT))
+	    break;
+	  b = vlib_get_buffer (wrk->vm, b->next_buffer);
+	}
+      di = d->next;
+    }
+
+  n_enqueued = svm_fifo_enqueue_segments (s->rx_fifo, wrk->rx_segs, vec_len (wrk->rx_segs),
+					  0 /* allow partial */);
+  vec_reset_length (wrk->rx_segs);
+
+  ASSERT (n_enqueued == n_bytes);
+  if (PREDICT_FALSE (n_enqueued != n_bytes))
+    return 0;
+
+  session_rx_buffers_release (wrk, head_slot, head_index, n_bytes);
+  return n_bytes;
+}
+
+u32
+session_rx_data_consume (session_t *s, session_rx_data_consume_fn_t fn, void *ctx)
+{
+  session_worker_t *wrk;
+  session_rx_buffer_desc_t *d;
+  session_rx_data_segment_t *seg;
+  session_rx_data_t data;
+  vlib_buffer_t *b;
+  u32 *head_slot;
+  u32 di, head_index, n_bytes;
+
+  ASSERT (s->thread_index == vlib_get_thread_index ());
+  ASSERT (fn != 0);
+  wrk = session_main_get_worker (s->thread_index);
+  head_slot = session_rx_buffer_head_slot (wrk, s->session_index);
+  ASSERT (head_slot != 0);
+  head_index = *head_slot;
+  if (head_index == SESSION_INVALID_INDEX)
+    return 0;
+
+  n_bytes = pool_elt_at_index (wrk->rx_buffers, head_index)->data_len;
+  vec_reset_length (wrk->rx_data_segments);
+  di = head_index;
+
+  while (di != SESSION_INVALID_INDEX)
+    {
+      d = pool_elt_at_index (wrk->rx_buffers, di);
+      b = vlib_get_buffer (wrk->vm, d->buffer_index);
+      while (1)
+	{
+	  vec_add2 (wrk->rx_data_segments, seg, 1);
+	  seg->data = vlib_buffer_get_current (b);
+	  seg->len = b->current_length;
+	  if (!(b->flags & VLIB_BUFFER_NEXT_PRESENT))
+	    break;
+	  b = vlib_get_buffer (wrk->vm, b->next_buffer);
+	}
+      di = d->next;
+    }
+
+  data.segments = wrk->rx_data_segments;
+  data.n_segments = vec_len (wrk->rx_data_segments);
+  data.data_len = n_bytes;
+  if (!fn (&data, ctx))
+    {
+      vec_reset_length (wrk->rx_data_segments);
+      return 0;
+    }
+
+  session_rx_buffers_release (wrk, head_slot, head_index, n_bytes);
+  vec_reset_length (wrk->rx_data_segments);
+  session_fifo_tuning (s, s->rx_fifo, SESSION_FT_ACTION_DEQUEUED, n_bytes);
+
+  if (svm_fifo_needs_deq_ntf (s->rx_fifo, n_bytes))
+    {
+      svm_fifo_clear_deq_ntf (s->rx_fifo);
+      session_program_transport_io_evt (s->handle, SESSION_IO_EVT_RX);
+    }
+
+  return n_bytes;
+}
+
+static void
+session_rx_data_disable (session_t *s)
+{
+  session_rx_buffer_page_t *page;
+  session_worker_t *wrk;
+  u32 map_index, page_index;
+
+  if (!(s->flags & SESSION_F_RX_DATA))
+    return;
+
+  session_rx_buffers_discard (s);
+  wrk = session_main_get_worker (s->thread_index);
+  map_index = s->session_index >> SESSION_RX_BUFFER_PAGE_LOG2;
+  page_index = wrk->rx_buffer_page_by_session[map_index];
+  page = pool_elt_at_index (wrk->rx_buffer_pages, page_index);
+  ASSERT (page->head[s->session_index & (SESSION_RX_BUFFER_PAGE_SIZE - 1)] ==
+	  SESSION_INVALID_INDEX);
+  ASSERT (page->n_sessions > 0);
+
+  if (--page->n_sessions == 0)
+    {
+      wrk->rx_buffer_cached_session_key = 0;
+      wrk->rx_buffer_cached_head = 0;
+      pool_put (wrk->rx_buffer_pages, page);
+      wrk->rx_buffer_page_by_session[map_index] = SESSION_INVALID_INDEX;
+      while (vec_len (wrk->rx_buffer_page_by_session) &&
+	     wrk->rx_buffer_page_by_session[vec_len (wrk->rx_buffer_page_by_session) - 1] ==
+	       SESSION_INVALID_INDEX)
+	vec_dec_len (wrk->rx_buffer_page_by_session, 1);
+    }
+
+  s->flags &= ~SESSION_F_RX_DATA;
+}
+
 void
 session_free (session_t * s)
 {
   session_worker_t *wrk = &session_main.wrk[s->thread_index];
 
   SESSION_EVT (SESSION_EVT_FREE, s);
+  session_rx_data_disable (s);
   if (CLIB_DEBUG)
     clib_memset (s, 0xFA, sizeof (*s));
   pool_put (wrk->sessions, s);
