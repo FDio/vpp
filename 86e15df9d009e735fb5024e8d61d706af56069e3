@@ -1,0 +1,39 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "66aa7e46_464312c6",
+        "filename": "src/vnet/flow/flow.c",
+        "patchSetId": 37
+      },
+      "lineNbr": 141,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-07-29T08:13:20Z",
+      "side": 1,
+      "message": "This still appears unfixed in patchset 37: `IS_FLOW_ENABLED()` only checks that `hw_if_index !\u003d ~0`, so an enable callback that records a different interface passes this postcondition. A later disable would then dispatch through the wrong interface and could leave the original hardware rule installed. Could we also require `f-\u003edriver_data.hw_if_index \u003d\u003d hw_if_index` here?",
+      "parentUuid": "47be15a4_687fe100",
+      "revId": "86e15df9d009e735fb5024e8d61d706af56069e3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3d80b5ce_577a4943",
+        "filename": "src/vnet/flow/flow_cli.c",
+        "patchSetId": 37
+      },
+      "lineNbr": 568,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-07-29T08:13:20Z",
+      "side": 1,
+      "message": "Once `flow_indices` is populated here, several later error paths return directly—for example invalid RSS input or an unsupported flow type—without reaching `done:`. Repeating such malformed commands leaks the vector. Could these paths use a common cleanup path that frees both `flow_indices` and `line_input`?",
+      "revId": "86e15df9d009e735fb5024e8d61d706af56069e3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
