@@ -16,6 +16,41 @@
       "message": "recheck",
       "revId": "6bcff345b8d8665b171d2b53e26bf9017f359475",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "15c1dd17_1d7215e3",
+        "filename": "src/vlib/pool_cache.h",
+        "patchSetId": 15
+      },
+      "lineNbr": 76,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-07-29T08:12:50Z",
+      "side": 1,
+      "message": "Is `pool_cache_is_free_index()` required by a concrete production consumer? It appears to introduce much of the current complexity: because entries held in a thread-local cache remain allocated from the backing pool, supporting logical \"free\" queries requires separate per-slot state and atomic transitions.\n\nWithout that API, the implementation could rely much more directly on fixed-size regular pools:\n\n- regular pools provide the global freelists, free bitmaps, allocation, and ASan behavior under the spinlock;\n- refill transfers indices from `pool_get()` into a bounded per-thread stack;\n- flush returns excess indices with `pool_put_index()`;\n- local put/get only poison and unpoison the payload;\n- another fixed-size backing pool is created under the lock when needed.\n\nThis removes both `next_free[]` and production `slot_state[]`, along with the production CAS. Double-free checking could remain debug-only if desired. Could we first confirm whether `pool_cache_is_free_index()` is actually needed before carrying its cost and semantics into the primitive?",
+      "parentUuid": "6e32784e_4de4d526",
+      "revId": "6bcff345b8d8665b171d2b53e26bf9017f359475",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c7e8becc_41e6f452",
+        "filename": "src/vlib/pool_cache.h",
+        "patchSetId": 15
+      },
+      "lineNbr": 217,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-07-29T08:12:50Z",
+      "side": 1,
+      "message": "Could this API use the same vocabulary as regular pools? In particular, `pool_cache_alloc()`/`pool_cache_free()` currently introduce a second naming convention for pool operations. Something like:\n\n```c\nu32 index \u003d pool_cache_get_index (\u0026cache);\npool_cache_put_index (\u0026cache, index);\npool_cache_free (\u0026cache); /* release resources */\n```\n\nwould align with `pool_get`, `pool_put_index`, `pool_free`, and `pool_elt_at_index`. If the shorter `pool_cache_get()` is preferred, its index-returning semantics should be explicit because regular `pool_get()` yields an element pointer through an output argument.",
+      "revId": "6bcff345b8d8665b171d2b53e26bf9017f359475",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
