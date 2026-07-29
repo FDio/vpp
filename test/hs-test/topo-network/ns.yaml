@@ -1,12 +1,14 @@
 ---
 extra-config:
-  - configured-by-host: true
+  - configured-by-host: false
 devices:
   - name: "cln"
     type: "netns"
 
   - name: "hclnvpp"
-    type: "veth"
+    type: "tap"
+    ip4:
+      network: 1
     host:
       name: "cln"
       netns: "cln"
@@ -14,7 +16,9 @@ devices:
         network: 1
 
   - name: "hsrvvpp"
-    type: "veth"
+    type: "tap"
+    ip4:
+      network: 2
     host:
       name: "srv"
       ip4:
