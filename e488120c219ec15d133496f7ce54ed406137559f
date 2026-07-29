@@ -1,0 +1,44 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f08f2643_9028d7b0",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-07-29T17:49:42Z",
+      "side": 1,
+      "message": "this should be split in two patches, one changing completion timeout in the test and another fixing http if you think there is some issue",
+      "revId": "e488120c219ec15d133496f7ce54ed406137559f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "116a8d62_5ac25d5e",
+        "filename": "src/plugins/http/http.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 926,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-07-29T17:49:42Z",
+      "side": 1,
+      "message": "I don\u0027t understand why we need to doing this. in transport_conn_reschedule_callback we reschedule app connection and on tx event from app we update idle timeout. on the other hand timer should be definitely updated in h1 and h2 vft callbacks instead of doing condition here",
+      "range": {
+        "startLine": 925,
+        "startChar": 0,
+        "endLine": 926,
+        "endChar": 32
+      },
+      "revId": "e488120c219ec15d133496f7ce54ed406137559f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
