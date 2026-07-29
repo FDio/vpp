@@ -265,15 +265,9 @@ func setupHsiUdpMigrationTest(s *HsiSuite) {
 	s.CpusPerVppContainer = 3
 	s.SetupTest()
 
+	// SetupTest steers client and server ingress to separate workers.
 	vpp := s.Containers.Vpp.VppInstance
-	numWorkers := len(s.Containers.Vpp.AllocatedCpus) - 1
-	AssertEqual(2, numWorkers)
-	for queueID := range numWorkers {
-		Log(vpp.Vppctl("set interface rx-placement %s queue %d worker 0",
-			s.Interfaces.Client.VppName(), queueID))
-		Log(vpp.Vppctl("set interface rx-placement %s queue %d worker 1",
-			s.Interfaces.Server.VppName(), queueID))
-	}
+	AssertEqual(2, vpp.CpuConfig.NumWorkers)
 	Log(vpp.Vppctl("show interface rx-placement"))
 }
 
