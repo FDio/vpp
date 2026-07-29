@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a0ed342f_b34f7b7a",
+        "filename": "src/vnet/bfd/bfd_cli.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 112,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-07-29T06:05:33Z",
+      "side": 1,
+      "message": "Potential follow-up: echo RX/TX timestamps are updated independently, so `echo_last_rx_nsec - echo_last_tx_nsec` can still underflow after a newer echo is sent or while replies are lost. We could guard against zero/out-of-order timestamps or retain the RTT when an echo is received. This seems separate from the unit-conversion fix.",
+      "revId": "8e97fc0f97ac4a7ecdff65729ff428d6b779e7a2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
