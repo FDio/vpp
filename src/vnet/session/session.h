@@ -19,6 +19,49 @@ typedef struct session_wrk_stats_
   u32 errors[SESSION_N_ERRORS];
 } session_wrk_stats_t;
 
+/** Read-only application view of one retained RX buffer span. */
+typedef struct
+{
+  const u8 *data;
+  u32 len;
+} session_rx_data_segment_t;
+
+/** Read-only scatter/gather view of retained in-order stream data. */
+typedef struct
+{
+  const session_rx_data_segment_t *segments;
+  u32 n_segments;
+  u32 data_len;
+} session_rx_data_t;
+
+/**
+ * Consume all data in a retained RX view.
+ *
+ * The view and its segments are valid only during this call. The consumer must
+ * not retain or modify the spans, free their storage, or invoke session APIs.
+ * A non-zero return consumes the complete view. Returning zero requests FIFO
+ * fallback and must not commit consumption to application-owned state.
+ */
+typedef int (*session_rx_data_consume_fn_t) (const session_rx_data_t *data, void *ctx);
+
+typedef struct
+{
+  u32 next;	    /**< Next descriptor in the retained list */
+  u32 buffer_index; /**< First buffer in this retained chain */
+  u32 tail;	    /**< Last descriptor, valid only on the head */
+  u32 data_len;	    /**< Total bytes, valid only on the head */
+} session_rx_buffer_desc_t;
+
+/* One directory entry covers 64 session indices; pages exist only on demand. */
+#define SESSION_RX_BUFFER_PAGE_LOG2 6
+#define SESSION_RX_BUFFER_PAGE_SIZE (1 << SESSION_RX_BUFFER_PAGE_LOG2)
+
+typedef struct
+{
+  u32 n_sessions;
+  u32 head[SESSION_RX_BUFFER_PAGE_SIZE];
+} session_rx_buffer_page_t;
+
 typedef struct session_tx_context_
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
@@ -153,6 +196,13 @@ typedef struct session_worker_
   uword *app_wrks_pending_ntf;
 
   svm_fifo_seg_t *rx_segs;
+  session_rx_data_segment_t *rx_data_segments;
+  session_rx_buffer_desc_t *rx_buffers;
+  session_rx_buffer_page_t *rx_buffer_pages;
+  u32 *rx_buffer_page_by_session;
+  u32 *rx_buffer_cached_head;	    /**< Last retained head slot */
+  u32 rx_buffer_cached_session_key; /**< Session index + 1; zero is invalid */
+  u32 rx_buffer_bytes;		    /**< Total bytes retained by this worker */
 
   session_switch_pool_args_t *session_migrate_requests;
   session_switch_pool_args_t *session_migrate_requests_handling;
@@ -645,6 +695,76 @@ int session_enqueue_dgram_connection_cl (session_t *s,
 void session_fifo_tuning (session_t *s, svm_fifo_t *f, session_ft_action_t act,
 			  u32 len);
 
+/* Built-in application API. */
+/**
+ * Enable retained RX data for a built-in stream session.
+ *
+ * Data remains bounded per worker and is exposed only from the regular
+ * asynchronous built-in RX callback. If the application does not consume it
+ * there, the session layer copies it to the RX FIFO and schedules another RX
+ * notification.
+ */
+void session_rx_data_enable (session_t *s);
+
+/**
+ * Offer retained RX data to a built-in application's consumer.
+ *
+ * Must be called from the session's regular built-in RX callback on its owner
+ * worker. Returns the number of bytes consumed, or zero when no retained data
+ * exists or the consumer requests FIFO fallback.
+ */
+u32 session_rx_data_consume (session_t *s, session_rx_data_consume_fn_t fn, void *ctx);
+
+/* Session-layer internal helpers. */
+u32 session_rx_buffers_to_fifo (session_t *s);
+u32 session_rx_buffers_enqueue (session_t *s, vlib_buffer_t *b, u32 n_bytes);
+
+always_inline u32 *
+session_rx_buffer_head_slot (session_worker_t *wrk, u32 session_index)
+{
+  session_rx_buffer_page_t *page;
+  u32 map_index, page_index, *head;
+
+  if (PREDICT_TRUE (wrk->rx_buffer_cached_session_key == session_index + 1))
+    return wrk->rx_buffer_cached_head;
+
+  map_index = session_index >> SESSION_RX_BUFFER_PAGE_LOG2;
+  if (PREDICT_FALSE (map_index >= vec_len (wrk->rx_buffer_page_by_session)))
+    return 0;
+
+  page_index = wrk->rx_buffer_page_by_session[map_index];
+  if (PREDICT_FALSE (page_index == SESSION_INVALID_INDEX))
+    return 0;
+  page = pool_elt_at_index (wrk->rx_buffer_pages, page_index);
+  head = &page->head[session_index & (SESSION_RX_BUFFER_PAGE_SIZE - 1)];
+  wrk->rx_buffer_cached_session_key = session_index + 1;
+  wrk->rx_buffer_cached_head = head;
+  return head;
+}
+
+always_inline u32
+session_rx_buffers_bytes (session_t *s)
+{
+  session_worker_t *wrk;
+  u32 *head;
+
+  if (PREDICT_TRUE (!(s->flags & SESSION_F_RX_DATA)))
+    return 0;
+
+  wrk = session_main_get_worker (s->thread_index);
+  head = session_rx_buffer_head_slot (wrk, s->session_index);
+  if (!head || *head == SESSION_INVALID_INDEX)
+    return 0;
+
+  return pool_elt_at_index (wrk->rx_buffers, *head)->data_len;
+}
+
+always_inline u8
+session_rx_data_is_enabled (session_t *s)
+{
+  return !!(s->flags & SESSION_F_RX_DATA);
+}
+
 /**
  * Discards bytes from buffer chain
  *
@@ -786,6 +906,25 @@ session_enqueue_stream_connection (transport_connection_t *tc,
 
   if (is_in_order)
     {
+      if (PREDICT_FALSE (session_rx_data_is_enabled (s) &&
+			 svm_fifo_max_dequeue_cons (s->rx_fifo) == 0 &&
+			 !svm_fifo_has_ooo_data (s->rx_fifo)))
+	{
+	  u32 n_bytes = vlib_buffer_length_in_chain (vlib_get_main (), b);
+
+	  if (session_rx_buffers_enqueue (s, b, n_bytes))
+	    {
+	      enqueued = n_bytes;
+	      goto queue_event;
+	    }
+	}
+
+      if (PREDICT_FALSE (session_rx_buffers_bytes (s)))
+	{
+	  if (!session_rx_buffers_to_fifo (s))
+	    return 0;
+	}
+
       enqueued = svm_fifo_enqueue (s->rx_fifo, b->current_length,
 				   vlib_buffer_get_current (b));
       if (PREDICT_FALSE ((b->flags & VLIB_BUFFER_NEXT_PRESENT) &&
@@ -799,6 +938,12 @@ session_enqueue_stream_connection (transport_connection_t *tc,
     }
   else
     {
+      if (PREDICT_FALSE (session_rx_buffers_bytes (s)))
+	{
+	  if (!session_rx_buffers_to_fifo (s))
+	    return 0;
+	}
+
       rv = svm_fifo_enqueue_with_offset (s->rx_fifo, offset, b->current_length,
 					 vlib_buffer_get_current (b));
       if (PREDICT_FALSE ((b->flags & VLIB_BUFFER_NEXT_PRESENT) && !rv))
@@ -808,6 +953,7 @@ session_enqueue_stream_connection (transport_connection_t *tc,
       return rv;
     }
 
+queue_event:
   if (queue_event)
     {
       /* Queue RX event on this fifo. Eventually these will need to be
@@ -917,7 +1063,10 @@ always_inline u32
 transport_max_rx_enqueue (transport_connection_t * tc)
 {
   session_t *s = session_get (tc->s_index, tc->thread_index);
-  return svm_fifo_max_enqueue_prod (s->rx_fifo);
+  u32 max_enqueue = svm_fifo_max_enqueue_prod (s->rx_fifo);
+  u32 rx_buffer_bytes = session_rx_buffers_bytes (s);
+
+  return max_enqueue > rx_buffer_bytes ? max_enqueue - rx_buffer_bytes : 0;
 }
 
 always_inline u32

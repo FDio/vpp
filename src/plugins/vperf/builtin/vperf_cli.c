@@ -10,7 +10,7 @@ static clib_error_t *
 vp_server_create_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
 {
   vp_server_main_t *vpsm = &vp_server_main;
-  u8 server_uri_set = 0, *appns_id = 0;
+  u8 server_uri_set = 0, rx_data = 0, *appns_id = 0;
   u64 appns_flags = 0, appns_secret = 0;
   char *default_uri = "tcp://0.0.0.0/1234";
   int rv, is_stop = 0;
@@ -47,6 +47,8 @@ vp_server_create_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_
 	;
       else if (unformat (input, "report-interval"))
 	vpsm->cfg.report_interval = 1;
+      else if (unformat (input, "rx-data"))
+	rx_data = 1;
       else if (unformat (input, "connect-tcp"))
 	vpsm->cfg.http_connect_proto = VP_HTTP_CONNECT_PROTO_TCP;
       else if (unformat (input, "connect-udp"))
@@ -75,6 +77,8 @@ vp_server_create_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_
 	}
       goto cleanup;
     }
+
+  vpsm->cfg.rx_data = rx_data;
 
   session_enable_disable_args_t args = { .is_en = 1,
 					 .rt_engine_type = RT_BACKEND_ENGINE_RULE_TABLE };
@@ -165,7 +169,7 @@ VLIB_CLI_COMMAND (vp_server_create_command, static) = {
   .short_help = "vperf server [uri <proto://ip:port>] [fifo-size <bytes>[k|m|g]]\n"
 		"[private-segment-count <n>] [private-segment-size <bytes>[k|m|g]]\n"
 		"[all-scope|local-scope|global-scope] [secret <n>] [stop] [tls-engine <id>]\n"
-		"[prealloc-fifos <n>] [appns <id>] [report-interval [<seconds>]]",
+		"[prealloc-fifos <n>] [appns <id>] [report-interval [<seconds>]] [rx-data]",
   .function = vp_server_create_command_fn,
   .is_mp_safe = 1,
 };

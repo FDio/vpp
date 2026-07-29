@@ -89,6 +89,8 @@ vp_server_session_accept_callback (session_t *s)
     return vp_server_ctrl_session_accept_callback (s);
 
   s->session_state = SESSION_STATE_READY;
+  if (vpsm->cfg.rx_data && vpsm->cfg.test_cfg.test == VPERF_TEST_TYPE_UNI)
+    session_rx_data_enable (s);
   vp_server_session_alloc_and_init (s);
   return 0;
 }
@@ -398,10 +400,29 @@ vp_server_setup_test (vperf_cfg_t *c)
   return 0;
 }
 
+static int
+vp_server_rx_data_consume (const session_rx_data_t *data, void *ctx)
+{
+  vp_test_session_t *es = ctx;
+
+  es->bytes_received += data->data_len;
+  return 1;
+}
+
 int
 vp_server_rx_callback_common (session_t *s)
 {
   vp_server_main_t *vpsm = &vp_server_main;
+
+  if (PREDICT_FALSE (session_rx_data_is_enabled (s)))
+    {
+      vp_test_worker_t *wrk = vp_server_worker_get (s->thread_index);
+      vp_test_session_t *es = vp_server_session_get (wrk, s->opaque);
+
+      if (session_rx_data_consume (s, vp_server_rx_data_consume, es))
+	return 0;
+    }
+
   return vpsm->rx_callback (s);
 }
 
