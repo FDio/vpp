@@ -16,6 +16,23 @@
       "message": "recheck",
       "revId": "ea08f0ac670e98cd5b512b753e3e6ea440e09bc4",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "10ec33de_6ae927cf",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 7
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2026-07-30T07:46:49Z",
+      "side": 1,
+      "message": "I tried to model the CLI such that \"set ... \" enables the feature and \"delete ...\" disables / removes the configuration. I.e. the verb goes first.\nset + enable and set + disable on the same line becomes quite confusing... :-)",
+      "revId": "ea08f0ac670e98cd5b512b753e3e6ea440e09bc4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
