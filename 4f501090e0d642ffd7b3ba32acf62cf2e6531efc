@@ -395,6 +395,23 @@
       "parentUuid": "7686cff2_12598c1a",
       "revId": "4f501090e0d642ffd7b3ba32acf62cf2e6531efc",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1657ccff_4c44cbd7",
+        "filename": "src/plugins/rdma/output.c",
+        "patchSetId": 44
+      },
+      "lineNbr": 262,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-07-30T14:27:39Z",
+      "side": 1,
+      "message": "Could you check whether mlx5 TSO requires the TCP checksum field to contain the IPv4/IPv6 pseudo-header checksum before copying the header into the WQE? This preparation was present in PS31 but is absent here. An external application using the DPDK mlx5 driver is expected to initialize this field itself—for example with rte_ipv4_phdr_cksum() or rte_ipv6_phdr_cksum()—before submitting a TSO packet. Does the direct-verbs mlx5 path have the same requirement?",
+      "revId": "4f501090e0d642ffd7b3ba32acf62cf2e6531efc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
