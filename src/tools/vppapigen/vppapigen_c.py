@@ -72,6 +72,35 @@ global_types = _GlobalTypesProxy()
 process_imports = False
 
 
+def scalar_needs_alignment(fieldtype):
+    """True if fieldtype is a scalar whose alignment exceeds 1.
+
+    API messages are packed, so a field of such a type generally sits at a
+    misaligned offset. Binding &msg->field to a pointer of that type then
+    yields a pointer-to-aligned-type that is not actually aligned --
+    -Waddress-of-packed-member warns, and dereferencing it is undefined.
+    Emitters use this to route those accesses through an aligned temporary.
+
+    Packed aggregates (Typedef/Union) and u8 arrays are alignof 1, so a
+    misaligned pointer to them is already well-defined.
+    """
+    if fieldtype in ENDIAN_STRINGS:
+        return True
+    if not fieldtype.startswith("vl_api_"):
+        return False
+    resolved = global_types.get(fieldtype)
+    if resolved is None:
+        return False
+    cls = resolved.__class__.__name__
+    if cls in ("Enum", "EnumFlag"):
+        return resolved.enumtype in ENDIAN_STRINGS
+    if cls == "Using":
+        if "length" in resolved.alias and resolved.alias["length"]:
+            return False
+        return resolved.alias["type"] in ENDIAN_STRINGS
+    return False
+
+
 ###############################################################################
 class ToJSON:
     """Class to generate functions converting from VPP binary API to JSON."""
@@ -192,10 +221,10 @@ class ToJSON:
 
         forloop = """\
     {{
-        int i;
+        u32 i;
         cJSON *array = cJSON_AddArrayToObject(o, "{n}");
-        for (i = 0; i < {lfield}; i++) {{
-            cJSON_AddItemToArray(array, {f}({p}a->{n}[i]));
+        for (i = 0; i < (u32) ({lfield}); i++) {{
+            {item}
         }}
     }}
 """
@@ -218,7 +247,20 @@ class ToJSON:
             return
 
         f, p = self.get_json_array_func(o.fieldtype)
-        write(forloop.format(lfield=lfield, t=o.fieldtype, n=o.fieldname, f=f, p=p))
+        item = "cJSON_AddItemToArray(array, {f}({p}a->{n}[i]));".format(
+            f=f, p=p, n=o.fieldname
+        )
+        # A scalar array element is misaligned for the same reason a scalar
+        # field is, and unlike the field path here (which passes the value)
+        # the array helper takes a typed pointer. Read through an aligned
+        # temporary. Aggregates are packed, so alignof is 1, no copy needed.
+        if p == "&" and scalar_needs_alignment(o.fieldtype):
+            item = (
+                "{ %s _v; __builtin_memcpy (&_v, &a->%s[i], sizeof (_v)); "
+                "cJSON_AddItemToArray(array, %s(&_v)); }"
+                % (o.fieldtype, o.fieldname, f)
+            )
+        write(forloop.format(lfield=lfield, t=o.fieldtype, n=o.fieldname, item=item))
 
     _dispatch["Array"] = print_array
 
@@ -434,17 +476,30 @@ class FromJSON:
         msgvar = "(void **)&a" if toplevel else "mp"
         msgsize = "&l" if toplevel else "len"
 
+        # Messages are packed, so a scalar field of alignment > 1 generally
+        # sits at a misaligned offset. Parse into an aligned temporary and
+        # memcpy it into place rather than handing the callee &a->field as a
+        # pointer-to-aligned-type that is not aligned. Fixed-size scalars
+        # only, so the callee cannot realloc the message out from under `a`.
+        tmp = scalar_needs_alignment(o.fieldtype)
+        dst = "&_v" if tmp else "&a->{}".format(o.fieldname)
+        if tmp:
+            write("    {{ {ft} _v;\n".format(ft=o.fieldtype))
         if is_bt:
             write(
-                "    vl_api_{t}_fromjson(item, &a->{n});\n".format(
-                    t=o.fieldtype, n=o.fieldname
-                )
+                "    vl_api_{t}_fromjson(item, {dst});\n".format(t=o.fieldtype, dst=dst)
             )
         else:
             write(
                 "    if ({t}_fromjson({msgvar}, "
-                "{msgsize}, item, &a->{n}) < 0) goto error;\n".format(
-                    t=t, n=o.fieldname, msgvar=msgvar, msgsize=msgsize
+                "{msgsize}, item, {dst}) < 0) goto error;\n".format(
+                    t=t, dst=dst, msgvar=msgvar, msgsize=msgsize
+                )
+            )
+        if tmp:
+            write(
+                "      __builtin_memcpy (&a->{n}, &_v, sizeof (_v)); }}\n".format(
+                    n=o.fieldname
                 )
             )
 
@@ -473,7 +528,7 @@ class FromJSON:
         int size = cJSON_GetArraySize(array);
         {lfield} = size;
         {realloc} = cJSON_realloc({realloc}, {msgsize} + sizeof({t}) * size);
-        {t} *d = (void *){realloc} + {msgsize};
+        {t} *d = (void *)((u8 *){realloc} + {msgsize});
         {msgsize} += sizeof({t}) * size;
         for (i = 0; i < size; i++) {{
             cJSON *e = cJSON_GetArrayItem(array, i);
@@ -504,7 +559,7 @@ class FromJSON:
                     )
                 )
                 write(
-                    "    clib_memcpy((void *){realloc} + {msgsize}, s, "
+                    "    clib_memcpy((u8 *){realloc} + {msgsize}, s, "
                     "vec_len(s));\n".format(realloc=realloc, msgsize=msgsize)
                 )
                 write("    {msgsize} += vec_len(s);\n".format(msgsize=msgsize))
@@ -520,30 +575,48 @@ class FromJSON:
 
         is_bt = self.is_base_type(o.fieldtype)
 
+        # Elements of a scalar array need the same aligned temporary as a
+        # scalar field: the array starts at a misaligned offset in the packed
+        # message, so every element is misaligned too. pipe_create_reply's
+        # pipe_sw_if_index[2] starts at offset 14, i.e. 2 mod 4.
+        tmp = scalar_needs_alignment(o.fieldtype)
+
+        def aligned(call, dst):
+            if not tmp:
+                return call
+            return "{ %s _v; %s __builtin_memcpy (%s, &_v, sizeof (_v)); }" % (
+                o.fieldtype,
+                call,
+                dst,
+            )
+
         if o.lengthfield:
+            dst = "&_v" if tmp else "&d[i]"
             if is_bt:
-                call = "vl_api_{t}_fromjson(e, &d[i]);".format(t=o.fieldtype)
+                call = "vl_api_{t}_fromjson(e, {dst});".format(t=o.fieldtype, dst=dst)
             else:
-                call = "if ({t}_fromjson({msgvar}, len, e, &d[i]) < 0) goto error; ".format(
-                    t=o.fieldtype, msgvar=msgvar
+                call = "if ({t}_fromjson({msgvar}, len, e, {dst}) < 0) goto error; ".format(
+                    t=o.fieldtype, msgvar=msgvar, dst=dst
                 )
             write(
                 forloop_vla.format(
                     lfield=lfield,
                     t=o.fieldtype,
                     n=o.fieldname,
-                    call=call,
+                    call=aligned(call, "&d[i]"),
                     realloc=realloc,
                     msgsize=msgsize,
                 )
             )
         else:
+            dst = "&_v" if tmp else "&a->{}[i]".format(o.fieldname)
             if is_bt:
-                call = "vl_api_{t}_fromjson(e, &a->{n}[i]);".format(t=t, n=o.fieldname)
+                call = "vl_api_{t}_fromjson(e, {dst});".format(t=t, dst=dst)
             else:
-                call = "if ({}_fromjson({}, len, e, &a->{}[i]) < 0) goto error;".format(
-                    t, msgvar, o.fieldname
+                call = "if ({}_fromjson({}, len, e, {}) < 0) goto error;".format(
+                    t, msgvar, dst
                 )
+            call = aligned(call, "&a->{}[i]".format(o.fieldname))
             write(
                 forloop.format(
                     lfield=lfield,
@@ -945,10 +1018,18 @@ class Printfun:
                 "format_white_space, indent, a->{n});\n".format(n=o.fieldname, f=f)
             )
         else:
+            # Only the scalar formatters take void * (see signature_scalar in
+            # printfun_types); aggregate formatters still va_arg a typed
+            # pointer, and void * there would be an incompatible variadic
+            # pair. Aggregates are packed, so alignof is 1 and a typed
+            # pointer to a misaligned one is already well-defined.
+            cast = "(void *) " if scalar_needs_alignment(o.fieldtype) else ""
             write(
                 '    s = format(s, "\\n%U{n}: %U", '
                 "format_white_space, indent, "
-                "format_{t}, &a->{n}, indent);\n".format(n=o.fieldname, t=o.fieldtype)
+                "format_{t}, {cast}&a->{n}, indent);\n".format(
+                    n=o.fieldname, t=o.fieldtype, cast=cast
+                )
             )
 
     _dispatch["Field"] = print_field
@@ -958,14 +1039,14 @@ class Printfun:
         write = stream.write
 
         forloop = """\
-    for (i = 0; i < {lfield}; i++) {{
+    for (i = 0; i < (u32) ({lfield}); i++) {{
         s = format(s, "\\n%U{n}: %U",
-                   format_white_space, indent, format_{t}, &a->{n}[i], indent);
+                   format_white_space, indent, format_{t}, {cast}&a->{n}[i], indent);
     }}
 """
 
         forloop_format = """\
-    for (i = 0; i < {lfield}; i++) {{
+    for (i = 0; i < (u32) ({lfield}); i++) {{
         s = format(s, "\\n%U{n}: {t}",
                    format_white_space, indent, a->{n}[i]);
     }}
@@ -1000,7 +1081,11 @@ class Printfun:
                 )
             )
         else:
-            write(forloop.format(lfield=lfield, t=o.fieldtype, n=o.fieldname))
+            # See print_field: cast only where the formatter takes void *.
+            cast = "(void *) " if scalar_needs_alignment(o.fieldtype) else ""
+            write(
+                forloop.format(lfield=lfield, t=o.fieldtype, n=o.fieldname, cast=cast)
+            )
 
     _dispatch["Array"] = print_array
 
@@ -1031,6 +1116,11 @@ class Printfun:
         for b in o:
             write("    case %s:\n" % b[1])
             write('        return format(s, "{}");\n'.format(b[0]))
+        # An enum carrying an out-of-range value falls through to the
+        # caller's fallback return; spell the arm out so -Wswitch-default
+        # is usable by consumers of these headers.
+        write("    default:\n")
+        write("        break;\n")
         write("    }\n")
 
     _dispatch["Enum"] = print_enum
@@ -1078,7 +1168,7 @@ static inline u8 *vl_api_{name}_t_format (u8 *s,  va_list *args)
 {{
     __attribute__((unused)) vl_api_{name}_t *a = va_arg (*args, vl_api_{name}_t *);
     u32 indent __attribute__((unused)) = 2;
-    int i __attribute__((unused));
+    u32 i __attribute__((unused));
 """
 
     h = h.format(module=modulename)
@@ -1123,13 +1213,34 @@ static inline u8 *format_vl_api_{name}_t (u8 *s, va_list * args)
 {{
     vl_api_{name}_t *a = va_arg (*args, vl_api_{name}_t *);
     u32 indent __attribute__((unused)) = va_arg (*args, u32);
-    int i __attribute__((unused));
+    u32 i __attribute__((unused));
+    indent += 2;
+"""
+
+    # Scalars of alignment > 1: callers pass &msg->field out of a packed
+    # message, so consume it as void * and read through an aligned copy.
+    # The body below is unchanged -- `a` still points at the value, just at
+    # an aligned one. Printing is read-only, so nothing is written back.
+    signature_scalar = """\
+static inline u8 *format_vl_api_{name}_t (u8 *s, va_list * args)
+{{
+    void *_p = va_arg (*args, void *);
+    vl_api_{name}_t _v;
+    __builtin_memcpy (&_v, _p, sizeof (_v));
+    vl_api_{name}_t *a = &_v;
+    u32 indent __attribute__((unused)) = va_arg (*args, u32);
+    u32 i __attribute__((unused));
     indent += 2;
 """
 
     for t in objs:
         if t.__class__.__name__ == "Enum" or t.__class__.__name__ == "EnumFlag":
-            write(signature.format(name=t.name))
+            sig = (
+                signature_scalar
+                if scalar_needs_alignment(f"vl_api_{t.name}_t")
+                else signature
+            )
+            write(sig.format(name=t.name))
             pp.print_enum(t.block, stream)
             write("    return s;\n")
             write("}\n\n")
@@ -1140,7 +1251,12 @@ static inline u8 *format_vl_api_{name}_t (u8 *s, va_list * args)
             continue
 
         if t.__class__.__name__ == "Using":
-            write(signature.format(name=t.name))
+            sig = (
+                signature_scalar
+                if scalar_needs_alignment(f"vl_api_{t.name}_t")
+                else signature
+            )
+            write(sig.format(name=t.name))
             pp.print_alias(t.name, t, stream)
             write("}\n\n")
             continue
@@ -1196,13 +1312,13 @@ def endianfun_array(o, block):
     """Generate endian functions for arrays"""
     forloop = """\
     ASSERT((u32){length} <= (u32)VL_API_MAX_ARRAY_SIZE);
-    for (i = 0; i < {length}; i++) {{
+    for (i = 0; i < (u32) ({length}); i++) {{
         a->{name}[i] = {format}(a->{name}[i]);
     }}
 """
 
     forloop_format = """\
-    for (i = 0; i < {length}; i++) {{
+    for (i = 0; i < (u32) ({length}); i++) {{
         {type}_endian(&a->{name}[i], to_net);
     }}
 """
@@ -1338,20 +1454,46 @@ def endianfun(objs, modulename, options=None):
     signature = """\
 static inline void vl_api_{name}_t_endian (vl_api_{name}_t *a, bool to_net)
 {{
-    int i __attribute__((unused));
+    u32 i __attribute__((unused));
+"""
+
+    # Scalar aliases and enums resolve to a base integer type whose alignment
+    # (2/4/8) exceeds that of the packed messages embedding them -- a 4-byte
+    # field sits at offset 10, i.e. 2 mod 4. Callers pass &msg->field, and
+    # dereferencing that as a pointer-to-aligned-type is undefined: see
+    # -Waddress-of-packed-member and -fsanitize=alignment. Harmless on x86-64
+    # and on aarch64 with SCTLR_EL1.A=0; faults under -mstrict-align.
+    #
+    # void * has no alignment requirement, so take that and copy through a
+    # temporary; a constant-size __builtin_memcpy lowers to one unaligned
+    # load/store, making this free. Call sites are unchanged, and the
+    # signature now matches endian_handler in api_common.h. Aggregates keep
+    # the typed form -- the generated structs are packed, so alignof == 1.
+    signature_scalar = """\
+static inline void vl_api_{name}_t_endian (void *p, bool to_net)
+{{
+    {base} v;
+    __builtin_memcpy (&v, p, sizeof (v));
+    v = {swap} (v);
+    __builtin_memcpy (p, &v, sizeof (v));
+}}
+
 """
 
     for t in objs:
         if t.__class__.__name__ == "Enum" or t.__class__.__name__ == "EnumFlag":
-            output += signature.format(name=t.name)
             if t.enumtype in ENDIAN_STRINGS:
-                output += "    *a = {}(*a);\n".format(get_endian_string(t.enumtype))
+                output += signature_scalar.format(
+                    name=t.name,
+                    base=t.enumtype,
+                    swap=get_endian_string(t.enumtype),
+                )
             else:
+                output += signature.format(name=t.name)
                 output += "    /* a->{name} = a->{name} (no-op) */\n".format(
                     name=t.name
                 )
-
-            output += "}\n\n"
+                output += "}\n\n"
             continue
 
         if t.manual_endian:
@@ -1359,18 +1501,34 @@ static inline void vl_api_{name}_t_endian (vl_api_{name}_t *a, bool to_net)
             continue
 
         if t.__class__.__name__ == "Using":
-            output += signature.format(name=t.name)
             if "length" in t.alias and t.alias["length"] and t.alias["type"] == "u8":
+                # u8 array alias (mac address, etc): nothing to swap.
+                output += signature.format(name=t.name)
                 output += "    /* a->{name} = a->{name} (no-op) */\n".format(
                     name=t.name
                 )
-            elif t.alias["type"] in FORMAT_STRINGS:
-                output += "    *a = {}(*a);\n".format(
-                    get_endian_string(t.alias["type"])
+                output += "}\n\n"
+            elif t.alias["type"] in ENDIAN_STRINGS:
+                output += signature_scalar.format(
+                    name=t.name,
+                    base=t.alias["type"],
+                    swap=get_endian_string(t.alias["type"]),
                 )
+            elif t.alias["type"] in FORMAT_STRINGS:
+                # Single-byte scalar alias (u8 / i8 / bool): no swap needed,
+                # and alignof == 1 so there is no alignment concern either.
+                # Note this arm was previously unreachable-by-intent: it fell
+                # into the swap path above and raised KeyError, since these
+                # types have no ENDIAN_STRINGS entry.
+                output += signature.format(name=t.name)
+                output += "    /* a->{name} = a->{name} (no-op) */\n".format(
+                    name=t.name
+                )
+                output += "}\n\n"
             else:
+                output += signature.format(name=t.name)
                 output += "    /* Not Implemented yet {} */".format(t.name)
-            output += "}\n\n"
+                output += "}\n\n"
             continue
         if t.__class__.__name__ == "Union":
 
@@ -1483,8 +1641,29 @@ static inline uword vl_api_{name}_t_calc_size (vl_api_{name}_t *a)
 {{
 """
 
+    # Scalars of alignment > 1 take void *: callers pass &msg->field out of a
+    # packed message, which -Waddress-of-packed-member flags. Nothing here is
+    # dereferenced (sizeof is unevaluated), so this removes a warning rather
+    # than a live bug -- and it matches calc_size_func's uword (*) (void *)
+    # in api_common.h. Aggregates and u8 aliases keep the typed form.
+    signature_scalar = """\
+/* calculate message size of message in network byte order */
+static inline uword vl_api_{name}_t_calc_size (void *p)
+{{
+      return sizeof ({base});
+}}
+
+"""
+
     for o in objs:
         tname = o.__class__.__name__
+
+        if tname in ("Using", "Enum", "EnumFlag") and scalar_needs_alignment(
+            f"vl_api_{o.name}_t"
+        ):
+            base = o.alias["type"] if tname == "Using" else o.enumtype
+            output += signature_scalar.format(name=o.name, base=base)
+            continue
 
         output += signature.format(name=o.name)
         output += f"      return sizeof(*a)"
@@ -2061,7 +2240,7 @@ api_{n} (cJSON *o)
     }}
 
     if (reply_msg_id == details_msg_id) {{
-        if (l < sizeof(vl_api_{r}_t)) {{
+        if (l < (int) sizeof(vl_api_{r}_t)) {{
             cJSON_free(reply);
             return 0;
         }}
