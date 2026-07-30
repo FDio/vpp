@@ -1,0 +1,22 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a60ff9b0_322d5490",
+        "filename": "src/vnet/sfdp/sfdp.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 436,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-07-30T08:56:33Z",
+      "side": 1,
+      "message": "Could we avoid using timer-pool occupancy as session state here? Timer handles are reusable pool indices. If another session reuses this handle between batch calls, this check treats the original session as active again, enqueues it twice, and stops the new session\u0027s timer; expiry may then remove the original session twice. Please use a stable per-session pending-expiry marker that is also respected by timer-refresh paths, and extend the stacked-call test by creating a new flow between calls while expiry is disabled.",
+      "parentUuid": "4838da90_dd37c424",
+      "revId": "f840095addf38e6e7581b78574fd917ba16fbfa0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
