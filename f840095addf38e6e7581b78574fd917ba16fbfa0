@@ -17,6 +17,24 @@
       "parentUuid": "4838da90_dd37c424",
       "revId": "f840095addf38e6e7581b78574fd917ba16fbfa0",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4ad6fdf3_9c6226a2",
+        "filename": "src/vnet/sfdp/sfdp.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 436,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-07-30T13:06:22Z",
+      "side": 1,
+      "message": "Sure. I see the issue that could occur with timer-handle re-use, and rather went with a flag \u0027expiry_pending\u0027 in the `sfdp_session_timer_t` struct.\n\nThis flag is checked in timer-refresh paths to ensure any packets in-flight does not attempt to update the access/update the timer wheel of a sfdp session which has been marked for expiry.\n\nConcerning the test modification you propose, I don\u0027t think it is that easy to verify this scenario. Since a call to sfdp_kill_session_batch also results in a call to vlib_node_set_interrupt_pending() for the sfdp-expire node, it would be difficult to \u0027stack\u0027 batches of sfdp sessions to expire unless we add additional plumbing in SFDP code to stop the sfdp-expire node from being scheduled to run right after the batch \u0026 reproduce a \u0027stacking\u0027 scenario particularly for the test. Since this is a test API that it not expected to be used in production scenario, would it be fine if we omit such test for now ?",
+      "parentUuid": "a60ff9b0_322d5490",
+      "revId": "f840095addf38e6e7581b78574fd917ba16fbfa0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
