@@ -1,0 +1,8 @@
+Verified+1: FDio GitHub Actions <releng+fdio-github@linuxfoundation.org>
+Code-Review+1: Klement Sekera <ksekera@netgate.com>
+Code-Review+2: Ole Tr�an <otroan@employees.org>
+Submitted-by: Ole Tr�an <otroan@employees.org>
+Submitted-at: Thu, 30 Jul 2026 07:35:58 +0000
+Reviewed-on: https://gerrit.fd.io/r/c/vpp/+/46065
+Project: vpp
+Branch: refs/heads/master
