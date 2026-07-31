@@ -1,0 +1,22 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "77b3b49d_8337cb12",
+        "filename": "src/plugins/rdma/output.c",
+        "patchSetId": 46
+      },
+      "lineNbr": 262,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-07-31T08:10:22Z",
+      "side": 1,
+      "message": "Correction: my previous reply was incorrect. The Mellanox Adapters PRM, section 3.3.1 (Checksum Offload), states that TX TCP/UDP checksum offload does not require pseudo-header checksum preparation and that the TCP/UDP checksum field is ignored when the device performs the calculation. This direct mlx5 WQE sets the l3cs/l4cs bits, so the generic DPDK offload contract does not apply here. PS46 removes the unnecessary PS45 preparation and restores the PS44 behavior. This also explains why the earlier end-to-end TSO tests passed. PRM: https://network.nvidia.com/files/doc-2020/ethernet-adapters-programming-manual.pdf",
+      "parentUuid": "1657ccff_4c44cbd7",
+      "revId": "54cc097d49ebe52ecec80090ab8ac528383cce31",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
