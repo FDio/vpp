@@ -1,0 +1,22 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d1ea7d49_477322e0",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-07-31T13:07:44Z",
+      "side": 1,
+      "message": "Done. I split the test timeout change into https://gerrit.fd.io/r/c/vpp/+/46384. This change is now HTTP-only.",
+      "parentUuid": "727b7833_dcd45c2a",
+      "revId": "87d4e736495e2d95406d27441cbe692ee07e3a52",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
