@@ -1,0 +1,22 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "3b6d4c0b_2ef3eb22",
+        "filename": "src/plugins/rdma/device.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-07-31T19:32:42Z",
+      "side": 1,
+      "message": "Implemented the suggested fast path with ibv_get_device_index() on the already matched ibv_device. I could not remove the fallback completely: VPP builds the static libibverbs with ENABLE_RESOLVE_NEIGH\u003d0, which disables its netlink backend, and ibv_get_device_index() consequently returns -1. PS11 keeps the device dump only for that documented unsupported-index case; otherwise it performs only the filtered PORT_GET dump. Both paths were validated with the VPP static build on CX5 hardware.",
+      "parentUuid": "dc22fb1b_4aacb042",
+      "revId": "29c02952b1724f8786317f7a36750df62816d1d4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
