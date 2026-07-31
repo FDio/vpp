@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "475e1fcb_34f5b400",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 9
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2220
+      },
+      "writtenOn": "2026-07-31T11:36:59Z",
+      "side": 1,
+      "message": "Hi Matthew,\n\nThis is the latest patch for solving the lcp tables lifetime and cleanup logic.\nIt aligns the del behavior to be the same as add for routes, fixes the mfib cleanup and instead of relying on netlink logic - it manages lcp table\u0027s lifetime based on interface\u0027s VRF binding.\n\nWould be happy to hear your opinion on this one.",
+      "revId": "4954964683326e850a45e8f98f92f2cb4e293f76",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
