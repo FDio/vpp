@@ -1,0 +1,22 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "dc22fb1b_4aacb042",
+        "filename": "src/plugins/rdma/device.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 197,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-07-31T11:37:55Z",
+      "side": 1,
+      "message": "This is reintroduced again in patchset 10: `rdma_nldev_index_from_name()` performs a separate device dump before the port dump. I agree that the kernel requires `RDMA_NLDEV_ATTR_DEV_INDEX` for `RDMA_NLDEV_CMD_PORT_GET`, but we already have the matching `ibv_device` here. Could we use `ibv_get_device_index(dev_list[i])`, pass that index to `rdma_nldev_port_from_ifname()`, and remove the device dump/name-to-index parser? That preserves the required filter while leaving only one netlink dump.",
+      "parentUuid": "c76ecce8_72a8a582",
+      "revId": "42556fe358cbb2811e23a257d8f8ef48f13d163b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
