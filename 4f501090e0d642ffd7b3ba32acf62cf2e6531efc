@@ -412,6 +412,24 @@
       "message": "Could you check whether mlx5 TSO requires the TCP checksum field to contain the IPv4/IPv6 pseudo-header checksum before copying the header into the WQE? This preparation was present in PS31 but is absent here. An external application using the DPDK mlx5 driver is expected to initialize this field itself—for example with rte_ipv4_phdr_cksum() or rte_ipv6_phdr_cksum()—before submitting a TSO packet. Does the direct-verbs mlx5 path have the same requirement?",
       "revId": "4f501090e0d642ffd7b3ba32acf62cf2e6531efc",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "150566a5_7c08032e",
+        "filename": "src/plugins/rdma/output.c",
+        "patchSetId": 44
+      },
+      "lineNbr": 262,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-07-31T08:00:47Z",
+      "side": 1,
+      "message": "Confirmed: the direct mlx5 TSO path has the same requirement. PS45 now seeds the TCP checksum with the non-complemented IPv4/IPv6 pseudo-header checksum before copying the inline header. For TSO the L4 length is zero, matching rte_ipv4_phdr_cksum()/rte_ipv6_phdr_cksum() with TX_TCP_SEG, so hardware supplies each segment length. Validation: the full x86_64 build passed; physical DV TSO captures verified 5000/5000 valid TCP checksums for IPv4 and 5000/5000 for IPv6, with zero invalid checksums.",
+      "parentUuid": "1657ccff_4c44cbd7",
+      "revId": "4f501090e0d642ffd7b3ba32acf62cf2e6531efc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
