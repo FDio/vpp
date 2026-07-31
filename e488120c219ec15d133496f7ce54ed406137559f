@@ -74,6 +74,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "8370e0f6_a4a31795",
+        "filename": "src/plugins/http/http.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-07-31T19:04:04Z",
+      "side": 1,
+      "message": "http_ts_builtin_tx_callback is generated only when http ask for it. in case of http/1 and http/2 when we try send app data to underlying transport (tcp ot tls) and tx fifo is full, this happen when http has tx event from app (http/1 immediately from cutstom_tx callback or http/2 tx scheduler), in addition to asking tcp/tls for dequeue notification we deschedule app session so we don\u0027t receive new tx events from it. when http_ts_builtin_tx_callback is invoked we call transport_connection_reschedule which generate tx event for http and in next dispatch we enqueue new portion of data to tcp/tls tx fifo and update timer.\nwhat you described mean that http do not try to enqueue data, no tx event and timer update, after it get dequeue notification from tcp/tls. in my opinion updating timer in http_ts_builtin_tx_callback just help but don\u0027t fix real issue which is probably something completely different",
+      "parentUuid": "813a9794_9365aa45",
+      "revId": "e488120c219ec15d133496f7ce54ed406137559f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "116a8d62_5ac25d5e",
         "filename": "src/plugins/http/http.c",
         "patchSetId": 3
