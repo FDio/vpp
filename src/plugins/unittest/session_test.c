@@ -890,8 +890,8 @@ session_test_namespace (vlib_main_t * vm, unformat_input_t * input)
   vnet_application_attach (&attach_args);
   error = vnet_connect (&connect_args);
   SESSION_TEST ((error != 0), "client connect should return error code");
-  SESSION_TEST ((error == SESSION_E_NOROUTE),
-		"error code should be noroute (not in same ns)");
+  SESSION_TEST ((error == SESSION_E_REFUSED),
+		"error code should be refused (no listener for local endpoint)");
   detach_args.app_index = client_index;
   vnet_application_detach (&detach_args);
 
