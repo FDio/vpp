@@ -1,0 +1,72 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9d4a21c0_2f5a4123",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 2
+      },
+      "lineNbr": 3,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-07-31T11:24:48Z",
+      "side": 1,
+      "message": "The commit message is considerably longer than necessary and mixes the core alignment fix with architecture background, diagnostic counts, remaining warnings, compatibility caveats, and unrelated warning cleanups. Please reduce it to the problem, solution, and validation. The unrelated warning cleanups would be easier to review as a separate change.",
+      "revId": "5abbee4aaac9627b9cd57c53f7508e52ef77c5fa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ec11d7ce_a93c39c4",
+        "filename": "src/tools/vppapigen/vppapigen_c.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 471,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-07-31T11:24:48Z",
+      "side": 1,
+      "message": "Could we extend this handling to `print_array()`? Scalar array elements still use typed pointers directly. For example, `pipe_create_reply.pipe_sw_if_index[2]` starts at offset 14, so generated `fromjson` passes a 2-mod-4 address to a helper that writes through `u32 *`. This retains the strict-alignment/UBSan failure this change is intended to fix. Please cover fixed and variable-length scalar arrays through aligned temporaries or a common unaligned accessor.",
+      "revId": "5abbee4aaac9627b9cd57c53f7508e52ef77c5fa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "82dcfdbc_2ad9e8e2",
+        "filename": "src/tools/vppapigen/vppapigen_c.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 993,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-07-31T11:24:48Z",
+      "side": 1,
+      "message": "This `(void *)` cast is emitted for aggregates as well as scalars, but aggregate formatters still retrieve `vl_api_\u003ctype\u003e_t *` with `va_arg`. Passing `void *` and retrieving an aggregate pointer is an incompatible variadic argument pair and therefore undefined behavior. For example, generated calls to `format_vl_api_address_t` now pass `void *`, while that formatter expects `vl_api_address_t *`. Please keep aggregate arguments typed and use `void *` only with formatters whose contract explicitly requires it. The array path below has the same issue.",
+      "revId": "5abbee4aaac9627b9cd57c53f7508e52ef77c5fa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "66c3ce55_abe61f59",
+        "filename": "src/tools/vppapigen/vppapigen_c.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 1186,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-07-31T11:24:48Z",
+      "side": 1,
+      "message": "This changes the public generated C API: scalar endian and calc-size helpers change from `vl_api_\u003ctype\u003e_t *` to `void *`, and scalar formatters change their variadic argument contract. Out-of-tree consumers using typed function pointers can fail to compile, while existing formatter calls can continue compiling but invoke undefined behavior.\n\nThe packed wire format itself remains unchanged; the compatibility break is in the generated C interface. Could we preserve the existing public helpers and introduce internal unaligned accessors for generated packed-message call sites instead? An alignment-one typedef following VPP\u0027s existing `u32u` pattern may also preserve the signatures, but changing `_Alignof(vl_api_\u003ctype\u003e_t)` could alter consumer-defined structure layouts and would need a compatibility assessment.",
+      "revId": "5abbee4aaac9627b9cd57c53f7508e52ef77c5fa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
