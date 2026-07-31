@@ -1,0 +1,22 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a00f853d_25fc6170",
+        "filename": "src/tools/vppapigen/vppapigen_c.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 1472,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-07-31T13:43:28Z",
+      "side": 1,
+      "message": "I agree `u32u` risks a layout/ABI change. The typed-wrapper/internal-`void *` helper approach seems safest: preserve the public API while generated packed-message paths use memcpy-based accessors.\n\nTwo issues remain:\n\n- The VLA path still creates a typed pointer at a potentially unaligned offset.\n- `ToJSON.print_using()` passes a typed pointer to a formatter that now retrieves `void *` from `va_list`.\n\nCould we use internal unaligned helpers and keep the public typed/variadic contracts unchanged?",
+      "parentUuid": "76f1bb30_bff9b263",
+      "revId": "11e614f876ebc2d1bd17bbb5c8e14fde052efe8e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
