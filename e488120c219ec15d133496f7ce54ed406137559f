@@ -56,6 +56,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "813a9794_9365aa45",
+        "filename": "src/plugins/http/http.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-07-31T13:07:52Z",
+      "side": 1,
+      "message": "Addressed in the latest patch set. I moved the timer refresh into the HTTP/1 and HTTP/2 protocol-specific reschedule callbacks as suggested.",
+      "parentUuid": "46938450_31f83fc3",
+      "revId": "e488120c219ec15d133496f7ce54ed406137559f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "116a8d62_5ac25d5e",
         "filename": "src/plugins/http/http.c",
         "patchSetId": 3
