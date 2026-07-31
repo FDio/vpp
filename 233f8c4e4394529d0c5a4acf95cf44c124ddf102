@@ -1,0 +1,93 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a5b7f273_a6fc7ce3",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 3
+      },
+      "lineNbr": 3,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2026-07-31T12:44:22Z",
+      "side": 1,
+      "message": "Done -- trimmed from 79 lines to 56: dropped the diagnostic\ncounts, the remaining-warnings inventory and most of the architecture\nbackground, keeping problem / solution / validation.\n\nOn splitting out the warning cleanups: I\u0027d rather keep them here, if you\ndon\u0027t mind. They are the same sweep over the same emitters -- the\n-Wsign-compare loop counters are literally the same forloop templates the\nalignment fix rewrites, so splitting produces two changes that conflict in\nevery hunk, and each one needs the full 151-header regeneration plus a tree\nbuild to validate. I\u0027ve made the message say plainly which part is the fix\nand which is the cleanup. Happy to split if you still prefer it after\nlooking at patch set 3.",
+      "parentUuid": "9d4a21c0_2f5a4123",
+      "revId": "233f8c4e4394529d0c5a4acf95cf44c124ddf102",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "c9f08f59_cf1c58b0",
+        "filename": "src/tools/vppapigen/vppapigen_c.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 75,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2026-07-31T12:44:22Z",
+      "side": 1,
+      "message": "On the in-tree test: agreed on the gap, and it would have caught\nboth real defects above. But I\u0027d like to scope it down and do it separately.\n\nWhere I agree: the existing tests didn\u0027t catch this, exactly as you say. My\nfixture found 7 gcc diagnostics against the patch-set-2 generator and 0\nagainst patch set 3, so the fixture shape you describe -- scalar aliases and\nenums as both fields and arrays -- is the right shape.\n\nWhere I\u0027d push back: compiling generated C and running it under the alignment\nsanitizer is a new kind of test for src/tools/vppapigen/. test_vppapigen.py\ntoday is a single pure-Python unittest file with no fixtures directory and no\ncompile step, run by `make test-vppapigen`. Adding a toolchain-dependent\ncompile-and-execute gate there means a C compiler, VPP\u0027s headers, and a\nsanitizer runtime become dependencies of a Python unit test, and a\nstrict-alignment target means a cross-toolchain or qemu in CI. That\u0027s a real\npiece of infrastructure, and bolting it onto this change would make the fix\nhostage to it.\n\nWhat I\u0027d propose instead, as a follow-up change: a pure-Python test that\nasserts on the emitted text. It stays in the existing file and existing\nharness, needs no toolchain, and pins exactly the invariants that broke here:\n\n- every scalar/enum field and array element reaching a typed-pointer helper\n  goes through an aligned temporary -- i.e. no `\u0026a-\u003e\u003cscalar field\u003e` appears as\n  a fromjson/tojson helper argument\n- the (void *) cast appears only for scalar and enum formatter call sites,\n  never for aggregate ones\n- the scalar endian/calc_size signatures are void *, and the aggregate ones\n  are not (your signature-compatibility point, checked directly)\n\nThat\u0027s a text-level assertion rather than a behavioural one, which is the\nhonest limitation -- it pins the emitter, not the semantics. If you want the\ncompile-and-sanitize gate as well I think it belongs in the API test suite\nwhere a toolchain and headers already exist, as its own change. I\u0027m happy to\nwrite either; I\u0027d just rather not land the fix behind it.\n\nI can post the pure-Python test as a follow-up right away if that works for\nyou.",
+      "revId": "233f8c4e4394529d0c5a4acf95cf44c124ddf102",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "77839c18_fcc38599",
+        "filename": "src/tools/vppapigen/vppapigen_c.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 582,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2026-07-31T12:44:22Z",
+      "side": 1,
+      "message": "Good catch, fixed -- and it was worse than one path.\n\nThe alias fromjson does write through a typed pointer, so\npipe_create_reply.pipe_sw_if_index[2] at offset 14 (2 mod 4) was exactly the\nbug this change was supposed to remove. Now covered for both the\nfixed-length branch and the VLA branch, via the same aligned temporary the\nscalar field path uses.\n\nChasing it with your fixture shape turned up a third site you didn\u0027t\nmention: ToJSON.print_array. get_json_array_func() returns \"\u0026\" for a scalar\nalias, while get_json_func() resolves the alias to its base type and passes\nby value -- so the array variant took the address and the field variant\ndidn\u0027t. gcc flags it; that\u0027s fixed the same way (line 253).\n\nFor the record, the two array paths that were already fine: endianfun_array\nroutes through the void * helper, and Printfun\u0027s loop was already casting.\n\nOne thing I deliberately did NOT change while in there. For a scalar alias,\ntojson emits a JSON *string* (the alias _tojson calls format_c_string) while\nthe field path emits a *number*, and the alias _fromjson reads a number via\nvl_api_u32_fromjson. So scalar-alias arrays don\u0027t round-trip through JSON\ntoday, independently of alignment. Making the array path consistent with the\nfield path would fix it but changes the JSON representation, so it wants its\nown change and its own discussion. I kept the aligned-temporary form that\npreserves current output byte-for-byte.",
+      "parentUuid": "ec11d7ce_a93c39c4",
+      "revId": "233f8c4e4394529d0c5a4acf95cf44c124ddf102",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "00028a3e_8a91448f",
+        "filename": "src/tools/vppapigen/vppapigen_c.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 1026,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2026-07-31T12:44:22Z",
+      "side": 1,
+      "message": "Agreed, and fixed. You\u0027re right that the cast was emitted for\neverything outside FORMAT_STRINGS, so aggregate call sites started passing\nvoid * to formatters that still va_arg a typed pointer -- formally\nincompatible per C11 7.16.1.1p2, and a regression I introduced rather than\nanything pre-existing.\n\nBoth sites now gate on scalar_needs_alignment(), so only scalar and enum\nformatters -- the ones whose signature actually changed to void * -- get the\ncast (print_field line 1026, print_array line 1085). Verified on a fixture\ncarrying both kinds:\n\n  format_vl_api_myindex_t, (void *) \u0026a-\u003escalar_field     \u003c- scalar, cast\n  format_vl_api_myagg_t, \u0026a-\u003eagg_field                   \u003c- aggregate, typed\n\nAggregates keep the typed form for the reason you\u0027d expect: they\u0027re packed,\nalignof is 1, so a pointer to a misaligned one was never a problem.",
+      "parentUuid": "82dcfdbc_2ad9e8e2",
+      "revId": "233f8c4e4394529d0c5a4acf95cf44c124ddf102",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "76f1bb30_bff9b263",
+        "filename": "src/tools/vppapigen/vppapigen_c.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 1472,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2026-07-31T12:44:22Z",
+      "side": 1,
+      "message": "I\u0027d like to push back on this one, with numbers.\n\nThe signature change is real, but I think the exposure is narrower than it\nlooks:\n\n- Registration can\u0027t break. vl_msg_api_msg_config_t types every handler slot\n  as plain void * (api_common.h:107-118), and the canonical types in\n  api_main_t are already void (*endian_handler) (void *, bool) and\n  uword (*calc_size_func) (void *) (api_common.h:228,231). This change moves\n  scalar helpers toward that declared contract, not away from it.\n- Only message helpers are ever registered. Scalar alias and enum helpers are\n  called directly from generated code. Taking a typed function pointer to\n  vl_api_interface_index_t_endian is expressible, but grep finds zero\n  instances in tree, and every .endian \u003d ... site I can find is a message.\n- The formatters need a caveat, and here your concern has more force than the\n  rest of it. There are no hand-written *callers* of a scalar or enum\n  formatter in tree. But there are hand-written *implementations* that\n  override generated ones for scalar aliases, and one class of them is\n  already out of sync with the generated call sites, independently of this\n  change: format_vl_api_timestamp_t (jsonformat.c:436) reads\n  va_arg (*args, f64) -- a value -- while the generated call site has always\n  passed the field\u0027s address. vpe.api\u0027s vpe_system_time, start_timestamp and\n  timestamp all go through it, so that pretty-printer has been reinterpreting\n  a pointer as an f64 for a long time; vpe_types.api_tojson.h does the same\n  through format_c_string. timedelta forwards to it and has the same problem.\n\n  My change rewrites that call site from `\u0026a-\u003ex` to `(void *) \u0026a-\u003ex`, so it\n  neither fixes nor worsens it -- both spellings mismatch va_arg(f64). I\u0027ve\n  left it alone deliberately: it\u0027s a different bug in a hand-written file,\n  and the fix is to give the formatter a pointer parameter like every other\n  one, which wants its own change. But it is a concrete instance of exactly\n  the hazard you\u0027re pointing at, so I don\u0027t want to wave the formatter\n  question away. Out-of-tree I can\u0027t prove a negative either, which is why\n  the caveat stays in the commit message.\n- The full debug tree builds warning-free and error-free on patch set 3\n  (1695 targets), which covers every consumer of these helpers in tree.\n\nOn the u32u alternative: it does exist (vppinfra/types.h:162) and it would\npreserve the signatures, but I think it\u0027s the riskier of the two. You flagged\nthe reason yourself -- it changes _Alignof(vl_api_\u003ctype\u003e_t), which changes\nlayout in any consumer-defined struct embedding one of these types. That\u0027s a\nsilent ABI change in third-party code, which seems strictly worse than a\nsignature change on helpers that nothing outside generated code appears to\ntake pointers to. It also doesn\u0027t extend cleanly to enums.\n\nSo my preference is to keep void *. If you\u0027re still uncomfortable, the middle\nground I\u0027d suggest is keeping the public typed helpers as thin inline wrappers\nand having generated call sites use internal unaligned accessors -- happy to\ndo that instead, it\u0027s just more generated code for a case I can\u0027t find a\ncaller for. Your call.",
+      "parentUuid": "66c3ce55_abe61f59",
+      "revId": "233f8c4e4394529d0c5a4acf95cf44c124ddf102",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
