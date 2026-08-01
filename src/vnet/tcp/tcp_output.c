@@ -1259,11 +1259,10 @@ tcp_prepare_retransmit_segment (tcp_worker_ctx_t * wrk,
     return 0;
 
   tc->snd_rxt_bytes += n_bytes;
-  if (tcp_opts_sack_permitted (&tc->rcv_opts))
-    tcp_dsack_track_retransmit (tc, start, start + n_bytes);
-
   if (PREDICT_FALSE (tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE))
     tcp_bt_track_rxt (tc, start, start + n_bytes);
+  else if (tcp_opts_sack_permitted (&tc->rcv_opts))
+    tcp_dsack_track_retransmit (tc, start, start + n_bytes);
 
   tc->bytes_retrans += n_bytes;
   tc->segs_retrans += 1;
