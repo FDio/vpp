@@ -58,6 +58,25 @@ void tcp_bt_track_tx (tcp_connection_t * tc, u32 len);
  */
 void tcp_bt_track_rxt (tcp_connection_t * tc, u32 start, u32 end);
 /**
+ * Apply prepared cumulative ACK and SACK ranges
+ *
+ * @param tc		tcp connection
+ * @param ack		effective cumulative ACK
+ * @param high_sacked	highest sequence covered by prepared ranges
+ * @param has_sack	prepared ranges include a valid wire SACK block
+ * @param rs		ACK-local result
+ */
+void tcp_bt_apply_sacks (tcp_connection_t *tc, u32 ack, u32 high_sacked, u8 has_sack,
+			 tcp_rate_sample_t *rs);
+void tcp_bt_recompute_sack_loss (tcp_connection_t *tc);
+void tcp_bt_init_rxt (tcp_connection_t *tc, u32 snd_una);
+void tcp_bt_rxt_mark_lost (tcp_connection_t *tc);
+u8 tcp_bt_handle_sack_reneging (tcp_connection_t *tc);
+u8 tcp_bt_is_sane_post_recovery (tcp_connection_t *tc);
+u8 tcp_bt_next_rxt_range (tcp_connection_t *tc, u8 have_unsent, u8 *can_rescue, u8 *snd_limited,
+			  tcp_rxt_range_t *range);
+u8 tcp_bt_last_rxt_range (tcp_connection_t *tc, tcp_rxt_range_t *range);
+/**
  * Generate a delivery rate sample from recently acked bytes
  *
  * @param tc	tcp connection
