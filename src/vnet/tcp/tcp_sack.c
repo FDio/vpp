@@ -433,6 +433,11 @@ tcp_sack_is_sane_post_recovery (tcp_connection_t *tc)
 void
 tcp_dsack_recovery_clear (tcp_connection_t *tc)
 {
+  if (PREDICT_FALSE (tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER))
+    {
+      tcp_bt_dsack_recovery_clear (tc);
+      return;
+    }
   vec_free (tc->dsack_rxt);
   tc->dsack_flags &= TCP_DSACK_UNDO_DISABLED;
   tc->dsack_recovery_ack = 0;
@@ -441,7 +446,7 @@ tcp_dsack_recovery_clear (tcp_connection_t *tc)
 void
 tcp_dsack_recovery_save (tcp_connection_t *tc)
 {
-  if (tcp_dsack_has_history (tc))
+  if (!(tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER) && tcp_dsack_has_history (tc))
     tc->dsack_recovery_ack = tc->snd_una;
 }
 
@@ -622,6 +627,9 @@ tcp_dsack_mark_duplicate (tcp_connection_t *tc, u32 start, u32 end)
   u32 overlap_start, overlap_end, marked_i, next_i;
   u32 matched = 0, last_marked = ~0, i = 0;
 
+  if (PREDICT_FALSE (tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER))
+    return tcp_bt_dsack_mark_duplicate (tc, start, end);
+
   while (i < vec_len (tc->dsack_rxt))
     {
       cur = tc->dsack_rxt[i];
@@ -706,6 +714,21 @@ tcp_dsack_mark_duplicate (tcp_connection_t *tc, u32 start, u32 end)
   return matched;
 }
 
+static u8
+tcp_dsack_all_duplicate (tcp_connection_t *tc)
+{
+  tcp_dsack_rxt_t *rxt;
+
+  if (PREDICT_FALSE (tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER))
+    return tcp_bt_dsack_all_duplicate (tc);
+
+  vec_foreach (rxt, tc->dsack_rxt)
+    if (!(rxt->flags & TCP_DSACK_RXT_DUPLICATE))
+      return 0;
+
+  return vec_len (tc->dsack_rxt) != 0;
+}
+
 static_always_inline u8
 tcp_sack_detect_dsack (tcp_connection_t *tc, u32 ack, sack_block_t *dsack)
 {
@@ -746,11 +769,10 @@ tcp_sack_extract_dsack (tcp_connection_t *tc, u32 ack, sack_block_t *dsack)
   return 1;
 }
 
-static tcp_ack_flag_t
+static u8
 tcp_dsack_update (tcp_connection_t *tc, u32 packet_ack, const sack_block_t *dsack,
 		  u8 had_sack_history)
 {
-  tcp_dsack_rxt_t *rxt;
   u32 matched;
 
   if (!tcp_dsack_has_history (tc))
@@ -769,7 +791,7 @@ tcp_dsack_update (tcp_connection_t *tc, u32 packet_ack, const sack_block_t *dsac
   if (!tcp_in_cong_recovery (tc) && !dsack)
     {
       u32 new_snd_una = seq_max (tc->snd_una, packet_ack);
-      if (seq_gt (new_snd_una, tc->dsack_recovery_ack))
+      if ((tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER) || seq_gt (new_snd_una, tc->dsack_recovery_ack))
 	tcp_dsack_recovery_clear (tc);
       return 0;
     }
@@ -800,17 +822,20 @@ tcp_dsack_update (tcp_connection_t *tc, u32 packet_ack, const sack_block_t *dsac
 	}
     }
 
+  return 1;
+}
+
+static tcp_ack_flag_t
+tcp_dsack_finalize (tcp_connection_t *tc)
+{
+
   if (tc->sack_sb.is_reneging)
     tc->dsack_flags |= TCP_DSACK_INELIGIBLE;
 
   if (tc->dsack_flags & (TCP_DSACK_INELIGIBLE | TCP_DSACK_UNDO_DISABLED))
     return 0;
 
-  vec_foreach (rxt, tc->dsack_rxt)
-    if (!(rxt->flags & TCP_DSACK_RXT_DUPLICATE))
-      return 0;
-
-  return TCP_ACK_F_DSACK_SPURIOUS;
+  return tcp_dsack_all_duplicate (tc) ? TCP_ACK_F_DSACK_SPURIOUS : 0;
 }
 
 void
@@ -822,7 +847,8 @@ tcp_rcv_dsack (tcp_connection_t *tc, u32 ack, tcp_rate_sample_t *rs)
       tcp_sack_extract_dsack (tc, ack, &dsack))
     {
       rs->ack_flags |= TCP_ACK_F_DSACK;
-      rs->ack_flags |= tcp_dsack_update (tc, ack, &dsack, tc->sack_sb.sacked_bytes != 0);
+      if (tcp_dsack_update (tc, ack, &dsack, tc->sack_sb.sacked_bytes != 0))
+	rs->ack_flags |= tcp_dsack_finalize (tc);
     }
 }
 
@@ -987,7 +1013,7 @@ tcp_rcv_sacks (tcp_connection_t *tc, u32 ack, tcp_rate_sample_t *rs)
   sack_scoreboard_t *sb = &tc->sack_sb;
   sack_block_t dsack, *blk, *rcv_sacks;
   u32 i, j, high_sacked, packet_ack = ack;
-  u8 had_sack_history, has_dsack, has_sack, has_scoreboard, needs_update;
+  u8 finalize_dsack, had_sack_history, has_dsack, has_sack, has_scoreboard, needs_update;
 
   has_sack = tcp_opts_sack (&tc->rcv_opts) != 0;
   had_sack_history = sb->sacked_bytes != 0;
@@ -1001,6 +1027,10 @@ tcp_rcv_sacks (tcp_connection_t *tc, u32 ack, tcp_rate_sample_t *rs)
   rs->ack_flags |= has_dsack * TCP_ACK_F_DSACK;
   has_sack &= vec_len (tc->rcv_opts.sacks) != 0;
   needs_update |= has_dsack;
+  /* Match before scoreboard processing can retire BT samples, but decide
+   * undo only after it has updated reneging state. */
+  finalize_dsack =
+    needs_update && tcp_dsack_update (tc, packet_ack, has_dsack ? &dsack : 0, had_sack_history);
 
   if (!(has_sack | has_scoreboard))
     goto done;
@@ -1067,8 +1097,8 @@ tcp_rcv_sacks (tcp_connection_t *tc, u32 ack, tcp_rate_sample_t *rs)
     }
 
 done:
-  if (PREDICT_FALSE (needs_update))
-    rs->ack_flags |= tcp_dsack_update (tc, packet_ack, has_dsack ? &dsack : 0, had_sack_history);
+  if (PREDICT_FALSE (finalize_dsack))
+    rs->ack_flags |= tcp_dsack_finalize (tc);
 }
 
 static u8
