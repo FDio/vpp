@@ -310,6 +310,7 @@ func TcpCubicStartupConfigDiagTest(s *VethsSuite) {
 	AssertContains(sessionDetail, "Byte tracker")
 	AssertContains(sessionDetail, "bt:")
 	AssertContains(sessionDetail, "samples active")
+	AssertContains(sessionDetail, "dsack rxt-bytes")
 
 	o := <-done
 	Log(o)
