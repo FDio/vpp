@@ -92,12 +92,7 @@ sack_scoreboard_hole_t *scoreboard_next_rxt_hole (sack_scoreboard_t * sb,
 						  u8 * can_rescue,
 						  u8 * snd_limited);
 void scoreboard_clear (sack_scoreboard_t * sb);
-void scoreboard_clear_reneging (sack_scoreboard_t * sb, u32 start, u32 end);
 void scoreboard_init (sack_scoreboard_t * sb);
-void scoreboard_init_rxt (sack_scoreboard_t * sb, u32 snd_una);
-void scoreboard_rxt_mark_lost (sack_scoreboard_t *sb, u32 snd_una,
-			       u32 snd_nxt);
-void scoreboard_recompute_sack_loss (sack_scoreboard_t *sb, u32 ack, u32 snd_mss);
 
 format_function_t format_tcp_scoreboard;
 
@@ -109,8 +104,10 @@ void tcp_dsack_track_retransmit (tcp_connection_t *tc, u32 start, u32 end);
 u32 tcp_sack_list_bytes (tcp_connection_t * tc);
 void tcp_rcv_dsack (tcp_connection_t *tc, u32 ack, tcp_rate_sample_t *rs);
 void tcp_rcv_sacks (tcp_connection_t *tc, u32 ack, tcp_rate_sample_t *rs);
-u8 *tcp_scoreboard_replay (u8 * s, tcp_connection_t * tc, u8 verbose);
-u8 tcp_scoreboard_is_sane_post_recovery (tcp_connection_t * tc);
+void tcp_sack_init_rxt (tcp_connection_t *tc, u32 snd_una);
+void tcp_sack_recompute_loss (tcp_connection_t *tc);
+void tcp_sack_rxt_mark_lost (tcp_connection_t *tc);
 u8 tcp_sack_handle_reneging (tcp_connection_t *tc);
+u8 *tcp_scoreboard_replay (u8 *s, tcp_connection_t *tc, u8 verbose);
 
 #endif /* SRC_VNET_TCP_TCP_SACK_H_ */
