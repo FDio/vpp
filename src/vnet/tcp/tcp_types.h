@@ -152,14 +152,38 @@ typedef struct _scoreboard_trace_elt
   u32 group;
 } scoreboard_trace_elt_t;
 
+typedef struct tcp_rxt_range_
+{
+  u32 start;  /**< Start sequence number */
+  u32 end;    /**< End sequence number */
+  u8 is_lost; /**< Range is considered lost */
+} tcp_rxt_range_t;
+
 typedef struct _sack_scoreboard_hole
 {
+  union
+  {
+    tcp_rxt_range_t range; /**< Retransmission range */
+    struct
+    {
+      u32 start;
+      u32 end;
+      u8 is_lost;
+    };
+  };
   u32 next;		/**< Index for next entry in linked list */
   u32 prev;		/**< Index for previous entry in linked list */
-  u32 start;		/**< Start sequence number */
-  u32 end;		/**< End sequence number */
-  u8 is_lost;		/**< Mark hole as lost */
 } sack_scoreboard_hole_t;
+
+STATIC_ASSERT (STRUCT_OFFSET_OF (sack_scoreboard_hole_t, range.start) ==
+		 STRUCT_OFFSET_OF (sack_scoreboard_hole_t, start),
+	       "scoreboard range and start offsets must match");
+STATIC_ASSERT (STRUCT_OFFSET_OF (sack_scoreboard_hole_t, range.end) ==
+		 STRUCT_OFFSET_OF (sack_scoreboard_hole_t, end),
+	       "scoreboard range and end offsets must match");
+STATIC_ASSERT (STRUCT_OFFSET_OF (sack_scoreboard_hole_t, range.is_lost) ==
+		 STRUCT_OFFSET_OF (sack_scoreboard_hole_t, is_lost),
+	       "scoreboard range and is_lost offsets must match");
 
 typedef struct _sack_scoreboard
 {
@@ -218,6 +242,8 @@ typedef enum tcp_bts_flags_
   TCP_BTS_IS_APP_LIMITED = 1 << 1,
   TCP_BTS_IS_SACKED = 1 << 2,
   TCP_BTS_IS_RXT_LOST = 1 << 3,
+  TCP_BTS_IS_DELIVERED = 1 << 4,
+  TCP_BTS_IS_LOST = 1 << 5,
 } __clib_packed tcp_bts_flags_t;
 
 typedef struct tcp_bt_sample_
@@ -263,6 +289,7 @@ typedef struct tcp_byte_tracker_
   u32 head;			/**< Head of samples linked list */
   u32 tail;			/**< Tail of samples linked list */
   u32 last_ooo;			/**< Cached last ooo sample */
+  u32 cur_rxt;			/**< Current retransmission sample */
 } tcp_byte_tracker_t;
 
 typedef enum _tcp_cc_algorithm_type

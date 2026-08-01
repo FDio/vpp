@@ -259,6 +259,7 @@ func TcpCubicStartupConfigDiagTest(s *VethsSuite) {
 	tcpConfig.NewStanza("tcp").
 		Append("cc-algo cubic").
 		Append("no-dsack").
+		Append("byte-tracker").
 		NewStanza("cubic").
 		Append("no-fast-convergence").
 		Append("ssthresh 12345").
@@ -278,6 +279,7 @@ func TcpCubicStartupConfigDiagTest(s *VethsSuite) {
 	Log(config)
 	AssertContains(config, "congestion control algorithm: cubic")
 	AssertContains(config, "dsack: disabled")
+	AssertContains(config, "byte tracker: enabled")
 
 	serverVpp.Vppctl("vperf server fifo-size 64k uri tcp://%s/%s", serverAddress, s.Ports.Port1)
 	listenerDetail := serverVpp.Vppctl("show session verbose 2 proto tcp state listening")
@@ -290,10 +292,14 @@ func TcpCubicStartupConfigDiagTest(s *VethsSuite) {
 			serverAddress, s.Ports.Port1)
 	}()
 
-	sessionDetail := waitForTcpDiagOutput(serverVpp, "show session verbose 2 proto tcp", "ssthresh 12345")
+	sessionDetail := waitForTcpDiagOutput(serverVpp, "show session verbose 2 proto tcp",
+		"ssthresh 12345", "Rate sampling")
 	Log(sessionDetail)
 	AssertContains(sessionDetail, "algo cubic")
 	AssertContains(sessionDetail, "ssthresh 12345")
+	AssertContains(sessionDetail, "Rate sampling")
+	AssertContains(sessionDetail, "bt:")
+	AssertContains(sessionDetail, "samples active")
 
 	o := <-done
 	Log(o)
