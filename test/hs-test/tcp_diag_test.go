@@ -63,7 +63,12 @@ func TcpConfigDiagTest(s *VethsSuite) {
 	AssertContains(config, "congestion control algorithm:")
 	AssertContains(config, "checksum offload:")
 	AssertContains(config, "dsack: enabled")
+	AssertContains(config, "byte tracker: disabled")
 
+	AssertContains(serverVpp.Vppctl("set tcp byte-tracker enable"), "enabled")
+	AssertContains(serverVpp.Vppctl("show tcp config"), "byte tracker: enabled")
+	AssertContains(serverVpp.Vppctl("set tcp byte-tracker disable"), "disabled")
+	AssertContains(serverVpp.Vppctl("show tcp config"), "byte tracker: disabled")
 	AssertContains(serverVpp.Vppctl("set tcp csum-offload disable"), "disabled")
 	AssertContains(serverVpp.Vppctl("show tcp config"), "checksum offload: disabled")
 	AssertContains(serverVpp.Vppctl("set tcp csum-offload enable"), "enabled")
