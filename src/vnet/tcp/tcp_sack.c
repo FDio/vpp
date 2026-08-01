@@ -433,6 +433,11 @@ tcp_sack_is_sane_post_recovery (tcp_connection_t *tc)
 void
 tcp_dsack_recovery_clear (tcp_connection_t *tc)
 {
+  if (PREDICT_FALSE (tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER))
+    {
+      tcp_bt_dsack_recovery_clear (tc);
+      return;
+    }
   vec_free (tc->dsack_rxt);
   tc->dsack_flags &= TCP_DSACK_UNDO_DISABLED;
   tc->dsack_recovery_ack = 0;
@@ -752,6 +757,9 @@ tcp_dsack_update (tcp_connection_t *tc, u32 packet_ack, const sack_block_t *dsac
 {
   tcp_dsack_rxt_t *rxt;
   u32 matched;
+
+  if (PREDICT_FALSE (tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER))
+    return tcp_bt_dsack_update (tc, packet_ack, dsack, had_sack_history);
 
   if (!tcp_dsack_has_history (tc))
     {

@@ -68,6 +68,9 @@ void tcp_bt_track_rxt (tcp_connection_t * tc, u32 start, u32 end);
  */
 void tcp_bt_apply_sacks (tcp_connection_t *tc, u32 ack, u32 high_sacked, u8 has_sack,
 			 tcp_rate_sample_t *rs);
+void tcp_bt_dsack_recovery_clear (tcp_connection_t *tc);
+tcp_ack_flag_t tcp_bt_dsack_update (tcp_connection_t *tc, u32 packet_ack, const sack_block_t *dsack,
+				    u8 had_sack_history);
 void tcp_bt_recompute_sack_loss (tcp_connection_t *tc);
 void tcp_bt_init_rxt (tcp_connection_t *tc, u32 snd_una);
 void tcp_bt_rxt_mark_lost (tcp_connection_t *tc);
