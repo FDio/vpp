@@ -69,5 +69,6 @@ void tcp_bt_check_app_limited (tcp_connection_t * tc);
 int tcp_bt_is_sane (tcp_byte_tracker_t * bt);
 
 format_function_t format_tcp_bt;
+format_function_t format_tcp_bt_stats;
 
 #endif /* SRC_VNET_TCP_TCP_BT_H_ */

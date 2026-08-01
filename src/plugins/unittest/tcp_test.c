@@ -2456,7 +2456,7 @@ tcp_test_persist_e2e (vlib_main_t *vm, unformat_input_t *input)
 
   /* The empty-flight transition records the local delivery baseline even
    * when delivery-rate sampling is disabled. */
-  client_tc->cfg_flags &= ~TCP_CFG_F_RATE_SAMPLE;
+  client_tc->cfg_flags &= ~TCP_CFG_F_BYTE_TRACKER;
   client_tc->delivered_time = 0;
   server_bytes_drained += session_test_drain_rx_fifo (server_s);
 

@@ -313,7 +313,7 @@ tcp_update_burst_snd_vars (tcp_connection_t * tc)
 
   tcp_update_rcv_wnd (tc);
 
-  if (tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE)
+  if (tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER)
     tcp_bt_check_app_limited (tc);
 
   if (tc->snd_una == tc->snd_nxt)
@@ -969,7 +969,7 @@ tcp_buffer_len (vlib_buffer_t * b)
 always_inline u32
 tcp_push_one_header (tcp_connection_t *tc, vlib_buffer_t *b, tcp_push_hdr_flags_t push_hdr_flags)
 {
-  if (tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE)
+  if (tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER)
     tcp_bt_track_tx (tc, tcp_buffer_len (b));
 
   tcp_push_hdr_i (tc, b, tc->snd_nxt, push_hdr_flags);
@@ -1262,7 +1262,7 @@ tcp_prepare_retransmit_segment (tcp_worker_ctx_t * wrk,
   if (tcp_opts_sack_permitted (&tc->rcv_opts))
     tcp_dsack_track_retransmit (tc, start, start + n_bytes);
 
-  if (tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE)
+  if (tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER)
     tcp_bt_track_rxt (tc, start, start + n_bytes);
 
   tc->bytes_retrans += n_bytes;
@@ -1664,7 +1664,7 @@ tcp_transmit_unsent (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
   available_wnd = tc->snd_wnd - offset;
   burst_size = clib_min (burst_size, available_wnd / tc->snd_mss);
 
-  if (tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE)
+  if (tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER)
     tcp_bt_check_app_limited (tc);
 
   while (n_segs < burst_size)
@@ -1678,7 +1678,7 @@ tcp_transmit_unsent (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
       offset += n_written;
       n_segs += 1;
 
-      if (tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE)
+      if (tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER)
 	tcp_bt_track_tx (tc, n_written);
 
       tc->snd_nxt += n_written;
