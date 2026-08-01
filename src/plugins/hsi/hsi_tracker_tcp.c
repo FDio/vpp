@@ -572,10 +572,9 @@ hsi_tcp_track_cleanup_tcp_state (tcp_connection_t *tc)
   clib_memset (&tc->sack_sb, 0, sizeof (tc->sack_sb));
   scoreboard_init (&tc->sack_sb);
 
-  if (tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE)
+  if (tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER)
     {
       tcp_bt_cleanup (tc);
-      tc->cfg_flags &= ~TCP_CFG_F_RATE_SAMPLE;
     }
 }
 

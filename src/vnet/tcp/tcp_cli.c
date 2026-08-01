@@ -206,6 +206,8 @@ format_tcp_vars (u8 * s, va_list * args)
     {
       s = format (s, " sboard: %U\n", format_tcp_scoreboard, &tc->sack_sb,
 		  tc);
+      if (tc->bt)
+	s = format (s, " bt:     %U\n", format_tcp_bt_stats, tc);
       s = format (s, " stats: %U\n", format_tcp_stats, tc);
     }
   if (vec_len (tc->snd_sacks))
@@ -862,6 +864,7 @@ format_tcp_cfg (u8 *s, va_list *args)
   s = format (s, "checksum offload: %s\n",
 	      tm_cfg.csum_offload ? "enabled" : "disabled");
   s = format (s, "dsack: %s\n", tm_cfg.enable_dsack ? "enabled" : "disabled");
+  s = format (s, "byte tracker: %s\n", tm_cfg.enable_byte_tracker ? "enabled" : "disabled");
   s = format (s, "congestion control algorithm: %s\n",
 	      tcp_cc_algo_get (tm_cfg.cc_algo)->name);
   s = format (s, "min rwnd update ack: %u\n", tm_cfg.rwnd_min_update_ack);
@@ -916,6 +919,7 @@ VLIB_CLI_COMMAND (show_tcp_cfg_command, static) = {
 static clib_error_t *
 tcp_set_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
 {
+  u8 byte_tracker_set = 0;
   u8 csum_offload_set = 0;
   u8 dsack_set = 0;
   u8 mtu_set = 0;
@@ -934,6 +938,18 @@ tcp_set_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
 					 "csum-offload");
 
 	  csum_offload_set = 1;
+	}
+      else if (unformat (input, "byte-tracker"))
+	{
+	  if (unformat (input, "enable") || unformat (input, "on"))
+	    tcp_cfg.enable_byte_tracker = 1;
+	  else if (unformat (input, "disable") || unformat (input, "off"))
+	    tcp_cfg.enable_byte_tracker = 0;
+	  else
+	    return clib_error_return (0, "expected enable or disable for "
+					 "byte-tracker");
+
+	  byte_tracker_set = 1;
 	}
       else if (unformat (input, "dsack"))
 	{
@@ -960,9 +976,13 @@ tcp_set_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
 	return clib_error_return (0, "unknown input `%U'", format_unformat_error, input);
     }
 
-  if (!csum_offload_set && !dsack_set && !mtu_set)
-    return clib_error_return (0, "expected csum-offload, dsack or mtu");
+  if (!byte_tracker_set && !csum_offload_set && !dsack_set && !mtu_set)
+    return clib_error_return (0, "expected byte-tracker, csum-offload, "
+				 "dsack or mtu");
 
+  if (byte_tracker_set)
+    vlib_cli_output (vm, "TCP byte tracker for new connections: %s",
+		     tcp_cfg.enable_byte_tracker ? "enabled" : "disabled");
   if (csum_offload_set)
     vlib_cli_output (vm, "TCP checksum offload: %s", tcp_cfg.csum_offload ? "enabled" : "disabled");
   if (dsack_set)
@@ -975,8 +995,8 @@ tcp_set_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
 
 VLIB_CLI_COMMAND (tcp_set_command, static) = {
   .path = "set tcp",
-  .short_help = "set tcp [csum-offload [enable|disable]] [dsack [enable|disable]] "
-		"[mtu <mtu>]",
+  .short_help = "set tcp [byte-tracker [enable|disable]] "
+		"[csum-offload [enable|disable]] [dsack [enable|disable]] [mtu <mtu>]",
   .function = tcp_set_fn,
 };
 
@@ -1147,6 +1167,8 @@ tcp_config_fn (vlib_main_t * vm, unformat_input_t * input)
 	tcp_cfg.csum_offload = 0;
       else if (unformat (input, "no-dsack"))
 	tcp_cfg.enable_dsack = 0;
+      else if (unformat (input, "byte-tracker"))
+	tcp_cfg.enable_byte_tracker = 1;
       else if (unformat (input, "max-gso-size %u", &max_gso_size))
 	tcp_cfg.max_gso_size = clib_min (max_gso_size, TCP_MAX_GSO_SZ);
       else if (unformat (input, "cc-algo %U", unformat_tcp_cc_algo,

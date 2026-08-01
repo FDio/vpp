@@ -270,7 +270,7 @@ tcp_connection_cleanup (tcp_connection_t * tc)
       vec_free (tc->dsack_rxt);
       pool_free (tc->sack_sb.holes);
 
-      if (tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE)
+      if (tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER)
 	tcp_bt_cleanup (tc);
 
       tcp_connection_free (tc);
@@ -780,7 +780,7 @@ tcp_connection_init_vars (tcp_connection_t * tc)
       || tcp_cfg.enable_tx_pacing)
     tcp_enable_pacing (tc);
 
-  if (tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE)
+  if (tcp_cfg.enable_byte_tracker || (tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER))
     tcp_bt_init (tc);
 
   if (!tcp_cfg.allow_tso)
@@ -1002,15 +1002,13 @@ tcp_set_attribute (tcp_connection_t *tc, transport_endpt_attr_t *attr)
 	}
       if (attr->flags & TRANSPORT_ENDPT_ATTR_F_RATE_SAMPLING)
 	{
-	  if (!(tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE))
+	  if (!(tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER))
 	    tcp_bt_init (tc);
-	  tc->cfg_flags |= TCP_CFG_F_RATE_SAMPLE;
 	}
       else
 	{
-	  if (tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE)
+	  if (tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER)
 	    tcp_bt_cleanup (tc);
-	  tc->cfg_flags &= ~TCP_CFG_F_RATE_SAMPLE;
 	}
       break;
     case TRANSPORT_ENDPT_ATTR_CC_ALGO:
@@ -1049,7 +1047,7 @@ tcp_get_attribute (tcp_connection_t *tc, transport_endpt_attr_t *attr)
 	attr->flags |= TRANSPORT_ENDPT_ATTR_F_CSUM_OFFLOAD;
       if (tc->cfg_flags & TCP_CFG_F_TSO)
 	attr->flags |= TRANSPORT_ENDPT_ATTR_F_GSO;
-      if (tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE)
+      if (tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER)
 	attr->flags |= TRANSPORT_ENDPT_ATTR_F_RATE_SAMPLING;
       break;
     case TRANSPORT_ENDPT_ATTR_CC_ALGO:
@@ -1695,6 +1693,7 @@ tcp_configuration_init (void)
   tcp_cfg.allow_tso = 0;
   tcp_cfg.csum_offload = 1;
   tcp_cfg.enable_dsack = 1;
+  tcp_cfg.enable_byte_tracker = 0;
   tcp_cfg.cc_algo = TCP_CC_CUBIC;
   tcp_cfg.rwnd_min_update_ack = 1;
   tcp_cfg.max_gso_size = TCP_MAX_GSO_SZ;

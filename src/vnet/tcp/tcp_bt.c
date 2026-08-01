@@ -672,6 +672,7 @@ tcp_bt_cleanup (tcp_connection_t * tc)
   pool_free (bt->samples);
   clib_mem_free (bt);
   tc->bt = 0;
+  tc->cfg_flags &= ~TCP_CFG_F_BYTE_TRACKER;
 }
 
 void
@@ -685,6 +686,7 @@ tcp_bt_init (tcp_connection_t * tc)
   rb_tree_init (&bt->sample_lookup);
   bt->head = bt->tail = TCP_BTS_INVALID_INDEX;
   tc->bt = bt;
+  tc->cfg_flags |= TCP_CFG_F_BYTE_TRACKER;
 }
 
 u8 *
@@ -714,5 +716,18 @@ format_tcp_bt (u8 * s, va_list * args)
       bts = bt_next_sample (bt, bts);
     }
 
+  return s;
+}
+
+u8 *
+format_tcp_bt_stats (u8 *s, va_list *args)
+{
+  tcp_connection_t *tc = va_arg (*args, tcp_connection_t *);
+  tcp_byte_tracker_t *bt = tc->bt;
+  u32 indent = format_get_indent (s);
+
+  s = format (s, "delivered %lu lost %lu app-limited %s\n", tc->delivered, tc->lost,
+	      tc->app_limited ? "yes" : "no");
+  s = format (s, "%Usamples active %u", format_white_space, indent, pool_elts (bt->samples));
   return s;
 }
