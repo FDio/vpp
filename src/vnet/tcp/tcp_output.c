@@ -1833,7 +1833,7 @@ tcp_retransmit_sack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
 	  tcp_enqueue_to_output (wrk, b, bi, tc->c_is_ip4);
 	  n_segs += 1;
 	  sent_bytes += n_written;
-	  break;
+	  goto done;
 	}
 
       max_bytes = hole->end - sb->high_rxt;
