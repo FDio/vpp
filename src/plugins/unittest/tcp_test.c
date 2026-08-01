@@ -1213,7 +1213,6 @@ tcp_test_dsack_rx (vlib_main_t *vm)
   tc->snd_una = 1300;
   tc->snd_congestion = 1200;
   tcp_cong_recovery_off (tc);
-  tcp_dsack_recovery_save (tc);
   block.start = 1100;
   block.end = 1200;
   vec_add1 (tc->rcv_opts.sacks, block);
@@ -1271,7 +1270,6 @@ tcp_test_dsack_rx (vlib_main_t *vm)
   tcp_dsack_track_retransmit (tc, 1100, 1200);
   tc->snd_una = tc->snd_congestion;
   tcp_cong_recovery_off (tc);
-  tcp_dsack_recovery_save (tc);
   block.start = 1100;
   block.end = 1200;
   vec_add1 (tc->rcv_opts.sacks, block);
@@ -1309,7 +1307,6 @@ tcp_test_dsack_rx (vlib_main_t *vm)
 	    "coalesce adjacent retransmissions without losing byte coverage");
   tc->snd_una = tc->snd_congestion;
   tcp_cong_recovery_off (tc);
-  tcp_dsack_recovery_save (tc);
   block.start = 1100;
   block.end = 1200;
   vec_add1 (tc->rcv_opts.sacks, block);
@@ -1398,7 +1395,6 @@ tcp_test_dsack_rx (vlib_main_t *vm)
 	    "range overflow abandons only the current D-SACK undo episode");
   tc->snd_una = tc->snd_congestion;
   tcp_cong_recovery_off (tc);
-  tcp_dsack_recovery_save (tc);
   block.start = 800;
   block.end = 900;
   vec_add1 (tc->rcv_opts.sacks, block);
@@ -1411,9 +1407,12 @@ tcp_test_dsack_rx (vlib_main_t *vm)
   tc->rcv_opts.flags = TCP_OPTS_FLAG_SACK_PERMITTED;
   rs.ack_flags = 0;
   tcp_test_rcv_sacks (tc, tc->snd_una + 100, &rs);
+  TCP_TEST (tcp_dsack_has_history (tc) && (tc->dsack_flags & TCP_DSACK_RXT_OVERFLOW),
+	    "ACK progress retains the overflowed recovery episode");
+  tcp_dsack_recovery_init (tc);
   TCP_TEST (!tcp_dsack_has_history (tc) &&
 	      !(tc->dsack_flags & (TCP_DSACK_INELIGIBLE | TCP_DSACK_RXT_OVERFLOW)),
-	    "ACK progress retires the overflowed recovery episode");
+	    "next recovery retires the overflowed recovery episode");
 
   /* D-SACK marking may split a retained range, so it observes the same cap. */
   DSACK_RX_RESET ();
@@ -1446,7 +1445,6 @@ tcp_test_dsack_rx (vlib_main_t *vm)
 	    "one D-SACK does not undo an episode with another retransmission");
   tc->snd_una = tc->snd_congestion;
   tcp_cong_recovery_off (tc);
-  tcp_dsack_recovery_save (tc);
   vec_reset_length (tc->rcv_opts.sacks);
   rs.ack_flags = 0;
   vec_add1 (tc->rcv_opts.sacks, block);
@@ -1468,7 +1466,6 @@ tcp_test_dsack_rx (vlib_main_t *vm)
   tcp_dsack_track_retransmit (tc, 1300, 1400);
   tc->snd_una = tc->snd_congestion;
   tcp_cong_recovery_off (tc);
-  tcp_dsack_recovery_save (tc);
   block.start = 1100;
   block.end = 1400;
   vec_add1 (tc->rcv_opts.sacks, block);
@@ -1486,7 +1483,6 @@ tcp_test_dsack_rx (vlib_main_t *vm)
   tcp_dsack_track_retransmit (tc, 1100, 1300);
   tc->snd_una = tc->snd_congestion;
   tcp_cong_recovery_off (tc);
-  tcp_dsack_recovery_save (tc);
   block.start = 1100;
   block.end = 1200;
   vec_add1 (tc->rcv_opts.sacks, block);
@@ -1515,7 +1511,6 @@ tcp_test_dsack_rx (vlib_main_t *vm)
   tcp_dsack_track_retransmit (tc, 1150, 1250);
   tc->snd_una = tc->snd_congestion;
   tcp_cong_recovery_off (tc);
-  tcp_dsack_recovery_save (tc);
   block.start = 1200;
   block.end = 1250;
   vec_add1 (tc->rcv_opts.sacks, block);
@@ -1542,7 +1537,6 @@ tcp_test_dsack_rx (vlib_main_t *vm)
 	    "union of multiple retransmissions remains sorted and disjoint");
   tc->snd_una = tc->snd_congestion;
   tcp_cong_recovery_off (tc);
-  tcp_dsack_recovery_save (tc);
   block.start = 1300;
   block.end = 1400;
   vec_add1 (tc->rcv_opts.sacks, block);
@@ -1563,7 +1557,6 @@ tcp_test_dsack_rx (vlib_main_t *vm)
   tc->dsack_flags |= TCP_DSACK_INELIGIBLE;
   tc->snd_una = tc->snd_congestion;
   tcp_cong_recovery_off (tc);
-  tcp_dsack_recovery_save (tc);
   block.start = 1100;
   block.end = 1200;
   vec_add1 (tc->rcv_opts.sacks, block);
@@ -1576,8 +1569,9 @@ tcp_test_dsack_rx (vlib_main_t *vm)
   rs.ack_flags = 0;
   tc->rcv_opts.flags = TCP_OPTS_FLAG_SACK_PERMITTED;
   tcp_test_rcv_sacks (tc, tc->snd_una + 100, &rs);
-  TCP_TEST (!tcp_dsack_has_history (tc),
-	    "later cumulative ACK progress retires incomplete D-SACK history");
+  TCP_TEST (tcp_dsack_has_history (tc), "ordinary ACK progress retains incomplete D-SACK history");
+  tcp_dsack_recovery_init (tc);
+  TCP_TEST (!tcp_dsack_has_history (tc), "next recovery retires incomplete D-SACK history");
 
   /* RFC 3708 A.1 applies to the SACK history at ACK arrival. Processing the
    * cumulative ACK may drain that history before D-SACK eligibility is
@@ -4829,17 +4823,16 @@ tcp_test_tamper_dsack_early_undo (vlib_main_t *vm)
 	}
       tcp_e2e_pump (vm, 2e-3);
     }
-  if (!TCP_TEST_I (
-	(saw_reentry),
-	"dsack_early: D-SACK exited timeout recovery and re-entered fast recovery "
-	"(tr delta %u, fr delta %u, flags 0x%x, lost %u, "
-	"loss matches %u drops %u, una %u, nxt %u, dsack flags 0x%x, "
-	"rxt ranges %u, recovery ack %u)",
-	client_tc->tr_occurences - tr_before, client_tc->fr_occurences - fr_before,
-	client_tc->flags, client_tc->sack_sb.lost_bytes, loss_rule->n_matched, loss_rule->n_dropped,
-	client_tc->snd_una - client_tc->iss, client_tc->snd_nxt - client_tc->iss,
-	client_tc->dsack_flags, vec_len (client_tc->dsack_rxt),
-	client_tc->dsack_recovery_ack ? client_tc->dsack_recovery_ack - client_tc->iss : 0))
+  if (!TCP_TEST_I ((saw_reentry),
+		   "dsack_early: D-SACK exited timeout recovery and re-entered fast recovery "
+		   "(tr delta %u, fr delta %u, flags 0x%x, lost %u, "
+		   "loss matches %u drops %u, una %u, nxt %u, dsack flags 0x%x, "
+		   "rxt ranges %u)",
+		   client_tc->tr_occurences - tr_before, client_tc->fr_occurences - fr_before,
+		   client_tc->flags, client_tc->sack_sb.lost_bytes, loss_rule->n_matched,
+		   loss_rule->n_dropped, client_tc->snd_una - client_tc->iss,
+		   client_tc->snd_nxt - client_tc->iss, client_tc->dsack_flags,
+		   vec_len (client_tc->dsack_rxt)))
     {
       rv = 1;
       goto cleanup;
@@ -6927,6 +6920,127 @@ tcp_test_bt_rxt_merge_flags (void)
 }
 
 static int
+tcp_test_bt_dsack (void)
+{
+  tcp_connection_t _tc = {}, *tc = &_tc;
+  tcp_bt_sample_t *bts;
+  tcp_rate_sample_t rs = {};
+  sack_block_t block;
+  tcp_ack_flag_t flags;
+  u32 samples;
+
+  tc->snd_mss = 100;
+  tc->snd_una = tc->snd_nxt = 1000;
+  tc->snd_congestion = 1600;
+  tc->flags = TCP_CONN_FAST_RECOVERY | TCP_CONN_RECOVERY;
+  tc->rcv_opts.flags = TCP_OPTS_FLAG_SACK_PERMITTED | TCP_OPTS_FLAG_SACK;
+  scoreboard_init (&tc->sack_sb);
+  tcp_bt_init (tc);
+  tcp_bt_track_tx (tc, 600);
+  tc->snd_nxt = 1600;
+
+  tc->flags = 0;
+  tcp_bt_track_rxt (tc, 1100, 1200);
+  TCP_TEST (!tcp_dsack_has_history (tc),
+	    "BT does not account retransmission outside congestion recovery");
+  tc->flags = TCP_CONN_FAST_RECOVERY | TCP_CONN_RECOVERY;
+  tcp_dsack_recovery_init (tc);
+  TCP_TEST (tc->dsack_pending_bytes == 100 && tc->dsack_history_start == 1000 &&
+	      (tc->dsack_flags & TCP_DSACK_HISTORY),
+	    "BT seeds D-SACK accounting from an active retransmission");
+
+  tc->rcv_opts.flags &= ~TCP_OPTS_FLAG_SACK;
+  tcp_rcv_sacks (tc, 1300, &rs);
+  rs.bytes_acked = 300;
+  tc->snd_una = 1300;
+  tcp_bt_sample_delivery_rate (tc, &rs);
+  bts = pool_elt_at_index (tc->bt->samples, tc->bt->head);
+  TCP_TEST (bts->min_seq == tc->snd_una && tc->dsack_pending_bytes == 100,
+	    "BT frees ACKed samples and keeps aggregate D-SACK history");
+  TCP_TEST (tcp_bt_is_sane (tc->bt), "BT range store sane after ACKed samples are freed");
+
+  tc->snd_congestion = 1200;
+  tcp_cong_recovery_off (tc);
+  tc->rcv_opts.flags = TCP_OPTS_FLAG_SACK_PERMITTED;
+  clib_memset (&rs, 0, sizeof (rs));
+  tcp_rcv_sacks (tc, 1400, &rs);
+  rs.bytes_acked = 100;
+  tc->snd_una = 1400;
+  tcp_bt_sample_delivery_rate (tc, &rs);
+  TCP_TEST (tcp_dsack_has_history (tc) && tc->dsack_pending_bytes == 100,
+	    "BT retains D-SACK history across ordinary post-recovery ACKs");
+
+  tc->rcv_opts.flags |= TCP_OPTS_FLAG_SACK;
+  vec_reset_length (tc->rcv_opts.sacks);
+  block = (sack_block_t) { .start = 1100, .end = 1200 };
+  vec_add1 (tc->rcv_opts.sacks, block);
+  tc->rcv_opts.n_sack_blocks = 1;
+  clib_memset (&rs, 0, sizeof (rs));
+  tcp_rcv_dsack (tc, 1200, &rs);
+  TCP_TEST (rs.ack_flags & TCP_ACK_F_DSACK, "BT recognizes D-SACK against ACKed history");
+  TCP_TEST (!tc->dsack_pending_bytes, "BT accounts D-SACK evidence for ACKed samples");
+  TCP_TEST (!(tc->dsack_flags & (TCP_DSACK_INELIGIBLE | TCP_DSACK_UNDO_DISABLED)),
+	    "BT D-SACK history remains undo eligible: 0x%x", tc->dsack_flags);
+  TCP_TEST ((rs.ack_flags & (TCP_ACK_F_DSACK | TCP_ACK_F_DSACK_SPURIOUS)) ==
+	      (TCP_ACK_F_DSACK | TCP_ACK_F_DSACK_SPURIOUS),
+	    "BT aggregate history proves a retransmission spurious");
+
+  tcp_bt_dsack_recovery_clear (tc);
+  tc->snd_una = 1400;
+  tc->snd_nxt = 1600;
+  tc->flags = TCP_CONN_FAST_RECOVERY | TCP_CONN_RECOVERY;
+  tcp_bt_track_rxt (tc, 1400, 1600);
+  block = (sack_block_t) { .start = 1400, .end = 1500 };
+  samples = pool_elts (tc->bt->samples);
+  tcp_bt_dsack_mark_duplicate (tc, block.start, block.end);
+  flags = tcp_bt_dsack_all_duplicate (tc) ? TCP_ACK_F_DSACK_SPURIOUS : 0;
+  TCP_TEST (!(flags & TCP_ACK_F_DSACK_SPURIOUS) && tc->dsack_pending_bytes == 100 &&
+	      pool_elts (tc->bt->samples) == samples,
+	    "partial BT D-SACK updates only aggregate state");
+  block = (sack_block_t) { .start = 1500, .end = 1600 };
+  tcp_bt_dsack_mark_duplicate (tc, block.start, block.end);
+  flags = tcp_bt_dsack_all_duplicate (tc) ? TCP_ACK_F_DSACK_SPURIOUS : 0;
+  TCP_TEST (flags & TCP_ACK_F_DSACK_SPURIOUS,
+	    "complete BT D-SACK coverage proves recovery spurious");
+  TCP_TEST (tcp_bt_is_sane (tc->bt), "BT range store sane after partial D-SACK accounting");
+
+  tcp_bt_dsack_recovery_clear (tc);
+  tc->flags = TCP_CONN_FAST_RECOVERY | TCP_CONN_RECOVERY;
+  tcp_bt_track_rxt (tc, 1400, 1500);
+  tcp_bt_track_rxt (tc, 1400, 1500);
+  block = (sack_block_t) { .start = 1400, .end = 1500 };
+  tcp_bt_dsack_mark_duplicate (tc, block.start, block.end);
+  TCP_TEST (tc->dsack_pending_bytes == 100 && !tcp_bt_dsack_all_duplicate (tc),
+	    "one BT D-SACK accounts one retransmission");
+  tcp_bt_dsack_mark_duplicate (tc, block.start, block.end);
+  TCP_TEST (!tc->dsack_pending_bytes && tcp_bt_dsack_all_duplicate (tc),
+	    "repeated BT D-SACK accounts repeated retransmission");
+
+  tcp_bt_dsack_recovery_clear (tc);
+  tc->snd_una = 1400;
+  tc->snd_nxt = 1600;
+  tc->flags = TCP_CONN_FAST_RECOVERY | TCP_CONN_RECOVERY;
+  tcp_bt_track_rxt (tc, 1450, 1500);
+  vec_reset_length (tc->rcv_opts.sacks);
+  block = (sack_block_t) { .start = 1450, .end = 1500 };
+  vec_add1 (tc->rcv_opts.sacks, block);
+  block = (sack_block_t) { .start = 1501, .end = 1600 };
+  vec_add1 (tc->rcv_opts.sacks, block);
+  tc->rcv_opts.n_sack_blocks = 2;
+  clib_memset (&rs, 0, sizeof (rs));
+  tcp_rcv_sacks (tc, 1500, &rs);
+  TCP_TEST ((rs.ack_flags & (TCP_ACK_F_DSACK | TCP_ACK_F_DSACK_SPURIOUS)) ==
+	      (TCP_ACK_F_DSACK | TCP_ACK_F_DSACK_SPURIOUS),
+	    "BT processes D-SACK evidence before ACK and SACK sample retirement");
+  TCP_TEST (!tc->dsack_pending_bytes && tcp_bt_is_sane (tc->bt),
+	    "BT keeps aggregate state sane after combined D-SACK processing");
+
+  vec_free (tc->rcv_opts.sacks);
+  tcp_bt_cleanup (tc);
+  return 0;
+}
+
+static int
 tcp_test_bt_toggle (void)
 {
   tcp_connection_t _tc = {}, *tc = &_tc;
@@ -6995,6 +7109,8 @@ tcp_test_bt (vlib_main_t * vm, unformat_input_t * input)
       tcp_test_bt_rxt_merge_loss_boundary () || tcp_test_bt_rxt_across_sacked_island ())
     return 1;
   if (tcp_test_bt_rxt_merge_flags ())
+    return 1;
+  if (tcp_test_bt_dsack ())
     return 1;
 
   /* Init data structures */
