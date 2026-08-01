@@ -9,6 +9,7 @@ uword
 unformat_rdma_create_if_args (unformat_input_t * input, va_list * vargs)
 {
   rdma_create_if_args_t *args = va_arg (*vargs, rdma_create_if_args_t *);
+  int allow_port_num = va_arg (*vargs, int);
   unformat_input_t _line_input, *line_input = &_line_input;
   uword ret = 1;
   u32 tmp;
@@ -35,6 +36,15 @@ unformat_rdma_create_if_args (unformat_input_t * input, va_list * vargs)
 	args->mode = RDMA_MODE_IBV;
       else if (unformat (line_input, "mode dv"))
 	args->mode = RDMA_MODE_DV;
+      else if (allow_port_num && unformat (line_input, "port-num %u", &tmp))
+	{
+	  if (tmp == 0 || tmp > 255)
+	    {
+	      ret = 0;
+	      break;
+	    }
+	  args->port_num = tmp;
+	}
       else if (unformat (line_input, "no-striding"))
 	args->disable_striding_rq = 1;
       else if (unformat (line_input, "no-multi-seg"))
