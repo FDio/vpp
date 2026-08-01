@@ -98,7 +98,7 @@ format_function_t format_tcp_scoreboard;
 
 void tcp_update_sack_list (tcp_connection_t * tc, u32 start, u32 end);
 void tcp_dsack_recovery_clear (tcp_connection_t *tc);
-void tcp_dsack_recovery_save (tcp_connection_t *tc);
+void tcp_dsack_recovery_init (tcp_connection_t *tc);
 void tcp_sack_recovery_exit (tcp_connection_t *tc, tcp_ack_flag_t spurious_flags);
 void tcp_dsack_track_retransmit (tcp_connection_t *tc, u32 start, u32 end);
 u32 tcp_sack_list_bytes (tcp_connection_t * tc);
