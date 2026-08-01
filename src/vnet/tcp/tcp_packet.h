@@ -170,6 +170,7 @@ typedef struct
 #define seq_leq(_s1, _s2) ((i32)((_s1)-(_s2)) <= 0)
 #define seq_gt(_s1, _s2) ((i32)((_s1)-(_s2)) > 0)
 #define seq_geq(_s1, _s2) ((i32)((_s1)-(_s2)) >= 0)
+#define seq_min(_s1, _s2) (seq_lt ((_s1), (_s2)) ? (_s1) : (_s2))
 #define seq_max(_s1, _s2) (seq_gt((_s1), (_s2)) ? (_s1) : (_s2))
 
 /* Modulo arithmetic for timestamps */
