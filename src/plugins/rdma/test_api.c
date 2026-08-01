@@ -92,6 +92,11 @@ api_rdma_create (vat_main_t * vam)
       clib_warning ("unknown input `%U'", format_unformat_error, vam->input);
       return -99;
     }
+  if (args.port_num)
+    {
+      clib_warning ("port-num is not supported by this API version");
+      return -99;
+    }
 
   M (RDMA_CREATE, mp);
 
@@ -118,6 +123,11 @@ api_rdma_create_v2 (vat_main_t * vam)
   if (!unformat_user (vam->input, unformat_rdma_create_if_args, &args))
     {
       clib_warning ("unknown input `%U'", format_unformat_error, vam->input);
+      return -99;
+    }
+  if (args.port_num)
+    {
+      clib_warning ("port-num is not supported by this API version");
       return -99;
     }
 
@@ -151,6 +161,11 @@ api_rdma_create_v3 (vat_main_t *vam)
   if (!unformat_user (vam->input, unformat_rdma_create_if_args, &args))
     {
       clib_warning ("unknown input `%U'", format_unformat_error, vam->input);
+      return -99;
+    }
+  if (args.port_num)
+    {
+      clib_warning ("port-num is not supported by this API version");
       return -99;
     }
 
@@ -188,6 +203,11 @@ api_rdma_create_v4 (vat_main_t *vam)
       clib_warning ("unknown input `%U'", format_unformat_error, vam->input);
       return -99;
     }
+  if (args.port_num)
+    {
+      clib_warning ("port-num is not supported by this API version");
+      return -99;
+    }
 
   M (RDMA_CREATE_V4, mp);
 
@@ -204,6 +224,42 @@ api_rdma_create_v4 (vat_main_t *vam)
   mp->max_pktlen = args.max_pktlen;
   mp->rss4 = api_rdma_rss4 (args.rss4);
   mp->rss6 = api_rdma_rss6 (args.rss6);
+
+  S (mp);
+  W (ret);
+
+  return ret;
+}
+
+static int
+api_rdma_create_v5 (vat_main_t *vam)
+{
+  vl_api_rdma_create_v5_t *mp;
+  rdma_create_if_args_t args;
+  int ret;
+
+  if (!unformat_user (vam->input, unformat_rdma_create_if_args, &args))
+    {
+      clib_warning ("unknown input `%U'", format_unformat_error, vam->input);
+      return -99;
+    }
+
+  M (RDMA_CREATE_V5, mp);
+
+  snprintf ((char *) mp->host_if, sizeof (mp->host_if), "%s", args.ifname);
+  if (args.name)
+    snprintf ((char *) mp->name, sizeof (mp->name), "%s", args.name);
+  else
+    mp->name[0] = 0;
+  mp->rxq_num = args.rxq_num;
+  mp->rxq_size = args.rxq_size;
+  mp->txq_size = args.txq_size;
+  mp->mode = api_rdma_mode (args.mode);
+  mp->no_multi_seg = args.no_multi_seg;
+  mp->max_pktlen = args.max_pktlen;
+  mp->rss4 = api_rdma_rss4 (args.rss4);
+  mp->rss6 = api_rdma_rss6 (args.rss6);
+  mp->port_num = args.port_num;
 
   S (mp);
   W (ret);
@@ -276,6 +332,23 @@ vl_api_rdma_create_v4_reply_t_handler (vl_api_rdma_create_v4_reply_t *mp)
     {
       fformat (vam->ofp, "created rdma with sw_if_index %d\n",
 	       ntohl (mp->sw_if_index));
+    }
+
+  vam->retval = retval;
+  vam->result_ready = 1;
+  vam->regenerate_interface_table = 1;
+}
+
+/* rdma-create reply handler v5 */
+static void
+vl_api_rdma_create_v5_reply_t_handler (vl_api_rdma_create_v5_reply_t *mp)
+{
+  vat_main_t *vam = rdma_test_main.vat_main;
+  i32 retval = mp->retval;
+
+  if (retval == 0)
+    {
+      fformat (vam->ofp, "created rdma with sw_if_index %d\n", ntohl (mp->sw_if_index));
     }
 
   vam->retval = retval;
