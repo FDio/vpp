@@ -247,6 +247,13 @@ typedef enum tcp_bts_flags_
   TCP_BTS_IS_LOST = 1 << 5,
 } __clib_packed tcp_bts_flags_t;
 
+typedef enum tcp_bts_dsack_flags_
+{
+  TCP_BTS_DSACK_TRACKED = 1,
+  TCP_BTS_DSACK_DUPLICATE = 1 << 1,
+  TCP_BTS_DSACK_RETIRED = 1 << 2,
+} __clib_packed tcp_bts_dsack_flags_t;
+
 typedef struct tcp_bt_sample_
 {
   u32 next;			/**< Next sample index in list */
@@ -260,6 +267,7 @@ typedef struct tcp_bt_sample_
   u64 tx_in_flight;		/**< In flight at tx time */
   u64 tx_lost;			/**< Lost at tx time */
   tcp_bts_flags_t flags;	/**< Sample flag */
+  tcp_bts_dsack_flags_t dsack_flags; /**< D-SACK history state */
 } tcp_bt_sample_t;
 
 typedef struct tcp_rate_sample_
@@ -293,6 +301,7 @@ typedef struct tcp_byte_tracker_
   u32 cur_rxt;			/**< Current retransmission sample */
   u32 cur_rxt_end;		/**< Cached range end; mutations reset to high_rxt */
   u32 sack_loss_high;		/**< Upper edge of SACK-derived lost prefix */
+  u32 *dsack_samples;		/**< Active and retired D-SACK sample indices */
 } tcp_byte_tracker_t;
 
 typedef enum _tcp_cc_algorithm_type
@@ -493,7 +502,9 @@ tcp_cong_recovery_off (tcp_connection_t * tc)
 #define tcp_zero_rwnd_sent_off(tc) (tc)->flags &= ~TCP_CONN_ZERO_RWND_SENT
 
 #define tcp_dsack_has_history(tc)                                                                  \
-  ((tc)->dsack_rxt != 0 || ((tc)->dsack_flags & TCP_DSACK_RXT_OVERFLOW))
+  (((tc)->cfg_flags & TCP_CFG_F_BYTE_TRACKER) ?                                                    \
+     ((tc)->bt->dsack_samples != 0 || ((tc)->dsack_flags & TCP_DSACK_RXT_OVERFLOW)) :              \
+     ((tc)->dsack_rxt != 0 || ((tc)->dsack_flags & TCP_DSACK_RXT_OVERFLOW)))
 
 always_inline tcp_connection_t *
 tcp_get_connection_from_transport (transport_connection_t * tconn)

@@ -433,6 +433,11 @@ tcp_sack_is_sane_post_recovery (tcp_connection_t *tc)
 void
 tcp_dsack_recovery_clear (tcp_connection_t *tc)
 {
+  if (PREDICT_FALSE (tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER))
+    {
+      tcp_bt_dsack_recovery_clear (tc);
+      return;
+    }
   vec_free (tc->dsack_rxt);
   tc->dsack_flags &= TCP_DSACK_UNDO_DISABLED;
   tc->dsack_recovery_ack = 0;
@@ -622,6 +627,9 @@ tcp_dsack_mark_duplicate (tcp_connection_t *tc, u32 start, u32 end)
   u32 overlap_start, overlap_end, marked_i, next_i;
   u32 matched = 0, last_marked = ~0, i = 0;
 
+  if (PREDICT_FALSE (tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER))
+    return tcp_bt_dsack_mark_duplicate (tc, start, end);
+
   while (i < vec_len (tc->dsack_rxt))
     {
       cur = tc->dsack_rxt[i];
@@ -706,6 +714,21 @@ tcp_dsack_mark_duplicate (tcp_connection_t *tc, u32 start, u32 end)
   return matched;
 }
 
+static u8
+tcp_dsack_all_duplicate (tcp_connection_t *tc)
+{
+  tcp_dsack_rxt_t *rxt;
+
+  if (PREDICT_FALSE (tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER))
+    return tcp_bt_dsack_all_duplicate (tc);
+
+  vec_foreach (rxt, tc->dsack_rxt)
+    if (!(rxt->flags & TCP_DSACK_RXT_DUPLICATE))
+      return 0;
+
+  return vec_len (tc->dsack_rxt) != 0;
+}
+
 static_always_inline u8
 tcp_sack_detect_dsack (tcp_connection_t *tc, u32 ack, sack_block_t *dsack)
 {
@@ -750,7 +773,6 @@ static tcp_ack_flag_t
 tcp_dsack_update (tcp_connection_t *tc, u32 packet_ack, const sack_block_t *dsack,
 		  u8 had_sack_history)
 {
-  tcp_dsack_rxt_t *rxt;
   u32 matched;
 
   if (!tcp_dsack_has_history (tc))
@@ -806,11 +828,7 @@ tcp_dsack_update (tcp_connection_t *tc, u32 packet_ack, const sack_block_t *dsac
   if (tc->dsack_flags & (TCP_DSACK_INELIGIBLE | TCP_DSACK_UNDO_DISABLED))
     return 0;
 
-  vec_foreach (rxt, tc->dsack_rxt)
-    if (!(rxt->flags & TCP_DSACK_RXT_DUPLICATE))
-      return 0;
-
-  return TCP_ACK_F_DSACK_SPURIOUS;
+  return tcp_dsack_all_duplicate (tc) ? TCP_ACK_F_DSACK_SPURIOUS : 0;
 }
 
 void
