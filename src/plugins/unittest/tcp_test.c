@@ -4853,6 +4853,9 @@ tcp_test_delivery (vlib_main_t * vm, unformat_input_t * input)
   tcp_bt_init (tc);
   bt = tc->bt;
 
+  TCP_TEST (bt->last_ooo == TCP_BTS_INVALID_INDEX,
+	    "last out-of-order sample should be invalid after init");
+
   /*
    * Track simple bursts without rxt
    */
@@ -5026,6 +5029,7 @@ tcp_test_delivery (vlib_main_t * vm, unformat_input_t * input)
   TCP_TEST (tcp_bt_is_sane (bt), "tracker should be sane");
   TCP_TEST (pool_elts (bt->samples) == 5, "there should be 5 samples %u",
 	    pool_elts (bt->samples));
+  TCP_TEST (bt->last_ooo != TCP_BTS_INVALID_INDEX, "last retransmit sample should be cached");
 
   vec_validate (min_seqs, 4);
   min_seqs[0] = snd_una + 10;
@@ -5104,6 +5108,9 @@ tcp_test_delivery (vlib_main_t * vm, unformat_input_t * input)
   TCP_TEST (tcp_bt_is_sane (bt), "tracker should be sane");
   TCP_TEST (pool_elts (bt->samples) == 0, "num samples should be 0 is %u",
 	    pool_elts (bt->samples));
+  TCP_TEST (bt->head == TCP_BTS_INVALID_INDEX && bt->tail == TCP_BTS_INVALID_INDEX &&
+	      bt->last_ooo == TCP_BTS_INVALID_INDEX,
+	    "sample indices should be invalid after freeing cached sample");
   TCP_TEST (tc->delivered_time == 11, "delivered time should be 11");
   TCP_TEST (tc->delivered == 7 * burst, "delivered should be %u is %u",
 	    7 * burst, tc->delivered);
@@ -5135,6 +5142,12 @@ tcp_test_delivery (vlib_main_t * vm, unformat_input_t * input)
   tc->snd_nxt += burst;
 
   tcp_bt_flush_samples (tc);
+
+  TCP_TEST (tcp_bt_is_sane (bt), "tracker should be sane after flush");
+  TCP_TEST (pool_elts (bt->samples) == 0, "flush should free all samples");
+  TCP_TEST (bt->head == TCP_BTS_INVALID_INDEX && bt->tail == TCP_BTS_INVALID_INDEX &&
+	      bt->last_ooo == TCP_BTS_INVALID_INDEX,
+	    "sample indices should be invalid after flush");
 
   /*
    * Cleanup
@@ -5377,6 +5390,20 @@ tcp_test_bt (vlib_main_t * vm, unformat_input_t * input)
   TCP_TEST (pool_elts (bt->samples) == 1, "same time tx should coalesce");
   bts = pool_elt_at_index (bt->samples, bt->head);
   TCP_TEST (bts->min_seq == 0 && bts->max_seq == 125, "coalesced sample should cover [0:125]");
+
+  tc->app_limited = 1;
+  tcp_bt_track_tx (tc, 25);
+  tc->snd_nxt += 25;
+
+  TCP_TEST (tcp_bt_is_sane (bt), "tracker should be sane after app-limited transition");
+  TCP_TEST (pool_elts (bt->samples) == 2,
+	    "samples with different app-limited state should not coalesce");
+  bts = pool_elt_at_index (bt->samples, bt->head);
+  TCP_TEST (!(bts->flags & TCP_BTS_IS_APP_LIMITED) && bts->min_seq == 0 && bts->max_seq == 125,
+	    "first sample should remain non-app-limited [0:125]");
+  bts = pool_elt_at_index (bt->samples, bt->tail);
+  TCP_TEST ((bts->flags & TCP_BTS_IS_APP_LIMITED) && bts->min_seq == 125 && bts->max_seq == 150,
+	    "second sample should be app-limited [125:150]");
 
   bt_fmt = format (0, "%U", format_tcp_bt, tc);
   TCP_TEST (vec_len (bt_fmt) > 0, "bt format should produce output");
