@@ -4,9 +4,13 @@
 
 #include <unistd.h>
 #include <fcntl.h>
+#include <string.h>
 #include <net/if.h>
+#include <sys/socket.h>
 #include <linux/if_link.h>
 #include <linux/if_ether.h>
+#include <linux/netlink.h>
+#include <rdma/rdma_netlink.h>
 
 #include <vppinfra/linux/sysfs.h>
 #include <vlib/vlib.h>
@@ -45,6 +49,199 @@ rdma_main_t rdma_main;
 #define rdma_log(lvl, dev, f, ...) \
    rdma_log__((lvl), (dev), "%s (%d): " f, strerror(errno), errno, ##__VA_ARGS__)
 
+#define RDMA_NL_ATTR_TYPE(a)	((a)->nla_type & RDMA_NLA_TYPE_MASK)
+#define RDMA_NL_ATTR_DATA(a)	((void *) ((char *) (a) + NLA_HDRLEN))
+#define RDMA_NL_ATTR_PAYLOAD(a) ((int) ((a)->nla_len - NLA_HDRLEN))
+#define RDMA_NL_ATTR_OK(a, len)                                                                    \
+  ((len) >= (int) sizeof (struct nlattr) && (a)->nla_len >= sizeof (struct nlattr) &&              \
+   (a)->nla_len <= (len))
+#define RDMA_NL_ATTR_NEXT(a, len)                                                                  \
+  ((len) -= NLA_ALIGN ((a)->nla_len), (struct nlattr *) ((char *) (a) + NLA_ALIGN ((a)->nla_len)))
+#define RDMA_NL_ARRAY_LEN(a) (sizeof (a) / sizeof ((a)[0]))
+
+static void
+rdma_nldev_parse_attrs (struct nlmsghdr *h, struct nlattr **tb, u32 tb_len)
+{
+  struct nlattr *a = (struct nlattr *) NLMSG_DATA (h);
+  int len = h->nlmsg_len - NLMSG_HDRLEN;
+
+  clib_memset (tb, 0, tb_len * sizeof (tb[0]));
+  while (RDMA_NL_ATTR_OK (a, len))
+    {
+      u16 type = RDMA_NL_ATTR_TYPE (a);
+
+      if (type < tb_len)
+	tb[type] = a;
+      a = RDMA_NL_ATTR_NEXT (a, len);
+    }
+}
+
+static uword
+rdma_nldev_attr_u32 (struct nlattr **tb, u32 type, u32 *value)
+{
+  if (!tb[type] || RDMA_NL_ATTR_PAYLOAD (tb[type]) < sizeof (*value))
+    return 0;
+
+  clib_memcpy (value, RDMA_NL_ATTR_DATA (tb[type]), sizeof (*value));
+  return 1;
+}
+
+static uword
+rdma_nldev_attr_str_is (struct nlattr *a, const char *s)
+{
+  u32 len = RDMA_NL_ATTR_PAYLOAD (a);
+  char *data = RDMA_NL_ATTR_DATA (a);
+
+  if (len && data[len - 1] == 0)
+    len--;
+
+  return strlen (s) == len && memcmp (data, s, len) == 0;
+}
+
+typedef enum
+{
+  RDMA_NLDEV_MATCH_U32,
+  RDMA_NLDEV_MATCH_STRING,
+} rdma_nldev_match_type_t;
+
+static clib_error_t *
+rdma_nldev_lookup_u32 (int fd, u32 seq, u8 command, u16 request_attr, const u32 *request_value,
+		       u16 match_attr, rdma_nldev_match_type_t match_type, const void *match_value,
+		       u16 result_attr, u32 *result, uword *found)
+{
+  struct
+  {
+    struct nlmsghdr h;
+    struct nlattr a;
+    u32 value;
+  } req = {};
+
+  *found = 0;
+  req.h.nlmsg_len = NLMSG_LENGTH (0);
+  req.h.nlmsg_type = RDMA_NL_GET_TYPE (RDMA_NL_NLDEV, command);
+  req.h.nlmsg_flags = NLM_F_REQUEST | NLM_F_DUMP;
+  req.h.nlmsg_seq = seq;
+
+  if (request_value)
+    {
+      req.h.nlmsg_len = NLMSG_LENGTH (NLA_ALIGN (NLA_HDRLEN + sizeof (req.value)));
+      req.a.nla_type = request_attr;
+      req.a.nla_len = NLA_HDRLEN + sizeof (req.value);
+      req.value = *request_value;
+    }
+
+  if (send (fd, &req, req.h.nlmsg_len, 0) < 0)
+    return clib_error_return_unix (0, "RDMA netlink send");
+
+  while (1)
+    {
+      char buf[8192];
+      ssize_t n = recv (fd, buf, sizeof (buf), 0);
+
+      if (n < 0)
+	return clib_error_return_unix (0, "RDMA netlink dump recv");
+
+      for (struct nlmsghdr *h = (struct nlmsghdr *) buf; NLMSG_OK (h, n); h = NLMSG_NEXT (h, n))
+	{
+	  struct nlattr *tb[RDMA_NLDEV_ATTR_MAX + 1];
+	  u32 match_u32;
+
+	  if (h->nlmsg_seq != seq)
+	    continue;
+
+	  if (h->nlmsg_type == NLMSG_DONE)
+	    return 0;
+
+	  if (h->nlmsg_type == NLMSG_ERROR)
+	    {
+	      struct nlmsgerr *e = NLMSG_DATA (h);
+
+	      if (e->error)
+		return clib_error_return (0, "RDMA netlink dump: %s", strerror (-e->error));
+	      continue;
+	    }
+
+	  rdma_nldev_parse_attrs (h, tb, RDMA_NL_ARRAY_LEN (tb));
+	  if (match_type == RDMA_NLDEV_MATCH_STRING)
+	    {
+	      if (!tb[match_attr] || !rdma_nldev_attr_str_is (tb[match_attr], match_value))
+		continue;
+	    }
+	  else if (!rdma_nldev_attr_u32 (tb, match_attr, &match_u32) ||
+		   match_u32 != *(const u32 *) match_value)
+	    continue;
+
+	  if (!rdma_nldev_attr_u32 (tb, result_attr, result))
+	    continue;
+
+	  *found = 1;
+	}
+    }
+}
+
+static clib_error_t *
+rdma_nldev_port_from_ifname (const char *ifname, const char *ibdev_name, int ibdev_index,
+			     u8 *port_num)
+{
+  int fd;
+  u32 if_index, dev_index = 0;
+  u32 seq = 1;
+  u32 port_index;
+  uword found;
+  clib_error_t *err = 0;
+
+  if_index = if_nametoindex (ifname);
+  if (!if_index)
+    return clib_error_return_unix (0, "if_nametoindex(%s) failed", ifname);
+
+  fd = socket (AF_NETLINK, SOCK_RAW, NETLINK_RDMA);
+  if (fd < 0)
+    return clib_error_return_unix (0, "RDMA netlink socket");
+
+  if (ibdev_index < 0)
+    {
+      err = rdma_nldev_lookup_u32 (fd, seq++, RDMA_NLDEV_CMD_GET, 0, 0, RDMA_NLDEV_ATTR_DEV_NAME,
+				   RDMA_NLDEV_MATCH_STRING, ibdev_name, RDMA_NLDEV_ATTR_DEV_INDEX,
+				   &dev_index, &found);
+      if (err)
+	goto done;
+      if (!found)
+	{
+	  err = clib_error_return (0, "cannot find RDMA device %s", ibdev_name);
+	  goto done;
+	}
+    }
+  else
+    dev_index = ibdev_index;
+
+  err = rdma_nldev_lookup_u32 (fd, seq, RDMA_NLDEV_CMD_PORT_GET, RDMA_NLDEV_ATTR_DEV_INDEX,
+			       &dev_index, RDMA_NLDEV_ATTR_NDEV_INDEX, RDMA_NLDEV_MATCH_U32,
+			       &if_index, RDMA_NLDEV_ATTR_PORT_INDEX, &port_index, &found);
+  if (err)
+    goto done;
+
+  if (!found)
+    {
+      err = clib_error_return (0, "cannot map host-if %s to RDMA device %u", ifname, dev_index);
+      goto done;
+    }
+
+  if (port_index > 255)
+    {
+      err = clib_error_return (0,
+			       "RDMA port %u exceeds supported "
+			       "port-num range",
+			       port_index);
+      goto done;
+    }
+
+  *port_num = port_index;
+
+done:
+  close (fd);
+  return err;
+}
+
 static struct ibv_flow *
 rdma_rxq_init_flow (const rdma_device_t * rd, struct ibv_qp *qp,
 		    const mac_address_t * mac, const mac_address_t * mask,
@@ -59,7 +256,7 @@ rdma_rxq_init_flow (const rdma_device_t * rd, struct ibv_qp *qp,
 
   memset (&fa, 0, sizeof (fa));
   fa.attr.num_of_specs = 1;
-  fa.attr.port = 1;
+  fa.attr.port = rd->port_num;
   fa.attr.flags = flags;
   fa.spec_eth.type = IBV_FLOW_SPEC_ETH;
   fa.spec_eth.size = sizeof (struct ibv_flow_spec_eth);
@@ -285,10 +482,9 @@ rdma_async_event_read_ready (clib_file_t * f)
   switch (event.event_type)
     {
     case IBV_EVENT_PORT_ACTIVE:
-      rdma_update_state (vnm, rd, event.element.port_num);
-      break;
     case IBV_EVENT_PORT_ERR:
-      rdma_update_state (vnm, rd, event.element.port_num);
+      if (event.element.port_num == rd->port_num)
+	rdma_update_state (vnm, rd, rd->port_num);
       break;
     case IBV_EVENT_DEVICE_FATAL:
       rd->flags &= ~RDMA_DEVICE_F_LINK_UP;
@@ -747,7 +943,7 @@ rdma_txq_init (vlib_main_t * vm, rdma_device_t * rd, u16 qid, u32 n_desc)
   memset (&qpa, 0, sizeof (qpa));
   qp_flags = IBV_QP_STATE | IBV_QP_PORT;
   qpa.qp_state = IBV_QPS_INIT;
-  qpa.port_num = 1;
+  qpa.port_num = rd->port_num;
   if (ibv_modify_qp (txq->qp, &qpa, qp_flags) != 0)
     return clib_error_return_unix (0, "Modify QP (init) Failed");
 
@@ -894,6 +1090,8 @@ rdma_create_if (vlib_main_t * vm, rdma_create_if_args_t * args)
   struct ibv_device **dev_list;
   int n_devs;
   u8 *s;
+  const char *ibdev_name = 0;
+  int ibdev_index = -1;
   u16 qid;
   int i;
 
@@ -935,6 +1133,7 @@ rdma_create_if (vlib_main_t * vm, rdma_create_if_args_t * args)
   rd->dev_instance = rd - rm->devices;
   rd->per_interface_next_index = VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT;
   rd->linux_ifname = format (0, "%s", args->ifname);
+  rd->port_num = args->port_num ? args->port_num : 1;
 
   if (!args->name || 0 == args->name[0])
     rd->name = format (0, "%s/%d", args->ifname, rd->dev_instance);
@@ -973,7 +1172,26 @@ rdma_create_if (vlib_main_t * vm, rdma_create_if_args_t * args)
 	continue;
 
       if ((rd->ctx = ibv_open_device (dev_list[i])))
-	break;
+	{
+	  ibdev_name = ibv_get_device_name (dev_list[i]);
+	  ibdev_index = ibv_get_device_index (dev_list[i]);
+	  break;
+	}
+    }
+
+  if (rd->ctx == 0)
+    {
+      args->error = clib_error_return_unix (0, "Device Open Failed");
+      goto err2;
+    }
+
+  if (!args->port_num)
+    {
+      /* Static libibverbs builds without netlink support return -1. */
+      args->error =
+	rdma_nldev_port_from_ifname ((char *) args->ifname, ibdev_name, ibdev_index, &rd->port_num);
+      if (args->error)
+	goto err2;
     }
 
   if (args->mode != RDMA_MODE_IBV)
@@ -1030,7 +1248,7 @@ are explicitly disabled, and if the interface supports it.*/
   if ((args->error = rdma_async_event_init (rd)))
     goto err3;
 
-  rdma_update_state (vnm, rd, 1);
+  rdma_update_state (vnm, rd, rd->port_num);
 
   vnet_sw_interface_t *sw = vnet_get_hw_sw_interface (vnm, rd->hw_if_index);
   args->sw_if_index = rd->sw_if_index = sw->sw_if_index;
