@@ -20,7 +20,7 @@ rdma_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 {
   rdma_create_if_args_t args;
 
-  if (!unformat_user (input, unformat_rdma_create_if_args, &args))
+  if (!unformat_user (input, unformat_rdma_create_if_args, &args, 1))
     return clib_error_return (0, "unknown input `%U'",
 			      format_unformat_error, input);
 
@@ -37,6 +37,7 @@ VLIB_CLI_COMMAND (rdma_create_command, static) = {
   .short_help = "create interface rdma <host-if ifname> [name <name>]"
 		" [rx-queue-size <size>] [tx-queue-size <size>]"
 		" [num-rx-queues <size>] [mode <auto|ibv|dv>]"
+		" [port-num <n>]"
 		" [no-multi-seg] [no-striding]"
 		" [max-pktlen <size>]",
   .function = rdma_create_command_fn,
