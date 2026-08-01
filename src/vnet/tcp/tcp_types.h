@@ -152,14 +152,38 @@ typedef struct _scoreboard_trace_elt
   u32 group;
 } scoreboard_trace_elt_t;
 
+typedef struct tcp_rxt_range_
+{
+  u32 start;  /**< Start sequence number */
+  u32 end;    /**< End sequence number */
+  u8 is_lost; /**< Range is considered lost */
+} tcp_rxt_range_t;
+
 typedef struct _sack_scoreboard_hole
 {
+  union
+  {
+    tcp_rxt_range_t range; /**< Retransmission range */
+    struct
+    {
+      u32 start;
+      u32 end;
+      u8 is_lost;
+    };
+  };
   u32 next;		/**< Index for next entry in linked list */
   u32 prev;		/**< Index for previous entry in linked list */
-  u32 start;		/**< Start sequence number */
-  u32 end;		/**< End sequence number */
-  u8 is_lost;		/**< Mark hole as lost */
 } sack_scoreboard_hole_t;
+
+STATIC_ASSERT (STRUCT_OFFSET_OF (sack_scoreboard_hole_t, range.start) ==
+		 STRUCT_OFFSET_OF (sack_scoreboard_hole_t, start),
+	       "scoreboard range and start offsets must match");
+STATIC_ASSERT (STRUCT_OFFSET_OF (sack_scoreboard_hole_t, range.end) ==
+		 STRUCT_OFFSET_OF (sack_scoreboard_hole_t, end),
+	       "scoreboard range and end offsets must match");
+STATIC_ASSERT (STRUCT_OFFSET_OF (sack_scoreboard_hole_t, range.is_lost) ==
+		 STRUCT_OFFSET_OF (sack_scoreboard_hole_t, is_lost),
+	       "scoreboard range and is_lost offsets must match");
 
 typedef struct _sack_scoreboard
 {
@@ -207,6 +231,7 @@ typedef enum tcp_ack_flag_
   TCP_ACK_F_DSACK = 1 << 1,
   TCP_ACK_F_DSACK_SPURIOUS = 1 << 2,
   TCP_ACK_F_EIFEL_SPURIOUS = 1 << 3,
+  TCP_ACK_F_BT_PROCESSED = 1 << 4,
   TCP_ACK_F_SPURIOUS = TCP_ACK_F_DSACK_SPURIOUS | TCP_ACK_F_EIFEL_SPURIOUS,
 } __clib_packed tcp_ack_flag_t;
 
@@ -218,6 +243,8 @@ typedef enum tcp_bts_flags_
   TCP_BTS_IS_APP_LIMITED = 1 << 1,
   TCP_BTS_IS_SACKED = 1 << 2,
   TCP_BTS_IS_RXT_LOST = 1 << 3,
+  TCP_BTS_IS_DELIVERED = 1 << 4,
+  TCP_BTS_IS_LOST = 1 << 5,
 } __clib_packed tcp_bts_flags_t;
 
 typedef struct tcp_bt_sample_
@@ -248,7 +275,7 @@ typedef struct tcp_rate_sample_
   u32 bytes_acked;		/**< Bytes cumulatively acknowledged now */
   u32 acked_and_sacked;		/**< Bytes acked + sacked now */
   u32 last_sacked_bytes;	/**< Number of bytes newly sacked */
-  u32 last_bytes_delivered;	/**< Previously sacked bytes cumulatively acked */
+  u32 last_bytes_delivered;	/**< Previously delivered bytes acked/sacked now */
   u32 rxt_sacked;		/**< Retransmitted bytes newly delivered */
   u32 last_lost;		/**< Bytes lost now */
   u32 lost;			/**< Number of bytes lost over interval */
@@ -263,6 +290,9 @@ typedef struct tcp_byte_tracker_
   u32 head;			/**< Head of samples linked list */
   u32 tail;			/**< Tail of samples linked list */
   u32 last_ooo;			/**< Cached last ooo sample */
+  u32 cur_rxt;			/**< Current retransmission sample */
+  u32 cur_rxt_end;		/**< Cached range end; mutations reset to high_rxt */
+  u32 sack_loss_high;		/**< Upper edge of SACK-derived lost prefix */
 } tcp_byte_tracker_t;
 
 typedef enum _tcp_cc_algorithm_type
