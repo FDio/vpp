@@ -201,6 +201,7 @@ typedef struct
   u32 cqe_comp_supported_formats;
   rdma_rss4_t rss4;
   rdma_rss6_t rss6;
+  u8 port_num;
 
   struct ibv_context *ctx;
   struct ibv_pd *pd;
@@ -270,6 +271,7 @@ typedef struct
   u8 no_multi_seg;
   u8 disable_striding_rq;
   u8 no_rx_cksum;
+  u8 port_num;
   u16 max_pktlen;
   rdma_rss4_t rss4;
   rdma_rss6_t rss6;
