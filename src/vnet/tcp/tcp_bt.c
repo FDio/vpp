@@ -60,7 +60,7 @@ bt_alloc_sample (tcp_byte_tracker_t * bt, u32 min_seq, u32 max_seq)
 }
 
 static void
-bt_free_sample (tcp_byte_tracker_t * bt, tcp_bt_sample_t * bts)
+bt_free_sample (tcp_byte_tracker_t *bt, tcp_bt_sample_t *bts)
 {
   if (bt->last_ooo == bt_sample_index (bt, bts))
     bt->last_ooo = TCP_BTS_INVALID_INDEX;
@@ -241,17 +241,15 @@ tcp_bt_is_sane (tcp_byte_tracker_t * bt)
   while (bts)
     {
       tmp = bt_lookup_seq (bt, bts->min_seq);
-      if (!tmp)
-	return 0;
-      if (tmp != bts)
+      if (!tmp || tmp != bts)
 	return 0;
       tmp = bt_next_sample (bt, bts);
       if (tmp)
 	{
 	  if (tmp->prev != bt_sample_index (bt, bts))
 	    {
-	      clib_warning ("next %u thinks prev is %u should be %u",
-			    bts->next, tmp->prev, bt_sample_index (bt, bts));
+	      clib_warning ("next %u thinks prev is %u should be %u", bts->next, tmp->prev,
+			    bt_sample_index (bt, bts));
 	      return 0;
 	    }
 	  if (!seq_lt (bts->min_seq, tmp->min_seq))
@@ -266,6 +264,7 @@ tcp_bt_is_sane (tcp_byte_tracker_t * bt)
 	}
       bts = tmp;
     }
+
   return 1;
 }
 
@@ -367,7 +366,7 @@ bt_rxt_range_end (tcp_connection_t *tc, tcp_bt_sample_t *bts, u32 end, tcp_bts_f
  * map to rxt_flags. */
 static void
 bt_track_rxt_range (tcp_connection_t *tc, tcp_bt_sample_t *start_bts, u32 start, u32 end,
-		    tcp_bts_flags_t rxt_flags)
+		    tcp_bts_flags_t rxt_flags, u8 track_dsack)
 {
   tcp_byte_tracker_t *bt = tc->bt;
   sack_scoreboard_t *sb = &tc->sack_sb;
@@ -403,7 +402,7 @@ bt_track_rxt_range (tcp_connection_t *tc, tcp_bt_sample_t *start_bts, u32 start,
       next_index = bt_sample_index (bt, next);
 
       cur = tcp_bt_alloc_tx_sample (tc, start, end);
-      cur->flags = rxt_flags;
+      cur->flags = rxt_flags | (track_dsack ? TCP_BTS_DSACK_TRACKED : 0);
       cur->next = next_index;
       cur->prev = prev_index;
 
@@ -445,7 +444,7 @@ bt_track_rxt_range (tcp_connection_t *tc, tcp_bt_sample_t *start_bts, u32 start,
 
   /* Have to split or tail overlap */
   cur = tcp_bt_alloc_tx_sample (tc, start, end);
-  cur->flags = rxt_flags;
+  cur->flags = rxt_flags | (track_dsack ? TCP_BTS_DSACK_TRACKED : 0);
   cur->prev = bts_index;
   cur_index = bt_sample_index (bt, cur);
 
@@ -496,7 +495,7 @@ bt_track_rxt_range (tcp_connection_t *tc, tcp_bt_sample_t *start_bts, u32 start,
 }
 
 static_always_inline tcp_bt_sample_t *
-bt_rxt_extend_candidate (tcp_connection_t *tc, u32 start, tcp_bt_sample_t **next)
+bt_rxt_extend_candidate (tcp_connection_t *tc, u32 start, u8 track_dsack, tcp_bt_sample_t **next)
 {
   tcp_byte_tracker_t *bt = tc->bt;
   tcp_bt_sample_t *bts, *last;
@@ -511,6 +510,7 @@ bt_rxt_extend_candidate (tcp_connection_t *tc, u32 start, tcp_bt_sample_t **next
     return 0;
 
   rxt_flags = bt_rxt_flags (tc, bts);
+  rxt_flags |= track_dsack ? TCP_BTS_DSACK_TRACKED : 0;
   if (last->flags != rxt_flags || last->tx_time != tcp_time_now_us (tc->c_thread_index))
     return 0;
 
@@ -526,11 +526,11 @@ bt_extend_rxt_sample (tcp_connection_t *tc, tcp_bt_sample_t *last, tcp_bt_sample
 }
 
 static_always_inline u8
-bt_try_extend_rxt_sample (tcp_connection_t *tc, u32 start, u32 end)
+bt_try_extend_rxt_sample (tcp_connection_t *tc, u32 start, u32 end, u8 track_dsack)
 {
   tcp_bt_sample_t *last, *next;
 
-  last = bt_rxt_extend_candidate (tc, start, &next);
+  last = bt_rxt_extend_candidate (tc, start, track_dsack, &next);
   if (!last || seq_gt (end, next->max_seq))
     return 0;
 
@@ -538,13 +538,13 @@ bt_try_extend_rxt_sample (tcp_connection_t *tc, u32 start, u32 end)
   return 1;
 }
 
-static void
-bt_track_rxt_ranges (tcp_connection_t *tc, u32 start, u32 end)
+static u32
+bt_track_rxt_ranges (tcp_connection_t *tc, u32 start, u32 end, u8 track_dsack)
 {
   tcp_byte_tracker_t *bt = tc->bt;
   tcp_bt_sample_t *bts, *last, *next;
   tcp_bts_flags_t rxt_flags;
-  u32 range_end;
+  u32 range_end, tracked = 0;
 
   /* A retransmit can cross one or more ranges the peer already sacked. Record every unsacked
    * sub-range sent so retransmit delivery and rtt ambiguity remain byte exact. */
@@ -566,26 +566,64 @@ bt_track_rxt_ranges (tcp_connection_t *tc, u32 start, u32 end)
 
       /* range_end is already known to be homogeneous, so extending through
        * multiple compatible source samples needs no second boundary scan. */
-      last = bt_rxt_extend_candidate (tc, start, &next);
+      last = bt_rxt_extend_candidate (tc, start, track_dsack, &next);
       if (last && next == bts)
 	bt_extend_rxt_sample (tc, last, bts, range_end);
       else
-	bt_track_rxt_range (tc, bts, start, range_end, rxt_flags);
+	bt_track_rxt_range (tc, bts, start, range_end, rxt_flags, track_dsack);
+      tracked += range_end - start;
       start = range_end;
     }
+
+  return tracked;
 }
 
 void
 tcp_bt_track_rxt (tcp_connection_t *tc, u32 start, u32 end)
 {
+  tcp_byte_tracker_t *bt = tc->bt;
+  tcp_bt_sample_t *bts, *scan;
+  u32 tracked;
+  u8 dsack_overlap = 0;
+  u8 track_dsack = tcp_opts_sack_permitted (&tc->rcv_opts) &&
+		   !(tc->dsack_flags & TCP_DSACK_UNDO_DISABLED) && tcp_in_cong_recovery (tc);
+
   ASSERT (seq_lt (start, end));
+
+  bts = bt_lookup_seq (bt, start);
+  ASSERT (bts != 0 && seq_geq (start, bts->min_seq) && seq_lt (start, bts->max_seq));
+
+  if (track_dsack)
+    {
+      scan = bts;
+      while (scan && seq_lt (scan->min_seq, end))
+	{
+	  dsack_overlap |= !!(scan->flags & (TCP_BTS_IS_SACKED | TCP_BTS_DSACK_TRACKED));
+	  scan = bt_next_sample (bt, scan);
+	}
+      if (dsack_overlap)
+	tc->dsack_flags |= TCP_DSACK_INELIGIBLE;
+    }
+  else
+    track_dsack = 0;
 
   /* Consecutive homogeneous retransmits can extend the last sample without
    * an rb-tree lookup or a new allocation. */
-  if (bt_try_extend_rxt_sample (tc, start, end))
-    return;
+  if (bt_try_extend_rxt_sample (tc, start, end, track_dsack))
+    tracked = end - start;
+  else
+    tracked = bt_track_rxt_ranges (tc, start, end, track_dsack);
 
-  bt_track_rxt_ranges (tc, start, end);
+  if (track_dsack && tracked)
+    {
+      if (!(tc->dsack_flags & TCP_DSACK_HISTORY))
+	{
+	  tc->dsack_recovery_ack = tc->snd_una;
+	  tc->dsack_flags |= TCP_DSACK_HISTORY;
+	}
+      ASSERT (tc->dsack_pending_bytes <= (u32) ~0 - tracked);
+      tc->dsack_pending_bytes += tracked;
+    }
 }
 
 static void
@@ -1181,6 +1219,88 @@ tcp_bt_last_rxt_range (tcp_connection_t *tc, tcp_rxt_range_t *range)
   return 1;
 }
 
+u32
+tcp_bt_dsack_mark_duplicate (tcp_connection_t *tc, u32 start, u32 end)
+{
+  tcp_byte_tracker_t *bt = tc->bt;
+  tcp_bt_sample_t *bts;
+  u32 bts_index, matched = 0, newly_duplicate = 0;
+  u32 active_start = start, overlap_start, overlap_end;
+
+  /* ACKed samples are no longer retained. Match their D-SACK evidence
+   * against the recovery boundary and account it with the aggregate. */
+  if (seq_lt (active_start, tc->snd_una))
+    {
+      overlap_end = seq_lt (end, tc->snd_una) ? end : tc->snd_una;
+      overlap_start = seq_max (active_start, tc->dsack_recovery_ack);
+      if (seq_lt (overlap_start, overlap_end))
+	{
+	  newly_duplicate += overlap_end - overlap_start;
+	  matched += overlap_end - overlap_start;
+	}
+      active_start = overlap_end;
+    }
+
+  if (seq_lt (active_start, end))
+    bts = bt_lookup_seq (bt, active_start);
+  else
+    bts = 0;
+
+  while (bts && seq_lt (bts->min_seq, end))
+    {
+      overlap_start = seq_max (active_start, bts->min_seq);
+      overlap_end = seq_lt (end, bts->max_seq) ? end : bts->max_seq;
+      if (!seq_lt (overlap_start, overlap_end) || !(bts->flags & TCP_BTS_DSACK_TRACKED))
+	goto next;
+
+      matched += overlap_end - overlap_start;
+      if (bts->flags & TCP_BTS_DSACK_DUPLICATE)
+	goto next;
+
+      if (seq_gt (overlap_start, bts->min_seq))
+	bts = bt_split_sample (bt, bts, overlap_start);
+      if (seq_lt (overlap_end, bts->max_seq))
+	{
+	  bts_index = bt_sample_index (bt, bts);
+	  bt_split_sample (bt, bts, overlap_end);
+	  bts = bt_get_sample (bt, bts_index);
+	}
+
+      bts->flags |= TCP_BTS_DSACK_DUPLICATE;
+      newly_duplicate += overlap_end - overlap_start;
+
+    next:
+      bts = bt_next_sample (bt, bts);
+    }
+
+  tc->dsack_pending_bytes -= clib_min (tc->dsack_pending_bytes, newly_duplicate);
+
+  return matched;
+}
+
+u8
+tcp_bt_dsack_all_duplicate (tcp_connection_t *tc)
+{
+  return (tc->dsack_flags & TCP_DSACK_HISTORY) && !tc->dsack_pending_bytes;
+}
+
+void
+tcp_bt_dsack_recovery_clear (tcp_connection_t *tc)
+{
+  tcp_byte_tracker_t *bt = tc->bt;
+  tcp_bt_sample_t *bts;
+
+  bts = bt_get_sample (bt, bt->head);
+  while (bts)
+    {
+      bts->flags &= ~(TCP_BTS_DSACK_TRACKED | TCP_BTS_DSACK_DUPLICATE);
+      bts = bt_next_sample (bt, bts);
+    }
+  tc->dsack_rxt = 0;
+  tc->dsack_flags &= TCP_DSACK_UNDO_DISABLED;
+  tc->dsack_recovery_ack = 0;
+}
+
 static void
 tcp_bt_process_ack (tcp_connection_t *tc, tcp_rate_sample_t *rs, u32 data_acked)
 {
@@ -1262,6 +1382,7 @@ tcp_bt_flush_samples (tcp_connection_t * tc)
       bt_free_sample (bt, bts);
       bts = next;
     }
+  tcp_bt_dsack_recovery_clear (tc);
 }
 
 void
@@ -1269,6 +1390,9 @@ tcp_bt_cleanup (tcp_connection_t * tc)
 {
   tcp_byte_tracker_t *bt = tc->bt;
 
+  tc->dsack_rxt = 0;
+  tc->dsack_flags &= TCP_DSACK_UNDO_DISABLED;
+  tc->dsack_recovery_ack = 0;
   rb_tree_free_nodes (&bt->sample_lookup);
   pool_free (bt->samples);
   clib_mem_free (bt);
@@ -1306,7 +1430,10 @@ tcp_bt_enable (tcp_connection_t *tc, u8 enable)
     return -1;
 
   if (enable)
-    tcp_bt_init (tc);
+    {
+      tcp_dsack_recovery_clear (tc);
+      tcp_bt_init (tc);
+    }
   else
     tcp_bt_cleanup (tc);
   return 0;
