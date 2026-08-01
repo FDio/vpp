@@ -405,8 +405,7 @@ tcp_update_rtt (tcp_connection_t * tc, tcp_rate_sample_t * rs, u32 ack)
   if (tcp_in_cong_recovery (tc))
     {
       /* Accept rtt estimates for samples that have not been retransmitted */
-      if (!(tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE)
-	  || (rs->flags & TCP_BTS_IS_RXT))
+      if (!(tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER) || (rs->flags & TCP_BTS_IS_RXT))
 	goto done;
       if (rs->rtt_time)
 	tcp_estimate_rtt_us (tc, rs->rtt_time);
@@ -830,7 +829,7 @@ tcp_handle_old_ack (tcp_connection_t *tc, tcp_rate_sample_t *rs, u32 ack)
       !(rs->ack_flags & TCP_ACK_F_DSACK_SPURIOUS))
     return;
 
-  if (tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE)
+  if (tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER)
     tcp_bt_sample_delivery_rate (tc, rs);
   else
     rs->acked_and_sacked = rs->last_sacked_bytes;
@@ -918,7 +917,7 @@ tcp_rcv_ack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc, vlib_buffer_t * b,
   tc->snd_una = vnet_buffer (b)->tcp.ack_number;
   tcp_validate_txf_size (tc, rs.bytes_acked);
 
-  if (tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE)
+  if (tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER)
     tcp_bt_sample_delivery_rate (tc, &rs);
   else
     rs.acked_and_sacked = rs.bytes_acked + rs.last_sacked_bytes - rs.last_bytes_delivered;

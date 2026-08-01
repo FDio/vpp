@@ -82,7 +82,7 @@ typedef enum _tcp_timers
 
 /** Connection configuration flags */
 #define foreach_tcp_cfg_flag                                                                       \
-  _ (RATE_SAMPLE, "Rate sampling")                                                                 \
+  _ (BYTE_TRACKER, "Byte tracker")                                                                 \
   _ (NO_CSUM_OFFLOAD, "No csum offload")                                                           \
   _ (NO_TSO, "TSO off")                                                                            \
   _ (TSO, "TSO")                                                                                   \
