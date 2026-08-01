@@ -62,6 +62,9 @@ bt_alloc_sample (tcp_byte_tracker_t * bt, u32 min_seq, u32 max_seq)
 static void
 bt_free_sample (tcp_byte_tracker_t * bt, tcp_bt_sample_t * bts)
 {
+  if (bt->last_ooo == bt_sample_index (bt, bts))
+    bt->last_ooo = TCP_BTS_INVALID_INDEX;
+
   if (bts->prev != TCP_BTS_INVALID_INDEX)
     {
       tcp_bt_sample_t *prev = bt_prev_sample (bt, bts);
@@ -293,12 +296,12 @@ tcp_bt_track_tx (tcp_connection_t * tc, u32 len)
 {
   tcp_byte_tracker_t *bt = tc->bt;
   tcp_bt_sample_t *bts, *tail;
+  tcp_bts_flags_t tx_flags = tc->app_limited ? TCP_BTS_IS_APP_LIMITED : 0;
   u32 bts_index;
 
   tail = bt_get_sample (bt, bt->tail);
-  if (tail && tail->max_seq == tc->snd_nxt
-      && !(tail->flags & TCP_BTS_IS_SACKED)
-      && tail->tx_time == tcp_time_now_us (tc->c_thread_index))
+  if (tail && tail->max_seq == tc->snd_nxt && tail->flags == tx_flags &&
+      tail->tx_time == tcp_time_now_us (tc->c_thread_index))
     {
       tail->max_seq += len;
       return;
@@ -642,25 +645,17 @@ void
 tcp_bt_flush_samples (tcp_connection_t * tc)
 {
   tcp_byte_tracker_t *bt = tc->bt;
-  tcp_bt_sample_t *bts;
-  u32 *samples = 0, *si;
+  tcp_bt_sample_t *bts, *next;
 
   ASSERT (pool_elts (bt->samples) != 0);
 
-  vec_validate (samples, pool_elts (bt->samples) - 1);
-  vec_reset_length (samples);
-
-  pool_foreach (bts, bt->samples)  {
-    vec_add1 (samples, bts - bt->samples);
-  }
-
-  vec_foreach (si, samples)
-  {
-    bts = bt_get_sample (bt, *si);
-    bt_free_sample (bt, bts);
-  }
-
-  vec_free (samples);
+  bts = bt_get_sample (bt, bt->head);
+  while (bts)
+    {
+      next = bt_next_sample (bt, bts);
+      bt_free_sample (bt, bts);
+      bts = next;
+    }
 }
 
 void
@@ -684,6 +679,7 @@ tcp_bt_init (tcp_connection_t * tc)
 
   rb_tree_init (&bt->sample_lookup);
   bt->head = bt->tail = TCP_BTS_INVALID_INDEX;
+  bt->last_ooo = TCP_BTS_INVALID_INDEX;
   tc->bt = bt;
 }
 
