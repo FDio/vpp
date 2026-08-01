@@ -60,7 +60,7 @@ bt_alloc_sample (tcp_byte_tracker_t * bt, u32 min_seq, u32 max_seq)
 }
 
 static void
-bt_free_sample (tcp_byte_tracker_t * bt, tcp_bt_sample_t * bts)
+bt_free_sample (tcp_byte_tracker_t *bt, tcp_bt_sample_t *bts)
 {
   if (bt->last_ooo == bt_sample_index (bt, bts))
     bt->last_ooo = TCP_BTS_INVALID_INDEX;
@@ -241,17 +241,15 @@ tcp_bt_is_sane (tcp_byte_tracker_t * bt)
   while (bts)
     {
       tmp = bt_lookup_seq (bt, bts->min_seq);
-      if (!tmp)
-	return 0;
-      if (tmp != bts)
+      if (!tmp || tmp != bts)
 	return 0;
       tmp = bt_next_sample (bt, bts);
       if (tmp)
 	{
 	  if (tmp->prev != bt_sample_index (bt, bts))
 	    {
-	      clib_warning ("next %u thinks prev is %u should be %u",
-			    bts->next, tmp->prev, bt_sample_index (bt, bts));
+	      clib_warning ("next %u thinks prev is %u should be %u", bts->next, tmp->prev,
+			    bt_sample_index (bt, bts));
 	      return 0;
 	    }
 	  if (!seq_lt (bts->min_seq, tmp->min_seq))
@@ -266,6 +264,7 @@ tcp_bt_is_sane (tcp_byte_tracker_t * bt)
 	}
       bts = tmp;
     }
+
   return 1;
 }
 
@@ -538,13 +537,13 @@ bt_try_extend_rxt_sample (tcp_connection_t *tc, u32 start, u32 end)
   return 1;
 }
 
-static void
+static u32
 bt_track_rxt_ranges (tcp_connection_t *tc, u32 start, u32 end)
 {
   tcp_byte_tracker_t *bt = tc->bt;
   tcp_bt_sample_t *bts, *last, *next;
   tcp_bts_flags_t rxt_flags;
-  u32 range_end;
+  u32 range_end, tracked = 0;
 
   /* A retransmit can cross one or more ranges the peer already sacked. Record every unsacked
    * sub-range sent so retransmit delivery and rtt ambiguity remain byte exact. */
@@ -571,21 +570,39 @@ bt_track_rxt_ranges (tcp_connection_t *tc, u32 start, u32 end)
 	bt_extend_rxt_sample (tc, last, bts, range_end);
       else
 	bt_track_rxt_range (tc, bts, start, range_end, rxt_flags);
+      tracked += range_end - start;
       start = range_end;
     }
+
+  return tracked;
 }
 
 void
 tcp_bt_track_rxt (tcp_connection_t *tc, u32 start, u32 end)
 {
+  u32 tracked;
+  u8 track_dsack = tcp_opts_sack_permitted (&tc->rcv_opts) &&
+		   !(tc->dsack_flags & TCP_DSACK_UNDO_DISABLED) && tcp_in_cong_recovery (tc);
+
   ASSERT (seq_lt (start, end));
 
   /* Consecutive homogeneous retransmits can extend the last sample without
    * an rb-tree lookup or a new allocation. */
   if (bt_try_extend_rxt_sample (tc, start, end))
-    return;
+    tracked = end - start;
+  else
+    tracked = bt_track_rxt_ranges (tc, start, end);
 
-  bt_track_rxt_ranges (tc, start, end);
+  if (track_dsack && tracked)
+    {
+      if (!(tc->dsack_flags & TCP_DSACK_HISTORY))
+	{
+	  tc->dsack_history_start = tc->snd_una;
+	  tc->dsack_flags |= TCP_DSACK_HISTORY;
+	}
+      ASSERT (tc->dsack_pending_bytes <= (u32) ~0 - tracked);
+      tc->dsack_pending_bytes += tracked;
+    }
 }
 
 static void
@@ -1181,6 +1198,93 @@ tcp_bt_last_rxt_range (tcp_connection_t *tc, tcp_rxt_range_t *range)
   return 1;
 }
 
+u32
+tcp_bt_dsack_mark_duplicate (tcp_connection_t *tc, u32 start, u32 end)
+{
+  tcp_byte_tracker_t *bt = tc->bt;
+  tcp_bt_sample_t *bts = 0;
+  u32 matched = 0, duplicate = 0;
+  u32 active_start = start, overlap_start, overlap_end;
+
+  /* ACKed samples are no longer retained. Match their D-SACK evidence
+   * against the recovery boundary and account it with the aggregate. */
+  if (seq_lt (active_start, tc->snd_una))
+    {
+      overlap_end = seq_min (end, tc->snd_una);
+      overlap_start = seq_max (active_start, tc->dsack_history_start);
+      if (seq_lt (overlap_start, overlap_end))
+	{
+	  duplicate += overlap_end - overlap_start;
+	  matched += overlap_end - overlap_start;
+	}
+      active_start = overlap_end;
+    }
+
+  if (seq_lt (active_start, end))
+    bts = bt_lookup_seq (bt, active_start);
+
+  while (bts && seq_lt (bts->min_seq, end))
+    {
+      overlap_start = seq_max (active_start, bts->min_seq);
+      overlap_end = seq_min (end, bts->max_seq);
+
+      if (seq_lt (overlap_start, overlap_end) && (bts->flags & TCP_BTS_IS_RXT))
+	{
+	  duplicate += overlap_end - overlap_start;
+	  matched += overlap_end - overlap_start;
+	}
+      bts = bt_next_sample (bt, bts);
+    }
+
+  tc->dsack_pending_bytes -= clib_min (tc->dsack_pending_bytes, duplicate);
+
+  return matched;
+}
+
+u8
+tcp_bt_dsack_all_duplicate (tcp_connection_t *tc)
+{
+  return (tc->dsack_flags & TCP_DSACK_HISTORY) && !tc->dsack_pending_bytes;
+}
+
+void
+tcp_bt_dsack_recovery_init (tcp_connection_t *tc)
+{
+  tcp_byte_tracker_t *bt = tc->bt;
+  tcp_bt_sample_t *bts;
+  u32 start;
+
+  if (!tcp_opts_sack_permitted (&tc->rcv_opts) || (tc->dsack_flags & TCP_DSACK_UNDO_DISABLED))
+    return;
+
+  bts = bt_get_sample (bt, bt->head);
+  while (bts)
+    {
+      if ((bts->flags & (TCP_BTS_IS_RXT | TCP_BTS_IS_SACKED | TCP_BTS_IS_DELIVERED)) ==
+	  TCP_BTS_IS_RXT)
+	{
+	  start = seq_max (bts->min_seq, tc->snd_una);
+	  if (seq_lt (start, bts->max_seq))
+	    tc->dsack_pending_bytes += bts->max_seq - start;
+	}
+      bts = bt_next_sample (bt, bts);
+    }
+
+  if (tc->dsack_pending_bytes)
+    {
+      tc->dsack_history_start = tc->snd_una;
+      tc->dsack_flags |= TCP_DSACK_HISTORY;
+    }
+}
+
+void
+tcp_bt_dsack_recovery_clear (tcp_connection_t *tc)
+{
+  tc->dsack_rxt = 0;
+  tc->dsack_pending_bytes = 0;
+  tc->dsack_flags &= TCP_DSACK_UNDO_DISABLED;
+}
+
 static void
 tcp_bt_process_ack (tcp_connection_t *tc, tcp_rate_sample_t *rs, u32 data_acked)
 {
@@ -1262,6 +1366,7 @@ tcp_bt_flush_samples (tcp_connection_t * tc)
       bt_free_sample (bt, bts);
       bts = next;
     }
+  tcp_bt_dsack_recovery_clear (tc);
 }
 
 void
@@ -1269,6 +1374,9 @@ tcp_bt_cleanup (tcp_connection_t * tc)
 {
   tcp_byte_tracker_t *bt = tc->bt;
 
+  tc->dsack_rxt = 0;
+  tc->dsack_pending_bytes = 0;
+  tc->dsack_flags &= TCP_DSACK_UNDO_DISABLED;
   rb_tree_free_nodes (&bt->sample_lookup);
   pool_free (bt->samples);
   clib_mem_free (bt);
@@ -1306,7 +1414,10 @@ tcp_bt_enable (tcp_connection_t *tc, u8 enable)
     return -1;
 
   if (enable)
-    tcp_bt_init (tc);
+    {
+      tcp_dsack_recovery_clear (tc);
+      tcp_bt_init (tc);
+    }
   else
     tcp_bt_cleanup (tc);
   return 0;

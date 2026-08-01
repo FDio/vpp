@@ -10,7 +10,7 @@ static void
 tcp_cc_init_congestion (tcp_connection_t *tc)
 {
   tcp_fastrecovery_on (tc);
-  tcp_dsack_recovery_clear (tc);
+  tcp_dsack_recovery_init (tc);
   tc->snd_congestion = tc->snd_nxt;
   tc->cwnd_acc_bytes = 0;
   tc->rxt_delivered = 0;

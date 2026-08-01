@@ -215,6 +215,7 @@ typedef enum tcp_dsack_state_flag_
   TCP_DSACK_INELIGIBLE = 1,
   TCP_DSACK_UNDO_DISABLED = 1 << 1,
   TCP_DSACK_RXT_OVERFLOW = 1 << 2,
+  TCP_DSACK_HISTORY = 1 << 3,
 } __clib_packed tcp_dsack_state_flag_t;
 
 /** Retransmitted byte range retained for conservative D-SACK undo. */
@@ -431,8 +432,12 @@ typedef struct _tcp_connection
 
   tcp_errors_t errors;	/**< Soft connection errors */
 
-  tcp_dsack_rxt_t *dsack_rxt;	      /**< Retransmits retained for D-SACK undo */
-  u32 dsack_recovery_ack;	      /**< ACK at recovery exit; bounds retained history */
+  union
+  {
+    tcp_dsack_rxt_t *dsack_rxt; /**< Retransmits retained for D-SACK undo */
+    u32 dsack_history_start;	/**< Lower sequence bound for retired BT history */
+  };
+  u32 dsack_pending_bytes;	      /**< Retransmit bytes without D-SACK evidence */
   tcp_dsack_state_flag_t dsack_flags; /**< D-SACK undo state */
 
   u32 iss;		/**< initial sent sequence */
@@ -493,7 +498,9 @@ tcp_cong_recovery_off (tcp_connection_t * tc)
 #define tcp_zero_rwnd_sent_off(tc) (tc)->flags &= ~TCP_CONN_ZERO_RWND_SENT
 
 #define tcp_dsack_has_history(tc)                                                                  \
-  ((tc)->dsack_rxt != 0 || ((tc)->dsack_flags & TCP_DSACK_RXT_OVERFLOW))
+  (((tc)->cfg_flags & TCP_CFG_F_BYTE_TRACKER) ?                                                    \
+     (((tc)->dsack_flags & TCP_DSACK_HISTORY) != 0) :                                              \
+     ((tc)->dsack_rxt != 0 || ((tc)->dsack_flags & TCP_DSACK_RXT_OVERFLOW)))
 
 always_inline tcp_connection_t *
 tcp_get_connection_from_transport (transport_connection_t * tconn)
