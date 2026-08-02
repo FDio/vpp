@@ -20,6 +20,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "8b5a126b_eec265c9",
+        "filename": "src/vnet/tcp/tcp_bt.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 1022,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-08-02T21:46:24Z",
+      "side": 1,
+      "message": "you actually mean bool type to avoid the !! lower?",
+      "parentUuid": "377ea24d_d2cf6c0a",
+      "revId": "72431ea3c28b706b10ef1792ba89364f8ca88504",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "e6802ff1_a382cc74",
         "filename": "src/vnet/tcp/tcp_bt.c",
         "patchSetId": 5
