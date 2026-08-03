@@ -429,7 +429,7 @@ vp_server_attach (u8 *appns_id, u64 appns_flags, u64 appns_secret)
   vpsm->rx_callback = vp_server_rx_callback;
 
   a->api_client_index = ~0;
-  a->name = format (0, "vperf_server");
+  a->name = format (0, "vperf_srv_builtin");
   a->session_cb_vft = &vp_server_session_cb_vft;
   a->options = options;
   a->options[APP_OPTIONS_SEGMENT_SIZE] = vpsm->cfg.private_segment_size;

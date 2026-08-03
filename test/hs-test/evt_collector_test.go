@@ -94,7 +94,7 @@ func EvtCollectorSinkTest(s *VethsSuite) {
 	Log(o)
 
 	/* Attach vperf_server to the collector */
-	o = serverVpp.Vppctl("app evt-collector app vperf_server")
+	o = serverVpp.Vppctl("app evt-collector app vperf_srv_builtin")
 	Log(o)
 
 	/* Run echo client — returns after all sessions close */
