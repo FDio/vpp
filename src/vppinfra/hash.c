@@ -205,7 +205,13 @@ set_indirect_is_user (void *v, uword i, hash_pair_union_t * p, uword key)
   uword log2_bytes = 0;
 
   if (h->log2_pair_size == 0)
-    q = vec_new (hash_pair_t, 2);
+    {
+      q = vec_new (hash_pair_t, 2);
+      /* inherit mt-safety so growing/freeing this pair vector is also
+       * safe for concurrent readers of the hash */
+      if (PREDICT_FALSE (vec_is_mt_safe (v)))
+	vec_mark_mt_safe (q);
+    }
   else
     {
       log2_bytes = 1 + hash_pair_log2_bytes (h);
@@ -253,7 +259,10 @@ set_indirect (void *v, hash_pair_indirect_t * pi, uword key,
       new_len = len + 1;
       if (new_len * hash_pair_bytes (h) > (1ULL << log2_bytes))
 	{
-	  pi->pairs = clib_mem_realloc (pi->pairs, 1ULL << (log2_bytes + 1));
+	  if (PREDICT_FALSE (vec_is_mt_safe (v)))
+	    pi->pairs = clib_mem_realloc_delayed (pi->pairs, 1ULL << (log2_bytes + 1));
+	  else
+	    pi->pairs = clib_mem_realloc (pi->pairs, 1ULL << (log2_bytes + 1));
 	  log2_bytes++;
 	}
 
@@ -300,7 +309,12 @@ unset_indirect (void *v, uword i, hash_pair_t * q)
       if (is_vec)
 	vec_free (r);
       else if (r)
-	clib_mem_free (r);
+	{
+	  if (PREDICT_FALSE (vec_is_mt_safe (v)))
+	    clib_mem_free_delayed (r);
+	  else
+	    clib_mem_free (r);
+	}
     }
   else
     {
@@ -562,10 +576,12 @@ _hash_free (void *v)
 {
   hash_t *h = hash_header (v);
   hash_pair_union_t *p;
-  uword i;
+  uword i, mt_safe;
 
   if (!v)
     return v;
+
+  mt_safe = vec_is_mt_safe (v);
 
   /* We zero all freed memory in case user would be tempted to use it. */
   for (i = 0; i < hash_capacity (v); i++)
@@ -576,11 +592,19 @@ _hash_free (void *v)
       if (h->log2_pair_size == 0)
 	vec_free (p->indirect.pairs);
       else if (p->indirect.pairs)
-	clib_mem_free (p->indirect.pairs);
+	{
+	  if (PREDICT_FALSE (mt_safe))
+	    clib_mem_free_delayed (p->indirect.pairs);
+	  else
+	    clib_mem_free (p->indirect.pairs);
+	}
     }
 
   vec_free (h->is_user);
-  vec_free_header (h);
+  if (PREDICT_FALSE (mt_safe))
+    clib_mem_free_delayed (h);
+  else
+    vec_free_header (h);
 
   return 0;
 }
@@ -596,6 +620,10 @@ hash_resize_internal (void *old, uword new_size, uword free_old)
     {
       hash_t *h = old ? hash_header (old) : 0;
       new = _hash_create (new_size, h);
+      /* inherit mt-safety before inserting, so indirect pairs created
+       * during the copy are marked as well */
+      if (old && vec_is_mt_safe (old))
+	hash_mark_mt_safe (new);
       hash_foreach_pair (p, old, {
 	new = _hash_set3 (new, p->key, &p->value[0], 0);
       });
@@ -610,6 +638,35 @@ __clib_export void *
 hash_resize (void *old, uword new_size)
 {
   return hash_resize_internal (old, new_size, 1);
+}
+
+__clib_export void
+hash_mark_mt_safe (void *v)
+{
+  hash_t *h;
+  uword i;
+
+  /* mark right after hash_create; a NULL hash cannot hold the mark */
+  ASSERT (v);
+  if (!v)
+    return;
+
+  h = hash_header (v);
+  _vec_find (v)->flags |= VEC_FLAG_MT_SAFE;
+  vec_mark_mt_safe (h->is_user);
+
+  /* mark existing indirect pair vectors so their growth/free is also
+   * delayed; new ones inherit the mark on creation */
+  if (h->log2_pair_size == 0)
+    for (i = 0; i < hash_capacity (v); i++)
+      {
+	hash_pair_union_t *p;
+	if (hash_is_user (v, i))
+	  continue;
+	p = get_pair (v, i);
+	if (p->indirect.pairs)
+	  vec_mark_mt_safe (p->indirect.pairs);
+      }
 }
 
 __clib_export void *

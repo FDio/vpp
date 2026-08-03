@@ -104,7 +104,8 @@ ip4_fib_hash_table_entry_insert (ip4_fib_hash_t *fib,
 	if (NULL == hash) {
 	    hash = hash_create (32 /* elts */, sizeof (uword));
 	    hash_set_flags (hash, HASH_FLAG_NO_AUTO_SHRINK);
-
+	    /* read by workers while entries are added on the main thread */
+	    hash_mark_mt_safe (hash);
 	}
 	hash = hash_set(hash, key, fib_entry_index);
 	fib->fib_entry_by_dst_address[len] = hash;

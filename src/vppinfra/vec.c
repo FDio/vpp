@@ -91,8 +91,14 @@ _vec_realloc_internal (void *v, uword n_elts, const vec_attr_t *const attr)
 
       req_size += CLIB_VECTOR_GROW_BY_ONE ? 0 : n_data_bytes / 2;
 
-      p = clib_mem_heap_realloc_aligned (vec_get_heap (v), p, req_size,
-					 vec_get_align (v));
+      /* mt-safe vectors may have concurrent readers, so the old allocation
+       * (which includes the vector header, flags included) must only be
+       * freed once no reader can reference it anymore */
+      if (PREDICT_FALSE (_vec_find (v)->flags & VEC_FLAG_MT_SAFE))
+	p =
+	  clib_mem_heap_realloc_aligned_delayed (vec_get_heap (v), p, req_size, vec_get_align (v));
+      else
+	p = clib_mem_heap_realloc_aligned (vec_get_heap (v), p, req_size, vec_get_align (v));
       new_alloc_sz = clib_mem_size (p);
       v = p + data_offset;
 

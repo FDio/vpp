@@ -1421,6 +1421,14 @@ fib_path_list_module_init (void)
     				     /* format pair/arg */
     				     0, 0);
     fib_path_list_logger = vlib_log_register_class("fib", "path-list");
+
+    /*
+     * path-lists are read by workers (see VPP-2325/#3628: fib_path_list_get
+     * from an arp reply while the main thread grows the pool) while the
+     * pool and the DB grow on the main thread
+     */
+    pool_mark_mt_safe(fib_path_list_pool);
+    hash_mark_mt_safe(fib_path_list_db);
 }
 
 static clib_error_t *

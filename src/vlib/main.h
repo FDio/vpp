@@ -17,6 +17,8 @@
 #include <vppinfra/random_buffer.h>
 #include <vppinfra/time.h>
 
+#include <vlib/delayed_free.h>
+
 #include <pthread.h>
 
 
@@ -177,6 +179,9 @@ typedef struct vlib_main_t
   clib_thread_index_t thread_index;
   u32 numa_node;
 
+  /* last delayed-free epoch this worker acknowledged (see delayed_free.h) */
+  u64 local_epoch;
+
   /* epoll and eventfd */
   int epoll_fd;
   int wakeup_fd;
@@ -240,6 +245,10 @@ typedef struct vlib_main_t
   uword *pending_rpc_requests;
   uword *processing_rpc_requests;
   clib_spinlock_t pending_rpc_lock;
+
+  /* main thread only: delayed frees enqueued during this main loop
+   * iteration, moved to the epoch fifo by vlib_delayed_free_process() */
+  vlib_delayed_free_entry_t *pending_frees;
 
   /* buffer fault injector */
   u32 buffer_alloc_success_seed;
@@ -319,6 +328,9 @@ typedef struct vlib_global_main_t
 
   /* Hash table to record which init functions have been called. */
   uword *init_functions_called;
+
+  /* Delayed free state (see delayed_free.h). */
+  vlib_delayed_free_main_t delayed_free_main;
 
 } vlib_global_main_t;
 

@@ -442,9 +442,34 @@ clib_mem_heap_alloc_aligned_or_null (void *heap, uword size, uword align)
 				     /* os_out_of_memory */ 0);
 }
 
-__clib_export __clib_flatten void *
-clib_mem_heap_realloc_aligned (void *heap, void *p, uword new_size,
-			       uword align)
+static clib_mem_delayed_free_cb_t *clib_mem_delayed_free_cb;
+
+__clib_export void
+clib_mem_set_delayed_free_cb (clib_mem_delayed_free_cb_t *cb)
+{
+  clib_mem_delayed_free_cb = cb;
+}
+
+__clib_export __clib_flatten void
+clib_mem_heap_free_delayed (void *heap, void *p)
+{
+  clib_mem_heap_t *h = heap ? heap : clib_mem_get_heap ();
+
+  if (PREDICT_TRUE (clib_mem_delayed_free_cb != 0))
+    clib_mem_delayed_free_cb (h, p);
+  else
+    clib_mem_heap_free (h, p);
+}
+
+__clib_export __clib_flatten void
+clib_mem_free_delayed (void *p)
+{
+  clib_mem_heap_free_delayed (0, p);
+}
+
+static inline void *
+clib_mem_heap_realloc_aligned_inline (void *heap, void *p, uword new_size, uword align,
+				      int delay_free)
 {
   uword old_alloc_size;
   clib_mem_heap_t *h = heap ? heap : clib_mem_get_heap ();
@@ -476,12 +501,34 @@ clib_mem_heap_realloc_aligned (void *heap, void *p, uword new_size,
 	{
 	  clib_mem_unpoison (p, old_alloc_size);
 	  clib_memcpy_fast (new, p, clib_min (new_size, old_alloc_size));
-	  clib_mem_heap_free (h, p);
+	  if (delay_free)
+	    clib_mem_heap_free_delayed (h, p);
+	  else
+	    clib_mem_heap_free (h, p);
 	}
       p = new;
     }
 
   return p;
+}
+
+__clib_export __clib_flatten void *
+clib_mem_heap_realloc_aligned (void *heap, void *p, uword new_size, uword align)
+{
+  return clib_mem_heap_realloc_aligned_inline (heap, p, new_size, align, 0 /* delay_free */);
+}
+
+__clib_export __clib_flatten void *
+clib_mem_heap_realloc_aligned_delayed (void *heap, void *p, uword new_size, uword align)
+{
+  return clib_mem_heap_realloc_aligned_inline (heap, p, new_size, align, 1 /* delay_free */);
+}
+
+__clib_export __clib_flatten void *
+clib_mem_realloc_delayed (void *p, uword new_size)
+{
+  return clib_mem_heap_realloc_aligned_inline (0, p, new_size, CLIB_MEM_MIN_ALIGN,
+					       1 /* delay_free */);
 }
 
 __clib_export __clib_flatten void *

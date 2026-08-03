@@ -680,6 +680,8 @@ start_workers (vlib_main_t * vm)
 	      vm_clone->pending_rpc_requests = 0;
 	      vec_validate (vm_clone->pending_rpc_requests, 0);
 	      vec_set_len (vm_clone->pending_rpc_requests, 0);
+	      vm_clone->pending_frees = 0;
+	      vm_clone->local_epoch = 0;
 	      clib_memset (&vm_clone->random_buffer, 0,
 			   sizeof (vm_clone->random_buffer));
 	      clib_spinlock_init
@@ -857,6 +859,10 @@ start_workers (vlib_main_t * vm)
       clib_error_report (err);
   }
   vlib_worker_thread_barrier_release (vm);
+
+  if (vlib_num_workers () > 0)
+    vlib_delayed_free_enable (vm);
+
   return 0;
 }
 

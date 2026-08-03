@@ -145,6 +145,13 @@ ip4_create_fib_with_table_id (u32 table_id,
 
     pool_get_aligned(ip4_fibs, v4_fib, CLIB_CACHE_LINE_BYTES);
 
+    /*
+     * both pools are read by workers while they grow on the main thread;
+     * marking is idempotent, so doing it on each create is fine
+     */
+    pool_mark_mt_safe(ip4_main.fibs);
+    pool_mark_mt_safe_aligned(ip4_fibs, CLIB_CACHE_LINE_BYTES);
+
     fib_table->ft_proto = FIB_PROTOCOL_IP4;
     fib_table->ft_index = (v4_fib - ip4_fibs);
 
@@ -157,6 +164,7 @@ ip4_create_fib_with_table_id (u32 table_id,
     ASSERT(fib_table->ft_index == fib_table - ip4_main.fibs);
 
     hash_set (ip4_main.fib_index_by_table_id, table_id, fib_table->ft_index);
+    hash_mark_mt_safe (ip4_main.fib_index_by_table_id);
 
     fib_table->ft_table_id =
 	v4_fib->hash.table_id =

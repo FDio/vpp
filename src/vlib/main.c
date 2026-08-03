@@ -1507,7 +1507,16 @@ vlib_main_or_worker_loop (vlib_main_t * vm, int is_main)
 	vlib_rpc_call_main_thread_process (vm);
 
       if (!is_main)
-	vlib_worker_thread_barrier_check ();
+	{
+	  vlib_global_main_t *vgm = vlib_get_global_main ();
+	  /* Acknowledge the current delayed-free epoch: this worker no
+	   * longer references memory parked in previous epochs. Acquire
+	   * pairs with the release in vlib_delayed_free_process(). */
+	  u64 epoch = __atomic_load_n (&vgm->delayed_free_main.current_epoch, __ATOMIC_ACQUIRE);
+	  if (PREDICT_FALSE (epoch != vm->local_epoch))
+	    __atomic_store_n (&vm->local_epoch, epoch, __ATOMIC_RELEASE);
+	  vlib_worker_thread_barrier_check ();
+	}
 
       if (PREDICT_FALSE (__atomic_load_n (&vm->handoff_queue_pending_bmp, __ATOMIC_RELAXED)))
 	handoff_queues_dequeue (vm);
@@ -1712,6 +1721,14 @@ vlib_main_or_worker_loop (vlib_main_t * vm, int is_main)
 	  vm->loop_interval_start = now;
 	  vm->loop_interval_end = now + 2e-4;
 	  vm->loops_this_reporting_interval = 0;
+	}
+
+      if (is_main && vlib_num_workers () > 0)
+	{
+	  vlib_global_main_t *vgm = vlib_get_global_main ();
+	  if (PREDICT_FALSE (vec_len (vm->pending_frees) != 0 ||
+			     clib_fifo_elts (vgm->delayed_free_main.frees_by_epoch_fifo) != 0))
+	    vlib_delayed_free_process (vm);
 	}
     }
 }
