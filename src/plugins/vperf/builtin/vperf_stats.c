@@ -73,6 +73,7 @@ vp_print_periodic_stats (vlib_main_t *vm, u8 print_header, vp_test_cfg_t *cfg, v
 	{
 	  received_bytes += sess->bytes_received;
 	  sent_bytes += sess->bytes_sent;
+	  n_sessions++;
 	  if (cfg->proto == VP_PROTO_UDP)
 	    {
 	      vp_update_rtt_stats_udp (sess, &stats->rtt_stats);
@@ -80,7 +81,6 @@ vp_print_periodic_stats (vlib_main_t *vm, u8 print_header, vp_test_cfg_t *cfg, v
 	      dgrams_sent += sess->dgrams_sent;
 	      sess->rtt_stat = 0;
 	      jitter += sess->jitter;
-	      n_sessions++;
 	    }
 	  else if (cfg->proto == VP_PROTO_TCP)
 	    {
@@ -146,6 +146,8 @@ vp_print_periodic_stats (vlib_main_t *vm, u8 print_header, vp_test_cfg_t *cfg, v
 	  else
 	    vp_cli ("Interval (s)  Transmitted   Received   Throughput   Roundtrip");
 	}
+      if (cfg->proto == VP_PROTO_TCP)
+	rtt = n_sessions ? rtt / n_sessions : 0.0;
       if (cfg->report_interval_total)
 	vp_cli ("%-13.1f %-13U %-10U %+9Ub/s %+7.3fms", interval_end, format_base10, sent_bytes,
 		format_base10, received_bytes, format_base10,
