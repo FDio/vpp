@@ -5184,6 +5184,34 @@ tcp_test_delivery (vlib_main_t * vm, unformat_input_t * input)
 }
 
 static int
+tcp_test_bt_toggle (void)
+{
+  tcp_connection_t _tc = {}, *tc = &_tc;
+
+  tc->snd_una = 100;
+  tc->snd_nxt = 200;
+  TCP_TEST (tcp_bt_enable (tc, 0) == 0 && tc->bt == 0,
+	    "disabled byte tracker is a no-op with data in flight");
+  TCP_TEST (tcp_bt_enable (tc, 1) == -1 && tc->bt == 0,
+	    "cannot enable byte tracker with data in flight");
+
+  tc->snd_nxt = tc->snd_una;
+  TCP_TEST (tcp_bt_enable (tc, 1) == 0 && tc->bt != 0,
+	    "can enable byte tracker with an empty flight");
+
+  tc->snd_nxt = 200;
+  TCP_TEST (tcp_bt_enable (tc, 1) == 0 && tc->bt != 0,
+	    "enabled byte tracker is a no-op with data in flight");
+  TCP_TEST (tcp_bt_enable (tc, 0) == -1 && tc->bt != 0,
+	    "cannot disable byte tracker with data in flight");
+
+  tc->snd_una = tc->snd_nxt;
+  TCP_TEST (tcp_bt_enable (tc, 0) == 0 && tc->bt == 0,
+	    "can disable byte tracker with an empty flight");
+  return 0;
+}
+
+static int
 tcp_test_bt (vlib_main_t * vm, unformat_input_t * input)
 {
   clib_thread_index_t thread_index = 0;
@@ -5199,6 +5227,9 @@ tcp_test_bt (vlib_main_t * vm, unformat_input_t * input)
   u32 head;
   u8 *bt_fmt = 0;
   sack_block_t *blk;
+
+  if (tcp_test_bt_toggle ())
+    return 1;
 
   /* Init data structures */
   memset (tc, 0, sizeof (*tc));
