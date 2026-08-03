@@ -33,7 +33,7 @@ func testAppNsVclEcho(s *VethsSuite, proto, nsId string) {
 	vclSrvCmd := fmt.Sprintf("vperf_server -p %s -B %s %s > %s 2>&1",
 		proto, serverVethAddress, s.Ports.Port1, VclTestSrvLogFileName(srvAppCont))
 	srvAppCont.ExecServer(true, WrapCmdWithLineBuffering(vclSrvCmd))
-	srvVppCont.VppInstance.WaitForApp("vperf_server", 3)
+	srvVppCont.VppInstance.WaitForApp("vperf_srv_vcl", 3)
 
 	defaultNsApps := srvVppCont.VppInstance.Vppctl("show app ns id default")
 	AssertNotContains(defaultNsApps, "vperf_server")

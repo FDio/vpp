@@ -62,7 +62,7 @@ func EchoBuiltinClientSessionDisconnectTest(s *EchoSuite) {
 		done <- clientResult{output: o, err: err}
 	}()
 
-	clientVpp.WaitForApp("vperf_client", 5)
+	clientVpp.WaitForApp("vperf_cln_builtin", 5)
 
 	dataPort, err := strconv.Atoi(s.Ports.Port1)
 	AssertNil(err)
