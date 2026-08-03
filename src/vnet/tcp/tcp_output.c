@@ -1298,8 +1298,11 @@ tcp_cc_rxt_timeout (tcp_connection_t *tc)
 
       if (head_was_rxt)
 	{
-	  tc->rxt_delivered += n_bytes;
+	  /* rxt_delivered is aggregate state and can already include part of the range below
+	   * high_rxt. Retire no more than the retransmitted bytes still accounted in flight */
 	  ASSERT (tc->rxt_delivered <= tc->snd_rxt_bytes);
+	  n_bytes = clib_min (n_bytes, tc->snd_rxt_bytes - tc->rxt_delivered);
+	  tc->rxt_delivered += n_bytes;
 	}
     }
 

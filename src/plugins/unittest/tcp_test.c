@@ -2622,6 +2622,9 @@ typedef struct
   u32 cc_space_after_second;
   u32 snd_rxt_after_second;
   u32 rxt_delivered_after_second;
+  u32 rxt_flight_after_reneging;
+  u32 snd_rxt_after_reneging;
+  u32 rxt_delivered_after_reneging;
   u32 second_ssthresh;
   u32 second_prev_cwnd;
   u8 dsack_ineligible_after_second;
@@ -2683,6 +2686,17 @@ tcp_test_rto_rpc (void *argp)
   a->second_ssthresh = tc->ssthresh;
   a->second_prev_cwnd = tc->prev_cwnd;
   a->dsack_ineligible_after_second = (tc->dsack_flags & TCP_DSACK_INELIGIBLE) != 0;
+
+  /* A retransmitted range may be counted delivered and later reneged. In
+   * that case high_rxt still covers the head but no retransmitted bytes are
+   * left to retire before sending its replacement. */
+  tc->rxt_delivered = tc->snd_rxt_bytes;
+  tc->sack_sb.is_reneging = 1;
+  tcp_timer_reset (&wrk->timer_wheel, tc, TCP_TIMER_RETRANSMIT);
+  tcp_timer_retransmit_handler (tc);
+  a->rxt_flight_after_reneging = tc->snd_rxt_bytes - tc->rxt_delivered;
+  a->snd_rxt_after_reneging = tc->snd_rxt_bytes;
+  a->rxt_delivered_after_reneging = tc->rxt_delivered;
 
   /* Fire an RTO during fast recovery and preserve its entry snapshot. */
   tcp_recovery_off (tc);
@@ -3107,6 +3121,17 @@ tcp_test_rto_reduce_once_e2e (vlib_main_t *vm, unformat_input_t *input)
 	goto cleanup;
       }
     if (!TCP_TEST_I (a->dsack_ineligible_after_second, "second rto makes D-SACK undo ineligible"))
+      {
+	rv = 1;
+	goto cleanup;
+      }
+    if (!TCP_TEST_I ((a->snd_rxt_after_reneging == 3 * a->mss &&
+		      a->rxt_delivered_after_reneging == 2 * a->mss &&
+		      a->rxt_flight_after_reneging == a->mss),
+		     "rto after reneging leaves its replacement in flight "
+		     "(sent %u delivered %u rxt flight %u mss %u)",
+		     a->snd_rxt_after_reneging, a->rxt_delivered_after_reneging,
+		     a->rxt_flight_after_reneging, a->mss))
       {
 	rv = 1;
 	goto cleanup;
