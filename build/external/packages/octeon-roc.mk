@@ -2,9 +2,9 @@
 # SPDX-License-Identifier: Apache-2.0
 # https://spdx.org/licenses/Apache-2.0.html
 
-octeon-roc_version             := 26.05
+octeon-roc_version             := 26.09
 octeon-roc_tarball             := v$(octeon-roc_version).tar.gz
-octeon-roc_tarball_sha256sum   := e81d8277e891260df59f2f9fa6bc3abcfade42d9751ae577f94dc37274224c6a
+octeon-roc_tarball_sha256sum   := b589e653722fdbfaa71514623b269692a52b771dd304ac55b75c7fbbe10ef402
 
 octeon-roc_tarball_strip_dirs  := 1
 octeon-roc_url                 := https://github.com/MarvellEmbeddedProcessors/marvell-octeon-roc/archive/refs/tags/$(octeon-roc_tarball)
