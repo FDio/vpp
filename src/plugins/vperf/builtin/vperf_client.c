@@ -854,7 +854,7 @@ vp_client_attach ()
   clib_memset (options, 0, sizeof (options));
 
   a->api_client_index = ~0;
-  a->name = format (0, "vperf_client");
+  a->name = format (0, "vperf_cln_builtin");
   a->session_cb_vft = &vp_client_cb_vft;
 
   prealloc_fifos = vpcm->prealloc_fifos ? vpcm->expected_sessions : 1;

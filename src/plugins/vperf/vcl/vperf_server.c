@@ -907,7 +907,7 @@ main (int argc, char **argv)
   vsm->active_workers = 0;
   vperf_server_process_opts (vsm, argc, argv);
 
-  rv = vppcom_app_create ("vperf_server");
+  rv = vppcom_app_create ("vperf_srv_vcl");
   if (rv)
     vperf_fail ("vppcom_app_create()", rv);
 

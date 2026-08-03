@@ -108,7 +108,7 @@ func testXEchoVclServer(s *VclSuite, proto string) {
 		AssertNil(err, o+oErr)
 	})
 
-	srvVppCont.VppInstance.WaitForApp("vperf_server", 3)
+	srvVppCont.VppInstance.WaitForApp("vperf_srv_vcl", 3)
 	clientVpp := s.Containers.ClientVpp.VppInstance
 	testBytes := ""
 	if proto == "udp" {
@@ -142,7 +142,7 @@ func testVclEcho(s *VclSuite, proto string, extraArgs ...string) (string, string
 		proto, serverVethAddress, s.Ports.Port1, VclTestSrvLogFileName(srvAppCont))
 
 	srvAppCont.ExecServer(true, WrapCmdWithLineBuffering(vclSrvCmd))
-	srvVppCont.VppInstance.WaitForApp("vperf_server", 3)
+	srvVppCont.VppInstance.WaitForApp("vperf_srv_vcl", 3)
 
 	if proto == "quic" {
 		o := s.Containers.ServerVpp.VppInstance.Vppctl("show quic crypto context")
@@ -297,7 +297,7 @@ func VclDtlsOverMTUTest(s *VclSuite) {
 	vclSrvCmd := fmt.Sprintf("vperf_server -p dtls -B %s %s > %s 2>&1",
 		serverVethAddress, s.Ports.Port1, VclTestSrvLogFileName(srvAppCont))
 	srvAppCont.ExecServer(true, WrapCmdWithLineBuffering(vclSrvCmd))
-	srvVppCont.VppInstance.WaitForApp("vperf_server", 3)
+	srvVppCont.VppInstance.WaitForApp("vperf_srv_vcl", 3)
 
 	echoClnContainer := s.GetTransientContainerByName("client-app")
 	echoClnContainer.CreateFile("/vcl.conf", getVclConfig(echoClnContainer))
@@ -328,7 +328,7 @@ func testRetryAttach(s *VclSuite, proto string) {
 	vclSrvCmd := fmt.Sprintf("vperf_server -p %s -B %s %s > %s 2>&1",
 		proto, serverVethAddress, s.Ports.Port1, VclTestSrvLogFileName(echoSrvContainer))
 	echoSrvContainer.ExecServer(true, WrapCmdWithLineBuffering(vclSrvCmd))
-	srvVppContainer.VppInstance.WaitForApp("vperf_server", 3)
+	srvVppContainer.VppInstance.WaitForApp("vperf_srv_vcl", 3)
 
 	Log("This whole test case can take around 3 minutes to run. Please be patient.")
 	Log("... Running first echo client test, before disconnect.")
