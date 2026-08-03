@@ -145,7 +145,7 @@ vp_client_session_peer_close (session_t *s, u8 is_reset)
   if (was_running)
     {
       clib_atomic_sub_fetch (&vpcm->ready_sessions, 1);
-      signal_evt_to_cli (VP_CLIENT_CLI_TEST_DONE);
+      signal_evt_to_cli (VP_CLIENT_CLI_TEST_ABORT);
     }
 }
 
@@ -1285,6 +1285,19 @@ vp_client_run (vlib_main_t *vm)
 	    }
 	  break;
 
+	case VP_CLIENT_CLI_TEST_ABORT:
+	  vp_cli ("aborted");
+	  if (clib_atomic_load_relax_n (&vpcm->failed_session_closes))
+	    error = clib_error_return (0,
+				       "failed: %u session close events before test completion "
+				       "(%u reset, %u disconnected)",
+				       clib_atomic_load_relax_n (&vpcm->failed_session_closes),
+				       clib_atomic_load_relax_n (&vpcm->reset_count),
+				       clib_atomic_load_relax_n (&vpcm->disconnect_count));
+	  else
+	    error = clib_error_return (0, "failed: unknown error");
+	  goto stop_test;
+
 	case VP_CLIENT_CLI_TEST_DONE:
 	  vpcm->stats.test_end_time = vlib_time_now (vm);
 	  main_loop_done = true;
@@ -1298,16 +1311,6 @@ vp_client_run (vlib_main_t *vm)
 	}
     }
   while (!main_loop_done);
-
-  if (clib_atomic_load_relax_n (&vpcm->failed_session_closes))
-    {
-      error = clib_error_return (
-	0, "failed: %u session close events before test completion (%u reset, %u disconnected)",
-	clib_atomic_load_relax_n (&vpcm->failed_session_closes),
-	clib_atomic_load_relax_n (&vpcm->reset_count),
-	clib_atomic_load_relax_n (&vpcm->disconnect_count));
-      goto stop_test;
-    }
 
   delta = vpcm->stats.test_end_time - vpcm->stats.test_start_time;
   if (delta < FLT_EPSILON)
@@ -1332,12 +1335,6 @@ vp_client_run (vlib_main_t *vm)
 
 stop_test:
   vpcm->run_test = VP_CLIENT_EXITING;
-
-  if (clib_atomic_load_relax_n (&vpcm->failed_session_closes))
-    {
-      vp_client_ctrl_session_disconnect ();
-      return error;
-    }
 
   vlib_process_wait_for_event_or_clock (vm, VP_TEST_DELAY_DISCONNECT);
   /* no signals are expected - just wait for clock */

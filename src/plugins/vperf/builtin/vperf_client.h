@@ -89,7 +89,8 @@ typedef enum vp_client_cli_signal_
   VP_CLIENT_CLI_CFG_SYNC,
   VP_CLIENT_CLI_START,
   VP_CLIENT_CLI_STOP,
-  VP_CLIENT_CLI_TEST_DONE
+  VP_CLIENT_CLI_TEST_DONE,
+  VP_CLIENT_CLI_TEST_ABORT
 } vp_client_cli_signal_t;
 
 void vp_client_program_connects (void);
