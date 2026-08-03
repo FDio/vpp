@@ -985,6 +985,9 @@ tcp_set_attribute (tcp_connection_t *tc, transport_endpt_attr_t *attr)
       tc->snd_mss = clib_min (tc->snd_mss, tc->mss);
       break;
     case TRANSPORT_ENDPT_ATTR_FLAGS:
+      rv = tcp_bt_enable (tc, attr->flags & TRANSPORT_ENDPT_ATTR_F_RATE_SAMPLING);
+      if (rv)
+	break;
       if (attr->flags & TRANSPORT_ENDPT_ATTR_F_CSUM_OFFLOAD)
 	tc->cfg_flags |= TCP_CFG_F_NO_CSUM_OFFLOAD;
       else
@@ -999,16 +1002,6 @@ tcp_set_attribute (tcp_connection_t *tc, transport_endpt_attr_t *attr)
 	{
 	  tc->cfg_flags |= TCP_CFG_F_NO_TSO;
 	  tc->cfg_flags &= ~TCP_CFG_F_TSO;
-	}
-      if (attr->flags & TRANSPORT_ENDPT_ATTR_F_RATE_SAMPLING)
-	{
-	  if (!(tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER))
-	    tcp_bt_init (tc);
-	}
-      else
-	{
-	  if (tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER)
-	    tcp_bt_cleanup (tc);
 	}
       break;
     case TRANSPORT_ENDPT_ATTR_CC_ALGO:

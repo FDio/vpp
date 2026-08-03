@@ -685,6 +685,23 @@ tcp_bt_init (tcp_connection_t * tc)
   tc->cfg_flags |= TCP_CFG_F_BYTE_TRACKER;
 }
 
+int
+tcp_bt_enable (tcp_connection_t *tc, u8 enable)
+{
+  bool is_enabled = tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER;
+
+  if (!!enable == is_enabled)
+    return 0;
+  if (tc->snd_una != tc->snd_nxt)
+    return -1;
+
+  if (enable)
+    tcp_bt_init (tc);
+  else
+    tcp_bt_cleanup (tc);
+  return 0;
+}
+
 u8 *
 format_tcp_bt_sample (u8 * s, va_list * args)
 {

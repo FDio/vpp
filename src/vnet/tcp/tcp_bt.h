@@ -26,6 +26,18 @@ void tcp_bt_init (tcp_connection_t * tc);
  */
 void tcp_bt_cleanup (tcp_connection_t * tc);
 /**
+ * Enable or disable byte tracking
+ *
+ * The tracker can only change state when no data is in flight, because
+ * enabling it cannot reconstruct samples for data already transmitted and
+ * disabling it would discard samples still needed by acknowledgments.
+ *
+ * @param tc	connection whose tracker state should change
+ * @param enable	non-zero to enable byte tracking
+ * @return	0 on success, -1 if data is in flight
+ */
+int tcp_bt_enable (tcp_connection_t *tc, u8 enable);
+/**
  * Flush byte tracker samples
  *
  * @param tc	tcp connection for which samples should be flushed
