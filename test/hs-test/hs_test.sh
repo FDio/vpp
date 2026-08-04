@@ -127,6 +127,9 @@ case "${i}" in
     --host_ppid=*)
         args="$args -host_ppid ${i#*=}"
         ;;
+    --run_id=*)
+        args="$args -run_id ${i#*=}"
+        ;;
     --seed=*)
         seed="${i#*=}"
         ginkgo_args="$ginkgo_args --seed=$seed"
@@ -230,8 +233,8 @@ fi
 mkdir -p .go_cache
 
 if [ "$mw_parallel" = "true" ]; then
-    mkdir -p /tmp/hs-test
-    rm -f /tmp/hs-test/cpu-claims /tmp/hs-test/cpu-claims.lock
+    mkdir -p /tmp/hst
+    rm -f /tmp/hst/cpu-claims /tmp/hst/cpu-claims.lock
 fi
 
 mkdir -p summary
