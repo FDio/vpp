@@ -1,6 +1,8 @@
 # wrk HTTP benchmarking container that uses the base image
 ARG UBUNTU_VERSION=22.04
-FROM localhost:5001/vpp-test-base:latest
+# set per run by script/build-images.sh; the default keeps 'docker build' working
+ARG BASE_TAG=localhost:5001/vpp-test-base:latest
+FROM ${BASE_TAG}
 
 # wrk is installed in the base image
 

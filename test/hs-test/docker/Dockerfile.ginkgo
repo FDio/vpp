@@ -1,4 +1,6 @@
-FROM localhost:5001/vpp-test-base:latest
+# set per run by script/build-images.sh; the default keeps 'docker build' working
+ARG BASE_TAG=localhost:5001/vpp-test-base:latest
+FROM ${BASE_TAG}
 
 # We don't need to install these packages as they're in the base image
 # Just install anything specific to VPP that isn't in the base
