@@ -97,6 +97,18 @@ vl_api_sfdp_session_stats_ring_entry_abi_id_t_handler (
   REPLY_MACRO (VL_API_SFDP_SESSION_STATS_RING_ENTRY_ABI_ID_REPLY);
 }
 
+/* no-op api handler for sfdp_session_stats_ring_entry_v2_abi_id */
+static void
+vl_api_sfdp_session_stats_ring_entry_v2_abi_id_t_handler (
+  vl_api_sfdp_session_stats_ring_entry_v2_abi_id_t *mp)
+{
+  vl_api_sfdp_session_stats_ring_entry_v2_abi_id_reply_t *rmp;
+  sfdp_session_stats_main_t *ssm = &sfdp_session_stats_main;
+  int rv = 0;
+
+  REPLY_MACRO (VL_API_SFDP_SESSION_STATS_RING_ENTRY_V2_ABI_ID_REPLY);
+}
+
 static void
 sfdp_session_stats_send_details (vl_api_registration_t *rp, u32 context, sfdp_session_t *session,
 				 sfdp_session_stats_entry_t *stats)

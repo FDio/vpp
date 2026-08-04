@@ -6,13 +6,14 @@
 #include <sfdp_services/session_stats/session_stats.h>
 #include <sfdp_services/session_stats/session_stats.api_types.h>
 #include <vlib/stats/stats.h>
+#include <vppinfra/time.h>
 
 #define vl_endianfun
 #include <sfdp_services/session_stats/session_stats.api.h>
 #undef vl_endianfun
 
-STATIC_ASSERT (sizeof (vl_api_sfdp_session_stats_ring_entry_t) == 258,
-	       "sfdp_session_stats_ring_entry_t size changed, "
+STATIC_ASSERT (sizeof (vl_api_sfdp_session_stats_ring_entry_v2_t) == 304,
+	       "sfdp_session_stats_ring_entry_v2_t size changed, "
 	       "update consumers and bump API version");
 
 sfdp_session_stats_main_t sfdp_session_stats_main;
@@ -21,20 +22,22 @@ int
 sfdp_session_stats_ring_init (vlib_main_t *vm, u32 ring_size)
 {
   sfdp_session_stats_main_t *ssm = &sfdp_session_stats_main;
+  sfdp_session_stats_entry_t *stats;
 
-  /* copy abi-id associated with sfdp_session_stats_ring_entry in ring-buffer schema  */
-  const char *schema_id = VL_API_SFDP_SESSION_STATS_RING_ENTRY_ABI_ID_CRC;
+  /* Copy the ABI ID associated with the version 2 ring entry. */
+  const char *schema_id = VL_API_SFDP_SESSION_STATS_RING_ENTRY_V2_ABI_ID_CRC;
   u32 schema_size = clib_strnlen (schema_id, 128);
 
   /* check if ring buffer is not already enabled */
   if (ssm->ring_buffer_enabled)
     return 0;
 
-  vlib_stats_ring_config_t config = { .entry_size = sizeof (vl_api_sfdp_session_stats_ring_entry_t),
+  vlib_stats_ring_config_t config = { .entry_size =
+					sizeof (vl_api_sfdp_session_stats_ring_entry_v2_t),
 				      .ring_size = ring_size,
 				      .n_threads = vlib_get_n_threads (),
 				      .schema_size = schema_size,
-				      .schema_version = 1 };
+				      .schema_version = 2 };
 
   ssm->ring_buffer_index =
     vlib_stats_add_ring_buffer (&config, (const void *) schema_id, "/sfdp/session/stats");
@@ -46,6 +49,8 @@ sfdp_session_stats_ring_init (vlib_main_t *vm, u32 ring_size)
     }
 
   ssm->ring_buffer_size = ring_size;
+  vec_foreach (stats, ssm->stats)
+    stats->create_exported = 0;
   ssm->ring_buffer_enabled = 1;
 
   return 0;
@@ -57,14 +62,12 @@ sfdp_session_stats_export_session (vlib_main_t *vm, u32 session_index,
 {
   sfdp_session_stats_main_t *ssm = &sfdp_session_stats_main;
   sfdp_main_t *sfdp = &sfdp_main;
-  vl_api_sfdp_session_stats_ring_entry_t *entry;
+  vl_api_sfdp_session_stats_ring_entry_v2_t *entry;
   sfdp_session_stats_entry_t *stats;
   sfdp_session_t *session;
   sfdp_tenant_t *tenant;
   u32 thread_index;
-
-  /* TODO - export reason is not leveraged today in ring buffer information */
-  /* should it be kept or refactored out ? */
+  u8 swap_endpoints;
 
   if (!ssm->ring_buffer_enabled)
     return 0;
@@ -98,14 +101,29 @@ sfdp_session_stats_export_session (vlib_main_t *vm, u32 session_index,
   /* Fill in the entry */
   clib_memset (entry, 0, sizeof (*entry));
 
+  if (reason == SFDP_SESSION_STATS_EXPORT_EXPIRY)
+    entry->event_type = SFDP_SESSION_STATS_EVENT_TYPE_CLOSED;
+  else if (!stats->create_exported)
+    entry->event_type = SFDP_SESSION_STATS_EVENT_TYPE_CREATED;
+  else
+    entry->event_type = SFDP_SESSION_STATS_EVENT_TYPE_UPDATED;
+
   entry->session_id = session->session_id;
   entry->session_index = session_index;
   entry->proto = session->proto;
   entry->session_type = session->type;
+  entry->session_state = session->state;
+  entry->forward_service_bitmap = session->bitmaps[SFDP_FLOW_FORWARD];
+  entry->reverse_service_bitmap = session->bitmaps[SFDP_FLOW_REVERSE];
+  entry->exported_at_unix_micros = ssm->unix_time_offset_us + (i64) (vlib_time_now (vm) * 1e6);
+  entry->first_packet_time_unix_micros = ssm->unix_time_offset_us + (i64) (stats->first_seen * 1e6);
+  if (entry->event_type == SFDP_SESSION_STATS_EVENT_TYPE_CLOSED)
+    entry->last_packet_time_unix_micros = ssm->unix_time_offset_us + (i64) (stats->last_seen * 1e6);
 
   /* Get tenant ID */
   tenant = sfdp_tenant_at_index (sfdp, session->tenant_idx);
   entry->tenant_id = tenant ? tenant->tenant_id : 0;
+  entry->context_id = tenant ? tenant->context_id : 0;
 
   /* Copy stats */
   entry->packets_forward = stats->packets[SFDP_FLOW_FORWARD];
@@ -113,28 +131,35 @@ sfdp_session_stats_export_session (vlib_main_t *vm, u32 session_index,
   entry->bytes_forward = stats->bytes[SFDP_FLOW_FORWARD];
   entry->bytes_reverse = stats->bytes[SFDP_FLOW_REVERSE];
 
-  /* Extract endpoint key from primary session key */
+  /* Restore the initiator/responder orientation of the first packet. */
+  swap_endpoints = session->pseudo_dir[SFDP_SESSION_KEY_PRIMARY];
   if (session->key_flags & SFDP_SESSION_KEY_FLAG_PRIMARY_VALID_IP4)
     {
       sfdp_session_ip4_key_t *key4 = &session->keys[0].key4;
       entry->is_ip4 = 1;
 
-      /* Endpoint key: src -> dst */
-      clib_memcpy (entry->src_ip, &key4->ip4_key.ip_addr_lo, 4);
-      clib_memcpy (entry->dst_ip, &key4->ip4_key.ip_addr_hi, 4);
-      entry->src_port = clib_net_to_host_u16 (key4->ip4_key.port_lo);
-      entry->dst_port = clib_net_to_host_u16 (key4->ip4_key.port_hi);
+      clib_memcpy (entry->src_ip,
+		   swap_endpoints ? &key4->ip4_key.ip_addr_hi : &key4->ip4_key.ip_addr_lo, 4);
+      clib_memcpy (entry->dst_ip,
+		   swap_endpoints ? &key4->ip4_key.ip_addr_lo : &key4->ip4_key.ip_addr_hi, 4);
+      entry->src_port =
+	clib_net_to_host_u16 (swap_endpoints ? key4->ip4_key.port_hi : key4->ip4_key.port_lo);
+      entry->dst_port =
+	clib_net_to_host_u16 (swap_endpoints ? key4->ip4_key.port_lo : key4->ip4_key.port_hi);
     }
   else if (session->key_flags & SFDP_SESSION_KEY_FLAG_PRIMARY_VALID_IP6)
     {
       sfdp_session_ip6_key_t *key6 = &session->keys[0].key6;
       entry->is_ip4 = 0;
 
-      /* Endpoint key: src -> dst */
-      clib_memcpy (entry->src_ip, &key6->ip6_key.ip6_addr_lo, 16);
-      clib_memcpy (entry->dst_ip, &key6->ip6_key.ip6_addr_hi, 16);
-      entry->src_port = clib_net_to_host_u16 (key6->ip6_key.port_lo);
-      entry->dst_port = clib_net_to_host_u16 (key6->ip6_key.port_hi);
+      clib_memcpy (entry->src_ip,
+		   swap_endpoints ? &key6->ip6_key.ip6_addr_hi : &key6->ip6_key.ip6_addr_lo, 16);
+      clib_memcpy (entry->dst_ip,
+		   swap_endpoints ? &key6->ip6_key.ip6_addr_lo : &key6->ip6_key.ip6_addr_hi, 16);
+      entry->src_port =
+	clib_net_to_host_u16 (swap_endpoints ? key6->ip6_key.port_hi : key6->ip6_key.port_lo);
+      entry->dst_port =
+	clib_net_to_host_u16 (swap_endpoints ? key6->ip6_key.port_lo : key6->ip6_key.port_hi);
     }
 
   /* Duration */
@@ -193,28 +218,31 @@ sfdp_session_stats_export_session (vlib_main_t *vm, u32 session_index,
   /* Populate opaque data - always present in exported entries. */
   entry->opaque = SFDP_SESSION_STATS_OPAQUE_DATA_DEFAULT;
 
-  if (vec_len (ssm->custom_data_entries) > 0 && tenant)
+  if (tenant && session->tenant_idx < vec_len (ssm->custom_data_entries))
     {
-      /* Set per-tenant API custom data */
-      u8 has_tenant_data = 0;
-      u64 tenant_api_data =
-	sfdp_session_stats_get_tenant_custom_data (tenant->tenant_id, &has_tenant_data);
-      if (has_tenant_data)
-	{
-	  entry->opaque = tenant_api_data;
-	}
+      sfdp_session_stats_custom_data_entry_t *custom_data =
+	&ssm->custom_data_entries[session->tenant_idx];
+
+      /* Validate ownership in case SFDP reused a deleted tenant's pool slot. */
+      if (custom_data->has_value && custom_data->tenant_id == tenant->tenant_id)
+	entry->opaque = custom_data->value;
     }
+
+  entry->opaque = (entry->opaque & ~stats->session_opaque_mask) |
+		  (stats->session_opaque & stats->session_opaque_mask);
 
   /* ring entries are stored in network-byte order for decoding compatibility in consumers */
   /* TODO - for performance, it would be change this to avoid encoding/decoding to network-byte
   order and directly copy entries to the ring buffer for consumption by an external consumer  */
-  vl_api_sfdp_session_stats_ring_entry_t_endian (entry, /* to_net */ 1);
+  vl_api_sfdp_session_stats_ring_entry_v2_t_endian (entry, /* to_net */ 1);
 
   /* Commit the slot */
   vlib_stats_ring_commit_slot (ssm->ring_buffer_index, thread_index);
 
   /* Update per-thread export counter */
   ssm->per_thread[thread_index].total_exports++;
+  if (entry->event_type == SFDP_SESSION_STATS_EVENT_TYPE_CREATED)
+    stats->create_exported = 1;
 
   return 1;
 }
@@ -282,8 +310,14 @@ sfdp_session_stats_clear_sessions (u64 session_id)
 	{
 	  sfdp_session_stats_entry_t *stats = vec_elt_at_index (ssm->stats, i);
 	  session_version_t v = stats->version;
+	  u64 session_opaque = stats->session_opaque;
+	  u64 session_opaque_mask = stats->session_opaque_mask;
+	  u8 create_exported = stats->create_exported;
 	  clib_memset (stats, 0, sizeof (sfdp_session_stats_entry_t));
 	  stats->version = v;
+	  stats->session_opaque = session_opaque;
+	  stats->session_opaque_mask = session_opaque_mask;
+	  stats->create_exported = create_exported;
 	}
     }
   else
@@ -300,9 +334,15 @@ sfdp_session_stats_clear_sessions (u64 session_id)
 	  {
 	    sfdp_session_stats_entry_t *stats = vec_elt_at_index (ssm->stats, session_index);
 	    session_version_t v = stats->version;
+	    u64 session_opaque = stats->session_opaque;
+	    u64 session_opaque_mask = stats->session_opaque_mask;
+	    u8 create_exported = stats->create_exported;
 	    session_found = 1;
 	    clib_memset (stats, 0, sizeof (sfdp_session_stats_entry_t));
 	    stats->version = v;
+	    stats->session_opaque = session_opaque;
+	    stats->session_opaque_mask = session_opaque_mask;
+	    stats->create_exported = create_exported;
 	    break;
 	  }
       }
@@ -314,13 +354,63 @@ sfdp_session_stats_clear_sessions (u64 session_id)
   return 0;
 }
 
+__clib_export int
+sfdp_session_stats_update_session_opaque (u32 session_index, u64 value, u64 mask)
+{
+  sfdp_session_stats_main_t *ssm = &sfdp_session_stats_main;
+  sfdp_session_stats_entry_t *stats;
+  sfdp_session_t *session;
+
+  if (session_index >= vec_len (ssm->stats))
+    return -1;
+
+  session = sfdp_session_at_index_if_valid (session_index);
+  if (!session)
+    return -1;
+
+  stats = vec_elt_at_index (ssm->stats, session_index);
+  if (stats->version != session->session_version)
+    return -1;
+
+  stats->session_opaque = (stats->session_opaque & ~mask) | (value & mask);
+  stats->session_opaque_mask |= mask;
+  return 0;
+}
+
+__clib_export int
+sfdp_session_stats_set_session_opaque_once (u32 session_index, u64 value, u64 mask)
+{
+  sfdp_session_stats_main_t *ssm = &sfdp_session_stats_main;
+  sfdp_session_stats_entry_t *stats;
+  sfdp_session_t *session;
+
+  if (session_index >= vec_len (ssm->stats))
+    return -1;
+
+  session = sfdp_session_at_index_if_valid (session_index);
+  if (!session)
+    return -1;
+
+  stats = vec_elt_at_index (ssm->stats, session_index);
+  if (stats->version != session->session_version)
+    return -1;
+
+  if (stats->session_opaque_mask & mask)
+    return 0;
+
+  stats->session_opaque = (stats->session_opaque & ~mask) | (value & mask);
+  stats->session_opaque_mask |= mask;
+  return 0;
+}
+
 static u32
 sfdp_session_stats_notify_deleted_sessions (const u32 *deleted_sessions, u32 len)
 {
   /* upon session deletion, export session stats to ring buffer */
   /* this export can be triggered from worker threads */
   sfdp_session_stats_main_t *ssm = &sfdp_session_stats_main;
-  vlib_main_t *vm = vlib_get_main ();
+  u32 thread_index = vlib_get_thread_index ();
+  vlib_main_t *vm = vlib_get_main_by_index (thread_index);
 
   for (u32 i = 0; i < len; i++)
     {
@@ -329,10 +419,9 @@ sfdp_session_stats_notify_deleted_sessions (const u32 *deleted_sessions, u32 len
       /* Export stats before clearing if ring buffer is enabled */
       if (ssm->export_on_expiry && ssm->ring_buffer_enabled)
 	{
-	  u32 ti = vlib_get_thread_index ();
 	  sfdp_session_stats_export_session (vm, session_index, SFDP_SESSION_STATS_EXPORT_EXPIRY);
 	  vlib_log_debug (ssm->log_class, "worker %u: exported session %u on expiry (total: %lu)",
-			  ti, session_index, ssm->per_thread[ti].total_exports);
+			  thread_index, session_index, ssm->per_thread[thread_index].total_exports);
 	}
 
       /* Clear the stats entry to avoid stale data */
@@ -397,6 +486,8 @@ sfdp_session_stats_init (vlib_main_t *vm)
   ssm->export_batch_interval = SFDP_SESSION_STATS_DEFAULT_BATCH_EXPORT_INTERVAL;
   ssm->export_on_expiry = 1;	    /* Default: export on session expiry */
   ssm->periodic_export_enabled = 0; /* Default: periodic export disabled */
+  ssm->unix_time_offset_us =
+    (i64) (unix_time_now_nsec () / 1000) - (i64) (vlib_time_now (vm) * 1e6);
 
   /* Per-tenant custom data vec */
   ssm->custom_data_entries = NULL;
@@ -413,15 +504,24 @@ int
 sfdp_session_stats_set_tenant_custom_data (u32 tenant_id, u64 value)
 {
   sfdp_session_stats_main_t *ssm = &sfdp_session_stats_main;
+  sfdp_main_t *sfdp = &sfdp_main;
+  clib_bihash_kv_8_8_t kv = { .key = tenant_id };
+  u32 tenant_idx;
 
   if (tenant_id == SFDP_SESSION_STATS_ALL_TENANTS)
     return -1; /* Cannot set data for "all tenants" - must specify a valid tenant */
 
-  /* ensure vector index is valid & set data for requested tenant_id */
+  if (!sfdp->tenants || clib_bihash_search_inline_8_8 (&sfdp->tenant_idx_by_id, &kv))
+    return -1; /* Tenant must exist before custom data can be attached. */
+
+  tenant_idx = kv.value;
+
+  /* Store by compact pool index, not by the potentially sparse tenant ID. */
   sfdp_session_stats_custom_data_entry_t entry_init = { 0 };
-  vec_validate_init_empty (ssm->custom_data_entries, tenant_id, entry_init);
-  ssm->custom_data_entries[tenant_id].value = value;
-  ssm->custom_data_entries[tenant_id].has_value = 1;
+  vec_validate_init_empty (ssm->custom_data_entries, tenant_idx, entry_init);
+  ssm->custom_data_entries[tenant_idx].value = value;
+  ssm->custom_data_entries[tenant_idx].tenant_id = tenant_id;
+  ssm->custom_data_entries[tenant_idx].has_value = 1;
 
   return 0;
 }
@@ -434,6 +534,8 @@ int
 sfdp_session_stats_clear_tenant_custom_data (u32 tenant_id)
 {
   sfdp_session_stats_main_t *ssm = &sfdp_session_stats_main;
+  sfdp_main_t *sfdp = &sfdp_main;
+  clib_bihash_kv_8_8_t kv = { .key = tenant_id };
 
   if (tenant_id == SFDP_SESSION_STATS_ALL_TENANTS)
     {
@@ -441,11 +543,14 @@ sfdp_session_stats_clear_tenant_custom_data (u32 tenant_id)
     }
   else
     {
-      /* Clear specific tenant entry if within bounds */
-      if (tenant_id < vec_len (ssm->custom_data_entries))
+      /* Resolve the external tenant ID to its compact SFDP pool index. */
+      if (sfdp->tenants && !clib_bihash_search_inline_8_8 (&sfdp->tenant_idx_by_id, &kv) &&
+	  kv.value < vec_len (ssm->custom_data_entries) &&
+	  ssm->custom_data_entries[kv.value].tenant_id == tenant_id)
 	{
-	  ssm->custom_data_entries[tenant_id].value = 0;
-	  ssm->custom_data_entries[tenant_id].has_value = 0;
+	  ssm->custom_data_entries[kv.value].value = 0;
+	  ssm->custom_data_entries[kv.value].tenant_id = 0;
+	  ssm->custom_data_entries[kv.value].has_value = 0;
 	}
     }
 
@@ -456,13 +561,17 @@ u64
 sfdp_session_stats_get_tenant_custom_data (u32 tenant_id, u8 *has_value)
 {
   sfdp_session_stats_main_t *ssm = &sfdp_session_stats_main;
+  sfdp_main_t *sfdp = &sfdp_main;
+  clib_bihash_kv_8_8_t kv = { .key = tenant_id };
 
-  if (tenant_id < vec_len (ssm->custom_data_entries) &&
-      ssm->custom_data_entries[tenant_id].has_value)
+  if (sfdp->tenants && !clib_bihash_search_inline_8_8 (&sfdp->tenant_idx_by_id, &kv) &&
+      kv.value < vec_len (ssm->custom_data_entries) &&
+      ssm->custom_data_entries[kv.value].tenant_id == tenant_id &&
+      ssm->custom_data_entries[kv.value].has_value)
     {
       if (has_value)
 	*has_value = 1;
-      return ssm->custom_data_entries[tenant_id].value;
+      return ssm->custom_data_entries[kv.value].value;
     }
 
   /* No value set for this tenant - return default opaque value */
