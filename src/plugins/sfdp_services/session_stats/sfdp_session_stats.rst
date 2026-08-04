@@ -24,6 +24,8 @@ Key Features
 - ECN/CWR congestion notification tracking
 - Setting custom u64 value per-tenant through API, which can be used to introduce external labels and/or for data correlation
 - Ring buffer export to VPP stats segment for external consumption
+- Session create, update, and close lifecycle records
+- Unix timestamps for export, first packet, and final packet
 - IPv4 and IPv6 traffic support
 
 
@@ -92,10 +94,12 @@ The dump supports filtering by ``session_id`` and ``tenant_idx``.
 Session statistics can be exported to a ring buffer in the VPP stats
 segment. This is the recommended path for external consumption.
 
-- **Schema identifier**:  to ensure consistency between VPP and external consumers,
-  the ring buffer entry format is defined in API typedef ``sfdp_session_stats_ring_entry``.
+- **Schema identifier**: to ensure consistency between VPP and external consumers,
+  the current ring buffer entry format is defined in API typedef
+  ``sfdp_session_stats_ring_entry_v2``. The version 1 typedef remains available
+  for source and ABI compatibility.
   An ABI ID is generated from a dedicated API marker message CRC
-  (``sfdp_session_stats_ring_entry_abi_id_<crc>``) and published alongside
+  (``sfdp_session_stats_ring_entry_v2_abi_id_<crc>``) and published alongside
   ring data at ``/sfdp/session/stats``, so that external consumers can
   verify if they are using the appropriate entry format.
 
@@ -109,6 +113,25 @@ Ring buffer exports can be triggered by:
 - **On-demand**: Via API (``sfdp_session_stats_export_now``) or CLI
   (``sfdp session stats export``).
 
+Lifecycle Records
+~~~~~~~~~~~~~~~~~
+
+Every ring entry contains an ``event_type`` describing why the snapshot was
+published:
+
+- ``CREATED`` is emitted after the first packet has been accounted. If the
+  ring is enabled after a session starts, the next observation emits the
+  session's first ``CREATED`` record.
+- ``UPDATED`` is emitted by periodic and on-demand exports after a
+  ``CREATED`` record has been committed.
+- ``CLOSED`` is emitted from the session deletion callback before the
+  per-session statistics are cleared.
+
+``exported_at_unix_micros`` and ``first_packet_time_unix_micros`` are present
+on every lifecycle record. ``last_packet_time_unix_micros`` is populated only
+for ``CLOSED`` records. Endpoints retain the initiator/responder orientation of
+the first packet rather than the normalized lookup-key order.
+
 Custom Data
 ~~~~~~~~~~~
 
@@ -119,6 +142,12 @@ in every exported ring buffer entry for sessions belonging to that tenant.
 - On export: the value is always written to the ring field ``opaque``.
   If a tenant has no configured value, ``opaque`` is exported as ``0``.
 - Bulk clear: use tenant_id ``0xFFFFFFFF`` to clear all tenants at once.
+
+Plugins can also overlay selected bits for an active session with
+``sfdp_session_stats_update_session_opaque``. The caller supplies a value and
+mask; masked bits replace the corresponding bits in the tenant value when the
+session is exported. SFDP does not assign semantics to these bits. The update
+must run on the session's owning dataplane thread while the session is valid.
 
 Session Exporter Program
 ~~~~~~~~~~~~~~~~~~~~~~~~

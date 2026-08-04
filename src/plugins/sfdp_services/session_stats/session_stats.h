@@ -91,6 +91,9 @@ typedef struct
   u8 has_pending_gap[SFDP_FLOW_F_B_N];	    /**< Forward gap detected, awaiting fill */
   u32 gap_start_seq[SFDP_FLOW_F_B_N];	    /**< Seq where the gap begins (old end_seq_max) */
   u32 gap_dupack_snapshot[SFDP_FLOW_F_B_N]; /**< dupack_like[ack_dir] at gap detection */
+  u64 session_opaque;			    /**< Per-session opaque data */
+  u64 session_opaque_mask;		    /**< Bits owned by per-session data */
+  u8 create_exported;			    /**< Create record committed to the ring */
 } sfdp_session_stats_entry_t;
 
 /* Default value for opaque data when no tenant-specific value is set */
@@ -100,9 +103,10 @@ typedef struct
 #define SFDP_SESSION_STATS_ALL_TENANTS ((u32) ~0U)
 
 #define foreach_sfdp_session_stats_export_reason                                                   \
-  _ (PERIODIC, 0, "periodic")                                                                      \
-  _ (EXPIRY, 1, "expiry")                                                                          \
-  _ (API_REQUEST, 2, "api-request")
+  _ (CREATE, 0, "create")                                                                          \
+  _ (PERIODIC, 1, "periodic")                                                                      \
+  _ (EXPIRY, 2, "expiry")                                                                          \
+  _ (API_REQUEST, 3, "api-request")
 
 typedef enum
 {
@@ -148,7 +152,8 @@ typedef struct
   sfdp_session_stats_custom_data_entry_t *custom_data_entries;
   vlib_log_class_t log_class; /**< Log class */
 
-  u16 msg_id_base; /**< API message ID base */
+  u16 msg_id_base;	   /**< API message ID base */
+  i64 unix_time_offset_us; /**< Unix epoch offset for monotonic timestamps */
 } sfdp_session_stats_main_t;
 
 extern sfdp_session_stats_main_t sfdp_session_stats_main;
@@ -184,6 +189,12 @@ u32 sfdp_session_stats_export_batch (vlib_main_t *vm, sfdp_session_stats_export_
 				     u32 start_index, u32 max_entries, f64 active_since);
 
 int sfdp_session_stats_clear_sessions (u64 session_id);
+
+/*
+ * Overlay selected bits in a session's exported opaque value. This function
+ * must be called from the owning dataplane thread while the session is valid.
+ */
+int sfdp_session_stats_update_session_opaque (u32 session_index, u64 value, u64 mask);
 
 /* Custom data configuration functions */
 int sfdp_session_stats_set_tenant_custom_data (u32 tenant_id, u64 value);
