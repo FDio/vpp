@@ -21,6 +21,9 @@ sfdp_session_remove (sfdp_main_t *sfdp, sfdp_per_thread_data_t *ptd,
   sfdp_parser_data_t *parser;
   sfdp_parser_main_t *pm = &sfdp_parser_main;
 
+  /* Preserve the creation shard before removal changes session ownership. */
+  sfdp_health_record_session_removed (sfdp, session);
+
   kv2.key = session->session_id;
   if (session->key_flags & SFDP_SESSION_KEY_FLAG_PRIMARY_VALID_IP4)
     {
