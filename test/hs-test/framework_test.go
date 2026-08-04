@@ -30,6 +30,10 @@ var _ = ReportAfterSuite("VPP version under test", func(report Report) {
 	}
 })
 
+var _ = ReportAfterSuite("Run identity", func(report Report) {
+	Log("* RUN_ID = %s (log directories use %s)", RunIdentity, RunPathToken)
+})
+
 func TestHst(t *testing.T) {
 	Log("* Go version: " + runtime.Version())
 	Log("* HyperThreading = %t\n* CPU0 = %t", *HyperThreading, *UseCpu0)
@@ -59,15 +63,23 @@ func TestHst(t *testing.T) {
 		Ppid = Ppid[len(Ppid)-3:]
 	}
 
-	// creates a file with PPID, used for 'make cleanup-hst'
-	f, _ := os.Create(".last_hst_ppid")
-	f.Write([]byte(Ppid))
+	// the Makefile always passes -run_id; fall back to Ppid when hs-test is driven
+	// by hand, at the cost of not being isolated from other runs
+	if *RunId != "" {
+		SetRunIdentity(*RunId)
+	} else {
+		SetRunIdentity(Ppid)
+	}
+
+	// cleanup-hst cleans up by run identity and cannot derive it on its own
+	f, _ := os.Create(".last_hst_run_id")
+	f.Write([]byte(RunIdentity))
 	f.Close()
 
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "HST")
 	if *DryRun || *IsPersistent {
 		Log("\033[36m" + "Use 'make cleanup-hst' to remove IP files, " +
-			"namespaces and containers. \nPPID: " + Ppid + "\033[0m")
+			"namespaces and containers. \nRUN_ID: " + RunIdentity + "\033[0m")
 	}
 }
