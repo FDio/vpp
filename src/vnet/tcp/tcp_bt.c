@@ -528,8 +528,8 @@ tcp_bt_walk_samples_ooo (tcp_connection_t * tc, tcp_rate_sample_t * rs)
       ASSERT (seq_geq (blk->start, cur->min_seq)
 	      && seq_lt (blk->start, cur->max_seq));
 
-      /* Current should be split. Second part will be consumed */
-      if (PREDICT_FALSE (cur->min_seq != blk->start))
+      /* Split current if block starts in new sack coverage. Second part will be consumed */
+      if (PREDICT_FALSE (cur->min_seq != blk->start) && !(cur->flags & TCP_BTS_IS_SACKED))
 	{
 	  cur = bt_split_sample (bt, cur, blk->start);
 	  prev = bt_prev_sample (bt, cur);
@@ -567,6 +567,9 @@ tcp_bt_walk_samples_ooo (tcp_connection_t * tc, tcp_rate_sample_t * rs)
 
       if (cur && seq_lt (cur->min_seq, blk->end))
 	{
+	  if (cur->flags & TCP_BTS_IS_SACKED)
+	    continue;
+
 	  tcp_bt_sample_to_rate_sample (tc, cur, rs);
 	  prev = bt_prev_sample (bt, cur);
 	  /* Extend previous to include the newly sacked bytes */

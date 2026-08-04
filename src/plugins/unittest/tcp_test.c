@@ -5184,6 +5184,53 @@ tcp_test_delivery (vlib_main_t * vm, unformat_input_t * input)
 }
 
 static int
+tcp_test_bt_repeat_sack (void)
+{
+  tcp_connection_t _tc = {}, *tc = &_tc;
+  tcp_rate_sample_t rs = {};
+  tcp_bt_sample_t *bts;
+  sack_block_t block;
+  u32 n_samples;
+
+  tcp_bt_init (tc);
+  tcp_bt_track_tx (tc, 1000);
+  tc->snd_nxt = 1000;
+
+  block = (sack_block_t) { .start = 100, .end = 900 };
+  vec_add1 (tc->rcv_opts.sacks, block);
+  rs.last_sacked_bytes = 800;
+  tcp_bt_sample_delivery_rate (tc, &rs);
+
+  n_samples = pool_elts (tc->bt->samples);
+  TCP_TEST (n_samples == 3 && tc->delivered == 800,
+	    "initial SACK creates three ranges and delivers 800 bytes: %u/%u", n_samples,
+	    tc->delivered);
+
+  /* A repeated block is processed alongside new coverage. It must not split
+   * the already SACKed range at either of its internal boundaries. */
+  vec_reset_length (tc->rcv_opts.sacks);
+  block = (sack_block_t) { .start = 200, .end = 800 };
+  vec_add1 (tc->rcv_opts.sacks, block);
+  block = (sack_block_t) { .start = 900, .end = 950 };
+  vec_add1 (tc->rcv_opts.sacks, block);
+  clib_memset (&rs, 0, sizeof (rs));
+  rs.last_sacked_bytes = 50;
+  tcp_bt_sample_delivery_rate (tc, &rs);
+
+  bts = pool_elt_at_index (tc->bt->samples, tc->bt->head);
+  bts = pool_elt_at_index (tc->bt->samples, bts->next);
+  TCP_TEST (pool_elts (tc->bt->samples) == n_samples && bts->min_seq == 100 &&
+	      bts->max_seq == 950 && (bts->flags & TCP_BTS_IS_SACKED),
+	    "repeat SACK preserves one compact SACKed range [100:950]");
+  TCP_TEST (tc->delivered == 850 && tcp_bt_is_sane (tc->bt),
+	    "repeat SACK accounts only new coverage and keeps BT sane: %u", tc->delivered);
+
+  vec_free (tc->rcv_opts.sacks);
+  tcp_bt_cleanup (tc);
+  return 0;
+}
+
+static int
 tcp_test_bt_toggle (void)
 {
   tcp_connection_t _tc = {}, *tc = &_tc;
@@ -5229,6 +5276,8 @@ tcp_test_bt (vlib_main_t * vm, unformat_input_t * input)
   sack_block_t *blk;
 
   if (tcp_test_bt_toggle ())
+    return 1;
+  if (tcp_test_bt_repeat_sack ())
     return 1;
 
   /* Init data structures */
