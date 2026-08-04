@@ -315,6 +315,10 @@ sfdp_session_stats_process_packet (vlib_main_t *vm, vlib_buffer_t *b,
 
       sfdp_session_stats_process_tcp (vm, b, stats, session, direction, l3_len);
     }
+
+  /* The new-session callback runs before first-packet accounting. */
+  if (PREDICT_FALSE (!stats->create_exported && ssm->ring_buffer_enabled))
+    sfdp_session_stats_export_session (vm, session_idx, SFDP_SESSION_STATS_EXPORT_CREATE);
 }
 
 VLIB_NODE_FN (sfdp_session_stats_node)
@@ -427,6 +431,6 @@ VLIB_REGISTER_NODE (sfdp_session_stats_node) = {
 SFDP_SERVICE_DEFINE (session_stats) = {
   .node_name = "sfdp-session-stats",
   .runs_before = SFDP_SERVICES (0),
-  .runs_after = SFDP_SERVICES ("sfdp-drop", "sfdp-l4-lifecycle"),
+  .runs_after = SFDP_SERVICES ("sfdp-drop", "sfdp-l4-lifecycle", "sfdp-tcp-check"),
   .is_terminal = 0,
 };
