@@ -742,7 +742,7 @@ func (vpp *VppInstance) DeleteTap(tapInterface *NetInterface) error {
 }
 
 func (vpp *VppInstance) saveLogs() {
-	logTarget := vpp.getSuite().getLogDirPath() + "vppinstance-" + vpp.Container.Name + ".log"
+	logTarget := vpp.getSuite().getLogDirPath() + "vppinstance-" + vpp.Container.BaseName + ".log"
 	logSource := vpp.Container.GetHostWorkDir() + defaultLogFilePath
 	cmd := exec.Command("cp", logSource, logTarget)
 	Log(cmd.String())

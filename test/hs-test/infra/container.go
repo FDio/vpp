@@ -27,6 +27,10 @@ var (
 	workDir, _ = os.Getwd()
 )
 
+// runLabel is set on every container so cleanup can target one run without
+// matching on container names.
+const runLabel = "io.fd.hs-test.run"
+
 type Volume struct {
 	HostDir          string
 	ContainerDir     string
@@ -34,10 +38,13 @@ type Volume struct {
 }
 
 type Container struct {
-	Suite            *HstSuite
-	IsOptional       bool
-	RunDetached      bool
-	Name             string
+	Suite       *HstSuite
+	IsOptional  bool
+	RunDetached bool
+	// Name is the docker container name, scoped to this run and Ginkgo process.
+	Name string
+	// BaseName is the name as written in the topology yaml, without any scoping.
+	BaseName         string
 	ID               string
 	Image            string
 	ExtraRunningArgs string
@@ -60,6 +67,7 @@ func newContainer(suite *HstSuite, yamlInput ContainerConfig) (*Container, error
 	container.Volumes = make(map[string]Volume)
 	container.EnvVars = make(map[string]string)
 	container.Name = containerName
+	container.BaseName = containerName
 	container.Suite = suite
 	container.ctx = context.Background()
 
@@ -173,9 +181,10 @@ func (c *Container) Create() error {
 	resp, err := c.Suite.Docker.ContainerCreate(
 		c.ctx,
 		&containerTypes.Config{
-			Image: c.Image,
-			Env:   c.getEnvVars(),
-			Cmd:   strings.Split(c.ExtraRunningArgs, " "),
+			Image:  c.Image,
+			Env:    c.getEnvVars(),
+			Cmd:    strings.Split(c.ExtraRunningArgs, " "),
+			Labels: map[string]string{runLabel: RunIdentity},
 		},
 		&containerTypes.HostConfig{
 			Resources: containerTypes.Resources{
@@ -201,7 +210,7 @@ func (c *Container) Create() error {
 				},
 			},
 			CapAdd:      []string{"NET_ADMIN", "SYS_RESOURCE", "IPC_LOCK", "SYS_PTRACE"},
-			NetworkMode: "container:ginkgo",
+			NetworkMode: containerTypes.NetworkMode("container:" + GinkgoContainerName()),
 			Binds:       c.getVolumesAsSlice(),
 		},
 		nil,
@@ -222,7 +231,7 @@ func formatCpuSet(cpus []int) string {
 
 func (c *Container) allocateCpus() {
 	c.Suite.StartedContainers = append(c.Suite.StartedContainers, c)
-	c.AllocatedCpus = c.Suite.AllocateCpus(c.Name)
+	c.AllocatedCpus = c.Suite.AllocateCpus(c.BaseName)
 	c.Suite.ClaimCpus(c.Name, c.AllocatedCpus)
 	Log("Allocated CPUs " + fmt.Sprint(c.AllocatedCpus) + " to container " + c.Name)
 }
@@ -247,13 +256,18 @@ func (c *Container) Start() error {
 	// wait for container to start
 	time.Sleep(500 * time.Millisecond)
 
-	// check if container exited right after startup
+	// check if container exited right after startup.
+	// the name filter is a regex; anchor it so it cannot match a concurrent run's
+	// containers
 	containers, err := c.Suite.Docker.ContainerList(c.ctx, containerTypes.ListOptions{
 		All:     true,
-		Filters: filters.NewArgs(filters.Arg("name", c.Name)),
+		Filters: filters.NewArgs(filters.Arg("name", "^/"+regexp.QuoteMeta(c.Name)+"$")),
 	})
 	if err != nil {
 		return err
+	}
+	if len(containers) == 0 {
+		return fmt.Errorf("container %s not found after start", c.Name)
 	}
 
 	Log("Container '%s': %s", c.Name, containers[0].Status)
@@ -350,10 +364,13 @@ func (c *Container) addVolume(hostDir string, containerDir string, isDefaultWork
 	volume.ContainerDir = containerDir
 	volume.IsDefaultWorkDir = isDefaultWorkDir
 	c.Volumes[hostDir] = volume
-	if volume.IsDefaultWorkDir && len(volume.HostDir)+len(defaultApiSocketFilePath) > 108 {
-		Log("**************************************************************\n" +
-			"Default api socket file path exceeds 108 bytes. Test may fail.\n" +
-			"**************************************************************")
+	// sun_path is 108 bytes including the terminating NUL, so 107 is the longest
+	// path connect() accepts; at 108 it fails with EINVAL rather than warning.
+	if pathLen := len(volume.HostDir) + len(defaultApiSocketFilePath); volume.IsDefaultWorkDir && pathLen > 107 {
+		Log("**************************************************************\n"+
+			"Api socket path is %d bytes, over the %d the kernel accepts.\n"+
+			"Connecting to VPP will fail. Shorten the test name or LogDir.\n"+
+			"**************************************************************", pathLen, 107)
 	}
 }
 
@@ -589,7 +606,9 @@ func (c *Container) ExecContext(ctx context.Context, useEnvVars bool, command an
 }
 
 func (c *Container) saveLogs() {
-	testLogFilePath := c.Suite.getLogDirPath() + "container-" + c.Name + ".log"
+	// BaseName, not Name: the log directory is already per run and per test, so
+	// repeating the run and process in the file name only makes it harder to read
+	testLogFilePath := c.Suite.getLogDirPath() + "container-" + c.BaseName + ".log"
 
 	logs, err := c.log(0)
 	if err != nil {

@@ -13,7 +13,7 @@ then
         echo -n "Copying docker logs..."
         dirs=$(jq -r '.[] | .SpecReports[] | select((.State == "failed") or (.State == "timedout") or (.State == "panicked") or (.State == "aborted") or (.State == "interrupted")) | .LeafNodeText | split("/")[1]' ${HS_ROOT}/summary/report.json)
         for dirName in $dirs; do
-            logDir=/tmp/hs-test/$dirName
+            logDir=/tmp/hst/$dirName
             if [ -d "$logDir" ]; then
                 mkdir -p ${WORKSPACE}/archives/summary
                 rsync -a --exclude 'vol' $logDir ${WORKSPACE}/archives/summary/
