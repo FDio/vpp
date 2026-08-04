@@ -130,6 +130,9 @@ case "${i}" in
     --run_id=*)
         args="$args -run_id ${i#*=}"
         ;;
+    --image_tag=*)
+        args="$args -image_tag ${i#*=}"
+        ;;
     --seed=*)
         seed="${i#*=}"
         ginkgo_args="$ginkgo_args --seed=$seed"

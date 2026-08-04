@@ -50,8 +50,17 @@ if [ -d "${DOCKER_BUILD_DIR}" ] ; then
   DOCKER_CACHE_ARGS="--builder=${DOCKER_HST_BUILDER} --load --cache-to type=local,dest=${DOCKER_CACHE_DIR},mode=max --cache-from type=local,src=${DOCKER_CACHE_DIR}"
 fi
 
+# IMAGE_TAG scopes every image this script produces to one test run, so that two
+# checkouts building different VPP versions do not overwrite each other's images.
+# Identical layers are still stored once by docker, so tagging per run costs build
+# time rather than disk.
+IMAGE_TAG=${IMAGE_TAG:-latest}
+
 # Set the tag for the base image
-BASE_TAG=${BASE_TAG:-"localhost:5001/vpp-test-base:latest"}
+BASE_TAG=${BASE_TAG:-"localhost:5001/vpp-test-base:$IMAGE_TAG"}
+
+# Label used to find images this script created; see the prune step at the end.
+HST_IMAGE_LABEL="io.fd.hs-test.image"
 
 echo "=== Building base image ==="
 # shellcheck disable=2086
@@ -62,6 +71,7 @@ docker buildx build ${DOCKER_CACHE_ARGS} \
   --build-arg https_proxy="$HTTP_PROXY" \
   --build-arg HTTP_PROXY="$HTTP_PROXY" \
   --build-arg HTTPS_PROXY="$HTTP_PROXY" \
+  --label "$HST_IMAGE_LABEL=1" \
   -t $BASE_TAG -f docker/Dockerfile.base . || {
     echo "Error: Failed to build base image"
     exit 1
@@ -73,10 +83,11 @@ docker push "$BASE_TAG" || {
     exit 1
 }
 
-# Function to build each image
+# Function to build each image. The second argument is the repository; the run's
+# IMAGE_TAG is appended here so that no call site has to remember it.
 build_image() {
     local dockerfile="docker/$1"
-    local tag=$2
+    local tag="$2:$IMAGE_TAG"
     local add_args="${3:-}"
 
     if [ ! -f "$dockerfile" ]; then
@@ -104,10 +115,12 @@ build_image() {
         --build-arg UBUNTU_VERSION="${UBUNTU_VERSION:-22.04}" \
         --build-arg OS_ARCH="$ARCH" \
         --build-arg CODENAME="$CODENAME" \
+        --build-arg BASE_TAG="$BASE_TAG" \
         --build-arg http_proxy="$HTTP_PROXY" \
         --build-arg https_proxy="$HTTP_PROXY" \
         --build-arg HTTP_PROXY="$HTTP_PROXY" \
         --build-arg HTTPS_PROXY="$HTTP_PROXY" \
+        --label "$HST_IMAGE_LABEL=1" \
         $add_args \
         -t "$tag" \
         -f "$dockerfile" . || {
@@ -143,10 +156,14 @@ if [ -d "${DOCKER_CACHE_DIR}" ] ; then
   chmod -R g+rwx "${DOCKER_CACHE_DIR}" 2>/dev/null || true
 fi
 
-# cleanup detached images
-images=$(docker images --filter "dangling=true" -q --no-trunc)
+# Clean up images this script replaced. Restricted to images carrying our label:
+# an unrestricted 'dangling=true' sweep removes every untagged image on the host,
+# including ones belonging to other users and to concurrently running builds.
+# Since images are tagged per run, an hs-test image only becomes dangling when the
+# same run rebuilds it, so this no longer competes with another run's build.
+images=$(docker images --filter "dangling=true" --filter "label=$HST_IMAGE_LABEL=1" -q --no-trunc)
 if [ -n "$images" ]; then
-    echo "=== Cleaning up dangling images ==="
+    echo "=== Cleaning up replaced hs-test images ==="
     # shellcheck disable=SC2086
     docker rmi $images || true
 fi

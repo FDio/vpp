@@ -9,11 +9,16 @@
 # Build first (make build), then run this.
 #
 # This checks the isolation of two runs, not of two checkouts. Testing one commit
-# twice is enough to show that two runs do not collide. Running two different VPP
-# versions side by side additionally needs per-run docker image tags, which do not
-# exist yet - both runs here share whatever images the checkout built.
+# twice is enough to show that the runs do not collide, which is what stage 1 of
+# the isolation work addresses; running two different VPP versions side by side
+# additionally needs per-run docker image tags, which do not exist yet.
 #
 # Usage: script/concurrent_run_check.sh [test-name] [run-id-a] [run-id-b]
+#
+# Both runs use this checkout's images by default. To check that two different VPP
+# builds can run side by side, point each run at its own tag:
+#
+#   IMAGE_TAG_A=<tag> IMAGE_TAG_B=<tag> script/concurrent_run_check.sh
 
 set -u
 
@@ -31,17 +36,58 @@ if [ ! -f .build.ok ]; then
     exit 1
 fi
 
+# Images are tagged per run, so a made-up RUN_ID has no images. Both runs default
+# to the tag this checkout actually built, which makes this a test of run isolation
+# rather than of building twice. Set IMAGE_TAG_A and IMAGE_TAG_B to different tags
+# to check that two VPP versions can be exercised side by side.
+DEFAULT_TAG=$(make -n test 2>/dev/null < /dev/null |
+    grep -o -- '--image_tag=[^ ]*' | head -1 | cut -d= -f2)
+if [ -z "$DEFAULT_TAG" ]; then
+    echo "Could not determine this checkout's image tag." >&2
+    exit 1
+fi
+TAG_A=${IMAGE_TAG_A:-$DEFAULT_TAG}
+TAG_B=${IMAGE_TAG_B:-$DEFAULT_TAG}
+
+for tag in "$TAG_A" "$TAG_B"; do
+    for repo in hs-test/vpp hs-test/ginkgo; do
+        if ! docker image inspect "$repo:$tag" > /dev/null 2>&1; then
+            echo "Image $repo:$tag does not exist." >&2
+            if [ "$tag" = "$DEFAULT_TAG" ]; then
+                echo "Run 'make build' first." >&2
+            fi
+            exit 1
+        fi
+    done
+done
+
+if [ "$TAG_A" = "$TAG_B" ]; then
+    echo "Using images tagged '$TAG_A' for both runs."
+else
+    echo "Using images '$TAG_A' for $RUN_A and '$TAG_B' for $RUN_B."
+fi
+
 # Ask make what it would run, so this script cannot drift from the real recipe.
 # stdin is redirected because the Makefile adds 'docker run -it' when it sees a
 # terminal, and the two runs below are backgrounded and so have no terminal.
+tag_for() { [ "$1" = "$RUN_A" ] && echo "$TAG_A" || echo "$TAG_B"; }
+
 for run_id in "$RUN_A" "$RUN_B"; do
-    if ! make RUN_ID="$run_id" TEST="$TEST_NAME" -n test 2>/dev/null < /dev/null |
+    if ! make RUN_ID="$run_id" IMAGE_TAG="$(tag_for "$run_id")" TEST="$TEST_NAME" -n test \
+            2>/dev/null < /dev/null |
             grep '^docker run' | head -1 > "$OUT_DIR/cmd-$run_id.sh"; then
         echo "Could not determine the docker command for RUN_ID=$run_id" >&2
         exit 1
     fi
     if [ ! -s "$OUT_DIR/cmd-$run_id.sh" ]; then
         echo "make -n produced no docker command for RUN_ID=$run_id" >&2
+        exit 1
+    fi
+
+    # The Ginkgo container is started by the Makefile rather than by the test
+    # binary, so it logs nothing and has to be checked in the command itself.
+    if ! grep -q "hs-test/ginkgo:$(tag_for "$run_id")" "$OUT_DIR/cmd-$run_id.sh"; then
+        echo "RUN_ID=$run_id would not use hs-test/ginkgo:$(tag_for "$run_id")" >&2
         exit 1
     fi
 done
@@ -88,6 +134,7 @@ report() {
     echo "--- $run_id (exit $status)"
     echo "$text" | grep -aE "^(Ran [0-9]+ of|SUCCESS!|FAIL!)" | sed 's/^/    /'
     echo "    containers: $(containers_of "$run_id" | paste -sd' ')"
+    echo "    images:     $(images_of "$run_id" | paste -sd' ')"
     echo "    log dir:    $(dirs_of "$run_id" | paste -sd' ')"
     echo "    log file:   $log"
 }
@@ -100,6 +147,13 @@ containers_of() {
 }
 dirs_of() {
     strip_colors "$OUT_DIR/$1.log" | grep -aoE "$DIR_RE" | sort -u
+}
+# hs-test logs the image each container is created from, so the run's own log is
+# the record of what it used - no need to watch 'docker ps' and hope to catch a
+# short-lived container while it is up.
+images_of() {
+    strip_colors "$OUT_DIR/$1.log" |
+        grep -aoE "from image [^[:space:]]+" | sed 's/from image //' | sort -u
 }
 
 report "$RUN_A" $status_a
@@ -127,6 +181,21 @@ if [ -n "$shared_containers" ]; then
     exit 1
 fi
 
+# When two different builds were requested, neither run may have touched the
+# other's images - that is the claim per-run image tags exist to support.
+if [ "$TAG_A" != "$TAG_B" ]; then
+    wrong=$( { images_of "$RUN_A" | grep -v ":$TAG_A\$" || true; } )
+    wrong="$wrong$( { images_of "$RUN_B" | grep -v ":$TAG_B\$" || true; } )"
+    if [ -n "$wrong" ]; then
+        echo "WRONG IMAGES - a run used an image that is not its own:"
+        echo "$wrong" | sed 's/^/    /'
+        exit 1
+    fi
+    if [ -z "$(images_of "$RUN_A")" ] || [ -z "$(images_of "$RUN_B")" ]; then
+        echo "INCONCLUSIVE - could not observe the images one of the runs used."
+        exit 1
+    fi
+fi
 if [ -n "$shared_dirs" ]; then
     echo "NOT ISOLATED - both runs used these directories:"
     echo "$shared_dirs" | sed 's/^/    /'

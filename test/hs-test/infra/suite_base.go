@@ -43,6 +43,7 @@ var DryRun = flag.Bool("dryrun", false, "set up containers but don't run tests")
 var Timeout = flag.Int("timeout", 5, "test timeout override (in minutes)")
 var HostPpid = flag.Int("host_ppid", os.Getppid(), "automatically set in Makefile")
 var RunId = flag.String("run_id", "", "unique identifier of this test run, automatically set in Makefile")
+var ImageTag = flag.String("image_tag", "latest", "tag of the hs-test docker images to use, automatically set in Makefile")
 var CpuOffset = flag.Int("cpu_offset", 0, "initial CPU offset")
 var CpuOffsetNumaNode = flag.Int("cpu_offset_numa_node", 0, "NUMA node containing the initial CPU offset")
 var HyperThreading = flag.Bool("hyperthread", false, "whether to use hyperthreads in CPU allocation")
@@ -88,6 +89,30 @@ func SetRunIdentity(runIdentity string) {
 // topologies of concurrent runs apart. Must match the name used in the Makefile.
 func GinkgoContainerName() string {
 	return "ginkgo-" + RunIdentity
+}
+
+// hsTestImagePrefix identifies the images hs-test builds itself, and so the ones
+// that carry a per-run tag.
+const hsTestImagePrefix = "hs-test/"
+
+// imageHasTag reports whether an image reference already names a tag. Only the
+// part after the last '/' can hold one - a registry host may contain a colon too.
+func imageHasTag(image string) bool {
+	if i := strings.LastIndex(image, "/"); i != -1 {
+		return strings.Contains(image[i+1:], ":")
+	}
+	return strings.Contains(image, ":")
+}
+
+// ImageReference returns the image to run for this test run. Images built by
+// hs-test are tagged per run, so that two checkouts testing different VPP versions
+// do not overwrite each other's images. References that already name a tag, and
+// images from elsewhere, are returned unchanged.
+func ImageReference(image string) string {
+	if !strings.HasPrefix(image, hsTestImagePrefix) || imageHasTag(image) {
+		return image
+	}
+	return image + ":" + *ImageTag
 }
 
 const (

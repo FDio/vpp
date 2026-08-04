@@ -91,6 +91,14 @@ endif
 # must match GinkgoContainerName() in infra/suite_base.go
 GINKGO_CONTAINER:=ginkgo-$(RUN_ID)
 
+# IMAGE_TAG selects which build to test, RUN_ID says which run this is. They are
+# the same by default - a checkout tests what it built - but separating them lets
+# two runs exercise one build, which is what script/concurrent_run_check.sh needs
+# in order to test isolation without building twice.
+ifeq ($(IMAGE_TAG),)
+IMAGE_TAG:=$(RUN_ID)
+endif
+
 # 'make cleanup-hst' cleans up the run RUN_ID names, which for the branch and
 # directory defaults is the run this checkout would have started. Only when RUN_ID
 # fell back to this make process' PID does it identify nothing, and the id recorded
@@ -181,12 +189,12 @@ DOCKER_VOLUMES:=-v $(WS_ROOT):$(WS_ROOT) -v /var/run/docker.sock:/var/run/docker
 DOCKER_PROXY:=-e HTTP_PROXY=$(HTTP_PROXY) -e HTTPS_PROXY=$(HTTPS_PROXY) -e NO_PROXY=$(NO_PROXY)
 DOCKER_COMMON_ARGS:=$(DOCKER_TTY) --rm $(DOCKER_CAPABILITIES) $(DOCKER_DEVICES) $(DOCKER_PROXY) \
 		-e GITHUB_REPO_URL=$(GITHUB_REPO_URL) $(DOCKER_VOLUMES) --name $(GINKGO_CONTAINER) \
-		--label io.fd.hs-test.run=$(RUN_ID) hs-test/ginkgo \
+		--label io.fd.hs-test.run=$(RUN_ID) hs-test/ginkgo:$(IMAGE_TAG) \
 		.$(HS_ROOT)/hs_test.sh --persist=$(PERSIST) --verbose=$(VERBOSE) \
 		--debug=$(DEBUG) --cpus=$(CPUS) --vppsrc=$(VPPSRC) --parallel=$(PARALLEL) \
 		--repeat=$(REPEAT) --cpu0=$(CPU0) --dryrun=$(DRYRUN) --skip=$(SKIP) --no_color=$(NO_COLOR) \
 		--timeout=$(TIMEOUT) --ginkgo_timeout=$(GINKGO_TIMEOUT) --vpp_cpus=$(VPP_CPUS) --hs_root=$(HS_ROOT) \
-		$(LABEL_ARG) --host_ppid=$$PPID --run_id=$(RUN_ID) $(SEED_ARG) \
+		$(LABEL_ARG) --host_ppid=$$PPID --run_id=$(RUN_ID) --image_tag=$(IMAGE_TAG) $(SEED_ARG) \
 		--hyperthread=$(HT) --mw_parallel=$(MW_PARALLEL) $(MW_WORKERS_PER_NUMA_ARG)
 
 .PHONY: help
@@ -196,6 +204,7 @@ help:
 	@echo " build-cov                - coverage build of VPP and Docker images"
 	@echo " build-debug              - build test infra (vpp debug image)"
 	@echo " checkstyle-go            - check style of .go source files"
+	@echo " clean-hst-images         - delete this run's docker images (see IMAGE_TAG)"
 	@echo " clean-hst-registry       - delete images and repositories from local registry"
 	@echo " cleanup-hst              - removes all docker containers and namespaces from last test run"
 	@echo " fixstyle-go              - format .go source files"
@@ -292,27 +301,27 @@ test-leak: FORCE_BUILD=false
 test-leak: .deps.ok .build_debug.ok
 	docker run $(DOCKER_TTY) --rm $(DOCKER_CAPABILITIES) $(DOCKER_DEVICES) $(DOCKER_PROXY)\
 		-e GITHUB_REPO_URL=$(GITHUB_REPO_URL) $(DOCKER_VOLUMES) --name $(GINKGO_CONTAINER) \
-		--label io.fd.hs-test.run=$(RUN_ID) hs-test/ginkgo \
+		--label io.fd.hs-test.run=$(RUN_ID) hs-test/ginkgo:$(IMAGE_TAG) \
 		.$(HS_ROOT)/hs_test.sh --test=$(TEST) --debug_build=true --leak_check=true --vppsrc=$(VPPSRC) \
 		--timeout=$(TIMEOUT) --ginkgo_timeout=$(GINKGO_TIMEOUT) --vpp_cpus=$(VPP_CPUS) --hs_root=$(HS_ROOT) \
-		$(LABEL_ARG) --host_ppid=$$PPID --run_id=$(RUN_ID) $(SEED_ARG); \
+		$(LABEL_ARG) --host_ppid=$$PPID --run_id=$(RUN_ID) --image_tag=$(IMAGE_TAG) $(SEED_ARG); \
 
 .PHONY: build
 build: .deps.ok build-vpp-release
 	@rm -f .build.ok
-	bash ./script/build_hst.sh release $(FORCE_BUILD)
+	IMAGE_TAG=$(IMAGE_TAG) bash ./script/build_hst.sh release $(FORCE_BUILD)
 	@touch .build.ok
 
 .PHONY: build-cov
 build-cov: .deps.ok build-vpp-gcov
 	@rm -f .build.cov.ok
-	bash ./script/build_hst.sh gcov $(FORCE_BUILD)
+	IMAGE_TAG=$(IMAGE_TAG) bash ./script/build_hst.sh gcov $(FORCE_BUILD)
 	@touch .build.cov.ok
 
 .PHONY: build-debug
 build-debug: .deps.ok build-vpp-debug
 	@rm -f .build.ok
-	bash ./script/build_hst.sh debug $(FORCE_BUILD)
+	IMAGE_TAG=$(IMAGE_TAG) bash ./script/build_hst.sh debug $(FORCE_BUILD)
 	@touch .build.ok
 
 .deps.ok:
@@ -393,6 +402,25 @@ cleanup-hst:
 	echo "****************************"; \
 	echo "Done."; \
 	echo "****************************"
+
+# Removes the images of one run, selected by IMAGE_TAG. Images are tagged per run,
+# so every checkout that has been built leaves a set behind, and the only images
+# reclaimed automatically are the ones a rebuild of the same tag replaces. Only
+# images this framework built are considered, so nothing else on the host is
+# touched.
+.PHONY: clean-hst-images
+clean-hst-images:
+	@if [ -z "$(IMAGE_TAG)" ]; then echo "IMAGE_TAG is empty."; exit 1; fi
+	@echo "****************************"
+	@echo "Removing hs-test images tagged $(IMAGE_TAG):"
+	@refs=$$(docker images --filter "label=io.fd.hs-test.image=1" \
+		--format '{{.Repository}}:{{.Tag}}' | grep ":$(IMAGE_TAG)$$" || true); \
+	if [ -n "$$refs" ]; then \
+		echo "$$refs" | xargs docker rmi; \
+	else \
+		echo "none found"; \
+	fi
+	@echo "****************************"
 
 .PHONY: clear-hst-registry
 clear-hst-registry:
