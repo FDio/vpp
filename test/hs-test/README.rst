@@ -222,19 +222,42 @@ by it and have to be removed by name.
 
 To check that concurrent runs really are isolated, ``script/concurrent_run_check.sh``
 runs one test twice under two ``RUN_ID``\ s and verifies that the two runs shared no
-container and no directory::
+container, no directory and no image::
 
     $ make build
     $ ./script/concurrent_run_check.sh [test-name] [run-id-a] [run-id-b]
 
-It skips ``make build`` deliberately: the two runs would otherwise rebuild the same
-docker image tags, and from a single checkout the same VPP build tree.
+Both runs use this checkout's images by default, which is what makes the result a
+statement about run isolation rather than about building twice. To check that two
+different builds run side by side, give each run its own tag::
 
-Note that docker image tags (``hs-test/vpp`` and friends) are *not* scoped by
-``RUN_ID``, so concurrent runs still share one set of images and ``make build`` in
-one checkout replaces the VPP under test in the other. Until that is addressed,
-concurrent runs are only safe when both checkouts have built the same images, or
-when only one of them rebuilds.
+    $ IMAGE_TAG_A=<tag-a> IMAGE_TAG_B=<tag-b> ./script/concurrent_run_check.sh
+
+The script reports the images it observed each run's containers being created from,
+and fails if either run touched the other's. Note that a run pointed at the wrong
+images still *passes* - it silently tests the wrong VPP - which is why this is
+checked rather than assumed.
+
+Two tags to compare are normally produced by building two checkouts. Build them one
+after the other rather than at the same time: the ``docker buildx`` cache under
+``/scratch/docker-build/docker_cache`` is shared, and two builds writing to it
+concurrently can corrupt it. Only the test runs need to overlap.
+
+Every image hs-test builds is tagged with ``RUN_ID`` as well, so ``make build`` in
+one checkout does not replace the VPP under test in the other, and two different
+VPP versions can be exercised at the same time. The topology files still name
+images without a tag (``hs-test/nginx-server``); the run's tag is added when the
+container is created, so only images under ``hs-test/`` are affected and images
+from elsewhere are used as written.
+
+Tagging per run costs build time rather than disk: docker stores identical layers
+once, so a tool image built from unchanged sources in two checkouts is stored once
+and only the layers that genuinely differ, such as the VPP binaries, are duplicated.
+
+Every checkout that has been built therefore leaves a set of images behind, and a
+rebuild only reclaims the ones it replaces. ``make clean-hst-images`` removes the
+images of one run, selected by ``IMAGE_TAG``; only images this framework built are
+considered.
 
 CPU allocation is *not* yet coordinated across runs, so two concurrent runs can pin
 containers to the same cores. Tests still pass, but they take noticeably longer than

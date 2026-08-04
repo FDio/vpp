@@ -71,10 +71,12 @@ func newContainer(suite *HstSuite, yamlInput ContainerConfig) (*Container, error
 	container.Suite = suite
 	container.ctx = context.Background()
 
+	// the topologies name images without a tag; ImageReference adds this run's tag
+	// to the ones hs-test builds, so the yaml files stay free of run specifics
 	if Image, ok := yamlInput["image"]; ok {
-		container.Image = Image.(string)
+		container.Image = ImageReference(Image.(string))
 	} else {
-		container.Image = "hs-test/vpp"
+		container.Image = ImageReference("hs-test/vpp")
 	}
 
 	if args, ok := yamlInput["extra-args"]; ok {
@@ -159,19 +161,32 @@ func (c *Container) PullDockerImage(name string, ctx context.Context) {
 func (c *Container) Create() error {
 	c.createVolumePaths()
 
-	var sliceOfImageNames []string
 	images, err := c.Suite.Docker.ImageList(c.ctx, image.ListOptions{})
 	AssertNil(err)
 
-	for _, image := range images {
-		if len(image.RepoTags) == 0 {
-			continue
-		}
-		sliceOfImageNames = append(sliceOfImageNames, strings.Split(image.RepoTags[0], ":")[0])
+	// Compare full repository:tag references, and every tag of every image rather
+	// than just the first. Comparing repository names alone would treat another
+	// run's build of hs-test/vpp as this run's, and would also make a locally built
+	// per-run tag look absent and send us to 'docker pull', which cannot find it.
+	wanted := c.Image
+	if !imageHasTag(wanted) {
+		wanted += ":latest"
 	}
-	if !slices.Contains(sliceOfImageNames, c.Image) {
+	found := false
+	for _, image := range images {
+		if slices.Contains(image.RepoTags, wanted) {
+			found = true
+			break
+		}
+	}
+	if !found {
 		c.PullDockerImage(c.Image, c.ctx)
 	}
+
+	// Record the image each container is created from. Nothing else in the output
+	// says which build was exercised, so without this a run pointed at the wrong
+	// images passes and reads exactly like a correct one.
+	Log("Creating container %s from image %s", c.Name, c.Image)
 
 	c.allocateCpus()
 	cpuSet := fmt.Sprintf("%d-%d", c.AllocatedCpus[0], c.AllocatedCpus[len(c.AllocatedCpus)-1])
