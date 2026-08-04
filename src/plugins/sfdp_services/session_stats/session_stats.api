@@ -2,9 +2,18 @@
  * Copyright (c) 2025 Cisco Systems, Inc.
  */
 
-option version = "1.1.0";
+option version = "1.2.0";
 import "vnet/interface_types.api";
 import "vnet/ip/ip_types.api";
+import "vnet/sfdp/sfdp_types.api";
+
+enum sfdp_session_stats_event_type : u8
+{
+  SFDP_SESSION_STATS_EVENT_TYPE_UNSPECIFIED = 0,
+  SFDP_SESSION_STATS_EVENT_TYPE_CREATED = 1,
+  SFDP_SESSION_STATS_EVENT_TYPE_UPDATED = 2,
+  SFDP_SESSION_STATS_EVENT_TYPE_CLOSED = 3,
+};
 
 /*
  * typedef for ring-buffer entries format
@@ -12,6 +21,11 @@ import "vnet/ip/ip_types.api";
  */
 typedef sfdp_session_stats_ring_entry
 {
+  u64 exported_at_unix_micros;
+  u64 first_packet_time_unix_micros;
+  u64 last_packet_time_unix_micros;
+  u64 forward_service_bitmap;
+  u64 reverse_service_bitmap;
   f64 duration;
   f64 ttl_mean_forward;
   f64 ttl_mean_reverse;
@@ -29,6 +43,7 @@ typedef sfdp_session_stats_ring_entry
   u64 opaque;
   u32 session_index;
   u32 tenant_id;
+  u32 context_id;
   u32 tcp_syn_packets;
   u32 tcp_fin_packets;
   u32 tcp_rst_packets;
@@ -63,6 +78,8 @@ typedef sfdp_session_stats_ring_entry
   u8 src_ip[16];
   u8 dst_ip[16];
   u8 tcp_handshake_complete;
+  vl_api_sfdp_session_stats_event_type_t event_type;
+  vl_api_sfdp_session_state_t session_state;
 };
 
 /*
