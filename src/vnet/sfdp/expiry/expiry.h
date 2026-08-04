@@ -14,6 +14,12 @@
 /* Defined in sfdp.h, but needed in callback functions definitions */
 typedef struct sfdp_session sfdp_session_t;
 
+/* Describes why sessions were appended by one expiry callback invocation. */
+typedef struct
+{
+  u32 capacity_evictions;
+} sfdp_expiry_result_t;
+
 /* Defines callbacks used by sfdp to call expiry module. */
 typedef struct
 {
@@ -33,15 +39,16 @@ typedef struct
    * desired_expiries: number of requested flow expiries to be added to the
    * vector. expired_sessions_vec: vec pointer to be filled with expired
    * sessions. return: updated expired_sessions_vec (resize may change the
-   * vector pointer value). The expiry module may add fewer, or more, sessions
-   * than the requested number.
+   * vector pointer value). result reports how many appended sessions were
+   * selected specifically because SFDP requested capacity eviction. The expiry
+   * module may add fewer, or more, sessions than the requested number.
    *
    * Note: Upon placing a session index in expired_sessions_vec, the expiry
    *       module shall have freed any associated resources, as sfdp will free
    * it definitely.
    */
-  u32 *(*expire_or_evict_sessions) (u32 desired_expiries,
-				    u32 *expired_sessions_vec);
+  u32 *(*expire_or_evict_sessions) (u32 desired_expiries, u32 *expired_sessions_vec,
+				    sfdp_expiry_result_t *result);
 
   /* Called by sfdp-lookup after new session entry is created,
    * but before the first packet gets procesed with it.
