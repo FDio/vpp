@@ -49,6 +49,58 @@ ifeq ($(CPU0),)
 CPU0=false
 endif
 
+# RUN_ID isolates one test run from another, so that several checkouts can run
+# 'make test' at the same time. It names the Ginkgo container that owns the run's
+# network namespace, is embedded in every container name, and labels every
+# container so that cleanup can target a single run.
+#
+# It defaults to the current branch name, which is normally distinct per worktree
+# and is what you want to see in 'docker ps'. Two things follow from the default
+# being stable rather than per-invocation: switching branches mid-run orphans the
+# containers named after the old branch, and starting a second run on the same
+# branch fails on the duplicate container name instead of silently sharing state.
+# Pass RUN_ID explicitly in either case.
+ifeq ($(RUN_ID),)
+RUN_ID:=$(shell git -C $(WS_ROOT) rev-parse --abbrev-ref HEAD 2>/dev/null | \
+	sed 's/[^a-zA-Z0-9_.-]/-/g; s/^[^a-zA-Z0-9]*//' | cut -c1-40)
+endif
+
+# detached HEAD reports "HEAD", which says nothing about which checkout this is;
+# fall back to the checkout's directory name, then to this make process' PID
+ifeq ($(RUN_ID),HEAD)
+RUN_ID:=
+endif
+ifeq ($(RUN_ID),)
+RUN_ID:=$(shell basename "$$(cd $(WS_ROOT) && pwd)" | \
+	sed 's/[^a-zA-Z0-9_.-]/-/g; s/^[^a-zA-Z0-9]*//' | cut -c1-40)
+endif
+ifeq ($(RUN_ID),)
+RUN_ID:=$(shell echo $$PPID)
+# a PID identifies one invocation rather than one checkout, so unlike the other
+# defaults it tells 'make cleanup-hst' nothing about a run that already finished
+RUN_ID_IS_PID:=1
+endif
+
+# RUN_ID has to be usable as a docker container name. It does not have to be short:
+# where the run appears in a filesystem path, hs-test uses a 4-character token
+# derived from it instead (see RunPathToken in infra/suite_base.go).
+ifneq ($(shell printf '%s' '$(RUN_ID)' | grep -cE '^[a-zA-Z0-9][a-zA-Z0-9_.-]{0,39}$$'),1)
+$(error RUN_ID must match [a-zA-Z0-9][a-zA-Z0-9_.-]{0,39}, got '$(RUN_ID)')
+endif
+
+# must match GinkgoContainerName() in infra/suite_base.go
+GINKGO_CONTAINER:=ginkgo-$(RUN_ID)
+
+# 'make cleanup-hst' cleans up the run RUN_ID names, which for the branch and
+# directory defaults is the run this checkout would have started. Only when RUN_ID
+# fell back to this make process' PID does it identify nothing, and the id recorded
+# by the last run is used instead.
+ifeq ($(RUN_ID_IS_PID),1)
+CLEANUP_RUN_ID=$(shell cat .last_hst_run_id 2>/dev/null)
+else
+CLEANUP_RUN_ID=$(RUN_ID)
+endif
+
 ifeq ($(VPPSRC),)
 VPPSRC=$(shell pwd)/../..
 endif
@@ -123,18 +175,19 @@ FORCE_BUILD?=true
 # privileged is needed for "ip netns" otherwise we are not able to create namespace
 DOCKER_CAPABILITIES:=--privileged
 DOCKER_DEVICES:=--device /dev/vhost-net:/dev/vhost-net --device /dev/net/tun:/dev/net/tun
-DOCKER_VOLUMES:=-v $(WS_ROOT):$(WS_ROOT) -v /var/run/docker.sock:/var/run/docker.sock -v /tmp/hs-test:/tmp/hs-test \
+DOCKER_VOLUMES:=-v $(WS_ROOT):$(WS_ROOT) -v /var/run/docker.sock:/var/run/docker.sock -v /tmp/hst:/tmp/hst \
 	-v /etc/localtime:/etc/localtime:ro $(CORE_VOLUME) -v $(HS_ROOT)/.go_cache/mod:/root/go/pkg/mod \
 	-v $(HS_ROOT)/.go_cache/build:/root/.cache/go-build
 DOCKER_PROXY:=-e HTTP_PROXY=$(HTTP_PROXY) -e HTTPS_PROXY=$(HTTPS_PROXY) -e NO_PROXY=$(NO_PROXY)
 DOCKER_COMMON_ARGS:=$(DOCKER_TTY) --rm $(DOCKER_CAPABILITIES) $(DOCKER_DEVICES) $(DOCKER_PROXY) \
-		-e GITHUB_REPO_URL=$(GITHUB_REPO_URL) $(DOCKER_VOLUMES) --name ginkgo hs-test/ginkgo \
+		-e GITHUB_REPO_URL=$(GITHUB_REPO_URL) $(DOCKER_VOLUMES) --name $(GINKGO_CONTAINER) \
+		--label io.fd.hs-test.run=$(RUN_ID) hs-test/ginkgo \
 		.$(HS_ROOT)/hs_test.sh --persist=$(PERSIST) --verbose=$(VERBOSE) \
 		--debug=$(DEBUG) --cpus=$(CPUS) --vppsrc=$(VPPSRC) --parallel=$(PARALLEL) \
 		--repeat=$(REPEAT) --cpu0=$(CPU0) --dryrun=$(DRYRUN) --skip=$(SKIP) --no_color=$(NO_COLOR) \
 		--timeout=$(TIMEOUT) --ginkgo_timeout=$(GINKGO_TIMEOUT) --vpp_cpus=$(VPP_CPUS) --hs_root=$(HS_ROOT) \
-		$(LABEL_ARG) --host_ppid=$$PPID $(SEED_ARG) --hyperthread=$(HT) --mw_parallel=$(MW_PARALLEL) \
-		$(MW_WORKERS_PER_NUMA_ARG)
+		$(LABEL_ARG) --host_ppid=$$PPID --run_id=$(RUN_ID) $(SEED_ARG) \
+		--hyperthread=$(HT) --mw_parallel=$(MW_PARALLEL) $(MW_WORKERS_PER_NUMA_ARG)
 
 .PHONY: help
 help:
@@ -170,6 +223,7 @@ help:
 	@echo " PARALLEL=[n|auto]        - number of test processes; auto splits MW into NUMA-aware phases when MW_PARALLEL=true"
 	@echo " PERSIST=[true|false]     - whether clean up topology and dockers after test"
 	@echo " REPEAT=[n]               - repeat the selected test sequence N additional times or until failure"
+	@echo " RUN_ID=[id]              - isolates this run's containers from concurrent runs (default = branch name)"
 	@echo " SEED=[n]                 - set Ginkgo seed"
 	@echo " SKIP=[name1,name2...]    - specific test(s) to skip"
 	@echo " TEST=[name1,name2...]    - specific test(s) to run"
@@ -237,10 +291,11 @@ test-cov: .deps.ok .build.cov.ok wipe-lcov
 test-leak: FORCE_BUILD=false
 test-leak: .deps.ok .build_debug.ok
 	docker run $(DOCKER_TTY) --rm $(DOCKER_CAPABILITIES) $(DOCKER_DEVICES) $(DOCKER_PROXY)\
-		-e GITHUB_REPO_URL=$(GITHUB_REPO_URL) $(DOCKER_VOLUMES) --name ginkgo hs-test/ginkgo \
+		-e GITHUB_REPO_URL=$(GITHUB_REPO_URL) $(DOCKER_VOLUMES) --name $(GINKGO_CONTAINER) \
+		--label io.fd.hs-test.run=$(RUN_ID) hs-test/ginkgo \
 		.$(HS_ROOT)/hs_test.sh --test=$(TEST) --debug_build=true --leak_check=true --vppsrc=$(VPPSRC) \
 		--timeout=$(TIMEOUT) --ginkgo_timeout=$(GINKGO_TIMEOUT) --vpp_cpus=$(VPP_CPUS) --hs_root=$(HS_ROOT) \
-		$(LABEL_ARG) --host_ppid=$$PPID $(SEED_ARG); \
+		$(LABEL_ARG) --host_ppid=$$PPID --run_id=$(RUN_ID) $(SEED_ARG); \
 
 .PHONY: build
 build: .deps.ok build-vpp-release
@@ -317,20 +372,27 @@ fixstyle-go:
 	@echo "Fixstyle done."
 	@echo "*******************************************************************"
 
+# Cleans up a single run, identified by RUN_ID. Filtering by label instead of by
+# container name matters once several runs are in flight: the old name filter was
+# a substring match on the PPID and could reap a concurrent run's containers.
 .PHONY: cleanup-hst
 cleanup-hst:
-	@if [ ! -f ".last_hst_ppid" ]; then \
-		echo "'.last_hst_ppid' file does not exist."; \
+	@run_id="$(CLEANUP_RUN_ID)"; \
+	if [ -z "$$run_id" ]; then \
+		echo "Cannot tell which run to clean up. Pass RUN_ID=<id> or run 'make test' first."; \
 		exit 1; \
-	fi
-	@echo "****************************"
-	@echo "Removing docker containers:"
-	@# "-" ignores errors
-	@-sudo docker rm $$(sudo docker stop $$(sudo docker ps -a -q --filter "name=$$(cat .last_hst_ppid)") -t 0)
-	@-sudo docker rm -f ginkgo
-	@echo "****************************"
-	@echo "Done."
-	@echo "****************************"
+	fi; \
+	echo "****************************"; \
+	echo "Removing docker containers of run $$run_id:"; \
+	ids=$$(sudo docker ps -a -q --filter "label=io.fd.hs-test.run=$$run_id"); \
+	if [ -n "$$ids" ]; then \
+		sudo docker rm -f $$ids; \
+	else \
+		echo "no containers found"; \
+	fi; \
+	echo "****************************"; \
+	echo "Done."; \
+	echo "****************************"
 
 .PHONY: clear-hst-registry
 clear-hst-registry:
