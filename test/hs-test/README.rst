@@ -209,6 +209,27 @@ to 107 bytes, which a readable ``RUN_ID`` would not fit.
 ``make cleanup-hst`` removes the containers of one run, selected by label. It uses
 the id recorded in ``.last_hst_run_id`` unless ``RUN_ID`` is given.
 
+Images are tagged with ``RUN_ID`` too, so ``make build`` in one checkout does not
+replace the VPP under test in the other. Topology files name images without a tag
+(``hs-test/nginx-server``); the run's tag is added when the container is created,
+so images from elsewhere are used as written. This costs build time rather than
+disk, because docker stores identical layers once.
+
+Every checkout that has been built leaves a set of images behind, and a rebuild
+only reclaims the ones it replaces. ``make clean-hst-images`` removes the images
+of one run, and ``make clean-hst-images-all`` removes the images of every run.
+Pass ``RUN_ID`` to clean up after a branch you are no longer on::
+
+    $ make clean-hst-images RUN_ID=review-46432
+    $ make clean-hst-images-all
+
+Both also remove ``.last_state_hash`` when it names an image they deleted, so the
+next ``make test`` rebuilds instead of skipping the build and failing on a missing
+image.
+
+CPU allocation is not yet coordinated across runs, so two concurrent runs can pin
+containers to the same cores. Tests still pass, but take longer.
+
 Two runs from the *same* checkout are not supported: Ginkgo compiles the suite to
 ``hs-test.test`` in the package directory and removes it when the run ends, so the
 runs would delete it under each other.
