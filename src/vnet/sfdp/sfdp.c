@@ -154,7 +154,9 @@ sfdp_init_main_if_needed (sfdp_main_t *sfdp)
 				 << (template_shift + log_n_thread);
       ptd->session_id_template |= (u64) i << template_shift;
       ptd->session_freelist = 0;
+      ptd->health.accounting_valid = 1;
     }
+  sfdp->unbound_health.accounting_valid = 1;
   if (vlib_num_workers ())
     clib_spinlock_init (&sfdp->session_lock);
 
@@ -190,6 +192,91 @@ sfdp_init_main_if_needed (sfdp_main_t *sfdp)
     }
 
   done = 1;
+}
+
+int
+sfdp_health_snapshot_get (sfdp_health_snapshot_t *snapshot,
+                          sfdp_health_snapshot_reason_t *reason_out)
+{
+  sfdp_main_t *sfdp = &sfdp_main;
+  sfdp_health_counters_t *health;
+  u64 value;
+
+  if (reason_out)
+    *reason_out = SFDP_HEALTH_SNAPSHOT_REASON_NONE;
+  if (!snapshot || !sfdp->sessions)
+    {
+      if (reason_out)
+        *reason_out = SFDP_HEALTH_SNAPSHOT_REASON_UNAVAILABLE;
+      return -1;
+    }
+  clib_memset (snapshot, 0, sizeof (*snapshot));
+  snapshot->session_table_capacity = sfdp_num_sessions ();
+  snapshot->accounting_valid = 1;
+
+  for (u32 shard = 0; shard <= vec_len (sfdp->per_thread_data); shard++)
+    {
+      health = shard < vec_len (sfdp->per_thread_data) ? &sfdp->per_thread_data[shard].health :
+                                                         &sfdp->unbound_health;
+      if (!__atomic_load_n (&health->accounting_valid, __ATOMIC_ACQUIRE))
+        {
+          if (reason_out)
+            *reason_out = SFDP_HEALTH_SNAPSHOT_REASON_ACCOUNTING_INVALID;
+          return -1;
+        }
+
+      value = __atomic_load_n (&health->active_sessions, __ATOMIC_RELAXED);
+      if (value > ~0ULL - snapshot->session_table_used)
+        {
+          if (reason_out)
+            *reason_out = SFDP_HEALTH_SNAPSHOT_REASON_COUNTER_OVERFLOW;
+          return -1;
+        }
+      snapshot->session_table_used += value;
+
+      for (u32 i = 0; i < SFDP_SESSION_CREATE_N_FAILURE_REASONS; i++)
+        {
+          value = __atomic_load_n (&health->create_failures[i], __ATOMIC_RELAXED);
+          if (value > ~0ULL - snapshot->create_failures[i])
+            {
+              if (reason_out)
+                *reason_out = SFDP_HEALTH_SNAPSHOT_REASON_COUNTER_OVERFLOW;
+              return -1;
+            }
+          snapshot->create_failures[i] += value;
+        }
+      for (u32 i = 0; i < SFDP_SESSION_N_EVICTION_REASONS; i++)
+        {
+          value = __atomic_load_n (&health->evictions[i], __ATOMIC_RELAXED);
+          if (value > ~0ULL - snapshot->evictions[i])
+            {
+              if (reason_out)
+                *reason_out = SFDP_HEALTH_SNAPSHOT_REASON_COUNTER_OVERFLOW;
+              return -1;
+            }
+          snapshot->evictions[i] += value;
+        }
+    }
+
+  for (u32 shard = 0; shard <= vec_len (sfdp->per_thread_data); shard++)
+    {
+      health = shard < vec_len (sfdp->per_thread_data) ? &sfdp->per_thread_data[shard].health :
+                                                         &sfdp->unbound_health;
+      if (!__atomic_load_n (&health->accounting_valid, __ATOMIC_ACQUIRE))
+        {
+          if (reason_out)
+            *reason_out = SFDP_HEALTH_SNAPSHOT_REASON_ACCOUNTING_INVALID;
+          return -1;
+        }
+    }
+
+  if (snapshot->session_table_used > snapshot->session_table_capacity)
+    {
+      if (reason_out)
+        *reason_out = SFDP_HEALTH_SNAPSHOT_REASON_SESSION_TABLE_CAPACITY_EXCEEDED;
+      return -1;
+    }
+  return 0;
 }
 
 static clib_error_t *
