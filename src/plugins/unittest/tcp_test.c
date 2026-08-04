@@ -5231,6 +5231,51 @@ tcp_test_bt_repeat_sack (void)
 }
 
 static int
+tcp_test_bt_rxt_across_sacked_island (void)
+{
+  tcp_connection_t _tc = {}, *tc = &_tc;
+  tcp_rate_sample_t rs = {};
+  tcp_bt_sample_t *bts;
+  sack_block_t block;
+
+  tcp_bt_init (tc);
+  tcp_bt_track_tx (tc, 200);
+  tc->snd_nxt = 200;
+
+  block = (sack_block_t) { .start = 40, .end = 60 };
+  vec_add1 (tc->rcv_opts.sacks, block);
+  rs.last_sacked_bytes = 20;
+  tcp_bt_sample_delivery_rate (tc, &rs);
+
+  /* The retransmitted segment covers unsacked bytes on both sides of the
+   * SACKed island. Preserve the island and relabel both transmitted pieces. */
+  tcp_bt_track_rxt (tc, 0, 100);
+  bts = pool_elt_at_index (tc->bt->samples, tc->bt->head);
+  TCP_TEST (bts->min_seq == 0 && bts->max_seq == 40 && (bts->flags & TCP_BTS_IS_RXT),
+	    "BT tracks retransmitted prefix [0:40]");
+  bts = pool_elt_at_index (tc->bt->samples, bts->next);
+  TCP_TEST (bts->min_seq == 40 && bts->max_seq == 60 && (bts->flags & TCP_BTS_IS_SACKED),
+	    "BT preserves SACKed island [40:60]");
+  bts = pool_elt_at_index (tc->bt->samples, bts->next);
+  TCP_TEST (bts->min_seq == 60 && bts->max_seq == 100 && (bts->flags & TCP_BTS_IS_RXT),
+	    "BT tracks retransmitted suffix [60:100]");
+
+  vec_reset_length (tc->rcv_opts.sacks);
+  block = (sack_block_t) { .start = 60, .end = 100 };
+  vec_add1 (tc->rcv_opts.sacks, block);
+  clib_memset (&rs, 0, sizeof (rs));
+  rs.last_sacked_bytes = 40;
+  tcp_bt_sample_delivery_rate (tc, &rs);
+  TCP_TEST (tc->delivered == 60 && (rs.flags & TCP_BTS_IS_RXT),
+	    "BT samples retransmitted suffix delivery as RTT ambiguous: %u", tc->delivered);
+  TCP_TEST (tcp_bt_is_sane (tc->bt), "BT remains sane after SACKing retransmitted suffix");
+
+  vec_free (tc->rcv_opts.sacks);
+  tcp_bt_cleanup (tc);
+  return 0;
+}
+
+static int
 tcp_test_bt_toggle (void)
 {
   tcp_connection_t _tc = {}, *tc = &_tc;
@@ -5278,6 +5323,8 @@ tcp_test_bt (vlib_main_t * vm, unformat_input_t * input)
   if (tcp_test_bt_toggle ())
     return 1;
   if (tcp_test_bt_repeat_sack ())
+    return 1;
+  if (tcp_test_bt_rxt_across_sacked_island ())
     return 1;
 
   /* Init data structures */

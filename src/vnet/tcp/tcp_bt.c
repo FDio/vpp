@@ -328,8 +328,9 @@ tcp_bt_track_tx (tcp_connection_t * tc, u32 len)
     }
 }
 
-void
-tcp_bt_track_rxt (tcp_connection_t * tc, u32 start, u32 end)
+/* Record one contiguous unsacked retransmit range. */
+static void
+bt_track_rxt_range (tcp_connection_t *tc, u32 start, u32 end)
 {
   tcp_byte_tracker_t *bt = tc->bt;
   tcp_bt_sample_t *bts, *next, *cur, *prev, *nbts;
@@ -460,6 +461,46 @@ tcp_bt_track_rxt (tcp_connection_t * tc, u32 start, u32 end)
       bts->next = cur_index;
 
       bt->last_ooo = cur_index;
+    }
+}
+
+void
+tcp_bt_track_rxt (tcp_connection_t *tc, u32 start, u32 end)
+{
+  tcp_byte_tracker_t *bt = tc->bt;
+  tcp_bt_sample_t *bts, *scan;
+  u32 range_end;
+
+  ASSERT (seq_lt (start, end));
+
+  /* A retransmit can cross one or more ranges the peer already sacked. Record every unsacked
+   * sub-range sent so retransmit delivery and rtt ambiguity remain byte exact. */
+  while (seq_lt (start, end))
+    {
+      bts = bt_lookup_seq (bt, start);
+      ASSERT (bts != 0 && seq_geq (start, bts->min_seq));
+
+      if (bts->flags & TCP_BTS_IS_SACKED)
+	{
+	  start = seq_lt (bts->max_seq, end) ? bts->max_seq : end;
+	  continue;
+	}
+
+      range_end = end;
+      scan = bt_next_sample (bt, bts);
+      while (scan && seq_lt (scan->min_seq, end))
+	{
+	  if (scan->flags & TCP_BTS_IS_SACKED)
+	    {
+	      range_end = scan->min_seq;
+	      break;
+	    }
+	  scan = bt_next_sample (bt, scan);
+	}
+
+      ASSERT (seq_lt (start, range_end));
+      bt_track_rxt_range (tc, start, range_end);
+      start = range_end;
     }
 }
 
