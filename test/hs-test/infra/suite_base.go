@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"flag"
 	"fmt"
+	"hash/fnv"
 	"net/http"
 	"net/http/httputil"
 	"os"
@@ -41,6 +42,7 @@ var IsVppDebug = flag.Bool("debug", false, "attach gdb to vpp")
 var DryRun = flag.Bool("dryrun", false, "set up containers but don't run tests")
 var Timeout = flag.Int("timeout", 5, "test timeout override (in minutes)")
 var HostPpid = flag.Int("host_ppid", os.Getppid(), "automatically set in Makefile")
+var RunId = flag.String("run_id", "", "unique identifier of this test run, automatically set in Makefile")
 var CpuOffset = flag.Int("cpu_offset", 0, "initial CPU offset")
 var CpuOffsetNumaNode = flag.Int("cpu_offset_numa_node", 0, "NUMA node containing the initial CPU offset")
 var HyperThreading = flag.Bool("hyperthread", false, "whether to use hyperthreads in CPU allocation")
@@ -50,10 +52,48 @@ var NumaAwareCpuAlloc bool
 var TestTimeout time.Duration
 var RunningInCi bool
 var TestsThatWillRun int
+
+// Ppid holds the last 3 digits of the PID of the process that launched the run.
+// It only has to be unique within a single run: every network object it names is
+// created inside the Ginkgo container's network namespace, so concurrent runs
+// cannot see each other's. Keeping it short respects the interface name length
+// limit and keeps generated port numbers numeric.
 var Ppid string
 
+// RunIdentity identifies the whole test run. Unlike Ppid it has to be unique
+// across concurrent runs, because docker object names are global to the daemon.
+// Set from the -run_id flag, falling back to Ppid when the run was not started
+// through the Makefile.
+var RunIdentity string
+
+// RunPathToken is a short, fixed-width stand-in for RunIdentity, used wherever the
+// run has to appear in a filesystem path. VPP's api socket is reached through the
+// host side of a container volume, so that path is bound by sun_path's 108 bytes,
+// and the per-test log directory already spends 99 of them in the worst case. A
+// RunIdentity long enough to be readable (a branch name, say) does not fit; four
+// hex digits derived from it do.
+var RunPathToken string
+
+// SetRunIdentity records the identity of this run and derives the short token that
+// represents it in filesystem paths.
+func SetRunIdentity(runIdentity string) {
+	RunIdentity = runIdentity
+	hash := fnv.New32a()
+	hash.Write([]byte(runIdentity))
+	RunPathToken = fmt.Sprintf("%04x", hash.Sum32()&0xffff)
+}
+
+// GinkgoContainerName returns the name of the container that runs Ginkgo. Test
+// containers join its network namespace, so this name is what keeps the network
+// topologies of concurrent runs apart. Must match the name used in the Makefile.
+func GinkgoContainerName() string {
+	return "ginkgo-" + RunIdentity
+}
+
 const (
-	LogDir      string = "/tmp/hs-test/"
+	// kept short because the per-test volume path below it carries VPP's api
+	// socket, which sun_path limits to 107 usable bytes
+	LogDir      string = "/tmp/hst/"
 	VolumeDir   string = "/vol"
 	MWWideLabel string = "MWWide"
 )
@@ -184,6 +224,8 @@ func (s *HstSuite) newDockerClient() {
 	Log("docker client created")
 }
 
+// AllocateCpus takes the unscoped container name (Container.BaseName), so that a
+// run identity containing "vpp" cannot make every container look like a VPP one.
 func (s *HstSuite) AllocateCpus(containerName string) []int {
 	var cpuCtx *CpuContext
 	var err error
@@ -524,8 +566,14 @@ func (s *HstSuite) GetInterfaceByName(name string) *NetInterface {
 	return s.NetInterfaces[s.ProcessIndex+name+Ppid]
 }
 
+// ScopedContainerName returns a docker container name that is unique both across
+// the Ginkgo processes of this run and across concurrent hs-test runs.
+func (s *HstSuite) ScopedContainerName(name string) string {
+	return s.ProcessIndex + name + RunIdentity
+}
+
 func (s *HstSuite) GetContainerByName(name string) *Container {
-	return s.AllContainers[s.ProcessIndex+name+Ppid]
+	return s.AllContainers[s.ScopedContainerName(name)]
 }
 
 /*
@@ -533,7 +581,7 @@ func (s *HstSuite) GetContainerByName(name string) *Container {
  * are not able to modify the original container and affect other tests by doing that
  */
 func (s *HstSuite) GetTransientContainerByName(name string) *Container {
-	containerCopy := *s.AllContainers[s.ProcessIndex+name+Ppid]
+	containerCopy := *s.AllContainers[s.ScopedContainerName(name)]
 	return &containerCopy
 }
 
@@ -552,7 +600,7 @@ func (s *HstSuite) LoadContainerTopology(topologyName string) {
 	for _, elem := range yamlTopo.Containers {
 		newContainer, err := newContainer(s, elem)
 		newContainer.Suite = s
-		newContainer.Name = newContainer.Suite.ProcessIndex + newContainer.Name + Ppid
+		newContainer.Name = s.ScopedContainerName(newContainer.BaseName)
 		if err != nil {
 			Fail("container config error: " + fmt.Sprint(err))
 		}
@@ -718,7 +766,11 @@ func (s *HstSuite) GetTestId() string {
 	}
 
 	if _, ok := s.TestIds[testName]; !ok {
-		s.TestIds[testName] = time.Now().Format("060102_150405")
+		// the run token is part of the id because the timestamp only has second
+		// resolution: two concurrent runs starting the same test within the same
+		// second would otherwise share the directory that gets bind-mounted into
+		// their containers, and fight over each other's config files and sockets
+		s.TestIds[testName] = time.Now().Format("060102_150405") + "-" + RunPathToken
 	}
 
 	return s.TestIds[testName]
