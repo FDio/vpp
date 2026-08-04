@@ -24,6 +24,8 @@ Key Features
 - ECN/CWR congestion notification tracking
 - Setting custom u64 value per-tenant through API, which can be used to introduce external labels and/or for data correlation
 - Ring buffer export to VPP stats segment for external consumption
+- Session create, update, and close lifecycle records
+- Unix timestamps for export, first packet, and final packet
 - IPv4 and IPv6 traffic support
 
 
@@ -92,10 +94,12 @@ The dump supports filtering by ``session_id`` and ``tenant_idx``.
 Session statistics can be exported to a ring buffer in the VPP stats
 segment. This is the recommended path for external consumption.
 
-- **Schema identifier**:  to ensure consistency between VPP and external consumers,
-  the ring buffer entry format is defined in API typedef ``sfdp_session_stats_ring_entry``.
+- **Schema identifier**: to ensure consistency between VPP and external consumers,
+  the current ring buffer entry format is defined in API typedef
+  ``sfdp_session_stats_ring_entry_v3``. The version 1 and 2 typedefs remain
+  available for source and ABI compatibility.
   An ABI ID is generated from a dedicated API marker message CRC
-  (``sfdp_session_stats_ring_entry_abi_id_<crc>``) and published alongside
+  (``sfdp_session_stats_ring_entry_v3_abi_id_<crc>``) and published alongside
   ring data at ``/sfdp/session/stats``, so that external consumers can
   verify if they are using the appropriate entry format.
 
@@ -109,16 +113,54 @@ Ring buffer exports can be triggered by:
 - **On-demand**: Via API (``sfdp_session_stats_export_now``) or CLI
   (``sfdp session stats export``).
 
+Lifecycle Records
+~~~~~~~~~~~~~~~~~
+
+Every ring entry contains an ``event_type`` describing why the snapshot was
+published:
+
+- ``CREATED`` is emitted by the owning dataplane worker after a packet has
+  been accounted. If the ring is enabled after a session starts, the next
+  packet observation attempts the session's first ``CREATED`` record.
+- ``UPDATED`` is emitted by periodic and on-demand exports. It carries a
+  per-session ``update_sequence`` that starts at zero and advances through
+  65,535 before wrapping to zero after a successful ring commit. Event type
+  determines whether the ordinal is meaningful; zero is a valid update value.
+- ``CLOSED`` is emitted from the session deletion callback before the
+  per-session statistics are cleared.
+
+``exported_at_unix_micros`` and ``first_packet_time_unix_micros`` are present
+on every lifecycle record. ``last_packet_time_unix_micros`` is populated only
+for ``CLOSED`` records. Endpoints retain the initiator/responder orientation of
+the first packet rather than the normalized lookup-key order.
+Clearing counters preserves the first-packet timestamp and update sequence;
+it does not create a new session generation.
+
 Custom Data
 ~~~~~~~~~~~
 
 A 64-bit user-defined value can be attached **per-tenant** and is included
 in every exported ring buffer entry for sessions belonging to that tenant.
+Values are stored by the tenant's compact SFDP pool index, so memory usage
+scales with the number of configured tenants rather than the largest external
+tenant ID. The tenant must exist before custom data can be set.
 
 - Set via ``sfdp_session_stats_set_tenant_custom_data`` API (tenant_id + u64 value)
 - On export: the value is always written to the ring field ``opaque``.
   If a tenant has no configured value, ``opaque`` is exported as ``0``.
 - Bulk clear: use tenant_id ``0xFFFFFFFF`` to clear all tenants at once.
+
+Plugins can also overlay selected bits for an active session with
+``sfdp_session_stats_update_session_opaque``. The caller supplies a value and
+mask; masked bits replace the corresponding bits in the tenant value when the
+session is exported. SFDP does not assign semantics to these bits. The update
+must run on the session's owning dataplane thread while the session is valid.
+
+For session metadata whose orientation is fixed by the first observation, use
+``sfdp_session_stats_set_session_opaque_once``. The first call that claims any
+bit in the supplied mask stores the masked value. Later calls whose mask
+overlaps an already claimed bit leave the entire masked field unchanged. The
+same owning-thread and session-validity requirements apply.
 
 Session Exporter Program
 ~~~~~~~~~~~~~~~~~~~~~~~~
@@ -203,7 +245,38 @@ setup, and ring buffer configuration — see
 Known Limitations
 ~~~~~~~~~~~~~~~~~
 
-- **Ring buffer overflow**: API-triggered exports (``export-now``) dump all
-  sessions in a single unbatched call. If the number of active sessions
-  exceeds the ring buffer size, older entries will be overwritten.
+- **Ring buffer overflow**: API-triggered exports (``export-now``) export all
+  sessions without waiting for the consumer between snapshot chunks. If the
+  number of active sessions exceeds the ring buffer size, older entries will
+  be overwritten.
 - **Testing**: No IPv6-specific tests are currently present.
+
+Concurrency and performance
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Session owners export CREATE, UPDATE and CLOSE into their own thread's ring.
+UPDATE sequence state lives with the session counters, advances only after a
+successful commit, and is preserved by counter clearing. New-session callbacks
+reset it. Main-thread configuration and export requests only wake workers.
+
+A scheduled node on each worker exports at most 256 candidates and scans at
+most 256 bitmap words per invocation. A cooperative 50-us budget is checked
+every 16 candidates. Continuations use the worker's timer so packet processing
+runs between chunks; periodic batches retain the configured ring-size limit
+and batch interval. Routine exports and checkpoints take no worker barrier.
+Workers keep private bitmaps, with no shared lifecycle atomic operations or
+additional per-packet sequence operations.
+
+DNA brackets each shared-memory copy with two position checkpoints and verifies
+the mapped process marker. It consumes records committed before the copy whose
+slots were not touched through the second checkpoint, including aborted writes.
+Unrelated writes need no retry. Actual overruns are counted and the cursor
+advances; finite rings cannot retain an unlimited backlog. Workers run during
+the copy and checkpoints. Each export publishes its write position before
+touching the slot, using an atomic store and a release fence; checkpoints read
+atomic positions without pausing workers.
+
+At 524288 slots, each worker bitmap costs about 64 KiB. Sequence state uses
+existing padding in the session stats entry; no separate per-session table is
+needed. Ring entries add 2 bytes each. Measure packet throughput, tail latency,
+export cadence and ring loss with matching images before rollout.

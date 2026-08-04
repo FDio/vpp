@@ -301,8 +301,10 @@ typedef struct sfdp_session
   u8 type; /* see sfdp_session_type_t */
   u8 key_flags;
   u16 parser_index[SFDP_SESSION_N_KEY];
+  u16 health_accounting_thread_index;
   u8 scope_index;
-  u8 unused1[55];
+  u8 health_accounting_valid;
+  u8 unused1[52];
   CLIB_CACHE_LINE_ALIGN_MARK (cache1);
   union
   {
@@ -336,6 +338,101 @@ sfdp_get_session_expiry_opaque (sfdp_session_t *s)
   return (void *) s->expiry_opaque;
 }
 
+/*
+ * Stable session-create failure reason domain for the health contract.
+ * Record exactly one reason for each terminally failed create attempt.
+ *
+ * CAPACITY means that no SFDP session slot was available. ALLOCATION and
+ * VALIDATION are supported contract reasons, but have no authoritative
+ * producer path yet and therefore remain zero. Hash collisions and
+ * pre-create routing decisions are not session-create failures.
+ */
+typedef enum
+{
+  SFDP_SESSION_CREATE_FAILURE_CAPACITY,
+  SFDP_SESSION_CREATE_FAILURE_ALLOCATION,
+  SFDP_SESSION_CREATE_FAILURE_VALIDATION,
+  SFDP_SESSION_CREATE_N_FAILURE_REASONS,
+} sfdp_session_create_failure_reason_t;
+
+typedef enum
+{
+  SFDP_SESSION_EVICTION_CAPACITY,
+  SFDP_SESSION_N_EVICTION_REASONS,
+} sfdp_session_eviction_reason_t;
+
+typedef struct
+{
+  u64 active_sessions;
+  u64 create_failures[SFDP_SESSION_CREATE_N_FAILURE_REASONS];
+  u64 evictions[SFDP_SESSION_N_EVICTION_REASONS];
+  u8 accounting_valid;
+} sfdp_health_counters_t;
+
+typedef struct
+{
+  u64 session_table_used;
+  u64 session_table_capacity;
+  u64 create_failures[SFDP_SESSION_CREATE_N_FAILURE_REASONS];
+  u64 evictions[SFDP_SESSION_N_EVICTION_REASONS];
+  u8 accounting_valid;
+} sfdp_health_snapshot_t;
+
+typedef enum
+{
+  SFDP_HEALTH_SNAPSHOT_REASON_NONE = 0,
+  SFDP_HEALTH_SNAPSHOT_REASON_UNAVAILABLE,
+  SFDP_HEALTH_SNAPSHOT_REASON_ACCOUNTING_INVALID,
+  SFDP_HEALTH_SNAPSHOT_REASON_COUNTER_OVERFLOW,
+  SFDP_HEALTH_SNAPSHOT_REASON_SESSION_TABLE_CAPACITY_EXCEEDED,
+} sfdp_health_snapshot_reason_t;
+
+/*
+ * Versioned ABI used by external plugins to read session-stats ring health.
+ * Keep the callback return type as int so enum representation is not part of
+ * the ABI between shared objects.
+ */
+#define SFDP_SESSION_STATS_RING_HEALTH_ABI_V1 1
+#define SFDP_SESSION_STATS_RING_HEALTH_GET_V1_SYMBOL                           \
+  "sfdp_session_stats_ring_health_get_v1"
+
+typedef enum
+{
+  SFDP_SESSION_STATS_RING_HEALTH_OK = 0,
+  SFDP_SESSION_STATS_RING_HEALTH_UNAVAILABLE = -1,
+  SFDP_SESSION_STATS_RING_HEALTH_ABI_MISMATCH = -2,
+} sfdp_session_stats_ring_health_result_t;
+
+typedef struct
+{
+  u32 worker_index;
+  u32 schema_version;
+  u32 entry_size;
+  u32 capacity;
+  u64 producer_sequence;
+  u64 records_produced;
+  /* Reserved for internal consistency checks until a future wire revision. */
+  u64 config_generation;
+  u8 ring_abi[8];
+} sfdp_session_stats_ring_health_v1_t;
+
+STATIC_ASSERT_SIZEOF (sfdp_session_stats_ring_health_v1_t, 48);
+STATIC_ASSERT_OFFSET_OF (sfdp_session_stats_ring_health_v1_t, worker_index, 0);
+STATIC_ASSERT_OFFSET_OF (sfdp_session_stats_ring_health_v1_t, schema_version, 4);
+STATIC_ASSERT_OFFSET_OF (sfdp_session_stats_ring_health_v1_t, entry_size, 8);
+STATIC_ASSERT_OFFSET_OF (sfdp_session_stats_ring_health_v1_t, capacity, 12);
+STATIC_ASSERT_OFFSET_OF (sfdp_session_stats_ring_health_v1_t, producer_sequence,
+			 16);
+STATIC_ASSERT_OFFSET_OF (sfdp_session_stats_ring_health_v1_t, records_produced,
+			 24);
+STATIC_ASSERT_OFFSET_OF (sfdp_session_stats_ring_health_v1_t, config_generation,
+			 32);
+STATIC_ASSERT_OFFSET_OF (sfdp_session_stats_ring_health_v1_t, ring_abi, 40);
+
+typedef int (*sfdp_session_stats_ring_health_get_v1_fn_t) (
+  u32 worker_index, u32 abi_version, u32 output_size,
+  sfdp_session_stats_ring_health_v1_t *output);
+
 typedef struct
 {
   u32 *expired_sessions; // per thread expired session vector
@@ -343,6 +440,7 @@ typedef struct
   u64 session_id_template;
   u32 *session_freelist;
   u32 n_sessions; /* Number of sessions belonging to this thread */
+  sfdp_health_counters_t health;
 } sfdp_per_thread_data_t;
 
 // TODO: Find a way to abstract, or share, timeout definition.
@@ -453,6 +551,7 @@ typedef struct
 
   /* per-thread data */
   sfdp_per_thread_data_t *per_thread_data;
+  sfdp_health_counters_t unbound_health;
   u16 msg_id_base;
   sfdp_expiry_callbacks_t expiry_callbacks;
 
@@ -488,6 +587,9 @@ typedef struct
     if ((s = sfdp_session_at_index (i)) && s->state != SFDP_SESSION_STATE_FREE)
 
 extern sfdp_main_t sfdp_main;
+
+int sfdp_health_snapshot_get (
+  sfdp_health_snapshot_t *snapshot, sfdp_health_snapshot_reason_t *reason_out);
 
 clib_error_t *sfdp_timeout_register (sfdp_main_t *sfdp, sfdp_timeout_t *timeout);
 
@@ -612,6 +714,80 @@ static_always_inline sfdp_per_thread_data_t *
 sfdp_get_per_thread_data (u32 thread_index)
 {
   return vec_elt_at_index (sfdp_main.per_thread_data, thread_index);
+}
+
+static_always_inline sfdp_health_counters_t *
+sfdp_health_get_shard (sfdp_main_t *sfdp, sfdp_per_thread_data_t *ptd)
+{
+  return ptd ? &ptd->health : &sfdp->unbound_health;
+}
+
+static_always_inline void
+sfdp_health_record_create_failure (sfdp_main_t *sfdp, sfdp_per_thread_data_t *ptd,
+				   sfdp_session_create_failure_reason_t reason)
+{
+  sfdp_health_counters_t *health = sfdp_health_get_shard (sfdp, ptd);
+  if (PREDICT_FALSE (reason >= SFDP_SESSION_CREATE_N_FAILURE_REASONS))
+    {
+      __atomic_store_n (&health->accounting_valid, 0, __ATOMIC_RELEASE);
+      return;
+    }
+  __atomic_fetch_add (&health->create_failures[reason], 1, __ATOMIC_RELAXED);
+}
+
+static_always_inline void
+sfdp_health_record_session_created (sfdp_main_t *sfdp, sfdp_per_thread_data_t *ptd,
+				    sfdp_session_t *session)
+{
+  sfdp_health_counters_t *health = sfdp_health_get_shard (sfdp, ptd);
+  session->health_accounting_thread_index =
+    ptd ? (u16) (ptd - sfdp->per_thread_data) : SFDP_UNBOUND_THREAD_INDEX;
+  session->health_accounting_valid = 1;
+  __atomic_fetch_add (&health->active_sessions, 1, __ATOMIC_RELAXED);
+}
+
+static_always_inline void
+sfdp_health_mark_accounting_invalid (sfdp_per_thread_data_t *ptd)
+{
+  __atomic_store_n (&ptd->health.accounting_valid, 0, __ATOMIC_RELEASE);
+}
+
+static_always_inline void
+sfdp_health_record_session_removed (sfdp_main_t *sfdp, sfdp_session_t *session)
+{
+  sfdp_health_counters_t *health;
+  u64 previous;
+
+  if (PREDICT_FALSE (!session->health_accounting_valid))
+    {
+      __atomic_store_n (&sfdp->unbound_health.accounting_valid, 0, __ATOMIC_RELEASE);
+      return;
+    }
+  if (session->health_accounting_thread_index == SFDP_UNBOUND_THREAD_INDEX)
+    health = &sfdp->unbound_health;
+  else if (PREDICT_TRUE (session->health_accounting_thread_index < vec_len (sfdp->per_thread_data)))
+    health = &sfdp->per_thread_data[session->health_accounting_thread_index].health;
+  else
+    {
+      __atomic_store_n (&sfdp->unbound_health.accounting_valid, 0, __ATOMIC_RELEASE);
+      session->health_accounting_valid = 0;
+      return;
+    }
+
+  previous = __atomic_fetch_sub (&health->active_sessions, 1, __ATOMIC_RELAXED);
+  if (PREDICT_FALSE (previous == 0))
+    {
+      __atomic_fetch_add (&health->active_sessions, 1, __ATOMIC_RELAXED);
+      __atomic_store_n (&health->accounting_valid, 0, __ATOMIC_RELEASE);
+    }
+  session->health_accounting_valid = 0;
+}
+
+static_always_inline void
+sfdp_health_record_capacity_evictions (sfdp_per_thread_data_t *ptd, u32 count)
+{
+  __atomic_fetch_add (&ptd->health.evictions[SFDP_SESSION_EVICTION_CAPACITY], count,
+		      __ATOMIC_RELAXED);
 }
 
 static_always_inline u32
@@ -832,13 +1008,15 @@ sfdp_create_session_inline (sfdp_main_t *sfdp, sfdp_per_thread_data_t *ptd,
     sfdp_alloc_session (sfdp, ptd, thread_index != SFDP_UNBOUND_THREAD_INDEX);
 
   if (session_idx == ~0)
-    return 1;
+    {
+      sfdp_health_record_create_failure (sfdp, ptd, SFDP_SESSION_CREATE_FAILURE_CAPACITY);
+      return 1;
+    }
 
   session = pool_elt_at_index (sfdp->sessions, session_idx);
 
   pseudo_flow_idx = (lookup_val[0] & 0x1) | (session_idx << 1);
-  value = sfdp_session_mk_table_value (thread_index, pseudo_flow_idx,
-				       session->session_version + 1);
+  value = sfdp_session_mk_table_value (thread_index, pseudo_flow_idx, session->session_version + 1);
   if (is_ipv6)
     {
       clib_memcpy_fast (&kv.kv6.key, k, sizeof (kv.kv6.key));
@@ -898,18 +1076,17 @@ sfdp_create_session_inline (sfdp_main_t *sfdp, sfdp_per_thread_data_t *ptd,
   vlib_increment_simple_counter (
     &sfdp->tenant_session_ctr[SFDP_TENANT_SESSION_COUNTER_CREATED],
     thread_index, tenant_idx, 1);
+  sfdp_health_record_session_created (sfdp, ptd, session);
   return 0;
 }
 int sfdp_create_session (vlib_main_t *vm, vlib_buffer_t *b, u32 context_id,
 			 u32 thread_index, u32 tenant_index,
 			 u32 *session_index, int is_ipv6);
-int sfdp_create_session_with_scope_index (vlib_main_t *vm, vlib_buffer_t *b,
-					  u32 context_id, u32 thread_index,
-					  u32 tenant_index, u32 *session_index,
+int sfdp_create_session_with_scope_index (vlib_main_t *vm, vlib_buffer_t *b, u32 context_id,
+					  u32 thread_index, u32 tenant_index, u32 *session_index,
 					  u32 scope_index, int is_ipv6);
 
-clib_error_t *sfdp_tenant_add_del (sfdp_main_t *sfdp, u32 tenant_id,
-				   u32 context_id, u8 is_del);
+clib_error_t *sfdp_tenant_add_del (sfdp_main_t *sfdp, u32 tenant_id, u32 context_id, u8 is_del);
 clib_error_t *sfdp_set_services (sfdp_main_t *sfdp, u32 tenant_id,
 				 sfdp_bitmap_t bitmap, u8 direction);
 clib_error_t *sfdp_set_timeout (sfdp_main_t *sfdp, u32 tenant_id,

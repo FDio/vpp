@@ -189,7 +189,10 @@ sfdp_parser_create_session_inline (const sfdp_parser_registration_t *reg,
     sfdp_alloc_session (sfdp, ptd, thread_index != SFDP_UNBOUND_THREAD_INDEX);
 
   if (session_idx == ~0)
-    return 1;
+    {
+      sfdp_health_record_create_failure (sfdp, ptd, SFDP_SESSION_CREATE_FAILURE_CAPACITY);
+      return 1;
+    }
 
   session = pool_elt_at_index (sfdp->sessions, session_idx);
 
@@ -239,6 +242,7 @@ sfdp_parser_create_session_inline (const sfdp_parser_registration_t *reg,
   vlib_increment_simple_counter (
     &sfdp->tenant_session_ctr[SFDP_TENANT_SESSION_COUNTER_CREATED],
     thread_index, tenant_idx, 1);
+  sfdp_health_record_session_created (sfdp, ptd, session);
   return 0;
 }
 
