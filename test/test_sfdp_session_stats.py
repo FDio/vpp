@@ -80,10 +80,10 @@ class TestSfdpSessionStats(VppTestCase):
                 f"Provided schema has unsupported type: {type(schema_data).__name__}"
             )
 
-        # Reconstruct ABI ID for api define sfdp_session_stats_ring_entry_abi_id
-        abi_prefix = "sfdp_session_stats_ring_entry_abi_id_"
+        # Reconstruct ABI ID for the version 2 ring entry marker message.
+        abi_prefix = "sfdp_session_stats_ring_entry_v2_abi_id_"
         expected_abi_id = None
-        msg = self.vapi.vpp.messages.get("sfdp_session_stats_ring_entry_abi_id")
+        msg = self.vapi.vpp.messages.get("sfdp_session_stats_ring_entry_v2_abi_id")
         msg_crc = getattr(msg, "crc", None)
         msg_crc = msg_crc.lower()
         msg_crc = msg_crc[2:]  # Remove prefix '0x' from msg crc string
@@ -100,11 +100,11 @@ class TestSfdpSessionStats(VppTestCase):
 
         # Get common ring buffer entry type defined in VPP API
         ring_entry_type = self.vapi.vpp.get_type(
-            "vl_api_sfdp_session_stats_ring_entry_t"
+            "vl_api_sfdp_session_stats_ring_entry_v2_t"
         )
         if ring_entry_type is None:
             raise ValueError(
-                "vl_api_sfdp_session_stats_ring_entry_t type does not exist"
+                "vl_api_sfdp_session_stats_ring_entry_v2_t type does not exist"
             )
 
         # Check that ring entry size from stats ring config matches API typedef size.
@@ -1085,9 +1085,24 @@ class TestSfdpSessionStats(VppTestCase):
             config.ring_buffer_enabled, "Ring buffer should be disabled by default"
         )
 
-        # Set tenant custom data for tenant_id 1
+        # Use a sparse external ID to exercise compact pool-indexed storage.
         test_data = 0x123456789ABCDEF0
-        tenant_id = 1
+        tenant_id = 0x00ABCDEF
+
+        # Custom data can only be attached to an existing SFDP tenant.
+        with self.vapi.assert_negative_api_retval():
+            self.vapi.sfdp_session_stats_set_tenant_custom_data(
+                tenant_id=tenant_id, value=test_data
+            )
+
+        reply = self.vapi.sfdp_tenant_add_del(
+            tenant_id=tenant_id,
+            context_id=tenant_id,
+            is_del=False,
+        )
+        self.assertEqual(reply.retval, 0)
+
+        # Set tenant custom data for the sparse tenant ID.
         reply = self.vapi.sfdp_session_stats_set_tenant_custom_data(
             tenant_id=tenant_id, value=test_data
         )
@@ -1108,7 +1123,10 @@ class TestSfdpSessionStats(VppTestCase):
         self.assertEqual(reply.retval, 0)
 
         reply = self.vapi.sfdp_session_stats_get_tenant_custom_data(tenant_id=tenant_id)
-        self.assertFalse(reply.has_api_data, "API data should be cleared for tenant 1")
+        self.assertFalse(reply.has_api_data, "Tenant custom data should be cleared")
+
+        reply = self.vapi.sfdp_tenant_add_del(tenant_id=tenant_id, is_del=True)
+        self.assertEqual(reply.retval, 0)
 
     def test_session_stats_ring_buffer_multiple_sessions(self):
         """Test that multiple sessions are correctly exported to ring buffer"""
@@ -1151,12 +1169,17 @@ class TestSfdpSessionStats(VppTestCase):
             schema_data, ring_config["entry_size"]
         )
 
-        self.assertEqual(len(data), 3, "Should have 3 entries in ring buffer")
+        decoded_entries = [decode_entry(entry_bytes) for entry_bytes in data]
+        updated_entries = [
+            entry for entry in decoded_entries if entry["event_type"] == 2
+        ]
+        self.assertEqual(
+            len(updated_entries), 3, "Should have an update for each session"
+        )
 
-        # Parse all entries and verify packet counts using schema-driven offsets
+        # Verify packet counts using schema-driven offsets.
         parsed_entries = []
-        for entry_bytes in data:
-            decoded = decode_entry(entry_bytes)
+        for decoded in updated_entries:
             dst_port = decoded["dst_port"]
             packets_forward = decoded["packets_forward"]
             parsed_entries.append({"dst_port": dst_port, "packets": packets_forward})
@@ -1179,6 +1202,161 @@ class TestSfdpSessionStats(VppTestCase):
             )
 
         # Cleanup
+        self._cleanup_sfdp_session_stats(config)
+
+    def test_session_stats_lifecycle_ring_records(self):
+        """Test create, update, and close lifecycle records"""
+        config = self._configure_sfdp_session_stats(
+            enable_ring_buffer=True,
+            ring_size=32,
+        )
+        sport = 41000
+        dport = 8443
+
+        pkt = self.create_tcp_packet(
+            src_mac=self.pg0.remote_mac,
+            dst_mac=self.pg0.local_mac,
+            src_ip=self.pg0.remote_ip4,
+            dst_ip=self.pg1.remote_ip4,
+            sport=sport,
+            dport=dport,
+        )
+        self.pg_send(self.pg0, pkt)
+
+        ring_buffer = self.statistics.get_ring_buffer("/sfdp/session/stats")
+        schema_data = ring_buffer.get_schema_string(thread_index=0)
+        ring_config = ring_buffer.get_config()
+        decode_entry, schema = self.create_ring_buffer_decoder(
+            schema_data, ring_config["entry_size"]
+        )
+        self.assertEqual(schema["schema_version"], 2)
+
+        created_data = ring_buffer.consume_data(thread_index=0)
+        self.assertEqual(len(created_data), 1)
+        created = decode_entry(created_data[0])
+        self.assertEqual(created["event_type"], 1)
+        self.assertEqual(created["packets_forward"], 1)
+        self.assertEqual(created["packets_reverse"], 0)
+        self.assertEqual(created["src_port"], sport)
+        self.assertEqual(created["dst_port"], dport)
+        self.assertEqual(created["context_id"], 1)
+        self.assertGreater(created["forward_service_bitmap"], 0)
+        self.assertGreater(created["reverse_service_bitmap"], 0)
+        self.assertGreater(created["exported_at_unix_micros"], 0)
+        self.assertGreater(created["first_packet_time_unix_micros"], 0)
+        self.assertEqual(created["last_packet_time_unix_micros"], 0)
+
+        reply = self.vapi.sfdp_session_stats_export_now()
+        self.assertEqual(reply.retval, 0)
+        self.virtual_sleep(0.2)
+        updated_data = ring_buffer.consume_data(thread_index=0)
+        self.assertEqual(len(updated_data), 1)
+        updated = decode_entry(updated_data[0])
+        self.assertEqual(updated["event_type"], 2)
+        self.assertEqual(
+            updated["first_packet_time_unix_micros"],
+            created["first_packet_time_unix_micros"],
+        )
+        self.assertGreaterEqual(
+            updated["exported_at_unix_micros"],
+            created["exported_at_unix_micros"],
+        )
+        self.assertEqual(updated["last_packet_time_unix_micros"], 0)
+
+        reply = self.vapi.sfdp_kill_session(is_all=True)
+        self.assertEqual(reply.retval, 0)
+        self.virtual_sleep(0.2)
+        closed_data = ring_buffer.consume_data(thread_index=0)
+        self.assertEqual(len(closed_data), 1)
+        closed = decode_entry(closed_data[0])
+        self.assertEqual(closed["event_type"], 3)
+        self.assertEqual(
+            closed["first_packet_time_unix_micros"],
+            created["first_packet_time_unix_micros"],
+        )
+        self.assertGreaterEqual(
+            closed["last_packet_time_unix_micros"],
+            closed["first_packet_time_unix_micros"],
+        )
+
+        self._cleanup_sfdp_session_stats(config)
+
+    def test_session_stats_create_after_ring_enable(self):
+        """Test that an existing session emits create after ring enable"""
+        config = self._configure_sfdp_session_stats(enable_ring_buffer=False)
+        sport = 42000
+        dport = 9443
+
+        pkt = self.create_tcp_packet(
+            src_mac=self.pg0.remote_mac,
+            dst_mac=self.pg0.local_mac,
+            src_ip=self.pg0.remote_ip4,
+            dst_ip=self.pg1.remote_ip4,
+            sport=sport,
+            dport=dport,
+        )
+        self.pg_send(self.pg0, pkt)
+
+        reply = self.vapi.sfdp_session_stats_ring_enable(enable=True, ring_size=32)
+        self.assertEqual(reply.retval, 0)
+        self.pg_send(self.pg0, pkt)
+
+        ring_buffer = self.statistics.get_ring_buffer("/sfdp/session/stats")
+        schema_data = ring_buffer.get_schema_string(thread_index=0)
+        ring_config = ring_buffer.get_config()
+        decode_entry, _ = self.create_ring_buffer_decoder(
+            schema_data, ring_config["entry_size"]
+        )
+        data = ring_buffer.consume_data(thread_index=0)
+        self.assertEqual(len(data), 1)
+        created = decode_entry(data[0])
+        self.assertEqual(created["event_type"], 1)
+        self.assertEqual(created["packets_forward"], 2)
+        self.assertEqual(created["last_packet_time_unix_micros"], 0)
+
+        self._cleanup_sfdp_session_stats(config)
+
+    def test_session_stats_lifecycle_preserves_endpoint_orientation(self):
+        """Test lifecycle endpoints retain first-packet orientation"""
+        config = self._configure_sfdp_session_stats(
+            enable_ring_buffer=True,
+            ring_size=32,
+            enable_bidirectional=True,
+        )
+        sport = 43000
+        dport = 10443
+
+        pkt = self.create_tcp_packet(
+            src_mac=self.pg1.remote_mac,
+            dst_mac=self.pg1.local_mac,
+            src_ip=self.pg1.remote_ip4,
+            dst_ip=self.pg0.remote_ip4,
+            sport=sport,
+            dport=dport,
+        )
+        self.pg_send(self.pg1, pkt)
+
+        ring_buffer = self.statistics.get_ring_buffer("/sfdp/session/stats")
+        schema_data = ring_buffer.get_schema_string(thread_index=0)
+        ring_config = ring_buffer.get_config()
+        decode_entry, _ = self.create_ring_buffer_decoder(
+            schema_data, ring_config["entry_size"]
+        )
+        data = ring_buffer.consume_data(thread_index=0)
+        self.assertEqual(len(data), 1)
+        created = decode_entry(data[0])
+        self.assertEqual(created["event_type"], 1)
+        self.assertEqual(
+            self.format_ip_from_bytes(created["src_ip"], created["is_ip4"]),
+            self.pg1.remote_ip4,
+        )
+        self.assertEqual(
+            self.format_ip_from_bytes(created["dst_ip"], created["is_ip4"]),
+            self.pg0.remote_ip4,
+        )
+        self.assertEqual(created["src_port"], sport)
+        self.assertEqual(created["dst_port"], dport)
+
         self._cleanup_sfdp_session_stats(config)
 
     def test_session_stats_ring_buffer_with_custom_data(self):
