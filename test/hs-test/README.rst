@@ -182,6 +182,65 @@ passed, failed, skipped, and elapsed-time statistics. With
 contains the final attempt.
 
 
+Running several checkouts at once
+---------------------------------
+
+Every run is identified by ``RUN_ID``. It names the Ginkgo container that owns the
+run's network namespace (``ginkgo-$RUN_ID``), is embedded in every container name,
+and is set as the ``io.fd.hs-test.run`` label on every container the run creates.
+Two checkouts can therefore be tested at the same time, each with its own network
+topology.
+
+``RUN_ID`` defaults to the current branch name, so separate checkouts are isolated
+from each other without passing anything::
+
+    # in a worktree on branch 'feature-a'      -> containers named *feature-a
+    $ make test TEST=...
+
+    # in a worktree on branch 'feature-b'      -> containers named *feature-b
+    $ make test TEST=...
+
+Characters a docker container name cannot contain are replaced with ``-``, so
+``feature/tcp-fix`` becomes ``feature-tcp-fix``. On a detached HEAD the checkout's
+directory name is used, and failing that the ``make`` process' PID.
+
+Because the default is stable rather than per-invocation, two cases need an
+explicit ``RUN_ID``: switching branches during a run orphans the containers named
+after the old branch, and starting a second run on the same branch fails on the
+duplicate container name rather than silently sharing state.
+
+Where the run has to appear in a filesystem path, hs-test substitutes a
+four-character token derived from ``RUN_ID`` (logged at startup). VPP's api socket
+is reached through the host side of a container volume, and that path is bound by
+``sun_path``'s 108 bytes, of which the per-test log directory already uses 99 in
+the worst case - a readable ``RUN_ID`` does not fit, so it is not put there.
+
+``make cleanup-hst`` removes the containers of a single run, selected by label.
+It cleans up the run recorded in ``.last_hst_run_id`` unless ``RUN_ID`` is passed
+explicitly. Containers created before the run label was introduced are not matched
+by it and have to be removed by name.
+
+To check that concurrent runs really are isolated, ``script/concurrent_run_check.sh``
+runs one test twice under two ``RUN_ID``\ s and verifies that the two runs shared no
+container and no directory::
+
+    $ make build
+    $ ./script/concurrent_run_check.sh [test-name] [run-id-a] [run-id-b]
+
+It skips ``make build`` deliberately: the two runs would otherwise rebuild the same
+docker image tags, and from a single checkout the same VPP build tree.
+
+Note that docker image tags (``hs-test/vpp`` and friends) are *not* scoped by
+``RUN_ID``, so concurrent runs still share one set of images and ``make build`` in
+one checkout replaces the VPP under test in the other. Until that is addressed,
+concurrent runs are only safe when both checkouts have built the same images, or
+when only one of them rebuilds.
+
+CPU allocation is *not* yet coordinated across runs, so two concurrent runs can pin
+containers to the same cores. Tests still pass, but they take noticeably longer than
+the same work run on its own.
+
+
 Modifying the framework
 -----------------------
 
@@ -359,8 +418,8 @@ This should be implemented in ``netconfig.go`` for network and in ``container.go
 When two VPP instances or other applications, each in its own Docker container,
 want to communicate there are typically two ways this can be done within *hs-test*.
 
-* Network interfaces. Containers are being created with ``--network=ginkgo`` options,
-  so they are connected with interfaces created in the ``ginkgo`` container
+* Network interfaces. Containers are being created with ``--network=container:ginkgo-$RUN_ID`` options,
+  so they are connected with interfaces created in the run's ``ginkgo-$RUN_ID`` container
 * Shared folders. Containers are being created with ``-v`` option to create shared `volumes`_ between host system and containers
   or just between containers
 
