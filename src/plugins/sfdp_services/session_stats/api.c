@@ -34,13 +34,16 @@ vl_api_sfdp_session_stats_ring_enable_t_handler (vl_api_sfdp_session_stats_ring_
     }
   else
     {
+      clib_spinlock_lock (&ssm->ring_config_lock);
       if (ssm->ring_buffer_enabled)
 	{
 	  vlib_stats_remove_entry (ssm->ring_buffer_index);
 	  ssm->ring_buffer_index = CLIB_U32_MAX;
 	  ssm->ring_buffer_size = 0;
 	  ssm->ring_buffer_enabled = 0;
+	  ssm->ring_config_generation++;
 	}
+      clib_spinlock_unlock (&ssm->ring_config_lock);
     }
 
   REPLY_MACRO (VL_API_SFDP_SESSION_STATS_RING_ENABLE_REPLY);
@@ -95,6 +98,18 @@ vl_api_sfdp_session_stats_ring_entry_abi_id_t_handler (
   int rv = 0;
 
   REPLY_MACRO (VL_API_SFDP_SESSION_STATS_RING_ENTRY_ABI_ID_REPLY);
+}
+
+/* no-op api handler for sfdp_session_stats_ring_entry_v2_abi_id */
+static void
+vl_api_sfdp_session_stats_ring_entry_v2_abi_id_t_handler (
+  vl_api_sfdp_session_stats_ring_entry_v2_abi_id_t *mp)
+{
+  vl_api_sfdp_session_stats_ring_entry_v2_abi_id_reply_t *rmp;
+  sfdp_session_stats_main_t *ssm = &sfdp_session_stats_main;
+  int rv = 0;
+
+  REPLY_MACRO (VL_API_SFDP_SESSION_STATS_RING_ENTRY_V2_ABI_ID_REPLY);
 }
 
 static void
