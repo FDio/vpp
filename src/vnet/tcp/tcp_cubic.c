@@ -170,6 +170,9 @@ cubic_rcv_ack (tcp_connection_t * tc, tcp_rate_sample_t * rs)
   f64 t, rtt_sec;
   u32 thresh;
 
+  if (!tcp_cc_is_cwnd_limited (tc, rs))
+    return;
+
   /* Constrained by tx fifo, can't grow further */
   if (tc->cwnd >= tc->tx_fifo_size)
     return;

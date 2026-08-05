@@ -72,6 +72,8 @@ type TcpTestEndpointCommandResult struct {
 type TcpHarnessClientSessionStats struct {
 	Output              string
 	SndMss              uint64
+	Cwnd                uint64
+	FlightSize          uint64
 	RtoBackoffCount     uint64
 	FastRecoveryCount   uint64
 	TimerRecoveryCount  uint64
@@ -133,6 +135,8 @@ const (
 
 var (
 	tcpHarnessClientSessionSndMssRE  = regexp.MustCompile(`\bsnd_mss (\d+)\b`)
+	tcpHarnessClientSessionCwndRE    = regexp.MustCompile(`\bcwnd (\d+)\b`)
+	tcpHarnessClientSessionFlightRE  = regexp.MustCompile(`\bflight size (\d+)\b`)
 	tcpHarnessClientSessionRtoBoffRE = regexp.MustCompile(`\brto_boff (\d+)\b`)
 	tcpHarnessClientSessionFrRE      = regexp.MustCompile(`\bfr (\d+)\b`)
 	tcpHarnessClientSessionTrRE      = regexp.MustCompile(`\btr (\d+)\b`)
@@ -630,6 +634,8 @@ func ParseClientVppSessionStats(output string) TcpHarnessClientSessionStats {
 	return TcpHarnessClientSessionStats{
 		Output:              output,
 		SndMss:              parseTcpHarnessClientSessionUint(output, tcpHarnessClientSessionSndMssRE),
+		Cwnd:                parseTcpHarnessClientSessionUint(output, tcpHarnessClientSessionCwndRE),
+		FlightSize:          parseTcpHarnessClientSessionUint(output, tcpHarnessClientSessionFlightRE),
 		RtoBackoffCount:     parseTcpHarnessClientSessionUint(output, tcpHarnessClientSessionRtoBoffRE),
 		FastRecoveryCount:   parseTcpHarnessClientSessionUint(output, tcpHarnessClientSessionFrRE),
 		TimerRecoveryCount:  parseTcpHarnessClientSessionUint(output, tcpHarnessClientSessionTrRE),
@@ -834,8 +840,14 @@ func (s *TcpHarnessSuite) SetupTest() {
 		s.Containers.ServerVpp.AllocatedCpus, sessionConfig)
 	AssertNotNil(serverVpp, fmt.Sprint(err))
 
+	clientConfigs := []Stanza{sessionConfig}
+	if strings.Contains(CurrentSpecReport().LeafNodeText, "TcpFastRecoveryTwoHolesPartialAckTest") {
+		var tcpConfig Stanza
+		tcpConfig.NewStanza("tcp").Append("initial-cwnd-multiplier 5").Close()
+		clientConfigs = append(clientConfigs, tcpConfig)
+	}
 	clientVpp, err := s.Containers.ClientVpp.newVppInstance(
-		s.Containers.ClientVpp.AllocatedCpus, sessionConfig)
+		s.Containers.ClientVpp.AllocatedCpus, clientConfigs...)
 	AssertNotNil(clientVpp, fmt.Sprint(err))
 
 	s.SetupServerVpp(s.Containers.ServerVpp)

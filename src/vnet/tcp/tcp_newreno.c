@@ -37,6 +37,9 @@ newreno_recovered (tcp_connection_t * tc)
 static void
 newreno_rcv_ack (tcp_connection_t * tc, tcp_rate_sample_t * rs)
 {
+  if (!tcp_cc_is_cwnd_limited (tc, rs))
+    return;
+
   if (tcp_in_slowstart (tc))
     {
       tc->cwnd += clib_min (tc->snd_mss, rs->acked_and_sacked);
