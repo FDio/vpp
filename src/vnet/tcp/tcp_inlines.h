@@ -211,6 +211,35 @@ tcp_available_cc_snd_space (const tcp_connection_t * tc)
   return available_wnd - flight_size;
 }
 
+/** Record the end of a flight that exhausted the congestion window. */
+always_inline void
+tcp_cc_update_cwnd_limited (tcp_connection_t *tc)
+{
+  u32 outstanding = tc->snd_nxt - tc->snd_una;
+
+  /* A smaller receive window, rather than cwnd, constrained the sender. */
+  if (tc->cwnd > tc->snd_wnd)
+    return;
+
+  if (outstanding >= tc->cwnd || (tc->cwnd - outstanding < tc->snd_mss &&
+				  transport_max_tx_dequeue (&tc->connection) > outstanding))
+    tc->cwnd_limited_seq = tc->snd_nxt;
+}
+
+/** Return true if this ACK covers data from a cwnd-limited flight. */
+always_inline u8
+tcp_cc_is_cwnd_limited (tcp_connection_t *tc, const tcp_rate_sample_t *rs)
+{
+  u32 prior_snd_una = tc->snd_una - rs->bytes_acked;
+
+  if (seq_lt (prior_snd_una, tc->cwnd_limited_seq))
+    return 1;
+
+  /* Keep an expired marker close to snd_una across sequence wrap. */
+  tc->cwnd_limited_seq = tc->snd_una;
+  return 0;
+}
+
 always_inline u8
 tcp_is_lost_fin (tcp_connection_t * tc)
 {
