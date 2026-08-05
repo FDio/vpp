@@ -1012,6 +1012,8 @@ tcp_session_push_header (transport_connection_t *tconn, vlib_buffer_t **bs,
       bs += 1;
     }
 
+  tcp_cc_update_cwnd_limited (tc);
+
   /* If not tracking an ACK, start tracking */
   if (tc->rtt_ts == 0 && !tcp_in_cong_recovery (tc))
     {
@@ -1690,6 +1692,8 @@ tcp_transmit_unsent (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
     }
 
 done:
+  if (n_segs)
+    tcp_cc_update_cwnd_limited (tc);
   return n_segs;
 }
 
