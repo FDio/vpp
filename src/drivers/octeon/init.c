@@ -173,6 +173,60 @@ static clib_arg_t oct_dev_args[] = {
   },
 };
 
+static const u32 oct_mac_modes[CGX_MODE_MAX + 1] = {
+  [CGX_MODE_SGMII] = VNET_HW_IF_SPEED_1G,
+  [CGX_MODE_1000_BASEX] = VNET_HW_IF_SPEED_1G,
+  [CGX_MODE_QSGMII] = VNET_HW_IF_SPEED_1G,
+  [CGX_MODE_10G_C2C] = VNET_HW_IF_SPEED_10G,
+  [CGX_MODE_10G_C2M] = VNET_HW_IF_SPEED_10G,
+  [CGX_MODE_10G_KR] = VNET_HW_IF_SPEED_10G,
+  [CGX_MODE_20G_C2C] = VNET_HW_IF_SPEED_20G,
+  [CGX_MODE_25G_C2C] = VNET_HW_IF_SPEED_25G,
+  [CGX_MODE_25G_C2M] = VNET_HW_IF_SPEED_25G,
+  [CGX_MODE_25G_2_C2C] = VNET_HW_IF_SPEED_25G,
+  [CGX_MODE_25G_CR] = VNET_HW_IF_SPEED_25G,
+  [CGX_MODE_25G_KR] = VNET_HW_IF_SPEED_25G,
+  [CGX_MODE_40G_C2C] = VNET_HW_IF_SPEED_40G,
+  [CGX_MODE_40G_C2M] = VNET_HW_IF_SPEED_40G,
+  [CGX_MODE_40G_CR4] = VNET_HW_IF_SPEED_40G,
+  [CGX_MODE_40G_KR4] = VNET_HW_IF_SPEED_40G,
+  [CGX_MODE_40GAUI_C2C] = VNET_HW_IF_SPEED_40G,
+  [CGX_MODE_50G_C2C] = VNET_HW_IF_SPEED_50G,
+  [CGX_MODE_50G_C2M] = VNET_HW_IF_SPEED_50G,
+  [CGX_MODE_50G_4_C2C] = VNET_HW_IF_SPEED_50G,
+  [CGX_MODE_50G_CR] = VNET_HW_IF_SPEED_50G,
+  [CGX_MODE_50G_KR] = VNET_HW_IF_SPEED_50G,
+  [CGX_MODE_80GAUI_C2C] = 0, /* No define for 80G */
+  [CGX_MODE_100G_C2C] = VNET_HW_IF_SPEED_100G,
+  [CGX_MODE_100G_C2M] = VNET_HW_IF_SPEED_100G,
+  [CGX_MODE_100G_CR4] = VNET_HW_IF_SPEED_100G,
+  [CGX_MODE_100G_KR4] = VNET_HW_IF_SPEED_100G,
+  [CGX_MODE_LAUI_2_C2C_BIT] = VNET_HW_IF_SPEED_50G,
+  [CGX_MODE_LAUI_2_C2M_BIT] = VNET_HW_IF_SPEED_50G,
+  [CGX_MODE_50GBASE_CR2_C_BIT] = VNET_HW_IF_SPEED_50G,
+  [CGX_MODE_50GBASE_KR2_C_BIT] = VNET_HW_IF_SPEED_50G,
+  [CGX_MODE_100GAUI_2_C2C_BIT] = VNET_HW_IF_SPEED_100G,
+  [CGX_MODE_100GAUI_2_C2M_BIT] = VNET_HW_IF_SPEED_100G,
+  [CGX_MODE_100GBASE_CR2_BIT] = VNET_HW_IF_SPEED_100G,
+  [CGX_MODE_100GBASE_KR2_BIT] = VNET_HW_IF_SPEED_100G,
+  [CGX_MODE_SFI_1G_BIT] = VNET_HW_IF_SPEED_1G,
+  [CGX_MODE_25GBASE_CR_C_BIT] = VNET_HW_IF_SPEED_25G,
+  [CGX_MODE_25GBASE_KR_C_BIT] = VNET_HW_IF_SPEED_25G,
+  [ETH_MODE_SGMII_10M_BIT] = VNET_HW_IF_SPEED_10M,
+  [ETH_MODE_SGMII_100M_BIT] = VNET_HW_IF_SPEED_100M,
+  [40] = 0,
+  [41] = 0,
+  [ETH_MODE_2500_BASEX_BIT] = VNET_HW_IF_SPEED_2_5G,
+  [ETH_MODE_5000_BASEX_BIT] = VNET_HW_IF_SPEED_5G,
+  [ETH_MODE_O_USGMII_BIT] = VNET_HW_IF_SPEED_100M,
+  [ETH_MODE_Q_USGMII_BIT] = VNET_HW_IF_SPEED_1G,
+  [ETH_MODE_2_5G_USXGMII_BIT] = VNET_HW_IF_SPEED_2_5G,
+  [ETH_MODE_5G_USXGMII_BIT] = VNET_HW_IF_SPEED_5G,
+  [ETH_MODE_10G_SXGMII_BIT] = VNET_HW_IF_SPEED_10G,
+  [ETH_MODE_10G_DXGMII_BIT] = VNET_HW_IF_SPEED_10G,
+  [ETH_MODE_10G_QXGMII_BIT] = VNET_HW_IF_SPEED_10G,
+};
+
 static u8 *
 oct_probe (vlib_main_t *vm, vnet_dev_probe_args_t *args)
 {
@@ -244,6 +298,40 @@ oct_alloc (vlib_main_t *vm, vnet_dev_t *dev)
   return VNET_DEV_OK;
 }
 
+static inline uint32_t
+oct_nix_get_speed_capa (vnet_dev_t *dev)
+{
+  oct_device_t *cd = vnet_dev_get_data (dev);
+  struct roc_nix_mac_fwdata fwdata;
+  uint32_t speed_capa = VNET_HW_IF_SPEED_UNKNOWN;
+  uint8_t mode;
+  int rc;
+
+  /* Auto negotiation disabled */
+  if (!roc_nix_is_vf_or_sdp (cd->nix) && !roc_nix_is_lbk (cd->nix))
+    {
+      memset (&fwdata, 0, sizeof (fwdata));
+      rc = roc_nix_mac_fwdata_get (cd->nix, &fwdata);
+      if (rc)
+	{
+	  log_err (dev, "Failed to get MAC firmware data");
+	  return speed_capa;
+	}
+
+      if (fwdata.supported_an)
+	speed_capa = 0;
+
+      /* Translate advertised modes to speed_capa */
+      for (mode = 0; mode < CGX_MODE_MAX; mode++)
+	{
+	  if (fwdata.supported_link_modes & BIT_ULL (mode))
+	    speed_capa |= oct_mac_modes[mode];
+	}
+    }
+
+  return speed_capa;
+}
+
 static vnet_dev_rv_t
 oct_init_nix (vlib_main_t *vm, vnet_dev_t *dev)
 {
@@ -276,6 +364,7 @@ oct_init_nix (vlib_main_t *vm, vnet_dev_t *dev)
 	.caps = {
 	  .rss = 1,
 	},
+	.speed_caps = oct_nix_get_speed_capa (dev),
 	.rx_offloads = {
 	  .ip4_cksum = 1,
 	},
