@@ -227,7 +227,7 @@ class QUICEchoIntMStreamTestCase(QUICEchoIntTestCase):
     def test_quic_int_multistream_transfer(self):
         """QUIC internal multi-stream transfer"""
         self.server()
-        self.client("nclients", "10", "bytes", "1m")
+        self.client("nstreams", "10", "bytes", "1m")
 
 
 class QUICEchoExtTestCase(QUICTestCase):
