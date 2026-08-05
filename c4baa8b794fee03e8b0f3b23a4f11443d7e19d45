@@ -16,6 +16,23 @@
       "message": "Re-run failed jobs via Github UI",
       "revId": "c4baa8b794fee03e8b0f3b23a4f11443d7e19d45",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "36788119_292c7878",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 7
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2026-08-05T08:13:18Z",
+      "side": 1,
+      "message": "Bisect run [0] confirms this increases 2n-emr MRR performance by ~10% both in base and scale ip6 test.\n\n[0] https://github.com/FDio/csit/actions/runs/30909484254/job/91992427398",
+      "revId": "c4baa8b794fee03e8b0f3b23a4f11443d7e19d45",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
