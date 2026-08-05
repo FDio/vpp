@@ -25,11 +25,20 @@ function wait_for_process () {
 }
 
 # Check if Docker is running
-if ! docker info &>/dev/null; then
-    echo "Docker is not running, starting dockerd."
-    if ! sudo systemctl start docker; then
-        echo "Error: failed to start dockerd."
-        exit 1
+
+if ! DOCKER_INFO=$(docker info 2>&1); then
+    echo "dockerd is not running"
+    echo "$DOCKER_INFO"
+    # We can't use systemd in d-in-d executor image
+    if [ -n "$(which "$START_DOCKER_SCRIPT")" ] ; then
+        echo "Starting dockerd with '$START_DOCKER_SCRIPT'"
+        $START_DOCKER_SCRIPT
+    else
+        echo "Starting dockerd with systemd"
+        if ! sudo systemctl start docker; then
+            echo "Error: failed to start dockerd."
+            exit 1
+        fi
     fi
     echo "Waiting for dockerd to be running"
     if ! wait_for_process dockerd; then
@@ -37,8 +46,10 @@ if ! docker info &>/dev/null; then
         exit 1
     else
         echo "dockerd is running"
-        if ! docker info &>/dev/null; then
+        if ! DOCKER_INFO=$(docker info 2>&1); then
             echo "Error: docker info failed."
+            echo "$DOCKER_INFO"
+            ls -la /var/run/docker.sock
             exit 1
         fi
     fi
