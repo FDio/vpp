@@ -579,6 +579,128 @@ oct_port_stop (vlib_main_t *vm, vnet_dev_port_t *port)
 }
 
 vnet_dev_rv_t
+oct_validate_config_link_speed (vnet_dev_port_t *port, u32 link_speed)
+{
+  vnet_dev_t *dev = port->dev;
+  oct_device_t *cd = vnet_dev_get_data (dev);
+  struct roc_nix *nix = cd->nix;
+
+  if (roc_nix_is_sdp (nix) || !roc_nix_is_pf (nix))
+    return VNET_DEV_ERR_UNSUPPORTED_DEVICE;
+
+  return VNET_DEV_OK;
+}
+
+vnet_dev_rv_t
+oct_op_config_link_speed (vlib_main_t *vm, vnet_dev_port_t *port, u32 link_speed_kbps)
+{
+  /* Per speed: 'adv' bit drives the CGX mode; 'cgx_mode' checks port support.
+   * Variants ordered CR, KR, optical; first supported one wins. */
+  static const struct
+  {
+    u32 speed_mbps;
+    u64 adv;
+    u8 cgx_mode;
+  } link_modes[] = {
+    { 10, ROC_NIX_LINK_MODE_10BASET_FD, ETH_MODE_SGMII_10M_BIT },
+    { 100, ROC_NIX_LINK_MODE_100BASET_FD, ETH_MODE_SGMII_100M_BIT },
+    { 1000, ROC_NIX_LINK_MODE_1000BASEX_FD, CGX_MODE_1000_BASEX },
+    { 1000, ROC_NIX_LINK_MODE_1000BASEKX_FD, CGX_MODE_SFI_1G_BIT },
+    { 1000, ROC_NIX_LINK_MODE_1000BASET_FD, CGX_MODE_SGMII },
+    { 2500, ROC_NIX_LINK_MODE_2500BASEX_FD, ETH_MODE_2500_BASEX_BIT },
+    { 5000, ROC_NIX_LINK_MODE_5000BASET_FD, ETH_MODE_5000_BASEX_BIT },
+    { 10000, ROC_NIX_LINK_MODE_10000BASESR_FD, CGX_MODE_10G_C2C },
+    { 10000, ROC_NIX_LINK_MODE_10000BASELR_FD, CGX_MODE_10G_C2M },
+    { 10000, ROC_NIX_LINK_MODE_10000BASEKR_FD, CGX_MODE_10G_KR },
+    { 20000, ROC_NIX_LINK_MODE_20000BASEMLD2_FD, CGX_MODE_20G_C2C },
+    { 25000, ROC_NIX_LINK_MODE_25000BASECR_FD, CGX_MODE_25G_CR },
+    { 25000, ROC_NIX_LINK_MODE_25000BASECR_FD, CGX_MODE_25GBASE_CR_C_BIT },
+    { 25000, ROC_NIX_LINK_MODE_25000BASEKR_FD, CGX_MODE_25G_KR },
+    { 25000, ROC_NIX_LINK_MODE_25000BASEKR_FD, CGX_MODE_25GBASE_KR_C_BIT },
+    { 25000, ROC_NIX_LINK_MODE_25000BASESR_FD, CGX_MODE_25G_C2C },
+    { 25000, ROC_NIX_LINK_MODE_25000BASESR_FD, CGX_MODE_25G_C2M },
+    { 40000, ROC_NIX_LINK_MODE_40000BASECR4_FD, CGX_MODE_40G_CR4 },
+    { 40000, ROC_NIX_LINK_MODE_40000BASEKR4_FD, CGX_MODE_40G_KR4 },
+    { 40000, ROC_NIX_LINK_MODE_40000BASESR4_FD, CGX_MODE_40G_C2C },
+    { 40000, ROC_NIX_LINK_MODE_40000BASELR4_FD, CGX_MODE_40G_C2M },
+    { 50000, ROC_NIX_LINK_MODE_50000BASECR2_FD, CGX_MODE_50G_CR },
+    { 50000, ROC_NIX_LINK_MODE_50000BASEKR2_FD, CGX_MODE_50G_KR },
+    { 50000, ROC_NIX_LINK_MODE_50000BASESR2_FD, CGX_MODE_50G_C2C },
+    { 50000, ROC_NIX_LINK_MODE_50000BASEDR_FD, CGX_MODE_50G_C2M },
+    { 50000, ROC_NIX_LINK_MODE_50000BASECR_FD, CGX_MODE_50GBASE_CR2_C_BIT },
+    { 50000, ROC_NIX_LINK_MODE_50000BASEKR_FD, CGX_MODE_50GBASE_KR2_C_BIT },
+    { 50000, ROC_NIX_LINK_MODE_50000BASESR_FD, CGX_MODE_LAUI_2_C2C_BIT },
+    { 100000, ROC_NIX_LINK_MODE_100000BASECR4_FD, CGX_MODE_100G_CR4 },
+    { 100000, ROC_NIX_LINK_MODE_100000BASEKR4_FD, CGX_MODE_100G_KR4 },
+    { 100000, ROC_NIX_LINK_MODE_100000BASESR4_FD, CGX_MODE_100G_C2C },
+    { 100000, ROC_NIX_LINK_MODE_100000BASECR2_FD, CGX_MODE_100GBASE_CR2_BIT },
+    { 100000, ROC_NIX_LINK_MODE_100000BASEKR2_FD, CGX_MODE_100GBASE_KR2_BIT },
+    { 100000, ROC_NIX_LINK_MODE_100000BASESR2_FD, CGX_MODE_100GAUI_2_C2C_BIT },
+  };
+
+  vnet_dev_t *dev = port->dev;
+  oct_device_t *cd = vnet_dev_get_data (dev);
+  struct roc_nix *nix = cd->nix;
+  struct roc_nix_link_info link_info = {};
+  struct roc_nix_mac_fwdata fwdata = {};
+  u32 speed_mbps;
+  int rrv;
+
+  rrv = roc_nix_mac_fwdata_get (nix, &fwdata);
+  if (rrv)
+    return oct_roc_err (dev, rrv, "roc_nix_mac_fwdata_get failed");
+
+  /* Speed is stored in kbps; ROC MAC link API expects Mbps */
+  speed_mbps = link_speed_kbps / 1000;
+
+  /* 1000BASE-X uses clause-37 autoneg. Enable it for 1G to match the peer. */
+  link_info.autoneg = (speed_mbps == 1000) ? 1 : 0;
+  link_info.speed = speed_mbps;
+  link_info.full_duplex = ROC_NIX_LINK_DUPLEX_FULL;
+
+  for (u32 i = 0; i < ARRAY_LEN (link_modes); i++)
+    {
+      if (link_modes[i].speed_mbps != speed_mbps)
+	continue;
+      if (fwdata.supported_link_modes & BIT_ULL (link_modes[i].cgx_mode))
+	{
+	  link_info.advertising = link_modes[i].adv;
+	  break;
+	}
+    }
+
+  if (!link_info.advertising)
+    {
+      log_err (dev, "no supported link mode for speed %u Mbps", speed_mbps);
+      return VNET_DEV_ERR_NOT_SUPPORTED;
+    }
+
+  log_debug (dev,
+	     "link config: speed %u Mbps autoneg %u duplex %u "
+	     "advertising 0x%lx",
+	     link_info.speed, link_info.autoneg, link_info.full_duplex, link_info.advertising);
+
+  /* Bounce the CGX link so the SerDes retrains at the new rate. */
+  rrv = roc_nix_mac_link_state_set (nix, 0);
+  if (rrv)
+    oct_roc_err (dev, rrv, "roc_nix_mac_link_state_set(down) failed");
+
+  rrv = roc_nix_mac_link_info_set (nix, &link_info);
+  if (rrv)
+    {
+      vnet_dev_rv_t rv = oct_roc_err (dev, rrv, "roc_nix_mac_link_info_set() failed");
+      roc_nix_mac_link_state_set (nix, 1);
+      return rv;
+    }
+
+  rrv = roc_nix_mac_link_state_set (nix, 1);
+  if (rrv)
+    oct_roc_err (dev, rrv, "roc_nix_mac_link_state_set(up) failed");
+
+  return VNET_DEV_OK;
+}
+
+vnet_dev_rv_t
 oct_validate_config_promisc_mode (vnet_dev_port_t *port, int enable)
 {
   vnet_dev_t *dev = port->dev;
@@ -712,6 +834,10 @@ oct_port_cfg_change_validate (vlib_main_t *vm, vnet_dev_port_t *port,
 
   switch (req->type)
     {
+    case VNET_DEV_PORT_CFG_SET_LINK_SPEED:
+      rv = oct_validate_config_link_speed (port, req->link_speed);
+      break;
+
     case VNET_DEV_PORT_CFG_MAX_RX_FRAME_SIZE:
       if (port->started)
 	rv = VNET_DEV_ERR_PORT_STARTED;
@@ -751,6 +877,10 @@ oct_port_cfg_change (vlib_main_t *vm, vnet_dev_port_t *port,
 
   switch (req->type)
     {
+    case VNET_DEV_PORT_CFG_SET_LINK_SPEED:
+      rv = oct_op_config_link_speed (vm, port, req->link_speed);
+      break;
+
     case VNET_DEV_PORT_CFG_PROMISC_MODE:
       rv = oct_op_config_promisc_mode (vm, port, req->promisc);
       break;
