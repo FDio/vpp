@@ -531,7 +531,7 @@ dpdk_get_pci_device (const struct rte_eth_dev_info *info)
 
   bus = rte_bus_find_by_device (info->device);
   if (bus && !strcmp (rte_bus_name (bus), "pci"))
-    return RTE_DEV_TO_PCI (info->device);
+    return RTE_BUS_DEVICE (info->device, struct rte_pci_device);
   else
     return NULL;
 }
