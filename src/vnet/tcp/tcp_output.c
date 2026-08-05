@@ -319,6 +319,8 @@ tcp_update_burst_snd_vars (tcp_connection_t * tc)
   if (tc->snd_una == tc->snd_nxt)
     {
       tcp_cc_event (tc, TCP_CC_EVT_START_TX);
+      if (transport_connection_is_tx_paced (&tc->connection))
+	transport_connection_tx_pacer_reset_bucket (&tc->connection, 0);
     }
 
   if (tc->flags & TCP_CONN_PSH_PENDING)
