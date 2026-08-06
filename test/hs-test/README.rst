@@ -259,9 +259,35 @@ rebuild only reclaims the ones it replaces. ``make clean-hst-images`` removes th
 images of one run, selected by ``IMAGE_TAG``; only images this framework built are
 considered.
 
-CPU allocation is *not* yet coordinated across runs, so two concurrent runs can pin
-containers to the same cores. Tests still pass, but they take noticeably longer than
-the same work run on its own.
+Container CPUs are pinned, and the allocator hands them out from the start of its
+list, so two runs left to themselves pin to the same cores while the rest of the
+machine idles. Each run therefore reserves the cores it may use before Ginkgo
+starts, and no two runs are given the same core.
+
+The share is the usable cores divided by the number of runs, this one included, so
+nothing has to be passed on the command line. A run on its own reserves everything,
+which is what it would have used anyway. When a second run starts it takes its
+share from the first, which notices at its next test and carries on with fewer
+cores; a third run splits the machine three ways, and so on. ``CPU_BUDGET`` caps a
+run's share when that is wanted, but never raises it.
+
+Note that the total worker count across all runs is what has to fit: roughly one
+worker per four usable cores. On a 24 core machine that is about five workers, so
+two runs at ``PARALLEL=3`` fit while two at ``PARALLEL=auto`` do not, and the
+second one is left with a small share.
+
+Reservations are keyed on the run's Ginkgo container, so a run that is killed
+releases its cores rather than holding them until the file is cleaned by hand.
+
+Sharing applies to plain runs. ``MW_PARALLEL=true`` allocates per NUMA node and
+needs whole nodes, so such a run takes the machine and is never trimmed: it will
+not start while other runs hold cores, and other runs will not start while it is
+going. Run it on its own.
+
+One thing concurrency does not cover is two runs started from the *same* checkout.
+Ginkgo compiles the suite to ``hs-test.test`` in the package directory and removes
+it when the run ends, so the second run can lose the binary under it. Run
+concurrent tests from separate checkouts.
 
 
 Modifying the framework

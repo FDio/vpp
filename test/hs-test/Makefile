@@ -45,6 +45,13 @@ ifeq ($(REPEAT),)
 REPEAT=0
 endif
 
+# CPU_BUDGET caps how many cores this run reserves. 0 means take everything that
+# is free, which is what a lone run would have used anyway. Give each run a share
+# when running several at once, e.g. CPU_BUDGET=12.
+ifeq ($(CPU_BUDGET),)
+CPU_BUDGET=0
+endif
+
 ifeq ($(CPU0),)
 CPU0=false
 endif
@@ -194,7 +201,7 @@ DOCKER_COMMON_ARGS:=$(DOCKER_TTY) --rm $(DOCKER_CAPABILITIES) $(DOCKER_DEVICES) 
 		--debug=$(DEBUG) --cpus=$(CPUS) --vppsrc=$(VPPSRC) --parallel=$(PARALLEL) \
 		--repeat=$(REPEAT) --cpu0=$(CPU0) --dryrun=$(DRYRUN) --skip=$(SKIP) --no_color=$(NO_COLOR) \
 		--timeout=$(TIMEOUT) --ginkgo_timeout=$(GINKGO_TIMEOUT) --vpp_cpus=$(VPP_CPUS) --hs_root=$(HS_ROOT) \
-		$(LABEL_ARG) --host_ppid=$$PPID --run_id=$(RUN_ID) --image_tag=$(IMAGE_TAG) $(SEED_ARG) \
+		$(LABEL_ARG) --host_ppid=$$PPID --run_id=$(RUN_ID) --cpu_budget=$(CPU_BUDGET) --image_tag=$(IMAGE_TAG) $(SEED_ARG) \
 		--hyperthread=$(HT) --mw_parallel=$(MW_PARALLEL) $(MW_WORKERS_PER_NUMA_ARG)
 
 .PHONY: help
@@ -220,6 +227,7 @@ help:
 	@echo
 	@echo "'make test' specific arguments:"
 	@echo " CPU0=[true|false]        - use cpu0"
+	@echo " CPU_BUDGET=[n]           - cores this run may reserve (default = all free)"
 	@echo " CPUS=[n]                 - number of cpus to allocate to each non-VPP container (default = 1)"
 	@echo " DEBUG=[true|false]       - attach VPP to GDB"
 	@echo " DRYRUN=[true|false]      - set up containers but don't run tests"
@@ -304,7 +312,7 @@ test-leak: .deps.ok .build_debug.ok
 		--label io.fd.hs-test.run=$(RUN_ID) hs-test/ginkgo:$(IMAGE_TAG) \
 		.$(HS_ROOT)/hs_test.sh --test=$(TEST) --debug_build=true --leak_check=true --vppsrc=$(VPPSRC) \
 		--timeout=$(TIMEOUT) --ginkgo_timeout=$(GINKGO_TIMEOUT) --vpp_cpus=$(VPP_CPUS) --hs_root=$(HS_ROOT) \
-		$(LABEL_ARG) --host_ppid=$$PPID --run_id=$(RUN_ID) --image_tag=$(IMAGE_TAG) $(SEED_ARG); \
+		$(LABEL_ARG) --host_ppid=$$PPID --run_id=$(RUN_ID) --cpu_budget=$(CPU_BUDGET) --image_tag=$(IMAGE_TAG) $(SEED_ARG); \
 
 .PHONY: build
 build: .deps.ok build-vpp-release
