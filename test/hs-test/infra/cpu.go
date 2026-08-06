@@ -25,6 +25,15 @@ type CpuAllocatorT struct {
 	numa1   []int
 	lastCpu int
 	suite   *HstSuite
+	// the machine as read from sysfs, before this run's reservation is applied.
+	// Kept so that a reservation which changes while the run is going can be
+	// re-applied, rather than narrowing the lists a second time.
+	allCpus  []int
+	allNuma  [][]int
+	allNuma0 []int
+	allNuma1 []int
+	// the reservation in force, so a change can be reported once
+	appliedReservation string
 }
 
 var cpuAllocator *CpuAllocatorT = nil
@@ -115,6 +124,17 @@ func (c *CpuAllocatorT) Allocate(nCpus int, offset int) (*CpuContext, error) {
 		c.lastCpu = minCpu + nCpus
 		cpuCtx.cpuAllocator = c
 		return &cpuCtx, nil
+	}
+
+	// A run's share can shrink while it is running, and lastCpu advances with every
+	// container, so the next block can start past the cores still held. Wrap to the
+	// front instead of failing: containers of one run sharing a core is a far
+	// smaller problem than a test that cannot run at all.
+	if maxCpu > len(c.cpus)-1 && nCpus <= len(c.cpus) {
+		Log("CPU block %d-%d is outside this run's %d cores; wrapping to the start",
+			minCpu, maxCpu, len(c.cpus))
+		minCpu = 0
+		maxCpu = nCpus - 1
 	}
 
 	if len(c.cpus)-1 < maxCpu {
@@ -414,12 +434,165 @@ func (c *CpuAllocatorT) readCpus() error {
 	return nil
 }
 
+// reservationPath holds the cores each live run may use, one run per line. It is
+// written before Ginkgo starts and rewritten when another run starts and takes its
+// share, so it has to be re-read rather than cached.
+const (
+	reservationPath = LogDir + "cpu-reservations"
+	// mode recorded by an MW_PARALLEL run; must match hs_test.sh
+	reservationModeMW = "mw"
+)
+
+// readReservedCpus returns the cores reserved for this run, or nil when the run is
+// not taking part in reservations at all.
+func readReservedCpus() []int {
+	data, err := os.ReadFile(reservationPath)
+	if err != nil {
+		return nil
+	}
+	for line := range strings.SplitSeq(string(data), "\n") {
+		fields := strings.Split(strings.TrimSpace(line), "\t")
+		if len(fields) < 2 || fields[0] != RunIdentity {
+			continue
+		}
+		// An MW_PARALLEL run records the whole machine only so that plain runs stay
+		// out of its way. It must not narrow its own lists: PARALLEL=auto splits such
+		// a run into a non-MW phase and MW phases, and the non-MW phase would
+		// otherwise intersect with a list built by different rules than its own.
+		if len(fields) > 2 && fields[2] == reservationModeMW {
+			return nil
+		}
+		cpus, err := parseLinuxList(fields[1])
+		if err != nil {
+			return nil
+		}
+		return cpus
+	}
+	return nil
+}
+
+// restrictToReservedCpus narrows the allocator to the cores this run holds, so
+// that concurrent runs cannot pin containers to the same core. Re-applied at every
+// test, because a run that starts later trims the shares of the runs already going.
+func (c *CpuAllocatorT) restrictToReservedCpus() error {
+	// MW runs allocate per NUMA node and need whole nodes, so hs_test.sh gives them
+	// the machine and never trims them. Leave their lists exactly as read from sysfs
+	// rather than intersecting with the reservation: the two are computed
+	// independently and need not agree once a CPU offset is in play.
+	if *NumaPerProcess {
+		return nil
+	}
+
+	if c.allCpus == nil {
+		c.allCpus, c.allNuma0, c.allNuma1, c.allNuma = c.cpus, c.numa0, c.numa1, c.numa
+	}
+
+	reserved := readReservedCpus()
+	if reserved == nil && *ReservedCpus != "" {
+		var err error
+		if reserved, err = parseLinuxList(*ReservedCpus); err != nil {
+			return fmt.Errorf("parse %q: %w", *ReservedCpus, err)
+		}
+	}
+	if len(reserved) == 0 {
+		c.cpus, c.numa0, c.numa1, c.numa = c.allCpus, c.allNuma0, c.allNuma1, c.allNuma
+		return nil
+	}
+
+	isReserved := make(map[int]bool, len(reserved))
+	for _, cpu := range reserved {
+		isReserved[cpu] = true
+	}
+	keep := func(cpus []int) []int {
+		filtered := make([]int, 0, len(cpus))
+		for _, cpu := range cpus {
+			if isReserved[cpu] {
+				filtered = append(filtered, cpu)
+			}
+		}
+		return filtered
+	}
+
+	c.cpus = keep(c.allCpus)
+	c.numa0 = keep(c.allNuma0)
+	c.numa1 = keep(c.allNuma1)
+	c.numa = make([][]int, len(c.allNuma))
+	for i := range c.allNuma {
+		c.numa[i] = keep(c.allNuma[i])
+	}
+
+	// with -numa_per_process only c.numa is populated and c.cpus stays empty, so
+	// the reservation is only unusable when nothing is left anywhere
+	remaining := len(c.cpus)
+	for _, nodeCpus := range c.numa {
+		remaining += len(nodeCpus)
+	}
+	if remaining == 0 {
+		return fmt.Errorf("none of the reserved CPUs %v are usable", reserved)
+	}
+	return nil
+}
+
+// cpusPerWorker mirrors CPUS_PER_WORKER in hs_test.sh: the CPU budget one Ginkgo
+// process is assumed to need. The shell sizes PARALLEL=auto with it; the allocator
+// spaces the processes with it.
+const cpusPerWorker = 4
+
+// WorkerOffset returns the index into this run's cores at which a Ginkgo process
+// starts allocating. The spacing used to be a constant 4, which breaks once a run
+// holds fewer cores than processes x 4: later processes are handed offsets past
+// the end of the reservation and cannot allocate, which most suites turn into a
+// skip. Space the processes over whatever the run currently holds, and if even one
+// core each does not fit, let them share rather than fail.
+func (c *CpuAllocatorT) WorkerOffset(processIndex int) int {
+	// same per-worker budget hs_test.sh uses to size PARALLEL=auto (CPUS_PER_WORKER)
+	stride := cpusPerWorker
+	if ParallelTotal != nil {
+		if total, err := strconv.Atoi(ParallelTotal.Value.String()); err == nil && total > 0 {
+			if fitted := len(c.cpus) / total; fitted < stride {
+				stride = fitted
+			}
+		}
+	}
+	if stride < 1 {
+		stride = 1
+	}
+
+	offset := (processIndex - 1) * stride
+	if last := len(c.cpus) - 1; offset > last {
+		offset = last
+	}
+	if offset < 0 {
+		offset = 0
+	}
+	return offset
+}
+
+// RefreshReservation re-applies the reservation, picking up a share that shrank
+// because another run started. Containers already pinned keep their cores until
+// the test that created them ends.
+func (c *CpuAllocatorT) RefreshReservation() {
+	if err := c.restrictToReservedCpus(); err != nil {
+		Log("could not refresh CPU reservation: %v", err)
+		return
+	}
+	// compare the set rather than its size: another run can hand this one a
+	// different set of the same size, which still has to be reported
+	if applied := formatCpuSet(c.cpus); applied != c.appliedReservation {
+		Log("CPU reservation in force: %s", applied)
+		c.appliedReservation = applied
+	}
+}
+
 func CpuAllocator() (*CpuAllocatorT, error) {
 	if cpuAllocator == nil {
 		var err error
 		cpuAllocator = new(CpuAllocatorT)
 		err = cpuAllocator.readCpus()
 		if err != nil {
+			return nil, err
+		}
+		if err = cpuAllocator.restrictToReservedCpus(); err != nil {
 			return nil, err
 		}
 	}

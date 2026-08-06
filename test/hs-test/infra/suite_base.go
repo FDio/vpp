@@ -44,6 +44,7 @@ var Timeout = flag.Int("timeout", 5, "test timeout override (in minutes)")
 var HostPpid = flag.Int("host_ppid", os.Getppid(), "automatically set in Makefile")
 var RunId = flag.String("run_id", "", "unique identifier of this test run, automatically set in Makefile")
 var ImageTag = flag.String("image_tag", "latest", "tag of the hs-test docker images to use, automatically set in Makefile")
+var ReservedCpus = flag.String("cpu_list", "", "CPUs this run may use, automatically set in Makefile")
 var CpuOffset = flag.Int("cpu_offset", 0, "initial CPU offset")
 var CpuOffsetNumaNode = flag.Int("cpu_offset_numa_node", 0, "NUMA node containing the initial CPU offset")
 var HyperThreading = flag.Bool("hyperthread", false, "whether to use hyperthreads in CPU allocation")
@@ -258,7 +259,8 @@ func (s *HstSuite) AllocateCpus(containerName string) []int {
 	if strings.Contains(containerName, "vpp") {
 		// CPUs are allocated sequentially using 'lastCpu' as the offset.
 		// Each parallel Ginkgo process gets a non-overlapping CPU block via
-		// lastCpu = (GinkgoParallelProcess() - 1) * 4 set in SetupTest().
+		// lastCpu = CpuAllocator.WorkerOffset(GinkgoParallelProcess()) set in
+		// SetupTest(), which spaces the processes over the cores this run holds.
 		// In the NUMA-aware path, if the allocation doesn't fit in numa0,
 		// it falls back to numa1 with an independent offset.
 		// 'lastCpu' is reset on test teardown.make
@@ -313,10 +315,10 @@ func (s *HstSuite) SetupSuite() {
 
 	var err error
 	s.CpuAllocator, err = CpuAllocator()
-	s.CpuAllocator.suite = s
 	if err != nil {
 		Fail("failed to init cpu allocator: " + fmt.Sprint(err))
 	}
+	s.CpuAllocator.suite = s
 	s.CpusPerContainer = *NConfiguredCpus
 	s.CpusPerVppContainer = *NConfiguredVppCpus
 	s.CoverageRun = *IsCoverage
@@ -344,11 +346,14 @@ func (s *HstSuite) TeardownSuite() {
 func (s *HstSuite) SetupTest() {
 	TestCounterFunc()
 	Log("[* TEST SETUP]")
+	// another run may have started since the last test and taken part of this
+	// run's share; pick that up before any container is pinned
+	s.CpuAllocator.RefreshReservation()
 	if *NumaPerProcess {
 		s.CpuAllocator.lastCpu = 0
 	} else {
 		// doesn't impact MW/solo tests
-		s.CpuAllocator.lastCpu = (GinkgoParallelProcess() - 1) * 4
+		s.CpuAllocator.lastCpu = s.CpuAllocator.WorkerOffset(GinkgoParallelProcess())
 	}
 	s.StartedContainers = s.StartedContainers[:0]
 	s.SetupContainers()

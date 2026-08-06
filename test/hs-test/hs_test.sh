@@ -23,6 +23,9 @@ mw_parallel=false
 mw_workers_per_numa=auto
 mw_workers_per_numa_set=0
 repeat=0
+run_id=
+cpu_budget=0
+rebalance_pid=
 
 for i in "$@"
 do
@@ -127,7 +130,11 @@ case "${i}" in
     --host_ppid=*)
         args="$args -host_ppid ${i#*=}"
         ;;
+    --cpu_budget=*)
+        cpu_budget="${i#*=}"
+        ;;
     --run_id=*)
+        run_id="${i#*=}"
         args="$args -run_id ${i#*=}"
         ;;
     --image_tag=*)
@@ -163,6 +170,11 @@ fi
 
 if [ "$mw_workers_per_numa" != "auto" ] && ! [[ "$mw_workers_per_numa" =~ ^[1-9][0-9]*$ ]]; then
     echo -e "\e[1;31mMW_WORKERS_PER_NUMA must be 'auto' or a positive integer\e[1;0m"
+    exit 2
+fi
+
+if ! [[ "$cpu_budget" =~ ^[0-9]+$ ]]; then
+    echo -e "\e[1;31mCPU_BUDGET must be a non-negative integer\e[1;0m"
     exit 2
 fi
 
@@ -237,7 +249,13 @@ mkdir -p .go_cache
 
 if [ "$mw_parallel" = "true" ]; then
     mkdir -p /tmp/hst
-    rm -f /tmp/hst/cpu-claims /tmp/hst/cpu-claims.lock
+    # Drop only claims left behind by an earlier run with this id. Removing the
+    # whole file would discard the claims of a run happening right now.
+    if [ -f /tmp/hst/cpu-claims ] && [ -n "$run_id" ]; then
+        awk -v prefix="run=$run_id " 'index($0, prefix) != 1' /tmp/hst/cpu-claims \
+            > /tmp/hst/cpu-claims.$$ 2>/dev/null || true
+        mv /tmp/hst/cpu-claims.$$ /tmp/hst/cpu-claims
+    fi
 fi
 
 mkdir -p summary
@@ -296,6 +314,7 @@ get_numa_nodes() {
 # Determine available cores and set up taskset
 taskset_cmd=""
 taskset_node_id=""
+taskset_cores=""
 total_usable_cores=0
 
 mapfile -t numa_nodes < <(get_numa_nodes)
@@ -375,6 +394,7 @@ for node_id in "${numa_nodes[@]}"; do
         fi
 
         cpu_list=$(IFS=,; echo "${selected_cores[*]}")
+        taskset_cores=$cpu_list
         taskset_cmd="taskset -c $cpu_list"
         taskset_node_id=$node_id
         args="$args -cpu_offset=$CORES_TO_USE"
@@ -423,6 +443,228 @@ resolve_auto_process_count() {
         auto_procs=1
     fi
 }
+
+# ---------------------------------------------------------------------------
+# CPU reservation
+#
+# Container CPUs are pinned by index from the start of the allocator's list, so
+# two runs left to themselves pin to the same cores while the rest of the machine
+# sits idle. Each run therefore reserves the cores it may use before Ginkgo
+# starts, and passes them on with -cpu_list.
+#
+# With no other run present a run reserves everything free, which is what it
+# would have used anyway. CPU_BUDGET caps that, so two runs can be given a share
+# each; the reservation is what makes the shares disjoint rather than advisory.
+# ---------------------------------------------------------------------------
+CPU_RESERVATIONS=/tmp/hst/cpu-reservations
+CPU_RESERVATIONS_LOCK=/tmp/hst/cpu-reservations.lock
+reserved_cpus=
+
+# Cores tests may use: physical cores (or every thread with HT), less core 0
+# unless CPU0=true, less the block handed to taskset for the Ginkgo process.
+usable_core_list() {
+    local node_id core
+    local -a cores
+    for node_id in "${numa_nodes[@]}"; do
+        mapfile -t cores < <(get_cores_on_node "$node_id")
+        for core in "${cores[@]}"; do
+            if [ "$core" = "0" ] && [ "$use_cpu0" != true ]; then
+                continue
+            fi
+            case ",$taskset_cores," in *",$core,"*) continue ;; esac
+            echo "$core"
+        done
+    done
+}
+
+# A reservation whose Ginkgo container is gone belongs to a run that died; the
+# cores are free again. This is what keeps a crashed run from leaking its share.
+reservation_is_live() {
+    # by label, not by name: the name filter is a regex and RUN_ID may contain
+    # '.', which would match another run and treat it as this one
+    [ -n "$(docker ps -q -f "label=io.fd.hs-test.run=$1" 2>/dev/null)" ]
+}
+
+# Any live run other than this one holding cores.
+other_runs_hold_cpus() {
+    local id cpus mode
+    [ -f "$CPU_RESERVATIONS" ] || return 1
+    while IFS="	" read -r id cpus mode; do
+        [ -z "$id" ] && continue
+        [ "$id" = "$run_id" ] && continue
+        reservation_is_live "$id" && return 0
+    done < "$CPU_RESERVATIONS"
+    return 1
+}
+
+# An MW_PARALLEL run has the machine; plain runs must not start alongside it.
+mw_run_is_live() {
+    local id cpus mode
+    [ -f "$CPU_RESERVATIONS" ] || return 1
+    while IFS="	" read -r id cpus mode; do
+        [ -z "$id" ] && continue
+        [ "$id" = "$run_id" ] && continue
+        [ "$mode" = "mw" ] || continue
+        reservation_is_live "$id" && return 0
+    done < "$CPU_RESERVATIONS"
+    return 1
+}
+
+# Claim everything, so a plain run starting later sees the machine is taken. No
+# -cpu_list is passed: an MW run keeps the NUMA-aware allocation it has always had.
+record_whole_machine_reservation() {
+    local usable
+    mkdir -p /tmp/hst 2>/dev/null || true
+    (
+        flock 9
+        touch "$CPU_RESERVATIONS"
+        usable=$(usable_core_list | paste -sd, -)
+        printf '%s	%s	mw\n' "$run_id" "$usable" > "$CPU_RESERVATIONS.tmp.$$"
+        chmod 666 "$CPU_RESERVATIONS.tmp.$$" 2>/dev/null || true
+        mv "$CPU_RESERVATIONS.tmp.$$" "$CPU_RESERVATIONS"
+    ) 9>"$CPU_RESERVATIONS_LOCK"
+    echo "* MW_PARALLEL run '$run_id' has taken the whole machine"
+}
+
+release_cpu_reservation() {
+    [ -n "$run_id" ] || return 0
+    [ -f "$CPU_RESERVATIONS" ] || return 0
+    (
+        flock 9
+        awk -F'\t' -v id="$run_id" '$1 != id' "$CPU_RESERVATIONS" \
+            > "$CPU_RESERVATIONS.$$" 2>/dev/null || true
+        mv "$CPU_RESERVATIONS.$$" "$CPU_RESERVATIONS" 2>/dev/null || true
+    ) 9>"$CPU_RESERVATIONS_LOCK"
+}
+
+# Reserve this run's share of the machine.
+#
+# The share is the usable cores divided by the number of runs, this one included,
+# so nothing has to be passed on the command line. A run that already holds more
+# than its share is trimmed down to it and the surplus taken; holders notice at
+# their next test and carry on with fewer cores. CPU_BUDGET, when set, caps this
+# run's share but never raises it.
+reserve_cpus() {
+    local id cpus kept core fair keep n_live want held_now
+    local -a usable free mine
+
+    mkdir -p /tmp/hst 2>/dev/null || true
+    : > "$CPU_RESERVATIONS.new.$$"
+
+    (
+        flock 9
+        touch "$CPU_RESERVATIONS"
+        # runs may belong to different users; all of them have to be able to
+        # rewrite the shares
+        chmod 666 "$CPU_RESERVATIONS" "$CPU_RESERVATIONS_LOCK" 2>/dev/null || true
+
+        mapfile -t usable < <(usable_core_list)
+
+        n_live=0
+        while IFS="	" read -r id cpus mode; do
+            [ -z "$id" ] && continue
+            [ "$id" = "$run_id" ] && continue
+            reservation_is_live "$id" && n_live=$((n_live + 1))
+        done < "$CPU_RESERVATIONS"
+
+        fair=$(( ${#usable[@]} / (n_live + 1) ))
+        [ "$fair" -lt 1 ] && fair=1
+        want=$fair
+        if [ "$cpu_budget" -gt 0 ] && [ "$cpu_budget" -lt "$want" ]; then
+            want=$cpu_budget
+        fi
+
+        # Trim every live holder to the fair share. What they give up needs no
+        # bookkeeping: the free list below is whatever no holder kept.
+        kept=""
+        while IFS="	" read -r id cpus mode; do
+            [ -z "$id" ] && continue
+            [ "$id" = "$run_id" ] && continue
+            if ! reservation_is_live "$id"; then
+                continue
+            fi
+            keep=$(echo "$cpus" | tr ',' '\n' | head -n "$fair" | paste -sd,)
+            kept="$kept$id	$keep	${mode:-plain}
+"
+        done < "$CPU_RESERVATIONS"
+
+        # Free cores are those no live holder kept. The held set is built once:
+        # this runs on a timer for every live run, so a subshell per core adds up.
+        held_now=",$(printf '%s' "$kept" | cut -f2 | paste -sd, -),"
+        free=()
+        for core in "${usable[@]}"; do
+            case "$held_now" in *",$core,"*) continue ;; esac
+            free+=("$core")
+        done
+
+        mine=("${free[@]:0:$want}")
+        if [ "${#mine[@]}" -lt 1 ]; then
+            printf 'NONE\n' > "$CPU_RESERVATIONS.new.$$"
+            printf '%s' "$kept" > "$CPU_RESERVATIONS.tmp.$$"
+            mv "$CPU_RESERVATIONS.tmp.$$" "$CPU_RESERVATIONS"
+            exit 0
+        fi
+
+        printf '%s%s	%s	plain\n' "$kept" "$run_id" "$(IFS=,; echo "${mine[*]}")" \
+            > "$CPU_RESERVATIONS.tmp.$$"
+        chmod 666 "$CPU_RESERVATIONS.tmp.$$" 2>/dev/null || true
+        mv "$CPU_RESERVATIONS.tmp.$$" "$CPU_RESERVATIONS"
+        (IFS=,; echo "${mine[*]}") > "$CPU_RESERVATIONS.new.$$"
+    ) 9>"$CPU_RESERVATIONS_LOCK"
+
+    reserved_cpus=$(head -1 "$CPU_RESERVATIONS.new.$$" 2>/dev/null)
+    rm -f "$CPU_RESERVATIONS.new.$$"
+
+    if [ "$reserved_cpus" = "NONE" ] || [ -z "$reserved_cpus" ]; then
+        echo -e "\e[1;31mNo CPUs are free for this run.\e[1;0m"
+        echo "Cores are held by:"
+        sed 's/^/    /' "$CPU_RESERVATIONS" 2>/dev/null
+        return 1
+    fi
+    return 0
+}
+
+# Re-balancing is just reserve_cpus run again: it recomputes the fair share from
+# the runs that are live at that moment and re-takes this run's part of it. Doing
+# it periodically is what lets a share grow back once another run has finished,
+# not only shrink when one starts. Ginkgo is running by then, so it has to happen
+# in the background; the test binary picks the change up at its next test.
+rebalance_cpus_periodically() {
+    while sleep 30; do
+        reserve_cpus "$cpu_budget" > /dev/null 2>&1 || true
+    done
+}
+
+stop_cpu_rebalance() {
+    [ -n "$rebalance_pid" ] && kill "$rebalance_pid" 2>/dev/null
+    release_cpu_reservation
+}
+
+# Sharing is for plain runs. An MW_PARALLEL run allocates per NUMA node and needs
+# whole nodes, so it takes the machine and is never trimmed; other runs stay out of
+# its way, and it will not start while somebody else is holding cores.
+if [ "$mw_parallel" = "true" ] && [ -n "$run_id" ]; then
+    if other_runs_hold_cpus; then
+        echo -e "\e[1;31mMW_PARALLEL needs the whole machine, but other runs hold cores:\e[1;0m"
+        sed 's/^/    /' "$CPU_RESERVATIONS" 2>/dev/null
+        exit 2
+    fi
+    record_whole_machine_reservation
+    trap release_cpu_reservation EXIT
+elif [ -n "$run_id" ]; then
+    if mw_run_is_live; then
+        echo -e "\e[1;31mAn MW_PARALLEL run is using the whole machine; wait for it to finish.\e[1;0m"
+        exit 2
+    fi
+    trap stop_cpu_rebalance EXIT
+    reserve_cpus "$cpu_budget" || exit 2
+    reserved_count=$(echo "$reserved_cpus" | tr ',' '\n' | grep -c .)
+    args="$args -cpu_list=$reserved_cpus"
+    total_usable_cores=$reserved_count
+    echo "* Reserved $reserved_count core(s) for run '$run_id': $reserved_cpus"
+    rebalance_cpus_periodically &
+    rebalance_pid=$!
+fi
 
 auto_procs=1
 numa_procs=1
