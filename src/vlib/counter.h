@@ -349,11 +349,20 @@ vlib_log2_histogram_bin_index (const vlib_log2_histogram_main_t *hm, u32 value)
   u8 log2_val = min_log2 (value);
   int min_exp = hm->min_exp;
   int n_bins = vec_len (hm->bins[0]);
+  /* Slot 0 of the bin vector holds min_exp and
+     vlib_increment_log2_histogram_bin() writes to bin + 1, so the highest
+     index a bin may take is vec_len - 2.  Clamping to vec_len - 1 (as this
+     did) puts the overflow bin one element past the end of the vector, so
+     any value >= 2^(min_exp + n_bins - 1) corrupted whatever the stats-
+     segment heap placed next. */
+  int max_bin = n_bins - 2;
   int bin = log2_val - min_exp;
+  if (max_bin < 0)
+    return 0;
   if (bin < 0)
     bin = 0;
-  if (bin >= n_bins)
-    bin = n_bins - 1;
+  if (bin > max_bin)
+    bin = max_bin;
   return (u8) bin;
 }
 
