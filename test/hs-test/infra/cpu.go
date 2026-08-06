@@ -25,6 +25,14 @@ type CpuAllocatorT struct {
 	numa1   []int
 	lastCpu int
 	suite   *HstSuite
+	// the machine as read from sysfs, kept so a reservation that changes mid-run is
+	// re-applied to it rather than narrowing the current lists again
+	allCpus  []int
+	allNuma  [][]int
+	allNuma0 []int
+	allNuma1 []int
+	// the reservation in force, so a change can be reported once
+	appliedReservation string
 }
 
 var cpuAllocator *CpuAllocatorT = nil
@@ -115,6 +123,16 @@ func (c *CpuAllocatorT) Allocate(nCpus int, offset int) (*CpuContext, error) {
 		c.lastCpu = minCpu + nCpus
 		cpuCtx.cpuAllocator = c
 		return &cpuCtx, nil
+	}
+
+	// a run's share can shrink mid-run while lastCpu keeps advancing, so the next
+	// block can start past the cores still held. Wrap instead of failing: containers
+	// of one run sharing a core beats a test that cannot run.
+	if maxCpu > len(c.cpus)-1 && nCpus <= len(c.cpus) {
+		Log("CPU block %d-%d is outside this run's %d cores; wrapping to the start",
+			minCpu, maxCpu, len(c.cpus))
+		minCpu = 0
+		maxCpu = nCpus - 1
 	}
 
 	if len(c.cpus)-1 < maxCpu {
@@ -412,6 +430,92 @@ func (c *CpuAllocatorT) readCpus() error {
 	}
 
 	return nil
+}
+
+// allocatableCpus returns the cores Allocate can hand out, which is what a
+// reservation is carved from.
+func (c *CpuAllocatorT) allocatableCpus() []int {
+	if c.allCpus == nil {
+		c.allCpus, c.allNuma0, c.allNuma1, c.allNuma = c.cpus, c.numa0, c.numa1, c.numa
+	}
+	// -numa_per_process fills only the per-node lists, leaving the flat one empty
+	if *NumaPerProcess {
+		var all []int
+		for _, nodeCpus := range c.allNuma {
+			all = append(all, nodeCpus...)
+		}
+		return all
+	}
+	if NumaAwareCpuAlloc {
+		return append(append([]int{}, c.allNuma0...), c.allNuma1...)
+	}
+	return c.allCpus
+}
+
+// applyReservation narrows the allocator to the cores this run holds. A run holding
+// everything is left alone, so one run on a machine allocates as it did before.
+func (c *CpuAllocatorT) applyReservation(reserved []int) {
+	allocatable := c.allocatableCpus()
+	if len(reserved) >= len(allocatable) {
+		c.cpus, c.numa0, c.numa1, c.numa = c.allCpus, c.allNuma0, c.allNuma1, c.allNuma
+		c.appliedReservation = ""
+		return
+	}
+
+	isReserved := make(map[int]bool, len(reserved))
+	for _, cpu := range reserved {
+		isReserved[cpu] = true
+	}
+	keep := func(cpus []int) []int {
+		filtered := make([]int, 0, len(cpus))
+		for _, cpu := range cpus {
+			if isReserved[cpu] {
+				filtered = append(filtered, cpu)
+			}
+		}
+		return filtered
+	}
+
+	c.cpus = keep(c.allCpus)
+	c.numa0 = keep(c.allNuma0)
+	c.numa1 = keep(c.allNuma1)
+	c.numa = make([][]int, len(c.allNuma))
+	for i := range c.allNuma {
+		c.numa[i] = keep(c.allNuma[i])
+	}
+
+	if applied := formatCpuSet(c.cpus); applied != c.appliedReservation {
+		Log("CPU reservation in force: %s", applied)
+		c.appliedReservation = applied
+	}
+}
+
+// WorkerOffset returns where a Ginkgo process starts allocating within this run's
+// cores. The spacing was a constant 4, which puts later processes past the end of a
+// reservation smaller than processes x 4, leaving them unable to allocate. Space
+// them over what the run holds, and let them share if one core each does not fit.
+func (c *CpuAllocatorT) WorkerOffset(processIndex int) int {
+	// same per-worker budget hs_test.sh uses to size PARALLEL=auto (CPUS_PER_WORKER)
+	stride := cpusPerWorker
+	if ParallelTotal != nil {
+		if total, err := strconv.Atoi(ParallelTotal.Value.String()); err == nil && total > 0 {
+			if fitted := len(c.cpus) / total; fitted < stride {
+				stride = fitted
+			}
+		}
+	}
+	if stride < 1 {
+		stride = 1
+	}
+
+	offset := (processIndex - 1) * stride
+	if last := len(c.cpus) - 1; offset > last {
+		offset = last
+	}
+	if offset < 0 {
+		offset = 0
+	}
+	return offset
 }
 
 func CpuAllocator() (*CpuAllocatorT, error) {

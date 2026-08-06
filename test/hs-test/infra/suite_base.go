@@ -83,6 +83,10 @@ func GinkgoContainerName() string {
 	return "ginkgo-" + RunIdentity
 }
 
+// cpusPerWorker is the CPU budget assumed for one Ginkgo process. Must match
+// CPUS_PER_WORKER in hs_test.sh, which uses it to size PARALLEL=auto.
+const cpusPerWorker = 4
+
 // hsTestImagePrefix identifies the images hs-test builds, which carry a per-run tag.
 const hsTestImagePrefix = "hs-test/"
 
@@ -239,6 +243,20 @@ func (s *HstSuite) newDockerClient() {
 	Log("docker client created")
 }
 
+// settleCpuReservation agrees this run's share with the other runs on the machine
+// and narrows the allocator to it. A run holding everything is left alone, so a
+// machine with a single run behaves as it did before reservations existed.
+func (s *HstSuite) settleCpuReservation() {
+	if RunIdentity == "" {
+		return
+	}
+	reserved, err := s.reserveCpus(s.CpuAllocator.allocatableCpus())
+	if err != nil {
+		Fail("could not reserve CPUs: " + fmt.Sprint(err))
+	}
+	s.CpuAllocator.applyReservation(reserved)
+}
+
 // AllocateCpus takes the unscoped name, so a run id containing "vpp" cannot make
 // every container look like a VPP one.
 func (s *HstSuite) AllocateCpus(containerName string) []int {
@@ -248,7 +266,8 @@ func (s *HstSuite) AllocateCpus(containerName string) []int {
 	if strings.Contains(containerName, "vpp") {
 		// CPUs are allocated sequentially using 'lastCpu' as the offset.
 		// Each parallel Ginkgo process gets a non-overlapping CPU block via
-		// lastCpu = (GinkgoParallelProcess() - 1) * 4 set in SetupTest().
+		// lastCpu = CpuAllocator.WorkerOffset(GinkgoParallelProcess()) set in
+		// SetupTest(), which spaces the processes over the cores this run holds.
 		// In the NUMA-aware path, if the allocation doesn't fit in numa0,
 		// it falls back to numa1 with an independent offset.
 		// 'lastCpu' is reset on test teardown.make
@@ -303,10 +322,11 @@ func (s *HstSuite) SetupSuite() {
 
 	var err error
 	s.CpuAllocator, err = CpuAllocator()
-	s.CpuAllocator.suite = s
 	if err != nil {
 		Fail("failed to init cpu allocator: " + fmt.Sprint(err))
 	}
+	s.CpuAllocator.suite = s
+	s.settleCpuReservation()
 	s.CpusPerContainer = *NConfiguredCpus
 	s.CpusPerVppContainer = *NConfiguredVppCpus
 	s.CoverageRun = *IsCoverage
@@ -315,6 +335,9 @@ func (s *HstSuite) SetupSuite() {
 func (s *HstSuite) TeardownSuite() {
 	defer LogFile.Close()
 	defer s.Docker.Close()
+	// give this run's CPUs back before the docker client goes away; a run that dies
+	// without reaching here is cleaned up by the next run that reads the table
+	defer s.releaseCpuReservation()
 	if *IsPersistent || *DryRun {
 		s.Skip("Skipping suite teardown")
 	}
@@ -334,11 +357,14 @@ func (s *HstSuite) TeardownSuite() {
 func (s *HstSuite) SetupTest() {
 	TestCounterFunc()
 	Log("[* TEST SETUP]")
+	// another run may have started or finished since the last test, changing this
+	// run's share; settle it before any container is pinned
+	s.settleCpuReservation()
 	if *NumaPerProcess {
 		s.CpuAllocator.lastCpu = 0
 	} else {
 		// doesn't impact MW/solo tests
-		s.CpuAllocator.lastCpu = (GinkgoParallelProcess() - 1) * 4
+		s.CpuAllocator.lastCpu = s.CpuAllocator.WorkerOffset(GinkgoParallelProcess())
 	}
 	s.StartedContainers = s.StartedContainers[:0]
 	s.SetupContainers()
