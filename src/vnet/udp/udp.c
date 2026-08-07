@@ -323,7 +323,7 @@ udp_push_header_batch (udp_connection_t *uc, vlib_buffer_t **bs, u32 n_bufs,
 }
 
 static u32
-udp_push_header (transport_connection_t *tc, vlib_buffer_t **bs, u32 n_bufs)
+udp_push_header (transport_connection_t *tc, vlib_buffer_t **bs, u32 n_bufs, u32 available_bytes)
 {
   udp_connection_t *uc;
 

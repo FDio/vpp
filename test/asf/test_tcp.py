@@ -124,11 +124,34 @@ class TestTCPUnitTests(VppAsfTestCase):
 
     def test_tcp_unittest(self):
         """TCP Unit Tests"""
-        error = self.vapi.cli("test tcp all")
+        # Tamper cases intentionally wait for RTOs. Run them separately so no
+        # individual API request consumes the shared CLI response timeout.
+        test_cases = (
+            "sack",
+            "lookup",
+            "delivery",
+            "persist",
+            "rto",
+            "cubic",
+            "bt",
+            "tamper fin",
+            "tamper lost-ack",
+            "tamper peer-fin",
+            "tamper chain-rxt",
+            "tamper queued-fin",
+            "tamper queued-data-loss",
+            "tamper recov-pt",
+            "tamper dsack-early",
+            "tamper strand-head",
+            "tamper rto",
+        )
 
-        if error:
-            self.logger.critical(error)
-        self.assertNotIn("failed", error)
+        for test_case in test_cases:
+            with self.subTest(test_case=test_case):
+                error = self.vapi.cli(f"test tcp {test_case}")
+                if error:
+                    self.logger.critical(error)
+                self.assertNotIn("failed", error)
 
 
 if __name__ == "__main__":

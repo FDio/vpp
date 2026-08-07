@@ -73,6 +73,49 @@ tcp_cc_data (tcp_connection_t * tc)
   return (void *) tc->cc_data;
 }
 
+/**
+ * Record the end of a flight that permits congestion window growth.
+ *
+ * @param tc		TCP connection
+ * @param max_dequeue	TX fifo bytes at burst start, including outstanding data
+ */
+always_inline void
+tcp_cc_update_cwnd_limited (tcp_connection_t *tc, u32 max_dequeue)
+{
+  u32 outstanding;
+
+  /* Keep an expired marker close to snd_una across sequence wrap. */
+  if (seq_lt (tc->cwnd_limited_seq, tc->snd_una))
+    tc->cwnd_limited_seq = tc->snd_una;
+
+  /* A smaller receive window, rather than cwnd, constrained the sender. */
+  if (tc->cwnd > tc->snd_wnd)
+    return;
+
+  /* Queued data could fill cwnd, so a short flight reflects pacing or output
+   * scheduling rather than application-limited input. */
+  if (max_dequeue >= tc->cwnd)
+    tc->cwnd_limited_seq = tc->snd_nxt;
+  else
+    {
+      outstanding = tc->snd_nxt - tc->snd_una;
+
+      /* RFC 7661 allows standard slow-start growth once the sender has
+       * validated more than half of cwnd. Unsent data with less than one MSS
+       * of headroom also exhausts cwnd. */
+      if (outstanding >= tc->cwnd || (tcp_in_slowstart (tc) && outstanding > tc->cwnd / 2) ||
+	  (tc->cwnd - outstanding < tc->snd_mss && max_dequeue > outstanding))
+	tc->cwnd_limited_seq = tc->snd_nxt;
+    }
+}
+
+/** Return true if this ACK covers a flight that permits cwnd growth. */
+always_inline u8
+tcp_cc_is_cwnd_limited (const tcp_connection_t *tc, const tcp_rate_sample_t *rs)
+{
+  return seq_lt (tc->snd_una - rs->bytes_acked, tc->cwnd_limited_seq);
+}
+
 /* Eifel spurious-retransmit detection (RFC 3522 Sec. 3.2). Spurious if the ack
  * echoes a timestamp older than the first retransmit (tsecr < snd_rxt_ts) and
  * leaves part of the flight outstanding (snd_una < snd_congestion). A

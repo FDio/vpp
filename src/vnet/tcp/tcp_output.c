@@ -981,11 +981,12 @@ tcp_push_one_header (tcp_connection_t *tc, vlib_buffer_t *b, tcp_push_hdr_flags_
 }
 
 u32
-tcp_session_push_header (transport_connection_t *tconn, vlib_buffer_t **bs,
-			 u32 n_bufs)
+tcp_session_push_header (transport_connection_t *tconn, vlib_buffer_t **bs, u32 n_bufs,
+			 u32 available_bytes)
 {
   tcp_connection_t *tc = (tcp_connection_t *) tconn;
   tcp_push_hdr_flags_t push_hdr_flags = TCP_PUSH_HDR_F_BURST | TCP_PUSH_HDR_F_UPDATE_SND_NXT;
+  u32 max_dequeue = tc->snd_nxt - tc->snd_una + available_bytes;
 
   if (PREDICT_FALSE (tc->cfg_flags & TCP_CFG_F_TSO))
     push_hdr_flags |= TCP_PUSH_HDR_F_MAYBE_GSO;
@@ -1011,6 +1012,8 @@ tcp_session_push_header (transport_connection_t *tconn, vlib_buffer_t **bs,
       n_bufs -= 1;
       bs += 1;
     }
+
+  tcp_cc_update_cwnd_limited (tc, max_dequeue);
 
   /* If not tracking an ACK, start tracking */
   if (tc->rtt_ts == 0 && !tcp_in_cong_recovery (tc))
@@ -1310,6 +1313,9 @@ tcp_cc_rxt_timeout (tcp_connection_t *tc)
 
   /* Advance the recovery point to snd_nxt on every rto (RFC 6675) */
   tc->snd_congestion = tc->snd_nxt;
+
+  /* An RTO exits the RFC 7661 non-validated phase */
+  tc->cwnd_limited_seq = tc->snd_nxt;
 
   /* State snapshotted once per congestion event, when the event starts. If we
    * are already in congestion recovery these were taken on entry and must not
@@ -1690,6 +1696,8 @@ tcp_transmit_unsent (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
     }
 
 done:
+  if (n_segs)
+    tcp_cc_update_cwnd_limited (tc, transport_max_tx_dequeue (&tc->connection));
   return n_segs;
 }
 
