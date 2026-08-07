@@ -1960,11 +1960,15 @@ tcp_test_cubic_init_epoch (tcp_connection_t *tc, clib_thread_index_t thread_inde
 static int
 tcp_test_cubic_compare_growth (tcp_connection_t *tc, tcp_connection_t *ref, u32 n_acks)
 {
-  tcp_rate_sample_t rs = { .acked_and_sacked = tc->snd_mss };
+  tcp_rate_sample_t rs = { .bytes_acked = tc->snd_mss, .acked_and_sacked = tc->snd_mss };
   u32 i;
 
   for (i = 0; i < n_acks; i++)
     {
+      tc->snd_una += rs.bytes_acked;
+      ref->snd_una += rs.bytes_acked;
+      tc->cwnd_limited_seq = tc->snd_una;
+      ref->cwnd_limited_seq = ref->snd_una;
       tc->cc_algo->rcv_ack (tc, &rs);
       ref->cc_algo->rcv_ack (ref, &rs);
       if (tc->cwnd != ref->cwnd || tc->cwnd_acc_bytes != ref->cwnd_acc_bytes)
@@ -1976,6 +1980,94 @@ tcp_test_cubic_compare_growth (tcp_connection_t *tc, tcp_connection_t *ref, u32 
 	  return 1;
 	}
     }
+  return 0;
+}
+
+static int
+tcp_test_cwnd_limited_marking (void)
+{
+  const u32 snd_mss = 1000, cwnd = 10 * snd_mss;
+  tcp_connection_t _tc, *tc = &_tc;
+
+  clib_memset (tc, 0, sizeof (*tc));
+  tc->snd_mss = snd_mss;
+  tc->snd_una = 100 * snd_mss;
+  tc->cwnd = cwnd;
+  tc->cwnd_limited_seq = tc->snd_una;
+
+  /* A smaller receive window, not cwnd, limits this flight. */
+  tc->snd_wnd = cwnd / 2;
+  tc->snd_nxt = tc->snd_una + tc->snd_wnd;
+  tcp_cc_update_cwnd_limited (tc);
+  TCP_TEST ((tc->cwnd_limited_seq == tc->snd_una),
+	    "rwnd-limited flight is not marked cwnd-limited");
+
+  /* A full congestion window is positive evidence of cwnd limitation. */
+  tc->snd_wnd = cwnd;
+  tc->snd_nxt = tc->snd_una + cwnd;
+  tcp_cc_update_cwnd_limited (tc);
+  TCP_TEST ((tc->cwnd_limited_seq == tc->snd_nxt), "full flight is marked cwnd-limited");
+
+  /* With at least one MSS of headroom, the FIFO cannot affect the result. */
+  tc->cwnd_limited_seq = tc->snd_una;
+  tc->snd_nxt = tc->snd_una + cwnd - 2 * snd_mss;
+  tcp_cc_update_cwnd_limited (tc);
+  TCP_TEST ((tc->cwnd_limited_seq == tc->snd_una),
+	    "flight with cwnd headroom is not marked cwnd-limited");
+
+  return 0;
+}
+
+static int
+tcp_test_cwnd_limited_growth (void)
+{
+  const tcp_cc_algorithm_type_e cc_types[] = { TCP_CC_NEWRENO, TCP_CC_CUBIC };
+  const char *cc_names[] = { "newreno", "cubic" };
+  const u32 snd_mss = 1000, initial_cwnd = 10 * snd_mss, n_app_limited_acks = 128;
+  tcp_rate_sample_t rs = { .bytes_acked = snd_mss, .acked_and_sacked = snd_mss };
+  tcp_connection_t _tc, *tc = &_tc;
+  u32 i, j;
+
+  for (i = 0; i < ARRAY_LEN (cc_types); i++)
+    {
+      clib_memset (tc, 0, sizeof (*tc));
+      tc->cc_algo = tcp_cc_algo_get (cc_types[i]);
+      tc->snd_mss = snd_mss;
+      tc->snd_una = 2 * snd_mss;
+      tc->cwnd = initial_cwnd;
+      tc->ssthresh = 1 << 30;
+      tc->tx_fifo_size = 1 << 30;
+
+      /* None of these ACKs cover data from a cwnd-limited flight. */
+      tc->cwnd_limited_seq = tc->snd_una - rs.bytes_acked;
+      for (j = 0; j < n_app_limited_acks; j++)
+	{
+	  tc->cc_algo->rcv_ack (tc, &rs);
+	  tc->snd_una += rs.bytes_acked;
+	}
+      TCP_TEST ((tc->cwnd == initial_cwnd), "%s does not grow over %u app-limited ACKs",
+		cc_names[i], n_app_limited_acks);
+
+      /* Extending the marker through the ACK permits normal slow-start
+       * growth. */
+      tc->cwnd_limited_seq = tc->snd_una;
+      tc->cc_algo->rcv_ack (tc, &rs);
+      TCP_TEST ((tc->cwnd == initial_cwnd + snd_mss), "%s grows when cwnd-limited", cc_names[i]);
+
+      /* Once cumulative ACKs pass the marker, growth stops again. */
+      tc->snd_una += rs.bytes_acked;
+      tc->cc_algo->rcv_ack (tc, &rs);
+      TCP_TEST ((tc->cwnd == initial_cwnd + snd_mss), "%s expires cwnd-limited marker",
+		cc_names[i]);
+
+      /* The next send-side update ages the expired marker. */
+      tc->snd_wnd = 0;
+      tc->snd_nxt = tc->snd_una;
+      tcp_cc_update_cwnd_limited (tc);
+      TCP_TEST ((tc->cwnd_limited_seq == tc->snd_una),
+		"%s ages expired cwnd-limited marker on send", cc_names[i]);
+    }
+
   return 0;
 }
 
@@ -2128,6 +2220,12 @@ tcp_test_cubic (vlib_main_t *vm, unformat_input_t *input)
       vlib_cli_output (vm, "parse error: '%U'", format_unformat_error, input);
       return -1;
     }
+
+  if ((rv = tcp_test_cwnd_limited_marking ()))
+    return rv;
+
+  if ((rv = tcp_test_cwnd_limited_growth ()))
+    return rv;
 
   if ((rv = tcp_test_cubic_undo (vm)))
     return rv;

@@ -14,6 +14,7 @@ import (
 
 func init() {
 	RegisterTcpHarnessTests(
+		TcpAppLimitedNoCwndGrowthTest,
 		TcpWindowProbeLinuxTest,
 		TcpFastRecoverySackSingleLossTest,
 		TcpFastRecoveryNoSack5MBLossTest,
@@ -78,6 +79,76 @@ func tcpHarnessDropIndicesForLossPercent(bytes, mss uint64, lossPercent uint64) 
 		last = index
 	}
 	return indices
+}
+
+func TcpAppLimitedNoCwndGrowthTest(s *TcpHarnessSuite) {
+	const (
+		appLimitedBursts = 32
+		bulkSendBytes    = 2 << 20
+		ioTimeout        = 10 * time.Second
+	)
+
+	var (
+		initialStats   TcpHarnessClientSessionStats
+		drainedStats   TcpHarnessClientSessionStats
+		grownStats     TcpHarnessClientSessionStats
+		serverStats    TcpTestEndpointStats
+		clientStats    TcpTestEndpointStats
+		peerClosed     TcpTestEndpointStats
+		sendHandle     TcpHarnessSendHandle
+		sendResult     TcpTestEndpointCommandResult
+		totalSendBytes uint64
+	)
+
+	defer s.StopTcpTestEndpoints()
+	state := RunTcpHarnessScenario(s,
+		StartTcpTestEndpointServer(TcpTestEndpointServerConfig{Port: s.Ports.Port1}),
+		StartTcpTestEndpointClient(TcpTestEndpointClientConfig{}),
+		WaitServerStats(5*time.Second, IsAccepted, &serverStats),
+		WaitClientSessionStats(5*time.Second, func(stats TcpHarnessClientSessionStats) bool {
+			return stats.SndMss > 0 && stats.Cwnd > 2*stats.SndMss && stats.FlightSize == 0
+		}, &initialStats),
+	)
+	defer state.Close()
+
+	burstBytes := 2 * initialStats.SndMss
+	for range appLimitedBursts {
+		totalSendBytes += burstBytes
+		RunTcpHarnessScenarioOnState(s, state,
+			StartClientSend(burstBytes, &sendHandle),
+			WaitServerStats(ioTimeout, BytesReadExactly(totalSendBytes), &serverStats),
+			WaitClientSend(&sendHandle, ioTimeout, &sendResult),
+			WaitClientSessionStats(ioTimeout, func(stats TcpHarnessClientSessionStats) bool {
+				return stats.Cwnd > 0 && stats.FlightSize == 0
+			}, &drainedStats),
+		)
+		assertTcpTestEndpointCommandOK(sendResult)
+	}
+
+	Log("app-limited cwnd: initial=%d final=%d", initialStats.Cwnd, drainedStats.Cwnd)
+	AssertEqual(initialStats.Cwnd, drainedStats.Cwnd,
+		"cwnd must not grow across drained app-limited flights")
+	AssertEqual(uint64(0), drainedStats.RetransmitSegsCount,
+		"app-limited flights must complete without retransmission")
+
+	totalSendBytes += bulkSendBytes
+	RunTcpHarnessScenarioOnState(s, state,
+		StartClientSend(bulkSendBytes, &sendHandle),
+		WaitServerStats(ioTimeout, BytesReadExactly(totalSendBytes), &serverStats),
+		WaitClientSend(&sendHandle, ioTimeout, &sendResult),
+		WaitClientSessionStats(ioTimeout, func(stats TcpHarnessClientSessionStats) bool {
+			return stats.FlightSize == 0 && stats.Cwnd > drainedStats.Cwnd
+		}, &grownStats),
+		WaitClientStats(5*time.Second, BytesSentExactly(totalSendBytes), &clientStats),
+		CloseTcpTestEndpointClient(),
+		WaitServerStats(5*time.Second, IsPeerClosed, &peerClosed),
+	)
+
+	assertTcpTestEndpointCommandOK(sendResult)
+	AssertEqual(totalSendBytes, serverStats.BytesRead)
+	AssertEqual(totalSendBytes, clientStats.BytesSent)
+	AssertEqual(true, peerClosed.PeerClosed)
+	Log("cwnd-limited growth: before=%d after=%d", drainedStats.Cwnd, grownStats.Cwnd)
 }
 
 type tcpHarnessLargeLossConfig struct {
@@ -479,6 +550,8 @@ func TcpTailLossTimerRecoveryTest(s *TcpHarnessSuite) {
 
 func TcpFastRecoveryTwoHolesPartialAckTest(s *TcpHarnessSuite) {
 	const controlledDataSegments = 5
+	Log(s.Containers.ClientVpp.VppInstance.Vppctl(
+		"set tcp initial-cwnd-multiplier %d", controlledDataSegments))
 
 	dropDataPacketIndices := []uint32{2, 4}
 	scriptCfg := tcpharness.NFQueueScript(dropDataPacketIndices,
@@ -490,6 +563,7 @@ func TcpFastRecoveryTwoHolesPartialAckTest(s *TcpHarnessSuite) {
 			tcpharness.AdvanceScriptToDone()))
 	var (
 		mssStats     TcpHarnessClientSessionStats
+		warmupStats  TcpHarnessClientSessionStats
 		serverStats  TcpTestEndpointStats
 		clientStats  TcpTestEndpointStats
 		peerClosed   TcpTestEndpointStats
@@ -522,6 +596,9 @@ func TcpFastRecoveryTwoHolesPartialAckTest(s *TcpHarnessSuite) {
 		StartClientSend(warmupBytes, &warmupHandle),
 		WaitServerStats(10*time.Second, BytesReadExactly(warmupBytes), &serverStats),
 		WaitClientSend(&warmupHandle, 10*time.Second, &warmupResult),
+		WaitClientSessionStats(10*time.Second, func(stats TcpHarnessClientSessionStats) bool {
+			return stats.FlightSize == 0 && stats.Cwnd >= controlledBytes
+		}, &warmupStats),
 		EnableServerNFQueueScript(scriptCfg),
 		StartClientSend(controlledBytes, &sendHandle),
 		WaitServerNFQueueScriptDone(10*time.Second, &scriptStats, &scriptTrace),
@@ -579,6 +656,8 @@ func TcpSackScoreboardRobustnessTest(s *TcpHarnessSuite) {
 	 * without waiting for sender RTO to release more data.
 	 */
 	const controlledDataSegments = 7
+	Log(s.Containers.ClientVpp.VppInstance.Vppctl(
+		"set tcp initial-cwnd-multiplier %d", controlledDataSegments))
 
 	dropDataPacketIndices := []uint32{2, 4, 6}
 
@@ -589,6 +668,7 @@ func TcpSackScoreboardRobustnessTest(s *TcpHarnessSuite) {
 			tcpharness.AdvanceScriptToDone()))
 	var (
 		mssStats     TcpHarnessClientSessionStats
+		warmupStats  TcpHarnessClientSessionStats
 		serverStats  TcpTestEndpointStats
 		clientStats  TcpTestEndpointStats
 		peerClosed   TcpTestEndpointStats
@@ -621,6 +701,9 @@ func TcpSackScoreboardRobustnessTest(s *TcpHarnessSuite) {
 		StartClientSend(warmupBytes, &warmupHandle),
 		WaitServerStats(10*time.Second, BytesReadExactly(warmupBytes), &serverStats),
 		WaitClientSend(&warmupHandle, 10*time.Second, &warmupResult),
+		WaitClientSessionStats(10*time.Second, func(stats TcpHarnessClientSessionStats) bool {
+			return stats.FlightSize == 0 && stats.Cwnd >= controlledBytes
+		}, &warmupStats),
 		EnableServerNFQueueScript(scriptCfg),
 		StartClientSend(controlledBytes, &sendHandle),
 		WaitServerNFQueueScriptStats(10*time.Second, func(stats tcpharness.NFQueueScriptStats) bool {

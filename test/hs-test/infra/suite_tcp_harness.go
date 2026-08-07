@@ -72,6 +72,8 @@ type TcpTestEndpointCommandResult struct {
 type TcpHarnessClientSessionStats struct {
 	Output              string
 	SndMss              uint64
+	Cwnd                uint64
+	FlightSize          uint64
 	RtoBackoffCount     uint64
 	FastRecoveryCount   uint64
 	TimerRecoveryCount  uint64
@@ -133,6 +135,8 @@ const (
 
 var (
 	tcpHarnessClientSessionSndMssRE  = regexp.MustCompile(`\bsnd_mss (\d+)\b`)
+	tcpHarnessClientSessionCwndRE    = regexp.MustCompile(`\bcwnd (\d+)\b`)
+	tcpHarnessClientSessionFlightRE  = regexp.MustCompile(`\bflight size (\d+)\b`)
 	tcpHarnessClientSessionRtoBoffRE = regexp.MustCompile(`\brto_boff (\d+)\b`)
 	tcpHarnessClientSessionFrRE      = regexp.MustCompile(`\bfr (\d+)\b`)
 	tcpHarnessClientSessionTrRE      = regexp.MustCompile(`\btr (\d+)\b`)
@@ -369,6 +373,11 @@ func ReadClientPcap(dst *[]tcpharness.PcapIPv4TCPPacket) TcpHarnessAction {
 
 func RegisterTcpHarnessTests(tests ...func(s *TcpHarnessSuite)) {
 	tcpHarnessTests[GetTestFilename()] = tests
+}
+
+func tcpHarnessTestName(test func(s *TcpHarnessSuite)) string {
+	pc := reflect.ValueOf(test).Pointer()
+	return strings.Split(runtime.FuncForPC(pc).Name(), ".")[2]
 }
 
 func (cfg TcpTestEndpointServerConfig) command() string {
@@ -630,6 +639,8 @@ func ParseClientVppSessionStats(output string) TcpHarnessClientSessionStats {
 	return TcpHarnessClientSessionStats{
 		Output:              output,
 		SndMss:              parseTcpHarnessClientSessionUint(output, tcpHarnessClientSessionSndMssRE),
+		Cwnd:                parseTcpHarnessClientSessionUint(output, tcpHarnessClientSessionCwndRE),
+		FlightSize:          parseTcpHarnessClientSessionUint(output, tcpHarnessClientSessionFlightRE),
 		RtoBackoffCount:     parseTcpHarnessClientSessionUint(output, tcpHarnessClientSessionRtoBoffRE),
 		FastRecoveryCount:   parseTcpHarnessClientSessionUint(output, tcpHarnessClientSessionFrRE),
 		TimerRecoveryCount:  parseTcpHarnessClientSessionUint(output, tcpHarnessClientSessionTrRE),
@@ -1424,9 +1435,7 @@ var _ = Describe("TcpHarnessSuite", Ordered, ContinueOnFailure, Label("TCP", "Ha
 	for filename, tests := range tcpHarnessTests {
 		for _, test := range tests {
 			test := test
-			pc := reflect.ValueOf(test).Pointer()
-			funcValue := runtime.FuncForPC(pc)
-			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
+			testName := filename + "/" + tcpHarnessTestName(test)
 			It(testName, func(ctx SpecContext) {
 				Log("[* TEST BEGIN]: " + testName)
 				test(&s)
