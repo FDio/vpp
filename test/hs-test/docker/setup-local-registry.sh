@@ -25,7 +25,7 @@ function wait_for_process () {
 }
 
 # Check if Docker is running
-
+START_DOCKER_SCRIPT="start-docker.sh"
 if ! DOCKER_INFO=$(docker info 2>&1); then
     echo "dockerd is not running"
     echo "$DOCKER_INFO"
