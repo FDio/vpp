@@ -923,7 +923,8 @@ tcp_set_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
   u8 csum_offload_set = 0;
   u8 dsack_set = 0;
   u8 mtu_set = 0;
-  u32 mtu, min_mtu = 1280;
+  u8 initial_cwnd_set = 0;
+  u32 mtu, min_mtu = 1280, initial_cwnd_multiplier;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -972,13 +973,23 @@ tcp_set_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
 	  tcp_cfg.default_mtu = mtu;
 	  mtu_set = 1;
 	}
+      else if (unformat (input, "initial-cwnd-multiplier %u", &initial_cwnd_multiplier))
+	{
+	  if (initial_cwnd_multiplier > CLIB_U16_MAX)
+	    return clib_error_return (0,
+				      "initial cwnd multiplier must not "
+				      "exceed %u",
+				      CLIB_U16_MAX);
+	  tcp_cfg.initial_cwnd_multiplier = initial_cwnd_multiplier;
+	  initial_cwnd_set = 1;
+	}
       else
 	return clib_error_return (0, "unknown input `%U'", format_unformat_error, input);
     }
 
-  if (!byte_tracker_set && !csum_offload_set && !dsack_set && !mtu_set)
+  if (!byte_tracker_set && !csum_offload_set && !dsack_set && !mtu_set && !initial_cwnd_set)
     return clib_error_return (0, "expected byte-tracker, csum-offload, "
-				 "dsack or mtu");
+				 "dsack, mtu or initial-cwnd-multiplier");
 
   if (byte_tracker_set)
     vlib_cli_output (vm, "TCP byte tracker for new connections: %s",
@@ -990,13 +1001,17 @@ tcp_set_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
 		     tcp_cfg.enable_dsack ? "enabled" : "disabled");
   if (mtu_set)
     vlib_cli_output (vm, "TCP default mtu: %u", tcp_cfg.default_mtu);
+  if (initial_cwnd_set)
+    vlib_cli_output (vm, "TCP initial cwnd multiplier for new connections: %u",
+		     tcp_cfg.initial_cwnd_multiplier);
   return 0;
 }
 
 VLIB_CLI_COMMAND (tcp_set_command, static) = {
   .path = "set tcp",
   .short_help = "set tcp [byte-tracker [enable|disable]] "
-		"[csum-offload [enable|disable]] [dsack [enable|disable]] [mtu <mtu>]",
+		"[csum-offload [enable|disable]] [dsack [enable|disable]] "
+		"[mtu <mtu>] [initial-cwnd-multiplier <n>]",
   .function = tcp_set_fn,
 };
 

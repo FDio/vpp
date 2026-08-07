@@ -64,6 +64,7 @@ func TcpConfigDiagTest(s *VethsSuite) {
 	AssertContains(config, "checksum offload:")
 	AssertContains(config, "dsack: enabled")
 	AssertContains(config, "byte tracker: disabled")
+	AssertContains(config, "initial cwnd multiplier: 0")
 
 	AssertContains(serverVpp.Vppctl("set tcp byte-tracker enable"), "enabled")
 	AssertContains(serverVpp.Vppctl("show tcp config"), "byte tracker: enabled")
@@ -83,6 +84,15 @@ func TcpConfigDiagTest(s *VethsSuite) {
 	AssertContains(serverVpp.Vppctl("show tcp config"), "default mtu: 1280")
 	AssertContains(serverVpp.Vppctl("set tcp mtu 1500"), "TCP default mtu: 1500")
 	AssertContains(serverVpp.Vppctl("show tcp config"), "default mtu: 1500")
+	AssertContains(serverVpp.Vppctl("set tcp initial-cwnd-multiplier 7"),
+		"TCP initial cwnd multiplier for new connections: 7")
+	AssertContains(serverVpp.Vppctl("show tcp config"), "initial cwnd multiplier: 7")
+	AssertContains(serverVpp.Vppctl("set tcp initial-cwnd-multiplier 65536"),
+		"initial cwnd multiplier must not exceed 65535")
+	AssertContains(serverVpp.Vppctl("show tcp config"), "initial cwnd multiplier: 7")
+	AssertContains(serverVpp.Vppctl("set tcp initial-cwnd-multiplier 0"),
+		"TCP initial cwnd multiplier for new connections: 0")
+	AssertContains(serverVpp.Vppctl("show tcp config"), "initial cwnd multiplier: 0")
 
 	punt := serverVpp.Vppctl("show tcp punt")
 	Log(punt)
