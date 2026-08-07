@@ -16,6 +16,23 @@
       "message": "recheck",
       "revId": "25328872d9b5bbf8fab7aab3c5cc656f41e0ce69",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "7f8f58aa_5d1e0371",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-08-07T21:01:24Z",
+      "side": 1,
+      "message": "Docs spell check failed in checkstyle job",
+      "revId": "25328872d9b5bbf8fab7aab3c5cc656f41e0ce69",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
