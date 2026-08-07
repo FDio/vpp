@@ -1960,11 +1960,15 @@ tcp_test_cubic_init_epoch (tcp_connection_t *tc, clib_thread_index_t thread_inde
 static int
 tcp_test_cubic_compare_growth (tcp_connection_t *tc, tcp_connection_t *ref, u32 n_acks)
 {
-  tcp_rate_sample_t rs = { .acked_and_sacked = tc->snd_mss };
+  tcp_rate_sample_t rs = { .bytes_acked = tc->snd_mss, .acked_and_sacked = tc->snd_mss };
   u32 i;
 
   for (i = 0; i < n_acks; i++)
     {
+      tc->snd_una += rs.bytes_acked;
+      ref->snd_una += rs.bytes_acked;
+      tc->cwnd_limited_seq = tc->snd_una;
+      ref->cwnd_limited_seq = ref->snd_una;
       tc->cc_algo->rcv_ack (tc, &rs);
       ref->cc_algo->rcv_ack (ref, &rs);
       if (tc->cwnd != ref->cwnd || tc->cwnd_acc_bytes != ref->cwnd_acc_bytes)
@@ -1976,6 +1980,224 @@ tcp_test_cubic_compare_growth (tcp_connection_t *tc, tcp_connection_t *ref, u32 
 	  return 1;
 	}
     }
+  return 0;
+}
+
+static int
+tcp_test_cwnd_limited_marking (void)
+{
+  const u32 snd_mss = 1000, cwnd = 10 * snd_mss;
+  const clib_thread_index_t thread_index = 0;
+  fifo_segment_create_args_t _a = { 0 }, *a = &_a;
+  fifo_segment_main_t _fsm = { 0 }, *fsm = &_fsm;
+  tcp_connection_t _tc, *tc = &_tc;
+  fifo_segment_t *fs;
+  session_t *s;
+  u8 *data = 0;
+  int rv;
+
+  clib_memset (tc, 0, sizeof (*tc));
+  tc->snd_mss = snd_mss;
+  tc->snd_una = 100 * snd_mss;
+  tc->cwnd = cwnd;
+  tc->cwnd_limited_seq = tc->snd_una;
+
+  /* A smaller receive window, not cwnd, limits this flight. */
+  tc->snd_wnd = cwnd / 2;
+  tc->snd_nxt = tc->snd_una + tc->snd_wnd;
+  tcp_cc_update_cwnd_limited (tc);
+  TCP_TEST ((tc->cwnd_limited_seq == tc->snd_una),
+	    "rwnd-limited flight is not marked cwnd-limited");
+
+  /* A full congestion window is positive evidence of cwnd limitation. */
+  tc->snd_wnd = cwnd;
+  tc->snd_nxt = tc->snd_una + cwnd;
+  tcp_cc_update_cwnd_limited (tc);
+  TCP_TEST ((tc->cwnd_limited_seq == tc->snd_nxt), "full flight is marked cwnd-limited");
+
+  /* With at least one MSS of headroom, the FIFO cannot affect the result. */
+  tc->cwnd_limited_seq = tc->snd_una;
+  tc->snd_nxt = tc->snd_una + cwnd - 2 * snd_mss;
+  tcp_cc_update_cwnd_limited (tc);
+  TCP_TEST ((tc->cwnd_limited_seq == tc->snd_una),
+	    "flight with cwnd headroom is not marked cwnd-limited");
+
+  /* An ACK that starts before the marker covers data from a cwnd-limited
+   * flight even if it cumulatively acknowledges data beyond the marker. */
+  {
+    tcp_rate_sample_t rs = { .bytes_acked = 3 * snd_mss };
+
+    tc->snd_una = 200 * snd_mss;
+    tc->cwnd_limited_seq = tc->snd_una - 2 * snd_mss;
+    TCP_TEST (tcp_cc_is_cwnd_limited (tc, &rs), "cumulative ACK crossing marker is cwnd-limited");
+
+    rs.bytes_acked = snd_mss;
+    TCP_TEST (!tcp_cc_is_cwnd_limited (tc, &rs),
+	      "cumulative ACK starting past marker is not cwnd-limited");
+  }
+
+  /* Less than one MSS of headroom is cwnd-limited when queued data remains,
+   * because output rounding prevents the sender from using that headroom. */
+  a->segment_name = "tcp-cwnd-limited";
+  a->segment_size = 256 << 10;
+  a->segment_type = SSVM_SEGMENT_PRIVATE;
+  rv = fifo_segment_create (fsm, a);
+  TCP_TEST (!rv, "cwnd-limited fifo segment create returned %d", rv);
+  fs = fifo_segment_get_segment (fsm, a->new_segment_indices[0]);
+  TCP_TEST (fs != 0, "cwnd-limited fifo segment should be allocated");
+
+  s = session_alloc (thread_index);
+  TCP_TEST (s != 0, "cwnd-limited session should be allocated");
+  s->tx_fifo = fifo_segment_alloc_fifo_w_slice (fs, 0, 16 << 10, FIFO_SEGMENT_TX_FIFO);
+  TCP_TEST (s->tx_fifo != 0, "cwnd-limited tx fifo should be allocated");
+  vec_validate (data, cwnd - 1);
+  TCP_TEST (svm_fifo_enqueue (s->tx_fifo, cwnd, data) == cwnd,
+	    "cwnd-limited test data should be queued");
+
+  tc->connection.s_index = s->session_index;
+  tc->connection.thread_index = thread_index;
+  tc->snd_una = 300 * snd_mss;
+  tc->snd_nxt = tc->snd_una + cwnd - snd_mss / 2;
+  tc->snd_wnd = cwnd;
+  tc->cwnd = cwnd;
+  tc->cwnd_limited_seq = tc->snd_una;
+  tcp_cc_update_cwnd_limited (tc);
+  TCP_TEST ((tc->cwnd_limited_seq == tc->snd_nxt),
+	    "queued data marks a flight with sub-mss cwnd headroom");
+
+  fifo_segment_free_fifo (fs, s->tx_fifo);
+  session_free (s);
+  vec_free (data);
+  vec_free (a->new_segment_indices);
+  fifo_segment_delete (fsm, fs);
+
+  return 0;
+}
+
+static int
+tcp_test_cwnd_limited_growth (void)
+{
+  const tcp_cc_algorithm_type_e cc_types[] = { TCP_CC_NEWRENO, TCP_CC_CUBIC };
+  const char *cc_names[] = { "newreno", "cubic" };
+  const u32 snd_mss = 1000, initial_cwnd = 10 * snd_mss, n_app_limited_acks = 128;
+  tcp_rate_sample_t rs = { .bytes_acked = snd_mss, .acked_and_sacked = snd_mss };
+  tcp_connection_t _tc, *tc = &_tc;
+  u32 i, j;
+
+  for (i = 0; i < ARRAY_LEN (cc_types); i++)
+    {
+      clib_memset (tc, 0, sizeof (*tc));
+      tc->cc_algo = tcp_cc_algo_get (cc_types[i]);
+      tc->snd_mss = snd_mss;
+      tc->snd_una = 2 * snd_mss;
+      tc->cwnd = initial_cwnd;
+      tc->ssthresh = 1 << 30;
+      tc->tx_fifo_size = 1 << 30;
+
+      /* None of these ACKs cover data from a cwnd-limited flight. */
+      tc->cwnd_limited_seq = tc->snd_una - rs.bytes_acked;
+      for (j = 0; j < n_app_limited_acks; j++)
+	{
+	  tc->cc_algo->rcv_ack (tc, &rs);
+	  tc->snd_una += rs.bytes_acked;
+	}
+      TCP_TEST ((tc->cwnd == initial_cwnd), "%s does not grow over %u app-limited ACKs",
+		cc_names[i], n_app_limited_acks);
+
+      /* Extending the marker through the ACK permits normal slow-start
+       * growth. */
+      tc->cwnd_limited_seq = tc->snd_una;
+      tc->cc_algo->rcv_ack (tc, &rs);
+      TCP_TEST ((tc->cwnd == initial_cwnd + snd_mss), "%s grows when cwnd-limited", cc_names[i]);
+
+      /* Once cumulative ACKs pass the marker, growth stops again. */
+      tc->snd_una += rs.bytes_acked;
+      tc->cc_algo->rcv_ack (tc, &rs);
+      TCP_TEST ((tc->cwnd == initial_cwnd + snd_mss), "%s expires cwnd-limited marker",
+		cc_names[i]);
+
+      /* The next send-side update ages the expired marker. */
+      tc->snd_wnd = 0;
+      tc->snd_nxt = tc->snd_una;
+      tcp_cc_update_cwnd_limited (tc);
+      TCP_TEST ((tc->cwnd_limited_seq == tc->snd_una),
+		"%s ages expired cwnd-limited marker on send", cc_names[i]);
+    }
+
+  return 0;
+}
+
+/* RFC 9438 excludes continuously application-limited time from the CUBIC
+ * epoch even when the flight never drains and START_TX is not generated. */
+static int
+tcp_test_cubic_app_limited (void)
+{
+  const clib_thread_index_t thread_index = 0;
+  const u32 snd_mss = 1000;
+  tcp_rate_sample_t rs = { .bytes_acked = snd_mss, .acked_and_sacked = snd_mss };
+  tcp_connection_t _tc, *tc = &_tc, _ref, *ref = &_ref;
+  u32 initial_cwnd;
+
+  tcp_test_set_time (thread_index, 1);
+  tcp_test_cubic_init_epoch (tc, thread_index, snd_mss, 100);
+  initial_cwnd = tc->cwnd;
+
+  /* The ACK at time 2 belongs to a flight that did not exhaust cwnd. */
+  tcp_test_set_time (thread_index, 2);
+  tc->snd_una = 2 * snd_mss;
+  tc->cwnd_limited_seq = tc->snd_una - rs.bytes_acked;
+  tc->cc_algo->rcv_ack (tc, &rs);
+  TCP_TEST ((tc->cwnd == initial_cwnd), "cubic pauses on an app-limited ACK");
+
+  /* At time 10 the sender becomes cwnd-limited without first draining the
+   * flight.  Its frozen one-second epoch must match an epoch started at 9. */
+  tcp_test_set_time (thread_index, 9);
+  tcp_test_cubic_init_epoch (ref, thread_index, snd_mss, 100);
+  tcp_test_set_time (thread_index, 10);
+  TCP_TEST ((tcp_test_cubic_compare_growth (tc, ref, 1) == 0),
+	    "cubic excludes a continuous app-limited interval");
+  tcp_test_set_time (thread_index, 11);
+  TCP_TEST ((tcp_test_cubic_compare_growth (tc, ref, 64) == 0),
+	    "cubic preserves its curve after continuous app limitation");
+
+  /* A paused epoch stays frozen across restarted app-limited flights.  If
+   * START_TX resumed it, every short flight would add roughly one RTT. */
+  tcp_test_set_time (thread_index, 20);
+  tcp_test_cubic_init_epoch (tc, thread_index, snd_mss, 100);
+  tcp_test_set_time (thread_index, 21);
+  tc->snd_una = 2 * snd_mss;
+  tc->cwnd_limited_seq = tc->snd_una - rs.bytes_acked;
+  tc->cc_algo->rcv_ack (tc, &rs);
+  tc->delivered_time = tcp_time_now_us (thread_index);
+
+  tcp_test_set_time (thread_index, 30);
+  tc->cc_algo->event (tc, TCP_CC_EVT_START_TX);
+  tcp_test_set_time (thread_index, 31);
+  tc->snd_una += rs.bytes_acked;
+  tc->cwnd_limited_seq = tc->snd_una - rs.bytes_acked;
+  tc->cc_algo->rcv_ack (tc, &rs);
+  tc->delivered_time = tcp_time_now_us (thread_index);
+
+  tcp_test_set_time (thread_index, 40);
+  tc->cc_algo->event (tc, TCP_CC_EVT_START_TX);
+  tcp_test_set_time (thread_index, 41);
+  tc->snd_una += rs.bytes_acked;
+  tc->cwnd_limited_seq = tc->snd_una - rs.bytes_acked;
+  tc->cc_algo->rcv_ack (tc, &rs);
+  tc->delivered_time = tcp_time_now_us (thread_index);
+
+  /* When bulk transmission resumes, the first cwnd-limited ACK resumes the
+   * original one-second epoch. */
+  tcp_test_set_time (thread_index, 50);
+  tc->cc_algo->event (tc, TCP_CC_EVT_START_TX);
+  tcp_test_cubic_init_epoch (ref, thread_index, snd_mss, 100);
+  tcp_test_set_time (thread_index, 51);
+  TCP_TEST ((tcp_test_cubic_compare_growth (tc, ref, 1) == 0),
+	    "cubic excludes repeated app-limited flights");
+  tcp_test_set_time (thread_index, 52);
+  TCP_TEST ((tcp_test_cubic_compare_growth (tc, ref, 64) == 0),
+	    "cubic preserves its curve after repeated app limitation");
+
   return 0;
 }
 
@@ -2128,6 +2350,15 @@ tcp_test_cubic (vlib_main_t *vm, unformat_input_t *input)
       vlib_cli_output (vm, "parse error: '%U'", format_unformat_error, input);
       return -1;
     }
+
+  if ((rv = tcp_test_cwnd_limited_marking ()))
+    return rv;
+
+  if ((rv = tcp_test_cwnd_limited_growth ()))
+    return rv;
+
+  if ((rv = tcp_test_cubic_app_limited ()))
+    return rv;
 
   if ((rv = tcp_test_cubic_undo (vm)))
     return rv;
@@ -2605,6 +2836,7 @@ typedef struct
   u32 total_bytes;
   /* Recorded outcomes. */
   u8 first_in_recovery;
+  u8 first_cwnd_growth_enabled;
   u32 first_tr_occurences;
   u32 first_rto_boff;
   u32 cwnd_after_first;
@@ -2655,11 +2887,14 @@ tcp_test_rto_rpc (void *argp)
   tc->rxt_delivered = 0;
   tc->tr_occurences = 0;
   tc->rto_boff = 0;
+  /* Model a flight that did not exhaust the pre-timeout cwnd. */
+  tc->cwnd_limited_seq = tc->snd_una;
   tc->rcv_opts.flags |= TCP_OPTS_FLAG_SACK_PERMITTED;
   a->mss = tc->snd_mss;
   tcp_timer_retransmit_handler (tc);
 
   a->first_in_recovery = tcp_in_recovery (tc);
+  a->first_cwnd_growth_enabled = tc->cwnd_limited_seq == tc->snd_nxt;
   a->first_tr_occurences = tc->tr_occurences;
   a->first_rto_boff = tc->rto_boff;
   a->cwnd_after_first = tc->cwnd;
@@ -3044,6 +3279,12 @@ tcp_test_rto_reduce_once_e2e (vlib_main_t *vm, unformat_input_t *input)
 
     /* First rto: enters recovery, counts once, backs off. */
     if (!TCP_TEST_I ((a->first_in_recovery != 0), "first rto enters recovery"))
+      {
+	rv = 1;
+	goto cleanup;
+      }
+    if (!TCP_TEST_I ((a->first_cwnd_growth_enabled != 0),
+		     "first rto restores standard cwnd growth for an app-limited flight"))
       {
 	rv = 1;
 	goto cleanup;
@@ -4726,6 +4967,9 @@ tcp_test_tamper_rto (vlib_main_t *vm)
   /* Drop the only in-flight segment so recovery requires an RTO. */
   total_bytes = client_tc->snd_mss;
   tr_before = client_tc->tr_occurences;
+  client_tc->cwnd = clib_max (client_tc->cwnd, 4 * client_tc->snd_mss);
+  client_tc->snd_wnd = clib_max (client_tc->snd_wnd, client_tc->cwnd);
+  client_tc->cwnd_limited_seq = client_tc->snd_una;
   seg_rule = tcp_tamper_drop_seq (client_tc, client_tc->snd_una, 1);
   tcp_tamper_enable (client_tc);
   client_tc->rto = TCP_RTO_MIN;
@@ -4758,6 +5002,16 @@ tcp_test_tamper_rto (vlib_main_t *vm)
       }
   }
 
+  /* Delivery reaches the peer before its ACK necessarily reaches the sender.
+   * Wait for timer recovery to finish before checking the loss window. */
+  {
+    u32 max_iters = tcp_e2e_rxt_wait_iters (client_tc, 10e-3);
+    for (tries = 0; (tcp_in_recovery (client_tc) || client_tc->snd_una != client_tc->snd_nxt) &&
+		    tries < max_iters;
+	 tries++)
+      tcp_e2e_pump (vm, 10e-3);
+  }
+
   if (!TCP_TEST_I ((seg_rule->n_dropped == 1), "rto: the lone segment was dropped (dropped %u)",
 		   seg_rule->n_dropped))
     {
@@ -4773,6 +5027,19 @@ tcp_test_tamper_rto (vlib_main_t *vm)
     }
   if (!TCP_TEST_I ((drained == total_bytes), "rto: data delivered after the timeout (got %u of %u)",
 		   drained, total_bytes))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  if (!TCP_TEST_I ((!tcp_in_recovery (client_tc) && client_tc->snd_una == client_tc->snd_nxt),
+		   "rto: retransmitted app-limited flight was acknowledged"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  if (!TCP_TEST_I ((client_tc->cwnd > client_tc->snd_mss),
+		   "rto: ACK resumes standard cwnd growth (cwnd %u, mss %u)", client_tc->cwnd,
+		   client_tc->snd_mss))
     {
       rv = 1;
       goto cleanup;
