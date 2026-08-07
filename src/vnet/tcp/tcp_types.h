@@ -352,6 +352,7 @@ typedef struct _tcp_connection
 
   /* Congestion control */
   u32 cwnd;		/**< Congestion window */
+  u32 cwnd_limited_seq; /**< End of last flight eligible for cwnd growth */
   u32 cwnd_acc_bytes;	/**< Bytes accumulated for cwnd increment */
   u32 ssthresh;		/**< Slow-start threshold */
   u32 prev_ssthresh;	/**< ssthresh before congestion */
