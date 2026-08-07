@@ -1646,7 +1646,7 @@ session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
 
   /* Ask transport to push headers */
   ctx->transport_vft->push_header (ctx->tc, ctx->transport_pending_bufs,
-				   ctx->n_segs_per_evt);
+				   ctx->n_segs_per_evt, ctx->max_dequeue);
 
   if (PREDICT_FALSE (n_bufs))
     vlib_buffer_free (vm, ctx->tx_buffers, n_bufs);
