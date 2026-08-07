@@ -28,7 +28,8 @@ typedef struct cubic_data_
    *  size to W_max if there are no further congestion events */
   f64 K;
 
-  /** time (in sec) since the start of current congestion avoidance */
+  /** Start of the current congestion-avoidance epoch. While application
+   *  limited, a negative value encodes the frozen elapsed epoch time. */
   f64 t_start;
 
   /** Inflection point of the cubic function (in snd_mss segments) */
@@ -45,6 +46,36 @@ static inline f64
 cubic_time (clib_thread_index_t thread_index)
 {
   return tcp_time_now_us (thread_index);
+}
+
+/* t_start normally contains an absolute time. Negating the elapsed epoch
+ * time, with a one-second bias, lets us retain both the paused state and the
+ * curve position without growing the per-connection CC state. */
+#define CUBIC_PAUSED_EPOCH_BIAS 1.0
+
+static inline u8
+cubic_epoch_is_paused (const cubic_data_t *cd)
+{
+  return cd->t_start < 0;
+}
+
+static inline void
+cubic_pause_epoch (cubic_data_t *cd, f64 now)
+{
+  f64 elapsed;
+
+  if (cubic_epoch_is_paused (cd))
+    return;
+
+  elapsed = clib_max (now - cd->t_start, 0.0);
+  cd->t_start = -(elapsed + CUBIC_PAUSED_EPOCH_BIAS);
+}
+
+static inline void
+cubic_resume_epoch (cubic_data_t *cd, f64 now)
+{
+  ASSERT (cubic_epoch_is_paused (cd));
+  cd->t_start = clib_min (now + cd->t_start + CUBIC_PAUSED_EPOCH_BIAS, now);
 }
 
 /**
@@ -167,12 +198,22 @@ cubic_rcv_ack (tcp_connection_t * tc, tcp_rate_sample_t * rs)
 {
   cubic_data_t *cd = (cubic_data_t *) tcp_cc_data (tc);
   u64 w_cubic, w_aimd;
-  f64 t, rtt_sec;
+  f64 now, t, rtt_sec;
   u32 thresh;
 
-  /* Constrained by tx fifo, can't grow further */
-  if (tc->cwnd >= tc->tx_fifo_size)
-    return;
+  now = cubic_time (tc->c_thread_index);
+
+  /* RFC 9438 Sec. 4.2 excludes periods in which cwnd is not updated because
+   * the flow is application-limited. A local tx-fifo ceiling has the same
+   * effect and must not allow the cubic clock to run ahead either. */
+  if (!tcp_cc_is_cwnd_limited (tc, rs) || tc->cwnd >= tc->tx_fifo_size)
+    {
+      cubic_pause_epoch (cd, now);
+      return;
+    }
+
+  if (cubic_epoch_is_paused (cd))
+    cubic_resume_epoch (cd, now);
 
   if (tcp_in_slowstart (tc))
     {
@@ -180,7 +221,7 @@ cubic_rcv_ack (tcp_connection_t * tc, tcp_rate_sample_t * rs)
       return;
     }
 
-  t = cubic_time (tc->c_thread_index) - cd->t_start;
+  t = now - cd->t_start;
   rtt_sec = clib_min (tc->mrtt_us, (f64) tc->srtt * TCP_TICK);
 
   w_cubic = W_cubic (cd, t + rtt_sec) * tc->snd_mss;
@@ -267,6 +308,16 @@ cubic_event (tcp_connection_t *tc, tcp_cc_event_t evt)
    * means no delivery baseline is available, so start a fresh epoch. */
   cd = (cubic_data_t *) tcp_cc_data (tc);
   now = cubic_time (tc->c_thread_index);
+
+  /* A continuously application-limited flight may drain before transmission
+   * restarts.  Close that interval here and do not also charge the drained
+   * idle interval below. */
+  if (cubic_epoch_is_paused (cd))
+    {
+      cubic_resume_epoch (cd, now);
+      return;
+    }
+
   if (tc->delivered_time == 0)
     {
       cd->t_start = now;
