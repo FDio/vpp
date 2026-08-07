@@ -981,11 +981,12 @@ tcp_push_one_header (tcp_connection_t *tc, vlib_buffer_t *b, tcp_push_hdr_flags_
 }
 
 u32
-tcp_session_push_header (transport_connection_t *tconn, vlib_buffer_t **bs,
-			 u32 n_bufs)
+tcp_session_push_header (transport_connection_t *tconn, vlib_buffer_t **bs, u32 n_bufs,
+			 u32 available_bytes)
 {
   tcp_connection_t *tc = (tcp_connection_t *) tconn;
   tcp_push_hdr_flags_t push_hdr_flags = TCP_PUSH_HDR_F_BURST | TCP_PUSH_HDR_F_UPDATE_SND_NXT;
+  u32 max_dequeue = tc->snd_nxt - tc->snd_una + available_bytes;
 
   if (PREDICT_FALSE (tc->cfg_flags & TCP_CFG_F_TSO))
     push_hdr_flags |= TCP_PUSH_HDR_F_MAYBE_GSO;
@@ -1011,6 +1012,8 @@ tcp_session_push_header (transport_connection_t *tconn, vlib_buffer_t **bs,
       n_bufs -= 1;
       bs += 1;
     }
+
+  tcp_cc_update_cwnd_limited (tc, max_dequeue);
 
   /* If not tracking an ACK, start tracking */
   if (tc->rtt_ts == 0 && !tcp_in_cong_recovery (tc))
@@ -1310,6 +1313,9 @@ tcp_cc_rxt_timeout (tcp_connection_t *tc)
 
   /* Advance the recovery point to snd_nxt on every rto (RFC 6675) */
   tc->snd_congestion = tc->snd_nxt;
+
+  /* An RTO exits the RFC 7661 non-validated phase */
+  tc->cwnd_limited_seq = tc->snd_nxt;
 
   /* State snapshotted once per congestion event, when the event starts. If we
    * are already in congestion recovery these were taken on entry and must not
@@ -1658,14 +1664,15 @@ tcp_retransmit_first_unacked (tcp_worker_ctx_t * wrk, tcp_connection_t * tc)
 }
 
 static int
-tcp_transmit_unsent (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
-		     u32 burst_size)
+tcp_transmit_unsent (tcp_worker_ctx_t *wrk, tcp_connection_t *tc, u32 burst_size,
+		     u32 available_bytes)
 {
-  u32 offset, n_segs = 0, n_written, bi, available_wnd;
+  u32 offset, max_dequeue, n_segs = 0, n_written, bi, available_wnd;
   vlib_main_t *vm = wrk->vm;
   vlib_buffer_t *b = 0;
 
   offset = tc->snd_nxt - tc->snd_una;
+  max_dequeue = offset + available_bytes;
   available_wnd = tc->snd_wnd - offset;
   burst_size = clib_min (burst_size, available_wnd / tc->snd_mss);
 
@@ -1690,6 +1697,8 @@ tcp_transmit_unsent (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
     }
 
 done:
+  if (n_segs)
+    tcp_cc_update_cwnd_limited (tc, max_dequeue);
   return n_segs;
 }
 
@@ -1804,7 +1813,7 @@ tcp_retransmit_sack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
 	      burst_size = clib_min (burst_size - n_segs,
 				     snd_space / tc->snd_mss);
 	      burst_size = clib_min (burst_size, TCP_RXT_MAX_BURST);
-	      n_segs_new = tcp_transmit_unsent (wrk, tc, burst_size);
+	      n_segs_new = tcp_transmit_unsent (wrk, tc, burst_size, max_deq);
 	      n_bytes_new = n_segs_new * tc->snd_mss;
 	      sent_bytes += clib_min (max_deq, n_bytes_new);
 	      if (max_deq > n_bytes_new)
@@ -1963,7 +1972,7 @@ send_unsent:
     {
       snd_space = clib_min (max_deq, snd_space);
       burst_size = clib_min (burst_size - n_segs, snd_space / tc->snd_mss);
-      n_segs_now = tcp_transmit_unsent (wrk, tc, burst_size);
+      n_segs_now = tcp_transmit_unsent (wrk, tc, burst_size, max_deq);
       if (n_segs_now && max_deq > n_segs_now * tc->snd_mss)
 	tcp_program_retransmit (tc);
       n_segs += n_segs_now;
