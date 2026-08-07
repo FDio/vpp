@@ -6,6 +6,7 @@
 #ifndef SRC_VNET_TCP_TCP_CC_H_
 #define SRC_VNET_TCP_TCP_CC_H_
 
+#include <vnet/session/session.h>
 #include <vnet/tcp/tcp_types.h>
 
 always_inline void
@@ -71,6 +72,32 @@ static inline void *
 tcp_cc_data (tcp_connection_t * tc)
 {
   return (void *) tc->cc_data;
+}
+
+/** Record the end of a flight that exhausted the congestion window. */
+always_inline void
+tcp_cc_update_cwnd_limited (tcp_connection_t *tc)
+{
+  u32 outstanding = tc->snd_nxt - tc->snd_una;
+
+  /* Keep an expired marker close to snd_una across sequence wrap. */
+  if (seq_lt (tc->cwnd_limited_seq, tc->snd_una))
+    tc->cwnd_limited_seq = tc->snd_una;
+
+  /* A smaller receive window, rather than cwnd, constrained the sender. */
+  if (tc->cwnd > tc->snd_wnd)
+    return;
+
+  if (outstanding >= tc->cwnd || (tc->cwnd - outstanding < tc->snd_mss &&
+				  transport_max_tx_dequeue (&tc->connection) > outstanding))
+    tc->cwnd_limited_seq = tc->snd_nxt;
+}
+
+/** Return true if this ACK covers data from a cwnd-limited flight. */
+always_inline u8
+tcp_cc_is_cwnd_limited (const tcp_connection_t *tc, const tcp_rate_sample_t *rs)
+{
+  return seq_lt (tc->snd_una - rs->bytes_acked, tc->cwnd_limited_seq);
 }
 
 /* Eifel spurious-retransmit detection (RFC 3522 Sec. 3.2). Spurious if the ack
