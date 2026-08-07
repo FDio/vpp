@@ -16,6 +16,23 @@
       "message": "csit-2n-icx-perftest mrrANDnic_*AND1cANDethip?-ip?base",
       "revId": "3ff2e52a3d2b98b059ff01b0c315313943fab9a8",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "20986f05_6cda3c90",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2026-08-07T07:07:06Z",
+      "side": 1,
+      "message": "@Kai VPP code needs to convert to new macros, see https://github.com/DPDK/dpdk/commit/2bc5ebc5fcf073d28b10c3bed517e616dc78a7ac",
+      "revId": "3ff2e52a3d2b98b059ff01b0c315313943fab9a8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
