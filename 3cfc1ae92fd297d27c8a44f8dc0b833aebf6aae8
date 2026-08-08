@@ -16,6 +16,23 @@
       "message": "recheck",
       "revId": "3cfc1ae92fd297d27c8a44f8dc0b833aebf6aae8",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "f8ab1e3d_4a008e73",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-08-08T02:45:43Z",
+      "side": 1,
+      "message": "Re-run failed jobs via GitHub UI",
+      "revId": "3cfc1ae92fd297d27c8a44f8dc0b833aebf6aae8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
