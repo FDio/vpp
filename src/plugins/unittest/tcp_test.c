@@ -5538,6 +5538,40 @@ tcp_test_bt_rxt_across_sacked_island (void)
 }
 
 static int
+tcp_test_bt_rxt_merge_flags (void)
+{
+  tcp_connection_t _tc = {}, *tc = &_tc;
+  tcp_bt_sample_t *bts;
+
+  tcp_bt_init (tc);
+  tcp_test_set_time (tc->c_thread_index, 1);
+  tcp_bt_track_tx (tc, 100);
+  tc->snd_nxt = 100;
+
+  /* Contiguous retransmits at the same timestamp may only be coalesced when
+   * the resulting samples carry identical delivery-rate metadata. */
+  tcp_test_set_time (tc->c_thread_index, 2);
+  tcp_bt_track_rxt (tc, 0, 50);
+  tc->app_limited = 1;
+  tcp_bt_track_rxt (tc, 50, 100);
+
+  bts = pool_elt_at_index (tc->bt->samples, tc->bt->head);
+  TCP_TEST (bts->min_seq == 0 && bts->max_seq == 50 && (bts->flags & TCP_BTS_IS_RXT) &&
+	      !(bts->flags & TCP_BTS_IS_APP_LIMITED),
+	    "BT retains non-app-limited retransmit [0:50]");
+  bts = pool_elt_at_index (tc->bt->samples, bts->next);
+  TCP_TEST (bts->min_seq == 50 && bts->max_seq == 100 &&
+	      (bts->flags & (TCP_BTS_IS_RXT | TCP_BTS_IS_APP_LIMITED)) ==
+		(TCP_BTS_IS_RXT | TCP_BTS_IS_APP_LIMITED),
+	    "BT retains app-limited retransmit [50:100]");
+  TCP_TEST (pool_elts (tc->bt->samples) == 2 && tcp_bt_is_sane (tc->bt),
+	    "BT keeps incompatible retransmit samples separate");
+
+  tcp_bt_cleanup (tc);
+  return 0;
+}
+
+static int
 tcp_test_bt_toggle (void)
 {
   tcp_connection_t _tc = {}, *tc = &_tc;
@@ -5587,6 +5621,8 @@ tcp_test_bt (vlib_main_t * vm, unformat_input_t * input)
   if (tcp_test_bt_repeat_sack ())
     return 1;
   if (tcp_test_bt_rxt_across_sacked_island ())
+    return 1;
+  if (tcp_test_bt_rxt_merge_flags ())
     return 1;
 
   /* Init data structures */
