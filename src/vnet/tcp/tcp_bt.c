@@ -330,30 +330,34 @@ tcp_bt_track_tx (tcp_connection_t * tc, u32 len)
 
 /* Record one contiguous unsacked retransmit range. */
 static void
-bt_track_rxt_range (tcp_connection_t *tc, u32 start, u32 end)
+bt_track_rxt_range (tcp_connection_t *tc, tcp_bt_sample_t *start_bts, u32 start, u32 end)
 {
   tcp_byte_tracker_t *bt = tc->bt;
   tcp_bt_sample_t *bts, *next, *cur, *prev, *nbts;
   u32 bts_index, cur_index, next_index, prev_index, max_seq;
   u8 is_end = end == tc->snd_nxt;
-  tcp_bts_flags_t bts_flags;
+  tcp_bts_flags_t bts_flags, merge_flags;
 
   /* Contiguous blocks retransmitted at the same time */
   bts = bt_get_sample (bt, bt->last_ooo);
-  if (bts && bts->max_seq == start
-      && bts->tx_time == tcp_time_now_us (tc->c_thread_index))
+  next = bts ? bt_next_sample (bt, bts) : 0;
+  merge_flags = TCP_BTS_IS_RXT;
+  if (next && (next->flags & TCP_BTS_IS_RXT))
+    merge_flags |= TCP_BTS_IS_RXT_LOST;
+  merge_flags |= tc->app_limited ? TCP_BTS_IS_APP_LIMITED : 0;
+  if (bts && next && bts->max_seq == start && bts->flags == merge_flags &&
+      bts->tx_time == tcp_time_now_us (tc->c_thread_index))
     {
       bts->max_seq = end;
-      next = bt_next_sample (bt, bts);
-      if (next)
-	bt_fix_overlapped (bt, next, end, is_end);
+      bt_fix_overlapped (bt, next, end, is_end);
 
       return;
     }
 
-  /* Find original tx sample and cache flags in case the sample
-   * is freed or the pool moves */
-  bts = bt_lookup_seq (bt, start);
+  /* Cache original tx flags in case the sample is freed or the pool moves.
+   * The caller already resolved the sample while splitting the retransmit
+   * around SACKed ranges, so do not repeat the rb-tree lookup here. */
+  bts = start_bts;
   bts_flags = bts->flags;
 
   ASSERT (bts != 0 && seq_geq (start, bts->min_seq));
@@ -499,7 +503,7 @@ tcp_bt_track_rxt (tcp_connection_t *tc, u32 start, u32 end)
 	}
 
       ASSERT (seq_lt (start, range_end));
-      bt_track_rxt_range (tc, start, range_end);
+      bt_track_rxt_range (tc, bts, start, range_end);
       start = range_end;
     }
 }
