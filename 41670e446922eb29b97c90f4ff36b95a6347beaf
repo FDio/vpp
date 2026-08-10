@@ -50,6 +50,23 @@
       "message": "I used my CSIT committer powers to start a bisect job. The 1-core 64B ip4base test showed a regression on E810cq, but telemetry does not look conclusive to me.\nTelemetry before: https://logs.fd.io/vex-yul-rot-jenkins-1/csit-vpp-bisect-2n-icx/31382105813/csit_earliest/log.html.gz#s1-s1-s1-s1-s2-t1-k2-k9-k10-k10-k1-k1-k1-k14\nTelemetry after: https://logs.fd.io/vex-yul-rot-jenkins-1/csit-vpp-bisect-2n-icx/31382105813/csit_latest/log.html.gz#s1-s1-s1-s1-s2-t1-k2-k9-k10-k10-k1-k1-k1-k14\nLet me try to get more stable telemetry.",
       "revId": "41670e446922eb29b97c90f4ff36b95a6347beaf",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "6394d34b_824f7552",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2026-08-10T13:54:38Z",
+      "side": 1,
+      "message": "\u003e more stable telemetry\n\nI increased the collection time from 1s to 10s but I am not sure the numbers are conclusive now.\nBefore: https://logs.fd.io/vex-yul-rot-jenkins-1/csit-vpp-bisect-2n-icx/31389991319/csit_earliest/log.html.gz#s1-s1-s1-s1-s1-t1-k2-k9-k10-k10-k1-k1-k1-k14\nAfter: https://logs.fd.io/vex-yul-rot-jenkins-1/csit-vpp-bisect-2n-icx/31389991319/csit_latest/log.html.gz#s1-s1-s1-s1-s1-t1-k2-k9-k10-k10-k1-k1-k1-k14",
+      "revId": "41670e446922eb29b97c90f4ff36b95a6347beaf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
