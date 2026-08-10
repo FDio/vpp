@@ -92,6 +92,7 @@ list(APPEND VNET_HEADERS
   interface_output.h
   ip/ip4_to_ip6.h
   ip/ip6_to_ip4.h
+  ip/ip6_link.h
   ip/ip_types_api.h
   l3_types.h
   plugin/plugin.h
@@ -226,6 +227,7 @@ list(APPEND VNET_HEADERS
   l2/l2_rw.h
   l2/l2_xcrw.h
   l2/l2_classify.h
+  l2/l2_in_out_feat_arc.h
 )
 
 list(APPEND VNET_API_FILES l2/l2.api)
@@ -1109,6 +1111,7 @@ list(APPEND VNET_HEADERS
   adj/adj_nsh.h
   adj/adj_nbr.h
   adj/adj_midchain.h
+  adj/adj_delegate.h
   adj/rewrite.h
 )
 
