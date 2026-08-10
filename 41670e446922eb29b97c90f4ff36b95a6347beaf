@@ -67,6 +67,23 @@
       "message": "\u003e more stable telemetry\n\nI increased the collection time from 1s to 10s but I am not sure the numbers are conclusive now.\nBefore: https://logs.fd.io/vex-yul-rot-jenkins-1/csit-vpp-bisect-2n-icx/31389991319/csit_earliest/log.html.gz#s1-s1-s1-s1-s1-t1-k2-k9-k10-k10-k1-k1-k1-k14\nAfter: https://logs.fd.io/vex-yul-rot-jenkins-1/csit-vpp-bisect-2n-icx/31389991319/csit_latest/log.html.gz#s1-s1-s1-s1-s1-t1-k2-k9-k10-k10-k1-k1-k1-k14",
       "revId": "41670e446922eb29b97c90f4ff36b95a6347beaf",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "0a974cc3_d78f032a",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2832
+      },
+      "writtenOn": "2026-08-10T15:42:39Z",
+      "side": 1,
+      "message": "Changed mempool cache behaviour explained in dpdk v26.07 release notes: https://doc.dpdk.org/guides/rel_notes/release_26_07.html\n\nThe mempool cache flush/refill algorithm was improved to reduce the cache miss rate for most application types.\nThe effective size of a mempool cache was changed to match the specified size at mempool creation; the effective size was previously 50% larger than requested.\nApplications where each lcore only puts or gets to a mempool should adapt by doubling their configured mempool cache size to avoid doubling their mempool cache miss rate.\n\nFollowing the DPDK v26.07 guidance, double the default num-mbufs to 32768 ?",
+      "revId": "41670e446922eb29b97c90f4ff36b95a6347beaf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
