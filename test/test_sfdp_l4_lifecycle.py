@@ -69,6 +69,7 @@ class TestSfdpL4LifecycleBase(BaseSfdpTest):
         self.set_timeout("embryonic", 10)  # SFDP_TIMEOUT_EMBRYONIC       = 10s
         self.set_timeout("established", 10)  # SFDP_TIMEOUT_ESTABLISHED     = 10s
         self.set_timeout("tcp-established", 10)  # SFDP_TIMEOUT_TCP_ESTABLISHED = 10s
+        self.vapi.cli("set sfdp tcp-check time-wait disable")
 
         # Enable sfdp on pg0/pg1 interfaces
         self.vapi.sfdp_interface_input_set(
@@ -199,6 +200,114 @@ class TestSfdpL4LifecycleBase(BaseSfdpTest):
             session_type,
         )
 
+    def _send_tcp(self, from_initiator, sport, flags, seq, is_ip6, ack=0):
+        src_if, dst_if = (
+            (self.pg0, self.pg1) if from_initiator else (self.pg1, self.pg0)
+        )
+        if is_ip6:
+            packet_fn = self.create_tcp6_packet
+            src_ip, dst_ip = src_if.remote_ip6, dst_if.remote_ip6
+        else:
+            packet_fn = self.create_tcp_packet
+            src_ip, dst_ip = src_if.remote_ip4, dst_if.remote_ip4
+
+        self.send_and_expect(
+            src_if,
+            packet_fn(
+                src_if.remote_mac,
+                src_if.local_mac,
+                src_ip,
+                dst_ip,
+                sport=sport if from_initiator else 80,
+                dport=80 if from_initiator else sport,
+                flags=flags,
+                seq=seq,
+                ack=ack,
+                payload=b"",
+            ),
+            dst_if,
+        )
+
+    def _test_tcp_time_wait_supersession(self, sport, is_ip6):
+        self.vapi.cli("set sfdp tcp-check time-wait enable")
+        self._tcp_establish(sport=sport)
+        self._send_tcp(True, sport, "FA", seq=1001, is_ip6=is_ip6, ack=2001)
+        self._send_tcp(False, sport, "FA", seq=2001, is_ip6=is_ip6, ack=1002)
+        self._send_tcp(True, sport, "A", seq=1002, is_ip6=is_ip6, ack=2002)
+
+        sessions = self.sessions()
+        self.assertEqual(len(sessions), 1)
+        old_session_index = sessions[0].session_idx
+        self.assertEqual(
+            sessions[0].state,
+            VppEnum.vl_api_sfdp_session_state_t.SFDP_API_SESSION_STATE_TIME_WAIT,
+        )
+
+        if is_ip6:
+            packet_fn = self.create_tcp6_packet
+            src_ip, dst_ip = self.pg0.remote_ip6, self.pg1.remote_ip6
+        else:
+            packet_fn = self.create_tcp_packet
+            src_ip, dst_ip = self.pg0.remote_ip4, self.pg1.remote_ip4
+
+        # Both packets enter tcp-check with the old flow index. The SYN
+        # supersedes it; the following ACK must refresh through the bihash.
+        packets = [
+            packet_fn(
+                self.pg0.remote_mac,
+                self.pg0.local_mac,
+                src_ip,
+                dst_ip,
+                sport=sport,
+                dport=80,
+                flags="S",
+                seq=3000,
+                payload=b"",
+            ),
+            packet_fn(
+                self.pg0.remote_mac,
+                self.pg0.local_mac,
+                src_ip,
+                dst_ip,
+                sport=sport,
+                dport=80,
+                flags="A",
+                seq=3001,
+                payload=b"",
+            ),
+        ]
+        self.send_and_expect(self.pg0, packets, self.pg1)
+
+        fresh_session = None
+        timeout = 5.0
+        tick = 0.02
+        for _ in range(int(timeout / tick) + 1):
+            sessions = self.sessions()
+            if len(sessions) == 1 and sessions[0].session_idx != old_session_index:
+                fresh_session = sessions[0]
+                break
+            self.virtual_sleep(0.02)
+
+        self.assertIsNotNone(
+            fresh_session,
+            "Old TIME_WAIT session was not replaced by one fresh session",
+        )
+        self.assertEqual(
+            fresh_session.state,
+            VppEnum.vl_api_sfdp_session_state_t.SFDP_API_SESSION_STATE_FSOL,
+        )
+
+        self._send_tcp(False, sport, "SA", seq=4000, is_ip6=is_ip6, ack=3001)
+        self._send_tcp(True, sport, "A", seq=3001, is_ip6=is_ip6, ack=4001)
+
+        sessions = self.sessions()
+        self.assertEqual(len(sessions), 1)
+        self.assertEqual(sessions[0].session_idx, fresh_session.session_idx)
+        self.assertEqual(
+            sessions[0].state,
+            VppEnum.vl_api_sfdp_session_state_t.SFDP_API_SESSION_STATE_ESTABLISHED,
+        )
+
 
 @unittest.skipIf(
     "sfdp_services" in config.excluded_plugins,
@@ -313,6 +422,27 @@ class TestSfdpL4LifecycleIp4(TestSfdpL4LifecycleBase):
         # Session reaped after tcp_established timeout
         self.virtual_sleep(11)  # tcp_established timeout = 10s
         self.wait_no_sessions()
+
+    def test_tcp_time_wait_mode_switch(self):
+        """TCP - enable TIME_WAIT and expire retained sessions on disable"""
+        self.vapi.cli("set sfdp tcp-check time-wait enable")
+        self._tcp_establish(sport=20012)
+        self._send_tcp(True, 20012, "FA", seq=1001, is_ip6=False, ack=2001)
+        self._send_tcp(False, 20012, "FA", seq=2001, is_ip6=False, ack=1002)
+        self._send_tcp(True, 20012, "A", seq=1002, is_ip6=False, ack=2002)
+
+        sessions = self.sessions()
+        self.assertEqual(len(sessions), 1)
+        self.assertEqual(
+            sessions[0].state,
+            VppEnum.vl_api_sfdp_session_state_t.SFDP_API_SESSION_STATE_TIME_WAIT,
+        )
+
+        self.vapi.cli("set sfdp tcp-check time-wait disable")
+        self.wait_no_sessions()
+
+    def test_tcp_time_wait_supersession(self):
+        self._test_tcp_time_wait_supersession(sport=20013, is_ip6=False)
 
     def test_tcp_rst_from_initiator(self):
         """TCP - RST from initiator on established session reaps session"""
@@ -763,6 +893,9 @@ class TestSfdpL4LifecycleIp6(TestSfdpL4LifecycleBase):
         self._tcp_establish(sport=30001)
         self.virtual_sleep(11)  # tcp_established timeout = 10s
         self.wait_no_sessions()
+
+    def test_tcp_time_wait_supersession(self):
+        self._test_tcp_time_wait_supersession(sport=30013, is_ip6=True)
 
     def test_tcp_rst_from_initiator(self):
         """TCP - RST from initiator on established session reaps session"""
