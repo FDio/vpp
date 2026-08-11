@@ -1027,7 +1027,7 @@ class TestSfdpSampleTimeout(BaseSfdpTest):
     def test_sample_timeout_registration(self):
         # Dump registered timeouts and verify that sample-timeout is registered.
         timeouts = list(self.vapi.sfdp_timeout_dump())
-        self.assertEqual(len(timeouts), 5)
+        self.assertEqual(len(timeouts), 6)
 
         # Verify that there is only a single 'sample-timeout' entry
         custom_timeouts = [

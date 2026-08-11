@@ -22,7 +22,8 @@ sfdp_session_remove (sfdp_main_t *sfdp, sfdp_per_thread_data_t *ptd,
   sfdp_parser_main_t *pm = &sfdp_parser_main;
 
   kv2.key = session->session_id;
-  if (session->key_flags & SFDP_SESSION_KEY_FLAG_PRIMARY_VALID_IP4)
+  if ((session->key_flags & SFDP_SESSION_KEY_FLAG_PRIMARY_VALID_IP4) &&
+      !(session->key_flags & SFDP_SESSION_KEY_FLAG_PRIMARY_SUPERSEDED))
     {
       clib_memcpy_fast (&kv.kv4.key,
 			&session->keys[SFDP_SESSION_KEY_PRIMARY].key4,
@@ -36,7 +37,8 @@ sfdp_session_remove (sfdp_main_t *sfdp, sfdp_per_thread_data_t *ptd,
 			sizeof (kv.kv4.key));
       clib_bihash_add_del_24_8 (&sfdp->table4, &kv.kv4, 0);
     }
-  if (session->key_flags & SFDP_SESSION_KEY_FLAG_PRIMARY_VALID_IP6)
+  if ((session->key_flags & SFDP_SESSION_KEY_FLAG_PRIMARY_VALID_IP6) &&
+      !(session->key_flags & SFDP_SESSION_KEY_FLAG_PRIMARY_SUPERSEDED))
     {
       clib_memcpy_fast (&kv.kv6.key,
 			&session->keys[SFDP_SESSION_KEY_PRIMARY].key6,
@@ -50,7 +52,8 @@ sfdp_session_remove (sfdp_main_t *sfdp, sfdp_per_thread_data_t *ptd,
 			sizeof (kv.kv6.key));
       clib_bihash_add_del_48_8 (&sfdp->table6, &kv.kv6, 0);
     }
-  if (session->key_flags & SFDP_SESSION_KEY_FLAG_PRIMARY_VALID_USER)
+  if ((session->key_flags & SFDP_SESSION_KEY_FLAG_PRIMARY_VALID_USER) &&
+      !(session->key_flags & SFDP_SESSION_KEY_FLAG_PRIMARY_SUPERSEDED))
     {
       parser = vec_elt_at_index (
 	pm->parsers, session->parser_index[SFDP_SESSION_KEY_PRIMARY]);
