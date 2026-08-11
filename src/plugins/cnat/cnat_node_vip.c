@@ -194,7 +194,8 @@ VLIB_REGISTER_NODE (cnat_vip_ip4_node) =
   .vector_size = sizeof (u32),
   .format_trace = format_cnat_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
-  .n_errors = 0,
+  .n_errors = CNAT_N_ERROR,
+  .error_strings = cnat_error_strings,
   .n_next_nodes = CNAT_NODE_VIP_N_NEXT,
   .next_nodes =
   {
@@ -209,7 +210,8 @@ VLIB_REGISTER_NODE (cnat_vip_ip6_node) =
   .vector_size = sizeof (u32),
   .format_trace = format_cnat_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
-  .n_errors = 0,
+  .n_errors = CNAT_N_ERROR,
+  .error_strings = cnat_error_strings,
   .n_next_nodes = CNAT_NODE_VIP_N_NEXT,
   .next_nodes =
   {
