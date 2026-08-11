@@ -170,7 +170,7 @@ sfdp_calc_key_v4 (vlib_buffer_t *b, u32 context_id,
     sfdp_buffer2 (b)->tcp_flags =
       vnet_buffer (b)->ip.reass.icmp_type_or_tcp_flags;
   else if (pr == IP_PROTOCOL_TCP)
-    sfdp_buffer (b)->tcp_flags = *(u8 *) next_header + 13;
+    sfdp_buffer (b)->tcp_flags = ((tcp_header_t *) next_header)->flags;
   else
     sfdp_buffer (b)->tcp_flags = 0;
 
