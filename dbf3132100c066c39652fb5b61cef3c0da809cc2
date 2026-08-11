@@ -33,6 +33,23 @@
       "message": "Re-run failed jobs via GitHub UI",
       "revId": "dbf3132100c066c39652fb5b61cef3c0da809cc2",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "efe18ec5_1aa04cd3",
+        "filename": "src/vnet/tcp/tcp_bt.c",
+        "patchSetId": 26
+      },
+      "lineNbr": 1212,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-08-11T09:47:36Z",
+      "side": 1,
+      "message": "isn\u0027t this always true? because line #1205 check if it is false and no variable in condition is modified",
+      "revId": "dbf3132100c066c39652fb5b61cef3c0da809cc2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
