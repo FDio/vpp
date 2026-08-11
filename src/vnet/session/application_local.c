@@ -271,7 +271,12 @@ ct_accept_one (clib_thread_index_t thread_index, u32 ho_index)
    * and mark ho connection index reusable. Avoids another rpc
    */
   session_half_open_migrate_notify (&cct->connection);
-  session_half_open_migrated_notify (&cct->connection);
+  if (session_half_open_migrated_notify (&cct->connection))
+    {
+      ct_connection_free (cct);
+      ct_half_open_add_reusable (ho_index);
+      return;
+    }
   ct_half_open_add_reusable (ho_index);
 
   /*
