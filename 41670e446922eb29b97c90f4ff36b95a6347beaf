@@ -84,6 +84,24 @@
       "message": "Changed mempool cache behaviour explained in dpdk v26.07 release notes: https://doc.dpdk.org/guides/rel_notes/release_26_07.html\n\nThe mempool cache flush/refill algorithm was improved to reduce the cache miss rate for most application types.\nThe effective size of a mempool cache was changed to match the specified size at mempool creation; the effective size was previously 50% larger than requested.\nApplications where each lcore only puts or gets to a mempool should adapt by doubling their configured mempool cache size to avoid doubling their mempool cache miss rate.\n\nFollowing the DPDK v26.07 guidance, double the default num-mbufs to 32768 ?",
       "revId": "41670e446922eb29b97c90f4ff36b95a6347beaf",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "1600c1fb_d4454b2d",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2026-08-11T11:03:12Z",
+      "side": 1,
+      "message": "\u003e configured mempool cache size\n\nI do not see VPP code explicitly configuring that, but I might have searched for wrong keywords.\n\n\u003e double the default num-mbufs to 32768.\n\nWhat is num-membufs? I know outdated documentation still mentions that, but the code had renamed [8], deprecated [9] and removed [10] that knob.\nI added \"show dpdk buffer\" to CSIT code, but total remains at 214837, with allocated bellow 10k both before [12] and after [13].\n\nI noticed this [11] edit on DPDK side, but that should have not affected the default behavior. I am running out of ideas here.\n\n[8] https://gerrit.fd.io/r/c/vpp/+/16638/28/src/plugins/dpdk/device/init.c#b1212\n[9] https://gerrit.fd.io/r/c/vpp/+/31443/8/extras/deprecated/dpdk-ipsec/ipsec.c#b838\n[10] https://gerrit.fd.io/r/c/vpp/+/34805/4/src/plugins/dpdk/device/init.c#b1509\n[11] https://github.com/DPDK/dpdk/commit/b3f2afb3b7eaa680ede545ea7e5ca43d2e1c18ab\n[12] https://logs.fd.io/vex-yul-rot-jenkins-1/csit-vpp-bisect-2n-icx/31481510026/csit_earliest/log.html.gz#s1-s1-s1-s1-s1-t1-k2-k9-k10-k14-k1-k1-k1-k1\n[13] https://logs.fd.io/vex-yul-rot-jenkins-1/csit-vpp-bisect-2n-icx/31481510026/csit_latest/log.html.gz#s1-s1-s1-s1-s1-t1-k2-k9-k10-k14-k1-k1-k1-k1",
+      "parentUuid": "0a974cc3_d78f032a",
+      "revId": "41670e446922eb29b97c90f4ff36b95a6347beaf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
