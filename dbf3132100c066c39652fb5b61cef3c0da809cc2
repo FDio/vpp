@@ -50,6 +50,24 @@
       "message": "isn\u0027t this always true? because line #1205 check if it is false and no variable in condition is modified",
       "revId": "dbf3132100c066c39652fb5b61cef3c0da809cc2",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "3a3eb2b9_dec6b9db",
+        "filename": "src/vnet/tcp/tcp_bt.c",
+        "patchSetId": 26
+      },
+      "lineNbr": 1212,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-08-11T12:18:48Z",
+      "side": 1,
+      "message": "yup, somehow I missed this, and a few other optimizations. Will be coming in the next patch",
+      "parentUuid": "efe18ec5_1aa04cd3",
+      "revId": "dbf3132100c066c39652fb5b61cef3c0da809cc2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
