@@ -127,13 +127,14 @@ enum
   SFDP_SESSION_N_KEY
 };
 /* Flags to determine key validity in the session */
-#define foreach_sfdp_session_key_flag                                         \
-  _ (PRIMARY_VALID_IP4, 0x1, "primary-valid-ip4")                             \
-  _ (PRIMARY_VALID_IP6, 0x2, "primary-valid-ip6")                             \
-  _ (SECONDARY_VALID_IP4, 0x4, "secondary-valid-ip4")                         \
-  _ (SECONDARY_VALID_IP6, 0x8, "secondary-valid-ip6")                         \
-  _ (PRIMARY_VALID_USER, 0x10, "primary-valid-user")                          \
-  _ (SECONDARY_VALID_USER, 0x20, "secondary-valid-user")
+#define foreach_sfdp_session_key_flag                                                              \
+  _ (PRIMARY_VALID_IP4, 0x1, "primary-valid-ip4")                                                  \
+  _ (PRIMARY_VALID_IP6, 0x2, "primary-valid-ip6")                                                  \
+  _ (SECONDARY_VALID_IP4, 0x4, "secondary-valid-ip4")                                              \
+  _ (SECONDARY_VALID_IP6, 0x8, "secondary-valid-ip6")                                              \
+  _ (PRIMARY_VALID_USER, 0x10, "primary-valid-user")                                               \
+  _ (SECONDARY_VALID_USER, 0x20, "secondary-valid-user")                                           \
+  _ (PRIMARY_SUPERSEDED, 0x40, "primary-superseded")
 
 enum
 {
@@ -352,6 +353,7 @@ typedef struct
   _ (EMBRYONIC, 5, "embryonic")                                                                    \
   _ (ESTABLISHED, 120, "established")                                                              \
   _ (TCP_ESTABLISHED, 3600, "tcp-established")                                                     \
+  _ (TIME_WAIT, 120, "time-wait")                                                                  \
   _ (SECURITY, 30, "security")
 
 enum
@@ -900,6 +902,98 @@ sfdp_create_session_inline (sfdp_main_t *sfdp, sfdp_per_thread_data_t *ptd,
     thread_index, tenant_idx, 1);
   return 0;
 }
+
+/* Replace a single primary IP lookup with a freshly allocated session.
+ * The caller must run on the replaced session's owning worker.
+ * Sessions with secondary keys, such as NAT sessions, are not supported.
+ * Keep new-session initialization in sync with sfdp_create_session_inline().
+ * sfdp_notify_new_sessions must be called afterward.
+ * Return value: 0 --> SUCCESS
+		 1 --> Unable to allocate session
+		 2 --> Unable to publish replacement */
+static_always_inline int
+sfdp_replace_session_inline (sfdp_main_t *sfdp, sfdp_per_thread_data_t *ptd,
+			     u32 replaced_session_index, u32 *new_session_index)
+{
+  sfdp_bihash_kv46_t kv = {};
+  sfdp_session_t *replaced_session = sfdp_session_at_index (replaced_session_index);
+  u16 thread_index = vlib_get_thread_index ();
+  sfdp_tenant_t *tenant;
+  sfdp_session_t *session;
+  u32 session_idx;
+  u32 pseudo_flow_idx;
+  u64 value;
+
+  ASSERT (replaced_session->state == SFDP_SESSION_STATE_TIME_WAIT);
+  ASSERT (replaced_session->owning_thread_index == thread_index);
+  ASSERT (!(replaced_session->key_flags &
+	    (SFDP_SESSION_KEY_FLAG_SECONDARY_VALID_IP4 | SFDP_SESSION_KEY_FLAG_SECONDARY_VALID_IP6 |
+	     SFDP_SESSION_KEY_FLAG_SECONDARY_VALID_USER)));
+
+  tenant = sfdp_tenant_at_index (sfdp, replaced_session->tenant_idx);
+  session_idx = sfdp_alloc_session (sfdp, ptd, 1);
+  if (session_idx == ~0)
+    return 1;
+
+  session = pool_elt_at_index (sfdp->sessions, session_idx);
+  pseudo_flow_idx = (session_idx << 1) | replaced_session->pseudo_dir[SFDP_SESSION_KEY_PRIMARY];
+  value = sfdp_session_mk_table_value (thread_index, pseudo_flow_idx, session->session_version + 1);
+
+  if (replaced_session->key_flags & SFDP_SESSION_KEY_FLAG_PRIMARY_VALID_IP6)
+    {
+      clib_memcpy_fast (&kv.kv6.key, &replaced_session->keys[SFDP_SESSION_KEY_PRIMARY].key6,
+			sizeof (kv.kv6.key));
+      kv.kv6.value = value;
+      if (clib_bihash_add_del_48_8 (&sfdp->table6, &kv.kv6, 1))
+	{
+	  sfdp_free_session (sfdp, ptd, session_idx);
+	  return 2;
+	}
+      session->type = SFDP_SESSION_TYPE_IP6;
+      session->key_flags = SFDP_SESSION_KEY_FLAG_PRIMARY_VALID_IP6;
+      clib_memcpy_fast (&session->keys[SFDP_SESSION_KEY_PRIMARY].key6,
+			&replaced_session->keys[SFDP_SESSION_KEY_PRIMARY].key6,
+			sizeof (session->keys[SFDP_SESSION_KEY_PRIMARY].key6));
+    }
+  else
+    {
+      ASSERT (replaced_session->key_flags & SFDP_SESSION_KEY_FLAG_PRIMARY_VALID_IP4);
+      clib_memcpy_fast (&kv.kv4.key, &replaced_session->keys[SFDP_SESSION_KEY_PRIMARY].key4,
+			sizeof (kv.kv4.key));
+      kv.kv4.value = value;
+      if (clib_bihash_add_del_24_8 (&sfdp->table4, &kv.kv4, 1))
+	{
+	  sfdp_free_session (sfdp, ptd, session_idx);
+	  return 2;
+	}
+      session->type = SFDP_SESSION_TYPE_IP4;
+      session->key_flags = SFDP_SESSION_KEY_FLAG_PRIMARY_VALID_IP4;
+      clib_memcpy_fast (&session->keys[SFDP_SESSION_KEY_PRIMARY].key4,
+			&replaced_session->keys[SFDP_SESSION_KEY_PRIMARY].key4,
+			sizeof (session->keys[SFDP_SESSION_KEY_PRIMARY].key4));
+    }
+
+  session->session_version += 1;
+  session->tenant_idx = replaced_session->tenant_idx;
+  session->state = SFDP_SESSION_STATE_FSOL;
+  session->owning_thread_index = thread_index;
+  session->scope_index = replaced_session->scope_index;
+  sfdp_session_generate_and_set_id (sfdp, ptd, session);
+  clib_memcpy_fast (session->bitmaps, tenant->bitmaps, sizeof (session->bitmaps));
+  session->pseudo_dir[SFDP_SESSION_KEY_PRIMARY] =
+    replaced_session->pseudo_dir[SFDP_SESSION_KEY_PRIMARY];
+  session->proto = replaced_session->proto;
+
+  replaced_session->key_flags |= SFDP_SESSION_KEY_FLAG_PRIMARY_SUPERSEDED;
+  vlib_zero_combined_counter (&sfdp->per_session_ctr[SFDP_FLOW_COUNTER_LOOKUP], session_idx << 1);
+  vlib_zero_combined_counter (&sfdp->per_session_ctr[SFDP_FLOW_COUNTER_LOOKUP],
+			      (session_idx << 1) | 0x1);
+  vlib_increment_simple_counter (&sfdp->tenant_session_ctr[SFDP_TENANT_SESSION_COUNTER_CREATED],
+				 thread_index, session->tenant_idx, 1);
+  *new_session_index = session_idx;
+  return 0;
+}
+
 int sfdp_create_session (vlib_main_t *vm, vlib_buffer_t *b, u32 context_id,
 			 u32 thread_index, u32 tenant_index,
 			 u32 *session_index, int is_ipv6);

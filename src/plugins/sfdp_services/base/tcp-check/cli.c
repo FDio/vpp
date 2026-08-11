@@ -94,3 +94,64 @@ VLIB_CLI_COMMAND (sfdp_tcp_set_fsol_non_syn_command, static) = {
   .short_help = "set sfdp tcp-check fsol-non-syn <security|remove>",
   .function = sfdp_tcp_set_fsol_non_syn_command_fn,
 };
+
+static clib_error_t *
+sfdp_tcp_set_time_wait_command_fn (vlib_main_t *vm, unformat_input_t *input,
+				   vlib_cli_command_t *cmd)
+{
+  unformat_input_t line_input_, *line_input = &line_input_;
+  sfdp_tcp_check_main_t *vtcm = &sfdp_tcp;
+  sfdp_main_t *sfdp = &sfdp_main;
+  sfdp_tcp_check_session_state_t *tcp_session;
+  sfdp_session_t *session;
+  uword session_index;
+  u8 enable;
+  clib_error_t *err = 0;
+
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return clib_error_return (0, "missing argument");
+
+  if (unformat (line_input, "enable"))
+    enable = 1;
+  else if (unformat (line_input, "disable"))
+    enable = 0;
+  else
+    err = clib_error_return (0, "expected 'enable' or 'disable'");
+
+  if (!err && unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    err = unformat_parse_error (line_input);
+  unformat_free (line_input);
+
+  if (err)
+    return err;
+
+  if (vtcm->time_wait_enabled == enable)
+    return 0;
+
+  vtcm->time_wait_enabled = enable;
+  if (enable)
+    return 0;
+
+  sfdp_foreach_session (sfdp, session_index, session)
+  {
+    if (session->state != SFDP_SESSION_STATE_TIME_WAIT)
+      continue;
+
+    tcp_session = vec_elt_at_index (vtcm->state, session_index);
+    if (tcp_session->flags & SFDP_TCP_CHECK_SESSION_FLAG_REMOVING)
+      continue;
+
+    err = sfdp_kill_session (sfdp, session_index, 0);
+    if (err)
+      return err;
+    tcp_session->flags = SFDP_TCP_CHECK_SESSION_FLAG_REMOVING;
+  }
+
+  return 0;
+}
+
+VLIB_CLI_COMMAND (sfdp_tcp_set_time_wait_command, static) = {
+  .path = "set sfdp tcp-check time-wait",
+  .short_help = "set sfdp tcp-check time-wait <enable|disable>",
+  .function = sfdp_tcp_set_time_wait_command_fn,
+};

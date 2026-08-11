@@ -7,7 +7,12 @@
 #include <vnet/sfdp/service.h>
 #include <vnet/sfdp/timer/timer.h>
 
-#define foreach_sfdp_tcp_check_error _ (DROP, "drop")
+#define foreach_sfdp_tcp_check_error                                                               \
+  _ (DROP, "drop")                                                                                 \
+  _ (TIME_WAIT_SUPERSEDED, "time-wait sessions superseded")                                        \
+  _ (TIME_WAIT_NO_SPACE, "time-wait supersession allocation failures")                             \
+  _ (TIME_WAIT_PUBLISH_FAILED, "time-wait supersession publish failures")                          \
+  _ (TIME_WAIT_REFRESH_FAILED, "time-wait supersession refresh failures")
 
 typedef enum
 {
@@ -16,6 +21,12 @@ typedef enum
 #undef _
     SFDP_TCP_CHECK_N_ERROR,
 } sfdp_tcp_check_error_t;
+
+typedef enum
+{
+  SFDP_TCP_CHECK_PACKET_PROCESSED,
+  SFDP_TCP_CHECK_PACKET_SUPERSEDE,
+} sfdp_tcp_check_packet_action_t;
 
 static char *sfdp_tcp_check_error_strings[] = {
 #define _(sym, string) string,
@@ -48,10 +59,50 @@ format_sfdp_tcp_check_trace (u8 *s, va_list *args)
 }
 
 SFDP_SERVICE_DECLARE (drop)
-static_always_inline void
+
+static_always_inline int
+sfdp_tcp_check_lookup_replacement (sfdp_main_t *sfdp, sfdp_session_t *superseded_session,
+				   u32 *replacement_session_index)
+{
+  sfdp_bihash_kv46_t kv = {};
+  sfdp_session_t *replacement_session;
+  u64 lookup_value;
+  u32 session_index;
+
+  if (superseded_session->key_flags & SFDP_SESSION_KEY_FLAG_PRIMARY_VALID_IP4)
+    {
+      clib_memcpy_fast (&kv.kv4.key, &superseded_session->keys[SFDP_SESSION_KEY_PRIMARY].key4,
+			sizeof (kv.kv4.key));
+      if (clib_bihash_search_24_8 (&sfdp->table4, &kv.kv4, &kv.kv4))
+	return 1;
+      lookup_value = kv.kv4.value;
+    }
+  else if (superseded_session->key_flags & SFDP_SESSION_KEY_FLAG_PRIMARY_VALID_IP6)
+    {
+      clib_memcpy_fast (&kv.kv6.key, &superseded_session->keys[SFDP_SESSION_KEY_PRIMARY].key6,
+			sizeof (kv.kv6.key));
+      if (clib_bihash_search_48_8 (&sfdp->table6, &kv.kv6, &kv.kv6))
+	return 1;
+      lookup_value = kv.kv6.value;
+    }
+  else
+    return 1;
+
+  session_index = sfdp_session_index_from_lookup (lookup_value);
+  replacement_session = sfdp_session_at_index_if_valid (session_index);
+  if (!replacement_session ||
+      replacement_session->session_version != sfdp_session_version_from_lookup (lookup_value))
+    return 1;
+
+  *replacement_session_index = session_index;
+  return 0;
+}
+
+static_always_inline sfdp_tcp_check_packet_action_t
 update_state_one_pkt (sfdp_tw_t *tw, sfdp_tenant_t *tenant, u8 fsol_non_syn_security,
-		      sfdp_tcp_check_session_state_t *tcp_session, sfdp_session_t *session,
-		      f64 current_time, u8 dir, u16 *to_next, vlib_buffer_t **b, u32 *sf, u32 *nsf)
+		      u8 time_wait_enabled, sfdp_tcp_check_session_state_t *tcp_session,
+		      sfdp_session_t *session, f64 current_time, u8 dir, u16 *to_next,
+		      vlib_buffer_t **b, u32 *sf, u32 *nsf)
 {
   /* Parse the packet */
   /* TODO: !!! Broken with IP options !!! */
@@ -68,7 +119,7 @@ update_state_one_pkt (sfdp_tw_t *tw, sfdp_tenant_t *tenant, u8 fsol_non_syn_secu
 	clib_host_to_net_u16 (IP4_HEADER_FLAG_MORE_FRAGMENTS - 1))
     {
       sfdp_next (b[0], to_next);
-      return;
+      return SFDP_TCP_CHECK_PACKET_PROCESSED;
     }
 
   if (session->type == SFDP_SESSION_TYPE_IP6 && ip6_ext_hdr (ip6->protocol))
@@ -83,7 +134,7 @@ update_state_one_pkt (sfdp_tw_t *tw, sfdp_tenant_t *tenant, u8 fsol_non_syn_secu
 	  if (ip6_frag_hdr_offset (frag))
 	    {
 	      sfdp_next (b[0], to_next);
-	      return;
+	      return SFDP_TCP_CHECK_PACKET_PROCESSED;
 	    }
 	}
       tcph =
@@ -142,6 +193,24 @@ update_state_one_pkt (sfdp_tw_t *tw, sfdp_tenant_t *tenant, u8 fsol_non_syn_secu
 	}
     }
   nsf[0] = (sf[0] = tcp_session->flags);
+
+  if (session->state == SFDP_SESSION_STATE_TIME_WAIT)
+    {
+      if (time_wait_enabled && dir == SFDP_FLOW_FORWARD && flags == SFDP_TCP_CHECK_TCP_FLAGS_SYN)
+	return SFDP_TCP_CHECK_PACKET_SUPERSEDE;
+
+      if (flags & SFDP_TCP_CHECK_TCP_FLAGS_RST)
+	{
+	  nsf[0] = SFDP_TCP_CHECK_SESSION_FLAG_REMOVING;
+	  remove_session = 1;
+	}
+
+      /* TIME_WAIT uses idle-timeout semantics: every non-RST packet
+       * associated with this session refreshes its expiration deadline and
+       * can therefore retain the session while matching traffic continues. */
+      goto out;
+    }
+
   if (dir == SFDP_FLOW_FORWARD)
     {
       if (sf[0] & SFDP_TCP_CHECK_SESSION_FLAG_BLOCKED)
@@ -242,17 +311,24 @@ update_state_one_pkt (sfdp_tw_t *tw, sfdp_tenant_t *tenant, u8 fsol_non_syn_secu
       session->state = SFDP_SESSION_STATE_ESTABLISHED;
     }
 
-  /* If all FINs are ACKED, game over */
+  /* If all FINs are ACKED, remove or retain the session. */
   if ((nsf[0] & (SFDP_TCP_CHECK_SESSION_FLAG_SEEN_ACK_TO_FIN_INIT)) &&
       (nsf[0] & SFDP_TCP_CHECK_SESSION_FLAG_SEEN_ACK_TO_FIN_RESP))
     {
-      nsf[0] = SFDP_TCP_CHECK_SESSION_FLAG_REMOVING;
-      remove_session = 1;
+      if (time_wait_enabled)
+	session->state = SFDP_SESSION_STATE_TIME_WAIT;
+      else
+	{
+	  nsf[0] = SFDP_TCP_CHECK_SESSION_FLAG_REMOVING;
+	  remove_session = 1;
+	}
     }
 out:
   tcp_session->flags = nsf[0];
   if (remove_session)
     next_timeout = 0;
+  else if (session->state == SFDP_SESSION_STATE_TIME_WAIT)
+    next_timeout = tenant->timeouts[SFDP_TIMEOUT_INDEX (TIME_WAIT)];
   else if (nsf[0] & SFDP_TCP_CHECK_SESSION_FLAG_ESTABLISHED)
     next_timeout = tenant->timeouts[SFDP_TIMEOUT_INDEX (TCP_ESTABLISHED)];
   else if (nsf[0] & SFDP_TCP_CHECK_SESSION_FLAG_BLOCKED)
@@ -260,10 +336,10 @@ out:
   else
     next_timeout = tenant->timeouts[SFDP_TIMEOUT_INDEX (EMBRYONIC)];
 
-  sfdp_session_timer_update_maybe_past (tw, SFDP_SESSION_TIMER (session),
-					current_time, next_timeout);
+  sfdp_session_timer_update_maybe_past (tw, SFDP_SESSION_TIMER (session), current_time,
+					next_timeout);
   sfdp_next (b[0], to_next);
-  return;
+  return SFDP_TCP_CHECK_PACKET_PROCESSED;
 }
 
 VLIB_NODE_FN (sfdp_tcp_check_node)
@@ -273,12 +349,15 @@ VLIB_NODE_FN (sfdp_tcp_check_node)
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b = bufs;
   sfdp_main_t *sfdp = &sfdp_main;
   sfdp_timer_main_t *sfdpt = &sfdp_timer_main;
+  sfdp_per_thread_data_t *ptd;
   sfdp_tcp_check_main_t *vtcm = &sfdp_tcp;
   u32 thread_index = vlib_get_thread_index ();
   sfdp_timer_per_thread_data_t *timer_ptd =
     vec_elt_at_index (sfdpt->per_thread_data, thread_index);
+  u8 frame_has_supersession = 0;
 
   sfdp_session_t *session;
+  sfdp_session_t *replacement_session;
   sfdp_tenant_t *tenant;
   u32 session_idx;
   sfdp_tcp_check_session_state_t *tcp_session;
@@ -290,19 +369,103 @@ VLIB_NODE_FN (sfdp_tcp_check_node)
   u32 new_state_flags[VLIB_FRAME_SIZE], *nsf = new_state_flags;
   f64 current_time = timer_ptd->current_time;
 
+  ptd = vec_elt_at_index (sfdp->per_thread_data, thread_index);
   vlib_get_buffers (vm, from, bufs, n_left);
   while (n_left > 0)
     {
+      u8 direction;
+      sfdp_tcp_check_packet_action_t action;
+
       session_idx = sfdp_session_from_flow_index (b[0]->flow_id);
       session = sfdp_session_at_index (session_idx);
+      direction = sfdp_direction_from_flow_index (b[0]->flow_id);
+
+      if (frame_has_supersession && session->key_flags & SFDP_SESSION_KEY_FLAG_PRIMARY_SUPERSEDED)
+	{
+	  u32 replacement_session_index;
+
+	  sf[0] = nsf[0] = 0;
+	  if (sfdp_tcp_check_lookup_replacement (sfdp, session, &replacement_session_index))
+	    {
+	      vlib_node_increment_counter (vm, node->node_index,
+					   SFDP_TCP_CHECK_ERROR_TIME_WAIT_REFRESH_FAILED, 1);
+	      sfdp_buffer (b[0])->service_bitmap = SFDP_SERVICE_MASK (drop);
+	      sfdp_next (b[0], to_next);
+	      goto next_packet;
+	    }
+
+	  replacement_session = sfdp_session_at_index (replacement_session_index);
+	  b[0]->flow_id = (replacement_session_index << 1) | direction;
+	  sfdp_buffer (b[0])->tenant_index = replacement_session->tenant_idx;
+	  sfdp_buffer (b[0])->service_bitmap = replacement_session->bitmaps[direction];
+	  sfdp_next (b[0], to_next);
+	  goto next_packet;
+	}
+
       tcp_session = vec_elt_at_index (vtcm->state, session_idx);
       tenant = sfdp_tenant_at_index (sfdp, sfdp_buffer (b[0])->tenant_index);
-      if (sfdp_direction_from_flow_index (b[0]->flow_id) == SFDP_FLOW_FORWARD)
-	update_state_one_pkt (tw, tenant, vtcm->fsol_non_syn_security, tcp_session, session,
-			      current_time, SFDP_FLOW_FORWARD, to_next, b, sf, nsf);
+
+      if (direction == SFDP_FLOW_FORWARD)
+	action = update_state_one_pkt (tw, tenant, vtcm->fsol_non_syn_security,
+				       vtcm->time_wait_enabled, tcp_session, session, current_time,
+				       SFDP_FLOW_FORWARD, to_next, b, sf, nsf);
       else
-	update_state_one_pkt (tw, tenant, vtcm->fsol_non_syn_security, tcp_session, session,
-			      current_time, SFDP_FLOW_REVERSE, to_next, b, sf, nsf);
+	action = update_state_one_pkt (tw, tenant, vtcm->fsol_non_syn_security,
+				       vtcm->time_wait_enabled, tcp_session, session, current_time,
+				       SFDP_FLOW_REVERSE, to_next, b, sf, nsf);
+
+      if (action == SFDP_TCP_CHECK_PACKET_SUPERSEDE)
+	{
+	  u8 has_secondary_key = session->key_flags & (SFDP_SESSION_KEY_FLAG_SECONDARY_VALID_IP4 |
+						       SFDP_SESSION_KEY_FLAG_SECONDARY_VALID_IP6 |
+						       SFDP_SESSION_KEY_FLAG_SECONDARY_VALID_USER);
+
+	  /* TIME_WAIT supersession supports only sessions with one primary
+	   * IP key. Sessions with secondary keys, such as NAT sessions, remain
+	   * in TIME_WAIT. */
+	  if (!has_secondary_key)
+	    {
+	      u32 replacement_session_index;
+	      int rv;
+
+	      rv = sfdp_replace_session_inline (sfdp, ptd, session_idx, &replacement_session_index);
+	      if (rv == 1)
+		{
+		  vlib_node_increment_counter (vm, node->node_index,
+					       SFDP_TCP_CHECK_ERROR_TIME_WAIT_NO_SPACE, 1);
+		}
+	      else if (rv == 2)
+		{
+		  vlib_node_increment_counter (vm, node->node_index,
+					       SFDP_TCP_CHECK_ERROR_TIME_WAIT_PUBLISH_FAILED, 1);
+		}
+	      else
+		{
+		  replacement_session = sfdp_session_at_index (replacement_session_index);
+		  sfdp_notify_new_sessions (sfdp, &replacement_session_index, 1);
+
+		  tcp_session->flags = SFDP_TCP_CHECK_SESSION_FLAG_REMOVING;
+		  nsf[0] = SFDP_TCP_CHECK_SESSION_FLAG_REMOVING;
+		  sfdp_session_timer_update_maybe_past (tw, SFDP_SESSION_TIMER (session),
+							current_time, 0);
+
+		  frame_has_supersession = 1;
+		  b[0]->flow_id = (replacement_session_index << 1) | SFDP_FLOW_FORWARD;
+		  sfdp_buffer (b[0])->tenant_index = replacement_session->tenant_idx;
+		  sfdp_buffer (b[0])->service_bitmap =
+		    replacement_session->bitmaps[SFDP_FLOW_FORWARD];
+		  vlib_node_increment_counter (vm, node->node_index,
+					       SFDP_TCP_CHECK_ERROR_TIME_WAIT_SUPERSEDED, 1);
+		  sfdp_next (b[0], to_next);
+		  goto next_packet;
+		}
+	    }
+
+	  sfdp_session_timer_update_maybe_past (tw, SFDP_SESSION_TIMER (session), current_time,
+						tenant->timeouts[SFDP_TIMEOUT_INDEX (TIME_WAIT)]);
+	  sfdp_next (b[0], to_next);
+	}
+    next_packet:
       n_left -= 1;
       b += 1;
       to_next += 1;
