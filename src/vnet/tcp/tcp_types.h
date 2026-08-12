@@ -205,25 +205,36 @@ typedef struct _sack_scoreboard
 
 } sack_scoreboard_t;
 
-typedef enum tcp_dsack_rxt_flag_
-{
-  TCP_DSACK_RXT_DUPLICATE = 1,
-} tcp_dsack_rxt_flag_t;
-
 typedef enum tcp_dsack_state_flag_
 {
   TCP_DSACK_INELIGIBLE = 1,
   TCP_DSACK_UNDO_DISABLED = 1 << 1,
   TCP_DSACK_RXT_OVERFLOW = 1 << 2,
   TCP_DSACK_HISTORY = 1 << 3,
+  TCP_DSACK_RXT_ACTIVE = 1 << 4,
 } __clib_packed tcp_dsack_state_flag_t;
+
+#define TCP_DSACK_RXT_INVALID_INDEX ((u32) ~0)
 
 /** Retransmitted byte range retained for conservative D-SACK undo. */
 typedef struct tcp_dsack_rxt_
 {
-  u32 start;
-  u32 end;
-  tcp_dsack_rxt_flag_t flags;
+  union
+  {
+    struct
+    {
+      u32 start;
+      u32 end;
+      u32 next;
+    };
+    /* Pool element zero stores active-range metadata. */
+    struct
+    {
+      u32 head;
+      u32 tail;
+      u32 history_start;
+    };
+  };
 } tcp_dsack_rxt_t;
 
 typedef enum tcp_ack_flag_
@@ -434,8 +445,8 @@ typedef struct _tcp_connection
 
   union
   {
-    tcp_dsack_rxt_t *dsack_rxt; /**< Retransmits retained for D-SACK undo */
-    u32 dsack_history_start;	/**< Lower sequence bound for retired BT history */
+    tcp_dsack_rxt_t *dsack_rxt; /**< Active retransmit ranges for D-SACK undo */
+    u32 dsack_history_start;	/**< Lower sequence bound for retired history */
   };
   u32 dsack_pending_bytes;	      /**< Retransmit bytes without D-SACK evidence */
   tcp_dsack_state_flag_t dsack_flags; /**< D-SACK undo state */
@@ -497,10 +508,7 @@ tcp_cong_recovery_off (tcp_connection_t * tc)
 #define tcp_zero_rwnd_sent_on(tc) (tc)->flags |= TCP_CONN_ZERO_RWND_SENT
 #define tcp_zero_rwnd_sent_off(tc) (tc)->flags &= ~TCP_CONN_ZERO_RWND_SENT
 
-#define tcp_dsack_has_history(tc)                                                                  \
-  (((tc)->cfg_flags & TCP_CFG_F_BYTE_TRACKER) ?                                                    \
-     (((tc)->dsack_flags & TCP_DSACK_HISTORY) != 0) :                                              \
-     ((tc)->dsack_rxt != 0 || ((tc)->dsack_flags & TCP_DSACK_RXT_OVERFLOW)))
+#define tcp_dsack_has_history(tc) (((tc)->dsack_flags & TCP_DSACK_HISTORY) != 0)
 
 always_inline tcp_connection_t *
 tcp_get_connection_from_transport (transport_connection_t * tconn)
