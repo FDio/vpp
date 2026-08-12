@@ -13,7 +13,7 @@ from vpp_qemu_utils import (
 )
 from vpp_iperf import start_iperf, stop_iperf
 from framework import VppTestCase
-from asfframework import VppTestRunner
+from asfframework import VppTestRunner, tag_run_solo
 from config import config
 from vpp_papi import VppEnum
 import time
@@ -82,6 +82,7 @@ layer2 = test_config["L2"]
 layer3 = test_config["L3"]
 
 
+@tag_run_solo
 class AfXDPTestLockMixin:
     @classmethod
     def setUpClass(cls):
