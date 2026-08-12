@@ -36,9 +36,10 @@ VLIB_CLI_COMMAND (rdma_create_command, static) = {
   .path = "create interface rdma",
   .short_help = "create interface rdma <host-if ifname> [name <name>]"
 		" [rx-queue-size <size>] [tx-queue-size <size>]"
+		" [tx-empw-inline <on [max-size <1..64>]|off>]"
 		" [num-rx-queues <size>] [mode <auto|ibv|dv>]"
 		" [port-num <n>]"
-		" [no-multi-seg] [no-striding]"
+		" [no-multi-seg] [no-striding] [no-empw]"
 		" [max-pktlen <size>]",
   .function = rdma_create_command_fn,
 };
