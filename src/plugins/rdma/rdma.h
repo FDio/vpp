@@ -19,7 +19,8 @@
   _ (3, PROMISC, "promiscuous")                                                                    \
   _ (4, MLX5DV, "mlx5dv")                                                                          \
   _ (5, STRIDING_RQ, "striding-rq")                                                                \
-  _ (6, RX_L4_CKSUM, "rx-l4-cksum")
+  _ (6, RX_L4_CKSUM, "rx-l4-cksum")                                                                \
+  _ (7, EMPW, "enhanced-mpw")
 
 enum
 {
@@ -29,8 +30,15 @@ enum
 };
 
 #ifndef MLX5_ETH_L2_INLINE_HEADER_SIZE
-#define MLX5_ETH_L2_INLINE_HEADER_SIZE  18
+#define MLX5_ETH_L2_INLINE_HEADER_SIZE 18
 #endif
+
+#ifndef MLX5_OPCODE_ENHANCED_MPSW
+#define MLX5_OPCODE_ENHANCED_MPSW 0x29
+#endif
+
+#define RDMA_MLX5_EMPW_INLINE_DEFAULT 60
+#define RDMA_MLX5_EMPW_INLINE_MAX     64
 
 typedef struct
 {
@@ -49,11 +57,44 @@ typedef struct
   struct mlx5_wqe_eth_seg eseg;
   struct mlx5_wqe_data_seg dseg;
 } rdma_mlx5_wqe_t;
-#define RDMA_MLX5_WQE_SZ        sizeof(rdma_mlx5_wqe_t)
-#define RDMA_MLX5_WQE_DS        (RDMA_MLX5_WQE_SZ/sizeof(struct mlx5_wqe_data_seg))
+#define RDMA_MLX5_WQE_SZ sizeof (rdma_mlx5_wqe_t)
+#define RDMA_MLX5_WQE_DS (RDMA_MLX5_WQE_SZ / sizeof (struct mlx5_wqe_data_seg))
 STATIC_ASSERT (RDMA_MLX5_WQE_SZ == MLX5_SEND_WQE_BB &&
-	       RDMA_MLX5_WQE_SZ % sizeof (struct mlx5_wqe_data_seg) == 0,
+		 RDMA_MLX5_WQE_SZ % sizeof (struct mlx5_wqe_data_seg) == 0,
 	       "bad size");
+
+/* eMPW uses a compact 16-byte Ethernet segment.  struct mlx5_wqe_eth_seg
+ * also contains space for an inline header and cannot be used as the title. */
+typedef struct
+{
+  u32 rsvd0;
+  u8 cs_flags;
+  u8 rsvd1;
+  u16 mss;
+  u32 rsvd2;
+  u16 inline_hdr_sz;
+  u8 inline_hdr_start[2];
+} rdma_mlx5_empw_eth_seg_t;
+
+typedef struct
+{
+  CLIB_ALIGN_MARK (align0, MLX5_SEND_WQE_BB);
+  union
+  {
+    struct mlx5_wqe_ctrl_seg ctrl;
+    struct
+    {
+      u8 opc_mod;
+      u8 wqe_index_hi;
+      u8 wqe_index_lo;
+      u8 opcode;
+    };
+  };
+  rdma_mlx5_empw_eth_seg_t eseg;
+  struct mlx5_wqe_data_seg dseg[2];
+} rdma_mlx5_empw_wqe_t;
+STATIC_ASSERT_SIZEOF (rdma_mlx5_empw_eth_seg_t, 16);
+STATIC_ASSERT_SIZEOF (rdma_mlx5_empw_wqe_t, MLX5_SEND_WQE_BB);
 
 typedef struct
 {
@@ -128,20 +169,27 @@ typedef struct
     };
   };
 
-  u32 *bufs;			/* vlib_buffer ring buffer */
+  u32 *bufs; /* vlib_buffer ring buffer */
   u16 head;
   u16 tail;
-  u16 dv_cq_idx;		/* monotonic CQE index (valid only for direct verbs) */
-  u8 bufs_log2sz;		/* log2 vlib_buffer entries */
-  u8 dv_sq_log2sz:4;		/* log2 SQ WQE entries (valid only for direct verbs) */
-  u8 dv_cq_log2sz:4;		/* log2 CQ CQE entries (valid only for direct verbs) */
-    STRUCT_MARK (cacheline1);
+  u16 dv_cq_idx;       /* monotonic CQE index (valid only for direct verbs) */
+  u8 bufs_log2sz;      /* log2 vlib_buffer entries */
+  u8 dv_sq_log2sz : 4; /* log2 SQ WQE entries (valid only for direct verbs) */
+  u8 dv_cq_log2sz : 4; /* log2 CQ CQE entries (valid only for direct verbs) */
+  STRUCT_MARK (cacheline1);
 
   /* WQE template (valid only for direct verbs) */
   u8 dv_wqe_tmpl[64];
 
   /* end of 2nd 64-bytes cacheline (or 1st 128-bytes cacheline) */
-    STRUCT_MARK (cacheline2);
+  STRUCT_MARK (cacheline2);
+
+  /* eMPW uses independent WQEBB and buffer counters because one WQE can
+   * carry several packets.  The map records the buffer tail for every
+   * posted WQE, including WQEs which are normally unsignalled. */
+  u16 dv_sq_head;
+  u16 dv_sq_tail;
+  u16 *dv_sq_buf_tail;
 
   /* fields below are not accessed in datapath */
   struct ibv_cq *cq;
@@ -151,14 +199,17 @@ typedef struct
 STATIC_ASSERT_OFFSET_OF (rdma_txq_t, cacheline1, 64);
 STATIC_ASSERT_OFFSET_OF (rdma_txq_t, cacheline2, 128);
 
-#define RDMA_TXQ_BUF_SZ(txq)    (1U << (txq)->bufs_log2sz)
-#define RDMA_TXQ_DV_SQ_SZ(txq)  (1U << (txq)->dv_sq_log2sz)
-#define RDMA_TXQ_DV_CQ_SZ(txq)  (1U << (txq)->dv_cq_log2sz)
+#define RDMA_TXQ_BUF_SZ(txq)   (1U << (txq)->bufs_log2sz)
+#define RDMA_TXQ_DV_SQ_SZ(txq) (1U << (txq)->dv_sq_log2sz)
+#define RDMA_TXQ_DV_CQ_SZ(txq) (1U << (txq)->dv_cq_log2sz)
 
-#define RDMA_TXQ_USED_SZ(head, tail)            ((u16)((u16)(tail) - (u16)(head)))
-#define RDMA_TXQ_AVAIL_SZ(txq, head, tail)      ((u16)(RDMA_TXQ_BUF_SZ (txq) - RDMA_TXQ_USED_SZ (head, tail)))
-#define RDMA_RXQ_MAX_CHAIN_LOG_SZ 3	/* This should NOT be lower than 3! */
-#define RDMA_RXQ_MAX_CHAIN_SZ (1U << RDMA_RXQ_MAX_CHAIN_LOG_SZ)
+#define RDMA_TXQ_USED_SZ(head, tail) ((u16) ((u16) (tail) - (u16) (head)))
+#define RDMA_TXQ_AVAIL_SZ(txq, head, tail)                                                         \
+  ((u16) (RDMA_TXQ_BUF_SZ (txq) - RDMA_TXQ_USED_SZ (head, tail)))
+#define RDMA_TXQ_DV_SQ_AVAIL_SZ(txq)                                                               \
+  ((u16) (RDMA_TXQ_DV_SQ_SZ (txq) - RDMA_TXQ_USED_SZ ((txq)->dv_sq_head, (txq)->dv_sq_tail)))
+#define RDMA_RXQ_MAX_CHAIN_LOG_SZ	  3 /* This should NOT be lower than 3! */
+#define RDMA_RXQ_MAX_CHAIN_SZ		  (1U << RDMA_RXQ_MAX_CHAIN_LOG_SZ)
 #define RDMA_RXQ_LEGACY_MODE_MAX_CHAIN_SZ 5
 
 typedef enum
@@ -188,8 +239,10 @@ typedef struct
   u32 per_interface_next_index;
   u32 sw_if_index;
   u32 hw_if_index;
-  u32 lkey;			/* cache of mr->lkey */
-  u8 pool;			/* buffer pool index */
+  u32 lkey;		 /* cache of mr->lkey */
+  u8 pool;		 /* buffer pool index */
+  u8 tx_empw_inline_max; /* inline eMPW packets up to this size; 0 disables */
+  u8 tx_min_inline;	 /* minimum inline Ethernet bytes selected by mlx5 */
 
   /* fields below are not accessed in datapath */
   vlib_pci_device_info_t *pci;
@@ -267,11 +320,13 @@ typedef struct
   u32 rxq_size;
   u32 txq_size;
   u32 rxq_num;
+  u32 tx_empw_inline_max;
   rdma_mode_t mode;
   u8 no_multi_seg;
   u8 disable_striding_rq;
   u8 no_rx_cksum;
   u8 port_num;
+  u8 no_empw;
   u16 max_pktlen;
   rdma_rss4_t rss4;
   rdma_rss6_t rss6;
@@ -306,7 +361,8 @@ typedef struct
   _ (NO_FREE_SLOTS, "no free tx slots")                                                            \
   _ (SUBMISSION, "tx submission errors")                                                           \
   _ (COMPLETION, "tx completion errors")                                                           \
-  _ (DEVICE, "device error")
+  _ (DEVICE, "device error")                                                                       \
+  _ (PACKET_TOO_SHORT, "packet shorter than required inline header")
 
 typedef enum
 {
