@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "33c7aa47_fe60d559",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-08-12T14:41:34Z",
+      "side": 1,
+      "message": "Verified locally by raising an exception in a testcase setUpClass() method.",
+      "revId": "f536411492c5b6e20fc82e557e722b078067184e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
