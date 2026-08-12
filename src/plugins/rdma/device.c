@@ -568,33 +568,35 @@ rdma_dev_cleanup (rdma_device_t *rd)
   rdma_rxq_t *rxq;
   rdma_txq_t *txq;
 
-#define _(fn, arg) if (arg) \
-  { \
-    int rv; \
-    if ((rv = fn (arg))) \
-       rdma_log (VLIB_LOG_LEVEL_DEBUG, rd, #fn "() failed (rv = %d)", rv); \
-  }
+#define _(fn, arg)                                                                                 \
+  if (arg)                                                                                         \
+    {                                                                                              \
+      int rv;                                                                                      \
+      if ((rv = fn (arg)))                                                                         \
+	rdma_log (VLIB_LOG_LEVEL_DEBUG, rd, #fn "() failed (rv = %d)", rv);                        \
+    }
 
-  _(ibv_destroy_flow, rd->flow_mcast6);
-  _(ibv_destroy_flow, rd->flow_ucast6);
-  _(ibv_destroy_flow, rd->flow_mcast4);
-  _(ibv_destroy_flow, rd->flow_ucast4);
-  _(ibv_dereg_mr, rd->mr);
+  _ (ibv_destroy_flow, rd->flow_mcast6);
+  _ (ibv_destroy_flow, rd->flow_ucast6);
+  _ (ibv_destroy_flow, rd->flow_mcast4);
+  _ (ibv_destroy_flow, rd->flow_ucast4);
+  _ (ibv_dereg_mr, rd->mr);
   vec_foreach (txq, rd->txqs)
-  {
-    _(ibv_destroy_qp, txq->qp);
-    _(ibv_destroy_cq, txq->cq);
-  }
+    {
+      _ (ibv_destroy_qp, txq->qp);
+      _ (ibv_destroy_cq, txq->cq);
+      vec_free (txq->dv_sq_buf_tail);
+    }
   vec_foreach (rxq, rd->rxqs)
-  {
-    _(ibv_destroy_wq, rxq->wq);
-    _(ibv_destroy_cq, rxq->cq);
-  }
-  _(ibv_destroy_rwq_ind_table, rd->rx_rwq_ind_tbl);
-  _(ibv_destroy_qp, rd->rx_qp6);
-  _(ibv_destroy_qp, rd->rx_qp4);
-  _(ibv_dealloc_pd, rd->pd);
-  _(ibv_close_device, rd->ctx);
+    {
+      _ (ibv_destroy_wq, rxq->wq);
+      _ (ibv_destroy_cq, rxq->cq);
+    }
+  _ (ibv_destroy_rwq_ind_table, rd->rx_rwq_ind_tbl);
+  _ (ibv_destroy_qp, rd->rx_qp6);
+  _ (ibv_destroy_qp, rd->rx_qp4);
+  _ (ibv_dealloc_pd, rd->pd);
+  _ (ibv_close_device, rd->ctx);
 #undef _
 
   clib_error_free (rd->error);
@@ -937,10 +939,15 @@ rdma_txq_init (vlib_main_t * vm, rdma_device_t * rd, u16 qid, u32 n_desc)
   qpia.recv_cq = txq->cq;
   qpia.cap.max_send_wr = n_desc;
   qpia.cap.max_send_sge = 1;
+  if (rd->flags & RDMA_DEVICE_F_EMPW)
+    qpia.cap.max_inline_data = rd->tx_empw_inline_max;
   qpia.qp_type = IBV_QPT_RAW_PACKET;
 
   if ((txq->qp = ibv_create_qp (rd->pd, &qpia)) == 0)
     return clib_error_return_unix (0, "Queue Pair create failed");
+  if (qpia.cap.max_inline_data < rd->tx_empw_inline_max)
+    return clib_error_return (0, "Queue Pair inline capacity %u is below requested %u",
+			      qpia.cap.max_inline_data, rd->tx_empw_inline_max);
 
   memset (&qpa, 0, sizeof (qpa));
   qp_flags = IBV_QP_STATE | IBV_QP_PORT;
@@ -996,6 +1003,8 @@ rdma_txq_init (vlib_main_t * vm, rdma_device_t * rd, u16 qid, u32 n_desc)
       txq->dv_sq_dbrec = dv_qp.dbrec;
       txq->dv_sq_db = dv_qp.bf.reg;
       txq->dv_sq_log2sz = min_log2 (dv_qp.sq.wqe_cnt);
+      if (rd->flags & RDMA_DEVICE_F_EMPW)
+	vec_validate_aligned (txq->dv_sq_buf_tail, dv_qp.sq.wqe_cnt - 1, CLIB_CACHE_LINE_BYTES);
 
       /* get CQ and doorbell addresses */
       txq->dv_cq_cqes = dv_cq.buf;
@@ -1013,9 +1022,117 @@ rdma_txq_init (vlib_main_t * vm, rdma_device_t * rd, u16 qid, u32 n_desc)
   return 0;
 }
 
+static struct ibv_qp *
+rdma_mlx5_create_inline_probe_qp (rdma_device_t *rd, struct ibv_cq *cq, u32 requested, u32 *granted)
+{
+  struct ibv_qp_init_attr_ex qpia = {
+    .cap.max_send_wr = 1,
+    .cap.max_send_sge = 1,
+    .qp_type = IBV_QPT_RAW_PACKET,
+    .comp_mask = IBV_QP_INIT_ATTR_PD | IBV_QP_INIT_ATTR_SEND_OPS_FLAGS,
+    .send_ops_flags = IBV_QP_EX_WITH_SEND,
+  };
+
+  qpia.cap.max_inline_data = requested;
+  qpia.send_cq = cq;
+  qpia.recv_cq = cq;
+  qpia.pd = rd->pd;
+
+  struct ibv_qp *qp = ibv_create_qp_ex (rd->ctx, &qpia);
+  if (qp)
+    *granted = qpia.cap.max_inline_data;
+  return qp;
+}
+
 static clib_error_t *
-rdma_dev_init (vlib_main_t * vm, rdma_device_t * rd,
-	       rdma_create_if_args_t * args)
+rdma_mlx5_query_inline_caps (rdma_device_t *rd, const void *sample, u16 *min_inline,
+			     u16 *max_inline)
+{
+  struct mlx5dv_qp dv_qp = {};
+  struct mlx5dv_obj obj = {};
+  struct ibv_qp_ex *qpx;
+  struct ibv_cq *cq = 0;
+  struct ibv_qp *qp = 0;
+  clib_error_t *err = 0;
+  u32 granted = 0;
+  u32 requested = (rd->flags & RDMA_DEVICE_F_EMPW) ? RDMA_MLX5_EMPW_INLINE_MAX : 0;
+
+  if ((cq = ibv_create_cq (rd->ctx, 1, 0, 0, 0)) == 0)
+    return clib_error_return_unix (0, "Create TX inline probe CQ failed");
+
+  qp = rdma_mlx5_create_inline_probe_qp (rd, cq, requested, &granted);
+  if (qp == 0 && requested != 0)
+    {
+      u32 lower = 0;
+      u32 upper = requested;
+
+      /* Providers reject an unsupported request instead of clamping it.
+       * Usually the format maximum succeeds immediately.  Keep a binary
+       * search fallback for devices with a smaller max_wqe_sz_sq. */
+      while (lower + 1 < upper)
+	{
+	  u32 probe = lower + (upper - lower) / 2;
+	  struct ibv_qp *probe_qp = rdma_mlx5_create_inline_probe_qp (rd, cq, probe, &granted);
+
+	  if (probe_qp)
+	    {
+	      lower = probe;
+	      if (ibv_destroy_qp (probe_qp) != 0)
+		{
+		  err = clib_error_return_unix (0, "Destroy TX inline probe QP failed");
+		  goto done;
+		}
+	    }
+	  else
+	    upper = probe;
+	}
+
+      qp = rdma_mlx5_create_inline_probe_qp (rd, cq, lower, &granted);
+    }
+  if (qp == 0)
+    {
+      err = clib_error_return_unix (0, "Create TX inline probe QP failed");
+      goto done;
+    }
+
+  *max_inline = clib_min (granted, RDMA_MLX5_EMPW_INLINE_MAX);
+
+  qpx = ibv_qp_to_qp_ex (qp);
+  if (qpx == 0)
+    {
+      err = clib_error_return (0, "Extended send operations unavailable for TX inline probe");
+      goto done;
+    }
+
+  obj.qp.in = qp;
+  obj.qp.out = &dv_qp;
+  if (mlx5dv_init_obj (&obj, MLX5DV_OBJ_QP) != 0 || dv_qp.sq.buf == 0 ||
+      dv_qp.sq.stride < sizeof (rdma_mlx5_wqe_t))
+    {
+      err = clib_error_return (0, "Invalid TX inline probe SQ");
+      goto done;
+    }
+
+  /* Let the mlx5 provider build one ordinary SEND WQE, then abort the WR.
+   * This exposes the provider's kernel-derived eth_min_inline value without
+   * ringing a doorbell or transmitting the probe.  max_inline_data on the
+   * same QP reflects the device WQE-size capability enforced by rdma-core. */
+  ibv_wr_start (qpx);
+  ibv_wr_send (qpx);
+  ibv_wr_set_sge (qpx, rd->lkey, pointer_to_uword (sample), MLX5_ETH_L2_INLINE_HEADER_SIZE);
+  *min_inline = be16toh (((rdma_mlx5_wqe_t *) dv_qp.sq.buf)->eseg.inline_hdr_sz);
+  ibv_wr_abort (qpx);
+
+done:
+  if (qp && ibv_destroy_qp (qp) != 0 && err == 0)
+    err = clib_error_return_unix (0, "Destroy TX inline probe QP failed");
+  if (ibv_destroy_cq (cq) != 0 && err == 0)
+    err = clib_error_return_unix (0, "Destroy TX inline probe CQ failed");
+  return err;
+}
+
+static clib_error_t *
+rdma_dev_init (vlib_main_t *vm, rdma_device_t *rd, rdma_create_if_args_t *args)
 {
   clib_error_t *err;
   vlib_buffer_main_t *bm = vm->buffer_main;
@@ -1031,12 +1148,57 @@ rdma_dev_init (vlib_main_t * vm, rdma_device_t * rd,
   if ((rd->pd = ibv_alloc_pd (rd->ctx)) == 0)
     return clib_error_return_unix (0, "PD Alloc Failed");
 
-  if ((rd->mr = ibv_reg_mr (rd->pd, (void *) bm->buffer_mem_start,
-			    bm->buffer_mem_size,
+  if ((rd->mr = ibv_reg_mr (rd->pd, (void *) bm->buffer_mem_start, bm->buffer_mem_size,
 			    IBV_ACCESS_LOCAL_WRITE)) == 0)
     return clib_error_return_unix (0, "Register MR Failed");
 
-  rd->lkey = rd->mr->lkey;	/* avoid indirection in datapath */
+  rd->lkey = rd->mr->lkey; /* avoid indirection in datapath */
+
+  if (rd->flags & RDMA_DEVICE_F_MLX5DV)
+    {
+      u16 min_inline = 0;
+      u16 max_inline = 0;
+
+      err = rdma_mlx5_query_inline_caps (rd, uword_to_pointer (bm->buffer_mem_start, void *),
+					 &min_inline, &max_inline);
+
+      /* rdma-core exposes the kernel-selected Ethernet minimum as either no
+       * inline bytes or the 18-byte L2 requirement used by this datapath. */
+      if (err || (min_inline != 0 && min_inline != MLX5_ETH_L2_INLINE_HEADER_SIZE))
+	{
+	  if (err == 0)
+	    err = clib_error_return (0, "unsupported mlx5 TX inline requirement %u", min_inline);
+
+	  if (args->mode == RDMA_MODE_DV)
+	    return err;
+
+	  rdma_log__ (VLIB_LOG_LEVEL_WARNING, rd,
+		      "cannot validate mlx5 DV TX inline requirement, falling back to ibverbs: %U",
+		      format_clib_error, err);
+	  clib_error_free (err);
+	  rd->flags &= ~(RDMA_DEVICE_F_MLX5DV | RDMA_DEVICE_F_STRIDING_RQ |
+			 RDMA_DEVICE_F_RX_L4_CKSUM | RDMA_DEVICE_F_EMPW);
+	}
+      else
+	{
+	  rd->tx_min_inline = min_inline;
+	  rd->tx_empw_inline_cap = max_inline;
+	  rdma_log__ (VLIB_LOG_LEVEL_DEBUG, rd, "TX requires %u inline bytes", min_inline);
+	  if ((rd->flags & RDMA_DEVICE_F_EMPW) && min_inline != 0)
+	    {
+	      rd->flags &= ~RDMA_DEVICE_F_EMPW;
+	      rdma_log__ (VLIB_LOG_LEVEL_DEBUG, rd,
+			  "required TX inline header is incompatible with eMPW, disabling eMPW");
+	    }
+	}
+    }
+
+  if (rd->tx_empw_inline_max && !(rd->flags & RDMA_DEVICE_F_EMPW))
+    return clib_error_return (0, "tx-empw-inline requires enhanced MPW TX support");
+
+  if (rd->tx_empw_inline_max > rd->tx_empw_inline_cap)
+    return clib_error_return (0, "tx-empw-inline max-size %u exceeds device limit %u",
+			      rd->tx_empw_inline_max, rd->tx_empw_inline_cap);
 
   ethernet_mac_address_generate (rd->hwaddr.bytes);
 
@@ -1053,9 +1215,7 @@ rdma_dev_init (vlib_main_t * vm, rdma_device_t * rd,
       return err;
 
   for (i = 0; i < rxq_num; i++)
-    if ((err =
-	 rdma_rxq_init (vm, rd, i, rxq_size,
-			args->no_multi_seg, args->max_pktlen)))
+    if ((err = rdma_rxq_init (vm, rd, i, rxq_size, args->no_multi_seg, args->max_pktlen)))
       return err;
   if ((err = rdma_rxq_finalize (vm, rd)))
     return err;
@@ -1064,7 +1224,7 @@ rdma_dev_init (vlib_main_t * vm, rdma_device_t * rd,
 }
 
 static uword
-sysfs_path_to_pci_addr (char *path, vlib_pci_addr_t * addr)
+sysfs_path_to_pci_addr (char *path, vlib_pci_addr_t *addr)
 {
   char resolved_path[PATH_MAX];
 
@@ -1113,9 +1273,17 @@ rdma_create_if (vlib_main_t * vm, rdma_create_if_args_t * args)
   args->txq_size = args->txq_size ? args->txq_size : 1024;
   args->rxq_num = args->rxq_num ? args->rxq_num : 2;
 
+  if (args->tx_empw_inline_max > RDMA_MLX5_EMPW_INLINE_MAX)
+    {
+      args->rv = VNET_API_ERROR_INVALID_VALUE;
+      args->error = clib_error_return (0, "tx-empw-inline max-size cannot exceed %u bytes",
+				       RDMA_MLX5_EMPW_INLINE_MAX);
+      goto err0;
+    }
+
   if (args->rxq_size < VLIB_FRAME_SIZE || args->txq_size < VLIB_FRAME_SIZE ||
-      args->rxq_size > 65535 || args->txq_size > 65535 ||
-      !is_pow2 (args->rxq_size) || !is_pow2 (args->txq_size))
+      args->rxq_size > 65535 || args->txq_size > 65535 || !is_pow2 (args->rxq_size) ||
+      !is_pow2 (args->txq_size))
     {
       args->rv = VNET_API_ERROR_INVALID_VALUE;
       args->error = clib_error_return (0,
@@ -1166,9 +1334,7 @@ rdma_create_if (vlib_main_t * vm, rdma_create_if_args_t * args)
 
   if (strncmp ((char *) rd->pci->driver_name, "mlx5_core", 9))
     {
-      args->error =
-	clib_error_return (0,
-			   "invalid interface (only mlx5 supported for now)");
+      args->error = clib_error_return (0, "invalid interface (only mlx5 supported for now)");
       goto err2;
     }
 
@@ -1208,14 +1374,13 @@ rdma_create_if (vlib_main_t * vm, rdma_create_if_args_t * args)
 
   if (args->mode != RDMA_MODE_IBV)
     {
-      struct mlx5dv_context mlx5dv_attrs = { };
+      struct mlx5dv_context mlx5dv_attrs = {};
       mlx5dv_attrs.comp_mask |=
 	MLX5DV_CONTEXT_MASK_STRIDING_RQ | MLX5DV_CONTEXT_MASK_CQE_COMPRESION;
 
       if (mlx5dv_query_device (rd->ctx, &mlx5dv_attrs) == 0)
 	{
-	  uword data_seg_log2_sz =
-	    min_log2 (vlib_buffer_get_default_data_size (vm));
+	  uword data_seg_log2_sz = min_log2 (vlib_buffer_get_default_data_size (vm));
 	  rd->cqe_comp_supported_formats = mlx5dv_attrs.cqe_comp_caps.supported_format;
 
 	  if ((mlx5dv_attrs.flags & MLX5DV_CONTEXT_FLAGS_CQE_V1))
@@ -1227,17 +1392,22 @@ rdma_create_if (vlib_main_t * vm, rdma_create_if_args_t * args)
 		rd->flags |= RDMA_DEVICE_F_RX_L4_CKSUM;
 	    }
 
-/* Enable striding RQ if neither multiseg nor striding rq
-are explicitly disabled, and if the interface supports it.*/
-	  if (!args->no_multi_seg && !args->disable_striding_rq
-	      && data_seg_log2_sz <=
-	      mlx5dv_attrs.striding_rq_caps.max_single_stride_log_num_of_bytes
-	      && data_seg_log2_sz >=
-	      mlx5dv_attrs.striding_rq_caps.min_single_stride_log_num_of_bytes
-	      && RDMA_RXQ_MAX_CHAIN_LOG_SZ >=
-	      mlx5dv_attrs.striding_rq_caps.min_single_wqe_log_num_of_strides
-	      && RDMA_RXQ_MAX_CHAIN_LOG_SZ <=
-	      mlx5dv_attrs.striding_rq_caps.max_single_wqe_log_num_of_strides)
+	  if ((rd->flags & RDMA_DEVICE_F_MLX5DV) && !args->no_empw &&
+	      (mlx5dv_attrs.flags & MLX5DV_CONTEXT_FLAGS_ENHANCED_MPW))
+	    rd->flags |= RDMA_DEVICE_F_EMPW;
+
+	  /* Enable striding RQ if neither multiseg nor striding rq
+	  are explicitly disabled, and if the interface supports it.*/
+	  if ((rd->flags & RDMA_DEVICE_F_MLX5DV) && !args->no_multi_seg &&
+	      !args->disable_striding_rq &&
+	      data_seg_log2_sz <=
+		mlx5dv_attrs.striding_rq_caps.max_single_stride_log_num_of_bytes &&
+	      data_seg_log2_sz >=
+		mlx5dv_attrs.striding_rq_caps.min_single_stride_log_num_of_bytes &&
+	      RDMA_RXQ_MAX_CHAIN_LOG_SZ >=
+		mlx5dv_attrs.striding_rq_caps.min_single_wqe_log_num_of_strides &&
+	      RDMA_RXQ_MAX_CHAIN_LOG_SZ <=
+		mlx5dv_attrs.striding_rq_caps.max_single_wqe_log_num_of_strides)
 	    rd->flags |= RDMA_DEVICE_F_STRIDING_RQ;
 	}
       else
@@ -1249,7 +1419,20 @@ are explicitly disabled, and if the interface supports it.*/
 	      goto err2;
 	    }
 	}
+
+      if (args->mode == RDMA_MODE_DV && !(rd->flags & RDMA_DEVICE_F_MLX5DV))
+	{
+	  args->error = clib_error_return (0, "Direct Verbs mode requires mlx5 CQE v1 support");
+	  goto err2;
+	}
     }
+
+  if (args->tx_empw_inline_max && !(rd->flags & RDMA_DEVICE_F_EMPW))
+    {
+      args->error = clib_error_return (0, "tx-empw-inline requires enhanced MPW TX support");
+      goto err2;
+    }
+  rd->tx_empw_inline_max = args->tx_empw_inline_max;
 
   if ((args->error = rdma_dev_init (vm, rd, args)))
     goto err2;
