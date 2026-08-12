@@ -1098,6 +1098,127 @@ class TestSfdpSampleTimeout(BaseSfdpTest):
 
 
 @unittest.skipIf(
+    "sfdp_services" in config.excluded_plugins
+    or "sfdp_services_sample" in config.excluded_plugins,
+    "SFDP services and SFDP sample services plugins are required to run this test",
+)
+class TestSfdpSampleParser(BaseSfdpTest):
+    """Test SFDP custom parser registration"""
+
+    extra_vpp_plugin_config = [
+        "plugin sfdp_services_sample_plugin.so { enable }",
+    ]
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        try:
+            cls.create_pg_interfaces(range(2))
+            for interface in cls.pg_interfaces:
+                interface.config_ip4()
+                interface.resolve_arp()
+                interface.admin_up()
+        except Exception:
+            super().tearDownClass()
+            raise
+
+    @classmethod
+    def tearDownClass(cls):
+        for interface in cls.pg_interfaces:
+            interface.unconfig_ip4()
+            interface.admin_down()
+        super().tearDownClass()
+
+    def setUp(self):
+        super().setUp()
+        self._configure_sfdp()
+
+        # Disable SFDP interface_input, and rather configure
+        # our custom parser_input
+        self.vapi.sfdp_interface_input_set(
+            sw_if_index=self.pg0.sw_if_index,
+            tenant_id=self.tenant_id_ip4,
+            is_disable=True,
+        )
+
+        self.vapi.cli(
+            f"set sfdp sample-parser {self.pg0.name} tenant {self.tenant_id_ip4}"
+        )
+        self.vapi.cli(
+            f"set sfdp sample-parser {self.pg1.name} tenant {self.tenant_id_ip4}"
+        )
+
+    def tearDown(self):
+        # Disable our custom parser_input and
+        # re-enable interface_input on interface
+        self.vapi.cli(
+            f"set sfdp sample-parser {self.pg0.name} "
+            f"tenant {self.tenant_id_ip4} disable"
+        )
+        self.vapi.cli(
+            f"set sfdp sample-parser {self.pg1.name} "
+            f"tenant {self.tenant_id_ip4} disable"
+        )
+        self.vapi.sfdp_interface_input_set(
+            sw_if_index=self.pg0.sw_if_index,
+            tenant_id=self.tenant_id_ip4,
+            is_disable=False,
+        )
+        self._cleanup_sfdp()
+        super().tearDown()
+
+    def test_sample_parser_lookup(self):
+        """Test SFDP lookup using custom parser"""
+        # Send forward and reverse traffic
+        # and expect the custom parser to match
+        # them against the appropriate session
+        sport = 10000
+        dport = 20000
+        forward = self.create_udp_packet(
+            self.pg0.remote_mac,
+            self.pg0.local_mac,
+            self.pg0.remote_ip4,
+            self.pg1.remote_ip4,
+            sport=sport,
+            dport=dport,
+        )
+        reverse = self.create_udp_packet(
+            self.pg1.remote_mac,
+            self.pg1.local_mac,
+            self.pg1.remote_ip4,
+            self.pg0.remote_ip4,
+            sport=dport,
+            dport=sport,
+        )
+
+        self.send_and_expect(
+            self.pg0, [forward] * 5, self.pg1
+        )  # Send five forward packets to exercise vector and tail lookup paths
+        self.send_and_expect(self.pg1, reverse, self.pg0)  # Send one reverse packet
+
+        # Single session is expected to be created
+        sessions = self.sessions()
+        self.assertEqual(len(sessions), 1)
+        session = sessions[0]
+        self.assertEqual(
+            session.session_type,
+            VppEnum.vl_api_sfdp_session_type_t.SFDP_API_SESSION_TYPE_USER,  # Session type 'user' with custom parsers
+        )
+        self.assertEqual(session.protocol, 17)
+
+        # Check CLI output, and verify sessions created with custom parser are present
+        output = self.vapi.cli("show sfdp session-table")
+        self.assertIn("custom-parser: sample-ip4-parser", output)
+        self.assertIn(f"{self.pg0.remote_ip4}:{sport}", output)
+        self.assertIn(f"{self.pg1.remote_ip4}:{dport}", output)
+
+        # Verify custom parser's context/ingress/egress format function
+        details = self.vapi.cli(f"show sfdp session-detail {hex(session.session_id)}")
+        self.assertRegex(details, r"forward flow:\n\s+bytes: \d+\n\s+packets: 5")
+        self.assertRegex(details, r"reverse flow:\n\s+bytes: \d+\n\s+packets: 1")
+
+
+@unittest.skipIf(
     "sfdp_services" in config.excluded_plugins,
     "SFDP_Services plugin is required to run SFDP tests",
 )

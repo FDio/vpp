@@ -5,7 +5,34 @@
 #include <vnet/sfdp/sfdp.h>
 #include <vnet/sfdp/lookup/lookup_inlines.h>
 #include <vnet/sfdp/lookup/parser.h>
-#include <vnet/sfdp/lookup/parser_inlines.h>
+#include <vnet/sfdp/lookup/sfdp_bihashes.h>
+
+static clib_error_t *
+sfdp_validate_parser (sfdp_parser_registration_mutable_t *reg, uword *parser_index_per_name)
+{
+  if (!reg->name || !reg->name[0])
+    return clib_error_return (0, "SFDP parser name must not be empty");
+  if (hash_get_mem (parser_index_per_name, reg->name))
+    return clib_error_return (0, "SFDP parser '%s' is registered twice", reg->name);
+  if (reg->key_size >= ARRAY_LEN (sfdp_parser_bihash_regs) ||
+      !sfdp_parser_bihash_regs[reg->key_size].table_size)
+    return clib_error_return (0, "SFDP parser '%s' has unsupported key size %u", reg->name,
+			      reg->key_size);
+  if (!reg->calc_key_fn || !reg->normalize_key_fn)
+    return clib_error_return (0, "SFDP parser '%s' has missing callbacks", reg->name);
+  for (uword i = 0; i < SFDP_PARSER_N_FORMAT_FUNCTION; i++)
+    if (!reg->format_fn || !reg->format_fn[i])
+      return clib_error_return (0, "SFDP parser '%s' has missing format callback", reg->name);
+  if (reg->proto_offset >= reg->key_size)
+    return clib_error_return (0, "SFDP parser '%s' has invalid protocol offset %u", reg->name,
+			      reg->proto_offset);
+  if (reg->type != SFDP_SESSION_TYPE_USER)
+    return clib_error_return (0, "SFDP parser '%s' must use USER session type", reg->name);
+  if (!reg->node_reg)
+    return clib_error_return (0, "SFDP parser '%s' has no parser node", reg->name);
+  return 0;
+}
+
 static uword
 sfdp_create_parser (sfdp_parser_main_t *pm,
 		    sfdp_parser_registration_mutable_t *reg)
@@ -43,13 +70,18 @@ sfdp_parser_init (vlib_main_t *vm)
 {
   sfdp_parser_main_t *pm = &sfdp_parser_main;
   sfdp_parser_registration_mutable_t *current_reg = pm->regs;
+  clib_error_t *err;
   vlib_call_init_function (vm, sfdp_init);
   uword pi;
 
+  pm->parser_index_per_name = hash_create_string (0, sizeof (uword));
   while (current_reg)
     {
+      if ((err = sfdp_validate_parser (current_reg, pm->parser_index_per_name)))
+	return err;
       pi = sfdp_create_parser (pm, current_reg);
       current_reg->sfdp_parser_data_index = pi;
+      hash_set_mem (pm->parser_index_per_name, current_reg->name, pi);
       current_reg = current_reg->next;
     }
   return 0;
