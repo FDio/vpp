@@ -389,6 +389,7 @@ rdma_dev_cleanup (rdma_device_t *rd)
   {
     _(ibv_destroy_qp, txq->qp);
     _(ibv_destroy_cq, txq->cq);
+    vec_free (txq->dv_sq_buf_tail);
   }
   vec_foreach (rxq, rd->rxqs)
   {
@@ -818,6 +819,8 @@ rdma_txq_init (vlib_main_t *vm, rdma_device_t *rd, u16 qid, u32 n_desc)
       txq->dv_sq_dbrec = dv_qp.dbrec;
       txq->dv_sq_db = dv_qp.bf.reg;
       txq->dv_sq_log2sz = min_log2 (dv_qp.sq.wqe_cnt);
+      if (rd->flags & RDMA_DEVICE_F_EMPW)
+	vec_validate_aligned (txq->dv_sq_buf_tail, dv_qp.sq.wqe_cnt - 1, CLIB_CACHE_LINE_BYTES);
 
       /* get CQ and doorbell addresses */
       txq->dv_cq_cqes = dv_cq.buf;
@@ -1026,8 +1029,12 @@ rdma_create_if (vlib_main_t * vm, rdma_create_if_args_t * args)
 		rd->flags |= RDMA_DEVICE_F_RX_L4_CKSUM;
 	    }
 
-/* Enable striding RQ if neither multiseg nor striding rq
-are explicitly disabled, and if the interface supports it.*/
+	  if ((rd->flags & RDMA_DEVICE_F_MLX5DV) && !args->no_empw &&
+	      (mlx5dv_attrs.flags & MLX5DV_CONTEXT_FLAGS_ENHANCED_MPW))
+	    rd->flags |= RDMA_DEVICE_F_EMPW;
+
+	  /* Enable striding RQ if neither multiseg nor striding rq
+	  are explicitly disabled, and if the interface supports it.*/
 	  if (!args->no_multi_seg && !args->disable_striding_rq
 	      && data_seg_log2_sz <=
 	      mlx5dv_attrs.striding_rq_caps.max_single_stride_log_num_of_bytes
