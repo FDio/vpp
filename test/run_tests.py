@@ -26,6 +26,7 @@ from config import (
 from vpp_papi import VPPApiJSONFiles
 from asfframework import (
     VppTestRunner,
+    VppTestResult,
     get_testcase_doc_name,
     get_test_description,
     get_failed_testcase_linkname,
@@ -189,6 +190,11 @@ def test_runner_wrapper(
 ):
     sys.stdout = stdouterr_queue
     sys.stderr = stdouterr_queue
+    # A worker is forked from the controller, so it can inherit result state
+    # established by the optional sanity preflight.  This suite has not set
+    # up a testcase yet; in particular, a class-level skip or a setup-class
+    # failure must not be attributed to the preflight testcase.
+    VppTestResult.current_test_case_info = None
     if logger.handlers:
         VppTestCase.parallel_handler = logger.handlers[0]
     else:
