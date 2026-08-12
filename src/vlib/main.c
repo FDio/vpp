@@ -895,6 +895,24 @@ dispatch_node (vlib_main_t *vm, vlib_node_runtime_t *node,
 	{
 	  vlib_buffer_t *b = vlib_get_buffer (vm, from[i]);
 	  add_trajectory_trace (b, node->node_index);
+#if (CLIB_DEBUG > 0)
+	  if (vlib_buffer_is_known (vm, from[i]) == VLIB_BUFFER_KNOWN_FREE)
+	    {
+	      clib_panic ("dispatch free buffer %p bi(0x%x) to node%u", b, from[i],
+			  node->node_index);
+	    }
+	  while (b->flags & VLIB_BUFFER_NEXT_PRESENT)
+	    {
+	      u32 next_buffer = b->next_buffer;
+	      b = vlib_get_buffer (vm, next_buffer);
+	      add_trajectory_trace (b, node->node_index);
+	      if (vlib_buffer_is_known (vm, next_buffer) == VLIB_BUFFER_KNOWN_FREE)
+		{
+		  clib_panic ("dispatch free next buffer %p bi(0x%x) to node%u head bi(0x%x)", b,
+			      next_buffer, node->node_index, from[i]);
+		}
+	    }
+#endif
 	}
     }
 
