@@ -144,6 +144,15 @@ format_rdma_device (u8 * s, va_list * args)
 		  format_white_space, indent + 2,
 		  format_rdma_bit_flag, c.flags, str_flags,
 		  ARRAY_LEN (str_flags));
+      if (rd->flags & RDMA_DEVICE_F_EMPW)
+	{
+	  s = format (s, "\n%UeMPW inline: device limit %u bytes, ", format_white_space, indent + 2,
+		      rd->tx_empw_inline_cap);
+	  if (rd->tx_empw_inline_max)
+	    s = format (s, "threshold %u bytes", rd->tx_empw_inline_max);
+	  else
+	    s = format (s, "disabled");
+	}
     }
 
   return s;
