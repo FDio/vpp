@@ -272,7 +272,7 @@ tcp_connection_cleanup (tcp_connection_t * tc)
       if (tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER)
 	tcp_bt_cleanup (tc);
       else
-	vec_free (tc->dsack_rxt);
+	tcp_dsack_cleanup (tc);
 
       tcp_connection_free (tc);
     }

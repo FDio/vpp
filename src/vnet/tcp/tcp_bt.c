@@ -1203,7 +1203,7 @@ tcp_bt_dsack_mark_duplicate (tcp_connection_t *tc, u32 start, u32 end)
 {
   tcp_byte_tracker_t *bt = tc->bt;
   tcp_bt_sample_t *bts = 0;
-  u32 matched = 0, duplicate = 0;
+  u32 matched = 0;
   u32 active_start = start, overlap_start, overlap_end;
 
   /* ACKed samples are no longer retained. Match their D-SACK evidence
@@ -1214,7 +1214,6 @@ tcp_bt_dsack_mark_duplicate (tcp_connection_t *tc, u32 start, u32 end)
       overlap_start = seq_max (active_start, tc->dsack_history_start);
       if (seq_lt (overlap_start, overlap_end))
 	{
-	  duplicate += overlap_end - overlap_start;
 	  matched += overlap_end - overlap_start;
 	}
       active_start = overlap_end;
@@ -1230,21 +1229,12 @@ tcp_bt_dsack_mark_duplicate (tcp_connection_t *tc, u32 start, u32 end)
 
       if (seq_lt (overlap_start, overlap_end) && (bts->flags & TCP_BTS_IS_RXT))
 	{
-	  duplicate += overlap_end - overlap_start;
 	  matched += overlap_end - overlap_start;
 	}
       bts = bt_next_sample (bt, bts);
     }
 
-  tc->dsack_pending_bytes -= clib_min (tc->dsack_pending_bytes, duplicate);
-
   return matched;
-}
-
-u8
-tcp_bt_dsack_all_duplicate (tcp_connection_t *tc)
-{
-  return (tc->dsack_flags & TCP_DSACK_HISTORY) && !tc->dsack_pending_bytes;
 }
 
 void
@@ -1415,7 +1405,7 @@ tcp_bt_enable (tcp_connection_t *tc, u8 enable)
 
   if (enable)
     {
-      tcp_dsack_recovery_clear (tc);
+      tcp_dsack_cleanup (tc);
       tcp_bt_init (tc);
     }
   else
