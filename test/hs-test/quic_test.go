@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"regexp"
+	"strings"
 	"time"
 
 	. "fd.io/hs-test/infra"
@@ -104,12 +105,21 @@ func QuicAlpnMismatchTest(s *QuicSuite) {
 	AssertContains(o, "connect error failed tls handshake")
 	// check if everything is cleanup
 	// server should have only 2 listener sessions (udp and quic) and app no accepted connection
+	// server cleanup connection with delay ~1 second
+	serverCleanupDone := false
+	for range 5 {
+		o = serverVpp.Vppctl("show session verbose 2")
+		if strings.Contains(o, "active sessions 2") {
+			Log(o)
+			serverCleanupDone = true
+			break
+		}
+		time.Sleep(1 * time.Second)
+	}
+	AssertEqual(true, serverCleanupDone, "server sessions not cleaned up")
 	o = serverVpp.Vppctl("show test tls server")
 	Log(o)
 	AssertContains(o, "accepted connections 0")
-	o = serverVpp.Vppctl("show session verbose 2")
-	Log(o)
-	AssertContains(o, "active sessions 2")
 	// no session on client
 	o = clientVpp.Vppctl("show session verbose 2")
 	Log(o)
