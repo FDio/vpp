@@ -11,9 +11,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-openssl_version             := 3.6.1
+openssl_version             := 4.0.1
 openssl_tarball             := openssl-$(openssl_version).tar.gz
-openssl_tarball_sha256sum   := b1bfedcd5b289ff22aee87c9d600f515767ebf45f77168cb6d64f231f518a82e
+openssl_tarball_sha256sum   := 2db3f3a0d6ea4b59e1f094ace2c8cd536dffb87cdc39084c5afa1e6f7f37dd09
 
 openssl_tarball_strip_dirs  := 1
 openssl_url                 := https://github.com/openssl/openssl/releases/download/openssl-$(openssl_version)/$(openssl_tarball)
