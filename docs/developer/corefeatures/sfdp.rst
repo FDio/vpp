@@ -235,6 +235,19 @@ node name is the parser name plus an optional `-<scope>` suffix, where
 `<scope>` is the scope name string. The default scope uses the base parser name
 with no suffix, while non-default scopes use the suffix.
 
+The parser key size must match one of the bihash variants supported by SFDP:
+24, 32, 40, 48, or 56 bytes (see `src/vnet/sfdp/lookup/sfdp_bihashes.h`).
+A parser registration must provide the key calculation and normalization
+callbacks, all three formatting callbacks, and a protocol offset within the key.
+
+The default-disabled `sfdp_services_sample` plugin contains a custom parser example,
+including the required parser callbacks and custom interface-input node (see
+`src/plugins/sfdp_services_sample/parser.c`). The sample input node resolves the
+tenant when it is enabled and stores the internal tenant index per interface,
+following the standard `sfdp-interface-input` pattern. It is an alternative
+injector: disable `sfdp-interface-input-ip4` before enabling the sample input node
+on an interface.
+
 Primary and secondary session keys
 __________________________________
 
