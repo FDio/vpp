@@ -389,6 +389,7 @@ rdma_dev_cleanup (rdma_device_t *rd)
   {
     _(ibv_destroy_qp, txq->qp);
     _(ibv_destroy_cq, txq->cq);
+    vec_free (txq->dv_sq_buf_tail);
   }
   vec_foreach (rxq, rd->rxqs)
   {
@@ -818,6 +819,8 @@ rdma_txq_init (vlib_main_t *vm, rdma_device_t *rd, u16 qid, u32 n_desc)
       txq->dv_sq_dbrec = dv_qp.dbrec;
       txq->dv_sq_db = dv_qp.bf.reg;
       txq->dv_sq_log2sz = min_log2 (dv_qp.sq.wqe_cnt);
+      if (rd->flags & RDMA_DEVICE_F_EMPW)
+	vec_validate_aligned (txq->dv_sq_buf_tail, dv_qp.sq.wqe_cnt - 1, CLIB_CACHE_LINE_BYTES);
 
       /* get CQ and doorbell addresses */
       txq->dv_cq_cqes = dv_cq.buf;
@@ -833,6 +836,68 @@ rdma_txq_init (vlib_main_t *vm, rdma_device_t *rd, u16 qid, u32 n_desc)
     }
 
   return 0;
+}
+
+static clib_error_t *
+rdma_mlx5_query_min_inline (rdma_device_t *rd, const void *sample, u16 *min_inline)
+{
+  struct ibv_qp_init_attr_ex qpia = {
+    .cap.max_send_wr = 1,
+    .cap.max_send_sge = 1,
+    .qp_type = IBV_QPT_RAW_PACKET,
+    .comp_mask = IBV_QP_INIT_ATTR_PD | IBV_QP_INIT_ATTR_SEND_OPS_FLAGS,
+    .send_ops_flags = IBV_QP_EX_WITH_SEND,
+  };
+  struct mlx5dv_qp dv_qp = {};
+  struct mlx5dv_obj obj = {};
+  struct ibv_qp_ex *qpx;
+  struct ibv_cq *cq = 0;
+  struct ibv_qp *qp = 0;
+  clib_error_t *err = 0;
+
+  if ((cq = ibv_create_cq (rd->ctx, 1, 0, 0, 0)) == 0)
+    return clib_error_return_unix (0, "Create eMPW probe CQ failed");
+
+  qpia.send_cq = cq;
+  qpia.recv_cq = cq;
+  qpia.pd = rd->pd;
+  if ((qp = ibv_create_qp_ex (rd->ctx, &qpia)) == 0)
+    {
+      err = clib_error_return_unix (0, "Create eMPW probe QP failed");
+      goto done;
+    }
+
+  qpx = ibv_qp_to_qp_ex (qp);
+  if (qpx == 0)
+    {
+      err = clib_error_return (0, "Extended send operations unavailable for eMPW probe");
+      goto done;
+    }
+
+  obj.qp.in = qp;
+  obj.qp.out = &dv_qp;
+  if (mlx5dv_init_obj (&obj, MLX5DV_OBJ_QP) != 0 || dv_qp.sq.buf == 0 ||
+      dv_qp.sq.stride < sizeof (rdma_mlx5_wqe_t))
+    {
+      err = clib_error_return (0, "Invalid eMPW probe SQ");
+      goto done;
+    }
+
+  /* Let the mlx5 provider build one ordinary SEND WQE, then abort the WR.
+   * This exposes the provider's kernel-derived eth_min_inline value without
+   * ringing a doorbell or transmitting the probe. */
+  ibv_wr_start (qpx);
+  ibv_wr_send (qpx);
+  ibv_wr_set_sge (qpx, rd->lkey, pointer_to_uword (sample), MLX5_ETH_L2_INLINE_HEADER_SIZE);
+  *min_inline = be16toh (((rdma_mlx5_wqe_t *) dv_qp.sq.buf)->eseg.inline_hdr_sz);
+  ibv_wr_abort (qpx);
+
+done:
+  if (qp && ibv_destroy_qp (qp) != 0 && err == 0)
+    err = clib_error_return_unix (0, "Destroy eMPW probe QP failed");
+  if (ibv_destroy_cq (cq) != 0 && err == 0)
+    err = clib_error_return_unix (0, "Destroy eMPW probe CQ failed");
+  return err;
 }
 
 static clib_error_t *
@@ -859,6 +924,28 @@ rdma_dev_init (vlib_main_t * vm, rdma_device_t * rd,
     return clib_error_return_unix (0, "Register MR Failed");
 
   rd->lkey = rd->mr->lkey;	/* avoid indirection in datapath */
+
+  if (rd->flags & RDMA_DEVICE_F_EMPW)
+    {
+      u16 min_inline = 0;
+
+      err = rdma_mlx5_query_min_inline (rd, uword_to_pointer (bm->buffer_mem_start, void *),
+					&min_inline);
+      if (err || min_inline != 0)
+	{
+	  rd->flags &= ~RDMA_DEVICE_F_EMPW;
+	  if (err)
+	    {
+	      rdma_log__ (VLIB_LOG_LEVEL_WARNING, rd,
+			  "cannot determine required TX inline header, disabling eMPW: %U",
+			  format_clib_error, err);
+	      clib_error_free (err);
+	    }
+	  else
+	    rdma_log__ (VLIB_LOG_LEVEL_DEBUG, rd, "TX requires %u inline bytes, disabling eMPW",
+			min_inline);
+	}
+    }
 
   ethernet_mac_address_generate (rd->hwaddr.bytes);
 
@@ -1026,8 +1113,12 @@ rdma_create_if (vlib_main_t * vm, rdma_create_if_args_t * args)
 		rd->flags |= RDMA_DEVICE_F_RX_L4_CKSUM;
 	    }
 
-/* Enable striding RQ if neither multiseg nor striding rq
-are explicitly disabled, and if the interface supports it.*/
+	  if ((rd->flags & RDMA_DEVICE_F_MLX5DV) && !args->no_empw &&
+	      (mlx5dv_attrs.flags & MLX5DV_CONTEXT_FLAGS_ENHANCED_MPW))
+	    rd->flags |= RDMA_DEVICE_F_EMPW;
+
+	  /* Enable striding RQ if neither multiseg nor striding rq
+	  are explicitly disabled, and if the interface supports it.*/
 	  if (!args->no_multi_seg && !args->disable_striding_rq
 	      && data_seg_log2_sz <=
 	      mlx5dv_attrs.striding_rq_caps.max_single_stride_log_num_of_bytes
