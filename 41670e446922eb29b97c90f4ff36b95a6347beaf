@@ -102,6 +102,23 @@
       "parentUuid": "0a974cc3_d78f032a",
       "revId": "41670e446922eb29b97c90f4ff36b95a6347beaf",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "20b0ac8a_d53b2caf",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2832
+      },
+      "writtenOn": "2026-08-13T15:05:36Z",
+      "side": 1,
+      "message": "Can you confirm this regression only happen on E810Cq NICs and no impact other venders",
+      "revId": "41670e446922eb29b97c90f4ff36b95a6347beaf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
