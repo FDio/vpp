@@ -16,6 +16,23 @@
       "message": "Hi Matthew,\n\nThis is the latest patch for solving the lcp tables lifetime and cleanup logic.\nIt aligns the del behavior to be the same as add for routes, fixes the mfib cleanup and instead of relying on netlink logic - it manages lcp table\u0027s lifetime based on interface\u0027s VRF binding.\n\nWould be happy to hear your opinion on this one.",
       "revId": "4954964683326e850a45e8f98f92f2cb4e293f76",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "61780d53_80019c8b",
+        "filename": "src/plugins/linux-cp/lcp_router.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 1289,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2026-08-13T18:12:38Z",
+      "side": 1,
+      "message": "This message will be formatted exactly the same as the one in `lcp_router_route_add()`. Could you modify the messages in both places to make it clear whether it\u0027s adding or deleting that is being skipped? E.g. make this one look like \"route del skip:\".",
+      "revId": "4954964683326e850a45e8f98f92f2cb4e293f76",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
