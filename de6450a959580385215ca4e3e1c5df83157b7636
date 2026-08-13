@@ -17,6 +17,23 @@
       "message": "Please rebase your patch on HEAD, there has been a workaround merged to address the AF_XDP lock failure",
       "revId": "de6450a959580385215ca4e3e1c5df83157b7636",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "c56360f5_2d05fd78",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3347
+      },
+      "writtenOn": "2026-08-13T18:55:08Z",
+      "side": 1,
+      "message": "recheck",
+      "revId": "de6450a959580385215ca4e3e1c5df83157b7636",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
