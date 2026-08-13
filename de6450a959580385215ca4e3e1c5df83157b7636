@@ -1,4 +1,22 @@
 {
   "pushCert": "certificate version 0.1\npusher 6F6F9D990CCCF059 1786405189 -0700\npushee ssh://gerrit.fd.io:29418/vpp\nnonce 1786405189-CBCBB5F79634A555F87DF685AE9B2A5EDCF9C0B9\n\n0000000000000000000000000000000000000000 de6450a959580385215ca4e3e1c5df83157b7636 refs/for/master\n-----BEGIN PGP SIGNATURE-----\n\niQIzBAABCgAdFiEEyGSwkgkld8+3HGB7b2+dmQzM8FkFAmp6YUUACgkQb2+dmQzM\n8Flo3w/9E1z76756w1iYt0Q/YzoKpPdyu0P9T+qodQ7W3FNVlKQ8s1LyHVmTznKh\nnug0fVZHa8IyRu7PCL0ytVknHxpJbpj0Oa/W9Sw/r1dynd6XUf+NjAiz4uX2rNkC\nfGutHvARFt2lHwz/yayQkABAidsr0WHDS9vfvqJqinPf7rKEBAMh0pkQivejbe6C\nM7x7prGwaOLyvNlm7M6xavDgu9kM7kaO/E8ewHQ5VQFYgFr5XfN2WQjTkzk7V85z\nUhiyqsuXCJIgUtf2y+ItvrNb4Ox2grQJ+g75396Gx8pBQuX/BKlucT27cVgZEB6r\nGb9FtdoGzv/G0clOJENpdsDKVEq3i3kOixzwBOHTY2znO38/R0kXCObj3CNloL6p\nw6YySZbCwjKxz8przX12wmfkZMbY1u4pm/zX3urXsxVn/SJdduEN5F57MRfM2wlH\nA9woSd5KZNZ4NfK7wVo0ZNE1ICKFC2HsPECbYNJXdKX3hzLvKXiEFfAfSIV6a1Vg\nUpPf64zUO9XLoq0eiQMgpnM4olzHU3MNuNVHlHFcFRYT2T4U7cKu05tgBpOKMJ33\nZ+RvEQNvlwrbLDkEsy+/wuBrABwSNZoauxguLfFQZPknHX6ipkoe6gOgDjzrOZAD\njtpobmXg7DEHoe8dxLuNs72fhKeuGUBtLoD2XxQE+lYFogq2tUY\u003d\n\u003d83Ub\n-----END PGP SIGNATURE-----\n",
-  "comments": []
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "79d7438c_7dbc1195",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3347
+      },
+      "writtenOn": "2026-08-13T18:52:19Z",
+      "side": 1,
+      "message": "Please rebase your patch on HEAD, there has been a workaround merged to address the AF_XDP lock failure",
+      "revId": "de6450a959580385215ca4e3e1c5df83157b7636",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
 }
