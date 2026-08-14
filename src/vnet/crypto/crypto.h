@@ -294,9 +294,9 @@ typedef enum
 } __clib_packed vnet_crypto_op_status_t;
 
 #define foreach_crypto_handler_type                                                                \
+  _ (ASYNC, "async")                                                                               \
   _ (SIMPLE, "simple")                                                                             \
-  _ (CHAINED, "chained")                                                                           \
-  _ (ASYNC, "async")
+  _ (CHAINED, "chained")
 
 typedef enum
 {
@@ -667,7 +667,8 @@ typedef struct
   vnet_crypto_hash_alg_data_t hash_algs[VNET_CRYPTO_N_HASH_ALGS];
   vnet_crypto_engine_id_t active_op_engine_index[VNET_CRYPTO_N_ALGS][VNET_CRYPTO_OP_N_TYPES]
 						[VNET_CRYPTO_HANDLER_N_TYPES];
-  vnet_crypto_engine_id_t active_hash_engine_index[VNET_CRYPTO_N_HASH_ALGS][2];
+  vnet_crypto_engine_id_t active_hash_engine_index[VNET_CRYPTO_N_HASH_ALGS]
+						  [VNET_CRYPTO_HANDLER_N_TYPES];
   u8 default_disabled;
 } vnet_crypto_main_t;
 

@@ -111,7 +111,8 @@ vnet_crypto_ctx_set_engine (vnet_crypto_ctx_t *ctx, vnet_crypto_handler_type_t t
     {
       e = vec_elt_at_index (cm->engines, engine);
       if (e->key_data_per_thread[t][ctx->alg])
-	ctx->key_data_stride[t] = e->key_data_sz[t][ctx->alg];
+	ctx->key_data_stride[t] =
+	  (VNET_CRYPTO_HANDLER_TYPE_ASYNC == t) ? 0 : e->key_data_sz[t][ctx->alg];
       vnet_crypto_ctx_update_handlers (ctx, t, e);
     }
   else
@@ -174,7 +175,8 @@ vnet_crypto_ctx_set_default_engine (vnet_crypto_ctx_t *ctx, vnet_crypto_handler_
   ctx->engine_index[t] = engine;
   e = vec_elt_at_index (cm->engines, engine);
   if (e->key_data_per_thread[t][ctx->alg])
-    ctx->key_data_stride[t] = e->key_data_sz[t][ctx->alg];
+    ctx->key_data_stride[t] =
+      (VNET_CRYPTO_HANDLER_TYPE_ASYNC == t) ? 0 : e->key_data_sz[t][ctx->alg];
   fn = e->key_change_fn[t][ctx->alg];
   key_data_per_thread = e->key_data_per_thread[t][ctx->alg];
   vnet_crypto_key_call (ctx, fn, t, 1, key_data_per_thread);
