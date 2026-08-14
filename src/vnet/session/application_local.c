@@ -243,7 +243,7 @@ ct_accept_one (clib_thread_index_t thread_index, u32 ho_index)
 {
   ct_connection_t *sct, *cct, *ho;
   transport_connection_t *ll_ct;
-  app_worker_t *server_wrk;
+  app_worker_t *client_wrk, *server_wrk;
   u32 cct_index, ll_index;
   session_t *ss, *ll;
 
@@ -279,10 +279,20 @@ ct_accept_one (clib_thread_index_t thread_index, u32 ho_index)
    */
 
   ll_index = cct->peer_index;
-  ll = listen_session_get (ll_index);
+  ll = session_get_if_valid (ll_index, 0);
+  if (PREDICT_FALSE (!ll || ll->session_state != SESSION_STATE_LISTENING))
+    goto stale_listener;
+
   sct = ct_connection_alloc (thread_index);
+  cct = ct_connection_get (cct_index, thread_index);
+
   /* Transport not necessarily ct but it might, so grab after sct alloc */
+  ll = session_get_if_valid (ll_index, 0);
+  if (PREDICT_FALSE (!ll || ll->session_state != SESSION_STATE_LISTENING))
+    goto stale_listener_sct;
   ll_ct = listen_session_get_transport (ll);
+  if (PREDICT_FALSE (!ll_ct))
+    goto stale_listener_sct;
 
   /* Make sure cct is valid after sct alloc */
   cct = ct_connection_get (cct_index, thread_index);
@@ -331,6 +341,17 @@ ct_accept_one (clib_thread_index_t thread_index, u32 ho_index)
       ct_connection_free (sct);
       session_free (ss);
     }
+  return;
+
+stale_listener_sct:
+  ct_connection_free (sct);
+stale_listener:
+  cct = ct_connection_get (cct_index, thread_index);
+  session_half_open_delete_notify (&cct->connection);
+  client_wrk = app_worker_get_if_valid (cct->client_wrk);
+  if (client_wrk)
+    app_worker_connect_notify (client_wrk, 0, SESSION_E_REFUSED, cct->client_opaque);
+  ct_connection_free (cct);
 }
 
 static void
