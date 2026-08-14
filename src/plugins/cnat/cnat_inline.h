@@ -49,6 +49,16 @@ cnat_timestamp_get (u32 index)
   return ts;
 }
 
+always_inline void
+cnat_flow_classify (cnat_timestamp_t *ts, cnat_flow_class_t flow_class)
+{
+  ASSERT (flow_class > CNAT_FLOW_CLASS_UNCLASSIFIED && flow_class < CNAT_N_FLOW_CLASSES);
+
+  if (clib_atomic_cmp_and_swap (&ts->ts_flow_class, (u8) CNAT_FLOW_CLASS_UNCLASSIFIED,
+				(u8) flow_class) == CNAT_FLOW_CLASS_UNCLASSIFIED)
+    vlib_increment_simple_counter (&cnat_flow_started, vlib_get_thread_index (), flow_class, 1);
+}
+
 always_inline index_t
 cnat_timestamp_alloc (u32 fib_index, bool is_v6)
 {
@@ -114,12 +124,16 @@ cnat_timestamp_destroy (u32 index, bool is_v6)
   u32 pidx = index >> log2_pool_sz;
   cnat_timestamp_t *pool;
   cnat_timestamp_t *ts;
+  u32 thread_index = vlib_get_thread_index ();
 
   index = index & ((1 << log2_pool_sz) - 1);
 
   clib_rwlock_writer_lock (&ctm->ts_lock);
   pool = vec_elt (ctm->ts_pools, pidx);
   ts = pool_elt_at_index (pool, index);
+  if (ts->ts_flow_class != CNAT_FLOW_CLASS_UNCLASSIFIED)
+    vlib_increment_simple_counter (&cnat_flow_ended, thread_index, ts->ts_flow_class, 1);
+  vlib_increment_simple_counter (&cnat_flow_ended, thread_index, CNAT_FLOW_CLASS_UNCLASSIFIED, 1);
   pool_put (pool, ts);
   ctm->ts_free = clib_bitmap_set (ctm->ts_free, pidx, 1);
   clib_rwlock_writer_unlock (&ctm->ts_lock);
@@ -138,6 +152,8 @@ cnat_timestamp_new (u32 t, u32 fib_index, bool is_v6)
    * this will be incremented when adding the reverse
    * session in cnat_rsession_create */
   ts->ts_session_refcnt = 1;
+  vlib_increment_simple_counter (&cnat_flow_started, vlib_get_thread_index (),
+				 CNAT_FLOW_CLASS_UNCLASSIFIED, 1);
   return index;
 }
 

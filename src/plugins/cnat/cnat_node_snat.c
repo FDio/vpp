@@ -56,6 +56,7 @@ cnat_snat_feature_new_flow_inline (vlib_main_t *vm, vlib_node_runtime_t *node, v
 	{
 	  if (!(cpe->snat_ip4.ce_flags & CNAT_EP_FLAG_RESOLVED))
 	    {
+	      vlib_error_count (vm, node->node_index, CNAT_ERROR_SNAT_ADDRESS_UNAVAILABLE, 1);
 	      rw->cts_dpoi_next_node = CNAT_NODE_SNAT_NEXT_DROP;
 	      return (rw);
 	    }
@@ -66,6 +67,7 @@ cnat_snat_feature_new_flow_inline (vlib_main_t *vm, vlib_node_runtime_t *node, v
 	{
 	  if (!(cpe->snat_ip6.ce_flags & CNAT_EP_FLAG_RESOLVED))
 	    {
+	      vlib_error_count (vm, node->node_index, CNAT_ERROR_SNAT_ADDRESS_UNAVAILABLE, 1);
 	      rw->cts_dpoi_next_node = CNAT_NODE_SNAT_NEXT_DROP;
 	      return (rw);
 	    }
@@ -149,6 +151,10 @@ cnat_snat_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_buffer_t *b,
   else if (vnet_buffer2 (b)->session.state == CNAT_LOOKUP_IS_NEW)
     {
       rw = cnat_snat_feature_new_flow_inline (vm, node, b, af, ts, fwd_fib_index);
+      if (!rw)
+	cnat_flow_classify (ts, CNAT_FLOW_CLASS_PASS_THROUGH);
+      else if (rw->cts_dpoi_next_node != CNAT_NODE_SNAT_NEXT_DROP)
+	cnat_flow_classify (ts, CNAT_FLOW_CLASS_NAT);
     }
   else if (is_return && vnet_buffer2 (b)->session.state == CNAT_LOOKUP_IS_RETURN)
     {

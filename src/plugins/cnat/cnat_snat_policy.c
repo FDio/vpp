@@ -102,7 +102,7 @@ cnat_snat_policy_entry_get_default (void)
 static int
 cnat_snat_policy_entry_is_init (const cnat_snat_policy_entry_t *cpe)
 {
-  return vec_len (cpe->interface_maps[0]) != 0;
+  return cpe->is_initialized;
 }
 
 static void
@@ -124,6 +124,8 @@ cnat_snat_policy_entry_init (cnat_snat_policy_entry_t *cpe)
 
   for (int i = 0; i < CNAT_N_SNAT_IF_MAP; i++)
     clib_bitmap_validate (cpe->interface_maps[i], cm->snat_if_map_length);
+
+  cpe->is_initialized = 1;
 }
 
 __clib_export void
@@ -140,6 +142,7 @@ cnat_snat_policy_entry_cleanup (cnat_snat_policy_entry_t *cpe)
 	  vec_free (excluded_pfx->meta[i].prefix_lengths_in_search_order);
 	  clib_bitmap_free (excluded_pfx->meta[i].non_empty_dst_address_length_bitmap);
 	}
+      cpe->is_initialized = 0;
     }
 }
 

@@ -15,6 +15,9 @@
 #include <vppinfra/bihash_template.c>
 
 cnat_bihash_t cnat_session_db;
+vlib_simple_counter_main_t cnat_flow_started;
+vlib_simple_counter_main_t cnat_flow_ended;
+
 /* Index into the double vector for deferred backend deletion.
  * Flipped by the scanner at the start of each full scan cycle (i == 0).
  * cnat_ep_trk_delete_notify writes into slot [state ^ 1] (the inactive
@@ -525,14 +528,28 @@ out:
 }
 
 static void
-cnat_sessions_collect_total_fn (vlib_stats_collector_data_t *d)
+cnat_flows_collect_fn (vlib_stats_collector_data_t *d)
 {
-  const cnat_timestamp_mpool_t *ctm = &cnat_timestamps;
-  u32 total = 0;
-  int i;
-  vec_foreach_index (i, ctm->ts_pools)
-    total += pool_elts (vec_elt (ctm->ts_pools, i));
-  d->entry->value = total;
+  counter_t started;
+  counter_t ended;
+
+  started = vlib_get_simple_counter (&cnat_flow_started, d->private_data);
+  ended = vlib_get_simple_counter (&cnat_flow_ended, d->private_data);
+
+  /* The per-thread vectors are scraped without a worker barrier. */
+  d->entry->value = started >= ended ? started - ended : 0;
+}
+
+static void
+cnat_flows_register_gauge (char *path, cnat_flow_class_t flow_class)
+{
+  vlib_stats_collector_reg_t reg = {
+    .entry_index = vlib_stats_add_gauge (path),
+    .collect_fn = cnat_flows_collect_fn,
+    .private_data = flow_class,
+  };
+
+  vlib_stats_register_collector_fn (&reg);
 }
 
 static clib_error_t *
@@ -552,10 +569,21 @@ cnat_session_init (vlib_main_t * vm)
   vec_validate_init_empty_aligned (ctm->sessions_per_vrf_ip6, CNAT_FIB_TABLE,
 				   ctm->max_sessions_per_vrf, CLIB_CACHE_LINE_BYTES);
 
-  vlib_stats_collector_reg_t reg;
-  reg.entry_index = vlib_stats_add_gauge ("/cnat/sessions/total");
-  reg.collect_fn = cnat_sessions_collect_total_fn;
-  vlib_stats_register_collector_fn (&reg);
+  vlib_validate_simple_counter (&cnat_flow_started, CNAT_N_FLOW_CLASSES - 1);
+  vlib_validate_simple_counter (&cnat_flow_ended, CNAT_N_FLOW_CLASSES - 1);
+  for (u32 i = 0; i < CNAT_N_FLOW_CLASSES; i++)
+    {
+      vlib_zero_simple_counter (&cnat_flow_started, i);
+      vlib_zero_simple_counter (&cnat_flow_ended, i);
+    }
+
+  cnat_flows_register_gauge ("/cnat/flows/total", CNAT_FLOW_CLASS_UNCLASSIFIED);
+  cnat_flows_register_gauge ("/cnat/flows/nat", CNAT_FLOW_CLASS_NAT);
+  cnat_flows_register_gauge ("/cnat/flows/no-nat", CNAT_FLOW_CLASS_NO_NAT);
+  cnat_flows_register_gauge ("/cnat/flows/pass-through", CNAT_FLOW_CLASS_PASS_THROUGH);
+
+  /* Compatibility name. Both total paths use the same lifecycle counters. */
+  cnat_flows_register_gauge ("/cnat/sessions/total", CNAT_FLOW_CLASS_UNCLASSIFIED);
 
   return (NULL);
 }

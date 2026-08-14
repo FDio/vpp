@@ -122,6 +122,11 @@ STATIC_ASSERT (sizeof (cnat_session_t) == sizeof (cnat_bihash_kv_t),
  */
 extern cnat_bihash_t cnat_session_db;
 
+/* Per-thread flow lifecycle events. The UNCLASSIFIED index represents all
+ * flows, while the remaining indexes represent classified flows. */
+extern vlib_simple_counter_main_t cnat_flow_started;
+extern vlib_simple_counter_main_t cnat_flow_ended;
+
 /**
  * Callback function invoked during a walk of all sessions
  */

@@ -84,6 +84,9 @@ cnat_input_feature_new_flow_inline (vlib_main_t *vm, vlib_buffer_t *b, ip_addres
   if (PREDICT_FALSE (!trk0))
     {
       /* Load balance is empty or not resolved, drop  */
+      vlib_node_registration_t *node =
+	(AF_IP4 == af) ? &cnat_input_feature_ip4_node : &cnat_input_feature_ip6_node;
+      vlib_error_count (vm, node->index, CNAT_ERROR_NO_ACTIVE_BACKEND, 1);
       rw->cts_dpoi_next_node = IP_LOOKUP_NEXT_DROP;
       return (rw);
     }
@@ -138,8 +141,15 @@ cnat_dnat_input_slow_path (vlib_main_t *vm, vlib_buffer_t *b, ip_address_family_
   cnat_main_t *cm = &cnat_main;
   cnat_input_feature_new_flow_inline (vm, b, af, ts);
   if (ts->ts_rw_bm & (1 << CNAT_LOCATION_INPUT))
-    cnat_translation (b, af, &ts->cts_rewrites[CNAT_LOCATION_INPUT], &ts->lifetime, cm->tcp_max_age,
-		      0);
+    {
+      cnat_timestamp_rewrite_t *rw = &ts->cts_rewrites[CNAT_LOCATION_INPUT];
+
+      /* NO_NAT selects the backend DPO directly and bypasses writeback. */
+      if (rw->cts_flags & CNAT_TS_RW_FLAG_NO_NAT)
+	cnat_flow_classify (ts, CNAT_FLOW_CLASS_NO_NAT);
+
+      cnat_translation (b, af, rw, &ts->lifetime, cm->tcp_max_age, 0);
+    }
 }
 
 always_inline cnat_timestamp_rewrite_t *
@@ -343,6 +353,8 @@ cnat_output_feature_new_flow_inline (vlib_main_t *vm, vlib_buffer_t *b, ip_addre
 				     cnat_timestamp_t *ts)
 {
   cnat_timestamp_rewrite_t *rw = NULL;
+  vlib_node_registration_t *node =
+    (AF_IP4 == af) ? &cnat_output_feature_ip4_node : &cnat_output_feature_ip6_node;
 
   u32 fwd_fib_index = vnet_buffer (b)->ip.fib_index;
   cnat_snat_policy_entry_t *cpe = cnat_snat_policy_entry_get__ (af, fwd_fib_index);
@@ -371,6 +383,7 @@ cnat_output_feature_new_flow_inline (vlib_main_t *vm, vlib_buffer_t *b, ip_addre
     {
       if (ip_address_is_zero (&cpe->snat_ip4.ce_ip))
 	{
+	  vlib_error_count (vm, node->index, CNAT_ERROR_SNAT_ADDRESS_UNAVAILABLE, 1);
 	  rw->cts_dpoi_next_node = CNAT_FEATURE_NEXT_DROP;
 	  return (rw);
 	}
@@ -381,6 +394,7 @@ cnat_output_feature_new_flow_inline (vlib_main_t *vm, vlib_buffer_t *b, ip_addre
     {
       if (ip_address_is_zero (&cpe->snat_ip6.ce_ip))
 	{
+	  vlib_error_count (vm, node->index, CNAT_ERROR_SNAT_ADDRESS_UNAVAILABLE, 1);
 	  rw->cts_dpoi_next_node = CNAT_FEATURE_NEXT_DROP;
 	  return (rw);
 	}
@@ -392,8 +406,6 @@ cnat_output_feature_new_flow_inline (vlib_main_t *vm, vlib_buffer_t *b, ip_addre
   rv = cnat_allocate_port (fwd_fib_index, &sport, rw->tuple.iproto);
   if (rv)
     {
-      vlib_node_registration_t *node =
-	(AF_IP4 == af) ? &cnat_output_feature_ip4_node : &cnat_output_feature_ip6_node;
       vlib_node_increment_counter (vm, node->index, CNAT_ERROR_EXHAUSTED_PORTS, 1);
       rw->cts_dpoi_next_node = CNAT_FEATURE_NEXT_DROP;
       return (rw);
