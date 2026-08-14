@@ -119,6 +119,24 @@
       "message": "Can you confirm this regression only happen on E810Cq NICs and no impact other venders",
       "revId": "41670e446922eb29b97c90f4ff36b95a6347beaf",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b6449216_76105620",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2026-08-14T11:49:37Z",
+      "side": 1,
+      "message": "So far I can confirm E810CQ is affected but ConnectX7 is not affected, both on Skylake. Let me tweak the CSIT code to runthe test on more combinations.",
+      "parentUuid": "20b0ac8a_d53b2caf",
+      "revId": "41670e446922eb29b97c90f4ff36b95a6347beaf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
