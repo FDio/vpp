@@ -219,6 +219,19 @@ typedef enum cnat_lookup_state_t_
   CNAT_LOOKUP_IS_DONE = 4,
 } cnat_lookup_state_t;
 
+typedef enum cnat_flow_class_t_
+{
+  /* Failed or not yet finalized. Counted only in total. */
+  CNAT_FLOW_CLASS_UNCLASSIFIED,
+  /* At least one address or port rewrite is applied. */
+  CNAT_FLOW_CLASS_NAT,
+  /* Explicit Maglev/DSR decision to forward without a rewrite. */
+  CNAT_FLOW_CLASS_NO_NAT,
+  /* Tracked without either a rewrite or an explicit NO_NAT decision. */
+  CNAT_FLOW_CLASS_PASS_THROUGH,
+  CNAT_N_FLOW_CLASSES,
+} cnat_flow_class_t;
+
 typedef struct cnat_timestamp_t_
 {
   /* Last time said session was seen */
@@ -234,6 +247,11 @@ typedef struct cnat_timestamp_t_
   u8 ts_session_refcnt;
 
   u8 ts_rw_bm;
+
+  /* Active-flow gauge classification. UNCLASSIFIED entries contribute only
+   * to the total gauge. */
+  u8 ts_flow_class;
+
   cnat_timestamp_rewrite_t cts_rewrites[VLIB_N_DIR * CNAT_N_LOCATIONS];
 
 } cnat_timestamp_t;
