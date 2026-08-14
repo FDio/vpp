@@ -282,8 +282,8 @@ VLIB_REGISTER_NODE (sfdp_nat_slowpath_node) = {
 
 SFDP_SERVICE_DEFINE (nat_output) = {
   .node_name = "sfdp-nat-output",
-  .runs_before = SFDP_SERVICES ("sfdp-geneve-output", "sfdp-nat-late-rewrite"),
-  .runs_after = SFDP_SERVICES ("sfdp-drop", "sfdp-l4-lifecycle",
-			       "sfdp-tcp-check"),
+  .runs_before = SFDP_SERVICES ("sfdp-geneve-output", "sfdp-nat-late-rewrite", "ip4-lookup",
+				"ip6-lookup"),
+  .runs_after = SFDP_SERVICES ("sfdp-drop", "sfdp-l4-lifecycle", "sfdp-tcp-check"),
   .is_terminal = 0
 };

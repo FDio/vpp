@@ -247,16 +247,15 @@ VLIB_REGISTER_NODE (sfdp_nat_late_rewrite_node) = {
 
 SFDP_SERVICE_DEFINE (nat_late_rewrite) = {
   .node_name = "sfdp-nat-late-rewrite",
-  .runs_before = SFDP_SERVICES (0),
-  .runs_after = SFDP_SERVICES ("sfdp-drop", "sfdp-l4-lifecycle",
-			       "sfdp-tcp-check", "sfdp-nat-output"),
+  .runs_before = SFDP_SERVICES ("ip4-lookup", "ip6-lookup"),
+  .runs_after = SFDP_SERVICES ("sfdp-drop", "sfdp-l4-lifecycle", "sfdp-tcp-check",
+			       "sfdp-nat-output"),
   .is_terminal = 1
 };
 
 SFDP_SERVICE_DEFINE (nat_early_rewrite) = {
   .node_name = "sfdp-nat-early-rewrite",
-  .runs_before = SFDP_SERVICES ("sfdp-geneve-output"),
-  .runs_after = SFDP_SERVICES ("sfdp-drop", "sfdp-l4-lifecycle",
-			       "sfdp-tcp-check"),
+  .runs_before = SFDP_SERVICES ("sfdp-geneve-output", "ip4-lookup", "ip6-lookup"),
+  .runs_after = SFDP_SERVICES ("sfdp-drop", "sfdp-l4-lifecycle", "sfdp-tcp-check"),
   .is_terminal = 0
 };
