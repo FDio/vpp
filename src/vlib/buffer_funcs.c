@@ -294,6 +294,35 @@ next:
 }
 
 static_always_inline void
+vlib_buffer_get_next_frame_with_aux64_and_scalar (vlib_main_t *vm, vlib_node_runtime_t *node,
+						  u16 next_index, u32 **to_next, u64 **to_next_aux,
+						  u32 *n_left_to_next, void *scalar_data,
+						  u16 scalar_size)
+{
+  vlib_frame_t *f;
+  u32 n_used;
+
+  f = vlib_get_next_frame_internal (vm, node, next_index, 0);
+  n_used = f->n_vectors;
+
+  /* Scalar arguments apply to every vector in a frame.  Preserve batching
+   * when the existing frame has compatible arguments, but do not let a new
+   * producer reinterpret vectors that are already present. */
+  if (PREDICT_FALSE (n_used && clib_memcmp (vlib_frame_scalar_args (f), scalar_data, scalar_size)))
+    {
+      f = vlib_get_next_frame_internal (vm, node, next_index, 1);
+      n_used = f->n_vectors;
+    }
+
+  if (n_used == 0)
+    clib_memcpy_fast (vlib_frame_scalar_args (f), scalar_data, scalar_size);
+
+  *to_next = (u32 *) vlib_frame_vector_args (f) + n_used;
+  *to_next_aux = (u64 *) vlib_frame_aux_args (f) + n_used;
+  *n_left_to_next = VLIB_FRAME_SIZE - n_used;
+}
+
+static_always_inline void
 vlib_buffer_enqueue_to_single_next_aux64_and_scalar_fn_inline (vlib_main_t *vm,
 							       vlib_node_runtime_t *node,
 							       u32 *buffers, u64 *aux_data,
@@ -302,11 +331,9 @@ vlib_buffer_enqueue_to_single_next_aux64_and_scalar_fn_inline (vlib_main_t *vm,
 {
   u32 *to_next, n_left_to_next, n_enq;
   u64 *to_next_aux;
-  vlib_next_frame_t *nf;
 
-  vlib_get_next_frame_with_aux (vm, node, next_index, to_next, to_next_aux, n_left_to_next);
-  nf = vlib_node_runtime_get_next_frame (vm, node, next_index);
-  clib_memcpy_fast (vlib_frame_scalar_args (nf->frame), scalar_data, scalar_size);
+  vlib_buffer_get_next_frame_with_aux64_and_scalar (vm, node, next_index, &to_next, &to_next_aux,
+						    &n_left_to_next, scalar_data, scalar_size);
 
   if (PREDICT_TRUE (n_left_to_next >= count))
     {
@@ -330,9 +357,8 @@ next:
       aux_data += n_enq;
 
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
-      vlib_get_next_frame_with_aux (vm, node, next_index, to_next, to_next_aux, n_left_to_next);
-      nf = vlib_node_runtime_get_next_frame (vm, node, next_index);
-      clib_memcpy_fast (vlib_frame_scalar_args (nf->frame), scalar_data, scalar_size);
+      vlib_buffer_get_next_frame_with_aux64_and_scalar (
+	vm, node, next_index, &to_next, &to_next_aux, &n_left_to_next, scalar_data, scalar_size);
       n_enq = clib_min (n_left_to_next, count);
       goto next;
     }

@@ -1118,9 +1118,20 @@ esp_encrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   return frame->n_vectors;
 }
 
+always_inline u16
+esp_encrypt_post_validate_next (vlib_buffer_t *b, vlib_node_runtime_t *node, u16 next,
+				u16 drop_next)
+{
+  if (PREDICT_TRUE (next < node->n_next_nodes))
+    return next;
+
+  b->error = node->errors[ESP_ENCRYPT_ERROR_INVALID_POST_NEXT];
+  return drop_next;
+}
+
 always_inline uword
-esp_encrypt_post_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
-			 vlib_frame_t * frame)
+esp_encrypt_post_inline (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame,
+			 u16 drop_next)
 {
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b = bufs;
   u16 nexts[VLIB_FRAME_SIZE], *next = nexts;
@@ -1177,6 +1188,11 @@ esp_encrypt_post_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    }
 	}
 
+      next[0] = esp_encrypt_post_validate_next (b[0], node, next[0], drop_next);
+      next[1] = esp_encrypt_post_validate_next (b[1], node, next[1], drop_next);
+      next[2] = esp_encrypt_post_validate_next (b[2], node, next[2], drop_next);
+      next[3] = esp_encrypt_post_validate_next (b[3], node, next[3], drop_next);
+
       b += 4;
       next += 4;
       n_left -= 4;
@@ -1191,6 +1207,8 @@ esp_encrypt_post_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 							 sizeof (*tr));
 	  tr->next_index = next[0];
 	}
+
+      next[0] = esp_encrypt_post_validate_next (b[0], node, next[0], drop_next);
 
       b += 1;
       next += 1;
@@ -1236,7 +1254,7 @@ VLIB_NODE_FN (esp4_encrypt_post_node) (vlib_main_t * vm,
 				       vlib_node_runtime_t * node,
 				       vlib_frame_t * from_frame)
 {
-  return esp_encrypt_post_inline (vm, node, from_frame);
+  return esp_encrypt_post_inline (vm, node, from_frame, ESP_ENCRYPT_NEXT_DROP4);
 }
 
 VLIB_REGISTER_NODE (esp4_encrypt_post_node) = {
@@ -1273,7 +1291,7 @@ VLIB_NODE_FN (esp6_encrypt_post_node) (vlib_main_t * vm,
 				       vlib_node_runtime_t * node,
 				       vlib_frame_t * from_frame)
 {
-  return esp_encrypt_post_inline (vm, node, from_frame);
+  return esp_encrypt_post_inline (vm, node, from_frame, ESP_ENCRYPT_NEXT_DROP6);
 }
 
 VLIB_REGISTER_NODE (esp6_encrypt_post_node) = {
@@ -1321,7 +1339,7 @@ VLIB_NODE_FN (esp4_encrypt_tun_post_node) (vlib_main_t * vm,
 				  vlib_node_runtime_t * node,
 				  vlib_frame_t * from_frame)
 {
-  return esp_encrypt_post_inline (vm, node, from_frame);
+  return esp_encrypt_post_inline (vm, node, from_frame, ESP_ENCRYPT_NEXT_DROP4);
 }
 
 VLIB_REGISTER_NODE (esp4_encrypt_tun_post_node) = {
@@ -1369,7 +1387,7 @@ VLIB_NODE_FN (esp6_encrypt_tun_post_node) (vlib_main_t * vm,
 					   vlib_node_runtime_t * node,
 					   vlib_frame_t * from_frame)
 {
-  return esp_encrypt_post_inline (vm, node, from_frame);
+  return esp_encrypt_post_inline (vm, node, from_frame, ESP_ENCRYPT_NEXT_DROP6);
 }
 
 VLIB_REGISTER_NODE (esp6_encrypt_tun_post_node) = {
@@ -1415,7 +1433,7 @@ VLIB_REGISTER_NODE (esp_mpls_encrypt_tun_node) = {
 VLIB_NODE_FN (esp_mpls_encrypt_tun_post_node)
 (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *from_frame)
 {
-  return esp_encrypt_post_inline (vm, node, from_frame);
+  return esp_encrypt_post_inline (vm, node, from_frame, ESP_ENCRYPT_NEXT_DROP_MPLS);
 }
 
 VLIB_REGISTER_NODE (esp_mpls_encrypt_tun_post_node) = {
