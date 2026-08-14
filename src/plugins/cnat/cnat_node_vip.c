@@ -60,6 +60,8 @@ cnat_vip_feature_new_flow_inline (vlib_main_t *vm, vlib_buffer_t *b, ip_address_
   if (PREDICT_FALSE (!trk0))
     {
       /* Load balance is empty or not resolved, drop  */
+      vlib_node_registration_t *node = (AF_IP4 == af) ? &cnat_vip_ip4_node : &cnat_vip_ip6_node;
+      vlib_error_count (vm, node->index, CNAT_ERROR_NO_ACTIVE_BACKEND, 1);
       rw->cts_dpoi_next_node = CNAT_NODE_VIP_NEXT_DROP;
       return (rw);
     }
@@ -157,7 +159,11 @@ cnat_vip_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_buffer_t *b, 
 	     NULL;
     }
   else if (vnet_buffer2 (b)->session.state == CNAT_LOOKUP_IS_NEW)
-    rw = cnat_vip_feature_new_flow_inline (vm, b, af, ts, cc);
+    {
+      rw = cnat_vip_feature_new_flow_inline (vm, b, af, ts, cc);
+      if (rw && rw->cts_dpoi_next_node != CNAT_NODE_VIP_NEXT_DROP)
+	cnat_flow_classify (ts, CNAT_FLOW_CLASS_NAT);
+    }
 
   cnat_translation (b, af, rw, &ts->lifetime, cm->tcp_max_age, 0 /* iph_offset */);
   cnat_set_rw_next_node (b, rw, next0);
