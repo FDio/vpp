@@ -136,12 +136,33 @@ dispatch_pcap_trace (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  /* Is this packet traced? */
 	  if (PREDICT_FALSE (b->flags & VLIB_BUFFER_IS_TRACED))
 	    {
-	      vlib_trace_header_t **h = pool_elt_at_index (
-		tm->trace_buffer_pool, vlib_buffer_get_trace_index (b));
-
-	      dtt->pcap_buffer = format (dtt->pcap_buffer, "%U%c",
-					 format_vlib_trace, vm, h[0], 0);
-	      string_count++;
+	      /*
+	       * Trace buffers are per-thread. b->trace_handle encodes the
+	       * recording thread in its high byte (vlib_buffer_get_trace_thread)
+	       * and the pool index in the low 24 bits. A packet traced on one
+	       * worker may be handed off to another (e.g. via NAT). The trace
+	       * pool of the *current* thread (tm->trace_buffer_pool) is only
+	       * valid for packets that were traced on this same thread; another
+	       * thread's pool may be NULL or freed concurrently. So we may only
+	       * safely read the trace when it was recorded on the current thread.
+	       * For handed-off packets the trace text is already captured during
+	       * the recording thread's own dispatch pass, so skipping here loses
+	       * nothing. This fixes the cross-worker-handoff SIGSEGV
+	       * (DISP-TRACE-HANDOFF evidence: cur_thread=4 traced_by_thread=1
+	       * at nat44-ed-out2in, cur_pool=0x0).
+	       */
+	      u32 traced_thread = vlib_buffer_get_trace_thread (b);
+	      if (traced_thread == vm->thread_index && tm->trace_buffer_pool != NULL)
+		{
+		  vlib_trace_header_t **h =
+		    pool_elt_at_index (tm->trace_buffer_pool, vlib_buffer_get_trace_index (b));
+		  if (h[0] != NULL)
+		    {
+		      dtt->pcap_buffer =
+			format (dtt->pcap_buffer, "%U%c", format_vlib_trace, vm, h[0], 0);
+		      string_count++;
+		    }
+		}
 	    }
 
 	  /* Save the string count */
@@ -273,6 +294,7 @@ vlib_pcap_dispatch_trace_configure (vlib_pcap_dispatch_trace_args_t *a)
   /* Independent of enable/disable, to allow buffer trace multi nodes */
   if (a->buffer_trace_node_index != ~0)
     {
+      vlib_worker_thread_barrier_sync (vm);
       foreach_vlib_main ()
 	{
 	  tm = &this_vlib_main->trace_main;
@@ -291,6 +313,7 @@ vlib_pcap_dispatch_trace_configure (vlib_pcap_dispatch_trace_args_t *a)
 	    clib_warning ("Dispatch wrapper already in use on thread %u",
 			  this_vlib_main->thread_index);
 	}
+      vlib_worker_thread_barrier_release (vm);
       vec_add1 (dtm->dispatch_buffer_trace_nodes, a->buffer_trace_node_index);
     }
 
@@ -322,6 +345,7 @@ vlib_pcap_dispatch_trace_configure (vlib_pcap_dispatch_trace_args_t *a)
   else
     {
       dtm->enable = 0;
+      vlib_worker_thread_barrier_sync (vm);
       /* Disable filter */
       dtm->filter_enable = 0;
       foreach_vlib_main ()
@@ -331,6 +355,7 @@ vlib_pcap_dispatch_trace_configure (vlib_pcap_dispatch_trace_args_t *a)
 	  tm->filter_count = 0;
 	  vlib_node_set_dispatch_wrapper (this_vlib_main, 0);
 	}
+      vlib_worker_thread_barrier_release (vm);
       vec_reset_length (dtm->dispatch_buffer_trace_nodes);
       if (pm->n_packets_captured)
 	{
