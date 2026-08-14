@@ -97,6 +97,9 @@ typedef struct cnat_snat_policy_entry_t_
   /* SNAT policy for the output feature node */
   cnat_snat_policy_t snat_policy;
 
+  /* The prefix bihash and interface maps have been initialized. */
+  u8 is_initialized;
+
   cnat_snat_policy_flags_t flags;
 
 } cnat_snat_policy_entry_t;
