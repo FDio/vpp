@@ -778,7 +778,7 @@ hsi_tcp_drain_try_complete (session_t *s, tcp_connection_t *tc, hsi_tcp_drain_t 
     }
 
   peer_tc = hsi_tcp_connection_at_session (peer_s);
-  if (!(peer_tc->cfg_flags & TCP_CFG_F_TRACKED))
+  if (!(peer_tc->cfg_flags & TCP_CFG_F_TRACKED) || peer_tc->state == TCP_STATE_CLOSED)
     return 0;
 
   rv = hsi_tcp_drain_update_and_needs_drain (s, tc, drain, now);
