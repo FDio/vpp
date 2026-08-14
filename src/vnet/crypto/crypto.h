@@ -294,9 +294,9 @@ typedef enum
 } __clib_packed vnet_crypto_op_status_t;
 
 #define foreach_crypto_handler_type                                                                \
+  _ (ASYNC, "async")                                                                               \
   _ (SIMPLE, "simple")                                                                             \
-  _ (CHAINED, "chained")                                                                           \
-  _ (ASYNC, "async")
+  _ (CHAINED, "chained")
 
 typedef enum
 {
