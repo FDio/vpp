@@ -78,6 +78,32 @@ To show existing translations and sessions you can use
   show cnat session verbose
   show cnat translation
 
+Statistics
+----------
+
+CNAT exports gauges for the currently allocated flows. Here, a ``flow`` is
+the timestamp object referenced by one or more directional session entries.
+The word ``active`` is therefore implicit in every ``/cnat/flows/`` name.
+
+* ``/cnat/flows/total``: all allocated flows, excluding the timestamp reserved
+  at index zero. This can include cached failed flows until they are purged or
+  expire.
+* ``/cnat/flows/nat``: flows with an address or port rewrite.
+* ``/cnat/flows/no-nat``: flows explicitly marked ``NO_NAT`` for Maglev/DSR.
+  These are deliberately forwarded without changing the inner packet.
+* ``/cnat/flows/pass-through``: tracked flows for which CNAT applies neither a
+  rewrite nor an explicit ``NO_NAT`` decision.
+
+The three class gauges contain successfully classified flows. Consequently,
+their sum can be less than ``/cnat/flows/total`` while failed entries remain
+cached. All gauges decrease when their flow expires or is purged.
+
+``/cnat/sessions/total`` is retained as a compatibility name for
+``/cnat/flows/total``. It counts timestamp flows, not the directional entries
+displayed by ``show cnat session``. ``/net/cnat-translation`` is a separate
+combined packet/byte counter updated when new traffic matches a translation;
+it is not an active-flow gauge.
+
 
 SourceNATing outgoing traffic
 -----------------------------

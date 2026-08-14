@@ -525,14 +525,27 @@ out:
 }
 
 static void
-cnat_sessions_collect_total_fn (vlib_stats_collector_data_t *d)
+cnat_flows_collect_fn (vlib_stats_collector_data_t *d)
 {
   const cnat_timestamp_mpool_t *ctm = &cnat_timestamps;
-  u32 total = 0;
-  int i;
-  vec_foreach_index (i, ctm->ts_pools)
-    total += pool_elts (vec_elt (ctm->ts_pools, i));
-  d->entry->value = total;
+
+  if (d->private_data == CNAT_FLOW_CLASS_UNCLASSIFIED)
+    d->entry->value = clib_atomic_load_relax_n (&ctm->active_flows);
+  else
+    d->entry->value =
+      clib_atomic_load_relax_n (&ctm->active_flows_by_class[d->private_data]);
+}
+
+static void
+cnat_flows_register_gauge (char *path, cnat_flow_class_t flow_class)
+{
+  vlib_stats_collector_reg_t reg = {
+    .entry_index = vlib_stats_add_gauge (path),
+    .collect_fn = cnat_flows_collect_fn,
+    .private_data = flow_class,
+  };
+
+  vlib_stats_register_collector_fn (&reg);
 }
 
 static clib_error_t *
@@ -552,10 +565,13 @@ cnat_session_init (vlib_main_t * vm)
   vec_validate_init_empty_aligned (ctm->sessions_per_vrf_ip6, CNAT_FIB_TABLE,
 				   ctm->max_sessions_per_vrf, CLIB_CACHE_LINE_BYTES);
 
-  vlib_stats_collector_reg_t reg;
-  reg.entry_index = vlib_stats_add_gauge ("/cnat/sessions/total");
-  reg.collect_fn = cnat_sessions_collect_total_fn;
-  vlib_stats_register_collector_fn (&reg);
+  cnat_flows_register_gauge ("/cnat/flows/total", CNAT_FLOW_CLASS_UNCLASSIFIED);
+  cnat_flows_register_gauge ("/cnat/flows/nat", CNAT_FLOW_CLASS_NAT);
+  cnat_flows_register_gauge ("/cnat/flows/no-nat", CNAT_FLOW_CLASS_NO_NAT);
+  cnat_flows_register_gauge ("/cnat/flows/pass-through", CNAT_FLOW_CLASS_PASS_THROUGH);
+
+  /* Compatibility name. Both total paths are collected from active_flows. */
+  cnat_flows_register_gauge ("/cnat/sessions/total", CNAT_FLOW_CLASS_UNCLASSIFIED);
 
   return (NULL);
 }

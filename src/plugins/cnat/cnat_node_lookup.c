@@ -83,6 +83,23 @@ set_buffer_fib_index_from_interface (u32 *fib_index_by_sw_if_index, vlib_buffer_
 }
 
 always_inline void
+cnat_writeback_classify_flow (cnat_timestamp_t *ts)
+{
+  if (ts->ts_rw_bm & (1 << CNAT_LOCATION_INPUT))
+    {
+      cnat_timestamp_rewrite_t *rw = &ts->cts_rewrites[CNAT_LOCATION_INPUT];
+      cnat_flow_classify (
+	ts, rw->cts_flags & CNAT_TS_RW_FLAG_NO_NAT ?
+	      CNAT_FLOW_CLASS_NO_NAT :
+	      CNAT_FLOW_CLASS_NAT);
+    }
+  else if (ts->ts_rw_bm & (1 << CNAT_LOCATION_OUTPUT))
+    cnat_flow_classify (ts, CNAT_FLOW_CLASS_NAT);
+  else
+    cnat_flow_classify (ts, CNAT_FLOW_CLASS_PASS_THROUGH);
+}
+
+always_inline void
 cnat_writeback_new_flow (vlib_buffer_t *b, ip_address_family_t af, u16 *next)
 {
   cnat_bihash_kv_t bkey;
@@ -91,16 +108,18 @@ cnat_writeback_new_flow (vlib_buffer_t *b, ip_address_family_t af, u16 *next)
   u32 n_retries = 0, rv, port_seed = 0;
   cnat_main_t *cm = &cnat_main;
 
-  if (vnet_buffer2 (b)->session.flags & CNAT_BUFFER_SESSION_FLAG_NO_RETURN)
-    {
-      vnet_buffer2 (b)->session.state = CNAT_LOOKUP_IS_DONE;
-      return;
-    }
-
   ts = cnat_timestamp_get_if_exists (b->flow_id);
   if (ts == NULL)
     {
       *next = 0; // TODO: DROP, probably needs improvement
+      return;
+    }
+
+  cnat_writeback_classify_flow (ts);
+
+  if (vnet_buffer2 (b)->session.flags & CNAT_BUFFER_SESSION_FLAG_NO_RETURN)
+    {
+      vnet_buffer2 (b)->session.state = CNAT_LOOKUP_IS_DONE;
       return;
     }
 

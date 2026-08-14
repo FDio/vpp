@@ -38,6 +38,7 @@ N_REMOTE_HOSTS = 3
 N_SESSIONS_MAX = 256
 N_SESSIONS_PER_VRF = 200
 CNAT_TR_FLAG_NO_CLIENT = 8
+CNAT_EPT_NO_NAT = 2
 
 SRC = 0
 DST = 1
@@ -77,6 +78,25 @@ class CnatCommonTestCase(VppTestCase):
     @classmethod
     def tearDownClass(cls):
         super(CnatCommonTestCase, cls).tearDownClass()
+
+    def assert_cnat_flow_stats(self, **expected):
+        paths = {
+            "total": "/cnat/flows/total",
+            "nat": "/cnat/flows/nat",
+            "no_nat": "/cnat/flows/no-nat",
+            "pass_through": "/cnat/flows/pass-through",
+        }
+        actual = {}
+        for _ in range(50):
+            actual = {
+                name: self.statistics.get_counter(paths[name])[0][0]
+                for name in expected
+            }
+            if actual == expected:
+                return
+            self.sleep(0.1)
+        for name, value in expected.items():
+            self.assertEqual(actual[name], value)
 
 
 class Endpoint(object):
@@ -143,8 +163,12 @@ class Translation(VppObject):
 
     def _encoded_paths(self):
         return [
-            {"src_ep": src.encode(), "dst_ep": dst.encode()}
-            for (src, dst) in self.paths
+            {
+                "src_ep": path[SRC].encode(),
+                "dst_ep": path[DST].encode(),
+                "flags": path[2] if len(path) > 2 else 0,
+            }
+            for path in self.paths
         ]
 
     def add_vpp_config(self, flags=0):
@@ -773,6 +797,7 @@ class TestCNatTranslation(CnatCommonTestCase):
         self.virtual_sleep(20)
         sessions = self.vapi.cnat_session_dump()
         self.assertEqual(len(sessions), 0)
+        self.assert_cnat_flow_stats(total=0, nat=0, no_nat=0, pass_through=0)
         self.vapi.cli("test cnat scanner off")
 
         #
@@ -852,7 +877,7 @@ class TestCNatTranslation(CnatCommonTestCase):
             ).add_vpp_config(flags)
         )
 
-    def _make_remote_backend_translation_v4(self, flags=0):
+    def _make_remote_backend_translation_v4(self, flags=0, path_flags=0):
         self.translations = []
         self.mbtranslations = []
         self.translations.append(
@@ -864,6 +889,7 @@ class TestCNatTranslation(CnatCommonTestCase):
                     (
                         Endpoint(is_v6=False),
                         Endpoint(ip="2.2.2.2", port=4001, is_v6=False),
+                        path_flags,
                     )
                 ],
                 0x9F,
@@ -996,6 +1022,27 @@ class TestCNatTranslation(CnatCommonTestCase):
         self.cnat_enable_features()
         self.make_encap_vxlan()
         self.cnat_encap_vxlan()
+        self.cnat_enable_features(0)
+
+    def test_cnat_no_nat(self):
+        self._make_remote_backend_translation_v4(
+            CNAT_TR_FLAG_NO_CLIENT, CNAT_EPT_NO_NAT
+        )
+        self.cnat_enable_features()
+        self.make_encap()
+        self.assert_cnat_flow_stats(total=0, nat=0, no_nat=0, pass_through=0)
+
+        translation = self.translations[0]
+        vip = translation.vip
+        ctx = CnatTestContext(self, translation.iproto, vip.is_v6)
+        ctx.cnat_send(self.pg0, 0, 1234, self.pg2, vip.ip, vip.port)
+        ctx.cnat_expect(self.pg1, 0, 1234, self.pg2, 0, vip.port)
+        for rx in ctx.rxs:
+            self.assertEqual(rx[IP].payload.dst, vip.ip)
+
+        self.assert_cnat_flow_stats(total=1, nat=0, no_nat=1, pass_through=0)
+        self.vapi.cnat_session_purge()
+        self.assert_cnat_flow_stats(total=0, nat=0, no_nat=0, pass_through=0)
         self.cnat_enable_features(0)
 
     def test_fib_delete_translation(self):
@@ -1265,9 +1312,11 @@ class TestCNatSourceNAT(CnatCommonTestCase):
 
     def sourcenat_test_tcp_udp_conf(self, L4PROTO, is_v6=False):
         ctx = CnatTestContext(self, L4PROTO, is_v6)
+        self.assert_cnat_flow_stats(total=0, nat=0, no_nat=0, pass_through=0)
         # we should source NAT
         ctx.cnat_send(self.pg0, 0, 1234, self.pg1, 0, 6661)
         ctx.cnat_expect(self.pg2, 0, None, self.pg1, 0, 6661)
+        self.assert_cnat_flow_stats(total=1, nat=1, no_nat=0, pass_through=0)
         ctx.cnat_send_return().cnat_expect_return()
 
         # exclude dst address of pg1.1 from snat
@@ -1286,6 +1335,7 @@ class TestCNatSourceNAT(CnatCommonTestCase):
         # We should not source NAT the id=1
         ctx.cnat_send(self.pg0, 0, 1234, self.pg1, 1, 6661)
         ctx.cnat_expect(self.pg0, 0, 1234, self.pg1, 1, 6661)
+        self.assert_cnat_flow_stats(total=2, nat=1, no_nat=0, pass_through=1)
         ctx.cnat_send_return().cnat_expect_return()
 
         # But we should source NAT the id=0
@@ -1296,10 +1346,12 @@ class TestCNatSourceNAT(CnatCommonTestCase):
         # remove remote host from exclude list
         self.vapi.cnat_snat_policy_add_del_exclude_pfx(prefix=exclude_prefix, is_add=0)
         self.vapi.cnat_session_purge()
+        self.assert_cnat_flow_stats(total=0, nat=0, no_nat=0, pass_through=0)
 
         # We should source NAT again
         ctx.cnat_send(self.pg0, 0, 1234, self.pg1, 1, 6661)
         ctx.cnat_expect(self.pg2, 0, None, self.pg1, 1, 6661)
+        self.assert_cnat_flow_stats(total=1, nat=1, no_nat=0, pass_through=0)
         ctx.cnat_send_return().cnat_expect_return()
 
         # test return ICMP error nating
@@ -1308,6 +1360,7 @@ class TestCNatSourceNAT(CnatCommonTestCase):
         ctx.cnat_send_icmp_return_error().cnat_expect_icmp_error_return()
 
         self.vapi.cnat_session_purge()
+        self.assert_cnat_flow_stats(total=0, nat=0, no_nat=0, pass_through=0)
 
     def test_snat_limit(self):
         """CNAT Source Nat sessions limit"""
