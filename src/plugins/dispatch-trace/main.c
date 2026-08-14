@@ -136,12 +136,17 @@ dispatch_pcap_trace (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  /* Is this packet traced? */
 	  if (PREDICT_FALSE (b->flags & VLIB_BUFFER_IS_TRACED))
 	    {
-	      vlib_trace_header_t **h = pool_elt_at_index (
-		tm->trace_buffer_pool, vlib_buffer_get_trace_index (b));
-
-	      dtt->pcap_buffer = format (dtt->pcap_buffer, "%U%c",
-					 format_vlib_trace, vm, h[0], 0);
-	      string_count++;
+        if (tm->trace_buffer_pool != NULL)
+          {
+            vlib_trace_header_t **h = pool_elt_at_index (
+        tm->trace_buffer_pool, vlib_buffer_get_trace_index (b));
+            if (h[0] != NULL)
+              {
+                dtt->pcap_buffer = format (dtt->pcap_buffer, "%U%c",
+                  format_vlib_trace, vm, h[0], 0);
+                string_count++;
+              }
+          }
 	    }
 
 	  /* Save the string count */
