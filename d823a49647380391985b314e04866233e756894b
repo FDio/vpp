@@ -50,6 +50,46 @@
       "message": "Re-run failed jobs via GitHub UI",
       "revId": "d823a49647380391985b314e04866233e756894b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ef0065ff_404f8c05",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2026-08-15T15:16:16Z",
+      "side": 1,
+      "message": "Thanks for working on this. Please try to understand and resolve the root cause, see code comment...",
+      "revId": "d823a49647380391985b314e04866233e756894b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "52ef373d_b91bb595",
+        "filename": "src/plugins/dispatch-trace/main.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 139,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2026-08-15T15:16:16Z",
+      "side": 1,
+      "message": "If possible, please figure out why tm-\u003etrace_buffer_pool is NULL in the case at hand and fix the root cause.",
+      "range": {
+        "startLine": 139,
+        "startChar": 0,
+        "endLine": 139,
+        "endChar": 2
+      },
+      "revId": "d823a49647380391985b314e04866233e756894b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
