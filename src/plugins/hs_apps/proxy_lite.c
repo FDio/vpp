@@ -328,7 +328,12 @@ proxy_lite_start_hsi_offload (session_t *s, session_handle_t peer_handle, u32 ps
 	}
     }
   else
-    proxy_lite_session_finish_hsi (ps);
+    {
+      if (s->thread_index == sh.thread_index || ps->hsi_offload_stall)
+	proxy_lite_session_finish_hsi (ps);
+      else
+	ps->state = PROXY_LITE_S_PROXYING;
+    }
   pm->hsi_tracked++;
   clib_spinlock_unlock_if_init (&pm->sessions_lock);
 
