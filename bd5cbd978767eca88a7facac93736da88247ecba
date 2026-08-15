@@ -16,6 +16,23 @@
       "message": "recheck",
       "revId": "bd5cbd978767eca88a7facac93736da88247ecba",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "559ef8fd_a934cd7b",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-08-15T02:08:11Z",
+      "side": 1,
+      "message": "Checkstyle job failed with:\nmake: *** [Makefile:900: checkstyle] Error 1\n\nPlease run \u0027make fixstyle\u0027 and upload new patchset",
+      "revId": "bd5cbd978767eca88a7facac93736da88247ecba",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
