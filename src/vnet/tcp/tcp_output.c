@@ -1330,7 +1330,7 @@ tcp_cc_rxt_timeout (tcp_connection_t *tc)
     }
 
   if (head_overlaps_rxt || sack_reneged)
-    tc->dsack_flags |= TCP_DSACK_INELIGIBLE;
+    tc->sack_sb.flags |= TCP_DSACK_INELIGIBLE;
 
   tcp_recovery_on (tc);
 
@@ -1883,7 +1883,7 @@ tcp_retransmit_sack_inline (tcp_worker_ctx_t *wrk, tcp_connection_t *tc, u32 bur
 	    goto done;
 
 	  /* A rescue retransmission can overlap bytes below HighRxt. */
-	  tc->dsack_flags |= TCP_DSACK_INELIGIBLE;
+	  tc->sack_sb.flags |= TCP_DSACK_INELIGIBLE;
 	  sb->rescue_rxt = tc->snd_congestion;
 	  bi = vlib_get_buffer_index (vm, b);
 	  tcp_enqueue_to_output (wrk, b, bi, tc->c_is_ip4);

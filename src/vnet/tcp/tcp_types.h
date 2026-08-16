@@ -185,6 +185,18 @@ STATIC_ASSERT (STRUCT_OFFSET_OF (sack_scoreboard_hole_t, range.is_lost) ==
 		 STRUCT_OFFSET_OF (sack_scoreboard_hole_t, is_lost),
 	       "scoreboard range and is_lost offsets must match");
 
+typedef enum tcp_scoreboard_flag_
+{
+  TCP_DSACK_INELIGIBLE = 1,
+  TCP_DSACK_UNDO_DISABLED = 1 << 1,
+  TCP_DSACK_RXT_OVERFLOW = 1 << 2,
+  TCP_DSACK_HISTORY = 1 << 3,
+  TCP_DSACK_RXT_ACTIVE = 1 << 4,
+  TCP_SCOREBOARD_F_RENEGING = 1 << 5,
+} __clib_packed tcp_scoreboard_flag_t;
+
+STATIC_ASSERT_SIZEOF (tcp_scoreboard_flag_t, 1);
+
 typedef struct _sack_scoreboard
 {
   sack_scoreboard_hole_t *holes;	/**< Pool of holes */
@@ -197,7 +209,7 @@ typedef struct _sack_scoreboard
   u32 lost_bytes;			/**< Bytes lost as per RFC6675 */
   u32 cur_rxt_hole;			/**< Retransmitting from this hole */
   u32 reorder;				/**< Estimate of segment reordering */
-  u8 is_reneging;			/**< Flag set if peer is reneging*/
+  tcp_scoreboard_flag_t flags;		/**< Scoreboard and D-SACK state */
 
 #if TCP_SCOREBOARD_TRACE
   scoreboard_trace_elt_t *trace;
@@ -205,14 +217,18 @@ typedef struct _sack_scoreboard
 
 } sack_scoreboard_t;
 
-typedef enum tcp_dsack_state_flag_
+static_always_inline u8
+tcp_scoreboard_is_reneging (const sack_scoreboard_t *sb)
 {
-  TCP_DSACK_INELIGIBLE = 1,
-  TCP_DSACK_UNDO_DISABLED = 1 << 1,
-  TCP_DSACK_RXT_OVERFLOW = 1 << 2,
-  TCP_DSACK_HISTORY = 1 << 3,
-  TCP_DSACK_RXT_ACTIVE = 1 << 4,
-} __clib_packed tcp_dsack_state_flag_t;
+  return (sb->flags & TCP_SCOREBOARD_F_RENEGING) != 0;
+}
+
+static_always_inline void
+tcp_scoreboard_set_reneging (sack_scoreboard_t *sb, u8 is_reneging)
+{
+  sb->flags =
+    (sb->flags & ~TCP_SCOREBOARD_F_RENEGING) | ((is_reneging != 0) * TCP_SCOREBOARD_F_RENEGING);
+}
 
 #define TCP_DSACK_RXT_INVALID_INDEX ((u32) ~0)
 
@@ -449,8 +465,7 @@ typedef struct _tcp_connection
     tcp_dsack_rxt_t *dsack_rxt; /**< Active retransmit ranges for D-SACK undo */
     u32 dsack_history_start;	/**< Lower sequence bound for retired history */
   };
-  u32 dsack_pending_bytes;	      /**< Retransmit bytes without D-SACK evidence */
-  tcp_dsack_state_flag_t dsack_flags; /**< D-SACK undo state */
+  u32 dsack_pending_bytes; /**< Retransmit bytes without D-SACK evidence */
 
   u32 iss;		/**< initial sent sequence */
   u32 irs;		/**< initial remote sequence */
@@ -509,7 +524,7 @@ tcp_cong_recovery_off (tcp_connection_t * tc)
 #define tcp_zero_rwnd_sent_on(tc) (tc)->flags |= TCP_CONN_ZERO_RWND_SENT
 #define tcp_zero_rwnd_sent_off(tc) (tc)->flags &= ~TCP_CONN_ZERO_RWND_SENT
 
-#define tcp_dsack_has_history(tc) (((tc)->dsack_flags & TCP_DSACK_HISTORY) != 0)
+#define tcp_dsack_has_history(tc) (((tc)->sack_sb.flags & TCP_DSACK_HISTORY) != 0)
 
 always_inline tcp_connection_t *
 tcp_get_connection_from_transport (transport_connection_t * tconn)
