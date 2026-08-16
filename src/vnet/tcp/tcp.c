@@ -766,7 +766,7 @@ tcp_connection_init_vars (tcp_connection_t * tc)
   tcp_init_mss (tc);
   scoreboard_init (&tc->sack_sb);
   if (!tcp_cfg.enable_dsack)
-    tc->dsack_flags |= TCP_DSACK_UNDO_DISABLED;
+    tc->sack_sb.flags |= TCP_DSACK_UNDO_DISABLED;
 
   if (tc->state == TCP_STATE_SYN_RCVD)
     tcp_init_snd_vars (tc);

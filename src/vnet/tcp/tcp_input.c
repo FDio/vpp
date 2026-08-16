@@ -735,7 +735,7 @@ tcp_cc_handle_event (tcp_connection_t *tc, tcp_rate_sample_t *rs)
   u8 has_sack = tcp_opts_sack_permitted (&tc->rcv_opts);
 
   /* If reneging, wait for timer based retransmits */
-  if (PREDICT_FALSE (tcp_is_lost_fin (tc) || tc->sack_sb.is_reneging))
+  if (PREDICT_FALSE (tcp_is_lost_fin (tc) || tcp_scoreboard_is_reneging (&tc->sack_sb)))
     return;
 
   /*

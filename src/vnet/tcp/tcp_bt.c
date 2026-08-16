@@ -582,7 +582,7 @@ tcp_bt_track_rxt (tcp_connection_t *tc, u32 start, u32 end)
 {
   u32 tracked;
   u8 track_dsack = tcp_opts_sack_permitted (&tc->rcv_opts) &&
-		   !(tc->dsack_flags & TCP_DSACK_UNDO_DISABLED) && tcp_in_cong_recovery (tc);
+		   !(tc->sack_sb.flags & TCP_DSACK_UNDO_DISABLED) && tcp_in_cong_recovery (tc);
 
   ASSERT (seq_lt (start, end));
 
@@ -595,10 +595,10 @@ tcp_bt_track_rxt (tcp_connection_t *tc, u32 start, u32 end)
 
   if (track_dsack && tracked)
     {
-      if (!(tc->dsack_flags & TCP_DSACK_HISTORY))
+      if (!(tc->sack_sb.flags & TCP_DSACK_HISTORY))
 	{
 	  tc->dsack_history_start = tc->snd_una;
-	  tc->dsack_flags |= TCP_DSACK_HISTORY;
+	  tc->sack_sb.flags |= TCP_DSACK_HISTORY;
 	}
       ASSERT (tc->dsack_pending_bytes <= (u32) ~0 - tracked);
       tc->dsack_pending_bytes += tracked;
@@ -893,7 +893,8 @@ tcp_bt_apply_sacks (tcp_connection_t *tc, u32 ack, u32 high_sacked, u8 has_sack,
 
   rs->ack_flags |= TCP_ACK_F_BT_PROCESSED;
   now = tcp_time_now_us (tc->c_thread_index);
-  old_high_sacked = (sb->sacked_bytes || sb->is_reneging) ? sb->high_sacked : tc->snd_una;
+  old_high_sacked =
+    (sb->sacked_bytes || tcp_scoreboard_is_reneging (sb)) ? sb->high_sacked : tc->snd_una;
 
   if (seq_gt (ack, tc->snd_una))
     {
@@ -916,7 +917,7 @@ tcp_bt_apply_sacks (tcp_connection_t *tc, u32 ack, u32 high_sacked, u8 has_sack,
   /* A cumulative-only ACK already updated the aggregates while retiring its
    * prefix. Only the head is needed to detect that prior SACK state reneged. */
   head = bt_get_sample (bt, bt->head);
-  sb->is_reneging = head && (head->flags & TCP_BTS_IS_SACKED);
+  tcp_scoreboard_set_reneging (sb, head && (head->flags & TCP_BTS_IS_SACKED));
 }
 
 void
@@ -999,7 +1000,7 @@ tcp_bt_handle_sack_reneging (tcp_connection_t *tc)
   u32 lost = 0;
 
   cur = bt_get_sample (bt, bt->head);
-  if (!sb->is_reneging && (!cur || !(cur->flags & TCP_BTS_IS_SACKED)))
+  if (!tcp_scoreboard_is_reneging (sb) && (!cur || !(cur->flags & TCP_BTS_IS_SACKED)))
     return 0;
 
   while (cur)
@@ -1013,7 +1014,7 @@ tcp_bt_handle_sack_reneging (tcp_connection_t *tc)
   sb->sacked_bytes = 0;
   sb->lost_bytes = lost;
   sb->high_sacked = tc->snd_una;
-  sb->is_reneging = 0;
+  tcp_scoreboard_set_reneging (sb, 0);
   sb->reorder = TCP_DUPACK_THRESHOLD;
   bt->sack_loss_high = tc->snd_una;
   tcp_bt_init_rxt (tc, tc->snd_una);
@@ -1244,7 +1245,7 @@ tcp_bt_dsack_recovery_init (tcp_connection_t *tc)
   tcp_bt_sample_t *bts;
   u32 start;
 
-  if (!tcp_opts_sack_permitted (&tc->rcv_opts) || (tc->dsack_flags & TCP_DSACK_UNDO_DISABLED))
+  if (!tcp_opts_sack_permitted (&tc->rcv_opts) || (tc->sack_sb.flags & TCP_DSACK_UNDO_DISABLED))
     return;
 
   bts = bt_get_sample (bt, bt->head);
@@ -1263,7 +1264,7 @@ tcp_bt_dsack_recovery_init (tcp_connection_t *tc)
   if (tc->dsack_pending_bytes)
     {
       tc->dsack_history_start = tc->snd_una;
-      tc->dsack_flags |= TCP_DSACK_HISTORY;
+      tc->sack_sb.flags |= TCP_DSACK_HISTORY;
     }
 }
 
@@ -1272,7 +1273,7 @@ tcp_bt_dsack_recovery_clear (tcp_connection_t *tc)
 {
   tc->dsack_rxt = 0;
   tc->dsack_pending_bytes = 0;
-  tc->dsack_flags &= TCP_DSACK_UNDO_DISABLED;
+  tc->sack_sb.flags &= TCP_SCOREBOARD_F_RENEGING | TCP_DSACK_UNDO_DISABLED;
 }
 
 static void
@@ -1291,7 +1292,8 @@ tcp_bt_process_ack (tcp_connection_t *tc, tcp_rate_sample_t *rs, u32 data_acked)
 
   now = tcp_time_now_us (tc->c_thread_index);
   prev_una = tc->snd_una - rs->bytes_acked;
-  old_high_sacked = (sb->sacked_bytes || sb->is_reneging) ? sb->high_sacked : prev_una;
+  old_high_sacked =
+    (sb->sacked_bytes || tcp_scoreboard_is_reneging (sb)) ? sb->high_sacked : prev_una;
 
   tcp_bt_walk_samples (tc, tc->snd_una, rs, now, old_high_sacked, account);
   if (account)
@@ -1299,7 +1301,7 @@ tcp_bt_process_ack (tcp_connection_t *tc, tcp_rate_sample_t *rs, u32 data_acked)
       bt->sack_loss_high = seq_max (bt->sack_loss_high, tc->snd_una);
       sb->high_sacked = seq_max (old_high_sacked, tc->snd_una);
       head = bt_get_sample (bt, bt->head);
-      sb->is_reneging = head && (head->flags & TCP_BTS_IS_SACKED);
+      tcp_scoreboard_set_reneging (sb, head && (head->flags & TCP_BTS_IS_SACKED));
     }
 }
 
@@ -1366,7 +1368,7 @@ tcp_bt_cleanup (tcp_connection_t * tc)
 
   tc->dsack_rxt = 0;
   tc->dsack_pending_bytes = 0;
-  tc->dsack_flags &= TCP_DSACK_UNDO_DISABLED;
+  tc->sack_sb.flags &= TCP_SCOREBOARD_F_RENEGING | TCP_DSACK_UNDO_DISABLED;
   rb_tree_free_nodes (&bt->sample_lookup);
   pool_free (bt->samples);
   clib_mem_free (bt);
