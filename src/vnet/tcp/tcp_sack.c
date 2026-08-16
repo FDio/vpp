@@ -833,6 +833,11 @@ tcp_sack_extract_dsack (tcp_connection_t *tc, u32 ack, sack_block_t *dsack)
   if (!tcp_sack_detect_dsack (tc, ack, dsack))
     return 0;
 
+  /* A duplicate range larger than any window advertised by the peer is not
+   * credible evidence of a sender-generated duplicate (RFC 5961). */
+  if (PREDICT_FALSE (dsack->end - dsack->start > tc->snd_wnd_max))
+    return 0;
+
   vec_del1 (tc->rcv_opts.sacks, 0);
   tc->rcv_opts.n_sack_blocks -= tc->rcv_opts.n_sack_blocks != 0;
   return 1;

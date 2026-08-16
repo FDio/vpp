@@ -550,6 +550,8 @@ tcp_update_snd_wnd (tcp_connection_t * tc, u32 seq, u32 ack, u32 snd_wnd)
       || (tc->snd_wl1 == seq && seq_leq (tc->snd_wl2, ack)))
     {
       tc->snd_wnd = snd_wnd;
+      if (PREDICT_FALSE (snd_wnd > tc->snd_wnd_max))
+	tc->snd_wnd_max = snd_wnd;
       tc->snd_wl1 = seq;
       tc->snd_wl2 = ack;
       TCP_EVT (TCP_EVT_SND_WND, tc);
@@ -889,11 +891,14 @@ tcp_rcv_ack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc, vlib_buffer_t * b,
   /* If old ACK, probably it's an old dupack */
   if (PREDICT_FALSE (seq_lt (vnet_buffer (b)->tcp.ack_number, tc->snd_una)))
     {
+      u32 old_ack_wnd;
+
       tc->errors.below_ack_wnd += 1;
       *error = TCP_ERROR_ACK_OLD;
       TCP_EVT (TCP_EVT_ACK_RCV_ERR, tc, 1, vnet_buffer (b)->tcp.ack_number);
 
-      if (seq_lt (vnet_buffer (b)->tcp.ack_number, tc->snd_una - tc->rcv_wnd))
+      old_ack_wnd = tcp_old_ack_wnd (tc);
+      if (seq_lt (vnet_buffer (b)->tcp.ack_number, tc->snd_una - old_ack_wnd))
 	return -1;
 
       tcp_handle_old_ack (tc, &rs, vnet_buffer (b)->tcp.ack_number);
@@ -1851,6 +1856,7 @@ tcp46_syn_sent_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 
       /* RFC7323 sec 2.2: Window field in a syn segment must not be scaled */
       new_tc->snd_wnd = clib_net_to_host_u16 (tcp->window);
+      new_tc->snd_wnd_max = new_tc->snd_wnd;
       new_tc->snd_wl1 = seq;
       new_tc->snd_wl2 = ack;
 
@@ -2118,6 +2124,7 @@ tcp46_rcv_process_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  tc->snd_una = vnet_buffer (b[0])->tcp.ack_number;
 	  tc->snd_wnd = clib_net_to_host_u16 (tcp->window)
 			<< tc->rcv_opts.wscale;
+	  tc->snd_wnd_max = clib_max (tc->snd_wnd_max, tc->snd_wnd);
 	  tc->snd_wl1 = vnet_buffer (b[0])->tcp.seq_number;
 	  tc->snd_wl2 = vnet_buffer (b[0])->tcp.ack_number;
 

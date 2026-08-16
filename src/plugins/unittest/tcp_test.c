@@ -1195,6 +1195,7 @@ tcp_test_dsack_rx (vlib_main_t *vm)
       tc->snd_mss = 100;                                                                           \
       tc->snd_una = 1000;                                                                          \
       tc->snd_nxt = 2000;                                                                          \
+      tc->snd_wnd_max = 1000;                                                                      \
       tc->snd_congestion = 1600;                                                                   \
       tc->rcv_opts.flags = TCP_OPTS_FLAG_SACK_PERMITTED | TCP_OPTS_FLAG_SACK;                      \
       rs.ack_flags = 0;                                                                            \
@@ -1283,6 +1284,16 @@ tcp_test_dsack_rx (vlib_main_t *vm)
   tcp_test_rcv_sacks (tc, 1000, &rs);
   TCP_TEST (!(rs.ack_flags & TCP_ACK_F_DSACK),
 	    "do not classify uncontained above-ACK block as D-SACK");
+
+  DSACK_RX_RESET ();
+  tc->snd_wnd_max = 100;
+  block.start = 800;
+  block.end = 1000;
+  vec_add1 (tc->rcv_opts.sacks, block);
+  tc->rcv_opts.n_sack_blocks = 1;
+  tcp_test_rcv_sacks (tc, 1000, &rs);
+  TCP_TEST (!(rs.ack_flags & TCP_ACK_F_DSACK),
+	    "ignore dubious D-SACK larger than maximum advertised window");
 
   /* One retransmission, acknowledged through the recovery point and reported
    * duplicate, is sufficient evidence for undo. */
@@ -1845,6 +1856,27 @@ tcp_test_sack_tx (vlib_main_t * vm, unformat_input_t * input)
 }
 
 static int
+tcp_test_snd_wnd_max (void)
+{
+  tcp_connection_t _tc, *tc = &_tc;
+
+  clib_memset (tc, 0, sizeof (*tc));
+
+  tc->snd_wnd_max = 1000;
+  tc->snd_una = 1000;
+  tc->snd_nxt = 1500;
+  tc->bytes_out = 800;
+  tc->bytes_retrans = 100;
+  TCP_TEST (tcp_old_ack_wnd (tc) == 200, "bound old ACK history by cumulatively acknowledged data");
+
+  tc->bytes_out = (1ULL << 32) + 2000;
+  TCP_TEST (tcp_old_ack_wnd (tc) == tc->snd_wnd_max,
+	    "retain maximum send-window bound across sequence wrap");
+
+  return 0;
+}
+
+static int
 tcp_test_sack (vlib_main_t * vm, unformat_input_t * input)
 {
   int res = 0;
@@ -1863,6 +1895,11 @@ tcp_test_sack (vlib_main_t * vm, unformat_input_t * input)
 	}
 
       if (tcp_test_dsack_rx (vm))
+	{
+	  return -1;
+	}
+
+      if (tcp_test_snd_wnd_max ())
 	{
 	  return -1;
 	}
@@ -7010,6 +7047,7 @@ tcp_test_bt_dsack (void)
 
   tc->snd_mss = 100;
   tc->snd_una = tc->snd_nxt = 1000;
+  tc->snd_wnd_max = 1000;
   tc->snd_congestion = 1600;
   tc->flags = TCP_CONN_FAST_RECOVERY | TCP_CONN_RECOVERY;
   tc->rcv_opts.flags = TCP_OPTS_FLAG_SACK_PERMITTED | TCP_OPTS_FLAG_SACK;

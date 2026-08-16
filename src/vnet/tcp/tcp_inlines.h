@@ -119,6 +119,21 @@ tcp_bytes_out (const tcp_connection_t * tc)
 		     tc->snd_nxt - tc->snd_una);
 }
 
+static_always_inline u32
+tcp_old_ack_wnd (const tcp_connection_t *tc)
+{
+  u64 data_sent, data_acked;
+  u32 outstanding;
+
+  /* bytes_out includes retransmissions. Subtract those and the currently outstanding sequence
+   * space to avoid accepting ACKs for data that has never been cumulatively acknowledged */
+  data_sent = tc->bytes_out >= tc->bytes_retrans ? tc->bytes_out - tc->bytes_retrans : 0;
+  outstanding = tc->snd_nxt - tc->snd_una;
+  data_acked = data_sent > outstanding ? data_sent - outstanding : 0;
+
+  return (u32) clib_min (data_acked, (u64) tc->snd_wnd_max);
+}
+
 /**
  * Our estimate of the number of bytes in flight (pipe size)
  */
@@ -410,6 +425,8 @@ tcp_init_w_buffer (tcp_connection_t * tc, vlib_buffer_t * b, u8 is_ip4)
     tc->snd_wscale = tc->rcv_opts.wscale;
 
   tc->snd_wnd = clib_net_to_host_u16 (th->window) << tc->snd_wscale;
+  /* RFC 7323: SYN windows are never scaled. */
+  tc->snd_wnd_max = clib_net_to_host_u16 (th->window);
 }
 
 always_inline void
