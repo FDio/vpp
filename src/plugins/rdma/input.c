@@ -751,7 +751,10 @@ rdma_device_poll_cq_mlx5dv (rdma_device_t * rd, rdma_rxq_t * rxq,
 
 done:
   if (n_rx_packets)
-    rxq->cq_db[0] = rxq->cq_ci = cq_ci;
+    {
+      rxq->cq_ci = cq_ci;
+      rxq->cq_db[0] = htobe32 (cq_ci & 0xffffff);
+    }
   return n_rx_packets;
 }
 
