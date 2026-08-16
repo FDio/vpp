@@ -1295,6 +1295,56 @@ tcp_test_dsack_rx (vlib_main_t *vm)
   TCP_TEST (!(rs.ack_flags & TCP_ACK_F_DSACK),
 	    "ignore dubious D-SACK larger than maximum advertised window");
 
+  DSACK_RX_RESET ();
+  block.start = 1900;
+  block.end = 2100;
+  vec_add1 (tc->rcv_opts.sacks, block);
+  block.start = 1800;
+  block.end = 2200;
+  vec_add1 (tc->rcv_opts.sacks, block);
+  tc->rcv_opts.n_sack_blocks = 2;
+  tcp_test_rcv_sacks (tc, 1000, &rs);
+  TCP_TEST (!(rs.ack_flags & TCP_ACK_F_DSACK) && !(tc->dsack_flags & TCP_DSACK_UNDO_DISABLED),
+	    "ignore future D-SACK without disabling undo");
+
+  DSACK_RX_RESET ();
+  block.start = tc->snd_nxt + 0x7ffffff0;
+  block.end = block.start + 100;
+  vec_add1 (tc->rcv_opts.sacks, block);
+  tc->rcv_opts.n_sack_blocks = 1;
+  tcp_test_rcv_sacks (tc, 1000, &rs);
+  TCP_TEST (!(rs.ack_flags & TCP_ACK_F_DSACK) && !(tc->dsack_flags & TCP_DSACK_UNDO_DISABLED),
+	    "ignore wrap-ambiguous D-SACK without disabling undo");
+
+  DSACK_RX_RESET ();
+  tc->flags = TCP_CONN_FAST_RECOVERY | TCP_CONN_RECOVERY;
+  tcp_dsack_track_retransmit (tc, 1100, 1200);
+  block.start = 950;
+  block.end = 1050;
+  vec_add1 (tc->rcv_opts.sacks, block);
+  block.start = 900;
+  block.end = 1100;
+  vec_add1 (tc->rcv_opts.sacks, block);
+  tc->rcv_opts.n_sack_blocks = 2;
+  tcp_test_rcv_sacks (tc, 900, &rs);
+  TCP_TEST (!(rs.ack_flags & TCP_ACK_F_DSACK) && tc->dsack_pending_bytes == 100 &&
+	      !(tc->dsack_flags & TCP_DSACK_UNDO_DISABLED),
+	    "ignore snd_una-straddling D-SACK without changing history");
+
+  DSACK_RX_RESET ();
+  tc->flags = TCP_CONN_FAST_RECOVERY | TCP_CONN_RECOVERY;
+  tc->snd_una = 900;
+  tcp_dsack_track_retransmit (tc, 950, 1100);
+  tc->snd_una = 1000;
+  block.start = 950;
+  block.end = 1100;
+  vec_add1 (tc->rcv_opts.sacks, block);
+  tc->rcv_opts.n_sack_blocks = 1;
+  tcp_test_rcv_sacks (tc, 1200, &rs);
+  TCP_TEST ((rs.ack_flags & (TCP_ACK_F_DSACK | TCP_ACK_F_DSACK_SPURIOUS)) ==
+	      (TCP_ACK_F_DSACK | TCP_ACK_F_DSACK_SPURIOUS),
+	    "accept D-SACK below advancing ACK across prior snd_una");
+
   /* One retransmission, acknowledged through the recovery point and reported
    * duplicate, is sufficient evidence for undo. */
   DSACK_RX_RESET ();
@@ -7065,6 +7115,17 @@ tcp_test_bt_dsack (void)
   TCP_TEST (tc->dsack_pending_bytes == 100 && tc->dsack_history_start == 1000 &&
 	      (tc->dsack_flags & TCP_DSACK_HISTORY),
 	    "BT seeds D-SACK accounting from an active retransmission");
+
+  block = (sack_block_t) { .start = 950, .end = 1050 };
+  vec_add1 (tc->rcv_opts.sacks, block);
+  block = (sack_block_t) { .start = 900, .end = 1100 };
+  vec_add1 (tc->rcv_opts.sacks, block);
+  tc->rcv_opts.n_sack_blocks = 2;
+  tcp_rcv_sacks (tc, 900, &rs);
+  TCP_TEST (!(rs.ack_flags & TCP_ACK_F_DSACK) && tc->dsack_pending_bytes == 100 &&
+	      !(tc->dsack_flags & TCP_DSACK_UNDO_DISABLED) && tcp_bt_is_sane (tc->bt),
+	    "BT ignores snd_una-straddling D-SACK without changing history");
+  vec_reset_length (tc->rcv_opts.sacks);
 
   tc->rcv_opts.flags &= ~TCP_OPTS_FLAG_SACK;
   tcp_rcv_sacks (tc, 1300, &rs);
