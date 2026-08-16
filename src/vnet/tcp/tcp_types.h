@@ -380,6 +380,7 @@ typedef struct _tcp_connection
   u32 tsval_recent;		/**< Last timestamp received */
   u32 tsval_recent_age;		/**< When last updated tstamp_recent*/
   u32 timestamp_delta;		/**< Offset for timestamp */
+  u32 snd_wnd_max;		/**< RFC 5961 MAX.SND.WND */
   tcp_options_t snd_opts;	/**< Tx options for connection */
   tcp_options_t rcv_opts;	/**< Rx options for connection */
 
