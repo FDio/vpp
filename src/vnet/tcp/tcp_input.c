@@ -911,13 +911,14 @@ tcp_rcv_ack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc, vlib_buffer_t * b,
    * Looks okay, process feedback
    */
 
-  if (tcp_opts_sack_permitted (&tc->rcv_opts))
-    tcp_rcv_sacks (tc, vnet_buffer (b)->tcp.ack_number, &rs);
-
   prev_snd_wnd = tc->snd_wnd;
   tcp_update_snd_wnd (tc, vnet_buffer (b)->tcp.seq_number,
 		      vnet_buffer (b)->tcp.ack_number,
 		      clib_net_to_host_u16 (th->window) << tc->snd_wscale);
+
+  if (tcp_opts_sack_permitted (&tc->rcv_opts))
+    tcp_rcv_sacks (tc, vnet_buffer (b)->tcp.ack_number, &rs);
+
   rs.bytes_acked = vnet_buffer (b)->tcp.ack_number - tc->snd_una;
   tc->snd_una = vnet_buffer (b)->tcp.ack_number;
   tcp_validate_txf_size (tc, rs.bytes_acked);
