@@ -801,28 +801,27 @@ tcp_dsack_all_duplicate (tcp_connection_t *tc)
 static_always_inline u8
 tcp_sack_detect_dsack (tcp_connection_t *tc, u32 ack, sack_block_t *dsack)
 {
-  sack_block_t *sacks = tc->rcv_opts.sacks;
+  sack_block_t *first, *sacks = tc->rcv_opts.sacks;
 
   ASSERT (vec_len (sacks));
-
-  if (PREDICT_FALSE (!seq_lt (sacks[0].start, sacks[0].end)))
-    return 0;
+  first = sacks;
 
   /* RFC 2883: compare against the ACK in this packet, never snd_una. */
-  if (seq_leq (sacks[0].end, ack))
+  if (PREDICT_TRUE (seq_gt (first->start, ack)))
     {
-      *dsack = sacks[0];
-      return 1;
+      /* RFC 2883: second block identifies the larger received range containing the first */
+      if (PREDICT_TRUE (vec_len (sacks) < 2 || seq_gt (sacks[1].start, first->start) ||
+			seq_lt (sacks[1].end, first->end)))
+	return 0;
     }
+  else if (seq_gt (first->end, ack))
+    return 0;
 
-  if (vec_len (sacks) > 1 && seq_gt (sacks[0].start, ack) &&
-      seq_leq (sacks[1].start, sacks[0].start) && seq_geq (sacks[1].end, sacks[0].end))
-    {
-      *dsack = sacks[0];
-      return 1;
-    }
+  if (PREDICT_FALSE (!seq_lt (first->start, first->end)))
+    return 0;
 
-  return 0;
+  *dsack = *first;
+  return 1;
 }
 
 static u8
