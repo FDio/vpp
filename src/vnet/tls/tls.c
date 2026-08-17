@@ -56,11 +56,11 @@ tls_get_engine_type (crypto_engine_type_t requested,
 {
   if (requested != CRYPTO_ENGINE_NONE)
     {
-      if (tls_vfts[requested].ctx_alloc)
+      if (vec_len (tls_vfts) > requested && tls_vfts[requested].ctx_alloc)
 	return requested;
       return CRYPTO_ENGINE_NONE;
     }
-  if (!tls_vfts[preferred].ctx_alloc)
+  if (vec_len (tls_vfts) <= preferred || !tls_vfts[preferred].ctx_alloc)
     return tls_get_available_engine ();
   return preferred;
 }
