@@ -1,0 +1,208 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "73d92e00_33b41580",
+        "filename": "src/vnet/buffer.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 36,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-08-17T12:30:13Z",
+      "side": 1,
+      "message": "Do we want to consume a globally scarce VNET buffer flag for state used only by the optional IPTFS implementation? Could this live in IPTFS-owned metadata, or use a generic buffer-reuse semantic if other subsystems can share it? If a global flag is required to survive generic/async nodes, its set/clear lifetime should be documented explicitly to prevent stale state on recycled buffers.",
+      "revId": "73c848384baa3894b29d566bfa4cfe81547ed72f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6e58e779_8936082d",
+        "filename": "src/vnet/buffer.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 312,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-08-17T12:30:13Z",
+      "side": 1,
+      "message": "This places iptfs_esp_seq over ip.adj_index[VLIB_RX/TX]. I understand that the 24-byte primary opaque union is already full, so simply expanding the IPsec member is not possible. Could we instead carry the sequence in esp_decrypt_packet_data_t through crypto and copy it into IPTFS-owned metadata only in the post-decrypt path, after the adjacency is no longer needed?",
+      "revId": "73c848384baa3894b29d566bfa4cfe81547ed72f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "bae228d4_ef8ff11a",
+        "filename": "src/vnet/ipsec/esp_decrypt.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 981,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-08-17T12:30:13Z",
+      "side": 1,
+      "message": "AES-GCM should only touch the packet ranges supplied in the crypto operation, not buffer opaque metadata. In the async path the actual overwrite is explained by *async_pd \u003d *pd, because esp_post_data() overlays the same union as vnet_buffer()-\u003eipsec; in the sync path pd is stack-resident. Could we identify the actual sync-path writer and set sad_index/extended sequence once in the common post-decrypt path when next_header \u003d\u003d AGGFRAG, instead of attributing this to GCM and restoring it in separate places?",
+      "revId": "73c848384baa3894b29d566bfa4cfe81547ed72f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "26a095e9_4b31f9af",
+        "filename": "src/vnet/ipsec/ipsec.api",
+        "patchSetId": 3
+      },
+      "lineNbr": 659,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-08-17T12:30:13Z",
+      "side": 1,
+      "message": "What contract is intended for originator? As implemented it is informational mutable state attached to an API connection: it does not establish ownership, its numeric namespace is unspecified, and the behavior of later add calls depends on an earlier RPC. Would it be clearer to carry the originator explicitly in versioned SA/SPD add messages? This functionality also appears independent of IPTFS and would be easier to review and test as a separate change.",
+      "revId": "73c848384baa3894b29d566bfa4cfe81547ed72f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0af6ccfd_58103efb",
+        "filename": "src/vnet/ipsec/ipsec_api.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 683,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-08-17T12:30:13Z",
+      "side": 1,
+      "message": "tfs_config_len comes from the API client but is not checked against the fixed 256-byte tfs_config array. With the IPTFS parser registered, a value greater than 256 makes ipsec_tfs_config_decode() read beyond the message. Could we reject lengths greater than sizeof (entry-\u003etfs_config) before calling the parser?",
+      "revId": "73c848384baa3894b29d566bfa4cfe81547ed72f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9e40df55_546cbb16",
+        "filename": "src/vnet/ipsec/ipsec_api.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1567,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-08-17T12:30:13Z",
+      "side": 1,
+      "message": "This length is written in host byte order, whereas API integer fields are encoded in network byte order. On little-endian systems clients will decode an incorrect length. Could we retain a host-order local for the copy and assign tfs_config_len \u003d htons (len)?",
+      "revId": "73c848384baa3894b29d566bfa4cfe81547ed72f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c6c40a1c_d053a516",
+        "filename": "src/vnet/ipsec/ipsec_api.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1653,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-08-17T12:30:13Z",
+      "side": 1,
+      "message": "This per-client hash entry is never removed when the API client disconnects. Since client indices can be reused, a later client can inherit the previous client\u0027s originator, and the hash grows indefinitely. Could we add a VL_MSG_API_REAPER_FUNCTION that unsets the client index?",
+      "revId": "73c848384baa3894b29d566bfa4cfe81547ed72f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "47a5e93c_d672e13a",
+        "filename": "src/vnet/ipsec/ipsec_output.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 161,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-08-17T12:30:13Z",
+      "side": 1,
+      "message": "Could we precompute this choice when initializing the outbound runtime? For a TFS SA, both ipsec4_output_next_index and ipsec6_output_next_index could be set to the TFS next slot; the hot path would then retain only the existing IPv4/IPv6 selection and would not need is_tfs or a third next-index field.\n\nAlso, tfs_encap_next_index is initialized from tfs_encap_node_index. A global node index is not interchangeable with a node-local next slot. How is the IPTFS node registered as a common next slot of both IPsec output nodes?",
+      "revId": "73c848384baa3894b29d566bfa4cfe81547ed72f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "cfc25d78_1d26a2d0",
+        "filename": "src/vnet/ipsec/ipsec_sa.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1068,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-08-17T12:30:13Z",
+      "side": 1,
+      "message": "These new failure exits occur after tunnel resolution, inbound UDP-port registration, insertion into sa_index_by_sa_id, and assignment of sa_out_index. The fail path does not unregister the UDP port or reset the outbound DPO, so a rejected TFS SA can leak resources and return an index that has already been freed. Could TFS validation happen before publication, or could cleanup mirror ipsec_sa_del()?",
+      "revId": "73c848384baa3894b29d566bfa4cfe81547ed72f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1db29b90_2f6c6c78",
+        "filename": "src/vnet/ipsec/ipsec_sa.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1081,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-08-17T12:30:13Z",
+      "side": 1,
+      "message": "If tfs_check_support_cb succeeds but tfs_add_del_sa_cb is absent, err remains uninitialized and is tested below. Could we initialize it to NULL and explicitly require or reject a missing add/delete callback for a TFS SA? Returned clib_error_t values also appear to need freeing after conversion to an API error.",
+      "revId": "73c848384baa3894b29d566bfa4cfe81547ed72f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f9c3d1eb_6e084e2c",
+        "filename": "src/vnet/ipsec/ipsec_sa.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 282,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-08-17T12:30:13Z",
+      "side": 1,
+      "message": "The new layout still leaves ipsec.sad_index at exactly the same offset as ip.save_protocol, so why weaken this assertion from \u003d\u003d to \u003e\u003d? Keeping equality would catch future layouts that move sad_index into later IP metadata.",
+      "revId": "73c848384baa3894b29d566bfa4cfe81547ed72f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2f3f3013_576b458b",
+        "filename": "src/vnet/ipsec/ipsec_spd_policy.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 240,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-08-17T12:30:13Z",
+      "side": 1,
+      "message": "The fast-path SPD path returns here before tfs_add_del_policy_cb is called. Consequently, with fast-path SPD enabled, the IPTFS backend never sees policy attachment changes. Could the callback be invoked after successful add/delete in both fast and traditional paths, preferably through a common completion path?",
+      "revId": "73c848384baa3894b29d566bfa4cfe81547ed72f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
