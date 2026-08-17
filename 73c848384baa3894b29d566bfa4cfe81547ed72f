@@ -18,6 +18,23 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "0c26bf13_ff4d907f",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3200
+      },
+      "writtenOn": "2026-08-17T19:33:34Z",
+      "side": 1,
+      "message": "Regarding splitting this ipsec commit into multiple pieces as you have described (originator, SA creation timestamp, etc): that seems logical and I will do so.\n\nI am open to moving the iptfs code under ipsec. Beware that it is currently 19 source files and totals over 10,000 lines so I\u0027m inclined to at least make it a subdirectory of ipsec just to keep track of everything. Does the code size affect your opinion on the move?",
+      "revId": "73c848384baa3894b29d566bfa4cfe81547ed72f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "73d92e00_33b41580",
