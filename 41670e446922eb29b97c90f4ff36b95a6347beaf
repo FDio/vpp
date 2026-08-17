@@ -189,6 +189,24 @@
       "message": "Let me know if you need me to extract more information, but for now I do not recommend bumping the DPDK version.",
       "revId": "41670e446922eb29b97c90f4ff36b95a6347beaf",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "16bec095_0a6ccd16",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2832
+      },
+      "writtenOn": "2026-08-17T15:31:14Z",
+      "side": 1,
+      "message": "thanks, Just checking to see if the regression on 64B only or across over all the frame size ? I will try to run similar test on our lab now",
+      "parentUuid": "f680cdcf_c1281a8b",
+      "revId": "41670e446922eb29b97c90f4ff36b95a6347beaf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
