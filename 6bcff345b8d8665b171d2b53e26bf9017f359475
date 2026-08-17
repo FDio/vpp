@@ -68,6 +68,24 @@
       "message": "Could this API use the same vocabulary as regular pools? In particular, `pool_cache_alloc()`/`pool_cache_free()` currently introduce a second naming convention for pool operations. Something like:\n\n```c\nu32 index \u003d pool_cache_get_index (\u0026cache);\npool_cache_put_index (\u0026cache, index);\npool_cache_free (\u0026cache); /* release resources */\n```\n\nwould align with `pool_get`, `pool_put_index`, `pool_free`, and `pool_elt_at_index`. If the shorter `pool_cache_get()` is preferred, its index-returning semantics should be explicit because regular `pool_get()` yields an element pointer through an output argument.",
       "revId": "6bcff345b8d8665b171d2b53e26bf9017f359475",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "245b4670_7a440d63",
+        "filename": "src/vlib/pool_cache.h",
+        "patchSetId": 15
+      },
+      "lineNbr": 217,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2026-08-17T14:30:39Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "c7e8becc_41e6f452",
+      "revId": "6bcff345b8d8665b171d2b53e26bf9017f359475",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
