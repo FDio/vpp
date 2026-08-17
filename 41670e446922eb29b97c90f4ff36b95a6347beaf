@@ -154,6 +154,41 @@
       "message": "DPDK: All intel NICs seem to be affected (~7% regression), newly tested on: 2n-spr+e810cq, 2n-spr+e810xxv, 2n-zn2+x710, 2n-zn2+xxv710.\nDPDK and RDMA-core: No Mellanox nics are affected, newly tested: 2n-zn2+cx556a, 3n-alt+cx6dx (perhaps even ~1% progression but noise is too high to confirm, probably no effect).\n(AVF not affected.)",
       "revId": "41670e446922eb29b97c90f4ff36b95a6347beaf",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "d64cca59_98a6fad8",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2026-08-17T12:16:18Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "b6449216_76105620",
+      "revId": "41670e446922eb29b97c90f4ff36b95a6347beaf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "96ee0ff1_eb55b5c6",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2026-08-17T12:16:18Z",
+      "side": 1,
+      "message": "Let me know if you need me to extract more information, but for now I do not recommend bumping the DPDK version.",
+      "revId": "41670e446922eb29b97c90f4ff36b95a6347beaf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
