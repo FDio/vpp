@@ -194,7 +194,7 @@ cubic_cwnd_accumulate (tcp_connection_t * tc, u32 thresh, u32 bytes_acked)
 }
 
 static void
-cubic_rcv_ack (tcp_connection_t * tc, tcp_rate_sample_t * rs)
+cubic_rcv_ack (tcp_connection_t *tc, tcp_ack_ctx_t *ac)
 {
   cubic_data_t *cd = (cubic_data_t *) tcp_cc_data (tc);
   u64 w_cubic, w_aimd;
@@ -206,7 +206,7 @@ cubic_rcv_ack (tcp_connection_t * tc, tcp_rate_sample_t * rs)
   /* RFC 9438 Sec. 4.2 excludes periods in which cwnd is not updated because
    * the flow is application-limited. A local tx-fifo ceiling has the same
    * effect and must not allow the cubic clock to run ahead either. */
-  if (!tcp_cc_is_cwnd_limited (tc, rs) || tc->cwnd >= tc->tx_fifo_size)
+  if (!tcp_cc_is_cwnd_limited (tc, ac) || tc->cwnd >= tc->tx_fifo_size)
     {
       cubic_pause_epoch (cd, now);
       return;
@@ -217,7 +217,7 @@ cubic_rcv_ack (tcp_connection_t * tc, tcp_rate_sample_t * rs)
 
   if (tcp_in_slowstart (tc))
     {
-      tc->cwnd += rs->acked_and_sacked;
+      tc->cwnd += ac->acked_and_sacked;
       return;
     }
 
@@ -228,7 +228,7 @@ cubic_rcv_ack (tcp_connection_t * tc, tcp_rate_sample_t * rs)
   w_aimd = (u64) W_est (cd, t, rtt_sec) * tc->snd_mss;
   if (w_cubic < w_aimd)
     {
-      cubic_cwnd_accumulate (tc, tc->cwnd, rs->acked_and_sacked);
+      cubic_cwnd_accumulate (tc, tc->cwnd, ac->acked_and_sacked);
     }
   else
     {
@@ -254,7 +254,7 @@ cubic_rcv_ack (tcp_connection_t * tc, tcp_rate_sample_t * rs)
 	  /* Practically we can't increment so just inflate threshold */
 	  thresh = 50 * tc->cwnd;
 	}
-      cubic_cwnd_accumulate (tc, thresh, rs->acked_and_sacked);
+      cubic_cwnd_accumulate (tc, thresh, ac->acked_and_sacked);
     }
 }
 

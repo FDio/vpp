@@ -597,14 +597,14 @@ if (_av > 0) 								\
   ed->data[4] = _tc->snd_wnd;						\
 }
 
-#define TCP_EVT_ACK_RCVD_HANDLER(_tc, _rs, ...)                                                    \
+#define TCP_EVT_ACK_RCVD_HANDLER(_tc, _ac, ...)                                                    \
   {                                                                                                \
     ELOG_TYPE_DECLARE (_e) = {                                                                     \
       .format = "ack-rx: %u snd_una %u snd_wnd %u cwnd %u inflight %u",                            \
       .format_args = "i4i4i4i4i4",                                                                 \
     };                                                                                             \
     TCP_DECLARE_ETD (_tc, _e, 5);                                                                  \
-    ed->data[0] = _rs->bytes_acked;                                                                \
+    ed->data[0] = _ac->bytes_acked;                                                                \
     ed->data[1] = _tc->snd_una - _tc->iss;                                                         \
     ed->data[2] = _tc->snd_wnd;                                                                    \
     ed->data[3] = _tc->cwnd;                                                                       \
@@ -784,9 +784,9 @@ if (_av > 0) 								\
   ed->data[0] = _tc->snd_una - _tc->iss;				\
   ed->data[1] = _tc->snd_nxt - _tc->iss;				\
 }
-#define TCP_EVT_CC_SCOREBOARD_HANDLER(_tc, _rs, ...)                                               \
+#define TCP_EVT_CC_SCOREBOARD_HANDLER(_tc, _ac, ...)                                               \
   {                                                                                                \
-    if (TCP_DEBUG_CC > 1 && _rs->last_sacked_bytes)                                                \
+    if (TCP_DEBUG_CC > 1 && _ac->last_sacked_bytes)                                                \
       {                                                                                            \
 	ELOG_TYPE_DECLARE (_e) = {                                                                 \
 	  .format = "sb1: holes %u lost %u sacked %u high %u highrxt %u",                          \
@@ -799,7 +799,7 @@ if (_av > 0) 								\
 	ed->data[3] = _tc->sack_sb.high_sacked - _tc->iss;                                         \
 	ed->data[4] = _tc->sack_sb.high_rxt - _tc->iss;                                            \
       }                                                                                            \
-    if (TCP_DEBUG_CC > 1 && _rs->last_sacked_bytes)                                                \
+    if (TCP_DEBUG_CC > 1 && _ac->last_sacked_bytes)                                                \
       {                                                                                            \
 	sack_scoreboard_hole_t *hole;                                                              \
 	hole = scoreboard_first_hole (&_tc->sack_sb);                                              \
