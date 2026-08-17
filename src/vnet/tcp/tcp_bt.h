@@ -67,7 +67,7 @@ void tcp_bt_track_rxt (tcp_connection_t * tc, u32 start, u32 end);
  * @param rs		ACK-local result
  */
 void tcp_bt_apply_sacks (tcp_connection_t *tc, u32 ack, u32 high_sacked, u8 has_sack,
-			 tcp_rate_sample_t *rs);
+			 tcp_ack_ctx_t *rs);
 void tcp_bt_dsack_recovery_init (tcp_connection_t *tc);
 void tcp_bt_dsack_recovery_clear (tcp_connection_t *tc);
 u32 tcp_bt_dsack_mark_duplicate (tcp_connection_t *tc, u32 start, u32 end);
@@ -85,8 +85,7 @@ u8 tcp_bt_last_rxt_range (tcp_connection_t *tc, tcp_rxt_range_t *range);
  * @param tc	tcp connection
  * @param rs	resulting rate sample
  */
-void tcp_bt_sample_delivery_rate (tcp_connection_t * tc,
-				  tcp_rate_sample_t * rs);
+void tcp_bt_sample_delivery_rate (tcp_connection_t *tc, tcp_ack_ctx_t *rs);
 /**
  * Check if sample to be generated is app limited
  *

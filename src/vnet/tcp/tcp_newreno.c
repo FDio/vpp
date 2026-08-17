@@ -35,7 +35,7 @@ newreno_recovered (tcp_connection_t * tc)
 }
 
 static void
-newreno_rcv_ack (tcp_connection_t * tc, tcp_rate_sample_t * rs)
+newreno_rcv_ack (tcp_connection_t *tc, tcp_ack_ctx_t *rs)
 {
   if (!tcp_cc_is_cwnd_limited (tc, rs))
     return;
@@ -52,8 +52,7 @@ newreno_rcv_ack (tcp_connection_t * tc, tcp_rate_sample_t * rs)
 }
 
 void
-newreno_rcv_cong_ack (tcp_connection_t * tc, tcp_cc_ack_t ack_type,
-		      tcp_rate_sample_t * rs)
+newreno_rcv_cong_ack (tcp_connection_t *tc, tcp_cc_ack_t ack_type, tcp_ack_ctx_t *rs)
 {
   /* With sacks prr controls the data in flight post congestion */
   if (PREDICT_TRUE (tcp_opts_sack_permitted (tc)))

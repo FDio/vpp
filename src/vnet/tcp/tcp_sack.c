@@ -86,7 +86,7 @@ typedef enum
 } tcp_sb_sack_mode_e;
 
 always_inline void
-scoreboard_update_sacked (sack_scoreboard_t *sb, tcp_rate_sample_t *rs, u32 start, u32 end,
+scoreboard_update_sacked (sack_scoreboard_t *sb, tcp_ack_ctx_t *rs, u32 start, u32 end,
 			  tcp_sb_sack_mode_e mode, u16 snd_mss)
 {
   /* A newly sacked segment below the sack frontier arrived out of order. Use it to grow the reorder
@@ -187,7 +187,7 @@ scoreboard_update_loss (sack_scoreboard_t *sb, u32 ack, u32 snd_mss, u8 clear_lo
 }
 
 always_inline void
-scoreboard_update_bytes (sack_scoreboard_t *sb, tcp_rate_sample_t *rs, u32 ack, u32 snd_mss)
+scoreboard_update_bytes (sack_scoreboard_t *sb, tcp_ack_ctx_t *rs, u32 ack, u32 snd_mss)
 {
   u32 old_sacked = sb->sacked_bytes;
 
@@ -913,7 +913,7 @@ tcp_dsack_finalize (tcp_connection_t *tc)
 }
 
 void
-tcp_rcv_dsack (tcp_connection_t *tc, u32 ack, tcp_rate_sample_t *rs)
+tcp_rcv_dsack (tcp_connection_t *tc, u32 ack, tcp_ack_ctx_t *rs)
 {
   sack_block_t dsack;
 
@@ -928,7 +928,7 @@ tcp_rcv_dsack (tcp_connection_t *tc, u32 ack, tcp_rate_sample_t *rs)
 
 static void
 tcp_scoreboard_apply_sacks (tcp_connection_t *tc, u32 ack, u32 high_sacked, tcp_sb_sack_mode_e mode,
-			    tcp_rate_sample_t *rs)
+			    tcp_ack_ctx_t *rs)
 {
   sack_scoreboard_hole_t *hole, *next_hole;
   sack_scoreboard_t *sb = &tc->sack_sb;
@@ -1082,7 +1082,7 @@ tcp_scoreboard_apply_sacks (tcp_connection_t *tc, u32 ack, u32 high_sacked, tcp_
 }
 
 void
-tcp_rcv_sacks (tcp_connection_t *tc, u32 ack, tcp_rate_sample_t *rs)
+tcp_rcv_sacks (tcp_connection_t *tc, u32 ack, tcp_ack_ctx_t *rs)
 {
   sack_scoreboard_t *sb = &tc->sack_sb;
   sack_block_t dsack, *blk, *rcv_sacks;
