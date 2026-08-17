@@ -649,12 +649,12 @@ tcp_scoreboard_dump_trace (u8 * s, sack_scoreboard_t * sb)
 
   s = format (s, "scoreboard trace:");
   vec_foreach (block, sb->trace)
-  {
-    s = format (s, "{%u, %u, %u, %u, %u}, ", block->start, block->end,
-		block->ack, block->snd_una_max, block->group);
-    if ((++i % 3) == 0)
-      s = format (s, "\n");
-  }
+    {
+      s = format (s, "{%u, %u, %u, %u, %u}, ", block->start, block->end, block->ack, block->snd_nxt,
+		  block->group);
+      if ((++i % 3) == 0)
+	s = format (s, "\n");
+    }
   return s;
 #else
   return 0;
@@ -745,8 +745,8 @@ tcp_scoreboard_replay (u8 * s, tcp_connection_t * tc, u8 verbose)
 	  if (trace[left].ack != 0)
 	    {
 	      if (verbose)
-		s = format (s, "Adding ack %u, snd_una_max %u, segs: ",
-			    trace[left].ack, trace[left].snd_nxt);
+		s = format (s, "Adding ack %u, snd_nxt %u, segs: ", trace[left].ack,
+			    trace[left].snd_nxt);
 	      placeholder_tc->snd_nxt = trace[left].snd_nxt;
 	      next_ack = trace[left].ack;
 	      has_new_ack = 1;
