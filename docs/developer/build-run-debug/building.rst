@@ -13,6 +13,16 @@ For more detailed information on the build system please refer to :ref:`buildsys
 VPP for Ubuntu: Environment Setup
 -------------------------------------------
 
+Before cloning the VPP for Ubuntu, the following update has to be installed on Ubuntu
+
+.. code-block:: console
+
+    apt update
+    apt dist-upgrade -y
+    apt install git make curl wget sudo
+
+Now do the git clone using ssh
+
 If you are not downloading VPP on Ubuntu with WSL (Windows Subsystem for Linux), please disregard this section
 and jump to 'Get the VPP Sources'.
 
