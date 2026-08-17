@@ -62,35 +62,52 @@ scoreboard_last_hole (sack_scoreboard_t * sb)
 }
 
 #if TCP_SCOREBOARD_TRACE
-#define tcp_scoreboard_trace_add(_tc, _ack) 				\
-{									\
-    static u64 _group = 0;						\
-    sack_scoreboard_t *_sb = &_tc->sack_sb;				\
-    sack_block_t *_sack, *_sacks;					\
-    scoreboard_trace_elt_t *_elt;					\
-    int i;								\
-    _group++;								\
-    _sacks = _tc->rcv_opts.sacks;					\
-    for (i = 0; i < vec_len (_sacks); i++) 				\
-      {									\
-	_sack = &_sacks[i];						\
-	vec_add2 (_sb->trace, _elt, 1);					\
-	_elt->start = _sack->start;					\
-	_elt->end = _sack->end;						\
-	_elt->ack = _elt->end == _ack ? _ack : 0;			\
-	_elt->snd_una_max = _elt->end == _ack ? _tc->snd_una_max : 0;	\
-	_elt->group = _group;						\
-      }									\
-}
+#define tcp_scoreboard_trace_add(_tc, _ack)                                                        \
+  {                                                                                                \
+    static u64 _group = 0;                                                                         \
+    sack_scoreboard_t *_sb = &_tc->sack_sb;                                                        \
+    sack_block_t *_sack, *_sacks;                                                                  \
+    scoreboard_trace_elt_t *_elt;                                                                  \
+    int i;                                                                                         \
+    _group++;                                                                                      \
+    _sacks = _tc->rcv_opts.sacks;                                                                  \
+    if (seq_gt (_ack, _tc->snd_una))                                                               \
+      {                                                                                            \
+	vec_add2 (_sb->trace, _elt, 1);                                                            \
+	_elt->start = _tc->snd_una;                                                                \
+	_elt->end = _ack;                                                                          \
+	_elt->ack = _ack;                                                                          \
+	_elt->snd_nxt = _tc->snd_nxt;                                                              \
+	_elt->group = _group;                                                                      \
+      }                                                                                            \
+    for (i = 0; i < vec_len (_sacks); i++)                                                         \
+      {                                                                                            \
+	_sack = &_sacks[i];                                                                        \
+	vec_add2 (_sb->trace, _elt, 1);                                                            \
+	_elt->start = _sack->start;                                                                \
+	_elt->end = _sack->end;                                                                    \
+	_elt->ack = 0;                                                                             \
+	_elt->snd_nxt = 0;                                                                         \
+	_elt->group = _group;                                                                      \
+      }                                                                                            \
+  }
+
+#define tcp_sack_trace(_tc, _ack)                                                                  \
+  do                                                                                               \
+    {                                                                                              \
+      if (!((_tc)->cfg_flags & TCP_CFG_F_BYTE_TRACKER))                                            \
+	tcp_scoreboard_trace_add (_tc, _ack);                                                      \
+    }                                                                                              \
+  while (0)
 #else
 #define tcp_scoreboard_trace_add(_tc, _ack)
+#define tcp_sack_trace(_tc, _ack)
 #endif
 
-sack_scoreboard_hole_t *scoreboard_next_rxt_hole (sack_scoreboard_t * sb,
-						  sack_scoreboard_hole_t *
-						  start, u8 have_sent_1_smss,
-						  u8 * can_rescue,
-						  u8 * snd_limited);
+sack_scoreboard_hole_t *scoreboard_next_rxt_hole (sack_scoreboard_t *sb,
+						  sack_scoreboard_hole_t *start,
+						  u8 have_sent_1_smss, u8 *can_rescue,
+						  u8 *snd_limited);
 void scoreboard_clear (sack_scoreboard_t * sb);
 void scoreboard_init (sack_scoreboard_t * sb);
 

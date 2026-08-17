@@ -656,12 +656,11 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
   tcp_test_rcv_sacks (tc, 1300, &ac);
 
   if (verbose)
-    vlib_cli_output (vm, "\nsb ack up to byte 1300:\n%U",
-		     format_tcp_scoreboard, sb, tc);
+    vlib_cli_output (vm, "\nsb ack up to byte 1300:\n%U", format_tcp_scoreboard, sb, tc);
 
+  TCP_TEST (vec_len (tc->rcv_opts.sacks) == 0, "cumulative ack does not add a sack block");
   TCP_TEST ((sb->sacked_bytes == 0), "sacked bytes %d", sb->sacked_bytes);
-  TCP_TEST ((pool_elts (sb->holes) == 1),
-	    "scoreboard has %d elements", pool_elts (sb->holes));
+  TCP_TEST ((pool_elts (sb->holes) == 1), "scoreboard has %d elements", pool_elts (sb->holes));
   TCP_TEST ((ac.last_bytes_delivered == 100), "last bytes delivered %d", ac.last_bytes_delivered);
   TCP_TEST ((sb->lost_bytes == 0), "lost bytes %u", sb->lost_bytes);
   TCP_TEST ((sb->head != TCP_INVALID_SACK_HOLE_INDEX), "head %u", sb->head);
@@ -5763,6 +5762,9 @@ tcp_test_sack_backend_trace (tcp_test_sack_backend_t backend, tcp_test_sack_snap
       tc->rcv_opts.n_sack_blocks = vec_len (tc->rcv_opts.sacks);
 
       tcp_test_rcv_sacks (tc, acks[i], &ac);
+      TCP_TEST (vec_len (tc->rcv_opts.sacks) == n_blocks[i],
+		"%s keeps only received sack blocks at step %u",
+		tcp_test_sack_backend_names[backend], i);
       snapshots[i] = (tcp_test_sack_snapshot_t) {
 	.sacked_bytes = tc->sack_sb.sacked_bytes,
 	.lost_bytes = tc->sack_sb.lost_bytes,

@@ -926,6 +926,58 @@ tcp_rcv_dsack (tcp_connection_t *tc, u32 ack, tcp_ack_ctx_t *ac)
     }
 }
 
+static_always_inline sack_scoreboard_hole_t *
+scoreboard_update_cumulative_ack (tcp_connection_t *tc, u32 ack, tcp_sb_sack_mode_e mode,
+				  tcp_ack_ctx_t *ac)
+{
+  sack_scoreboard_hole_t *hole, *next_hole;
+  sack_scoreboard_t *sb = &tc->sack_sb;
+  u32 sacked;
+
+  hole = scoreboard_first_hole (sb);
+
+  if (PREDICT_FALSE (tcp_scoreboard_is_reneging (sb)))
+    {
+      ac->last_bytes_delivered += clib_min (hole->start - tc->snd_una, ack - tc->snd_una);
+      tcp_scoreboard_set_reneging (sb, seq_lt (ack, hole->start));
+    }
+
+  if (seq_leq (ack, tc->snd_una))
+    return hole;
+
+  while (hole && seq_lt (hole->start, ack))
+    {
+      if (seq_gt (hole->end, ack))
+	{
+	  scoreboard_update_sacked (sb, ac, hole->start, ack, mode, tc->snd_mss);
+	  hole->start = ack;
+	  break;
+	}
+
+      next_hole = scoreboard_next_hole (sb, hole);
+
+      /* Account bytes already delivered by SACK between this hole and the
+	 next one, or between the last hole and the SACK frontier. */
+      sacked = next_hole ? next_hole->start : seq_max (sb->high_sacked, hole->end);
+      if (PREDICT_FALSE (seq_lt (ack, sacked)))
+	{
+	  ac->last_bytes_delivered += ack - hole->end;
+	  tcp_scoreboard_set_reneging (sb, 1);
+	}
+      else
+	{
+	  ac->last_bytes_delivered += sacked - hole->end;
+	  tcp_scoreboard_set_reneging (sb, 0);
+	}
+
+      scoreboard_update_sacked (sb, ac, hole->start, hole->end, mode, tc->snd_mss);
+      scoreboard_remove_hole (sb, hole);
+      hole = next_hole;
+    }
+
+  return hole;
+}
+
 static void
 tcp_scoreboard_apply_sacks (tcp_connection_t *tc, u32 ack, u32 high_sacked, tcp_sb_sack_mode_e mode,
 			    tcp_ack_ctx_t *ac)
@@ -989,14 +1041,8 @@ tcp_scoreboard_apply_sacks (tcp_connection_t *tc, u32 ack, u32 high_sacked, tcp_
 	}
     }
 
-  /* Walk the holes with the SACK blocks */
-  hole = pool_elt_at_index (sb->holes, sb->head);
-
-  if (PREDICT_FALSE (tcp_scoreboard_is_reneging (sb)))
-    {
-      ac->last_bytes_delivered += clib_min (hole->start - tc->snd_una, ack - tc->snd_una);
-      tcp_scoreboard_set_reneging (sb, seq_lt (ack, hole->start));
-    }
+  /* Advance the cumulative ACK and continue with the first surviving hole. */
+  hole = scoreboard_update_cumulative_ack (tc, ack, mode, ac);
 
   while (hole && blk_index < vec_len (rcv_sacks))
     {
@@ -1007,22 +1053,6 @@ tcp_scoreboard_apply_sacks (tcp_connection_t *tc, u32 ack, u32 high_sacked, tcp_
 	  if (seq_geq (blk->end, hole->end))
 	    {
 	      next_hole = scoreboard_next_hole (sb, hole);
-
-	      /* If covered by ack, compute delivered bytes */
-	      if (blk->end == ack)
-		{
-		  u32 sacked = next_hole ? next_hole->start : seq_max (sb->high_sacked, hole->end);
-		  if (PREDICT_FALSE (seq_lt (ack, sacked)))
-		    {
-		      ac->last_bytes_delivered += ack - hole->end;
-		      tcp_scoreboard_set_reneging (sb, 1);
-		    }
-		  else
-		    {
-		      ac->last_bytes_delivered += sacked - hole->end;
-		      tcp_scoreboard_set_reneging (sb, 0);
-		    }
-		}
 	      scoreboard_update_sacked (sb, ac, hole->start, hole->end, mode, tc->snd_mss);
 	      scoreboard_remove_hole (sb, hole);
 	      hole = next_hole;
@@ -1128,22 +1158,13 @@ tcp_rcv_sacks (tcp_connection_t *tc, u32 ack, tcp_ack_ctx_t *ac)
 
   has_sack = vec_len (tc->rcv_opts.sacks) != 0;
 
-  /* Add block for cumulative ack */
-  if (seq_gt (ack, tc->snd_una))
-    {
-      vec_add2 (tc->rcv_opts.sacks, blk, 1);
-      blk->start = tc->snd_una;
-      blk->end = ack;
-    }
-
-  if (vec_len (tc->rcv_opts.sacks) == 0)
+  if (!has_sack && seq_leq (ack, tc->snd_una))
     goto done;
 
-  if (!(tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER))
-    tcp_scoreboard_trace_add (tc, ack);
+  tcp_sack_trace (tc, ack);
 
-  high_sacked =
-    (sb->sacked_bytes || tcp_scoreboard_is_reneging (sb)) ? sb->high_sacked : tc->snd_una;
+  high_sacked = seq_max (
+    ack, (sb->sacked_bytes || tcp_scoreboard_is_reneging (sb)) ? sb->high_sacked : tc->snd_una);
 
   /* Make sure blocks are ordered */
   rcv_sacks = tc->rcv_opts.sacks;
