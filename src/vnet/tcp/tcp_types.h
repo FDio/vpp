@@ -290,8 +290,19 @@ typedef struct tcp_bt_sample_
   tcp_bts_flags_t flags;	/**< Sample flag */
 } tcp_bt_sample_t;
 
-typedef struct tcp_rate_sample_
+typedef struct tcp_ack_ctx_
 {
+  /* Feedback updated while processing every ACK */
+  u32 bytes_acked;	    /**< Bytes cumulatively acknowledged now */
+  u32 acked_and_sacked;	    /**< Bytes acked + sacked now */
+  u32 last_sacked_bytes;    /**< Number of bytes newly sacked */
+  u32 last_bytes_delivered; /**< Previously delivered bytes acked/sacked now */
+  u32 rxt_sacked;	    /**< Retransmitted bytes newly delivered */
+  u32 last_lost;	    /**< Bytes lost now */
+  tcp_ack_flag_t ack_flags; /**< Flags describing the current ACK */
+  tcp_bts_flags_t flags;    /**< Rate sample flags from bt sample */
+
+  /* Delivery-rate sample populated only when byte tracking is enabled */
   u64 prior_delivered;		/**< Delivered of sample used for rate, i.e.,
 				     total bytes delivered at prior_time */
   f64 prior_time;		/**< Delivered time of sample used for rate */
@@ -300,16 +311,8 @@ typedef struct tcp_rate_sample_
   u64 tx_in_flight;		/**< In flight at (re)transmit time */
   u64 tx_lost;			/**< Lost over interval */
   u32 delivered;		/**< Bytes delivered in interval_time */
-  u32 bytes_acked;		/**< Bytes cumulatively acknowledged now */
-  u32 acked_and_sacked;		/**< Bytes acked + sacked now */
-  u32 last_sacked_bytes;	/**< Number of bytes newly sacked */
-  u32 last_bytes_delivered;	/**< Previously delivered bytes acked/sacked now */
-  u32 rxt_sacked;		/**< Retransmitted bytes newly delivered */
-  u32 last_lost;		/**< Bytes lost now */
   u32 lost;			/**< Number of bytes lost over interval */
-  tcp_bts_flags_t flags;	/**< Rate sample flags from bt sample */
-  tcp_ack_flag_t ack_flags;	/**< Flags describing the current ACK */
-} tcp_rate_sample_t;
+} tcp_ack_ctx_t;
 
 typedef struct tcp_byte_tracker_
 {
@@ -483,9 +486,8 @@ struct _tcp_cc_algorithm
   uword (*unformat_cfg) (unformat_input_t * input);
   void (*init) (tcp_connection_t * tc);
   void (*cleanup) (tcp_connection_t * tc);
-  void (*rcv_ack) (tcp_connection_t * tc, tcp_rate_sample_t *rs);
-  void (*rcv_cong_ack) (tcp_connection_t * tc, tcp_cc_ack_t ack,
-			tcp_rate_sample_t *rs);
+  void (*rcv_ack) (tcp_connection_t *tc, tcp_ack_ctx_t *rs);
+  void (*rcv_cong_ack) (tcp_connection_t *tc, tcp_cc_ack_t ack, tcp_ack_ctx_t *rs);
   void (*congestion) (tcp_connection_t * tc);
   void (*loss) (tcp_connection_t * tc);
   void (*recovered) (tcp_connection_t * tc);

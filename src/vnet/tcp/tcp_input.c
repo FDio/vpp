@@ -396,7 +396,7 @@ tcp_estimate_rtt_us (tcp_connection_t * tc, f64 mrtt)
  * For now, rate sample rtts are only used under congestion.
  */
 static int
-tcp_update_rtt (tcp_connection_t * tc, tcp_rate_sample_t * rs, u32 ack)
+tcp_update_rtt (tcp_connection_t *tc, tcp_ack_ctx_t *rs, u32 ack)
 {
   u32 mrtt = 0;
 
@@ -526,7 +526,7 @@ tcp_handle_postponed_dequeues (tcp_worker_ctx_t * wrk)
 }
 
 static void
-tcp_program_dequeue (tcp_worker_ctx_t *wrk, tcp_connection_t *tc, tcp_rate_sample_t *rs)
+tcp_program_dequeue (tcp_worker_ctx_t *wrk, tcp_connection_t *tc, tcp_ack_ctx_t *rs)
 {
   if (!(tc->flags & TCP_CONN_DEQ_PENDING))
     {
@@ -609,7 +609,7 @@ tcp_cc_dsack_undo (tcp_connection_t *tc)
 }
 
 static inline u8
-tcp_should_fastrecover (tcp_connection_t *tc, tcp_rate_sample_t *rs, u8 has_sack)
+tcp_should_fastrecover (tcp_connection_t *tc, tcp_ack_ctx_t *rs, u8 has_sack)
 {
   if (!has_sack)
     {
@@ -636,7 +636,7 @@ tcp_should_fastrecover (tcp_connection_t *tc, tcp_rate_sample_t *rs, u8 has_sack
 
 /* Tear down current recovery episode and notify cc algo. If spurious, undo congestion */
 static void
-tcp_cc_exit_recovery (tcp_connection_t *tc, tcp_rate_sample_t *rs)
+tcp_cc_exit_recovery (tcp_connection_t *tc, tcp_ack_ctx_t *rs)
 {
   tcp_ack_flag_t spurious_flags = rs->ack_flags & TCP_ACK_F_SPURIOUS;
 
@@ -670,7 +670,7 @@ tcp_cc_exit_recovery (tcp_connection_t *tc, tcp_rate_sample_t *rs)
 /* Process (re)transmit feedback. Output path uses this to decide how much more data to release into
  * the network */
 always_inline void
-tcp_cc_account_recovery_ack (tcp_connection_t *tc, tcp_rate_sample_t *rs, u8 has_sack)
+tcp_cc_account_recovery_ack (tcp_connection_t *tc, tcp_ack_ctx_t *rs, u8 has_sack)
 {
   if (has_sack)
     {
@@ -701,7 +701,7 @@ tcp_cc_account_recovery_ack (tcp_connection_t *tc, tcp_rate_sample_t *rs, u8 has
 
 /* Exit recovery and re-enter if loss remains. */
 static void
-tcp_cc_try_exit_recovery (tcp_connection_t *tc, tcp_rate_sample_t *rs, u8 has_sack)
+tcp_cc_try_exit_recovery (tcp_connection_t *tc, tcp_ack_ctx_t *rs, u8 has_sack)
 {
   /* Any loss still outstanding above snd_congestion was sent at the
    * already-reduced rate, so it is a fresh congestion event: exit here and let
@@ -715,7 +715,7 @@ tcp_cc_try_exit_recovery (tcp_connection_t *tc, tcp_rate_sample_t *rs, u8 has_sa
 }
 
 static void
-tcp_cc_update (tcp_connection_t * tc, tcp_rate_sample_t * rs)
+tcp_cc_update (tcp_connection_t *tc, tcp_ack_ctx_t *rs)
 {
   ASSERT (!tcp_in_cong_recovery (tc) || tcp_is_lost_fin (tc));
 
@@ -730,7 +730,7 @@ tcp_cc_update (tcp_connection_t * tc, tcp_rate_sample_t * rs)
  * One function to rule them all ... and in the darkness bind them
  */
 static void
-tcp_cc_handle_event (tcp_connection_t *tc, tcp_rate_sample_t *rs)
+tcp_cc_handle_event (tcp_connection_t *tc, tcp_ack_ctx_t *rs)
 {
   u8 has_sack = tcp_opts_sack_permitted (&tc->rcv_opts);
 
@@ -810,7 +810,7 @@ tcp_cc_handle_event (tcp_connection_t *tc, tcp_rate_sample_t *rs)
 }
 
 static void
-tcp_handle_old_ack (tcp_connection_t *tc, tcp_rate_sample_t *rs, u32 ack)
+tcp_handle_old_ack (tcp_connection_t *tc, tcp_ack_ctx_t *rs, u32 ack)
 {
   if (!tcp_in_cong_recovery (tc))
     {
@@ -844,7 +844,7 @@ tcp_handle_old_ack (tcp_connection_t *tc, tcp_rate_sample_t *rs, u32 ack)
  * Check if duplicate ack as per RFC5681 Sec. 2
  */
 always_inline u8
-tcp_ack_is_dupack (tcp_connection_t *tc, vlib_buffer_t *b, u32 prev_snd_wnd, tcp_rate_sample_t *rs)
+tcp_ack_is_dupack (tcp_connection_t *tc, vlib_buffer_t *b, u32 prev_snd_wnd, tcp_ack_ctx_t *rs)
 {
   return ((!rs->bytes_acked) && seq_gt (tc->snd_nxt, tc->snd_una) &&
 	  (vnet_buffer (b)->tcp.seq_end == vnet_buffer (b)->tcp.seq_number) &&
@@ -855,8 +855,7 @@ tcp_ack_is_dupack (tcp_connection_t *tc, vlib_buffer_t *b, u32 prev_snd_wnd, tcp
  * Checks if ack is a congestion control event.
  */
 static u8
-tcp_ack_is_cc_event (tcp_connection_t *tc, vlib_buffer_t *b, u32 prev_snd_wnd,
-		     tcp_rate_sample_t *rs)
+tcp_ack_is_cc_event (tcp_connection_t *tc, vlib_buffer_t *b, u32 prev_snd_wnd, tcp_ack_ctx_t *rs)
 {
   /* Check if ack is duplicate. Per RFC 6675, ACKs that SACK new data are
    * defined to be 'duplicate' as well. TCP_ACK_F_DUPACK is bit zero, so the
@@ -875,7 +874,7 @@ tcp_rcv_ack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc, vlib_buffer_t * b,
 	     tcp_header_t * th, u32 * error)
 {
   u32 prev_snd_wnd;
-  tcp_rate_sample_t rs = { 0 };
+  tcp_ack_ctx_t rs = { 0 };
 
   TCP_EVT (TCP_EVT_CC_STAT, tc);
 

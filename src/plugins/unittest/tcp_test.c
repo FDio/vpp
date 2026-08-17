@@ -34,7 +34,7 @@
 /* Production creates one rate sample per ACK. Keep direct scoreboard tests
  * faithful to that ownership model when they reuse a local sample. */
 static_always_inline void
-tcp_test_rcv_sacks (tcp_connection_t *tc, u32 ack, tcp_rate_sample_t *rs)
+tcp_test_rcv_sacks (tcp_connection_t *tc, u32 ack, tcp_ack_ctx_t *rs)
 {
   clib_memset (rs, 0, sizeof (*rs));
   tcp_rcv_sacks (tc, ack, rs);
@@ -158,7 +158,7 @@ static int
 tcp_test_sack_reordering (tcp_test_sack_backend_t backend)
 {
   tcp_connection_t _tc, *tc = &_tc;
-  tcp_rate_sample_t rs = {};
+  tcp_ack_ctx_t rs = {};
   sack_scoreboard_t *sb = &tc->sack_sb;
   sack_block_t block;
   u32 i;
@@ -228,7 +228,7 @@ static u32
 tcp_test_reorder_observe (tcp_connection_t *tc, tcp_test_sack_backend_t backend, u16 mss,
 			  u32 snd_nxt, u32 distance, u32 initial_reorder)
 {
-  tcp_rate_sample_t rs = {};
+  tcp_ack_ctx_t rs = {};
   sack_scoreboard_t *sb = &tc->sack_sb;
   sack_block_t block;
   u32 reorder;
@@ -269,7 +269,7 @@ static int
 tcp_test_sack_reorder_accuracy (tcp_test_sack_backend_t backend)
 {
   tcp_connection_t _tc, *tc = &_tc;
-  tcp_rate_sample_t rs = {};
+  tcp_ack_ctx_t rs = {};
   sack_scoreboard_t *sb = &tc->sack_sb;
   sack_block_t block;
   const u16 mss = 150;
@@ -386,7 +386,7 @@ static int
 tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
 {
   tcp_connection_t _tc, *tc = &_tc;
-  tcp_rate_sample_t rs = {};
+  tcp_ack_ctx_t rs = {};
   sack_scoreboard_t *sb = &tc->sack_sb;
   sack_block_t *sacks = 0, block;
   sack_scoreboard_hole_t *hole;
@@ -1192,7 +1192,7 @@ static int
 tcp_test_dsack_rx (vlib_main_t *vm)
 {
   tcp_connection_t _tc, *tc = &_tc;
-  tcp_rate_sample_t rs = {};
+  tcp_ack_ctx_t rs = {};
   sack_block_t block;
 
 #define DSACK_RX_INIT()                                                                            \
@@ -2188,7 +2188,7 @@ tcp_test_cubic_init_epoch (tcp_connection_t *tc, clib_thread_index_t thread_inde
 static int
 tcp_test_cubic_compare_growth (tcp_connection_t *tc, tcp_connection_t *ref, u32 n_acks)
 {
-  tcp_rate_sample_t rs = { .bytes_acked = tc->snd_mss, .acked_and_sacked = tc->snd_mss };
+  tcp_ack_ctx_t rs = { .bytes_acked = tc->snd_mss, .acked_and_sacked = tc->snd_mss };
   u32 i;
 
   for (i = 0; i < n_acks; i++)
@@ -2283,7 +2283,7 @@ tcp_test_cwnd_limited_marking (void)
   /* An ACK that starts before the marker covers data from a cwnd-limited
    * flight even if it cumulatively acknowledges data beyond the marker. */
   {
-    tcp_rate_sample_t rs = { .bytes_acked = 3 * snd_mss };
+    tcp_ack_ctx_t rs = { .bytes_acked = 3 * snd_mss };
 
     tc->snd_una = 200 * snd_mss;
     tc->cwnd_limited_seq = tc->snd_una - 2 * snd_mss;
@@ -2303,7 +2303,7 @@ tcp_test_cwnd_limited_growth (void)
   const tcp_cc_algorithm_type_e cc_types[] = { TCP_CC_NEWRENO, TCP_CC_CUBIC };
   const char *cc_names[] = { "newreno", "cubic" };
   const u32 snd_mss = 1000, initial_cwnd = 10 * snd_mss, n_app_limited_acks = 128;
-  tcp_rate_sample_t rs = { .bytes_acked = snd_mss, .acked_and_sacked = snd_mss };
+  tcp_ack_ctx_t rs = { .bytes_acked = snd_mss, .acked_and_sacked = snd_mss };
   tcp_connection_t _tc, *tc = &_tc;
   u32 i, j;
 
@@ -2357,7 +2357,7 @@ tcp_test_cubic_app_limited (void)
 {
   const clib_thread_index_t thread_index = 0;
   const u32 snd_mss = 1000;
-  tcp_rate_sample_t rs = { .bytes_acked = snd_mss, .acked_and_sacked = snd_mss };
+  tcp_ack_ctx_t rs = { .bytes_acked = snd_mss, .acked_and_sacked = snd_mss };
   tcp_connection_t _tc, *tc = &_tc, _ref, *ref = &_ref;
   u32 initial_cwnd;
 
@@ -3636,7 +3636,7 @@ tcp_test_rto_reduce_once_e2e (vlib_main_t *vm, unformat_input_t *input)
    */
   {
     tcp_connection_t _stc, *stc = &_stc;
-    tcp_rate_sample_t _srs, *srs = &_srs;
+    tcp_ack_ctx_t _srs, *srs = &_srs;
     u32 mss = 1460;
 
 #define ARM_SPURIOUS()                                                                             \
@@ -4837,7 +4837,7 @@ tcp_test_tamper_dsack_early_undo (vlib_main_t *vm)
   tcp_e2e_ctx_t _ctx, *ctx = &_ctx;
   tcp_connection_t *client_tc, *server_tc;
   tcp_tamper_rule_t *ack_rule, *loss_rule, *release_rule;
-  tcp_rate_sample_t seed_rs = { 0 };
+  tcp_ack_ctx_t seed_rs = { 0 };
   sack_block_t seed_sack, dsack;
   session_t *client_s, *server_s;
   const u32 n_segments = 8;
@@ -5373,7 +5373,7 @@ static int
 tcp_test_delivery (vlib_main_t * vm, unformat_input_t * input)
 {
   clib_thread_index_t thread_index = 0, snd_una, *min_seqs = 0;
-  tcp_rate_sample_t _rs = { 0 }, *rs = &_rs;
+  tcp_ack_ctx_t _rs = { 0 }, *rs = &_rs;
   tcp_connection_t _tc, *tc = &_tc;
   int __clib_unused verbose = 0, i;
   u64 rate = 1000, burst = 100;
@@ -5735,7 +5735,7 @@ static int
 tcp_test_sack_backend_trace (tcp_test_sack_backend_t backend, tcp_test_sack_snapshot_t *snapshots)
 {
   tcp_connection_t _tc = {}, *tc = &_tc;
-  tcp_rate_sample_t rs;
+  tcp_ack_ctx_t rs;
   sack_block_t blocks[3];
   u32 acks[] = { 0, 100, 100, 450 };
   u32 n_blocks[] = { 3, 3, 1, 2 };
@@ -5851,7 +5851,7 @@ tcp_test_bt_scoreboard_random (u32 base, u32 seed, tcp_test_bt_sb_mode_t mode)
 {
   tcp_connection_t _default_tc = {}, _bt_tc = {};
   tcp_connection_t *default_tc = &_default_tc, *bt_tc = &_bt_tc;
-  tcp_rate_sample_t default_rs, bt_rs;
+  tcp_ack_ctx_t default_rs, bt_rs;
   sack_block_t block;
   u32 ack, end, flight = 8192, high_rxt, i, j, n_blocks, offset, span;
   u8 rescue_active = 0, same;
@@ -5991,7 +5991,7 @@ static int
 tcp_test_bt_reorder (void)
 {
   tcp_connection_t _tc = {}, *tc = &_tc;
-  tcp_rate_sample_t rs = {};
+  tcp_ack_ctx_t rs = {};
   sack_block_t block;
 
   tc->snd_mss = 100;
@@ -6071,7 +6071,7 @@ tcp_test_bt_retransmit_ranges (void)
 {
   tcp_connection_t _default_tc = {}, _bt_tc = {};
   tcp_connection_t *default_tc = &_default_tc, *bt_tc = &_bt_tc;
-  tcp_rate_sample_t default_rs = {}, bt_rs = {};
+  tcp_ack_ctx_t default_rs = {}, bt_rs = {};
   sack_scoreboard_hole_t *hole;
   tcp_rxt_range_t range;
   sack_block_t blocks[] = {
@@ -6170,7 +6170,7 @@ static int
 tcp_test_bt_cumulative_ack (void)
 {
   tcp_connection_t _tc = {}, *tc = &_tc;
-  tcp_rate_sample_t rs = {};
+  tcp_ack_ctx_t rs = {};
   tcp_bt_sample_t *head;
 
   tc->snd_mss = 100;
@@ -6234,7 +6234,7 @@ static int
 tcp_test_bt_reneging_delivery (void)
 {
   tcp_connection_t _tc = {}, *tc = &_tc;
-  tcp_rate_sample_t rs = {};
+  tcp_ack_ctx_t rs = {};
   tcp_bt_sample_t *bts;
   sack_block_t block;
 
@@ -6345,7 +6345,7 @@ static int
 tcp_test_bt_repeat_sack (void)
 {
   tcp_connection_t _tc = {}, *tc = &_tc;
-  tcp_rate_sample_t rs = {};
+  tcp_ack_ctx_t rs = {};
   sack_block_t block;
   u32 i, n_samples;
 
@@ -6402,7 +6402,7 @@ static int
 tcp_test_bt_sack_bridge (void)
 {
   tcp_connection_t _tc = {}, *tc = &_tc;
-  tcp_rate_sample_t rs = {};
+  tcp_ack_ctx_t rs = {};
   tcp_bt_sample_t *bts;
   sack_block_t block;
 
@@ -6447,7 +6447,7 @@ static int
 tcp_test_bt_incremental_sack_loss (void)
 {
   tcp_connection_t _tc = {}, *tc = &_tc;
-  tcp_rate_sample_t rs = {};
+  tcp_ack_ctx_t rs = {};
   sack_block_t block;
   u32 i;
 
@@ -6559,7 +6559,7 @@ static int
 tcp_test_bt_retransmit_range_cache (void)
 {
   tcp_connection_t _tc = {}, *tc = &_tc;
-  tcp_rate_sample_t rs = {};
+  tcp_ack_ctx_t rs = {};
   tcp_rxt_range_t range;
   sack_block_t block;
   u8 can_rescue = 0, snd_limited = 0;
@@ -6629,7 +6629,7 @@ tcp_test_bt_retransmit_range_cache_skip_sacked (void)
 {
   tcp_connection_t _default_tc = {}, _bt_tc = {};
   tcp_connection_t *default_tc = &_default_tc, *bt_tc = &_bt_tc;
-  tcp_rate_sample_t default_rs = {}, bt_rs = {};
+  tcp_ack_ctx_t default_rs = {}, bt_rs = {};
   sack_scoreboard_hole_t *hole;
   tcp_rxt_range_t range;
   sack_block_t blocks[] = {
@@ -6801,7 +6801,7 @@ tcp_test_bt_rxt_over_sacked (void)
 {
   tcp_connection_t _default_tc = {}, _bt_tc = {};
   tcp_connection_t *default_tc = &_default_tc, *bt_tc = &_bt_tc;
-  tcp_rate_sample_t default_rs, bt_rs;
+  tcp_ack_ctx_t default_rs, bt_rs;
   sack_block_t block;
 
   default_tc->snd_mss = bt_tc->snd_mss = 100;
@@ -6897,7 +6897,7 @@ static int
 tcp_test_bt_rxt_merge_over_sacked (void)
 {
   tcp_connection_t _tc = {}, *tc = &_tc;
-  tcp_rate_sample_t rs;
+  tcp_ack_ctx_t rs;
   sack_block_t block;
 
   tc->snd_mss = 100;
@@ -7006,7 +7006,7 @@ tcp_test_bt_rxt_across_sacked_island (void)
 {
   tcp_connection_t _default_tc = {}, _bt_tc = {};
   tcp_connection_t *default_tc = &_default_tc, *bt_tc = &_bt_tc;
-  tcp_rate_sample_t default_rs, bt_rs;
+  tcp_ack_ctx_t default_rs, bt_rs;
   tcp_bt_sample_t *bts;
   sack_block_t block;
 
@@ -7110,7 +7110,7 @@ tcp_test_bt_dsack (void)
 {
   tcp_connection_t _tc = {}, *tc = &_tc;
   tcp_bt_sample_t *bts;
-  tcp_rate_sample_t rs = {};
+  tcp_ack_ctx_t rs = {};
   sack_block_t block;
   u32 matched, samples;
 
@@ -7264,7 +7264,7 @@ static int
 tcp_test_bt (vlib_main_t * vm, unformat_input_t * input)
 {
   clib_thread_index_t thread_index = 0;
-  tcp_rate_sample_t _rs = { 0 }, *rs = &_rs;
+  tcp_ack_ctx_t _rs = { 0 }, *rs = &_rs;
   tcp_connection_t _tc, *tc = &_tc;
   fifo_segment_create_args_t _a, *a = &_a;
   fifo_segment_main_t _fsm = { 0 }, *fsm = &_fsm;

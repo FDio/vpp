@@ -606,7 +606,7 @@ tcp_bt_track_rxt (tcp_connection_t *tc, u32 start, u32 end)
 }
 
 static void
-tcp_bt_sample_to_rate_sample (tcp_connection_t *tc, tcp_bt_sample_t *bts, tcp_rate_sample_t *rs,
+tcp_bt_sample_to_rate_sample (tcp_connection_t *tc, tcp_bt_sample_t *bts, tcp_ack_ctx_t *rs,
 			      f64 now)
 {
   if (bts->flags & TCP_BTS_IS_DELIVERED)
@@ -643,7 +643,7 @@ tcp_bt_update_reorder (tcp_connection_t *tc, tcp_bts_flags_t flags, u32 start, u
 }
 
 static_always_inline void
-tcp_bt_update_rxt_delivered (tcp_connection_t *tc, tcp_rate_sample_t *rs, tcp_bts_flags_t flags,
+tcp_bt_update_rxt_delivered (tcp_connection_t *tc, tcp_ack_ctx_t *rs, tcp_bts_flags_t flags,
 			     u32 start, u32 end)
 {
   u32 high_rxt = tc->sack_sb.high_rxt;
@@ -655,7 +655,7 @@ tcp_bt_update_rxt_delivered (tcp_connection_t *tc, tcp_rate_sample_t *rs, tcp_bt
 }
 
 static void
-tcp_bt_walk_samples (tcp_connection_t *tc, u32 ack, tcp_rate_sample_t *rs, f64 now, u32 high_sacked,
+tcp_bt_walk_samples (tcp_connection_t *tc, u32 ack, tcp_ack_ctx_t *rs, f64 now, u32 high_sacked,
 		     u8 account)
 {
   tcp_byte_tracker_t *bt = tc->bt;
@@ -715,8 +715,7 @@ tcp_bt_walk_samples (tcp_connection_t *tc, u32 ack, tcp_rate_sample_t *rs, f64 n
 }
 
 static void
-tcp_bt_walk_samples_ooo (tcp_connection_t *tc, tcp_rate_sample_t *rs, f64 now, u32 ack,
-			 u32 high_sacked)
+tcp_bt_walk_samples_ooo (tcp_connection_t *tc, tcp_ack_ctx_t *rs, f64 now, u32 ack, u32 high_sacked)
 {
   sack_block_t *blks = tc->rcv_opts.sacks, *blk;
   tcp_byte_tracker_t *bt = tc->bt;
@@ -812,7 +811,7 @@ tcp_bt_walk_samples_ooo (tcp_connection_t *tc, tcp_rate_sample_t *rs, f64 now, u
 }
 
 static_always_inline u32
-tcp_bt_data_acked (tcp_connection_t *tc, tcp_rate_sample_t *rs)
+tcp_bt_data_acked (tcp_connection_t *tc, tcp_ack_ctx_t *rs)
 {
   u32 ack_end, data_end, prev_una;
 
@@ -830,7 +829,7 @@ tcp_bt_data_acked (tcp_connection_t *tc, tcp_rate_sample_t *rs)
  * evidence above the next candidate and the newly exposed interval need to
  * be walked. RTO loss does not advance this boundary. */
 static void
-tcp_bt_update_sack_loss (tcp_connection_t *tc, tcp_rate_sample_t *rs)
+tcp_bt_update_sack_loss (tcp_connection_t *tc, tcp_ack_ctx_t *rs)
 {
   tcp_byte_tracker_t *bt = tc->bt;
   tcp_bt_sample_t *cur;
@@ -882,8 +881,7 @@ tcp_bt_update_sack_loss (tcp_connection_t *tc, tcp_rate_sample_t *rs)
 }
 
 void
-tcp_bt_apply_sacks (tcp_connection_t *tc, u32 ack, u32 high_sacked, u8 has_sack,
-		    tcp_rate_sample_t *rs)
+tcp_bt_apply_sacks (tcp_connection_t *tc, u32 ack, u32 high_sacked, u8 has_sack, tcp_ack_ctx_t *rs)
 {
   tcp_byte_tracker_t *bt = tc->bt;
   sack_scoreboard_t *sb = &tc->sack_sb;
@@ -1277,7 +1275,7 @@ tcp_bt_dsack_recovery_clear (tcp_connection_t *tc)
 }
 
 static void
-tcp_bt_process_ack (tcp_connection_t *tc, tcp_rate_sample_t *rs, u32 data_acked)
+tcp_bt_process_ack (tcp_connection_t *tc, tcp_ack_ctx_t *rs, u32 data_acked)
 {
   tcp_byte_tracker_t *bt = tc->bt;
   sack_scoreboard_t *sb = &tc->sack_sb;
@@ -1306,7 +1304,7 @@ tcp_bt_process_ack (tcp_connection_t *tc, tcp_rate_sample_t *rs, u32 data_acked)
 }
 
 void
-tcp_bt_sample_delivery_rate (tcp_connection_t * tc, tcp_rate_sample_t * rs)
+tcp_bt_sample_delivery_rate (tcp_connection_t *tc, tcp_ack_ctx_t *rs)
 {
   u32 delivered, data_acked;
   f64 now;
