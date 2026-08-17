@@ -16,6 +16,57 @@
       "message": "Re-run failed jobs via GitHub UI",
       "revId": "67d00741edcb696d9fd146d418ba251d652e0f31",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "02cc598d_29c91a91",
+        "filename": "src/plugins/sfdp_services/session_stats/cli.c",
+        "patchSetId": 34
+      },
+      "lineNbr": 129,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-08-17T12:06:10Z",
+      "side": 1,
+      "message": "Could we reject `ring_size \u003d\u003d 0` in `sfdp_session_stats_ring_init()` so every caller is protected? The CLI accepts `size 0`; the next export reserves against a zero-sized ring and ring commit performs modulo zero, potentially crashing VPP. An upper-bound/overflow check would also prevent invalid ring allocations.",
+      "revId": "67d00741edcb696d9fd146d418ba251d652e0f31",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0b188774_f6fa6b45",
+        "filename": "src/plugins/sfdp_services/session_stats/node.c",
+        "patchSetId": 34
+      },
+      "lineNbr": 67,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-08-17T12:06:10Z",
+      "side": 1,
+      "message": "Could we locate TCP using the L4 offset computed by the SFDP parser and validate the header bounds? Adding fixed IPv4/IPv6 header sizes interprets IPv4 options or IPv6 extension headers as TCP, producing invalid TCP/RTT statistics and potentially reading beyond the valid header.",
+      "revId": "67d00741edcb696d9fd146d418ba251d652e0f31",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e541ebbb_b1df5d1c",
+        "filename": "src/plugins/sfdp_services/session_stats/session_stats.c",
+        "patchSetId": 34
+      },
+      "lineNbr": 119,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-08-17T12:06:10Z",
+      "side": 1,
+      "message": "Could we use `sfdp_normalise_ip4_key()` here, and the IPv6 equivalent below, as the API dump does? `session-\u003ekeys[0]` is stored in canonical low/high order; when `pseudo_dir` is set, these fields reverse the real source and destination while the forward/reverse counters retain their original direction.",
+      "revId": "67d00741edcb696d9fd146d418ba251d652e0f31",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
