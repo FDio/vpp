@@ -1,0 +1,22 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6da47041_439df667",
+        "filename": "src/plugins/rdma/device.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-08-17T12:02:51Z",
+      "side": 1,
+      "message": "Confirmed: VPP intentionally builds static rdma-core with ENABLE_RESOLVE_NEIGH\u003d0 to avoid the libnl dependency, so ibv_get_device_index() returns -1. Keeping the device-index fallback is therefore reasonable.\n\nCould we nevertheless simplify the netlink implementation by using one parameterized multipart-dump lookup helper? Both lookups perform the same request construction, sequence filtering, NLMSG_ERROR/NLMSG_DONE handling, attribute matching, and u32 extraction. The call site would reduce to DEV_NAME -\u003e DEV_INDEX, then NDEV_INDEX -\u003e PORT_INDEX filtered by DEV_INDEX. This preserves the required fallback while removing the separate send functions and duplicated receive/parsing loops.",
+      "parentUuid": "3b6d4c0b_2ef3eb22",
+      "revId": "65507518cc1c31c8c72504eaf72b4a7b0740ea07",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
