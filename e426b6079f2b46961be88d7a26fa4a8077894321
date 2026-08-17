@@ -1,0 +1,72 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f0a9bd89_b36059da",
+        "filename": "src/plugins/rdma/device.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1032,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-08-17T09:27:42Z",
+      "side": 1,
+      "message": "The enhanced-MPW capability does not guarantee that the port permits zero-byte inlining. The new eMPW WQE zeroes the shared Ethernet segment and references each packet from byte zero, whereas the existing SEND path always inlines 18 bytes. On ports requiring a minimum inline header, automatically enabling this path can produce TX errors. Could we detect the required inline mode and leave eMPW disabled when it is nonzero?",
+      "revId": "e426b6079f2b46961be88d7a26fa4a8077894321",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3a3b22ac_02b89c57",
+        "filename": "src/plugins/rdma/output.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 123,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-08-17T09:27:42Z",
+      "side": 1,
+      "message": "Could we specialize eMPW in the same way as TSO by passing a constant mode into this `always_inline` helper? Testing `rd-\u003eflags \u0026 RDMA_DEVICE_F_EMPW` here cannot be constant-folded and is currently repeated below. A `SEND`/`TSO`/`EMPW` mode selected by the caller would let the compiler remove the irrelevant completion translation and buffer-free branches for each path.",
+      "revId": "e426b6079f2b46961be88d7a26fa4a8077894321",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ee46f24f_690ca2de",
+        "filename": "src/plugins/rdma/output.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 668,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-08-17T09:27:42Z",
+      "side": 1,
+      "message": "Could we share the existing TSO builder instead of maintaining a second implementation for eMPW? The two versions have already drifted: `rdma_mlx5_try_tso()` falls back to regular SEND when `pkt_sz \u003c hdr_sz`, while this version reports `TSO_PAYLOAD_TOO_BIG` and drops the packet. Ideally the common builder would return the resulting buffer index, WQEBB count, last control segment, and status, leaving the legacy and eMPW callers to apply their different ring accounting.",
+      "revId": "e426b6079f2b46961be88d7a26fa4a8077894321",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2815b309_335a309a",
+        "filename": "src/plugins/rdma/rdma.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 195,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-08-17T09:27:42Z",
+      "side": 1,
+      "message": "These fields are now accessed in the datapath, so the surrounding cold-field comment is no longer accurate. Could we also order the pointer-aligned fields before the two `u16` counters? The current `u16`, `u16`, pointer ordering creates a four-byte alignment hole. This does not change the cache-line-rounded structure size, but grouping/reordering the new hot state would make the layout intentional.",
+      "revId": "e426b6079f2b46961be88d7a26fa4a8077894321",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
