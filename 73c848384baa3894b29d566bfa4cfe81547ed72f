@@ -1,6 +1,23 @@
 {
   "comments": [
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "4e09891a_3a1455d7",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2026-08-17T16:15:53Z",
+      "side": 1,
+      "message": "Agree with Benoît on integrate IPTFS to vnet/ipsec. Also it would be nice to separate the big commit to multiple (relatively) self-contained subcommits.",
+      "revId": "73c848384baa3894b29d566bfa4cfe81547ed72f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "73d92e00_33b41580",
