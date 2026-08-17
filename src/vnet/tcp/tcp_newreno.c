@@ -35,25 +35,24 @@ newreno_recovered (tcp_connection_t * tc)
 }
 
 static void
-newreno_rcv_ack (tcp_connection_t * tc, tcp_rate_sample_t * rs)
+newreno_rcv_ack (tcp_connection_t *tc, tcp_ack_ctx_t *ac)
 {
-  if (!tcp_cc_is_cwnd_limited (tc, rs))
+  if (!tcp_cc_is_cwnd_limited (tc, ac))
     return;
 
   if (tcp_in_slowstart (tc))
     {
-      tc->cwnd += clib_min (tc->snd_mss, rs->acked_and_sacked);
+      tc->cwnd += clib_min (tc->snd_mss, ac->acked_and_sacked);
     }
   else
     {
       /* tc->cwnd += clib_max ((tc->snd_mss * tc->snd_mss) / tc->cwnd, 1); */
-      tcp_cwnd_accumulate (tc, tc->cwnd, rs->acked_and_sacked);
+      tcp_cwnd_accumulate (tc, tc->cwnd, ac->acked_and_sacked);
     }
 }
 
 void
-newreno_rcv_cong_ack (tcp_connection_t * tc, tcp_cc_ack_t ack_type,
-		      tcp_rate_sample_t * rs)
+newreno_rcv_cong_ack (tcp_connection_t *tc, tcp_cc_ack_t ack_type, tcp_ack_ctx_t *ac)
 {
   /* With sacks prr controls the data in flight post congestion */
   if (PREDICT_TRUE (tcp_opts_sack_permitted (tc)))
@@ -76,8 +75,8 @@ newreno_rcv_cong_ack (tcp_connection_t * tc, tcp_cc_ack_t ack_type,
        * eventually ends, approximately ssthresh amount of data will be
        * outstanding in the network. */
       tc->cwnd =
-	(tc->cwnd > rs->bytes_acked + tc->snd_mss) ? tc->cwnd - rs->bytes_acked : tc->snd_mss;
-      if (rs->bytes_acked > tc->snd_mss)
+	(tc->cwnd > ac->bytes_acked + tc->snd_mss) ? tc->cwnd - ac->bytes_acked : tc->snd_mss;
+      if (ac->bytes_acked > tc->snd_mss)
 	tc->cwnd += tc->snd_mss;
     }
 }

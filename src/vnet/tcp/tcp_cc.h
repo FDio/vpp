@@ -9,17 +9,16 @@
 #include <vnet/tcp/tcp_types.h>
 
 always_inline void
-tcp_cc_rcv_ack (tcp_connection_t * tc, tcp_rate_sample_t * rs)
+tcp_cc_rcv_ack (tcp_connection_t *tc, tcp_ack_ctx_t *ac)
 {
-  tc->cc_algo->rcv_ack (tc, rs);
+  tc->cc_algo->rcv_ack (tc, ac);
   tc->tsecr_last_ack = tc->rcv_opts.tsecr;
 }
 
 static inline void
-tcp_cc_rcv_cong_ack (tcp_connection_t * tc, tcp_cc_ack_t ack_type,
-		     tcp_rate_sample_t * rs)
+tcp_cc_rcv_cong_ack (tcp_connection_t *tc, tcp_cc_ack_t ack_type, tcp_ack_ctx_t *ac)
 {
-  tc->cc_algo->rcv_cong_ack (tc, ack_type, rs);
+  tc->cc_algo->rcv_cong_ack (tc, ack_type, ac);
 }
 
 static inline void
@@ -111,9 +110,9 @@ tcp_cc_update_cwnd_limited (tcp_connection_t *tc, u32 max_dequeue)
 
 /** Return true if this ACK covers a flight that permits cwnd growth. */
 always_inline u8
-tcp_cc_is_cwnd_limited (const tcp_connection_t *tc, const tcp_rate_sample_t *rs)
+tcp_cc_is_cwnd_limited (const tcp_connection_t *tc, const tcp_ack_ctx_t *ac)
 {
-  return seq_lt (tc->snd_una - rs->bytes_acked, tc->cwnd_limited_seq);
+  return seq_lt (tc->snd_una - ac->bytes_acked, tc->cwnd_limited_seq);
 }
 
 /* Eifel spurious-retransmit detection (RFC 3522 Sec. 3.2). Spurious if the ack
@@ -123,9 +122,9 @@ tcp_cc_is_cwnd_limited (const tcp_connection_t *tc, const tcp_rate_sample_t *rs)
  * dsack to disambiguate. Other outstanding loss is handled as a new recovery
  * event. Must be called on a cumulative ack in recovery. */
 static inline u8
-tcp_cc_is_spurious_retransmit (tcp_connection_t *tc, tcp_rate_sample_t *rs)
+tcp_cc_is_spurious_retransmit (tcp_connection_t *tc, tcp_ack_ctx_t *ac)
 {
-  ASSERT (tcp_in_cong_recovery (tc) && rs->bytes_acked);
+  ASSERT (tcp_in_cong_recovery (tc) && ac->bytes_acked);
   return (tc->snd_rxt_ts && seq_lt (tc->snd_una, tc->snd_congestion) &&
 	  tcp_opts_tstamp (&tc->rcv_opts) && timestamp_lt (tc->rcv_opts.tsecr, tc->snd_rxt_ts));
 }
@@ -145,7 +144,6 @@ tcp_cc_algorithm_t *tcp_cc_algo_get (tcp_cc_algorithm_type_e type);
 /** Enter fast recovery using the connection's negotiated ACK mechanism. */
 void tcp_cc_enter_recovery (tcp_connection_t *tc);
 
-void newreno_rcv_cong_ack (tcp_connection_t * tc, tcp_cc_ack_t ack_type,
-			   tcp_rate_sample_t * rs);
+void newreno_rcv_cong_ack (tcp_connection_t *tc, tcp_cc_ack_t ack_type, tcp_ack_ctx_t *ac);
 
 #endif /* SRC_VNET_TCP_TCP_CC_H_ */
