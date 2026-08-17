@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e42abe90_c5ac80d1",
+        "filename": "src/plugins/rdma/output.c",
+        "patchSetId": 48
+      },
+      "lineNbr": 239,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-08-17T09:11:47Z",
+      "side": 1,
+      "message": "Could we add `ASSERT (mss !\u003d 0)` here to document the TSO metadata invariant and catch invalid producers in debug builds?",
+      "revId": "5f1c4ef1d470eab138072aea5d26bb6714ec31c8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4e9917cb_2a9f5c0d",
+        "filename": "src/plugins/rdma/output.c",
+        "patchSetId": 48
+      },
+      "lineNbr": 560,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-08-17T09:11:47Z",
+      "side": 1,
+      "message": "This selects TSO for every `VNET_BUFFER_F_GSO` packet, but VPP also uses that flag for UDP GSO and advertises UDP GSO through a separate capability. For example, vhost can produce a GSO buffer with `VNET_BUFFER_OFFLOAD_F_UDP_CKSUM`. Could we require TCP checksum offload here and ensure non-TCP GSO is segmented or dropped rather than submitted through the TCP TSO path?",
+      "revId": "5f1c4ef1d470eab138072aea5d26bb6714ec31c8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "701ef42e_4e6bcdc8",
+        "filename": "src/plugins/rdma/output.c",
+        "patchSetId": 48
+      },
+      "lineNbr": 906,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-08-17T09:11:47Z",
+      "side": 1,
+      "message": "Could we annotate literal arguments used to select constant-folded variants with the customary `/* parameter */ value` form? Here, both the completion and TX dispatch calls should use `/* is_tso */ 1` or `/* is_tso */ 0`. More generally, please do this for every constant-folding selector introduced by the change.",
+      "revId": "5f1c4ef1d470eab138072aea5d26bb6714ec31c8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
