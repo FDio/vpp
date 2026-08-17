@@ -1,5 +1,125 @@
 {
-  "comments": [],
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5311f31f_beb48624",
+        "filename": "src/vnet/ip/ip6_destination_options.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 101,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-08-17T08:52:05Z",
+      "side": 1,
+      "message": "Could we validate the available buffer and IPv6 payload length before dereferencing dest_opts? A truncated packet can currently cause an out-of-bounds read. If this remains Linux-specific, the simplest check would validate that the complete fixed eight-byte option and inner IPv6 header are present.",
+      "revId": "e104492e41484ee649517b096ab46675244ac901",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3278c18f_d91ed196",
+        "filename": "src/vnet/ip/ip6_destination_options.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 104,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-08-17T08:52:05Z",
+      "side": 1,
+      "message": "This only checks that the next header is IPv6; it does not check whether the Destination Options header actually contains Linux\u0027s Encapsulation Limit option. As written, malformed or unrelated options are forwarded to ipip6-input. For the narrow implementation, could we accept only Linux\u0027s fixed layout (Hdr Ext Len \u003d\u003d 0, option 0x04, length 1, followed by PadN) and punt everything else?",
+      "revId": "e104492e41484ee649517b096ab46675244ac901",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1a846b64_96675f58",
+        "filename": "src/vnet/ip/ip6_destination_options.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 108,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-08-17T08:52:05Z",
+      "side": 1,
+      "message": "Since this handler is registered globally and enabled by default, dropping every unsupported protocol-60 packet changes the previous punt behavior for unrelated Destination Options traffic. Could unsupported but safely readable forms retain the IPv6 punt disposition? Malformed packets can still be dropped explicitly.",
+      "revId": "e104492e41484ee649517b096ab46675244ac901",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "44f322b8_1856ec28",
+        "filename": "src/vnet/ip/ip6_destination_options.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 132,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-08-17T08:52:05Z",
+      "side": 1,
+      "message": "Trace capture always copies 120 bytes regardless of the packet\u0027s available length. Short packets therefore include stale bytes beyond current_length. Could the trace be zero-initialized and copy only the available bytes?",
+      "revId": "e104492e41484ee649517b096ab46675244ac901",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d22d5f14_86e201e1",
+        "filename": "src/vnet/ipip/node.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 88,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-08-17T08:52:05Z",
+      "side": 1,
+      "message": "ext_len is u8, while ip6_ext_header_len_s() can return extension lengths up to 2048 bytes. Values of 256 bytes or greater therefore wrap and decapsulation starts at the wrong offset. If the implementation is Linux-specific, this can be avoided entirely by validating the fixed header and using a constant length of eight.",
+      "revId": "e104492e41484ee649517b096ab46675244ac901",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "cb1484f5_e7fb0b5f",
+        "filename": "src/vnet/ipip/node.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 118,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-08-17T08:52:05Z",
+      "side": 1,
+      "message": "The wire-provided extension length is used without checking it against current_length or the IPv6 payload length before vlib_buffer_advance(). This can assert in debug builds or underflow current_length in release builds. Please validate the complete header before advancing, or use the existing safe extension-header walking helper for a generic implementation.",
+      "revId": "e104492e41484ee649517b096ab46675244ac901",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "be038b49_faeccddf",
+        "filename": "test/test_ipip.py",
+        "patchSetId": 8
+      },
+      "lineNbr": 1162,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-08-17T08:52:05Z",
+      "side": 1,
+      "message": "Could we add negative coverage for truncated input and unsupported option layouts? If this is Linux-specific, tests for a nonzero Hdr Ext Len, an unexpected option type or length, and a non-IPv6 next header would document the deliberately narrow contract and verify that unsupported input is handled safely.",
+      "revId": "e104492e41484ee649517b096ab46675244ac901",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ],
   "submitRequirementResults": [
     {
       "submitRequirement": {
