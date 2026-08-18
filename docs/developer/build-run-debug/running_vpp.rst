@@ -4,6 +4,7 @@
 
 Running VPP
 ===========
+.. DO NOT COMMIT
 
 After building the VPP binaries, you now have several images built.
 These images are useful when you need to run VPP without installing the packages.
