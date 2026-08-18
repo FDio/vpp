@@ -10,12 +10,13 @@
 #include <wireguard/wireguard.h>
 #include <wireguard/wireguard_send.h>
 
-#define foreach_wg_output_error                                               \
-  _ (NONE, "No error")                                                        \
-  _ (PEER, "Peer error")                                                      \
-  _ (KEYPAIR, "Keypair error")                                                \
-  _ (NO_BUFFERS, "No buffers")                                                \
-  _ (CRYPTO_ENGINE_ERROR, "crypto engine error (packet dropped)")
+#define foreach_wg_output_error                                                                    \
+  _ (NONE, "No error")                                                                             \
+  _ (PEER, "Peer error")                                                                           \
+  _ (KEYPAIR, "Keypair error")                                                                     \
+  _ (NO_BUFFERS, "No buffers")                                                                     \
+  _ (CRYPTO_ENGINE_ERROR, "crypto engine error (packet dropped)")                                  \
+  _ (INVALID_POST_NEXT, "invalid post next index (packet dropped)")
 
 typedef enum
 {
@@ -667,6 +668,16 @@ wg_output_tun_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   return frame->n_vectors;
 }
 
+always_inline u16
+wg_output_tun_post_validate_next (vlib_buffer_t *b, vlib_node_runtime_t *node, u16 next)
+{
+  if (PREDICT_TRUE (next < node->n_next_nodes))
+    return next;
+
+  b->error = node->errors[WG_OUTPUT_ERROR_INVALID_POST_NEXT];
+  return WG_OUTPUT_NEXT_ERROR;
+}
+
 always_inline uword
 wg_output_tun_post (vlib_main_t *vm, vlib_node_runtime_t *node,
 		    vlib_frame_t *frame)
@@ -742,6 +753,11 @@ wg_output_tun_post (vlib_main_t *vm, vlib_node_runtime_t *node,
 	    }
 	}
 
+      next[0] = wg_output_tun_post_validate_next (b[0], node, next[0]);
+      next[1] = wg_output_tun_post_validate_next (b[1], node, next[1]);
+      next[2] = wg_output_tun_post_validate_next (b[2], node, next[2]);
+      next[3] = wg_output_tun_post_validate_next (b[3], node, next[3]);
+
       b += 4;
       next += 4;
       n_left -= 4;
@@ -761,6 +777,8 @@ wg_output_tun_post (vlib_main_t *vm, vlib_node_runtime_t *node,
 	    vnet_buffer (b[0])->ip.adj_index[VLIB_TX]);
 	  tr->next_index = next[0];
 	}
+
+      next[0] = wg_output_tun_post_validate_next (b[0], node, next[0]);
 
       b += 1;
       next += 1;
