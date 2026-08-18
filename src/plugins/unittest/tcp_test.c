@@ -37,7 +37,7 @@ static_always_inline void
 tcp_test_rcv_sacks (tcp_connection_t *tc, u32 ack, tcp_ack_ctx_t *ac)
 {
   clib_memset (ac, 0, sizeof (*ac));
-  tcp_rcv_sacks (tc, ack, ac);
+  tcp_ack_handle_feedback (tc, ack, ac);
 }
 
 typedef enum
@@ -171,7 +171,7 @@ tcp_test_sack_reordering (tcp_test_sack_backend_t backend)
       clib_memset (tc, 0, sizeof (*tc));
       tc->snd_nxt = t->snd_nxt;
       tc->snd_mss = t->snd_mss;
-      tc->rcv_opts.flags = TCP_OPTS_FLAG_SACK;
+      tc->rcv_opts.flags = TCP_OPTS_FLAG_SACK_PERMITTED | TCP_OPTS_FLAG_SACK;
       tcp_test_sack_backend_init (tc, backend);
       sb->reorder = t->initial_reorder;
       sb->rescue_rxt = tc->snd_una - 1;
@@ -236,7 +236,7 @@ tcp_test_reorder_observe (tcp_connection_t *tc, tcp_test_sack_backend_t backend,
   clib_memset (tc, 0, sizeof (*tc));
   tc->snd_nxt = snd_nxt;
   tc->snd_mss = mss;
-  tc->rcv_opts.flags = TCP_OPTS_FLAG_SACK;
+  tc->rcv_opts.flags = TCP_OPTS_FLAG_SACK_PERMITTED | TCP_OPTS_FLAG_SACK;
   tcp_test_sack_backend_init (tc, backend);
   sb->reorder = initial_reorder;
   sb->rescue_rxt = tc->snd_una - 1;
@@ -332,7 +332,7 @@ tcp_test_sack_reorder_accuracy (tcp_test_sack_backend_t backend)
     clib_memset (tc, 0, sizeof (*tc));
     tc->snd_nxt = snd_nxt;
     tc->snd_mss = mss;
-    tc->rcv_opts.flags = TCP_OPTS_FLAG_SACK;
+    tc->rcv_opts.flags = TCP_OPTS_FLAG_SACK_PERMITTED | TCP_OPTS_FLAG_SACK;
     tcp_test_sack_backend_init (tc, backend);
     sb->rescue_rxt = tc->snd_una - 1;
 
@@ -413,7 +413,7 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
   tc->flags |= TCP_CONN_FAST_RECOVERY | TCP_CONN_RECOVERY;
   tc->snd_una = 0;
   tc->snd_nxt = 1000;
-  tc->rcv_opts.flags |= TCP_OPTS_FLAG_SACK;
+  tc->rcv_opts.flags |= TCP_OPTS_FLAG_SACK_PERMITTED | TCP_OPTS_FLAG_SACK;
   tc->snd_mss = 150;
   scoreboard_init (&tc->sack_sb);
 
@@ -4931,7 +4931,7 @@ tcp_test_tamper_dsack_early_undo (vlib_main_t *vm)
   vec_add1 (client_tc->rcv_opts.sacks, seed_sack);
   client_tc->rcv_opts.n_sack_blocks = 1;
   client_tc->rcv_opts.flags |= TCP_OPTS_FLAG_SACK;
-  tcp_rcv_sacks (client_tc, spurious_seq, &seed_ac);
+  tcp_ack_handle_feedback (client_tc, spurious_seq, &seed_ac);
   if (!TCP_TEST_I ((client_tc->sack_sb.sacked_bytes != 0),
 		   "dsack_early: prior SACK history seeded "
 		   "(una %u, nxt %u, block %u-%u, sacked %u, last %u)",
@@ -5428,8 +5428,11 @@ tcp_test_delivery (vlib_main_t * vm, unformat_input_t * input)
 
   /* 2) check delivery rate at time 2 */
   tcp_test_set_time (thread_index, 2);
-  tc->snd_una = tc->snd_nxt = burst;
+  tc->snd_nxt = burst;
+  clib_memset (ac, 0, sizeof (*ac));
+  tcp_ack_handle_feedback (tc, burst, ac);
   ac->bytes_acked = burst;
+  tc->snd_una = burst;
 
   tcp_bt_sample_delivery_rate (tc, ac);
 
@@ -5466,8 +5469,11 @@ tcp_test_delivery (vlib_main_t * vm, unformat_input_t * input)
 
   /* 5) check delivery rate at time 4 */
   tcp_test_set_time (thread_index, 4);
-  tc->snd_una = tc->snd_nxt;
+  ack = tc->snd_nxt;
+  clib_memset (ac, 0, sizeof (*ac));
+  tcp_ack_handle_feedback (tc, ack, ac);
   ac->bytes_acked = 2 * burst;
+  tc->snd_una = ack;
 
   tcp_bt_sample_delivery_rate (tc, ac);
 
@@ -5933,12 +5939,11 @@ tcp_test_bt_scoreboard_random (u32 base, u32 seed, tcp_test_bt_sb_mode_t mode)
 
       clib_memset (&default_ac, 0, sizeof (default_ac));
       clib_memset (&bt_ac, 0, sizeof (bt_ac));
-      tcp_rcv_sacks (default_tc, ack, &default_ac);
-      tcp_rcv_sacks (bt_tc, ack, &bt_ac);
+      tcp_ack_handle_feedback (default_tc, ack, &default_ac);
+      tcp_ack_handle_feedback (bt_tc, ack, &bt_ac);
 
-      /* Production completes deferred BT cumulative-ACK accounting after
-       * snd_una and bytes_acked are updated. Compare backends after that full
-       * per-ACK sequence rather than halfway through it. */
+      /* Finalize delivery after both range backends have consumed the same
+       * ACK feedback. */
       default_ac.bytes_acked = bt_ac.bytes_acked = ack - default_tc->snd_una;
       default_tc->snd_una = bt_tc->snd_una = ack;
       tcp_bt_sample_delivery_rate (bt_tc, &bt_ac);
@@ -6095,8 +6100,8 @@ tcp_test_bt_retransmit_ranges (void)
     }
   default_tc->rcv_opts.n_sack_blocks = ARRAY_LEN (blocks);
   bt_tc->rcv_opts.n_sack_blocks = ARRAY_LEN (blocks);
-  tcp_rcv_sacks (default_tc, 0, &default_ac);
-  tcp_rcv_sacks (bt_tc, 0, &bt_ac);
+  tcp_ack_handle_feedback (default_tc, 0, &default_ac);
+  tcp_ack_handle_feedback (bt_tc, 0, &bt_ac);
   tcp_sack_init_rxt (default_tc, 0);
   tcp_sack_init_rxt (bt_tc, 0);
   hole = scoreboard_get_hole (&default_tc->sack_sb, default_tc->sack_sb.cur_rxt_hole);
@@ -6143,8 +6148,8 @@ tcp_test_bt_retransmit_ranges (void)
   bt_tc->rcv_opts.n_sack_blocks = 1;
   clib_memset (&default_ac, 0, sizeof (default_ac));
   clib_memset (&bt_ac, 0, sizeof (bt_ac));
-  tcp_rcv_sacks (default_tc, 100, &default_ac);
-  tcp_rcv_sacks (bt_tc, 100, &bt_ac);
+  tcp_ack_handle_feedback (default_tc, 100, &default_ac);
+  tcp_ack_handle_feedback (bt_tc, 100, &bt_ac);
   TCP_TEST (default_ac.rxt_sacked == bt_ac.rxt_sacked && bt_ac.rxt_sacked == 200,
 	    "BT retransmission delivery accounting matches default: %u", bt_ac.rxt_sacked);
   TCP_TEST (default_tc->sack_sb.sacked_bytes == bt_tc->sack_sb.sacked_bytes &&
@@ -6176,21 +6181,20 @@ tcp_test_bt_cumulative_ack (void)
   tcp_bt_track_tx (tc, 300);
   tc->snd_nxt = 300;
 
-  /* A clean cumulative ACK has no SACK block and therefore bypasses the
-   * generic SACK preparation path. Delivery sampling must retire its prefix
-   * and advance the byte tracker's scoreboard boundaries. */
+  /* A clean cumulative ACK has no SACK block, but the feedback pass must
+   * still retire its tracker prefix before delivery-rate finalization. */
   tcp_test_rcv_sacks (tc, 100, &ac);
-  TCP_TEST (!(ac.ack_flags & TCP_ACK_F_BT_PROCESSED),
-	    "clean BT cumulative ACK is deferred to delivery sampling");
-  TCP_TEST (pool_elts (tc->bt->samples) == 1,
-	    "SACK preparation leaves a clean BT cumulative ACK untouched");
+  head = pool_elt_at_index (tc->bt->samples, tc->bt->head);
+  TCP_TEST (pool_elts (tc->bt->samples) == 1 && head->min_seq == 100,
+	    "feedback pass retires the clean cumulative ACK once");
+  TCP_TEST (tc->delivered == 0, "rate finalization remains separate from tracker updates");
   ac.bytes_acked = 100;
   tc->snd_una = 100;
   tcp_bt_sample_delivery_rate (tc, &ac);
 
   head = pool_elt_at_index (tc->bt->samples, tc->bt->head);
   TCP_TEST (head->min_seq == 100 && tc->delivered == 100,
-	    "BT delivery sampling retires a clean cumulative ACK");
+	    "rate finalization does not revisit a clean cumulative ACK");
   TCP_TEST (tc->sack_sb.high_sacked == 100 && tc->bt->sack_loss_high == 100,
 	    "clean cumulative ACK advances BT scoreboard boundaries");
 
@@ -6204,8 +6208,8 @@ tcp_test_bt_cumulative_ack (void)
   tc->sack_sb.high_rxt = 200;
 
   tcp_test_rcv_sacks (tc, 200, &ac);
-  TCP_TEST (!(ac.ack_flags & TCP_ACK_F_BT_PROCESSED),
-	    "recovery cumulative ACK is deferred to one accounted tracker walk");
+  TCP_TEST (tc->sack_sb.lost_bytes == 100 && ac.rxt_sacked == 100,
+	    "feedback pass accounts the recovery cumulative ACK once");
   ac.bytes_acked = 100;
   tc->snd_una = 200;
   tcp_bt_sample_delivery_rate (tc, &ac);
@@ -6245,7 +6249,7 @@ tcp_test_bt_reneging_delivery (void)
   vec_add1 (tc->rcv_opts.sacks, block);
   tc->rcv_opts.n_sack_blocks = 1;
   tcp_test_rcv_sacks (tc, 0, &ac);
-  TCP_TEST (ac.ack_flags & TCP_ACK_F_BT_PROCESSED, "BT SACK processing records its tracker walk");
+  TCP_TEST (ac.last_sacked_bytes == 100, "BT SACK feedback is applied before rate finalization");
   tcp_bt_sample_delivery_rate (tc, &ac);
   TCP_TEST (tc->delivered == 100, "BT credits the initial SACK once: %u", tc->delivered);
 
@@ -6255,8 +6259,8 @@ tcp_test_bt_reneging_delivery (void)
   tc->rcv_opts.flags &= ~TCP_OPTS_FLAG_SACK;
   tc->rcv_opts.n_sack_blocks = 0;
   tcp_test_rcv_sacks (tc, 100, &ac);
-  TCP_TEST (ac.ack_flags & TCP_ACK_F_BT_PROCESSED,
-	    "BT cumulative ACK after SACK history records its tracker walk");
+  TCP_TEST (tcp_scoreboard_is_reneging (&tc->sack_sb),
+	    "BT cumulative ACK resolves reneging before rate finalization");
   ac.bytes_acked = 100;
   tc->snd_una = 100;
   tcp_bt_sample_delivery_rate (tc, &ac);
@@ -6651,8 +6655,8 @@ tcp_test_bt_retransmit_range_cache_skip_sacked (void)
       vec_add1 (bt_tc->rcv_opts.sacks, blocks[i]);
     }
   default_tc->rcv_opts.n_sack_blocks = bt_tc->rcv_opts.n_sack_blocks = ARRAY_LEN (blocks);
-  tcp_rcv_sacks (default_tc, 0, &default_ac);
-  tcp_rcv_sacks (bt_tc, 0, &bt_ac);
+  tcp_ack_handle_feedback (default_tc, 0, &default_ac);
+  tcp_ack_handle_feedback (bt_tc, 0, &bt_ac);
 
   default_tc->flags = bt_tc->flags = TCP_CONN_FAST_RECOVERY | TCP_CONN_RECOVERY;
   default_tc->snd_congestion = bt_tc->snd_congestion = 1000;
@@ -7136,14 +7140,14 @@ tcp_test_bt_dsack (void)
   block = (sack_block_t) { .start = 900, .end = 1100 };
   vec_add1 (tc->rcv_opts.sacks, block);
   tc->rcv_opts.n_sack_blocks = 2;
-  tcp_rcv_sacks (tc, 900, &ac);
+  tcp_ack_handle_feedback (tc, 900, &ac);
   TCP_TEST (!(ac.ack_flags & TCP_ACK_F_DSACK) && tc->dsack_pending_bytes == 100 &&
 	      !(tc->sack_sb.flags & TCP_DSACK_UNDO_DISABLED) && tcp_bt_is_sane (tc->bt),
 	    "BT ignores snd_una-straddling D-SACK without changing history");
   vec_reset_length (tc->rcv_opts.sacks);
 
   tc->rcv_opts.flags &= ~TCP_OPTS_FLAG_SACK;
-  tcp_rcv_sacks (tc, 1300, &ac);
+  tcp_ack_handle_feedback (tc, 1300, &ac);
   ac.bytes_acked = 300;
   tc->snd_una = 1300;
   tcp_bt_sample_delivery_rate (tc, &ac);
@@ -7156,7 +7160,7 @@ tcp_test_bt_dsack (void)
   tcp_cong_recovery_off (tc);
   tc->rcv_opts.flags = TCP_OPTS_FLAG_SACK_PERMITTED;
   clib_memset (&ac, 0, sizeof (ac));
-  tcp_rcv_sacks (tc, 1400, &ac);
+  tcp_ack_handle_feedback (tc, 1400, &ac);
   ac.bytes_acked = 100;
   tc->snd_una = 1400;
   tcp_bt_sample_delivery_rate (tc, &ac);
@@ -7216,7 +7220,7 @@ tcp_test_bt_dsack (void)
   vec_add1 (tc->rcv_opts.sacks, block);
   tc->rcv_opts.n_sack_blocks = 2;
   clib_memset (&ac, 0, sizeof (ac));
-  tcp_rcv_sacks (tc, 1500, &ac);
+  tcp_ack_handle_feedback (tc, 1500, &ac);
   TCP_TEST ((ac.ack_flags & (TCP_ACK_F_DSACK | TCP_ACK_F_DSACK_SPURIOUS)) ==
 	      (TCP_ACK_F_DSACK | TCP_ACK_F_DSACK_SPURIOUS),
 	    "BT processes D-SACK evidence before ACK and SACK sample retirement");
@@ -7340,9 +7344,10 @@ tcp_test_bt (vlib_main_t * vm, unformat_input_t * input)
   /* ACK:150 */
   /* --> [150:200] */
   tcp_test_set_time (thread_index, 3);
-  tc->snd_una = 150;
+  memset (ac, 0, sizeof (*ac));
+  tcp_ack_handle_feedback (tc, 150, ac);
   ac->bytes_acked = 150;
-  ac->last_sacked_bytes = 0;
+  tc->snd_una = 150;
   tcp_bt_sample_delivery_rate (tc, ac);
 
   TCP_TEST (tcp_bt_is_sane (bt), "tracker should be sane");
@@ -7562,15 +7567,17 @@ tcp_test_bt (vlib_main_t * vm, unformat_input_t * input)
   tcp_bt_track_tx (tc, 100);
   tc->snd_nxt = 101;
   tc->flags |= TCP_CONN_FINSNT;
-  tc->snd_una = 100;
-  ac->bytes_acked = 100;
   tcp_test_set_time (thread_index, 51);
+  tcp_ack_handle_feedback (tc, 100, ac);
+  ac->bytes_acked = 100;
+  tc->snd_una = 100;
   tcp_bt_sample_delivery_rate (tc, ac);
   TCP_TEST (tc->delivered == 100 && ac->acked_and_sacked == 100,
 	    "data delivery remains sampled after FIN is sent");
-  tc->snd_una = 101;
   memset (ac, 0, sizeof (*ac));
+  tcp_ack_handle_feedback (tc, 101, ac);
   ac->bytes_acked = 1;
+  tc->snd_una = 101;
   tcp_bt_sample_delivery_rate (tc, ac);
   TCP_TEST (tc->delivered == 100 && ac->acked_and_sacked == 0,
 	    "FIN acknowledgment is excluded from delivered bytes");

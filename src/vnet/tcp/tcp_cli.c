@@ -770,7 +770,7 @@ tcp_scoreboard_replay (u8 * s, tcp_connection_t * tc, u8 verbose)
 	placeholder_tc->rcv_opts.flags &= ~TCP_OPTS_FLAG_SACK;
       placeholder_tc->rcv_opts.n_sack_blocks = vec_len (placeholder_tc->rcv_opts.sacks);
       clib_memset (&ac, 0, sizeof (ac));
-      tcp_rcv_sacks (placeholder_tc, next_ack, &ac);
+      tcp_ack_handle_feedback (placeholder_tc, next_ack, &ac);
       if (has_new_ack)
 	placeholder_tc->snd_una = next_ack;
 

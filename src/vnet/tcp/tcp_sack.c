@@ -1111,36 +1111,19 @@ tcp_scoreboard_apply_sacks (tcp_connection_t *tc, u32 ack, u32 high_sacked, tcp_
   TCP_EVT (TCP_EVT_CC_SCOREBOARD, tc, ac);
 }
 
-void
-tcp_rcv_sacks (tcp_connection_t *tc, u32 ack, tcp_ack_ctx_t *ac)
+static void
+tcp_sack_normalize (tcp_connection_t *tc, u32 packet_ack, sack_block_t *dsack, u32 *high_sacked,
+		    tcp_ack_ctx_t *ac)
 {
-  sack_scoreboard_t *sb = &tc->sack_sb;
-  sack_block_t dsack, *blk, *rcv_sacks;
-  u32 i, j, high_sacked, packet_ack = ack;
-  u8 finalize_dsack, had_sack_history, has_dsack, has_sack, has_scoreboard;
-  u8 may_retire_dsack;
+  sack_block_t *blk, *rcv_sacks;
+  u32 ack = seq_max (packet_ack, tc->snd_una);
+  u32 i, j;
 
-  has_sack = tcp_opts_sack (&tc->rcv_opts) != 0;
-  had_sack_history = sb->sacked_bytes != 0;
-  has_scoreboard = had_sack_history || sb->head != TCP_INVALID_SACK_HOLE_INDEX;
-  may_retire_dsack = seq_gt (packet_ack, tc->snd_una) && (tc->sack_sb.flags & TCP_DSACK_RXT_ACTIVE);
-
-  if (PREDICT_TRUE (!(has_sack | has_scoreboard | may_retire_dsack)))
-    return;
-
-  has_dsack = has_sack && tcp_sack_extract_dsack (tc, packet_ack, &dsack);
-  ac->ack_flags |= has_dsack * TCP_ACK_F_DSACK;
-  has_sack &= vec_len (tc->rcv_opts.sacks) != 0;
-  /* Record dsack evidence first, but decide undo only after ack/sack
-   * processing has resolved reneging. */
-  finalize_dsack = has_dsack && tcp_dsack_update (tc, &dsack, had_sack_history);
-
-  if (!(has_sack | has_scoreboard))
-    goto done;
-
-  /* The dsack check needs the ack from the wire. The scoreboard treats
-   * an old ack as snd_una */
-  ack = seq_max (packet_ack, tc->snd_una);
+  if (vec_len (tc->rcv_opts.sacks))
+    {
+      if (tcp_sack_extract_dsack (tc, packet_ack, dsack))
+	ac->ack_flags |= TCP_ACK_F_DSACK;
+    }
 
   /* Remove invalid blocks */
   blk = tc->rcv_opts.sacks;
@@ -1156,15 +1139,10 @@ tcp_rcv_sacks (tcp_connection_t *tc, u32 ack, tcp_ack_ctx_t *ac)
       vec_del1 (tc->rcv_opts.sacks, blk - tc->rcv_opts.sacks);
     }
 
-  has_sack = vec_len (tc->rcv_opts.sacks) != 0;
+  if (!vec_len (tc->rcv_opts.sacks))
+    return;
 
-  if (!has_sack && seq_leq (ack, tc->snd_una))
-    goto done;
-
-  tcp_sack_trace (tc, ack);
-
-  high_sacked = seq_max (
-    ack, (sb->sacked_bytes || tcp_scoreboard_is_reneging (sb)) ? sb->high_sacked : tc->snd_una);
+  ac->ack_flags |= TCP_ACK_F_SACK;
 
   /* Make sure blocks are ordered */
   rcv_sacks = tc->rcv_opts.sacks;
@@ -1178,20 +1156,57 @@ tcp_rcv_sacks (tcp_connection_t *tc, u32 ack, tcp_ack_ctx_t *ac)
 	    rcv_sacks[j] = tmp;
 	  }
       /* Last block's end is not guaranteed to be highest */
-      high_sacked = seq_max (high_sacked, rcv_sacks[i].end);
+      *high_sacked = seq_max (*high_sacked, rcv_sacks[i].end);
     }
+}
 
-  if (PREDICT_FALSE (tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER))
-    tcp_bt_apply_sacks (tc, ack, high_sacked, has_sack, ac);
-  else
+void
+tcp_ack_handle_feedback (tcp_connection_t *tc, u32 packet_ack, tcp_ack_ctx_t *ac)
+{
+  sack_scoreboard_t *sb = &tc->sack_sb;
+  sack_block_t dsack;
+  u32 ack = seq_max (packet_ack, tc->snd_una), high_sacked;
+  u8 finalize_dsack = 0, has_sack;
+  u8 had_sack_history = sb->sacked_bytes != 0;
+  u8 has_scoreboard = had_sack_history || sb->head != TCP_INVALID_SACK_HOLE_INDEX;
+  u8 has_wire_sack = tcp_opts_sack (&tc->rcv_opts) != 0;
+  u8 has_ack = seq_gt (ack, tc->snd_una);
+  u8 is_bt = (tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER) != 0;
+  u8 may_retire_dsack =
+    seq_gt (packet_ack, tc->snd_una) && (tc->sack_sb.flags & TCP_DSACK_RXT_ACTIVE);
+
+  if (PREDICT_TRUE (!(has_wire_sack | may_retire_dsack | (has_ack & (is_bt | has_scoreboard)))))
+    return;
+
+  high_sacked = seq_max (
+    ack, (had_sack_history || tcp_scoreboard_is_reneging (sb)) ? sb->high_sacked : tc->snd_una);
+  if (has_wire_sack)
     {
-      tcp_sb_sack_mode_e mode = !tcp_in_cong_recovery (tc)	      ? TCP_SB_SACK_OOO :
-				seq_geq (sb->rescue_rxt, tc->snd_una) ? TCP_SB_SACK_RXT_RESCUED :
-									TCP_SB_SACK_RXT;
-      tcp_scoreboard_apply_sacks (tc, ack, high_sacked, mode, ac);
+      tcp_sack_normalize (tc, packet_ack, &dsack, &high_sacked, ac);
+      if (ac->ack_flags & TCP_ACK_F_DSACK)
+	{
+	  /* Record D-SACK evidence first, but decide undo only after range
+	   * processing has resolved reneging. */
+	  finalize_dsack = tcp_dsack_update (tc, &dsack, had_sack_history);
+	}
+    }
+  has_sack = (ac->ack_flags & TCP_ACK_F_SACK) != 0;
+
+  if (has_ack | has_sack)
+    {
+      tcp_sack_trace (tc, ack);
+      if (PREDICT_FALSE (is_bt))
+	tcp_bt_apply_ack (tc, ack, high_sacked, has_sack, ac);
+      else if (has_scoreboard | has_sack)
+	{
+	  tcp_sb_sack_mode_e mode = !tcp_in_cong_recovery (tc) ? TCP_SB_SACK_OOO :
+				    seq_geq (sb->rescue_rxt, tc->snd_una) ?
+								 TCP_SB_SACK_RXT_RESCUED :
+								 TCP_SB_SACK_RXT;
+	  tcp_scoreboard_apply_sacks (tc, ack, high_sacked, mode, ac);
+	}
     }
 
-done:
   if (PREDICT_FALSE (finalize_dsack | may_retire_dsack))
     {
       if (finalize_dsack)
