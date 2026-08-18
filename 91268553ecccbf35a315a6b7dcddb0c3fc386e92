@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "fa024fe6_13dd69cb",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 5
+      },
+      "lineNbr": 15,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-08-18T07:47:30Z",
+      "side": 1,
+      "message": "The `Fixes:` SHA does not resolve. Should this be `dd648aac0615c416507de9097b6f50db16ad319c`?",
+      "revId": "91268553ecccbf35a315a6b7dcddb0c3fc386e92",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
