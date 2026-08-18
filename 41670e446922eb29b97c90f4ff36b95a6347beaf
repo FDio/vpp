@@ -207,6 +207,23 @@
       "parentUuid": "f680cdcf_c1281a8b",
       "revId": "41670e446922eb29b97c90f4ff36b95a6347beaf",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "d052b4e0_26385c15",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2026-08-18T10:25:18Z",
+      "side": 1,
+      "message": "I triggered a run on 2n-emr (e810) but that testbed has no problem reaching the line rate with 1518B frames. Looking at IMIX tests, I guess they prove the size of packets does not matter, but the results are somewhat noisy so I am not entirely sure.",
+      "revId": "41670e446922eb29b97c90f4ff36b95a6347beaf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
