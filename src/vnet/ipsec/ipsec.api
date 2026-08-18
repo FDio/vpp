@@ -762,12 +762,6 @@ counters esp_encrypt {
   units "packets";
   description "no available frame (packet dropped)";
   };
-  invalid_post_next {
-    severity error;
-    type counter64;
-    units "packets";
-    description "invalid ESP post next index (packet dropped)";
-  };
 };
 
 counters ah_encrypt {
