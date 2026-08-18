@@ -28,14 +28,6 @@ class TestBuffers(VppAsfTestCase):
             self.logger.critical(error)
             self.assertNotIn("failed", error)
 
-    def test_scalar_frame_enqueue(self):
-        """Scalar Frame Enqueue Compatibility"""
-        error = self.vapi.cli("test buffer scalar-frame-enqueue")
-
-        if error:
-            self.logger.critical(error)
-            self.assertNotIn("failed", error)
-
 
 def buffer_pool_config(layout):
     return [

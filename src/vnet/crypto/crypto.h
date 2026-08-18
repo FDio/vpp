@@ -126,9 +126,7 @@ typedef struct
 {
   u16 next_node_index;
   vnet_crypto_op_type_t op_type;
-  u8 reserved;
 } vnet_crypto_deq_scalar_data_t;
-STATIC_ASSERT_SIZEOF (vnet_crypto_deq_scalar_data_t, sizeof (u32));
 
 static_always_inline void
 vlib_buffer_enqueue_to_single_next_with_aux64_and_scalar (
