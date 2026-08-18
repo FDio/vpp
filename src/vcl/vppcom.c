@@ -8,6 +8,10 @@
 #include <vcl/vcl_private.h>
 #include <svm/fifo_segment.h>
 
+/* SURS-test change only for Gerrit-> To monitor and test the CI infra
+ * DO NOT COMMIT
+ */
+
 __thread uword __vcl_worker_index = ~0;
 
 static inline int
