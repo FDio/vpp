@@ -824,8 +824,7 @@ tcp_handle_old_ack (tcp_connection_t *tc, tcp_ack_ctx_t *ac, u32 ack)
       return;
     }
 
-  if (tcp_opts_sack_permitted (&tc->rcv_opts))
-    tcp_rcv_sacks (tc, ack, ac);
+  tcp_ack_handle_feedback (tc, ack, ac);
 
   if ((ac->ack_flags & TCP_ACK_F_DSACK) && !ac->last_sacked_bytes &&
       !(ac->ack_flags & TCP_ACK_F_DSACK_SPURIOUS))
@@ -915,8 +914,7 @@ tcp_rcv_ack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc, vlib_buffer_t * b,
 		      vnet_buffer (b)->tcp.ack_number,
 		      clib_net_to_host_u16 (th->window) << tc->snd_wscale);
 
-  if (tcp_opts_sack_permitted (&tc->rcv_opts))
-    tcp_rcv_sacks (tc, vnet_buffer (b)->tcp.ack_number, &ac);
+  tcp_ack_handle_feedback (tc, vnet_buffer (b)->tcp.ack_number, &ac);
 
   ac.bytes_acked = vnet_buffer (b)->tcp.ack_number - tc->snd_una;
   tc->snd_una = vnet_buffer (b)->tcp.ack_number;

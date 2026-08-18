@@ -881,24 +881,30 @@ tcp_bt_update_sack_loss (tcp_connection_t *tc, tcp_ack_ctx_t *ac)
 }
 
 void
-tcp_bt_apply_sacks (tcp_connection_t *tc, u32 ack, u32 high_sacked, u8 has_sack, tcp_ack_ctx_t *ac)
+tcp_bt_apply_ack (tcp_connection_t *tc, u32 ack, u32 high_sacked, u8 has_sack, tcp_ack_ctx_t *ac)
 {
   tcp_byte_tracker_t *bt = tc->bt;
   sack_scoreboard_t *sb = &tc->sack_sb;
   tcp_bt_sample_t *head;
   u32 old_high_sacked;
+  u8 account;
   f64 now;
 
-  ac->ack_flags |= TCP_ACK_F_BT_PROCESSED;
+  account = tcp_opts_sack_permitted (&tc->rcv_opts) != 0;
   now = tcp_time_now_us (tc->c_thread_index);
-  old_high_sacked =
-    (sb->sacked_bytes || tcp_scoreboard_is_reneging (sb)) ? sb->high_sacked : tc->snd_una;
+  old_high_sacked = account && (sb->sacked_bytes || tcp_scoreboard_is_reneging (sb)) ?
+		      sb->high_sacked :
+		      tc->snd_una;
 
   if (seq_gt (ack, tc->snd_una))
     {
-      tcp_bt_walk_samples (tc, ack, ac, now, old_high_sacked, 1 /* account */);
-      bt->sack_loss_high = seq_max (bt->sack_loss_high, ack);
+      tcp_bt_walk_samples (tc, ack, ac, now, old_high_sacked, account);
+      if (account)
+	bt->sack_loss_high = seq_max (bt->sack_loss_high, ack);
     }
+
+  if (!account)
+    return;
 
   sb->high_sacked = high_sacked;
   if (PREDICT_FALSE (has_sack))
@@ -1274,48 +1280,13 @@ tcp_bt_dsack_recovery_clear (tcp_connection_t *tc)
   tc->sack_sb.flags &= TCP_SCOREBOARD_F_RENEGING | TCP_DSACK_UNDO_DISABLED;
 }
 
-static void
-tcp_bt_process_ack (tcp_connection_t *tc, tcp_ack_ctx_t *ac, u32 data_acked)
-{
-  tcp_byte_tracker_t *bt = tc->bt;
-  sack_scoreboard_t *sb = &tc->sack_sb;
-  tcp_bt_sample_t *head;
-  u32 old_high_sacked, prev_una;
-  u8 account;
-  f64 now;
-
-  account = tcp_opts_sack_permitted (&tc->rcv_opts) != 0;
-  if (!(data_acked || (account && ac->bytes_acked)))
-    return;
-
-  now = tcp_time_now_us (tc->c_thread_index);
-  prev_una = tc->snd_una - ac->bytes_acked;
-  old_high_sacked =
-    (sb->sacked_bytes || tcp_scoreboard_is_reneging (sb)) ? sb->high_sacked : prev_una;
-
-  tcp_bt_walk_samples (tc, tc->snd_una, ac, now, old_high_sacked, account);
-  if (account)
-    {
-      bt->sack_loss_high = seq_max (bt->sack_loss_high, tc->snd_una);
-      sb->high_sacked = seq_max (old_high_sacked, tc->snd_una);
-      head = bt_get_sample (bt, bt->head);
-      tcp_scoreboard_set_reneging (sb, head && (head->flags & TCP_BTS_IS_SACKED));
-    }
-}
-
 void
 tcp_bt_sample_delivery_rate (tcp_connection_t *tc, tcp_ack_ctx_t *ac)
 {
   u32 delivered, data_acked;
   f64 now;
 
-  /* Deferred accounting and delivery use the same ACK state. */
   data_acked = tcp_bt_data_acked (tc, ac);
-
-  /* If SACK processing did not walk the tracker, process the cumulative ACK
-   * here after snd_una and bytes_acked have been updated. */
-  if (!(ac->ack_flags & TCP_ACK_F_BT_PROCESSED))
-    tcp_bt_process_ack (tc, ac, data_acked);
 
   tc->lost += ac->last_lost;
 
