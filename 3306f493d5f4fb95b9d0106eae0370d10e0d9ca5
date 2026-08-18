@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5b6293f8_12bf0449",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 1
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-08-18T15:35:13Z",
+      "side": 1,
+      "message": "The subject says this change preserves scalar frame metadata, but that behavior is implemented by the parent change. This patch adds a WireGuard-specific bounds check. Could the subject describe the actual change—for example, `wireguard: reject invalid output post next indices`—and explain why runtime validation is still needed after the parent fix?",
+      "revId": "3306f493d5f4fb95b9d0106eae0370d10e0d9ca5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d72cf47e_4efd7e52",
+        "filename": "src/plugins/wireguard/wireguard_output_tun.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 674,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-08-18T15:35:13Z",
+      "side": 1,
+      "message": "`next_index` is written internally by `wg_add_to_async_frame()`, and the parent change now prevents scalar frame metadata from being overwritten. What remaining runtime path can make this value invalid? If there is none, could this be an `ASSERT(next \u003c node-\u003en_next_nodes)` instead of a per-packet production check? The bounds check only catches out-of-range corruption; an incorrect but valid index still passes. If runtime recovery is intended, please document the remaining failure path and add regression coverage.",
+      "revId": "3306f493d5f4fb95b9d0106eae0370d10e0d9ca5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
