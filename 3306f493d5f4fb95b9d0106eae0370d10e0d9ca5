@@ -33,6 +33,24 @@
       "message": "`next_index` is written internally by `wg_add_to_async_frame()`, and the parent change now prevents scalar frame metadata from being overwritten. What remaining runtime path can make this value invalid? If there is none, could this be an `ASSERT(next \u003c node-\u003en_next_nodes)` instead of a per-packet production check? The bounds check only catches out-of-range corruption; an incorrect but valid index still passes. If runtime recovery is intended, please document the remaining failure path and add regression coverage.",
       "revId": "3306f493d5f4fb95b9d0106eae0370d10e0d9ca5",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4ecfb3ac_a1eed5ef",
+        "filename": "src/plugins/wireguard/wireguard_output_tun.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 674,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2026-08-18T16:26:12Z",
+      "side": 1,
+      "message": "You are right Benoît - this change was unnecessary. I made a mistake on this change. I also made the mistake to merge https://gerrit.fd.io/r/c/vpp/+/46474 - already fired a revert request in https://gerrit.fd.io/r/c/vpp/+/46405. Could you have a look?",
+      "parentUuid": "d72cf47e_4efd7e52",
+      "revId": "3306f493d5f4fb95b9d0106eae0370d10e0d9ca5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
