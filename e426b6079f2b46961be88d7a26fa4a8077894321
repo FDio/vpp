@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "87081dd5_09837727",
+        "filename": "src/plugins/rdma/device.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1032,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-08-18T12:15:45Z",
+      "side": 1,
+      "message": "Addressed in PS5: eMPW is enabled only when the provider-derived minimum inline header is zero; ports requiring inline bytes retain the existing SEND path.",
+      "parentUuid": "f0a9bd89_b36059da",
+      "revId": "e426b6079f2b46961be88d7a26fa4a8077894321",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "3a3b22ac_02b89c57",
@@ -31,6 +49,24 @@
       "writtenOn": "2026-08-17T09:27:42Z",
       "side": 1,
       "message": "Could we specialize eMPW in the same way as TSO by passing a constant mode into this `always_inline` helper? Testing `rd-\u003eflags \u0026 RDMA_DEVICE_F_EMPW` here cannot be constant-folded and is currently repeated below. A `SEND`/`TSO`/`EMPW` mode selected by the caller would let the compiler remove the irrelevant completion translation and buffer-free branches for each path.",
+      "revId": "e426b6079f2b46961be88d7a26fa4a8077894321",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "1ff1d0e7_ef133d2b",
+        "filename": "src/plugins/rdma/output.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 123,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-08-18T12:15:45Z",
+      "side": 1,
+      "message": "Addressed in PS5: completion handling is specialized at compile time with SEND, TSO and EMPW modes, so irrelevant branches are constant-folded away.",
+      "parentUuid": "3a3b22ac_02b89c57",
       "revId": "e426b6079f2b46961be88d7a26fa4a8077894321",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -52,6 +88,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "7b0de6ef_fcfdf96a",
+        "filename": "src/plugins/rdma/output.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 668,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-08-18T12:15:45Z",
+      "side": 1,
+      "message": "Addressed in PS5: both callers now share rdma_mlx5_build_tso(), including the regular-SEND fallback when pkt_sz is smaller than hdr_sz; the helper returns status, buffer index, WQEBB count and last control segment.",
+      "parentUuid": "ee46f24f_690ca2de",
+      "revId": "e426b6079f2b46961be88d7a26fa4a8077894321",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "2815b309_335a309a",
@@ -65,6 +119,24 @@
       "writtenOn": "2026-08-17T09:27:42Z",
       "side": 1,
       "message": "These fields are now accessed in the datapath, so the surrounding cold-field comment is no longer accurate. Could we also order the pointer-aligned fields before the two `u16` counters? The current `u16`, `u16`, pointer ordering creates a four-byte alignment hole. This does not change the cache-line-rounded structure size, but grouping/reordering the new hot state would make the layout intentional.",
+      "revId": "e426b6079f2b46961be88d7a26fa4a8077894321",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "faacb795_f9008e71",
+        "filename": "src/plugins/rdma/rdma.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 195,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-08-18T12:15:45Z",
+      "side": 1,
+      "message": "Addressed in PS5: the datapath fields are separated from the cold section and ordered with pointer-aligned fields before the u16 counters.",
+      "parentUuid": "2815b309_335a309a",
       "revId": "e426b6079f2b46961be88d7a26fa4a8077894321",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
