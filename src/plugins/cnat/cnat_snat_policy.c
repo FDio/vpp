@@ -115,19 +115,9 @@ cnat_snat_policy_entry_init (cnat_snat_policy_entry_t *cpe)
     return; /* already initialized */
 
   int i;
+  /* Precompute the mask for every prefix length (0..128) */
   for (i = 0; i < ARRAY_LEN (excluded_pfx->ip_masks); i++)
-    {
-      u32 j, i0, i1;
-
-      i0 = i / 32;
-      i1 = i % 32;
-
-      for (j = 0; j < i0; j++)
-	excluded_pfx->ip_masks[i].as_u32[j] = ~0;
-
-      if (i1)
-	excluded_pfx->ip_masks[i].as_u32[i0] = clib_host_to_net_u32 (pow2_mask (i1) << (32 - i1));
-    }
+    ip6_address_mask_from_width (&excluded_pfx->ip_masks[i], i);
   clib_bihash_init_24_8 (&excluded_pfx->ip_hash, "snat prefixes", cm->snat_hash_buckets,
 			 cm->snat_hash_memory);
   clib_bihash_set_kvp_format_fn_24_8 (&excluded_pfx->ip_hash, format_cnat_snat_prefix);
@@ -265,7 +255,7 @@ cnat_search_snat_prefix__ (cnat_snat_policy_entry_t *cpe, ip_address_family_t af
   const u16 *plen;
   vec_foreach (plen, table->meta[af].prefix_lengths_in_search_order)
     {
-      ASSERT (*plen >= 0 && *plen <= 128);
+      ASSERT (*plen <= 128);
       const ip6_address_t *mask = &table->ip_masks[*plen];
 
       /* As lengths are decreasing, masks are increasingly specific. */
