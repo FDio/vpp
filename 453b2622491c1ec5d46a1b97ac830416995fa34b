@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "11b40100_ad3882c7",
+        "filename": "src/vlib/buffer_funcs.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 309,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-08-18T16:52:18Z",
+      "side": 1,
+      "message": "Instead of reverting the frame-isolation fix, could we follow up with a separate patch that removes only the `next_index` validation if that check is unnecessary? The per-buffer `esp_post_data(b)-\u003enext_index` remains intact, but the frame-wide `vnet_crypto_deq_scalar_data_t.next_node_index` and `op_type` can still be overwritten when another producer appends to the same partial `crypto-enq` frame.",
+      "revId": "453b2622491c1ec5d46a1b97ac830416995fa34b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
