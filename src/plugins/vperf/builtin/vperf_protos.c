@@ -10,9 +10,9 @@ vp_test_main_t vp_test_main;
 #define VP_MAX_RX_RETRIES 500000
 
 static_always_inline void
-vp_proto_test_bytes (u8 *rx_buf, int actual_transfer, u32 offset)
+vp_proto_test_bytes (u8 *rx_buf, u32 actual_transfer, u32 offset)
 {
-  int i;
+  u32 i;
   for (i = 0; i < actual_transfer; i++)
     {
       if (rx_buf[i] != ((offset + i) & 0xff))
@@ -1771,8 +1771,13 @@ vp_proto_http_server_dgram_rx (vp_test_session_t *es, session_t *s, u8 *rx_buf, 
       ASSERT (rv == dgram_size);
 
       if (test_bytes)
-	vp_proto_test_bytes ((rx_buf + sizeof (session_dgram_hdr_t) + sizeof (u32)),
-			     ph.data_length - sizeof (u32), *(u32 *) rx_buf);
+	{
+	  /* Sanity check, in case of a broken dgram */
+	  if (ph.data_length < sizeof (u32) + 1)
+	    return 0;
+	  vp_proto_test_bytes ((rx_buf + sizeof (session_dgram_hdr_t) + sizeof (u32)),
+			       ph.data_length - sizeof (u32), *(u32 *) rx_buf);
+	}
 
       rv = svm_fifo_enqueue (tx_fifo, dgram_size, rx_buf);
       ASSERT (rv == dgram_size);
@@ -1830,8 +1835,13 @@ vp_proto_http_client_dgram_rx_inline (vp_test_session_t *es, session_t *s, u8 *r
       ASSERT (rv == dgram_size);
       left_deq -= dgram_size;
       if (test_bytes)
-	vp_proto_test_bytes ((rx_buf + sizeof (session_dgram_hdr_t) + sizeof (u32)),
-			     ph.data_length - sizeof (u32), *(u32 *) rx_buf);
+	{
+	  /* Sanity check, in case of a broken dgram */
+	  if (ph.data_length < sizeof (u32) + 1)
+	    return 0;
+	  vp_proto_test_bytes ((rx_buf + sizeof (session_dgram_hdr_t) + sizeof (u32)),
+			       ph.data_length - sizeof (u32), *(u32 *) rx_buf);
+	}
     }
 
   es->bytes_received += bytes_received;

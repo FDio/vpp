@@ -178,6 +178,7 @@ vp_client_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command
   vp_client_main_t *vpcm = &vp_client_main;
   clib_error_t *error = 0;
   int rv, timed_run_conflict = 0, tput_conflict = 0, had_config = 1, use_default_mode = 1;
+  u32 connections_per_batch;
 
   if (vpcm->test_client_attached)
     return clib_error_return (0, "failed: already running!");
@@ -235,8 +236,11 @@ vp_client_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command
 	vpcm->prealloc_fifos = 1;
       else if (unformat (line_input, "preallocate-sessions"))
 	vpcm->prealloc_sessions = 1;
-      else if (unformat (line_input, "client-batch %d", &vpcm->connections_per_batch))
-	;
+      else if (unformat (line_input, "client-batch %u", &connections_per_batch))
+	{
+	  if (!connections_per_batch)
+	    return clib_error_return (0, "client-batch must be greater than 0");
+	}
       else if (unformat (line_input, "report-jitter"))
 	vpcm->cfg.report_interval_jitter = 1;
       else if (unformat (line_input, "report-interval-total %u", &vpcm->cfg.report_interval))
