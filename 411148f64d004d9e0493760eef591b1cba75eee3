@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2fba5770_b0a8c3e3",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 1
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-08-19T07:25:58Z",
+      "side": 1,
+      "message": "The subject lists CID 562701, while the mask-precomputation bullet lists 562717. Could you correct whichever CID is transposed so the change remains traceable to the intended Coverity report?",
+      "revId": "411148f64d004d9e0493760eef591b1cba75eee3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
