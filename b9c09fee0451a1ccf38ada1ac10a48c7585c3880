@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c1085d85_a7c5e70b",
+        "filename": "test/test_bfd.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 4,
+      "author": {
+        "id": 3121
+      },
+      "writtenOn": "2026-08-19T03:50:39Z",
+      "side": 1,
+      "message": "Please update this as `# SURS test change -- DO NOT COMMIT`\nOtherwise, the CI will *always fail*.\n\nContext: https://github.com/FDio/vpp/actions/runs/32187246224/\nPython requires every `from __future__ import ...` statement to appear *before* any executable statement other than the module docstring, comments, and blank lines.\nThis is what you have now:\n```\n\"\"\"BFD tests\"\"\"\n\n\"\"\" SURS test change -- DO NOT COMMIT \"\"\"\n\nfrom __future__ import division\n```\n*Only the first string literal can count as the module docstring*. The second one is treated as a regular Python statement, so the future import is no longer at the beginning of the file.\nThat is why all `make test` in the CI are failing with `SyntaxError: from __future__ imports must occur at the beginning of the file`.",
+      "revId": "b9c09fee0451a1ccf38ada1ac10a48c7585c3880",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
