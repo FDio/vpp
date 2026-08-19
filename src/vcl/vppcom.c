@@ -2,6 +2,10 @@
  * Copyright (c) 2017-2019 Cisco and/or its affiliates.
  */
 
+/* Surs-Test change only for Gerrit -> To monitor and test the CI Infra
+ * DO NOT COMMIT
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <vcl/vppcom.h>
