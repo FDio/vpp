@@ -16,6 +16,60 @@
       "message": "Re-run failed jobs via GitHub UI",
       "revId": "5c594cb70d5a11050d83d04dab6b7c74ab0cd419",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "0f621466_f262290c",
+        "filename": "src/plugins/rdma/output.c",
+        "patchSetId": 49
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-08-19T14:49:55Z",
+      "side": 1,
+      "message": "Addressed in PS49: the TSO builder now asserts `mss !\u003d 0` immediately after reading the MSS, documenting the metadata invariant in debug builds.",
+      "parentUuid": "e42abe90_c5ac80d1",
+      "revId": "5c594cb70d5a11050d83d04dab6b7c74ab0cd419",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "88c14c9e_5230f640",
+        "filename": "src/plugins/rdma/output.c",
+        "patchSetId": 49
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-08-19T14:49:55Z",
+      "side": 1,
+      "message": "Addressed in PS49: the rare GSO branch now requires TCP checksum offload through `rdma_mlx5_is_tcp_gso()`; non-TCP GSO is counted as unsupported, freed, and not submitted through the TCP TSO path.",
+      "parentUuid": "4e9917cb_2a9f5c0d",
+      "revId": "5c594cb70d5a11050d83d04dab6b7c74ab0cd419",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "28ed0fcc_ce6b7141",
+        "filename": "src/plugins/rdma/output.c",
+        "patchSetId": 49
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-08-19T14:49:55Z",
+      "side": 1,
+      "message": "Addressed in PS49: every constant-folding selector introduced by the change is annotated with the customary `/* is_tso */ 1/0` form.",
+      "parentUuid": "701ef42e_4e6bcdc8",
+      "revId": "5c594cb70d5a11050d83d04dab6b7c74ab0cd419",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
