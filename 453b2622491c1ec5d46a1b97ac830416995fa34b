@@ -38,6 +38,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "7a1025b9_479a27a9",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2026-08-19T08:06:01Z",
+      "side": 1,
+      "message": "The rational behind reverting the whole commit was:\n1. The change that buffer_funcs.c in my opinion was valid, that was the reason I thought the change was legit and worth merging.\n2. But the change in both crypto.h and esp_encrypt.h - I agree with Benoît it should be caused by crypto infra instead of ipsec. \n3. Hence, the commit to me worths rework that with both buffer fix and actual fixes. Dropping the packets with unrecognized next index shall not be the way.\n\n@Aaron sorry for the confusion here. The problem is definitely there but sorry for jumping to hit merge button too early before careful thinking on my end. The root cause is still buried even after this fix. Please give me sometime to work on it.\n\nBut adding a patch to remove both crypto.h and esp_encrypt.h change to address the problem I caused is valid - I will change the patch instead @Benoît. Thanks for the review.",
+      "parentUuid": "26e9396f_e79f9978",
+      "revId": "453b2622491c1ec5d46a1b97ac830416995fa34b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "11b40100_ad3882c7",
         "filename": "src/vlib/buffer_funcs.c",
         "patchSetId": 2
