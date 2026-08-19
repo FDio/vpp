@@ -102,12 +102,19 @@ ip_config_init (vlib_main_t *vm, unformat_input_t *input)
 				  format_unformat_error, input);
     }
 
+  /* unformat_memory_size (above) returns a BYTE count, but
+   * load_balance_pool_alloc()/fib_entry_pool_alloc()/ip4_mtrie_pool_alloc()
+   * all forward their argument straight into pool_alloc()/pool_alloc_aligned(),
+   * whose size parameter is an ELEMENT count, not a byte count. Without
+   * converting here, e.g. "load-balance-pool-size 8M" (intended: ~8MB of
+   * headroom) instead pre-allocates 8M load_balance_t structures - ~64x
+   * more memory than intended. */
   if (lbsz)
-    load_balance_pool_alloc (lbsz);
+    load_balance_pool_alloc (lbsz / sizeof (load_balance_t));
   if (fibentrysz)
-    fib_entry_pool_alloc (fibentrysz);
+    fib_entry_pool_alloc (fibentrysz / sizeof (fib_entry_t));
   if (mtriesz)
-    ip4_mtrie_pool_alloc (mtriesz);
+    ip4_mtrie_pool_alloc (mtriesz / sizeof (ip4_mtrie_8_ply_t));
 
   return 0;
 }
