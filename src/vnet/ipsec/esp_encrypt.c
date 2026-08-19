@@ -1118,20 +1118,8 @@ esp_encrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   return frame->n_vectors;
 }
 
-always_inline u16
-esp_encrypt_post_validate_next (vlib_buffer_t *b, vlib_node_runtime_t *node, u16 next,
-				u16 drop_next)
-{
-  if (PREDICT_TRUE (next < node->n_next_nodes))
-    return next;
-
-  b->error = node->errors[ESP_ENCRYPT_ERROR_INVALID_POST_NEXT];
-  return drop_next;
-}
-
 always_inline uword
-esp_encrypt_post_inline (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame,
-			 u16 drop_next)
+esp_encrypt_post_inline (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b = bufs;
   u16 nexts[VLIB_FRAME_SIZE], *next = nexts;
@@ -1159,6 +1147,11 @@ esp_encrypt_post_inline (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_
       next[1] = (esp_post_data (b[1]))->next_index;
       next[2] = (esp_post_data (b[2]))->next_index;
       next[3] = (esp_post_data (b[3]))->next_index;
+
+      ASSERT (next[0] < node->n_next_nodes);
+      ASSERT (next[1] < node->n_next_nodes);
+      ASSERT (next[2] < node->n_next_nodes);
+      ASSERT (next[3] < node->n_next_nodes);
 
       if (PREDICT_FALSE (node->flags & VLIB_NODE_FLAG_TRACE))
 	{
@@ -1188,11 +1181,6 @@ esp_encrypt_post_inline (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_
 	    }
 	}
 
-      next[0] = esp_encrypt_post_validate_next (b[0], node, next[0], drop_next);
-      next[1] = esp_encrypt_post_validate_next (b[1], node, next[1], drop_next);
-      next[2] = esp_encrypt_post_validate_next (b[2], node, next[2], drop_next);
-      next[3] = esp_encrypt_post_validate_next (b[3], node, next[3], drop_next);
-
       b += 4;
       next += 4;
       n_left -= 4;
@@ -1201,14 +1189,14 @@ esp_encrypt_post_inline (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_
   while (n_left > 0)
     {
       next[0] = (esp_post_data (b[0]))->next_index;
+      ASSERT (next[0] < node->n_next_nodes);
+
       if (PREDICT_FALSE (b[0]->flags & VLIB_BUFFER_IS_TRACED))
 	{
 	  esp_encrypt_post_trace_t *tr = vlib_add_trace (vm, node, b[0],
 							 sizeof (*tr));
 	  tr->next_index = next[0];
 	}
-
-      next[0] = esp_encrypt_post_validate_next (b[0], node, next[0], drop_next);
 
       b += 1;
       next += 1;
@@ -1254,7 +1242,7 @@ VLIB_NODE_FN (esp4_encrypt_post_node) (vlib_main_t * vm,
 				       vlib_node_runtime_t * node,
 				       vlib_frame_t * from_frame)
 {
-  return esp_encrypt_post_inline (vm, node, from_frame, ESP_ENCRYPT_NEXT_DROP4);
+  return esp_encrypt_post_inline (vm, node, from_frame);
 }
 
 VLIB_REGISTER_NODE (esp4_encrypt_post_node) = {
@@ -1291,7 +1279,7 @@ VLIB_NODE_FN (esp6_encrypt_post_node) (vlib_main_t * vm,
 				       vlib_node_runtime_t * node,
 				       vlib_frame_t * from_frame)
 {
-  return esp_encrypt_post_inline (vm, node, from_frame, ESP_ENCRYPT_NEXT_DROP6);
+  return esp_encrypt_post_inline (vm, node, from_frame);
 }
 
 VLIB_REGISTER_NODE (esp6_encrypt_post_node) = {
@@ -1339,7 +1327,7 @@ VLIB_NODE_FN (esp4_encrypt_tun_post_node) (vlib_main_t * vm,
 				  vlib_node_runtime_t * node,
 				  vlib_frame_t * from_frame)
 {
-  return esp_encrypt_post_inline (vm, node, from_frame, ESP_ENCRYPT_NEXT_DROP4);
+  return esp_encrypt_post_inline (vm, node, from_frame);
 }
 
 VLIB_REGISTER_NODE (esp4_encrypt_tun_post_node) = {
@@ -1387,7 +1375,7 @@ VLIB_NODE_FN (esp6_encrypt_tun_post_node) (vlib_main_t * vm,
 					   vlib_node_runtime_t * node,
 					   vlib_frame_t * from_frame)
 {
-  return esp_encrypt_post_inline (vm, node, from_frame, ESP_ENCRYPT_NEXT_DROP6);
+  return esp_encrypt_post_inline (vm, node, from_frame);
 }
 
 VLIB_REGISTER_NODE (esp6_encrypt_tun_post_node) = {
@@ -1433,7 +1421,7 @@ VLIB_REGISTER_NODE (esp_mpls_encrypt_tun_node) = {
 VLIB_NODE_FN (esp_mpls_encrypt_tun_post_node)
 (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *from_frame)
 {
-  return esp_encrypt_post_inline (vm, node, from_frame, ESP_ENCRYPT_NEXT_DROP_MPLS);
+  return esp_encrypt_post_inline (vm, node, from_frame);
 }
 
 VLIB_REGISTER_NODE (esp_mpls_encrypt_tun_post_node) = {
