@@ -46,9 +46,8 @@ dpdk_buffer_pool_init (vlib_main_t * vm, vlib_buffer_pool_t * bp)
 
   /* normal mempool */
   name = format (name, "vpp pool %u%c", bp->index, 0);
-  mp = rte_mempool_create_empty ((char *) name, bp->n_buffers,
-				 elt_size, 512, sizeof (priv),
-				 bp->numa_node, 0);
+  mp = rte_mempool_create_empty ((char *) name, bp->n_buffers, elt_size, RTE_MEMPOOL_CACHE_MAX_SIZE,
+				 sizeof (priv), bp->numa_node, 0);
   if (!mp)
     {
       vec_free (name);
@@ -333,13 +332,11 @@ CLIB_MULTIARCH_FN (dpdk_ops_vpp_dequeue) (struct rte_mempool * mp,
 					  void **obj_table, unsigned n)
 {
   /*
-   * The cache path is bounded by RTE_MEMPOOL_CACHE_MAX_SIZE (512) so at
-   * most cache->size + remaining = 1024 entries.  However the ops dequeue
-   * function can also be called directly (e.g. by ena_populate_rx_queue to
-   * pre-fill an RX ring), in which case n equals the ring size and can be
-   * much larger. Process in chunks to keep the on-stack bufs[] array small.
+   * The ops dequeue function can be called directly (e.g. to pre-fill an RX
+   * ring) with n equal to the ring size. Process in chunks to keep the
+   * on-stack bufs[] array bounded.
    */
-  const unsigned chunk_size = RTE_MEMPOOL_CACHE_MAX_SIZE * 2;
+  const unsigned chunk_size = RTE_MEMPOOL_CACHE_MAX_SIZE;
   vlib_main_t *vm = vlib_get_main ();
   u8 buffer_pool_index = mp->pool_id;
   struct rte_mbuf t = dpdk_mbuf_template_by_pool_index[buffer_pool_index];
