@@ -47,6 +47,8 @@ lb_vip_type_to_api_encap (lb_vip_type_t type)
       return LB_API_ENCAP_TYPE_NAT4;
     case LB_VIP_TYPE_IP6_NAT6:
       return LB_API_ENCAP_TYPE_NAT6;
+    case LB_VIP_TYPE_IP6_NAT6_NOPORT:
+      return LB_API_ENCAP_TYPE_NAT6_NOPORT;
     default:
       return LB_API_ENCAP_TYPE_GRE4;
     }
@@ -138,6 +140,8 @@ vl_api_lb_add_del_vip_t_handler
 	  type = LB_VIP_TYPE_IP6_GRE6;
 	else if (encap == LB_API_ENCAP_TYPE_NAT6)
 	  type = LB_VIP_TYPE_IP6_NAT6;
+	else if (encap == LB_API_ENCAP_TYPE_NAT6_NOPORT)
+	  type = LB_VIP_TYPE_IP6_NAT6_NOPORT;
       }
 
     args.plen = plen;
@@ -210,6 +214,8 @@ vl_api_lb_add_del_vip_v2_t_handler (vl_api_lb_add_del_vip_v2_t *mp)
 	    type = LB_VIP_TYPE_IP6_GRE6;
 	  else if (encap == LB_API_ENCAP_TYPE_NAT6)
 	    type = LB_VIP_TYPE_IP6_NAT6;
+	  else if (encap == LB_API_ENCAP_TYPE_NAT6_NOPORT)
+	    type = LB_VIP_TYPE_IP6_NAT6_NOPORT;
 	}
 
       args.plen = plen;
