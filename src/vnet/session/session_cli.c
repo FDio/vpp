@@ -152,12 +152,8 @@ format_session_transport (u8 *s, session_t *ss, u32 tp, session_fmt_req_t fmt,
 
   if (wants_state)
     {
-      if (use_cols)
-	s = format (s, "%-" SESSION_CLI_STATE_LEN "U", transport_formatter, tp,
-		    ss->connection_index, ss->thread_index, TRANSPORT_FMT_REQ_F_STATE);
-      else
-	s = format (s, "%U", transport_formatter, tp, ss->connection_index, ss->thread_index,
-		    TRANSPORT_FMT_REQ_F_STATE);
+      s = format (s, "%-" SESSION_CLI_STATE_LEN "U", transport_formatter, tp, ss->connection_index,
+		  ss->thread_index, TRANSPORT_FMT_REQ_F_STATE);
     }
 
   if (wants_io)
