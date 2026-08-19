@@ -83,6 +83,12 @@ const static char* const * const lb_dpo_nat6_port_nodes[DPO_PROTO_NUM] =
         [DPO_PROTO_IP6]  = lb_dpo_nat6_ip6_port,
     };
 
+const static char * const lb_dpo_nat6_noport_ip6[] = { "lb6-nat6-noport" , NULL };
+const static char* const * const lb_dpo_nat6_noport_nodes[DPO_PROTO_NUM] =
+    {
+        [DPO_PROTO_IP6]  = lb_dpo_nat6_noport_ip6,
+    };
+
 u32 lb_hash_time_now(vlib_main_t * vm)
 {
   return (u32) (vlib_time_now(vm) + 10000);
@@ -119,6 +125,7 @@ static char *lb_vip_type_strings[] = {
     [LB_VIP_TYPE_IP4_L3DSR] = "ip4-l3dsr",
     [LB_VIP_TYPE_IP4_NAT4] = "ip4-nat4",
     [LB_VIP_TYPE_IP6_NAT6] = "ip6-nat6",
+    [LB_VIP_TYPE_IP6_NAT6_NOPORT] = "ip6-nat6-noport",
 };
 
 u8 *format_lb_vip_type (u8 * s, va_list * args)
@@ -988,6 +995,8 @@ static void lb_vip_add_adjacency(lb_main_t *lbm, lb_vip_t *vip,
     dpo_type = lbm->dpo_nat4_port_type;
   else if (lb_vip_is_nat6_port(vip))
     dpo_type = lbm->dpo_nat6_port_type;
+  else if (lb_vip_is_nat6_noport(vip))
+    dpo_type = lbm->dpo_nat6_noport_type;
 
   dpo_set(&dpo, dpo_type, proto, *vip_prefix_index);
   fib_table_entry_special_dpo_add(0,
@@ -1352,6 +1361,8 @@ lb_as_stack (lb_as_t *as)
     dpo_type = lbm->dpo_nat4_port_type;
   else if (lb_vip_is_nat6_port(vip))
     dpo_type = lbm->dpo_nat6_port_type;
+  else if (lb_vip_is_nat6_noport(vip))
+    dpo_type = lbm->dpo_nat6_noport_type;
 
   dpo_stack(dpo_type,
             lb_vip_is_ip4(vip->type)?DPO_PROTO_IP4:DPO_PROTO_IP6,
@@ -1453,6 +1464,8 @@ lb_init (vlib_main_t * vm)
                                                   lb_dpo_nat4_port_nodes);
   lbm->dpo_nat6_port_type = dpo_register_new_type(&lb_vft,
                                                   lb_dpo_nat6_port_nodes);
+  lbm->dpo_nat6_noport_type = dpo_register_new_type(&lb_vft,
+                                                    lb_dpo_nat6_noport_nodes);
   lbm->fib_node_type = fib_node_register_new_type ("lb", &lb_fib_node_vft);
 
   //Init AS reference counters
