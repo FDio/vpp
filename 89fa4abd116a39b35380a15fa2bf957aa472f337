@@ -35,6 +35,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "980551a0_28dc5cbe",
+        "filename": "src/vnet/crypto/crypto.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 129,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2026-08-19T17:28:47Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "b4043bc4_ddc63f1f",
+      "revId": "89fa4abd116a39b35380a15fa2bf957aa472f337",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "9887b3fa_a7cf2dfa",
@@ -48,6 +66,24 @@
       "writtenOn": "2026-08-19T15:29:44Z",
       "side": 1,
       "message": "Could we remove these local assertions, including the scalar-loop assertion below? `vlib_buffer_enqueue_to_next()` already passes every distinct `next_index` through `vlib_get_next_frame_internal()` and `vlib_node_runtime_get_next_frame()`, which asserts `next_index \u003c n_next_nodes` before indexing the graph arc. That generic enqueue boundary is the appropriate centralized validation point; these checks duplicate the invariant once per packet.",
+      "revId": "89fa4abd116a39b35380a15fa2bf957aa472f337",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "df79213e_62ed1455",
+        "filename": "src/vnet/ipsec/esp_encrypt.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1151,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2026-08-19T17:28:47Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "9887b3fa_a7cf2dfa",
       "revId": "89fa4abd116a39b35380a15fa2bf957aa472f337",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
