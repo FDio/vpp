@@ -33,6 +33,41 @@
       "message": "recheck",
       "revId": "758913d6c303ce23cd7c8133bd606025baef705c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2a9d3fd7_b2b78956",
+        "filename": "src/vlib/pool_cache.h",
+        "patchSetId": 16
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-08-19T08:06:02Z",
+      "side": 1,
+      "message": "Given that `pool_cache_is_free_index()` is required, could we encode the state directly in `next_free[]` instead of maintaining a parallel `slot_state[]` array? For example, reserve a second non-encodable sentinel for `ALLOCATED`; free entries contain their next index (including the existing end-of-list sentinel), while allocated entries contain `ALLOCATED`.\n\n`is_free_index()` would then be a relaxed atomic load of `next_free[index] !\u003d ALLOCATED`. A put could relaxed-store the local-list head into `next_free[index]`, combining the state transition and list link in one write. Double-free detection could use a debug-only CAS from `ALLOCATED`, or retain that CAS in production if hard rejection is required.\n\nThis would remove the separate state allocation and avoid touching an additional metadata cache line on every get/put. All `next_free` accesses would need relaxed atomic operations because `is_free_index()` may read them concurrently, but those compile to ordinary loads/stores. Does that fit the required `is_free_index()` semantics?",
+      "parentUuid": "15c1dd17_1d7215e3",
+      "revId": "758913d6c303ce23cd7c8133bd606025baef705c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "62091444_8973d461",
+        "filename": "src/vlib/pool_cache.h",
+        "patchSetId": 16
+      },
+      "lineNbr": 71,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-08-19T08:06:02Z",
+      "side": 1,
+      "message": "Since each `vlib_pool_cache_thread_t` has a single writer, are these atomics only needed for concurrent `show pool-cache` diagnostics? If so, relaxed loads/stores should be sufficient: the snapshot is already approximate and does not consume data published through these counters. We could also replace the `refills`/`flushes` atomic RMW increments with relaxed load-plus-store operations, avoiding exclusive/locked instructions while remaining race-free for the CLI reader.",
+      "revId": "758913d6c303ce23cd7c8133bd606025baef705c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
