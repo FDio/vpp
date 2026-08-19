@@ -1,0 +1,22 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "f0413b73_e2116547",
+        "filename": "src/plugins/rdma/device.c",
+        "patchSetId": 14
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-08-19T14:50:55Z",
+      "side": 1,
+      "message": "Addressed in PS14: both multipart lookups now use the single parameterized `rdma_nldev_lookup_u32()` helper. The call site performs DEV_NAME to DEV_INDEX, then NDEV_INDEX to PORT_INDEX filtered by DEV_INDEX, while the helper owns request construction, sequence/error handling, attribute matching, and result extraction.",
+      "parentUuid": "6da47041_439df667",
+      "revId": "74b0d8cf33384bf0694dc8530ebfe54f6eb6e9ea",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
