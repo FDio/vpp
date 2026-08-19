@@ -422,6 +422,63 @@ class TestIpsec4TunIfEsp1(TemplateIpsec4TunIfEsp, IpsecTun4Tests):
         self.vapi.sw_interface_set_mtu(p.tun_if.sw_if_index, [9000, 0, 0, 0])
 
 
+class TestIpsec4TunIfEspAsyncSharedFrame(TemplateIpsec4TunIfEsp, IpsecTun4):
+    """Ipsec ESP - async crypto-enq frame sharing"""
+
+    # Testing the situation where the frame scalar may be overwritten, one direction's
+    # buffers reach the peer direction's post node and are dispatched on a next
+    # index read out of the wrong union member.
+
+    # setting worker count to 1 to recreate crypto-enq frame sharing to avoid
+    # per thread frame. Both enc and dec nodes will run on same thread.
+    vpp_worker_count = 1
+
+    tun4_encrypt_node_name = "esp4-encrypt-tun"
+    tun4_decrypt_node_name = ["esp4-decrypt-tun", "esp4-decrypt-tun-post"]
+
+    def setUp(self):
+        super(TestIpsec4TunIfEspAsyncSharedFrame, self).setUp()
+        self.vapi.cli("set ipsec async mode on")
+
+    def tearDown(self):
+        self.vapi.cli("set ipsec async mode off")
+        super(TestIpsec4TunIfEspAsyncSharedFrame, self).tearDown()
+
+    def test_async_bidir_single_dispatch44(self):
+        """ipsec 4o4 async bidirectional single dispatch test"""
+        p = self.params[socket.AF_INET]
+        count = 127
+
+        encrypt_pkts = self.gen_encrypt_pkts(
+            p,
+            p.scapy_tun_sa,
+            self.tun_if,
+            src=p.remote_tun_if_host,
+            dst=self.pg1.remote_ip4,
+            count=count,
+        )
+        plain_pkts = self.gen_pkts(
+            self.pg1,
+            src=self.pg1.remote_ip4,
+            dst=p.remote_tun_if_host,
+            count=count,
+        )
+
+        self.pg_enable_capture(self.pg_interfaces)
+
+        # Add both directions' streams to the same thread to share a crypto-enq
+        # frame.
+        self.tun_if.add_stream(encrypt_pkts)
+        self.pg1.add_stream(plain_pkts)
+        self.pg_start()
+
+        rx_plain = self.pg1.get_capture(count)
+        rx_esp = self.tun_if.get_capture(count)
+
+        self.verify_decrypted(p, rx_plain)
+        self.verify_encrypted(p, p.vpp_tun_sa, rx_esp)
+
+
 class TestIpsec4TunIfEspUdp(TemplateIpsec4TunIfEspUdp, IpsecTun4Tests):
     """Ipsec ESP UDP tests"""
 
