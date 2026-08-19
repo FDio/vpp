@@ -84,18 +84,15 @@ VLIB_INIT_FUNCTION (ip_main_init) = {
 static clib_error_t *
 ip_config_init (vlib_main_t *vm, unformat_input_t *input)
 {
-  uword lbsz = 0, fibentrysz = 0, mtriesz = 0;
+  u64 lbsz = 0, fibentrysz = 0, mtriesz = 0;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (input, "load-balance-pool-size %U", unformat_memory_size,
-		    &lbsz))
+      if (unformat (input, "load-balance-pool-size %U", unformat_base10, &lbsz))
 	;
-      else if (unformat (input, "fib-entry-pool-size %U", unformat_memory_size,
-			 &fibentrysz))
+      else if (unformat (input, "fib-entry-pool-size %U", unformat_base10, &fibentrysz))
 	;
-      else if (unformat (input, "ip4-mtrie-pool-size %U", unformat_memory_size,
-			 &mtriesz))
+      else if (unformat (input, "ip4-mtrie-pool-size %U", unformat_base10, &mtriesz))
 	;
       else
 	return clib_error_return (0, "unknown input `%U'",
