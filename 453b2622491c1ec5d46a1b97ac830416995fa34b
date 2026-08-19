@@ -20,6 +20,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "26e9396f_e79f9978",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-08-19T07:29:23Z",
+      "side": 1,
+      "message": "Sorry I was not clear. What I was trying to say is that the check within esp_encrypt to validate next_index should not be necessary, it just hides the bug in crypto enqueue.\nIf we fix the issue in crypto enqueue, this check should not be necessary.",
+      "parentUuid": "54e60fb2_8265212d",
+      "revId": "453b2622491c1ec5d46a1b97ac830416995fa34b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "11b40100_ad3882c7",
         "filename": "src/vlib/buffer_funcs.c",
         "patchSetId": 2
