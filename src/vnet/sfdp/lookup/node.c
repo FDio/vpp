@@ -36,6 +36,7 @@ static vlib_error_desc_t sfdp_handoff_error_counters[] = {
 typedef struct
 {
   u32 sw_if_index;
+  u16 tenant_idx;
   union
   {
     sfdp_session_ip4_key_t k4;
@@ -721,6 +722,7 @@ sfdp_lookup_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	      sfdp_lookup_trace_t *t =
 		vlib_add_trace (vm, node, b[0], sizeof (*t));
 	      t->sw_if_index = vnet_buffer (b[0])->sw_if_index[VLIB_RX];
+	      t->tenant_idx = sfdp_buffer (b[0])->tenant_index;
 	      t->flow_id = b[0]->flow_id;
 	      t->hash = h[0];
 	      t->is_sp = 0;
@@ -863,20 +865,18 @@ format_sfdp_lookup_trace (u8 *s, va_list *args)
 
   if (!t->is_sp)
     s = format (s,
-		"sfdp-lookup: sw_if_index %d, next index %d hash 0x%x "
-		"flow-id %u (session %u, %s) key 0x%U",
-		t->sw_if_index, t->next_index, t->hash, t->flow_id,
-		t->flow_id >> 1, t->flow_id & 0x1 ? "reverse" : "forward",
-		format_hex_bytes_no_wrap,
+		"sfdp-lookup: tenant_idx %u sw_if_index %d, next index %d "
+		"hash 0x%x flow-id %u (session %u, %s) key 0x%U",
+		t->tenant_idx, t->sw_if_index, t->next_index, t->hash, t->flow_id, t->flow_id >> 1,
+		t->flow_id & 0x1 ? "reverse" : "forward", format_hex_bytes_no_wrap,
 		t->is_ip6 ? (u8 *) &t->k6 : (u8 *) &t->k4,
 		t->is_ip6 ? sizeof (t->k6) : sizeof (t->k4));
   else
     s = format (s,
-		"sfdp-lookup: sw_if_index %d, slow-path (%U) "
+		"sfdp-lookup: tenant_idx %u sw_if_index %d, slow-path (%U) "
 		"slow-path node %U key 0x%U",
-		t->sw_if_index, format_sfdp_sp_node, t->sp_index,
-		format_vlib_node_name, vm, t->sp_node_index,
-		format_hex_bytes_no_wrap,
+		t->tenant_idx, t->sw_if_index, format_sfdp_sp_node, t->sp_index,
+		format_vlib_node_name, vm, t->sp_node_index, format_hex_bytes_no_wrap,
 		t->is_ip6 ? (u8 *) &t->k6 : (u8 *) &t->k4,
 		t->is_ip6 ? sizeof (t->k6) : sizeof (t->k4));
   return s;
