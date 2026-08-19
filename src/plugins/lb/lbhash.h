@@ -141,16 +141,23 @@ void lb_hash_get(lb_hash_t *ht, u32 hash, u32 vip, u32 time_now,
       (bitmask)?time_now + ht->timeout:bucket->timeout[found_index];
 #else
   u32 i;
-  for (i = 0; i < LBHASH_ENTRY_PER_BUCKET; i++) {
-      u8 cmp = (bucket->hash[i] == hash && bucket->vip[i] == vip);
-      u8 timeouted = clib_u32_loop_gt(time_now, bucket->timeout[i]);
-      *found_value = (cmp || timeouted)?*found_value:bucket->value[i];
-      bucket->timeout[i] = (cmp || timeouted)?time_now + ht->timeout:bucket->timeout[i];
-      *available_index = (timeouted && (*available_index == ~0))?i:*available_index;
-
-      if (!cmp)
-	return;
-  }
+  for (i = 0; i < LBHASH_ENTRY_PER_BUCKET; i++)
+    {
+      u8 timeouted = clib_u32_loop_gt (time_now, bucket->timeout[i]);
+      u8 cmp = (!timeouted) && (bucket->hash[i] == hash) && (bucket->vip[i] == vip);
+      if (cmp)
+	{
+	  /* Live match: this is the caller's own existing entry - return its
+	   * value and refresh its timeout, exactly like the SSE4.2 path. */
+	  *found_value = bucket->value[i];
+	  bucket->timeout[i] = time_now + ht->timeout;
+	  return;
+	}
+      if (timeouted && (*available_index == ~0))
+	{
+	  *available_index = i;
+	}
+    }
 #endif
 }
 

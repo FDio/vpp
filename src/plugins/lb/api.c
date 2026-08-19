@@ -47,6 +47,12 @@ lb_vip_type_to_api_encap (lb_vip_type_t type)
       return LB_API_ENCAP_TYPE_NAT4;
     case LB_VIP_TYPE_IP6_NAT6:
       return LB_API_ENCAP_TYPE_NAT6;
+    /* LB_VIP_TYPE_IP6_NAT6_NOPORT has no representation in the frozen
+     * lb_encap_type enum lb_vip_details still uses (see lb_types.api) -
+     * falls through to the GRE4 default below. A NAT6-NOPORT VIP dumped
+     * via lb_vip_dump/lb_vip_details therefore misreports its encap; a
+     * versioned lb_vip_details_v2 would be needed to fix that, left as a
+     * known follow-up rather than in scope here. */
     default:
       return LB_API_ENCAP_TYPE_GRE4;
     }
@@ -234,6 +240,87 @@ vl_api_lb_add_del_vip_v2_t_handler (vl_api_lb_add_del_vip_v2_t *mp)
       rv = lb_vip_add (args, &vip_index);
     }
   REPLY_MACRO (VL_API_LB_ADD_DEL_VIP_V2_REPLY);
+}
+
+/* Identical to vl_api_lb_add_del_vip_v2_t_handler, except mp->encap is read
+ * against lb_encap_type_v2 (see lb_types.api) so NAT6-NOPORT can be
+ * expressed - lb_encap_type itself is frozen and cannot grow this value
+ * without changing lb_add_del_vip/_v2/lb_vip_details's wire CRC. */
+static void
+vl_api_lb_add_del_vip_v3_t_handler (vl_api_lb_add_del_vip_v3_t *mp)
+{
+  lb_main_t *lbm = &lb_main;
+  vl_api_lb_conf_reply_t *rmp;
+  int rv = 0;
+  lb_vip_add_args_t args = {};
+
+  /* if port == 0, it means all-port VIP */
+  if (mp->port == 0)
+    {
+      mp->protocol = ~0;
+    }
+
+  ip_address_decode (&mp->pfx.address, &(args.prefix));
+  u8 plen = mp->pfx.len + (mp->pfx.address.af == ADDRESS_IP4 ? 96 : 0);
+
+  if (mp->is_del)
+    {
+      u32 vip_index;
+      if (!(rv =
+	      lb_vip_find_index (&(args.prefix), plen, mp->protocol, ntohs (mp->port), &vip_index)))
+	rv = lb_vip_del (vip_index);
+    }
+  else
+    {
+      u32 vip_index;
+      lb_vip_type_t type = 0;
+      u32 encap = clib_net_to_host_u32 (mp->encap);
+
+      if (ip46_prefix_is_ip4 (&(args.prefix), plen))
+	{
+	  if (encap == LB_API_ENCAP_TYPE_V2_GRE4)
+	    type = LB_VIP_TYPE_IP4_GRE4;
+	  else if (encap == LB_API_ENCAP_TYPE_V2_GRE6)
+	    type = LB_VIP_TYPE_IP4_GRE6;
+	  else if (encap == LB_API_ENCAP_TYPE_V2_L3DSR)
+	    type = LB_VIP_TYPE_IP4_L3DSR;
+	  else if (encap == LB_API_ENCAP_TYPE_V2_NAT4)
+	    type = LB_VIP_TYPE_IP4_NAT4;
+	}
+      else
+	{
+	  if (encap == LB_API_ENCAP_TYPE_V2_GRE4)
+	    type = LB_VIP_TYPE_IP6_GRE4;
+	  else if (encap == LB_API_ENCAP_TYPE_V2_GRE6)
+	    type = LB_VIP_TYPE_IP6_GRE6;
+	  else if (encap == LB_API_ENCAP_TYPE_V2_NAT6)
+	    type = LB_VIP_TYPE_IP6_NAT6;
+	  else if (encap == LB_API_ENCAP_TYPE_V2_NAT6_NOPORT)
+	    type = LB_VIP_TYPE_IP6_NAT6_NOPORT;
+	}
+
+      args.plen = plen;
+      args.protocol = mp->protocol;
+      args.port = ntohs (mp->port);
+      args.type = type;
+      args.new_length = ntohl (mp->new_flows_table_length);
+
+      if (mp->src_ip_sticky)
+	args.src_ip_sticky = 1;
+
+      if (encap == LB_API_ENCAP_TYPE_V2_L3DSR)
+	{
+	  args.encap_args.dscp = (u8) (mp->dscp & 0x3F);
+	}
+      else if ((encap == LB_API_ENCAP_TYPE_V2_NAT4) || (encap == LB_API_ENCAP_TYPE_V2_NAT6))
+	{
+	  args.encap_args.srv_type = mp->type;
+	  args.encap_args.target_port = ntohs (mp->target_port);
+	}
+
+      rv = lb_vip_add (args, &vip_index);
+    }
+  REPLY_MACRO (VL_API_LB_ADD_DEL_VIP_V3_REPLY);
 }
 
 static void
