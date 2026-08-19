@@ -548,6 +548,12 @@ lb_node_fn (vlib_main_t * vm,
                       csum = ip_csum_add_even (
                           csum, lbm->ass[asindex0].address.ip6.as_u64[1]);
                       uh->checksum = ip_csum_fold (csum);
+                      /* 0 means "no checksum" for UDP/IPv4 but is illegal for
+                       * UDP/IPv6 (RFC 8200 8.1) - if the incremental update
+                       * happens to fold to exactly 0, remap to the
+                       * equivalent all-ones representation. */
+                      if (uh->checksum == 0)
+                        uh->checksum = 0xffff;
                     }
                   else
                     {
