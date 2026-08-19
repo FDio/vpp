@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "dd51b65f_7ed88ab6",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 40
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-08-19T10:05:43Z",
+      "side": 1,
+      "message": "Looks good to me, with just a nit comment.",
+      "revId": "32dda020758c7c58a4d4e1d28096d43ccdfc2b26",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "67f3a229_1c5d4aa9",
+        "filename": "src/vnet/flow/flow.api",
+        "patchSetId": 40
+      },
+      "lineNbr": 213,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-08-19T10:05:43Z",
+      "side": 1,
+      "message": "nit: the caller contract for `vnet_flow_async_dev_ops_function_t` specifies that there must be \u0027flow index uniqueness\u0027.\n\nWhat if a user provide the same flow index multiple times through the API and CLI in the flow_async_range_enable/flow_async_range_disable calls ? Do we want to enforce a check or it is the user\u0027s responsibility to sanitize inputs and verify duplicate flow indices are not submitted ?",
+      "revId": "32dda020758c7c58a4d4e1d28096d43ccdfc2b26",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
