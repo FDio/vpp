@@ -4,6 +4,7 @@
  */
 
 #include <vppinfra/mhash.h>
+#include <vlib/vlib.h>
 #include <vnet/ip/ip.h>
 #include <vnet/adj/adj.h>
 #include <vnet/dpo/load_balance.h>
@@ -301,6 +302,19 @@ fib_path_list_destroy (fib_path_list_t *path_list)
 
     FIB_PATH_LIST_DBG(path_list, "destroy");
 
+    /* fib_path_get_resolving_interface() (via arp_reply(), on the ARP
+     * fast path) walks fpl_paths and dereferences each path index
+     * directly, with no synchronization of its own, on a worker thread.
+     * The loop below frees each path's fib_path_pool slot one at a time
+     * while fpl_paths still holds the remainder - a worker reading
+     * fpl_paths concurrently can dereference an index this loop already
+     * freed, hitting fib_path_get()'s pool_is_free assertion (or, in a
+     * non-debug build, reading freed memory). Barrier-protect the whole
+     * teardown - the path destroys, freeing fpl_paths itself, and this
+     * path list's own pool_put - so no worker can be mid-read of any of
+     * it while it is torn down. */
+    vlib_worker_thread_barrier_sync (vlib_get_main ());
+
     vec_foreach (path_index, path_list->fpl_paths)
     {
 	fib_path_destroy(*path_index);
@@ -311,6 +325,8 @@ fib_path_list_destroy (fib_path_list_t *path_list)
 
     fib_node_deinit(&path_list->fpl_node);
     pool_put(fib_path_list_pool, path_list);
+
+    vlib_worker_thread_barrier_release (vlib_get_main ());
 }
 
 static void
