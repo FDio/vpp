@@ -54,6 +54,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "3f41831c_24e51f03",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2026-08-19T14:42:27Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "7a1025b9_479a27a9",
+      "revId": "453b2622491c1ec5d46a1b97ac830416995fa34b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "11b40100_ad3882c7",
@@ -85,6 +103,24 @@
       "side": 1,
       "message": "+1, I haven\u0027t heard an explanation yet about what prevents two produces appending to the same frame. I can reproduce this",
       "parentUuid": "11b40100_ad3882c7",
+      "revId": "453b2622491c1ec5d46a1b97ac830416995fa34b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "50f19ff6_3f0b62f6",
+        "filename": "src/vlib/buffer_funcs.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 309,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2026-08-19T14:42:27Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "d93d3b81_07bab5d2",
       "revId": "453b2622491c1ec5d46a1b97ac830416995fa34b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
