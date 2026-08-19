@@ -26,6 +26,7 @@ typedef struct
 {
   u32 flow_id;
   u32 thread_index;
+  u16 tenant_idx;
 } sfdp_nat_slowpath_trace_t;
 
 format_function_t format_sfdp_bitmap;
@@ -41,8 +42,8 @@ format_sfdp_nat_slowpath_trace (u8 *s, va_list *args)
   sfdp_session_t *session = sfdp_session_at_index (t->flow_id >> 1);
   u32 scope_index = session->scope_index;
 
-  s = format (s, "sfdp-nat-output: flow-id %u (session %u, %s)\n", t->flow_id,
-	      t->flow_id >> 1, t->flow_id & 0x1 ? "reverse" : "forward");
+  s = format (s, "sfdp-nat-output: tenant-idx %u flow-id %u (session %u, %s)\n", t->tenant_idx,
+	      t->flow_id, t->flow_id >> 1, t->flow_id & 0x1 ? "reverse" : "forward");
   s = format (s, "  new forward service chain: %U\n", format_sfdp_bitmap,
 	      scope_index, session->bitmaps[SFDP_FLOW_FORWARD]);
   s = format (s, "  new reverse service chain: %U\n", format_sfdp_bitmap,
@@ -261,6 +262,7 @@ VLIB_NODE_FN (sfdp_nat_slowpath_node)
 		vlib_add_trace (vm, node, b[0], sizeof (*t));
 	      t->flow_id = b[0]->flow_id;
 	      t->thread_index = thread_index;
+	      t->tenant_idx = sfdp_buffer (b[0])->tenant_index;
 	      b++;
 	    }
 	  else
