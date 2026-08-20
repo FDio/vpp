@@ -188,6 +188,8 @@ hsi_tcp_track_abort_session (session_t *s)
       tcp_connection_timers_reset (tc);
       tcp_cong_recovery_off (tc);
       tcp_connection_set_state (tc, TCP_STATE_CLOSED);
+      hsi_session_program_cleanup (s);
+      return;
     }
 
   hsi_session_cleanup (s);
