@@ -10,8 +10,8 @@
 #include <vnet/sfdp/common.h>
 typedef struct
 {
-  u32 tenant_id;
   u32 sw_if_index;
+  u16 tenant_idx;
 } sfdp_interface_input_trace_t;
 
 static u8 *
@@ -22,8 +22,8 @@ format_sfdp_interface_input_trace (u8 *s, va_list *args)
   sfdp_interface_input_trace_t *t =
     va_arg (*args, sfdp_interface_input_trace_t *);
 
-  s = format (s, "sfdp-interface-input: sw_if_index %d, tenant %d\n",
-	      t->sw_if_index, t->tenant_id);
+  s = format (s, "sfdp-interface-input: sw_if_index %d, tenant-idx %u\n", t->sw_if_index,
+	      t->tenant_idx);
 
   return s;
 }
@@ -111,6 +111,19 @@ sfdp_interface_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_fr
       n_left -= 1;
     }
   vlib_buffer_enqueue_to_next (vm, node, from, next_indices, frame->n_vectors);
+  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)))
+    {
+      b = bufs;
+      for (int i = 0; i < frame->n_vectors; b++, i++)
+	{
+	  if (b[0]->flags & VLIB_BUFFER_IS_TRACED)
+	    {
+	      sfdp_interface_input_trace_t *t = vlib_add_trace (vm, node, b[0], sizeof (*t));
+	      t->sw_if_index = vnet_buffer (b[0])->sw_if_index[VLIB_RX];
+	      t->tenant_idx = sfdp_buffer (b[0])->tenant_index;
+	    }
+	}
+    }
   return frame->n_vectors;
 }
 
@@ -165,12 +178,14 @@ VNET_FEATURE_INIT (sfdp_interface_input_ip6_feat, static) = {
 };
 
 SFDP_SERVICE_DEFINE (ip4_lookup) = { .node_name = "ip4-lookup",
+				     .format_trace = format_sfdp_interface_input_trace,
 				     .runs_before = SFDP_SERVICES (0),
 				     .runs_after = SFDP_SERVICES ("sfdp-drop", "sfdp-l4-lifecycle",
 								  "sfdp-tcp-check"),
 				     .is_terminal = 1 };
 
 SFDP_SERVICE_DEFINE (ip6_lookup) = { .node_name = "ip6-lookup",
+				     .format_trace = format_sfdp_interface_input_trace,
 				     .runs_before = SFDP_SERVICES (0),
 				     .runs_after = SFDP_SERVICES ("sfdp-drop", "sfdp-l4-lifecycle",
 								  "sfdp-tcp-check"),

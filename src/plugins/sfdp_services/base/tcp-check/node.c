@@ -28,6 +28,7 @@ typedef struct
   u32 flow_id;
   u32 old_state_flags;
   u32 new_state_flags;
+  u16 tenant_idx;
 } sfdp_tcp_check_trace_t;
 
 static u8 *
@@ -38,8 +39,8 @@ format_sfdp_tcp_check_trace (u8 *s, va_list *args)
   sfdp_tcp_check_trace_t *t = va_arg (*args, sfdp_tcp_check_trace_t *);
   u32 indent = format_get_indent (s);
   indent += 2;
-  s = format (s, "sfdp-tcp-check: flow-id %u (session %u, %s)\n", t->flow_id,
-	      t->flow_id >> 1, t->flow_id & 0x1 ? "reverse" : "forward");
+  s = format (s, "sfdp-tcp-check: flow-id %u (tenant-idx %u, session %u, %s)\n", t->flow_id,
+	      t->tenant_idx, t->flow_id >> 1, t->flow_id & 0x1 ? "reverse" : "forward");
   s = format (s, "%Uold session flags: %U\n", format_white_space, indent,
 	      format_sfdp_tcp_check_session_flags, t->old_state_flags);
   s = format (s, "%Unew session flags: %U\n", format_white_space, indent,
@@ -312,12 +313,10 @@ VLIB_NODE_FN (sfdp_tcp_check_node)
   vlib_buffer_enqueue_to_next (vm, node, from, next_indices, frame->n_vectors);
   if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)))
     {
-      int i;
-      b = bufs;
       sf = state_flags;
       nsf = new_state_flags;
-      n_left = frame->n_vectors;
-      for (i = 0; i < n_left; i++)
+      b = bufs;
+      for (int i = 0; i < frame->n_vectors; b++, i++)
 	{
 	  if (b[0]->flags & VLIB_BUFFER_IS_TRACED)
 	    {
@@ -326,12 +325,10 @@ VLIB_NODE_FN (sfdp_tcp_check_node)
 	      t->flow_id = b[0]->flow_id;
 	      t->old_state_flags = sf[0];
 	      t->new_state_flags = nsf[0];
-	      b++;
-	      sf++;
-	      nsf++;
+	      t->tenant_idx = sfdp_buffer (b[0])->tenant_index;
 	    }
-	  else
-	    break;
+	  sf++;
+	  nsf++;
 	}
     }
   return frame->n_vectors;
