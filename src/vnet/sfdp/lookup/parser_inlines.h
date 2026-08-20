@@ -28,6 +28,7 @@ typedef struct
   u16 parser_index;
   u8 key_size;
   u8 is_sp;
+  u16 tenant_idx;
   union
   {
     struct
@@ -55,7 +56,8 @@ format_sfdp_parser_lookup_trace (u8 *s, va_list *args)
 	      format_hex_bytes_no_wrap, t->key_data, t->key_size);
   if (t->is_sp)
     return format (s, " slow-path %u node %u", t->sp_index, t->sp_node_index);
-  return format (s, " flow-id %u next-index %u hash 0x%llx", t->flow_id, t->next_index, t->hash);
+  return format (s, " flow-id %u tenant-idx %u next-index %u hash 0x%llx", t->flow_id,
+		 t->tenant_idx, t->next_index, t->hash);
 }
 
 static_always_inline u8
@@ -556,8 +558,6 @@ sfdp_parser_lookup_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 
   if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)))
     {
-      int i;
-      b = bufs;
       bi = from;
       h = hashes;
       u32 *in_local = to_local;
@@ -566,7 +566,8 @@ sfdp_parser_lookup_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       u32 *local_end = to_local + n_local;
       u32 *remote_end = to_remote + n_remote;
       u32 *sp_end = to_sp + n_to_sp;
-      for (i = 0; i < frame->n_vectors; i++)
+      b = bufs;
+      for (int i = 0; i < frame->n_vectors; b++, i++)
 	{
 	  if (b[0]->flags & VLIB_BUFFER_IS_TRACED)
 	    {
@@ -576,6 +577,7 @@ sfdp_parser_lookup_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	      t->flow_id = b[0]->flow_id;
 	      t->hash = h[0];
 	      t->is_sp = 0;
+	      t->tenant_idx = sfdp_buffer (b[0])->tenant_index;
 	      t->parser_index = parser_data_index;
 	      t->key_size = key_size;
 	      if (in_local < local_end && bi[0] == in_local[0])
@@ -597,12 +599,9 @@ sfdp_parser_lookup_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 
 	      clib_memcpy (&t->key_data, i * key_size + keys, key_size);
 
-	      bi++;
-	      b++;
-	      h++;
 	    }
-	  else
-	    break;
+	  bi++;
+	  h++;
 	}
     }
   return frame->n_vectors;
