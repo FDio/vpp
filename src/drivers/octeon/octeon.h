@@ -99,6 +99,16 @@ typedef struct
 
 typedef struct
 {
+  u8 npa_pool_initialized : 1;
+  u16 hdr_off;
+  u64 aura_handle;
+  oct_npa_batch_alloc_cl128_t *ba_buffer;
+  u8 ba_first_cl;
+  u8 ba_num_cl;
+} oct_per_thread_data_t;
+
+typedef struct
+{
   oct_device_type_t type;
   u8 nix_initialized : 1;
   u8 status : 1;
@@ -109,6 +119,7 @@ typedef struct
   struct roc_nix *nix;
   oct_msix_handler_info_t *msix_handler;
   oct_txq_t **ctqs;
+  oct_per_thread_data_t *per_thread_data;
 } oct_device_t;
 
 typedef struct
@@ -150,19 +161,8 @@ typedef struct
 
 typedef struct
 {
-  u8 npa_pool_initialized : 1;
-  u16 hdr_off;
-  u64 aura_handle;
-  oct_npa_batch_alloc_cl128_t *ba_buffer;
-  u8 ba_first_cl;
-  u8 ba_num_cl;
-} oct_per_thread_data_t;
-
-typedef struct
-{
   u8 is_config_done;
   u32 npa_max_pools;
-  oct_per_thread_data_t *per_thread_data;
 } oct_main_t;
 
 extern oct_main_t oct_main;
