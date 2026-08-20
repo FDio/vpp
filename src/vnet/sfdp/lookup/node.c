@@ -36,6 +36,7 @@ static vlib_error_desc_t sfdp_handoff_error_counters[] = {
 typedef struct
 {
   u32 sw_if_index;
+  u16 tenant_idx;
   union
   {
     sfdp_session_ip4_key_t k4;
@@ -63,6 +64,7 @@ typedef struct
 {
   u32 next_index;
   u32 flow_id;
+  u16 tenant_idx;
 } sfdp_handoff_trace_t;
 
 static_always_inline int
@@ -707,20 +709,19 @@ sfdp_lookup_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 
   if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)))
     {
-      int i;
-      b = bufs;
       bi = from;
       h = hashes;
       u32 *in_local = to_local;
       u32 *in_remote = to_remote;
       u32 *in_sp = to_sp;
-      for (i = 0; i < frame->n_vectors; i++)
+      for (b = bufs, int i = 0; i < frame->n_vectors; b++, i++)
 	{
 	  if (b[0]->flags & VLIB_BUFFER_IS_TRACED)
 	    {
 	      sfdp_lookup_trace_t *t =
 		vlib_add_trace (vm, node, b[0], sizeof (*t));
 	      t->sw_if_index = vnet_buffer (b[0])->sw_if_index[VLIB_RX];
+	      t->tenant_idx = sfdp_buffer (b[0])->tenant_index;
 	      t->flow_id = b[0]->flow_id;
 	      t->hash = h[0];
 	      t->is_sp = 0;
@@ -746,12 +747,9 @@ sfdp_lookup_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	      else
 		clib_memcpy (&t->k4, &keys.keys4[i], sizeof (t->k4));
 
-	      bi++;
-	      b++;
-	      h++;
 	    }
-	  else
-	    break;
+	  bi++;
+	  h++;
 	}
     }
   return frame->n_vectors;
@@ -833,10 +831,8 @@ VLIB_NODE_FN (sfdp_handoff_node)
 			       SFDP_HANDOFF_ERROR_SESS_DROP, n_drop);
   if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)))
     {
-      int i;
-      b = bufs;
       current_next = next_indices;
-      for (i = 0; i < frame->n_vectors; i++)
+      for (b = bufs, int i = 0; i < frame->n_vectors; b++, i++)
 	{
 	  if (b[0]->flags & VLIB_BUFFER_IS_TRACED)
 	    {
@@ -844,11 +840,9 @@ VLIB_NODE_FN (sfdp_handoff_node)
 		vlib_add_trace (vm, node, b[0], sizeof (*t));
 	      t->flow_id = b[0]->flow_id;
 	      t->next_index = current_next[0];
-	      b++;
-	      current_next++;
+	      t->tenant_idx = sfdp_buffer (b[0])->tenant_index;
 	    }
-	  else
-	    break;
+	  current_next++;
 	}
     }
   return frame->n_vectors;
@@ -863,20 +857,18 @@ format_sfdp_lookup_trace (u8 *s, va_list *args)
 
   if (!t->is_sp)
     s = format (s,
-		"sfdp-lookup: sw_if_index %d, next index %d hash 0x%x "
-		"flow-id %u (session %u, %s) key 0x%U",
-		t->sw_if_index, t->next_index, t->hash, t->flow_id,
-		t->flow_id >> 1, t->flow_id & 0x1 ? "reverse" : "forward",
-		format_hex_bytes_no_wrap,
+		"sfdp-lookup: sw_if_index %d, next index %d "
+		"hash 0x%x flow-id %u (tenant-idx %u, session %u, %s) key 0x%U",
+		t->sw_if_index, t->next_index, t->hash, t->flow_id, t->tenant_idx, t->flow_id >> 1,
+		t->flow_id & 0x1 ? "reverse" : "forward", format_hex_bytes_no_wrap,
 		t->is_ip6 ? (u8 *) &t->k6 : (u8 *) &t->k4,
 		t->is_ip6 ? sizeof (t->k6) : sizeof (t->k4));
   else
     s = format (s,
-		"sfdp-lookup: sw_if_index %d, slow-path (%U) "
+		"sfdp-lookup: sw_if_index %d, tenant-idx %u slow-path (%U) "
 		"slow-path node %U key 0x%U",
-		t->sw_if_index, format_sfdp_sp_node, t->sp_index,
-		format_vlib_node_name, vm, t->sp_node_index,
-		format_hex_bytes_no_wrap,
+		t->sw_if_index, t->tenant_idx, format_sfdp_sp_node, t->sp_index,
+		format_vlib_node_name, vm, t->sp_node_index, format_hex_bytes_no_wrap,
 		t->is_ip6 ? (u8 *) &t->k6 : (u8 *) &t->k4,
 		t->is_ip6 ? sizeof (t->k6) : sizeof (t->k4));
   return s;
@@ -891,8 +883,8 @@ format_sfdp_handoff_trace (u8 *s, va_list *args)
 
   s = format (s,
 	      "sfdp-handoff: next index %d "
-	      "flow-id %u (session %u, %s)",
-	      t->next_index, t->flow_id, t->flow_id >> 1,
+	      "flow-id %u (tenant_idx %u, session %u, %s)",
+	      t->next_index, t->flow_id, t->tenant_idx, t->flow_id >> 1,
 	      t->flow_id & 0x1 ? "reverse" : "forward");
   return s;
 }

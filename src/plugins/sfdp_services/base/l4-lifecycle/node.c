@@ -26,6 +26,7 @@ typedef struct
 {
   u32 flow_id;
   u8 new_state;
+  u16 tenant_idx;
 } sfdp_l4_lifecycle_trace_t;
 
 static u8 *
@@ -35,10 +36,9 @@ format_sfdp_l4_lifecycle_trace (u8 *s, va_list *args)
   vlib_node_t __clib_unused *node = va_arg (*args, vlib_node_t *);
   sfdp_l4_lifecycle_trace_t *t = va_arg (*args, sfdp_l4_lifecycle_trace_t *);
 
-  s = format (
-    s, "sfdp-l4-lifecycle: flow-id %u (session %u, %s) new_state: %U",
-    t->flow_id, t->flow_id >> 1, t->flow_id & 0x1 ? "reverse" : "forward",
-    format_sfdp_session_state, t->new_state);
+  s = format (s, "sfdp-l4-lifecycle: flow-id %u (tenant-idx %u, session %u, %s) new_state: %U",
+	      t->flow_id, t->tenant_idx, t->flow_id >> 1, t->flow_id & 0x1 ? "reverse" : "forward",
+	      format_sfdp_session_state, t->new_state);
   return s;
 }
 
@@ -103,9 +103,7 @@ VLIB_NODE_FN (sfdp_l4_lifecycle_node)
 
   if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)))
     {
-      n_left = frame->n_vectors;
-      b = bufs;
-      for (int i = 0; i < n_left; i++)
+      for (b = bufs, int i = 0; i < frame->n_vectors; b++, i++)
 	{
 	  if (b[0]->flags & VLIB_BUFFER_IS_TRACED)
 	    {
@@ -116,10 +114,8 @@ VLIB_NODE_FN (sfdp_l4_lifecycle_node)
 	      u16 state = session->state;
 	      t->flow_id = b[0]->flow_id;
 	      t->new_state = state;
-	      b++;
+	      t->tenant_idx = sfdp_buffer (b[0])->tenant_index;
 	    }
-	  else
-	    break;
 	}
     }
   vlib_buffer_enqueue_to_next (vm, node, from, next_indices, frame->n_vectors);

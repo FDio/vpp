@@ -33,6 +33,7 @@ typedef enum
 typedef struct
 {
   u32 flow_id;
+  u16 tenant_idx;
 } sfdp_drop_trace_t;
 
 static u8 *
@@ -42,7 +43,7 @@ format_sfdp_drop_trace (u8 *s, va_list *args)
   vlib_node_t __clib_unused *node = va_arg (*args, vlib_node_t *);
   sfdp_drop_trace_t *t = va_arg (*args, sfdp_drop_trace_t *);
 
-  s = format (s, "sfdp-drop: flow-id %u (session %u, %s)", t->flow_id,
+  s = format (s, "sfdp-drop: flow-id %u (tenant-idx %u, session %u, %s)", t->flow_id, t->tenant_idx,
 	      t->flow_id >> 1, t->flow_id & 0x1 ? "reverse" : "forward");
   return s;
 }
@@ -60,20 +61,16 @@ VLIB_NODE_FN (sfdp_drop_node)
 			       n_left);
   if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)))
     {
-      int i;
       vlib_get_buffers (vm, from, bufs, n_left);
-      b = bufs;
-      for (i = 0; i < n_left; i++)
+      for (b = bufs, int i = 0; i < n_left; b++, i++)
 	{
 	  if (b[0]->flags & VLIB_BUFFER_IS_TRACED)
 	    {
 	      sfdp_drop_trace_t *t =
 		vlib_add_trace (vm, node, b[0], sizeof (*t));
 	      t->flow_id = b[0]->flow_id;
-	      b++;
+	      t->tenant_idx = sfdp_buffer (b[0])->tenant_index;
 	    }
-	  else
-	    break;
 	}
     }
   return frame->n_vectors;

@@ -39,6 +39,7 @@ typedef struct
 {
   u32 thread_index;
   u32 flow_id;
+  u16 tenant_idx;
 } sfdp_nat_fastpath_trace_t;
 
 static u8 *
@@ -49,10 +50,9 @@ format_sfdp_nat_fastpath_trace (u8 *s, va_list *args)
   sfdp_nat_fastpath_trace_t *t = va_arg (*args, sfdp_nat_fastpath_trace_t *);
   nat_main_t *nm = &nat_main;
   nat_rewrite_data_t *rewrite = vec_elt_at_index (nm->flows, t->flow_id);
-  s = format (
-    s, "sfdp-nat-fastpath: flow-id %u (session %u, %s) rewrite: %U\n",
-    t->flow_id, t->flow_id >> 1, t->flow_id & 0x1 ? "reverse" : "forward",
-    format_sfdp_nat_rewrite, rewrite);
+  s = format (s, "sfdp-nat-fastpath: flow-id %u (session %u, tenant-idx %u, %s) rewrite: %U\n",
+	      t->flow_id, t->tenant_idx, t->flow_id >> 1, t->flow_id & 0x1 ? "reverse" : "forward",
+	      format_sfdp_nat_rewrite, rewrite);
 
   return s;
 }
@@ -186,10 +186,7 @@ sfdp_nat_fastpath_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   vlib_buffer_enqueue_to_next (vm, node, from, next_indices, frame->n_vectors);
   if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)))
     {
-      int i;
-      b = bufs;
-      n_left = frame->n_vectors;
-      for (i = 0; i < n_left; i++)
+      for (b = bufs, int i = 0; i < frame->n_vectors; b++, i++)
 	{
 	  if (b[0]->flags & VLIB_BUFFER_IS_TRACED)
 	    {
@@ -197,10 +194,8 @@ sfdp_nat_fastpath_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 		vlib_add_trace (vm, node, b[0], sizeof (*t));
 	      t->flow_id = b[0]->flow_id;
 	      t->thread_index = thread_index;
-	      b++;
+	      t->tenant_idx = sfdp_buffer (b[0])->tenant_index;
 	    }
-	  else
-	    break;
 	}
     }
   return frame->n_vectors;
