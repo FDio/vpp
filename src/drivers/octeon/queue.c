@@ -303,14 +303,19 @@ oct_txq_deinit (vlib_main_t *vm, vnet_dev_tx_queue_t *txq)
 {
   oct_txq_t *ctq = vnet_dev_get_tx_queue_data (txq);
   vnet_dev_t *dev = txq->port->dev;
+  oct_device_t *cd = vnet_dev_get_data (dev);
   int rrv;
 
   if (ctq->sq_initialized)
     {
       rrv = roc_nix_sq_fini (&ctq->sq);
       if (rrv)
-	oct_roc_err (dev, rrv, "roc_nix_sq_fini() failed");
-      ctq->sq_initialized = 0;
+	{
+	  oct_roc_err (dev, rrv, "roc_nix_sq_fini() failed");
+	  cd->txq_fini_failed = 1;
+	}
+      else
+	ctq->sq_initialized = 0;
     }
 }
 

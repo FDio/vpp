@@ -111,6 +111,7 @@ typedef struct
 {
   oct_device_type_t type;
   u8 nix_initialized : 1;
+  u8 txq_fini_failed : 1;
   u8 status : 1;
   u8 full_duplex : 1;
   u8 egress_tm : 1;
