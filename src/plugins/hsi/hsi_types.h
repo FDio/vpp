@@ -15,6 +15,7 @@
 #define HSI_UDP_DRAIN_NO_PROGRESS_DEFAULT_TIMEOUT 10.0
 #define HSI_UDP_IDLE_DEFAULT_TIMEOUT		  300.0
 #define HSI_TCP_FIN_WAIT_DEFAULT_TIMEOUT	  2.0
+#define HSI_POSTPONED_CLEANUP_TIME		  0.1
 
 typedef struct hsi_tcp_track_snapshot_
 {
@@ -92,6 +93,12 @@ typedef struct hsi_worker_stats_
 #undef _
 } hsi_worker_stats_t;
 
+typedef struct hsi_cleanup_req_
+{
+  f64 free_time;
+  session_handle_t sh;
+} hsi_cleanup_req_t;
+
 typedef struct hsi_worker_
 {
   hsi_tcp_track_commit_req_t *tcp_track_commit_reqs;
@@ -123,6 +130,8 @@ typedef struct hsi_worker_
   u8 udp_drain_time_unregister_pending;
   u8 udp_idle_time_registered;
   u8 udp_idle_time_unregister_pending;
+  hsi_cleanup_req_t *pending_cleanups;
+  u8 pending_cleanups_registered;
 } hsi_worker_t;
 
 #define hsi_worker_counter_inc(_wrk, _counter)                                                     \
@@ -167,6 +176,7 @@ typedef struct hsi_main_
   f64 udp_drain_no_progress_timeout;
   f64 udp_idle_timeout;
   f64 tcp_fin_wait_timeout;
+  f64 postponed_cleanup_time;
 
   /* ipv4 and ipv6 for tcp and udp */
   session_handle_t intercept_listeners[2][2];
