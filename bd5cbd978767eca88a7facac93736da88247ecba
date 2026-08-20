@@ -35,6 +35,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "13d53df3_b9d78a19",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 660
+      },
+      "writtenOn": "2026-08-20T08:41:02Z",
+      "side": 1,
+      "message": "Thanks, Dave. It was an annoying space.",
+      "parentUuid": "559ef8fd_a934cd7b",
+      "revId": "bd5cbd978767eca88a7facac93736da88247ecba",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "39af2b16_a648310e",
@@ -52,6 +70,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "b5dce667_717cde97",
+        "filename": "src/plugins/cnat/cnat_node_lookup.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 91,
+      "author": {
+        "id": 660
+      },
+      "writtenOn": "2026-08-20T08:41:02Z",
+      "side": 1,
+      "message": "Good catch and thanks, Benoit.",
+      "parentUuid": "39af2b16_a648310e",
+      "revId": "bd5cbd978767eca88a7facac93736da88247ecba",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "5ac11975_f9b0e1bd",
@@ -65,6 +101,24 @@
       "writtenOn": "2026-08-17T09:09:52Z",
       "side": 1,
       "message": "Could we use the usual `vlib_simple_counter_main_t` infrastructure instead of global atomic counters here? Cross-thread expiration does not require decrementing the creator\u0027s slot: maintain monotonic per-thread `created`/`classified` and `expired` counters on whichever thread performs each operation, then compute the active gauge as `sum(created) - sum(expired)` in the collector. This avoids contention on global cache lines and preserves the standard per-thread lifecycle counters. The per-flow CAS can remain to ensure classification happens once; the collector should clamp transient scrape skew at zero.",
+      "revId": "bd5cbd978767eca88a7facac93736da88247ecba",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "bf028b97_d195beca",
+        "filename": "src/plugins/cnat/cnat_types.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 295,
+      "author": {
+        "id": 660
+      },
+      "writtenOn": "2026-08-20T08:41:02Z",
+      "side": 1,
+      "message": "Thanks. Done.",
+      "parentUuid": "5ac11975_f9b0e1bd",
       "revId": "bd5cbd978767eca88a7facac93736da88247ecba",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
