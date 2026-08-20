@@ -35,6 +35,8 @@ If you're on Ubuntu, install keychain:
 
     $ sudo apt-get install keychain
 
+.. _gerrit_ssh_keys:
+
 ssh keys
 -------------
 

@@ -107,14 +107,79 @@ Run these proxy commands to specify the *proxy-server-name* and corresponding *p
 
 
 Get the VPP Sources
------------------------------------
+===========================
 
-To get the VPP sources that are used to create the build, run the following commands:
+.. To get the VPP sources that are used to create the build, run the following commands:
+
+
+..    $ git clone https://gerrit.fd.io/r/vpp
+..    $ cd vpp
+
+Pulling
+-------
+
+fd.io uses `Gerrit <https://gerrit-review.googlesource.com/Documentation/>`_, a code review front end on `git <https://git-scm.com/>`_.
+You can pull and push code via ssh with an ssh key or authenticated https. ssh is recommended. You can also pull code using
+anonymous https. Regardless of the access method you will require the "git" program and the "git review" extension is strongly recommended.
+
+Pulling anonymously (https)
+---------------------------
+
+You can pull the code anonymously using:
 
 .. code-block:: console
 
     $ git clone https://gerrit.fd.io/r/vpp
     $ cd vpp
+
+This is the fastest way to get the code, but you cannot *push* anonymously, and so you are going to have to establish an account when you get to the point of pushing code.
+
+Pulling code via ssh
+--------------------
+
+The recommended way to pull code is via ssh, especially if you intend to develop and submit changes. This requires you to setup an account and set up gerrit.
+
+Setting up an account
+^^^^^^^^^^^^^^^^^^^^^
+
+fd.io uses the Linux Foundations identity system. If you do not already have an LF account, proceed to: https://identity.linuxfoundation.org/
+to create one. If you do, you can use your Linux Foundation username and password for all logins at fd.io.
+
+Setting up Gerrit
+^^^^^^^^^^^^^^^^^
+
+For Gerrit SSH key setup, see :ref:`SSH keys <gerrit_ssh_keys>`.
+
+.. Make sure you have `registered your ssh key with gerrit <https://github.com/FDio/vpp/wiki/DEV-Setting_up_Gerrit>`_.
+
+Pulling the code
+^^^^^^^^^^^^^^^^
+
+Type the following git command (replacing USERNAME with your `Linux Foundation <https://identity.linuxfoundation.org/>`_ username):
+
+.. code-block:: console
+
+    git clone ssh://USERNAME@gerrit.fd.io:29418/vpp.git
+
+Pulling code via authenticated https
+------------------------------------
+
+If you are on a network that blocks port 29418 then you may be able to use authenticated https instead. You still need a gerrit account (see above).
+The invocation for this would look like:
+
+.. code-block:: console
+
+    git clone https://USERNAME:gerrit.fd.io/r/a/vpp
+
+Again, replace USERNAME with your `Linux Foundation <https://identity.linuxfoundation.org/>`_ username. APITOKEN is a Gerrit feature; In among your user settings there is a section entitled "`HTTP Password <https://gerrit.fd.io/r/#/settings/http-password>`_". This page will allow you to generate a token that you can use in place of your password. If you do not wish to embed the token in the URL, then this method
+
+.. code-block:: console
+
+    git clone https://USERNAME:APITOKEN@gerrit.fd.io/r/a/vpp
+
+will prompt you for a password; if you have generated a token then use it here though understand that you'll have to enter it every time you use this method.
+
+Also it is worth noting that some features of the review process may unavoidably require using SSH on port 29418.
 
 As VPP version is derived from git description (which is based on git tags),
 if the github generated tarballs are used, the version information
@@ -236,7 +301,6 @@ In order to fix this and save time, run the following command:
 
     $ make install-ext-deps
 
--------------------------------------------
 Building Necessary Packages
 -------------------------------------------
 
