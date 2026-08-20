@@ -1,0 +1,96 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f5440690_6c20df70",
+        "filename": "docs/developer/build-run-debug/building.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 16,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-08-20T16:17:35Z",
+      "side": 1,
+      "message": "replace \u0027update has\u0027 with \u0027debian packages have\u0027",
+      "range": {
+        "startLine": 16,
+        "startChar": 49,
+        "endLine": 16,
+        "endChar": 59
+      },
+      "revId": "01765d9c7460cec43d5899d0df438aedbadfa768",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7d4619ec_3456acb1",
+        "filename": "docs/developer/build-run-debug/building.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 16,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-08-20T16:17:35Z",
+      "side": 1,
+      "message": "please delete \u0027on Ubuntu\u0027 as this is redundant since you already stated \u0027for Ubuntu\u0027",
+      "range": {
+        "startLine": 16,
+        "startChar": 75,
+        "endLine": 16,
+        "endChar": 85
+      },
+      "revId": "01765d9c7460cec43d5899d0df438aedbadfa768",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "bdfac977_a73278ba",
+        "filename": "docs/developer/build-run-debug/building.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 22,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-08-20T16:17:35Z",
+      "side": 1,
+      "message": "apt install -y",
+      "range": {
+        "startLine": 22,
+        "startChar": 4,
+        "endLine": 22,
+        "endChar": 16
+      },
+      "revId": "01765d9c7460cec43d5899d0df438aedbadfa768",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "931aca8e_94f37707",
+        "filename": "docs/developer/build-run-debug/building.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 24,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-08-20T16:17:35Z",
+      "side": 1,
+      "message": "Then clone the VPP repository.",
+      "range": {
+        "startLine": 24,
+        "startChar": 0,
+        "endLine": 24,
+        "endChar": 30
+      },
+      "revId": "01765d9c7460cec43d5899d0df438aedbadfa768",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
