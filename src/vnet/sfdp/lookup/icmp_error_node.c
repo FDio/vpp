@@ -43,7 +43,7 @@ typedef enum
 
 typedef struct
 {
-
+  u16 tenant_idx;
 } sfdp_lookup_icmp_trace_t;
 
 static u8 *
@@ -53,7 +53,7 @@ format_sfdp_lookup_icmp_trace (u8 *s, va_list *args)
   vlib_node_t __clib_unused *node = va_arg (*args, vlib_node_t *);
   sfdp_lookup_icmp_trace_t __clib_unused *t =
     va_arg (*args, sfdp_lookup_icmp_trace_t *);
-  s = format (s, "%v:", node->name);
+  s = format (s, "%v: tenant-idx %d", node->name, t->tenant_idx);
   return s;
 }
 
@@ -333,17 +333,15 @@ sfdp_lookup_icmp_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 
   if (node->flags & VLIB_NODE_FLAG_TRACE)
     {
-      n_left = frame->n_vectors;
       b = bufs;
-      while (n_left)
+      for (int i = 0; i < frame->n_vectors; b++, i++)
 	{
 	  if (b[0]->flags & VLIB_BUFFER_IS_TRACED)
 	    {
 	      sfdp_lookup_icmp_trace_t *t =
 		vlib_add_trace (vm, node, b[0], sizeof (*t));
+	      t->tenant_idx = sfdp_buffer (b[0])->tenant_index;
 	    }
-	  b += 1;
-	  n_left -= 1;
 	}
     }
 
