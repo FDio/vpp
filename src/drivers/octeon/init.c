@@ -513,6 +513,7 @@ oct_init (vlib_main_t *vm, vnet_dev_t *dev)
   vlib_buffer_pool_t *bp = vlib_get_buffer_pool (vm, 0);
   struct npa_aura_s aura = {};
   oct_device_t *cd = vnet_dev_get_data (dev);
+  oct_per_thread_data_t *ptd;
   vlib_pci_config_hdr_t pci_hdr;
   vnet_dev_rv_t rv;
 
@@ -582,42 +583,40 @@ oct_init (vlib_main_t *vm, vnet_dev_t *dev)
     case OCT_DEVICE_TYPE_LBK_VF:
     case OCT_DEVICE_TYPE_SDP_VF:
       rv = oct_init_nix (vm, dev);
+      if (rv != VNET_DEV_OK)
+	return rv;
       break;
 
     case OCT_DEVICE_TYPE_O10K_CPT_VF:
     case OCT_DEVICE_TYPE_O9K_CPT_VF:
-      rv = oct_init_cpt (vm, dev);
-      break;
+      return oct_init_cpt (vm, dev);
 
     default:
       return VNET_DEV_ERR_UNSUPPORTED_DEVICE;
     }
 
-  if (!vec_len (oct_main.per_thread_data))
+  vec_validate_aligned (cd->per_thread_data, tm->n_vlib_mains - 1, CLIB_CACHE_LINE_BYTES);
+  for (int i = 0; i < tm->n_vlib_mains; i++)
     {
-      vec_validate_aligned (oct_main.per_thread_data, tm->n_vlib_mains - 1, CLIB_CACHE_LINE_BYTES);
-      for (int i = 0; i < tm->n_vlib_mains; i++)
+      ptd = vec_elt_at_index (cd->per_thread_data, i);
+      ptd->ba_buffer = oct_plt_init_param.oct_plt_zmalloc (sz, 128);
+
+      if (ptd->ba_buffer == NULL)
 	{
-	  oct_per_thread_data_t *ptd = vec_elt_at_index (oct_main.per_thread_data, i);
-	  ptd->ba_buffer = oct_plt_init_param.oct_plt_zmalloc (sz, 128);
-
-	  if (ptd->ba_buffer == NULL)
-	    {
-	      log_err (dev, "Failed to allocate memory for batch buffers");
-	      return VNET_DEV_ERR_DMA_MEM_ALLOC_FAIL;
-	    }
-
-	  clib_memset_u64 (ptd->ba_buffer, OCT_BATCH_ALLOC_IOVA0_MASK,
-			   ROC_CN10K_NPA_BATCH_ALLOC_MAX_PTRS);
-	  if ((rv = roc_npa_pool_create (&ptd->aura_handle, bp->alloc_size, bp->n_buffers, &aura,
-					 &npapool, 0)))
-	    {
-	      return cnx_return_roc_err (dev, rv, "roc_npa_pool_create() failed");
-	    }
-	  ptd->npa_pool_initialized = 1;
-	  ptd->hdr_off = vm->buffer_main->ext_hdr_size;
-	  log_notice (dev, "NPA pool created, tx aura_handle = 0x%lx", ptd->aura_handle);
+	  log_err (dev, "Failed to allocate memory for batch buffers");
+	  return VNET_DEV_ERR_DMA_MEM_ALLOC_FAIL;
 	}
+
+      clib_memset_u64 (ptd->ba_buffer, OCT_BATCH_ALLOC_IOVA0_MASK,
+		       ROC_CN10K_NPA_BATCH_ALLOC_MAX_PTRS);
+      if ((rv = roc_npa_pool_create (&ptd->aura_handle, bp->alloc_size, bp->n_buffers, &aura,
+				     &npapool, 0)))
+	{
+	  return cnx_return_roc_err (dev, rv, "roc_npa_pool_create() failed");
+	}
+      ptd->npa_pool_initialized = 1;
+      ptd->hdr_off = vm->buffer_main->ext_hdr_size;
+      log_notice (dev, "NPA pool created, tx aura_handle = 0x%lx", ptd->aura_handle);
     }
 
   return rv;
@@ -628,6 +627,7 @@ oct_deinit (vlib_main_t *vm, vnet_dev_t *dev)
 {
   oct_device_t *cd = vnet_dev_get_data (dev);
 
+  /* TODO: Drain and free per-device TX completion auras. */
   if (cd->nix_initialized)
     roc_nix_dev_fini (cd->nix);
 }
