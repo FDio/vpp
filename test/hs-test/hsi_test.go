@@ -533,7 +533,9 @@ func HsiProxyLiteDrainTimeoutTest(s *HsiSuite) {
 
 	WaitProxyLiteTracked(vpp, func() {})
 
-	AssertNotNil(<-finished)
+	err := <-finished
+	AssertNotNil(err)
+	AssertContains(err.Error(), "Connection reset by peer")
 	hsi := WaitHsiContains(vpp, "tcp-drain-stalled 1")
 	Log(hsi)
 	AssertProxyLiteSessionsCleaned(s)

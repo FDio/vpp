@@ -517,6 +517,7 @@ int hsi_track_tcp (session_t *s, session_t *peer_s);
 int hsi_track_udp (session_t *s, session_t *peer_s);
 
 void hsi_session_cleanup_fifos (session_t *s);
+void hsi_session_program_cleanup (session_t *s);
 void hsi_session_cleanup (session_t *s);
 void hsi_session_send_cleanup_pair (session_handle_t first);
 
