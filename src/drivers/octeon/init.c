@@ -24,6 +24,8 @@ VLIB_REGISTER_LOG_CLASS (oct_log, static) = {
   .subclass_name = "init",
 };
 
+#define OCT_BATCH_ALLOC_FINI_WAIT_US (100 * 1000)
+
 #define _(f, n, s, d)                                                         \
   { .name = #n, .desc = d, .severity = VL_COUNTER_SEVERITY_##s },
 
@@ -259,6 +261,7 @@ oct_init_nix (vlib_main_t *vm, vnet_dev_t *dev)
 
   if ((rrv = roc_nix_dev_init (cd->nix)))
     return cnx_return_roc_err (dev, rrv, "roc_nix_dev_init");
+  cd->nix_initialized = 1;
 
   if ((rrv = roc_nix_npc_mac_addr_get (cd->nix, mac_addr)))
     return cnx_return_roc_err (dev, rrv, "roc_nix_npc_mac_addr_get");
@@ -622,14 +625,99 @@ oct_init (vlib_main_t *vm, vnet_dev_t *dev)
   return rv;
 }
 
+static int
+oct_tx_pending_batch_free (vlib_main_t *vm __clib_unused, oct_per_thread_data_t *ptd __clib_unused)
+{
+#ifndef PLATFORM_OCTEON9
+  u64 buffers[ROC_CN10K_NPA_BATCH_ALLOC_MAX_PTRS];
+  u32 bi[ROC_CN10K_NPA_BATCH_ALLOC_MAX_PTRS];
+  oct_npa_batch_alloc_cl128_t *cl;
+  u32 n;
+
+  if (ptd->ba_num_cl == 0)
+    return 0;
+
+  cl = ptd->ba_buffer + ptd->ba_first_cl;
+  for (u32 i = 0; i < ptd->ba_num_cl; i++)
+    {
+      oct_npa_batch_alloc_status_t st;
+
+      roc_npa_batch_alloc_wait (cl[i].iova, OCT_BATCH_ALLOC_FINI_WAIT_US);
+      st.as_u64 = __atomic_load_n (cl[i].iova, __ATOMIC_ACQUIRE);
+      if (st.status.ccode == ALLOC_CCODE_INVAL)
+	return -1;
+    }
+
+  n = roc_npa_aura_batch_alloc_extract (buffers, (u64 *) cl, ptd->ba_num_cl * ARRAY_LEN (cl->iova));
+  if (n)
+    {
+      vlib_get_buffer_indices_with_offset (vm, (void **) buffers, bi, n, ptd->hdr_off);
+      vlib_buffer_free_no_next (vm, bi, n);
+    }
+
+  ptd->ba_num_cl = ptd->ba_first_cl = 0;
+#endif
+  return 0;
+}
+
+static void
+oct_tx_completion_deinit (vlib_main_t *vm, vnet_dev_t *dev)
+{
+  oct_device_t *cd = vnet_dev_get_data (dev);
+  oct_per_thread_data_t *ptd;
+  int cleanup_failed = 0;
+
+  if (cd->txq_fini_failed)
+    {
+      log_err (dev, "TX queue finalization failed, preserving completion auras");
+      return;
+    }
+
+  vec_foreach (ptd, cd->per_thread_data)
+    {
+      if (ptd->npa_pool_initialized)
+	{
+	  if (oct_tx_pending_batch_free (vm, ptd))
+	    {
+	      log_err (dev, "Timed out waiting for pending TX batch allocation");
+	      cleanup_failed = 1;
+	      continue;
+	    }
+
+	  oct_aura_free_all_buffers (vm, ptd->aura_handle, ptd->hdr_off, 0);
+	  if (roc_npa_pool_destroy (ptd->aura_handle))
+	    {
+	      log_err (dev, "roc_npa_pool_destroy() failed for TX completion aura");
+	      cleanup_failed = 1;
+	      continue;
+	    }
+	  ptd->npa_pool_initialized = 0;
+	}
+
+      if (ptd->ba_buffer)
+	{
+	  oct_plt_init_param.oct_plt_free (ptd->ba_buffer);
+	  ptd->ba_buffer = 0;
+	}
+    }
+
+  if (!cleanup_failed)
+    vec_free (cd->per_thread_data);
+}
+
 static void
 oct_deinit (vlib_main_t *vm, vnet_dev_t *dev)
 {
   oct_device_t *cd = vnet_dev_get_data (dev);
+  int rrv;
 
-  /* TODO: Drain and free per-device TX completion auras. */
+  oct_tx_completion_deinit (vm, dev);
   if (cd->nix_initialized)
-    roc_nix_dev_fini (cd->nix);
+    {
+      rrv = roc_nix_dev_fini (cd->nix);
+      if (rrv == 0)
+	cd->nix_initialized = 0;
+    }
 }
 
 static void
