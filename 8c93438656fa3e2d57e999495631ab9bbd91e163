@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "43863d86_28d8dd25",
+        "filename": "docs/developer/build-run-debug/building.rst",
+        "patchSetId": 1
+      },
+      "lineNbr": 118,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-08-20T16:05:31Z",
+      "side": 1,
+      "message": "Please delete this line, as it is not useful to the reader.\n\nInstead, add this information to the commit comment and include the name of the wiki page used as the source.",
+      "range": {
+        "startLine": 118,
+        "startChar": 0,
+        "endLine": 118,
+        "endChar": 18
+      },
+      "revId": "8c93438656fa3e2d57e999495631ab9bbd91e163",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b0751964_e7b43be3",
+        "filename": "docs/developer/build-run-debug/building.rst",
+        "patchSetId": 1
+      },
+      "lineNbr": 134,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-08-20T16:05:31Z",
+      "side": 1,
+      "message": "Please restore the original text here",
+      "range": {
+        "startLine": 134,
+        "startChar": 4,
+        "endLine": 134,
+        "endChar": 40
+      },
+      "revId": "8c93438656fa3e2d57e999495631ab9bbd91e163",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
