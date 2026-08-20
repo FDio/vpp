@@ -133,7 +133,8 @@ jobs:
     needs:
       - start-verify
       - verify-checkstyle
-    if: ${{ needs.verify-checkstyle.result == 'success' }}
+      - detect-docs-changes
+    if: ${{ needs.verify-checkstyle.result == 'success' && needs.detect-docs-changes.outputs.docs_only != 'true' }}
     uses: fdio/vpp/.github/workflows/vpp-verify-maketest.yml@c316a780f8f25c5d2386ef8fa085e90338300e3a
     with:
       FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE }}
@@ -151,7 +152,8 @@ jobs:
     needs:
       - start-verify
       - verify-checkstyle
-    if: ${{ needs.verify-checkstyle.result == 'success' }}
+      - detect-docs-changes
+    if: ${{ needs.verify-checkstyle.result == 'success' && needs.detect-docs-changes.outputs.docs_only != 'true' }}
     uses: fdio/vpp/.github/workflows/vpp-verify-gcc.yml@e5c8759e531c155d1aa983fcb0fe84fd1f004c88
     with:
       FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE }}
@@ -172,7 +174,8 @@ jobs:
     needs:
       - start-verify
       - verify-checkstyle
-    if: ${{ needs.verify-checkstyle.result == 'success' }}
+      - detect-docs-changes
+    if: ${{ needs.verify-checkstyle.result == 'success' && needs.detect-docs-changes.outputs.docs_only != 'true' }}
     uses: fdio/vpp/.github/workflows/vpp-csit-verify-api.yml@e5c8759e531c155d1aa983fcb0fe84fd1f004c88
     with:
       FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE }}
@@ -190,7 +193,8 @@ jobs:
     needs:
       - start-verify
       - verify-checkstyle
-    if: ${{ needs.verify-checkstyle.result == 'success' }}
+      - detect-docs-changes
+    if: ${{ needs.verify-checkstyle.result == 'success' && needs.detect-docs-changes.outputs.docs_only != 'true' }}
     uses: fdio/vpp/.github/workflows/vpp-verify-arm-drivers.yml@e5c8759e531c155d1aa983fcb0fe84fd1f004c88
     with:
       FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE }}
@@ -208,7 +212,8 @@ jobs:
     needs:
       - start-verify
       - verify-checkstyle
-    if: ${{ needs.verify-checkstyle.result == 'success' }}
+      - detect-docs-changes
+    if: ${{ needs.verify-checkstyle.result == 'success' && needs.detect-docs-changes.outputs.docs_only != 'true' }}
     uses: fdio/vpp/.github/workflows/vpp-verify-hst.yml@f2443416568f44a73be9d94758f3077a43e8b1f0
     with:
       FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE }}
@@ -223,9 +228,11 @@ jobs:
 
   detect-docs-changes:
     name: Detect Docs Changes
+    # Runs in parallel with verify-checkstyle so the docs_only decision is
+    # ready by the time checkstyle finishes, adding ~zero latency to the
+    # heavy jobs that gate on both.
     needs:
       - start-verify
-      - verify-checkstyle
     runs-on:
       - self-hosted
       - nomad
@@ -237,6 +244,7 @@ jobs:
       - fdio:workflow=${{ github.run_id }}
     outputs:
       docs_changed: ${{ steps.docs-changed.outputs.docs_changed }}
+      docs_only: ${{ steps.docs-changed.outputs.docs_only }}
     env:
       WORKSPACE: /scratch/docker-build/vpp
       GERRIT_BRANCH: ${{ inputs.GERRIT_BRANCH }}
@@ -268,19 +276,36 @@ jobs:
         run: |
           set -euxo pipefail
 
+          # docs_changed : at least one docs file was touched (drives the Docs job)
+          # docs_only    : every changed file is a docs file (lets us skip the
+          #                heavy build/test jobs for documentation-only changes)
           docs_changed="true"
+          docs_only="false"
+          docs_pattern='(^docs/|\.rst$)'
+
           if [[ "$CHECKOUT_OUTCOME" == "success" ]]; then
             cd "$WORKSPACE"
-            if git diff-tree --no-commit-id --name-only -r --root HEAD | grep -Eq '(^docs/|\.rst$)'; then
+            changed_files="$(git diff-tree --no-commit-id --name-only -r --root HEAD)"
+
+            if printf '%s\n' "$changed_files" | grep -Eq "$docs_pattern"; then
               docs_changed="true"
             else
               docs_changed="false"
             fi
+
+            # docs_only is true only when there is at least one changed file and
+            # none of the changed files fall outside the docs pattern.
+            if [[ -n "$changed_files" ]] && \
+               ! printf '%s\n' "$changed_files" | grep -Evq "$docs_pattern"; then
+              docs_only="true"
+            fi
           else
-            echo "warn: unable to checkout '${GERRIT_REFSPEC}'; defaulting docs_changed=true" >&2
+            # Fail safe: if we cannot inspect the change, run the full pipeline.
+            echo "warn: unable to checkout '${GERRIT_REFSPEC}'; defaulting docs_changed=true docs_only=false" >&2
           fi
 
           echo "docs_changed=$docs_changed" >> "$GITHUB_OUTPUT"
+          echo "docs_only=$docs_only" >> "$GITHUB_OUTPUT"
 
   verify-docs:
     name: Docs
@@ -323,23 +348,35 @@ jobs:
         id: overall
         run: |
           set -euxo pipefail
-          docs_ok="true"
+
+          # A gated build/test job that is intentionally skipped (docs-only
+          # change) must not fail the vote, so accept both success and skipped.
+          gated_ok() {
+            [[ "$1" == "success" || "$1" == "skipped" ]]
+          }
+
+          result="success"
+
+          # These jobs always run and must succeed.
+          [[ "${{ needs.start-verify.result }}" == "success" ]] || result="failure"
+          [[ "${{ needs.verify-checkstyle.result }}" == "success" ]] || result="failure"
+          [[ "${{ needs.detect-docs-changes.result }}" == "success" ]] || result="failure"
+
+          # Heavy jobs: run for non-docs-only changes, skipped otherwise.
+          gated_ok "${{ needs.verify-maketest.result }}" || result="failure"
+          gated_ok "${{ needs.verify-gcc.result }}" || result="failure"
+          gated_ok "${{ needs.verify-csit-api.result }}" || result="failure"
+          gated_ok "${{ needs.verify-arm-drivers.result }}" || result="failure"
+          gated_ok "${{ needs.verify-hst.result }}" || result="failure"
+
+          # Docs job: required only when docs were actually touched.
           if [[ "${{ needs.detect-docs-changes.outputs.docs_changed }}" == "true" ]]; then
-            [[ "${{ needs.verify-docs.result }}" == "success" ]] || docs_ok="false"
+            [[ "${{ needs.verify-docs.result }}" == "success" ]] || result="failure"
+          else
+            gated_ok "${{ needs.verify-docs.result }}" || result="failure"
           fi
 
-          if [[ "${{ needs.start-verify.result }}" == "success" && \
-                "${{ needs.verify-checkstyle.result }}" == "success" && \
-                "${{ needs.verify-maketest.result }}" == "success" && \
-                "${{ needs.verify-gcc.result }}" == "success" && \
-                "$docs_ok" == "true" && \
-                "${{ needs.verify-csit-api.result }}" == "success" && \
-                "${{ needs.verify-arm-drivers.result }}" == "success" && \
-                "${{ needs.verify-hst.result }}" == "success" ]]; then
-            echo "result=success" >> "$GITHUB_OUTPUT"
-          else
-            echo "result=failure" >> "$GITHUB_OUTPUT"
-          fi
+          echo "result=$result" >> "$GITHUB_OUTPUT"
 
       - name: Gerrit Vote
         # yamllint disable-line rule:line-length
