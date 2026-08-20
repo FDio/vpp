@@ -33,6 +33,24 @@
       "message": "Could you use tenant_id rather than tenant_idx ?\n\ntenant_id is unique, while tenant_idx can be re-used between tenants creation/deletion.",
       "revId": "f3b4620c38facc3ca335ceeb049986ad6de409b9",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "f56844a5_9ecaec75",
+        "filename": "src/plugins/sfdp_services/base/nat/fastpath_node.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 42,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2026-08-20T10:31:04Z",
+      "side": 1,
+      "message": "That would need more code to translate from the index value stored in buffer. For now it is easier this way. I was thinking about moving common flow+session+tenant+direction piece of formatting into a reusable function, we can add/replace tenant ID after that (if ever), but I am not going to do that in this change.",
+      "parentUuid": "2458662f_c22f0f57",
+      "revId": "f3b4620c38facc3ca335ceeb049986ad6de409b9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
