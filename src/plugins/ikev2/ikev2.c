@@ -5139,8 +5139,6 @@ ikev2_initiate_delete_child_sa (vlib_main_t * vm, u32 ispi)
   /* Search for the child SA */
   pool_foreach (sa, km->sas)
     {
-      if (fchild)
-	break;
       fchild = ikev2_sa_get_child (sa, ispi, IKEV2_PROTOCOL_ESP, 1);
       if (fchild)
 	{
@@ -5173,8 +5171,6 @@ ikev2_initiate_delete_ike_sa (vlib_main_t * vm, u64 ispi)
   /* Search for the IKE SA */
   pool_foreach (sa, km->sas)
     {
-      if (fsa)
-	break;
       if (sa->ispi == ispi)
 	{
 	  fsa = sa;
@@ -5252,8 +5248,6 @@ ikev2_initiate_rekey_child_sa (vlib_main_t * vm, u32 ispi)
   /* Search for the child SA */
   pool_foreach (sa, km->sas)
     {
-      if (fchild)
-	break;
       fchild = ikev2_sa_get_child (sa, ispi, IKEV2_PROTOCOL_ESP, 1);
       if (fchild)
 	{
@@ -5515,8 +5509,6 @@ ikev2_mngr_process_ipsec_sa (vlib_main_t *vm, ipsec_sa_t *ipsec_sa)
   /* Search for the SA and child SA */
   pool_foreach (sa, km->sas)
     {
-      if (fchild)
-	break;
       fchild = ikev2_sa_get_child (sa, ipsec_sa->spi, IKEV2_PROTOCOL_ESP, 1);
       if (fchild)
 	{
