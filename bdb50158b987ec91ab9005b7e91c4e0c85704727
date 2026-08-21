@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "bfff4957_50f02d26",
+        "filename": "src/vnet/fib/fib_path_list.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 316,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-08-21T15:07:29Z",
+      "side": 1,
+      "message": "This addresses one symptom, but `arp_reply()` still traverses mutable FIB control-plane state from a worker: the FIB hash, entries and sources, path lists, and paths. Other mutations and pool expansions therefore remain racy. Could we fix the ownership boundary in ARP instead—throttle incoming ARP on the worker, then transfer accepted packets to a batched main-thread RPC for the complete FIB-dependent processing? That would avoid adding teardown barriers throughout FIB.",
+      "revId": "bdb50158b987ec91ab9005b7e91c4e0c85704727",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "40dc1813_ca987ee0",
+        "filename": "src/vnet/fib/fib_path_list.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 329,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-08-21T15:07:29Z",
+      "side": 1,
+      "message": "`fib_path_list_destroy()` also handles temporary path lists that were never published to workers. An unconditional barrier here stops all workers for those objects too, making no-op/shared-route updates unnecessarily expensive. This is another reason to move synchronization to the ARP processing boundary.",
+      "revId": "bdb50158b987ec91ab9005b7e91c4e0c85704727",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
