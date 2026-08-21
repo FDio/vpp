@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4ba1daaa_52c7e497",
+        "filename": "test/hs-test/framework_test.go",
+        "patchSetId": 5
+      },
+      "lineNbr": 69,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-08-21T17:13:20Z",
+      "side": 1,
+      "message": "can we print this in the end after test run like vpp version?",
+      "revId": "899b812f769932505aa0ac68b11140c2bc44ed3f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
