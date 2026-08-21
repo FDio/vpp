@@ -565,8 +565,8 @@ vperf_server_handle_ctrl_cfg (vperf_server_worker_t *wrk, vperf_cfg_t *rx_cfg,
     {
     case VPERF_TEST_TYPE_NONE:
     case VPERF_TEST_TYPE_ECHO:
-      /* post-test sync, send our rx stats to the client, builtin echo use it to show datagram loss
-       * rate */
+      /* post-test sync, send our rx stats to the client; the builtin vperf
+       * client uses them to show datagram loss rate */
       if (conn->is_done)
 	{
 	  rx_cfg->total_bytes = conn->stats.rx_bytes;

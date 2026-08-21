@@ -13,8 +13,8 @@ import (
 
 func init() {
 	RegisterQuicTests(QuicAlpnMatchTest, QuicAlpnOverlapMatchTest, QuicAlpnServerPriorityMatchTest, QuicAlpnMismatchTest,
-		QuicAlpnEmptyServerListTest, QuicAlpnEmptyClientListTest, QuicBuiltinEchoZeroCopyTest,
-		QuicBuiltinEchoBidirectionalZeroCopyTest, QuicBuiltinEchoTest, QuicBuiltinEchoBidirectionalTest,
+		QuicAlpnEmptyServerListTest, QuicAlpnEmptyClientListTest, QuicBuiltinVperfZeroCopyTest,
+		QuicBuiltinVperfBidirectionalZeroCopyTest, QuicBuiltinVperfTest, QuicBuiltinVperfBidirectionalTest,
 		QuicReorderTest, QuicCrlRejectThenAllowTest)
 	RegisterQuicMWTests(QuicCpsMWTest)
 	RegisterNoTopoTests(QuicFailedHandshakeTest, QuicCryptoContextTest)
@@ -248,7 +248,7 @@ func QuicCryptoContextTest(s *NoTopoSuite) {
 	AssertContains(o, "crctx: 1")
 }
 
-func quicBuiltinEcho(s *QuicSuite, uni bool) {
+func quicBuiltinVperf(s *QuicSuite, uni bool) {
 	expr := `(\d+\.\d)-(\d+.\d)\s+(\d+\.\d+)[KMG]\s+0\s+\d+\.\d+[KMG]b/s\s+(\d?\.\d+)ms`
 	if uni {
 		expr = `(\d+\.\d)-(\d+.\d)\s+(\d+\.\d+)[KMG]\s+(\d+\.\d+)[KMG]\s+\d+\.\d+[KMG]b/s\s+(\d?\.\d+)ms`
@@ -273,19 +273,19 @@ func quicBuiltinEcho(s *QuicSuite, uni bool) {
 		// check if all intervals have non-zero TX bytes
 		AssertEqual(30, len(matches))
 	} else {
-		AssertEmpty("invalid echo test client output")
+		AssertEmpty("invalid vperf client output")
 	}
 }
 
-func QuicBuiltinEchoZeroCopyTest(s *QuicSuite) {
-	quicBuiltinEcho(s, false)
+func QuicBuiltinVperfZeroCopyTest(s *QuicSuite) {
+	quicBuiltinVperf(s, false)
 }
 
-func QuicBuiltinEchoBidirectionalZeroCopyTest(s *QuicSuite) {
-	quicBuiltinEcho(s, true)
+func QuicBuiltinVperfBidirectionalZeroCopyTest(s *QuicSuite) {
+	quicBuiltinVperf(s, true)
 }
 
-func QuicBuiltinEchoTest(s *QuicSuite) {
+func QuicBuiltinVperfTest(s *QuicSuite) {
 	serverVpp := s.Containers.ServerVpp.VppInstance
 	clientVpp := s.Containers.ClientVpp.VppInstance
 
@@ -300,7 +300,7 @@ func QuicBuiltinEchoTest(s *QuicSuite) {
 	AssertNotContains(o, "failed")
 }
 
-func QuicBuiltinEchoBidirectionalTest(s *QuicSuite) {
+func QuicBuiltinVperfBidirectionalTest(s *QuicSuite) {
 	serverVpp := s.Containers.ServerVpp.VppInstance
 	clientVpp := s.Containers.ClientVpp.VppInstance
 
@@ -354,7 +354,7 @@ func QuicReorderTest(s *QuicSuite) {
 	serverVpp.Vppctl("nsim output-feature enable-disable " + s.Interfaces.Server.VppName())
 	Log(serverVpp.Vppctl("show nsim"))
 
-	quicBuiltinEcho(s, true)
+	quicBuiltinVperf(s, true)
 	Log(serverVpp.Vppctl("show session verbose 2"))
 	Log(clientVpp.Vppctl("show session verbose 2"))
 	Log(serverVpp.Vppctl("show error"))
