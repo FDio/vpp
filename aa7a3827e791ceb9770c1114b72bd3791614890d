@@ -16,6 +16,23 @@
       "message": "46523: dpdk: use RTE_MEMPOOL_CACHE_MAX_SIZE for buffer pool cache depth | https://gerrit.fd.io/r/c/vpp/+/46523\nThat reverses the regression seen here. Not sure whether to squash or merge separately.",
       "revId": "aa7a3827e791ceb9770c1114b72bd3791614890d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "69fe6026_ad5b75e3",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 6
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2026-08-21T09:27:41Z",
+      "side": 1,
+      "message": "Merging both patches now as regression was resolved.",
+      "revId": "aa7a3827e791ceb9770c1114b72bd3791614890d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
