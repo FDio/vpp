@@ -11,10 +11,10 @@ import (
 )
 
 func init() {
-	RegisterNoTopoTests(BuiltinEchoVclClientCutThruTest, RedisCutThruTest,
+	RegisterNoTopoTests(BuiltinVperfVclClientCutThruTest, RedisCutThruTest,
 		LdpIperfTcpCutThruTest, LdpIperfUdpCutThruTest)
 	RegisterNoTopoMWTests(RedisCutThruMWTest, LdpIperfTcpCutThruMWTest, LdpIperfUdpCutThruMWTest,
-		BuiltinEchoVclClientCutThruMWTest)
+		BuiltinVperfVclClientCutThruMWTest)
 	RegisterVppProxyTests(LdpWgetVppProxyNginxCutThruTest, LdpWgetVppProxyNginxCutThruSmallFifoTest)
 }
 
@@ -22,15 +22,15 @@ func RedisCutThruTest(s *NoTopoSuite) {
 	redisCutThru(s)
 }
 
-func BuiltinEchoVclClientCutThruTest(s *NoTopoSuite) {
-	builtinEchoVclClientCutThru(s)
+func BuiltinVperfVclClientCutThruTest(s *NoTopoSuite) {
+	builtinVperfVclClientCutThru(s)
 }
 
-func BuiltinEchoVclClientCutThruMWTest(s *NoTopoSuite) {
+func BuiltinVperfVclClientCutThruMWTest(s *NoTopoSuite) {
 	s.CpusPerVppContainer = 3
 	s.CpusPerContainer = 3
 	s.SetupTest()
-	builtinEchoVclClientCutThru(s)
+	builtinVperfVclClientCutThru(s)
 }
 
 func createSmallFifoVclConfig(container *Container) {
@@ -59,7 +59,7 @@ func removeStaleWorkDirVolumes(container *Container, containerWorkDir string) {
 	}
 }
 
-func builtinEchoVclClientCutThru(s *NoTopoSuite) {
+func builtinVperfVclClientCutThru(s *NoTopoSuite) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 

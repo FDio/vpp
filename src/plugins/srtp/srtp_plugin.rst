@@ -25,8 +25,8 @@ Quickstart
 
    make build
 
-3. Test protocol using vcl test server and client. On server side, start
-   vpp and server app:
+3. Test protocol using the vperf server and client apps. On server side,
+   start vpp and server app:
 
 ::
 

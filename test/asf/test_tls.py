@@ -110,7 +110,7 @@ class TestTLS(VppAsfTestCase):
 
     @unittest.skipUnless(checkAll(), "QAT or OpenSSL not satisfied,skip.")
     def test_tls_transfer(self):
-        """TLS qat echo client/server transfer"""
+        """TLS qat vperf client/server transfer"""
 
         # Add inter-table routes
         ip_t01 = VppIpRoute(
