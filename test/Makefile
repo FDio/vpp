@@ -87,10 +87,10 @@ VPP_OPT_DEPS_LIBRARY_PATH?=/opt/vpp/optional/${MACHINE}/lib64
 endif
 
 PYTHON_VERSION=$(shell $(PYTHON_INTERP) -c 'import sys; print(sys.version_info.major)')
-PIP_VERSION=26.0.1
+PIP_VERSION=26.2.1
 # Keep in sync with requirements.txt
-PIP_TOOLS_VERSION=7.5.3
-PIP_SETUPTOOLS_VERSION=82.0.1
+PIP_TOOLS_VERSION=7.6.1
+PIP_SETUPTOOLS_VERSION=84.0.0
 PYTHON_DEPENDS=requirements-$(PYTHON_VERSION).txt
 SCAPY_SOURCE=$(shell find $(VENV_PATH)/lib/python* -name site-packages)
 SCAPY_VERSION=$(shell grep scapy $(TEST_DIR)/requirements.txt | cut -d'=' -f3 | cut -d';' -f1)
