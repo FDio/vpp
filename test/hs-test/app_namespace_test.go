@@ -7,18 +7,18 @@ import (
 )
 
 func init() {
-	RegisterVethTests(AppNsVclEchoTcpTest, AppNsVclEchoUdpTest)
+	RegisterVethTests(AppNsVclVperfTcpTest, AppNsVclVperfUdpTest)
 }
 
-func AppNsVclEchoTcpTest(s *VethsSuite) {
-	testAppNsVclEcho(s, "tcp", "1")
+func AppNsVclVperfTcpTest(s *VethsSuite) {
+	testAppNsVclVperf(s, "tcp", "1")
 }
 
-func AppNsVclEchoUdpTest(s *VethsSuite) {
-	testAppNsVclEcho(s, "udp", "1")
+func AppNsVclVperfUdpTest(s *VethsSuite) {
+	testAppNsVclVperf(s, "udp", "1")
 }
 
-func testAppNsVclEcho(s *VethsSuite, proto, nsId string) {
+func testAppNsVclVperf(s *VethsSuite, proto, nsId string) {
 	s.SetupAppContainers()
 
 	srvVppCont := s.Containers.ServerVpp
@@ -42,14 +42,14 @@ func testAppNsVclEcho(s *VethsSuite, proto, nsId string) {
 	clnVppCont.VppInstance.Vppctl("app ns add id %s secret %s if %s",
 		nsId, nsId, s.Interfaces.Client.VppName())
 
-	echoClnContainer := s.GetTransientContainerByName("client-app")
-	echoClnContainer.CreateFile("/vcl.conf", getVclConfig(echoClnContainer, nsId))
-	echoClnContainer.AddEnvVar("VCL_CONFIG", "/vcl.conf")
+	vperfClnContainer := s.GetTransientContainerByName("client-app")
+	vperfClnContainer.CreateFile("/vcl.conf", getVclConfig(vperfClnContainer, nsId))
+	vperfClnContainer.AddEnvVar("VCL_CONFIG", "/vcl.conf")
 
 	testClientCommand := fmt.Sprintf("vperf_client -X -S -p %s %s %s 2>&1 | tee %s",
-		proto, serverVethAddress, s.Ports.Port1, VclTestClnLogFileName(echoClnContainer))
+		proto, serverVethAddress, s.Ports.Port1, VclTestClnLogFileName(vperfClnContainer))
 
-	o, err := echoClnContainer.Exec(true, WrapCmdWithLineBuffering(testClientCommand))
+	o, err := vperfClnContainer.Exec(true, WrapCmdWithLineBuffering(testClientCommand))
 	Log("****** Client output:\n%s\n******", o)
 
 	oSrv, errSrv := srvAppCont.Exec(false, "cat %s", VclTestSrvLogFileName(srvAppCont))
