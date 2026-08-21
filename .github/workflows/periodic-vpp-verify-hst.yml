@@ -24,7 +24,7 @@ permissions:
   actions: read
 
 concurrency:
-  group: required-${{ github.workflow }}
+  group: required-${{ github.workflow }}-${{ inputs.FDIO_NAMESPACE }}
   cancel-in-progress: true
 
 jobs:
