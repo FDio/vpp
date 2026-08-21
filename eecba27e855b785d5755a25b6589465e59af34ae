@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6c8f653e_fd7ba58d",
+        "filename": "src/vnet/ip/ip_init.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 105,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-08-21T13:41:20Z",
+      "side": 1,
+      "message": "Can this be a bit more concise?",
+      "revId": "eecba27e855b785d5755a25b6589465e59af34ae",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
