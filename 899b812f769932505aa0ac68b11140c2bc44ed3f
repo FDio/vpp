@@ -16,6 +16,23 @@
       "message": "can we print this in the end after test run like vpp version?",
       "revId": "899b812f769932505aa0ac68b11140c2bc44ed3f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b77736ca_e3b7c409",
+        "filename": "test/hs-test/infra/suite_base.go",
+        "patchSetId": 5
+      },
+      "lineNbr": 564,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-08-21T17:20:30Z",
+      "side": 1,
+      "message": "dash between name and RunIdentity, it\u0027s 1vpp-masque-serverreview-46431, I would prefer 1vpp-masque-server-review-46431 as we use for ginkgo container (ginkgo-review-46431)",
+      "revId": "899b812f769932505aa0ac68b11140c2bc44ed3f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
