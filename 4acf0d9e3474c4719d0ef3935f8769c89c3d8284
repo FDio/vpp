@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2ba20412_a49742ca",
+        "filename": "test/hs-test/Makefile",
+        "patchSetId": 5
+      },
+      "lineNbr": 392,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-08-21T21:00:55Z",
+      "side": 1,
+      "message": "you need to remove .last_state_hash too otherwise make test will fail if there was no change, we need to force image build",
+      "revId": "4acf0d9e3474c4719d0ef3935f8769c89c3d8284",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "364e848d_e6741faf",
+        "filename": "test/hs-test/README.rst",
+        "patchSetId": 5
+      },
+      "lineNbr": 217,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-08-21T21:00:55Z",
+      "side": 1,
+      "message": "can you please write here that if you want to clean images from old branch you should use \"make clean-hst-images RUN_ID\u003dreview-46432\" and maybe we should have something to clean all images",
+      "revId": "4acf0d9e3474c4719d0ef3935f8769c89c3d8284",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
