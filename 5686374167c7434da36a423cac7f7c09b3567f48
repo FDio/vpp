@@ -1,0 +1,44 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9e21d278_6bd59451",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-08-21T16:09:43Z",
+      "side": 1,
+      "message": "this need rebase, it\u0027s 3 weeks behind master",
+      "revId": "5686374167c7434da36a423cac7f7c09b3567f48",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "695ba676_76db16bf",
+        "filename": "test/hs-test/infra/suite_hsi.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 84,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-08-21T16:09:43Z",
+      "side": 1,
+      "message": "we do this in setupHsiUdpMigrationTest too. do we need both?",
+      "range": {
+        "startLine": 75,
+        "startChar": 0,
+        "endLine": 84,
+        "endChar": 0
+      },
+      "revId": "5686374167c7434da36a423cac7f7c09b3567f48",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
