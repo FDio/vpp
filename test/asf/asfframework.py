@@ -1802,8 +1802,24 @@ class Worker(Thread):
             else:
                 os.sched_setaffinity(0, range(os.cpu_count()))
 
+        # stdbuf injects libstdbuf.so via LD_PRELOAD. GNU stdbuf appends it
+        # to the caller's LD_PRELOAD; uutils (Rust) stdbuf (Ubuntu 26.04)
+        # overwrites it. Hide our LD_PRELOAD from stdbuf and sh, and have
+        # sh put it back in front of libstdbuf.so before exec'ing the app.
+        stdbuf_cmd = ["stdbuf", "-o0", "-e0"]
+        ld_preload = env.pop("LD_PRELOAD", None)
+        if ld_preload:
+            stdbuf_cmd += [
+                "/bin/sh",
+                "-c",
+                'export LD_PRELOAD="$1${LD_PRELOAD:+:$LD_PRELOAD}"; '
+                'shift; exec "$@"',
+                "sh",
+                ld_preload,
+            ]
+
         self.process = subprocess.Popen(
-            ["stdbuf", "-o0", "-e0"] + self.args,
+            stdbuf_cmd + self.args,
             shell=False,
             env=env,
             preexec_fn=_preexec,
