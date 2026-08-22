@@ -48,6 +48,9 @@ enum
 #define MLX5_OPCODE_ENHANCED_MPSW 0x29
 #endif
 
+#define RDMA_MLX5_EMPW_INLINE_DEFAULT 60
+#define RDMA_MLX5_EMPW_INLINE_MAX     64
+
 typedef struct
 {
   CLIB_ALIGN_MARK (align0, MLX5_SEND_WQE_BB);
@@ -248,6 +251,7 @@ typedef struct
   u32 lkey;			/* cache of mr->lkey */
   u32 max_tso;			/* maximum TSO payload reported by the device */
   u8 pool;			/* buffer pool index */
+  u8 tx_empw_inline_max;	/* inline eMPW packets up to this size; 0 disables */
 
   /* fields below are not accessed in datapath */
   vlib_pci_device_info_t *pci;
@@ -324,6 +328,7 @@ typedef struct
   u32 rxq_size;
   u32 txq_size;
   u32 rxq_num;
+  u32 tx_empw_inline_max;
   rdma_mode_t mode;
   u8 no_multi_seg;
   u8 disable_striding_rq;
