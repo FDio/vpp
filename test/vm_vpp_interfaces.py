@@ -323,6 +323,10 @@ class TestVPPInterfacesQemu:
         enable_server_if_checksum_offload = test.get("server_if_checksum_offload", 0)
         enable_client_if_multi_buffer = test.get("client_if_multi_buffer", 0)
         enable_server_if_multi_buffer = test.get("server_if_multi_buffer", 0)
+        client_if_busy_poll_usecs = test.get("client_if_busy_poll_usecs", 0)
+        server_if_busy_poll_usecs = test.get("server_if_busy_poll_usecs", 0)
+        client_if_busy_poll_budget = test.get("client_if_busy_poll_budget", 0)
+        server_if_busy_poll_budget = test.get("server_if_busy_poll_budget", 0)
 
         # Handle client interface types
         delete_all_host_interfaces(self.if_history_name)
@@ -430,6 +434,8 @@ class TestVPPInterfacesQemu:
                     ),
                     version=client_if_version,
                     multi_buffer=enable_client_if_multi_buffer,
+                    busy_poll_usecs=client_if_busy_poll_usecs,
+                    busy_poll_budget=client_if_busy_poll_budget,
                 )
             else:
                 print(
@@ -515,6 +521,8 @@ class TestVPPInterfacesQemu:
                     ip6_prefix=server_ip6_prefix,
                     version=server_if_version,
                     multi_buffer=enable_server_if_multi_buffer,
+                    busy_poll_usecs=server_if_busy_poll_usecs,
+                    busy_poll_budget=server_if_busy_poll_budget,
                 )
             else:
                 print(
@@ -880,6 +888,8 @@ class TestVPPInterfacesQemu:
         ip6_prefix,
         version,
         multi_buffer=0,
+        busy_poll_usecs=0,
+        busy_poll_budget=0,
     ):
         """Create an AF_XDP interface and configure it in VPP and Linux."""
         try:
@@ -996,6 +1006,12 @@ class TestVPPInterfacesQemu:
                         result = self.vapi.af_xdp_create_v2(**api_args)
                     elif version == 3:
                         result = self.vapi.af_xdp_create_v3(**api_args)
+                    elif version == 4:
+                        result = self.vapi.af_xdp_create_v4(
+                            **api_args,
+                            busy_poll_usecs=busy_poll_usecs,
+                            busy_poll_budget=busy_poll_budget,
+                        )
                     else:
                         raise ValueError(f"Unsupported AF_XDP version: {version}")
                     break
@@ -1012,6 +1028,15 @@ class TestVPPInterfacesQemu:
                 )
 
             sw_if_index = result.sw_if_index
+
+            if busy_poll_usecs or busy_poll_budget:
+                expected_usecs = busy_poll_usecs or 20
+                expected_budget = busy_poll_budget or 64
+                hardware = self.vapi.cli(f"show hardware-interfaces {sw_if_index}")
+                self.assertIn(
+                    f"busy-poll usecs {expected_usecs} budget {expected_budget}",
+                    hardware,
+                )
 
             # Set interface up
             self.vapi.sw_interface_set_flags(sw_if_index=sw_if_index, flags=1)
