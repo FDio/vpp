@@ -671,6 +671,28 @@ rdma_mlx5_empw_compatible (const vlib_buffer_t *b)
 	 !(b->flags & (VLIB_BUFFER_NEXT_PRESENT | VNET_BUFFER_F_GSO | VNET_BUFFER_F_OFFLOAD));
 }
 
+#define RDMA_MLX5_INLINE_DATA (1u << 31)
+
+static_always_inline void
+rdma_mlx5_sq_copy (rdma_txq_t *txq, u32 offset, const void *src, u32 len)
+{
+  u8 *ring = (u8 *) txq->dv_sq_wqes;
+  u32 ring_size = RDMA_TXQ_DV_SQ_SZ (txq) * MLX5_SEND_WQE_BB;
+  u32 pos = offset & (ring_size - 1);
+  u32 first = clib_min (len, ring_size - pos);
+
+  clib_memcpy_fast (ring + pos, src, first);
+  if (PREDICT_FALSE (first != len))
+    clib_memcpy_fast (ring, (const u8 *) src + first, len - first);
+}
+
+static_always_inline u32
+rdma_mlx5_empw_inline_packet_ds (u32 len)
+{
+  return round_pow2 (sizeof (u32) + len, sizeof (struct mlx5_wqe_data_seg)) /
+	 sizeof (struct mlx5_wqe_data_seg);
+}
+
 static_always_inline rdma_mlx5_tx_packet_result_t
 rdma_mlx5_empw_send_one (vlib_main_t *vm, const vlib_node_runtime_t *node, const rdma_device_t *rd,
 			 rdma_txq_t *txq, vlib_buffer_t *b, u32 bi, u16 *sq_tail_p, u32 sq_avail,
@@ -746,7 +768,7 @@ rdma_mlx5_empw_tso_one (vlib_main_t *vm, const vlib_node_runtime_t *node, const 
 static_always_inline u32
 rdma_device_output_tx_mlx5_empw (vlib_main_t *vm, const vlib_node_runtime_t *node,
 				 const rdma_device_t *rd, rdma_txq_t *txq, u32 n_left_from,
-				 const u32 *bi, vlib_buffer_t **b)
+				 const u32 *bi, vlib_buffer_t **b, const u8 inline_max)
 {
   const rdma_mlx5_wqe_t *tmpl = (void *) txq->dv_wqe_tmpl;
   const u32 sq_mask = pow2_mask (txq->dv_sq_log2sz);
@@ -772,6 +794,67 @@ rdma_device_output_tx_mlx5_empw (vlib_main_t *vm, const vlib_node_runtime_t *nod
 	    part = i;
 	    break;
 	  }
+
+      if (inline_max)
+	{
+	  u32 inline_part = 0;
+	  u32 inline_ds = 2;
+
+	  for (u32 i = 0; i < part; i++)
+	    {
+	      u32 len = b[i]->current_length;
+	      u32 packet_ds;
+
+	      if (len > inline_max)
+		break;
+	      packet_ds = rdma_mlx5_empw_inline_packet_ds (len);
+	      if (inline_ds + packet_ds > RDMA_MLX5_WQE_DS_MAX ||
+		  RDMA_TXQ_DV_DSEG2WQE (inline_ds + packet_ds) > sq_avail)
+		break;
+	      inline_ds += packet_ds;
+	      inline_part++;
+	    }
+
+	  if (inline_part >= 2)
+	    {
+	      u16 wqe_tail = sq_tail;
+	      u32 n_wqebb = RDMA_TXQ_DV_DSEG2WQE (inline_ds);
+	      u32 byte_pos =
+		(u32) sq_tail * MLX5_SEND_WQE_BB + 2 * sizeof (struct mlx5_wqe_data_seg);
+	      rdma_mlx5_empw_wqe_t *wqe = (void *) (txq->dv_sq_wqes + (wqe_tail & sq_mask));
+
+	      wqe->ctrl = tmpl->ctrl;
+	      clib_memset (&wqe->eseg, 0, sizeof (wqe->eseg));
+	      wqe->opc_mod = 0;
+	      wqe->wqe_index_lo = sq_tail;
+	      wqe->wqe_index_hi = sq_tail >> 8;
+	      wqe->opcode = MLX5_OPCODE_ENHANCED_MPSW;
+	      ((u8 *) &wqe->ctrl.qpn_ds)[3] = inline_ds;
+
+	      for (u32 i = 0; i < inline_part; i++)
+		{
+		  u32 len = b[i]->current_length;
+		  u32 descriptor_bytes =
+		    rdma_mlx5_empw_inline_packet_ds (len) * sizeof (struct mlx5_wqe_data_seg);
+		  u32 bcount = htobe32 (len | RDMA_MLX5_INLINE_DATA);
+
+		  rdma_mlx5_sq_copy (txq, byte_pos, &bcount, sizeof (bcount));
+		  rdma_mlx5_sq_copy (txq, byte_pos + sizeof (bcount),
+				     vlib_buffer_get_current (b[i]), len);
+		  byte_pos += descriptor_bytes;
+		}
+
+	      vlib_buffer_free (vm, (u32 *) bi, inline_part);
+
+	      last = &wqe->ctrl;
+	      sq_tail += n_wqebb;
+	      txq->dv_sq_buf_tail[wqe_tail & sq_mask] = buf_tail;
+	      b += inline_part;
+	      bi += inline_part;
+	      n -= inline_part;
+	      continue;
+	    }
+	}
 
       if (part < 2)
 	{
@@ -1229,7 +1312,14 @@ rdma_device_output_tx_try (vlib_main_t *vm, const vlib_node_runtime_t *node,
   if (PREDICT_TRUE (rd->flags & RDMA_DEVICE_F_MLX5DV))
     {
       if (rd->flags & RDMA_DEVICE_F_EMPW)
-	n_left_from = rdma_device_output_tx_mlx5_empw (vm, node, rd, txq, n_left_from, bi, b);
+	{
+	  if (PREDICT_FALSE (rd->tx_empw_inline_max != 0))
+	    n_left_from = rdma_device_output_tx_mlx5_empw (vm, node, rd, txq, n_left_from, bi, b,
+							   rd->tx_empw_inline_max);
+	  else
+	    n_left_from =
+	      rdma_device_output_tx_mlx5_empw (vm, node, rd, txq, n_left_from, bi, b, 0);
+	}
       else if (rd->flags & RDMA_DEVICE_F_TSO)
 	n_left_from = rdma_device_output_tx_mlx5 (vm, node, rd, txq, n_left_from, bi, b,
 						  /* is_tso */ 1);

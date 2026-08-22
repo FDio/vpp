@@ -1008,9 +1008,17 @@ rdma_create_if (vlib_main_t * vm, rdma_create_if_args_t * args)
   args->txq_size = args->txq_size ? args->txq_size : 1024;
   args->rxq_num = args->rxq_num ? args->rxq_num : 2;
 
+  if (args->tx_empw_inline_max > RDMA_MLX5_EMPW_INLINE_MAX)
+    {
+      args->rv = VNET_API_ERROR_INVALID_VALUE;
+      args->error = clib_error_return (0, "tx-empw-inline max-size cannot exceed %u bytes",
+				       RDMA_MLX5_EMPW_INLINE_MAX);
+      goto err0;
+    }
+
   if (args->rxq_size < VLIB_FRAME_SIZE || args->txq_size < VLIB_FRAME_SIZE ||
-      args->rxq_size > 65535 || args->txq_size > 65535 ||
-      !is_pow2 (args->rxq_size) || !is_pow2 (args->txq_size))
+      args->rxq_size > 65535 || args->txq_size > 65535 || !is_pow2 (args->rxq_size) ||
+      !is_pow2 (args->txq_size))
     {
       args->rv = VNET_API_ERROR_INVALID_VALUE;
       args->error = clib_error_return (0,
@@ -1158,6 +1166,13 @@ rdma_create_if (vlib_main_t * vm, rdma_create_if_args_t * args)
 
   if ((args->error = rdma_dev_init (vm, rd, args)))
     goto err2;
+
+  if (args->tx_empw_inline_max && !(rd->flags & RDMA_DEVICE_F_EMPW))
+    {
+      args->error = clib_error_return (0, "tx-empw-inline requires enhanced MPW TX support");
+      goto err2;
+    }
+  rd->tx_empw_inline_max = args->tx_empw_inline_max;
 
   if ((args->error = rdma_register_interface (vnm, rd)))
     goto err2;

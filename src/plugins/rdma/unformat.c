@@ -27,6 +27,19 @@ unformat_rdma_create_if_args (unformat_input_t * input, va_list * vargs)
 	;
       else if (unformat (line_input, "tx-queue-size %u", &args->txq_size))
 	;
+      else if (unformat (line_input, "tx-empw-inline on max-size %u", &tmp))
+	{
+	  if (tmp == 0 || tmp > RDMA_MLX5_EMPW_INLINE_MAX)
+	    {
+	      ret = 0;
+	      break;
+	    }
+	  args->tx_empw_inline_max = tmp;
+	}
+      else if (unformat (line_input, "tx-empw-inline on"))
+	args->tx_empw_inline_max = RDMA_MLX5_EMPW_INLINE_DEFAULT;
+      else if (unformat (line_input, "tx-empw-inline off"))
+	args->tx_empw_inline_max = 0;
       else if (unformat (line_input, "num-rx-queues %u", &args->rxq_num))
 	;
       else if (unformat (line_input, "mode auto"))
