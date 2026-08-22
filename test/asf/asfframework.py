@@ -1750,8 +1750,34 @@ class Worker(Thread):
             else:
                 os.sched_setaffinity(0, range(os.cpu_count()))
 
+        # stdbuf gives the child unbuffered stdout/stderr so output is not
+        # lost if it is killed on timeout. It works by preloading its own
+        # libstdbuf.so via LD_PRELOAD. GNU coreutils' stdbuf prepends that
+        # library and keeps any caller-provided LD_PRELOAD; uutils (Rust)
+        # coreutils' stdbuf - the default /usr/bin/stdbuf on Ubuntu 26.04+ -
+        # overwrites LD_PRELOAD with only its own library, silently dropping
+        # preloads the test relies on (e.g. VCL's libvcl_ldpreload.so), so
+        # LDP helpers run on the kernel stack instead of VPP and hang.
+        #
+        # Re-inject it via an sh trampoline: stdbuf execs
+        # `sh -c <script> sh <preload> <app>...`, so $1 is the preload and
+        # $2.. the real command; sh re-exports LD_PRELOAD (merging it with
+        # libstdbuf.so), shifts $1 off, then exec's the app. Works whether
+        # stdbuf kept or dropped LD_PRELOAD; no-op when LD_PRELOAD is unset.
+        stdbuf_cmd = ["stdbuf", "-o0", "-e0"]
+        ld_preload = env.get("LD_PRELOAD")
+        if ld_preload:
+            stdbuf_cmd += [
+                "/bin/sh",
+                "-c",
+                'export LD_PRELOAD="$1${LD_PRELOAD:+:$LD_PRELOAD}"; '
+                'shift; exec "$@"',
+                "sh",
+                ld_preload,
+            ]
+
         self.process = subprocess.Popen(
-            ["stdbuf", "-o0", "-e0"] + self.args,
+            stdbuf_cmd + self.args,
             shell=False,
             env=env,
             preexec_fn=_preexec,
