@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <net/if.h>
 #include <sys/ioctl.h>
+#include <sys/socket.h>
 #include <linux/ethtool.h>
 #include <linux/if_link.h>
 #include <linux/sockios.h>
@@ -27,6 +28,14 @@
 #define XDP_UMEM_MIN_CHUNK_SIZE 2048
 #endif
 
+#ifndef SO_PREFER_BUSY_POLL
+#define SO_PREFER_BUSY_POLL 69
+#endif
+
+#ifndef SO_BUSY_POLL_BUDGET
+#define SO_BUSY_POLL_BUDGET 70
+#endif
+
 af_xdp_main_t af_xdp_main;
 
 typedef struct
@@ -47,6 +56,31 @@ gdb_af_xdp_get_cons (const struct xsk_ring_cons *cons)
 {
   gdb_af_xdp_pair_t pair = { *cons->producer, *cons->consumer };
   return pair;
+}
+
+static clib_error_t *
+af_xdp_set_busy_poll (const af_xdp_device_t *ad, int fd, u32 qid)
+{
+  int one = 1;
+  int usecs = ad->busy_poll_usecs;
+  int budget = ad->busy_poll_budget;
+
+  if (usecs == 0)
+    return 0;
+
+  if (setsockopt (fd, SOL_SOCKET, SO_BUSY_POLL, &usecs, sizeof (usecs)))
+    return clib_error_return_unix (0, "setsockopt(SO_BUSY_POLL) failed for %s queue %u",
+				   ad->linux_ifname, qid);
+
+  if (setsockopt (fd, SOL_SOCKET, SO_PREFER_BUSY_POLL, &one, sizeof (one)))
+    return clib_error_return_unix (0, "setsockopt(SO_PREFER_BUSY_POLL) failed for %s queue %u",
+				   ad->linux_ifname, qid);
+
+  if (budget && setsockopt (fd, SOL_SOCKET, SO_BUSY_POLL_BUDGET, &budget, sizeof (budget)))
+    return clib_error_return_unix (0, "setsockopt(SO_BUSY_POLL_BUDGET) failed for %s queue %u",
+				   ad->linux_ifname, qid);
+
+  return 0;
 }
 
 static clib_error_t *
@@ -783,6 +817,13 @@ af_xdp_create_if (vlib_main_t *vm, af_xdp_create_if_args_t *args)
       goto err0;
     }
 
+  if (args->busy_poll_usecs > INT_MAX)
+    {
+      args->rv = VNET_API_ERROR_INVALID_VALUE;
+      args->error = clib_error_return (0, "busy-poll-usecs must fit an int");
+      goto err0;
+    }
+
   ret = af_xdp_enter_netns (args->netns, ns_fds);
   if (ret)
     {
@@ -815,6 +856,14 @@ af_xdp_create_if (vlib_main_t *vm, af_xdp_create_if_args_t *args)
     ad->flags |= AF_XDP_DEVICE_F_SYSCALL_LOCK;
   if (args->flags & AF_XDP_CREATE_FLAGS_MULTI_BUFFER)
     ad->flags |= AF_XDP_DEVICE_F_MULTI_BUFFER;
+  if (args->busy_poll_usecs || args->busy_poll_budget)
+    {
+      ad->busy_poll_usecs =
+	args->busy_poll_usecs ? args->busy_poll_usecs : AF_XDP_BUSY_POLL_USECS_DEFAULT;
+      ad->busy_poll_budget =
+	args->busy_poll_budget ? args->busy_poll_budget : AF_XDP_BUSY_POLL_BUDGET_DEFAULT;
+      ad->flags |= AF_XDP_DEVICE_F_BUSY_POLL;
+    }
 
   if ((ad->flags & AF_XDP_DEVICE_F_MULTI_BUFFER) && !prog)
     prog = AF_XDP_MB_DEFAULT_PROG;
@@ -947,6 +996,13 @@ af_xdp_create_if (vlib_main_t *vm, af_xdp_create_if_args_t *args)
 	  break;
 	}
     }
+
+  for (i = 0; i < vec_len (ad->xsk); i++)
+    if ((args->error = af_xdp_set_busy_poll (ad, xsk_socket__fd (ad->xsk[i]), i)))
+      {
+	args->rv = VNET_API_ERROR_SYSCALL_ERROR_3;
+	goto err2;
+      }
 
   if (af_xdp_exit_netns (args->netns, ns_fds))
     {
