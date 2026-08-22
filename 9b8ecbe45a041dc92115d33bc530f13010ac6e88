@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f46eb023_7cb86637",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-08-22T16:23:54Z",
+      "side": 1,
+      "message": "I get following error on one instance when running \"make test-debug PARALLEL\u003dauto MW_PARALLEL\u003dtrue\" on two vpp workspaces at the same time\n  [FAILED] could not reserve CPUs: MW parallelism needs the whole machine, but run tmp holds CPUs 11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63\n  In [BeforeAll] at: /scratch/matfabia/vpp/test/hs-test/infra/suite_base.go:255 @ 08/22/26 12:19:00.072",
+      "revId": "9b8ecbe45a041dc92115d33bc530f13010ac6e88",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
