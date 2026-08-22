@@ -1150,11 +1150,13 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
   TCP_TEST ((sb->lost_bytes == 0), "empty scoreboard has no lost bytes %u", sb->lost_bytes);
 
   sb->flags |= TCP_DSACK_HISTORY;
-  tcp_scoreboard_set_reneging (sb, 1);
+  tcp_scoreboard_set_reneging (sb, 1, 0);
   scoreboard_clear (sb);
-  TCP_TEST ((sb->flags & TCP_DSACK_HISTORY) && !tcp_scoreboard_is_reneging (sb),
+  TCP_TEST ((sb->flags & (TCP_DSACK_HISTORY | TCP_DSACK_INELIGIBLE)) ==
+		(TCP_DSACK_HISTORY | TCP_DSACK_INELIGIBLE) &&
+	      !tcp_scoreboard_is_reneging (sb),
 	    "scoreboard clear preserves D-SACK state while clearing reneging");
-  sb->flags &= ~TCP_DSACK_HISTORY;
+  sb->flags &= ~(TCP_DSACK_HISTORY | TCP_DSACK_INELIGIBLE);
 
   /*
    * Clear
@@ -1761,12 +1763,37 @@ tcp_test_dsack_rx (vlib_main_t *vm)
 	      !(ac.ack_flags & TCP_ACK_F_DSACK_SPURIOUS),
 	    "empty SACK history at snd_una keeps whole-ACK-loss reduction");
 
-  tcp_scoreboard_set_reneging (&tc->sack_sb, 1);
+  /* D-SACK evidence is finalized before the scoreboard applies ACK/SACK
+   * ranges. Reneging discovered later in the same ACK must revoke the
+   * provisional spurious-recovery result. */
+  DSACK_RX_RESET ();
+  tc->flags |= TCP_CONN_FAST_RECOVERY | TCP_CONN_RECOVERY;
+  tcp_dsack_recovery_clear (tc);
+  tcp_dsack_track_retransmit (tc, 1000, 1100);
+  block.start = 1100;
+  block.end = 1200;
+  vec_add1 (tc->rcv_opts.sacks, block);
+  tc->rcv_opts.n_sack_blocks = 1;
+  tcp_test_rcv_sacks (tc, tc->snd_una, &ac);
+  TCP_TEST (tc->sack_sb.sacked_bytes == 100, "retain adjacent SACK history before D-SACK");
+
+  vec_reset_length (tc->rcv_opts.sacks);
+  block.start = 1000;
+  block.end = 1100;
+  vec_add1 (tc->rcv_opts.sacks, block);
+  tc->rcv_opts.flags |= TCP_OPTS_FLAG_SACK;
+  tc->rcv_opts.n_sack_blocks = 1;
+  tcp_test_rcv_sacks (tc, 1100, &ac);
+  TCP_TEST ((ac.ack_flags & TCP_ACK_F_DSACK) && !(ac.ack_flags & TCP_ACK_F_DSACK_SPURIOUS) &&
+	      tcp_scoreboard_is_reneging (&tc->sack_sb) &&
+	      (tc->sack_sb.flags & TCP_DSACK_INELIGIBLE) && !tc->dsack_pending_bytes,
+	    "same-ACK scoreboard reneging revokes provisional D-SACK undo");
+
   tcp_dsack_recovery_clear (tc);
   TCP_TEST (tcp_scoreboard_is_reneging (&tc->sack_sb) &&
 	      !(tc->sack_sb.flags & TCP_DSACK_INELIGIBLE),
 	    "D-SACK clear preserves scoreboard reneging state");
-  tcp_scoreboard_set_reneging (&tc->sack_sb, 0);
+  tcp_scoreboard_set_reneging (&tc->sack_sb, 0, 0);
 
   if (vm)
     vlib_cli_output (vm, "D-SACK receive/undo tests passed");
@@ -3148,7 +3175,7 @@ tcp_test_rto_rpc (void *argp)
    * that case high_rxt still covers the head but no retransmitted bytes are
    * left to retire before sending its replacement. */
   tc->rxt_delivered = tc->snd_rxt_bytes;
-  tcp_scoreboard_set_reneging (&tc->sack_sb, 1);
+  tcp_scoreboard_set_reneging (&tc->sack_sb, 1, 0);
   tcp_timer_reset (&wrk->timer_wheel, tc, TCP_TIMER_RETRANSMIT);
   tcp_timer_retransmit_handler (tc);
   a->rxt_flight_after_reneging = tc->snd_rxt_bytes - tc->rxt_delivered;
@@ -7185,6 +7212,42 @@ tcp_test_bt_dsack (void)
 	    "BT processes D-SACK evidence before ACK and SACK sample retirement");
   TCP_TEST (!tc->dsack_pending_bytes && tcp_bt_is_sane (tc->bt),
 	    "BT keeps aggregate state sane after combined D-SACK processing");
+
+  /* A D-SACK can provisionally prove the retransmission spurious before the
+   * BT ACK walk exposes reneging. The final ACK result must reflect both. */
+  vec_free (tc->rcv_opts.sacks);
+  tcp_bt_cleanup (tc);
+  clib_memset (tc, 0, sizeof (*tc));
+  tc->snd_mss = 100;
+  tc->snd_una = 1000;
+  tc->snd_nxt = 1600;
+  tc->snd_wnd_max = 1000;
+  tc->snd_congestion = 1600;
+  tc->flags = TCP_CONN_FAST_RECOVERY | TCP_CONN_RECOVERY;
+  tc->rcv_opts.flags = TCP_OPTS_FLAG_SACK_PERMITTED | TCP_OPTS_FLAG_SACK;
+  scoreboard_init (&tc->sack_sb);
+  tcp_bt_init (tc);
+  tc->snd_nxt = tc->snd_una;
+  tcp_bt_track_tx (tc, 600);
+  tc->snd_nxt = 1600;
+  tcp_bt_track_rxt (tc, 1000, 1100);
+
+  block = (sack_block_t) { .start = 1100, .end = 1200 };
+  vec_add1 (tc->rcv_opts.sacks, block);
+  tc->rcv_opts.n_sack_blocks = 1;
+  tcp_test_rcv_sacks (tc, tc->snd_una, &ac);
+  TCP_TEST (tc->sack_sb.sacked_bytes == 100, "BT retains adjacent SACK history before D-SACK");
+
+  vec_reset_length (tc->rcv_opts.sacks);
+  block = (sack_block_t) { .start = 1000, .end = 1100 };
+  vec_add1 (tc->rcv_opts.sacks, block);
+  tc->rcv_opts.n_sack_blocks = 1;
+  tcp_test_rcv_sacks (tc, 1100, &ac);
+  TCP_TEST ((ac.ack_flags & TCP_ACK_F_DSACK) && !(ac.ack_flags & TCP_ACK_F_DSACK_SPURIOUS) &&
+	      tcp_scoreboard_is_reneging (&tc->sack_sb) &&
+	      (tc->sack_sb.flags & TCP_DSACK_INELIGIBLE) && !tc->dsack_pending_bytes &&
+	      tcp_bt_is_sane (tc->bt),
+	    "same-ACK BT reneging revokes provisional D-SACK undo");
 
   vec_free (tc->rcv_opts.sacks);
   tcp_bt_cleanup (tc);

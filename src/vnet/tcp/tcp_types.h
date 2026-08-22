@@ -223,13 +223,6 @@ tcp_scoreboard_is_reneging (const sack_scoreboard_t *sb)
   return (sb->flags & TCP_SCOREBOARD_F_RENEGING) != 0;
 }
 
-static_always_inline void
-tcp_scoreboard_set_reneging (sack_scoreboard_t *sb, u8 is_reneging)
-{
-  sb->flags =
-    (sb->flags & ~TCP_SCOREBOARD_F_RENEGING) | ((is_reneging != 0) * TCP_SCOREBOARD_F_RENEGING);
-}
-
 #define TCP_DSACK_RXT_INVALID_INDEX ((u32) ~0)
 
 /** Retransmitted byte range retained for conservative D-SACK undo. */
@@ -260,7 +253,6 @@ typedef enum tcp_ack_flag_
   TCP_ACK_F_DSACK_SPURIOUS = 1 << 2,
   TCP_ACK_F_EIFEL_SPURIOUS = 1 << 3,
   TCP_ACK_F_SACK = 1 << 4,
-  TCP_ACK_F_DETECT_LOSS = 1 << 5,
   TCP_ACK_F_SPURIOUS = TCP_ACK_F_DSACK_SPURIOUS | TCP_ACK_F_EIFEL_SPURIOUS,
 } __clib_packed tcp_ack_flag_t;
 
@@ -314,6 +306,20 @@ typedef struct tcp_ack_ctx_
   u32 delivered;		/**< Bytes delivered in interval_time */
   u32 lost;			/**< Number of bytes lost over interval */
 } tcp_ack_ctx_t;
+
+static_always_inline void
+tcp_scoreboard_set_reneging (sack_scoreboard_t *sb, u8 is_reneging, tcp_ack_ctx_t *ac)
+{
+  is_reneging = is_reneging != 0;
+  sb->flags = (sb->flags & ~TCP_SCOREBOARD_F_RENEGING) | (is_reneging * TCP_SCOREBOARD_F_RENEGING);
+  if (is_reneging)
+    {
+      /* Retracted SACK evidence makes D-SACK undo ambiguous. */
+      sb->flags |= TCP_DSACK_INELIGIBLE;
+      if (ac)
+	ac->ack_flags &= ~TCP_ACK_F_DSACK_SPURIOUS;
+    }
+}
 
 typedef struct tcp_byte_tracker_
 {

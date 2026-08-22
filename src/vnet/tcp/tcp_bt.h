@@ -63,11 +63,9 @@ void tcp_bt_track_rxt (tcp_connection_t * tc, u32 start, u32 end);
  * @param tc		tcp connection
  * @param ack		effective cumulative ACK
  * @param high_sacked	highest sequence covered by prepared ranges
- * @param has_sack	prepared ranges include a valid wire SACK block
  * @param ac		ACK-local result
  */
-void tcp_bt_apply_ack (tcp_connection_t *tc, u32 ack, u32 high_sacked, u8 has_sack,
-		       tcp_ack_ctx_t *ac);
+void tcp_bt_apply_ack (tcp_connection_t *tc, u32 ack, u32 high_sacked, tcp_ack_ctx_t *ac);
 void tcp_bt_loss_on_ack (tcp_connection_t *tc, tcp_ack_ctx_t *ac);
 void tcp_bt_dsack_recovery_init (tcp_connection_t *tc);
 void tcp_bt_dsack_recovery_clear (tcp_connection_t *tc);
@@ -80,13 +78,6 @@ u8 tcp_bt_is_sane_post_recovery (tcp_connection_t *tc);
 u8 tcp_bt_next_rxt_range (tcp_connection_t *tc, u8 have_unsent, u8 *can_rescue, u8 *snd_limited,
 			  tcp_rxt_range_t *range);
 u8 tcp_bt_last_rxt_range (tcp_connection_t *tc, tcp_rxt_range_t *range);
-/**
- * Finalize a delivery rate sample after ACK feedback has been applied
- *
- * @param tc	tcp connection
- * @param ac	resulting rate sample
- */
-void tcp_bt_sample_delivery_rate (tcp_connection_t *tc, tcp_ack_ctx_t *ac);
 /**
  * Check if sample to be generated is app limited
  *
