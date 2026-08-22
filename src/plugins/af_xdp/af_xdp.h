@@ -20,6 +20,8 @@
 
 #define AF_XDP_TX_COPY_MAX_SEGS		18 /* CONFIG_MAX_SKB_FRAGS + 1 portable copy-mode limit. */
 #define AF_XDP_NUM_RX_QUEUES_ALL        ((u16)-1)
+#define AF_XDP_BUSY_POLL_USECS_DEFAULT	20
+#define AF_XDP_BUSY_POLL_BUDGET_DEFAULT 64
 
 static_always_inline u32
 af_xdp_addr2bi (u64 addr)
@@ -53,7 +55,8 @@ af_xdp_buffer_free_no_next_batch (vlib_main_t *vm, u32 *bis, u32 *n_free)
   _ (3, LINK_UP, "link-up")                                                                        \
   _ (4, ZEROCOPY, "zero-copy")                                                                     \
   _ (5, SYSCALL_LOCK, "syscall-lock")                                                              \
-  _ (6, MULTI_BUFFER, "multi-buffer")
+  _ (6, MULTI_BUFFER, "multi-buffer")                                                              \
+  _ (7, BUSY_POLL, "busy-poll")
 
 enum
 {
@@ -136,6 +139,8 @@ typedef struct
 
   /* fields below are accessed in control-plane only (cold) */
 
+  u32 busy_poll_usecs;
+  u16 busy_poll_budget;
   char *name;
   char *linux_ifname;
   u32 dev_instance;
@@ -191,6 +196,8 @@ typedef struct
   u32 rxq_size;
   u32 txq_size;
   u32 rxq_num;
+  u32 busy_poll_usecs;
+  u16 busy_poll_budget;
 
   /* return */
   int rv;
