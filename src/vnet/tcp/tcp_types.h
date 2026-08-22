@@ -260,6 +260,7 @@ typedef enum tcp_ack_flag_
   TCP_ACK_F_DSACK_SPURIOUS = 1 << 2,
   TCP_ACK_F_EIFEL_SPURIOUS = 1 << 3,
   TCP_ACK_F_SACK = 1 << 4,
+  TCP_ACK_F_DETECT_LOSS = 1 << 5,
   TCP_ACK_F_SPURIOUS = TCP_ACK_F_DSACK_SPURIOUS | TCP_ACK_F_EIFEL_SPURIOUS,
 } __clib_packed tcp_ack_flag_t;
 

@@ -68,6 +68,7 @@ void tcp_bt_track_rxt (tcp_connection_t * tc, u32 start, u32 end);
  */
 void tcp_bt_apply_ack (tcp_connection_t *tc, u32 ack, u32 high_sacked, u8 has_sack,
 		       tcp_ack_ctx_t *ac);
+void tcp_bt_loss_on_ack (tcp_connection_t *tc, tcp_ack_ctx_t *ac);
 void tcp_bt_dsack_recovery_init (tcp_connection_t *tc);
 void tcp_bt_dsack_recovery_clear (tcp_connection_t *tc);
 u32 tcp_bt_dsack_mark_duplicate (tcp_connection_t *tc, u32 start, u32 end);

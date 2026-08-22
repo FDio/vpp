@@ -813,15 +813,15 @@ tcp_bt_walk_samples_ooo (tcp_connection_t *tc, tcp_ack_ctx_t *ac, f64 now, u32 a
 static_always_inline u32
 tcp_bt_data_acked (tcp_connection_t *tc, tcp_ack_ctx_t *ac)
 {
-  u32 ack_end, data_end, prev_una;
+  u32 ack, ack_end, data_end;
 
   if (PREDICT_TRUE (!(tc->flags & TCP_CONN_FINSNT)))
     return ac->bytes_acked;
 
+  ack = tc->snd_una + ac->bytes_acked;
   data_end = tc->snd_nxt - 1;
-  prev_una = tc->snd_una - ac->bytes_acked;
-  ack_end = seq_lt (tc->snd_una, data_end) ? tc->snd_una : data_end;
-  return seq_gt (ack_end, prev_una) ? ack_end - prev_una : 0;
+  ack_end = seq_lt (ack, data_end) ? ack : data_end;
+  return seq_gt (ack_end, tc->snd_una) ? ack_end - tc->snd_una : 0;
 }
 
 /* Advance the RFC 6675 loss boundary after new SACK coverage. Samples below
@@ -881,6 +881,13 @@ tcp_bt_update_sack_loss (tcp_connection_t *tc, tcp_ack_ctx_t *ac)
 }
 
 void
+tcp_bt_loss_on_ack (tcp_connection_t *tc, tcp_ack_ctx_t *ac)
+{
+  ASSERT (ac->last_sacked_bytes);
+  tcp_bt_update_sack_loss (tc, ac);
+}
+
+void
 tcp_bt_apply_ack (tcp_connection_t *tc, u32 ack, u32 high_sacked, u8 has_sack, tcp_ack_ctx_t *ac)
 {
   tcp_byte_tracker_t *bt = tc->bt;
@@ -915,7 +922,7 @@ tcp_bt_apply_ack (tcp_connection_t *tc, u32 ack, u32 high_sacked, u8 has_sack, t
       /* Prefix retirement keeps both aggregates exact. Without new sack
        * coverage, no remaining range can acquire a new loss classification. */
       if (ac->last_sacked_bytes)
-	tcp_bt_update_sack_loss (tc, ac);
+	ac->ack_flags |= TCP_ACK_F_DETECT_LOSS;
     }
 
   /* A cumulative-only ACK already updated the aggregates while retiring its
