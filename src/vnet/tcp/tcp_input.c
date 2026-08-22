@@ -830,11 +830,6 @@ tcp_handle_old_ack (tcp_connection_t *tc, tcp_ack_ctx_t *ac, u32 ack)
       !(ac->ack_flags & TCP_ACK_F_DSACK_SPURIOUS))
     return;
 
-  if (tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER)
-    tcp_bt_sample_delivery_rate (tc, ac);
-  else
-    ac->acked_and_sacked = ac->last_sacked_bytes;
-
   ac->ack_flags |= ac->last_sacked_bytes != 0;
   tcp_cc_handle_event (tc, ac);
 }
@@ -916,14 +911,8 @@ tcp_rcv_ack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc, vlib_buffer_t * b,
 
   tcp_ack_handle_feedback (tc, vnet_buffer (b)->tcp.ack_number, &ac);
 
-  ac.bytes_acked = vnet_buffer (b)->tcp.ack_number - tc->snd_una;
   tc->snd_una = vnet_buffer (b)->tcp.ack_number;
   tcp_validate_txf_size (tc, ac.bytes_acked);
-
-  if (tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER)
-    tcp_bt_sample_delivery_rate (tc, &ac);
-  else
-    ac.acked_and_sacked = ac.bytes_acked + ac.last_sacked_bytes - ac.last_bytes_delivered;
 
   if (ac.bytes_acked + ac.last_sacked_bytes)
     {

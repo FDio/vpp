@@ -978,13 +978,15 @@ scoreboard_update_cumulative_ack (tcp_connection_t *tc, u32 ack, tcp_sb_sack_mod
   return hole;
 }
 
-static void
-tcp_scoreboard_apply_sacks (tcp_connection_t *tc, u32 ack, u32 high_sacked, tcp_sb_sack_mode_e mode,
-			    tcp_ack_ctx_t *ac)
+static __clib_noinline void
+tcp_scoreboard_apply_sacks (tcp_connection_t *tc, u32 ack, u32 high_sacked, tcp_ack_ctx_t *ac)
 {
   sack_scoreboard_hole_t *hole, *next_hole;
   sack_scoreboard_t *sb = &tc->sack_sb;
   sack_block_t *blk, *rcv_sacks = tc->rcv_opts.sacks;
+  tcp_sb_sack_mode_e mode = !tcp_in_cong_recovery (tc)		  ? TCP_SB_SACK_OOO :
+			    seq_geq (sb->rescue_rxt, tc->snd_una) ? TCP_SB_SACK_RXT_RESCUED :
+								    TCP_SB_SACK_RXT;
   u32 blk_index = 0;
 
   if (sb->head == TCP_INVALID_SACK_HOLE_INDEX)
@@ -1095,6 +1097,14 @@ tcp_scoreboard_apply_sacks (tcp_connection_t *tc, u32 ack, u32 high_sacked, tcp_
     }
 
   sb->high_sacked = high_sacked;
+  ac->ack_flags |= TCP_ACK_F_DETECT_LOSS;
+}
+
+static void
+tcp_scoreboard_loss_on_ack (tcp_connection_t *tc, u32 ack, tcp_ack_ctx_t *ac)
+{
+  sack_scoreboard_t *sb = &tc->sack_sb;
+
   scoreboard_update_bytes (sb, ac, ack, tc->snd_mss);
 
   ASSERT (ac->last_sacked_bytes <= sb->sacked_bytes || tcp_in_recovery (tc));
@@ -1109,6 +1119,17 @@ tcp_scoreboard_apply_sacks (tcp_connection_t *tc, u32 ack, u32 high_sacked, tcp_
   ASSERT ((ack - tc->snd_una) >= ac->last_bytes_delivered || (tc->flags & TCP_CONN_FINSNT));
 
   TCP_EVT (TCP_EVT_CC_SCOREBOARD, tc, ac);
+}
+
+static void
+tcp_loss_on_ack (tcp_connection_t *tc, u32 ack, tcp_ack_ctx_t *ac)
+{
+  ASSERT (ac->ack_flags & TCP_ACK_F_DETECT_LOSS);
+
+  if (PREDICT_FALSE (tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER))
+    tcp_bt_loss_on_ack (tc, ac);
+  else
+    tcp_scoreboard_loss_on_ack (tc, ack, ac);
 }
 
 static void
@@ -1161,22 +1182,18 @@ tcp_sack_normalize (tcp_connection_t *tc, u32 packet_ack, sack_block_t *dsack, u
 }
 
 void
-tcp_ack_handle_feedback (tcp_connection_t *tc, u32 packet_ack, tcp_ack_ctx_t *ac)
+tcp_ack_handle_full_feedback (tcp_connection_t *tc, u32 packet_ack, u32 ack, tcp_ack_ctx_t *ac)
 {
   sack_scoreboard_t *sb = &tc->sack_sb;
   sack_block_t dsack;
-  u32 ack = seq_max (packet_ack, tc->snd_una), high_sacked;
-  u8 finalize_dsack = 0, has_sack;
+  u32 high_sacked;
   u8 had_sack_history = sb->sacked_bytes != 0;
   u8 has_scoreboard = had_sack_history || sb->head != TCP_INVALID_SACK_HOLE_INDEX;
   u8 has_wire_sack = tcp_opts_sack (&tc->rcv_opts) != 0;
-  u8 has_ack = seq_gt (ack, tc->snd_una);
   u8 is_bt = (tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER) != 0;
-  u8 may_retire_dsack =
-    seq_gt (packet_ack, tc->snd_una) && (tc->sack_sb.flags & TCP_DSACK_RXT_ACTIVE);
-
-  if (PREDICT_TRUE (!(has_wire_sack | may_retire_dsack | (has_ack & (is_bt | has_scoreboard)))))
-    return;
+  u8 has_ack = ac->bytes_acked != 0;
+  u8 has_dsack_rxt = (sb->flags & TCP_DSACK_RXT_ACTIVE) != 0;
+  u8 finalize_dsack = 0, has_sack;
 
   high_sacked = seq_max (
     ack, (had_sack_history || tcp_scoreboard_is_reneging (sb)) ? sb->high_sacked : tc->snd_una);
@@ -1198,22 +1215,24 @@ tcp_ack_handle_feedback (tcp_connection_t *tc, u32 packet_ack, tcp_ack_ctx_t *ac
       if (PREDICT_FALSE (is_bt))
 	tcp_bt_apply_ack (tc, ack, high_sacked, has_sack, ac);
       else if (has_scoreboard | has_sack)
-	{
-	  tcp_sb_sack_mode_e mode = !tcp_in_cong_recovery (tc) ? TCP_SB_SACK_OOO :
-				    seq_geq (sb->rescue_rxt, tc->snd_una) ?
-								 TCP_SB_SACK_RXT_RESCUED :
-								 TCP_SB_SACK_RXT;
-	  tcp_scoreboard_apply_sacks (tc, ack, high_sacked, mode, ac);
-	}
+	tcp_scoreboard_apply_sacks (tc, ack, high_sacked, ac);
     }
 
-  if (PREDICT_FALSE (finalize_dsack | may_retire_dsack))
+  if (PREDICT_FALSE (finalize_dsack | (has_ack & has_dsack_rxt)))
     {
       if (finalize_dsack)
 	ac->ack_flags |= tcp_dsack_finalize (tc);
-      if (may_retire_dsack && (tc->sack_sb.flags & TCP_DSACK_RXT_ACTIVE))
+      if (has_ack && (sb->flags & TCP_DSACK_RXT_ACTIVE))
 	tcp_dsack_retire (tc, packet_ack);
     }
+
+  if (ac->ack_flags & TCP_ACK_F_DETECT_LOSS)
+    tcp_loss_on_ack (tc, ack, ac);
+
+  if (PREDICT_FALSE (is_bt))
+    tcp_bt_sample_delivery_rate (tc, ac);
+  else
+    ac->acked_and_sacked = ac->bytes_acked + ac->last_sacked_bytes - ac->last_bytes_delivered;
 }
 
 static u8
