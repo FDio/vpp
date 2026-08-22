@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <net/if.h>
 #include <sys/ioctl.h>
+#include <sys/socket.h>
 #include <linux/ethtool.h>
 #include <linux/if_link.h>
 #include <linux/sockios.h>
@@ -25,6 +26,14 @@
 
 #ifndef XDP_UMEM_MIN_CHUNK_SIZE
 #define XDP_UMEM_MIN_CHUNK_SIZE 2048
+#endif
+
+#ifndef SO_PREFER_BUSY_POLL
+#define SO_PREFER_BUSY_POLL 69
+#endif
+
+#ifndef SO_BUSY_POLL_BUDGET
+#define SO_BUSY_POLL_BUDGET 70
 #endif
 
 af_xdp_main_t af_xdp_main;
@@ -48,6 +57,38 @@ gdb_af_xdp_get_cons (const struct xsk_ring_cons *cons)
   gdb_af_xdp_pair_t pair = { *cons->producer, *cons->consumer };
   return pair;
 }
+
+static clib_error_t *
+af_xdp_set_busy_poll (const af_xdp_device_t *ad, int fd, u32 qid)
+{
+  int one = 1;
+  int usecs = ad->busy_poll_usecs;
+  int budget = ad->busy_poll_budget;
+
+  if (usecs == 0)
+    return 0;
+
+  if (setsockopt (fd, SOL_SOCKET, SO_BUSY_POLL, &usecs, sizeof (usecs)))
+    return clib_error_return_unix (0, "setsockopt(SO_BUSY_POLL) failed for %s queue %u",
+				   ad->linux_ifname, qid);
+
+  if (setsockopt (fd, SOL_SOCKET, SO_PREFER_BUSY_POLL, &one, sizeof (one)))
+    return clib_error_return_unix (0, "setsockopt(SO_PREFER_BUSY_POLL) failed for %s queue %u",
+				   ad->linux_ifname, qid);
+
+  if (budget && setsockopt (fd, SOL_SOCKET, SO_BUSY_POLL_BUDGET, &budget, sizeof (budget)))
+    return clib_error_return_unix (0, "setsockopt(SO_BUSY_POLL_BUDGET) failed for %s queue %u",
+				   ad->linux_ifname, qid);
+
+  return 0;
+}
+
+typedef enum
+{
+  AF_XDP_QUEUE_CREATE_SUCCESS,
+  AF_XDP_QUEUE_CREATE_ERROR,
+  AF_XDP_QUEUE_CREATE_BUSY_POLL_ERROR,
+} af_xdp_queue_create_result_t;
 
 static clib_error_t *
 af_xdp_mac_change (vnet_hw_interface_t *hw, const u8 *old, const u8 *new)
@@ -393,7 +434,7 @@ af_xdp_load_program (af_xdp_create_if_args_t *args, af_xdp_device_t *ad, const c
   return 0;
 }
 
-static int
+static af_xdp_queue_create_result_t
 af_xdp_create_queue (vlib_main_t *vm, af_xdp_create_if_args_t *args, af_xdp_device_t *ad, int qid)
 {
   struct xsk_umem **umem;
@@ -406,6 +447,7 @@ af_xdp_create_queue (vlib_main_t *vm, af_xdp_create_if_args_t *args, af_xdp_devi
   socklen_t optlen;
   const int is_rx = qid < ad->rxq_num;
   const int is_tx = qid < ad->txq_num;
+  af_xdp_queue_create_result_t rv = AF_XDP_QUEUE_CREATE_ERROR;
 
   umem = vec_elt_at_index (ad->umem, qid);
   xsk = vec_elt_at_index (ad->xsk, qid);
@@ -528,6 +570,13 @@ af_xdp_create_queue (vlib_main_t *vm, af_xdp_create_if_args_t *args, af_xdp_devi
 	goto err2;
     }
 
+  if ((args->error = af_xdp_set_busy_poll (ad, fd, qid)))
+    {
+      args->rv = VNET_API_ERROR_SYSCALL_ERROR_3;
+      rv = AF_XDP_QUEUE_CREATE_BUSY_POLL_ERROR;
+      goto err2;
+    }
+
   rxq->xsk_fd = is_rx ? fd : -1;
   rxq->mb_head_bi = ~0;
   rxq->mb_tail_bi = ~0;
@@ -559,7 +608,7 @@ af_xdp_create_queue (vlib_main_t *vm, af_xdp_create_if_args_t *args, af_xdp_devi
       txq->xsk_fd = -1;
     }
 
-  return 0;
+  return AF_XDP_QUEUE_CREATE_SUCCESS;
 
 err2:
   xsk_socket__delete (*xsk);
@@ -568,7 +617,7 @@ err1:
 err0:
   *umem = 0;
   *xsk = 0;
-  return -1;
+  return rv;
 }
 
 static int
@@ -783,6 +832,13 @@ af_xdp_create_if (vlib_main_t *vm, af_xdp_create_if_args_t *args)
       goto err0;
     }
 
+  if (args->busy_poll_usecs > INT_MAX)
+    {
+      args->rv = VNET_API_ERROR_INVALID_VALUE;
+      args->error = clib_error_return (0, "busy-poll-usecs must not exceed %d", INT_MAX);
+      goto err0;
+    }
+
   ret = af_xdp_enter_netns (args->netns, ns_fds);
   if (ret)
     {
@@ -815,6 +871,14 @@ af_xdp_create_if (vlib_main_t *vm, af_xdp_create_if_args_t *args)
     ad->flags |= AF_XDP_DEVICE_F_SYSCALL_LOCK;
   if (args->flags & AF_XDP_CREATE_FLAGS_MULTI_BUFFER)
     ad->flags |= AF_XDP_DEVICE_F_MULTI_BUFFER;
+  if (args->busy_poll_usecs || args->busy_poll_budget)
+    {
+      ad->busy_poll_usecs =
+	args->busy_poll_usecs ? args->busy_poll_usecs : AF_XDP_BUSY_POLL_USECS_DEFAULT;
+      ad->busy_poll_budget =
+	args->busy_poll_budget ? args->busy_poll_budget : AF_XDP_BUSY_POLL_BUDGET_DEFAULT;
+      ad->flags |= AF_XDP_DEVICE_F_BUSY_POLL;
+    }
 
   if ((ad->flags & AF_XDP_DEVICE_F_MULTI_BUFFER) && !prog)
     prog = AF_XDP_MB_DEFAULT_PROG;
@@ -914,7 +978,9 @@ af_xdp_create_if (vlib_main_t *vm, af_xdp_create_if_args_t *args)
 
   for (i = 0; i < q_num; i++)
     {
-      if (af_xdp_create_queue (vm, args, ad, i))
+      af_xdp_queue_create_result_t queue_rv = af_xdp_create_queue (vm, args, ad, i);
+
+      if (queue_rv != AF_XDP_QUEUE_CREATE_SUCCESS)
 	{
 	  /*
 	   * queue creation failed
@@ -935,7 +1001,8 @@ af_xdp_create_if (vlib_main_t *vm, af_xdp_create_if_args_t *args)
 	  ad->rxq_num = clib_min (i, rxq_num);
 	  ad->txq_num = clib_min (i, txq_num);
 
-	  if (i == 0 || (i < rxq_num && AF_XDP_NUM_RX_QUEUES_ALL != args->rxq_num))
+	  if (queue_rv == AF_XDP_QUEUE_CREATE_BUSY_POLL_ERROR || i == 0 ||
+	      (i < rxq_num && AF_XDP_NUM_RX_QUEUES_ALL != args->rxq_num))
 	    {
 	      ad->rxq_num = ad->txq_num = 0;
 	      goto err2; /* failed creating requested rxq: fatal error, bailing
