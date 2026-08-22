@@ -54,17 +54,10 @@ af_xdp_device_input_trace (vlib_main_t *vm, vlib_node_runtime_t *node, u32 n_lef
   vlib_set_trace_count (vm, node, n_trace);
 }
 
-static_always_inline void
-af_xdp_device_input_refill_db (vlib_main_t *vm, const vlib_node_runtime_t *node,
-			       af_xdp_device_t *ad, af_xdp_rxq_t *rxq, const u32 n_alloc)
+static_always_inline int
+af_xdp_device_input_recvmsg (af_xdp_rxq_t *rxq)
 {
-  xsk_ring_prod__submit (&rxq->fq, n_alloc);
-
-  if (AF_XDP_RXQ_MODE_INTERRUPT == rxq->mode || !xsk_ring_prod__needs_wakeup (&rxq->fq))
-    return;
-
-  if (node)
-    vlib_error_count (vm, node->node_index, AF_XDP_INPUT_ERROR_SYSCALL_REQUIRED, 1);
+  int ret = 0;
 
   if (clib_spinlock_trylock_if_init (&rxq->syscall_lock))
     {
@@ -73,15 +66,34 @@ af_xdp_device_input_refill_db (vlib_main_t *vm, const vlib_node_runtime_t *node,
       msg.msg_iov = &iov;
       msg.msg_iovlen = 1;
 
-      int ret = recvmsg (rxq->xsk_fd, &msg, MSG_DONTWAIT);
+      ret = recvmsg (rxq->xsk_fd, &msg, MSG_DONTWAIT);
       clib_spinlock_unlock_if_init (&rxq->syscall_lock);
-      if (PREDICT_FALSE (ret < 0))
-	{
-	  /* something bad is happening */
-	  if (node)
-	    vlib_error_count (vm, node->node_index, AF_XDP_INPUT_ERROR_SYSCALL_FAILURES, 1);
-	  af_xdp_device_error (ad, "rx poll() failed");
-	}
+    }
+
+  return ret;
+}
+
+static_always_inline void
+af_xdp_device_input_refill_db (vlib_main_t *vm, const vlib_node_runtime_t *node,
+			       af_xdp_device_t *ad, af_xdp_rxq_t *rxq, const u32 n_alloc)
+{
+  int ret;
+
+  xsk_ring_prod__submit (&rxq->fq, n_alloc);
+
+  if (AF_XDP_RXQ_MODE_INTERRUPT == rxq->mode || !xsk_ring_prod__needs_wakeup (&rxq->fq))
+    return;
+
+  if (node)
+    vlib_error_count (vm, node->node_index, AF_XDP_INPUT_ERROR_SYSCALL_REQUIRED, 1);
+
+  ret = af_xdp_device_input_recvmsg (rxq);
+  if (PREDICT_FALSE (ret < 0))
+    {
+      /* something bad is happening */
+      if (node)
+	vlib_error_count (vm, node->node_index, AF_XDP_INPUT_ERROR_SYSCALL_FAILURES, 1);
+      af_xdp_device_error (ad, "rx poll() failed");
     }
 }
 
@@ -370,7 +382,23 @@ af_xdp_device_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_fra
   n_rx_desc = xsk_ring_cons__peek (&rxq->rx, VLIB_FRAME_SIZE, &idx);
 
   if (PREDICT_FALSE (0 == n_rx_desc))
-    goto refill;
+    {
+      if (ad->flags & AF_XDP_DEVICE_F_BUSY_POLL)
+	{
+	  int ret = af_xdp_device_input_recvmsg (rxq);
+
+	  if (PREDICT_FALSE (ret < 0))
+	    {
+	      vlib_error_count (vm, node->node_index, AF_XDP_INPUT_ERROR_SYSCALL_FAILURES, 1);
+	      af_xdp_device_error (ad, "rx busy poll failed");
+	    }
+	  else
+	    n_rx_desc = xsk_ring_cons__peek (&rxq->rx, VLIB_FRAME_SIZE, &idx);
+	}
+
+      if (0 == n_rx_desc)
+	goto refill;
+    }
 
   vlib_buffer_copy_template (&bt, &ad->buffer_template->template);
   next_index = ad->per_interface_next_index;
