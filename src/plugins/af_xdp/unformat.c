@@ -31,6 +31,10 @@ unformat_af_xdp_create_if_args (unformat_input_t * input, va_list * vargs)
 	args->rxq_num = AF_XDP_NUM_RX_QUEUES_ALL;
       else if (unformat (line_input, "num-rx-queues %u", &args->rxq_num))
 	;
+      else if (unformat (line_input, "busy-poll-usecs %u", &args->busy_poll_usecs))
+	;
+      else if (unformat (line_input, "busy-poll-budget %u", &args->busy_poll_budget))
+	;
       else if (unformat (line_input, "prog %s", &args->prog))
 	;
       else if (unformat (line_input, "netns %s", &args->netns))
