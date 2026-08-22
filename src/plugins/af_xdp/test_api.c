@@ -45,7 +45,46 @@ api_af_xdp_mode (af_xdp_mode_t mode)
   return ~0;
 }
 
-/* af_xdp create v3 API */
+/* af_xdp create v4 API */
+static int
+api_af_xdp_create_v4 (vat_main_t *vam)
+{
+  vl_api_af_xdp_create_v4_t *mp;
+  af_xdp_create_if_args_t args;
+  int ret;
+
+  if (!unformat_user (vam->input, unformat_af_xdp_create_if_args, &args))
+    {
+      clib_warning ("unknown input `%U'", format_unformat_error, vam->input);
+      return -99;
+    }
+
+  M (AF_XDP_CREATE_V4, mp);
+
+  snprintf ((char *) mp->host_if, sizeof (mp->host_if), "%s", args.linux_ifname ?: "");
+  snprintf ((char *) mp->name, sizeof (mp->name), "%s", args.name ?: "");
+  snprintf ((char *) mp->netns, sizeof (mp->netns), "%s", args.netns ?: "");
+  mp->rxq_num = args.rxq_num;
+  mp->rxq_size = args.rxq_size;
+  mp->txq_size = args.txq_size;
+  mp->mode = api_af_xdp_mode (args.mode);
+  if (args.flags & AF_XDP_CREATE_FLAGS_NO_SYSCALL_LOCK)
+    mp->flags |= AF_XDP_API_FLAGS_NO_SYSCALL_LOCK;
+  if (args.flags & AF_XDP_CREATE_FLAGS_MAC_REUSE)
+    mp->flags |= AF_XDP_API_FLAGS_MAC_REUSE;
+  if (args.flags & AF_XDP_CREATE_FLAGS_MULTI_BUFFER)
+    mp->flags |= AF_XDP_API_FLAGS_MULTI_BUFFER;
+  snprintf ((char *) mp->prog, sizeof (mp->prog), "%s", args.prog ?: "");
+  mp->busy_poll_usecs = args.busy_poll_usecs;
+  mp->busy_poll_budget = args.busy_poll_budget;
+  mp->prefer_busy_poll = !!(args.flags & AF_XDP_CREATE_FLAGS_PREFER_BUSY_POLL);
+
+  S (mp);
+  W (ret);
+
+  return ret;
+}
+
 static int
 api_af_xdp_create_v3 (vat_main_t *vam)
 {
@@ -83,7 +122,23 @@ api_af_xdp_create_v3 (vat_main_t *vam)
   return ret;
 }
 
-/* af_xdp-create v3 reply handler */
+/* af_xdp-create v4 reply handler */
+static void
+vl_api_af_xdp_create_v4_reply_t_handler (vl_api_af_xdp_create_v4_reply_t *mp)
+{
+  vat_main_t *vam = af_xdp_test_main.vat_main;
+  i32 retval = mp->retval;
+
+  if (retval == 0)
+    {
+      fformat (vam->ofp, "created af_xdp with sw_if_index %d\n", mp->sw_if_index);
+    }
+
+  vam->retval = retval;
+  vam->result_ready = 1;
+  vam->regenerate_interface_table = 1;
+}
+
 static void
 vl_api_af_xdp_create_v3_reply_t_handler (vl_api_af_xdp_create_v3_reply_t *mp)
 {

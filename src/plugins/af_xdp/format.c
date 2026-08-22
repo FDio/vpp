@@ -44,6 +44,9 @@ format_af_xdp_device (u8 * s, va_list * args)
   s =
     format (s, "%Uflags: %U", format_white_space, indent,
 	    format_af_xdp_device_flags, ad);
+  if (ad->busy_poll_usecs)
+    s = format (s, "\n%Ubusy-poll usecs %u budget %u prefer %s", format_white_space, indent,
+		ad->busy_poll_usecs, ad->busy_poll_budget, ad->prefer_busy_poll ? "on" : "off");
   if (ad->error)
     s = format (s, "\n%Uerror %U", format_white_space, indent,
 		format_clib_error, ad->error);

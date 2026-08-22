@@ -20,6 +20,7 @@
 
 #define AF_XDP_TX_COPY_MAX_SEGS		18 /* CONFIG_MAX_SKB_FRAGS + 1 portable copy-mode limit. */
 #define AF_XDP_NUM_RX_QUEUES_ALL        ((u16)-1)
+#define AF_XDP_BUSY_POLL_BUDGET_DEFAULT 64
 
 static_always_inline u32
 af_xdp_addr2bi (u64 addr)
@@ -136,6 +137,9 @@ typedef struct
 
   /* fields below are accessed in control-plane only (cold) */
 
+  u32 busy_poll_usecs;
+  u16 busy_poll_budget;
+  u8 prefer_busy_poll;
   char *name;
   char *linux_ifname;
   u32 dev_instance;
@@ -176,6 +180,7 @@ typedef enum
   AF_XDP_CREATE_FLAGS_NO_SYSCALL_LOCK = 1,
   AF_XDP_CREATE_FLAGS_MAC_REUSE = 2,
   AF_XDP_CREATE_FLAGS_MULTI_BUFFER = 4,
+  AF_XDP_CREATE_FLAGS_PREFER_BUSY_POLL = 8,
 } af_xdp_create_flag_t;
 
 #define AF_XDP_MB_DEFAULT_PROG "xsk_def_xdp_prog.o"
@@ -191,6 +196,8 @@ typedef struct
   u32 rxq_size;
   u32 txq_size;
   u32 rxq_num;
+  u32 busy_poll_usecs;
+  u32 busy_poll_budget;
 
   /* return */
   int rv;
