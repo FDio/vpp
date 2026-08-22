@@ -771,6 +771,8 @@ tcp_scoreboard_replay (u8 * s, tcp_connection_t * tc, u8 verbose)
       placeholder_tc->rcv_opts.n_sack_blocks = vec_len (placeholder_tc->rcv_opts.sacks);
       clib_memset (&ac, 0, sizeof (ac));
       tcp_ack_handle_feedback (placeholder_tc, next_ack, &ac);
+      if (ac.ack_flags & TCP_ACK_F_DETECT_LOSS)
+	tcp_loss_on_ack (placeholder_tc, &ac);
       if (has_new_ack)
 	placeholder_tc->snd_una = next_ack;
 
