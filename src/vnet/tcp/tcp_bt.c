@@ -45,6 +45,8 @@ bt_seq_lt (u32 a, u32 b)
   return seq_lt (a, b);
 }
 
+static void tcp_bt_sample_delivery_rate (tcp_connection_t *tc, tcp_ack_ctx_t *ac);
+
 static tcp_bt_sample_t *
 bt_alloc_sample (tcp_byte_tracker_t * bt, u32 min_seq, u32 max_seq)
 {
@@ -888,7 +890,7 @@ tcp_bt_loss_on_ack (tcp_connection_t *tc, tcp_ack_ctx_t *ac)
 }
 
 void
-tcp_bt_apply_ack (tcp_connection_t *tc, u32 ack, u32 high_sacked, u8 has_sack, tcp_ack_ctx_t *ac)
+tcp_bt_apply_ack (tcp_connection_t *tc, u32 ack, u32 high_sacked, tcp_ack_ctx_t *ac)
 {
   tcp_byte_tracker_t *bt = tc->bt;
   sack_scoreboard_t *sb = &tc->sack_sb;
@@ -910,25 +912,29 @@ tcp_bt_apply_ack (tcp_connection_t *tc, u32 ack, u32 high_sacked, u8 has_sack, t
 	bt->sack_loss_high = seq_max (bt->sack_loss_high, ack);
     }
 
-  if (!account)
-    return;
-
-  sb->high_sacked = high_sacked;
-  if (PREDICT_FALSE (has_sack))
+  if (account)
     {
-      /* SACK processing can split ranges or change their loss classification. */
-      bt->cur_rxt_end = sb->high_rxt;
-      tcp_bt_walk_samples_ooo (tc, ac, now, ack, old_high_sacked);
-      /* Prefix retirement keeps both aggregates exact. Without new sack
-       * coverage, no remaining range can acquire a new loss classification. */
-      if (ac->last_sacked_bytes)
-	ac->ack_flags |= TCP_ACK_F_DETECT_LOSS;
+      sb->high_sacked = high_sacked;
+      if (PREDICT_FALSE (ac->ack_flags & TCP_ACK_F_SACK))
+	{
+	  /* SACK processing can split ranges or change their loss classification. */
+	  bt->cur_rxt_end = sb->high_rxt;
+	  tcp_bt_walk_samples_ooo (tc, ac, now, ack, old_high_sacked);
+	}
+
+      /* A cumulative-only ACK already updated the aggregates while retiring
+       * its prefix. Only the head is needed to detect that prior SACK state
+       * reneged. */
+      head = bt_get_sample (bt, bt->head);
+      tcp_scoreboard_set_reneging (sb, head && (head->flags & TCP_BTS_IS_SACKED), ac);
     }
 
-  /* A cumulative-only ACK already updated the aggregates while retiring its
-   * prefix. Only the head is needed to detect that prior SACK state reneged. */
-  head = bt_get_sample (bt, bt->head);
-  tcp_scoreboard_set_reneging (sb, head && (head->flags & TCP_BTS_IS_SACKED));
+  /* Prefix retirement keeps both aggregates exact. Without new SACK
+   * coverage, no remaining range can acquire a new loss classification. */
+  if (ac->last_sacked_bytes)
+    tcp_loss_on_ack (tc, ack, ac);
+
+  tcp_bt_sample_delivery_rate (tc, ac);
 }
 
 void
@@ -1025,7 +1031,7 @@ tcp_bt_handle_sack_reneging (tcp_connection_t *tc)
   sb->sacked_bytes = 0;
   sb->lost_bytes = lost;
   sb->high_sacked = tc->snd_una;
-  tcp_scoreboard_set_reneging (sb, 0);
+  tcp_scoreboard_set_reneging (sb, 0, 0);
   sb->reorder = TCP_DUPACK_THRESHOLD;
   bt->sack_loss_high = tc->snd_una;
   tcp_bt_init_rxt (tc, tc->snd_una);
@@ -1287,7 +1293,7 @@ tcp_bt_dsack_recovery_clear (tcp_connection_t *tc)
   tc->sack_sb.flags &= TCP_SCOREBOARD_F_RENEGING | TCP_DSACK_UNDO_DISABLED;
 }
 
-void
+static void
 tcp_bt_sample_delivery_rate (tcp_connection_t *tc, tcp_ack_ctx_t *ac)
 {
   u32 delivered, data_acked;
