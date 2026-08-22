@@ -825,6 +825,8 @@ tcp_handle_old_ack (tcp_connection_t *tc, tcp_ack_ctx_t *ac, u32 ack)
     }
 
   tcp_ack_handle_feedback (tc, ack, ac);
+  if (ac->ack_flags & TCP_ACK_F_DETECT_LOSS)
+    tcp_loss_on_ack (tc, ac);
 
   if ((ac->ack_flags & TCP_ACK_F_DSACK) && !ac->last_sacked_bytes &&
       !(ac->ack_flags & TCP_ACK_F_DSACK_SPURIOUS))
@@ -867,34 +869,34 @@ static int
 tcp_rcv_ack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc, vlib_buffer_t * b,
 	     tcp_header_t * th, u32 * error)
 {
-  u32 prev_snd_wnd;
+  u32 ack = vnet_buffer (b)->tcp.ack_number, prev_snd_wnd;
   tcp_ack_ctx_t ac = { 0 };
 
   TCP_EVT (TCP_EVT_CC_STAT, tc);
 
   /* If the ACK acks something not yet sent (SEG.ACK > SND.NXT) */
-  if (PREDICT_FALSE (seq_gt (vnet_buffer (b)->tcp.ack_number, tc->snd_nxt)))
+  if (PREDICT_FALSE (seq_gt (ack, tc->snd_nxt)))
     {
       tc->errors.above_ack_wnd += 1;
       *error = TCP_ERROR_ACK_FUTURE;
-      TCP_EVT (TCP_EVT_ACK_RCV_ERR, tc, 0, vnet_buffer (b)->tcp.ack_number);
+      TCP_EVT (TCP_EVT_ACK_RCV_ERR, tc, 0, ack);
       return -1;
     }
 
   /* If old ACK, probably it's an old dupack */
-  if (PREDICT_FALSE (seq_lt (vnet_buffer (b)->tcp.ack_number, tc->snd_una)))
+  if (PREDICT_FALSE (seq_lt (ack, tc->snd_una)))
     {
       u32 old_ack_wnd;
 
       tc->errors.below_ack_wnd += 1;
       *error = TCP_ERROR_ACK_OLD;
-      TCP_EVT (TCP_EVT_ACK_RCV_ERR, tc, 1, vnet_buffer (b)->tcp.ack_number);
+      TCP_EVT (TCP_EVT_ACK_RCV_ERR, tc, 1, ack);
 
       old_ack_wnd = tcp_old_ack_wnd (tc);
-      if (seq_lt (vnet_buffer (b)->tcp.ack_number, tc->snd_una - old_ack_wnd))
+      if (seq_lt (ack, tc->snd_una - old_ack_wnd))
 	return -1;
 
-      tcp_handle_old_ack (tc, &ac, vnet_buffer (b)->tcp.ack_number);
+      tcp_handle_old_ack (tc, &ac, ack);
 
       /* Don't drop yet */
       return 0;
@@ -905,21 +907,23 @@ tcp_rcv_ack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc, vlib_buffer_t * b,
    */
 
   prev_snd_wnd = tc->snd_wnd;
-  tcp_update_snd_wnd (tc, vnet_buffer (b)->tcp.seq_number,
-		      vnet_buffer (b)->tcp.ack_number,
+  tcp_update_snd_wnd (tc, vnet_buffer (b)->tcp.seq_number, ack,
 		      clib_net_to_host_u16 (th->window) << tc->snd_wscale);
 
-  tcp_ack_handle_feedback (tc, vnet_buffer (b)->tcp.ack_number, &ac);
+  tcp_ack_handle_feedback (tc, ack, &ac);
 
-  tc->snd_una = vnet_buffer (b)->tcp.ack_number;
+  tc->snd_una = ack;
   tcp_validate_txf_size (tc, ac.bytes_acked);
 
   if (ac.bytes_acked + ac.last_sacked_bytes)
     {
-      tcp_update_rtt (tc, &ac, vnet_buffer (b)->tcp.ack_number);
+      tcp_update_rtt (tc, &ac, ack);
       if (ac.bytes_acked)
 	tcp_program_dequeue (wrk, tc, &ac);
     }
+
+  if (ac.ack_flags & TCP_ACK_F_DETECT_LOSS)
+    tcp_loss_on_ack (tc, &ac);
 
   TCP_EVT (TCP_EVT_ACK_RCVD, tc, &ac);
 

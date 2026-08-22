@@ -121,6 +121,7 @@ void tcp_sack_recovery_exit (tcp_connection_t *tc, tcp_ack_flag_t spurious_flags
 void tcp_dsack_track_retransmit (tcp_connection_t *tc, u32 start, u32 end);
 u32 tcp_sack_list_bytes (tcp_connection_t * tc);
 void tcp_rcv_dsack (tcp_connection_t *tc, u32 ack, tcp_ack_ctx_t *ac);
+void tcp_loss_on_ack (tcp_connection_t *tc, tcp_ack_ctx_t *ac);
 void tcp_ack_handle_full_feedback (tcp_connection_t *tc, u32 packet_ack, u32 ack,
 				   tcp_ack_ctx_t *ac);
 
