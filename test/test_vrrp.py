@@ -534,7 +534,7 @@ class TestVRRP4(VppTestCase):
         vr.add_vpp_config()
 
         arp_req = Ether(dst="ff:ff:ff:ff:ff:ff", src=self.pg0.remote_mac) / ARP(
-            op=ARP.who_has,
+            op="who-has",
             pdst=vip,
             psrc=self.pg0.remote_ip4,
             hwsrc=self.pg0.remote_mac,
