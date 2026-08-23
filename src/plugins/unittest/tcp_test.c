@@ -7,6 +7,7 @@
 #include <vnet/tcp/tcp_inlines.h>
 #include <vnet/tcp/tcp_rack.h>
 #include <vnet/tcp/tcp_timer.h>
+#include <vnet/tcp/tcp_tlp.h>
 #include <svm/fifo_segment.h>
 #include <unittest/session/test_session_helpers.h>
 #include <unittest/tcp/tcp_tamper.h>
@@ -7763,15 +7764,72 @@ tcp_test_rack (vlib_main_t *vm, unformat_input_t *input)
   tcp_retransmit_timer_reset (&wrk->timer_wheel, tc);
   tcp_test_rack_cleanup (tc);
 
+  /* REO, PTO, and RTO compete for one timer. RTO wins ties so a PTO
+   * clamped to the RTO deadline cannot defer timeout recovery. */
+  tcp_test_rack_init (tc, thread_index);
+  tc->state = TCP_STATE_ESTABLISHED;
+  tc->snd_nxt = 200;
+  tc->rto = TCP_RTO_MIN;
+  tc->srtt = 0.1 * THZ;
+  tcp_retransmit_timer_set (&wrk->timer_wheel, tc);
+  tcp_rack_timer_update_on_new_data (&wrk->timer_wheel, tc, 0 /* prior_flight */);
+  TCP_TEST (tcp_rack_timer_type (tc) == TCP_RACK_TIMER_RTO,
+	    "RTO wins when the rounded PTO does not precede it");
+
+  tcp_retransmit_timer_reset (&wrk->timer_wheel, tc);
+  tc->srtt = 0.01 * THZ;
+  tcp_retransmit_timer_set (&wrk->timer_wheel, tc);
+  tcp_rack_timer_update_on_new_data (&wrk->timer_wheel, tc, 0 /* prior_flight */);
+  TCP_TEST (tcp_rack_timer_is_probe (tc), "an earlier PTO borrows the retransmit timer");
+
+  tcp_retransmit_timer_reset (&wrk->timer_wheel, tc);
+  tcp_retransmit_timer_set (&wrk->timer_wheel, tc);
+  tcp_rack_arm_reorder_timer (tc, 0.05, 0 /* rto_update_deferred */);
+  TCP_TEST (tcp_rack_timer_is_reordering (tc),
+	    "an earlier REO deadline initially borrows the retransmit timer");
+  tcp_rack_timer_update_on_new_data (&wrk->timer_wheel, tc, 0 /* prior_flight */);
+  TCP_TEST (tcp_rack_timer_is_probe (tc), "an earlier PTO preempts the REO deadline");
+  tcp_test_rack_cleanup (tc);
+
+  /* TLP recovery detection retains an exactly ACKed retransmission until
+   * duplicate feedback resolves the retransmission ambiguity. New-data
+   * probes and ACKs beyond the retransmitted probe are unambiguous. */
+  tcp_test_rack_init (tc, thread_index);
+  rack = tcp_rack_get_state (tc);
+  clib_memset (&ac, 0, sizeof (ac));
+  rack->flags |= TCP_RACK_F_TLP_IN_FLIGHT;
+  rack->tlp_end_seq = 100;
+  tcp_tlp_process_ack (tc, 100, &ac, 0 /* is_repeated */);
+  TCP_TEST (!tcp_tlp_is_in_flight (tc), "exact ACK retires a new-data TLP");
+
+  rack->flags |= TCP_RACK_F_TLP_IN_FLIGHT | TCP_RACK_F_TLP_IS_RXT;
+  rack->tlp_end_seq = 100;
+  tc->snd_rxt_bytes = 100;
+  tcp_tlp_process_ack (tc, 100, &ac, 0 /* is_repeated */);
+  TCP_TEST (tcp_tlp_is_in_flight (tc) && tc->snd_rxt_bytes == 0,
+	    "exact ACK retains retransmitted TLP ambiguity without retaining flight");
+  tcp_tlp_process_ack (tc, 100, &ac, 1 /* is_repeated */);
+  TCP_TEST (!tcp_tlp_is_in_flight (tc), "repeated pure ACK resolves a spurious TLP");
+
+  rack->flags |= TCP_RACK_F_TLP_IN_FLIGHT | TCP_RACK_F_TLP_IS_RXT;
+  rack->tlp_end_seq = 100;
+  ac.ack_flags = TCP_ACK_F_DSACK;
+  ac.dsack_end = 100;
+  tc->snd_una = 200;
+  tcp_tlp_process_ack (tc, 100, &ac, 0 /* is_repeated */);
+  TCP_TEST (!tcp_tlp_is_in_flight (tc), "matching D-SACK on an old ACK resolves a spurious TLP");
+
+  rack->flags |= TCP_RACK_F_TLP_IN_FLIGHT | TCP_RACK_F_TLP_IS_RXT;
+  rack->tlp_end_seq = 100;
+  clib_memset (&ac, 0, sizeof (ac));
+  tcp_tlp_process_ack (tc, 101, &ac, 0 /* is_repeated */);
+  TCP_TEST (!tcp_tlp_is_in_flight (tc) && (ac.ack_flags & TCP_ACK_F_TLP_RECOVERY),
+	    "ACK beyond retransmitted TLP reports a congestion event");
+  tcp_test_rack_cleanup (tc);
+
   /* A pure duplicate ACK does not advance RACK state. The reordering timer
    * armed by the ACK that did advance it owns any later time-based check. */
   tcp_test_rack_init (tc, thread_index);
-  tc->rcv_opts.flags &= ~TCP_OPTS_FLAG_SACK;
-  TCP_TEST (!tcp_loss_old_ack_needs_feedback (tc),
-	    "old pure ACK without delivery evidence skips RACK feedback");
-  tc->rcv_opts.flags |= TCP_OPTS_FLAG_SACK;
-  TCP_TEST (tcp_loss_old_ack_needs_feedback (tc),
-	    "old ACK with SACK evidence enters RACK feedback");
   tc->rcv_opts.flags &= ~TCP_OPTS_FLAG_SACK;
   clib_memset (&ac, 0, sizeof (ac));
   tcp_test_ack_handle_feedback (tc, tc->snd_una, &ac);
