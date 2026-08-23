@@ -608,32 +608,6 @@ tcp_cc_dsack_undo (tcp_connection_t *tc)
   tcp_dsack_recovery_clear (tc);
 }
 
-static inline u8
-tcp_loss_should_enter_recovery (tcp_connection_t *tc, tcp_ack_ctx_t *ac, u8 has_sack)
-{
-  if (!has_sack)
-    {
-      /* If of of the two conditions lower hold, reset dupacks because
-       * we're probably after timeout (RFC6582 heuristics).
-       * If Cumulative ack does not cover more than congestion threshold,
-       * and:
-       * 1) The following doesn't hold: The congestion window is greater
-       *    than SMSS bytes and the difference between highest_ack
-       *    and prev_highest_ack is at most 4*SMSS bytes
-       * 2) Echoed timestamp in the last non-dup ack does not equal the
-       *    stored timestamp
-       */
-      if (seq_leq (tc->snd_una, tc->snd_congestion) &&
-	  ((!(tc->cwnd > tc->snd_mss && ac->bytes_acked <= 4 * tc->snd_mss)) ||
-	   (tc->rcv_opts.tsecr != tc->tsecr_last_ack)))
-	{
-	  tc->rcv_dupacks = 0;
-	  return 0;
-	}
-    }
-  return tc->sack_sb.lost_bytes || tc->rcv_dupacks >= tc->sack_sb.reorder;
-}
-
 /* Tear down current recovery episode and notify cc algo. If spurious, undo congestion */
 static void
 tcp_loss_exit_recovery (tcp_connection_t *tc, tcp_ack_ctx_t *ac)
@@ -708,7 +682,7 @@ tcp_loss_try_exit_recovery (tcp_connection_t *tc, tcp_ack_ctx_t *ac, u8 has_sack
    * the next loss detection re-enter recovery with its own window reduction */
   tcp_loss_exit_recovery (tc, ac);
 
-  if (tcp_loss_should_enter_recovery (tc, ac, has_sack))
+  if (tcp_loss_should_reenter_recovery (tc, ac, has_sack))
     tcp_loss_enter_recovery (tc);
   else
     tcp_cc_rcv_ack (tc, ac);
@@ -751,12 +725,12 @@ tcp_cc_handle_event (tcp_connection_t *tc, tcp_ack_ctx_t *ac)
 	  tc->rcv_dupacks++;
 	  TCP_EVT (TCP_EVT_DUPACK_RCVD, tc, 1);
 	  tcp_cc_rcv_cong_ack (tc, TCP_CC_DUPACK, ac);
-
-	  if (tcp_loss_should_enter_recovery (tc, ac, has_sack))
-	    tcp_loss_enter_recovery (tc);
 	}
       else
 	tcp_cc_update (tc, ac);
+
+      if (tcp_loss_should_enter_recovery (tc, ac, has_sack))
+	tcp_loss_enter_recovery (tc);
 
       return;
     }
