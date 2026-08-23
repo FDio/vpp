@@ -107,20 +107,21 @@ typedef enum tcp_cfg_flag_
 } tcp_cfg_flags_e;
 
 /** TCP connection flags */
-#define foreach_tcp_connection_flag             \
-  _(SNDACK, "Send ACK")                         \
-  _(FINSNT, "FIN sent")				\
-  _(RECOVERY, "Recovery")                    	\
-  _(FAST_RECOVERY, "Fast Recovery")		\
-  _(DCNT_PENDING, "Disconnect pending")		\
-  _(HALF_OPEN_DONE, "Half-open completed")	\
-  _(FINPNDG, "FIN pending")			\
-  _(RXT_PENDING, "Retransmit pending")		\
-  _(FRXT_FIRST, "Retransmit first")		\
-  _(DEQ_PENDING, "Dequeue pending ")		\
-  _(PSH_PENDING, "PSH pending")			\
-  _(FINRCVD, "FIN received")			\
-  _(ZERO_RWND_SENT, "Zero RWND sent")		\
+#define foreach_tcp_connection_flag                                                                \
+  _ (SNDACK, "Send ACK")                                                                           \
+  _ (FINSNT, "FIN sent")                                                                           \
+  _ (RECOVERY, "Recovery")                                                                         \
+  _ (FAST_RECOVERY, "Fast Recovery")                                                               \
+  _ (DCNT_PENDING, "Disconnect pending")                                                           \
+  _ (HALF_OPEN_DONE, "Half-open completed")                                                        \
+  _ (FINPNDG, "FIN pending")                                                                       \
+  _ (RXT_PENDING, "Retransmit pending")                                                            \
+  _ (FRXT_FIRST, "Retransmit first")                                                               \
+  _ (DEQ_PENDING, "Dequeue pending ")                                                              \
+  _ (PSH_PENDING, "PSH pending")                                                                   \
+  _ (FINRCVD, "FIN received")                                                                      \
+  _ (ZERO_RWND_SENT, "Zero RWND sent")                                                             \
+  _ (TLP_IN_FLIGHT, "TLP in flight")
 
 typedef enum tcp_connection_flag_bits_
 {
@@ -257,6 +258,8 @@ typedef enum tcp_ack_flag_
   TCP_ACK_F_DETECT_LOSS = 1 << 5,
   TCP_ACK_F_DSACK_MATCHED = 1 << 6,
   TCP_ACK_F_REO_WND_UPDATED = 1 << 7,
+  TCP_ACK_F_TLP_RECOVERY = 1 << 8,
+  TCP_ACK_F_REPEATED = 1 << 9,
   TCP_ACK_F_SPURIOUS = TCP_ACK_F_DSACK_SPURIOUS | TCP_ACK_F_EIFEL_SPURIOUS,
 } __clib_packed tcp_ack_flag_t;
 
@@ -321,6 +324,7 @@ typedef struct tcp_ack_ctx_
   u32 last_lost;	    /**< Bytes lost now */
   tcp_ack_flag_t ack_flags; /**< Flags describing the current ACK */
   tcp_bts_flags_t flags;    /**< Rate sample flags from bt sample */
+  u32 dsack_end;	    /**< End sequence of the received D-SACK */
 
   /* Delivery-rate sample populated only when byte tracking is enabled */
   u64 prior_delivered;		/**< Delivered of sample used for rate, i.e.,
