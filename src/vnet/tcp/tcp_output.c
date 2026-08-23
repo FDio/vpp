@@ -5,6 +5,7 @@
 
 #include <vnet/tcp/tcp.h>
 #include <vnet/tcp/tcp_inlines.h>
+#include <vnet/tcp/tcp_tlp.h>
 #include <math.h>
 #include <vnet/ip/ip4_inlines.h>
 #include <vnet/ip/ip6_inlines.h>
@@ -984,7 +985,9 @@ tcp_session_push_header (transport_connection_t *tconn, vlib_buffer_t **bs, u32 
 {
   tcp_connection_t *tc = (tcp_connection_t *) tconn;
   tcp_push_hdr_flags_t push_hdr_flags = TCP_PUSH_HDR_F_BURST | TCP_PUSH_HDR_F_UPDATE_SND_NXT;
-  u32 max_dequeue = tc->snd_nxt - tc->snd_una + available_bytes;
+  u32 prior_flight = tc->snd_nxt - tc->snd_una;
+  u32 max_dequeue = prior_flight + available_bytes;
+  u8 timer_active, is_rack;
 
   if (PREDICT_FALSE (tc->cfg_flags & TCP_CFG_F_TSO))
     push_hdr_flags |= TCP_PUSH_HDR_F_MAYBE_GSO;
@@ -1019,11 +1022,19 @@ tcp_session_push_header (transport_connection_t *tconn, vlib_buffer_t **bs, u32 
       tc->rtt_ts = tcp_time_now_us (tc->c_thread_index);
       tc->rtt_seq = tc->snd_nxt;
     }
-  if (PREDICT_FALSE (!tcp_timer_is_active (tc, TCP_TIMER_RETRANSMIT)))
+  timer_active = tcp_timer_is_active (tc, TCP_TIMER_RETRANSMIT);
+  is_rack = tcp_rack_enabled (tc);
+  if (PREDICT_FALSE (!timer_active | is_rack))
     {
       tcp_worker_ctx_t *wrk = tcp_get_worker (tc->c_thread_index);
-      tcp_retransmit_timer_set (&wrk->timer_wheel, tc);
-      tc->rto_boff = 0;
+
+      if (!timer_active)
+	{
+	  tcp_retransmit_timer_set (&wrk->timer_wheel, tc);
+	  tc->rto_boff = 0;
+	}
+      if (is_rack)
+	tcp_rack_timer_update_on_new_data (&wrk->timer_wheel, tc, prior_flight);
     }
   return 0;
 }
@@ -1299,6 +1310,73 @@ tcp_check_syn_flood (tcp_connection_t *tc)
   args.action_index = SESSION_RULES_TABLE_ACTION_DROP;
   args.tag = 0;
   tm->sdl_cb (&args);
+}
+
+void
+tcp_tlp_send_probe (tcp_connection_t *tc)
+{
+  tcp_worker_ctx_t *wrk = tcp_get_worker (tc->c_thread_index);
+  tcp_rack_state_t *rack = tcp_rack_get_state (tc);
+  u32 outstanding, max_deq, available, offset, n_bytes = 0;
+  u32 interval = clib_max ((u32) tc->rto * TCP_TO_TIMER_TICK, 1);
+  vlib_main_t *vm = wrk->vm;
+  vlib_buffer_t *b = 0;
+  u8 is_retrans = 0;
+  u32 bi;
+
+  outstanding = tc->snd_nxt - tc->snd_una;
+  max_deq = transport_max_tx_dequeue (&tc->connection);
+
+  /* Prefer one unsent segment when the peer's receive window permits it. */
+  if (max_deq > outstanding && tc->snd_wnd > outstanding)
+    {
+      available = clib_min (max_deq - outstanding, tc->snd_wnd - outstanding);
+      tcp_bt_check_app_limited (tc);
+      n_bytes =
+	tcp_prepare_segment (wrk, tc, outstanding, clib_min (available, (u32) tc->snd_mss), &b);
+      if (n_bytes)
+	{
+	  bi = vlib_get_buffer_index (vm, b);
+	  tcp_enqueue_to_output (wrk, b, bi, tc->c_is_ip4);
+	  tcp_bt_track_tx (tc, n_bytes);
+	  tc->snd_nxt += n_bytes;
+	  tcp_validate_txf_size (tc, tc->snd_nxt - tc->snd_una);
+	  tcp_cc_update_cwnd_limited (tc, max_deq);
+	  if (tc->rtt_ts == 0)
+	    {
+	      tc->rtt_ts = tcp_time_now_us (tc->c_thread_index);
+	      tc->rtt_seq = tc->snd_nxt;
+	    }
+	}
+    }
+
+  if (!n_bytes && outstanding)
+    {
+      u32 probe_len = clib_min ((u32) tc->snd_mss, outstanding);
+
+      offset = outstanding - probe_len;
+      n_bytes = tcp_prepare_retransmit_segment (wrk, tc, offset, probe_len, &b);
+      if (n_bytes)
+	{
+	  bi = vlib_get_buffer_index (vm, b);
+	  tcp_enqueue_to_output (wrk, b, bi, tc->c_is_ip4);
+	  is_retrans = 1;
+	}
+    }
+
+  if (n_bytes)
+    {
+      if (transport_connection_is_tx_paced (&tc->connection))
+	transport_connection_tx_pacer_update_bytes (&tc->connection, n_bytes);
+      rack->flags = (rack->flags & ~(TCP_RACK_F_TLP_RTT | TCP_RACK_F_TLP_IS_RXT)) |
+		    (is_retrans ? TCP_RACK_F_TLP_IS_RXT : 0);
+      rack->flags |= TCP_RACK_F_TLP_IN_FLIGHT;
+      rack->tlp_end_seq = tc->snd_nxt;
+    }
+
+  /* A PTO always gives way to a fresh RTO, whether or not probe allocation
+   * or transmission succeeded. */
+  tcp_retransmit_timer_reschedule (&wrk->timer_wheel, tc, interval);
 }
 
 void

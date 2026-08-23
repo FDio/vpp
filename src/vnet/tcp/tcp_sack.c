@@ -5,6 +5,7 @@
 
 #include <vnet/tcp/tcp_sack.h>
 #include <vnet/tcp/tcp_bt.h>
+#include <vnet/tcp/tcp_tlp.h>
 
 static void
 scoreboard_remove_hole (sack_scoreboard_t * sb, sack_scoreboard_hole_t * hole)
@@ -886,6 +887,10 @@ tcp_dsack_finalize (tcp_connection_t *tc)
 static void
 tcp_dsack_update (tcp_connection_t *tc, const sack_block_t *dsack, tcp_ack_ctx_t *ac)
 {
+  ac->dsack_end = dsack->end;
+  if (tcp_tlp_dsack_matches (tc, dsack))
+    return;
+
   tcp_dsack_account (tc, dsack, ac);
   ac->ack_flags |= tcp_dsack_finalize (tc);
 }

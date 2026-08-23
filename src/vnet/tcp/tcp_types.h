@@ -257,6 +257,7 @@ typedef enum tcp_ack_flag_
   TCP_ACK_F_DETECT_LOSS = 1 << 5,
   TCP_ACK_F_DSACK_MATCHED = 1 << 6,
   TCP_ACK_F_REO_WND_UPDATED = 1 << 7,
+  TCP_ACK_F_TLP_RECOVERY = 1 << 8,
   TCP_ACK_F_SPURIOUS = TCP_ACK_F_DSACK_SPURIOUS | TCP_ACK_F_EIFEL_SPURIOUS,
 } __clib_packed tcp_ack_flag_t;
 
@@ -321,6 +322,7 @@ typedef struct tcp_ack_ctx_
   u32 last_lost;	    /**< Bytes lost now */
   tcp_ack_flag_t ack_flags; /**< Flags describing the current ACK */
   tcp_bts_flags_t flags;    /**< Rate sample flags from bt sample */
+  u32 dsack_end;	    /**< End sequence of the received D-SACK */
 
   /* Delivery-rate sample populated only when byte tracking is enabled */
   u64 prior_delivered;		/**< Delivered of sample used for rate, i.e.,
