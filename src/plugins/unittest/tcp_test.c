@@ -3296,7 +3296,7 @@ tcp_test_headrtx_setup_rpc (void *argp)
 /*
  * Regression test for "reduce loss window once per rto congestion event".
  *
- * On each rto tcp_cc_rxt_timeout re-sets the loss cwnd, but the once-per-event
+ * On each rto tcp_loss_on_rto re-sets the loss cwnd, but the once-per-event
  * reduction (ssthresh via tcp_cc_congestion, the prev_cwnd/prev_ssthresh undo
  * snapshot, and the snd_rxt_ts Eifel reference) must run only for the rto that
  * starts the event. It must NOT re-run for a subsequent rto of the same,
@@ -3660,7 +3660,7 @@ tcp_test_rto_reduce_once_e2e (vlib_main_t *vm, unformat_input_t *input)
 
   /*
    * Spurious-retransmit detection predicate (RFC 3522 Sec. 3.2 Eifel),
-   * tcp_cc_is_spurious_retransmit: on a cumulative ack in recovery, decides
+   * tcp_loss_is_eifel_spurious: on a cumulative ack in recovery, decides
    * whether the window reduction was spurious (reordered/delayed data, not real
    * loss) and should be undone. Base state below is spurious; each case flips
    * one term. Spurious requires: retransmit stamped, part of the flight still
@@ -3692,7 +3692,7 @@ tcp_test_rto_reduce_once_e2e (vlib_main_t *vm, unformat_input_t *input)
 
     /* Base: all conditions met -> spurious. */
     ARM_SPURIOUS ();
-    if (!TCP_TEST_I ((tcp_cc_is_spurious_retransmit (stc, ac)),
+    if (!TCP_TEST_I ((tcp_loss_is_eifel_spurious (stc, ac)),
 		     "eifel: spurious on partial cumulative ack, tsecr < snd_rxt_ts, "
 		     "no loss"))
       {
@@ -3703,8 +3703,7 @@ tcp_test_rto_reduce_once_e2e (vlib_main_t *vm, unformat_input_t *input)
     /* Also valid for rto recovery (TCP_CONN_RECOVERY), not just fast recovery. */
     ARM_SPURIOUS ();
     stc->flags = TCP_CONN_RECOVERY;
-    if (!TCP_TEST_I ((tcp_cc_is_spurious_retransmit (stc, ac)),
-		     "eifel: also fires for rto recovery"))
+    if (!TCP_TEST_I ((tcp_loss_is_eifel_spurious (stc, ac)), "eifel: also fires for rto recovery"))
       {
 	rv = 1;
 	goto cleanup;
@@ -3715,7 +3714,7 @@ tcp_test_rto_reduce_once_e2e (vlib_main_t *vm, unformat_input_t *input)
     ARM_SPURIOUS ();
     stc->flags = TCP_CONN_RECOVERY;
     stc->sack_sb.lost_bytes = mss;
-    if (!TCP_TEST_I ((tcp_cc_is_spurious_retransmit (stc, ac)),
+    if (!TCP_TEST_I ((tcp_loss_is_eifel_spurious (stc, ac)),
 		     "eifel: rto retransmit spurious despite outstanding loss"))
       {
 	rv = 1;
@@ -3725,7 +3724,7 @@ tcp_test_rto_reduce_once_e2e (vlib_main_t *vm, unformat_input_t *input)
     /* Negative: no retransmit stamped (snd_rxt_ts == 0), nothing to undo. */
     ARM_SPURIOUS ();
     stc->snd_rxt_ts = 0;
-    if (!TCP_TEST_I ((!tcp_cc_is_spurious_retransmit (stc, ac)),
+    if (!TCP_TEST_I ((!tcp_loss_is_eifel_spurious (stc, ac)),
 		     "eifel: not spurious without a retransmit timestamp"))
       {
 	rv = 1;
@@ -3736,7 +3735,7 @@ tcp_test_rto_reduce_once_e2e (vlib_main_t *vm, unformat_input_t *input)
      * loss remains outstanding. The response handles that as a fresh event. */
     ARM_SPURIOUS ();
     stc->sack_sb.lost_bytes = mss;
-    if (!TCP_TEST_I ((tcp_cc_is_spurious_retransmit (stc, ac)),
+    if (!TCP_TEST_I ((tcp_loss_is_eifel_spurious (stc, ac)),
 		     "eifel: fast retransmit spurious despite other outstanding loss"))
       {
 	rv = 1;
@@ -3747,7 +3746,7 @@ tcp_test_rto_reduce_once_e2e (vlib_main_t *vm, unformat_input_t *input)
      * RFC 3522 Sec. 3.2 (e.g. rto from losing all acks) -> keep the reduction. */
     ARM_SPURIOUS ();
     stc->snd_una = stc->snd_congestion;
-    if (!TCP_TEST_I ((!tcp_cc_is_spurious_retransmit (stc, ac)),
+    if (!TCP_TEST_I ((!tcp_loss_is_eifel_spurious (stc, ac)),
 		     "eifel: not spurious on a full-flight ack"))
       {
 	rv = 1;
@@ -3758,7 +3757,7 @@ tcp_test_rto_reduce_once_e2e (vlib_main_t *vm, unformat_input_t *input)
      * retransmit -> the retransmit was needed). */
     ARM_SPURIOUS ();
     stc->rcv_opts.tsecr = stc->snd_rxt_ts;
-    if (!TCP_TEST_I ((!tcp_cc_is_spurious_retransmit (stc, ac)),
+    if (!TCP_TEST_I ((!tcp_loss_is_eifel_spurious (stc, ac)),
 		     "eifel: not spurious when tsecr >= snd_rxt_ts"))
       {
 	rv = 1;
@@ -3768,7 +3767,7 @@ tcp_test_rto_reduce_once_e2e (vlib_main_t *vm, unformat_input_t *input)
     /* Negative: no timestamp option -> Eifel not applicable. */
     ARM_SPURIOUS ();
     stc->rcv_opts.flags = 0;
-    if (!TCP_TEST_I ((!tcp_cc_is_spurious_retransmit (stc, ac)),
+    if (!TCP_TEST_I ((!tcp_loss_is_eifel_spurious (stc, ac)),
 		     "eifel: not spurious without the timestamp option"))
       {
 	rv = 1;

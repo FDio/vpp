@@ -609,7 +609,7 @@ tcp_cc_dsack_undo (tcp_connection_t *tc)
 }
 
 static inline u8
-tcp_should_fastrecover (tcp_connection_t *tc, tcp_ack_ctx_t *ac, u8 has_sack)
+tcp_loss_should_enter_recovery (tcp_connection_t *tc, tcp_ack_ctx_t *ac, u8 has_sack)
 {
   if (!has_sack)
     {
@@ -636,7 +636,7 @@ tcp_should_fastrecover (tcp_connection_t *tc, tcp_ack_ctx_t *ac, u8 has_sack)
 
 /* Tear down current recovery episode and notify cc algo. If spurious, undo congestion */
 static void
-tcp_cc_exit_recovery (tcp_connection_t *tc, tcp_ack_ctx_t *ac)
+tcp_loss_exit_recovery (tcp_connection_t *tc, tcp_ack_ctx_t *ac)
 {
   tcp_ack_flag_t spurious_flags = ac->ack_flags & TCP_ACK_F_SPURIOUS;
 
@@ -670,7 +670,7 @@ tcp_cc_exit_recovery (tcp_connection_t *tc, tcp_ack_ctx_t *ac)
 /* Process (re)transmit feedback. Output path uses this to decide how much more data to release into
  * the network */
 always_inline void
-tcp_cc_account_recovery_ack (tcp_connection_t *tc, tcp_ack_ctx_t *ac, u8 has_sack)
+tcp_loss_account_recovery_ack (tcp_connection_t *tc, tcp_ack_ctx_t *ac, u8 has_sack)
 {
   if (has_sack)
     {
@@ -701,15 +701,15 @@ tcp_cc_account_recovery_ack (tcp_connection_t *tc, tcp_ack_ctx_t *ac, u8 has_sac
 
 /* Exit recovery and re-enter if loss remains. */
 static void
-tcp_cc_try_exit_recovery (tcp_connection_t *tc, tcp_ack_ctx_t *ac, u8 has_sack)
+tcp_loss_try_exit_recovery (tcp_connection_t *tc, tcp_ack_ctx_t *ac, u8 has_sack)
 {
   /* Any loss still outstanding above snd_congestion was sent at the
    * already-reduced rate, so it is a fresh congestion event: exit here and let
    * the next loss detection re-enter recovery with its own window reduction */
-  tcp_cc_exit_recovery (tc, ac);
+  tcp_loss_exit_recovery (tc, ac);
 
-  if (tcp_should_fastrecover (tc, ac, has_sack))
-    tcp_cc_enter_recovery (tc);
+  if (tcp_loss_should_enter_recovery (tc, ac, has_sack))
+    tcp_loss_enter_recovery (tc);
   else
     tcp_cc_rcv_ack (tc, ac);
 }
@@ -752,8 +752,8 @@ tcp_cc_handle_event (tcp_connection_t *tc, tcp_ack_ctx_t *ac)
 	  TCP_EVT (TCP_EVT_DUPACK_RCVD, tc, 1);
 	  tcp_cc_rcv_cong_ack (tc, TCP_CC_DUPACK, ac);
 
-	  if (tcp_should_fastrecover (tc, ac, has_sack))
-	    tcp_cc_enter_recovery (tc);
+	  if (tcp_loss_should_enter_recovery (tc, ac, has_sack))
+	    tcp_loss_enter_recovery (tc);
 	}
       else
 	tcp_cc_update (tc, ac);
@@ -769,11 +769,11 @@ tcp_cc_handle_event (tcp_connection_t *tc, tcp_ack_ctx_t *ac)
    * or D-SACK proves the reduction spurious. */
   if (seq_geq (tc->snd_una, tc->snd_congestion) || (ac->ack_flags & TCP_ACK_F_DSACK_SPURIOUS))
     {
-      tcp_cc_try_exit_recovery (tc, ac, has_sack);
+      tcp_loss_try_exit_recovery (tc, ac, has_sack);
       return;
     }
 
-  tcp_cc_account_recovery_ack (tc, ac, has_sack);
+  tcp_loss_account_recovery_ack (tc, ac, has_sack);
 
   tcp_program_retransmit (tc);
 
@@ -794,10 +794,10 @@ tcp_cc_handle_event (tcp_connection_t *tc, tcp_ack_ctx_t *ac)
   /* RFC 3522: Eifel spurious retransmit check */
   if (PREDICT_FALSE (tc->snd_rxt_ts))
     {
-      if (tcp_cc_is_spurious_retransmit (tc, ac))
+      if (tcp_loss_is_eifel_spurious (tc, ac))
 	{
 	  ac->ack_flags |= TCP_ACK_F_EIFEL_SPURIOUS;
-	  tcp_cc_try_exit_recovery (tc, ac, has_sack);
+	  tcp_loss_try_exit_recovery (tc, ac, has_sack);
 	  return;
 	}
       tc->snd_rxt_ts = 0;
