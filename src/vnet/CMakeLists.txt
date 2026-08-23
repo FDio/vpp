@@ -586,7 +586,7 @@ list(APPEND VNET_SOURCES
   tcp/tcp_syn_filter4.c
   tcp/tcp_output.c
   tcp/tcp_input.c
-  tcp/tcp_cc.c
+  tcp/tcp_loss.c
   tcp/tcp_newreno.c
   tcp/tcp_bt.c
   tcp/tcp_cli.c
@@ -610,6 +610,7 @@ list(APPEND VNET_HEADERS
   tcp/tcp_cc.h
   tcp/tcp_debug.h
   tcp/tcp_inlines.h
+  tcp/tcp_loss.h
   tcp/tcp_sack.h
   tcp/tcp_sdl.h
   tcp/tcp_types.h
