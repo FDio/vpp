@@ -19,6 +19,17 @@
  * 		initialized
  */
 void tcp_bt_init (tcp_connection_t * tc);
+
+/** Initialize a byte tracker with contiguous private extension storage. */
+void tcp_bt_init_opaque (tcp_connection_t *tc, uword opaque_size);
+
+static_always_inline void *
+tcp_bt_opaque (tcp_connection_t *tc)
+{
+  ASSERT (tc->bt != 0);
+  return tc->bt + 1;
+}
+
 /**
  * Byte tracker cleanup
  *
