@@ -5,6 +5,7 @@
 
 #include <vnet/tcp/tcp.h>
 #include <vnet/tcp/tcp_rack.h>
+#include <vnet/tcp/tcp_tlp.h>
 #include <vnet/tcp/tcp_inlines.h>
 
 static void
@@ -80,7 +81,11 @@ tcp_loss_recovery_state_is_sane (tcp_connection_t *tc)
 u8
 tcp_loss_retransmit_timer_expired (tcp_connection_t *tc)
 {
-  return tcp_rack_enabled (tc) && tcp_rack_retransmit_timer_expired (tc);
+  if (!tcp_rack_enabled (tc))
+    return 0;
+  if (tcp_loss_timer_is_probe (tc))
+    return tcp_tlp_retransmit_timer_expired (tc);
+  return tcp_rack_retransmit_timer_expired (tc);
 }
 
 void
@@ -170,6 +175,18 @@ tcp_loss_dsack_undo (tcp_connection_t *tc)
   tcp_cc_congestion_undo (tc);
   tcp_connection_tx_pacer_reset (tc, tc->cwnd, 0 /* start bucket */);
   tcp_dsack_recovery_clear (tc);
+}
+
+void
+tcp_loss_tlp_recovery (tcp_connection_t *tc)
+{
+  ASSERT (!tcp_in_cong_recovery (tc));
+
+  tc->prev_ssthresh = tc->ssthresh;
+  tc->prev_cwnd = tc->cwnd;
+  tcp_cc_congestion (tc);
+  tcp_cc_recovered (tc);
+  tcp_connection_tx_pacer_reset (tc, tc->cwnd, 0 /* start bucket */);
 }
 
 static u8

@@ -8,10 +8,11 @@
 
 #include <vnet/tcp/tcp_types.h>
 
-/* RACK timer hooks. All callers are guarded by TCP_CFG_F_RACK. */
+/* RACK-TLP timer hooks. All callers are guarded by TCP_CFG_F_RACK. */
 void tcp_rack_timer_rto_set (tcp_timer_wheel_t *tw, tcp_connection_t *tc, u32 interval);
 void tcp_rack_timer_reset (tcp_connection_t *tc);
 u8 tcp_rack_timer_rto_update (tcp_timer_wheel_t *tw, tcp_connection_t *tc, u32 interval);
+u8 tcp_tlp_timer_update (tcp_timer_wheel_t *tw, tcp_connection_t *tc);
 
 always_inline tcp_loss_timer_type_t
 tcp_loss_timer_type (tcp_connection_t *tc)
@@ -25,10 +26,16 @@ tcp_loss_timer_is_reordering (tcp_connection_t *tc)
   return tcp_loss_timer_type (tc) == TCP_LOSS_TIMER_REO;
 }
 
+always_inline u8
+tcp_loss_timer_is_probe (tcp_connection_t *tc)
+{
+  return tcp_loss_timer_type (tc) == TCP_LOSS_TIMER_PTO;
+}
+
 always_inline void
 tcp_loss_timer_set_type (tcp_connection_t *tc, tcp_loss_timer_type_t type)
 {
-  ASSERT (type == TCP_LOSS_TIMER_RTO || type == TCP_LOSS_TIMER_REO);
+  ASSERT (type == TCP_LOSS_TIMER_RTO || type == TCP_LOSS_TIMER_REO || type == TCP_LOSS_TIMER_PTO);
   tc->flags = (tc->flags & ~TCP_CONN_LOSS_TIMER_MASK) | type;
 }
 
@@ -134,9 +141,11 @@ tcp_retransmit_timer_update (tcp_timer_wheel_t * tw, tcp_connection_t * tc)
     {
       u32 interval = clib_max ((u32) tc->rto * TCP_TO_TIMER_TICK, 1);
 
-      if (PREDICT_FALSE (tc->cfg_flags & TCP_CFG_F_RACK) &&
-	  tcp_rack_timer_rto_update (tw, tc, interval))
-	return;
+      if (PREDICT_FALSE (tc->cfg_flags & TCP_CFG_F_RACK))
+	{
+	  if (tcp_rack_timer_rto_update (tw, tc, interval) || tcp_tlp_timer_update (tw, tc))
+	    return;
+	}
       tcp_timer_update (tw, tc, TCP_TIMER_RETRANSMIT, interval);
     }
 }
