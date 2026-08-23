@@ -10,6 +10,7 @@
 #include <vnet/ip/ip.h>
 #include <vnet/session/session.h>
 #include <vnet/tcp/tcp_types.h>
+#include <vnet/tcp/tcp_loss.h>
 #include <vnet/tcp/tcp_timer.h>
 #include <vnet/tcp/tcp_debug.h>
 #include <vnet/tcp/tcp_sack.h>

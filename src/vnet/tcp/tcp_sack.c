@@ -1134,15 +1134,6 @@ tcp_scoreboard_apply_ack (tcp_connection_t *tc, u32 ack, u32 high_sacked, tcp_ac
   ac->acked_and_sacked = ac->bytes_acked + ac->last_sacked_bytes - ac->last_bytes_delivered;
 }
 
-void
-tcp_loss_on_ack (tcp_connection_t *tc, tcp_ack_ctx_t *ac)
-{
-  ASSERT (ac->ack_flags & TCP_ACK_F_DETECT_LOSS);
-  ASSERT (tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER);
-
-  tcp_bt_loss_on_ack (tc, ac);
-}
-
 static void
 tcp_sack_normalize (tcp_connection_t *tc, u32 packet_ack, sack_block_t *dsack, u32 *high_sacked,
 		    tcp_ack_ctx_t *ac)
