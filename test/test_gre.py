@@ -7,6 +7,12 @@ from scapy.packet import Raw
 from scapy.layers.l2 import Ether, Dot1Q, GRE
 from scapy.layers.inet import IP, UDP
 from scapy.layers.inet6 import IPv6
+
+# VPP can push an MPLS label into a GRE tunnel (the labelled-route case
+# in test_gre). Without this binding, scapy leaves the inner packet as
+# Raw and rx[GRE][IP] fails. Import it explicitly instead of relying on
+# another test module having imported it into the interpreter first.
+from scapy.contrib.mpls import MPLS  # noqa: F401
 from scapy.volatile import RandMAC, RandIP
 
 from framework import VppTestCase

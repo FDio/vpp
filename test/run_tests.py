@@ -13,6 +13,7 @@ import traceback
 import signal
 import re
 import warnings
+import multiprocessing
 from multiprocessing import Process, Pipe, get_context
 from multiprocessing.queues import Queue
 from multiprocessing.managers import BaseManager
@@ -1239,6 +1240,18 @@ def parse_results(results, write_failed_file=True):
 
 
 if __name__ == "__main__":
+    # The test framework is built around fork semantics: worker processes
+    # are forked from the controller, so they inherit its already-imported
+    # modules and global state (scapy layer bindings, class monkey-patches,
+    # preloaded VPP API tables), and RemoteClass shares a Pipe with its
+    # child through fork rather than pickling.
+    # Python 3.14 changed the default multiprocessing start method on Linux
+    # from "fork" to "forkserver", which spawns fresh workers that lack that
+    # inherited state and cannot receive a RemoteClass by pickling. Pin fork
+    # so behavior is identical across Python versions.
+    if "fork" in multiprocessing.get_all_start_methods():
+        multiprocessing.set_start_method("fork", force=True)
+
     print(f"Config is: {config}")
 
     if config.list:
