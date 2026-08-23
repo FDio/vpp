@@ -14,6 +14,7 @@ void tcp_loss_on_rto (tcp_connection_t *tc);
 void tcp_loss_enter_recovery (tcp_connection_t *tc);
 void tcp_loss_exit_recovery (tcp_connection_t *tc, tcp_ack_ctx_t *ac);
 void tcp_loss_dsack_undo (tcp_connection_t *tc);
+void tcp_loss_tlp_recovery (tcp_connection_t *tc, tcp_ack_ctx_t *ac);
 void tcp_loss_recovery_state_sync (tcp_connection_t *tc);
 u8 tcp_loss_recovery_state_is_sane (tcp_connection_t *tc);
 u8 tcp_loss_retransmit_timer_expired (tcp_connection_t *tc);

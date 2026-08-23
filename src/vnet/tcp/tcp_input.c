@@ -8,7 +8,7 @@
 #include <vnet/fib/ip6_fib.h>
 #include <vnet/tcp/tcp.h>
 #include <vnet/tcp/tcp_inlines.h>
-#include <vnet/tcp/tcp_rack.h>
+#include <vnet/tcp/tcp_tlp.h>
 #include <vnet/session/session.h>
 #include <math.h>
 
@@ -664,8 +664,9 @@ tcp_cc_handle_event (tcp_connection_t *tc, tcp_ack_ctx_t *ac)
 {
   u8 has_sack = tcp_opts_sack_permitted (&tc->rcv_opts);
 
-  /* Lost FINs and SACK reneging require timer based retransmits. */
-  if (PREDICT_FALSE (tcp_is_lost_fin (tc) || tcp_scoreboard_is_reneging (&tc->sack_sb)))
+  /* Reneging and lost FINs require timer-based retransmits. A FIN is sent only
+   * after all data is acked, so neither reneging nor TLP recovery applies. */
+  if (PREDICT_FALSE (tcp_scoreboard_is_reneging (&tc->sack_sb) || tcp_is_lost_fin (tc)))
     {
       tcp_loss_recovery_state_sync (tc);
       return;
@@ -676,6 +677,12 @@ tcp_cc_handle_event (tcp_connection_t *tc, tcp_ack_ctx_t *ac)
    */
   if (!tcp_in_cong_recovery (tc))
     {
+      if (ac->ack_flags & TCP_ACK_F_TLP_RECOVERY)
+	{
+	  tcp_loss_tlp_recovery (tc, ac);
+	  return;
+	}
+
       if (ac->ack_flags & TCP_ACK_F_DSACK_SPURIOUS)
 	tcp_loss_dsack_undo (tc);
 
@@ -756,24 +763,30 @@ static_always_inline tcp_ack_flag_t
 tcp_ack_classify_duplicate (tcp_connection_t *tc, vlib_buffer_t *b, u32 prev_snd_wnd,
 			    tcp_ack_ctx_t *ac)
 {
+  tcp_ack_flag_t flags = 0;
   u8 repeated;
 
   repeated = !ac->bytes_acked && vnet_buffer (b)->tcp.seq_end == vnet_buffer (b)->tcp.seq_number &&
 	     prev_snd_wnd == tc->snd_wnd;
 
+  flags |= repeated ? TCP_ACK_F_REPEATED : 0;
   /* Per RFC 6675, an ACK that SACKs new data is a DupACK as well. A
-   * repeated ACK additionally needs outstanding data for congestion control. */
-  return (ac->last_sacked_bytes || (repeated && seq_gt (tc->snd_nxt, tc->snd_una))) ?
-	   TCP_ACK_F_DUPACK :
-	   0;
+   * repeated ACK additionally needs outstanding data for congestion
+   * control, but not for TLP probe outcome detection. */
+  flags |= (ac->last_sacked_bytes || (repeated && seq_gt (tc->snd_nxt, tc->snd_una))) ?
+	     TCP_ACK_F_DUPACK :
+	     0;
+
+  return flags;
 }
 
 /** Checks if an ACK needs loss or congestion slow-path processing. */
 static_always_inline u32
 tcp_ack_needs_slow_path (tcp_connection_t *tc, tcp_ack_ctx_t *ac)
 {
-  return (ac->ack_flags & (TCP_ACK_F_DUPACK | TCP_ACK_F_DSACK_SPURIOUS | TCP_ACK_F_DETECT_LOSS)) ||
-	 tcp_in_cong_recovery (tc);
+  return (ac->ack_flags & (TCP_ACK_F_DUPACK | TCP_ACK_F_DSACK_SPURIOUS | TCP_ACK_F_DETECT_LOSS |
+			   TCP_ACK_F_TLP_RECOVERY)) |
+	 (tc->flags & (TCP_CONN_FAST_RECOVERY | TCP_CONN_RECOVERY | TCP_CONN_TLP_PENDING));
 }
 
 static_always_inline u8
@@ -781,7 +794,7 @@ tcp_old_ack_is_cc_event (tcp_connection_t *tc, tcp_ack_ctx_t *ac)
 {
   /* A D-SACK-only old ACK is not a recovery duplicate ACK unless it also
    * carries new SACK or loss evidence. */
-  return ac->last_lost || (ac->ack_flags & TCP_ACK_F_DSACK_SPURIOUS) ||
+  return ac->last_lost || (ac->ack_flags & (TCP_ACK_F_DSACK_SPURIOUS | TCP_ACK_F_TLP_RECOVERY)) ||
 	 (tcp_in_cong_recovery (tc) &&
 	  (!(ac->ack_flags & TCP_ACK_F_DSACK) || ac->last_sacked_bytes));
 }
@@ -796,6 +809,9 @@ tcp_handle_old_ack (tcp_connection_t *tc, tcp_ack_ctx_t *ac, u32 ack)
       if (tcp_opts_sack (&tc->rcv_opts))
 	tcp_rcv_dsack (tc, ack, ac);
 
+      if (PREDICT_FALSE (tcp_tlp_is_pending (tc)))
+	tcp_tlp_process_ack (tc, ack, ac);
+
       if (ac->ack_flags & TCP_ACK_F_DSACK_SPURIOUS)
 	tcp_loss_dsack_undo (tc);
       return;
@@ -808,6 +824,9 @@ tcp_handle_old_ack (tcp_connection_t *tc, tcp_ack_ctx_t *ac, u32 ack)
   if (ac->last_sacked_bytes)
     ac->ack_flags |= TCP_ACK_F_DUPACK;
 
+  if (PREDICT_FALSE (tcp_tlp_is_pending (tc)))
+    tcp_tlp_process_ack (tc, ack, ac);
+
   if (tcp_old_ack_is_cc_event (tc, ac))
     tcp_cc_handle_event (tc, ac);
 }
@@ -816,8 +835,8 @@ tcp_handle_old_ack (tcp_connection_t *tc, tcp_ack_ctx_t *ac, u32 ack)
  * Process incoming ACK
  */
 static int
-tcp_rcv_ack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc, vlib_buffer_t * b,
-	     tcp_header_t * th, u32 * error)
+tcp_rcv_ack (tcp_worker_ctx_t *wrk, tcp_connection_t *tc, vlib_buffer_t *b, tcp_header_t *th,
+	     u32 *error)
 {
   u32 ack = vnet_buffer (b)->tcp.ack_number, prev_snd_wnd;
   tcp_ack_ctx_t ac = { 0 };
@@ -882,6 +901,9 @@ tcp_rcv_ack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc, vlib_buffer_t * b,
 
   if (tcp_ack_needs_slow_path (tc, &ac))
     {
+      if (tcp_tlp_is_pending (tc))
+	tcp_tlp_process_ack (tc, ack, &ac);
+
       if (ac.ack_flags & TCP_ACK_F_DETECT_LOSS)
 	tcp_loss_on_ack (tc, &ac);
 

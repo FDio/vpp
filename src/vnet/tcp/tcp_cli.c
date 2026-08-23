@@ -220,6 +220,10 @@ format_tcp_vars (u8 * s, va_list * args)
 			  rack->rtt > 0.0 ? rack->end_seq - tc->iss : 0, rack->rtt * 1e3,
 			  rack->min_rtt * 1e3, tcp_rack_reo_wnd (tc) * 1e3, rack->reo_wnd_mult,
 			  rack->reo_wnd_persist, tcp_rack_reordered (tc));
+	      s = format (s, "         tlp: end %u pending %u retrans %u\n",
+			  rack->tlp_end_seq ? rack->tlp_end_seq - tc->iss : 0,
+			  !!(tc->flags & TCP_CONN_TLP_PENDING),
+			  !!(rack->flags & TCP_RACK_F_TLP_IS_RXT));
 	    }
 	}
       s = format (s, " stats: %U\n", format_tcp_stats, tc);
