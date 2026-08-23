@@ -1372,8 +1372,7 @@ tcp_timer_retransmit_handler (tcp_connection_t * tc)
       if (!n_bytes)
 	{
 	  /* Allocation failed, do not re-credit again the head to rxt_delivered */
-	  if (tcp_opts_sack_permitted (&tc->rcv_opts))
-	    tcp_sack_init_rxt (tc, tc->snd_una);
+	  tcp_loss_rto_retransmit_failed (tc);
 	  tcp_retransmit_timer_reschedule (&wrk->timer_wheel, tc, tcp_cfg.alloc_err_timeout);
 	  return;
 	}
