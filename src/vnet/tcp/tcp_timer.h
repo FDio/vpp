@@ -8,6 +8,25 @@
 
 #include <vnet/tcp/tcp_types.h>
 
+always_inline tcp_loss_timer_type_t
+tcp_loss_timer_type (tcp_connection_t *tc)
+{
+  return (tcp_loss_timer_type_t) (tc->flags & TCP_CONN_LOSS_TIMER_MASK);
+}
+
+always_inline u8
+tcp_loss_timer_is_reordering (tcp_connection_t *tc)
+{
+  return tcp_loss_timer_type (tc) == TCP_LOSS_TIMER_REO;
+}
+
+always_inline void
+tcp_loss_timer_set_type (tcp_connection_t *tc, tcp_loss_timer_type_t type)
+{
+  ASSERT (type == TCP_LOSS_TIMER_RTO || type == TCP_LOSS_TIMER_REO);
+  tc->flags = (tc->flags & ~TCP_CONN_LOSS_TIMER_MASK) | type;
+}
+
 static inline u8
 tcp_timer_thread_is_valid (tcp_connection_t *tc)
 {

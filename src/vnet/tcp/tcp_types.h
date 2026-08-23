@@ -120,6 +120,7 @@ typedef enum tcp_cfg_flag_
   _(PSH_PENDING, "PSH pending")			\
   _(FINRCVD, "FIN received")			\
   _(ZERO_RWND_SENT, "Zero RWND sent")		\
+  _(LOSS_TIMER_REORDER, "Loss timer reordering")
 
 typedef enum tcp_connection_flag_bits_
 {
@@ -136,6 +137,16 @@ typedef enum tcp_connection_flag_
 #undef _
   TCP_CONN_N_FLAGS
 } tcp_connection_flags_e;
+
+STATIC_ASSERT (TCP_CONN_N_FLAG_BITS <= 16, "tcp connection flags exceed storage");
+
+typedef enum
+{
+  TCP_LOSS_TIMER_RTO = 0,
+  TCP_LOSS_TIMER_REO = TCP_CONN_LOSS_TIMER_REORDER,
+} tcp_loss_timer_type_t;
+
+#define TCP_CONN_LOSS_TIMER_MASK TCP_CONN_LOSS_TIMER_REORDER
 
 #define TCP_SCOREBOARD_TRACE (0)
 #define TCP_MAX_SACK_BLOCKS 255	/**< Max number of SACK blocks stored */
