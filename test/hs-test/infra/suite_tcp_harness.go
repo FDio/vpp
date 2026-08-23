@@ -72,6 +72,7 @@ type TcpTestEndpointCommandResult struct {
 type TcpHarnessClientSessionStats struct {
 	Output              string
 	SndMss              uint64
+	MrttMs              float64
 	Cwnd                uint64
 	FlightSize          uint64
 	RtoBackoffCount     uint64
@@ -135,6 +136,7 @@ const (
 
 var (
 	tcpHarnessClientSessionSndMssRE  = regexp.MustCompile(`\bsnd_mss (\d+)\b`)
+	tcpHarnessClientSessionMrttRE    = regexp.MustCompile(`\bsrtt [\d.]+ us ([\d.]+)\b`)
 	tcpHarnessClientSessionCwndRE    = regexp.MustCompile(`\bcwnd (\d+)\b`)
 	tcpHarnessClientSessionFlightRE  = regexp.MustCompile(`\bflight size (\d+)\b`)
 	tcpHarnessClientSessionRtoBoffRE = regexp.MustCompile(`\brto_boff (\d+)\b`)
@@ -633,12 +635,24 @@ func parseTcpHarnessClientSessionUint(output string, re *regexp.Regexp) uint64 {
 	return value
 }
 
+func parseTcpHarnessClientSessionFloat(output string, re *regexp.Regexp) float64 {
+	matches := re.FindStringSubmatch(output)
+	if len(matches) != 2 {
+		return 0
+	}
+
+	value, err := strconv.ParseFloat(matches[1], 64)
+	AssertNil(err)
+	return value
+}
+
 func ParseClientVppSessionStats(output string) TcpHarnessClientSessionStats {
 	isReneging := parseTcpHarnessClientSessionUint(output, tcpHarnessClientSessionRenegRE) != 0
 
 	return TcpHarnessClientSessionStats{
 		Output:              output,
 		SndMss:              parseTcpHarnessClientSessionUint(output, tcpHarnessClientSessionSndMssRE),
+		MrttMs:              parseTcpHarnessClientSessionFloat(output, tcpHarnessClientSessionMrttRE),
 		Cwnd:                parseTcpHarnessClientSessionUint(output, tcpHarnessClientSessionCwndRE),
 		FlightSize:          parseTcpHarnessClientSessionUint(output, tcpHarnessClientSessionFlightRE),
 		RtoBackoffCount:     parseTcpHarnessClientSessionUint(output, tcpHarnessClientSessionRtoBoffRE),
