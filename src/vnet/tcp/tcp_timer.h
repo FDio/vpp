@@ -8,10 +8,12 @@
 
 #include <vnet/tcp/tcp_types.h>
 
-/* RACK timer hooks. All callers are guarded by TCP_CFG_F_RACK. */
+/* RACK-TLP timer hooks. All callers are guarded by TCP_CFG_F_RACK. */
 void tcp_rack_timer_rto_set (tcp_connection_t *tc, u32 interval);
 void tcp_rack_timer_reset (tcp_connection_t *tc);
 u32 tcp_rack_timer_rto_update (tcp_connection_t *tc, u32 interval);
+void tcp_rack_timer_update_on_new_data (tcp_timer_wheel_t *tw, tcp_connection_t *tc,
+					 u32 prior_flight);
 
 static inline u8
 tcp_timer_thread_is_valid (tcp_connection_t *tc)
