@@ -421,7 +421,7 @@ tcp_sack_handle_reneging (tcp_connection_t *tc)
   return 1;
 }
 
-static u8
+u8
 tcp_sack_is_sane_post_recovery (tcp_connection_t *tc)
 {
   return (tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER) ? tcp_bt_is_sane_post_recovery (tc) :
@@ -568,36 +568,6 @@ tcp_dsack_recovery_init (tcp_connection_t *tc)
     }
   if (tc->dsack_pending_bytes)
     tc->sack_sb.flags |= TCP_DSACK_HISTORY;
-}
-
-void
-tcp_sack_recovery_exit (tcp_connection_t *tc, tcp_ack_flag_t spurious_flags)
-{
-  sack_scoreboard_hole_t *hole;
-
-  if (spurious_flags)
-    tcp_sack_recompute_loss (tc);
-
-  if (!(tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER))
-    {
-      hole = scoreboard_first_hole (&tc->sack_sb);
-      if (hole && seq_leq (tc->sack_sb.high_sacked, hole->end) && !tc->sack_sb.lost_bytes)
-	scoreboard_clear (&tc->sack_sb);
-    }
-
-  if (spurious_flags)
-    {
-      if ((spurious_flags & TCP_ACK_F_DSACK_SPURIOUS) || !tcp_dsack_has_history (tc))
-	tcp_dsack_recovery_clear (tc);
-      else
-	/* Retain enough history to recognize the later D-SACK without
-	 * misclassifying it as network duplication, but never undo twice. */
-	tc->sack_sb.flags |= TCP_DSACK_INELIGIBLE;
-    }
-  else if ((tc->sack_sb.flags & TCP_DSACK_UNDO_DISABLED) || !tcp_dsack_has_history (tc))
-    tcp_dsack_recovery_clear (tc);
-
-  ASSERT (tcp_sack_is_sane_post_recovery (tc));
 }
 
 /* Prepare to add retained ranges. On overflow, discard range history and make
