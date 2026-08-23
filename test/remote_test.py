@@ -5,8 +5,18 @@ import os
 import reprlib
 import unittest
 from framework import VppTestCase
-from multiprocessing import Process, Pipe
+from multiprocessing import Pipe, get_context
 from pickle import dumps
+
+# RemoteClass runs the wrapped class in a child process and shares a
+# Pipe with it. It relies on the child being a fork (a memory copy) of
+# the parent. It does not provide pickle support and the child reads
+# the state (self._pipe, self._cls) set up before start().
+# Python 3.14 changed the default multiprocessing start method on Linux
+# from "fork" to "forkserver", which pickles the Process and breaks
+# RemoteClass. Pin a fork context so this works regardless of the
+# interpreter default or how the parent process itself was started.
+_mp_fork_ctx = get_context("fork")
 
 from enum import IntEnum, IntFlag
 
@@ -64,7 +74,7 @@ class RemoteClassAttr:
         )
 
 
-class RemoteClass(Process):
+class RemoteClass(_mp_fork_ctx.Process):
     """
     This class can wrap around and adapt the interface of another class,
     and then delegate its execution to a newly forked child process.
