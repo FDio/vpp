@@ -8,10 +8,12 @@
 
 #include <vnet/tcp/tcp_types.h>
 
-/* RACK timer hooks. All callers are guarded by TCP_CFG_F_RACK. */
+/* RACK-TLP timer hooks. All callers are guarded by TCP_CFG_F_RACK. */
 void tcp_rack_timer_rto_set (tcp_timer_wheel_t *tw, tcp_connection_t *tc, u32 interval);
 void tcp_rack_timer_reset (tcp_connection_t *tc);
-u8 tcp_rack_timer_rto_update (tcp_timer_wheel_t *tw, tcp_connection_t *tc, u32 interval);
+void tcp_rack_timer_update (tcp_timer_wheel_t *tw, tcp_connection_t *tc, u32 interval);
+void tcp_rack_timer_update_on_new_data (tcp_timer_wheel_t *tw, tcp_connection_t *tc,
+					u32 prior_flight);
 
 static inline u8
 tcp_timer_thread_is_valid (tcp_connection_t *tc)
@@ -115,9 +117,11 @@ tcp_retransmit_timer_update (tcp_timer_wheel_t * tw, tcp_connection_t * tc)
     {
       u32 interval = clib_max ((u32) tc->rto * TCP_TO_TIMER_TICK, 1);
 
-      if (PREDICT_FALSE (tc->cfg_flags & TCP_CFG_F_RACK) &&
-	  tcp_rack_timer_rto_update (tw, tc, interval))
-	return;
+      if (PREDICT_FALSE (tc->cfg_flags & TCP_CFG_F_RACK))
+	{
+	  tcp_rack_timer_update (tw, tc, interval);
+	  return;
+	}
       tcp_timer_update (tw, tc, TCP_TIMER_RETRANSMIT, interval);
     }
 }
