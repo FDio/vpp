@@ -5,6 +5,7 @@
 
 #include <vnet/tcp/tcp.h>
 #include <vnet/tcp/tcp_rack.h>
+#include <vnet/tcp/tcp_tlp.h>
 #include <vnet/tcp/tcp_inlines.h>
 
 #define TCP_RACK_MIN_RTT_WINDOW 10.0
@@ -26,6 +27,7 @@ tcp_rack_recovery_init (tcp_connection_t *tc)
 
   ASSERT (tcp_rack_enabled (tc));
   rack = tcp_rack_get_state (tc);
+  tcp_tlp_recovery_init (tc);
   tc->snd_rxt_bytes = rack->rxt_in_flight;
   tcp_bt_init_rxt (tc, tc->snd_rxt_bytes ? tc->sack_sb.high_rxt : tc->snd_una);
 }
@@ -76,6 +78,7 @@ tcp_rack_prepare_rto (tcp_connection_t *tc, u8 *sack_reneged)
       tc->rxt_delivered = 0;
     }
   *sack_reneged = tcp_bt_handle_sack_reneging (tc);
+  tcp_tlp_recovery_init (tc);
   tcp_rack_mark_losses_on_rto (tc);
   tcp_bt_rack_sync_rxt_delivery (tc);
 }
@@ -86,6 +89,7 @@ tcp_rack_retransmit_timer_expired (tcp_connection_t *tc)
   tcp_rack_state_t *rack;
 
   ASSERT (tcp_rack_enabled (tc));
+  ASSERT (!tcp_loss_timer_is_probe (tc));
 
   if (tcp_loss_timer_is_reordering (tc))
     {
@@ -154,6 +158,8 @@ tcp_rack_sample_acked (tcp_connection_t *tc, tcp_rack_state_t *rack, tcp_bt_samp
       if (rack->min_rtt <= 0.0 || rtt < rack->min_rtt)
 	return 0;
     }
+
+  rack->flags |= TCP_RACK_F_TLP_RTT;
 
   if (rack->min_rtt == 0.0 || now - rack->min_rtt_ts >= TCP_RACK_MIN_RTT_WINDOW)
     {
@@ -399,7 +405,7 @@ tcp_rack_restore_rto (tcp_connection_t *tc)
 {
   tcp_worker_ctx_t *wrk = tcp_get_worker (tc->c_thread_index);
   tcp_rack_state_t *rack = tcp_rack_get_state (tc);
-  u8 was_reordering = tcp_loss_timer_is_reordering (tc);
+  u8 was_rto = tcp_loss_timer_type (tc) == TCP_LOSS_TIMER_RTO;
   u64 now = wrk->timer_wheel.current_tick;
   u32 remaining;
 
@@ -416,7 +422,7 @@ tcp_rack_restore_rto (tcp_connection_t *tc)
   if (!rack->rto_deadline)
     rack->rto_deadline = now + clib_max ((u32) tc->rto * TCP_TO_TIMER_TICK, 1);
 
-  if (!was_reordering && tcp_timer_is_active (tc, TCP_TIMER_RETRANSMIT))
+  if (was_rto && tcp_timer_is_active (tc, TCP_TIMER_RETRANSMIT))
     return;
 
   remaining =

@@ -8,6 +8,7 @@
 #include <vnet/fib/ip6_fib.h>
 #include <vnet/tcp/tcp.h>
 #include <vnet/tcp/tcp_inlines.h>
+#include <vnet/tcp/tcp_tlp.h>
 #include <vnet/session/session.h>
 #include <math.h>
 
@@ -669,6 +670,12 @@ tcp_cc_handle_event (tcp_connection_t *tc, tcp_ack_ctx_t *ac)
    */
   if (!tcp_in_cong_recovery (tc))
     {
+      if (ac->ack_flags & TCP_ACK_F_TLP_RECOVERY)
+	{
+	  tcp_loss_tlp_recovery (tc);
+	  return;
+	}
+
       if (ac->ack_flags & TCP_ACK_F_DSACK_SPURIOUS)
 	tcp_loss_dsack_undo (tc);
 
@@ -783,13 +790,27 @@ tcp_ack_is_dupack (tcp_connection_t *tc, vlib_buffer_t *b, u32 prev_snd_wnd, tcp
 static u8
 tcp_ack_is_cc_event (tcp_connection_t *tc, vlib_buffer_t *b, u32 prev_snd_wnd, tcp_ack_ctx_t *ac)
 {
+  u8 is_dupack;
+
   /* Check if ack is duplicate. Per RFC 6675, ACKs that SACK new data are
    * defined to be 'duplicate' as well. TCP_ACK_F_DUPACK is bit zero, so the
    * boolean result can be ORed into ack_flags directly. */
-  ac->ack_flags |= ac->last_sacked_bytes || tcp_ack_is_dupack (tc, b, prev_snd_wnd, ac);
+  is_dupack = tcp_ack_is_dupack (tc, b, prev_snd_wnd, ac);
+  ac->ack_flags |= ac->last_sacked_bytes || is_dupack;
 
-  return ((ac->ack_flags & (TCP_ACK_F_DUPACK | TCP_ACK_F_DSACK_SPURIOUS)) || ac->last_lost ||
-	  tcp_in_cong_recovery (tc));
+  if (PREDICT_FALSE (tcp_tlp_is_in_flight (tc)))
+    {
+      /* TLP also treats a repeated ACK after the original tail was ACKed as
+       * a DupACK, even though no data remains outstanding. */
+      is_dupack |= !ac->bytes_acked &&
+		   vnet_buffer (b)->tcp.seq_end == vnet_buffer (b)->tcp.seq_number &&
+		   prev_snd_wnd == tc->snd_wnd;
+      tcp_tlp_process_ack (tc, ac, is_dupack);
+    }
+
+  return (
+    (ac->ack_flags & (TCP_ACK_F_DUPACK | TCP_ACK_F_DSACK_SPURIOUS | TCP_ACK_F_TLP_RECOVERY)) ||
+    ac->last_lost || tcp_in_cong_recovery (tc));
 }
 
 /**

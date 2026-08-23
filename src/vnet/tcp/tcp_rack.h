@@ -19,6 +19,7 @@ typedef struct tcp_rack_state_
   u32 end_seq;	      /**< End sequence of RACK.segment */
   u32 rxt_in_flight;  /**< Active retransmission-copy bytes */
   u32 dsack_round;    /**< SND.NXT at the last reo_wnd adjustment */
+  u32 tlp_end_seq;    /**< End sequence of the outstanding loss probe */
   u8 reo_wnd_mult;    /**< Multiples of min_rtt/4 in reo_wnd */
   u8 reo_wnd_persist; /**< Recoveries before reo_wnd resets */
   u8 flags;	      /**< RACK connection flags */
@@ -29,6 +30,8 @@ typedef enum
   TCP_RACK_F_DSACK_ROUND = 1,
   TCP_RACK_F_REORDERED = 1 << 1,
   TCP_RACK_F_REF_IS_RXT = 1 << 2,
+  TCP_RACK_F_TLP_RTT = 1 << 3,
+  TCP_RACK_F_TLP_IS_RXT = 1 << 4,
 } tcp_rack_flags_t;
 
 #define TCP_RACK_REO_WND_PERSIST 16
