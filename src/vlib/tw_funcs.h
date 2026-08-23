@@ -29,6 +29,11 @@ static_always_inline u32
 vlib_tw_timer_start (vlib_main_t *vm, vlib_tw_event_t e, u64 interval)
 {
   TWT (tw_timer_wheel) *tw = (TWT (tw_timer_wheel) *) vm->timing_wheel;
+  /* The wheel is not advanced while it holds no timers, so last_run_time is
+   * stale here. Re-base it, or the next expire_timers () walks one tick per
+   * 10 us of idle time, delaying a worker's barrier check. */
+  if (vm->n_tw_timers == 0)
+    tw->last_run_time = vlib_time_now (vm);
   vm->n_tw_timers++;
   return TW (tw_timer_start) (tw, e.as_u32, 0 /* timer_id */, interval);
 }
