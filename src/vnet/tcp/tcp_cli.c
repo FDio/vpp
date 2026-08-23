@@ -208,6 +208,10 @@ format_tcp_vars (u8 * s, va_list * args)
 		  rack->rtt > 0.0 ? rack->end_seq - tc->iss : 0, rack->rtt * 1e3,
 		  rack->min_rtt * 1e3, tcp_rack_reo_wnd (tc) * 1e3, rack->reo_wnd_mult,
 		  rack->reo_wnd_persist, !!tcp_rack_reordered (tc));
+      s = format (s, " tlp: end %u in_flight %u retrans %u\n",
+		  rack->tlp_end_seq ? rack->tlp_end_seq - tc->iss : 0,
+		  !!(rack->flags & TCP_RACK_F_TLP_IN_FLIGHT),
+		  !!(rack->flags & TCP_RACK_F_TLP_IS_RXT));
     }
   s = format (s, " next_node %u opaque 0x%x fib_index %u sw_if_index %d\n",
 	      tc->next_node_index, tc->next_node_opaque, tc->c_fib_index,

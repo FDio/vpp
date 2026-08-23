@@ -12,6 +12,7 @@ typedef enum
 {
   TCP_RACK_TIMER_RTO,
   TCP_RACK_TIMER_REO,
+  TCP_RACK_TIMER_PTO,
 } __clib_packed tcp_rack_timer_type_t;
 
 typedef struct
@@ -32,6 +33,7 @@ typedef struct tcp_rack_state_
   u32 end_seq;	      /**< End sequence of RACK.segment */
   u32 rxt_in_flight;  /**< Active retransmission-copy bytes */
   u32 dsack_round;    /**< SND.NXT at the last reo_wnd adjustment */
+  u32 tlp_end_seq;    /**< End sequence of the outstanding loss probe */
   u32 tx_order_head;  /**< Oldest outstanding transmission sample */
   u32 tx_order_tail;  /**< Newest outstanding transmission sample */
   u8 reo_wnd_mult;    /**< Multiples of min_rtt/4 in reo_wnd */
@@ -45,9 +47,28 @@ typedef enum
   TCP_RACK_F_DSACK_ROUND = 1,
   TCP_RACK_F_REORDERED = 1 << 1,
   TCP_RACK_F_REF_IS_RXT = 1 << 2,
+  TCP_RACK_F_TLP_RTT = 1 << 3,
+  TCP_RACK_F_TLP_IS_RXT = 1 << 4,
+  TCP_RACK_F_TLP_IN_FLIGHT = 1 << 5,
 } tcp_rack_flags_t;
 
 #define TCP_RACK_REO_WND_PERSIST 16
+#define TCP_RACK_MIN_RTT_WINDOW	 10.0
+
+static_always_inline void
+tcp_rack_note_rtt_sample (tcp_rack_state_t *rack, f64 rtt, f64 now)
+{
+  ASSERT (rtt > 0.0);
+  rack->flags |= TCP_RACK_F_TLP_RTT;
+
+  if (rack->min_rtt == 0.0 || now - rack->min_rtt_ts >= TCP_RACK_MIN_RTT_WINDOW)
+    {
+      rack->min_rtt = rtt;
+      rack->min_rtt_ts = now;
+    }
+  else
+    rack->min_rtt = clib_min (rack->min_rtt, rtt);
+}
 
 void tcp_rack_init (tcp_connection_t *tc);
 void tcp_rack_cleanup (tcp_connection_t *tc);
@@ -89,10 +110,16 @@ tcp_rack_timer_is_reordering (tcp_connection_t *tc)
   return tcp_rack_timer_type (tc) == TCP_RACK_TIMER_REO;
 }
 
+always_inline u8
+tcp_rack_timer_is_probe (tcp_connection_t *tc)
+{
+  return tcp_rack_timer_type (tc) == TCP_RACK_TIMER_PTO;
+}
+
 always_inline void
 tcp_rack_timer_set_type (tcp_connection_t *tc, tcp_rack_timer_type_t type)
 {
-  ASSERT (type == TCP_RACK_TIMER_RTO || type == TCP_RACK_TIMER_REO);
+  ASSERT (type == TCP_RACK_TIMER_RTO || type == TCP_RACK_TIMER_REO || type == TCP_RACK_TIMER_PTO);
   tcp_rack_get_state (tc)->timer_type = type;
 }
 
