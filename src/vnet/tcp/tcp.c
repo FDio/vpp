@@ -547,7 +547,8 @@ tcp_connection_timers_reset (tcp_connection_t * tc)
   tcp_worker_ctx_t *wrk = tcp_get_worker (tc->c_thread_index);
   int i;
 
-  for (i = 0; i < TCP_N_TIMERS; i++)
+  tcp_retransmit_timer_reset (&wrk->timer_wheel, tc);
+  for (i = TCP_TIMER_PERSIST; i < TCP_N_TIMERS; i++)
     tcp_timer_reset (&wrk->timer_wheel, tc, i);
 }
 

@@ -824,8 +824,7 @@ tcp_send_synack (tcp_connection_t * tc)
 
   if (PREDICT_FALSE (!vlib_buffer_alloc (vm, &bi, 1)))
     {
-      tcp_timer_update (&wrk->timer_wheel, tc, TCP_TIMER_RETRANSMIT,
-			tcp_cfg.alloc_err_timeout);
+      tcp_retransmit_timer_reschedule (&wrk->timer_wheel, tc, tcp_cfg.alloc_err_timeout);
       tcp_worker_stats_inc (wrk, no_buffer, 1);
       return;
     }
@@ -857,8 +856,7 @@ tcp_send_fin (tcp_connection_t * tc)
   if (PREDICT_FALSE (!vlib_buffer_alloc (vm, &bi, 1)))
     {
       /* Out of buffers so program fin retransmit ASAP */
-      tcp_timer_update (&wrk->timer_wheel, tc, TCP_TIMER_RETRANSMIT,
-			tcp_cfg.alloc_err_timeout);
+      tcp_retransmit_timer_reschedule (&wrk->timer_wheel, tc, tcp_cfg.alloc_err_timeout);
       tc->snd_nxt += 1;
       /* Make sure retransmit retries a fin not data with right snd_nxt */
       if (!fin_snt)
@@ -1376,8 +1374,7 @@ tcp_timer_retransmit_handler (tcp_connection_t * tc)
 	  /* Allocation failed, do not re-credit again the head to rxt_delivered */
 	  if (tcp_opts_sack_permitted (&tc->rcv_opts))
 	    tcp_sack_init_rxt (tc, tc->snd_una);
-	  tcp_timer_update (&wrk->timer_wheel, tc, TCP_TIMER_RETRANSMIT,
-			    tcp_cfg.alloc_err_timeout);
+	  tcp_retransmit_timer_reschedule (&wrk->timer_wheel, tc, tcp_cfg.alloc_err_timeout);
 	  return;
 	}
 
@@ -1414,8 +1411,7 @@ tcp_timer_retransmit_handler (tcp_connection_t * tc)
 
       if (PREDICT_FALSE (!vlib_buffer_alloc (vm, &bi, 1)))
 	{
-	  tcp_timer_update (&wrk->timer_wheel, tc, TCP_TIMER_RETRANSMIT,
-			    tcp_cfg.alloc_err_timeout);
+	  tcp_retransmit_timer_reschedule (&wrk->timer_wheel, tc, tcp_cfg.alloc_err_timeout);
 	  tcp_worker_stats_inc (wrk, no_buffer, 1);
 	  return;
 	}
