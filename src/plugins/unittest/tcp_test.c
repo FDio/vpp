@@ -1257,9 +1257,10 @@ tcp_test_dsack_rx (vlib_main_t *vm)
   vec_add1 (tc->rcv_opts.sacks, block);
   tc->rcv_opts.n_sack_blocks = 1;
   tcp_rcv_dsack (tc, 1200, &ac);
-  TCP_TEST ((ac.ack_flags & (TCP_ACK_F_DSACK | TCP_ACK_F_DSACK_SPURIOUS)) ==
-	      (TCP_ACK_F_DSACK | TCP_ACK_F_DSACK_SPURIOUS),
-	    "old ACK D-SACK proves retained retransmission spurious");
+  TCP_TEST (
+    (ac.ack_flags & (TCP_ACK_F_DSACK | TCP_ACK_F_DSACK_MATCHED | TCP_ACK_F_DSACK_SPURIOUS)) ==
+      (TCP_ACK_F_DSACK | TCP_ACK_F_DSACK_MATCHED | TCP_ACK_F_DSACK_SPURIOUS),
+    "old ACK D-SACK proves retained retransmission spurious");
   TCP_TEST (tc->sack_sb.head == TCP_INVALID_SACK_HOLE_INDEX && !tc->sack_sb.sacked_bytes,
 	    "old ACK D-SACK leaves scoreboard unchanged");
 
@@ -1269,7 +1270,8 @@ tcp_test_dsack_rx (vlib_main_t *vm)
   vec_add1 (tc->rcv_opts.sacks, block);
   tc->rcv_opts.n_sack_blocks = 1;
   tcp_test_rcv_sacks (tc, 1000, &ac);
-  TCP_TEST (ac.ack_flags & TCP_ACK_F_DSACK, "detect D-SACK below cumulative ACK");
+  TCP_TEST ((ac.ack_flags & TCP_ACK_F_DSACK) && !(ac.ack_flags & TCP_ACK_F_DSACK_MATCHED),
+	    "untracked D-SACK is detected but not matched");
   TCP_TEST (tc->sack_sb.flags & TCP_DSACK_UNDO_DISABLED,
 	    "D-SACK for untracked data disables congestion undo");
   TCP_TEST (vec_len (tc->rcv_opts.sacks) == 0,
@@ -1578,7 +1580,8 @@ tcp_test_dsack_rx (vlib_main_t *vm)
   vec_add1 (tc->rcv_opts.sacks, block);
   tc->rcv_opts.n_sack_blocks = 2;
   tcp_rcv_dsack (tc, tc->snd_una, &ac);
-  TCP_TEST ((tc->sack_sb.flags & TCP_DSACK_RXT_ACTIVE) &&
+  TCP_TEST ((ac.ack_flags & TCP_ACK_F_DSACK_MATCHED) &&
+	      (tc->sack_sb.flags & TCP_DSACK_RXT_ACTIVE) &&
 	      !(tc->sack_sb.flags & TCP_DSACK_RXT_OVERFLOW) &&
 	      tcp_test_dsack_rxt_count (tc) == TCP_MAX_DSACK_RXT_RANGES &&
 	      tc->dsack_pending_bytes == TCP_MAX_DSACK_RXT_RANGES * 100 - 50,
@@ -1627,10 +1630,10 @@ tcp_test_dsack_rx (vlib_main_t *vm)
   vec_add1 (tc->rcv_opts.sacks, block);
   tc->rcv_opts.n_sack_blocks = 2;
   tcp_rcv_dsack (tc, tc->snd_una, &ac);
-  TCP_TEST (!(tc->sack_sb.flags & TCP_DSACK_RXT_ACTIVE) &&
-	      (tc->sack_sb.flags & TCP_DSACK_UNDO_DISABLED) &&
-	      !(ac.ack_flags & TCP_ACK_F_DSACK_SPURIOUS),
-	    "active D-SACK gap disables undo and discards history");
+  TCP_TEST (
+    !(ac.ack_flags & TCP_ACK_F_DSACK_MATCHED) && !(tc->sack_sb.flags & TCP_DSACK_RXT_ACTIVE) &&
+      (tc->sack_sb.flags & TCP_DSACK_UNDO_DISABLED) && !(ac.ack_flags & TCP_ACK_F_DSACK_SPURIOUS),
+    "active D-SACK gap disables undo and discards history");
 
   /* Overlapping D-SACK evidence cannot credit more bytes than remain
    * pending for the episode. */
@@ -1655,7 +1658,7 @@ tcp_test_dsack_rx (vlib_main_t *vm)
   tc->rcv_opts.flags |= TCP_OPTS_FLAG_SACK;
   tc->rcv_opts.n_sack_blocks = 1;
   tcp_test_rcv_sacks (tc, tc->snd_una, &ac);
-  TCP_TEST (!(ac.ack_flags & TCP_ACK_F_DSACK_SPURIOUS) &&
+  TCP_TEST (!(ac.ack_flags & (TCP_ACK_F_DSACK_MATCHED | TCP_ACK_F_DSACK_SPURIOUS)) &&
 	      (tc->sack_sb.flags & TCP_DSACK_INELIGIBLE) && tc->dsack_pending_bytes == 100,
 	    "overlapping D-SACK cannot exceed pending retransmit evidence");
 
@@ -1701,10 +1704,10 @@ tcp_test_dsack_rx (vlib_main_t *vm)
   vec_add1 (tc->rcv_opts.sacks, block);
   tc->rcv_opts.n_sack_blocks = 1;
   tcp_test_rcv_sacks (tc, tc->snd_una, &ac);
-  TCP_TEST ((tc->sack_sb.flags & TCP_DSACK_INELIGIBLE) &&
-	      !(tc->sack_sb.flags & TCP_DSACK_UNDO_DISABLED) &&
-	      !(ac.ack_flags & TCP_ACK_F_DSACK_SPURIOUS),
-	    "D-SACK after a multi-range union matches retained history");
+  TCP_TEST (
+    (ac.ack_flags & TCP_ACK_F_DSACK_MATCHED) && (tc->sack_sb.flags & TCP_DSACK_INELIGIBLE) &&
+      !(tc->sack_sb.flags & TCP_DSACK_UNDO_DISABLED) && !(ac.ack_flags & TCP_ACK_F_DSACK_SPURIOUS),
+    "D-SACK after a multi-range union matches retained history");
 
   /* Eifel may undo first and retain an ineligible history solely to recognize
    * the later D-SACK. Matching that history is not network duplication and
@@ -1721,7 +1724,8 @@ tcp_test_dsack_rx (vlib_main_t *vm)
   vec_add1 (tc->rcv_opts.sacks, block);
   tc->rcv_opts.n_sack_blocks = 1;
   tcp_test_rcv_sacks (tc, tc->snd_una, &ac);
-  TCP_TEST (!(ac.ack_flags & TCP_ACK_F_DSACK_SPURIOUS) &&
+  TCP_TEST ((ac.ack_flags & TCP_ACK_F_DSACK_MATCHED) &&
+	      !(ac.ack_flags & TCP_ACK_F_DSACK_SPURIOUS) &&
 	      !(tc->sack_sb.flags & TCP_DSACK_UNDO_DISABLED),
 	    "late D-SACK matching Eifel history neither re-undoes nor disables");
   vec_reset_length (tc->rcv_opts.sacks);
@@ -7173,9 +7177,10 @@ tcp_test_bt_dsack (void)
   TCP_TEST (!tc->dsack_pending_bytes, "BT accounts D-SACK evidence for ACKed samples");
   TCP_TEST (!(tc->sack_sb.flags & (TCP_DSACK_INELIGIBLE | TCP_DSACK_UNDO_DISABLED)),
 	    "BT D-SACK history remains undo eligible: 0x%x", tc->sack_sb.flags);
-  TCP_TEST ((ac.ack_flags & (TCP_ACK_F_DSACK | TCP_ACK_F_DSACK_SPURIOUS)) ==
-	      (TCP_ACK_F_DSACK | TCP_ACK_F_DSACK_SPURIOUS),
-	    "BT aggregate history proves a retransmission spurious");
+  TCP_TEST (
+    (ac.ack_flags & (TCP_ACK_F_DSACK | TCP_ACK_F_DSACK_MATCHED | TCP_ACK_F_DSACK_SPURIOUS)) ==
+      (TCP_ACK_F_DSACK | TCP_ACK_F_DSACK_MATCHED | TCP_ACK_F_DSACK_SPURIOUS),
+    "BT aggregate history proves a retransmission spurious");
 
   tcp_bt_dsack_recovery_clear (tc);
   tc->snd_una = 1400;

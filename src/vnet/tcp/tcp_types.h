@@ -254,6 +254,7 @@ typedef enum tcp_ack_flag_
   TCP_ACK_F_EIFEL_SPURIOUS = 1 << 3,
   TCP_ACK_F_SACK = 1 << 4,
   TCP_ACK_F_DETECT_LOSS = 1 << 5,
+  TCP_ACK_F_DSACK_MATCHED = 1 << 6,
   TCP_ACK_F_SPURIOUS = TCP_ACK_F_DSACK_SPURIOUS | TCP_ACK_F_EIFEL_SPURIOUS,
 } __clib_packed tcp_ack_flag_t;
 
@@ -318,7 +319,7 @@ tcp_scoreboard_set_reneging (sack_scoreboard_t *sb, u8 is_reneging, tcp_ack_ctx_
       /* Retracted SACK evidence makes D-SACK undo ambiguous. */
       sb->flags |= TCP_DSACK_INELIGIBLE;
       if (ac)
-	ac->ack_flags &= ~TCP_ACK_F_DSACK_SPURIOUS;
+	ac->ack_flags &= ~(TCP_ACK_F_DSACK_SPURIOUS | TCP_ACK_F_DSACK_MATCHED);
     }
 }
 
