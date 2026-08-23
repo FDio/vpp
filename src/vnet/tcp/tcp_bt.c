@@ -1360,12 +1360,13 @@ tcp_bt_cleanup (tcp_connection_t * tc)
 }
 
 void
-tcp_bt_init (tcp_connection_t * tc)
+tcp_bt_init_opaque (tcp_connection_t *tc, uword opaque_size)
 {
   tcp_byte_tracker_t *bt;
+  uword alloc_size = sizeof (*bt) + opaque_size;
 
-  bt = clib_mem_alloc (sizeof (tcp_byte_tracker_t));
-  clib_memset (bt, 0, sizeof (tcp_byte_tracker_t));
+  bt = clib_mem_alloc (alloc_size);
+  clib_memset (bt, 0, alloc_size);
 
   rb_tree_init (&bt->sample_lookup);
   bt->head = bt->tail = TCP_BTS_INVALID_INDEX;
@@ -1376,6 +1377,12 @@ tcp_bt_init (tcp_connection_t * tc)
   tc->sack_sb.high_sacked = tc->snd_una;
   tc->bt = bt;
   tc->cfg_flags |= TCP_CFG_F_BYTE_TRACKER;
+}
+
+void
+tcp_bt_init (tcp_connection_t *tc)
+{
+  tcp_bt_init_opaque (tc, 0);
 }
 
 int
