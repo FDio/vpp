@@ -616,8 +616,7 @@ tcp_loss_exit_recovery (tcp_connection_t *tc, tcp_ack_ctx_t *ac)
 
   ASSERT (tcp_in_cong_recovery (tc));
 
-  if (tcp_opts_sack_permitted (&tc->rcv_opts))
-    tcp_sack_recovery_exit (tc, spurious_flags);
+  tcp_loss_recovery_backend_exit (tc, ac);
 
   if (spurious_flags)
     tcp_cc_congestion_undo (tc);

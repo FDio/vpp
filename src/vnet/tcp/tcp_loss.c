@@ -7,6 +7,53 @@
 #include <vnet/tcp/tcp_inlines.h>
 
 void
+tcp_loss_recovery_backend_init (tcp_connection_t *tc)
+{
+  tc->snd_rxt_bytes = 0;
+  if (tcp_opts_sack_permitted (&tc->rcv_opts))
+    tcp_sack_init_rxt (tc, tc->snd_una);
+  else
+    tcp_fastrecovery_first_on (tc);
+}
+
+void
+tcp_loss_recovery_backend_exit (tcp_connection_t *tc, tcp_ack_ctx_t *ac)
+{
+  tcp_ack_flag_t spurious_flags = ac->ack_flags & TCP_ACK_F_SPURIOUS;
+  sack_scoreboard_hole_t *hole;
+
+  if (!tcp_opts_sack_permitted (&tc->rcv_opts))
+    return;
+
+  if (spurious_flags)
+    tcp_sack_recompute_loss (tc);
+
+  if (!(tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER))
+    {
+      hole = scoreboard_first_hole (&tc->sack_sb);
+      if (hole && seq_leq (tc->sack_sb.high_sacked, hole->end) &&
+	  !tc->sack_sb.lost_bytes)
+	scoreboard_clear (&tc->sack_sb);
+    }
+
+  if (spurious_flags)
+    {
+      if ((spurious_flags & TCP_ACK_F_DSACK_SPURIOUS) ||
+	  !tcp_dsack_has_history (tc))
+	tcp_dsack_recovery_clear (tc);
+      else
+	/* Retain enough history to recognize the later D-SACK without
+	 * misclassifying it as network duplication, but never undo twice. */
+	tc->sack_sb.flags |= TCP_DSACK_INELIGIBLE;
+    }
+  else if ((tc->sack_sb.flags & TCP_DSACK_UNDO_DISABLED) ||
+	   !tcp_dsack_has_history (tc))
+    tcp_dsack_recovery_clear (tc);
+
+  ASSERT (tcp_sack_is_sane_post_recovery (tc));
+}
+
+void
 tcp_loss_enter_recovery (tcp_connection_t *tc)
 {
   ASSERT (!tcp_in_cong_recovery (tc));
@@ -23,12 +70,7 @@ tcp_loss_enter_recovery (tcp_connection_t *tc)
   tc->prev_cwnd = tc->cwnd;
   tc->snd_rxt_ts = tcp_tstamp (tc);
 
-  tc->snd_rxt_bytes = 0;
-  if (tcp_opts_sack_permitted (&tc->rcv_opts))
-    tcp_sack_init_rxt (tc, tc->snd_una);
-  else
-    tcp_fastrecovery_first_on (tc);
-
+  tcp_loss_recovery_backend_init (tc);
   tcp_cc_congestion (tc);
 
   if (!tcp_opts_sack_permitted (&tc->rcv_opts))
