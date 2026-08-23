@@ -5,6 +5,7 @@
 
 #include <vnet/tcp/tcp.h>
 #include <vnet/tcp/tcp_rack.h>
+#include <vnet/tcp/tcp_tlp.h>
 #include <vnet/tcp/tcp_inlines.h>
 
 static void
@@ -79,7 +80,11 @@ tcp_loss_recovery_state_is_sane (tcp_connection_t *tc)
 u8
 tcp_loss_retransmit_timer_expired (tcp_connection_t *tc)
 {
-  return tcp_rack_enabled (tc) && tcp_rack_retransmit_timer_expired (tc);
+  if (!tcp_rack_enabled (tc))
+    return 0;
+  if (tcp_rack_timer_is_probe (tc))
+    return tcp_tlp_retransmit_timer_expired (tc);
+  return tcp_rack_retransmit_timer_expired (tc);
 }
 
 void
@@ -169,6 +174,34 @@ tcp_loss_dsack_undo (tcp_connection_t *tc)
   tcp_cc_congestion_undo (tc);
   tcp_connection_tx_pacer_reset (tc, tc->cwnd, 0 /* start bucket */);
   tcp_dsack_recovery_clear (tc);
+}
+
+void
+tcp_loss_tlp_recovery (tcp_connection_t *tc, tcp_ack_ctx_t *ac)
+{
+  ASSERT (!tcp_in_cong_recovery (tc));
+
+  /* The ACK that proves TLP recovery is cumulative. Keep the normal ACK
+   * bookkeeping even though congestion control is handled specially. */
+  tc->rcv_dupacks = 0;
+  tc->tsecr_last_ack = tc->rcv_opts.tsecr;
+
+  /* If this ACK also exposed another loss, enter ordinary recovery once.
+   * It performs the congestion response and schedules that retransmission. */
+  if (ac->last_lost)
+    {
+      tcp_loss_enter_recovery (tc);
+      return;
+    }
+
+  tc->prev_ssthresh = tc->ssthresh;
+  tc->prev_cwnd = tc->cwnd;
+  tc->cwnd_acc_bytes = 0;
+  tcp_cc_congestion (tc);
+  tcp_cc_recovered (tc);
+  tc->fr_occurences += 1;
+  TCP_EVT (TCP_EVT_CC_EVT, tc, 4);
+  tcp_connection_tx_pacer_reset (tc, tc->cwnd, 0 /* start bucket */);
 }
 
 static u8

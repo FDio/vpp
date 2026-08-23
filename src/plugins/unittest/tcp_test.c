@@ -7,6 +7,7 @@
 #include <vnet/tcp/tcp_inlines.h>
 #include <vnet/tcp/tcp_rack.h>
 #include <vnet/tcp/tcp_timer.h>
+#include <vnet/tcp/tcp_tlp.h>
 #include <svm/fifo_segment.h>
 #include <unittest/session/test_session_helpers.h>
 #include <unittest/tcp/tcp_tamper.h>
@@ -4074,8 +4075,9 @@ cleanup:
  * (or "all") runs them all.
  */
 
-/* Drop the client's first FIN and confirm the connection still tears down: the
- * FIN is retransmitted and acknowledged (snd_una reaches snd_nxt). */
+/* Drop the client's first FIN and confirm TLP retransmits it without entering
+ * RTO recovery. A one-segment PTO may be capped at the RTO deadline. The FIN
+ * must then be acknowledged (snd_una reaches snd_nxt). */
 static int
 tcp_test_tamper_lost_fin (vlib_main_t *vm)
 {
@@ -4093,10 +4095,13 @@ tcp_test_tamper_lost_fin (vlib_main_t *vm)
   tcp_connection_t *client_tc;
   tcp_tamper_rule_t *fin_rule;
   u64 to_before;
-  u32 tries;
+  u32 tr_before, tries;
+  u8 rack_enabled_before;
   int rv = 0;
 
   tcp_tamper_reset ();
+  rack_enabled_before = tcp_cfg.enable_rack;
+  tcp_cfg.enable_rack = 1;
 
   if (!TCP_TEST_I ((tcp_e2e_setup (vm, ctx, &params) == 0), "lost_fin: e2e setup"))
     {
@@ -4112,9 +4117,15 @@ tcp_test_tamper_lost_fin (vlib_main_t *vm)
       rv = 1;
       goto cleanup;
     }
+  if (!TCP_TEST_I (tcp_rack_enabled (client_tc), "lost_fin: RACK/TLP enabled on client"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
 
   /* Arm the drop, route the client's egress through the tamper node, close. */
   to_before = tcp_e2e_teardown_timeouts ();
+  tr_before = client_tc->tr_occurences;
   fin_rule = tcp_tamper_drop_fin (client_tc, 1);
   tcp_tamper_enable (client_tc);
   session_close (ctx->client_s);
@@ -4139,6 +4150,13 @@ tcp_test_tamper_lost_fin (vlib_main_t *vm)
   }
   if (!TCP_TEST_I ((fin_rule->n_matched >= 2),
 		   "lost_fin: FIN retransmitted after the drop (matched %u)", fin_rule->n_matched))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  if (!TCP_TEST_I ((client_tc->tr_occurences == tr_before),
+		   "lost_fin: FIN retransmitted by PTO without RTO recovery (tr delta %u)",
+		   client_tc->tr_occurences - tr_before))
     {
       rv = 1;
       goto cleanup;
@@ -4195,6 +4213,7 @@ tcp_test_tamper_lost_fin (vlib_main_t *vm)
 cleanup:
   tcp_tamper_reset ();
   tcp_e2e_teardown (vm, ctx);
+  tcp_cfg.enable_rack = rack_enabled_before;
   return rv;
 }
 
@@ -8041,9 +8060,9 @@ tcp_test_rack (vlib_main_t *vm, unformat_input_t *input)
   tcp_rxt_range_t range;
   sack_block_t block;
   f64 next_to, base_reo, reo_deadline, rto_deadline;
-  u32 fack, lost, tx_tsval;
+  u32 fack, lost, max_ack_delay_ticks, pto_delta, pto_ticks, tx_tsval;
   u32 timer_next, timer_prev;
-  u8 have_range, reo_wnd_updated, sack_reneged;
+  u8 have_range, reo_wnd_updated, sack_reneged, timer_updated;
 
   /* RACK borrows the retransmit timer while preserving the RTO deadline. */
   tcp_test_rack_init (tc, thread_index);
@@ -8113,6 +8132,174 @@ tcp_test_rack (vlib_main_t *vm, unformat_input_t *input)
 	      rack->timer_type != TCP_RACK_TIMER_REO,
 	    "restoring RTO keeps the shared timer active");
   tcp_retransmit_timer_reset (&wrk->timer_wheel, tc);
+  tcp_test_rack_cleanup (tc);
+
+  /* REO, PTO, and RTO compete for one timer. A PTO capped at the RTO
+   * deadline remains a probe and gives way to a fresh RTO after it fires. */
+  tcp_test_rack_init (tc, thread_index);
+  rack = tcp_rack_get_state (tc);
+  tc->state = TCP_STATE_ESTABLISHED;
+  tc->snd_nxt = 200;
+  tc->rto = TCP_RTO_MIN;
+  tc->srtt = 0.1 * THZ;
+  tcp_retransmit_timer_set (&wrk->timer_wheel, tc);
+  TCP_TEST (!tcp_rack_timer_is_probe (tc) && tcp_tlp_pto_ticks (tc) == 0,
+	    "PTO is not armed without a fresh RTT sample");
+  tcp_retransmit_timer_reset (&wrk->timer_wheel, tc);
+  tcp_rack_note_rtt_sample (rack, (f64) tc->srtt * TCP_TICK, tcp_time_now_us (thread_index));
+  tcp_retransmit_timer_set (&wrk->timer_wheel, tc);
+  timer_updated = tcp_rack_timer_update_on_new_data (tc);
+  TCP_TEST (tcp_rack_timer_is_probe (tc) && !timer_updated,
+	    "PTO capped at the RTO deadline reuses the active timer as a probe");
+
+  tcp_retransmit_timer_reset (&wrk->timer_wheel, tc);
+  tc->snd_nxt = tc->snd_mss;
+  tc->srtt = 0.01 * THZ;
+  pto_ticks = tcp_tlp_pto_ticks (tc);
+  tc->snd_nxt = 2 * tc->snd_mss;
+  pto_delta = pto_ticks - tcp_tlp_pto_ticks (tc);
+  max_ack_delay_ticks = (u32) (TCP_RTO_MIN * TCP_TO_TIMER_TICK);
+  TCP_TEST (pto_delta >= max_ack_delay_ticks - 1 && pto_delta <= max_ack_delay_ticks + 1,
+	    "single-segment PTO includes the minimum RTO delayed-ACK budget");
+  tc->snd_nxt = tc->snd_mss;
+  tcp_retransmit_timer_set (&wrk->timer_wheel, tc);
+  timer_updated = tcp_rack_timer_update_on_new_data (tc);
+  TCP_TEST (tcp_rack_timer_is_probe (tc) && !timer_updated,
+	    "single-segment PTO capped at minimum RTO reuses the timer as a probe");
+
+  tcp_retransmit_timer_reset (&wrk->timer_wheel, tc);
+  tc->snd_nxt = 2 * tc->snd_mss;
+  tc->srtt = 0.01 * THZ;
+  tcp_retransmit_timer_set (&wrk->timer_wheel, tc);
+  timer_updated = tcp_rack_timer_update_on_new_data (tc);
+  TCP_TEST (tcp_rack_timer_is_probe (tc) && timer_updated,
+	    "an earlier PTO borrows the retransmit timer");
+  rto_deadline = rack->rto_deadline;
+  tc->snd_nxt += tc->snd_mss;
+  timer_updated = tcp_rack_timer_update_on_new_data (tc);
+  TCP_TEST (tcp_rack_timer_is_probe (tc) && timer_updated && rack->rto_deadline == rto_deadline,
+	    "new data restarts an active PTO without postponing RTO");
+
+  tcp_retransmit_timer_reset (&wrk->timer_wheel, tc);
+  tcp_retransmit_timer_set (&wrk->timer_wheel, tc);
+  tcp_rack_arm_reorder_timer (tc, 0.05, 0 /* rto_update_deferred */);
+  TCP_TEST (tcp_rack_timer_is_reordering (tc),
+	    "an earlier REO deadline initially borrows the retransmit timer");
+  timer_updated = tcp_rack_timer_update_on_new_data (tc);
+  TCP_TEST (tcp_rack_timer_is_probe (tc) && timer_updated,
+	    "an earlier PTO preempts the REO deadline");
+
+  tc->snd_una = 0;
+  tc->snd_nxt = 2 * tc->snd_mss;
+  tc->snd_wnd = 4 * tc->snd_mss;
+  tc->cwnd = 2 * tc->snd_mss;
+  TCP_TEST (!tcp_tlp_new_data_fits_cwnd (tc, tc->snd_mss),
+	    "TLP uses a tail retransmission instead of exceeding cwnd");
+  tc->cwnd += tc->snd_mss;
+  TCP_TEST (tcp_tlp_new_data_fits_cwnd (tc, tc->snd_mss),
+	    "TLP prefers new data when one segment fits within cwnd");
+  tcp_test_rack_cleanup (tc);
+
+  /* TLP recovery detection retains an exactly ACKed retransmission until
+   * duplicate feedback resolves the retransmission ambiguity. New-data
+   * probes and ACKs beyond the retransmitted probe are unambiguous. */
+  tcp_test_rack_init (tc, thread_index);
+  rack = tcp_rack_get_state (tc);
+  clib_memset (&ac, 0, sizeof (ac));
+  tc->rtt_ts = 1.0;
+  tc->rtt_seq = 100;
+  tcp_tlp_retransmit_disarm_rtt (tc, 100, 200);
+  TCP_TEST (tc->rtt_ts == 1.0, "TLP retransmission preserves an earlier RTT sample");
+  tc->rtt_seq = 200;
+  tcp_tlp_retransmit_disarm_rtt (tc, 100, 200);
+  TCP_TEST (tc->rtt_ts == 0.0, "TLP retransmission disarms an ambiguous RTT sample");
+
+  tc->flags |= TCP_CONN_TLP_PENDING;
+  rack->tlp_end_seq = 100;
+  tcp_tlp_process_ack (tc, 100, &ac);
+  TCP_TEST (!tcp_tlp_is_pending (tc), "exact ACK retires a new-data TLP");
+
+  tc->flags |= TCP_CONN_TLP_PENDING;
+  rack->flags |= TCP_RACK_F_TLP_IS_RXT;
+  rack->tlp_end_seq = 100;
+  tc->snd_rxt_bytes = 100;
+  tcp_tlp_process_ack (tc, 100, &ac);
+  TCP_TEST (tcp_tlp_is_pending (tc) && tc->snd_rxt_bytes == 0,
+	    "exact ACK retains retransmitted TLP ambiguity without retaining flight");
+  ac.ack_flags = TCP_ACK_F_REPEATED;
+  tcp_tlp_process_ack (tc, 100, &ac);
+  TCP_TEST (!tcp_tlp_is_pending (tc), "repeated pure ACK resolves a spurious TLP");
+
+  tc->flags |= TCP_CONN_TLP_PENDING;
+  rack->flags |= TCP_RACK_F_TLP_IS_RXT;
+  rack->tlp_end_seq = 100;
+  block = (sack_block_t) { .start = 0, .end = 100 };
+  TCP_TEST (tcp_tlp_dsack_matches (tc, &block), "one-MSS D-SACK matches the TLP retransmission");
+  ac.ack_flags = TCP_ACK_F_DSACK | TCP_ACK_F_TLP_DSACK;
+  tc->snd_una = 200;
+  tcp_tlp_process_ack (tc, 100, &ac);
+  TCP_TEST (!tcp_tlp_is_pending (tc), "matching D-SACK on an old ACK resolves a spurious TLP");
+
+  tc->flags |= TCP_CONN_TLP_PENDING;
+  rack->flags |= TCP_RACK_F_TLP_IS_RXT;
+  rack->tlp_end_seq = 200;
+  block = (sack_block_t) { .start = 99, .end = 200 };
+  TCP_TEST (!tcp_tlp_dsack_matches (tc, &block),
+	    "D-SACK larger than one MSS does not match the TLP retransmission");
+  ac.ack_flags = TCP_ACK_F_DSACK;
+  tcp_tlp_process_ack (tc, 200, &ac);
+  TCP_TEST (tcp_tlp_is_pending (tc), "non-matching D-SACK does not resolve TLP ambiguity");
+  tcp_tlp_recovery_init (tc);
+
+  tc->flags |= TCP_CONN_TLP_PENDING;
+  rack->flags |= TCP_RACK_F_TLP_IS_RXT;
+  rack->tlp_end_seq = 100;
+  tc->snd_nxt = 200;
+  clib_memset (&ac, 0, sizeof (ac));
+  tcp_tlp_process_ack (tc, 200, &ac);
+  TCP_TEST (
+    !tcp_tlp_is_pending (tc) && (ac.ack_flags & TCP_ACK_F_TLP_RECOVERY),
+    "later data makes ACK beyond retransmitted TLP reachable and reports a congestion event");
+
+  tc->cc_algo = tcp_cc_algo_get (TCP_CC_NEWRENO);
+  tc->snd_una = 0;
+  tc->snd_nxt = 10 * tc->snd_mss;
+  tc->cwnd = 20 * tc->snd_mss;
+  tc->ssthresh = tc->cwnd;
+  tc->cwnd_acc_bytes = tc->cwnd - 1;
+  tc->mrtt_us = 0.1;
+  tc->rcv_dupacks = 2;
+  tc->rcv_opts.tsecr = 1234;
+  clib_memset (&ac, 0, sizeof (ac));
+  tcp_loss_tlp_recovery (tc, &ac);
+  TCP_TEST (!tc->cwnd_acc_bytes && tc->fr_occurences == 1 && !tc->rcv_dupacks &&
+	      tc->tsecr_last_ack == tc->rcv_opts.tsecr,
+	    "TLP congestion response resets cumulative ACK state and records recovery");
+  tcp_test_rack_cleanup (tc);
+
+  /* A TLP ACK can expose another RACK loss. Enter ordinary recovery once so
+   * the marked range is retransmitted instead of waiting for RTO. */
+  tcp_test_rack_init (tc, thread_index);
+  tc->state = TCP_STATE_ESTABLISHED;
+  tcp_test_set_time (thread_index, 0.1);
+  tcp_bt_track_tx (tc, 100);
+  tc->snd_nxt = 100;
+  bts = pool_elt_at_index (tc->bt->samples, tc->bt->head);
+  tcp_rack_mark_sample_lost (tc, bts);
+  tc->sack_sb.lost_bytes = 100;
+  tc->cc_algo = tcp_cc_algo_get (TCP_CC_NEWRENO);
+  tc->cwnd = 20 * tc->snd_mss;
+  tc->ssthresh = tc->cwnd;
+  tc->mrtt_us = 0.1;
+  tc->flags |= TCP_CONN_RXT_PENDING;
+  tc->rcv_dupacks = 2;
+  clib_memset (&ac, 0, sizeof (ac));
+  ac.ack_flags = TCP_ACK_F_TLP_RECOVERY | TCP_ACK_F_DUPACK;
+  ac.last_lost = 100;
+  tcp_loss_tlp_recovery (tc, &ac);
+  TCP_TEST (tcp_in_fastrecovery (tc) && tc->fr_occurences == 1 && tc->snd_congestion == 100 &&
+	      !tc->rcv_dupacks,
+	    "cumulative TLP ACK with a newly marked RACK loss enters recovery once");
   tcp_test_rack_cleanup (tc);
 
   /* A pure duplicate ACK does not advance RACK state. The reordering timer
@@ -8239,6 +8426,7 @@ tcp_test_rack (vlib_main_t *vm, unformat_input_t *input)
   /* Selective delivery removes samples from the loss-candidate order while
    * retaining their BT history until the cumulative ACK catches up. */
   tcp_test_rack_init (tc, thread_index);
+  rack = tcp_rack_get_state (tc);
   tcp_test_set_time (thread_index, 0.30);
   tcp_bt_track_tx (tc, 300);
   tc->snd_nxt = 300;
