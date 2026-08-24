@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "403c321a_08fc1863",
+        "filename": "src/plugins/cnat/cnat_node_vip.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 164,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-08-24T08:50:54Z",
+      "side": 1,
+      "message": "Could we classify the `!rw` case as `CNAT_FLOW_CLASS_PASS_THROUGH`? When a packet reaches the direct VIP DPO but no translation matches its port/protocol, the lookup has already allocated a tracked flow and `cnat_vip_feature_new_flow_inline()` returns `NULL` to follow the parent DPO. Currently that flow increments `/cnat/flows/total` but remains absent from `/cnat/flows/pass-through`. Please also add coverage using an unmatched VIP port.",
+      "revId": "9eba3db8bb91cd1242a9ffce1afb9a3fcb9459f9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
