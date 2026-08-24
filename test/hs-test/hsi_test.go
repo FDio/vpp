@@ -500,6 +500,10 @@ func HsiProxyLiteUdpRepeatedMigrationIdleMWTest(s *HsiSuite) {
 func HsiProxyLiteDrainCacheOverflowTest(s *HsiSuite) {
 	s.SetupNginxServer()
 	vpp := s.Containers.Vpp.VppInstance
+
+	Log(vpp.Vppctl("set nsim poll-main-thread delay 100 ms bandwidth 40 gbit"))
+	Log(vpp.Vppctl("nsim output-feature enable-disable " + s.Interfaces.Server.VppName()))
+
 	Log(vpp.Vppctl("hsi tcp drain-cache max-packets 1"))
 	s.StartProxyLiteTcp4("hsi-offload", "fifo-size 4k")
 
@@ -508,7 +512,7 @@ func HsiProxyLiteDrainCacheOverflowTest(s *HsiSuite) {
 
 	uri := fmt.Sprintf("http://%s:%d/upload/hsi-proxy-lite-overflow", s.ServerAddr(), s.Ports.Server)
 	finished := startCurlHttpRequest(uri, s.NetNamespaces.Client, "201", 10,
-		"-T", uploadFileName, "-H", "Expect:", "--limit-rate", "256k")
+		"-T", uploadFileName, "-H", "Expect:")
 
 	WaitProxyLiteTracked(vpp, func() {})
 
