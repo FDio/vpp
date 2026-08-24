@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8b66d3d9_c0957b52",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 1
+      },
+      "lineNbr": 17,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-08-24T01:44:43Z",
+      "side": 1,
+      "message": "VPP_CLOSING? I\u0027m guessing that was supposed to be STATE_CLOSING?",
+      "revId": "ea794e8e5731707c8e5481d4a4921894e8fcf117",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
