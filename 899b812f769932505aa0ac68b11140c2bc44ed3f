@@ -20,6 +20,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "a8e3a8bd_92a9d3b8",
+        "filename": "test/hs-test/framework_test.go",
+        "patchSetId": 5
+      },
+      "lineNbr": 69,
+      "author": {
+        "id": 3325
+      },
+      "writtenOn": "2026-08-24T14:21:06Z",
+      "side": 1,
+      "message": "Moved to a ReportAfterSuite registered after the VPP version one, so it is the last line printed.",
+      "parentUuid": "4ba1daaa_52c7e497",
+      "revId": "899b812f769932505aa0ac68b11140c2bc44ed3f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "552ab899_e0229ae3",
         "filename": "test/hs-test/infra/container.go",
         "patchSetId": 5
@@ -37,6 +55,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "896708b0_7f5dc97c",
+        "filename": "test/hs-test/infra/container.go",
+        "patchSetId": 5
+      },
+      "lineNbr": 47,
+      "author": {
+        "id": 3325
+      },
+      "writtenOn": "2026-08-24T14:21:06Z",
+      "side": 1,
+      "message": "Done, 1vpp-masque-server-review-46431.",
+      "parentUuid": "552ab899_e0229ae3",
+      "revId": "899b812f769932505aa0ac68b11140c2bc44ed3f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "b77736ca_e3b7c409",
         "filename": "test/hs-test/infra/suite_base.go",
         "patchSetId": 5
@@ -48,6 +84,24 @@
       "writtenOn": "2026-08-21T17:20:30Z",
       "side": 1,
       "message": "dash between name and RunIdentity, it\u0027s 1vpp-masque-serverreview-46431, I would prefer 1vpp-masque-server-review-46431 as we use for ginkgo container (ginkgo-review-46431)",
+      "revId": "899b812f769932505aa0ac68b11140c2bc44ed3f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "19087733_fd8ff97a",
+        "filename": "test/hs-test/infra/suite_base.go",
+        "patchSetId": 5
+      },
+      "lineNbr": 564,
+      "author": {
+        "id": 3325
+      },
+      "writtenOn": "2026-08-24T14:21:06Z",
+      "side": 1,
+      "message": "Done, and did the same for vppinstance-*.log. The log directory is already per run and per test, so the run and the process were redundant: container-client-app.log and vppinstance-client-vpp.log now.",
+      "parentUuid": "b77736ca_e3b7c409",
       "revId": "899b812f769932505aa0ac68b11140c2bc44ed3f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
