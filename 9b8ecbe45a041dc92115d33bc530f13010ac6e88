@@ -34,6 +34,24 @@
       "parentUuid": "f46eb023_7cb86637",
       "revId": "9b8ecbe45a041dc92115d33bc530f13010ac6e88",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "961059f0_0b558c98",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3325
+      },
+      "writtenOn": "2026-08-24T14:36:26Z",
+      "side": 1,
+      "message": "Skips now — another run holding the cores is a Skip, while lock, file and docker errors still Fail, so a real breakage is not skipped quietly.\n\nNice, that was actually a bug. The reservation was released in TeardownSuite, which runs once per suite in every Ginkgo process, so a run kept deleting its own row and the check was open most of the time, two MW runs could both start and then collide in ClaimCpus. No run deletes its own row now, rows whose Ginkgo container is gone are dropped by whichever run reads them next.",
+      "parentUuid": "4aeea89e_da86b4f6",
+      "revId": "9b8ecbe45a041dc92115d33bc530f13010ac6e88",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
