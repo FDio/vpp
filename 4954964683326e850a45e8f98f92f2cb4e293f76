@@ -33,6 +33,24 @@
       "message": "This message will be formatted exactly the same as the one in `lcp_router_route_add()`. Could you modify the messages in both places to make it clear whether it\u0027s adding or deleting that is being skipped? E.g. make this one look like \"route del skip:\".",
       "revId": "4954964683326e850a45e8f98f92f2cb4e293f76",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "5e20da0f_0884cb12",
+        "filename": "src/plugins/linux-cp/lcp_router.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 1289,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2026-08-24T13:43:30Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "61780d53_80019c8b",
+      "revId": "4954964683326e850a45e8f98f92f2cb4e293f76",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
