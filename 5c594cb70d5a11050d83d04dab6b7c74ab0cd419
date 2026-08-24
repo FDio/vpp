@@ -1,6 +1,23 @@
 {
   "comments": [
     {
+      "unresolved": true,
+      "key": {
+        "uuid": "a6eca69f_7be2e7a4",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 49
+      },
+      "lineNbr": 11,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-08-24T08:13:47Z",
+      "side": 1,
+      "message": "Can you reformat the commit message so that it respects the width of 78 characters?",
+      "revId": "5c594cb70d5a11050d83d04dab6b7c74ab0cd419",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": false,
       "key": {
         "uuid": "4bca06bc_40e3f990",
