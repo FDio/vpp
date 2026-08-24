@@ -85,6 +85,24 @@
       "message": "The cleanup fix still misses this parse-error path: returning directly leaks `line_input` and any previously populated `flow_indices`. Could we use `goto done` here? The oversized generic spec/mask paths above appear to have the same issue.",
       "revId": "32dda020758c7c58a4d4e1d28096d43ccdfc2b26",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "91a329fe_ac93cdbe",
+        "filename": "src/vnet/flow/flow_cli.c",
+        "patchSetId": 40
+      },
+      "lineNbr": 668,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2026-08-24T09:59:29Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "89eba8a5_ccaef328",
+      "revId": "32dda020758c7c58a4d4e1d28096d43ccdfc2b26",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
