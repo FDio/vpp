@@ -20,6 +20,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "52941491_cc4ef2cb",
+        "filename": "test/hs-test/Makefile",
+        "patchSetId": 5
+      },
+      "lineNbr": 392,
+      "author": {
+        "id": 3325
+      },
+      "writtenOn": "2026-08-24T14:25:45Z",
+      "side": 1,
+      "message": "Fixed. Both clean targets now drop .last_state_hash when it names an image they removed, only in this case, so cleaning up another branch does not force a rebuild of the one you are on.",
+      "parentUuid": "2ba20412_a49742ca",
+      "revId": "4acf0d9e3474c4719d0ef3935f8769c89c3d8284",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "364e848d_e6741faf",
         "filename": "test/hs-test/README.rst",
         "patchSetId": 5
@@ -31,6 +49,24 @@
       "writtenOn": "2026-08-21T21:00:55Z",
       "side": 1,
       "message": "can you please write here that if you want to clean images from old branch you should use \"make clean-hst-images RUN_ID\u003dreview-46432\" and maybe we should have something to clean all images",
+      "revId": "4acf0d9e3474c4719d0ef3935f8769c89c3d8284",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9c9fca66_0af35804",
+        "filename": "test/hs-test/README.rst",
+        "patchSetId": 5
+      },
+      "lineNbr": 217,
+      "author": {
+        "id": 3325
+      },
+      "writtenOn": "2026-08-24T14:25:45Z",
+      "side": 1,
+      "message": "Both done, documented with that example, and added \u0027make clean-hst-images-all\u0027.",
+      "parentUuid": "364e848d_e6741faf",
       "revId": "4acf0d9e3474c4719d0ef3935f8769c89c3d8284",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
