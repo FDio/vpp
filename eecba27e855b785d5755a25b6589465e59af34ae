@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "7bcde31e_f13adaec",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 2
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-08-24T08:14:23Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "37d4e612_9c11a9fc",
+      "revId": "eecba27e855b785d5755a25b6589465e59af34ae",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "6c8f653e_fd7ba58d",
@@ -35,6 +53,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "3223dd19_95c15f24",
+        "filename": "src/vnet/ip/ip_init.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 105,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-08-24T08:14:23Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "6c8f653e_fd7ba58d",
+      "revId": "eecba27e855b785d5755a25b6589465e59af34ae",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "3c89408b_1605bc80",
@@ -48,6 +84,24 @@
       "writtenOn": "2026-08-21T14:50:59Z",
       "side": 1,
       "message": "`startup.conf` documents these values as the expected number of objects/mtries, so `unformat_memory_size()` is only providing K/M/G scaling; its result is not necessarily a byte count. Dividing by `sizeof` changes the existing semantics—for example, the documented `ip4-mtrie-pool-size 1K` would preallocate zero elements. Could we keep these as element counts and use `unformat_base10()` instead to avoid the misleading parser name?",
+      "revId": "eecba27e855b785d5755a25b6589465e59af34ae",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "73019926_c7ac7939",
+        "filename": "src/vnet/ip/ip_init.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 113,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-08-24T08:14:23Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3c89408b_1605bc80",
       "revId": "eecba27e855b785d5755a25b6589465e59af34ae",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
