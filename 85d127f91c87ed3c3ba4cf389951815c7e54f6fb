@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9c374d5f_2680fc5c",
+        "filename": "src/plugins/rdma/output.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 186,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-08-24T08:38:31Z",
+      "side": 1,
+      "message": "Could the common doorbell sequence be moved into a small `always_inline` helper? Both doorbell functions perform the store barrier, DB-record update, compiler barrier, and MMIO write in the same order. Keeping that ordering in one place would prevent the two paths from drifting while allowing each wrapper to retain its own completion mapping and assertions.",
+      "revId": "85d127f91c87ed3c3ba4cf389951815c7e54f6fb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e0c01451_50c8ea29",
+        "filename": "src/plugins/rdma/output.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 688,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-08-24T08:38:31Z",
+      "side": 1,
+      "message": "Could we share the chained-SEND builder with `rdma_mlx5_tx_regular()`, similarly to the shared TSO builder? These implementations have already diverged: the regular path skips zero-length fragments, while this path counts each one as a data segment. Consequently, enabling eMPW can consume additional WQEBBs or reject a fragmented packet with `SEGMENT_SIZE_EXCEEDED` when the legacy path would transmit it. A common builder returning the status, final control segment, and WQEBB count would allow each caller to retain its different buffer-ring accounting.",
+      "revId": "85d127f91c87ed3c3ba4cf389951815c7e54f6fb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "67e88293_917ae245",
+        "filename": "src/plugins/rdma/output.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 783,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-08-24T08:38:31Z",
+      "side": 1,
+      "message": "Could the TCP-GSO validation and drop handling be shared with `rdma_mlx5_tx_one()`? Both paths check whether GSO is supported and whether the packet is TCP GSO before invoking the common TSO builder. Centralizing that policy would keep the error counter and fallback behavior consistent between eMPW and non-eMPW operation.",
+      "revId": "85d127f91c87ed3c3ba4cf389951815c7e54f6fb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
