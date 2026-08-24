@@ -143,9 +143,10 @@ typedef struct
   /* end of 2nd 64-bytes cacheline (or 1st 128-bytes cacheline) */
     STRUCT_MARK (cacheline2);
 
-  /* fields below are not accessed in datapath */
-  struct ibv_cq *cq;
-  struct ibv_qp *qp;
+    /* fields below are not accessed in the normal datapath */
+    struct ibv_cq *cq;
+    struct ibv_qp *qp;
+    u8 dv_cq_error_logged;
 
 } rdma_txq_t;
 STATIC_ASSERT_OFFSET_OF (rdma_txq_t, cacheline1, 64);

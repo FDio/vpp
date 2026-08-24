@@ -22,10 +22,26 @@
  * MLX5 direct verbs tx/free functions
  */
 
+static __clib_noinline void
+rdma_device_output_mlx5_log_error (vlib_main_t *vm, const rdma_device_t *rd, rdma_txq_t *txq,
+				   const struct mlx5_cqe64 *cqe)
+{
+  const struct mlx5_err_cqe *ecqe = (const void *) cqe;
+  u32 s_wqe_opcode_qpn = be32toh (ecqe->s_wqe_opcode_qpn);
+
+  txq->dv_cq_error_logged = 1;
+  vlib_log_err (rdma_main.log_class,
+		"%s: txq %u, %U, QP %u: TX CQE opcode 0x%02x, syndrome 0x%02x, "
+		"vendor syndrome 0x%02x, WQE counter %u, WQE opcode 0x%02x, CQE QP %u",
+		rd->name, (u32) (txq - rd->txqs), format_vlib_thread_name_and_index,
+		vm->thread_index, txq->qp->qp_num, ecqe->op_own >> 4, ecqe->syndrome,
+		ecqe->vendor_err_synd, be16toh (ecqe->wqe_counter), s_wqe_opcode_qpn >> 24,
+		s_wqe_opcode_qpn & 0xffffff);
+}
+
 static_always_inline void
-rdma_device_output_free_mlx5 (vlib_main_t * vm,
-			      const vlib_node_runtime_t * node,
-			      rdma_txq_t * txq)
+rdma_device_output_free_mlx5 (vlib_main_t *vm, const vlib_node_runtime_t *node,
+			      const rdma_device_t *rd, rdma_txq_t *txq)
 {
   u16 idx = txq->dv_cq_idx;
   u32 cq_mask = pow2_mask (txq->dv_cq_log2sz);
@@ -43,8 +59,12 @@ rdma_device_output_free_mlx5 (vlib_main_t * vm,
       if (((idx >> log2_cq_sz) & MLX5_CQE_OWNER_MASK) !=
 	  (op_own & MLX5_CQE_OWNER_MASK) || (op_own >> 4) == MLX5_CQE_INVALID)
 	break;
-      if (PREDICT_FALSE ((op_own >> 4)) != MLX5_CQE_REQ)
-	vlib_error_count (vm, node->node_index, RDMA_TX_ERROR_COMPLETION, 1);
+      if (PREDICT_FALSE ((op_own >> 4) != MLX5_CQE_REQ))
+	{
+	  if (PREDICT_FALSE (!txq->dv_cq_error_logged))
+	    rdma_device_output_mlx5_log_error (vm, rd, txq, cur);
+	  vlib_error_count (vm, node->node_index, RDMA_TX_ERROR_COMPLETION, 1);
+	}
       idx++;
       cur = cqes + (idx & cq_mask);
     }
@@ -472,7 +492,7 @@ rdma_device_output_free (vlib_main_t *vm, const vlib_node_runtime_t *node,
 			 const rdma_device_t *rd, rdma_txq_t *txq)
 {
   if (PREDICT_TRUE (rd->flags & RDMA_DEVICE_F_MLX5DV))
-    rdma_device_output_free_mlx5 (vm, node, txq);
+    rdma_device_output_free_mlx5 (vm, node, rd, txq);
   else
     rdma_device_output_free_ibverb (vm, node, txq);
 }
