@@ -1119,8 +1119,7 @@ esp_encrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 }
 
 always_inline uword
-esp_encrypt_post_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
-			 vlib_frame_t * frame)
+esp_encrypt_post_inline (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b = bufs;
   u16 nexts[VLIB_FRAME_SIZE], *next = nexts;
@@ -1185,6 +1184,7 @@ esp_encrypt_post_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   while (n_left > 0)
     {
       next[0] = (esp_post_data (b[0]))->next_index;
+
       if (PREDICT_FALSE (b[0]->flags & VLIB_BUFFER_IS_TRACED))
 	{
 	  esp_encrypt_post_trace_t *tr = vlib_add_trace (vm, node, b[0],

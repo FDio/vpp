@@ -8,10 +8,51 @@ if [ -x "$DOCKER_LOGIN_SCRIPT" ] ; then
   $DOCKER_LOGIN_SCRIPT
 fi
 
+function wait_for_process () {
+    local max_time_wait=30
+    local process_name="$1"
+    local waited_sec=0
+    while ! pgrep "$process_name" >/dev/null && ((waited_sec < max_time_wait)); do
+        echo "Process $process_name is not running yet. Retrying in 1 seconds"
+        echo "Waited $waited_sec seconds of $max_time_wait seconds"
+        sleep 1
+        ((waited_sec=waited_sec+1))
+        if ((waited_sec >= max_time_wait)); then
+            return 1
+        fi
+    done
+    return 0
+}
+
 # Check if Docker is running
-if ! docker info &>/dev/null; then
-    echo "Error: Docker is not running. Please start Docker and try again."
-    exit 1
+START_DOCKER_SCRIPT="start-docker.sh"
+if ! DOCKER_INFO=$(docker info 2>&1); then
+    echo "dockerd is not running"
+    echo "$DOCKER_INFO"
+    # We can't use systemd in d-in-d executor image
+    if [ -n "$(which "$START_DOCKER_SCRIPT")" ] ; then
+        echo "Starting dockerd with '$START_DOCKER_SCRIPT'"
+        $START_DOCKER_SCRIPT
+    else
+        echo "Starting dockerd with systemd"
+        if ! sudo systemctl start docker; then
+            echo "Error: failed to start dockerd."
+            exit 1
+        fi
+    fi
+    echo "Waiting for dockerd to be running"
+    if ! wait_for_process dockerd; then
+        echo "dockerd is not running after max time"
+        exit 1
+    else
+        echo "dockerd is running"
+        if ! DOCKER_INFO=$(docker info 2>&1); then
+            echo "Error: docker info failed."
+            echo "$DOCKER_INFO"
+            ls -la /var/run/docker.sock
+            exit 1
+        fi
+    fi
 fi
 
 # Registry container name

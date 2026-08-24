@@ -361,8 +361,37 @@ vlib_get_next_buffer (vlib_main_t * vm, vlib_buffer_t * b)
 	  ? vlib_get_buffer (vm, b->next_buffer) : 0);
 }
 
-uword vlib_buffer_length_in_chain_slow_path (vlib_main_t * vm,
-					     vlib_buffer_t * b_first);
+uword vlib_buffer_length_in_chain_slow_path (vlib_main_t *vm, vlib_buffer_t *b_first,
+					     vlib_buffer_t **b_last, u16 *count);
+
+/** \brief Get length in bytes of the buffer chain return last
+
+    @param vm - (vlib_main_t *) vlib main data structure pointer
+    @param b - (void *) buffer pointer
+    @param lb - (vlib_buffer_t **) store last buffer pointer here
+    @param count - (u16 *) store buffer count here
+    @return - (uword) length of buffer chain, and a pointer to the
+	      last buffer in the chain
+*/
+always_inline uword
+vlib_buffer_length_in_chain_lb (vlib_main_t *vm, vlib_buffer_t *b, vlib_buffer_t **lb, u16 *count)
+{
+  uword len = b->current_length;
+
+  if (PREDICT_TRUE ((b->flags & VLIB_BUFFER_NEXT_PRESENT) == 0))
+    {
+      if (lb)
+	*lb = b;
+      if (count)
+	*count = 1;
+      return len;
+    }
+
+  if (!lb && !count && PREDICT_TRUE (b->flags & VLIB_BUFFER_TOTAL_LENGTH_VALID))
+    return len + b->total_length_not_including_first_buffer;
+
+  return vlib_buffer_length_in_chain_slow_path (vm, b, lb, count);
+}
 
 /** \brief Get length in bytes of the buffer chain
 
@@ -371,17 +400,9 @@ uword vlib_buffer_length_in_chain_slow_path (vlib_main_t * vm,
     @return - (uword) length of buffer chain
 */
 always_inline uword
-vlib_buffer_length_in_chain (vlib_main_t * vm, vlib_buffer_t * b)
+vlib_buffer_length_in_chain (vlib_main_t *vm, vlib_buffer_t *b)
 {
-  uword len = b->current_length;
-
-  if (PREDICT_TRUE ((b->flags & VLIB_BUFFER_NEXT_PRESENT) == 0))
-    return len;
-
-  if (PREDICT_TRUE (b->flags & VLIB_BUFFER_TOTAL_LENGTH_VALID))
-    return len + b->total_length_not_including_first_buffer;
-
-  return vlib_buffer_length_in_chain_slow_path (vm, b);
+  return vlib_buffer_length_in_chain_lb (vm, b, NULL, NULL);
 }
 
 /** \brief Get length in bytes of the buffer index buffer chain
@@ -1357,6 +1378,12 @@ vlib_buffer_clone_255 (vlib_main_t *vm, u32 src_buffer, u32 *buffers,
   n_buffers = vlib_buffer_alloc_from_pool (vm, buffers, n_buffers,
 					   s->buffer_pool_index);
 
+  if (PREDICT_FALSE (n_buffers == 0))
+    {
+      buffers[0] = src_buffer;
+      return 1;
+    }
+
   for (i = 0; i < n_buffers; i++)
     {
       vlib_buffer_t *d = vlib_get_buffer (vm, buffers[i]);
@@ -1385,11 +1412,16 @@ vlib_buffer_clone_255 (vlib_main_t *vm, u32 src_buffer, u32 *buffers,
       d->next_buffer = src_buffer;
     }
   vlib_buffer_advance (s, head_end_offset);
-  s->ref_count = n_buffers ? n_buffers : s->ref_count;
+  /* reset ref_count because it is now the tail of N new buffers */
+  s->ref_count = n_buffers;
+
   while (s->flags & VLIB_BUFFER_NEXT_PRESENT)
     {
       s = vlib_get_buffer (vm, s->next_buffer);
-      s->ref_count = n_buffers ? n_buffers : s->ref_count;
+      /* add to the ref_count of all tail buffers
+       * minus 1 because src_buffer became a tail
+       */
+      s->ref_count += (n_buffers - 1);
     }
 
   return n_buffers;

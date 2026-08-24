@@ -918,7 +918,7 @@ VNET_DEV_NODE_FN (oct_tx_node)
 #else
   u64 lmt_id = thread_index << ROC_LMT_LINES_PER_CORE_LOG2;
 #endif
-  oct_per_thread_data_t *ptd = vec_elt_at_index (oct_main.per_thread_data, thread_index);
+  oct_per_thread_data_t *ptd = vec_elt_at_index (cd->per_thread_data, thread_index);
 
   oct_tx_ctx_t ctx = {
     .node = node,
@@ -1028,7 +1028,7 @@ VNET_DEV_NODE_FN (oct_tx_tm_node)
 #else
   u64 lmt_id = thread_index << ROC_LMT_LINES_PER_CORE_LOG2;
 #endif
-  oct_per_thread_data_t *ptd = vec_elt_at_index (oct_main.per_thread_data, thread_index);
+  oct_per_thread_data_t *ptd = vec_elt_at_index (cd->per_thread_data, thread_index);
 
   oct_tx_ctx_t ctx = {
     .node = node,

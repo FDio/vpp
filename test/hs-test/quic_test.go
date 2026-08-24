@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"regexp"
+	"strings"
 	"time"
 
 	. "fd.io/hs-test/infra"
@@ -104,12 +105,21 @@ func QuicAlpnMismatchTest(s *QuicSuite) {
 	AssertContains(o, "connect error failed tls handshake")
 	// check if everything is cleanup
 	// server should have only 2 listener sessions (udp and quic) and app no accepted connection
+	// server cleanup connection with delay ~1 second
+	serverCleanupDone := false
+	for range 5 {
+		o = serverVpp.Vppctl("show session verbose 2")
+		if strings.Contains(o, "active sessions 2") {
+			Log(o)
+			serverCleanupDone = true
+			break
+		}
+		time.Sleep(1 * time.Second)
+	}
+	AssertEqual(true, serverCleanupDone, "server sessions not cleaned up")
 	o = serverVpp.Vppctl("show test tls server")
 	Log(o)
 	AssertContains(o, "accepted connections 0")
-	o = serverVpp.Vppctl("show session verbose 2")
-	Log(o)
-	AssertContains(o, "active sessions 2")
 	// no session on client
 	o = clientVpp.Vppctl("show session verbose 2")
 	Log(o)
@@ -211,13 +221,13 @@ func QuicCryptoContextTest(s *NoTopoSuite) {
 	Log(vpp.Vppctl("vperf server fifo-size 8k uri quic://" + serverAddress5))
 	o = vpp.Vppctl("show quic crypto context")
 	Log(o)
-	AssertContains(o, "[3][vperf_server n_sub: 1")
+	AssertContains(o, "[3][vperf_srv_builtin n_sub: 1")
 
 	// remove app to test cleanup
 	Log(vpp.Vppctl("vperf server stop"))
 	o = vpp.Vppctl("show quic crypto context")
 	Log(o)
-	AssertNotContains(o, "[3][vperf_server n_sub: 1")
+	AssertNotContains(o, "[3][vperf_srv_builtin n_sub: 1")
 	AssertContains(o, "[0][test_tls_server n_sub: 2, ckpair: 1]")
 	AssertContains(o, "[1][test_tls_server n_sub: 1, ckpair: 1]")
 	AssertContains(o, "[2][test_tls_server n_sub: 1, ckpair: 2][tls_profile: 0]")

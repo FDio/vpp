@@ -58,10 +58,9 @@ format_punt_trace (u8 * s, va_list * args)
 }
 
 always_inline u32
-punt_replicate (vlib_main_t *vm, vlib_node_runtime_t *node,
-		clib_thread_index_t thread_index, vlib_buffer_t *b0, u32 bi0,
-		vlib_punt_reason_t pr0, u32 *next_index, u32 *n_left_to_next,
-		u32 **to_next, u32 *n_dispatched)
+punt_replicate (vlib_main_t *vm, vlib_node_runtime_t *node, clib_thread_index_t thread_index,
+		vlib_buffer_t *b0, u32 *bi0, vlib_punt_reason_t pr0, u32 *next_index,
+		u32 *n_left_to_next, u32 **to_next, u32 *n_dispatched)
 {
   /* multiple clients => replicate a copy to each */
   u16 n_clones0, n_cloned0, clone0;
@@ -70,9 +69,8 @@ punt_replicate (vlib_main_t *vm, vlib_node_runtime_t *node,
   n_clones0 = vec_len (punt_dp_db[pr0]);
   vec_validate (punt_clones[thread_index], n_clones0);
 
-  n_cloned0 = vlib_buffer_clone (vm, bi0,
-				 punt_clones[thread_index],
-				 n_clones0, 2 * CLIB_CACHE_LINE_BYTES);
+  n_cloned0 =
+    vlib_buffer_clone (vm, bi0[0], punt_clones[thread_index], n_clones0, 2 * CLIB_CACHE_LINE_BYTES);
 
   if (PREDICT_FALSE (n_cloned0 != n_clones0))
     {
@@ -108,6 +106,10 @@ punt_replicate (vlib_main_t *vm, vlib_node_runtime_t *node,
     }
   *n_dispatched = *n_dispatched + n_cloned0;
 
+  /* original buffer might have been updated and no longer available;
+   * see vlib_buffer_clone() */
+  bi0[0] = punt_clones[thread_index][0];
+
   /* The original buffer is the first clone */
   next0 = punt_dp_db[pr0][0];
   /*
@@ -120,16 +122,15 @@ punt_replicate (vlib_main_t *vm, vlib_node_runtime_t *node,
 }
 
 always_inline u32
-punt_dispatch_one (vlib_main_t *vm, vlib_node_runtime_t *node,
-		   vlib_combined_counter_main_t *cm,
-		   clib_thread_index_t thread_index, u32 bi0, u32 *next_index,
-		   u32 *n_left_to_next, u32 **to_next, u32 *n_dispatched)
+punt_dispatch_one (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_combined_counter_main_t *cm,
+		   clib_thread_index_t thread_index, u32 *bi0, u32 *next_index, u32 *n_left_to_next,
+		   u32 **to_next, u32 *n_dispatched)
 {
   vlib_punt_reason_t pr0;
   vlib_buffer_t *b0;
   u32 next0;
 
-  b0 = vlib_get_buffer (vm, bi0);
+  b0 = vlib_get_buffer (vm, bi0[0]);
   pr0 = b0->punt_reason;
 
   if (PREDICT_FALSE (pr0 >= vec_len (punt_dp_db)))
@@ -165,6 +166,8 @@ punt_dispatch_one (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  next0 = punt_replicate (vm, node, thread_index, b0, bi0, pr0,
 				  next_index, n_left_to_next, to_next,
 				  n_dispatched);
+	  /* re-fetch buffer */
+	  b0 = vlib_get_buffer (vm, bi0[0]);
 	}
     }
 
@@ -220,11 +223,9 @@ VLIB_NODE_FN (punt_dispatch_node) (vlib_main_t * vm,
 	  from += 2;
 	  n_left_from -= 2;
 
-	  next0 = punt_dispatch_one (vm, node, cm, thread_index, bi0,
-				     &next_index, &n_left_to_next,
+	  next0 = punt_dispatch_one (vm, node, cm, thread_index, &bi0, &next_index, &n_left_to_next,
 				     &to_next, &n_dispatched);
-	  next1 = punt_dispatch_one (vm, node, cm, thread_index, bi1,
-				     &next_index, &n_left_to_next,
+	  next1 = punt_dispatch_one (vm, node, cm, thread_index, &bi1, &next_index, &n_left_to_next,
 				     &to_next, &n_dispatched);
 
 	  to_next += 2;
@@ -243,8 +244,7 @@ VLIB_NODE_FN (punt_dispatch_node) (vlib_main_t * vm,
 	  from += 1;
 	  n_left_from -= 1;
 
-	  next0 = punt_dispatch_one (vm, node, cm, thread_index, bi0,
-				     &next_index, &n_left_to_next,
+	  next0 = punt_dispatch_one (vm, node, cm, thread_index, &bi0, &next_index, &n_left_to_next,
 				     &to_next, &n_dispatched);
 
 	  to_next += 1;

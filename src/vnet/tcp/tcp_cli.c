@@ -130,8 +130,7 @@ format_tcp_congestion (u8 * s, va_list * args)
   u32 indent = format_get_indent (s), prr_space = 0;
 
   s = format (s, "%U ", format_tcp_congestion_status, tc);
-  s = format (s, "algo %s cwnd %u ssthresh %u bytes_acked %u\n",
-	      tc->cc_algo->name, tc->cwnd, tc->ssthresh, tc->bytes_acked);
+  s = format (s, "algo %s cwnd %u ssthresh %u\n", tc->cc_algo->name, tc->cwnd, tc->ssthresh);
   s = format (s, "%Ucc space %u prev_cwnd %u prev_ssthresh %u\n",
 	      format_white_space, indent, tcp_available_cc_snd_space (tc),
 	      tc->prev_cwnd, tc->prev_ssthresh);
@@ -207,6 +206,8 @@ format_tcp_vars (u8 * s, va_list * args)
     {
       s = format (s, " sboard: %U\n", format_tcp_scoreboard, &tc->sack_sb,
 		  tc);
+      if (tc->bt)
+	s = format (s, " bt:     %U\n", format_tcp_bt_stats, tc);
       s = format (s, " stats: %U\n", format_tcp_stats, tc);
     }
   if (vec_len (tc->snd_sacks))
@@ -358,17 +359,11 @@ format_tcp_scoreboard (u8 * s, va_list * args)
   sack_scoreboard_hole_t *hole;
   u32 indent = format_get_indent (s);
 
-  s = format (s, "sacked %u last_sacked %u lost %u last_lost %u"
-	      " rxt_sacked %u\n",
-	      sb->sacked_bytes, sb->last_sacked_bytes, sb->lost_bytes,
-	      sb->last_lost_bytes, sb->rxt_sacked);
-  s = format (s, "%Ulast_delivered %u high_sacked %u is_reneging %u",
-	      format_white_space, indent, sb->last_bytes_delivered,
-	      sb->high_sacked - tc->iss, sb->is_reneging);
-  s = format (s, " reorder %u\n", sb->reorder);
-  s = format (s, "%Ucur_rxt_hole %u high_rxt %u rescue_rxt %u",
-	      format_white_space, indent, sb->cur_rxt_hole,
-	      sb->high_rxt - tc->iss, sb->rescue_rxt - tc->iss);
+  s = format (s, "sacked %u lost %u high_sacked %u is_reneging %u reorder %u\n", sb->sacked_bytes,
+	      sb->lost_bytes, sb->high_sacked - tc->iss, tcp_scoreboard_is_reneging (sb),
+	      sb->reorder);
+  s = format (s, "%Ucur_rxt_hole %u high_rxt %u rescue_rxt %u", format_white_space, indent,
+	      sb->cur_rxt_hole, sb->high_rxt - tc->iss, sb->rescue_rxt - tc->iss);
 
   hole = scoreboard_first_hole (sb);
   if (hole)
@@ -654,12 +649,12 @@ tcp_scoreboard_dump_trace (u8 * s, sack_scoreboard_t * sb)
 
   s = format (s, "scoreboard trace:");
   vec_foreach (block, sb->trace)
-  {
-    s = format (s, "{%u, %u, %u, %u, %u}, ", block->start, block->end,
-		block->ack, block->snd_una_max, block->group);
-    if ((++i % 3) == 0)
-      s = format (s, "\n");
-  }
+    {
+      s = format (s, "{%u, %u, %u, %u, %u}, ", block->start, block->end, block->ack, block->snd_nxt,
+		  block->group);
+      if ((++i % 3) == 0)
+	s = format (s, "\n");
+    }
   return s;
 #else
   return 0;
@@ -709,6 +704,7 @@ tcp_scoreboard_replay (u8 * s, tcp_connection_t * tc, u8 verbose)
   scoreboard_trace_elt_t *trace;
   u32 next_ack, left, group, has_new_ack = 0;
   tcp_connection_t _placeholder_tc, *placeholder_tc = &_placeholder_tc;
+  tcp_ack_ctx_t ac = {};
   sack_block_t *block;
 
   if (!TCP_SCOREBOARD_TRACE)
@@ -723,7 +719,6 @@ tcp_scoreboard_replay (u8 * s, tcp_connection_t * tc, u8 verbose)
   clib_memset (placeholder_tc, 0, sizeof (*placeholder_tc));
   tcp_connection_timers_init (placeholder_tc);
   scoreboard_init (&placeholder_tc->sack_sb);
-  placeholder_tc->rcv_opts.flags |= TCP_OPTS_FLAG_SACK;
 
 #if TCP_SCOREBOARD_TRACE
   trace = tc->sack_sb.trace;
@@ -750,8 +745,8 @@ tcp_scoreboard_replay (u8 * s, tcp_connection_t * tc, u8 verbose)
 	  if (trace[left].ack != 0)
 	    {
 	      if (verbose)
-		s = format (s, "Adding ack %u, snd_una_max %u, segs: ",
-			    trace[left].ack, trace[left].snd_nxt);
+		s = format (s, "Adding ack %u, snd_nxt %u, segs: ", trace[left].ack,
+			    trace[left].snd_nxt);
 	      placeholder_tc->snd_nxt = trace[left].snd_nxt;
 	      next_ack = trace[left].ack;
 	      has_new_ack = 1;
@@ -769,7 +764,15 @@ tcp_scoreboard_replay (u8 * s, tcp_connection_t * tc, u8 verbose)
 	}
 
       /* Push segments */
-      tcp_rcv_sacks (placeholder_tc, next_ack);
+      if (vec_len (placeholder_tc->rcv_opts.sacks))
+	placeholder_tc->rcv_opts.flags |= TCP_OPTS_FLAG_SACK;
+      else
+	placeholder_tc->rcv_opts.flags &= ~TCP_OPTS_FLAG_SACK;
+      placeholder_tc->rcv_opts.n_sack_blocks = vec_len (placeholder_tc->rcv_opts.sacks);
+      clib_memset (&ac, 0, sizeof (ac));
+      tcp_ack_handle_feedback (placeholder_tc, next_ack, &ac);
+      if (ac.ack_flags & TCP_ACK_F_DETECT_LOSS)
+	tcp_loss_on_ack (placeholder_tc, &ac);
       if (has_new_ack)
 	placeholder_tc->snd_una = next_ack;
 
@@ -863,6 +866,8 @@ format_tcp_cfg (u8 *s, va_list *args)
   s = format (s, "tso: %s\n", tm_cfg.allow_tso ? "allowed" : "disallowed");
   s = format (s, "checksum offload: %s\n",
 	      tm_cfg.csum_offload ? "enabled" : "disabled");
+  s = format (s, "dsack: %s\n", tm_cfg.enable_dsack ? "enabled" : "disabled");
+  s = format (s, "byte tracker: %s\n", tm_cfg.enable_byte_tracker ? "enabled" : "disabled");
   s = format (s, "congestion control algorithm: %s\n",
 	      tcp_cc_algo_get (tm_cfg.cc_algo)->name);
   s = format (s, "min rwnd update ack: %u\n", tm_cfg.rwnd_min_update_ack);
@@ -917,9 +922,12 @@ VLIB_CLI_COMMAND (show_tcp_cfg_command, static) = {
 static clib_error_t *
 tcp_set_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
 {
+  u8 byte_tracker_set = 0;
   u8 csum_offload_set = 0;
+  u8 dsack_set = 0;
   u8 mtu_set = 0;
-  u32 mtu, min_mtu = 1280;
+  u8 initial_cwnd_set = 0;
+  u32 mtu, min_mtu = 1280, initial_cwnd_multiplier;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -935,6 +943,30 @@ tcp_set_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
 
 	  csum_offload_set = 1;
 	}
+      else if (unformat (input, "byte-tracker"))
+	{
+	  if (unformat (input, "enable") || unformat (input, "on"))
+	    tcp_cfg.enable_byte_tracker = 1;
+	  else if (unformat (input, "disable") || unformat (input, "off"))
+	    tcp_cfg.enable_byte_tracker = 0;
+	  else
+	    return clib_error_return (0, "expected enable or disable for "
+					 "byte-tracker");
+
+	  byte_tracker_set = 1;
+	}
+      else if (unformat (input, "dsack"))
+	{
+	  if (unformat (input, "enable") || unformat (input, "on"))
+	    tcp_cfg.enable_dsack = 1;
+	  else if (unformat (input, "disable") || unformat (input, "off"))
+	    tcp_cfg.enable_dsack = 0;
+	  else
+	    return clib_error_return (0, "expected enable or disable for "
+					 "dsack");
+
+	  dsack_set = 1;
+	}
       else if (unformat (input, "mtu %u", &mtu))
 	{
 	  if (mtu < min_mtu)
@@ -944,23 +976,45 @@ tcp_set_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
 	  tcp_cfg.default_mtu = mtu;
 	  mtu_set = 1;
 	}
+      else if (unformat (input, "initial-cwnd-multiplier %u", &initial_cwnd_multiplier))
+	{
+	  if (initial_cwnd_multiplier > CLIB_U16_MAX)
+	    return clib_error_return (0,
+				      "initial cwnd multiplier must not "
+				      "exceed %u",
+				      CLIB_U16_MAX);
+	  tcp_cfg.initial_cwnd_multiplier = initial_cwnd_multiplier;
+	  initial_cwnd_set = 1;
+	}
       else
 	return clib_error_return (0, "unknown input `%U'", format_unformat_error, input);
     }
 
-  if (!csum_offload_set && !mtu_set)
-    return clib_error_return (0, "expected csum-offload or mtu");
+  if (!byte_tracker_set && !csum_offload_set && !dsack_set && !mtu_set && !initial_cwnd_set)
+    return clib_error_return (0, "expected byte-tracker, csum-offload, "
+				 "dsack, mtu or initial-cwnd-multiplier");
 
+  if (byte_tracker_set)
+    vlib_cli_output (vm, "TCP byte tracker for new connections: %s",
+		     tcp_cfg.enable_byte_tracker ? "enabled" : "disabled");
   if (csum_offload_set)
     vlib_cli_output (vm, "TCP checksum offload: %s", tcp_cfg.csum_offload ? "enabled" : "disabled");
+  if (dsack_set)
+    vlib_cli_output (vm, "TCP D-SACK for new connections: %s",
+		     tcp_cfg.enable_dsack ? "enabled" : "disabled");
   if (mtu_set)
     vlib_cli_output (vm, "TCP default mtu: %u", tcp_cfg.default_mtu);
+  if (initial_cwnd_set)
+    vlib_cli_output (vm, "TCP initial cwnd multiplier for new connections: %u",
+		     tcp_cfg.initial_cwnd_multiplier);
   return 0;
 }
 
 VLIB_CLI_COMMAND (tcp_set_command, static) = {
   .path = "set tcp",
-  .short_help = "set tcp [csum-offload [enable|disable]] [mtu <mtu>]",
+  .short_help = "set tcp [byte-tracker [enable|disable]] "
+		"[csum-offload [enable|disable]] [dsack [enable|disable]] "
+		"[mtu <mtu>] [initial-cwnd-multiplier <n>]",
   .function = tcp_set_fn,
 };
 
@@ -1129,6 +1183,10 @@ tcp_config_fn (vlib_main_t * vm, unformat_input_t * input)
 	tcp_cfg.allow_tso = 1;
       else if (unformat (input, "no-csum-offload"))
 	tcp_cfg.csum_offload = 0;
+      else if (unformat (input, "no-dsack"))
+	tcp_cfg.enable_dsack = 0;
+      else if (unformat (input, "byte-tracker"))
+	tcp_cfg.enable_byte_tracker = 1;
       else if (unformat (input, "max-gso-size %u", &max_gso_size))
 	tcp_cfg.max_gso_size = clib_min (max_gso_size, TCP_MAX_GSO_SZ);
       else if (unformat (input, "cc-algo %U", unformat_tcp_cc_algo,

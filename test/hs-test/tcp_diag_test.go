@@ -62,17 +62,37 @@ func TcpConfigDiagTest(s *VethsSuite) {
 	AssertContains(config, "max rx fifo size:")
 	AssertContains(config, "congestion control algorithm:")
 	AssertContains(config, "checksum offload:")
+	AssertContains(config, "dsack: enabled")
+	AssertContains(config, "byte tracker: disabled")
+	AssertContains(config, "initial cwnd multiplier: 0")
 
+	AssertContains(serverVpp.Vppctl("set tcp byte-tracker enable"), "enabled")
+	AssertContains(serverVpp.Vppctl("show tcp config"), "byte tracker: enabled")
+	AssertContains(serverVpp.Vppctl("set tcp byte-tracker disable"), "disabled")
+	AssertContains(serverVpp.Vppctl("show tcp config"), "byte tracker: disabled")
 	AssertContains(serverVpp.Vppctl("set tcp csum-offload disable"), "disabled")
 	AssertContains(serverVpp.Vppctl("show tcp config"), "checksum offload: disabled")
 	AssertContains(serverVpp.Vppctl("set tcp csum-offload enable"), "enabled")
 	AssertContains(serverVpp.Vppctl("show tcp config"), "checksum offload: enabled")
+	AssertContains(serverVpp.Vppctl("set tcp dsack disable"), "disabled")
+	AssertContains(serverVpp.Vppctl("show tcp config"), "dsack: disabled")
+	AssertContains(serverVpp.Vppctl("set tcp dsack enable"), "enabled")
+	AssertContains(serverVpp.Vppctl("show tcp config"), "dsack: enabled")
 	AssertContains(serverVpp.Vppctl("set tcp mtu 9000"), "TCP default mtu: 9000")
 	AssertContains(serverVpp.Vppctl("show tcp config"), "default mtu: 9000")
 	AssertContains(serverVpp.Vppctl("set tcp mtu 1280"), "TCP default mtu: 1280")
 	AssertContains(serverVpp.Vppctl("show tcp config"), "default mtu: 1280")
 	AssertContains(serverVpp.Vppctl("set tcp mtu 1500"), "TCP default mtu: 1500")
 	AssertContains(serverVpp.Vppctl("show tcp config"), "default mtu: 1500")
+	AssertContains(serverVpp.Vppctl("set tcp initial-cwnd-multiplier 7"),
+		"TCP initial cwnd multiplier for new connections: 7")
+	AssertContains(serverVpp.Vppctl("show tcp config"), "initial cwnd multiplier: 7")
+	AssertContains(serverVpp.Vppctl("set tcp initial-cwnd-multiplier 65536"),
+		"initial cwnd multiplier must not exceed 65535")
+	AssertContains(serverVpp.Vppctl("show tcp config"), "initial cwnd multiplier: 7")
+	AssertContains(serverVpp.Vppctl("set tcp initial-cwnd-multiplier 0"),
+		"TCP initial cwnd multiplier for new connections: 0")
+	AssertContains(serverVpp.Vppctl("show tcp config"), "initial cwnd multiplier: 0")
 
 	punt := serverVpp.Vppctl("show tcp punt")
 	Log(punt)
@@ -248,6 +268,8 @@ func TcpCubicStartupConfigDiagTest(s *VethsSuite) {
 	var tcpConfig Stanza
 	tcpConfig.NewStanza("tcp").
 		Append("cc-algo cubic").
+		Append("no-dsack").
+		Append("byte-tracker").
 		NewStanza("cubic").
 		Append("no-fast-convergence").
 		Append("ssthresh 12345").
@@ -266,6 +288,8 @@ func TcpCubicStartupConfigDiagTest(s *VethsSuite) {
 	config := serverVpp.Vppctl("show tcp config")
 	Log(config)
 	AssertContains(config, "congestion control algorithm: cubic")
+	AssertContains(config, "dsack: disabled")
+	AssertContains(config, "byte tracker: enabled")
 
 	serverVpp.Vppctl("vperf server fifo-size 64k uri tcp://%s/%s", serverAddress, s.Ports.Port1)
 	listenerDetail := serverVpp.Vppctl("show session verbose 2 proto tcp state listening")
@@ -278,10 +302,14 @@ func TcpCubicStartupConfigDiagTest(s *VethsSuite) {
 			serverAddress, s.Ports.Port1)
 	}()
 
-	sessionDetail := waitForTcpDiagOutput(serverVpp, "show session verbose 2 proto tcp", "ssthresh 12345")
+	sessionDetail := waitForTcpDiagOutput(serverVpp, "show session verbose 2 proto tcp",
+		"ssthresh 12345", "Byte tracker")
 	Log(sessionDetail)
 	AssertContains(sessionDetail, "algo cubic")
 	AssertContains(sessionDetail, "ssthresh 12345")
+	AssertContains(sessionDetail, "Byte tracker")
+	AssertContains(sessionDetail, "bt:")
+	AssertContains(sessionDetail, "samples active")
 
 	o := <-done
 	Log(o)

@@ -19,7 +19,7 @@ typedef struct
   vp_test_worker_t *wrk;   /**< Per-thread state */
   u8 *connect_test_data;   /**< Pre-computed test data */
 
-  volatile u32 ready_connections;
+  volatile u32 ready_sessions;
   volatile u32 failed_session_closes;
   volatile u32 reset_count;
   volatile u32 disconnect_count;
@@ -46,7 +46,7 @@ typedef struct
    * Configuration params
    */
   vp_test_cfg_t cfg;
-  u32 expected_connections;  /**< Number of clients/connections */
+  u32 expected_sessions;     /**< Number of test sessions */
   u32 connections_per_batch; /**< Connections to rx/tx at once */
   u64 throughput;	     /**< Target bytes per second */
   u64 attach_flags;	     /**< App attach flags */
@@ -89,7 +89,8 @@ typedef enum vp_client_cli_signal_
   VP_CLIENT_CLI_CFG_SYNC,
   VP_CLIENT_CLI_START,
   VP_CLIENT_CLI_STOP,
-  VP_CLIENT_CLI_TEST_DONE
+  VP_CLIENT_CLI_TEST_DONE,
+  VP_CLIENT_CLI_TEST_ABORT
 } vp_client_cli_signal_t;
 
 void vp_client_program_connects (void);

@@ -10,6 +10,7 @@
 #include <vnet/sfdp/sfdp.h>
 
 #define SFDP_PARSER_MAX_KEY_SIZE 64
+/* Build a parser-specific lookup key from the current packet and its context. */
 typedef u8 calc_key_fn_t (vlib_buffer_t *b, u32 context_id, void *skey,
 			  u64 *lookup_val, u64 *h, i16 *l4_hdr_offset,
 			  u8 slowpath);
@@ -42,9 +43,12 @@ typedef struct _sfdp_parser_registration_mutable_t
 {
   struct _sfdp_parser_registration_mutable_t *next;
   uword key_size;
+  uword proto_offset;
   uword sfdp_parser_data_index;
   char *name;
+  sfdp_session_type_t type;
   vlib_node_registration_t *node_reg;
+  calc_key_fn_t *calc_key_fn;
   format_function_t *const *format_fn;
   normalize_key_fn_t *normalize_key_fn;
 } sfdp_parser_registration_mutable_t;
@@ -96,23 +100,25 @@ typedef struct
 } sfdp_parser_main_t;
 
 #ifndef CLIB_MARCH_VARIANT
-#define SFDP_PARSER_REGISTER(x)                                               \
-  static const sfdp_parser_registration_t sfdp_parser_registration_##x;       \
-  sfdp_parser_registration_mutable_t sfdp_parser_registration_mutable_##x;    \
-  static void __sfdp_parser_registration_mutable_add_registration__##x (void) \
-    __attribute__ ((__constructor__));                                        \
-  static void __sfdp_parser_registration_mutable_add_registration__##x (void) \
-  {                                                                           \
-    sfdp_parser_main_t *pm = &sfdp_parser_main;                               \
-    sfdp_parser_registration_mutable_t *r =                                   \
-      &sfdp_parser_registration_mutable_##x;                                  \
-    r->next = pm->regs;                                                       \
-    r->key_size = sfdp_parser_registration_##x.key_size;                      \
-    r->name = sfdp_parser_registration_##x.name;                              \
-    r->format_fn = sfdp_parser_registration_##x.format_fn;                    \
-    r->normalize_key_fn = sfdp_parser_registration_##x.normalize_key_fn;      \
-    pm->regs = r;                                                             \
-  }                                                                           \
+#define SFDP_PARSER_REGISTER(x)                                                                    \
+  static const sfdp_parser_registration_t sfdp_parser_registration_##x;                            \
+  sfdp_parser_registration_mutable_t sfdp_parser_registration_mutable_##x;                         \
+  static void __sfdp_parser_registration_mutable_add_registration__##x (void)                      \
+    __attribute__ ((__constructor__));                                                             \
+  static void __sfdp_parser_registration_mutable_add_registration__##x (void)                      \
+  {                                                                                                \
+    sfdp_parser_main_t *pm = &sfdp_parser_main;                                                    \
+    sfdp_parser_registration_mutable_t *r = &sfdp_parser_registration_mutable_##x;                 \
+    r->next = pm->regs;                                                                            \
+    r->key_size = sfdp_parser_registration_##x.key_size;                                           \
+    r->proto_offset = sfdp_parser_registration_##x.proto_offset;                                   \
+    r->name = sfdp_parser_registration_##x.name;                                                   \
+    r->type = sfdp_parser_registration_##x.type;                                                   \
+    r->calc_key_fn = sfdp_parser_registration_##x.calc_key_fn;                                     \
+    r->format_fn = sfdp_parser_registration_##x.format_fn;                                         \
+    r->normalize_key_fn = sfdp_parser_registration_##x.normalize_key_fn;                           \
+    pm->regs = r;                                                                                  \
+  }                                                                                                \
   static const sfdp_parser_registration_t sfdp_parser_registration_##x
 #else
 #define SFDP_PARSER_REGISTER(x)                                               \

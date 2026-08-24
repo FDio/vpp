@@ -25,6 +25,7 @@ vlib_node_registration_t tcp_tamper_node;
 typedef struct
 {
   u32 seq;
+  u32 data_len;
   u8 flags;
   u8 dropped;
   u8 is_ip4;
@@ -38,8 +39,8 @@ format_tcp_tamper_trace (u8 *s, va_list *args)
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   tcp_tamper_trace_t *t = va_arg (*args, tcp_tamper_trace_t *);
 
-  s = format (s, "TCP-TAMPER: ip%d seq %u flags 0x%x -> %s", t->is_ip4 ? 4 : 6, t->seq, t->flags,
-	      t->dropped ? "drop" : "pass");
+  s = format (s, "TCP-TAMPER: ip%d seq %u data %u flags 0x%x -> %s", t->is_ip4 ? 4 : 6, t->seq,
+	      t->data_len, t->flags, t->dropped ? "drop" : "pass");
   return s;
 }
 #endif /* CLIB_MARCH_VARIANT */
@@ -78,9 +79,10 @@ typedef enum
  * rather than assuming a fixed IP header size. The IP version comes from the
  * buffer flag. */
 static_always_inline void
-tcp_tamper_parse (vlib_buffer_t *b, u32 *seq, u8 *flags, u8 *is_ip4)
+tcp_tamper_parse (vlib_buffer_t *b, u32 *seq, u32 *data_len, u8 *flags, u8 *is_ip4)
 {
   tcp_header_t *th;
+  u32 ip_payload_len;
 
   ASSERT (b->flags & VNET_BUFFER_F_L4_HDR_OFFSET_VALID);
   th = (tcp_header_t *) (b->data + vnet_buffer (b)->l4_hdr_offset);
@@ -88,13 +90,24 @@ tcp_tamper_parse (vlib_buffer_t *b, u32 *seq, u8 *flags, u8 *is_ip4)
 
   *seq = clib_net_to_host_u32 (th->seq_number);
   *flags = th->flags;
+  if (*is_ip4)
+    {
+      ip4_header_t *ip4 = vlib_buffer_get_current (b);
+      ip_payload_len = clib_net_to_host_u16 (ip4->length) - ip4_header_bytes (ip4);
+    }
+  else
+    {
+      ip6_header_t *ip6 = vlib_buffer_get_current (b);
+      ip_payload_len = clib_net_to_host_u16 (ip6->payload_length);
+    }
+  *data_len = ip_payload_len - tcp_header_bytes (th);
 }
 
 /* Decide whether this segment should be dropped, updating rule counters.
  * Connection indices are worker-local, so a connection-scoped rule must match
  * the worker too. */
 static_always_inline int
-tcp_tamper_should_drop (u32 thread_index, u32 conn_index, u32 seq, u8 flags)
+tcp_tamper_should_drop (u32 thread_index, u32 conn_index, u32 seq, u32 data_len, u8 flags)
 {
   tcp_tamper_main_t *im = &tcp_tamper_main;
   /* The connection may be gone during teardown. */
@@ -109,6 +122,8 @@ tcp_tamper_should_drop (u32 thread_index, u32 conn_index, u32 seq, u8 flags)
       if (r->thread_index != ~0u && r->thread_index != thread_index)
 	continue;
       if ((flags & r->flags_mask) != r->flags_match)
+	continue;
+      if (r->data_only && !data_len)
 	continue;
       if (r->above_rp_in_recovery)
 	{
@@ -159,11 +174,12 @@ VLIB_NODE_FN (tcp_tamper_node)
 
   while (n_left_from > 0)
     {
-      u32 seq = 0, conn_index = vnet_buffer (b[0])->tcp.connection_index;
+      u32 seq = 0, data_len = 0;
+      u32 conn_index = vnet_buffer (b[0])->tcp.connection_index;
       u8 flags = 0, is_ip4 = 1, drop;
 
-      tcp_tamper_parse (b[0], &seq, &flags, &is_ip4);
-      drop = tcp_tamper_should_drop (vm->thread_index, conn_index, seq, flags);
+      tcp_tamper_parse (b[0], &seq, &data_len, &flags, &is_ip4);
+      drop = tcp_tamper_should_drop (vm->thread_index, conn_index, seq, data_len, flags);
 
       if (drop)
 	{
@@ -181,6 +197,7 @@ VLIB_NODE_FN (tcp_tamper_node)
 	{
 	  tcp_tamper_trace_t *t = vlib_add_trace (vm, node, b[0], sizeof (*t));
 	  t->seq = seq;
+	  t->data_len = data_len;
 	  t->flags = flags;
 	  t->dropped = drop;
 	  t->is_ip4 = is_ip4;

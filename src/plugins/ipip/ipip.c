@@ -6,14 +6,13 @@
 
 #include <stddef.h>
 #include <vnet/adj/adj_midchain.h>
-#include <vnet/ipip/ipip.h>
+#include <ipip/ipip.h>
 #include <vnet/vnet.h>
 #include <vnet/adj/adj_nbr.h>
 #include <vnet/adj/adj_midchain.h>
 #include <vnet/fib/ip4_fib.h>
 #include <vnet/fib/ip6_fib.h>
 #include <vnet/ip/format.h>
-#include <vnet/ipip/ipip.h>
 #include <vnet/teib/teib.h>
 #include <vnet/tunnel/tunnel_dp.h>
 
@@ -570,7 +569,7 @@ VNET_HW_INTERFACE_CLASS(mipip_hw_interface_class) = {
 };
 
 ipip_tunnel_t *
-ipip_tunnel_db_find (const ipip_tunnel_key_t * key)
+ipip_tunnel_db_find (const ipip_tunnel_key_t *key)
 {
   ipip_main_t *gm = &ipip_main;
   uword *p;
@@ -621,7 +620,7 @@ ipip_mk_key_i (ipip_transport_t transport,
   key->src = *src;
   key->dst = *dst;
   key->fib_index = fib_index;
-  key->__pad = 0;;
+  key->__pad = 0;
 }
 
 void
@@ -740,11 +739,10 @@ ipip_tunnel_add_teib_walk (index_t nei, void *ctx)
   return (WALK_CONTINUE);
 }
 
-int
-ipip_add_tunnel (ipip_transport_t transport,
-		 u32 instance, ip46_address_t * src, ip46_address_t * dst,
-		 u32 fib_index, tunnel_encap_decap_flags_t flags,
-		 ip_dscp_t dscp, tunnel_mode_t tmode, u32 * sw_if_indexp)
+__clib_export int
+ipip_add_tunnel (ipip_transport_t transport, u32 instance, ip46_address_t *src, ip46_address_t *dst,
+		 u32 fib_index, tunnel_encap_decap_flags_t flags, ip_dscp_t dscp,
+		 tunnel_mode_t tmode, u32 *sw_if_indexp)
 {
   ipip_main_t *gm = &ipip_main;
   vnet_main_t *vnm = gm->vnet_main;
@@ -846,7 +844,7 @@ ipip_add_tunnel (ipip_transport_t transport,
   return 0;
 }
 
-int
+__clib_export int
 ipip_del_tunnel (u32 sw_if_index)
 {
   ipip_main_t *gm = &ipip_main;
@@ -872,6 +870,16 @@ ipip_del_tunnel (u32 sw_if_index)
   pool_put (gm->tunnels, t);
 
   return 0;
+}
+
+__clib_export u32
+ipip_tunnel_db_find_sw_if_index (const ipip_tunnel_key_t *key)
+{
+  ipip_tunnel_t *ipip = ipip_tunnel_db_find (key);
+
+  if (!ipip)
+    return (INDEX_INVALID);
+  return (ipip->sw_if_index);
 }
 
 const static teib_vft_t ipip_teib_vft = {

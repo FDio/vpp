@@ -38,8 +38,11 @@ VLIB_CLI_COMMAND (af_xdp_create_command, static) = {
   .path = "create interface af_xdp",
   .short_help = "create interface af_xdp <host-if linux-ifname> [name ifname] "
 		"[rx-queue-size size] [tx-queue-size size] [num-rx-queues <num|all>] "
-		"[prog pathname] [netns ns] [zero-copy|no-zero-copy] [no-syscall-lock] "
-		"[mac-reuse] ",
+		"[prog <filename|pathname>] [netns ns] [zero-copy|no-zero-copy] "
+		"[no-syscall-lock] [mac-reuse] [multi-buffer|no-multi-buffer]\n"
+		"  prog: bare filename (e.g. xsk_def_xdp_prog.o) is searched in "
+		"LIBXDP_OBJECT_PATH (/usr/lib/bpf); a path containing '/' "
+		"(e.g. /path/to/prog.o) is opened directly from the filesystem",
   .function = af_xdp_create_command_fn,
 };
 
@@ -81,7 +84,8 @@ af_xdp_delete_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
   ad = pool_elt_at_index (am->devices, hw->dev_instance);
 
-  af_xdp_delete_if (vm, ad);
+  if (af_xdp_delete_if (vm, ad))
+    return clib_error_return (0, "failed to delete AF_XDP interface");
 
   return 0;
 }

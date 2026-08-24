@@ -5,7 +5,23 @@ set -e
 
 # Get default architecture for multi-arch builds
 ARCH=${OS_ARCH:-$(dpkg --print-architecture)}
-CODENAME=$(lsb_release -cs)
+
+# We can't use lsb_release becuse host can be on different Ubuntu version
+case $UBUNTU_VERSION in
+    22.04 )
+        CODENAME="jammy"
+        ;;
+    24.04 )
+        CODENAME="noble"
+        ;;
+    26.04 )
+        CODENAME="resolute"
+        ;;
+    * )
+        echo "Error: unsupported Ubuntu version $UBUNTU_VERSION"
+        exit 1
+        ;;
+esac
 
 # Set up buildx configuration
 DOCKER_BUILD_DIR="/scratch/docker-build"
@@ -41,6 +57,7 @@ echo "=== Building base image ==="
 # shellcheck disable=2086
 docker buildx build ${DOCKER_CACHE_ARGS} \
   --build-arg UBUNTU_VERSION="${UBUNTU_VERSION:-22.04}" \
+  --build-arg CODENAME="$CODENAME" \
   --build-arg http_proxy="$HTTP_PROXY" \
   --build-arg https_proxy="$HTTP_PROXY" \
   --build-arg HTTP_PROXY="$HTTP_PROXY" \
@@ -51,7 +68,7 @@ docker buildx build ${DOCKER_CACHE_ARGS} \
 }
 
 # Push the base image to the local registry
-docker push $BASE_TAG || {
+docker push "$BASE_TAG" || {
     echo "Error: Failed to push base image to local registry"
     exit 1
 }

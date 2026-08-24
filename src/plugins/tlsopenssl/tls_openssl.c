@@ -1862,7 +1862,12 @@ openssl_tls_ctx_attribute (tls_ctx_t *ctx, u8 is_get,
 	attr->tls_profile_info.tls_version = (u16) version;
 
 	/* Get negotiated group (key agreement algorithm) */
-#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+#if OPENSSL_VERSION_NUMBER >= 0x30200000L
+	const char *group_name = SSL_get0_group_name (oc->ssl);
+	if (group_name)
+	  attr->tls_profile_info.key_agreement = format (0, "%s", group_name);
+	else
+#elif OPENSSL_VERSION_NUMBER >= 0x30000000L
 	const char *group_name;
 	int group_id = SSL_get_negotiated_group (oc->ssl);
 	if (group_id != NID_undef)

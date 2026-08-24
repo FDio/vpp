@@ -10,6 +10,7 @@
 #include <vnet/ip/ip.h>
 #include <vnet/session/session.h>
 #include <vnet/tcp/tcp_types.h>
+#include <vnet/tcp/tcp_loss.h>
 #include <vnet/tcp/tcp_timer.h>
 #include <vnet/tcp/tcp_debug.h>
 #include <vnet/tcp/tcp_sack.h>
@@ -158,6 +159,12 @@ typedef struct tcp_configuration_
 
   /** Set if csum offloading is enabled */
   u8 csum_offload;
+
+  /** Enable D-SACK processing for new connections */
+  u8 enable_dsack;
+
+  /** Enable byte tracking for new connections */
+  u8 enable_byte_tracker;
 
   /** Default congestion control algorithm type */
   tcp_cc_algorithm_type_e cc_algo;
@@ -319,8 +326,8 @@ u32 tcp_snd_space (tcp_connection_t * tc);
 int tcp_fastrecovery_prr_snd_space (tcp_connection_t * tc);
 void tcp_reschedule (tcp_connection_t * tc);
 fib_node_index_t tcp_lookup_rmt_in_fib (tcp_connection_t * tc);
-u32 tcp_session_push_header (transport_connection_t *tconn, vlib_buffer_t **b,
-			     u32 n_bufs);
+u32 tcp_session_push_header (transport_connection_t *tconn, vlib_buffer_t **b, u32 n_bufs,
+			     u32 available_bytes);
 int tcp_session_custom_tx (void *conn, transport_send_params_t * sp);
 
 void tcp_connection_timers_init (tcp_connection_t * tc);

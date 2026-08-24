@@ -515,6 +515,7 @@ The buffers Section
       buffers-per-numa 128000
       default data-size 2048
       page-size default-hugepage
+      layout packed
       numa 1 {
          buffers 64000
       }
@@ -552,6 +553,19 @@ Set the page size for buffer allocation
    page-size 1G
    page-size default
    page-size default-hugepage
+
+layout natural|packed
+^^^^^^^^^^^^^^^^^^^^^
+
+Select how buffers are laid out in the memory map. ``natural`` keeps buffers
+naturally aligned using a single stride across the map. ``packed`` restarts
+the stride at each page boundary to use small pages efficiently. The default
+is platform-dependent.
+
+.. code-block:: console
+
+   layout natural
+   layout packed
 
 numa <numa index> { .. }
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

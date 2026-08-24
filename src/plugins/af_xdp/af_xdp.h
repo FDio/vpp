@@ -9,18 +9,51 @@
 #include <vnet/interface.h>
 #include <xdp/xsk.h>
 
+/* Compatibility for older kernel UAPI headers (pre-5.18). */
+#ifndef XDP_USE_SG
+#define XDP_USE_SG (1 << 4)
+#endif
+
+#ifndef XDP_PKT_CONTD
+#define XDP_PKT_CONTD (1 << 0)
+#endif
+
+#define AF_XDP_TX_COPY_MAX_SEGS		18 /* CONFIG_MAX_SKB_FRAGS + 1 portable copy-mode limit. */
 #define AF_XDP_NUM_RX_QUEUES_ALL        ((u16)-1)
+
+static_always_inline u32
+af_xdp_addr2bi (u64 addr)
+{
+  return addr >> CLIB_LOG2_CACHE_LINE_BYTES;
+}
+
+static_always_inline void
+af_xdp_buffer_index_from_xdp_addr (u32 *bis, u32 *n_free, u64 addr)
+{
+  bis[(*n_free)++] = af_xdp_addr2bi (xsk_umem__extract_addr (addr));
+}
+
+static_always_inline void
+af_xdp_buffer_free_no_next_batch (vlib_main_t *vm, u32 *bis, u32 *n_free)
+{
+  if (*n_free)
+    {
+      vlib_buffer_free_no_next (vm, bis, *n_free);
+      *n_free = 0;
+    }
+}
 
 #define af_xdp_log(lvl, dev, f, ...) \
   vlib_log(lvl, af_xdp_main.log_class, "%v: " f, (dev)->name, ##__VA_ARGS__)
 
-#define foreach_af_xdp_device_flags                                           \
-  _ (0, INITIALIZED, "initialized")                                           \
-  _ (1, ERROR, "error")                                                       \
-  _ (2, ADMIN_UP, "admin-up")                                                 \
-  _ (3, LINK_UP, "link-up")                                                   \
-  _ (4, ZEROCOPY, "zero-copy")                                                \
-  _ (5, SYSCALL_LOCK, "syscall-lock")
+#define foreach_af_xdp_device_flags                                                                \
+  _ (0, INITIALIZED, "initialized")                                                                \
+  _ (1, ERROR, "error")                                                                            \
+  _ (2, ADMIN_UP, "admin-up")                                                                      \
+  _ (3, LINK_UP, "link-up")                                                                        \
+  _ (4, ZEROCOPY, "zero-copy")                                                                     \
+  _ (5, SYSCALL_LOCK, "syscall-lock")                                                              \
+  _ (6, MULTI_BUFFER, "multi-buffer")
 
 enum
 {
@@ -54,6 +87,11 @@ typedef struct
   struct xsk_ring_cons rx;
   struct xsk_ring_prod fq;
   int xsk_fd;
+
+  /* multi-buffer partial packet state */
+  u32 mb_head_bi;
+  u32 mb_tail_bi;
+  u32 mb_total_len;
 
   /* fields below are accessed in control-plane only (cold) */
 
@@ -92,6 +130,7 @@ typedef struct
   u32 sw_if_index;
   u32 hw_if_index;
   u32 flags;
+  u32 tx_max_segs;
   u8 pool;			/* buffer pool index */
   u8 txq_num;
 
@@ -109,7 +148,7 @@ typedef struct
   struct xsk_umem **umem;
   struct xsk_socket **xsk;
 
-  struct bpf_object *bpf_obj;
+  struct xdp_program *xdp_prog; /* libxdp program handle */
   unsigned linux_ifindex;
 
   /* error */
@@ -136,7 +175,10 @@ typedef enum
 {
   AF_XDP_CREATE_FLAGS_NO_SYSCALL_LOCK = 1,
   AF_XDP_CREATE_FLAGS_MAC_REUSE = 2,
+  AF_XDP_CREATE_FLAGS_MULTI_BUFFER = 4,
 } af_xdp_create_flag_t;
+
+#define AF_XDP_MB_DEFAULT_PROG "xsk_def_xdp_prog.o"
 
 typedef struct
 {
@@ -157,9 +199,10 @@ typedef struct
 } af_xdp_create_if_args_t;
 
 void af_xdp_create_if (vlib_main_t * vm, af_xdp_create_if_args_t * args);
-void af_xdp_delete_if (vlib_main_t * vm, af_xdp_device_t * ad);
+int af_xdp_delete_if (vlib_main_t *vm, af_xdp_device_t *ad);
 
 void af_xdp_device_input_refill (af_xdp_device_t *ad);
+void af_xdp_device_input_reset (af_xdp_device_t *ad);
 
 extern vlib_node_registration_t af_xdp_input_node;
 extern vnet_device_class_t af_xdp_device_class;
@@ -178,9 +221,11 @@ typedef struct
   u32 hw_if_index;
 } af_xdp_input_trace_t;
 
-#define foreach_af_xdp_tx_func_error                                          \
-  _ (NO_FREE_SLOTS, "no free tx slots")                                       \
-  _ (SYSCALL_REQUIRED, "syscall required")                                    \
+#define foreach_af_xdp_tx_func_error                                                               \
+  _ (NO_FREE_SLOTS, "no free tx slots")                                                            \
+  _ (TOO_MANY_SEGS, "too many packet segments")                                                    \
+  _ (ZERO_LENGTH_SEG, "zero length packet segment")                                                \
+  _ (SYSCALL_REQUIRED, "syscall required")                                                         \
   _ (SYSCALL_FAILURES, "syscall failures")
 
 typedef enum

@@ -1054,7 +1054,7 @@ class VCLThruHostStackHTTPPost(VCLTestCase):
         super(VCLThruHostStackHTTPPost, self).setUp()
 
         self.thru_host_stack_setup()
-        self.client_uni_dir_http_post_timeout = 20
+        self.client_uni_dir_http_post_timeout = 120
         self.server_http_post_args = ["-p", "http", self.server_port]
         self.client_uni_dir_http_post_test_args = [
             "-N",

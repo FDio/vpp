@@ -164,6 +164,18 @@ def _is_platform_aarch64():
 is_platform_aarch64 = _is_platform_aarch64()
 
 
+def _has_kernel_af_xdp_multi_buffer():
+    """Check kernel >= 6.6 for AF_XDP multi-buffer socket support."""
+    try:
+        major, minor = (int(x) for x in platform.release().split("-")[0].split(".")[:2])
+        return major > 6 or (major == 6 and minor >= 6)
+    except (ValueError, IndexError):
+        return False
+
+
+has_kernel_af_xdp_multi_buffer = _has_kernel_af_xdp_multi_buffer()
+
+
 class KeepAliveReporter(object):
     """
     Singleton object which reports test start to parent process

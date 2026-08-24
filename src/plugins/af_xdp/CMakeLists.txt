@@ -31,9 +31,14 @@ set(CMAKE_REQUIRED_FLAGS "-fPIC")
 set(CMAKE_REQUIRED_INCLUDES "${XDP_INCLUDE_DIR}")
 set(CMAKE_REQUIRED_LIBRARIES "${XDP_LIB}" "${BPF_LIB}" "${ELF_LIB}" "${Z_LIB}")
 CHECK_C_SOURCE_COMPILES("
+#include <stdbool.h>
+#include <xdp/libxdp.h>
 #include <xdp/xsk.h>
 int main(void)
 {
+    struct xdp_program *prog = 0;
+    (void) xdp_program__set_xdp_frags_support (prog, true);
+    (void) xdp_program__bpf_obj (prog);
     return xsk_socket__create (0, 0, 0, 0, 0, 0, 0);
 }" XDP_COMPILES_CHECK)
 if (NOT XDP_COMPILES_CHECK)

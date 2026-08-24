@@ -716,7 +716,7 @@ openssl_ops_hmac (vnet_crypto_op_t *ops[], vnet_crypto_op_chunk_t *chunks, u32 n
 										   thread_index) :
 	  (openssl_hmac_key_data_t *) vnet_crypto_get_simple_key_data_for_thread (op->ctx,
 										  thread_index);
-      unsigned int out_len = 0;
+      unsigned int hmac_out_len = 0;
       size_t sz = out_len ? out_len : op->auth_len ? op->auth_len : EVP_MD_size (md);
 
       ctx = kd->hmac_ctx;
@@ -738,7 +738,7 @@ openssl_ops_hmac (vnet_crypto_op_t *ops[], vnet_crypto_op_chunk_t *chunks, u32 n
 	}
       else
 	HMAC_Update (ctx, op->auth_src, op->auth_src_len);
-      HMAC_Final (ctx, buffer, &out_len);
+      HMAC_Final (ctx, buffer, &hmac_out_len);
 
       if (op->flags & VNET_CRYPTO_OP_FLAG_HMAC_CHECK)
 	{

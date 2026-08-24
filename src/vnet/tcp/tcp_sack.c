@@ -4,6 +4,7 @@
  */
 
 #include <vnet/tcp/tcp_sack.h>
+#include <vnet/tcp/tcp_bt.h>
 
 static void
 scoreboard_remove_hole (sack_scoreboard_t * sb, sack_scoreboard_hole_t * hole)
@@ -85,8 +86,8 @@ typedef enum
 } tcp_sb_sack_mode_e;
 
 always_inline void
-scoreboard_update_sacked (sack_scoreboard_t *sb, u32 start, u32 end, tcp_sb_sack_mode_e mode,
-			  u16 snd_mss)
+scoreboard_update_sacked (sack_scoreboard_t *sb, tcp_ack_ctx_t *ac, u32 start, u32 end,
+			  tcp_sb_sack_mode_e mode, u16 snd_mss)
 {
   /* A newly sacked segment below the sack frontier arrived out of order. Use it to grow the reorder
    * estimate when its late arrival is unambiguous reordering. Segments below high_rxt (or after
@@ -105,15 +106,14 @@ scoreboard_update_sacked (sack_scoreboard_t *sb, u32 start, u32 end, tcp_sb_sack
   if (seq_geq (start, sb->high_rxt))
     return;
 
-  sb->rxt_sacked +=
-    seq_lt (end, sb->high_rxt) ? (end - start) : (sb->high_rxt - start);
+  ac->rxt_sacked += seq_lt (end, sb->high_rxt) ? (end - start) : (sb->high_rxt - start);
 }
 
 always_inline u32
-scoreboard_update_loss (sack_scoreboard_t *sb, u32 ack, u32 snd_mss, u8 clear_lost)
+scoreboard_update_loss (sack_scoreboard_t *sb, u32 ack, u32 snd_mss, u8 clear_lost, u32 *last_lost)
 {
   sack_scoreboard_hole_t *hole, *left, *right;
-  u32 sacked = 0, blks = 0;
+  u32 sacked = 0, blks = 0, newly_lost = 0;
 
   if (clear_lost)
     {
@@ -125,7 +125,6 @@ scoreboard_update_loss (sack_scoreboard_t *sb, u32 ack, u32 snd_mss, u8 clear_lo
 	}
     }
 
-  sb->last_lost_bytes = 0;
   sb->lost_bytes = 0;
 
   right = scoreboard_last_hole (sb);
@@ -153,7 +152,7 @@ scoreboard_update_loss (sack_scoreboard_t *sb, u32 ack, u32 snd_mss, u8 clear_lo
       left = scoreboard_prev_hole (sb, right);
       if (!left)
 	{
-	  ASSERT (right->start == ack || sb->is_reneging);
+	  ASSERT (right->start == ack || tcp_scoreboard_is_reneging (sb));
 	  sacked += right->start - ack;
 	  right = 0;
 	  break;
@@ -168,12 +167,13 @@ scoreboard_update_loss (sack_scoreboard_t *sb, u32 ack, u32 snd_mss, u8 clear_lo
   while (right)
     {
       sb->lost_bytes += scoreboard_hole_bytes (right);
-      sb->last_lost_bytes += right->is_lost ? 0 : (right->end - right->start);
+      if (!right->is_lost)
+	newly_lost += right->end - right->start;
       right->is_lost = 1;
       left = scoreboard_prev_hole (sb, right);
       if (!left)
 	{
-	  ASSERT (right->start == ack || sb->is_reneging);
+	  ASSERT (right->start == ack || tcp_scoreboard_is_reneging (sb));
 	  sacked += right->start - ack;
 	  break;
 	}
@@ -181,29 +181,30 @@ scoreboard_update_loss (sack_scoreboard_t *sb, u32 ack, u32 snd_mss, u8 clear_lo
       right = left;
     }
 
+  if (last_lost)
+    *last_lost = newly_lost;
   return sacked;
 }
 
 always_inline void
-scoreboard_update_bytes (sack_scoreboard_t *sb, u32 ack, u32 snd_mss)
+scoreboard_update_bytes (sack_scoreboard_t *sb, tcp_ack_ctx_t *ac, u32 ack, u32 snd_mss)
 {
   u32 old_sacked = sb->sacked_bytes;
 
-  sb->sacked_bytes = scoreboard_update_loss (sb, ack, snd_mss, 0);
-  sb->last_sacked_bytes = sb->sacked_bytes - (old_sacked - sb->last_bytes_delivered);
+  sb->sacked_bytes = scoreboard_update_loss (sb, ack, snd_mss, 0, &ac->last_lost);
+  ac->last_sacked_bytes = sb->sacked_bytes - (old_sacked - ac->last_bytes_delivered);
 }
 
-void
+static void
 scoreboard_recompute_sack_loss (sack_scoreboard_t *sb, u32 ack, u32 snd_mss)
 {
-  u32 last_lost_bytes = sb->last_lost_bytes;
   u32 sacked;
 
   /* Discard loss classification inherited from an rto and infer it again
-   * solely from the SACK scoreboard. Keep per-ack accounting unchanged. */
-  sacked = scoreboard_update_loss (sb, ack, snd_mss, 1);
+   * solely from the SACK scoreboard. Reclassification is not newly detected
+   * loss for the current ACK, so discard the delta. */
+  sacked = scoreboard_update_loss (sb, ack, snd_mss, 1, 0);
   ASSERT (sacked == sb->sacked_bytes);
-  sb->last_lost_bytes = last_lost_bytes;
 }
 
 /**
@@ -271,8 +272,8 @@ scoreboard_next_rxt_hole (sack_scoreboard_t * sb,
   return hole;
 }
 
-void
-scoreboard_init_rxt (sack_scoreboard_t * sb, u32 snd_una)
+static void
+scoreboard_init_rxt (sack_scoreboard_t *sb, u32 snd_una)
 {
   sack_scoreboard_hole_t *hole;
   hole = scoreboard_first_hole (sb);
@@ -285,7 +286,7 @@ scoreboard_init_rxt (sack_scoreboard_t * sb, u32 snd_una)
   sb->rescue_rxt = snd_una - 1;
 }
 
-void
+static void
 scoreboard_rxt_mark_lost (sack_scoreboard_t *sb, u32 snd_una, u32 snd_nxt)
 {
   sack_scoreboard_hole_t *hole;
@@ -326,17 +327,14 @@ scoreboard_clear (sack_scoreboard_t * sb)
   ASSERT (sb->head == sb->tail && sb->head == TCP_INVALID_SACK_HOLE_INDEX);
   ASSERT (pool_elts (sb->holes) == 0);
   sb->sacked_bytes = 0;
-  sb->last_sacked_bytes = 0;
-  sb->last_bytes_delivered = 0;
   sb->lost_bytes = 0;
-  sb->last_lost_bytes = 0;
   sb->cur_rxt_hole = TCP_INVALID_SACK_HOLE_INDEX;
-  sb->is_reneging = 0;
+  tcp_scoreboard_set_reneging (sb, 0, 0);
   /* reorder is a learned path property, not episode state, so it is NOT reset here */
 }
 
-void
-scoreboard_clear_reneging (sack_scoreboard_t * sb, u32 start, u32 end)
+static void
+scoreboard_clear_reneging (sack_scoreboard_t *sb, u32 start, u32 end)
 {
   sack_scoreboard_hole_t *last_hole;
 
@@ -355,7 +353,7 @@ scoreboard_clear_reneging (sack_scoreboard_t * sb, u32 start, u32 end)
 /**
  * Test that scoreboard is sane after recovery
  */
-u8
+static u8
 tcp_scoreboard_is_sane_post_recovery (tcp_connection_t *tc)
 {
   sack_scoreboard_hole_t *hole = scoreboard_first_hole (&tc->sack_sb);
@@ -380,76 +378,649 @@ tcp_scoreboard_is_sane_post_recovery (tcp_connection_t *tc)
 }
 
 void
-tcp_rcv_sacks (tcp_connection_t * tc, u32 ack)
+tcp_sack_init_rxt (tcp_connection_t *tc, u32 snd_una)
+{
+  if (PREDICT_FALSE (tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER))
+    tcp_bt_init_rxt (tc, snd_una);
+  else
+    scoreboard_init_rxt (&tc->sack_sb, snd_una);
+}
+
+void
+tcp_sack_recompute_loss (tcp_connection_t *tc)
+{
+  if (PREDICT_FALSE (tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER))
+    tcp_bt_recompute_sack_loss (tc);
+  else
+    scoreboard_recompute_sack_loss (&tc->sack_sb, tc->snd_una, tc->snd_mss);
+}
+
+void
+tcp_sack_rxt_mark_lost (tcp_connection_t *tc)
+{
+  if (PREDICT_FALSE (tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER))
+    tcp_bt_rxt_mark_lost (tc);
+  else
+    scoreboard_rxt_mark_lost (&tc->sack_sb, tc->snd_una, tc->snd_nxt);
+}
+
+u8
+tcp_sack_handle_reneging (tcp_connection_t *tc)
+{
+  sack_scoreboard_t *sb = &tc->sack_sb;
+  sack_scoreboard_hole_t *hole;
+
+  if (PREDICT_FALSE (tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER))
+    return tcp_bt_handle_sack_reneging (tc);
+
+  hole = scoreboard_first_hole (sb);
+  if (!tcp_scoreboard_is_reneging (sb) && (!hole || hole->start == tc->snd_una))
+    return 0;
+
+  scoreboard_clear_reneging (sb, tc->snd_una, tc->snd_nxt);
+  return 1;
+}
+
+static u8
+tcp_sack_is_sane_post_recovery (tcp_connection_t *tc)
+{
+  return (tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER) ? tcp_bt_is_sane_post_recovery (tc) :
+						    tcp_scoreboard_is_sane_post_recovery (tc);
+}
+
+static_always_inline tcp_dsack_rxt_t *
+tcp_dsack_rxt_header (tcp_connection_t *tc)
+{
+  ASSERT ((tc->sack_sb.flags & TCP_DSACK_RXT_ACTIVE) && tc->dsack_rxt);
+  return pool_elt_at_index (tc->dsack_rxt, 0);
+}
+
+static_always_inline tcp_dsack_rxt_t *
+tcp_dsack_rxt_get (tcp_connection_t *tc, u32 index)
+{
+  ASSERT (index != TCP_DSACK_RXT_INVALID_INDEX);
+  return pool_elt_at_index (tc->dsack_rxt, index);
+}
+
+static_always_inline u32
+tcp_dsack_rxt_count (tcp_connection_t *tc)
+{
+  ASSERT (tc->sack_sb.flags & TCP_DSACK_RXT_ACTIVE);
+  return pool_elts (tc->dsack_rxt) - 1;
+}
+
+static_always_inline u32
+tcp_dsack_get_history_start (tcp_connection_t *tc)
+{
+  if (tc->sack_sb.flags & TCP_DSACK_RXT_ACTIVE)
+    return tcp_dsack_rxt_header (tc)->history_start;
+  return tc->dsack_history_start;
+}
+
+static void
+tcp_dsack_rxt_release (tcp_connection_t *tc, u32 history_start)
+{
+  ASSERT (tc->sack_sb.flags & TCP_DSACK_RXT_ACTIVE);
+  pool_free (tc->dsack_rxt);
+  tc->dsack_history_start = history_start;
+  tc->sack_sb.flags &= ~TCP_DSACK_RXT_ACTIVE;
+}
+
+void
+tcp_dsack_cleanup (tcp_connection_t *tc)
+{
+  ASSERT (!(tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER));
+  if (tc->sack_sb.flags & TCP_DSACK_RXT_ACTIVE)
+    pool_free (tc->dsack_rxt);
+  tc->dsack_rxt = 0;
+  tc->dsack_pending_bytes = 0;
+  tc->sack_sb.flags &= TCP_SCOREBOARD_F_RENEGING | TCP_DSACK_UNDO_DISABLED;
+}
+
+/* Retire exact ranges as the cumulative ACK advances past them. Aggregate
+ * accounting retains the D-SACK evidence still required. */
+static void
+tcp_dsack_retire (tcp_connection_t *tc, u32 ack)
+{
+  tcp_dsack_rxt_t *hdr, *rxt;
+  u32 history_start, index, next;
+
+  ASSERT (tc->sack_sb.flags & TCP_DSACK_RXT_ACTIVE);
+  hdr = tcp_dsack_rxt_header (tc);
+  index = hdr->head;
+  rxt = tcp_dsack_rxt_get (tc, index);
+  if (seq_leq (ack, rxt->start))
+    return;
+
+  history_start = hdr->history_start;
+  while (index != TCP_DSACK_RXT_INVALID_INDEX)
+    {
+      rxt = tcp_dsack_rxt_get (tc, index);
+      if (seq_gt (rxt->end, ack))
+	break;
+      next = rxt->next;
+      pool_put_index (tc->dsack_rxt, index);
+      index = next;
+    }
+
+  if (index == TCP_DSACK_RXT_INVALID_INDEX)
+    {
+      tcp_dsack_rxt_release (tc, tcp_dsack_has_history (tc) ? history_start : 0);
+      return;
+    }
+
+  hdr->head = index;
+  rxt = tcp_dsack_rxt_get (tc, index);
+  if (seq_lt (rxt->start, ack))
+    rxt->start = ack;
+}
+
+/* Clear recovery-local D-SACK state while preserving active retransmissions
+ * and a connection-wide decision to disable undo. */
+void
+tcp_dsack_recovery_clear (tcp_connection_t *tc)
+{
+  if (PREDICT_FALSE (tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER))
+    {
+      tcp_bt_dsack_recovery_clear (tc);
+      return;
+    }
+
+  tc->dsack_pending_bytes = 0;
+  if (tc->sack_sb.flags & TCP_DSACK_UNDO_DISABLED)
+    tcp_dsack_cleanup (tc);
+  else
+    {
+      if (!(tc->sack_sb.flags & TCP_DSACK_RXT_ACTIVE))
+	tc->dsack_history_start = 0;
+      tc->sack_sb.flags &= TCP_SCOREBOARD_F_RENEGING | TCP_DSACK_RXT_ACTIVE;
+    }
+}
+
+void
+tcp_dsack_recovery_init (tcp_connection_t *tc)
+{
+  tcp_dsack_rxt_t *hdr, *rxt;
+  u32 index;
+
+  tcp_dsack_recovery_clear (tc);
+  if (PREDICT_FALSE (tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER))
+    {
+      tcp_bt_dsack_recovery_init (tc);
+      return;
+    }
+
+  if (!(tc->sack_sb.flags & TCP_DSACK_RXT_ACTIVE))
+    return;
+
+  tcp_dsack_retire (tc, tc->snd_una);
+  if (!(tc->sack_sb.flags & TCP_DSACK_RXT_ACTIVE))
+    return;
+
+  hdr = tcp_dsack_rxt_header (tc);
+  hdr->history_start = tc->snd_una;
+  index = hdr->head;
+  while (index != TCP_DSACK_RXT_INVALID_INDEX)
+    {
+      rxt = tcp_dsack_rxt_get (tc, index);
+      tc->dsack_pending_bytes += rxt->end - rxt->start;
+      index = rxt->next;
+    }
+  if (tc->dsack_pending_bytes)
+    tc->sack_sb.flags |= TCP_DSACK_HISTORY;
+}
+
+void
+tcp_sack_recovery_exit (tcp_connection_t *tc, tcp_ack_flag_t spurious_flags)
+{
+  sack_scoreboard_hole_t *hole;
+
+  if (spurious_flags)
+    tcp_sack_recompute_loss (tc);
+
+  if (!(tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER))
+    {
+      hole = scoreboard_first_hole (&tc->sack_sb);
+      if (hole && seq_leq (tc->sack_sb.high_sacked, hole->end) && !tc->sack_sb.lost_bytes)
+	scoreboard_clear (&tc->sack_sb);
+    }
+
+  if (spurious_flags)
+    {
+      if ((spurious_flags & TCP_ACK_F_DSACK_SPURIOUS) || !tcp_dsack_has_history (tc))
+	tcp_dsack_recovery_clear (tc);
+      else
+	/* Retain enough history to recognize the later D-SACK without
+	 * misclassifying it as network duplication, but never undo twice. */
+	tc->sack_sb.flags |= TCP_DSACK_INELIGIBLE;
+    }
+  else if ((tc->sack_sb.flags & TCP_DSACK_UNDO_DISABLED) || !tcp_dsack_has_history (tc))
+    tcp_dsack_recovery_clear (tc);
+
+  ASSERT (tcp_sack_is_sane_post_recovery (tc));
+}
+
+/* Prepare to add retained ranges. On overflow, discard range history and make
+ * the current recovery episode ineligible for D-SACK undo. */
+static_always_inline u8
+tcp_dsack_rxt_prepare_add (tcp_connection_t *tc)
+{
+  u32 history_start;
+
+  if (tcp_dsack_rxt_count (tc) < TCP_MAX_DSACK_RXT_RANGES)
+    return 1;
+
+  history_start = tcp_dsack_get_history_start (tc);
+  tcp_dsack_rxt_release (tc, history_start);
+  tc->sack_sb.flags |= TCP_DSACK_INELIGIBLE | TCP_DSACK_RXT_OVERFLOW | TCP_DSACK_HISTORY;
+  return 0;
+}
+
+static_always_inline u32
+tcp_dsack_rxt_alloc (tcp_connection_t *tc, tcp_dsack_rxt_t rxt, u32 next)
+{
+  tcp_dsack_rxt_t *new_rxt;
+  u32 index;
+
+  pool_get (tc->dsack_rxt, new_rxt);
+  index = new_rxt - tc->dsack_rxt;
+  *new_rxt = rxt;
+  new_rxt->next = next;
+  return index;
+}
+
+static_always_inline void
+tcp_dsack_rxt_append (tcp_connection_t *tc, tcp_dsack_rxt_t rxt)
+{
+  tcp_dsack_rxt_t *hdr;
+  u32 index, tail;
+
+  hdr = tcp_dsack_rxt_header (tc);
+  tail = hdr->tail;
+  index = tcp_dsack_rxt_alloc (tc, rxt, TCP_DSACK_RXT_INVALID_INDEX);
+  hdr = tcp_dsack_rxt_header (tc);
+  if (tail == TCP_DSACK_RXT_INVALID_INDEX)
+    hdr->head = index;
+  else
+    tcp_dsack_rxt_get (tc, tail)->next = index;
+  hdr->tail = index;
+}
+
+static_always_inline void
+tcp_dsack_rxt_insert (tcp_connection_t *tc, tcp_dsack_rxt_t rxt, u32 prev, u32 next)
+{
+  tcp_dsack_rxt_t *hdr;
+  u32 index;
+
+  index = tcp_dsack_rxt_alloc (tc, rxt, next);
+  hdr = tcp_dsack_rxt_header (tc);
+  if (prev == TCP_DSACK_RXT_INVALID_INDEX)
+    hdr->head = index;
+  else
+    tcp_dsack_rxt_get (tc, prev)->next = index;
+  if (next == TCP_DSACK_RXT_INVALID_INDEX)
+    hdr->tail = index;
+}
+
+/* Add retransmitted coverage as a sorted, disjoint union. Returns true when
+ * the new transmission overlaps a copy already in flight. */
+static u8
+tcp_dsack_track_range_union (tcp_connection_t *tc, u32 start, u32 end)
+{
+  tcp_dsack_rxt_t rxt = { .start = start, .end = end };
+  tcp_dsack_rxt_t *hdr, *cur, *last;
+  u8 overlap = 0;
+  u32 current, next, prev = TCP_DSACK_RXT_INVALID_INDEX;
+
+  if (!(tc->sack_sb.flags & TCP_DSACK_RXT_ACTIVE))
+    {
+      u32 history_start = tcp_dsack_has_history (tc) ? tc->dsack_history_start : tc->snd_una;
+
+      tc->dsack_rxt = 0;
+      pool_get (tc->dsack_rxt, hdr);
+      ASSERT (hdr == tc->dsack_rxt);
+      hdr->head = TCP_DSACK_RXT_INVALID_INDEX;
+      hdr->tail = TCP_DSACK_RXT_INVALID_INDEX;
+      hdr->history_start = history_start;
+      tc->sack_sb.flags |= TCP_DSACK_RXT_ACTIVE;
+      tcp_dsack_rxt_append (tc, rxt);
+      return 0;
+    }
+
+  hdr = tcp_dsack_rxt_header (tc);
+  last = tcp_dsack_rxt_get (tc, hdr->tail);
+  if (seq_geq (start, last->end))
+    {
+      if (start == last->end)
+	last->end = end;
+      else if (tcp_dsack_rxt_prepare_add (tc))
+	tcp_dsack_rxt_append (tc, rxt);
+      return 0;
+    }
+
+  current = hdr->head;
+  while (current != TCP_DSACK_RXT_INVALID_INDEX)
+    {
+      cur = tcp_dsack_rxt_get (tc, current);
+      if (seq_lt (rxt.end, cur->start))
+	break;
+      if (seq_gt (rxt.start, cur->end))
+	{
+	  prev = current;
+	  current = cur->next;
+	  continue;
+	}
+
+      overlap |= seq_lt (rxt.start, cur->end) && seq_gt (rxt.end, cur->start);
+      rxt.start = seq_min (cur->start, rxt.start);
+      rxt.end = seq_max (rxt.end, cur->end);
+      next = cur->next;
+      pool_put_index (tc->dsack_rxt, current);
+      current = next;
+    }
+
+  if (!tcp_dsack_rxt_prepare_add (tc))
+    return overlap;
+
+  tcp_dsack_rxt_insert (tc, rxt, prev, current);
+  return overlap;
+}
+
+void
+tcp_dsack_track_retransmit (tcp_connection_t *tc, u32 start, u32 end)
+{
+  u32 tracked = end - start;
+
+  ASSERT (tcp_opts_sack_permitted (&tc->rcv_opts));
+  ASSERT (tcp_in_cong_recovery (tc));
+  ASSERT (seq_lt (start, end));
+
+  if (tc->sack_sb.flags & (TCP_DSACK_UNDO_DISABLED | TCP_DSACK_RXT_OVERFLOW))
+    return;
+
+  if (tcp_dsack_track_range_union (tc, start, end))
+    tc->sack_sb.flags |= TCP_DSACK_INELIGIBLE;
+  ASSERT (tc->dsack_pending_bytes <= (u32) ~0 - tracked);
+  tc->dsack_pending_bytes += tracked;
+  tc->sack_sb.flags |= TCP_DSACK_HISTORY;
+}
+
+/* Match the intersection of [start,end) with retained retransmissions. */
+static u32
+tcp_dsack_mark_duplicate (tcp_connection_t *tc, u32 start, u32 end)
+{
+  tcp_dsack_rxt_t *rxt;
+  u32 active_start = start, matched = 0;
+  u32 index, overlap_start, overlap_end;
+
+  if (PREDICT_FALSE (tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER))
+    return tcp_bt_dsack_mark_duplicate (tc, start, end);
+
+  if (seq_lt (active_start, tc->snd_una))
+    {
+      overlap_end = seq_min (end, tc->snd_una);
+      overlap_start = seq_max (active_start, tcp_dsack_get_history_start (tc));
+      if (seq_lt (overlap_start, overlap_end))
+	{
+	  matched += overlap_end - overlap_start;
+	}
+      active_start = overlap_end;
+    }
+
+  if ((tc->sack_sb.flags & TCP_DSACK_RXT_ACTIVE) && seq_lt (active_start, end))
+    {
+      index = tcp_dsack_rxt_header (tc)->head;
+      while (index != TCP_DSACK_RXT_INVALID_INDEX)
+	{
+	  rxt = tcp_dsack_rxt_get (tc, index);
+	  if (seq_leq (end, rxt->start))
+	    break;
+	  if (seq_geq (active_start, rxt->end))
+	    {
+	      index = rxt->next;
+	      continue;
+	    }
+
+	  overlap_start = seq_max (active_start, rxt->start);
+	  overlap_end = seq_min (end, rxt->end);
+	  ASSERT (seq_lt (overlap_start, overlap_end));
+	  matched += overlap_end - overlap_start;
+	  index = rxt->next;
+	}
+    }
+
+  return matched;
+}
+
+static u8
+tcp_dsack_all_duplicate (tcp_connection_t *tc)
+{
+  return tcp_dsack_has_history (tc) && !tc->dsack_pending_bytes;
+}
+
+static_always_inline u8
+tcp_sack_detect_dsack (tcp_connection_t *tc, u32 ack, sack_block_t *dsack)
+{
+  sack_block_t *first, *sacks = tc->rcv_opts.sacks;
+
+  ASSERT (vec_len (sacks));
+  first = sacks;
+
+  /* RFC 2883: compare against the ACK in this packet, never snd_una. */
+  if (PREDICT_TRUE (seq_gt (first->start, ack)))
+    {
+      /* RFC 2883: second block identifies the larger received range containing the first */
+      if (PREDICT_TRUE (vec_len (sacks) < 2 || seq_lt (sacks[1].end, first->end) ||
+			seq_gt (sacks[1].start, first->start)))
+	return 0;
+    }
+  else if (seq_gt (first->end, ack))
+    return 0;
+
+  if (PREDICT_FALSE (!seq_lt (first->start, first->end)))
+    return 0;
+
+  *dsack = *first;
+  return 1;
+}
+
+static u8
+tcp_sack_extract_dsack_slow (tcp_connection_t *tc, u32 ack, sack_block_t *dsack)
+{
+  /* Ignore ranges that alias unsent sequence space, cross the cumulative ACK, or are larger than
+   * any receive window advertised by the peer. */
+  u32 snd_una = seq_max (ack, tc->snd_una);
+  if (PREDICT_FALSE (seq_gt (dsack->end, tc->snd_nxt) || seq_geq (dsack->start, tc->snd_nxt) ||
+		     (seq_leq (dsack->start, snd_una) && seq_gt (dsack->end, snd_una)) ||
+		     dsack->end - dsack->start > tc->snd_wnd_max))
+    return 0;
+
+  vec_del1 (tc->rcv_opts.sacks, 0);
+  tc->rcv_opts.n_sack_blocks -= tc->rcv_opts.n_sack_blocks != 0;
+  return 1;
+}
+
+static_always_inline u8
+tcp_sack_extract_dsack (tcp_connection_t *tc, u32 ack, sack_block_t *dsack)
+{
+  ASSERT (tcp_opts_sack (&tc->rcv_opts) && vec_len (tc->rcv_opts.sacks));
+
+  if (PREDICT_TRUE (!tcp_sack_detect_dsack (tc, ack, dsack)))
+    return 0;
+
+  return tcp_sack_extract_dsack_slow (tc, ack, dsack);
+}
+
+static void
+tcp_dsack_account (tcp_connection_t *tc, const sack_block_t *dsack, tcp_ack_ctx_t *ac)
+{
+  u32 matched;
+
+  ASSERT (dsack != 0);
+
+  if (!tcp_dsack_has_history (tc))
+    {
+      /* With bounded retransmit history, conservatively treat a D-SACK
+       * without retained history as network duplication (RFC 3708 A.4). */
+      tc->sack_sb.flags |= TCP_DSACK_UNDO_DISABLED;
+      tcp_dsack_recovery_clear (tc);
+      return;
+    }
+
+  /* Tracking overflow makes only this recovery episode ineligible. D-SACKs
+   * cannot be matched after its history is discarded, but that is not
+   * evidence that D-SACK undo should be disabled for the connection. */
+  if (tc->sack_sb.flags & TCP_DSACK_RXT_OVERFLOW)
+    return;
+
+  /* RFC 3708 A.1: an empty SACK history and a D-SACK beginning at
+   * snd_una is indistinguishable from loss of the whole ACK window. The
+   * current ACK's normalized SACK ranges have not been applied yet. */
+  if (!tc->sack_sb.sacked_bytes && dsack->start == tc->snd_una)
+    {
+      tc->sack_sb.flags |= TCP_DSACK_INELIGIBLE;
+      return;
+    }
+
+  matched = tcp_dsack_mark_duplicate (tc, dsack->start, dsack->end);
+  if (tc->sack_sb.flags & TCP_DSACK_RXT_OVERFLOW)
+    return;
+  if (matched != dsack->end - dsack->start)
+    {
+      tc->sack_sb.flags |= TCP_DSACK_UNDO_DISABLED;
+      tcp_dsack_recovery_clear (tc);
+      return;
+    }
+  if (matched > tc->dsack_pending_bytes)
+    {
+      tc->sack_sb.flags |= TCP_DSACK_INELIGIBLE;
+      return;
+    }
+  tc->dsack_pending_bytes -= matched;
+  ac->ack_flags |= TCP_ACK_F_DSACK_MATCHED;
+}
+
+static tcp_ack_flag_t
+tcp_dsack_finalize (tcp_connection_t *tc)
+{
+
+  if (tcp_scoreboard_is_reneging (&tc->sack_sb))
+    tc->sack_sb.flags |= TCP_DSACK_INELIGIBLE;
+
+  if (tc->sack_sb.flags & (TCP_DSACK_INELIGIBLE | TCP_DSACK_UNDO_DISABLED | TCP_DSACK_RXT_OVERFLOW))
+    return 0;
+
+  return tcp_dsack_all_duplicate (tc) ? TCP_ACK_F_DSACK_SPURIOUS : 0;
+}
+
+static void
+tcp_dsack_update (tcp_connection_t *tc, const sack_block_t *dsack, tcp_ack_ctx_t *ac)
+{
+  tcp_dsack_account (tc, dsack, ac);
+  ac->ack_flags |= tcp_dsack_finalize (tc);
+}
+
+void
+tcp_rcv_dsack (tcp_connection_t *tc, u32 ack, tcp_ack_ctx_t *ac)
+{
+  sack_block_t dsack;
+
+  if (tcp_opts_sack (&tc->rcv_opts) && vec_len (tc->rcv_opts.sacks) &&
+      tcp_sack_extract_dsack (tc, ack, &dsack))
+    {
+      ac->ack_flags |= TCP_ACK_F_DSACK;
+      tcp_dsack_update (tc, &dsack, ac);
+    }
+}
+
+static_always_inline sack_scoreboard_hole_t *
+scoreboard_update_cumulative_ack (tcp_connection_t *tc, u32 ack, tcp_sb_sack_mode_e mode,
+				  tcp_ack_ctx_t *ac)
 {
   sack_scoreboard_hole_t *hole, *next_hole;
   sack_scoreboard_t *sb = &tc->sack_sb;
-  sack_block_t *blk, *rcv_sacks;
-  u32 blk_index = 0, i, j, high_sacked;
-  tcp_sb_sack_mode_e mode;
+  u32 sacked;
 
-  sb->last_sacked_bytes = 0;
-  sb->last_bytes_delivered = 0;
-  sb->rxt_sacked = 0;
+  hole = scoreboard_first_hole (sb);
 
-  if (!tcp_opts_sack (&tc->rcv_opts) && !sb->sacked_bytes
-      && sb->head == TCP_INVALID_SACK_HOLE_INDEX)
-    return;
-
-  mode = !tcp_in_cong_recovery (tc)	       ? TCP_SB_SACK_OOO :
-	 seq_geq (sb->rescue_rxt, tc->snd_una) ? TCP_SB_SACK_RXT_RESCUED :
-						 TCP_SB_SACK_RXT;
-
-  /* Remove invalid blocks */
-  blk = tc->rcv_opts.sacks;
-  while (blk < vec_end (tc->rcv_opts.sacks))
+  if (PREDICT_FALSE (tcp_scoreboard_is_reneging (sb)))
     {
-      if (seq_lt (blk->start, blk->end)
-	  && seq_gt (blk->start, tc->snd_una)
-	  && seq_gt (blk->start, ack)
-	  && seq_lt (blk->start, tc->snd_nxt)
-	  && seq_leq (blk->end, tc->snd_nxt))
+      ac->last_bytes_delivered += clib_min (hole->start - tc->snd_una, ack - tc->snd_una);
+      tcp_scoreboard_set_reneging (sb, seq_lt (ack, hole->start), ac);
+    }
+
+  if (seq_leq (ack, tc->snd_una))
+    return hole;
+
+  while (hole && seq_lt (hole->start, ack))
+    {
+      if (seq_gt (hole->end, ack))
 	{
-	  blk++;
-	  continue;
+	  scoreboard_update_sacked (sb, ac, hole->start, ack, mode, tc->snd_mss);
+	  hole->start = ack;
+	  break;
 	}
-      vec_del1 (tc->rcv_opts.sacks, blk - tc->rcv_opts.sacks);
+
+      next_hole = scoreboard_next_hole (sb, hole);
+
+      /* Account bytes already delivered by SACK between this hole and the
+	 next one, or between the last hole and the SACK frontier. */
+      sacked = next_hole ? next_hole->start : seq_max (sb->high_sacked, hole->end);
+      if (PREDICT_FALSE (seq_lt (ack, sacked)))
+	{
+	  ac->last_bytes_delivered += ack - hole->end;
+	  tcp_scoreboard_set_reneging (sb, 1, ac);
+	}
+      else
+	{
+	  ac->last_bytes_delivered += sacked - hole->end;
+	  tcp_scoreboard_set_reneging (sb, 0, ac);
+	}
+
+      scoreboard_update_sacked (sb, ac, hole->start, hole->end, mode, tc->snd_mss);
+      scoreboard_remove_hole (sb, hole);
+      hole = next_hole;
     }
 
-  /* Add block for cumulative ack */
-  if (seq_gt (ack, tc->snd_una))
-    {
-      vec_add2 (tc->rcv_opts.sacks, blk, 1);
-      blk->start = tc->snd_una;
-      blk->end = ack;
-    }
+  return hole;
+}
 
-  if (vec_len (tc->rcv_opts.sacks) == 0)
-    return;
+static void
+tcp_scoreboard_loss_on_ack (tcp_connection_t *tc, u32 ack, tcp_ack_ctx_t *ac)
+{
+  sack_scoreboard_t *sb = &tc->sack_sb;
 
-  tcp_scoreboard_trace_add (tc, ack);
+  scoreboard_update_bytes (sb, ac, ack, tc->snd_mss);
 
-  high_sacked = (sb->sacked_bytes || sb->is_reneging) ? sb->high_sacked : tc->snd_una;
+  ASSERT (ac->last_sacked_bytes <= sb->sacked_bytes || tcp_in_recovery (tc));
+  ASSERT (sb->sacked_bytes == 0 || tcp_in_recovery (tc) ||
+	  sb->sacked_bytes <= tc->snd_nxt - seq_max (tc->snd_una, ack));
+  ASSERT (ac->last_sacked_bytes + sb->lost_bytes <= tc->snd_nxt - seq_max (tc->snd_una, ack) ||
+	  tcp_in_recovery (tc));
+  ASSERT (sb->head == TCP_INVALID_SACK_HOLE_INDEX || tcp_in_recovery (tc) ||
+	  tcp_scoreboard_is_reneging (sb) || sb->holes[sb->head].start == ack);
+  ASSERT (ac->last_lost <= sb->lost_bytes);
+  ASSERT ((ack - tc->snd_una) + ac->last_sacked_bytes - ac->last_bytes_delivered >= ac->rxt_sacked);
+  ASSERT ((ack - tc->snd_una) >= ac->last_bytes_delivered || (tc->flags & TCP_CONN_FINSNT));
 
-  /* Make sure blocks are ordered */
-  rcv_sacks = tc->rcv_opts.sacks;
-  for (i = 0; i < vec_len (rcv_sacks); i++)
-    {
-      for (j = i + 1; j < vec_len (rcv_sacks); j++)
-	if (seq_lt (rcv_sacks[j].start, rcv_sacks[i].start))
-	  {
-	    sack_block_t tmp = rcv_sacks[i];
-	    rcv_sacks[i] = rcv_sacks[j];
-	    rcv_sacks[j] = tmp;
-	  }
-      /* Last block's end is not guaranteed to be highest */
-      high_sacked = seq_max (high_sacked, rcv_sacks[i].end);
-    }
+  TCP_EVT (TCP_EVT_CC_SCOREBOARD, tc, ac);
+}
+
+static __clib_noinline void
+tcp_scoreboard_apply_sacks (tcp_connection_t *tc, u32 ack, u32 high_sacked, tcp_ack_ctx_t *ac)
+{
+  sack_scoreboard_hole_t *hole, *next_hole;
+  sack_scoreboard_t *sb = &tc->sack_sb;
+  sack_block_t *blk, *rcv_sacks = tc->rcv_opts.sacks;
+  tcp_sb_sack_mode_e mode = !tcp_in_cong_recovery (tc)		  ? TCP_SB_SACK_OOO :
+			    seq_geq (sb->rescue_rxt, tc->snd_una) ? TCP_SB_SACK_RXT_RESCUED :
+								    TCP_SB_SACK_RXT;
+  u32 blk_index = 0;
 
   if (sb->head == TCP_INVALID_SACK_HOLE_INDEX)
     {
       /* Handle reneging as a special case */
-      if (PREDICT_FALSE (sb->is_reneging))
+      if (PREDICT_FALSE (tcp_scoreboard_is_reneging (sb)))
 	{
 	  /* No holes, only sacked bytes */
 	  if (seq_leq (tc->snd_nxt, sb->high_sacked))
@@ -459,9 +1030,9 @@ tcp_rcv_sacks (tcp_connection_t * tc, u32 ack)
 		return;
 
 	      /* Update sacked bytes delivered and return */
-	      sb->last_bytes_delivered = ack - tc->snd_una;
-	      sb->sacked_bytes -= sb->last_bytes_delivered;
-	      sb->is_reneging = seq_lt (ack, sb->high_sacked);
+	      ac->last_bytes_delivered = ack - tc->snd_una;
+	      sb->sacked_bytes -= ac->last_bytes_delivered;
+	      tcp_scoreboard_set_reneging (sb, seq_lt (ack, sb->high_sacked), ac);
 	      return;
 	    }
 
@@ -500,15 +1071,8 @@ tcp_rcv_sacks (tcp_connection_t * tc, u32 ack)
 	}
     }
 
-  /* Walk the holes with the SACK blocks */
-  hole = pool_elt_at_index (sb->holes, sb->head);
-
-  if (PREDICT_FALSE (sb->is_reneging))
-    {
-      sb->last_bytes_delivered += clib_min (hole->start - tc->snd_una,
-					    ack - tc->snd_una);
-      sb->is_reneging = seq_lt (ack, hole->start);
-    }
+  /* Advance the cumulative ACK and continue with the first surviving hole. */
+  hole = scoreboard_update_cumulative_ack (tc, ack, mode, ac);
 
   while (hole && blk_index < vec_len (rcv_sacks))
     {
@@ -519,24 +1083,7 @@ tcp_rcv_sacks (tcp_connection_t * tc, u32 ack)
 	  if (seq_geq (blk->end, hole->end))
 	    {
 	      next_hole = scoreboard_next_hole (sb, hole);
-
-	      /* If covered by ack, compute delivered bytes */
-	      if (blk->end == ack)
-		{
-		  u32 sacked = next_hole ? next_hole->start :
-		    seq_max (sb->high_sacked, hole->end);
-		  if (PREDICT_FALSE (seq_lt (ack, sacked)))
-		    {
-		      sb->last_bytes_delivered += ack - hole->end;
-		      sb->is_reneging = 1;
-		    }
-		  else
-		    {
-		      sb->last_bytes_delivered += sacked - hole->end;
-		      sb->is_reneging = 0;
-		    }
-		}
-	      scoreboard_update_sacked (sb, hole->start, hole->end, mode, tc->snd_mss);
+	      scoreboard_update_sacked (sb, ac, hole->start, hole->end, mode, tc->snd_mss);
 	      scoreboard_remove_hole (sb, hole);
 	      hole = next_hole;
 	    }
@@ -545,7 +1092,7 @@ tcp_rcv_sacks (tcp_connection_t * tc, u32 ack)
 	    {
 	      if (seq_gt (blk->end, hole->start))
 		{
-		  scoreboard_update_sacked (sb, hole->start, blk->end, mode, tc->snd_mss);
+		  scoreboard_update_sacked (sb, ac, hole->start, blk->end, mode, tc->snd_mss);
 		  hole->start = blk->end;
 		}
 	      blk_index++;
@@ -557,21 +1104,20 @@ tcp_rcv_sacks (tcp_connection_t * tc, u32 ack)
 	  if (seq_lt (blk->end, hole->end))
 	    {
 	      u32 hole_index = scoreboard_hole_index (sb, hole);
-	      next_hole = scoreboard_insert_hole (sb, hole_index, blk->end,
-						  hole->end);
+	      next_hole = scoreboard_insert_hole (sb, hole_index, blk->end, hole->end);
 	      /* Pool might've moved */
 	      hole = scoreboard_get_hole (sb, hole_index);
 	      hole->end = blk->start;
 	      next_hole->is_lost = hole->is_lost;
 
-	      scoreboard_update_sacked (sb, blk->start, blk->end, mode, tc->snd_mss);
+	      scoreboard_update_sacked (sb, ac, blk->start, blk->end, mode, tc->snd_mss);
 
 	      blk_index++;
 	      ASSERT (hole->next == scoreboard_hole_index (sb, next_hole));
 	    }
 	  else if (seq_lt (blk->start, hole->end))
 	    {
-	      scoreboard_update_sacked (sb, blk->start, hole->end, mode, tc->snd_mss);
+	      scoreboard_update_sacked (sb, ac, blk->start, hole->end, mode, tc->snd_mss);
 	      hole->end = blk->start;
 	    }
 	  hole = scoreboard_next_hole (sb, hole);
@@ -579,22 +1125,100 @@ tcp_rcv_sacks (tcp_connection_t * tc, u32 ack)
     }
 
   sb->high_sacked = high_sacked;
-  scoreboard_update_bytes (sb, ack, tc->snd_mss);
+  tcp_scoreboard_loss_on_ack (tc, ack, ac);
+}
 
-  ASSERT (sb->last_sacked_bytes <= sb->sacked_bytes || tcp_in_recovery (tc));
-  ASSERT (sb->sacked_bytes == 0 || tcp_in_recovery (tc)
-	  || sb->sacked_bytes <= tc->snd_nxt - seq_max (tc->snd_una, ack));
-  ASSERT (sb->last_sacked_bytes + sb->lost_bytes <= tc->snd_nxt
-	  - seq_max (tc->snd_una, ack) || tcp_in_recovery (tc));
-  ASSERT (sb->head == TCP_INVALID_SACK_HOLE_INDEX || tcp_in_recovery (tc)
-	  || sb->is_reneging || sb->holes[sb->head].start == ack);
-  ASSERT (sb->last_lost_bytes <= sb->lost_bytes);
-  ASSERT ((ack - tc->snd_una) + sb->last_sacked_bytes
-	  - sb->last_bytes_delivered >= sb->rxt_sacked);
-  ASSERT ((ack - tc->snd_una) >= tc->sack_sb.last_bytes_delivered
-	  || (tc->flags & TCP_CONN_FINSNT));
+static_always_inline void
+tcp_scoreboard_apply_ack (tcp_connection_t *tc, u32 ack, u32 high_sacked, tcp_ack_ctx_t *ac)
+{
+  sack_scoreboard_t *sb = &tc->sack_sb;
 
-  TCP_EVT (TCP_EVT_CC_SCOREBOARD, tc);
+  if ((ac->ack_flags & TCP_ACK_F_SACK) || sb->sacked_bytes ||
+      sb->head != TCP_INVALID_SACK_HOLE_INDEX)
+    tcp_scoreboard_apply_sacks (tc, ack, high_sacked, ac);
+
+  if (ac->bytes_acked && (sb->flags & TCP_DSACK_RXT_ACTIVE))
+    tcp_dsack_retire (tc, ack);
+
+  ac->acked_and_sacked = ac->bytes_acked + ac->last_sacked_bytes - ac->last_bytes_delivered;
+}
+
+static void
+tcp_sack_normalize (tcp_connection_t *tc, u32 packet_ack, sack_block_t *dsack, u32 *high_sacked,
+		    tcp_ack_ctx_t *ac)
+{
+  sack_block_t *blk, *rcv_sacks;
+  u32 ack = seq_max (packet_ack, tc->snd_una);
+  u32 i, j;
+
+  if (vec_len (tc->rcv_opts.sacks))
+    {
+      if (tcp_sack_extract_dsack (tc, packet_ack, dsack))
+	ac->ack_flags |= TCP_ACK_F_DSACK;
+    }
+
+  /* Remove invalid blocks */
+  blk = tc->rcv_opts.sacks;
+  while (blk < vec_end (tc->rcv_opts.sacks))
+    {
+      if (seq_lt (blk->start, blk->end) && seq_gt (blk->start, tc->snd_una) &&
+	  seq_gt (blk->start, ack) && seq_lt (blk->start, tc->snd_nxt) &&
+	  seq_leq (blk->end, tc->snd_nxt))
+	{
+	  blk++;
+	  continue;
+	}
+      vec_del1 (tc->rcv_opts.sacks, blk - tc->rcv_opts.sacks);
+    }
+
+  if (!vec_len (tc->rcv_opts.sacks))
+    return;
+
+  ac->ack_flags |= TCP_ACK_F_SACK;
+
+  /* Make sure blocks are ordered */
+  rcv_sacks = tc->rcv_opts.sacks;
+  for (i = 0; i < vec_len (rcv_sacks); i++)
+    {
+      for (j = i + 1; j < vec_len (rcv_sacks); j++)
+	if (seq_lt (rcv_sacks[j].start, rcv_sacks[i].start))
+	  {
+	    sack_block_t tmp = rcv_sacks[i];
+	    rcv_sacks[i] = rcv_sacks[j];
+	    rcv_sacks[j] = tmp;
+	  }
+      /* Last block's end is not guaranteed to be highest */
+      *high_sacked = seq_max (*high_sacked, rcv_sacks[i].end);
+    }
+}
+
+void
+tcp_ack_handle_full_feedback (tcp_connection_t *tc, u32 packet_ack, u32 ack, tcp_ack_ctx_t *ac)
+{
+  sack_scoreboard_t *sb = &tc->sack_sb;
+  sack_block_t dsack;
+  u32 high_sacked;
+  u8 had_sacked_bytes = sb->sacked_bytes != 0;
+
+  high_sacked = seq_max (
+    ack, (had_sacked_bytes || tcp_scoreboard_is_reneging (sb)) ? sb->high_sacked : tc->snd_una);
+  if (tcp_opts_sack (&tc->rcv_opts))
+    {
+      tcp_sack_normalize (tc, packet_ack, &dsack, &high_sacked, ac);
+      if (ac->ack_flags & TCP_ACK_F_DSACK)
+	{
+	  /* Backend application revokes provisional results on reneging. */
+	  tcp_dsack_update (tc, &dsack, ac);
+	}
+    }
+  if (!(ac->bytes_acked | (ac->ack_flags & TCP_ACK_F_SACK)))
+    return;
+
+  tcp_sack_trace (tc, ack);
+  if (PREDICT_FALSE (tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER))
+    tcp_bt_apply_ack (tc, ack, high_sacked, ac);
+  else
+    tcp_scoreboard_apply_ack (tc, ack, high_sacked, ac);
 }
 
 static u8

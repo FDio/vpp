@@ -142,6 +142,9 @@ func (s *HsiSuite) TeardownTest() {
 	if CurrentSpecReport().Failed() {
 		Log(vpp.Vppctl("show session verbose 2"))
 		Log(vpp.Vppctl("show error"))
+		Log(vpp.Vppctl("show tcp stats"))
+		Log(vpp.Vppctl("show proxy-lite"))
+		Log(vpp.Vppctl("show hsi"))
 		CollectNginxLogs(s.Containers.NginxServerTransient)
 	}
 }

@@ -1437,7 +1437,7 @@ main (int argc, char **argv)
 
   vperf_client_alloc_workers (vcm);
 
-  rv = vppcom_app_create ("vperf_client");
+  rv = vppcom_app_create ("vperf_cln_vcl");
   if (rv < 0)
     vperf_fail ("vppcom_app_create()", rv);
 

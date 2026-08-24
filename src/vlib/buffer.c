@@ -30,19 +30,25 @@ STATIC_ASSERT_FITS_IN (vlib_buffer_t, buffer_pool_index, 16);
 u16 __vlib_buffer_external_hdr_size = 0;
 
 uword
-vlib_buffer_length_in_chain_slow_path (vlib_main_t * vm,
-				       vlib_buffer_t * b_first)
+vlib_buffer_length_in_chain_slow_path (vlib_main_t *vm, vlib_buffer_t *b_first,
+				       vlib_buffer_t **b_last, u16 *countp)
 {
   vlib_buffer_t *b = b_first;
   uword l_first = b_first->current_length;
   uword l = 0;
+  u16 count = 1;
   while (b->flags & VLIB_BUFFER_NEXT_PRESENT)
     {
       b = vlib_get_buffer (vm, b->next_buffer);
       l += b->current_length;
+      count++;
     }
   b_first->total_length_not_including_first_buffer = l;
   b_first->flags |= VLIB_BUFFER_TOTAL_LENGTH_VALID;
+  if (b_last)
+    *b_last = b;
+  if (countp)
+    *countp = count;
   return l + l_first;
 }
 
@@ -449,6 +455,19 @@ vlib_buffer_alloc_size (uword ext_hdr_size, uword data_size)
   return alloc_size;
 }
 
+static_always_inline void
+vlib_buffer_pool_add_buffer (vlib_main_t *vm, vlib_buffer_main_t *bm, vlib_buffer_pool_t *bp, u8 *p)
+{
+  vlib_buffer_t *b = (vlib_buffer_t *) (p + bm->ext_hdr_size);
+  u32 bi;
+
+  b->template = bp->buffer_template;
+  bi = vlib_get_buffer_index (vm, b);
+  ASSERT (bi != 0);
+  bp->buffers[bp->n_avail++] = bi;
+  vlib_get_buffer (vm, bi);
+}
+
 u8
 vlib_buffer_pool_create (vlib_main_t *vm, u32 data_size, u32 physmem_map_index,
 			 char *fmt, ...)
@@ -459,6 +478,8 @@ vlib_buffer_pool_create (vlib_main_t *vm, u32 data_size, u32 physmem_map_index,
   uword start = pointer_to_uword (m->base);
   uword size = (uword) m->n_pages << m->log2_page_size;
   uword page_mask = ~pow2_mask (m->log2_page_size);
+  uword page_size = (uword) 1 << m->log2_page_size;
+  u8 *page_start, *page, *end;
   u8 *p;
   u32 alloc_size;
   va_list va;
@@ -498,6 +519,7 @@ vlib_buffer_pool_create (vlib_main_t *vm, u32 data_size, u32 physmem_map_index,
   bp->index = bp - bm->buffer_pools;
   bp->buffer_template.buffer_pool_index = bp->index;
   bp->buffer_template.ref_count = 1;
+  bp->buffer_template.next_buffer = 0xDEADBEAF; /* force failure on non-initialized field */
   bp->physmem_map_index = physmem_map_index;
   bp->data_size = data_size;
   bp->numa_node = m->numa_node;
@@ -520,33 +542,61 @@ vlib_buffer_pool_create (vlib_main_t *vm, u32 data_size, u32 physmem_map_index,
 
   clib_spinlock_init (&bp->lock);
 
-  p = m->base;
-
-  /* start with naturally aligned address */
-  p += alloc_size - (uword) p % alloc_size;
-
-  /*
-   * Waste 1 buffer (maximum) so that 0 is never a valid buffer index.
-   * Allows various places to ASSERT (bi != 0). Much easier
-   * than debugging downstream crashes in successor nodes.
-   */
-  if (p == m->base)
-    p += alloc_size;
-
-  for (; p < (u8 *) m->base + size - alloc_size; p += alloc_size)
+  if (bm->layout == VLIB_BUFFER_LAYOUT_NATURAL)
     {
-      vlib_buffer_t *b;
-      u32 bi;
+      /*
+       * Keep a single stride across the whole memory map.  Aligning the first
+       * buffer to alloc_size makes every subsequent buffer naturally aligned,
+       * as required by some platforms.  Buffers crossing a page boundary must
+       * be skipped, which can waste a significant part of small pages.
+       */
+      p = m->base;
 
-      /* skip if buffer spans across page boundary */
-      if (((uword) p & page_mask) != ((uword) (p + alloc_size) & page_mask))
-	continue;
+      /* start with naturally aligned address */
+      p += alloc_size - (uword) p % alloc_size;
 
-      b = (vlib_buffer_t *) (p + bm->ext_hdr_size);
-      b->template = bp->buffer_template;
-      bi = vlib_get_buffer_index (vm, b);
-      bp->buffers[bp->n_avail++] = bi;
-      vlib_get_buffer (vm, bi);
+      /*
+       * Waste 1 buffer (maximum) so that 0 is never a valid buffer index.
+       * Allows various places to ASSERT (bi != 0). Much easier
+       * than debugging downstream crashes in successor nodes.
+       */
+      if (p == m->base)
+	p += alloc_size;
+
+      for (; p < (u8 *) m->base + size - alloc_size; p += alloc_size)
+	{
+	  /* skip if buffer spans across page boundary */
+	  if (((uword) p & page_mask) != ((uword) (p + alloc_size) & page_mask))
+	    continue;
+
+	  vlib_buffer_pool_add_buffer (vm, bm, bp, p);
+	}
+    }
+  else
+    {
+      /*
+       * Restart the stride at every page boundary.  This guarantees that
+       * buffers do not span pages and packs each small page independently,
+       * but buffers do not retain natural alloc_size alignment across the
+       * whole memory map.
+       */
+      /*
+       * Waste 1 buffer (maximum) so that 0 is never a valid buffer index.
+       * Allows various places to ASSERT (bi != 0). Much easier
+       * than debugging downstream crashes in successor nodes.
+       */
+      page_start = m->base + alloc_size;
+
+      end = (u8 *) m->base + size;
+      for (page = m->base; page < end; page += page_size)
+	{
+	  u8 *page_end = page + page_size;
+
+	  for (p = page_start; p + alloc_size <= page_end; p += alloc_size)
+	    vlib_buffer_pool_add_buffer (vm, bm, bp, p);
+
+	  page_start = page_end;
+	}
     }
 
   bp->n_buffers = bp->n_avail;
@@ -753,6 +803,8 @@ vlib_buffer_main_alloc (vlib_main_t * vm)
     clib_mem_alloc_aligned (sizeof (bm[0]), CLIB_CACHE_LINE_BYTES);
   clib_memset (vm->buffer_main, 0, sizeof (bm[0]));
   bm->default_data_size = VLIB_BUFFER_DEFAULT_DATA_SIZE;
+  bm->layout =
+    VLIB_BUFFER_NATURAL_ALIGN_DEFAULT ? VLIB_BUFFER_LAYOUT_NATURAL : VLIB_BUFFER_LAYOUT_PACKED;
 }
 
 static u32
@@ -960,6 +1012,10 @@ vlib_buffers_configure (vlib_main_t * vm, unformat_input_t * input)
       else if (unformat (input, "default data-size %u",
 			 &bm->default_data_size))
 	;
+      else if (unformat (input, "layout natural"))
+	bm->layout = VLIB_BUFFER_LAYOUT_NATURAL;
+      else if (unformat (input, "layout packed"))
+	bm->layout = VLIB_BUFFER_LAYOUT_PACKED;
       else if (unformat (input, "numa %u %U", &numa_node,
 			 unformat_vlib_cli_sub_input, &sub_input))
 	{

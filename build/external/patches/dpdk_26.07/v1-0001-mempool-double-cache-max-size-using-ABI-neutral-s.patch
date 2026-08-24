@@ -1,0 +1,77 @@
+From 59158c4a7bc27424ac65a3002475f8bf1d4cdf7a Mon Sep 17 00:00:00 2001
+From: Kai Ji <kai.ji@intel.com>
+Date: Wed, 19 Aug 2026 15:22:52 +0000
+Subject: [dpdk-dev v1] mempool: double cache max size using ABI-neutral struct
+ compaction
+
+commit f5e1310f16e0 ("mempool: improve cache behaviour and performance")
+changed the flush/refill algorithm:
+
+  - flush threshold dropped from 1.5 * size (flushthresh) to size
+  - refill batch reduced from size + remaining to size / 2
+  - effective warm-cache depth after a refill: size / 2
+
+The release notes for that commit explicitly warned:
+
+  "Applications where each lcore only puts or gets to a mempool,
+  e.g. pipelined applications where ethdev Rx and Tx run on
+  separate lcores, should adapt to the new algorithm by doubling
+  their configured mempool cache size, to avoid doubling their
+  mempool cache miss rate."
+
+Simultaneously, the same commit noted that the objs[] array no longer
+needs to be sized at 2 * RTE_MEMPOOL_CACHE_MAX_SIZE since the new
+algorithm never overflows cache->size, leaving half the allocated
+array unused.
+
+Perform the advised doubling as a zero-cost ABI-neutral operation:
+  - Shrink objs[] from [MAX_SIZE * 2] to [MAX_SIZE] in the struct
+  - Double RTE_MEMPOOL_CACHE_MAX_SIZE from 512 to 1024
+
+Result: sizeof(rte_mempool_cache) is unchanged (1024 pointer slots),
+but the maximum usable cache depth doubles from 512 to 1024.
+Existing callers passing cache_size <= 512 are unaffected.
+
+Fixes: f5e1310f16e0 ("mempool: improve cache behaviour and performance")
+
+Signed-off-by: Kai Ji <kai.ji@intel.com>
+---
+ config/rte_config.h       | 2 +-
+ lib/mempool/rte_mempool.h | 7 +------
+ 2 files changed, 2 insertions(+), 7 deletions(-)
+
+diff --git a/config/rte_config.h b/config/rte_config.h
+index 0447cdf2ad..afb26c5218 100644
+--- a/config/rte_config.h
++++ b/config/rte_config.h
+@@ -56,7 +56,7 @@
+ #define RTE_CONTIGMEM_DEFAULT_BUF_SIZE (512*1024*1024)
+ 
+ /* mempool defines */
+-#define RTE_MEMPOOL_CACHE_MAX_SIZE 512
++#define RTE_MEMPOOL_CACHE_MAX_SIZE 1024
+ /* RTE_LIBRTE_MEMPOOL_STATS is not set */
+ /* RTE_LIBRTE_MEMPOOL_DEBUG is not set */
+ 
+diff --git a/lib/mempool/rte_mempool.h b/lib/mempool/rte_mempool.h
+index 50d958c7c6..61dfe386c0 100644
+--- a/lib/mempool/rte_mempool.h
++++ b/lib/mempool/rte_mempool.h
+@@ -106,13 +106,8 @@ struct __rte_cache_aligned rte_mempool_cache {
+ #endif
+ 	/**
+ 	 * Cache objects
+-	 *
+-	 * Note:
+-	 * Cache is allocated at double size for API/ABI compatibility purposes only.
+-	 * When reducing its size at an API/ABI breaking release,
+-	 * remember to add a cache guard after it.
+ 	 */
+-	alignas(RTE_CACHE_LINE_SIZE) void *objs[RTE_MEMPOOL_CACHE_MAX_SIZE * 2];
++	alignas(RTE_CACHE_LINE_SIZE) void *objs[RTE_MEMPOOL_CACHE_MAX_SIZE];
+ };
+ 
+ /**
+-- 
+2.43.0
+

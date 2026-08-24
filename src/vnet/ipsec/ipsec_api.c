@@ -16,7 +16,6 @@
 #include <vnet/ipsec/ipsec_types_api.h>
 #include <vnet/tunnel/tunnel_types_api.h>
 #include <vnet/fib/fib.h>
-#include <vnet/ipip/ipip.h>
 #include <vnet/tunnel/tunnel_types_api.h>
 #include <vnet/ipsec/ipsec.h>
 #include <vnet/ipsec/ipsec_tun.h>

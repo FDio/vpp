@@ -757,10 +757,10 @@ counters esp_encrypt {
     description "no Encrypting SA (packet dropped)";
   };
   no_avail_frame {
-  severity error;
-  type counter64;
-  units "packets";
-  description "no available frame (packet dropped)";
+    severity error;
+    type counter64;
+    units "packets";
+    description "no available frame (packet dropped)";
   };
 };
 

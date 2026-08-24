@@ -15,6 +15,7 @@
 
 #include <vnet/ip/ip.h>
 #include <vnet/session/transport.h>
+#include <vppinfra/sparse_vec.h>
 
 #define UDP_NO_NODE_SET ((u16) ~0)
 
@@ -129,10 +130,11 @@ typedef struct
   uword *dst_port_info_by_name[N_UDP_AF];
   uword *dst_port_info_by_dst_port[N_UDP_AF];
 
-  /* Sparse vector mapping udp dst_port in network byte order
-     to next index. */
+  /* Maps UDP dst_port in network byte order to next index. The tables are
+   * sparse until UDP transport is enabled, then converted to dense vectors. */
   u16 *next_by_dst_port4;
   u16 *next_by_dst_port6;
+  u8 next_by_dst_port_is_dense;
   u8 punt_unknown4;
   u8 punt_unknown6;
 
@@ -164,6 +166,52 @@ extern vlib_node_registration_t udp4_local_node;
 extern vlib_node_registration_t udp6_local_node;
 extern vlib_node_registration_t udp4_output_node;
 extern vlib_node_registration_t udp6_output_node;
+
+always_inline u16 *
+udp_dst_port_table (udp_main_t *um, u8 is_ip4)
+{
+  return is_ip4 ? um->next_by_dst_port4 : um->next_by_dst_port6;
+}
+
+always_inline u16
+udp_dst_port_lookup (u16 *table, u16 dst_port, u8 is_dense)
+{
+  uword index;
+
+  if (is_dense)
+    return vec_elt (table, dst_port);
+
+  index = sparse_vec_index (table, dst_port);
+  return index == SPARSE_VEC_INVALID_INDEX ? UDP_NO_NODE_SET : vec_elt (table, index);
+}
+
+always_inline void
+udp_dst_port_lookup2 (u16 *table, u16 dst_port0, u16 dst_port1, u8 is_dense, u32 *next0, u32 *next1)
+{
+  u32 index0, index1;
+
+  if (is_dense)
+    {
+      *next0 = vec_elt (table, dst_port0);
+      *next1 = vec_elt (table, dst_port1);
+      return;
+    }
+
+  sparse_vec_index2 (table, dst_port0, dst_port1, &index0, &index1);
+  *next0 = index0 == SPARSE_VEC_INVALID_INDEX ? UDP_NO_NODE_SET : vec_elt (table, index0);
+  *next1 = index1 == SPARSE_VEC_INVALID_INDEX ? UDP_NO_NODE_SET : vec_elt (table, index1);
+}
+
+always_inline u16 *
+udp_dst_port_get_slot (udp_main_t *um, u16 dst_port, u8 is_ip4)
+{
+  u16 **table = is_ip4 ? &um->next_by_dst_port4 : &um->next_by_dst_port6;
+
+  if (um->next_by_dst_port_is_dense)
+    return vec_elt_at_index (*table, dst_port);
+
+  return sparse_vec_validate (*table, dst_port);
+}
 
 void udp_add_dst_port (udp_main_t * um, udp_dst_port_t dst_port,
 		       char *dst_port_name, u8 is_ip4);

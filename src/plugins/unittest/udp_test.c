@@ -273,25 +273,117 @@ udp_test_binds (vlib_main_t *vm, unformat_input_t *input)
   return rv;
 }
 
+static int
+udp_test_dst_port_tables (vlib_main_t *vm)
+{
+  udp_main_t *um = &udp_main;
+  session_enable_disable_args_t args = {
+    .is_en = 1,
+    .rt_engine_type = RT_BACKEND_ENGINE_RULE_TABLE,
+  };
+  clib_error_t *error;
+  u8 was_dense = um->next_by_dst_port_is_dense;
+  struct
+  {
+    u16 port;
+    u16 next4;
+    u16 next6;
+    u16 old_next4;
+    u16 old_next6;
+  } cases[] = {
+    /* Insert out of order to exercise sparse-vector element relocation. */
+    { 64, 0, 1 },
+    { 42, 1, 2 },
+    /* Exercise the boundary ports omitted by the old conversion. */
+    { 0, 2, 0 },
+    { (u16) ~0, 1, 2 },
+  };
+
+  for (u32 i = 0; i < ARRAY_LEN (cases); i++)
+    {
+      cases[i].old_next4 =
+	udp_dst_port_lookup (um->next_by_dst_port4, cases[i].port, um->next_by_dst_port_is_dense);
+      cases[i].old_next6 =
+	udp_dst_port_lookup (um->next_by_dst_port6, cases[i].port, um->next_by_dst_port_is_dense);
+      *udp_dst_port_get_slot (um, cases[i].port, 1 /* is_ip4 */) = cases[i].next4;
+      *udp_dst_port_get_slot (um, cases[i].port, 0 /* is_ip4 */) = cases[i].next6;
+    }
+
+  if (!was_dense)
+    for (u32 i = 0; i < ARRAY_LEN (cases); i++)
+      {
+	UDP_TEST (udp_dst_port_lookup (um->next_by_dst_port4, cases[i].port, 0) == cases[i].next4,
+		  "IPv4 sparse port %u should retain its value", cases[i].port);
+	UDP_TEST (udp_dst_port_lookup (um->next_by_dst_port6, cases[i].port, 0) == cases[i].next6,
+		  "IPv6 sparse port %u should retain its value", cases[i].port);
+      }
+
+  error = vnet_session_enable_disable (vm, &args);
+  UDP_TEST (error == 0, "session enable should work");
+  UDP_TEST (um->next_by_dst_port_is_dense, "UDP destination port tables should be dense");
+  UDP_TEST (vec_len (um->next_by_dst_port4) == 1 << 16,
+	    "IPv4 destination port table should cover all ports");
+  UDP_TEST (vec_len (um->next_by_dst_port6) == 1 << 16,
+	    "IPv6 destination port table should cover all ports");
+
+  for (u32 i = 0; i < ARRAY_LEN (cases); i++)
+    {
+      UDP_TEST (udp_dst_port_lookup (um->next_by_dst_port4, cases[i].port,
+				     um->next_by_dst_port_is_dense) == cases[i].next4,
+		"IPv4 port %u should survive dense conversion", cases[i].port);
+      UDP_TEST (udp_dst_port_lookup (um->next_by_dst_port6, cases[i].port,
+				     um->next_by_dst_port_is_dense) == cases[i].next6,
+		"IPv6 port %u should survive dense conversion", cases[i].port);
+      UDP_TEST (um->next_by_dst_port4[cases[i].port] == cases[i].next4,
+		"IPv4 port %u should be directly indexed", cases[i].port);
+      UDP_TEST (um->next_by_dst_port6[cases[i].port] == cases[i].next6,
+		"IPv6 port %u should be directly indexed", cases[i].port);
+    }
+
+  for (u32 i = 0; i < ARRAY_LEN (cases); i++)
+    {
+      *udp_dst_port_get_slot (um, cases[i].port, 1 /* is_ip4 */) = cases[i].old_next4;
+      *udp_dst_port_get_slot (um, cases[i].port, 0 /* is_ip4 */) = cases[i].old_next6;
+    }
+
+  return 0;
+}
+
+static int
+udp_test_enable_sessions (vlib_main_t *vm)
+{
+  session_enable_disable_args_t args = {
+    .is_en = 1,
+    .rt_engine_type = RT_BACKEND_ENGINE_RULE_TABLE,
+  };
+  clib_error_t *error = vnet_session_enable_disable (vm, &args);
+
+  UDP_TEST (error == 0, "session enable should work");
+  return 0;
+}
+
 static clib_error_t *
 udp_test (vlib_main_t *vm, unformat_input_t *input,
 	  vlib_cli_command_t *cmd_arg)
 {
   int res = 0;
-  session_enable_disable_args_t args = { .is_en = 1,
-					 .rt_engine_type =
-					   RT_BACKEND_ENGINE_RULE_TABLE };
-
-  vnet_session_enable_disable (vm, &args);
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (input, "binds"))
+      if (unformat (input, "dst-port-tables"))
 	{
+	  res = udp_test_dst_port_tables (vm);
+	}
+      else if (unformat (input, "binds"))
+	{
+	  if ((res = udp_test_enable_sessions (vm)))
+	    goto done;
 	  res = udp_test_binds (vm, input);
 	}
       else if (unformat (input, "all"))
 	{
+	  if ((res = udp_test_dst_port_tables (vm)))
+	    goto done;
 	  if ((res = udp_test_binds (vm, input)))
 	    goto done;
 	}
@@ -309,6 +401,6 @@ done:
 
 VLIB_CLI_COMMAND (udp_test_command, static) = {
   .path = "test udp",
-  .short_help = "internal udp unit tests",
+  .short_help = "test udp [dst-port-tables|binds|all]",
   .function = udp_test,
 };

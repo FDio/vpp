@@ -8,13 +8,13 @@
 #include <vnet/api_errno.h>
 #include <vnet/fib/fib_table.h>
 #include <vnet/interface.h>
-#include <vnet/ipip/ipip.h>
+#include <ipip/ipip.h>
 #include <vnet/vnet.h>
 #include <vnet/ip/ip_types_api.h>
 #include <vnet/tunnel/tunnel_types_api.h>
 
-#include <vnet/ipip/ipip.api_enum.h>
-#include <vnet/ipip/ipip.api_types.h>
+#include <ipip/ipip.api_enum.h>
+#include <ipip/ipip.api_types.h>
 
 #define REPLY_MSG_ID_BASE im->msg_id_base
 #include <vlibapi/api_helper_macros.h>
@@ -212,7 +212,7 @@ vl_api_ipip_6rd_del_tunnel_t_handler (vl_api_ipip_6rd_del_tunnel_t * mp)
  */
 /* API definitions */
 #include <vnet/format_fns.h>
-#include <vnet/ipip/ipip.api.c>
+#include <ipip/ipip.api.c>
 
 static clib_error_t *
 ipip_api_hookup (vlib_main_t * vm)

@@ -26,6 +26,7 @@ typedef struct
   u32 sw_if_index;
   u8 key_data[64];
   u16 parser_index;
+  u8 key_size;
   u8 is_sp;
   union
   {
@@ -43,10 +44,23 @@ typedef struct
   };
 } sfdp_parser_lookup_trace_t;
 
+static u8 *
+format_sfdp_parser_lookup_trace (u8 *s, va_list *args)
+{
+  CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
+  CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
+  sfdp_parser_lookup_trace_t *t = va_arg (*args, sfdp_parser_lookup_trace_t *);
+
+  s = format (s, "sfdp-parser: sw_if_index %u parser %u key %U", t->sw_if_index, t->parser_index,
+	      format_hex_bytes_no_wrap, t->key_data, t->key_size);
+  if (t->is_sp)
+    return format (s, " slow-path %u node %u", t->sp_index, t->sp_node_index);
+  return format (s, " flow-id %u next-index %u hash 0x%llx", t->flow_id, t->next_index, t->hash);
+}
+
 static_always_inline u8
-sfdp_parser_lookup_four (const sfdp_parser_registration_t *reg,
-			 vlib_buffer_t **b, void *k, u64 *lookup_val, u64 *h,
-			 i16 *l4_hdr_offset, int prefetch_buffer_stride,
+sfdp_parser_lookup_four (const sfdp_parser_registration_t *reg, vlib_buffer_t **b, u8 *k,
+			 u64 *lookup_val, u64 *h, i16 *l4_hdr_offset, int prefetch_buffer_stride,
 			 u8 slowpath)
 {
   vlib_buffer_t **pb = b + prefetch_buffer_stride;
@@ -58,8 +72,7 @@ sfdp_parser_lookup_four (const sfdp_parser_registration_t *reg,
     }
 
   __sfdp_inline_here slowpath_needed |=
-    reg->calc_key_fn (b[0], b[0]->flow_id, k + 0, lookup_val + 0, h + 0,
-		      l4_hdr_offset + 0, slowpath);
+    reg->calc_key_fn (b[0], b[0]->flow_id, k, lookup_val + 0, h + 0, l4_hdr_offset + 0, slowpath);
 
   if (prefetch_buffer_stride)
     {
@@ -67,9 +80,8 @@ sfdp_parser_lookup_four (const sfdp_parser_registration_t *reg,
       clib_prefetch_load (pb[1]->data);
     }
 
-  __sfdp_inline_here slowpath_needed |=
-    reg->calc_key_fn (b[1], b[1]->flow_id, k + 1, lookup_val + 1, h + 1,
-		      l4_hdr_offset + 1, slowpath);
+  __sfdp_inline_here slowpath_needed |= reg->calc_key_fn (
+    b[1], b[1]->flow_id, k + reg->key_size, lookup_val + 1, h + 1, l4_hdr_offset + 1, slowpath);
 
   if (prefetch_buffer_stride)
     {
@@ -77,9 +89,8 @@ sfdp_parser_lookup_four (const sfdp_parser_registration_t *reg,
       clib_prefetch_load (pb[2]->data);
     }
 
-  __sfdp_inline_here slowpath_needed |=
-    reg->calc_key_fn (b[2], b[2]->flow_id, k + 2, lookup_val + 2, h + 2,
-		      l4_hdr_offset + 2, slowpath);
+  __sfdp_inline_here slowpath_needed |= reg->calc_key_fn (
+    b[2], b[2]->flow_id, k + 2 * reg->key_size, lookup_val + 2, h + 2, l4_hdr_offset + 2, slowpath);
 
   if (prefetch_buffer_stride)
     {
@@ -87,17 +98,14 @@ sfdp_parser_lookup_four (const sfdp_parser_registration_t *reg,
       clib_prefetch_load (pb[3]->data);
     }
 
-  __sfdp_inline_here slowpath_needed |=
-    reg->calc_key_fn (b[3], b[3]->flow_id, k + 3, lookup_val + 3, h + 3,
-		      l4_hdr_offset + 3, slowpath);
+  __sfdp_inline_here slowpath_needed |= reg->calc_key_fn (
+    b[3], b[3]->flow_id, k + 3 * reg->key_size, lookup_val + 3, h + 3, l4_hdr_offset + 3, slowpath);
   return slowpath_needed;
 }
 
 static_always_inline uword
-sfdp_parser_prepare_all_keys (const sfdp_parser_registration_t *reg,
-			      vlib_buffer_t **b, sfdp_session_ip4_key_t *k,
-			      u64 *lv, u64 *h, i16 *l4_hdr_offset, u32 n_left,
-			      u8 slowpath)
+sfdp_parser_prepare_all_keys (const sfdp_parser_registration_t *reg, vlib_buffer_t **b, u8 *k,
+			      u64 *lv, u64 *h, i16 *l4_hdr_offset, u32 n_left, u8 slowpath)
 {
   /* main loop - prefetch next 4 buffers,
    * prefetch previous 4 buckets */
@@ -109,7 +117,7 @@ sfdp_parser_prepare_all_keys (const sfdp_parser_registration_t *reg,
 	return n_left;
 
       b += 4;
-      k += 4;
+      k += 4 * reg->key_size;
       lv += 4;
       h += 4;
       l4_hdr_offset += 4;
@@ -126,7 +134,7 @@ sfdp_parser_prepare_all_keys (const sfdp_parser_registration_t *reg,
 	return n_left;
 
       b += 4;
-      k += 4;
+      k += 4 * reg->key_size;
       lv += 4;
       h += 4;
       l4_hdr_offset += 4;
@@ -135,13 +143,12 @@ sfdp_parser_prepare_all_keys (const sfdp_parser_registration_t *reg,
 
   while (n_left > 0)
     {
-      __sfdp_inline_here if (reg->calc_key_fn (b[0], b[0]->flow_id, k + 0,
-					       lv + 0, h + 0,
+      __sfdp_inline_here if (reg->calc_key_fn (b[0], b[0]->flow_id, k, lv + 0, h + 0,
 					       l4_hdr_offset + 0, slowpath) &&
 			     !slowpath) return n_left;
 
       b += 1;
-      k += 1;
+      k += reg->key_size;
       lv += 1;
       h += 1;
       l4_hdr_offset += 1;
@@ -151,19 +158,15 @@ sfdp_parser_prepare_all_keys (const sfdp_parser_registration_t *reg,
 }
 
 static_always_inline void
-sfdp_parser_prepare_all_keys_slow (const sfdp_parser_registration_t *reg,
-				   vlib_buffer_t **b,
-				   sfdp_session_ip4_key_t *k, u64 *lv, u64 *h,
-				   i16 *l4_hdr_offset, u32 n_left)
+sfdp_parser_prepare_all_keys_slow (const sfdp_parser_registration_t *reg, vlib_buffer_t **b, u8 *k,
+				   u64 *lv, u64 *h, i16 *l4_hdr_offset, u32 n_left)
 {
   sfdp_parser_prepare_all_keys (reg, b, k, lv, h, l4_hdr_offset, n_left, 1);
 }
 
 static_always_inline uword
-sfdp_parser_prepare_all_keys_fast (const sfdp_parser_registration_t *reg,
-				   vlib_buffer_t **b,
-				   sfdp_session_ip4_key_t *k, u64 *lv, u64 *h,
-				   i16 *l4_hdr_offset, u32 n_left)
+sfdp_parser_prepare_all_keys_fast (const sfdp_parser_registration_t *reg, vlib_buffer_t **b, u8 *k,
+				   u64 *lv, u64 *h, i16 *l4_hdr_offset, u32 n_left)
 {
   return sfdp_parser_prepare_all_keys (reg, b, k, lv, h, l4_hdr_offset, n_left,
 				       0);
@@ -560,6 +563,9 @@ sfdp_parser_lookup_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       u32 *in_local = to_local;
       u32 *in_remote = to_remote;
       u32 *in_sp = to_sp;
+      u32 *local_end = to_local + n_local;
+      u32 *remote_end = to_remote + n_remote;
+      u32 *sp_end = to_sp + n_to_sp;
       for (i = 0; i < frame->n_vectors; i++)
 	{
 	  if (b[0]->flags & VLIB_BUFFER_IS_TRACED)
@@ -571,16 +577,17 @@ sfdp_parser_lookup_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	      t->hash = h[0];
 	      t->is_sp = 0;
 	      t->parser_index = parser_data_index;
-	      if (bi[0] == in_local[0])
+	      t->key_size = key_size;
+	      if (in_local < local_end && bi[0] == in_local[0])
 		{
 		  t->next_index = local_next_indices[(in_local++) - to_local];
 		}
-	      else if (bi[0] == in_remote[0])
+	      else if (in_remote < remote_end && bi[0] == in_remote[0])
 		{
 		  t->next_index = ~0;
 		  in_remote++;
 		}
-	      else
+	      else if (in_sp < sp_end && bi[0] == in_sp[0])
 		{
 		  t->is_sp = 1;
 		  t->sp_index = sp_indices[in_sp - to_sp];
@@ -614,25 +621,25 @@ sfdp_parser_lookup_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 #else
 #define _SFDP_PARSER_DEFINE_NODE_AUX(x)
 #endif
-#define SFDP_PARSER_DEFINE_NODE(x)                                            \
-  VLIB_REGISTER_NODE (x##_node) = {                                           \
-    .vector_size = sizeof (u32),                                              \
-    .format_trace = 0,                                                        \
-    .type = VLIB_NODE_TYPE_INTERNAL,                                          \
-    .flags = VLIB_NODE_FLAG_ALLOW_LAZY_NEXT_NODES,                            \
-    .runtime_data = 0,                                                        \
-    .runtime_data_bytes = sizeof (u8),                                        \
-    .n_errors = ARRAY_LEN (sfdp_lookup_error_strings),                        \
-    .error_strings = sfdp_lookup_error_strings,                               \
-  };                                                                          \
-                                                                              \
-  VLIB_NODE_FN (x##_node)                                                     \
-  (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)        \
-  {                                                                           \
-    return sfdp_parser_lookup_inline (                                        \
-      vm, node, frame, &sfdp_parser_registration_##x,                         \
-      sfdp_parser_registration_mutable_##x.sfdp_parser_data_index);           \
-  }                                                                           \
+#define SFDP_PARSER_DEFINE_NODE(x)                                                                 \
+  VLIB_REGISTER_NODE (x##_node) = {                                                                \
+    .vector_size = sizeof (u32),                                                                   \
+    .format_trace = format_sfdp_parser_lookup_trace,                                               \
+    .type = VLIB_NODE_TYPE_INTERNAL,                                                               \
+    .flags = VLIB_NODE_FLAG_ALLOW_LAZY_NEXT_NODES,                                                 \
+    .runtime_data = 0,                                                                             \
+    .runtime_data_bytes = sizeof (sfdp_lookup_node_runtime_data_t),                                \
+    .n_errors = ARRAY_LEN (sfdp_lookup_error_strings),                                             \
+    .error_strings = sfdp_lookup_error_strings,                                                    \
+  };                                                                                               \
+                                                                                                   \
+  VLIB_NODE_FN (x##_node)                                                                          \
+  (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)                             \
+  {                                                                                                \
+    return sfdp_parser_lookup_inline (                                                             \
+      vm, node, frame, &sfdp_parser_registration_##x,                                              \
+      sfdp_parser_registration_mutable_##x.sfdp_parser_data_index);                                \
+  }                                                                                                \
   _SFDP_PARSER_DEFINE_NODE_AUX (x)
 
 #if defined(__clang__) && __clang_major__ > 17

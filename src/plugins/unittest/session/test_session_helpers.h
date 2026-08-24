@@ -63,7 +63,7 @@ placeholder_session_disconnect_callback (session_t *s)
 	s->thread_index == connected_session_thread) &&
       !(s->session_index == accepted_session_index && s->thread_index == accepted_session_thread))
     {
-      clib_warning (0, "unexpected disconnect s %u thread %u", s->session_index, s->thread_index);
+      clib_warning ("unexpected disconnect s %u thread %u", s->session_index, s->thread_index);
       app_session_error = 1;
     }
 
@@ -109,7 +109,7 @@ placeholder_cleanup_callback (session_t *s, session_cleanup_ntf_t ntf)
     }
   else
     {
-      clib_warning (0, "unexpected cleanup s %u thread %u", s->session_index, s->thread_index);
+      clib_warning ("unexpected cleanup s %u thread %u", s->session_index, s->thread_index);
       app_session_error = 1;
     }
 }

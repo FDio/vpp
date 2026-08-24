@@ -2,6 +2,7 @@
 """6RD RFC5969 functional tests"""
 
 import unittest
+from config import config
 from scapy.layers.inet import IP, UDP, Ether
 from scapy.layers.inet6 import IPv6
 from scapy.packet import Raw
@@ -16,6 +17,7 @@ from vpp_ip_route import VppIpRoute, VppRoutePath, VppIpTable
 """
 
 
+@unittest.skipIf("ipip" in config.excluded_plugins, "Exclude IPIP plugin tests")
 class Test6RD(VppTestCase):
     """6RD Test Case"""
 

@@ -645,8 +645,7 @@ fail:
     vppcom_app_destroy ();
   if (cl.ctl_fd >= 0)
     close (cl.ctl_fd);
-  if (control_path)
-    unlink (control_path);
+  unlink (control_path);
   return 1;
 }
 

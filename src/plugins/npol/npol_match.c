@@ -9,6 +9,62 @@
 #include <npol/npol_interface.h>
 #include <cnat/cnat_node.h>
 
+#ifndef CLIB_MARCH_VARIANT
+vlib_simple_counter_main_t npol_flow_counters[NPOL_N_FLOW_COUNTERS] = {
+  [NPOL_FLOW_COUNTER_RX_ALLOW] = {
+    .name = "rx-flows-allow",
+    .stat_segment_name = "/net/npol/rx/flows/allow",
+  },
+  [NPOL_FLOW_COUNTER_RX_DENY] = {
+    .name = "rx-flows-deny",
+    .stat_segment_name = "/net/npol/rx/flows/deny",
+  },
+  [NPOL_FLOW_COUNTER_TX_ALLOW] = {
+    .name = "tx-flows-allow",
+    .stat_segment_name = "/net/npol/tx/flows/allow",
+  },
+  [NPOL_FLOW_COUNTER_TX_DENY] = {
+    .name = "tx-flows-deny",
+    .stat_segment_name = "/net/npol/tx/flows/deny",
+  },
+};
+
+void
+npol_flow_counters_validate (u32 sw_if_index)
+{
+  for (npol_flow_counter_t c = 0; c < NPOL_N_FLOW_COUNTERS; c++)
+    vlib_validate_simple_counter (&npol_flow_counters[c], sw_if_index);
+}
+
+always_inline void
+npol_flow_counter_increment (u32 sw_if_index, u32 is_inbound, u8 action)
+{
+  npol_flow_counter_t counter;
+
+  if (is_inbound)
+    {
+      if (action == NPOL_ACTION_ALLOW)
+	counter = NPOL_FLOW_COUNTER_RX_ALLOW;
+      else if (action == NPOL_ACTION_DENY)
+	counter = NPOL_FLOW_COUNTER_RX_DENY;
+      else
+	return;
+    }
+  else
+    {
+      if (action == NPOL_ACTION_ALLOW)
+	counter = NPOL_FLOW_COUNTER_TX_ALLOW;
+      else if (action == NPOL_ACTION_DENY)
+	counter = NPOL_FLOW_COUNTER_TX_DENY;
+      else
+	return;
+    }
+
+  vlib_increment_simple_counter (&npol_flow_counters[counter], vlib_get_thread_index (),
+				 sw_if_index, 1);
+}
+#endif
+
 always_inline u8
 ip_ipset_contains_ip4 (npol_ipset_t *ipset, ip4_address_t *addr)
 {
@@ -758,6 +814,7 @@ npol_cnat_slow_path_input (vlib_main_t *vm, vlib_buffer_t *b, ip_address_family_
   u8 action = 0;
   CLIB_MARCH_FN_SELECT (npol_match)
   (in_if, 1 /* is_inbound */, &tup, !(AF_IP4 == af), &action);
+  npol_flow_counter_increment (in_if, 1 /* is_inbound */, action);
   if (action == NPOL_ACTION_DENY)
     cnat_hook_deny (ts, CNAT_LOCATION_INPUT);
 }
@@ -774,6 +831,7 @@ npol_cnat_slow_path_output (vlib_main_t *vm, vlib_buffer_t *b, ip_address_family
   u8 action = 0;
   CLIB_MARCH_FN_SELECT (npol_match)
   (out_if, 0 /* is_inbound */, &tup, !(AF_IP4 == af), &action);
+  npol_flow_counter_increment (out_if, 0 /* is_inbound */, action);
   if (action == NPOL_ACTION_DENY)
     cnat_hook_deny (ts, CNAT_LOCATION_OUTPUT);
 }

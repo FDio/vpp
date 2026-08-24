@@ -3,7 +3,12 @@
 from __future__ import print_function
 from multiprocessing import Pipe
 import sys
-from asfframework import VppDiedError, VppAsfTestCase, KeepAliveReporter
+from asfframework import (
+    KeepAliveReporter,
+    VppAsfTestCase,
+    VppDiedError,
+    VppTestResult,
+)
 
 
 class SanityTestCase(VppAsfTestCase):
@@ -31,14 +36,22 @@ def main():
     reporter = KeepAliveReporter()
     reporter.pipe = y
     try:
-        tc.setUpClass()
-    except VppDiedError:
-        rc = -1
-    else:
         try:
-            tc.tearDownClass()
-        except Exception:
+            tc.setUpClass()
+        except VppDiedError:
             rc = -1
+        else:
+            try:
+                tc.tearDownClass()
+            except Exception:
+                rc = -1
+    finally:
+        # The normal test run starts after this preflight.  setUpClass()
+        # populates this class-level result context, which is inherited by
+        # subsequently forked workers.  A skipped class, or a class whose
+        # setup fails before VppAsfTestCase.setUpClass(), cannot replace it;
+        # leaving it set would attribute that class's result to SanityTestCase.
+        VppTestResult.current_test_case_info = None
     x.close()
     y.close()
 

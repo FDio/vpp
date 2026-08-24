@@ -480,12 +480,12 @@ quic_show_aggregated_stats (vlib_main_t *vm)
   vlib_cli_output (vm, "RX 0RTT:         %d",
 		   quic_get_counter_value (QUIC_ERROR_TX_PACKETS));
   vlib_cli_output (vm, "----------- Stats -----------");
-  vlib_cli_output (vm, "Min      RTT     %f",
-		   nconn > 0 ? agg_stats.rtt_minimum / nconn : 0);
-  vlib_cli_output (vm, "Smoothed RTT     %f",
-		   nconn > 0 ? agg_stats.rtt_smoothed / nconn : 0);
-  vlib_cli_output (vm, "Variance on RTT  %f",
-		   nconn > 0 ? agg_stats.rtt_variance / nconn : 0);
+  vlib_cli_output (vm, "Min      RTT     %u",
+		   nconn > 0 ? (u32) (agg_stats.rtt_minimum / nconn) : 0);
+  vlib_cli_output (vm, "Smoothed RTT     %u",
+		   nconn > 0 ? (u32) (agg_stats.rtt_smoothed / nconn) : 0);
+  vlib_cli_output (vm, "Variance on RTT  %u",
+		   nconn > 0 ? (u32) (agg_stats.rtt_variance / nconn) : 0);
   vlib_cli_output (vm, "Packets Received %lu", agg_stats.num_packets_received);
   vlib_cli_output (vm, "Packets Sent     %lu", agg_stats.num_packets_sent);
   vlib_cli_output (vm, "Packets Lost     %lu", agg_stats.num_packets_lost);

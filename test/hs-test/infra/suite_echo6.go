@@ -41,7 +41,7 @@ func (s *Echo6Suite) SetupSuite() {
 	time.Sleep(1 * time.Second)
 	s.HstSuite.SetupSuite()
 	s.ConfigureNetworkTopology("2peerVeth6")
-	s.LoadContainerTopology("2peerVeth")
+	s.LoadContainerTopology("2peerVpps")
 	s.Interfaces.Client = s.GetInterfaceByName("cln")
 	s.Interfaces.Server = s.GetInterfaceByName("srv")
 	s.Containers.ServerVpp = s.GetContainerByName("server-vpp")

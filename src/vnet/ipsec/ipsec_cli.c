@@ -9,7 +9,6 @@
 #include <vnet/ip/ip.h>
 #include <vnet/interface.h>
 #include <vnet/fib/fib.h>
-#include <vnet/ipip/ipip.h>
 
 #include <vnet/ipsec/ipsec.h>
 #include <vnet/ipsec/ipsec_tun.h>

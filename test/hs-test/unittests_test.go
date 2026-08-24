@@ -5,7 +5,7 @@ import (
 )
 
 func init() {
-	RegisterNoTopoTests(HttpUnitTest, TcpUnitTest, SvmUnitTest, SessionUnitTest)
+	RegisterNoTopoTests(HttpUnitTest, TcpUnitTest, UdpUnitTest, SvmUnitTest, SessionUnitTest)
 }
 
 func runUnitTest(s *NoTopoSuite, vppCmd string) {
@@ -25,7 +25,6 @@ func TcpUnitTest(s *NoTopoSuite) {
 }
 
 func UdpUnitTest(s *NoTopoSuite) {
-	s.SkipIfNotCoverage()
 	runUnitTest(s, "test udp all")
 }
 

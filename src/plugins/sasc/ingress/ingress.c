@@ -22,15 +22,24 @@ sasc_interface_input_enable_disable(u32 sw_if_index, u32 tenant_idx, bool output
     int dir = output_arc ? VLIB_TX : VLIB_RX;
 
     if (is_enable) {
-        sasc_tenant_t *tenant = pool_elt_at_index(sasc->tenants, tenant_idx);
-        if (!tenant)
-            return -1;
+        /* check if tenant_idx is valid in pool */
+        if (pool_is_free_index(sasc->tenants, tenant_idx))
+            return VNET_API_ERROR_NO_SUCH_ENTRY;
 
-        vec_validate_init_empty(sasc_ingress->tenant_idx_by_sw_if_idx[dir], sw_if_index, 0xFFFF);
+        vec_validate_init_empty(sasc_ingress->tenant_idx_by_sw_if_idx[dir], sw_if_index, UINT16_MAX);
 
         config = vec_elt_at_index(sasc_ingress->tenant_idx_by_sw_if_idx[dir], sw_if_index);
         config[0] = tenant_idx;
+    } else {
+        /* check if provided sw_if_index is within expected range */
+        if (!sasc_ingress->tenant_idx_by_sw_if_idx[dir] ||
+            sw_if_index >= vec_len(sasc_ingress->tenant_idx_by_sw_if_idx[dir]))
+            return VNET_API_ERROR_NO_SUCH_ENTRY;
+
+        config = vec_elt_at_index(sasc_ingress->tenant_idx_by_sw_if_idx[dir], sw_if_index);
+        config[0] = UINT16_MAX;
     }
+
     if (output_arc)
         return vnet_feature_enable_disable("ip4-output", "sasc-input-out", sw_if_index, is_enable, 0, 0);
     else

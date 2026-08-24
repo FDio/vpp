@@ -15,6 +15,9 @@
 #define RDMA_TXQ_DV_DSEG_SZ(txq)        (RDMA_MLX5_WQE_DS * RDMA_TXQ_DV_SQ_SZ(txq))
 #define RDMA_TXQ_DV_DSEG2WQE(d)         (((d) + RDMA_MLX5_WQE_DS - 1) / RDMA_MLX5_WQE_DS)
 
+/* Keep mlx5 SEND WQEs below the hardware WQE size limit. */
+#define RDMA_MLX5_WQE_DS_MAX 60
+
 /*
  * MLX5 direct verbs tx/free functions
  */
@@ -159,14 +162,11 @@ rdma_device_output_tx_mlx5_chained (vlib_main_t *vm,
 
       if (b[0]->flags & VLIB_BUFFER_NEXT_PRESENT)
 	{
-	  /*
-	   * max number of available dseg:
-	   *  - 4 dseg per WQEBB available
-	   *  - max 32 dseg per WQE (5-bits length field in WQE ctrl)
-	   */
-#define RDMA_MLX5_WQE_DS_MAX    (1 << 5)
-	  const u32 dseg_max =
-	    clib_min (RDMA_MLX5_WQE_DS * (wqe_n - 1), RDMA_MLX5_WQE_DS_MAX);
+	  /* Additional dseg are bounded by available WQEBBs and by
+	   * the mlx5 WQE size limit. */
+	  const u32 dseg_hw_max = RDMA_MLX5_WQE_DS_MAX - RDMA_MLX5_WQE_DS;
+	  const u32 dseg_slot_max = RDMA_MLX5_WQE_DS * (wqe_n - 1);
+	  const u32 dseg_max = clib_min (dseg_hw_max, dseg_slot_max);
 	  vlib_buffer_t *chained_b = b[0];
 	  u32 chained_n = 0;
 
@@ -220,9 +220,9 @@ rdma_device_output_tx_mlx5_chained (vlib_main_t *vm,
 					  RDMA_TXQ_BUF_SZ (txq), 1 +
 					  RDMA_TXQ_DV_DSEG2WQE (chained_n));
 	      vlib_error_count (vm, node->node_index,
-				dseg_max == chained_n ?
-				RDMA_TX_ERROR_SEGMENT_SIZE_EXCEEDED :
-				RDMA_TX_ERROR_NO_FREE_SLOTS, 1);
+				chained_n == dseg_hw_max ? RDMA_TX_ERROR_SEGMENT_SIZE_EXCEEDED :
+							   RDMA_TX_ERROR_NO_FREE_SLOTS,
+				1);
 
 	      /* fixup tail to overwrite wqe head with next packet */
 	      tail -= 1;

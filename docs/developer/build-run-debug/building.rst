@@ -13,6 +13,16 @@ For more detailed information on the build system please refer to :ref:`buildsys
 VPP for Ubuntu: Environment Setup
 -------------------------------------------
 
+Before cloning the VPP for Ubuntu, the following debian packages have to be installed
+
+.. code-block:: console
+
+    apt update
+    apt dist-upgrade -y
+    apt install -y git make curl wget sudo
+
+Then clone the VPP repository.
+
 If you are not downloading VPP on Ubuntu with WSL (Windows Subsystem for Linux), please disregard this section
 and jump to 'Get the VPP Sources'.
 

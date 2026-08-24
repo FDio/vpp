@@ -2606,6 +2606,8 @@ class TestNAT44ED(VppTestCase):
             i.remove_vpp_config()
 
 
+# FIXME: this test crashes VPP in the CI with 'worker thread deadlock'
+@unittest.skipUnless(config.extended, "part of extended tests")
 @unittest.skipIf("nat" in config.excluded_plugins, "Exclude NAT plugin tests")
 class TestNAT44EDMW(TestNAT44ED):
     """NAT44ED MW Test Case"""

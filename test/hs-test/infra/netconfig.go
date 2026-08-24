@@ -42,6 +42,7 @@ type (
 		HwAddress        MacAddress
 		NetworkNamespace string
 		NetworkNumber    int
+		Bridge           string
 		Host             *NetInterface
 		vppName          string
 	}
@@ -98,6 +99,9 @@ func newNetworkInterface(cfg NetDevConfig, a *Ip4AddressAllocator) (*NetInterfac
 	if netns, ok := cfg["netns"]; ok {
 		newInterface.NetworkNamespace = netns.(string)
 	}
+	if bridge, ok := cfg["bridge"]; ok {
+		newInterface.Bridge = bridge.(string)
+	}
 
 	if ip, ok := cfg["ip4"]; ok {
 		if n, ok := ip.(NetDevConfig)["network"]; ok {
@@ -144,6 +148,9 @@ func newNetworkInterface6(cfg NetDevConfig, a *Ip6AddressAllocator) (*NetInterfa
 
 	if netns, ok := cfg["netns"]; ok {
 		newInterface.NetworkNamespace = netns.(string)
+	}
+	if bridge, ok := cfg["bridge"]; ok {
+		newInterface.Bridge = bridge.(string)
 	}
 
 	if ip, ok := cfg["ip6"]; ok {

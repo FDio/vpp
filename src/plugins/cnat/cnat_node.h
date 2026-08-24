@@ -196,7 +196,7 @@ cnat_ip4_translate_l4 (ip4_header_t *ip4, udp_header_t *udp, u16 *pkt_csum,
       csum = ip_csum_update (csum, old_port[VLIB_TX], new_port[VLIB_TX], udp_header_t, dst_port);
       csum = ip_csum_update (csum, old_port[VLIB_RX], new_port[VLIB_RX], udp_header_t, src_port);
 
-      if (csum_diff)
+      if (csum_diff && cts_flags)
 	{
 	  *cts_flags |= CNAT_TS_RW_FLAG_CACHE_TS_L4;
 	  *csum_diff = ip_csum_fold (ip_csum_add_even (csum, *pkt_csum));
@@ -255,7 +255,7 @@ cnat_ip4_translate_l3 (ip4_header_t *ip4, ip4_address_t new_addr[VLIB_N_DIR], u3
 			     dst_address);
       csum = ip_csum_update (csum, old_addr[VLIB_RX].as_u32, new_addr[VLIB_RX].as_u32, ip4_header_t,
 			     src_address);
-      if (csum_diff)
+      if (csum_diff && cts_flags)
 	{
 	  *cts_flags |= CNAT_TS_RW_FLAG_CACHE_TS_L3;
 	  *csum_diff = ip_csum_fold (ip_csum_add_even (csum, ip4->checksum));

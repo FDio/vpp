@@ -586,7 +586,7 @@ list(APPEND VNET_SOURCES
   tcp/tcp_syn_filter4.c
   tcp/tcp_output.c
   tcp/tcp_input.c
-  tcp/tcp_cc.c
+  tcp/tcp_loss.c
   tcp/tcp_newreno.c
   tcp/tcp_bt.c
   tcp/tcp_cli.c
@@ -610,6 +610,7 @@ list(APPEND VNET_HEADERS
   tcp/tcp_cc.h
   tcp/tcp_debug.h
   tcp/tcp_inlines.h
+  tcp/tcp_loss.h
   tcp/tcp_sack.h
   tcp/tcp_sdl.h
   tcp/tcp_types.h
@@ -657,29 +658,6 @@ list(APPEND VNET_API_FILES udp/udp.api)
 ##############################################################################
 list(APPEND VNET_HEADERS
   gre/packet.h
-)
-
-##############################################################################
-# Tunnel protocol: ipip
-##############################################################################
-list(APPEND VNET_SOURCES
-  ipip/ipip.c
-  ipip/node.c
-  ipip/sixrd.c
-  ipip/ipip_api.c
-  ipip/ipip_cli.c
-)
-
-list(APPEND VNET_MULTIARCH_SOURCES
-  ipip/node.c
-)
-
-list(APPEND VNET_HEADERS
-  ipip/ipip.h
-)
-
-list(APPEND VNET_API_FILES
-  ipip/ipip.api
 )
 
 ##############################################################################

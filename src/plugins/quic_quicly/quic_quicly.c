@@ -86,6 +86,7 @@ quic_quicly_connection_delete (quic_ctx_t *ctx)
   quic_increment_counter (qm, QUIC_ERROR_CLOSED_CONNECTION, 1);
   quic_disconnect_transport (ctx, qm->app_index);
   quicly_free (ctx->conn);
+  ctx->conn = NULL;
   if (ctx->c_s_index != QUIC_SESSION_INVALID && !(ctx->flags & QUIC_F_NO_APP_SESSION))
     session_transport_delete_notify (&ctx->connection);
 }

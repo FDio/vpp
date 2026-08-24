@@ -4,7 +4,7 @@
 #include <stdbool.h>
 #include <vnet/fib/ip6_fib.h>
 #include <vnet/ip/ip.h>
-#include <vnet/ipip/ipip.h>
+#include <ipip/ipip.h>
 #include <vnet/vnet.h>
 #include <vppinfra/error.h>
 
