@@ -87,19 +87,22 @@ def vpp_atexit(vpp_weakref):
 
 def add_convenience_methods():
     # provide convenience methods to IP[46]Address.vapi_af
+    # Use the public ipaddress .version (4 or 6) rather than the private
+    # ._version attribute: Python 3.14 removed ._version from IPv4Address/
+    # IPv6Address, while .version has been the supported API across versions.
     def _vapi_af(self):
-        if 6 == self._version:
+        if 6 == self.version:
             return VppEnum.vl_api_address_family_t.ADDRESS_IP6.value
-        if 4 == self._version:
+        if 4 == self.version:
             return VppEnum.vl_api_address_family_t.ADDRESS_IP4.value
-        raise ValueError("Invalid _version.")
+        raise ValueError("Invalid version.")
 
     def _vapi_af_name(self):
-        if 6 == self._version:
+        if 6 == self.version:
             return "ip6"
-        if 4 == self._version:
+        if 4 == self.version:
             return "ip4"
-        raise ValueError("Invalid _version.")
+        raise ValueError("Invalid version.")
 
     ipaddress._IPAddressBase.vapi_af = property(_vapi_af)
     ipaddress._IPAddressBase.vapi_af_name = property(_vapi_af_name)
