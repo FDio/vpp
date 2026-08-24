@@ -36,6 +36,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "3f6870d1_520492ab",
+        "filename": "test/hs-test/framework_test.go",
+        "patchSetId": 5
+      },
+      "lineNbr": 69,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-08-24T19:32:35Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "a8e3a8bd_92a9d3b8",
+      "revId": "899b812f769932505aa0ac68b11140c2bc44ed3f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "552ab899_e0229ae3",
@@ -71,6 +89,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "d3f61bf9_5aad1c48",
+        "filename": "test/hs-test/infra/container.go",
+        "patchSetId": 5
+      },
+      "lineNbr": 47,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-08-24T19:32:35Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "896708b0_7f5dc97c",
+      "revId": "899b812f769932505aa0ac68b11140c2bc44ed3f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "b77736ca_e3b7c409",
@@ -102,6 +138,24 @@
       "side": 1,
       "message": "Done, and did the same for vppinstance-*.log. The log directory is already per run and per test, so the run and the process were redundant: container-client-app.log and vppinstance-client-vpp.log now.",
       "parentUuid": "b77736ca_e3b7c409",
+      "revId": "899b812f769932505aa0ac68b11140c2bc44ed3f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e2482b9c_d0ec9543",
+        "filename": "test/hs-test/infra/suite_base.go",
+        "patchSetId": 5
+      },
+      "lineNbr": 564,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-08-24T19:32:35Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "19087733_fd8ff97a",
       "revId": "899b812f769932505aa0ac68b11140c2bc44ed3f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
