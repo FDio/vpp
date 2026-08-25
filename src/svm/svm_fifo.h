@@ -353,6 +353,41 @@ void svm_fifo_enqueue_nocopy (svm_fifo_t * f, u32 len);
  */
 int svm_fifo_enqueue_segments (svm_fifo_t * f, const svm_fifo_seg_t segs[],
 			       u32 n_segs, u8 allow_partial);
+int svm_fifo_enqueue_async (svm_fifo_t *f, svm_fifo_async_op_t *op);
+void svm_fifo_commit_async_ops (svm_fifo_t *f);
+void svm_fifo_free_async_data (svm_fifo_t *f);
+
+static inline void
+svm_fifo_add_async_ref (svm_fifo_t *f, u32 ref)
+{
+  ASSERT (f->async_state != 0);
+  vec_add1 (f->async_state->refs, ref);
+}
+
+static inline u32 *
+svm_fifo_async_refs (svm_fifo_t *f)
+{
+  return f->async_state ? f->async_state->refs : 0;
+}
+
+static inline void
+svm_fifo_reset_async_refs (svm_fifo_t *f)
+{
+  if (f->async_state)
+    vec_reset_length (f->async_state->refs);
+}
+
+static inline u32
+svm_fifo_n_async_ops (svm_fifo_t *f)
+{
+  return f->async_state ? vec_len (f->async_state->ops) : 0;
+}
+
+static inline u32
+svm_fifo_n_async_refs (svm_fifo_t *f)
+{
+  return f->async_state ? vec_len (f->async_state->refs) : 0;
+}
 /**
  * Overwrite fifo head with new data
  *
@@ -485,6 +520,17 @@ svm_fifo_max_dequeue_prod (svm_fifo_t * f)
   return f_cursize (f, head, tail);
 }
 
+static inline u32
+svm_fifo_max_dequeue_prod_async (svm_fifo_t *f)
+{
+  u32 tail, head;
+
+  f_load_head_tail_prod (f, &head, &tail);
+  if (f->async_state && f->async_state->tail != SVM_FIFO_ASYNC_TAIL_INVALID)
+    tail = f->async_state->tail;
+  return f_cursize (f, head, tail);
+}
+
 /**
  * Fifo max bytes to dequeue
  *
@@ -591,6 +637,17 @@ svm_fifo_max_enqueue_prod (svm_fifo_t * f)
   return f_free_count (f, head, tail);
 }
 
+static inline u32
+svm_fifo_max_enqueue_prod_async (svm_fifo_t *f)
+{
+  u32 head, tail;
+
+  f_load_head_tail_prod (f, &head, &tail);
+  if (f->async_state && f->async_state->tail != SVM_FIFO_ASYNC_TAIL_INVALID)
+    tail = f->async_state->tail;
+  return f_free_count (f, head, tail);
+}
+
 /* Maximum number of bytes that can be enqueued into fifo
  *
  * Note: use producer or consumer specific functions for performance.
@@ -648,11 +705,12 @@ svm_fifo_newest_ooo_segment_reset (svm_fifo_t * f)
 static inline u32
 ooo_segment_offset_prod (svm_fifo_t * f, ooo_segment_t * s)
 {
-  u32 tail;
-  /* load-relaxed: producer owned index */
-  tail = f->shr->tail;
+  u32 tail = f->shr->tail;
 
-  return (s->start - tail);
+  /* load-relaxed: producer owned index */
+  if (f->async_state && f->async_state->tail != SVM_FIFO_ASYNC_TAIL_INVALID)
+    tail = f->async_state->tail;
+  return s->start - tail;
 }
 
 static inline u32
