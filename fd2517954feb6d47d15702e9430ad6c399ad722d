@@ -1,0 +1,22 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "02eed132_20d92cf6",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 50
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-08-25T13:32:45Z",
+      "side": 1,
+      "message": "Addressed in PS50: the commit message is now wrapped to 78 columns (or fewer).",
+      "parentUuid": "a6eca69f_7be2e7a4",
+      "revId": "fd2517954feb6d47d15702e9430ad6c399ad722d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
