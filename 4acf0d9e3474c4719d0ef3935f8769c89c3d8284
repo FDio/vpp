@@ -36,6 +36,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "cdcf15e2_3fd3a063",
+        "filename": "test/hs-test/Makefile",
+        "patchSetId": 5
+      },
+      "lineNbr": 392,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-08-25T19:26:30Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "52941491_cc4ef2cb",
+      "revId": "4acf0d9e3474c4719d0ef3935f8769c89c3d8284",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "364e848d_e6741faf",
@@ -67,6 +85,24 @@
       "side": 1,
       "message": "Both done, documented with that example, and added \u0027make clean-hst-images-all\u0027.",
       "parentUuid": "364e848d_e6741faf",
+      "revId": "4acf0d9e3474c4719d0ef3935f8769c89c3d8284",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "5e27a6e0_7c23b077",
+        "filename": "test/hs-test/README.rst",
+        "patchSetId": 5
+      },
+      "lineNbr": 217,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-08-25T19:26:30Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "9c9fca66_0af35804",
       "revId": "4acf0d9e3474c4719d0ef3935f8769c89c3d8284",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
