@@ -78,6 +78,34 @@ CLIB_MARCH_FN (svm_fifo_copy_from_chunk, void, svm_fifo_t *f,
     }
 }
 
+CLIB_MARCH_FN (svm_fifo_copy_from_segments, u32, svm_fifo_t *f, svm_fifo_chunk_t *c, u32 tail,
+	       svm_fifo_async_seg_t *segs, u32 n_segs, fs_sptr_t *last)
+{
+  u32 chunk_off, i, n_copy, n_left;
+  u8 *src;
+
+  for (i = 0; i < n_segs; i++)
+    {
+      src = segs[i].data;
+      n_left = segs[i].len;
+      while (n_left)
+	{
+	  ASSERT (c && f_chunk_includes_pos (c, tail));
+	  chunk_off = tail - c->start_byte;
+	  n_copy = clib_min (n_left, c->length - chunk_off);
+	  clib_memcpy_fast (c->data + chunk_off, src, n_copy);
+	  src += n_copy;
+	  tail += n_copy;
+	  n_left -= n_copy;
+	  if (tail == f_chunk_end (c))
+	    c = f_cptr (f, c->next);
+	}
+    }
+
+  *last = f_csptr (f, c);
+  return tail;
+}
+
 #ifndef CLIB_MARCH_VARIANT
 
 static inline void
@@ -94,6 +122,13 @@ svm_fifo_copy_from_chunk (svm_fifo_t *f, svm_fifo_chunk_t *c, u32 head_idx,
 {
   CLIB_MARCH_FN_SELECT (svm_fifo_copy_from_chunk) (f, c, head_idx, dst, len,
 						   last);
+}
+
+static inline u32
+svm_fifo_copy_from_segments (svm_fifo_t *f, svm_fifo_chunk_t *c, u32 tail,
+			     svm_fifo_async_seg_t *segs, u32 n_segs, fs_sptr_t *last)
+{
+  return CLIB_MARCH_FN_SELECT (svm_fifo_copy_from_segments) (f, c, tail, segs, n_segs, last);
 }
 
 static inline u32
@@ -365,6 +400,11 @@ svm_fifo_init (svm_fifo_t * f, u32 size)
   f->shr->head = f->shr->tail = f->flags = 0;
   f->shr->head_chunk = f->shr->tail_chunk = f->shr->start_chunk;
   f->ooo_deq = f->ooo_enq = 0;
+  if (f->async_state)
+    {
+      ASSERT (!vec_len (f->async_state->segs));
+      f->async_state->tail = SVM_FIFO_ASYNC_TAIL_INVALID;
+    }
   f->signals = &f->shr->signals;
 
   min_alloc = size > 32 << 10 ? size >> 3 : 4096;
@@ -751,6 +791,18 @@ svm_fifo_free_chunk_lookup (svm_fifo_t * f)
 }
 
 void
+svm_fifo_free_async_data (svm_fifo_t *f)
+{
+  if (!f->async_state)
+    return;
+
+  ASSERT (!vec_len (f->async_state->segs));
+  vec_free (f->async_state->segs);
+  clib_mem_free (f->async_state);
+  f->async_state = 0;
+}
+
+void
 svm_fifo_free (svm_fifo_t * f)
 {
   ASSERT (f->refcnt > 0);
@@ -759,6 +811,7 @@ svm_fifo_free (svm_fifo_t * f)
     {
       /* ooo data is not allocated on segment heap */
       svm_fifo_free_chunk_lookup (f);
+      svm_fifo_free_async_data (f);
       clib_mem_free (f);
     }
 }
@@ -1035,6 +1088,108 @@ svm_fifo_enqueue_segments (svm_fifo_t * f, const svm_fifo_seg_t segs[],
   clib_atomic_store_rel_n (&f->shr->tail, tail);
 
   return len;
+}
+
+static svm_fifo_async_state_t *
+svm_fifo_async_state_get (svm_fifo_t *f)
+{
+  svm_fifo_async_state_t *state = f->async_state;
+
+  if (PREDICT_FALSE (!state))
+    {
+      state = clib_mem_alloc_or_null (sizeof (*state));
+      if (!state)
+	return 0;
+      clib_memset (state, 0, sizeof (*state));
+      state->tail = SVM_FIFO_ASYNC_TAIL_INVALID;
+      f->async_state = state;
+    }
+  return state;
+}
+
+static_always_inline int
+svm_fifo_reserve_async_inline (svm_fifo_t *f, u32 len)
+{
+  svm_fifo_async_state_t *state = f->async_state;
+  u32 head, tail, free_count;
+
+  f->ooos_newest = OOO_SEGMENT_INVALID_INDEX;
+  if (PREDICT_FALSE (f->ooos_list_head != OOO_SEGMENT_INVALID_INDEX))
+    return SVM_FIFO_EINVAL;
+
+  f_load_head_tail_prod (f, &head, &tail);
+  if (state && state->tail != SVM_FIFO_ASYNC_TAIL_INVALID)
+    tail = state->tail;
+
+  free_count = f_free_count (f, head, tail);
+  if (PREDICT_FALSE (free_count < len))
+    return SVM_FIFO_EFULL;
+
+  if (f_pos_gt (tail + len, f_chunk_end (f_end_cptr (f))) &&
+      PREDICT_FALSE (f_try_chunk_alloc (f, head, tail, len)))
+    return SVM_FIFO_EGROW;
+
+  if (!state && PREDICT_FALSE (!(state = svm_fifo_async_state_get (f))))
+    return SVM_FIFO_EGROW;
+  tail += len;
+  svm_fifo_trace_add (f, head, len, 2);
+  state->tail = tail;
+  return len;
+}
+
+int
+svm_fifo_reserve_async (svm_fifo_t *f, u32 len)
+{
+  return svm_fifo_reserve_async_inline (f, len);
+}
+
+int
+svm_fifo_enqueue_async_segment (svm_fifo_t *f, const svm_fifo_async_seg_t *seg)
+{
+  int rv;
+
+  rv = svm_fifo_reserve_async_inline (f, seg->len);
+  if (rv < 0)
+    return rv;
+
+  vec_add1 (f->async_state->segs, *seg);
+  return rv;
+}
+
+int
+svm_fifo_commit_async_segments (svm_fifo_t *f)
+{
+  svm_fifo_async_state_t *state = f->async_state;
+  svm_fifo_async_seg_t *segs;
+  fs_sptr_t last;
+  u32 expected, i, n_bytes = 0, n_segs, tail;
+
+  if (!state || state->tail == SVM_FIFO_ASYNC_TAIL_INVALID)
+    return 0;
+
+  if (PREDICT_FALSE (f->ooos_list_head != OOO_SEGMENT_INVALID_INDEX))
+    return SVM_FIFO_EINVAL;
+
+  segs = state->segs;
+  n_segs = vec_len (segs);
+  expected = (u32) state->tail - f->shr->tail;
+  if (CLIB_ASSERT_ENABLE)
+    {
+      for (i = 0; i < n_segs; i++)
+	n_bytes += segs[i].len;
+      ASSERT (n_bytes == expected);
+    }
+
+  tail = f->shr->tail;
+  last = f->shr->tail_chunk;
+  state->tail = SVM_FIFO_ASYNC_TAIL_INVALID;
+  tail = svm_fifo_copy_from_segments (f, f_tail_cptr (f), tail, segs, n_segs, &last);
+  ASSERT (tail == f->shr->tail + expected);
+  f->shr->tail_chunk = last;
+  clib_atomic_store_rel_n (&f->shr->tail, tail);
+  vec_reset_length (state->segs);
+
+  return expected;
 }
 
 always_inline svm_fifo_chunk_t *

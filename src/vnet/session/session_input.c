@@ -120,6 +120,7 @@ app_worker_flush_events_inline (app_worker_t *app_wrk,
 	{
 	case SESSION_IO_EVT_RX:
 	  s = session_get (evt->session_index, thread_index);
+	  session_flush_async_rx (s->rx_fifo);
 	  s->flags &= ~SESSION_F_RX_EVT;
 	  /* App is unaware of the session or closing notification provided */
 	  if (PREDICT_FALSE (!(s->flags & SESSION_F_RX_READY)))
@@ -131,6 +132,7 @@ app_worker_flush_events_inline (app_worker_t *app_wrk,
 	  s = session_get_from_handle_if_valid (evt->session_handle);
 	  if (!s)
 	    break;
+	  session_flush_async_rx (s->rx_fifo);
 	  s->flags &= ~SESSION_F_RX_EVT;
 	  if (PREDICT_FALSE (!(s->flags & SESSION_F_RX_READY)))
 	    break;
@@ -171,6 +173,7 @@ app_worker_flush_events_inline (app_worker_t *app_wrk,
 		  s = session_get_from_handle (
 		    session_make_handle (evt->session_index, thread_index));
 		  session_set_state (s, clib_max (old_state, s->session_state));
+		  session_flush_async_rx (s->rx_fifo);
 		  if (svm_fifo_max_dequeue (s->rx_fifo))
 		    app->cb_fns.builtin_app_rx_callback (s);
 		  if (!(s->flags & SESSION_F_APP_CLOSED))
@@ -215,6 +218,7 @@ app_worker_flush_events_inline (app_worker_t *app_wrk,
 	  if (old_state >= SESSION_STATE_TRANSPORT_CLOSING)
 	    {
 	      session_set_state (s, clib_max (old_state, s->session_state));
+	      session_flush_async_rx (s->rx_fifo);
 	      if (svm_fifo_max_dequeue (s->rx_fifo))
 		app->cb_fns.builtin_app_rx_callback (s);
 	      if (!(s->flags & SESSION_F_APP_CLOSED))
