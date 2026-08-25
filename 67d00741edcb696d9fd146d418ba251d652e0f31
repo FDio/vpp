@@ -35,6 +35,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "f43796ff_868e9113",
+        "filename": "src/plugins/sfdp_services/session_stats/cli.c",
+        "patchSetId": 34
+      },
+      "lineNbr": 129,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-08-25T14:22:14Z",
+      "side": 1,
+      "message": "Sure. The current behavior is to only protect through the API call, but no the CLI call to configure a ring buffer.\n\nI\u0027ve added an explicit check in `sfdp_session_stats_ring_init()` for `ring_size \u003d\u003d 0` and a negative API test case when we attempt to configure a ring buffer with size zero.",
+      "parentUuid": "02cc598d_29c91a91",
+      "revId": "67d00741edcb696d9fd146d418ba251d652e0f31",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "0b188774_f6fa6b45",
@@ -52,6 +70,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "1f4933fe_6bf865e1",
+        "filename": "src/plugins/sfdp_services/session_stats/node.c",
+        "patchSetId": 34
+      },
+      "lineNbr": 67,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-08-25T14:22:14Z",
+      "side": 1,
+      "message": "Added additional checks for the TCP header, which should address use-cases where IPV4 options or IPv6 option headers are present.\n\nIt seems like we currently don\u0027t have overall tests in SFDP for packets with IPv4 options or IPv6 extension headers, and these should be investigated in a subsequent patch.",
+      "parentUuid": "0b188774_f6fa6b45",
+      "revId": "67d00741edcb696d9fd146d418ba251d652e0f31",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "e541ebbb_b1df5d1c",
@@ -65,6 +101,24 @@
       "writtenOn": "2026-08-17T12:06:10Z",
       "side": 1,
       "message": "Could we use `sfdp_normalise_ip4_key()` here, and the IPv6 equivalent below, as the API dump does? `session-\u003ekeys[0]` is stored in canonical low/high order; when `pseudo_dir` is set, these fields reverse the real source and destination while the forward/reverse counters retain their original direction.",
+      "revId": "67d00741edcb696d9fd146d418ba251d652e0f31",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b20538ec_995fefbe",
+        "filename": "src/plugins/sfdp_services/session_stats/session_stats.c",
+        "patchSetId": 34
+      },
+      "lineNbr": 119,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-08-25T14:22:14Z",
+      "side": 1,
+      "message": "Done.",
+      "parentUuid": "e541ebbb_b1df5d1c",
       "revId": "67d00741edcb696d9fd146d418ba251d652e0f31",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
