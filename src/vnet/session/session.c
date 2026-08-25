@@ -16,7 +16,9 @@
 #include <vlib/dma/dma.h>
 #include <vnet/session/session_rules_table.h>
 
-session_main_t session_main;
+session_main_t session_main = {
+  .deferred_rx_max_segs = SESSION_DEFERRED_RX_MAX_SEGS,
+};
 
 typedef enum
 {
@@ -717,15 +719,13 @@ session_main_flush_enqueue_events (transport_proto_t transport_proto,
 }
 
 int
-session_enqueue_dgram_connection_cl (session_t *s, session_dgram_hdr_t *hdr,
-				     vlib_buffer_t *b, u8 proto,
-				     u8 queue_event)
+session_enqueue_dgram_connection_cl (session_t *s, session_dgram_hdr_t *hdr, vlib_buffer_t *b,
+				     u8 proto, u8 queue_event)
 {
   session_t *awls;
 
   awls = app_listener_select_wrk_cl_session (s, hdr);
-  return session_enqueue_dgram_connection_inline (awls, hdr, b, proto,
-						  queue_event, 1 /* is_cl */);
+  return session_enqueue_dgram_connection_inline (awls, hdr, b, proto, queue_event, 1 /* is_cl */);
 }
 
 int
@@ -2053,6 +2053,7 @@ session_manager_main_enable (vlib_main_t *vm,
       wrk->evts_pending_main =
 	clib_llist_make_head (wrk->event_elts, evt_list);
       wrk->vm = vlib_get_main_by_index (i);
+      wrk->deferred_io.max_segs = smm->deferred_rx_max_segs;
       wrk->last_vlib_time = vlib_time_now (vm);
       wrk->last_vlib_us_time = wrk->last_vlib_time * CLIB_US_TIME_FREQ;
       wrk->timerfd = -1;
