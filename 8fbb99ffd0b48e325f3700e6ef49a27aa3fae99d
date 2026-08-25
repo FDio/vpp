@@ -35,6 +35,24 @@
       "parentUuid": "e0c01451_50c8ea29",
       "revId": "8fbb99ffd0b48e325f3700e6ef49a27aa3fae99d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "360cfc82_d9c4e0e5",
+        "filename": "src/plugins/rdma/output.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-08-25T13:35:32Z",
+      "side": 1,
+      "message": "Addressed in PS10: rdma_mlx5_validate_tcp_gso() now centralizes capability/TCP-GSO validation, the unsupported-GSO counter, and buffer release for both paths.",
+      "parentUuid": "67e88293_917ae245",
+      "revId": "8fbb99ffd0b48e325f3700e6ef49a27aa3fae99d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
