@@ -78,18 +78,19 @@ rdma_device_output_free_mlx5 (vlib_main_t *vm, const vlib_node_runtime_t *node,
   cur->op_own = 0xf0;
   txq->dv_cq_idx = idx;
 
-  /* retrieve original WQE and get new tail counter */
-  wqe = txq->dv_sq_wqes + (be16toh (cur->wqe_counter) & sq_mask);
-  if (PREDICT_FALSE (wqe->ctrl.imm == RDMA_TXQ_DV_INVALID_ID))
-    return;			/* can happen if CQE reports error for an intermediate WQE */
+  /* retrieve completion target for the WQEBB reported by the CQE */
+  u16 cqe_wqe_counter = be16toh (cur->wqe_counter);
+  wqe = txq->dv_sq_wqes + (cqe_wqe_counter & sq_mask);
+  u8 wqe_ds = ((u8 *) &wqe->ctrl.qpn_ds)[3];
+  u16 comp_tail = cqe_wqe_counter + RDMA_TXQ_DV_DSEG2WQE (wqe_ds);
 
-  ASSERT (RDMA_TXQ_USED_SZ (txq->head, wqe->ctrl.imm) <= buf_sz &&
-	  RDMA_TXQ_USED_SZ (wqe->ctrl.imm, txq->tail) < buf_sz);
+  ASSERT (RDMA_TXQ_USED_SZ (txq->head, comp_tail) <= buf_sz &&
+	  RDMA_TXQ_USED_SZ (comp_tail, txq->tail) < buf_sz);
 
   /* free sent buffers and update txq head */
   vlib_buffer_free_from_ring (vm, txq->bufs, txq->head & mask, buf_sz,
-			      RDMA_TXQ_USED_SZ (txq->head, wqe->ctrl.imm));
-  txq->head = wqe->ctrl.imm;
+			      RDMA_TXQ_USED_SZ (txq->head, comp_tail));
+  txq->head = comp_tail;
 
   /* ring doorbell */
   CLIB_MEMORY_STORE_BARRIER ();
@@ -100,7 +101,6 @@ static_always_inline void
 rdma_device_output_tx_mlx5_doorbell (rdma_txq_t * txq, rdma_mlx5_wqe_t * last,
 				     const u16 tail, u32 sq_mask)
 {
-  last->ctrl.imm = tail;	/* register item to free */
   last->ctrl.fm_ce_se = MLX5_WQE_CTRL_CQ_UPDATE;	/* generate a CQE so we can free buffers */
 
   ASSERT (tail != txq->tail &&
