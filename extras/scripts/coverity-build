@@ -51,8 +51,11 @@ fi
 version=$(git describe)
 
 # Run the build
+# Disable ccache
+export CCACHE_DISABLE=1
+
 cd "${root_dir}"
-"${COVERITY_TOOLS}/bin/cov-build" --dir "${covdir}" make bootstrap build-coverity
+"${COVERITY_TOOLS}/bin/cov-build" --dir "${covdir}" make build-coverity
 cd "${build_dir}"
 
 # Tar the build artifacts that scan wants
