@@ -8,6 +8,7 @@
 
 #include <vppinfra/llist.h>
 #include <vnet/session/session_types.h>
+#include <vnet/session/session_deferred_rx.h>
 #include <vnet/session/session_lookup.h>
 #include <vnet/session/session_debug.h>
 #include <svm/message_queue.h>
@@ -343,6 +344,11 @@ session_main_get_worker (clib_thread_index_t thread_index)
 {
   return vec_elt_at_index (session_main.wrk, thread_index);
 }
+
+#define SESSION_DEFERRED_RX_MAX_SEGS 64
+
+/** Session-layer cleanup helper for a detached RX FIFO. */
+int session_flush_deferred_rx_fifo (svm_fifo_t *f);
 
 static inline session_worker_t *
 session_main_get_worker_if_valid (clib_thread_index_t thread_index)
@@ -761,6 +767,93 @@ session_enqueue_chain_tail (session_t *s, vlib_buffer_t *b, u32 offset,
     }
 }
 
+always_inline int
+session_enqueue_stream_connection_deferred (session_t *s, transport_connection_t *tc,
+					    vlib_buffer_t *b, u8 *is_buffer_held)
+{
+  session_worker_t *wrk;
+  svm_fifo_async_seg_t seg;
+  vlib_buffer_t *cur;
+  u32 bi, left;
+  u32 len = 0;
+  int rv;
+
+  wrk = session_main_get_worker (s->thread_index);
+  ASSERT (s->thread_index == vlib_get_thread_index ());
+  if (PREDICT_FALSE (svm_fifo_n_async_segments (s->rx_fifo) >= SESSION_DEFERRED_RX_MAX_SEGS))
+    session_flush_deferred_rx (s);
+  cur = b;
+
+  if (PREDICT_TRUE (!(b->flags & VLIB_BUFFER_NEXT_PRESENT)))
+    {
+      if (!b->current_length)
+	return 0;
+
+      seg = (svm_fifo_async_seg_t) {
+	.data = vlib_buffer_get_current (b),
+	.len = b->current_length,
+	.opaque = vlib_get_buffer_index (wrk->vm, b),
+      };
+      rv = svm_fifo_enqueue_async_segment (s->rx_fifo, &seg);
+      if (rv < 0)
+	return rv;
+      goto enqueue_event;
+    }
+
+  do
+    {
+      len += cur->current_length;
+
+      if (!(cur->flags & VLIB_BUFFER_NEXT_PRESENT))
+	break;
+      cur = vlib_get_buffer (wrk->vm, cur->next_buffer);
+    }
+  while (1);
+
+  if (!len)
+    return 0;
+
+  rv = svm_fifo_reserve_async (s->rx_fifo, len);
+  if (rv < 0)
+    return rv;
+
+  bi = vlib_get_buffer_index (wrk->vm, b);
+  left = len;
+  cur = b;
+  do
+    {
+      if (cur->current_length)
+	{
+	  left -= cur->current_length;
+	  seg = (svm_fifo_async_seg_t) {
+	    .data = vlib_buffer_get_current (cur),
+	    .len = cur->current_length,
+	    .opaque = left ? SVM_FIFO_ASYNC_OPAQUE_INVALID : bi,
+	  };
+	  svm_fifo_add_async_segment (s->rx_fifo, &seg);
+	}
+
+      if (!(cur->flags & VLIB_BUFFER_NEXT_PRESENT))
+	break;
+      cur = vlib_get_buffer (wrk->vm, cur->next_buffer);
+    }
+  while (1);
+  ASSERT (left == 0);
+
+enqueue_event:
+  *is_buffer_held = 1;
+
+  if (!(s->flags & SESSION_F_RX_EVT))
+    {
+      s->flags |= SESSION_F_RX_EVT;
+      vec_add1 (wrk->session_to_enqueue[tc->proto], session_handle (s));
+    }
+
+  session_fifo_tuning (s, s->rx_fifo, SESSION_FT_ACTION_ENQUEUED, 0);
+
+  return rv;
+}
+
 /*
  * Enqueue data for delivery to app. If requested, it queues app notification
  * event for later delivery.
@@ -772,17 +865,33 @@ session_enqueue_chain_tail (session_t *s, vlib_buffer_t *b, u32 offset,
  *                    is to be queued. The former is useful when more data is
  *                    enqueued and only one event is to be generated.
  * @param is_in_order Flag to indicate if data is in order
+ * @param is_buffer_held Set if session layer retains the buffer
  * @return Number of bytes enqueued or a negative value if enqueueing failed.
  */
 always_inline int
-session_enqueue_stream_connection (transport_connection_t *tc,
-				   vlib_buffer_t *b, u32 offset,
-				   u8 queue_event, u8 is_in_order)
+session_enqueue_stream_connection (transport_connection_t *tc, vlib_buffer_t *b, u32 offset,
+				   u8 queue_event, u8 is_in_order, u8 *is_buffer_held)
 {
   session_t *s;
   int enqueued = 0, rv, in_order_off;
 
+  *is_buffer_held = 0;
   s = session_get (tc->s_index, tc->thread_index);
+  if (PREDICT_FALSE (s->flags & SESSION_F_DEFERRED_RX))
+    {
+      if (is_in_order && queue_event)
+	{
+	  enqueued = session_enqueue_stream_connection_deferred (s, tc, b, is_buffer_held);
+	  if (enqueued >= 0)
+	    return enqueued;
+	}
+
+      /* Enqueues without an RX event are barriers for pending deferred writes. */
+      session_flush_deferred_rx (s);
+    }
+  else
+    ASSERT (!s->rx_fifo->async_state ||
+	    s->rx_fifo->async_state->tail == SVM_FIFO_ASYNC_TAIL_INVALID);
 
   if (is_in_order)
     {
@@ -917,6 +1026,8 @@ always_inline u32
 transport_max_rx_enqueue (transport_connection_t * tc)
 {
   session_t *s = session_get (tc->s_index, tc->thread_index);
+  if (PREDICT_FALSE (s->flags & SESSION_F_DEFERRED_RX))
+    return svm_fifo_max_enqueue_prod_async (s->rx_fifo);
   return svm_fifo_max_enqueue_prod (s->rx_fifo);
 }
 
@@ -931,7 +1042,9 @@ always_inline u32
 transport_max_rx_dequeue (transport_connection_t * tc)
 {
   session_t *s = session_get (tc->s_index, tc->thread_index);
-  return svm_fifo_max_dequeue (s->rx_fifo);
+  if (PREDICT_FALSE (s->flags & SESSION_F_DEFERRED_RX))
+    return svm_fifo_max_dequeue_prod_async (s->rx_fifo);
+  return svm_fifo_max_dequeue_prod (s->rx_fifo);
 }
 
 always_inline u32

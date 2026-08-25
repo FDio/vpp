@@ -30,6 +30,13 @@ mq_event_ring_index (session_evt_type_t et)
 					     SESSION_MQ_IO_EVT_RING);
 }
 
+always_inline u8
+session_has_rx_data (session_t *s)
+{
+  return svm_fifo_max_dequeue (s->rx_fifo) ||
+	 ((s->flags & SESSION_F_DEFERRED_RX) && svm_fifo_n_async_segments (s->rx_fifo));
+}
+
 void
 app_worker_del_all_events (app_worker_t *app_wrk)
 {
@@ -87,6 +94,7 @@ app_worker_flush_events_inline (app_worker_t *app_wrk,
   u8 ring_index, mq_is_cong;
   session_state_t old_state;
   session_event_t *evt;
+  svm_fifo_t *rx_fifo;
   u32 n_evts = 128, i;
   session_t *s;
   int rv;
@@ -124,7 +132,9 @@ app_worker_flush_events_inline (app_worker_t *app_wrk,
 	  /* App is unaware of the session or closing notification provided */
 	  if (PREDICT_FALSE (!(s->flags & SESSION_F_RX_READY)))
 	    break;
+	  rx_fifo = s->rx_fifo;
 	  app->cb_fns.builtin_app_rx_callback (s);
+	  ASSERT (!svm_fifo_n_async_segments (rx_fifo));
 	  break;
 	/* Handle sessions that might not be on current thread */
 	case SESSION_IO_EVT_BUILTIN_RX:
@@ -134,7 +144,9 @@ app_worker_flush_events_inline (app_worker_t *app_wrk,
 	  s->flags &= ~SESSION_F_RX_EVT;
 	  if (PREDICT_FALSE (!(s->flags & SESSION_F_RX_READY)))
 	    break;
+	  rx_fifo = s->rx_fifo;
 	  app->cb_fns.builtin_app_rx_callback (s);
+	  ASSERT (!svm_fifo_n_async_segments (rx_fifo));
 	  break;
 	case SESSION_IO_EVT_TX:
 	  s = session_get (evt->session_index, thread_index);
@@ -171,8 +183,12 @@ app_worker_flush_events_inline (app_worker_t *app_wrk,
 		  s = session_get_from_handle (
 		    session_make_handle (evt->session_index, thread_index));
 		  session_set_state (s, clib_max (old_state, s->session_state));
-		  if (svm_fifo_max_dequeue (s->rx_fifo))
-		    app->cb_fns.builtin_app_rx_callback (s);
+		  if (session_has_rx_data (s))
+		    {
+		      rx_fifo = s->rx_fifo;
+		      app->cb_fns.builtin_app_rx_callback (s);
+		      ASSERT (!svm_fifo_n_async_segments (rx_fifo));
+		    }
 		  if (!(s->flags & SESSION_F_APP_CLOSED))
 		    {
 		      s->flags |= SESSION_F_TPT_INIT_CLOSE;
@@ -215,8 +231,12 @@ app_worker_flush_events_inline (app_worker_t *app_wrk,
 	  if (old_state >= SESSION_STATE_TRANSPORT_CLOSING)
 	    {
 	      session_set_state (s, clib_max (old_state, s->session_state));
-	      if (svm_fifo_max_dequeue (s->rx_fifo))
-		app->cb_fns.builtin_app_rx_callback (s);
+	      if (session_has_rx_data (s))
+		{
+		  rx_fifo = s->rx_fifo;
+		  app->cb_fns.builtin_app_rx_callback (s);
+		  ASSERT (!svm_fifo_n_async_segments (rx_fifo));
+		}
 	      if (!(s->flags & SESSION_F_APP_CLOSED))
 		{
 		  s->flags |= SESSION_F_TPT_INIT_CLOSE;

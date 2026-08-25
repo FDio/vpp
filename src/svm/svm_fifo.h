@@ -41,6 +41,7 @@ typedef enum
   SVM_FIFO_EFULL = -2,
   SVM_FIFO_EEMPTY = -3,
   SVM_FIFO_EGROW = -4,
+  SVM_FIFO_EINVAL = -5,
 } svm_fifo_err_t;
 
 typedef struct svm_fifo_seg_
@@ -48,6 +49,10 @@ typedef struct svm_fifo_seg_
   u8 *data;
   u32 len;
 } svm_fifo_seg_t;
+
+STATIC_ASSERT_SIZEOF (svm_fifo_async_seg_t, sizeof (svm_fifo_seg_t));
+STATIC_ASSERT_OFFSET_OF (svm_fifo_async_seg_t, data, offsetof (svm_fifo_seg_t, data));
+STATIC_ASSERT_OFFSET_OF (svm_fifo_async_seg_t, len, offsetof (svm_fifo_seg_t, len));
 
 #if SVM_FIFO_TRACE
 #define svm_fifo_trace_add(_f, _s, _l, _t)		\
@@ -353,6 +358,53 @@ void svm_fifo_enqueue_nocopy (svm_fifo_t * f, u32 len);
  */
 int svm_fifo_enqueue_segments (svm_fifo_t * f, const svm_fifo_seg_t segs[],
 			       u32 n_segs, u8 allow_partial);
+
+/**
+ * Reserve space for a deferred enqueue.
+ *
+ * Reservations are all-or-nothing and are not visible to the consumer until
+ * committed. The caller must subsequently add descriptors whose lengths sum
+ * to the reserved bytes. Deferred reservations are not supported while the
+ * fifo has out-of-order data.
+ */
+int svm_fifo_reserve_async (svm_fifo_t *f, u32 len);
+
+/** Reserve space and add one deferred segment. */
+int svm_fifo_enqueue_async_segment (svm_fifo_t *f, const svm_fifo_async_seg_t *seg);
+
+/**
+ * Copy all deferred segments and publish the reserved fifo tail.
+ *
+ * If @p opaques and @p n_opaques are provided, compact valid opaque values
+ * into descriptor storage and return them to the caller. The caller must
+ * release those references and call svm_fifo_clear_async_segments() before
+ * adding another deferred segment. If no opaque output is requested, the
+ * descriptors are cleared before this function returns.
+ */
+int svm_fifo_commit_async_segments (svm_fifo_t *f, u32 **opaques, u32 *n_opaques);
+
+/** Clear descriptors retained by svm_fifo_commit_async_segments(). */
+void svm_fifo_clear_async_segments (svm_fifo_t *f);
+void svm_fifo_free_async_data (svm_fifo_t *f);
+
+always_inline void
+svm_fifo_add_async_segment (svm_fifo_t *f, svm_fifo_async_seg_t *seg)
+{
+  ASSERT (f->async_state != 0);
+  vec_add1 (f->async_state->segs, *seg);
+}
+
+static inline svm_fifo_async_seg_t *
+svm_fifo_async_segments (svm_fifo_t *f)
+{
+  return f->async_state ? f->async_state->segs : 0;
+}
+
+static inline u32
+svm_fifo_n_async_segments (svm_fifo_t *f)
+{
+  return f->async_state ? vec_len (f->async_state->segs) : 0;
+}
 /**
  * Overwrite fifo head with new data
  *
@@ -485,6 +537,17 @@ svm_fifo_max_dequeue_prod (svm_fifo_t * f)
   return f_cursize (f, head, tail);
 }
 
+static inline u32
+svm_fifo_max_dequeue_prod_async (svm_fifo_t *f)
+{
+  u32 tail, head;
+
+  f_load_head_tail_prod (f, &head, &tail);
+  if (f->async_state && f->async_state->tail != SVM_FIFO_ASYNC_TAIL_INVALID)
+    tail = f->async_state->tail;
+  return f_cursize (f, head, tail);
+}
+
 /**
  * Fifo max bytes to dequeue
  *
@@ -588,6 +651,17 @@ svm_fifo_max_enqueue_prod (svm_fifo_t * f)
 {
   u32 head, tail;
   f_load_head_tail_prod (f, &head, &tail);
+  return f_free_count (f, head, tail);
+}
+
+static inline u32
+svm_fifo_max_enqueue_prod_async (svm_fifo_t *f)
+{
+  u32 head, tail;
+
+  f_load_head_tail_prod (f, &head, &tail);
+  if (f->async_state && f->async_state->tail != SVM_FIFO_ASYNC_TAIL_INVALID)
+    tail = f->async_state->tail;
   return f_free_count (f, head, tail);
 }
 

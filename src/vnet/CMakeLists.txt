@@ -914,6 +914,7 @@ list(APPEND VNET_API_FILES devices/pipe/pipe.api)
 
 list(APPEND VNET_SOURCES
   session/session.c
+  session/session_deferred_rx.c
   session/session_debug.c
   session/session_table.c
   session/session_rules_table.c
@@ -936,6 +937,7 @@ list(APPEND VNET_SOURCES
 
 list(APPEND VNET_HEADERS
   session/session.h
+  session/session_deferred_rx.h
   session/session_table.h
   session/session_rules_table.h
   session/session_types.h
