@@ -72,6 +72,7 @@ typedef struct
   ip4_address_t *remaining;
 } nat_alloc_pool_t;
 STATIC_ASSERT_SIZEOF (nat_alloc_pool_t, CLIB_CACHE_LINE_BYTES);
+/* TODO: Find space for u32 num to allow pools larger than 16k, if API survives that. */
 
 typedef struct
 {
