@@ -394,6 +394,7 @@ VLIB_NODE_FN (session_input_node)
   session_worker_t *wrk;
 
   wrk = session_main_get_worker (thread_index);
+  session_main_flush_async_ops (thread_index);
   session_wrk_flush_events (wrk);
 
   return 0;

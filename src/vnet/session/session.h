@@ -153,6 +153,8 @@ typedef struct session_worker_
   uword *app_wrks_pending_ntf;
 
   svm_fifo_seg_t *rx_segs;
+  session_handle_t *async_rx_sessions;
+  u32 *async_rx_buffers;
 
   session_switch_pool_args_t *session_migrate_requests;
   session_switch_pool_args_t *session_migrate_requests_handling;
@@ -632,6 +634,7 @@ transport_proto_t session_add_transport_proto (void);
 void session_register_update_time_fn (session_update_time_fn fn, u8 is_add);
 void session_register_update_time_fn_w_thread (session_update_time_fn fn, u8 is_add,
 					       clib_thread_index_t thread_index);
+void session_main_flush_async_ops (clib_thread_index_t thread_index);
 void session_main_flush_enqueue_events (transport_proto_t transport_proto,
 					clib_thread_index_t thread_index);
 void session_queue_run_on_main_thread (vlib_main_t *vm);
@@ -761,6 +764,11 @@ session_enqueue_chain_tail (session_t *s, vlib_buffer_t *b, u32 offset,
     }
 }
 
+always_inline int session_enqueue_stream_connection_async (session_t *s, transport_connection_t *tc,
+							   vlib_buffer_t *b, u32 offset,
+							   u8 queue_event, u8 is_in_order,
+							   u8 *is_buffer_held);
+
 /*
  * Enqueue data for delivery to app. If requested, it queues app notification
  * event for later delivery.
@@ -772,17 +780,21 @@ session_enqueue_chain_tail (session_t *s, vlib_buffer_t *b, u32 offset,
  *                    is to be queued. The former is useful when more data is
  *                    enqueued and only one event is to be generated.
  * @param is_in_order Flag to indicate if data is in order
+ * @param is_buffer_held Set if session layer retains the buffer
  * @return Number of bytes enqueued or a negative value if enqueueing failed.
  */
 always_inline int
-session_enqueue_stream_connection (transport_connection_t *tc,
-				   vlib_buffer_t *b, u32 offset,
-				   u8 queue_event, u8 is_in_order)
+session_enqueue_stream_connection (transport_connection_t *tc, vlib_buffer_t *b, u32 offset,
+				   u8 queue_event, u8 is_in_order, u8 *is_buffer_held)
 {
   session_t *s;
   int enqueued = 0, rv, in_order_off;
 
+  *is_buffer_held = 0;
   s = session_get (tc->s_index, tc->thread_index);
+  if (PREDICT_FALSE (s->flags & SESSION_F_ASYNC_RX))
+    return session_enqueue_stream_connection_async (s, tc, b, offset, queue_event, is_in_order,
+						    is_buffer_held);
 
   if (is_in_order)
     {
@@ -824,6 +836,85 @@ session_enqueue_stream_connection (transport_connection_t *tc,
     }
 
   return enqueued;
+}
+
+always_inline int
+session_enqueue_stream_connection_async (session_t *s, transport_connection_t *tc, vlib_buffer_t *b,
+					 u32 offset, u8 queue_event, u8 is_in_order,
+					 u8 *is_buffer_held)
+{
+  session_worker_t *wrk;
+  svm_fifo_async_op_t op;
+  vlib_buffer_t *cur;
+  u32 initial_ops, len;
+  int enqueued = 0, rv = 0;
+
+  wrk = session_main_get_worker (s->thread_index);
+  ASSERT (s->thread_index == vlib_get_thread_index ());
+  initial_ops = svm_fifo_n_async_ops (s->rx_fifo);
+  cur = b;
+
+  if (!is_in_order)
+    {
+      rv = svm_fifo_reserve_async (s->rx_fifo, offset, vlib_buffer_length_in_chain (wrk->vm, b));
+      if (PREDICT_FALSE (rv))
+	return rv;
+    }
+
+  do
+    {
+      len = cur->current_length;
+      if (len)
+	{
+	  op = (svm_fifo_async_op_t) {
+	    .data = vlib_buffer_get_current (cur),
+	    .len = len,
+	    .offset = offset,
+	  };
+
+	  rv = is_in_order ? svm_fifo_enqueue_async (s->rx_fifo, &op) :
+			     svm_fifo_enqueue_with_offset_async (s->rx_fifo, &op);
+	  if (rv < 0)
+	    break;
+
+	  if (is_in_order)
+	    {
+	      enqueued += rv;
+	      if (op.len < len)
+		break;
+	    }
+	  else
+	    offset += len;
+	}
+
+      if (!(cur->flags & VLIB_BUFFER_NEXT_PRESENT))
+	break;
+      cur = vlib_get_buffer (wrk->vm, cur->next_buffer);
+    }
+  while (1);
+
+  if (svm_fifo_n_async_ops (s->rx_fifo) != initial_ops)
+    {
+      if (initial_ops == 0)
+	{
+	  vec_add1 (wrk->async_rx_sessions, session_handle (s));
+	  vlib_node_set_interrupt_pending (wrk->vm, session_input_node.index);
+	}
+
+      vec_add1 (wrk->async_rx_buffers, vlib_get_buffer_index (wrk->vm, b));
+      *is_buffer_held = 1;
+    }
+
+  if (queue_event && enqueued > 0 && !(s->flags & SESSION_F_RX_EVT))
+    {
+      s->flags |= SESSION_F_RX_EVT;
+      vec_add1 (wrk->session_to_enqueue[tc->proto], session_handle (s));
+    }
+
+  if (queue_event && enqueued > 0)
+    session_fifo_tuning (s, s->rx_fifo, SESSION_FT_ACTION_ENQUEUED, 0);
+
+  return is_in_order ? enqueued : rv;
 }
 
 always_inline int

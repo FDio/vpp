@@ -677,6 +677,31 @@ session_dequeue_notify (session_t *s)
   return 0;
 }
 
+void
+session_main_flush_async_ops (clib_thread_index_t thread_index)
+{
+  session_worker_t *wrk = session_main_get_worker (thread_index);
+  session_handle_t *handles = wrk->async_rx_sessions;
+  session_t *s;
+  u32 i;
+
+  for (i = 0; i < vec_len (handles); i++)
+    {
+      s = session_get_from_handle_if_valid (handles[i]);
+      if (s)
+	svm_fifo_commit_async_ops (s->rx_fifo);
+    }
+
+  vec_reset_length (handles);
+  wrk->async_rx_sessions = handles;
+
+  if (vec_len (wrk->async_rx_buffers))
+    {
+      vlib_buffer_free (wrk->vm, wrk->async_rx_buffers, vec_len (wrk->async_rx_buffers));
+      vec_reset_length (wrk->async_rx_buffers);
+    }
+}
+
 /**
  * Flushes queue of sessions that are to be notified of new data
  * enqueued events.
