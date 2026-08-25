@@ -97,6 +97,23 @@ typedef struct svm_fifo_shr_
 
 struct _svm_fifo;
 
+typedef struct
+{
+  u8 *data;
+  u32 len;
+  u32 offset;
+} svm_fifo_async_op_t;
+
+typedef struct
+{
+  svm_fifo_async_op_t *ops;
+  u32 *refs; /**< producer-owned opaque references for staged operations */
+  u64 tail;
+} svm_fifo_async_state_t;
+
+#define SVM_FIFO_ASYNC_OP_F_OOO	    (1U << 31)
+#define SVM_FIFO_ASYNC_TAIL_INVALID ((u64) ~0)
+
 typedef struct _svm_fifo
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline);
@@ -139,10 +156,16 @@ typedef struct _svm_fifo
     };
   };
 
+  svm_fifo_async_state_t *async_state;
+
 #if SVM_FIFO_TRACE
   svm_fifo_trace_elem_t *trace;
 #endif
 } svm_fifo_t;
+
+#if !SVM_FIFO_TRACE
+STATIC_ASSERT_SIZEOF (svm_fifo_t, 2 * CLIB_CACHE_LINE_BYTES);
+#endif
 
 /* To minimize size of svm_fifo_t reuse ooo lookup for tracking chunks and
  * hdr at attach/detach. Fifo being migrated should not receive new data */
