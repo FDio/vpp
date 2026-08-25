@@ -208,19 +208,20 @@ typedef enum
     SESSION_N_STATES,
 } __clib_packed session_state_t;
 
-#define foreach_session_flag                                                  \
-  _ (RX_EVT, "rx-event")                                                      \
-  _ (PROXY, "proxy")                                                          \
-  _ (CUSTOM_TX, "custom-tx")                                                  \
-  _ (IS_MIGRATING, "migrating")                                               \
-  _ (UNIDIRECTIONAL, "unidirectional")                                        \
-  _ (CUSTOM_FIFO_TUNING, "custom-fifo-tuning")                                \
-  _ (HALF_OPEN, "half-open")                                                  \
-  _ (APP_CLOSED, "app-closed")                                                \
-  _ (IS_CLESS, "connectionless")                                              \
-  _ (RX_READY, "rx-ready")                                                    \
-  _ (TPT_INIT_CLOSE, "transport-init-close")                                  \
-  _ (STREAM, "stream")
+#define foreach_session_flag                                                                       \
+  _ (RX_EVT, "rx-event")                                                                           \
+  _ (PROXY, "proxy")                                                                               \
+  _ (CUSTOM_TX, "custom-tx")                                                                       \
+  _ (IS_MIGRATING, "migrating")                                                                    \
+  _ (UNIDIRECTIONAL, "unidirectional")                                                             \
+  _ (CUSTOM_FIFO_TUNING, "custom-fifo-tuning")                                                     \
+  _ (HALF_OPEN, "half-open")                                                                       \
+  _ (APP_CLOSED, "app-closed")                                                                     \
+  _ (IS_CLESS, "connectionless")                                                                   \
+  _ (RX_READY, "rx-ready")                                                                         \
+  _ (TPT_INIT_CLOSE, "transport-init-close")                                                       \
+  _ (STREAM, "stream")                                                                             \
+  _ (DEFERRED_RX, "deferred-rx")
 
 typedef enum session_flags_bits_
 {
