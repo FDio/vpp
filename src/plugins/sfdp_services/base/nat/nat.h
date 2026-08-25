@@ -67,7 +67,7 @@ typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cache0);
   u16 flags;
-  u16 num;
+  u32 num;
   ip4_address_t addr[NAT_ALLOC_POOL_ARRAY_SZ];
   ip4_address_t *remaining;
 } nat_alloc_pool_t;
