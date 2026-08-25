@@ -17,6 +17,23 @@
       "parentUuid": "a6eca69f_7be2e7a4",
       "revId": "fd2517954feb6d47d15702e9430ad6c399ad722d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "6aef3ccc_9e432a08",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 50
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-08-25T16:50:55Z",
+      "side": 1,
+      "message": "The maketest failures have been fixed in master.  Please rebase on master:HEAD to pick up these fixes.",
+      "revId": "fd2517954feb6d47d15702e9430ad6c399ad722d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
