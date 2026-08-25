@@ -1002,9 +1002,8 @@ rdma_txq_init (vlib_main_t * vm, rdma_device_t * rd, u16 qid, u32 n_desc)
 
       /* init tx desc template */
       STATIC_ASSERT_SIZEOF (txq->dv_wqe_tmpl, sizeof (*tmpl));
-      mlx5dv_set_ctrl_seg (&tmpl->ctrl, 0, MLX5_OPCODE_SEND, 0,
-			   txq->qp->qp_num, 0, RDMA_MLX5_WQE_DS, 0,
-			   RDMA_TXQ_DV_INVALID_ID);
+      mlx5dv_set_ctrl_seg (&tmpl->ctrl, 0, MLX5_OPCODE_SEND, 0, txq->qp->qp_num, 0,
+			   RDMA_MLX5_WQE_DS, 0, 0);
       tmpl->eseg.inline_hdr_sz = htobe16 (MLX5_ETH_L2_INLINE_HEADER_SIZE);
       mlx5dv_set_data_seg (&tmpl->dseg, 0, rd->lkey, 0);
     }
