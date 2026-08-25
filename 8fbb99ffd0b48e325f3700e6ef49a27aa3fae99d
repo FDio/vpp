@@ -1,0 +1,22 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "6b42b00a_6c10ece0",
+        "filename": "src/plugins/rdma/output.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-08-25T13:35:02Z",
+      "side": 1,
+      "message": "Addressed in PS10: the shared helper now owns the barrier, DB-record update, compiler barrier, and MMIO write. Each wrapper retains its assertions and completion mapping.",
+      "parentUuid": "9c374d5f_2680fc5c",
+      "revId": "8fbb99ffd0b48e325f3700e6ef49a27aa3fae99d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
