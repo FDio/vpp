@@ -2807,6 +2807,110 @@ sfifo_test_fifo_segment (vlib_main_t * vm, unformat_input_t * input)
   return 0;
 }
 
+static int
+sfifo_test_fifo_async (void)
+{
+  fifo_segment_main_t _fsm = { 0 }, *fsm = &_fsm;
+  svm_fifo_async_seg_t seg;
+  fifo_segment_t *fs;
+  svm_fifo_t *f;
+  u8 *large_data = 0, *large_output = 0;
+  u8 data[16], output[16];
+  u32 fifo_size = (64 << 10) + 1, half = 32 << 10, quarter = 16 << 10, i, j;
+
+  for (i = 0; i < ARRAY_LEN (data); i++)
+    data[i] = i;
+
+  fs = fifo_segment_prepare (fsm, "fifo-test-async", 0);
+  f = fifo_prepare (fs, ARRAY_LEN (data) + 1);
+
+  SFIFO_TEST (!svm_fifo_enqueue_with_offset (f, 8, 8, &data[8]), "enqueue synchronous ooo");
+  SFIFO_TEST (svm_fifo_reserve_async (f, 8) == SVM_FIFO_EINVAL,
+	      "async reservation rejected with ooo data");
+  SFIFO_TEST (svm_fifo_enqueue (f, 8, data) == ARRAY_LEN (data),
+	      "synchronous enqueue collects ooo data");
+  SFIFO_TEST (svm_fifo_dequeue (f, ARRAY_LEN (output), output) == ARRAY_LEN (output),
+	      "dequeue mixed data");
+  SFIFO_TEST (!clib_memcmp (data, output, ARRAY_LEN (data)), "mixed data matches");
+
+  seg = (svm_fifo_async_seg_t) { .data = data, .len = 8, .opaque = 7 };
+  SFIFO_TEST (svm_fifo_enqueue_async_segment (f, &seg) == 8, "enqueue first async segment");
+  seg = (svm_fifo_async_seg_t) { .data = data + 8, .len = 8, .opaque = ~0 };
+  SFIFO_TEST (svm_fifo_enqueue_async_segment (f, &seg) == 8, "enqueue second async segment");
+  SFIFO_TEST (!svm_fifo_max_dequeue (f), "fifo is unchanged before commit");
+  SFIFO_TEST (svm_fifo_max_dequeue_prod_async (f) == ARRAY_LEN (data),
+	      "producer sees staged bytes");
+  SFIFO_TEST (svm_fifo_max_enqueue_prod_async (f) == 1, "producer accounts for staged bytes");
+
+  SFIFO_TEST (svm_fifo_async_segments (f)[0].opaque == 7, "async reference matches");
+  SFIFO_TEST (svm_fifo_commit_async_segments (f) == ARRAY_LEN (data), "commit async segments");
+  SFIFO_TEST (svm_fifo_max_dequeue (f) == ARRAY_LEN (data), "fifo has %u bytes",
+	      svm_fifo_max_dequeue (f));
+  SFIFO_TEST (svm_fifo_dequeue (f, ARRAY_LEN (output), output) == ARRAY_LEN (output),
+	      "dequeue async data");
+  SFIFO_TEST (!clib_memcmp (data, output, ARRAY_LEN (data)), "async data matches");
+  SFIFO_TEST (!svm_fifo_n_async_segments (f), "async segments reset");
+
+  SFIFO_TEST (svm_fifo_reserve_async (f, ARRAY_LEN (data) + 2) == SVM_FIFO_EFULL,
+	      "async reservation is all or nothing");
+
+  ft_fifo_free (fs, f);
+
+  f = fifo_prepare (fs, fifo_size);
+  svm_fifo_init_ooo_lookup (f, 0 /* ooo enq */);
+  vec_validate (large_data, 2 * half - 1);
+  vec_validate (large_output, 2 * half - 1);
+  for (i = 0; i < vec_len (large_data); i++)
+    large_data[i] = i;
+
+  for (i = 0; i < 512; i++)
+    {
+      SFIFO_TEST (svm_fifo_reserve_async (f, 2 * half) == 2 * half,
+		  "reserve async data iteration %u", i);
+      seg = (svm_fifo_async_seg_t) { .data = large_data, .len = 2 * half };
+      svm_fifo_add_async_segment (f, &seg);
+      SFIFO_TEST (svm_fifo_commit_async_segments (f) == 2 * half, "commit async data iteration %u",
+		  i);
+      SFIFO_TEST (svm_fifo_dequeue (f, 2 * half, large_output) == 2 * half,
+		  "dequeue async iteration %u", i);
+      for (j = 0; j < vec_len (large_data); j++)
+	if (large_data[j] != large_output[j])
+	  break;
+      SFIFO_TEST (j == vec_len (large_data), "async data iteration %u byte %u", i, j);
+    }
+
+  for (i = 0; i < 512; i++)
+    {
+      SFIFO_TEST (svm_fifo_reserve_async (f, quarter) == quarter,
+		  "reserve async prefix iteration %u", i);
+      seg = (svm_fifo_async_seg_t) { .data = large_data, .len = quarter };
+      svm_fifo_add_async_segment (f, &seg);
+      SFIFO_TEST (svm_fifo_commit_async_segments (f) == quarter, "commit async prefix iteration %u",
+		  i);
+
+      SFIFO_TEST (!svm_fifo_enqueue_with_offset (f, quarter, quarter, large_data + 2 * quarter),
+		  "enqueue synchronous ooo iteration %u", i);
+
+      SFIFO_TEST (svm_fifo_reserve_async (f, quarter) == SVM_FIFO_EINVAL,
+		  "reject async gap iteration %u", i);
+      SFIFO_TEST (svm_fifo_enqueue (f, quarter, large_data + quarter) == 2 * quarter,
+		  "enqueue synchronous gap iteration %u", i);
+
+      SFIFO_TEST (svm_fifo_dequeue (f, 3 * quarter, large_output) == 3 * quarter,
+		  "dequeue mixed iteration %u", i);
+      for (j = 0; j < 3 * quarter; j++)
+	if (large_data[j] != large_output[j])
+	  break;
+      SFIFO_TEST (j == 3 * quarter, "mixed data iteration %u byte %u", i, j);
+    }
+
+  vec_free (large_data);
+  vec_free (large_output);
+  ft_fifo_free (fs, f);
+  ft_fifo_segment_free (fsm, fs);
+  return 0;
+}
+
 static clib_error_t *
 svm_fifo_test (vlib_main_t * vm, unformat_input_t * input,
 	       vlib_cli_command_t * cmd_arg)
@@ -2832,6 +2936,8 @@ svm_fifo_test (vlib_main_t * vm, unformat_input_t * input,
 	res = sfifo_test_fifo6 (vm, input);
       else if (unformat (input, "fifo7"))
 	res = sfifo_test_fifo7 (vm, input);
+      else if (unformat (input, "async"))
+	res = sfifo_test_fifo_async ();
       else if (unformat (input, "large"))
 	res = sfifo_test_fifo_large (vm, input);
       else if (unformat (input, "replay"))
@@ -2897,6 +3003,9 @@ svm_fifo_test (vlib_main_t * vm, unformat_input_t * input,
 	    goto done;
 
 	  if ((res = sfifo_test_fifo7 (vm, input)))
+	    goto done;
+
+	  if ((res = sfifo_test_fifo_async ()))
 	    goto done;
 
 	  if ((res = sfifo_test_fifo_grow (vm, input)))
