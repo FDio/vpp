@@ -97,6 +97,29 @@ typedef struct svm_fifo_shr_
 
 struct _svm_fifo;
 
+typedef struct svm_fifo_seg_
+{
+  u8 *data;
+  u32 len;
+  /* On 64-bit, this uses existing padding and preserves two-field initializers. */
+  union
+  {
+    u32 opaque; /**< Producer-owned reference for deferred segments */
+  };
+} svm_fifo_seg_t;
+
+typedef svm_fifo_seg_t svm_fifo_async_seg_t;
+
+#define SVM_FIFO_ASYNC_OPAQUE_INVALID ((u32) ~0)
+
+typedef struct
+{
+  svm_fifo_async_seg_t *segs;
+  u64 tail;
+} svm_fifo_async_state_t;
+
+#define SVM_FIFO_ASYNC_TAIL_INVALID ((u64) ~0)
+
 typedef struct _svm_fifo
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline);
@@ -139,10 +162,16 @@ typedef struct _svm_fifo
     };
   };
 
+  svm_fifo_async_state_t *async_state;
+
 #if SVM_FIFO_TRACE
   svm_fifo_trace_elem_t *trace;
 #endif
 } svm_fifo_t;
+
+STATIC_ASSERT (sizeof (svm_fifo_t) <= 128, "svm_fifo_t must not exceed 128 bytes");
+STATIC_ASSERT (sizeof (svm_fifo_t) % CLIB_CACHE_LINE_BYTES == 0,
+	       "svm_fifo_t must occupy whole cache lines");
 
 /* To minimize size of svm_fifo_t reuse ooo lookup for tracking chunks and
  * hdr at attach/detach. Fifo being migrated should not receive new data */
