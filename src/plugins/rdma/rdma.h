@@ -152,8 +152,6 @@ typedef struct
 STATIC_ASSERT_OFFSET_OF (rdma_txq_t, cacheline1, 64);
 STATIC_ASSERT_OFFSET_OF (rdma_txq_t, cacheline2, 128);
 
-#define RDMA_TXQ_DV_INVALID_ID  0xffffffff
-
 #define RDMA_TXQ_BUF_SZ(txq)    (1U << (txq)->bufs_log2sz)
 #define RDMA_TXQ_DV_SQ_SZ(txq)  (1U << (txq)->dv_sq_log2sz)
 #define RDMA_TXQ_DV_CQ_SZ(txq)  (1U << (txq)->dv_cq_log2sz)
