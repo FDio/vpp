@@ -8,6 +8,7 @@
 
 #include <vppinfra/llist.h>
 #include <vnet/session/session_types.h>
+#include <vnet/session/session_deferred_io.h>
 #include <vnet/session/session_lookup.h>
 #include <vnet/session/session_debug.h>
 #include <svm/message_queue.h>
@@ -71,6 +72,13 @@ typedef struct
   u32 *pending_tx_buffers;
   u16 *pending_tx_nexts;
 } session_dma_transfer;
+
+struct session_deferred_rx_worker_
+{
+  svm_fifo_async_seg_t **free_seg_vecs;
+  u32 *held_buffers;
+  u32 n_segs;
+};
 
 typedef void (*session_update_time_fn) (f64 time_now, u8 thread_index);
 typedef struct _session_switch_pool_args
@@ -166,6 +174,9 @@ typedef struct session_worker_
   u16 trans_size;
   u16 batch_num;
   vlib_dma_batch_t *batch;
+
+  /** Lazily allocated deferred RX worker state. */
+  session_deferred_rx_worker_t *deferred_rx;
 
   session_wrk_stats_t stats;
 
@@ -343,6 +354,16 @@ session_main_get_worker (clib_thread_index_t thread_index)
 {
   return vec_elt_at_index (session_main.wrk, thread_index);
 }
+
+/* Maximum number of deferred RX descriptors held by a worker. */
+#define SESSION_DEFERRED_RX_MAX_SEGS 64
+
+/** Session-layer helpers for a FIFO with deferred RX data. */
+int session_flush_deferred_rx_fifo (svm_fifo_t *f);
+void session_cleanup_deferred_rx_fifo (svm_fifo_t *f);
+session_deferred_rx_worker_t *session_deferred_rx_worker_get (session_worker_t *wrk);
+u8 session_deferred_rx_enqueue_or_flush (session_t *s, transport_connection_t *tc, vlib_buffer_t *b,
+					 u8 queue_event, u8 is_in_order, int *enqueued);
 
 static inline session_worker_t *
 session_main_get_worker_if_valid (clib_thread_index_t thread_index)
@@ -753,9 +774,7 @@ session_enqueue_chain_tail (session_t *s, vlib_buffer_t *b, u32 offset,
 	    }
 	  offset += len;
 	}
-      while ((chain_bi = (chain_b->flags & VLIB_BUFFER_NEXT_PRESENT) ?
-			   chain_b->next_buffer :
-			   0));
+      while ((chain_bi = (chain_b->flags & VLIB_BUFFER_NEXT_PRESENT) ? chain_b->next_buffer : 0));
 
       return 0;
     }
@@ -775,21 +794,23 @@ session_enqueue_chain_tail (session_t *s, vlib_buffer_t *b, u32 offset,
  * @return Number of bytes enqueued or a negative value if enqueueing failed.
  */
 always_inline int
-session_enqueue_stream_connection (transport_connection_t *tc,
-				   vlib_buffer_t *b, u32 offset,
+session_enqueue_stream_connection (transport_connection_t *tc, vlib_buffer_t *b, u32 offset,
 				   u8 queue_event, u8 is_in_order)
 {
   session_t *s;
   int enqueued = 0, rv, in_order_off;
 
   s = session_get (tc->s_index, tc->thread_index);
+  if (PREDICT_FALSE (s->flags & SESSION_F_DEFERRED_RX))
+    {
+      if (session_deferred_rx_enqueue_or_flush (s, tc, b, queue_event, is_in_order, &enqueued))
+	return enqueued;
+    }
 
   if (is_in_order)
     {
-      enqueued = svm_fifo_enqueue (s->rx_fifo, b->current_length,
-				   vlib_buffer_get_current (b));
-      if (PREDICT_FALSE ((b->flags & VLIB_BUFFER_NEXT_PRESENT) &&
-			 enqueued >= 0))
+      enqueued = svm_fifo_enqueue (s->rx_fifo, b->current_length, vlib_buffer_get_current (b));
+      if (PREDICT_FALSE ((b->flags & VLIB_BUFFER_NEXT_PRESENT) && enqueued >= 0))
 	{
 	  in_order_off = enqueued > b->current_length ? enqueued : 0;
 	  rv = session_enqueue_chain_tail (s, b, in_order_off, 1);
@@ -827,24 +848,19 @@ session_enqueue_stream_connection (transport_connection_t *tc,
 }
 
 always_inline int
-session_enqueue_dgram_connection_inline (session_t *s,
-					 session_dgram_hdr_t *hdr,
-					 vlib_buffer_t *b, u8 proto,
-					 u8 queue_event, u32 is_cl)
+session_enqueue_dgram_connection_inline (session_t *s, session_dgram_hdr_t *hdr, vlib_buffer_t *b,
+					 u8 proto, u8 queue_event, u32 is_cl)
 {
   int rv;
 
-  ASSERT (svm_fifo_max_enqueue_prod (s->rx_fifo) >=
-	  b->current_length + sizeof (*hdr));
+  ASSERT (svm_fifo_max_enqueue_prod (s->rx_fifo) >= b->current_length + sizeof (*hdr));
 
   if (PREDICT_TRUE (!(b->flags & VLIB_BUFFER_NEXT_PRESENT)))
     {
       svm_fifo_seg_t segs[2] = { { (u8 *) hdr, sizeof (*hdr) },
-				 { vlib_buffer_get_current (b),
-				   b->current_length } };
+				 { vlib_buffer_get_current (b), b->current_length } };
 
-      rv =
-	svm_fifo_enqueue_segments (s->rx_fifo, segs, 2, 0 /* allow_partial */);
+      rv = svm_fifo_enqueue_segments (s->rx_fifo, segs, 2, 0 /* allow_partial */);
     }
   else
     {
@@ -866,8 +882,7 @@ session_enqueue_dgram_connection_inline (session_t *s,
 	    break;
 	  it = vlib_get_buffer (vm, it->next_buffer);
 	}
-      rv = svm_fifo_enqueue_segments (s->rx_fifo, segs, n_segs,
-				      0 /* allow partial */);
+      rv = svm_fifo_enqueue_segments (s->rx_fifo, segs, n_segs, 0 /* allow partial */);
       vec_free (segs);
     }
 
@@ -877,8 +892,7 @@ session_enqueue_dgram_connection_inline (session_t *s,
        * flushed by calling @ref session_main_flush_enqueue_events () */
       if (!(s->flags & SESSION_F_RX_EVT))
 	{
-	  clib_thread_index_t thread_index =
-	    is_cl ? vlib_get_thread_index () : s->thread_index;
+	  clib_thread_index_t thread_index = is_cl ? vlib_get_thread_index () : s->thread_index;
 	  session_worker_t *wrk = session_main_get_worker (thread_index);
 	  ASSERT (s->thread_index == vlib_get_thread_index () || is_cl);
 	  s->flags |= SESSION_F_RX_EVT;
@@ -891,19 +905,17 @@ session_enqueue_dgram_connection_inline (session_t *s,
 }
 
 always_inline int
-session_enqueue_dgram_connection (session_t *s, session_dgram_hdr_t *hdr,
-				  vlib_buffer_t *b, u8 proto, u8 queue_event)
+session_enqueue_dgram_connection (session_t *s, session_dgram_hdr_t *hdr, vlib_buffer_t *b,
+				  u8 proto, u8 queue_event)
 {
-  return session_enqueue_dgram_connection_inline (s, hdr, b, proto,
-						  queue_event, 0 /* is_cl */);
+  return session_enqueue_dgram_connection_inline (s, hdr, b, proto, queue_event, 0 /* is_cl */);
 }
 
 always_inline int
-session_enqueue_dgram_connection2 (session_t *s, session_dgram_hdr_t *hdr,
-				   vlib_buffer_t *b, u8 proto, u8 queue_event)
+session_enqueue_dgram_connection2 (session_t *s, session_dgram_hdr_t *hdr, vlib_buffer_t *b,
+				   u8 proto, u8 queue_event)
 {
-  return session_enqueue_dgram_connection_inline (s, hdr, b, proto,
-						  queue_event, 1 /* is_cl */);
+  return session_enqueue_dgram_connection_inline (s, hdr, b, proto, queue_event, 1 /* is_cl */);
 }
 
 always_inline void
@@ -914,28 +926,32 @@ session_set_state (session_t *s, session_state_t session_state)
 }
 
 always_inline u32
-transport_max_rx_enqueue (transport_connection_t * tc)
+transport_max_rx_enqueue (transport_connection_t *tc)
 {
   session_t *s = session_get (tc->s_index, tc->thread_index);
+  if (PREDICT_FALSE (s->flags & SESSION_F_DEFERRED_RX))
+    return svm_fifo_max_enqueue_prod_async (s->rx_fifo);
   return svm_fifo_max_enqueue_prod (s->rx_fifo);
 }
 
 always_inline u32
-transport_max_tx_dequeue (transport_connection_t * tc)
+transport_max_tx_dequeue (transport_connection_t *tc)
 {
   session_t *s = session_get (tc->s_index, tc->thread_index);
   return svm_fifo_max_dequeue_cons (s->tx_fifo);
 }
 
 always_inline u32
-transport_max_rx_dequeue (transport_connection_t * tc)
+transport_max_rx_dequeue (transport_connection_t *tc)
 {
   session_t *s = session_get (tc->s_index, tc->thread_index);
-  return svm_fifo_max_dequeue (s->rx_fifo);
+  if (PREDICT_FALSE (s->flags & SESSION_F_DEFERRED_RX))
+    return svm_fifo_max_dequeue_prod_async (s->rx_fifo);
+  return svm_fifo_max_dequeue_prod (s->rx_fifo);
 }
 
 always_inline u32
-transport_rx_fifo_size (transport_connection_t * tc)
+transport_rx_fifo_size (transport_connection_t *tc)
 {
   session_t *s = session_get (tc->s_index, tc->thread_index);
   return svm_fifo_size (s->rx_fifo);
@@ -1011,8 +1027,7 @@ transport_cl_thread (void)
 always_inline u32
 session_vlib_thread_is_cl_thread (void)
 {
-  return (vlib_get_thread_index () == transport_cl_thread () ||
-	  vlib_thread_is_main_w_barrier ());
+  return (vlib_get_thread_index () == transport_cl_thread () || vlib_thread_is_main_w_barrier ());
 }
 
 /*
@@ -1034,8 +1049,7 @@ listen_session_get_from_handle (session_handle_t handle)
 }
 
 always_inline void
-listen_session_parse_handle (session_handle_t handle, u32 * index,
-			     u32 * thread_index)
+listen_session_parse_handle (session_handle_t handle, u32 *index, u32 *thread_index)
 {
   session_parse_handle (handle, index, thread_index);
 }

@@ -903,6 +903,10 @@ segment_manager_dealloc_fifos (svm_fifo_t *rx_fifo, svm_fifo_t *tx_fifo)
   ASSERT (rx_fifo->master_thread_index == vlib_get_thread_index () ||
 	  rx_fifo->refcnt > 1 || vlib_thread_is_main_w_barrier ());
 
+  /* Acquired batches are application-owned and may outlive the session. Only
+   * release buffers that are still staged on the FIFO. */
+  session_cleanup_deferred_rx_fifo (rx_fifo);
+
   if (rx_fifo->flags & (SVM_FIFO_F_SERVER_CT | SVM_FIFO_F_CLIENT_CT))
     {
       if (rx_fifo->flags & SVM_FIFO_F_SERVER_CT)
