@@ -17,6 +17,24 @@
       "parentUuid": "9c374d5f_2680fc5c",
       "revId": "8fbb99ffd0b48e325f3700e6ef49a27aa3fae99d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "379bf255_b435d074",
+        "filename": "src/plugins/rdma/output.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-08-25T13:35:17Z",
+      "side": 1,
+      "message": "Addressed in PS10: rdma_mlx5_build_send() is shared by the legacy and eMPW fallback paths. It skips zero-length fragments identically and returns status, final control segment, and WQEBB count; buffer-ring accounting remains caller-specific.",
+      "parentUuid": "e0c01451_50c8ea29",
+      "revId": "8fbb99ffd0b48e325f3700e6ef49a27aa3fae99d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
