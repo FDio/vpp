@@ -1,0 +1,58 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "7c893aff_cd8f4faa",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 2
+      },
+      "lineNbr": 9,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-08-26T11:45:29Z",
+      "side": 1,
+      "message": "Fixed in PS2: the commit message is wrapped.",
+      "parentUuid": "3a6f3f9d_73797c1c",
+      "revId": "a7dfa8037180ae7084555c4a71bb698d216df08a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "651d3790_d7437032",
+        "filename": "src/plugins/af_xdp/af_xdp.api",
+        "patchSetId": 2
+      },
+      "lineNbr": 108,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-08-26T11:45:29Z",
+      "side": 1,
+      "message": "Done in PS2. The explicit prefer-busy-poll flag is removed. Either a nonzero timeout or budget enables busy polling; the omitted counterpart gets the default value.",
+      "parentUuid": "63f8d8cd_76e92d9a",
+      "revId": "a7dfa8037180ae7084555c4a71bb698d216df08a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "2ad5ecd8_ab01bef1",
+        "filename": "src/plugins/af_xdp/device.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1006,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-08-26T11:45:29Z",
+      "side": 1,
+      "message": "Done in PS2. When an enabled RX queue is empty, the input path now issues recvmsg(MSG_DONTWAIT) and then rechecks the RX ring, matching the DPDK AF_XDP approach. It reuses the existing per-socket syscall lock; the disabled path is unchanged apart from the cold RX-empty flag test.",
+      "parentUuid": "07e97f92_dfd78295",
+      "revId": "a7dfa8037180ae7084555c4a71bb698d216df08a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
