@@ -430,7 +430,7 @@ extern int bier_table_id_cmp(const bier_table_id_t *btid1,
  * values, to bit and bytes
  */
 extern u32 bier_hdr_len_id_to_num_buckets(bier_hdr_len_id_t id);
-extern u32 bier_hdr_len_id_to_num_bytes(bier_hdr_len_id_t id);
+__clib_export extern u32 bier_hdr_len_id_to_num_bytes (bier_hdr_len_id_t id);
 extern u32 bier_hdr_len_id_to_max_bucket(bier_hdr_len_id_t id);
 extern u32 bier_hdr_len_id_to_num_bits(bier_hdr_len_id_t id);
 extern u32 bier_hdr_len_id_to_max_bit(bier_hdr_len_id_t id);

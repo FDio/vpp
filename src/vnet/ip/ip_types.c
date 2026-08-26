@@ -372,7 +372,7 @@ ip_prefix_normalize (ip_prefix_t * a)
     }
 }
 
-void
+__clib_export void
 ip_prefix_copy (void *dst, void *src)
 {
   clib_memcpy (dst, src, sizeof (ip_prefix_t));

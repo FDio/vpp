@@ -51,7 +51,7 @@ typedef enum flow_hash_config_t_
 } flow_hash_config_t;
 
 /* Router ID mixed into the flow hash to prevent network polarisation */
-extern u32 ip_flow_hash_router_id;
+__clib_export extern u32 ip_flow_hash_router_id;
 
 int ip_flow_hash_set (ip_address_family_t af, u32 table_id,
 		      flow_hash_config_t flow_hash_config);

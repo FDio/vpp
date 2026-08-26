@@ -67,8 +67,8 @@ int ip6_sv_reass_extended_lock (vlib_buffer_t *b,
 
 void ip6_sv_reass_extended_unlock (vlib_buffer_t *b);
 
-int ip6_sv_reass_enable_disable_with_refcnt (u32 sw_if_index, int is_enable);
+__clib_export int ip6_sv_reass_enable_disable_with_refcnt (u32 sw_if_index, int is_enable);
 int ip6_sv_reass_multicast_enable_disable_with_refcnt (u32 sw_if_index, int is_enable);
-uword ip6_sv_reass_custom_context_register_next_node (uword node_index);
+__clib_export uword ip6_sv_reass_custom_context_register_next_node (uword node_index);
 
 #endif /* __included_ip6_sv_reass_h */

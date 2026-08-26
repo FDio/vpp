@@ -47,26 +47,22 @@ typedef struct bier_disp_table_t_
  */
 extern u8* format_bier_disp_table(u8* s, va_list *ap);
 
-extern void bier_disp_table_entry_path_add(u32 table_id,
-                                           bier_bp_t src,
-                                           bier_hdr_proto_id_t payload_proto,
-                                           const fib_route_path_t *rpath);
+__clib_export extern void bier_disp_table_entry_path_add (u32 table_id, bier_bp_t src,
+							  bier_hdr_proto_id_t payload_proto,
+							  const fib_route_path_t *rpath);
 
-extern void bier_disp_table_entry_path_remove(u32 table_id,
-                                              bier_bp_t src,
-                                              bier_hdr_proto_id_t payload_proto,
-                                              const fib_route_path_t *paths);
+__clib_export extern void bier_disp_table_entry_path_remove (u32 table_id, bier_bp_t src,
+							     bier_hdr_proto_id_t payload_proto,
+							     const fib_route_path_t *paths);
 
 extern index_t bier_disp_table_find(u32 table_id);
 
-
-extern index_t bier_disp_table_add_or_lock(u32 table_id);
-extern void bier_disp_table_unlock_w_table_id(u32 table_id);
+__clib_export extern index_t bier_disp_table_add_or_lock (u32 table_id);
+__clib_export extern void bier_disp_table_unlock_w_table_id (u32 table_id);
 
 extern void bier_disp_table_unlock(index_t bdti);
 extern void bier_disp_table_lock(index_t bdti);
-extern void bier_disp_table_contribute_forwarding(index_t bdti,
-                                                  dpo_id_t *dpo);
+__clib_export extern void bier_disp_table_contribute_forwarding (index_t bdti, dpo_id_t *dpo);
 
 /**
  * Types and functions to walk all the entries in one BIER Table
@@ -83,7 +79,7 @@ extern void bier_disp_table_walk(u32 table_id,
  * @brief
  * Get a pointer to a FIB table
  */
-extern bier_disp_table_t *bier_disp_table_pool;
+__clib_export extern bier_disp_table_t *bier_disp_table_pool;
 
 static inline bier_disp_table_t *
 bier_disp_table_get (index_t bdti)

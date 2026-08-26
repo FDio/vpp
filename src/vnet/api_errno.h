@@ -21,7 +21,7 @@ typedef enum
     VNET_API_N_ERROR,
 } vnet_api_error_t;
 
-format_function_t format_vnet_api_errno;
+__clib_export format_function_t format_vnet_api_errno;
 
 static_always_inline vnet_api_error_t
 vnet_api_error (clib_error_t *err)

@@ -8,7 +8,7 @@
 
 #include <vnet/tcp/tcp_types.h>
 
-void tcp_loss_on_ack (tcp_connection_t *tc, tcp_ack_ctx_t *ac);
+__clib_export void tcp_loss_on_ack (tcp_connection_t *tc, tcp_ack_ctx_t *ac);
 void tcp_loss_on_rto (tcp_connection_t *tc);
 void tcp_loss_enter_recovery (tcp_connection_t *tc);
 void tcp_loss_exit_recovery (tcp_connection_t *tc, tcp_ack_ctx_t *ac);

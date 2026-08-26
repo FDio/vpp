@@ -217,7 +217,7 @@ void vnet_rewrite_for_sw_interface (struct vnet_main_t *vnm,
 				    vnet_rewrite_header_t * rw,
 				    u32 max_rewrite_bytes);
 
-u32 vnet_tx_node_index_for_sw_interface (struct vnet_main_t *vnm,
+__clib_export u32 vnet_tx_node_index_for_sw_interface (struct vnet_main_t *vnm,
 					 u32 sw_if_index);
 
 void vnet_rewrite_init (struct vnet_main_t *vnm,
@@ -233,7 +233,7 @@ u8 *vnet_build_rewrite_for_sw_interface (struct vnet_main_t *vnm,
 					 u32 sw_if_index,
 					 vnet_link_t packet_type,
 					 const void *dst_address);
-void vnet_update_adjacency_for_sw_interface (struct vnet_main_t *vnm,
+__clib_export void vnet_update_adjacency_for_sw_interface (struct vnet_main_t *vnm,
 					     u32 sw_if_index, u32 ai);
 
 format_function_t format_vnet_rewrite;

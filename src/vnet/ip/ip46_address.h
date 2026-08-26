@@ -34,8 +34,7 @@ typedef CLIB_PACKED (union ip46_address_t_ {
   u64 as_u64[2];
 }) ip46_address_t;
 
-
-format_function_t format_ip46_address;
+__clib_export format_function_t format_ip46_address;
 
 #define ip46_address_initializer {{{ 0 }}}
 
