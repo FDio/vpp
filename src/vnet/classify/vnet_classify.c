@@ -2024,21 +2024,6 @@ classify_filter_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/** Enable / disable packet trace filter */
-int
-vlib_enable_disable_pkt_trace_filter (int enable)
-{
-  if (enable)
-    {
-      vlib_global_main.trace_filter.trace_filter_enable = 1;
-    }
-  else
-    {
-      vlib_global_main.trace_filter.trace_filter_enable = 0;
-    }
-  return 0;
-}
-
 /*?
  * Construct an arbitrary set of packet classifier tables for use with
  * "pcap trace rx | tx," and with the vpp packet tracer
