@@ -88,7 +88,8 @@ typedef enum _tcp_timers
   _ (NO_TSO, "TSO off")                                                                            \
   _ (TSO, "TSO")                                                                                   \
   _ (NO_ENDPOINT, "No endpoint")                                                                   \
-  _ (TRACKED, "Tracked connection")
+  _ (TRACKED, "Tracked connection")                                                                \
+  _ (RACK, "RACK")
 
 typedef enum tcp_cfg_flag_bits_
 {
@@ -256,6 +257,7 @@ typedef enum tcp_ack_flag_
   TCP_ACK_F_SACK = 1 << 4,
   TCP_ACK_F_DETECT_LOSS = 1 << 5,
   TCP_ACK_F_DSACK_MATCHED = 1 << 6,
+  TCP_ACK_F_REO_WND_UPDATED = 1 << 7,
   TCP_ACK_F_SPURIOUS = TCP_ACK_F_DSACK_SPURIOUS | TCP_ACK_F_EIFEL_SPURIOUS,
 } __clib_packed tcp_ack_flag_t;
 
