@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0
- * Copyright (c) 2018 Cisco and/or its affiliates.
+ * Copyright (c) 2018, 2026 Cisco and/or its affiliates.
  */
 
 /* ipip.c: ipip */
@@ -386,7 +386,7 @@ ipip_update_adj (vnet_main_t * vnm, u32 sw_if_index, adj_index_t ai)
 typedef struct mipip_walk_ctx_t_
 {
   const ipip_tunnel_t *t;
-  const teib_entry_t *ne;
+  teib_entry_info_t info;
 } mipip_walk_ctx_t;
 
 static adj_walk_rc_t
@@ -407,15 +407,12 @@ mipip_mk_complete_walk (adj_index_t ai, void *data)
   if (!(ctx->t->flags & TUNNEL_ENCAP_DECAP_FLAG_ENCAP_INNER_HASH))
     af |= ADJ_FLAG_MIDCHAIN_IP_STACK;
 
-  adj_nbr_midchain_update_rewrite
-    (ai, fixup,
-     uword_to_pointer (ctx->t->flags, void *),
-     af, ipip_build_rewrite (vnet_get_main (),
-			     ctx->t->sw_if_index,
-			     adj_get_link_type (ai),
-			     &teib_entry_get_nh (ctx->ne)->fp_addr));
+  adj_nbr_midchain_update_rewrite (ai, fixup, uword_to_pointer (ctx->t->flags, void *), af,
+				   ipip_build_rewrite (vnet_get_main (), ctx->t->sw_if_index,
+						       adj_get_link_type (ai),
+						       &ctx->info.nh.fp_addr));
 
-  teib_entry_adj_stack (ctx->ne, ai);
+  teib_entry_adj_stack (&ctx->info, ai);
 
   return (ADJ_WALK_RC_CONTINUE);
 }
@@ -442,8 +439,8 @@ mipip_update_adj (vnet_main_t * vnm, u32 sw_if_index, adj_index_t ai)
 {
   ipip_main_t *gm = &ipip_main;
   adj_midchain_fixup_t fixup;
+  teib_entry_info_t info;
   ip_adjacency_t *adj;
-  teib_entry_t *ne;
   ipip_tunnel_t *t;
   adj_flags_t af;
   u32 ti;
@@ -453,10 +450,7 @@ mipip_update_adj (vnet_main_t * vnm, u32 sw_if_index, adj_index_t ai)
   ti = gm->tunnel_index_by_sw_if_index[sw_if_index];
   t = pool_elt_at_index (gm->tunnels, ti);
 
-  ne = teib_entry_find_46 (sw_if_index,
-			   adj->ia_nh_proto, &adj->sub_type.nbr.next_hop);
-
-  if (NULL == ne)
+  if (!teib_entry_find_46 (sw_if_index, adj->ia_nh_proto, &adj->sub_type.nbr.next_hop, &info))
     {
       // no TEIB entry to provide the next-hop
       fixup = ipip_get_fixup (t, adj_get_link_type (ai), &af);
@@ -465,10 +459,7 @@ mipip_update_adj (vnet_main_t * vnm, u32 sw_if_index, adj_index_t ai)
       return;
     }
 
-  mipip_walk_ctx_t ctx = {
-    .t = t,
-    .ne = ne
-  };
+  mipip_walk_ctx_t ctx = { .t = t, .info = info };
   adj_nbr_walk_nh (sw_if_index,
 		   adj->ia_nh_proto,
 		   &adj->sub_type.nbr.next_hop, mipip_mk_complete_walk, &ctx);
@@ -631,21 +622,15 @@ ipip_mk_key (const ipip_tunnel_t * t, ipip_tunnel_key_t * key)
 }
 
 static void
-ipip_teib_mk_key (const ipip_tunnel_t * t,
-		  const teib_entry_t * ne, ipip_tunnel_key_t * key)
+ipip_teib_mk_key (const ipip_tunnel_t *t, const teib_entry_info_t *info, ipip_tunnel_key_t *key)
 {
-  const fib_prefix_t *nh;
-
-  nh = teib_entry_get_nh (ne);
-
   /* construct the key using mode P2P so it can be found in the DP */
-  ipip_mk_key_i (t->transport, IPIP_MODE_P2P,
-		 &t->tunnel_src, &nh->fp_addr,
-		 teib_entry_get_fib_index (ne), key);
+  ipip_mk_key_i (t->transport, IPIP_MODE_P2P, &t->tunnel_src, &info->nh.fp_addr, info->nh_fib_index,
+		 key);
 }
 
 static void
-ipip_teib_entry_added (const teib_entry_t * ne)
+ipip_teib_entry_added (const teib_entry_info_t *info)
 {
   ipip_main_t *gm = &ipip_main;
   const ip_address_t *nh;
@@ -654,7 +639,7 @@ ipip_teib_entry_added (const teib_entry_t * ne)
   u32 sw_if_index;
   u32 t_idx;
 
-  sw_if_index = teib_entry_get_sw_if_index (ne);
+  sw_if_index = info->sw_if_index;
   if (vec_len (gm->tunnel_index_by_sw_if_index) < sw_if_index)
     return;
 
@@ -665,24 +650,19 @@ ipip_teib_entry_added (const teib_entry_t * ne)
 
   t = pool_elt_at_index (gm->tunnels, t_idx);
 
-  ipip_teib_mk_key (t, ne, &key);
+  ipip_teib_mk_key (t, info, &key);
   ipip_tunnel_db_add (t, &key);
 
   // update the rewrites for each of the adjacencies for this next-hop
-  mipip_walk_ctx_t ctx = {
-    .t = t,
-    .ne = ne
-  };
-  nh = teib_entry_get_peer (ne);
-  adj_nbr_walk_nh (teib_entry_get_sw_if_index (ne),
-		   (AF_IP4 == ip_addr_version (nh) ?
-		    FIB_PROTOCOL_IP4 :
-		    FIB_PROTOCOL_IP6),
+  mipip_walk_ctx_t ctx = { .t = t, .info = *info };
+  nh = &info->peer;
+  adj_nbr_walk_nh (info->sw_if_index,
+		   (AF_IP4 == ip_addr_version (nh) ? FIB_PROTOCOL_IP4 : FIB_PROTOCOL_IP6),
 		   &ip_addr_46 (nh), mipip_mk_complete_walk, &ctx);
 }
 
 static void
-ipip_teib_entry_deleted (const teib_entry_t * ne)
+ipip_teib_entry_deleted (const teib_entry_info_t *info)
 {
   ipip_main_t *gm = &ipip_main;
   const ip_address_t *nh;
@@ -691,7 +671,7 @@ ipip_teib_entry_deleted (const teib_entry_t * ne)
   u32 sw_if_index;
   u32 t_idx;
 
-  sw_if_index = teib_entry_get_sw_if_index (ne);
+  sw_if_index = info->sw_if_index;
   if (vec_len (gm->tunnel_index_by_sw_if_index) < sw_if_index)
     return;
 
@@ -702,38 +682,36 @@ ipip_teib_entry_deleted (const teib_entry_t * ne)
 
   t = pool_elt_at_index (gm->tunnels, t_idx);
 
-  ipip_teib_mk_key (t, ne, &key);
+  ipip_teib_mk_key (t, info, &key);
   ipip_tunnel_db_remove (t, &key);
 
-  nh = teib_entry_get_peer (ne);
+  nh = &info->peer;
 
   /* make all the adjacencies incomplete */
-  adj_nbr_walk_nh (teib_entry_get_sw_if_index (ne),
-		   (AF_IP4 == ip_addr_version (nh) ?
-		    FIB_PROTOCOL_IP4 :
-		    FIB_PROTOCOL_IP6),
+  adj_nbr_walk_nh (info->sw_if_index,
+		   (AF_IP4 == ip_addr_version (nh) ? FIB_PROTOCOL_IP4 : FIB_PROTOCOL_IP6),
 		   &ip_addr_46 (nh), mipip_mk_incomplete_walk, t);
 }
 
 static walk_rc_t
-ipip_tunnel_delete_teib_walk (index_t nei, void *ctx)
+ipip_tunnel_delete_teib_walk (const teib_entry_info_t *info, void *ctx)
 {
   ipip_tunnel_t *t = ctx;
   ipip_tunnel_key_t key;
 
-  ipip_teib_mk_key (t, teib_entry_get (nei), &key);
+  ipip_teib_mk_key (t, info, &key);
   ipip_tunnel_db_remove (t, &key);
 
   return (WALK_CONTINUE);
 }
 
 static walk_rc_t
-ipip_tunnel_add_teib_walk (index_t nei, void *ctx)
+ipip_tunnel_add_teib_walk (const teib_entry_info_t *info, void *ctx)
 {
   ipip_tunnel_t *t = ctx;
   ipip_tunnel_key_t key;
 
-  ipip_teib_mk_key (t, teib_entry_get (nei), &key);
+  ipip_teib_mk_key (t, info, &key);
   ipip_tunnel_db_add (t, &key);
 
   return (WALK_CONTINUE);
