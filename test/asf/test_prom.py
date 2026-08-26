@@ -68,6 +68,8 @@ class TestProm(VppAsfTestCase):
                 "exec",
                 self.ns_name,
                 "curl",
+                "--noproxy",
+                "10.10.1.2",
                 f"10.10.1.2/stats.prom",
             ],
             capture_output=True,
