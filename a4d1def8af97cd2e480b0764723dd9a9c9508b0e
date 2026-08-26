@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3a6f3f9d_73797c1c",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 1
+      },
+      "lineNbr": 9,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-08-26T08:24:15Z",
+      "side": 1,
+      "message": "commit message lines are too long",
+      "revId": "a4d1def8af97cd2e480b0764723dd9a9c9508b0e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "63f8d8cd_76e92d9a",
+        "filename": "src/plugins/af_xdp/af_xdp.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 108,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-08-26T08:24:15Z",
+      "side": 1,
+      "message": "do we need this? if busy_pool_usecs or busy_poll_budget is defined, it should be enough to indicate we want busy poll?",
+      "revId": "a4d1def8af97cd2e480b0764723dd9a9c9508b0e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
