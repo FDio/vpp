@@ -230,6 +230,8 @@ class QUICEchoIntMStreamTestCase(QUICEchoIntTestCase):
         self.client("nstreams", "10", "bytes", "1m")
 
 
+# TODO: deprecate
+@unittest.skipUnless(config.extended, "part of extended tests")
 class QUICEchoExtTestCase(QUICTestCase):
     quic_setup = "default"
     test_bytes = "test-bytes:assert"
@@ -823,6 +825,7 @@ class QUICCryptoHandlerSwitchTestCase(QUICEchoIntTestCase):
             self.client("bytes", "2m")
 
 
+# FIXME: switch to use vperf
 class QUICCryptoHandlerMidTransferSwitchTestCase(QUICEchoExtTestCase):
     """QUIC Crypto Handler Runtime Switch During Active Transfer"""
 
@@ -859,6 +862,7 @@ class QUICCryptoHandlerMidTransferSwitchTestCase(QUICEchoExtTestCase):
         self.validate_ext_test_results()
 
 
+# FIXME: switch to use vperf
 class QUICCryptoHandlerMidTransferWithKeyUpdateTestCase(QUICEchoExtTestCase):
     """QUIC Crypto Handler Switch Mid-Transfer with Frequent Key Updates
 
