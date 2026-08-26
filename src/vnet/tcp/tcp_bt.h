@@ -30,6 +30,23 @@ tcp_bt_opaque (tcp_connection_t *tc)
   return tc->bt + 1;
 }
 
+static_always_inline tcp_bt_tx_order_t *
+tcp_bt_tx_order (tcp_connection_t *tc)
+{
+  ASSERT (tc->bt != 0);
+  return &tc->bt->tx_order;
+}
+
+/* Compare transmissions by send time, then ending sequence. */
+static_always_inline u8
+tcp_bt_tx_sent_after (f64 ts, u32 end_seq, f64 other_ts, u32 other_end)
+{
+  return ts != other_ts ? ts > other_ts : seq_gt (end_seq, other_end);
+}
+
+/** Remove a sample from an active transmit-order index. No-op if inactive. */
+void tcp_bt_tx_order_remove (tcp_byte_tracker_t *bt, tcp_bt_sample_t *bts);
+
 /**
  * Byte tracker cleanup
  *
@@ -45,7 +62,7 @@ void tcp_bt_cleanup (tcp_connection_t * tc);
  *
  * @param tc	connection whose tracker state should change
  * @param enable	non-zero to enable byte tracking
- * @return	0 on success, -1 if data is in flight
+ * @return	0 on success, -1 if data is in flight or RACK requires tracking
  */
 int tcp_bt_enable (tcp_connection_t *tc, u8 enable);
 /**
@@ -67,7 +84,8 @@ void tcp_bt_track_tx (tcp_connection_t * tc, u32 len);
  * @param start	start sequence number
  * @param end	end sequence number
  */
-void tcp_bt_track_rxt (tcp_connection_t * tc, u32 start, u32 end);
+void tcp_bt_track_rxt (tcp_connection_t *tc, u32 start, u32 end);
+
 /**
  * Apply cumulative ACK and prepared SACK ranges to the byte tracker
  *

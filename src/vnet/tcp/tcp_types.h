@@ -87,7 +87,8 @@ typedef enum _tcp_timers
   _ (NO_TSO, "TSO off")                                                                            \
   _ (TSO, "TSO")                                                                                   \
   _ (NO_ENDPOINT, "No endpoint")                                                                   \
-  _ (TRACKED, "Tracked connection")
+  _ (TRACKED, "Tracked connection")                                                                \
+  _ (RACK, "RACK")
 
 typedef enum tcp_cfg_flag_bits_
 {
@@ -260,6 +261,26 @@ typedef enum tcp_ack_flag_
 
 #define TCP_BTS_INVALID_INDEX	((u32)~0)
 
+typedef struct
+{
+  u32 next;
+  u32 prev;
+} tcp_bt_tx_link_t;
+
+/** Optional index of byte-tracker samples ordered by transmission time.
+ *
+ * For a connection using the index from its first transmission, a null links
+ * vector means no retransmission has reordered the samples and the byte
+ * tracker's sequence list is also in transmission order. For other byte
+ * trackers, a null vector only means the index is inactive.
+ */
+typedef struct
+{
+  tcp_bt_tx_link_t *links;
+  u32 head;
+  u32 tail;
+} tcp_bt_tx_order_t;
+
 typedef enum tcp_bts_flags_
 {
   TCP_BTS_IS_RXT = 1,
@@ -333,6 +354,7 @@ typedef struct tcp_byte_tracker_
   u32 cur_rxt;			/**< Current retransmission sample */
   u32 cur_rxt_end;		/**< Cached range end; mutations reset to high_rxt */
   u32 sack_loss_high;		/**< Upper edge of SACK-derived lost prefix */
+  tcp_bt_tx_order_t tx_order;	/**< Optional transmission-order index */
 } tcp_byte_tracker_t;
 
 typedef enum _tcp_cc_algorithm_type
