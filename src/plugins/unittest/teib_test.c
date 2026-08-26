@@ -68,9 +68,8 @@ teib_test_find_hit_miss (u32 sw_if_index, u32 nh_table_id)
    * interface and does not have to be routable */
   ip4_address_t v4_nh = { .as_u32 = clib_host_to_net_u32 (0x0a630001) }; /* 10.99.0.1 */
   ip_address_t peer, absent, nh;
-  const teib_entry_t *te;
+  teib_entry_info_t info;
   bool added = false;
-  fib_prefix_t got;
   u32 nh_fib_index;
   int res = 0;
 
@@ -87,28 +86,23 @@ teib_test_find_hit_miss (u32 sw_if_index, u32 nh_table_id)
     }
   added = true;
 
-  te = teib_entry_find (sw_if_index, &peer);
-  if (NULL == te)
+  if (!teib_entry_find (sw_if_index, &peer, &info))
     {
       TEIB_TEST_I (0, "find hits the entry that was added");
       goto done;
     }
 
-  /* the next-hop comes back as a prefix; ip4_address_compare() takes it
-   * without a const, so read the snapshot into a value */
-  got = *teib_entry_get_nh (te);
-
-  TEIB_TEST_I (sw_if_index == teib_entry_get_sw_if_index (te), "hit's interface");
-  TEIB_TEST_I (0 == ip_address_cmp (&peer, teib_entry_get_peer (te)), "hit's peer");
-  TEIB_TEST_I (FIB_PROTOCOL_IP4 == got.fp_proto, "hit's next-hop protocol");
-  TEIB_TEST_I (32 == got.fp_len, "hit's next-hop prefix length");
-  TEIB_TEST_I (0 == ip4_address_compare (&got.fp_addr.ip4, &v4_nh), "hit's next-hop address");
-  TEIB_TEST_I (nh_fib_index == teib_entry_get_fib_index (te), "hit's next-hop FIB index");
-  TEIB_TEST_I (fib_table_find (FIB_PROTOCOL_IP4, 0) != teib_entry_get_fib_index (te),
+  TEIB_TEST_I (sw_if_index == info.sw_if_index, "hit's interface");
+  TEIB_TEST_I (0 == ip_address_cmp (&peer, &info.peer), "hit's peer");
+  TEIB_TEST_I (FIB_PROTOCOL_IP4 == info.nh.fp_proto, "hit's next-hop protocol");
+  TEIB_TEST_I (32 == info.nh.fp_len, "hit's next-hop prefix length");
+  TEIB_TEST_I (0 == ip4_address_compare (&info.nh.fp_addr.ip4, &v4_nh), "hit's next-hop address");
+  TEIB_TEST_I (nh_fib_index == info.nh_fib_index, "hit's next-hop FIB index");
+  TEIB_TEST_I (fib_table_find (FIB_PROTOCOL_IP4, 0) != info.nh_fib_index,
 	       "hit's next-hop FIB index is not the default table's");
 
   /* another peer on the same interface is a miss */
-  TEIB_TEST_I (NULL == teib_entry_find (sw_if_index, &absent), "miss on a peer never added");
+  TEIB_TEST_I (!teib_entry_find (sw_if_index, &absent, &info), "miss on a peer never added");
 
   /* and deleting the entry turns the hit into a miss */
   if (0 != teib_entry_del (sw_if_index, &peer))
@@ -118,7 +112,7 @@ teib_test_find_hit_miss (u32 sw_if_index, u32 nh_table_id)
     }
   added = false;
 
-  TEIB_TEST_I (NULL == teib_entry_find (sw_if_index, &peer), "miss on a peer that was deleted");
+  TEIB_TEST_I (!teib_entry_find (sw_if_index, &peer, &info), "miss on a peer that was deleted");
 
 done:
   if (added)
@@ -137,13 +131,13 @@ typedef struct teib_test_walk_ctx_t_
 } teib_test_walk_ctx_t;
 
 static walk_rc_t
-teib_test_walk_one (index_t tei, void *arg)
+teib_test_walk_one (const teib_entry_info_t *info, void *arg)
 {
   teib_test_walk_ctx_t *ctx = arg;
 
   ctx->n_visited++;
 
-  if (ctx->sw_if_index != teib_entry_get_sw_if_index (teib_entry_get (tei)))
+  if (ctx->sw_if_index != info->sw_if_index)
     ctx->n_other_itf++;
 
   return (WALK_CONTINUE);
@@ -243,7 +237,7 @@ teib_test_find_46 (u32 sw_if_index, u32 nh_table_id)
 				      clib_host_to_net_u64 (0x0000000000000001) } };
   ip_address_t peer4, peer6, absent, nh4, nh6;
   bool added4 = false, added6 = false;
-  const teib_entry_t *te;
+  teib_entry_info_t info;
   ip46_address_t key;
   int res = 0;
 
@@ -272,27 +266,25 @@ teib_test_find_46 (u32 sw_if_index, u32 nh_table_id)
   added6 = true;
 
   ip_address_to_46 (&peer4, &key);
-  te = teib_entry_find_46 (sw_if_index, FIB_PROTOCOL_IP4, &key);
-  if (NULL == te)
+  if (!teib_entry_find_46 (sw_if_index, FIB_PROTOCOL_IP4, &key, &info))
     TEIB_TEST_I (0, "find_46 hits the entry with an IPv4 peer");
   else
     {
-      TEIB_TEST_I (sw_if_index == teib_entry_get_sw_if_index (te), "IPv4 hit's interface");
-      TEIB_TEST_I (0 == ip_address_cmp (&peer4, teib_entry_get_peer (te)), "IPv4 hit's peer");
+      TEIB_TEST_I (sw_if_index == info.sw_if_index, "IPv4 hit's interface");
+      TEIB_TEST_I (0 == ip_address_cmp (&peer4, &info.peer), "IPv4 hit's peer");
     }
 
   ip_address_to_46 (&peer6, &key);
-  te = teib_entry_find_46 (sw_if_index, FIB_PROTOCOL_IP6, &key);
-  if (NULL == te)
+  if (!teib_entry_find_46 (sw_if_index, FIB_PROTOCOL_IP6, &key, &info))
     TEIB_TEST_I (0, "find_46 hits the entry with an IPv6 peer");
   else
     {
-      TEIB_TEST_I (sw_if_index == teib_entry_get_sw_if_index (te), "IPv6 hit's interface");
-      TEIB_TEST_I (0 == ip_address_cmp (&peer6, teib_entry_get_peer (te)), "IPv6 hit's peer");
+      TEIB_TEST_I (sw_if_index == info.sw_if_index, "IPv6 hit's interface");
+      TEIB_TEST_I (0 == ip_address_cmp (&peer6, &info.peer), "IPv6 hit's peer");
     }
 
   ip_address_to_46 (&absent, &key);
-  TEIB_TEST_I (NULL == teib_entry_find_46 (sw_if_index, FIB_PROTOCOL_IP4, &key),
+  TEIB_TEST_I (!teib_entry_find_46 (sw_if_index, FIB_PROTOCOL_IP4, &key, &info),
 	       "find_46 misses a peer never added");
 
 done:
