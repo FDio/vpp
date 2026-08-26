@@ -1321,6 +1321,9 @@ tcp_timer_retransmit_handler (tcp_connection_t * tc)
 
   if (tc->state >= TCP_STATE_ESTABLISHED)
     {
+      if (PREDICT_FALSE (tcp_loss_retransmit_timer_expired (tc)))
+	return;
+
       TCP_EVT (TCP_EVT_CC_EVT, tc, 2);
 
       /* Lost FIN, retransmit and return */
@@ -1670,6 +1673,7 @@ typedef enum
 {
   TCP_RXT_BACKEND_SCOREBOARD,
   TCP_RXT_BACKEND_BT,
+  TCP_RXT_BACKEND_RACK,
 } tcp_rxt_backend_t;
 
 typedef struct
@@ -1685,6 +1689,12 @@ tcp_rxt_next_range (tcp_connection_t *tc, tcp_rxt_backend_t backend, tcp_rxt_cur
   if (backend == TCP_RXT_BACKEND_BT)
     {
       if (!tcp_bt_next_rxt_range (tc, have_unsent, can_rescue, snd_limited, &cursor->bt_range))
+	return 0;
+      return &cursor->bt_range;
+    }
+  if (backend == TCP_RXT_BACKEND_RACK)
+    {
+      if (!tcp_bt_next_rack_rxt_range (tc, &cursor->bt_range))
 	return 0;
       return &cursor->bt_range;
     }
@@ -1876,6 +1886,12 @@ tcp_retransmit_bt (tcp_worker_ctx_t *wrk, tcp_connection_t *tc, u32 burst_size)
   return tcp_retransmit_sack_inline (wrk, tc, burst_size, TCP_RXT_BACKEND_BT);
 }
 
+static int
+tcp_retransmit_rack (tcp_worker_ctx_t *wrk, tcp_connection_t *tc, u32 burst_size)
+{
+  return tcp_retransmit_sack_inline (wrk, tc, burst_size, TCP_RXT_BACKEND_RACK);
+}
+
 /**
  * Fast retransmit without SACK info
  */
@@ -2041,7 +2057,12 @@ tcp_do_retransmit (tcp_connection_t * tc, u32 max_burst_size)
   if (tcp_opts_sack_permitted (&tc->rcv_opts))
     {
       if (PREDICT_FALSE (tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER))
-	n_segs = tcp_retransmit_bt (wrk, tc, max_burst_size);
+	{
+	  if (PREDICT_FALSE (tc->cfg_flags & TCP_CFG_F_RACK))
+	    n_segs = tcp_retransmit_rack (wrk, tc, max_burst_size);
+	  else
+	    n_segs = tcp_retransmit_bt (wrk, tc, max_burst_size);
+	}
       else
 	n_segs = tcp_retransmit_sack (wrk, tc, max_burst_size);
     }
