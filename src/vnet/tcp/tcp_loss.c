@@ -4,16 +4,27 @@
  */
 
 #include <vnet/tcp/tcp.h>
+#include <vnet/tcp/tcp_rack.h>
 #include <vnet/tcp/tcp_inlines.h>
 
 static void
 tcp_loss_recovery_state_init (tcp_connection_t *tc)
 {
-  tc->snd_rxt_bytes = 0;
   if (tcp_opts_sack_permitted (&tc->rcv_opts))
-    tcp_sack_init_rxt (tc, tc->snd_una);
+    {
+      if (tcp_rack_enabled (tc))
+	tcp_rack_recovery_init (tc);
+      else
+	{
+	  tc->snd_rxt_bytes = 0;
+	  tcp_sack_init_rxt (tc, tc->snd_una);
+	}
+    }
   else
-    tcp_fastrecovery_first_on (tc);
+    {
+      tc->snd_rxt_bytes = 0;
+      tcp_fastrecovery_first_on (tc);
+    }
 }
 
 static void
@@ -25,7 +36,9 @@ tcp_loss_recovery_state_exit (tcp_connection_t *tc, tcp_ack_ctx_t *ac)
   if (!tcp_opts_sack_permitted (&tc->rcv_opts))
     return;
 
-  if (spurious_flags)
+  if (tcp_rack_enabled (tc))
+    tcp_rack_recovery_exit (tc, ac);
+  else if (spurious_flags)
     tcp_sack_recompute_loss (tc);
 
   if (!(tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER))
@@ -48,6 +61,43 @@ tcp_loss_recovery_state_exit (tcp_connection_t *tc, tcp_ack_ctx_t *ac)
     tcp_dsack_recovery_clear (tc);
 
   ASSERT (tcp_sack_is_sane_post_recovery (tc));
+}
+
+void
+tcp_loss_recovery_state_sync (tcp_connection_t *tc)
+{
+  if (tcp_rack_enabled (tc) && tcp_in_cong_recovery (tc))
+    tcp_rack_recovery_sync (tc);
+}
+
+u8
+tcp_loss_recovery_state_is_sane (tcp_connection_t *tc)
+{
+  return !tcp_rack_enabled (tc) || tcp_rack_recovery_account_is_sane (tc);
+}
+
+u8
+tcp_loss_retransmit_timer_expired (tcp_connection_t *tc)
+{
+  return tcp_rack_enabled (tc) && tcp_rack_retransmit_timer_expired (tc);
+}
+
+void
+tcp_loss_on_ack (tcp_connection_t *tc, tcp_ack_ctx_t *ac)
+{
+  ASSERT (ac->ack_flags & TCP_ACK_F_DETECT_LOSS);
+  ASSERT (tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER);
+
+  if (PREDICT_FALSE (tcp_rack_enabled (tc)))
+    tcp_rack_loss_on_ack (tc, ac);
+  else
+    tcp_bt_loss_on_ack (tc, ac);
+}
+
+u8
+tcp_loss_old_ack_needs_full_feedback (tcp_connection_t *tc)
+{
+  return tcp_rack_enabled (tc) && tcp_opts_sack (&tc->rcv_opts);
 }
 
 void
@@ -131,11 +181,16 @@ tcp_loss_prepare_rto (tcp_connection_t *tc, u8 *sack_reneged)
   if (!tcp_opts_sack_permitted (&tc->rcv_opts))
     return 0;
 
-  n_bytes = clib_min (tc->snd_mss, tc->snd_nxt - tc->snd_una);
-
   /* Snapshot before reneging handling can reset high_rxt. */
-  head_was_rxt = tcp_in_cong_recovery (tc) && seq_geq (tc->sack_sb.high_rxt, tc->snd_una + n_bytes);
   head_overlaps_rxt = tcp_in_cong_recovery (tc) && seq_gt (tc->sack_sb.high_rxt, tc->snd_una);
+  if (tcp_rack_enabled (tc))
+    {
+      tcp_rack_prepare_rto (tc, sack_reneged);
+      return head_overlaps_rxt;
+    }
+
+  n_bytes = clib_min (tc->snd_mss, tc->snd_nxt - tc->snd_una);
+  head_was_rxt = tcp_in_cong_recovery (tc) && seq_geq (tc->sack_sb.high_rxt, tc->snd_una + n_bytes);
 
   *sack_reneged = tcp_sack_handle_reneging (tc);
   tcp_sack_rxt_mark_lost (tc);
@@ -155,17 +210,8 @@ tcp_loss_prepare_rto (tcp_connection_t *tc, u8 *sack_reneged)
 void
 tcp_loss_rto_retransmit_failed (tcp_connection_t *tc)
 {
-  if (tcp_opts_sack_permitted (&tc->rcv_opts))
+  if (tcp_opts_sack_permitted (&tc->rcv_opts) && !tcp_rack_enabled (tc))
     tcp_sack_init_rxt (tc, tc->snd_una);
-}
-
-void
-tcp_loss_on_ack (tcp_connection_t *tc, tcp_ack_ctx_t *ac)
-{
-  ASSERT (ac->ack_flags & TCP_ACK_F_DETECT_LOSS);
-  ASSERT (tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER);
-
-  tcp_bt_loss_on_ack (tc, ac);
 }
 
 void
