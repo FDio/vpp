@@ -265,6 +265,8 @@ vperf_client_worker_sessions_exit (vperf_client_worker_t *wrk)
       vperf_session_buf_free (ts);
     }
 
+  free (wrk->sessions);
+  wrk->sessions = NULL;
   wrk->n_sessions = 0;
 }
 
@@ -1516,6 +1518,9 @@ main (int argc, char **argv)
 
   vperf_client_ctrl_session_exit ();
   vppcom_app_destroy ();
+  free (vt->wrk);
+  vt->wrk = NULL;
   free (vcm->workers);
+  vcm->workers = NULL;
   return 0;
 }

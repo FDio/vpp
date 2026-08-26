@@ -154,14 +154,19 @@ vcl_cfg_parse_heapsize (char *conf_fname)
 	      goto defaulted;
 	    }
 	}
-      free (argv[i]);
     }
 
 defaulted:
   if (fp != NULL)
     fclose (fp);
   if (argv != NULL)
-    free (argv);
+    {
+      for (i = 1; i < argc; i++)
+	{
+	  free (argv[i]);
+	}
+      free (argv);
+    }
 }
 
 void
