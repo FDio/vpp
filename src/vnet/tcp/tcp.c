@@ -10,6 +10,7 @@
 
 #include <vnet/tcp/tcp.h>
 #include <vnet/tcp/tcp_inlines.h>
+#include <vnet/tcp/tcp_rack.h>
 #include <vnet/session/session.h>
 #include <vnet/fib/fib.h>
 #include <vnet/dpo/load_balance.h>
@@ -763,6 +764,8 @@ tcp_enable_pacing (tcp_connection_t * tc)
 void
 tcp_connection_init_vars (tcp_connection_t * tc)
 {
+  u8 use_bt, use_rack;
+
   tcp_connection_timers_init (tc);
   tcp_init_mss (tc);
   scoreboard_init (&tc->sack_sb);
@@ -783,8 +786,20 @@ tcp_connection_init_vars (tcp_connection_t * tc)
       || tcp_cfg.enable_tx_pacing)
     tcp_enable_pacing (tc);
 
-  if (tcp_cfg.enable_byte_tracker || (tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER))
-    tcp_bt_init (tc);
+  use_bt = tcp_cfg.enable_byte_tracker || (tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER);
+  use_rack = (tcp_cfg.enable_rack || (tc->cfg_flags & TCP_CFG_F_RACK)) &&
+	     tcp_opts_sack_permitted (&tc->rcv_opts);
+  if (use_rack)
+    {
+      tc->cfg_flags |= TCP_CFG_F_BYTE_TRACKER | TCP_CFG_F_RACK;
+      tcp_rack_init (tc);
+    }
+  else
+    {
+      tc->cfg_flags &= ~TCP_CFG_F_RACK;
+      if (use_bt)
+	tcp_bt_init (tc);
+    }
 
   if (!tcp_cfg.allow_tso)
     tc->cfg_flags |= TCP_CFG_F_NO_TSO;
@@ -1686,6 +1701,7 @@ tcp_configuration_init (void)
   tcp_cfg.default_mtu = 1500;
   tcp_cfg.initial_cwnd_multiplier = 0;
   tcp_cfg.enable_tx_pacing = 1;
+  tcp_cfg.enable_rack = 0;
   tcp_cfg.allow_tso = 0;
   tcp_cfg.csum_offload = 1;
   tcp_cfg.enable_dsack = 1;

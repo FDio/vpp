@@ -5,6 +5,7 @@
 
 #include <vnet/tcp/tcp.h>
 #include <vnet/tcp/tcp_inlines.h>
+#include <vnet/tcp/tcp_rack.h>
 #include <vnet/dpo/receive_dpo.h>
 #include <vnet/ip-neighbor/ip_neighbor.h>
 
@@ -207,7 +208,20 @@ format_tcp_vars (u8 * s, va_list * args)
       s = format (s, " sboard: %U\n", format_tcp_scoreboard, &tc->sack_sb,
 		  tc);
       if (tc->bt)
-	s = format (s, " bt:     %U\n", format_tcp_bt_stats, tc);
+	{
+	  s = format (s, " bt:     %U\n", format_tcp_bt_stats, tc);
+	  if (tcp_rack_enabled (tc))
+	    {
+	      tcp_rack_state_t *rack = tcp_rack_get_state (tc);
+
+	      s = format (s,
+			  "         rack: end %u rtt %.3fms min_rtt %.3fms reo_wnd "
+			  "%.3fms reo_mult %u reo_persist %u reo_seen %u\n",
+			  rack->rtt > 0.0 ? rack->end_seq - tc->iss : 0, rack->rtt * 1e3,
+			  rack->min_rtt * 1e3, tcp_rack_reo_wnd (tc) * 1e3, rack->reo_wnd_mult,
+			  rack->reo_wnd_persist, tcp_rack_reordered (tc));
+	    }
+	}
       s = format (s, " stats: %U\n", format_tcp_stats, tc);
     }
   if (vec_len (tc->snd_sacks))
@@ -854,15 +868,14 @@ format_tcp_cfg (u8 *s, va_list *args)
 {
   tcp_configuration_t tm_cfg = va_arg (*args, tcp_configuration_t);
 
-  s = format (s, "max rx fifo size: %U\n", format_memory_size,
-	      tm_cfg.max_rx_fifo);
+  s = format (s, "max rx fifo size: %U\n", format_memory_size, tm_cfg.max_rx_fifo);
   s = format (s, "min rx fifo size: %U\n", format_memory_size,
 	      tm_cfg.min_rx_fifo);
   s = format (s, "default mtu: %u\n", tm_cfg.default_mtu);
-  s = format (s, "initial cwnd multiplier: %u\n",
-	      tm_cfg.initial_cwnd_multiplier);
+  s = format (s, "initial cwnd multiplier: %u\n", tm_cfg.initial_cwnd_multiplier);
   s = format (s, "tx pacing: %s\n",
 	      tm_cfg.enable_tx_pacing ? "enabled" : "disabled");
+  s = format (s, "rack loss detection: %s\n", tm_cfg.enable_rack ? "enabled" : "disabled");
   s = format (s, "tso: %s\n", tm_cfg.allow_tso ? "allowed" : "disallowed");
   s = format (s, "checksum offload: %s\n",
 	      tm_cfg.csum_offload ? "enabled" : "disabled");
@@ -927,6 +940,7 @@ tcp_set_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
   u8 dsack_set = 0;
   u8 mtu_set = 0;
   u8 initial_cwnd_set = 0;
+  u8 rack_set = 0;
   u32 mtu, min_mtu = 1280, initial_cwnd_multiplier;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
@@ -940,8 +954,18 @@ tcp_set_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
 	  else
 	    return clib_error_return (0, "expected enable or disable for "
 					 "csum-offload");
-
 	  csum_offload_set = 1;
+	}
+      else if (unformat (input, "rack"))
+	{
+	  /* Apply to new connections. */
+	  tcp_cfg.enable_rack = 1;
+	  rack_set = 1;
+	}
+      else if (unformat (input, "no-rack"))
+	{
+	  tcp_cfg.enable_rack = 0;
+	  rack_set = 1;
 	}
       else if (unformat (input, "byte-tracker"))
 	{
@@ -990,9 +1014,10 @@ tcp_set_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
 	return clib_error_return (0, "unknown input `%U'", format_unformat_error, input);
     }
 
-  if (!byte_tracker_set && !csum_offload_set && !dsack_set && !mtu_set && !initial_cwnd_set)
+  if (!byte_tracker_set && !csum_offload_set && !dsack_set && !mtu_set && !initial_cwnd_set &&
+      !rack_set)
     return clib_error_return (0, "expected byte-tracker, csum-offload, "
-				 "dsack, mtu or initial-cwnd-multiplier");
+				 "dsack, mtu, initial-cwnd-multiplier or [no-]rack");
 
   if (byte_tracker_set)
     vlib_cli_output (vm, "TCP byte tracker for new connections: %s",
@@ -1007,6 +1032,9 @@ tcp_set_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
   if (initial_cwnd_set)
     vlib_cli_output (vm, "TCP initial cwnd multiplier for new connections: %u",
 		     tcp_cfg.initial_cwnd_multiplier);
+  if (rack_set)
+    vlib_cli_output (vm, "TCP RACK loss detection: %s",
+		     tcp_cfg.enable_rack ? "enabled" : "disabled");
   return 0;
 }
 
@@ -1014,7 +1042,7 @@ VLIB_CLI_COMMAND (tcp_set_command, static) = {
   .path = "set tcp",
   .short_help = "set tcp [byte-tracker [enable|disable]] "
 		"[csum-offload [enable|disable]] [dsack [enable|disable]] "
-		"[mtu <mtu>] [initial-cwnd-multiplier <n>]",
+		"[mtu <mtu>] [initial-cwnd-multiplier <n>] [rack|no-rack]",
   .function = tcp_set_fn,
 };
 
@@ -1174,11 +1202,14 @@ tcp_config_fn (vlib_main_t * vm, unformat_input_t * input)
       else if (unformat (input, "rwnd-min-update-ack %d",
 			 &tcp_cfg.rwnd_min_update_ack))
 	;
-      else if (unformat (input, "initial-cwnd-multiplier %u",
-			 &cwnd_multiplier))
+      else if (unformat (input, "initial-cwnd-multiplier %u", &cwnd_multiplier))
 	tcp_cfg.initial_cwnd_multiplier = cwnd_multiplier;
       else if (unformat (input, "no-tx-pacing"))
 	tcp_cfg.enable_tx_pacing = 0;
+      else if (unformat (input, "rack"))
+	tcp_cfg.enable_rack = 1;
+      else if (unformat (input, "no-rack"))
+	tcp_cfg.enable_rack = 0;
       else if (unformat (input, "tso"))
 	tcp_cfg.allow_tso = 1;
       else if (unformat (input, "no-csum-offload"))
