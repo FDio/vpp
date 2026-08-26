@@ -250,7 +250,7 @@ macro(vpp_library_set_multiarch_sources lib)
   cmake_parse_arguments(ARG
     ""
     ""
-    "SOURCES;DEPENDS;FORCE_ON;INCLUDE_DIRECTORIES"
+    "SOURCES;DEPENDS;FORCE_ON;INCLUDE_DIRECTORIES;COMPILE_OPTIONS;COMPILE_DEFINITIONS"
     ${ARGN}
   )
 
@@ -281,8 +281,14 @@ macro(vpp_library_set_multiarch_sources lib)
       target_include_directories(${l} PRIVATE ${ARG_INCLUDE_DIRECTORIES})
     endif()
     target_compile_definitions(${l} PUBLIC CLIB_MARCH_VARIANT=${VARIANT})
+    if(ARG_COMPILE_DEFINITIONS)
+      target_compile_definitions(${l} PRIVATE ${ARG_COMPILE_DEFINITIONS})
+    endif()
     separate_arguments(VARIANT_FLAGS)
     target_compile_options(${l} PUBLIC ${VARIANT_FLAGS})
+    if(ARG_COMPILE_OPTIONS)
+      target_compile_options(${l} PRIVATE ${ARG_COMPILE_OPTIONS})
+    endif()
     target_sources(${lib} PRIVATE $<TARGET_OBJECTS:${l}>)
   endforeach()
 endmacro()
