@@ -60,15 +60,15 @@ tcp_rack_note_rtt_sample (tcp_rack_state_t *rack, f64 rtt, f64 now)
     rack->min_rtt = clib_min (rack->min_rtt, rtt);
 }
 
-void tcp_rack_init (tcp_connection_t *tc);
+__clib_export void tcp_rack_init (tcp_connection_t *tc);
 void tcp_rack_loss_on_ack (tcp_connection_t *tc, tcp_ack_ctx_t *ac);
-u8 tcp_rack_update_reo_wnd (tcp_connection_t *tc, u8 is_dsack);
-u32 tcp_rack_mark_sample_lost (tcp_connection_t *tc, tcp_bt_sample_t *bts);
-void tcp_rack_recovery_init (tcp_connection_t *tc);
-void tcp_rack_recovery_exit (tcp_connection_t *tc, tcp_ack_ctx_t *ac);
+__clib_export u8 tcp_rack_update_reo_wnd (tcp_connection_t *tc, u8 is_dsack);
+__clib_export u32 tcp_rack_mark_sample_lost (tcp_connection_t *tc, tcp_bt_sample_t *bts);
+__clib_export void tcp_rack_recovery_init (tcp_connection_t *tc);
+__clib_export void tcp_rack_recovery_exit (tcp_connection_t *tc, tcp_ack_ctx_t *ac);
 void tcp_rack_recovery_sync (tcp_connection_t *tc);
-u8 tcp_rack_recovery_account_is_sane (tcp_connection_t *tc);
-void tcp_rack_prepare_rto (tcp_connection_t *tc, u8 *sack_reneged);
+__clib_export u8 tcp_rack_recovery_account_is_sane (tcp_connection_t *tc);
+__clib_export void tcp_rack_prepare_rto (tcp_connection_t *tc, u8 *sack_reneged);
 u8 tcp_rack_retransmit_timer_expired (tcp_connection_t *tc);
 
 always_inline u8
@@ -110,8 +110,9 @@ tcp_rack_reordered (tcp_connection_t *tc)
   return !!(tcp_rack_get_state (tc)->flags & TCP_RACK_F_REORDERED);
 }
 
-u8 tcp_rack_rxt_sample_acked (tcp_connection_t *tc, tcp_rack_state_t *rack, tcp_bt_sample_t *bts,
-			      u32 delivered_end, u32 *fack, f64 now);
+__clib_export u8 tcp_rack_rxt_sample_acked (tcp_connection_t *tc, tcp_rack_state_t *rack,
+					    tcp_bt_sample_t *bts, u32 delivered_end, u32 *fack,
+					    f64 now);
 
 always_inline u8
 tcp_rack_sample_acked (tcp_connection_t *tc, tcp_rack_state_t *rack, tcp_bt_sample_t *bts,
@@ -146,11 +147,12 @@ tcp_rack_sample_acked (tcp_connection_t *tc, tcp_rack_state_t *rack, tcp_bt_samp
   return 1;
 }
 
-f64 tcp_rack_reo_wnd (tcp_connection_t *tc);
-u32 tcp_rack_detect_loss (tcp_connection_t *tc, f64 *next_to);
-u32 tcp_rack_mark_losses_on_rto (tcp_connection_t *tc);
-void tcp_rack_arm_reorder_timer (tcp_connection_t *tc, f64 next_to, u8 timer_update_deferred);
-void tcp_rack_restore_rto (tcp_connection_t *tc);
+__clib_export f64 tcp_rack_reo_wnd (tcp_connection_t *tc);
+__clib_export u32 tcp_rack_detect_loss (tcp_connection_t *tc, f64 *next_to);
+__clib_export u32 tcp_rack_mark_losses_on_rto (tcp_connection_t *tc);
+__clib_export void tcp_rack_arm_reorder_timer (tcp_connection_t *tc, f64 next_to,
+					       u8 timer_update_deferred);
+__clib_export void tcp_rack_restore_rto (tcp_connection_t *tc);
 void tcp_rack_reorder_timeout (tcp_connection_t *tc);
 
 #endif /* SRC_VNET_TCP_TCP_RACK_H_ */

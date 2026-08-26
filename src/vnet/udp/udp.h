@@ -159,7 +159,7 @@ typedef struct
   u8 icmp_send_unreachable_disabled;
 } udp_main_t;
 
-extern udp_main_t udp_main;
+__clib_export extern udp_main_t udp_main;
 extern vlib_node_registration_t udp4_input_node;
 extern vlib_node_registration_t udp6_input_node;
 extern vlib_node_registration_t udp4_local_node;
@@ -250,8 +250,8 @@ udp_connection_from_transport (transport_connection_t * tc)
   return ((udp_connection_t *) tc);
 }
 
-void udp_connection_free (udp_connection_t * uc);
-udp_connection_t *udp_connection_alloc (clib_thread_index_t thread_index);
+__clib_export void udp_connection_free (udp_connection_t *uc);
+__clib_export udp_connection_t *udp_connection_alloc (clib_thread_index_t thread_index);
 void udp_connection_share_port (u16 lcl_port, u8 is_ip4);
 
 void udp_connection_handle_icmp (transport_connection_t *tconn, u8 icmp_type,
@@ -285,11 +285,11 @@ udp_get_dst_port_info (udp_main_t * um, udp_dst_port_t dst_port, u8 is_ip4)
   return p ? vec_elt_at_index (um->dst_port_infos[is_ip4], p[0]) : 0;
 }
 
-format_function_t format_udp_header;
+__clib_export format_function_t format_udp_header;
 format_function_t format_udp_rx_trace;
 format_function_t format_udp_connection;
 unformat_function_t unformat_udp_header;
 unformat_function_t unformat_udp_port;
 
-void udp_punt_unknown (vlib_main_t *vm, u8 is_ip4, u8 is_add);
+__clib_export void udp_punt_unknown (vlib_main_t *vm, u8 is_ip4, u8 is_add);
 #endif /* __included_udp_h__ */

@@ -60,11 +60,9 @@ typedef enum
 #undef _
 } udp6_dst_port_t;
 
-void udp_register_dst_port (vlib_main_t * vm,
-			    udp_dst_port_t dst_port,
-			    u32 node_index, u8 is_ip4);
-void udp_unregister_dst_port (vlib_main_t * vm,
-			      udp_dst_port_t dst_port, u8 is_ip4);
-u8 udp_is_valid_dst_port (udp_dst_port_t dst_port, u8 is_ip4);
+__clib_export void udp_register_dst_port (vlib_main_t *vm, udp_dst_port_t dst_port, u32 node_index,
+					  u8 is_ip4);
+__clib_export void udp_unregister_dst_port (vlib_main_t *vm, udp_dst_port_t dst_port, u8 is_ip4);
+__clib_export u8 udp_is_valid_dst_port (udp_dst_port_t dst_port, u8 is_ip4);
 
 #endif /* SRC_VNET_UDP_UDP_LOCAL_H_ */

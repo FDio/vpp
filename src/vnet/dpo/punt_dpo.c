@@ -12,7 +12,7 @@
 
 static dpo_id_t punt_dpos[DPO_PROTO_NUM];
 
-const dpo_id_t *
+__clib_export const dpo_id_t *
 punt_dpo_get (dpo_proto_t proto)
 {
     dpo_set(&punt_dpos[proto], DPO_PUNT, proto, 1);

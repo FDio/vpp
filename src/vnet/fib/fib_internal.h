@@ -13,7 +13,7 @@ extern void fib_prefix_from_mpls_label(mpls_label_t label,
                                        mpls_eos_bit_t eos,
 				       fib_prefix_t *prf);
 
-extern int fib_route_path_cmp(const fib_route_path_t *rpath1,
+__clib_export extern int fib_route_path_cmp(const fib_route_path_t *rpath1,
 			      const fib_route_path_t *rpath2);
 
 /**

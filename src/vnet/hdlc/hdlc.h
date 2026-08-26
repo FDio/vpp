@@ -73,8 +73,7 @@ unformat_function_t unformat_hdlc_protocol_net_byte_order;
 unformat_function_t unformat_hdlc_header;
 unformat_function_t unformat_pg_hdlc_header;
 
-void
-hdlc_register_input_protocol (vlib_main_t * vm,
-			      hdlc_protocol_t protocol, u32 node_index);
+void __clib_export hdlc_register_input_protocol (vlib_main_t *vm, hdlc_protocol_t protocol,
+						 u32 node_index);
 
 #endif /* included_hdlc_h */
