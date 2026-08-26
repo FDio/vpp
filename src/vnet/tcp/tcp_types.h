@@ -83,6 +83,7 @@ typedef enum _tcp_timers
 /** Connection configuration flags */
 #define foreach_tcp_cfg_flag                                                                       \
   _ (BYTE_TRACKER, "Byte tracker")                                                                 \
+  _ (BT_TX_ORDER, "Byte tracker transmit order")                                                   \
   _ (NO_CSUM_OFFLOAD, "No csum offload")                                                           \
   _ (NO_TSO, "TSO off")                                                                            \
   _ (TSO, "TSO")                                                                                   \
@@ -268,6 +269,7 @@ typedef enum tcp_bts_flags_
   TCP_BTS_IS_RXT_LOST = 1 << 3,
   TCP_BTS_IS_DELIVERED = 1 << 4,
   TCP_BTS_IS_LOST = 1 << 5,
+  TCP_BTS_TX_LOST = 1 << 6,
 } __clib_packed tcp_bts_flags_t;
 
 typedef struct tcp_bt_sample_
