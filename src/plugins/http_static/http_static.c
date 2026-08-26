@@ -160,11 +160,11 @@ vl_api_http_static_get_t_handler (vl_api_http_static_get_t *mp)
 
   if (hsm->default_listener.sep.is_ip4)
     {
-      addr = format (addr, "%U", format_ip4_address, &hsm->default_listener.sep.ip);
+      addr = format (addr, "%U", format_ip4_address, &hsm->default_listener.sep.ip.ip4);
     }
   else
     {
-      addr = format (addr, "[%U]", format_ip6_address, &hsm->default_listener.sep.ip);
+      addr = format (addr, "[%U]", format_ip6_address, &hsm->default_listener.sep.ip.ip6);
     }
 
   REPLY_MACRO2 (VL_API_HTTP_STATIC_GET_REPLY, {
