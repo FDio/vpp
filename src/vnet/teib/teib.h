@@ -8,6 +8,7 @@
 #define __TEIB_H__
 
 #include <vnet/ip/ip.h>
+#include <vnet/fib/fib_types.h>
 
 /**
  * Tunnel Endpoint Information Base.
@@ -20,14 +21,29 @@
  *
  * Such overlay to underlay mappings might be providied by a protocol like NHRP
  */
-typedef struct teib_entry_t_ teib_entry_t;
 
-/** accessors for the opaque struct */
-extern u32 teib_entry_get_sw_if_index (const teib_entry_t * ne);
-extern u32 teib_entry_get_fib_index (const teib_entry_t * ne);
-extern const ip_address_t *teib_entry_get_peer (const teib_entry_t * ne);
-extern const fib_prefix_t *teib_entry_get_nh (const teib_entry_t * ne);
-extern u8 *format_teib_entry (u8 * s, va_list * args);
+/**
+ * A self contained snapshot of a TEIB entry. Consumers are handed the data
+ * itself rather than a reference to the entry, so that they need nothing from
+ * TEIB in order to read it.
+ *
+ * It holds no references, so it may be copied and kept for as long as needed.
+ * Where one is passed by pointer the pointer itself is only valid for the
+ * duration of the call, so keep a copy rather than the pointer. Note that a
+ * kept copy is a snapshot and not a view: it does not track subsequent changes
+ * to the entry, nor its removal.
+ */
+typedef struct teib_entry_info_t_
+{
+  /** overlay: the multipoint tunnel interface */
+  u32 sw_if_index;
+  /** underlay: the FIB in which the next-hop is resolved */
+  u32 nh_fib_index;
+  /** overlay: the peer's address */
+  ip_address_t peer;
+  /** underlay: the next-hop */
+  fib_prefix_t nh;
+} teib_entry_info_t;
 
 /**
  * Create a new TEIB entry
@@ -38,16 +54,17 @@ extern int teib_entry_add (u32 sw_if_index,
 
 extern int teib_entry_del (u32 sw_if_index, const ip_address_t * peer);
 
-extern teib_entry_t *teib_entry_find (u32 sw_if_index,
-				      const ip_address_t * peer);
-extern teib_entry_t *teib_entry_find_46 (u32 sw_if_index,
-					 fib_protocol_t fproto,
-					 const ip46_address_t * peer);
-extern teib_entry_t *teib_entry_get (index_t nei);
+/**
+ * Look an entry up and take a snapshot of it. Returns false, leaving 'info'
+ * untouched, if there is no such entry.
+ */
+extern bool teib_entry_find (u32 sw_if_index, const ip_address_t *peer, teib_entry_info_t *info);
+extern bool teib_entry_find_46 (u32 sw_if_index, fib_protocol_t fproto, const ip46_address_t *peer,
+				teib_entry_info_t *info);
 
-extern void teib_entry_adj_stack (const teib_entry_t * ne, adj_index_t ai);
+extern void teib_entry_adj_stack (const teib_entry_info_t *info, adj_index_t ai);
 
-typedef walk_rc_t (*teib_walk_cb_t) (index_t nei, void *ctx);
+typedef walk_rc_t (*teib_walk_cb_t) (const teib_entry_info_t *info, void *ctx);
 
 extern void teib_walk (teib_walk_cb_t fn, void *ctx);
 extern void teib_walk_itf (u32 sw_if_index, teib_walk_cb_t fn, void *ctx);
@@ -55,8 +72,8 @@ extern void teib_walk_itf (u32 sw_if_index, teib_walk_cb_t fn, void *ctx);
 /**
  * Notifications for the creation and deletion of TEIB entries
  */
-typedef void (*teib_entry_added_t) (const teib_entry_t * ne);
-typedef void (*teib_entry_deleted_t) (const teib_entry_t * ne);
+typedef void (*teib_entry_added_t) (const teib_entry_info_t *info);
+typedef void (*teib_entry_deleted_t) (const teib_entry_info_t *info);
 
 typedef struct teib_vft_t_
 {
