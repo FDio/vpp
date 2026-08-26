@@ -688,6 +688,18 @@ spdk_vpp_app_rx_callback (session_t *s)
 	  return 0;
 	}
 
+      /* Published FIFO bytes precede the newly staged async batch in the
+       * TCP stream.  Keep materializing subsequent batches until the FIFO
+       * drains; otherwise recv_next(), which serves retained buffers first,
+       * would expose newer bytes ahead of the older FIFO contents. */
+      if (svm_fifo_max_dequeue_cons (s->rx_fifo))
+	{
+	  session_flush_async_rx (s->rx_fifo);
+	  sock->rx_direct_fallbacks++;
+	  spdk_vpp_sock_event (sock);
+	  return 0;
+	}
+
       consumed = session_async_rx_consume (s, spdk_vpp_rx_data_consume, sock);
       if (consumed)
 	{
