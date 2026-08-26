@@ -30,6 +30,31 @@ tcp_bt_opaque (tcp_connection_t *tc)
   return tc->bt + 1;
 }
 
+static_always_inline tcp_bt_tx_order_t *
+tcp_bt_tx_order (tcp_connection_t *tc)
+{
+  ASSERT (tc->bt != 0);
+  return &tc->bt->tx_order;
+}
+
+/* Compare transmissions by send time, then ending sequence. */
+static_always_inline u8
+tcp_bt_tx_sent_after (f64 ts, u32 end_seq, f64 other_ts, u32 other_end)
+{
+  return ts != other_ts ? ts > other_ts : seq_gt (end_seq, other_end);
+}
+
+void tcp_bt_tx_order_build (tcp_connection_t *tc);
+void tcp_bt_tx_order_insert (tcp_bt_tx_order_t *order, tcp_byte_tracker_t *bt,
+			     tcp_bt_sample_t *bts);
+void tcp_bt_tx_order_append (tcp_bt_tx_order_t *order, tcp_byte_tracker_t *bt,
+			     tcp_bt_sample_t *bts);
+u8 tcp_bt_tx_order_remove (tcp_bt_tx_order_t *order, tcp_byte_tracker_t *bt, tcp_bt_sample_t *bts);
+void tcp_bt_tx_order_reinsert (tcp_bt_tx_order_t *order, tcp_byte_tracker_t *bt,
+			       tcp_bt_sample_t *bts);
+void tcp_bt_tx_order_split (tcp_bt_tx_order_t *order, tcp_byte_tracker_t *bt, tcp_bt_sample_t *bts,
+			    tcp_bt_sample_t *split);
+
 /**
  * Byte tracker cleanup
  *
@@ -67,7 +92,8 @@ void tcp_bt_track_tx (tcp_connection_t * tc, u32 len);
  * @param start	start sequence number
  * @param end	end sequence number
  */
-void tcp_bt_track_rxt (tcp_connection_t * tc, u32 start, u32 end);
+void tcp_bt_track_rxt (tcp_connection_t *tc, u32 start, u32 end);
+
 /**
  * Apply cumulative ACK and prepared SACK ranges to the byte tracker
  *
