@@ -86,6 +86,12 @@ void tcp_bt_track_tx (tcp_connection_t * tc, u32 len);
  */
 void tcp_bt_track_rxt (tcp_connection_t *tc, u32 start, u32 end);
 
+/** Split the byte-tracker sample containing seq, if seq is an interior point. */
+void tcp_bt_split_at (tcp_connection_t *tc, u32 seq);
+
+/** Rewind retransmission selection to the sample containing seq. */
+void tcp_bt_rxt_rewind (tcp_connection_t *tc, u32 seq);
+
 /**
  * Apply cumulative ACK and prepared SACK ranges to the byte tracker
  *
