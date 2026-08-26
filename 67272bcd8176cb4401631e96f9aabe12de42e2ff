@@ -16,6 +16,23 @@
       "message": "recheck",
       "revId": "67272bcd8176cb4401631e96f9aabe12de42e2ff",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7ae2a3bc_b838be84",
+        "filename": "src/plugins/sfdp_services/base/nat/fastpath_node.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 250,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-08-26T16:02:10Z",
+      "side": 1,
+      "message": "nit: `sfdp-nat-late-rewrite` is a terminal node.\n\nWe don\u0027t expect to have multiple terminal nodes configured at once in a session bitmap (e.g. have `ip4/ip6-lookup` enabled at the same time as `sfdp-nat-late-rewrite) either at session configuration or a runtime.\n\nWe can keep the .runs_after constraint here, but it would just set an ordering if we fall in the \u0027non-valid\u0027 state where more than one terminal nodes is active at once in a session bitmap.",
+      "revId": "67272bcd8176cb4401631e96f9aabe12de42e2ff",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
