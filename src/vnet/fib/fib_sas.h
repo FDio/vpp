@@ -43,7 +43,7 @@ extern bool fib_sas_get (u32 sw_if_index,
  *
  * @return True if an address is available False (and src is unset) otherwise
  */
-extern bool fib_sas4_get (u32 sw_if_index,
+__clib_export extern bool fib_sas4_get (u32 sw_if_index,
                           const ip4_address_t *dst,
                           ip4_address_t *src);
 

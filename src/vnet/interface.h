@@ -563,10 +563,8 @@ typedef struct _vnet_hw_interface_class
 /**
  * @brief Return a complete, zero-length (aka placeholder) rewrite
  */
-extern u8 *default_build_rewrite (struct vnet_main_t *vnm,
-				  u32 sw_if_index,
-				  vnet_link_t link_type,
-				  const void *dst_hw_address);
+__clib_export extern u8 *default_build_rewrite (struct vnet_main_t *vnm, u32 sw_if_index,
+						vnet_link_t link_type, const void *dst_hw_address);
 
 /**
  * @brief Default adjacency update function
@@ -850,7 +848,7 @@ typedef struct
   void *rxq_interrupts;
 } vnet_hw_if_rx_node_runtime_t;
 
-extern vnet_device_class_t vnet_local_interface_device_class;
+__clib_export extern vnet_device_class_t vnet_local_interface_device_class;
 
 typedef enum
 {
@@ -1162,7 +1160,7 @@ vnet_interface_counter_unlock (vnet_interface_main_t * im)
 
 void vnet_pcap_drop_trace_filter_add_del (u32 error_index, int is_add);
 
-int vnet_interface_name_renumber (u32 sw_if_index, u32 new_show_dev_instance);
+__clib_export int vnet_interface_name_renumber (u32 sw_if_index, u32 new_show_dev_instance);
 
 void vnet_register_format_buffer_opaque_helper
   (vnet_buffer_opquae_formatter_t fn);

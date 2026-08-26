@@ -168,19 +168,18 @@ typedef struct tls_engine_vft_
 
 extern tls_engine_vft_t *tls_vfts;
 
-tls_main_t *vnet_tls_get_main (void);
-void tls_register_engine (const tls_engine_vft_t * vft,
-			  crypto_engine_type_t type);
+__clib_export tls_main_t *vnet_tls_get_main (void);
+__clib_export void tls_register_engine (const tls_engine_vft_t *vft, crypto_engine_type_t type);
 int tls_add_vpp_q_rx_evt (session_t * s);
-int tls_add_vpp_q_tx_evt (session_t * s);
+__clib_export int tls_add_vpp_q_tx_evt (session_t *s);
 int tls_add_vpp_q_builtin_tx_evt (session_t * s);
-int tls_add_vpp_q_builtin_rx_evt (session_t * s);
-int tls_notify_app_accept (tls_ctx_t * ctx);
-int tls_notify_app_connected (tls_ctx_t * ctx, session_error_t err);
-void tls_notify_app_enqueue (tls_ctx_t * ctx, session_t * app_session);
-void tls_notify_app_io_error (tls_ctx_t *ctx);
-void tls_disconnect_transport (tls_ctx_t * ctx);
-void tls_shutdown_transport (tls_ctx_t *ctx);
+__clib_export int tls_add_vpp_q_builtin_rx_evt (session_t *s);
+__clib_export int tls_notify_app_accept (tls_ctx_t *ctx);
+__clib_export int tls_notify_app_connected (tls_ctx_t *ctx, session_error_t err);
+__clib_export void tls_notify_app_enqueue (tls_ctx_t *ctx, session_t *app_session);
+__clib_export void tls_notify_app_io_error (tls_ctx_t *ctx);
+__clib_export void tls_disconnect_transport (tls_ctx_t *ctx);
+__clib_export void tls_shutdown_transport (tls_ctx_t *ctx);
 
 void tls_add_postponed_ho_cleanups (u32 ho_index);
 void tls_flush_postponed_ho_cleanups ();

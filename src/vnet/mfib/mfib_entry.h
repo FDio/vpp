@@ -111,7 +111,7 @@ extern fib_node_index_t mfib_entry_create(u32 fib_index,
                                           mfib_entry_flags_t entry_flags,
                                           index_t repi);
 
-extern int mfib_entry_update(fib_node_index_t fib_entry_index,
+__clib_export extern int mfib_entry_update(fib_node_index_t fib_entry_index,
                              mfib_source_t source,
                              mfib_entry_flags_t entry_flags,
                              fib_rpf_id_t rpf_id,
@@ -146,7 +146,7 @@ extern void mfib_entry_child_remove(fib_node_index_t mfib_entry_index,
 extern void mfib_entry_lock(fib_node_index_t fib_entry_index);
 extern void mfib_entry_unlock(fib_node_index_t fib_entry_index);
 
-extern const mfib_prefix_t *mfib_entry_get_prefix(fib_node_index_t fib_entry_index);
+__clib_export extern const mfib_prefix_t *mfib_entry_get_prefix(fib_node_index_t fib_entry_index);
 extern u32 mfib_entry_get_fib_index(fib_node_index_t fib_entry_index);
 extern int mfib_entry_is_sourced(fib_node_index_t fib_entry_index,
                                  mfib_source_t source);
@@ -173,7 +173,7 @@ typedef enum mfib_entry_fwd_flags_t_
     MFIB_ENTRY_FWD_FLAG_NO_LOCAL,
 } mfib_entry_fwd_flags_t;
 
-extern void mfib_entry_contribute_forwarding(
+__clib_export extern void mfib_entry_contribute_forwarding(
     fib_node_index_t mfib_entry_index,
     fib_forward_chain_type_t type,
     mfib_entry_fwd_flags_t flags,
@@ -184,7 +184,7 @@ extern fib_route_path_t* mfib_entry_encode(fib_node_index_t fib_entry_index);
 extern void mfib_entry_module_init(void);
 
 
-extern mfib_entry_t *mfib_entry_pool;
+__clib_export extern mfib_entry_t *mfib_entry_pool;
 
 static inline mfib_entry_t *
 mfib_entry_get (fib_node_index_t index)

@@ -135,7 +135,7 @@ void tcp_cc_algo_register (tcp_cc_algorithm_type_e type,
  * Register new cc algo type
  */
 tcp_cc_algorithm_type_e tcp_cc_algo_new_type (const tcp_cc_algorithm_t * vft);
-tcp_cc_algorithm_t *tcp_cc_algo_get (tcp_cc_algorithm_type_e type);
+__clib_export tcp_cc_algorithm_t *tcp_cc_algo_get (tcp_cc_algorithm_type_e type);
 
 void newreno_rcv_cong_ack (tcp_connection_t *tc, tcp_cc_ack_t ack_type, tcp_ack_ctx_t *ac);
 

@@ -137,28 +137,20 @@ vnet_get_config_shared_data (u32 *config_string_heap, u32 *config_index, u32 *ne
   return (void *) d;
 }
 
-void vnet_config_init (vlib_main_t * vm,
-		       vnet_config_main_t * cm,
-		       char *start_node_names[],
-		       int n_start_node_names,
-		       char *feature_node_names[], int n_feature_node_names);
+__clib_export void vnet_config_init (vlib_main_t *vm, vnet_config_main_t *cm,
+				     char *start_node_names[], int n_start_node_names,
+				     char *feature_node_names[], int n_feature_node_names);
 
 void vnet_config_del (vnet_config_main_t * cm, u32 config_id);
 
 /* Calls to add/delete features from configurations. */
-u32 vnet_config_add_feature (vlib_main_t * vm,
-			     vnet_config_main_t * cm,
-			     u32 config_id,
-			     u32 feature_index,
-			     void *feature_config,
-			     u32 n_feature_config_bytes);
+__clib_export u32 vnet_config_add_feature (vlib_main_t *vm, vnet_config_main_t *cm, u32 config_id,
+					   u32 feature_index, void *feature_config,
+					   u32 n_feature_config_bytes);
 
-u32 vnet_config_del_feature (vlib_main_t * vm,
-			     vnet_config_main_t * cm,
-			     u32 config_id,
-			     u32 feature_index,
-			     void *feature_config,
-			     u32 n_feature_config_bytes);
+__clib_export u32 vnet_config_del_feature (vlib_main_t *vm, vnet_config_main_t *cm, u32 config_id,
+					   u32 feature_index, void *feature_config,
+					   u32 n_feature_config_bytes);
 
 u32 vnet_config_modify_end_node (vlib_main_t * vm,
 				 vnet_config_main_t * cm,

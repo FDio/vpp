@@ -121,7 +121,7 @@ typedef struct _transport_proto_vft
   transport_options_t transport_options;
 } transport_proto_vft_t;
 
-extern transport_proto_vft_t *tp_vfts;
+__clib_export extern transport_proto_vft_t *tp_vfts;
 
 #define transport_proto_foreach(VAR, VAR_ALLOW_BM)                            \
   for (VAR = 0; VAR < vec_len (tp_vfts); VAR++)                               \
@@ -135,12 +135,11 @@ int transport_connect_stream (transport_proto_t tp,
 void transport_half_close (transport_proto_t tp, u32 conn_index,
 			   u8 thread_index);
 void transport_close (transport_proto_t tp, u32 conn_index, u8 thread_index);
-void transport_reset (transport_proto_t tp, u32 conn_index, u8 thread_index);
+__clib_export void transport_reset (transport_proto_t tp, u32 conn_index, u8 thread_index);
 u32 transport_start_listen (transport_proto_t tp, u32 session_index,
 			    transport_endpoint_cfg_t *tep);
 u32 transport_stop_listen (transport_proto_t tp, u32 conn_index);
-void transport_cleanup (transport_proto_t tp, u32 conn_index,
-			u8 thread_index);
+__clib_export void transport_cleanup (transport_proto_t tp, u32 conn_index, u8 thread_index);
 void transport_cleanup_half_open (transport_proto_t tp, u32 conn_index);
 void transport_get_endpoint (transport_proto_t tp, u32 conn_index,
 			     clib_thread_index_t thread_index,
@@ -225,7 +224,7 @@ transport_connection_is_cless (transport_connection_t * tc)
   return ((tc->flags & TRANSPORT_CONNECTION_F_CLESS) ? 1 : 0);
 }
 
-void transport_connection_reschedule (transport_connection_t * tc);
+__clib_export void transport_connection_reschedule (transport_connection_t *tc);
 void transport_fifos_init_ooo (transport_connection_t * tc);
 
 /**
@@ -237,9 +236,9 @@ void transport_fifos_init_ooo (transport_connection_t * tc);
  * @param output_node - output node index that session layer will hand off
  * 			buffers to, for requested fib proto
  */
-void transport_register_protocol (transport_proto_t transport_proto,
-				  const transport_proto_vft_t * vft,
-				  fib_protocol_t fib_proto, u32 output_node);
+__clib_export void transport_register_protocol (transport_proto_t transport_proto,
+						const transport_proto_vft_t *vft,
+						fib_protocol_t fib_proto, u32 output_node);
 transport_proto_t
 transport_register_new_protocol (const transport_proto_vft_t * vft,
 				 fib_protocol_t fib_proto, u32 output_node);
@@ -255,7 +254,7 @@ void transport_share_local_endpoint (u8 proto, u32 fib_index,
 int transport_mark_used_local_endpoint (u8 proto, u32 fib_index, ip46_address_t *ip, u16 port);
 int transport_release_local_endpoint (u8 proto, u32 fib_index, ip46_address_t *lcl_ip, u16 port);
 u16 transport_port_alloc_max_tries ();
-u32 transport_port_local_in_use ();
+__clib_export u32 transport_port_local_in_use ();
 void transport_clear_stats ();
 void transport_enable_disable (vlib_main_t * vm, u8 is_en);
 void transport_init (void);
@@ -293,9 +292,8 @@ void transport_connection_tx_pacer_init (transport_connection_t *tc, u64 rate_by
  * 				inactivity time after which pacer bucket is
  * 				reset to 1 mtu
  */
-void transport_connection_tx_pacer_update (transport_connection_t * tc,
-					   u64 bytes_per_sec,
-					   clib_us_time_t rtt);
+__clib_export void transport_connection_tx_pacer_update (transport_connection_t *tc,
+							 u64 bytes_per_sec, clib_us_time_t rtt);
 
 /**
  * Get tx pacer max burst

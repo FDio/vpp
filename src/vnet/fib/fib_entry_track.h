@@ -28,7 +28,7 @@
  * @param sigbling [RETURNED] The sibling index of the child on the tracker
  * @return The index of the FIB entry
  */
-extern fib_node_index_t fib_entry_track(u32 fib_index,
+__clib_export extern fib_node_index_t fib_entry_track(u32 fib_index,
                                         const fib_prefix_t *prefix,
                                         fib_node_type_t child_type,
                                         index_t child_index,
@@ -39,7 +39,7 @@ extern fib_node_index_t fib_entry_track(u32 fib_index,
  * @param fei FIB entry index (as returned from the track API above)
  * @param sibling Sibling index (as returned from the track API above)
  */
-extern void fib_entry_untrack(fib_node_index_t fei,
+__clib_export extern void fib_entry_untrack(fib_node_index_t fei,
                               u32 sibling);
 
 extern void fib_entry_track_module_init(void);
