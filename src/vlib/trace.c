@@ -354,11 +354,10 @@ VLIB_CLI_COMMAND (show_trace_cli,static) = {
   .function = cli_show_trace_buffer,
 };
 
-int vlib_enable_disable_pkt_trace_filter (int enable) __attribute__ ((weak));
-
 int
 vlib_enable_disable_pkt_trace_filter (int enable)
 {
+  vlib_global_main.trace_filter.trace_filter_enable = !!enable;
   return 0;
 }
 
