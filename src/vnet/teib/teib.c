@@ -4,7 +4,7 @@
 
 /* teib.h: Tunnel Endpoint Information Base */
 
-#include <vnet/teib/teib.h>
+#include <vnet/teib/teib_internal.h>
 #include <vnet/fib/fib_table.h>
 #include <vnet/adj/adj_midchain.h>
 #include <vnet/ip/ip6_ll_table.h>
@@ -18,12 +18,12 @@ typedef struct teib_key_t_
 
 STATIC_ASSERT_SIZEOF (teib_key_t, 24);
 
-struct teib_entry_t_
+typedef struct teib_entry_t_
 {
   teib_key_t *te_key;
   fib_prefix_t te_nh;
   u32 te_nh_fib_index;
-};
+} teib_entry_t;
 
 typedef struct teib_db_t_
 {
@@ -56,8 +56,8 @@ static vlib_log_class_t teib_logger;
 #define TEIB_TE_INFO(_te, _fmt, _args...)                      \
   vlib_log_notice (teib_logger, "[%U]: " _fmt, format_teib_entry, _te - teib_pool, ##_args)
 
-u32
-teib_entry_get_sw_if_index (const teib_entry_t * te)
+static u32
+teib_entry_get_sw_if_index (const teib_entry_t *te)
 {
   return (te->te_key->tk_sw_if_index);
 }
@@ -68,38 +68,29 @@ teib_entry_get_af (const teib_entry_t * te)
   return (ip_addr_version (&te->te_key->tk_peer));
 }
 
-u32
-teib_entry_get_fib_index (const teib_entry_t * te)
+static void
+teib_entry_to_info (const teib_entry_t *te, teib_entry_info_t *info)
 {
-  return (te->te_nh_fib_index);
-}
-
-const ip_address_t *
-teib_entry_get_peer (const teib_entry_t * te)
-{
-  return (&te->te_key->tk_peer);
-}
-
-const fib_prefix_t *
-teib_entry_get_nh (const teib_entry_t * te)
-{
-  return (&te->te_nh);
+  info->sw_if_index = te->te_key->tk_sw_if_index;
+  info->nh_fib_index = te->te_nh_fib_index;
+  info->peer = te->te_key->tk_peer;
+  info->nh = te->te_nh;
 }
 
 void
-teib_entry_adj_stack (const teib_entry_t * te, adj_index_t ai)
+teib_entry_adj_stack (const teib_entry_info_t *info, adj_index_t ai)
 {
-  adj_midchain_delegate_stack (ai, te->te_nh_fib_index, &te->te_nh);
+  adj_midchain_delegate_stack (ai, info->nh_fib_index, &info->nh);
 }
 
-teib_entry_t *
+static teib_entry_t *
 teib_entry_get (index_t tei)
 {
   return pool_elt_at_index (teib_pool, tei);
 }
 
-teib_entry_t *
-teib_entry_find (u32 sw_if_index, const ip_address_t * peer)
+static teib_entry_t *
+teib_entry_find_ptr (u32 sw_if_index, const ip_address_t *peer)
 {
   teib_key_t nk = {
     .tk_peer = *peer,
@@ -115,15 +106,30 @@ teib_entry_find (u32 sw_if_index, const ip_address_t * peer)
   return (NULL);
 }
 
-teib_entry_t *
-teib_entry_find_46 (u32 sw_if_index,
-		    fib_protocol_t fproto, const ip46_address_t * peer)
+bool
+teib_entry_find (u32 sw_if_index, const ip_address_t *peer, teib_entry_info_t *info)
+{
+  const teib_entry_t *te;
+
+  te = teib_entry_find_ptr (sw_if_index, peer);
+
+  if (NULL == te)
+    return (false);
+
+  teib_entry_to_info (te, info);
+
+  return (true);
+}
+
+bool
+teib_entry_find_46 (u32 sw_if_index, fib_protocol_t fproto, const ip46_address_t *peer,
+		    teib_entry_info_t *info)
 {
   ip_address_t ip;
 
   ip_address_from_46 (peer, fproto, &ip);
 
-  return (teib_entry_find (sw_if_index, &ip));
+  return (teib_entry_find (sw_if_index, &ip, info));
 }
 
 static void
@@ -201,7 +207,7 @@ teib_entry_add (u32 sw_if_index,
       return (VNET_API_ERROR_NO_SUCH_FIB);
     }
 
-  te = teib_entry_find (sw_if_index, peer);
+  te = teib_entry_find_ptr (sw_if_index, peer);
 
   if (NULL == te)
     {
@@ -209,6 +215,7 @@ teib_entry_add (u32 sw_if_index,
 	.tk_peer = *peer,
 	.tk_sw_if_index = sw_if_index,
       };
+      teib_entry_info_t info;
       teib_entry_t *te;
 
       pool_get_zero (teib_pool, te);
@@ -225,7 +232,8 @@ teib_entry_add (u32 sw_if_index,
       /* we how have a /32 in the overlay, add an adj-fib */
       teib_adj_fib_add (&te->te_key->tk_peer, sw_if_index, peer_fib_index);
 
-      TEIB_NOTIFY (te, nv_added);
+      teib_entry_to_info (te, &info);
+      TEIB_NOTIFY (&info, nv_added);
       TEIB_TE_INFO (te, "created");
     }
   else
@@ -241,12 +249,13 @@ teib_entry_del (u32 sw_if_index, const ip_address_t * peer)
 {
   teib_entry_t *te;
 
-  te = teib_entry_find (sw_if_index, peer);
+  te = teib_entry_find_ptr (sw_if_index, peer);
 
   if (te != NULL)
     {
       TEIB_TE_INFO (te, "removed");
 
+      teib_entry_info_t info;
       u32 peer_fib_index;
 
       peer_fib_index = fib_table_get_index_for_sw_if_index (
@@ -256,7 +265,8 @@ teib_entry_del (u32 sw_if_index, const ip_address_t * peer)
 
       hash_unset_mem (teib_db.td_db, te->te_key);
 
-      TEIB_NOTIFY (te, nv_deleted);
+      teib_entry_to_info (te, &info);
+      TEIB_NOTIFY (&info, nv_deleted);
 
       clib_mem_free (te->te_key);
       pool_put (teib_pool, te);
@@ -292,7 +302,7 @@ format_teib_entry (u8 * s, va_list * args)
 }
 
 void
-teib_walk (teib_walk_cb_t fn, void *ctx)
+teib_walk_index (teib_walk_index_cb_t fn, void *ctx)
 {
   index_t tei;
 
@@ -303,20 +313,40 @@ teib_walk (teib_walk_cb_t fn, void *ctx)
 }
 
 void
+teib_walk (teib_walk_cb_t fn, void *ctx)
+{
+  index_t tei;
+
+  pool_foreach_index (tei, teib_pool)
+    {
+      teib_entry_info_t info;
+
+      teib_entry_to_info (teib_entry_get (tei), &info);
+      fn (&info, ctx);
+    }
+}
+
+void
 teib_walk_itf (u32 sw_if_index, teib_walk_cb_t fn, void *ctx)
 {
   index_t tei;
 
   pool_foreach_index (tei, teib_pool)
-   {
-    if (sw_if_index == teib_entry_get_sw_if_index(teib_entry_get(tei)))
-      fn(tei, ctx);
-  }
+    {
+      const teib_entry_t *te = teib_entry_get (tei);
+
+      if (sw_if_index == teib_entry_get_sw_if_index (te))
+	{
+	  teib_entry_info_t info;
+
+	  teib_entry_to_info (te, &info);
+	  fn (&info, ctx);
+	}
+    }
 }
 
 static void
-teib_walk_itf_proto (u32 sw_if_index,
-		     ip_address_family_t af, teib_walk_cb_t fn, void *ctx)
+teib_walk_itf_proto (u32 sw_if_index, ip_address_family_t af, teib_walk_index_cb_t fn, void *ctx)
 {
   index_t tei;
 
