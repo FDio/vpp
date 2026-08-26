@@ -382,6 +382,47 @@ add_custom_target(config
   USES_TERMINAL
 )
 
+if(TARGET vnet AND CMAKE_READELF)
+  set(_vnet_export_check_dependencies vnet vpp)
+  set(_vnet_export_check_consumers $<TARGET_FILE:vpp>)
+
+  get_property(_vnet_export_check_plugins GLOBAL PROPERTY VPP_PLUGINS_LIST)
+  foreach(name ${_vnet_export_check_plugins})
+    if(TARGET ${name}_plugin)
+      list(APPEND _vnet_export_check_dependencies ${name}_plugin)
+      list(APPEND _vnet_export_check_consumers $<TARGET_FILE:${name}_plugin>)
+    endif()
+  endforeach()
+
+  get_property(_vnet_export_check_drivers GLOBAL PROPERTY VPP_DRIVERS_LIST)
+  foreach(name ${_vnet_export_check_drivers})
+    if(TARGET ${name}_driver)
+      list(APPEND _vnet_export_check_dependencies ${name}_driver)
+      list(APPEND _vnet_export_check_consumers $<TARGET_FILE:${name}_driver>)
+    endif()
+  endforeach()
+
+  get_property(_vnet_export_check_engines GLOBAL PROPERTY VPP_CRYPTO_ENGINES_LIST)
+  foreach(name ${_vnet_export_check_engines})
+    if(TARGET ${name}_crypto_engine)
+      list(APPEND _vnet_export_check_dependencies ${name}_crypto_engine)
+      list(APPEND _vnet_export_check_consumers
+        $<TARGET_FILE:${name}_crypto_engine>)
+    endif()
+  endforeach()
+
+  add_custom_target(check-vnet-exports ALL
+    COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/scripts/check_vnet_exports.sh
+      ${CMAKE_READELF}
+      $<TARGET_FILE:vnet>
+      ${_vnet_export_check_consumers}
+    DEPENDS ${_vnet_export_check_dependencies}
+    COMMENT "Checking libvnet exports used by in-tree consumers"
+    COMMAND_EXPAND_LISTS
+    VERBATIM
+  )
+endif()
+
 foreach(bt ${BUILD_TYPES})
   add_custom_target(set-build-type-${bt}
     COMMAND cmake -DCMAKE_BUILD_TYPE:STRING=${bt} .

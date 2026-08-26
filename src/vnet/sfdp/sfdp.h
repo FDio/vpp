@@ -379,7 +379,7 @@ typedef struct sfdp_timeout_registration
   sfdp_timeout_t timeout;
 } sfdp_timeout_registration_t;
 
-void sfdp_timeout_add_registration (sfdp_timeout_registration_t *registration);
+__clib_export void sfdp_timeout_add_registration (sfdp_timeout_registration_t *registration);
 
 #define SFDP_TIMEOUT_DECLARE(x) extern sfdp_timeout_registration_t sfdp_timeout_registration_##x
 #define SFDP_TIMEOUT_INDEX(x)	(sfdp_timeout_registration_##x.timeout.index)
@@ -487,7 +487,7 @@ typedef struct
   pool_foreach_index (i, (sfdp)->sessions)                                    \
     if ((s = sfdp_session_at_index (i)) && s->state != SFDP_SESSION_STATE_FREE)
 
-extern sfdp_main_t sfdp_main;
+__clib_export extern sfdp_main_t sfdp_main;
 
 clib_error_t *sfdp_timeout_register (sfdp_main_t *sfdp, sfdp_timeout_t *timeout);
 
@@ -500,18 +500,18 @@ clib_error_t *sfdp_timeout_register (sfdp_main_t *sfdp, sfdp_timeout_t *timeout)
 extern vlib_node_registration_t sfdp_handoff_node;
 extern vlib_node_registration_t sfdp_lookup_ip4_icmp_node;
 extern vlib_node_registration_t sfdp_lookup_ip6_icmp_node;
-extern vlib_node_registration_t sfdp_lookup_ip4_node;
-extern vlib_node_registration_t sfdp_lookup_ip6_node;
+__clib_export extern vlib_node_registration_t sfdp_lookup_ip4_node;
+__clib_export extern vlib_node_registration_t sfdp_lookup_ip6_node;
 format_function_t format_sfdp_session;
-format_function_t format_sfdp_ipv4_context_id;
-format_function_t format_sfdp_ipv4_ingress;
-format_function_t format_sfdp_ipv4_egress;
-format_function_t format_sfdp_ipv6_context_id;
-format_function_t format_sfdp_ipv6_ingress;
-format_function_t format_sfdp_ipv6_egress;
+__clib_export format_function_t format_sfdp_ipv4_context_id;
+__clib_export format_function_t format_sfdp_ipv4_ingress;
+__clib_export format_function_t format_sfdp_ipv4_egress;
+__clib_export format_function_t format_sfdp_ipv6_context_id;
+__clib_export format_function_t format_sfdp_ipv6_ingress;
+__clib_export format_function_t format_sfdp_ipv6_egress;
 format_function_t format_sfdp_session_detail;
-format_function_t format_sfdp_session_state;
-format_function_t format_sfdp_session_type;
+__clib_export format_function_t format_sfdp_session_state;
+__clib_export format_function_t format_sfdp_session_type;
 format_function_t format_sfdp_tenant;
 format_function_t format_sfdp_tenant_extra;
 format_function_t format_sfdp_sp_node;
@@ -920,23 +920,23 @@ clib_error_t *sfdp_set_sp_node (sfdp_main_t *sfdp, u32 tenant_id, u32 sp_index,
 clib_error_t *sfdp_set_icmp_error_node (sfdp_main_t *sfdp, u32 tenant_id,
 					u8 is_ip6, u32 node_index);
 clib_error_t *sfdp_kill_session (sfdp_main_t *sfdp, u32 session_index, u8 is_all);
-void sfdp_normalise_ip4_key (sfdp_session_t *session,
-			     sfdp_session_ip4_key_t *result, u8 key_idx);
+__clib_export void sfdp_normalise_ip4_key (sfdp_session_t *session, sfdp_session_ip4_key_t *result,
+					   u8 key_idx);
 
-void sfdp_normalise_ip6_key (sfdp_session_t *session,
-			     sfdp_session_ip6_key_t *result, u8 key_idx);
+__clib_export void sfdp_normalise_ip6_key (sfdp_session_t *session, sfdp_session_ip6_key_t *result,
+					   u8 key_idx);
 
 void sfdp_table_format_add_header_col (table_t *t);
 u32 sfdp_table_format_insert_session (table_t *t, u32 n, u32 session_index,
 				      sfdp_session_t *session, u32 tenant_id,
 				      f64 now);
-int sfdp_bihash_add_del_inline_with_hash_24_8 (clib_bihash_24_8_t *h,
-					       clib_bihash_kv_24_8_t *kv,
-					       u64 hash, u8 is_add);
+__clib_export int sfdp_bihash_add_del_inline_with_hash_24_8 (clib_bihash_24_8_t *h,
+							     clib_bihash_kv_24_8_t *kv, u64 hash,
+							     u8 is_add);
 
-int sfdp_bihash_add_del_inline_with_hash_48_8 (clib_bihash_48_8_t *h,
-					       clib_bihash_kv_48_8_t *kv,
-					       u64 hash, u8 is_add);
+__clib_export int sfdp_bihash_add_del_inline_with_hash_48_8 (clib_bihash_48_8_t *h,
+							     clib_bihash_kv_48_8_t *kv, u64 hash,
+							     u8 is_add);
 
 void sfdp_ip4_full_reass_custom_context_register_next_node (u16 node_index);
 void sfdp_ip6_full_reass_custom_context_register_next_node (u16 node_index);

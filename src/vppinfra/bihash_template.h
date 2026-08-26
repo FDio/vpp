@@ -323,43 +323,46 @@ static inline uword BV (clib_bihash_get_offset) (BVT (clib_bihash) * h,
 #define BIHASH_ADD 1
 #define BIHASH_DEL 0
 
-void BV (clib_bihash_init)
-  (BVT (clib_bihash) * h, char *name, u32 nbuckets, uword memory_size);
-
-void BV (clib_bihash_init2) (BVT (clib_bihash_init2_args) * a);
-
-#if BIHASH_32_64_SVM
-void BV (clib_bihash_initiator_init_svm)
-  (BVT (clib_bihash) * h, char *name, u32 nbuckets, u64 memory_size);
-void BV (clib_bihash_responder_init_svm)
-  (BVT (clib_bihash) * h, char *name, int fd);
+#ifndef BIHASH_TEMPLATE_API
+#define BIHASH_TEMPLATE_API
 #endif
 
-void BV (clib_bihash_set_kvp_format_fn) (BVT (clib_bihash) * h,
-					 format_function_t * kvp_fmt_fn);
+BIHASH_TEMPLATE_API void BV (clib_bihash_init) (BVT (clib_bihash) * h, char *name, u32 nbuckets,
+						uword memory_size);
 
-void BV (clib_bihash_free) (BVT (clib_bihash) * h);
+BIHASH_TEMPLATE_API void BV (clib_bihash_init2) (BVT (clib_bihash_init2_args) * a);
 
-int BV (clib_bihash_add_del) (BVT (clib_bihash) * h,
-			      BVT (clib_bihash_kv) * add_v, int is_add);
+#if BIHASH_32_64_SVM
+BIHASH_TEMPLATE_API void BV (clib_bihash_initiator_init_svm) (BVT (clib_bihash) * h, char *name,
+							      u32 nbuckets, u64 memory_size);
+BIHASH_TEMPLATE_API void BV (clib_bihash_responder_init_svm) (BVT (clib_bihash) * h, char *name,
+							      int fd);
+#endif
 
-int BV (clib_bihash_add_del_with_hash) (BVT (clib_bihash) * h,
-					BVT (clib_bihash_kv) * add_v, u64 hash,
-					int is_add);
-int BV (clib_bihash_add_or_overwrite_stale) (BVT (clib_bihash) * h,
-					     BVT (clib_bihash_kv) * add_v,
-					     int (*is_stale_cb) (BVT
-								 (clib_bihash_kv)
-								 *, void *),
-					     void *arg);
-int BV (clib_bihash_add_with_overwrite_cb) (
-  BVT (clib_bihash) * h, BVT (clib_bihash_kv) * add_v,
-  void (*overwrite_cb) (BVT (clib_bihash_kv) *, void *), void *arg);
-int BV (clib_bihash_search) (BVT (clib_bihash) * h,
-			     BVT (clib_bihash_kv) * search_v,
-			     BVT (clib_bihash_kv) * return_v);
+BIHASH_TEMPLATE_API void BV (clib_bihash_set_kvp_format_fn) (BVT (clib_bihash) * h,
+							     format_function_t *kvp_fmt_fn);
 
-int BV (clib_bihash_is_initialised) (const BVT (clib_bihash) * h);
+BIHASH_TEMPLATE_API void BV (clib_bihash_free) (BVT (clib_bihash) * h);
+
+BIHASH_TEMPLATE_API int BV (clib_bihash_add_del) (BVT (clib_bihash) * h,
+						  BVT (clib_bihash_kv) * add_v, int is_add);
+
+BIHASH_TEMPLATE_API int BV (clib_bihash_add_del_with_hash) (BVT (clib_bihash) * h,
+							    BVT (clib_bihash_kv) * add_v, u64 hash,
+							    int is_add);
+BIHASH_TEMPLATE_API int
+  BV (clib_bihash_add_or_overwrite_stale) (BVT (clib_bihash) * h, BVT (clib_bihash_kv) * add_v,
+					   int (*is_stale_cb) (BVT (clib_bihash_kv) *, void *),
+					   void *arg);
+BIHASH_TEMPLATE_API int
+  BV (clib_bihash_add_with_overwrite_cb) (BVT (clib_bihash) * h, BVT (clib_bihash_kv) * add_v,
+					  void (*overwrite_cb) (BVT (clib_bihash_kv) *, void *),
+					  void *arg);
+BIHASH_TEMPLATE_API int BV (clib_bihash_search) (BVT (clib_bihash) * h,
+						 BVT (clib_bihash_kv) * search_v,
+						 BVT (clib_bihash_kv) * return_v);
+
+BIHASH_TEMPLATE_API int BV (clib_bihash_is_initialised) (const BVT (clib_bihash) * h);
 
 #define BIHASH_WALK_STOP 0
 #define BIHASH_WALK_CONTINUE 1
@@ -367,14 +370,12 @@ int BV (clib_bihash_is_initialised) (const BVT (clib_bihash) * h);
 typedef
   int (*BV (clib_bihash_foreach_key_value_pair_cb)) (BVT (clib_bihash_kv) *,
 						     void *);
-void BV (clib_bihash_foreach_key_value_pair) (BVT (clib_bihash) * h,
-					      BV
-					      (clib_bihash_foreach_key_value_pair_cb)
-					      cb, void *arg);
+BIHASH_TEMPLATE_API void BV (clib_bihash_foreach_key_value_pair) (
+  BVT (clib_bihash) * h, BV (clib_bihash_foreach_key_value_pair_cb) cb, void *arg);
 void *clib_all_bihash_set_heap (void);
 void clib_bihash_copied (void *dst, void *src);
 
-format_function_t BV (format_bihash);
+BIHASH_TEMPLATE_API format_function_t BV (format_bihash);
 format_function_t BV (format_bihash_kvp);
 format_function_t BV (format_bihash_lru);
 

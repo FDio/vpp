@@ -57,13 +57,10 @@ int vnet_set_in_out_acl_intfc (vlib_main_t *vm, u32 sw_if_index,
 			       u32 ip6_punt_table_index, u32 is_add,
 			       u32 is_output);
 
-int vnet_set_input_acl_intfc (vlib_main_t *vm, u32 sw_if_index,
-			      u32 ip4_table_index, u32 ip6_table_index,
-			      u32 l2_table_index, u32 is_add);
+__clib_export int vnet_set_input_acl_intfc (vlib_main_t *vm, u32 sw_if_index, u32 ip4_table_index,
+					    u32 ip6_table_index, u32 l2_table_index, u32 is_add);
 
-int vnet_set_output_acl_intfc (vlib_main_t * vm, u32 sw_if_index,
-			       u32 ip4_table_index,
-			       u32 ip6_table_index,
-			       u32 l2_table_index, u32 is_add);
+__clib_export int vnet_set_output_acl_intfc (vlib_main_t *vm, u32 sw_if_index, u32 ip4_table_index,
+					     u32 ip6_table_index, u32 l2_table_index, u32 is_add);
 
 #endif /* __included_vnet_in_out_acl_h__ */

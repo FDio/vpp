@@ -202,13 +202,13 @@ typedef enum mfib_source_t_
 extern int mfib_prefix_cmp(const mfib_prefix_t *p1,
                            const mfib_prefix_t *p2);
 
-extern u8 * format_mfib_prefix(u8 * s, va_list * args);
+__clib_export extern u8 * format_mfib_prefix(u8 * s, va_list * args);
 
-extern u8 *format_mfib_entry_flags(u8 * s, va_list * args);
-extern u8 *format_mfib_itf_flags(u8 * s, va_list * args);
-extern uword unformat_mfib_itf_flags(unformat_input_t * input,
+__clib_export extern u8 *format_mfib_entry_flags(u8 * s, va_list * args);
+__clib_export extern u8 *format_mfib_itf_flags(u8 * s, va_list * args);
+__clib_export extern uword unformat_mfib_itf_flags(unformat_input_t * input,
                                      va_list * args);
-extern uword unformat_mfib_entry_flags(unformat_input_t * input,
+__clib_export extern uword unformat_mfib_entry_flags(unformat_input_t * input,
                                        va_list * args);
 /**
  * \brief Compare two prefixes for covering relationship
@@ -223,7 +223,7 @@ extern int mfib_prefix_is_cover(const mfib_prefix_t *p1,
  */
 extern int mfib_prefix_is_host(const mfib_prefix_t *p);
 
-extern fib_forward_chain_type_t mfib_forw_chain_type_from_dpo_proto(dpo_proto_t proto);
-extern fib_forward_chain_type_t mfib_forw_chain_type_from_fib_proto(fib_protocol_t proto);
+__clib_export extern fib_forward_chain_type_t mfib_forw_chain_type_from_dpo_proto(dpo_proto_t proto);
+__clib_export extern fib_forward_chain_type_t mfib_forw_chain_type_from_fib_proto(fib_protocol_t proto);
 
 #endif

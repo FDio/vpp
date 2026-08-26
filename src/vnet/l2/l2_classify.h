@@ -72,7 +72,7 @@ typedef struct _l2_classify_main
 typedef struct _l2_classify_main l2_output_classify_main_t;
 
 extern l2_input_classify_main_t l2_input_classify_main;
-extern vlib_node_registration_t l2_input_classify_node;
+__clib_export extern vlib_node_registration_t l2_input_classify_node;
 
 extern l2_output_classify_main_t l2_output_classify_main;
 extern vlib_node_registration_t l2_output_classify_node;

@@ -140,7 +140,7 @@ extern u8* format_fib_table_name(u8* s, va_list *ap);
  * @return
  *  The index of the fib_entry_t for the best match, which may be the default route
  */
-extern fib_node_index_t fib_table_lookup(u32 fib_index,
+__clib_export extern fib_node_index_t fib_table_lookup(u32 fib_index,
 					 const fib_prefix_t *prefix);
 
 /**
@@ -157,7 +157,7 @@ extern fib_node_index_t fib_table_lookup(u32 fib_index,
  *  The index of the fib_entry_t for the exact match, or INVALID
  *  is there is no match.
  */
-extern fib_node_index_t fib_table_lookup_exact_match(u32 fib_index,
+__clib_export extern fib_node_index_t fib_table_lookup_exact_match(u32 fib_index,
 						     const fib_prefix_t *prefix);
 
 /**
@@ -202,7 +202,7 @@ extern fib_node_index_t fib_table_get_less_specific(u32 fib_index,
  * @return
  *  the index of the fib_entry_t that is created (or exists already).
  */
-extern fib_node_index_t fib_table_entry_special_add(u32 fib_index,
+__clib_export extern fib_node_index_t fib_table_entry_special_add(u32 fib_index,
 						    const fib_prefix_t *prefix,
 						    fib_source_t source,
 						    fib_entry_flag_t flags);
@@ -234,7 +234,7 @@ extern fib_node_index_t fib_table_entry_special_add(u32 fib_index,
  * @return
  *  the index of the fib_entry_t that is created (or existed already).
  */
-extern fib_node_index_t fib_table_entry_special_dpo_add(u32 fib_index,
+__clib_export extern fib_node_index_t fib_table_entry_special_dpo_add(u32 fib_index,
                                                         const fib_prefix_t *prefix,
                                                         fib_source_t source,
                                                         fib_entry_flag_t stype,
@@ -266,7 +266,7 @@ extern fib_node_index_t fib_table_entry_special_dpo_add(u32 fib_index,
  * @return
  *  the index of the fib_entry_t that is created (or existed already).
  */
-extern fib_node_index_t fib_table_entry_special_dpo_update (u32 fib_index,
+__clib_export extern fib_node_index_t fib_table_entry_special_dpo_update (u32 fib_index,
 							    const fib_prefix_t *prefix,
 							    fib_source_t source,
 							    fib_entry_flag_t stype,
@@ -288,7 +288,7 @@ extern fib_node_index_t fib_table_entry_special_dpo_update (u32 fib_index,
  *  The ID of the client/source adding the entry.
  *
  */
-extern void fib_table_entry_special_remove(u32 fib_index,
+__clib_export extern void fib_table_entry_special_remove(u32 fib_index,
 					   const fib_prefix_t *prefix,
 					   fib_source_t source);
 
@@ -336,7 +336,7 @@ extern void fib_table_entry_special_remove(u32 fib_index,
  * @return
  *  the index of the fib_entry_t that is created (or existed already).
  */
-extern fib_node_index_t fib_table_entry_path_add(u32 fib_index,
+__clib_export extern fib_node_index_t fib_table_entry_path_add(u32 fib_index,
 						 const fib_prefix_t *prefix,
 						 fib_source_t source,
 						 fib_entry_flag_t flags,
@@ -372,7 +372,7 @@ extern fib_node_index_t fib_table_entry_path_add(u32 fib_index,
  * @return
  *  the index of the fib_entry_t that is created (or existed already).
  */
-extern fib_node_index_t fib_table_entry_path_add2(u32 fib_index,
+__clib_export extern fib_node_index_t fib_table_entry_path_add2(u32 fib_index,
 						  const fib_prefix_t *prefix,
 						  fib_source_t source,
 						  fib_entry_flag_t flags,
@@ -413,7 +413,7 @@ extern fib_node_index_t fib_table_entry_path_add2(u32 fib_index,
  * @param  pf
  *  Flags for the path
  */
-extern void fib_table_entry_path_remove(u32 fib_index,
+__clib_export extern void fib_table_entry_path_remove(u32 fib_index,
 					const fib_prefix_t *prefix,
 					fib_source_t source,
 					dpo_proto_t next_hop_proto,
@@ -442,7 +442,7 @@ extern void fib_table_entry_path_remove(u32 fib_index,
  * @param rpaths
  *  A vector of paths.
  */
-extern void fib_table_entry_path_remove2(u32 fib_index,
+__clib_export extern void fib_table_entry_path_remove2(u32 fib_index,
 					 const fib_prefix_t *prefix,
 					 fib_source_t source,
 					 fib_route_path_t *paths);
@@ -469,7 +469,7 @@ extern void fib_table_entry_path_remove2(u32 fib_index,
  * @return
  *  the index of the fib_entry_t that is created (or existed already).
  */
-extern fib_node_index_t fib_table_entry_update(u32 fib_index,
+__clib_export extern fib_node_index_t fib_table_entry_update(u32 fib_index,
 					       const fib_prefix_t *prefix,
 					       fib_source_t source,
 					       fib_entry_flag_t flags,
@@ -519,7 +519,7 @@ extern fib_node_index_t fib_table_entry_update(u32 fib_index,
  * @return
  *  the index of the fib_entry_t that is created (or existed already).
  */
-extern fib_node_index_t fib_table_entry_update_one_path(u32 fib_index,
+__clib_export extern fib_node_index_t fib_table_entry_update_one_path(u32 fib_index,
 							const fib_prefix_t *prefix,
 							fib_source_t source,
 							fib_entry_flag_t flags,
@@ -549,7 +549,7 @@ extern fib_node_index_t fib_table_entry_update_one_path(u32 fib_index,
  * @return
  *  the index of the fib_entry_t that is created (or existed already).
  */
-extern fib_node_index_t fib_table_entry_local_label_add(u32 fib_index,
+__clib_export extern fib_node_index_t fib_table_entry_local_label_add(u32 fib_index,
 							const fib_prefix_t *prefix,
 							mpls_label_t label);
 /**
@@ -565,7 +565,7 @@ extern fib_node_index_t fib_table_entry_local_label_add(u32 fib_index,
  * @param label
  *  The MPLS label to add
  */
-extern void fib_table_entry_local_label_remove(u32 fib_index,
+__clib_export extern void fib_table_entry_local_label_remove(u32 fib_index,
 					       const fib_prefix_t *prefix,
 					       mpls_label_t label);
 
@@ -583,7 +583,7 @@ extern void fib_table_entry_local_label_remove(u32 fib_index,
  * @param source
  *  The ID of the client/source adding the entry.
  */
-extern void fib_table_entry_delete(u32 fib_index,
+__clib_export extern void fib_table_entry_delete(u32 fib_index,
 				   const fib_prefix_t *prefix,
 				   fib_source_t source);
 
@@ -598,7 +598,7 @@ extern void fib_table_entry_delete(u32 fib_index,
  * @param source
  *  The ID of the client/source adding the entry.
  */
-extern void fib_table_entry_delete_index(fib_node_index_t entry_index,
+__clib_export extern void fib_table_entry_delete_index(fib_node_index_t entry_index,
 					 fib_source_t source);
 
 /**
@@ -625,7 +625,7 @@ extern u32 fib_table_entry_get_stats_index(u32 fib_index,
  * @param source
  *  the source to flush
  */
-extern void fib_table_flush(u32 fib_index,
+__clib_export extern void fib_table_flush(u32 fib_index,
 			    fib_protocol_t proto,
 			    fib_source_t source);
 
@@ -645,7 +645,7 @@ extern void fib_table_flush(u32 fib_index,
  * @param source
  *  the source to flush
  */
-extern void fib_table_mark(u32 fib_index,
+__clib_export extern void fib_table_mark(u32 fib_index,
                            fib_protocol_t proto,
                            fib_source_t source);
 
@@ -665,7 +665,7 @@ extern void fib_table_mark(u32 fib_index,
  * @param source
  *  the source to flush
  */
-extern void fib_table_sweep(u32 fib_index,
+__clib_export extern void fib_table_sweep(u32 fib_index,
                             fib_protocol_t proto,
                             fib_source_t source);
 
@@ -682,7 +682,7 @@ extern void fib_table_sweep(u32 fib_index,
  * @return fib_index
  *  The index of the FIB
  */
-extern u32 fib_table_get_index_for_sw_if_index(fib_protocol_t proto,
+__clib_export extern u32 fib_table_get_index_for_sw_if_index(fib_protocol_t proto,
 					       u32 sw_if_index);
 
 /**
@@ -698,7 +698,7 @@ extern u32 fib_table_get_index_for_sw_if_index(fib_protocol_t proto,
  * @return fib_index
  *  The tableID of the FIB
  */
-extern u32 fib_table_get_table_id_for_sw_if_index(fib_protocol_t proto,
+__clib_export extern u32 fib_table_get_table_id_for_sw_if_index(fib_protocol_t proto,
 						  u32 sw_if_index);
 
 /**
@@ -714,7 +714,7 @@ extern u32 fib_table_get_table_id_for_sw_if_index(fib_protocol_t proto,
  * @return fib_index
  *  The tableID of the FIB
  */
-extern u32 fib_table_get_table_id(u32 fib_index, fib_protocol_t proto);
+__clib_export extern u32 fib_table_get_table_id(u32 fib_index, fib_protocol_t proto);
 
 /**
  * @brief
@@ -730,7 +730,7 @@ extern u32 fib_table_get_table_id(u32 fib_index, fib_protocol_t proto);
  * @return fib_index
  *  The index of the FIB, which may be INVALID.
  */
-extern u32 fib_table_find(fib_protocol_t proto, u32 table_id);
+__clib_export extern u32 fib_table_find(fib_protocol_t proto, u32 table_id);
 
 
 /**
@@ -750,7 +750,7 @@ extern u32 fib_table_find(fib_protocol_t proto, u32 table_id);
  * @param source
  *  The ID of the client/source.
  */
-extern u32 fib_table_find_or_create_and_lock(fib_protocol_t proto,
+__clib_export extern u32 fib_table_find_or_create_and_lock(fib_protocol_t proto,
 					     u32 table_id,
                                              fib_source_t source);
 
@@ -796,7 +796,7 @@ extern u32 fib_table_find_or_create_and_lock_w_name(fib_protocol_t proto,
  * @return fib_index
  *  The index of the FIB
  */
-extern u32 fib_table_create_and_lock(fib_protocol_t proto,
+__clib_export extern u32 fib_table_create_and_lock(fib_protocol_t proto,
                                      fib_source_t source,
                                      const char *const fmt,
                                      ...);
@@ -813,7 +813,7 @@ extern u32 fib_table_create_and_lock(fib_protocol_t proto,
  *
  * @return The flow hash config
  */
-extern flow_hash_config_t fib_table_get_flow_hash_config(u32 fib_index,
+__clib_export extern flow_hash_config_t fib_table_get_flow_hash_config(u32 fib_index,
 							 fib_protocol_t proto);
 
 /**
@@ -842,7 +842,7 @@ extern flow_hash_config_t fib_table_get_default_flow_hash_config(fib_protocol_t 
  *
  * @return none
  */
-extern void fib_table_set_flow_hash_config(u32 fib_index,
+__clib_export extern void fib_table_set_flow_hash_config(u32 fib_index,
                                            fib_protocol_t proto,
                                            flow_hash_config_t hash_config);
 
@@ -859,7 +859,7 @@ extern void fib_table_set_flow_hash_config(u32 fib_index,
  * @param source
  *  The ID of the client/source.
  */ 
-extern void fib_table_unlock(u32 fib_index,
+__clib_export extern void fib_table_unlock(u32 fib_index,
 			     fib_protocol_t proto,
                              fib_source_t source);
 
@@ -877,7 +877,7 @@ extern void fib_table_unlock(u32 fib_index,
  * @param source
  *  The ID of the client/source.
  */ 
-extern void fib_table_lock(u32 fib_index,
+__clib_export extern void fib_table_lock(u32 fib_index,
 			   fib_protocol_t proto,
                            fib_source_t source);
 
@@ -893,7 +893,7 @@ extern void fib_table_lock(u32 fib_index,
  *
  * @return number of sourced entries.
  */ 
-extern u32 fib_table_get_num_entries(u32 fib_index,
+__clib_export extern u32 fib_table_get_num_entries(u32 fib_index,
 				     fib_protocol_t proto,
 				     fib_source_t source);
 
@@ -901,7 +901,7 @@ extern u32 fib_table_get_num_entries(u32 fib_index,
  * @brief
  * Get a pointer to a FIB table
  */
-extern fib_table_t *fib_table_get(fib_node_index_t index,
+__clib_export extern fib_table_t *fib_table_get(fib_node_index_t index,
 				  fib_protocol_t proto);
 
 /**
@@ -934,7 +934,7 @@ typedef fib_table_walk_rc_t (*fib_table_walk_fn_t)(fib_node_index_t fei,
  * N.B: This is NOT safe to deletes. If you need to delete walk the whole
  * table and store elements in a vector, then delete the elements
  */
-extern void fib_table_walk(u32 fib_index,
+__clib_export extern void fib_table_walk(u32 fib_index,
                            fib_protocol_t proto,
                            fib_table_walk_fn_t fn,
                            void *ctx);

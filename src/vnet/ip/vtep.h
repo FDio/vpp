@@ -59,8 +59,8 @@ vtep_table_create ()
   return t;
 }
 
-uword vtep_addr_ref (vtep_table_t * t, u32 fib_index, ip46_address_t * ip);
-uword vtep_addr_unref (vtep_table_t * t, u32 fib_index, ip46_address_t * ip);
+__clib_export uword vtep_addr_ref (vtep_table_t *t, u32 fib_index, ip46_address_t *ip);
+__clib_export uword vtep_addr_unref (vtep_table_t *t, u32 fib_index, ip46_address_t *ip);
 
 always_inline void
 vtep4_key_init (vtep4_key_t * k4)

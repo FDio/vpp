@@ -136,14 +136,14 @@ typedef struct ip4_main_t
 #define ARP_THROTTLE_BITS	(512)
 
 /** Global ip4 main structure. */
-extern ip4_main_t ip4_main;
+__clib_export extern ip4_main_t ip4_main;
 
 /** Global ip4 input node.  Errors get attached to ip4 input node. */
-extern vlib_node_registration_t ip4_input_node;
-extern vlib_node_registration_t ip4_lookup_node;
+__clib_export extern vlib_node_registration_t ip4_input_node;
+__clib_export extern vlib_node_registration_t ip4_lookup_node;
 extern vlib_node_registration_t ip4_local_node;
-extern vlib_node_registration_t ip4_rewrite_node;
-extern vlib_node_registration_t ip4_rewrite_mcast_node;
+__clib_export extern vlib_node_registration_t ip4_rewrite_node;
+__clib_export extern vlib_node_registration_t ip4_rewrite_mcast_node;
 extern vlib_node_registration_t ip4_rewrite_local_node;
 extern vlib_node_registration_t ip4_arp_node;
 extern vlib_node_registration_t ip4_glean_node;
@@ -194,18 +194,16 @@ ip4_interface_address_matching_destination (ip4_main_t * im,
   return result;
 }
 
-ip4_address_t *ip4_interface_first_address (ip4_main_t * im, u32 sw_if_index,
-					    ip_interface_address_t **
-					    result_ia);
+__clib_export ip4_address_t *ip4_interface_first_address (ip4_main_t *im, u32 sw_if_index,
+							  ip_interface_address_t **result_ia);
 
-clib_error_t *ip4_add_del_interface_address (vlib_main_t * vm,
-					     u32 sw_if_index,
-					     ip4_address_t * address,
-					     u32 address_length, u32 is_del);
+__clib_export clib_error_t *ip4_add_del_interface_address (vlib_main_t *vm, u32 sw_if_index,
+							   ip4_address_t *address,
+							   u32 address_length, u32 is_del);
 
 void ip4_directed_broadcast (u32 sw_if_index, u8 enable);
 
-void ip4_sw_interface_enable_disable (u32 sw_if_index, u32 is_enable);
+__clib_export void ip4_sw_interface_enable_disable (u32 sw_if_index, u32 is_enable);
 
 static_always_inline int
 ip4_address_compare (ip4_address_t *a1, ip4_address_t *a2)
@@ -217,10 +215,10 @@ uword
 ip4_udp_register_listener (vlib_main_t * vm,
 			   u16 dst_port, u32 next_node_index);
 
-u16 ip4_tcp_udp_compute_checksum (vlib_main_t * vm, vlib_buffer_t * p0,
-				  ip4_header_t * ip0);
+__clib_export u16 ip4_tcp_udp_compute_checksum (vlib_main_t *vm, vlib_buffer_t *p0,
+						ip4_header_t *ip0);
 
-void ip4_register_protocol (u32 protocol, u32 node_index);
+__clib_export void ip4_register_protocol (u32 protocol, u32 node_index);
 void ip4_unregister_protocol (u32 protocolx);
 
 serialize_function_t serialize_vnet_ip4_main, unserialize_vnet_ip4_main;
@@ -228,21 +226,16 @@ serialize_function_t serialize_vnet_ip4_main, unserialize_vnet_ip4_main;
 int vnet_set_ip4_classify_intfc (vlib_main_t * vm, u32 sw_if_index,
 				 u32 table_index);
 
-void ip4_punt_redirect_add_paths (u32 rx_sw_if_index,
-				  const fib_route_path_t *paths);
+__clib_export void ip4_punt_redirect_add_paths (u32 rx_sw_if_index, const fib_route_path_t *paths);
 
-void ip4_punt_redirect_del (u32 rx_sw_if_index);
+__clib_export void ip4_punt_redirect_del (u32 rx_sw_if_index);
 
+void __clib_export ip4_forward_next_trace (vlib_main_t *vm, vlib_node_runtime_t *node,
+					   vlib_frame_t *frame, vlib_rx_or_tx_t which_adj_index);
 
-void
-ip4_forward_next_trace (vlib_main_t * vm,
-			vlib_node_runtime_t * node,
-			vlib_frame_t * frame,
-			vlib_rx_or_tx_t which_adj_index);
+__clib_export u8 *format_ip4_forward_next_trace (u8 *s, va_list *args);
 
-u8 *format_ip4_forward_next_trace (u8 * s, va_list * args);
-
-u32 ip4_tcp_udp_validate_checksum (vlib_main_t * vm, vlib_buffer_t * p0);
+__clib_export u32 ip4_tcp_udp_validate_checksum (vlib_main_t *vm, vlib_buffer_t *p0);
 
 always_inline u32
 vlib_buffer_get_ip4_fib_index (vlib_buffer_t * b)

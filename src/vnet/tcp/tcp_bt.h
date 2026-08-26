@@ -18,10 +18,10 @@
  * @param tc	connection for which the byte tracker should be allocated and
  * 		initialized
  */
-void tcp_bt_init (tcp_connection_t * tc);
+__clib_export void tcp_bt_init (tcp_connection_t *tc);
 
 /** Initialize a byte tracker with contiguous private extension storage. */
-void tcp_bt_init_opaque (tcp_connection_t *tc, uword opaque_size);
+__clib_export void tcp_bt_init_opaque (tcp_connection_t *tc, uword opaque_size);
 
 static_always_inline void *
 tcp_bt_opaque (tcp_connection_t *tc)
@@ -45,14 +45,14 @@ tcp_bt_tx_sent_after (f64 ts, u32 end_seq, f64 other_ts, u32 other_end)
 }
 
 /** Explicitly remove a sample from the transmit-order index. No-op if inactive. */
-void tcp_bt_tx_order_remove (tcp_byte_tracker_t *bt, tcp_bt_sample_t *bts);
+__clib_export void tcp_bt_tx_order_remove (tcp_byte_tracker_t *bt, tcp_bt_sample_t *bts);
 
 /**
  * Byte tracker cleanup
  *
  * @param tc	connection for which the byte tracker should be cleaned up
  */
-void tcp_bt_cleanup (tcp_connection_t * tc);
+__clib_export void tcp_bt_cleanup (tcp_connection_t *tc);
 /**
  * Enable or disable byte tracking
  *
@@ -64,19 +64,19 @@ void tcp_bt_cleanup (tcp_connection_t * tc);
  * @param enable	non-zero to enable byte tracking
  * @return	0 on success, -1 if data is in flight or RACK requires tracking
  */
-int tcp_bt_enable (tcp_connection_t *tc, u8 enable);
+__clib_export int tcp_bt_enable (tcp_connection_t *tc, u8 enable);
 /**
  * Flush byte tracker samples
  *
  * @param tc	tcp connection for which samples should be flushed
  */
-void tcp_bt_flush_samples (tcp_connection_t * tc);
+__clib_export void tcp_bt_flush_samples (tcp_connection_t *tc);
 /**
  * Track a tcp tx burst
  *
  * @param tc	tcp connection
  */
-void tcp_bt_track_tx (tcp_connection_t * tc, u32 len);
+__clib_export void tcp_bt_track_tx (tcp_connection_t *tc, u32 len);
 /**
  * Track a tcp retransmission
  *
@@ -84,13 +84,13 @@ void tcp_bt_track_tx (tcp_connection_t * tc, u32 len);
  * @param start	start sequence number
  * @param end	end sequence number
  */
-void tcp_bt_track_rxt (tcp_connection_t *tc, u32 start, u32 end);
+__clib_export void tcp_bt_track_rxt (tcp_connection_t *tc, u32 start, u32 end);
 
 /** Split the byte-tracker sample containing seq, if seq is an interior point. */
-void tcp_bt_split_at (tcp_connection_t *tc, u32 seq);
+__clib_export void tcp_bt_split_at (tcp_connection_t *tc, u32 seq);
 
 /** Rewind retransmission selection to the sample containing seq. */
-void tcp_bt_rxt_rewind (tcp_connection_t *tc, u32 seq);
+__clib_export void tcp_bt_rxt_rewind (tcp_connection_t *tc, u32 seq);
 
 /**
  * Apply cumulative ACK and prepared SACK ranges to the byte tracker
@@ -103,25 +103,25 @@ void tcp_bt_rxt_rewind (tcp_connection_t *tc, u32 seq);
 void tcp_bt_apply_ack (tcp_connection_t *tc, u32 ack, u32 high_sacked, tcp_ack_ctx_t *ac);
 void tcp_bt_loss_on_ack (tcp_connection_t *tc, tcp_ack_ctx_t *ac);
 void tcp_bt_dsack_recovery_init (tcp_connection_t *tc);
-void tcp_bt_dsack_recovery_clear (tcp_connection_t *tc);
-u32 tcp_bt_dsack_mark_duplicate (tcp_connection_t *tc, u32 start, u32 end);
-void tcp_bt_recompute_sack_loss (tcp_connection_t *tc);
-void tcp_bt_init_rxt (tcp_connection_t *tc, u32 snd_una);
-void tcp_bt_rxt_mark_lost (tcp_connection_t *tc);
+__clib_export void tcp_bt_dsack_recovery_clear (tcp_connection_t *tc);
+__clib_export u32 tcp_bt_dsack_mark_duplicate (tcp_connection_t *tc, u32 start, u32 end);
+__clib_export void tcp_bt_recompute_sack_loss (tcp_connection_t *tc);
+__clib_export void tcp_bt_init_rxt (tcp_connection_t *tc, u32 snd_una);
+__clib_export void tcp_bt_rxt_mark_lost (tcp_connection_t *tc);
 /** Handle SACK reneging and optionally restore formerly SACKed samples to the
  * transmit-order index. Consumers that immediately classify all restored
  * samples can leave them unlinked. */
-u8 tcp_bt_handle_sack_reneging (tcp_connection_t *tc, u8 restore_tx_order);
-u8 tcp_bt_is_sane_post_recovery (tcp_connection_t *tc);
-u8 tcp_bt_next_rxt_range (tcp_connection_t *tc, u8 have_unsent, u8 *can_rescue, u8 *snd_limited,
-			  tcp_rxt_range_t *range);
-u8 tcp_bt_last_rxt_range (tcp_connection_t *tc, tcp_rxt_range_t *range);
+__clib_export u8 tcp_bt_handle_sack_reneging (tcp_connection_t *tc, u8 restore_tx_order);
+__clib_export u8 tcp_bt_is_sane_post_recovery (tcp_connection_t *tc);
+__clib_export u8 tcp_bt_next_rxt_range (tcp_connection_t *tc, u8 have_unsent, u8 *can_rescue,
+					u8 *snd_limited, tcp_rxt_range_t *range);
+__clib_export u8 tcp_bt_last_rxt_range (tcp_connection_t *tc, tcp_rxt_range_t *range);
 /**
  * Check if sample to be generated is app limited
  *
  * @param tc	tcp connection
  */
-void tcp_bt_check_app_limited (tcp_connection_t * tc);
+__clib_export void tcp_bt_check_app_limited (tcp_connection_t *tc);
 /**
  * Check if the byte tracker is in sane state
  *
@@ -129,9 +129,9 @@ void tcp_bt_check_app_limited (tcp_connection_t * tc);
  *
  * @param bt	byte tracker
  */
-int tcp_bt_is_sane (tcp_byte_tracker_t * bt);
+__clib_export int tcp_bt_is_sane (tcp_byte_tracker_t *bt);
 
-format_function_t format_tcp_bt;
+__clib_export format_function_t format_tcp_bt;
 format_function_t format_tcp_bt_stats;
 
 #endif /* SRC_VNET_TCP_TCP_BT_H_ */

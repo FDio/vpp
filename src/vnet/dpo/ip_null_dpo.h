@@ -38,9 +38,8 @@ typedef enum ip_null_dpo_action_t_
 
 #define IP_NULL_DPO_ACTION_NUM (IP_NULL_ACTION_SEND_ICMP_PROHIBIT+1)
 
-extern void ip_null_dpo_add_and_lock (dpo_proto_t proto,
-				      ip_null_dpo_action_t action,
-				      dpo_id_t *dpo);
+__clib_export extern void ip_null_dpo_add_and_lock (dpo_proto_t proto, ip_null_dpo_action_t action,
+						    dpo_id_t *dpo);
 
 extern void ip_null_dpo_module_init(void);
 
