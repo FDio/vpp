@@ -804,8 +804,6 @@ spdk_vpp_session_accept_callback (session_t *s)
     return -1;
 
   s->session_state = SESSION_STATE_READY;
-  if (spdk_vpp_direct_rx_is_enabled ())
-    session_async_rx_enable (s);
   sock->session = s;
   sock->handle = session_handle (s);
   sock->listener_handle = s->listener_handle;
@@ -2015,6 +2013,12 @@ spdk_vpp_sock_group_impl_add_sock (struct spdk_sock_group_impl *_group, struct s
   clib_spinlock_lock (&sock->lock);
   sock->group = group;
   s = sock->handle != SESSION_INVALID_HANDLE ? session_get_from_handle_if_valid (sock->handle) : 0;
+  /* Accepted sockets are first visible without a backend poll group.  Enable
+   * deferred RX only after the socket has an owner that can take the buffers;
+   * bytes received during the accept-to-group window remain in the FIFO. */
+  if (!sock->is_listener && s && spdk_vpp_direct_rx_is_enabled () &&
+      !(s->flags & SESSION_F_ASYNC_RX))
+    session_async_rx_enable (s);
   if ((sock->is_listener && !TAILQ_EMPTY (&sock->acceptq)) || !STAILQ_EMPTY (&sock->rx_segments) ||
       (!sock->is_listener && s &&
        (svm_fifo_max_dequeue_cons (s->rx_fifo) || session_async_rx_pending (s))))
