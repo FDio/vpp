@@ -601,6 +601,7 @@ tcp_loss_account_recovery_ack (tcp_connection_t *tc, tcp_ack_ctx_t *ac, u8 has_s
     {
       tc->rxt_delivered += ac->rxt_sacked;
       tc->prr_delivered += ac->acked_and_sacked;
+      ASSERT (tcp_loss_recovery_state_is_sane (tc));
     }
   else
     {
@@ -659,9 +660,12 @@ tcp_cc_handle_event (tcp_connection_t *tc, tcp_ack_ctx_t *ac)
 {
   u8 has_sack = tcp_opts_sack_permitted (&tc->rcv_opts);
 
-  /* If reneging, wait for timer based retransmits */
+  /* Lost FINs and SACK reneging require timer based retransmits. */
   if (PREDICT_FALSE (tcp_is_lost_fin (tc) || tcp_scoreboard_is_reneging (&tc->sack_sb)))
-    return;
+    {
+      tcp_loss_recovery_state_sync (tc);
+      return;
+    }
 
   /*
    * If not in recovery, figure out if we should enter
@@ -671,14 +675,23 @@ tcp_cc_handle_event (tcp_connection_t *tc, tcp_ack_ctx_t *ac)
       if (ac->ack_flags & TCP_ACK_F_DSACK_SPURIOUS)
 	tcp_loss_dsack_undo (tc);
 
-      if (ac->ack_flags & TCP_ACK_F_DUPACK)
+      if (!(ac->ack_flags & TCP_ACK_F_DUPACK))
 	{
-	  tc->rcv_dupacks++;
-	  TCP_EVT (TCP_EVT_DUPACK_RCVD, tc, 1);
-	  tcp_cc_rcv_cong_ack (tc, TCP_CC_DUPACK, ac);
+	  /* Time-based loss can be exposed by a cumulative ACK */
+	  if (tcp_loss_should_enter_recovery (tc, ac, has_sack))
+	    {
+	      tc->rcv_dupacks = 0;
+	      tc->tsecr_last_ack = tc->rcv_opts.tsecr;
+	      tcp_loss_enter_recovery (tc);
+	    }
+	  else
+	    tcp_cc_update (tc, ac);
+	  return;
 	}
-      else
-	tcp_cc_update (tc, ac);
+
+      tc->rcv_dupacks++;
+      TCP_EVT (TCP_EVT_DUPACK_RCVD, tc, 1);
+      tcp_cc_rcv_cong_ack (tc, TCP_CC_DUPACK, ac);
 
       if (tcp_loss_should_enter_recovery (tc, ac, has_sack))
 	tcp_loss_enter_recovery (tc);
@@ -734,33 +747,6 @@ tcp_cc_handle_event (tcp_connection_t *tc, tcp_ack_ctx_t *ac)
     tcp_cc_rcv_cong_ack (tc, TCP_CC_PARTIALACK, ac);
 }
 
-static void
-tcp_handle_old_ack (tcp_connection_t *tc, tcp_ack_ctx_t *ac, u32 ack)
-{
-  if (!tcp_in_cong_recovery (tc))
-    {
-      /* An old ACK can still expose network duplication. RFC 3708 requires
-       * disabling D-SACK undo if the reported range was never retransmitted. */
-      if (tcp_opts_sack (&tc->rcv_opts))
-	tcp_rcv_dsack (tc, ack, ac);
-
-      if (ac->ack_flags & TCP_ACK_F_DSACK_SPURIOUS)
-	tcp_loss_dsack_undo (tc);
-      return;
-    }
-
-  tcp_ack_handle_feedback (tc, ack, ac);
-  if (ac->ack_flags & TCP_ACK_F_DETECT_LOSS)
-    tcp_loss_on_ack (tc, ac);
-
-  if ((ac->ack_flags & TCP_ACK_F_DSACK) && !ac->last_sacked_bytes &&
-      !(ac->ack_flags & TCP_ACK_F_DSACK_SPURIOUS))
-    return;
-
-  ac->ack_flags |= ac->last_sacked_bytes != 0;
-  tcp_cc_handle_event (tc, ac);
-}
-
 /**
  * Check if duplicate ack as per RFC5681 Sec. 2
  */
@@ -785,6 +771,42 @@ tcp_ack_is_cc_event (tcp_connection_t *tc, vlib_buffer_t *b, u32 prev_snd_wnd, t
 
   return ((ac->ack_flags & (TCP_ACK_F_DUPACK | TCP_ACK_F_DSACK_SPURIOUS | TCP_ACK_F_DETECT_LOSS)) ||
 	  tcp_in_cong_recovery (tc));
+}
+
+static_always_inline u8
+tcp_old_ack_is_cc_event (tcp_connection_t *tc, tcp_ack_ctx_t *ac)
+{
+  /* A D-SACK-only old ACK is not a recovery duplicate ACK unless it also
+   * carries new SACK or loss evidence. */
+  return ac->last_lost || (ac->ack_flags & TCP_ACK_F_DSACK_SPURIOUS) ||
+	 (tcp_in_cong_recovery (tc) &&
+	  (!(ac->ack_flags & TCP_ACK_F_DSACK) || ac->last_sacked_bytes));
+}
+
+static void
+tcp_handle_old_ack (tcp_connection_t *tc, tcp_ack_ctx_t *ac, u32 ack)
+{
+  if (!tcp_in_cong_recovery (tc) && !tcp_loss_old_ack_needs_full_feedback (tc))
+    {
+      /* An old ACK can still expose network duplication. RFC 3708 requires
+       * disabling D-SACK undo if the reported range was never retransmitted. */
+      if (tcp_opts_sack (&tc->rcv_opts))
+	tcp_rcv_dsack (tc, ack, ac);
+
+      if (ac->ack_flags & TCP_ACK_F_DSACK_SPURIOUS)
+	tcp_loss_dsack_undo (tc);
+      return;
+    }
+
+  tcp_ack_handle_feedback (tc, ack, ac);
+  if (ac->ack_flags & TCP_ACK_F_DETECT_LOSS)
+    tcp_loss_on_ack (tc, ac);
+
+  if (ac->last_sacked_bytes)
+    ac->ack_flags |= TCP_ACK_F_DUPACK;
+
+  if (tcp_old_ack_is_cc_event (tc, ac))
+    tcp_cc_handle_event (tc, ac);
 }
 
 /**
