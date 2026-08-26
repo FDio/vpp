@@ -1437,4 +1437,4 @@ if __name__ == "__main__":
             else:
                 print("%s attempt(s) left." % attempts)
         save_test_timings(test_timings)
-        sys.exit(exit_code)
+        os._exit(exit_code)
