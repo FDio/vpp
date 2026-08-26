@@ -33,6 +33,23 @@
       "message": "do we need this? if busy_pool_usecs or busy_poll_budget is defined, it should be enough to indicate we want busy poll?",
       "revId": "a4d1def8af97cd2e480b0764723dd9a9c9508b0e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "07e97f92_dfd78295",
+        "filename": "src/plugins/af_xdp/device.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1003,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-08-26T08:25:39Z",
+      "side": 1,
+      "message": "Setting the socket options alone does not continuously activate AF_XDP busy polling: the kernel enters sk_busy_loop() through recvmsg(), while this datapath calls recvmsg() only during fill-ring replenishment. Once an idle fill ring is full, no syscall occurs, so the next burst remains interrupt-driven and SO_PREFER_BUSY_POLL can lapse. Could we issue a nonblocking recvmsg() when the RX ring is empty and busy polling is enabled, similar to DPDK\u0027s AF_XDP receive path?",
+      "revId": "a4d1def8af97cd2e480b0764723dd9a9c9508b0e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
