@@ -1,9 +1,9 @@
 /*
  * SPDX-License-Identifier: Apache-2.0
- * Copyright (c) 2019 Cisco and/or its affiliates.
+ * Copyright (c) 2019, 2026 Cisco and/or its affiliates.
  */
 
-#include <vnet/teib/teib.h>
+#include <vnet/teib/teib_internal.h>
 
 static clib_error_t *
 teib_add (vlib_main_t * vm,
@@ -157,7 +157,7 @@ static clib_error_t *
 teib_show (vlib_main_t * vm,
 	   unformat_input_t * input, vlib_cli_command_t * cmd)
 {
-  teib_walk (teib_show_one, vm);
+  teib_walk_index (teib_show_one, vm);
   return (NULL);
 }
 

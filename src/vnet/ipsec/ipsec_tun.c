@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0
- * Copyright (c) 2015 Cisco and/or its affiliates.
+ * Copyright (c) 2015, 2026 Cisco and/or its affiliates.
  */
 
 /* ipsec_tun.h : IPSEC tunnel protection */
@@ -537,17 +537,10 @@ ipsec_tun_protect_unconfig (ipsec_main_t * im, ipsec_tun_protect_t * itp)
 }
 
 static void
-ipsec_tun_protect_update_from_teib (ipsec_tun_protect_t * itp,
-				    const teib_entry_t * ne)
+ipsec_tun_protect_update_from_teib (ipsec_tun_protect_t *itp, const teib_entry_info_t *info)
 {
-  if (NULL != ne)
-    {
-      const fib_prefix_t *pfx;
-
-      pfx = teib_entry_get_nh (ne);
-
-      ip46_address_copy (&itp->itp_tun.dst, &pfx->fp_addr);
-    }
+  if (NULL != info)
+    ip46_address_copy (&itp->itp_tun.dst, &info->nh.fp_addr);
   else
     ip46_address_reset (&itp->itp_tun.dst);
 }
@@ -655,8 +648,10 @@ ipsec_tun_protect_update (u32 sw_if_index,
 	{
 	  /* tunnel has no destination address, presumably because it's p2mp
 	     in which case we use the nh that this is protection for */
-	  ipsec_tun_protect_update_from_teib
-	    (itp, teib_entry_find (sw_if_index, nh));
+	  teib_entry_info_t info;
+
+	  ipsec_tun_protect_update_from_teib (
+	    itp, (teib_entry_find (sw_if_index, nh, &info) ? &info : NULL));
 	}
 
       if (is_l2)
@@ -897,20 +892,19 @@ ipsec_tun_protect_adj_delegate_format (const adj_delegate_t * aed, u8 * s)
 }
 
 static void
-ipsec_tun_teib_entry_added (const teib_entry_t * ne)
+ipsec_tun_teib_entry_added (const teib_entry_info_t *info)
 {
   ipsec_tun_protect_t *itp;
   index_t itpi;
 
-  itpi = ipsec_tun_protect_find (teib_entry_get_sw_if_index (ne),
-				 teib_entry_get_peer (ne));
+  itpi = ipsec_tun_protect_find (info->sw_if_index, &info->peer);
 
   if (INDEX_INVALID == itpi)
     return;
 
   itp = ipsec_tun_protect_get (itpi);
   ipsec_tun_protect_rx_db_remove (&ipsec_main, itp);
-  ipsec_tun_protect_update_from_teib (itp, ne);
+  ipsec_tun_protect_update_from_teib (itp, info);
   ipsec_tun_protect_set_crypto_addr (itp);
   ipsec_tun_protect_rx_db_add (&ipsec_main, itp);
 
@@ -918,13 +912,12 @@ ipsec_tun_teib_entry_added (const teib_entry_t * ne)
 }
 
 static void
-ipsec_tun_teib_entry_deleted (const teib_entry_t * ne)
+ipsec_tun_teib_entry_deleted (const teib_entry_info_t *info)
 {
   ipsec_tun_protect_t *itp;
   index_t itpi;
 
-  itpi = ipsec_tun_protect_find (teib_entry_get_sw_if_index (ne),
-				 teib_entry_get_peer (ne));
+  itpi = ipsec_tun_protect_find (info->sw_if_index, &info->peer);
 
   if (INDEX_INVALID == itpi)
     return;
