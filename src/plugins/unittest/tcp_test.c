@@ -7825,6 +7825,26 @@ tcp_test_bt (vlib_main_t * vm, unformat_input_t * input)
   TCP_TEST (!(tc->cfg_flags & (TCP_CFG_F_BYTE_TRACKER | TCP_CFG_F_RACK)),
 	    "byte-tracker cleanup clears dependent configuration");
 
+  /* Recovery consumers can align a scan boundary and rewind retransmission
+   * selection without knowing byte-tracker internals. */
+  memset (tc, 0, sizeof (*tc));
+  tcp_bt_init (tc);
+  tcp_test_set_time (thread_index, 70);
+  tcp_bt_track_tx (tc, 200);
+  tc->snd_nxt = 200;
+  tcp_bt_split_at (tc, 100);
+  bt = tc->bt;
+  bts = pool_elt_at_index (bt->samples, bt->head);
+  TCP_TEST (bts->min_seq == 0 && bts->max_seq == 100 &&
+	      pool_elt_at_index (bt->samples, bts->next)->min_seq == 100,
+	    "recovery boundary splits byte-tracker sample");
+  tc->sack_sb.high_rxt = 180;
+  tcp_bt_rxt_rewind (tc, 100);
+  bts = pool_elt_at_index (bt->samples, bt->cur_rxt);
+  TCP_TEST (bts->min_seq == 100 && tc->sack_sb.high_rxt == 100,
+	    "retransmission selection rewinds to requested sample");
+  tcp_bt_cleanup (tc);
+
   return 0;
 }
 
