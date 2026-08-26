@@ -16,6 +16,40 @@
       "message": "recheck",
       "revId": "db09cc7768e4685cb677e9b8a7d76d71e91bc4c1",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6dfb4ec7_985389f4",
+        "filename": "src/vnet/flow/flow_api.c",
+        "patchSetId": 41
+      },
+      "lineNbr": 511,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-08-26T08:29:33Z",
+      "side": 1,
+      "message": "On full success, `rv \u003d\u003d count` remains positive and is copied into the reply\u0027s `retval`, so a successful nonempty request appears to fail. Could we preserve the count in `n_success` and set `rv \u003d 0` when it equals `count`? The disable handler needs the same adjustment.",
+      "revId": "db09cc7768e4685cb677e9b8a7d76d71e91bc4c1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9217464e_eebf6bc8",
+        "filename": "src/vnet/flow/flow_cli.c",
+        "patchSetId": 41
+      },
+      "lineNbr": 482,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-08-26T08:29:33Z",
+      "side": 1,
+      "message": "The oversized spec path still returns directly, leaking `generic_spec` and `line_input`; the mask path below has the same issue. Could we free the temporary vector, set `error`, and use `goto done` for both paths?",
+      "revId": "db09cc7768e4685cb677e9b8a7d76d71e91bc4c1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
