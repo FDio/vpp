@@ -87,9 +87,17 @@ rdma_device_output_tx_mlx5_doorbell (rdma_txq_t * txq, rdma_mlx5_wqe_t * last,
 	  RDMA_TXQ_AVAIL_SZ (txq, txq->head, txq->tail) >=
 	  RDMA_TXQ_USED_SZ (txq->tail, tail));
 
+#ifdef __aarch64__
+  asm volatile ("dmb oshst" ::: "memory");
+#else
   CLIB_MEMORY_STORE_BARRIER ();
+#endif
   txq->dv_sq_dbrec[MLX5_SND_DBR] = htobe32 (tail);
+#ifdef __aarch64__
+  asm volatile ("dmb oshst" ::: "memory");
+#else
   CLIB_COMPILER_BARRIER ();
+#endif
   txq->dv_sq_db[0] = *(u64 *) last;
 }
 
