@@ -37,7 +37,7 @@
 
 static u16 msg_id_base;
 
-vpe_api_main_t vpe_api_main;
+__clib_export vpe_api_main_t vpe_api_main;
 
 #define foreach_vpe_api_msg                                                                        \
   _ (SW_INTERFACE_SET_FLAGS, sw_interface_set_flags)                                               \

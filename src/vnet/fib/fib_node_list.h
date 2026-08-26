@@ -38,7 +38,7 @@ extern int fib_node_list_get_front(fib_node_list_t head,
 extern int fib_node_list_elt_get_next(u32 elt,
                                       fib_node_ptr_t *ptr);
 
-extern u32 fib_node_list_get_size(fib_node_list_t head);
+__clib_export extern u32 fib_node_list_get_size(fib_node_list_t head);
 
 /**
  * @brief Callback function invoked during a list walk

@@ -13,9 +13,9 @@
 
 #include <vnet/dpo/dpo.h>
 
-extern int dpo_is_drop(const dpo_id_t *dpo);
+__clib_export extern int dpo_is_drop (const dpo_id_t *dpo);
 
-extern const dpo_id_t *drop_dpo_get(dpo_proto_t proto);
+__clib_export extern const dpo_id_t *drop_dpo_get (dpo_proto_t proto);
 
 extern void drop_dpo_module_init(void);
 

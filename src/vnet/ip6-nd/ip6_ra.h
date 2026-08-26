@@ -115,12 +115,10 @@ extern int ip6_ra_config (vlib_main_t * vm, u32 sw_if_index,
 			  u32 initial_count, u32 initial_interval,
 			  u32 max_interval, u32 min_interval, u8 is_no);
 
-extern int ip6_ra_prefix (vlib_main_t * vm, u32 sw_if_index,
-			  ip6_address_t * prefix_addr, u8 prefix_len,
-			  u8 use_default, u32 val_lifetime,
-			  u32 pref_lifetime, u8 no_advertise,
-			  u8 off_link, u8 no_autoconfig,
-			  u8 no_onlink, u8 is_no);
+__clib_export extern int ip6_ra_prefix (vlib_main_t *vm, u32 sw_if_index,
+					ip6_address_t *prefix_addr, u8 prefix_len, u8 use_default,
+					u32 val_lifetime, u32 pref_lifetime, u8 no_advertise,
+					u8 off_link, u8 no_autoconfig, u8 no_onlink, u8 is_no);
 
 typedef walk_rc_t (*ip6_ra_itf_walk_fn_t) (u32 sw_if_index, void *ctx);
 
@@ -160,10 +158,8 @@ typedef void (*ip6_ra_report_notify_t) (const ip6_ra_report_t * rap);
 
 extern void ip6_ra_report_register (ip6_ra_report_notify_t fn);
 extern void ip6_ra_report_unregister (ip6_ra_report_notify_t fn);
-extern void ip6_ra_update_secondary_radv_info (ip6_address_t * address,
-					       u8 prefix_len,
-					       u32 primary_sw_if_index,
-					       u32 valid_time,
-					       u32 preferred_time);
+__clib_export extern void ip6_ra_update_secondary_radv_info (ip6_address_t *address, u8 prefix_len,
+							     u32 primary_sw_if_index,
+							     u32 valid_time, u32 preferred_time);
 extern u8 ip6_ra_adv_enabled (u32 sw_if_index);
 #endif /* included_ip6_neighbor_h */

@@ -405,4 +405,5 @@ ip4_init (vlib_main_t * vm)
   return error;
 }
 
+__clib_export extern vlib_init_function_t *VLIB_INIT_FUNCTION_SYMBOL (ip4_init);
 VLIB_INIT_FUNCTION (ip4_init);

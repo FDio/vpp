@@ -20,8 +20,8 @@
 
 typedef void (timer_expiration_handler) (tcp_connection_t * tc);
 
-extern timer_expiration_handler tcp_timer_retransmit_handler;
-extern timer_expiration_handler tcp_timer_persist_handler;
+__clib_export extern timer_expiration_handler tcp_timer_retransmit_handler;
+__clib_export extern timer_expiration_handler tcp_timer_persist_handler;
 extern timer_expiration_handler tcp_timer_retransmit_syn_handler;
 
 typedef enum _tcp_error
@@ -264,11 +264,11 @@ typedef struct _tcp_main
   tcp_sdl_cb_fn_t sdl_cb;
 } tcp_main_t;
 
-extern tcp_main_t tcp_main;
+__clib_export extern tcp_main_t tcp_main;
 extern vlib_node_registration_t tcp4_input_node;
 extern vlib_node_registration_t tcp6_input_node;
-extern vlib_node_registration_t tcp4_output_node;
-extern vlib_node_registration_t tcp6_output_node;
+__clib_export extern vlib_node_registration_t tcp4_output_node;
+__clib_export extern vlib_node_registration_t tcp6_output_node;
 extern vlib_node_registration_t tcp4_established_node;
 extern vlib_node_registration_t tcp6_established_node;
 extern vlib_node_registration_t tcp4_syn_sent_node;
@@ -299,7 +299,7 @@ tcp_get_worker (clib_thread_index_t thread_index)
   return &tcp_main.wrk[thread_index];
 }
 
-tcp_connection_t *tcp_connection_alloc (u8 thread_index);
+__clib_export tcp_connection_t *tcp_connection_alloc (u8 thread_index);
 tcp_connection_t *tcp_connection_alloc_w_base (u8 thread_index,
 					       tcp_connection_t **base);
 void tcp_connection_free (tcp_connection_t * tc);
@@ -310,14 +310,14 @@ int tcp_half_open_connection_cleanup (tcp_connection_t * tc);
 
 void tcp_send_reset_w_pkt (tcp_connection_t *tc, vlib_buffer_t *pkt,
 			   clib_thread_index_t thread_index, u8 is_ip4);
-void tcp_send_reset (tcp_connection_t * tc);
+__clib_export void tcp_send_reset (tcp_connection_t *tc);
 void tcp_send_syn (tcp_connection_t * tc);
 void tcp_send_synack (tcp_connection_t * tc);
 void tcp_send_fin (tcp_connection_t * tc);
-void tcp_send_ack (tcp_connection_t * tc);
+__clib_export void tcp_send_ack (tcp_connection_t *tc);
 void tcp_send_window_update_ack (tcp_connection_t * tc);
 
-void tcp_program_ack (tcp_connection_t * tc);
+__clib_export void tcp_program_ack (tcp_connection_t *tc);
 void tcp_program_dupack (tcp_connection_t * tc);
 void tcp_program_retransmit (tcp_connection_t * tc);
 
@@ -331,9 +331,9 @@ u32 tcp_session_push_header (transport_connection_t *tconn, vlib_buffer_t **b, u
 int tcp_session_custom_tx (void *conn, transport_send_params_t * sp);
 
 void tcp_connection_timers_init (tcp_connection_t * tc);
-void tcp_connection_timers_reset (tcp_connection_t * tc);
+__clib_export void tcp_connection_timers_reset (tcp_connection_t *tc);
 void tcp_init_snd_vars (tcp_connection_t * tc);
-void tcp_connection_init_vars (tcp_connection_t * tc);
+__clib_export void tcp_connection_init_vars (tcp_connection_t *tc);
 void tcp_connection_tx_pacer_update (tcp_connection_t * tc);
 void tcp_connection_tx_pacer_reset (tcp_connection_t * tc, u32 window,
 				    u32 start_bucket);
@@ -341,7 +341,7 @@ void tcp_program_cleanup (tcp_worker_ctx_t * wrk, tcp_connection_t * tc);
 void tcp_check_gso (tcp_connection_t *tc);
 
 int tcp_buffer_make_reset (vlib_main_t *vm, vlib_buffer_t *b, u8 is_ip4);
-void tcp_punt_unknown (vlib_main_t * vm, u8 is_ip4, u8 is_add);
+__clib_export void tcp_punt_unknown (vlib_main_t *vm, u8 is_ip4, u8 is_add);
 int tcp_configure_v4_source_address_range (vlib_main_t * vm,
 					   ip4_address_t * start,
 					   ip4_address_t * end, u32 table_id);
@@ -351,9 +351,9 @@ int tcp_configure_v6_source_address_range (vlib_main_t * vm,
 
 clib_error_t *vnet_tcp_enable_disable (vlib_main_t * vm, u8 is_en);
 
-format_function_t format_tcp_state;
+__clib_export format_function_t format_tcp_state;
 format_function_t format_tcp_flags;
-format_function_t format_tcp_sacks;
+__clib_export format_function_t format_tcp_sacks;
 format_function_t format_tcp_rcv_sacks;
 format_function_t format_tcp_connection;
 format_function_t format_tcp_listener_connection;

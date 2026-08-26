@@ -51,8 +51,8 @@ extern index_t load_balance_map_add_or_lock(u32 n_buckets,
                                             u32 sum_of_weights,
                                             const load_balance_path_t *norm_paths);
 
-extern void load_balance_map_lock(index_t lmbi);
-extern void load_balance_map_unlock(index_t lbmi);
+__clib_export extern void load_balance_map_lock (index_t lmbi);
+__clib_export extern void load_balance_map_unlock (index_t lbmi);
 
 extern void load_balance_map_path_state_change(fib_node_index_t path_index);
 
@@ -62,7 +62,7 @@ extern void load_balance_map_show_mem(void);
 /**
  * The encapsulation breakages are for fast DP access
  */
-extern load_balance_map_t *load_balance_map_pool;
+__clib_export extern load_balance_map_t *load_balance_map_pool;
 
 static inline load_balance_map_t*
 load_balance_map_get (index_t lbmi)

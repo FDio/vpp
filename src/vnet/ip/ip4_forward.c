@@ -1137,6 +1137,7 @@ ip4_lookup_init (vlib_main_t * vm)
   return error;
 }
 
+__clib_export extern vlib_init_function_t *VLIB_INIT_FUNCTION_SYMBOL (ip4_lookup_init);
 VLIB_INIT_FUNCTION (ip4_lookup_init);
 
 typedef struct
@@ -1352,7 +1353,7 @@ ip4_tcp_udp_validate_checksum (vlib_main_t * vm, vlib_buffer_t * p0)
 }
 #endif
 
-VNET_FEATURE_ARC_INIT (ip4_local) = {
+VNET_FEATURE_ARC_INIT (ip4_local, __clib_export) = {
   .arc_name = "ip4-local",
   .start_nodes = VNET_FEATURES ("ip4-local", "ip4-receive"),
   .last_in_arc = "ip4-local-end-of-arc",

@@ -52,10 +52,10 @@ typedef int (*ip4_session_table_walk_fn_t) (clib_bihash_kv_16_8_t * kvp,
 void ip4_session_table_walk (clib_bihash_16_8_t * hash,
 			     ip4_session_table_walk_fn_t fn, void *arg);
 
-session_table_t *session_table_alloc (void);
+__clib_export session_table_t *session_table_alloc (void);
 u32 session_table_index (session_table_t * slt);
-void session_table_init (session_table_t * slt, u8 fib_proto);
-void session_table_free (session_table_t *slt, u8 fib_proto);
+__clib_export void session_table_init (session_table_t *slt, u8 fib_proto);
+__clib_export void session_table_free (session_table_t *slt, u8 fib_proto);
 
 u32 session_table_memory_size (session_table_t *st);
 u8 *format_session_table (u8 *s, va_list *args);

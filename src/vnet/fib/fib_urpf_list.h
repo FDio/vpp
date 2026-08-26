@@ -74,14 +74,14 @@ extern void fib_urpf_list_combine(index_t urpf1, index_t urpf2);
 
 extern void fib_urpf_list_bake(index_t urpf);
 
-extern u8 *format_fib_urpf_list(u8 *s, va_list *ap);
+__clib_export extern u8 *format_fib_urpf_list(u8 *s, va_list *ap);
 
 extern void fib_urpf_list_show_mem(void);
 
 /**
  * @brief pool of all fib_urpf_list
  */
-extern fib_urpf_list_t *fib_urpf_list_pool;
+__clib_export extern fib_urpf_list_t *fib_urpf_list_pool;
 
 static inline fib_urpf_list_t *
 fib_urpf_list_get (index_t index)

@@ -105,7 +105,7 @@ extern void adj_delegate_remove(adj_index_t ai,
  * @param type The type of delegate being added
  * @param adi The provider's [pool] index of its attached objet
  */
-extern int adj_delegate_add(ip_adjacency_t *adj,
+__clib_export extern int adj_delegate_add(ip_adjacency_t *adj,
                             adj_delegate_type_t fdt,
                             index_t adi);
 
@@ -115,7 +115,7 @@ extern int adj_delegate_add(ip_adjacency_t *adj,
  * @param ai The adjacency to get the delegate from
  * @param type The type of delegate being sought
  */
-extern adj_delegate_t *adj_delegate_get(const ip_adjacency_t *adj,
+__clib_export extern adj_delegate_t *adj_delegate_get(const ip_adjacency_t *adj,
                                         adj_delegate_type_t type);
 
 /**
@@ -127,7 +127,7 @@ extern void adj_delegate_register_type(adj_delegate_type_t type,
 /**
  * @brief create a new delegate type and register a new VFT
  */
-extern adj_delegate_type_t adj_delegate_register_new_type(
+__clib_export extern adj_delegate_type_t adj_delegate_register_new_type(
     const adj_delegate_vft_t *vft);
 
 #endif

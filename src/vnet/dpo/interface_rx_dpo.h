@@ -39,16 +39,15 @@ typedef struct interface_rx_dpo_t_
     u16 ido_locks;
 } interface_rx_dpo_t;
 
-extern void interface_rx_dpo_add_or_lock (dpo_proto_t proto,
-                                          u32 sw_if_index,
-                                          dpo_id_t *dpo);
+__clib_export extern void interface_rx_dpo_add_or_lock (dpo_proto_t proto, u32 sw_if_index,
+							dpo_id_t *dpo);
 
 extern void interface_rx_dpo_module_init(void);
 
 /**
  * @brief pool of all interface DPOs
  */
-extern interface_rx_dpo_t *interface_rx_dpo_pool;
+__clib_export extern interface_rx_dpo_t *interface_rx_dpo_pool;
 
 static inline interface_rx_dpo_t *
 interface_rx_dpo_get (index_t index)
