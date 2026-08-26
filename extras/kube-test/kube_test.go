@@ -160,7 +160,7 @@ func NginxProxyMirroringTest(s *KubeSuite) {
 
 	// wait for nginx to start up
 	time.Sleep(time.Second * 2)
-	out, err = s.Pods.ClientGeneric.Exec(ctx, []string{"curl", "-v", "--noproxy", "'*'", "--insecure", "http://" + s.Pods.NginxProxy.IpAddress + ":8080/64B.json"})
+	out, err = s.Pods.ClientGeneric.Exec(ctx, []string{"curl", "-v", "--noproxy", "*", "--insecure", "http://" + s.Pods.NginxProxy.IpAddress + ":8080/64B.json"})
 	Log(out)
 	AssertNil(err)
 }
