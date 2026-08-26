@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0
- * Copyright (c) 2016 Cisco and/or its affiliates.
+ * Copyright (c) 2016, 2026 Cisco and/or its affiliates.
  */
 
 /*
@@ -10,7 +10,7 @@
 #include <vlibmemory/api.h>
 
 #include <vnet/api_errno.h>
-#include <vnet/teib/teib.h>
+#include <vnet/teib/teib_internal.h>
 #include <vnet/ip/ip_types_api.h>
 #include <vnet/fib/fib_table.h>
 
@@ -54,26 +54,19 @@ typedef struct vl_api_teib_send_t_
 } vl_api_teib_send_t;
 
 static walk_rc_t
-vl_api_teib_send_one (index_t nei, void *arg)
+vl_api_teib_send_one (const teib_entry_info_t *info, void *arg)
 {
   vl_api_teib_details_t *mp;
   vl_api_teib_send_t *ctx = arg;
-  const teib_entry_t *ne;
-  const fib_prefix_t *pfx;
 
   mp = vl_msg_api_alloc_zero (sizeof (*mp));
   mp->_vl_msg_id = ntohs (VL_API_TEIB_DETAILS + REPLY_MSG_ID_BASE);
   mp->context = ctx->context;
 
-  ne = teib_entry_get (nei);
-  pfx = teib_entry_get_nh (ne);
-
-  ip_address_encode2 (teib_entry_get_peer (ne), &mp->entry.peer);
-  ip_address_encode (&pfx->fp_addr, IP46_TYPE_ANY, &mp->entry.nh);
-  mp->entry.nh_table_id =
-    htonl (fib_table_get_table_id
-	   (teib_entry_get_fib_index (ne), pfx->fp_proto));
-  mp->entry.sw_if_index = htonl (teib_entry_get_sw_if_index (ne));
+  ip_address_encode2 (&info->peer, &mp->entry.peer);
+  ip_address_encode (&info->nh.fp_addr, IP46_TYPE_ANY, &mp->entry.nh);
+  mp->entry.nh_table_id = htonl (fib_table_get_table_id (info->nh_fib_index, info->nh.fp_proto));
+  mp->entry.sw_if_index = htonl (info->sw_if_index);
 
   vl_api_send_msg (ctx->reg, (u8 *) mp);
 
