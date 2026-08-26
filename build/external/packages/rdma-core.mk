@@ -41,6 +41,7 @@ define  rdma-core_config_cmds
 	    -DENABLE_STATIC=1 -DENABLE_RESOLVE_NEIGH=0 -DNO_PYVERBS=1 -DENABLE_VALGRIND=0\
 	    -DCMAKE_BUILD_TYPE=$(RDMA_BUILD_TYPE) -DCMAKE_INSTALL_PREFIX=$(rdma-core_install_dir) \
 	    -DCMAKE_INSTALL_LIBDIR=lib \
+	    -DSYSUSERS_DIR=$(rdma-core_install_dir)/lib/sysusers.d \
 	    -DCMAKE_INSTALL_RUNDIR:PATH=/run \
 	    -DCMAKE_C_FLAGS='-fPIC' -DNO_MAN_PAGES=ON | tee $(rdma-core_config_log)
 endef
