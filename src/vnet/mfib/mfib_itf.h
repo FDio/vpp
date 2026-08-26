@@ -64,7 +64,7 @@ extern void mfib_itf_mac_add(mfib_itf_t *itf,
 extern void mfib_itf_mac_del(mfib_itf_t *itf,
                              const mfib_prefix_t *pfx);
 
-extern mfib_itf_t *mfib_itf_pool;
+__clib_export extern mfib_itf_t *mfib_itf_pool;
 
 /**
  * Get the MFIB interface representation

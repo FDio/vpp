@@ -403,12 +403,10 @@ typedef struct
 extern vlib_node_registration_t bond_input_node;
 extern vlib_node_registration_t bond_process_node;
 extern vnet_device_class_t bond_dev_class;
-extern bond_main_t bond_main;
+__clib_export extern bond_main_t bond_main;
 
-void bond_disable_collecting_distributing (vlib_main_t * vm,
-					   member_if_t * mif);
-void bond_enable_collecting_distributing (vlib_main_t * vm,
-					  member_if_t * mif);
+__clib_export void bond_disable_collecting_distributing (vlib_main_t *vm, member_if_t *mif);
+__clib_export void bond_enable_collecting_distributing (vlib_main_t *vm, member_if_t *mif);
 u8 *format_bond_interface_name (u8 * s, va_list * args);
 
 void bond_set_intf_weight (vlib_main_t * vm,

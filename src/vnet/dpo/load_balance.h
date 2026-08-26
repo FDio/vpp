@@ -38,7 +38,7 @@ typedef struct load_balance_main_t_
     vlib_combined_counter_main_t lbm_via_counters;
 } load_balance_main_t;
 
-extern load_balance_main_t load_balance_main;
+__clib_export extern load_balance_main_t load_balance_main;
 
 /**
  * The maximum number of buckets that a load-balance object can have
@@ -188,29 +188,25 @@ typedef enum load_balance_format_flags_t_
   LOAD_BALANCE_FORMAT_RANGE = (1 << 1),
 } load_balance_format_flags_t;
 
-extern index_t load_balance_create(u32 num_buckets,
-				   dpo_proto_t lb_proto,
-				   flow_hash_config_t fhc);
+__clib_export extern index_t load_balance_create (u32 num_buckets, dpo_proto_t lb_proto,
+						  flow_hash_config_t fhc);
 extern flow_hash_config_t load_balance_get_default_flow_hash(dpo_proto_t lb_proto);
 extern void load_balance_multipath_update(
     const dpo_id_t *dpo,
     const load_balance_path_t * raw_next_hops,
     load_balance_flags_t flags);
 
-extern void load_balance_set_bucket(index_t lbi,
-				    u32 bucket,
-				    const dpo_id_t *next);
+__clib_export extern void load_balance_set_bucket (index_t lbi, u32 bucket, const dpo_id_t *next);
 extern void load_balance_set_urpf(index_t lbi,
 				  index_t urpf);
 extern void load_balance_set_fib_entry_flags(index_t lbi,
                                              fib_entry_flag_t flags);
-extern index_t load_balance_get_urpf(index_t lbi);
+__clib_export extern index_t load_balance_get_urpf (index_t lbi);
 
-extern u8* format_load_balance(u8 * s, va_list * args);
+__clib_export extern u8 *format_load_balance (u8 *s, va_list *args);
 
-extern const dpo_id_t *load_balance_get_bucket(index_t lbi,
-					       u32 bucket);
-extern int load_balance_is_drop(const dpo_id_t *dpo);
+__clib_export extern const dpo_id_t *load_balance_get_bucket (index_t lbi, u32 bucket);
+__clib_export extern int load_balance_is_drop (const dpo_id_t *dpo);
 extern u16 load_balance_n_buckets(index_t lbi);
 
 extern f64 load_balance_get_multipath_tolerance(void);
@@ -218,7 +214,7 @@ extern f64 load_balance_get_multipath_tolerance(void);
 /**
  * The encapsulation breakages are for fast DP access
  */
-extern load_balance_t *load_balance_pool;
+__clib_export extern load_balance_t *load_balance_pool;
 static inline load_balance_t*
 load_balance_get (index_t lbi)
 {

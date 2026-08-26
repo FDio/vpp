@@ -93,12 +93,10 @@ typedef struct lookup_dpo_t
     u16 lkd_locks;
 } lookup_dpo_t;
 
-extern void lookup_dpo_add_or_lock_w_fib_index(fib_node_index_t fib_index,
-                                               dpo_proto_t proto,
-                                               lookup_cast_t cast,
-                                               lookup_input_t input,
-                                               lookup_table_t table,
-                                               dpo_id_t *dpo);
+__clib_export extern void lookup_dpo_add_or_lock_w_fib_index (fib_node_index_t fib_index,
+							      dpo_proto_t proto, lookup_cast_t cast,
+							      lookup_input_t input,
+							      lookup_table_t table, dpo_id_t *dpo);
 extern void lookup_dpo_add_or_lock_w_table_id(u32 table_id,
                                               dpo_proto_t proto,
                                               lookup_cast_t cast,
@@ -111,7 +109,7 @@ extern u8* format_lookup_dpo(u8 *s, va_list *args);
 /*
  * Encapsulation violation for fast data-path access
  */
-extern lookup_dpo_t *lookup_dpo_pool;
+__clib_export extern lookup_dpo_t *lookup_dpo_pool;
 
 static inline lookup_dpo_t *
 lookup_dpo_get (index_t index)

@@ -8,7 +8,7 @@
 #undef __included_bihash_template_inlines_h__
 #include <vppinfra/bihash_template_inlines.h>
 
-void BV (clib_bihash_init2) (BVT (clib_bihash_init2_args) * a)
+BIHASH_TEMPLATE_API void BV (clib_bihash_init2) (BVT (clib_bihash_init2_args) * a)
 {
   int i;
   void *oldheap;
@@ -65,8 +65,8 @@ do_lock:
     BV (clib_bihash_instantiate) (h);
 }
 
-void BV (clib_bihash_init)
-  (BVT (clib_bihash) * h, char *name, u32 nbuckets, uword memory_size)
+BIHASH_TEMPLATE_API void BV (clib_bihash_init) (BVT (clib_bihash) * h, char *name, u32 nbuckets,
+						uword memory_size)
 {
   BVT (clib_bihash_init2_args) _a, *a = &_a;
 
@@ -85,8 +85,8 @@ void BV (clib_bihash_init)
 #define MFD_ALLOW_SEALING 0x0002U
 #endif
 
-void BV (clib_bihash_initiator_init_svm)
-  (BVT (clib_bihash) * h, char *name, u32 nbuckets, u64 memory_size)
+BIHASH_TEMPLATE_API void BV (clib_bihash_initiator_init_svm) (BVT (clib_bihash) * h, char *name,
+							      u32 nbuckets, u64 memory_size)
 {
   uword bucket_size;
   u8 *mmap_addr;
@@ -158,8 +158,8 @@ void BV (clib_bihash_initiator_init_svm)
   h->instantiated = 1;
 }
 
-void BV (clib_bihash_responder_init_svm)
-  (BVT (clib_bihash) * h, char *name, int fd)
+BIHASH_TEMPLATE_API void BV (clib_bihash_responder_init_svm) (BVT (clib_bihash) * h, char *name,
+							      int fd)
 {
   u8 *mmap_addr;
   u64 memory_size;
@@ -209,18 +209,18 @@ void BV (clib_bihash_responder_init_svm)
 }
 #endif /* BIHASH_32_64_SVM */
 
-void BV (clib_bihash_set_kvp_format_fn) (BVT (clib_bihash) * h,
-					 format_function_t * kvp_fmt_fn)
+BIHASH_TEMPLATE_API void BV (clib_bihash_set_kvp_format_fn) (BVT (clib_bihash) * h,
+							     format_function_t *kvp_fmt_fn)
 {
   h->kvp_fmt_fn = kvp_fmt_fn;
 }
 
-int BV (clib_bihash_is_initialised) (const BVT (clib_bihash) * h)
+BIHASH_TEMPLATE_API int BV (clib_bihash_is_initialised) (const BVT (clib_bihash) * h)
 {
   return (h->instantiated != 0);
 }
 
-void BV (clib_bihash_free) (BVT (clib_bihash) * h)
+BIHASH_TEMPLATE_API void BV (clib_bihash_free) (BVT (clib_bihash) * h)
 {
   int i;
 
@@ -275,44 +275,46 @@ never_initialized:
 		(u64) (uword) h);
 }
 
-int BV (clib_bihash_add_del_with_hash) (BVT (clib_bihash) * h,
-					BVT (clib_bihash_kv) * add_v, u64 hash,
-					int is_add)
+BIHASH_TEMPLATE_API int BV (clib_bihash_add_del_with_hash) (BVT (clib_bihash) * h,
+							    BVT (clib_bihash_kv) * add_v, u64 hash,
+							    int is_add)
 {
   return BV (clib_bihash_add_del_inline_with_hash) (h, add_v, hash, is_add, 0,
 						    0, 0, 0);
 }
 
-int BV (clib_bihash_add_del)
-  (BVT (clib_bihash) * h, BVT (clib_bihash_kv) * add_v, int is_add)
+BIHASH_TEMPLATE_API int BV (clib_bihash_add_del) (BVT (clib_bihash) * h,
+						  BVT (clib_bihash_kv) * add_v, int is_add)
 {
   return BV (clib_bihash_add_del_inline) (h, add_v, is_add, 0, 0);
 }
 
-int BV (clib_bihash_add_or_overwrite_stale)
-  (BVT (clib_bihash) * h, BVT (clib_bihash_kv) * add_v,
-   int (*stale_callback) (BVT (clib_bihash_kv) *, void *), void *arg)
+BIHASH_TEMPLATE_API int
+  BV (clib_bihash_add_or_overwrite_stale) (BVT (clib_bihash) * h, BVT (clib_bihash_kv) * add_v,
+					   int (*stale_callback) (BVT (clib_bihash_kv) *, void *),
+					   void *arg)
 {
   return BV (clib_bihash_add_del_inline) (h, add_v, 1, stale_callback, arg);
 }
 
-int BV (clib_bihash_add_with_overwrite_cb) (
-  BVT (clib_bihash) * h, BVT (clib_bihash_kv) * add_v,
-  void (overwrite_cb) (BVT (clib_bihash_kv) *, void *), void *arg)
+BIHASH_TEMPLATE_API int
+  BV (clib_bihash_add_with_overwrite_cb) (BVT (clib_bihash) * h, BVT (clib_bihash_kv) * add_v,
+					  void (overwrite_cb) (BVT (clib_bihash_kv) *, void *),
+					  void *arg)
 {
   u64 hash = BV (clib_bihash_hash) (add_v);
   return BV (clib_bihash_add_del_inline_with_hash) (h, add_v, hash, 1, 0, 0,
 						    overwrite_cb, arg);
 }
 
-int BV (clib_bihash_search)
-  (BVT (clib_bihash) * h,
-   BVT (clib_bihash_kv) * search_key, BVT (clib_bihash_kv) * valuep)
+BIHASH_TEMPLATE_API int BV (clib_bihash_search) (BVT (clib_bihash) * h,
+						 BVT (clib_bihash_kv) * search_key,
+						 BVT (clib_bihash_kv) * valuep)
 {
   return BV (clib_bihash_search_inline_2) (h, search_key, valuep);
 }
 
-u8 *BV (format_bihash) (u8 * s, va_list * args)
+BIHASH_TEMPLATE_API u8 *BV (format_bihash) (u8 *s, va_list *args)
 {
   BVT (clib_bihash) * h = va_arg (*args, BVT (clib_bihash) *);
   int verbose = va_arg (*args, int);
@@ -438,9 +440,9 @@ u8 *BV (format_bihash) (u8 * s, va_list * args)
   return s;
 }
 
-void BV (clib_bihash_foreach_key_value_pair)
-  (BVT (clib_bihash) * h,
-   BV (clib_bihash_foreach_key_value_pair_cb) cb, void *arg)
+BIHASH_TEMPLATE_API void
+  BV (clib_bihash_foreach_key_value_pair) (BVT (clib_bihash) * h,
+					   BV (clib_bihash_foreach_key_value_pair_cb) cb, void *arg)
 {
   int i, j, k;
   BVT (clib_bihash_bucket) * b;

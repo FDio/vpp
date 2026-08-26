@@ -209,7 +209,7 @@ transport_fmt_req_is_explicit (transport_fmt_req_t fmt)
     return !!(fmt.as_u32 & ~TRANSPORT_FMT_REQ_LEVEL_MASK);
 }
 
-u8 *format_transport_proto (u8 * s, va_list * args);
+__clib_export u8 *format_transport_proto (u8 *s, va_list *args);
 u8 *format_transport_proto_short (u8 * s, va_list * args);
 u8 *format_transport_flags (u8 *s, va_list *args);
 u8 *format_transport_connection (u8 * s, va_list * args);
@@ -309,7 +309,7 @@ typedef enum tls_verify_cfg_
 #undef _
 } tls_verify_cfg_t;
 
-format_function_t format_tls_verify_cfg;
+__clib_export format_function_t format_tls_verify_cfg;
 
 #define foreach_tls_alpn_protos                                               \
   _ (NONE, "none")                                                            \
@@ -373,8 +373,8 @@ tls_alpn_proto_id_eq (tls_alpn_proto_id_t *actual,
   return memcmp (actual->base, expected->base, expected->len) == 0 ? 1 : 0;
 }
 
-tls_alpn_proto_t tls_alpn_proto_by_str (tls_alpn_proto_id_t *alpn_id);
-format_function_t format_tls_alpn_proto;
+__clib_export tls_alpn_proto_t tls_alpn_proto_by_str (tls_alpn_proto_id_t *alpn_id);
+__clib_export format_function_t format_tls_alpn_proto;
 
 typedef struct transport_endpt_crypto_cfg_
 {

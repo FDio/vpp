@@ -81,7 +81,7 @@ typedef struct vnet_main_t
     vlib_main_t *vlib_main;
 } vnet_main_t;
 
-extern vnet_main_t vnet_main;
+__clib_export extern vnet_main_t vnet_main;
 
 #include <vppinfra/pcap_funcs.h>
 #include <vnet/interface_funcs.h>

@@ -99,7 +99,7 @@ void segment_manager_free_safe (segment_manager_t *sm);
  * @param sm	segment manager to be freed
  */
 void segment_manager_init_free (segment_manager_t * sm);
-segment_manager_t *segment_manager_get (u32 index);
+__clib_export segment_manager_t *segment_manager_get (u32 index);
 segment_manager_t *segment_manager_get_if_valid (u32 index);
 u32 segment_manager_index (segment_manager_t * sm);
 
@@ -110,8 +110,8 @@ u32 segment_manager_index (segment_manager_t * sm);
  * @param segment_size	Size of segment to be added
  * @param notify_app	Flag set if app notification requested
  */
-int segment_manager_add_segment (segment_manager_t *sm, uword segment_size,
-				 u8 notify_app);
+__clib_export int segment_manager_add_segment (segment_manager_t *sm, uword segment_size,
+					       u8 notify_app);
 
 /**
  * Add segment with lock
@@ -120,29 +120,28 @@ int segment_manager_add_segment (segment_manager_t *sm, uword segment_size,
  * @param segment_size	Size of segment to be added
  * @param flags		Flags to be set on segment
  */
-fifo_segment_t *segment_manager_get_segment (segment_manager_t * sm,
-					     u32 segment_index);
+__clib_export fifo_segment_t *segment_manager_get_segment (segment_manager_t *sm,
+							   u32 segment_index);
 fifo_segment_t *segment_manager_get_segment_w_handle (u64 sh);
-fifo_segment_t *segment_manager_get_segment_w_lock (segment_manager_t * sm,
-						    u32 segment_index);
+__clib_export fifo_segment_t *segment_manager_get_segment_w_lock (segment_manager_t *sm,
+								  u32 segment_index);
 int segment_manager_add_first_segment (segment_manager_t * sm,
 				       u32 segment_size);
 u64 segment_manager_make_segment_handle (u32 segment_manager_index,
 					 u32 segment_index);
 u64 segment_manager_segment_handle (segment_manager_t * sm,
 				    fifo_segment_t * segment);
-void segment_manager_segment_reader_unlock (segment_manager_t * sm);
+__clib_export void segment_manager_segment_reader_unlock (segment_manager_t *sm);
 
-int segment_manager_alloc_session_fifos (segment_manager_t *sm,
-					 clib_thread_index_t thread_index,
-					 svm_fifo_t **rx_fifo,
-					 svm_fifo_t **tx_fifo);
+__clib_export int segment_manager_alloc_session_fifos (segment_manager_t *sm,
+						       clib_thread_index_t thread_index,
+						       svm_fifo_t **rx_fifo, svm_fifo_t **tx_fifo);
 int segment_manager_alloc_session_fifos_ct (session_t *s,
 					    segment_manager_t *sm,
 					    clib_thread_index_t thread_index,
 					    svm_fifo_t **rx_fifo,
 					    svm_fifo_t **tx_fifo);
-void segment_manager_dealloc_fifos (svm_fifo_t *rx_fifo, svm_fifo_t *tx_fifo);
+__clib_export void segment_manager_dealloc_fifos (svm_fifo_t *rx_fifo, svm_fifo_t *tx_fifo);
 void segment_manager_dealloc_fifos_ct (svm_fifo_t *rx_fifo, svm_fifo_t *tx_fifo, u32 is_client);
 void segment_manager_detach_fifo (svm_fifo_t **f);
 void segment_manager_attach_fifo (svm_fifo_t **f, session_t *s);

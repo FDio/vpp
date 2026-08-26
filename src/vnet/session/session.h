@@ -307,8 +307,8 @@ typedef struct session_main_
   session_stats_segs_indicies_t stats_seg_idx;
 } session_main_t;
 
-extern session_main_t session_main;
-extern vlib_node_registration_t session_queue_node;
+__clib_export extern session_main_t session_main;
+__clib_export extern vlib_node_registration_t session_queue_node;
 extern vlib_node_registration_t session_input_node;
 extern vlib_node_registration_t session_queue_process_node;
 extern vlib_node_registration_t session_queue_pre_input_node;
@@ -458,11 +458,11 @@ session_evt_alloc_old (session_worker_t * wrk)
 
 int session_wrk_handle_mq (session_worker_t *wrk, svm_msg_q_t *mq);
 
-session_t *session_alloc (clib_thread_index_t thread_index);
-void session_free (session_t * s);
+__clib_export session_t *session_alloc (clib_thread_index_t thread_index);
+__clib_export void session_free (session_t *s);
 void session_cleanup (session_t *s);
 void session_program_cleanup (session_t *s);
-void session_cleanup_half_open (session_handle_t ho_handle);
+__clib_export void session_cleanup_half_open (session_handle_t ho_handle);
 u8 session_is_valid (u32 si, u8 thread_index);
 
 always_inline session_t *
@@ -541,15 +541,15 @@ int session_open_stream (session_endpoint_cfg_t *sep, session_handle_t *rsh);
 int session_listen (session_t * s, session_endpoint_cfg_t * sep);
 int session_stop_listen (session_t * s);
 void session_half_close (session_t *s);
-void session_close (session_t * s);
-void session_reset (session_t * s);
+__clib_export void session_close (session_t *s);
+__clib_export void session_reset (session_t *s);
 void session_detach_app (session_t *s);
 void session_transport_half_close (session_t *s);
 void session_transport_close (session_t * s);
 void session_transport_reset (session_t * s);
-void session_transport_cleanup (session_t * s);
-int session_enqueue_notify (session_t *s);
-int session_dequeue_notify (session_t * s);
+__clib_export void session_transport_cleanup (session_t *s);
+__clib_export int session_enqueue_notify (session_t *s);
+__clib_export int session_dequeue_notify (session_t *s);
 int session_enqueue_notify_cl (session_t *s);
 /* Deprecated, use session_program_* functions */
 int session_send_io_evt_to_thread (svm_fifo_t *f, session_evt_type_t evt_type);
@@ -557,26 +557,25 @@ int session_send_io_evt_to_thread (svm_fifo_t *f, session_evt_type_t evt_type);
 int session_send_io_evt_to_thread_custom (void *data,
 					  clib_thread_index_t thread_index,
 					  session_evt_type_t evt_type);
-int session_program_tx_io_evt (session_handle_tu_t sh,
-			       session_evt_type_t evt_type);
-int session_program_rx_io_evt (session_handle_tu_t sh);
-int session_program_transport_io_evt (session_handle_tu_t sh,
-				      session_evt_type_t evt_type);
-void session_send_rpc_evt_to_thread (clib_thread_index_t thread_index,
-				     void *fp, void *rpc_args);
-void session_send_rpc_evt_to_thread_force (clib_thread_index_t thread_index,
-					   void *fp, void *rpc_args);
+__clib_export int session_program_tx_io_evt (session_handle_tu_t sh, session_evt_type_t evt_type);
+__clib_export int session_program_rx_io_evt (session_handle_tu_t sh);
+__clib_export int session_program_transport_io_evt (session_handle_tu_t sh,
+						    session_evt_type_t evt_type);
+__clib_export void session_send_rpc_evt_to_thread (clib_thread_index_t thread_index, void *fp,
+						   void *rpc_args);
+__clib_export void session_send_rpc_evt_to_thread_force (clib_thread_index_t thread_index, void *fp,
+							 void *rpc_args);
 void session_add_self_custom_tx_evt (transport_connection_t * tc,
 				     u8 has_prio);
 void sesssion_reschedule_tx (transport_connection_t * tc);
-transport_connection_t *session_get_transport (session_t *s);
-void session_get_endpoint (session_t *s, transport_endpoint_t *tep_rmt,
-			   transport_endpoint_t *tep_lcl);
-int session_transport_attribute (session_t *s, u8 is_get,
-				 transport_endpt_attr_t *attr);
+__clib_export transport_connection_t *session_get_transport (session_t *s);
+__clib_export void session_get_endpoint (session_t *s, transport_endpoint_t *tep_rmt,
+					 transport_endpoint_t *tep_lcl);
+__clib_export int session_transport_attribute (session_t *s, u8 is_get,
+					       transport_endpt_attr_t *attr);
 u64 session_segment_handle (session_t *s);
 
-u8 *format_session (u8 * s, va_list * args);
+__clib_export u8 *format_session (u8 *s, va_list *args);
 uword unformat_session (unformat_input_t * input, va_list * args);
 uword unformat_transport_connection (unformat_input_t * input,
 				     va_list * args);
@@ -593,21 +592,20 @@ transport_cleanup_cb (void *cb_fn, transport_connection_t *tc)
 
 int session_stream_connect_notify (transport_connection_t * tc,
 				   session_error_t err);
-int session_dgram_connect_notify (transport_connection_t *tc,
-				  session_handle_tu_t osh,
-				  session_t **new_session);
-void session_migrate_accept (session_t *s);
-int session_stream_accept_notify (transport_connection_t * tc);
-void session_transport_closing_notify (transport_connection_t * tc);
-void session_transport_delete_notify (transport_connection_t * tc);
-void session_half_open_delete_notify (transport_connection_t *tc);
+__clib_export int session_dgram_connect_notify (transport_connection_t *tc, session_handle_tu_t osh,
+						session_t **new_session);
+__clib_export void session_migrate_accept (session_t *s);
+__clib_export int session_stream_accept_notify (transport_connection_t *tc);
+__clib_export void session_transport_closing_notify (transport_connection_t *tc);
+__clib_export void session_transport_delete_notify (transport_connection_t *tc);
+__clib_export void session_half_open_delete_notify (transport_connection_t *tc);
 void session_half_open_delete_request (transport_connection_t *tc, transport_cleanup_cb_fn cb_fn);
-void session_half_open_migrate_notify (transport_connection_t *tc);
-int session_half_open_migrated_notify (transport_connection_t *tc);
-void session_transport_closed_notify (transport_connection_t * tc);
-void session_transport_reset_notify (transport_connection_t * tc);
-int session_stream_accept (transport_connection_t *tc, u32 listener_index,
-			   clib_thread_index_t thread_index, u8 notify);
+__clib_export void session_half_open_migrate_notify (transport_connection_t *tc);
+__clib_export int session_half_open_migrated_notify (transport_connection_t *tc);
+__clib_export void session_transport_closed_notify (transport_connection_t *tc);
+__clib_export void session_transport_reset_notify (transport_connection_t *tc);
+__clib_export int session_stream_accept (transport_connection_t *tc, u32 listener_index,
+					 clib_thread_index_t thread_index, u8 notify);
 int session_dgram_accept (transport_connection_t *tc, u32 listener_index,
 			  clib_thread_index_t thread_index);
 void session_transport_delete_request (transport_connection_t *tc,
@@ -630,14 +628,14 @@ void session_register_transport (transport_proto_t transport_proto,
 				 u32 output_node);
 transport_proto_t session_add_transport_proto (void);
 void session_register_update_time_fn (session_update_time_fn fn, u8 is_add);
-void session_register_update_time_fn_w_thread (session_update_time_fn fn, u8 is_add,
-					       clib_thread_index_t thread_index);
+__clib_export void session_register_update_time_fn_w_thread (session_update_time_fn fn, u8 is_add,
+							     clib_thread_index_t thread_index);
 void session_main_flush_enqueue_events (transport_proto_t transport_proto,
 					clib_thread_index_t thread_index);
 void session_queue_run_on_main_thread (vlib_main_t *vm);
 int session_tx_fifo_peek_bytes (transport_connection_t * tc, u8 * buffer,
 				u32 offset, u32 max_bytes);
-u32 session_tx_fifo_dequeue_drop (transport_connection_t * tc, u32 max_bytes);
+__clib_export u32 session_tx_fifo_dequeue_drop (transport_connection_t *tc, u32 max_bytes);
 int session_enqueue_dgram_connection_cl (session_t *s,
 					 session_dgram_hdr_t *hdr,
 					 vlib_buffer_t *b, u8 proto,
@@ -1118,9 +1116,8 @@ session_wrk_update_time (session_worker_t *wrk, f64 now)
 void session_wrk_enable_adaptive_mode (session_worker_t *wrk);
 fifo_segment_t *session_main_get_wrk_mqs_segment (void);
 void session_node_enable_disable (u8 is_en);
-clib_error_t *
-vnet_session_enable_disable (vlib_main_t *vm,
-			     session_enable_disable_args_t *args);
+__clib_export clib_error_t *vnet_session_enable_disable (vlib_main_t *vm,
+							 session_enable_disable_args_t *args);
 void session_wrk_handle_evts_main_rpc (void *);
 void session_wrk_program_app_wrk_evts (session_worker_t *wrk,
 				       u32 app_wrk_index);

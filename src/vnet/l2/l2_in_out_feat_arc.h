@@ -31,10 +31,9 @@ typedef enum
   IN_OUT_FEAT_ARC_N_TABLE_GROUPS
 } in_out_feat_arc_table_group_id_t;
 
-int vnet_l2_feature_enable_disable (const char *arc_name,
-				    const char *node_name, u32 sw_if_index,
-				    int enable_disable, void *feature_config,
-				    u32 n_feature_config_bytes);
+__clib_export int vnet_l2_feature_enable_disable (const char *arc_name, const char *node_name,
+						  u32 sw_if_index, int enable_disable,
+						  void *feature_config, u32 n_feature_config_bytes);
 
 extern vlib_node_registration_t l2_in_feat_arc_end_node;
 extern vlib_node_registration_t l2_out_feat_arc_end_node;

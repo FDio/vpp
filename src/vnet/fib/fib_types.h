@@ -78,12 +78,12 @@ extern ip46_type_t fib_proto_to_ip46(fib_protocol_t fproto);
 /**
  * @brief Convert from ip46_type to fib_protocol
  */
-extern fib_protocol_t fib_proto_from_ip46(ip46_type_t iproto);
+__clib_export extern fib_protocol_t fib_proto_from_ip46(ip46_type_t iproto);
 
 /**
  * @brief Convert from a protocol to a link type
  */
-vnet_link_t fib_proto_to_link (fib_protocol_t proto);
+__clib_export vnet_link_t fib_proto_to_link (fib_protocol_t proto);
 
 /**
  * FIB output chain type. When a child object requests a forwarding contribution
@@ -173,12 +173,12 @@ extern fib_forward_chain_type_t fib_forw_chain_type_from_link_type(vnet_link_t l
 /**
  * @brief Convert from a payload-protocol to a chain type.
  */
-extern fib_forward_chain_type_t fib_forw_chain_type_from_dpo_proto(dpo_proto_t proto);
+__clib_export extern fib_forward_chain_type_t fib_forw_chain_type_from_dpo_proto(dpo_proto_t proto);
 
 /**
  * @brief Convert from a fib-protocol to a chain type.
  */
-extern fib_forward_chain_type_t fib_forw_chain_type_from_fib_proto(fib_protocol_t proto);
+__clib_export extern fib_forward_chain_type_t fib_forw_chain_type_from_fib_proto(fib_protocol_t proto);
 
 /**
  * @brief Convert from a chain type to the DPO proto it will install
@@ -232,7 +232,7 @@ STATIC_ASSERT(STRUCT_OFFSET_OF(fib_prefix_t, fp_addr) == 4,
 /**
  * \brief Compare two prefixes for equality
  */
-extern int fib_prefix_cmp(const fib_prefix_t *p1,
+__clib_export extern int fib_prefix_cmp(const fib_prefix_t *p1,
 			  const fib_prefix_t *p2);
 
 /**
@@ -265,15 +265,15 @@ extern void fib_prefix_normalize(const fib_prefix_t *p,
 /**
  * \brief Host prefix from ip
  */
-extern void fib_prefix_from_ip46_addr (fib_protocol_t fproto,
+__clib_export extern void fib_prefix_from_ip46_addr (fib_protocol_t fproto,
 		                       const ip46_address_t *addr,
 		                       fib_prefix_t *pfx);
 
-extern u8 * format_fib_prefix(u8 * s, va_list * args);
+__clib_export extern u8 * format_fib_prefix(u8 * s, va_list * args);
 extern u8 * format_fib_forw_chain_type(u8 * s, va_list * args);
 
-extern dpo_proto_t fib_proto_to_dpo(fib_protocol_t fib_proto);
-extern fib_protocol_t dpo_proto_to_fib(dpo_proto_t dpo_proto);
+__clib_export extern dpo_proto_t fib_proto_to_dpo(fib_protocol_t fib_proto);
+__clib_export extern fib_protocol_t dpo_proto_to_fib(dpo_proto_t dpo_proto);
 
 /**
  * \brief Increase IPv4/IPv6 address according to the prefix length
@@ -316,7 +316,7 @@ typedef enum fib_special_type_t_ {
     for (_item = FIB_TYPE_SPEICAL_FIRST;		\
 	 _item <= FIB_SPEICAL_TYPE_LAST; _item++)
 
-extern u8 * format_fib_protocol(u8 * s, va_list *ap);
+__clib_export extern u8 * format_fib_protocol(u8 * s, va_list *ap);
 extern u8 * format_vnet_link(u8 *s, va_list *ap);
 
 /**
@@ -607,17 +607,17 @@ typedef struct fib_route_path_t_ {
 /**
  * Unformat a fib_route_path_t from CLI input
  */
-extern uword unformat_fib_route_path(unformat_input_t * input, va_list * args);
+__clib_export extern uword unformat_fib_route_path(unformat_input_t * input, va_list * args);
 
 /**
  * Format route path flags
  */
-extern u8 * format_fib_route_path(u8 *s, va_list *ap);
+__clib_export extern u8 * format_fib_route_path(u8 *s, va_list *ap);
 
 /*
  * Return true if the path is attached
  */
-extern int fib_route_path_is_attached (const fib_route_path_t *rpath);
+__clib_export extern int fib_route_path_is_attached (const fib_route_path_t *rpath);
 
 /**
  * A help string to list the FIB path options
