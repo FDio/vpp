@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0
- * Copyright (c) 2012 Cisco and/or its affiliates.
+ * Copyright (c) 2012, 2026 Cisco and/or its affiliates.
  */
 
 /* gre.h: types/functions for gre. */
@@ -330,7 +330,7 @@ extern void gre_update_adj (vnet_main_t *vnm, u32 sw_if_index, adj_index_t ai);
 typedef struct mgre_walk_ctx_t_
 {
   const gre_tunnel_t *t;
-  const teib_entry_t *ne;
+  teib_entry_info_t info;
 } mgre_walk_ctx_t;
 
 adj_walk_rc_t mgre_mk_complete_walk (adj_index_t ai, void *data);

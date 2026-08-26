@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0
- * Copyright (c) 2012 Cisco and/or its affiliates.
+ * Copyright (c) 2012, 2026 Cisco and/or its affiliates.
  */
 
 /* gre_interface.c: gre interfaces */
@@ -192,12 +192,10 @@ mgre_tunnel_stack (adj_index_t ai)
     }
   else
     {
-      const teib_entry_t *ne;
+      teib_entry_info_t info;
 
-      ne = teib_entry_find_46 (sw_if_index, adj->ia_nh_proto,
-			       &adj->sub_type.nbr.next_hop);
-      if (NULL != ne)
-	teib_entry_adj_stack (ne, ai);
+      if (teib_entry_find_46 (sw_if_index, adj->ia_nh_proto, &adj->sub_type.nbr.next_hop, &info))
+	teib_entry_adj_stack (&info, ai);
     }
 }
 
@@ -242,29 +240,24 @@ gre_tunnel_restack (gre_tunnel_t *gt)
 }
 
 static void
-gre_teib_mk_key (const gre_tunnel_t *t, const teib_entry_t *ne,
-		 gre_tunnel_key_t *key)
+gre_teib_mk_key (const gre_tunnel_t *t, const teib_entry_info_t *info, gre_tunnel_key_t *key)
 {
-  const fib_prefix_t *nh;
-
-  nh = teib_entry_get_nh (ne);
+  const fib_prefix_t *nh = &info->nh;
 
   /* construct the key using mode P2P so it can be found in the DP */
   if (FIB_PROTOCOL_IP4 == nh->fp_proto)
-    gre_mk_key4 (t->tunnel_src.ip4, nh->fp_addr.ip4,
-		 teib_entry_get_fib_index (ne), t->type, TUNNEL_MODE_P2P, 0,
-		 t->gre_key, &key->gtk_v4);
+    gre_mk_key4 (t->tunnel_src.ip4, nh->fp_addr.ip4, info->nh_fib_index, t->type, TUNNEL_MODE_P2P,
+		 0, t->gre_key, &key->gtk_v4);
   else
-    gre_mk_key6 (&t->tunnel_src.ip6, &nh->fp_addr.ip6,
-		 teib_entry_get_fib_index (ne), t->type, TUNNEL_MODE_P2P, 0,
-		 t->gre_key, &key->gtk_v6);
+    gre_mk_key6 (&t->tunnel_src.ip6, &nh->fp_addr.ip6, info->nh_fib_index, t->type, TUNNEL_MODE_P2P,
+		 0, t->gre_key, &key->gtk_v6);
 }
 
 /**
  * An TEIB entry has been added
  */
 static void
-gre_teib_entry_added (const teib_entry_t *ne)
+gre_teib_entry_added (const teib_entry_info_t *info)
 {
   gre_main_t *gm = &gre_main;
   const ip_address_t *nh;
@@ -273,7 +266,7 @@ gre_teib_entry_added (const teib_entry_t *ne)
   u32 sw_if_index;
   u32 t_idx;
 
-  sw_if_index = teib_entry_get_sw_if_index (ne);
+  sw_if_index = info->sw_if_index;
   if (vec_len (gm->tunnel_index_by_sw_if_index) <= sw_if_index)
     return;
 
@@ -290,21 +283,20 @@ gre_teib_entry_added (const teib_entry_t *ne)
 
   /* the next-hop (underlay) of the NHRP entry will form part of the key for
    * ingress lookup to match packets to this interface */
-  gre_teib_mk_key (t, ne, &key);
+  gre_teib_mk_key (t, info, &key);
   gre_tunnel_db_add (t, &key);
 
   /* update the rewrites for each of the adjacencies for this peer (overlay)
    * using  the next-hop (underlay) */
-  mgre_walk_ctx_t ctx = { .t = t, .ne = ne };
-  nh = teib_entry_get_peer (ne);
-  adj_nbr_walk_nh (
-    teib_entry_get_sw_if_index (ne),
-    (AF_IP4 == ip_addr_version (nh) ? FIB_PROTOCOL_IP4 : FIB_PROTOCOL_IP6),
-    &ip_addr_46 (nh), mgre_mk_complete_walk, &ctx);
+  mgre_walk_ctx_t ctx = { .t = t, .info = *info };
+  nh = &info->peer;
+  adj_nbr_walk_nh (info->sw_if_index,
+		   (AF_IP4 == ip_addr_version (nh) ? FIB_PROTOCOL_IP4 : FIB_PROTOCOL_IP6),
+		   &ip_addr_46 (nh), mgre_mk_complete_walk, &ctx);
 }
 
 static void
-gre_teib_entry_deleted (const teib_entry_t *ne)
+gre_teib_entry_deleted (const teib_entry_info_t *info)
 {
   gre_main_t *gm = &gre_main;
   const ip_address_t *nh;
@@ -313,7 +305,7 @@ gre_teib_entry_deleted (const teib_entry_t *ne)
   u32 sw_if_index;
   u32 t_idx;
 
-  sw_if_index = teib_entry_get_sw_if_index (ne);
+  sw_if_index = info->sw_if_index;
   if (vec_len (gm->tunnel_index_by_sw_if_index) <= sw_if_index)
     return;
 
@@ -325,37 +317,36 @@ gre_teib_entry_deleted (const teib_entry_t *ne)
   t = pool_elt_at_index (gm->tunnels, t_idx);
 
   /* remove the next-hop as an ingress lookup key */
-  gre_teib_mk_key (t, ne, &key);
+  gre_teib_mk_key (t, info, &key);
   gre_tunnel_db_remove (t, &key);
 
-  nh = teib_entry_get_peer (ne);
+  nh = &info->peer;
 
   /* make all the adjacencies incomplete */
-  adj_nbr_walk_nh (
-    teib_entry_get_sw_if_index (ne),
-    (AF_IP4 == ip_addr_version (nh) ? FIB_PROTOCOL_IP4 : FIB_PROTOCOL_IP6),
-    &ip_addr_46 (nh), mgre_mk_incomplete_walk, t);
+  adj_nbr_walk_nh (info->sw_if_index,
+		   (AF_IP4 == ip_addr_version (nh) ? FIB_PROTOCOL_IP4 : FIB_PROTOCOL_IP6),
+		   &ip_addr_46 (nh), mgre_mk_incomplete_walk, t);
 }
 
 static walk_rc_t
-gre_tunnel_delete_teib_walk (index_t nei, void *ctx)
+gre_tunnel_delete_teib_walk (const teib_entry_info_t *info, void *ctx)
 {
   gre_tunnel_t *t = ctx;
   gre_tunnel_key_t key;
 
-  gre_teib_mk_key (t, teib_entry_get (nei), &key);
+  gre_teib_mk_key (t, info, &key);
   gre_tunnel_db_remove (t, &key);
 
   return (WALK_CONTINUE);
 }
 
 static walk_rc_t
-gre_tunnel_add_teib_walk (index_t nei, void *ctx)
+gre_tunnel_add_teib_walk (const teib_entry_info_t *info, void *ctx)
 {
   gre_tunnel_t *t = ctx;
   gre_tunnel_key_t key = {};
 
-  gre_teib_mk_key (t, teib_entry_get (nei), &key);
+  gre_teib_mk_key (t, info, &key);
   gre_tunnel_db_add (t, &key);
 
   return (WALK_CONTINUE);
