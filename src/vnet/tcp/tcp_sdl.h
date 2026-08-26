@@ -14,6 +14,6 @@ typedef struct _auto_sdl_track_prefix_args
 } auto_sdl_track_prefix_args_t;
 
 typedef int (*tcp_sdl_cb_fn_t) (auto_sdl_track_prefix_args_t *args);
-extern void tcp_sdl_enable_disable (tcp_sdl_cb_fn_t fp);
+__clib_export extern void tcp_sdl_enable_disable (tcp_sdl_cb_fn_t fp);
 
 #endif /* _vnet_tcp_sdl_h_ */

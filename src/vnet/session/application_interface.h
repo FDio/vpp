@@ -242,24 +242,24 @@ typedef enum session_fd_flag_
 #undef _
 } session_fd_flag_t;
 
-session_error_t parse_uri (char *uri, session_endpoint_cfg_t *sep);
-session_error_t parse_target (char **uri, char **target);
+__clib_export session_error_t parse_uri (char *uri, session_endpoint_cfg_t *sep);
+__clib_export session_error_t parse_target (char **uri, char **target);
 session_error_t vnet_bind_uri (vnet_listen_args_t *);
 session_error_t vnet_unbind_uri (vnet_unlisten_args_t *a);
 session_error_t vnet_connect_uri (vnet_connect_args_t *a);
 
-session_error_t vnet_application_attach (vnet_app_attach_args_t *a);
-session_error_t vnet_application_detach (vnet_app_detach_args_t *a);
-session_error_t vnet_listen (vnet_listen_args_t *a);
-session_error_t vnet_connect (vnet_connect_args_t *a);
-session_error_t vnet_connect2 (vnet_connect_args_t *a);
-session_error_t vnet_connect_stream (vnet_connect_args_t *a);
-session_error_t vnet_unlisten (vnet_unlisten_args_t *a);
-session_error_t vnet_shutdown_session (vnet_shutdown_args_t *a);
-session_error_t vnet_disconnect_session (vnet_disconnect_args_t *a);
+__clib_export session_error_t vnet_application_attach (vnet_app_attach_args_t *a);
+__clib_export session_error_t vnet_application_detach (vnet_app_detach_args_t *a);
+__clib_export session_error_t vnet_listen (vnet_listen_args_t *a);
+__clib_export session_error_t vnet_connect (vnet_connect_args_t *a);
+__clib_export session_error_t vnet_connect2 (vnet_connect_args_t *a);
+__clib_export session_error_t vnet_connect_stream (vnet_connect_args_t *a);
+__clib_export session_error_t vnet_unlisten (vnet_unlisten_args_t *a);
+__clib_export session_error_t vnet_shutdown_session (vnet_shutdown_args_t *a);
+__clib_export session_error_t vnet_disconnect_session (vnet_disconnect_args_t *a);
 
-int vnet_app_add_cert_key_pair (vnet_app_add_cert_key_pair_args_t * a);
-int vnet_app_del_cert_key_pair (u32 index);
+__clib_export int vnet_app_add_cert_key_pair (vnet_app_add_cert_key_pair_args_t *a);
+__clib_export int vnet_app_del_cert_key_pair (u32 index);
 
 uword unformat_vnet_uri (unformat_input_t *input, va_list *args);
 

@@ -127,7 +127,7 @@ typedef struct
 #define ARP_TARGET 1
 
 extern u8 *format_ethernet_arp_header (u8 * s, va_list * va);
-extern u8 *format_ethernet_arp_opcode (u8 * s, va_list * va);
+__clib_export extern u8 *format_ethernet_arp_opcode (u8 *s, va_list *va);
 extern u8 *format_ethernet_arp_hardware_type (u8 * s, va_list * va);
 
 #endif /* included_ethernet_arp_packet_h */

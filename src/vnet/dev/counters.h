@@ -92,7 +92,7 @@ typedef struct vnet_dev_counter_main
 vnet_dev_counter_main_t *vnet_dev_counters_alloc (vlib_main_t *,
 						  vnet_dev_counter_t *, u16,
 						  char *, ...);
-void vnet_dev_counters_clear (vlib_main_t *, vnet_dev_counter_main_t *);
+__clib_export void vnet_dev_counters_clear (vlib_main_t *, vnet_dev_counter_main_t *);
 void vnet_dev_counters_free (vlib_main_t *, vnet_dev_counter_main_t *);
 
 format_function_t format_vnet_dev_counters;

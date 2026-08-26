@@ -250,7 +250,7 @@ typedef struct
   u32 policy_id;
 } ipsec_output_trace_t;
 
-extern ipsec_main_t ipsec_main;
+__clib_export extern ipsec_main_t ipsec_main;
 
 extern vlib_node_registration_t ipsec4_tun_input_node;
 extern vlib_node_registration_t ipsec6_tun_input_node;
@@ -324,10 +324,10 @@ ipsec_set_next_index (vlib_buffer_t *b, vlib_node_runtime_t *node,
 				   thread_index, sa_index, 1);
 }
 
-void ipsec_set_async_mode (u32 is_enabled);
+__clib_export void ipsec_set_async_mode (u32 is_enabled);
 
-extern void ipsec_register_udp_port (u16 udp_port, u8 is_ip4);
-extern void ipsec_unregister_udp_port (u16 udp_port, u8 is_ip4);
+__clib_export extern void ipsec_register_udp_port (u16 udp_port, u8 is_ip4);
+__clib_export extern void ipsec_unregister_udp_port (u16 udp_port, u8 is_ip4);
 
 extern clib_error_t *ipsec_register_next_header (vlib_main_t *vm,
 						 u8 next_header,

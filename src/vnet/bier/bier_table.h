@@ -79,22 +79,17 @@ typedef struct bier_table_t_ {
 STATIC_ASSERT((sizeof(bier_table_t) <= 2*CLIB_CACHE_LINE_BYTES),
               "BIER table fits on 2 cache lines");
 
-extern index_t bier_table_add_or_lock(const bier_table_id_t *id,
-                                      mpls_label_t ll);
+__clib_export extern index_t bier_table_add_or_lock (const bier_table_id_t *id, mpls_label_t ll);
 extern index_t bier_table_lock(const bier_table_id_t *id);
-extern void bier_table_unlock(const bier_table_id_t *id);
+__clib_export extern void bier_table_unlock (const bier_table_id_t *id);
 
-extern void bier_table_route_path_add(const bier_table_id_t *bti,
-                                      bier_bp_t bp,
-                                      fib_route_path_t *brp);
-extern void bier_table_route_path_remove(const bier_table_id_t *bti,
-                                         bier_bp_t bp,
-                                         fib_route_path_t *brp);
-extern void bier_table_route_path_update(const bier_table_id_t *bti,
-                                         bier_bp_t bp,
-                                         fib_route_path_t *brp);
-extern void bier_table_route_delete(const bier_table_id_t *bti,
-                                    bier_bp_t b);
+__clib_export extern void bier_table_route_path_add (const bier_table_id_t *bti, bier_bp_t bp,
+						     fib_route_path_t *brp);
+__clib_export extern void bier_table_route_path_remove (const bier_table_id_t *bti, bier_bp_t bp,
+							fib_route_path_t *brp);
+__clib_export extern void bier_table_route_path_update (const bier_table_id_t *bti, bier_bp_t bp,
+							fib_route_path_t *brp);
+__clib_export extern void bier_table_route_delete (const bier_table_id_t *bti, bier_bp_t b);
 
 extern void bier_table_show_all(vlib_main_t * vm,
                                 bier_show_flags_t flags);
@@ -104,8 +99,8 @@ extern const bier_table_id_t *bier_table_get_id(index_t bti);
 extern u8 *format_bier_table (u8 *s, va_list *args);
 extern u8 *format_bier_table_entry (u8 *s, va_list *args);
 
-extern index_t bier_table_ecmp_create_and_lock(const bier_table_id_t *id);
-extern void bier_table_ecmp_unlock(index_t bti);
+__clib_export extern index_t bier_table_ecmp_create_and_lock (const bier_table_id_t *id);
+__clib_export extern void bier_table_ecmp_unlock (index_t bti);
 extern void bier_table_ecmp_set_fmask(index_t bti,
                                       bier_bp_t bp,
                                       index_t bfmi);
@@ -144,7 +139,7 @@ extern void bier_table_walk(const bier_table_id_t *id,
 /*
  * provided for fast data plane access.
  */
-extern bier_table_t *bier_table_pool;
+__clib_export extern bier_table_t *bier_table_pool;
 
 static inline bier_table_t *
 bier_table_get (index_t bti)

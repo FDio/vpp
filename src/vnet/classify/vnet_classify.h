@@ -15,8 +15,8 @@
 #include <vppinfra/crc32.h>
 #include <vppinfra/xxhash.h>
 
-extern vlib_node_registration_t ip4_classify_node;
-extern vlib_node_registration_t ip6_classify_node;
+__clib_export extern vlib_node_registration_t ip4_classify_node;
+__clib_export extern vlib_node_registration_t ip6_classify_node;
 
 #define CLASSIFY_TRACE 0
 
@@ -231,13 +231,13 @@ struct _vnet_classify_main
   vnet_main_t *vnet_main;
 };
 
-extern vnet_classify_main_t vnet_classify_main;
+__clib_export extern vnet_classify_main_t vnet_classify_main;
 
 u8 *format_classify_entry (u8 *s, va_list *args);
 u8 *format_classify_table (u8 * s, va_list * args);
 u8 *format_vnet_classify_table (u8 *s, va_list *args);
 
-u32 vnet_classify_hash_packet (const vnet_classify_table_t *t, u8 *h);
+__clib_export u32 vnet_classify_hash_packet (const vnet_classify_table_t *t, u8 *h);
 
 static_always_inline vnet_classify_table_t *
 vnet_classify_table_get (u32 table_index)
@@ -415,9 +415,8 @@ vnet_classify_prefetch_entry (vnet_classify_table_t * t, u64 hash)
   clib_prefetch_load (e);
 }
 
-vnet_classify_entry_t *
-vnet_classify_find_entry (const vnet_classify_table_t *t, u8 *h, u32 hash,
-			  f64 now);
+__clib_export vnet_classify_entry_t *vnet_classify_find_entry (const vnet_classify_table_t *t,
+							       u8 *h, u32 hash, f64 now);
 
 static_always_inline int
 vnet_classify_entry_is_equal (vnet_classify_entry_t *v, const u8 *d, u8 *m,
@@ -579,17 +578,16 @@ vnet_classify_table_t *vnet_classify_new_table (vnet_classify_main_t *cm,
 						u32 skip_n_vectors,
 						u32 match_n_vectors);
 
-int vnet_classify_add_del_session (vnet_classify_main_t *cm, u32 table_index,
-				   const u8 *match, u16 hit_next_index,
-				   u32 opaque_index, i32 advance, u8 action,
-				   u32 metadata, int is_add);
+__clib_export int vnet_classify_add_del_session (vnet_classify_main_t *cm, u32 table_index,
+						 const u8 *match, u16 hit_next_index,
+						 u32 opaque_index, i32 advance, u8 action,
+						 u32 metadata, int is_add);
 
-int vnet_classify_add_del_table (vnet_classify_main_t *cm, const u8 *mask,
-				 u32 nbuckets, u32 memory_size, u32 skip,
-				 u32 match, u32 next_table_index,
-				 u32 miss_next_index, u32 *table_index,
-				 u8 current_data_flag, i16 current_data_offset,
-				 int is_add, int del_chain);
+__clib_export int vnet_classify_add_del_table (vnet_classify_main_t *cm, const u8 *mask,
+					       u32 nbuckets, u32 memory_size, u32 skip, u32 match,
+					       u32 next_table_index, u32 miss_next_index,
+					       u32 *table_index, u8 current_data_flag,
+					       i16 current_data_offset, int is_add, int del_chain);
 void vnet_classify_delete_table_index (vnet_classify_main_t *cm,
 				       u32 table_index, int del_chain);
 
@@ -602,11 +600,11 @@ unformat_function_t unformat_l2_next_index;
 unformat_function_t unformat_ip_next_index;
 unformat_function_t unformat_ip4_match;
 unformat_function_t unformat_ip6_match;
-unformat_function_t unformat_l3_match;
-unformat_function_t unformat_l4_match;
+__clib_export unformat_function_t unformat_l3_match;
+__clib_export unformat_function_t unformat_l4_match;
 unformat_function_t unformat_vlan_tag;
-unformat_function_t unformat_l2_match;
-unformat_function_t unformat_classify_match;
+__clib_export unformat_function_t unformat_l2_match;
+__clib_export unformat_function_t unformat_classify_match;
 
 void vnet_classify_register_unformat_ip_next_index_fn
   (unformat_function_t * fn);
@@ -617,11 +615,9 @@ void vnet_classify_register_unformat_l2_next_index_fn
 void vnet_classify_register_unformat_acl_next_index_fn
   (unformat_function_t * fn);
 
-void vnet_classify_register_unformat_policer_next_index_fn
-  (unformat_function_t * fn);
+__clib_export void vnet_classify_register_unformat_policer_next_index_fn (unformat_function_t *fn);
 
-void vnet_classify_register_unformat_opaque_index_fn (unformat_function_t *
-						      fn);
+__clib_export void vnet_classify_register_unformat_opaque_index_fn (unformat_function_t *fn);
 
 u32 classify_get_pcap_chain (vnet_classify_main_t * cm, u32 sw_if_index);
 void classify_set_pcap_chain (vnet_classify_main_t * cm,
