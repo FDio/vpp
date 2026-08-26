@@ -35,7 +35,7 @@
  * @param sw_if_index
  *  The interface on which the peer resides
  */
-extern adj_index_t adj_nbr_add_or_lock(fib_protocol_t nh_proto,
+__clib_export extern adj_index_t adj_nbr_add_or_lock(fib_protocol_t nh_proto,
 				       vnet_link_t link_type,
 				       const ip46_address_t *nh_addr,
 				       u32 sw_if_index);
@@ -61,7 +61,7 @@ extern adj_index_t adj_nbr_add_or_lock(fib_protocol_t nh_proto,
  * @param rewrite
  *  The rewrite to prepend to packets
  */
-extern adj_index_t adj_nbr_add_or_lock_w_rewrite(fib_protocol_t nh_proto,
+__clib_export extern adj_index_t adj_nbr_add_or_lock_w_rewrite(fib_protocol_t nh_proto,
 						 vnet_link_t link_type,
 						 const ip46_address_t *nh_addr,
 						 u32 sw_if_index,
@@ -106,7 +106,7 @@ typedef enum adj_nbr_rewrite_flag_t_
  * @param
  *  The new rewrite
  */
-extern void adj_nbr_update_rewrite(adj_index_t adj_index,
+__clib_export extern void adj_nbr_update_rewrite(adj_index_t adj_index,
 				   adj_nbr_rewrite_flag_t flags,
 				   u8 *rewrite);
 
@@ -120,12 +120,12 @@ extern u8* format_adj_nbr_incomplete(u8* s, va_list *ap);
  * @brief
  * Format a neigbour (REWRITE) adjacency
  */
-extern u8* format_adj_nbr(u8* s, va_list *ap);
+__clib_export extern u8* format_adj_nbr(u8* s, va_list *ap);
 
 /**
  * @brief Walk the neighbour Adjacencies on a given interface
  */
-extern void adj_nbr_walk (u32 sw_if_index,
+__clib_export extern void adj_nbr_walk (u32 sw_if_index,
 			  fib_protocol_t adj_nh_proto,
 			  adj_walk_cb_t cb,
 			  void *ctx);
@@ -133,7 +133,7 @@ extern void adj_nbr_walk (u32 sw_if_index,
  * @brief Walk the neighbour Adjacencies on a given interface with a given next-hop
  */
 void
-adj_nbr_walk_nh (u32 sw_if_index,
+__clib_export adj_nbr_walk_nh (u32 sw_if_index,
 		 fib_protocol_t adj_nh_proto,
 		 const ip46_address_t *nh,
 		 adj_walk_cb_t cb,
@@ -163,7 +163,7 @@ adj_nbr_walk_nh6 (u32 sw_if_index,
  * @brief Lookup neighbor adjancency.
  */
 adj_index_t
-adj_nbr_find (fib_protocol_t nh_proto,
+__clib_export adj_nbr_find (fib_protocol_t nh_proto,
 	      vnet_link_t link_type,
 	      const ip46_address_t *nh_addr,
 	      u32 sw_if_index);
@@ -177,6 +177,6 @@ extern void adj_nbr_module_init(void);
  * @brief
  *  Return the size of the adjacency database. for testing purposes
  */
-extern u32 adj_nbr_db_size(void);
+__clib_export extern u32 adj_nbr_db_size(void);
 
 #endif

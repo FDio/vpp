@@ -94,7 +94,7 @@ typedef struct vnet_crypto_engine_registration
   vnet_crypto_reg_hash_alg_group_t *reg_hash_groups;
 } vnet_crypto_engine_registration_t;
 
-void vnet_crypto_register_engine_registration (vnet_crypto_engine_registration_t *r);
+__clib_export void vnet_crypto_register_engine_registration (vnet_crypto_engine_registration_t *r);
 
 extern __clib_export vnet_crypto_engine_registration_t __vnet_crypto_engine;
 

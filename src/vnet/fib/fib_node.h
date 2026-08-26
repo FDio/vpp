@@ -338,7 +338,7 @@ STATIC_ASSERT(sizeof(fib_node_t) == 12, "FIB node type is growing");
  * @param vft
  * virtual function table
  */
-extern void fib_node_register_type (fib_node_type_t ft,
+__clib_export extern void fib_node_register_type (fib_node_type_t ft,
 				    const fib_node_vft_t *vft);
 
 /**
@@ -350,7 +350,7 @@ extern void fib_node_register_type (fib_node_type_t ft,
  *
  * @return new FIB node type
  */
-extern fib_node_type_t fib_node_register_new_type (const char *name,
+__clib_export extern fib_node_type_t fib_node_register_new_type (const char *name,
                                                    const fib_node_vft_t *vft);
 
 /**
@@ -369,20 +369,20 @@ extern void fib_show_memory_usage(const char *name,
 				  u32 allocd_elts,
 				  size_t size_elt);
 
-extern void fib_node_init(fib_node_t *node,
+__clib_export extern void fib_node_init(fib_node_t *node,
 			  fib_node_type_t ft);
-extern void fib_node_deinit(fib_node_t *node);
+__clib_export extern void fib_node_deinit(fib_node_t *node);
 
-extern void fib_node_lock(fib_node_t *node);
-extern void fib_node_unlock(fib_node_t *node);
+__clib_export extern void fib_node_lock(fib_node_t *node);
+__clib_export extern void fib_node_unlock(fib_node_t *node);
 
 extern u32 fib_node_get_n_children(fib_node_type_t parent_type,
                                    fib_node_index_t parent_index);
-extern u32 fib_node_child_add(fib_node_type_t parent_type,
+__clib_export extern u32 fib_node_child_add(fib_node_type_t parent_type,
 			      fib_node_index_t parent_index,
 			      fib_node_type_t child_type,
 			      fib_node_index_t child_index);
-extern void fib_node_child_remove(fib_node_type_t parent_type,
+__clib_export extern void fib_node_child_remove(fib_node_type_t parent_type,
                                   fib_node_index_t parent_index,
                                   fib_node_index_t sibling_index);
 

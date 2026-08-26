@@ -100,7 +100,7 @@ adj_bfd_update_walk (adj_index_t ai)
  * of the CRUD of BFD sessions
  * would be static but for the fact it's called from the unit-tests
  */
-void
+__clib_export void
 adj_bfd_notify (bfd_listen_event_e event,
                 const bfd_session_t *session)
 {

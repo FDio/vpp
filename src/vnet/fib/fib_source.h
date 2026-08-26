@@ -280,9 +280,9 @@ extern fib_source_behaviour_t fib_source_get_behaviour(fib_source_t src);
 extern fib_source_priority_cmp_t fib_source_cmp(fib_source_t s1,
                                                 fib_source_t s2);
 
-extern u8 *format_fib_source(u8 *s, va_list *a);
+__clib_export extern u8 *format_fib_source(u8 *s, va_list *a);
 
-extern fib_source_t fib_source_allocate(const char *name,
+__clib_export extern fib_source_t fib_source_allocate(const char *name,
                                         fib_source_priority_t prio,
                                         fib_source_behaviour_t bh);
 

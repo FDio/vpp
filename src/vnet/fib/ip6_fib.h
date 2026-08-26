@@ -38,9 +38,9 @@ typedef struct ip6_fib_fwding_table_instance_t_
 /**
  * The two FIB tables; fwding and non-fwding
  */
-extern ip6_fib_fwding_table_instance_t ip6_fib_fwding_table;
+__clib_export extern ip6_fib_fwding_table_instance_t ip6_fib_fwding_table;
 
-extern fib_node_index_t ip6_fib_table_lookup(u32 fib_index,
+__clib_export extern fib_node_index_t ip6_fib_table_lookup(u32 fib_index,
 					     const ip6_address_t *addr,
 					     u32 len);
 extern fib_node_index_t ip6_fib_table_lookup_exact_match(u32 fib_index,
@@ -198,7 +198,7 @@ u32 ip6_fib_index_from_table_id (u32 table_id)
   return p[0];
 }
 
-extern u32 ip6_fib_table_get_index_for_sw_if_index(u32 sw_if_index);
+__clib_export extern u32 ip6_fib_table_get_index_for_sw_if_index(u32 sw_if_index);
 extern void ip6_fib_table_show (vlib_main_t *vm, fib_table_t *fib_table, int summary);
 
 #endif

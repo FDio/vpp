@@ -112,7 +112,7 @@ typedef struct
 /**
  * @brief Add/Delete a SPD
  */
-extern int ipsec_add_del_spd (vlib_main_t * vm, u32 spd_id, int is_add);
+__clib_export extern int ipsec_add_del_spd (vlib_main_t *vm, u32 spd_id, int is_add);
 
 /**
  * @brief Bind/attach a SPD to an interface

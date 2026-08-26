@@ -87,8 +87,8 @@ typedef enum ip_dscp_t_
 #undef _
 } __clib_packed ip_dscp_t;
 
-extern u8 *format_ip_dscp (u8 * s, va_list * va);
-unformat_function_t unformat_ip_dscp;
+__clib_export extern u8 *format_ip_dscp (u8 *s, va_list *va);
+__clib_export unformat_function_t unformat_ip_dscp;
 
 /**
  * IP DSCP bit shift
@@ -202,7 +202,7 @@ ip_csum_fold (ip_csum_t c)
   return c;
 }
 
-extern ip_csum_t (*vnet_incremental_checksum_fp) (ip_csum_t, void *, uword);
+__clib_export extern ip_csum_t (*vnet_incremental_checksum_fp) (ip_csum_t, void *, uword);
 
 /* Checksum routine. */
 always_inline ip_csum_t
