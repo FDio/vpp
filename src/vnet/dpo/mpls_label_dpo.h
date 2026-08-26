@@ -117,12 +117,10 @@ STATIC_ASSERT((sizeof(mpls_label_dpo_t) <= CLIB_CACHE_LINE_BYTES),
  * @param parent The parent of the created MPLS label object
  * @param dpo The MPLS label DPO created
  */
-extern void mpls_label_dpo_create(fib_mpls_label_t *label_stack,
-                                  mpls_eos_bit_t eos,
-                                  dpo_proto_t payload_proto,
-                                  mpls_label_dpo_flags_t flags,
-                                  const dpo_id_t *paremt,
-                                  dpo_id_t *dpo);
+__clib_export extern void mpls_label_dpo_create (fib_mpls_label_t *label_stack, mpls_eos_bit_t eos,
+						 dpo_proto_t payload_proto,
+						 mpls_label_dpo_flags_t flags,
+						 const dpo_id_t *paremt, dpo_id_t *dpo);
 
 extern u8* format_mpls_label_dpo(u8 *s, va_list *args);
 
@@ -130,7 +128,7 @@ extern u8* format_mpls_label_dpo(u8 *s, va_list *args);
 /*
  * Encapsulation violation for fast data-path access
  */
-extern mpls_label_dpo_t *mpls_label_dpo_pool;
+__clib_export extern mpls_label_dpo_t *mpls_label_dpo_pool;
 
 static inline mpls_label_dpo_t *
 mpls_label_dpo_get (index_t index)
@@ -143,6 +141,6 @@ extern void mpls_label_dpo_module_init(void);
 /*
  * test function to get the registered DPO type for the flags
  */
-extern dpo_type_t mpls_label_dpo_get_type(mpls_label_dpo_flags_t flags);
+__clib_export extern dpo_type_t mpls_label_dpo_get_type (mpls_label_dpo_flags_t flags);
 
 #endif

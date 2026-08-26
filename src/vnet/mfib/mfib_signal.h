@@ -30,7 +30,7 @@ typedef struct mfib_signal_t_
 } mfib_signal_t;
 
 
-extern void mfib_signal_push(const mfib_entry_t *mfe,
+__clib_export extern void mfib_signal_push(const mfib_entry_t *mfe,
                              mfib_itf_t *mfi,
                              vlib_buffer_t *b0);
 extern void mfib_signal_remove_itf(const mfib_itf_t *mfi);

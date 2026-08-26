@@ -221,7 +221,7 @@ fib_walk_get (index_t fwi)
 /*
  * not static so it can be used in the unit tests
  */
-u32
+__clib_export u32
 fib_walk_queue_get_size (fib_walk_priority_t prio)
 {
     return (fib_node_list_get_size(fib_walk_queues.fwqs_queues[prio].fwq_queue));
@@ -447,7 +447,7 @@ static u64 fib_walk_sleep_lengths[2];
  * @brief Service the queues
  * This is not declared static so that it can be unit tested - i know i know...
  */
-f64
+__clib_export f64
 fib_walk_process_queues (vlib_main_t * vm,
 			 const f64 quota)
 {

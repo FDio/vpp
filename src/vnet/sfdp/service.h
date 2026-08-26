@@ -29,7 +29,7 @@ typedef struct
   uword *service_index_by_name;
 } sfdp_service_main_t;
 
-extern sfdp_service_main_t sfdp_service_main;
+__clib_export extern sfdp_service_main_t sfdp_service_main;
 
 #define SFDP_SERVICE_DECLARE(x)                                               \
   extern u8 sfdp_service_index_in_bitmap_##x;                                 \

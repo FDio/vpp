@@ -93,7 +93,7 @@ typedef struct
   uword *port_info_by_name;
 } ip_main_t;
 
-extern ip_main_t ip_main;
+__clib_export extern ip_main_t ip_main;
 
 clib_error_t *ip_main_init (vlib_main_t * vm);
 
@@ -229,26 +229,23 @@ void ip_del_all_interface_addresses (vlib_main_t * vm, u32 sw_if_index);
 extern vlib_node_registration_t ip4_inacl_node;
 extern vlib_node_registration_t ip6_inacl_node;
 
-void ip_table_create (fib_protocol_t fproto, u32 table_id, u8 is_api,
-		      u8 create_mfib, const u8 *name);
+__clib_export void ip_table_create (fib_protocol_t fproto, u32 table_id, u8 is_api, u8 create_mfib,
+				    const u8 *name);
 
 void ip_table_delete (fib_protocol_t fproto, u32 table_id, u8 is_api);
 
-void fib_table_bind (fib_protocol_t fproto, u32 sw_if_index, u32 fib_index);
+__clib_export void fib_table_bind (fib_protocol_t fproto, u32 sw_if_index, u32 fib_index);
 void mfib_table_bind (fib_protocol_t fproto, u32 sw_if_index, u32 mfib_index);
-int ip_table_bind (fib_protocol_t fproto, u32 sw_if_index, u32 table_id);
+__clib_export int ip_table_bind (fib_protocol_t fproto, u32 sw_if_index, u32 table_id);
 
 u32 ip_table_get_unused_id (fib_protocol_t fproto);
 
 u8 ip_is_local (u32 fib_index, ip46_address_t *ip46_address, u8 is_ip4);
 
-void ip_feature_enable_disable (ip_address_family_t af,
-				ip_sub_address_family_t safi,
-				ip_feature_location_t loc,
-				const char *feature,
-				u32 sw_if_index, int enable_disable,
-				void *feature_config,
-				u32 n_feature_config_bytes);
+__clib_export void ip_feature_enable_disable (ip_address_family_t af, ip_sub_address_family_t safi,
+					      ip_feature_location_t loc, const char *feature,
+					      u32 sw_if_index, int enable_disable,
+					      void *feature_config, u32 n_feature_config_bytes);
 
 ethernet_type_t ip_address_family_to_ether_type (ip_address_family_t af);
 

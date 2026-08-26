@@ -21,8 +21,8 @@ typedef enum tunnel_mode_t_
 #undef _
 } __clib_packed tunnel_mode_t;
 
-extern u8 *format_tunnel_mode (u8 * s, va_list * args);
-extern uword unformat_tunnel_mode (unformat_input_t * input, va_list * args);
+__clib_export extern u8 *format_tunnel_mode (u8 *s, va_list *args);
+__clib_export extern uword unformat_tunnel_mode (unformat_input_t *input, va_list *args);
 
 /**
  * Keep these idenitical to those in ipip.api
@@ -47,9 +47,9 @@ typedef enum tunnel_encap_decap_flags_t_
 
 extern const u8 TUNNEL_ENCAP_DECAP_FLAG_MASK;
 
-extern u8 *format_tunnel_encap_decap_flags (u8 * s, va_list * args);
-extern uword unformat_tunnel_encap_decap_flags (unformat_input_t *input,
-						va_list *args);
+__clib_export extern u8 *format_tunnel_encap_decap_flags (u8 *s, va_list *args);
+__clib_export extern uword unformat_tunnel_encap_decap_flags (unformat_input_t *input,
+							      va_list *args);
 
 #define foreach_tunnel_flag                                                   \
   _ (RESOLVED, 0, "resolved")                                                 \

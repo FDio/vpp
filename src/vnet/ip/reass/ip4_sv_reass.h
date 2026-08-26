@@ -33,10 +33,9 @@ vnet_api_error_t ip4_sv_reass_get (u32 *timeout_ms, u32 *max_reassemblies,
 vnet_api_error_t ip4_sv_reass_enable_disable (u32 sw_if_index,
 					      u8 enable_disable);
 
-int ip4_sv_reass_enable_disable_with_refcnt (u32 sw_if_index, int is_enable);
+__clib_export int ip4_sv_reass_enable_disable_with_refcnt (u32 sw_if_index, int is_enable);
 int ip4_sv_reass_multicast_enable_disable_with_refcnt (u32 sw_if_index, int is_enable);
-int ip4_sv_reass_output_enable_disable_with_refcnt (u32 sw_if_index,
-						    int is_enable);
+__clib_export int ip4_sv_reass_output_enable_disable_with_refcnt (u32 sw_if_index, int is_enable);
 
 /*
  * Enable or disable extended reassembly.
@@ -68,7 +67,7 @@ int ip4_sv_reass_extended_lock (vlib_buffer_t *b,
 
 void ip4_sv_reass_extended_unlock (vlib_buffer_t *b);
 
-uword ip4_sv_reass_custom_register_next_node (uword node_index);
-uword ip4_sv_reass_custom_context_register_next_node (uword node_index);
+__clib_export uword ip4_sv_reass_custom_register_next_node (uword node_index);
+__clib_export uword ip4_sv_reass_custom_context_register_next_node (uword node_index);
 
 #endif /* __included_ip4_sv_reass_h__ */

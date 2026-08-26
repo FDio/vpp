@@ -196,7 +196,7 @@ extern void fib_path_contribute_urpf(fib_node_index_t path_index,
 extern adj_index_t fib_path_get_adj(fib_node_index_t path_index);
 extern int fib_path_recursive_loop_detect(fib_node_index_t path_index,
 					  fib_node_index_t **entry_indicies);
-extern u32 fib_path_get_resolving_interface(fib_node_index_t fib_entry_index);
+__clib_export extern u32 fib_path_get_resolving_interface(fib_node_index_t fib_entry_index);
 extern index_t fib_path_get_resolving_index(fib_node_index_t path_index);
 extern u16 fib_path_get_weight(fib_node_index_t path_index);
 extern u16 fib_path_get_preference(fib_node_index_t path_index);
@@ -213,7 +213,7 @@ typedef struct fib_path_encode_ctx_t_
     fib_route_path_t *rpaths;
 } fib_path_encode_ctx_t;
 
-extern fib_path_list_walk_rc_t fib_path_encode(fib_node_index_t path_list_index,
+__clib_export extern fib_path_list_walk_rc_t fib_path_encode(fib_node_index_t path_list_index,
                                                fib_node_index_t path_index,
                                                const struct fib_path_ext_t_ *ext_list,
                                                void *ctx);

@@ -2796,6 +2796,7 @@ ip6_lookup_init (vlib_main_t * vm)
   return error;
 }
 
+__clib_export extern vlib_init_function_t *VLIB_INIT_FUNCTION_SYMBOL (ip6_lookup_init);
 VLIB_INIT_FUNCTION (ip6_lookup_init);
 
 static clib_error_t *
