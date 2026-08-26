@@ -101,17 +101,17 @@ typedef enum fib_path_list_flags_t_ {
  */
 #define FIB_PATH_LIST_KEY_FLAGS (FIB_PATH_LIST_FLAG_NO_URPF)
 
-extern fib_node_index_t fib_path_list_create(fib_path_list_flags_t flags,
+__clib_export extern fib_node_index_t fib_path_list_create(fib_path_list_flags_t flags,
 					     const fib_route_path_t *paths);
 extern fib_node_index_t fib_path_list_create_special(dpo_proto_t nh_proto,
 						     fib_path_list_flags_t flags,
 						     const dpo_id_t *dpo);
 
-extern fib_node_index_t fib_path_list_copy_and_path_add(
+__clib_export extern fib_node_index_t fib_path_list_copy_and_path_add(
     fib_node_index_t pl_index,
     fib_path_list_flags_t flags,
     const fib_route_path_t *path);
-extern fib_node_index_t fib_path_list_copy_and_path_remove(
+__clib_export extern fib_node_index_t fib_path_list_copy_and_path_remove(
     fib_node_index_t pl_index,
     fib_path_list_flags_t flags,
     const fib_route_path_t *path);
@@ -122,7 +122,7 @@ extern fib_node_index_t* fib_path_list_paths_remove (
     fib_node_index_t path_list_index,
     const fib_route_path_t *rpaths);
 
-extern u32 fib_path_list_get_n_paths(fib_node_index_t pl_index);
+__clib_export extern u32 fib_path_list_get_n_paths(fib_node_index_t pl_index);
 
 /**
  * Flags to control how the path-list returns forwarding information
@@ -134,7 +134,7 @@ typedef enum fib_path_list_fwd_flags_t_
     FIB_PATH_LIST_FWD_FLAG_STICKY = (1 << 1),
 } fib_path_list_fwd_flags_t;
 
-extern void fib_path_list_contribute_forwarding(fib_node_index_t path_list_index,
+__clib_export extern void fib_path_list_contribute_forwarding(fib_node_index_t path_list_index,
 						fib_forward_chain_type_t type,
                                                 fib_path_list_fwd_flags_t flags,
 						dpo_id_t *dpo);
@@ -144,24 +144,24 @@ extern index_t fib_path_list_get_urpf(fib_node_index_t path_list_index);
 extern index_t fib_path_list_get_adj(fib_node_index_t path_list_index,
 				     fib_forward_chain_type_t type);
 
-extern u32 fib_path_list_child_add(fib_node_index_t pl_index,
+__clib_export extern u32 fib_path_list_child_add(fib_node_index_t pl_index,
 				   fib_node_type_t type,
 				   fib_node_index_t child_index);
-extern void fib_path_list_child_remove(fib_node_index_t pl_index,
+__clib_export extern void fib_path_list_child_remove(fib_node_index_t pl_index,
 				       fib_node_index_t sibling_index);
 extern void fib_path_list_back_walk(fib_node_index_t pl_index,
 				    fib_node_back_walk_ctx_t *ctx);
-extern void fib_path_list_lock(fib_node_index_t pl_index);
-extern void fib_path_list_unlock(fib_node_index_t pl_index);
+__clib_export extern void fib_path_list_lock(fib_node_index_t pl_index);
+__clib_export extern void fib_path_list_unlock(fib_node_index_t pl_index);
 extern int fib_path_list_recursive_loop_detect(fib_node_index_t path_list_index,
 					       fib_node_index_t **entry_indicies);
 extern u32 fib_path_list_get_resolving_interface(fib_node_index_t path_list_index);
 extern int fib_path_list_is_looped(fib_node_index_t path_list_index);
-extern int fib_path_list_is_popular(fib_node_index_t path_list_index);
+__clib_export extern int fib_path_list_is_popular(fib_node_index_t path_list_index);
 extern dpo_proto_t fib_path_list_get_proto(fib_node_index_t path_list_index);
-extern u8 * fib_path_list_format(fib_node_index_t pl_index,
+__clib_export extern u8 * fib_path_list_format(fib_node_index_t pl_index,
 				 u8 * s);
-extern u8 * format_fib_path_list(u8 * s, va_list *args);
+__clib_export extern u8 * format_fib_path_list(u8 * s, va_list *args);
 
 extern index_t fib_path_list_lb_map_add_or_lock(fib_node_index_t pl_index,
                                                 const fib_node_index_t *pis);
@@ -176,7 +176,7 @@ typedef fib_path_list_walk_rc_t (*fib_path_list_walk_fn_t)(
     fib_node_index_t path_index,
     void *ctx);
 
-extern void fib_path_list_walk(fib_node_index_t pl_index,
+__clib_export extern void fib_path_list_walk(fib_node_index_t pl_index,
 			       fib_path_list_walk_fn_t func,
 			       void *ctx);
 
@@ -186,7 +186,7 @@ typedef fib_path_list_walk_rc_t (*fib_path_list_walk_w_ext_fn_t)(
     const struct fib_path_ext_t_ *ext_list,
     void *ctx);
 
-extern void fib_path_list_walk_w_ext(fib_node_index_t pl_index,
+__clib_export extern void fib_path_list_walk_w_ext(fib_node_index_t pl_index,
                                      const fib_path_ext_list_t *ext_list,
                                      fib_path_list_walk_w_ext_fn_t func,
                                      void *ctx);
@@ -196,7 +196,7 @@ extern void fib_path_list_module_init(void);
 /*
  * functions for testing.
  */
-u32 fib_path_list_pool_size(void);
-u32 fib_path_list_db_size(void);
+__clib_export u32 fib_path_list_pool_size(void);
+__clib_export u32 fib_path_list_db_size(void);
 
 #endif

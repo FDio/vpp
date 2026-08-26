@@ -133,10 +133,8 @@ snap_get_protocol_info (snap_main_t * sm, snap_header_t * h)
 extern snap_main_t snap_main;
 
 /* Register given node index to take input for given snap type. */
-void
-snap_register_input_protocol (vlib_main_t * vm,
-			      char *name,
-			      u32 ieee_oui, u16 protocol, u32 node_index);
+void __clib_export snap_register_input_protocol (vlib_main_t *vm, char *name, u32 ieee_oui,
+						 u16 protocol, u32 node_index);
 
 format_function_t format_snap_protocol;
 format_function_t format_snap_header;

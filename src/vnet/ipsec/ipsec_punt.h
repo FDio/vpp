@@ -24,6 +24,6 @@ typedef enum ipsec_punt_reason_t_
 
 extern u8 *format_ipsec_punt_reason (u8 * s, va_list * args);
 
-extern vlib_punt_reason_t ipsec_punt_reason[IPSEC_PUNT_N_REASONS];
+__clib_export extern vlib_punt_reason_t ipsec_punt_reason[IPSEC_PUNT_N_REASONS];
 
 #endif /* __IPSEC_SPD_H__ */

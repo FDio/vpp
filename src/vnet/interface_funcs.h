@@ -153,9 +153,8 @@ typedef walk_rc_t (*vnet_hw_sw_interface_walk_t) (vnet_main_t * vnm,
  * Walk the SW interfaces on a HW interface - this is the super
  * interface and any sub-interfaces.
  */
-void vnet_hw_interface_walk_sw (vnet_main_t * vnm,
-				u32 hw_if_index,
-				vnet_hw_sw_interface_walk_t fn, void *ctx);
+__clib_export void vnet_hw_interface_walk_sw (vnet_main_t *vnm, u32 hw_if_index,
+					      vnet_hw_sw_interface_walk_t fn, void *ctx);
 
 /**
  * Call back walk type for walking SW indices on a HW interface
@@ -186,31 +185,28 @@ void vnet_hw_interface_walk (vnet_main_t * vnm,
 			     vnet_hw_interface_walk_t fn, void *ctx);
 
 /* Register a hardware interface instance. */
-u32 vnet_register_interface (vnet_main_t * vnm,
-			     u32 dev_class_index,
-			     u32 dev_instance,
-			     u32 hw_class_index, u32 hw_instance);
+__clib_export u32 vnet_register_interface (vnet_main_t *vnm, u32 dev_class_index, u32 dev_instance,
+					   u32 hw_class_index, u32 hw_instance);
 
 /**
  * Set interface output node - for interface registered without its output/tx
  * nodes created because its VNET_DEVICE_CLASS did not specify any tx_function.
  * This is typically the case for tunnel interfaces.
  */
-void vnet_set_interface_output_node (vnet_main_t * vnm,
-				     u32 hw_if_index, u32 node_index);
+__clib_export void vnet_set_interface_output_node (vnet_main_t *vnm, u32 hw_if_index,
+						   u32 node_index);
 
-void vnet_set_interface_l3_output_node (vlib_main_t *vm, u32 sw_if_index,
-					u8 *output_node);
-void vnet_reset_interface_l3_output_node (vlib_main_t *vm, u32 sw_if_index);
+__clib_export void vnet_set_interface_l3_output_node (vlib_main_t *vm, u32 sw_if_index,
+						      u8 *output_node);
+__clib_export void vnet_reset_interface_l3_output_node (vlib_main_t *vm, u32 sw_if_index);
 
 /* Creates a software interface given template. */
-clib_error_t *vnet_create_sw_interface (vnet_main_t * vnm,
-					vnet_sw_interface_t * template,
-					u32 * sw_if_index);
+__clib_export clib_error_t *
+vnet_create_sw_interface (vnet_main_t *vnm, vnet_sw_interface_t *template, u32 *sw_if_index);
 
-void vnet_delete_hw_interface (vnet_main_t * vnm, u32 hw_if_index);
+__clib_export void vnet_delete_hw_interface (vnet_main_t *vnm, u32 hw_if_index);
 void vnet_delete_sw_interface (vnet_main_t * vnm, u32 sw_if_index);
-int vnet_sw_interface_is_p2p (vnet_main_t * vnm, u32 sw_if_index);
+__clib_export int vnet_sw_interface_is_p2p (vnet_main_t *vnm, u32 sw_if_index);
 int vnet_sw_interface_is_nbma (vnet_main_t * vnm, u32 sw_if_index);
 
 always_inline vnet_sw_interface_flags_t
@@ -322,8 +318,8 @@ vnet_sw_interface_is_sub (vnet_main_t *vnm, u32 sw_if_index)
   return (sw->sw_if_index != sw->sup_sw_if_index);
 }
 
-clib_error_t *vnet_sw_interface_supports_addressing (vnet_main_t *vnm,
-						     u32 sw_if_index);
+__clib_export clib_error_t *vnet_sw_interface_supports_addressing (vnet_main_t *vnm,
+								   u32 sw_if_index);
 
 always_inline vlib_frame_t *
 vnet_get_frame_to_sw_interface (vnet_main_t * vnm, u32 sw_if_index)
@@ -372,15 +368,15 @@ vnet_hw_interface_change_link_speed (vnet_main_t *vnm, u32 hw_if_index, u32 link
 }
 
 /* Change interface flags (e.g. up, down, enable, disable). */
-clib_error_t *vnet_hw_interface_set_flags (vnet_main_t * vnm, u32 hw_if_index,
-					   vnet_hw_interface_flags_t flags);
+__clib_export clib_error_t *vnet_hw_interface_set_flags (vnet_main_t *vnm, u32 hw_if_index,
+							 vnet_hw_interface_flags_t flags);
 
 /* Change interface flags (e.g. up, down, enable, disable). */
-clib_error_t *vnet_sw_interface_set_flags (vnet_main_t * vnm, u32 sw_if_index,
-					   vnet_sw_interface_flags_t flags);
+__clib_export clib_error_t *vnet_sw_interface_set_flags (vnet_main_t *vnm, u32 sw_if_index,
+							 vnet_sw_interface_flags_t flags);
 
-void vnet_sw_interface_admin_up (vnet_main_t * vnm, u32 sw_if_index);
-void vnet_sw_interface_admin_down (vnet_main_t * vnm, u32 sw_if_index);
+__clib_export void vnet_sw_interface_admin_up (vnet_main_t *vnm, u32 sw_if_index);
+__clib_export void vnet_sw_interface_admin_down (vnet_main_t *vnm, u32 sw_if_index);
 
 /* Change interface class. */
 clib_error_t *vnet_hw_interface_set_class (vnet_main_t * vnm, u32 hw_if_index,
@@ -394,19 +390,18 @@ void vnet_hw_interface_init_for_class (vnet_main_t * vnm, u32 hw_if_index,
 				       u32 hw_class_index, u32 hw_instance);
 
 /* Rename interface */
-clib_error_t *vnet_rename_interface (vnet_main_t * vnm, u32 hw_if_index,
-				     char *new_name);
+__clib_export clib_error_t *vnet_rename_interface (vnet_main_t *vnm, u32 hw_if_index,
+						   char *new_name);
 
 /* Add/delete secondary interface mac address*/
-clib_error_t *vnet_hw_interface_add_del_mac_address (vnet_main_t * vnm,
-						     u32 hw_if_index,
-						     const u8 * mac_address,
-						     u8 is_add);
+__clib_export clib_error_t *vnet_hw_interface_add_del_mac_address (vnet_main_t *vnm,
+								   u32 hw_if_index,
+								   const u8 *mac_address,
+								   u8 is_add);
 
 /* Change interface mac address*/
-clib_error_t *vnet_hw_interface_change_mac_address (vnet_main_t * vnm,
-						    u32 hw_if_index,
-						    const u8 * mac_address);
+__clib_export clib_error_t *vnet_hw_interface_change_mac_address (vnet_main_t *vnm, u32 hw_if_index,
+								  const u8 *mac_address);
 
 /* Change rx-mode */
 clib_error_t *set_hw_interface_change_rx_mode (vnet_main_t * vnm,
@@ -423,15 +418,13 @@ clib_error_t *set_hw_interface_rx_placement (u32 hw_if_index, u32 queue_id,
 int set_hw_interface_tx_queue (u32 hw_if_index, u32 queue_id, uword *bitmap);
 
 /* Set the Max Frame Size on the HW interface */
-clib_error_t *vnet_hw_interface_set_max_frame_size (vnet_main_t *vnm,
-						    u32 hw_if_index,
-						    u32 max_frame_size);
+__clib_export clib_error_t *vnet_hw_interface_set_max_frame_size (vnet_main_t *vnm, u32 hw_if_index,
+								  u32 max_frame_size);
 /* Set the MTU on the HW interface */
-clib_error_t *vnet_hw_interface_set_mtu (vnet_main_t *vnm, u32 hw_if_index,
-					 u32 mtu);
+__clib_export clib_error_t *vnet_hw_interface_set_mtu (vnet_main_t *vnm, u32 hw_if_index, u32 mtu);
 
 /* Set the MTU on the SW interface */
-void vnet_sw_interface_set_mtu (vnet_main_t * vnm, u32 sw_if_index, u32 mtu);
+__clib_export void vnet_sw_interface_set_mtu (vnet_main_t *vnm, u32 sw_if_index, u32 mtu);
 void vnet_sw_interface_set_protocol_mtu (vnet_main_t * vnm, u32 sw_if_index,
 					 u32 mtu[]);
 
@@ -445,26 +438,25 @@ void vnet_sw_interface_ip_directed_broadcast (vnet_main_t * vnm,
 					      u32 sw_if_index, u8 enable);
 
 /* set interface rss queues */
-clib_error_t *vnet_hw_interface_set_rss_queues (vnet_main_t * vnm,
-						vnet_hw_interface_t * hi,
-						clib_bitmap_t * bitmap);
+__clib_export clib_error_t *
+vnet_hw_interface_set_rss_queues (vnet_main_t *vnm, vnet_hw_interface_t *hi, clib_bitmap_t *bitmap);
 
-void vnet_hw_if_update_runtime_data (vnet_main_t *vnm, u32 hw_if_index);
+__clib_export void vnet_hw_if_update_runtime_data (vnet_main_t *vnm, u32 hw_if_index);
 
 /* Formats sw/hw interface. */
 format_function_t format_vnet_hw_interface;
-format_function_t format_vnet_hw_if_rx_mode;
+__clib_export format_function_t format_vnet_hw_if_rx_mode;
 format_function_t format_vnet_hw_interface_link_speed;
-format_function_t format_vnet_hw_if_index_name;
+__clib_export format_function_t format_vnet_hw_if_index_name;
 format_function_t format_vnet_sw_interface;
-format_function_t format_vnet_sw_interface_name;
+__clib_export format_function_t format_vnet_sw_interface_name;
 format_function_t format_vnet_sw_interface_name_override;
-format_function_t format_vnet_sw_if_index_name;
+__clib_export format_function_t format_vnet_sw_if_index_name;
 format_function_t format_vnet_sw_interface_flags;
 
 /* Parses sw/hw interface name -> index. */
-unformat_function_t unformat_vnet_sw_interface;
-unformat_function_t unformat_vnet_hw_interface;
+__clib_export unformat_function_t unformat_vnet_sw_interface;
+__clib_export unformat_function_t unformat_vnet_hw_interface;
 unformat_function_t unformat_vnet_buffer_flags;
 unformat_function_t unformat_vnet_buffer_offload_flags;
 
@@ -565,8 +557,8 @@ typedef struct
   vnet_hw_if_caps_t mask;
 } vnet_hw_if_caps_change_t;
 
-void vnet_hw_if_change_caps (vnet_main_t *vnm, u32 hw_if_index,
-			     vnet_hw_if_caps_change_t *caps);
+__clib_export void vnet_hw_if_change_caps (vnet_main_t *vnm, u32 hw_if_index,
+					   vnet_hw_if_caps_change_t *caps);
 
 static_always_inline void
 vnet_hw_if_set_caps (vnet_main_t *vnm, u32 hw_if_index, vnet_hw_if_caps_t caps)

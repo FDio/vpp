@@ -33,7 +33,7 @@ typedef struct
   vnet_main_t *vnet_main;
 } bd_main_t;
 
-extern bd_main_t bd_main;
+__clib_export extern bd_main_t bd_main;
 
 /* Bridge domain member  */
 
@@ -166,7 +166,7 @@ u32 bd_get_unused_id (void);
  * \param bd_id The bridge domain ID
  * \return The bridge domain index in \c l2input_main->l2_bridge_domain_t vector.
  */
-u32 bd_find_index (bd_main_t * bdm, u32 bd_id);
+__clib_export u32 bd_find_index (bd_main_t *bdm, u32 bd_id);
 
 /**
  * \brief Create a bridge domain.
@@ -176,7 +176,7 @@ u32 bd_find_index (bd_main_t * bdm, u32 bd_id);
  * \param bdm bd_main pointer.
  * \return The bridge domain index in \c l2input_main->l2_bridge_domain_t vector.
  */
-u32 bd_add_bd_index (bd_main_t * bdm, u32 bd_id);
+__clib_export u32 bd_add_bd_index (bd_main_t *bdm, u32 bd_id);
 
 /**
  * \brief Get or create a bridge domain.
