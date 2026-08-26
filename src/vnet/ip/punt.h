@@ -94,9 +94,7 @@ typedef struct punt_reg_t_
   punt_union_t punt;
 } punt_reg_t;
 
-
-clib_error_t *vnet_punt_add_del (vlib_main_t * vm,
-				 const punt_reg_t * pr, bool is_add);
+__clib_export clib_error_t *vnet_punt_add_del (vlib_main_t *vm, const punt_reg_t *pr, bool is_add);
 clib_error_t *vnet_punt_socket_add (vlib_main_t * vm,
 				    u32 header_version,
 				    const punt_reg_t * pr,
@@ -166,7 +164,7 @@ typedef walk_rc_t (*punt_client_walk_cb_t) (const punt_client_t * pc,
 extern void punt_client_walk (punt_type_t pt,
 			      punt_client_walk_cb_t cb, void *ctx);
 
-extern u8 *format_vnet_punt_reason_flags (u8 *s, va_list *args);
+__clib_export extern u8 *format_vnet_punt_reason_flags (u8 *s, va_list *args);
 
 /*
  * inlines for the data-plane

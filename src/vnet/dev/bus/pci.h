@@ -61,28 +61,26 @@ vnet_dev_get_pci_n_msix_interrupts (vnet_dev_t *dev)
 format_function_t format_dev_pci_device_name_from_ids;
 format_function_t format_dev_pci_vendor_name_from_ids;
 
-vnet_dev_rv_t vnet_dev_pci_read_config_header (vlib_main_t *, vnet_dev_t *,
-					       vlib_pci_config_hdr_t *);
+__clib_export vnet_dev_rv_t vnet_dev_pci_read_config_header (vlib_main_t *, vnet_dev_t *,
+							     vlib_pci_config_hdr_t *);
 vnet_dev_rv_t vnet_dev_pci_read_config (vlib_main_t *, vnet_dev_t *,
 					vlib_pci_config_t *);
 vnet_dev_rv_t vnet_dev_pci_read_config_ext (vlib_main_t *, vnet_dev_t *,
 					    vlib_pci_config_ext_t *);
-vnet_dev_rv_t vnet_dev_pci_map_region (vlib_main_t *, vnet_dev_t *, u8,
-				       void **);
-vnet_dev_rv_t vnet_dev_pci_function_level_reset (vlib_main_t *, vnet_dev_t *);
-vnet_dev_rv_t vnet_dev_pci_bus_master_enable (vlib_main_t *, vnet_dev_t *);
+__clib_export vnet_dev_rv_t vnet_dev_pci_map_region (vlib_main_t *, vnet_dev_t *, u8, void **);
+__clib_export vnet_dev_rv_t vnet_dev_pci_function_level_reset (vlib_main_t *, vnet_dev_t *);
+__clib_export vnet_dev_rv_t vnet_dev_pci_bus_master_enable (vlib_main_t *, vnet_dev_t *);
 vnet_dev_rv_t vnet_dev_pci_bus_master_disable (vlib_main_t *, vnet_dev_t *);
-vnet_dev_rv_t vnet_dev_pci_intx_add_handler (vlib_main_t *, vnet_dev_t *,
-					     vnet_dev_pci_intx_handler_fn_t *);
-vnet_dev_rv_t vnet_dev_pci_intx_remove_handler (vlib_main_t *, vnet_dev_t *);
-vnet_dev_rv_t vnet_dev_pci_msix_add_handler (vlib_main_t *, vnet_dev_t *,
-					     vnet_dev_pci_msix_handler_fn_t *,
-					     u16, u16);
-vnet_dev_rv_t vnet_dev_pci_msix_remove_handler (vlib_main_t *, vnet_dev_t *,
-						u16, u16);
-vnet_dev_rv_t vnet_dev_pci_msix_enable (vlib_main_t *, vnet_dev_t *, u16, u16);
-vnet_dev_rv_t vnet_dev_pci_msix_disable (vlib_main_t *, vnet_dev_t *, u16,
-					 u16);
+__clib_export vnet_dev_rv_t vnet_dev_pci_intx_add_handler (vlib_main_t *, vnet_dev_t *,
+							   vnet_dev_pci_intx_handler_fn_t *);
+__clib_export vnet_dev_rv_t vnet_dev_pci_intx_remove_handler (vlib_main_t *, vnet_dev_t *);
+__clib_export vnet_dev_rv_t vnet_dev_pci_msix_add_handler (vlib_main_t *, vnet_dev_t *,
+							   vnet_dev_pci_msix_handler_fn_t *, u16,
+							   u16);
+__clib_export vnet_dev_rv_t vnet_dev_pci_msix_remove_handler (vlib_main_t *, vnet_dev_t *, u16,
+							      u16);
+__clib_export vnet_dev_rv_t vnet_dev_pci_msix_enable (vlib_main_t *, vnet_dev_t *, u16, u16);
+__clib_export vnet_dev_rv_t vnet_dev_pci_msix_disable (vlib_main_t *, vnet_dev_t *, u16, u16);
 vnet_dev_rv_t vnet_dev_pci_msi_add_handler (vlib_main_t *, vnet_dev_t *,
 					    vnet_dev_pci_msix_handler_fn_t *,
 					    u16, u16);
@@ -90,8 +88,7 @@ vnet_dev_rv_t vnet_dev_pci_msi_remove_handler (vlib_main_t *, vnet_dev_t *,
 					       u16, u16);
 vnet_dev_rv_t vnet_dev_pci_msi_enable (vlib_main_t *, vnet_dev_t *, u16, u16);
 vnet_dev_rv_t vnet_dev_pci_msi_disable (vlib_main_t *, vnet_dev_t *, u16, u16);
-void vnet_dev_pci_msix_set_polling_thread (vlib_main_t *, vnet_dev_t *, u16,
-					   u16);
+__clib_export void vnet_dev_pci_msix_set_polling_thread (vlib_main_t *, vnet_dev_t *, u16, u16);
 
 static_always_inline u16
 vnet_dev_get_pci_n_msi_interrupts (vnet_dev_t *dev)

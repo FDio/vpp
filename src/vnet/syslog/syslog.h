@@ -132,7 +132,7 @@ typedef struct
   u16 msg_id_base;
 } syslog_main_t;
 
-extern syslog_main_t syslog_main;
+__clib_export extern syslog_main_t syslog_main;
 
 /**
  * @brief Initialize syslog message header
@@ -142,21 +142,19 @@ extern syslog_main_t syslog_main;
  * @param app_name application that originated message RFC424 6.2.5. (optional)
  * @param msgid identify the type of message RFC5424 6.2.7. (optional)
  */
-void syslog_msg_init (syslog_msg_t * syslog_msg, syslog_facility_t facility,
-		      syslog_severity_t severity, char *app_name,
-		      char *msgid);
+__clib_export void syslog_msg_init (syslog_msg_t *syslog_msg, syslog_facility_t facility,
+				    syslog_severity_t severity, char *app_name, char *msgid);
 /**
  * @brief Initialize structured data element
  *
  * @param sd_id structured data element name RFC5424 6.3.2.
  */
-void syslog_msg_sd_init (syslog_msg_t * syslog_msg, char *sd_id);
+__clib_export void syslog_msg_sd_init (syslog_msg_t *syslog_msg, char *sd_id);
 
 /**
  * @brief Add structured data elemnt parameter name-value pair RFC5424 6.3.3.
  */
-void syslog_msg_add_sd_param (syslog_msg_t * syslog_msg, char *name,
-			      char *fmt, ...);
+__clib_export void syslog_msg_add_sd_param (syslog_msg_t *syslog_msg, char *name, char *fmt, ...);
 
 /**
  * @brief Add free-form message RFC5424 6.4.
@@ -166,7 +164,7 @@ void syslog_msg_add_msg (syslog_msg_t * syslog_msg, char *fmt, ...);
 /**
  * @brief Send syslog message
  */
-int syslog_msg_send (syslog_msg_t * syslog_msg);
+__clib_export int syslog_msg_send (syslog_msg_t *syslog_msg);
 
 /**
  * @brief Set syslog sender configuration
