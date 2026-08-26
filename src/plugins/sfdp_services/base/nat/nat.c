@@ -64,6 +64,10 @@ nat_alloc_pool_add_del (nat_main_t *nat, u32 alloc_pool_id, u8 is_del,
 
   if (is_del)
     {
+      nat_alloc_pool_t *alloc_pool = pool_elt_at_index (nat->alloc_pool, val[0]);
+
+      /* TODO: Track SNAT tenant references and reject deletion while in use. */
+      vec_free (alloc_pool->remaining);
       pool_put_index (nat->alloc_pool, val[0]);
       hash_unset (nat->alloc_pool_idx_by_id, alloc_pool_id);
     }
@@ -72,6 +76,12 @@ nat_alloc_pool_add_del (nat_main_t *nat, u32 alloc_pool_id, u8 is_del,
       nat_alloc_pool_t *alloc_pool;
       uword num = vec_len (addr);
       uword num_static = clib_min (num, NAT_ALLOC_POOL_ARRAY_SZ);
+
+      if (num == 0)
+	return clib_error_return (0, "Allocation pool requires at least one address");
+      if (num > CLIB_U16_MAX)
+	return clib_error_return (0, "Allocation pool cannot exceed %u addresses", CLIB_U16_MAX);
+
       pool_get_zero (nat->alloc_pool, alloc_pool);
       alloc_pool->num = num;
       alloc_pool_idx = alloc_pool - nat->alloc_pool;
@@ -81,7 +91,7 @@ nat_alloc_pool_add_del (nat_main_t *nat, u32 alloc_pool_id, u8 is_del,
       if (num > 0)
 	{
 	  addr += num_static;
-	  vec_validate (alloc_pool->remaining, num);
+	  vec_validate (alloc_pool->remaining, num - 1);
 	  for (int i = 0; i < num; i++)
 	    alloc_pool->remaining[i] = addr[i];
 	}
@@ -146,6 +156,8 @@ nat_tenant_set_snat (nat_main_t *nat, u32 tenant_id, u32 outside_tenant_id,
       tenant->fib_index = fib_index[0];
       tenant->out_alloc_pool_idx = out_alloc_pool_idx[0];
       tenant->reverse_context = outside_tenant->context_id;
+      /* TODO: Define handling for external packets that miss an existing NAT
+       * secondary key, currently we create a new SFDP session if this occurs */
     }
   return 0;
 }
