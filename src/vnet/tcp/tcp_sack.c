@@ -1181,8 +1181,16 @@ tcp_ack_handle_full_feedback (tcp_connection_t *tc, u32 packet_ack, u32 ack, tcp
 	  tcp_dsack_update (tc, &dsack, ac);
 	}
     }
+
   if (!(ac->bytes_acked | (ac->ack_flags & TCP_ACK_F_SACK)))
-    return;
+    {
+      /* Only BT-backed RACK consumes D-SACK-only loss feedback. Avoid
+       * replaying an unchanged legacy scoreboard for this case. */
+      if ((ac->ack_flags & TCP_ACK_F_DSACK) &&
+	  PREDICT_FALSE (tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER))
+	tcp_bt_apply_ack (tc, ack, high_sacked, ac);
+      return;
+    }
 
   tcp_sack_trace (tc, ack);
   if (PREDICT_FALSE (tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER))
