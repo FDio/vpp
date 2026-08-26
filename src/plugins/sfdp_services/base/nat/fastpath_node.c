@@ -7,7 +7,9 @@
 #include <vnet/sfdp/service.h>
 #include <vnet/sfdp/sfdp_funcs.h>
 
-#define foreach_sfdp_nat_fastpath_error _ (DROP, "drop")
+#define foreach_sfdp_nat_fastpath_error                                                            \
+  _ (DROP, "drop")                                                                                 \
+  _ (UNSUPPORTED_IP6, "IPv6 is not supported")
 
 #define foreach_sfdp_nat_terminal_next                                        \
   _ (DROP, "error-drop")                                                      \
@@ -60,9 +62,9 @@ format_sfdp_nat_fastpath_trace (u8 *s, va_list *args)
 SFDP_SERVICE_DECLARE (drop)
 
 static_always_inline void
-nat_fastpath_process_one (nat_rewrite_data_t *nat_session,
-			  sfdp_session_t *session, u16 *to_next,
-			  vlib_buffer_t **b, u8 is_terminal)
+nat_fastpath_process_one (vlib_main_t *vm, nat_rewrite_data_t *nat_session, sfdp_session_t *session,
+			  vlib_node_runtime_t *node, u16 *to_next, vlib_buffer_t **b,
+			  u8 is_terminal)
 {
   u8 *data = vlib_buffer_get_current (b[0]);
   u8 proto = nat_session->rewrite.proto;
@@ -73,6 +75,14 @@ nat_fastpath_process_one (nat_rewrite_data_t *nat_session,
   udp_header_t *udp;
   icmp46_header_t *icmp;
   u16 *icmp_id;
+
+  if (PREDICT_FALSE (session->type != SFDP_SESSION_TYPE_IP4))
+    {
+      vlib_node_increment_counter (vm, node->node_index, SFDP_NAT_FASTPATH_ERROR_UNSUPPORTED_IP6,
+				   1);
+      sfdp_buffer (b[0])->service_bitmap = SFDP_SERVICE_MASK (drop);
+      goto end_of_packet;
+    }
 
   if (session->session_version != nat_session->version)
     {
@@ -111,11 +121,14 @@ nat_fastpath_process_one (nat_rewrite_data_t *nat_session,
   else if (proto == IP_PROTOCOL_UDP)
     {
       udp = ip4_next_header (ip4);
-      udp_sum = udp->checksum;
-      udp_sum = ip_csum_sub_even (udp_sum, nat_session->l3_csum_delta);
-      udp_sum = ip_csum_sub_even (udp_sum, nat_session->l4_csum_delta);
-      udp_sum = ip_csum_fold (udp_sum);
-      udp->checksum = udp_sum;
+      if (udp->checksum)
+	{
+	  udp_sum = udp->checksum;
+	  udp_sum = ip_csum_sub_even (udp_sum, nat_session->l3_csum_delta);
+	  udp_sum = ip_csum_sub_even (udp_sum, nat_session->l4_csum_delta);
+	  udp_sum = ip_csum_fold (udp_sum);
+	  udp->checksum = udp_sum;
+	}
 
       if (ops & NAT_REWRITE_OP_SPORT)
 	udp->src_port = nat_session->rewrite.sport;
@@ -178,7 +191,7 @@ sfdp_nat_fastpath_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       session = sfdp_session_at_index (session_idx);
       nat_rewrite = vec_elt_at_index (nat->flows, b[0]->flow_id);
 
-      nat_fastpath_process_one (nat_rewrite, session, to_next, b, is_terminal);
+      nat_fastpath_process_one (vm, nat_rewrite, session, node, to_next, b, is_terminal);
       n_left -= 1;
       b += 1;
       to_next += 1;
