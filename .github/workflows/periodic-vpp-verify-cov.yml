@@ -56,6 +56,7 @@ jobs:
       WORKSPACE: /scratch/docker-build/vpp
       MAKE_PARALLEL_JOBS: 16
       TEST_JOBS: 4
+      HS_PARALLEL: auto
       TEST_RETRIES: 3
       MAKE_TEST_OS: ubuntu-24.04
       VPPAPIGEN_TEST_OS: ubuntu-24.04
@@ -134,7 +135,8 @@ jobs:
           cd "$WORKSPACE"
           set -x
           {
-            make COMPRESS_FAILED_TEST_LOGS=yes TEST_JOBS=$TEST_JOBS CCACHE_DISABLE=1 test-cov-both || true
+            make COMPRESS_FAILED_TEST_LOGS=yes TEST_JOBS=$TEST_JOBS \
+              HS_PARALLEL=$HS_PARALLEL CCACHE_DISABLE=1 test-cov-both || true
           } | tee "$LOG_DIR/make_coverage_test.log"
 
       - name: AWS S3 Publish Logs
