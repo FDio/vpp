@@ -297,24 +297,28 @@ static spdk_vpp_sock_t *
 spdk_vpp_sock_get_by_handle (session_handle_t handle)
 {
   spdk_vpp_main_t *vm = &spdk_vpp_main;
+  spdk_vpp_sock_t *sock;
   uword *p;
 
   clib_spinlock_lock (&vm->lock);
   p = hash_get (vm->sock_by_handle, handle);
+  sock = p ? uword_to_pointer (*p, spdk_vpp_sock_t *) : 0;
   clib_spinlock_unlock (&vm->lock);
-  return p ? uword_to_pointer (*p, spdk_vpp_sock_t *) : 0;
+  return sock;
 }
 
 static spdk_vpp_sock_t *
 spdk_vpp_sock_get_by_opaque (u32 opaque)
 {
   spdk_vpp_main_t *vm = &spdk_vpp_main;
+  spdk_vpp_sock_t *sock;
   uword *p;
 
   clib_spinlock_lock (&vm->lock);
   p = hash_get (vm->sock_by_opaque, opaque);
+  sock = p ? uword_to_pointer (*p, spdk_vpp_sock_t *) : 0;
   clib_spinlock_unlock (&vm->lock);
-  return p ? uword_to_pointer (*p, spdk_vpp_sock_t *) : 0;
+  return sock;
 }
 
 static void
