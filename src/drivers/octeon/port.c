@@ -475,7 +475,7 @@ oct_port_start (vlib_main_t *vm, vnet_dev_port_t *port)
   oct_port_t *cp = vnet_dev_get_port_data (port);
   struct roc_nix *nix = cd->nix;
   struct roc_nix_eeprom_info eeprom_info = {};
-  vnet_dev_rv_t rv;
+  vnet_dev_rv_t rv = VNET_DEV_OK;
   int rrv;
 
   log_debug (port->dev, "port start: port %u", port->port_id);
@@ -499,21 +499,22 @@ oct_port_start (vlib_main_t *vm, vnet_dev_port_t *port)
   if (!(roc_nix_is_sdp (nix) || roc_nix_is_lbk (nix)))
     {
 
-      rv = roc_nix_npc_promisc_ena_dis (nix, port->promisc);
-      if (rv)
+      rrv = roc_nix_npc_promisc_ena_dis (nix, port->promisc);
+      if (rrv)
 	{
-	  return oct_roc_err (dev, rv, "roc_nix_npc_promisc_ena_dis failed");
+	  rv = oct_roc_err (dev, rrv, "roc_nix_npc_promisc_ena_dis failed");
+	  goto done;
 	}
 
       if (roc_nix_is_pf (nix))
 	{
 
-	  rv = roc_nix_mac_promisc_mode_enable (nix, port->promisc);
-	  if (rv)
+	  rrv = roc_nix_mac_promisc_mode_enable (nix, port->promisc);
+	  if (rrv)
 	    {
-	      return oct_roc_err (dev, rv,
-				  "roc_nix_mac_promisc_mode_enable(%s) failed",
-				  port->promisc ? "true" : "false");
+	      rv = oct_roc_err (dev, rrv, "roc_nix_mac_promisc_mode_enable(%s) failed",
+				port->promisc ? "true" : "false");
+	      goto done;
 	    }
 	}
     }
@@ -528,7 +529,7 @@ oct_port_start (vlib_main_t *vm, vnet_dev_port_t *port)
 done:
   if (rv != VNET_DEV_OK)
     oct_port_stop (vm, port);
-  return VNET_DEV_OK;
+  return rv;
 }
 
 void
