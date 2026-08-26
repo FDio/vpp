@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "6b91f19e_cd8f9706",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3063
+      },
+      "writtenOn": "2026-08-26T22:02:28Z",
+      "side": 1,
+      "message": "I encountered the same issue in my local environment. It seems that the `SYSUSERS_DIR` was introduced in rdma-core 63.0 [1].\n[1] https://github.com/linux-rdma/rdma-core/blob/v63.0/CMakeLists.txt#L609",
+      "revId": "cd9970a02c0303266d93af34e174ef6d23208be6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
