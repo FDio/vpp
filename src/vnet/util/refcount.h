@@ -52,7 +52,7 @@ void vlib_refcount_unlock (clib_spinlock_t counter_lock)
   clib_spinlock_unlock (&counter_lock);
 }
 
-void __vlib_refcount_resize(vlib_refcount_per_cpu_t *per_cpu, u32 size);
+__clib_export void __vlib_refcount_resize (vlib_refcount_per_cpu_t *per_cpu, u32 size);
 
 static_always_inline void
 vlib_refcount_add (vlib_refcount_t *r, clib_thread_index_t thread_index,
@@ -65,7 +65,7 @@ vlib_refcount_add (vlib_refcount_t *r, clib_thread_index_t thread_index,
   per_cpu->counters[counter_index] += v;
 }
 
-u64 vlib_refcount_get(vlib_refcount_t *r, u32 index);
+__clib_export u64 vlib_refcount_get (vlib_refcount_t *r, u32 index);
 
 static_always_inline
 void vlib_refcount_init(vlib_refcount_t *r)
