@@ -49,14 +49,13 @@ peer's underlay address (probably on the other side of the
 internet). In the P2P case where there is only one peer on the link,
 the peer's underlay address is the same as the tunnel's destination
 address.
-The data structure that represents the mapping of the peer's overlay
-with underlay address is an entry in the Tunnel Endpoint Information
-Base (TEIB); the *tieb_entry_t*. TEIB entries are created by the
-control plane (e.g. NHRP (RFC2332)).
+The mapping of a peer's overlay address to its underlay address is represented
+by an entry in the Tunnel Endpoint Information Base (TEIB). Tunnel consumers
+access a self-contained snapshot of an entry as a *teib_entry_info_t*. TEIB
+entries are created by the control plane (e.g. NHRP (RFC2332)).
 
 Each mid-chain adjacency on a multi-point tunnel is stacked on the
 *fib_entry_t* object that resolves the peer's underlay address. The
 glean adjacency on the tunnel resolves via a drop, since broadcasts
 are not possible. A multicast adjacency on a multi-point tunnel is
 currently a work in progress.
-
