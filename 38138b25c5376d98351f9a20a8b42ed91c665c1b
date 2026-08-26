@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "00c23e4c_d20fa642",
+        "filename": "src/vlib/pool_cache.c",
+        "patchSetId": 17
+      },
+      "lineNbr": 198,
+      "author": {
+        "id": 1628
+      },
+      "writtenOn": "2026-08-26T08:14:19Z",
+      "side": 1,
+      "message": "I think this should be under lock as we relax increment on line 223",
+      "revId": "38138b25c5376d98351f9a20a8b42ed91c665c1b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
