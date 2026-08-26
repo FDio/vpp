@@ -13,9 +13,9 @@
 
 macro(add_vpp_library lib)
   cmake_parse_arguments(ARG
-    "LTO"
+    "HIDDEN;LTO"
     "COMPONENT"
-    "SOURCES;MULTIARCH_SOURCES;API_FILES;LINK_LIBRARIES;INSTALL_HEADERS;DEPENDS"
+    "SOURCES;MULTIARCH_SOURCES;API_FILES;LINK_LIBRARIES;INSTALL_HEADERS;DEPENDS;COMPILE_DEFINITIONS"
     ${ARGN}
   )
 
@@ -23,6 +23,12 @@ macro(add_vpp_library lib)
   add_library(${lo} OBJECT ${ARG_SOURCES})
   set_target_properties(${lo} PROPERTIES POSITION_INDEPENDENT_CODE ON)
   target_compile_options(${lo} PUBLIC ${VPP_DEFAULT_MARCH_FLAGS})
+  if(ARG_HIDDEN)
+    target_compile_options(${lo} PRIVATE "-fvisibility=hidden")
+  endif()
+  if(ARG_COMPILE_DEFINITIONS)
+    target_compile_definitions(${lo} PRIVATE ${ARG_COMPILE_DEFINITIONS})
+  endif()
 
   add_library(${lib} SHARED)
   target_sources(${lib} PRIVATE $<TARGET_OBJECTS:${lo}>)
@@ -59,7 +65,16 @@ macro(add_vpp_library lib)
   endif()
 
   if(ARG_MULTIARCH_SOURCES)
-    vpp_library_set_multiarch_sources(${lib} DEPENDS ${ARG_DEPENDS} SOURCES ${ARG_MULTIARCH_SOURCES})
+    set(_multiarch_compile_options)
+    if(ARG_HIDDEN)
+      list(APPEND _multiarch_compile_options "-fvisibility=hidden")
+    endif()
+    vpp_library_set_multiarch_sources(${lib}
+      DEPENDS ${ARG_DEPENDS}
+      SOURCES ${ARG_MULTIARCH_SOURCES}
+      COMPILE_OPTIONS ${_multiarch_compile_options}
+      COMPILE_DEFINITIONS ${ARG_COMPILE_DEFINITIONS}
+    )
   endif()
 
   if(ARG_API_FILES)
