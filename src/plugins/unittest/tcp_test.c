@@ -5868,6 +5868,93 @@ typedef enum
   TCP_TEST_BT_SB_RESCUE,
 } tcp_test_bt_sb_mode_t;
 
+static u8
+tcp_test_bt_tx_order_is_sane (tcp_connection_t *tc)
+{
+  tcp_bt_tx_order_t *order = tcp_bt_tx_order (tc);
+  tcp_byte_tracker_t *bt = tc->bt;
+  tcp_bt_tx_link_t *link;
+  tcp_bt_sample_t *bts, *prev = 0;
+  u32 index, n_eligible = 0, n_samples = 0, n_seen = 0;
+  u32 order_tail, prev_index = TCP_BTS_INVALID_INDEX;
+  u8 linked;
+
+  if (!order->links)
+    {
+      if (order->head != TCP_BTS_INVALID_INDEX || order->tail != TCP_BTS_INVALID_INDEX)
+	return 0;
+
+      index = bt->head;
+      while (index != TCP_BTS_INVALID_INDEX)
+	{
+	  if (index >= pool_len (bt->samples) || pool_is_free_index (bt->samples, index))
+	    return 0;
+	  bts = pool_elt_at_index (bt->samples, index);
+	  if (bts->prev != prev_index)
+	    return 0;
+	  if (prev &&
+	      tcp_bt_tx_sent_after (prev->tx_time, prev->max_seq, bts->tx_time, bts->max_seq))
+	    return 0;
+	  prev = bts;
+	  prev_index = index;
+	  index = bts->next;
+	  if (++n_seen > pool_elts (bt->samples))
+	    return 0;
+	}
+      return prev_index == bt->tail && n_seen == pool_elts (bt->samples);
+    }
+
+  index = order->head;
+  while (index != TCP_BTS_INVALID_INDEX)
+    {
+      if (index >= vec_len (order->links) || pool_is_free_index (bt->samples, index) ||
+	  order->links[index].prev != prev_index)
+	return 0;
+      bts = pool_elt_at_index (bt->samples, index);
+      if ((bts->flags & TCP_BTS_IS_SACKED) ||
+	  (prev && tcp_bt_tx_sent_after (prev->tx_time, prev->max_seq, bts->tx_time, bts->max_seq)))
+	return 0;
+      prev = bts;
+      prev_index = index;
+      index = order->links[index].next;
+      if (++n_seen > pool_elts (bt->samples))
+	return 0;
+    }
+
+  order_tail = prev_index;
+  prev_index = TCP_BTS_INVALID_INDEX;
+  index = bt->head;
+  while (index != TCP_BTS_INVALID_INDEX)
+    {
+      if (index >= pool_len (bt->samples) || pool_is_free_index (bt->samples, index) ||
+	  index >= vec_len (order->links))
+	return 0;
+      bts = pool_elt_at_index (bt->samples, index);
+      if (bts->prev != prev_index)
+	return 0;
+      link = &order->links[index];
+      linked = order->head == index || link->prev != TCP_BTS_INVALID_INDEX ||
+	       link->next != TCP_BTS_INVALID_INDEX;
+      if (bts->flags & TCP_BTS_IS_SACKED)
+	{
+	  if (linked)
+	    return 0;
+	}
+      else
+	{
+	  if (!linked)
+	    return 0;
+	  n_eligible++;
+	}
+      prev_index = index;
+      index = bts->next;
+      if (++n_samples > pool_elts (bt->samples))
+	return 0;
+    }
+  return order_tail == order->tail && n_seen == n_eligible && prev_index == bt->tail &&
+	 n_samples == pool_elts (bt->samples);
+}
+
 static int
 tcp_test_bt_scoreboard_random (u32 base, u32 seed, tcp_test_bt_sb_mode_t mode)
 {
@@ -5902,7 +5989,11 @@ tcp_test_bt_scoreboard_random (u32 base, u32 seed, tcp_test_bt_sb_mode_t mode)
        * BT intentionally accounts such mixed blocks more precisely than the
        * hole scoreboard, so they are not strict equivalence cases. */
       high_rxt = base + flight;
+      /* Materialize the index without presenting the equivalence trace as a
+	 RACK connection to ACK and loss handling. */
+      bt_tc->cfg_flags |= TCP_CFG_F_RACK;
       tcp_bt_track_rxt (bt_tc, base, high_rxt);
+      bt_tc->cfg_flags &= ~TCP_CFG_F_RACK;
       default_tc->sack_sb.high_rxt = bt_tc->sack_sb.high_rxt = high_rxt;
     }
 
@@ -5974,7 +6065,8 @@ tcp_test_bt_scoreboard_random (u32 base, u32 seed, tcp_test_bt_sb_mode_t mode)
 	     default_ac.last_sacked_bytes == bt_ac.last_sacked_bytes &&
 	     default_ac.last_bytes_delivered == bt_ac.last_bytes_delivered &&
 	     default_ac.rxt_sacked == bt_ac.rxt_sacked && default_ac.last_lost == bt_ac.last_lost &&
-	     tcp_bt_is_sane (bt_tc->bt) && bt_tc->sack_sb.head == TCP_INVALID_SACK_HOLE_INDEX;
+	     tcp_bt_is_sane (bt_tc->bt) && tcp_test_bt_tx_order_is_sane (bt_tc) &&
+	     bt_tc->sack_sb.head == TCP_INVALID_SACK_HOLE_INDEX;
       TCP_TEST (same,
 		"random BT scoreboard trace matches default at step %u "
 		"(base 0x%x mode %u, sacked %u/%u lost %u/%u "
@@ -7284,6 +7376,11 @@ tcp_test_bt_toggle (void)
   TCP_TEST (tcp_bt_enable (tc, 1) == 0 && tc->bt != 0,
 	    "can enable byte tracker with an empty flight");
 
+  tc->cfg_flags |= TCP_CFG_F_RACK;
+  TCP_TEST (tcp_bt_enable (tc, 0) == -1 && tc->bt != 0,
+	    "cannot disable byte tracker while RACK requires it");
+  tc->cfg_flags &= ~TCP_CFG_F_RACK;
+
   tc->snd_nxt = 200;
   TCP_TEST (tcp_bt_enable (tc, 1) == 0 && tc->bt != 0,
 	    "enabled byte tracker is a no-op with data in flight");
@@ -7309,6 +7406,7 @@ tcp_test_bt (vlib_main_t * vm, unformat_input_t * input)
   tcp_byte_tracker_t *bt;
   session_t *s;
   tcp_bt_sample_t *bts;
+  sack_block_t block;
   u32 head;
   u8 *bt_fmt = 0;
 
@@ -7612,6 +7710,120 @@ tcp_test_bt (vlib_main_t * vm, unformat_input_t * input)
   TCP_TEST (tc->delivered == 100 && ac->acked_and_sacked == 0,
 	    "FIN acknowledgment is excluded from delivered bytes");
   tcp_bt_cleanup (tc);
+
+  /* Optional transmit ordering stays dormant until sequence order diverges,
+   * then follows middle splits, SACK removal and merging, cumulative ACKs,
+   * reneging, append, flush, and pool-index reuse. */
+  memset (tc, 0, sizeof (*tc));
+  memset (ac, 0, sizeof (*ac));
+  tc->snd_mss = 50;
+  tc->rcv_opts.flags = TCP_OPTS_FLAG_SACK_PERMITTED | TCP_OPTS_FLAG_SACK;
+  scoreboard_init (&tc->sack_sb);
+  tcp_bt_init (tc);
+  tcp_test_set_time (thread_index, 60);
+  tcp_bt_track_tx (tc, 300);
+  tc->snd_nxt = 300;
+  TCP_TEST (!tcp_bt_tx_order (tc)->links, "transmit-order index stays lazy before retransmission");
+
+  /* A middle retransmission invokes the transmit-order split helper for both
+   * original-data remainders. */
+  tcp_test_set_time (thread_index, 61);
+  tc->cfg_flags |= TCP_CFG_F_RACK;
+  tcp_bt_track_rxt (tc, 100, 200);
+  tc->cfg_flags &= ~TCP_CFG_F_RACK;
+  TCP_TEST (pool_elts (tc->bt->samples) == 3 && tcp_test_bt_tx_order_is_sane (tc),
+	    "transmit-order index follows a middle retransmission split");
+
+  /* Original data sent in the same timestamp sorts after the retransmission
+   * by ending sequence. */
+  tcp_bt_track_tx (tc, 100);
+  tc->snd_nxt = 400;
+  TCP_TEST (tcp_test_bt_tx_order_is_sane (tc),
+	    "transmit-order index orders equal-time original data");
+
+  /* Partially SACK the retransmission and then bridge both adjacent pieces.
+   * This exercises index removal and both SACK merge directions. */
+  block = (sack_block_t) { .start = 125, .end = 175 };
+  vec_add1 (tc->rcv_opts.sacks, block);
+  tc->rcv_opts.n_sack_blocks = 1;
+  tcp_test_rcv_sacks (tc, 0, ac);
+  TCP_TEST (pool_elts (tc->bt->samples) == 6 && tcp_test_bt_tx_order_is_sane (tc),
+	    "transmit-order index follows a partial SACK split");
+
+  tc->rcv_opts.sacks[0] = (sack_block_t) { .start = 100, .end = 125 };
+  tcp_test_rcv_sacks (tc, 0, ac);
+  TCP_TEST (tcp_test_bt_tx_order_is_sane (tc), "transmit-order index follows a left SACK merge");
+
+  tc->rcv_opts.sacks[0] = (sack_block_t) { .start = 175, .end = 200 };
+  tcp_test_rcv_sacks (tc, 0, ac);
+  TCP_TEST (pool_elts (tc->bt->samples) == 4 && tcp_test_bt_tx_order_is_sane (tc),
+	    "transmit-order index follows a right SACK merge");
+
+  /* Retire the original prefix without repeating the SACK. The SACKed
+   * retransmission becomes the tracker head and signals reneging. */
+  vec_reset_length (tc->rcv_opts.sacks);
+  tc->rcv_opts.flags &= ~TCP_OPTS_FLAG_SACK;
+  tc->rcv_opts.n_sack_blocks = 0;
+  tcp_test_rcv_sacks (tc, 100, ac);
+  tc->snd_una = 100;
+  TCP_TEST (tcp_scoreboard_is_reneging (&tc->sack_sb) && tcp_test_bt_tx_order_is_sane (tc),
+	    "cumulative ACK retirement preserves transmit order before reneging");
+  TCP_TEST (tcp_sack_handle_reneging (tc) && tcp_test_bt_tx_order_is_sane (tc),
+	    "reneged SACK ranges return to transmit order");
+
+  tcp_test_rcv_sacks (tc, 150, ac);
+  tc->snd_una = 150;
+  TCP_TEST (tcp_test_bt_tx_order_is_sane (tc), "partial cumulative ACK preserves transmit order");
+
+  tcp_bt_recompute_sack_loss (tc);
+  tcp_bt_flush_samples (tc);
+  tc->snd_una = tc->snd_nxt;
+  tcp_test_set_time (thread_index, 62);
+  tcp_bt_track_tx (tc, 100);
+  tc->snd_nxt += 100;
+  TCP_TEST (tcp_test_bt_tx_order_is_sane (tc),
+	    "transmit-order index handles reused sample indices");
+
+  /* A consumer can remove a sample without freeing it. Retirement must
+   * tolerate the unlinked sample and leave its pool index reusable. */
+  bts = pool_elt_at_index (tc->bt->samples, tc->bt->head);
+  tcp_bt_tx_order_remove (tc->bt, bts);
+  TCP_TEST (tcp_bt_tx_order (tc)->head == TCP_BTS_INVALID_INDEX &&
+	      tcp_bt_tx_order (tc)->tail == TCP_BTS_INVALID_INDEX,
+	    "explicit transmit-order removal empties the index");
+  tcp_test_rcv_sacks (tc, tc->snd_nxt, ac);
+  tc->snd_una = tc->snd_nxt;
+  tcp_test_set_time (thread_index, 63);
+  tcp_bt_track_tx (tc, 100);
+  tc->snd_nxt += 100;
+  TCP_TEST (tcp_test_bt_tx_order_is_sane (tc),
+	    "transmit-order index reuses an explicitly removed sample index");
+
+  /* A time-based loss consumer immediately classifies all reneged samples
+   * and can therefore leave their former SACK exclusions unlinked. */
+  head = tc->snd_una + 1;
+  block = (sack_block_t) { .start = head, .end = tc->snd_nxt };
+  vec_add1 (tc->rcv_opts.sacks, block);
+  tc->rcv_opts.flags |= TCP_OPTS_FLAG_SACK;
+  tc->rcv_opts.n_sack_blocks = 1;
+  tcp_test_rcv_sacks (tc, tc->snd_una, ac);
+  vec_reset_length (tc->rcv_opts.sacks);
+  tc->rcv_opts.flags &= ~TCP_OPTS_FLAG_SACK;
+  tc->rcv_opts.n_sack_blocks = 0;
+  tcp_test_rcv_sacks (tc, head, ac);
+  tc->snd_una = head;
+  TCP_TEST (tcp_scoreboard_is_reneging (&tc->sack_sb),
+	    "missing SACK feedback detects reneging before loss classification");
+  TCP_TEST (tcp_bt_handle_sack_reneging (tc, 0 /* restore_tx_order */) &&
+	      tcp_bt_tx_order (tc)->head == TCP_BTS_INVALID_INDEX &&
+	      tcp_bt_tx_order (tc)->tail == TCP_BTS_INVALID_INDEX,
+	    "consumer-owned reneging handling avoids rebuilding transmit order");
+
+  vec_free (tc->rcv_opts.sacks);
+  tc->cfg_flags |= TCP_CFG_F_RACK;
+  tcp_bt_cleanup (tc);
+  TCP_TEST (!(tc->cfg_flags & (TCP_CFG_F_BYTE_TRACKER | TCP_CFG_F_RACK)),
+	    "byte-tracker cleanup clears dependent configuration");
 
   return 0;
 }
