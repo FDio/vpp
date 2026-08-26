@@ -9,10 +9,14 @@
 #include <vnet/tcp/tcp_types.h>
 
 void tcp_loss_on_ack (tcp_connection_t *tc, tcp_ack_ctx_t *ac);
+u8 tcp_loss_old_ack_needs_full_feedback (tcp_connection_t *tc);
 void tcp_loss_on_rto (tcp_connection_t *tc);
 void tcp_loss_enter_recovery (tcp_connection_t *tc);
 void tcp_loss_exit_recovery (tcp_connection_t *tc, tcp_ack_ctx_t *ac);
 void tcp_loss_dsack_undo (tcp_connection_t *tc);
+void tcp_loss_recovery_state_sync (tcp_connection_t *tc);
+u8 tcp_loss_recovery_state_is_sane (tcp_connection_t *tc);
+u8 tcp_loss_retransmit_timer_expired (tcp_connection_t *tc);
 void tcp_loss_rto_retransmit_failed (tcp_connection_t *tc);
 
 /* Eifel spurious-retransmit detection (RFC 3522 Sec. 3.2). Spurious if the ACK
@@ -45,6 +49,9 @@ tcp_loss_default_should_enter_recovery (tcp_connection_t *tc, tcp_ack_ctx_t *ac,
 static_always_inline u8
 tcp_loss_should_enter_recovery (tcp_connection_t *tc, tcp_ack_ctx_t *ac, u8 has_sack)
 {
+  if (PREDICT_FALSE (tc->cfg_flags & TCP_CFG_F_RACK))
+    return ac->last_lost != 0;
+
   if (PREDICT_FALSE (!(ac->ack_flags & TCP_ACK_F_DUPACK)))
     return 0;
 
@@ -54,6 +61,9 @@ tcp_loss_should_enter_recovery (tcp_connection_t *tc, tcp_ack_ctx_t *ac, u8 has_
 static_always_inline u8
 tcp_loss_should_reenter_recovery (tcp_connection_t *tc, tcp_ack_ctx_t *ac, u8 has_sack)
 {
+  if (PREDICT_FALSE (tc->cfg_flags & TCP_CFG_F_RACK))
+    return tc->sack_sb.lost_bytes != 0;
+
   return tcp_loss_default_should_enter_recovery (tc, ac, has_sack);
 }
 
