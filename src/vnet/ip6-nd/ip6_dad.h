@@ -171,7 +171,7 @@ extern void ip6_dad_stop (u32 sw_if_index, const ip6_address_t *address);
  *
  * @param enable True to enable, false to disable
  */
-extern void ip6_dad_enable_disable (bool enable);
+__clib_export extern void ip6_dad_enable_disable (bool enable);
 
 /**
  * @brief Configure DAD parameters
@@ -189,7 +189,7 @@ extern clib_error_t *ip6_dad_config (u8 transmits, f64 delay);
  * @param transmits Output: Number of transmissions
  * @param delay Output: Retransmit delay
  */
-extern void ip6_dad_get_config (bool *enabled, u8 *transmits, f64 *delay);
+__clib_export extern void ip6_dad_get_config (bool *enabled, u8 *transmits, f64 *delay);
 
 /**
  * @brief Send DAD event notification to registered clients
@@ -218,12 +218,12 @@ extern u8 *format_ip6_dad_entry (u8 *s, va_list *args);
  * @param callback_fn Function to call when duplicate detected
  * @return Handle for unregistration (0 = error)
  */
-u32 ip6_dad_register_duplicate_callback (ip6_dad_duplicate_callback_fn_t callback_fn);
+__clib_export u32 ip6_dad_register_duplicate_callback (ip6_dad_duplicate_callback_fn_t callback_fn);
 
 /**
  * Unregister duplicate callback
  * @param handle Handle returned from registration
  */
-void ip6_dad_unregister_duplicate_callback (u32 handle);
+__clib_export void ip6_dad_unregister_duplicate_callback (u32 handle);
 
 #endif /* __IP6_DAD_H__ */

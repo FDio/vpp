@@ -58,12 +58,13 @@ typedef struct vnet_crypto_hash_alg_data_t_
   vnet_crypto_alg_t alg;
 } vnet_crypto_hash_alg_data_t;
 
-u32 vnet_crypto_process_hash_ops (vlib_main_t *vm, vnet_crypto_hash_op_t ops[],
-				  vnet_crypto_op_chunk_t *chunks, u32 n_ops);
-vnet_crypto_hash_ctx_t *vnet_crypto_hash_ctx_create (vnet_crypto_hash_alg_t alg);
-void vnet_crypto_hash_ctx_destroy (vnet_crypto_hash_ctx_t *ctx);
-void vnet_crypto_hash_ctx_set_engine (vnet_crypto_hash_ctx_t *ctx, vnet_crypto_handler_type_t t,
-				      vnet_crypto_engine_id_t engine);
+__clib_export u32 vnet_crypto_process_hash_ops (vlib_main_t *vm, vnet_crypto_hash_op_t ops[],
+						vnet_crypto_op_chunk_t *chunks, u32 n_ops);
+__clib_export vnet_crypto_hash_ctx_t *vnet_crypto_hash_ctx_create (vnet_crypto_hash_alg_t alg);
+__clib_export void vnet_crypto_hash_ctx_destroy (vnet_crypto_hash_ctx_t *ctx);
+__clib_export void vnet_crypto_hash_ctx_set_engine (vnet_crypto_hash_ctx_t *ctx,
+						    vnet_crypto_handler_type_t t,
+						    vnet_crypto_engine_id_t engine);
 void vnet_crypto_hash_ctx_set_default_engine (vnet_crypto_hash_ctx_t *ctx,
 					      vnet_crypto_handler_type_t t);
 void vnet_crypto_register_hash_handler_inline (vlib_main_t *vm, vnet_crypto_engine_id_t engine,
@@ -71,7 +72,7 @@ void vnet_crypto_register_hash_handler_inline (vlib_main_t *vm, vnet_crypto_engi
 					       vnet_crypto_hash_fn_t *fn,
 					       vnet_crypto_hash_fn_t *cfn);
 
-format_function_t format_vnet_crypto_hash_alg;
+__clib_export format_function_t format_vnet_crypto_hash_alg;
 
 static_always_inline void
 vnet_crypto_hash_op_init (vnet_crypto_hash_op_t *op)

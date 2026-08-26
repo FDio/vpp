@@ -23,7 +23,7 @@ typedef struct
   sfdp_timer_per_thread_data_t *per_thread_data;
 } sfdp_timer_main_t;
 
-extern sfdp_timer_main_t sfdp_timer_main;
+__clib_export extern sfdp_timer_main_t sfdp_timer_main;
 
 // Per session state held in sfdp session expiry opaque data
 typedef struct
