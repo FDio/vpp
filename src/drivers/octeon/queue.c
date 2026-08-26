@@ -209,7 +209,7 @@ oct_drain_queue (vlib_main_t *vm, vnet_dev_rx_queue_t *rxq)
 	return f_cnt;
 
       n = clib_min (cq_size - head, n_desc);
-      for (i = head; i < n; i++)
+      for (i = head; i < head + n; i++)
 	{
 	  b = oct_seg_to_bp (descs[i].segs0[0]);
 	  vlib_buffer_free_one (vm, vlib_get_buffer_index (vm, b));
