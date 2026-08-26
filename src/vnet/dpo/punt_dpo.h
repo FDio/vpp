@@ -14,7 +14,7 @@
 
 extern int dpo_is_punt(const dpo_id_t *dpo);
 
-extern const dpo_id_t *punt_dpo_get(dpo_proto_t proto);
+__clib_export extern const dpo_id_t *punt_dpo_get (dpo_proto_t proto);
 
 extern void punt_dpo_module_init(void);
 

@@ -116,15 +116,12 @@ typedef enum replicate_format_flags_t_ {
     REPLICATE_FORMAT_DETAIL = (1 << 0),
 } replicate_format_flags_t;
 
-extern index_t replicate_create(u32 num_buckets,
-                                dpo_proto_t rep_proto);
+__clib_export extern index_t replicate_create (u32 num_buckets, dpo_proto_t rep_proto);
 extern void replicate_multipath_update(
     const dpo_id_t *dpo,
     load_balance_path_t *next_hops);
 
-extern void replicate_set_bucket(index_t repi,
-                                 u32 bucket,
-                                 const dpo_id_t *next);
+__clib_export extern void replicate_set_bucket (index_t repi, u32 bucket, const dpo_id_t *next);
 
 extern u8* format_replicate(u8 * s, va_list * args);
 
@@ -140,7 +137,7 @@ extern index_t replicate_dup(replicate_flags_t flags,
 /**
  * The encapsulation breakages are for fast DP access
  */
-extern replicate_t *replicate_pool;
+__clib_export extern replicate_t *replicate_pool;
 static inline replicate_t*
 replicate_get (index_t repi)
 {
