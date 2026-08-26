@@ -115,7 +115,7 @@ pg_edit_alloc_value (pg_edit_t * e, int i)
   vec_validate (e->values[i], e->lsb_bit_offset / BITS (u8));
 }
 
-extern void pg_edit_set_value (pg_edit_t * e, int hi_or_lo, u64 value);
+__clib_export extern void pg_edit_set_value (pg_edit_t *e, int hi_or_lo, u64 value);
 
 static inline void
 pg_edit_set_fixed (pg_edit_t * e, u64 value)
@@ -162,9 +162,9 @@ pg_edit_is_fixed_with_value (pg_edit_t * e, u64 value)
 	  && value == pg_edit_get_value (e, PG_EDIT_LO));
 }
 
-uword unformat_pg_edit (unformat_input_t * input, va_list * args);
-uword unformat_pg_payload (unformat_input_t * input, va_list * args);
-uword unformat_pg_number (unformat_input_t * input, va_list * args);
+__clib_export uword unformat_pg_edit (unformat_input_t *input, va_list *args);
+__clib_export uword unformat_pg_payload (unformat_input_t *input, va_list *args);
+__clib_export uword unformat_pg_number (unformat_input_t *input, va_list *args);
 uword unformat_pg_interface (unformat_input_t * input, va_list * args);
 
 #endif /* included_packet_generator_pg_edit_h */

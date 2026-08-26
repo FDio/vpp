@@ -52,16 +52,14 @@ typedef struct dvr_dpo_t_
 /* 8 bytes is a factor of cache line size so this struct will never span */
 STATIC_ASSERT_SIZEOF(dvr_dpo_t, 8);
 
-extern void dvr_dpo_add_or_lock (u32 sw_if_index,
-                                 dpo_proto_t dproto,
-                                 dpo_id_t *dpo);
+__clib_export extern void dvr_dpo_add_or_lock (u32 sw_if_index, dpo_proto_t dproto, dpo_id_t *dpo);
 
 extern void dvr_dpo_module_init(void);
 
 /**
  * @brief pool of all interface DPOs
  */
-extern dvr_dpo_t *dvr_dpo_pool;
+__clib_export extern dvr_dpo_t *dvr_dpo_pool;
 
 static inline dvr_dpo_t *
 dvr_dpo_get (index_t index)

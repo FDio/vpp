@@ -80,7 +80,7 @@ foreach_sfdp_callback_type
 #undef _
 } sfdp_callback_main_t;
 
-extern sfdp_callback_main_t sfdp_callback_main;
+__clib_export extern sfdp_callback_main_t sfdp_callback_main;
 
 #define SFDP_CALLBACK_BUILD_EFFECTIVE_LIST(x)                                 \
   do                                                                          \

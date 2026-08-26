@@ -588,23 +588,27 @@ typedef vnet_crypto_async_frame_t *(
   vnet_crypto_frame_dequeue_t) (vlib_main_t *vm, u32 *nb_elts_processed,
 				clib_thread_index_t *enqueue_thread_idx);
 
-vnet_crypto_engine_id_t vnet_crypto_register_engine (vlib_main_t *vm, char *name, int prio,
-						     char *desc);
-vnet_crypto_engine_id_t vnet_crypto_get_engine_index_by_name (const char *fmt, ...);
+__clib_export vnet_crypto_engine_id_t vnet_crypto_register_engine (vlib_main_t *vm, char *name,
+								   int prio, char *desc);
+__clib_export vnet_crypto_engine_id_t vnet_crypto_get_engine_index_by_name (const char *fmt, ...);
 
-int vnet_crypto_register_key_change_handler (vlib_main_t *vm, vnet_crypto_engine_id_t engine,
-					     vnet_crypto_key_change_fn_t *key_change_fn,
-					     u16 key_data_sz);
+__clib_export int
+vnet_crypto_register_key_change_handler (vlib_main_t *vm, vnet_crypto_engine_id_t engine,
+					 vnet_crypto_key_change_fn_t *key_change_fn,
+					 u16 key_data_sz);
 
 /** async crypto register functions */
-u32 vnet_crypto_register_post_node (vlib_main_t * vm, char *post_node_name);
+__clib_export u32 vnet_crypto_register_post_node (vlib_main_t *vm, char *post_node_name);
 
-void vnet_crypto_register_enqueue_handler_by_alg (vlib_main_t *vm, vnet_crypto_engine_id_t engine,
-						  vnet_crypto_alg_t alg, vnet_crypto_op_type_t type,
-						  vnet_crypto_frame_enq_fn_t *enq_fn);
+__clib_export void vnet_crypto_register_enqueue_handler_by_alg (vlib_main_t *vm,
+								vnet_crypto_engine_id_t engine,
+								vnet_crypto_alg_t alg,
+								vnet_crypto_op_type_t type,
+								vnet_crypto_frame_enq_fn_t *enq_fn);
 
-void vnet_crypto_register_dequeue_handler (vlib_main_t *vm, vnet_crypto_engine_id_t engine,
-					   vnet_crypto_frame_dequeue_t *deq_fn);
+__clib_export void vnet_crypto_register_dequeue_handler (vlib_main_t *vm,
+							 vnet_crypto_engine_id_t engine,
+							 vnet_crypto_frame_dequeue_t *deq_fn);
 
 typedef struct
 {
@@ -673,15 +677,15 @@ typedef struct
   u8 default_disabled;
 } vnet_crypto_main_t;
 
-extern vnet_crypto_main_t crypto_main;
+__clib_export extern vnet_crypto_main_t crypto_main;
 
 void vnet_crypto_register_key_handler_for_alg (vnet_crypto_engine_id_t engine,
 					       vnet_crypto_alg_t alg, vnet_crypto_handler_type_t t,
 					       vnet_crypto_key_change_fn_t *key_change_fn,
 					       u16 key_data_sz, u8 key_data_per_thread);
 
-u32 vnet_crypto_process_ops (vlib_main_t *vm, vnet_crypto_op_t ops[],
-			     vnet_crypto_op_chunk_t *chunks, u32 n_ops);
+__clib_export u32 vnet_crypto_process_ops (vlib_main_t *vm, vnet_crypto_op_t ops[],
+					   vnet_crypto_op_chunk_t *chunks, u32 n_ops);
 typedef struct
 {
   char *handler_name;
@@ -693,22 +697,23 @@ typedef struct
 
 int vnet_crypto_set_handlers (vnet_crypto_set_handlers_args_t *);
 
-vnet_crypto_ctx_t *vnet_crypto_ctx_create (vnet_crypto_alg_t alg);
-int vnet_crypto_ctx_set_cipher_key (vnet_crypto_ctx_t *ctx, const u8 *cipher_key,
-				    u16 cipher_key_len);
-int vnet_crypto_ctx_set_auth_key (vnet_crypto_ctx_t *ctx, const u8 *auth_key, u16 auth_key_len);
-void vnet_crypto_ctx_destroy (vlib_main_t *vm, vnet_crypto_ctx_t *ctx);
-void vnet_crypto_ctx_set_engine (vnet_crypto_ctx_t *ctx, vnet_crypto_handler_type_t t,
-				 vnet_crypto_engine_id_t engine);
+__clib_export vnet_crypto_ctx_t *vnet_crypto_ctx_create (vnet_crypto_alg_t alg);
+__clib_export int vnet_crypto_ctx_set_cipher_key (vnet_crypto_ctx_t *ctx, const u8 *cipher_key,
+						  u16 cipher_key_len);
+__clib_export int vnet_crypto_ctx_set_auth_key (vnet_crypto_ctx_t *ctx, const u8 *auth_key,
+						u16 auth_key_len);
+__clib_export void vnet_crypto_ctx_destroy (vlib_main_t *vm, vnet_crypto_ctx_t *ctx);
+__clib_export void vnet_crypto_ctx_set_engine (vnet_crypto_ctx_t *ctx, vnet_crypto_handler_type_t t,
+					       vnet_crypto_engine_id_t engine);
 void vnet_crypto_ctx_set_default_engine (vnet_crypto_ctx_t *ctx, vnet_crypto_handler_type_t t);
 
-format_function_t format_vnet_crypto_alg;
-format_function_t format_vnet_crypto_engine;
-format_function_t format_crypto_op_type_short;
+__clib_export format_function_t format_vnet_crypto_alg;
+__clib_export format_function_t format_vnet_crypto_engine;
+__clib_export format_function_t format_crypto_op_type_short;
 format_function_t format_vnet_crypto_op_type;
-format_function_t format_vnet_crypto_op_status;
-unformat_function_t unformat_vnet_crypto_alg;
-unformat_function_t unformat_vnet_crypto_engine;
+__clib_export format_function_t format_vnet_crypto_op_status;
+__clib_export unformat_function_t unformat_vnet_crypto_alg;
+__clib_export unformat_function_t unformat_vnet_crypto_engine;
 
 static_always_inline int
 vnet_crypto_alg_has_op_type (vnet_crypto_alg_t alg, vnet_crypto_op_type_t type)

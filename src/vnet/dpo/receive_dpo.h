@@ -50,7 +50,7 @@ extern void receive_dpo_module_init(void);
 /**
  * @brief pool of all receive DPOs
  */
-extern receive_dpo_t *receive_dpo_pool;
+__clib_export extern receive_dpo_t *receive_dpo_pool;
 
 static inline receive_dpo_t *
 receive_dpo_get (index_t index)

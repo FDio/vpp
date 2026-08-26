@@ -16,15 +16,14 @@ typedef enum ip_address_family_t_
 
 #define N_AF (AF_IP6+1)
 
-extern uword unformat_ip_address_family (unformat_input_t * input,
-					 va_list * args);
-extern u8 *format_ip_address_family (u8 * s, va_list * args);
+__clib_export extern uword unformat_ip_address_family (unformat_input_t *input, va_list *args);
+__clib_export extern u8 *format_ip_address_family (u8 *s, va_list *args);
 
 #define FOR_EACH_IP_ADDRESS_FAMILY(_af) \
   for (_af = AF_IP4; _af <= AF_IP6; _af++)
 
 extern vnet_link_t ip_address_family_to_link_type (ip_address_family_t af);
-extern fib_protocol_t ip_address_family_to_fib_proto (ip_address_family_t af);
+__clib_export extern fib_protocol_t ip_address_family_to_fib_proto (ip_address_family_t af);
 extern ip_address_family_t ip_address_family_from_fib_proto (fib_protocol_t
 							     fp);
 
@@ -80,25 +79,23 @@ typedef struct ip_address
 #define ip_addr_v6(_a) (_a)->ip.ip6
 #define ip_addr_version(_a) (_a)->version
 
-extern u8 *ip_addr_bytes (ip_address_t * ip);
+__clib_export extern u8 *ip_addr_bytes (ip_address_t *ip);
 
-extern bool ip_address_is_zero (const ip_address_t * ip);
-extern int ip_address_cmp (const ip_address_t * ip1,
-			   const ip_address_t * ip2);
-extern void ip_address_copy (ip_address_t * dst, const ip_address_t * src);
-extern void ip_address_copy_addr (void *dst, const ip_address_t * src);
-extern void ip_address_set (ip_address_t *dst, const void *src,
-			    ip_address_family_t version);
-extern u16 ip_address_size (const ip_address_t * a);
-extern u16 ip_version_to_size (ip_address_family_t af);
-extern u8 *format_ip_address (u8 * s, va_list * args);
-extern uword unformat_ip_address (unformat_input_t * input, va_list * args);
-extern fib_protocol_t ip_address_to_46 (const ip_address_t * addr,
-					ip46_address_t * a);
+__clib_export extern bool ip_address_is_zero (const ip_address_t *ip);
+__clib_export extern int ip_address_cmp (const ip_address_t *ip1, const ip_address_t *ip2);
+__clib_export extern void ip_address_copy (ip_address_t *dst, const ip_address_t *src);
+__clib_export extern void ip_address_copy_addr (void *dst, const ip_address_t *src);
+__clib_export extern void ip_address_set (ip_address_t *dst, const void *src,
+					  ip_address_family_t version);
+__clib_export extern u16 ip_address_size (const ip_address_t *a);
+__clib_export extern u16 ip_version_to_size (ip_address_family_t af);
+__clib_export extern u8 *format_ip_address (u8 *s, va_list *args);
+__clib_export extern uword unformat_ip_address (unformat_input_t *input, va_list *args);
+__clib_export extern fib_protocol_t ip_address_to_46 (const ip_address_t *addr, ip46_address_t *a);
 extern void ip_address_from_46 (const ip46_address_t * a,
 				fib_protocol_t fproto, ip_address_t * addr);
 extern void ip_address_increment (ip_address_t * ip);
-extern void ip_address_reset (ip_address_t * ip);
+__clib_export extern void ip_address_reset (ip_address_t *ip);
 
 typedef struct ip_prefix
 {
@@ -112,22 +109,20 @@ typedef struct ip_prefix
 #define ip_prefix_v4(_a) ip_addr_v4(&ip_prefix_addr(_a))
 #define ip_prefix_v6(_a) ip_addr_v6(&ip_prefix_addr(_a))
 
-extern int ip_prefix_cmp (const ip_prefix_t *p1, const ip_prefix_t *p2);
-extern void ip_prefix_normalize (ip_prefix_t * a);
+__clib_export extern int ip_prefix_cmp (const ip_prefix_t *p1, const ip_prefix_t *p2);
+__clib_export extern void ip_prefix_normalize (ip_prefix_t *a);
 
-extern void ip_address_to_fib_prefix (const ip_address_t * addr,
-				      fib_prefix_t * prefix);
+__clib_export extern void ip_address_to_fib_prefix (const ip_address_t *addr, fib_prefix_t *prefix);
 extern void ip_address_to_prefix (const ip_address_t *addr,
 				  ip_prefix_t *prefix);
-extern void ip_prefix_to_fib_prefix (const ip_prefix_t * ipp,
-				     fib_prefix_t * fibp);
-extern u8 *format_ip_prefix (u8 * s, va_list * args);
-extern uword unformat_ip_prefix (unformat_input_t * input, va_list * args);
+__clib_export extern void ip_prefix_to_fib_prefix (const ip_prefix_t *ipp, fib_prefix_t *fibp);
+__clib_export extern u8 *format_ip_prefix (u8 *s, va_list *args);
+__clib_export extern uword unformat_ip_prefix (unformat_input_t *input, va_list *args);
 
-extern bool ip_prefix_validate (const ip_prefix_t * ip);
+__clib_export extern bool ip_prefix_validate (const ip_prefix_t *ip);
 extern void ip4_address_normalize (ip4_address_t * ip4, u8 preflen);
 extern void ip6_address_normalize (ip6_address_t * ip6, u8 preflen);
-extern void ip4_preflen_to_mask (u8 pref_len, ip4_address_t * ip);
+__clib_export extern void ip4_preflen_to_mask (u8 pref_len, ip4_address_t *ip);
 extern u32 ip4_mask_to_preflen (ip4_address_t * mask);
 extern void ip4_prefix_max_address_host_order (ip4_address_t * ip, u8 plen,
 					       ip4_address_t * res);
@@ -141,6 +136,6 @@ extern u8 ip6_is_local_host (ip6_address_t *ip6_address);
 extern u8 ip_is_zero (ip46_address_t *ip46_address, u8 is_ip4);
 extern u8 ip_is_local_host (ip46_address_t *ip46_address, u8 is_ip4);
 extern void ip_copy (ip46_address_t *dst, ip46_address_t *src, u8 is_ip4);
-extern void ip_set (ip46_address_t *dst, void *src, u8 is_ip4);
+__clib_export extern void ip_set (ip46_address_t *dst, void *src, u8 is_ip4);
 
 #endif /* __IP_TYPES_H__ */

@@ -104,24 +104,24 @@ scoreboard_last_hole (sack_scoreboard_t * sb)
 #define tcp_sack_trace(_tc, _ack)
 #endif
 
-sack_scoreboard_hole_t *scoreboard_next_rxt_hole (sack_scoreboard_t *sb,
-						  sack_scoreboard_hole_t *start,
-						  u8 have_sent_1_smss, u8 *can_rescue,
-						  u8 *snd_limited);
-void scoreboard_clear (sack_scoreboard_t * sb);
-void scoreboard_init (sack_scoreboard_t * sb);
+__clib_export sack_scoreboard_hole_t *scoreboard_next_rxt_hole (sack_scoreboard_t *sb,
+								sack_scoreboard_hole_t *start,
+								u8 have_sent_1_smss, u8 *can_rescue,
+								u8 *snd_limited);
+__clib_export void scoreboard_clear (sack_scoreboard_t *sb);
+__clib_export void scoreboard_init (sack_scoreboard_t *sb);
 
-format_function_t format_tcp_scoreboard;
+__clib_export format_function_t format_tcp_scoreboard;
 
-void tcp_update_sack_list (tcp_connection_t * tc, u32 start, u32 end);
-void tcp_dsack_cleanup (tcp_connection_t *tc);
-void tcp_dsack_recovery_clear (tcp_connection_t *tc);
-void tcp_dsack_recovery_init (tcp_connection_t *tc);
-void tcp_dsack_track_retransmit (tcp_connection_t *tc, u32 start, u32 end);
+__clib_export void tcp_update_sack_list (tcp_connection_t *tc, u32 start, u32 end);
+__clib_export void tcp_dsack_cleanup (tcp_connection_t *tc);
+__clib_export void tcp_dsack_recovery_clear (tcp_connection_t *tc);
+__clib_export void tcp_dsack_recovery_init (tcp_connection_t *tc);
+__clib_export void tcp_dsack_track_retransmit (tcp_connection_t *tc, u32 start, u32 end);
 u32 tcp_sack_list_bytes (tcp_connection_t * tc);
-void tcp_rcv_dsack (tcp_connection_t *tc, u32 ack, tcp_ack_ctx_t *ac);
-void tcp_ack_handle_full_feedback (tcp_connection_t *tc, u32 packet_ack, u32 ack,
-				   tcp_ack_ctx_t *ac);
+__clib_export void tcp_rcv_dsack (tcp_connection_t *tc, u32 ack, tcp_ack_ctx_t *ac);
+__clib_export void tcp_ack_handle_full_feedback (tcp_connection_t *tc, u32 packet_ack, u32 ack,
+						 tcp_ack_ctx_t *ac);
 
 static_always_inline void
 tcp_ack_handle_feedback (tcp_connection_t *tc, u32 packet_ack, tcp_ack_ctx_t *ac)
@@ -146,11 +146,11 @@ tcp_ack_handle_feedback (tcp_connection_t *tc, u32 packet_ack, tcp_ack_ctx_t *ac
   ac->acked_and_sacked = ac->bytes_acked;
 }
 
-void tcp_sack_init_rxt (tcp_connection_t *tc, u32 snd_una);
-void tcp_sack_recompute_loss (tcp_connection_t *tc);
-void tcp_sack_rxt_mark_lost (tcp_connection_t *tc);
-u8 tcp_sack_handle_reneging (tcp_connection_t *tc);
+__clib_export void tcp_sack_init_rxt (tcp_connection_t *tc, u32 snd_una);
+__clib_export void tcp_sack_recompute_loss (tcp_connection_t *tc);
+__clib_export void tcp_sack_rxt_mark_lost (tcp_connection_t *tc);
+__clib_export u8 tcp_sack_handle_reneging (tcp_connection_t *tc);
 u8 tcp_sack_is_sane_post_recovery (tcp_connection_t *tc);
-u8 *tcp_scoreboard_replay (u8 *s, tcp_connection_t *tc, u8 verbose);
+__clib_export u8 *tcp_scoreboard_replay (u8 *s, tcp_connection_t *tc, u8 verbose);
 
 #endif /* SRC_VNET_TCP_TCP_SACK_H_ */

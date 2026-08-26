@@ -145,11 +145,10 @@ typedef struct ipsec_tun_protect_t_
   }                                                        \
 }
 
-extern int ipsec_tun_protect_update (u32 sw_if_index,
-				     const ip_address_t * nh,
-				     u32 sa_out, u32 * sa_ins);
+__clib_export extern int ipsec_tun_protect_update (u32 sw_if_index, const ip_address_t *nh,
+						   u32 sa_out, u32 *sa_ins);
 
-extern int ipsec_tun_protect_del (u32 sw_if_index, const ip_address_t * nh);
+__clib_export extern int ipsec_tun_protect_del (u32 sw_if_index, const ip_address_t *nh);
 
 typedef walk_rc_t (*ipsec_tun_protect_walk_cb_t) (index_t itpi, void *arg);
 extern void ipsec_tun_protect_walk (ipsec_tun_protect_walk_cb_t fn,
