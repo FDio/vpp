@@ -35,7 +35,7 @@
  * @param rewrite
  *  The rewrite.
  */
-extern void adj_nbr_midchain_update_rewrite(adj_index_t adj_index,
+__clib_export extern void adj_nbr_midchain_update_rewrite(adj_index_t adj_index,
 					    adj_midchain_fixup_t fixup,
                                             const void *fixup_data,
 					    adj_flags_t flags,
@@ -74,7 +74,7 @@ extern void adj_nbr_midchain_update_next_node(adj_index_t adj_index,
  * @param dpo
  *  The parent DPO to stack onto (i.e. become a child of).
  */
-extern void adj_nbr_midchain_stack(adj_index_t adj_index,
+__clib_export extern void adj_nbr_midchain_stack(adj_index_t adj_index,
 				   const dpo_id_t *dpo);
 
 /**
@@ -92,7 +92,7 @@ extern void adj_nbr_midchain_stack(adj_index_t adj_index,
  * @param fct
  *  The chain type to use from the fib entry forwarding
  */
-extern void adj_nbr_midchain_stack_on_fib_entry(adj_index_t adj_index,
+__clib_export extern void adj_nbr_midchain_stack_on_fib_entry(adj_index_t adj_index,
                                                 fib_node_index_t fei,
                                                 fib_forward_chain_type_t fct);
 
@@ -104,7 +104,7 @@ extern void adj_nbr_midchain_stack_on_fib_entry(adj_index_t adj_index,
  * @param adj_index
  *  The index of the midchain to stack
  */
-extern void adj_nbr_midchain_unstack(adj_index_t adj_index);
+__clib_export extern void adj_nbr_midchain_unstack(adj_index_t adj_index);
 
 /**
  * @brief descend the FIB graph looking for loops
@@ -137,7 +137,7 @@ extern u8* format_adj_midchain(u8* s, va_list *ap);
  * @param fib_index - The FIB index of the prefix on which to stack
  * @param pfx - The prefix on which to stack
  */
-extern void adj_midchain_delegate_stack(adj_index_t ai,
+__clib_export extern void adj_midchain_delegate_stack(adj_index_t ai,
                                         u32 fib_index,
                                         const fib_prefix_t *pfx);
 
@@ -149,12 +149,12 @@ extern void adj_midchain_delegate_restack(adj_index_t ai);
 /**
  * @brief unstack a midchain delegate (this stacks it on a drop)
  */
-extern void adj_midchain_delegate_unstack(adj_index_t ai);
+__clib_export extern void adj_midchain_delegate_unstack(adj_index_t ai);
 
 /**
  * @brief remove a midchain delegate (this stacks it on a drop)
  */
-extern void adj_midchain_delegate_remove (adj_index_t ai);
+__clib_export extern void adj_midchain_delegate_remove (adj_index_t ai);
 
 extern u8 adj_is_midchain (adj_index_t ai);
 

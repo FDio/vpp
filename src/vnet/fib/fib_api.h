@@ -19,11 +19,11 @@ struct _vl_api_fib_prefix;
 /**
  * Encode and decode functions from the API types to internal types
  */
-extern vl_api_fib_path_nh_proto_t fib_api_path_dpo_proto_to_nh (dpo_proto_t dproto);
-extern int fib_api_path_nh_proto_to_dpo (vl_api_fib_path_nh_proto_t pp, dpo_proto_t *dproto);
-extern void fib_api_path_encode(const fib_route_path_t * api_rpath,
+__clib_export extern vl_api_fib_path_nh_proto_t fib_api_path_dpo_proto_to_nh (dpo_proto_t dproto);
+__clib_export extern int fib_api_path_nh_proto_to_dpo (vl_api_fib_path_nh_proto_t pp, dpo_proto_t *dproto);
+__clib_export extern void fib_api_path_encode(const fib_route_path_t * api_rpath,
                                 vl_api_fib_path_t *out);
-extern int fib_api_path_decode(vl_api_fib_path_t *in,
+__clib_export extern int fib_api_path_decode(vl_api_fib_path_t *in,
                                fib_route_path_t *out);
 
 extern int fib_api_table_id_decode(fib_protocol_t fproto,
@@ -45,7 +45,7 @@ extern u8 *format_vl_api_address_union (u8 * s, va_list * args);
 extern u8* format_vl_api_fib_path(u8 * s, va_list * args);
 
 
-extern int fib_proto_from_api_address_family (vl_api_address_family_t af, fib_protocol_t *out);
-extern vl_api_address_family_t fib_proto_to_api_address_family (fib_protocol_t fproto);
+__clib_export extern int fib_proto_from_api_address_family (vl_api_address_family_t af, fib_protocol_t *out);
+__clib_export extern vl_api_address_family_t fib_proto_to_api_address_family (fib_protocol_t fproto);
 
 #endif /* __FIB_API_H__ */

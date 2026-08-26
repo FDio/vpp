@@ -87,6 +87,6 @@ extern void adj_glean_module_init(void);
  * @brief
  *  Return the size of the adjacency database. for testing purposes
  */
-extern u32 adj_glean_db_size(void);
+__clib_export extern u32 adj_glean_db_size(void);
 
 #endif
