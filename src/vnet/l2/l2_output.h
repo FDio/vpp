@@ -127,7 +127,7 @@ typedef enum
 } l2output_error_t;
 
 /* Return an array of strings containing graph node names of each feature */
-char **l2output_get_feat_names (void);
+__clib_export char **l2output_get_feat_names (void);
 
 /* arg0 - u32 feature_bitmap, arg1 - u32 verbose */
 u8 *format_l2_output_features (u8 * s, va_list * args);
@@ -148,8 +148,7 @@ void l2output_create_output_node_mapping (vlib_main_t * vlib_main,
 l2_output_config_t *l2output_intf_config (u32 sw_if_index);
 
 /** Enable (or disable) the feature in the bitmap for the given interface */
-void l2output_intf_bitmap_enable (u32 sw_if_index,
-				  l2output_feat_masks_t feature_bitmap,
-				  u32 enable);
+__clib_export void l2output_intf_bitmap_enable (u32 sw_if_index,
+						l2output_feat_masks_t feature_bitmap, u32 enable);
 
 #endif

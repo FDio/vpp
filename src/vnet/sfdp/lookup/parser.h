@@ -127,6 +127,6 @@ typedef struct
   static sfdp_parser_registration_t sfdp_parser_registration_##x
 #endif
 
-extern sfdp_parser_main_t sfdp_parser_main;
+__clib_export extern sfdp_parser_main_t sfdp_parser_main;
 
 #endif /*__included_lookup_parser_h__*/

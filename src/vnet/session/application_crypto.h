@@ -214,31 +214,31 @@ void app_crypto_ctx_free (app_crypto_ctx_t *crypto_ctx);
  */
 
 app_cert_key_pair_t *app_cert_key_pair_get (u32 index);
-app_cert_key_pair_t *app_cert_key_pair_get_if_valid (u32 index);
-app_cert_key_pair_t *app_cert_key_pair_get_default ();
+__clib_export app_cert_key_pair_t *app_cert_key_pair_get_if_valid (u32 index);
+__clib_export app_cert_key_pair_t *app_cert_key_pair_get_default ();
 
-int app_crypto_add_ca_trust (u32 app_index, app_ca_trust_add_args_t *args);
-int app_crypto_update_ca_trust_crl (u32 app_index, app_ca_trust_update_crl_args_t *args);
-app_crypto_ca_trust_t *app_crypto_get_wrk_ca_trust (u32 app_wrk_index,
-						    u32 ca_trust_index);
-app_crypto_ca_trust_int_ctx_t *
-app_crypto_alloc_int_ca_trust (app_crypto_ca_trust_t *ct,
-			       clib_thread_index_t thread_index);
-app_crypto_ca_trust_int_ctx_t *
-app_crypto_get_int_ca_trust (app_crypto_ca_trust_t *ct,
-			     clib_thread_index_t thread_index);
+__clib_export int app_crypto_add_ca_trust (u32 app_index, app_ca_trust_add_args_t *args);
+__clib_export int app_crypto_update_ca_trust_crl (u32 app_index,
+						  app_ca_trust_update_crl_args_t *args);
+__clib_export app_crypto_ca_trust_t *app_crypto_get_wrk_ca_trust (u32 app_wrk_index,
+								  u32 ca_trust_index);
+__clib_export app_crypto_ca_trust_int_ctx_t *
+app_crypto_alloc_int_ca_trust (app_crypto_ca_trust_t *ct, clib_thread_index_t thread_index);
+__clib_export app_crypto_ca_trust_int_ctx_t *
+app_crypto_get_int_ca_trust (app_crypto_ca_trust_t *ct, clib_thread_index_t thread_index);
 
-int vnet_app_add_cert_key_pair (vnet_app_add_cert_key_pair_args_t *a);
-int vnet_app_del_cert_key_pair (u32 index);
+__clib_export int vnet_app_add_cert_key_pair (vnet_app_add_cert_key_pair_args_t *a);
+__clib_export int vnet_app_del_cert_key_pair (u32 index);
 
 /*
  * TLS profile management
  */
 
-int app_crypto_add_tls_profile (u32 app_index, app_tls_profile_add_args_t *args);
-void app_crypto_del_tls_profile (u32 app_index, u32 profile_index);
-app_tls_profile_t *app_crypto_get_tls_profile (u32 app_wrk_index, u32 profile_index);
-app_tls_profile_t *app_crypto_get_tls_profile_if_valid (u32 app_wrk_index, u32 profile_index);
+__clib_export int app_crypto_add_tls_profile (u32 app_index, app_tls_profile_add_args_t *args);
+__clib_export void app_crypto_del_tls_profile (u32 app_index, u32 profile_index);
+__clib_export app_tls_profile_t *app_crypto_get_tls_profile (u32 app_wrk_index, u32 profile_index);
+__clib_export app_tls_profile_t *app_crypto_get_tls_profile_if_valid (u32 app_wrk_index,
+								      u32 profile_index);
 
 static inline app_certkey_int_ctx_t *
 app_certkey_get_int_ctx (app_cert_key_pair_t *ck,
@@ -265,19 +265,18 @@ app_certkey_alloc_int_ctx (app_cert_key_pair_t *ck,
   return cki;
 }
 
-app_crypto_async_req_ticket_t
-app_crypto_async_req (app_crypto_async_req_t *req);
-void app_crypto_async_cancel_req (app_crypto_async_req_ticket_t ticket);
-void app_crypto_async_reply (app_crypto_async_reply_t *reply);
+app_crypto_async_req_ticket_t __clib_export app_crypto_async_req (app_crypto_async_req_t *req);
+__clib_export void app_crypto_async_cancel_req (app_crypto_async_req_ticket_t ticket);
+__clib_export void app_crypto_async_reply (app_crypto_async_reply_t *reply);
 
 /*
  * Crypto engine management
  */
 crypto_engine_type_t app_crypto_engine_type_add (void);
 u8 app_crypto_engine_n_types (void);
-u8 *format_crypto_engine (u8 *s, va_list *args);
+__clib_export u8 *format_crypto_engine (u8 *s, va_list *args);
 uword unformat_crypto_engine (unformat_input_t *input, va_list *args);
-u8 *format_app_tls_version (u8 *s, va_list *args);
+__clib_export u8 *format_app_tls_version (u8 *s, va_list *args);
 
 clib_error_t *application_crypto_init ();
 

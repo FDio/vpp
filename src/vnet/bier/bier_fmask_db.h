@@ -79,8 +79,7 @@ typedef struct bier_fmask_id_t_ {
 extern index_t
 bier_fmask_db_find_or_create_and_lock(index_t bti,
                                       const fib_route_path_t *rpath);
-extern index_t bier_fmask_db_find (index_t bti,
-                                   const fib_route_path_t *rpath);
+__clib_export extern index_t bier_fmask_db_find (index_t bti, const fib_route_path_t *rpath);
 
 extern void bier_fmask_db_remove (const bier_fmask_id_t *fmid);
 

@@ -286,27 +286,27 @@ foreach_ipsec_sa_flags
   }
     foreach_ipsec_sa_flags
 #undef _
-  /**
-   * @brief
-   * SA packet & bytes counters
-   */
-  extern vlib_combined_counter_main_t ipsec_sa_counters;
+      /**
+       * @brief
+       * SA packet & bytes counters
+       */
+      __clib_export extern vlib_combined_counter_main_t ipsec_sa_counters;
 extern vlib_simple_counter_main_t ipsec_sa_err_counters[IPSEC_SA_N_ERRORS];
 
-extern void ipsec_mk_key (ipsec_key_t *key, const u8 *data, u8 len);
+__clib_export extern void ipsec_mk_key (ipsec_key_t *key, const u8 *data, u8 len);
 
 extern int ipsec_sa_update (u32 id, u16 src_port, u16 dst_port,
 			    const tunnel_t *tun, bool is_tun);
 extern void ipsec_sa_update_runtime (ipsec_sa_t *sa);
-extern int ipsec_sa_add_and_lock (
-  u32 id, u32 spi, ipsec_protocol_t proto, ipsec_crypto_alg_t crypto_alg,
-  const ipsec_key_t *ck, ipsec_integ_alg_t integ_alg, const ipsec_key_t *ik,
-  ipsec_sa_flags_t flags, u32 salt, u16 src_port, u16 dst_port,
-  u32 anti_replay_window_size, const tunnel_t *tun, u32 *sa_out_index);
+__clib_export extern int
+ipsec_sa_add_and_lock (u32 id, u32 spi, ipsec_protocol_t proto, ipsec_crypto_alg_t crypto_alg,
+		       const ipsec_key_t *ck, ipsec_integ_alg_t integ_alg, const ipsec_key_t *ik,
+		       ipsec_sa_flags_t flags, u32 salt, u16 src_port, u16 dst_port,
+		       u32 anti_replay_window_size, const tunnel_t *tun, u32 *sa_out_index);
 extern int ipsec_sa_bind (u32 id, u32 worker, bool bind);
-extern index_t ipsec_sa_find_and_lock (u32 id);
-extern int ipsec_sa_unlock_id (u32 id);
-extern void ipsec_sa_unlock (index_t sai);
+__clib_export extern index_t ipsec_sa_find_and_lock (u32 id);
+__clib_export extern int ipsec_sa_unlock_id (u32 id);
+__clib_export extern void ipsec_sa_unlock (index_t sai);
 extern void ipsec_sa_lock (index_t sai);
 extern void ipsec_sa_clear (index_t sai);
 extern void ipsec_sa_set_async_mode (ipsec_sa_t *sa, int is_enabled);

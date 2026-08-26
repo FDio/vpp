@@ -55,7 +55,7 @@ typedef struct
   uword next_worker_thread_index;
 } vnet_device_main_t;
 
-extern vnet_device_main_t vnet_device_main;
+__clib_export extern vnet_device_main_t vnet_device_main;
 extern vlib_node_registration_t device_input_node;
 
 static inline u64

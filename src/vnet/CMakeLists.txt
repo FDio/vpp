@@ -1417,8 +1417,10 @@ list (APPEND VNET_MULTIARCH_SOURCES
 ##############################################################################
 
 add_vpp_library(vnet
+  HIDDEN
   SOURCES ${VNET_SOURCES}
   MULTIARCH_SOURCES ${VNET_MULTIARCH_SOURCES}
+  COMPILE_DEFINITIONS BIHASH_TEMPLATE_API=__clib_export
   INSTALL_HEADERS ${VNET_HEADERS}
   API_FILES ${VNET_API_FILES}
   LINK_LIBRARIES vppinfra svm vlibapi vlibmemory vlib

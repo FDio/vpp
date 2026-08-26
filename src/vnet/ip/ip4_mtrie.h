@@ -144,7 +144,7 @@ format_function_t format_ip4_mtrie_8;
 /**
  * @brief A global pool of 8bit stride plys
  */
-extern ip4_mtrie_8_ply_t *ip4_ply_pool;
+__clib_export extern ip4_mtrie_8_ply_t *ip4_ply_pool;
 
 /**
  * @brief Pre-allocate the pool of plys

@@ -210,7 +210,7 @@ format_sfdp_scope (u8 *s, va_list *args)
   return format (s, "%s", sm->scope_names[scope_index]);
 }
 
-u8 *
+__clib_export u8 *
 format_sfdp_bitmap (u8 *s, va_list *args)
 {
   u32 scope_index = va_arg (*args, u32);
