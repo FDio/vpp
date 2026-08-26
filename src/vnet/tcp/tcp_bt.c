@@ -10,6 +10,7 @@
 #include <vnet/tcp/tcp_bt.h>
 #include <vnet/tcp/tcp.h>
 #include <vnet/tcp/tcp_inlines.h>
+#include <vnet/tcp/tcp_rack.h>
 
 static tcp_bt_sample_t *
 bt_get_sample (tcp_byte_tracker_t * bt, u32 bts_index)
@@ -251,7 +252,7 @@ tcp_bt_tx_order_split (tcp_byte_tracker_t *bt, tcp_bt_sample_t *bts, tcp_bt_samp
     order->tail = split_index;
 }
 
-static void
+void
 tcp_bt_tx_order_build (tcp_byte_tracker_t *bt)
 {
   tcp_bt_tx_order_t *order = &bt->tx_order;
@@ -267,7 +268,7 @@ tcp_bt_tx_order_build (tcp_byte_tracker_t *bt)
   while (index != TCP_BTS_INVALID_INDEX)
     {
       bts = pool_elt_at_index (bt->samples, index);
-      if (!(bts->flags & TCP_BTS_IS_SACKED))
+      if (!(bts->flags & (TCP_BTS_TX_LOST | TCP_BTS_IS_SACKED)))
 	tcp_bt_tx_order_insert (bt, bts);
       index = bts->next;
     }
@@ -584,6 +585,22 @@ tcp_bt_track_tx (tcp_connection_t * tc, u32 len)
     }
 }
 
+static_always_inline void
+tcp_bt_account_rxt_departed (tcp_connection_t *tc, u32 departed)
+{
+  u32 available, delivered;
+
+  if (!departed || !tcp_in_cong_recovery (tc))
+    return;
+
+  ASSERT (tc->rxt_delivered <= tc->snd_rxt_bytes);
+  delivered = clib_min (tc->rxt_delivered, tc->snd_rxt_bytes);
+  available = tc->snd_rxt_bytes - delivered;
+  ASSERT (departed <= available);
+  departed = clib_min (departed, available);
+  tc->rxt_delivered = delivered + departed;
+}
+
 static_always_inline tcp_bts_flags_t
 bt_rxt_flags (tcp_connection_t *tc, tcp_bt_sample_t *bts)
 {
@@ -595,17 +612,36 @@ bt_rxt_flags (tcp_connection_t *tc, tcp_bt_sample_t *bts)
   return flags;
 }
 
+static_always_inline u8
+bt_rxt_is_active (tcp_bt_sample_t *bts)
+{
+  return (bts->flags & TCP_BTS_IS_RXT) && !(bts->flags & (TCP_BTS_TX_LOST | TCP_BTS_IS_SACKED));
+}
+
 static_always_inline u32
-bt_rxt_range_end (tcp_connection_t *tc, tcp_bt_sample_t *bts, u32 end, tcp_bts_flags_t rxt_flags)
+bt_rxt_range_end (tcp_connection_t *tc, tcp_bt_sample_t *bts, u32 start, u32 end,
+		  tcp_bts_flags_t rxt_flags, u32 *replaced)
 {
   tcp_byte_tracker_t *bt = tc->bt;
   tcp_bt_sample_t *scan;
+  u32 sample_end;
+
+  sample_end = seq_min (bts->max_seq, end);
+  if (replaced && bt_rxt_is_active (bts))
+    *replaced += sample_end - start;
+  if (sample_end == end)
+    return end;
 
   scan = bt_next_sample (bt, bts);
   while (scan && seq_lt (scan->min_seq, end))
     {
       if ((scan->flags & TCP_BTS_IS_SACKED) || bt_rxt_flags (tc, scan) != rxt_flags)
 	return scan->min_seq;
+      sample_end = seq_min (scan->max_seq, end);
+      if (replaced && bt_rxt_is_active (scan))
+	*replaced += sample_end - scan->min_seq;
+      if (sample_end == end)
+	return end;
       scan = bt_next_sample (bt, scan);
     }
   return end;
@@ -750,7 +786,7 @@ bt_track_rxt_range (tcp_connection_t *tc, tcp_bt_sample_t *start_bts, u32 start,
 }
 
 static_always_inline tcp_bt_sample_t *
-bt_rxt_extend_candidate (tcp_connection_t *tc, u32 start, tcp_bt_sample_t **next)
+bt_rxt_extend_candidate (tcp_connection_t *tc, u32 start, tcp_bt_sample_t **next, f64 now)
 {
   tcp_byte_tracker_t *bt = tc->bt;
   tcp_bt_sample_t *bts, *last;
@@ -765,7 +801,7 @@ bt_rxt_extend_candidate (tcp_connection_t *tc, u32 start, tcp_bt_sample_t **next
     return 0;
 
   rxt_flags = bt_rxt_flags (tc, bts);
-  if (last->flags != rxt_flags || last->tx_time != tcp_time_now_us (tc->c_thread_index))
+  if (last->flags != rxt_flags || last->tx_time != now)
     return 0;
 
   *next = bts;
@@ -782,20 +818,22 @@ bt_extend_rxt_sample (tcp_connection_t *tc, tcp_bt_sample_t *last, tcp_bt_sample
 }
 
 static_always_inline u8
-bt_try_extend_rxt_sample (tcp_connection_t *tc, u32 start, u32 end)
+bt_try_extend_rxt_sample (tcp_connection_t *tc, u32 start, u32 end, f64 now, u32 *replaced)
 {
   tcp_bt_sample_t *last, *next;
 
-  last = bt_rxt_extend_candidate (tc, start, &next);
+  last = bt_rxt_extend_candidate (tc, start, &next, now);
   if (!last || seq_gt (end, next->max_seq))
     return 0;
 
+  if (replaced && bt_rxt_is_active (next))
+    *replaced += end - start;
   bt_extend_rxt_sample (tc, last, next, end);
   return 1;
 }
 
 static u32
-bt_track_rxt_ranges (tcp_connection_t *tc, u32 start, u32 end)
+bt_track_rxt_ranges (tcp_connection_t *tc, u32 start, u32 end, f64 now, u32 *replaced)
 {
   tcp_byte_tracker_t *bt = tc->bt;
   tcp_bt_sample_t *bts, *last, *next;
@@ -816,13 +854,13 @@ bt_track_rxt_ranges (tcp_connection_t *tc, u32 start, u32 end)
 	}
 
       rxt_flags = bt_rxt_flags (tc, bts);
-      range_end = bt_rxt_range_end (tc, bts, end, rxt_flags);
+      range_end = bt_rxt_range_end (tc, bts, start, end, rxt_flags, replaced);
 
       ASSERT (seq_lt (start, range_end));
 
       /* range_end is already known to be homogeneous, so extending through
        * multiple compatible source samples needs no second boundary scan. */
-      last = bt_rxt_extend_candidate (tc, start, &next);
+      last = bt_rxt_extend_candidate (tc, start, &next, now);
       if (last && next == bts)
 	bt_extend_rxt_sample (tc, last, bts, range_end);
       else
@@ -838,21 +876,23 @@ void
 tcp_bt_track_rxt (tcp_connection_t *tc, u32 start, u32 end)
 {
   tcp_byte_tracker_t *bt = tc->bt;
-  u32 tracked;
+  tcp_rack_state_t *rack = PREDICT_FALSE (tcp_rack_enabled (tc)) ? tcp_rack_get_state (tc) : 0;
+  f64 now = tcp_time_now_us (tc->c_thread_index);
+  u32 replaced = 0, tracked;
   u8 track_dsack = tcp_opts_sack_permitted (&tc->rcv_opts) &&
 		   !(tc->sack_sb.flags & TCP_DSACK_UNDO_DISABLED) && tcp_in_cong_recovery (tc);
 
   ASSERT (seq_lt (start, end));
 
-  if (PREDICT_FALSE ((tc->cfg_flags & TCP_CFG_F_RACK) && !bt->tx_order.links))
+  if (PREDICT_FALSE (rack && !bt->tx_order.links))
     tcp_bt_tx_order_build (bt);
 
   /* Consecutive homogeneous retransmits can extend the last sample without
    * an rb-tree lookup or a new allocation. */
-  if (bt_try_extend_rxt_sample (tc, start, end))
+  if (bt_try_extend_rxt_sample (tc, start, end, now, rack ? &replaced : 0))
     tracked = end - start;
   else
-    tracked = bt_track_rxt_ranges (tc, start, end);
+    tracked = bt_track_rxt_ranges (tc, start, end, now, rack ? &replaced : 0);
 
   if (track_dsack && tracked)
     {
@@ -863,6 +903,22 @@ tcp_bt_track_rxt (tcp_connection_t *tc, u32 start, u32 end)
 	}
       ASSERT (tc->dsack_pending_bytes <= (u32) ~0 - tracked);
       tc->dsack_pending_bytes += tracked;
+    }
+
+  if (rack)
+    {
+      u32 retained, room, untracked = end - start - tracked;
+
+      ASSERT (replaced <= rack->rxt_in_flight);
+      replaced = clib_min (replaced, rack->rxt_in_flight);
+      retained = rack->rxt_in_flight - replaced;
+      room = (u32) ~0 - retained;
+      ASSERT (tracked <= room);
+      rack->rxt_in_flight = retained + clib_min (tracked, room);
+
+      /* Replaced copies and bytes retransmitted across already-SACKed
+	 islands no longer contribute to retransmission flight. */
+      tcp_bt_account_rxt_departed (tc, replaced + untracked);
     }
 }
 
@@ -897,8 +953,10 @@ tcp_bt_rxt_rewind (tcp_connection_t *tc, u32 seq)
 typedef struct
 {
   f64 now;
+  tcp_rack_state_t *rack;
   u32 fack;
   u8 account_sack;
+  u8 rack_updated;
 } tcp_bt_ack_state_t;
 
 static void
@@ -942,19 +1000,61 @@ static_always_inline void
 tcp_bt_update_rxt_delivered (tcp_connection_t *tc, tcp_ack_ctx_t *ac, tcp_bts_flags_t flags,
 			     u32 start, u32 end)
 {
-  u32 high_rxt = tc->sack_sb.high_rxt;
+  u32 high_rxt;
 
-  if (!(flags & TCP_BTS_IS_RXT) || !tcp_in_cong_recovery (tc) || seq_geq (start, high_rxt))
+  if (!(flags & TCP_BTS_IS_RXT))
     return;
 
+  high_rxt = tc->sack_sb.high_rxt;
+  if (!tcp_in_cong_recovery (tc) || seq_geq (start, high_rxt))
+    return;
   ac->rxt_sacked += seq_min (end, high_rxt) - start;
+}
+
+static_always_inline void
+tcp_bt_rack_update_rxt_delivered (tcp_rack_state_t *rack, tcp_ack_ctx_t *ac, tcp_bts_flags_t flags,
+				  u32 start, u32 end)
+{
+  u32 departed, room;
+
+  if (!(flags & TCP_BTS_IS_RXT))
+    return;
+
+  if (flags & (TCP_BTS_TX_LOST | TCP_BTS_IS_SACKED))
+    return;
+
+  departed = end - start;
+  ASSERT (departed <= rack->rxt_in_flight);
+  departed = clib_min (departed, rack->rxt_in_flight);
+  rack->rxt_in_flight -= departed;
+  room = (u32) ~0 - ac->rxt_sacked;
+  ASSERT (departed <= room);
+  ac->rxt_sacked += clib_min (departed, room);
 }
 
 static_always_inline void
 tcp_bt_account_sample_delivery (tcp_connection_t *tc, tcp_bt_ack_state_t *state,
 				tcp_bt_sample_t *bts, u32 start, u32 end, tcp_ack_ctx_t *ac)
 {
-  if (state->account_sack && !(bts->flags & TCP_BTS_IS_SACKED))
+  if (PREDICT_FALSE (state->rack != 0))
+    {
+      tcp_bt_rack_update_rxt_delivered (state->rack, ac, bts->flags, start, end);
+
+      /* Reneging preserves delivery-rate accounting but a retransmission of
+	 the restored range is a new current copy for RACK. */
+      if (!(bts->flags & TCP_BTS_IS_DELIVERED) ||
+	  ((bts->flags & TCP_BTS_IS_RXT) && !(bts->flags & (TCP_BTS_TX_LOST | TCP_BTS_IS_SACKED))))
+	{
+	  /* Keep RACK's DupThresh fallback in sync with the packet-distance
+	   * reordering estimate used by the legacy SACK path. Retransmissions
+	   * cannot provide unambiguous reordering evidence. */
+	  if (!(bts->flags & TCP_BTS_IS_RXT))
+	    tcp_bt_update_reorder (tc, bts->flags, start, state->fack);
+	  state->rack_updated |=
+	    tcp_rack_sample_acked (tc, state->rack, bts, end, &state->fack, state->now);
+	}
+    }
+  else if (state->account_sack && !(bts->flags & TCP_BTS_IS_SACKED))
     {
       tcp_bt_update_reorder (tc, bts->flags, start, state->fack);
       tcp_bt_update_rxt_delivered (tc, ac, bts->flags, start, end);
@@ -1236,12 +1336,24 @@ tcp_bt_apply_ack (tcp_connection_t *tc, u32 ack, u32 high_sacked, tcp_ack_ctx_t 
   tcp_bt_sample_t *head;
   u32 old_high_sacked;
 
+  /* A DSACK without ACK/SACK range progress only updates RACK's reordering
+   * state. It does not require a byte-tracker walk or rate finalization. */
+  if (!(ac->bytes_acked | (ac->ack_flags & TCP_ACK_F_SACK)))
+    {
+      ASSERT (ac->ack_flags & TCP_ACK_F_DSACK);
+      if (tcp_rack_enabled (tc) && (ac->ack_flags & TCP_ACK_F_DSACK_MATCHED))
+	ac->ack_flags |= TCP_ACK_F_DETECT_LOSS;
+      return;
+    }
+
   state.account_sack = tcp_opts_sack_permitted (&tc->rcv_opts) != 0;
-  state.now = tcp_time_now_us (tc->c_thread_index);
   old_high_sacked = state.account_sack && (sb->sacked_bytes || tcp_scoreboard_is_reneging (sb)) ?
 		      sb->high_sacked :
 		      tc->snd_una;
+  state.now = tcp_time_now_us (tc->c_thread_index);
   state.fack = old_high_sacked;
+  state.rack = PREDICT_FALSE (tcp_rack_enabled (tc)) ? tcp_rack_get_state (tc) : 0;
+  state.rack_updated = 0;
 
   if (seq_gt (ack, tc->snd_una))
     {
@@ -1267,9 +1379,22 @@ tcp_bt_apply_ack (tcp_connection_t *tc, u32 ack, u32 high_sacked, tcp_ack_ctx_t 
       tcp_scoreboard_set_reneging (sb, head && (head->flags & TCP_BTS_IS_SACKED), ac);
     }
 
-  /* Prefix retirement keeps both aggregates exact. Without new SACK
-   * coverage, no remaining range can acquire a new loss classification. */
-  if (ac->last_sacked_bytes)
+  /* RFC 6675 loss detection needs new SACK coverage. RACK needs a scan only
+   * when valid delivery can expose an earlier transmission or a matched
+   * D-SACK updates its reordering state. The postponed dequeue refreshes the
+   * shared retransmit timer after cumulative-only progress. */
+  if (state.rack)
+    {
+      u8 has_loss_candidate =
+	seq_lt (ack, tc->snd_nxt) &&
+	((state.rack->flags & TCP_RACK_F_SEG_IS_RXT) || seq_gt (sb->high_sacked, ack));
+
+      if ((ac->ack_flags & TCP_ACK_F_DSACK_MATCHED) || (state.rack_updated && has_loss_candidate))
+	ac->ack_flags |= TCP_ACK_F_DETECT_LOSS;
+      else if (state.rack_updated)
+	state.rack->reo_deadline = 0;
+    }
+  else if (ac->last_sacked_bytes)
     ac->ack_flags |= TCP_ACK_F_DETECT_LOSS;
 
   tcp_bt_sample_delivery_rate (tc, ac);
@@ -1441,6 +1566,36 @@ bt_next_rxt_range (tcp_byte_tracker_t *bt, tcp_bt_sample_t *cur, tcp_rxt_range_t
   return 1;
 }
 
+static u8
+bt_next_rack_rxt_range (tcp_byte_tracker_t *bt, tcp_bt_sample_t *cur, tcp_rxt_range_t *range,
+			tcp_bt_sample_t **range_start)
+{
+  tcp_bt_sample_t *next;
+
+  /* IS_LOST is retained for aggregate accounting on a fresh retransmission.
+   * TX_LOST identifies the active transmission that is eligible to send. */
+  while (cur && (!(cur->flags & TCP_BTS_TX_LOST) || (cur->flags & TCP_BTS_IS_SACKED)))
+    cur = bt_next_sample (bt, cur);
+  if (!cur)
+    {
+      *range_start = 0;
+      return 0;
+    }
+
+  *range_start = cur;
+  range->start = cur->min_seq;
+  range->end = cur->max_seq;
+  range->is_lost = 1;
+
+  next = bt_next_sample (bt, cur);
+  while (next && (next->flags & TCP_BTS_TX_LOST) && !(next->flags & TCP_BTS_IS_SACKED))
+    {
+      range->end = next->max_seq;
+      next = bt_next_sample (bt, next);
+    }
+  return 1;
+}
+
 u8
 tcp_bt_next_rxt_range (tcp_connection_t *tc, u8 have_unsent, u8 *can_rescue, u8 *snd_limited,
 		       tcp_rxt_range_t *range)
@@ -1527,6 +1682,43 @@ tcp_bt_next_rxt_range (tcp_connection_t *tc, u8 have_unsent, u8 *can_rescue, u8 
   if (seq_lt (sb->high_rxt, range->start))
     sb->high_rxt = range->start;
   range->start = sb->high_rxt;
+  ASSERT (seq_lt (range->start, range->end));
+  return 1;
+}
+
+u8
+tcp_bt_next_rack_rxt_range (tcp_connection_t *tc, tcp_rxt_range_t *range)
+{
+  tcp_byte_tracker_t *bt = tc->bt;
+  sack_scoreboard_t *sb = &tc->sack_sb;
+  tcp_bt_sample_t *cur, *range_start;
+
+  cur = bt_get_sample (bt, bt->cur_rxt);
+  if (cur && (cur->flags & TCP_BTS_TX_LOST) && seq_geq (sb->high_rxt, cur->min_seq) &&
+      seq_lt (sb->high_rxt, bt->cur_rxt_end))
+    {
+      range->start = sb->high_rxt;
+      range->end = bt->cur_rxt_end;
+      range->is_lost = 1;
+    }
+  else
+    {
+      if (!cur)
+	cur = bt_get_sample (bt, bt->head);
+      if (!bt_next_rack_rxt_range (bt, cur, range, &range_start))
+	{
+	  bt->cur_rxt = TCP_BTS_INVALID_INDEX;
+	  bt->cur_rxt_end = sb->high_rxt;
+	  return 0;
+	}
+      cur = range_start;
+    }
+
+  /* TX_LOST describes the active transmission copy, so unlike RFC 6675's
+   * HighRxt ordering it can make older sequence space eligible again. */
+  bt->cur_rxt = bt_sample_index (bt, cur);
+  bt->cur_rxt_end = range->end;
+  sb->high_rxt = range->start;
   ASSERT (seq_lt (range->start, range->end));
   return 1;
 }

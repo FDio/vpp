@@ -47,6 +47,9 @@ tcp_bt_tx_sent_after (f64 ts, u32 end_seq, f64 other_ts, u32 other_end)
 /** Explicitly remove a sample from the transmit-order index. No-op if inactive. */
 void tcp_bt_tx_order_remove (tcp_byte_tracker_t *bt, tcp_bt_sample_t *bts);
 
+/** Build the transmit-order index from the byte tracker's sequence list. */
+void tcp_bt_tx_order_build (tcp_byte_tracker_t *bt);
+
 /**
  * Byte tracker cleanup
  *
@@ -116,6 +119,7 @@ u8 tcp_bt_handle_sack_reneging (tcp_connection_t *tc, u8 restore_tx_order);
 u8 tcp_bt_is_sane_post_recovery (tcp_connection_t *tc);
 u8 tcp_bt_next_rxt_range (tcp_connection_t *tc, u8 have_unsent, u8 *can_rescue, u8 *snd_limited,
 			  tcp_rxt_range_t *range);
+u8 tcp_bt_next_rack_rxt_range (tcp_connection_t *tc, tcp_rxt_range_t *range);
 u8 tcp_bt_last_rxt_range (tcp_connection_t *tc, tcp_rxt_range_t *range);
 /**
  * Check if sample to be generated is app limited

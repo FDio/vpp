@@ -135,6 +135,7 @@ class TestTCPUnitTests(VppAsfTestCase):
             "rst",
             "cubic",
             "bt",
+            "rack",
             "tamper fin",
             "tamper lost-ack",
             "tamper peer-fin",
