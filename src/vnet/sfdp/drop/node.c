@@ -97,6 +97,8 @@ VLIB_REGISTER_NODE (sfdp_drop_node) = {
 
 };
 
+__clib_export extern u8 sfdp_service_index_in_bitmap_drop;
+__clib_export extern sfdp_bitmap_t sfdp_service_mask_drop;
 SFDP_SERVICE_DEFINE (drop) = { .node_name = "sfdp-drop",
 			       .runs_before = SFDP_SERVICES (0),
 			       .runs_after = SFDP_SERVICES (0),

@@ -88,7 +88,7 @@ typedef struct
   vnet_main_t *vnet_main;
 } ip6_hop_by_hop_ioam_main_t;
 
-extern ip6_hop_by_hop_ioam_main_t ip6_hop_by_hop_ioam_main;
+__clib_export extern ip6_hop_by_hop_ioam_main_t ip6_hop_by_hop_ioam_main;
 
 extern clib_error_t *ip6_ioam_enable (int has_trace_option,
 				      int has_pot_option,
@@ -134,40 +134,34 @@ is_zero_ip6_address (ip6_address_t * a)
   return ((a->as_u64[0] == 0) && (a->as_u64[1] == 0));
 }
 
-int ip6_hbh_add_register_option (u8 option,
-				 u8 size,
-				 int rewrite_options (u8 * rewrite_string,
-						      u8 * size));
+__clib_export int ip6_hbh_add_register_option (u8 option, u8 size,
+					       int rewrite_options (u8 *rewrite_string, u8 *size));
 int ip6_hbh_add_unregister_option (u8 option);
 
-int ip6_hbh_pop_register_option (u8 option,
-				 int options (vlib_buffer_t * b,
-					      ip6_header_t * ip,
-					      ip6_hop_by_hop_option_t * opt));
-int ip6_hbh_pop_unregister_option (u8 option);
+__clib_export int ip6_hbh_pop_register_option (u8 option,
+					       int options (vlib_buffer_t *b, ip6_header_t *ip,
+							    ip6_hop_by_hop_option_t *opt));
+__clib_export int ip6_hbh_pop_unregister_option (u8 option);
 
 int
 ip6_hbh_get_sizeof_register_option (u8 option,
 				    int get_sizeof_hdr_options (u32 *
 								rewrite_size));
 
-int
-ip6_ioam_set_rewrite (u8 ** rwp, int has_trace_option,
-		      int has_pot_option, int has_seq_no);
+int __clib_export ip6_ioam_set_rewrite (u8 **rwp, int has_trace_option, int has_pot_option,
+					int has_seq_no);
 
-int
-ip6_hbh_config_handler_register (u8 option,
-				 int config_handler (void *data, u8 disable));
+int __clib_export ip6_hbh_config_handler_register (u8 option,
+						   int config_handler (void *data, u8 disable));
 
 int ip6_hbh_config_handler_unregister (u8 option);
 
-int ip6_hbh_flow_handler_register (u8 option,
-				   u32 ioam_flow_handler (u32 flow_ctx,
-							  u8 add));
+__clib_export int ip6_hbh_flow_handler_register (u8 option,
+						 u32 ioam_flow_handler (u32 flow_ctx, u8 add));
 
 int ip6_hbh_flow_handler_unregister (u8 option);
 
-u8 *get_flow_name_from_flow_ctx (u32 flow_ctx);
+__clib_export u8 *get_flow_name_from_flow_ctx (u32 flow_ctx);
 
 static inline flow_data_t *
 get_flow (u32 index)

@@ -89,7 +89,7 @@ typedef struct
   u16 msg_id_base;
 } l2input_main_t;
 
-extern l2input_main_t l2input_main;
+__clib_export extern l2input_main_t l2input_main;
 
 extern vlib_node_registration_t l2input_node;
 
@@ -169,7 +169,7 @@ typedef enum
 STATIC_ASSERT ((u64) L2INPUT_VALID_MASK == (1ull << L2INPUT_N_FEAT) - 1, "");
 
 /** Return an array of strings containing graph node names of each feature */
-char **l2input_get_feat_names (void);
+__clib_export char **l2input_get_feat_names (void);
 
 /* arg0 - u32 feature_bitmap, arg1 - u32 verbose */
 u8 *format_l2_input_feature_bitmap (u8 * s, va_list * args);
@@ -252,16 +252,14 @@ l2_input_seq_num (u32 sw_if_index)
 l2_input_config_t *l2input_intf_config (u32 sw_if_index);
 
 /* Enable (or disable) the feature in the bitmap for the given interface */
-u32 l2input_intf_bitmap_enable (u32 sw_if_index,
-				l2input_feat_masks_t feature_bitmap,
-				u32 enable);
+__clib_export u32 l2input_intf_bitmap_enable (u32 sw_if_index, l2input_feat_masks_t feature_bitmap,
+					      u32 enable);
 
 /* Sets modifies flags from a bridge domain */
 u32 l2input_set_bridge_features (u32 bd_index, u32 feat_mask, u32 feat_value);
 
-void l2input_interface_mac_change (u32 sw_if_index,
-				   const u8 * old_address,
-				   const u8 * new_address);
+__clib_export void l2input_interface_mac_change (u32 sw_if_index, const u8 *old_address,
+						 const u8 *new_address);
 
 void l2_input_seq_num_inc (u32 sw_if_index);
 walk_rc_t l2input_recache (u32 bd_index, u32 sw_if_index);
@@ -274,12 +272,9 @@ walk_rc_t l2input_recache (u32 bd_index, u32 sw_if_index);
 #define MODE_ERROR_ETH        1
 #define MODE_ERROR_BVI_DEF    2
 
-u32 set_int_l2_mode (vlib_main_t * vm,
-		     vnet_main_t * vnet_main,
-		     u32 mode,
-		     u32 sw_if_index,
-		     u32 bd_index, l2_bd_port_type_t port_type,
-		     u32 shg, u32 xc_sw_if_index);
+__clib_export u32 set_int_l2_mode (vlib_main_t *vm, vnet_main_t *vnet_main, u32 mode,
+				   u32 sw_if_index, u32 bd_index, l2_bd_port_type_t port_type,
+				   u32 shg, u32 xc_sw_if_index);
 
 static inline u16
 vnet_update_l2_len (vlib_buffer_t *b)
