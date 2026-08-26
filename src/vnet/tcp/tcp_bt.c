@@ -39,6 +39,224 @@ bt_sample_index (tcp_byte_tracker_t * bt, tcp_bt_sample_t * bts)
   return bts - bt->samples;
 }
 
+static_always_inline void
+tcp_bt_tx_order_sample_init (tcp_bt_tx_order_t *order, tcp_byte_tracker_t *bt,
+			     tcp_bt_sample_t *bts)
+{
+  tcp_bt_tx_link_t *link;
+  u32 index = bt_sample_index (bt, bts), i;
+
+  i = vec_len (order->links);
+  vec_validate (order->links, index);
+  while (i < vec_len (order->links))
+    {
+      order->links[i].next = order->links[i].prev = TCP_BTS_INVALID_INDEX;
+      i++;
+    }
+  link = &order->links[index];
+  link->next = link->prev = TCP_BTS_INVALID_INDEX;
+}
+
+static_always_inline u8
+tcp_bt_tx_order_sample_is_linked (tcp_bt_tx_order_t *order, u32 index)
+{
+  tcp_bt_tx_link_t *link;
+
+  ASSERT (index < vec_len (order->links));
+  link = &order->links[index];
+  return order->head == index || link->prev != TCP_BTS_INVALID_INDEX ||
+	 link->next != TCP_BTS_INVALID_INDEX;
+}
+
+void
+tcp_bt_tx_order_insert (tcp_bt_tx_order_t *order, tcp_byte_tracker_t *bt,
+			tcp_bt_sample_t *bts)
+{
+  tcp_bt_tx_link_t *link, *prev_link;
+  tcp_bt_sample_t *prev;
+  u32 index, prev_index;
+
+  index = bt_sample_index (bt, bts);
+  if (index >= vec_len (order->links))
+    tcp_bt_tx_order_sample_init (order, bt, bts);
+  link = &order->links[index];
+  ASSERT (!tcp_bt_tx_order_sample_is_linked (order, index));
+
+  prev_index = order->tail;
+  if (prev_index != TCP_BTS_INVALID_INDEX)
+    {
+      prev = pool_elt_at_index (bt->samples, prev_index);
+      if (PREDICT_TRUE (
+	    !tcp_bt_tx_sent_after (prev->tx_time, prev->max_seq, bts->tx_time, bts->max_seq)))
+	{
+	  link->prev = prev_index;
+	  order->links[prev_index].next = index;
+	  order->tail = index;
+	  return;
+	}
+      prev_index = order->links[prev_index].prev;
+    }
+
+  while (prev_index != TCP_BTS_INVALID_INDEX)
+    {
+      prev = pool_elt_at_index (bt->samples, prev_index);
+      if (!tcp_bt_tx_sent_after (prev->tx_time, prev->max_seq, bts->tx_time, bts->max_seq))
+	break;
+      prev_index = order->links[prev_index].prev;
+    }
+
+  if (prev_index == TCP_BTS_INVALID_INDEX)
+    {
+      link->next = order->head;
+      if (link->next != TCP_BTS_INVALID_INDEX)
+	order->links[link->next].prev = index;
+      else
+	order->tail = index;
+      order->head = index;
+      return;
+    }
+
+  prev_link = &order->links[prev_index];
+  link->prev = prev_index;
+  link->next = prev_link->next;
+  if (link->next != TCP_BTS_INVALID_INDEX)
+    order->links[link->next].prev = index;
+  else
+    order->tail = index;
+  prev_link->next = index;
+}
+
+void
+tcp_bt_tx_order_append (tcp_bt_tx_order_t *order, tcp_byte_tracker_t *bt,
+			tcp_bt_sample_t *bts)
+{
+  tcp_bt_tx_link_t *link;
+  u32 index = bt_sample_index (bt, bts);
+
+  if (index >= vec_len (order->links))
+    tcp_bt_tx_order_sample_init (order, bt, bts);
+  ASSERT (!tcp_bt_tx_order_sample_is_linked (order, index));
+
+  link = &order->links[index];
+  link->prev = order->tail;
+  if (order->tail != TCP_BTS_INVALID_INDEX)
+    order->links[order->tail].next = index;
+  else
+    order->head = index;
+  order->tail = index;
+}
+
+u8
+tcp_bt_tx_order_remove (tcp_bt_tx_order_t *order, tcp_byte_tracker_t *bt,
+			tcp_bt_sample_t *bts)
+{
+  tcp_bt_tx_link_t *link;
+  u32 index = bt_sample_index (bt, bts);
+
+  ASSERT (index < vec_len (order->links));
+  if (!tcp_bt_tx_order_sample_is_linked (order, index))
+    return 0;
+
+  link = &order->links[index];
+  if (link->prev != TCP_BTS_INVALID_INDEX)
+    order->links[link->prev].next = link->next;
+  else
+    order->head = link->next;
+  if (link->next != TCP_BTS_INVALID_INDEX)
+    order->links[link->next].prev = link->prev;
+  else
+    order->tail = link->prev;
+  link->next = link->prev = TCP_BTS_INVALID_INDEX;
+  return 1;
+}
+
+void
+tcp_bt_tx_order_reinsert (tcp_bt_tx_order_t *order, tcp_byte_tracker_t *bt,
+			  tcp_bt_sample_t *bts)
+{
+  tcp_bt_tx_link_t *link;
+  tcp_bt_sample_t *next, *prev;
+  u32 index = bt_sample_index (bt, bts);
+
+  if (!tcp_bt_tx_order_sample_is_linked (order, index))
+    return;
+
+  link = &order->links[index];
+  if (link->prev != TCP_BTS_INVALID_INDEX)
+    {
+      prev = pool_elt_at_index (bt->samples, link->prev);
+      if (tcp_bt_tx_sent_after (prev->tx_time, prev->max_seq, bts->tx_time, bts->max_seq))
+	goto reorder;
+    }
+  if (link->next != TCP_BTS_INVALID_INDEX)
+    {
+      next = pool_elt_at_index (bt->samples, link->next);
+      if (tcp_bt_tx_sent_after (bts->tx_time, bts->max_seq, next->tx_time, next->max_seq))
+	goto reorder;
+    }
+  return;
+
+reorder:
+  tcp_bt_tx_order_remove (order, bt, bts);
+  tcp_bt_tx_order_insert (order, bt, bts);
+}
+
+void
+tcp_bt_tx_order_split (tcp_bt_tx_order_t *order, tcp_byte_tracker_t *bt,
+		       tcp_bt_sample_t *bts, tcp_bt_sample_t *split)
+{
+  u32 index = bt_sample_index (bt, bts);
+
+  tcp_bt_tx_order_sample_init (order, bt, split);
+  if (!tcp_bt_tx_order_sample_is_linked (order, index))
+    return;
+
+  /* Splitting changes bts' end-sequence tie-breaker. Update its position
+   * before inserting the new piece because timestamps can be equal. */
+  tcp_bt_tx_order_reinsert (order, bt, bts);
+  tcp_bt_tx_order_insert (order, bt, split);
+}
+
+void
+tcp_bt_tx_order_init (tcp_connection_t *tc)
+{
+  tcp_bt_tx_order_t *order = (tcp_bt_tx_order_t *) tcp_bt_opaque (tc);
+
+  ASSERT (!(tc->cfg_flags & TCP_CFG_F_BT_TX_ORDER));
+  order->head = order->tail = TCP_BTS_INVALID_INDEX;
+  tc->cfg_flags |= TCP_CFG_F_BT_TX_ORDER;
+}
+
+void
+tcp_bt_tx_order_cleanup (tcp_connection_t *tc)
+{
+  tcp_bt_tx_order_t *order = tcp_bt_tx_order (tc);
+
+  vec_free (order->links);
+  order->head = order->tail = TCP_BTS_INVALID_INDEX;
+  tc->cfg_flags &= ~TCP_CFG_F_BT_TX_ORDER;
+}
+
+void
+tcp_bt_tx_order_build (tcp_connection_t *tc)
+{
+  tcp_bt_tx_order_t *order = tcp_bt_tx_order (tc);
+  tcp_byte_tracker_t *bt = tc->bt;
+  tcp_bt_sample_t *bts;
+  u32 index;
+
+  ASSERT (order->links == 0);
+  index = bt->head;
+  while (index != TCP_BTS_INVALID_INDEX)
+    {
+      bts = pool_elt_at_index (bt->samples, index);
+      tcp_bt_tx_order_sample_init (order, bt, bts);
+      if (!(bts->flags & (TCP_BTS_TX_LOST | TCP_BTS_IS_SACKED)))
+	tcp_bt_tx_order_insert (order, bt, bts);
+      index = bts->next;
+    }
+}
+
 static inline int
 bt_seq_lt (u32 a, u32 b)
 {
@@ -60,8 +278,11 @@ bt_alloc_sample (tcp_byte_tracker_t * bt, u32 min_seq, u32 max_seq)
 }
 
 static void
-bt_free_sample (tcp_byte_tracker_t *bt, tcp_bt_sample_t *bts)
+bt_free_sample (tcp_byte_tracker_t *bt, tcp_bt_sample_t *bts, tcp_bt_tx_order_t *order)
 {
+  if (order && order->links)
+    tcp_bt_tx_order_remove (order, bt, bts);
+
   if (bt->last_ooo == bt_sample_index (bt, bts))
     bt->last_ooo = TCP_BTS_INVALID_INDEX;
   if (bt->cur_rxt == bt_sample_index (bt, bts))
@@ -90,7 +311,8 @@ bt_free_sample (tcp_byte_tracker_t *bt, tcp_bt_sample_t *bts)
 }
 
 static tcp_bt_sample_t *
-bt_split_sample (tcp_byte_tracker_t * bt, tcp_bt_sample_t * bts, u32 seq)
+bt_split_sample (tcp_byte_tracker_t *bt, tcp_bt_sample_t *bts, u32 seq,
+		 tcp_bt_tx_order_t *order)
 {
   tcp_bt_sample_t *ns, *next;
   u32 bts_index;
@@ -115,18 +337,25 @@ bt_split_sample (tcp_byte_tracker_t * bt, tcp_bt_sample_t * bts, u32 seq)
   bts->next = bt_sample_index (bt, ns);
   ns->prev = bt_sample_index (bt, bts);
 
+  if (order && order->links)
+    tcp_bt_tx_order_split (order, bt, bts, ns);
+
   return ns;
 }
 
 static tcp_bt_sample_t *
-bt_merge_sample (tcp_byte_tracker_t * bt, tcp_bt_sample_t * prev,
-		 tcp_bt_sample_t * cur)
+bt_merge_sample (tcp_byte_tracker_t *bt, tcp_bt_sample_t *prev, tcp_bt_sample_t *cur,
+		 tcp_bt_tx_order_t *order)
 {
+  u8 update_order = order && order->links;
+
   ASSERT (prev->max_seq == cur->min_seq);
   prev->max_seq = cur->max_seq;
   if (bt_sample_index (bt, cur) == bt->tail)
     bt->tail = bt_sample_index (bt, prev);
-  bt_free_sample (bt, cur);
+  bt_free_sample (bt, cur, order);
+  if (update_order)
+    tcp_bt_tx_order_reinsert (order, bt, prev);
   return prev;
 }
 
@@ -194,8 +423,8 @@ bt_update_sample (tcp_byte_tracker_t * bt, tcp_bt_sample_t * bts, u32 seq)
 }
 
 static tcp_bt_sample_t *
-bt_fix_overlapped (tcp_byte_tracker_t * bt, tcp_bt_sample_t * start,
-		   u32 seq, u8 is_end)
+bt_fix_overlapped (tcp_byte_tracker_t *bt, tcp_bt_sample_t *start, u32 seq, u8 is_end,
+		   tcp_bt_tx_order_t *order)
 {
   tcp_bt_sample_t *cur, *next;
 
@@ -203,7 +432,7 @@ bt_fix_overlapped (tcp_byte_tracker_t * bt, tcp_bt_sample_t * start,
   while (cur && seq_leq (cur->max_seq, seq))
     {
       next = bt_next_sample (bt, cur);
-      bt_free_sample (bt, cur);
+      bt_free_sample (bt, cur, order);
       cur = next;
     }
 
@@ -269,7 +498,7 @@ tcp_bt_is_sane (tcp_byte_tracker_t * bt)
 }
 
 static tcp_bt_sample_t *
-tcp_bt_alloc_tx_sample (tcp_connection_t * tc, u32 min_seq, u32 max_seq)
+tcp_bt_alloc_tx_sample (tcp_connection_t *tc, u32 min_seq, u32 max_seq)
 {
   tcp_bt_sample_t *bts;
   bts = bt_alloc_sample (tc->bt, min_seq, max_seq);
@@ -302,6 +531,8 @@ void
 tcp_bt_track_tx (tcp_connection_t * tc, u32 len)
 {
   tcp_byte_tracker_t *bt = tc->bt;
+  tcp_bt_tx_order_t *order =
+    PREDICT_FALSE (tcp_bt_tx_order_enabled (tc)) ? tcp_bt_tx_order (tc) : 0;
   tcp_bt_sample_t *bts, *tail;
   tcp_bts_flags_t tx_flags = tc->app_limited ? TCP_BTS_IS_APP_LIMITED : 0;
   u32 bts_index;
@@ -311,6 +542,8 @@ tcp_bt_track_tx (tcp_connection_t * tc, u32 len)
       tail->tx_time == tcp_time_now_us (tc->c_thread_index))
     {
       tail->max_seq += len;
+      if (order && order->links)
+	tcp_bt_tx_order_reinsert (order, bt, tail);
       return;
     }
 
@@ -332,6 +565,12 @@ tcp_bt_track_tx (tcp_connection_t * tc, u32 len)
   else
     {
       bt->tail = bt->head = bts_index;
+    }
+  if (order && order->links)
+    {
+      /* Newly transmitted original data has the latest send time and the
+	 highest ending sequence, so it is already last in transmit order. */
+      tcp_bt_tx_order_append (order, bt, bts);
     }
 }
 
@@ -365,8 +604,8 @@ bt_rxt_range_end (tcp_connection_t *tc, tcp_bt_sample_t *bts, u32 end, tcp_bts_f
 /* Record one contiguous unsacked retransmit range whose source samples all
  * map to rxt_flags. */
 static void
-bt_track_rxt_range (tcp_connection_t *tc, tcp_bt_sample_t *start_bts, u32 start, u32 end,
-		    tcp_bts_flags_t rxt_flags)
+bt_track_rxt_range (tcp_connection_t *tc, tcp_bt_tx_order_t *order, tcp_bt_sample_t *start_bts,
+		    u32 start, u32 end, tcp_bts_flags_t rxt_flags)
 {
   tcp_byte_tracker_t *bt = tc->bt;
   sack_scoreboard_t *sb = &tc->sack_sb;
@@ -397,7 +636,7 @@ bt_track_rxt_range (tcp_connection_t *tc, tcp_bt_sample_t *start_bts, u32 start,
   if (bts->min_seq == start)
     {
       prev_index = bts->prev;
-      next = bt_fix_overlapped (bt, bts, end, is_end);
+      next = bt_fix_overlapped (bt, bts, end, is_end, order);
       /* bts might no longer be valid from here */
       next_index = bt_sample_index (bt, next);
 
@@ -431,13 +670,15 @@ bt_track_rxt_range (tcp_connection_t *tc, tcp_bt_sample_t *start_bts, u32 start,
       bt->last_ooo = cur_index;
       if (was_cur_rxt)
 	bt->cur_rxt = cur_index;
+      if (order && order->links)
+	tcp_bt_tx_order_insert (order, bt, cur);
       return;
     }
 
   bts_index = bt_sample_index (bt, bts);
   next = bt_next_sample (bt, bts);
   if (next)
-    bt_fix_overlapped (bt, next, end, is_end);
+    bt_fix_overlapped (bt, next, end, is_end, order);
 
   max_seq = bts->max_seq;
   ASSERT (seq_lt (start, max_seq));
@@ -470,6 +711,8 @@ bt_track_rxt_range (tcp_connection_t *tc, tcp_bt_sample_t *start_bts, u32 start,
       cur->next = bt_sample_index (bt, nbts);
 
       bts->max_seq = start;
+      if (order && order->links)
+	tcp_bt_tx_order_split (order, bt, bts, nbts);
     }
   /* Tail completely overlapped */
   else
@@ -492,6 +735,8 @@ bt_track_rxt_range (tcp_connection_t *tc, tcp_bt_sample_t *start_bts, u32 start,
   bt->last_ooo = cur_index;
   if (was_cur_rxt)
     bt->cur_rxt = cur_index;
+  if (order && order->links)
+    tcp_bt_tx_order_insert (order, bt, cur);
 }
 
 static_always_inline tcp_bt_sample_t *
@@ -518,14 +763,17 @@ bt_rxt_extend_candidate (tcp_connection_t *tc, u32 start, tcp_bt_sample_t **next
 }
 
 static_always_inline void
-bt_extend_rxt_sample (tcp_connection_t *tc, tcp_bt_sample_t *last, tcp_bt_sample_t *next, u32 end)
+bt_extend_rxt_sample (tcp_connection_t *tc, tcp_bt_tx_order_t *order, tcp_bt_sample_t *last,
+		      tcp_bt_sample_t *next, u32 end)
 {
   last->max_seq = end;
-  bt_fix_overlapped (tc->bt, next, end, end == tc->snd_nxt);
+  if (order && order->links)
+    tcp_bt_tx_order_reinsert (order, tc->bt, last);
+  bt_fix_overlapped (tc->bt, next, end, end == tc->snd_nxt, order);
 }
 
 static_always_inline u8
-bt_try_extend_rxt_sample (tcp_connection_t *tc, u32 start, u32 end)
+bt_try_extend_rxt_sample (tcp_connection_t *tc, tcp_bt_tx_order_t *order, u32 start, u32 end)
 {
   tcp_bt_sample_t *last, *next;
 
@@ -533,12 +781,12 @@ bt_try_extend_rxt_sample (tcp_connection_t *tc, u32 start, u32 end)
   if (!last || seq_gt (end, next->max_seq))
     return 0;
 
-  bt_extend_rxt_sample (tc, last, next, end);
+  bt_extend_rxt_sample (tc, order, last, next, end);
   return 1;
 }
 
 static u32
-bt_track_rxt_ranges (tcp_connection_t *tc, u32 start, u32 end)
+bt_track_rxt_ranges (tcp_connection_t *tc, tcp_bt_tx_order_t *order, u32 start, u32 end)
 {
   tcp_byte_tracker_t *bt = tc->bt;
   tcp_bt_sample_t *bts, *last, *next;
@@ -567,9 +815,9 @@ bt_track_rxt_ranges (tcp_connection_t *tc, u32 start, u32 end)
        * multiple compatible source samples needs no second boundary scan. */
       last = bt_rxt_extend_candidate (tc, start, &next);
       if (last && next == bts)
-	bt_extend_rxt_sample (tc, last, bts, range_end);
+	bt_extend_rxt_sample (tc, order, last, bts, range_end);
       else
-	bt_track_rxt_range (tc, bts, start, range_end, rxt_flags);
+	bt_track_rxt_range (tc, order, bts, start, range_end, rxt_flags);
       tracked += range_end - start;
       start = range_end;
     }
@@ -580,18 +828,23 @@ bt_track_rxt_ranges (tcp_connection_t *tc, u32 start, u32 end)
 void
 tcp_bt_track_rxt (tcp_connection_t *tc, u32 start, u32 end)
 {
+  tcp_bt_tx_order_t *order =
+    PREDICT_FALSE (tcp_bt_tx_order_enabled (tc)) ? tcp_bt_tx_order (tc) : 0;
   u32 tracked;
   u8 track_dsack = tcp_opts_sack_permitted (&tc->rcv_opts) &&
 		   !(tc->sack_sb.flags & TCP_DSACK_UNDO_DISABLED) && tcp_in_cong_recovery (tc);
 
   ASSERT (seq_lt (start, end));
 
+  if (order && !order->links)
+    tcp_bt_tx_order_build (tc);
+
   /* Consecutive homogeneous retransmits can extend the last sample without
    * an rb-tree lookup or a new allocation. */
-  if (bt_try_extend_rxt_sample (tc, start, end))
+  if (bt_try_extend_rxt_sample (tc, order, start, end))
     tracked = end - start;
   else
-    tracked = bt_track_rxt_ranges (tc, start, end);
+    tracked = bt_track_rxt_ranges (tc, order, start, end);
 
   if (track_dsack && tracked)
     {
@@ -608,6 +861,7 @@ tcp_bt_track_rxt (tcp_connection_t *tc, u32 start, u32 end)
 typedef struct
 {
   f64 now;
+  tcp_bt_tx_order_t *tx_order;
   u32 fack;
   u8 account_sack;
 } tcp_bt_ack_state_t;
@@ -701,7 +955,7 @@ tcp_bt_walk_samples (tcp_connection_t *tc, u32 ack, tcp_ack_ctx_t *ac, tcp_bt_ac
 	    tc->sack_sb.lost_bytes -= len;
 	}
       tcp_bt_account_sample_delivery (tc, state, cur, cur->min_seq, cur->max_seq, ac);
-      bt_free_sample (bt, cur);
+      bt_free_sample (bt, cur, state->tx_order);
       cur = next;
     }
 
@@ -756,7 +1010,7 @@ tcp_bt_walk_samples_ooo (tcp_connection_t *tc, tcp_ack_ctx_t *ac, u32 ack,
       /* Split current if block starts in new sack coverage. Second part will be consumed */
       if (PREDICT_FALSE (cur->min_seq != blk->start) && !(cur->flags & TCP_BTS_IS_SACKED))
 	{
-	  cur = bt_split_sample (bt, cur, blk->start);
+	  cur = bt_split_sample (bt, cur, blk->start, state->tx_order);
 	  prev = bt_prev_sample (bt, cur);
 	}
       else
@@ -774,17 +1028,19 @@ tcp_bt_walk_samples_ooo (tcp_connection_t *tc, tcp_ack_ctx_t *ac, u32 ack,
 	      if (cur->flags & TCP_BTS_IS_LOST)
 		tc->sack_sb.lost_bytes -= len;
 	      tcp_bt_account_sample_delivery (tc, state, cur, cur->min_seq, cur->max_seq, ac);
+	      if (PREDICT_FALSE (state->tx_order && state->tx_order->links))
+		tcp_bt_tx_order_remove (state->tx_order, bt, cur);
 	      cur->flags &= ~TCP_BTS_IS_LOST;
 	      cur->flags |= TCP_BTS_IS_SACKED | TCP_BTS_IS_DELIVERED;
 	      if (prev && (prev->flags & TCP_BTS_IS_SACKED) &&
 		  bt_sacked_samples_can_merge (prev, cur))
-		cur = bt_merge_sample (bt, prev, cur);
+		cur = bt_merge_sample (bt, prev, cur, state->tx_order);
 
 	      next = bt_next_sample (bt, cur);
 	      if (next && (next->flags & TCP_BTS_IS_SACKED) &&
 		  bt_sacked_samples_can_merge (cur, next))
 		{
-		  cur = bt_merge_sample (bt, cur, next);
+		  cur = bt_merge_sample (bt, cur, next, state->tx_order);
 		  next = bt_next_sample (bt, cur);
 		}
 	    }
@@ -808,15 +1064,17 @@ tcp_bt_walk_samples_ooo (tcp_connection_t *tc, tcp_ack_ctx_t *ac, u32 ack,
 	  if (cur->flags & TCP_BTS_IS_LOST)
 	    tc->sack_sb.lost_bytes -= len;
 	  tcp_bt_account_sample_delivery (tc, state, cur, cur->min_seq, blk->end, ac);
-	  next = bt_split_sample (bt, cur, blk->end);
+	  next = bt_split_sample (bt, cur, blk->end, state->tx_order);
 	  cur = bt_prev_sample (bt, next);
+	  if (PREDICT_FALSE (state->tx_order && state->tx_order->links))
+	    tcp_bt_tx_order_remove (state->tx_order, bt, cur);
 	  cur->flags &= ~TCP_BTS_IS_LOST;
 	  cur->flags |= TCP_BTS_IS_SACKED | TCP_BTS_IS_DELIVERED;
 
 	  prev = bt_prev_sample (bt, cur);
 	  if (prev && (prev->flags & TCP_BTS_IS_SACKED) && bt_sacked_samples_can_merge (prev, cur))
 	    {
-	      bt_merge_sample (bt, prev, cur);
+	      bt_merge_sample (bt, prev, cur, state->tx_order);
 	    }
 	}
     }
@@ -949,6 +1207,8 @@ tcp_bt_apply_ack (tcp_connection_t *tc, u32 ack, u32 high_sacked, tcp_ack_ctx_t 
 		      sb->high_sacked :
 		      tc->snd_una;
   state.fack = old_high_sacked;
+  state.tx_order =
+    PREDICT_FALSE (tcp_bt_tx_order_enabled (tc)) ? tcp_bt_tx_order (tc) : 0;
 
   if (seq_gt (ack, tc->snd_una))
     {
@@ -1342,6 +1602,8 @@ void
 tcp_bt_flush_samples (tcp_connection_t * tc)
 {
   tcp_byte_tracker_t *bt = tc->bt;
+  tcp_bt_tx_order_t *order =
+    PREDICT_FALSE (tcp_bt_tx_order_enabled (tc)) ? tcp_bt_tx_order (tc) : 0;
   tcp_bt_sample_t *bts, *next;
 
   ASSERT (pool_elts (bt->samples) != 0);
@@ -1350,7 +1612,7 @@ tcp_bt_flush_samples (tcp_connection_t * tc)
   while (bts)
     {
       next = bt_next_sample (bt, bts);
-      bt_free_sample (bt, bts);
+      bt_free_sample (bt, bts, order);
       bts = next;
     }
   tcp_bt_dsack_recovery_clear (tc);
@@ -1364,11 +1626,13 @@ tcp_bt_cleanup (tcp_connection_t * tc)
   tc->dsack_rxt = 0;
   tc->dsack_pending_bytes = 0;
   tc->sack_sb.flags &= TCP_SCOREBOARD_F_RENEGING | TCP_DSACK_UNDO_DISABLED;
+  if (tcp_bt_tx_order_enabled (tc))
+    tcp_bt_tx_order_cleanup (tc);
   rb_tree_free_nodes (&bt->sample_lookup);
   pool_free (bt->samples);
   clib_mem_free (bt);
   tc->bt = 0;
-  tc->cfg_flags &= ~TCP_CFG_F_BYTE_TRACKER;
+  tc->cfg_flags &= ~(TCP_CFG_F_BYTE_TRACKER | TCP_CFG_F_BT_TX_ORDER);
 }
 
 void

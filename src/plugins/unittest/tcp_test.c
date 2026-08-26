@@ -7296,6 +7296,45 @@ tcp_test_bt_toggle (void)
   return 0;
 }
 
+static u8
+tcp_test_bt_tx_order_is_sane (tcp_connection_t *tc)
+{
+  tcp_bt_tx_order_t *order = tcp_bt_tx_order (tc);
+  tcp_byte_tracker_t *bt = tc->bt;
+  tcp_bt_sample_t *bts, *prev = 0;
+  u32 index, n_eligible = 0, n_seen = 0, prev_index = TCP_BTS_INVALID_INDEX;
+
+  if (!order->links)
+    return order->head == TCP_BTS_INVALID_INDEX && order->tail == TCP_BTS_INVALID_INDEX;
+
+  index = order->head;
+  while (index != TCP_BTS_INVALID_INDEX)
+    {
+      if (index >= vec_len (order->links) || pool_is_free_index (bt->samples, index) ||
+	  order->links[index].prev != prev_index)
+	return 0;
+      bts = pool_elt_at_index (bt->samples, index);
+      if ((bts->flags & (TCP_BTS_TX_LOST | TCP_BTS_IS_SACKED)) ||
+	  (prev && tcp_bt_tx_sent_after (prev->tx_time, prev->max_seq, bts->tx_time,
+				  bts->max_seq)))
+	return 0;
+      prev = bts;
+      prev_index = index;
+      index = order->links[index].next;
+      if (++n_seen > pool_elts (bt->samples))
+	return 0;
+    }
+
+  index = bt->head;
+  while (index != TCP_BTS_INVALID_INDEX)
+    {
+      bts = pool_elt_at_index (bt->samples, index);
+      n_eligible += !(bts->flags & (TCP_BTS_TX_LOST | TCP_BTS_IS_SACKED));
+      index = bts->next;
+    }
+  return prev_index == order->tail && n_seen == n_eligible;
+}
+
 static int
 tcp_test_bt (vlib_main_t * vm, unformat_input_t * input)
 {
@@ -7611,6 +7650,36 @@ tcp_test_bt (vlib_main_t * vm, unformat_input_t * input)
   tc->snd_una = 101;
   TCP_TEST (tc->delivered == 100 && ac->acked_and_sacked == 0,
 	    "FIN acknowledgment is excluded from delivered bytes");
+  tcp_bt_cleanup (tc);
+
+  /* Optional transmit ordering stays dormant until sequence order diverges,
+   * then follows split, extension, append, flush, and pool-index reuse. */
+  memset (tc, 0, sizeof (*tc));
+  tcp_bt_init_opaque (tc, sizeof (tcp_bt_tx_order_t));
+  tcp_bt_tx_order_init (tc);
+  tcp_test_set_time (thread_index, 60);
+  tcp_bt_track_tx (tc, 200);
+  tc->snd_nxt = 200;
+  TCP_TEST (!tcp_bt_tx_order (tc)->links,
+	    "transmit-order index stays lazy before retransmission");
+  tcp_test_set_time (thread_index, 61);
+  tcp_bt_track_rxt (tc, 0, 100);
+  TCP_TEST (tcp_test_bt_tx_order_is_sane (tc),
+	    "transmit-order index follows retransmission split");
+  tcp_bt_track_rxt (tc, 100, 200);
+  TCP_TEST (tcp_test_bt_tx_order_is_sane (tc),
+	    "transmit-order index follows retransmission extension");
+  tcp_bt_track_tx (tc, 100);
+  tc->snd_nxt = 300;
+  TCP_TEST (tcp_test_bt_tx_order_is_sane (tc),
+	    "transmit-order index orders equal-time original data");
+  tcp_bt_flush_samples (tc);
+  tc->snd_una = tc->snd_nxt;
+  tcp_test_set_time (thread_index, 62);
+  tcp_bt_track_tx (tc, 100);
+  tc->snd_nxt += 100;
+  TCP_TEST (tcp_test_bt_tx_order_is_sane (tc),
+	    "transmit-order index handles reused sample indices");
   tcp_bt_cleanup (tc);
 
   return 0;
