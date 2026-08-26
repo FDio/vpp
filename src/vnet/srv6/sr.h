@@ -322,7 +322,7 @@ typedef struct
   u16 msg_id_base;
 } ip6_sr_main_t;
 
-extern ip6_sr_main_t sr_main;
+__clib_export extern ip6_sr_main_t sr_main;
 
 extern vlib_node_registration_t sr_policy_rewrite_encaps_node;
 extern vlib_node_registration_t sr_policy_rewrite_insert_node;
@@ -332,38 +332,30 @@ extern vlib_node_registration_t sr_localsid_d_node;
 extern void sr_dpo_lock (dpo_id_t * dpo);
 extern void sr_dpo_unlock (dpo_id_t * dpo);
 
-extern int
-sr_localsid_register_function (vlib_main_t * vm, u8 * fn_name,
-			       u8 * keyword_str, u8 * def_str,
-			       u8 * params_str, u8 prefix_length,
-			       dpo_type_t * dpo,
-			       format_function_t * ls_format,
-			       unformat_function_t * ls_unformat,
-			       sr_plugin_callback_t * creation_fn,
-			       sr_plugin_callback_t * removal_fn);
+extern int __clib_export sr_localsid_register_function (
+  vlib_main_t *vm, u8 *fn_name, u8 *keyword_str, u8 *def_str, u8 *params_str, u8 prefix_length,
+  dpo_type_t *dpo, format_function_t *ls_format, unformat_function_t *ls_unformat,
+  sr_plugin_callback_t *creation_fn, sr_plugin_callback_t *removal_fn);
 
-extern int
-sr_policy_register_function (vlib_main_t * vm, u8 * fn_name,
-			     u8 * keyword_str, u8 * def_str,
-			     u8 * params_str, u8 prefix_length,
-			     dpo_type_t * dpo,
-			     format_function_t * ls_format,
-			     unformat_function_t * ls_unformat,
-			     sr_p_plugin_callback_t * creation_fn,
-			     sr_p_plugin_callback_t * removal_fn);
+extern int __clib_export sr_policy_register_function (vlib_main_t *vm, u8 *fn_name, u8 *keyword_str,
+						      u8 *def_str, u8 *params_str, u8 prefix_length,
+						      dpo_type_t *dpo, format_function_t *ls_format,
+						      unformat_function_t *ls_unformat,
+						      sr_p_plugin_callback_t *creation_fn,
+						      sr_p_plugin_callback_t *removal_fn);
 
-extern int sr_policy_add (ip6_address_t *bsid, ip6_address_t *segments,
-			  ip6_address_t *encap_src, u32 weight, u8 type,
-			  u32 fib_table, u8 is_encap, u16 plugin,
-			  void *plugin_mem);
+__clib_export extern int sr_policy_add (ip6_address_t *bsid, ip6_address_t *segments,
+					ip6_address_t *encap_src, u32 weight, u8 type,
+					u32 fib_table, u8 is_encap, u16 plugin, void *plugin_mem);
 extern int sr_policy_mod (ip6_address_t *bsid, u32 index, u32 fib_table,
 			  u8 operation, ip6_address_t *segments,
 			  ip6_address_t *encap_src, u32 sl_index, u32 weight);
 extern int sr_policy_del (ip6_address_t * bsid, u32 index);
 
-extern int sr_cli_localsid (char is_del, ip6_address_t *localsid_addr, u16 localsid_prefix_len,
-			    char end_psp, u8 behavior, u32 sw_if_index, u32 fib_table,
-			    ip46_address_t *nh_addr, int usid_len, void *ls_plugin_mem);
+__clib_export extern int sr_cli_localsid (char is_del, ip6_address_t *localsid_addr,
+					  u16 localsid_prefix_len, char end_psp, u8 behavior,
+					  u32 sw_if_index, u32 fib_table, ip46_address_t *nh_addr,
+					  int usid_len, void *ls_plugin_mem);
 
 extern int
 sr_steering_policy (int is_del, ip6_address_t * bsid, u32 sr_policy_index,
@@ -371,10 +363,10 @@ sr_steering_policy (int is_del, ip6_address_t * bsid, u32 sr_policy_index,
 		    u32 sw_if_index, u8 traffic_type);
 
 extern void sr_set_source (ip6_address_t * address);
-extern ip6_address_t *sr_get_encaps_source ();
+__clib_export extern ip6_address_t *sr_get_encaps_source ();
 
 extern void sr_set_hop_limit (u8 hop_limit);
-extern u8 sr_get_hop_limit (void);
+__clib_export extern u8 sr_get_hop_limit (void);
 
 /**
  * @brief SR rewrite string computation for SRH insertion (inline)
