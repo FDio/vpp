@@ -98,6 +98,16 @@ rdma_device_output_free_mlx5 (vlib_main_t *vm, const vlib_node_runtime_t *node,
 }
 
 static_always_inline void
+rdma_mlx5_tx_wmb (void)
+{
+#ifdef __aarch64__
+  asm volatile ("dmb oshst" ::: "memory");
+#else
+  CLIB_MEMORY_STORE_BARRIER ();
+#endif
+}
+
+static_always_inline void
 rdma_device_output_tx_mlx5_doorbell (rdma_txq_t * txq, rdma_mlx5_wqe_t * last,
 				     const u16 tail, u32 sq_mask)
 {
@@ -107,9 +117,9 @@ rdma_device_output_tx_mlx5_doorbell (rdma_txq_t * txq, rdma_mlx5_wqe_t * last,
 	  RDMA_TXQ_AVAIL_SZ (txq, txq->head, txq->tail) >=
 	  RDMA_TXQ_USED_SZ (txq->tail, tail));
 
-  CLIB_MEMORY_STORE_BARRIER ();
+  rdma_mlx5_tx_wmb ();
   txq->dv_sq_dbrec[MLX5_SND_DBR] = htobe32 (tail);
-  CLIB_COMPILER_BARRIER ();
+  rdma_mlx5_tx_wmb ();
   txq->dv_sq_db[0] = *(u64 *) last;
 }
 
