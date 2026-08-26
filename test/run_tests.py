@@ -1513,6 +1513,7 @@ if __name__ == "__main__":
         )
         exit_code = 0
         while suites and attempts > 0:
+            print("start")
             for suite in suites:
                 failed_link = get_failed_testcase_linkname(
                     config.failed_dir,
@@ -1530,5 +1531,8 @@ if __name__ == "__main__":
                 print("Test run was successful")
             else:
                 print("%s attempt(s) left." % attempts)
+            print("end")
+        print("done, going to save timings")
         save_test_timings(test_timings)
+        print("exit code %s" % exit_code)
         sys.exit(exit_code)
