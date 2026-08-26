@@ -141,12 +141,12 @@ typedef struct ip6_main_t
 #define ND_THROTTLE_BITS 512
 
 /* Global ip6 main structure. */
-extern ip6_main_t ip6_main;
+__clib_export extern ip6_main_t ip6_main;
 
 /* Global ip6 input node.  Errors get attached to ip6 input node. */
-extern vlib_node_registration_t ip6_input_node;
+__clib_export extern vlib_node_registration_t ip6_input_node;
 extern vlib_node_registration_t ip6_rewrite_node;
-extern vlib_node_registration_t ip6_rewrite_mcast_node;
+__clib_export extern vlib_node_registration_t ip6_rewrite_mcast_node;
 extern vlib_node_registration_t ip6_rewrite_local_node;
 extern vlib_node_registration_t ip6_discover_neighbor_node;
 extern vlib_node_registration_t ip6_glean_node;
@@ -226,16 +226,15 @@ ip6_interface_address_matching_destination (ip6_main_t * im,
   return result;
 }
 
-clib_error_t *ip6_add_del_interface_address (vlib_main_t * vm,
-					     u32 sw_if_index,
-					     ip6_address_t * address,
-					     u32 address_length, u32 is_del);
-void ip6_sw_interface_enable_disable (u32 sw_if_index, u32 is_enable);
+__clib_export clib_error_t *ip6_add_del_interface_address (vlib_main_t *vm, u32 sw_if_index,
+							   ip6_address_t *address,
+							   u32 address_length, u32 is_del);
+__clib_export void ip6_sw_interface_enable_disable (u32 sw_if_index, u32 is_enable);
 
 /**
  * @brief get first IPv6 interface address
  */
-ip6_address_t *ip6_interface_first_address (ip6_main_t * im, u32 sw_if_index);
+__clib_export ip6_address_t *ip6_interface_first_address (ip6_main_t *im, u32 sw_if_index);
 
 static_always_inline int
 ip6_address_compare (ip6_address_t *a1, ip6_address_t *a2)
@@ -269,29 +268,27 @@ uword
 ip6_udp_register_listener (vlib_main_t * vm,
 			   u16 dst_port, u32 next_node_index);
 
-u16 ip6_tcp_udp_icmp_compute_checksum (vlib_main_t * vm, vlib_buffer_t * p0,
-				       ip6_header_t * ip0,
-				       int *bogus_lengthp);
+__clib_export u16 ip6_tcp_udp_icmp_compute_checksum (vlib_main_t *vm, vlib_buffer_t *p0,
+						     ip6_header_t *ip0, int *bogus_lengthp);
 
-void ip6_register_protocol (u32 protocol, u32 node_index);
+__clib_export void ip6_register_protocol (u32 protocol, u32 node_index);
 void ip6_unregister_protocol (u32 protocol);
-void ip6_local_hop_by_hop_register_protocol (u32 protocol, u32 node_index);
+__clib_export void ip6_local_hop_by_hop_register_protocol (u32 protocol, u32 node_index);
 
 serialize_function_t serialize_vnet_ip6_main, unserialize_vnet_ip6_main;
 
-u8 *format_ip6_forward_next_trace (u8 * s, va_list * args);
+__clib_export u8 *format_ip6_forward_next_trace (u8 *s, va_list *args);
 
-u32 ip6_tcp_udp_icmp_validate_checksum (vlib_main_t * vm, vlib_buffer_t * p0);
+__clib_export u32 ip6_tcp_udp_icmp_validate_checksum (vlib_main_t *vm, vlib_buffer_t *p0);
 
-void ip6_punt_redirect_add_paths (u32 rx_sw_if_index,
-				  const fib_route_path_t *paths);
-void ip6_punt_redirect_del (u32 rx_sw_if_index);
+__clib_export void ip6_punt_redirect_add_paths (u32 rx_sw_if_index, const fib_route_path_t *paths);
+__clib_export void ip6_punt_redirect_del (u32 rx_sw_if_index);
 
 int vnet_set_ip6_classify_intfc (vlib_main_t * vm, u32 sw_if_index,
 				 u32 table_index);
-extern vlib_node_registration_t ip6_lookup_node;
+__clib_export extern vlib_node_registration_t ip6_lookup_node;
 
-u8 *format_ip6_hop_by_hop_ext_hdr (u8 * s, va_list * args);
+__clib_export u8 *format_ip6_hop_by_hop_ext_hdr (u8 *s, va_list *args);
 /*
  * Hop-by-Hop handling
  */
@@ -306,14 +303,12 @@ typedef struct
 
 extern ip6_hop_by_hop_main_t ip6_hop_by_hop_main;
 
-int ip6_hbh_register_option (u8 option,
-			     int options (vlib_buffer_t * b,
-					  ip6_header_t * ip,
-					  ip6_hop_by_hop_option_t * opt),
-			     u8 * trace (u8 * s,
-					 ip6_hop_by_hop_option_t * opt));
-int ip6_hbh_unregister_option (u8 option);
-void ip6_hbh_set_next_override (uword next);
+__clib_export int ip6_hbh_register_option (u8 option,
+					   int options (vlib_buffer_t *b, ip6_header_t *ip,
+							ip6_hop_by_hop_option_t *opt),
+					   u8 *trace (u8 *s, ip6_hop_by_hop_option_t *opt));
+__clib_export int ip6_hbh_unregister_option (u8 option);
+__clib_export void ip6_hbh_set_next_override (uword next);
 
 always_inline u32
 vlib_buffer_get_ip6_fib_index (vlib_buffer_t * b)

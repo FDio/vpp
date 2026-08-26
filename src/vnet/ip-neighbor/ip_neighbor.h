@@ -16,12 +16,11 @@
  * APIs external modules can invoke on the neighbor subsystem
  */
 
-extern ip_neighbor_t *ip_neighbor_get (index_t ipni);
-extern int ip_neighbor_add (const ip_address_t * ip,
-			    const mac_address_t * mac,
-			    u32 sw_if_index,
-			    ip_neighbor_flags_t flags, u32 * stats_index);
-extern int ip_neighbor_del (const ip_address_t * ip, u32 sw_if_index);
+__clib_export extern ip_neighbor_t *ip_neighbor_get (index_t ipni);
+__clib_export extern int ip_neighbor_add (const ip_address_t *ip, const mac_address_t *mac,
+					  u32 sw_if_index, ip_neighbor_flags_t flags,
+					  u32 *stats_index);
+__clib_export extern int ip_neighbor_del (const ip_address_t *ip, u32 sw_if_index);
 
 extern int ip_neighbor_config (ip_address_family_t af,
 			       u32 limit, u32 age, bool recycle);
@@ -31,13 +30,12 @@ extern int ip_neighbor_get_config (ip_address_family_t af, u32 *limit,
 extern void ip_neighbor_del_all (ip_address_family_t af, u32 sw_if_index);
 
 typedef walk_rc_t (*ip_neighbor_walk_cb_t) (index_t ipni, void *ctx);
-extern void ip_neighbor_walk (ip_address_family_t af,
-			      u32 sw_if_index,
-			      ip_neighbor_walk_cb_t fn, void *ctx);
+__clib_export extern void ip_neighbor_walk (ip_address_family_t af, u32 sw_if_index,
+					    ip_neighbor_walk_cb_t fn, void *ctx);
 
-extern const ip_address_t *ip_neighbor_get_ip (const ip_neighbor_t * ipn);
+__clib_export extern const ip_address_t *ip_neighbor_get_ip (const ip_neighbor_t *ipn);
 extern ip_address_family_t ip_neighbor_get_af (const ip_neighbor_t * ipn);
-extern const mac_address_t *ip_neighbor_get_mac (const ip_neighbor_t * ipn);
+__clib_export extern const mac_address_t *ip_neighbor_get_mac (const ip_neighbor_t *ipn);
 extern const u32 ip_neighbor_get_sw_if_index (const ip_neighbor_t * ipn);
 
 extern void ip_neighbor_learn (const ip_neighbor_learn_t * l);
@@ -51,8 +49,8 @@ extern void ip_neighbor_probe_dst (u32 sw_if_index,
 				   const ip46_address_t *ip);
 
 extern void ip_neighbor_mark (ip_address_family_t af);
-extern void ip_neighbor_sweep (ip_address_family_t af);
-extern walk_rc_t ip_neighbor_mark_one (index_t ipni, void *ctx);
+__clib_export extern void ip_neighbor_sweep (ip_address_family_t af);
+__clib_export extern walk_rc_t ip_neighbor_mark_one (index_t ipni, void *ctx);
 
 /**
  * From the watcher to the API to publish a new neighbor

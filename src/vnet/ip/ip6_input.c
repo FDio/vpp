@@ -235,4 +235,5 @@ ip6_init (vlib_main_t * vm)
   return /* no error */ 0;
 }
 
+__clib_export extern vlib_init_function_t *VLIB_INIT_FUNCTION_SYMBOL (ip6_init);
 VLIB_INIT_FUNCTION (ip6_init);
