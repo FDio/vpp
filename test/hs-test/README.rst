@@ -209,6 +209,11 @@ to 107 bytes, which a readable ``RUN_ID`` would not fit.
 ``make cleanup-hst`` removes the containers of one run, selected by label. It uses
 the id recorded in ``.last_hst_run_id`` unless ``RUN_ID`` is given.
 
+``make test-wipe`` removes ``/tmp/hst``, where every run leaves its logs, core
+dumps and generated configs, and the ``summary`` directory holding the Ginkgo
+report. Unlike ``cleanup-hst`` it is not per run, so do not use it while another
+checkout is testing.
+
 Two runs from the *same* checkout are not supported: Ginkgo compiles the suite to
 ``hs-test.test`` in the package directory and removes it when the run ends, so the
 runs would delete it under each other.
