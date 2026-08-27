@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0012f6e2_64d672ac",
+        "filename": "src/plugins/rdma/output.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 90,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-08-27T17:08:54Z",
+      "side": 1,
+      "message": "Could we introduce separate DMA-publication and MMIO-ordering barriers instead of open-coding the AArch64 instructions here? The two edges have different optimal x86 semantics: WQE-\u003eDBR can use a compiler barrier for ordinary WB memory, while DBR-\u003eUAR may require sfence when the UAR is WC; on AArch64 both require dmb oshst. This matches DPDK\u0027s rte_io_wmb(); dbrec \u003d ...; rte_wmb(); uar \u003d ... sequence.\n\nSomething like CLIB_DMA_WMB() followed by CLIB_MMIO_WMB() would express those semantics and avoid placing the x86 fence on the wrong edge. Atomics would not replace these barriers because their ordering applies to CPU participants, not PCIe observers, and AArch64 release atomics do not provide outer-shareable ordering.",
+      "revId": "2ab0543f61f4e133c6607e934a324f1c4cb95906",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
