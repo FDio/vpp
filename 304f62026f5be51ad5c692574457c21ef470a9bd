@@ -1,0 +1,22 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "56bcf69f_255d556d",
+        "filename": "src/plugins/rdma/output.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 90,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-08-27T19:25:54Z",
+      "side": 1,
+      "message": "Done in PS6. The helper now uses CLIB_DMA_WMB() before publishing the DBR and CLIB_MMIO_WMB() before the UAR write. On x86 these map to a compiler barrier and sfence respectively; on AArch64 both map to dmb oshst. Thanks.",
+      "parentUuid": "0012f6e2_64d672ac",
+      "revId": "304f62026f5be51ad5c692574457c21ef470a9bd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
