@@ -5,8 +5,8 @@
 /* teib.h: Tunnel Endpoint Information Base */
 
 #include <vnet/teib/teib_internal.h>
+#include <vnet/teib/teib_impl.h>
 #include <vnet/fib/fib_table.h>
-#include <vnet/adj/adj_midchain.h>
 #include <vnet/ip/ip6_ll_table.h>
 
 typedef struct teib_key_t_
@@ -33,17 +33,7 @@ typedef struct teib_db_t_
 
 static teib_db_t teib_db;
 static teib_entry_t *teib_pool;
-static teib_vft_t *teib_vfts;
 static vlib_log_class_t teib_logger;
-
-#define TEIB_NOTIFY(_te, _fn) {                  \
-  teib_vft_t *_vft;                              \
-  vec_foreach(_vft, teib_vfts) {                 \
-    if (_vft->_fn) {                             \
-      _vft->_fn(_te);                            \
-    }                                            \
-  }                                              \
-}
 
 #define TEIB_DBG(...)                           \
     vlib_log_debug (teib_logger, __VA_ARGS__);
@@ -77,12 +67,6 @@ teib_entry_to_info (const teib_entry_t *te, teib_entry_info_t *info)
   info->nh = te->te_nh;
 }
 
-void
-teib_entry_adj_stack (const teib_entry_info_t *info, adj_index_t ai)
-{
-  adj_midchain_delegate_stack (ai, info->nh_fib_index, &info->nh);
-}
-
 static teib_entry_t *
 teib_entry_get (index_t tei)
 {
@@ -106,8 +90,9 @@ teib_entry_find_ptr (u32 sw_if_index, const ip_address_t *peer)
   return (NULL);
 }
 
-bool
-teib_entry_find (u32 sw_if_index, const ip_address_t *peer, teib_entry_info_t *info)
+static bool
+teib_impl_entry_find (u32 sw_if_index, const ip_address_t *peer,
+		      teib_entry_info_t *info)
 {
   const teib_entry_t *te;
 
@@ -119,17 +104,6 @@ teib_entry_find (u32 sw_if_index, const ip_address_t *peer, teib_entry_info_t *i
   teib_entry_to_info (te, info);
 
   return (true);
-}
-
-bool
-teib_entry_find_46 (u32 sw_if_index, fib_protocol_t fproto, const ip46_address_t *peer,
-		    teib_entry_info_t *info)
-{
-  ip_address_t ip;
-
-  ip_address_from_46 (peer, fproto, &ip);
-
-  return (teib_entry_find (sw_if_index, &ip, info));
 }
 
 static void
@@ -185,10 +159,9 @@ teib_adj_fib_remove (ip_address_t *ip, u32 sw_if_index, u32 peer_fib_index)
     }
 }
 
-int
-teib_entry_add (u32 sw_if_index,
-		const ip_address_t * peer,
-		u32 nh_table_id, const ip_address_t * nh)
+static int
+teib_impl_entry_add (u32 sw_if_index, const ip_address_t *peer,
+		     u32 nh_table_id, const ip_address_t *nh)
 {
   fib_protocol_t nh_proto;
   teib_entry_t *te;
@@ -233,7 +206,7 @@ teib_entry_add (u32 sw_if_index,
       teib_adj_fib_add (&te->te_key->tk_peer, sw_if_index, peer_fib_index);
 
       teib_entry_to_info (te, &info);
-      TEIB_NOTIFY (&info, nv_added);
+      teib_publish_entry_added (&info);
       TEIB_TE_INFO (te, "created");
     }
   else
@@ -244,8 +217,8 @@ teib_entry_add (u32 sw_if_index,
   return 0;
 }
 
-int
-teib_entry_del (u32 sw_if_index, const ip_address_t * peer)
+static int
+teib_impl_entry_del (u32 sw_if_index, const ip_address_t *peer)
 {
   teib_entry_t *te;
 
@@ -266,7 +239,7 @@ teib_entry_del (u32 sw_if_index, const ip_address_t * peer)
       hash_unset_mem (teib_db.td_db, te->te_key);
 
       teib_entry_to_info (te, &info);
-      TEIB_NOTIFY (&info, nv_deleted);
+      teib_publish_entry_deleted (&info);
 
       clib_mem_free (te->te_key);
       pool_put (teib_pool, te);
@@ -326,8 +299,8 @@ teib_walk (teib_walk_cb_t fn, void *ctx)
     }
 }
 
-void
-teib_walk_itf (u32 sw_if_index, teib_walk_cb_t fn, void *ctx)
+static void
+teib_impl_walk_itf (u32 sw_if_index, teib_walk_cb_t fn, void *ctx)
 {
   index_t tei;
 
@@ -409,11 +382,12 @@ teib_table_bind_v6 (ip6_main_t * im,
   teib_walk_itf_proto (sw_if_index, AF_IP6, teib_walk_table_bind, &ctx);
 }
 
-void
-teib_register (const teib_vft_t * vft)
-{
-  vec_add1 (teib_vfts, *vft);
-}
+static const teib_impl_vft_t teib_impl = {
+  .entry_add = teib_impl_entry_add,
+  .entry_del = teib_impl_entry_del,
+  .entry_find = teib_impl_entry_find,
+  .walk_itf = teib_impl_walk_itf,
+};
 
 static clib_error_t *
 teib_init (vlib_main_t * vm)
@@ -432,7 +406,10 @@ teib_init (vlib_main_t * vm)
 
   teib_logger = vlib_log_register_class ("teib", "teib");
 
-  return (NULL);
+  return (teib_impl_bind (&teib_impl));
 }
 
-VLIB_INIT_FUNCTION (teib_init);
+/* Bind the implementation before VNET finalizes TEIB availability. */
+VLIB_INIT_FUNCTION (teib_init) = {
+  .runs_before = VLIB_INITS ("teib_init_complete"),
+};
