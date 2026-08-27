@@ -939,14 +939,16 @@ class VppAsfTestCase(CPUInterface, unittest.TestCase):
                 self.show_commands_at_teardown()
                 if self.remove_configured_vpp_objects_on_tear_down:
                     self.registry.remove_vpp_config(self.logger)
-            # Save/Dump VPP api trace log
-            m = self._testMethodName
-            api_trace = "vpp_api_trace.%s.%d.log" % (m, self.vpp.pid)
-            tmp_api_trace = "/tmp/%s" % api_trace
-            vpp_api_trace_log = "%s/%s" % (self.tempdir, api_trace)
-            self.logger.info(self.vapi.ppcli("api trace save %s" % api_trace))
-            self.logger.info("Moving %s to %s\n" % (tmp_api_trace, vpp_api_trace_log))
-            shutil.move(tmp_api_trace, vpp_api_trace_log)
+                # Save/Dump VPP api trace log
+                m = self._testMethodName
+                api_trace = "vpp_api_trace.%s.%d.log" % (m, self.vpp.pid)
+                tmp_api_trace = "/tmp/%s" % api_trace
+                vpp_api_trace_log = "%s/%s" % (self.tempdir, api_trace)
+                self.logger.info(self.vapi.ppcli("api trace save %s" % api_trace))
+                self.logger.info(
+                    "Moving %s to %s\n" % (tmp_api_trace, vpp_api_trace_log)
+                )
+                shutil.move(tmp_api_trace, vpp_api_trace_log)
         except VppTransportSocketIOError:
             self.logger.debug(
                 "VppTransportSocketIOError: Vpp dead. Cannot log show commands."
