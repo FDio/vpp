@@ -227,6 +227,11 @@ Both also remove ``.last_state_hash`` when it names an image they deleted, so th
 next ``make test`` rebuilds instead of skipping the build and failing on a missing
 image.
 
+``make test-wipe`` removes ``/tmp/hst``, where every run leaves its logs, core
+dumps and generated configs, and the ``summary`` directory holding the Ginkgo
+report. Unlike ``cleanup-hst`` it is not per run, so do not use it while another
+checkout is testing.
+
 Container CPUs are pinned and handed out from the start of the allocator's list, so
 two runs left to themselves pin to the same cores while the rest of the machine
 idles. Each run therefore reserves the cores it may use before Ginkgo starts, and no
