@@ -257,6 +257,126 @@ session_alloc (clib_thread_index_t thread_index)
   return s;
 }
 
+/* Staged bytes are bounded by the RX FIFO. Bound buffers already loaned to
+ * applications independently of the number of sessions on a worker. */
+#define SESSION_ASYNC_RX_MAX_LOANED_BYTES (64 << 20)
+
+void
+session_async_rx_enable (session_t *s)
+{
+  application_t *app;
+
+  ASSERT (s->thread_index == vlib_get_thread_index ());
+  app = app_worker_get_app (s->app_wrk_index);
+  ASSERT (app && application_is_builtin (app));
+  ASSERT (session_transport_service_type (s) == TRANSPORT_SERVICE_VC);
+  session_set_async_rx (s, 1);
+}
+
+u32
+session_async_rx_consume (session_t *s, session_async_rx_consume_fn_t fn,
+			  void *ctx)
+{
+  svm_fifo_async_state_t *state;
+  session_async_rx_data_t data;
+  session_async_rx_result_t result;
+  session_worker_t *wrk;
+  svm_fifo_t *f;
+  u32 data_len = 0, i, n_refs;
+
+  ASSERT (s->thread_index == vlib_get_thread_index ());
+  ASSERT (s->flags & SESSION_F_ASYNC_RX);
+  ASSERT (fn != 0);
+
+  f = s->rx_fifo;
+  state = f->async_state;
+  if (!state || !vec_len (state->ops))
+    return 0;
+
+  /* An offset denotes data already collected through the OOO path. Keep
+   * mixed FIFO/buffer ownership on Florin's regular materialization path. */
+  for (i = 0; i < vec_len (state->ops); i++)
+    {
+      if (state->ops[i].offset)
+	{
+	  session_flush_async_rx (f);
+	  return 0;
+	}
+      data_len += state->ops[i].len;
+    }
+
+  ASSERT (state->tail != SVM_FIFO_ASYNC_TAIL_INVALID);
+  if (PREDICT_FALSE ((u32) state->tail - f->shr->tail != data_len))
+    {
+      session_flush_async_rx (f);
+      return 0;
+    }
+
+  wrk = session_main_get_worker (s->thread_index);
+  if (PREDICT_FALSE (wrk->async_rx_loaned_bytes + data_len >
+		     SESSION_ASYNC_RX_MAX_LOANED_BYTES))
+    {
+      session_flush_async_rx (f);
+      return 0;
+    }
+
+  n_refs = vec_len (state->refs);
+  data = (session_async_rx_data_t) {
+    .segments = state->ops,
+    .buffer_refs = state->refs,
+    .n_segments = vec_len (state->ops),
+    .n_buffer_refs = n_refs,
+    .data_len = data_len,
+  };
+
+  result = fn (&data, ctx);
+  if (result == SESSION_ASYNC_RX_REJECT)
+    {
+      session_flush_async_rx (f);
+      return 0;
+    }
+
+  if (PREDICT_FALSE (result != SESSION_ASYNC_RX_CONSUME &&
+		     result != SESSION_ASYNC_RX_TAKE))
+    {
+      ASSERT (0);
+      session_flush_async_rx (f);
+      return 0;
+    }
+
+  if (result == SESSION_ASYNC_RX_TAKE)
+    wrk->async_rx_loaned_bytes += data_len;
+  else if (n_refs)
+    vlib_buffer_free (wrk->vm, state->refs, n_refs);
+
+  vec_reset_length (state->ops);
+  vec_reset_length (state->refs);
+  state->tail = SVM_FIFO_ASYNC_TAIL_INVALID;
+
+  session_fifo_tuning (s, f, SESSION_FT_ACTION_DEQUEUED, data_len);
+  if (svm_fifo_needs_deq_ntf (f, data_len))
+    {
+      svm_fifo_clear_deq_ntf (f);
+      session_program_transport_io_evt (s->handle, SESSION_IO_EVT_RX);
+    }
+
+  return data_len;
+}
+
+void
+session_async_rx_release (u32 thread_index, const u32 *buffer_refs,
+			  u32 n_buffer_refs, u32 n_bytes)
+{
+  session_worker_t *wrk;
+
+  ASSERT (thread_index == vlib_get_thread_index ());
+  ASSERT (n_buffer_refs != 0);
+  wrk = session_main_get_worker (thread_index);
+  ASSERT (wrk->async_rx_loaned_bytes >= n_bytes);
+  wrk->async_rx_loaned_bytes -= n_bytes;
+  vlib_buffer_free (wrk->vm, (u32 *) buffer_refs, n_buffer_refs);
+}
+
 void
 session_free (session_t * s)
 {
