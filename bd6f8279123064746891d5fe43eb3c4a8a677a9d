@@ -16,6 +16,98 @@
       "message": "This is a duplicate of https://gerrit.fd.io/r/c/vpp/+/46459, although you also fixed the async implementation as well, so I\u0027ll abandon 46459 since this is more complete.",
       "revId": "bd6f8279123064746891d5fe43eb3c4a8a677a9d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d9e994a1_f41bdecb",
+        "filename": "src/vpp-api/python/vpp_papi/vpp_papi.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 109,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-08-27T02:24:58Z",
+      "side": 1,
+      "message": "f\"Invalid IP address family version: {self.version}\" is a more complete error message",
+      "range": {
+        "startLine": 109,
+        "startChar": 25,
+        "endLine": 109,
+        "endChar": 43
+      },
+      "revId": "bd6f8279123064746891d5fe43eb3c4a8a677a9d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d3d1195d_bd100668",
+        "filename": "src/vpp-api/python/vpp_papi/vpp_papi.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 116,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-08-27T02:24:58Z",
+      "side": 1,
+      "message": "f\"Invalid IP address family version: {self.version}\" is a more complete error message",
+      "range": {
+        "startLine": 116,
+        "startChar": 25,
+        "endLine": 116,
+        "endChar": 43
+      },
+      "revId": "bd6f8279123064746891d5fe43eb3c4a8a677a9d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ba26f361_e43d58eb",
+        "filename": "src/vpp-api/python/vpp_papi/vpp_papi_async.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 98,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-08-27T02:24:58Z",
+      "side": 1,
+      "message": "f\"Invalid IP address family version: {self.version}\" is a more complete error message",
+      "range": {
+        "startLine": 98,
+        "startChar": 25,
+        "endLine": 98,
+        "endChar": 43
+      },
+      "revId": "bd6f8279123064746891d5fe43eb3c4a8a677a9d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "41bf93d6_41eb811a",
+        "filename": "src/vpp-api/python/vpp_papi/vpp_papi_async.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 105,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-08-27T02:24:58Z",
+      "side": 1,
+      "message": "f\"Invalid IP address family version: {self.version}\" is a more complete error message",
+      "range": {
+        "startLine": 105,
+        "startChar": 25,
+        "endLine": 105,
+        "endChar": 43
+      },
+      "revId": "bd6f8279123064746891d5fe43eb3c4a8a677a9d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
