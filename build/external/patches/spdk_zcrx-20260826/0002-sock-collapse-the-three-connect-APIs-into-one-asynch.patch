@@ -1,0 +1,870 @@
+From c53834b0276c0412bbd2c95fd89abba9d718df40 Mon Sep 17 00:00:00 2001
+From: Ben Walker <ben@nvidia.com>
+Date: Fri, 9 Aug 2024 10:08:10 -0700
+Subject: [PATCH 02/21] sock: collapse the three connect APIs into one
+ asynchronous spdk_sock_connect
+
+v26.05 announced that spdk_sock_connect, spdk_sock_connect_ext and
+spdk_sock_connect_async would be replaced by a single API. Do that now.
+
+The survivor is named spdk_sock_connect and takes the opts pointer plus the
+completion callback. It is always asynchronous: the socket is returned before
+the connection is established and the outcome is reported through cb_fn. The
+synchronous variants are gone rather than kept as wrappers, so there is one
+contract instead of three overlapping ones.
+
+Because the public API no longer has a synchronous path, the sock module
+vtable loses its separate connect/connect_async pair as well - impl->connect
+now carries the callback and is the only entry point.
+
+The connect state machine is driven by spdk_sock_is_connected(), by
+spdk_sock_flush() and by reads on the socket; adding a connecting socket to a
+poll group is not by itself enough to complete it. Callers that want to block
+poll spdk_sock_is_connected(), which is what the removed synchronous
+implementation did internally anyway.
+
+Removing the synchronous path also means posix_sock_is_connected() is now
+the only thing driving posix_connect_poller() to completion, which exposed
+a latent error path: on a failed deferred group add the poller rederived
+the error from errno, even though posix_sock_group_impl_add_sock() already
+returns a negative errno (and -ENOTCONN, which errno never carries). If
+errno happened to be 0 the poller reported success after closing the fd,
+and the caller went on to poll() and recv() on -1. Propagate the returned
+error instead.
+
+The uring module completes the connection synchronously and only defers the
+callback, and it fired that callback from _sock_flush() alone. A caller that
+polls spdk_sock_is_connected() before adding the socket to a poll group never
+reaches a flush, so the callback never fired - hello_sock -N uring hung
+forever at "Connecting to the server". Fire it from both paths, which is what
+posix does through posix_connect_poller().
+
+Change-Id: I76b674a0af9415a9570cb55825ee61410b989222
+Signed-off-by: Ben Walker <ben@nvidia.com>
+---
+ CHANGELOG.md                                |  8 ++
+ deprecation.md                              |  4 -
+ examples/sock/hello_world/hello_sock.c      | 89 ++++++++++++++-------
+ include/spdk/sock.h                         | 46 +++--------
+ include/spdk_internal/sock_module.h         |  5 +-
+ lib/nvme/nvme_tcp.c                         |  4 +-
+ lib/sock/sock.c                             | 41 +---------
+ lib/sock/spdk_sock.map                      |  2 -
+ module/sock/posix/posix.c                   | 48 +++--------
+ module/sock/uring/uring.c                   | 46 ++++++-----
+ test/app/fuzz/iscsi_fuzz/iscsi_fuzz.c       | 16 +++-
+ test/common/lib/test_sock.c                 |  2 -
+ test/unit/lib/nvme/nvme_tcp.c/nvme_tcp_ut.c | 18 ++---
+ test/unit/lib/sock/sock.c/sock_ut.c         | 33 ++++++--
+ 14 files changed, 171 insertions(+), 191 deletions(-)
+
+diff --git a/CHANGELOG.md b/CHANGELOG.md
+index 41317ad3c..050bf3896 100644
+--- a/CHANGELOG.md
++++ b/CHANGELOG.md
+@@ -26,6 +26,14 @@ Removed the deprecated `max_discard_size_kib` and `max_write_zeroes_size_kib` pa
+ Removed the deprecated NVMf subsystem creation, option setter, and individual option getter APIs.
+ Use `spdk_nvmf_subsystem_create_ext()` and `spdk_nvmf_subsystem_get_opts()` instead.
+ 
++### sock
++
++`spdk_sock_connect`, `spdk_sock_connect_ext` and `spdk_sock_connect_async` have been collapsed
++into a single `spdk_sock_connect()`, as announced in v26.05. The replacement is always
++asynchronous: it returns the socket before the connection completes and reports the outcome
++through the supplied callback. Callers that need to block until the connection is established
++should poll `spdk_sock_is_connected()`.
++
+ ## v26.05
+ 
+ ### accel
+diff --git a/deprecation.md b/deprecation.md
+index ab8380d39..0064a9b18 100644
+--- a/deprecation.md
++++ b/deprecation.md
+@@ -118,10 +118,6 @@ The `cb_fn` and `cb_arg` parameters of `spdk_sock_group_add_sock` are deprecated
+ removed in v26.09. Instead, pass `cb_fn` and `cb_arg` via the new `spdk_sock_group_opts` struct
+ passed to `spdk_sock_group_create`.
+ 
+-#### `spdk_sock_connect`, `spdk_sock_connect_ext`, `spdk_sock_connect_async`
+-
+-These 3 APIs will be collapsed into a single replacement starting in v26.09.
+-
+ #### `spdk_sock_listen`, `spdk_sock_listen_ext`
+ 
+ These two APIs will be collapsed into a single replacement starting in v26.09.
+diff --git a/examples/sock/hello_world/hello_sock.c b/examples/sock/hello_world/hello_sock.c
+index c13f05312..3c317cc72 100644
+--- a/examples/sock/hello_world/hello_sock.c
++++ b/examples/sock/hello_world/hello_sock.c
+@@ -59,6 +59,7 @@ struct hello_context_t {
+ 	void *buf;
+ 	struct spdk_poller *poller_in;
+ 	struct spdk_poller *poller_out;
++	struct spdk_poller *poller_connect;
+ 	struct spdk_poller *time_out;
+ 
+ 	int rc;
+@@ -295,12 +296,67 @@ hello_sock_group_poll(void *arg)
+ 	return rc > 0 ? SPDK_POLLER_BUSY : SPDK_POLLER_IDLE;
+ }
+ 
++/*
++ * spdk_sock_connect() is asynchronous. The connection state machine is driven by
++ * spdk_sock_is_connected(), so poll it until the callback below fires.
++ */
+ static int
+-hello_sock_connect(struct hello_context_t *ctx)
++hello_sock_connect_poll(void *arg)
+ {
+-	int rc;
++	struct hello_context_t *ctx = arg;
++
++	spdk_sock_is_connected(ctx->sock);
++
++	return SPDK_POLLER_BUSY;
++}
++
++static void
++hello_sock_connect_cb(void *cb_arg, int status)
++{
++	struct hello_context_t *ctx = cb_arg;
+ 	char saddr[ADDR_STR_LEN], caddr[ADDR_STR_LEN];
+ 	uint16_t cport, sport;
++	int rc;
++
++	spdk_poller_unregister(&ctx->poller_connect);
++
++	if (status != 0) {
++		SPDK_ERRLOG("connect error(%d): %s\n", -status, spdk_strerror(-status));
++		goto err;
++	}
++
++	rc = spdk_sock_getaddr(ctx->sock, saddr, sizeof(saddr), &sport, caddr, sizeof(caddr), &cport);
++	if (rc < 0) {
++		SPDK_ERRLOG("Cannot get connection addresses\n");
++		goto err;
++	}
++
++	SPDK_NOTICELOG("Connection accepted from (%s, %hu) to (%s, %hu)\n", caddr, cport, saddr, sport);
++
++	if (spdk_fd_set_nonblock(STDIN_FILENO) < 0) {
++		goto err;
++	}
++
++	rc = spdk_sock_group_add_sock(ctx->group, ctx->sock, hello_sock_recv_poll, ctx);
++	if (rc < 0) {
++		SPDK_ERRLOG("Cannot add socket to group\n");
++		goto err;
++	}
++
++	g_is_running = true;
++	ctx->poller_in = SPDK_POLLER_REGISTER(hello_sock_group_poll, ctx, 0);
++	ctx->poller_out = SPDK_POLLER_REGISTER(hello_sock_writev_poll, ctx, 0);
++
++	return;
++err:
++	spdk_sock_close(&ctx->sock);
++	spdk_sock_group_close(&ctx->group);
++	spdk_app_stop(-1);
++}
++
++static int
++hello_sock_connect(struct hello_context_t *ctx)
++{
+ 	struct spdk_sock_impl_opts impl_opts;
+ 	size_t impl_opts_size = sizeof(impl_opts);
+ 	struct spdk_sock_opts opts;
+@@ -331,40 +387,17 @@ hello_sock_connect(struct hello_context_t *ctx)
+ 	SPDK_NOTICELOG("Connecting to the server on %s:%d with sock_impl(%s)\n", ctx->host, ctx->port,
+ 		       ctx->sock_impl_name);
+ 
+-	ctx->sock = spdk_sock_connect_ext(ctx->host, ctx->port, ctx->sock_impl_name, &opts);
++	ctx->sock = spdk_sock_connect(ctx->host, ctx->port, ctx->sock_impl_name, &opts,
++				      hello_sock_connect_cb, ctx);
+ 	if (ctx->sock == NULL) {
+ 		SPDK_ERRLOG("connect error(%d): %s\n", errno, spdk_strerror(errno));
+ 		spdk_sock_group_close(&ctx->group);
+ 		return -1;
+ 	}
+ 
+-	rc = spdk_sock_getaddr(ctx->sock, saddr, sizeof(saddr), &sport, caddr, sizeof(caddr), &cport);
+-	if (rc < 0) {
+-		SPDK_ERRLOG("Cannot get connection addresses\n");
+-		goto err;
+-	}
+-
+-	SPDK_NOTICELOG("Connection accepted from (%s, %hu) to (%s, %hu)\n", caddr, cport, saddr, sport);
+-
+-	if (spdk_fd_set_nonblock(STDIN_FILENO) < 0) {
+-		goto err;
+-	}
+-
+-	rc = spdk_sock_group_add_sock(ctx->group, ctx->sock, hello_sock_recv_poll, ctx);
+-	if (rc < 0) {
+-		SPDK_ERRLOG("Cannot add socket to group\n");
+-		goto err;
+-	}
+-
+-	g_is_running = true;
+-	ctx->poller_in = SPDK_POLLER_REGISTER(hello_sock_group_poll, ctx, 0);
+-	ctx->poller_out = SPDK_POLLER_REGISTER(hello_sock_writev_poll, ctx, 0);
++	ctx->poller_connect = SPDK_POLLER_REGISTER(hello_sock_connect_poll, ctx, 0);
+ 
+ 	return 0;
+-err:
+-	spdk_sock_close(&ctx->sock);
+-	spdk_sock_group_close(&ctx->group);
+-	return -1;
+ }
+ 
+ static void
+diff --git a/include/spdk/sock.h b/include/spdk/sock.h
+index e3154fca3..0ab2b6a78 100644
+--- a/include/spdk/sock.h
++++ b/include/spdk/sock.h
+@@ -196,7 +196,7 @@ struct spdk_sock_impl_opts {
+ /**
+  * Spdk socket initialization options.
+  *
+- * A pointer to this structure will be used by spdk_sock_listen_ext() or spdk_sock_connect_ext() to
++ * A pointer to this structure will be used by spdk_sock_listen_ext() or spdk_sock_connect() to
+  * allow the user to request non-default options on the socket.
+  */
+ struct spdk_sock_opts {
+@@ -338,38 +338,10 @@ int spdk_sock_getaddr(struct spdk_sock *sock, char *saddr, int slen, uint16_t *s
+  */
+ const char *spdk_sock_get_impl_name(struct spdk_sock *sock);
+ 
+-/**
+- * Create a socket using the specific sock implementation, connect the socket
+- * to the specified address and port (of the server), and then return the socket.
+- * This function is used by client.
+- *
+- * \param ip IP address of the server.
+- * \param port Port number of the server.
+- * \param impl_name The sock implementation to use, such as "posix", or NULL for default.
+- *
+- * \return a pointer to the connected socket on success, or NULL on failure.
+- */
+-struct spdk_sock *spdk_sock_connect(const char *ip, int port, const char *impl_name);
+-
+-/**
+- * Create a socket using the specific sock implementation, connect the socket
+- * to the specified address and port (of the server), and then return the socket.
+- * This function is used by client.
+- *
+- * \param ip IP address of the server.
+- * \param port Port number of the server.
+- * \param impl_name The sock implementation to use, such as "posix", or NULL for default.
+- * \param opts The sock option pointer provided by the user which should not be NULL pointer.
+- *
+- * \return a pointer to the connected socket on success, or NULL on failure.
+- */
+-struct spdk_sock *spdk_sock_connect_ext(const char *ip, int port, const char *impl_name,
+-					struct spdk_sock_opts *opts);
+-
+ /**
+  * Signature for callback function invoked when a connection is completed.
+  *
+- * \param cb_arg Context specified by \ref spdk_sock_connect_async.
++ * \param cb_arg Context specified by \ref spdk_sock_connect.
+  * \param status 0 on success, negative errno value on failure.
+  */
+ typedef void (*spdk_sock_connect_cb_fn)(void *cb_arg, int status);
+@@ -379,13 +351,12 @@ typedef void (*spdk_sock_connect_cb_fn)(void *cb_arg, int status);
+  * to the specified address and port (of the server), and then return the socket.
+  * This function is used by client.
+  *
+- * Not every function with sock object on the interface is allowed if the conncection is not
+- * established. In order to determine connection status use \p cb_fn. Functions taking sock
+- * object as an input may return EAGAIN to indicate connection is in progress or other
+- * errno values if connection failed.
++ * The connection is always established asynchronously. The socket is returned before the
++ * connection completes, and \p cb_fn reports the outcome. Not every function taking a sock
++ * object is allowed before the connection is established; such functions may return EAGAIN
++ * to indicate the connection is still in progress, or another errno value if it failed.
+  *
+  * Callback function \p cb_fn is invoked only if this function returns a non-NULL value.
+- * If async connect is not supported by the \p impl_name specified then NULL is returned.
+  *
+  * \param ip IP address of the server.
+  * \param port Port number of the server.
+@@ -396,8 +367,9 @@ typedef void (*spdk_sock_connect_cb_fn)(void *cb_arg, int status);
+  *
+  * \return a pointer to the socket on success, or NULL on failure.
+  */
+-struct spdk_sock *spdk_sock_connect_async(const char *ip, int port, const char *impl_name,
+-		struct spdk_sock_opts *opts, spdk_sock_connect_cb_fn cb_fn, void *cb_arg);
++struct spdk_sock *spdk_sock_connect(const char *ip, int port, const char *impl_name,
++				    struct spdk_sock_opts *opts, spdk_sock_connect_cb_fn cb_fn,
++				    void *cb_arg);
+ 
+ /**
+  * Create a socket using the specific sock implementation, bind the socket to
+diff --git a/include/spdk_internal/sock_module.h b/include/spdk_internal/sock_module.h
+index 5fa00c85c..2f804ad11 100644
+--- a/include/spdk_internal/sock_module.h
++++ b/include/spdk_internal/sock_module.h
+@@ -77,9 +77,8 @@ struct spdk_net_impl {
+ 		       int clen, uint16_t *cport);
+ 	const char *(*get_interface_name)(struct spdk_sock *sock);
+ 	int32_t (*get_numa_id)(struct spdk_sock *sock);
+-	struct spdk_sock *(*connect)(const char *ip, int port, struct spdk_sock_opts *opts);
+-	struct spdk_sock *(*connect_async)(const char *ip, int port, struct spdk_sock_opts *opts,
+-					   spdk_sock_connect_cb_fn cb_fn, void *cb_arg);
++	struct spdk_sock *(*connect)(const char *ip, int port, struct spdk_sock_opts *opts,
++				     spdk_sock_connect_cb_fn cb_fn, void *cb_arg);
+ 	struct spdk_sock *(*listen)(const char *ip, int port, struct spdk_sock_opts *opts);
+ 	struct spdk_sock *(*accept)(struct spdk_sock *sock);
+ 	int (*close)(struct spdk_sock *sock);
+diff --git a/lib/nvme/nvme_tcp.c b/lib/nvme/nvme_tcp.c
+index 9942b468e..90b46008f 100644
+--- a/lib/nvme/nvme_tcp.c
++++ b/lib/nvme/nvme_tcp.c
+@@ -2576,8 +2576,8 @@ nvme_tcp_qpair_connect_sock(struct spdk_nvme_ctrlr *ctrlr, struct spdk_nvme_qpai
+ 	}
+ 
+ 	nvme_tcp_qpair_set_state(tqpair, NVME_TCP_QPAIR_STATE_SOCK_CONNECTING);
+-	tqpair->sock = spdk_sock_connect_async(ctrlr->trid.traddr, port, sock_impl_name, &opts,
+-					       nvme_tcp_sock_connect_cb_fn, tqpair);
++	tqpair->sock = spdk_sock_connect(ctrlr->trid.traddr, port, sock_impl_name, &opts,
++					 nvme_tcp_sock_connect_cb_fn, tqpair);
+ 	if (!tqpair->sock) {
+ 		NVME_TQPAIR_ERRLOG(tqpair, "sock connection error with addr=%s, port=%ld\n", ctrlr->trid.traddr,
+ 				   port);
+diff --git a/lib/sock/sock.c b/lib/sock/sock.c
+index afef290f6..35cf41457 100644
+--- a/lib/sock/sock.c
++++ b/lib/sock/sock.c
+@@ -622,26 +622,14 @@ spdk_sock_posix_fd_connect(int fd, struct addrinfo *res, struct spdk_sock_opts *
+ }
+ 
+ struct spdk_sock *
+-spdk_sock_connect(const char *ip, int port, const char *impl_name)
+-{
+-	struct spdk_sock_opts opts;
+-
+-	opts.opts_size = sizeof(opts);
+-	spdk_sock_get_default_opts(&opts);
+-	return spdk_sock_connect_ext(ip, port, impl_name, &opts);
+-}
+-
+-static struct spdk_sock *
+-sock_connect_ext(const char *ip, int port, const char *_impl_name, struct spdk_sock_opts *opts,
+-		 bool async, spdk_sock_connect_cb_fn cb_fn, void *cb_arg)
++spdk_sock_connect(const char *ip, int port, const char *_impl_name, struct spdk_sock_opts *opts,
++		  spdk_sock_connect_cb_fn cb_fn, void *cb_arg)
+ {
+ 	struct spdk_net_impl *impl = NULL;
+ 	struct spdk_sock *sock;
+ 	struct spdk_sock_opts opts_local;
+ 	const char *impl_name = NULL;
+ 
+-	assert(async || (!cb_fn && !cb_arg));
+-
+ 	if (opts == NULL) {
+ 		SPDK_ERRLOG("the opts should not be NULL pointer\n");
+ 		return NULL;
+@@ -664,11 +652,6 @@ sock_connect_ext(const char *ip, int port, const char *_impl_name, struct spdk_s
+ 		return NULL;
+ 	}
+ 
+-	if (async && !impl->connect_async) {
+-		SPDK_ERRLOG("Asynchronous connect is not supported by %s\n", impl->name);
+-		return NULL;
+-	}
+-
+ 	SPDK_DEBUGLOG(sock, "Creating a client socket using impl %s\n", impl->name);
+ 	sock_init_opts(&opts_local, opts);
+ 	if (opts_local.connect_timeout > INT_MAX) {
+@@ -676,12 +659,7 @@ sock_connect_ext(const char *ip, int port, const char *_impl_name, struct spdk_s
+ 		return NULL;
+ 	}
+ 
+-	if (async) {
+-		sock = impl->connect_async(ip, port, &opts_local, cb_fn, cb_arg);
+-	} else {
+-		sock = impl->connect(ip, port, &opts_local);
+-	}
+-
++	sock = impl->connect(ip, port, &opts_local, cb_fn, cb_arg);
+ 	if (!sock) {
+ 		return NULL;
+ 	}
+@@ -697,19 +675,6 @@ sock_connect_ext(const char *ip, int port, const char *_impl_name, struct spdk_s
+ 	return sock;
+ }
+ 
+-struct spdk_sock *
+-spdk_sock_connect_ext(const char *ip, int port, const char *_impl_name, struct spdk_sock_opts *opts)
+-{
+-	return sock_connect_ext(ip, port, _impl_name, opts, false, NULL, NULL);
+-}
+-
+-struct spdk_sock *
+-spdk_sock_connect_async(const char *ip, int port, const char *_impl_name,
+-			struct spdk_sock_opts *opts, spdk_sock_connect_cb_fn cb_fn, void *cb_arg)
+-{
+-	return sock_connect_ext(ip, port, _impl_name, opts, true, cb_fn, cb_arg);
+-}
+-
+ struct spdk_sock *
+ spdk_sock_listen(const char *ip, int port, const char *impl_name)
+ {
+diff --git a/lib/sock/spdk_sock.map b/lib/sock/spdk_sock.map
+index 9042b30a6..f5d81cd9a 100644
+--- a/lib/sock/spdk_sock.map
++++ b/lib/sock/spdk_sock.map
+@@ -9,8 +9,6 @@
+ 	spdk_sock_get_interface_name;
+ 	spdk_sock_get_numa_id;
+ 	spdk_sock_connect;
+-	spdk_sock_connect_ext;
+-	spdk_sock_connect_async;
+ 	spdk_sock_listen;
+ 	spdk_sock_listen_ext;
+ 	spdk_sock_accept;
+diff --git a/module/sock/posix/posix.c b/module/sock/posix/posix.c
+index b01239258..d30e255b6 100644
+--- a/module/sock/posix/posix.c
++++ b/module/sock/posix/posix.c
+@@ -1063,7 +1063,7 @@ sock_posix_connect_async(struct addrinfo *res, struct spdk_sock_opts *opts,
+ static int posix_connect_poller(struct spdk_posix_sock *sock);
+ 
+ static struct spdk_sock *
+-_posix_sock_connect(const char *ip, int port, struct spdk_sock_opts *opts, bool async,
++_posix_sock_connect(const char *ip, int port, struct spdk_sock_opts *opts,
+ 		    bool enable_ssl, spdk_sock_connect_cb_fn cb_fn, void *cb_arg)
+ {
+ 	struct spdk_sock_impl_opts impl_opts;
+@@ -1097,19 +1097,6 @@ _posix_sock_connect(const char *ip, int port, struct spdk_sock_opts *opts, bool
+ 	}
+ 
+ 	sock->fd = sock->connect_ctx->fd;
+-	if (async) {
+-		return &sock->base;
+-	}
+-
+-	do {
+-		rc = posix_connect_poller(sock);
+-	} while (rc == -EAGAIN);
+-
+-	if (!sock->ready) {
+-		free(sock);
+-		return NULL;
+-	}
+-
+ 	return &sock->base;
+ 
+ err:
+@@ -1132,16 +1119,10 @@ posix_sock_listen(const char *ip, int port, struct spdk_sock_opts *opts)
+ }
+ 
+ static struct spdk_sock *
+-posix_sock_connect(const char *ip, int port, struct spdk_sock_opts *opts)
++posix_sock_connect(const char *ip, int port, struct spdk_sock_opts *opts,
++		   spdk_sock_connect_cb_fn cb_fn, void *cb_arg)
+ {
+-	return _posix_sock_connect(ip, port, opts, false, false, NULL, NULL);
+-}
+-
+-static struct spdk_sock *
+-posix_sock_connect_async(const char *ip, int port, struct spdk_sock_opts *opts,
+-			 spdk_sock_connect_cb_fn cb_fn, void *cb_arg)
+-{
+-	return _posix_sock_connect(ip, port, opts, true, false, cb_fn, cb_arg);
++	return _posix_sock_connect(ip, port, opts, false, cb_fn, cb_arg);
+ }
+ 
+ static struct spdk_sock *
+@@ -2351,10 +2332,9 @@ posix_connect_poller(struct spdk_posix_sock *sock)
+ 
+ 	if (sock->base.group_impl) {
+ 		rc = posix_sock_group_impl_add_sock(sock->base.group_impl, &sock->base);
+-		if (rc) {
+-			SPDK_ERRLOG("Connection was established but delayed posix_sock_group_impl_add_sock() failed %d (errno=%d).\n",
+-				    rc, errno);
+-			rc = -errno;
++		if (rc < 0) {
++			SPDK_ERRLOG("Connection was established but delayed posix_sock_group_impl_add_sock() failed %d.\n",
++				    rc);
+ 			goto err;
+ 		}
+ 	}
+@@ -2390,7 +2370,6 @@ static struct spdk_net_impl g_posix_net_impl = {
+ 	.get_interface_name = posix_sock_get_interface_name,
+ 	.get_numa_id	= posix_sock_get_numa_id,
+ 	.connect	= posix_sock_connect,
+-	.connect_async	= posix_sock_connect_async,
+ 	.listen		= posix_sock_listen,
+ 	.accept		= posix_sock_accept,
+ 	.close		= posix_sock_close,
+@@ -2425,16 +2404,10 @@ ssl_sock_listen(const char *ip, int port, struct spdk_sock_opts *opts)
+ }
+ 
+ static struct spdk_sock *
+-ssl_sock_connect(const char *ip, int port, struct spdk_sock_opts *opts)
+-{
+-	return _posix_sock_connect(ip, port, opts, false, true, NULL, NULL);
+-}
+-
+-static struct spdk_sock *
+-ssl_sock_connect_async(const char *ip, int port, struct spdk_sock_opts *opts,
+-		       spdk_sock_connect_cb_fn cb_fn, void *cb_arg)
++ssl_sock_connect(const char *ip, int port, struct spdk_sock_opts *opts,
++		 spdk_sock_connect_cb_fn cb_fn, void *cb_arg)
+ {
+-	return _posix_sock_connect(ip, port, opts, true, true, cb_fn, cb_arg);
++	return _posix_sock_connect(ip, port, opts, true, cb_fn, cb_arg);
+ }
+ 
+ static struct spdk_sock *
+@@ -2456,7 +2429,6 @@ static struct spdk_net_impl g_ssl_net_impl = {
+ 	.get_interface_name = posix_sock_get_interface_name,
+ 	.get_numa_id	= posix_sock_get_numa_id,
+ 	.connect	= ssl_sock_connect,
+-	.connect_async	= ssl_sock_connect_async,
+ 	.listen		= ssl_sock_listen,
+ 	.accept		= ssl_sock_accept,
+ 	.close		= posix_sock_close,
+diff --git a/module/sock/uring/uring.c b/module/sock/uring/uring.c
+index 6f5768e1e..6979acd1a 100644
+--- a/module/sock/uring/uring.c
++++ b/module/sock/uring/uring.c
+@@ -582,23 +582,17 @@ uring_sock_listen(const char *ip, int port, struct spdk_sock_opts *opts)
+ 	return _sock;
+ }
+ 
++/* The connection itself is established synchronously here, but the callback is deferred
++ * rather than invoked inline. That keeps the spdk_sock_connect contract simple: the callback
++ * never fires before this function returns. */
+ static struct spdk_sock *
+-uring_sock_connect(const char *ip, int port, struct spdk_sock_opts *opts)
++uring_sock_connect(const char *ip, int port, struct spdk_sock_opts *opts,
++		   spdk_sock_connect_cb_fn cb_fn, void *cb_arg)
+ {
+-	return uring_sock_create(ip, port, SPDK_SOCK_CREATE_CONNECT, opts);
+-}
+-
+-/* This is a dummy implementation of async connect, but it is required to simplify
+- * the spdk_sock_connect_async contract — i.e., to remove the need for a synchronous fallback
+- * and avoid the problematic case where the callback is invoked before this function returns. */
+-static struct spdk_sock *
+-uring_sock_connect_async(const char *ip, int port, struct spdk_sock_opts *opts,
+-			 spdk_sock_connect_cb_fn cb_fn, void *cb_arg)
+-{
+-	static struct spdk_sock *_sock;
++	struct spdk_sock *_sock;
+ 	struct spdk_uring_sock *sock;
+ 
+-	_sock = uring_sock_connect(ip, port, opts);
++	_sock = uring_sock_create(ip, port, SPDK_SOCK_CREATE_CONNECT, opts);
+ 	if (!_sock) {
+ 		return NULL;
+ 	}
+@@ -1089,6 +1083,23 @@ _sock_prep_errqueue(struct spdk_sock *_sock)
+ 
+ #endif
+ 
++/* The connection is already established by the time uring_sock_connect() returns, so the
++ * deferred callback can fire from anywhere that drives the socket. Both spdk_sock_flush()
++ * and spdk_sock_is_connected() must do so - a caller that has not yet added the socket to
++ * a poll group has nothing but the latter to poll. */
++static void
++uring_sock_complete_connect(struct spdk_uring_sock *sock)
++{
++	spdk_sock_connect_cb_fn cb_fn = sock->connect_cb_fn;
++
++	if (cb_fn == NULL) {
++		return;
++	}
++
++	sock->connect_cb_fn = NULL;
++	cb_fn(sock->connect_cb_arg, 0);
++}
++
+ static void
+ _sock_flush(struct spdk_sock *_sock)
+ {
+@@ -1098,11 +1109,7 @@ _sock_flush(struct spdk_sock *_sock)
+ 	struct io_uring_sqe *sqe;
+ 	int flags;
+ 
+-	if (sock->connect_cb_fn) {
+-		spdk_sock_connect_cb_fn cb_fn = sock->connect_cb_fn;
+-		sock->connect_cb_fn = NULL;
+-		cb_fn(sock->connect_cb_arg, 0);
+-	}
++	uring_sock_complete_connect(sock);
+ 
+ 	if (task->status == SPDK_URING_SOCK_TASK_IN_PROCESS) {
+ 		return;
+@@ -1482,6 +1489,8 @@ uring_sock_is_connected(struct spdk_sock *_sock)
+ 	int rc;
+ 	struct pollfd pfd;
+ 
++	uring_sock_complete_connect(sock);
++
+ 	pfd.fd = sock->fd;
+ 	pfd.events = 0;
+ 	pfd.revents = 0;
+@@ -1951,7 +1960,6 @@ static struct spdk_net_impl g_uring_net_impl = {
+ 	.get_interface_name = uring_sock_get_interface_name,
+ 	.get_numa_id	= uring_sock_get_numa_id,
+ 	.connect	= uring_sock_connect,
+-	.connect_async	= uring_sock_connect_async,
+ 	.listen		= uring_sock_listen,
+ 	.accept		= uring_sock_accept,
+ 	.close		= uring_sock_close,
+diff --git a/test/app/fuzz/iscsi_fuzz/iscsi_fuzz.c b/test/app/fuzz/iscsi_fuzz/iscsi_fuzz.c
+index 3370d7dc2..ccf3c40b2 100644
+--- a/test/app/fuzz/iscsi_fuzz/iscsi_fuzz.c
++++ b/test/app/fuzz/iscsi_fuzz/iscsi_fuzz.c
+@@ -681,8 +681,12 @@ iscsi_fuzz_sock_connect(struct spdk_iscsi_conn *conn, struct spdk_sock_group *gr
+ 	char saddr[INET6_ADDRSTRLEN], caddr[INET6_ADDRSTRLEN];
+ 	uint16_t cport, sport;
+ 	int rc = 0;
++	struct spdk_sock_opts opts;
+ 
+-	conn->sock = spdk_sock_connect(host, spdk_strtol(port, 10), NULL);
++	opts.opts_size = sizeof(opts);
++	spdk_sock_get_default_opts(&opts);
++
++	conn->sock = spdk_sock_connect(host, spdk_strtol(port, 10), NULL, &opts, NULL, NULL);
+ 	if (conn->sock == NULL) {
+ 		fprintf(stderr, "connect error(%d): %s\n", errno, spdk_strerror(errno));
+ 		spdk_sock_close(&conn->sock);
+@@ -690,6 +694,16 @@ iscsi_fuzz_sock_connect(struct spdk_iscsi_conn *conn, struct spdk_sock_group *gr
+ 	}
+ 	fprintf(stderr, "\nConnecting to the server on %s:%s\n", host, port);
+ 
++	/* spdk_sock_connect() is asynchronous, but the rest of this app is not. Drive the
++	 * connection to completion here. The connect_timeout opt bounds the wait. */
++	while (!spdk_sock_is_connected(conn->sock)) {
++		if (errno != EAGAIN && errno != EWOULDBLOCK) {
++			fprintf(stderr, "connect error(%d): %s\n", errno, spdk_strerror(errno));
++			spdk_sock_close(&conn->sock);
++			return;
++		}
++	}
++
+ 	rc = spdk_sock_getaddr(conn->sock, saddr, sizeof(saddr), &sport, caddr, sizeof(caddr), &cport);
+ 	if (rc < 0) {
+ 		fprintf(stderr, "Cannot get connection addresses\n");
+diff --git a/test/common/lib/test_sock.c b/test/common/lib/test_sock.c
+index c9e895e05..56f2e818e 100644
+--- a/test/common/lib/test_sock.c
++++ b/test/common/lib/test_sock.c
+@@ -23,8 +23,6 @@ struct test_sock_group {
+ 
+ DEFINE_STUB(spdk_sock_getaddr, int, (struct spdk_sock *sock, char *saddr, int slen, uint16_t *sport,
+ 				     char *caddr, int clen, uint16_t *cport), 0);
+-DEFINE_STUB(spdk_sock_connect, struct spdk_sock *, (const char *ip, int port,
+-		const char *impl_name), NULL);
+ DEFINE_STUB(spdk_sock_listen, struct spdk_sock *, (const char *ip, int port, const char *impl_name),
+ 	    NULL);
+ DEFINE_STUB(spdk_sock_listen_ext, struct spdk_sock *, (const char *ip, int port,
+diff --git a/test/unit/lib/nvme/nvme_tcp.c/nvme_tcp_ut.c b/test/unit/lib/nvme/nvme_tcp.c/nvme_tcp_ut.c
+index 1d856e9b3..2bbce31d0 100644
+--- a/test/unit/lib/nvme/nvme_tcp.c/nvme_tcp_ut.c
++++ b/test/unit/lib/nvme/nvme_tcp.c/nvme_tcp_ut.c
+@@ -1122,12 +1122,12 @@ test_nvme_tcp_pdu_ch_handle(void)
+ 			  struct spdk_nvme_tcp_common_pdu_hdr));
+ }
+ 
+-DEFINE_RETURN_MOCK(spdk_sock_connect_async, struct spdk_sock *);
++DEFINE_RETURN_MOCK(spdk_sock_connect, struct spdk_sock *);
+ struct spdk_sock *
+-spdk_sock_connect_async(const char *ip, int port, const char *_impl_name,
+-			struct spdk_sock_opts *opts, spdk_sock_connect_cb_fn cb_fn, void *cb_arg)
++spdk_sock_connect(const char *ip, int port, const char *_impl_name,
++		  struct spdk_sock_opts *opts, spdk_sock_connect_cb_fn cb_fn, void *cb_arg)
+ {
+-	HANDLE_RETURN_MOCK(spdk_sock_connect_async);
++	HANDLE_RETURN_MOCK(spdk_sock_connect);
+ 	CU_ASSERT(port == 23);
+ 	CU_ASSERT(opts->opts_size == sizeof(*opts));
+ 	CU_ASSERT(opts->priority == 1);
+@@ -1861,7 +1861,7 @@ test_nvme_tcp_ctrlr_construct(void)
+ 
+ 	/* Transmit ACK timeout value exceeds max, expected to pass and using max */
+ 	opts.transport_ack_timeout = NVME_TCP_CTRLR_MAX_TRANSPORT_ACK_TIMEOUT + 1;
+-	MOCK_SET(spdk_sock_connect_async, (struct spdk_sock *)0xDEADBEEF);
++	MOCK_SET(spdk_sock_connect, (struct spdk_sock *)0xDEADBEEF);
+ 	ctrlr = nvme_tcp_ctrlr_construct(&trid, &opts, NULL);
+ 	tctrlr = nvme_tcp_ctrlr(ctrlr);
+ 	tqpair = nvme_tcp_qpair(tctrlr->ctrlr.adminq);
+@@ -1902,13 +1902,13 @@ test_nvme_tcp_ctrlr_construct(void)
+ 
+ 	/* Error connecting socket, expected to create Admin qpair failed */
+ 	trid.adrfam = SPDK_NVMF_ADRFAM_IPV4;
+-	MOCK_SET(spdk_sock_connect_async, NULL);
++	MOCK_SET(spdk_sock_connect, NULL);
+ 	ctrlr = nvme_tcp_ctrlr_construct(&trid, &opts, NULL);
+ 	rc = nvme_tcp_ctrlr_connect_qpair(ctrlr, ctrlr->adminq);
+ 	CU_ASSERT(rc == -1);
+ 	nvme_tcp_ctrlr_destruct(ctrlr);
+ 
+-	MOCK_CLEAR(spdk_sock_connect_async);
++	MOCK_CLEAR(spdk_sock_connect);
+ }
+ 
+ static void
+@@ -1937,7 +1937,7 @@ test_nvme_tcp_qpair_submit_request(void)
+ 
+ 	/* Construct TCP Controller */
+ 	opts.transport_ack_timeout = NVME_TCP_CTRLR_MAX_TRANSPORT_ACK_TIMEOUT + 1;
+-	MOCK_SET(spdk_sock_connect_async, (struct spdk_sock *)0xDCADBEEF);
++	MOCK_SET(spdk_sock_connect, (struct spdk_sock *)0xDCADBEEF);
+ 
+ 	ctrlr = nvme_tcp_ctrlr_construct(&trid, &opts, NULL);
+ 	CU_ASSERT(ctrlr != NULL);
+@@ -2018,7 +2018,7 @@ test_nvme_tcp_qpair_submit_request(void)
+ 	CU_ASSERT(rc == -EAGAIN);
+ 	CU_ASSERT(tqpair->stats->queued_requests == 1);
+ 
+-	MOCK_CLEAR(spdk_sock_connect_async);
++	MOCK_CLEAR(spdk_sock_connect);
+ 	free(tqpair->tcp_reqs);
+ 	spdk_free(tqpair->send_pdus);
+ 	free(tqpair);
+diff --git a/test/unit/lib/sock/sock.c/sock_ut.c b/test/unit/lib/sock/sock.c/sock_ut.c
+index b38d7e77c..b260a14fe 100644
+--- a/test/unit/lib/sock/sock.c/sock_ut.c
++++ b/test/unit/lib/sock/sock.c/sock_ut.c
+@@ -69,7 +69,8 @@ spdk_ut_sock_listen(const char *ip, int port, struct spdk_sock_opts *opts)
+ }
+ 
+ static struct spdk_sock *
+-spdk_ut_sock_connect(const char *ip, int port, struct spdk_sock_opts *opts)
++spdk_ut_sock_connect(const char *ip, int port, struct spdk_sock_opts *opts,
++		     spdk_sock_connect_cb_fn cb_fn, void *cb_arg)
+ {
+ 	struct spdk_ut_sock *sock;
+ 
+@@ -340,6 +341,7 @@ _sock(const char *ip, int port, char *impl_name)
+ 	struct spdk_sock *listen_sock;
+ 	struct spdk_sock *server_sock;
+ 	struct spdk_sock *client_sock;
++	struct spdk_sock_opts opts;
+ 	char *test_string = "abcdef";
+ 	char buffer[64];
+ 	ssize_t bytes_read, bytes_written;
+@@ -347,6 +349,9 @@ _sock(const char *ip, int port, char *impl_name)
+ 	int nbytes;
+ 	int rc;
+ 
++	opts.opts_size = sizeof(opts);
++	spdk_sock_get_default_opts(&opts);
++
+ 	listen_sock = spdk_sock_listen(ip, port, impl_name);
+ 	SPDK_CU_ASSERT_FATAL(listen_sock != NULL);
+ 
+@@ -354,7 +359,7 @@ _sock(const char *ip, int port, char *impl_name)
+ 	CU_ASSERT(server_sock == NULL);
+ 	CU_ASSERT(errno == EAGAIN || errno == EWOULDBLOCK);
+ 
+-	client_sock = spdk_sock_connect(ip, port, impl_name);
++	client_sock = spdk_sock_connect(ip, port, impl_name, &opts, NULL, NULL);
+ 	SPDK_CU_ASSERT_FATAL(client_sock != NULL);
+ 
+ 	/*
+@@ -490,11 +495,15 @@ _sock_group(const char *ip, int port, char *impl_name)
+ 	struct spdk_sock *listen_sock;
+ 	struct spdk_sock *server_sock;
+ 	struct spdk_sock *client_sock;
++	struct spdk_sock_opts opts;
+ 	char *test_string = "abcdef";
+ 	ssize_t bytes_written;
+ 	struct iovec iov;
+ 	int rc;
+ 
++	opts.opts_size = sizeof(opts);
++	spdk_sock_get_default_opts(&opts);
++
+ 	listen_sock = spdk_sock_listen(ip, port, impl_name);
+ 	SPDK_CU_ASSERT_FATAL(listen_sock != NULL);
+ 
+@@ -502,7 +511,7 @@ _sock_group(const char *ip, int port, char *impl_name)
+ 	CU_ASSERT(server_sock == NULL);
+ 	CU_ASSERT(errno == EAGAIN || errno == EWOULDBLOCK);
+ 
+-	client_sock = spdk_sock_connect(ip, port, impl_name);
++	client_sock = spdk_sock_connect(ip, port, impl_name, &opts, NULL, NULL);
+ 	SPDK_CU_ASSERT_FATAL(client_sock != NULL);
+ 
+ 	usleep(1000);
+@@ -621,11 +630,15 @@ posix_sock_group_fairness(void)
+ 	struct spdk_sock *listen_sock;
+ 	struct spdk_sock *server_sock[3];
+ 	struct spdk_sock *client_sock[3];
++	struct spdk_sock_opts opts;
+ 	char test_char = 'a';
+ 	ssize_t bytes_written;
+ 	struct iovec iov;
+ 	int i, rc;
+ 
++	opts.opts_size = sizeof(opts);
++	spdk_sock_get_default_opts(&opts);
++
+ 	listen_sock = spdk_sock_listen("127.0.0.1", UT_PORT, "posix");
+ 	SPDK_CU_ASSERT_FATAL(listen_sock != NULL);
+ 
+@@ -633,7 +646,7 @@ posix_sock_group_fairness(void)
+ 	SPDK_CU_ASSERT_FATAL(group != NULL);
+ 
+ 	for (i = 0; i < 3; i++) {
+-		client_sock[i] = spdk_sock_connect("127.0.0.1", UT_PORT, "posix");
++		client_sock[i] = spdk_sock_connect("127.0.0.1", UT_PORT, "posix", &opts, NULL, NULL);
+ 		SPDK_CU_ASSERT_FATAL(client_sock[i] != NULL);
+ 
+ 		usleep(1000);
+@@ -748,16 +761,20 @@ _sock_close(const char *ip, int port, char *impl_name)
+ 	struct spdk_sock *listen_sock;
+ 	struct spdk_sock *server_sock;
+ 	struct spdk_sock *client_sock;
++	struct spdk_sock_opts opts;
+ 	uint8_t data_buf[64] = {};
+ 	struct spdk_sock_request *req1, *req2;
+ 	struct close_ctx ctx = {};
+ 	bool cb_arg2 = false;
+ 	int rc;
+ 
++	opts.opts_size = sizeof(opts);
++	spdk_sock_get_default_opts(&opts);
++
+ 	listen_sock = spdk_sock_listen(ip, port, impl_name);
+ 	SPDK_CU_ASSERT_FATAL(listen_sock != NULL);
+ 
+-	client_sock = spdk_sock_connect(ip, port, impl_name);
++	client_sock = spdk_sock_connect(ip, port, impl_name, &opts, NULL, NULL);
+ 	SPDK_CU_ASSERT_FATAL(client_sock != NULL);
+ 
+ 	usleep(1000);
+@@ -1153,7 +1170,7 @@ override_impl_opts(void)
+ 
+ 	impl_opts.send_buf_size = send_buf_size + 2;
+ 
+-	csock = spdk_sock_connect_ext("127.0.0.1", UT_PORT, "posix", &opts);
++	csock = spdk_sock_connect("127.0.0.1", UT_PORT, "posix", &opts, NULL, NULL);
+ 	SPDK_CU_ASSERT_FATAL(csock != NULL);
+ 	CU_ASSERT_EQUAL(csock->impl_opts.send_buf_size, send_buf_size + 2);
+ 
+@@ -1193,7 +1210,7 @@ override_impl_opts(void)
+ 
+ 	impl_opts.send_buf_size = send_buf_size + 2;
+ 
+-	csock = spdk_sock_connect_ext("127.0.0.1", UT_PORT, "posix", &opts);
++	csock = spdk_sock_connect("127.0.0.1", UT_PORT, "posix", &opts, NULL, NULL);
+ 	SPDK_CU_ASSERT_FATAL(csock != NULL);
+ 	CU_ASSERT_EQUAL(csock->impl_opts.send_buf_size, send_buf_size);
+ 
+@@ -1249,7 +1266,7 @@ posix_get_interface_name(void)
+ 	opts.impl_opts = &impl_opts;
+ 	opts.impl_opts_size = sizeof(impl_opts);
+ 
+-	csock = spdk_sock_connect_ext("127.0.0.1", UT_PORT, "posix", &opts);
++	csock = spdk_sock_connect("127.0.0.1", UT_PORT, "posix", &opts, NULL, NULL);
+ 	SPDK_CU_ASSERT_FATAL(csock != NULL);
+ 
+ 	asock = spdk_sock_accept(lsock);

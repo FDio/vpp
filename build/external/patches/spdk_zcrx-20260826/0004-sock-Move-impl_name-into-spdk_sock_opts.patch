@@ -1,0 +1,422 @@
+From 5b018f85c7444e5808832987187db36db78ea574 Mon Sep 17 00:00:00 2001
+From: Ben Walker <ben@nvidia.com>
+Date: Fri, 9 Aug 2024 10:40:12 -0700
+Subject: [PATCH 04/21] sock: Move impl_name into spdk_sock_opts
+
+Since we're breaking the API, let's move this typically unused option
+into the spdk_sock_opts struct.
+
+Change-Id: Ibb8a5d9742a90466fd578cdf641d745ffb633c5e
+Signed-off-by: Ben Walker <ben@nvidia.com>
+---
+ examples/sock/hello_world/hello_sock.c      |  7 ++--
+ include/spdk/sock.h                         | 17 ++++-----
+ lib/iscsi/portal_grp.c                      |  2 +-
+ lib/nvme/nvme_tcp.c                         |  3 +-
+ lib/nvmf/tcp.c                              |  4 +--
+ lib/sock/sock.c                             | 16 +++++----
+ test/app/fuzz/iscsi_fuzz/iscsi_fuzz.c       |  2 +-
+ test/common/lib/test_sock.c                 |  2 +-
+ test/unit/lib/nvme/nvme_tcp.c/nvme_tcp_ut.c |  4 +--
+ test/unit/lib/sock/sock.c/sock_ut.c         | 38 +++++++++++++--------
+ 10 files changed, 56 insertions(+), 39 deletions(-)
+
+diff --git a/examples/sock/hello_world/hello_sock.c b/examples/sock/hello_world/hello_sock.c
+index b359b1ab9..17e21ecc6 100644
+--- a/examples/sock/hello_world/hello_sock.c
++++ b/examples/sock/hello_world/hello_sock.c
+@@ -381,14 +381,14 @@ hello_sock_connect(struct hello_context_t *ctx)
+ 	opts.opts_size = sizeof(opts);
+ 	spdk_sock_get_default_opts(&opts);
+ 	opts.zcopy = ctx->zcopy;
++	opts.impl_name = ctx->sock_impl_name;
+ 	opts.impl_opts = &impl_opts;
+ 	opts.impl_opts_size = sizeof(impl_opts);
+ 
+ 	SPDK_NOTICELOG("Connecting to the server on %s:%d with sock_impl(%s)\n", ctx->host, ctx->port,
+ 		       ctx->sock_impl_name);
+ 
+-	ctx->sock = spdk_sock_connect(ctx->host, ctx->port, ctx->sock_impl_name, &opts,
+-				      hello_sock_connect_cb, ctx);
++	ctx->sock = spdk_sock_connect(ctx->host, ctx->port, &opts, hello_sock_connect_cb, ctx);
+ 	if (ctx->sock == NULL) {
+ 		SPDK_ERRLOG("connect error(%d): %s\n", errno, spdk_strerror(errno));
+ 		spdk_sock_group_close(&ctx->group);
+@@ -504,10 +504,11 @@ hello_sock_listen(struct hello_context_t *ctx)
+ 	opts.opts_size = sizeof(opts);
+ 	spdk_sock_get_default_opts(&opts);
+ 	opts.zcopy = ctx->zcopy;
++	opts.impl_name = ctx->sock_impl_name;
+ 	opts.impl_opts = &impl_opts;
+ 	opts.impl_opts_size = sizeof(impl_opts);
+ 
+-	ctx->sock = spdk_sock_listen(ctx->host, ctx->port, ctx->sock_impl_name, &opts);
++	ctx->sock = spdk_sock_listen(ctx->host, ctx->port, &opts);
+ 	if (ctx->sock == NULL) {
+ 		SPDK_ERRLOG("Cannot create server socket\n");
+ 		spdk_sock_group_close(&ctx->group);
+diff --git a/include/spdk/sock.h b/include/spdk/sock.h
+index 766ed2b15..f7143e485 100644
+--- a/include/spdk/sock.h
++++ b/include/spdk/sock.h
+@@ -257,8 +257,13 @@ struct spdk_sock_opts {
+ 	 * Time in msec to wait until connection is done (0 = no timeout).
+ 	 */
+ 	uint32_t connect_timeout;
++
++	/**
++	 * The sock implementation to use, such as "posix", or NULL for default.
++	 */
++	const char *impl_name;
+ };
+-SPDK_STATIC_ASSERT(sizeof(struct spdk_sock_opts) == 56, "Incorrect size");
++SPDK_STATIC_ASSERT(sizeof(struct spdk_sock_opts) == 64, "Incorrect size");
+ 
+ /**
+  * Options for the socket library.
+@@ -360,16 +365,14 @@ typedef void (*spdk_sock_connect_cb_fn)(void *cb_arg, int status);
+  *
+  * \param ip IP address of the server.
+  * \param port Port number of the server.
+- * \param impl_name The sock implementation to use, such as "posix", or NULL for default.
+  * \param opts The sock option pointer provided by the user which should not be NULL pointer.
+  * \param cb_fn Callback function invoked when the connection attempt is completed. (optional)
+  * \param cb_arg Argument passed to callback function. (optional)
+  *
+  * \return a pointer to the socket on success, or NULL on failure.
+  */
+-struct spdk_sock *spdk_sock_connect(const char *ip, int port, const char *impl_name,
+-				    struct spdk_sock_opts *opts, spdk_sock_connect_cb_fn cb_fn,
+-				    void *cb_arg);
++struct spdk_sock *spdk_sock_connect(const char *ip, int port, struct spdk_sock_opts *opts,
++				    spdk_sock_connect_cb_fn cb_fn, void *cb_arg);
+ 
+ /**
+  * Create a socket using the specific sock implementation, bind the socket to
+@@ -378,13 +381,11 @@ struct spdk_sock *spdk_sock_connect(const char *ip, int port, const char *impl_n
+  *
+  * \param ip IP address to listen on.
+  * \param port Port number.
+- * \param impl_name The sock implementation to use, such as "posix", or NULL for default.
+  * \param opts The sock option pointer provided by the user, which should not be NULL pointer.
+  *
+  * \return a pointer to the listened socket on success, or NULL on failure.
+  */
+-struct spdk_sock *spdk_sock_listen(const char *ip, int port, const char *impl_name,
+-				   struct spdk_sock_opts *opts);
++struct spdk_sock *spdk_sock_listen(const char *ip, int port, struct spdk_sock_opts *opts);
+ 
+ /**
+  * Accept a new connection from a client on the specified socket and return a
+diff --git a/lib/iscsi/portal_grp.c b/lib/iscsi/portal_grp.c
+index 2d3ac556c..4451527f2 100644
+--- a/lib/iscsi/portal_grp.c
++++ b/lib/iscsi/portal_grp.c
+@@ -162,7 +162,7 @@ iscsi_portal_open(struct spdk_iscsi_portal *p)
+ 		return -1;
+ 	}
+ 
+-	sock = spdk_sock_listen(p->host, port, NULL, &opts);
++	sock = spdk_sock_listen(p->host, port, &opts);
+ 	if (sock == NULL) {
+ 		SPDK_ERRLOG("listen error %.64s.%d\n", p->host, port);
+ 		return -1;
+diff --git a/lib/nvme/nvme_tcp.c b/lib/nvme/nvme_tcp.c
+index 90b46008f..ba9f96e13 100644
+--- a/lib/nvme/nvme_tcp.c
++++ b/lib/nvme/nvme_tcp.c
+@@ -2571,12 +2571,13 @@ nvme_tcp_qpair_connect_sock(struct spdk_nvme_ctrlr *ctrlr, struct spdk_nvme_qpai
+ 	opts.connect_timeout = g_spdk_nvme_transport_opts.tcp_connect_timeout_ms;
+ 
+ 	if (sock_impl_name) {
++		opts.impl_name = sock_impl_name;
+ 		opts.impl_opts = &impl_opts;
+ 		opts.impl_opts_size = sizeof(impl_opts);
+ 	}
+ 
+ 	nvme_tcp_qpair_set_state(tqpair, NVME_TCP_QPAIR_STATE_SOCK_CONNECTING);
+-	tqpair->sock = spdk_sock_connect(ctrlr->trid.traddr, port, sock_impl_name, &opts,
++	tqpair->sock = spdk_sock_connect(ctrlr->trid.traddr, port, &opts,
+ 					 nvme_tcp_sock_connect_cb_fn, tqpair);
+ 	if (!tqpair->sock) {
+ 		NVME_TQPAIR_ERRLOG(tqpair, "sock connection error with addr=%s, port=%ld\n", ctrlr->trid.traddr,
+diff --git a/lib/nvmf/tcp.c b/lib/nvmf/tcp.c
+index 5427ace73..380752da8 100644
+--- a/lib/nvmf/tcp.c
++++ b/lib/nvmf/tcp.c
+@@ -1053,12 +1053,12 @@ nvmf_tcp_listen(struct spdk_nvmf_transport *transport, const struct spdk_nvme_tr
+ 			impl_opts.tls_cipher_suites = "TLS_AES_256_GCM_SHA384:TLS_AES_128_GCM_SHA256";
+ 		}
+ 
++		opts.impl_name = sock_impl_name;
+ 		opts.impl_opts = &impl_opts;
+ 		opts.impl_opts_size = sizeof(impl_opts);
+ 	}
+ 
+-	port->listen_sock = spdk_sock_listen(trid->traddr, trsvcid_int,
+-					     sock_impl_name, &opts);
++	port->listen_sock = spdk_sock_listen(trid->traddr, trsvcid_int, &opts);
+ 	if (port->listen_sock == NULL) {
+ 		SPDK_ERRLOG("spdk_sock_listen(%s, %d) failed: %s (%d)\n",
+ 			    trid->traddr, trsvcid_int,
+diff --git a/lib/sock/sock.c b/lib/sock/sock.c
+index df04b20f0..7615d2891 100644
+--- a/lib/sock/sock.c
++++ b/lib/sock/sock.c
+@@ -323,6 +323,10 @@ spdk_sock_get_default_opts(struct spdk_sock_opts *opts)
+ 	if (SPDK_SOCK_OPTS_FIELD_OK(opts, connect_timeout)) {
+ 		opts->connect_timeout = SPDK_SOCK_DEFAULT_CONNECT_TIMEOUT;
+ 	}
++
++	if (SPDK_SOCK_OPTS_FIELD_OK(opts, impl_name)) {
++		opts->impl_name = NULL;
++	}
+ }
+ 
+ /*
+@@ -622,7 +626,7 @@ spdk_sock_posix_fd_connect(int fd, struct addrinfo *res, struct spdk_sock_opts *
+ }
+ 
+ struct spdk_sock *
+-spdk_sock_connect(const char *ip, int port, const char *_impl_name, struct spdk_sock_opts *opts,
++spdk_sock_connect(const char *ip, int port, struct spdk_sock_opts *opts,
+ 		  spdk_sock_connect_cb_fn cb_fn, void *cb_arg)
+ {
+ 	struct spdk_net_impl *impl = NULL;
+@@ -635,8 +639,8 @@ spdk_sock_connect(const char *ip, int port, const char *_impl_name, struct spdk_
+ 		return NULL;
+ 	}
+ 
+-	if (_impl_name) {
+-		impl_name = _impl_name;
++	if (opts->impl_name) {
++		impl_name = opts->impl_name;
+ 	} else if (g_default_impl) {
+ 		impl_name = g_default_impl->name;
+ 	}
+@@ -676,7 +680,7 @@ spdk_sock_connect(const char *ip, int port, const char *_impl_name, struct spdk_
+ }
+ 
+ struct spdk_sock *
+-spdk_sock_listen(const char *ip, int port, const char *_impl_name, struct spdk_sock_opts *opts)
++spdk_sock_listen(const char *ip, int port, struct spdk_sock_opts *opts)
+ {
+ 	struct spdk_net_impl *impl = NULL;
+ 	struct spdk_sock *sock;
+@@ -688,8 +692,8 @@ spdk_sock_listen(const char *ip, int port, const char *_impl_name, struct spdk_s
+ 		return NULL;
+ 	}
+ 
+-	if (_impl_name) {
+-		impl_name = _impl_name;
++	if (opts->impl_name) {
++		impl_name = opts->impl_name;
+ 	} else if (g_default_impl) {
+ 		impl_name = g_default_impl->name;
+ 	}
+diff --git a/test/app/fuzz/iscsi_fuzz/iscsi_fuzz.c b/test/app/fuzz/iscsi_fuzz/iscsi_fuzz.c
+index ccf3c40b2..aa13ed8bf 100644
+--- a/test/app/fuzz/iscsi_fuzz/iscsi_fuzz.c
++++ b/test/app/fuzz/iscsi_fuzz/iscsi_fuzz.c
+@@ -686,7 +686,7 @@ iscsi_fuzz_sock_connect(struct spdk_iscsi_conn *conn, struct spdk_sock_group *gr
+ 	opts.opts_size = sizeof(opts);
+ 	spdk_sock_get_default_opts(&opts);
+ 
+-	conn->sock = spdk_sock_connect(host, spdk_strtol(port, 10), NULL, &opts, NULL, NULL);
++	conn->sock = spdk_sock_connect(host, spdk_strtol(port, 10), &opts, NULL, NULL);
+ 	if (conn->sock == NULL) {
+ 		fprintf(stderr, "connect error(%d): %s\n", errno, spdk_strerror(errno));
+ 		spdk_sock_close(&conn->sock);
+diff --git a/test/common/lib/test_sock.c b/test/common/lib/test_sock.c
+index 211365050..ea1d951ef 100644
+--- a/test/common/lib/test_sock.c
++++ b/test/common/lib/test_sock.c
+@@ -24,7 +24,7 @@ struct test_sock_group {
+ DEFINE_STUB(spdk_sock_getaddr, int, (struct spdk_sock *sock, char *saddr, int slen, uint16_t *sport,
+ 				     char *caddr, int clen, uint16_t *cport), 0);
+ DEFINE_STUB(spdk_sock_listen, struct spdk_sock *, (const char *ip, int port,
+-		const char *impl_name, struct spdk_sock_opts *opts), NULL);
++		struct spdk_sock_opts *opts), NULL);
+ DEFINE_STUB_V(spdk_sock_get_default_opts, (struct spdk_sock_opts *opts));
+ DEFINE_STUB(spdk_sock_impl_get_opts, int, (const char *impl_name, struct spdk_sock_impl_opts *opts,
+ 		size_t *len), 0);
+diff --git a/test/unit/lib/nvme/nvme_tcp.c/nvme_tcp_ut.c b/test/unit/lib/nvme/nvme_tcp.c/nvme_tcp_ut.c
+index 2bbce31d0..a2bd0e994 100644
+--- a/test/unit/lib/nvme/nvme_tcp.c/nvme_tcp_ut.c
++++ b/test/unit/lib/nvme/nvme_tcp.c/nvme_tcp_ut.c
+@@ -1124,8 +1124,8 @@ test_nvme_tcp_pdu_ch_handle(void)
+ 
+ DEFINE_RETURN_MOCK(spdk_sock_connect, struct spdk_sock *);
+ struct spdk_sock *
+-spdk_sock_connect(const char *ip, int port, const char *_impl_name,
+-		  struct spdk_sock_opts *opts, spdk_sock_connect_cb_fn cb_fn, void *cb_arg)
++spdk_sock_connect(const char *ip, int port, struct spdk_sock_opts *opts,
++		  spdk_sock_connect_cb_fn cb_fn, void *cb_arg)
+ {
+ 	HANDLE_RETURN_MOCK(spdk_sock_connect);
+ 	CU_ASSERT(port == 23);
+diff --git a/test/unit/lib/sock/sock.c/sock_ut.c b/test/unit/lib/sock/sock.c/sock_ut.c
+index 01d09e2d6..51595f332 100644
+--- a/test/unit/lib/sock/sock.c/sock_ut.c
++++ b/test/unit/lib/sock/sock.c/sock_ut.c
+@@ -351,15 +351,16 @@ _sock(const char *ip, int port, char *impl_name)
+ 
+ 	opts.opts_size = sizeof(opts);
+ 	spdk_sock_get_default_opts(&opts);
++	opts.impl_name = impl_name;
+ 
+-	listen_sock = spdk_sock_listen(ip, port, impl_name, &opts);
++	listen_sock = spdk_sock_listen(ip, port, &opts);
+ 	SPDK_CU_ASSERT_FATAL(listen_sock != NULL);
+ 
+ 	server_sock = spdk_sock_accept(listen_sock);
+ 	CU_ASSERT(server_sock == NULL);
+ 	CU_ASSERT(errno == EAGAIN || errno == EWOULDBLOCK);
+ 
+-	client_sock = spdk_sock_connect(ip, port, impl_name, &opts, NULL, NULL);
++	client_sock = spdk_sock_connect(ip, port, &opts, NULL, NULL);
+ 	SPDK_CU_ASSERT_FATAL(client_sock != NULL);
+ 
+ 	/*
+@@ -503,15 +504,16 @@ _sock_group(const char *ip, int port, char *impl_name)
+ 
+ 	opts.opts_size = sizeof(opts);
+ 	spdk_sock_get_default_opts(&opts);
++	opts.impl_name = impl_name;
+ 
+-	listen_sock = spdk_sock_listen(ip, port, impl_name, &opts);
++	listen_sock = spdk_sock_listen(ip, port, &opts);
+ 	SPDK_CU_ASSERT_FATAL(listen_sock != NULL);
+ 
+ 	server_sock = spdk_sock_accept(listen_sock);
+ 	CU_ASSERT(server_sock == NULL);
+ 	CU_ASSERT(errno == EAGAIN || errno == EWOULDBLOCK);
+ 
+-	client_sock = spdk_sock_connect(ip, port, impl_name, &opts, NULL, NULL);
++	client_sock = spdk_sock_connect(ip, port, &opts, NULL, NULL);
+ 	SPDK_CU_ASSERT_FATAL(client_sock != NULL);
+ 
+ 	usleep(1000);
+@@ -638,15 +640,16 @@ posix_sock_group_fairness(void)
+ 
+ 	opts.opts_size = sizeof(opts);
+ 	spdk_sock_get_default_opts(&opts);
++	opts.impl_name = "posix";
+ 
+-	listen_sock = spdk_sock_listen("127.0.0.1", UT_PORT, "posix", &opts);
++	listen_sock = spdk_sock_listen("127.0.0.1", UT_PORT, &opts);
+ 	SPDK_CU_ASSERT_FATAL(listen_sock != NULL);
+ 
+ 	group = spdk_sock_group_create(NULL);
+ 	SPDK_CU_ASSERT_FATAL(group != NULL);
+ 
+ 	for (i = 0; i < 3; i++) {
+-		client_sock[i] = spdk_sock_connect("127.0.0.1", UT_PORT, "posix", &opts, NULL, NULL);
++		client_sock[i] = spdk_sock_connect("127.0.0.1", UT_PORT, &opts, NULL, NULL);
+ 		SPDK_CU_ASSERT_FATAL(client_sock[i] != NULL);
+ 
+ 		usleep(1000);
+@@ -770,11 +773,12 @@ _sock_close(const char *ip, int port, char *impl_name)
+ 
+ 	opts.opts_size = sizeof(opts);
+ 	spdk_sock_get_default_opts(&opts);
++	opts.impl_name = impl_name;
+ 
+-	listen_sock = spdk_sock_listen(ip, port, impl_name, &opts);
++	listen_sock = spdk_sock_listen(ip, port, &opts);
+ 	SPDK_CU_ASSERT_FATAL(listen_sock != NULL);
+ 
+-	client_sock = spdk_sock_connect(ip, port, impl_name, &opts, NULL, NULL);
++	client_sock = spdk_sock_connect(ip, port, &opts, NULL, NULL);
+ 	SPDK_CU_ASSERT_FATAL(client_sock != NULL);
+ 
+ 	usleep(1000);
+@@ -1148,6 +1152,7 @@ override_impl_opts(void)
+ 	CU_ASSERT_EQUAL(rc, 0);
+ 	opts.opts_size = sizeof(opts);
+ 	spdk_sock_get_default_opts(&opts);
++	opts.impl_name = "posix";
+ 	opts.impl_opts = &impl_opts;
+ 	opts.impl_opts_size = sizeof(impl_opts);
+ 
+@@ -1155,7 +1160,7 @@ override_impl_opts(void)
+ 	send_buf_size = impl_opts.send_buf_size;
+ 	impl_opts.send_buf_size = send_buf_size + 1;
+ 
+-	lsock = spdk_sock_listen("127.0.0.1", UT_PORT, "posix", &opts);
++	lsock = spdk_sock_listen("127.0.0.1", UT_PORT, &opts);
+ 	SPDK_CU_ASSERT_FATAL(lsock != NULL);
+ 	CU_ASSERT_EQUAL(lsock->impl_opts.send_buf_size, send_buf_size + 1);
+ 
+@@ -1165,12 +1170,13 @@ override_impl_opts(void)
+ 	CU_ASSERT_EQUAL(rc, 0);
+ 	opts.opts_size = sizeof(opts);
+ 	spdk_sock_get_default_opts(&opts);
++	opts.impl_name = "posix";
+ 	opts.impl_opts = &impl_opts;
+ 	opts.impl_opts_size = sizeof(impl_opts);
+ 
+ 	impl_opts.send_buf_size = send_buf_size + 2;
+ 
+-	csock = spdk_sock_connect("127.0.0.1", UT_PORT, "posix", &opts, NULL, NULL);
++	csock = spdk_sock_connect("127.0.0.1", UT_PORT, &opts, NULL, NULL);
+ 	SPDK_CU_ASSERT_FATAL(csock != NULL);
+ 	CU_ASSERT_EQUAL(csock->impl_opts.send_buf_size, send_buf_size + 2);
+ 
+@@ -1189,13 +1195,14 @@ override_impl_opts(void)
+ 	CU_ASSERT_EQUAL(rc, 0);
+ 	opts.opts_size = sizeof(opts);
+ 	spdk_sock_get_default_opts(&opts);
++	opts.impl_name = "posix";
+ 	opts.impl_opts = &impl_opts;
+ 	opts.impl_opts_size = offsetof(struct spdk_sock_impl_opts, send_buf_size);
+ 
+ 	send_buf_size = impl_opts.send_buf_size;
+ 	impl_opts.send_buf_size = send_buf_size + 1;
+ 
+-	lsock = spdk_sock_listen("127.0.0.1", UT_PORT, "posix", &opts);
++	lsock = spdk_sock_listen("127.0.0.1", UT_PORT, &opts);
+ 	SPDK_CU_ASSERT_FATAL(lsock != NULL);
+ 	CU_ASSERT_EQUAL(lsock->impl_opts.send_buf_size, send_buf_size);
+ 
+@@ -1205,12 +1212,13 @@ override_impl_opts(void)
+ 	CU_ASSERT_EQUAL(rc, 0);
+ 	opts.opts_size = sizeof(opts);
+ 	spdk_sock_get_default_opts(&opts);
++	opts.impl_name = "posix";
+ 	opts.impl_opts = &impl_opts;
+ 	opts.impl_opts_size = offsetof(struct spdk_sock_impl_opts, send_buf_size);
+ 
+ 	impl_opts.send_buf_size = send_buf_size + 2;
+ 
+-	csock = spdk_sock_connect("127.0.0.1", UT_PORT, "posix", &opts, NULL, NULL);
++	csock = spdk_sock_connect("127.0.0.1", UT_PORT, &opts, NULL, NULL);
+ 	SPDK_CU_ASSERT_FATAL(csock != NULL);
+ 	CU_ASSERT_EQUAL(csock->impl_opts.send_buf_size, send_buf_size);
+ 
+@@ -1251,10 +1259,11 @@ posix_get_interface_name(void)
+ 	CU_ASSERT_EQUAL(rc, 0);
+ 	opts.opts_size = sizeof(opts);
+ 	spdk_sock_get_default_opts(&opts);
++	opts.impl_name = "posix";
+ 	opts.impl_opts = &impl_opts;
+ 	opts.impl_opts_size = sizeof(impl_opts);
+ 
+-	lsock = spdk_sock_listen("127.0.0.1", UT_PORT, "posix", &opts);
++	lsock = spdk_sock_listen("127.0.0.1", UT_PORT, &opts);
+ 	SPDK_CU_ASSERT_FATAL(lsock != NULL);
+ 
+ 	/* Check the same for connect() */
+@@ -1263,10 +1272,11 @@ posix_get_interface_name(void)
+ 	CU_ASSERT_EQUAL(rc, 0);
+ 	opts.opts_size = sizeof(opts);
+ 	spdk_sock_get_default_opts(&opts);
++	opts.impl_name = "posix";
+ 	opts.impl_opts = &impl_opts;
+ 	opts.impl_opts_size = sizeof(impl_opts);
+ 
+-	csock = spdk_sock_connect("127.0.0.1", UT_PORT, "posix", &opts, NULL, NULL);
++	csock = spdk_sock_connect("127.0.0.1", UT_PORT, &opts, NULL, NULL);
+ 	SPDK_CU_ASSERT_FATAL(csock != NULL);
+ 
+ 	asock = spdk_sock_accept(lsock);

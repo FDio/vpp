@@ -1,0 +1,67 @@
+From 265cf5e0817ab223e3447585010f54ac4b2c70fc Mon Sep 17 00:00:00 2001
+From: Ben Walker <ben@nvidia.com>
+Date: Tue, 27 May 2025 16:55:17 -0700
+Subject: [PATCH 07/21] sock: Add spdk_sock_set_user_ctx()
+
+This allows the user to change the cb_arg. This will become necessary
+after a future patch.
+
+Change-Id: Iad5c308d184a10b601de3bd09be41a57960b29e4
+Signed-off-by: Ben Walker <ben@nvidia.com>
+---
+ include/spdk/sock.h    | 11 +++++++++++
+ lib/sock/sock.c        |  6 ++++++
+ lib/sock/spdk_sock.map |  1 +
+ 3 files changed, 18 insertions(+)
+
+diff --git a/include/spdk/sock.h b/include/spdk/sock.h
+index 4708f6310..def7291b6 100644
+--- a/include/spdk/sock.h
++++ b/include/spdk/sock.h
+@@ -397,6 +397,17 @@ struct spdk_sock *spdk_sock_listen(const char *ip, int port, struct spdk_sock_op
+  */
+ struct spdk_sock *spdk_sock_accept(struct spdk_sock *sock);
+ 
++/**
++ * Change the user context callback argument passed to spdk_sock_cb for this socket.
++ *
++ * This is intended for attaching per-connection state to a newly accepted socket. If the
++ * socket will be added to a socket group, set the user context before adding it.
++ *
++ * \param sock The socket to change the callback argument for.
++ * \param user_ctx The new callback argument to set.
++ */
++void spdk_sock_set_user_ctx(struct spdk_sock *sock, void *user_ctx);
++
+ /**
+  * Gets the name of the network interface of the local port for the socket.
+  *
+diff --git a/lib/sock/sock.c b/lib/sock/sock.c
+index 13a407d1d..3ff06cd17 100644
+--- a/lib/sock/sock.c
++++ b/lib/sock/sock.c
+@@ -745,6 +745,12 @@ spdk_sock_accept(struct spdk_sock *sock)
+ 	return new_sock;
+ }
+ 
++void
++spdk_sock_set_user_ctx(struct spdk_sock *sock, void *user_ctx)
++{
++	sock->cb_arg = user_ctx;
++}
++
+ int
+ spdk_sock_close(struct spdk_sock **_sock)
+ {
+diff --git a/lib/sock/spdk_sock.map b/lib/sock/spdk_sock.map
+index 97be608a3..e5f4f47fc 100644
+--- a/lib/sock/spdk_sock.map
++++ b/lib/sock/spdk_sock.map
+@@ -11,6 +11,7 @@
+ 	spdk_sock_connect;
+ 	spdk_sock_listen;
+ 	spdk_sock_accept;
++	spdk_sock_set_user_ctx;
+ 	spdk_sock_close;
+ 	spdk_sock_flush;
+ 	spdk_sock_recv;

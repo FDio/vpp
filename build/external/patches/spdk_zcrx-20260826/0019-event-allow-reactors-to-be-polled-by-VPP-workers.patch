@@ -1,0 +1,375 @@
+From 6be37003a8715d293253c9064147539fe160eeb1 Mon Sep 17 00:00:00 2001
+From: Jerome Tollet <jtollet@cisco.com>
+Date: Wed, 26 Aug 2026 09:57:40 +0200
+Subject: [PATCH 19/21] event: allow reactors to be polled by VPP workers
+
+---
+ include/spdk/env.h            |   3 +
+ include/spdk/event.h          |   7 ++
+ include/spdk_internal/event.h |   7 ++
+ lib/env_dpdk/threads.c        |  12 +++
+ lib/event/app.c               |  36 +++++--
+ lib/event/reactor.c           | 177 ++++++++++++++++++++++++++++++++++
+ 6 files changed, 236 insertions(+), 6 deletions(-)
+
+diff --git a/include/spdk/env.h b/include/spdk/env.h
+index ed24f5059..17ab22eb7 100644
+--- a/include/spdk/env.h
++++ b/include/spdk/env.h
+@@ -472,6 +472,9 @@ uint32_t spdk_env_get_core_count(void);
+  */
+ uint32_t spdk_env_get_current_core(void);
+ 
++/** Override the current core reported on the calling external poll thread. */
++void spdk_env_set_current_core(uint32_t core);
++
+ /**
+  * Get the index of the main dedicated CPU core for this application.
+  *
+diff --git a/include/spdk/event.h b/include/spdk/event.h
+index 55d47848f..02d2f5541 100644
+--- a/include/spdk/event.h
++++ b/include/spdk/event.h
+@@ -244,11 +244,18 @@ void spdk_app_opts_init(struct spdk_app_opts *opts, size_t opts_size);
+ int spdk_app_start(struct spdk_app_opts *opts_user, spdk_msg_fn start_fn,
+ 		   void *ctx);
+ 
++/** Initialize the framework without launching SPDK-owned reactor threads. */
++int spdk_app_start_external(struct spdk_app_opts *opts_user, spdk_msg_fn start_fn,
++			    void *ctx);
++
+ /**
+  * Perform final shutdown operations on an application using the event framework.
+  */
+ void spdk_app_fini(void);
+ 
++/** Return the current application return code. */
++int spdk_app_get_rc(void);
++
+ /**
+  * Start shutting down the framework.
+  *
+diff --git a/include/spdk_internal/event.h b/include/spdk_internal/event.h
+index 978946b9f..6c0f4488f 100644
+--- a/include/spdk_internal/event.h
++++ b/include/spdk_internal/event.h
+@@ -78,13 +78,20 @@ struct spdk_reactor {
+ 	struct spdk_fd_group				*fgrp;
+ 	int						resched_fd;
+ 	uint16_t					trace_id;
++
++	bool						external_started;
++	bool						external_exited;
++	uint64_t					external_last_sched;
+ } __attribute__((aligned(SPDK_CACHE_LINE_SIZE)));
+ 
+ int spdk_reactors_init(size_t msg_mempool_size);
+ void spdk_reactors_fini(void);
+ 
+ void spdk_reactors_start(void);
++void spdk_reactors_start_external(void);
++int spdk_reactor_poll_once(uint32_t lcore);
+ void spdk_reactors_stop(void *arg1);
++enum spdk_reactor_state spdk_reactors_get_state(void);
+ 
+ struct spdk_reactor *spdk_reactor_get(uint32_t lcore);
+ 
+diff --git a/lib/env_dpdk/threads.c b/lib/env_dpdk/threads.c
+index 5c9fca3d9..bfa63aef6 100644
+--- a/lib/env_dpdk/threads.c
++++ b/lib/env_dpdk/threads.c
+@@ -15,6 +15,8 @@
+ #define THREAD_SIBLINGS_FILE \
+ 	"/sys/devices/system/cpu/cpu%d/topology/thread_siblings"
+ 
++static __thread uint32_t g_current_core_override = SPDK_ENV_LCORE_ID_ANY;
++
+ uint32_t
+ spdk_env_get_core_count(void)
+ {
+@@ -24,9 +26,19 @@ spdk_env_get_core_count(void)
+ uint32_t
+ spdk_env_get_current_core(void)
+ {
++	if (g_current_core_override != SPDK_ENV_LCORE_ID_ANY) {
++		return g_current_core_override;
++	}
++
+ 	return rte_lcore_id();
+ }
+ 
++void
++spdk_env_set_current_core(uint32_t core)
++{
++	g_current_core_override = core;
++}
++
+ uint32_t
+ spdk_env_get_main_core(void)
+ {
+diff --git a/lib/event/app.c b/lib/event/app.c
+index 7ee57db03..cd8232c0e 100644
+--- a/lib/event/app.c
++++ b/lib/event/app.c
+@@ -878,9 +878,9 @@ error:
+ 	return -1;
+ }
+ 
+-int
+-spdk_app_start(struct spdk_app_opts *opts_user, spdk_msg_fn start_fn,
+-	       void *arg1)
++static int
++app_start_common(struct spdk_app_opts *opts_user, spdk_msg_fn start_fn,
++		 void *arg1, bool external_reactors)
+ {
+ 	int			rc;
+ 	char			*tty;
+@@ -1061,12 +1061,30 @@ spdk_app_start(struct spdk_app_opts *opts_user, spdk_msg_fn start_fn,
+ 
+ 	spdk_thread_send_msg(spdk_thread_get_app_thread(), bootstrap_fn, NULL);
+ 
+-	/* This blocks until spdk_app_stop is called */
+-	spdk_reactors_start();
++	if (external_reactors) {
++		spdk_reactors_start_external();
++	} else {
++		/* This blocks until spdk_app_stop is called */
++		spdk_reactors_start();
++	}
+ 
+ 	g_env_was_setup = true;
+ 
+-	return g_spdk_app.rc;
++	return external_reactors ? 0 : g_spdk_app.rc;
++}
++
++int
++spdk_app_start(struct spdk_app_opts *opts_user, spdk_msg_fn start_fn,
++	       void *arg1)
++{
++	return app_start_common(opts_user, start_fn, arg1, false);
++}
++
++int
++spdk_app_start_external(struct spdk_app_opts *opts_user, spdk_msg_fn start_fn,
++			void *arg1)
++{
++	return app_start_common(opts_user, start_fn, arg1, true);
+ }
+ 
+ void
+@@ -1079,6 +1097,12 @@ spdk_app_fini(void)
+ 	unclaim_cpu_cores(NULL);
+ }
+ 
++int
++spdk_app_get_rc(void)
++{
++	return g_spdk_app.rc;
++}
++
+ static void
+ subsystem_fini_done(void *arg1)
+ {
+diff --git a/lib/event/reactor.c b/lib/event/reactor.c
+index 62dbd48c4..c548a099e 100644
+--- a/lib/event/reactor.c
++++ b/lib/event/reactor.c
+@@ -64,6 +64,7 @@ static void end_reactor(void *arg1, void *arg2);
+ 
+ static pthread_mutex_t g_stopping_reactors_mtx = PTHREAD_MUTEX_INITIALIZER;
+ static bool g_stopping_reactors = false;
++static pthread_mutex_t g_external_reactors_mtx = PTHREAD_MUTEX_INITIALIZER;
+ 
+ static struct spdk_scheduler *
+ _scheduler_find(const char *name)
+@@ -984,6 +985,153 @@ _reactor_run(struct spdk_reactor *reactor)
+ 	}
+ }
+ 
++static void
++reactor_external_started(struct spdk_reactor *reactor)
++{
++	char thread_name[32];
++
++	if (reactor->external_started) {
++		return;
++	}
++
++	snprintf(thread_name, sizeof(thread_name), "reactor_%u", reactor->lcore);
++	reactor->trace_id = spdk_trace_register_owner(OWNER_TYPE_REACTOR, thread_name);
++	reactor->tsc_last = spdk_get_ticks();
++	reactor->external_last_sched = reactor->tsc_last;
++	reactor->external_started = true;
++	SPDK_NOTICELOG("Reactor externally polled on core %u\n", reactor->lcore);
++}
++
++static void
++reactor_external_housekeeping(struct spdk_reactor *reactor)
++{
++	if (g_framework_context_switch_monitor_enabled) {
++		if ((reactor->last_rusage + g_rusage_period) < reactor->tsc_last) {
++			get_rusage(reactor);
++			reactor->last_rusage = reactor->tsc_last;
++		}
++	}
++
++	if (spdk_unlikely(g_scheduler_period_in_tsc > 0 &&
++			  (reactor->tsc_last - reactor->external_last_sched) > g_scheduler_period_in_tsc &&
++			  reactor == g_scheduling_reactor &&
++			  !g_scheduling_in_progress)) {
++		reactor->external_last_sched = reactor->tsc_last;
++		g_scheduling_in_progress = true;
++		spdk_trace_record(TRACE_SCHEDULER_PERIOD_START, 0, 0, 0);
++		_reactors_scheduler_gather_metrics(NULL, NULL);
++	}
++}
++
++static bool
++reactor_external_cleanup_once(struct spdk_reactor *reactor)
++{
++	struct spdk_thread *thread;
++	struct spdk_lw_thread *lw_thread, *tmp;
++
++	if (reactor->external_exited) {
++		return true;
++	}
++
++	TAILQ_FOREACH(lw_thread, &reactor->threads, link) {
++		thread = spdk_thread_get_from_ctx(lw_thread);
++		if (spdk_thread_is_running(thread)) {
++			if (!spdk_thread_is_app_thread(thread)) {
++				SPDK_ERRLOG("spdk_thread_exit() was not called on thread '%s'\n",
++					    spdk_thread_get_name(thread));
++				SPDK_ERRLOG("This will result in a non-zero exit code in a future release.\n");
++			}
++			spdk_set_thread(thread);
++			spdk_thread_exit(thread);
++			spdk_set_thread(NULL);
++		}
++	}
++
++	TAILQ_FOREACH_SAFE(lw_thread, &reactor->threads, link, tmp) {
++		thread = spdk_thread_get_from_ctx(lw_thread);
++		spdk_set_thread(thread);
++		if (spdk_thread_is_exited(thread)) {
++			_reactor_remove_lw_thread(reactor, lw_thread);
++			spdk_thread_destroy(thread);
++		} else {
++			spdk_thread_poll(thread, 0, 0);
++		}
++		spdk_set_thread(NULL);
++	}
++
++	if (TAILQ_EMPTY(&reactor->threads)) {
++		reactor->external_exited = true;
++		return true;
++	}
++
++	return false;
++}
++
++static void
++reactors_try_external_shutdown(void)
++{
++	struct spdk_reactor *reactor;
++	uint32_t i;
++	bool all_exited = true;
++
++	pthread_mutex_lock(&g_external_reactors_mtx);
++	if (g_reactor_state != SPDK_REACTOR_STATE_EXITING) {
++		pthread_mutex_unlock(&g_external_reactors_mtx);
++		return;
++	}
++
++	SPDK_ENV_FOREACH_CORE(i) {
++		reactor = spdk_reactor_get(i);
++		if (reactor != NULL && !reactor->external_exited) {
++			all_exited = false;
++			break;
++		}
++	}
++
++	if (all_exited) {
++		g_reactor_state = SPDK_REACTOR_STATE_SHUTDOWN;
++	}
++	pthread_mutex_unlock(&g_external_reactors_mtx);
++}
++
++int
++spdk_reactor_poll_once(uint32_t lcore)
++{
++	struct spdk_reactor *reactor;
++
++	reactor = spdk_reactor_get(lcore);
++	if (reactor == NULL) {
++		return -EINVAL;
++	}
++
++	if (g_reactor_state == SPDK_REACTOR_STATE_UNINITIALIZED ||
++	    g_reactor_state == SPDK_REACTOR_STATE_INITIALIZED) {
++		return -EAGAIN;
++	}
++
++	if (g_reactor_state == SPDK_REACTOR_STATE_SHUTDOWN || reactor->external_exited) {
++		return -ESHUTDOWN;
++	}
++
++	if (reactor->in_interrupt) {
++		return -ENOTSUP;
++	}
++
++	reactor_external_started(reactor);
++	spdk_env_set_current_core(lcore);
++
++	if (g_reactor_state == SPDK_REACTOR_STATE_RUNNING) {
++		_reactor_run(reactor);
++		reactor_external_housekeeping(reactor);
++	} else {
++		reactor_external_cleanup_once(reactor);
++		reactors_try_external_shutdown();
++	}
++
++	spdk_env_set_current_core(SPDK_ENV_LCORE_ID_ANY);
++	return 0;
++}
++
+ static int
+ reactor_run(void *arg)
+ {
+@@ -1094,6 +1242,35 @@ spdk_app_get_core_mask(void)
+ 	return &g_reactor_core_mask;
+ }
+ 
++enum spdk_reactor_state
++spdk_reactors_get_state(void)
++{
++	return g_reactor_state;
++}
++
++void
++spdk_reactors_start_external(void)
++{
++	struct spdk_reactor *reactor;
++	uint32_t i;
++
++	g_rusage_period = (CONTEXT_SWITCH_MONITOR_PERIOD * spdk_get_ticks_hz()) / SPDK_SEC_TO_USEC;
++	g_reactor_state = SPDK_REACTOR_STATE_RUNNING;
++	g_stopping_reactors = false;
++
++	SPDK_ENV_FOREACH_CORE(i) {
++		reactor = spdk_reactor_get(i);
++		if (reactor == NULL) {
++			continue;
++		}
++
++		reactor->external_started = false;
++		reactor->external_exited = false;
++		reactor->external_last_sched = 0;
++		spdk_cpuset_set_cpu(&g_reactor_core_mask, i, true);
++	}
++}
++
+ void
+ spdk_reactors_start(void)
+ {

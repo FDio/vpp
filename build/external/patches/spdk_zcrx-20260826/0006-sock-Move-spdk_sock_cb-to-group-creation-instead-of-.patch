@@ -1,0 +1,773 @@
+From 27f220b67eb9bfcbb863f360392ddd2262d75fc4 Mon Sep 17 00:00:00 2001
+From: Ben Walker <ben@nvidia.com>
+Date: Tue, 20 Aug 2024 13:06:55 -0700
+Subject: [PATCH 06/21] sock: Move spdk_sock_cb to group creation instead of
+ when a socket is added to the group.
+
+This means there is one global callback for the whole group, which would
+seem like a major change if all of the code didn't use the same callback
+for every socket in a group already.
+
+Change-Id: I66f812c4e7b19baaa128b36e5775a82f410d5f6d
+Signed-off-by: Ben Walker <ben@nvidia.com>
+---
+ deprecation.md                              |  6 ----
+ examples/sock/hello_world/hello_sock.c      | 21 ++++++++----
+ include/spdk/sock.h                         | 14 ++++----
+ include/spdk_internal/sock_module.h         |  2 +-
+ lib/iscsi/conn.c                            |  7 ++--
+ lib/iscsi/conn.h                            |  2 ++
+ lib/iscsi/iscsi_subsystem.c                 |  7 +++-
+ lib/iscsi/portal_grp.c                      |  5 +--
+ lib/nvme/nvme_tcp.c                         |  5 +--
+ lib/nvmf/tcp.c                              | 26 ++++++++-------
+ lib/sock/sock.c                             | 33 ++++++++++---------
+ module/sock/posix/posix.c                   |  6 ++--
+ module/sock/uring/uring.c                   | 13 +++-----
+ test/app/fuzz/iscsi_fuzz/iscsi_fuzz.c       |  7 ++--
+ test/common/lib/test_sock.c                 | 12 ++++---
+ test/unit/lib/iscsi/conn.c/conn_ut.c        |  3 +-
+ test/unit/lib/nvme/nvme_tcp.c/nvme_tcp_ut.c |  9 +++++-
+ test/unit/lib/sock/sock.c/sock_ut.c         | 36 +++++++++++++--------
+ 18 files changed, 122 insertions(+), 92 deletions(-)
+
+diff --git a/deprecation.md b/deprecation.md
+index e9bd0b396..dcde4ee2b 100644
+--- a/deprecation.md
++++ b/deprecation.md
+@@ -112,12 +112,6 @@ per I/O on the DIF path (the old in-place transport-side path is gone).
+ 
+ ### sock
+ 
+-#### `spdk_sock_group_add_sock`, `spdk_sock_group_create`
+-
+-The `cb_fn` and `cb_arg` parameters of `spdk_sock_group_add_sock` are deprecated and will be
+-removed in v26.09. Instead, pass `cb_fn` and `cb_arg` via the new `spdk_sock_group_opts` struct
+-passed to `spdk_sock_group_create`.
+-
+ #### `nvmf_create_transport`
+ 
+ buf-cache-size parameter is deprecated in favor of iobuf-small-cache-size and will be removed in 26.09 release.
+diff --git a/examples/sock/hello_world/hello_sock.c b/examples/sock/hello_world/hello_sock.c
+index 17e21ecc6..71ddaf587 100644
+--- a/examples/sock/hello_world/hello_sock.c
++++ b/examples/sock/hello_world/hello_sock.c
+@@ -337,7 +337,7 @@ hello_sock_connect_cb(void *cb_arg, int status)
+ 		goto err;
+ 	}
+ 
+-	rc = spdk_sock_group_add_sock(ctx->group, ctx->sock, hello_sock_recv_poll, ctx);
++	rc = spdk_sock_group_add_sock(ctx->group, ctx->sock, ctx);
+ 	if (rc < 0) {
+ 		SPDK_ERRLOG("Cannot add socket to group\n");
+ 		goto err;
+@@ -360,11 +360,16 @@ hello_sock_connect(struct hello_context_t *ctx)
+ 	struct spdk_sock_impl_opts impl_opts;
+ 	size_t impl_opts_size = sizeof(impl_opts);
+ 	struct spdk_sock_opts opts;
++	struct spdk_sock_group_opts sgroup_opts = {
++		.size = sizeof(sgroup_opts),
++		.ctx = NULL,
++		.rx_cb = hello_sock_recv_poll
++	};
+ 
+ 	/*
+ 	 * Create sock group for client socket
+ 	 */
+-	ctx->group = spdk_sock_group_create(NULL);
++	ctx->group = spdk_sock_group_create(&sgroup_opts);
+ 	if (ctx->group == NULL) {
+ 		SPDK_ERRLOG("Cannot create sock group\n");
+ 		return -1;
+@@ -426,8 +431,7 @@ hello_sock_cb(void *arg, struct spdk_sock_group *group, struct spdk_sock *sock)
+ 				SPDK_NOTICELOG("Accepting a new connection from (%s, %hu) to (%s, %hu)\n",
+ 					       caddr, cport, saddr, sport);
+ 
+-				rc = spdk_sock_group_add_sock(ctx->group, new_sock,
+-							      hello_sock_cb, ctx);
++				rc = spdk_sock_group_add_sock(ctx->group, new_sock, ctx);
+ 
+ 				if (rc < 0) {
+ 					spdk_sock_close(&new_sock);
+@@ -482,11 +486,16 @@ hello_sock_listen(struct hello_context_t *ctx)
+ 	struct spdk_sock_impl_opts impl_opts;
+ 	size_t impl_opts_size = sizeof(impl_opts);
+ 	struct spdk_sock_opts opts;
++	struct spdk_sock_group_opts sgroup_opts = {
++		.size = sizeof(sgroup_opts),
++		.ctx = NULL,
++		.rx_cb = hello_sock_cb
++	};
+ 
+ 	/*
+ 	 * Create sock group for server socket
+ 	 */
+-	ctx->group = spdk_sock_group_create(NULL);
++	ctx->group = spdk_sock_group_create(&sgroup_opts);
+ 	if (ctx->group == NULL) {
+ 		SPDK_ERRLOG("Cannot create sock group\n");
+ 		spdk_sock_close(&ctx->sock);
+@@ -515,7 +524,7 @@ hello_sock_listen(struct hello_context_t *ctx)
+ 		return -1;
+ 	}
+ 
+-	rc = spdk_sock_group_add_sock(ctx->group, ctx->sock, hello_sock_cb, ctx);
++	rc = spdk_sock_group_add_sock(ctx->group, ctx->sock, ctx);
+ 	if (rc < 0) {
+ 		SPDK_ERRLOG("Cannot add sock to group\n");
+ 		spdk_sock_group_close(&ctx->group);
+diff --git a/include/spdk/sock.h b/include/spdk/sock.h
+index 048278a49..4708f6310 100644
+--- a/include/spdk/sock.h
++++ b/include/spdk/sock.h
+@@ -547,9 +547,9 @@ bool spdk_sock_is_ipv4(struct spdk_sock *sock);
+ bool spdk_sock_is_connected(struct spdk_sock *sock);
+ 
+ /**
+- * Callback function for spdk_sock_group_add_sock().
++ * Callback function for spdk_sock_group_opts.
+  *
+- * \param arg Argument for the callback function.
++ * \param arg Socket argument for the callback function.
+  * \param group Socket group.
+  * \param sock Socket.
+  */
+@@ -558,14 +558,16 @@ typedef void (*spdk_sock_cb)(void *arg, struct spdk_sock_group *group, struct sp
+ struct spdk_sock_group_opts {
+ 	/** Size of this structure */
+ 	size_t		size;
+-	/** User context */
++	/** User context. Can be NULL */
+ 	void		*ctx;
++	/** Callback function for when sockets have new data to receive. Required. */
++	spdk_sock_cb	rx_cb;
+ };
+ 
+ /**
+  * Create a new socket group.
+  *
+- * \param opts Socket group options.
++ * \param opts Socket group options. This is required and may not be NULL.
+  *
+  * \return a pointer to the created group on success, or NULL on failure.
+  */
+@@ -585,13 +587,11 @@ void *spdk_sock_group_get_ctx(struct spdk_sock_group *sock_group);
+  *
+  * \param group Socket group.
+  * \param sock Socket to add.
+- * \param cb_fn Called when the operation completes.
+  * \param cb_arg Argument passed to the callback function.
+  *
+  * \return 0 on success, negative errno value on failure.
+  */
+-int spdk_sock_group_add_sock(struct spdk_sock_group *group, struct spdk_sock *sock,
+-			     spdk_sock_cb cb_fn, void *cb_arg);
++int spdk_sock_group_add_sock(struct spdk_sock_group *group, struct spdk_sock *sock, void *cb_arg);
+ 
+ /**
+  * Remove a socket from the group.
+diff --git a/include/spdk_internal/sock_module.h b/include/spdk_internal/sock_module.h
+index 2f804ad11..0f4311b76 100644
+--- a/include/spdk_internal/sock_module.h
++++ b/include/spdk_internal/sock_module.h
+@@ -42,7 +42,6 @@ struct spdk_sock {
+ 	struct spdk_sock_request	*read_req;
+ 	int				queued_iovcnt;
+ 	int				cb_cnt;
+-	spdk_sock_cb			cb_fn;
+ 	void				*cb_arg;
+ 	struct {
+ 		uint8_t		closed		: 1;
+@@ -55,6 +54,7 @@ struct spdk_sock_group {
+ 	STAILQ_HEAD(, spdk_sock_group_impl)	group_impls;
+ 	struct spdk_fd_group			*fgrp;
+ 	void					*ctx;
++	spdk_sock_cb				rx_cb;
+ };
+ 
+ struct spdk_sock_group_impl {
+diff --git a/lib/iscsi/conn.c b/lib/iscsi/conn.c
+index 4eb21f287..67cf6a199 100644
+--- a/lib/iscsi/conn.c
++++ b/lib/iscsi/conn.c
+@@ -43,9 +43,6 @@ static pthread_mutex_t g_conns_mutex = PTHREAD_MUTEX_INITIALIZER;
+ 
+ static struct spdk_poller *g_shutdown_timer = NULL;
+ 
+-static void iscsi_conn_sock_cb(void *arg, struct spdk_sock_group *group,
+-			       struct spdk_sock *sock);
+-
+ static struct spdk_iscsi_conn *
+ allocate_conn(void)
+ {
+@@ -117,7 +114,7 @@ iscsi_poll_group_add_conn(struct spdk_iscsi_poll_group *pg, struct spdk_iscsi_co
+ {
+ 	int rc;
+ 
+-	rc = spdk_sock_group_add_sock(pg->sock_group, conn->sock, iscsi_conn_sock_cb, conn);
++	rc = spdk_sock_group_add_sock(pg->sock_group, conn->sock, conn);
+ 	if (rc < 0) {
+ 		SPDK_ERRLOG("spdk_sock_group_add_sock() failed, sock=%p, conn=%p, rc %d: %s\n", conn->sock, conn,
+ 			    rc, spdk_strerror(-rc));
+@@ -1480,7 +1477,7 @@ iscsi_conn_write_pdu(struct spdk_iscsi_conn *conn, struct spdk_iscsi_pdu *pdu,
+ 	spdk_sock_writev_async(conn->sock, &pdu->sock_req);
+ }
+ 
+-static void
++void
+ iscsi_conn_sock_cb(void *arg, struct spdk_sock_group *group, struct spdk_sock *sock)
+ {
+ 	struct spdk_iscsi_conn *conn = arg;
+diff --git a/lib/iscsi/conn.h b/lib/iscsi/conn.h
+index 1198050ed..3da97b9a6 100644
+--- a/lib/iscsi/conn.h
++++ b/lib/iscsi/conn.h
+@@ -173,6 +173,8 @@ struct spdk_iscsi_conn {
+ 	TAILQ_ENTRY(spdk_iscsi_conn)	conn_link;
+ };
+ 
++void iscsi_conn_sock_cb(void *arg, struct spdk_sock_group *group, struct spdk_sock *sock);
++
+ void iscsi_task_cpl(struct spdk_scsi_task *scsi_task);
+ void iscsi_task_mgmt_cpl(struct spdk_scsi_task *scsi_task);
+ 
+diff --git a/lib/iscsi/iscsi_subsystem.c b/lib/iscsi/iscsi_subsystem.c
+index 415661e92..e9e3c5fe6 100644
+--- a/lib/iscsi/iscsi_subsystem.c
++++ b/lib/iscsi/iscsi_subsystem.c
+@@ -992,9 +992,14 @@ static int
+ iscsi_poll_group_create(void *io_device, void *ctx_buf)
+ {
+ 	struct spdk_iscsi_poll_group *pg = ctx_buf;
++	struct spdk_sock_group_opts sgroup_opts = {
++		.size = sizeof(sgroup_opts),
++		.ctx = NULL,
++		.rx_cb = iscsi_conn_sock_cb
++	};
+ 
+ 	STAILQ_INIT(&pg->connections);
+-	pg->sock_group = spdk_sock_group_create(NULL);
++	pg->sock_group = spdk_sock_group_create(&sgroup_opts);
+ 	assert(pg->sock_group != NULL);
+ 
+ 	pg->poller = SPDK_POLLER_REGISTER(iscsi_poll_group_poll, pg, 0);
+diff --git a/lib/iscsi/portal_grp.c b/lib/iscsi/portal_grp.c
+index ac3534f9e..856545bad 100644
+--- a/lib/iscsi/portal_grp.c
++++ b/lib/iscsi/portal_grp.c
+@@ -168,7 +168,7 @@ iscsi_portal_open(struct spdk_iscsi_portal *p)
+ 		return -1;
+ 	}
+ 
+-	rc = spdk_sock_group_add_sock(p->group->sock_group, sock, iscsi_portal_accept, p);
++	rc = spdk_sock_group_add_sock(p->group->sock_group, sock, p);
+ 	if (rc < 0) {
+ 		SPDK_ERRLOG("spdk_sock_group_add_sock() failed, rc %d: %s\n", rc, spdk_strerror(-rc));
+ 		spdk_sock_close(&sock);
+@@ -372,7 +372,8 @@ iscsi_portal_grp_open(struct spdk_iscsi_portal_grp *pg, bool pause)
+ {
+ 	struct spdk_sock_group_opts opts = {
+ 		.size = sizeof(opts),
+-		.ctx = pg
++		.ctx = pg,
++		.rx_cb = iscsi_portal_accept
+ 	};
+ 	struct spdk_iscsi_portal *p;
+ 	int rc;
+diff --git a/lib/nvme/nvme_tcp.c b/lib/nvme/nvme_tcp.c
+index 1d3e86d61..cc8971128 100644
+--- a/lib/nvme/nvme_tcp.c
++++ b/lib/nvme/nvme_tcp.c
+@@ -2697,7 +2697,7 @@ nvme_tcp_ctrlr_connect_qpair(struct spdk_nvme_ctrlr *ctrlr, struct spdk_nvme_qpa
+ 	if (qpair->poll_group) {
+ 		tgroup = nvme_tcp_poll_group(qpair->poll_group);
+ 
+-		rc = spdk_sock_group_add_sock(tgroup->sock_group, tqpair->sock, nvme_tcp_qpair_sock_cb, qpair);
++		rc = spdk_sock_group_add_sock(tgroup->sock_group, tqpair->sock, qpair);
+ 		if (rc < 0) {
+ 			NVME_TQPAIR_ERRLOG(tqpair, "spdk_sock_group_add_sock() failed, rc %d: %s\n", rc,
+ 					   spdk_strerror(-rc));
+@@ -3003,7 +3003,8 @@ nvme_tcp_poll_group_create(void)
+ 	struct nvme_tcp_poll_group *group = calloc(1, sizeof(*group));
+ 	struct spdk_sock_group_opts opts = {
+ 		.size = sizeof(opts),
+-		.ctx = group
++		.ctx = group,
++		.rx_cb = nvme_tcp_qpair_sock_cb
+ 	};
+ 
+ 	if (group == NULL) {
+diff --git a/lib/nvmf/tcp.c b/lib/nvmf/tcp.c
+index 1ecc55431..eb4328964 100644
+--- a/lib/nvmf/tcp.c
++++ b/lib/nvmf/tcp.c
+@@ -746,9 +746,10 @@ nvmf_tcp_create(struct spdk_nvmf_transport_opts *opts)
+ 	struct spdk_nvmf_tcp_transport *ttransport;
+ 	uint32_t sge_count;
+ 	uint64_t period;
+-	struct spdk_sock_group_opts sgroup_opts = {
+-		.size = sizeof(sgroup_opts),
+-		.ctx = NULL
++	struct spdk_sock_group_opts sock_group_opts = {
++		.size = sizeof(sock_group_opts),
++		.ctx = NULL,
++		.rx_cb = nvmf_tcp_accept_cb
+ 	};
+ 
+ 	ttransport = calloc(1, sizeof(*ttransport));
+@@ -853,7 +854,7 @@ nvmf_tcp_create(struct spdk_nvmf_transport_opts *opts)
+ 
+ 	spdk_poller_register_interrupt(ttransport->accept_poller, NULL, NULL);
+ 
+-	ttransport->listen_sock_group = spdk_sock_group_create(&sgroup_opts);
++	ttransport->listen_sock_group = spdk_sock_group_create(&sock_group_opts);
+ 	if (ttransport->listen_sock_group == NULL) {
+ 		SPDK_ERRLOG("Failed to create socket group for listen sockets\n");
+ 		spdk_poller_unregister(&ttransport->accept_poller);
+@@ -1087,8 +1088,7 @@ nvmf_tcp_listen(struct spdk_nvmf_transport *transport, const struct spdk_nvme_tr
+ 		return -EINVAL;
+ 	}
+ 
+-	rc = spdk_sock_group_add_sock(ttransport->listen_sock_group, port->listen_sock, nvmf_tcp_accept_cb,
+-				      port);
++	rc = spdk_sock_group_add_sock(ttransport->listen_sock_group, port->listen_sock, port);
+ 	if (rc < 0) {
+ 		SPDK_ERRLOG("spdk_sock_group_add_sock() failed, rc %d: %s\n", rc, spdk_strerror(-rc));
+ 		spdk_sock_close(&port->listen_sock);
+@@ -1648,22 +1648,25 @@ nvmf_tcp_poll_group_intr(void *ctx)
+ 	return ret != 0 ? SPDK_POLLER_BUSY : SPDK_POLLER_IDLE;
+ }
+ 
++static void nvmf_tcp_sock_cb(void *arg, struct spdk_sock_group *group, struct spdk_sock *sock);
++
+ static struct spdk_nvmf_transport_poll_group *
+ nvmf_tcp_poll_group_create(struct spdk_nvmf_transport *transport,
+ 			   struct spdk_nvmf_poll_group *group)
+ {
+ 	struct spdk_nvmf_tcp_transport	*ttransport;
+ 	struct spdk_nvmf_tcp_poll_group *tgroup;
+-	struct spdk_sock_group_opts sgroup_opts;
++	struct spdk_sock_group_opts sock_group_opts;
+ 
+ 	tgroup = calloc(1, sizeof(*tgroup));
+ 	if (!tgroup) {
+ 		return NULL;
+ 	}
+ 
+-	sgroup_opts.size = sizeof(sgroup_opts);
+-	sgroup_opts.ctx = &tgroup->group;
+-	tgroup->sock_group = spdk_sock_group_create(&sgroup_opts);
++	sock_group_opts.size = SPDK_SIZEOF(&sock_group_opts, rx_cb);
++	sock_group_opts.ctx = &tgroup->group;
++	sock_group_opts.rx_cb = nvmf_tcp_sock_cb;
++	tgroup->sock_group = spdk_sock_group_create(&sock_group_opts);
+ 	if (!tgroup->sock_group) {
+ 		goto cleanup;
+ 	}
+@@ -3396,8 +3399,7 @@ nvmf_tcp_poll_group_add(struct spdk_nvmf_transport_poll_group *group,
+ 		return -1;
+ 	}
+ 
+-	rc = spdk_sock_group_add_sock(tgroup->sock_group, tqpair->sock,
+-				      nvmf_tcp_sock_cb, tqpair);
++	rc = spdk_sock_group_add_sock(tgroup->sock_group, tqpair->sock, tqpair);
+ 	if (rc != 0) {
+ 		SPDK_ERRLOG("spdk_sock_group_add_sock() failed, rc %d: %s\n", rc, spdk_strerror(-rc));
+ 		return -1;
+diff --git a/lib/sock/sock.c b/lib/sock/sock.c
+index 191f5b11f..13a407d1d 100644
+--- a/lib/sock/sock.c
++++ b/lib/sock/sock.c
+@@ -754,7 +754,7 @@ spdk_sock_close(struct spdk_sock **_sock)
+ 		return -EBADF;
+ 	}
+ 
+-	if (sock->cb_fn != NULL) {
++	if (sock->group_impl != NULL) {
+ 		/* This sock is still part of a sock_group. */
+ 		return -EBUSY;
+ 	}
+@@ -880,13 +880,26 @@ spdk_sock_group_create(const struct spdk_sock_group_opts *opts)
+ 	struct spdk_net_impl *impl = NULL;
+ 	struct spdk_sock_group *group;
+ 	struct spdk_sock_group_impl *group_impl;
++	spdk_sock_cb rx_cb;
+ 	int rc, fd;
+ 
++	if (opts == NULL) {
++		return NULL;
++	}
++
++	rx_cb = SPDK_GET_FIELD(opts, rx_cb, NULL);
++	if (rx_cb == NULL) {
++		return NULL;
++	}
++
+ 	group = calloc(1, sizeof(*group));
+ 	if (group == NULL) {
+ 		return NULL;
+ 	}
+ 
++	group->ctx = SPDK_GET_FIELD(opts, ctx, NULL);
++	group->rx_cb = rx_cb;
++
+ 	STAILQ_INIT(&group->group_impls);
+ 
+ 	if (g_init_opts.enable_interrupt_mode) {
+@@ -923,10 +936,6 @@ spdk_sock_group_create(const struct spdk_sock_group_opts *opts)
+ 		}
+ 	}
+ 
+-	if (opts) {
+-		group->ctx = SPDK_GET_FIELD(opts, ctx, NULL);
+-	}
+-
+ 	return group;
+ }
+ 
+@@ -946,19 +955,15 @@ SPDK_LOG_DEPRECATION_REGISTER(spdk_sock_group_add_sock_callbacks,
+ 
+ int
+ spdk_sock_group_add_sock(struct spdk_sock_group *group, struct spdk_sock *sock,
+-			 spdk_sock_cb cb_fn, void *cb_arg)
++			 void *cb_arg)
+ {
+ 	struct spdk_sock_group_impl *group_impl = NULL;
+ 	int rc;
+ 
+-	if (cb_fn != NULL || cb_arg != NULL) {
++	if (cb_arg != NULL) {
+ 		SPDK_LOG_DEPRECATED(spdk_sock_group_add_sock_callbacks);
+ 	}
+ 
+-	if (cb_fn == NULL) {
+-		return -EINVAL;
+-	}
+-
+ 	if (sock->group_impl != NULL) {
+ 		/*
+ 		 * This sock is already part of a sock_group.
+@@ -978,7 +983,6 @@ spdk_sock_group_add_sock(struct spdk_sock_group *group, struct spdk_sock *sock,
+ 
+ 	TAILQ_INSERT_TAIL(&group_impl->socks, sock, link);
+ 	sock->group_impl = group_impl;
+-	sock->cb_fn = cb_fn;
+ 	sock->cb_arg = cb_arg;
+ 	return 0;
+ }
+@@ -1000,7 +1004,6 @@ spdk_sock_group_remove_sock(struct spdk_sock_group *group, struct spdk_sock *soc
+ 	if (rc == 0) {
+ 		TAILQ_REMOVE(&group_impl->socks, sock, link);
+ 		sock->group_impl = NULL;
+-		sock->cb_fn = NULL;
+ 		sock->cb_arg = NULL;
+ 	}
+ 
+@@ -1027,8 +1030,8 @@ sock_group_impl_poll_count(struct spdk_sock_group_impl *group_impl,
+ 	num_events = rc;
+ 	for (i = 0; i < num_events; i++) {
+ 		struct spdk_sock *sock = socks[i];
+-		assert(sock->cb_fn != NULL);
+-		sock->cb_fn(sock->cb_arg, group, sock);
++		assert(group->rx_cb != NULL);
++		group->rx_cb(sock->cb_arg, group, sock);
+ 	}
+ 
+ 	return num_events;
+diff --git a/module/sock/posix/posix.c b/module/sock/posix/posix.c
+index d30e255b6..23d127814 100644
+--- a/module/sock/posix/posix.c
++++ b/module/sock/posix/posix.c
+@@ -2140,7 +2140,7 @@ posix_sock_group_impl_poll(struct spdk_sock_group_impl *_group, int max_events,
+ 			/* If the socket was closed or removed from
+ 			 * the group in response to a send ack, don't
+ 			 * add it to the array here. */
+-			if (rc || sock->cb_fn == NULL) {
++			if (rc || sock->group_impl == NULL) {
+ 				continue;
+ 			}
+ 		}
+@@ -2168,9 +2168,9 @@ posix_sock_group_impl_poll(struct spdk_sock_group_impl *_group, int max_events,
+ 			break;
+ 		}
+ 
+-		/* If the socket's cb_fn is NULL, just remove it from the
++		/* If the socket isn't supposed to be in a group, just remove it from the
+ 		 * list and do not add it to socks array */
+-		if (spdk_unlikely(psock->base.cb_fn == NULL)) {
++		if (spdk_unlikely(psock->base.group_impl == NULL)) {
+ 			psock->socket_has_data = false;
+ 			psock->pipe_has_data = false;
+ 			TAILQ_REMOVE(&group->socks_with_data, psock, link);
+diff --git a/module/sock/uring/uring.c b/module/sock/uring/uring.c
+index 6979acd1a..a23390a81 100644
+--- a/module/sock/uring/uring.c
++++ b/module/sock/uring/uring.c
+@@ -1201,8 +1201,7 @@ uring_sock_fail(struct spdk_uring_sock *sock, int status)
+ 	rc = spdk_sock_abort_requests(&sock->base);
+ 
+ 	/* The user needs to be notified that this socket is dead. */
+-	if (rc == 0 && sock->base.cb_fn != NULL &&
+-	    sock->pending_recv == false) {
++	if (rc == 0 && sock->pending_recv == false) {
+ 		sock->pending_recv = true;
+ 		TAILQ_INSERT_TAIL(&group->pending_recv, sock, link);
+ 	}
+@@ -1254,8 +1253,7 @@ sock_uring_group_reap(struct spdk_uring_sock_group_impl *group, int max, int max
+ 			} else if (status == -ENOBUFS) {
+ 				/* There's data in the socket but the user hasn't provided any buffers.
+ 				 * We need to notify the user that the socket has data pending. */
+-				if (sock->base.cb_fn != NULL &&
+-				    sock->pending_recv == false) {
++				if (sock->pending_recv == false) {
+ 					sock->pending_recv = true;
+ 					TAILQ_INSERT_TAIL(&group->pending_recv, sock, link);
+ 				}
+@@ -1278,8 +1276,7 @@ sock_uring_group_reap(struct spdk_uring_sock_group_impl *group, int max, int max
+ 				assert(group->buf_ring_count > 0);
+ 				group->buf_ring_count--;
+ 
+-				if (sock->base.cb_fn != NULL &&
+-				    sock->pending_recv == false) {
++				if (sock->pending_recv == false) {
+ 					sock->pending_recv = true;
+ 					TAILQ_INSERT_TAIL(&group->pending_recv, sock, link);
+ 				}
+@@ -1334,8 +1331,8 @@ sock_uring_group_reap(struct spdk_uring_sock_group_impl *group, int max, int max
+ 			break;
+ 		}
+ 
+-		/* If the socket's cb_fn is NULL, do not add it to socks array */
+-		if (spdk_unlikely(sock->base.cb_fn == NULL)) {
++		/* If the socket was removed from the group, do not add it to socks array */
++		if (spdk_unlikely(sock->group == NULL)) {
+ 			assert(sock->pending_recv == true);
+ 			sock->pending_recv = false;
+ 			TAILQ_REMOVE(&group->pending_recv, sock, link);
+diff --git a/test/app/fuzz/iscsi_fuzz/iscsi_fuzz.c b/test/app/fuzz/iscsi_fuzz/iscsi_fuzz.c
+index 87c66a209..67b12b9cc 100644
+--- a/test/app/fuzz/iscsi_fuzz/iscsi_fuzz.c
++++ b/test/app/fuzz/iscsi_fuzz/iscsi_fuzz.c
+@@ -666,7 +666,7 @@ iscsi_fuzz_conn_reset(struct spdk_iscsi_conn *conn, struct spdk_iscsi_sess *sess
+ }
+ 
+ static void
+-iscsi_conn_sock_cb(void *arg, struct spdk_sock_group *group, struct spdk_sock *sock)
++iscsi_fuzz_sock_cb(void *arg, struct spdk_sock_group *group, struct spdk_sock *sock)
+ {
+ 	struct spdk_iscsi_conn *conn = arg;
+ 
+@@ -711,7 +711,7 @@ iscsi_fuzz_sock_connect(struct spdk_iscsi_conn *conn, struct spdk_sock_group *gr
+ 		return;
+ 	}
+ 
+-	rc = spdk_sock_group_add_sock(group, conn->sock, iscsi_conn_sock_cb, conn);
++	rc = spdk_sock_group_add_sock(group, conn->sock, conn);
+ 	if (rc < 0) {
+ 		fprintf(stderr, "Cannot add socket to group\n");
+ 		spdk_sock_close(&conn->sock);
+@@ -946,7 +946,8 @@ start_io(void *ctx)
+ 	struct fuzz_iscsi_dev_ctx *dev_ctx = ctx;
+ 	struct spdk_sock_group_opts opts = {
+ 		.size = sizeof(opts),
+-		.ctx = dev_ctx
++		.ctx = dev_ctx,
++		.rx_cb = iscsi_fuzz_sock_cb
+ 	};
+ 
+ 	dev_ctx->sess.ExpCmdSN = 0;
+diff --git a/test/common/lib/test_sock.c b/test/common/lib/test_sock.c
+index da0979e16..d911a3379 100644
+--- a/test/common/lib/test_sock.c
++++ b/test/common/lib/test_sock.c
+@@ -10,7 +10,6 @@
+ 
+ struct test_sock_group_entry {
+ 	struct spdk_sock	*sock;
+-	spdk_sock_cb		cb_fn;
+ 	void			*cb_arg;
+ };
+ 
+@@ -19,6 +18,7 @@ struct test_sock_group_entry {
+ struct test_sock_group {
+ 	struct test_sock_group_entry	entries[MAX_SOCK_GROUP_ENTRIES];
+ 	int				num_entries;
++	spdk_sock_cb			rx_cb;
+ };
+ 
+ DEFINE_STUB(spdk_sock_getaddr, int, (struct spdk_sock *sock, char *saddr, int slen, uint16_t *sport,
+@@ -53,13 +53,16 @@ spdk_sock_group_create(const struct spdk_sock_group_opts *opts)
+ 	group = calloc(1, sizeof(*group));
+ 	SPDK_CU_ASSERT_FATAL(group != NULL);
+ 
++	if (opts) {
++		group->rx_cb = opts->rx_cb;
++	}
++
+ 	return (struct spdk_sock_group *)group;
+ }
+ 
+ DEFINE_RETURN_MOCK(spdk_sock_group_add_sock, int);
+ int
+-spdk_sock_group_add_sock(struct spdk_sock_group *_group, struct spdk_sock *sock, spdk_sock_cb cb_fn,
+-			 void *cb_arg)
++spdk_sock_group_add_sock(struct spdk_sock_group *_group, struct spdk_sock *sock, void *cb_arg)
+ {
+ 	struct test_sock_group *group;
+ 	struct test_sock_group_entry *entry;
+@@ -73,7 +76,6 @@ spdk_sock_group_add_sock(struct spdk_sock_group *_group, struct spdk_sock *sock,
+ 	entry = &group->entries[group->num_entries++];
+ 
+ 	entry->cb_arg = cb_arg;
+-	entry->cb_fn = cb_fn;
+ 	entry->sock = sock;
+ 
+ 	return 0;
+@@ -117,7 +119,7 @@ spdk_sock_group_poll(struct spdk_sock_group *_group)
+ 	group = (struct test_sock_group *)_group;
+ 
+ 	for (i = 0; i < group->num_entries; i++) {
+-		group->entries[i].cb_fn(group->entries[i].cb_arg, _group, group->entries[i].sock);
++		group->rx_cb(group->entries[i].cb_arg, _group, group->entries[i].sock);
+ 	}
+ 
+ 	return 0;
+diff --git a/test/unit/lib/iscsi/conn.c/conn_ut.c b/test/unit/lib/iscsi/conn.c/conn_ut.c
+index c94d1b176..2dea78b76 100644
+--- a/test/unit/lib/iscsi/conn.c/conn_ut.c
++++ b/test/unit/lib/iscsi/conn.c/conn_ut.c
+@@ -71,8 +71,7 @@ DEFINE_STUB(spdk_sock_set_recvbuf, int, (struct spdk_sock *sock, int sz), 0);
+ DEFINE_STUB(spdk_sock_set_sendbuf, int, (struct spdk_sock *sock, int sz), 0);
+ 
+ DEFINE_STUB(spdk_sock_group_add_sock, int,
+-	    (struct spdk_sock_group *group, struct spdk_sock *sock,
+-	     spdk_sock_cb cb_fn, void *cb_arg),
++	    (struct spdk_sock_group *group, struct spdk_sock *sock, void *cb_arg),
+ 	    0);
+ 
+ DEFINE_STUB(spdk_sock_group_remove_sock, int,
+diff --git a/test/unit/lib/nvme/nvme_tcp.c/nvme_tcp_ut.c b/test/unit/lib/nvme/nvme_tcp.c/nvme_tcp_ut.c
+index 0c7cd8f26..5d3f96204 100644
+--- a/test/unit/lib/nvme/nvme_tcp.c/nvme_tcp_ut.c
++++ b/test/unit/lib/nvme/nvme_tcp.c/nvme_tcp_ut.c
+@@ -1562,6 +1562,12 @@ ut_disconnect_qpair_poll_group_cb(struct spdk_nvme_qpair *qpair, void *ctx)
+ 	(*disconnected)++;
+ }
+ 
++static void
++ut_sock_group_cb(void *ctx, struct spdk_sock_group *group, struct spdk_sock *sock)
++{
++
++}
++
+ static void
+ test_nvme_tcp_ctrlr_disconnect_qpair(void)
+ {
+@@ -1583,7 +1589,8 @@ test_nvme_tcp_ctrlr_disconnect_qpair(void)
+ 	int rc, disconnected;
+ 	struct spdk_sock_group_opts opts = {
+ 		.size = sizeof(opts),
+-		.ctx = &tgroup
++		.ctx = &tgroup,
++		.rx_cb = ut_sock_group_cb
+ 	};
+ 
+ 	tgroup.sock_group = spdk_sock_group_create(&opts);
+diff --git a/test/unit/lib/sock/sock.c/sock_ut.c b/test/unit/lib/sock/sock.c/sock_ut.c
+index 51595f332..9bce35220 100644
+--- a/test/unit/lib/sock/sock.c/sock_ut.c
++++ b/test/unit/lib/sock/sock.c/sock_ut.c
+@@ -501,6 +501,11 @@ _sock_group(const char *ip, int port, char *impl_name)
+ 	ssize_t bytes_written;
+ 	struct iovec iov;
+ 	int rc;
++	struct spdk_sock_group_opts sgroup_opts = {
++		.size = sizeof(sgroup_opts),
++		.ctx = NULL,
++		.rx_cb = read_data
++	};
+ 
+ 	opts.opts_size = sizeof(opts);
+ 	spdk_sock_get_default_opts(&opts);
+@@ -521,21 +526,17 @@ _sock_group(const char *ip, int port, char *impl_name)
+ 	server_sock = spdk_sock_accept(listen_sock);
+ 	SPDK_CU_ASSERT_FATAL(server_sock != NULL);
+ 
+-	group = spdk_sock_group_create(NULL);
++	group = spdk_sock_group_create(&sgroup_opts);
+ 	SPDK_CU_ASSERT_FATAL(group != NULL);
+ 
+-	hint = spdk_sock_group_create(NULL);
++	hint = spdk_sock_group_create(&sgroup_opts);
+ 	SPDK_CU_ASSERT_FATAL(hint != NULL);
+ 
+-	/* pass null cb_fn */
+-	rc = spdk_sock_group_add_sock(group, server_sock, NULL, NULL);
+-	CU_ASSERT(rc == -EINVAL);
+-
+-	rc = spdk_sock_group_add_sock(group, server_sock, read_data, server_sock);
++	rc = spdk_sock_group_add_sock(group, server_sock, server_sock);
+ 	CU_ASSERT(rc == 0);
+ 
+ 	/* try adding sock a second time */
+-	rc = spdk_sock_group_add_sock(group, server_sock, read_data, server_sock);
++	rc = spdk_sock_group_add_sock(group, server_sock, server_sock);
+ 	CU_ASSERT(rc == -EINVAL);
+ 
+ 	g_read_data_called = false;
+@@ -637,6 +638,11 @@ posix_sock_group_fairness(void)
+ 	ssize_t bytes_written;
+ 	struct iovec iov;
+ 	int i, rc;
++	struct spdk_sock_group_opts sgroup_opts = {
++		.size = sizeof(sgroup_opts),
++		.ctx = NULL,
++		.rx_cb = read_data_fairness
++	};
+ 
+ 	opts.opts_size = sizeof(opts);
+ 	spdk_sock_get_default_opts(&opts);
+@@ -645,7 +651,7 @@ posix_sock_group_fairness(void)
+ 	listen_sock = spdk_sock_listen("127.0.0.1", UT_PORT, &opts);
+ 	SPDK_CU_ASSERT_FATAL(listen_sock != NULL);
+ 
+-	group = spdk_sock_group_create(NULL);
++	group = spdk_sock_group_create(&sgroup_opts);
+ 	SPDK_CU_ASSERT_FATAL(group != NULL);
+ 
+ 	for (i = 0; i < 3; i++) {
+@@ -657,8 +663,7 @@ posix_sock_group_fairness(void)
+ 		server_sock[i] = spdk_sock_accept(listen_sock);
+ 		SPDK_CU_ASSERT_FATAL(server_sock[i] != NULL);
+ 
+-		rc = spdk_sock_group_add_sock(group, server_sock[i],
+-					      read_data_fairness, server_sock[i]);
++		rc = spdk_sock_group_add_sock(group, server_sock[i], server_sock[i]);
+ 		CU_ASSERT(rc == 0);
+ 	}
+ 
+@@ -770,6 +775,11 @@ _sock_close(const char *ip, int port, char *impl_name)
+ 	struct close_ctx ctx = {};
+ 	bool cb_arg2 = false;
+ 	int rc;
++	struct spdk_sock_group_opts sgroup_opts = {
++		.size = sizeof(sgroup_opts),
++		.ctx = NULL,
++		.rx_cb = read_data
++	};
+ 
+ 	opts.opts_size = sizeof(opts);
+ 	spdk_sock_get_default_opts(&opts);
+@@ -786,10 +796,10 @@ _sock_close(const char *ip, int port, char *impl_name)
+ 	server_sock = spdk_sock_accept(listen_sock);
+ 	SPDK_CU_ASSERT_FATAL(server_sock != NULL);
+ 
+-	group = spdk_sock_group_create(NULL);
++	group = spdk_sock_group_create(&sgroup_opts);
+ 	SPDK_CU_ASSERT_FATAL(group != NULL);
+ 
+-	rc = spdk_sock_group_add_sock(group, server_sock, read_data, server_sock);
++	rc = spdk_sock_group_add_sock(group, server_sock, server_sock);
+ 	CU_ASSERT(rc == 0);
+ 
+ 	/* Submit multiple async writevs on the server sock */

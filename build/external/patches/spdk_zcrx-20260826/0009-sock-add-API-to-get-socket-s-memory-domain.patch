@@ -1,0 +1,198 @@
+From 451ef9ecc48d2f71a20ec5b6d0442acda4ca3e65 Mon Sep 17 00:00:00 2001
+From: Konrad Sztyber <ksztyber@nvidia.com>
+Date: Tue, 22 Jul 2025 14:54:34 +0200
+Subject: [PATCH 09/21] sock: add API to get socket's memory domain
+
+Change-Id: I19604fe93b71655d887ffe9ee60e8aea342cda74
+Signed-off-by: Konrad Sztyber <ksztyber@nvidia.com>
+---
+ include/spdk/sock.h                 | 39 +++++++++++++++++++++++++++++
+ include/spdk_internal/sock_module.h |  4 +++
+ lib/sock/sock.c                     | 32 +++++++++++++++++++++++
+ lib/sock/spdk_sock.map              |  2 ++
+ test/common/lib/test_sock.c         |  2 ++
+ 5 files changed, 79 insertions(+)
+
+diff --git a/include/spdk/sock.h b/include/spdk/sock.h
+index fff5fead6..c0b887bb2 100644
+--- a/include/spdk/sock.h
++++ b/include/spdk/sock.h
+@@ -12,6 +12,7 @@
+ 
+ #include "spdk/stdinc.h"
+ 
++#include "spdk/dma.h"
+ #include "spdk/queue.h"
+ #include "spdk/json.h"
+ #include "spdk/assert.h"
+@@ -71,6 +72,19 @@ SPDK_STATIC_ASSERT(sizeof(struct spdk_sock_request) == 64, "Incorrect size.");
+ 
+ #define SPDK_SOCK_REQUEST_IOV(req, i) ((struct iovec *)(((uint8_t *)req + sizeof(struct spdk_sock_request)) + (sizeof(struct iovec) * i)))
+ 
++struct spdk_sock_request_opts {
++	/** Size of this structure in bytes. Use SPDK_SIZEOF(opts, last_member) to obtain it. */
++	size_t				size;
++
++	/** Optional memory domain describing the request payload buffers. */
++	struct spdk_memory_domain	*memory_domain;
++
++	/** Context associated with the memory domain. */
++	void				*memory_domain_ctx;
++};
++
++SPDK_STATIC_ASSERT(sizeof(struct spdk_sock_request_opts) == 24, "Incorrect size.");
++
+ enum spdk_placement_mode {
+ 	PLACEMENT_NONE,
+ 	PLACEMENT_NAPI,
+@@ -500,6 +514,17 @@ ssize_t spdk_sock_writev(struct spdk_sock *sock, struct iovec *iov, int iovcnt);
+  */
+ void spdk_sock_writev_async(struct spdk_sock *sock, struct spdk_sock_request *req);
+ 
++/**
++ * Write data to the given socket asynchronously with optional request metadata.
++ *
++ * \param sock Socket to write to.
++ * \param req The write request to submit.
++ * \param opts Optional request metadata. The socket layer consumes this structure before
++ * returning and does not retain the pointer.
++ */
++void spdk_sock_writev_async_ext(struct spdk_sock *sock, struct spdk_sock_request *req,
++				const struct spdk_sock_request_opts *opts);
++
+ /**
+  * Read message from the given socket to the I/O vector array.
+  *
+@@ -732,6 +757,20 @@ void spdk_sock_write_config_json(struct spdk_json_write_ctx *w);
+  */
+ int spdk_sock_group_get_interruptfd(struct spdk_sock_group *group);
+ 
++/**
++ * Get memory domain associated with the socket, or NULL if the socket module doesn't support memory
++ * domains.
++ *
++ * A socket exposes at most one memory domain because the domain is tied to the socket
++ * implementation and connection. Callers that need to choose among multiple device domain types
++ * should perform that selection at the higher layer that owns those devices.
++ *
++ * \param sock Socket.
++ *
++ * \return Memory domain or NULL.
++ */
++struct spdk_memory_domain *spdk_sock_get_memory_domain(struct spdk_sock *sock);
++
+ #ifdef __cplusplus
+ }
+ #endif
+diff --git a/include/spdk_internal/sock_module.h b/include/spdk_internal/sock_module.h
+index 1b7daa77e..ef4b5f0e4 100644
+--- a/include/spdk_internal/sock_module.h
++++ b/include/spdk_internal/sock_module.h
+@@ -87,6 +87,8 @@ struct spdk_net_impl {
+ 	ssize_t (*writev)(struct spdk_sock *sock, struct iovec *iov, int iovcnt);
+ 
+ 	void (*writev_async)(struct spdk_sock *sock, struct spdk_sock_request *req);
++	void (*writev_async_ext)(struct spdk_sock *sock, struct spdk_sock_request *req,
++				 const struct spdk_sock_request_opts *opts);
+ 	void (*readv_async)(struct spdk_sock *sock, struct spdk_sock_request *req);
+ 	int (*flush)(struct spdk_sock *sock);
+ 
+@@ -111,6 +113,8 @@ struct spdk_net_impl {
+ 	int (*get_opts)(struct spdk_sock_impl_opts *opts, size_t *len);
+ 	int (*set_opts)(const struct spdk_sock_impl_opts *opts, size_t len);
+ 
++	struct spdk_memory_domain *(*get_memory_domain)(struct spdk_sock *);
++
+ 	STAILQ_ENTRY(spdk_net_impl) link;
+ };
+ 
+diff --git a/lib/sock/sock.c b/lib/sock/sock.c
+index 446467488..16eed9247 100644
+--- a/lib/sock/sock.c
++++ b/lib/sock/sock.c
+@@ -864,6 +864,13 @@ spdk_sock_writev(struct spdk_sock *sock, struct iovec *iov, int iovcnt)
+ 
+ void
+ spdk_sock_writev_async(struct spdk_sock *sock, struct spdk_sock_request *req)
++{
++	spdk_sock_writev_async_ext(sock, req, NULL);
++}
++
++void
++spdk_sock_writev_async_ext(struct spdk_sock *sock, struct spdk_sock_request *req,
++			   const struct spdk_sock_request_opts *opts)
+ {
+ 	assert(req->cb_fn != NULL);
+ 
+@@ -872,6 +879,21 @@ spdk_sock_writev_async(struct spdk_sock *sock, struct spdk_sock_request *req)
+ 		return;
+ 	}
+ 
++	if (opts != NULL && opts->size < SPDK_SIZEOF(opts, memory_domain_ctx)) {
++		req->cb_fn(req->cb_arg, -EINVAL);
++		return;
++	}
++
++	if (sock->net_impl->writev_async_ext != NULL) {
++		sock->net_impl->writev_async_ext(sock, req, opts);
++		return;
++	}
++
++	if (opts != NULL && opts->memory_domain != NULL) {
++		req->cb_fn(req->cb_arg, -ENOTSUP);
++		return;
++	}
++
+ 	sock->net_impl->writev_async(sock, req);
+ }
+ 
+@@ -1406,6 +1428,16 @@ spdk_sock_group_get_interruptfd(struct spdk_sock_group *group)
+ 	return spdk_fd_group_get_fd(group->fgrp);
+ }
+ 
++struct spdk_memory_domain *
++spdk_sock_get_memory_domain(struct spdk_sock *sock)
++{
++	if (sock->net_impl->get_memory_domain) {
++		return sock->net_impl->get_memory_domain(sock);
++	}
++
++	return NULL;
++}
++
+ SPDK_LOG_REGISTER_COMPONENT(sock)
+ 
+ static void
+diff --git a/lib/sock/spdk_sock.map b/lib/sock/spdk_sock.map
+index 606a940d4..b6735a695 100644
+--- a/lib/sock/spdk_sock.map
++++ b/lib/sock/spdk_sock.map
+@@ -17,6 +17,7 @@
+ 	spdk_sock_recv;
+ 	spdk_sock_writev;
+ 	spdk_sock_writev_async;
++	spdk_sock_writev_async_ext;
+ 	spdk_sock_readv;
+ 	spdk_sock_set_recvlowat;
+ 	spdk_sock_set_recvbuf;
+@@ -38,6 +39,7 @@
+ 	spdk_sock_write_config_json;
+ 	spdk_sock_get_impl_name;
+ 	spdk_sock_group_get_interruptfd;
++	spdk_sock_get_memory_domain;
+ 
+ 	# internal function in spdk_internal/sock_module.h
+ 	spdk_net_impl_register;
+diff --git a/test/common/lib/test_sock.c b/test/common/lib/test_sock.c
+index ed2b4f3b4..40aad81d4 100644
+--- a/test/common/lib/test_sock.c
++++ b/test/common/lib/test_sock.c
+@@ -28,6 +28,8 @@ DEFINE_STUB(spdk_sock_set_recvlowat, int, (struct spdk_sock *sock, int nbytes),
+ DEFINE_STUB(spdk_sock_set_recvbuf, int, (struct spdk_sock *sock, int sz), 0);
+ DEFINE_STUB(spdk_sock_set_sendbuf, int, (struct spdk_sock *sock, int sz), 0);
+ DEFINE_STUB_V(spdk_sock_writev_async, (struct spdk_sock *sock, struct spdk_sock_request *req));
++DEFINE_STUB_V(spdk_sock_writev_async_ext, (struct spdk_sock *sock, struct spdk_sock_request *req,
++		const struct spdk_sock_request_opts *opts));
+ DEFINE_STUB(spdk_sock_flush, int, (struct spdk_sock *sock), 0);
+ DEFINE_STUB(spdk_sock_is_ipv6, bool, (struct spdk_sock *sock), false);
+ DEFINE_STUB(spdk_sock_is_ipv4, bool, (struct spdk_sock *sock), true);

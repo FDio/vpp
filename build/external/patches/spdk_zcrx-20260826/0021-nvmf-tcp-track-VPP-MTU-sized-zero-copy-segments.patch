@@ -1,0 +1,49 @@
+From 8052325bccc3f16dbc6588ff157fe7130abea5ac Mon Sep 17 00:00:00 2001
+From: Jerome Tollet <jtollet@cisco.com>
+Date: Wed, 26 Aug 2026 10:26:12 +0200
+Subject: [PATCH 21/21] nvmf/tcp: track VPP MTU-sized zero-copy segments
+
+---
+ include/spdk/nvmf_transport.h    | 8 +++++---
+ include/spdk_internal/nvme_tcp.h | 2 +-
+ 2 files changed, 6 insertions(+), 4 deletions(-)
+
+diff --git a/include/spdk/nvmf_transport.h b/include/spdk/nvmf_transport.h
+index 5b8f7c054..90e7feeb9 100644
+--- a/include/spdk/nvmf_transport.h
++++ b/include/spdk/nvmf_transport.h
+@@ -26,8 +26,10 @@ extern "C" {
+ 
+ #define SPDK_NVMF_MAX_SGL_ENTRIES	16
+ 
+-/* The maximum number of buffers per request */
+-#define NVMF_REQ_MAX_BUFFERS	(SPDK_NVMF_MAX_SGL_ENTRIES * 2 + 1)
++/* TCP zero-copy receive can expose one buffer per wire segment.  Keep enough
++ * entries for a 1 MiB transfer at MTU 9000 without double buffering.  The
++ * request iovcnt is uint8_t, so 255 is the largest representable value. */
++#define NVMF_REQ_MAX_BUFFERS	255
+ 
+ /* Maximum pending AERs that can be migrated */
+ #define SPDK_NVMF_MIGR_MAX_PENDING_AERS 256
+@@ -117,7 +119,7 @@ struct spdk_nvmf_request {
+ 	uint32_t			orig_nsid;
+ 	STAILQ_ENTRY(spdk_nvmf_request)	reservation_link;
+ };
+-SPDK_STATIC_ASSERT(sizeof(struct spdk_nvmf_request) == 752, "Incorrect size");
++SPDK_STATIC_ASSERT(sizeof(struct spdk_nvmf_request) == 4304, "Incorrect size");
+ 
+ enum spdk_nvmf_qpair_state {
+ 	SPDK_NVMF_QPAIR_UNINITIALIZED = 0,
+diff --git a/include/spdk_internal/nvme_tcp.h b/include/spdk_internal/nvme_tcp.h
+index ed791ee0b..5dcbd0d52 100644
+--- a/include/spdk_internal/nvme_tcp.h
++++ b/include/spdk_internal/nvme_tcp.h
+@@ -30,7 +30,7 @@
+ /*
+  * Maximum number of SGL elements.
+  */
+-#define NVME_TCP_MAX_SGL_DESCRIPTORS	(16)
++#define NVME_TCP_MAX_SGL_DESCRIPTORS	(256)
+ 
+ #define MAKE_DIGEST_WORD(BUF, CRC32C) \
+         (   ((*((uint8_t *)(BUF)+0)) = (uint8_t)((uint32_t)(CRC32C) >> 0)), \

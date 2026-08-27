@@ -1,0 +1,38 @@
+From 95e5d8b4d79b395c5ee4efc4a5837eab480c7b17 Mon Sep 17 00:00:00 2001
+From: Jerome Tollet <jtollet@cisco.com>
+Date: Wed, 26 Aug 2026 10:25:58 +0200
+Subject: [PATCH 20/21] nvmf/tcp: fix zero-copy fallback on current SPDK
+
+---
+ lib/nvmf/tcp.c | 11 +++++++----
+ 1 file changed, 7 insertions(+), 4 deletions(-)
+
+diff --git a/lib/nvmf/tcp.c b/lib/nvmf/tcp.c
+index 894462aef..d16e5afbe 100644
+--- a/lib/nvmf/tcp.c
++++ b/lib/nvmf/tcp.c
+@@ -2644,7 +2644,8 @@ nvmf_tcp_double_buffer_scattered_payload(struct spdk_nvmf_tcp_qpair *tqpair,
+ 	}
+ 
+ 	SPDK_WARNLOG("Double buffering scattered zero-copy payload on tqpair=%p\n", tqpair);
+-	double_buf = spdk_malloc(total_sz, PAGE_SIZE, NULL, SPDK_ENV_SOCKET_ID_ANY, 0);
++	double_buf = spdk_malloc(total_sz, PAGE_SIZE, NULL, SPDK_ENV_SOCKET_ID_ANY,
++				 SPDK_MALLOC_DMA);
+ 	if (double_buf == NULL) {
+ 		SPDK_ERRLOG("Failed to allocate buffer for scattered payload\n");
+ 		return -ENOMEM;
+@@ -2712,9 +2713,11 @@ nvmf_tcp_read_data_zcopy(struct spdk_nvmf_tcp_qpair *tqpair, struct spdk_nvmf_tc
+ 
+ 		if (pdu->data_iovcnt >= SPDK_COUNTOF(pdu->data_iov) - 1 ||
+ 		    tcp_req->req.iovcnt >= SPDK_COUNTOF(tcp_req->req.iov) - 1) {
+-			ret = nvmf_tcp_double_buffer_scattered_payload(tqpair, tcp_req, pdu);
+-			if (ret != 0) {
+-				return ret;
++			int rc;
++
++			rc = nvmf_tcp_double_buffer_scattered_payload(tqpair, tcp_req, pdu);
++			if (rc != 0) {
++				return rc;
+ 			}
+ 		}
+ 
