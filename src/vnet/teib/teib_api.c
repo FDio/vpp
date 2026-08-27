@@ -10,7 +10,7 @@
 #include <vlibmemory/api.h>
 
 #include <vnet/api_errno.h>
-#include <vnet/teib/teib.h>
+#include <vnet/teib/teib_internal.h>
 #include <vnet/ip/ip_types_api.h>
 #include <vnet/fib/fib_table.h>
 

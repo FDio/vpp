@@ -20,6 +20,13 @@
  *   underlay.
  *
  * Such overlay to underlay mappings might be providied by a protocol like NHRP
+ *
+ * This is the in-process consumer API. The mappings themselves are held by a
+ * registered TEIB backend, which need not be part of this image; see
+ * vnet/teib/teib_backend.h. All of the calls below are safe to make whether or
+ * not a backend is present.
+ *
+ * These calls are for the main thread only.
  */
 
 /**
@@ -46,17 +53,10 @@ typedef struct teib_entry_info_t_
 } teib_entry_info_t;
 
 /**
- * Create a new TEIB entry
- */
-extern int teib_entry_add (u32 sw_if_index,
-			   const ip_address_t * peer,
-			   u32 nh_table_id, const ip_address_t * nh);
-
-extern int teib_entry_del (u32 sw_if_index, const ip_address_t * peer);
-
-/**
  * Look an entry up and take a snapshot of it. Returns false, leaving 'info'
- * untouched, if there is no such entry.
+ * untouched, if there is no such entry. A false return also covers the absence
+ * of a TEIB backend, since a consumer has nothing else to do in either case:
+ * there is no mapping to act on.
  */
 extern bool teib_entry_find (u32 sw_if_index, const ip_address_t *peer, teib_entry_info_t *info);
 extern bool teib_entry_find_46 (u32 sw_if_index, fib_protocol_t fproto, const ip46_address_t *peer,
@@ -66,11 +66,20 @@ extern void teib_entry_adj_stack (const teib_entry_info_t *info, adj_index_t ai)
 
 typedef walk_rc_t (*teib_walk_cb_t) (const teib_entry_info_t *info, void *ctx);
 
-extern void teib_walk (teib_walk_cb_t fn, void *ctx);
+/**
+ * Walk the entries on one interface. A no-op if there is no TEIB backend.
+ */
 extern void teib_walk_itf (u32 sw_if_index, teib_walk_cb_t fn, void *ctx);
 
 /**
- * Notifications for the creation and deletion of TEIB entries
+ * Notifications for the creation and deletion of TEIB entries.
+ *
+ * A listener is called on the main thread, with a snapshot that is only valid
+ * for the duration of the call; keep a copy of the value, not the pointer.
+ *
+ * A listener must not add or delete TEIB entries from within a callback: it is
+ * called part way through the operation on the entry, so mutating the database
+ * there can invalidate the caller's own state.
  */
 typedef void (*teib_entry_added_t) (const teib_entry_info_t *info);
 typedef void (*teib_entry_deleted_t) (const teib_entry_info_t *info);
@@ -81,6 +90,10 @@ typedef struct teib_vft_t_
   teib_entry_deleted_t nv_deleted;
 } teib_vft_t;
 
+/**
+ * Register for notifications. For use at init time only, and independent of
+ * whether a TEIB backend has registered yet.
+ */
 extern void teib_register (const teib_vft_t * vft);
 
 #endif

@@ -2,14 +2,28 @@
  * Copyright (c) 2026 Cisco and/or its affiliates.
  */
 
-/* teib_internal.h: TEIB internals shared by the implementation and the CLI.
- *                  Not part of the public API.
+/* teib_internal.h: TEIB internals shared by the implementation and its own
+ *                  CLI and API. Not part of the public API.
  */
 
 #ifndef __TEIB_INTERNAL_H__
 #define __TEIB_INTERNAL_H__
 
 #include <vnet/teib/teib.h>
+
+/**
+ * Create a new TEIB entry
+ */
+extern int teib_entry_add (u32 sw_if_index, const ip_address_t *peer, u32 nh_table_id,
+			   const ip_address_t *nh);
+
+extern int teib_entry_del (u32 sw_if_index, const ip_address_t *peer);
+
+/**
+ * Walk every entry, taking a snapshot of each. Used by the API dump, which is
+ * part of TEIB itself; a consumer walks one interface instead.
+ */
+extern void teib_walk (teib_walk_cb_t fn, void *ctx);
 
 /**
  * Walk every entry, yielding its index. Used by the CLI, which prints the
