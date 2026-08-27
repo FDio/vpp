@@ -3,11 +3,11 @@
 
 SPDK_DEBUG ?= n
 
-spdk_version ?= 26.05
-spdk_tarball := spdk-$(spdk_version).tar.gz
-spdk_tarball_sha256sum_26.05 := cde0e1ef1db576ca1bb59f94c08d3bd9291aa485f372e20088aa448ec7b09a06
-spdk_tarball_sha256sum := $(spdk_tarball_sha256sum_$(spdk_version))
-spdk_url := https://github.com/spdk/spdk/archive/refs/tags/v$(spdk_version).tar.gz
+spdk_version ?= zcrx-master-20260904
+spdk_source_commit := 96ce991932382f19b4ca737fa7e86a1ace45d569
+spdk_tarball := spdk-$(spdk_source_commit).tar.gz
+spdk_tarball_sha256sum := 3ff10b0fe7e6d2538044c1185e27ff803ca91cdec1b62b628cd1d10b9f20305b
+spdk_url := https://github.com/spdk/spdk/archive/$(spdk_source_commit).tar.gz
 spdk_tarball_strip_dirs := 1
 spdk_env_dir := $(CURDIR)/spdk-env-vpp
 spdk_target_arch := $(if $(AARCH64),armv8-a+crc,native)
