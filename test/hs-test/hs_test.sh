@@ -93,6 +93,12 @@ case "${i}" in
             use_cpu0=true
         fi
         ;;
+    --pcap=*)
+        pcap="${i#*=}"
+        if [ "$pcap" = "true" ]; then
+            args="$args -pcap"
+        fi
+        ;;
     --dryrun=*)
         dryrun="${i#*=}"
         if [ "$dryrun" = "true" ]; then
