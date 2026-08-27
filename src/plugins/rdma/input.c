@@ -702,6 +702,14 @@ rdma_device_poll_cq_mlx5dv (rdma_device_t * rd, rdma_rxq_t * rxq,
       if ((cqe_last_byte & 0x1) != owner)
 	break;
 
+      /* The device updates the CQE owner after writing the CQE payload.
+       * Order subsequent CQE and mini-CQE loads after the owner load. */
+#ifdef __aarch64__
+      asm volatile ("dmb oshld" ::: "memory");
+#else
+      CLIB_COMPILER_BARRIER ();
+#endif
+
       cqe_last_byte &= 0xfc;	/* remove owner and solicited bits */
 
       if (cqe_last_byte == 0x2c)	/* OPCODE = 0x2 (Responder Send), Format = 0x3 (Compressed CQE) */
