@@ -16,6 +16,24 @@
       "message": "VPP_CLOSING? I\u0027m guessing that was supposed to be STATE_CLOSING?",
       "revId": "ea794e8e5731707c8e5481d4a4921894e8fcf117",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "45e236c2_5ffe84e4",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 1
+      },
+      "lineNbr": 17,
+      "author": {
+        "id": 3121
+      },
+      "writtenOn": "2026-08-27T17:46:15Z",
+      "side": 1,
+      "message": "Yes, it was a typo. I meant `SESSION_STATE_TRANSPORT_CLOSING`. Fixed.",
+      "parentUuid": "8b66d3d9_c0957b52",
+      "revId": "ea794e8e5731707c8e5481d4a4921894e8fcf117",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
