@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a875728c_41f6e23b",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-08-27T02:17:10Z",
+      "side": 1,
+      "message": "This is a duplicate of https://gerrit.fd.io/r/c/vpp/+/46459, although you also fixed the async implementation as well, so I\u0027ll abandon 46459 since this is more complete.",
+      "revId": "bd6f8279123064746891d5fe43eb3c4a8a677a9d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
