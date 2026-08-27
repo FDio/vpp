@@ -17,6 +17,24 @@
       "parentUuid": "a60ff9b0_322d5490",
       "revId": "857f3528fd0017edca9126b5e22013ad6d457f58",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "84bab7d1_4f161b48",
+        "filename": "src/vnet/sfdp/sfdp.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 436,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-08-27T12:47:24Z",
+      "side": 1,
+      "message": "Done, I went ahead and added some plumbing in the expiry nodes, and modified the test case so that we can hold the expiry node disabled across several calls, before re-enabling it and verifying expiry.",
+      "parentUuid": "08ff955a_774f3d2f",
+      "revId": "857f3528fd0017edca9126b5e22013ad6d457f58",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
