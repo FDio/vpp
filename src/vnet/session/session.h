@@ -19,6 +19,26 @@ typedef struct session_wrk_stats_
   u32 errors[SESSION_N_ERRORS];
 } session_wrk_stats_t;
 
+/** Read-only view of stream data staged in an RX FIFO. */
+typedef struct
+{
+  const svm_fifo_async_op_t *segments;
+  const u32 *buffer_refs;
+  u32 n_segments;
+  u32 n_buffer_refs;
+  u32 data_len;
+} session_async_rx_data_t;
+
+typedef enum
+{
+  SESSION_ASYNC_RX_REJECT = 0,
+  SESSION_ASYNC_RX_CONSUME,
+  SESSION_ASYNC_RX_TAKE,
+} session_async_rx_result_t;
+
+typedef session_async_rx_result_t (*session_async_rx_consume_fn_t) (
+  const session_async_rx_data_t *data, void *ctx);
+
 typedef struct session_tx_context_
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
@@ -166,6 +186,9 @@ typedef struct session_worker_
   u16 trans_size;
   u16 batch_num;
   vlib_dma_batch_t *batch;
+
+  /** Bytes in RX buffer chains loaned to built-in applications. */
+  u64 async_rx_loaned_bytes;
 
   session_wrk_stats_t stats;
 
@@ -686,6 +709,29 @@ void session_register_update_time_fn_w_thread (session_update_time_fn fn, u8 is_
 void session_main_flush_enqueue_events (transport_proto_t transport_proto,
 					clib_thread_index_t thread_index);
 void session_queue_run_on_main_thread (vlib_main_t *vm);
+
+/** Enable deferred RX delivery for an eligible built-in stream session. */
+void session_async_rx_enable (session_t *s);
+
+/**
+ * Offer staged RX data to a built-in app from its normal RX callback.
+ *
+ * REJECT materializes the data in the FIFO. CONSUME releases its backing
+ * buffers after synchronous use. TAKE transfers buffer ownership to the app,
+ * which must later call @ref session_async_rx_release on the owning worker.
+ */
+u32 session_async_rx_consume (session_t *s,
+			      session_async_rx_consume_fn_t fn, void *ctx);
+
+/** Release VLIB buffer-chain roots previously taken by a built-in app. */
+void session_async_rx_release (u32 thread_index, const u32 *buffer_refs,
+			       u32 n_buffer_refs, u32 n_bytes);
+
+static inline u8
+session_async_rx_pending (session_t *s)
+{
+  return svm_fifo_n_async_ops (s->rx_fifo) != 0;
+}
 int session_tx_fifo_peek_bytes (transport_connection_t * tc, u8 * buffer,
 				u32 offset, u32 max_bytes);
 u32 session_tx_fifo_dequeue_drop (transport_connection_t * tc, u32 max_bytes);
@@ -840,14 +886,20 @@ session_enqueue_stream_connection (transport_connection_t *tc, vlib_buffer_t *b,
   s = session_get (tc->s_index, tc->thread_index);
   if (PREDICT_FALSE (s->flags & SESSION_F_ASYNC_RX))
     {
-      if (is_in_order && queue_event)
+      /* Direct buffer delivery must not overtake bytes already published in
+       * the fifo, or data held in the out-of-order queue.  In either case,
+       * materialize pending async writes and use the regular fifo path. */
+      if (is_in_order && queue_event &&
+	  svm_fifo_max_dequeue_cons (s->rx_fifo) == 0 &&
+	  !svm_fifo_has_ooo_data (s->rx_fifo))
 	{
-	  enqueued = session_enqueue_stream_connection_async (s, tc, b, is_buffer_held);
+	  enqueued = session_enqueue_stream_connection_async (s, tc, b,
+						     is_buffer_held);
 	  if (enqueued >= 0)
 	    return enqueued;
 	}
 
-      /* Enqueues without an RX event are barriers for pending async writes. */
+      /* Non-eligible enqueues are barriers for pending async writes. */
       session_flush_async_rx (s->rx_fifo);
     }
   else

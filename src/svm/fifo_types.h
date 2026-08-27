@@ -154,6 +154,11 @@ typedef struct _svm_fifo
     };
   };
 
+#if CLIB_LOG2_CACHE_LINE_BYTES == 7
+  /* Preserve the two-cache-line private FIFO size contract on aarch64 and
+   * place the deferred producer state in the second line. */
+  CLIB_CACHE_LINE_ALIGN_MARK (async_cacheline);
+#endif
   svm_fifo_async_state_t *async_state;
 
 #if SVM_FIFO_TRACE

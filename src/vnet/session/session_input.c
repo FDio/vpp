@@ -120,7 +120,8 @@ app_worker_flush_events_inline (app_worker_t *app_wrk,
 	{
 	case SESSION_IO_EVT_RX:
 	  s = session_get (evt->session_index, thread_index);
-	  session_flush_async_rx (s->rx_fifo);
+	  if (!(s->flags & SESSION_F_ASYNC_RX))
+	    session_flush_async_rx (s->rx_fifo);
 	  s->flags &= ~SESSION_F_RX_EVT;
 	  /* App is unaware of the session or closing notification provided */
 	  if (PREDICT_FALSE (!(s->flags & SESSION_F_RX_READY)))
@@ -132,7 +133,8 @@ app_worker_flush_events_inline (app_worker_t *app_wrk,
 	  s = session_get_from_handle_if_valid (evt->session_handle);
 	  if (!s)
 	    break;
-	  session_flush_async_rx (s->rx_fifo);
+	  if (!(s->flags & SESSION_F_ASYNC_RX))
+	    session_flush_async_rx (s->rx_fifo);
 	  s->flags &= ~SESSION_F_RX_EVT;
 	  if (PREDICT_FALSE (!(s->flags & SESSION_F_RX_READY)))
 	    break;
