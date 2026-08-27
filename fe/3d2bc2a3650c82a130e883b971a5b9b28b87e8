@@ -1,0 +1,8 @@
+Verified+1: FDio GitHub Actions <releng+fdio-github@linuxfoundation.org>
+Code-Review+2: Florin Coras <florin.coras@gmail.com>
+Code-Review+1: Matus Fabian <matfabia@cisco.com>
+Submitted-by: Florin Coras <florin.coras@gmail.com>
+Submitted-at: Thu, 27 Aug 2026 04:04:01 +0000
+Reviewed-on: https://gerrit.fd.io/r/c/vpp/+/46582
+Project: vpp
+Branch: refs/heads/master
