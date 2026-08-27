@@ -1,0 +1,22 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "08ff955a_774f3d2f",
+        "filename": "src/vnet/sfdp/sfdp.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 436,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-08-27T09:11:47Z",
+      "side": 1,
+      "message": "The `expiry_pending` flag and the timer-refresh guard address the handle-reuse issue, thanks.\n\nI think deterministic coverage is still needed. The current consecutive-call test can pass if `sfdp-expire` processes the first batch before the second API request, so its final zero-session assertion does not verify stacking. Could we add narrowly scoped test plumbing to hold the expiry node disabled across both calls, then re-enable it and verify that all ten distinct sessions are removed?",
+      "parentUuid": "a60ff9b0_322d5490",
+      "revId": "857f3528fd0017edca9126b5e22013ad6d457f58",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
