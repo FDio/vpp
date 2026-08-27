@@ -365,7 +365,7 @@ func StopClientPcap() TcpHarnessAction {
 func ReadClientPcap(dst *[]tcpharness.PcapIPv4TCPPacket) TcpHarnessAction {
 	return TcpHarnessActionFunc(func(s *TcpHarnessSuite, st *TcpHarnessScenarioState) {
 		AssertNotNil(dst)
-		packets, err := tcpharness.ReadPcapIPv4TCPPackets(s.GetPcapTracePath(s.Containers.ClientVpp.Name))
+		packets, err := tcpharness.ReadPcapIPv4TCPPackets(s.Containers.ClientVpp.VppInstance.PcapTracePath())
 		AssertNil(err)
 		*dst = packets
 	})
@@ -654,9 +654,7 @@ func ParseClientVppSessionStats(output string) TcpHarnessClientSessionStats {
 }
 
 func (s *TcpHarnessSuite) StartPcapTrace(vpp *VppInstance) *TcpHarnessPcapTrace {
-	Log(vpp.Vppctl(fmt.Sprintf(
-		"pcap trace rx tx max 10000 max-bytes-per-pkt %d intfc any file vppTest.pcap",
-		tcpHarnessPcapMaxBytesPerPkt)))
+	vpp.EnablePcapTraceMaxBytes(tcpHarnessPcapMaxBytesPerPkt)
 	return &TcpHarnessPcapTrace{vpp: vpp}
 }
 
@@ -788,10 +786,6 @@ func (s *TcpHarnessSuite) StopTcpTestEndpointServer() {
 func (s *TcpHarnessSuite) StopTcpTestEndpoints() {
 	s.StopTcpTestEndpointClient()
 	s.StopTcpTestEndpointServer()
-}
-
-func (s *TcpHarnessSuite) GetPcapTracePath(vppName string) string {
-	return filepath.Join(LogDir, GetCurrentTestName(), s.GetTestId(), vppName+".pcap")
 }
 
 func (s *TcpHarnessSuite) SetupSuite() {

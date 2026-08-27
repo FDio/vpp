@@ -40,6 +40,7 @@ var IsVerbose = flag.Bool("verbose", false, "verbose test output")
 var ParallelTotal = flag.Lookup("ginkgo.parallel.total")
 var IsVppDebug = flag.Bool("debug", false, "attach gdb to vpp")
 var DryRun = flag.Bool("dryrun", false, "set up containers but don't run tests")
+var IsPcap = flag.Bool("pcap", false, "capture packets on all VPP instances")
 var Timeout = flag.Int("timeout", 5, "test timeout override (in minutes)")
 var HostPpid = flag.Int("host_ppid", os.Getppid(), "automatically set in Makefile")
 var RunId = flag.String("run_id", "", "unique identifier of this test run, automatically set in Makefile")
@@ -330,11 +331,29 @@ func (s *HstSuite) TeardownTest() {
 	// reset to defaults
 	s.CpusPerContainer = *NConfiguredCpus
 	s.CpusPerVppContainer = *NConfiguredVppCpus
+	s.CollectPcapTraces()
 	coreDump := s.WaitForCoreDump()
 	s.ResetContainers()
 
 	if coreDump {
 		Fail("VPP crashed")
+	}
+}
+
+// CollectPcapTraces saves the packet capture of every VPP instance still running one
+func (s *HstSuite) CollectPcapTraces() {
+	for _, container := range s.StartedContainers {
+		vpp := container.VppInstance
+		if vpp == nil || !vpp.pcapTraceEnabled {
+			continue
+		}
+		// only VPP itself can write the capture out, and failing to reach it here
+		// would mask the crash that killed it
+		if !vpp.isRunning() {
+			Log("%s: VPP is not running, skipping pcap trace collection", container.Name)
+			continue
+		}
+		vpp.CollectPcapTrace()
 	}
 }
 

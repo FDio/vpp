@@ -89,6 +89,9 @@ const (
 	defaultApiSocketFilePath = "/var/run/vpp/api.sock"
 	defaultLogFilePath       = "/var/log/vpp/vpp.log"
 	Consistent_qp            = 256
+
+	pcapTraceFileName              = "vppTest.pcap"
+	pcapTraceDefaultMaxBytesPerPkt = 1500
 )
 
 type VppInstance struct {
@@ -98,6 +101,7 @@ type VppInstance struct {
 	ApiStream        api.Stream
 	Cpus             []int
 	CpuConfig        VppCpuConfig
+	pcapTraceEnabled bool
 }
 
 type VppCpuConfig struct {
@@ -252,7 +256,17 @@ func (vpp *VppInstance) Start() error {
 
 	AddReportEntry("VPP version", vpp.Vppctl("show version verbose"), ReportEntryVisibilityNever)
 
+	if *IsPcap {
+		vpp.EnablePcapTrace()
+	}
+
 	return nil
+}
+
+// isRunning reports whether the VPP process is still alive
+func (vpp *VppInstance) isRunning() bool {
+	pid, err := vpp.Container.Exec(false, "pidof vpp")
+	return err == nil && strings.TrimSpace(pid) != ""
 }
 
 func (vpp *VppInstance) Stop() {
@@ -934,14 +948,37 @@ func (vpp *VppInstance) CollectEventLogs() {
 
 // EnablePcapTrace enables packet capture on all interfaces and maximum 10000 packets
 func (vpp *VppInstance) EnablePcapTrace() {
-	Log(vpp.Vppctl("pcap trace rx tx max 10000 max-bytes-per-pkt 1500 intfc any file vppTest.pcap"))
+	vpp.EnablePcapTraceMaxBytes(pcapTraceDefaultMaxBytesPerPkt)
 }
 
-// CollectPcapTrace saves pcap trace to the test execution directory
-func (vpp *VppInstance) CollectPcapTrace() {
+// EnablePcapTraceMaxBytes enables packet capture on all interfaces and maximum 10000 packets,
+// capturing at most 'maxBytesPerPkt' bytes of each packet
+func (vpp *VppInstance) EnablePcapTraceMaxBytes(maxBytesPerPkt int) {
+	// VPP rejects a capture while another one is running
+	if vpp.pcapTraceEnabled {
+		vpp.DisablePcapTrace()
+	}
+	Log(vpp.Vppctl("pcap trace rx tx max 10000 max-bytes-per-pkt %d intfc any file %s",
+		maxBytesPerPkt, pcapTraceFileName))
+	vpp.pcapTraceEnabled = true
+}
+
+// DisablePcapTrace stops packet capture and saves it to a file inside the container
+func (vpp *VppInstance) DisablePcapTrace() {
 	Log(vpp.Vppctl("pcap trace off"))
-	targetDir := vpp.Container.Suite.getLogDirPath()
-	err := vpp.Container.GetFile("/tmp/vppTest.pcap", targetDir+"/"+vpp.Container.Name+".pcap")
+	vpp.pcapTraceEnabled = false
+}
+
+// PcapTracePath is where CollectPcapTrace saves the packet capture of this instance
+func (vpp *VppInstance) PcapTracePath() string {
+	// BaseName, not Name: same reasoning as in Container.saveLogs()
+	return vpp.Container.Suite.getLogDirPath() + vpp.Container.BaseName + ".pcap"
+}
+
+// CollectPcapTrace stops packet capture and saves it to the test execution directory
+func (vpp *VppInstance) CollectPcapTrace() {
+	vpp.DisablePcapTrace()
+	err := vpp.Container.GetFile("/tmp/"+pcapTraceFileName, vpp.PcapTracePath())
 	if err != nil {
 		Log(fmt.Sprint(err))
 	}

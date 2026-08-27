@@ -49,6 +49,10 @@ ifeq ($(CPU0),)
 CPU0=false
 endif
 
+ifeq ($(PCAP),)
+PCAP=false
+endif
+
 # RUN_ID lets several checkouts run 'make test' at once. It names the Ginkgo
 # container owning the run's network namespace, is part of every container name,
 # and labels every container so cleanup can target one run. Defaults to the branch
@@ -177,7 +181,7 @@ DOCKER_COMMON_ARGS:=$(DOCKER_TTY) --rm $(DOCKER_CAPABILITIES) $(DOCKER_DEVICES) 
 		--repeat=$(REPEAT) --cpu0=$(CPU0) --dryrun=$(DRYRUN) --skip=$(SKIP) --no_color=$(NO_COLOR) \
 		--timeout=$(TIMEOUT) --ginkgo_timeout=$(GINKGO_TIMEOUT) --vpp_cpus=$(VPP_CPUS) --hs_root=$(HS_ROOT) \
 		$(LABEL_ARG) --host_ppid=$$PPID --run_id=$(RUN_ID) $(SEED_ARG) \
-		--hyperthread=$(HT) --mw_parallel=$(MW_PARALLEL) $(MW_WORKERS_PER_NUMA_ARG)
+		--hyperthread=$(HT) --mw_parallel=$(MW_PARALLEL) $(MW_WORKERS_PER_NUMA_ARG) --pcap=$(PCAP)
 
 .PHONY: help
 help:
@@ -211,6 +215,7 @@ help:
 	@echo " MW_WORKERS_PER_NUMA=[n|auto] - MW workers per NUMA node; only valid with MW_PARALLEL=true (auto by default)"
 	@echo " NO_COLOR=[true|false]    - disables colorful Docker and Ginkgo output"
 	@echo " PARALLEL=[n|auto]        - number of test processes; auto splits MW into NUMA-aware phases when MW_PARALLEL=true"
+	@echo " PCAP=[true|false]        - capture packets on every VPP instance (false by default)"
 	@echo " PERSIST=[true|false]     - whether clean up topology and dockers after test"
 	@echo " REPEAT=[n]               - repeat the selected test sequence N additional times or until failure"
 	@echo " RUN_ID=[id]              - isolates this run's containers from concurrent runs (default = branch name)"

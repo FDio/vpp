@@ -452,9 +452,16 @@ Utility methods
 **Packet Capture**
 
 It is possible to use VPP pcap trace to capture received and sent packets.
-You just need to add ``EnablePcapTrace`` to ``SetupTest`` method in test suite and ``CollectPcapTrace`` to ``TeardownTest``.
-This way pcap trace is enabled on all interfaces and to capture maximum 10000 packets.
-Your pcap file will be located in the test execution directory.
+The easiest way is to run tests with ``PCAP=true``:
+
+::
+
+    $ make test TEST=HttpClientGetResponseBodyTest PCAP=true
+
+This enables pcap trace on every VPP instance right after it starts and collects it when the test ends.
+To capture only a part of a test, call ``EnablePcapTrace`` and ``CollectPcapTrace`` on the VPP instance
+directly. Both ways capture packets on all interfaces, up to a maximum of 10000 packets. Your pcap file
+will be located in the test execution directory, named after the container the VPP instance runs in.
 
 **Event Logger**
 
