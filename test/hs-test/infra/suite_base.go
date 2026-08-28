@@ -424,6 +424,17 @@ func (s *HstSuite) SkipIfArm() {
 	}
 }
 
+// SkipIfLDPreloadASan skips LD_PRELOAD-based VCL tests on ASAN builds. The VCL
+// shim (and its dependencies) are instrumented and reference __asan_* symbols
+// that are only provided by the statically-sanitized VPP executable. When the
+// shim is LD_PRELOADed into a non-sanitized binary (iperf3, redis, nginx, etc.)
+// the loader cannot resolve them and the process aborts on start.
+func (s *HstSuite) SkipIfLDPreloadASan() {
+	if IsAsanBuild() {
+		s.Skip("LD_PRELOAD VCL tests are not supported on ASAN builds")
+	}
+}
+
 type coreInfo struct {
 	file    string
 	binPath string

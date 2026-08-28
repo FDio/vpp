@@ -110,6 +110,7 @@ func RedisCutThruMWTest(s *NoTopoSuite) {
 }
 
 func redisCutThru(s *NoTopoSuite) {
+	s.SkipIfLDPreloadASan()
 	s.SkipIfArm()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -191,6 +192,7 @@ func LdpWgetVppProxyNginxCutThruSmallFifoTest(s *VppProxySuite) {
 }
 
 func ldpWgetVppProxyNginxCutThru(s *VppProxySuite, proxyFifoSize string, vclFifoSize int, wgetArgs, expectedStatus string) {
+	s.SkipIfLDPreloadASan()
 	s.SetupNginxServer()
 	cleanup := configureVppProxyLdpClient(s, vclFifoSize)
 	defer cleanup()
@@ -275,6 +277,7 @@ func RunLdpWgetContainer(clientCont *Container, args string) string {
 
 // only runs iperf for 5s
 func ldPreloadIperfCutThru(s *NoTopoSuite, extraClientArgs string) float64 {
+	s.SkipIfLDPreloadASan()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	s.CreateGenericVclConfig(s.Containers.Vpp)

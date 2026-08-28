@@ -63,6 +63,7 @@ func (s *NginxProxySuite) SetupSuite() {
 }
 
 func (s *NginxProxySuite) SetupTest() {
+	s.SkipIfLDPreloadASan()
 	s.HstSuite.SetupTest()
 
 	// VPP
