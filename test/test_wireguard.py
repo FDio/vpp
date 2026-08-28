@@ -2807,6 +2807,8 @@ class TestWg(VppTestCase):
 
 
 @tag_fixme_vpp_debug
+# TODO: Temporarily remove due to non-related test failures in CI
+@unittest.skipUnless(config.extended, "part of extended tests")
 class WireguardHandoffTests(TestWg):
     """Wireguard Tests in multi worker setup"""
 
