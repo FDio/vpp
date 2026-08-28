@@ -4,8 +4,8 @@
 
 /* teib_vnet.c: the TEIB service as seen by its consumers.
  *
- * This holds no entries of its own: it dispatches to the bound implementation
- * and fans notifications out to the listeners.
+ * This holds no entries of its own: it dispatches to the implementation bound
+ * by the TEIB plugin and fans notifications out to the listeners.
  */
 
 #include <vnet/teib/teib_impl.h>
@@ -14,13 +14,13 @@
 
 /* The service's startup lifecycle.
  *
- * Consumers cannot tell whether TEIB is unavailable or has merely not been
- * initialised yet. The states below give them a point, teib_init_complete(),
- * by which the answer is final:
+ * The TEIB plugin is optional, so consumers cannot tell whether TEIB is
+ * unavailable or has merely not been initialised yet. The states below give
+ * them a point, teib_init_complete(), by which the answer is final:
  *
  *   UNFINALIZED ---------------------.
  *       |                            |
- *       | teib_impl_bind             | no implementation
+ *       | teib_impl_bind             | TEIB plugin absent
  *       v                            |
  *     BOUND -------------------------+
  *       |                            |
@@ -48,7 +48,7 @@ typedef struct teib_vnet_main_t_
 
 static teib_vnet_main_t teib_vnet_main;
 
-/* Close the binding window and settle TEIB availability. The implementation
+/* Close the binding window and settle TEIB availability. The TEIB plugin
  * orders itself before this; consumers order themselves after it. */
 static clib_error_t *
 teib_init_complete (vlib_main_t *vm)
@@ -64,6 +64,12 @@ teib_init_complete (vlib_main_t *vm)
 }
 
 VLIB_INIT_FUNCTION (teib_init_complete);
+
+bool
+teib_is_available (void)
+{
+  return (TEIB_STATE_AVAILABLE == teib_vnet_main.state);
+}
 
 clib_error_t *
 teib_impl_bind (const teib_impl_vft_t *vft)
