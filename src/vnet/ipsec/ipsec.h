@@ -176,6 +176,12 @@ typedef struct
   u8 input_flow_cache_flag;
 
   u8 async_mode;
+
+  /* Is TEIB available? Protecting a destination-less P2MP tunnel needs it to
+     learn the peer's underlay address. Cached once by
+     ipsec_tunnel_protect_init and immutable thereafter. */
+  bool teib_available;
+
   u16 msg_id_base;
 
   ipsec_sa_t *sa_pool;

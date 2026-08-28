@@ -4,7 +4,7 @@
 
 /* teib.h: Tunnel Endpoint Information Base */
 
-#include <vnet/teib/teib_internal.h>
+#include <teib/teib_internal.h>
 #include <vnet/teib/teib_impl.h>
 #include <vnet/fib/fib_table.h>
 #include <vnet/ip/ip6_ll_table.h>

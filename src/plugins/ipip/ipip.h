@@ -79,6 +79,10 @@ typedef struct
   bool ip4_protocol_registered;
   bool ip6_protocol_registered;
 
+  /* Is TEIB available? P2MP tunnels need it to resolve their peers. Cached
+     once by ipip_init and immutable thereafter. */
+  bool teib_available;
+
   u16 msg_id_base;
 } ipip_main_t;
 
