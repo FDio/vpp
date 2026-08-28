@@ -1299,17 +1299,12 @@ list(APPEND VNET_API_FILES syslog/syslog.api)
 ##############################################################################
 
 list (APPEND VNET_SOURCES
-  teib/teib_api.c
-  teib/teib_cli.c
-  teib/teib.c
   teib/teib_vnet.c
 )
 
 list(APPEND VNET_HEADERS
   teib/teib.h
 )
-
-list(APPEND VNET_API_FILES teib/teib.api)
 
 ##############################################################################
 # TM

@@ -1222,6 +1222,10 @@ class TestGRE(VppTestCase):
         route_via_tun_2.remove_vpp_config()
         gre_if.remove_vpp_config()
 
+    @unittest.skipIf(
+        "teib" in config.excluded_plugins,
+        "Exclude tests requiring TEIB plugin",
+    )
     def test_mgre(self):
         """mGRE IPv4 tunnel Tests"""
 
@@ -1350,6 +1354,10 @@ class TestGRE(VppTestCase):
             gre_if.admin_down()
             gre_if.unconfig_ip4()
 
+    @unittest.skipIf(
+        "teib" in config.excluded_plugins,
+        "Exclude tests requiring TEIB plugin",
+    )
     def test_mgre_nh_in_vrf(self):
         """mGRE IPv4 tunnel with an underlay next-hop in a VRF"""
 
@@ -1394,6 +1402,10 @@ class TestGRE(VppTestCase):
         route_via_tun.remove_vpp_config()
         gre_if.remove_vpp_config()
 
+    @unittest.skipIf(
+        "teib" in config.excluded_plugins,
+        "Exclude tests requiring TEIB plugin",
+    )
     def test_mgre6(self):
         """mGRE IPv6 tunnel Tests"""
 

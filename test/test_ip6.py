@@ -3634,7 +3634,8 @@ class TestIP6LinkLocal(VppTestCase):
         gre_if.remove_vpp_config()
 
     @unittest.skipIf(
-        "gre" in config.excluded_plugins, "Exclude tests requiring GRE plugin"
+        "gre" in config.excluded_plugins or "teib" in config.excluded_plugins,
+        "Exclude tests requiring GRE and TEIB plugins",
     )
     def test_ip6_ll_p2mp(self):
         """IPv6 Link Local P2MP (GRE)"""

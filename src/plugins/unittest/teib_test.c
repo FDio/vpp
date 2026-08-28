@@ -11,6 +11,7 @@
 
 #include <vlib/vlib.h>
 #include <vnet/vnet.h>
+#include <vnet/api_errno.h>
 #include <vnet/teib/teib.h>
 #include <vnet/fib/fib_table.h>
 
@@ -296,6 +297,31 @@ done:
   return (res);
 }
 
+static int
+teib_test_unavailable (u32 sw_if_index)
+{
+  ip4_address_t v4_nh = { .as_u32 = clib_host_to_net_u32 (0x0a630001) }; /* 10.99.0.1 */
+  teib_test_walk_ctx_t ctx;
+  teib_entry_info_t info;
+  ip_address_t peer, nh;
+  int res = 0;
+
+  teib_test_mk_peer (sw_if_index, 128, &peer);
+  ip_address_set (&nh, &v4_nh, AF_IP4);
+
+  TEIB_TEST_I (!teib_is_available (), "TEIB reports itself unavailable");
+  TEIB_TEST_I (VNET_API_ERROR_FEATURE_DISABLED == teib_entry_add (sw_if_index, &peer, 0, &nh),
+	       "add is refused");
+  TEIB_TEST_I (VNET_API_ERROR_FEATURE_DISABLED == teib_entry_del (sw_if_index, &peer),
+	       "delete is refused");
+  TEIB_TEST_I (!teib_entry_find (sw_if_index, &peer, &info), "find misses");
+
+  teib_test_walk (sw_if_index, &ctx);
+  TEIB_TEST_I (0 == ctx.n_visited, "the walk visits nothing");
+
+  return (res);
+}
+
 static clib_error_t *
 teib_test (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
 {
@@ -385,4 +411,36 @@ VLIB_CLI_COMMAND (test_teib_command, static) = {
   .short_help = "test teib <interface-1> <interface-2> nh-table-id <ID> - "
 		"teib unit tests - DO NOT RUN ON A LIVE SYSTEM",
   .function = teib_test,
+};
+
+/* A separate command, because availability is settled once at startup: a
+ * process either has TEIB or it does not, and the two cannot be exercised in
+ * the same run. */
+static clib_error_t *
+teib_test_unavailable_cli (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
+{
+  u32 sw_if_index = ~0;
+  int res;
+
+  if (!unformat (input, "%U", unformat_vnet_sw_interface, vnet_get_main (), &sw_if_index))
+    return clib_error_return (0, "interface required");
+
+  if (NULL == ip4_interface_first_address (&ip4_main, sw_if_index, 0))
+    return clib_error_return (0, "the interface needs an IPv4 address");
+
+  res = teib_test_unavailable (sw_if_index);
+
+  fflush (NULL);
+
+  if (res)
+    return clib_error_return (0, "TEIB Unit Test Failed");
+
+  return NULL;
+}
+
+VLIB_CLI_COMMAND (test_teib_unavailable_command, static) = {
+  .path = "test teib unavailable",
+  .short_help = "test teib unavailable <interface> - teib unit tests for a "
+		"process without TEIB - DO NOT RUN ON A LIVE SYSTEM",
+  .function = teib_test_unavailable_cli,
 };
