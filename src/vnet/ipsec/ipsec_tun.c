@@ -650,6 +650,16 @@ ipsec_tun_protect_update (u32 sw_if_index,
 	     in which case we use the nh that this is protection for */
 	  teib_entry_info_t info;
 
+	  if (!im->teib_available)
+	    {
+	      /* the peer's underlay address could only come from the TEIB and
+		 TEIB is unavailable for the lifetime of this process. */
+	      rv = VNET_API_ERROR_FEATURE_DISABLED;
+	      clib_mem_free (itp->itp_key);
+	      pool_put (ipsec_tun_protect_pool, itp);
+	      goto out_unlock;
+	    }
+
 	  ipsec_tun_protect_update_from_teib (
 	    itp, (teib_entry_find (sw_if_index, nh, &info) ? &info : NULL));
 	}
@@ -690,6 +700,7 @@ ipsec_tun_protect_update (u32 sw_if_index,
       ipsec_tun_protect_config (im, itp, sa_out, sas_in);
     }
 
+out_unlock:
   ipsec_sa_unlock (sa_out);
   vec_foreach (saip, sas_in) ipsec_sa_unlock (*saip);
   vec_free (sas_in);
@@ -980,6 +991,8 @@ ipsec_tunnel_protect_init (vlib_main_t *vm)
 
   ipsec_tun_protect_logger = vlib_log_register_class ("ipsec", "tun");
 
+  im->teib_available = teib_is_available ();
+
   teib_register (&ipsec_tun_teib_vft);
 
   vnet_feature_register (ipsec_tun_feature_update, NULL);
@@ -987,4 +1000,9 @@ ipsec_tunnel_protect_init (vlib_main_t *vm)
   return 0;
 }
 
-VLIB_INIT_FUNCTION (ipsec_tunnel_protect_init);
+/* TEIB availability is only final once its initialization has completed.
+ * IPsec as a whole does not depend on TEIB; only protection of a
+ * destination-less P2MP tunnel does. */
+VLIB_INIT_FUNCTION (ipsec_tunnel_protect_init) = {
+  .runs_after = VLIB_INITS ("ipsec_init", "teib_init_complete"),
+};

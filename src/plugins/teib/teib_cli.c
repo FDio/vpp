@@ -3,7 +3,7 @@
  * Copyright (c) 2019, 2026 Cisco and/or its affiliates.
  */
 
-#include <vnet/teib/teib_internal.h>
+#include <teib/teib_internal.h>
 
 static clib_error_t *
 teib_add (vlib_main_t * vm,
