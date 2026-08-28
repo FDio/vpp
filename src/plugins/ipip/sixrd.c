@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0
- * Copyright (c) 2018 Cisco and/or its affiliates.
+ * Copyright (c) 2018, 2026 Cisco and/or its affiliates.
  */
 
 /* sixrd.c - 6RD specific functions (RFC5969) */
@@ -481,17 +481,15 @@ const static fib_node_vft_t sixrd_fib_node_vft = {
 static clib_error_t *
 sixrd_init (vlib_main_t * vm)
 {
-  clib_error_t *error = 0;
-
-  /* Make sure the IPIP tunnel subsystem is initialised */
-  error = vlib_call_init_function (vm, ipip_init);
-
   sixrd_adj_delegate_type =
     adj_delegate_register_new_type (&sixrd_adj_delegate_vft);
   sixrd_fib_node_type =
     fib_node_register_new_type ("sixrd", &sixrd_fib_node_vft);
 
-  return error;
+  return (NULL);
 }
 
-VLIB_INIT_FUNCTION (sixrd_init);
+VLIB_INIT_FUNCTION (sixrd_init) = {
+  /* Make sure the IPIP tunnel subsystem is initialised */
+  .runs_after = VLIB_INITS ("ipip_init"),
+};
