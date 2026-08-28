@@ -218,10 +218,12 @@ M:	Damjan Marion <damarion@cisco.com>
 M:	Neale Ranns <neale@graphiant.com>
 F:	src/vnet/crypto/
 
-VNET TEIB
+TEIB
 I:	teib
+Y:	src/plugins/teib/FEATURE.yaml
 M:	Neale Ranns <neale@graphiant.com>
 F:	src/vnet/teib/
+F:	src/plugins/teib/
 
 VNET SPAN
 I:	span

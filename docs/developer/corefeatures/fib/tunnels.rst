@@ -54,6 +54,12 @@ with underlay address is an entry in the Tunnel Endpoint Information
 Base (TEIB); the *tieb_entry_t*. TEIB entries are created by the
 control plane (e.g. NHRP (RFC2332)).
 
+The TEIB database, along with its CLI and binary API, is provided by the
+optional *teib* plugin. Tunnel consumers use a lookup API that is part of
+VNET itself, so they load whether or not the plugin is present. Without it
+there are no mappings, so a multi-point tunnel's mid-chain adjacencies
+remain unresolved and drop.
+
 Each mid-chain adjacency on a multi-point tunnel is stacked on the
 *fib_entry_t* object that resolves the peer's underlay address. The
 glean adjacency on the tunnel resolves via a drop, since broadcasts

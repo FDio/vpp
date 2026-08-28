@@ -1,0 +1,11 @@
+---
+name: Tunnel Endpoint Information Base
+maintainer: Neale Ranns <neale@graphiant.com>
+features:
+  - Maps multipoint tunnel overlay peers to underlay next hops
+  - Updates tunnel adjacencies when endpoint mappings change
+description: |-
+  Provides the Tunnel Endpoint Information Base used by multipoint tunnel
+  consumers such as GRE, IPIP, and IPsec.
+state: production
+properties: [API, CLI, MULTITHREAD]
