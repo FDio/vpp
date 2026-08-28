@@ -51,6 +51,16 @@ typedef struct teib_entry_info_t_
 } teib_entry_info_t;
 
 /**
+ * Is TEIB available to serve the calls below?
+ *
+ * The answer is settled during VLIB initialization and is then immutable for
+ * the lifetime of the process, so a consumer may read it once and keep the
+ * result. An init-time caller must order itself after 'teib_init_complete',
+ * otherwise it may read the answer before it is final.
+ */
+extern bool teib_is_available (void);
+
+/**
  * Add a TEIB entry. Returns VNET_API_ERROR_FEATURE_DISABLED if TEIB is
  * unavailable.
  */

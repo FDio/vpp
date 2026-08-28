@@ -452,6 +452,7 @@ COV_REM_HST_UNUSED_FEAT= "*/plugins/ping/*" "*/plugins/unittest/mpcap_node.c" "*
 					 "*/vnet/ipsec/*" "*/vnet/l2/*" "*/vnet/mpls/*" \
 					 "*/vnet/pg/*" "*/vnet/policer/*" "*/vnet/snap/*" \
 					 "*/vnet/span/*" "*/vnet/srv6/*" "*/vnet/teib/*" \
+					 "*/plugins/teib/*" \
 					 "*/vnet/tunnel/*" "*/vpp-api/vapi/*" "*/vpp/app/vpe_cli.c" \
 					 "*/vppinfra/pcap.c" "*/vppinfra/pcap_funcs.h"
 else

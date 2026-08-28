@@ -54,8 +54,15 @@ by an entry in the Tunnel Endpoint Information Base (TEIB). Tunnel consumers
 access a self-contained snapshot of an entry as a *teib_entry_info_t*. TEIB
 entries are created by the control plane (e.g. NHRP (RFC2332)).
 
+TEIB is implemented by the *teib* plugin, including the CLI and binary API
+used to manage its entries. If the plugin is not loaded, TEIB is unavailable.
+VPP and point-to-point tunnels remain available, but configuration that
+requires TEIB, such as multipoint GRE or IPIP tunnels or IPsec protection of a
+destination-less tunnel, is rejected.
+
 Each mid-chain adjacency on a multi-point tunnel is stacked on the
 *fib_entry_t* object that resolves the peer's underlay address. The
 glean adjacency on the tunnel resolves via a drop, since broadcasts
 are not possible. A multicast adjacency on a multi-point tunnel is
 currently a work in progress.
+
