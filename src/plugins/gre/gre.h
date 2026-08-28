@@ -293,6 +293,10 @@ typedef struct
   /* Record used instances */
   uword *instance_used;
 
+  /* Is TEIB available? Multipoint tunnels need it to resolve their peers.
+     Cached once by gre_interface_init and immutable thereafter. */
+  bool teib_available;
+
   u16 msg_id_base;
 } gre_main_t;
 

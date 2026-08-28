@@ -523,6 +523,10 @@ class TestIPIP(VppTestCase):
     def payload(self, len):
         return "x" * len
 
+    @unittest.skipIf(
+        "teib" in config.excluded_plugins,
+        "Exclude tests requiring TEIB plugin",
+    )
     def test_mipip4(self):
         """p2mp IPv4 tunnel Tests"""
 
