@@ -733,6 +733,11 @@ ipip_add_tunnel (ipip_transport_t transport, u32 instance, ip46_address_t *src, 
   if (tmode == TUNNEL_MODE_MP && !ip46_address_is_zero (dst))
     return (VNET_API_ERROR_INVALID_DST_ADDRESS);
 
+  if (tmode == TUNNEL_MODE_MP && !gm->teib_available)
+    /* TEIB supplies the peers of a P2MP tunnel and is unavailable for the
+       lifetime of this process */
+    return (VNET_API_ERROR_FEATURE_DISABLED);
+
   mode = (tmode == TUNNEL_MODE_P2P ? IPIP_MODE_P2P : IPIP_MODE_P2MP);
   ipip_mk_key_i (transport, mode, src, dst, fib_index, &key);
 
@@ -875,10 +880,13 @@ ipip_init (vlib_main_t * vm)
   gm->vnet_main = vnet_get_main ();
   gm->tunnel_by_key =
     hash_create_mem (0, sizeof (ipip_tunnel_key_t), sizeof (uword));
+  gm->teib_available = teib_is_available ();
 
   teib_register (&ipip_teib_vft);
 
   return 0;
 }
 
-VLIB_INIT_FUNCTION (ipip_init);
+VLIB_INIT_FUNCTION (ipip_init) = {
+  .runs_after = VLIB_INITS ("teib_init_complete"),
+};

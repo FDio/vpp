@@ -4,9 +4,9 @@
 
 /* teib_impl.h: bind the VNET-owned TEIB API to its implementation.
  *
- * The TEIB implementation owns the entries and binds itself once during VLIB
- * initialization. This is the private integration contract between the
- * implementation and VNET; tunnel consumers use vnet/teib/teib.h instead.
+ * The TEIB plugin owns the entries and binds their implementation once during
+ * VLIB initialization. This is the private integration contract between that
+ * plugin and VNET; tunnel consumers use vnet/teib/teib.h instead.
  */
 
 #ifndef __TEIB_IMPL_H__
@@ -43,8 +43,8 @@ typedef struct teib_impl_vft_t_
 } teib_impl_vft_t;
 
 /**
- * Bind the TEIB implementation. Called once during init, after it is ready to
- * serve the methods above.
+ * Bind the TEIB implementation. Called once by the TEIB plugin during init,
+ * after it is ready to serve the methods above.
  *
  * Returns an error if an implementation is already bound, initialization has
  * been finalized, or the VFT is incomplete.
