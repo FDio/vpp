@@ -28,6 +28,26 @@ rdma_device_output_mlx5_log_error (vlib_main_t *vm, const rdma_device_t *rd, rdm
 {
   const struct mlx5_err_cqe *ecqe = (const void *) cqe;
   u32 s_wqe_opcode_qpn = be32toh (ecqe->s_wqe_opcode_qpn);
+  u16 cqe_wqe_counter = be16toh (ecqe->wqe_counter);
+  u32 sq_mask = pow2_mask (txq->dv_sq_log2sz);
+  u32 buf_mask = pow2_mask (txq->bufs_log2sz);
+  const rdma_mlx5_wqe_t *wqe = txq->dv_sq_wqes + (cqe_wqe_counter & sq_mask);
+  u32 opmod_idx_opcode = be32toh (wqe->ctrl.opmod_idx_opcode);
+  u32 qpn_ds = be32toh (wqe->ctrl.qpn_ds);
+  u32 dseg_len = be32toh (wqe->dseg.byte_count);
+  u64 dseg_addr = be64toh (wqe->dseg.addr);
+  u64 mr_start = pointer_to_uword (rd->mr->addr);
+  u64 mr_end = mr_start + rd->mr->length;
+  u16 sw_inflight = RDMA_TXQ_USED_SZ (txq->head, txq->tail);
+  u16 sw_offset = RDMA_TXQ_USED_SZ (txq->head, cqe_wqe_counter);
+  u16 inline_hdr_sz = be16toh (wqe->eseg.inline_hdr_sz);
+  u16 wqe_index = (opmod_idx_opcode >> 8) & 0xffff;
+  u8 wqe_ds = qpn_ds & 0x3f;
+  u32 bi = txq->bufs[cqe_wqe_counter & buf_mask];
+  int owned = sw_offset < sw_inflight;
+  int bi_valid = ((uword) bi << CLIB_LOG2_CACHE_LINE_BYTES) < vm->buffer_main->buffer_mem_size;
+  int mr_ok = dseg_addr >= mr_start && dseg_addr <= mr_end && dseg_len <= mr_end - dseg_addr;
+  int eth_reserved_zero = wqe->eseg.rsvd0 == 0 && wqe->eseg.rsvd1 == 0 && wqe->eseg.rsvd2 == 0;
 
   txq->dv_cq_error_logged = 1;
   vlib_log_err (rdma_main.log_class,
@@ -37,6 +57,37 @@ rdma_device_output_mlx5_log_error (vlib_main_t *vm, const rdma_device_t *rd, rdm
 		vm->thread_index, txq->qp->qp_num, ecqe->op_own >> 4, ecqe->syndrome,
 		ecqe->vendor_err_synd, be16toh (ecqe->wqe_counter), s_wqe_opcode_qpn >> 24,
 		s_wqe_opcode_qpn & 0xffffff);
+  vlib_log_err (rdma_main.log_class,
+		"%s: txq %u: SQ head %u tail %u inflight %u DBR %u; WQE slot %u owned %u, "
+		"ctrl idx %u opcode 0x%02x QP %u ds %u sig 0x%02x stream %u fm_ce_se 0x%02x "
+		"imm 0x%08x; eth cs 0x%02x mss %u inline %u reserved-zero %u; "
+		"dseg len %u lkey 0x%08x mr-ok %u; buffer %u valid %u",
+		rd->name, (u32) (txq - rd->txqs), txq->head, txq->tail, sw_inflight,
+		be32toh (txq->dv_sq_dbrec[MLX5_SND_DBR]), cqe_wqe_counter & sq_mask, owned,
+		wqe_index, opmod_idx_opcode & 0xff, qpn_ds >> 8, wqe_ds, wqe->ctrl.signature,
+		be16toh (wqe->ctrl.dci_stream_channel_id), wqe->ctrl.fm_ce_se,
+		be32toh (wqe->ctrl.imm), wqe->eseg.cs_flags, be16toh (wqe->eseg.mss), inline_hdr_sz,
+		eth_reserved_zero, dseg_len, be32toh (wqe->dseg.lkey), mr_ok, bi, bi_valid);
+
+  if (owned && bi_valid)
+    {
+      vlib_buffer_t *b = vlib_get_buffer (vm, bi);
+      u32 expected_len = b->current_length >= inline_hdr_sz ? b->current_length - inline_hdr_sz : 0;
+      u64 expected_addr = vlib_buffer_get_current_va (b) + inline_hdr_sz;
+      int inline_match =
+	inline_hdr_sz <= sizeof (wqe->eseg.inline_hdr_start) + sizeof (wqe->eseg.inline_hdr) &&
+	inline_hdr_sz <= b->current_length &&
+	memcmp (wqe->eseg.inline_hdr_start, vlib_buffer_get_current (b), inline_hdr_sz) == 0;
+
+      vlib_log_err (rdma_main.log_class,
+		    "%s: txq %u: buffer %u current-length %u expected dseg len %u; "
+		    "WQE index-match %u QP-match %u inline-match %u len-match %u lkey-match %u "
+		    "addr-match %u",
+		    rd->name, (u32) (txq - rd->txqs), bi, b->current_length, expected_len,
+		    wqe_index == cqe_wqe_counter, (qpn_ds >> 8) == txq->qp->qp_num, inline_match,
+		    dseg_len == expected_len, be32toh (wqe->dseg.lkey) == rd->lkey,
+		    dseg_addr == expected_addr);
+    }
 }
 
 static_always_inline void
