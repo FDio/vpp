@@ -503,7 +503,7 @@ func (s *HstSuite) WaitForCoreDump() bool {
 					// this was most likely LDP and we want symbol table
 					libPath = fmt.Sprintf("build-root/build-vpp%s-native/vpp/lib/%s-linux-gnu", debug, archStr)
 				}
-				cmd := fmt.Sprintf("sudo gdb %s -c %s -ex 'set solib-search-path %s/%s' -ex 'bt full' -batch", binPath, corePath, *VppSourceFileDir, libPath)
+				cmd := fmt.Sprintf("sudo gdb %s -c %s -ex 'set solib-search-path %s/%s' -ex 'thread apply all bt full' -batch", binPath, corePath, *VppSourceFileDir, libPath)
 				Log(cmd)
 				output, _ := exechelper.Output(cmd)
 				if strings.Contains(core.binPath, "vpp") {
