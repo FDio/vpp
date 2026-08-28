@@ -2256,7 +2256,8 @@ class TestIpsecGre6IfEspTra(TemplateIpsec, IpsecTun6Tests):
 
 
 @unittest.skipIf(
-    "gre" in config.excluded_plugins, "Exclude tests depending on GRE plugin"
+    "gre" in config.excluded_plugins or "teib" in config.excluded_plugins,
+    "Exclude tests depending on GRE and TEIB plugins",
 )
 class TestIpsecMGreIfEspTra4(TemplateIpsec, IpsecTun4):
     """Ipsec mGRE ESP v4 TRA tests"""
@@ -2414,7 +2415,8 @@ class TestIpsecMGreIfEspTra4(TemplateIpsec, IpsecTun4):
 
 
 @unittest.skipIf(
-    "gre" in config.excluded_plugins, "Exclude tests depending on GRE plugin"
+    "gre" in config.excluded_plugins or "teib" in config.excluded_plugins,
+    "Exclude tests depending on GRE and TEIB plugins",
 )
 class TestIpsecMGreIfEspTra6(TemplateIpsec, IpsecTun6):
     """Ipsec mGRE ESP v6 TRA tests"""

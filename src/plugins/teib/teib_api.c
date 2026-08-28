@@ -10,14 +10,14 @@
 #include <vlibmemory/api.h>
 
 #include <vnet/api_errno.h>
-#include <vnet/teib/teib_internal.h>
+#include <teib/teib_internal.h>
 #include <vnet/ip/ip_types_api.h>
 #include <vnet/fib/fib_table.h>
 
 /* define message IDs */
 #include <vnet/format_fns.h>
-#include <vnet/teib/teib.api_enum.h>
-#include <vnet/teib/teib.api_types.h>
+#include <teib/teib.api_enum.h>
+#include <teib/teib.api_types.h>
 
 static u32 teib_base_msg_id;
 #define REPLY_MSG_ID_BASE teib_base_msg_id
@@ -97,7 +97,7 @@ vl_api_teib_dump_t_handler (vl_api_teib_dump_t * mp)
  * added the client registration handlers.
  * See .../vlib-api/vlibmemory/memclnt_vlib.c:memclnt_process()
  */
-#include <vnet/teib/teib.api.c>
+#include <teib/teib.api.c>
 
 static clib_error_t *
 teib_api_hookup (vlib_main_t * vm)

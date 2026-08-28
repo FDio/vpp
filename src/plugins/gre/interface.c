@@ -364,6 +364,11 @@ vnet_gre_tunnel_add (vnet_gre_tunnel_add_del_args_t *a, u32 outer_fib_index,
   u8 is_ipv6 = a->is_ipv6;
   gre_tunnel_key_t key;
 
+  if (a->mode == TUNNEL_MODE_MP && !gm->teib_available)
+    /* TEIB supplies the peers of a multipoint tunnel and is unavailable for
+       the lifetime of this process */
+    return VNET_API_ERROR_FEATURE_DISABLED;
+
   t = gre_tunnel_db_find (a, outer_fib_index, &key);
   if (NULL != t)
     return VNET_API_ERROR_IF_ALREADY_EXISTS;
@@ -813,9 +818,15 @@ const static teib_vft_t gre_teib_vft = {
 clib_error_t *
 gre_interface_init (vlib_main_t *vm)
 {
+  gre_main.teib_available = teib_is_available ();
+
   teib_register (&gre_teib_vft);
 
   return (NULL);
 }
 
-VLIB_INIT_FUNCTION (gre_interface_init);
+/* gre_init clears gre_main, and TEIB availability is only final once its
+ * initialization has completed, so this has to follow both. */
+VLIB_INIT_FUNCTION (gre_interface_init) = {
+  .runs_after = VLIB_INITS ("gre_init", "teib_init_complete"),
+};
