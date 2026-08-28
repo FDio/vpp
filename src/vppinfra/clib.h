@@ -163,6 +163,15 @@
 #define CLIB_MEMORY_STORE_BARRIER() __sync_synchronize ()
 #endif
 
+/* Order DMA device writes before subsequent CPU reads. */
+#if defined(__aarch64__)
+#define CLIB_DMA_RMB() asm volatile ("dmb oshld" ::: "memory")
+#elif defined(__x86_64__)
+#define CLIB_DMA_RMB() CLIB_COMPILER_BARRIER ()
+#else
+#define CLIB_DMA_RMB() CLIB_MEMORY_BARRIER ()
+#endif
+
 /* Arranges for function to be called before main. */
 #define INIT_FUNCTION(decl)			\
   decl __attribute ((constructor));		\
