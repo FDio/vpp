@@ -398,10 +398,12 @@ hc_session_connected_callback (u32 app_index, u32 ho_index, session_t *s,
       return -1;
     }
 
-  ho_session = hc_session_get (ho_index, transport_cl_thread ());
   wrk = hc_worker_get (s->thread_index);
   hc_session = hc_session_alloc (wrk);
   s_index = hc_session->session_index;
+  /* Refetch ho_session after the alloc: hc_session_alloc() may have grown and
+   * reallocated the same pool that ho_session points into, invalidating it. */
+  ho_session = hc_session_get (ho_index, transport_cl_thread ());
   clib_memcpy_fast (hc_session, ho_session, sizeof (*hc_session));
   hc_session->session_index = s_index;
   hc_session->thread_index = s->thread_index;
@@ -786,9 +788,11 @@ hc_rx_callback (session_t *s)
 		{
 		  u8 mime_len =
 		    clib_strnlen (mime_printable[i], mime_printable_max_len);
+		  /* content_type->base points into the raw, non-NULL-terminated
+		   * header buffer; use a fixed-count compare so we never read
+		   * past content_type->len into the ASAN redzone */
 		  if (content_type->len >= mime_len &&
-		      clib_strncmp (content_type->base, mime_printable[i],
-				    mime_len) == 0)
+		      clib_memcmp (content_type->base, mime_printable[i], mime_len) == 0)
 		    {
 		      hc_session->session_flags |= HC_S_FLAG_PRINTABLE_BODY;
 		      break;
@@ -832,7 +836,11 @@ hc_rx_callback (session_t *s)
     }
   u32 n_deq = clib_min (hc_session->to_recv, max_deq);
   u32 curr = vec_len (hc_session->http_response);
-  rv = svm_fifo_dequeue (s->rx_fifo, n_deq, hc_session->http_response + curr);
+  u8 *data = hc_session->http_response + curr;
+  /* vec_reset_length poisons the reserved capacity under ASAN; unpoison
+   * the destination bytes before dequeuing through the raw pointer */
+  clib_mem_unpoison (data, n_deq);
+  rv = svm_fifo_dequeue (s->rx_fifo, n_deq, data);
   if (rv < 0)
     {
       clib_warning ("app dequeue(n=%d) failed; rv = %d", n_deq, rv);
