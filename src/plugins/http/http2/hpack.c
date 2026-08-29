@@ -238,8 +238,17 @@ hpack_dynamic_table_add (hpack_dynamic_table_t *table, http_token_t *name,
 {
   u32 entry_size;
   hpack_dynamic_table_entry_t *e;
+  u8 *buf = 0;
 
   entry_size = name->len + value->len + HPACK_DYNAMIC_TABLE_ENTRY_OVERHEAD;
+
+  /* The new entry's name aor value may reference an entry that the eviction
+   * below is about to remove (RFC 7541 Section 4.4). Eviction resets that
+   * entry's buffer (poisoning it under ASAN), so assemble the payload into
+   * a temporary buffer before evicting to avoid reading freed data. */
+  vec_validate (buf, name->len + value->len - 1);
+  clib_memcpy (buf, name->base, name->len);
+  clib_memcpy (buf + name->len, value->base, value->len);
 
   /* make space or evict all */
   while (clib_ring_n_enq (table->entries) &&
@@ -248,15 +257,18 @@ hpack_dynamic_table_add (hpack_dynamic_table_t *table, http_token_t *name,
 
   /* attempt to add entry larger than the maximum size is not error */
   if (entry_size > table->size)
-    return;
+    {
+      vec_free (buf);
+      return;
+    }
 
   e = clib_ring_enq (table->entries);
   ASSERT (e);
   vec_validate (e->buf, name->len + value->len - 1);
-  clib_memcpy (e->buf, name->base, name->len);
-  clib_memcpy (e->buf + name->len, value->base, value->len);
+  clib_memcpy (e->buf, buf, name->len + value->len);
   e->name_len = name->len;
   table->used += entry_size;
+  vec_free (buf);
 
   HTTP_DBG (2, "%U: %U", format_http_bytes, e->buf, e->name_len,
 	    format_http_bytes, hpack_dynamic_table_entry_value_base (e),

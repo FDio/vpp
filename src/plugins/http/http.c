@@ -508,8 +508,13 @@ u8 *
 http_get_rx_buf (http_ctx_t *hc)
 {
   http_main_t *hm = &http_main;
-  vec_reset_length (hm->rx_bufs[hc->c_thread_index]);
-  return hm->rx_bufs[hc->c_thread_index];
+  u8 *buf = hm->rx_bufs[hc->c_thread_index];
+  vec_reset_length (buf);
+  /* buffer is used as raw scratch storage written through svm_fifo_read/peek;
+   * unpoison its full pre-allocated capacity since callers write past the zero
+   * length via raw pointers (vec_reset_length() poisons it under ASAN) */
+  clib_mem_unpoison (buf, vec_max_len (buf));
+  return buf;
 }
 
 u8 *
@@ -676,7 +681,8 @@ http_ts_accept_stream (session_t *stream_session)
 {
   session_t *conn_session;
   http_ctx_t *hc, *stream;
-  u32 stream_index, thresh;
+  u32 stream_index, thresh, hc_index;
+  clib_thread_index_t hc_thread, stream_thread;
   http_conn_handle_t hc_handle;
   int rv;
 
@@ -703,11 +709,21 @@ http_ts_accept_stream (session_t *stream_session)
   stream->state = HTTP_CONN_STATE_ESTABLISHED;
   stream->hc_http_conn_index = hc->hc_hc_index;
 
+  /* capture indices before the accept callback; it may allocate http ctxs
+   * and grow (realloc) the pool, invalidating the hc/stream pointers */
+  hc_index = hc->hc_hc_index;
+  hc_thread = hc->c_thread_index;
+  stream_thread = stream_session->thread_index;
+
   if ((rv = http_vfts[stream->version].transport_stream_accept_callback (stream, hc)))
     {
       http_ctx_free (stream);
       return rv;
     }
+
+  /* regrab hc and stream from the (possibly reallocated) pool */
+  hc = http_ctx_get_w_thread (hc_index, hc_thread);
+  stream = http_ctx_get_w_thread (stream_index, stream_thread);
 
   hc_handle.version = stream->version;
   hc_handle.conn_index = stream_index;

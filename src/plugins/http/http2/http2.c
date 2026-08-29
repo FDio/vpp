@@ -3516,10 +3516,13 @@ http2_rx_expect_default (http_ctx_t *hc)
   clib_thread_index_t thread_index = hc->c_thread_index;
 
   to_deq = http_io_ts_max_read (hc);
-  rx_buf = http_get_rx_buf (hc);
 
   while (to_deq >= HTTP2_FRAME_HEADER_SIZE)
     {
+      /* frame handlers below reuse (reset/realloc) the per-thread
+       * rx buffer via http_get_rx_buf_len(); re-fetch it on every
+       * iteration to avoid a stale / re-poisoned pointer */
+      rx_buf = http_get_rx_buf (hc);
       http_io_ts_read (hc, rx_buf, HTTP2_FRAME_HEADER_SIZE, 1);
       to_deq -= HTTP2_FRAME_HEADER_SIZE;
       http2_frame_header_read (rx_buf, &fh);

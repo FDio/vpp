@@ -657,7 +657,11 @@ http_path_sanitize (u8 *path)
   int i, ii;
 
   if (!path || vec_len (path) == 0)
-    return vec_new (u8, 0);
+    {
+      new_path = vec_new (u8, 0);
+      vec_terminate_c_string (new_path);
+      return new_path;
+    }
 
   segments = vec_new (u32, 1);
   /* first segment */
@@ -704,6 +708,7 @@ http_path_sanitize (u8 *path)
       if (segments_len[i])
 	vec_add (new_path, path + segments[i], segments_len[i]);
     }
+  vec_terminate_c_string (new_path);
   vec_free (segments);
   vec_free (segments_len);
   return new_path;
