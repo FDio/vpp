@@ -261,6 +261,11 @@ vp_proto_client_stream_tx_test_bytes (vp_test_session_t *es, u8 *test_data, u32 
   ASSERT (test_buf_len > 0);
   test_buf_offset = es->bytes_sent % test_buf_len;
 
+  /* Wrap so a full chunk still fits; & 0xff keeps the mod-256 byte phase. */
+  if (test_buf_len - test_buf_offset < max_send)
+    test_buf_offset = es->bytes_sent & 0xff;
+  ASSERT (test_buf_len - test_buf_offset >= max_send);
+
   rv = app_send_stream ((app_session_t *) es, test_data + test_buf_offset, max_send, 0);
   n_sent = vp_protos_check_tx_rv (rv);
   es->bytes_sent += n_sent;
@@ -1381,6 +1386,11 @@ vp_proto_http_client_tx_test_bytes (vp_test_session_t *es, u8 *test_data, u32 ma
   test_buf_len = vec_len (test_data);
   ASSERT (test_buf_len > 0);
   test_buf_offset = es->bytes_sent % test_buf_len;
+
+  /* Wrap so a full chunk still fits; & 0xff keeps the mod-256 byte phase. */
+  if (test_buf_len - test_buf_offset < max_send)
+    test_buf_offset = es->bytes_sent & 0xff;
+  ASSERT (test_buf_len - test_buf_offset >= max_send);
 
   seg[0].data = test_data + test_buf_offset;
   seg[0].len = max_send;

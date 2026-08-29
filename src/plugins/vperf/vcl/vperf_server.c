@@ -734,6 +734,9 @@ vperf_server_worker_loop (void *arg)
 		}
 	      else
 		{
+		  /* Skip if already cleaned up earlier in this batch. */
+		  if (!conn->is_open)
+		    continue;
 		  /* if close return 1 we can delete session, otherwise keep
 		   * session (e.g. quic half-close stream) */
 		  if (!tp->close (conn, ep_evts[i].events))
@@ -853,6 +856,8 @@ done:
     {
       if (!wrk->wrk_index)
 	vsm->ctrl = 0;
+      /* Drain leftover sessions before freeing the pool. */
+      vperf_server_wrk_cleanup_all (wrk);
       free (wrk->conn_pool);
     }
   vsm->active_workers -= 1;
