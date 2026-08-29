@@ -138,10 +138,12 @@ hcc_ts_connected_callback (u32 app_index, u32 hc_index, session_t *as,
       return -1;
     }
 
-  hs = hcc_session_get (hc_index, 0);
   wrk = hcc_worker_get (as->thread_index);
   new_hs = hcc_session_alloc (wrk);
   new_hs_index = new_hs->session_index;
+  /* Refetch hs after the alloc: hcc_session_alloc() may have grown and
+   * reallocated the same pool that hs points into, invalidating it. */
+  hs = hcc_session_get (hc_index, 0);
   clib_memcpy_fast (new_hs, hs, sizeof (*hs));
   new_hs->session_index = new_hs_index;
   new_hs->thread_index = as->thread_index;
@@ -265,8 +267,12 @@ hcc_ts_rx_callback (session_t *ts)
     goto done;
 
   u32 n_deq = clib_min (hs->to_recv, max_deq);
-  u64 curr = vec_len (hcm->http_response);
-  rv = svm_fifo_dequeue (ts->rx_fifo, n_deq, hcm->http_response + curr);
+  u32 curr = vec_len (hcm->http_response);
+  u8 *data = hcm->http_response + curr;
+  /* vec_reset_length poisons the reserved capacity under ASAN; unpoison
+   * the destination bytes before dequeuing through the raw pointer */
+  clib_mem_unpoison (data, n_deq);
+  rv = svm_fifo_dequeue (ts->rx_fifo, n_deq, data);
   if (rv < 0)
     {
       clib_warning ("app dequeue(n=%d) failed; rv = %d", n_deq, rv);

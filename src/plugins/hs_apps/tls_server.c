@@ -237,8 +237,9 @@ ts_listen ()
   clib_memset (a, 0, sizeof (*a));
   a->app_index = sm->app_index;
 
+  ASSERT (sm->uri);
+  vec_terminate_c_string (sm->uri);
   uri = (char *) sm->uri;
-  ASSERT (uri);
 
   if (parse_uri (uri, &a->sep_ext))
     return -1;

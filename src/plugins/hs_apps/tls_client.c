@@ -331,13 +331,13 @@ tc_run (vlib_main_t *vm)
       vlib_cli_output (vm, "ALPN selected: %U", format_tls_alpn_proto,
 		       cm->alpn_proto_selected);
       if (cm->negotiated_cipher)
-	vlib_cli_output (vm, "Cipher: %s", cm->negotiated_cipher);
+	vlib_cli_output (vm, "Cipher: %v", cm->negotiated_cipher);
       if (cm->negotiated_tls_version)
 	vlib_cli_output (vm, "TLS version: %U", format_app_tls_version, cm->negotiated_tls_version);
       if (cm->negotiated_key_agreement)
-	vlib_cli_output (vm, "Key agreement: %s", cm->negotiated_key_agreement);
+	vlib_cli_output (vm, "Key agreement: %v", cm->negotiated_key_agreement);
       if (cm->negotiated_signature_algo)
-	vlib_cli_output (vm, "Signature algorithm: %s", cm->negotiated_signature_algo);
+	vlib_cli_output (vm, "Signature algorithm: %v", cm->negotiated_signature_algo);
       break;
     case TC_CLI_CONNECT_FAILED:
       error = clib_error_return (0, "connect error %U", format_session_error,
@@ -444,6 +444,7 @@ tls_client_run_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_co
       goto done;
     }
 
+  vec_terminate_c_string (cm->uri);
   if (parse_uri ((char *) cm->uri, &cm->connect_sep))
     {
       error = clib_error_return (0, "invalid uri");
