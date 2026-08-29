@@ -5,10 +5,12 @@
 """Tests for pg interface capture mechanics."""
 
 import unittest
+from unittest.mock import ANY, patch
 
 from scapy.layers.inet import IP, UDP
 from scapy.layers.l2 import Ether
 from scapy.packet import Raw
+from scapy.plist import PacketList
 
 from framework import VppTestCase
 from asfframework import VppTestRunner
@@ -91,6 +93,43 @@ class TestPgCapture(VppTestCase):
         self.pg_start()
         with self.assertRaises(CaptureTimeoutError):
             self.pg1.get_capture(expected_count=1)
+
+    def test_capture_timeout_does_not_spin_pg_barrier(self):
+        """Waiting for an async capture takes the pg barrier only once."""
+        with patch.object(self.pg1, "wait_for_pg_stop") as wait_for_pg_stop:
+            with patch.object(self.pg1, "_file_state", return_value=None):
+                with patch.object(
+                    self.pg1, "_wait_for_file_inotify", return_value=False
+                ) as wait_for_file:
+                    with self.assertRaises(CaptureTimeoutError):
+                        self.pg1.get_capture(expected_count=1, timeout=0.02)
+        wait_for_pg_stop.assert_called_once()
+        wait_for_file.assert_called_once_with(
+            self.pg1.out_path, ANY, previous_state=None
+        )
+
+    def test_partial_capture_waits_for_file_change(self):
+        """A partial capture is retried only after its file changes."""
+        partial = PacketList([Ether()])
+        complete = PacketList([Ether(), Ether()])
+        with patch.object(self.pg1, "wait_for_pg_stop") as wait_for_pg_stop:
+            with patch.object(self.pg1, "_file_state", side_effect=[(1, 1), (2, 2)]):
+                with patch.object(
+                    self.pg1, "_wait_for_file_inotify", return_value=True
+                ) as wait_for_file:
+                    with patch.object(
+                        self.pg1, "_get_capture", side_effect=[partial, complete]
+                    ) as get_capture:
+                        capture = self.pg1.get_capture(expected_count=2, timeout=0.02)
+        wait_for_pg_stop.assert_called_once()
+        wait_for_file.assert_called_once_with(
+            self.pg1.out_path, ANY, previous_state=(1, 1)
+        )
+        self.assertEqual(2, get_capture.call_count)
+        self.assertTrue(
+            all(not call.kwargs["wait_for_pg"] for call in get_capture.call_args_list)
+        )
+        self.assertEqual(complete, capture)
 
     def test_capture_mismatch_fewer_expected(self):
         """CaptureMismatchError raised when more packets arrive than expected"""
