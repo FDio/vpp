@@ -1101,20 +1101,17 @@ vperf_quic_accept (int listen_fd, vperf_session_t *ts)
 static int
 vperf_quic_cleanup (vperf_session_t *ts)
 {
-  if (!vppcom_session_is_stream (ts->fd))
-    return 0;
-
   vperf_quic_ctx_t *quic_ctx = (vperf_quic_ctx_t *) ts->opaque;
 
   if (!quic_ctx)
     return 0;
 
-  if (quic_ctx->flags & VPERF_QUIC_F_SERVER)
+  /* For a server stream, close the parent connection (listener)
+   * once it has no more sessions left. */
+  if (vppcom_session_is_stream (ts->fd) && (quic_ctx->flags & VPERF_QUIC_F_SERVER))
     {
       int listener_fd = vppcom_session_listener (ts->fd);
-      if (listener_fd == VPPCOM_EBADFD)
-	return 0;
-      if ((vppcom_session_n_accepted (listener_fd) == 0) &&
+      if (listener_fd != VPPCOM_EBADFD && vppcom_session_n_accepted (listener_fd) == 0 &&
 	  vppcom_session_is_connectable_listener (listener_fd))
 	{
 	  vperf_info ("Connected Listener fd %x has no more sessions", listener_fd);
@@ -1122,8 +1119,9 @@ vperf_quic_cleanup (vperf_session_t *ts)
 	}
     }
 
-  if (ts->opaque)
-    free (ts->opaque);
+  /* Free the per-session context for both streams and connections. */
+  free (ts->opaque);
+  ts->opaque = 0;
 
   return 0;
 }
