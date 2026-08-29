@@ -508,8 +508,13 @@ u8 *
 http_get_rx_buf (http_ctx_t *hc)
 {
   http_main_t *hm = &http_main;
-  vec_reset_length (hm->rx_bufs[hc->c_thread_index]);
-  return hm->rx_bufs[hc->c_thread_index];
+  u8 *buf = hm->rx_bufs[hc->c_thread_index];
+  vec_reset_length (buf);
+  /* buffer is used as raw scratch storage written through svm_fifo_read/peek;
+   * unpoison its full pre-allocated capacity since callers write past the zero
+   * length via raw pointers (vec_reset_length() poisons it under ASAN) */
+  clib_mem_unpoison (buf, vec_max_len (buf));
+  return buf;
 }
 
 u8 *
@@ -677,6 +682,7 @@ http_ts_accept_stream (session_t *stream_session)
   session_t *conn_session;
   http_ctx_t *hc, *stream;
   u32 stream_index, thresh;
+  clib_thread_index_t thread_index;
   http_conn_handle_t hc_handle;
   int rv;
 
@@ -685,13 +691,16 @@ http_ts_accept_stream (session_t *stream_session)
   ASSERT (stream_session->thread_index ==
 	  session_thread_from_handle (stream_session->listener_handle));
 
-  stream_index = http_ctx_alloc_w_thread (stream_session->thread_index);
+  /* stream and its parent connection are always on the same thread */
+  thread_index = stream_session->thread_index;
+  stream_index = http_ctx_alloc_w_thread (thread_index);
+
   conn_session = session_get_from_handle (stream_session->listener_handle);
   hc = http_ctx_get_w_thread (((http_conn_handle_t) conn_session->opaque).conn_index,
-			      conn_session->thread_index);
+			      thread_index);
   ASSERT (hc->version == HTTP_VERSION_3);
 
-  stream = http_ctx_get_w_thread (stream_index, stream_session->thread_index);
+  stream = http_ctx_get_w_thread (stream_index, thread_index);
   clib_memcpy_fast (stream, hc, sizeof (*hc));
   stream->hc_hc_index = stream_index;
   stream->flags |= HTTP_CONN_F_NO_APP_SESSION;
@@ -709,6 +718,10 @@ http_ts_accept_stream (session_t *stream_session)
       return rv;
     }
 
+  /* the accept callback may allocate http ctxs and grow (realloc) the pool,
+   * invalidating hc/stream; regrab stream. hc is not dereferenced afterwards */
+  stream = http_ctx_get_w_thread (stream_index, thread_index);
+
   hc_handle.version = stream->version;
   hc_handle.conn_index = stream_index;
   /* session pool might be reallocated meanwhile */
@@ -716,7 +729,7 @@ http_ts_accept_stream (session_t *stream_session)
   stream_session->opaque = hc_handle.as_u32;
   stream_session->session_state = SESSION_STATE_READY;
   HTTP_DBG (1, "Accepted on connection [%u]%x new stream %x",
-	    hc->c_thread_index, hc->hc_hc_index, stream_index);
+	    thread_index, stream->hc_http_conn_index, stream_index);
 
   /* Avoid enqueuing small chunks of data on transport tx notifications. If
    * the fifo is small (under 16K) we set the threshold to it's size, meaning
