@@ -434,6 +434,10 @@ class VppAsfTestCase(CPUInterface, unittest.TestCase):
             "main-core",
             str(cls.cpus[0]),
         ]
+        if not (cls.debug_gdb or cls.debug_gdbserver or cls.debug_attach):
+            # CI workers can be descheduled for more than the one-second
+            # release-build default without a VPP worker being deadlocked.
+            cls.vpp_cmdline.extend(["barrier-timeout", "5"])
         if cls.extern_plugin_path not in (None, ""):
             cls.extra_vpp_plugin_config.append("add-path %s" % cls.extern_plugin_path)
         if cls.get_vpp_worker_count():
