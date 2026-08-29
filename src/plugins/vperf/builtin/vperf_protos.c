@@ -239,6 +239,15 @@ vp_proto_client_stream_tx_test_bytes (vp_test_session_t *es, u8 *test_data, u32 
   ASSERT (test_buf_len > 0);
   test_buf_offset = es->bytes_sent % test_buf_len;
 
+  /* If fewer than max_send contiguous bytes remain to the end of the pattern
+   * buffer, wrap back near the start so we can still send a full-size chunk
+   * rather than a short tail that would drop throughput on the next dispatch.
+   * The buffer is a mod-256 ramp and the receiver validates against a running
+   * (mod-256) byte index; wrap to bytes_sent & 0xff to keep the byte phase. */
+  if (test_buf_len - test_buf_offset < max_send)
+    test_buf_offset = es->bytes_sent & 0xff;
+
+  max_send = clib_min (max_send, test_buf_len - test_buf_offset);
   rv = app_send_stream ((app_session_t *) es, test_data + test_buf_offset, max_send, 0);
   n_sent = clib_max (rv, 0);
   es->bytes_sent += n_sent;
@@ -1323,8 +1332,16 @@ vp_proto_http_client_tx_test_bytes (vp_test_session_t *es, u8 *test_data, u32 ma
   ASSERT (test_buf_len > 0);
   test_buf_offset = es->bytes_sent % test_buf_len;
 
+  /* If fewer than max_send contiguous bytes remain to the end of the pattern
+   * buffer, wrap back near the start so we can still enqueue a full-size chunk
+   * rather than a short tail that would drop throughput on the next dispatch.
+   * The buffer is a mod-256 ramp and the receiver validates against a running
+   * (mod-256) byte index; wrap to bytes_sent & 0xff to keep the byte phase. */
+  if (test_buf_len - test_buf_offset < max_send)
+    test_buf_offset = es->bytes_sent & 0xff;
+
   seg[0].data = test_data + test_buf_offset;
-  seg[0].len = max_send;
+  seg[0].len = clib_min (max_send, test_buf_len - test_buf_offset);
   rv = svm_fifo_enqueue_segments (f, seg, 1, 1);
   n_sent = clib_max (rv, 0);
   es->bytes_sent += n_sent;
