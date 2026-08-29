@@ -853,6 +853,9 @@ done:
     {
       if (!wrk->wrk_index)
 	vsm->ctrl = 0;
+      /* Free any session still holding buffers/proto state (e.g. half-closed
+       * quic streams) before releasing the pool, otherwise they leak. */
+      vperf_server_wrk_cleanup_all (wrk);
       free (wrk->conn_pool);
     }
   vsm->active_workers -= 1;
