@@ -5,6 +5,7 @@
 """Tests for pg interface capture mechanics."""
 
 import unittest
+from unittest.mock import patch
 
 from scapy.layers.inet import IP, UDP
 from scapy.layers.l2 import Ether
@@ -91,6 +92,14 @@ class TestPgCapture(VppTestCase):
         self.pg_start()
         with self.assertRaises(CaptureTimeoutError):
             self.pg1.get_capture(expected_count=1)
+
+    def test_capture_timeout_does_not_spin_pg_barrier(self):
+        """Waiting for an async capture takes the pg barrier only once."""
+        with patch.object(self.pg1, "wait_for_pg_stop") as wait_for_pg_stop:
+            with patch("vpp_pg_interface.os.path.isfile", return_value=False):
+                with self.assertRaises(CaptureTimeoutError):
+                    self.pg1.get_capture(expected_count=1, timeout=0.02)
+        wait_for_pg_stop.assert_called_once()
 
     def test_capture_mismatch_fewer_expected(self):
         """CaptureMismatchError raised when more packets arrive than expected"""

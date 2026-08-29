@@ -292,7 +292,7 @@ class VppPGInterface(VppInterface):
             f.writelines(format_stack())
         self._out_assert_counter += 1
 
-    def _get_capture(self, filter_out_fn=is_ipv6_misc):
+    def _get_capture(self, filter_out_fn=is_ipv6_misc, timeout=None):
         """Helper method to get capture and filter it"""
         try:
             self.wait_for_pg_stop()
@@ -306,9 +306,15 @@ class VppPGInterface(VppInterface):
             # capture file visible in the kernel VFS immediately (no fsync
             # needed; stat() checks the dentry cache, not the block
             # device). Therefore a single os.path.isfile() after pg stop
-            # is sufficient: the file is either here now or no packets
-            # were captured.
-            if not os.path.isfile(self.out_path):
+            # is sufficient for packets injected by pg. With an explicit
+            # timeout, packets may instead be generated asynchronously by
+            # a timer, so wait for the capture file without taking another
+            # worker barrier.
+            if not os.path.isfile(self.out_path) and (
+                timeout is None
+                or timeout <= 0
+                or not self._wait_for_file_inotify(self.out_path, timeout)
+            ):
                 self.test.logger.debug(
                     "Capture file %s not found after pg stop" % self.out_path
                 )
@@ -363,7 +369,9 @@ class VppPGInterface(VppInterface):
         )
         while remaining_time is None or remaining_time > 0:
             before = time.time()
-            capture = self._get_capture(filter_out_fn)
+            capture = self._get_capture(
+                filter_out_fn=filter_out_fn, timeout=remaining_time
+            )
             elapsed_time = time.time() - before
             if capture:
                 if len(capture.res) == expected_count:
