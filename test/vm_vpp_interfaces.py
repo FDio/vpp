@@ -114,6 +114,7 @@ def create_test(test_name, test, ip_version, mtu):
                 server_only=True,
                 server_args=f"-p {self.iperf_port}",
                 logger=self.logger,
+                cpus=self.helper_affinity(),
             )
             # Send traffic between iperf client & server
             self.assertTrue(
@@ -127,6 +128,7 @@ def create_test(test_name, test, ip_version, mtu):
                     client_only=True,
                     duration=2,
                     logger=self.logger,
+                    cpus=self.helper_affinity(),
                 )
             )
         else:
@@ -195,6 +197,9 @@ class TestVPPInterfacesQemu:
     Linux_ns1--iperfClient--host-int1--vpp-af_packet-int1--VPP-BD
              --vppaf_packet_int2--host-int2--iperfServer--Linux_ns2
     """
+
+    # The iperf client and server run concurrently with VPP.
+    helper_count = 2
 
     def setUpTestToplogy(self, test, ip_version):
         """Setup the test topology.
