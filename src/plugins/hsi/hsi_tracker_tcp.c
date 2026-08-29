@@ -495,7 +495,7 @@ hsi_tcp_drain_start_rpc (void *arg)
   tcp_connection_t *tc, *peer_tc;
 
   s = session_get_from_handle_if_valid (sh);
-  peer_s = session_get_from_handle_safe (peer_sh);
+  peer_s = hsi_session_peer_get_if_valid (peer_sh);
   if (!s || !peer_s)
     {
       hsi_worker_counter_inc (hsi_worker_get (sh.thread_index), tcp_track_peer_rpc_failed);
@@ -771,7 +771,7 @@ hsi_tcp_drain_try_complete (session_t *s, tcp_connection_t *tc, hsi_tcp_drain_t 
     return -1;
 
   peer_sh.handle = drain->peer_session_handle;
-  peer_s = session_get_from_handle_safe (peer_sh);
+  peer_s = hsi_session_peer_get_if_valid (peer_sh);
   if (!peer_s)
     {
       hsi_worker_counter_inc (hsi_worker_get (s->thread_index), tcp_track_peer_rpc_failed);
@@ -976,9 +976,10 @@ hsi_tcp_drain_update_time (f64 time_now, u8 thread_index)
       tcp_connection_t *tc;
       session_t *s;
 
-      s = session_get_from_handle_safe (sh);
-      if (!s || s->thread_index != thread_index)
+      s = session_get_from_handle_if_valid (sh);
+      if (!s)
 	continue;
+      ASSERT (s->thread_index == thread_index);
 
       tc = hsi_tcp_connection_at_session (s);
       if (!(tc->cfg_flags & TCP_CFG_F_TRACKED) || tc->state == TCP_STATE_CLOSED)
@@ -1062,7 +1063,7 @@ hsi_tcp_track_schedule_cleanup_pair (tcp_connection_t *tc, hsi_tcp_tracker_t *tr
 
   local_handle = session_make_handle (tc->c_s_index, tc->c_thread_index);
 
-  peer_s = session_get_from_handle_safe (peer_sh);
+  peer_s = hsi_session_peer_get_if_valid (peer_sh);
   if (peer_s)
     {
       peer_tc = hsi_tcp_connection_at_session (peer_s);
@@ -1144,7 +1145,7 @@ hsi_tcp_track_maybe_cleanup_pair (tcp_connection_t *tc, hsi_tcp_tracker_t *trk)
   if (!hsi_tcp_tracker_fin_done (trk))
     return;
 
-  peer_s = session_get_from_handle_safe (peer_sh);
+  peer_s = hsi_session_peer_get_if_valid (peer_sh);
   if (!peer_s)
     return;
 
@@ -1220,7 +1221,7 @@ hsi_tcp_fin_wait_update_time (f64 time_now, u8 thread_index)
 	continue;
 
       peer_sh.handle = trk->peer_session_handle;
-      peer_s = session_get_from_handle_safe (peer_sh);
+      peer_s = hsi_session_peer_get_if_valid (peer_sh);
       if (!peer_s)
 	{
 	  hsi_tcp_fin_wait_del_key (thread_index, *keyp);
