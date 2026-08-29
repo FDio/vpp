@@ -734,6 +734,14 @@ vperf_server_worker_loop (void *arg)
 		}
 	      else
 		{
+		  /* The session may already have been torn down earlier in
+		   * this same event batch: a ctrl-session HUP runs
+		   * vperf_server_wrk_cleanup_all(), which cleans up (and
+		   * frees the proto opaque of) every conn in the pool. Skip
+		   * stale close events on such sessions; tp->close() would
+		   * otherwise dereference the freed opaque. */
+		  if (!conn->is_open)
+		    continue;
 		  /* if close return 1 we can delete session, otherwise keep
 		   * session (e.g. quic half-close stream) */
 		  if (!tp->close (conn, ep_evts[i].events))
@@ -853,6 +861,9 @@ done:
     {
       if (!wrk->wrk_index)
 	vsm->ctrl = 0;
+      /* Free any session still holding buffers/proto state (e.g. half-closed
+       * quic streams) before releasing the pool, otherwise they leak. */
+      vperf_server_wrk_cleanup_all (wrk);
       free (wrk->conn_pool);
     }
   vsm->active_workers -= 1;
