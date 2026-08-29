@@ -3510,19 +3510,20 @@ http2_rx_expect_default (http_ctx_t *hc)
 {
   http2_frame_header_t fh;
   u32 to_deq;
-  u8 *rx_buf;
+  u8 fh_buf[HTTP2_FRAME_HEADER_SIZE];
   http2_error_t rv;
   u32 hc_index = hc->hc_hc_index;
   clib_thread_index_t thread_index = hc->c_thread_index;
 
   to_deq = http_io_ts_max_read (hc);
-  rx_buf = http_get_rx_buf (hc);
 
   while (to_deq >= HTTP2_FRAME_HEADER_SIZE)
     {
-      http_io_ts_read (hc, rx_buf, HTTP2_FRAME_HEADER_SIZE, 1);
+      /* only the 9-byte frame header is needed here; read it into a small
+       * stack buffer so we don't touch the shared per-thread rx buffer */
+      http_io_ts_read (hc, fh_buf, HTTP2_FRAME_HEADER_SIZE, 1);
       to_deq -= HTTP2_FRAME_HEADER_SIZE;
-      http2_frame_header_read (rx_buf, &fh);
+      http2_frame_header_read (fh_buf, &fh);
       if (PREDICT_FALSE (fh.length > hc->settings.max_frame_size))
 	{
 	  HTTP_DBG (1, "frame length %lu exceeded SETTINGS_MAX_FRAME_SIZE %lu", fh.length,

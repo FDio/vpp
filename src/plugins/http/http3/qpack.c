@@ -1158,7 +1158,10 @@ qpack_encode_status_code (u8 *dst, http_status_code_t sc)
       break;
     default:
       orig_len = vec_len (dst);
-      vec_add2 (dst, a, 5);
+      /* worst case is 6 bytes: 2 for the ":status" name reference (static
+       * index 24 needs a continuation byte with a 4-bit prefix) plus up to
+       * 4 bytes for the 3-digit value (1 length byte + 3 raw bytes) */
+      vec_add2 (dst, a, 6);
       *a = 0x50;
       b = hpack_encode_int (a, 24, 4);
       b = qpack_encode_string (b, (const u8 *) http_status_code_str[sc], 3, 8);
