@@ -259,9 +259,10 @@ http3_conn_init (u32 parent_index, clib_thread_index_t thread_index, http_ctx_t 
   http_stats_ctrl_streams_opened_inc (thread_index);
 
   vec_reset_length (http_tx_buf (ctrl_stream));
-  /* write stream type first */
-  p = http_encode_varint (http_tx_buf (ctrl_stream), HTTP3_STREAM_TYPE_CONTROL);
-  vec_set_len (http_tx_buf (ctrl_stream), (p - http_tx_buf (ctrl_stream)));
+  /* write stream type first; reserve the bytes via vec_add2() so the
+   * buffer is grown/unpoisoned before writing through the raw pointer */
+  vec_add2 (http_tx_buf (ctrl_stream), p, http_varint_len (HTTP3_STREAM_TYPE_CONTROL));
+  http_encode_varint (p, HTTP3_STREAM_TYPE_CONTROL);
   /* write settings frame */
   http3_frame_settings_write (&hm->h3_settings, &http_tx_buf (ctrl_stream));
   /* this should not fail, it's fresh fifo with 4kB chunk */
