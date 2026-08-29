@@ -239,6 +239,9 @@ vp_proto_client_stream_tx_test_bytes (vp_test_session_t *es, u8 *test_data, u32 
   ASSERT (test_buf_len > 0);
   test_buf_offset = es->bytes_sent % test_buf_len;
 
+  /* clamp to the contiguous run left in the wrap-around pattern buffer so
+   * the send never reads past its end (the node loops to send the rest) */
+  max_send = clib_min (max_send, test_buf_len - test_buf_offset);
   rv = app_send_stream ((app_session_t *) es, test_data + test_buf_offset, max_send, 0);
   n_sent = clib_max (rv, 0);
   es->bytes_sent += n_sent;
@@ -1324,7 +1327,9 @@ vp_proto_http_client_tx_test_bytes (vp_test_session_t *es, u8 *test_data, u32 ma
   test_buf_offset = es->bytes_sent % test_buf_len;
 
   seg[0].data = test_data + test_buf_offset;
-  seg[0].len = max_send;
+  /* clamp to the contiguous run left in the wrap-around pattern buffer so
+   * the enqueue never reads past its end (the node loops to send the rest) */
+  seg[0].len = clib_min (max_send, test_buf_len - test_buf_offset);
   rv = svm_fifo_enqueue_segments (f, seg, 1, 1);
   n_sent = clib_max (rv, 0);
   es->bytes_sent += n_sent;
