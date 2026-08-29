@@ -292,10 +292,11 @@ class VppPGInterface(VppInterface):
             f.writelines(format_stack())
         self._out_assert_counter += 1
 
-    def _get_capture(self, filter_out_fn=is_ipv6_misc):
+    def _get_capture(self, filter_out_fn=is_ipv6_misc, wait_for_pg=True):
         """Helper method to get capture and filter it"""
         try:
-            self.wait_for_pg_stop()
+            if wait_for_pg:
+                self.wait_for_pg_stop()
             # "show packet-generator" CLI is not mp_safe, so VPP parks all
             # worker threads at a barrier before executing it. By the time
             # the CLI returns "stopped", every packet that was injected by
@@ -361,10 +362,32 @@ class VppPGInterface(VppInterface):
             "Expecting to capture %s (%s) packets on %s"
             % (expected_count, based_on, name)
         )
+        self.wait_for_pg_stop()
+        first_attempt = True
+        previous_file_state = None
         while remaining_time is None or remaining_time > 0:
             before = time.time()
-            capture = self._get_capture(filter_out_fn)
+            if remaining_time is not None:
+                if first_attempt:
+                    file_state = self._file_state(self.out_path)
+                    wait_for_file = file_state is None
+                else:
+                    wait_for_file = True
+                if wait_for_file:
+                    if not self._wait_for_file_inotify(
+                        self.out_path,
+                        remaining_time,
+                        previous_state=previous_file_state,
+                    ):
+                        remaining_time -= time.time() - before
+                        break
+                    file_state = self._file_state(self.out_path)
+            else:
+                file_state = None
+            capture = self._get_capture(filter_out_fn=filter_out_fn, wait_for_pg=False)
             elapsed_time = time.time() - before
+            first_attempt = False
+            previous_file_state = file_state
             if capture:
                 if len(capture.res) == expected_count:
                     # bingo, got the packets we expected
@@ -423,56 +446,68 @@ class VppPGInterface(VppInterface):
             # junk filtered out, we're good
             return
 
-    def _wait_for_file_inotify(self, path, timeout):
-        """Wait for file to appear using Linux inotify. Returns True if file
-        appeared, False on timeout. Falls back to polling on non-Linux."""
-        if os.path.isfile(path):
+    @staticmethod
+    def _file_state(path):
+        """Return the file state needed to detect creation or modification."""
+        try:
+            stat_result = os.stat(path)
+        except FileNotFoundError:
+            return None
+        return stat_result.st_size, stat_result.st_mtime_ns
+
+    def _wait_for_file_inotify(self, path, timeout, previous_state=None):
+        """Wait for file creation or modification using Linux inotify."""
+        if self._file_state(path) != previous_state:
             return True
         if sys.platform != "linux":
-            return self._wait_for_file_poll(path, timeout)
+            return self._wait_for_file_poll(path, timeout, previous_state)
 
         libc = ctypes.CDLL(ctypes.util.find_library("c"), use_errno=True)
+        IN_MODIFY = 0x00000002
+        IN_CLOSE_WRITE = 0x00000008
         IN_CREATE = 0x00000100
         IN_MOVED_TO = 0x00000080
         IN_NONBLOCK = 0x00000800
 
         fd = libc.inotify_init1(IN_NONBLOCK)
         if fd < 0:
-            return self._wait_for_file_poll(path, timeout)
+            return self._wait_for_file_poll(path, timeout, previous_state)
         try:
             dirpath = os.path.dirname(path)
             wd = libc.inotify_add_watch(
-                fd, dirpath.encode("utf-8"), IN_CREATE | IN_MOVED_TO
+                fd,
+                dirpath.encode("utf-8"),
+                IN_MODIFY | IN_CLOSE_WRITE | IN_CREATE | IN_MOVED_TO,
             )
             if wd < 0:
-                return self._wait_for_file_poll(path, timeout)
+                return self._wait_for_file_poll(path, timeout, previous_state)
             # re-check after watch is established to close the race window
-            if os.path.isfile(path):
+            if self._file_state(path) != previous_state:
                 return True
             deadline = time.time() + timeout
             while True:
                 remaining = deadline - time.time()
                 if remaining <= 0:
-                    return os.path.isfile(path)
+                    return self._file_state(path) != previous_state
                 ready, _, _ = select([fd], [], [], remaining)
                 if ready:
                     os.read(fd, 4096)  # drain events
-                    if os.path.isfile(path):
+                    if self._file_state(path) != previous_state:
                         return True
                     # event was for a different file in the directory
                 else:
-                    return os.path.isfile(path)
+                    return self._file_state(path) != previous_state
         finally:
             os.close(fd)
 
-    def _wait_for_file_poll(self, path, timeout):
+    def _wait_for_file_poll(self, path, timeout, previous_state=None):
         """Fallback file-wait using polling (for non-Linux platforms)."""
         deadline = time.time() + timeout
         while time.time() < deadline:
-            if os.path.isfile(path):
+            if self._file_state(path) != previous_state:
                 return True
             time.sleep(0.01)
-        return os.path.isfile(path)
+        return self._file_state(path) != previous_state
 
     def wait_for_pg_stop(self):
         # wait till packet-generator is stopped
