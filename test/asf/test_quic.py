@@ -63,6 +63,9 @@ class QUICTestCase(VppAsfTestCase):
     """QUIC Test Case"""
 
     timeout = 20
+    # vperf transfers can legitimately take longer than the framework's
+    # default 5 second API response timeout on loaded CI workers.
+    vapi_response_timeout = timeout
     pre_test_sleep = 0.3
     post_test_sleep = 0.3
     server_appns = "server"
