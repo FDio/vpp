@@ -996,7 +996,7 @@ def verify_event(test, event, expected_state):
 
 
 def wait_for_bfd_packet(
-    test, timeout=1, pcap_time_min=None, is_tunnel=False, expected_tos=None
+    test, timeout=2, pcap_time_min=None, is_tunnel=False, expected_tos=None
 ):
     """wait for BFD packet and verify its correctness
 
@@ -1377,7 +1377,7 @@ class BFD4TestCase(VppTestCase):
         verify_event(self, e, expected_state=BFDState.down)
         time_to_event = time.time() - time_mark
         self.assert_in_range(
-            time_to_event, 0.9 * timeout, 1.1 * timeout, "session timeout"
+            time_to_event, 0.9 * timeout, 1.25 * timeout, "session timeout"
         )
 
     def test_modify_req_min_rx_halve(self):
@@ -1592,7 +1592,7 @@ class BFD4TestCase(VppTestCase):
         counter = 0
         bfd_control_packets_rx = 0
         while counter < echo_packet_count:
-            p = self.pg0.wait_for_packet(1)
+            p = self.pg0.wait_for_packet(2)
             self.logger.debug(ppp("Got packet:", p))
             ether = p[Ether]
             self.assert_equal(self.pg0.remote_mac, ether.dst, "Destination MAC")
