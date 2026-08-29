@@ -271,6 +271,7 @@ jobs:
         with:
           LOG_DIR: ${{ env.LOG_DIR }}
           WORKSPACE: ${{ env.WORKSPACE }}
+          BUILD_TYPE: ${{ matrix.build_type }}
           TEST_JOBS: ${{ env.TEST_JOBS }}
           TEST_RETRIES: ${{ env.TEST_RETRIES }}
           MAKE_TEST_OS: ${{ env.MAKE_TEST_OS }}
