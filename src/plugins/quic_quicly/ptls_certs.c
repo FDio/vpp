@@ -161,10 +161,10 @@ ptls_load_bio_certificates (ptls_context_t * ctx, BIO * bio)
 }
 
 int
-load_bio_certificate_chain (ptls_context_t * ctx, const char *cert_data)
+load_bio_certificate_chain (ptls_context_t *ctx, const char *cert_data, int cert_len)
 {
   BIO *cert_bio;
-  cert_bio = BIO_new_mem_buf (cert_data, -1);
+  cert_bio = BIO_new_mem_buf (cert_data, cert_len);
   if (ptls_load_bio_certificates (ctx, cert_bio) != 0)
     {
       BIO_free (cert_bio);
@@ -175,13 +175,13 @@ load_bio_certificate_chain (ptls_context_t * ctx, const char *cert_data)
 }
 
 int
-load_bio_private_key (ptls_context_t * ctx, const char *pk_data)
+load_bio_private_key (ptls_context_t *ctx, const char *pk_data, int pk_len)
 {
   static ptls_openssl_sign_certificate_t sc;
   EVP_PKEY *pkey;
   BIO *key_bio;
 
-  key_bio = BIO_new_mem_buf (pk_data, -1);
+  key_bio = BIO_new_mem_buf (pk_data, pk_len);
   pkey = PEM_read_bio_PrivateKey (key_bio, NULL, NULL, NULL);
   BIO_free (key_bio);
 
@@ -196,12 +196,12 @@ load_bio_private_key (ptls_context_t * ctx, const char *pk_data)
 }
 
 EVP_PKEY *
-ptls_load_private_key (const char *pk_data)
+ptls_load_private_key (const char *pk_data, int pk_len)
 {
   EVP_PKEY *pkey;
   BIO *key_bio;
 
-  key_bio = BIO_new_mem_buf (pk_data, -1);
+  key_bio = BIO_new_mem_buf (pk_data, pk_len);
   pkey = PEM_read_bio_PrivateKey (key_bio, NULL, NULL, NULL);
   BIO_free (key_bio);
 
@@ -209,7 +209,7 @@ ptls_load_private_key (const char *pk_data)
 }
 
 quic_quicly_ptls_cert_list_t *
-ptls_load_certificate_chain (const char *cert_data)
+ptls_load_certificate_chain (const char *cert_data, int cert_len)
 {
   quic_quicly_ptls_cert_list_t *cl;
   BIO *cert_bio;
@@ -217,9 +217,9 @@ ptls_load_certificate_chain (const char *cert_data)
 
   cl = clib_mem_alloc (PTLS_MAX_CERTS_IN_CONTEXT * sizeof (ptls_iovec_t) +
 		       sizeof (quic_quicly_ptls_cert_list_t));
-  cert_bio = BIO_new_mem_buf (cert_data, -1);
-  rv = ptls_load_bio_pem_objects (cert_bio, "CERTIFICATE", cl->certs,
-				  PTLS_MAX_CERTS_IN_CONTEXT, &cl->count);
+  cert_bio = BIO_new_mem_buf (cert_data, cert_len);
+  rv = ptls_load_bio_pem_objects (cert_bio, "CERTIFICATE", cl->certs, PTLS_MAX_CERTS_IN_CONTEXT,
+				  &cl->count);
   BIO_free (cert_bio);
   if (rv)
     {
