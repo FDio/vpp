@@ -1632,11 +1632,18 @@ class VppTestRunner(unittest.TextTestRunner):
         :param test:
 
         """
-        faulthandler.enable()  # emit stack trace to stderr if killed by signal
+        # Use the real stderr file descriptor. The test stream is a
+        # multiprocessing queue whose fd must not receive unframed writes
+        # from faulthandler.
+        faulthandler.enable(file=sys.__stderr__, all_threads=True)
+        faulthandler.register(signal.SIGUSR2, file=sys.__stderr__, all_threads=True)
         # the parent uses SIGUSR1 to ask us to stop after the current test
         signal.signal(signal.SIGUSR1, _request_graceful_stop)
 
-        result = super(VppTestRunner, self).run(test)
+        try:
+            result = super(VppTestRunner, self).run(test)
+        finally:
+            faulthandler.unregister(signal.SIGUSR2)
         if not self.print_summary:
             self.stream = self.orig_stream
             result.stream = self.orig_stream

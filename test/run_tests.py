@@ -342,6 +342,34 @@ def handle_failed_suite(logger, last_test_temp_dir, vpp_pid, vpp_binary):
             tee_handler.close()
 
 
+def preserve_failed_attempt(failed_link, attempt):
+    """Keep a failed suite directory before a retry reuses its name."""
+    if not os.path.islink(failed_link):
+        return
+
+    failed_dir = os.path.realpath(failed_link)
+    os.unlink(failed_link)
+    if not os.path.isdir(failed_dir):
+        return
+
+    link_stem = failed_link.removesuffix("-FAILED")
+    suffix = f"attempt-{attempt}"
+    preserved_dir = f"{failed_dir}-{suffix}"
+    preserved_link = f"{link_stem}-{suffix}-FAILED"
+    serial = 2
+    while os.path.lexists(preserved_dir) or os.path.lexists(preserved_link):
+        suffix = f"attempt-{attempt}-{serial}"
+        preserved_dir = f"{failed_dir}-{suffix}"
+        preserved_link = f"{link_stem}-{suffix}-FAILED"
+        serial += 1
+
+    os.rename(failed_dir, preserved_dir)
+    os.symlink(preserved_dir, preserved_link)
+    print(
+        "Preserved failed attempt artifacts: %s -> %s" % (preserved_link, preserved_dir)
+    )
+
+
 def _handle_failed_suite(logger, last_test_temp_dir, vpp_pid, vpp_binary):
     if last_test_temp_dir:
         # Need to create link in case of a timeout or core dump without failure
@@ -638,6 +666,18 @@ def run_forked(testcase_suites):
                             wrapped_testcase_suite.last_test_temp_dir,
                         )
                     )
+                    try:
+                        os.kill(wrapped_testcase_suite.child.pid, signal.SIGUSR2)
+                    except OSError:
+                        pass
+                    else:
+                        wrapped_testcase_suite.logger.critical(
+                            "Requested Python stack dump from timed-out child "
+                            "process %d" % wrapped_testcase_suite.child.pid
+                        )
+                        # Give faulthandler a brief opportunity to write the
+                        # traceback before terminate() delivers SIGTERM.
+                        time.sleep(0.1)
                 elif not wrapped_testcase_suite.child.is_alive():
                     fail = True
                     wrapped_testcase_suite.logger.critical(
@@ -1427,8 +1467,7 @@ if __name__ == "__main__":
                     config.failed_dir,
                     f"{get_testcase_dirname(suite._tests[0].__class__.__name__)}",
                 )
-                if os.path.islink(failed_link):
-                    os.unlink(failed_link)
+                preserve_failed_attempt(failed_link, config.retries + 1 - attempts)
             results = run_forked(suites)
             # Don't write failed_tests file if there are more attempts remaining
             write_failed_file = attempts == 1
