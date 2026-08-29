@@ -128,6 +128,12 @@ class TestResult(dict):
         return 0 == len(self[TestResultCode.TEST_RUN])
 
     def process_result(self, test_id, result):
+        if test_id is None:
+            if self.testcases:
+                testcase_class = unittest.util.strclass(self.testcases[0].__class__)
+                test_id = f"setUpClass ({testcase_class})"
+            else:
+                test_id = "unknown test"
         self[result].append(test_id)
 
     def suite_from_failed(self):
@@ -327,7 +333,13 @@ def handle_failed_suite(logger, last_test_temp_dir, vpp_pid, vpp_binary):
     # location, decoded backtrace) without requiring the controller stdout.
     tee_handler = None
     if last_test_temp_dir:
-        log_txt = os.path.join(last_test_temp_dir, "log.txt")
+        if config.log_dir is None:
+            log_dir = last_test_temp_dir
+        else:
+            log_dir = os.path.join(
+                config.log_dir, os.path.basename(os.path.normpath(last_test_temp_dir))
+            )
+        log_txt = os.path.join(log_dir, "log.txt")
         if os.path.isfile(log_txt):
             tee_handler = logging.FileHandler(log_txt)
             tee_handler.setFormatter(
@@ -340,6 +352,34 @@ def handle_failed_suite(logger, last_test_temp_dir, vpp_pid, vpp_binary):
         if tee_handler is not None:
             logger.removeHandler(tee_handler)
             tee_handler.close()
+
+
+def preserve_failed_attempt(failed_link, attempt):
+    """Keep a failed suite directory before a retry reuses its name."""
+    if not os.path.islink(failed_link):
+        return
+
+    failed_dir = os.path.realpath(failed_link)
+    os.unlink(failed_link)
+    if not os.path.isdir(failed_dir):
+        return
+
+    link_stem = failed_link.removesuffix("-FAILED")
+    suffix = f"attempt-{attempt}"
+    preserved_dir = f"{failed_dir}-{suffix}"
+    preserved_link = f"{link_stem}-{suffix}-FAILED"
+    serial = 2
+    while os.path.lexists(preserved_dir) or os.path.lexists(preserved_link):
+        suffix = f"attempt-{attempt}-{serial}"
+        preserved_dir = f"{failed_dir}-{suffix}"
+        preserved_link = f"{link_stem}-{suffix}-FAILED"
+        serial += 1
+
+    os.rename(failed_dir, preserved_dir)
+    os.symlink(preserved_dir, preserved_link)
+    print(
+        "Preserved failed attempt artifacts: %s -> %s" % (preserved_link, preserved_dir)
+    )
 
 
 def _handle_failed_suite(logger, last_test_temp_dir, vpp_pid, vpp_binary):
@@ -637,6 +677,40 @@ def run_forked(testcase_suites):
                             wrapped_testcase_suite.last_test,
                             wrapped_testcase_suite.last_test_temp_dir,
                         )
+                    )
+                    child_pid = wrapped_testcase_suite.child.pid
+                    stack_dump_label = "timed-out child process %d, last test: %s" % (
+                        child_pid,
+                        wrapped_testcase_suite.last_test,
+                    )
+                    print(
+                        "%s\nBEGIN PYTHON STACK DUMP: %s\n%s"
+                        % (single_line_delim, stack_dump_label, single_line_delim),
+                        file=sys.__stderr__,
+                        flush=True,
+                    )
+                    try:
+                        os.kill(child_pid, signal.SIGUSR2)
+                    except OSError as exc:
+                        wrapped_testcase_suite.logger.error(
+                            "Failed to request Python stack dump from child "
+                            "process %d: %s",
+                            child_pid,
+                            exc,
+                        )
+                    else:
+                        wrapped_testcase_suite.logger.critical(
+                            "Requested Python stack dump from timed-out child "
+                            "process %d" % child_pid
+                        )
+                        # Give faulthandler a brief opportunity to write the
+                        # traceback before terminate() delivers SIGTERM.
+                        time.sleep(0.1)
+                    print(
+                        "%s\nEND PYTHON STACK DUMP: %s\n%s"
+                        % (single_line_delim, stack_dump_label, single_line_delim),
+                        file=sys.__stderr__,
+                        flush=True,
                     )
                 elif not wrapped_testcase_suite.child.is_alive():
                     fail = True
@@ -1427,8 +1501,7 @@ if __name__ == "__main__":
                     config.failed_dir,
                     f"{get_testcase_dirname(suite._tests[0].__class__.__name__)}",
                 )
-                if os.path.islink(failed_link):
-                    os.unlink(failed_link)
+                preserve_failed_attempt(failed_link, config.retries + 1 - attempts)
             results = run_forked(suites)
             # Don't write failed_tests file if there are more attempts remaining
             write_failed_file = attempts == 1
