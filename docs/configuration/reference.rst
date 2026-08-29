@@ -506,6 +506,18 @@ and has to be in the range of priorities supported for a particular policy
 
    scheduler-priority 50
 
+barrier-timeout seconds
+^^^^^^^^^^^^^^^^^^^^^^^
+
+Set the maximum time VPP waits for worker threads to enter or leave a worker
+barrier before reporting a deadlock. The release-build default is 1 second.
+Increasing it can tolerate temporary CPU scheduling stalls, but also delays
+the detection of a genuine worker deadlock.
+
+.. code-block:: console
+
+   barrier-timeout 5
+
 The buffers Section
 -------------------
 
