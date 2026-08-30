@@ -4092,7 +4092,7 @@ class TestNAT44EI(MethodHolder):
         nat_sw_if_indices = [
             i.sw_if_index
             for i in self.vapi.nat44_ei_interface_dump()
-            + list(self.vapi.vpp.details_iter(self.vapi.nat44_ei_output_interface_get))
+            + list(self.vapi.details_iter(self.vapi.nat44_ei_output_interface_get))
         ]
         self.assertEqual(len(nat_sw_if_indices), len(interfaces))
 
@@ -4111,9 +4111,7 @@ class TestNAT44EI(MethodHolder):
             nat_sw_if_indices = [
                 i.sw_if_index
                 for i in self.vapi.nat44_ei_interface_dump()
-                + list(
-                    self.vapi.vpp.details_iter(self.vapi.nat44_ei_output_interface_get)
-                )
+                + list(self.vapi.details_iter(self.vapi.nat44_ei_output_interface_get))
             ]
             self.assertNotIn(lo.sw_if_index, nat_sw_if_indices)
 
