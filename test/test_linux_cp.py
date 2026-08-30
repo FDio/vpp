@@ -77,7 +77,10 @@ class VppLcpPair(VppObject):
         return "lcp:%d:%d" % (self.phy.sw_if_index, self.host.sw_if_index)
 
     def query_vpp_config(self):
-        pairs = list(self._test.vapi.vpp.details_iter(self._test.vapi.lcp_itf_pair_get))
+        with self._test.vapi.assert_known_api_retval(retvals=[0, -165]):
+            pairs = list(
+                self._test.vapi.vpp.details_iter(self._test.vapi.lcp_itf_pair_get)
+            )
 
         for p in pairs:
             if (
@@ -1458,7 +1461,8 @@ class TestLinuxCPPairManagement(TestLinuxCPNetNSBase):
 
     def _get_lcp_pairs(self):
         """Get all LCP pairs as a list of dicts."""
-        return list(self.vapi.vpp.details_iter(self.vapi.lcp_itf_pair_get))
+        with self.vapi.assert_known_api_retval(retvals=[0, -165]):
+            return list(self.vapi.vpp.details_iter(self.vapi.lcp_itf_pair_get))
 
     def _find_lcp_pair(self, phy_sw_if_index):
         """Find an LCP pair by phy sw_if_index."""
