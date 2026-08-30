@@ -1,0 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * pppoeclient_all_api_h.h - plug-in api #include file
+ */
+/* Include the generated file, see BUILT_SOURCES in Makefile.am */
+#include <pppoeclient/pppox/pppox.api.h>
