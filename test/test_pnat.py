@@ -228,10 +228,10 @@ class TestPNAT(VppTestCase):
                 binding_index=rv.binding_index,
             )
 
-        rv, l = self.vapi.pnat_bindings_get()
+        l = list(self.vapi.details_iter(self.vapi.pnat_bindings_get))
         self.assertEqual(len(l), len(tests))
 
-        rv, l = self.vapi.pnat_interfaces_get()
+        l = list(self.vapi.details_iter(self.vapi.pnat_interfaces_get))
         self.assertEqual(len(l), 2)
 
         self.logger.info(self.vapi.cli("show pnat translations"))
