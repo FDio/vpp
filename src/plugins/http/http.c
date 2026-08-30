@@ -1597,7 +1597,10 @@ http_app_tx_callback (void *session, transport_send_params_t *sp)
   max_burst_sz = sp->max_burst_size * TRANSPORT_PACER_MIN_MSS;
   sp->max_burst_size = max_burst_sz;
 
-  http_vfts[hc->version].app_tx_callback (hc, hr_handle.req_index, sp);
+  if (PREDICT_TRUE (svm_fifo_max_dequeue (as->tx_fifo)))
+    http_vfts[hc->version].app_tx_callback (hc, hr_handle.req_index, sp);
+  else
+    HTTP_DBG (1, "ignoring tx callback with empty app fifo");
 
   if (hc->state == HTTP_CONN_STATE_APP_CLOSED)
     http_vfts[hc->version].app_close_callback (hc, hr_handle.req_index,
