@@ -1362,6 +1362,10 @@ if __name__ == "__main__":
         % (tests_amount, tests_amount + cb.filtered.countTestCases())
     )
 
+    if not suites:
+        print("No tests matched the specified filter, exiting with failure.")
+        sys.exit(1)
+
     if not config.extended:
         print("Not running extended tests (some tests will be skipped)")
 
