@@ -1264,14 +1264,15 @@ ip4_full_reass_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  clib_thread_index_t handoff_thread_idx;
 	  u32 counter = ~0;
 	  /*
-      For packets cloned from l2-flood, privatize them first to resolve the issue where packet assembly modifies the next_buffer of the cloned buffer, causing a buffer double free.
+      For packets cloned from l2-flood, privatize them first to resolve the issue where packet
+      assembly modifies the next_buffer of the cloned buffer, causing a buffer double free.
       */
-      if (0 != vlib_buffer_unclone_chain(vm, bi0, &bi0))
-      {
-	  	  next0 = IP4_FULL_REASS_NEXT_DROP;
-		  error0 = IP4_ERROR_REASS_INTERNAL_ERROR;
+	  if (0 != vlib_buffer_unclone_chain (vm, bi0, &bi0))
+	    {
+	      next0 = IP4_FULL_REASS_NEXT_DROP;
+	      error0 = IP4_ERROR_REASS_INTERNAL_ERROR;
 	      goto packet_enqueue;
-      }
+	    }
 	  switch (ip4_full_reass_update (vm, node, rm, rt, reass, &bi0, &next0,
 					 &error0, CUSTOM == type,
 					 &handoff_thread_idx))
