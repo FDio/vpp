@@ -845,6 +845,8 @@ lcp_itf_pair_create (u32 phy_sw_if_index, u8 *host_if_name,
       return VNET_API_ERROR_INVALID_SW_IF_INDEX;
     }
 
+  /* PPPOX and other virtual interfaces register non-ethernet hw classes,
+   * so the generic check below already rejects TAP host pairs for them. */
   if (hw->hw_class_index != ethernet_hw_interface_class.index &&
       host_if_type == LCP_ITF_HOST_TAP)
     {
