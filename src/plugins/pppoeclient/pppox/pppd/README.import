@@ -1,0 +1,38 @@
+SPDX-FileCopyrightText: Copyright (c) 2026 Hi-Jiajun.
+SPDX-License-Identifier: Apache-2.0
+
+This directory contains imported PPP control-plane sources derived from
+the upstream pppd codebase.
+
+Import scope
+- Files under this directory provide the PPP finite state machines and
+  control protocols used by the pppox plugin: LCP, IPCP, IPv6CP, PAP,
+  CHAP, and supporting utility code.
+- The original per-file provenance is preserved in the source headers
+  via the upstream copyright and RCS identifiers.
+
+Why these files are vendored
+- The pppox plugin needs an in-process PPP control plane that can run
+  directly on top of VPP virtual interfaces.
+- Real-line validation showed that replacing the imported CHAP/MD5 path
+  with a native VPP crypto/hash rewrite broke CHAP authentication, so
+  the imported implementation is intentionally retained for correctness.
+
+Local adaptations
+- Added per-unit state handling so multiple PPPoX instances can run
+  concurrently inside VPP.
+- Added the sys-vpp shim layer in sys-vpp.c / sys-vpp.h to bridge the
+  imported PPP state machines to VPP/PPPoX runtime hooks.
+- Kept plugin-facing behavior changes outside the imported files where
+  possible, in pppox.c and pppoeclient.c.
+- auth.c carries two minimal hook calls (`pppox_note_auth_failure(unit)`
+  in `auth_peer_fail` and `auth_withpeer_fail`) so the pppox / pppoeclient
+  restart path can distinguish CHAP / PAP denial from a normal teardown.
+  The hook is declared via an `extern` near the top of auth.c and
+  implemented in pppox.c.
+
+Review expectations
+- Treat these files as imported third-party sources with localized VPP
+  integration changes, not as freshly authored VPP-native code.
+- When touching behavior, prefer small, well-contained changes and keep
+  the original upstream structure recognizable.
