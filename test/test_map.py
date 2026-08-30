@@ -152,8 +152,10 @@ class TestMAP(VppTestCase):
             rv, _ = e.reply
         self.assertIn(rv.retval, [0, -165])
 
-        with self.vapi.assert_known_api_retval([0, -165]):
-            d = list(self.vapi.vpp.details_iter(self.vapi.map_domains_get))
+        with self.assertRaises(UnexpectedApiReturnValueError):
+            self.vapi.map_domains_get()
+
+        d = list(self.vapi.vpp.details_iter(self.vapi.map_domains_get))
         self.assertEqual(len(d), no_domains - 1)
 
         # Clean up

@@ -301,7 +301,7 @@ class TestLldpDump(VppTestCase):
         #
         # Ensure an LLDP-disabled interface doesn't dump.
         #
-        result, details = self.vapi.lldp_dump()
+        details = list(self.vapi.vpp.details_iter(self.vapi.lldp_dump))
         self.assert_equal(len(details), 0)
 
         #
@@ -320,7 +320,7 @@ class TestLldpDump(VppTestCase):
         # Ensure an inactive LLDP-enabled interface dumps with
         # expected values.
         #
-        result, details = self.vapi.lldp_dump()
+        details = list(self.vapi.vpp.details_iter(self.vapi.lldp_dump))
         self.assertNotEqual(len(details), 0)
 
         #
@@ -405,7 +405,7 @@ class TestLldpDump(VppTestCase):
         # Pretend to wait so LLDP will flow, then get the LLDP dump data.
         #
         self.virtual_sleep(10)
-        result, details = self.vapi.lldp_dump()
+        details = list(self.vapi.vpp.details_iter(self.vapi.lldp_dump))
 
         #
         # Validate the various pieces of the LLDP dump data.
@@ -469,7 +469,7 @@ class TestLldpDump(VppTestCase):
         #
         # Get the dump data again and ensure that things have gone inactive.
         #
-        result, details = self.vapi.lldp_dump()
+        details = list(self.vapi.vpp.details_iter(self.vapi.lldp_dump))
         for d in details:
             self.assert_equal(d.active, False)
 
