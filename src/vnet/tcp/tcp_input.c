@@ -780,7 +780,7 @@ tcp_ack_is_cc_event (tcp_connection_t *tc, vlib_buffer_t *b, u32 prev_snd_wnd, t
    * boolean result can be ORed into ack_flags directly. */
   ac->ack_flags |= ac->last_sacked_bytes || tcp_ack_is_dupack (tc, b, prev_snd_wnd, ac);
 
-  return ((ac->ack_flags & (TCP_ACK_F_DUPACK | TCP_ACK_F_DSACK_SPURIOUS)) ||
+  return ((ac->ack_flags & (TCP_ACK_F_DUPACK | TCP_ACK_F_DSACK_SPURIOUS | TCP_ACK_F_DETECT_LOSS)) ||
 	  tcp_in_cong_recovery (tc));
 }
 
@@ -844,17 +844,17 @@ tcp_rcv_ack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc, vlib_buffer_t * b,
 	tcp_program_dequeue (wrk, tc, &ac);
     }
 
-  if (ac.ack_flags & TCP_ACK_F_DETECT_LOSS)
-    tcp_loss_on_ack (tc, &ac);
-
-  TCP_EVT (TCP_EVT_ACK_RCVD, tc, &ac);
-
   /*
    * Check if we have congestion event
    */
 
+  TCP_EVT (TCP_EVT_ACK_RCVD, tc, &ac);
+
   if (tcp_ack_is_cc_event (tc, b, prev_snd_wnd, &ac))
     {
+      if (ac.ack_flags & TCP_ACK_F_DETECT_LOSS)
+	tcp_loss_on_ack (tc, &ac);
+
       tcp_cc_handle_event (tc, &ac);
       tc->dupacks_in += !!(ac.ack_flags & TCP_ACK_F_DUPACK);
       if (!tcp_in_cong_recovery (tc))
