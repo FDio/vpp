@@ -134,6 +134,22 @@ class StatsClientTestCase(VppTestCase):
         self.assertEqual(rx_packets, 5)
         self.assertEqual(vectors[0], rx[0]["packets"])
 
+    def test_symlink_recycled_interface_nodes(self):
+        """Test symlinks after interface node recycling"""
+        self.create_loopback_interfaces(10)
+        for interface in self.lo_interfaces:
+            interface.remove_vpp_config()
+
+        # Let the stats collector observe all deleted interface nodes.
+        self.sleep(0.2)
+
+        self.create_loopback_interfaces(1)
+        self.loop0.remove_vpp_config()
+
+        # The hardware interface and node pools use different reuse orders.
+        # Let the collector process the recycled node after its deletion.
+        self.sleep(0.2)
+
     def test_index_consistency(self):
         """Test index consistency despite changes in the stats"""
         d = self.statistics.ls(["/if/names"])

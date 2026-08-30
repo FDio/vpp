@@ -1112,10 +1112,12 @@ vnet_delete_hw_interface (vnet_main_t * vnm, u32 hw_if_index)
 	  rt->is_deleted = 1;
 	}
 
+      /* Interface and node pools can reuse elements in different orders.
+       * Use the node index to keep deleted node names unique. */
       vlib_node_rename (vm, hw->output_node_index,
-			"interface-%d-output-deleted", hw_if_index);
-      vlib_node_rename (vm, hw->tx_node_index, "interface-%d-tx-deleted",
-			hw_if_index);
+			"interface-%u-output-deleted", hw->output_node_index);
+      vlib_node_rename (vm, hw->tx_node_index, "interface-%u-tx-deleted",
+			hw->tx_node_index);
       vlib_unregister_errors (vm, hw->output_node_index);
       vlib_unregister_errors (vm, hw->tx_node_index);
       vec_add2 (im->deleted_hw_interface_nodes, dn, 1);
