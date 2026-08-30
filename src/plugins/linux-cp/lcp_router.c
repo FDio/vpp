@@ -780,11 +780,14 @@ lcp_router_neigh_del (struct rtnl_neigh *rn)
 
       rv = ip_neighbor_del (&nh, sw_if_index);
 
+      /* ip_neighbor_del() only ever fails with
+       * VNET_API_ERROR_NO_SUCH_ENTRY, so a plain if (rv) covers every
+       * error case - log at debug level to tolerate neighbors that are
+       * already gone. */
       if (rv)
 	{
-	  LCP_ROUTER_ERROR (
-	    "Failed to delete neighbor: %U %U", format_ip_address, &nh,
-	    format_vnet_sw_if_index_name, vnet_get_main (), sw_if_index);
+	  LCP_ROUTER_DBG ("ignore neighbor del missing: %U %U", format_ip_address, &nh,
+			  format_vnet_sw_if_index_name, vnet_get_main (), sw_if_index);
 	}
       else
 	{
