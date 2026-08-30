@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "0513664c_fa0394ef",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-08-30T12:05:22Z",
+      "side": 1,
+      "message": "This just hide potential issue with rapid reduction of requests per stream, with lower value we didn\u0027t catch bug in the past. Test failures are most likely caused by patch which upgraded nginx version on Aug 11. I\u0027m currently testing patch with upgrade to the latest stable nginx version. So we will either temporarily disable the test or wait until I finish testing of my patch.",
+      "revId": "031d070bff8bcc21e67302a87a6bea25bcbc9bb2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
