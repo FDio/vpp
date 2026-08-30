@@ -8,6 +8,10 @@ from asfframework import VppAsfTestCase, VppTestRunner
 class TestCrypto(VppAsfTestCase):
     """Crypto Test Case"""
 
+    # Performance CLI commands can exceed the default 5 second API timeout
+    # on loaded ARM workers.
+    vapi_response_timeout = 20
+
     @classmethod
     def setUpClass(cls):
         super(TestCrypto, cls).setUpClass()
