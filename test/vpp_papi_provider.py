@@ -333,9 +333,9 @@ class VppPapiProvider(object):
         self._events.put(event)
 
     def factory(self, name, apifn):
-        def f(*a, **ka):
-            fields = apifn._func.msg.fields
+        fields = apifn._func.msg.fields
 
+        def f(*a, **ka):
             # add positional and kw arguments
             d = ka
             for i, o in enumerate(fields[3:]):
@@ -350,7 +350,13 @@ class VppPapiProvider(object):
                     if k in d:
                         continue
                     d[k] = v
-            return self.api(apifn, d)
+
+            # details_iter supplies cursor explicitly for every page.  Accept
+            # EAGAIN only for those calls, while keeping a raw call which uses
+            # the default cursor strict so it cannot return a partial list
+            # unnoticed.
+            expected_retval = [0, -165] if "cursor" in fields and "cursor" in d else 0
+            return self.api(apifn, d, expected_retval=expected_retval)
 
         return f
 
@@ -421,7 +427,7 @@ class VppPapiProvider(object):
                 or (isinstance(expected_retval, list) and retval not in expected_retval)
             ):
                 msg = (
-                    "%s(%s) failed, expected %d return value instead "
+                    "%s(%s) failed, expected %s return value instead "
                     "of %d in %s"
                     % (
                         api_fn.__name__,
