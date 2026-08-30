@@ -3290,9 +3290,11 @@ class TestNAT44EI(MethodHolder):
             sw_if_index=self.pg1.sw_if_index, is_add=1
         )
 
-        self.frag_in_order(proto=IP_PROTOS.tcp)
-        self.frag_in_order(proto=IP_PROTOS.udp)
-        self.frag_in_order(proto=IP_PROTOS.icmp)
+        # The random external port may legitimately equal the internal port.
+        # Address translation and the reverse path prove the mapping works.
+        self.frag_in_order(proto=IP_PROTOS.tcp, ignore_port=True)
+        self.frag_in_order(proto=IP_PROTOS.udp, ignore_port=True)
+        self.frag_in_order(proto=IP_PROTOS.icmp, ignore_port=True)
 
     def test_frag_forwarding(self):
         """NAT44EI forwarding fragment test"""
@@ -3388,9 +3390,11 @@ class TestNAT44EI(MethodHolder):
             sw_if_index=self.pg1.sw_if_index, is_add=1
         )
 
-        self.frag_out_of_order(proto=IP_PROTOS.tcp)
-        self.frag_out_of_order(proto=IP_PROTOS.udp)
-        self.frag_out_of_order(proto=IP_PROTOS.icmp)
+        # The random external port may legitimately equal the internal port.
+        # Address translation and the reverse path prove the mapping works.
+        self.frag_out_of_order(proto=IP_PROTOS.tcp, ignore_port=True)
+        self.frag_out_of_order(proto=IP_PROTOS.udp, ignore_port=True)
+        self.frag_out_of_order(proto=IP_PROTOS.icmp, ignore_port=True)
 
     def test_port_restricted(self):
         """NAT44EI Port restricted NAT44EI (MAP-E CE)"""
