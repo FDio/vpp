@@ -1,0 +1,22 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ca968675_d6fb15cf",
+        "filename": "src/plugins/linux-cp/lcp_router.c",
+        "patchSetId": 125
+      },
+      "lineNbr": 784,
+      "author": {
+        "id": 3306
+      },
+      "writtenOn": "2026-08-30T01:48:46Z",
+      "side": 1,
+      "message": "You\u0027re right — I accidentally reverted the PS30 fix while rebasing, sorry about that. PS125 simplifies the block back to a single \u0027if (rv)\u0027 with LCP_ROUTER_DBG (the else-if branch is unreachable since ip_neighbor_del() only ever returns VNET_API_ERROR_NO_SUCH_ENTRY), and drops the now-unused \u003cvnet/api_errno.h\u003e include. I also removed the PPPOX device-class guard from lcp_interface.c because the existing non-ethernet TAP check already covers it.",
+      "parentUuid": "b36abf6e_1dbdfae8",
+      "revId": "2373d0491b99b01fc6df5811a344f660933cce02",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
