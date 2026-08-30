@@ -248,7 +248,13 @@ handle_dad_conflict (vlib_main_t *vm, u32 sw_if_index, const ip6_address_t *addr
 
   /* Call registered internal callbacks */
   ip6_dad_callback_registration_t *reg;
-  u8 address_length = entry->address_length; /* Save before freeing entry */
+  u8 address_length = entry->address_length;
+
+  /* A callback may delete the duplicate address. That invokes
+   * ip6_dad_stop() through the link delegate, so remove the entry first to
+   * prevent the callback and this function from freeing it twice. */
+  pool_put (ip6_dad_main.dad_entries, entry);
+
   pool_foreach (reg, ip6_dad_main.duplicate_callbacks)
     {
       reg->callback_fn (sw_if_index, address, address_length);
@@ -259,8 +265,6 @@ handle_dad_conflict (vlib_main_t *vm, u32 sw_if_index, const ip6_address_t *addr
    * Applications are notified via the event system
    */
 
-  /* Free the DAD entry */
-  pool_put (ip6_dad_main.dad_entries, entry);
 }
 
 /**
