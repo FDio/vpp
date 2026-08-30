@@ -3292,7 +3292,7 @@ class TestIPv4PathMTU(VppTestCase):
             self.assertTrue(pmtu.query_vpp_config())
 
         self.logger.info(self.vapi.cli("sh ip pmtu"))
-        dump = list(self.vapi.vpp.details_iter(self.vapi.ip_path_mtu_get))
+        dump = list(self.vapi.details_iter(self.vapi.ip_path_mtu_get))
         self.assertEqual(N_HOSTS, len(dump))
 
         for h in range(N_HOSTS):
