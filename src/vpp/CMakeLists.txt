@@ -14,6 +14,38 @@
 ##############################################################################
 # Generate vpp/app/version.h
 ##############################################################################
+set(VPP_VERSION_DEPS
+  ${CMAKE_SOURCE_DIR}/scripts/generate_version_h
+  ${CMAKE_SOURCE_DIR}/scripts/version
+)
+
+execute_process(
+  COMMAND git rev-parse --git-dir
+  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+  OUTPUT_VARIABLE VPP_GIT_DIR
+  OUTPUT_STRIP_TRAILING_WHITESPACE
+  ERROR_QUIET
+)
+
+if(VPP_GIT_DIR)
+  if(NOT IS_ABSOLUTE "${VPP_GIT_DIR}")
+    set(VPP_GIT_DIR "${CMAKE_SOURCE_DIR}/${VPP_GIT_DIR}")
+  endif()
+
+  if(EXISTS "${VPP_GIT_DIR}/HEAD")
+    list(APPEND VPP_VERSION_DEPS "${VPP_GIT_DIR}/HEAD")
+    file(READ "${VPP_GIT_DIR}/HEAD" VPP_GIT_HEAD_CONTENT)
+    string(REGEX MATCH "^ref: (.+)$" _vpp_git_head_ref "${VPP_GIT_HEAD_CONTENT}")
+    if(CMAKE_MATCH_1 AND EXISTS "${VPP_GIT_DIR}/${CMAKE_MATCH_1}")
+      list(APPEND VPP_VERSION_DEPS "${VPP_GIT_DIR}/${CMAKE_MATCH_1}")
+    endif()
+  endif()
+
+  if(EXISTS "${VPP_GIT_DIR}/index")
+    list(APPEND VPP_VERSION_DEPS "${VPP_GIT_DIR}/index")
+  endif()
+endif()
+
 add_custom_command(
   OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/app/version.h
   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
@@ -21,6 +53,7 @@ add_custom_command(
   ARGS -p ${CMAKE_CURRENT_BINARY_DIR}/app
   COMMAND scripts/generate_version_h
   ARGS ${CMAKE_CURRENT_BINARY_DIR}/app/version.h ${VPP_PLATFORM}
+  DEPENDS ${VPP_VERSION_DEPS}
   COMMENT "Generating VPP version.h"
 )
 
