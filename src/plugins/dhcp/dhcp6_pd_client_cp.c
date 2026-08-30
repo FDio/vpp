@@ -1202,7 +1202,7 @@ VLIB_CLI_COMMAND (ip6_pd_clients_show_command, static) = {
   .function = ip6_pd_clients_show_command_function,
 };
 
-u8
+u8 __clib_export
 dhcp6_pd_client_get_runtime (u32 sw_if_index, dhcp6_pd_client_runtime_t *rt)
 {
   dhcp6_pd_client_cp_main_t *rm = &dhcp6_pd_client_cp_main;
