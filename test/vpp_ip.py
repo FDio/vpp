@@ -223,7 +223,7 @@ class VppIpPathMtu(VppObject):
         )
 
     def query_vpp_config(self):
-        ds = list(self._test.vapi.vpp.details_iter(self._test.vapi.ip_path_mtu_get))
+        ds = list(self._test.vapi.details_iter(self._test.vapi.ip_path_mtu_get))
 
         for d in ds:
             if (

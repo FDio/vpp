@@ -291,6 +291,16 @@ class VppPapiProvider(object):
     def __exit__(self, exc_type, exc_value, traceback):
         self._expect_api_retval = self._expect_stack.pop()
 
+    def details_iter(self, api_fn, **kwargs):
+        """Iterate over a paginated details API.
+
+        Paginated APIs return ``VNET_API_ERROR_EAGAIN`` while more details
+        remain.  Allow that expected continuation value through the test
+        provider so the PAPI iterator can advance to the next cursor.
+        """
+        with self.assert_known_api_retval([0, -165]):
+            yield from self.vpp.details_iter(api_fn, **kwargs)
+
     def register_hook(self, hook):
         """Replace hook registration with new hook
 
