@@ -171,5 +171,27 @@ class StatsClientTestCase(VppTestCase):
         print("AFTER", before, self.statistics.get_counter("/mem/statseg/used"))
 
 
+class StatsNodeRecycleTestCase(VppTestCase):
+    """Test stats after interface node recycling, including debug builds"""
+
+    extra_vpp_statseg_config = "per-node-counters on update-interval 0.05"
+
+    def test_symlink_recycled_interface_nodes(self):
+        """Test symlinks after interface node recycling"""
+        self.create_loopback_interfaces(10)
+        for interface in self.lo_interfaces:
+            interface.remove_vpp_config()
+
+        # Let the stats collector observe all deleted interface nodes.
+        self.sleep(0.2)
+
+        self.create_loopback_interfaces(1)
+        self.loop0.remove_vpp_config()
+
+        # The hardware interface and node pools use different reuse orders.
+        # Let the collector process the recycled node after its deletion.
+        self.sleep(0.2)
+
+
 if __name__ == "__main__":
     unittest.main(testRunner=VppTestRunner)
