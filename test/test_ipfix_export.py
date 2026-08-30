@@ -64,7 +64,7 @@ class TestIpfixExporter(VppTestCase):
             exp, IPv4Address(self.pg1.remote_ip4), IPv4Address(self.pg0.local_ip4)
         )
 
-        exporters = list(self.vapi.vpp.details_iter(self.vapi.ipfix_all_exporter_get))
+        exporters = list(self.vapi.details_iter(self.vapi.ipfix_all_exporter_get))
         exp = self.find_exp_by_collector_addr(exporters, self.pg1.remote_ip4)
         self.verify_exporter_detail(
             exp, IPv4Address(self.pg1.remote_ip4), IPv4Address(self.pg0.local_ip4)
@@ -80,7 +80,7 @@ class TestIpfixExporter(VppTestCase):
             is_create=True,
         )
 
-        exporters = list(self.vapi.vpp.details_iter(self.vapi.ipfix_all_exporter_get))
+        exporters = list(self.vapi.details_iter(self.vapi.ipfix_all_exporter_get))
         self.assertTrue(len(exporters) == 2)
         exp = self.find_exp_by_collector_addr(exporters, self.pg1.remote_ip4)
         self.verify_exporter_detail(
@@ -101,7 +101,7 @@ class TestIpfixExporter(VppTestCase):
             is_create=True,
         )
 
-        exporters = list(self.vapi.vpp.details_iter(self.vapi.ipfix_all_exporter_get))
+        exporters = list(self.vapi.details_iter(self.vapi.ipfix_all_exporter_get))
         self.assertTrue(len(exporters) == 3)
         exp = self.find_exp_by_collector_addr(exporters, self.pg1.remote_ip4)
         self.verify_exporter_detail(
@@ -126,7 +126,7 @@ class TestIpfixExporter(VppTestCase):
             is_create=True,
         )
 
-        exporters = list(self.vapi.vpp.details_iter(self.vapi.ipfix_all_exporter_get))
+        exporters = list(self.vapi.details_iter(self.vapi.ipfix_all_exporter_get))
         self.assertTrue(len(exporters) == 3)
         exp = self.find_exp_by_collector_addr(exporters, self.pg1.remote_ip4)
         self.verify_exporter_detail(
@@ -155,7 +155,7 @@ class TestIpfixExporter(VppTestCase):
             is_create=False,
         )
 
-        exporters = list(self.vapi.vpp.details_iter(self.vapi.ipfix_all_exporter_get))
+        exporters = list(self.vapi.details_iter(self.vapi.ipfix_all_exporter_get))
         self.assertTrue(len(exporters) == 2)
         exp = self.find_exp_by_collector_addr(exporters, self.pg1.remote_ip4)
         self.verify_exporter_detail(
@@ -176,7 +176,7 @@ class TestIpfixExporter(VppTestCase):
             is_create=False,
         )
 
-        exporters = list(self.vapi.vpp.details_iter(self.vapi.ipfix_all_exporter_get))
+        exporters = list(self.vapi.details_iter(self.vapi.ipfix_all_exporter_get))
         self.assertTrue(len(exporters) == 1)
         exp = self.find_exp_by_collector_addr(exporters, self.pg1.remote_ip4)
         self.verify_exporter_detail(
