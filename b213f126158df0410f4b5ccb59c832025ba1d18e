@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e34d615c_e1f0b7bf",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-08-30T00:33:22Z",
+      "side": 1,
+      "message": "Since this is an intermittent condition, is there a way to force the schedele stall to occur or otherwise verify missing the timeout is reported as a worker dewdlock anf subsequently prove that this change fixes the issue?\n\nAre there any side effects of changing the timeout?",
+      "revId": "b213f126158df0410f4b5ccb59c832025ba1d18e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
