@@ -1311,14 +1311,16 @@ ip6_full_reassembly_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	    {
 	      u32 handoff_thread_idx;
 	      u32 counter = ~0;
-		/*
-		For packets cloned from l2-flood, privatize them first to resolve the issue where packet assembly modifies the next_buffer of the cloned buffer, causing a buffer double free.
-		*/
-		if (0 != vlib_buffer_unclone_chain(vm, bi0, &bi0))
+	      /*
+	      For packets cloned from l2-flood, privatize them first to resolve the issue where
+	      packet assembly modifies the next_buffer of the cloned buffer, causing a buffer double
+	      free.
+	      */
+	      if (0 != vlib_buffer_unclone_chain (vm, bi0, &bi0))
 		{
-			next0 = IP6_FULL_REASSEMBLY_NEXT_DROP;
-			error0 = IP6_ERROR_REASS_INTERNAL_ERROR;
-			goto skip_reass;
+		  next0 = IP6_FULL_REASSEMBLY_NEXT_DROP;
+		  error0 = IP6_ERROR_REASS_INTERNAL_ERROR;
+		  goto skip_reass;
 		}
 	      switch (ip6_full_reass_update (
 		vm, node, rm, rt, reass, &bi0, &next0, &error0, frag_hdr,

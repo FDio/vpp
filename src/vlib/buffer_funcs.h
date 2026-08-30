@@ -1329,23 +1329,23 @@ vlib_buffer_unclone_chain (vlib_main_t *vm, u32 src_bi, u32 *dst_bi)
   while (1)
     {
       if (PREDICT_FALSE (n_buffers >= VLIB_FRAME_SIZE))
-        return -1;
+	return -1;
 
       b = vlib_get_buffer (vm, bi);
       chain_bis[n_buffers] = bi;
       if (b->ref_count > 1)
-        {
-          shared_pos[n_shared] = n_buffers;
-          n_shared++;
-          if (shared_pool_index == (u8) ~0)
-            shared_pool_index = b->buffer_pool_index;
-          else if (PREDICT_FALSE (shared_pool_index != b->buffer_pool_index))
-            return -1;
-        }
+	{
+	  shared_pos[n_shared] = n_buffers;
+	  n_shared++;
+	  if (shared_pool_index == (u8) ~0)
+	    shared_pool_index = b->buffer_pool_index;
+	  else if (PREDICT_FALSE (shared_pool_index != b->buffer_pool_index))
+	    return -1;
+	}
 
       n_buffers++;
       if ((b->flags & VLIB_BUFFER_NEXT_PRESENT) == 0)
-        break;
+	break;
       bi = b->next_buffer;
     }
 
@@ -1356,12 +1356,11 @@ vlib_buffer_unclone_chain (vlib_main_t *vm, u32 src_bi, u32 *dst_bi)
     return -1;
 
   /* All shared segments must come from the same pool for batched allocation. */
-  n_alloc = vlib_buffer_alloc_from_pool (vm, replacement_bis, n_shared,
-                                         shared_pool_index);
+  n_alloc = vlib_buffer_alloc_from_pool (vm, replacement_bis, n_shared, shared_pool_index);
   if (PREDICT_FALSE (n_alloc != n_shared))
     {
       if (n_alloc)
-        vlib_buffer_free (vm, replacement_bis, n_alloc);
+	vlib_buffer_free (vm, replacement_bis, n_alloc);
       return -1;
     }
 
@@ -1371,33 +1370,33 @@ vlib_buffer_unclone_chain (vlib_main_t *vm, u32 src_bi, u32 *dst_bi)
       b = vlib_get_buffer (vm, chain_bis[i]);
 
       if (n_new < n_shared && shared_pos[n_new] == i)
-        {
-          out_bi = replacement_bis[n_new++];
-          d = vlib_get_buffer (vm, out_bi);
-          /* Copy the whole segment payload so the new buffer becomes exclusive. */
-          clib_memcpy_fast (d, b, sizeof (vlib_buffer_t) + data_size);
-          d->ref_count = 1;
-          b = d;
-        }
+	{
+	  out_bi = replacement_bis[n_new++];
+	  d = vlib_get_buffer (vm, out_bi);
+	  /* Copy the whole segment payload so the new buffer becomes exclusive. */
+	  clib_memcpy_fast (d, b, sizeof (vlib_buffer_t) + data_size);
+	  d->ref_count = 1;
+	  b = d;
+	}
       else
-        out_bi = chain_bis[i];
+	out_bi = chain_bis[i];
 
       if (i == 0)
-        new_head_bi = out_bi;
+	new_head_bi = out_bi;
 
       if (prev_out)
-        {
-          prev_out->flags |= VLIB_BUFFER_NEXT_PRESENT;
-          prev_out->next_buffer = out_bi;
-        }
+	{
+	  prev_out->flags |= VLIB_BUFFER_NEXT_PRESENT;
+	  prev_out->next_buffer = out_bi;
+	}
 
       prev_out = b;
 
       if (i + 1 == n_buffers)
-        {
-          prev_out->flags &= ~VLIB_BUFFER_NEXT_PRESENT;
-          prev_out->next_buffer = 0;
-        }
+	{
+	  prev_out->flags &= ~VLIB_BUFFER_NEXT_PRESENT;
+	  prev_out->next_buffer = 0;
+	}
     }
 
   for (i = 0; i < n_shared; i++)
