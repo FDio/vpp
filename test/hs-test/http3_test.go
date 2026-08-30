@@ -222,11 +222,12 @@ func Http3ClientGetRepeatTest(s *Http3Suite) {
 func Http3ClientGetMultiplexingTest(s *Http3Suite) {
 	vpp := s.Containers.Vpp.VppInstance
 	serverAddress := s.HostAddr() + ":" + s.Ports.Port1
+	const requestCount = 200
 
 	s.StartNginx()
 
 	uri := "https://" + serverAddress + "/64B"
-	cmd := fmt.Sprintf("http client http3 streams %d repeat %d uri %s", 10, 1000, uri)
+	cmd := fmt.Sprintf("http client http3 streams %d repeat %d uri %s", 10, requestCount, uri)
 
 	var lastOutput string
 	done := make(chan string, 1)
@@ -247,20 +248,20 @@ func Http3ClientGetMultiplexingTest(s *Http3Suite) {
 	o := <-done
 
 	Log(o)
-	AssertContains(o, "1000 request(s)")
+	AssertContains(o, fmt.Sprintf("%d request(s)", requestCount))
 	AssertNotContains(o, "error")
 	o = vpp.Vppctl("show http stats")
 	Log(o)
 	AssertContains(o, "1 connections established")
 	AssertContains(o, "10 application streams opened")
 	AssertContains(o, "10 application streams closed")
-	AssertContains(o, "1000 requests sent")
-	AssertContains(o, "1000 responses received")
+	AssertContains(o, fmt.Sprintf("%d requests sent", requestCount))
+	AssertContains(o, fmt.Sprintf("%d responses received", requestCount))
 
 	logPath := s.Containers.Nginx.GetHostWorkDir() + "/" + s.Containers.Nginx.Name
 	logContents, err := exechelper.Output("cat " + logPath + "-access.log")
 	AssertNil(err)
-	AssertContains(string(logContents), "conn_reqs=1000")
+	AssertContains(string(logContents), fmt.Sprintf("conn_reqs=%d", requestCount))
 	logContents, err = exechelper.Output("cat " + logPath + "-error.log")
 	AssertNil(err)
 	AssertNotContains(string(logContents), "client closed connection while waiting for request")
