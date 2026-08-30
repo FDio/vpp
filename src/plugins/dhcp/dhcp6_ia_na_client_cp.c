@@ -585,7 +585,7 @@ VLIB_CLI_COMMAND (dhcp6_clients_show_command, static) = {
   .function = dhcp6_clients_show_command_function,
 };
 
-u8
+u8 __clib_export
 dhcp6_ia_na_client_get_runtime (u32 sw_if_index, dhcp6_ia_na_client_runtime_t *rt)
 {
   dhcp6_client_cp_main_t *rm = &dhcp6_client_cp_main;
