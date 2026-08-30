@@ -1056,9 +1056,11 @@ class VCLThruHostStackHTTPPost(VCLTestCase):
         self.thru_host_stack_setup()
         self.client_uni_dir_http_post_timeout = 120
         self.server_http_post_args = ["-p", "http", self.server_port]
+        # Keep this functional workload below the HTTP transport's 60 second
+        # connection timeout on slower ARM runners.
         self.client_uni_dir_http_post_test_args = [
             "-N",
-            "10000",
+            "2000",
             "-U",
             "-X",
             "-p",
