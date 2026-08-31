@@ -163,6 +163,41 @@
 #define CLIB_MEMORY_STORE_BARRIER() __sync_synchronize ()
 #endif
 
+/*
+ * DMA barriers order accesses to coherent, cacheable memory shared with a
+ * DMA device.  They do not perform cache maintenance, change cacheability or
+ * make non-coherent DMA memory visible to either the CPU or the device.
+ */
+
+/* Order DMA device writes before subsequent CPU reads. */
+#if defined(__aarch64__)
+#define CLIB_DMA_RMB() asm volatile ("dmb oshld" ::: "memory")
+#elif defined(__x86_64__)
+#define CLIB_DMA_RMB() CLIB_COMPILER_BARRIER ()
+#else
+#define CLIB_DMA_RMB() CLIB_MEMORY_BARRIER ()
+#endif
+
+/* Order CPU writes published to a DMA device before a following store. */
+#if defined(__aarch64__)
+#define CLIB_DMA_WMB() asm volatile ("dmb oshst" ::: "memory")
+#elif defined(__x86_64__)
+#define CLIB_DMA_WMB() CLIB_COMPILER_BARRIER ()
+#else
+#define CLIB_DMA_WMB() CLIB_MEMORY_STORE_BARRIER ()
+#endif
+
+/*
+ * Order preceding normal-memory stores before a following MMIO write.  MMIO
+ * is device/uncached memory and its accesses may have side effects; this
+ * barrier does not make it interchangeable with DMA memory.
+ */
+#if defined(__aarch64__)
+#define CLIB_MMIO_WMB() asm volatile ("dmb oshst" ::: "memory")
+#else
+#define CLIB_MMIO_WMB() CLIB_MEMORY_STORE_BARRIER ()
+#endif
+
 /* Arranges for function to be called before main. */
 #define INIT_FUNCTION(decl)			\
   decl __attribute ((constructor));		\
