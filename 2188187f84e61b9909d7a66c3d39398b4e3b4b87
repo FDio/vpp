@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b96e8a48_b1f1aed2",
+        "filename": "src/plugins/vperf/builtin/vperf_protos.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 244,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-08-31T08:09:40Z",
+      "side": 1,
+      "message": "from performance perspective it\u0027s better to start again from offset 0 in test buffer in this case, otherwise we might send less packets or one smaller in next dispatch which drops throughput",
+      "revId": "2188187f84e61b9909d7a66c3d39398b4e3b4b87",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9d6e8831_2e4f2537",
+        "filename": "src/plugins/vperf/builtin/vperf_protos.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1332,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-08-31T08:09:40Z",
+      "side": 1,
+      "message": "from performance perspective it\u0027s better to start again from offset 0 in test buffer in this case, otherwise we might send less packets or one smaller in next dispatch which drops throughput",
+      "revId": "2188187f84e61b9909d7a66c3d39398b4e3b4b87",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "74c7a61c_922fb6df",
+        "filename": "src/vcl/vcl_cfg.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 411,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-08-31T08:09:40Z",
+      "side": 1,
+      "message": "could you please split this to another patch? it\u0027s better to do commit for just one component if possible",
+      "revId": "2188187f84e61b9909d7a66c3d39398b4e3b4b87",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
