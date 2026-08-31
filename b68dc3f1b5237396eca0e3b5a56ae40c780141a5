@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0ce51510_0dbcd6ca",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-08-31T08:10:59Z",
+      "side": 1,
+      "message": "could you please split this in two patches? it\u0027s preferred to do commit for just one component if possible",
+      "revId": "b68dc3f1b5237396eca0e3b5a56ae40c780141a5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
