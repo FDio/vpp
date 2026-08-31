@@ -163,6 +163,22 @@
 #define CLIB_MEMORY_STORE_BARRIER() __sync_synchronize ()
 #endif
 
+/* Order CPU writes published to a DMA device before a following store. */
+#if defined(__aarch64__)
+#define CLIB_DMA_WMB() asm volatile ("dmb oshst" ::: "memory")
+#elif defined(__x86_64__)
+#define CLIB_DMA_WMB() CLIB_COMPILER_BARRIER ()
+#else
+#define CLIB_DMA_WMB() CLIB_MEMORY_STORE_BARRIER ()
+#endif
+
+/* Order preceding stores before a following MMIO write. */
+#if defined(__aarch64__)
+#define CLIB_MMIO_WMB() asm volatile ("dmb oshst" ::: "memory")
+#else
+#define CLIB_MMIO_WMB() CLIB_MEMORY_STORE_BARRIER ()
+#endif
+
 /* Arranges for function to be called before main. */
 #define INIT_FUNCTION(decl)			\
   decl __attribute ((constructor));		\
