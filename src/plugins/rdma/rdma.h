@@ -373,6 +373,7 @@ typedef struct
   _ (NO_FREE_SLOTS, "no free tx slots")                                                            \
   _ (SUBMISSION, "tx submission errors")                                                           \
   _ (COMPLETION, "tx completion errors")                                                           \
+  _ (DEVICE, "device error")                                                                       \
   _ (UNSUPPORTED_GSO, "unsupported non-TCP GSO packet")                                            \
   _ (PACKET_TOO_SHORT, "packet shorter than required inline header")                               \
   _ (TSO_HDR_INVALID, "invalid tso header or mss")                                                 \
