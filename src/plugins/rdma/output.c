@@ -31,6 +31,14 @@ rdma_mlx5_wqe_chained_dseg_max (u32 n_wqebb, u32 base_ds)
   return clib_min (available_ds - base_ds, RDMA_MLX5_WQE_DS_MAX - base_ds);
 }
 
+static_always_inline int
+rdma_mlx5_packet_too_short (const rdma_device_t *rd, const vlib_buffer_t *b)
+{
+  u16 min_length = rd->tx_min_inline ? rd->tx_min_inline : 1;
+
+  return b->current_length < min_length;
+}
+
 /* Sentinel used for WQEBB slots that do not own a buffer index. */
 #define RDMA_TXQ_INVALID_BUF ((u32) ~0)
 
@@ -38,7 +46,6 @@ typedef enum
 {
   RDMA_MLX5_TX_PACKET_CONSUMED,
   RDMA_MLX5_TX_PACKET_NO_SLOTS,
-  RDMA_MLX5_TX_PACKET_REGULAR,
 } rdma_mlx5_tx_packet_result_t;
 
 typedef enum
@@ -454,6 +461,13 @@ rdma_mlx5_build_tso (vlib_main_t *vm, const vlib_node_runtime_t *node, const rdm
   u32 total_wqebb;
   u8 base_ds;
 
+  if (PREDICT_FALSE (hdr_sz < RDMA_MLX5_ETH_L2_MIN_HEADER_SIZE || vnet_buffer2 (b)->gso_size == 0))
+    {
+      vlib_error_count (vm, node->node_index, RDMA_TX_ERROR_TSO_HDR_INVALID, 1);
+      vlib_buffer_free_one (vm, bi);
+      return r;
+    }
+
   if (PREDICT_FALSE (hdr_sz > RDMA_MLX5_TSO_HDR_MAX))
     {
       /* Header too large for the TSO WQE inline area.  The interface
@@ -465,9 +479,11 @@ rdma_mlx5_build_tso (vlib_main_t *vm, const vlib_node_runtime_t *node, const rdm
     }
 
   pkt_sz = vlib_buffer_length_in_chain (vm, b);
-  if (PREDICT_FALSE (pkt_sz < hdr_sz))
+  /* A zero-length TSO payload would require omitting the DATA segment. */
+  if (PREDICT_FALSE (pkt_sz <= hdr_sz))
     {
-      r.status = RDMA_MLX5_TX_PACKET_REGULAR;
+      vlib_error_count (vm, node->node_index, RDMA_TX_ERROR_TSO_HDR_INVALID, 1);
+      vlib_buffer_free_one (vm, bi);
       return r;
     }
 
@@ -679,16 +695,22 @@ rdma_mlx5_tx_one (vlib_main_t *vm, const vlib_node_runtime_t *node, const rdma_d
 		  rdma_txq_t *txq, vlib_buffer_t *b, u32 bi, u16 *tail_p, u32 *wqe_n_p, u32 sq_mask,
 		  u32 dseg_mask, u32 mask, u32 lkey_be, rdma_mlx5_wqe_t **last_p, const int is_tso)
 {
+  /* Never publish a raw Ethernet WQE which cannot satisfy the provider's
+   * inline-header requirement. */
+  if (PREDICT_FALSE (rdma_mlx5_packet_too_short (rd, b)))
+    {
+      vlib_error_count (vm, node->node_index, RDMA_TX_ERROR_PACKET_TOO_SHORT, 1);
+      vlib_buffer_free_one (vm, bi);
+      return RDMA_MLX5_TX_PACKET_CONSUMED;
+    }
+
   if (is_tso && PREDICT_FALSE (b->flags & VNET_BUFFER_F_GSO))
     {
       if (PREDICT_FALSE (!rdma_mlx5_validate_tcp_gso (vm, node, rd, b, bi)))
 	return RDMA_MLX5_TX_PACKET_CONSUMED;
 
-      rdma_mlx5_tx_packet_result_t r = rdma_mlx5_try_tso (
-	vm, node, rd, txq, b, bi, tail_p, wqe_n_p, sq_mask, dseg_mask, mask, lkey_be, last_p);
-
-      if (r != RDMA_MLX5_TX_PACKET_REGULAR)
-	return r;
+      return rdma_mlx5_try_tso (vm, node, rd, txq, b, bi, tail_p, wqe_n_p, sq_mask, dseg_mask, mask,
+				lkey_be, last_p);
     }
 
   return rdma_mlx5_tx_regular (vm, node, txq, b, bi, tail_p, wqe_n_p, sq_mask, dseg_mask, mask,
@@ -863,7 +885,13 @@ rdma_device_output_tx_mlx5_empw (vlib_main_t *vm, const vlib_node_runtime_t *nod
 	  u32 packet_bi = bi[0];
 	  u16 old_sq_tail = sq_tail;
 
-	  if (packet->flags & VNET_BUFFER_F_GSO)
+	  if (PREDICT_FALSE (rdma_mlx5_packet_too_short (rd, packet)))
+	    {
+	      vlib_error_count (vm, node->node_index, RDMA_TX_ERROR_PACKET_TOO_SHORT, 1);
+	      vlib_buffer_free_one (vm, packet_bi);
+	      r = RDMA_MLX5_TX_PACKET_CONSUMED;
+	    }
+	  else if (packet->flags & VNET_BUFFER_F_GSO)
 	    {
 	      if (PREDICT_FALSE (!rdma_mlx5_validate_tcp_gso (vm, node, rd, packet, packet_bi)))
 		r = RDMA_MLX5_TX_PACKET_CONSUMED;
@@ -872,9 +900,6 @@ rdma_device_output_tx_mlx5_empw (vlib_main_t *vm, const vlib_node_runtime_t *nod
 					    sq_avail, &last);
 	    }
 	  else
-	    r = rdma_mlx5_empw_send_one (vm, node, rd, txq, packet, packet_bi, &sq_tail, sq_avail,
-					 &last);
-	  if (r == RDMA_MLX5_TX_PACKET_REGULAR)
 	    r = rdma_mlx5_empw_send_one (vm, node, rd, txq, packet, packet_bi, &sq_tail, sq_avail,
 					 &last);
 	  if (r == RDMA_MLX5_TX_PACKET_NO_SLOTS)
@@ -1010,7 +1035,10 @@ wrap_around:
   while (n >= 8)
     {
       u32 flags = b[0]->flags | b[1]->flags | b[2]->flags | b[3]->flags;
-      if (PREDICT_FALSE (flags & (VLIB_BUFFER_NEXT_PRESENT | (is_tso ? VNET_BUFFER_F_GSO : 0))))
+      if (PREDICT_FALSE (
+	    flags & (VLIB_BUFFER_NEXT_PRESENT | (is_tso ? VNET_BUFFER_F_GSO : 0)) ||
+	    rdma_mlx5_packet_too_short (rd, b[0]) || rdma_mlx5_packet_too_short (rd, b[1]) ||
+	    rdma_mlx5_packet_too_short (rd, b[2]) || rdma_mlx5_packet_too_short (rd, b[3])))
 	return rdma_device_output_tx_mlx5_chained (vm, node, rd, txq, n_left_from, bi, b, tail,
 						   is_tso);
 
@@ -1034,8 +1062,9 @@ wrap_around:
 
   while (n >= 1)
     {
-      if (PREDICT_FALSE (b[0]->flags &
-			 (VLIB_BUFFER_NEXT_PRESENT | (is_tso ? VNET_BUFFER_F_GSO : 0))))
+      if (PREDICT_FALSE (rdma_mlx5_packet_too_short (rd, b[0]) ||
+			 b[0]->flags &
+			   (VLIB_BUFFER_NEXT_PRESENT | (is_tso ? VNET_BUFFER_F_GSO : 0))))
 	return rdma_device_output_tx_mlx5_chained (vm, node, rd, txq, n_left_from, bi, b, tail,
 						   is_tso);
 
