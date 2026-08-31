@@ -35,6 +35,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "45b698ca_a12ec885",
+        "filename": "src/plugins/sfdp_services/base/nat/slowpath_node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 111,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-08-31T10:07:15Z",
+      "side": 1,
+      "message": "Sure. I have updated change 46587 [1] with a test case that exercises `pool-\u003eremaining`, by creating a pool with more than 13 IPs and sending traffic that is expected to match against all IPs in the NAT\u0027d pool (We currently use the logic (source_ip % pool_size) to map source IPs to the NAT\u0027d IPs).\n\n[1] https://gerrit.fd.io/r/c/vpp/+/46587",
+      "parentUuid": "81d884cb_60da4b15",
+      "revId": "8149a8cc1384121ca91e0661e72623842ab8fc4b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "d1f0d060_8b02088d",
@@ -48,6 +66,24 @@
       "writtenOn": "2026-08-31T08:22:07Z",
       "side": 1,
       "message": "Heads-up for a follow-up: deleting an allocation pool does not free its `remaining` vector before `pool_put_index()`, so repeated add/delete operations on pools larger than 13 addresses leak memory. This predates this change and is not blocking here, but larger pools becoming usable makes it more relevant.",
+      "revId": "8149a8cc1384121ca91e0661e72623842ab8fc4b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "122235e6_44b17f50",
+        "filename": "src/plugins/sfdp_services/base/nat/slowpath_node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 119,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-08-31T10:07:15Z",
+      "side": 1,
+      "message": "Sure, Change 46588 should address this [1]. I\u0027ve put it in WIP previously, but will open it for review on top of the existing commits. \n\n[1] https://gerrit.fd.io/r/c/vpp/+/46588",
+      "parentUuid": "d1f0d060_8b02088d",
       "revId": "8149a8cc1384121ca91e0661e72623842ab8fc4b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
