@@ -303,7 +303,8 @@ typedef struct
 _(SEGMENT_SIZE_EXCEEDED, "segment size exceeded") \
 _(NO_FREE_SLOTS, "no free tx slots") \
 _(SUBMISSION, "tx submission errors") \
-_(COMPLETION, "tx completion errors")
+_(COMPLETION, "tx completion errors") \
+_(DEVICE, "device error")
 
 typedef enum
 {
