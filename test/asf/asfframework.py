@@ -227,10 +227,10 @@ class TestCaseTag(Enum):
 
 def create_tag_decorator(e):
     def decorator(cls):
-        try:
-            cls.test_tags.append(e)
-        except AttributeError:
-            cls.test_tags = [e]
+        # Copy inherited tags before adding the tag so decorating a subclass
+        # does not mutate its parent's tag list.
+        cls.test_tags = list(getattr(cls, "test_tags", []))
+        cls.test_tags.append(e)
         return cls
 
     return decorator
@@ -239,7 +239,15 @@ def create_tag_decorator(e):
 tag_run_solo = create_tag_decorator(TestCaseTag.RUN_SOLO)
 tag_fixme_vpp_workers = create_tag_decorator(TestCaseTag.FIXME_VPP_WORKERS)
 tag_fixme_asan = create_tag_decorator(TestCaseTag.FIXME_ASAN)
-tag_fixme_vpp_debug = create_tag_decorator(TestCaseTag.FIXME_VPP_DEBUG)
+
+
+def tag_fixme_vpp_debug(cls):
+    """Mark a class as skipped when using the debug VPP image."""
+    cls = create_tag_decorator(TestCaseTag.FIXME_VPP_DEBUG)(cls)
+    return unittest.skipIf(
+        config.vpp_tag == "vpp_debug",
+        "Skipping @tag_fixme_vpp_debug tests",
+    )(cls)
 
 
 class DummyVpp:

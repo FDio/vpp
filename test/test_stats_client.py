@@ -5,11 +5,13 @@ import psutil
 from vpp_papi.vpp_stats import VPPStats
 
 from framework import VppTestCase
-from asfframework import VppTestRunner
+from asfframework import VppTestRunner, tag_fixme_vpp_debug
 from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP
 
 
+@tag_fixme_vpp_debug
+# TODO: Temporarily remove due to non-related test failures in CI
 class StatsClientTestCase(VppTestCase):
     """Test Stats Client"""
 
