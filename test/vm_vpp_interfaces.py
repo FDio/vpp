@@ -76,7 +76,6 @@ class TestSelector:
 
 
 # Test Config variables
-af_packet_config = test_config["af_packet"]
 af_xdp_config = test_config["af_xdp"]
 layer2 = test_config["L2"]
 layer3 = test_config["L3"]
@@ -253,6 +252,18 @@ class TestVPPInterfacesQemu:
         3. Cross-Connect interfaces in VPP using L2 or L3.
         """
 
+        # Initialize teardown state before any setup operation can fail.
+        self.tap_interfaces = []
+        self.memif_interfaces = []
+        self.ingress_if_idxes = []
+        self.egress_if_idxes = []
+        self.vpp_interfaces = []
+        self.linux_interfaces = []
+        self.iprf_client_host_interface_on_linux = None
+        self.iprf_client_host_interface_on_vpp = None
+        self.iprf_server_host_interface_on_linux = None
+        self.iprf_server_host_interface_on_vpp = None
+
         # Need to support multiple interface types as the memif interface
         # in VPP is connected to the iPerf client & server by x-connecting
         # to a tap interface in their respective namespaces.
@@ -288,9 +299,7 @@ class TestVPPInterfacesQemu:
         )
         vpp_server_nexthop = str(ip_interface(vpp_server_prefix).ip)
         # Create unique namespaces for iperf client & iperf server to
-        # prevent conflicts when TEST_JOBS > 1
-        self.client_namespace = test_config["client_namespace"] + str(test["id"])
-        self.server_namespace = test_config["server_namespace"] + str(test["id"])
+        # prevent conflicts with parallel or interrupted test runs.
         self.ns_history_file = (
             f"{config.tmp_dir}/vpp-unittest-{self.__class__.__name__}/history_ns.txt"
         )
@@ -298,18 +307,14 @@ class TestVPPInterfacesQemu:
             f"{config.tmp_dir}/vpp-unittest-{self.__class__.__name__}/history_if.txt"
         )
         delete_all_namespaces(self.ns_history_file)
-        create_namespace(
-            self.ns_history_file, ns=[self.client_namespace, self.server_namespace]
+        self.client_namespace = create_namespace(
+            self.ns_history_file, prefix=test_config["client_namespace"]
+        )
+        self.server_namespace = create_namespace(
+            self.ns_history_file, prefix=test_config["server_namespace"]
         )
         # Set a unique iPerf port for parallel server and client runs
         self.iperf_port = 5000 + test["id"]
-        # IPerf client & server ingress/egress interface indexes in VPP
-        self.tap_interfaces = []
-        self.memif_interfaces = []
-        self.ingress_if_idxes = []
-        self.egress_if_idxes = []
-        self.vpp_interfaces = []
-        self.linux_interfaces = []
         enable_client_if_gso = test.get("client_if_gso", 0)
         enable_server_if_gso = test.get("server_if_gso", 0)
         enable_client_if_gro = test.get("client_if_gro", 0)
@@ -319,25 +324,14 @@ class TestVPPInterfacesQemu:
         enable_client_if_multi_buffer = test.get("client_if_multi_buffer", 0)
         enable_server_if_multi_buffer = test.get("server_if_multi_buffer", 0)
 
-        # Create unique host interfaces in Linux and VPP for connecting to iperf
-        # client & iperf server to prevent conflicts when TEST_JOBS > 1
-        self.iprf_client_host_interface_on_linux = af_packet_config[
-            "iprf_client_interface_on_linux"
-        ] + str(test["id"])
-        self.iprf_client_host_interface_on_vpp = af_packet_config[
-            "iprf_client_interface_on_vpp"
-        ] + str(test["id"])
-        self.iprf_server_host_interface_on_linux = af_packet_config[
-            "iprf_server_interface_on_linux"
-        ] + str(test["id"])
-        self.iprf_server_host_interface_on_vpp = af_packet_config[
-            "iprf_server_interface_on_vpp"
-        ] + str(test["id"])
         # Handle client interface types
         delete_all_host_interfaces(self.if_history_name)
         for client_if_type in client_if_types:
             if client_if_type == "af_packet":
-                create_host_interface(
+                (
+                    self.iprf_client_host_interface_on_linux,
+                    self.iprf_client_host_interface_on_vpp,
+                ) = create_host_interface(
                     self.if_history_name,
                     self.client_namespace,
                     (
@@ -350,8 +344,6 @@ class TestVPPInterfacesQemu:
                         if x_connect_mode == "L2"
                         else layer3["client_ip6_prefix"]
                     ),
-                    vpp_if_name=self.iprf_client_host_interface_on_vpp,
-                    host_if_name=self.iprf_client_host_interface_on_linux,
                 )
                 self.ingress_if_idx = self.create_af_packet(
                     version=client_if_version,
@@ -447,13 +439,14 @@ class TestVPPInterfacesQemu:
                 sys.exit(1)
         for server_if_type in server_if_types:
             if server_if_type == "af_packet":
-                create_host_interface(
+                (
+                    self.iprf_server_host_interface_on_linux,
+                    self.iprf_server_host_interface_on_vpp,
+                ) = create_host_interface(
                     self.if_history_name,
                     self.server_namespace,
                     server_ip4_prefix,
                     server_ip6_prefix,
-                    vpp_if_name=self.iprf_server_host_interface_on_vpp,
-                    host_if_name=self.iprf_server_host_interface_on_linux,
                 )
                 self.egress_if_idx = self.create_af_packet(
                     version=server_if_version,

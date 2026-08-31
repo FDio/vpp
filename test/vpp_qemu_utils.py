@@ -29,7 +29,7 @@ def can_create_namespaces(namespace="vpp_chk_4212"):
             return False
 
 
-def create_namespace(history_file, ns=None):
+def create_namespace(history_file, ns=None, prefix="vpp_ns"):
     """Create one or more namespaces."""
 
     with lock:
@@ -43,7 +43,7 @@ def create_namespace(history_file, ns=None):
                 suffix = "".join(
                     random.choices(string.ascii_lowercase + string.digits, k=8)
                 )
-                new_namespace_name = f"vpp_ns{suffix}"
+                new_namespace_name = f"{prefix}{suffix}"
                 # Check if the namespace already exists
                 result = subprocess.run(
                     ["ip", "netns", "add", new_namespace_name],
