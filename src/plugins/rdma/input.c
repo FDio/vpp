@@ -751,7 +751,7 @@ rdma_device_poll_cq_mlx5dv (rdma_device_t * rd, rdma_rxq_t * rxq,
 	  continue;
 	}
 
-      rd->flags |= RDMA_DEVICE_F_ERROR;
+      clib_atomic_fetch_or (&rd->flags, RDMA_DEVICE_F_ERROR);
       break;
     }
 
@@ -1162,7 +1162,8 @@ rdma_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   u32 next_index, *to_next, n_left_to_next, n_rx_bytes = 0;
   int n_rx_packets, skip_ip4_cksum = 0, l4_ok_all = 0;
   u32 mask = rxq->size - 1;
-  const int is_striding = ! !(rd->flags & RDMA_DEVICE_F_STRIDING_RQ);
+  const u32 flags = clib_atomic_load_relax_n (&rd->flags);
+  const int is_striding = !!(flags & RDMA_DEVICE_F_STRIDING_RQ);
 
   if (use_mlx5dv)
     n_rx_packets = rdma_device_poll_cq_mlx5dv (rd, rxq, byte_cnts,
@@ -1189,7 +1190,7 @@ rdma_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
     {
       u32 *bc = byte_cnts;
       int slow_path_needed;
-      const int rx_l4_cksum = !!(rd->flags & RDMA_DEVICE_F_RX_L4_CKSUM);
+      const int rx_l4_cksum = !!(flags & RDMA_DEVICE_F_RX_L4_CKSUM);
 
       if (rx_l4_cksum)
 	skip_ip4_cksum =
@@ -1272,14 +1273,17 @@ VLIB_NODE_FN (rdma_input_node) (vlib_main_t * vm,
   for (int i = 0; i < vec_len (pv); i++)
     {
       rdma_device_t *rd;
+      u32 flags;
+
       rd = vec_elt_at_index (rm->devices, pv[i].dev_instance);
-      if (PREDICT_TRUE (rd->flags & RDMA_DEVICE_F_ADMIN_UP) == 0)
+      flags = clib_atomic_load_relax_n (&rd->flags);
+      if (PREDICT_TRUE (flags & RDMA_DEVICE_F_ADMIN_UP) == 0)
 	continue;
 
-      if (PREDICT_FALSE (rd->flags & RDMA_DEVICE_F_ERROR))
+      if (PREDICT_FALSE (flags & RDMA_DEVICE_F_ERROR))
 	continue;
 
-      if (PREDICT_TRUE (rd->flags & RDMA_DEVICE_F_MLX5DV))
+      if (PREDICT_TRUE (flags & RDMA_DEVICE_F_MLX5DV))
 	n_rx +=
 	  rdma_device_input_inline (vm, node, frame, rd, pv[i].queue_id, 1);
       else
