@@ -16,6 +16,40 @@
       "message": "Works when CSIT perf tests are applied to VPP debug build.",
       "revId": "8149a8cc1384121ca91e0661e72623842ab8fc4b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "81d884cb_60da4b15",
+        "filename": "src/plugins/sfdp_services/base/nat/slowpath_node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 111,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-08-31T08:22:07Z",
+      "side": 1,
+      "message": "Could we add regression coverage for the overflow branch? Change 46587 adds useful NAT tests, but its pool contains only one address, so it does not exercise `pool-\u003eremaining`. A case with at least 14 addresses and a source mapping to index 13 or higher would cover this fix directly.",
+      "revId": "8149a8cc1384121ca91e0661e72623842ab8fc4b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d1f0d060_8b02088d",
+        "filename": "src/plugins/sfdp_services/base/nat/slowpath_node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 119,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-08-31T08:22:07Z",
+      "side": 1,
+      "message": "Heads-up for a follow-up: deleting an allocation pool does not free its `remaining` vector before `pool_put_index()`, so repeated add/delete operations on pools larger than 13 addresses leak memory. This predates this change and is not blocking here, but larger pools becoming usable makes it more relevant.",
+      "revId": "8149a8cc1384121ca91e0661e72623842ab8fc4b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
