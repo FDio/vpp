@@ -110,8 +110,8 @@ rdma_buffer_free_from_ring_mlx5 (vlib_main_t *vm, u32 *ring, u32 start, u32 ring
 }
 
 static_always_inline void
-rdma_device_output_free_mlx5 (vlib_main_t *vm, const vlib_node_runtime_t *node, rdma_txq_t *txq,
-			      const rdma_mlx5_tx_mode_t mode)
+rdma_device_output_free_mlx5 (vlib_main_t *vm, const vlib_node_runtime_t *node, rdma_device_t *rd,
+			      rdma_txq_t *txq, const rdma_mlx5_tx_mode_t mode)
 {
   u16 idx = txq->dv_cq_idx;
   u32 cq_mask = pow2_mask (txq->dv_cq_log2sz);
@@ -120,7 +120,7 @@ rdma_device_output_free_mlx5 (vlib_main_t *vm, const vlib_node_runtime_t *node, 
   u32 buf_sz = RDMA_TXQ_BUF_SZ (txq);
   u32 log2_cq_sz = txq->dv_cq_log2sz;
   struct mlx5_cqe64 *cqes = txq->dv_cq_cqes, *cur = cqes + (idx & cq_mask);
-  u8 op_own, saved;
+  u8 op_own, saved, completion_error = 0;
 
   for (;;)
     {
@@ -129,7 +129,10 @@ rdma_device_output_free_mlx5 (vlib_main_t *vm, const vlib_node_runtime_t *node, 
 	  (op_own & MLX5_CQE_OWNER_MASK) || (op_own >> 4) == MLX5_CQE_INVALID)
 	break;
       if (PREDICT_FALSE ((op_own >> 4)) != MLX5_CQE_REQ)
-	vlib_error_count (vm, node->node_index, RDMA_TX_ERROR_COMPLETION, 1);
+	{
+	  vlib_error_count (vm, node->node_index, RDMA_TX_ERROR_COMPLETION, 1);
+	  completion_error = 1;
+	}
       idx++;
       cur = cqes + (idx & cq_mask);
     }
@@ -185,6 +188,11 @@ done:
   /* ring doorbell */
   CLIB_MEMORY_STORE_BARRIER ();
   txq->dv_cq_dbrec[0] = htobe32 (idx);
+
+  /* An SQ error flushes or ignores subsequent WQEs.  Stop publishing new
+   * work until the interface is recreated instead of filling a dead SQ. */
+  if (PREDICT_FALSE (completion_error))
+    clib_atomic_fetch_or (&rd->flags, RDMA_DEVICE_F_ERROR);
 }
 
 static_always_inline void
@@ -1204,17 +1212,17 @@ rdma_device_output_tx_ibverb (vlib_main_t *vm, const vlib_node_runtime_t *node,
  */
 
 static void
-rdma_device_output_free (vlib_main_t *vm, const vlib_node_runtime_t *node,
-			 const rdma_device_t *rd, rdma_txq_t *txq)
+rdma_device_output_free (vlib_main_t *vm, const vlib_node_runtime_t *node, rdma_device_t *rd,
+			 rdma_txq_t *txq)
 {
   if (PREDICT_TRUE (rd->flags & RDMA_DEVICE_F_MLX5DV))
     {
       if (rd->flags & RDMA_DEVICE_F_EMPW)
-	rdma_device_output_free_mlx5 (vm, node, txq, RDMA_MLX5_TX_MODE_EMPW);
+	rdma_device_output_free_mlx5 (vm, node, rd, txq, RDMA_MLX5_TX_MODE_EMPW);
       else if (rd->flags & RDMA_DEVICE_F_TSO)
-	rdma_device_output_free_mlx5 (vm, node, txq, RDMA_MLX5_TX_MODE_TSO);
+	rdma_device_output_free_mlx5 (vm, node, rd, txq, RDMA_MLX5_TX_MODE_TSO);
       else
-	rdma_device_output_free_mlx5 (vm, node, txq, RDMA_MLX5_TX_MODE_SEND);
+	rdma_device_output_free_mlx5 (vm, node, rd, txq, RDMA_MLX5_TX_MODE_SEND);
     }
   else
     rdma_device_output_free_ibverb (vm, node, txq);
@@ -1270,6 +1278,8 @@ rdma_device_output_tx (vlib_main_t *vm, vlib_node_runtime_t *node,
     {
       u32 n_enq;
       rdma_device_output_free (vm, node, rd, txq);
+      if (PREDICT_FALSE (rd->flags & RDMA_DEVICE_F_ERROR))
+	break;
       n_enq = rdma_device_output_tx_try (vm, node, rd, txq, n_left_from, from);
       n_left_from -= n_enq;
       from += n_enq;
@@ -1303,7 +1313,9 @@ VNET_DEVICE_CLASS_TX_FN (rdma_device_class) (vlib_main_t * vm,
   if (PREDICT_FALSE (n_left))
     {
       vlib_buffer_free (vm, from + n_buffers - n_left, n_left);
-      vlib_error_count (vm, node->node_index, RDMA_TX_ERROR_NO_FREE_SLOTS,
+      vlib_error_count (vm, node->node_index,
+			rd->flags & RDMA_DEVICE_F_ERROR ? RDMA_TX_ERROR_DEVICE :
+							  RDMA_TX_ERROR_NO_FREE_SLOTS,
 			n_left);
     }
 

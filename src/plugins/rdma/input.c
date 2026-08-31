@@ -747,7 +747,7 @@ rdma_device_poll_cq_mlx5dv (rdma_device_t * rd, rdma_rxq_t * rxq,
 	  continue;
 	}
 
-      rd->flags |= RDMA_DEVICE_F_ERROR;
+      clib_atomic_fetch_or (&rd->flags, RDMA_DEVICE_F_ERROR);
       break;
     }
 
