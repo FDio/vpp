@@ -7,12 +7,6 @@ test_config = {
     "server_namespace": "iprf_server_ns",
     "mtus": [9001, 9000, 2048, 2049, 1500, 512],
     "ip_versions": [4, 6],
-    "af_packet": {
-        "iprf_client_interface_on_linux": "hostintclient",
-        "iprf_server_interface_on_linux": "hostintserver",
-        "iprf_client_interface_on_vpp": "vppclientout",
-        "iprf_server_interface_on_vpp": "vppserverout",
-    },
     "af_xdp": {
         "iprf_client_interface_on_linux": "afxdp",
         "iprf_server_interface_on_linux": "afxdps",
