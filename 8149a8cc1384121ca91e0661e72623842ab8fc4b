@@ -20,6 +20,23 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "47b03759_651f928d",
+        "filename": "src/plugins/sfdp_services/base/nat/slowpath_node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 110,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-08-31T12:38:04Z",
+      "side": 1,
+      "message": "Could we validate the pool size before storing it? The API accepts a `u32 n_addr`, but `nat_alloc_pool_t::num` is `u16`. With exactly 65,536 addresses, `pool-\u003enum` becomes zero and this modulo divides by zero; larger values wrap and use only part of the configured pool. Rejecting counts above `UINT16_MAX` (or widening `num`) would avoid this.",
+      "revId": "8149a8cc1384121ca91e0661e72623842ab8fc4b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "81d884cb_60da4b15",
         "filename": "src/plugins/sfdp_services/base/nat/slowpath_node.c",
         "patchSetId": 1
