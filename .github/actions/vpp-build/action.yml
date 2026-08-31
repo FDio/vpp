@@ -23,6 +23,11 @@ inputs:
     required: false
     default: "false"
     type: string
+  ENABLE_ASAN:
+    description: "Build debug VPP with AddressSanitizer"
+    required: false
+    default: "false"
+    type: string
   USE_GCC:
     description: "Use GCC as the compiler"
     required: false
@@ -49,6 +54,8 @@ runs:
         BUILD_TYPE: ${{ inputs.BUILD_TYPE }}
         LOG_DIR: ${{ inputs.LOG_DIR }}
         BUILD_HST: ${{ inputs.BUILD_HST }}
+        ENABLE_ASAN: ${{ inputs.ENABLE_ASAN }}
+        BUILD_STYLE: ""
         USE_GCC: ${{ inputs.USE_GCC }}
         TUI_LINE: ${{ inputs.TUI_LINE }}
       run: |
@@ -115,14 +122,60 @@ runs:
             fi
         }
 
+        build_hst_asan_vpp() {
+            echo "Building VPP debug with AddressSanitizer."
+            echo "MAKE_PARALLEL_JOBS=${MAKE_PARALLEL_JOBS}"
+
+            if [ "$BUILD_TYPE" != "debug" ] ; then
+                  BUILD_ERROR="FAILED ASAN requires BUILD_TYPE=debug"
+                  return
+            fi
+
+            if ! make UNATTENDED=yes MAKE_PARALLEL_JOBS=${MAKE_PARALLEL_JOBS} VPP_EXTRA_CMAKE_ARGS="-DVPP_ENABLE_SANITIZE_ADDR=ON" build | tee "$LOG_DIR/build_hst_debug.log" ; then
+               BUILD_ERROR="FAILED HST BUILD 'make UNATTENDED=yes MAKE_PARALLEL_JOBS=${MAKE_PARALLEL_JOBS} VPP_EXTRA_CMAKE_ARGS="-DVPP_ENABLE_SANITIZE_ADDR=ON" build'"
+               return
+            fi
+        }
+
+          build_asan_vpp() {
+            echo "Building VPP debug with AddressSanitizer."
+            echo "MAKE_PARALLEL_JOBS=${MAKE_PARALLEL_JOBS}"
+
+      if [ "$BUILD_TYPE" != "debug" ]; then
+          BUILD_ERROR="FAILED ASAN BUILD BUILD_TYPE must be debug"
+          return
+      fi
+
+            if [ "$USE_GCC" == "true" ]; then
+          BUILD_ERROR="FAILED ASAN BUILD: USE_GCC must be false"
+          return
+      fi
+
+      if ! make UNATTENDED=yes MAKE_PARALLEL_JOBS=${MAKE_PARALLEL_JOBS} VPP_EXTRA_CMAKE_ARGS="-DVPP_ENABLE_SANITIZE_ADDR=ON" build | tee "$LOG_DIR/build_vpp_debug.log"; then
+      BUILD_ERROR="FAILED 'make UNATTENDED=yes MAKE_PARALLEL_JOBS=${MAKE_PARALLEL_JOBS} VPP_EXTRA_CMAKE_ARGS="-DVPP_ENABLE_SANITIZE_ADDR=ON" build'"
+          return
+      fi
+  }
+
         if [ "$BUILD_HST" == "true" ] ; then
-            build_hst_vpp
+            if [ "$ENABLE_ASAN" == "true" ] ; then
+                build_hst_asan_vpp
+                BUILD_STYLE="ASAN HST "
+            else
+                build_hst_vpp
+                BUILD_STYLE="HST "
+            fi
         else
-            build_vpp
+            if [ "$ENABLE_ASAN" == "true" ] ; then
+                build_asan_vpp
+                BUILD_STYLE="ASAN "
+            else
+                build_vpp
+            fi
         fi
         if [ -n "${BUILD_ERROR}" ] ; then
             BUILD_RESULT="${BUILD_ERROR}"
             RETVAL="1"
         fi
-        echo -e "\n$TUI_LINE\n* VPP ${OS_ID^^}-${OS_VERSION_ID}-${OS_ARCH^^} BUILD $BUILD_RESULT\n$TUI_LINE\n"
+        echo -e "\n$TUI_LINE\n* VPP ${OS_ID^^}-${OS_VERSION_ID}-${OS_ARCH^^} ${BUILD_HST_TYPE}BUILD $BUILD_RESULT\n$TUI_LINE\n"
         exit $RETVAL
