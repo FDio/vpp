@@ -34,6 +34,7 @@ rdma_device_output_free_mlx5 (vlib_main_t * vm,
   u32 buf_sz = RDMA_TXQ_BUF_SZ (txq);
   u32 log2_cq_sz = txq->dv_cq_log2sz;
   struct mlx5_cqe64 *cqes = txq->dv_cq_cqes, *cur = cqes + (idx & cq_mask);
+  u16 cqe_wqe_counter;
   u8 op_own, saved;
   const rdma_mlx5_wqe_t *wqe;
 
@@ -43,6 +44,11 @@ rdma_device_output_free_mlx5 (vlib_main_t * vm,
       if (((idx >> log2_cq_sz) & MLX5_CQE_OWNER_MASK) !=
 	  (op_own & MLX5_CQE_OWNER_MASK) || (op_own >> 4) == MLX5_CQE_INVALID)
 	break;
+
+      /* The device updates the CQE owner after writing the CQE payload.  In
+       * particular, wqe_counter must not be consumed before this barrier. */
+      CLIB_DMA_RMB ();
+
       if (PREDICT_FALSE ((op_own >> 4)) != MLX5_CQE_REQ)
 	vlib_error_count (vm, node->node_index, RDMA_TX_ERROR_COMPLETION, 1);
       idx++;
@@ -54,12 +60,15 @@ rdma_device_output_free_mlx5 (vlib_main_t * vm,
 
   cur = cqes + ((idx - 1) & cq_mask);
   saved = cur->op_own;
+  cqe_wqe_counter = be16toh (cur->wqe_counter);
+
+  /* Do not access the CQE after returning its slot to hardware. */
   (void) saved;
   cur->op_own = 0xf0;
   txq->dv_cq_idx = idx;
 
   /* retrieve original WQE and get new tail counter */
-  wqe = txq->dv_sq_wqes + (be16toh (cur->wqe_counter) & sq_mask);
+  wqe = txq->dv_sq_wqes + (cqe_wqe_counter & sq_mask);
   if (PREDICT_FALSE (wqe->ctrl.imm == RDMA_TXQ_DV_INVALID_ID))
     return;			/* can happen if CQE reports error for an intermediate WQE */
 
@@ -72,8 +81,8 @@ rdma_device_output_free_mlx5 (vlib_main_t * vm,
   txq->head = wqe->ctrl.imm;
 
   /* ring doorbell */
-  CLIB_MEMORY_STORE_BARRIER ();
-  txq->dv_cq_dbrec[0] = htobe32 (idx);
+  CLIB_DMA_WMB ();
+  txq->dv_cq_dbrec[0] = htobe32 (idx & 0xffffff);
 }
 
 static_always_inline void
@@ -87,9 +96,9 @@ rdma_device_output_tx_mlx5_doorbell (rdma_txq_t * txq, rdma_mlx5_wqe_t * last,
 	  RDMA_TXQ_AVAIL_SZ (txq, txq->head, txq->tail) >=
 	  RDMA_TXQ_USED_SZ (txq->tail, tail));
 
-  CLIB_MEMORY_STORE_BARRIER ();
+  CLIB_DMA_WMB ();
   txq->dv_sq_dbrec[MLX5_SND_DBR] = htobe32 (tail);
-  CLIB_COMPILER_BARRIER ();
+  CLIB_MMIO_WMB ();
   txq->dv_sq_db[0] = *(u64 *) last;
 }
 

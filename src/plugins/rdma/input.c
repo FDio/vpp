@@ -192,7 +192,10 @@ rdma_device_input_refill (vlib_main_t * vm, rdma_device_t * rd,
 	{
 	  rxq->tail += n_completed;
 	  if (n_completed)
-	    rxq->wq_db[MLX5_RCV_DBR] = clib_host_to_net_u32 (rxq->tail);
+	    {
+	      CLIB_DMA_WMB ();
+	      rxq->wq_db[MLX5_RCV_DBR] = clib_host_to_net_u32 (rxq->tail & 0xffff);
+	    }
 	}
       else
 	{
@@ -322,16 +325,15 @@ rdma_device_input_refill (vlib_main_t * vm, rdma_device_t * rd,
 							  bt, first_slot,
 							  n_alloc);
 	}
-      CLIB_MEMORY_STORE_BARRIER ();
+      CLIB_DMA_WMB ();
       rxq->tail += n_alloc;
       if (is_striding)
 	{
 	  rxq->striding_wqe_tail += n_alloc >> log_stride_per_wqe;
-	  rxq->wq_db[MLX5_RCV_DBR] =
-	    clib_host_to_net_u32 (rxq->striding_wqe_tail);
+	  rxq->wq_db[MLX5_RCV_DBR] = clib_host_to_net_u32 (rxq->striding_wqe_tail & 0xffff);
 	}
       else
-	rxq->wq_db[MLX5_RCV_DBR] = clib_host_to_net_u32 (rxq->tail);
+	rxq->wq_db[MLX5_RCV_DBR] = clib_host_to_net_u32 (rxq->tail & 0xffff);
       return;
     }
 
@@ -702,6 +704,10 @@ rdma_device_poll_cq_mlx5dv (rdma_device_t * rd, rdma_rxq_t * rxq,
       if ((cqe_last_byte & 0x1) != owner)
 	break;
 
+      /* The device updates the CQE owner after writing the CQE payload.
+       * Order subsequent CQE and mini-CQE loads after the owner load. */
+      CLIB_DMA_RMB ();
+
       cqe_last_byte &= 0xfc;	/* remove owner and solicited bits */
 
       if (cqe_last_byte == 0x2c)	/* OPCODE = 0x2 (Responder Send), Format = 0x3 (Compressed CQE) */
@@ -753,6 +759,9 @@ done:
   if (n_rx_packets)
     {
       rxq->cq_ci = cq_ci;
+      /* Compressed CQE owner updates must be visible before the consumer
+       * counter releases those CQE slots back to hardware. */
+      CLIB_DMA_WMB ();
       rxq->cq_db[0] = htobe32 (cq_ci & 0xffffff);
     }
   return n_rx_packets;
