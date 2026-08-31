@@ -117,7 +117,7 @@ rdma_dev_set_promisc (rdma_device_t * rd)
   if (!rd->flow_ucast6 || !rd->flow_ucast4)
     return ~0;
 
-  rd->flags |= RDMA_DEVICE_F_PROMISC;
+  clib_atomic_fetch_or (&rd->flags, RDMA_DEVICE_F_PROMISC);
   return 0;
 }
 
@@ -155,7 +155,7 @@ rdma_dev_set_ucast (rdma_device_t * rd)
       || !rd->flow_mcast4)
     return ~0;
 
-  rd->flags &= ~RDMA_DEVICE_F_PROMISC;
+  clib_atomic_fetch_and (&rd->flags, ~RDMA_DEVICE_F_PROMISC);
   return 0;
 }
 
@@ -165,7 +165,7 @@ rdma_mac_change (vnet_hw_interface_t * hw, const u8 * old, const u8 * new)
   rdma_main_t *rm = &rdma_main;
   rdma_device_t *rd = vec_elt_at_index (rm->devices, hw->dev_instance);
   mac_address_from_bytes (&rd->hwaddr, new);
-  if (!(rd->flags & RDMA_DEVICE_F_PROMISC) && rdma_dev_set_ucast (rd))
+  if (!(clib_atomic_load_relax_n (&rd->flags) & RDMA_DEVICE_F_PROMISC) && rdma_dev_set_ucast (rd))
     {
       mac_address_from_bytes (&rd->hwaddr, old);
       return clib_error_return_unix (0, "MAC update failed");
@@ -217,12 +217,12 @@ rdma_update_state (vnet_main_t * vnm, rdma_device_t * rd, int port)
     {
     case IBV_PORT_ACTIVE:	/* fallthrough */
     case IBV_PORT_ACTIVE_DEFER:
-      rd->flags |= RDMA_DEVICE_F_LINK_UP;
+      clib_atomic_fetch_or (&rd->flags, RDMA_DEVICE_F_LINK_UP);
       vnet_hw_interface_set_flags (vnm, rd->hw_if_index,
 				   VNET_HW_INTERFACE_FLAG_LINK_UP);
       break;
     default:
-      rd->flags &= ~RDMA_DEVICE_F_LINK_UP;
+      clib_atomic_fetch_and (&rd->flags, ~RDMA_DEVICE_F_LINK_UP);
       vnet_hw_interface_set_flags (vnm, rd->hw_if_index, 0);
       break;
     }
@@ -294,7 +294,7 @@ rdma_async_event_read_ready (clib_file_t * f)
       rdma_update_state (vnm, rd, event.element.port_num);
       break;
     case IBV_EVENT_DEVICE_FATAL:
-      rd->flags &= ~RDMA_DEVICE_F_LINK_UP;
+      clib_atomic_fetch_and (&rd->flags, ~RDMA_DEVICE_F_LINK_UP);
       vnet_hw_interface_set_flags (vnm, rd->hw_if_index, 0);
       vlib_log_emerg (rm->log_class, "%s: fatal error", rd->name);
       break;
@@ -367,7 +367,24 @@ rdma_unregister_interface (vnet_main_t *vnm, rdma_device_t *rd)
 }
 
 static void
-rdma_dev_cleanup (rdma_device_t *rd)
+rdma_txq_free_pending_buffers (vlib_main_t *vm, rdma_txq_t *txq)
+{
+  u32 n_buffers = RDMA_TXQ_USED_SZ (txq->head, txq->tail);
+  u32 mask = pow2_mask (txq->bufs_log2sz);
+
+  for (u32 i = 0; i < n_buffers; i++)
+    {
+      u32 bi = txq->bufs[(txq->head + i) & mask];
+
+      /* Some WQEBB slots do not own a VPP buffer. */
+      if (bi != (u32) ~0)
+	vlib_buffer_free_one (vm, bi);
+    }
+  txq->head = txq->tail;
+}
+
+static void
+rdma_dev_cleanup (vlib_main_t *vm, rdma_device_t *rd)
 {
   rdma_main_t *rm = &rdma_main;
   rdma_rxq_t *rxq;
@@ -384,10 +401,22 @@ rdma_dev_cleanup (rdma_device_t *rd)
   _(ibv_destroy_flow, rd->flow_ucast6);
   _(ibv_destroy_flow, rd->flow_mcast4);
   _(ibv_destroy_flow, rd->flow_ucast4);
-  _(ibv_dereg_mr, rd->mr);
   vec_foreach (txq, rd->txqs)
   {
-    _(ibv_destroy_qp, txq->qp);
+    if (txq->qp)
+      {
+	int rv = ibv_destroy_qp (txq->qp);
+
+	if (rv)
+	  rdma_log (VLIB_LOG_LEVEL_DEBUG, rd, "ibv_destroy_qp() failed (rv = %d)", rv);
+	else
+	  {
+	    txq->qp = 0;
+	    /* QP destruction quiesces DMA.  Buffers without a completion can
+	     * now be returned safely, including WQEs ignored after an error. */
+	    rdma_txq_free_pending_buffers (vm, txq);
+	  }
+      }
     _(ibv_destroy_cq, txq->cq);
   }
   vec_foreach (rxq, rd->rxqs)
@@ -398,6 +427,7 @@ rdma_dev_cleanup (rdma_device_t *rd)
   _(ibv_destroy_rwq_ind_table, rd->rx_rwq_ind_tbl);
   _(ibv_destroy_qp, rd->rx_qp6);
   _(ibv_destroy_qp, rd->rx_qp4);
+  _ (ibv_dereg_mr, rd->mr);
   _(ibv_dealloc_pd, rd->pd);
   _(ibv_close_device, rd->ctx);
 #undef _
@@ -1073,7 +1103,7 @@ are explicitly disabled, and if the interface supports it.*/
 err3:
   rdma_unregister_interface (vnm, rd);
 err2:
-  rdma_dev_cleanup (rd);
+  rdma_dev_cleanup (vm, rd);
 err1:
   ibv_free_device_list (dev_list);
   vec_free (s);
@@ -1087,7 +1117,7 @@ rdma_delete_if (vlib_main_t * vm, rdma_device_t * rd)
 {
   rdma_async_event_cleanup (rd);
   rdma_unregister_interface (vnet_get_main (), rd);
-  rdma_dev_cleanup (rd);
+  rdma_dev_cleanup (vm, rd);
 }
 
 static clib_error_t *
@@ -1098,19 +1128,19 @@ rdma_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
   rdma_device_t *rd = vec_elt_at_index (rm->devices, hi->dev_instance);
   uword is_up = (flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP) != 0;
 
-  if (rd->flags & RDMA_DEVICE_F_ERROR)
+  if (clib_atomic_load_relax_n (&rd->flags) & RDMA_DEVICE_F_ERROR)
     return clib_error_return (0, "device is in error state");
 
   if (is_up)
     {
       vnet_hw_interface_set_flags (vnm, rd->hw_if_index,
 				   VNET_HW_INTERFACE_FLAG_LINK_UP);
-      rd->flags |= RDMA_DEVICE_F_ADMIN_UP;
+      clib_atomic_fetch_or (&rd->flags, RDMA_DEVICE_F_ADMIN_UP);
     }
   else
     {
       vnet_hw_interface_set_flags (vnm, rd->hw_if_index, 0);
-      rd->flags &= ~RDMA_DEVICE_F_ADMIN_UP;
+      clib_atomic_fetch_and (&rd->flags, ~RDMA_DEVICE_F_ADMIN_UP);
     }
   return 0;
 }
