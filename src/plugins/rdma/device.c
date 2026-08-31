@@ -1054,21 +1054,21 @@ rdma_mlx5_query_min_inline (rdma_device_t *rd, const void *sample, u16 *min_inli
   clib_error_t *err = 0;
 
   if ((cq = ibv_create_cq (rd->ctx, 1, 0, 0, 0)) == 0)
-    return clib_error_return_unix (0, "Create eMPW probe CQ failed");
+    return clib_error_return_unix (0, "Create TX inline probe CQ failed");
 
   qpia.send_cq = cq;
   qpia.recv_cq = cq;
   qpia.pd = rd->pd;
   if ((qp = ibv_create_qp_ex (rd->ctx, &qpia)) == 0)
     {
-      err = clib_error_return_unix (0, "Create eMPW probe QP failed");
+      err = clib_error_return_unix (0, "Create TX inline probe QP failed");
       goto done;
     }
 
   qpx = ibv_qp_to_qp_ex (qp);
   if (qpx == 0)
     {
-      err = clib_error_return (0, "Extended send operations unavailable for eMPW probe");
+      err = clib_error_return (0, "Extended send operations unavailable for TX inline probe");
       goto done;
     }
 
@@ -1077,7 +1077,7 @@ rdma_mlx5_query_min_inline (rdma_device_t *rd, const void *sample, u16 *min_inli
   if (mlx5dv_init_obj (&obj, MLX5DV_OBJ_QP) != 0 || dv_qp.sq.buf == 0 ||
       dv_qp.sq.stride < sizeof (rdma_mlx5_wqe_t))
     {
-      err = clib_error_return (0, "Invalid eMPW probe SQ");
+      err = clib_error_return (0, "Invalid TX inline probe SQ");
       goto done;
     }
 
@@ -1092,9 +1092,9 @@ rdma_mlx5_query_min_inline (rdma_device_t *rd, const void *sample, u16 *min_inli
 
 done:
   if (qp && ibv_destroy_qp (qp) != 0 && err == 0)
-    err = clib_error_return_unix (0, "Destroy eMPW probe QP failed");
+    err = clib_error_return_unix (0, "Destroy TX inline probe QP failed");
   if (ibv_destroy_cq (cq) != 0 && err == 0)
-    err = clib_error_return_unix (0, "Destroy eMPW probe CQ failed");
+    err = clib_error_return_unix (0, "Destroy TX inline probe CQ failed");
   return err;
 }
 
@@ -1123,25 +1123,41 @@ rdma_dev_init (vlib_main_t * vm, rdma_device_t * rd,
 
   rd->lkey = rd->mr->lkey;	/* avoid indirection in datapath */
 
-  if (rd->flags & RDMA_DEVICE_F_EMPW)
+  if (rd->flags & RDMA_DEVICE_F_MLX5DV)
     {
       u16 min_inline = 0;
 
       err = rdma_mlx5_query_min_inline (rd, uword_to_pointer (bm->buffer_mem_start, void *),
 					&min_inline);
-      if (err || min_inline != 0)
+
+      /* rdma-core exposes the kernel-selected Ethernet minimum as either no
+       * inline bytes or the 18-byte L2 requirement used by this datapath. */
+      if (err || (min_inline != 0 && min_inline != MLX5_ETH_L2_INLINE_HEADER_SIZE))
 	{
-	  rd->flags &= ~RDMA_DEVICE_F_EMPW;
-	  if (err)
+	  if (err == 0)
+	    err = clib_error_return (0, "unsupported mlx5 TX inline requirement %u", min_inline);
+
+	  if (args->mode == RDMA_MODE_DV)
+	    return err;
+
+	  rdma_log__ (VLIB_LOG_LEVEL_WARNING, rd,
+		      "cannot validate mlx5 DV TX inline requirement, falling back to ibverbs: %U",
+		      format_clib_error, err);
+	  clib_error_free (err);
+	  rd->flags &= ~(RDMA_DEVICE_F_MLX5DV | RDMA_DEVICE_F_STRIDING_RQ |
+			 RDMA_DEVICE_F_RX_L4_CKSUM | RDMA_DEVICE_F_TSO | RDMA_DEVICE_F_EMPW);
+	  rd->max_tso = 0;
+	}
+      else
+	{
+	  rd->tx_min_inline = min_inline;
+	  rdma_log__ (VLIB_LOG_LEVEL_DEBUG, rd, "TX requires %u inline bytes", min_inline);
+	  if ((rd->flags & RDMA_DEVICE_F_EMPW) && min_inline != 0)
 	    {
-	      rdma_log__ (VLIB_LOG_LEVEL_WARNING, rd,
-			  "cannot determine required TX inline header, disabling eMPW: %U",
-			  format_clib_error, err);
-	      clib_error_free (err);
+	      rd->flags &= ~RDMA_DEVICE_F_EMPW;
+	      rdma_log__ (VLIB_LOG_LEVEL_DEBUG, rd,
+			  "required TX inline header is incompatible with eMPW, disabling eMPW");
 	    }
-	  else
-	    rdma_log__ (VLIB_LOG_LEVEL_DEBUG, rd, "TX requires %u inline bytes, disabling eMPW",
-			min_inline);
 	}
     }
 
@@ -1364,15 +1380,16 @@ rdma_create_if (vlib_main_t * vm, rdma_create_if_args_t * args)
 
 	  /* Enable striding RQ if neither multiseg nor striding rq
 	  are explicitly disabled, and if the interface supports it.*/
-	  if (!args->no_multi_seg && !args->disable_striding_rq
-	      && data_seg_log2_sz <=
-	      mlx5dv_attrs.striding_rq_caps.max_single_stride_log_num_of_bytes
-	      && data_seg_log2_sz >=
-	      mlx5dv_attrs.striding_rq_caps.min_single_stride_log_num_of_bytes
-	      && RDMA_RXQ_MAX_CHAIN_LOG_SZ >=
-	      mlx5dv_attrs.striding_rq_caps.min_single_wqe_log_num_of_strides
-	      && RDMA_RXQ_MAX_CHAIN_LOG_SZ <=
-	      mlx5dv_attrs.striding_rq_caps.max_single_wqe_log_num_of_strides)
+	  if ((rd->flags & RDMA_DEVICE_F_MLX5DV) && !args->no_multi_seg &&
+	      !args->disable_striding_rq &&
+	      data_seg_log2_sz <=
+		mlx5dv_attrs.striding_rq_caps.max_single_stride_log_num_of_bytes &&
+	      data_seg_log2_sz >=
+		mlx5dv_attrs.striding_rq_caps.min_single_stride_log_num_of_bytes &&
+	      RDMA_RXQ_MAX_CHAIN_LOG_SZ >=
+		mlx5dv_attrs.striding_rq_caps.min_single_wqe_log_num_of_strides &&
+	      RDMA_RXQ_MAX_CHAIN_LOG_SZ <=
+		mlx5dv_attrs.striding_rq_caps.max_single_wqe_log_num_of_strides)
 	    rd->flags |= RDMA_DEVICE_F_STRIDING_RQ;
 	}
       else
@@ -1383,6 +1400,12 @@ rdma_create_if (vlib_main_t * vm, rdma_create_if_args_t * args)
 					       "supported on this interface");
 	      goto err2;
 	    }
+	}
+
+      if (args->mode == RDMA_MODE_DV && !(rd->flags & RDMA_DEVICE_F_MLX5DV))
+	{
+	  args->error = clib_error_return (0, "Direct Verbs mode requires mlx5 CQE v1 support");
+	  goto err2;
 	}
     }
 
