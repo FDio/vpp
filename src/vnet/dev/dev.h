@@ -554,6 +554,7 @@ typedef struct
   u8 startup_config_completed;
 
   u16 next_rx_queue_thread;
+  u16 next_rx_queue_thread_with_main;
   u8 eth_port_rx_feature_arc_index;
 } vnet_dev_main_t;
 

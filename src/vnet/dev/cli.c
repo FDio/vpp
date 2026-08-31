@@ -185,7 +185,8 @@ device_create_if_cmd_fn (vlib_main_t *vm, unformat_input_t *input,
 VLIB_CLI_COMMAND (device_create_if_cmd, static) = {
   .path = "device create-interface",
   .short_help = "device create-interface <device-id> [port <port-id>] "
-		"[rx-queue-assignment <mode>] "
+		"[rx-queue-assignment {round-robin | rr-with-main | "
+		"queue-per-thread | main-thread-only}] "
 		"[args <iface-args>]",
   .function = device_create_if_cmd_fn,
   .is_mp_safe = 1,

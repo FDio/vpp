@@ -414,6 +414,8 @@ unformat_vnet_dev_rx_queue_assignment (unformat_input_t *input, va_list *args)
 
   if (unformat (input, "round-robin"))
     *a = VNET_DEV_RX_QUEUE_ASSIGNMENT_ROUND_ROBIN;
+  else if (unformat (input, "rr-with-main"))
+    *a = VNET_DEV_RX_QUEUE_ASSIGNMENT_ROUND_ROBIN_WITH_MAIN;
   else if (unformat (input, "queue-per-thread"))
     *a = VNET_DEV_RX_QUEUE_ASSIGNMENT_QUEUE_PER_THREAD;
   else if (unformat (input, "main-thread-only"))

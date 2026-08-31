@@ -697,6 +697,11 @@ vnet_dev_port_if_create (vlib_main_t *vm, vnet_dev_port_t *port, void *ptr)
 	      if (dm->next_rx_queue_thread >= n_threads)
 		dm->next_rx_queue_thread = 1;
 	      break;
+	    case VNET_DEV_RX_QUEUE_ASSIGNMENT_ROUND_ROBIN_WITH_MAIN:
+	      ti = dm->next_rx_queue_thread_with_main++;
+	      if (dm->next_rx_queue_thread_with_main >= n_threads)
+		dm->next_rx_queue_thread_with_main = 0;
+	      break;
 	    case VNET_DEV_RX_QUEUE_ASSIGNMENT_QUEUE_PER_THREAD:
 	      ti = i;
 	      break;

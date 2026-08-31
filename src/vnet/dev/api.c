@@ -225,6 +225,8 @@ vnet_dev_api_create_port_if (vlib_main_t *vm,
     {
     case VNET_DEV_RX_QUEUE_ASSIGNMENT_ROUND_ROBIN:
       break;
+    case VNET_DEV_RX_QUEUE_ASSIGNMENT_ROUND_ROBIN_WITH_MAIN:
+      break;
     case VNET_DEV_RX_QUEUE_ASSIGNMENT_QUEUE_PER_THREAD:
       if (args->num_rx_queues)
 	return VNET_DEV_ERR_INVALID_NUM_RX_QUEUES;
