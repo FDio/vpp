@@ -16,6 +16,24 @@
       "message": "The cleanup added here exposes a pre-existing lifecycle issue: clearing the last interface map makes `cnat_snat_policy_entry_is_init()` return false, so the subsequent SNAT-policy deletion skips `clib_bihash_free_24_8()` and leaves a poisoned entry in `clib_all_bihashes`. In a focused debug ASAN run, the new `test_cnat_snat_address_unavailable` consequently fails during `super().tearDown()` in `show bihash`. Could this change fix the initialization tracking or otherwise ensure the bihash is unregistered during policy deletion?",
       "revId": "5736caacbcf1513230cac6fff520139028037392",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3d230f9d_e69a6dc7",
+        "filename": "test/test_cnat.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 429,
+      "author": {
+        "id": 660
+      },
+      "writtenOn": "2026-08-31T10:36:45Z",
+      "side": 1,
+      "message": "Done. And once again, excellent catch and thank you :)",
+      "parentUuid": "284b4661_4f98efcd",
+      "revId": "5736caacbcf1513230cac6fff520139028037392",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
