@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2cf9f448_cd8cd6da",
+        "filename": "src/plugins/cnat/cnat_node_lookup.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 105,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-08-31T12:12:18Z",
+      "side": 1,
+      "message": "Could we leave hook-denied flows unclassified here? `cnat_hook_deny()` sets the canonical rewrite\u0027s next node to `DROP` and clears its `ts_rw_bm` bit. An NPOL deny therefore reaches this branch with neither bitmap bit set and increments `/cnat/flows/pass-through`, although failed flows should contribute only to `total`. Please check the drop sentinel before classifying an empty bitmap as pass-through, or preserve an explicit denied state. Could we also add inbound and outbound NPOL-deny coverage asserting all class gauges remain zero?",
+      "revId": "eb1430a66d785e4dba4ddd3b7d2829703c9c4579",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
