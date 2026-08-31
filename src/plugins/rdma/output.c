@@ -23,9 +23,7 @@
  */
 
 static_always_inline void
-rdma_device_output_free_mlx5 (vlib_main_t * vm,
-			      const vlib_node_runtime_t * node,
-			      rdma_txq_t * txq)
+rdma_device_output_free_mlx5 (vlib_main_t *vm, const vlib_node_runtime_t *node, rdma_txq_t *txq)
 {
   u16 idx = txq->dv_cq_idx;
   u32 cq_mask = pow2_mask (txq->dv_cq_log2sz);
@@ -35,7 +33,7 @@ rdma_device_output_free_mlx5 (vlib_main_t * vm,
   u32 log2_cq_sz = txq->dv_cq_log2sz;
   struct mlx5_cqe64 *cqes = txq->dv_cq_cqes, *cur = cqes + (idx & cq_mask);
   u16 cqe_wqe_counter, comp_tail;
-  u8 op_own, saved, wqe_ds;
+  u8 op_own, saved, wqe_ds, completion_error = 0;
   const rdma_mlx5_wqe_t *wqe;
 
   for (;;)
@@ -50,7 +48,10 @@ rdma_device_output_free_mlx5 (vlib_main_t * vm,
       CLIB_DMA_RMB ();
 
       if (PREDICT_FALSE ((op_own >> 4)) != MLX5_CQE_REQ)
-	vlib_error_count (vm, node->node_index, RDMA_TX_ERROR_COMPLETION, 1);
+	{
+	  vlib_error_count (vm, node->node_index, RDMA_TX_ERROR_COMPLETION, 1);
+	  completion_error = 1;
+	}
       idx++;
       cur = cqes + (idx & cq_mask);
     }
@@ -83,17 +84,22 @@ rdma_device_output_free_mlx5 (vlib_main_t * vm,
   /* ring doorbell */
   CLIB_DMA_WMB ();
   txq->dv_cq_dbrec[0] = htobe32 (idx & 0xffffff);
+
+  /* A TX CQ belongs to one raw-packet SQ.  An error CQE may flush or ignore
+   * subsequent WQEs on that SQ, irrespective of its detailed syndrome.  Stop
+   * only this TX queue; the other QPs and the RX queues remain usable. */
+  if (PREDICT_FALSE (completion_error))
+    txq->error = 1;
 }
 
 static_always_inline void
-rdma_device_output_tx_mlx5_doorbell (rdma_txq_t * txq, rdma_mlx5_wqe_t * last,
-				     const u16 tail, u32 sq_mask)
+rdma_device_output_tx_mlx5_doorbell (rdma_txq_t *txq, rdma_mlx5_wqe_t *last, const u16 tail,
+				     u32 sq_mask)
 {
-  last->ctrl.fm_ce_se = MLX5_WQE_CTRL_CQ_UPDATE;	/* generate a CQE so we can free buffers */
+  last->ctrl.fm_ce_se = MLX5_WQE_CTRL_CQ_UPDATE; /* generate a CQE so we can free buffers */
 
   ASSERT (tail != txq->tail &&
-	  RDMA_TXQ_AVAIL_SZ (txq, txq->head, txq->tail) >=
-	  RDMA_TXQ_USED_SZ (txq->tail, tail));
+	  RDMA_TXQ_AVAIL_SZ (txq, txq->head, txq->tail) >= RDMA_TXQ_USED_SZ (txq->tail, tail));
 
   CLIB_DMA_WMB ();
   txq->dv_sq_dbrec[MLX5_SND_DBR] = htobe32 (tail);
@@ -476,10 +482,10 @@ rdma_device_output_tx_ibverb (vlib_main_t * vm,
  */
 
 static void
-rdma_device_output_free (vlib_main_t *vm, const vlib_node_runtime_t *node,
-			 const rdma_device_t *rd, rdma_txq_t *txq)
+rdma_device_output_free (vlib_main_t *vm, const vlib_node_runtime_t *node, rdma_device_t *rd,
+			 rdma_txq_t *txq)
 {
-  if (PREDICT_TRUE (rd->flags & RDMA_DEVICE_F_MLX5DV))
+  if (PREDICT_TRUE (clib_atomic_load_relax_n (&rd->flags) & RDMA_DEVICE_F_MLX5DV))
     rdma_device_output_free_mlx5 (vm, node, txq);
   else
     rdma_device_output_free_ibverb (vm, node, txq);
@@ -506,7 +512,7 @@ rdma_device_output_tx_try (vlib_main_t *vm, const vlib_node_runtime_t *node,
 
   vlib_get_buffers (vm, bi, b, n_left_from);
 
-  if (PREDICT_TRUE (rd->flags & RDMA_DEVICE_F_MLX5DV))
+  if (PREDICT_TRUE (clib_atomic_load_relax_n (&rd->flags) & RDMA_DEVICE_F_MLX5DV))
     n_left_from =
       rdma_device_output_tx_mlx5 (vm, node, rd, txq, n_left_from, bi, b);
   else
@@ -527,6 +533,9 @@ rdma_device_output_tx (vlib_main_t *vm, vlib_node_runtime_t *node,
     {
       u32 n_enq;
       rdma_device_output_free (vm, node, rd, txq);
+
+      if (PREDICT_FALSE (txq->error || clib_atomic_load_relax_n (&rd->flags) & RDMA_DEVICE_F_ERROR))
+	break;
       n_enq = rdma_device_output_tx_try (vm, node, rd, txq, n_left_from, from);
       n_left_from -= n_enq;
       from += n_enq;
@@ -560,7 +569,11 @@ VNET_DEVICE_CLASS_TX_FN (rdma_device_class) (vlib_main_t * vm,
   if (PREDICT_FALSE (n_left))
     {
       vlib_buffer_free (vm, from + n_buffers - n_left, n_left);
-      vlib_error_count (vm, node->node_index, RDMA_TX_ERROR_NO_FREE_SLOTS,
+      vlib_error_count (vm, node->node_index,
+			txq->error ||
+			    (clib_atomic_load_relax_n (&rd->flags) & RDMA_DEVICE_F_ERROR) ?
+			  RDMA_TX_ERROR_DEVICE :
+			  RDMA_TX_ERROR_NO_FREE_SLOTS,
 			n_left);
     }
 
