@@ -16,7 +16,10 @@ VLIB_REGISTER_LOG_CLASS (dev_log, static) = {
   .class_name = "dev",
 };
 
-vnet_dev_main_t vnet_dev_main = { .next_rx_queue_thread = 1 };
+vnet_dev_main_t vnet_dev_main = {
+  .next_rx_queue_thread = 1,
+  .next_rx_queue_thread_with_main = 0,
+};
 
 static void
 vnet_dev_load_drivers (vlib_main_t *vm __clib_unused)
