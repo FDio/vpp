@@ -854,32 +854,59 @@ func (vpp *VppInstance) GetMemoryTrace() ([]VppMemTrace, error) {
 	return trace, nil
 }
 
+// Frames that are noise on their own, no matter who called them.
 var defaultMemLeakReportNoiseFrames = []string{
 	"unix_cli",
 	"vlib_buffer_validate_alloc_free",
 	"tap_device_input_one_inline",
 	"tw_timer_expire_timers_internal",
 	"http_add_postponed_ho_cleanups",
+	// interface name formatted into an ip/neighbor log message, which
+	// vlib_log retains in its ring buffer
+	"format_vnet_sw_interface_name",
 }
 
-func memTraceContainsAnyFrame(trace VppMemTrace, tracebackFrames []string) bool {
+// Frame pairs {callee, caller} for generic helpers that are noise only under one
+// specific caller. Frames must be adjacent, callee first. Traceback is capped at
+// 12 frames, so anchor pairs deep in the stack.
+var defaultMemLeakReportNoiseFramePairs = [][2]string{
+	// per worker scratch vectors, grow to a high-water mark and are never freed
+	{"_vec_validate", "session_tx_fifo_read_and_snd_i"},
+}
+
+// memTraceIsReportNoise reports whether a trace is expected noise and what matched.
+func memTraceIsReportNoise(trace VppMemTrace) (bool, string) {
 	for i := 0; i < len(trace.Traceback); i++ {
-		for j := 0; j < len(tracebackFrames); j++ {
-			if strings.Contains(trace.Traceback[i], tracebackFrames[j]) {
-				return true
+		for j := 0; j < len(defaultMemLeakReportNoiseFrames); j++ {
+			if strings.Contains(trace.Traceback[i], defaultMemLeakReportNoiseFrames[j]) {
+				return true, defaultMemLeakReportNoiseFrames[j]
+			}
+		}
+		if i+1 >= len(trace.Traceback) {
+			continue
+		}
+		for j := 0; j < len(defaultMemLeakReportNoiseFramePairs); j++ {
+			pair := defaultMemLeakReportNoiseFramePairs[j]
+			if strings.Contains(trace.Traceback[i], pair[0]) &&
+				strings.Contains(trace.Traceback[i+1], pair[1]) {
+				return true, pair[0] + " <- " + pair[1]
 			}
 		}
 	}
-	return false
+	return false, ""
 }
 
 // memTracesSuppressReportNoise filters out expected allocations unrelated to the code under test.
 func memTracesSuppressReportNoise(traces []VppMemTrace) []VppMemTrace {
 	var filtered []VppMemTrace
 	for i := range traces {
-		if !memTraceContainsAnyFrame(traces[i], defaultMemLeakReportNoiseFrames) {
-			filtered = append(filtered, traces[i])
+		noise, match := memTraceIsReportNoise(traces[i])
+		if noise {
+			Log("mem trace suppressed as report noise [%s]: %d byte(s) in %d allocation(s) from %s",
+				match, traces[i].Size, traces[i].Count, strings.Join(traces[i].Traceback, " <- "))
+			continue
 		}
+		filtered = append(filtered, traces[i])
 	}
 	return filtered
 }
