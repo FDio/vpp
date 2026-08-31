@@ -112,6 +112,9 @@ tcp_handle_rst (tcp_connection_t * tc)
       tcp_connection_cleanup_and_notify (tc);
       break;
     case TCP_STATE_SYN_SENT:
+      /* A burst may contain more than one RST for the same half-open connection */
+      if (tc->c_flags & TRANSPORT_CONNECTION_F_ERROR)
+	break;
       session_stream_connect_notify (&tc->connection, SESSION_E_REFUSED);
       tcp_connection_cleanup (tc);
       break;
