@@ -132,10 +132,11 @@ typedef struct
   u16 head;
   u16 tail;
   u16 dv_cq_idx;		/* monotonic CQE index (valid only for direct verbs) */
-  u8 bufs_log2sz;		/* log2 vlib_buffer entries */
+  u8 bufs_log2sz : 7;		/* log2 vlib_buffer entries */
+  u8 error : 1;			/* stop submissions after a TX completion error */
   u8 dv_sq_log2sz:4;		/* log2 SQ WQE entries (valid only for direct verbs) */
   u8 dv_cq_log2sz:4;		/* log2 CQ CQE entries (valid only for direct verbs) */
-    STRUCT_MARK (cacheline1);
+  STRUCT_MARK (cacheline1);
 
   /* WQE template (valid only for direct verbs) */
   u8 dv_wqe_tmpl[64];
@@ -299,11 +300,12 @@ typedef struct
   u16 cqe_flags;
 } rdma_input_trace_t;
 
-#define foreach_rdma_tx_func_error \
-_(SEGMENT_SIZE_EXCEEDED, "segment size exceeded") \
-_(NO_FREE_SLOTS, "no free tx slots") \
-_(SUBMISSION, "tx submission errors") \
-_(COMPLETION, "tx completion errors")
+#define foreach_rdma_tx_func_error                                                                 \
+  _ (SEGMENT_SIZE_EXCEEDED, "segment size exceeded")                                               \
+  _ (NO_FREE_SLOTS, "no free tx slots")                                                            \
+  _ (SUBMISSION, "tx submission errors")                                                           \
+  _ (COMPLETION, "tx completion errors")                                                           \
+  _ (DEVICE, "device error")
 
 typedef enum
 {
