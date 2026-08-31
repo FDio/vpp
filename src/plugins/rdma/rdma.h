@@ -34,6 +34,8 @@ enum
 #define MLX5_ETH_L2_INLINE_HEADER_SIZE  18
 #endif
 
+#define RDMA_MLX5_ETH_L2_MIN_HEADER_SIZE 14
+
 /*
  * TSO headers are inlined as the mlx5 Ethernet inline header plus 16-byte
  * continuation DS. The WQE occupies ceil(ctrl.ds / 4) WQEBBs; callers must
@@ -252,6 +254,7 @@ typedef struct
   u32 max_tso;			/* maximum TSO payload reported by the device */
   u8 pool;			/* buffer pool index */
   u8 tx_empw_inline_max;	/* inline eMPW packets up to this size; 0 disables */
+  u8 tx_min_inline;		/* minimum inline Ethernet bytes selected by mlx5 */
 
   /* fields below are not accessed in datapath */
   vlib_pci_device_info_t *pci;
@@ -369,6 +372,8 @@ typedef struct
   _ (SUBMISSION, "tx submission errors")                                                           \
   _ (COMPLETION, "tx completion errors")                                                           \
   _ (UNSUPPORTED_GSO, "unsupported non-TCP GSO packet")                                            \
+  _ (PACKET_TOO_SHORT, "packet shorter than required inline header")                               \
+  _ (TSO_HDR_INVALID, "invalid tso header or mss")                                                 \
   _ (TSO_HDR_TOO_BIG, "tso header exceeds max inline size")                                        \
   _ (TSO_HDR_SPLIT, "tso header spans multiple buffers")                                           \
   _ (TSO_PAYLOAD_TOO_BIG, "tso payload exceeds device limit")
