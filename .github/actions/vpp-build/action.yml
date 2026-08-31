@@ -23,6 +23,11 @@ inputs:
     required: false
     default: "false"
     type: string
+  ENABLE_ASAN:
+    description: "Build debug VPP with AddressSanitizer"
+    required: false
+    default: "false"
+    type: string
   USE_GCC:
     description: "Use GCC as the compiler"
     required: false
@@ -51,6 +56,7 @@ runs:
         BUILD_HST: ${{ inputs.BUILD_HST }}
         USE_GCC: ${{ inputs.USE_GCC }}
         TUI_LINE: ${{ inputs.TUI_LINE }}
+        ENABLE_ASAN: ${{ inputs.ENABLE_ASAN }}
       run: |
         set -euo pipefail
         cd "${WORKSPACE}"
@@ -115,8 +121,27 @@ runs:
             fi
         }
 
+        build_hst_asan_vpp() {
+            echo "Building VPP debug with AddressSanitizer."
+            echo "MAKE_PARALLEL_JOBS=${MAKE_PARALLEL_JOBS}"
+
+            if [ "$BUILD_TYPE" != "debug" ] ; then
+                  BUILD_ERROR="FAILED ASAN requires BUILD_TYPE=debug"
+                  return
+            fi
+
+            if ! make UNATTENDED=yes MAKE_PARALLEL_JOBS=${MAKE_PARALLEL_JOBS} VPP_EXTRA_CMAKE_ARGS="-DVPP_ENABLE_SANITIZE_ADDR=ON" build | tee "$LOG_DIR/build_hst_debug.log" ; then
+               BUILD_ERROR="FAILED HST BUILD 'make UNATTENDED=yes MAKE_PARALLEL_JOBS=${MAKE_PARALLEL_JOBS} VPP_EXTRA_CMAKE_ARGS="-DVPP_ENABLE_SANITIZE_ADDR=ON" build'"
+               return
+            fi
+        }
+
         if [ "$BUILD_HST" == "true" ] ; then
-            build_hst_vpp
+            if [ "$ENABLE_ASAN" == "true" ] ; then
+                build_hst_asan_vpp
+            else
+                build_hst_vpp
+            fi
         else
             build_vpp
         fi
