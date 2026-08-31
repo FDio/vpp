@@ -50,6 +50,24 @@
       "message": "Could we follow the usual VPP error-handling pattern here? `sfdp_kill_session_batch()` should return a specific `vnet_api_error_t`, which this handler can pass directly to the reply; any CLI caller can convert it to a human-readable `clib_error_t`. Currently the initialization failure becomes generic `-1`, and the allocated `clib_error_t` is never freed. It may be worth normalizing the existing `sfdp_kill_session()` path at the same time.",
       "revId": "8e025822cdde136b2ec806f393354f2e0da80f6e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "00688be0_d094ed19",
+        "filename": "src/vnet/sfdp/api.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 218,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-08-31T10:03:20Z",
+      "side": 1,
+      "message": "Good point. I went ahead and made the changes to follow the usual VPP error-handling pattern for both APIs.",
+      "parentUuid": "a883cf04_0d74118e",
+      "revId": "8e025822cdde136b2ec806f393354f2e0da80f6e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
