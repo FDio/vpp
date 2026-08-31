@@ -253,6 +253,14 @@ class TestVPPInterfacesQemu:
         3. Cross-Connect interfaces in VPP using L2 or L3.
         """
 
+        # Initialize teardown state before any setup operation can fail.
+        self.tap_interfaces = []
+        self.memif_interfaces = []
+        self.ingress_if_idxes = []
+        self.egress_if_idxes = []
+        self.vpp_interfaces = []
+        self.linux_interfaces = []
+
         # Need to support multiple interface types as the memif interface
         # in VPP is connected to the iPerf client & server by x-connecting
         # to a tap interface in their respective namespaces.
@@ -288,9 +296,7 @@ class TestVPPInterfacesQemu:
         )
         vpp_server_nexthop = str(ip_interface(vpp_server_prefix).ip)
         # Create unique namespaces for iperf client & iperf server to
-        # prevent conflicts when TEST_JOBS > 1
-        self.client_namespace = test_config["client_namespace"] + str(test["id"])
-        self.server_namespace = test_config["server_namespace"] + str(test["id"])
+        # prevent conflicts with parallel or interrupted test runs.
         self.ns_history_file = (
             f"{config.tmp_dir}/vpp-unittest-{self.__class__.__name__}/history_ns.txt"
         )
@@ -298,18 +304,14 @@ class TestVPPInterfacesQemu:
             f"{config.tmp_dir}/vpp-unittest-{self.__class__.__name__}/history_if.txt"
         )
         delete_all_namespaces(self.ns_history_file)
-        create_namespace(
-            self.ns_history_file, ns=[self.client_namespace, self.server_namespace]
+        self.client_namespace = create_namespace(
+            self.ns_history_file, prefix=test_config["client_namespace"]
+        )
+        self.server_namespace = create_namespace(
+            self.ns_history_file, prefix=test_config["server_namespace"]
         )
         # Set a unique iPerf port for parallel server and client runs
         self.iperf_port = 5000 + test["id"]
-        # IPerf client & server ingress/egress interface indexes in VPP
-        self.tap_interfaces = []
-        self.memif_interfaces = []
-        self.ingress_if_idxes = []
-        self.egress_if_idxes = []
-        self.vpp_interfaces = []
-        self.linux_interfaces = []
         enable_client_if_gso = test.get("client_if_gso", 0)
         enable_server_if_gso = test.get("server_if_gso", 0)
         enable_client_if_gro = test.get("client_if_gro", 0)
