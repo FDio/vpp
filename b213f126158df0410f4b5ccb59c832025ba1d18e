@@ -16,6 +16,23 @@
       "message": "Since this is an intermittent condition, is there a way to force the schedele stall to occur or otherwise verify missing the timeout is reported as a worker dewdlock anf subsequently prove that this change fixes the issue?\n\nAre there any side effects of changing the timeout?",
       "revId": "b213f126158df0410f4b5ccb59c832025ba1d18e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "62f58c94_5699eece",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-08-31T05:40:46Z",
+      "side": 1,
+      "message": "Thanks for the detailed explanation of the verification for this gerrit change.  I agree that automating this testing is not worth the investment to run it in the CI.",
+      "revId": "b213f126158df0410f4b5ccb59c832025ba1d18e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
