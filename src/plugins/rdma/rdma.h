@@ -299,11 +299,12 @@ typedef struct
   u16 cqe_flags;
 } rdma_input_trace_t;
 
-#define foreach_rdma_tx_func_error \
-_(SEGMENT_SIZE_EXCEEDED, "segment size exceeded") \
-_(NO_FREE_SLOTS, "no free tx slots") \
-_(SUBMISSION, "tx submission errors") \
-_(COMPLETION, "tx completion errors")
+#define foreach_rdma_tx_func_error                                                                 \
+  _ (SEGMENT_SIZE_EXCEEDED, "segment size exceeded")                                               \
+  _ (NO_FREE_SLOTS, "no free tx slots")                                                            \
+  _ (SUBMISSION, "tx submission errors")                                                           \
+  _ (COMPLETION, "tx completion errors")                                                           \
+  _ (DEVICE, "device error")
 
 typedef enum
 {
