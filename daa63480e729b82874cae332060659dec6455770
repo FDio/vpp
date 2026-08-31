@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "30bf7d0c_1011e3a5",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1388
+      },
+      "writtenOn": "2026-08-31T16:37:25Z",
+      "side": 1,
+      "message": "Steven, would it unblock the merge if I remove the spinlock? Moving reset of interrupt variables to the top already greatly reduces the chances of a race and almost all unnecessary extra interrupts will be suppressed after this. The race may still happen in rare cases, but I think it would be acceptable, given that interrupt is a hint.",
+      "revId": "daa63480e729b82874cae332060659dec6455770",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
