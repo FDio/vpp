@@ -4,7 +4,10 @@
 
 #include <unistd.h>
 #include <fcntl.h>
+#include <limits.h>
 #include <net/if.h>
+#include <stdlib.h>
+#include <string.h>
 #include <linux/if_link.h>
 #include <linux/if_ether.h>
 
@@ -869,19 +872,31 @@ rdma_dev_init (vlib_main_t * vm, rdma_device_t * rd,
 static uword
 sysfs_path_to_pci_addr (char *path, vlib_pci_addr_t * addr)
 {
-  uword rv;
-  unformat_input_t in;
-  u8 *s;
+  char resolved_path[PATH_MAX];
 
-  s = clib_file_get_resolved_basename (path);
-  if (!s)
+  if (!realpath (path, resolved_path))
     return 0;
 
-  unformat_init_string (&in, (char *) s, strlen ((char *) s));
-  rv = unformat (&in, "%U", unformat_vlib_pci_addr, addr);
-  unformat_free (&in);
-  vec_free (s);
-  return rv;
+  while (resolved_path[0])
+    {
+      char *basename = strrchr (resolved_path, '/');
+      unformat_input_t in;
+      uword rv;
+
+      basename = basename ? basename + 1 : resolved_path;
+      unformat_init_string (&in, basename, strlen (basename));
+      rv = unformat (&in, "%U", unformat_vlib_pci_addr, addr) &&
+	   unformat_check_input (&in) == UNFORMAT_END_OF_INPUT;
+      unformat_free (&in);
+      if (rv)
+	return 1;
+
+      if (basename == resolved_path)
+	break;
+      basename[-1] = 0;
+    }
+
+  return 0;
 }
 
 void
