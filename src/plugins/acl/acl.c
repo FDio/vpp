@@ -354,6 +354,9 @@ acl_add_list (u32 count, vl_api_acl_rule_t rules[],
 	("acl-plugin-warning: supplied no rules for ACL %d (tag %s)",
 	 *acl_list_index, tag);
     }
+  if (vec_len (am->acl_add_list_cbs) > 0)
+    clib_call_callbacks (am->acl_add_list_cbs, am, *acl_list_index,
+			 0 /* before */);
 
   /* Create and populate the rules */
   if (count > 0)
@@ -404,6 +407,9 @@ acl_add_list (u32 count, vl_api_acl_rule_t rules[],
     }
   validate_and_reset_acl_counters (am, *acl_list_index);
   acl_plugin_lookup_context_notify_acl_change (*acl_list_index);
+  if (vec_len (am->acl_add_list_cbs) > 0)
+    clib_call_callbacks (am->acl_add_list_cbs, am, *acl_list_index,
+			 1 /* after */);
   return 0;
 }
 
@@ -437,6 +443,9 @@ acl_del_list (u32 acl_list_index)
   /* lookup contexts cover other cases, not just inbound/outbound, so check that */
   if (acl_is_used_by (acl_list_index, am->lc_index_vec_by_acl))
     return VNET_API_ERROR_ACL_IN_USE_BY_LOOKUP_CONTEXT;
+  if (vec_len (am->acl_del_list_cbs) > 0)
+    clib_call_callbacks (am->acl_del_list_cbs, am, acl_list_index,
+			 0 /* before */);
 
   /* now we can delete the ACL itself */
   a = pool_elt_at_index (am->acls, acl_list_index);
@@ -445,6 +454,9 @@ acl_del_list (u32 acl_list_index)
   pool_put (am->acls, a);
   /* acl_list_index is now free, notify the lookup contexts */
   acl_plugin_lookup_context_notify_acl_change (acl_list_index);
+  if (vec_len (am->acl_del_list_cbs) > 0)
+    clib_call_callbacks (am->acl_del_list_cbs, am, acl_list_index,
+			 1 /* after */);
   return 0;
 }
 

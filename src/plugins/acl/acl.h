@@ -104,7 +104,8 @@ typedef struct
   u8 from_tm;
 } ace_mask_type_entry_t;
 
-typedef struct {
+typedef struct acl_main_t
+{
   /* API message ID base */
   u16 msg_id_base;
 
@@ -292,6 +293,12 @@ typedef struct {
   vlib_combined_counter_main_t *combined_acl_counters;
   /* enable/disable ACL counters for interface processing */
   u32 interface_acl_counters_enabled;
+
+  /* callbacks */
+  void (**acl_add_list_cbs) (struct acl_main_t *, u32 acl_list_index,
+			     int before_or_after);
+  void (**acl_del_list_cbs) (struct acl_main_t *, u32 acl_list_index,
+			     int before_or_after);
 } acl_main_t;
 
 #define acl_log_err(...) \
