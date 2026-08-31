@@ -4,7 +4,10 @@
 
 #include <unistd.h>
 #include <fcntl.h>
+#include <limits.h>
 #include <net/if.h>
+#include <stdlib.h>
+#include <string.h>
 #include <linux/if_link.h>
 #include <linux/if_ether.h>
 
@@ -869,19 +872,31 @@ rdma_dev_init (vlib_main_t * vm, rdma_device_t * rd,
 static uword
 sysfs_path_to_pci_addr (char *path, vlib_pci_addr_t * addr)
 {
-  uword rv;
-  unformat_input_t in;
-  u8 *s;
+  char resolved_path[PATH_MAX];
 
-  s = clib_file_get_resolved_basename (path);
-  if (!s)
+  if (!realpath (path, resolved_path))
     return 0;
 
-  unformat_init_string (&in, (char *) s, strlen ((char *) s));
-  rv = unformat (&in, "%U", unformat_vlib_pci_addr, addr);
-  unformat_free (&in);
-  vec_free (s);
-  return rv;
+  while (resolved_path[0])
+    {
+      char *basename = strrchr (resolved_path, '/');
+      unformat_input_t in;
+      uword rv;
+
+      basename = basename ? basename + 1 : resolved_path;
+      unformat_init_string (&in, basename, strlen (basename));
+      rv = unformat (&in, "%U", unformat_vlib_pci_addr, addr) &&
+	   unformat_check_input (&in) == UNFORMAT_END_OF_INPUT;
+      unformat_free (&in);
+      if (rv)
+	return 1;
+
+      if (basename == resolved_path)
+	break;
+      basename[-1] = 0;
+    }
+
+  return 0;
 }
 
 void
@@ -891,6 +906,7 @@ rdma_create_if (vlib_main_t * vm, rdma_create_if_args_t * args)
   rdma_main_t *rm = &rdma_main;
   rdma_device_t *rd;
   vlib_pci_addr_t pci_addr;
+  char netdev_path[PATH_MAX];
   struct ibv_device **dev_list;
   int n_devs;
   u8 *s;
@@ -924,7 +940,7 @@ rdma_create_if (vlib_main_t * vm, rdma_create_if_args_t * args)
 
   /* get PCI address */
   s = format (0, "/sys/class/net/%s/device%c", args->ifname, 0);
-  if (sysfs_path_to_pci_addr ((char *) s, &pci_addr) == 0)
+  if (!realpath ((char *) s, netdev_path) || sysfs_path_to_pci_addr ((char *) s, &pci_addr) == 0)
     {
       args->error =
 	clib_error_return (0, "cannot find PCI address for device ");
@@ -961,15 +977,12 @@ rdma_create_if (vlib_main_t * vm, rdma_create_if_args_t * args)
 
   for (i = 0; i < n_devs; i++)
     {
-      vlib_pci_addr_t addr;
+      char rdma_path[PATH_MAX];
 
       vec_reset_length (s);
       s = format (s, "%s/device%c", dev_list[i]->dev_path, 0);
 
-      if (sysfs_path_to_pci_addr ((char *) s, &addr) == 0)
-	continue;
-
-      if (addr.as_u32 != rd->pci->addr.as_u32)
+      if (!realpath ((char *) s, rdma_path) || strcmp (netdev_path, rdma_path))
 	continue;
 
       if ((rd->ctx = ibv_open_device (dev_list[i])))
