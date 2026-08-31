@@ -1530,7 +1530,7 @@ class VppTestResult(unittest.TestResult):
         if self.verbosity > 0:
             self.stream.writeln(single_line_delim)
             self.stream.writeln(
-                "%-72s%s%s"
+                "%-96s%s%s"
                 % (
                     self.getDescription(test),
                     self.result_string,
@@ -1540,7 +1540,7 @@ class VppTestResult(unittest.TestResult):
             self.stream.writeln(single_line_delim)
         else:
             self.stream.writeln(
-                "%-67s %4.2f %s%s"
+                "%-89s %4.2f %s%s"
                 % (
                     self.getDescription(test),
                     time.time() - self.start_test,

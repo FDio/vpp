@@ -7,9 +7,9 @@ import logging
 from config import config
 
 """ @var formatting delimiter consisting of '=' characters """
-double_line_delim = "=" * 78
+double_line_delim = "=" * 100
 """ @var formatting delimiter consisting of '-' characters """
-single_line_delim = "-" * 78
+single_line_delim = "-" * 100
 
 
 def colorize(msg, color):
