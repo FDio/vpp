@@ -303,10 +303,12 @@ typedef struct tcp_bt_sample_
   f64 delivered_time;		/**< Delivered time when sample taken */
   f64 tx_time;			/**< Transmit time for the burst */
   f64 first_tx_time;		/**< Connection first tx time at tx */
-  u64 tx_in_flight;		/**< In flight at tx time */
   u64 tx_lost;			/**< Lost at tx time */
+  u32 tx_in_flight;		/**< In flight at tx time */
   tcp_bts_flags_t flags;	/**< Sample flag */
 } tcp_bt_sample_t;
+
+STATIC_ASSERT_SIZEOF (tcp_bt_sample_t, 64);
 
 typedef struct tcp_ack_ctx_
 {
