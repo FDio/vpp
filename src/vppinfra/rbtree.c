@@ -187,6 +187,7 @@ rb_tree_add_custom (rb_tree_t * rt, u32 key, uword opaque, rb_tree_lt_fn ltfn)
 {
   rb_node_index_t yi = 0, xi = rb_tree_root (rt);
   rb_node_t *z, *y, *x;
+  u8 insert_left = 0;
 
   pool_get_zero (rt->nodes, z);
   z->key = key;
@@ -199,7 +200,8 @@ rb_tree_add_custom (rb_tree_t * rt, u32 key, uword opaque, rb_tree_lt_fn ltfn)
       x = rb_node (rt, xi);
       y = x;
       ASSERT (z->key != x->key);
-      if (ltfn (z->key, x->key))
+      insert_left = ltfn (z->key, x->key);
+      if (insert_left)
 	xi = x->left;
       else
 	xi = x->right;
@@ -208,7 +210,7 @@ rb_tree_add_custom (rb_tree_t * rt, u32 key, uword opaque, rb_tree_lt_fn ltfn)
   z->parent = yi;
   if (yi == RBTREE_TNIL_INDEX)
     rb_tree_root (rt) = rb_node_index (rt, z);
-  else if (ltfn (z->key, y->key))
+  else if (insert_left)
     y->left = rb_node_index (rt, z);
   else
     y->right = rb_node_index (rt, z);
