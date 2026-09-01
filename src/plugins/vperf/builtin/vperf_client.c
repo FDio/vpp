@@ -423,6 +423,7 @@ vp_client_reset_runtime_config (vp_client_main_t *vpcm)
   vpcm->barrier_acq_needed = 0;
   vpcm->prealloc_sessions = 0;
   vpcm->prealloc_fifos = 0;
+  vpcm->cfg.fifo_pct_first_alloc = 100;
   vpcm->appns_id = 0;
   vpcm->appns_secret = 0;
   vpcm->attach_flags = 0;
@@ -866,7 +867,7 @@ vp_client_attach ()
   options[APP_OPTIONS_PREALLOC_FIFO_PAIRS] = prealloc_fifos;
   options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_IS_BUILTIN;
   options[APP_OPTIONS_TLS_ENGINE] = vpcm->cfg.tls_engine;
-  options[APP_OPTIONS_PCT_FIRST_ALLOC] = 100;
+  options[APP_OPTIONS_PCT_FIRST_ALLOC] = vpcm->cfg.fifo_pct_first_alloc;
   options[APP_OPTIONS_FLAGS] |= vpcm->attach_flags;
   if (vpcm->appns_id)
     {

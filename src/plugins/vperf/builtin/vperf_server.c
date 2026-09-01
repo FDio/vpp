@@ -422,6 +422,7 @@ vp_server_attach (u8 *appns_id, u64 appns_flags, u64 appns_secret)
   vp_server_main_t *vpsm = &vp_server_main;
   vnet_app_attach_args_t _a, *a = &_a;
   u64 options[APP_OPTIONS_N_OPTIONS];
+  session_error_t rv;
 
   clib_memset (a, 0, sizeof (*a));
   clib_memset (options, 0, sizeof (options));
@@ -437,7 +438,7 @@ vp_server_attach (u8 *appns_id, u64 appns_flags, u64 appns_secret)
   a->options[APP_OPTIONS_RX_FIFO_SIZE] = vpsm->cfg.fifo_size;
   a->options[APP_OPTIONS_TX_FIFO_SIZE] = vpsm->cfg.fifo_size;
   a->options[APP_OPTIONS_TLS_ENGINE] = vpsm->cfg.tls_engine;
-  a->options[APP_OPTIONS_PCT_FIRST_ALLOC] = 100;
+  a->options[APP_OPTIONS_PCT_FIRST_ALLOC] = vpsm->cfg.fifo_pct_first_alloc;
   a->options[APP_OPTIONS_PREALLOC_FIFO_PAIRS] =
     vpsm->cfg.prealloc_fifos ? vpsm->cfg.prealloc_fifos : 1;
 
@@ -450,9 +451,9 @@ vp_server_attach (u8 *appns_id, u64 appns_flags, u64 appns_secret)
       a->options[APP_OPTIONS_NAMESPACE_SECRET] = appns_secret;
     }
 
-  if (vnet_application_attach (a))
+  if ((rv = vnet_application_attach (a)))
     {
-      vp_server_err ("failed to attach server");
+      vp_server_err ("failed to attach server: %U", format_session_error, rv);
       return -1;
     }
   vpsm->app_index = a->app_index;
@@ -568,6 +569,7 @@ vp_server_init (vlib_main_t *vm)
   vpsm->vlib_main = vm;
   vpsm->cfg.fifo_size = 4 << 20;
   vpsm->cfg.prealloc_fifos = 0;
+  vpsm->cfg.fifo_pct_first_alloc = 100;
   vpsm->cfg.private_segment_size = 512 << 20;
   vpsm->cfg.tls_engine = CRYPTO_ENGINE_OPENSSL;
   vpsm->cfg.report_interval = 0;

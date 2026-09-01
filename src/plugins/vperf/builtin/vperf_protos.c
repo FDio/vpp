@@ -213,15 +213,16 @@ vp_proto_client_stream_tx (vp_test_session_t *es, u32 max_send)
   u32 to_send, max_enq;
   int rv;
 
-  rv = svm_fifo_fill_chunk_list (f);
-  if (rv < 0)
-    return 0;
-
   max_enq = svm_fifo_max_enqueue_prod (f);
   if (max_enq == 0)
     return 0;
 
   to_send = clib_min (max_enq, max_send);
+
+  rv = svm_fifo_provision_chunks (f, 0, 0, to_send);
+  if (rv < 0)
+    return 0;
+
   svm_fifo_enqueue_nocopy (f, to_send);
   if (svm_fifo_set_event (es->tx_fifo))
     session_program_tx_io_evt (es->vpp_session_handle, SESSION_IO_EVT_TX);
@@ -494,13 +495,15 @@ vp_proto_client_dgram_tx (vp_test_session_t *es, u32 max_send)
   u32 max_enqueue, n_sent = 0;
   int rv;
 
-  rv = svm_fifo_fill_chunk_list (f);
-  if (rv < 0)
+  max_enqueue = svm_fifo_max_enqueue_prod (f);
+  if (max_enqueue <= sizeof (session_dgram_hdr_t))
     return 0;
 
-  max_enqueue = svm_fifo_max_enqueue_prod (f);
-
-  if (max_enqueue <= sizeof (session_dgram_hdr_t))
+  rv = svm_fifo_provision_chunks (
+    f, 0, 0,
+    clib_min (max_send + (max_send / TRANSPORT_PACER_MIN_MSS + 1) * sizeof (session_dgram_hdr_t),
+	      max_enqueue));
+  if (rv < 0)
     return 0;
 
   session_dgram_hdr_t hdr = {
@@ -667,16 +670,15 @@ vp_proto_client_udp_uso_tx (vp_test_session_t *es, u32 max_send)
   u32 max_enqueue, to_send = 0;
   int rv;
 
-  rv = svm_fifo_fill_chunk_list (f);
-  if (rv < 0)
-    return 0;
-
   max_enqueue = svm_fifo_max_enqueue_prod (f);
-
   if (max_enqueue <= sizeof (session_dgram_hdr_t))
     return 0;
 
   to_send = clib_min (max_enqueue - sizeof (session_dgram_hdr_t), max_send);
+
+  rv = svm_fifo_provision_chunks (f, 0, 0, to_send + sizeof (session_dgram_hdr_t));
+  if (rv < 0)
+    return 0;
 
   session_dgram_hdr_t hdr = {
     .data_length = to_send,
@@ -1069,6 +1071,8 @@ static int
 vp_proto_http_connect (vnet_connect_args_t *args, vp_test_cfg_t *cfg)
 {
   transport_endpt_ext_cfg_t *ext_cfg;
+  /* use longer idle timeout than server, we want to timeout on one side only */
+  transport_endpt_cfg_http_t http_cfg = { .timeout = 120 };
 
   if (vp_test_transport_needs_crypto (&args->sep_ext))
     {
@@ -1092,14 +1096,11 @@ vp_proto_http_connect (vnet_connect_args_t *args, vp_test_cfg_t *cfg)
   else
     {
       if (cfg->http_version == HTTP_VERSION_2)
-	{
-	  transport_endpt_cfg_http_t http_cfg = { .timeout = 60,
-						  .flags = HTTP_ENDPT_CFG_F_HTTP2_PRIOR_KNOWLEDGE };
-	  ext_cfg = session_endpoint_add_ext_cfg (&args->sep_ext, TRANSPORT_ENDPT_EXT_CFG_HTTP,
-						  sizeof (http_cfg));
-	  clib_memcpy (ext_cfg->data, &http_cfg, sizeof (http_cfg));
-	}
+	http_cfg.flags = HTTP_ENDPT_CFG_F_HTTP2_PRIOR_KNOWLEDGE;
     }
+  ext_cfg =
+    session_endpoint_add_ext_cfg (&args->sep_ext, TRANSPORT_ENDPT_EXT_CFG_HTTP, sizeof (http_cfg));
+  clib_memcpy (ext_cfg->data, &http_cfg, sizeof (http_cfg));
 
   int rv = vnet_connect (args);
   session_endpoint_free_ext_cfgs (&args->sep_ext);
@@ -1295,15 +1296,16 @@ vp_proto_http_client_tx (vp_test_session_t *es, u32 max_send)
   u32 to_send, max_enq;
   int rv;
 
-  rv = svm_fifo_fill_chunk_list (f);
-  if (rv < 0)
-    return 0;
-
   max_enq = svm_fifo_max_enqueue_prod (f);
   if (max_enq == 0)
     return 0;
 
   to_send = clib_min (max_enq, max_send);
+
+  rv = svm_fifo_provision_chunks (f, 0, 0, to_send);
+  if (rv < 0)
+    return 0;
+
   svm_fifo_enqueue_nocopy (f, to_send);
   if (svm_fifo_set_event (f))
     session_program_tx_io_evt (es->vpp_session_handle, SESSION_IO_EVT_TX);
@@ -1383,7 +1385,7 @@ vp_proto_http_masque_listen (vnet_listen_args_t *args, vp_test_cfg_t *cfg)
       ext_cfg->crypto.alpn_protos[0] = TLS_ALPN_PROTO_HTTP_3;
       ext_cfg->crypto.alpn_protos[1] = TLS_ALPN_PROTO_HTTP_2;
     }
-  transport_endpt_cfg_http_t http_cfg = { 120, HTTP_UDP_TUNNEL_DGRAM, 0 };
+  transport_endpt_cfg_http_t http_cfg = { 60, HTTP_UDP_TUNNEL_DGRAM, 0 };
   ext_cfg =
     session_endpoint_add_ext_cfg (&args->sep_ext, TRANSPORT_ENDPT_EXT_CFG_HTTP, sizeof (http_cfg));
   clib_memcpy (ext_cfg->data, &http_cfg, sizeof (http_cfg));

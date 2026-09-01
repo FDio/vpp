@@ -15,6 +15,7 @@ vp_server_create_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_
   char *default_uri = "tcp://0.0.0.0/1234";
   int rv, is_stop = 0;
   clib_error_t *error = 0;
+  u32 tmp;
 
   vp_server_init (vm);
 
@@ -26,6 +27,12 @@ vp_server_create_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_
 	;
       else if (unformat (input, "prealloc-fifos %d", &vpsm->cfg.prealloc_fifos))
 	;
+      else if (unformat (input, "fifo-pct-first-alloc %u", &tmp))
+	{
+	  if (tmp > 100)
+	    return clib_error_return (0, "fifo-pct-first-alloc can't be greater than 100");
+	  vpsm->cfg.fifo_pct_first_alloc = (u8) tmp;
+	}
       else if (unformat (input, "private-segment-size %U", unformat_memory_size,
 			 &vpsm->cfg.private_segment_size))
 	;
@@ -165,7 +172,8 @@ VLIB_CLI_COMMAND (vp_server_create_command, static) = {
   .short_help = "vperf server [uri <proto://ip:port>] [fifo-size <bytes>[k|m|g]]\n"
 		"[private-segment-count <n>] [private-segment-size <bytes>[k|m|g]]\n"
 		"[all-scope|local-scope|global-scope] [secret <n>] [stop] [tls-engine <id>]\n"
-		"[prealloc-fifos <n>] [appns <id>] [report-interval [<seconds>]]",
+		"[prealloc-fifos <n>] [appns <id>] [report-interval [<seconds>]]\n"
+		"[fifo-pct-first-alloc <n>]",
   .function = vp_server_create_command_fn,
   .is_mp_safe = 1,
 };
@@ -178,7 +186,7 @@ vp_client_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command
   vp_client_main_t *vpcm = &vp_client_main;
   clib_error_t *error = 0;
   int rv, timed_run_conflict = 0, tput_conflict = 0, had_config = 1, use_default_mode = 1;
-  u32 connections_per_batch;
+  u32 tmp;
 
   if (vpcm->test_client_attached)
     return clib_error_return (0, "failed: already running!");
@@ -234,12 +242,19 @@ vp_client_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command
 	tput_conflict = 1;
       else if (unformat (line_input, "preallocate-fifos"))
 	vpcm->prealloc_fifos = 1;
+      else if (unformat (line_input, "fifo-pct-first-alloc %u", &tmp))
+	{
+	  if (tmp > 100)
+	    return clib_error_return (0, "fifo-pct-first-alloc can't be greater than 100");
+	  vpcm->cfg.fifo_pct_first_alloc = (u8) tmp;
+	}
       else if (unformat (line_input, "preallocate-sessions"))
 	vpcm->prealloc_sessions = 1;
-      else if (unformat (line_input, "client-batch %u", &connections_per_batch))
+      else if (unformat (line_input, "client-batch %u", &tmp))
 	{
-	  if (!connections_per_batch)
+	  if (!tmp)
 	    return clib_error_return (0, "client-batch must be greater than 0");
+	  vpcm->connections_per_batch = tmp;
 	}
       else if (unformat (line_input, "report-jitter"))
 	vpcm->cfg.report_interval_jitter = 1;
@@ -380,7 +395,7 @@ VLIB_CLI_COMMAND (vp_client_command, static) = {
     "[client-batch <n>] [max-tx-chunk <bytes>[k|m]] [nstreams <n>]\n"
     "[throughput <bytes>[k|m|g]] [report-interval[-total] [<seconds>]] [report-jitter]\n"
     "[uri <proto://ip:port>] [test-bytes] [verbose] [all-scope|local-scope|global-scope]\n"
-    "[connect-tcp|connect-udp]",
+    "[connect-tcp|connect-udp] [fifo-pct-first-alloc <n>]",
   .function = vp_client_command_fn,
   .is_mp_safe = 1,
 };
