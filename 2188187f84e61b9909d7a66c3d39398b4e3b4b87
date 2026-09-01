@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "2df4c27d_8cbc7377",
+        "filename": "src/plugins/vperf/builtin/vperf_protos.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 244,
+      "author": {
+        "id": 3121
+      },
+      "writtenOn": "2026-09-01T00:20:22Z",
+      "side": 1,
+      "message": "Ack, fixed.",
+      "parentUuid": "b96e8a48_b1f1aed2",
+      "revId": "2188187f84e61b9909d7a66c3d39398b4e3b4b87",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "9d6e8831_2e4f2537",
@@ -35,6 +53,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "8686464b_199e96be",
+        "filename": "src/plugins/vperf/builtin/vperf_protos.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1332,
+      "author": {
+        "id": 3121
+      },
+      "writtenOn": "2026-09-01T00:20:22Z",
+      "side": 1,
+      "message": "Ack, fixed.",
+      "parentUuid": "9d6e8831_2e4f2537",
+      "revId": "2188187f84e61b9909d7a66c3d39398b4e3b4b87",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "74c7a61c_922fb6df",
@@ -48,6 +84,24 @@
       "writtenOn": "2026-08-31T08:09:40Z",
       "side": 1,
       "message": "could you please split this to another patch? it\u0027s better to do commit for just one component if possible",
+      "revId": "2188187f84e61b9909d7a66c3d39398b4e3b4b87",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "c75220a3_3a75f9d5",
+        "filename": "src/vcl/vcl_cfg.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 411,
+      "author": {
+        "id": 3121
+      },
+      "writtenOn": "2026-09-01T00:20:22Z",
+      "side": 1,
+      "message": "Done. This patch has the `vperf` fixes. Suresh\u0027s patch has the `vcl` fixes.",
+      "parentUuid": "74c7a61c_922fb6df",
       "revId": "2188187f84e61b9909d7a66c3d39398b4e3b4b87",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
