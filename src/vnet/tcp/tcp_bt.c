@@ -515,13 +515,14 @@ tcp_bt_is_sane (tcp_byte_tracker_t * bt)
 }
 
 static tcp_bt_sample_t *
-tcp_bt_alloc_tx_sample (tcp_connection_t *tc, u32 min_seq, u32 max_seq)
+tcp_bt_alloc_tx_sample (tcp_connection_t *tc, u32 min_seq, u32 max_seq,
+			f64 now)
 {
   tcp_bt_sample_t *bts;
   bts = bt_alloc_sample (tc->bt, min_seq, max_seq);
   bts->delivered = tc->delivered;
   bts->delivered_time = tc->delivered_time;
-  bts->tx_time = tcp_time_now_us (tc->c_thread_index);
+  bts->tx_time = now;
   bts->first_tx_time = tc->first_tx_time;
   bts->flags |= tc->app_limited ? TCP_BTS_IS_APP_LIMITED : 0;
   bts->tx_in_flight = tcp_flight_size (tc);
@@ -547,11 +548,12 @@ tcp_bt_track_tx (tcp_connection_t * tc, u32 len)
   tcp_byte_tracker_t *bt = tc->bt;
   tcp_bt_sample_t *bts, *tail;
   tcp_bts_flags_t tx_flags = tc->app_limited ? TCP_BTS_IS_APP_LIMITED : 0;
+  f64 now = tcp_time_now_us (tc->c_thread_index);
   u32 bts_index;
 
   tail = bt_get_sample (bt, bt->tail);
   if (tail && tail->max_seq == tc->snd_nxt && tail->flags == tx_flags &&
-      tail->tx_time == tcp_time_now_us (tc->c_thread_index))
+      tail->tx_time == now)
     {
       tail->max_seq += len;
       return;
@@ -559,11 +561,11 @@ tcp_bt_track_tx (tcp_connection_t * tc, u32 len)
 
   if (tc->snd_una == tc->snd_nxt)
     {
-      tc->delivered_time = tcp_time_now_us (tc->c_thread_index);
+      tc->delivered_time = now;
       tc->first_tx_time = tc->delivered_time;
     }
 
-  bts = tcp_bt_alloc_tx_sample (tc, tc->snd_nxt, tc->snd_nxt + len);
+  bts = tcp_bt_alloc_tx_sample (tc, tc->snd_nxt, tc->snd_nxt + len, now);
   bts_index = bt_sample_index (bt, bts);
   tail = bt_get_sample (bt, bt->tail);
   if (tail)
@@ -615,7 +617,7 @@ bt_rxt_range_end (tcp_connection_t *tc, tcp_bt_sample_t *bts, u32 end, tcp_bts_f
  * map to rxt_flags. */
 static void
 bt_track_rxt_range (tcp_connection_t *tc, tcp_bt_sample_t *start_bts, u32 start, u32 end,
-		    tcp_bts_flags_t rxt_flags)
+		    tcp_bts_flags_t rxt_flags, f64 now)
 {
   tcp_byte_tracker_t *bt = tc->bt;
   sack_scoreboard_t *sb = &tc->sack_sb;
@@ -650,7 +652,7 @@ bt_track_rxt_range (tcp_connection_t *tc, tcp_bt_sample_t *start_bts, u32 start,
       /* bts might no longer be valid from here */
       next_index = bt_sample_index (bt, next);
 
-      cur = tcp_bt_alloc_tx_sample (tc, start, end);
+      cur = tcp_bt_alloc_tx_sample (tc, start, end, now);
       cur->flags = rxt_flags;
       cur->next = next_index;
       cur->prev = prev_index;
@@ -694,7 +696,7 @@ bt_track_rxt_range (tcp_connection_t *tc, tcp_bt_sample_t *start_bts, u32 start,
   ASSERT (seq_lt (start, max_seq));
 
   /* Have to split or tail overlap */
-  cur = tcp_bt_alloc_tx_sample (tc, start, end);
+  cur = tcp_bt_alloc_tx_sample (tc, start, end, now);
   cur->flags = rxt_flags;
   cur->prev = bts_index;
   cur_index = bt_sample_index (bt, cur);
@@ -702,7 +704,7 @@ bt_track_rxt_range (tcp_connection_t *tc, tcp_bt_sample_t *start_bts, u32 start,
   /* Split. Allocate another sample */
   if (seq_lt (end, max_seq))
     {
-      nbts = tcp_bt_alloc_tx_sample (tc, end, bts->max_seq);
+      nbts = tcp_bt_alloc_tx_sample (tc, end, bts->max_seq, now);
       cur = bt_get_sample (bt, cur_index);
       bts = bt_get_sample (bt, bts_index);
 
@@ -750,7 +752,8 @@ bt_track_rxt_range (tcp_connection_t *tc, tcp_bt_sample_t *start_bts, u32 start,
 }
 
 static_always_inline tcp_bt_sample_t *
-bt_rxt_extend_candidate (tcp_connection_t *tc, u32 start, tcp_bt_sample_t **next)
+bt_rxt_extend_candidate (tcp_connection_t *tc, u32 start,
+			 tcp_bt_sample_t **next, f64 now)
 {
   tcp_byte_tracker_t *bt = tc->bt;
   tcp_bt_sample_t *bts, *last;
@@ -765,7 +768,7 @@ bt_rxt_extend_candidate (tcp_connection_t *tc, u32 start, tcp_bt_sample_t **next
     return 0;
 
   rxt_flags = bt_rxt_flags (tc, bts);
-  if (last->flags != rxt_flags || last->tx_time != tcp_time_now_us (tc->c_thread_index))
+  if (last->flags != rxt_flags || last->tx_time != now)
     return 0;
 
   *next = bts;
@@ -782,11 +785,11 @@ bt_extend_rxt_sample (tcp_connection_t *tc, tcp_bt_sample_t *last, tcp_bt_sample
 }
 
 static_always_inline u8
-bt_try_extend_rxt_sample (tcp_connection_t *tc, u32 start, u32 end)
+bt_try_extend_rxt_sample (tcp_connection_t *tc, u32 start, u32 end, f64 now)
 {
   tcp_bt_sample_t *last, *next;
 
-  last = bt_rxt_extend_candidate (tc, start, &next);
+  last = bt_rxt_extend_candidate (tc, start, &next, now);
   if (!last || seq_gt (end, next->max_seq))
     return 0;
 
@@ -795,7 +798,7 @@ bt_try_extend_rxt_sample (tcp_connection_t *tc, u32 start, u32 end)
 }
 
 static u32
-bt_track_rxt_ranges (tcp_connection_t *tc, u32 start, u32 end)
+bt_track_rxt_ranges (tcp_connection_t *tc, u32 start, u32 end, f64 now)
 {
   tcp_byte_tracker_t *bt = tc->bt;
   tcp_bt_sample_t *bts, *last, *next;
@@ -822,11 +825,11 @@ bt_track_rxt_ranges (tcp_connection_t *tc, u32 start, u32 end)
 
       /* range_end is already known to be homogeneous, so extending through
        * multiple compatible source samples needs no second boundary scan. */
-      last = bt_rxt_extend_candidate (tc, start, &next);
+      last = bt_rxt_extend_candidate (tc, start, &next, now);
       if (last && next == bts)
 	bt_extend_rxt_sample (tc, last, bts, range_end);
       else
-	bt_track_rxt_range (tc, bts, start, range_end, rxt_flags);
+	bt_track_rxt_range (tc, bts, start, range_end, rxt_flags, now);
       tracked += range_end - start;
       start = range_end;
     }
@@ -838,6 +841,7 @@ void
 tcp_bt_track_rxt (tcp_connection_t *tc, u32 start, u32 end)
 {
   tcp_byte_tracker_t *bt = tc->bt;
+  f64 now = tcp_time_now_us (tc->c_thread_index);
   u32 tracked;
   u8 track_dsack = tcp_opts_sack_permitted (&tc->rcv_opts) &&
 		   !(tc->sack_sb.flags & TCP_DSACK_UNDO_DISABLED) && tcp_in_cong_recovery (tc);
@@ -849,10 +853,10 @@ tcp_bt_track_rxt (tcp_connection_t *tc, u32 start, u32 end)
 
   /* Consecutive homogeneous retransmits can extend the last sample without
    * an rb-tree lookup or a new allocation. */
-  if (bt_try_extend_rxt_sample (tc, start, end))
+  if (bt_try_extend_rxt_sample (tc, start, end, now))
     tracked = end - start;
   else
-    tracked = bt_track_rxt_ranges (tc, start, end);
+    tracked = bt_track_rxt_ranges (tc, start, end, now);
 
   if (track_dsack && tracked)
     {
@@ -1130,10 +1134,9 @@ tcp_bt_data_acked (tcp_connection_t *tc, tcp_ack_ctx_t *ac)
 }
 
 static void
-tcp_bt_sample_delivery_rate (tcp_connection_t *tc, tcp_ack_ctx_t *ac)
+tcp_bt_sample_delivery_rate (tcp_connection_t *tc, tcp_ack_ctx_t *ac, f64 now)
 {
   u32 delivered, data_acked;
-  f64 now;
 
   data_acked = tcp_bt_data_acked (tc, ac);
 
@@ -1143,7 +1146,6 @@ tcp_bt_sample_delivery_rate (tcp_connection_t *tc, tcp_ack_ctx_t *ac)
   if (!delivered)
     goto done;
 
-  now = tcp_time_now_us (tc->c_thread_index);
   tc->delivered += delivered;
   tc->delivered_time = now;
 
@@ -1272,7 +1274,7 @@ tcp_bt_apply_ack (tcp_connection_t *tc, u32 ack, u32 high_sacked, tcp_ack_ctx_t 
   if (ac->last_sacked_bytes)
     ac->ack_flags |= TCP_ACK_F_DETECT_LOSS;
 
-  tcp_bt_sample_delivery_rate (tc, ac);
+  tcp_bt_sample_delivery_rate (tc, ac, state.now);
 }
 
 void
