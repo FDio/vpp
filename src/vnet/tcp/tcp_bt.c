@@ -310,6 +310,25 @@ bt_alloc_last_sample (tcp_byte_tracker_t *bt, u32 min_seq, u32 max_seq)
   return bts;
 }
 
+static_always_inline void
+bt_del_sample_lookup (tcp_byte_tracker_t *bt, tcp_bt_sample_t *bts)
+{
+  rb_tree_t *rt = &bt->sample_lookup;
+  rb_node_t *n;
+
+  if (bts->prev != TCP_BTS_INVALID_INDEX)
+    {
+      rb_tree_del_custom (rt, bts->min_seq, bt_seq_lt);
+      return;
+    }
+
+  n = rb_tree_min_subtree (rt, rb_node (rt, rb_tree_root (rt)));
+  ASSERT (!rb_node_is_tnil (rt, n));
+  ASSERT (n->key == bts->min_seq);
+  ASSERT (n->opaque == bt_sample_index (bt, bts));
+  rb_tree_del_node (rt, n);
+}
+
 static void
 bt_free_sample (tcp_byte_tracker_t *bt, tcp_bt_sample_t *bts)
 {
@@ -344,7 +363,7 @@ bt_free_sample (tcp_byte_tracker_t *bt, tcp_bt_sample_t *bts)
   else
     bt->tail = bts->prev;
 
-  rb_tree_del_custom (&bt->sample_lookup, bts->min_seq, bt_seq_lt);
+  bt_del_sample_lookup (bt, bts);
   if (CLIB_DEBUG)
     memset (bts, 0xfc, sizeof (*bts));
   pool_put (bt->samples, bts);
@@ -451,10 +470,18 @@ bt_lookup_seq (tcp_byte_tracker_t * bt, u32 seq)
 static void
 bt_update_sample (tcp_byte_tracker_t * bt, tcp_bt_sample_t * bts, u32 seq)
 {
-  rb_tree_del_custom (&bt->sample_lookup, bts->min_seq, bt_seq_lt);
+  rb_tree_t *rt = &bt->sample_lookup;
+  rb_node_t *n;
+
+  ASSERT (seq_gt (seq, bts->min_seq) && seq_lt (seq, bts->max_seq));
+  n = rb_tree_search_subtree_custom (rt, rb_node (rt, rb_tree_root (rt)), bts->min_seq, bt_seq_lt);
+  ASSERT (!rb_node_is_tnil (rt, n));
+  ASSERT (n->opaque == bt_sample_index (bt, bts));
+
+  /* The new minimum remains within this sample's original range, so its
+     position relative to the neighboring samples does not change. */
   bts->min_seq = seq;
-  rb_tree_add_custom (&bt->sample_lookup, bts->min_seq,
-		      bt_sample_index (bt, bts), bt_seq_lt);
+  n->key = seq;
 }
 
 static tcp_bt_sample_t *
