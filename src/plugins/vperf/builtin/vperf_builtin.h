@@ -14,6 +14,14 @@
 
 typedef enum
 {
+#define vperf_error(f, n, s, d) VP_ERROR_##f,
+#include <plugins/vperf/builtin/vperf_error.def>
+#undef vperf_error
+  VP_N_ERROR,
+} vp_error_t;
+
+typedef enum
+{
 #define _(sym, str, sstr) VP_PROTO_##sym,
   foreach_transport_proto
 #undef _
@@ -52,6 +60,7 @@ typedef struct
   u8 report_interval_jitter;  /**< Report jitter in periodic reports */
   u8 is_server;		      /**< Server side app */
   u8 uso;		      /**< UDP segmentation offload */
+  u8 fifo_pct_first_alloc;    /**< Pct of fifo size to alloc */
   u64 report_interval;	      /**< Time between periodic reports (s) */
   f64 run_time;		      /**< Length of a test (s) */
 } vp_test_cfg_t;
@@ -142,6 +151,7 @@ typedef struct
 typedef struct
 {
   vp_test_proto_vft_t protos[VP_N_PROTOS];
+  u32 node_index;
 } vp_test_main_t;
 
 extern vp_test_main_t vp_test_main;
@@ -202,6 +212,13 @@ vp_test_set_proto (vp_test_cfg_t *cfg)
       vp_proto_err ("unsupported protocol %U", format_transport_proto, cfg->sep.transport_proto);
       break;
     }
+}
+
+static_always_inline void
+vp_test_increment_counter (vp_error_t e, u64 increment)
+{
+  vlib_main_t *vm = vlib_get_main ();
+  vlib_node_increment_counter (vm, vp_test_main.node_index, e, increment);
 }
 
 #endif /* SRC_PLUGINS_VPERF_BUILTIN_H_ */

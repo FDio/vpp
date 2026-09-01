@@ -22,6 +22,21 @@ vp_proto_test_bytes (u8 *rx_buf, u32 actual_transfer, u32 offset)
     }
 }
 
+static_always_inline u32
+vp_protos_check_tx_rv (int rv)
+{
+  if (PREDICT_FALSE (rv < 0))
+    {
+      if (rv == SVM_FIFO_EGROW)
+	vp_test_increment_counter (VP_ERROR_FIFO_GROW, 1);
+      /* app_send_dgram_segs return -1 if there is not enough space in fifo */
+      else if (rv == SVM_FIFO_EFULL || rv == -1)
+	vp_test_increment_counter (VP_ERROR_FIFO_FULL, 1);
+      return 0;
+    }
+  return rv;
+}
+
 static u32
 vp_proto_connected (session_t *s, vp_test_cfg_t *cfg, vp_test_worker_t *wrk, u32 app_index)
 {
@@ -213,15 +228,22 @@ vp_proto_client_stream_tx (vp_test_session_t *es, u32 max_send)
   u32 to_send, max_enq;
   int rv;
 
-  rv = svm_fifo_fill_chunk_list (f);
-  if (rv < 0)
-    return 0;
-
   max_enq = svm_fifo_max_enqueue_prod (f);
   if (max_enq == 0)
-    return 0;
+    {
+      vp_test_increment_counter (VP_ERROR_FIFO_FULL, 1);
+      return 0;
+    }
 
   to_send = clib_min (max_enq, max_send);
+
+  rv = svm_fifo_provision_chunks (f, 0, 0, to_send);
+  if (rv < 0)
+    {
+      vp_test_increment_counter (VP_ERROR_FIFO_GROW, 1);
+      return 0;
+    }
+
   svm_fifo_enqueue_nocopy (f, to_send);
   if (svm_fifo_set_event (es->tx_fifo))
     session_program_tx_io_evt (es->vpp_session_handle, SESSION_IO_EVT_TX);
@@ -240,7 +262,7 @@ vp_proto_client_stream_tx_test_bytes (vp_test_session_t *es, u8 *test_data, u32 
   test_buf_offset = es->bytes_sent % test_buf_len;
 
   rv = app_send_stream ((app_session_t *) es, test_data + test_buf_offset, max_send, 0);
-  n_sent = clib_max (rv, 0);
+  n_sent = vp_protos_check_tx_rv (rv);
   es->bytes_sent += n_sent;
   return n_sent;
 }
@@ -494,14 +516,22 @@ vp_proto_client_dgram_tx (vp_test_session_t *es, u32 max_send)
   u32 max_enqueue, n_sent = 0;
   int rv;
 
-  rv = svm_fifo_fill_chunk_list (f);
-  if (rv < 0)
-    return 0;
-
   max_enqueue = svm_fifo_max_enqueue_prod (f);
-
   if (max_enqueue <= sizeof (session_dgram_hdr_t))
-    return 0;
+    {
+      vp_test_increment_counter (VP_ERROR_FIFO_FULL, 1);
+      return 0;
+    }
+
+  rv = svm_fifo_provision_chunks (
+    f, 0, 0,
+    clib_min (max_send + (max_send / TRANSPORT_PACER_MIN_MSS + 1) * sizeof (session_dgram_hdr_t),
+	      max_enqueue));
+  if (rv < 0)
+    {
+      vp_test_increment_counter (VP_ERROR_FIFO_GROW, 1);
+      return 0;
+    }
 
   session_dgram_hdr_t hdr = {
     .data_length = TRANSPORT_PACER_MIN_MSS,
@@ -549,12 +579,16 @@ vp_proto_client_dgram_tx (vp_test_session_t *es, u32 max_send)
 static u32
 vp_proto_client_dgram_tx_test_bytes (vp_test_session_t *es, u8 *test_data, u32 max_send)
 {
-  u32 test_buf_len, test_buf_offset, n_sent, n_transfer;
+  u32 test_buf_len, test_buf_offset, n_sent, n_sent_total, n_transfer;
   svm_fifo_t *f = es->tx_fifo;
   u32 max_enqueue = svm_fifo_max_enqueue_prod (f);
+  int rv;
 
   if (max_enqueue <= (sizeof (session_dgram_hdr_t) + sizeof (u32)))
-    return 0;
+    {
+      vp_test_increment_counter (VP_ERROR_FIFO_FULL, 1);
+      return 0;
+    }
 
   test_buf_len = vec_len (test_data);
   ASSERT (test_buf_len > 0);
@@ -587,12 +621,15 @@ vp_proto_client_dgram_tx_test_bytes (vp_test_session_t *es, u8 *test_data, u32 m
       es->send_rtt = vlib_time_now (vlib_get_main ());
       es->rtt_stat |= VP_UDP_RTT_TX_FLAG;
     }
-  app_send_dgram_segs ((app_session_t *) es, data_segs, 2, n_transfer + sizeof (u32), 0);
+  rv = app_send_dgram_segs ((app_session_t *) es, data_segs, 2, n_transfer + sizeof (u32), 0);
+  n_sent = vp_protos_check_tx_rv (rv);
+  if (PREDICT_FALSE (!n_sent))
+    return 0;
   es->dgrams_sent++;
   es->bytes_sent += n_transfer;
-  n_sent = n_transfer;
+  n_sent_total = n_transfer;
   max_enqueue -= n_transfer;
-  max_send -= n_sent;
+  max_send -= n_sent_total;
 
   /* send datagrams of size 1460 */
   n_transfer = TRANSPORT_PACER_MIN_MSS;
@@ -608,10 +645,13 @@ vp_proto_client_dgram_tx_test_bytes (vp_test_session_t *es, u8 *test_data, u32 m
       data_segs[0].len = 0; /* app_send_dgram_segs side effect */
       data_segs[1].data = (u8 *) &test_buf_offset;
       data_segs[2].data = test_data + test_buf_offset;
+      rv = app_send_dgram_segs ((app_session_t *) es, data_segs, 2, n_transfer + sizeof (u32), 0);
+      n_sent = vp_protos_check_tx_rv (rv);
+      if (PREDICT_FALSE (!n_sent))
+	return n_sent_total;
       es->dgrams_sent++;
       es->bytes_sent += n_transfer;
-      n_sent += n_transfer;
-      app_send_dgram_segs ((app_session_t *) es, data_segs, 2, n_transfer + sizeof (u32), 0);
+      n_sent_total += n_transfer;
     }
 
   /* remainder of bytes, this should be only last datagram if number of total bytes is not multiply
@@ -627,15 +667,18 @@ vp_proto_client_dgram_tx_test_bytes (vp_test_session_t *es, u8 *test_data, u32 m
       data_segs[1].data = (u8 *) &test_buf_offset;
       data_segs[2].data = test_data + test_buf_offset;
       data_segs[2].len = n_transfer;
+      rv = app_send_dgram_segs ((app_session_t *) es, data_segs, 2, n_transfer + sizeof (u32), 0);
+      n_sent = vp_protos_check_tx_rv (rv);
+      if (PREDICT_FALSE (!n_sent))
+	return n_sent_total;
       es->dgrams_sent++;
       es->bytes_sent += n_transfer;
-      n_sent += n_transfer;
-      app_send_dgram_segs ((app_session_t *) es, data_segs, 2, n_transfer + sizeof (u32), 0);
+      n_sent_total += n_transfer;
     }
 
 #undef vp_proto_client_set_test_buf_offset
 
-  return n_sent;
+  return n_sent_total;
 }
 
 static int
@@ -667,16 +710,21 @@ vp_proto_client_udp_uso_tx (vp_test_session_t *es, u32 max_send)
   u32 max_enqueue, to_send = 0;
   int rv;
 
-  rv = svm_fifo_fill_chunk_list (f);
-  if (rv < 0)
-    return 0;
-
   max_enqueue = svm_fifo_max_enqueue_prod (f);
-
   if (max_enqueue <= sizeof (session_dgram_hdr_t))
-    return 0;
+    {
+      vp_test_increment_counter (VP_ERROR_FIFO_FULL, 1);
+      return 0;
+    }
 
   to_send = clib_min (max_enqueue - sizeof (session_dgram_hdr_t), max_send);
+
+  rv = svm_fifo_provision_chunks (f, 0, 0, to_send + sizeof (session_dgram_hdr_t));
+  if (rv < 0)
+    {
+      vp_test_increment_counter (VP_ERROR_FIFO_GROW, 1);
+      return 0;
+    }
 
   session_dgram_hdr_t hdr = {
     .data_length = to_send,
@@ -702,13 +750,17 @@ vp_proto_client_udp_uso_tx (vp_test_session_t *es, u32 max_send)
 static u32
 vp_proto_client_udp_uso_tx_test_bytes (vp_test_session_t *es, u8 *test_data, u32 max_send)
 {
-  u32 test_buf_len, test_buf_offset, n_transfer;
+  u32 test_buf_len, test_buf_offset, n_transfer, n_sent;
   svm_fifo_t *f = es->tx_fifo;
   app_session_transport_t *at = &es->transport;
   u32 max_enqueue = svm_fifo_max_enqueue_prod (f);
+  int rv;
 
   if (max_enqueue <= (sizeof (session_dgram_hdr_t) + sizeof (u32)))
-    return 0;
+    {
+      vp_test_increment_counter (VP_ERROR_FIFO_FULL, 1);
+      return 0;
+    }
 
   test_buf_len = vec_len (test_data);
   ASSERT (test_buf_len > 0);
@@ -737,13 +789,14 @@ vp_proto_client_udp_uso_tx_test_bytes (vp_test_session_t *es, u8 *test_data, u32
   svm_fifo_seg_t data_segs[2] = { { (u8 *) &hdr, sizeof (hdr) },
 				  { test_data + test_buf_offset, n_transfer } };
 
-  svm_fifo_enqueue_segments (f, data_segs, 2, 0 /* allow partial */);
+  rv = svm_fifo_enqueue_segments (f, data_segs, 2, 0 /* allow partial */);
+  n_sent = vp_protos_check_tx_rv (rv);
   if (svm_fifo_set_event (es->tx_fifo))
     session_program_tx_io_evt (es->tx_fifo->vpp_sh, SESSION_IO_EVT_TX);
 
-  es->dgrams_sent += (n_transfer + TRANSPORT_PACER_MIN_MSS - 1) / TRANSPORT_PACER_MIN_MSS;
-  es->bytes_sent += n_transfer;
-  return n_transfer;
+  es->dgrams_sent += (n_sent + TRANSPORT_PACER_MIN_MSS - 1) / TRANSPORT_PACER_MIN_MSS;
+  es->bytes_sent += n_sent;
+  return n_sent;
 }
 
 static vp_test_proto_vft_t vp_test_udp_uso = {
@@ -1069,6 +1122,8 @@ static int
 vp_proto_http_connect (vnet_connect_args_t *args, vp_test_cfg_t *cfg)
 {
   transport_endpt_ext_cfg_t *ext_cfg;
+  /* use longer idle timeout than server, we want to timeout on one side only */
+  transport_endpt_cfg_http_t http_cfg = { .timeout = 120 };
 
   if (vp_test_transport_needs_crypto (&args->sep_ext))
     {
@@ -1092,14 +1147,11 @@ vp_proto_http_connect (vnet_connect_args_t *args, vp_test_cfg_t *cfg)
   else
     {
       if (cfg->http_version == HTTP_VERSION_2)
-	{
-	  transport_endpt_cfg_http_t http_cfg = { .timeout = 60,
-						  .flags = HTTP_ENDPT_CFG_F_HTTP2_PRIOR_KNOWLEDGE };
-	  ext_cfg = session_endpoint_add_ext_cfg (&args->sep_ext, TRANSPORT_ENDPT_EXT_CFG_HTTP,
-						  sizeof (http_cfg));
-	  clib_memcpy (ext_cfg->data, &http_cfg, sizeof (http_cfg));
-	}
+	http_cfg.flags = HTTP_ENDPT_CFG_F_HTTP2_PRIOR_KNOWLEDGE;
     }
+  ext_cfg =
+    session_endpoint_add_ext_cfg (&args->sep_ext, TRANSPORT_ENDPT_EXT_CFG_HTTP, sizeof (http_cfg));
+  clib_memcpy (ext_cfg->data, &http_cfg, sizeof (http_cfg));
 
   int rv = vnet_connect (args);
   session_endpoint_free_ext_cfgs (&args->sep_ext);
@@ -1295,15 +1347,22 @@ vp_proto_http_client_tx (vp_test_session_t *es, u32 max_send)
   u32 to_send, max_enq;
   int rv;
 
-  rv = svm_fifo_fill_chunk_list (f);
-  if (rv < 0)
-    return 0;
-
   max_enq = svm_fifo_max_enqueue_prod (f);
   if (max_enq == 0)
-    return 0;
+    {
+      vp_test_increment_counter (VP_ERROR_FIFO_FULL, 1);
+      return 0;
+    }
 
   to_send = clib_min (max_enq, max_send);
+
+  rv = svm_fifo_provision_chunks (f, 0, 0, to_send);
+  if (rv < 0)
+    {
+      vp_test_increment_counter (VP_ERROR_FIFO_GROW, 1);
+      return 0;
+    }
+
   svm_fifo_enqueue_nocopy (f, to_send);
   if (svm_fifo_set_event (f))
     session_program_tx_io_evt (es->vpp_session_handle, SESSION_IO_EVT_TX);
@@ -1326,7 +1385,7 @@ vp_proto_http_client_tx_test_bytes (vp_test_session_t *es, u8 *test_data, u32 ma
   seg[0].data = test_data + test_buf_offset;
   seg[0].len = max_send;
   rv = svm_fifo_enqueue_segments (f, seg, 1, 1);
-  n_sent = clib_max (rv, 0);
+  n_sent = vp_protos_check_tx_rv (rv);
   es->bytes_sent += n_sent;
   if (n_sent && svm_fifo_set_event (f))
     session_program_tx_io_evt (es->vpp_session_handle, SESSION_IO_EVT_TX);
@@ -1383,7 +1442,7 @@ vp_proto_http_masque_listen (vnet_listen_args_t *args, vp_test_cfg_t *cfg)
       ext_cfg->crypto.alpn_protos[0] = TLS_ALPN_PROTO_HTTP_3;
       ext_cfg->crypto.alpn_protos[1] = TLS_ALPN_PROTO_HTTP_2;
     }
-  transport_endpt_cfg_http_t http_cfg = { 120, HTTP_UDP_TUNNEL_DGRAM, 0 };
+  transport_endpt_cfg_http_t http_cfg = { 60, HTTP_UDP_TUNNEL_DGRAM, 0 };
   ext_cfg =
     session_endpoint_add_ext_cfg (&args->sep_ext, TRANSPORT_ENDPT_EXT_CFG_HTTP, sizeof (http_cfg));
   clib_memcpy (ext_cfg->data, &http_cfg, sizeof (http_cfg));
