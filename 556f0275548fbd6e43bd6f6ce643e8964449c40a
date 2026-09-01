@@ -24,6 +24,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "b44a4f57_f227a50b",
+        "filename": "src/plugins/http/http.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 717,
+      "author": {
+        "id": 3121
+      },
+      "writtenOn": "2026-09-01T21:03:23Z",
+      "side": 1,
+      "message": "Done. So the two `ASSERT`s guarantee the stream, its connection, and the listener are on the same thread. Captured the `thread_index \u003d stream_session-\u003ethread_index` and used it for the ctx alloc, both `http_ctx_get_w_thread()` lookups, and the regrab.",
+      "parentUuid": "a677a4ca_e2dd5b8c",
+      "range": {
+        "startLine": 715,
+        "startChar": 0,
+        "endLine": 717,
+        "endChar": 0
+      },
+      "revId": "556f0275548fbd6e43bd6f6ce643e8964449c40a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "b7ed3ff8_3e43476a",
@@ -37,6 +61,24 @@
       "writtenOn": "2026-09-01T09:12:11Z",
       "side": 1,
       "message": "hc is used only in dbg message where we print index and thread so we don\u0027t need to regrab it",
+      "revId": "556f0275548fbd6e43bd6f6ce643e8964449c40a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "0fec1ea1_2fd5fbe0",
+        "filename": "src/plugins/http/http.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 725,
+      "author": {
+        "id": 3121
+      },
+      "writtenOn": "2026-09-01T21:03:23Z",
+      "side": 1,
+      "message": "Missed that 😊 - removed the `hc` regrab and updated the debug print arguments.",
+      "parentUuid": "b7ed3ff8_3e43476a",
       "revId": "556f0275548fbd6e43bd6f6ce643e8964449c40a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -58,6 +100,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "bba18d37_240bcf0f",
+        "filename": "src/plugins/http/http.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 653,
+      "author": {
+        "id": 3121
+      },
+      "writtenOn": "2026-09-01T21:03:23Z",
+      "side": 1,
+      "message": "Ack. Will fix this at the call site in `try_file_handler()` with a `vec_terminate_c_string(sanitized_path)`. There are few ASan bugs in the `http_static` module. Will raise that patch separately.",
+      "parentUuid": "ff85e371_2b17ac3b",
+      "revId": "556f0275548fbd6e43bd6f6ce643e8964449c40a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "0f1e89a6_f548bece",
@@ -71,6 +131,24 @@
       "writtenOn": "2026-09-01T09:12:11Z",
       "side": 1,
       "message": "since this is used only to read frame header, which is just 9 bytes, I would rather use array on stack:\nu8 fh_buf[HTTP2_FRAME_HEADER_SIZE];",
+      "revId": "556f0275548fbd6e43bd6f6ce643e8964449c40a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "3589d9ca_5bedd548",
+        "filename": "src/plugins/http/http2/http2.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 3526,
+      "author": {
+        "id": 3121
+      },
+      "writtenOn": "2026-09-01T21:03:23Z",
+      "side": 1,
+      "message": "Done. Switched to a stack buffer `u8 fh_buf[HTTP2_FRAME_HEADER_SIZE]`.",
+      "parentUuid": "0f1e89a6_f548bece",
       "revId": "556f0275548fbd6e43bd6f6ce643e8964449c40a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
