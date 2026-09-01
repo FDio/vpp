@@ -16,6 +16,23 @@
       "message": "This change breaks the libvnet ABI contract with downstream consumers of VPP. Out-of-tree plugins accessing symbols removed from the shared object file will break. IMHO, this is not acceptable in the present form.\n\nThere needs to be a migration plan analogous to the Production API change process [0] for ABI changes.  It would be best add a document to the repository defining the ABI breaking change policy in this gerrit change and reviewing it both on vpp-dev@lists.fd.io and in a VPP Community meeting prior to merging this change.\n\nRecommended subjects to be included are:\n\n1. Definition of breaking ABI changes\n2. Build time ABI compliance checking for in-tree and out-of-tree plugins\n3. Opt-in mechanism for new ABI behavior (i.e. retention of old ABI as default)\n4. Retention period for previous ABI behavior\n5. Duration of opt-in period prior to making new ABI behavior the default",
       "revId": "3db289665abb0256dafe9df3131cea60c8b3b4e5",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "edfde47c_46224e2d",
+        "filename": "src/cmake/check_vnet_exports.sh",
+        "patchSetId": 4
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-09-01T22:40:41Z",
+      "side": 1,
+      "message": "This script should be in src/scripts, not src/cmake",
+      "revId": "3db289665abb0256dafe9df3131cea60c8b3b4e5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
