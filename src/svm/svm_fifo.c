@@ -593,6 +593,7 @@ f_update_ooo_enq (svm_fifo_t * f, u32 start_pos, u32 end_pos)
   rb_tree_t *rt = &f->ooo_enq_lookup;
   svm_fifo_chunk_t *c;
   rb_node_t *cur;
+  rb_node_index_t predecessor;
 
   /* Use linear search if rbtree is not initialized */
   if (PREDICT_FALSE (!rb_tree_is_init (rt)))
@@ -605,8 +606,7 @@ f_update_ooo_enq (svm_fifo_t * f, u32 start_pos, u32 end_pos)
     {
       c = f_tail_cptr (f);
       ASSERT (c->enq_rb_index == RBTREE_TNIL_INDEX);
-      c->enq_rb_index = rb_tree_add_custom (rt, c->start_byte,
-					    pointer_to_uword (c), f_pos_lt);
+      c->enq_rb_index = rb_tree_add_last (rt, c->start_byte, pointer_to_uword (c));
     }
   else
     {
@@ -623,12 +623,13 @@ f_update_ooo_enq (svm_fifo_t * f, u32 start_pos, u32 end_pos)
 
   do
     {
+      predecessor = c->enq_rb_index;
+      ASSERT (predecessor != RBTREE_TNIL_INDEX);
       c = f_cptr (f, c->next);
       if (!c || c->enq_rb_index != RBTREE_TNIL_INDEX)
 	break;
 
-      c->enq_rb_index = rb_tree_add_custom (rt, c->start_byte,
-					    pointer_to_uword (c), f_pos_lt);
+      c->enq_rb_index = rb_tree_add_after (rt, predecessor, c->start_byte, pointer_to_uword (c));
 
       if (f_chunk_includes_pos (c, start_pos))
 	f->ooo_enq = c;
@@ -642,6 +643,7 @@ f_update_ooo_deq (svm_fifo_t * f, u32 start_pos, u32 end_pos)
   rb_tree_t *rt = &f->ooo_deq_lookup;
   rb_node_t *cur;
   svm_fifo_chunk_t *c;
+  rb_node_index_t predecessor;
 
   /* Use linear search if rbtree is not initialized  */
   if (PREDICT_FALSE (!rb_tree_is_init (rt)))
@@ -654,8 +656,7 @@ f_update_ooo_deq (svm_fifo_t * f, u32 start_pos, u32 end_pos)
     {
       c = f_start_cptr (f);
       ASSERT (c->deq_rb_index == RBTREE_TNIL_INDEX);
-      c->deq_rb_index = rb_tree_add_custom (rt, c->start_byte,
-					    pointer_to_uword (c), f_pos_lt);
+      c->deq_rb_index = rb_tree_add_last (rt, c->start_byte, pointer_to_uword (c));
     }
   else
     {
@@ -672,12 +673,13 @@ f_update_ooo_deq (svm_fifo_t * f, u32 start_pos, u32 end_pos)
 
   do
     {
+      predecessor = c->deq_rb_index;
+      ASSERT (predecessor != RBTREE_TNIL_INDEX);
       c = f_cptr (f, c->next);
       if (!c || c->deq_rb_index != RBTREE_TNIL_INDEX)
 	break;
 
-      c->deq_rb_index = rb_tree_add_custom (rt, c->start_byte,
-					    pointer_to_uword (c), f_pos_lt);
+      c->deq_rb_index = rb_tree_add_after (rt, predecessor, c->start_byte, pointer_to_uword (c));
 
       if (f_chunk_includes_pos (c, start_pos))
 	f->ooo_deq = c;
