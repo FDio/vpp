@@ -1,0 +1,40 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a049cf22_f4a32b1d",
+        "filename": "src/plugins/rdma/device.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 880,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-09-01T09:19:15Z",
+      "side": 1,
+      "message": "An mlx5 SF has its own netdev, verbs device, and uverbs node even though its auxiliary-device path is below the parent PF BDF. On the tested BF3, enp3s0f0s0 maps to mlx5_1/uverbs1, whereas selecting by the parent BDF can open the sibling PF/uverbs0. Creating the interface from that PF would therefore create queues and flow steering for the wrong netdev. PS4 documents this use case in the commit message; the SF create/up/delete DV smoke test verified that VPP opens uverbs1.",
+      "parentUuid": "cf0b45ec_4828e182",
+      "revId": "dc949e84bdbf12338fdbc438343750678f6e8062",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "5559f198_ce56a688",
+        "filename": "src/plugins/rdma/device.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 992,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-09-01T09:19:15Z",
+      "side": 1,
+      "message": "Good catch. PS4 now checks rd-\u003ectx immediately after the loop and returns a no-matching-RDMA-device error before any mlx5dv_query_device() call. This covers both a missing path match and ibv_open_device() failure.",
+      "parentUuid": "179850e8_3e02d8b9",
+      "revId": "dc949e84bdbf12338fdbc438343750678f6e8062",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
