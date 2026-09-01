@@ -1,0 +1,78 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a677a4ca_e2dd5b8c",
+        "filename": "src/plugins/http/http.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 717,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-09-01T09:12:11Z",
+      "side": 1,
+      "message": "all should be on one thread, so it should be enough store thread index once after first two asserts and use it everywhere",
+      "range": {
+        "startLine": 715,
+        "startChar": 0,
+        "endLine": 717,
+        "endChar": 0
+      },
+      "revId": "556f0275548fbd6e43bd6f6ce643e8964449c40a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b7ed3ff8_3e43476a",
+        "filename": "src/plugins/http/http.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 725,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-09-01T09:12:11Z",
+      "side": 1,
+      "message": "hc is used only in dbg message where we print index and thread so we don\u0027t need to regrab it",
+      "revId": "556f0275548fbd6e43bd6f6ce643e8964449c40a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ff85e371_2b17ac3b",
+        "filename": "src/plugins/http/http.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 653,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-09-01T09:12:11Z",
+      "side": 1,
+      "message": "it\u0027s only used in try_file_handler of http static server where it\u0027s null terminated but formatted as string so it should be fixed there (this api works with vector and do not guarantee return null terminated string)\nhttps://github.com/FDio/vpp/blob/master/src/plugins/http_static/static_server.c#L514",
+      "revId": "556f0275548fbd6e43bd6f6ce643e8964449c40a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0f1e89a6_f548bece",
+        "filename": "src/plugins/http/http2/http2.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 3526,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-09-01T09:12:11Z",
+      "side": 1,
+      "message": "since this is used only to read frame header, which is just 9 bytes, I would rather use array on stack:\nu8 fh_buf[HTTP2_FRAME_HEADER_SIZE];",
+      "revId": "556f0275548fbd6e43bd6f6ce643e8964449c40a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
