@@ -279,8 +279,8 @@ bt_seq_lt (u32 a, u32 b)
   return seq_lt (a, b);
 }
 
-static tcp_bt_sample_t *
-bt_alloc_sample (tcp_byte_tracker_t * bt, u32 min_seq, u32 max_seq)
+static_always_inline tcp_bt_sample_t *
+bt_alloc_sample_raw (tcp_byte_tracker_t *bt, u32 min_seq, u32 max_seq)
 {
   tcp_bt_sample_t *bts;
 
@@ -288,8 +288,25 @@ bt_alloc_sample (tcp_byte_tracker_t * bt, u32 min_seq, u32 max_seq)
   bts->next = bts->prev = TCP_BTS_INVALID_INDEX;
   bts->min_seq = min_seq;
   bts->max_seq = max_seq;
+  return bts;
+}
+
+static tcp_bt_sample_t *
+bt_alloc_sample (tcp_byte_tracker_t *bt, u32 min_seq, u32 max_seq)
+{
+  tcp_bt_sample_t *bts = bt_alloc_sample_raw (bt, min_seq, max_seq);
+
   rb_tree_add_custom (&bt->sample_lookup, bts->min_seq, bts - bt->samples,
 		      bt_seq_lt);
+  return bts;
+}
+
+static tcp_bt_sample_t *
+bt_alloc_last_sample (tcp_byte_tracker_t *bt, u32 min_seq, u32 max_seq)
+{
+  tcp_bt_sample_t *bts = bt_alloc_sample_raw (bt, min_seq, max_seq);
+
+  rb_tree_add_last (&bt->sample_lookup, bts->min_seq, bts - bt->samples);
   return bts;
 }
 
@@ -514,12 +531,9 @@ tcp_bt_is_sane (tcp_byte_tracker_t * bt)
   return 1;
 }
 
-static tcp_bt_sample_t *
-tcp_bt_alloc_tx_sample (tcp_connection_t *tc, u32 min_seq, u32 max_seq,
-			f64 now)
+static_always_inline void
+tcp_bt_init_tx_sample (tcp_connection_t *tc, tcp_bt_sample_t *bts, f64 now)
 {
-  tcp_bt_sample_t *bts;
-  bts = bt_alloc_sample (tc->bt, min_seq, max_seq);
   bts->delivered = tc->delivered;
   bts->delivered_time = tc->delivered_time;
   bts->tx_time = now;
@@ -527,6 +541,23 @@ tcp_bt_alloc_tx_sample (tcp_connection_t *tc, u32 min_seq, u32 max_seq,
   bts->flags |= tc->app_limited ? TCP_BTS_IS_APP_LIMITED : 0;
   bts->tx_in_flight = tcp_flight_size (tc);
   bts->tx_lost = tc->lost;
+}
+
+static tcp_bt_sample_t *
+tcp_bt_alloc_tx_sample (tcp_connection_t *tc, u32 min_seq, u32 max_seq, f64 now)
+{
+  tcp_bt_sample_t *bts = bt_alloc_sample (tc->bt, min_seq, max_seq);
+
+  tcp_bt_init_tx_sample (tc, bts, now);
+  return bts;
+}
+
+static tcp_bt_sample_t *
+tcp_bt_alloc_last_tx_sample (tcp_connection_t *tc, u32 min_seq, u32 max_seq, f64 now)
+{
+  tcp_bt_sample_t *bts = bt_alloc_last_sample (tc->bt, min_seq, max_seq);
+
+  tcp_bt_init_tx_sample (tc, bts, now);
   return bts;
 }
 
@@ -565,7 +596,7 @@ tcp_bt_track_tx (tcp_connection_t * tc, u32 len)
       tc->first_tx_time = tc->delivered_time;
     }
 
-  bts = tcp_bt_alloc_tx_sample (tc, tc->snd_nxt, tc->snd_nxt + len, now);
+  bts = tcp_bt_alloc_last_tx_sample (tc, tc->snd_nxt, tc->snd_nxt + len, now);
   bts_index = bt_sample_index (bt, bts);
   tail = bt_get_sample (bt, bt->tail);
   if (tail)
