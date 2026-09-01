@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7ffb276f_bc856ee0",
+        "filename": ".github/actions/vpp-build/action.yml",
+        "patchSetId": 3
+      },
+      "lineNbr": 58,
+      "author": {
+        "id": 3121
+      },
+      "writtenOn": "2026-09-01T21:43:48Z",
+      "side": 1,
+      "message": "Since we use this for both `hs-test` and `make test`, would it be better to call this `BUILD_STYLE` (`BUILD_TYPE` is already taken) instead of `BUILD_HST_TYPE`?\n\nThese are the 4 values it can hold under different scenarios:\n* \"hs-test\" with ASan enabled \u003d\u003d\u003e `ASAN HST`\n* \"hs-test\" with ASan disabled \u003d\u003d\u003e `HST`\n* \"make test\" with ASan enabled \u003d\u003d\u003e `ASAN`\n* \"make test\" with ASan disabled \u003d\u003d\u003e ``",
+      "range": {
+        "startLine": 58,
+        "startChar": 8,
+        "endLine": 58,
+        "endChar": 22
+      },
+      "revId": "8f6560bc1e9ba5487694a46cc550d18013a63a7b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
