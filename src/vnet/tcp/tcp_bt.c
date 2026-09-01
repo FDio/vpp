@@ -530,12 +530,9 @@ tcp_bt_alloc_tx_sample (tcp_connection_t *tc, u32 min_seq, u32 max_seq)
 }
 
 void
-tcp_bt_check_app_limited (tcp_connection_t * tc)
+tcp_bt_check_app_limited (tcp_connection_t *tc, u32 available_bytes)
 {
-  u32 available_bytes, flight_size;
-
-  available_bytes = transport_max_tx_dequeue (&tc->connection);
-  flight_size = tcp_flight_size (tc);
+  u32 flight_size = tcp_flight_size (tc);
 
   /* Not enough bytes to fill the cwnd */
   if (available_bytes + flight_size + tc->snd_mss < tc->cwnd

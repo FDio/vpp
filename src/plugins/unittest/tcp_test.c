@@ -7682,7 +7682,7 @@ tcp_test_bt (vlib_main_t * vm, unformat_input_t * input)
   tc->sack_sb.lost_bytes = 0;
   tc->app_limited = 0;
 
-  tcp_bt_check_app_limited (tc);
+  tcp_bt_check_app_limited (tc, 0);
   TCP_TEST (tc->app_limited == 500, "app limited should include delivered and flight bytes");
 
   fifo_segment_free_fifo (fs, s->tx_fifo);

@@ -75,6 +75,7 @@ void tcp_bt_flush_samples (tcp_connection_t * tc);
  * Track a tcp tx burst
  *
  * @param tc	tcp connection
+ * @param len	bytes transmitted
  */
 void tcp_bt_track_tx (tcp_connection_t * tc, u32 len);
 /**
@@ -119,9 +120,10 @@ u8 tcp_bt_last_rxt_range (tcp_connection_t *tc, tcp_rxt_range_t *range);
 /**
  * Check if sample to be generated is app limited
  *
- * @param tc	tcp connection
+ * @param tc		 tcp connection
+ * @param available_bytes unsent bytes available for transmission
  */
-void tcp_bt_check_app_limited (tcp_connection_t * tc);
+void tcp_bt_check_app_limited (tcp_connection_t *tc, u32 available_bytes);
 /**
  * Check if the byte tracker is in sane state
  *
