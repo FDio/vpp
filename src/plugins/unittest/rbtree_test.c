@@ -65,6 +65,7 @@ rbtree_test_basic (vlib_main_t * vm, unformat_input_t * input)
 
   n = rb_tree_max_subtree (rt, rb_node (rt, rb_tree_root (rt)));
   RBTREE_TEST (n->key == n_keys - 1, "max should be %u", n_keys - 1);
+  RBTREE_TEST (rb_tree_last_index (rt) == rb_node_index (rt, n), "last index should track max");
 
   n = rb_tree_min_subtree (rt, rb_node (rt, rb_tree_root (rt)));
   RBTREE_TEST (n->key == 0, "min should be %u", 0);
@@ -159,6 +160,7 @@ rbtree_test_basic (vlib_main_t * vm, unformat_input_t * input)
 
   RBTREE_TEST (rb_tree_n_nodes (rt) == 1, "number nodes %u is %u",
 	       1, rb_tree_n_nodes (rt));
+  RBTREE_TEST (rb_tree_last_index (rt) == RBTREE_TNIL_INDEX, "empty tree should have no last node");
 
   n = rb_tree_min_subtree (rt, rb_node (rt, rb_tree_root (rt)));
   RBTREE_TEST (rb_node_is_tnil (rt, n), "min should be tnil");
@@ -188,9 +190,26 @@ rbtree_test_basic (vlib_main_t * vm, unformat_input_t * input)
   aux = rb_tree_predecessor (rt, n);
   RBTREE_TEST (aux->key == 9, "predecessor should be %u is %u", 9, aux->key);
 
+  rb_tree_add_after (rt, rb_node_index (rt, n), 14, 14);
+  aux = rb_tree_successor (rt, n);
+  RBTREE_TEST (aux->key == 14 && aux->opaque == 14,
+	       "ordered insert after should add immediate successor");
+  aux = rb_tree_successor (rt, aux);
+  RBTREE_TEST (aux->key == 15, "ordered successor should remain %u is %u", 15, aux->key);
+
+  rb_tree_add_last (rt, 21, 21);
+  aux = rb_node (rt, rb_tree_last_index (rt));
+  RBTREE_TEST (aux->key == 21 && aux->opaque == 21, "ordered last insert should update max");
+
+  rb_tree_del (rt, 21);
+  aux = rb_node (rt, rb_tree_last_index (rt));
+  RBTREE_TEST (aux->key == 20, "last index should retreat to %u is %u", 20, aux->key);
+  rb_tree_add_last (rt, 21, 21);
+
+  aux = rb_node (rt, rb_tree_last_index (rt));
   n = aux;
   aux = rb_tree_predecessor (rt, n);
-  RBTREE_TEST (aux->key == 7, "predecessor should be %u is %u", 7, aux->key);
+  RBTREE_TEST (aux->key == 20, "predecessor should be %u is %u", 20, aux->key);
 
   /*
    * Cleanup
