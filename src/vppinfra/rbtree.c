@@ -128,11 +128,12 @@ rb_tree_fixup_inline (rb_tree_t * rt, rb_node_t * y, rb_node_t * z)
   rb_node (rt, rb_tree_root (rt))->color = RBTREE_BLACK;
 }
 
-static void
-rb_tree_insert (rb_tree_t * rt, rb_node_t * z)
+static u8
+rb_tree_insert (rb_tree_t *rt, rb_node_t *z)
 {
   rb_node_index_t yi = 0, xi = rb_tree_root (rt);
   rb_node_t *y, *x;
+  u8 is_last = 1;
 
   y = rb_node (rt, RBTREE_TNIL_INDEX);
   while (xi != RBTREE_TNIL_INDEX)
@@ -140,7 +141,10 @@ rb_tree_insert (rb_tree_t * rt, rb_node_t * z)
       x = rb_node (rt, xi);
       y = x;
       if (z->key < x->key)
-	xi = x->left;
+	{
+	  xi = x->left;
+	  is_last = 0;
+	}
       else
 	xi = x->right;
     }
@@ -155,6 +159,7 @@ rb_tree_insert (rb_tree_t * rt, rb_node_t * z)
 
   /* Tree fixup stage */
   rb_tree_fixup_inline (rt, y, z);
+  return is_last;
 }
 
 __clib_export rb_node_index_t
@@ -165,7 +170,8 @@ rb_tree_add (rb_tree_t * rt, u32 key)
   pool_get_zero (rt->nodes, n);
   n->key = key;
   n->color = RBTREE_RED;
-  rb_tree_insert (rt, n);
+  if (rb_tree_insert (rt, n))
+    rb_node (rt, RBTREE_TNIL_INDEX)->opaque = rb_node_index (rt, n);
   return rb_node_index (rt, n);
 }
 
@@ -178,7 +184,8 @@ rb_tree_add2 (rb_tree_t * rt, u32 key, uword opaque)
   n->key = key;
   n->color = RBTREE_RED;
   n->opaque = opaque;
-  rb_tree_insert (rt, n);
+  if (rb_tree_insert (rt, n))
+    rb_node (rt, RBTREE_TNIL_INDEX)->opaque = rb_node_index (rt, n);
   return rb_node_index (rt, n);
 }
 
@@ -187,7 +194,7 @@ rb_tree_add_custom (rb_tree_t * rt, u32 key, uword opaque, rb_tree_lt_fn ltfn)
 {
   rb_node_index_t yi = 0, xi = rb_tree_root (rt);
   rb_node_t *z, *y, *x;
-  u8 insert_left = 0;
+  u8 insert_left = 0, is_last = 1;
 
   pool_get_zero (rt->nodes, z);
   z->key = key;
@@ -202,7 +209,10 @@ rb_tree_add_custom (rb_tree_t * rt, u32 key, uword opaque, rb_tree_lt_fn ltfn)
       ASSERT (z->key != x->key);
       insert_left = ltfn (z->key, x->key);
       if (insert_left)
-	xi = x->left;
+	{
+	  xi = x->left;
+	  is_last = 0;
+	}
       else
 	xi = x->right;
     }
@@ -216,8 +226,74 @@ rb_tree_add_custom (rb_tree_t * rt, u32 key, uword opaque, rb_tree_lt_fn ltfn)
     y->right = rb_node_index (rt, z);
 
   rb_tree_fixup_inline (rt, y, z);
+  if (is_last)
+    rb_node (rt, RBTREE_TNIL_INDEX)->opaque = rb_node_index (rt, z);
 
   return rb_node_index (rt, z);
+}
+
+__clib_export rb_node_index_t
+rb_tree_add_after (rb_tree_t *rt, rb_node_index_t predecessor, u32 key, uword opaque)
+{
+  rb_node_t *z, *y;
+  rb_node_index_t zi;
+
+  ASSERT (predecessor != RBTREE_TNIL_INDEX);
+  pool_get (rt->nodes, z);
+  z->key = key;
+  z->color = RBTREE_RED;
+  z->left = z->right = RBTREE_TNIL_INDEX;
+  z->opaque = opaque;
+  zi = rb_node_index (rt, z);
+
+  y = rb_node (rt, predecessor);
+  if (y->right == RBTREE_TNIL_INDEX)
+    y->right = zi;
+  else
+    {
+      y = rb_tree_min_subtree (rt, rb_node_right (rt, y));
+      ASSERT (y->left == RBTREE_TNIL_INDEX);
+      y->left = zi;
+    }
+  z = rb_node (rt, zi);
+  z->parent = rb_node_index (rt, y);
+  rb_tree_fixup_inline (rt, y, z);
+
+  if (rb_tree_last_index (rt) == predecessor)
+    rb_node (rt, RBTREE_TNIL_INDEX)->opaque = zi;
+  return zi;
+}
+
+__clib_export rb_node_index_t
+rb_tree_add_last (rb_tree_t *rt, u32 key, uword opaque)
+{
+  rb_node_index_t last = rb_tree_last_index (rt);
+  rb_node_t *z, *y;
+  rb_node_index_t zi;
+
+  pool_get (rt->nodes, z);
+  z->key = key;
+  z->color = RBTREE_RED;
+  z->left = z->right = RBTREE_TNIL_INDEX;
+  z->opaque = opaque;
+  zi = rb_node_index (rt, z);
+
+  y = rb_node (rt, last);
+  z = rb_node (rt, zi);
+  z->parent = last;
+  if (last == RBTREE_TNIL_INDEX)
+    {
+      ASSERT (rb_tree_root (rt) == RBTREE_TNIL_INDEX);
+      rb_tree_root (rt) = zi;
+    }
+  else
+    {
+      ASSERT (y->right == RBTREE_TNIL_INDEX);
+      y->right = zi;
+    }
+  rb_tree_fixup_inline (rt, y, z);
+  rb_node (rt, RBTREE_TNIL_INDEX)->opaque = zi;
+  return zi;
 }
 
 __clib_export rb_node_t *
@@ -437,8 +513,14 @@ rb_tree_del_node_internal (rb_tree_t * rt, rb_node_t * z)
 __clib_export void
 rb_tree_del_node (rb_tree_t * rt, rb_node_t * z)
 {
+  rb_node_index_t new_last = RBTREE_TNIL_INDEX;
+
+  if (PREDICT_FALSE (rb_node_index (rt, z) == rb_tree_last_index (rt)))
+    new_last = rb_node_index (rt, rb_tree_predecessor (rt, z));
   rb_tree_del_node_internal (rt, z);
   pool_put (rt->nodes, z);
+  if (new_last != RBTREE_TNIL_INDEX || rb_tree_root (rt) == RBTREE_TNIL_INDEX)
+    rb_node (rt, RBTREE_TNIL_INDEX)->opaque = new_last;
 }
 
 __clib_export void

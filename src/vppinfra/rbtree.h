@@ -44,6 +44,12 @@ rb_node_index_t rb_tree_add (rb_tree_t * rt, u32 key);
 rb_node_index_t rb_tree_add2 (rb_tree_t * rt, u32 key, uword opaque);
 rb_node_index_t rb_tree_add_custom (rb_tree_t * rt, u32 key, uword opaque,
 				    rb_tree_lt_fn ltfn);
+/* Add the immediate in-order successor of predecessor. The caller must ensure
+ * that key sorts between predecessor and its current successor. */
+rb_node_index_t rb_tree_add_after (rb_tree_t *rt, rb_node_index_t predecessor, u32 key,
+				   uword opaque);
+/* Add a key that sorts after every node currently in the tree. */
+rb_node_index_t rb_tree_add_last (rb_tree_t *rt, u32 key, uword opaque);
 void rb_tree_del (rb_tree_t * rt, u32 key);
 void rb_tree_del_node (rb_tree_t * rt, rb_node_t * z);
 void rb_tree_del_custom (rb_tree_t * rt, u32 key, rb_tree_lt_fn ltfn);
@@ -92,6 +98,12 @@ static inline rb_node_t *
 rb_node_parent (rb_tree_t * rt, rb_node_t * n)
 {
   return pool_elt_at_index (rt->nodes, n->parent);
+}
+
+static inline rb_node_index_t
+rb_tree_last_index (rb_tree_t *rt)
+{
+  return (rb_node_index_t) rb_node (rt, RBTREE_TNIL_INDEX)->opaque;
 }
 
 #endif /* SRC_VPPINFRA_RBTREE_H_ */
