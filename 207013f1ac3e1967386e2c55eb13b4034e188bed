@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4ee7f5f7_96f016c3",
+        "filename": "src/plugins/sfdp_services/base/nat/nat.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 76,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-09-01T15:30:15Z",
+      "side": 1,
+      "message": "Could you use UINT16_MAX here ?",
+      "range": {
+        "startLine": 76,
+        "startChar": 16,
+        "endLine": 76,
+        "endChar": 21
+      },
+      "revId": "207013f1ac3e1967386e2c55eb13b4034e188bed",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
