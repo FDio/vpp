@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "cf0b45ec_4828e182",
+        "filename": "src/plugins/rdma/device.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 880,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-09-01T08:22:27Z",
+      "side": 1,
+      "message": "The current RDMA interface design requires `host-if` to refer directly to a PCI PF or VF. This ancestor walk changes that requirement by accepting auxiliary devices. What is the use case for supporting such devices, and why is creating the RDMA interface from the parent PF/VF not sufficient?",
+      "revId": "3bdfc1215f01a86ac6c3cfd9530df76cde98b628",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "179850e8_3e02d8b9",
+        "filename": "src/plugins/rdma/device.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 992,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-09-01T08:22:27Z",
+      "side": 1,
+      "message": "Could we check `rd-\u003ectx` after this loop? If no path matches, or `ibv_open_device()` fails, the default `auto` mode calls `mlx5dv_query_device(NULL, ...)`, which can crash VPP. Please return a \"no matching RDMA device\" error before probing DV capabilities.",
+      "revId": "3bdfc1215f01a86ac6c3cfd9530df76cde98b628",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
