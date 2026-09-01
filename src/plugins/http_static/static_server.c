@@ -448,12 +448,11 @@ try_index_file (hss_listener_t *l, hss_session_t *hs, u8 *path)
    */
   vec_delete (path, vec_len (l->www_root) - 1, 0);
 
-  redirect = format (0, "http%s://%s%s",
-		     l->flags & HSS_LISTENER_F_NEED_CRYPTO ? "s" : "",
+  redirect = format (0, "http%s://%v%s", l->flags & HSS_LISTENER_F_NEED_CRYPTO ? "s" : "",
 		     hs->authority, path);
 
   if (hsm->debug_level > 0)
-    clib_warning ("redirect: %s", redirect);
+    clib_warning ("redirect: %v", redirect);
 
   if (hss_add_header (hs, HTTP_HEADER_LOCATION, (const char *) redirect,
 		      vec_len (redirect)))
@@ -502,8 +501,12 @@ try_file_handler (hss_session_t *hs)
       hs->left_recv = 0;
     }
 
-  /* Sanitize received path */
+  /* http_path_sanitize() works on vectors and does not guarantee a
+     NULL terminated result, but sanitized_path is used as a C-string
+     below in content_type_from_request(), so terminate it here. */
   sanitized_path = http_path_sanitize (hs->target_path);
+  if (sanitized_path)
+    vec_terminate_c_string (sanitized_path);
 
   /*
    * Construct the file to open
