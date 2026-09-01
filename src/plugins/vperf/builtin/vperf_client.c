@@ -8,6 +8,12 @@
 #include <vperf/builtin/vperf_client.h>
 #include <vnet/tcp/tcp_types.h>
 
+static vlib_error_desc_t vp_client_error_counters[] = {
+#define vperf_error(f, n, s, d) { #n, d, VL_COUNTER_SEVERITY_##s },
+#include <vperf/builtin/vperf_error.def>
+#undef vperf_error
+};
+
 vp_client_main_t vp_client_main;
 
 #define vp_client_err(_fmt, _args...) clib_warning (_fmt, ##_args);
@@ -331,9 +337,7 @@ vp_client_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *fra
       vpcm->repeats++;
       vpcm->prev_conns = vec_len (conns_this_batch);
       if (vpcm->repeats == 500000 && !vpcm->cfg.run_time)
-	{
-	  vp_client_err ("stuck clients");
-	}
+	vp_test_increment_counter (VP_ERROR_STUCK_CLIENT, 1);
     }
   else
     {
@@ -391,9 +395,11 @@ vp_client_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *fra
 
 VLIB_REGISTER_NODE (vperf_clients_node) = {
   .function = vp_client_node_fn,
-  .name = "echo-clients",
+  .name = "vperf-client",
   .type = VLIB_NODE_TYPE_INPUT,
   .state = VLIB_NODE_STATE_DISABLED,
+  .n_errors = VP_N_ERROR,
+  .error_counters = vp_client_error_counters,
 };
 
 static void
@@ -423,6 +429,7 @@ vp_client_reset_runtime_config (vp_client_main_t *vpcm)
   vpcm->barrier_acq_needed = 0;
   vpcm->prealloc_sessions = 0;
   vpcm->prealloc_fifos = 0;
+  vpcm->cfg.fifo_pct_first_alloc = 100;
   vpcm->appns_id = 0;
   vpcm->appns_secret = 0;
   vpcm->attach_flags = 0;
@@ -866,7 +873,7 @@ vp_client_attach ()
   options[APP_OPTIONS_PREALLOC_FIFO_PAIRS] = prealloc_fifos;
   options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_IS_BUILTIN;
   options[APP_OPTIONS_TLS_ENGINE] = vpcm->cfg.tls_engine;
-  options[APP_OPTIONS_PCT_FIRST_ALLOC] = 100;
+  options[APP_OPTIONS_PCT_FIRST_ALLOC] = vpcm->cfg.fifo_pct_first_alloc;
   options[APP_OPTIONS_FLAGS] |= vpcm->attach_flags;
   if (vpcm->appns_id)
     {
@@ -1368,6 +1375,7 @@ vp_client_main_init (vlib_main_t *vm)
 {
   vp_client_main_t *vpcm = &vp_client_main;
   vpcm->app_is_init = 0;
+  vp_test_main.node_index = vperf_clients_node.index;
   return 0;
 }
 
