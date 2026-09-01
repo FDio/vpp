@@ -52,6 +52,7 @@ typedef struct
   u8 report_interval_jitter;  /**< Report jitter in periodic reports */
   u8 is_server;		      /**< Server side app */
   u8 uso;		      /**< UDP segmentation offload */
+  u8 fifo_pct_first_alloc;    /**< Pct of fifo size to alloc */
   u64 report_interval;	      /**< Time between periodic reports (s) */
   f64 run_time;		      /**< Length of a test (s) */
 } vp_test_cfg_t;
