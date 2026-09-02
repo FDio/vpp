@@ -92,7 +92,8 @@ vnet_netlink_msg_send (vnet_netlink_msg_t *m, vnet_netlink_msg_t **replies)
 	{
 	  struct nlmsgerr *e = (struct nlmsgerr *) NLMSG_DATA (nh);
 	  if (e->error)
-	    err = clib_error_return (0, "netlink error %d", e->error);
+	    err = clib_error_return_code (0, -e->error, 0, "netlink error %d",
+					  e->error);
 	  goto done;
 	}
 
@@ -323,7 +324,7 @@ vnet_netlink_add_ip4_addr (int ifindex, void *addr, int pfx_len)
   vnet_netlink_msg_add_rtattr (&m, IFA_ADDRESS, addr, 4);
   err = vnet_netlink_msg_send (&m, NULL);
   if (err)
-    err = clib_error_return (0, "add ip4 addr %U", format_clib_error, err);
+    err = clib_error_return (err, "add ip4 addr");
   return err;
 }
 
@@ -346,7 +347,7 @@ vnet_netlink_add_ip6_addr (int ifindex, void *addr, int pfx_len)
   vnet_netlink_msg_add_rtattr (&m, IFA_ADDRESS, addr, 16);
   err = vnet_netlink_msg_send (&m, NULL);
   if (err)
-    err = clib_error_return (0, "add ip6 addr %U", format_clib_error, err);
+    err = clib_error_return (err, "add ip6 addr");
   return err;
 }
 
@@ -417,8 +418,14 @@ vnet_netlink_del_ip4_addr (int ifindex, void *addr, int pfx_len)
   vnet_netlink_msg_add_rtattr (&m, IFA_LOCAL, addr, 4);
   vnet_netlink_msg_add_rtattr (&m, IFA_ADDRESS, addr, 4);
   err = vnet_netlink_msg_send (&m, NULL);
+  if (err && clib_error_get_code (err) == EADDRNOTAVAIL &&
+      !(err->flags & CLIB_ERROR_ERRNO_VALID))
+    {
+      clib_error_free (err);
+      return 0;
+    }
   if (err)
-    err = clib_error_return (0, "del ip4 addr %U", format_clib_error, err);
+    err = clib_error_return (err, "del ip4 addr");
   return err;
 }
 
@@ -439,7 +446,13 @@ vnet_netlink_del_ip6_addr (int ifindex, void *addr, int pfx_len)
   vnet_netlink_msg_add_rtattr (&m, IFA_LOCAL, addr, 16);
   vnet_netlink_msg_add_rtattr (&m, IFA_ADDRESS, addr, 16);
   err = vnet_netlink_msg_send (&m, NULL);
+  if (err && clib_error_get_code (err) == EADDRNOTAVAIL &&
+      !(err->flags & CLIB_ERROR_ERRNO_VALID))
+    {
+      clib_error_free (err);
+      return 0;
+    }
   if (err)
-    err = clib_error_return (0, "del ip6 addr %U", format_clib_error, err);
+    err = clib_error_return (err, "del ip6 addr");
   return err;
 }

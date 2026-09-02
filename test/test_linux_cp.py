@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 
 import unittest
+import os
 import socket
+import subprocess
 from ipaddress import ip_address, ip_interface
 
 from scapy.layers.inet import IP, UDP
 from scapy.layers.inet6 import IPv6, Raw
-from scapy.layers.l2 import Ether, ARP, Dot3, LLC
+from scapy.layers.l2 import Ether, ARP, Dot3, LLC, GRE
 from scapy.contrib.lacp import LACP
 from scapy.contrib.lldp import (
     LLDPDUChassisID,
@@ -37,7 +39,8 @@ from template_ipsec import (
 )
 from test_ipsec_tun_if_esp import TemplateIpsecItf4
 from config import config
-from vpp_ip_route import FibPathType
+from vpp_ip_route import FibPathType, VppRoutePath
+from vpp_gre_interface import VppGreInterface
 from vpp_qemu_utils import (
     add_namespace_route,
     add_namespace_multipath_route,
@@ -966,6 +969,8 @@ def _prefix_tuple(prefix):
 class TestLinuxCPSync(TestLinuxCPNetNSBase):
     """Linux CP VPP-to-Linux State Sync"""
 
+    VNET_API_ERROR_ADDRESS_NOT_FOUND_FOR_INTERFACE = -60
+
     # Addresses assigned to loop0 in the IPv4/IPv6 address sync tests.
     loop0_prefixes_v4 = ["10.10.1.2/24", "10.10.2.2/24"]
     loop0_prefixes_v6 = ["2001:db8:1::2/64", "2001:db8:2::2/64"]
@@ -993,6 +998,13 @@ class TestLinuxCPSync(TestLinuxCPNetNSBase):
     def _del_addr(self, sw_if_index, prefix):
         self.vapi.sw_interface_add_del_address(
             sw_if_index=sw_if_index, prefix=prefix, is_add=0
+        )
+
+    def _vpp_has_ipv4_address(self, sw_if_index, prefix):
+        """Return whether VPP reports an IPv4 address on an interface."""
+        return any(
+            str(address.prefix) == prefix
+            for address in self.vapi.ip_address_dump(sw_if_index, is_ipv6=False)
         )
 
     def test_lcp_sync_admin_state(self):
@@ -1117,6 +1129,91 @@ class TestLinuxCPSync(TestLinuxCPNetNSBase):
 
         # Cleanup
         loop0.admin_down()
+
+    def test_lcp_sync_ipv4_addr_delete_already_absent(self):
+        """Deleting a VPP address after Linux removed it keeps state converged"""
+        loop0 = self.lo_interfaces[0]
+        prefix = "10.40.1.2/24"
+        prefix_tuple = _prefix_tuple(prefix)
+
+        try:
+            loop0.admin_up()
+            self.poll_for(
+                "hloop0 up", lambda: is_interface_up(self.ns_name, "hloop0"), True
+            )
+
+            self._add_addr(loop0.sw_if_index, prefix)
+            self.poll_for(
+                f"hloop0 has {prefix}",
+                lambda: prefix_tuple
+                in get_interface_addresses(self.ns_name, "hloop0", family="inet"),
+                True,
+            )
+
+            del_namespace_address(self.ns_name, "hloop0", prefix)
+            self.poll_for(
+                f"hloop0 no longer has {prefix}",
+                lambda: prefix_tuple
+                not in get_interface_addresses(self.ns_name, "hloop0", family="inet"),
+                True,
+            )
+            # The Linux->VPP sync may already have removed the address.
+            with self.vapi.assert_known_api_retval(
+                [0, self.VNET_API_ERROR_ADDRESS_NOT_FOUND_FOR_INTERFACE]
+            ):
+                self._del_addr(loop0.sw_if_index, prefix)
+            self.poll_for(
+                f"VPP no longer has {prefix}",
+                lambda: not self._vpp_has_ipv4_address(loop0.sw_if_index, prefix),
+                True,
+            )
+            self.assertNotIn(
+                prefix_tuple,
+                get_interface_addresses(self.ns_name, "hloop0", family="inet"),
+            )
+        finally:
+            if self._vpp_has_ipv4_address(loop0.sw_if_index, prefix):
+                self._del_addr(loop0.sw_if_index, prefix)
+            loop0.admin_down()
+
+    def test_lcp_sync_ipv4_addr_external_delete_preserves_other_state(self):
+        """Removing one Linux address does not sweep another valid VPP address"""
+        loop0 = self.lo_interfaces[0]
+        prefixes = ("10.40.3.2/24", "10.40.4.2/24")
+        prefix_tuples = tuple(_prefix_tuple(prefix) for prefix in prefixes)
+
+        try:
+            loop0.admin_up()
+            self.poll_for(
+                "hloop0 up", lambda: is_interface_up(self.ns_name, "hloop0"), True
+            )
+            for prefix in prefixes:
+                self._add_addr(loop0.sw_if_index, prefix)
+            self.poll_for(
+                "hloop0 has both ipv4 addresses",
+                lambda: sorted(
+                    get_interface_addresses(self.ns_name, "hloop0", family="inet")
+                ),
+                sorted(prefix_tuples),
+            )
+
+            del_namespace_address(self.ns_name, "hloop0", prefixes[0])
+            self.poll_for(
+                f"VPP removed {prefixes[0]}",
+                lambda: not self._vpp_has_ipv4_address(loop0.sw_if_index, prefixes[0]),
+                True,
+            )
+
+            self.assertTrue(self._vpp_has_ipv4_address(loop0.sw_if_index, prefixes[1]))
+            self.assertEqual(
+                sorted(get_interface_addresses(self.ns_name, "hloop0", family="inet")),
+                [prefix_tuples[1]],
+            )
+        finally:
+            for prefix in prefixes:
+                if self._vpp_has_ipv4_address(loop0.sw_if_index, prefix):
+                    self._del_addr(loop0.sw_if_index, prefix)
+            loop0.admin_down()
 
     def test_lcp_sync_ipv6_addr(self):
         """VPP IPv6 address changes sync to Linux"""
@@ -1502,6 +1599,223 @@ class TestLinuxCPPairManagement(TestLinuxCPNetNSBase):
             lambda: interface_exists(self.ns_name, "htun0"),
             False,
         )
+
+    @unittest.skipIf(
+        "linux-cp" in config.excluded_plugins, "Exclude linux-cp plugin tests"
+    )
+    @unittest.skipIf("gre" in config.excluded_plugins, "Exclude GRE plugin tests")
+    def test_gre_lcp_ipv4_survives_pair_churn(self):
+        self.create_pg_interfaces(range(1))
+        underlay = self.pg_interfaces[0]
+        gre_if = VppGreInterface(self, underlay.local_ip4, underlay.remote_ip4)
+        sender = None
+        capture_active = False
+        gre_created = False
+        route_created = False
+        pair_created = False
+        linux_route_present = False
+        ready_file = os.path.join(self.tempdir, "gre_lcp_sender_ready")
+        go_file = os.path.join(self.tempdir, "gre_lcp_sender_go")
+        inner_dst = "198.18.0.1"
+
+        try:
+            underlay.admin_up()
+            underlay.config_ip4()
+            underlay.resolve_arp()
+
+            gre_if.add_vpp_config()
+            gre_created = True
+            gre_if.admin_up()
+            self.vapi.cli(
+                f"lcp create {gre_if.name} host-if hgre0 netns {self.ns_name} tun"
+            )
+            pair_created = True
+            self.poll_for(
+                "GRE LCP pair exists",
+                lambda: self._find_lcp_pair(gre_if.sw_if_index) is not None,
+                True,
+            )
+            pair = self._find_lcp_pair(gre_if.sw_if_index)
+            self.assertIsNotNone(pair)
+            self.assertEqual(pair.host_if_type, 1, "GRE LCP pair should use TUN")
+
+            gre_if.config_ip4()
+            route = VppIpRoute(
+                self,
+                inner_dst,
+                32,
+                [VppRoutePath("0.0.0.0", gre_if.sw_if_index)],
+            )
+            route.add_vpp_config()
+            route_created = True
+            expected_path = dict(
+                type=FibPathType.FIB_PATH_TYPE_NORMAL,
+                sw_if_index=gre_if.sw_if_index,
+            )
+            self.verify_paths(f"{inner_dst}/32", expected_path)
+            expected_address = [_prefix_tuple(gre_if.local_ip4_prefix)]
+            self.poll_for(
+                "hgre0 has GRE IPv4 address",
+                lambda: get_interface_addresses(self.ns_name, "hgre0", family="inet"),
+                expected_address,
+            )
+            add_namespace_route(self.ns_name, f"{inner_dst}/32", dev="hgre0")
+            linux_route_present = True
+
+            sender_script = """
+import os
+import sys
+import time
+from scapy.error import Scapy_Exception
+from scapy.all import IP, Raw, UDP, send
+
+iface, source, destination, ready, go = sys.argv[1:]
+def send_packet(sequence):
+    try:
+        send(IP(src=source, dst=destination) / UDP(sport=1234, dport=1234) / Raw(str(sequence).encode()), iface=iface, verbose=0)
+    except (OSError, Scapy_Exception, ValueError):
+        pass
+
+for sequence in range(20):
+    send_packet(sequence)
+open(ready, "w").close()
+sequence = 20
+while not os.path.exists(go):
+    send_packet(sequence)
+    sequence += 1
+    time.sleep(0.01)
+for sequence in range(100, 130):
+    send_packet(sequence)
+    time.sleep(0.01)
+"""
+            underlay.enable_capture()
+            capture_active = True
+            sender = subprocess.Popen(
+                [
+                    "ip",
+                    "netns",
+                    "exec",
+                    self.ns_name,
+                    "python3",
+                    "-c",
+                    sender_script,
+                    "hgre0",
+                    gre_if.local_ip4,
+                    inner_dst,
+                    ready_file,
+                    go_file,
+                ],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+            self.poll_for(
+                "inner IPv4 sender is active",
+                lambda: os.path.exists(ready_file),
+                True,
+            )
+            self.assertIsNone(self.vpp.poll(), "VPP must be alive before churn")
+
+            gre_if.admin_down()
+            self.poll_for(
+                "hgre0 down after GRE admin_down",
+                lambda: is_interface_up(self.ns_name, "hgre0"),
+                False,
+            )
+            gre_if.admin_up()
+            self.poll_for(
+                "hgre0 up after GRE admin_up",
+                lambda: is_interface_up(self.ns_name, "hgre0"),
+                True,
+            )
+
+            self.vapi.cli(f"lcp delete {gre_if.name}")
+            pair_created = False
+            self.poll_for(
+                "GRE LCP pair removed",
+                lambda: self._find_lcp_pair(gre_if.sw_if_index) is not None,
+                False,
+            )
+            self.poll_for(
+                "hgre0 removed after pair delete",
+                lambda: interface_exists(self.ns_name, "hgre0"),
+                False,
+            )
+            del_namespace_route(self.ns_name, f"{inner_dst}/32", check=False)
+            linux_route_present = False
+            self.assertIsNone(self.vpp.poll(), "VPP must be alive after pair delete")
+
+            self.vapi.cli(
+                f"lcp create {gre_if.name} host-if hgre0 netns {self.ns_name} tun"
+            )
+            pair_created = True
+            self.poll_for(
+                "GRE LCP pair recreated",
+                lambda: self._find_lcp_pair(gre_if.sw_if_index) is not None,
+                True,
+            )
+            self.poll_for(
+                "hgre0 recreated",
+                lambda: interface_exists(self.ns_name, "hgre0"),
+                True,
+            )
+            self.poll_for(
+                "hgre0 has GRE IPv4 address after recreation",
+                lambda: get_interface_addresses(self.ns_name, "hgre0", family="inet"),
+                expected_address,
+            )
+            add_namespace_route(self.ns_name, f"{inner_dst}/32", dev="hgre0")
+            linux_route_present = True
+            self.verify_paths(f"{inner_dst}/32", expected_path)
+            self.assertTrue(gre_if.query_vpp_config())
+            self.assertIn(gre_if.name, self.vapi.cli("show adj"))
+            self.assertIsNone(
+                self.vpp.poll(), "VPP must be alive after pair recreation"
+            )
+
+            with open(go_file, "w"):
+                pass
+            sender.wait(timeout=10)
+            self.assertEqual(sender.returncode, 0, "inner IPv4 sender failed")
+
+            def _capture_inner_sequences():
+                captured = underlay._get_capture()
+                if captured is None:
+                    return []
+                sequences = []
+                for packet in captured:
+                    if packet.haslayer(GRE):
+                        inner = IP(bytes(packet[GRE].payload))
+                        if inner.dst == inner_dst and inner.haslayer(Raw):
+                            sequences.append(int(bytes(inner[Raw].load)))
+                return sequences
+
+            self.poll_for(
+                "capture has pre- and post-churn inner packets",
+                lambda: any(sequence < 20 for sequence in _capture_inner_sequences())
+                and any(sequence >= 100 for sequence in _capture_inner_sequences()),
+                True,
+                timeout=10,
+            )
+            capture_active = False
+            inner_sequences = _capture_inner_sequences()
+            self.assertTrue(any(sequence < 20 for sequence in inner_sequences))
+            self.assertTrue(any(sequence >= 100 for sequence in inner_sequences))
+        finally:
+            if sender is not None and sender.poll() is None:
+                sender.terminate()
+                sender.wait(timeout=5)
+            if capture_active:
+                underlay.disable_capture()
+            if pair_created:
+                self.vapi.cli(f"lcp delete {gre_if.name}")
+            if linux_route_present:
+                del_namespace_route(self.ns_name, f"{inner_dst}/32", check=False)
+            if route_created:
+                route.remove_vpp_config()
+            if gre_created:
+                gre_if.remove_vpp_config()
+            underlay.unconfig_ip4()
+            underlay.admin_down()
 
     def test_pair_create_delete_tap(self):
         """Create and delete TAP LCP pair on pg interface"""

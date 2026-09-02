@@ -181,9 +181,9 @@ nl_register_vft (const nl_vft_t *nv)
 #define NL_INFO(...)  vlib_log_notice (nl_main.nl_logger, __VA_ARGS__);
 #define NL_ERROR(...) vlib_log_err (nl_main.nl_logger, __VA_ARGS__);
 
-static void lcp_nl_open_socket (void);
+static int lcp_nl_open_socket (void);
 static void lcp_nl_close_socket (void);
-static void lcp_nl_open_sync_socket (nl_sock_type_t sock_type);
+static int lcp_nl_open_sync_socket (nl_sock_type_t sock_type);
 static void lcp_nl_close_sync_socket (nl_sock_type_t sock_type);
 
 static void
@@ -395,6 +395,9 @@ lcp_nl_route_send_dump_req (nl_sock_type_t sock_type, int msg_type)
     .rtgen_family = AF_UNSPEC,
   };
 
+  if (!sk_route)
+    return -NLE_BAD_SOCK;
+
   err =
     nl_send_simple (sk_route, msg_type, NLM_F_DUMP, &rt_hdr, sizeof (rt_hdr));
 
@@ -415,7 +418,10 @@ lcp_nl_route_dump_cb (struct nl_msg *msg, void *arg)
   int err;
 
   if ((err = nl_msg_parse (msg, nl_route_dispatch, NULL)) < 0)
-    NL_ERROR ("Unable to parse object: %s", nl_geterror (err));
+    {
+      NL_ERROR ("Unable to parse object: %s", nl_geterror (err));
+      return err;
+    }
 
   return NL_OK;
 }
@@ -434,6 +440,9 @@ lcp_nl_recv_dump_replies (nl_sock_type_t sock_type, int msg_limit,
   int err = 0;
   int done = 0;
   int n_msgs = 0;
+
+  if (!sk_route)
+    return -NLE_BAD_SOCK;
 
   lcp_set_netlink_processing_active (1);
 
@@ -505,10 +514,18 @@ continue_reading:
        */
       else
 	{
-	  lcp_nl_route_dump_cb (msg, NULL);
+	  err = lcp_nl_route_dump_cb (msg, NULL);
+	  if (err < 0)
+	    goto out;
 	}
 
       hdr = nlmsg_next (hdr, &n_bytes);
+    }
+
+  if (n_bytes != 0)
+    {
+      err = -NLE_MSG_TRUNC;
+      goto out;
     }
 
   nlmsg_free (msg);
@@ -604,7 +621,9 @@ nl_route_process (vlib_main_t *vm, vlib_node_runtime_t *node,
 	   * If send a dump request while the previous one is in progress,
 	   * the request will fail and EBUSY returned
 	   */
-#define _(stype, mtype, tname, fn) lcp_nl_open_sync_socket (stype);
+#define _(stype, mtype, tname, fn)                                            \
+  if (lcp_nl_open_sync_socket (stype) < 0)                                   \
+    goto sync_later;
 	  foreach_sock_type
 #undef _
 
@@ -614,19 +633,25 @@ nl_route_process (vlib_main_t *vm, vlib_node_runtime_t *node,
 	   * the moment. Once all the dump replies are processed, the
 	   * notifications will be processed
 	   */
-	  lcp_nl_open_socket ();
+	  if (lcp_nl_open_socket () < 0)
+	    goto sync_later;
 
 	  /* Request the current entry set from the kernel for every data type
 	   * of interest. Thus requesting a snapshot of the current routing
 	   * state that the kernel will make and then reply with
 	   */
-#define _(stype, mtype, tname, fn) lcp_nl_route_send_dump_req (stype, mtype);
+#define _(stype, mtype, tname, fn)                                            \
+  if (lcp_nl_route_send_dump_req (stype, mtype) < 0)                          \
+    goto sync_later;
 	  foreach_sock_type
+#undef _
+
+#define _(stype, mtype, tname, fn) nl_##fn##_sync_begin ();
+	    foreach_sock_type
 #undef _
 
 	  /* Process all the dump replies */
 #define _(stype, mtype, tname, fn)                                            \
-  nl_##fn##_sync_begin ();                                                    \
   is_done = 0;                                                                \
   do                                                                          \
     {                                                                         \
@@ -637,12 +662,12 @@ nl_route_process (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  NL_ERROR ("Error receiving dump replies of type " tname             \
 		    ": %s (%d)",                                              \
 		    nl_geterror (n_msgs), n_msgs);                            \
-	  break;                                                              \
+	  goto sync_later;                                                    \
 	}                                                                     \
       else if (n_msgs == 0)                                                   \
 	{                                                                     \
 	  NL_ERROR ("EOF while receiving dump replies of type " tname);       \
-	  break;                                                              \
+	  goto sync_later;                                                    \
 	}                                                                     \
       else                                                                    \
 	NL_INFO ("Processed %u dump replies of type " tname, n_msgs);         \
@@ -655,7 +680,7 @@ nl_route_process (vlib_main_t *vm, vlib_node_runtime_t *node,
        * incomplete                                                           \
        */                                                                     \
       vlib_process_wait_for_event_or_clock (vm,                               \
-					    nm->sync_batch_delay_ms * 1e-3);  \
+						    nm->sync_batch_delay_ms * 1e-3);  \
       event_type = vlib_process_get_events (vm, &event_data);                 \
       vec_reset_length (event_data);                                          \
                                                                               \
@@ -665,14 +690,17 @@ nl_route_process (vlib_main_t *vm, vlib_node_runtime_t *node,
       if (event_type == NL_EVENT_ERR)                                         \
 	goto sync_later;                                                      \
     }                                                                         \
-  while (!is_done);                                                           \
-  nl_##fn##_sync_end ();
+  while (!is_done);
 
-	    foreach_sock_type
+	  foreach_sock_type
 #undef _
 
-	      /* Start processing notifications */
-	      nm->nl_status = NL_STATUS_NOTIF_PROC;
+#define _(stype, mtype, tname, fn) nl_##fn##_sync_end ();
+	  foreach_sock_type
+#undef _
+
+	  /* Start processing notifications */
+	  nm->nl_status = NL_STATUS_NOTIF_PROC;
 
 	  /* Trigger messages processing if there are notifications received
 	   * during synchronization
@@ -751,7 +779,12 @@ lcp_nl_pair_add_cb (lcp_itf_pair_t *pair)
   if (!nm->sk_route)
     {
       NL_INFO ("pair_add_cb: Opening netlink socket, LCP pairs %u", lcp_itf_num_pairs ());
-      lcp_nl_open_socket ();
+      if (lcp_nl_open_socket () < 0)
+	{
+	  nm->nl_status = NL_STATUS_SYNC;
+	  vlib_process_signal_event (vlib_get_main (), nl_route_process_node.index,
+				     NL_EVENT_ERR, 0);
+	}
     }
   else if (!lcp_get_netlink_processing_active ())
     lcp_nl_drain_messages ();
@@ -886,11 +919,13 @@ lcp_nl_close_socket (void)
     }
 }
 
-static void
+static int
 lcp_nl_open_socket (void)
 {
   nl_main_t *nm = &nl_main;
-  int dest_ns_fd, curr_ns_fd;
+  int dest_ns_fd, curr_ns_fd = -1;
+  int entered_dest_ns = 0;
+  int err;
 
   /* Allocate a new socket for both routes and acls
    * Notifications do not use sequence numbers, disable sequence number
@@ -899,31 +934,56 @@ lcp_nl_open_socket (void)
    * received
    */
   nm->sk_route = nl_socket_alloc ();
+  if (!nm->sk_route)
+    return -NLE_NOMEM;
   nl_socket_disable_seq_check (nm->sk_route);
 
   dest_ns_fd = lcp_get_default_ns_fd ();
-  if (dest_ns_fd)
+  if (dest_ns_fd > 0)
     {
-      curr_ns_fd = open ("/proc/self/ns/net", O_RDONLY);
-      setns (dest_ns_fd, CLONE_NEWNET);
+      curr_ns_fd = clib_netns_open (NULL /* self */);
+      if (curr_ns_fd < 0)
+	{
+	  err = -NLE_FAILURE;
+	  goto error;
+	}
+      if (clib_setns (dest_ns_fd) < 0)
+	{
+	  err = -NLE_FAILURE;
+	  goto error;
+	}
+      entered_dest_ns = 1;
     }
 
-  nl_connect (nm->sk_route, NETLINK_ROUTE);
+  err = nl_connect (nm->sk_route, NETLINK_ROUTE);
+  if (err < 0)
+    goto error;
 
-  if (dest_ns_fd && curr_ns_fd >= 0)
+  if (entered_dest_ns)
     {
-      setns (curr_ns_fd, CLONE_NEWNET);
+      if (clib_setns (curr_ns_fd) < 0)
+	{
+	  err = -NLE_FAILURE;
+	  goto error;
+	}
+      entered_dest_ns = 0;
+    }
+  if (curr_ns_fd >= 0)
+    {
       close (curr_ns_fd);
+      curr_ns_fd = -1;
     }
 
   /* Subscribe to all the 'routing' notifications on the route socket */
-  nl_socket_add_memberships (nm->sk_route, RTNLGRP_LINK, RTNLGRP_IPV6_IFADDR,
-			     RTNLGRP_IPV4_IFADDR, RTNLGRP_IPV4_ROUTE,
-			     RTNLGRP_IPV6_ROUTE, RTNLGRP_NEIGH, RTNLGRP_NOTIFY,
+  err = nl_socket_add_memberships (nm->sk_route, RTNLGRP_LINK, RTNLGRP_IPV6_IFADDR,
+				   RTNLGRP_IPV4_IFADDR, RTNLGRP_IPV4_ROUTE, RTNLGRP_IPV6_ROUTE,
+				   RTNLGRP_NEIGH, RTNLGRP_NOTIFY,
 #ifdef RTNLGRP_MPLS_ROUTE /* not defined on CentOS/RHEL 7 */
-			     RTNLGRP_MPLS_ROUTE,
+				   RTNLGRP_MPLS_ROUTE,
 #endif
-			     RTNLGRP_IPV4_RULE, RTNLGRP_IPV6_RULE, 0);
+				   RTNLGRP_IPV4_RULE, RTNLGRP_IPV6_RULE, 0);
+  if (err < 0)
+    goto error;
 
   /* Set socket in nonblocking mode and increase buffer sizes */
   nl_socket_set_nonblocking (nm->sk_route);
@@ -955,13 +1015,34 @@ lcp_nl_open_socket (void)
   nl_socket_modify_cb (nm->sk_route, NL_CB_VALID, NL_CB_CUSTOM, nl_route_cb,
 		       NULL);
   NL_INFO ("Opened netlink socket %d", nl_socket_get_fd (nm->sk_route));
+  return 0;
+
+error:
+  if (entered_dest_ns)
+    {
+      if (clib_setns (curr_ns_fd) < 0)
+	NL_ERROR ("Cannot set previous ns");
+      else
+	entered_dest_ns = 0;
+    }
+  if (curr_ns_fd >= 0)
+    {
+      close (curr_ns_fd);
+      curr_ns_fd = -1;
+    }
+  NL_ERROR ("Unable to open netlink socket: %s", nl_geterror (err));
+  nl_socket_free (nm->sk_route);
+  nm->sk_route = NULL;
+  return err;
 }
 
-static void
+static int
 lcp_nl_open_sync_socket (nl_sock_type_t sock_type)
 {
   nl_main_t *nm = &nl_main;
-  int dest_ns_fd, curr_ns_fd;
+  int dest_ns_fd, curr_ns_fd = -1;
+  int entered_dest_ns = 0;
+  int err;
   struct nl_sock *sk_route;
 
   /* Allocate a new blocking socket for routes that will be used for dump
@@ -971,33 +1052,67 @@ lcp_nl_open_sync_socket (nl_sock_type_t sock_type)
    */
 
   nm->sk_route_sync[sock_type] = sk_route = nl_socket_alloc ();
+  if (!sk_route)
+    return -NLE_NOMEM;
 
   dest_ns_fd = lcp_get_default_ns_fd ();
   if (dest_ns_fd > 0)
     {
       curr_ns_fd = clib_netns_open (NULL /* self */);
-      if (clib_setns (dest_ns_fd) == -1)
-	NL_ERROR ("Cannot set destination ns");
+      if (curr_ns_fd < 0)
+	{
+	  err = -NLE_FAILURE;
+	  goto error;
+	}
+      if (clib_setns (dest_ns_fd) < 0)
+	{
+	  err = -NLE_FAILURE;
+	  goto error;
+	}
+      entered_dest_ns = 1;
     }
 
-  nl_connect (sk_route, NETLINK_ROUTE);
+  err = nl_connect (sk_route, NETLINK_ROUTE);
+  if (err < 0)
+    goto error;
 
-  if (dest_ns_fd > 0)
+  if (entered_dest_ns)
     {
-      if (curr_ns_fd == -1)
+      if (clib_setns (curr_ns_fd) < 0)
 	{
-	  NL_ERROR ("No previous ns to set");
+	  err = -NLE_FAILURE;
+	  goto error;
 	}
-      else
-	{
-	  if (clib_setns (curr_ns_fd) == -1)
-	    NL_ERROR ("Cannot set previous ns");
-	  close (curr_ns_fd);
-	}
+      entered_dest_ns = 0;
+    }
+  if (curr_ns_fd >= 0)
+    {
+      close (curr_ns_fd);
+      curr_ns_fd = -1;
     }
 
   NL_INFO ("Opened netlink synchronization socket %d of type %d",
 	   nl_socket_get_fd (sk_route), sock_type);
+  return 0;
+
+error:
+  if (entered_dest_ns)
+    {
+      if (clib_setns (curr_ns_fd) < 0)
+	NL_ERROR ("Cannot set previous ns");
+      else
+	entered_dest_ns = 0;
+    }
+  if (curr_ns_fd >= 0)
+    {
+      close (curr_ns_fd);
+      curr_ns_fd = -1;
+    }
+  nl_socket_free (sk_route);
+  nm->sk_route_sync[sock_type] = NULL;
+  NL_ERROR ("Unable to open netlink synchronization socket of type %d: %s", sock_type,
+	    nl_geterror (err));
+  return err;
 }
 
 static void
