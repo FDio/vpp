@@ -34,6 +34,24 @@
       "parentUuid": "b8f68a82_c636218f",
       "revId": "576e6eedb95973b27036475543948e2fdbeb18bc",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "3e8ee8fe_340c517a",
+        "filename": "src/plugins/http_static/static_server.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 509,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-09-02T18:55:10Z",
+      "side": 1,
+      "message": "I missed that one 😊",
+      "parentUuid": "3591915c_67335fa1",
+      "revId": "576e6eedb95973b27036475543948e2fdbeb18bc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
