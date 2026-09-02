@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "7ba4c0ef_60e57cf1",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-09-02T08:45:17Z",
+      "side": 1,
+      "message": "could you please rebase this patch? all ci machines are back online and test jobs should pass with already merged fixes",
+      "revId": "84891e564e620db004829db0d15e214a10eb60ea",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
