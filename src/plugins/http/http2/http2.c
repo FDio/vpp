@@ -338,6 +338,7 @@ http2_connection_error (http_ctx_t *hc, http2_error_t error, transport_send_para
   else
     {
       HTTP_DBG (1, "http_io_ts_provision_chunks failed");
+      http_stats_ts_fifo_egrow_inc (hc->c_thread_index);
       session_reset (session_get_from_handle (hc->hc_tc_session_handle));
     }
 
@@ -578,6 +579,7 @@ http2_sched_dispatch_data (http_ctx_t *req, http_ctx_t *hc, u8 *n_emissions)
   if (PREDICT_FALSE (http_io_ts_provision_chunks (hc, n_read + HTTP2_FRAME_HEADER_SIZE)))
     {
       HTTP_DBG (1, "http_io_ts_provision_chunks failed");
+      http_stats_ts_fifo_egrow_inc (hc->c_thread_index);
       http2_req_schedule_data_tx (hc, req);
       return 1;
     }
@@ -696,6 +698,7 @@ http2_sched_dispatch_tunnel (http_ctx_t *req, http_ctx_t *hc, u8 *n_emissions)
   if (PREDICT_FALSE (http_io_ts_provision_chunks (hc, n_read + HTTP2_FRAME_HEADER_SIZE)))
     {
       HTTP_DBG (1, "http_io_ts_provision_chunks failed");
+      http_stats_ts_fifo_egrow_inc (hc->c_thread_index);
       http2_req_schedule_data_tx (hc, req);
       return 1;
     }
@@ -823,6 +826,7 @@ http2_sched_dispatch_udp_tunnel_inline (http_ctx_t *req, http_ctx_t *hc, u8 *n_e
       if (PREDICT_FALSE (http_io_ts_provision_chunks (hc, HTTP2_FRAME_HEADER_SIZE + frame_size)))
 	{
 	  HTTP_DBG (1, "http_io_ts_provision_chunks failed");
+	  http_stats_ts_fifo_egrow_inc (hc->c_thread_index);
 	  http2_req_schedule_data_tx (hc, req);
 	  return 1;
 	}
@@ -853,6 +857,7 @@ http2_sched_dispatch_udp_tunnel_inline (http_ctx_t *req, http_ctx_t *hc, u8 *n_e
       if (PREDICT_FALSE (http_io_ts_provision_chunks (hc, n_read)))
 	{
 	  HTTP_DBG (1, "http_io_ts_provision_chunks failed");
+	  http_stats_ts_fifo_egrow_inc (hc->c_thread_index);
 	  http2_req_schedule_data_tx (hc, req);
 	  return 1;
 	}
@@ -1067,6 +1072,7 @@ http2_sched_dispatch_postponed_headers (http_ctx_t *req, http_ctx_t *hc, u8 *n_e
   /* make sure ts tx fifo can actually buffer frame */
   if (PREDICT_FALSE (http_io_ts_provision_chunks (hc, to_send + HTTP2_FRAME_HEADER_SIZE)))
     {
+      http_stats_ts_fifo_egrow_inc (hc->c_thread_index);
       HTTP_DBG (1, "http_io_ts_provision_chunks failed");
       return 1;
     }
@@ -1205,6 +1211,7 @@ http2_sched_dispatch_resp_headers (http_ctx_t *req, http_ctx_t *hc, u8 *n_emissi
 							HTTP2_FRAME_HEADER_SIZE)))
     {
       HTTP_DBG (1, "http_io_ts_provision_chunks failed");
+      http_stats_ts_fifo_egrow_inc (hc->c_thread_index);
       req->dispatch_headers_cb = http2_sched_dispatch_postponed_headers;
       /* move headers to connection ctx */
       ASSERT (hc->unsent_headers == 0);
@@ -1399,6 +1406,7 @@ http2_sched_dispatch_req_headers (http_ctx_t *req, http_ctx_t *hc, u8 *n_emissio
 							HTTP2_FRAME_HEADER_SIZE)))
     {
       HTTP_DBG (1, "http_io_ts_provision_chunks failed");
+      http_stats_ts_fifo_egrow_inc (hc->c_thread_index);
       req->dispatch_headers_cb = http2_sched_dispatch_postponed_headers;
       /* move headers to connection ctx */
       ASSERT (hc->unsent_headers == 0);
@@ -2922,6 +2930,7 @@ http2_handle_goaway_frame (http_ctx_t *hc, http2_frame_header_t *fh)
 
   if (error_code == HTTP2_ERROR_NO_ERROR)
     {
+      http_stats_goaway_received_inc (hc->c_thread_index);
       /* graceful shutdown (no new streams for client) */
       if (!(hc->flags & HTTP_CONN_F_IS_SERVER))
 	{
@@ -3629,6 +3638,7 @@ http2_transport_rx_callback (http_ctx_t *hc)
 	    hc, HTTP2_CONNECTION_WINDOW_SIZE - hc->our_window, 0, &max_write)))
 	{
 	  HTTP_DBG (1, "transport fifo full postponing connection window update");
+	  http_stats_ts_fifo_efull_inc (hc->c_thread_index);
 	  http_io_ts_add_want_deq_ntf (hc);
 	}
       else
