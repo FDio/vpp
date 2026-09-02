@@ -188,3 +188,7 @@ calicovppversion
 
 # log file archives
 /archives
+
+# Agent workspace metadata
+/.omo/
+/.sisyphus/
