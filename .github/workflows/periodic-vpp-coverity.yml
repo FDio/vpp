@@ -108,9 +108,8 @@ jobs:
       - name: Run Coverity Build Script
         run: |
           set -euo pipefail
-          COVERITY_TOKEN=${{ secrets.FDIO_VPP_COVERITY_TOKEN }}
-          COVERITY_TOOLS=$(dirname $BLACK_DUCK_BIN)
-          $WORKSPACE/extras/scripts/coverity-build | tee $LOG_DIR/coverity-build.log
+
+          COVERITY_TOKEN=${{ secrets.FDIO_VPP_COVERITY_TOKEN }} $WORKSPACE/extras/scripts/coverity-build | tee $LOG_DIR/coverity-build.log
 
       - name: AWS S3 Publish Logs
         if: ${{ always() }}

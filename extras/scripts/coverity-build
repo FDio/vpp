@@ -39,7 +39,7 @@ build_dir=$(readlink -f "${script_dir}/../../build-root")
 
 # Location for Coverity things
 covdir="${build_dir}/cov-int"
-COVERITY_TOOLS="${COVERITY_TOOLS-/scratch/cov-analysis-latest}"
+COVERITY_TOOLS="${COVERITY_TOOLS-$(dirname $BLACK_DUCK_BIN)}"
 COVERITY_BUILD="$COVERITY_TOOLS/bin/cov-build"
 
 if [ ! -d "$COVERITY_TOOLS" ] ; then
