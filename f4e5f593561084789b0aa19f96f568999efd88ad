@@ -1,0 +1,58 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "402cdbc7_55c5d158",
+        "filename": "src/plugins/af_xdp/af_xdp.api",
+        "patchSetId": 3
+      },
+      "lineNbr": 91,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-09-02T18:50:58Z",
+      "side": 1,
+      "message": "Done in PS3: the VM AF_XDP tests now use create_v4.",
+      "parentUuid": "1d4f1fcc_2e760766",
+      "revId": "f4e5f593561084789b0aa19f96f568999efd88ad",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "0f7b20fa_c00a4935",
+        "filename": "src/plugins/af_xdp/af_xdp.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 200,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-09-02T18:50:58Z",
+      "side": 1,
+      "message": "Done in PS3: busy_poll_budget is now u16 in the create arguments as well, and CLI parsing is bounded with unformat_u16.",
+      "parentUuid": "9b20e724_4e5292c4",
+      "revId": "f4e5f593561084789b0aa19f96f568999efd88ad",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "22c8c02e_f4043368",
+        "filename": "src/plugins/af_xdp/device.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 862,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-09-02T18:50:58Z",
+      "side": 1,
+      "message": "Done in PS3: the device fields and flag are now assigned together inside the enabled branch.",
+      "parentUuid": "6854e41f_9450bd40",
+      "revId": "f4e5f593561084789b0aa19f96f568999efd88ad",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
