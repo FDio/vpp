@@ -123,6 +123,56 @@ session_consume_deferred_rx_segments (session_t *s, u32 n_segs)
 }
 
 int
+session_take_deferred_rx_segments (session_t *s, u32 n_segs)
+{
+  svm_fifo_async_state_t *state;
+  svm_fifo_async_seg_t *segs;
+  u32 i, n_bytes = 0;
+
+  ASSERT (s->thread_index == vlib_get_thread_index ());
+  state = s->rx_fifo->async_state;
+  if (!state)
+    return n_segs ? SVM_FIFO_EINVAL : 0;
+  if (!n_segs)
+    return 0;
+
+  /* A full-batch take keeps the ownership transition atomic and is all that
+   * is needed to measure the application integration. */
+  if (n_segs != vec_len (state->segs))
+    return SVM_FIFO_EINVAL;
+
+  ASSERT (state->tail != SVM_FIFO_ASYNC_TAIL_INVALID);
+  segs = state->segs;
+  for (i = 0; i < n_segs; i++)
+    n_bytes += segs[i].len;
+
+  state->tail = SVM_FIFO_ASYNC_TAIL_INVALID;
+  vec_reset_length (state->segs);
+
+  session_fifo_tuning (s, s->rx_fifo, SESSION_FT_ACTION_DEQUEUED, n_bytes);
+  if (svm_fifo_needs_deq_ntf (s->rx_fifo, n_bytes))
+    {
+      svm_fifo_clear_deq_ntf (s->rx_fifo);
+      session_program_transport_io_evt (s->handle, SESSION_IO_EVT_RX);
+    }
+
+  return n_bytes;
+}
+
+void
+session_release_deferred_rx_buffers (u32 thread_index, const u32 *buffer_refs, u32 n_buffer_refs)
+{
+  session_worker_t *wrk;
+
+  ASSERT (thread_index == vlib_get_thread_index ());
+  if (!n_buffer_refs)
+    return;
+
+  wrk = session_main_get_worker (thread_index);
+  vlib_buffer_free (wrk->vm, (u32 *) buffer_refs, n_buffer_refs);
+}
+
+int
 session_discard_deferred_rx (session_t *s)
 {
   svm_fifo_async_state_t *state;

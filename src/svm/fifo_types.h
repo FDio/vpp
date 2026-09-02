@@ -156,6 +156,11 @@ typedef struct _svm_fifo
     };
   };
 
+#if CLIB_LOG2_CACHE_LINE_BYTES == 7
+  /* Keep the deferred state in the second private FIFO cache line on
+   * targets such as BlueField where CLIB_CACHE_LINE_BYTES is 128. */
+  CLIB_CACHE_LINE_ALIGN_MARK (async_cacheline);
+#endif
   svm_fifo_async_state_t *async_state;
 
 #if SVM_FIFO_TRACE
