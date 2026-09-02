@@ -19,6 +19,23 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": true,
+      "key": {
+        "uuid": "1d4f1fcc_2e760766",
+        "filename": "src/plugins/af_xdp/af_xdp.api",
+        "patchSetId": 2
+      },
+      "lineNbr": 91,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-09-02T14:30:32Z",
+      "side": 1,
+      "message": "please update the tests to use v4 instead of v3",
+      "revId": "a7dfa8037180ae7084555c4a71bb698d216df08a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": false,
       "key": {
         "uuid": "651d3790_d7437032",
@@ -33,6 +50,40 @@
       "side": 1,
       "message": "Done in PS2. The explicit prefer-busy-poll flag is removed. Either a nonzero timeout or budget enables busy polling; the omitted counterpart gets the default value.",
       "parentUuid": "63f8d8cd_76e92d9a",
+      "revId": "a7dfa8037180ae7084555c4a71bb698d216df08a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9b20e724_4e5292c4",
+        "filename": "src/plugins/af_xdp/af_xdp.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 200,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-09-02T14:30:32Z",
+      "side": 1,
+      "message": "api and device struct both use u16, only the args use u32, this is confusing",
+      "revId": "a7dfa8037180ae7084555c4a71bb698d216df08a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6854e41f_9450bd40",
+        "filename": "src/plugins/af_xdp/device.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 862,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-09-02T14:30:32Z",
+      "side": 1,
+      "message": "can we move this under the  if (args-\u003ebusy_poll_usecs) below? otherwise this is misleading",
       "revId": "a7dfa8037180ae7084555c4a71bb698d216df08a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
