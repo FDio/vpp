@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "224f881f_abcb0299",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-09-02T14:34:06Z",
+      "side": 1,
+      "message": "I think the change is good, but it\u0027s only half-work. The second part of the loop, where the fail exists, but contains only some packets and waits for more, will hammer the vpp the same way. Could use inotify to monitor file size change to make this complete.",
+      "revId": "096dc51302e7893a82918140fabc4360de68d45f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
