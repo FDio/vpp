@@ -62,12 +62,17 @@ cd "${build_dir}"
 tar -czf fd.io-vpp.tgz "$(basename ${covdir})"
 rm -rf "${covdir}"
 
-# Submit the build
-echo curl --form token="${token}" \
-	--form email="${email}" \
-	--form file=@fd.io-vpp.tgz \
-	--form version="${version}" \
-	--form description="master:${version}"  \
-	"${url}/builds?project=${project_encoded}"
+# Submit the build only from the production namespace
+if [ "${FDIO_NAMESPACE:-}" = "prod" ]; then
+	curl --fail --show-error --silent \
+		--form token="${token}" \
+		--form email="${email}" \
+		--form file=@fd.io-vpp.tgz \
+		--form version="${version}" \
+		--form description="master:${version}"  \
+		"${url}/builds?project=${project_encoded}"
+else
+	echo "Skipping Coverity upload: FDIO_NAMESPACE is not prod."
+fi
 
 # All done!
