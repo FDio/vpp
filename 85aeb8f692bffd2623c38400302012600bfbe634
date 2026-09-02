@@ -1,0 +1,40 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "20230404_f74fc552",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-09-02T20:45:46Z",
+      "side": 1,
+      "message": "PS3 completes the local fix: get_capture checks PG status once, then waits via inotify for PCAP creation or a size/mtime change before every retry, including partial captures. A pg stream complete API event would be a larger VPP/API change and can be considered separately; expected_count plus the existing timeout provide the completion condition here.",
+      "parentUuid": "a280a595_c67a01dd",
+      "revId": "85aeb8f692bffd2623c38400302012600bfbe634",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "136e082b_090d3837",
+        "filename": "test/test_pg_capture.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-09-02T20:45:46Z",
+      "side": 1,
+      "message": "Removed in PS3. The regression test now mocks only methods on this pg interface instance; os.path.isfile is no longer patched process-wide. A second test covers waiting for a partial capture to change.",
+      "parentUuid": "7a064cb7_dc282a5f",
+      "revId": "85aeb8f692bffd2623c38400302012600bfbe634",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
