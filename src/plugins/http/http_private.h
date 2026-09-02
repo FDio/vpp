@@ -22,23 +22,27 @@ static const http_token_t http2_conn_preface = { http_token_lit (
 
 static const http_token_t http_masque_draft03_path = { http_token_lit ("/") };
 
-#define foreach_http_wrk_stat                                                 \
-  _ (proto_errors, "connections protocol error")                              \
-  _ (connections_timeout, "connections timeout")                              \
-  _ (connections_accepted, "connections accepted")                            \
-  _ (connections_established, "connections established")                      \
-  _ (connections_reset_by_peer, "connections reset by peer")                  \
-  _ (connections_reset_by_app, "connections reset by app")                    \
-  _ (app_streams_opened, "application streams opened")                        \
-  _ (app_streams_closed, "application streams closed")                        \
-  _ (ctrl_streams_opened, "control streams opened")                           \
-  _ (ctrl_streams_closed, "control streams closed")                           \
-  _ (stream_reset_by_peer, "streams reset by peer")                           \
-  _ (stream_reset_by_app, "streams reset by app")                             \
-  _ (requests_received, "requests received")                                  \
-  _ (requests_sent, "requests sent")                                          \
-  _ (responses_received, "responses received")                                \
-  _ (responses_sent, "responses sent")
+#define foreach_http_wrk_stat                                                                      \
+  _ (proto_errors, "connections protocol error")                                                   \
+  _ (connections_timeout, "connections timeout")                                                   \
+  _ (connections_accepted, "connections accepted")                                                 \
+  _ (connections_established, "connections established")                                           \
+  _ (connections_reset_by_peer, "connections reset by peer")                                       \
+  _ (connections_reset_by_app, "connections reset by app")                                         \
+  _ (app_streams_opened, "application streams opened")                                             \
+  _ (app_streams_closed, "application streams closed")                                             \
+  _ (ctrl_streams_opened, "control streams opened")                                                \
+  _ (ctrl_streams_closed, "control streams closed")                                                \
+  _ (stream_reset_by_peer, "streams reset by peer")                                                \
+  _ (stream_reset_by_app, "streams reset by app")                                                  \
+  _ (requests_received, "requests received")                                                       \
+  _ (requests_sent, "requests sent")                                                               \
+  _ (responses_received, "responses received")                                                     \
+  _ (responses_sent, "responses sent")                                                             \
+  _ (goaway_received, "goaway frames received")                                                    \
+  _ (ts_fifo_efull, "ts tx fifo efull")                                                            \
+  _ (ts_fifo_egrow, "ts tx fifo egrow")                                                            \
+  _ (as_fifo_efull, "as rx fifo efull")
 
 typedef struct
 {
@@ -591,7 +595,24 @@ typedef http_sm_result_t (*http_sm_handler) (http_ctx_t *hc, http_ctx_t *req,
   (const char *) ((_rx_buf) + (_req)->headers_offset + (_fl)->value_offset),  \
     (_fl)->value_len
 
-u8 *format_http_req_state (u8 *s, va_list *va);
+extern http_main_t http_main;
+
+static_always_inline http_worker_t *
+http_worker_get (clib_thread_index_t thread_index)
+{
+  return &http_main.wrk[thread_index];
+}
+
+#define _(name, str)                                                                               \
+  static_always_inline void http_stats_##name##_inc (clib_thread_index_t thread_index)             \
+  {                                                                                                \
+    http_worker_t *wrk = http_worker_get (thread_index);                                           \
+    wrk->stats.name++;                                                                             \
+  }
+foreach_http_wrk_stat
+#undef _
+
+  u8 *format_http_req_state (u8 *s, va_list *va);
 u8 *format_http_conn_state (u8 *s, va_list *args);
 u8 *format_http_conn_flags (u8 *s, va_list *args);
 u8 *format_http_req_flags (u8 *s, va_list *args);
@@ -1133,7 +1154,13 @@ http_io_ts_write (http_ctx_t *hc, u8 *data, u32 len, transport_send_params_t *sp
   else
     {
       if (PREDICT_FALSE (n_written <= 0))
-	return 0;
+	{
+	  if (n_written == SVM_FIFO_EGROW)
+	    http_stats_ts_fifo_egrow_inc (hc->c_thread_index);
+	  else
+	    http_stats_ts_fifo_efull_inc (hc->c_thread_index);
+	  return 0;
+	}
     }
 
   if (sp)
@@ -1158,7 +1185,13 @@ http_io_ts_write_segs (http_ctx_t *hc, const svm_fifo_seg_t segs[], u32 n_segs,
   else
     {
       if (PREDICT_FALSE (n_written <= 0))
-	return 0;
+	{
+	  if (n_written == SVM_FIFO_EGROW)
+	    http_stats_ts_fifo_egrow_inc (hc->c_thread_index);
+	  else
+	    http_stats_ts_fifo_efull_inc (hc->c_thread_index);
+	  return 0;
+	}
     }
 
   if (sp)
@@ -1311,14 +1344,6 @@ http_conn_established (http_ctx_t *hc, http_ctx_t *req, u32 parent_app_api_ctx)
   return 0;
 }
 
-extern http_main_t http_main;
-
-static_always_inline http_worker_t *
-http_worker_get (clib_thread_index_t thread_index)
-{
-  return &http_main.wrk[thread_index];
-}
-
 static_always_inline http_ctrl_msg_t *
 http_conn_alloc_ctrl_msg (http_ctx_t *hc)
 {
@@ -1329,15 +1354,5 @@ http_conn_alloc_ctrl_msg (http_ctx_t *hc)
 		       clib_llist_elt (wrk->ctrl_msg_pool, hc->pending_ctrl_frames));
   return msg;
 }
-
-#define _(name, str)                                                          \
-  static_always_inline void http_stats_##name##_inc (                         \
-    clib_thread_index_t thread_index)                                         \
-  {                                                                           \
-    http_worker_t *wrk = http_worker_get (thread_index);                      \
-    wrk->stats.name++;                                                        \
-  }
-foreach_http_wrk_stat
-#undef _
 
 #endif /* SRC_PLUGINS_HTTP_HTTP_PRIVATE_H_ */

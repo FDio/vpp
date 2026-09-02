@@ -1085,6 +1085,7 @@ http1_req_state_transport_io_more_data (http_ctx_t *hc, http_ctx_t *req,
   if (max_enq == 0)
     {
       HTTP_DBG (1, "app's rx fifo full");
+      http_stats_as_fifo_efull_inc (hc->c_thread_index);
       http_io_as_add_want_deq_ntf (req);
       return HTTP_SM_STOP;
     }
@@ -1140,6 +1141,7 @@ http1_req_state_tunnel_rx (http_ctx_t *hc, http_ctx_t *req, transport_send_param
   if (max_enq == 0)
     {
       HTTP_DBG (1, "app's rx fifo full");
+      http_stats_as_fifo_efull_inc (hc->c_thread_index);
       http_io_as_add_want_deq_ntf (req);
       return HTTP_SM_STOP;
     }
@@ -1239,6 +1241,7 @@ http1_req_state_udp_tunnel_rx_inline (http_ctx_t *hc, http_ctx_t *req, transport
       if (http_io_as_max_write (req) < dgram_size)
 	{
 	  HTTP_DBG (1, "app's rx fifo full");
+	  http_stats_as_fifo_efull_inc (hc->c_thread_index);
 	  http_io_as_add_want_deq_ntf (req);
 	  goto done;
 	}
@@ -1310,6 +1313,7 @@ http1_req_state_wait_app_reply (http_ctx_t *hc, http_ctx_t *req, transport_send_
 		      http_io_ts_fifo_size (hc, 0)))))
     {
       HTTP_DBG (1, "http_io_ts_provision_chunks failed");
+      http_stats_ts_fifo_egrow_inc (hc->c_thread_index);
       return HTTP_SM_STOP;
     }
 
@@ -1425,6 +1429,7 @@ http1_req_state_wait_app_method (http_ctx_t *hc, http_ctx_t *req, transport_send
 		  http_io_ts_fifo_size (hc, 0)))))
     {
       HTTP_DBG (1, "http_io_ts_provision_chunks failed");
+      http_stats_ts_fifo_egrow_inc (hc->c_thread_index);
       return HTTP_SM_STOP;
     }
 
@@ -1590,6 +1595,7 @@ http1_req_state_app_io_more_data (http_ctx_t *hc, http_ctx_t *req, transport_sen
   if (max_write == 0)
     {
       HTTP_DBG (1, "ts tx fifo full");
+      http_stats_ts_fifo_efull_inc (hc->c_thread_index);
       goto check_fifo;
     }
 
@@ -1648,6 +1654,7 @@ http1_req_state_app_io_more_streaming_data (http_ctx_t *hc, http_ctx_t *req,
   if (max_write < chunk_sz_value_headroom)
     {
       HTTP_DBG (1, "ts tx fifo full - before write");
+      http_stats_ts_fifo_efull_inc (hc->c_thread_index);
       goto check_fifo;
     }
   chunk_size = http_buffer_get_segs (hb, max_write - chunk_sz_value_headroom,
@@ -1660,7 +1667,10 @@ http1_req_state_app_io_more_streaming_data (http_ctx_t *hc, http_ctx_t *req,
     }
   /* make sure ts tx fifo can actually buffer chunk */
   if (PREDICT_FALSE (http_io_ts_provision_chunks (hc, chunk_size + chunk_sz_value_headroom)))
-    goto check_fifo;
+    {
+      http_stats_ts_fifo_egrow_inc (hc->c_thread_index);
+      goto check_fifo;
+    }
 
   /* Write chunk size in hex */
   hdr_len = snprintf ((char *) chunk_hdr, sizeof (chunk_hdr), "%x\r\n", chunk_size);
@@ -1713,6 +1723,7 @@ http1_req_state_tunnel_tx (http_ctx_t *hc, http_ctx_t *req, transport_send_param
   if (max_enq == 0)
     {
       HTTP_DBG (1, "ts tx fifo full");
+      http_stats_ts_fifo_efull_inc (hc->c_thread_index);
       goto check_fifo;
     }
   max_read = clib_min (max_enq, max_deq);
@@ -1759,12 +1770,16 @@ http1_req_state_udp_tunnel_tx_inline (http_ctx_t *hc, http_ctx_t *req, transport
 	  (hdr.data_length + HTTP_UDP_PROXY_DATAGRAM_CAPSULE_OVERHEAD))
 	{
 	  HTTP_DBG (1, "ts tx fifo full");
+	  http_stats_ts_fifo_efull_inc (hc->c_thread_index);
 	  goto done;
 	}
       /* make sure ts tx fifo can actually buffer capsule */
       if (PREDICT_FALSE (http_io_ts_provision_chunks (
 	    hc, hdr.data_length + HTTP_UDP_PROXY_DATAGRAM_CAPSULE_OVERHEAD)))
-	goto done;
+	{
+	  http_stats_ts_fifo_egrow_inc (hc->c_thread_index);
+	  goto done;
+	}
 
       /* create capsule header */
       payload = http_encap_udp_payload_datagram (buf, hdr.data_length, is_draft03);
