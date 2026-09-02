@@ -334,6 +334,91 @@ class TestSpan(VppTestCase):
 
         self.verify_capture(pg1_pkts, pg2_decaped)
 
+    def test_span_l2_rx_dst_two_gre_erspan_share_sequence(self):
+        """SPAN l2 rx mirror into two gre-erspan sharing a sequence object"""
+
+        self.sub_if.admin_up()
+
+        gre_if1 = VppGreInterface(
+            self,
+            self.pg2.local_ip4,
+            self.pg2.remote_ip4,
+            session=543,
+            type=(VppEnum.vl_api_gre_tunnel_type_t.GRE_API_TUNNEL_TYPE_ERSPAN),
+        )
+        gre_if2 = VppGreInterface(
+            self,
+            self.pg2.local_ip4,
+            self.pg2.remote_ip4,
+            session=544,
+            type=(VppEnum.vl_api_gre_tunnel_type_t.GRE_API_TUNNEL_TYPE_ERSPAN),
+        )
+
+        gre_if1.add_vpp_config()
+        gre_if2.add_vpp_config()
+        gre_if1.admin_up()
+        gre_if2.admin_up()
+        self.bridge(gre_if1.sw_if_index)
+        self.bridge(gre_if2.sw_if_index)
+        self.xconnect(self.sub_if.sw_if_index, self.pg1.sw_if_index)
+
+        pkts = self.create_stream(self.pg0, self.pg_if_packet_sizes, do_dot1=True)[:4]
+        self.pg0.add_stream(pkts)
+        self.vapi.sw_interface_span_enable_disable(
+            self.sub_if.sw_if_index, gre_if1.sw_if_index, is_l2=1
+        )
+        self.vapi.sw_interface_span_enable_disable(
+            self.sub_if.sw_if_index, gre_if2.sw_if_index, is_l2=1
+        )
+
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        self.pg1.get_capture(len(pkts))
+        mirrored = self.pg2.get_capture(2 * len(pkts))
+        sessions = {packet[ERSPAN].session_id for packet in mirrored}
+        self.assertEqual(sessions, {543, 544})
+
+        sequence_numbers = []
+        for packet in mirrored:
+            self.decap_erspan(packet, packet[ERSPAN].session_id)
+            gre_bytes = bytes(packet[GRE])
+            self.assertEqual(int.from_bytes(gre_bytes[0:2], "big") & 0x1000, 0x1000)
+            sequence_numbers.append(int.from_bytes(gre_bytes[4:8], "big"))
+
+        self.assertEqual(
+            sorted(sequence_numbers),
+            list(range(min(sequence_numbers), min(sequence_numbers) + len(mirrored))),
+        )
+
+        self.vapi.sw_interface_span_enable_disable(
+            self.sub_if.sw_if_index, gre_if1.sw_if_index, state=0, is_l2=1
+        )
+        self.bridge(gre_if1.sw_if_index, is_add=0)
+        gre_if1.remove_vpp_config()
+
+        pkts = self.create_stream(self.pg0, self.pg_if_packet_sizes, do_dot1=True)[:2]
+        self.pg0.add_stream(pkts)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        self.pg1.get_capture(len(pkts))
+        mirrored = self.pg2.get_capture(len(pkts))
+        self.assertEqual({packet[ERSPAN].session_id for packet in mirrored}, {544})
+        remaining_sequence_numbers = []
+        for packet in mirrored:
+            self.decap_erspan(packet, 544)
+            gre_bytes = bytes(packet[GRE])
+            remaining_sequence_numbers.append(int.from_bytes(gre_bytes[4:8], "big"))
+        self.assertTrue(min(remaining_sequence_numbers) > max(sequence_numbers))
+
+        self.vapi.sw_interface_span_enable_disable(
+            self.sub_if.sw_if_index, gre_if2.sw_if_index, state=0, is_l2=1
+        )
+        self.bridge(gre_if2.sw_if_index, is_add=0)
+        gre_if2.remove_vpp_config()
+        self.xconnect(self.sub_if.sw_if_index, self.pg1.sw_if_index, is_add=0)
+
     def test_span_l2_rx_dst_gre_subif_vtr(self):
         """SPAN l2 rx mirror into gre-subif+vtr"""
 

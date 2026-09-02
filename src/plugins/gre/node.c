@@ -450,7 +450,7 @@ gre_input (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame,
 
   vlib_node_increment_counter (
     vm, is_ipv6 ? gre6_input_node.index : gre4_input_node.index,
-    GRE_ERROR_PKTS_DECAP, n_left_from);
+    GRE_ERROR_PKTS_DECAP, frame->n_vectors);
 
   return frame->n_vectors;
 }

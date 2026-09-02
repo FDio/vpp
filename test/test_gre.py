@@ -645,8 +645,15 @@ class TestGRE(VppTestCase):
             self.pg0.local_ip4,
             self.pg0.remote_ip4,
         )
+        decap_counter_before = self.statistics.get_err_counter(
+            "/err/gre4-input/GRE input packets decapsulated"
+        )
         rx = self.send_and_expect(self.pg0, tx, self.pg0)
         self.verify_decapped_4o4(self.pg0, rx, tx)
+        decap_counter_after = self.statistics.get_err_counter(
+            "/err/gre4-input/GRE input packets decapsulated"
+        )
+        self.assertEqual(decap_counter_after, decap_counter_before + len(tx))
 
         #
         # Send tunneled packets that do not match the tunnel's src
@@ -841,6 +848,53 @@ class TestGRE(VppTestCase):
         # Cleanup
         route_tun_dst.remove_vpp_config()
         route_via_tun.remove_vpp_config()
+        gre_if.remove_vpp_config()
+
+    def test_non_erspan_session_id_is_rejected(self):
+        tunnel_type = VppEnum.vl_api_gre_tunnel_type_t.GRE_API_TUNNEL_TYPE_L3
+        tunnel_mode = VppEnum.vl_api_tunnel_mode_t.TUNNEL_API_MODE_P2P
+
+        with self.vapi.assert_negative_api_retval():
+            self.vapi.gre_tunnel_add_del_v2(
+                is_add=1,
+                tunnel={
+                    "src": self.pg0.local_ip4,
+                    "dst": "1.1.1.2",
+                    "outer_table_id": 0,
+                    "instance": 0xFFFFFFFF,
+                    "type": tunnel_type,
+                    "mode": tunnel_mode,
+                    "flags": 0,
+                    "session_id": 1,
+                    "key": 0,
+                },
+            )
+
+    def test_teib_next_hop_family_matches_gre_underlay(self):
+        e = VppEnum.vl_api_tunnel_mode_t
+        gre_if = VppGreInterface(
+            self,
+            self.pg3.local_ip4,
+            "0.0.0.0",
+            mode=e.TUNNEL_API_MODE_MP,
+        )
+        gre_if.add_vpp_config()
+        gre_if.admin_up()
+        gre_if.config_ip4()
+
+        with self.vapi.assert_negative_api_retval():
+            self.vapi.teib_entry_add_del(
+                is_add=1,
+                entry={
+                    "nh_table_id": 0,
+                    "sw_if_index": gre_if.sw_if_index,
+                    "peer": self.pg3.remote_ip4,
+                    "nh": self.pg2.remote_ip6,
+                },
+            )
+
+        gre_if.unconfig_ip4()
+        gre_if.admin_down()
         gre_if.remove_vpp_config()
 
     def test_gre6(self):

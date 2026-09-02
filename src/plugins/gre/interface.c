@@ -483,11 +483,13 @@ vnet_gre_tunnel_add (vnet_gre_tunnel_add_del_args_t *a, u32 outer_fib_index,
     {
       gre_sn_key_t skey;
       gre_sn_t *gre_sn;
+      uword *p;
 
       gre_mk_sn_key (t, &skey);
-      gre_sn = (gre_sn_t *) hash_get_mem (gm->seq_num_by_key, &skey);
-      if (gre_sn != NULL)
+      p = hash_get_mem (gm->seq_num_by_key, &skey);
+      if (p != NULL)
 	{
+	  gre_sn = (gre_sn_t *) p[0];
 	  gre_sn->ref_count++;
 	  t->gre_sn = gre_sn;
 	}
@@ -592,6 +594,9 @@ vnet_gre_tunnel_add_del (vnet_gre_tunnel_add_del_args_t *a, u32 *sw_if_indexp)
     return VNET_API_ERROR_NO_SUCH_FIB;
 
   if (a->session_id > GTK_SESSION_ID_MAX)
+    return VNET_API_ERROR_INVALID_SESSION_ID;
+
+  if (a->is_add && a->session_id != 0 && a->type != GRE_TUNNEL_TYPE_ERSPAN)
     return VNET_API_ERROR_INVALID_SESSION_ID;
 
   if (a->mode == TUNNEL_MODE_MP && !ip46_address_is_zero (&a->dst))

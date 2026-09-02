@@ -407,6 +407,12 @@ gre_update_adj (vnet_main_t *vnm, u32 sw_if_index, adj_index_t ai)
   adj_flags_t af;
   u32 ti;
 
+  if ((vec_len (gm->tunnel_index_by_sw_if_index) <= sw_if_index) ||
+      (~0 == gm->tunnel_index_by_sw_if_index[sw_if_index]) ||
+      pool_is_free_index (gm->tunnels,
+			  gm->tunnel_index_by_sw_if_index[sw_if_index]))
+    return;
+
   ti = gm->tunnel_index_by_sw_if_index[sw_if_index];
   t = pool_elt_at_index (gm->tunnels, ti);
   af = ADJ_FLAG_NONE;
@@ -478,6 +484,12 @@ mgre_update_adj (vnet_main_t *vnm, u32 sw_if_index, adj_index_t ai)
   teib_entry_t *ne;
   gre_tunnel_t *t;
   u32 ti;
+
+  if ((vec_len (gm->tunnel_index_by_sw_if_index) <= sw_if_index) ||
+      (~0 == gm->tunnel_index_by_sw_if_index[sw_if_index]) ||
+      pool_is_free_index (gm->tunnels,
+			  gm->tunnel_index_by_sw_if_index[sw_if_index]))
+    return;
 
   adj = adj_get (ai);
   ti = gm->tunnel_index_by_sw_if_index[sw_if_index];
