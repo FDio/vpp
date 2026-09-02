@@ -366,15 +366,18 @@ class VppPapiProvider(object):
 
     def connect(self, rx_qlen=None):
         """Connect the API to VPP"""
-        # This might be called before VPP is prepared to listen to the socket
-        retries = 0
-        while not os.path.exists(self.test_class.get_api_sock_path()):
-            time.sleep(0.5)
-            retries += 1
-            if retries > 120:
-                break
         kwargs = {} if rx_qlen is None else {"rx_qlen": rx_qlen}
-        self.vpp.connect(self.name[:63], **kwargs)
+        deadline = time.monotonic() + 60
+        while True:
+            try:
+                self.vpp.connect(self.name[:63], **kwargs)
+                break
+            except (FileNotFoundError, ConnectionRefusedError) as e:
+                self.vpp.disconnect()
+                if time.monotonic() >= deadline:
+                    raise
+                self.test_class.logger.debug("VPP API socket not ready: %s", e)
+                time.sleep(0.1)
         self.papi = self.vpp.api
         self.vpp.register_event_callback(self)
 
