@@ -109,6 +109,7 @@ jobs:
         run: |
           set -euo pipefail
 
+          cd $WORKSPACE
           COVERITY_TOKEN=${{ secrets.FDIO_VPP_COVERITY_TOKEN }} $WORKSPACE/extras/scripts/coverity-build | tee $LOG_DIR/coverity-build.log
 
       - name: AWS S3 Publish Logs
