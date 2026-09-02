@@ -108,15 +108,9 @@ jobs:
       - name: Run Coverity Build Script
         run: |
           set -euo pipefail
-
-            if [ -n "$(which cov-build)" ] ; then
-              {
-                COVERITY_TOKEN=${{ secrets.FDIO_VPP_COVERITY_TOKEN }} \
-                COVERITY_TOOLS=$(dirname $(dirname $(which cov-build))) $WORKSPACE/extras/scripts/coverity-build
-              } | tee $LOG_DIR/coverity-build.log
-            else
-              echo "ERROR: coverity build script is not installed in $PATH!"
-            fi
+          COVERITY_TOKEN=${{ secrets.FDIO_VPP_COVERITY_TOKEN }}
+          COVERITY_TOOLS=$(dirname $BLACK_DUCK_BIN)
+          $WORKSPACE/extras/scripts/coverity-build | tee $LOG_DIR/coverity-build.log
 
       - name: AWS S3 Publish Logs
         if: ${{ always() }}

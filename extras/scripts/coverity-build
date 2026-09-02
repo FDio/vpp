@@ -27,6 +27,11 @@ url=https://scan.coverity.com
 export COV_HOST=$(hostname -f)
 export COV_USER=vpp
 
+NOMAD_CLIENT_FILE="/scratch/nomad/nomad-client"
+if [ -f "$NOMAD_CLIENT_FILE" ] ; then
+    COV_HOST=$(cat "$NOMAD_CLIENT_FILE" | cut -d' ' -f1)
+fi
+
 # Work out where the root and build-root are
 script_dir=$(readlink -f $(dirname $0))
 root_dir=$(readlink -f "${script_dir}/../..")
@@ -35,15 +40,25 @@ build_dir=$(readlink -f "${script_dir}/../../build-root")
 # Location for Coverity things
 covdir="${build_dir}/cov-int"
 COVERITY_TOOLS="${COVERITY_TOOLS-/scratch/cov-analysis-latest}"
+COVERITY_BUILD="$COVERITY_TOOLS/bin/cov-build"
+
+if [ ! -d "$COVERITY_TOOLS" ] ; then
+       echo "ERROR: COVERITY_TOOLS directory missing: $COVERITY_TOOLS"
+       exit 1
+elif [ ! -e "$COVERITY_BUILD" ] ; then
+       echo "ERROR: Coverity build script missing: $COVERITY_BUILD"
+       ls -l "$(dirname $COVERITY_BUILD)"
+       exit 1
+fi
 
 # Before we run the build, check that we can submit one
 check=$(curl -s --form project="${project}" \
 	--form token="${token}" "${url}/api/upload_permitted")
-if [ "${check}" = "Access denied" ]; then
+if [ "${check}" = "Access denied" ] ; then
 	echo "Bad token or project name."
 	exit 1
 fi
-if [ "${check}" != '{"upload_permitted":true}' ]; then
+if [ "${check}" != '{"upload_permitted":true}' ] ; then
 	echo "Upload not permitted; stop now..."
         exit 1
 fi
@@ -55,7 +70,7 @@ version=$(git describe)
 export CCACHE_DISABLE=1
 
 cd "${root_dir}"
-"${COVERITY_TOOLS}/bin/cov-build" --dir "${covdir}" make build-coverity
+"${COVERITY_BUILD}" --dir "${covdir}" make build-coverity
 cd "${build_dir}"
 
 # Tar the build artifacts that scan wants
@@ -63,7 +78,7 @@ tar -czf fd.io-vpp.tgz "$(basename ${covdir})"
 rm -rf "${covdir}"
 
 # Submit the build only from the production namespace
-if [ "${FDIO_NAMESPACE:-}" = "prod" ]; then
+if [ "${FDIO_NAMESPACE:-}" = "prod" ] ; then
 	curl --fail --show-error --silent \
 		--form token="${token}" \
 		--form email="${email}" \
@@ -72,7 +87,7 @@ if [ "${FDIO_NAMESPACE:-}" = "prod" ]; then
 		--form description="master:${version}"  \
 		"${url}/builds?project=${project_encoded}"
 else
-	echo "Skipping Coverity upload: FDIO_NAMESPACE is not prod."
+	echo "Skipping Coverity upload: FDIO_NAMESPACE ($FDIO_NAMESPACE) != 'prod'"
 fi
 
 # All done!
