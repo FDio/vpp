@@ -20,6 +20,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "a280a595_c67a01dd",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-09-02T15:49:51Z",
+      "side": 1,
+      "message": "Instead of trying indirectly determine that the pg stream has been completely sent, would it not be better to create a mechanism in VPP that signals the pg to send a \"pg stream complete\" api message when the last packet of the stream has been processed by an output node or the error-drop node?",
+      "parentUuid": "224f881f_abcb0299",
+      "revId": "096dc51302e7893a82918140fabc4360de68d45f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "7a064cb7_dc282a5f",
         "filename": "test/test_pg_capture.py",
         "patchSetId": 1
