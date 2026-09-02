@@ -345,7 +345,7 @@ session_main_get_worker (clib_thread_index_t thread_index)
   return vec_elt_at_index (session_main.wrk, thread_index);
 }
 
-#define SESSION_DEFERRED_RX_MAX_SEGS 64
+#define SESSION_DEFERRED_RX_MAX_SEGS VLIB_FRAME_SIZE
 
 /** Session-layer cleanup helper for a detached RX FIFO. */
 int session_flush_deferred_rx_fifo (svm_fifo_t *f);

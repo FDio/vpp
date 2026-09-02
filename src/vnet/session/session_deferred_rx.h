@@ -11,7 +11,9 @@
 
 /* All operations must run on the session's owning thread. */
 
-typedef svm_fifo_seg_t session_deferred_rx_segment_t;
+/* The opaque value is owned by the session layer.  The experimental take API
+ * below allows a built-in application to retain it until release. */
+typedef svm_fifo_async_seg_t session_deferred_rx_segment_t;
 
 /**
  * Enable or disable deferred RX copying for a session.
@@ -37,6 +39,21 @@ session_deferred_rx_segment_t *session_get_deferred_rx_segments (session_t *s, u
  * after consuming data from the RX FIFO.
  */
 int session_consume_deferred_rx_segments (session_t *s, u32 n_segs);
+
+/**
+ * Take ownership of all currently deferred payload segments.
+ *
+ * Unlike session_consume_deferred_rx_segments(), this does not release the
+ * opaque buffer references.  The caller must copy the segment descriptors and
+ * valid opaque values before returning from the RX callback, then release the
+ * references on the owning worker with session_release_deferred_rx_buffers().
+ * Partial takes are deliberately not supported by this measurement API.
+ */
+int session_take_deferred_rx_segments (session_t *s, u32 n_segs);
+
+/** Release buffer references previously retained by a successful take. */
+void session_release_deferred_rx_buffers (u32 thread_index, const u32 *buffer_refs,
+					  u32 n_buffer_refs);
 
 /** Copy all remaining deferred payload into the RX FIFO. */
 int session_flush_deferred_rx (session_t *s);
