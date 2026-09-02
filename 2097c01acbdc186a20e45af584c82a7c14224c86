@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "80113407_f0a9f85c",
+        "filename": ".github/actions/vpp-build/action.yml",
+        "patchSetId": 4
+      },
+      "lineNbr": 145,
+      "author": {
+        "id": 3121
+      },
+      "writtenOn": "2026-09-02T17:57:18Z",
+      "side": 1,
+      "message": "Use the same error message as the HST case: `BUILD_ERROR\u003d\"FAILED ASAN requires BUILD_TYPE\u003ddebug\"`",
+      "range": {
+        "startLine": 145,
+        "startChar": 10,
+        "endLine": 145,
+        "endChar": 66
+      },
+      "revId": "2097c01acbdc186a20e45af584c82a7c14224c86",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "dccbe5a9_d91e4070",
+        "filename": ".github/actions/vpp-build/action.yml",
+        "patchSetId": 4
+      },
+      "lineNbr": 158,
+      "author": {
+        "id": 3121
+      },
+      "writtenOn": "2026-09-02T17:57:18Z",
+      "side": 1,
+      "message": "The indentation does not look correct.",
+      "range": {
+        "startLine": 144,
+        "startChar": 0,
+        "endLine": 158,
+        "endChar": 3
+      },
+      "revId": "2097c01acbdc186a20e45af584c82a7c14224c86",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "073dadd0_9a9b4f0a",
+        "filename": ".github/actions/vpp-build/action.yml",
+        "patchSetId": 4
+      },
+      "lineNbr": 180,
+      "author": {
+        "id": 3121
+      },
+      "writtenOn": "2026-09-02T17:57:18Z",
+      "side": 1,
+      "message": "This should be `BUILD_STYLE`.",
+      "range": {
+        "startLine": 180,
+        "startChar": 79,
+        "endLine": 180,
+        "endChar": 93
+      },
+      "revId": "2097c01acbdc186a20e45af584c82a7c14224c86",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
