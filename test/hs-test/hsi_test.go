@@ -265,15 +265,9 @@ func setupHsiUdpMigrationTest(s *HsiSuite) {
 	s.CpusPerVppContainer = 3
 	s.SetupTest()
 
+	// SetupTest steers client and server ingress to separate workers.
 	vpp := s.Containers.Vpp.VppInstance
-	numWorkers := len(s.Containers.Vpp.AllocatedCpus) - 1
-	AssertEqual(2, numWorkers)
-	for queueID := range numWorkers {
-		Log(vpp.Vppctl("set interface rx-placement %s queue %d worker 0",
-			s.Interfaces.Client.VppName(), queueID))
-		Log(vpp.Vppctl("set interface rx-placement %s queue %d worker 1",
-			s.Interfaces.Server.VppName(), queueID))
-	}
+	AssertEqual(2, vpp.CpuConfig.NumWorkers)
 	Log(vpp.Vppctl("show interface rx-placement"))
 }
 
@@ -500,6 +494,10 @@ func HsiProxyLiteUdpRepeatedMigrationIdleMWTest(s *HsiSuite) {
 func HsiProxyLiteDrainCacheOverflowTest(s *HsiSuite) {
 	s.SetupNginxServer()
 	vpp := s.Containers.Vpp.VppInstance
+
+	Log(vpp.Vppctl("set nsim poll-main-thread delay 100 ms bandwidth 40 gbit"))
+	Log(vpp.Vppctl("nsim output-feature enable-disable " + s.Interfaces.Server.VppName()))
+
 	Log(vpp.Vppctl("hsi tcp drain-cache max-packets 1"))
 	s.StartProxyLiteTcp4("hsi-offload", "fifo-size 4k")
 
@@ -508,7 +506,7 @@ func HsiProxyLiteDrainCacheOverflowTest(s *HsiSuite) {
 
 	uri := fmt.Sprintf("http://%s:%d/upload/hsi-proxy-lite-overflow", s.ServerAddr(), s.Ports.Server)
 	finished := startCurlHttpRequest(uri, s.NetNamespaces.Client, "201", 10,
-		"-T", uploadFileName, "-H", "Expect:", "--limit-rate", "256k")
+		"-T", uploadFileName, "-H", "Expect:")
 
 	WaitProxyLiteTracked(vpp, func() {})
 
@@ -533,8 +531,10 @@ func HsiProxyLiteDrainTimeoutTest(s *HsiSuite) {
 
 	WaitProxyLiteTracked(vpp, func() {})
 
-	AssertNotNil(<-finished)
-	hsi := WaitHsiContains(vpp, "tcp-drain-stalled 1")
+	err := <-finished
+	AssertNotNil(err)
+	AssertContains(err.Error(), "Connection reset by peer")
+	hsi := WaitHsiCounterAtLeast(vpp, "tcp-drain-stalled", 1)
 	Log(hsi)
 	AssertProxyLiteSessionsCleaned(s)
 }

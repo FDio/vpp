@@ -1,8 +1,8 @@
-name: periodic-vpp-verify-dpdk-rdma-ver
+name: periodic-vpp-coverity
 
 on:
   schedule:
-    - cron: '0 2 * * *'  # Runs daily at 2am UTC
+    - cron: '0 3 * * *'  # Runs daily at 3am UTC
   workflow_dispatch:
     inputs:
       FDIO_NAMESPACE:
@@ -27,9 +27,9 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  verify-dpdk-rdma-version:
+  coverity-build:
     # yamllint disable-line rule:line-length
-    name: dpdk-rdma-ver-${{ matrix.os }}-${{ matrix.executor_arch }}-${{ github.event.inputs.FDIO_NAMESPACE || 'prod' }}
+    name: coverity-build-${{ matrix.os }}-${{ matrix.executor_arch }}-${{ github.event.inputs.FDIO_NAMESPACE || 'prod' }}
     runs-on:
       - self-hosted
       - nomad
@@ -42,7 +42,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        build_type: ['release']
+        build_type: ['debug']
         class: ['builder']
         os: ['ubuntu2404']
         executor_arch: ['x86_64']
@@ -66,7 +66,7 @@ jobs:
         run: |
           set -euxo pipefail
           ts="$(date -u +%Y_%m_%d_%H%M%S_UTC)"
-          LOG_NAME="dpdk-rdma-version-master-${ts}-${{ matrix.build_type }}-${{ matrix.class }}-${{ matrix.os }}-${{ env.FDIO_NAMESPACE }}-${{ matrix.executor_arch }}"
+          LOG_NAME="coverity-build-master-${ts}-${{ matrix.build_type }}-${{ matrix.class }}-${{ matrix.os }}-${{ env.FDIO_NAMESPACE }}-${{ matrix.executor_arch }}"
           echo "LOG_NAME=$LOG_NAME" >> "$GITHUB_ENV"
           LOG_DIR="$WORKSPACE/logs/$LOG_NAME"
           echo "LOG_DIR=$LOG_DIR" >> "$GITHUB_ENV"
@@ -105,25 +105,18 @@ jobs:
           WORKSPACE: ${{ env.WORKSPACE }}
           TUI_LINE: ${{ env.TUI_LINE }}
 
-      - name: Build VPP and Verify DPDK RDMA driver
+      - name: Run Coverity Build Script
         run: |
           set -euo pipefail
 
-          EXTERNAL_BUILD_DIR="$WORKSPACE/build/external"
-          RETVAL="0"
-          RESULT="pass"
-          MISMATCH_RESULT="INCLUDED IN"
-
-          make -C "$EXTERNAL_BUILD_DIR" build-deb | tee "$LOG_DIR/build_deb.log"
-          source "$EXTERNAL_BUILD_DIR/dpdk_mlx_default.sh" || true
-
-          if [ "${DPDK_MLX_DEFAULT-}" = "n" ] ; then
-              MISMATCH_RESULT="MISSING FROM"
-              RETVAL="1"
-              RESULT="fail"
-          fi
-          echo -e "\n$TUI_LINE\n* MLX DPDK DRIVER $MISMATCH_RESULT VPP-EXT-DEPS PACKAGE\n$TUI_LINE\n" | tee "$LOG_DIR/result_${RESULT}.log"
-          exit $RETVAL
+            if [ -n "$(which cov-build)" ] ; then
+              {
+                COVERITY_TOKEN=${{ secrets.FDIO_VPP_COVERITY_TOKEN }} \
+                COVERITY_TOOLS=$(dirname $(dirname $(which cov-build))) $WORKSPACE/extras/scripts/coverity-build
+              } | tee $LOG_DIR/coverity-build.log
+            else
+              echo "ERROR: coverity build script is not installed in $PATH!"
+            fi
 
       - name: AWS S3 Publish Logs
         if: ${{ always() }}

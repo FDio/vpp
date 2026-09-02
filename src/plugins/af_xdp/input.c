@@ -465,9 +465,9 @@ void
 af_xdp_device_input_refill (af_xdp_device_t *ad)
 {
   vlib_main_t *vm = vlib_get_main ();
-  af_xdp_rxq_t *rxq;
-  vec_foreach (rxq, ad->rxqs)
-    af_xdp_device_input_refill_inline (vm, 0, ad, rxq);
+
+  for (u32 i = 0; i < ad->rxq_num; i++)
+    af_xdp_device_input_refill_inline (vm, 0, ad, vec_elt_at_index (ad->rxqs, i));
 }
 #endif /* CLIB_MARCH_VARIANT */
 

@@ -248,7 +248,7 @@ hsi_udp_send_cleanup_pair_once (session_handle_t session_handle,
       return;
     }
 
-  s = session_get_from_handle_safe (session_handle);
+  s = session_get_from_handle_if_valid (session_handle);
   if (!s || session_get_transport_proto (s) != TRANSPORT_PROTO_UDP ||
       !hsi_session_is_hsi_owned (s) || !hsi_udp_session_is_cleanup_ready (s))
     session_handle = peer_session_handle;
@@ -897,7 +897,7 @@ hsi_udp_drain_start_rpc (void *arg)
   udp_connection_t *uc, *peer_uc;
 
   s = session_get_from_handle_if_valid (sh);
-  peer_s = session_get_from_handle_safe (peer_sh);
+  peer_s = hsi_session_peer_get_if_valid (peer_sh);
   if (!s || !peer_s)
     {
       hsi_worker_counter_inc (hsi_worker_get (vlib_get_thread_index ()), udp_track_peer_rpc_failed);

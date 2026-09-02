@@ -15,13 +15,25 @@
 
 set -eEo pipefail
 
+#
+# If caller sets CHECKSTYLE_COMMIT, check that commit, otherwise default to
+# checking the most recent commit.
+#
+# Examples:
+#
+#   CHECKSTYLE_COMMIT=HEAD~3 checkstyle.sh
+#   CHECKSTYLE_COMMIT=<hash> checkstyle.sh
+#
+: ${CHECKSTYLE_COMMIT:=HEAD}
+echo Checking commit "${CHECKSTYLE_COMMIT}"
+
 CLANG_FORMAT_VER_REGEX='([0-9]+)\.[0-9]+\.[0-9]+'
 CLANG_FORMAT_DIFF="/usr/share/clang/clang-format-diff.py"
 
 # TODO: Remove clang-format-${CLANG_FORMAT_VER} from 'make install-deps' when
 #       CLANG_FORMAT_VER default value is upgraded to 15 after Ubuntu-20.04 is deprecated
 CLANG_FORMAT_VER=${CLANG_FORMAT_VER:-11}
-GIT_DIFF_ARGS="-U0 --no-color --relative HEAD~1"
+GIT_DIFF_ARGS="-U0 --no-color --relative ${CHECKSTYLE_COMMIT}~1 ${CHECKSTYLE_COMMIT}"
 GIT_DIFF_EXCLUDE_LIST=(
     ':!*.patch'
     ':(exclude)*src/vppinfra/dlmalloc.*'

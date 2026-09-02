@@ -1527,10 +1527,12 @@ class BFD4TestCase(VppTestCase):
         bfd_session_up(self)
         poll = self.test_session.create_packet()
         poll[BFD].flags = "P"
+        # Record the cutoff before sending the poll.  VPP can produce the
+        # final response before send_packet() returns; computing it afterwards
+        # can therefore discard the response we are trying to validate.
+        pcap_time_min = time.time() - self.vpp_clock_offset
         self.test_session.send_packet(poll)
-        final = wait_for_bfd_packet(
-            self, pcap_time_min=time.time() - self.vpp_clock_offset
-        )
+        final = wait_for_bfd_packet(self, pcap_time_min=pcap_time_min)
         self.assertIn("F", final.sprintf("%BFD.flags%"))
 
     def test_no_periodic_if_remote_demand(self):

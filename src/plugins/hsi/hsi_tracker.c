@@ -157,6 +157,52 @@ hsi_session_cleanup (session_t *s)
 }
 
 static void
+hsi_handle_cleanups (f64 time_now, u8 thread_index)
+{
+  hsi_worker_t *wrk;
+  session_t *s;
+  hsi_cleanup_req_t *req;
+
+  wrk = hsi_worker_get (thread_index);
+  while (clib_fifo_elts (wrk->pending_cleanups))
+    {
+      req = clib_fifo_head (wrk->pending_cleanups);
+      if (req->free_time > time_now)
+	break;
+      clib_fifo_sub2 (wrk->pending_cleanups, req);
+      s = session_get_from_handle_if_valid (req->sh);
+      if (s)
+	hsi_session_cleanup (s);
+    }
+
+  if (!clib_fifo_elts (wrk->pending_cleanups))
+    {
+      session_register_update_time_fn_w_thread (hsi_handle_cleanups, 0, thread_index);
+      wrk->pending_cleanups_registered = 0;
+    }
+}
+
+void
+hsi_session_program_cleanup (session_t *s)
+{
+  clib_thread_index_t thread_index = s->thread_index;
+  hsi_worker_t *wrk;
+  hsi_cleanup_req_t *req;
+  f64 now;
+
+  wrk = hsi_worker_get (thread_index);
+  now = vlib_time_now (vlib_get_main ());
+  clib_fifo_add2 (wrk->pending_cleanups, req);
+  req->sh = session_handle (s);
+  req->free_time = now + hsi_main.postponed_cleanup_time;
+  if (!wrk->pending_cleanups_registered)
+    {
+      session_register_update_time_fn_w_thread (hsi_handle_cleanups, 1, thread_index);
+      wrk->pending_cleanups_registered = 1;
+    }
+}
+
+static void
 hsi_session_cleanup_rpc (void *arg)
 {
   session_handle_tu_t sh = { .handle = pointer_to_uword (arg) };

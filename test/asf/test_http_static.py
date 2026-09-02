@@ -130,7 +130,7 @@ class TestHttpStaticVapi(VppAsfTestCase):
         # Now enable again
         self.vapi.http_static_enable_v5(
             www_root="/tmp",
-            uri="http://0.0.0.0:80",
+            uri="http://10.10.1.2:80",
         )
         self.temp2.seek(0)
         process = subprocess.run(
@@ -150,7 +150,7 @@ class TestHttpStaticVapi(VppAsfTestCase):
 
         reply = self.vapi.http_static_get()
         self.assertEqual(reply.www_root, "/tmp")
-        self.assertEqual(reply.uri, "http://0.0.0.0:80")
+        self.assertEqual(reply.uri, "http://10.10.1.2:80")
 
 
 @unittest.skipIf(

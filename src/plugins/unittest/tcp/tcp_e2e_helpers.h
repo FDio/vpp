@@ -31,6 +31,7 @@ typedef struct
   u64 secret;
   u32 rx_fifo_size; /**< 0 -> 4 KB */
   u32 tx_fifo_size; /**< 0 -> 4 KB */
+  u8 client_only;   /**< Return after creating the client half-open. */
 } tcp_e2e_params_t;
 
 typedef struct
@@ -296,6 +297,15 @@ tcp_e2e_setup (vlib_main_t *vm, tcp_e2e_ctx_t *ctx, tcp_e2e_params_t *p)
     {
       clib_warning ("connect failed: %d", error);
       return -1;
+    }
+
+  if (p->client_only)
+    {
+      session_t *ho = session_get_from_handle (connect_args.sh);
+      ctx->client_s = ho;
+      ctx->client_tc =
+	(tcp_connection_t *) transport_get_half_open (TRANSPORT_PROTO_TCP, ho->connection_index);
+      return ctx->client_tc ? 0 : -1;
     }
 
   tries = 0;

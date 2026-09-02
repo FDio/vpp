@@ -712,7 +712,7 @@ def run_forked(testcase_suites):
             for finished_testcase in finished_testcase_suites:
                 # Somewhat surprisingly, the join below may
                 # timeout, even if client signaled that
-                # it finished - so we note it just in case.
+                # it finished - so we terminate it and join it.
                 join_start = time.time()
                 finished_testcase.child.join(test_finished_join_timeout)
                 join_end = time.time()
@@ -721,6 +721,10 @@ def run_forked(testcase_suites):
                         "Timeout joining finished test: %s (pid %d)"
                         % (finished_testcase.last_test, finished_testcase.child.pid)
                     )
+                    finished_testcase.child.terminate()
+                    time.sleep(0.1)
+                    if not finished_testcase.child.is_alive():
+                        finished_testcase.child.join(1.0)
                 finished_testcase.close_pipes()
                 wrapped_testcase_suites.remove(finished_testcase)
                 finished_unread_testcases.add(finished_testcase)

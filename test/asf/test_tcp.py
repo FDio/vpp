@@ -132,6 +132,7 @@ class TestTCPUnitTests(VppAsfTestCase):
             "delivery",
             "persist",
             "rto",
+            "rst",
             "cubic",
             "bt",
             "tamper fin",

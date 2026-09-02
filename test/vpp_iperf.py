@@ -10,6 +10,14 @@ import signal
 from asfframework import VppAsfTestCase
 
 
+def set_iperf_affinity(cpus):
+    """Move an iperf child away from the test driver's VPP CPU."""
+    if cpus:
+        os.sched_setaffinity(0, set(cpus))
+    else:
+        os.sched_setaffinity(0, range(os.cpu_count()))
+
+
 class VppIperf:
     """ "Create an iPerf connection stream between two namespaces.
 
@@ -43,6 +51,7 @@ class VppIperf:
         self.client_args = ""
         self.server_args = ""
         self.logger = logger
+        self.cpus = None
         # Set the iperf executable
         self.iperf = self.get_iperf()
 
@@ -92,6 +101,7 @@ class VppIperf:
                 timeout=self.duration + self.timeout_delay,
                 encoding="utf-8",
                 capture_output=True,
+                preexec_fn=lambda: set_iperf_affinity(self.cpus),
             )
             if result.returncode != 0:
                 raise Exception(
@@ -136,6 +146,7 @@ class VppIperf:
                     timeout=self.duration + self.timeout_delay,
                     encoding="utf-8",
                     capture_output=True,
+                    preexec_fn=lambda: set_iperf_affinity(self.cpus),
                 )
                 transient_error = "unable to connect to server" in (
                     (result.stderr or "").lower()
@@ -200,6 +211,7 @@ def start_iperf(
     server_only=False,
     client_only=False,
     logger=None,
+    cpus=None,
 ):
     """Start an iperf connection stream using the iPerf object.
 
@@ -220,6 +232,7 @@ def start_iperf(
     server_only - start iperf server only
     client_only - start the iperf client only
     logger - test logger
+    cpus - CPUs on which to run the iPerf process
     """
     iperf = VppIperf()
     is_iperf3 = os.path.basename(iperf.iperf) == "iperf3"
@@ -245,6 +258,7 @@ def start_iperf(
     iperf.server_args = server_args
     iperf.duration = duration
     iperf.logger = logger
+    iperf.cpus = cpus
     return iperf.start(server_only=server_only, client_only=client_only)
 
 

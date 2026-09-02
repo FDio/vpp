@@ -11,6 +11,14 @@
 #include <http/http_status_codes.h>
 #include <vppinfra/unix.h>
 
+#define HC_DEBUG 0
+
+#if HC_DEBUG
+#define HC_DBG(_fmt, _args...) clib_warning (_fmt, ##_args)
+#else
+#define HC_DBG(_fmt, _args...)
+#endif
+
 #define foreach_hc_s_flag                                                     \
   _ (1, IS_CLOSED)                                                            \
   _ (2, PRINTABLE_BODY)                                                       \
@@ -30,6 +38,7 @@ typedef struct
   u64 request_count;
   f64 start, end;
   f64 elapsed_time;
+  f64 max_run_time;
 } hc_stats_t;
 
 typedef struct
@@ -190,7 +199,7 @@ hc_session_alloc (hc_worker_t *wrk)
   pool_get_zero (wrk->sessions, s);
   s->session_index = s - wrk->sessions;
   s->thread_index = wrk->thread_index;
-  HTTP_DBG (1, "[%u]%u", s->thread_index, s->session_index);
+  HC_DBG ("[%u]%u", s->thread_index, s->session_index);
 
   return s;
 }
@@ -296,6 +305,7 @@ hc_connect_streams (u64 parent_handle, u32 parent_index)
       s = session_get_from_handle (a->sh);
       hs->http_session_index = s->session_index;
       hs->stats.max_req = hcm->reqs_per_session;
+      hs->stats.max_run_time = hcm->duration;
       hs->stats.start = vlib_time_now (wrk->vlib_main);
       if (hc_request (s, wrk, hs))
 	return -1;
@@ -398,10 +408,12 @@ hc_session_connected_callback (u32 app_index, u32 ho_index, session_t *s,
       return -1;
     }
 
-  ho_session = hc_session_get (ho_index, transport_cl_thread ());
   wrk = hc_worker_get (s->thread_index);
   hc_session = hc_session_alloc (wrk);
   s_index = hc_session->session_index;
+  /* Refetch ho_session after the alloc: hc_session_alloc() may have grown and
+   * reallocated the same pool that ho_session points into, invalidating it. */
+  ho_session = hc_session_get (ho_index, transport_cl_thread ());
   clib_memcpy_fast (hc_session, ho_session, sizeof (*hc_session));
   hc_session->session_index = s_index;
   hc_session->thread_index = s->thread_index;
@@ -415,6 +427,7 @@ hc_session_connected_callback (u32 app_index, u32 ho_index, session_t *s,
   s->opaque = hc_session->session_index;
   wrk->session_index = hc_session->session_index;
 
+  hc_session->stats.max_run_time = hcm->duration;
   if (hcm->multi_session)
     {
       hc_session->stats.max_req = hcm->reqs_per_session;
@@ -499,8 +512,7 @@ hc_session_connected_callback (u32 app_index, u32 ho_index, session_t *s,
   if (http_version >= HTTP_VERSION_2 && hcm->max_streams > 1)
     {
       ASSERT (hc_session->session_flags & HC_S_FLAG_IS_PARENT);
-      HTTP_DBG (1, "parent connected, going to open %u streams",
-		hcm->max_streams - 1);
+      HC_DBG ("parent connected, going to open %u streams", hcm->max_streams - 1);
       hc_session->child_count = hcm->max_streams - 1;
       if (hc_connect_streams (session_handle (s), hc_session->session_index))
 	return -1;
@@ -510,10 +522,9 @@ hc_session_connected_callback (u32 app_index, u32 ho_index, session_t *s,
 }
 
 static void
-hc_session_disconnect_callback (session_t *s)
+hc_session_disconnect (session_t *s)
 {
   hc_main_t *hcm = &hc_main;
-  HTTP_DBG (1, "disconnecting");
   vnet_disconnect_args_t _a = { 0 }, *a = &_a;
   int rv;
   a->handle = session_handle (s);
@@ -527,12 +538,31 @@ hc_session_disconnect_callback (session_t *s)
 }
 
 static void
+hc_session_disconnect_callback (session_t *s)
+{
+  hc_session_t *hc_session;
+
+  HC_DBG ("transport closing [%u]%u", s->thread_index, s->opaque);
+  hc_session = hc_session_get (s->opaque, s->thread_index);
+  /* stop doing new requests */
+  hc_session->stats.max_req = 0;
+  hc_session->stats.max_run_time = 0;
+  if (hc_session->session_flags & HC_S_FLAG_IS_PARENT)
+    {
+      /* parent must be closed last */
+      if (hc_session->child_count)
+	return;
+    }
+  hc_session_disconnect (s);
+}
+
+static void
 hc_session_transport_closed_callback (session_t *s)
 {
   hc_main_t *hcm = &hc_main;
   hc_worker_t *wrk = hc_worker_get (s->thread_index);
 
-  HTTP_DBG (1, "transport closed");
+  HC_DBG ("transport closed [%u]%u", s->thread_index, s->opaque);
   clib_spinlock_lock_if_init (&hcm->lock);
   if (s->session_state == SESSION_STATE_TRANSPORT_CLOSED)
     {
@@ -565,7 +595,7 @@ hc_session_reset_callback (session_t *s)
   hc_worker_t *wrk = hc_worker_get (s->thread_index);
   int rv;
 
-  HTTP_DBG (1, "transport reset");
+  HC_DBG ("transport reset [%u]%u", s->thread_index, s->opaque);
   vlib_process_signal_event_mt (wrk->vlib_main, hcm->cli_node_index,
 				HC_TRANSPORT_CLOSED, 0);
   hc_session = hc_session_get (s->opaque, s->thread_index);
@@ -594,16 +624,16 @@ hc_redirect (session_t *s, hc_worker_t *wrk, hc_session_t *hc_session,
     {
       vlib_process_signal_event_mt (wrk->vlib_main, hcm->cli_node_index,
 				    HC_NO_LOCATION_HEADER, 0);
-      hc_session_disconnect_callback (s);
+      hc_session_disconnect (s);
       return -2;
     }
 
   if (hcm->redirect_count >= hcm->max_redirects)
     {
-      HTTP_DBG (1, "redirect limit hit (count: %d)", hcm->redirect_count);
+      HC_DBG ("redirect limit hit (count: %d)", hcm->redirect_count);
       vlib_process_signal_event_mt (wrk->vlib_main, hcm->cli_node_index,
 				    HC_MAX_REDIRECTS_HIT, 0);
-      hc_session_disconnect_callback (s);
+      hc_session_disconnect (s);
       goto cleanup;
     }
 
@@ -630,7 +660,7 @@ hc_redirect (session_t *s, hc_worker_t *wrk, hc_session_t *hc_session,
 		    rv);
       vlib_process_signal_event_mt (wrk->vlib_main, hcm->cli_node_index,
 				    HC_LOC_PARSE_ERROR, 0);
-      hc_session_disconnect_callback (s);
+      hc_session_disconnect (s);
       send_err = rv;
       goto cleanup;
     }
@@ -649,14 +679,14 @@ hc_redirect (session_t *s, hc_worker_t *wrk, hc_session_t *hc_session,
       vec_add1 (hcm->target, '\0');
     }
 
-  HTTP_DBG (2, "parsed target: %s", hcm->target);
+  HC_DBG ("parsed target: %s", hcm->target);
 
   if ((http_location.uri_type == HTTP_URI_TYPE_RELATIVE) ||
       (ip46_address_is_equal (&hcm->connect_sep.ip,
 			      &http_location.http_authority.ip) &&
        hcm->connect_sep.port == http_location.http_authority.port))
     {
-      HTTP_DBG (2, "relative location header or IPs and ports are identical");
+      HC_DBG ("relative location header or IPs and ports are identical");
 
       wrk->msg.method_type = hcm->req_method;
       wrk->msg.type = HTTP_MSG_REQUEST;
@@ -682,7 +712,7 @@ hc_redirect (session_t *s, hc_worker_t *wrk, hc_session_t *hc_session,
     }
   else
     {
-      HTTP_DBG (2, "connecting to new server");
+      HC_DBG ("connecting to new server");
       hcm->connect_sep.ip = http_location.http_authority.ip;
       hcm->connect_sep.port = http_location.http_authority.port;
       if (http_location.scheme == HTTP_URL_SCHEME_HTTP)
@@ -727,7 +757,7 @@ hc_rx_callback (session_t *s)
   max_deq = svm_fifo_max_dequeue_cons (s->rx_fifo);
   if (PREDICT_FALSE (max_deq == 0))
     {
-      HTTP_DBG (1, "no data to deq");
+      HC_DBG ("no data to deq");
       return 0;
     }
 
@@ -745,9 +775,8 @@ hc_rx_callback (session_t *s)
 	  return -1;
 	}
 
-      HTTP_DBG (1, "hc_session_index[%u]%u %U content-length: %lu",
-		s->thread_index, s->opaque, format_http_status_code, msg.code,
-		msg.data.body_len);
+      HC_DBG ("hc_session_index[%u]%u %U content-length: %lu", s->thread_index, s->opaque,
+	      format_http_status_code, msg.code, msg.data.body_len);
 
       hc_session->sc = msg.code;
 
@@ -773,8 +802,7 @@ hc_rx_callback (session_t *s)
 	    msg.data.headers_len + msg.data.headers_offset;
 
 	  http_build_header_table (&hc_session->resp_headers, msg);
-	  HTTP_DBG (2, "%U", format_hash,
-		    hc_session->resp_headers.value_by_name);
+	  HC_DBG ("%U", format_hash, hc_session->resp_headers.value_by_name);
 	  const http_token_t *content_type = http_get_header (
 	    &hc_session->resp_headers,
 	    http_header_name_token (HTTP_HEADER_CONTENT_TYPE));
@@ -786,9 +814,11 @@ hc_rx_callback (session_t *s)
 		{
 		  u8 mime_len =
 		    clib_strnlen (mime_printable[i], mime_printable_max_len);
+		  /* content_type->base points into the raw, non-NULL-terminated
+		   * header buffer; use a fixed-count compare so we never read
+		   * past content_type->len into the ASAN redzone */
 		  if (content_type->len >= mime_len &&
-		      clib_strncmp (content_type->base, mime_printable[i],
-				    mime_len) == 0)
+		      clib_memcmp (content_type->base, mime_printable[i], mime_len) == 0)
 		    {
 		      hc_session->session_flags |= HC_S_FLAG_PRINTABLE_BODY;
 		      break;
@@ -827,12 +857,16 @@ hc_rx_callback (session_t *s)
 	       svm_fifo_max_dequeue (s->rx_fifo));
   if (!max_deq)
     {
-      HTTP_DBG (1, "body not yet received");
+      HC_DBG ("body not yet received");
       goto done;
     }
   u32 n_deq = clib_min (hc_session->to_recv, max_deq);
   u32 curr = vec_len (hc_session->http_response);
-  rv = svm_fifo_dequeue (s->rx_fifo, n_deq, hc_session->http_response + curr);
+  u8 *data = hc_session->http_response + curr;
+  /* vec_reset_length poisons the reserved capacity under ASAN; unpoison
+   * the destination bytes before dequeuing through the raw pointer */
+  clib_mem_unpoison (data, n_deq);
+  rv = svm_fifo_dequeue (s->rx_fifo, n_deq, data);
   if (rv < 0)
     {
       clib_warning ("app dequeue(n=%d) failed; rv = %d", n_deq, rv);
@@ -852,7 +886,7 @@ hc_rx_callback (session_t *s)
   ASSERT (hc_session->to_recv >= rv);
   hc_session->to_recv -= rv;
   hc_session->body_recv += rv;
-  HTTP_DBG (1, "read %u, left to recv %u", n_deq, hc_session->to_recv);
+  HC_DBG ("read %u, left to recv %u", n_deq, hc_session->to_recv);
   if (hcm->filename)
     {
       if (hc_session->file_ptr == NULL)
@@ -876,35 +910,35 @@ done:
 	{
 	  hc_session->stats.request_count++;
 
-	  if (hc_session->stats.elapsed_time >= hcm->duration &&
+	  if (hc_session->stats.elapsed_time >= hc_session->stats.max_run_time &&
 	      hc_session->stats.request_count >= hc_session->stats.max_req)
 	    {
-	      HTTP_DBG (1, "hc_session [%u]%u repeat done",
-			hc_session->thread_index, hc_session->session_index);
+	      HC_DBG ("hc_session [%u]%u repeat done", hc_session->thread_index,
+		      hc_session->session_index);
 	      if (hc_session->session_flags & HC_S_FLAG_IS_PARENT)
 		{
 		  /* parent must be closed last */
 		  if (hc_session->child_count != 0)
 		    hc_session->session_flags |= HC_S_FLAG_IS_CLOSED;
 		  else
-		    hc_session_disconnect_callback (s);
+		    hc_session_disconnect (s);
 		}
 	      else
 		{
-		  hc_session_disconnect_callback (s);
+		  hc_session_disconnect (s);
 		  hc_session_t *parent = hc_session_get (
 		    hc_session->parent_index, hc_session->thread_index);
 		  parent->child_count--;
 		  if (parent->child_count == 0 &&
 		      parent->session_flags & HC_S_FLAG_IS_CLOSED)
-		    hc_session_disconnect_callback (session_get (
-		      parent->http_session_index, parent->thread_index));
+		    hc_session_disconnect (
+		      session_get (parent->http_session_index, parent->thread_index));
 		}
 	    }
 	  else
 	    {
-	      HTTP_DBG (1, "hc_session [%u]%u doing another repeat",
-			hc_session->thread_index, hc_session->session_index);
+	      HC_DBG ("hc_session [%u]%u doing another repeat", hc_session->thread_index,
+		      hc_session->session_index);
 	      send_err = hc_request (s, wrk, hc_session);
 	      if (send_err)
 		clib_warning ("failed to send request, error %d", send_err);
@@ -926,7 +960,7 @@ done:
 	    default:
 	      vlib_process_signal_event_mt (
 		wrk->vlib_main, hcm->cli_node_index, HC_REPLY_RECEIVED, 0);
-	      hc_session_disconnect_callback (s);
+	      hc_session_disconnect (s);
 	      break;
 	    }
 	}
@@ -934,7 +968,7 @@ done:
 	{
 	  vlib_process_signal_event_mt (wrk->vlib_main, hcm->cli_node_index,
 					HC_REPLY_RECEIVED, 0);
-	  hc_session_disconnect_callback (s);
+	  hc_session_disconnect (s);
 	}
     }
   return 0;
@@ -973,7 +1007,7 @@ hc_tx_callback (session_t *s)
 static void
 hc_ho_cleanup_callback (session_t *s)
 {
-  HTTP_DBG (1, "ho index %u", s->opaque);
+  HC_DBG ("ho index %u", s->opaque);
   hc_worker_t *wrk = hc_worker_get (transport_cl_thread ());
   pool_put_index (wrk->sessions, s->opaque);
 }
@@ -1248,7 +1282,7 @@ static void
 hc_worker_cleanup (hc_worker_t *wrk)
 {
   hc_session_t *hc_session;
-  HTTP_DBG (1, "worker and worker sessions cleanup");
+  HC_DBG ("worker and worker sessions cleanup");
 
   vec_free (wrk->headers_buf);
   pool_foreach (hc_session, wrk->sessions)
@@ -1263,7 +1297,7 @@ hc_worker_cleanup (hc_worker_t *wrk)
 static void
 hc_cleanup ()
 {
-  HTTP_DBG (1, "cleanup");
+  HC_DBG ("cleanup");
   hc_main_t *hcm = &hc_main;
   hc_worker_t *wrk;
   hc_http_header_t *header;

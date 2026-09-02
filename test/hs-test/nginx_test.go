@@ -18,6 +18,7 @@ func init() {
 }
 
 func NginxHttp3Test(s *NoTopoSuite) {
+	s.SkipIfLDPreloadASan()
 	query := "index.html"
 
 	s.Containers.NginxHttp3.Create()
@@ -48,6 +49,7 @@ func NginxHttp3Test(s *NoTopoSuite) {
 }
 
 func NginxAsServerTest(s *NoTopoSuite) {
+	s.SkipIfLDPreloadASan()
 	query := "return_ok"
 	finished := make(chan error, 1)
 
@@ -83,10 +85,12 @@ type nginxPerfInterface interface {
 	VppAddr() string
 	AddNginxVclConfig(bool)
 	CreateNginxConfig(*Container, bool)
+	SkipIfLDPreloadASan()
 }
 
 func runNginxPerf(s nginxPerfInterface, mode, ab_or_wrk string, multiThreadWorkers bool, port string,
 	vpp *VppInstance, nginxCont *Container, wrkCont *Container, abCont *Container) error {
+	s.SkipIfLDPreloadASan()
 	nRequests := 1000000
 	nClients := 1000
 	serverAddress := JoinHostPort(s.VppAddr(), port)

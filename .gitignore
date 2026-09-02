@@ -147,6 +147,7 @@ compile_commands.json
 /test/hs-test/http_server
 /test/hs-test/.build.ok
 /test/hs-test/.build.cov.ok
+/test/hs-test/.last_hst_run_id
 /test/hs-test/.last_hst_ppid
 /test/hs-test/summary/
 /test/hs-test/.last_state_hash

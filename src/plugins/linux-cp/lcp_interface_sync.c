@@ -421,7 +421,7 @@ lcp_itf_interface_add_del (vnet_main_t *vnm, u32 sw_if_index, u32 is_create)
   return NULL;
 }
 
-VNET_SW_INTERFACE_ADD_DEL_FUNCTION (lcp_itf_interface_add_del);
+VNET_SW_INTERFACE_ADD_DEL_FUNCTION_PRIO (lcp_itf_interface_add_del, VNET_ITF_FUNC_PRIORITY_HIGH);
 
 static clib_error_t *
 lcp_itf_sync_init (vlib_main_t *vm)

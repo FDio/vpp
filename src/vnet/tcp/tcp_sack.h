@@ -117,7 +117,6 @@ void tcp_update_sack_list (tcp_connection_t * tc, u32 start, u32 end);
 void tcp_dsack_cleanup (tcp_connection_t *tc);
 void tcp_dsack_recovery_clear (tcp_connection_t *tc);
 void tcp_dsack_recovery_init (tcp_connection_t *tc);
-void tcp_sack_recovery_exit (tcp_connection_t *tc, tcp_ack_flag_t spurious_flags);
 void tcp_dsack_track_retransmit (tcp_connection_t *tc, u32 start, u32 end);
 u32 tcp_sack_list_bytes (tcp_connection_t * tc);
 void tcp_rcv_dsack (tcp_connection_t *tc, u32 ack, tcp_ack_ctx_t *ac);
@@ -151,6 +150,7 @@ void tcp_sack_init_rxt (tcp_connection_t *tc, u32 snd_una);
 void tcp_sack_recompute_loss (tcp_connection_t *tc);
 void tcp_sack_rxt_mark_lost (tcp_connection_t *tc);
 u8 tcp_sack_handle_reneging (tcp_connection_t *tc);
+u8 tcp_sack_is_sane_post_recovery (tcp_connection_t *tc);
 u8 *tcp_scoreboard_replay (u8 *s, tcp_connection_t *tc, u8 verbose);
 
 #endif /* SRC_VNET_TCP_TCP_SACK_H_ */

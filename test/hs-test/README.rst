@@ -182,6 +182,37 @@ passed, failed, skipped, and elapsed-time statistics. With
 contains the final attempt.
 
 
+Running several checkouts at once
+---------------------------------
+
+Every run is identified by ``RUN_ID``, which defaults to the current branch name.
+It names the Ginkgo container that owns the run's network namespace
+(``ginkgo-$RUN_ID``), is part of every container name, and is set as the
+``io.fd.hs-test.run`` label on every container, so runs from different checkouts
+do not collide::
+
+    # in a checkout on branch 'feature-a'
+    $ make test TEST=...
+
+    # in another checkout on branch 'feature-b', at the same time
+    $ make test TEST=...
+
+Characters a container name cannot contain are replaced with ``-``. On a detached
+HEAD the checkout's directory name is used, then the ``make`` process' PID. Pass
+``RUN_ID`` explicitly to run the same branch twice, which would otherwise fail on
+the duplicate container name.
+
+Per-test directories get a short token derived from ``RUN_ID``: VPP's api socket
+is reached through the host side of a container volume, and that path is limited
+to 107 bytes, which a readable ``RUN_ID`` would not fit.
+
+``make cleanup-hst`` removes the containers of one run, selected by label. It uses
+the id recorded in ``.last_hst_run_id`` unless ``RUN_ID`` is given.
+
+Two runs from the *same* checkout are not supported: Ginkgo compiles the suite to
+``hs-test.test`` in the package directory and removes it when the run ends, so the
+runs would delete it under each other.
+
 Modifying the framework
 -----------------------
 

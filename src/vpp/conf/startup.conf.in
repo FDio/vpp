@@ -19,6 +19,7 @@ memory {
 cpu {
   # main-core 1
   # corelist-workers 2-3,18-19
+  # barrier-timeout 5
 }
 
 # buffers {

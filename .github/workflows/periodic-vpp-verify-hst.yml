@@ -24,7 +24,7 @@ permissions:
   actions: read
 
 concurrency:
-  group: required-${{ github.workflow }}-${{ inputs.FDIO_NAMESPACE }}
+  group: ${{ github.workflow }}-${{ inputs.FDIO_NAMESPACE }}
   cancel-in-progress: true
 
 jobs:
@@ -66,7 +66,7 @@ jobs:
       HS_TEST_DIR: /scratch/docker-build/vpp/test/hs-test
       CCACHE_DIR: /scratch/ccache/${{ matrix.os }}-${{ matrix.executor_arch }}
       MAKE_PARALLEL_JOBS: 16
-      TEST_JOBS: 1  # TODO: debug test failures with 16 parallel test jobs
+      TEST_JOBS: "auto"
       TUI_LINE: "*******************************************************************"
 
     steps:
@@ -139,7 +139,7 @@ jobs:
 
       - name: HST Test VPP
         if: success()
-        uses: fdio/vpp/.github/actions/vpp-hst-test@5c0def01c0f8a17f90a1b16c9039077e298e0adc
+        uses: fdio/vpp/.github/actions/vpp-hst-test@e970dcebe57999d0c04c63a466bb95604fcf9b4d
         timeout-minutes: 90
         with:
           LOG_DIR: ${{ env.LOG_DIR }}

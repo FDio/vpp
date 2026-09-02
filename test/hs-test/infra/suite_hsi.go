@@ -69,19 +69,30 @@ func (s *HsiSuite) SetupTest() {
 	AssertNotNil(vpp, fmt.Sprint(err))
 
 	AssertNil(vpp.Start())
-	numCpus := uint16(len(s.Containers.Vpp.AllocatedCpus))
-	numWorkers := uint16(max(numCpus-1, 1))
-	idx, err := vpp.createAfPacket(s.Interfaces.Client, false, WithNumRxQueues(numWorkers), WithNumTxQueues(numCpus))
-	AssertNil(err, fmt.Sprint(err))
-	AssertNotEqual(0, idx)
-	idx, err = vpp.createAfPacket(s.Interfaces.Server, false, WithNumRxQueues(numWorkers), WithNumTxQueues(numCpus))
-	AssertNil(err, fmt.Sprint(err))
-	AssertNotEqual(0, idx)
+	AssertNil(vpp.CreateTap(s.Interfaces.Client, false, 1))
+	AssertNil(vpp.CreateTap(s.Interfaces.Server, false, 2))
+
+	// Give each TAP stable ingress ownership in multi-worker tests.
+	if vpp.CpuConfig.NumWorkers >= 2 {
+		for queueID := range vpp.CpuConfig.NumWorkers {
+			Log(vpp.Vppctl("set interface rx-placement %s queue %d worker 0",
+				s.Interfaces.Client.VppName(), queueID))
+			Log(vpp.Vppctl("set interface rx-placement %s queue %d worker 1",
+				s.Interfaces.Server.VppName(), queueID))
+		}
+	}
 
 	Log(vpp.Vppctl("set interface feature " + s.Interfaces.Client.VppName() + " hsi4-in arc ip4-unicast"))
 	Log(vpp.Vppctl("set interface feature " + s.Interfaces.Server.VppName() + " hsi4-in arc ip4-unicast"))
 
-	s.setupIpv6(vpp)
+	s.setupVppIpv6(vpp)
+
+	if *DryRun {
+		s.LogStartedContainers()
+		s.Skip("Dry run mode = true")
+	}
+
+	s.setupHostIpv6()
 
 	// let the host know howto get to the server
 	cmd := exec.Command("ip", "netns", "exec", s.NetNamespaces.Client, "ip", "route", "replace",
@@ -89,19 +100,19 @@ func (s *HsiSuite) SetupTest() {
 	Log(cmd.String())
 	_, err = cmd.CombinedOutput()
 	AssertNil(err, fmt.Sprint(err))
-
-	if *DryRun {
-		s.LogStartedContainers()
-		s.Skip("Dry run mode = true")
-	}
 }
 
-func (s *HsiSuite) setupIpv6(vpp *VppInstance) {
-	s.setupInterfaceIpv6(vpp, s.Interfaces.Client)
-	s.setupInterfaceIpv6(vpp, s.Interfaces.Server)
+func (s *HsiSuite) setupVppIpv6(vpp *VppInstance) {
+	s.setupVppInterfaceIpv6(vpp, s.Interfaces.Client)
+	s.setupVppInterfaceIpv6(vpp, s.Interfaces.Server)
 
 	Log(vpp.Vppctl("set interface feature " + s.Interfaces.Client.VppName() + " hsi6-in arc ip6-unicast"))
 	Log(vpp.Vppctl("set interface feature " + s.Interfaces.Server.VppName() + " hsi6-in arc ip6-unicast"))
+}
+
+func (s *HsiSuite) setupHostIpv6() {
+	s.setupHostInterfaceIpv6(s.Interfaces.Client)
+	s.setupHostInterfaceIpv6(s.Interfaces.Server)
 
 	cmd := exec.Command("ip", "netns", "exec", s.NetNamespaces.Client, "ip", "-6", "route", "replace",
 		s.ServerAddr6(), "via", s.Interfaces.Client.Ip6AddressString(), "dev",
@@ -111,7 +122,7 @@ func (s *HsiSuite) setupIpv6(vpp *VppInstance) {
 	AssertNil(err, string(output))
 }
 
-func (s *HsiSuite) setupInterfaceIpv6(vpp *VppInstance, intf *NetInterface) {
+func (s *HsiSuite) setupVppInterfaceIpv6(vpp *VppInstance, intf *NetInterface) {
 	var err error
 
 	if intf.Ip6AddrAllocator == nil {
@@ -127,13 +138,32 @@ func (s *HsiSuite) setupInterfaceIpv6(vpp *VppInstance, intf *NetInterface) {
 	if intf.Host.Ip6Address == "" {
 		intf.Host.Ip6Address, err = intf.Host.Ip6AddrAllocator.NewIp6InterfaceAddress(intf.Host.NetworkNumber)
 		AssertNil(err, fmt.Sprint(err))
-		cmd := appendNetns([]string{"ip", "-6", "addr", "add", intf.Host.Ip6Address, "dev",
-			intf.Host.Name(), "nodad"}, intf.Host.NetworkNamespace)
-		output, err := cmd.CombinedOutput()
-		AssertNil(err, string(output))
 	}
 
 	Log(vpp.Vppctl("set interface ip address %s %s", intf.VppName(), intf.Ip6Address))
+}
+
+// setupHostInterfaceIpv6 reapplies the host-side IPv6 address, which is lost
+// when the TAP is recreated. CreateTap only waits for DAD to finish on TAPs
+// created as IPv6, so wait here before applications use the address.
+func (s *HsiSuite) setupHostInterfaceIpv6(intf *NetInterface) {
+	cmd := appendNetns([]string{"ip", "-6", "addr", "replace", intf.Host.Ip6Address, "dev",
+		intf.Host.Name(), "nodad"}, intf.Host.NetworkNamespace)
+	output, err := cmd.CombinedOutput()
+	AssertNil(err, string(output))
+
+	for range 50 {
+		cmd = appendNetns([]string{"ip", "-6", "addr", "show", "dev",
+			intf.Host.Name(), "tentative"}, intf.Host.NetworkNamespace)
+		output, err = cmd.CombinedOutput()
+		AssertNil(err, string(output))
+		if !strings.Contains(string(output), intf.Host.Ip6AddressString()) {
+			break
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	AssertNotContains(string(output), intf.Host.Ip6AddressString(),
+		"host IPv6 address remained tentative")
 }
 
 func (s *HsiSuite) TeardownTest() {

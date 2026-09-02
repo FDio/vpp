@@ -59,23 +59,23 @@ runs:
             fi
 
             hst_debug_build_run() {
-                if ! make VERBOSE=true VPPSRC="$WORKSPACE" PARALLEL="${TEST_JOBS}" -C "$HS_TEST_DIR" build-debug ; then
-                    BUILD_ERROR="FAILED 'make VERBOSE=true VPPSRC=$WORKSPACE PARALLEL="${TEST_JOBS}" -C $HS_TEST_DIR build-debug'"
+                if ! make VPPSRC="$WORKSPACE" PARALLEL="${TEST_JOBS}" -C "$HS_TEST_DIR" build-debug ; then
+                    BUILD_ERROR="FAILED 'make VPPSRC=$WORKSPACE PARALLEL="${TEST_JOBS}" -C $HS_TEST_DIR build-debug'"
                     return
                 fi
-                if ! make VERBOSE=true VPPSRC="$WORKSPACE" PARALLEL="${TEST_JOBS}" MW_PARALLEL="${MW_PARALLEL}" -C "$HS_TEST_DIR" test-debug ; then
-                    BUILD_ERROR="FAILED 'make VERBOSE=true VPPSRC=$WORKSPACE PARALLEL=${TEST_JOBS} MW_PARALLEL=${MW_PARALLEL} -C $HS_TEST_DIR test-debug'"
+                if ! make VERBOSE=1 VPPSRC="$WORKSPACE" PARALLEL="${TEST_JOBS}" MW_PARALLEL="${MW_PARALLEL}" -C "$HS_TEST_DIR" test-debug ; then
+                    BUILD_ERROR="FAILED 'make VERBOSE=1 VPPSRC=$WORKSPACE PARALLEL=${TEST_JOBS} MW_PARALLEL=${MW_PARALLEL} -C $HS_TEST_DIR test-debug'"
                     return
                 fi
             }
 
             hst_build_run() {
-                if ! make VERBOSE=true VPPSRC="$WORKSPACE" PARALLEL="${TEST_JOBS}" -C "$HS_TEST_DIR" build ; then
-                    BUILD_ERROR="FAILED 'make VERBOSE=true VPPSRC=$WORKSPACE PARALLEL="${TEST_JOBS}" -C $HS_TEST_DIR build'"
+                if ! make VPPSRC="$WORKSPACE" PARALLEL="${TEST_JOBS}" -C "$HS_TEST_DIR" build ; then
+                    BUILD_ERROR="FAILED 'make VPPSRC=$WORKSPACE PARALLEL="${TEST_JOBS}" -C $HS_TEST_DIR build'"
                     return
                 fi
-                if ! make VERBOSE=true VPPSRC="$WORKSPACE" PARALLEL="${TEST_JOBS}" MW_PARALLEL="${MW_PARALLEL}" -C "$HS_TEST_DIR" test ; then
-                    BUILD_ERROR="FAILED 'make VERBOSE=true VPPSRC=$WORKSPACE PARALLEL=${TEST_JOBS} MW_PARALLEL=${MW_PARALLEL} -C $HS_TEST_DIR test'"
+                if ! make VERBOSE=1 VPPSRC="$WORKSPACE" PARALLEL="${TEST_JOBS}" MW_PARALLEL="${MW_PARALLEL}" -C "$HS_TEST_DIR" test ; then
+                    BUILD_ERROR="FAILED 'make VERBOSE=1 VPPSRC=$WORKSPACE PARALLEL=${TEST_JOBS} MW_PARALLEL=${MW_PARALLEL} -C $HS_TEST_DIR test'"
                     return
                 fi
             }

@@ -271,6 +271,7 @@ jobs:
         with:
           LOG_DIR: ${{ env.LOG_DIR }}
           WORKSPACE: ${{ env.WORKSPACE }}
+          BUILD_TYPE: ${{ matrix.build_type }}
           TEST_JOBS: ${{ env.TEST_JOBS }}
           TEST_RETRIES: ${{ env.TEST_RETRIES }}
           MAKE_TEST_OS: ${{ env.MAKE_TEST_OS }}
@@ -299,10 +300,15 @@ jobs:
           unittest_failed_dir="/tmp/vpp-failed-unittests"
           for failed_test in $(ls "$unittest_failed_dir")
           do
-            failed_test_dir="$archives_dir"/"$failed_test"
-            if [ ! -e "$failed_test_dir" ] ; then
-              mkdir -p "$failed_test_dir"
-              cp -a "$unittest_failed_dir"/"$failed_test"/* "$failed_test_dir"
+            unittest_failed_test="$unittest_failed_dir"/"$failed_test"
+            if [ -f "$unittest_failed_test" ] ; then
+              cp -a "$unittest_failed_test" "$archives_dir"
+            else
+              failed_test_dir="$archives_dir"/"$failed_test"
+              if [ ! -e "$failed_test_dir" ] ; then
+                mkdir -p "$failed_test_dir"
+                cp -a "$unittest_failed_test"/* "$failed_test_dir"
+              fi
             fi
           done
           if [[ -d "$archives_dir" ]] && find "$archives_dir" -type f -print -quit | grep -q . ; then

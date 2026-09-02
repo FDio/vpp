@@ -29,6 +29,7 @@ vl (void *p)
 
 vlib_worker_thread_t *vlib_worker_threads;
 vlib_thread_main_t vlib_thread_main;
+static f64 barrier_sync_timeout = BARRIER_SYNC_TIMEOUT;
 
 void
 vlib_worker_thread_register_one_time_release_fn (vlib_worker_thread_one_time_release_fn_t *fn,
@@ -1127,6 +1128,8 @@ cpu_config (vlib_main_t * vm, unformat_input_t * input)
 	;
       else if (unformat (input, "main-core %u", &tm->main_lcore))
 	;
+      else if (unformat (input, "barrier-timeout %f", &barrier_sync_timeout))
+	;
       else if (unformat (input, "skip-cores %u", &tm->skip_cores))
 	;
       else if (unformat (input, "relative"))
@@ -1189,6 +1192,9 @@ cpu_config (vlib_main_t * vm, unformat_input_t * input)
   if (use_corelist && tm->main_lcore == ~0)
     return clib_error_return (0, "main-core must be specified when using "
 				 "corelist-* or coremask-* attribute");
+
+  if (barrier_sync_timeout <= 0)
+    return clib_error_return (0, "barrier-timeout must be greater than zero");
 
   if (tm->skip_cores != 0 && tm->main_lcore == ~0)
     return clib_error_return (
@@ -1287,7 +1293,7 @@ vlib_worker_thread_initial_barrier_sync_and_release (vlib_main_t * vm)
   if (count == 0)
     return;
 
-  deadline = now + BARRIER_SYNC_TIMEOUT;
+  deadline = now + barrier_sync_timeout;
   *vlib_worker_threads->wait_at_barrier = 1;
   while (*vlib_worker_threads->workers_at_barrier != count)
     {
@@ -1391,7 +1397,7 @@ vlib_worker_thread_barrier_sync_int (vlib_main_t * vm, const char *func_name)
   t_open = now - vm->barrier_epoch;
   vm->barrier_epoch = now;
 
-  deadline = now + BARRIER_SYNC_TIMEOUT;
+  deadline = now + barrier_sync_timeout;
 
   __atomic_store_n (vlib_worker_threads->wait_at_barrier, 1, __ATOMIC_RELEASE);
 
@@ -1467,7 +1473,7 @@ vlib_worker_thread_barrier_release (vlib_main_t * vm)
 
   vlib_worker_thread_call_one_time_release_fns (vm, vgm);
 
-  deadline = now + BARRIER_SYNC_TIMEOUT;
+  deadline = now + barrier_sync_timeout;
 
   /*
    * Note when we let go of the barrier.
@@ -1492,7 +1498,7 @@ vlib_worker_thread_barrier_release (vlib_main_t * vm)
     {
       now = vlib_time_now (vm);
 
-      deadline = now + BARRIER_SYNC_TIMEOUT;
+      deadline = now + barrier_sync_timeout;
 
       while (*vlib_worker_threads->node_reforks_required > 0)
 	{

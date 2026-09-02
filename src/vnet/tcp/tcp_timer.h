@@ -71,6 +71,12 @@ tcp_retransmit_timer_reset (tcp_timer_wheel_t * tw, tcp_connection_t * tc)
 }
 
 always_inline void
+tcp_retransmit_timer_reschedule (tcp_timer_wheel_t *tw, tcp_connection_t *tc, u32 interval)
+{
+  tcp_timer_update (tw, tc, TCP_TIMER_RETRANSMIT, interval);
+}
+
+always_inline void
 tcp_persist_timer_set (tcp_timer_wheel_t * tw, tcp_connection_t * tc)
 {
   /* Reuse RTO. It's backed off in handler */
@@ -94,8 +100,7 @@ tcp_retransmit_timer_update (tcp_timer_wheel_t * tw, tcp_connection_t * tc)
 	tcp_persist_timer_set (tw, tc);
     }
   else
-    tcp_timer_update (tw, tc, TCP_TIMER_RETRANSMIT,
-		      clib_max ((u32) tc->rto * TCP_TO_TIMER_TICK, 1));
+    tcp_retransmit_timer_reschedule (tw, tc, clib_max ((u32) tc->rto * TCP_TO_TIMER_TICK, 1));
 }
 
 always_inline void

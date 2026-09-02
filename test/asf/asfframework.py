@@ -227,10 +227,10 @@ class TestCaseTag(Enum):
 
 def create_tag_decorator(e):
     def decorator(cls):
-        try:
-            cls.test_tags.append(e)
-        except AttributeError:
-            cls.test_tags = [e]
+        # Copy inherited tags before adding the tag so decorating a subclass
+        # does not mutate its parent's tag list.
+        cls.test_tags = list(getattr(cls, "test_tags", []))
+        cls.test_tags.append(e)
         return cls
 
     return decorator
@@ -239,7 +239,15 @@ def create_tag_decorator(e):
 tag_run_solo = create_tag_decorator(TestCaseTag.RUN_SOLO)
 tag_fixme_vpp_workers = create_tag_decorator(TestCaseTag.FIXME_VPP_WORKERS)
 tag_fixme_asan = create_tag_decorator(TestCaseTag.FIXME_ASAN)
-tag_fixme_vpp_debug = create_tag_decorator(TestCaseTag.FIXME_VPP_DEBUG)
+
+
+def tag_fixme_vpp_debug(cls):
+    """Mark a class as skipped when using the debug VPP image."""
+    cls = create_tag_decorator(TestCaseTag.FIXME_VPP_DEBUG)(cls)
+    return unittest.skipIf(
+        config.vpp_tag == "vpp_debug",
+        "Skipping @tag_fixme_vpp_debug tests",
+    )(cls)
 
 
 class DummyVpp:
@@ -434,6 +442,10 @@ class VppAsfTestCase(CPUInterface, unittest.TestCase):
             "main-core",
             str(cls.cpus[0]),
         ]
+        if not (cls.debug_gdb or cls.debug_gdbserver or cls.debug_attach):
+            # CI workers can be descheduled for more than the one-second
+            # release-build default without a VPP worker being deadlocked.
+            cls.vpp_cmdline.extend(["barrier-timeout", "5"])
         if cls.extern_plugin_path not in (None, ""):
             cls.extra_vpp_plugin_config.append("add-path %s" % cls.extern_plugin_path)
         if cls.get_vpp_worker_count():
@@ -939,14 +951,16 @@ class VppAsfTestCase(CPUInterface, unittest.TestCase):
                 self.show_commands_at_teardown()
                 if self.remove_configured_vpp_objects_on_tear_down:
                     self.registry.remove_vpp_config(self.logger)
-            # Save/Dump VPP api trace log
-            m = self._testMethodName
-            api_trace = "vpp_api_trace.%s.%d.log" % (m, self.vpp.pid)
-            tmp_api_trace = "/tmp/%s" % api_trace
-            vpp_api_trace_log = "%s/%s" % (self.tempdir, api_trace)
-            self.logger.info(self.vapi.ppcli("api trace save %s" % api_trace))
-            self.logger.info("Moving %s to %s\n" % (tmp_api_trace, vpp_api_trace_log))
-            shutil.move(tmp_api_trace, vpp_api_trace_log)
+                # Save/Dump VPP api trace log
+                m = self._testMethodName
+                api_trace = "vpp_api_trace.%s.%d.log" % (m, self.vpp.pid)
+                tmp_api_trace = "/tmp/%s" % api_trace
+                vpp_api_trace_log = "%s/%s" % (self.tempdir, api_trace)
+                self.logger.info(self.vapi.ppcli("api trace save %s" % api_trace))
+                self.logger.info(
+                    "Moving %s to %s\n" % (tmp_api_trace, vpp_api_trace_log)
+                )
+                shutil.move(tmp_api_trace, vpp_api_trace_log)
         except VppTransportSocketIOError:
             self.logger.debug(
                 "VppTransportSocketIOError: Vpp dead. Cannot log show commands."

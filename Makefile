@@ -345,6 +345,7 @@ help:
 	@echo " test-list            - explain which tests TEST= selects, then exit (no run)"
 	@echo " test-cov-hs   		 - build and run host stack tests with coverage"
 	@echo " test-cov-both	  	 - build and run python and host stack tests, merge coverage data"
+	@echo "   HS_PARALLEL=[<n>|auto] - hs-test processes for coverage (default = TEST_JOBS)"
 	@echo " test-help            - show help on test framework"
 	@echo " run-vat              - run vpp-api-test tool"
 	@echo " pkg-deb              - build DEB packages"
@@ -604,9 +605,18 @@ test-cov:
 	$(eval TEST_GCOV=1)
 	$(call test,vpp_gcov,cov)
 
+# hs-test runs its own parallel test processes and knows nothing about TEST_JOBS,
+# so without this hs-test runs serially while the python tests do not. Each
+# hs-test process needs a window of 4 CPUs, so HS_PARALLEL=auto sizes itself to
+# the executor instead of failing to allocate CPUs; MW suites stay serial unless
+# HS_MW_PARALLEL=true is requested (which hs-test allows only with auto).
+HS_PARALLEL ?= $(if $(TEST_JOBS),$(TEST_JOBS),1)
+HS_MW_PARALLEL ?= false
+
 .PHONY: test-cov-hs
 test-cov-hs: build-gcov
 	@$(MAKE) CC=$(CC) -C test/hs-test test-cov \
+	PARALLEL=$(HS_PARALLEL) MW_PARALLEL=$(HS_MW_PARALLEL) \
 	VPP_BUILD_DIR=$(BR)/build-vpp_gcov-native/vpp
 
 .PHONY: test-cov-post-standalone

@@ -57,6 +57,7 @@ func (s *LdpSuite) SetupSuite() {
 }
 
 func (s *LdpSuite) SetupTest() {
+	s.SkipIfLDPreloadASan()
 	s.HstSuite.SetupTest()
 	s.SetupAppContainers()
 
