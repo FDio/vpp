@@ -26,6 +26,29 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "41077e3c_9030e2c3",
+        "filename": ".github/actions/vpp-build/action.yml",
+        "patchSetId": 4
+      },
+      "lineNbr": 152,
+      "author": {
+        "id": 3121
+      },
+      "writtenOn": "2026-09-02T18:23:59Z",
+      "side": 1,
+      "message": "I don\u0027t think `USE_GCC` needs to be `false` for ASan builds. Follow the same pattern from `build_vpp` and add `VPP_EXTRA_CMAKE_ARGS\u003d\"-DVPP_ENABLE_SANITIZE_ADDR\u003dON\"`. \n\n```\n                if [ \"$USE_GCC\" \u003d\u003d \"true\" ] ; then\n                    if ! make UNATTENDED\u003dyes CC\u003dgcc MAKE_PARALLEL_JOBS\u003d${MAKE_PARALLEL_JOBS} VPP_EXTRA_CMAKE_ARGS\u003d\"-DVPP_ENABLE_SANITIZE_ADDR\u003dON build | tee \"$LOG_DIR/build_vpp_debug_gcc.log\" ; then\n                        BUILD_ERROR\u003d\"FAILED \u0027make UNATTENDED\u003dyes CC\u003dgcc MAKE_PARALLEL_JOBS\u003d${MAKE_PARALLEL_JOBS} VPP_EXTRA_CMAKE_ARGS\u003d\"-DVPP_ENABLE_SANITIZE_ADDR\u003dON build\u0027\"\n                        return\n                    fi\n                else\n                    if ! make UNATTENDED\u003dyes MAKE_PARALLEL_JOBS\u003d${MAKE_PARALLEL_JOBS} build | tee \"$LOG_DIR/build_vpp_debug.log\" ; then\n                        BUILD_ERROR\u003d\"FAILED \u0027make UNATTENDED\u003dyes MAKE_PARALLEL_JOBS\u003d${MAKE_PARALLEL_JOBS} build\u0027\"\n                        return\n                    fi\n                fi\n```",
+      "range": {
+        "startLine": 149,
+        "startChar": 0,
+        "endLine": 152,
+        "endChar": 8
+      },
+      "revId": "2097c01acbdc186a20e45af584c82a7c14224c86",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "dccbe5a9_d91e4070",
         "filename": ".github/actions/vpp-build/action.yml",
         "patchSetId": 4
