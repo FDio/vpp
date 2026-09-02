@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "efa357c9_65c1bd05",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-09-02T08:42:17Z",
+      "side": 1,
+      "message": "we have same test in hs-test and it pass on arm periodic-vpp-verify-hst, so I assume this is caused by make test do not place external applications on separate cpu",
+      "revId": "fce06653a01e74c7dd0fe16bc304b4b5b6f1b1f9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
