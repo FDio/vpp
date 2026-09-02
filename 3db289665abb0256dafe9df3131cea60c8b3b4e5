@@ -33,6 +33,23 @@
       "message": "This script should be in src/scripts, not src/cmake",
       "revId": "3db289665abb0256dafe9df3131cea60c8b3b4e5",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5d69a258_a8fa2f80",
+        "filename": "src/vnet/adj/adj.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 365,
+      "author": {
+        "id": 219
+      },
+      "writtenOn": "2026-09-02T15:23:37Z",
+      "side": 1,
+      "message": "I\u0027m curious, how did you determine which symbols to export? I assume you built all known binaries and dumped their symbols and updated the exports based on that.\n\nWhy would adj_unlock() be exported but not adj_lock()? I think it is because code generally calls a different/wrapper function (i.e., adj_nbr_add_or_lock) and no known external code calls adj_lock() directly (maybe external code isn\u0027t supposed to call it?)\n\nGiven there are so many symbols exported, probably automatically, I wonder if we\u0027ll ever know if these are the \"right\" ones to export, or if they\u0027re just the ones that were exported because at this point in time they were the ones that happened to be used.\n\nAll that said, I don\u0027t know of a more efficient way to accomplish this other than what you\u0027ve done. I think \"-fvisibility\u003dhidden\" is a good thing, has numerous benefits, and should be done, even if there is some (probably minor) pain to refactor external plugins (or just submit patches for the missing exports).",
+      "revId": "3db289665abb0256dafe9df3131cea60c8b3b4e5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
