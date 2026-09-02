@@ -1,0 +1,22 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "f901add7_f36fedfb",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 6
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-09-02T19:56:10Z",
+      "side": 1,
+      "message": "PS6 removes the provider-level generator and context. The factory now accepts -165 only when cursor is supplied explicitly, which is how the existing self.vapi.vpp.details_iter path invokes every page. A raw call using the default cursor remains strict, and test_map now asserts that it still raises on a partial result. This preserves the existing call pattern and avoids state spanning a yield or being popped later by GC.",
+      "parentUuid": "f30aeb63_c2248394",
+      "revId": "78d9e3c2d67d15b730604a652f87051d9290ad4c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
