@@ -572,7 +572,7 @@ layout natural|packed
 Select how buffers are laid out in the memory map. ``natural`` keeps buffers
 naturally aligned using a single stride across the map. ``packed`` restarts
 the stride at each page boundary to use small pages efficiently. The default
-is platform-dependent.
+is ``natural`` for backward compatibility.
 
 .. code-block:: console
 
