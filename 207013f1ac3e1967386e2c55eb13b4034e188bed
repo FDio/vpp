@@ -22,6 +22,30 @@
       },
       "revId": "207013f1ac3e1967386e2c55eb13b4034e188bed",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "27936bb9_ff490584",
+        "filename": "src/plugins/sfdp_services/base/nat/nat.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 76,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2026-09-02T11:25:42Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "4ee7f5f7_96f016c3",
+      "range": {
+        "startLine": 76,
+        "startChar": 16,
+        "endLine": 76,
+        "endChar": 21
+      },
+      "revId": "207013f1ac3e1967386e2c55eb13b4034e188bed",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
