@@ -35,6 +35,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "55de8c8b_e22d876e",
+        "filename": "src/cmake/check_vnet_exports.sh",
+        "patchSetId": 4
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-09-02T18:51:16Z",
+      "side": 1,
+      "message": "Done in PS5: the checker is now in src/scripts and CMake uses the new path.",
+      "parentUuid": "edfde47c_46224e2d",
+      "revId": "3db289665abb0256dafe9df3131cea60c8b3b4e5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "5d69a258_a8fa2f80",
