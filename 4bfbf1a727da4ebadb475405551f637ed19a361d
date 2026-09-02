@@ -16,6 +16,24 @@
       "message": "I really dislike the idea of having to remember to use xxx.YYY instead of xxx.vpp.YYY. That\u0027s tedious and error-prone. The patch itself is headed the right way, but it has structural issue - generator holds provider-global state open across yield -  so with self.assert_known_api_retval([0, -165]) stays open for the caller\u0027s loop body, not just the API calls:\n\nfor pair in self.vapi.details_iter(self.vapi.lcp_itf_pair_get):\n    self.vapi.some_unrelated_call()   # also silently tolerates -165;\n    \nWorse, _expect_stack is a plain LIFO. Abandon the iterator without draining it and __exit__ fires at GC time, popping out of order:\n\nit \u003d self.vapi.details_iter(...); next(it)      # pushes None\nwith self.vapi.assert_negative_api_retval():    # pushes [0,-165]\n    ...\n    del it                                      # pops [0,-165]\n    \nI\u0027d lean towards a factory fix, we can detect if cursor is part of the definition and adjust the wrapper, something like:\n\ndef factory(self, name, apifn):\n    expected_retval \u003d [0, -165] if \"cursor\" in apifn._func.msg.fields else 0\n         \n    def f(*a, **ka):\n        fields \u003d apifn._func.msg.fields\n        ...\n\n        return self.api(apifn, d, expected_retval\u003dexpected_retval)\n\n    return f\n         \nWith that, self.vapi.vpp.details_iter(self.vapi.foo_get) just works, but a raw (non-iterating) call to a paginated API that returns -165 stops raising and silently returns a partial list instead of crashing loudly, so that bothers me a bit, but I\u0027d still prefer it over the almost-the-same off-by-one wrapper.\n\nWhat do you think?",
       "revId": "4bfbf1a727da4ebadb475405551f637ed19a361d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f157833d_e395c61b",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-09-02T19:51:52Z",
+      "side": 1,
+      "message": "I see gerrit absolutely f-ed up my formatting. Holler if you can\u0027t figure it out.",
+      "parentUuid": "f30aeb63_c2248394",
+      "revId": "4bfbf1a727da4ebadb475405551f637ed19a361d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
