@@ -1021,9 +1021,13 @@ error:
   if (entered_dest_ns)
     {
       if (clib_setns (curr_ns_fd) < 0)
-	NL_ERROR ("Cannot set previous ns");
+	{
+	  NL_ERROR ("Cannot set previous ns");
+	}
       else
-	entered_dest_ns = 0;
+	{
+	  entered_dest_ns = 0;
+	}
     }
   if (curr_ns_fd >= 0)
     {
@@ -1099,9 +1103,13 @@ error:
   if (entered_dest_ns)
     {
       if (clib_setns (curr_ns_fd) < 0)
-	NL_ERROR ("Cannot set previous ns");
+	{
+	  NL_ERROR ("Cannot set previous ns");
+	}
       else
-	entered_dest_ns = 0;
+	{
+	  entered_dest_ns = 0;
+	}
     }
   if (curr_ns_fd >= 0)
     {
