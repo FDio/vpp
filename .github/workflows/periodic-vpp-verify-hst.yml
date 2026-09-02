@@ -139,7 +139,7 @@ jobs:
 
       - name: HST Test VPP
         if: success()
-        uses: fdio/vpp/.github/actions/vpp-hst-test@5c0def01c0f8a17f90a1b16c9039077e298e0adc
+        uses: fdio/vpp/.github/actions/vpp-hst-test@e970dcebe57999d0c04c63a466bb95604fcf9b4d
         timeout-minutes: 90
         with:
           LOG_DIR: ${{ env.LOG_DIR }}
