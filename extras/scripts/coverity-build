@@ -63,7 +63,7 @@ tar -czf fd.io-vpp.tgz "$(basename ${covdir})"
 rm -rf "${covdir}"
 
 # Submit the build
-echo curl --form token="${token}" \
+curl --form token="${token}" \
 	--form email="${email}" \
 	--form file=@fd.io-vpp.tgz \
 	--form version="${version}" \
