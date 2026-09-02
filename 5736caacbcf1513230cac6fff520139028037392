@@ -34,6 +34,24 @@
       "parentUuid": "284b4661_4f98efcd",
       "revId": "5736caacbcf1513230cac6fff520139028037392",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "dd96606d_4ce16793",
+        "filename": "test/test_cnat.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 429,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-09-02T13:03:30Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3d230f9d_e69a6dc7",
+      "revId": "5736caacbcf1513230cac6fff520139028037392",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }

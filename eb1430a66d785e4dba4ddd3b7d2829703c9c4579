@@ -34,6 +34,24 @@
       "parentUuid": "2cf9f448_cd8cd6da",
       "revId": "eb1430a66d785e4dba4ddd3b7d2829703c9c4579",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "3cb793a2_11a4d8b3",
+        "filename": "src/plugins/cnat/cnat_node_lookup.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 105,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-09-02T13:03:30Z",
+      "side": 1,
+      "message": "yeah after looking again at it you are right, it should be dropped right after npol and should never reach cnat-writeback - and rereading I think this is always true: cts_dpoi_next_node is only used before cnat-writeback anyway, so when it reaches cnat-writeback it is too late and effectively passthrough\nso all in all I think my comment is wrong and we should not do that",
+      "parentUuid": "43f462d7_0e6a1663",
+      "revId": "eb1430a66d785e4dba4ddd3b7d2829703c9c4579",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
