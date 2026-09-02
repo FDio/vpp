@@ -1,0 +1,22 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "0b8fdea1_62d9ad0b",
+        "filename": "src/vnet/adj/adj.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 365,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-09-02T18:51:23Z",
+      "side": 1,
+      "message": "The set is dependency-derived rather than an attempt to declare a stable ABI: the checker intersects libvnet definitions with undefined dynamic symbols from all in-tree consumers. adj_unlock is used by several in-tree plugins; adj_lock is used only inside libvnet, so only adj_unlock is required in the current export set.",
+      "parentUuid": "5d69a258_a8fa2f80",
+      "revId": "fe83fe1e39df076437eaea17153a56859c407d02",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
