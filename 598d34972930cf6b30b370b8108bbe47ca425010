@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6a3c2842_11ec4f65",
+        "filename": "src/plugins/vperf/builtin/vperf_protos.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 250,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-09-03T11:54:09Z",
+      "side": 1,
+      "message": "can we have only ASSERT here, this should not happen? and maybe validate that test buf is long enough during test setup, max_send is no more than vpcm-\u003emax_chunk_bytes. could you please also shorten a bit comment",
+      "revId": "598d34972930cf6b30b370b8108bbe47ca425010",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "90500f1b_42dfc566",
+        "filename": "src/plugins/vperf/vcl/vperf_server.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 737,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-09-03T11:54:09Z",
+      "side": 1,
+      "message": "could you please shorten comment? it bloat source code and make it harder to read",
+      "revId": "598d34972930cf6b30b370b8108bbe47ca425010",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
