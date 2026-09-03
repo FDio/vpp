@@ -56,6 +56,7 @@ add_vpp_plugin(unittest
   segment_manager_test.c
   tcp/tcp_tamper.c
   tcp_test.c
+  teib_test.c
   test_buffer.c
   time_test.c
   unittest.c
