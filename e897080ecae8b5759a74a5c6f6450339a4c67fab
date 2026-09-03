@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "9ac33dd7_500984c7",
+        "filename": ".github/actions/vpp-build/action.yml",
+        "patchSetId": 6
+      },
+      "lineNbr": 126,
+      "author": {
+        "id": 3347
+      },
+      "writtenOn": "2026-09-03T08:52:12Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "b6a8b225_dfea768f",
+      "revId": "e897080ecae8b5759a74a5c6f6450339a4c67fab",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "5486848b_2273d5ff",
@@ -35,6 +53,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "e333bac2_27394ac1",
+        "filename": ".github/actions/vpp-build/action.yml",
+        "patchSetId": 6
+      },
+      "lineNbr": 127,
+      "author": {
+        "id": 3347
+      },
+      "writtenOn": "2026-09-03T08:52:12Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "5486848b_2273d5ff",
+      "revId": "e897080ecae8b5759a74a5c6f6450339a4c67fab",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "911448cf_5f0aa82c",
@@ -48,6 +84,30 @@
       "writtenOn": "2026-09-02T23:33:48Z",
       "side": 1,
       "message": "Move this if clause to the top of the function (before line 126) so there is no message about building if the error condition is detected.",
+      "range": {
+        "startLine": 129,
+        "startChar": 0,
+        "endLine": 132,
+        "endChar": 14
+      },
+      "revId": "e897080ecae8b5759a74a5c6f6450339a4c67fab",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ddf5f025_95dfdb35",
+        "filename": ".github/actions/vpp-build/action.yml",
+        "patchSetId": 6
+      },
+      "lineNbr": 132,
+      "author": {
+        "id": 3347
+      },
+      "writtenOn": "2026-09-03T08:52:12Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "911448cf_5f0aa82c",
       "range": {
         "startLine": 129,
         "startChar": 0,
@@ -81,6 +141,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "61f2f268_4aa637c1",
+        "filename": ".github/actions/vpp-build/action.yml",
+        "patchSetId": 6
+      },
+      "lineNbr": 142,
+      "author": {
+        "id": 3347
+      },
+      "writtenOn": "2026-09-03T08:52:12Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "6cb43882_2569d576",
+      "range": {
+        "startLine": 142,
+        "startChar": 0,
+        "endLine": 142,
+        "endChar": 59
+      },
+      "revId": "e897080ecae8b5759a74a5c6f6450339a4c67fab",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "3085c56a_d3f7c2da",
@@ -94,6 +178,30 @@
       "writtenOn": "2026-09-02T23:33:48Z",
       "side": 1,
       "message": "Move this to the top of the function (before line 141) so there is no message about building if the error condition is detected.",
+      "range": {
+        "startLine": 144,
+        "startChar": 0,
+        "endLine": 147,
+        "endChar": 14
+      },
+      "revId": "e897080ecae8b5759a74a5c6f6450339a4c67fab",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "fc16e53d_65d295d2",
+        "filename": ".github/actions/vpp-build/action.yml",
+        "patchSetId": 6
+      },
+      "lineNbr": 147,
+      "author": {
+        "id": 3347
+      },
+      "writtenOn": "2026-09-03T08:52:12Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3085c56a_d3f7c2da",
       "range": {
         "startLine": 144,
         "startChar": 0,
