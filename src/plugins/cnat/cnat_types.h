@@ -275,10 +275,12 @@ typedef struct cnat_timestamp_mpool_t_
 
 typedef struct cnat_main_
 {
-  /* Memory size of the session bihash */
+  /*
+   * Deprecated: session_hash_memory & session_hash_buckets are no longer
+   * used. Session bihash sizing is derived from the timestamp pool.
+   * Retained for public-header compatibility.
+   */
   uword session_hash_memory;
-
-  /* Number of buckets of the  session bihash */
   u32 session_hash_buckets;
 
   /* Memory size of the translation bihash */
