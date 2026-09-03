@@ -122,6 +122,18 @@ typedef struct
   u64 total_exports;	/**< Per-thread export counter */
 } sfdp_session_stats_per_thread_t;
 
+typedef struct
+{
+  u32 worker_index;
+  u32 schema_version;
+  u32 entry_size;
+  u32 capacity;
+  u64 producer_sequence;
+  u64 records_produced;
+  u64 config_generation;
+  u8 ring_abi[8];
+} sfdp_session_stats_ring_health_t;
+
 /*
  * Per-tenant custom data entry
  */
@@ -148,6 +160,8 @@ typedef struct
   u8 ring_buffer_enabled;     /**< Ring buffer enabled flag */
   u8 periodic_export_enabled; /**< Enable periodic export */
   u8 export_on_expiry;	      /**< Export stats when session expires */
+  clib_spinlock_t ring_config_lock; /**< Protects ring lifetime for health reads */
+  u64 ring_config_generation;
 
   /* Per-tenant custom data, vec indexed by compact SFDP tenant pool index */
   sfdp_session_stats_custom_data_entry_t *custom_data_entries;
@@ -166,7 +180,7 @@ sfdp_session_stats_total_exports (sfdp_session_stats_main_t *ssm)
   sfdp_session_stats_per_thread_t *pt;
   u64 total = 0;
   vec_foreach (pt, ssm->per_thread)
-    total += pt->total_exports;
+    total += __atomic_load_n (&pt->total_exports, __ATOMIC_RELAXED);
   return total;
 }
 
@@ -182,6 +196,8 @@ sfdp_session_stats_total_exports (sfdp_session_stats_main_t *ssm)
 
 /* Ring buffer functions */
 int sfdp_session_stats_ring_init (vlib_main_t *vm, u32 ring_size);
+int sfdp_session_stats_ring_health_get (
+  u32 worker_index, sfdp_session_stats_ring_health_t *health);
 int sfdp_session_stats_export_session (vlib_main_t *vm, u32 session_index,
 				       sfdp_session_stats_export_reason_t reason);
 void sfdp_session_stats_export_all_sessions (vlib_main_t *vm,
