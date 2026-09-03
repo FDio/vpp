@@ -16,6 +16,24 @@
       "message": "tcp unit test assert here\n07:05:53,560   #16 0x00007aaeb62ae4f1 in tcp_rack_mark_sample_lost (tc\u003d0x7aae7110d3c0, bts\u003d0x7aae759a9f78) at /scratch/matfabia/vpp/src/vnet/tcp/tcp_rack.c:266\n07:05:53,560           rack \u003d 0x7aae759aaea8\n07:05:53,560           available \u003d 0\n07:05:53,560           delivered \u003d 0\n07:05:53,560           departed \u003d 100\n07:05:53,560           recovery_credit \u003d 0\n07:05:53,560   #17 0x00007aaeb62ad96c in tcp_rack_mark_reneged_lost (tc\u003d0x7aae7110d3c0) at /scratch/matfabia/vpp/src/vnet/tcp/tcp_rack.c:92\n07:05:53,560           bt \u003d 0x7aae759aae70\n07:05:53,560           bts \u003d 0x7aae759a9f78\n07:05:53,560           index \u003d 1\n07:05:53,561           next \u003d 0\n07:05:53,561           newly_lost \u003d 100\n07:05:53,561   #18 0x00007aaeb62ad830 in tcp_rack_prepare_rto (tc\u003d0x7aae7110d3c0, sack_reneged\u003d0x7aae7110d2e1 \"\\001\") at /scratch/matfabia/vpp/src/vnet/tcp/tcp_rack.c:117\n07:05:53,561           rack \u003d 0x7aae759aaea8\n07:05:53,561   #19 0x00007aae739ea85f in tcp_test_rack (vm\u003d0x7aae757ffa40, input\u003d0x7aae7110dcc0) at /scratch/matfabia/vpp/src/plugins/unittest/tcp_test.c:8232",
       "revId": "380faa4eaf33eb7e7263d1751059ead341fe5851",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a4931d5c_a960fa51",
+        "filename": "src/vnet/tcp/tcp_rack.c",
+        "patchSetId": 97
+      },
+      "lineNbr": 266,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-09-03T17:06:44Z",
+      "side": 1,
+      "message": "this is older code, pushed the new one. Let me see if it\u0027s working",
+      "parentUuid": "5ef7a644_7c213a88",
+      "revId": "380faa4eaf33eb7e7263d1751059ead341fe5851",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
