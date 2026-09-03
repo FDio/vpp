@@ -1178,7 +1178,12 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
 static u32
 tcp_test_dsack_rxt_count (tcp_connection_t *tc)
 {
-  return (tc->sack_sb.flags & TCP_DSACK_RXT_ACTIVE) ? pool_elts (tc->dsack_rxt) - 1 : 0;
+  if (tc->sack_sb.flags & TCP_DSACK_RXT_ACTIVE)
+    {
+      ASSERT (tc->dsack_rxt);
+      return pool_elts (tc->dsack_rxt) - 1;
+    }
+  return 0;
 }
 
 static tcp_dsack_rxt_t *
