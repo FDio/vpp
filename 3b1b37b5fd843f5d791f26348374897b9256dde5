@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "694b7747_11b6b708",
+        "filename": "src/plugins/af_xdp/device.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 795,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-09-03T08:47:02Z",
+      "side": 1,
+      "message": "The busy-poll enable/default normalization happens here, then args-\u003ebusy_poll_usecs is tested again later solely to copy the normalized values into ad and set the flag. Could we keep this in one place—for example, normalize and initialize the device fields/flag together after ad is allocated? That would make the enable condition and its resulting device state easier to follow.",
+      "revId": "3b1b37b5fd843f5d791f26348374897b9256dde5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4d401103_bf34e059",
+        "filename": "test/vm_vpp_interfaces.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 1007,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-09-03T08:47:02Z",
+      "side": 1,
+      "message": "Could we add a V4 test case that supplies busy_poll_usecs, plus a budget-only case? The current VM cases exercise V4 compatibility but always leave both new fields at zero, so they do not cover socket-option setup, RX empty-queue busy polling, or the defaulting behavior.",
+      "revId": "3b1b37b5fd843f5d791f26348374897b9256dde5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
