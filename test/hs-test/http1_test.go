@@ -404,6 +404,7 @@ func HttpClientChunkedDownloadTest(s *Http1Suite) {
 	file_contents, err := vpp.Container.Exec(false, "cat /tmp/response.txt")
 	AssertNil(err)
 	AssertContains(file_contents, response)
+	AssertEqual(len(file_contents), len(response))
 }
 
 func HttpClientPutStreamingTest(s *Http1Suite) {
@@ -689,6 +690,7 @@ func httpClientGet(s httpClientGetInterface, vpp *VppInstance, response string, 
 	file_contents, err := vpp.Container.Exec(false, "cat /tmp/response.txt")
 	AssertNil(err)
 	AssertContains(file_contents, response)
+	AssertEqual(len(file_contents), size)
 }
 
 func httpClientGetRedirect(s *Http1Suite, requestMethod string, response string, size int, proto string, httpResponseCode int,
@@ -779,6 +781,7 @@ func httpClientGetRedirect(s *Http1Suite, requestMethod string, response string,
 	file_contents, err := vpp.Container.Exec(false, "cat /tmp/response.txt")
 	AssertNil(err)
 	AssertContains(file_contents, response)
+	AssertEqual(len(file_contents), size)
 }
 
 func HttpClientRedirect302Test(s *Http1Suite) {

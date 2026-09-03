@@ -233,11 +233,12 @@ echo_sapi_add_cert_key (echo_main_t *em)
       goto done;
     }
 
-  if (!rmp->cert_key_add_del_reply.retval)
-    rv = rmp->cert_key_add_del_reply.index;
+  if (rmp->cert_key_add_del_reply.retval)
+    goto done;
 
   em->state = STATE_ATTACHED;
-  em->ckpair_index = rv;
+  em->ckpair_index = rmp->cert_key_add_del_reply.index;
+  rv = (int) rmp->cert_key_add_del_reply.index;
 
 done:
 
