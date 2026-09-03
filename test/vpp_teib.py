@@ -9,7 +9,12 @@ from vpp_object import VppObject
 def find_teib(test, ne):
     ns = test.vapi.teib_dump()
     for n in ns:
-        if ne.peer == str(n.entry.peer) and ne.itf._sw_if_index == n.entry.sw_if_index:
+        if (
+            ne.peer == str(n.entry.peer)
+            and ne.itf._sw_if_index == n.entry.sw_if_index
+            and ne.nh == str(n.entry.nh)
+            and ne.table_id == n.entry.nh_table_id
+        ):
             return True
     return False
 
