@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "3af7dcc5_9edf6b74",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-09-03T19:54:39Z",
+      "side": 1,
+      "message": "Make test failure due to non-related debug job failures.\nPlease rebase to pick up changes which remove the broken tests from CI coverage.\n\nNote: the whole chain of gerrit changes need rebasing.  Start by rebasing the start of the chain on master HEAD.  Then rebase each in turn on its parent until all are current with the orginating ancestor.",
+      "revId": "a0558e7944231da51a0e2d9d4d033777e5b04003",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
