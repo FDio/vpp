@@ -1,0 +1,40 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "86c81695_1ffcf01f",
+        "filename": "src/plugins/af_xdp/device.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 859,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-09-03T19:29:35Z",
+      "side": 1,
+      "message": "Done in PS5. The enable check, defaults, device fields and flag are initialized together immediately after allocation; socket setup now reads the normalized values from ad.",
+      "parentUuid": "694b7747_11b6b708",
+      "revId": "9f6996f76641264d5c5df2deb216b6c618b98ac8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "0a9a086d_aa3a6cd8",
+        "filename": "test/vm_vpp_interfaces.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 1017,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-09-03T19:29:35Z",
+      "side": 1,
+      "message": "Done in PS5. Test 28 passes busy_poll_usecs only and test 29 passes busy_poll_budget only. Both sides assert the normalized values before traffic, which covers socket setup, defaulting and the RX-empty busy-poll path.",
+      "parentUuid": "4d401103_bf34e059",
+      "revId": "9f6996f76641264d5c5df2deb216b6c618b98ac8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
