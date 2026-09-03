@@ -10,14 +10,6 @@ import signal
 from asfframework import VppAsfTestCase
 
 
-def set_iperf_affinity(cpus):
-    """Move an iperf child away from the test driver's VPP CPU."""
-    if cpus:
-        os.sched_setaffinity(0, set(cpus))
-    else:
-        os.sched_setaffinity(0, range(os.cpu_count()))
-
-
 class VppIperf:
     """ "Create an iPerf connection stream between two namespaces.
 
@@ -81,18 +73,23 @@ class VppIperf:
             self.logger.error(f"Could not find an iperf executable for running tests")
             sys.exit(1)
 
+    def command_in_namespace(self, namespace, command):
+        """Build a namespace command with CPU affinity."""
+        args = ["ip", "netns", "exec", namespace]
+        cpus = self.cpus if self.cpus else range(os.cpu_count())
+        cpu_list = ",".join(str(cpu) for cpu in cpus)
+        args.extend(["taskset", "--cpu-list", cpu_list])
+        return args + command
+
     def start_iperf_server(self):
         """Starts the  iperf server and returns the process cmdline args."""
-        args = [
-            "ip",
-            "netns",
-            "exec",
-            self.server_ns,
+        iperf_args = [
             self.iperf,
             "-s",
             "-D",
         ]
-        args.extend(self.server_args.split())
+        iperf_args.extend(self.server_args.split())
+        args = self.command_in_namespace(self.server_ns, iperf_args)
         cmd = " ".join(args)
         self.logger.debug(f"Starting iperf server: {cmd}")
         try:
@@ -101,7 +98,6 @@ class VppIperf:
                 timeout=self.duration + self.timeout_delay,
                 encoding="utf-8",
                 capture_output=True,
-                preexec_fn=lambda: set_iperf_affinity(self.cpus),
             )
             if result.returncode != 0:
                 raise Exception(
@@ -113,7 +109,7 @@ class VppIperf:
                 "Error: Timeout expired for iPerf server", self._to_text(e.output)
             )
         VppAsfTestCase.sleep(self.server_init_delay)
-        return args[4:]
+        return iperf_args
 
     @staticmethod
     def _to_text(value):
@@ -124,20 +120,20 @@ class VppIperf:
         return str(value)
 
     def start_iperf_client(self):
-        args = [
-            "ip",
-            "netns",
-            "exec",
-            self.client_ns,
+        iperf_args = [
             self.iperf,
             "-c",
             self.server_ip,
             "-t",
             str(self.duration),
         ]
-        args.extend(self.client_args.split())
-        if os.path.basename(self.iperf) == "iperf3" and "--connect-timeout" not in args:
-            args.extend(["--connect-timeout", self.client_connect_timeout])
+        iperf_args.extend(self.client_args.split())
+        if (
+            os.path.basename(self.iperf) == "iperf3"
+            and "--connect-timeout" not in iperf_args
+        ):
+            iperf_args.extend(["--connect-timeout", self.client_connect_timeout])
+        args = self.command_in_namespace(self.client_ns, iperf_args)
         cmd = " ".join(args)
         for attempt in range(1, self.client_retries + 1):
             try:
@@ -146,7 +142,6 @@ class VppIperf:
                     timeout=self.duration + self.timeout_delay,
                     encoding="utf-8",
                     capture_output=True,
-                    preexec_fn=lambda: set_iperf_affinity(self.cpus),
                 )
                 transient_error = "unable to connect to server" in (
                     (result.stderr or "").lower()
