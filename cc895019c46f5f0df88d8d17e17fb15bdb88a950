@@ -16,6 +16,24 @@
       "message": "Feels a bit like we\u0027re hiding something here. Why are we rescheduling tx for session that has no data?",
       "revId": "cc895019c46f5f0df88d8d17e17fb15bdb88a950",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "39a22e2b_d629e40f",
+        "filename": "src/plugins/http/http.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1600,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-09-03T19:48:16Z",
+      "side": 1,
+      "message": "is this fix for VppConnectUdpStressTest failed in ci [1] or something else?\n[1] https://github.com/FDio/vpp/actions/runs/32974139272/job/98195335568",
+      "parentUuid": "8f1f368f_95d40b1f",
+      "revId": "cc895019c46f5f0df88d8d17e17fb15bdb88a950",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
