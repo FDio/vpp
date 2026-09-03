@@ -28,9 +28,14 @@ sfdp_session_stats_ring_init (vlib_main_t *vm, u32 ring_size)
   const char *schema_id = VL_API_SFDP_SESSION_STATS_RING_ENTRY_V2_ABI_ID_CRC;
   u32 schema_size = clib_strnlen (schema_id, 128);
 
+  clib_spinlock_lock (&ssm->ring_config_lock);
+
   /* check if ring buffer is not already enabled */
   if (ssm->ring_buffer_enabled)
-    return 0;
+    {
+      clib_spinlock_unlock (&ssm->ring_config_lock);
+      return 0;
+    }
 
   vlib_stats_ring_config_t config = { .entry_size =
 					sizeof (vl_api_sfdp_session_stats_ring_entry_v2_t),
@@ -45,14 +50,62 @@ sfdp_session_stats_ring_init (vlib_main_t *vm, u32 ring_size)
   if (ssm->ring_buffer_index == CLIB_U32_MAX)
     {
       clib_warning ("Failed to create SFDP session stats ring buffer");
+      clib_spinlock_unlock (&ssm->ring_config_lock);
       return -1;
     }
 
   ssm->ring_buffer_size = ring_size;
   vec_foreach (stats, ssm->stats)
     stats->create_exported = 0;
+  ssm->ring_config_generation++;
   ssm->ring_buffer_enabled = 1;
+  clib_spinlock_unlock (&ssm->ring_config_lock);
 
+  return 0;
+}
+
+__clib_export int
+sfdp_session_stats_ring_health_get (u32 worker_index, sfdp_session_stats_ring_health_t *health)
+{
+  sfdp_session_stats_main_t *ssm = &sfdp_session_stats_main;
+  vlib_stats_ring_buffer_t *ring;
+  vlib_stats_ring_metadata_t *metadata;
+  const char *schema_id = VL_API_SFDP_SESSION_STATS_RING_ENTRY_V2_ABI_ID_CRC;
+  u32 schema_id_len = clib_strnlen (schema_id, 128);
+
+  if (!health || schema_id_len < sizeof (health->ring_abi))
+    return -1;
+
+  clib_spinlock_lock (&ssm->ring_config_lock);
+  if (!ssm->ring_buffer_enabled || worker_index >= vec_len (ssm->per_thread))
+    {
+      clib_spinlock_unlock (&ssm->ring_config_lock);
+      return -1;
+    }
+
+  ring = vlib_stats_get_entry_data_pointer (ssm->ring_buffer_index);
+  if (!ring || worker_index >= ring->config.n_threads || ring->config.ring_size == 0)
+    {
+      clib_spinlock_unlock (&ssm->ring_config_lock);
+      return -1;
+    }
+  metadata = (vlib_stats_ring_metadata_t *) ((u8 *) ring + ring->metadata_offset +
+					     worker_index * sizeof (vlib_stats_ring_metadata_t));
+
+  clib_memset (health, 0, sizeof (*health));
+  health->worker_index = worker_index;
+  health->schema_version = metadata->schema_version;
+  health->entry_size = ring->config.entry_size;
+  health->capacity = ring->config.ring_size;
+  health->producer_sequence = __atomic_load_n (&metadata->sequence, __ATOMIC_ACQUIRE);
+  /* Sequence identifies committed entries in this ring lifetime. The export
+   * counter remains monotonic across ring recreation within the VPP process. */
+  health->records_produced =
+    __atomic_load_n (&ssm->per_thread[worker_index].total_exports, __ATOMIC_RELAXED);
+  health->config_generation = ssm->ring_config_generation;
+  clib_memcpy_fast (health->ring_abi, schema_id + schema_id_len - sizeof (health->ring_abi),
+		    sizeof (health->ring_abi));
+  clib_spinlock_unlock (&ssm->ring_config_lock);
   return 0;
 }
 
@@ -240,7 +293,7 @@ sfdp_session_stats_export_session (vlib_main_t *vm, u32 session_index,
   vlib_stats_ring_commit_slot (ssm->ring_buffer_index, thread_index);
 
   /* Update per-thread export counter */
-  ssm->per_thread[thread_index].total_exports++;
+  __atomic_fetch_add (&ssm->per_thread[thread_index].total_exports, 1, __ATOMIC_RELAXED);
   if (entry->event_type == SFDP_SESSION_STATS_EVENT_TYPE_CREATED)
     stats->create_exported = 1;
 
@@ -480,6 +533,7 @@ sfdp_session_stats_init (vlib_main_t *vm)
   vec_validate (ssm->per_thread, vlib_get_n_threads () - 1);
 
   ssm->ring_buffer_index = CLIB_U32_MAX;
+  clib_spinlock_init (&ssm->ring_config_lock);
   ssm->ring_buffer_enabled = 0;
   ssm->ring_buffer_size = 0;
   ssm->export_interval = SFDP_SESSION_STATS_DEFAULT_EXPORT_INTERVAL;

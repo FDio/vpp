@@ -154,7 +154,9 @@ sfdp_init_main_if_needed (sfdp_main_t *sfdp)
 				 << (template_shift + log_n_thread);
       ptd->session_id_template |= (u64) i << template_shift;
       ptd->session_freelist = 0;
+      ptd->health.accounting_valid = 1;
     }
+  sfdp->unbound_health.accounting_valid = 1;
   if (vlib_num_workers ())
     clib_spinlock_init (&sfdp->session_lock);
 
@@ -190,6 +192,61 @@ sfdp_init_main_if_needed (sfdp_main_t *sfdp)
     }
 
   done = 1;
+}
+
+int
+sfdp_health_snapshot_get (sfdp_health_snapshot_t *snapshot)
+{
+  sfdp_main_t *sfdp = &sfdp_main;
+  sfdp_health_counters_t *health;
+  u64 value;
+
+  if (!snapshot || !sfdp->sessions)
+    return -1;
+  clib_memset (snapshot, 0, sizeof (*snapshot));
+  snapshot->session_table_capacity = sfdp_num_sessions ();
+  snapshot->accounting_valid = 1;
+
+  for (u32 shard = 0; shard <= vec_len (sfdp->per_thread_data); shard++)
+    {
+      health = shard < vec_len (sfdp->per_thread_data) ? &sfdp->per_thread_data[shard].health :
+							 &sfdp->unbound_health;
+      if (!__atomic_load_n (&health->accounting_valid, __ATOMIC_ACQUIRE))
+	return -1;
+
+      value = __atomic_load_n (&health->active_sessions, __ATOMIC_RELAXED);
+      if (value > ~0ULL - snapshot->session_table_used)
+	return -1;
+      snapshot->session_table_used += value;
+
+      for (u32 reason = 0; reason < SFDP_SESSION_CREATE_N_FAILURE_REASONS; reason++)
+	{
+	  value = __atomic_load_n (&health->create_failures[reason], __ATOMIC_RELAXED);
+	  if (value > ~0ULL - snapshot->create_failures[reason])
+	    return -1;
+	  snapshot->create_failures[reason] += value;
+	}
+      for (u32 reason = 0; reason < SFDP_SESSION_N_EVICTION_REASONS; reason++)
+	{
+	  value = __atomic_load_n (&health->evictions[reason], __ATOMIC_RELAXED);
+	  if (value > ~0ULL - snapshot->evictions[reason])
+	    return -1;
+	  snapshot->evictions[reason] += value;
+	}
+    }
+
+  /* A validity transition during aggregation invalidates the whole result. */
+  for (u32 shard = 0; shard <= vec_len (sfdp->per_thread_data); shard++)
+    {
+      health = shard < vec_len (sfdp->per_thread_data) ? &sfdp->per_thread_data[shard].health :
+							 &sfdp->unbound_health;
+      if (!__atomic_load_n (&health->accounting_valid, __ATOMIC_ACQUIRE))
+	return -1;
+    }
+
+  if (snapshot->session_table_used > snapshot->session_table_capacity)
+    return -1;
+  return 0;
 }
 
 static clib_error_t *
