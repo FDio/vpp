@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8f1f368f_95d40b1f",
+        "filename": "src/plugins/http/http.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1600,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-09-03T18:01:53Z",
+      "side": 1,
+      "message": "Feels a bit like we\u0027re hiding something here. Why are we rescheduling tx for session that has no data?",
+      "revId": "cc895019c46f5f0df88d8d17e17fb15bdb88a950",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
