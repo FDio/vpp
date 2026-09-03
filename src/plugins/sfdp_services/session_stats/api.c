@@ -34,13 +34,16 @@ vl_api_sfdp_session_stats_ring_enable_t_handler (vl_api_sfdp_session_stats_ring_
     }
   else
     {
+      clib_spinlock_lock (&ssm->ring_config_lock);
       if (ssm->ring_buffer_enabled)
 	{
 	  vlib_stats_remove_entry (ssm->ring_buffer_index);
 	  ssm->ring_buffer_index = CLIB_U32_MAX;
 	  ssm->ring_buffer_size = 0;
 	  ssm->ring_buffer_enabled = 0;
+	  ssm->ring_config_generation++;
 	}
+      clib_spinlock_unlock (&ssm->ring_config_lock);
     }
 
   REPLY_MACRO (VL_API_SFDP_SESSION_STATS_RING_ENABLE_REPLY);
