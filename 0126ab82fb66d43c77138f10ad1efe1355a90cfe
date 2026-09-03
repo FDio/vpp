@@ -16,6 +16,23 @@
       "message": "recheck",
       "revId": "0126ab82fb66d43c77138f10ad1efe1355a90cfe",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "bb56eebe_4214d3a1",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3347
+      },
+      "writtenOn": "2026-09-03T19:46:11Z",
+      "side": 1,
+      "message": "CI build failure:\n  #5 [2/5] RUN echo \"I\u0027m building for amd64\" \u0026\u0026 wget -t 2 \"https://go.dev/dl/go1.26.5.linux-amd64.tar.gz\" -O /tmp/go.tar.gz \u0026\u0026 tar -xzf /tmp/go.tar.gz -C /usr/local \u0026\u0026 rm /tmp/go.tar.gz\n  #5 0.167 I\u0027m building for amd64\n  #5 0.170 --2026-09-03 15:09:55--  https://go.dev/dl/go1.26.5.linux-amd64.tar.gz\n  #5 0.205 Resolving go.dev (go.dev)... 216.239.36.21, 216.239.34.21, 216.239.32.21, ...\n  #5 0.230 Connecting to go.dev (go.dev)|216.239.36.21|:443... connected.\n  #5 0.263 HTTP request sent, awaiting response... 500 Internal Server Error\n  #5 0.329 2026-09-03 15:09:55 ERROR 500: Internal Server Error.\n  #5 0.329 \n  #5 ERROR: process \"/bin/sh -c echo \\\"I\u0027m building for ${TARGETARCH}\\\" \u0026\u0026 wget -t 2 \\\"https://go.dev/dl/go${GO_VERSION}.linux-${TARGETARCH}.tar.gz\\\" -O /tmp/go.tar.gz \u0026\u0026 tar -xzf /tmp/go.tar.gz -C /usr/local \u0026\u0026 rm /tmp/go.tar.gz\" did not complete successfully: exit code: 8\n  ------",
+      "revId": "0126ab82fb66d43c77138f10ad1efe1355a90cfe",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
