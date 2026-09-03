@@ -893,7 +893,7 @@ hc_rx_callback (session_t *s)
 	{
 	  vlib_process_signal_event_mt (wrk->vlib_main, hcm->cli_node_index,
 					HC_FOPEN_FAILED, 0);
-	  goto done;
+	  return -1;
 	}
       fwrite (hc_session->http_response, sizeof (u8), rv,
 	      hc_session->file_ptr);
