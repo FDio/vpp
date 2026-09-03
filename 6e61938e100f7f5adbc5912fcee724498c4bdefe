@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1418fd51_3d7043c9",
+        "filename": "src/vcl/vcl_cfg.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 413,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-09-03T11:34:55Z",
+      "side": 1,
+      "message": "this should be in commit description, it\u0027s just debug print and this type of comments only bloat source code file",
+      "range": {
+        "startLine": 411,
+        "startChar": 0,
+        "endLine": 413,
+        "endChar": 61
+      },
+      "revId": "6e61938e100f7f5adbc5912fcee724498c4bdefe",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
