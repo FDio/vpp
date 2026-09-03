@@ -34,6 +34,24 @@
       "parentUuid": "8f1f368f_95d40b1f",
       "revId": "cc895019c46f5f0df88d8d17e17fb15bdb88a950",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e27d2b94_eb1c17de",
+        "filename": "src/plugins/http/http.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1600,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-09-03T20:26:58Z",
+      "side": 1,
+      "message": "Yes, this is the same failure. The linked VppConnectUdpStressTest abort reaches http_get_app_msg with rv\u003d-3 from http1_req_state_wait_app_reply during teardown. This guard prevents the stale TX event from invoking the parser after the FIFO has become empty; the detailed evidence is in the PS3 message above.",
+      "parentUuid": "39a22e2b_d629e40f",
+      "revId": "cc895019c46f5f0df88d8d17e17fb15bdb88a950",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
