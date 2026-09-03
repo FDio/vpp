@@ -16,6 +16,24 @@
       "message": "asan-hst",
       "revId": "1542202b54c2e5a24c0b52c9644b56137781fccf",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "73276494_bee5b895",
+        "filename": ".github/workflows/periodic-vpp-verify-asan-hst.yml",
+        "patchSetId": 2
+      },
+      "lineNbr": 77,
+      "author": {
+        "id": 3347
+      },
+      "writtenOn": "2026-09-03T23:54:36Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "05ac8bb2_edcbdd97",
+      "revId": "1542202b54c2e5a24c0b52c9644b56137781fccf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
