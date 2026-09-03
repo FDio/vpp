@@ -1350,6 +1350,50 @@ class TestGRE(VppTestCase):
             gre_if.admin_down()
             gre_if.unconfig_ip4()
 
+    def test_mgre_nh_in_vrf(self):
+        """mGRE IPv4 tunnel with an underlay next-hop in a VRF"""
+
+        #
+        # pg1 is in table 1, so the entry's underlay next-hop resolves only
+        # there. An entry that lost its next-hop FIB index would stack the
+        # tunnel's midchain in the default table, where it has no route.
+        #
+        gre_if = VppGreInterface(
+            self,
+            self.pg1.local_ip4,
+            "0.0.0.0",
+            outer_table_id=1,
+            mode=(VppEnum.vl_api_tunnel_mode_t.TUNNEL_API_MODE_MP),
+        )
+        gre_if.add_vpp_config()
+        gre_if.admin_up()
+        gre_if.config_ip4()
+
+        route_via_tun = VppIpRoute(
+            self,
+            "4.4.4.4",
+            32,
+            [VppRoutePath(gre_if.remote_ip4, gre_if.sw_if_index)],
+        )
+        route_via_tun.add_vpp_config()
+
+        tx = self.create_stream_ip4(self.pg0, "5.5.5.5", "4.4.4.4")
+
+        # the peer is unresolved until an entry names its underlay next-hop
+        self.send_and_assert_no_replies(self.pg0, tx)
+
+        teib = VppTeib(self, gre_if, gre_if.remote_ip4, self.pg1.remote_ip4, table_id=1)
+        teib.add_vpp_config()
+
+        rx = self.send_and_expect(self.pg0, tx, self.pg1)
+        self.verify_tunneled_4o4(
+            self.pg0, rx, tx, self.pg1.local_ip4, self.pg1.remote_ip4
+        )
+
+        teib.remove_vpp_config()
+        route_via_tun.remove_vpp_config()
+        gre_if.remove_vpp_config()
+
     def test_mgre6(self):
         """mGRE IPv6 tunnel Tests"""
 
