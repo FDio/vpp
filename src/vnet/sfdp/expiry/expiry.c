@@ -88,6 +88,9 @@ VLIB_NODE_FN (sfdp_expire_node)
   sfdp_per_thread_data_t *ptd =
     vec_elt_at_index (sfdp->per_thread_data, thread_index);
   u32 *session_index;
+  u32 previous_len;
+  u32 added;
+  sfdp_expiry_result_t expiry_result = { 0 };
 
   u32 n_remaining_sessions = sfdp_sessions_available_for_this_thread (ptd);
   u32 desired_evictions =
@@ -96,8 +99,23 @@ VLIB_NODE_FN (sfdp_expire_node)
       0;
 
   /* Calling callback for expiries or evictions */
+  previous_len = vec_len (ptd->expired_sessions);
   ptd->expired_sessions = sfdp->expiry_callbacks.expire_or_evict_sessions (
-    desired_evictions, ptd->expired_sessions);
+    desired_evictions, ptd->expired_sessions, &expiry_result);
+  if (PREDICT_FALSE (vec_len (ptd->expired_sessions) < previous_len))
+    {
+      sfdp_health_mark_accounting_invalid (ptd);
+      expiry_result.capacity_evictions = 0;
+    }
+  else
+    {
+      added = vec_len (ptd->expired_sessions) - previous_len;
+      if (PREDICT_FALSE (expiry_result.capacity_evictions > added))
+	{
+	  sfdp_health_mark_accounting_invalid (ptd);
+	  expiry_result.capacity_evictions = 0;
+	}
+    }
 
   vlib_node_increment_counter (vm, node->node_index,
 			       SFDP_EXPIRE_ERROR_NODE_CALLED, 1);
@@ -116,6 +134,10 @@ VLIB_NODE_FN (sfdp_expire_node)
       sfdp_session_t *session = sfdp_session_at_index (*session_index);
       sfdp_session_remove (sfdp, ptd, session, thread_index, *session_index);
     }
+
+  /* Count only capacity-selected sessions that reached common removal. */
+  sfdp_health_record_capacity_evictions (ptd,
+					 expiry_result.capacity_evictions);
 
   vlib_node_increment_counter (vm, node->node_index, SFDP_EXPIRE_ERROR_EXPIRED,
 			       vec_len (ptd->expired_sessions));

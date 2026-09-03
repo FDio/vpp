@@ -61,10 +61,11 @@ timer_expiry_cb_disable ()
 }
 
 static u32 *
-timer_expiry_cb_expire_or_evict_sessions (u32 desired_expiries,
-					  u32 *expired_sessions_vec)
+timer_expiry_cb_expire_or_evict_sessions (u32 desired_expiries, u32 *expired_sessions_vec,
+					  sfdp_expiry_result_t *result)
 {
   (void) desired_expiries; // TODO: Early discards not supported for now.
+  result->capacity_evictions = 0;
 
   sfdp_timer_main_t *t = &sfdp_timer_main;
   vlib_main_t *vm = vlib_get_main ();
