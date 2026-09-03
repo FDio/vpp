@@ -15,6 +15,17 @@
  * below allows a built-in application to retain it until release. */
 typedef svm_fifo_async_seg_t session_deferred_rx_segment_t;
 
+typedef struct
+{
+  u64 current_buffers;
+  u64 peak_buffers;
+  u64 admission_fallbacks;
+  u64 shared_available_low;
+  u64 samples;
+  u32 total_buffers;
+  u32 reserve_buffers;
+} session_deferred_rx_pool_stats_t;
+
 /**
  * Enable or disable deferred RX copying for a session.
  *
@@ -54,6 +65,12 @@ int session_take_deferred_rx_segments (session_t *s, u32 n_segs);
 /** Release buffer references previously retained by a successful take. */
 void session_release_deferred_rx_buffers (u32 thread_index, const u32 *buffer_refs,
 					  u32 n_buffer_refs);
+
+/** Return pool-wide loan admission statistics for deferred RX. */
+int session_get_deferred_rx_pool_stats (u8 pool_index, session_deferred_rx_pool_stats_t *stats);
+
+/** Reset pool-wide loan statistics. Fails while loans are outstanding. */
+int session_reset_deferred_rx_pool_stats (u8 pool_index);
 
 /** Copy all remaining deferred payload into the RX FIFO. */
 int session_flush_deferred_rx (session_t *s);
