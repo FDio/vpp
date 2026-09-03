@@ -32,6 +32,7 @@ from ipaddress import ip_network
 from vpp_object import VppObject
 from vpp_papi import VppEnum
 from vpp_neighbor import VppNeighbor
+from vpp_papi_provider import CliFailedCommandError
 
 N_PKTS = 15
 N_REMOTE_HOSTS = 3
@@ -1034,6 +1035,45 @@ class TestCNatTranslation(CnatCommonTestCase):
         # """ CNat Translation flow hash config """
         self._make_multi_backend_translations()
         self.cnat_fhc_translation()
+
+
+@unittest.skipIf("cnat" in config.excluded_plugins, "Exclude CNAT plugin tests")
+class TestCNatTranslationCLI(CnatCommonTestCase):
+    """CNat translation CLI validation"""
+
+    def test_cnat_cli_translation_validation(self):
+        # The CLI defaults to the default load-balancing algorithm when no
+        # algorithm is specified and rejects add commands without a VIP/real.
+        before_ids = {t.translation.id for t in self.vapi.cnat_translation_dump()}
+
+        try:
+            self.vapi.cli(
+                "cnat translation add proto tcp vip 30.0.0.99 5555 "
+                "to ->20.0.0.1 4000"
+            )
+            created = [
+                t
+                for t in self.vapi.cnat_translation_dump()
+                if t.translation.id not in before_ids
+            ]
+            self.assertEqual(len(created), 1)
+            translation_id = created[0].translation.id
+            translation_lines = [
+                line
+                for line in self.vapi.cli("show cnat translation").splitlines()
+                if line.startswith(f"[{translation_id}]")
+            ]
+            self.assertEqual(len(translation_lines), 1)
+            self.assertIn("lb:default", translation_lines[0])
+
+            with self.assertRaises(CliFailedCommandError):
+                self.vapi.cli("cnat translation add proto tcp to ->20.0.0.2 4000")
+            after_ids = {t.translation.id for t in self.vapi.cnat_translation_dump()}
+            self.assertEqual(after_ids, before_ids | {translation_id})
+        finally:
+            for t in self.vapi.cnat_translation_dump():
+                if t.translation.id not in before_ids:
+                    self.vapi.cnat_translation_del(id=t.translation.id)
 
 
 @unittest.skipIf("cnat" in config.excluded_plugins, "Exclude CNAT plugin tests")
