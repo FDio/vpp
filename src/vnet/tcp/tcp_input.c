@@ -747,30 +747,29 @@ tcp_cc_handle_event (tcp_connection_t *tc, tcp_ack_ctx_t *ac)
     tcp_cc_rcv_cong_ack (tc, TCP_CC_PARTIALACK, ac);
 }
 
-/**
- * Check if duplicate ack as per RFC5681 Sec. 2
- */
-always_inline u8
-tcp_ack_is_dupack (tcp_connection_t *tc, vlib_buffer_t *b, u32 prev_snd_wnd, tcp_ack_ctx_t *ac)
+/** Classify repeated ACK and duplicate congestion feedback. */
+static_always_inline tcp_ack_flag_t
+tcp_ack_classify_duplicate (tcp_connection_t *tc, vlib_buffer_t *b, u32 prev_snd_wnd,
+			    tcp_ack_ctx_t *ac)
 {
-  return ((!ac->bytes_acked) && seq_gt (tc->snd_nxt, tc->snd_una) &&
-	  (vnet_buffer (b)->tcp.seq_end == vnet_buffer (b)->tcp.seq_number) &&
-	  (prev_snd_wnd == tc->snd_wnd));
+  u8 repeated;
+
+  repeated = !ac->bytes_acked && vnet_buffer (b)->tcp.seq_end == vnet_buffer (b)->tcp.seq_number &&
+	     prev_snd_wnd == tc->snd_wnd;
+
+  /* Per RFC 6675, an ACK that SACKs new data is a DupACK as well. A
+   * repeated ACK additionally needs outstanding data for congestion control. */
+  return (ac->last_sacked_bytes || (repeated && seq_gt (tc->snd_nxt, tc->snd_una))) ?
+	   TCP_ACK_F_DUPACK :
+	   0;
 }
 
-/**
- * Checks if ack is a congestion control event.
- */
-static u8
-tcp_ack_is_cc_event (tcp_connection_t *tc, vlib_buffer_t *b, u32 prev_snd_wnd, tcp_ack_ctx_t *ac)
+/** Checks if an ACK needs loss or congestion slow-path processing. */
+static_always_inline u32
+tcp_ack_needs_slow_path (tcp_connection_t *tc, tcp_ack_ctx_t *ac)
 {
-  /* Check if ack is duplicate. Per RFC 6675, ACKs that SACK new data are
-   * defined to be 'duplicate' as well. TCP_ACK_F_DUPACK is bit zero, so the
-   * boolean result can be ORed into ack_flags directly. */
-  ac->ack_flags |= ac->last_sacked_bytes || tcp_ack_is_dupack (tc, b, prev_snd_wnd, ac);
-
-  return ((ac->ack_flags & (TCP_ACK_F_DUPACK | TCP_ACK_F_DSACK_SPURIOUS | TCP_ACK_F_DETECT_LOSS)) ||
-	  tcp_in_cong_recovery (tc));
+  return (ac->ack_flags & (TCP_ACK_F_DUPACK | TCP_ACK_F_DSACK_SPURIOUS | TCP_ACK_F_DETECT_LOSS)) ||
+	 tcp_in_cong_recovery (tc);
 }
 
 static_always_inline u8
@@ -869,13 +868,15 @@ tcp_rcv_ack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc, vlib_buffer_t * b,
 	tcp_program_dequeue (wrk, tc, &ac);
     }
 
+  ac.ack_flags |= tcp_ack_classify_duplicate (tc, b, prev_snd_wnd, &ac);
+
   TCP_EVT (TCP_EVT_ACK_RCVD, tc, &ac);
 
   /*
    * Check if we have congestion event
    */
 
-  if (tcp_ack_is_cc_event (tc, b, prev_snd_wnd, &ac))
+  if (tcp_ack_needs_slow_path (tc, &ac))
     {
       if (ac.ack_flags & TCP_ACK_F_DETECT_LOSS)
 	tcp_loss_on_ack (tc, &ac);
