@@ -873,6 +873,7 @@ hsi_udp_drain_start (session_t *s, session_t *peer_s, udp_connection_t *uc,
   uc->cfg_flags |= UDP_CFG_F_TRACKED;
   hsi_worker_counter_inc (wrk, udp_drain_started);
   hsi_udp_drain_maybe_register_time_update (thread_index);
+  hsi_drain_program_tx (s);
 
   return drain;
 }
