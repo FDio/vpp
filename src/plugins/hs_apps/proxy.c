@@ -1306,8 +1306,35 @@ active_open_tx_callback (session_t * ao_s)
 static void
 active_open_cleanup_callback (session_t * s, session_cleanup_ntf_t ntf)
 {
+  proxy_main_t *pm = &proxy_main;
+  proxy_worker_t *wrk;
+  proxy_session_side_ctx_t *sc;
+  proxy_session_t *ps;
+
   if (ntf == SESSION_CLEANUP_TRANSPORT)
-    return;
+    {
+      if (session_get_transport_proto (s) != TRANSPORT_PROTO_TCP)
+	return;
+      wrk = proxy_worker_get (s->thread_index);
+      sc = proxy_session_side_ctx_get (wrk, s->opaque);
+      if (sc->state != PROXY_SC_S_CLOSING)
+	return;
+      /* reset after tcp session shutdown in one burst */
+      clib_spinlock_lock_if_init (&pm->sessions_lock);
+      ps = proxy_session_get (sc->ps_index);
+      if (ps->po.is_http && !ps->po_disconnected)
+	{
+	  /* we want stream reset here */
+	  ASSERT (ps->po.session_handle != SESSION_INVALID_HANDLE);
+	  sc->state = PROXY_SC_S_CLOSED;
+	  session_send_rpc_evt_to_thread_force (session_thread_from_handle (ps->po.session_handle),
+						proxy_do_reset_rpc,
+						uword_to_pointer (ps->po.session_handle, void *));
+	  ps->po_disconnected = 1;
+	}
+      clib_spinlock_unlock_if_init (&pm->sessions_lock);
+      return;
+    }
 
   proxy_try_delete_session (s, 1 /* is_active_open */ );
 }
