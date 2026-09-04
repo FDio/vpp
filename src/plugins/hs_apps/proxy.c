@@ -1303,11 +1303,47 @@ active_open_tx_callback (session_t * ao_s)
   return 0;
 }
 
+static_always_inline void
+active_open_check_rst_during_shutdown (session_t *s)
+{
+  proxy_main_t *pm = &proxy_main;
+  proxy_worker_t *wrk;
+  proxy_session_side_ctx_t *sc;
+  proxy_session_t *ps;
+
+  if (session_get_transport_proto (s) != TRANSPORT_PROTO_TCP)
+    return;
+
+  wrk = proxy_worker_get (s->thread_index);
+  sc = proxy_session_side_ctx_get (wrk, s->opaque);
+  if (sc->state != PROXY_SC_S_CLOSING)
+    return;
+
+  clib_spinlock_lock_if_init (&pm->sessions_lock);
+  ps = proxy_session_get (sc->ps_index);
+  if (ps->po.is_http && !ps->po_disconnected)
+    {
+      /* we want stream reset here */
+      ASSERT (ps->po.session_handle != SESSION_INVALID_HANDLE);
+      sc->state = PROXY_SC_S_CLOSED;
+      session_send_rpc_evt_to_thread_force (session_thread_from_handle (ps->po.session_handle),
+					    proxy_do_reset_rpc,
+					    uword_to_pointer (ps->po.session_handle, void *));
+      ps->po_disconnected = 1;
+    }
+  clib_spinlock_unlock_if_init (&pm->sessions_lock);
+
+  return;
+}
+
 static void
-active_open_cleanup_callback (session_t * s, session_cleanup_ntf_t ntf)
+active_open_cleanup_callback (session_t *s, session_cleanup_ntf_t ntf)
 {
   if (ntf == SESSION_CLEANUP_TRANSPORT)
-    return;
+    {
+      active_open_check_rst_during_shutdown (s);
+      return;
+    }
 
   proxy_try_delete_session (s, 1 /* is_active_open */ );
 }
@@ -1315,36 +1351,8 @@ active_open_cleanup_callback (session_t * s, session_cleanup_ntf_t ntf)
 static void
 active_open_transport_closed_callback (session_t *s)
 {
-  proxy_main_t *pm = &proxy_main;
-  proxy_session_side_ctx_t *sc;
-  proxy_worker_t *wrk;
-  proxy_session_t *ps;
-
-  wrk = proxy_worker_get (s->thread_index);
-  sc = proxy_session_side_ctx_get (wrk, s->opaque);
-
   PROXY_DBG ("[%u] ps %u ao transport closed", s->thread_index, sc->ps_index);
-
-  /* reset or timeout during tcp session shutdown */
-  if (sc->state == PROXY_SC_S_CLOSING)
-    {
-      clib_spinlock_lock_if_init (&pm->sessions_lock);
-
-      ps = proxy_session_get (sc->ps_index);
-
-      if (ps->po.is_http && !ps->po_disconnected)
-	{
-	  /* we want stream reset here */
-	  ASSERT (ps->po.session_handle != SESSION_INVALID_HANDLE);
-	  sc->state = PROXY_SC_S_CLOSED;
-	  session_send_rpc_evt_to_thread_force (session_thread_from_handle (ps->po.session_handle),
-						proxy_do_reset_rpc,
-						uword_to_pointer (ps->po.session_handle, void *));
-	  ps->po_disconnected = 1;
-	}
-
-      clib_spinlock_unlock_if_init (&pm->sessions_lock);
-    }
+  active_open_check_rst_during_shutdown (s);
 }
 
 static session_cb_vft_t active_open_clients = {
