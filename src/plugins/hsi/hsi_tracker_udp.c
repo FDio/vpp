@@ -1246,7 +1246,7 @@ hsi_udp_drain_update_time (f64 time_now, u8 thread_index)
 }
 
 int
-hsi_track_udp (session_t *s, session_t *peer_s)
+hsi_track_udp (session_t *s, session_t *peer_s, u8 program_tx)
 {
   hsi_udp_track_snapshot_t snap0, snap1;
   udp_connection_t *uc0, *uc1;
@@ -1264,6 +1264,8 @@ hsi_track_udp (session_t *s, session_t *peer_s)
       hsi_udp_drain_start (s, peer_s, uc0, uc1);
       if (hsi_udp_track_send_drain_start (s, peer_s))
 	return -1;
+      if (program_tx)
+	hsi_drain_program_tx_pair (s, peer_s);
       return 0;
     }
 
@@ -1271,6 +1273,8 @@ hsi_track_udp (session_t *s, session_t *peer_s)
     {
       hsi_udp_drain_start (s, peer_s, uc0, uc1);
       hsi_udp_drain_start (peer_s, s, uc1, uc0);
+      if (program_tx)
+	hsi_drain_program_tx_pair (s, peer_s);
       return 0;
     }
 
