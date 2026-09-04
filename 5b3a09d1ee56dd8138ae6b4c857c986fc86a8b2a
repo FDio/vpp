@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "bdc0f5e1_c2f0b3ca",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-09-04T07:47:13Z",
+      "side": 1,
+      "message": "we have two knobs - log-dir and tmp-dir - I believe the change covers tmp-dir, but if these are different, log.txt won\u0027t be present\nthe stack dump should be prefixed or somehow decorated, otherwise it\u0027s hard to account it to a failed worker since it\u0027s a bare stack trace",
+      "revId": "5b3a09d1ee56dd8138ae6b4c857c986fc86a8b2a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
