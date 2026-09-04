@@ -711,6 +711,10 @@ hsi_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cm
 	    }
 	  hm->postponed_cleanup_time = timeout;
 	}
+      else if (unformat (line_input, "test drain-wakeup disable"))
+	hm->test_disable_drain_wakeup = 1;
+      else if (unformat (line_input, "test drain-wakeup enable"))
+	hm->test_disable_drain_wakeup = 0;
       else
 	{
 	  error = clib_error_return (0, "unknown input `%U'", format_unformat_error, line_input);
@@ -729,7 +733,8 @@ VLIB_CLI_COMMAND (hsi_command, static) = {
 		"[tcp drain-cache max-packets <n>] [tcp drain-timeout <sec>] "
 		"[udp drain-cache max-packets <n>] [udp drain-timeout <sec>] "
 		"[udp idle-timeout <sec>] [tcp fin-wait-timeout <sec>] "
-		"[postponed-cleanup-time <sec>]",
+		"[postponed-cleanup-time <sec>] "
+		"[test drain-wakeup [enable | disable]]",
   .function = hsi_command_fn,
 };
 
@@ -747,6 +752,8 @@ hsi_show_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_
   vlib_cli_output (vm, "udp idle-timeout %.3f", hm->udp_idle_timeout);
   vlib_cli_output (vm, "tcp fin-wait-timeout %.3f", hm->tcp_fin_wait_timeout);
   vlib_cli_output (vm, "postponed-cleanup-time %.3f", hm->postponed_cleanup_time);
+  vlib_cli_output (vm, "test drain-wakeup %s",
+		   hm->test_disable_drain_wakeup ? "disabled" : "enabled");
 
   vec_foreach_index (i, hm->wrk)
     {
@@ -803,6 +810,7 @@ hsi_init (vlib_main_t *vm)
   hm->udp_idle_timeout = HSI_UDP_IDLE_DEFAULT_TIMEOUT;
   hm->tcp_fin_wait_timeout = HSI_TCP_FIN_WAIT_DEFAULT_TIMEOUT;
   hm->postponed_cleanup_time = HSI_POSTPONED_CLEANUP_TIME;
+  hm->test_disable_drain_wakeup = 0;
   hsi_workers_init ();
 
   return 0;

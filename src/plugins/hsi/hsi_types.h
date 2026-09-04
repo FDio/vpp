@@ -177,6 +177,7 @@ typedef struct hsi_main_
   f64 udp_idle_timeout;
   f64 tcp_fin_wait_timeout;
   f64 postponed_cleanup_time;
+  u8 test_disable_drain_wakeup;
 
   /* ipv4 and ipv6 for tcp and udp */
   session_handle_t intercept_listeners[2][2];

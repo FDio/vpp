@@ -342,6 +342,7 @@ func HsiProxyLiteUdpDrainCacheOverflowTest(s *HsiSuite) {
 
 	vpp := s.Containers.Vpp.VppInstance
 	Log(vpp.Vppctl("hsi udp drain-cache max-packets 1"))
+	Log(vpp.Vppctl("hsi test drain-wakeup disable"))
 	s.StartProxyLiteUdp4("hsi-offload-stall", "fifo-size 4k")
 
 	finished := SendHsiUdpDatagrams(s.ServerAddr(), s.Ports.Server, s.NetNamespaces.Client,
@@ -364,6 +365,7 @@ func HsiProxyLiteUdpDrainTimeoutTest(s *HsiSuite) {
 
 	vpp := s.Containers.Vpp.VppInstance
 	Log(vpp.Vppctl("hsi udp drain-timeout 1"))
+	Log(vpp.Vppctl("hsi test drain-wakeup disable"))
 	s.StartProxyLiteUdp4("hsi-offload-stall", "fifo-size 4k")
 
 	finished := SendHsiUdpDatagrams(s.ServerAddr(), s.Ports.Server, s.NetNamespaces.Client,
@@ -520,6 +522,7 @@ func HsiProxyLiteDrainTimeoutTest(s *HsiSuite) {
 	s.SetupNginxServer()
 	vpp := s.Containers.Vpp.VppInstance
 	Log(vpp.Vppctl("hsi tcp drain-timeout 1"))
+	Log(vpp.Vppctl("hsi test drain-wakeup disable"))
 	s.StartProxyLiteTcp4("hsi-offload-stall", "fifo-size 4k")
 
 	uploadFileName := MakeProxyLiteUploadFile()
