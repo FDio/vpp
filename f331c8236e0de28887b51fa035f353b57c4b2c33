@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "126ecfbe_175c5254",
+        "filename": "src/plugins/hsi/hsi_tracker_tcp.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 436,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-09-04T10:22:44Z",
+      "side": 1,
+      "message": "you are changing behavior to pass tests, so something must be wrong.",
+      "revId": "f331c8236e0de28887b51fa035f353b57c4b2c33",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
