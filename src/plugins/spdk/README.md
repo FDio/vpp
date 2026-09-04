@@ -82,6 +82,22 @@ Each FIFO span consumes one NVMe/TCP request iovec.  A reservation must fit in
 the current 34-entry iovec limit.  The physical benchmark configuration uses
 32 KiB VPP packet buffers for the later TCP-output stage.
 
+For host-to-controller writes, the socket backend implements SPDK's
+`spdk_sock_recv_next()` API on top of HostStack's deferred RX interface. The
+normal built-in application callback may take the ordered VLIB buffer-backed
+segments immediately and expose them to SPDK as receive tokens. SPDK releases
+each token after NVMe/TCP has finished consuming the payload, and the plugin
+returns the associated buffers on their owning VPP worker.
+
+Data is materialized into the session FIFO when direct delivery is disabled,
+stream ordering requires it, a segment cannot be represented safely, or the
+buffer-pool admission guard refuses a loan. The guard accounts outstanding
+loans for the whole VLIB buffer pool and preserves one per-thread cache refill
+as a reserve. A separate per-worker byte limit bounds application retention.
+`show spdk` reports direct and copied RX bytes, loan lifetime, fallbacks and
+pool low-watermarks. The `test spdk direct-rx on|off` command is intended only
+for controlled A/B measurements.
+
 The physical benchmark uses SPDK Malloc bdevs.  A native DMA bdev additionally
 requires every FIFO chunk exposed to the bdev to be DMA-safe and registered in
 SPDK's memory map.  The following asynchronous, non-destructive diagnostic
