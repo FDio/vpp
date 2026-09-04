@@ -8036,11 +8036,13 @@ tcp_test_rack (vlib_main_t *vm, unformat_input_t *input)
   tcp_connection_t _tc, *tc = &_tc;
   tcp_rack_state_t *rack;
   tcp_bt_sample_t *bts;
+  tw_timer_tcp_twsl_t *timer;
   tcp_ack_ctx_t ac;
   tcp_rxt_range_t range;
   sack_block_t block;
   f64 next_to, base_reo, reo_deadline, rto_deadline;
   u32 fack, lost, tx_tsval;
+  u32 timer_next, timer_prev;
   u8 have_range, reo_wnd_updated, sack_reneged;
 
   /* RACK borrows the retransmit timer while preserving the RTO deadline. */
@@ -8062,11 +8064,17 @@ tcp_test_rack (vlib_main_t *vm, unformat_input_t *input)
    * dequeue commits the final REO/RTO selection once for the input burst. */
   tc->flags |= TCP_CONN_DEQ_PENDING;
   tc->burst_acked = 1;
+  timer = pool_elt_at_index (wrk->timer_wheel.timers, tc->timers[TCP_TIMER_RETRANSMIT]);
+  timer_next = timer->next;
+  timer_prev = timer->prev;
   tcp_rack_arm_reorder_timer (tc, 0.01, 1 /* timer_update_deferred */);
   reo_deadline = rack->reo_deadline;
   rto_deadline = rack->rto_deadline;
   TCP_TEST (rack->timer_type == TCP_RACK_TIMER_REO && reo_deadline < rto_deadline,
 	    "deferred cumulative ACK selects the earlier reordering deadline");
+  timer = pool_elt_at_index (wrk->timer_wheel.timers, tc->timers[TCP_TIMER_RETRANSMIT]);
+  TCP_TEST (timer->next == timer_next && timer->prev == timer_prev,
+	    "deferred reordering selection does not mutate the timer wheel");
   tcp_rack_arm_reorder_timer (tc, 0.02, 1 /* timer_update_deferred */);
   TCP_TEST (rack->reo_deadline > reo_deadline && rack->reo_deadline < rto_deadline,
 	    "later ACK replaces the pending reordering deadline");
@@ -8255,8 +8263,9 @@ tcp_test_rack (vlib_main_t *vm, unformat_input_t *input)
   tcp_rack_recovery_init (tc);
   tc->prr_delivered = 17;
   tcp_rack_prepare_rto (tc, &sack_reneged);
-  TCP_TEST (sack_reneged && tcp_test_bt_tx_order_is_sane (tc) && tc->prr_delivered == 17,
-	    "SACK reneging does not create PRR delivery credit");
+  TCP_TEST (sack_reneged && tcp_test_bt_tx_order_is_sane (tc) && tc->prr_delivered == 17 &&
+	      tc->sack_sb.lost_bytes == 300 && tc->lost == 300,
+	    "SACK reneging accounts scoreboard and lifetime loss without PRR delivery credit");
   tcp_fastrecovery_off (tc);
   tc->prr_delivered = 0;
   have_range = tcp_bt_next_rack_rxt_range (tc, &range);
