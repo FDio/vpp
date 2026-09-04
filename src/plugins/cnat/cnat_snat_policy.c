@@ -135,6 +135,11 @@ cnat_snat_policy_entry_cleanup (cnat_snat_policy_entry_t *cpe)
       clib_bihash_free_24_8 (&excluded_pfx->ip_hash);
       for (int i = 0; i < CNAT_N_SNAT_IF_MAP; i++)
 	clib_bitmap_free (cpe->interface_maps[i]);
+      for (int i = 0; i < ARRAY_LEN (excluded_pfx->meta); i++)
+	{
+	  vec_free (excluded_pfx->meta[i].prefix_lengths_in_search_order);
+	  clib_bitmap_free (excluded_pfx->meta[i].non_empty_dst_address_length_bitmap);
+	}
     }
 }
 
