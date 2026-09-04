@@ -72,6 +72,7 @@ typedef struct proxy_lite_main_
   u8 started;
 
   proxy_lite_hsi_track_session_pair_fn hsi_track_session_pair;
+  proxy_lite_hsi_track_session_pair_fn hsi_track_session_pair_no_tx_wakeup;
 
   u64 accepted;
   u64 connected;
@@ -183,12 +184,14 @@ proxy_lite_hsi_symbols_init (void)
 {
   proxy_lite_main_t *pm = &proxy_lite_main;
 
-  if (pm->hsi_track_session_pair)
-    return 1;
+  if (!pm->hsi_track_session_pair)
+    pm->hsi_track_session_pair = vlib_get_plugin_symbol ("hsi_plugin.so", "hsi_track_session_pair");
+  if (pm->hsi_offload_stall && !pm->hsi_track_session_pair_no_tx_wakeup)
+    pm->hsi_track_session_pair_no_tx_wakeup =
+      vlib_get_plugin_symbol ("hsi_plugin.so", "hsi_track_session_pair_no_tx_wakeup");
 
-  pm->hsi_track_session_pair = vlib_get_plugin_symbol ("hsi_plugin.so", "hsi_track_session_pair");
-
-  return pm->hsi_track_session_pair != 0;
+  return pm->hsi_track_session_pair &&
+	 (!pm->hsi_offload_stall || pm->hsi_track_session_pair_no_tx_wakeup);
 }
 
 static_always_inline u8
@@ -302,6 +305,7 @@ static int
 proxy_lite_start_hsi_offload (session_t *s, session_handle_t peer_handle, u32 ps_index)
 {
   proxy_lite_main_t *pm = &proxy_lite_main;
+  proxy_lite_hsi_track_session_pair_fn track_session_pair;
   proxy_lite_session_t *ps;
   session_handle_tu_t sh = { .handle = peer_handle };
   session_t *peer_s;
@@ -312,7 +316,9 @@ proxy_lite_start_hsi_offload (session_t *s, session_handle_t peer_handle, u32 ps
     goto fail;
 
   pending = proxy_lite_session_has_pending (s) || proxy_lite_session_has_pending (peer_s);
-  if (pm->hsi_track_session_pair (s, peer_handle))
+  track_session_pair = pm->hsi_offload_stall ? pm->hsi_track_session_pair_no_tx_wakeup :
+					       pm->hsi_track_session_pair;
+  if (track_session_pair (s, peer_handle))
     goto fail;
 
   clib_spinlock_lock_if_init (&pm->sessions_lock);
