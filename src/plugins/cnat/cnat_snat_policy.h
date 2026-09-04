@@ -138,6 +138,23 @@ cnat_snat_policy_entry_get__ (ip_address_family_t af, u32 fwd_fib_index)
 
 cnat_snat_policy_entry_t *cnat_snat_policy_entry_get (ip_address_family_t af, u32 fwd_fib_index);
 
+static_always_inline cnat_snat_policy_entry_t *
+cnat_snat_policy_entry_get_explicit__ (ip_address_family_t af, u32 fwd_fib_index)
+{
+  cnat_snat_policy_main_t *cpm = &cnat_snat_policy_main;
+  u32 *cp_fwd_fib_index =
+    AF_IP4 == af ? cpm->snat_policy_per_fwd_fib_index4 : cpm->snat_policy_per_fwd_fib_index6;
+
+  if (fwd_fib_index >= vec_len (cp_fwd_fib_index))
+    return 0;
+
+  u32 cpe_index = vec_elt (cp_fwd_fib_index, fwd_fib_index);
+  if (cpe_index == INDEX_INVALID)
+    return 0;
+
+  return pool_elt_at_index (cpm->snat_policies_pool, cpe_index);
+}
+
 cnat_snat_policy_entry_t *cnat_snat_policy_entry_get_default (void);
 
 #endif

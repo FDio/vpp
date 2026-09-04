@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import re
 import unittest
 
 from framework import VppTestCase
@@ -1034,6 +1035,66 @@ class TestCNatTranslation(CnatCommonTestCase):
         # """ CNat Translation flow hash config """
         self._make_multi_backend_translations()
         self.cnat_fhc_translation()
+
+
+@unittest.skipIf("cnat" in config.excluded_plugins, "Exclude CNAT plugin tests")
+class TestCNatSNATPolicy(CnatCommonTestCase):
+    """CNat SNAT policy configuration"""
+
+    def setUp(self):
+        super(TestCNatSNATPolicy, self).setUp()
+
+        # VppIpTable takes a table ID. CNAT's fib argument requires the
+        # corresponding internal FIB index.
+        self.table_id = 1
+        self.table = VppIpTable(self, self.table_id)
+        self.table.add_vpp_config()
+
+        output = self.vapi.cli("show ip fib")
+        match = re.search(rf"ipv4-VRF:{self.table_id}, fib_index:?\s*(\d+)", output)
+        self.assertIsNotNone(match)
+        self.fib_index = int(match.group(1))
+
+    def tearDown(self):
+        entries = self._snat_by_table()
+        if self.table_id in entries:
+            self.vapi.cli(f"set cnat snat-policy addr fib {self.fib_index}")
+
+        entries = self._snat_by_table()
+        if 0 in entries:
+            self.vapi.cli("set cnat snat-policy addr fib 0")
+
+        self.table.remove_vpp_config()
+        super(TestCNatSNATPolicy, self).tearDown()
+
+    def _snat_by_table(self):
+        return {
+            entry.fwd_table_id4: str(entry.snat_ip4)
+            for entry in self.vapi.cnat_snat_addresses_dump()
+        }
+
+    def test_snat_policy_does_not_alias_fibs(self):
+        # A policy configured for a new FIB must not reuse the default
+        # policy pool entry. The dataplane lookup falls back to the
+        # default policy for unmapped FIBs; using it during configuration
+        # aliases the new FIB to the default entry. Deleting the new
+        # policy must therefore leave the default policy intact.
+        self.assertEqual({}, self._snat_by_table())
+
+        self.vapi.cli("set cnat snat-policy addr 30.0.0.1")
+        self.vapi.cli(f"set cnat snat-policy addr 40.0.0.1 fib {self.fib_index}")
+
+        self.assertEqual(
+            {0: "30.0.0.1", self.table_id: "40.0.0.1"},
+            self._snat_by_table(),
+        )
+
+        self.vapi.cli(f"set cnat snat-policy addr fib {self.fib_index}")
+
+        self.assertEqual({0: "30.0.0.1"}, self._snat_by_table())
+
+        self.vapi.cli("set cnat snat-policy addr fib 0")
+        self.assertEqual({}, self._snat_by_table())
 
 
 @unittest.skipIf("cnat" in config.excluded_plugins, "Exclude CNAT plugin tests")

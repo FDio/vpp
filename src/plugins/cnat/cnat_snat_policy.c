@@ -573,8 +573,8 @@ cnat_set_snat (u32 fwd_fib_index, u32 ret_fib_index, const ip4_address_t *ip4, u
    *  - update only ip4
    *  - update only ip6
    *  - update both ip4 & ip4 or sw_if_index */
-  cpe4 = cnat_snat_policy_entry_get (AF_IP4, fwd_fib_index);
-  cpe6 = cnat_snat_policy_entry_get (AF_IP6, fwd_fib_index);
+  cpe4 = cnat_snat_policy_entry_get_explicit__ (AF_IP4, fwd_fib_index);
+  cpe6 = cnat_snat_policy_entry_get_explicit__ (AF_IP6, fwd_fib_index);
   ASSERT (cpe4 == cpe6 || (!sw_if_set && !(ip4_set && ip6_set)));
   cpe = cpe4 ? cpe4 : cpe6;
 
@@ -719,8 +719,11 @@ cnat_set_snat_cli (vlib_main_t *vm, unformat_input_t *input,
 	}
     }
 
-  rv = cnat_set_snat (fwd_fib_index, ret_fib_index, &ip4, 32, &ip6, 128, sw_if_index,
-		      CNAT_SNAT_POLICY_FLAG_USE_AS_DEFAULT);
+  cnat_snat_policy_flags_t flags = CNAT_SNAT_POLICY_FLAG_NONE;
+  if (fwd_fib_index == CNAT_FIB_TABLE)
+    flags |= CNAT_SNAT_POLICY_FLAG_USE_AS_DEFAULT;
+
+  rv = cnat_set_snat (fwd_fib_index, ret_fib_index, &ip4, 32, &ip6, 128, sw_if_index, flags);
   if (rv)
     {
       e = clib_error_return (0, "unknown error %d", rv);
