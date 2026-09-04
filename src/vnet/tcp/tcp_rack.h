@@ -81,6 +81,25 @@ tcp_rack_get_state (tcp_connection_t *tc)
   return (tcp_rack_state_t *) tcp_bt_opaque (tc);
 }
 
+always_inline tcp_rack_timer_type_t
+tcp_rack_timer_type (tcp_connection_t *tc)
+{
+  return tcp_rack_get_state (tc)->timer_type;
+}
+
+always_inline u8
+tcp_rack_timer_is_reordering (tcp_connection_t *tc)
+{
+  return tcp_rack_timer_type (tc) == TCP_RACK_TIMER_REO;
+}
+
+always_inline void
+tcp_rack_timer_set_type (tcp_connection_t *tc, tcp_rack_timer_type_t type)
+{
+  ASSERT (type == TCP_RACK_TIMER_RTO || type == TCP_RACK_TIMER_REO);
+  tcp_rack_get_state (tc)->timer_type = type;
+}
+
 always_inline u8
 tcp_rack_reordered (tcp_connection_t *tc)
 {
