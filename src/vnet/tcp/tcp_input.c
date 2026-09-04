@@ -8,6 +8,7 @@
 #include <vnet/fib/ip6_fib.h>
 #include <vnet/tcp/tcp.h>
 #include <vnet/tcp/tcp_inlines.h>
+#include <vnet/tcp/tcp_rack.h>
 #include <vnet/session/session.h>
 #include <math.h>
 
@@ -479,6 +480,9 @@ tcp_estimate_initial_rtt (tcp_connection_t * tc)
       /* First measurement as per RFC 6298 */
       tc->srtt = mrtt;
       tc->rttvar = mrtt >> 1;
+      if (tcp_rack_enabled (tc))
+	tcp_rack_note_rtt_sample (tcp_rack_get_state (tc), (f64) mrtt * TCP_TICK,
+				  tcp_time_now_us (tc->c_thread_index));
     }
   tcp_update_rto (tc);
 }
