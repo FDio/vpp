@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "d93508ef_e344cba5",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2026-09-04T15:08:58Z",
+      "side": 1,
+      "message": "Works with CSIT suites, tested auto (DV) mode on Intel testbeds (ARM ones currently have issues preventing me from testing this). Considering a week ago CX6 and CX7 did not work on any testbed (and I tested this also with CX5 on 2n-zn2), this cannot not make the situation worse.",
+      "revId": "aefab5e4f79a5e6330ccebcbbb7a9ea7dfc9b167",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
