@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "21e4f86b_67602406",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 6
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-09-04T14:25:50Z",
+      "side": 1,
+      "message": "FYI: I\u0027m aware of VppConnectProxyIperfTcpMWTest issue and working on fix",
+      "revId": "136ac8d5381d12997f6fad307fde6316fa6678f3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
