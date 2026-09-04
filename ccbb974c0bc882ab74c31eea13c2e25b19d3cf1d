@@ -16,6 +16,23 @@
       "message": "The checkstyle workflow failed. Please run \"make fixstyle\" to fix the style and upload it",
       "revId": "ccbb974c0bc882ab74c31eea13c2e25b19d3cf1d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e9d932b2_a2190c4e",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 55
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2026-09-04T15:09:16Z",
+      "side": 1,
+      "message": "Works with CSIT suites, tested auto (DV) mode on Intel testbeds (ARM ones currently have issues preventing me from testing this). Considering a week ago CX6 and CX7 did not work on any testbed (and I tested this also with CX5 on 2n-zn2), this cannot not make the situation worse.",
+      "revId": "ccbb974c0bc882ab74c31eea13c2e25b19d3cf1d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
