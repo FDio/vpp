@@ -312,6 +312,13 @@ proxy_lite_start_hsi_offload (session_t *s, session_handle_t peer_handle, u32 ps
     goto fail;
 
   pending = proxy_lite_session_has_pending (s) || proxy_lite_session_has_pending (peer_s);
+  if (pm->hsi_offload_stall)
+    {
+      /* Leave the event bits set without queueing TX events. This is fault
+       * injection for the drain timeout and overflow tests. */
+      (void) svm_fifo_set_event (s->tx_fifo);
+      (void) svm_fifo_set_event (peer_s->tx_fifo);
+    }
   if (pm->hsi_track_session_pair (s, peer_handle))
     goto fail;
 
