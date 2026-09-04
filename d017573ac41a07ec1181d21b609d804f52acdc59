@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "86f04cdd_faea307f",
+        "filename": "test/remote_test.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 19,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-09-04T08:07:26Z",
+      "side": 1,
+      "message": "should we guard for presence in multiprocessing the same way as we do in run_tests.py?",
+      "revId": "d017573ac41a07ec1181d21b609d804f52acdc59",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ce111806_43756c4a",
+        "filename": "test/test_nat44_ei.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 2620,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-09-04T08:07:26Z",
+      "side": 1,
+      "message": "This keeps a pre-existing bug, \"is-at\" is the error message here, while we\u0027re asserting truthyness of `capture[0][ARP].op` should be `assertEqual(capture[0][ARP].op, 2)`",
+      "revId": "d017573ac41a07ec1181d21b609d804f52acdc59",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0568a755_50abd569",
+        "filename": "test/test_nat44_ei.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 2634,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-09-04T08:07:26Z",
+      "side": 1,
+      "message": "same here",
+      "revId": "d017573ac41a07ec1181d21b609d804f52acdc59",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
