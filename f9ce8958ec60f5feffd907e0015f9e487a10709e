@@ -16,6 +16,23 @@
       "message": "Works with CSIT suites, tested auto (DV) mode on Intel testbeds (ARM ones currently have issues preventing me from testing this). Considering a week ago CX6 and CX7 did not work on any testbed (and I tested this also with CX5 on 2n-zn2), this cannot not make the situation worse.",
       "revId": "f9ce8958ec60f5feffd907e0015f9e487a10709e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "12f64836_72e6935a",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 16
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2026-09-04T15:10:21Z",
+      "side": 1,
+      "message": "Also, this gave a nice performance boots, ~20% (depending on testbed) for l2-patch with 64B packets.",
+      "revId": "f9ce8958ec60f5feffd907e0015f9e487a10709e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
