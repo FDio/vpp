@@ -433,6 +433,7 @@ hsi_tcp_drain_start (session_t *s, session_t *peer_s, tcp_connection_t *tc,
   drain->flags |= HSI_TCP_DRAIN_F_WND_CLAMPED;
   hsi_worker_counter_inc (wrk, tcp_drain_started);
   hsi_tcp_drain_maybe_register_time_update (thread_index);
+  hsi_drain_program_tx (s);
 
   return drain;
 }
