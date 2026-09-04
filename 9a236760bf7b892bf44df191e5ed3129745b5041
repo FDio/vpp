@@ -16,6 +16,24 @@
       "message": "Move to a new function? But why aren\u0027t we catching some of this on ao side when upstream is tcp?",
       "revId": "9a236760bf7b892bf44df191e5ed3129745b5041",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2c246fd6_aeb42312",
+        "filename": "src/plugins/hs_apps/proxy.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1315,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-09-04T20:41:04Z",
+      "side": 1,
+      "message": "we do shutdown only for http connect tunnels",
+      "parentUuid": "ccaeb3af_d516216d",
+      "revId": "9a236760bf7b892bf44df191e5ed3129745b5041",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
