@@ -93,6 +93,7 @@ tcp_rack_mark_reneged_lost (tcp_connection_t *tc)
 	}
       index = next;
     }
+  /* Reneging handling already rebuilt sack_sb.lost_bytes for this range. */
   tc->lost += newly_lost;
 }
 
@@ -490,13 +491,47 @@ tcp_rack_timer_ticks (f64 timeout)
   return timeout > 0.0 ? (u32) (timeout / TCP_TIMER_TICK) + 1 : 1;
 }
 
+typedef struct
+{
+  f64 deadline;
+  tcp_rack_timer_type_t type;
+} tcp_rack_timer_choice_t;
+
+static_always_inline tcp_rack_timer_choice_t
+tcp_rack_select_loss_timer (tcp_rack_state_t *rack)
+{
+  tcp_rack_timer_choice_t choice = {
+    .deadline = rack->rto_deadline,
+    .type = TCP_RACK_TIMER_RTO,
+  };
+
+  ASSERT (choice.deadline != 0.0);
+  if (rack->reo_deadline && rack->reo_deadline < choice.deadline)
+    {
+      choice.deadline = rack->reo_deadline;
+      choice.type = TCP_RACK_TIMER_REO;
+    }
+
+  return choice;
+}
+
+static_always_inline void
+tcp_rack_program_loss_timer (tcp_timer_wheel_t *tw, tcp_connection_t *tc, tcp_rack_state_t *rack,
+			     tcp_rack_timer_choice_t choice, u32 interval)
+{
+  ASSERT (interval > 0);
+  rack->timer_type = choice.type;
+  tcp_timer_update (tw, tc, TCP_TIMER_RETRANSMIT, interval);
+}
+
 void
 tcp_rack_restore_rto (tcp_connection_t *tc)
 {
   tcp_worker_ctx_t *wrk = tcp_get_worker (tc->c_thread_index);
   tcp_rack_state_t *rack = tcp_rack_get_state (tc);
-  u8 was_reordering = rack->timer_type == TCP_RACK_TIMER_REO;
+  u8 was_rto = tcp_rack_timer_type (tc) == TCP_RACK_TIMER_RTO;
   f64 now = tcp_time_now_us (tc->c_thread_index);
+  tcp_rack_timer_choice_t choice;
   u32 remaining;
 
   rack->timer_type = TCP_RACK_TIMER_RTO;
@@ -513,12 +548,12 @@ tcp_rack_restore_rto (tcp_connection_t *tc)
     rack->rto_deadline =
       tcp_rack_timer_deadline (now, clib_max ((u32) tc->rto * TCP_TO_TIMER_TICK, 1));
 
-  if (!was_reordering && tcp_timer_is_active (tc, TCP_TIMER_RETRANSMIT))
+  if (was_rto && tcp_timer_is_active (tc, TCP_TIMER_RETRANSMIT))
     return;
 
-  /* Convert the absolute transport deadline to a relative wheel interval. */
-  remaining = tcp_rack_timer_ticks (rack->rto_deadline - now);
-  tcp_timer_update (&wrk->timer_wheel, tc, TCP_TIMER_RETRANSMIT, remaining);
+  choice = tcp_rack_select_loss_timer (rack);
+  remaining = tcp_rack_timer_ticks (choice.deadline - now);
+  tcp_rack_program_loss_timer (&wrk->timer_wheel, tc, rack, choice, remaining);
 }
 
 static_always_inline void
@@ -534,30 +569,23 @@ tcp_rack_defer_rto_update (tcp_connection_t *tc)
     rack->rto_deadline = 0;
 }
 
-static void
-tcp_rack_select_rto (tcp_connection_t *tc, u8 update_deferred)
-{
-  if (!update_deferred)
-    {
-      tcp_rack_restore_rto (tc);
-      return;
-    }
-
-  tcp_rack_defer_rto_update (tc);
-}
-
 void
 tcp_rack_arm_reorder_timer (tcp_connection_t *tc, f64 next_to, u8 timer_update_deferred)
 {
   tcp_rack_state_t *rack = tcp_rack_get_state (tc);
-  f64 now, deadline;
-  u32 ticks, rto_ticks;
+  tcp_worker_ctx_t *wrk = tcp_get_worker (tc->c_thread_index);
+  tcp_rack_timer_choice_t choice;
+  tcp_rack_timer_type_t old_type = tcp_rack_timer_type (tc);
+  f64 now;
+  u32 ticks = 0, rto_ticks, interval;
+  u8 rto_refreshed;
 
   ASSERT (!timer_update_deferred || ((tc->flags & TCP_CONN_DEQ_PENDING) && tc->burst_acked));
 
   now = tcp_time_now_us (tc->c_thread_index);
   rto_ticks = clib_max ((u32) tc->rto * TCP_TO_TIMER_TICK, 1);
-  if (timer_update_deferred || !rack->rto_deadline)
+  rto_refreshed = timer_update_deferred || !rack->rto_deadline;
+  if (rto_refreshed)
     rack->rto_deadline = tcp_rack_timer_deadline (now, rto_ticks);
 
   if (PREDICT_TRUE (timer_update_deferred && next_to <= 0.0))
@@ -567,30 +595,44 @@ tcp_rack_arm_reorder_timer (tcp_connection_t *tc, f64 next_to, u8 timer_update_d
     }
 
   if (next_to <= 0.0 || tc->snd_una == tc->snd_nxt)
+    rack->reo_deadline = 0;
+  else
     {
-      tcp_rack_select_rto (tc, timer_update_deferred);
+      /* Round the RACK deadline up to the next timer tick. */
+      ticks = tcp_rack_timer_ticks (next_to);
+      rack->reo_deadline = now + ticks * TCP_TIMER_TICK;
+    }
+
+  if (tc->snd_una == tc->snd_nxt)
+    {
+      rack->timer_type = TCP_RACK_TIMER_RTO;
+      rack->rto_deadline = 0;
+      if (!timer_update_deferred)
+	tcp_timer_reset (&wrk->timer_wheel, tc, TCP_TIMER_RETRANSMIT);
       return;
     }
 
-  /* Round the RACK deadline up to the next timer tick. */
-  ticks = tcp_rack_timer_ticks (next_to);
-  deadline = now + ticks * TCP_TIMER_TICK;
+  choice = tcp_rack_select_loss_timer (rack);
+  if (choice.type != TCP_RACK_TIMER_REO)
+    rack->reo_deadline = 0;
 
-  /* The shared loss timer always runs the earlier of REO and RTO. */
-  if (deadline >= rack->rto_deadline)
-    {
-      tcp_rack_select_rto (tc, timer_update_deferred);
-      return;
-    }
-
-  rack->timer_type = TCP_RACK_TIMER_REO;
-  rack->reo_deadline = deadline;
-  /* Postponed dequeue commits the selected REO/RTO deadline once per input
-   * burst with cumulative ACK progress. */
   if (timer_update_deferred)
+    {
+      if (choice.type == TCP_RACK_TIMER_RTO)
+	tcp_rack_defer_rto_update (tc);
+      else
+	rack->timer_type = choice.type;
+      return;
+    }
+
+  if (choice.type == TCP_RACK_TIMER_RTO && !rto_refreshed && old_type == TCP_RACK_TIMER_RTO &&
+      tcp_timer_is_active (tc, TCP_TIMER_RETRANSMIT))
     return;
-  tcp_timer_update (&tcp_get_worker (tc->c_thread_index)->timer_wheel, tc, TCP_TIMER_RETRANSMIT,
-		    clib_max (ticks, 1));
+
+  interval = choice.type == TCP_RACK_TIMER_REO ?
+	       ticks :
+	       (rto_refreshed ? rto_ticks : tcp_rack_timer_ticks (choice.deadline - now));
+  tcp_rack_program_loss_timer (&wrk->timer_wheel, tc, rack, choice, interval);
 }
 
 void
@@ -618,15 +660,23 @@ tcp_rack_timer_rto_update (tcp_connection_t *tc, u32 interval)
 {
   tcp_rack_state_t *rack = tcp_rack_get_state (tc);
   f64 now = tcp_time_now_us (tc->c_thread_index);
+  tcp_rack_timer_choice_t choice;
 
   rack->rto_deadline = tcp_rack_timer_deadline (now, interval);
-  if (rack->timer_type == TCP_RACK_TIMER_REO && rack->reo_deadline &&
-      rack->reo_deadline < rack->rto_deadline)
-    return tcp_rack_timer_ticks (rack->reo_deadline - now);
+  /* No REO deadline means RTO wins without arbitration. */
+  if (PREDICT_TRUE (rack->reo_deadline == 0.0))
+    {
+      rack->timer_type = TCP_RACK_TIMER_RTO;
+      return interval;
+    }
 
-  rack->timer_type = TCP_RACK_TIMER_RTO;
-  rack->reo_deadline = 0;
-  return interval;
+  choice = tcp_rack_select_loss_timer (rack);
+  if (choice.type != TCP_RACK_TIMER_REO)
+    rack->reo_deadline = 0;
+  rack->timer_type = choice.type;
+
+  return choice.type == TCP_RACK_TIMER_RTO ? interval :
+					     tcp_rack_timer_ticks (choice.deadline - now);
 }
 
 void
@@ -636,7 +686,7 @@ tcp_rack_reorder_timeout (tcp_connection_t *tc)
   u32 lost;
 
   ASSERT (tcp_rack_enabled (tc));
-  ASSERT (tcp_rack_get_state (tc)->timer_type == TCP_RACK_TIMER_REO);
+  ASSERT (tcp_rack_timer_is_reordering (tc));
   if (tc->state < TCP_STATE_ESTABLISHED || tc->snd_una == tc->snd_nxt)
     {
       tcp_rack_restore_rto (tc);
