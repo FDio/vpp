@@ -152,6 +152,7 @@ compile_commands.json
 /test/hs-test/summary/
 /test/hs-test/.last_state_hash
 /test/hs-test/.go_cache/
+/test/hs-test/hs-test.test
 
 # kube-test
 calicovppversion
