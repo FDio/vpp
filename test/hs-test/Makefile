@@ -314,11 +314,11 @@ build-debug: .deps.ok build-vpp-debug
 install-deps:
 	@rm -f .deps.ok
 	@if [ -d "/usr/local/go" ]; then \
-        echo "Go is already installed. You may have to update it manually if version < 1.25.4"; \
+        echo "Go is already installed. You may have to update it manually if version < 1.26.5"; \
 		go version; \
     else \
-        echo "Installing Go 1.25.4"; \
-		wget -t 2 https://go.dev/dl/go1.25.4.linux-$(ARCH).tar.gz -O /tmp/go1.25.4.linux-$(ARCH).tar.gz && sudo tar -C /usr/local -xzf /tmp/go1.25.4.linux-$(ARCH).tar.gz; \
+        echo "Installing Go 1.26.5"; \
+		wget -t 2 https://go.dev/dl/go1.26.5.linux-$(ARCH).tar.gz -O /tmp/go1.26.5.linux-$(ARCH).tar.gz && sudo tar -C /usr/local -xzf /tmp/go1.26.5.linux-$(ARCH).tar.gz; \
 		sudo ln -s /usr/local/go/bin/go /usr/bin/go ; \
 	fi
 	@if ! command -v docker >/dev/null 2>&1; then \
