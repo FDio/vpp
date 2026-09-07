@@ -4068,6 +4068,147 @@ cleanup:
   return rv;
 }
 
+/* A FIN queues a closing notification. If an RST for the same connection is
+ * processed later in the same dispatch, it moves the connection to CLOSED
+ * while the disconnect remains queued. The queued notification must then be
+ * delivered as a transport-closed notification. */
+static int
+tcp_test_fin_rst_burst (vlib_main_t *vm, unformat_input_t *input)
+{
+  tcp_e2e_params_t params = {
+    .name = "fin_rst_burst",
+    .client_addr = 0x18181801,
+    .server_addr = 0x19191901,
+    .client_vrf = 0,
+    .server_vrf = 2,
+    .server_port = 2253,
+    .client_port = 0,
+    .secret = 2252,
+  };
+  tcp_e2e_ctx_t _ctx, *ctx = &_ctx;
+  tcp_connection_t *tc;
+  app_worker_t *app_wrk;
+  session_event_t *events;
+  u32 buffer_indices[2] = { VLIB_BUFFER_INVALID_INDEX, VLIB_BUFFER_INVALID_INDEX };
+  u32 initial_rcv_nxt;
+  clib_thread_index_t thread_index;
+  uword n_events_before, n_events, n_disconnected = 0;
+  uword n_transport_closed = 0, n_reset = 0, i;
+  u32 n_buffers;
+  u8 buffers_enqueued = 0;
+  int rv = 0;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      vlib_cli_output (vm, "parse error: '%U'", format_unformat_error, input);
+      return -1;
+    }
+
+  if (!TCP_TEST_I ((tcp_e2e_setup (vm, ctx, &params) == 0), "fin_rst_burst: e2e setup"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+  tc = ctx->client_tc;
+  thread_index = tc->c_thread_index;
+  app_wrk = application_get_default_worker (application_get (ctx->client_index));
+  events = app_wrk->wrk_evts[thread_index];
+  n_events_before = clib_fifo_elts (events);
+  initial_rcv_nxt = tc->rcv_nxt;
+
+  if (!TCP_TEST_I ((tc->state == TCP_STATE_ESTABLISHED),
+		   "fin_rst_burst: connection starts in ESTABLISHED"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+  n_buffers = vlib_buffer_alloc (vm, buffer_indices, 2);
+  if (!TCP_TEST_I ((n_buffers == 2), "fin_rst_burst: allocate FIN/RST buffers"))
+    {
+      if (n_buffers)
+	vlib_buffer_free (vm, buffer_indices, n_buffers);
+      buffer_indices[0] = VLIB_BUFFER_INVALID_INDEX;
+      rv = 1;
+      goto cleanup;
+    }
+
+  for (i = 0; i < 2; i++)
+    {
+      vlib_buffer_t *b = vlib_get_buffer (vm, buffer_indices[i]);
+      tcp_header_t *tcp;
+      u32 seq = initial_rcv_nxt + (i != 0);
+
+      vlib_buffer_reset (b);
+      b->current_length = sizeof (*tcp);
+      vnet_buffer (b)->tcp.hdr_offset = 0;
+      vnet_buffer (b)->tcp.connection_index = tc->c_c_index;
+      vnet_buffer (b)->tcp.seq_number = seq;
+      /* tcp_input_lookup_buffer leaves FIN out of seq_end; the FIN handler
+       * accounts for it when it advances rcv_nxt. */
+      vnet_buffer (b)->tcp.seq_end = seq;
+      vnet_buffer (b)->tcp.ack_number = tc->snd_nxt;
+
+      tcp = vlib_buffer_get_current (b);
+      clib_memset (tcp, 0, sizeof (*tcp));
+      tcp->src_port = tc->c_rmt_port;
+      tcp->dst_port = tc->c_lcl_port;
+      tcp->seq_number = clib_host_to_net_u32 (seq);
+      tcp->ack_number = clib_host_to_net_u32 (tc->snd_nxt);
+      tcp->data_offset_and_reserved = 5 << 4;
+      tcp->flags = TCP_FLAG_ACK | (i == 0 ? TCP_FLAG_FIN : TCP_FLAG_RST);
+    }
+
+  {
+    vlib_frame_t *frame = vlib_get_frame_to_node (vm, tcp4_established_node.index);
+    vlib_node_runtime_t *node = vlib_node_get_runtime (vm, tcp4_established_node.index);
+    u32 *to = vlib_frame_vector_args (frame);
+    to[0] = buffer_indices[0];
+    to[1] = buffer_indices[1];
+    frame->n_vectors = 2;
+    buffers_enqueued = 1;
+    tcp4_established_node.function (vm, node, frame);
+    vlib_frame_free (vm, frame);
+  }
+
+  if (!TCP_TEST_I ((tc->state == TCP_STATE_CLOSED),
+		   "fin_rst_burst: RST closes connection after FIN"))
+    rv = 1;
+
+  n_events = clib_fifo_elts (events);
+  for (i = n_events_before; i < n_events; i++)
+    {
+      session_event_t *event = events + clib_fifo_elt_index (events, i);
+      if (event->event_type == SESSION_CTRL_EVT_DISCONNECTED)
+	n_disconnected++;
+      else if (event->event_type == SESSION_CTRL_EVT_TRANSPORT_CLOSED)
+	n_transport_closed++;
+      else if (event->event_type == SESSION_CTRL_EVT_RESET)
+	n_reset++;
+    }
+
+  if (!TCP_TEST_I ((n_events - n_events_before == 2),
+		   "fin_rst_burst: two close events queued (got %lu)", n_events - n_events_before))
+    rv = 1;
+  if (!TCP_TEST_I ((n_disconnected == 1), "fin_rst_burst: one disconnect notification (got %lu)",
+		   n_disconnected))
+    rv = 1;
+  if (!TCP_TEST_I ((n_transport_closed == 1),
+		   "fin_rst_burst: one transport-closed notification (got %lu)",
+		   n_transport_closed))
+    rv = 1;
+  if (!TCP_TEST_I ((n_reset == 0),
+		   "fin_rst_burst: no reset notification for a FIN/RST close (got %lu)", n_reset))
+    rv = 1;
+
+cleanup:
+  if (!buffers_enqueued && buffer_indices[0] != VLIB_BUFFER_INVALID_INDEX)
+    vlib_buffer_free (vm, buffer_indices, 2);
+  tcp_e2e_teardown (vm, ctx);
+  return rv;
+}
+
 /* Two SYNs can be resolved to the same TIME_WAIT connection before the
  * listen node processes either one. The first SYN replaces the lookup entry
  * and postpones transport cleanup. The second must not free that transport
@@ -9452,6 +9593,10 @@ tcp_test (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd_arg)
 	{
 	  res = tcp_test_rst_burst (vm, input);
 	}
+      else if (unformat (input, "fin-rst"))
+	{
+	  res = tcp_test_fin_rst_burst (vm, input);
+	}
       else if (unformat (input, "timewait"))
 	{
 	  res = tcp_test_timewait_syn_burst (vm, input);
@@ -9485,6 +9630,8 @@ tcp_test (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd_arg)
 	  if ((res = tcp_test_rto (vm, input)))
 	    goto done;
 	  if ((res = tcp_test_rst_burst (vm, input)))
+	    goto done;
+	  if ((res = tcp_test_fin_rst_burst (vm, input)))
 	    goto done;
 	  if ((res = tcp_test_timewait_syn_burst (vm, input)))
 	    goto done;
