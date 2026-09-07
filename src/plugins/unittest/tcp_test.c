@@ -9370,6 +9370,7 @@ tcp_test_rack (vlib_main_t *vm, unformat_input_t *input)
   block = (sack_block_t) { 100, 200 };
   vec_add1 (tc->rcv_opts.sacks, block);
   tcp_test_rcv_sacks (tc, tc->snd_una, &ac);
+  rack = tcp_rack_get_state (tc);
   TCP_TEST (rack->rxt_in_flight == 0, "RACK excludes SACKed retransmissions from flight");
   tcp_cong_recovery_off (tc);
   tcp_loss_enter_recovery (tc);
