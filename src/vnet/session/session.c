@@ -1101,7 +1101,7 @@ session_transport_delete_request (transport_connection_t *tc,
       session_program_transport_ctrl_evt (s, SESSION_CTRL_EVT_CLOSE);
       break;
     case SESSION_STATE_TRANSPORT_DELETED:
-      transport_cleanup_cb (cb_fn, tc);
+      /* Transport cleanup was already requested or completed. */
       break;
     case SESSION_STATE_CLOSED:
       session_lookup_del_session (s);

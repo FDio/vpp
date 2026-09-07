@@ -4068,6 +4068,210 @@ cleanup:
   return rv;
 }
 
+/* Two SYNs can be resolved to the same TIME_WAIT connection before the
+ * listen node processes either one. The first SYN replaces the lookup entry
+ * and postpones transport cleanup. The second must not free that transport
+ * before its queued cleanup callback runs. */
+static int
+tcp_test_timewait_syn_burst (vlib_main_t *vm, unformat_input_t *input)
+{
+  tcp_e2e_params_t params = {
+    .name = "timewait_syn_burst",
+    .client_addr = 0x16161601,
+    .server_addr = 0x17171701,
+    .client_vrf = 0,
+    .server_vrf = 2,
+    .server_port = 2251,
+    .client_port = 3251,
+    .secret = 2250,
+  };
+  tcp_e2e_ctx_t _ctx, *ctx = &_ctx;
+  u32 buffer_indices[2] = { VLIB_BUFFER_INVALID_INDEX, VLIB_BUFFER_INVALID_INDEX };
+  tcp_connection_t *old_tc = 0, *child = 0;
+  transport_connection_t *tconn;
+  session_event_t *events;
+  app_worker_t *app_wrk;
+  session_t *server_s;
+  ip4_address_t lcl_ip, rmt_ip;
+  u16 lcl_port = 0, rmt_port = 0;
+  u32 old_ci = ~0, old_si = ~0, fib_index = ~0, sw_if_index = ~0;
+  clib_thread_index_t thread_index = 0;
+  uword n_transport_cleanup = 0, n_session_cleanup = 0, i;
+  session_event_t *transport_cleanup_evt = 0;
+  u8 buffers_consumed = 0, result = 0, old_alive;
+  u32 n_buffers;
+  int rv = 0;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      vlib_cli_output (vm, "parse error: '%U'", format_unformat_error, input);
+      return -1;
+    }
+
+  if (!TCP_TEST_I ((tcp_e2e_setup (vm, ctx, &params) == 0), "timewait_syn_burst: e2e setup"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+  server_s = session_get_if_valid (accepted_session_index, accepted_session_thread);
+  if (!TCP_TEST_I ((server_s != 0), "timewait_syn_burst: server session exists"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+  old_tc = (tcp_connection_t *) session_get_transport (server_s);
+  if (!TCP_TEST_I ((old_tc != 0), "timewait_syn_burst: server transport exists"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+  old_ci = old_tc->c_c_index;
+  old_si = old_tc->c_s_index;
+  thread_index = old_tc->c_thread_index;
+  fib_index = old_tc->c_fib_index;
+  sw_if_index = old_tc->sw_if_index;
+  lcl_ip = old_tc->c_lcl_ip4;
+  rmt_ip = old_tc->c_rmt_ip4;
+  lcl_port = old_tc->c_lcl_port;
+  rmt_port = old_tc->c_rmt_port;
+
+  tcp_connection_timers_reset (old_tc);
+  old_tc->rcv_opts.flags &= ~TCP_OPTS_FLAG_TSTAMP;
+  tcp_connection_set_state (old_tc, TCP_STATE_TIME_WAIT);
+  server_s->flags |= SESSION_F_APP_CLOSED;
+  session_set_state (server_s, SESSION_STATE_CLOSED);
+
+  app_wrk = application_get_default_worker (application_get (ctx->server_index));
+  n_buffers = vlib_buffer_alloc (vm, buffer_indices, 2);
+  if (!TCP_TEST_I ((n_buffers == 2), "timewait_syn_burst: allocate SYN buffers"))
+    {
+      if (n_buffers)
+	vlib_buffer_free (vm, buffer_indices, n_buffers);
+      buffer_indices[0] = VLIB_BUFFER_INVALID_INDEX;
+      rv = 1;
+      goto cleanup;
+    }
+
+  /* Perform both lookups before invoking the listen node, matching the
+   * batching in tcp46_input_inline. */
+  for (i = 0; i < 2; i++)
+    {
+      vlib_buffer_t *b = vlib_get_buffer (vm, buffer_indices[i]);
+      tcp_connection_t *lookup_tc;
+      tcp_header_t *tcp;
+      ip4_header_t *ip4;
+      u32 error = TCP_ERROR_NO_LISTENER;
+
+      vlib_buffer_reset (b);
+      b->current_length = sizeof (*ip4) + sizeof (*tcp);
+      ip4 = vlib_buffer_get_current (b);
+      clib_memset (ip4, 0, b->current_length);
+      ip4->ip_version_and_header_length = 0x45;
+      ip4->length = clib_host_to_net_u16 (b->current_length);
+      ip4->ttl = 64;
+      ip4->protocol = IP_PROTOCOL_TCP;
+      ip4->src_address = rmt_ip;
+      ip4->dst_address = lcl_ip;
+
+      tcp = ip4_next_header (ip4);
+      tcp->src_port = rmt_port;
+      tcp->dst_port = lcl_port;
+      tcp->seq_number = clib_host_to_net_u32 (old_tc->rcv_nxt);
+      tcp->data_offset_and_reserved = 5 << 4;
+      tcp->flags = TCP_FLAG_SYN;
+      tcp->window = clib_host_to_net_u16 (65535);
+
+      vnet_buffer (b)->ip.fib_index = fib_index;
+      vnet_buffer (b)->ip.rx_sw_if_index = sw_if_index;
+      lookup_tc =
+	tcp_input_lookup_buffer (b, thread_index, &error, 1 /* is_ip4 */, 0 /* is_nolookup */);
+      if (!TCP_TEST_I ((lookup_tc && lookup_tc->c_c_index == old_ci),
+		       "timewait_syn_burst: SYN %lu resolves to old transport", i))
+	{
+	  rv = 1;
+	  goto cleanup;
+	}
+      vnet_buffer (b)->tcp.connection_index = lookup_tc->c_c_index;
+      vnet_buffer (b)->tcp.flags = lookup_tc->state;
+    }
+
+  {
+    vlib_frame_t *frame = vlib_get_frame_to_node (vm, tcp4_listen_node.index);
+    vlib_node_runtime_t *node = vlib_node_get_runtime (vm, tcp4_listen_node.index);
+    u32 *to = vlib_frame_vector_args (frame);
+    to[0] = buffer_indices[0];
+    to[1] = buffer_indices[1];
+    frame->n_vectors = 2;
+    buffers_consumed = 1;
+    tcp4_listen_node.function (vm, node, frame);
+    vlib_frame_free (vm, frame);
+  }
+
+  old_alive = tcp_connection_get_if_valid (old_ci, thread_index) != 0;
+  if (!TCP_TEST_I ((old_alive), "timewait_syn_burst: old transport waits for deferred cleanup"))
+    rv = 1;
+
+  events = app_wrk->wrk_evts[thread_index];
+  for (i = 0; i < clib_fifo_elts (events); i++)
+    {
+      session_event_t *event = events + clib_fifo_elt_index (events, i);
+      if (event->event_type != SESSION_CTRL_EVT_CLEANUP || (u32) event->as_u64[0] != old_si)
+	continue;
+      if ((event->as_u64[0] >> 32) == SESSION_CLEANUP_TRANSPORT)
+	{
+	  n_transport_cleanup++;
+	  transport_cleanup_evt = event;
+	}
+      else if ((event->as_u64[0] >> 32) == SESSION_CLEANUP_SESSION)
+	n_session_cleanup++;
+    }
+  if (!TCP_TEST_I ((n_transport_cleanup == 1 && n_session_cleanup == 1),
+		   "timewait_syn_burst: one deferred cleanup pair (transport %lu session %lu)",
+		   n_transport_cleanup, n_session_cleanup))
+    rv = 1;
+
+  tconn = session_lookup_connection_wt4 (fib_index, &lcl_ip, &rmt_ip, lcl_port, rmt_port,
+					 TRANSPORT_PROTO_TCP, thread_index, &result);
+  child = tcp_get_connection_from_transport (tconn);
+  if (!TCP_TEST_I ((child && child->state == TCP_STATE_SYN_RCVD && child->c_c_index != old_ci),
+		   "timewait_syn_burst: one replacement child remains in lookup"))
+    {
+      rv = 1;
+      child = 0;
+    }
+
+  /* The replacement has not been accepted yet, so its cleanup is synchronous
+   * and does not interfere with the deferred cleanup under test. */
+  if (child && child->state == TCP_STATE_SYN_RCVD)
+    {
+      tcp_connection_cleanup_and_notify (child);
+      child = 0;
+    }
+
+  /* On an unfixed build the second SYN has already freed old_tc. Disable the
+   * stale callback so the test reports the failed invariant instead of
+   * reproducing the production SIGSEGV during its own cleanup. */
+  if (!old_alive && transport_cleanup_evt)
+    transport_cleanup_evt->as_u64[1] = 0;
+  app_wrk_flush_wrk_events (app_wrk, thread_index);
+
+  if (!TCP_TEST_I ((tcp_connection_get_if_valid (old_ci, thread_index) == 0),
+		   "timewait_syn_burst: deferred callback frees old transport once"))
+    rv = 1;
+  if (!TCP_TEST_I ((session_get_if_valid (old_si, thread_index) == 0),
+		   "timewait_syn_burst: old session cleanup completes"))
+    rv = 1;
+
+cleanup:
+  if (!buffers_consumed && buffer_indices[0] != VLIB_BUFFER_INVALID_INDEX)
+    vlib_buffer_free (vm, buffer_indices, 2);
+  tcp_e2e_teardown (vm, ctx);
+  return rv;
+}
+
 /*
  * Tampering-based end-to-end cases. Each drives a real connection through the
  * test tampering node and asserts the connection tolerates a specific dropped
@@ -9266,6 +9470,10 @@ tcp_test (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd_arg)
 	{
 	  res = tcp_test_rst_burst (vm, input);
 	}
+      else if (unformat (input, "timewait"))
+	{
+	  res = tcp_test_timewait_syn_burst (vm, input);
+	}
       else if (unformat (input, "cubic"))
 	{
 	  res = tcp_test_cubic (vm, input);
@@ -9295,6 +9503,8 @@ tcp_test (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd_arg)
 	  if ((res = tcp_test_rto (vm, input)))
 	    goto done;
 	  if ((res = tcp_test_rst_burst (vm, input)))
+	    goto done;
+	  if ((res = tcp_test_timewait_syn_burst (vm, input)))
 	    goto done;
 	  if ((res = tcp_test_cubic (vm, input)))
 	    goto done;
