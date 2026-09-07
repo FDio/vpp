@@ -953,6 +953,9 @@ tcp_handle_disconnects (tcp_worker_ctx_t * wrk)
 	  tc = tcp_worker_connection_get (wrk, pending_disconnects[i]);
 	  tcp_disconnect_pending_off (tc);
 	  session_transport_closing_notify (&tc->connection);
+	  /* An RST after a FIN in the same dispatch leaves the connection CLOSED. */
+	  if (tc->state == TCP_STATE_CLOSED)
+	    session_transport_closed_notify (&tc->connection);
 	}
       vec_set_len (wrk->pending_disconnects, 0);
     }
