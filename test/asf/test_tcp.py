@@ -133,6 +133,7 @@ class TestTCPUnitTests(VppAsfTestCase):
             "persist",
             "rto",
             "rst",
+            "fin-rst",
             "timewait",
             "cubic",
             "bt",
