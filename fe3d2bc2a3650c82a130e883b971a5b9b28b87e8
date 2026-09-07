@@ -34,6 +34,24 @@
       "parentUuid": "a6dd0ca5_29794569",
       "revId": "fe3d2bc2a3650c82a130e883b971a5b9b28b87e8",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b6e40665_e10a4ae0",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3308
+      },
+      "writtenOn": "2026-09-07T20:46:48Z",
+      "side": 1,
+      "message": "My apologies. I had assumed there\u0027d be a notification from gerrit, and I don\u0027t seem the have received that. I also missed the merge in the history here because it was followed by another CI run.",
+      "parentUuid": "82447732_be31b3f4",
+      "revId": "fe3d2bc2a3650c82a130e883b971a5b9b28b87e8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
