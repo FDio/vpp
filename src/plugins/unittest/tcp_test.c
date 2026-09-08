@@ -8390,6 +8390,23 @@ tcp_test_rack_cleanup (tcp_connection_t *tc)
   tcp_bt_cleanup (tc);
 }
 
+typedef struct
+{
+  tcp_cc_loss_sample_t sample;
+  u64 total_lost;
+  u32 calls;
+} tcp_test_loss_sample_ctx_t;
+
+static tcp_test_loss_sample_ctx_t tcp_test_loss_sample_ctx;
+
+static void
+tcp_test_lost_sample (tcp_connection_t *tc, const tcp_cc_loss_sample_t *sample)
+{
+  tcp_test_loss_sample_ctx.sample = *sample;
+  tcp_test_loss_sample_ctx.total_lost = tc->lost;
+  tcp_test_loss_sample_ctx.calls++;
+}
+
 static void
 tcp_test_rack_init (tcp_connection_t *tc, clib_thread_index_t thread_index)
 {
@@ -8401,6 +8418,7 @@ tcp_test_rack_init (tcp_connection_t *tc, clib_thread_index_t thread_index)
   tc->snd_wnd_max = TCP_WND_MAX;
   tc->srtt = 0.1 * THZ;
   tc->rto = TCP_RTO_INIT;
+  tc->cc_algo = tcp_cc_algo_get (TCP_CC_NEWRENO);
   scoreboard_init (&tc->sack_sb);
   tcp_connection_timers_init (tc);
   tc->sack_sb.high_sacked = tc->snd_una;
@@ -8591,10 +8609,33 @@ tcp_test_rack (vlib_main_t *vm, unformat_input_t *input)
   f64 next_to, base_reo, reo_deadline, rto_deadline;
   u32 fack, lost, max_ack_delay_ticks, pto_delta, pto_ticks, tx_tsval;
   u8 have_range, reo_wnd_updated, sack_reneged;
+  tcp_cc_algorithm_t test_cc;
 
   if (tcp_test_tlp_probe_output (vm, tc, thread_index, 0 /* expect_retransmit */) ||
       tcp_test_tlp_probe_output (vm, tc, thread_index, 1 /* expect_retransmit */))
     return 1;
+
+  /* Report each RACK loss after lifetime accounting, preserving the state
+   * recorded when that transmission was sent. */
+  tcp_test_rack_init (tc, thread_index);
+  test_cc = *tc->cc_algo;
+  test_cc.lost_sample = tcp_test_lost_sample;
+  tc->cc_algo = &test_cc;
+  tc->lost = 25;
+  tcp_test_set_time (thread_index, 0.1);
+  tcp_bt_track_tx (tc, 100);
+  tc->snd_nxt = 100;
+  clib_memset (&tcp_test_loss_sample_ctx, 0, sizeof (tcp_test_loss_sample_ctx));
+  tcp_test_set_time (thread_index, 0.2);
+  lost = tcp_rack_mark_losses_on_rto (tc);
+  TCP_TEST (lost == 100 && tcp_test_loss_sample_ctx.calls == 1 &&
+	      tcp_test_loss_sample_ctx.total_lost == 125,
+	    "RACK reports newly marked loss after lifetime accounting");
+  TCP_TEST (tcp_test_loss_sample_ctx.sample.bytes == 100 &&
+	      tcp_test_loss_sample_ctx.sample.tx_in_flight == 100 &&
+	      tcp_test_loss_sample_ctx.sample.tx_lost == 25,
+	    "RACK loss report preserves transmit-time sample state");
+  tcp_test_rack_cleanup (tc);
 
   /* RACK borrows the retransmit timer while preserving the RTO deadline. */
   tcp_test_rack_init (tc, thread_index);

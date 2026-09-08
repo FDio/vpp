@@ -63,6 +63,21 @@ tcp_cc_event (tcp_connection_t * tc, tcp_cc_event_t evt)
     tc->cc_algo->event (tc, evt);
 }
 
+static inline void
+tcp_cc_lost_sample (tcp_connection_t *tc, const tcp_bt_sample_t *bts)
+{
+  tcp_cc_loss_sample_t sample;
+
+  if (!tc->cc_algo->lost_sample)
+    return;
+
+  sample.tx_in_flight = bts->tx_in_flight;
+  sample.tx_lost = bts->tx_lost;
+  sample.bytes = bts->max_seq - bts->min_seq;
+  sample.flags = bts->flags;
+  tc->cc_algo->lost_sample (tc, &sample);
+}
+
 static inline u64
 tcp_cc_get_pacing_rate (tcp_connection_t * tc)
 {
