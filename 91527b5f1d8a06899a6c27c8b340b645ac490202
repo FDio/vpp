@@ -1,0 +1,128 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ba1d6f6c_44e1ce10",
+        "filename": "src/vnet/buffer.h",
+        "patchSetId": 7
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-09-08T09:36:22Z",
+      "side": 1,
+      "message": "Looking again, this still consumes global VNET buffer bit 27: removing AVAIL9 also removes it from VNET_BUFFER_FLAGS_ALL_AVAIL. The foundation does not name the owner or document the flag\u0027s set/clear lifetime, so the reservation is implicit. Could we avoid the flag entirely, or at least define and document an IPTFS-owned flag explicitly?",
+      "parentUuid": "73d92e00_33b41580",
+      "revId": "91527b5f1d8a06899a6c27c8b340b645ac490202",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0b88adcf_75e4c76d",
+        "filename": "src/vnet/ipsec/esp_decrypt.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-09-08T09:36:22Z",
+      "side": 1,
+      "message": "Could we avoid restoring these values into vnet_buffer(b)-\u003eipsec? esp_post_data(b)-\u003edecrypt_data already persists in the buffer\u0027s unused opaque area for the async handoff and contains sa_index, seq, and seq_hi. IPTFS can consume that record directly. The sync path may need to save its stack-local pd into the same record before handoff, but that avoids both repurposing IPsec opaque metadata and the extra async copy.",
+      "parentUuid": "bae228d4_ef8ff11a",
+      "revId": "91527b5f1d8a06899a6c27c8b340b645ac490202",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "03860466_d380044d",
+        "filename": "src/vnet/ipsec/ipsec.h",
+        "patchSetId": 7
+      },
+      "lineNbr": 31,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-09-08T09:36:22Z",
+      "side": 1,
+      "message": "This introduces IPTFS-specific callbacks, configuration parsing, formatting, SA/policy lifecycle, tunnel feature handling, and output-node state into generic IPsec. Could the implementation instead live in an IPTFS-owned subtree, with core IPsec exposing only narrow generic integration points such as next-header registration and, if required, a generic SA output-next override? That would keep the substantial IPTFS implementation isolated and replace the distributed tfs_* callback contract with direct, type-checked ownership.",
+      "revId": "91527b5f1d8a06899a6c27c8b340b645ac490202",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3b4d170f_0feed702",
+        "filename": "src/vnet/ipsec/ipsec_api.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-09-08T09:36:22Z",
+      "side": 1,
+      "message": "Another serialization issue remains in this new dump API: ipsec_sad_tfs_type_decode() converts its input from network byte order, but ipsec_sad_tfs_type_encode() returns host-order enum values. On little-endian systems ipsec_sa_v6_dump therefore exposes an invalid TFS type to clients. Could the encoder return clib_host_to_net_u32() of the selected value?",
+      "parentUuid": "9e40df55_546cbb16",
+      "revId": "91527b5f1d8a06899a6c27c8b340b645ac490202",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "89a06d14_2dc3ba20",
+        "filename": "src/vnet/ipsec/ipsec_api.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 1510,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-09-08T09:36:22Z",
+      "side": 1,
+      "message": "Unlike the v5 dump, the new v6 dump populates replay_window but not entry.anti_replay_window_size. A non-default anti-replay window cannot be reconstructed from v6 dump output. Could this mirror the v5 assignment from irt-\u003eanti_replay_window_size?",
+      "revId": "91527b5f1d8a06899a6c27c8b340b645ac490202",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "569d1895_221420a0",
+        "filename": "src/vnet/ipsec/ipsec_sa.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-09-08T09:36:22Z",
+      "side": 1,
+      "message": "A related issue remains in this callback path: tfs_check_support_cb may change sa-\u003etfs_type to NO_TFS, but the runtime and both output next indices were initialized earlier from _tfs_type. The SA then reports TFS disabled while packets still go to the TFS encapsulation node. Could we reinitialize the runtime and output next slots after the downgrade, or reject the SA instead?",
+      "parentUuid": "1db29b90_2f6c6c78",
+      "revId": "91527b5f1d8a06899a6c27c8b340b645ac490202",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "31d9b5b1_78d21af1",
+        "filename": "src/vnet/ipsec/ipsec_spd_policy.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-09-08T09:36:22Z",
+      "side": 1,
+      "message": "The callback is now reached on the traditional path too, but this delete passes the request policy rather than the matched stored policy vp. API and CLI delete requests initialize sa_index to zero, so the IPTFS callback can detach state for SA 0 rather than the SA attached to this policy. Could this pass vp instead?",
+      "parentUuid": "2f3f3013_576b458b",
+      "revId": "91527b5f1d8a06899a6c27c8b340b645ac490202",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
