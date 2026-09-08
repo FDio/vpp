@@ -1541,6 +1541,7 @@ vnet_rename_interface (vnet_main_t * vnm, u32 hw_if_index, char *new_name)
   vnet_interface_main_t *im = &vnm->interface_main;
   vlib_main_t *vm = vnm->vlib_main;
   vnet_hw_interface_t *hw;
+  vnet_device_class_t *dev_class;
   u8 *old_name;
   clib_error_t *error = 0;
 
@@ -1561,9 +1562,16 @@ vnet_rename_interface (vnet_main_t * vnm, u32 hw_if_index, char *new_name)
   hash_unset_mem (im->hw_interface_by_name, old_name);
   hash_set_mem (im->hw_interface_by_name, hw->name, hw_if_index);
 
-  /* rename tx/output nodes */
-  vlib_node_rename (vm, hw->tx_node_index, "%v-tx", hw->name);
-  vlib_node_rename (vm, hw->output_node_index, "%v-output", hw->name);
+  /* Rename tx/output nodes only for device classes that registered a
+   * per-interface pair.  Tunnel classes (L2TPv3, VXLAN, PPPoX, ...) create
+   * none and either leave the indices zeroed or point output_node_index at
+   * a shared node, which must keep its canonical name. */
+  dev_class = vnet_get_device_class (vnm, hw->dev_class_index);
+  if (dev_class->tx_function || dev_class->tx_fn_registrations)
+    {
+      vlib_node_rename (vm, hw->tx_node_index, "%v-tx", hw->name);
+      vlib_node_rename (vm, hw->output_node_index, "%v-output", hw->name);
+    }
 
   /* free the old name vector */
   vec_free (old_name);
