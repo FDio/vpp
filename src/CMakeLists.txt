@@ -126,6 +126,12 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/${VPP_LIBRARY_DIR})
 set(VPP_BINARY_DIR ${CMAKE_BINARY_DIR}/CMakeFiles)
 set(PYENV PYTHONPYCACHEPREFIX=${CMAKE_BINARY_DIR}/CMakeFiles/__pycache__)
 
+install(
+  PROGRAMS scripts/vpp-check-libvnet-exports
+  DESTINATION ${VPP_RUNTIME_DIR}
+  COMPONENT vpp-dev
+)
+
 if (CMAKE_BUILD_TYPE)
   add_compile_options(-g -Werror -Wall)
 endif()
