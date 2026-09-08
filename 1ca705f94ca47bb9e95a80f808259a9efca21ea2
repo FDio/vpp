@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4305ba13_9c6c6240",
+        "filename": "src/plugins/af_xdp/device.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 573,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-09-08T12:57:30Z",
+      "side": 1,
+      "message": "I think it would be better to log this busy-poll setup failure and continue creating the queue, since busy polling is an optional performance optimization. Please clear `AF_XDP_DEVICE_F_BUSY_POLL` on failure so the RX path disables the mechanism for all queues; this would also remove the need for `af_xdp_queue_create_result_t`.",
+      "revId": "1ca705f94ca47bb9e95a80f808259a9efca21ea2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
