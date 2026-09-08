@@ -5762,6 +5762,8 @@ tcp_test_delivery (vlib_main_t * vm, unformat_input_t * input)
   TCP_TEST (bts->prev == TCP_BTS_INVALID_INDEX, "prev should be invalid");
   TCP_TEST (bts->delivered_time == 1, "delivered time should be 1");
   TCP_TEST (bts->delivered == 0, "delivered should be 0");
+  TCP_TEST (bts->tx_in_flight == burst, "tx flight should include first burst: %llu",
+	    bts->tx_in_flight);
   TCP_TEST (!(bts->flags & TCP_BTS_IS_RXT), "not retransmitted");
   TCP_TEST (!(bts->flags & TCP_BTS_IS_APP_LIMITED), "not app limited");
 
@@ -5779,6 +5781,7 @@ tcp_test_delivery (vlib_main_t * vm, unformat_input_t * input)
   TCP_TEST (ac->interval_time == 1, "ack time should be 1");
   TCP_TEST (ac->delivered == burst, "delivered should be 100");
   TCP_TEST (ac->prior_delivered == 0, "sample delivered should be 0");
+  TCP_TEST (ac->tx_in_flight == burst, "ack should report post-tx flight: %llu", ac->tx_in_flight);
   TCP_TEST (!(ac->flags & TCP_BTS_IS_RXT), "not retransmitted");
   TCP_TEST (tc->first_tx_time == 1, "first_tx_time %u", tc->first_tx_time);
 
@@ -7834,6 +7837,8 @@ tcp_test_bt (vlib_main_t * vm, unformat_input_t * input)
   TCP_TEST (pool_elts (bt->samples) == 1, "same time tx should coalesce");
   bts = pool_elt_at_index (bt->samples, bt->head);
   TCP_TEST (bts->min_seq == 0 && bts->max_seq == 125, "coalesced sample should cover [0:125]");
+  TCP_TEST (bts->tx_in_flight == 125, "coalesced sample should include full tx flight: %llu",
+	    bts->tx_in_flight);
 
   tc->app_limited = 1;
   tcp_bt_track_tx (tc, 25);
@@ -7848,6 +7853,8 @@ tcp_test_bt (vlib_main_t * vm, unformat_input_t * input)
   bts = pool_elt_at_index (bt->samples, bt->tail);
   TCP_TEST ((bts->flags & TCP_BTS_IS_APP_LIMITED) && bts->min_seq == 125 && bts->max_seq == 150,
 	    "second sample should be app-limited [125:150]");
+  TCP_TEST (bts->tx_in_flight == 150, "new sample should include its tx flight: %llu",
+	    bts->tx_in_flight);
 
   bt_fmt = format (0, "%U", format_tcp_bt, tc);
   TCP_TEST (vec_len (bt_fmt) > 0, "bt format should produce output");
@@ -7870,7 +7877,9 @@ tcp_test_bt (vlib_main_t * vm, unformat_input_t * input)
     }
 
   tcp_test_set_time (thread_index, 30);
+  tc->snd_rxt_bytes += 100;
   tcp_bt_track_rxt (tc, 0, 100);
+  tc->snd_rxt_bytes += 100;
   tcp_bt_track_rxt (tc, 100, 200);
 
   TCP_TEST (tcp_bt_is_sane (bt), "tracker should be sane after rxt merge");
@@ -7878,7 +7887,10 @@ tcp_test_bt (vlib_main_t * vm, unformat_input_t * input)
   bts = pool_elt_at_index (bt->samples, bt->head);
   TCP_TEST (bts->min_seq == 0 && bts->max_seq == 200, "merged rxt should cover [0:200]");
   TCP_TEST ((bts->flags & TCP_BTS_IS_RXT), "merged rxt should be marked");
+  TCP_TEST (bts->tx_in_flight == 500, "merged rxt should include full post-rxt flight: %llu",
+	    bts->tx_in_flight);
 
+  tc->snd_rxt_bytes += 25;
   tcp_bt_track_rxt (tc, 250, 275);
   TCP_TEST (tcp_bt_is_sane (bt), "tracker should be sane after rxt split");
   TCP_TEST (pool_elts (bt->samples) == 4, "rxt in middle should split sample");
@@ -7889,12 +7901,15 @@ tcp_test_bt (vlib_main_t * vm, unformat_input_t * input)
   TCP_TEST (bts->min_seq == 250 && bts->max_seq == 275, "split rxt should cover [250:275]");
   TCP_TEST ((bts->flags & TCP_BTS_IS_RXT), "split rxt should be marked");
 
+  tc->snd_rxt_bytes += 25;
   tcp_bt_track_rxt (tc, 275, 300);
   TCP_TEST (tcp_bt_is_sane (bt), "tracker should be sane after tail rxt merge");
   TCP_TEST (pool_elts (bt->samples) == 3, "tail rxt should merge with previous");
   bts = pool_elt_at_index (bt->samples, bt->tail);
   TCP_TEST (bts->min_seq == 250 && bts->max_seq == 300, "tail rxt merge should cover [250:300]");
   TCP_TEST ((bts->flags & TCP_BTS_IS_RXT), "tail rxt should be marked");
+  TCP_TEST (bts->tx_in_flight == 550, "tail rxt merge should refresh post-rxt flight: %llu",
+	    bts->tx_in_flight);
 
   /*
    * 8) a mid-sample retransmit preserves the original tx metadata on the
