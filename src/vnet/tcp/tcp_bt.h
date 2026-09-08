@@ -77,6 +77,8 @@ void tcp_bt_flush_samples (tcp_connection_t * tc);
 /**
  * Track a tcp tx burst
  *
+ * Must be called before snd_nxt is advanced. The saved flight includes len.
+ *
  * @param tc	tcp connection
  * @param len	bytes transmitted
  */
