@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3f97a607_736b6009",
+        "filename": "src/vlib/pool_cache.h",
+        "patchSetId": 18
+      },
+      "lineNbr": 292,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-09-08T08:43:43Z",
+      "side": 1,
+      "message": "This a bit hard to read, it took me some time to decipher. Can we do something like\n\n    if (CLIB_DEBUG)\n      {\n        bool success \u003d clib_atomic_cmp_and_swap(...)\n        ASSERT(success)\n      }\n    else\n      {\n        clib_atomic_store(...)\n      }",
+      "revId": "97b1e9f6c004045a545eaccc81f93662d5ba7bec",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
