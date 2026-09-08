@@ -20,6 +20,24 @@
     {
       "unresolved": false,
       "key": {
+        "uuid": "b8dabb02_ad8b4e08",
+        "filename": "src/plugins/af_xdp/device.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 823,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-09-08T11:08:28Z",
+      "side": 1,
+      "message": "Done in PS6. The validation now reports the concrete maximum (INT_MAX).",
+      "parentUuid": "066389b8_5372ad55",
+      "revId": "9f6996f76641264d5c5df2deb216b6c618b98ac8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
         "uuid": "86c81695_1ffcf01f",
         "filename": "src/plugins/af_xdp/device.c",
         "patchSetId": 5
@@ -49,6 +67,24 @@
       "writtenOn": "2026-09-08T08:12:57Z",
       "side": 1,
       "message": "why not call it from af_xdp_create_queue()?",
+      "revId": "9f6996f76641264d5c5df2deb216b6c618b98ac8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "76d03cad_746e8343",
+        "filename": "src/plugins/af_xdp/device.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 1001,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-09-08T11:08:28Z",
+      "side": 1,
+      "message": "Done in PS6. Busy-poll socket setup is now performed by af_xdp_create_queue(). A distinct result preserves the existing behavior: a requested busy-poll setup failure remains fatal, while ordinary failures of optional queues remain recoverable.",
+      "parentUuid": "a8e5b55b_5b0c3117",
       "revId": "9f6996f76641264d5c5df2deb216b6c618b98ac8",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
