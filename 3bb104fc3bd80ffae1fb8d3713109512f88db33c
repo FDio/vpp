@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a359ccaa_3bd5c52c",
+        "filename": "src/plugins/cnat/cnat_snat_policy.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 542,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-09-08T07:46:57Z",
+      "side": 1,
+      "message": "Could the delete path use exact per-FIB/per-AF lookups instead of the default-policy fallback? A delete for a FIB with no explicit policy currently resolves to and frees the default policy. Likewise, for an IPv6-only FIB policy, the IPv4 lookup falls back to default and is selected before the FIB’s IPv6 entry. Please reject deletes where neither family has an explicit entry; when only one family is configured, delete that explicit entry rather than the default fallback.",
+      "revId": "3bb104fc3bd80ffae1fb8d3713109512f88db33c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
