@@ -1,0 +1,178 @@
+#!/bin/sh
+
+# SPDX-License-Identifier: Apache-2.0
+# Copyright(c) 2026 Cisco Systems, Inc.
+
+set -eu
+
+usage()
+{
+  cat <<EOF
+Usage: $(basename "$0") [--readelf PROGRAM] LIBVNET PLUGIN...
+
+Check whether out-of-tree plugin ELF binaries require libvnet function,
+object, or TLS symbols that LIBVNET does not export.
+
+Options:
+  --readelf PROGRAM  ELF reader to use (default: READELF, readelf, or
+                      llvm-readelf)
+  -h, --help         Show this help
+EOF
+}
+
+fail()
+{
+  echo "$(basename "$0"): $*" >&2
+  exit 2
+}
+
+readelf_bin=${READELF:-}
+
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --readelf)
+      [ "$#" -ge 2 ] || fail "--readelf requires a program"
+      readelf_bin=$2
+      shift 2
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    --)
+      shift
+      break
+      ;;
+    -*)
+      fail "unknown option: $1"
+      ;;
+    *)
+      break
+      ;;
+  esac
+done
+
+[ "$#" -ge 2 ] || {
+  usage >&2
+  exit 2
+}
+
+if [ -z "$readelf_bin" ]; then
+  if command -v readelf >/dev/null 2>&1; then
+    readelf_bin=readelf
+  elif command -v llvm-readelf >/dev/null 2>&1; then
+    readelf_bin=llvm-readelf
+  else
+    fail "readelf or llvm-readelf was not found"
+  fi
+fi
+
+command -v "$readelf_bin" >/dev/null 2>&1 ||
+  fail "ELF reader was not found: $readelf_bin"
+
+libvnet=$1
+shift
+
+[ -r "$libvnet" ] || fail "cannot read libvnet: $libvnet"
+"$readelf_bin" --file-header "$libvnet" >/dev/null 2>&1 ||
+  fail "not a readable ELF file: $libvnet"
+
+if ! "$readelf_bin" --section-headers --wide "$libvnet" |
+  awk '$0 ~ /[[:space:]]\.symtab[[:space:]]/ { found = 1 }
+       END { exit found ? 0 : 1 }'
+then
+  fail "libvnet has no .symtab; use an unstripped library"
+fi
+
+for plugin in "$@"; do
+  [ -r "$plugin" ] || fail "cannot read plugin: $plugin"
+  "$readelf_bin" --file-header "$plugin" >/dev/null 2>&1 ||
+    fail "not a readable ELF file: $plugin"
+done
+
+work_dir=$(mktemp -d "${TMPDIR:-/tmp}/vnet-exports.XXXXXX")
+trap 'rm -rf "$work_dir"' EXIT HUP INT TERM
+
+defined_symbols()
+{
+  "$readelf_bin" --syms --wide "$1" |
+    awk '
+      $7 != "UND" &&
+      ($4 == "FUNC" || $4 == "OBJECT" || $4 == "TLS") {
+        name = $8;
+        sub(/@.*/, "", name);
+        if (name != "")
+          printf "%s\t%s\n", name, $4;
+      }'
+}
+
+exported_symbols()
+{
+  "$readelf_bin" --dyn-syms --wide "$1" |
+    awk '
+      $7 != "UND" &&
+      ($4 == "FUNC" || $4 == "OBJECT" || $4 == "TLS") &&
+      ($5 == "GLOBAL" || $5 == "WEAK" || $5 == "UNIQUE") &&
+      ($6 == "DEFAULT" || $6 == "PROTECTED") {
+        name = $8;
+        sub(/@.*/, "", name);
+        if (name != "")
+          print name;
+      }'
+}
+
+required_symbols()
+{
+  "$readelf_bin" --dyn-syms --wide "$1" |
+    awk '
+      $7 == "UND" &&
+      ($4 == "FUNC" || $4 == "OBJECT" || $4 == "TLS" ||
+       $4 == "NOTYPE") &&
+      ($5 == "GLOBAL" || $5 == "UNIQUE") {
+        name = $8;
+        sub(/@.*/, "", name);
+        if (name != "")
+          print name;
+      }'
+}
+
+LC_ALL=C
+export LC_ALL
+
+defined_symbols "$libvnet" | sort -u >"$work_dir/defined"
+cut -f1 "$work_dir/defined" | sort -u >"$work_dir/defined-names"
+exported_symbols "$libvnet" | sort -u >"$work_dir/exported"
+
+[ -s "$work_dir/defined-names" ] ||
+  fail "no libvnet definitions found in $libvnet"
+
+status=0
+checked=0
+
+for plugin in "$@"; do
+  checked=$((checked + 1))
+  required_symbols "$plugin" | sort -u >"$work_dir/undefined"
+  comm -12 "$work_dir/defined-names" "$work_dir/undefined" \
+    >"$work_dir/required"
+  comm -23 "$work_dir/required" "$work_dir/exported" >"$work_dir/missing"
+
+  required_count=$(awk 'END { print NR }' "$work_dir/required")
+  if [ -s "$work_dir/missing" ]; then
+    echo "$plugin: missing required libvnet exports:" >&2
+    awk -F '\t' '
+      NR == FNR { type[$1] = $2; next }
+      { printf "  %s (%s)\n", $1, type[$1] }
+    ' "$work_dir/defined" "$work_dir/missing" >&2
+    status=1
+  else
+    echo "$plugin: compatible ($required_count libvnet symbols required)"
+  fi
+done
+
+if [ "$status" -eq 0 ]; then
+  echo "libvnet export check passed for $checked consumer(s)"
+else
+  echo "libvnet export check failed" >&2
+fi
+
+exit "$status"
