@@ -358,15 +358,6 @@ format_pppox_name (u8 *s, va_list *args)
   return format (s, "pppox%d", dev_instance);
 }
 
-static uword
-dummy_interface_tx (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
-{
-  /* PPPOX interfaces never transmit via the generic device path. */
-  u32 *from = vlib_frame_vector_args (frame);
-  vlib_buffer_free (vm, from, frame->n_vectors);
-  return frame->n_vectors;
-}
-
 static clib_error_t *
 pppox_interface_admin_up_down (vnet_main_t *vnm, u32 hw_if_index, u32 flags)
 {
@@ -404,7 +395,12 @@ pppox_build_rewrite (vnet_main_t *vnm, u32 sw_if_index, vnet_link_t link_type,
 VNET_DEVICE_CLASS (pppox_device_class, static) = {
   .name = "PPPOX",
   .format_device_name = format_pppox_name,
-  .tx_function = dummy_interface_tx,
+  /* Deliberately no tx_function/tx_fn_registrations: vnet_register_interface()
+   * then takes the no_output_nodes path and does not register a per-interface
+   * "<name>-output"/"<name>-tx" node pair.  PPPoX TX always enters the shared
+   * pppoeclient-session-output node via hi->output_node_index, so those nodes
+   * would be orphaned -- and registering them dominates session setup time
+   * (two graph nodes per session, never reclaimed). */
   .admin_up_down_function = pppox_interface_admin_up_down,
 };
 VNET_HW_INTERFACE_CLASS (pppox_hw_class, static) = {
