@@ -309,7 +309,7 @@ typedef struct tcp_bt_sample_
   f64 delivered_time;		/**< Delivered time when sample taken */
   f64 tx_time;			/**< Transmit time for the burst */
   f64 first_tx_time;		/**< Connection first tx time at tx */
-  u64 tx_in_flight;		/**< In flight at tx time */
+  u64 tx_in_flight;		/**< In flight immediately after tx */
   u64 tx_lost;			/**< Lost at tx time */
   tcp_bts_flags_t flags;	/**< Sample flag */
 } tcp_bt_sample_t;
@@ -332,7 +332,7 @@ typedef struct tcp_ack_ctx_
   f64 prior_time;		/**< Delivered time of sample used for rate */
   f64 interval_time;		/**< Time to ack the bytes delivered */
   f64 rtt_time;			/**< RTT for sample */
-  u64 tx_in_flight;		/**< In flight at (re)transmit time */
+  u64 tx_in_flight;		/**< In flight immediately after (re)transmit */
   u64 tx_lost;			/**< Lost over interval */
   u32 delivered;		/**< Bytes delivered in interval_time */
   u32 lost;			/**< Number of bytes lost over interval */
