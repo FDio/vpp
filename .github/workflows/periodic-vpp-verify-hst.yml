@@ -47,7 +47,7 @@ jobs:
         include:
           # Debug builds on aarch64
           - build_type: 'debug'
-            os: 'ubuntu2204'
+            os: ['ubuntu2204', 'ubuntu2404']
             executor_arch: 'aarch64'
             class: 'hst'
             size: 'hst'
@@ -57,7 +57,12 @@ jobs:
             executor_arch: 'x86_64'
             class: 'hst'
             size: 'hst'
-
+          # Release builds on aarch64
+          - build_type: 'release'
+            os: 'ubuntu2404'
+            executor_arch: 'aarch64'
+            class: 'hst'
+            size: 'hst'
     env:
       FDIO_NAMESPACE: ${{ github.event.inputs.FDIO_NAMESPACE || 'prod' }}
       LOG_NAME: ""
