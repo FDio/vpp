@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "7c0f6547_ada5748e",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 19
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2026-09-08T12:25:03Z",
+      "side": 1,
+      "message": "Retested, this time with IBV mode to confirm no regressions there, no big difference there compared to usual noise.",
+      "revId": "93703e557b41544e6bb4ce20778f425121edd570",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
