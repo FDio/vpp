@@ -4,6 +4,7 @@
  */
 
 #include <vnet/tcp/tcp.h>
+#include <vnet/tcp/tcp_cc.h>
 #include <vnet/tcp/tcp_rack.h>
 #include <vnet/tcp/tcp_tlp.h>
 #include <vnet/tcp/tcp_inlines.h>
@@ -329,6 +330,8 @@ tcp_rack_evaluate_sample_loss (tcp_connection_t *tc, tcp_bt_sample_t *bts, tcp_r
     return;
 
   ctx->lost_bytes += loss_len;
+  tc->lost += loss_len;
+  tcp_cc_lost_sample (tc, bts);
   if (!ctx->has_lost_seq || seq_lt (start, ctx->first_lost_seq))
     {
       ctx->first_lost_seq = start;
@@ -433,7 +436,6 @@ tcp_rack_detect_loss_internal (tcp_connection_t *tc, f64 *next_to, u8 is_rto)
   ctx.range_end = end;
   tcp_rack_mark_lost_samples (tc, &ctx);
 
-  tc->lost += ctx.lost_bytes;
   if (ctx.has_lost_seq)
     tcp_bt_rxt_rewind (tc, ctx.first_lost_seq);
 

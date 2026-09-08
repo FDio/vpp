@@ -314,6 +314,14 @@ typedef struct tcp_bt_sample_
   tcp_bts_flags_t flags;	/**< Sample flag */
 } tcp_bt_sample_t;
 
+typedef struct
+{
+  u64 tx_in_flight;	 /**< In flight immediately after transmit */
+  u64 tx_lost;		 /**< Lifetime loss at transmit */
+  u32 bytes;		 /**< Bytes newly marked lost */
+  tcp_bts_flags_t flags; /**< Transmit sample flags */
+} tcp_cc_loss_sample_t;
+
 typedef struct tcp_ack_ctx_
 {
   /* Feedback updated while processing every ACK */
@@ -532,6 +540,7 @@ struct _tcp_cc_algorithm
   void (*recovered) (tcp_connection_t * tc);
   void (*undo_recovery) (tcp_connection_t * tc);
   void (*event) (tcp_connection_t *tc, tcp_cc_event_t evt);
+  void (*lost_sample) (tcp_connection_t *tc, const tcp_cc_loss_sample_t *sample);
   u64 (*get_pacing_rate) (tcp_connection_t *tc);
 };
 
