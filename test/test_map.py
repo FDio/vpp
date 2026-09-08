@@ -112,8 +112,6 @@ class TestMAP(VppTestCase):
 
     def create_domains(self, ip4_pfx_str, ip6_pfx_str, ip6_src_str):
         ip4_pfx = ipaddress.ip_network(ip4_pfx_str)
-        ip6_dst = ipaddress.ip_network(ip6_pfx_str)
-        mod = ip4_pfx.num_addresses / 1024
         indicies = []
         for i in range(ip4_pfx.num_addresses):
             rv = self.vapi.map_add_domain(
@@ -126,12 +124,11 @@ class TestMAP(VppTestCase):
 
     def test_api_map_domains_get(self):
         # Create a bunch of domains
-        no_domains = 4096  # This must be large enough to ensure VPP suspends
-        domains = self.create_domains("130.67.0.0/20", "2001::/32", "2001::1/128")
+        no_domains = 8192  # This must be large enough to ensure VPP suspends
+        domains = self.create_domains("130.67.0.0/19", "2001::/32", "2001::1/128")
         self.assertEqual(len(domains), no_domains)
 
         d = []
-        cursor = 0
 
         # Invalid cursor
         with self.vapi.assert_negative_api_retval():
