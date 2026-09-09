@@ -16,6 +16,23 @@
       "message": "recheck",
       "revId": "ff757b7dc5c5316484dbf80f8c5a3d858a8b1322",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "882d8a2e_3b808a9e",
+        "filename": "test/test_teib.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 70,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-09-09T07:32:39Z",
+      "side": 1,
+      "message": "Could we also cover an IPv6 next hop in a non-default IPv6 FIB? This case uses table 0, so it would not catch a lost or mis-selected next-hop FIB index on the IPv6 path. Creating an IPv6 VppIpTable and asserting its table ID in the dump/CLI would make this regression coverage symmetric.",
+      "revId": "ff757b7dc5c5316484dbf80f8c5a3d858a8b1322",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
