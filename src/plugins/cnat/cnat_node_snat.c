@@ -159,9 +159,12 @@ cnat_snat_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_buffer_t *b,
     }
   else
     {
-      /* CNAT_LOOKUP_IS_ERR or CNAT_LOOKUP_IS_RETURN
+      /* CNAT_LOOKUP_IS_ERR, CNAT_LOOKUP_IS_UNSUPPORTED_PROTO, or
+       * CNAT_LOOKUP_IS_RETURN when !is_return.
        * Return traffic is handled by cnat_return */
-      b->error = node->errors[CNAT_ERROR_SESSION_ALLOCATION_FAILURE];
+      b->error = node->errors[vnet_buffer2 (b)->session.state == CNAT_LOOKUP_IS_UNSUPPORTED_PROTO ?
+				CNAT_ERROR_UNSUPPORTED_PROTO :
+				CNAT_ERROR_SESSION_ALLOCATION_FAILURE];
       *next0 = CNAT_NODE_SNAT_NEXT_DROP;
       goto trace;
     }

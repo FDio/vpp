@@ -217,6 +217,7 @@ typedef enum cnat_lookup_state_t_
   /* Reset session state so encap processing does not traverse output nodes
    * twice */
   CNAT_LOOKUP_IS_DONE = 4,
+  CNAT_LOOKUP_IS_UNSUPPORTED_PROTO = 5,
 } cnat_lookup_state_t;
 
 typedef struct cnat_timestamp_t_

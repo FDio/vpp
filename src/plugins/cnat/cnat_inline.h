@@ -185,6 +185,7 @@ cnat_lookup_create_or_return (vlib_buffer_t *b, int rv, cnat_bihash_kv_t *bkey,
 {
   vnet_buffer2 (b)->session.flags = 0;
   cnat_session_t *ksession = (cnat_session_t *) bkey;
+  cnat_lookup_state_t err_state = CNAT_LOOKUP_IS_ERR;
   if (PREDICT_TRUE (!rv))
     {
       cnat_session_t *session = (cnat_session_t *) bvalue;
@@ -220,13 +221,18 @@ cnat_lookup_create_or_return (vlib_buffer_t *b, int rv, cnat_bihash_kv_t *bkey,
       ts->cts_rewrites[CNAT_LOCATION_FIB].rw_fib_index = ksession->key.fib_index;
     }
   else
-    goto err;
+    {
+      /* iproto == 0: cnat_make_buffer_5tuple never filled the 5-tuple in, so
+       * nothing about the session table failed here. */
+      err_state = CNAT_LOOKUP_IS_UNSUPPORTED_PROTO;
+      goto err;
+    }
 
   return;
 
 err:
   b->flow_id = 0;
-  vnet_buffer2 (b)->session.state = CNAT_LOOKUP_IS_ERR;
+  vnet_buffer2 (b)->session.state = err_state;
 }
 
 /* INPUT node stores FWD@INPUT + RETURN@OUTPUT, OUTPUT node stores the reverse.

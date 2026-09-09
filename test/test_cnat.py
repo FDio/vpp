@@ -1309,6 +1309,74 @@ class TestCNatSourceNAT(CnatCommonTestCase):
 
         self.vapi.cnat_session_purge()
 
+    def test_snat_unsupported_proto(self):
+        """CNat Source Nat unsupported IP protocol"""
+        # cnat_make_buffer_5tuple only fills in iproto for ICMP/ICMPv6, TCP,
+        # UDP and SCTP. Any other IP protocol leaves the 5-tuple's iproto at 0,
+        # so no session can be created. The packet is dropped, but nothing
+        # about the session table is exhausted, so the drop must not land on
+        # the session allocation failure counter that NAT capacity alerts read.
+
+        # IPIP (4), GRE (47) and ESP (50), carried as an opaque payload so that
+        # no L4 header is parsed at all. None of the three is an IPv6 extension
+        # header, so the v6 packets reach the feature node the same way the v4
+        # ones do.
+        protos = [4, 47, 50]
+        p4 = [
+            (
+                Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
+                / IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4, proto=proto)
+                / Raw("\xa5" * 100)
+            )
+            for proto in protos
+            for i in range(N_PKTS)
+        ]
+        p6 = [
+            (
+                Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
+                / IPv6(src=self.pg0.remote_ip6, dst=self.pg1.remote_ip6, nh=proto)
+                / Raw("\xa5" * 100)
+            )
+            for proto in protos
+            for i in range(N_PKTS)
+        ]
+
+        # start from a clean state...
+        self.vapi.cnat_session_purge()
+        self.assertFalse(self.vapi.cnat_session_dump())
+        unsupported4 = "/err/cnat-snat-ip4/unsupported protocol"
+        unsupported6 = "/err/cnat-snat-ip6/unsupported protocol"
+        alloc_fail4 = "/err/cnat-snat-ip4/session allocation failure"
+        alloc_fail6 = "/err/cnat-snat-ip6/session allocation failure"
+        err_unsupported4 = self.statistics.get_err_counter(unsupported4)
+        err_unsupported6 = self.statistics.get_err_counter(unsupported6)
+        err_alloc_fail4 = self.statistics.get_err_counter(alloc_fail4)
+        err_alloc_fail6 = self.statistics.get_err_counter(alloc_fail6)
+
+        self.send_and_assert_no_replies(self.pg0, p4)
+        self.send_and_assert_no_replies(self.pg0, p6)
+
+        # the drops are attributed to the unsupported protocol counter...
+        self.assertEqual(
+            self.statistics.get_err_counter(unsupported4) - err_unsupported4,
+            len(protos) * N_PKTS,
+        )
+        self.assertEqual(
+            self.statistics.get_err_counter(unsupported6) - err_unsupported6,
+            len(protos) * N_PKTS,
+        )
+        # ...and not to session allocation failure
+        self.assertEqual(
+            self.statistics.get_err_counter(alloc_fail4) - err_alloc_fail4, 0
+        )
+        self.assertEqual(
+            self.statistics.get_err_counter(alloc_fail6) - err_alloc_fail6, 0
+        )
+        # no session was created either
+        self.assertFalse(self.vapi.cnat_session_dump())
+
+        self.vapi.cnat_session_purge()
+
     def test_snat_limit(self):
         """CNAT Source Nat sessions limit"""
         # this tests both hitting max-session and max-session-per-vrf, as we

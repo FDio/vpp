@@ -176,7 +176,7 @@ cnat_input_feature_svc_chain (vlib_main_t *vm, cnat_main_t *cm, vlib_buffer_t *b
       return rw;
     }
 
-  /* IS_ERR / IS_DONE: return the slot initialised to sentinel values
+  /* IS_ERR / IS_UNSUPPORTED_PROTO / IS_DONE: return the slot initialised to sentinel values
    * (cts_dpoi_next_node == ~0, cts_lbi == ~0) so cnat_set_rw_next_node
    * leaves next unchanged. */
   return &ts->cts_rewrites[CNAT_LOCATION_INPUT];
@@ -480,7 +480,7 @@ cnat_output_feature_svc_chain (vlib_main_t *vm, cnat_main_t *cm, vlib_buffer_t *
       return rw;
     }
 
-  /* IS_ERR / IS_DONE: return the slot initialised to sentinel values
+  /* IS_ERR / IS_UNSUPPORTED_PROTO / IS_DONE: return the slot initialised to sentinel values
    * (cts_dpoi_next_node == ~0, cts_lbi == ~0) so cnat_set_rw_next_node
    * leaves next unchanged. */
   return &ts->cts_rewrites[CNAT_LOCATION_OUTPUT];

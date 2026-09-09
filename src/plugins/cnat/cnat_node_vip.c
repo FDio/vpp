@@ -232,7 +232,8 @@ cnat_return_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_buffer_t *
   if (CNAT_LOOKUP_IS_RETURN != vnet_buffer2 (b)->session.state)
     {
       ASSERT (0 == b->flow_id);
-      ASSERT (CNAT_LOOKUP_IS_ERR == vnet_buffer2 (b)->session.state);
+      ASSERT (CNAT_LOOKUP_IS_ERR == vnet_buffer2 (b)->session.state ||
+	      CNAT_LOOKUP_IS_UNSUPPORTED_PROTO == vnet_buffer2 (b)->session.state);
       /* not a return session: expire & drop */
       b->error = node->errors[CNAT_ERROR_UNKNOWN_SESSION];
       *next0 = CNAT_NODE_VIP_NEXT_DROP;

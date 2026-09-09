@@ -24,6 +24,8 @@ format_cnat_trace (u8 *s, va_list *args)
     s = format (s, "session found");
   else if (t->flow_state == CNAT_LOOKUP_IS_DONE)
     s = format (s, "writeback done");
+  else if (t->flow_state == CNAT_LOOKUP_IS_UNSUPPORTED_PROTO)
+    s = format (s, "unsupported protocol");
   else
     s = format (s, "weird flow_state %d", t->flow_state);
 
