@@ -85,7 +85,7 @@ func tcpHarnessDropIndicesForLossPercent(bytes, mss uint64, lossPercent uint64) 
 func TcpAppLimitedNoCwndGrowthTest(s *TcpHarnessSuite) {
 	const (
 		appLimitedBursts = 32
-		bulkSendBytes    = 2 << 20
+		bulkSendSegments = 64
 		ioTimeout        = 10 * time.Second
 	)
 
@@ -132,13 +132,14 @@ func TcpAppLimitedNoCwndGrowthTest(s *TcpHarnessSuite) {
 	AssertEqual(uint64(0), drainedStats.RetransmitSegsCount,
 		"app-limited flights must complete without retransmission")
 
+	bulkSendBytes := uint64(bulkSendSegments) * initialStats.SndMss
 	totalSendBytes += bulkSendBytes
 	RunTcpHarnessScenarioOnState(s, state,
 		StartClientSend(bulkSendBytes, &sendHandle),
 		WaitServerStats(ioTimeout, BytesReadExactly(totalSendBytes), &serverStats),
 		WaitClientSend(&sendHandle, ioTimeout, &sendResult),
 		WaitClientSessionStats(ioTimeout, func(stats TcpHarnessClientSessionStats) bool {
-			return stats.FlightSize == 0 && stats.Cwnd > drainedStats.Cwnd
+			return stats.FlightSize == 0
 		}, &grownStats),
 		WaitClientStats(5*time.Second, BytesSentExactly(totalSendBytes), &clientStats),
 		CloseTcpTestEndpointClient(),
@@ -150,6 +151,10 @@ func TcpAppLimitedNoCwndGrowthTest(s *TcpHarnessSuite) {
 	AssertEqual(totalSendBytes, clientStats.BytesSent)
 	AssertEqual(true, peerClosed.PeerClosed)
 	Log("cwnd-limited growth: before=%d after=%d", drainedStats.Cwnd, grownStats.Cwnd)
+	AssertEqual(drainedStats.RetransmitSegsCount, grownStats.RetransmitSegsCount,
+		"bulk cwnd-growth control must complete without retransmission")
+	AssertGreaterThan(grownStats.Cwnd, drainedStats.Cwnd,
+		"cwnd must grow across a loss-free cwnd-limited transfer")
 }
 
 type tcpHarnessLargeLossConfig struct {
