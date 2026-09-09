@@ -16,6 +16,23 @@
       "message": "recheck",
       "revId": "54c90ee95be3f38514e093d19b3b0e3f62777967",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7abf95bd_b2c5bf80",
+        "filename": "src/plugins/cnat/cnat.rst",
+        "patchSetId": 2
+      },
+      "lineNbr": 173,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-09-09T12:37:46Z",
+      "side": 1,
+      "message": "`maglev-len` accepts 0, 1, and composite values, although Maglev requires a prime length greater than one. `cnat_translation_init_maglev()` divides by both `maglev_len` and `maglev_len - 1`, so 0/1 can crash VPP; a composite length can prevent table construction from completing. Could we validate this in `cnat_config()` and reject invalid values at startup?",
+      "revId": "54c90ee95be3f38514e093d19b3b0e3f62777967",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
