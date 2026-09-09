@@ -1,0 +1,40 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "dba6566d_f2165378",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-09-09T20:16:03Z",
+      "side": 1,
+      "message": "Addressed in PS4: when log-dir differs from tmp-dir, post-mortem messages are mirrored to log-dir/\u003csuite\u003e/log.txt. The Python stack dump is also framed with BEGIN/END markers containing the child PID and last test, so it can be attributed to the timed-out worker.",
+      "parentUuid": "bdc0f5e1_c2f0b3ca",
+      "revId": "1c9cd387bbbf662f313fdee7dbe25b3b53877cc8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "16d98c58_da4628b8",
+        "filename": "test/run_tests.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-09-09T20:16:03Z",
+      "side": 1,
+      "message": "Addressed in PS4: the SIGUSR2 os.kill() is wrapped in try/except and an error including the child PID and exception is logged if the request fails.",
+      "parentUuid": "e3572392_e73ba42f",
+      "revId": "1c9cd387bbbf662f313fdee7dbe25b3b53877cc8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
