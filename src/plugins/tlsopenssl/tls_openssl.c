@@ -578,7 +578,7 @@ int
 openssl_ctx_read_tls (tls_ctx_t *ctx, session_t *tls_session)
 {
   openssl_ctx_t *oc = (openssl_ctx_t *) ctx;
-  const u32 max_len = 128 << 10;
+  const u32 max_len = 32 << 10;
   session_t *app_session;
   svm_fifo_t *f;
   int read;
@@ -590,6 +590,8 @@ openssl_ctx_read_tls (tls_ctx_t *ctx, session_t *tls_session)
 
       /* Application might force a session pool realloc on accept */
       tls_session = session_get_from_handle (ctx->tls_session_handle);
+      if (!((SSL_pending (oc->ssl) > 0) || svm_fifo_max_dequeue_cons (tls_session->rx_fifo)))
+	return 0;
     }
 
   app_session = session_get_from_handle (ctx->app_session_handle);
@@ -1516,7 +1518,7 @@ openssl_server_async_cert_cb (app_crypto_async_reply_t *reply)
   ckpair = app_cert_key_pair_get_if_valid (reply->async_cert.ckpair_index);
   if (!ckpair || !ckpair->cert || !ckpair->key)
     {
-      TLS_DBG (1, "Invalid certificate/key pair %u", ckpair_index);
+      TLS_DBG (1, "Invalid certificate/key pair %u", reply->async_cert.ckpair_index);
       goto error;
     }
 

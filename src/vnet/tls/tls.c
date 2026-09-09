@@ -8,6 +8,7 @@
 #include <vppinfra/lock.h>
 #include <vnet/tls/tls.h>
 #include <vnet/tls/tls_inlines.h>
+#include <vnet/tls/tls_record.h>
 
 static tls_main_t tls_main;
 tls_engine_vft_t *tls_vfts;
@@ -217,6 +218,8 @@ tls_notify_app_accept (tls_ctx_t * ctx)
       ctx->flags |= TLS_CONN_F_NO_APP_SESSION;
       return rv;
     }
+  app_session->rx_fifo->shr->min_alloc =
+    clib_min (TLS_FRAGMENT_MAX_LEN, app_session->rx_fifo->shr->min_alloc);
   ctx->app_session_handle = session_handle (app_session);
   ctx->parent_app_wrk_index = app_session->app_wrk_index;
   app_wrk = app_worker_get (app_session->app_wrk_index);
@@ -273,6 +276,8 @@ tls_notify_app_connected (tls_ctx_t * ctx, session_error_t err)
     }
 
   app_session->session_state = SESSION_STATE_READY;
+  app_session->rx_fifo->shr->min_alloc =
+    clib_min (TLS_FRAGMENT_MAX_LEN, app_session->rx_fifo->shr->min_alloc);
   parent_app_api_ctx = ctx->parent_app_api_context;
   ctx->app_session_handle = session_handle (app_session);
 
