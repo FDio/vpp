@@ -1,0 +1,22 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "8dafb487_f716367e",
+        "filename": "src/plugins/af_xdp/device.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 571,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-09-09T14:00:11Z",
+      "side": 1,
+      "message": "Done in PS7: busy-poll setup failures are logged and treated as non-fatal. The device flag and settings are cleared, and the dedicated queue-create result enum has been removed.",
+      "parentUuid": "4305ba13_9c6c6240",
+      "revId": "5ee0f59944e438ae1b5331732e24c069c6b8cac7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
