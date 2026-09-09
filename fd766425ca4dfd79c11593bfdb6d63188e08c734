@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "380bb3f1_236d7763",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 10
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-09-09T07:43:41Z",
+      "side": 1,
+      "message": "Looking at it, do we need TEIB to be independently disableable while GRE/IPIP P2P and core IPsec keep working? This facade enables that, but leaves VNET owning TEIB-specific API, lifecycle state, init barrier, and listener registry; the consumer-side teib_available state follows from it. That is not a full VNET/TEIB decoupling. If this optionality is not a firm requirement, a direct dependency may be simpler; if it is, we should first agree on a narrower consumer-owned extension boundary, especially for IPsec.\nI am not sure it is the right way of doing it, given that TEIB is probably the only implementation we\u0027ll ever have for this, and VNET cannot depends upon a plugin.",
+      "revId": "fd766425ca4dfd79c11593bfdb6d63188e08c734",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
