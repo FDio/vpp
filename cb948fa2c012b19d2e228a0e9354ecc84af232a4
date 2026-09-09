@@ -18,6 +18,23 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "a3cbb830_f4b123cb",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 23
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-09-09T15:35:38Z",
+      "side": 1,
+      "message": "Thanks for the review Jim!",
+      "revId": "cb948fa2c012b19d2e228a0e9354ecc84af232a4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "386e9fad_2e7f3b5e",
@@ -31,6 +48,24 @@
       "writtenOn": "2026-09-09T07:54:03Z",
       "side": 1,
       "message": "s/utilized/exploited/?",
+      "revId": "cb948fa2c012b19d2e228a0e9354ecc84af232a4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "040a5bd4_8e033632",
+        "filename": "docs/aboutvpp/security/tsc_vulnerability_management_v3.rst",
+        "patchSetId": 23
+      },
+      "lineNbr": 326,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-09-09T15:35:38Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "386e9fad_2e7f3b5e",
       "revId": "cb948fa2c012b19d2e228a0e9354ecc84af232a4",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
