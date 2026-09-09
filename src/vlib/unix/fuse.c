@@ -64,6 +64,7 @@ struct vlib_fuse_handle_t
   u64 private_data;
   u8 *mountpoint;
   u32 clib_file_index;
+  clib_thread_index_t polling_thread_index;
   u32 *node_generation;
   vlib_fuse_node_t root_node;
 };
@@ -724,12 +725,16 @@ vlib_fuse_reply_release (vlib_main_t *vm, vlib_fuse_handle_t h,
   vlib_fuse_reply (h, in, 0, 0);
 }
 
+static void vlib_fuse_read (vlib_main_t *vm, vlib_fuse_handle_t h);
+
 static clib_error_t *
 vlib_fuse_fd_read (struct clib_file *f)
 {
   vlib_fuse_handle_t h = (vlib_fuse_handle_t) f->private_data;
-  vlib_process_signal_event (vlib_get_main (), fuse_process_node_index, 0,
-			     (uword) h);
+  if (f->polling_thread_index == 0)
+    vlib_process_signal_event (vlib_get_main (), fuse_process_node_index, 0, (uword) h);
+  else
+    vlib_fuse_read (vlib_get_main_by_index (f->polling_thread_index), h);
   return 0;
 }
 
@@ -871,7 +876,7 @@ static void
 vlib_fuse_read (vlib_main_t *vm, vlib_fuse_handle_t h)
 {
   u32 msgs_left = h->max_msgs_per_read;
-  static u8 __clib_aligned (4096)
+  static __thread u8 __clib_aligned (4096)
   buf[VLIB_FUSE_MAX_WRITE + 4096]; /* 3 pages */
   struct fuse_in_header *in = (struct fuse_in_header *) buf;
   void *payload = buf + sizeof (*in);
@@ -1019,6 +1024,13 @@ vlib_fuse_process (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *f)
 __clib_export void
 vlib_fuse_destroy (vlib_fuse_handle_t h)
 {
+  bool polling_on_worker = (h->polling_thread_index != 0);
+  if (polling_on_worker)
+    {
+      ASSERT (vlib_get_thread_index () == 0);
+      vlib_worker_thread_barrier_sync (vlib_get_first_main ());
+    }
+
   clib_file_del_by_index (&file_main, h->clib_file_index);
   vec_add1 (h->mountpoint, 0);
   if (umount2 ((char *) h->mountpoint, MNT_DETACH))
@@ -1032,6 +1044,9 @@ vlib_fuse_destroy (vlib_fuse_handle_t h)
   vec_free (h->root_node.child_nodes);
   vec_free (h->node_generation);
   clib_mem_free (h);
+
+  if (polling_on_worker)
+    vlib_worker_thread_barrier_release (vlib_get_first_main ());
 }
 
 __clib_export clib_error_t *
@@ -1044,6 +1059,10 @@ vlib_fuse_create (vlib_fuse_handle_t *hp, vlib_fuse_create_args_t *args,
   struct stat st;
   u32 len;
   int fd = -1, rv;
+
+  if (args->polling_thread_index >= vlib_get_n_threads ())
+    return clib_error_return (0, "polling thread index %u out of range",
+			      args->polling_thread_index);
 
   va_start (va, fmt);
   mp = va_format (0, fmt, &va);
@@ -1122,6 +1141,7 @@ vlib_fuse_create (vlib_fuse_handle_t *hp, vlib_fuse_create_args_t *args,
     .fd = fd,
     .uid = getuid (),
     .gid = getgid (),
+    .polling_thread_index = args->polling_thread_index,
   };
 
   h->root_node = (vlib_fuse_node_t){
@@ -1132,7 +1152,7 @@ vlib_fuse_create (vlib_fuse_handle_t *hp, vlib_fuse_create_args_t *args,
     .generation = 1,
   };
 
-  if (fuse_process_node_index == 0)
+  if (args->polling_thread_index == 0 && fuse_process_node_index == 0)
     {
       vlib_main_t *vm = vlib_get_main ();
       vlib_node_t *n;
@@ -1153,6 +1173,7 @@ vlib_fuse_create (vlib_fuse_handle_t *hp, vlib_fuse_create_args_t *args,
   h->clib_file_index =
     clib_file_add (&file_main, &(clib_file_t){
 				 .file_descriptor = h->fd,
+				 .polling_thread_index = args->polling_thread_index,
 				 .read_function = vlib_fuse_fd_read,
 				 .error_function = vlib_fuse_fd_error,
 				 .description = format (0, "fuse '%v'", mp),
