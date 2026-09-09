@@ -621,6 +621,18 @@ bt_rxt_is_active (tcp_bt_sample_t *bts)
   return (bts->flags & TCP_BTS_IS_RXT) && !(bts->flags & (TCP_BTS_TX_LOST | TCP_BTS_IS_SACKED));
 }
 
+static_always_inline u64
+bt_rxt_sample_flight (tcp_connection_t *tc, u32 replaced)
+{
+  u64 flight = tcp_flight_size (tc);
+
+  /* The newly sent copy and the active copy it replaces are both in the
+   * current counter snapshot. Correct replacements found for this tracker
+   * range without rescanning other fragments of the retransmitted segment. */
+  ASSERT (replaced <= flight);
+  return flight - clib_min ((u64) replaced, flight);
+}
+
 static_always_inline u32
 bt_rxt_range_end (tcp_connection_t *tc, tcp_bt_sample_t *bts, u32 start, u32 end,
 		  tcp_bts_flags_t rxt_flags, u32 *replaced)
@@ -630,7 +642,7 @@ bt_rxt_range_end (tcp_connection_t *tc, tcp_bt_sample_t *bts, u32 start, u32 end
   u32 sample_end;
 
   sample_end = seq_min (bts->max_seq, end);
-  if (replaced && bt_rxt_is_active (bts))
+  if (bt_rxt_is_active (bts))
     *replaced += sample_end - start;
   if (sample_end == end)
     return end;
@@ -641,7 +653,7 @@ bt_rxt_range_end (tcp_connection_t *tc, tcp_bt_sample_t *bts, u32 start, u32 end
       if ((scan->flags & TCP_BTS_IS_SACKED) || bt_rxt_flags (tc, scan) != rxt_flags)
 	return scan->min_seq;
       sample_end = seq_min (scan->max_seq, end);
-      if (replaced && bt_rxt_is_active (scan))
+      if (bt_rxt_is_active (scan))
 	*replaced += sample_end - scan->min_seq;
       if (sample_end == end)
 	return end;
@@ -654,7 +666,7 @@ bt_rxt_range_end (tcp_connection_t *tc, tcp_bt_sample_t *bts, u32 start, u32 end
  * map to rxt_flags. */
 static void
 bt_track_rxt_range (tcp_connection_t *tc, tcp_bt_sample_t *start_bts, u32 start, u32 end,
-		    tcp_bts_flags_t rxt_flags)
+		    tcp_bts_flags_t rxt_flags, u32 replaced)
 {
   tcp_byte_tracker_t *bt = tc->bt;
   sack_scoreboard_t *sb = &tc->sack_sb;
@@ -689,7 +701,7 @@ bt_track_rxt_range (tcp_connection_t *tc, tcp_bt_sample_t *start_bts, u32 start,
       /* bts might no longer be valid from here */
       next_index = bt_sample_index (bt, next);
 
-      cur = tcp_bt_alloc_tx_sample (tc, start, end, tcp_flight_size (tc));
+      cur = tcp_bt_alloc_tx_sample (tc, start, end, bt_rxt_sample_flight (tc, replaced));
       cur->flags = rxt_flags;
       cur->next = next_index;
       cur->prev = prev_index;
@@ -733,7 +745,7 @@ bt_track_rxt_range (tcp_connection_t *tc, tcp_bt_sample_t *start_bts, u32 start,
   ASSERT (seq_lt (start, max_seq));
 
   /* Have to split or tail overlap */
-  cur = tcp_bt_alloc_tx_sample (tc, start, end, tcp_flight_size (tc));
+  cur = tcp_bt_alloc_tx_sample (tc, start, end, bt_rxt_sample_flight (tc, replaced));
   cur->flags = rxt_flags;
   cur->prev = bts_index;
   cur_index = bt_sample_index (bt, cur);
@@ -812,10 +824,11 @@ bt_rxt_extend_candidate (tcp_connection_t *tc, u32 start, tcp_bt_sample_t **next
 }
 
 static_always_inline void
-bt_extend_rxt_sample (tcp_connection_t *tc, tcp_bt_sample_t *last, tcp_bt_sample_t *next, u32 end)
+bt_extend_rxt_sample (tcp_connection_t *tc, tcp_bt_sample_t *last, tcp_bt_sample_t *next, u32 end,
+		      u32 replaced)
 {
   last->max_seq = end;
-  last->tx_in_flight = tcp_flight_size (tc);
+  last->tx_in_flight = bt_rxt_sample_flight (tc, replaced);
   if (PREDICT_FALSE (tc->bt->tx_order.links != 0))
     tcp_bt_tx_order_reinsert (tc->bt, last);
   bt_fix_overlapped (tc->bt, next, end, end == tc->snd_nxt);
@@ -825,14 +838,15 @@ static_always_inline u8
 bt_try_extend_rxt_sample (tcp_connection_t *tc, u32 start, u32 end, f64 now, u32 *replaced)
 {
   tcp_bt_sample_t *last, *next;
+  u32 range_replaced;
 
   last = bt_rxt_extend_candidate (tc, start, &next, now);
   if (!last || seq_gt (end, next->max_seq))
     return 0;
 
-  if (replaced && bt_rxt_is_active (next))
-    *replaced += end - start;
-  bt_extend_rxt_sample (tc, last, next, end);
+  range_replaced = bt_rxt_is_active (next) ? end - start : 0;
+  *replaced += range_replaced;
+  bt_extend_rxt_sample (tc, last, next, end, range_replaced);
   return 1;
 }
 
@@ -842,7 +856,7 @@ bt_track_rxt_ranges (tcp_connection_t *tc, u32 start, u32 end, f64 now, u32 *rep
   tcp_byte_tracker_t *bt = tc->bt;
   tcp_bt_sample_t *bts, *last, *next;
   tcp_bts_flags_t rxt_flags;
-  u32 range_end, tracked = 0;
+  u32 range_end, range_replaced, replaced_before, tracked = 0;
 
   /* A retransmit can cross one or more ranges the peer already sacked. Record every unsacked
    * sub-range sent so retransmit delivery and rtt ambiguity remain byte exact. */
@@ -858,7 +872,9 @@ bt_track_rxt_ranges (tcp_connection_t *tc, u32 start, u32 end, f64 now, u32 *rep
 	}
 
       rxt_flags = bt_rxt_flags (tc, bts);
+      replaced_before = *replaced;
       range_end = bt_rxt_range_end (tc, bts, start, end, rxt_flags, replaced);
+      range_replaced = *replaced - replaced_before;
 
       ASSERT (seq_lt (start, range_end));
 
@@ -866,9 +882,9 @@ bt_track_rxt_ranges (tcp_connection_t *tc, u32 start, u32 end, f64 now, u32 *rep
        * multiple compatible source samples needs no second boundary scan. */
       last = bt_rxt_extend_candidate (tc, start, &next, now);
       if (last && next == bts)
-	bt_extend_rxt_sample (tc, last, bts, range_end);
+	bt_extend_rxt_sample (tc, last, bts, range_end, range_replaced);
       else
-	bt_track_rxt_range (tc, bts, start, range_end, rxt_flags);
+	bt_track_rxt_range (tc, bts, start, range_end, rxt_flags, range_replaced);
       tracked += range_end - start;
       start = range_end;
     }
@@ -893,10 +909,10 @@ tcp_bt_track_rxt (tcp_connection_t *tc, u32 start, u32 end)
 
   /* Consecutive homogeneous retransmits can extend the last sample without
    * an rb-tree lookup or a new allocation. */
-  if (bt_try_extend_rxt_sample (tc, start, end, now, rack ? &replaced : 0))
+  if (bt_try_extend_rxt_sample (tc, start, end, now, &replaced))
     tracked = end - start;
   else
-    tracked = bt_track_rxt_ranges (tc, start, end, now, rack ? &replaced : 0);
+    tracked = bt_track_rxt_ranges (tc, start, end, now, &replaced);
 
   if (track_dsack && tracked)
     {

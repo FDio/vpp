@@ -8924,8 +8924,11 @@ tcp_test_rack (vlib_main_t *vm, unformat_input_t *input)
   tc->snd_rxt_bytes = 200;
   tcp_test_set_time (thread_index, 0.25);
   tcp_bt_track_rxt (tc, 0, 100);
+  bts = pool_elt_at_index (tc->bt->samples, tc->bt->head);
   TCP_TEST (rack->rxt_in_flight == 100 && tcp_test_bt_tx_order_is_sane (tc),
 	    "new retransmission replaces the prior active copy without corrupting transmit order");
+  TCP_TEST (bts->tx_in_flight == tcp_flight_size (tc),
+	    "replacement sample records final logical flight");
   TCP_TEST (tc->rxt_delivered == 100 && tc->prr_delivered == 0,
 	    "replacement retires the prior copy without creating delivery credit");
   tcp_test_rack_cleanup (tc);
