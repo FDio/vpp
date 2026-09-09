@@ -6392,6 +6392,22 @@ typedef enum
   TCP_TEST_BT_SB_RESCUE,
 } tcp_test_bt_sb_mode_t;
 
+static_always_inline void
+tcp_test_bt_track_output_rxt (tcp_connection_t *tc, u32 start, u32 end)
+{
+  ASSERT (seq_lt (start, end));
+  tc->snd_rxt_bytes += end - start;
+  tcp_bt_track_rxt (tc, start, end);
+}
+
+static_always_inline void
+tcp_test_bt_account_rxt_delivery (tcp_connection_t *tc, tcp_ack_ctx_t *ac)
+{
+  ASSERT (tc->rxt_delivered <= tc->snd_rxt_bytes);
+  ASSERT (ac->rxt_sacked <= tc->snd_rxt_bytes - tc->rxt_delivered);
+  tc->rxt_delivered += ac->rxt_sacked;
+}
+
 static u8
 tcp_test_bt_tx_order_is_sane (tcp_connection_t *tc)
 {
@@ -6516,7 +6532,7 @@ tcp_test_bt_scoreboard_random (u32 base, u32 seed, tcp_test_bt_sb_mode_t mode)
       /* Build the index without presenting the equivalence trace as a
 	 RACK connection to ACK and loss handling. */
       tcp_bt_tx_order_build (bt_tc->bt);
-      tcp_bt_track_rxt (bt_tc, base, high_rxt);
+      tcp_test_bt_track_output_rxt (bt_tc, base, high_rxt);
       default_tc->sack_sb.high_rxt = bt_tc->sack_sb.high_rxt = high_rxt;
     }
 
@@ -6535,7 +6551,7 @@ tcp_test_bt_scoreboard_random (u32 base, u32 seed, tcp_test_bt_sb_mode_t mode)
 	  seq_lt (default_tc->snd_una, default_tc->snd_nxt))
 	{
 	  u32 rxt_end = default_tc->snd_una + clib_min (default_tc->snd_mss, span);
-	  tcp_bt_track_rxt (bt_tc, bt_tc->snd_una, rxt_end);
+	  tcp_test_bt_track_output_rxt (bt_tc, bt_tc->snd_una, rxt_end);
 	  TCP_TEST (tcp_bt_is_sane (bt_tc->bt) && tcp_bt_is_sane_post_recovery (bt_tc),
 		    "random BT head retransmit keeps aggregates in step at step %u "
 		    "(base 0x%x mode %u, sacked %u lost %u)",
@@ -6578,6 +6594,7 @@ tcp_test_bt_scoreboard_random (u32 base, u32 seed, tcp_test_bt_sb_mode_t mode)
 
       /* Both range backends consumed and finalized the same ACK feedback. */
       default_tc->snd_una = bt_tc->snd_una = ack;
+      tcp_test_bt_account_rxt_delivery (bt_tc, &bt_ac);
 
       same = default_tc->sack_sb.sacked_bytes == bt_tc->sack_sb.sacked_bytes &&
 	     default_tc->sack_sb.lost_bytes == bt_tc->sack_sb.lost_bytes &&
@@ -8929,8 +8946,11 @@ tcp_test_rack (vlib_main_t *vm, unformat_input_t *input)
   tc->snd_rxt_bytes = 200;
   tcp_test_set_time (thread_index, 0.25);
   tcp_bt_track_rxt (tc, 0, 100);
+  bts = pool_elt_at_index (tc->bt->samples, tc->bt->head);
   TCP_TEST (rack->rxt_in_flight == 100 && tcp_test_bt_tx_order_is_sane (tc),
 	    "new retransmission replaces the prior active copy without corrupting transmit order");
+  TCP_TEST (bts->tx_in_flight == tcp_flight_size (tc),
+	    "replacement sample records final logical flight");
   TCP_TEST (tc->rxt_delivered == 100 && tc->prr_delivered == 0,
 	    "replacement retires the prior copy without creating delivery credit");
   tcp_test_rack_cleanup (tc);
