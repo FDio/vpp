@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a611f283_6a7a0630",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 23
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 259
+      },
+      "writtenOn": "2026-09-09T07:54:03Z",
+      "side": 1,
+      "message": "one minor change, and it\u0027s not that important.  +1 anyway.",
+      "revId": "cb948fa2c012b19d2e228a0e9354ecc84af232a4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "386e9fad_2e7f3b5e",
+        "filename": "docs/aboutvpp/security/tsc_vulnerability_management_v3.rst",
+        "patchSetId": 23
+      },
+      "lineNbr": 326,
+      "author": {
+        "id": 259
+      },
+      "writtenOn": "2026-09-09T07:54:03Z",
+      "side": 1,
+      "message": "s/utilized/exploited/?",
+      "revId": "cb948fa2c012b19d2e228a0e9354ecc84af232a4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
