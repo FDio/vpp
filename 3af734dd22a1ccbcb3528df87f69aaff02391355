@@ -1,0 +1,130 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "1c4b8777_82b19d98",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 21
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-09-10T16:35:00Z",
+      "side": 1,
+      "message": "Addressed in PS21: the commit body is reflowed below 78 columns and passes the VPP commit-message check.",
+      "parentUuid": "6ba358cc_763fe43c",
+      "revId": "3af734dd22a1ccbcb3528df87f69aaff02391355",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "f3f6dd8e_67d26211",
+        "filename": "src/plugins/rdma/device.c",
+        "patchSetId": 21
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-09-10T16:35:00Z",
+      "side": 1,
+      "message": "Addressed: both the optional DEV_NAME-to-DEV_INDEX lookup and the filtered NDEV_INDEX-to-PORT_INDEX lookup now use the shared parameterized rdma_nldev_lookup_u32() multipart-dump helper.",
+      "parentUuid": "6da47041_439df667",
+      "revId": "3af734dd22a1ccbcb3528df87f69aaff02391355",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "844a53f6_1efe5a01",
+        "filename": "src/plugins/rdma/device.c",
+        "patchSetId": 21
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-09-10T16:35:00Z",
+      "side": 1,
+      "message": "Addressed: PORT_ACTIVE and PORT_ERR events now update the interface only when event.element.port_num matches rd-\u003eport_num.",
+      "parentUuid": "83a9370c_2d7d4968",
+      "revId": "3af734dd22a1ccbcb3528df87f69aaff02391355",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "905d7bc3_a1f55032",
+        "filename": "src/plugins/rdma/device.c",
+        "patchSetId": 21
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-09-10T16:35:00Z",
+      "side": 1,
+      "message": "Addressed through the later discussion: PORT_GET requires DEV_INDEX. The current code uses ibv_get_device_index() when available and performs the DEV_NAME lookup only as the required fallback for VPP\u0027s static rdma-core build.",
+      "parentUuid": "8b0befe2_3f513e1f",
+      "revId": "3af734dd22a1ccbcb3528df87f69aaff02391355",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "79a5c1a1_544e9c4b",
+        "filename": "src/plugins/rdma/device.c",
+        "patchSetId": 21
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-09-10T16:35:00Z",
+      "side": 1,
+      "message": "Addressed: ibv_get_device_index() is passed into the port lookup. A DEV_NAME dump occurs only when it returns -1, as it does with VPP\u0027s static rdma-core configuration.",
+      "parentUuid": "dc22fb1b_4aacb042",
+      "revId": "3af734dd22a1ccbcb3528df87f69aaff02391355",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "58d4868d_e7672349",
+        "filename": "src/plugins/rdma/device.c",
+        "patchSetId": 21
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-09-10T16:35:00Z",
+      "side": 1,
+      "message": "Addressed: the current path first uses ibv_get_device_index(), avoiding the device dump on normal dynamic rdma-core builds. The fallback remains only for static rdma-core, where that API returns -1.",
+      "parentUuid": "c580dc3d_04aa42ea",
+      "revId": "3af734dd22a1ccbcb3528df87f69aaff02391355",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "bff8dfe4_d97a5608",
+        "filename": "src/plugins/rdma/unformat.c",
+        "patchSetId": 21
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-09-10T16:35:00Z",
+      "side": 1,
+      "message": "Addressed in PS21: rdma_create_v5 carries port_num with 0 meaning auto. Client and server handlers map it, while legacy VAT v1-v4 explicitly reject port-num instead of silently ignoring it.",
+      "parentUuid": "e1d3c867_bd7dadd0",
+      "revId": "3af734dd22a1ccbcb3528df87f69aaff02391355",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
