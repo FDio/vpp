@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "45916700_f3323a74",
+        "filename": "test/hs-test/infra/vppinstance.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 866,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-09-10T08:56:55Z",
+      "side": 1,
+      "message": "can we rather disable logging for memory leak testing?",
+      "revId": "4e9785975ecf8572c76fb60f655d37b27fe9216a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
