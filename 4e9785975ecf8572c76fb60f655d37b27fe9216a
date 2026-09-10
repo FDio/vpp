@@ -16,6 +16,24 @@
       "message": "can we rather disable logging for memory leak testing?",
       "revId": "4e9785975ecf8572c76fb60f655d37b27fe9216a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "7de9df4f_efe5b16e",
+        "filename": "test/hs-test/infra/vppinstance.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 866,
+      "author": {
+        "id": 3325
+      },
+      "writtenOn": "2026-09-10T10:50:41Z",
+      "side": 1,
+      "message": "Done as a separate change, log level is a template parameter now, set to disabled for leak runs (https://gerrit.fd.io/r/c/vpp/+/46762)\n\nformat_vnet_sw_interface_name is no longer added here, this patch is just the session tx frame pair",
+      "parentUuid": "45916700_f3323a74",
+      "revId": "4e9785975ecf8572c76fb60f655d37b27fe9216a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
