@@ -78,8 +78,8 @@ plugins {
 }
 
 logging {
-  default-log-level debug
-  default-syslog-log-level debug
+  default-log-level %[6]s
+  default-syslog-log-level %[6]s
 }
 
 `
@@ -161,6 +161,13 @@ func (vpp *VppInstance) Start() error {
 	o, err = vpp.Container.Exec(false, "mkdir -m 777 -p "+vpp.getEtcDir())
 	AssertNil(err, o)
 
+	// formatting a log message allocates a string that vlib_log keeps in its
+	// ring buffer, which the mem-leak report then sees as a live allocation
+	logLevel := "debug"
+	if *IsLeakCheck {
+		logLevel = "disabled"
+	}
+
 	// Create startup.conf inside the container
 	configContent := fmt.Sprintf(
 		vppConfigTemplate,
@@ -169,6 +176,7 @@ func (vpp *VppInstance) Start() error {
 		defaultApiSocketFilePath,
 		defaultLogFilePath,
 		cliConfig,
+		logLevel,
 	)
 	configContent += vpp.generateVPPCpuConfig()
 	for _, c := range vpp.AdditionalConfig {
