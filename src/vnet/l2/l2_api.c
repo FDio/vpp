@@ -1341,7 +1341,7 @@ l2_arp_term_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
 
       vlib_process_wait_for_event (vm);
 
-      vlib_process_get_event_data (vm, &event_type);
+      event_type = vlib_process_get_events (vm, NULL);
       now = vlib_time_now (vm);
 
       if (event_type == L2_ARP_TERM_EVENT_PUBLISH)
