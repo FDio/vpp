@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "3d10f32f_183f3f02",
+        "filename": "test/remote_test.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 19,
+      "author": {
+        "id": 3121
+      },
+      "writtenOn": "2026-09-10T01:06:28Z",
+      "side": 1,
+      "message": "Done. Guarded the same way as run_tests.py ... start from the default context, then pin \"fork\" only if it is in `get_all_start_methods()`.",
+      "parentUuid": "86f04cdd_faea307f",
+      "revId": "d017573ac41a07ec1181d21b609d804f52acdc59",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "ce111806_43756c4a",
@@ -35,6 +53,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "430740e7_09ccbdcc",
+        "filename": "test/test_nat44_ei.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 2620,
+      "author": {
+        "id": 3121
+      },
+      "writtenOn": "2026-09-10T01:06:28Z",
+      "side": 1,
+      "message": "Ack. Replaced `assertTrue(..., \"is-at\")` with `assertEqual(..., 2)` so we actually check the ARP reply opcode.",
+      "parentUuid": "ce111806_43756c4a",
+      "revId": "d017573ac41a07ec1181d21b609d804f52acdc59",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "0568a755_50abd569",
@@ -48,6 +84,24 @@
       "writtenOn": "2026-09-04T08:07:26Z",
       "side": 1,
       "message": "same here",
+      "revId": "d017573ac41a07ec1181d21b609d804f52acdc59",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "61de1aa8_60141bdf",
+        "filename": "test/test_nat44_ei.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 2634,
+      "author": {
+        "id": 3121
+      },
+      "writtenOn": "2026-09-10T01:06:28Z",
+      "side": 1,
+      "message": "Ack. Replaced `assertTrue(..., \"is-at\")` with `assertEqual(..., 2)` so we actually check the ARP reply opcode.",
+      "parentUuid": "0568a755_50abd569",
       "revId": "d017573ac41a07ec1181d21b609d804f52acdc59",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
