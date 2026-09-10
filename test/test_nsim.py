@@ -110,14 +110,15 @@ class TestNsimCli(VppTestCase):
         super(TestNsimCli, cls).tearDownClass()
 
     def test_nsim_delay(self):
-        """Add 100ms delay"""
+        """Add 100ms delay and serialize queued packets"""
         packets = create_stream(self, self.pg0, self.pg1, 5)
         self.pg0.add_stream(packets)
         self.pg0.enable_capture()
         self.pg1.enable_capture()
 
         self.vapi.cli(
-            "set nsim delay 100.0 ms bandwidth 1 gbit packet-size 128 drop-fraction 0.0"
+            "set nsim delay 100.0 ms bandwidth 100 kbps buffer 100 ms "
+            "packet-size 128 drop-fraction 0.0"
         )
         self.vapi.cli("nsim cross-connect enable-disable pg0 pg1")
         self.vapi.cli("nsim output-feature enable-disable pg0")
@@ -127,6 +128,12 @@ class TestNsimCli(VppTestCase):
         self.pg0.assert_nothing_captured()
         reply = self.vapi.cli("show trace")
         verify_capture(self, self.pg0, self.pg1, capture, reply)
+        serialization_span = float(capture[-1].time - capture[0].time)
+        self.assertGreaterEqual(
+            serialization_span,
+            0.03,
+            f"Queued packets were released too early: {serialization_span}s",
+        )
         self.assertIn("nsim", reply)
         reply = self.vapi.cli("show nsim")
         self.assertIn("delay: 100.0 ms", reply)
