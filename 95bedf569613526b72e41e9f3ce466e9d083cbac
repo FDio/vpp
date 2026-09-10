@@ -16,6 +16,23 @@
       "message": "Works with CSIT suites, tested auto (DV) mode on Intel testbeds (ARM ones currently have issues preventing me from testing this). Considering a week ago CX6 and CX7 did not work on any testbed (and I tested this also with CX5 on 2n-zn2), this cannot not make the situation worse.",
       "revId": "95bedf569613526b72e41e9f3ce466e9d083cbac",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "9a715b21_9c987822",
+        "filename": "src/vppinfra/clib.h",
+        "patchSetId": 7
+      },
+      "lineNbr": 166,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-09-10T12:34:06Z",
+      "side": 1,
+      "message": "Could we document the memory-type contract here? `CLIB_DMA_*` applies to coherent, cacheable DMA memory and only orders accesses—it does not clean caches, force write-through, or make non-coherent DMA buffers visible. Conversely, `CLIB_MMIO_WMB()` orders prior normal-memory stores before a following device-register (MMIO) write; MMIO is device/uncached memory whose accesses can have side effects. This distinction is important so future callers do not use these barriers as a cache-maintenance substitute.",
+      "revId": "95bedf569613526b72e41e9f3ce466e9d083cbac",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
