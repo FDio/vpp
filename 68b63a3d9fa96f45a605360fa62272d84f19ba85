@@ -1,6 +1,23 @@
 {
   "comments": [
     {
+      "unresolved": true,
+      "key": {
+        "uuid": "6ba358cc_763fe43c",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 19
+      },
+      "lineNbr": 3,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-09-10T12:49:17Z",
+      "side": 1,
+      "message": "Please reflow the commit body: lines 3, 5, and 7 exceed the 78-character limit.",
+      "revId": "68b63a3d9fa96f45a605360fa62272d84f19ba85",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": false,
       "key": {
         "uuid": "4aba82f4_6c1e1b29",
@@ -14,6 +31,23 @@
       "writtenOn": "2026-09-04T15:09:04Z",
       "side": 1,
       "message": "Works with CSIT suites, tested auto (DV) mode on Intel testbeds (ARM ones currently have issues preventing me from testing this). Considering a week ago CX6 and CX7 did not work on any testbed (and I tested this also with CX5 on 2n-zn2), this cannot not make the situation worse.",
+      "revId": "68b63a3d9fa96f45a605360fa62272d84f19ba85",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e1d3c867_bd7dadd0",
+        "filename": "src/plugins/rdma/unformat.c",
+        "patchSetId": 19
+      },
+      "lineNbr": 38,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-09-10T12:49:17Z",
+      "side": 1,
+      "message": "`unformat_rdma_create_if_args()` is also used by the VAT `rdma_create_v4` command, but v4 has no `port_num` field and `test_api.c` does not serialize `args.port_num`. Consequently, `test rdma_create_v4 ... port-num 2` accepts this option then silently uses autodetection instead of the requested port. Could we add a new API version carrying `port_num` (with 0 meaning auto) and map it in both client and server handlers?",
       "revId": "68b63a3d9fa96f45a605360fa62272d84f19ba85",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
