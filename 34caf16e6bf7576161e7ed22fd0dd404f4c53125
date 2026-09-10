@@ -1,0 +1,58 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "cafc340d_e04a90c4",
+        "filename": "src/plugins/rdma/output.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-09-10T16:34:16Z",
+      "side": 1,
+      "message": "Addressed in PS7: teardown destroys the QPs first, then frees every valid outstanding TX-ring buffer before releasing the queues and MRs. Two create/traffic/delete cycles ended with zero used buffers on CX4, CX5, CX6 and BF3.",
+      "parentUuid": "ba832e40_b8f41518",
+      "revId": "34caf16e6bf7576161e7ed22fd0dd404f4c53125",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e4a13803_9100ddcc",
+        "filename": "src/plugins/rdma/output.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-09-10T16:34:16Z",
+      "side": 1,
+      "message": "Addressed in PS7: datapath reads of rd-\u003eflags now use clib_atomic_load_relax_n(), consistently with the atomic updates.",
+      "parentUuid": "326b8df2_2c86f453",
+      "revId": "34caf16e6bf7576161e7ed22fd0dd404f4c53125",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ffa7fe05_26ed7950",
+        "filename": "src/plugins/rdma/output.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-09-10T16:34:16Z",
+      "side": 1,
+      "message": "Addressed in PS7: the error state is now per txq. Only the affected SQ stops submitting; RX and the other QPs continue. The code also documents the one-CQ-per-SQ invariant.",
+      "parentUuid": "1b52cbf8_876ccf59",
+      "revId": "34caf16e6bf7576161e7ed22fd0dd404f4c53125",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
