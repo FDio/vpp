@@ -16,6 +16,57 @@
       "message": "Works with CSIT suites, tested auto (DV) mode on Intel testbeds (ARM ones currently have issues preventing me from testing this). Considering a week ago CX6 and CX7 did not work on any testbed (and I tested this also with CX5 on 2n-zn2), this cannot not make the situation worse.",
       "revId": "aefab5e4f79a5e6330ccebcbbb7a9ea7dfc9b167",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1b52cbf8_876ccf59",
+        "filename": "src/plugins/rdma/output.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 51,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-09-10T12:46:49Z",
+      "side": 1,
+      "message": "Does every non-REQ TX CQE make the whole RDMA interface unrecoverable? This condition marks `rd` globally in error, which stops RX polling and TX on all worker-owned queues, although each TX queue has a separate raw-packet QP. It also groups all non-REQ opcodes together and does not inspect the CQE syndrome. Could we document why a device-wide stop is required, or scope the error to the affected `txq` and stop submissions only for that SQ?",
+      "revId": "aefab5e4f79a5e6330ccebcbbb7a9ea7dfc9b167",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "326b8df2_2c86f453",
+        "filename": "src/plugins/rdma/output.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 92,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-09-10T12:46:49Z",
+      "side": 1,
+      "message": "Could we make the corresponding datapath reads of `rd-\u003eflags` atomic too? This atomic RMW races with plain reads in `rdma_device_output_tx()` and the RX polling path. An atomic write does not make non-atomic readers race-safe. A `clib_atomic_load_relax_n(\u0026rd-\u003eflags)` snapshot for the error/mode checks would make the synchronization consistent.",
+      "revId": "aefab5e4f79a5e6330ccebcbbb7a9ea7dfc9b167",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ba832e40_b8f41518",
+        "filename": "src/plugins/rdma/output.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 92,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-09-10T12:46:49Z",
+      "side": 1,
+      "message": "Could we release outstanding TX-ring buffers as part of error recovery? If the SQ ignores WQEs following the failing one, the entries between `txq-\u003ehead` and `txq-\u003etail` never receive completions. The new error state stops further enqueueing, and deleting/recreating the interface destroys the QP/CQ then `vec_free`s `rd-\u003etxqs` without freeing those VPP buffers. Please free the outstanding ring entries after the QP is safely quiesced/destroyed.",
+      "revId": "aefab5e4f79a5e6330ccebcbbb7a9ea7dfc9b167",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
