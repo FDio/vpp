@@ -29,10 +29,12 @@ from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, TCP
 
 
+# TODO: Temporarily disabled due to non-related test failures in CI
 @unittest.skipIf(
     "sfdp_services" in config.excluded_plugins,
     "SFDP_Services plugin is required to run SFDP tests",
 )
+@unittest.skipUnless(config.extended, "part of extended tests")
 class TestSfdpTwoWorkers(BaseSfdpTest):
     """SFDP packet handoff between two workers"""
 
