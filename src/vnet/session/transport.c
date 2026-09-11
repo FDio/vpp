@@ -1003,7 +1003,7 @@ static inline void
 spacer_set_pace_rate (spacer_t * pacer, u64 rate_bytes_per_sec,
 		      clib_us_time_t rtt, clib_time_type_t sec_per_loop)
 {
-  clib_us_time_t max_time;
+  clib_time_type_t max_time;
 
   ASSERT (rate_bytes_per_sec != 0);
   pacer->bytes_per_sec = rate_bytes_per_sec;
@@ -1018,10 +1018,9 @@ spacer_set_pace_rate (spacer_t * pacer, u64 rate_bytes_per_sec,
    *
    * Max "time-length" of a burst cannot be less than 1us or more than 1ms.
    */
-  max_time = clib_max (rtt / TRANSPORT_PACER_BURSTS_PER_RTT,
-		       (clib_us_time_t) (sec_per_loop * CLIB_US_TIME_FREQ));
-  max_time = clib_clamp (max_time, 1 /* 1us */ , 1000 /* 1ms */ );
-  pacer->max_burst = (rate_bytes_per_sec * max_time) * CLIB_US_TIME_PERIOD;
+  max_time = clib_max (rtt * (CLIB_US_TIME_PERIOD / TRANSPORT_PACER_BURSTS_PER_RTT), sec_per_loop);
+  max_time = clib_clamp (max_time, CLIB_US_TIME_PERIOD, 1e-3 /* 1ms */);
+  pacer->max_burst = rate_bytes_per_sec * max_time;
   pacer->max_burst = clib_clamp (pacer->max_burst, pacer->min_burst, TRANSPORT_PACER_MAX_BURST);
 }
 
