@@ -16,6 +16,24 @@
       "message": "Not a blocker for this change, but could we follow up on this separately? `cnat_output_feature_new_flow_inline()` treats a SNAT address as available when `ce_ip` is nonzero, whereas the direct SNAT path uses `CNAT_EP_FLAG_RESOLVED`. After an interface loses its last address, the resolver clears that flag but retains the cached address, so this path can keep selecting the stale address. Checking `RESOLVED` here would make both paths consistent.",
       "revId": "4130790fc13c8d816a5b2b9aa3b3c10fee5dc96f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9fc8c3f0_ac1040e2",
+        "filename": "src/plugins/cnat/cnat_node_feature.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 384,
+      "author": {
+        "id": 660
+      },
+      "writtenOn": "2026-09-11T12:18:33Z",
+      "side": 1,
+      "message": "Good catch!\n\nhttps://gerrit.fd.io/r/c/vpp/+/46773",
+      "parentUuid": "84ce3a3d_1855bbf2",
+      "revId": "4130790fc13c8d816a5b2b9aa3b3c10fee5dc96f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
