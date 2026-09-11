@@ -68,10 +68,14 @@ static app_crypto_async_req_handle_t session_test_crypto_async_reply_handle;
 static int
 session_test_pacer (vlib_main_t *vm, unformat_input_t *input)
 {
+  clib_thread_index_t thread_index = vlib_get_thread_index ();
   clib_time_type_t saved_seconds_per_loop = vm->seconds_per_loop;
-  transport_connection_t tc = { .thread_index = vlib_get_thread_index () };
+  clib_us_time_t saved_time = transport_us_time_now (thread_index);
+  transport_connection_t tc = { .thread_index = thread_index };
   u64 rate = 2e9;
+  u64 old_rate = 7500000000, new_rate = 7514600000;
   u32 loop_max_burst, rtt_max_burst;
+  i64 rate_change_credit, rate_decrease_credit;
 
   vm->seconds_per_loop = 1.25e-6;
   transport_connection_tx_pacer_init (&tc, rate, 0, TRANSPORT_PACER_MIN_BURST);
@@ -81,12 +85,31 @@ session_test_pacer (vlib_main_t *vm, unformat_input_t *input)
   vm->seconds_per_loop = 1e-6;
   transport_connection_tx_pacer_update (&tc, rate, 25 /* 25us rtt */);
   rtt_max_burst = tc.pacer.max_burst;
+
+  /* Model one MSS of cwnd growth at 100us RTT. */
+  session_main.wrk[thread_index].last_vlib_us_time = saved_time;
+  transport_connection_tx_pacer_reset (&tc, old_rate, 0, 100 /* 100us rtt */);
+  session_main.wrk[thread_index].last_vlib_us_time = saved_time + 1;
+  transport_connection_tx_pacer_update (&tc, new_rate, 100 /* 100us rtt */);
+  transport_connection_tx_pacer_burst (&tc);
+  rate_change_credit = tc.pacer.bucket;
+
+  transport_connection_tx_pacer_reset (&tc, 2e9, 0, 100 /* 100us rtt */);
+  session_main.wrk[thread_index].last_vlib_us_time = saved_time + 6;
+  transport_connection_tx_pacer_update (&tc, 1e9, 100 /* 100us rtt */);
+  rate_decrease_credit = tc.pacer.bucket;
+
+  session_main.wrk[thread_index].last_vlib_us_time = saved_time;
   vm->seconds_per_loop = saved_seconds_per_loop;
 
   SESSION_TEST (loop_max_burst == 2500, "fractional loop interval sets max burst (%u)",
 		loop_max_burst);
   SESSION_TEST (rtt_max_burst == 2500, "fractional rtt interval sets max burst (%u)",
 		rtt_max_burst);
+  SESSION_TEST (rate_change_credit == 7500, "rate change preserves old-rate credit (%ld)",
+		rate_change_credit);
+  SESSION_TEST (rate_decrease_credit == 5000, "rate decrease clamps credit (%ld)",
+		rate_decrease_credit);
   return 0;
 }
 
