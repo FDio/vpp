@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "97a766b0_fa4a50fc",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2220
+      },
+      "writtenOn": "2026-09-11T13:32:59Z",
+      "side": 1,
+      "message": "Hello Steven,\nHello John,\n\nCould you review this small patch?",
+      "revId": "574706a0e049ef4e4431f22b24b0f50cff6a8681",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
