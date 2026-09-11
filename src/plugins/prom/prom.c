@@ -195,7 +195,10 @@ send_data_to_hss (hss_session_handle_t sh)
 static void
 send_data_to_hss_rpc (void *rpc_args)
 {
-  send_data_to_hss (*(hss_session_handle_t *) rpc_args);
+  hss_session_handle_t sh;
+
+  sh.as_u64 = pointer_to_uword (rpc_args);
+  send_data_to_hss (sh);
 }
 
 static uword
@@ -223,8 +226,8 @@ prom_scraper_process (vlib_main_t *vm, vlib_node_runtime_t *rt,
 	  vec_foreach (sh_as_uword, event_data)
 	    {
 	      sh.as_u64 = (u64) *sh_as_uword;
-	      session_send_rpc_evt_to_thread_force (
-		sh.thread_index, send_data_to_hss_rpc, sh_as_uword);
+	      session_send_rpc_evt_to_thread_force (sh.thread_index, send_data_to_hss_rpc,
+						    uword_to_pointer (sh.as_u64, void *));
 	    }
 	  pm->last_scrape = vlib_time_now (vm);
 	  break;
