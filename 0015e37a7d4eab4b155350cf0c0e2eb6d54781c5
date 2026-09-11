@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "52ff3e41_23a1bdda",
+        "filename": "src/plugins/rdma/unformat.c",
+        "patchSetId": 22
+      },
+      "lineNbr": 12,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-09-11T12:20:26Z",
+      "side": 1,
+      "message": "Could we keep `unformat_rdma_create_if_args()` independent of the API version?\n\n`allow_port_num` is only needed for legacy VAT compatibility, but it adds version-specific behavior to the shared CLI parser. Let the parser always recognize `port-num`, then have the legacy VAT handlers (`rdma_create` through `rdma_create_v4`) reject a nonzero `args.port_num` after parsing, since those messages cannot serialize it. The CLI and `rdma_create_v5` can use the parsed value directly.",
+      "revId": "0015e37a7d4eab4b155350cf0c0e2eb6d54781c5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
