@@ -3,6 +3,7 @@
  */
 
 #include <stdio.h>
+#include <limits.h>
 #include <net/if.h>
 #include <sys/ioctl.h>
 #include <linux/ethtool.h>
