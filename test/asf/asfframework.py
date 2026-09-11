@@ -9,6 +9,7 @@ import signal
 import subprocess
 import unittest
 import re
+import glob
 import time
 import faulthandler
 import random
@@ -238,7 +239,46 @@ def create_tag_decorator(e):
 
 tag_run_solo = create_tag_decorator(TestCaseTag.RUN_SOLO)
 tag_fixme_vpp_workers = create_tag_decorator(TestCaseTag.FIXME_VPP_WORKERS)
-tag_fixme_asan = create_tag_decorator(TestCaseTag.FIXME_ASAN)
+
+_is_asan_build = None
+
+
+def is_asan_build():
+    """Detect whether VPP was built with AddressSanitizer.
+
+    Mirrors the hs-test IsAsanBuild() helper: rather than trusting the
+    VPP_EXTRA_CMAKE_ARGS env var (which is only set at build time and is not
+    present when 'make test' runs in CI), inspect the installed libvppinfra
+    shared object for __asan_* runtime symbols. The result is cached.
+    """
+    global _is_asan_build
+    if _is_asan_build is not None:
+        return _is_asan_build
+    # Honor the build-time hint when it is available.
+    if "DVPP_ENABLE_SANITIZE_ADDR=ON" in os.environ.get("VPP_EXTRA_CMAKE_ARGS", ""):
+        _is_asan_build = True
+        return _is_asan_build
+    _is_asan_build = False
+    pattern = f"{config.vpp_install_dir}/**/libvppinfra.so*"
+    for path in glob.glob(pattern, recursive=True):
+        try:
+            with open(path, "rb") as f:
+                if b"__asan_" in f.read():
+                    _is_asan_build = True
+                    break
+        except OSError:
+            continue
+    return _is_asan_build
+
+
+def tag_fixme_asan(cls):
+    """Tag and skip a test or class known to be broken under ASan.
+
+    Uses unittest.skipIf at decoration time (like tag_fixme_vpp_debug) so a
+    tagged class is skipped before setUpClass runs.
+    """
+    cls = create_tag_decorator(TestCaseTag.FIXME_ASAN)(cls)
+    return unittest.skipIf(is_asan_build(), "Skipping @tag_fixme_asan tests")(cls)
 
 
 def tag_fixme_vpp_debug(cls):
@@ -335,14 +375,6 @@ class VppAsfTestCase(CPUInterface, unittest.TestCase):
     def is_tagged_run_solo(cls):
         """if the test case class is timing-sensitive - return true"""
         return cls.has_tag(TestCaseTag.RUN_SOLO)
-
-    @classmethod
-    def skip_fixme_asan(cls):
-        """if @tag_fixme_asan & ASan is enabled - raise SkipTest"""
-        if cls.has_tag(TestCaseTag.FIXME_ASAN):
-            vpp_extra_cmake_args = os.environ.get("VPP_EXTRA_CMAKE_ARGS", "")
-            if "DVPP_ENABLE_SANITIZE_ADDR=ON" in vpp_extra_cmake_args:
-                raise unittest.SkipTest("Skipping @tag_fixme_asan tests")
 
     @classmethod
     def instance(cls):
@@ -1477,7 +1509,6 @@ class VppTestResult(unittest.TestResult):
 
             if test.has_tag(TestCaseTag.FIXME_ASAN):
                 test_title = colorize(f"FIXME with ASAN: {test_title}", RED)
-                test.skip_fixme_asan()
 
             if hasattr(test, "vpp_worker_count"):
                 if test.vpp_worker_count == 0:
