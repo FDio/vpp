@@ -66,6 +66,31 @@ static app_crypto_async_req_t *session_test_crypto_async_last_req;
 static app_crypto_async_req_handle_t session_test_crypto_async_reply_handle;
 
 static int
+session_test_pacer (vlib_main_t *vm, unformat_input_t *input)
+{
+  clib_time_type_t saved_seconds_per_loop = vm->seconds_per_loop;
+  transport_connection_t tc = { .thread_index = vlib_get_thread_index () };
+  u64 rate = 2e9;
+  u32 loop_max_burst, rtt_max_burst;
+
+  vm->seconds_per_loop = 1.25e-6;
+  transport_connection_tx_pacer_init (&tc, rate, 0, TRANSPORT_PACER_MIN_BURST);
+  transport_connection_tx_pacer_update (&tc, rate, 1 /* 1us rtt */);
+  loop_max_burst = tc.pacer.max_burst;
+
+  vm->seconds_per_loop = 1e-6;
+  transport_connection_tx_pacer_update (&tc, rate, 25 /* 25us rtt */);
+  rtt_max_burst = tc.pacer.max_burst;
+  vm->seconds_per_loop = saved_seconds_per_loop;
+
+  SESSION_TEST (loop_max_burst == 2500, "fractional loop interval sets max burst (%u)",
+		loop_max_burst);
+  SESSION_TEST (rtt_max_burst == 2500, "fractional rtt interval sets max burst (%u)",
+		rtt_max_burst);
+  return 0;
+}
+
+static int
 session_test_crypto_async_cb (app_crypto_async_req_t *req)
 {
   session_test_crypto_async_count++;
@@ -3017,6 +3042,8 @@ session_test (vlib_main_t * vm,
 	res = session_test_ext_cfg (vm, input);
       else if (unformat (input, "app-crypto"))
 	res = session_test_app_crypto (vm, input);
+      else if (unformat (input, "pacer"))
+	res = session_test_pacer (vm, input);
       else if (unformat (input, "reconn-while-closed"))
 	res = session_test_reconn_while_closed (vm, input);
       else if (unformat (input, "all"))
@@ -3042,6 +3069,8 @@ session_test (vlib_main_t * vm,
 	  if ((res = session_test_ext_cfg (vm, input)))
 	    goto done;
 	  if ((res = session_test_app_crypto (vm, input)))
+	    goto done;
+	  if ((res = session_test_pacer (vm, input)))
 	    goto done;
 	  if ((res = session_test_enable_disable (vm, input)))
 	    goto done;
