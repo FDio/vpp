@@ -369,7 +369,7 @@ cnat_output_feature_new_flow_inline (vlib_main_t *vm, vlib_buffer_t *b, ip_addre
 
   if (AF_IP4 == af)
     {
-      if (ip_address_is_zero (&cpe->snat_ip4.ce_ip))
+      if (!(cpe->snat_ip4.ce_flags & CNAT_EP_FLAG_RESOLVED))
 	{
 	  rw->cts_dpoi_next_node = CNAT_FEATURE_NEXT_DROP;
 	  return (rw);
@@ -379,7 +379,7 @@ cnat_output_feature_new_flow_inline (vlib_main_t *vm, vlib_buffer_t *b, ip_addre
     }
   else
     {
-      if (ip_address_is_zero (&cpe->snat_ip6.ce_ip))
+      if (!(cpe->snat_ip6.ce_flags & CNAT_EP_FLAG_RESOLVED))
 	{
 	  rw->cts_dpoi_next_node = CNAT_FEATURE_NEXT_DROP;
 	  return (rw);
