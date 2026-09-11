@@ -1485,6 +1485,133 @@ class TestCNatDHCP(CnatCommonTestCase):
             self.add_del_address(pg, addr_id=1, is_add=False, is_v6=True)
         self.vapi.cnat_set_snat_addresses(sw_if_index=INVALID_INDEX)
 
+    def _test_dhcp_snat_output_drops_unresolved_address(self, is_v6):
+        self.create_pg_interfaces(range(3))
+
+        for pg in self.pg_interfaces:
+            pg.admin_up()
+
+        self.pg0.generate_remote_hosts(1)
+        self.pg1.generate_remote_hosts(1)
+
+        for pg in (self.pg0, self.pg1):
+            if is_v6:
+                pg.config_ip6()
+                pg.resolve_ndp()
+            else:
+                pg.config_ip4()
+                pg.resolve_arp()
+
+        snat_addr = self.make_addr(self.pg2.sw_if_index, 0, is_v6=is_v6)
+        snat_configured = False
+        snat_address_present = False
+        enabled_interfaces = []
+
+        try:
+            # Configure interface-based SNAT before pg2 has an address.
+            self.vapi.cnat_set_snat_addresses(
+                sw_if_index=self.pg2.sw_if_index,
+            )
+            snat_configured = True
+
+            # Resolve the SNAT endpoint and retain the resolver watch.
+            self.add_del_address(
+                self.pg2,
+                addr_id=0,
+                is_add=True,
+                is_v6=is_v6,
+            )
+            snat_address_present = True
+
+            # cnat-lookup-ip{4,6} sets b->flow_id on ingress, while
+            # cnat-output-ip{4,6} processes the output SNAT rewrite. A single
+            # feature_cnat_enable_disable arms both address families.
+            for pg in (self.pg0, self.pg1):
+                self.vapi.feature_cnat_enable_disable(
+                    sw_if_index=pg.sw_if_index,
+                    enable_disable=True,
+                )
+                enabled_interfaces.append(pg)
+
+            ip_layer = IPv6 if is_v6 else IP
+
+            def make_packet(sport):
+                src_host = self.pg0.remote_hosts[0]
+                dst_host = self.pg1.remote_hosts[0]
+                if is_v6:
+                    ip = IPv6(src=src_host.ip6, dst=dst_host.ip6)
+                else:
+                    ip = IP(src=src_host.ip4, dst=dst_host.ip4)
+                return (
+                    Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
+                    / ip
+                    / UDP(sport=sport, dport=6661)
+                    / Raw()
+                )
+
+            # Confirm that the output feature initially performs SNAT. The
+            # source check, not the packet count, is what keeps the negative
+            # leg below honest: an unresolved neighbour would put an NS on pg1
+            # (is_ipv6_misc does not filter NS), satisfying len(rxs) == 1.
+            rxs = self.send_and_expect(
+                self.pg0,
+                make_packet(1234),
+                self.pg1,
+            )
+            self.assertEqual(len(rxs), 1)
+            self.assertEqual(rxs[0][ip_layer].src, snat_addr)
+
+            self.vapi.cnat_session_purge()
+
+            # Removing the last address clears RESOLVED but leaves ce_ip cached.
+            self.add_del_address(
+                self.pg2,
+                addr_id=0,
+                is_add=False,
+                is_v6=is_v6,
+            )
+            snat_address_present = False
+
+            # A new flow must not use the stale cached address.
+            self.send_and_assert_no_replies(
+                self.pg0,
+                make_packet(1235),
+                self.pg1,
+            )
+        finally:
+            for pg in reversed(enabled_interfaces):
+                self.vapi.feature_cnat_enable_disable(
+                    sw_if_index=pg.sw_if_index,
+                    enable_disable=False,
+                )
+
+            if snat_address_present:
+                self.add_del_address(
+                    self.pg2,
+                    addr_id=0,
+                    is_add=False,
+                    is_v6=is_v6,
+                )
+
+            self.vapi.cnat_session_purge()
+
+            if snat_configured:
+                self.vapi.cnat_set_snat_addresses(
+                    sw_if_index=INVALID_INDEX,
+                )
+
+            for pg in (self.pg0, self.pg1):
+                if is_v6:
+                    pg.unconfig_ip6()
+                else:
+                    pg.unconfig_ip4()
+
+    def test_dhcp_snat_output_drops_unresolved_address_v4(self):
+        self._test_dhcp_snat_output_drops_unresolved_address(False)
+
+    def test_dhcp_snat_output_drops_unresolved_address_v6(self):
+        self._test_dhcp_snat_output_drops_unresolved_address(True)
+
 
 if __name__ == "__main__":
     unittest.main(testRunner=VppTestRunner)
