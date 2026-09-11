@@ -1,0 +1,22 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ecd3b2fb_a47100d0",
+        "filename": "src/plugins/rdma/unformat.c",
+        "patchSetId": 23
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-09-11T12:36:30Z",
+      "side": 1,
+      "message": "Addressed in PS23: the shared parser now always recognizes port-num. Legacy VAT handlers rdma_create through rdma_create_v4 reject a nonzero value after parsing; the CLI and rdma_create_v5 use it directly.",
+      "parentUuid": "52ff3e41_23a1bdda",
+      "revId": "afe7cb2e86b1e81c78487adffe5126f4c9a5c4b9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
