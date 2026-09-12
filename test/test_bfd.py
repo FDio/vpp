@@ -32,6 +32,7 @@ from bfd import (
     BFD_UDP_SH_PORT,
     BFD_UDP_MH_PORT,
     BFD_UDP_DEFAULT_TOS,
+    BFD_TEST_DETECT_MULT,
 )
 from framework import VppTestCase
 from asfframework import (
@@ -598,7 +599,7 @@ class BFDTestSession(object):
         test,
         interface,
         af,
-        detect_mult=3,
+        detect_mult=BFD_TEST_DETECT_MULT,
         sha1_key=None,
         bfd_key_id=None,
         our_seq_number=None,
@@ -1284,7 +1285,8 @@ class BFD4TestCase(VppTestCase):
         bfd_session_up(self)
         p = wait_for_bfd_packet(self)
         interval = 3000000
-        self.test_session.update(required_min_rx=interval)
+        # Keep the detection timeout below the requested transmit interval.
+        self.test_session.update(required_min_rx=interval, detect_mult=3)
         self.test_session.send_packet()
         time_mark = time.time()
         count = 0
