@@ -21,6 +21,8 @@ from vpp_papi import VppEnum
 BFD_UDP_SH_PORT = 3784
 BFD_UDP_MH_PORT = 4784
 BFD_UDP_DEFAULT_TOS = 192
+# The synchronous Python peer needs room for runner scheduling delays.
+BFD_TEST_DETECT_MULT = 10
 
 
 class BFDDiagCode(NumericConstant):
@@ -264,7 +266,7 @@ class VppBFDUDPSession(VppObject):
         af=AF_INET,
         desired_min_tx=300000,
         required_min_rx=300000,
-        detect_mult=3,
+        detect_mult=BFD_TEST_DETECT_MULT,
         sha1_key=None,
         bfd_key_id=None,
         is_tunnel=False,
