@@ -74,8 +74,8 @@ session_test_pacer (vlib_main_t *vm, unformat_input_t *input)
   transport_connection_t tc = { .thread_index = thread_index };
   u64 rate = 2e9;
   u64 old_rate = 7500000000, new_rate = 7514600000;
-  u32 loop_max_burst, rtt_max_burst;
-  i64 rate_change_credit, rate_decrease_credit;
+  u32 i, loop_max_burst, rtt_max_burst;
+  f64 fractional_credit, rate_change_credit, rate_decrease_credit;
 
   vm->seconds_per_loop = 1.25e-6;
   transport_connection_tx_pacer_init (&tc, rate, 0, TRANSPORT_PACER_MIN_BURST);
@@ -99,6 +99,14 @@ session_test_pacer (vlib_main_t *vm, unformat_input_t *input)
   transport_connection_tx_pacer_update (&tc, 1e9, 100 /* 100us rtt */);
   rate_decrease_credit = tc.pacer.bucket;
 
+  transport_connection_tx_pacer_reset (&tc, 6250000, 0, 100 /* 100us rtt */);
+  for (i = 1; i <= 100; i++)
+    {
+      session_main.wrk[thread_index].last_vlib_us_time = saved_time + 6 + 2 * i;
+      transport_connection_tx_pacer_burst (&tc);
+    }
+  fractional_credit = tc.pacer.bucket;
+
   session_main.wrk[thread_index].last_vlib_us_time = saved_time;
   vm->seconds_per_loop = saved_seconds_per_loop;
 
@@ -106,10 +114,12 @@ session_test_pacer (vlib_main_t *vm, unformat_input_t *input)
 		loop_max_burst);
   SESSION_TEST (rtt_max_burst == 2500, "fractional rtt interval sets max burst (%u)",
 		rtt_max_burst);
-  SESSION_TEST (rate_change_credit == 7500, "rate change preserves old-rate credit (%ld)",
+  SESSION_TEST (rate_change_credit == 7500, "rate change preserves old-rate credit (%.1f)",
 		rate_change_credit);
-  SESSION_TEST (rate_decrease_credit == 5000, "rate decrease clamps credit (%ld)",
+  SESSION_TEST (rate_decrease_credit == 5000, "rate decrease clamps credit (%.1f)",
 		rate_decrease_credit);
+  SESSION_TEST (fractional_credit == 1250, "fractional credit is retained (%.1f)",
+		fractional_credit);
   return 0;
 }
 

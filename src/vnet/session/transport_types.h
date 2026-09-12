@@ -64,9 +64,9 @@ typedef enum transport_connection_flags_
 typedef struct _spacer
 {
   u64 bytes_per_sec;
-  i64 bucket;
+  f64 bucket;
   clib_us_time_t last_update;
-  f32 tokens_per_period;
+  f64 tokens_per_period;
   u32 min_burst;
   u32 max_burst;
 } spacer_t;
