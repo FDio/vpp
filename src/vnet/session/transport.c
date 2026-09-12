@@ -972,7 +972,7 @@ format_transport_pacer (u8 * s, va_list * args)
 
   now = transport_us_time_now (thread_index);
   diff = now - pacer->last_update;
-  s = format (s, "rate %lu bucket %ld t/p %.3f last_update %U min-burst %u burst %u",
+  s = format (s, "rate %lu bucket %.3f t/p %.3f last_update %U min-burst %u burst %u",
 	      pacer->bytes_per_sec, pacer->bucket, pacer->tokens_per_period, format_clib_us_time,
 	      diff, pacer->min_burst, pacer->max_burst);
   return s;
@@ -981,14 +981,14 @@ format_transport_pacer (u8 * s, va_list * args)
 static inline void
 spacer_update_time (spacer_t *pacer, clib_us_time_t time_now, u8 force)
 {
-  u64 n_periods = (time_now - pacer->last_update);
-  i64 inc;
+  i64 n_periods = time_now - pacer->last_update;
+  f64 inc;
 
-  inc = (f32) n_periods * pacer->tokens_per_period;
+  inc = n_periods * pacer->tokens_per_period;
   if (force || inc > 10)
     {
       pacer->last_update = time_now;
-      pacer->bucket = clib_min (pacer->bucket + inc, (i64) pacer->max_burst);
+      pacer->bucket = clib_min (pacer->bucket + inc, (f64) pacer->max_burst);
     }
 }
 
@@ -1029,7 +1029,7 @@ spacer_set_pace_rate (spacer_t * pacer, u64 rate_bytes_per_sec,
   max_time = clib_clamp (max_time, CLIB_US_TIME_PERIOD, 1e-3 /* 1ms */);
   pacer->max_burst = rate_bytes_per_sec * max_time;
   pacer->max_burst = clib_clamp (pacer->max_burst, pacer->min_burst, TRANSPORT_PACER_MAX_BURST);
-  pacer->bucket = clib_min (pacer->bucket, (i64) pacer->max_burst);
+  pacer->bucket = clib_min (pacer->bucket, (f64) pacer->max_burst);
 }
 
 static inline u64
