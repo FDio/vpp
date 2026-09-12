@@ -381,7 +381,7 @@ ct_fwrk_flush_connects (void *rpc_args)
   clib_thread_index_t thread_index, fwrk_index, n_workers;
   ct_main_t *cm = &ct_main;
   ct_worker_t *wrk;
-  u8 need_rpc;
+  u8 need_rpc = 0;
 
   fwrk_index = cm->fwrk_thread;
   n_workers = vec_len (cm->fwrk_pending_connects);
