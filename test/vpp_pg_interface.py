@@ -299,20 +299,25 @@ class VppPGInterface(VppInterface):
             # "show packet-generator" CLI is not mp_safe, so VPP parks all
             # worker threads at a barrier before executing it. By the time
             # the CLI returns "stopped", every packet that was injected by
-            # the packet-generator has fully traversed the graph (run to
-            # completion). If any of those packets reached a pg output
+            # the packet-generator has either fully traversed the graph or
+            # sits in a cross-thread handoff frame queue; the drain wait in
+            # wait_for_pg_stop gives the queued buffers their window to
+            # egress. If any of those packets reached a pg output
             # interface, VPP's pg_output node has already called
-            # pcap_write() which issues a write() syscall — making the
+            # pcap_write() which issues a write() syscall, making the
             # capture file visible in the kernel VFS immediately (no fsync
             # needed; stat() checks the dentry cache, not the block
             # device). Therefore a single os.path.isfile() after pg stop
-            # is sufficient: the file is either here now or no packets
-            # were captured.
+            # is sufficient to decide whether packets were captured at all.
             if not os.path.isfile(self.out_path):
                 self.test.logger.debug(
                     "Capture file %s not found after pg stop" % self.out_path
                 )
                 return None
+            # The file exists, so packets were captured. The last of them may
+            # still be parked in a cross-thread handoff queue; let them
+            # egress before reading, or the capture read races them.
+            self.wait_for_cross_thread_handoff_drain()
             self.link_pcap_file(self.out_path, "out", self.out_history_counter)
             output = rdpcap(self.out_path)
             self.test.logger.debug(f"Capture has {len(output.res)} packets")
@@ -487,6 +492,41 @@ class VppPGInterface(VppInterface):
             if time.time() > deadline:
                 self.test.logger.debug("Timeout waiting for pg to stop")
                 break
+
+    def wait_for_cross_thread_handoff_drain(self):
+        """Give buffers parked in cross-thread handoff queues a window to egress.
+
+        "show packet-generator" is not mp-safe: VPP parks the workers at a
+        barrier while it runs. VPP moves buffers across threads through
+        per-thread handoff frame queues (for example, IP reassembly hands
+        fragments of a flow to the thread that owns its reassembly context).
+        The barrier does not drain those queues: a buffer enqueued to a
+        worker that the barrier already parked egresses only after the
+        barrier releases, that is, after the CLI returned. Wait until the
+        capture file stops growing so a reader sees the final capture
+        instead of racing the last packets. Only worth doing when the
+        capture file exists; a capture that never appeared has no queued
+        packets to wait for that this reader could miss.
+        """
+        if self.test.get_vpp_worker_count() == 0:
+            return
+        if not os.path.isfile(self.out_path):
+            return
+        deadline = time.time() + 1.0
+        stable_reads = 0
+        last_size = -1
+        while time.time() < deadline:
+            size = (
+                os.path.getsize(self.out_path) if os.path.isfile(self.out_path) else 0
+            )
+            if size == last_size:
+                stable_reads += 1
+                if stable_reads >= 3:
+                    return
+            else:
+                stable_reads = 0
+                last_size = size
+            time.sleep(0.05)
 
     def verify_enough_packet_data_in_pcap(self):
         """
