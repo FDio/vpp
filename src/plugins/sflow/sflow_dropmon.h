@@ -34,7 +34,7 @@
 #define SFLOWDM_FAM_LEN	      sizeof (SFLOWDM_FAM)
 #define SFLOWDM_FAM_FOOTPRINT NLMSG_ALIGN (SFLOWDM_FAM_LEN)
 #define SFLOWDM_ATTRS	      NET_DM_ATTR_MAX + 1
-#define SFLOWDM_IOV_FRAGS     ((2 * SFLOWDM_ATTRS) + 2)
+#define SFLOWDM_IOV_FRAGS     ((3 * SFLOWDM_ATTRS) + 2)
 
 typedef struct _SFLOWDM
 {

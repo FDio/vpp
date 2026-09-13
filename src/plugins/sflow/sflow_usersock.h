@@ -88,8 +88,7 @@ typedef struct _SFLOWUS_field_t
 } SFLOWUS_field_t;
 
 #define SFLOWUS_ATTRS __SFLOW_VPP_ATTRS
-#define SFLOWUS_IOV_FRAGS                                                     \
-  ((2 * SFLOWUS_ATTRS) + 2) // TODO: may only be +1 -- no ge header?
+#define SFLOWUS_IOV_FRAGS ((3 * SFLOWUS_ATTRS) + 2) // TODO: may only be +1 -- no ge header?
 
 typedef struct _SFLOWUS
 {
