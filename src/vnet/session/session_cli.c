@@ -1069,7 +1069,6 @@ clear_session_command_fn (vlib_main_t *vm, unformat_input_t *input,
     {
       if (unformat (input, "thread %d", &thread))
 	{
-	  /* unformat %d writes a 4-byte int; thread_index is a u16 */
 	  thread_index = thread;
 	}
       else if (unformat (input, "session %d", &session_index))

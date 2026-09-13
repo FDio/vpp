@@ -592,11 +592,11 @@ format_tls_profile (u8 *s, va_list *args)
   s = format (s, "[%u] ", prof->profile_index);
 
   if (prof->cipher_list)
-    s = format (s, "cipher-list: %s ", prof->cipher_list);
+    s = format (s, "cipher-list: %v ", prof->cipher_list);
   if (prof->ciphersuites)
-    s = format (s, "ciphersuites: %s ", prof->ciphersuites);
+    s = format (s, "ciphersuites: %v ", prof->ciphersuites);
   if (prof->groups)
-    s = format (s, "groups: %s ", prof->groups);
+    s = format (s, "groups: %v ", prof->groups);
   if (prof->min_version || prof->max_version)
     s = format (s, "versions: %U-%U ", format_app_tls_version, prof->min_version,
 		format_app_tls_version, prof->max_version);
