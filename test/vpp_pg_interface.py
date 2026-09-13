@@ -299,10 +299,12 @@ class VppPGInterface(VppInterface):
             # "show packet-generator" CLI is not mp_safe, so VPP parks all
             # worker threads at a barrier before executing it. By the time
             # the CLI returns "stopped", every packet that was injected by
-            # the packet-generator has fully traversed the graph (run to
-            # completion). If any of those packets reached a pg output
+            # the packet-generator has either fully traversed the graph or
+            # sits in a cross-thread handoff frame queue; the drain wait in
+            # wait_for_pg_stop gives the queued buffers their window to
+            # egress. If any of those packets reached a pg output
             # interface, VPP's pg_output node has already called
-            # pcap_write() which issues a write() syscall — making the
+            # pcap_write() which issues a write() syscall, making the
             # capture file visible in the kernel VFS immediately (no fsync
             # needed; stat() checks the dentry cache, not the block
             # device). Therefore a single os.path.isfile() after pg stop
@@ -487,6 +489,39 @@ class VppPGInterface(VppInterface):
             if time.time() > deadline:
                 self.test.logger.debug("Timeout waiting for pg to stop")
                 break
+        self.wait_for_cross_thread_handoff_drain()
+
+    def wait_for_cross_thread_handoff_drain(self):
+        """Give buffers parked in cross-thread handoff queues a window to egress.
+
+        "show packet-generator" is not mp-safe: VPP parks the workers at a
+        barrier while it runs. VPP moves buffers across threads through
+        per-thread handoff frame queues (for example, IP reassembly hands
+        fragments of a flow to the thread that owns its reassembly context).
+        The barrier does not drain those queues: a buffer enqueued to a
+        worker that the barrier already parked egresses only after the
+        barrier releases, that is, after the CLI returned. Wait until the
+        capture file stops growing so a reader sees the final capture
+        instead of racing the last packets.
+        """
+        if self.test.get_vpp_worker_count() == 0:
+            return
+        deadline = time.time() + 0.25
+        stable_reads = 0
+        last_size = -1
+        while time.time() < deadline:
+            size = (
+                os.path.getsize(self.out_path) if os.path.isfile(self.out_path) else 0
+            )
+            if size == last_size:
+                stable_reads += 1
+                if stable_reads >= 4:
+                    return
+            else:
+                stable_reads = 0
+                last_size = size
+                deadline = time.time() + 0.25
+            time.sleep(0.05)
 
     def verify_enough_packet_data_in_pcap(self):
         """
