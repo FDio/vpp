@@ -753,7 +753,7 @@ bt_track_rxt_range (tcp_connection_t *tc, tcp_bt_sample_t *start_bts, u32 start,
   /* Split. Allocate another sample */
   if (seq_lt (end, max_seq))
     {
-      nbts = tcp_bt_alloc_tx_sample (tc, end, bts->max_seq, 0 /* overwritten below */);
+      nbts = tcp_bt_alloc_tx_sample (tc, end, max_seq, 0 /* overwritten below */);
       cur = bt_get_sample (bt, cur_index);
       bts = bt_get_sample (bt, bts_index);
 
