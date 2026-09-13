@@ -55,7 +55,7 @@ static const SFLOWPS_field_t SFLOWPS_Fields[] = {
 #define SFLOWPS_FAM	      PSAMPLE_GENL_NAME
 #define SFLOWPS_FAM_LEN	      sizeof (SFLOWPS_FAM)
 #define SFLOWPS_FAM_FOOTPRINT NLMSG_ALIGN (SFLOWPS_FAM_LEN)
-#define SFLOWPS_IOV_FRAGS     ((2 * __SFLOWPS_PSAMPLE_ATTRS) + 2)
+#define SFLOWPS_IOV_FRAGS     ((3 * __SFLOWPS_PSAMPLE_ATTRS) + 2)
 
 typedef struct _SFLOWPS
 {
