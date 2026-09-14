@@ -9,13 +9,16 @@ ARG UBUNTU_VERSION
 ARG TARGETARCH
 ARG CODENAME
 ARG GO_VERSION
-RUN echo "I'm building for ${TARGETARCH}" \
-&& wget -t 2 "https://go.dev/dl/go${GO_VERSION}.linux-${TARGETARCH}.tar.gz" -O /tmp/go.tar.gz \
-&& tar -xzf /tmp/go.tar.gz -C /usr/local \
-&& rm /tmp/go.tar.gz
+RUN --mount=type=cache,target=/tmp/cache \
+  wget -t 2 "https://go.dev/dl/go${GO_VERSION}.linux-${TARGETARCH}.tar.gz" -O /tmp/cache/go.tar.gz \
+  && tar -xzf /tmp/cache/go.tar.gz -C /usr/local
 
-RUN wget -t 2 "https://download.docker.com/linux/ubuntu/dists/${CODENAME}/pool/stable/${TARGETARCH}/docker-ce-cli_29.3.1-1~ubuntu.${UBUNTU_VERSION}~${CODENAME}_${TARGETARCH}.deb" \
--O /tmp/docker-ce-cli.deb
-RUN dpkg -i /tmp/docker-ce-cli.deb
+RUN --mount=type=cache,target=/tmp/cache \
+  wget -t 2 "https://download.docker.com/linux/ubuntu/dists/${CODENAME}/pool/stable/${TARGETARCH}/docker-ce-cli_29.3.1-1~ubuntu.${UBUNTU_VERSION}~${CODENAME}_${TARGETARCH}.deb" \
+  -O /tmp/cache/docker-ce-cli.deb \
+  && dpkg -i /tmp/cache/docker-ce-cli.deb
 
 RUN ln -s /usr/local/go/bin/go /usr/bin/go
+
+COPY go.mod go.sum /
+RUN go mod download
