@@ -75,7 +75,8 @@ session_test_pacer (vlib_main_t *vm, unformat_input_t *input)
   u64 rate = 2e9;
   u64 old_rate = 7500000000, new_rate = 7514600000;
   u32 i, loop_max_burst, rtt_max_burst;
-  f64 fractional_credit, rate_change_credit, rate_decrease_credit;
+  f64 aged_debt, fractional_credit, rate_change_credit, rate_decrease_credit;
+  f64 restart_credit, restart_debt;
 
   vm->seconds_per_loop = 1.25e-6;
   transport_connection_tx_pacer_init (&tc, rate, 0, TRANSPORT_PACER_MIN_BURST);
@@ -107,6 +108,22 @@ session_test_pacer (vlib_main_t *vm, unformat_input_t *input)
     }
   fractional_credit = tc.pacer.bucket;
 
+  tc.flags |= TRANSPORT_CONNECTION_F_DESCHED;
+  tc.pacer.bucket = -TRANSPORT_PACER_MIN_BURST;
+  transport_connection_tx_reactivate (&tc);
+  restart_debt = tc.pacer.bucket;
+
+  tc.flags |= TRANSPORT_CONNECTION_F_DESCHED;
+  tc.pacer.bucket = TRANSPORT_PACER_MIN_BURST;
+  transport_connection_tx_reactivate (&tc);
+  restart_credit = tc.pacer.bucket;
+
+  tc.flags |= TRANSPORT_CONNECTION_F_DESCHED;
+  tc.pacer.bucket = -TRANSPORT_PACER_MIN_BURST;
+  session_main.wrk[thread_index].last_vlib_us_time = tc.pacer.last_update + 1000;
+  transport_connection_tx_reactivate (&tc);
+  aged_debt = tc.pacer.bucket;
+
   session_main.wrk[thread_index].last_vlib_us_time = saved_time;
   vm->seconds_per_loop = saved_seconds_per_loop;
 
@@ -120,6 +137,12 @@ session_test_pacer (vlib_main_t *vm, unformat_input_t *input)
 		rate_decrease_credit);
   SESSION_TEST (fractional_credit == 1250, "fractional credit is retained (%.1f)",
 		fractional_credit);
+  SESSION_TEST (!transport_connection_is_descheduled (&tc), "descheduled flag is cleared");
+  SESSION_TEST (restart_debt == -TRANSPORT_PACER_MIN_BURST,
+		"reactivation preserves pacer debt (%.1f)", restart_debt);
+  SESSION_TEST (restart_credit == 0, "reactivation discards pacer credit (%.1f)", restart_credit);
+  SESSION_TEST (aged_debt == 0, "elapsed credit does not survive descheduled state (%.1f)",
+		aged_debt);
   return 0;
 }
 
