@@ -1322,7 +1322,8 @@ hcpc_intercept_rollback_cwnd (session_handle_t intercept_handle, u32 cwnd)
   tc = session_get_transport (s);
   tcp_conn = (tcp_connection_t *) tc;
   tcp_conn->cwnd = cwnd;
-  transport_connection_reschedule (tc);
+  if (transport_connection_is_descheduled (tc))
+    transport_connection_reschedule (tc);
 }
 
 static void

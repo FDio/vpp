@@ -1525,8 +1525,7 @@ session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
 	}
     }
 
-  /* Connection previously descheduled because it had no data to send.
-   * Clear descheduled flag and reset pacer if in use */
+  /* Clear transport descheduling before reevaluating send parameters. */
   if (transport_connection_is_descheduled (ctx->tc))
     transport_connection_clear_descheduled (ctx->tc);
 
