@@ -174,8 +174,7 @@ HST_TMP_DIR:=/tmp/hst
 DOCKER_CAPABILITIES:=--privileged
 DOCKER_DEVICES:=--device /dev/vhost-net:/dev/vhost-net --device /dev/net/tun:/dev/net/tun
 DOCKER_VOLUMES:=-v $(WS_ROOT):$(WS_ROOT) -v /var/run/docker.sock:/var/run/docker.sock -v $(HST_TMP_DIR):$(HST_TMP_DIR) \
-	-v /etc/localtime:/etc/localtime:ro $(CORE_VOLUME) -v $(HS_ROOT)/.go_cache/mod:/root/go/pkg/mod \
-	-v $(HS_ROOT)/.go_cache/build:/root/.cache/go-build
+	-v /etc/localtime:/etc/localtime:ro $(CORE_VOLUME) -v $(HS_ROOT)/.go_cache/build:/root/.cache/go-build
 DOCKER_PROXY:=-e HTTP_PROXY=$(HTTP_PROXY) -e HTTPS_PROXY=$(HTTPS_PROXY) -e NO_PROXY=$(NO_PROXY)
 DOCKER_COMMON_ARGS:=$(DOCKER_TTY) --rm $(DOCKER_CAPABILITIES) $(DOCKER_DEVICES) $(DOCKER_PROXY) \
 		-e GITHUB_REPO_URL=$(GITHUB_REPO_URL) $(DOCKER_VOLUMES) --name $(GINKGO_CONTAINER) \

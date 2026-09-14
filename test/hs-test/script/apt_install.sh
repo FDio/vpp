@@ -13,7 +13,6 @@ fi
 for attempt in $(seq 1 "$MAX_RETRIES"); do
   if apt-get update && \
     apt-get -o Acquire::Retries=3 install -y "$@"; then
-    apt-get clean
     rm -rf /var/lib/apt/lists/*
     exit 0
   fi
