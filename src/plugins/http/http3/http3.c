@@ -1889,7 +1889,14 @@ http3_stream_transport_rx_req (http_ctx_t *req, http_ctx_t *stream, http_req_sta
   if (res == HTTP_SM_ERROR)
     {
     error:
-      if (err != HTTP3_ERROR_INCOMPLETE)
+      if (err == HTTP3_ERROR_INCOMPLETE)
+	{
+	  /* this should prevent quic stream to stuck if we can't read all data in fifo, quic want
+	   * notification on transition from full or to empty */
+	  http_io_ts_force_rx_evt (stream);
+	  return 0;
+	}
+      else
 	http3_stream_error_terminate_conn (stream, req, err);
     }
 
