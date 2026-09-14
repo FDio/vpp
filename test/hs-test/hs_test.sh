@@ -239,8 +239,6 @@ if [ -n "${GITHUB_REPO_URL}" ]; then
         ginkgo_args="$ginkgo_args --no-color --github-output"
 fi
 
-mkdir -p .go_cache
-
 if [ "$mw_parallel" = "true" ]; then
     mkdir -p /tmp/hst
     rm -f /tmp/hst/cpu-claims /tmp/hst/cpu-claims.lock
