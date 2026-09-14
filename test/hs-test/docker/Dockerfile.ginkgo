@@ -15,7 +15,11 @@ RUN echo "I'm building for ${TARGETARCH}" \
 && rm /tmp/go.tar.gz
 
 RUN wget -t 2 "https://download.docker.com/linux/ubuntu/dists/${CODENAME}/pool/stable/${TARGETARCH}/docker-ce-cli_29.3.1-1~ubuntu.${UBUNTU_VERSION}~${CODENAME}_${TARGETARCH}.deb" \
--O /tmp/docker-ce-cli.deb
-RUN dpkg -i /tmp/docker-ce-cli.deb
+-O /tmp/docker-ce-cli.deb \
+&& dpkg -i /tmp/docker-ce-cli.deb \
+&& rm /tmp/docker-ce-cli.deb
 
 RUN ln -s /usr/local/go/bin/go /usr/bin/go
+
+COPY go.mod go.sum /
+RUN go mod download
