@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "8ce29b9d_8b915136",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3002
+      },
+      "writtenOn": "2026-09-14T22:45:32Z",
+      "side": 1,
+      "message": "If I have understood correctly, someone calling SFLOWPS_set_attr(), like this:\nhttps://github.com/FDio/vpp/blob/98b1c75b3103857757c0b92ce6290b8a4ec24836/src/plugins/sflow/sflow.c#L344\nwould risk having 1-3 bytes copied into the netlink attribute padding from beyond the end of the value?\n\n(If so, I wonder why Coverity didn\u0027t complain at the time. Perhaps it was satisfied that the buffers being submitted were all at least quad-aligned by the allocator.)\n\nDoes the fix ensure that the pad bytes, if required, are always set to 0?  I don\u0027t remember, but I suspect that this was the reason for the iovec included the pad bytes in the first place.  Did not want to leave any bytes in the message buffer unset.",
+      "revId": "399e97d71c019b9abfb4c9d364f81f9c07811fd0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
