@@ -63,7 +63,7 @@ HST_IMAGE_LABEL="io.fd.hs-test.image"
 
 echo "=== Building base image ==="
 # shellcheck disable=2086
-docker buildx build ${DOCKER_CACHE_ARGS} \
+DOCKER_BUILDKIT=1 docker buildx build ${DOCKER_CACHE_ARGS} \
   --build-arg UBUNTU_VERSION="${UBUNTU_VERSION:-22.04}" \
   --build-arg CODENAME="$CODENAME" \
   --build-arg http_proxy="$HTTP_PROXY" \
@@ -108,7 +108,7 @@ build_image() {
 
     # Build the image
     # shellcheck disable=2086
-    docker build \
+    DOCKER_BUILDKIT=1 docker build \
         --build-arg GO_VERSION="$GO_VERSION" \
         --build-arg UBUNTU_VERSION="${UBUNTU_VERSION:-22.04}" \
         --build-arg OS_ARCH="$ARCH" \
