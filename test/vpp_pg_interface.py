@@ -1,6 +1,7 @@
 import ctypes
 import ctypes.util
 import os
+import re
 from select import select
 import shutil
 import socket
@@ -299,20 +300,25 @@ class VppPGInterface(VppInterface):
             # "show packet-generator" CLI is not mp_safe, so VPP parks all
             # worker threads at a barrier before executing it. By the time
             # the CLI returns "stopped", every packet that was injected by
-            # the packet-generator has fully traversed the graph (run to
-            # completion). If any of those packets reached a pg output
+            # the packet-generator has either fully traversed the graph or
+            # sits in a cross-thread handoff frame queue; the drain wait in
+            # wait_for_pg_stop gives the queued buffers their window to
+            # egress. If any of those packets reached a pg output
             # interface, VPP's pg_output node has already called
-            # pcap_write() which issues a write() syscall — making the
+            # pcap_write() which issues a write() syscall, making the
             # capture file visible in the kernel VFS immediately (no fsync
             # needed; stat() checks the dentry cache, not the block
             # device). Therefore a single os.path.isfile() after pg stop
-            # is sufficient: the file is either here now or no packets
-            # were captured.
+            # is sufficient to decide whether packets were captured at all.
             if not os.path.isfile(self.out_path):
                 self.test.logger.debug(
                     "Capture file %s not found after pg stop" % self.out_path
                 )
                 return None
+            # The file exists, so packets were captured. The last of them may
+            # still be parked in a cross-thread handoff queue; let them
+            # egress before reading, or the capture read races them.
+            self.wait_for_cross_thread_handoff_drain()
             self.link_pcap_file(self.out_path, "out", self.out_history_counter)
             output = rdpcap(self.out_path)
             self.test.logger.debug(f"Capture has {len(output.res)} packets")
@@ -487,6 +493,45 @@ class VppPGInterface(VppInterface):
             if time.time() > deadline:
                 self.test.logger.debug("Timeout waiting for pg to stop")
                 break
+
+    def wait_for_cross_thread_handoff_drain(self):
+        """Wait until cross-thread handoff queues have drained.
+
+        "show packet-generator" is not mp-safe: VPP parks the workers at a
+        barrier while it runs. VPP moves buffers across threads through
+        per-thread handoff frame queues (for example, IP reassembly hands
+        fragments of a flow to the thread that owns its reassembly context).
+        The barrier does not drain those queues: a buffer enqueued to a
+        worker that the barrier already parked egresses only after the
+        barrier releases, that is, after the CLI returned. Poll the
+        handoff queue depth until it reads zero on two consecutive barrier
+        snapshots: between two snapshots the workers ran at least one full
+        loop iteration, so a queue that stayed empty was not merely
+        transiently empty; its buffers were dispatched and are on the wire.
+        Each snapshot's barrier release doubles as the drain window.
+        Bounded at 1s. Only worth doing when the capture file exists; a
+        capture that never appeared has no queued packets that this reader
+        could miss.
+        """
+        if self.test.get_vpp_worker_count() == 0:
+            return
+        if not os.path.isfile(self.out_path):
+            return
+        deadline = time.time() + 1.0
+        zero_polls = 0
+        while time.time() < deadline:
+            reply = self.test.vapi.cli("show handoff pending")
+            m = re.search(r"Pending handoff queue elements: (\d+)", reply)
+            if m and int(m.group(1)) == 0:
+                zero_polls += 1
+                if zero_polls >= 2:
+                    return
+            else:
+                zero_polls = 0
+        self.test.logger.debug(
+            "Cross-thread handoff queues still non-empty after 1s, "
+            "reading the capture anyway"
+        )
 
     def verify_enough_packet_data_in_pcap(self):
         """
