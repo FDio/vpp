@@ -138,10 +138,64 @@ show_handoff_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *c
   return 0;
 }
 
+static clib_error_t *
+show_handoff_pending_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
+{
+  vlib_handoff_queue_main_t *hqm;
+  u64 total_pending = 0;
+
+  /* Deliberately not mp-safe. Running at the barrier parks the workers,
+   * which freezes the queues and yields a consistent snapshot. Callers
+   * polling this command until the pending count reads zero (e.g. a test
+   * framework waiting for a capture to go quiet) get a drain window for
+   * free, because the workers resume when the CLI returns. */
+  vec_foreach (hqm, vm->handoff_queue_mains)
+    {
+      u64 pending = 0;
+      u32 thread_index;
+
+      vec_foreach_index (thread_index, hqm->vlib_handoff_queues)
+	{
+	  vlib_handoff_queue_t *hq = hqm->vlib_handoff_queues[thread_index];
+	  vlib_handoff_queue_slot_t *slots = vlib_handoff_queue_buffer_index_slots (hq);
+	  u64 head = __atomic_load_n (&hq->head, __ATOMIC_ACQUIRE);
+	  u64 tail = __atomic_load_n (&hq->tail, __ATOMIC_ACQUIRE);
+	  u64 i;
+
+	  /* Workers are parked at the barrier, so no slot in [head, tail)
+	   * can be reserved-but-unpublished. */
+	  for (i = head; i < tail; i++)
+	    {
+	      u32 slot_index = i & (hq->size - 1);
+
+	      if (__atomic_load_n (&slots[slot_index].buffer_indices[0], __ATOMIC_ACQUIRE) ==
+		  VLIB_BUFFER_INVALID_INDEX)
+		break;
+	      pending += vlib_handoff_queue_slot_n_buffers (slots + slot_index);
+	    }
+	}
+
+      if (pending)
+	vlib_cli_output (vm, "Handoff queue %u (next node '%U'): %Lu pending",
+			 hqm - vm->handoff_queue_mains, format_vlib_node_name, vm, hqm->node_index,
+			 pending);
+      total_pending += pending;
+    }
+
+  vlib_cli_output (vm, "Pending handoff queue elements: %Lu", total_pending);
+  return 0;
+}
+
 VLIB_CLI_COMMAND (show_handoff_command, static) = {
   .path = "show handoff",
   .short_help = "show handoff [index <index>]",
   .function = show_handoff_fn,
+};
+
+VLIB_CLI_COMMAND (show_handoff_pending_command, static) = {
+  .path = "show handoff pending",
+  .short_help = "show handoff pending",
+  .function = show_handoff_pending_fn,
 };
 
 static clib_error_t *
