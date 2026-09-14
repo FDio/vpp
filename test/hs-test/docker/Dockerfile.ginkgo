@@ -9,13 +9,13 @@ ARG UBUNTU_VERSION
 ARG TARGETARCH
 ARG CODENAME
 ARG GO_VERSION
-RUN echo "I'm building for ${TARGETARCH}" \
-&& wget -t 2 "https://go.dev/dl/go${GO_VERSION}.linux-${TARGETARCH}.tar.gz" -O /tmp/go.tar.gz \
-&& tar -xzf /tmp/go.tar.gz -C /usr/local \
-&& rm /tmp/go.tar.gz
+RUN --mount=type=bind,source=script/install_go.sh,target=/tmp/install_go.sh \
+    --mount=type=cache,target=/var/cache/downloads \
+    /tmp/install_go.sh
 
-RUN wget -t 2 "https://download.docker.com/linux/ubuntu/dists/${CODENAME}/pool/stable/${TARGETARCH}/docker-ce-cli_29.3.1-1~ubuntu.${UBUNTU_VERSION}~${CODENAME}_${TARGETARCH}.deb" \
--O /tmp/docker-ce-cli.deb
-RUN dpkg -i /tmp/docker-ce-cli.deb
+RUN --mount=type=bind,source=script/install_docker_ce_cli.sh,target=/tmp/install_docker_ce_cli.sh \
+    --mount=type=cache,target=/var/cache/downloads \
+    /tmp/install_docker_ce_cli.sh
 
-RUN ln -s /usr/local/go/bin/go /usr/bin/go
+COPY go.mod go.sum /
+RUN go mod download

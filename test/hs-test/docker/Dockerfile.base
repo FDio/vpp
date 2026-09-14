@@ -9,12 +9,18 @@ ENV https_proxy=${http_proxy}
 ENV HTTP_PROXY=${http_proxy}
 ENV HTTPS_PROXY=${http_proxy}
 
+# Add a non-root user (useful for containers that need it)
+RUN groupadd -r vpp && useradd -r -g vpp -s /bin/bash vpp
+
 COPY script/apt_install.sh /usr/local/bin/apt-install-with-retries
 
 # Install common dependencies needed across multiple containers. Ubuntu
 # mirrors can briefly publish an index before all referenced packages are
 # available, so refresh the index and retry the complete transaction.
-RUN apt-install-with-retries --no-install-recommends \
+# Install common dependencies needed across multiple containers
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    apt-install-with-retries --no-install-recommends \
     # Basic utilities
     ca-certificates \
     wget \
@@ -58,13 +64,14 @@ RUN apt-install-with-retries --no-install-recommends \
 
 # Because of http/3 we can't use stock curl in ubuntu 24.04 and 26.04
 # Note: curl version 8.18.0 is available in ubuntu 26.04 but without http/3
-ARG TARGETARCH
-COPY script/build_curl.sh /build_curl.sh
-RUN /build_curl.sh
+RUN --mount=type=bind,source=script/install_curl.sh,target=/tmp/install_curl.sh \
+    --mount=type=cache,target=/var/cache/downloads \
+    /tmp/install_curl.sh
 
 ARG CODENAME
 # Because of http/3 support we can't use stock nginx in ubuntu 24.04
-RUN set -eu; \
+RUN --mount=type=cache,target=/var/cache/apt \
+    --mount=type=cache,target=/var/lib/apt \
     curl https://nginx.org/keys/nginx_signing.key | gpg --dearmor \
     | tee /usr/share/keyrings/nginx-archive-keyring.gpg >/dev/null \
     && echo "deb [signed-by=/usr/share/keyrings/nginx-archive-keyring.gpg] \
@@ -73,9 +80,6 @@ RUN set -eu; \
     && bash -c 'echo -e "Package: *\nPin: origin nginx.org\nPin: release o=nginx\nPin-Priority: 900\n" \
     | tee /etc/apt/preferences.d/99nginx'; \
     apt-install-with-retries nginx=1.30.4*
-
-# Add a non-root user (useful for containers that need it)
-RUN groupadd -r vpp && useradd -r -g vpp -s /bin/bash vpp
 
 # Set default command
 CMD ["/bin/bash"]
