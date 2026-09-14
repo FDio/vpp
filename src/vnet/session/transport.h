@@ -324,6 +324,11 @@ void transport_connection_tx_pacer_reset_bucket (transport_connection_t * tc,
 						 u32 bucket);
 
 /**
+ * Clear accumulated tx pacer credit without forgiving debt
+ */
+void transport_connection_tx_pacer_clear_credit (transport_connection_t *tc);
+
+/**
  * Check if transport connection is paced
  */
 always_inline u8
@@ -333,16 +338,19 @@ transport_connection_is_tx_paced (transport_connection_t * tc)
 }
 
 /**
- * Clear descheduled flag and update pacer if needed
+ * Reactivate a descheduled transport connection
  *
- * To add session to scheduler use @ref transport_connection_reschedule
+ * Clears descheduled state and pacer credit without forgiving debt. Does not
+ * enqueue tx work; use @ref transport_connection_reschedule for that.
  */
 always_inline void
-transport_connection_clear_descheduled (transport_connection_t *tc)
+transport_connection_tx_reactivate (transport_connection_t *tc)
 {
+  ASSERT (transport_connection_is_descheduled (tc));
+
   tc->flags &= ~TRANSPORT_CONNECTION_F_DESCHED;
   if (transport_connection_is_tx_paced (tc))
-    transport_connection_tx_pacer_reset_bucket (tc, 0 /* bucket */);
+    transport_connection_tx_pacer_clear_credit (tc);
 }
 
 u8 *format_transport_pacer (u8 * s, va_list * args);

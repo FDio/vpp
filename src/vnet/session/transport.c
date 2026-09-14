@@ -1064,6 +1064,21 @@ transport_connection_tx_pacer_reset_bucket (transport_connection_t * tc,
 }
 
 void
+transport_connection_tx_pacer_clear_credit (transport_connection_t *tc)
+{
+  spacer_t *pacer = &tc->pacer;
+  clib_us_time_t now = transport_us_time_now (tc->thread_index);
+
+  if (pacer->bucket < 0)
+    {
+      spacer_update_time (pacer, now, 1 /* force */);
+      pacer->bucket = clib_min (pacer->bucket, 0.0);
+    }
+  else
+    spacer_reset (pacer, now, 0 /* bucket */);
+}
+
+void
 transport_connection_tx_pacer_init (transport_connection_t *tc, u64 rate_bytes_per_sec,
 				    u32 initial_bucket, u32 min_burst)
 {
@@ -1120,8 +1135,8 @@ transport_update_pacer_time (clib_thread_index_t thread_index,
 void
 transport_connection_reschedule (transport_connection_t * tc)
 {
-  tc->flags &= ~TRANSPORT_CONNECTION_F_DESCHED;
-  transport_connection_tx_pacer_reset_bucket (tc, 0 /* bucket */);
+  transport_connection_tx_reactivate (tc);
+
   if (transport_max_tx_dequeue (tc))
     sesssion_reschedule_tx (tc);
   else
