@@ -55,6 +55,14 @@ fi
 # so this costs build time rather than disk.
 IMAGE_TAG=${IMAGE_TAG:-latest}
 
+# Limit concurrent image builds to avoid overwhelming the host. Set
+# HS_TEST_BUILD_JOBS to override this (for example, to 1 for serial builds).
+BUILD_JOBS=${HS_TEST_BUILD_JOBS:-4}
+if ! [[ "$BUILD_JOBS" =~ ^[1-9][0-9]*$ ]]; then
+    echo "Error: HS_TEST_BUILD_JOBS must be a positive integer"
+    exit 1
+fi
+
 # Set the tag for the base image
 BASE_TAG=${BASE_TAG:-"localhost:5001/vpp-test-base:$IMAGE_TAG"}
 
@@ -63,7 +71,7 @@ HST_IMAGE_LABEL="io.fd.hs-test.image"
 
 echo "=== Building base image ==="
 # shellcheck disable=2086
-docker buildx build ${DOCKER_CACHE_ARGS} \
+DOCKER_BUILDKIT=1 docker buildx build ${DOCKER_CACHE_ARGS} \
   --build-arg UBUNTU_VERSION="${UBUNTU_VERSION:-22.04}" \
   --build-arg CODENAME="$CODENAME" \
   --build-arg http_proxy="$HTTP_PROXY" \
@@ -108,7 +116,7 @@ build_image() {
 
     # Build the image
     # shellcheck disable=2086
-    docker build \
+    DOCKER_BUILDKIT=1 docker build \
         --build-arg GO_VERSION="$GO_VERSION" \
         --build-arg UBUNTU_VERSION="${UBUNTU_VERSION:-22.04}" \
         --build-arg OS_ARCH="$ARCH" \
@@ -129,24 +137,60 @@ build_image() {
     echo "=== Successfully built and pushed $tag ==="
 }
 
-# Build all standard images
-echo "=== Building standard images ==="
-build_image "Dockerfile.vpp" "hs-test/vpp"
-build_image "Dockerfile.nginx" "hs-test/nginx-ldp"
-build_image "Dockerfile.nginx-server" "hs-test/nginx-server"
-build_image "Dockerfile.h2load" "hs-test/h2load"
-build_image "Dockerfile.curl" "hs-test/curl"
-build_image "Dockerfile.ab" "hs-test/ab"
-build_image "Dockerfile.wrk" "hs-test/wrk"
-build_image "Dockerfile.ginkgo" "hs-test/ginkgo"
+# All remaining image builds are independent now that the base image is
+# available. Run a bounded number at a time and wait for every build before
+# cleanup, even when one of them fails.
+echo "=== Building test images (up to $BUILD_JOBS in parallel) ==="
+image_dockerfiles=(
+    "Dockerfile.vpp"
+    "Dockerfile.nginx"
+    "Dockerfile.nginx-server"
+    "Dockerfile.h2load"
+    "Dockerfile.curl"
+    "Dockerfile.ab"
+    "Dockerfile.wrk"
+    "Dockerfile.ginkgo"
+    "Dockerfile.nginx-http3"
+    "Dockerfile.envoy"
+)
+image_names=(
+    "hs-test/vpp"
+    "hs-test/nginx-ldp"
+    "hs-test/nginx-server"
+    "hs-test/h2load"
+    "hs-test/curl"
+    "hs-test/ab"
+    "hs-test/wrk"
+    "hs-test/ginkgo"
+    "hs-test/nginx-http3"
+    "hs-test/envoy"
+)
 
-# Build HTTP/3 nginx if available
-echo "=== Building HTTP/3 nginx image ==="
-build_image "Dockerfile.nginx-http3" "hs-test/nginx-http3"
+build_pids=()
+build_status=0
+for i in "${!image_dockerfiles[@]}"; do
+    build_image "${image_dockerfiles[$i]}" "${image_names[$i]}" &
+    build_pids+=("$!")
 
-# Build envoy separately since it doesn't use our base image
-echo "=== Building envoy-test ==="
-build_image "Dockerfile.envoy" "hs-test/envoy"
+    if (( ${#build_pids[@]} >= BUILD_JOBS )); then
+        # Waiting by PID preserves the status of builds that already finished.
+        if ! wait "${build_pids[0]}"; then
+            build_status=1
+        fi
+        build_pids=("${build_pids[@]:1}")
+    fi
+done
+
+for build_pid in "${build_pids[@]}"; do
+    if ! wait "$build_pid"; then
+        build_status=1
+    fi
+done
+
+if (( build_status != 0 )); then
+    echo "Error: One or more test image builds failed"
+    exit 1
+fi
 
 # make cache directory multi-user friendly if it exists
 if [ -d "${DOCKER_CACHE_DIR}" ] ; then

@@ -13,8 +13,6 @@ fi
 for attempt in $(seq 1 "$MAX_RETRIES"); do
   if apt-get update && \
     apt-get -o Acquire::Retries=3 install -y "$@"; then
-    apt-get clean
-    rm -rf /var/lib/apt/lists/*
     exit 0
   fi
 
@@ -25,6 +23,7 @@ for attempt in $(seq 1 "$MAX_RETRIES"); do
 
   delay=$((INITIAL_DELAY * 2 ** (attempt - 1)))
   echo "APT transaction failed; retrying in ${delay}s" >&2
+  # Discard potentially inconsistent indexes only when retrying.
   rm -rf /var/lib/apt/lists/*
   sleep "$delay"
 done
