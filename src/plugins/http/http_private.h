@@ -171,7 +171,8 @@ typedef struct
   _ (EXPECT_PEER_SETTINGS, "expect-peer-settings")                                                 \
   _ (UDP_TUNNEL_DGRAM, "udp-tunnel-dgram")                                                         \
   _ (CONNECT_UDP_DRAFT03, "connect-udp-draft03")                                                   \
-  _ (TUNNEL_RX_CLOSED, "tunnel-rx-closed")
+  _ (TUNNEL_RX_CLOSED, "tunnel-rx-closed")                                                         \
+  _ (INCOMPLETE_FRAME, "incomplete-frame")
 
 typedef enum http_conn_flags_bit_
 {
@@ -1125,11 +1126,26 @@ http_io_ts_after_read (http_ctx_t *hc, u8 clear_evt)
     }
 }
 
+/* this should prevent quic stream to stuck if we can't read all data in fifo, quic want
+ * notification on transition from full or to empty */
+always_inline u8
+http_io_ts_should_force_rx_evt (http_ctx_t *hc, u32 n_last_deq, svm_fifo_t *f)
+{
+  if (!(n_last_deq && (hc->flags & HTTP_CONN_F_INCOMPLETE_FRAME)))
+    return 0;
+
+  if (svm_fifo_get_want_deq_ntf (f) == SVM_FIFO_NO_DEQ_NOTIF || svm_fifo_has_deq_ntf (f))
+    return 0;
+
+  return 1;
+}
+
 always_inline void
 http_io_ts_program_rx_evt (http_ctx_t *hc, u32 n_last_deq)
 {
   session_t *ts = session_get_from_handle (hc->hc_tc_session_handle);
-  if (svm_fifo_needs_deq_ntf (ts->rx_fifo, n_last_deq))
+  if (svm_fifo_needs_deq_ntf (ts->rx_fifo, n_last_deq) ||
+      http_io_ts_should_force_rx_evt (hc, n_last_deq, ts->rx_fifo))
     {
       svm_fifo_clear_deq_ntf (ts->rx_fifo);
       session_program_transport_io_evt (ts->handle, SESSION_IO_EVT_RX);

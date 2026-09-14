@@ -1848,6 +1848,7 @@ http3_stream_transport_rx_req (http_ctx_t *req, http_ctx_t *stream, http_req_sta
 	      goto error;
 	    }
 	  http3_stream_drop_frame_header (req, stream);
+	  stream->flags &= ~HTTP_CONN_F_INCOMPLETE_FRAME;
 	  left_deq -= req->fh.header_len;
 	}
 
@@ -1889,7 +1890,9 @@ http3_stream_transport_rx_req (http_ctx_t *req, http_ctx_t *stream, http_req_sta
   if (res == HTTP_SM_ERROR)
     {
     error:
-      if (err != HTTP3_ERROR_INCOMPLETE)
+      if (err == HTTP3_ERROR_INCOMPLETE)
+	stream->flags |= HTTP_CONN_F_INCOMPLETE_FRAME;
+      else
 	http3_stream_error_terminate_conn (stream, req, err);
     }
 
@@ -1988,6 +1991,8 @@ format_http3_req_vars (u8 *s, va_list *args)
     s = format (s, " %U\n", format_http3_stream_type, req->stream_type);
   s = format (s, " req state: %U\n", format_http_req_state, req->req_state);
   s = format (s, " flags: %U\n", format_http_req_flags, req);
+  if (stream->flags & HTTP_CONN_F_INCOMPLETE_FRAME)
+    s = format (s, " incomplete-frame\n");
   if (req->req_flags & HTTP_REQ_F_IS_PARENT)
     {
       hc = http_ctx_get_w_thread (stream->hc_http_conn_index, stream->c_thread_index);
