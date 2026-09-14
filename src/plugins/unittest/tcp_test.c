@@ -5426,6 +5426,8 @@ tcp_test_tamper_dsack_early_undo (vlib_main_t *vm)
 
   client_tc->cfg_flags |= TCP_CFG_F_NO_TSO;
   client_tc->cfg_flags &= ~TCP_CFG_F_TSO;
+  /* Keep staged writes independent of pacer scheduling. */
+  client_tc->connection.flags &= ~TRANSPORT_CONNECTION_F_IS_TX_PACED;
 
   mss = client_tc->snd_mss;
   spurious_seq = client_tc->snd_una;
