@@ -192,7 +192,7 @@ session_add_self_custom_tx_evt (transport_connection_t * tc, u8 has_prio)
 	    elt = session_evt_alloc_old (wrk);
 	  elt->evt.session_index = tc->s_index;
 	  elt->evt.event_type = SESSION_IO_EVT_TX;
-	  tc->flags &= ~TRANSPORT_CONNECTION_F_DESCHED;
+	  transport_connection_clear_descheduled (tc);
 
 	  if (PREDICT_FALSE (wrk->state == SESSION_WRK_INTERRUPT))
 	    vlib_node_set_interrupt_pending (wrk->vm,
