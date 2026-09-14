@@ -19,3 +19,6 @@ RUN wget -t 2 "https://download.docker.com/linux/ubuntu/dists/${CODENAME}/pool/s
 RUN dpkg -i /tmp/docker-ce-cli.deb
 
 RUN ln -s /usr/local/go/bin/go /usr/bin/go
+
+COPY go.mod go.sum /
+RUN go mod download
