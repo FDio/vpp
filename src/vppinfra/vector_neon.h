@@ -214,6 +214,16 @@ u32x4_sum_elts (u32x4 v)
   return vaddvq_u32 (v);
 }
 
+/* Creates a mask from the result of a four-lane 32-bit comparison. */
+static_always_inline u8
+u32x4_compare_mask (u32x4 v)
+{
+  const u32x4 lane_bits = { 1, 2, 4, 8 };
+  return u32x4_sum_elts (v & lane_bits);
+}
+
+#define CLIB_HAVE_VEC128_COMPARE_MASK
+
 static_always_inline u16
 u16x8_sum_elts (u16x8 v)
 {
