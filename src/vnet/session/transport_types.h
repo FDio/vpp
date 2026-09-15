@@ -67,9 +67,12 @@ typedef struct _spacer
   f64 bucket;
   clib_us_time_t last_update;
   f64 tokens_per_period;
-  u32 min_burst;
-  u32 max_burst;
+  u16 min_burst;
+  u16 max_burst;
+  u16 burst_cap;
 } spacer_t;
+
+STATIC_ASSERT (sizeof (spacer_t) == 40, "pacer state size");
 
 #define TRANSPORT_CONN_ID_LEN	44
 /* This includes proto and ip4 flag which should not be overwritten */
