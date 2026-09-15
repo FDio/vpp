@@ -71,6 +71,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "30fa5103_2c528241",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3002
+      },
+      "writtenOn": "2026-09-15T19:13:31Z",
+      "side": 1,
+      "message": "Thanks for the detailed reply. Your fix looks good to me, but please also address the \"nits\" that Pim \"picked\".",
+      "parentUuid": "5d098b51_7e0f33a3",
+      "revId": "399e97d71c019b9abfb4c9d364f81f9c07811fd0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "5df9e661_c879923c",
