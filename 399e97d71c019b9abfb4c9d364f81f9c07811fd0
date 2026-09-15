@@ -52,6 +52,63 @@
       "parentUuid": "591d646c_eb73239d",
       "revId": "399e97d71c019b9abfb4c9d364f81f9c07811fd0",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "efc9a90d_a8b24101",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2026-09-15T14:04:46Z",
+      "side": 1,
+      "message": "Change looks good to me - two small nits. Please ensure Neil\u0027s questions are addressed, he is much more familiar with this code than I am",
+      "revId": "399e97d71c019b9abfb4c9d364f81f9c07811fd0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5df9e661_c879923c",
+        "filename": "src/plugins/sflow/sflow_dropmon.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 36,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2026-09-15T14:04:46Z",
+      "side": 1,
+      "message": "I just noticed this, unrelated to the change but probably good to fix while you\u0027re here; It needs parens (NET_DM_ATTR_MAX + 1) to avoid (3 * SFLOWDM_ATTRS) + 2 expanding into 3*NET_DM_ATTR_MAX + 3.",
+      "range": {
+        "startLine": 36,
+        "startChar": 28,
+        "endLine": 36,
+        "endChar": 47
+      },
+      "revId": "399e97d71c019b9abfb4c9d364f81f9c07811fd0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "96c15d13_3801c2ac",
+        "filename": "src/plugins/sflow/sflow_netlink.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 286,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2026-09-15T14:04:46Z",
+      "side": 1,
+      "message": "This assertion happens after the loop above could have already caused an overflow to occur. I think it\u0027s better to put it inside of the loop.",
+      "revId": "399e97d71c019b9abfb4c9d364f81f9c07811fd0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
