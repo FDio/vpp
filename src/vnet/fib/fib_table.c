@@ -61,11 +61,53 @@ fib_table_lookup_i (fib_table_t *fib_table,
     return (FIB_NODE_INDEX_INVALID);
 }
 
+/*
+ * fib_table_get() indexes the per-protocol FIB pool without validating the
+ * index.  Callers that derive the index from an interface binding can be
+ * handed ~0, and an interface that has been deleted keeps a stale index until
+ * its binding is torn down.  Validate here so that a bad index produces an
+ * empty lookup rather than a read through a wild pointer.
+ */
+static fib_table_t *
+fib_table_get_or_null (u32 fib_index, fib_protocol_t proto)
+{
+    if (~0 == fib_index)
+	return (NULL);
+
+    switch (proto)
+    {
+    case FIB_PROTOCOL_IP4:
+	if (fib_index >= vec_len (ip4_main.fibs) ||
+	    pool_is_free_index (ip4_main.fibs, fib_index))
+	    return (NULL);
+	break;
+    case FIB_PROTOCOL_IP6:
+	if (fib_index >= vec_len (ip6_main.fibs) ||
+	    pool_is_free_index (ip6_main.fibs, fib_index))
+	    return (NULL);
+	break;
+    case FIB_PROTOCOL_MPLS:
+	if (fib_index >= vec_len (mpls_main.fibs) ||
+	    pool_is_free_index (mpls_main.fibs, fib_index))
+	    return (NULL);
+	break;
+    }
+
+    return (fib_table_get (fib_index, proto));
+}
+
 fib_node_index_t
 fib_table_lookup (u32 fib_index,
 		  const fib_prefix_t *prefix)
 {
-    return (fib_table_lookup_i(fib_table_get(fib_index, prefix->fp_proto), prefix));
+    fib_table_t *fib_table;
+
+    fib_table = fib_table_get_or_null (fib_index, prefix->fp_proto);
+
+    if (NULL == fib_table)
+	return (FIB_NODE_INDEX_INVALID);
+
+    return (fib_table_lookup_i(fib_table, prefix));
 }
 
 static inline fib_node_index_t
@@ -94,9 +136,14 @@ fib_node_index_t
 fib_table_lookup_exact_match (u32 fib_index,
 			      const fib_prefix_t *prefix)
 {
-    return (fib_table_lookup_exact_match_i(fib_table_get(fib_index,
-							 prefix->fp_proto),
-					   prefix));
+    fib_table_t *fib_table;
+
+    fib_table = fib_table_get_or_null (fib_index, prefix->fp_proto);
+
+    if (NULL == fib_table)
+	return (FIB_NODE_INDEX_INVALID);
+
+    return (fib_table_lookup_exact_match_i (fib_table, prefix));
 }
 
 static fib_node_index_t

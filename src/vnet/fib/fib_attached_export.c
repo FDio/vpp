@@ -234,6 +234,16 @@ fib_attached_export_import (fib_entry_t *fib_entry,
     fib_node_index_t fei;
 
     /*
+     * The exporter FIB index is derived from a route's resolving interface.
+     * Interfaces that are not bound to a table, and interfaces that have
+     * been deleted, yield ~0.  fib_table_get() would then index the FIB pool
+     * out of range and fib_table_lookup_exact_match() would dereference the
+     * result.  Nothing to export to, so do nothing.
+     */
+    if (FIB_NODE_INDEX_INVALID == export_fib)
+	return;
+
+    /*
      * save index for later post-realloc retrieval
      */
     fei = fib_entry_get_index(fib_entry);

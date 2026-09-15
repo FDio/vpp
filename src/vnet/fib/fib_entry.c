@@ -605,7 +605,16 @@ fib_entry_post_flag_update_actions (fib_entry_t *fib_entry,
                 fib_entry_get_proto(fib_entry),
                 sw_if_index);
         }
-        fib_attached_export_import(fib_entry, new_fib_index);
+
+        /*
+         * The resolving interface may be unbound, or bound to a table that
+         * has since been removed.  fib_table_get_index_for_sw_if_index()
+         * reports that as ~0.  There is no exporter table to import from, so
+         * leave the entry alone; it will be revisited when the interface is
+         * bound to a table again.
+         */
+        if (~0 != new_fib_index)
+            fib_attached_export_import(fib_entry, new_fib_index);
     }
     else if (was_import && !is_import)
     {
