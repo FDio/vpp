@@ -20,6 +20,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "f32ac63b_3aa15994",
+        "filename": "src/plugins/cnat/cnat.rst",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-09-15T13:13:13Z",
+      "side": 1,
+      "message": "Without validation, 0 and 1 are not merely unsupported: they trigger a divide-by-zero as soon as a Maglev translation is initialized. For a composite length, a backend can receive a skip that is not coprime with the length; its probe sequence then revisits only a subset of buckets and the shuffle\u0027s collision loop does not terminate. This is input/hash dependent, but can leave the translation operation stuck and spin the main thread. I think a small primality check at config parsing is justified to fail early with a clear error.",
+      "parentUuid": "2736d3c0_ba1cb7f2",
+      "revId": "54c90ee95be3f38514e093d19b3b0e3f62777967",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "7abf95bd_b2c5bf80",
         "filename": "src/plugins/cnat/cnat.rst",
         "patchSetId": 2
