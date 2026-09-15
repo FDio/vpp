@@ -78,7 +78,14 @@ jobs:
           git config --global --add safe.directory "$PWD"
           git fetch --tags --force 2>/dev/null || true
           if ! git describe --tags --long --match 'v*' 2>/dev/null; then
-            echo "0.0.0-0-g$(git rev-parse --short=7 HEAD)" > src/scripts/.version
+            # No matching tag in this repo, so synthesise one.  The build
+            # identifier must vary per commit, otherwise every build of this
+            # branch produces the same version string and apt skips packages
+            # it considers already installed.
+            # Use the commit timestamp rather than git rev-list --count:
+            # this job clones with --depth 1, where the count is always 1.
+            echo "0.0.0-$(git log -1 --format=%ct)-g$(git rev-parse --short=7 HEAD)" \
+              > src/scripts/.version
           fi
           ccache -z
           export VPP_EXTRA_CMAKE_ARGS="\

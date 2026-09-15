@@ -41,10 +41,17 @@ if [ -z "${POINT}" ]; then
     fi
 fi
 
+# Prefer git for the commit description, but fall back to the commit count
+# and hash already carried in vstring when git cannot supply them.  A repo
+# without any matching tag (e.g. a fork with no tags pushed) makes
+# git describe fail; without this the commit is dropped and every build of
+# such a repo gets the same version string, which makes package managers
+# treat a newer build as already installed.
 git rev-parse 2> /dev/null
 if [ $? == 0 ]; then
-    CMT=$(git describe --dirty --long --match 'v*'| cut -s -d- -f3,4)
-else
+    CMT=$(git describe --dirty --long --match 'v*' 2> /dev/null | cut -s -d- -f3,4)
+fi
+if [ -z "${CMT}" ]; then
     CMT=$(echo ${vstring} | cut -s -d- -f3,4)
 fi
 CMTR=$(echo $CMT | sed 's/-/_/')
