@@ -18,6 +18,8 @@
 #define TRANSPORT_PACER_MIN_IDLE	100
 #define TRANSPORT_PACER_IDLE_FACTOR	0.05
 
+STATIC_ASSERT (TRANSPORT_PACER_MAX_BURST <= CLIB_U16_MAX, "pacer burst sizes must fit in u16");
+
 typedef struct _transport_options_t
 {
   char *name;
@@ -277,21 +279,30 @@ void transport_connection_tx_pacer_reset (transport_connection_t * tc,
 /**
  * Initialize tx pacer for connection
  *
- * @param tc				transport connection
- * @param rate_bytes_per_second		initial byte rate
- * @param burst_bytes			initial burst size in bytes
+ * @param tc			transport connection
+ * @param rate_bytes_per_sec	initial byte rate
+ * @param initial_bucket	initial credit in bytes
+ * @param min_burst		minimum burst size in bytes
  */
 void transport_connection_tx_pacer_init (transport_connection_t *tc, u64 rate_bytes_per_sec,
 					 u32 initial_bucket, u32 min_burst);
+
+/**
+ * Set tx pacer burst boundaries
+ *
+ * @param tc		transport connection
+ * @param min_burst	minimum nominal burst in bytes
+ * @param burst_cap	hard burst limit in bytes
+ */
+void transport_connection_tx_pacer_set_burst_limits (transport_connection_t *tc, u32 min_burst,
+						     u32 burst_cap);
 
 /**
  * Update tx pacer pacing rate
  *
  * @param tc			transport connection
  * @param bytes_per_sec		new pacing rate
- * @param rtt			connection rtt that is used to compute
- * 				inactivity time after which pacer bucket is
- * 				reset to 1 mtu
+ * @param rtt			connection RTT used to size the nominal burst
  */
 void transport_connection_tx_pacer_update (transport_connection_t * tc,
 					   u64 bytes_per_sec,
@@ -301,7 +312,6 @@ void transport_connection_tx_pacer_update (transport_connection_t * tc,
  * Get tx pacer max burst
  *
  * @param tc		transport connection
- * @param time_now	current cpu time
  * @return		max burst for connection
  */
 u32 transport_connection_tx_pacer_burst (transport_connection_t * tc);
