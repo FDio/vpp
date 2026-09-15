@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "4d8955b8_a51bdbde",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 9
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3189
+      },
+      "writtenOn": "2026-09-15T09:44:31Z",
+      "side": 1,
+      "message": "This PR is outdated.\n\nI had fixed the pkgconfig path issue for the vpp-ext-dep package. However, after merging, we noticed that the MPLX5 lib was not built, so we reverted the changes. I\u0027ve now fixed the problem in this PR.",
+      "revId": "5b2002502ab19776b57492effe77bbc49b5e89bf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
