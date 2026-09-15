@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "3334b4bc_96ac6247",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2026-09-15T20:48:35Z",
+      "side": 1,
+      "message": "Looks good, thanks for the performance stats showing overall improvement. My loadbalancers thank you :-)",
+      "revId": "d0e4cf708a9ca4e3e089575a901a7ee553e453ad",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
