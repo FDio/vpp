@@ -16,6 +16,24 @@
       "message": "Could we add a regression test for the output-feature path? It should resolve SNAT from an interface, remove that interface\u0027s final IPv4/IPv6 address, then verify a new flow is dropped rather than translated with the cached address. Current coverage exercises address resolution and direct SNAT, but not this stale-address output-feature case.",
       "revId": "2e0956096ea799a76a43aff61399adb76b92ccd4",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5dba6996_86a5bd45",
+        "filename": "src/plugins/cnat/cnat_node_feature.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 372,
+      "author": {
+        "id": 660
+      },
+      "writtenOn": "2026-09-15T13:11:10Z",
+      "side": 1,
+      "message": "Done.",
+      "parentUuid": "88ade7bd_cc44070e",
+      "revId": "2e0956096ea799a76a43aff61399adb76b92ccd4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
