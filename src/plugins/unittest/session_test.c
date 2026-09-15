@@ -74,9 +74,9 @@ session_test_pacer (vlib_main_t *vm, unformat_input_t *input)
   transport_connection_t tc = { .thread_index = thread_index };
   u64 rate = 2e9;
   u64 old_rate = 7500000000, new_rate = 7514600000;
-  u32 i, loop_max_burst, rtt_max_burst;
+  u32 catchup_burst, hard_cap_burst, i, loop_max_burst, overflow_burst, rtt_max_burst;
   f64 aged_debt, fractional_credit, rate_change_credit, rate_decrease_credit;
-  f64 restart_credit, restart_debt;
+  f64 catchup_credit, restart_credit, restart_debt;
 
   vm->seconds_per_loop = 1.25e-6;
   transport_connection_tx_pacer_init (&tc, rate, 0, TRANSPORT_PACER_MIN_BURST);
@@ -108,6 +108,22 @@ session_test_pacer (vlib_main_t *vm, unformat_input_t *input)
     }
   fractional_credit = tc.pacer.bucket;
 
+  transport_connection_tx_pacer_reset (&tc, 1e9, 0, 1 /* 1us rtt */);
+  transport_connection_tx_pacer_update_bytes (&tc, transport_connection_tx_pacer_burst (&tc));
+  session_main.wrk[thread_index].last_vlib_us_time = tc.pacer.last_update + 20;
+  catchup_burst = transport_connection_tx_pacer_burst (&tc);
+  transport_connection_tx_pacer_update_bytes (&tc, catchup_burst);
+  catchup_credit = tc.pacer.bucket;
+
+  transport_connection_tx_pacer_set_burst_limits (&tc, 4 * TRANSPORT_PACER_MIN_BURST,
+						  4 * TRANSPORT_PACER_MIN_BURST);
+  transport_connection_tx_pacer_reset (&tc, 1e9, 0, 1 /* 1us rtt */);
+  transport_connection_tx_pacer_update_bytes (&tc, transport_connection_tx_pacer_burst (&tc));
+  session_main.wrk[thread_index].last_vlib_us_time = tc.pacer.last_update + 20;
+  hard_cap_burst = transport_connection_tx_pacer_burst (&tc);
+  transport_connection_tx_pacer_reset (&tc, 1e9, (u32) ~0, 1 /* 1us rtt */);
+  overflow_burst = transport_connection_tx_pacer_burst (&tc);
+
   tc.flags |= TRANSPORT_CONNECTION_F_DESCHED;
   tc.pacer.bucket = -TRANSPORT_PACER_MIN_BURST;
   transport_connection_tx_reactivate (&tc);
@@ -133,10 +149,17 @@ session_test_pacer (vlib_main_t *vm, unformat_input_t *input)
 		rtt_max_burst);
   SESSION_TEST (rate_change_credit == 7500, "rate change preserves old-rate credit (%.1f)",
 		rate_change_credit);
-  SESSION_TEST (rate_decrease_credit == 5000, "rate decrease clamps credit (%.1f)",
+  SESSION_TEST (rate_decrease_credit == 10000, "rate decrease preserves credit (%.1f)",
 		rate_decrease_credit);
   SESSION_TEST (fractional_credit == 1250, "fractional credit is retained (%.1f)",
 		fractional_credit);
+  SESSION_TEST (catchup_burst == 20000, "late dispatch catches up (%u)", catchup_burst);
+  SESSION_TEST (catchup_credit == -TRANSPORT_PACER_MIN_BURST,
+		"catch-up restores nominal debt (%.1f)", catchup_credit);
+  SESSION_TEST (hard_cap_burst == 4 * TRANSPORT_PACER_MIN_BURST,
+		"configured burst cap is enforced (%u)", hard_cap_burst);
+  SESSION_TEST (overflow_burst == 4 * TRANSPORT_PACER_MIN_BURST,
+		"large initial credit is capped (%u)", overflow_burst);
   SESSION_TEST (!transport_connection_is_descheduled (&tc), "descheduled flag is cleared");
   SESSION_TEST (restart_debt == -TRANSPORT_PACER_MIN_BURST,
 		"reactivation preserves pacer debt (%.1f)", restart_debt);
