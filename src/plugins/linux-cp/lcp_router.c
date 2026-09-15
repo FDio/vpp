@@ -85,26 +85,15 @@ static const mfib_prefix_t ip6_specials[] = {
    },
 };
 
-/* VIF to PHY DB of managed interfaces */
-static uword *lcp_routing_itf_db;
-
 static u32
 lcp_router_intf_h2p (u32 host)
 {
   lcp_itf_pair_t *lip;
   index_t lipi;
-  uword *p;
 
   /*
-   * first check the linux side created interface (i.e. vlans, tunnels etc)
-   */
-  p = hash_get (lcp_routing_itf_db, host);
-
-  if (p)
-    return p[0];
-
-  /*
-   * then check the paired phys
+   * Find the PHY interface paired with the Linux VIF named in the netlink
+   * message.
    */
   lipi = lcp_itf_pair_find_by_vif (host);
 
@@ -1130,6 +1119,22 @@ lcp_router_route_path_parse (struct rtnl_nexthop *rnh, void *arg)
   int label_count = 0;
 
   sw_if_index = lcp_router_intf_h2p (rtnl_route_nh_get_ifindex (rnh));
+
+  /*
+   * The pair lookup is a hash lookup plus a pool index; it does not tell us
+   * whether the interface still exists.  A route notification can name an
+   * interface that has already been removed, which happens routinely while
+   * the netlink state is being replayed after a socket error: the link dump
+   * deletes LCP pairs before the route dump is read.  Dropping the nexthop
+   * here keeps a stale sw_if_index out of the FIB, where it would later be
+   * turned into an out-of-range fib_index.
+   */
+  if (~0 != sw_if_index &&
+      NULL == vnet_get_sw_interface_or_null (vnet_get_main (), sw_if_index))
+    {
+      LCP_ROUTER_DBG (" skipping nexthop on dead sw_if_index %u", sw_if_index);
+      sw_if_index = ~0;
+    }
 
   if (~0 != sw_if_index)
     {
