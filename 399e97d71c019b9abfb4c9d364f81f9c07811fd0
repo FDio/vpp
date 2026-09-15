@@ -34,6 +34,24 @@
       "parentUuid": "8ce29b9d_8b915136",
       "revId": "399e97d71c019b9abfb4c9d364f81f9c07811fd0",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "5d098b51_7e0f33a3",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-09-15T11:06:27Z",
+      "side": 1,
+      "message": "It was recently discovered that the Coverity job stopped working in Feb 2026.  It has not be relocated to a daily VPP GHA workflow.\n\nPlease review the outstanding Coverity issues for other anomalies that need to be addressed:  https://scan.coverity.com/projects/fd-io-vpp",
+      "parentUuid": "591d646c_eb73239d",
+      "revId": "399e97d71c019b9abfb4c9d364f81f9c07811fd0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
