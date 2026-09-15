@@ -21,17 +21,16 @@
 
 #include <vnet/vnet.h>
 #include <vppinfra/lb_hash_hash.h>
-
-#if defined (__SSE4_2__)
-#include <immintrin.h>
-#endif
+#include <vppinfra/vector.h>
 
 /*
  * @brief Number of entries per bucket.
  */
 #define LBHASH_ENTRY_PER_BUCKET 4
 
-#define LB_HASH_DO_NOT_USE_SSE_BUCKETS 0
+#ifndef LB_HASH_DO_NOT_USE_VEC128_BUCKETS
+#define LB_HASH_DO_NOT_USE_VEC128_BUCKETS 0
+#endif
 
 /*
  * @brief One bucket contains 4 entries.
@@ -106,39 +105,30 @@ void lb_hash_get(lb_hash_t *ht, u32 hash, u32 vip, u32 time_now,
   lb_hash_bucket_t *bucket = &ht->buckets[hash & ht->buckets_mask];
   *found_value = 0;
   *available_index = ~0;
-#if __SSE4_2__ && LB_HASH_DO_NOT_USE_SSE_BUCKETS == 0
-  u32 bitmask, found_index;
-  __m128i mask;
+#if defined(CLIB_HAVE_VEC128) && LB_HASH_DO_NOT_USE_VEC128_BUCKETS == 0
+  u32x4 time_now4 = u32x4_splat (time_now);
+  u32x4 timeout4 = u32x4_load_unaligned (bucket->timeout);
+  u32x4 expired = (time_now4 - timeout4) < u32x4_splat (0x7fffffff);
+  u32 bitmask = u8x16_msb_mask ((u8x16) expired);
 
-  // mask[*] = timeout[*] > now
-  mask = _mm_cmpgt_epi32(_mm_loadu_si128 ((__m128i *) bucket->timeout),
-			 _mm_set1_epi32 (time_now));
-  // bitmask[*] = now <= timeout[*/4]
-  bitmask = (~_mm_movemask_epi8(mask)) & 0xffff;
-  // Get first index with now <= timeout[*], if any.
-  *available_index = (bitmask)?__builtin_ctz(bitmask)/4:*available_index;
+  if (bitmask)
+    *available_index = count_trailing_zeros (bitmask) / 4;
 
-  // mask[*] = (timeout[*] > now) && (hash[*] == hash)
-  mask = _mm_and_si128(mask,
-		       _mm_cmpeq_epi32(
-			   _mm_loadu_si128 ((__m128i *) bucket->hash),
-			   _mm_set1_epi32 (hash)));
+  u32x4 live = ~expired;
+  u32x4 hash4 = u32x4_load_unaligned (bucket->hash);
+  u32x4 vip4 = u32x4_load_unaligned (bucket->vip);
+  u32x4 hash_match = hash4 == u32x4_splat (hash);
+  u32x4 vip_match = vip4 == u32x4_splat (vip);
+  u32x4 match = live & hash_match & vip_match;
 
-  // Load the array of vip values
-  // mask[*] = (timeout[*] > now) && (hash[*] == hash) && (vip[*] == vip)
-  mask = _mm_and_si128(mask,
-		       _mm_cmpeq_epi32(
-			   _mm_loadu_si128 ((__m128i *) bucket->vip),
-			   _mm_set1_epi32 (vip)));
-
-  // mask[*] = (timeout[*x4] > now) && (hash[*x4] == hash) && (vip[*x4] == vip)
-  bitmask = _mm_movemask_epi8(mask);
-  // Get first index, if any
-  found_index = (bitmask)?__builtin_ctzll(bitmask)/4:0;
-  ASSERT(found_index < 4);
-  *found_value = (bitmask)?bucket->value[found_index]:*found_value;
-  bucket->timeout[found_index] =
-      (bitmask)?time_now + ht->timeout:bucket->timeout[found_index];
+  bitmask = u8x16_msb_mask ((u8x16) match);
+  if (bitmask)
+    {
+      u32 found_index = count_trailing_zeros (bitmask) / 4;
+      ASSERT (found_index < LBHASH_ENTRY_PER_BUCKET);
+      *found_value = bucket->value[found_index];
+      bucket->timeout[found_index] = time_now + ht->timeout;
+    }
 #else
   u32 i;
   for (i = 0; i < LBHASH_ENTRY_PER_BUCKET; i++) {
@@ -154,8 +144,8 @@ void lb_hash_get(lb_hash_t *ht, u32 hash, u32 vip, u32 time_now,
 #endif
 }
 
-static_always_inline
-u32 lb_hash_available_value(lb_hash_t *h, u32 hash, u32 available_index)
+static_always_inline u32
+lb_hash_available_value (lb_hash_t *h, u32 hash, u32 available_index)
 {
   return h->buckets[hash & h->buckets_mask].value[available_index];
 }
