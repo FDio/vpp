@@ -82,9 +82,17 @@ jobs:
             # identifier must vary per commit, otherwise every build of this
             # branch produces the same version string and apt skips packages
             # it considers already installed.
+            #
+            # The "0.0.0-release" prefix is deliberate: it is the version of
+            # packages already installed from this branch, and Debian
+            # compares "<upstream>-<revision>" by its last hyphen, so a plain
+            # "0.0.0-<ts>~g<sha>" would sort BELOW "0.0.0-release" (letters
+            # outrank digits) and apt would refuse it.  Extending the existing
+            # "-release" revision keeps every new build strictly newer.
+            #
             # Use the commit timestamp rather than git rev-list --count:
             # this job clones with --depth 1, where the count is always 1.
-            echo "0.0.0-$(git log -1 --format=%ct)-g$(git rev-parse --short=7 HEAD)" \
+            echo "0.0.0-release+$(git log -1 --format=%ct)-g$(git rev-parse --short=7 HEAD)" \
               > src/scripts/.version
           fi
           ccache -z
