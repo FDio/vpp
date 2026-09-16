@@ -16,6 +16,24 @@
       "message": "It seems I got so focused on simple processing regression that I forgot to check other tests. Turns out cryptodev (ipsec and wireguard tests using QAT) git broken [0]. Investigating.\n\n[0] https://csit.fd.io/trending/#eNrNU01vhCAU_DX20jwDKnUvPezW_7Fh4VVJBSlgjf31RdsEbfqRvTS9AJl5vBneBB8Gh2eP_X3GTll9yopaybhk5fE2bi_WQmkAtQNKSIuFpXigRDyDtPIJhJttGIAyergAFYChU7ZS1qOogum7ifvZCIjYhXsEZQJw9AW7a4UG7dwiVDwsQnIMO9XE2G5OzPde0gXukKcb7xYTG9BvlK4xnHo8Oq7Rq1dMjdYRpAoRp7ohxV4_zHbD7ubQDckeW9KgJC9JzmhekVSVwGIBWZPVzUpdG2B86DmMxmDvP6c4Sjsph-3InaRfzOZv4tsY_DnDX-z-9_BYc2MGp9dfGM--GyYITvHef0BveMgGAw",
       "revId": "dd6c72f231bb556eb345baf10bcf07eb64381496",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a1ac3049_4fb11d25",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 7
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2026-09-16T17:59:53Z",
+      "side": 1,
+      "message": "Will discuss with Kai.",
+      "parentUuid": "b8ffcea9_7b09a079",
+      "revId": "dd6c72f231bb556eb345baf10bcf07eb64381496",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
