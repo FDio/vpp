@@ -233,7 +233,7 @@ vcl_send_session_accepted_reply (svm_msg_q_t *mq, session_accepted_msg_t *mp,
   rmp = (session_accepted_reply_msg_t *) app_evt->evt->data;
   rmp->handle = mp->handle;
   rmp->context = mp->context;
-  rmp->app_session_index = s->session_index;
+  rmp->app_session_index = retval ? SESSION_INVALID_INDEX : s->session_index;
   rmp->retval = retval;
   app_send_ctrl_evt_to_vpp (mq, app_evt);
 }
