@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "5378fabc_0d709adb",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3002
+      },
+      "writtenOn": "2026-09-16T21:53:57Z",
+      "side": 1,
+      "message": "That looks right (assuming it runs OK). Limiting strnlen() by the payload length is cunning and seems like it would always be good way to deal with strings in netlink attributes. I think most strings supplied from the kernel come with a null-terminating byte, but I have not seen it documented anywhere as a requirement. Thank you for doing this. I expect Coverity will be appeased.",
+      "revId": "48d22cff1d2c247521558235663faf2aac2b0692",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
