@@ -124,6 +124,7 @@ void _pool_cache_init_with_batch (vlib_pool_cache_t *c, char *name,
 #define pool_cache_init(C, N, F, L, A, T)                                                          \
   _pool_cache_init_with_batch ((C), (N), (F), (L), (A), 0, sizeof (T), __alignof__ (T))
 void pool_cache_free (vlib_pool_cache_t *c);
+void pool_cache_prefill (vlib_pool_cache_t *c, u32 n_elts);
 void _pool_cache_refill (vlib_pool_cache_t *c, vlib_pool_cache_thread_t *pt);
 void _pool_cache_flush (vlib_pool_cache_t *c, vlib_pool_cache_thread_t *pt, u32 n_cached);
 u8 *pool_cache_format_element (u8 *s, vlib_pool_cache_t *c, u32 index);
@@ -304,5 +305,57 @@ pool_cache_put_index (vlib_pool_cache_t *c, u32 index)
 
   _pool_cache_publish_free (c, index, pidx, eidx, sp);
 }
+
+static_always_inline u32
+pool_cache_count_total_cached (vlib_pool_cache_t *c)
+{
+  vlib_pool_cache_thread_t *pt;
+  u32 cached = 0;
+
+  vec_foreach (pt, c->per_thread)
+    cached += clib_atomic_load_relax_n (&pt->n_cached);
+  return cached;
+}
+
+static_always_inline u32
+pool_cache_count_global_free (vlib_pool_cache_t *c)
+{
+  return clib_atomic_load_relax_n (&c->n_global_free);
+}
+
+static_always_inline u32
+pool_cache_count_total_allocated (vlib_pool_cache_t *c)
+{
+  u32 n_subpools = clib_atomic_load_acq_n (&c->n_subpools);
+  return c->subpool_size * n_subpools;
+}
+
+/*
+ * Best-effort diagnostic iterator: allocation state may change after it is
+ * checked, so the body may observe recycled or inconsistent payload data and
+ * requires external quiescence to be sanitizer-safe.
+ */
+#define vlib_foreach_pool_cache(_e, _c, _b)                                                        \
+  do                                                                                               \
+    {                                                                                              \
+      vlib_main_t *vm = vlib_get_main ();                                                          \
+      f64 start = vlib_time_now (vm);                                                              \
+      u32 n_subpools = clib_atomic_load_relax_n (&(_c)->n_subpools);                               \
+                                                                                                   \
+      for (int pidx = 0; pidx < n_subpools; pidx++)                                                \
+	{                                                                                          \
+	  for (int eidx = 0; eidx < (_c)->subpool_size; eidx++)                                    \
+	    {                                                                                      \
+	      u32 index = _pool_cache_encode_index ((_c), pidx, eidx);                             \
+	      if (pool_cache_is_free_index ((_c), index))                                          \
+		continue;                                                                          \
+	      (_e) = _pool_cache_elt_at_indices ((_c), pidx, eidx);                                \
+	      {                                                                                    \
+		_b;                                                                                \
+	      }                                                                                    \
+	    }                                                                                      \
+	}                                                                                          \
+    }                                                                                              \
+  while (0);
 
 #endif /* included_vlib_pool_cache_h */
