@@ -373,6 +373,7 @@ sflow_netlink_generic_read (SFLOWNL *nl, struct nlmsghdr *nlh, int numbytes)
 		 attr1 = SFNLA_NEXT (attr1, attr0_len))
 	      {
 		char *grp_name = NULL;
+		u32 grp_name_len = 0;
 		u32 grp_id = 0;
 		struct nlattr *attr2 = SFNLA_DATA (attr1);
 		for (int attr1_len = SFNLA_PAYLOAD (attr1);
@@ -384,7 +385,8 @@ sflow_netlink_generic_read (SFLOWNL *nl, struct nlmsghdr *nlh, int numbytes)
 		      {
 		      case CTRL_ATTR_MCAST_GRP_NAME:
 			grp_name = SFNLA_DATA (attr2);
-			SFLOW_DBG ("netlink multicast group: %s\n", grp_name);
+			grp_name_len = SFNLA_PAYLOAD (attr2);
+			SFLOW_DBG ("netlink multicast group: %.*s\n", (int) grp_name_len, grp_name);
 			break;
 		      case CTRL_ATTR_MCAST_GRP_ID:
 			grp_id = *(u32 *) SFNLA_DATA (attr2);
@@ -392,13 +394,18 @@ sflow_netlink_generic_read (SFLOWNL *nl, struct nlmsghdr *nlh, int numbytes)
 			break;
 		      }
 		  }
-		if (nl->group_id == 0 && grp_name &&
-		    (((nl->join_group_id != 0) &&
-		      grp_id == nl->join_group_id) ||
-		     ((nl->join_group_name != NULL) &&
-		      !strcmp (grp_name, nl->join_group_name))))
+		int name_match = 0;
+		if (grp_name && nl->join_group_name)
 		  {
-		    SFLOW_DBG ("netlink found group %s=%u\n", grp_name,
+		    u32 join_len = strlen (nl->join_group_name);
+		    u32 name_len = strnlen (grp_name, grp_name_len);
+		    name_match = (name_len == join_len &&
+				  memcmp (grp_name, nl->join_group_name, join_len) == 0);
+		  }
+		if (nl->group_id == 0 && grp_name &&
+		    (((nl->join_group_id != 0) && grp_id == nl->join_group_id) || name_match))
+		  {
+		    SFLOW_DBG ("netlink found group %.*s=%u\n", (int) grp_name_len, grp_name,
 			       grp_id);
 		    nl->group_id = grp_id;
 		    // We don't need to actually join the group if we
