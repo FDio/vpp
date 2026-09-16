@@ -16,6 +16,23 @@
       "message": "Hi Neale,\n\nA gentle reminder to review this patch or give your opinion how should I proceed with my problem.\n\nI\u0027ve also added a simple UT",
       "revId": "1a3fb1b766b16976244bfa4f50a5c80a6f8b750e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "961eeff1_0a911737",
+        "filename": "src/vnet/ip/ip_api.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 302,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-09-16T17:35:00Z",
+      "side": 1,
+      "message": "Could we preserve ip_route_v2_dump semantics and add a versioned dump API for this? Today, a non-zero src filters on the entry\u0027s best source; this change instead returns every entry containing that source and encodes the non-contributing source\u0027s paths. That changes both result cardinality and route.src/paths for existing v2 clients that use this dump as a forwarding-state view.\n\nPlease consider an ip_route_v3_dump (with matching details) and an explicit selector such as include_non_best, while retaining the existing v2 behavior.",
+      "revId": "1a3fb1b766b16976244bfa4f50a5c80a6f8b750e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
