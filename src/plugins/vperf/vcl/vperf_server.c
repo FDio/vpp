@@ -770,6 +770,11 @@ vperf_server_worker_loop (void *arg)
 	  if (ep_evts[i].data.u32 == VPERF_DATA_LISTENER)
 	    {
 	      conn = vperf_server_accept_client (wrk, wrk->listener.fd);
+	      if (!conn)
+		{
+		  vperf_warn ("accept failed");
+		  goto fail;
+		}
 	      conn->cfg = vsm->ctrl->cfg;
 	      continue;
 	    }
