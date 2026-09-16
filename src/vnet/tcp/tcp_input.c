@@ -2772,6 +2772,7 @@ tcp_input_set_error_next (tcp_main_t * tm, u16 * next, u32 * error, u8 is_ip4)
     {
       *next = TCP_INPUT_NEXT_RESET;
       *error = TCP_ERROR_NO_LISTENER;
+      abort ();
     }
 }
 
