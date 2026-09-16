@@ -205,7 +205,7 @@ _pool_cache_refill (vlib_pool_cache_t *c, vlib_pool_cache_thread_t *pt)
 
   _pool_cache_lock (c);
 
-  /* Grow until a complete transfer batch can be detached. */
+  /* grow until a complete transfer batch can be detached. */
   while (clib_atomic_load_relax_n (&c->n_global_free) < batch)
     _pool_cache_add_subpool_locked (c);
 
@@ -334,6 +334,15 @@ pool_cache_free (vlib_pool_cache_t *c)
   vec_free (c->subpool_chunks);
   vec_free (c->per_thread);
   clib_spinlock_free (&c->lock);
+}
+
+void
+pool_cache_prefill (vlib_pool_cache_t *c, u32 n_elts)
+{
+  _pool_cache_lock (c);
+  while (clib_atomic_load_relax_n (&c->n_global_free) < n_elts)
+    _pool_cache_add_subpool_locked (c);
+  _pool_cache_unlock (c);
 }
 
 u8 *
