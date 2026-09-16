@@ -16,6 +16,24 @@
       "message": "Curious, how does that affect vpp, since vcl is refusing the connection",
       "revId": "707de9bcde5e607235a00a8c03fb40a031e65c37",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "3b44bfcd_d717b612",
+        "filename": "src/vcl/vppcom.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 236,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-09-16T17:42:25Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "9a5ff64e_c361dd7e",
+      "revId": "707de9bcde5e607235a00a8c03fb40a031e65c37",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
