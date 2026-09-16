@@ -34,6 +34,24 @@
       "parentUuid": "9a5ff64e_c361dd7e",
       "revId": "707de9bcde5e607235a00a8c03fb40a031e65c37",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "32e298a8_6e6df47d",
+        "filename": "src/vcl/vppcom.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 236,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-09-16T18:01:27Z",
+      "side": 1,
+      "message": "with vperf, when fixed 😊, when test failure is detected on client side sessions are cleanup and on server:\n[0:3][T] 10.10.1.1:1131-\u003e10.10.1.2:55568      TIME_WAIT\n   index: 1 cfg: TSO off, No endpoint flags: FIN sent timers: WAIT CLOSE",
+      "parentUuid": "9a5ff64e_c361dd7e",
+      "revId": "707de9bcde5e607235a00a8c03fb40a031e65c37",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
