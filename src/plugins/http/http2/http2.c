@@ -571,7 +571,8 @@ http2_sched_dispatch_data (http_ctx_t *req, http_ctx_t *hc, u8 *n_emissions)
   if (n_read == 0)
     {
       HTTP_DBG (1, "no data to deq");
-      transport_connection_reschedule (&req->connection);
+      if (transport_connection_is_descheduled (&req->connection))
+	transport_connection_reschedule (&req->connection);
       return 0;
     }
 
@@ -674,7 +675,8 @@ http2_sched_dispatch_tunnel (http_ctx_t *req, http_ctx_t *hc, u8 *n_emissions)
 	  *n_emissions += HTTP2_SCHED_WEIGHT_TUNNEL_FIN;
 	  return 0;
 	}
-      transport_connection_reschedule (&req->connection);
+      if (transport_connection_is_descheduled (&req->connection))
+	transport_connection_reschedule (&req->connection);
       return 0;
     }
   if (req->peer_stream_window == 0)
@@ -728,7 +730,10 @@ http2_sched_dispatch_tunnel (http_ctx_t *req, http_ctx_t *hc, u8 *n_emissions)
       http2_req_schedule_data_tx (hc, req);
     }
   else
-    transport_connection_reschedule (&req->connection);
+    {
+      if (transport_connection_is_descheduled (&req->connection))
+	transport_connection_reschedule (&req->connection);
+    }
 
   http_io_as_dequeue_notify (req, n_written);
 
@@ -785,7 +790,8 @@ http2_sched_dispatch_udp_tunnel_inline (http_ctx_t *req, http_ctx_t *hc, u8 *n_e
       if (max_read < sizeof (hdr))
 	{
 	  HTTP_DBG (2, "max_read < session dgram hdr");
-	  transport_connection_reschedule (&req->connection);
+	  if (transport_connection_is_descheduled (&req->connection))
+	    transport_connection_reschedule (&req->connection);
 	  return 0;
 	}
       http_io_as_peek (req, (u8 *) &hdr, sizeof (hdr), 0);
@@ -795,7 +801,8 @@ http2_sched_dispatch_udp_tunnel_inline (http_ctx_t *req, http_ctx_t *hc, u8 *n_e
       if (PREDICT_FALSE (max_read < dgram_size))
 	{
 	  HTTP_DBG (2, "datagram incomplete");
-	  transport_connection_reschedule (&req->connection);
+	  if (transport_connection_is_descheduled (&req->connection))
+	    transport_connection_reschedule (&req->connection);
 	  return 0;
 	}
       /* check stream level window */
@@ -906,7 +913,10 @@ http2_sched_dispatch_udp_tunnel_inline (http_ctx_t *req, http_ctx_t *hc, u8 *n_e
       http2_req_schedule_data_tx (hc, req);
     }
   else
-    transport_connection_reschedule (&req->connection);
+    {
+      if (transport_connection_is_descheduled (&req->connection))
+	transport_connection_reschedule (&req->connection);
+    }
 
   return 0;
 }
@@ -1048,7 +1058,9 @@ http2_req_setup_server_tunnel (http_ctx_t *req, http_ctx_t *hc)
     }
   else
     req->dispatch_data_cb = http2_sched_dispatch_tunnel;
-  transport_connection_reschedule (&req->connection);
+
+  if (transport_connection_is_descheduled (&req->connection))
+    transport_connection_reschedule (&req->connection);
   /* cleanup some stuff we don't need anymore in tunnel mode */
   vec_free (req->headers);
 }
@@ -1656,7 +1668,8 @@ http2_req_state_wait_transport_reply (http_ctx_t *hc, http_ctx_t *req, transport
       else
 	new_state = HTTP_REQ_STATE_TUNNEL;
       http_io_as_add_want_read_ntf (req);
-      transport_connection_reschedule (&req->connection);
+      if (transport_connection_is_descheduled (&req->connection))
+	transport_connection_reschedule (&req->connection);
       /* cleanup some stuff we don't need anymore in tunnel mode */
       vec_free (req->headers);
     }
@@ -1675,7 +1688,8 @@ http2_req_state_wait_transport_reply (http_ctx_t *hc, http_ctx_t *req, transport
   else
     {
       /* we are done wait for the next app request */
-      transport_connection_reschedule (&req->connection);
+      if (transport_connection_is_descheduled (&req->connection))
+	transport_connection_reschedule (&req->connection);
       http2_conn_reset_req (hc, req, hc->c_thread_index);
     }
 
@@ -2012,7 +2026,8 @@ http2_req_state_transport_io_more_data (http_ctx_t *hc, http_ctx_t *req,
 	{
 	  /* we are done wait for the next app request */
 	  http_req_state_change (req, HTTP_REQ_STATE_WAIT_APP_METHOD);
-	  transport_connection_reschedule (&req->connection);
+	  if (transport_connection_is_descheduled (&req->connection))
+	    transport_connection_reschedule (&req->connection);
 	  http2_conn_reset_req (hc, req, hc->c_thread_index);
 	  http_io_as_del_want_read_ntf (req);
 	}
