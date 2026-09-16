@@ -179,13 +179,13 @@ esp_get_ip6_hdr_len (ip6_header_t * ip6, ip6_ext_header_t ** ext_hdr)
  * unpredictable for CBC, it is then encrypted using the same key as the
  * message. You can refer to NIST SP800-38a and NIST SP800-38d for more
  * details. */
-static_always_inline void *
-esp_generate_iv (ipsec_sa_outb_rt_t *ort, void *payload, int iv_sz)
+static_always_inline u8 *
+esp_generate_iv (ipsec_sa_outb_rt_t *ort, u8 *iv, u8 iv_sz)
 {
   ASSERT (iv_sz >= sizeof (u64));
-  u64 *iv = (u64 *) (payload - iv_sz);
   clib_memset_u8 (iv, 0, iv_sz);
-  *iv = clib_pcg64i_random_r (&ort->iv_prng);
+  /* Packet fields are not guaranteed to be naturally aligned. */
+  *(u64u *) iv = clib_pcg64i_random_r (&ort->iv_prng);
   return iv;
 }
 
@@ -371,8 +371,7 @@ ipsec_build_enc_op_tmpl (vnet_crypto_op_t *op, ipsec_sa_outb_rt_t *ort,
 	  op->src = op->dst = crypto_start;
 	}
 
-      clib_memset_u8 (crypto_start, 0, rt->cipher_iv_size);
-      *crypto_start = clib_pcg64i_random_r (&ort->iv_prng);
+      esp_generate_iv (ort, crypto_start, rt->cipher_iv_size);
       op->iv = crypto_start - hdr_len - rt->cipher_iv_size;
       clib_memset_u8 (op->iv, 0, rt->cipher_iv_size);
 
@@ -387,7 +386,8 @@ ipsec_build_enc_op_tmpl (vnet_crypto_op_t *op, ipsec_sa_outb_rt_t *ort,
       op->len = payload_len - rt->integ_icv_size;
     }
 
-  pkt_iv = esp_generate_iv (ort, payload, rt->cipher_iv_size);
+  pkt_iv = esp_generate_iv (ort, payload - rt->cipher_iv_size,
+			    rt->cipher_iv_size);
   nonce = ipsec_setup_ctr_nonce (op, ort, pkt_iv, hdr_len);
   if (is_gcm)
     {
@@ -407,7 +407,8 @@ ipsec_null_gmac_build_enc_op_tmpl (vnet_crypto_op_t *op, ipsec_sa_outb_rt_t *ort
   op->src = op->dst = payload - rt->cbc_src_pre_bytes;
   op->len = payload_len - rt->integ_icv_size + rt->cbc_len_pre_bytes;
 
-  void *pkt_iv = esp_generate_iv (ort, payload, rt->cipher_iv_size);
+  void *pkt_iv = esp_generate_iv (ort, payload - rt->cipher_iv_size,
+				  rt->cipher_iv_size);
   esp_ctr_nonce_t *nonce = ipsec_setup_ctr_nonce (op, ort, pkt_iv, hdr_len);
   u8 *aad = (u8 *) nonce - sizeof (esp_aead_t);
   ipsec_setup_aead_fields (op, ort, rt, payload, payload_len, aad, esp, seq_hi);
@@ -420,7 +421,8 @@ ipsec_null_gmac_build_enc_op_tmpl_chain (vnet_crypto_op_t *op, ipsec_sa_outb_rt_
 					 u8 *payload, u16 payload_len, u32 hdr_len, void *esp,
 					 u32 seq_hi)
 {
-  void *pkt_iv = esp_generate_iv (ort, payload, rt->cipher_iv_size);
+  void *pkt_iv = esp_generate_iv (ort, payload - rt->cipher_iv_size,
+				  rt->cipher_iv_size);
   esp_ctr_nonce_t *nonce = ipsec_setup_ctr_nonce (op, ort, pkt_iv, hdr_len);
   u8 *aad = (u8 *) nonce - sizeof (esp_aead_t);
   ipsec_setup_aead_fields (op, ort, rt, payload, payload_len, aad, esp, seq_hi);
@@ -956,7 +958,8 @@ esp_encrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  tag = payload + crypto_total_len;
 
 	  /* generate the IV in front of the payload */
-	  pkt_iv = esp_generate_iv (ort, payload, rt.cipher_iv_size);
+	  pkt_iv = esp_generate_iv (ort, payload - rt.cipher_iv_size,
+				    rt.cipher_iv_size);
 
 	  if (rt.is_ctr)
 	    {

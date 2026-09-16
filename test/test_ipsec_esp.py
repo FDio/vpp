@@ -1,5 +1,9 @@
 import socket
 import unittest
+from itertools import combinations
+
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives.ciphers import Cipher, modes
 from scapy.layers.ipsec import ESP
 from scapy.layers.inet import IP, ICMP, UDP
 from scapy.layers.inet6 import IPv6
@@ -1114,7 +1118,174 @@ class RunTestIpsecEspAll(ConfigIpsecESP, IpsecTra4, IpsecTra6, IpsecTun4, IpsecT
     def run_test(self):
         self.run_a_test(self.engine, self.flag, self.algo)
 
-    def run_a_test(self, engine, flag, algo, payload_size=None):
+    def assert_iv_bits_vary(self, samples, description):
+        width = len(samples[0]) * 8
+        all_bits = (1 << width) - 1
+        values = [int.from_bytes(sample, "little") for sample in samples]
+        bits_set = 0
+        bits_clear = 0
+
+        # Every bit must be observed both set and clear.  This deterministically
+        # catches truncated stores and fixed fields in the IV source.
+        for value in values:
+            bits_set |= value
+            bits_clear |= value ^ all_bits
+
+        self.assertEqual(
+            bits_set & bits_clear,
+            all_bits,
+            "%s has stuck bits: set=%#x clear=%#x"
+            % (
+                description,
+                bits_set,
+                bits_clear,
+            ),
+        )
+
+        # Apply the same stuck-bit check to consecutive XORs.  This catches
+        # counters and other predictable transitions that can look balanced
+        # when only the individual values are examined.
+        deltas = [a ^ b for a, b in zip(values, values[1:])]
+        delta_bits_set = 0
+        delta_bits_clear = 0
+        for delta in deltas:
+            delta_bits_set |= delta
+            delta_bits_clear |= delta ^ all_bits
+
+        self.assertEqual(
+            delta_bits_set & delta_bits_clear,
+            all_bits,
+            "%s has stuck transition bits: set=%#x clear=%#x"
+            % (
+                description,
+                delta_bits_set,
+                delta_bits_clear,
+            ),
+        )
+
+    def assert_iv_bits_balanced(self, groups, description):
+        samples = [sample for group in groups for sample in group]
+        width = len(samples[0]) * 8
+        # The deliberately wide 15%-85% interval has negligible false-failure
+        # probability for these sample sizes, while still rejecting biased IVs.
+        minimum = len(samples) * 15 // 100
+        maximum = len(samples) - minimum
+
+        for bit in range(width):
+            ones = sum((sample[bit // 8] >> (bit % 8)) & 1 for sample in samples)
+            self.assertGreaterEqual(
+                ones,
+                minimum,
+                "%s bit %d has only %d/%d ones"
+                % (
+                    description,
+                    bit,
+                    ones,
+                    len(samples),
+                ),
+            )
+            self.assertLessEqual(
+                ones,
+                maximum,
+                "%s bit %d has %d/%d ones"
+                % (
+                    description,
+                    bit,
+                    ones,
+                    len(samples),
+                ),
+            )
+
+    def decode_iv_source(self, sa, wire_iv):
+        # Counter/GCM-style algorithms transmit the generated IV directly.
+        if sa.crypt_algo.name not in ("AES-CBC", "DES", "3DES"):
+            return wire_iv
+
+        # VPP whitens CBC IVs by encrypting a zero-padded 64-bit PRNG value.
+        # Undo that whitening so entropy defects cannot be hidden by AES/DES.
+        decryptor = Cipher(
+            sa.crypt_algo.cipher(sa.crypt_key),
+            modes.ECB(),
+            backend=default_backend(),
+        ).decryptor()
+        source_block = decryptor.update(wire_iv) + decryptor.finalize()
+
+        self.assertEqual(
+            source_block[8:],
+            b"\x00" * (len(source_block) - 8),
+            "%s IV source padding is not zero: %s"
+            % (sa.crypt_algo.name, source_block.hex()),
+        )
+        return source_block[:8]
+
+    def assert_iv_quality(self, captures):
+        wire_groups = []
+        source_groups = []
+
+        for description, sa, packets in captures:
+            iv_size = sa.crypt_algo.iv_size
+            if not iv_size:
+                continue
+
+            wire_ivs = [bytes(packet[ESP].data[:iv_size]) for packet in packets]
+            source_ivs = [self.decode_iv_source(sa, iv) for iv in wire_ivs]
+
+            # Reuse within an SA is always an error, regardless of statistical
+            # quality elsewhere in the sample.
+            self.assertEqual(
+                len(wire_ivs),
+                len(set(wire_ivs)),
+                "%s repeated a wire IV within one SA" % description,
+            )
+            self.assertEqual(
+                len(source_ivs),
+                len(set(source_ivs)),
+                "%s repeated an IV source value within one SA" % description,
+            )
+            self.assert_iv_bits_vary(wire_ivs, "%s wire IV" % description)
+            self.assert_iv_bits_vary(source_ivs, "%s IV source" % description)
+
+            wire_groups.append(wire_ivs)
+            source_groups.append(source_ivs)
+
+        if not wire_groups:
+            return
+
+        for name, groups in (("wire IV", wire_groups), ("IV source", source_groups)):
+            samples = [sample for group in groups for sample in group]
+            duplicate_count = len(samples) - len(set(samples))
+            # Permit one chance collision across independent SAs to keep the
+            # probabilistic test non-flaky, but reject systematic overlap.
+            self.assertLessEqual(
+                duplicate_count,
+                1,
+                "%s values have %d cross-SA duplicates" % (name, duplicate_count),
+            )
+            # Check both the generated values and how bits change from packet
+            # to packet; either view alone can miss simple broken generators.
+            self.assert_iv_bits_balanced(groups, name)
+            self.assert_iv_bits_balanced(
+                [
+                    [
+                        bytes(a ^ b for a, b in zip(left, right))
+                        for left, right in zip(group, group[1:])
+                    ]
+                    for group in groups
+                ],
+                "%s transitions" % name,
+            )
+
+        # Equal prefixes indicate that two SAs were initialized with the same
+        # generator state, even if the sequences have not collided elsewhere.
+        for left, right in combinations(source_groups, 2):
+            prefix_len = min(16, len(left), len(right))
+            self.assertNotEqual(
+                left[:prefix_len],
+                right[:prefix_len],
+                "independently initialized SAs produced the same IV sequence",
+            )
+
+    def configure_test_network(self, engine, flag, algo):
         if self.async_mode:
             self.vapi.cli("set ipsec async mode on")
         else:
@@ -1147,14 +1318,39 @@ class RunTestIpsecEspAll(ConfigIpsecESP, IpsecTra4, IpsecTra6, IpsecTun4, IpsecT
         #
         self.config_network(self.params.values())
 
+    def run_a_test(self, engine, flag, algo, payload_size=None):
+        self.configure_test_network(engine, flag, algo)
+
         #
         # run some traffic.
         #  An exhautsive 4o6, 6o4 is not necessary
         #  for each algo
         #
-        self.verify_tra_basic6(count=NUM_PKTS)
-        self.verify_tra_basic4(count=NUM_PKTS)
-        self.verify_tun_66(self.params[socket.AF_INET6], count=NUM_PKTS)
+        iv_captures = []
+        recv_pkts = self.verify_tra_basic6(count=NUM_PKTS)
+        iv_captures.append(
+            (
+                "IPv6 transport",
+                self.params[socket.AF_INET6].vpp_tra_sa,
+                recv_pkts,
+            )
+        )
+        recv_pkts = self.verify_tra_basic4(count=NUM_PKTS)
+        iv_captures.append(
+            (
+                "IPv4 transport",
+                self.params[socket.AF_INET].vpp_tra_sa,
+                recv_pkts,
+            )
+        )
+        recv_pkts = self.verify_tun_66(self.params[socket.AF_INET6], count=NUM_PKTS)
+        iv_captures.append(
+            (
+                "IPv6 tunnel",
+                self.params[socket.AF_INET6].vpp_tun_sa,
+                recv_pkts,
+            )
+        )
         #
         # Use an odd-byte payload size to check for correct padding.
         #
@@ -1163,9 +1359,19 @@ class RunTestIpsecEspAll(ConfigIpsecESP, IpsecTra4, IpsecTra6, IpsecTun4, IpsecT
         # This should catch bugs where the code is incorrectly over-padding
         # for algorithms that don't require it
         psz = 49 - len(IP() / ICMP()) if payload_size is None else payload_size
-        self.verify_tun_44(
+        recv_pkts = self.verify_tun_44(
             self.params[socket.AF_INET], count=NUM_PKTS, payload_size=psz
         )
+        iv_captures.append(
+            (
+                "IPv4 tunnel",
+                self.params[socket.AF_INET].vpp_tun_sa,
+                recv_pkts,
+            )
+        )
+        # Reuse the packets already sent by every generated algorithm test, so
+        # broad IV coverage adds assertions without adding test traffic.
+        self.assert_iv_quality(iv_captures)
 
         LARGE_PKT_SZ = [
             1970,  # results in 2 chained buffers entering decrypt node
@@ -1222,6 +1428,29 @@ class RunTestIpsecEspAll(ConfigIpsecESP, IpsecTra4, IpsecTra6, IpsecTun4, IpsecT
                 self.verify_tra_basic4(count=NUM_PKTS)
 
         self.unconfig_network()
+
+
+class TestIpsecEspIvQuality1024(RunTestIpsecEspAll):
+    """native ESNoff ARoff AES-GCM-128/NONE IPSec IV quality test"""
+
+    def test_iv_quality_1024(self):
+        """exercise the shared IV generator with a larger sample"""
+        self.configure_test_network(self.engine, self.flag, self.algo)
+        try:
+            # Supplement the fast all-mode samples with enough direct-IV output
+            # to expose weaker biases or sporadic duplicates in the common path.
+            recv_pkts = self.verify_tra_basic4(count=1024)
+            self.assert_iv_quality(
+                [
+                    (
+                        "IPv4 transport 1024-packet sample",
+                        self.params[socket.AF_INET].vpp_tra_sa,
+                        recv_pkts,
+                    )
+                ]
+            )
+        finally:
+            self.unconfig_network()
 
 
 #

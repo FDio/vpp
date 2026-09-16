@@ -1042,6 +1042,7 @@ class IpsecTra4(object):
                 payload_size=payload_size,
             )
             recv_pkts = self.send_and_expect(self.tra_if, send_pkts, self.tra_if)
+            encrypted_pkts = [packet.copy() for packet in recv_pkts]
             for rx in recv_pkts:
                 self.assertEqual(len(rx) - len(Ether()), rx[IP].len)
                 self.assert_packet_checksums_valid(rx)
@@ -1068,6 +1069,8 @@ class IpsecTra4(object):
 
         self.assert_packet_counter_equal(self.tra4_encrypt_node_name, count)
         self.assert_packet_counter_equal(self.tra4_decrypt_node_name[0], count)
+
+        return encrypted_pkts
 
     def _verify_tra_anti_replay_algorithm_esn(self):
         def seq_num(seqh, seql):
@@ -1931,6 +1934,7 @@ class IpsecTra6(object):
                 payload_size=payload_size,
             )
             recv_pkts = self.send_and_expect(self.tra_if, send_pkts, self.tra_if)
+            encrypted_pkts = [packet.copy() for packet in recv_pkts]
             for rx in recv_pkts:
                 self.assertEqual(len(rx) - len(Ether()) - len(IPv6()), rx[IPv6].plen)
                 try:
@@ -1953,6 +1957,8 @@ class IpsecTra6(object):
         )
         self.assert_packet_counter_equal(self.tra6_encrypt_node_name, count)
         self.assert_packet_counter_equal(self.tra6_decrypt_node_name[0], count)
+
+        return encrypted_pkts
 
     def gen_encrypt_pkts_ext_hdrs6(
         self, sa, sw_intf, src, dst, count=1, payload_size=54
@@ -2195,6 +2201,7 @@ class IpsecTun4(object):
                 payload_size=payload_size,
             )
             recv_pkts = self.send_and_expect(self.pg1, send_pkts, self.tun_if, n_rx)
+            encrypted_pkts = [packet.copy() for packet in recv_pkts]
             self.verify_encrypted(p, p.vpp_tun_sa, recv_pkts)
 
             for rx in recv_pkts:
@@ -2208,6 +2215,8 @@ class IpsecTun4(object):
         self.logger.info(self.vapi.ppcli("show ipsec sa 0"))
         self.logger.info(self.vapi.ppcli("show ipsec sa 4"))
         self.verify_counters4(p, count, n_rx)
+
+        return encrypted_pkts
 
     def verify_tun_dropped_44(self, p, count=1, payload_size=64, n_rx=None):
         self.vapi.cli("clear errors")
@@ -2482,6 +2491,7 @@ class IpsecTun6(object):
                 payload_size=payload_size,
             )
             recv_pkts = self.send_and_expect(self.pg1, send_pkts, self.tun_if)
+            encrypted_pkts = [packet.copy() for packet in recv_pkts]
             self.verify_encrypted6(p_out, p_out.vpp_tun_sa, recv_pkts)
 
             for rx in recv_pkts:
@@ -2492,6 +2502,8 @@ class IpsecTun6(object):
             self.logger.info(self.vapi.ppcli("show error"))
             self.logger.info(self.vapi.ppcli("show ipsec all"))
         self.verify_counters6(p_in, p_out, count)
+
+        return encrypted_pkts
 
     def verify_tun_reass_66(self, p):
         self.vapi.cli("clear errors")
