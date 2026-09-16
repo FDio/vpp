@@ -25,34 +25,17 @@ _pool_cache_unlock (vlib_pool_cache_t *c)
   clib_spinlock_unlock (&c->lock);
 }
 
-static u64
-_pool_cache_count_cached (vlib_pool_cache_t *c)
-{
-  vlib_pool_cache_thread_t *pt;
-  u64 cached = 0;
-
-  vec_foreach (pt, c->per_thread)
-    cached += clib_atomic_load_relax_n (&pt->n_cached);
-  return cached;
-}
-
-static u32
-_pool_cache_count_global (vlib_pool_cache_t *c)
-{
-  return clib_atomic_load_relax_n (&c->n_global_free);
-}
-
 static void
 _pool_cache_format_summary_row (table_t *t, int row, vlib_pool_cache_t *c)
 {
-  u64 allocated, free, cached, total;
+  u32 allocated, free, cached, total;
   u32 n_subpools, global;
   int col = 0;
 
   n_subpools = clib_atomic_load_acq_n (&c->n_subpools);
-  cached = _pool_cache_count_cached (c);
-  global = _pool_cache_count_global (c);
-  total = (u64) n_subpools * c->subpool_size;
+  cached = pool_cache_count_total_cached (c);
+  global = pool_cache_count_global_free (c);
+  total = n_subpools * c->subpool_size;
   free = cached + global;
   /* Concurrent transitions can make this diagnostic snapshot momentarily skewed. */
   allocated = free < total ? total - free : 0;
@@ -62,10 +45,10 @@ _pool_cache_format_summary_row (table_t *t, int row, vlib_pool_cache_t *c)
   table_format_cell (t, row, col++, "%u", n_subpools);
   table_format_cell (t, row, col++, "%u", c->subpool_size);
   table_format_cell (t, row, col++, "%u", c->batch_size);
-  table_format_cell (t, row, col++, "%llu", allocated);
+  table_format_cell (t, row, col++, "%u", allocated);
   table_format_cell (t, row, col++, "%u", global);
-  table_format_cell (t, row, col++, "%llu", cached);
-  table_format_cell (t, row, col++, "%llu", free);
+  table_format_cell (t, row, col++, "%u", cached);
+  table_format_cell (t, row, col++, "%u", free);
   table_format_cell (t, row, col++, "%llu",
 		     clib_atomic_load_relax_n (&c->global_lock_acquisitions));
   table_format_cell (t, row, col++, "%llu", clib_atomic_load_relax_n (&c->growths));
@@ -336,6 +319,36 @@ pool_cache_free (vlib_pool_cache_t *c)
   clib_spinlock_free (&c->lock);
 }
 
+int
+pool_cache_prefill (vlib_pool_cache_t *c, u32 n_elts)
+{
+  if (n_elts == 0)
+    return 0;
+
+  /* These pre-allocated entries will have to be divided between all the workers.
+   * Assume the worst case were every worker has its cache empty, it will acquire a full batch on
+   * the first pool_cache_get, and we don't wan't it to empty the global free list. So add a batch
+   * per thread of headroom. So we potentially over-allocate, but we guarantee no allocatation for
+   * the next n_elmts pool_cache_get from any worker */
+  u64 participating_threads = clib_min (n_elts, vec_len (c->per_thread));
+  u64 required = (u64) n_elts + participating_threads * (c->batch_size - 1);
+
+  _pool_cache_lock (c);
+
+  u32 start_free = clib_atomic_load_relax_n (&c->n_global_free);
+  if (required >= (u32) ~0 || start_free + (u32) required < start_free)
+    {
+      _pool_cache_unlock (c);
+      return -1;
+    }
+
+  while (clib_atomic_load_relax_n (&c->n_global_free) < start_free + (u32) required)
+    _pool_cache_add_subpool_locked (c);
+
+  _pool_cache_unlock (c);
+  return 0;
+}
+
 u8 *
 pool_cache_format_element (u8 *s, vlib_pool_cache_t *c, u32 index)
 {
@@ -392,7 +405,7 @@ show_pool_cache_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_c
 		     "GlobalFree", "CachedFree", "Free", "GlobalLocks", "Growths");
   for (c = pcm->instances; c; c = c->next_instance)
     {
-      if (name && strcmp (c->name, name))
+      if (name && strcmp (c->name, name) != 0)
 	continue;
       found = 1;
       _pool_cache_format_summary_row (t, row++, c);
