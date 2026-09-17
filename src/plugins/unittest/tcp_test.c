@@ -5949,8 +5949,7 @@ tcp_test_delivery (vlib_main_t * vm, unformat_input_t * input)
 	verbose = 1;
       else
 	{
-	  vlib_cli_output (vm, "parse error: '%U'", format_unformat_error,
-			   input);
+	  vlib_cli_output (vm, "parse error: '%U'", format_unformat_error, input);
 	  return -1;
 	}
     }
@@ -6044,7 +6043,7 @@ tcp_test_delivery (vlib_main_t * vm, unformat_input_t * input)
   TCP_TEST (ac->delivered == 2 * burst, "delivered should be 200");
   TCP_TEST (ac->prior_delivered == burst, "delivered should be 100");
   TCP_TEST (!(ac->flags & TCP_BTS_IS_RXT), "not retransmitted");
-  TCP_TEST (tc->first_tx_time == 2, "first_tx_time %u", tc->first_tx_time);
+  TCP_TEST (tc->first_tx_time == 3, "first_tx_time %u", tc->first_tx_time);
 
   /*
    * Track retransmissions
@@ -6102,16 +6101,15 @@ tcp_test_delivery (vlib_main_t * vm, unformat_input_t * input)
   TCP_TEST (tc->delivered_time == 8, "delivered time should be 8");
   TCP_TEST (tc->delivered == 3 * burst + 30, "delivered should be %u is %u",
 	    3 * burst + 30, tc->delivered);
-  /* All 3 samples have the same delivered number of bytes. So the first is
-   * the reference for delivery estimate. */
+  /* All 3 samples have the same delivered snapshot, so use the latest
+   * transmission as the reference. */
   TCP_TEST (ac->interval_time == 4, "ack time should be 4 is %.2f", ac->interval_time);
+  TCP_TEST (ac->rtt_time == 2, "sample rtt should be 2 is %.2f", ac->rtt_time);
   TCP_TEST (ac->delivered == 30, "delivered should be 30");
   TCP_TEST (ac->prior_delivered == 3 * burst, "sample delivered should be %u", 3 * burst);
   TCP_TEST (!(ac->flags & TCP_BTS_IS_RXT), "not retransmitted");
   TCP_TEST (!(ac->flags & TCP_BTS_IS_APP_LIMITED), "not app limited");
-  /* All 3 samples have the same delivered number of bytes. The first
-   * sets the first tx time */
-  TCP_TEST (tc->first_tx_time == 4, "first_tx_time %u", tc->first_tx_time);
+  TCP_TEST (tc->first_tx_time == 6, "first_tx_time %u", tc->first_tx_time);
 
   /* 6) Retransmit and track at time 9
    *
@@ -6186,10 +6184,8 @@ tcp_test_delivery (vlib_main_t * vm, unformat_input_t * input)
   TCP_TEST (tc->delivered_time == 10, "delivered time should be 10");
   TCP_TEST (tc->delivered == 5 * burst + 30, "delivered should be %u is %u", 5 * burst + 30,
 	    tc->delivered);
-  /* A rxt was acked and delivered time for it is 8 (last ack time) so
-   * ack_time is 2 (8 - 10). However, first_tx_time for rxt was 4 and rxt
-   * time 9. Therefore snd_time is 5 (9 - 4)*/
-  TCP_TEST (ac->interval_time == 5, "ack time should be 5 is %.2f", ac->interval_time);
+  /* ACK time is 2, while send time is 9 - 6 = 3. */
+  TCP_TEST (ac->interval_time == 3, "ack time should be 3 is %.2f", ac->interval_time);
   /* delivered_now - delivered_rxt ~ 5 * burst + 30 - 3 * burst - 30 */
   TCP_TEST (ac->delivered == 2 * burst, "delivered should be 200 is %u", ac->delivered);
   TCP_TEST (ac->prior_delivered == 3 * burst + 30, "sample delivered should be %u", 3 * burst + 30);
@@ -6223,10 +6219,8 @@ tcp_test_delivery (vlib_main_t * vm, unformat_input_t * input)
   TCP_TEST (tc->delivered_time == 11, "delivered time should be 11");
   TCP_TEST (tc->delivered == 7 * burst, "delivered should be %u is %u",
 	    7 * burst, tc->delivered);
-  /* Delivered time at retransmit was 8 so ack_time is 11 - 8 = 3. However,
-   * first_tx_time for rxt was 4 and rxt time was 9. Therefore snd_time
-   * is 9 - 4 = 5 */
-  TCP_TEST (ac->interval_time == 5, "ack time should be 5 is %.2f", ac->interval_time);
+  /* ACK and send intervals are both 3. */
+  TCP_TEST (ac->interval_time == 3, "ack time should be 3 is %.2f", ac->interval_time);
   /* delivered_now - delivered_rxt ~ 7 * burst - 3 * burst - 30.
    * That's because we didn't retransmit any new segment. */
   TCP_TEST (ac->delivered == 4 * burst - 30, "delivered should be 370 is %u", ac->delivered);
@@ -6254,6 +6248,21 @@ tcp_test_delivery (vlib_main_t * vm, unformat_input_t * input)
   TCP_TEST (bt->head == TCP_BTS_INVALID_INDEX && bt->tail == TCP_BTS_INVALID_INDEX &&
 	      bt->last_ooo == TCP_BTS_INVALID_INDEX,
 	    "sample indices should be invalid after flush");
+
+  /* An interval below the minimum RTT cannot produce a reliable rate. */
+  tc->snd_una = tc->snd_nxt;
+  bt->min_rtt = 1.0;
+  tcp_test_set_time (thread_index, 13);
+  tcp_bt_track_tx (tc, burst);
+  tc->snd_nxt += burst;
+  bts = pool_elt_at_index (bt->samples, bt->head);
+  bts->flags |= TCP_BTS_IS_RXT;
+  tcp_test_set_time (thread_index, 13.5);
+  clib_memset (ac, 0, sizeof (*ac));
+  tcp_test_ack_handle_feedback (tc, tc->snd_nxt, ac);
+  tc->snd_una = tc->snd_nxt;
+  TCP_TEST (ac->delivered == burst && ac->interval_time == 0.0,
+	    "sub-min-rtt rate sample should be invalid");
 
   /*
    * Cleanup

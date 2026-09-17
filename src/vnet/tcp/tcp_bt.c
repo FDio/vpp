@@ -973,10 +973,13 @@ tcp_bt_rxt_rewind (tcp_connection_t *tc, u32 seq)
 typedef struct
 {
   f64 now;
+  f64 rate_sample_tx_time;
   tcp_rack_state_t *rack;
   u32 fack;
+  u32 rate_sample_end;
   u8 account_sack;
   u8 rack_updated;
+  u8 rate_sample_valid;
 } tcp_bt_ack_state_t;
 
 static void
@@ -986,9 +989,14 @@ tcp_bt_sample_to_rate_sample (tcp_connection_t *tc, tcp_bt_ack_state_t *state, t
   if (bts->flags & TCP_BTS_IS_DELIVERED)
     return;
 
-  if (ac->prior_delivered && ac->prior_delivered >= bts->delivered)
+  if (state->rate_sample_valid &&
+      !tcp_bt_tx_sent_after (bts->tx_time, bts->max_seq, state->rate_sample_tx_time,
+			     state->rate_sample_end))
     return;
 
+  state->rate_sample_tx_time = bts->tx_time;
+  state->rate_sample_end = bts->max_seq;
+  state->rate_sample_valid = 1;
   ac->prior_delivered = bts->delivered;
   ac->prior_time = bts->delivered_time;
   ac->interval_time = bts->tx_time - bts->first_tx_time;
@@ -1273,6 +1281,14 @@ tcp_bt_sample_delivery_rate (tcp_connection_t *tc, tcp_ack_ctx_t *ac)
   ac->interval_time = clib_max ((tc->delivered_time - ac->prior_time), ac->interval_time);
   ac->delivered = tc->delivered - ac->prior_delivered;
 
+  if (ac->rtt_time > 0.0 && !(ac->flags & TCP_BTS_IS_RXT))
+    {
+      if (!tc->bt->min_rtt || ac->rtt_time < tc->bt->min_rtt)
+	tc->bt->min_rtt = ac->rtt_time;
+    }
+  if (tc->bt->min_rtt > 0.0 && ac->interval_time < tc->bt->min_rtt)
+    ac->interval_time = 0.0;
+
 done:
   ac->acked_and_sacked = delivered;
   ac->lost = tc->lost - ac->tx_lost;
@@ -1374,6 +1390,7 @@ tcp_bt_apply_ack (tcp_connection_t *tc, u32 ack, u32 high_sacked, tcp_ack_ctx_t 
   state.fack = old_high_sacked;
   state.rack = PREDICT_FALSE (tcp_rack_enabled (tc)) ? tcp_rack_get_state (tc) : 0;
   state.rack_updated = 0;
+  state.rate_sample_valid = 0;
 
   if (seq_gt (ack, tc->snd_una))
     {
