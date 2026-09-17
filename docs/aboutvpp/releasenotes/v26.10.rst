@@ -1,0 +1,44 @@
+Release notes for VPP 26.10
+===========================
+
+Compatibility notices
+---------------------
+
+Upcoming libvnet symbol visibility change
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Starting with VPP 27.02, libvnet will be built with hidden symbol visibility
+by default. This behavior is not enabled by default in VPP 26.10.
+
+With hidden visibility enabled, only libvnet symbols explicitly marked with
+``__clib_export`` are available to other shared objects. Out-of-tree plugins
+and applications that link directly against libvnet should verify the symbols
+they require before moving to a later VPP release.
+
+Use the standalone checker with an unstripped libvnet binary from the VPP
+build tree and one or more external plugin binaries:
+
+.. code-block:: console
+
+    $ vpp-check-libvnet-exports.sh \
+        /path/to/unstripped/libvnet.so \
+        /path/to/my_plugin.so
+
+If the checker reports a required symbol, either remove that dependency or
+mark the corresponding libvnet declaration with ``__clib_export`` when it is
+part of the intended interface. Please upstream justified export additions so
+other consumers benefit from the same interface.
+
+Builds can temporarily retain the legacy behavior, where all non-static
+libvnet symbols are exported, by disabling the option:
+
+.. code-block:: console
+
+    $ make build VPP_EXTRA_CMAKE_ARGS=-DVPP_LIBVNET_HIDDEN_VISIBILITY=OFF
+
+The implementation and migration tooling are tracked in:
+
+* `External libvnet export checker
+  <https://gerrit.fd.io/r/c/vpp/+/46747>`_
+* `Hidden visibility with explicit exports
+  <https://gerrit.fd.io/r/c/vpp/+/46573>`_
