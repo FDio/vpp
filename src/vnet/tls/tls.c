@@ -196,17 +196,20 @@ int
 tls_notify_app_accept (tls_ctx_t * ctx)
 {
   session_t *app_listener, *app_session;
+  session_handle_t app_listener_handle;
   app_worker_t *app_wrk;
   tls_ctx_t *lctx;
   int rv;
 
   lctx = tls_listener_ctx_get (ctx->listener_ctx_index);
-  app_listener = listen_session_get_from_handle (lctx->app_session_handle);
+  app_listener_handle = lctx->app_session_handle;
 
   app_session = session_alloc (ctx->c_thread_index);
+  /* session_alloc may grow the pool that owns the listener. */
+  app_listener = listen_session_get_from_handle (app_listener_handle);
   app_session->session_state = SESSION_STATE_ACCEPTING;
   app_session->session_type = app_listener->session_type;
-  app_session->listener_handle = listen_session_get_handle (app_listener);
+  app_session->listener_handle = app_listener_handle;
   app_session->connection_index = ctx->tls_ctx_handle;
   ctx->c_s_index = app_session->session_index;
 
