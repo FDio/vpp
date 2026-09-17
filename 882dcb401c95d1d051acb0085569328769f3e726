@@ -1,0 +1,113 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "13f64943_2e6ad6b6",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-09-17T01:55:52Z",
+      "side": 1,
+      "message": "Please rename src/scripts/vpp-check-libvnet-exports -\u003e vpp-check-libvnet-exports.sh",
+      "revId": "882dcb401c95d1d051acb0085569328769f3e726",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d9c88d9e_242eaa86",
+        "filename": "src/scripts/vpp-check-libvnet-exports",
+        "patchSetId": 3
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-09-17T01:55:52Z",
+      "side": 1,
+      "message": "please use /bin/bash",
+      "range": {
+        "startLine": 1,
+        "startChar": 2,
+        "endLine": 1,
+        "endChar": 9
+      },
+      "revId": "882dcb401c95d1d051acb0085569328769f3e726",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2a6bdb6f_bf623829",
+        "filename": "src/scripts/vpp-check-libvnet-exports",
+        "patchSetId": 3
+      },
+      "lineNbr": 6,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-09-17T01:55:52Z",
+      "side": 1,
+      "message": "set -euo pipefail",
+      "range": {
+        "startLine": 6,
+        "startChar": 0,
+        "endLine": 6,
+        "endChar": 7
+      },
+      "revId": "882dcb401c95d1d051acb0085569328769f3e726",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9676802f_46a9695c",
+        "filename": "src/scripts/vpp-check-libvnet-exports",
+        "patchSetId": 3
+      },
+      "lineNbr": 81,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-09-17T01:55:52Z",
+      "side": 1,
+      "message": "Please use mawk because original awk is not available in all of the distros being used by VPP downstream consumers and may actually point to gawk or other implementations based on the distro.  This may lead to inconsistent behavior of the script on different distros.",
+      "range": {
+        "startLine": 81,
+        "startChar": 2,
+        "endLine": 81,
+        "endChar": 5
+      },
+      "revId": "882dcb401c95d1d051acb0085569328769f3e726",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e10ee6fe_64e1c60e",
+        "filename": "src/scripts/vpp-check-libvnet-exports",
+        "patchSetId": 3
+      },
+      "lineNbr": 94,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-09-17T01:55:52Z",
+      "side": 1,
+      "message": "SIGHUP SIGINT SIGTERM",
+      "range": {
+        "startLine": 94,
+        "startChar": 31,
+        "endLine": 94,
+        "endChar": 41
+      },
+      "revId": "882dcb401c95d1d051acb0085569328769f3e726",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
