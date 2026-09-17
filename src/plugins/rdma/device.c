@@ -89,15 +89,28 @@ rdma_nldev_attr_u32 (struct nlattr **tb, u32 type, u32 *value)
 }
 
 static uword
-rdma_nldev_attr_str_is (struct nlattr *a, const char *s)
+rdma_nldev_attr_str_is (struct nlmsghdr *h, ssize_t n, struct nlattr *a, const char *s)
 {
-  u32 len = RDMA_NL_ATTR_PAYLOAD (a);
-  char *data = RDMA_NL_ATTR_DATA (a);
+  uword msg_addr = pointer_to_uword (h);
+  uword attr_addr = pointer_to_uword (a);
+  uword offset, len, str_len;
+  char *data;
 
-  if (len && data[len - 1] == 0)
-    len--;
+  if (!NLMSG_OK (h, n) || attr_addr < msg_addr)
+    return 0;
 
-  return strlen (s) == len && memcmp (data, s, len) == 0;
+  offset = attr_addr - msg_addr;
+  if (offset < NLMSG_HDRLEN || offset > h->nlmsg_len || !RDMA_NL_ATTR_OK (a, h->nlmsg_len - offset))
+    return 0;
+
+  data = RDMA_NL_ATTR_DATA (a);
+  len = RDMA_NL_ATTR_PAYLOAD (a);
+  str_len = strlen (s);
+
+  if (len != str_len && (len != str_len + 1 || data[str_len] != 0))
+    return 0;
+
+  return memcmp (data, s, str_len) == 0;
 }
 
 typedef enum
@@ -166,7 +179,7 @@ rdma_nldev_lookup_u32 (int fd, u32 seq, u8 command, u16 request_attr, const u32 
 	  rdma_nldev_parse_attrs (h, tb, RDMA_NL_ARRAY_LEN (tb));
 	  if (match_type == RDMA_NLDEV_MATCH_STRING)
 	    {
-	      if (!tb[match_attr] || !rdma_nldev_attr_str_is (tb[match_attr], match_value))
+	      if (!tb[match_attr] || !rdma_nldev_attr_str_is (h, n, tb[match_attr], match_value))
 		continue;
 	    }
 	  else if (!rdma_nldev_attr_u32 (tb, match_attr, &match_u32) ||
