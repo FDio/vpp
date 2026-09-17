@@ -974,13 +974,6 @@ tls_async_write_event_handler (void *async_evt, void *unused)
 
   app_session = session_get_from_handle (ctx->app_session_handle);
   tls_session = session_get_from_handle (ctx->tls_session_handle);
-  if (app_session->flags & SESSION_F_APP_CLOSED)
-    {
-      TLS_DBG (2, "Session State: App Closed");
-      SSL_shutdown (oc->ssl);
-      return 0;
-    }
-
   app_tx_fifo = app_session->tx_fifo;
 
   /* Check if already data write is completed or not */
@@ -1065,8 +1058,8 @@ check_tls_fifo:
   /* we got here, async write is done */
   oc->async_ctx.total_async_write = 0;
 
-  if (PREDICT_FALSE (ctx->flags & TLS_CONN_F_APP_CLOSED &&
-		     BIO_ctrl_pending (oc->rbio) <= 0))
+  if (PREDICT_FALSE ((ctx->flags & TLS_CONN_F_APP_CLOSED) &&
+		     !svm_fifo_max_dequeue_cons (app_tx_fifo) && BIO_ctrl_pending (oc->rbio) <= 0))
     openssl_confirm_app_close (ctx);
 
   /* Deschedule and wait for deq notification if fifo is almost full */

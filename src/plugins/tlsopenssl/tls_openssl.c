@@ -62,8 +62,7 @@ openssl_ctx_free (tls_ctx_t * ctx)
   /* Cleanup ssl ctx unless migrated */
   if (!(ctx->flags & TLS_CONN_F_MIGRATED))
     {
-      if (SSL_is_init_finished (oc->ssl) &&
-	  !(ctx->flags & TLS_CONN_F_PASSIVE_CLOSE))
+      if (oc->ssl && SSL_is_init_finished (oc->ssl) && !(ctx->flags & TLS_CONN_F_PASSIVE_CLOSE))
 	{
 	  int rv = SSL_shutdown (oc->ssl);
 	  if (rv < 0)
@@ -474,6 +473,7 @@ openssl_ctx_write_tls (tls_ctx_t *ctx, session_t *app_session,
 check_tls_fifo:
 
   if (PREDICT_FALSE ((ctx->flags & TLS_CONN_F_APP_CLOSED) &&
+		     !svm_fifo_max_dequeue_cons (app_session->tx_fifo) &&
 		     BIO_ctrl_pending (oc->rbio) <= 0))
     openssl_confirm_app_close (ctx);
 
