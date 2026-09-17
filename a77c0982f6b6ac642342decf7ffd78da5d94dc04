@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e9bc6740_0b5f4eb4",
+        "filename": "src/plugins/rdma/device.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 92,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-09-17T07:57:50Z",
+      "side": 1,
+      "message": "This revalidation appears redundant: rdma_nldev_parse_attrs() only stores attributes after RDMA_NL_ATTR_OK() has established their bounds within a message already accepted by NLMSG_OK(), and this static helper is only called with an attribute from that table. Could we mark the Coverity finding as a false positive instead, to avoid duplicating the parser\u0027s validation logic?",
+      "revId": "a77c0982f6b6ac642342decf7ffd78da5d94dc04",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
