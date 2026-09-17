@@ -156,6 +156,10 @@ static void
 cubic_recovered (tcp_connection_t * tc)
 {
   cubic_data_t *cd = (cubic_data_t *) tcp_cc_data (tc);
+
+  if (tcp_in_recovery (tc))
+    return;
+
   cd->t_start = cubic_time (tc->c_thread_index);
   tc->cwnd = tc->ssthresh;
   cd->K = K_cubic (cd, tc->cwnd / tc->snd_mss);

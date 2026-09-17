@@ -31,6 +31,9 @@ newreno_loss (tcp_connection_t * tc)
 static void
 newreno_recovered (tcp_connection_t * tc)
 {
+  if (tcp_in_recovery (tc))
+    return;
+
   tc->cwnd = tc->ssthresh;
 }
 
