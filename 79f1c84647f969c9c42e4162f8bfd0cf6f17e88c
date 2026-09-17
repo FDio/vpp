@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3ef69676_b3bfe6bd",
+        "filename": "src/svm/svm_fifo.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 1231,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-09-17T06:59:32Z",
+      "side": 1,
+      "message": "Isn\u0027t this just `svm_fifo_provision_chunks (f, fs, n_segs, svm_fifo_max_dequeue_prod (f) + desired_extra_len)` ?",
+      "revId": "79f1c84647f969c9c42e4162f8bfd0cf6f17e88c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
