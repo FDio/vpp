@@ -16,6 +16,24 @@
       "message": "Could we add the matching IPv6 case here? The patch changes both output-feature checks, but this regression only resolves/removes an IPv4 SNAT address. Exercising the same stale-address transition through cnat-output-ip6 would cover the other changed branch.",
       "revId": "73be7f7b50873923daeafdfcc4e525cdf4f86f27",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "236aa0d7_c46d6a34",
+        "filename": "test/test_cnat.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 1488,
+      "author": {
+        "id": 660
+      },
+      "writtenOn": "2026-09-17T09:22:54Z",
+      "side": 1,
+      "message": "Thank you for catching that! Done.",
+      "parentUuid": "0c95048c_d7fb72c0",
+      "revId": "73be7f7b50873923daeafdfcc4e525cdf4f86f27",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
