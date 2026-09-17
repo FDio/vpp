@@ -147,7 +147,7 @@ tcp_loss_exit_recovery (tcp_connection_t *tc, tcp_ack_ctx_t *ac)
 
   if (spurious_flags)
     tcp_cc_congestion_undo (tc);
-  else if (tcp_in_fastrecovery (tc))
+  else
     tcp_cc_recovered (tc);
 
   tcp_connection_tx_pacer_reset (tc, tc->cwnd, 0 /* start bucket */);
