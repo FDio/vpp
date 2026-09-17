@@ -580,6 +580,7 @@ class TestCNatTranslation(CnatCommonTestCase):
         self.logger.info(self.vapi.cli("sh ipip tunnel"))
         self.logger.info(self.vapi.cli("sh int addr"))
         self.logger.info(self.vapi.cli("sh ip fib"))
+        return rv, rrv, ip4_via_tunnel, rip4_via_tunnel
 
     def cnat_encap_vxlan(self):
         """CNat WIP translation"""
@@ -989,6 +990,49 @@ class TestCNatTranslation(CnatCommonTestCase):
         self.make_encap()
         self.cnat_encap()
         self.cnat_enable_features(0)
+
+    def test_cnat_snat_excluded_with_encap(self):
+        """CNAT output must not SNAT an already encapsulated packet"""
+        self.translations = []
+        self.mbtranslations = []
+        self.cnat_enable_features()
+        tun, rtun, route, rroute = self.make_encap()
+
+        policies = VppEnum.vl_api_cnat_snat_policies_t
+        policy_tables = VppEnum.vl_api_cnat_snat_policy_table_t
+        exclude_prefix = ip_network(f"{self.pg2.remote_hosts[0].ip4}/24", strict=False)
+
+        self.vapi.cnat_set_snat_addresses(
+            snat_ip4="4.4.4.4",
+            sw_if_index=INVALID_INDEX,
+        )
+        self.vapi.cnat_set_snat_policy(policy=policies.CNAT_POLICY_IF_PFX)
+        self.vapi.cnat_snat_policy_add_del_if(
+            sw_if_index=self.pg0.sw_if_index,
+            is_add=1,
+            table=policy_tables.CNAT_POLICY_INCLUDE_V4,
+        )
+        self.vapi.cnat_snat_policy_add_del_exclude_pfx(prefix=exclude_prefix, is_add=1)
+
+        try:
+            ctx = CnatTestContext(self, UDP, is_v6=False)
+            ctx.cnat_send(self.pg0, "3.3.3.3", 1234, self.pg2, "2.2.2.2", 4455)
+            ctx.cnat_expect(self.pg1, 0, 1234, self.pg2, 0, 4455)
+        finally:
+            self.vapi.cnat_snat_policy_add_del_exclude_pfx(
+                prefix=exclude_prefix, is_add=0
+            )
+            self.vapi.cnat_snat_policy_add_del_if(
+                sw_if_index=self.pg0.sw_if_index,
+                is_add=0,
+                table=policy_tables.CNAT_POLICY_INCLUDE_V4,
+            )
+            self.vapi.cnat_set_snat_addresses(sw_if_index=INVALID_INDEX)
+            self.cnat_enable_features(0)
+            route.remove_vpp_config()
+            rroute.remove_vpp_config()
+            self.vapi.ipip_del_tunnel(sw_if_index=tun.sw_if_index)
+            self.vapi.ipip_del_tunnel(sw_if_index=rtun.sw_if_index)
 
     def test_cnat_with_encap_vxlan(self):
         # """ CNat Translation ENCAP """
