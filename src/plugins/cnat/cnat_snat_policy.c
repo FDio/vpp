@@ -102,7 +102,9 @@ cnat_snat_policy_entry_get_default (void)
 static int
 cnat_snat_policy_entry_is_init (const cnat_snat_policy_entry_t *cpe)
 {
-  return vec_len (cpe->interface_maps[0]) != 0;
+  /* Clearing the last bit trims the bitmap to zero length,
+   * but its allocation remains until policy cleanup. */
+  return cpe->interface_maps[CNAT_SNAT_IF_MAP_INCLUDE_V4] != NULL;
 }
 
 static void
