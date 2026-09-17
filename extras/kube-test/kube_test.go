@@ -103,7 +103,7 @@ func nginxRps(s *KubeSuite, isVcl bool) {
 	if isVcl {
 		out, err := s.Pods.Nginx.Exec(ctx, []string{"/bin/bash", "-c", VclConfNginx})
 		AssertNil(err, out)
-		_, err = s.Pods.Ab.Exec(ctx, []string{"/bin/bash", "-c", VclConfIperf})
+		_, err = s.Pods.Ab.Exec(ctx, []string{"/bin/bash", "-c", VclConfNginx})
 		AssertNil(err)
 		vclLdpPath = fmt.Sprintf("%s %s ", ldp, vcl)
 	}
