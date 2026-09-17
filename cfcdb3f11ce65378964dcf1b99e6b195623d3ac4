@@ -1,0 +1,96 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6dcae7e1_3049383a",
+        "filename": "src/scripts/check_vnet_exports.sh",
+        "patchSetId": 14
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-09-17T03:16:50Z",
+      "side": 1,
+      "message": "Please use /bin/bash",
+      "range": {
+        "startLine": 1,
+        "startChar": 2,
+        "endLine": 1,
+        "endChar": 9
+      },
+      "revId": "cfcdb3f11ce65378964dcf1b99e6b195623d3ac4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "10d68715_73647e82",
+        "filename": "src/scripts/check_vnet_exports.sh",
+        "patchSetId": 14
+      },
+      "lineNbr": 6,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-09-17T03:16:50Z",
+      "side": 1,
+      "message": "set -euo pipefail",
+      "range": {
+        "startLine": 6,
+        "startChar": 1,
+        "endLine": 6,
+        "endChar": 7
+      },
+      "revId": "cfcdb3f11ce65378964dcf1b99e6b195623d3ac4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c6ba503c_1317dd0d",
+        "filename": "src/scripts/check_vnet_exports.sh",
+        "patchSetId": 14
+      },
+      "lineNbr": 18,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-09-17T03:16:50Z",
+      "side": 1,
+      "message": "SIGHUP SIGINT SIGTERM",
+      "range": {
+        "startLine": 18,
+        "startChar": 31,
+        "endLine": 18,
+        "endChar": 43
+      },
+      "revId": "cfcdb3f11ce65378964dcf1b99e6b195623d3ac4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6b535d7e_74d1a7a6",
+        "filename": "src/scripts/check_vnet_exports.sh",
+        "patchSetId": 14
+      },
+      "lineNbr": 23,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-09-17T03:16:50Z",
+      "side": 1,
+      "message": "Please use mawk because original awk is not available in all of the distros being used by VPP downstream consumers and may actually point to gawk or other implementations based on the distro. This may lead to inconsistent behavior of the script on different distros.",
+      "range": {
+        "startLine": 23,
+        "startChar": 4,
+        "endLine": 23,
+        "endChar": 7
+      },
+      "revId": "cfcdb3f11ce65378964dcf1b99e6b195623d3ac4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
