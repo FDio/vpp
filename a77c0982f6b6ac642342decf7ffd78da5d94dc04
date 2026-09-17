@@ -1,6 +1,23 @@
 {
   "comments": [
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "3b89885c_48d62274",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-09-17T15:07:13Z",
+      "side": 1,
+      "message": "I did mark coverity as false positive",
+      "revId": "a77c0982f6b6ac642342decf7ffd78da5d94dc04",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "e9bc6740_0b5f4eb4",
