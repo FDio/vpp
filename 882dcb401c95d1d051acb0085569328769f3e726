@@ -20,6 +20,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "2245a74e_7a7c4fee",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-09-17T22:07:20Z",
+      "side": 1,
+      "message": "Addressed in PS4/PS5: the command is now named vpp-check-libvnet-exports.sh, and all CMake and documentation references were updated.",
+      "parentUuid": "13f64943_2e6ad6b6",
+      "revId": "882dcb401c95d1d051acb0085569328769f3e726",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "d9c88d9e_242eaa86",
         "filename": "src/scripts/vpp-check-libvnet-exports",
         "patchSetId": 3
@@ -37,6 +55,24 @@
         "endLine": 1,
         "endChar": 9
       },
+      "revId": "882dcb401c95d1d051acb0085569328769f3e726",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "22014d13_ecd1287f",
+        "filename": "src/scripts/vpp-check-libvnet-exports",
+        "patchSetId": 3
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-09-17T22:07:20Z",
+      "side": 1,
+      "message": "Addressed in PS4: the script now uses #!/bin/bash.",
+      "parentUuid": "d9c88d9e_242eaa86",
       "revId": "882dcb401c95d1d051acb0085569328769f3e726",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -66,6 +102,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "ce9e6345_cd7166de",
+        "filename": "src/scripts/vpp-check-libvnet-exports",
+        "patchSetId": 3
+      },
+      "lineNbr": 6,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-09-17T22:07:20Z",
+      "side": 1,
+      "message": "Addressed in PS4: the script now uses set -euo pipefail.",
+      "parentUuid": "2a6bdb6f_bf623829",
+      "revId": "882dcb401c95d1d051acb0085569328769f3e726",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "9676802f_46a9695c",
         "filename": "src/scripts/vpp-check-libvnet-exports",
         "patchSetId": 3
@@ -89,6 +143,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "3a23f21e_e53cb9c1",
+        "filename": "src/scripts/vpp-check-libvnet-exports",
+        "patchSetId": 3
+      },
+      "lineNbr": 81,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-09-17T22:07:20Z",
+      "side": 1,
+      "message": "PS5 deliberately uses awk by default and allows AWK\u003dmawk. This preserves availability across downstream distros while allowing environments that require mawk to select it. ARM64 functional checks passed with both implementations. Please let me know whether this is acceptable.",
+      "parentUuid": "9676802f_46a9695c",
+      "revId": "882dcb401c95d1d051acb0085569328769f3e726",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "e10ee6fe_64e1c60e",
         "filename": "src/scripts/vpp-check-libvnet-exports",
         "patchSetId": 3
@@ -106,6 +178,24 @@
         "endLine": 94,
         "endChar": 41
       },
+      "revId": "882dcb401c95d1d051acb0085569328769f3e726",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c9757c64_1e43dd0a",
+        "filename": "src/scripts/vpp-check-libvnet-exports",
+        "patchSetId": 3
+      },
+      "lineNbr": 94,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-09-17T22:07:20Z",
+      "side": 1,
+      "message": "Addressed in PS4: the cleanup trap now names SIGHUP, SIGINT, and SIGTERM.",
+      "parentUuid": "e10ee6fe_64e1c60e",
       "revId": "882dcb401c95d1d051acb0085569328769f3e726",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
