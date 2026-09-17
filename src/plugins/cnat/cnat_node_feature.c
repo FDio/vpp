@@ -357,6 +357,10 @@ cnat_output_feature_new_flow_inline (vlib_main_t *vm, vlib_buffer_t *b, ip_addre
   /* new session */
   rw = &ts->cts_rewrites[CNAT_LOCATION_OUTPUT];
   cnat_make_buffer_5tuple (b, af, &rw->tuple, iph_offset, 0 /* swap */);
+
+  if (PREDICT_FALSE (rw->tuple.iproto == 0))
+    return NULL;
+
   do_snat = cpe->snat_policy (&rw->tuple, cpe, b, af);
   if (do_snat != 1)
     return (NULL);
