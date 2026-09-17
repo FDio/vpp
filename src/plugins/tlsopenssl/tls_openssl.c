@@ -62,8 +62,7 @@ openssl_ctx_free (tls_ctx_t * ctx)
   /* Cleanup ssl ctx unless migrated */
   if (!(ctx->flags & TLS_CONN_F_MIGRATED))
     {
-      if (SSL_is_init_finished (oc->ssl) &&
-	  !(ctx->flags & TLS_CONN_F_PASSIVE_CLOSE))
+      if (oc->ssl && SSL_is_init_finished (oc->ssl) && !(ctx->flags & TLS_CONN_F_PASSIVE_CLOSE))
 	{
 	  int rv = SSL_shutdown (oc->ssl);
 	  if (rv < 0)
@@ -75,6 +74,7 @@ openssl_ctx_free (tls_ctx_t * ctx)
 
       SSL_free (oc->ssl);
       vec_free (ctx->srv_hostname);
+      vec_free (ctx->alpn_list);
     }
 
   pool_put_index (openssl_main.ctx_pool[ctx->c_thread_index],
@@ -474,6 +474,7 @@ openssl_ctx_write_tls (tls_ctx_t *ctx, session_t *app_session,
 check_tls_fifo:
 
   if (PREDICT_FALSE ((ctx->flags & TLS_CONN_F_APP_CLOSED) &&
+		     !svm_fifo_max_dequeue_cons (app_session->tx_fifo) &&
 		     BIO_ctrl_pending (oc->rbio) <= 0))
     openssl_confirm_app_close (ctx);
 
@@ -1477,7 +1478,6 @@ openssl_start_listen (tls_ctx_t * lctx)
 err:
   if (ssl_ctx)
     SSL_CTX_free (ssl_ctx);
-  lctx->flags |= TLS_CONN_F_MIGRATED;
   return -1;
 }
 
@@ -1492,7 +1492,6 @@ openssl_stop_listen (tls_ctx_t * lctx)
 
   SSL_CTX_free (olc->ssl_ctx);
   openssl_listen_ctx_free (olc);
-  lctx->flags |= TLS_CONN_F_MIGRATED;
 
   return 0;
 }
@@ -1626,6 +1625,9 @@ openssl_ctx_init_server (tls_ctx_t * ctx)
   int rv, err;
 
   /* Start a new connection */
+
+  /* Listener configuration is shallow-copied into accepted contexts. */
+  ctx->alpn_list = vec_dup (ctx->alpn_list);
 
   olc = openssl_lctx_get (olc_index);
   oc->ssl = SSL_new (olc->ssl_ctx);
