@@ -370,6 +370,7 @@ typedef struct tcp_byte_tracker_
   u32 cur_rxt;			/**< Current retransmission sample */
   u32 cur_rxt_end;		/**< Cached range end; mutations reset to high_rxt */
   u32 sack_loss_high;		/**< Upper edge of SACK-derived lost prefix */
+  f64 min_rtt;			/**< Minimum RTT observed by rate sampling */
   tcp_bt_tx_order_t tx_order;	/**< Optional transmission-order index */
 } tcp_byte_tracker_t;
 
