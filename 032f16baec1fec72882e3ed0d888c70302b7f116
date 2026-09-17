@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "55dd3a3d_163fccf7",
+        "filename": "src/plugins/lb/lbhash.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 108,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-09-17T07:55:16Z",
+      "side": 1,
+      "message": "CLIB_HAVE_VEC128 is also set for AltiVec and i686, but those backends do not provide u8x16_msb_mask(). This selects the new path and breaks compilation outside SSE4.2/NEON. Could we guard it with CLIB_HAVE_VEC128_MSB_MASK instead? That capability is defined by both intended backends.",
+      "revId": "032f16baec1fec72882e3ed0d888c70302b7f116",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
