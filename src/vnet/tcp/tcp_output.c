@@ -650,6 +650,7 @@ tcp_buffer_make_reset (vlib_main_t *vm, vlib_buffer_t *b, u8 is_ip4)
       ih4 = vlib_buffer_push_ip4 (vm, b, &dst_ip4, &src_ip4,
 				  IP_PROTOCOL_TCP, 1);
       th->checksum = ip4_tcp_udp_compute_checksum (vm, b, ih4);
+      abort ();
     }
   else
     {
