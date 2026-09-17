@@ -2762,16 +2762,19 @@ tcp_input_set_error_next (tcp_main_t * tm, u16 * next, u32 * error, u8 is_ip4)
   if (*error == TCP_ERROR_FILTERED || *error == TCP_ERROR_WRONG_THREAD)
     {
       *next = TCP_INPUT_NEXT_DROP;
+      abort ();
     }
   else if ((is_ip4 && tm->punt_unknown4) || (!is_ip4 && tm->punt_unknown6))
     {
       *next = TCP_INPUT_NEXT_PUNT;
       *error = TCP_ERROR_PUNT;
+      abort ();
     }
   else
     {
       *next = TCP_INPUT_NEXT_RESET;
       *error = TCP_ERROR_NO_LISTENER;
+      abort ();
     }
 }
 
