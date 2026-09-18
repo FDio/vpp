@@ -36,6 +36,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "ec18c86c_27dff0bc",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-09-18T21:16:29Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "2245a74e_7a7c4fee",
+      "revId": "882dcb401c95d1d051acb0085569328769f3e726",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "d9c88d9e_242eaa86",
@@ -73,6 +91,24 @@
       "side": 1,
       "message": "Addressed in PS4: the script now uses #!/bin/bash.",
       "parentUuid": "d9c88d9e_242eaa86",
+      "revId": "882dcb401c95d1d051acb0085569328769f3e726",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a1cf7bca_03bb8364",
+        "filename": "src/scripts/vpp-check-libvnet-exports",
+        "patchSetId": 3
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-09-18T21:16:29Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "22014d13_ecd1287f",
       "revId": "882dcb401c95d1d051acb0085569328769f3e726",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -118,6 +154,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "e2cda4cd_34a9a0b3",
+        "filename": "src/scripts/vpp-check-libvnet-exports",
+        "patchSetId": 3
+      },
+      "lineNbr": 6,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-09-18T21:16:29Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "ce9e6345_cd7166de",
+      "revId": "882dcb401c95d1d051acb0085569328769f3e726",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "9676802f_46a9695c",
@@ -159,6 +213,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "079df88d_6c9fcde5",
+        "filename": "src/scripts/vpp-check-libvnet-exports",
+        "patchSetId": 3
+      },
+      "lineNbr": 81,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-09-18T21:16:29Z",
+      "side": 1,
+      "message": "See comment on PS5",
+      "parentUuid": "3a23f21e_e53cb9c1",
+      "revId": "882dcb401c95d1d051acb0085569328769f3e726",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "e10ee6fe_64e1c60e",
@@ -196,6 +268,24 @@
       "side": 1,
       "message": "Addressed in PS4: the cleanup trap now names SIGHUP, SIGINT, and SIGTERM.",
       "parentUuid": "e10ee6fe_64e1c60e",
+      "revId": "882dcb401c95d1d051acb0085569328769f3e726",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "82964843_def0825e",
+        "filename": "src/scripts/vpp-check-libvnet-exports",
+        "patchSetId": 3
+      },
+      "lineNbr": 94,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-09-18T21:16:29Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "c9757c64_1e43dd0a",
       "revId": "882dcb401c95d1d051acb0085569328769f3e726",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }

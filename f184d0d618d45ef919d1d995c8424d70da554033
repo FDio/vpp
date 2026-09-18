@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "01646bc4_2f88a861",
+        "filename": "src/scripts/vpp-check-libvnet-exports.sh",
+        "patchSetId": 5
+      },
+      "lineNbr": 30,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-09-18T21:16:29Z",
+      "side": 1,
+      "message": "mawk\n\nProviding an override is fine. However, as originally noted, awk is not an acceptable default.",
+      "revId": "f184d0d618d45ef919d1d995c8424d70da554033",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
