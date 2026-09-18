@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b89a19cb_a82c4ce6",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 9
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3200
+      },
+      "writtenOn": "2026-09-18T21:06:07Z",
+      "side": 1,
+      "message": "Thanks for your comments. I think I addressed all but the last one - hope you could clarify a bit.",
+      "revId": "bcee6f242299bc499a505cf26ff302da4adc28e9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}

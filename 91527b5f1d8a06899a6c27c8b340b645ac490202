@@ -19,6 +19,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "db8878cc_30b8b2c2",
+        "filename": "src/vnet/buffer.h",
+        "patchSetId": 7
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3200
+      },
+      "writtenOn": "2026-09-18T21:06:07Z",
+      "side": 1,
+      "message": "Oops, I meant to restore the flag definitions to their original condition. Should be fixed now.",
+      "parentUuid": "ba1d6f6c_44e1ce10",
+      "revId": "91527b5f1d8a06899a6c27c8b340b645ac490202",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "0b88adcf_75e4c76d",
@@ -33,6 +51,24 @@
       "side": 1,
       "message": "Could we avoid restoring these values into vnet_buffer(b)-\u003eipsec? esp_post_data(b)-\u003edecrypt_data already persists in the buffer\u0027s unused opaque area for the async handoff and contains sa_index, seq, and seq_hi. IPTFS can consume that record directly. The sync path may need to save its stack-local pd into the same record before handoff, but that avoids both repurposing IPsec opaque metadata and the extra async copy.",
       "parentUuid": "bae228d4_ef8ff11a",
+      "revId": "91527b5f1d8a06899a6c27c8b340b645ac490202",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "c0625d62_28477a40",
+        "filename": "src/vnet/ipsec/esp_decrypt.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3200
+      },
+      "writtenOn": "2026-09-18T21:06:07Z",
+      "side": 1,
+      "message": "Done. The copies are now performed in the synchronous crypto case, and there are now additional copies added to the iptfs code to assemble the 64-bit sequence number, but it\u0027s probably not a large performance hit.",
+      "parentUuid": "0b88adcf_75e4c76d",
       "revId": "91527b5f1d8a06899a6c27c8b340b645ac490202",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -56,6 +92,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "0aedb9af_89352973",
+        "filename": "src/vnet/ipsec/ipsec.h",
+        "patchSetId": 7
+      },
+      "lineNbr": 31,
+      "author": {
+        "id": 3200
+      },
+      "writtenOn": "2026-09-18T21:06:07Z",
+      "side": 1,
+      "message": "I\u0027m not sure I understand what you are asking for. I think you mean, for example: replace\n\n    (*im-\u003etfs_add_del_policy_cb) (policy-\u003esa_index, true);\n\nwith\n\n    iptfs_add_del_policy(policy-\u003esa_index, true);\n\nIf that\u0027s what you mean, then, yes, it would be easy to do. If not, perhaps you could give an example?",
+      "parentUuid": "03860466_d380044d",
+      "revId": "91527b5f1d8a06899a6c27c8b340b645ac490202",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "3b4d170f_0feed702",
         "filename": "src/vnet/ipsec/ipsec_api.c",
         "patchSetId": 7
@@ -68,6 +122,24 @@
       "side": 1,
       "message": "Another serialization issue remains in this new dump API: ipsec_sad_tfs_type_decode() converts its input from network byte order, but ipsec_sad_tfs_type_encode() returns host-order enum values. On little-endian systems ipsec_sa_v6_dump therefore exposes an invalid TFS type to clients. Could the encoder return clib_host_to_net_u32() of the selected value?",
       "parentUuid": "9e40df55_546cbb16",
+      "revId": "91527b5f1d8a06899a6c27c8b340b645ac490202",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "74da790d_3af4c6b7",
+        "filename": "src/vnet/ipsec/ipsec_api.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3200
+      },
+      "writtenOn": "2026-09-18T21:06:07Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3b4d170f_0feed702",
       "revId": "91527b5f1d8a06899a6c27c8b340b645ac490202",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -85,6 +157,24 @@
       "writtenOn": "2026-09-08T09:36:22Z",
       "side": 1,
       "message": "Unlike the v5 dump, the new v6 dump populates replay_window but not entry.anti_replay_window_size. A non-default anti-replay window cannot be reconstructed from v6 dump output. Could this mirror the v5 assignment from irt-\u003eanti_replay_window_size?",
+      "revId": "91527b5f1d8a06899a6c27c8b340b645ac490202",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "7fc1e562_1ad4dfde",
+        "filename": "src/vnet/ipsec/ipsec_api.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 1510,
+      "author": {
+        "id": 3200
+      },
+      "writtenOn": "2026-09-18T21:06:07Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "89a06d14_2dc3ba20",
       "revId": "91527b5f1d8a06899a6c27c8b340b645ac490202",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -107,6 +197,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "fef5596d_e19ddc64",
+        "filename": "src/vnet/ipsec/ipsec_sa.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3200
+      },
+      "writtenOn": "2026-09-18T21:06:07Z",
+      "side": 1,
+      "message": "Done. I reorganized the iptfs_add_del_sa() code a bit to simplify the setup calls and error handling.",
+      "parentUuid": "569d1895_221420a0",
+      "revId": "91527b5f1d8a06899a6c27c8b340b645ac490202",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "31d9b5b1_78d21af1",
@@ -121,6 +229,24 @@
       "side": 1,
       "message": "The callback is now reached on the traditional path too, but this delete passes the request policy rather than the matched stored policy vp. API and CLI delete requests initialize sa_index to zero, so the IPTFS callback can detach state for SA 0 rather than the SA attached to this policy. Could this pass vp instead?",
       "parentUuid": "2f3f3013_576b458b",
+      "revId": "91527b5f1d8a06899a6c27c8b340b645ac490202",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "29dabea7_edbc2d64",
+        "filename": "src/vnet/ipsec/ipsec_spd_policy.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3200
+      },
+      "writtenOn": "2026-09-18T21:06:07Z",
+      "side": 1,
+      "message": "I think I caught this issue before reading your comment, but commit squashing has lost my micro-history. Please let me know if I missed anything.",
+      "parentUuid": "31d9b5b1_78d21af1",
       "revId": "91527b5f1d8a06899a6c27c8b340b645ac490202",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
