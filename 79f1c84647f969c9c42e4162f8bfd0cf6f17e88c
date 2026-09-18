@@ -34,6 +34,24 @@
       "parentUuid": "3ef69676_b3bfe6bd",
       "revId": "79f1c84647f969c9c42e4162f8bfd0cf6f17e88c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1ce87d65_23a45228",
+        "filename": "src/svm/svm_fifo.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 1231,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-09-18T07:18:24Z",
+      "side": 1,
+      "message": "Fair, but how do we expect apps to consume this? One batch of say N segments provisioned and then potentially another batch, with offset, before submitting? Multiple incremental batches with offset? \n\nBasically, does an app want to pay the cost of running through this function multiple times instead of just requesting once one larger batch (segments are relatively large), that it caches for a while, and then when it fills it just commits and requests another one?\n\nWe can definitely add this, just wondering if extra freedom encourages suboptimal use.",
+      "parentUuid": "bad3feae_3ca48077",
+      "revId": "79f1c84647f969c9c42e4162f8bfd0cf6f17e88c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
