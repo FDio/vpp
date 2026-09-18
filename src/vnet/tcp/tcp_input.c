@@ -1859,6 +1859,7 @@ tcp46_syn_sent_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  new_tc->tx_fifo_size = transport_tx_fifo_size (&new_tc->connection);
 	  /* Update rtt with the syn-ack sample */
 	  tcp_estimate_initial_rtt (new_tc);
+	  tcp_connection_tx_pacer_update (new_tc);
 	  TCP_EVT (TCP_EVT_SYNACK_RCVD, new_tc);
 	  error = TCP_ERROR_SYN_ACKS_RCVD;
 	}
