@@ -199,6 +199,7 @@ tcp_loss_tlp_recovery (tcp_connection_t *tc, tcp_ack_ctx_t *ac)
   tc->cwnd_acc_bytes = 0;
   tcp_cc_congestion (tc);
   tcp_cc_recovered (tc);
+  tcp_cc_rcv_cong_ack (tc, TCP_CC_TLP_RECOVERY, ac);
   tc->fr_occurences += 1;
   TCP_EVT (TCP_EVT_CC_EVT, tc, 4);
   tcp_connection_tx_pacer_reset (tc, tc->cwnd, 0 /* start bucket */);
