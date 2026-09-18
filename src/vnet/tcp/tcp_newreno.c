@@ -84,11 +84,12 @@ newreno_rcv_cong_ack (tcp_connection_t *tc, tcp_cc_ack_t ack_type, tcp_ack_ctx_t
     }
 }
 
-static void
-newreno_conn_init (tcp_connection_t * tc)
+static int
+newreno_conn_init (tcp_connection_t *tc)
 {
   tc->ssthresh = newreno_cfg.ssthresh;
   tc->cwnd = tcp_initial_cwnd (tc);
+  return 0;
 }
 
 static uword

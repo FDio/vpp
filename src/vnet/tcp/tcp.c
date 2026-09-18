@@ -61,14 +61,23 @@ tcp_add_del_adjacency (tcp_connection_t * tc, u8 is_add)
 			     sizeof (args));
 }
 
-static void
-tcp_cc_init (tcp_connection_t * tc)
+static int
+tcp_cc_init (tcp_connection_t *tc)
 {
+  int rv;
+
   /* As per RFC 6582 initialize "recover" to iss */
   if (tcp_opts_sack_permitted (&tc->rcv_opts))
     tc->snd_congestion = tc->iss;
 
-  tc->cc_algo->init (tc);
+  rv = tc->cc_algo->init (tc);
+  if (PREDICT_FALSE (rv))
+    {
+      /* Fall back to CUBIC, whose initialization cannot fail. */
+      tc->cc_algo = tcp_cc_algo_get (TCP_CC_CUBIC);
+      tc->cc_algo->init (tc);
+    }
+  return rv;
 }
 
 static void
@@ -748,13 +757,17 @@ tcp_init_snd_vars (tcp_connection_t * tc)
     tc->cfg_flags |= TCP_CFG_F_NO_CSUM_OFFLOAD;
 }
 
-void
-tcp_enable_pacing (tcp_connection_t * tc)
+static void
+tcp_enable_pacing (tcp_connection_t *tc)
 {
-  u32 byte_rate;
-  byte_rate = tc->cwnd / (tc->srtt * TCP_TICK);
-  transport_connection_tx_pacer_init (&tc->connection, byte_rate, tc->cwnd, tc->snd_mss);
-  tc->mrtt_us = (u32) ~ 0;
+  u64 byte_rate;
+  u32 window;
+
+  if (!tc->mrtt_us)
+    tc->mrtt_us = (u32) ~0;
+  window = tc->cwnd ? tc->cwnd : tcp_initial_cwnd (tc);
+  byte_rate = tcp_cc_get_pacing_rate (tc);
+  transport_connection_tx_pacer_init (&tc->connection, byte_rate, window, tc->snd_mss);
 }
 
 /** Initialize tcp connection variables
@@ -775,17 +788,6 @@ tcp_connection_init_vars (tcp_connection_t * tc)
   if (tc->state == TCP_STATE_SYN_RCVD)
     tcp_init_snd_vars (tc);
 
-  tcp_cc_init (tc);
-
-  if (!tc->c_is_ip4 && ip6_address_is_link_local_unicast (&tc->c_rmt_ip6))
-    tcp_add_del_adjacency (tc, 1);
-
-  /*  tcp_connection_fib_attach (tc); */
-
-  if (transport_connection_is_tx_paced (&tc->connection)
-      || tcp_cfg.enable_tx_pacing)
-    tcp_enable_pacing (tc);
-
   use_rack = (tcp_cfg.enable_rack || (tc->cfg_flags & TCP_CFG_F_RACK)) &&
 	     tcp_opts_sack_permitted (&tc->rcv_opts);
   if (use_rack)
@@ -799,6 +801,18 @@ tcp_connection_init_vars (tcp_connection_t * tc)
       if (tcp_cfg.enable_byte_tracker || (tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER))
 	tcp_bt_init (tc);
     }
+
+  if (tcp_cfg.enable_tx_pacing)
+    tc->connection.flags |= TRANSPORT_CONNECTION_F_IS_TX_PACED;
+
+  tcp_cc_init (tc);
+  if (transport_connection_is_tx_paced (&tc->connection))
+    tcp_enable_pacing (tc);
+
+  if (!tc->c_is_ip4 && ip6_address_is_link_local_unicast (&tc->c_rmt_ip6))
+    tcp_add_del_adjacency (tc, 1);
+
+  /*  tcp_connection_fib_attach (tc); */
 
   if (!tcp_cfg.allow_tso)
     tc->cfg_flags |= TCP_CFG_F_NO_TSO;
@@ -989,6 +1003,8 @@ tcp_half_open_session_get_transport (u32 conn_index)
 static int
 tcp_set_attribute (tcp_connection_t *tc, transport_endpt_attr_t *attr)
 {
+  tcp_cc_algorithm_t *cc_algo;
+  u8 was_tx_paced;
   int rv = 0;
 
   switch (attr->type)
@@ -1022,11 +1038,21 @@ tcp_set_attribute (tcp_connection_t *tc, transport_endpt_attr_t *attr)
 	}
       break;
     case TRANSPORT_ENDPT_ATTR_CC_ALGO:
-      if (tc->cc_algo == tcp_cc_algo_get (attr->cc_algo))
+      cc_algo = tcp_cc_algo_get (attr->cc_algo);
+      if (tc->cc_algo == cc_algo)
 	break;
+      if (tc->snd_una != tc->snd_nxt)
+	{
+	  rv = -1;
+	  break;
+	}
+      was_tx_paced = transport_connection_is_tx_paced (&tc->connection);
       tcp_cc_cleanup (tc);
-      tc->cc_algo = tcp_cc_algo_get (attr->cc_algo);
-      tcp_cc_init (tc);
+      tc->cc_algo = cc_algo;
+      rv = tcp_cc_init (tc);
+      if (!was_tx_paced && transport_connection_is_tx_paced (&tc->connection))
+	tcp_enable_pacing (tc);
+      tcp_connection_tx_pacer_update (tc);
       break;
     default:
       rv = -1;
