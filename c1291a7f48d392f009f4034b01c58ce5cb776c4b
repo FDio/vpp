@@ -1,0 +1,44 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e2f88b1f_2d1fe929",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 15
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-09-18T21:21:57Z",
+      "side": 1,
+      "message": "Will remove -2 and merge once all open comments are resolved after VPP Release 26.10 RC1 milestone is complete (9/23/2026)",
+      "revId": "c1291a7f48d392f009f4034b01c58ce5cb776c4b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c443e3ef_5460acbe",
+        "filename": "src/scripts/check_vnet_exports.sh",
+        "patchSetId": 15
+      },
+      "lineNbr": 15,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-09-18T21:21:57Z",
+      "side": 1,
+      "message": "mawk\n\nProviding an override is fine. However, as originally noted, awk is not an acceptable default.",
+      "range": {
+        "startLine": 15,
+        "startChar": 15,
+        "endLine": 15,
+        "endChar": 18
+      },
+      "revId": "c1291a7f48d392f009f4034b01c58ce5cb776c4b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}

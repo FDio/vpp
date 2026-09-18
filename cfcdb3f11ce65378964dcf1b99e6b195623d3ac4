@@ -24,6 +24,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "42b92ae7_916d8cdb",
+        "filename": "src/scripts/check_vnet_exports.sh",
+        "patchSetId": 14
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-09-18T21:21:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "6dcae7e1_3049383a",
+      "range": {
+        "startLine": 1,
+        "startChar": 2,
+        "endLine": 1,
+        "endChar": 9
+      },
+      "revId": "cfcdb3f11ce65378964dcf1b99e6b195623d3ac4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "10d68715_73647e82",
@@ -37,6 +61,30 @@
       "writtenOn": "2026-09-17T03:16:50Z",
       "side": 1,
       "message": "set -euo pipefail",
+      "range": {
+        "startLine": 6,
+        "startChar": 1,
+        "endLine": 6,
+        "endChar": 7
+      },
+      "revId": "cfcdb3f11ce65378964dcf1b99e6b195623d3ac4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "f8e2161f_d61e9b6a",
+        "filename": "src/scripts/check_vnet_exports.sh",
+        "patchSetId": 14
+      },
+      "lineNbr": 6,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-09-18T21:21:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "10d68715_73647e82",
       "range": {
         "startLine": 6,
         "startChar": 1,
@@ -70,6 +118,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "d1cb37eb_a0dbc5a4",
+        "filename": "src/scripts/check_vnet_exports.sh",
+        "patchSetId": 14
+      },
+      "lineNbr": 18,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-09-18T21:21:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "c6ba503c_1317dd0d",
+      "range": {
+        "startLine": 18,
+        "startChar": 31,
+        "endLine": 18,
+        "endChar": 43
+      },
+      "revId": "cfcdb3f11ce65378964dcf1b99e6b195623d3ac4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "6b535d7e_74d1a7a6",
@@ -83,6 +155,30 @@
       "writtenOn": "2026-09-17T03:16:50Z",
       "side": 1,
       "message": "Please use mawk because original awk is not available in all of the distros being used by VPP downstream consumers and may actually point to gawk or other implementations based on the distro. This may lead to inconsistent behavior of the script on different distros.",
+      "range": {
+        "startLine": 23,
+        "startChar": 4,
+        "endLine": 23,
+        "endChar": 7
+      },
+      "revId": "cfcdb3f11ce65378964dcf1b99e6b195623d3ac4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "bce9b5b8_06e3382e",
+        "filename": "src/scripts/check_vnet_exports.sh",
+        "patchSetId": 14
+      },
+      "lineNbr": 23,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-09-18T21:21:57Z",
+      "side": 1,
+      "message": "See comment on PS15",
+      "parentUuid": "6b535d7e_74d1a7a6",
       "range": {
         "startLine": 23,
         "startChar": 4,
