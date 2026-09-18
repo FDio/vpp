@@ -378,7 +378,8 @@ typedef enum _tcp_cc_algorithm_type
 {
   TCP_CC_NEWRENO,
   TCP_CC_CUBIC,
-  TCP_CC_LAST = TCP_CC_CUBIC
+  TCP_CC_BBR,
+  TCP_CC_LAST = TCP_CC_BBR
 } tcp_cc_algorithm_type_e;
 
 typedef struct _tcp_cc_algorithm tcp_cc_algorithm_t;
@@ -387,7 +388,8 @@ typedef enum _tcp_cc_ack_t
 {
   TCP_CC_ACK,
   TCP_CC_DUPACK,
-  TCP_CC_PARTIALACK
+  TCP_CC_PARTIALACK,
+  TCP_CC_TLP_RECOVERY,
 } tcp_cc_ack_t;
 
 typedef enum tcp_cc_event_
@@ -544,6 +546,8 @@ struct _tcp_cc_algorithm
   void (*event) (tcp_connection_t *tc, tcp_cc_event_t evt);
   void (*lost_sample) (tcp_connection_t *tc, const tcp_cc_loss_sample_t *sample);
   u64 (*get_pacing_rate) (tcp_connection_t *tc);
+  /* Optional paced fast-recovery send-space override. */
+  u32 (*get_recovery_snd_space) (tcp_connection_t *tc);
 };
 
 #define tcp_fastrecovery_on(tc) (tc)->flags |= TCP_CONN_FAST_RECOVERY
