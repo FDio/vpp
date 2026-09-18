@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c96b38c4_ac462c3c",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 34
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-09-18T23:16:29Z",
+      "side": 1,
+      "message": "maybe bbr variant of TcpWithLossMWTest in hs-test?",
+      "revId": "765fcb6f70ecb183ae6ede981f5141d4eb4dc92f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
