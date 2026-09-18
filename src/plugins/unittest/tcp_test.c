@@ -4,6 +4,7 @@
  */
 
 #include <vnet/tcp/tcp.h>
+#include <vnet/tcp/tcp_bbr.h>
 #include <vnet/tcp/tcp_inlines.h>
 #include <vnet/tcp/tcp_rack.h>
 #include <vnet/tcp/tcp_timer.h>
@@ -2225,6 +2226,315 @@ tcp_test_set_time (clib_thread_index_t thread_index, f64 val)
 {
   session_main.wrk[thread_index].last_vlib_time = val;
   tcp_set_time_now (&tcp_main.wrk[thread_index], val);
+}
+
+static void
+tcp_test_bbr_init (tcp_connection_t *tc, clib_thread_index_t thread_index, u32 snd_mss, f64 srtt)
+{
+  clib_memset (tc, 0, sizeof (*tc));
+  tc->c_thread_index = thread_index;
+  tc->snd_mss = snd_mss;
+  tc->snd_wnd = 1 << 30;
+  tc->tx_fifo_size = 1 << 30;
+  tc->mrtt_us = srtt;
+  tc->srtt = srtt / TCP_TICK;
+  tc->rcv_opts.flags |= TCP_OPTS_FLAG_SACK_PERMITTED;
+  tc->cc_algo = tcp_cc_algo_get (TCP_CC_BBR);
+  tc->cc_algo->init (tc);
+}
+
+static void
+tcp_test_bbr_cleanup (tcp_connection_t *tc)
+{
+  tc->cc_algo->cleanup (tc);
+  tcp_bt_cleanup (tc);
+}
+
+static int
+tcp_test_bbr (vlib_main_t *vm, unformat_input_t *input)
+{
+  const clib_thread_index_t thread_index = 0;
+  tcp_connection_t _tc, *tc = &_tc;
+  tcp_connection_t *switch_tc;
+  tcp_connection_t *conns = 0;
+  transport_endpt_attr_t attr = {
+    .type = TRANSPORT_ENDPT_ATTR_CC_ALGO,
+    .cc_algo = TCP_CC_BBR,
+  };
+  tcp_ack_ctx_t ac = {};
+  bbr_data_t bd = {};
+  u64 expected_rate;
+  int switch_rv;
+  u32 i;
+  u8 *state, switch_rejected, no_sack_rejected, bbr_selected;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      vlib_cli_output (vm, "parse error: '%U'", format_unformat_error, input);
+      return -1;
+    }
+
+  /* The model quantum is independent of the transport pacer's burst size. */
+  tcp_test_set_time (thread_index, 1);
+  tcp_test_bbr_init (tc, thread_index, 536, 0.1);
+  TCP_TEST (tcp_rack_enabled (tc) && tc->bt && transport_connection_is_tx_paced (&tc->connection),
+	    "bbr enables rack and byte tracking and requests pacing");
+  expected_rate = (u64) (2.77 * tc->cwnd / 0.1);
+  TCP_TEST (tc->cc_algo->get_pacing_rate (tc) == expected_rate,
+	    "bbr initial pacing rate does not apply steady-state margin (%llu)", expected_rate);
+  TCP_TEST (bbr_send_quantum (tc, expected_rate) == 2 * tc->snd_mss,
+	    "bbr send quantum respects small MSS (%u)", bbr_send_quantum (tc, expected_rate));
+  tcp_test_bbr_cleanup (tc);
+
+  /* Refresh the cached quantum when the effective MSS changes without a
+   * pacing-rate change. */
+  tcp_test_bbr_init (tc, thread_index, 1000, 10.0);
+  tc->snd_mss = 2000;
+  ac.acked_and_sacked = 2000;
+  tc->cc_algo->rcv_ack (tc, &ac);
+  tc->cc_algo->rcv_ack (tc, &ac);
+  tc->cc_algo->rcv_ack (tc, &ac);
+  TCP_TEST (tc->cwnd == 6 * tc->snd_mss, "bbr refreshes quantum after mss change (%u)", tc->cwnd);
+  clib_memset (&ac, 0, sizeof (ac));
+  tcp_test_bbr_cleanup (tc);
+
+  /* A repaired tail loss must reach BBR even though it bypasses the normal
+   * ACK callback. */
+  tcp_test_bbr_init (tc, thread_index, 1000, 0.1);
+  tcp_loss_tlp_recovery (tc, &ac);
+  state = format (0, "%U%c", format_tcp_bbr, tc, 0);
+  TCP_TEST (strstr ((char *) state, "loss 0/1") != 0, "bbr records tlp recovery: %s", state);
+  vec_free (state);
+  tcp_test_bbr_cleanup (tc);
+
+  /* Keep the baseline allowance at low rates, grow it with the paced byte
+   * rate, and bound the high-rate allowance. */
+  TCP_TEST (bbr_offload_budget (BBR_SEND_QUANTUM_MAX, 1250000000.0) == 3 * BBR_SEND_QUANTUM_MAX,
+	    "bbr low-rate offload budget uses three quanta");
+  TCP_TEST (bbr_offload_budget (BBR_SEND_QUANTUM_MAX, 5000000000.0) == 10 * BBR_SEND_QUANTUM_MAX,
+	    "bbr offload budget grows with pacing rate");
+  TCP_TEST (bbr_offload_budget (BBR_SEND_QUANTUM_MAX, 12500000000.0) == 16 * BBR_SEND_QUANTUM_MAX,
+	    "bbr high-rate offload budget is bounded");
+
+  bd.bw_hi[0] = 1000.0;
+  bbr_advance_max_bw_filter (&bd);
+  TCP_TEST (bd.bw_hi[0] == 1000.0, "bbr retains max bw across an empty filter window");
+
+  /* VPP initializes CC before measuring the handshake RTT. Once that sample
+   * arrives, replace BBR's nominal 1 ms rate with the real smoothed RTT. */
+  clib_memset (tc, 0, sizeof (*tc));
+  tc->c_thread_index = thread_index;
+  tc->snd_mss = 1000;
+  tc->snd_wnd = tc->tx_fifo_size = 1 << 30;
+  tc->mrtt_us = (u32) ~0;
+  tc->srtt = 0.1 / TCP_TICK;
+  tc->rcv_opts.flags |= TCP_OPTS_FLAG_SACK_PERMITTED;
+  tc->cc_algo = tcp_cc_algo_get (TCP_CC_BBR);
+  tc->cc_algo->init (tc);
+  tc->mrtt_us = 0.1;
+  expected_rate = (u64) (2.77 * tc->cwnd / 0.1);
+  TCP_TEST (tc->cc_algo->get_pacing_rate (tc) == expected_rate,
+	    "bbr refreshes initial pacing rate from handshake SRTT (%llu)", expected_rate);
+  tcp_test_bbr_cleanup (tc);
+
+  /* BBR's propagation-delay filter consumes the raw delivery-rate sample,
+   * not TCP's independently smoothed RTT estimate. */
+  tcp_test_set_time (thread_index, 2);
+  tcp_test_bbr_init (tc, thread_index, 1000, 0.1);
+  ac.bytes_acked = ac.acked_and_sacked = ac.delivered = 1000;
+  ac.interval_time = ac.rtt_time = 0.01;
+  tc->delivered = 1000;
+  tc->cc_algo->rcv_ack (tc, &ac);
+  state = format (0, "%U%c", format_tcp_bbr, tc, 0);
+  TCP_TEST (strstr ((char *) state, "min_rtt 10.000ms") != 0, "bbr min_rtt uses raw RTT sample: %s",
+	    state);
+  vec_free (state);
+  tcp_test_bbr_cleanup (tc);
+
+  /* A faster sample within a round must reset STARTUP plateau detection.
+   * Only the no-growth counter itself is advanced at round boundaries. */
+  tcp_test_bbr_init (tc, thread_index, 1000, 0.1);
+  for (i = 0; i < 4; i++)
+    {
+      clib_memset (&ac, 0, sizeof (ac));
+      ac.acked_and_sacked = 1000;
+      ac.interval_time = ac.rtt_time = 0.001;
+      ac.prior_delivered = tc->delivered;
+      tc->delivered += 1000;
+      ac.delivered = tc->delivered - ac.prior_delivered;
+      tc->cc_algo->rcv_ack (tc, &ac);
+
+      clib_memset (&ac, 0, sizeof (ac));
+      ac.acked_and_sacked = 1500;
+      ac.interval_time = 0.001 / (1u << i);
+      ac.rtt_time = 0.001;
+      ac.prior_delivered = tc->delivered - 500;
+      tc->delivered += 1500;
+      ac.delivered = tc->delivered - ac.prior_delivered;
+      tc->cc_algo->rcv_ack (tc, &ac);
+    }
+  state = format (0, "%U%c", format_tcp_bbr, tc, 0);
+  TCP_TEST (strstr ((char *) state, "state 0/") != 0,
+	    "bbr startup observes intra-round bandwidth growth: %s", state);
+  vec_free (state);
+  tcp_test_bbr_cleanup (tc);
+
+  /* Restarting an idle ProbeRTT flow must not start its dwell timer. The next
+   * ACK starts the timer after the pipe is drained, so ProbeRTT remains active. */
+  tcp_test_set_time (thread_index, 3);
+  tcp_test_bbr_init (tc, thread_index, 1000, 0.1);
+  tc->snd_nxt = 20000;
+  clib_memset (&ac, 0, sizeof (ac));
+  ac.bytes_acked = ac.acked_and_sacked = ac.delivered = 1000;
+  ac.interval_time = ac.rtt_time = 0.01;
+  tc->delivered = 1000;
+  tcp_test_set_time (thread_index, 9);
+  tc->cc_algo->rcv_ack (tc, &ac);
+  tc->snd_una = tc->snd_nxt;
+  tc->app_limited = 1;
+  tcp_test_set_time (thread_index, 9.1);
+  tc->cc_algo->event (tc, TCP_CC_EVT_START_TX);
+  ac.prior_delivered = 1000;
+  tc->delivered = 2000;
+  tcp_test_set_time (thread_index, 9.4);
+  tc->cc_algo->rcv_ack (tc, &ac);
+  state = format (0, "%U%c", format_tcp_bbr, tc, 0);
+  TCP_TEST (strstr ((char *) state, "state 3/") != 0,
+	    "bbr idle restart does not start ProbeRTT dwell: %s", state);
+  vec_free (state);
+  tcp_test_bbr_cleanup (tc);
+
+  /* The first loss snapshots state before ACK-side model adaptation. Recovery
+   * entry after that ACK must not replace it with an already-reduced cwnd. */
+  tcp_test_set_time (thread_index, 10);
+  tcp_test_bbr_init (tc, thread_index, 1000, 0.1);
+  tc->cwnd = 20000;
+  tc->lost = 1000;
+  tc->cc_algo->rcv_cong_ack (tc, TCP_CC_DUPACK, &(tcp_ack_ctx_t) {});
+  tc->cwnd = 5000;
+  tcp_fastrecovery_on (tc);
+  tc->cc_algo->congestion (tc);
+  tc->cwnd = 1000;
+  tc->cc_algo->undo_recovery (tc);
+  TCP_TEST (tc->cwnd == 20000, "bbr recovery retains pre-loss cwnd (%u)", tc->cwnd);
+  tcp_test_bbr_cleanup (tc);
+
+  /* Count a loss-marking ACK as one event regardless of how many byte-tracker
+   * samples or bytes were marked lost while processing it. */
+  tcp_test_set_time (thread_index, 11);
+  tcp_test_bbr_init (tc, thread_index, 1000, 0.1);
+  for (i = 0; i < 64; i++)
+    {
+      tcp_cc_loss_sample_t loss_sample = {
+	.tx_in_flight = 64000,
+	.tx_lost = tc->lost,
+	.bytes = 1000,
+      };
+
+      tc->lost += loss_sample.bytes;
+      tc->cc_algo->lost_sample (tc, &loss_sample);
+    }
+  clib_memset (&ac, 0, sizeof (ac));
+  ac.last_lost = 64000;
+  tc->cc_algo->rcv_ack (tc, &ac);
+  state = format (0, "%U%c", format_tcp_bbr, tc, 0);
+  TCP_TEST (strstr ((char *) state, "loss 1/1") != 0, "bbr counts one loss event per ACK: %s",
+	    state);
+  vec_free (state);
+
+  clib_memset (&ac, 0, sizeof (ac));
+  tc->cc_algo->rcv_ack (tc, &ac);
+  state = format (0, "%U%c", format_tcp_bbr, tc, 0);
+  TCP_TEST (strstr ((char *) state, "loss 1/1") != 0,
+	    "bbr does not recount loss on a later ACK: %s", state);
+  vec_free (state);
+
+  tc->lost += 1000;
+  ac.last_lost = 1000;
+  tc->cc_algo->rcv_ack (tc, &ac);
+  state = format (0, "%U%c", format_tcp_bbr, tc, 0);
+  TCP_TEST (strstr ((char *) state, "loss 2/1") != 0,
+	    "bbr counts loss on a separate ACK as another event: %s", state);
+  vec_free (state);
+  tcp_test_bbr_cleanup (tc);
+
+  /* A cumulative ACK can enter recovery without an ACK callback to CC. The
+   * recovery callback must consume the pending event without counting each
+   * byte-tracker loss sample separately. */
+  tcp_test_bbr_init (tc, thread_index, 1000, 0.1);
+  for (i = 0; i < 8; i++)
+    {
+      tcp_cc_loss_sample_t loss_sample = {
+	.tx_in_flight = 8000,
+	.tx_lost = tc->lost,
+	.bytes = 1000,
+      };
+
+      tc->lost += loss_sample.bytes;
+      tc->cc_algo->lost_sample (tc, &loss_sample);
+    }
+  tcp_fastrecovery_on (tc);
+  tc->cc_algo->congestion (tc);
+  state = format (0, "%U%c", format_tcp_bbr, tc, 0);
+  TCP_TEST (strstr ((char *) state, "loss 1/1") != 0,
+	    "bbr counts one pending loss event on recovery entry: %s", state);
+  vec_free (state);
+  tcp_test_bbr_cleanup (tc);
+
+  /* Grow the worker-local state pool and verify that an early connection's
+   * index remains valid across pool relocation. */
+  vec_validate (conns, 127);
+  for (i = 0; i < vec_len (conns); i++)
+    tcp_test_bbr_init (&conns[i], thread_index, 1000, 0.1);
+  expected_rate = (u64) (2.77 * conns[0].cwnd / 0.1);
+  TCP_TEST (conns[0].cc_algo->get_pacing_rate (&conns[0]) == expected_rate,
+	    "bbr pooled state survives growth (%llu)", expected_rate);
+  for (i = 0; i < vec_len (conns); i++)
+    tcp_test_bbr_cleanup (&conns[i]);
+  vec_free (conns);
+
+  switch_tc = tcp_connection_alloc (thread_index);
+  switch_tc->snd_mss = 1000;
+  switch_tc->snd_wnd = switch_tc->tx_fifo_size = 1 << 30;
+  switch_tc->mrtt_us = 0.1;
+  switch_tc->srtt = 0.1 / TCP_TICK;
+  switch_tc->snd_una = 1;
+  switch_tc->snd_nxt = 2;
+  switch_tc->cc_algo = tcp_cc_algo_get (TCP_CC_CUBIC);
+  switch_tc->cc_algo->init (switch_tc);
+
+  switch_rv = transport_connection_attribute (TRANSPORT_PROTO_TCP, switch_tc->c_c_index,
+					      thread_index, 0, &attr);
+  switch_rejected =
+    switch_rv != 0 && switch_tc->cc_algo == tcp_cc_algo_get (TCP_CC_CUBIC) && !switch_tc->bt;
+
+  switch_tc->snd_nxt = switch_tc->snd_una;
+  switch_rv = transport_connection_attribute (TRANSPORT_PROTO_TCP, switch_tc->c_c_index,
+					      thread_index, 0, &attr);
+  no_sack_rejected = switch_rv != 0 && switch_tc->cc_algo == tcp_cc_algo_get (TCP_CC_CUBIC) &&
+		     !switch_tc->bt && !tcp_rack_enabled (switch_tc) &&
+		     !transport_connection_is_tx_paced (&switch_tc->connection);
+
+  switch_tc->rcv_opts.flags |= TCP_OPTS_FLAG_SACK_PERMITTED;
+  switch_rv = transport_connection_attribute (TRANSPORT_PROTO_TCP, switch_tc->c_c_index,
+					      thread_index, 0, &attr);
+  bbr_selected =
+    switch_rv == 0 && switch_tc->cc_algo == tcp_cc_algo_get (TCP_CC_BBR) &&
+    tcp_rack_enabled (switch_tc) && switch_tc->bt &&
+    transport_connection_is_tx_paced (&switch_tc->connection) &&
+    switch_tc->connection.pacer.bytes_per_sec == switch_tc->cc_algo->get_pacing_rate (switch_tc);
+
+  if (switch_tc->cc_algo->cleanup)
+    switch_tc->cc_algo->cleanup (switch_tc);
+  if (switch_tc->bt)
+    tcp_bt_cleanup (switch_tc);
+  tcp_connection_free (switch_tc);
+
+  TCP_TEST (switch_rejected, "cc switch rejects outstanding data");
+  TCP_TEST (no_sack_rejected, "bbr rejects connections without sack");
+  TCP_TEST (bbr_selected, "bbr enables connection prerequisites");
+
+  return 0;
 }
 
 /* Build a deterministic CUBIC avoidance epoch through the registered
@@ -9697,6 +10007,10 @@ tcp_test (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd_arg)
 	{
 	  res = tcp_test_cubic (vm, input);
 	}
+      else if (unformat (input, "bbr"))
+	{
+	  res = tcp_test_bbr (vm, input);
+	}
       else if (unformat (input, "bt"))
 	{
 	  res = tcp_test_bt (vm, input);
@@ -9728,6 +10042,8 @@ tcp_test (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd_arg)
 	  if ((res = tcp_test_timewait_syn_burst (vm, input)))
 	    goto done;
 	  if ((res = tcp_test_cubic (vm, input)))
+	    goto done;
+	  if ((res = tcp_test_bbr (vm, input)))
 	    goto done;
 	  if ((res = tcp_test_bt (vm, input)))
 	    goto done;
