@@ -361,6 +361,23 @@ vcl_session_transport_attr (vcl_worker_t *wrk, vcl_session_t *s, u8 is_get,
   return wrk->session_attr_op_rv;
 }
 
+static vcl_session_t *
+vcl_session_accepted_get_stream_listener (vcl_worker_t *wrk, session_accepted_msg_t *mp,
+					  session_handle_t parent_handle)
+{
+  vcl_session_t *accept_ls;
+
+  accept_ls = vcl_session_table_lookup_listener (wrk, mp->listener_handle);
+
+  if (!accept_ls || accept_ls->parent_handle != parent_handle)
+    {
+      VDBG (0, "ERROR: stream [0x%llx] listener session %lu does not match parent handle %u",
+	    mp->handle, accept_ls->session_index, mp->listener_handle);
+    }
+
+  return accept_ls;
+}
+
 static u32
 vcl_session_accepted_handler (vcl_worker_t * wrk, session_accepted_msg_t * mp,
 			      u32 ls_index)
@@ -373,9 +390,16 @@ vcl_session_accepted_handler (vcl_worker_t * wrk, session_accepted_msg_t * mp,
   listen_session = vcl_session_get (wrk, ls_index);
   if (listen_session->vpp_handle != mp->listener_handle)
     {
-      VDBG (0, "ERROR: listener handle %lu does not match session %u",
-	    mp->listener_handle, ls_index);
-      goto error;
+      listen_session =
+	mp->flags & SESSION_F_STREAM ?
+	  vcl_session_accepted_get_stream_listener (wrk, mp, listen_session->vpp_handle) :
+	  0;
+      if (!listen_session)
+	{
+	  VDBG (0, "ERROR: listener handle %lu does not match session %u", mp->listener_handle,
+		ls_index);
+	  goto error;
+	}
     }
 
   session->vpp_handle = mp->handle;
