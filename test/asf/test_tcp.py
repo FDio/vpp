@@ -136,6 +136,7 @@ class TestTCPUnitTests(VppAsfTestCase):
             "fin-rst",
             "timewait",
             "cubic",
+            "bbr",
             "bt",
             "rack",
             "tamper fin",
