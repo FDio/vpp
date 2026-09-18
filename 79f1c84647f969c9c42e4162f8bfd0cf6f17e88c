@@ -16,6 +16,24 @@
       "message": "Isn\u0027t this just `svm_fifo_provision_chunks (f, fs, n_segs, svm_fifo_max_dequeue_prod (f) + desired_extra_len)` ?",
       "revId": "79f1c84647f969c9c42e4162f8bfd0cf6f17e88c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "bad3feae_3ca48077",
+        "filename": "src/svm/svm_fifo.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 1231,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-09-18T04:31:03Z",
+      "side": 1,
+      "message": "Not quite: svm_fifo_provision_chunks() always maps from the producer tail, whereas this caller needs only [tail + offset, tail + offset + len). svm_fifo_max_dequeue_prod() is the published occupancy (tail - head), not the offset of earlier unpublished reservations (sock-\u003etx_reserved). Calling the existing helper with a larger length would return the prefix from tail; the caller would still have to skip and trim that prefix, including across chunks and the segment limit. The offset variant maps the requested range directly while keeping the old API as its offset-zero wrapper.",
+      "parentUuid": "3ef69676_b3bfe6bd",
+      "revId": "79f1c84647f969c9c42e4162f8bfd0cf6f17e88c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
