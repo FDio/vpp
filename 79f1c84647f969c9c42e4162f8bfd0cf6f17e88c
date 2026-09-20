@@ -52,6 +52,24 @@
       "parentUuid": "bad3feae_3ca48077",
       "revId": "79f1c84647f969c9c42e4162f8bfd0cf6f17e88c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "496c2d32_1c3b672f",
+        "filename": "src/svm/svm_fifo.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 1231,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-09-20T21:04:31Z",
+      "side": 1,
+      "message": "I measured this usage pattern before adding a cache. The current consumer calls the helper once per logical asynchronous reservation, not once per returned segment; the returned vector averaged two segments.\n\nAt offset zero, the new helper has no measurable overhead compared with the legacy wrapper. On BlueField-3, non-zero mappings up to 4 MiB averaged 0.23-0.31 us, and all mapping calls consumed only 0.009-0.022 CPU core. The 1 MiB workload saturated the 100 GbE link.\n\nCalling the helper per reservation therefore does not appear to be a performance issue. It preserves direct placement without copying, while an application-side cache would add invalidation and lifetime handling around commit, abort and teardown. Applications with simpler lifetimes may still cache larger batches, but the current API does not require it.",
+      "parentUuid": "1ce87d65_23a45228",
+      "revId": "79f1c84647f969c9c42e4162f8bfd0cf6f17e88c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
