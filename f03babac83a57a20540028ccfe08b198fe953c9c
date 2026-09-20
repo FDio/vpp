@@ -1,0 +1,22 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "d18cbe7f_f7ee9508",
+        "filename": "src/plugins/lb/lbhash.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 108,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-09-20T21:24:17Z",
+      "side": 1,
+      "message": "Addressed in PS4 and retained in PS5: the vector path is now guarded by CLIB_HAVE_VEC128_MSB_MASK, so it is selected only on backends providing u8x16_msb_mask(). Thanks.",
+      "parentUuid": "55dd3a3d_163fccf7",
+      "revId": "f03babac83a57a20540028ccfe08b198fe953c9c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
