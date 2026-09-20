@@ -1,0 +1,22 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "4e0ce335_3f926e4d",
+        "filename": "src/scripts/check_vnet_exports.sh",
+        "patchSetId": 16
+      },
+      "lineNbr": 15,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-09-20T20:41:55Z",
+      "side": 1,
+      "message": "Addressed in PS16: mawk is now the default; AWK remains available as an explicit override.",
+      "parentUuid": "c443e3ef_5460acbe",
+      "revId": "e7cec978ece824341692ee21340dbf411ba375b1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
