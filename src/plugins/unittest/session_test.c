@@ -74,7 +74,8 @@ session_test_pacer (vlib_main_t *vm, unformat_input_t *input)
   transport_connection_t tc = { .thread_index = thread_index };
   u64 rate = 2e9;
   u64 old_rate = 7500000000, new_rate = 7514600000;
-  u32 catchup_burst, hard_cap_burst, i, loop_max_burst, overflow_burst, rtt_max_burst;
+  u32 catchup_burst, hard_cap_burst, i, immediate_burst, loop_max_burst, overflow_burst;
+  u32 rtt_max_burst;
   f64 aged_debt, fractional_credit, rate_change_credit, rate_decrease_credit;
   f64 catchup_credit, restart_credit, restart_debt;
 
@@ -121,6 +122,8 @@ session_test_pacer (vlib_main_t *vm, unformat_input_t *input)
   transport_connection_tx_pacer_update_bytes (&tc, transport_connection_tx_pacer_burst (&tc));
   session_main.wrk[thread_index].last_vlib_us_time = tc.pacer.last_update + 20;
   hard_cap_burst = transport_connection_tx_pacer_burst (&tc);
+  transport_connection_tx_pacer_update_bytes (&tc, hard_cap_burst);
+  immediate_burst = transport_connection_tx_pacer_burst (&tc);
   transport_connection_tx_pacer_reset (&tc, 1e9, (u32) ~0, 1 /* 1us rtt */);
   overflow_burst = transport_connection_tx_pacer_burst (&tc);
 
@@ -158,6 +161,7 @@ session_test_pacer (vlib_main_t *vm, unformat_input_t *input)
 		"catch-up restores nominal debt (%.1f)", catchup_credit);
   SESSION_TEST (hard_cap_burst == 4 * TRANSPORT_PACER_MIN_BURST,
 		"configured burst cap is enforced (%u)", hard_cap_burst);
+  SESSION_TEST (immediate_burst == 0, "hard cap consumes accumulated credit (%u)", immediate_burst);
   SESSION_TEST (overflow_burst == 4 * TRANSPORT_PACER_MIN_BURST,
 		"large initial credit is capped (%u)", overflow_burst);
   SESSION_TEST (!transport_connection_is_descheduled (&tc), "descheduled flag is cleared");

@@ -988,7 +988,8 @@ spacer_update_time (spacer_t *pacer, clib_us_time_t time_now, u8 force)
   if (force || inc > 10)
     {
       pacer->last_update = time_now;
-      pacer->bucket = clib_min (pacer->bucket + inc, (f64) pacer->burst_cap);
+      /* The next grant also includes max_burst. */
+      pacer->bucket = clib_min (pacer->bucket + inc, (f64) (pacer->burst_cap - pacer->max_burst));
     }
 }
 
@@ -1037,7 +1038,7 @@ spacer_set_pace_rate (spacer_t * pacer, u64 rate_bytes_per_sec,
   max_time = clib_clamp (max_time, CLIB_US_TIME_PERIOD, 1e-3 /* 1ms */);
   max_burst = rate_bytes_per_sec * max_time;
   pacer->max_burst = clib_clamp (max_burst, (u64) pacer->min_burst, (u64) pacer->burst_cap);
-  pacer->bucket = clib_min (pacer->bucket, (f64) pacer->burst_cap);
+  pacer->bucket = clib_min (pacer->bucket, (f64) (pacer->burst_cap - pacer->max_burst));
 }
 
 static inline u64
@@ -1098,7 +1099,7 @@ transport_connection_tx_pacer_set_burst_limits (transport_connection_t *tc, u32 
   pacer->min_burst = (u16) min_burst;
   pacer->burst_cap = (u16) burst_cap;
   pacer->max_burst = clib_clamp ((u32) pacer->max_burst, min_burst, burst_cap);
-  pacer->bucket = clib_min (pacer->bucket, (f64) burst_cap);
+  pacer->bucket = clib_min (pacer->bucket, (f64) (pacer->burst_cap - pacer->max_burst));
 }
 
 void
