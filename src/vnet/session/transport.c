@@ -972,11 +972,16 @@ format_transport_pacer (u8 * s, va_list * args)
 
   now = transport_us_time_now (thread_index);
   diff = now - pacer->last_update;
-  s = format (s, "rate %lu bucket %.3f t/p %.3f last_update %U min-burst %u burst %u cap %u",
-	      pacer->bytes_per_sec, pacer->bucket, pacer->tokens_per_period, format_clib_us_time,
-	      diff, (u32) pacer->min_burst, (u32) pacer->max_burst, (u32) pacer->burst_cap);
+  s = format (
+    s, "rate %lu bucket %.3f credit %.3f t/p %.3f last_update %U min-burst %u burst %u cap %u",
+    pacer->bytes_per_sec, pacer->bucket, pacer->catchup_credit, pacer->tokens_per_period,
+    format_clib_us_time, diff, (u32) pacer->min_burst, (u32) pacer->max_burst,
+    (u32) pacer->burst_cap);
   return s;
 }
+
+#define SPACER_CATCHUP_RATE_GAIN    1.25
+#define SPACER_CATCHUP_CREDIT_SHARE ((SPACER_CATCHUP_RATE_GAIN - 1.0) / SPACER_CATCHUP_RATE_GAIN)
 
 static inline void
 spacer_update_time (spacer_t *pacer, clib_us_time_t time_now, u8 force)
@@ -988,7 +993,13 @@ spacer_update_time (spacer_t *pacer, clib_us_time_t time_now, u8 force)
   if (force || inc > 10)
     {
       pacer->last_update = time_now;
-      pacer->bucket = clib_min (pacer->bucket + inc, (f64) pacer->burst_cap);
+      pacer->bucket += inc;
+      if (pacer->bucket > 0)
+	{
+	  pacer->catchup_credit =
+	    clib_min (pacer->catchup_credit + pacer->bucket, (f64) pacer->burst_cap);
+	  pacer->bucket = 0;
+	}
     }
 }
 
@@ -1003,19 +1014,28 @@ spacer_max_burst (spacer_t *pacer, clib_us_time_t time_now)
     return 0;
 
   /* Recover service missed while runnable without exceeding the hard cap. */
-  burst = pacer->max_burst + (i64) pacer->bucket;
+  burst = pacer->max_burst + (u64) pacer->catchup_credit;
   return clib_min (burst, (u64) pacer->burst_cap);
 }
 
 static inline void
 spacer_update_bucket (spacer_t * pacer, u32 bytes)
 {
+  f64 credit_used;
+
   pacer->bucket -= bytes;
+  if (PREDICT_FALSE (pacer->catchup_credit > 0))
+    {
+      /* Spending this share bounds catch-up to SPACER_CATCHUP_RATE_GAIN. */
+      credit_used = clib_min (pacer->catchup_credit, (f64) bytes * SPACER_CATCHUP_CREDIT_SHARE);
+      pacer->catchup_credit -= credit_used;
+      pacer->bucket += credit_used;
+    }
 }
 
 static inline void
-spacer_set_pace_rate (spacer_t * pacer, u64 rate_bytes_per_sec,
-		      clib_us_time_t rtt, clib_time_type_t sec_per_loop)
+spacer_set_pace_rate (spacer_t *pacer, u64 rate_bytes_per_sec, clib_us_time_t rtt,
+		      clib_time_type_t sec_per_loop)
 {
   clib_time_type_t max_time;
   u64 max_burst;
@@ -1037,7 +1057,6 @@ spacer_set_pace_rate (spacer_t * pacer, u64 rate_bytes_per_sec,
   max_time = clib_clamp (max_time, CLIB_US_TIME_PERIOD, 1e-3 /* 1ms */);
   max_burst = rate_bytes_per_sec * max_time;
   pacer->max_burst = clib_clamp (max_burst, (u64) pacer->min_burst, (u64) pacer->burst_cap);
-  pacer->bucket = clib_min (pacer->bucket, (f64) pacer->burst_cap);
 }
 
 static inline u64
@@ -1050,7 +1069,8 @@ static inline void
 spacer_reset (spacer_t * pacer, clib_us_time_t time_now, u64 bucket)
 {
   pacer->last_update = time_now;
-  pacer->bucket = bucket;
+  pacer->bucket = 0;
+  pacer->catchup_credit = clib_min ((f64) bucket, (f64) pacer->burst_cap);
 }
 
 void
@@ -1077,13 +1097,8 @@ transport_connection_tx_pacer_clear_credit (transport_connection_t *tc)
   spacer_t *pacer = &tc->pacer;
   clib_us_time_t now = transport_us_time_now (tc->thread_index);
 
-  if (pacer->bucket < 0)
-    {
-      spacer_update_time (pacer, now, 1 /* force */);
-      pacer->bucket = clib_min (pacer->bucket, 0.0);
-    }
-  else
-    spacer_reset (pacer, now, 0 /* bucket */);
+  spacer_update_time (pacer, now, 1 /* force */);
+  pacer->catchup_credit = 0;
 }
 
 void
@@ -1098,7 +1113,7 @@ transport_connection_tx_pacer_set_burst_limits (transport_connection_t *tc, u32 
   pacer->min_burst = (u16) min_burst;
   pacer->burst_cap = (u16) burst_cap;
   pacer->max_burst = clib_clamp ((u32) pacer->max_burst, min_burst, burst_cap);
-  pacer->bucket = clib_min (pacer->bucket, (f64) burst_cap);
+  pacer->catchup_credit = clib_min (pacer->catchup_credit, (f64) pacer->burst_cap);
 }
 
 void
