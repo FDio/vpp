@@ -1,0 +1,22 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "4da482e6_d304ec43",
+        "filename": "src/scripts/vpp-check-libvnet-exports.sh",
+        "patchSetId": 6
+      },
+      "lineNbr": 30,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-09-20T20:41:25Z",
+      "side": 1,
+      "message": "Addressed in PS6: mawk is now the default; AWK remains available as an explicit override.",
+      "parentUuid": "01646bc4_2f88a861",
+      "revId": "0a20797a4ad8aab05c4208c3e3f61ac6eba27f61",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
