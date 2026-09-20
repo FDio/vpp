@@ -41,11 +41,15 @@ CFG_CORELIST_WKS="corelist-workers 2"
 
 # Socket and session configuration
 SOCK=/run/vpp-api.sock
-CLI_SOCK=/run/vpp/cli.sock
+CLI_SOCK=localhost:5002
 SESSION_CFG="session { event-queue-length 100000 use-app-socket-api }"
 
 # Protocol configuration
-TCP_CFG="tcp { max-rx-fifo 128m }"
+if [[ -n "$TSO_ENABLE" ]]; then
+  TCP_CFG="tcp { max-rx-fifo 128m tso }"
+else
+  TCP_CFG="tcp { max-rx-fifo 128m }"
+fi
 TLS_CFG="tls { fifo-size 1m }"
 #QUIC_ENABLE=1
 #LOCAL_OSSL=/scratch/fcoras/openssl
