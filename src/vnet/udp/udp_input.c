@@ -324,7 +324,24 @@ udp46_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 		  /*
 		   * Ask session layer for a new session.
 		   */
-		  session_dgram_connect_notify (&uc0->connection, osh, &s0);
+		  if (PREDICT_FALSE (session_dgram_connect_notify (
+				       &uc0->connection, osh, &s0) < 0))
+		    {
+		      /*
+		       * The migration was rolled back and s0 still belongs to
+		       * another thread. Undo the transport clone, hand the
+		       * datagram to the session's own thread and let it notify
+		       * the application.
+		       */
+		      udp_connection_t *old_uc = udp_connection_from_transport (
+			session_get_transport (s0));
+		      old_uc->flags &= ~UDP_CONN_F_MIGRATED;
+		      udp_connection_enqueue (uc0, s0, &hdr0, thread_index, b[0],
+					      0 /* queue_event */, &error0);
+		      session_program_rx_io_evt (osh);
+		      udp_connection_free (uc0);
+		      goto done;
+		    }
 		  queue_event = 0;
 		}
 	      else

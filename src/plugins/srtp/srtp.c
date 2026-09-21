@@ -482,8 +482,13 @@ srtp_migrate_ctx (void *arg)
   us->opaque = ctx_handle;
 
   /* Migrate app session as well */
-  session_dgram_connect_notify (&ctx->connection, ctx->app_session_handle, &new_app_session);
-  ctx->app_session_handle = session_handle (new_app_session);
+  if (session_dgram_connect_notify (&ctx->connection, ctx->app_session_handle,
+                                    &new_app_session) < 0)
+    clib_warning ("srtp: could not migrate app session of udp session 0x%lx",
+                  ctx->srtp_session_handle);
+  else
+    ctx->app_session_handle = session_handle (new_app_session);
+
   us = session_get_from_handle (ctx->srtp_session_handle);
   session_migrate_accept (us);
 

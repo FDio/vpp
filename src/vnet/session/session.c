@@ -962,8 +962,10 @@ session_dgram_connect_notify (transport_connection_t *tc,
 attach_error:
   if (rx_attached)
     segment_manager_detach_fifo (&new_s->rx_fifo);
+  /* The entry was pointed at new_s above: give it back to the session that
+   * stays in use */
   if (!(tc->flags & TRANSPORT_CONNECTION_F_NO_LOOKUP))
-    session_lookup_del_connection (tc);
+    session_lookup_add_connection (tc, osh.handle);
   session_free (new_s);
   return -1;
 }
