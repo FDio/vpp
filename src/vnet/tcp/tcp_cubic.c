@@ -11,32 +11,80 @@
 #define cubic_c		0.4
 #define west_const 	(3 * (1 - beta_cubic) / (1 + beta_cubic))
 
+/* Store K in 2^-20 second ticks (~0.954 us). u32 covers 4096 seconds,
+ * beyond the maximum K of about 2207 seconds for a u32 segment count. */
+#define CUBIC_K_SCALE (1U << 20)
+
+/* RFC 9406 recommended HyStart++ constants.  RTTs are stored in TCP_TICK
+ * units so the per-connection state remains compact. */
+#define HYSTART_MIN_RTT_THRESH	   (4 * TCP_TSTP_TO_HZ)
+#define HYSTART_MAX_RTT_THRESH	   (16 * TCP_TSTP_TO_HZ)
+#define HYSTART_MIN_RTT_DIVISOR	   8
+#define HYSTART_N_RTT_SAMPLE	   8
+#define HYSTART_CSS_GROWTH_DIVISOR 4
+#define HYSTART_CSS_ROUNDS	   5
+#define HYSTART_UNPACED_ACK_LIMIT  8
+
 typedef struct cubic_cfg_
 {
   u8 fast_convergence;
+  u8 hystart;
+  u8 hystart_css;
   u32 ssthresh;
 } cubic_cfg_t;
 
 static cubic_cfg_t cubic_cfg = {
   .fast_convergence = 1,
+  .hystart = 1,
+  .hystart_css = 1,
   .ssthresh = 0x7FFFFFFFU,
 };
 
+typedef enum
+{
+  CUBIC_MODE_AVOIDANCE,
+  CUBIC_MODE_HYSTART,
+  CUBIC_MODE_CSS,
+} cubic_mode_t;
+
 typedef struct cubic_data_
 {
-  /** time period (in seconds) needed to increase the current window
-   *  size to W_max if there are no further congestion events */
-  f64 K;
+  /* HyStart++ is used only before the first congestion-avoidance epoch, so
+   * its state can share storage with the CUBIC curve state. */
+  union
+  {
+    struct
+    {
+      /** Epoch start.  A negative value encodes a paused epoch. */
+      f64 t_start;
 
-  /** Start of the current congestion-avoidance epoch. While application
-   *  limited, a negative value encodes the frozen elapsed epoch time. */
-  f64 t_start;
+      /** Time needed to reach W_max, in 2^-20 second ticks */
+      u32 K_ticks;
 
-  /** Inflection point of the cubic function (in snd_mss segments) */
-  u32 w_max;
+      /** Inflection point, in snd_mss segments */
+      u32 w_max;
 
-  /** w_max snapshot taken at congestion entry, restored on spurious undo */
-  u32 prev_w_max;
+      /** w_max snapshot taken at congestion entry */
+      u32 prev_w_max;
+    } __clib_packed;
+
+    struct
+    {
+      /** HyStart++ minimum RTTs in TCP_TICK units; zero means infinity */
+      u32 last_round_min_rtt;
+      u32 current_round_min_rtt;
+      u32 css_baseline_min_rtt;
+
+      /** End sequence of the current HyStart++ round */
+      u32 window_end;
+
+      u8 rtt_sample_count;
+      u8 css_round_count;
+    };
+  };
+
+  u8 mode;
+  u8 prev_mode;
 
 } __clib_packed cubic_data_t;
 
@@ -81,27 +129,141 @@ cubic_resume_epoch (cubic_data_t *cd, f64 now)
 /**
  * RFC 8312 Eq. 1
  *
- * CUBIC window increase function. Time and K need to be provided in seconds.
+ * CUBIC window increase function. Time t is provided in seconds.
  */
 static inline u64
 W_cubic (cubic_data_t * cd, f64 t)
 {
-  f64 diff = t - cd->K;
+  f64 diff = t - (f64) cd->K_ticks / CUBIC_K_SCALE;
 
   /* W_cubic(t) = C*(t-K)^3 + W_max */
   return cubic_c * diff * diff * diff + cd->w_max;
 }
 
 /**
- * RFC 8312 Eq. 2
+ * RFC 8312 Eq. 2. Returns K in 2^-20 second ticks.
  */
-static inline f64
-K_cubic (cubic_data_t * cd, u32 wnd)
+static inline u32
+K_cubic (cubic_data_t *cd, u32 wnd)
 {
   /* K = cubic_root(W_max*(1-beta_cubic)/C)
    * Because the current window may be less than W_max * beta_cubic because
    * of fast convergence, we pass it as parameter */
-  return pow ((f64) (cd->w_max - wnd) / cubic_c, 1 / 3.0);
+  return pow ((f64) (cd->w_max - wnd) / cubic_c, 1 / 3.0) * CUBIC_K_SCALE;
+}
+
+/** Start CUBIC congestion avoidance after a lossless slow-start exit. */
+static void
+cubic_hystart_exit (tcp_connection_t *tc, cubic_data_t *cd)
+{
+  cd->mode = CUBIC_MODE_AVOIDANCE;
+  cd->t_start = cubic_time (tc->c_thread_index);
+  cd->K_ticks = 0;
+  cd->w_max = tc->cwnd / tc->snd_mss;
+  cd->prev_w_max = cd->w_max;
+  tc->cwnd_acc_bytes = 0;
+}
+
+/**
+ * Process an ACK during the initial HyStart++ slow start.
+ *
+ * Returns true if HyStart++ consumed the ACK, or false if this ACK should be
+ * processed by CUBIC congestion avoidance after a phase transition.
+ */
+static u8
+cubic_hystart_rcv_ack (tcp_connection_t *tc, tcp_ack_ctx_t *ac, cubic_data_t *cd)
+{
+  u32 bytes_acked, rtt, rtt_thresh;
+
+  /* A configured ssthresh can end the initial slow start before HyStart++. */
+  if (!tcp_in_slowstart (tc))
+    {
+      cubic_hystart_exit (tc, cd);
+      return 0;
+    }
+
+  /* Rounds end on cumulative progress. Once the flight drains, snd_una equals
+   * window_end on every ACK, including ACKs that acknowledge nothing new. */
+  if (ac->bytes_acked && seq_geq (tc->snd_una, cd->window_end))
+    {
+      cd->last_round_min_rtt = cd->current_round_min_rtt;
+      cd->current_round_min_rtt = 0;
+      cd->rtt_sample_count = 0;
+      cd->window_end = tc->snd_nxt;
+
+      /* A partial round in which CSS starts counts as the first CSS round. */
+      if (cd->mode == CUBIC_MODE_CSS && ++cd->css_round_count >= HYSTART_CSS_ROUNDS)
+	{
+	  tc->ssthresh = tc->cwnd;
+	  cubic_hystart_exit (tc, cd);
+	  return 0;
+	}
+    }
+
+  /* RFC 9406 limits growth per ACK only for an unpaced sender. */
+  if (tc->cwnd < tc->tx_fifo_size && tcp_cc_is_cwnd_limited (tc, ac))
+    {
+      bytes_acked = ac->acked_and_sacked;
+      if (!transport_connection_is_tx_paced (&tc->connection))
+	bytes_acked = clib_min (bytes_acked, HYSTART_UNPACED_ACK_LIMIT * tc->snd_mss);
+
+      if (cd->mode == CUBIC_MODE_CSS)
+	{
+	  tc->cwnd_acc_bytes += bytes_acked;
+	  tc->cwnd += tc->cwnd_acc_bytes / HYSTART_CSS_GROWTH_DIVISOR;
+	  tc->cwnd_acc_bytes %= HYSTART_CSS_GROWTH_DIVISOR;
+	}
+      else
+	tc->cwnd += bytes_acked;
+    }
+
+  /* Only new cumulative ACKs with an unambiguous RTT are samples. RFC 9406 recommends N_RTT_SAMPLE
+   * per round, so with one per round (no timestamps or byte tracker) CSS is never entered. */
+  if (!ac->bytes_acked || ac->rtt_time <= 0)
+    return 1;
+
+  rtt = clib_max ((u32) (ac->rtt_time * THZ), 1);
+  if (!cd->current_round_min_rtt || rtt < cd->current_round_min_rtt)
+    cd->current_round_min_rtt = rtt;
+  if (cd->rtt_sample_count != (u8) ~0)
+    cd->rtt_sample_count++;
+
+  if (cd->rtt_sample_count < HYSTART_N_RTT_SAMPLE)
+    return 1;
+
+  if (cd->mode == CUBIC_MODE_CSS)
+    {
+      if (cd->current_round_min_rtt < cd->css_baseline_min_rtt)
+	{
+	  cd->mode = CUBIC_MODE_HYSTART;
+	  cd->css_baseline_min_rtt = 0;
+	  cd->css_round_count = 0;
+	  tc->cwnd_acc_bytes = 0;
+	}
+      return 1;
+    }
+
+  if (!cd->last_round_min_rtt)
+    return 1;
+
+  rtt_thresh = clib_clamp (cd->last_round_min_rtt / HYSTART_MIN_RTT_DIVISOR, HYSTART_MIN_RTT_THRESH,
+			   HYSTART_MAX_RTT_THRESH);
+  if (cd->current_round_min_rtt >= cd->last_round_min_rtt + rtt_thresh)
+    {
+      /* Without CSS, the delay increase ends slow start right away */
+      if (!cubic_cfg.hystart_css)
+	{
+	  tc->ssthresh = tc->cwnd;
+	  cubic_hystart_exit (tc, cd);
+	  return 1;
+	}
+      cd->css_baseline_min_rtt = cd->current_round_min_rtt;
+      cd->css_round_count = 0;
+      cd->mode = CUBIC_MODE_CSS;
+      tc->cwnd_acc_bytes = 0;
+    }
+
+  return 1;
 }
 
 /**
@@ -122,16 +284,20 @@ static void
 cubic_congestion (tcp_connection_t * tc)
 {
   cubic_data_t *cd = (cubic_data_t *) tcp_cc_data (tc);
-  u32 w_max;
+  u32 old_w_max, w_max;
+
+  cd->prev_mode = cd->mode;
+  old_w_max = cd->mode == CUBIC_MODE_AVOIDANCE ? cd->w_max : 0;
+  cd->mode = CUBIC_MODE_AVOIDANCE;
 
   /* Snapshot the pre-congestion inflection point so a spurious retransmit can
    * be undone (RFC 9438 Sec. 4.9.2). cubic_congestion runs once per congestion
    * event, at entry, before any window reduction, on both fast recovery and
    * rto, so this is the right place to save it. */
-  cd->prev_w_max = cd->w_max;
+  cd->prev_w_max = old_w_max;
 
   w_max = tc->cwnd / tc->snd_mss;
-  if (cubic_cfg.fast_convergence && w_max < cd->w_max)
+  if (cubic_cfg.fast_convergence && w_max < old_w_max)
     w_max = w_max * ((1.0 + beta_cubic) / 2.0);
 
   cd->w_max = w_max;
@@ -146,7 +312,7 @@ cubic_loss (tcp_connection_t * tc)
 
   tc->cwnd = tcp_loss_wnd (tc);
   cd->t_start = cubic_time (tc->c_thread_index);
-  cd->K = 0;
+  cd->K_ticks = 0;
   /* Use the once-per-event slow-start threshold as the post-timeout w_max so
    * consecutive RTOs do not collapse it further with the loss window. */
   cd->w_max = tc->ssthresh / tc->snd_mss;
@@ -162,7 +328,7 @@ cubic_recovered (tcp_connection_t * tc)
 
   cd->t_start = cubic_time (tc->c_thread_index);
   tc->cwnd = tc->ssthresh;
-  cd->K = K_cubic (cd, tc->cwnd / tc->snd_mss);
+  cd->K_ticks = K_cubic (cd, tc->cwnd / tc->snd_mss);
 }
 
 /* Spurious retransmit detected: the cc layer has already restored
@@ -172,6 +338,7 @@ static void
 cubic_undo_recovery (tcp_connection_t *tc)
 {
   cubic_data_t *cd = (cubic_data_t *) tcp_cc_data (tc);
+  cubic_mode_t prev_mode = cd->prev_mode;
   u32 wnd = tc->cwnd / tc->snd_mss;
 
   cd->w_max = cd->prev_w_max;
@@ -179,7 +346,22 @@ cubic_undo_recovery (tcp_connection_t *tc)
   /* K_cubic assumes w_max >= wnd; if the restored window is already at/above
    * the old inflection point there is nothing to ramp back up to, so start a
    * fresh convex epoch from now (K = 0). */
-  cd->K = (wnd < cd->w_max) ? K_cubic (cd, wnd) : 0;
+  cd->K_ticks = (wnd < cd->w_max) ? K_cubic (cd, wnd) : 0;
+
+  /* A spurious initial loss must not permanently disable HyStart++.  Restart
+   * standard HyStart++ because ACKs received in recovery do not belong to the
+   * pre-recovery round (and may have interrupted CSS). */
+  if (prev_mode != CUBIC_MODE_AVOIDANCE)
+    {
+      cd->last_round_min_rtt = 0;
+      cd->current_round_min_rtt = 0;
+      cd->css_baseline_min_rtt = 0;
+      cd->rtt_sample_count = 0;
+      cd->css_round_count = 0;
+      cd->window_end = tc->snd_nxt;
+      cd->mode = CUBIC_MODE_HYSTART;
+    }
+  cd->prev_mode = CUBIC_MODE_AVOIDANCE;
 }
 
 static void
@@ -204,6 +386,9 @@ cubic_rcv_ack (tcp_connection_t *tc, tcp_ack_ctx_t *ac)
   u64 w_cubic, w_aimd;
   f64 now, t, rtt_sec;
   u32 thresh;
+
+  if (cd->mode != CUBIC_MODE_AVOIDANCE && cubic_hystart_rcv_ack (tc, ac, cd))
+    return;
 
   now = cubic_time (tc->c_thread_index);
 
@@ -268,10 +453,25 @@ cubic_conn_init (tcp_connection_t *tc)
   cubic_data_t *cd = (cubic_data_t *) tcp_cc_data (tc);
   tc->ssthresh = cubic_cfg.ssthresh;
   tc->cwnd = tcp_initial_cwnd (tc);
-  cd->w_max = 0;
-  cd->prev_w_max = 0;
-  cd->K = 0;
-  cd->t_start = cubic_time (tc->c_thread_index);
+  cd->mode = cubic_cfg.hystart && tcp_in_slowstart (tc) ? CUBIC_MODE_HYSTART : CUBIC_MODE_AVOIDANCE;
+  cd->prev_mode = CUBIC_MODE_AVOIDANCE;
+
+  if (cd->mode == CUBIC_MODE_HYSTART)
+    {
+      cd->last_round_min_rtt = 0;
+      cd->current_round_min_rtt = 0;
+      cd->css_baseline_min_rtt = 0;
+      cd->window_end = tc->snd_nxt;
+      cd->rtt_sample_count = 0;
+      cd->css_round_count = 0;
+    }
+  else
+    {
+      cd->w_max = 0;
+      cd->prev_w_max = 0;
+      cd->K_ticks = 0;
+      cd->t_start = cubic_time (tc->c_thread_index);
+    }
   return 0;
 }
 
@@ -289,6 +489,14 @@ cubic_unformat_config (unformat_input_t * input)
     {
       if (unformat (input, "no-fast-convergence"))
 	cubic_cfg.fast_convergence = 0;
+      else if (unformat (input, "no-hystart-css"))
+	cubic_cfg.hystart_css = 0;
+      else if (unformat (input, "hystart-css"))
+	cubic_cfg.hystart_css = 1;
+      else if (unformat (input, "no-hystart"))
+	cubic_cfg.hystart = 0;
+      else if (unformat (input, "hystart"))
+	cubic_cfg.hystart = 1;
       else if (unformat (input, "ssthresh %u", &ssthresh))
 	cubic_cfg.ssthresh = ssthresh;
       else
@@ -306,12 +514,16 @@ cubic_event (tcp_connection_t *tc, tcp_cc_event_t evt)
   if (evt != TCP_CC_EVT_START_TX)
     return;
 
+  /* The CUBIC epoch does not exist until the initial HyStart++ phase ends. */
+  cd = (cubic_data_t *) tcp_cc_data (tc);
+  if (cd->mode != CUBIC_MODE_AVOIDANCE)
+    return;
+
   /* App was idle so update t_start to avoid artificially inflating cwnd. Shift
    * the cubic epoch forward by that idle time (RFC 9438 Sec. 4.2: t MUST NOT
    * include application-limited periods). delivered_time is recorded when the
    * local flight drains and is not affected by reverse traffic. A zero value
    * means no delivery baseline is available, so start a fresh epoch. */
-  cd = (cubic_data_t *) tcp_cc_data (tc);
   now = cubic_time (tc->c_thread_index);
 
   /* Keep a paused epoch frozen until an ACK proves that the new flight was
