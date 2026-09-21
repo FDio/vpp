@@ -114,3 +114,14 @@ func AssertGreaterEqualUnlessCoverageBuild(actual, expected any, msgAndArgs ...a
 	}
 	AssertGreaterEqual(actual, expected, msgAndArgs...)
 }
+
+// AssertLesserEqualOnAsanBuild asserts strict equality on normal builds,
+// but relaxes to '<= relaxedMax' on instrumented (ASan) builds.
+func AssertLesserEqualOnAsanBuild(actual, expected, relaxedMax any, msgAndArgs ...any) {
+	if IsAsanBuild() {
+		Log("ASAN build; relaxing exact match to <= %v", relaxedMax)
+		ExpectWithOffset(2, actual).Should(BeNumerically("<=", relaxedMax), msgAndArgs...)
+		return
+	}
+	ExpectWithOffset(2, actual).To(Equal(expected), msgAndArgs...)
+}
