@@ -787,6 +787,9 @@ vnet_dev_port_if_create (vlib_main_t *vm, vnet_dev_port_t *port, void *ptr)
       if (caps)
 	vnet_hw_if_set_caps (vnm, hw_if_index, caps);
 
+      if (port->attr.speed_caps)
+	hw->supported_link_speeds = port->attr.speed_caps;
+
       /* create / reuse rx node */
       if (vec_len (dm->free_rx_node_indices))
 	{

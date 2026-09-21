@@ -338,6 +338,7 @@ http2_connection_error (http_ctx_t *hc, http2_error_t error, transport_send_para
   else
     {
       HTTP_DBG (1, "http_io_ts_provision_chunks failed");
+      http_stats_ts_fifo_egrow_inc (hc->c_thread_index);
       session_reset (session_get_from_handle (hc->hc_tc_session_handle));
     }
 
@@ -570,7 +571,8 @@ http2_sched_dispatch_data (http_ctx_t *req, http_ctx_t *hc, u8 *n_emissions)
   if (n_read == 0)
     {
       HTTP_DBG (1, "no data to deq");
-      transport_connection_reschedule (&req->connection);
+      if (transport_connection_is_descheduled (&req->connection))
+	transport_connection_reschedule (&req->connection);
       return 0;
     }
 
@@ -578,6 +580,7 @@ http2_sched_dispatch_data (http_ctx_t *req, http_ctx_t *hc, u8 *n_emissions)
   if (PREDICT_FALSE (http_io_ts_provision_chunks (hc, n_read + HTTP2_FRAME_HEADER_SIZE)))
     {
       HTTP_DBG (1, "http_io_ts_provision_chunks failed");
+      http_stats_ts_fifo_egrow_inc (hc->c_thread_index);
       http2_req_schedule_data_tx (hc, req);
       return 1;
     }
@@ -672,7 +675,8 @@ http2_sched_dispatch_tunnel (http_ctx_t *req, http_ctx_t *hc, u8 *n_emissions)
 	  *n_emissions += HTTP2_SCHED_WEIGHT_TUNNEL_FIN;
 	  return 0;
 	}
-      transport_connection_reschedule (&req->connection);
+      if (transport_connection_is_descheduled (&req->connection))
+	transport_connection_reschedule (&req->connection);
       return 0;
     }
   if (req->peer_stream_window == 0)
@@ -696,6 +700,7 @@ http2_sched_dispatch_tunnel (http_ctx_t *req, http_ctx_t *hc, u8 *n_emissions)
   if (PREDICT_FALSE (http_io_ts_provision_chunks (hc, n_read + HTTP2_FRAME_HEADER_SIZE)))
     {
       HTTP_DBG (1, "http_io_ts_provision_chunks failed");
+      http_stats_ts_fifo_egrow_inc (hc->c_thread_index);
       http2_req_schedule_data_tx (hc, req);
       return 1;
     }
@@ -725,7 +730,10 @@ http2_sched_dispatch_tunnel (http_ctx_t *req, http_ctx_t *hc, u8 *n_emissions)
       http2_req_schedule_data_tx (hc, req);
     }
   else
-    transport_connection_reschedule (&req->connection);
+    {
+      if (transport_connection_is_descheduled (&req->connection))
+	transport_connection_reschedule (&req->connection);
+    }
 
   http_io_as_dequeue_notify (req, n_written);
 
@@ -782,7 +790,8 @@ http2_sched_dispatch_udp_tunnel_inline (http_ctx_t *req, http_ctx_t *hc, u8 *n_e
       if (max_read < sizeof (hdr))
 	{
 	  HTTP_DBG (2, "max_read < session dgram hdr");
-	  transport_connection_reschedule (&req->connection);
+	  if (transport_connection_is_descheduled (&req->connection))
+	    transport_connection_reschedule (&req->connection);
 	  return 0;
 	}
       http_io_as_peek (req, (u8 *) &hdr, sizeof (hdr), 0);
@@ -792,7 +801,8 @@ http2_sched_dispatch_udp_tunnel_inline (http_ctx_t *req, http_ctx_t *hc, u8 *n_e
       if (PREDICT_FALSE (max_read < dgram_size))
 	{
 	  HTTP_DBG (2, "datagram incomplete");
-	  transport_connection_reschedule (&req->connection);
+	  if (transport_connection_is_descheduled (&req->connection))
+	    transport_connection_reschedule (&req->connection);
 	  return 0;
 	}
       /* check stream level window */
@@ -823,6 +833,7 @@ http2_sched_dispatch_udp_tunnel_inline (http_ctx_t *req, http_ctx_t *hc, u8 *n_e
       if (PREDICT_FALSE (http_io_ts_provision_chunks (hc, HTTP2_FRAME_HEADER_SIZE + frame_size)))
 	{
 	  HTTP_DBG (1, "http_io_ts_provision_chunks failed");
+	  http_stats_ts_fifo_egrow_inc (hc->c_thread_index);
 	  http2_req_schedule_data_tx (hc, req);
 	  return 1;
 	}
@@ -853,6 +864,7 @@ http2_sched_dispatch_udp_tunnel_inline (http_ctx_t *req, http_ctx_t *hc, u8 *n_e
       if (PREDICT_FALSE (http_io_ts_provision_chunks (hc, n_read)))
 	{
 	  HTTP_DBG (1, "http_io_ts_provision_chunks failed");
+	  http_stats_ts_fifo_egrow_inc (hc->c_thread_index);
 	  http2_req_schedule_data_tx (hc, req);
 	  return 1;
 	}
@@ -901,7 +913,10 @@ http2_sched_dispatch_udp_tunnel_inline (http_ctx_t *req, http_ctx_t *hc, u8 *n_e
       http2_req_schedule_data_tx (hc, req);
     }
   else
-    transport_connection_reschedule (&req->connection);
+    {
+      if (transport_connection_is_descheduled (&req->connection))
+	transport_connection_reschedule (&req->connection);
+    }
 
   return 0;
 }
@@ -1043,7 +1058,9 @@ http2_req_setup_server_tunnel (http_ctx_t *req, http_ctx_t *hc)
     }
   else
     req->dispatch_data_cb = http2_sched_dispatch_tunnel;
-  transport_connection_reschedule (&req->connection);
+
+  if (transport_connection_is_descheduled (&req->connection))
+    transport_connection_reschedule (&req->connection);
   /* cleanup some stuff we don't need anymore in tunnel mode */
   vec_free (req->headers);
 }
@@ -1067,6 +1084,7 @@ http2_sched_dispatch_postponed_headers (http_ctx_t *req, http_ctx_t *hc, u8 *n_e
   /* make sure ts tx fifo can actually buffer frame */
   if (PREDICT_FALSE (http_io_ts_provision_chunks (hc, to_send + HTTP2_FRAME_HEADER_SIZE)))
     {
+      http_stats_ts_fifo_egrow_inc (hc->c_thread_index);
       HTTP_DBG (1, "http_io_ts_provision_chunks failed");
       return 1;
     }
@@ -1205,6 +1223,7 @@ http2_sched_dispatch_resp_headers (http_ctx_t *req, http_ctx_t *hc, u8 *n_emissi
 							HTTP2_FRAME_HEADER_SIZE)))
     {
       HTTP_DBG (1, "http_io_ts_provision_chunks failed");
+      http_stats_ts_fifo_egrow_inc (hc->c_thread_index);
       req->dispatch_headers_cb = http2_sched_dispatch_postponed_headers;
       /* move headers to connection ctx */
       ASSERT (hc->unsent_headers == 0);
@@ -1399,6 +1418,7 @@ http2_sched_dispatch_req_headers (http_ctx_t *req, http_ctx_t *hc, u8 *n_emissio
 							HTTP2_FRAME_HEADER_SIZE)))
     {
       HTTP_DBG (1, "http_io_ts_provision_chunks failed");
+      http_stats_ts_fifo_egrow_inc (hc->c_thread_index);
       req->dispatch_headers_cb = http2_sched_dispatch_postponed_headers;
       /* move headers to connection ctx */
       ASSERT (hc->unsent_headers == 0);
@@ -1648,7 +1668,8 @@ http2_req_state_wait_transport_reply (http_ctx_t *hc, http_ctx_t *req, transport
       else
 	new_state = HTTP_REQ_STATE_TUNNEL;
       http_io_as_add_want_read_ntf (req);
-      transport_connection_reschedule (&req->connection);
+      if (transport_connection_is_descheduled (&req->connection))
+	transport_connection_reschedule (&req->connection);
       /* cleanup some stuff we don't need anymore in tunnel mode */
       vec_free (req->headers);
     }
@@ -1667,7 +1688,8 @@ http2_req_state_wait_transport_reply (http_ctx_t *hc, http_ctx_t *req, transport
   else
     {
       /* we are done wait for the next app request */
-      transport_connection_reschedule (&req->connection);
+      if (transport_connection_is_descheduled (&req->connection))
+	transport_connection_reschedule (&req->connection);
       http2_conn_reset_req (hc, req, hc->c_thread_index);
     }
 
@@ -2004,7 +2026,8 @@ http2_req_state_transport_io_more_data (http_ctx_t *hc, http_ctx_t *req,
 	{
 	  /* we are done wait for the next app request */
 	  http_req_state_change (req, HTTP_REQ_STATE_WAIT_APP_METHOD);
-	  transport_connection_reschedule (&req->connection);
+	  if (transport_connection_is_descheduled (&req->connection))
+	    transport_connection_reschedule (&req->connection);
 	  http2_conn_reset_req (hc, req, hc->c_thread_index);
 	  http_io_as_del_want_read_ntf (req);
 	}
@@ -2922,6 +2945,7 @@ http2_handle_goaway_frame (http_ctx_t *hc, http2_frame_header_t *fh)
 
   if (error_code == HTTP2_ERROR_NO_ERROR)
     {
+      http_stats_goaway_received_inc (hc->c_thread_index);
       /* graceful shutdown (no new streams for client) */
       if (!(hc->flags & HTTP_CONN_F_IS_SERVER))
 	{
@@ -3510,19 +3534,20 @@ http2_rx_expect_default (http_ctx_t *hc)
 {
   http2_frame_header_t fh;
   u32 to_deq;
-  u8 *rx_buf;
+  u8 fh_buf[HTTP2_FRAME_HEADER_SIZE];
   http2_error_t rv;
   u32 hc_index = hc->hc_hc_index;
   clib_thread_index_t thread_index = hc->c_thread_index;
 
   to_deq = http_io_ts_max_read (hc);
-  rx_buf = http_get_rx_buf (hc);
 
   while (to_deq >= HTTP2_FRAME_HEADER_SIZE)
     {
-      http_io_ts_read (hc, rx_buf, HTTP2_FRAME_HEADER_SIZE, 1);
+      /* only the 9-byte frame header is needed here; read it into a small
+       * stack buffer so we don't touch the shared per-thread rx buffer */
+      http_io_ts_read (hc, fh_buf, HTTP2_FRAME_HEADER_SIZE, 1);
       to_deq -= HTTP2_FRAME_HEADER_SIZE;
-      http2_frame_header_read (rx_buf, &fh);
+      http2_frame_header_read (fh_buf, &fh);
       if (PREDICT_FALSE (fh.length > hc->settings.max_frame_size))
 	{
 	  HTTP_DBG (1, "frame length %lu exceeded SETTINGS_MAX_FRAME_SIZE %lu", fh.length,
@@ -3629,6 +3654,7 @@ http2_transport_rx_callback (http_ctx_t *hc)
 	    hc, HTTP2_CONNECTION_WINDOW_SIZE - hc->our_window, 0, &max_write)))
 	{
 	  HTTP_DBG (1, "transport fifo full postponing connection window update");
+	  http_stats_ts_fifo_efull_inc (hc->c_thread_index);
 	  http_io_ts_add_want_deq_ntf (hc);
 	}
       else

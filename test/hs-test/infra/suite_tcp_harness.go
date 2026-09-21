@@ -72,6 +72,7 @@ type TcpTestEndpointCommandResult struct {
 type TcpHarnessClientSessionStats struct {
 	Output              string
 	SndMss              uint64
+	MrttMs              float64
 	Cwnd                uint64
 	FlightSize          uint64
 	RtoBackoffCount     uint64
@@ -135,6 +136,7 @@ const (
 
 var (
 	tcpHarnessClientSessionSndMssRE  = regexp.MustCompile(`\bsnd_mss (\d+)\b`)
+	tcpHarnessClientSessionMrttRE    = regexp.MustCompile(`\bsrtt [\d.]+ us ([\d.]+)\b`)
 	tcpHarnessClientSessionCwndRE    = regexp.MustCompile(`\bcwnd (\d+)\b`)
 	tcpHarnessClientSessionFlightRE  = regexp.MustCompile(`\bflight size (\d+)\b`)
 	tcpHarnessClientSessionRtoBoffRE = regexp.MustCompile(`\brto_boff (\d+)\b`)
@@ -365,7 +367,7 @@ func StopClientPcap() TcpHarnessAction {
 func ReadClientPcap(dst *[]tcpharness.PcapIPv4TCPPacket) TcpHarnessAction {
 	return TcpHarnessActionFunc(func(s *TcpHarnessSuite, st *TcpHarnessScenarioState) {
 		AssertNotNil(dst)
-		packets, err := tcpharness.ReadPcapIPv4TCPPackets(s.GetPcapTracePath(s.Containers.ClientVpp.Name))
+		packets, err := tcpharness.ReadPcapIPv4TCPPackets(s.Containers.ClientVpp.VppInstance.PcapTracePath())
 		AssertNil(err)
 		*dst = packets
 	})
@@ -633,12 +635,24 @@ func parseTcpHarnessClientSessionUint(output string, re *regexp.Regexp) uint64 {
 	return value
 }
 
+func parseTcpHarnessClientSessionFloat(output string, re *regexp.Regexp) float64 {
+	matches := re.FindStringSubmatch(output)
+	if len(matches) != 2 {
+		return 0
+	}
+
+	value, err := strconv.ParseFloat(matches[1], 64)
+	AssertNil(err)
+	return value
+}
+
 func ParseClientVppSessionStats(output string) TcpHarnessClientSessionStats {
 	isReneging := parseTcpHarnessClientSessionUint(output, tcpHarnessClientSessionRenegRE) != 0
 
 	return TcpHarnessClientSessionStats{
 		Output:              output,
 		SndMss:              parseTcpHarnessClientSessionUint(output, tcpHarnessClientSessionSndMssRE),
+		MrttMs:              parseTcpHarnessClientSessionFloat(output, tcpHarnessClientSessionMrttRE),
 		Cwnd:                parseTcpHarnessClientSessionUint(output, tcpHarnessClientSessionCwndRE),
 		FlightSize:          parseTcpHarnessClientSessionUint(output, tcpHarnessClientSessionFlightRE),
 		RtoBackoffCount:     parseTcpHarnessClientSessionUint(output, tcpHarnessClientSessionRtoBoffRE),
@@ -654,9 +668,7 @@ func ParseClientVppSessionStats(output string) TcpHarnessClientSessionStats {
 }
 
 func (s *TcpHarnessSuite) StartPcapTrace(vpp *VppInstance) *TcpHarnessPcapTrace {
-	Log(vpp.Vppctl(fmt.Sprintf(
-		"pcap trace rx tx max 10000 max-bytes-per-pkt %d intfc any file vppTest.pcap",
-		tcpHarnessPcapMaxBytesPerPkt)))
+	vpp.EnablePcapTraceMaxBytes(tcpHarnessPcapMaxBytesPerPkt)
 	return &TcpHarnessPcapTrace{vpp: vpp}
 }
 
@@ -788,10 +800,6 @@ func (s *TcpHarnessSuite) StopTcpTestEndpointServer() {
 func (s *TcpHarnessSuite) StopTcpTestEndpoints() {
 	s.StopTcpTestEndpointClient()
 	s.StopTcpTestEndpointServer()
-}
-
-func (s *TcpHarnessSuite) GetPcapTracePath(vppName string) string {
-	return filepath.Join(LogDir, GetCurrentTestName(), s.GetTestId(), vppName+".pcap")
 }
 
 func (s *TcpHarnessSuite) SetupSuite() {
@@ -927,6 +935,13 @@ func (s *TcpHarnessSuite) SetupClientVpp(clientContainer *Container) {
 
 	err := clientVpp.CreateTap(s.Interfaces.Client, false, 2)
 	AssertNil(err, fmt.Sprint(err))
+}
+
+// EnableClientRack configures RACK before the client connection is created.
+func EnableClientRack() TcpHarnessAction {
+	return TcpHarnessActionFunc(func(s *TcpHarnessSuite, st *TcpHarnessScenarioState) {
+		Log(s.Containers.ClientVpp.VppInstance.Vppctl("set tcp rack"))
+	})
 }
 
 func EnableServerNFQueue(cfg tcpharness.NFQueueConfig) TcpHarnessAction {

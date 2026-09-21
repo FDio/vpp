@@ -658,23 +658,16 @@ func HsiTrackerTcpFinRetransmitTest(s *HsiSuite) {
 func HsiTrackerTcpOptionRewriteTest(s *HsiSuite) {
 	s.SetupNginxServer()
 	vpp := s.Containers.Vpp.VppInstance
-	Log(vpp.Vppctl("pcap trace rx tx max 10000 max-bytes-per-pkt 1500 intfc any file vppTest.pcap"))
+	vpp.EnablePcapTrace()
 	s.StartProxyLiteTcp4("hsi-offload")
 
 	uri := fmt.Sprintf("http://%s:%d/64B", s.ServerAddr(), s.Ports.Server)
 	finished := startCurlHttpRequest(uri, s.NetNamespaces.Client, "200", 20)
 	WaitProxyLiteTracked(vpp, func() {})
 	AssertNil(<-finished)
-	Log(vpp.Vppctl("pcap trace off"))
+	vpp.CollectPcapTrace()
 
-	pcapFile, err := os.CreateTemp("", "hsi-option-rewrite-*.pcap")
-	AssertNil(err)
-	pcapPath := pcapFile.Name()
-	AssertNil(pcapFile.Close())
-	defer os.Remove(pcapPath)
-	AssertNil(vpp.Container.GetFile("/tmp/vppTest.pcap", pcapPath))
-
-	packets, err := tcpharness.ReadPcapIPv4TCPPackets(pcapPath)
+	packets, err := tcpharness.ReadPcapIPv4TCPPackets(vpp.PcapTracePath())
 	AssertNil(err)
 	hasTSOpt := false
 	for _, packet := range packets {

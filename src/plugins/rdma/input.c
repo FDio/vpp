@@ -192,7 +192,10 @@ rdma_device_input_refill (vlib_main_t * vm, rdma_device_t * rd,
 	{
 	  rxq->tail += n_completed;
 	  if (n_completed)
-	    rxq->wq_db[MLX5_RCV_DBR] = clib_host_to_net_u32 (rxq->tail);
+	    {
+	      CLIB_DMA_WMB ();
+	      rxq->wq_db[MLX5_RCV_DBR] = clib_host_to_net_u32 (rxq->tail & 0xffff);
+	    }
 	}
       else
 	{
@@ -322,16 +325,15 @@ rdma_device_input_refill (vlib_main_t * vm, rdma_device_t * rd,
 							  bt, first_slot,
 							  n_alloc);
 	}
-      CLIB_MEMORY_STORE_BARRIER ();
+      CLIB_DMA_WMB ();
       rxq->tail += n_alloc;
       if (is_striding)
 	{
 	  rxq->striding_wqe_tail += n_alloc >> log_stride_per_wqe;
-	  rxq->wq_db[MLX5_RCV_DBR] =
-	    clib_host_to_net_u32 (rxq->striding_wqe_tail);
+	  rxq->wq_db[MLX5_RCV_DBR] = clib_host_to_net_u32 (rxq->striding_wqe_tail & 0xffff);
 	}
       else
-	rxq->wq_db[MLX5_RCV_DBR] = clib_host_to_net_u32 (rxq->tail);
+	rxq->wq_db[MLX5_RCV_DBR] = clib_host_to_net_u32 (rxq->tail & 0xffff);
       return;
     }
 
@@ -708,6 +710,10 @@ rdma_device_poll_cq_mlx5dv (rdma_device_t * rd, rdma_rxq_t * rxq,
       if ((cqe_last_byte & 0x1) != owner)
 	break;
 
+      /* The device updates the CQE owner after writing the CQE payload.
+       * Order subsequent CQE and mini-CQE loads after the owner load. */
+      CLIB_DMA_RMB ();
+
       cqe_last_byte &= 0xfc;	/* remove owner and solicited bits */
 
       if (cqe_last_byte == 0x2c)	/* OPCODE = 0x2 (Responder Send), Format = 0x3 (Compressed CQE) */
@@ -751,7 +757,7 @@ rdma_device_poll_cq_mlx5dv (rdma_device_t * rd, rdma_rxq_t * rxq,
 	  continue;
 	}
 
-      rd->flags |= RDMA_DEVICE_F_ERROR;
+      clib_atomic_fetch_or (&rd->flags, RDMA_DEVICE_F_ERROR);
       break;
     }
 
@@ -759,6 +765,9 @@ done:
   if (n_rx_packets)
     {
       rxq->cq_ci = cq_ci;
+      /* Compressed CQE owner updates must be visible before the consumer
+       * counter releases those CQE slots back to hardware. */
+      CLIB_DMA_WMB ();
       rxq->cq_db[0] = htobe32 (cq_ci & 0xffffff);
     }
   return n_rx_packets;
@@ -1159,7 +1168,8 @@ rdma_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   u32 next_index, *to_next, n_left_to_next, n_rx_bytes = 0;
   int n_rx_packets, skip_ip4_cksum = 0, l4_ok_all = 0;
   u32 mask = rxq->size - 1;
-  const int is_striding = ! !(rd->flags & RDMA_DEVICE_F_STRIDING_RQ);
+  const u32 flags = clib_atomic_load_relax_n (&rd->flags);
+  const int is_striding = !!(flags & RDMA_DEVICE_F_STRIDING_RQ);
 
   if (use_mlx5dv)
     n_rx_packets = rdma_device_poll_cq_mlx5dv (rd, rxq, byte_cnts,
@@ -1186,7 +1196,7 @@ rdma_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
     {
       u32 *bc = byte_cnts;
       int slow_path_needed;
-      const int rx_l4_cksum = !!(rd->flags & RDMA_DEVICE_F_RX_L4_CKSUM);
+      const int rx_l4_cksum = !!(flags & RDMA_DEVICE_F_RX_L4_CKSUM);
 
       if (rx_l4_cksum)
 	skip_ip4_cksum =
@@ -1269,14 +1279,17 @@ VLIB_NODE_FN (rdma_input_node) (vlib_main_t * vm,
   for (int i = 0; i < vec_len (pv); i++)
     {
       rdma_device_t *rd;
+      u32 flags;
+
       rd = vec_elt_at_index (rm->devices, pv[i].dev_instance);
-      if (PREDICT_TRUE (rd->flags & RDMA_DEVICE_F_ADMIN_UP) == 0)
+      flags = clib_atomic_load_relax_n (&rd->flags);
+      if (PREDICT_TRUE (flags & RDMA_DEVICE_F_ADMIN_UP) == 0)
 	continue;
 
-      if (PREDICT_FALSE (rd->flags & RDMA_DEVICE_F_ERROR))
+      if (PREDICT_FALSE (flags & RDMA_DEVICE_F_ERROR))
 	continue;
 
-      if (PREDICT_TRUE (rd->flags & RDMA_DEVICE_F_MLX5DV))
+      if (PREDICT_TRUE (flags & RDMA_DEVICE_F_MLX5DV))
 	n_rx +=
 	  rdma_device_input_inline (vm, node, frame, rd, pv[i].queue_id, 1);
       else

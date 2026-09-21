@@ -72,13 +72,16 @@ nsim_drain_wheel (vlib_main_t *vm, vlib_node_runtime_t *node, nsim_wheel_t *wp, 
 
   from = froms;
   next = nexts;
-  while (n_tx_packets < n_burst && ep->tx_time <= now)
+  while (n_tx_packets < n_burst)
     {
+      ep = wp->entries + wp->head;
+      if (ep->tx_time > now)
+	break;
+
       /* prefetch one line / 2 entries ahead */
       if ((((uword) ep) & (CLIB_CACHE_LINE_BYTES - 1)) == 0)
 	clib_prefetch_load ((ep + 2));
 
-      ep = wp->entries + wp->head;
       from[0] = ep->buffer_index;
       next[0] = ep->output_next_index;
 

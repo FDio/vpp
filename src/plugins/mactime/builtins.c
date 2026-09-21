@@ -91,7 +91,7 @@ handle_get_mactime (hss_url_handler_args_t *args)
 	s = format (s, "},\n");
 
       need_comma = 1;
-      s = format (s, "{%smac_address%s: %s%s%s, ", q, q, q, macstring, q);
+      s = format (s, "{%smac_address%s: %s%v%s, ", q, q, q, macstring, q);
 
       switch (current_status)
 	{

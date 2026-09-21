@@ -10,10 +10,10 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 )
 
-var veth6Tests = map[string][]func(s *Echo6Suite){}
-var veth6SoloTests = map[string][]func(s *Echo6Suite){}
+var vperf6Tests = map[string][]func(s *Vperf6Suite){}
+var vperf6SoloTests = map[string][]func(s *Vperf6Suite){}
 
-type Echo6Suite struct {
+type Vperf6Suite struct {
 	HstSuite
 	Interfaces struct {
 		Server *NetInterface
@@ -30,14 +30,14 @@ type Echo6Suite struct {
 	}
 }
 
-func RegisterEcho6Tests(tests ...func(s *Echo6Suite)) {
-	veth6Tests[GetTestFilename()] = tests
+func RegisterVperf6Tests(tests ...func(s *Vperf6Suite)) {
+	vperf6Tests[GetTestFilename()] = tests
 }
-func RegisterSoloEcho6Tests(tests ...func(s *Echo6Suite)) {
-	veth6SoloTests[GetTestFilename()] = tests
+func RegisterSoloVperf6Tests(tests ...func(s *Vperf6Suite)) {
+	vperf6SoloTests[GetTestFilename()] = tests
 }
 
-func (s *Echo6Suite) SetupSuite() {
+func (s *Vperf6Suite) SetupSuite() {
 	time.Sleep(1 * time.Second)
 	s.HstSuite.SetupSuite()
 	s.ConfigureNetworkTopology("2peerVeth6")
@@ -51,7 +51,7 @@ func (s *Echo6Suite) SetupSuite() {
 	s.Ports.Port1 = s.GeneratePort()
 }
 
-func (s *Echo6Suite) SetupTest() {
+func (s *Vperf6Suite) SetupTest() {
 	s.HstSuite.SetupTest()
 
 	// Setup test conditions
@@ -84,7 +84,7 @@ func (s *Echo6Suite) SetupTest() {
 	}
 }
 
-func (s *Echo6Suite) SetupServerVpp() {
+func (s *Vperf6Suite) SetupServerVpp() {
 	serverVpp := s.Containers.ServerVpp.VppInstance
 	AssertNil(serverVpp.Start())
 
@@ -95,7 +95,7 @@ func (s *Echo6Suite) SetupServerVpp() {
 	AssertNotEqual(0, idx)
 }
 
-func (s *Echo6Suite) SetupClientVpp() {
+func (s *Vperf6Suite) SetupClientVpp() {
 	clientVpp := s.GetContainerByName("client-vpp").VppInstance
 	AssertNil(clientVpp.Start())
 
@@ -106,13 +106,13 @@ func (s *Echo6Suite) SetupClientVpp() {
 	AssertNotEqual(0, idx)
 }
 
-func (s *Echo6Suite) SetupAppContainers() {
+func (s *Vperf6Suite) SetupAppContainers() {
 	s.Containers.ClientApp.Run()
 	s.Containers.ServerApp.Run()
 }
 
-var _ = Describe("Echo6Suite", Ordered, ContinueOnFailure, Label("Veth", "Echo", "IPv6"), func() {
-	var s Echo6Suite
+var _ = Describe("Vperf6Suite", Ordered, ContinueOnFailure, Label("Veth", "Vperf", "IPv6"), func() {
+	var s Vperf6Suite
 	BeforeAll(func() {
 		s.SetupSuite()
 	})
@@ -128,7 +128,7 @@ var _ = Describe("Echo6Suite", Ordered, ContinueOnFailure, Label("Veth", "Echo",
 	})
 
 	// https://onsi.github.io/ginkgo/#dynamically-generating-specs
-	for filename, tests := range veth6Tests {
+	for filename, tests := range vperf6Tests {
 		for _, test := range tests {
 			test := test
 			pc := reflect.ValueOf(test).Pointer()
@@ -142,8 +142,8 @@ var _ = Describe("Echo6Suite", Ordered, ContinueOnFailure, Label("Veth", "Echo",
 	}
 })
 
-var _ = Describe("Echo6SuiteSolo", Ordered, ContinueOnFailure, Serial, Label("Veth", "Echo", "IPv6"), func() {
-	var s Echo6Suite
+var _ = Describe("Vperf6SuiteSolo", Ordered, ContinueOnFailure, Serial, Label("Veth", "Vperf", "IPv6"), func() {
+	var s Vperf6Suite
 	BeforeAll(func() {
 		s.SetupSuite()
 	})
@@ -158,7 +158,7 @@ var _ = Describe("Echo6SuiteSolo", Ordered, ContinueOnFailure, Serial, Label("Ve
 	})
 
 	// https://onsi.github.io/ginkgo/#dynamically-generating-specs
-	for filename, tests := range veth6SoloTests {
+	for filename, tests := range vperf6SoloTests {
 		for _, test := range tests {
 			test := test
 			pc := reflect.ValueOf(test).Pointer()

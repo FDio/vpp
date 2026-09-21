@@ -19,10 +19,14 @@ fi
 
 LAST_STATE_FILE=".last_state_hash"
 
+# the tag is part of the state: with a new IMAGE_TAG this run's images do not exist
+# yet, however unchanged the sources are
+export IMAGE_TAG=${IMAGE_TAG:-latest}
+
 # get current state hash and ubuntu version
 ctime_hash1=$(stat -c %Z "$VPP_BUILD_ROOT"/.mu_build_install_timestamp | sha1sum | awk '{print $1}')
 ctime_hash2=$(stat -c %Z docker/* | sha1sum | awk '{print $1}')
-current_state_hash=$ctime_hash1-$ctime_hash2-$UBUNTU_VERSION$1
+current_state_hash=$ctime_hash1-$ctime_hash2-$UBUNTU_VERSION$1-$IMAGE_TAG
 
 if [ -f "$LAST_STATE_FILE" ]; then
     last_state_hash=$(cat "$LAST_STATE_FILE")
@@ -86,7 +90,7 @@ cp -r ${VPP_WS}/extras/gdb/* ${gdb}
 echo "=== Building all containers using build-images.sh ==="
 (
     # Export necessary environment variables for build-images.sh
-    export BASE_TAG="localhost:$REGISTRY_PORT/vpp-test-base:latest"
+    export BASE_TAG="localhost:$REGISTRY_PORT/vpp-test-base:$IMAGE_TAG"
     export OS_ARCH
     export UBUNTU_VERSION
     export HTTP_PROXY

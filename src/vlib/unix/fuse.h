@@ -77,6 +77,7 @@ typedef struct
   u32 allow_other : 1;
   u32 blksize;
   u32 max_msgs_per_read;
+  clib_thread_index_t polling_thread_index;
   char *fsname;
   char *subtype;
 } vlib_fuse_create_args_t;

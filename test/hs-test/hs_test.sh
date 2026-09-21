@@ -93,6 +93,12 @@ case "${i}" in
             use_cpu0=true
         fi
         ;;
+    --pcap=*)
+        pcap="${i#*=}"
+        if [ "$pcap" = "true" ]; then
+            args="$args -pcap"
+        fi
+        ;;
     --dryrun=*)
         dryrun="${i#*=}"
         if [ "$dryrun" = "true" ]; then
@@ -129,6 +135,9 @@ case "${i}" in
         ;;
     --run_id=*)
         args="$args -run_id ${i#*=}"
+        ;;
+    --image_tag=*)
+        args="$args -image_tag ${i#*=}"
         ;;
     --seed=*)
         seed="${i#*=}"

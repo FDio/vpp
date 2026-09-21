@@ -174,9 +174,12 @@ vl_api_http_static_get_t_handler (vl_api_http_static_get_t *mp)
     else
       {
 	if (hsm->default_listener.sep.is_ip4)
-	  addr = format (addr, "%U", format_ip4_address, &hsm->default_listener.sep.ip);
+	  addr = format (addr, "%U", format_ip4_address, &hsm->default_listener.sep.ip.ip4);
 	else
-	  addr = format (addr, "[%U]", format_ip6_address, &hsm->default_listener.sep.ip);
+	  addr = format (addr, "[%U]", format_ip6_address, &hsm->default_listener.sep.ip.ip6);
+	/* format() does not NULL terminate; snprintf("%s", addr) would
+	   read past the end of the vector without this NULL termination. */
+	vec_add1 (addr, 0);
 
 	rmp->fifo_size = htonl (hsm->fifo_size);
 	rmp->cache_size_limit = htonl (hsm->default_listener.cache.cache_limit);

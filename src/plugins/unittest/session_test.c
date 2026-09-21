@@ -66,6 +66,110 @@ static app_crypto_async_req_t *session_test_crypto_async_last_req;
 static app_crypto_async_req_handle_t session_test_crypto_async_reply_handle;
 
 static int
+session_test_pacer (vlib_main_t *vm, unformat_input_t *input)
+{
+  clib_thread_index_t thread_index = vlib_get_thread_index ();
+  clib_time_type_t saved_seconds_per_loop = vm->seconds_per_loop;
+  clib_us_time_t saved_time = transport_us_time_now (thread_index);
+  transport_connection_t tc = { .thread_index = thread_index };
+  u64 rate = 2e9;
+  u64 old_rate = 7500000000, new_rate = 7514600000;
+  u32 catchup_burst, hard_cap_burst, i, loop_max_burst, overflow_burst, rtt_max_burst;
+  f64 aged_debt, fractional_credit, rate_change_credit, rate_decrease_credit;
+  f64 catchup_credit, restart_credit, restart_debt;
+
+  vm->seconds_per_loop = 1.25e-6;
+  transport_connection_tx_pacer_init (&tc, rate, 0, TRANSPORT_PACER_MIN_BURST);
+  transport_connection_tx_pacer_update (&tc, rate, 1 /* 1us rtt */);
+  loop_max_burst = tc.pacer.max_burst;
+
+  vm->seconds_per_loop = 1e-6;
+  transport_connection_tx_pacer_update (&tc, rate, 25 /* 25us rtt */);
+  rtt_max_burst = tc.pacer.max_burst;
+
+  /* Model one MSS of cwnd growth at 100us RTT. */
+  session_main.wrk[thread_index].last_vlib_us_time = saved_time;
+  transport_connection_tx_pacer_reset (&tc, old_rate, 0, 100 /* 100us rtt */);
+  session_main.wrk[thread_index].last_vlib_us_time = saved_time + 1;
+  transport_connection_tx_pacer_update (&tc, new_rate, 100 /* 100us rtt */);
+  transport_connection_tx_pacer_burst (&tc);
+  rate_change_credit = tc.pacer.bucket;
+
+  transport_connection_tx_pacer_reset (&tc, 2e9, 0, 100 /* 100us rtt */);
+  session_main.wrk[thread_index].last_vlib_us_time = saved_time + 6;
+  transport_connection_tx_pacer_update (&tc, 1e9, 100 /* 100us rtt */);
+  rate_decrease_credit = tc.pacer.bucket;
+
+  transport_connection_tx_pacer_reset (&tc, 6250000, 0, 100 /* 100us rtt */);
+  for (i = 1; i <= 100; i++)
+    {
+      session_main.wrk[thread_index].last_vlib_us_time = saved_time + 6 + 2 * i;
+      transport_connection_tx_pacer_burst (&tc);
+    }
+  fractional_credit = tc.pacer.bucket;
+
+  transport_connection_tx_pacer_reset (&tc, 1e9, 0, 1 /* 1us rtt */);
+  transport_connection_tx_pacer_update_bytes (&tc, transport_connection_tx_pacer_burst (&tc));
+  session_main.wrk[thread_index].last_vlib_us_time = tc.pacer.last_update + 20;
+  catchup_burst = transport_connection_tx_pacer_burst (&tc);
+  transport_connection_tx_pacer_update_bytes (&tc, catchup_burst);
+  catchup_credit = tc.pacer.bucket;
+
+  transport_connection_tx_pacer_set_burst_limits (&tc, 4 * TRANSPORT_PACER_MIN_BURST,
+						  4 * TRANSPORT_PACER_MIN_BURST);
+  transport_connection_tx_pacer_reset (&tc, 1e9, 0, 1 /* 1us rtt */);
+  transport_connection_tx_pacer_update_bytes (&tc, transport_connection_tx_pacer_burst (&tc));
+  session_main.wrk[thread_index].last_vlib_us_time = tc.pacer.last_update + 20;
+  hard_cap_burst = transport_connection_tx_pacer_burst (&tc);
+  transport_connection_tx_pacer_reset (&tc, 1e9, (u32) ~0, 1 /* 1us rtt */);
+  overflow_burst = transport_connection_tx_pacer_burst (&tc);
+
+  tc.flags |= TRANSPORT_CONNECTION_F_DESCHED;
+  tc.pacer.bucket = -TRANSPORT_PACER_MIN_BURST;
+  transport_connection_tx_reactivate (&tc);
+  restart_debt = tc.pacer.bucket;
+
+  tc.flags |= TRANSPORT_CONNECTION_F_DESCHED;
+  tc.pacer.bucket = TRANSPORT_PACER_MIN_BURST;
+  transport_connection_tx_reactivate (&tc);
+  restart_credit = tc.pacer.bucket;
+
+  tc.flags |= TRANSPORT_CONNECTION_F_DESCHED;
+  tc.pacer.bucket = -TRANSPORT_PACER_MIN_BURST;
+  session_main.wrk[thread_index].last_vlib_us_time = tc.pacer.last_update + 1000;
+  transport_connection_tx_reactivate (&tc);
+  aged_debt = tc.pacer.bucket;
+
+  session_main.wrk[thread_index].last_vlib_us_time = saved_time;
+  vm->seconds_per_loop = saved_seconds_per_loop;
+
+  SESSION_TEST (loop_max_burst == 2500, "fractional loop interval sets max burst (%u)",
+		loop_max_burst);
+  SESSION_TEST (rtt_max_burst == 2500, "fractional rtt interval sets max burst (%u)",
+		rtt_max_burst);
+  SESSION_TEST (rate_change_credit == 7500, "rate change preserves old-rate credit (%.1f)",
+		rate_change_credit);
+  SESSION_TEST (rate_decrease_credit == 10000, "rate decrease preserves credit (%.1f)",
+		rate_decrease_credit);
+  SESSION_TEST (fractional_credit == 1250, "fractional credit is retained (%.1f)",
+		fractional_credit);
+  SESSION_TEST (catchup_burst == 20000, "late dispatch catches up (%u)", catchup_burst);
+  SESSION_TEST (catchup_credit == -TRANSPORT_PACER_MIN_BURST,
+		"catch-up restores nominal debt (%.1f)", catchup_credit);
+  SESSION_TEST (hard_cap_burst == 4 * TRANSPORT_PACER_MIN_BURST,
+		"configured burst cap is enforced (%u)", hard_cap_burst);
+  SESSION_TEST (overflow_burst == 4 * TRANSPORT_PACER_MIN_BURST,
+		"large initial credit is capped (%u)", overflow_burst);
+  SESSION_TEST (!transport_connection_is_descheduled (&tc), "descheduled flag is cleared");
+  SESSION_TEST (restart_debt == -TRANSPORT_PACER_MIN_BURST,
+		"reactivation preserves pacer debt (%.1f)", restart_debt);
+  SESSION_TEST (restart_credit == 0, "reactivation discards pacer credit (%.1f)", restart_credit);
+  SESSION_TEST (aged_debt == 0, "elapsed credit does not survive descheduled state (%.1f)",
+		aged_debt);
+  return 0;
+}
+
+static int
 session_test_crypto_async_cb (app_crypto_async_req_t *req)
 {
   session_test_crypto_async_count++;
@@ -3017,6 +3121,8 @@ session_test (vlib_main_t * vm,
 	res = session_test_ext_cfg (vm, input);
       else if (unformat (input, "app-crypto"))
 	res = session_test_app_crypto (vm, input);
+      else if (unformat (input, "pacer"))
+	res = session_test_pacer (vm, input);
       else if (unformat (input, "reconn-while-closed"))
 	res = session_test_reconn_while_closed (vm, input);
       else if (unformat (input, "all"))
@@ -3042,6 +3148,8 @@ session_test (vlib_main_t * vm,
 	  if ((res = session_test_ext_cfg (vm, input)))
 	    goto done;
 	  if ((res = session_test_app_crypto (vm, input)))
+	    goto done;
+	  if ((res = session_test_pacer (vm, input)))
 	    goto done;
 	  if ((res = session_test_enable_disable (vm, input)))
 	    goto done;

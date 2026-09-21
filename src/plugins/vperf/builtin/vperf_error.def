@@ -1,0 +1,9 @@
+/*
+ * SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) 2026 Cisco Systems, Inc.
+ */
+
+vperf_error (NONE, none, INFO, "no error")
+vperf_error (FIFO_FULL, fifo_full, INFO, "Lack of tx fifo space")
+vperf_error (FIFO_GROW, fifo_grow, INFO, "Tx fifo under memory pressure")
+vperf_error (STUCK_CLIENT, stuck_client, INFO, "Stuck client tx")

@@ -154,14 +154,19 @@ vcl_cfg_parse_heapsize (char *conf_fname)
 	      goto defaulted;
 	    }
 	}
-      free (argv[i]);
     }
 
 defaulted:
   if (fp != NULL)
     fclose (fp);
   if (argv != NULL)
-    free (argv);
+    {
+      for (i = 1; i < argc; i++)
+	{
+	  free (argv[i]);
+	}
+      free (argv);
+    }
 }
 
 void
@@ -403,11 +408,10 @@ vppcom_cfg_read_file (char *conf_fname)
 			    getpid (), max_nsid_vec_len);
 		}
 
-	      VCFG_DBG (0, "VCL<%d>: configured namespace_id %s", getpid (),
-			(char *) vcl_cfg->namespace_id);
+	      VCFG_DBG (0, "VCL<%d>: configured namespace_id %.*s", getpid (),
+			(int) vec_len (vcl_cfg->namespace_id), (char *) vcl_cfg->namespace_id);
 	    }
-	  else if (unformat (line_input, "api-socket-name %s",
-			     &vcl_cfg->vpp_bapi_socket_name))
+	  else if (unformat (line_input, "api-socket-name %s", &vcl_cfg->vpp_bapi_socket_name))
 	    {
 	      vec_terminate_c_string (vcl_cfg->vpp_bapi_socket_name);
 	      VCFG_DBG (0, "VCL<%d>: configured api-socket-name (%s)",

@@ -26,13 +26,12 @@ int ptls_load_bio_pem_objects (BIO *bio, const char *label, ptls_iovec_t *list,
 
 int ptls_load_bio_certificates (ptls_context_t *ctx, BIO *bio);
 
-int load_bio_certificate_chain (ptls_context_t *ctx, const char *cert_data);
+int load_bio_certificate_chain (ptls_context_t *ctx, const char *cert_data, int cert_len);
 
-int load_bio_private_key (ptls_context_t *ctx, const char *pk_data);
+int load_bio_private_key (ptls_context_t *ctx, const char *pk_data, int pk_len);
 
-EVP_PKEY *ptls_load_private_key (const char *pk_data);
-quic_quicly_ptls_cert_list_t *
-ptls_load_certificate_chain (const char *cert_data);
+EVP_PKEY *ptls_load_private_key (const char *pk_data, int pk_len);
+quic_quicly_ptls_cert_list_t *ptls_load_certificate_chain (const char *cert_data, int cert_len);
 int ptls_assign_private_key (ptls_openssl_sign_certificate_t *sc, ptls_context_t *ctx,
 			     EVP_PKEY *pkey);
 void ptls_release_private_key (ptls_openssl_sign_certificate_t *sc);

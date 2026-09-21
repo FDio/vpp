@@ -255,16 +255,24 @@ vperf_client_accumulate_stats (vperf_client_worker_t *wrk, vperf_session_t *ctrl
 static void
 vperf_client_worker_sessions_exit (vperf_client_worker_t *wrk)
 {
+  vperf_client_main_t *vcm = &vperf_client_main;
+  vperf_main_t *vt = &vperf_main;
+  const vperf_proto_vft_t *tp = vt->protos[vcm->proto];
   vperf_session_t *ts;
   int i;
 
   for (i = 0; i < wrk->cfg.num_test_sessions; i++)
     {
       ts = &wrk->sessions[i];
+      /* Cleanup proto state before closing the fd. */
+      if (tp->cleanup)
+	tp->cleanup (ts);
       vppcom_session_close (ts->fd);
       vperf_session_buf_free (ts);
     }
 
+  free (wrk->sessions);
+  wrk->sessions = NULL;
   wrk->n_sessions = 0;
 }
 
@@ -1516,6 +1524,14 @@ main (int argc, char **argv)
 
   vperf_client_ctrl_session_exit ();
   vppcom_app_destroy ();
+  for (int i = 0; i < vcm->n_workers; i++)
+    {
+      free (vt->wrk[i].qsessions);
+      vt->wrk[i].qsessions = NULL;
+    }
+  free (vt->wrk);
+  vt->wrk = NULL;
   free (vcm->workers);
+  vcm->workers = NULL;
   return 0;
 }

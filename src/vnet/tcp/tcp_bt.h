@@ -47,6 +47,9 @@ tcp_bt_tx_sent_after (f64 ts, u32 end_seq, f64 other_ts, u32 other_end)
 /** Explicitly remove a sample from the transmit-order index. No-op if inactive. */
 void tcp_bt_tx_order_remove (tcp_byte_tracker_t *bt, tcp_bt_sample_t *bts);
 
+/** Build the transmit-order index from the byte tracker's sequence list. */
+void tcp_bt_tx_order_build (tcp_byte_tracker_t *bt);
+
 /**
  * Byte tracker cleanup
  *
@@ -74,11 +77,18 @@ void tcp_bt_flush_samples (tcp_connection_t * tc);
 /**
  * Track a tcp tx burst
  *
+ * Must be called before snd_nxt is advanced. The saved flight includes len.
+ *
  * @param tc	tcp connection
+ * @param len	bytes transmitted
  */
 void tcp_bt_track_tx (tcp_connection_t * tc, u32 len);
 /**
  * Track a tcp retransmission
+ *
+ * Must be called after snd_rxt_bytes is advanced by end - start. The saved
+ * flight includes the new transmission and discounts any active copy it
+ * replaces.
  *
  * @param tc	tcp connection
  * @param start	start sequence number
@@ -115,13 +125,15 @@ u8 tcp_bt_handle_sack_reneging (tcp_connection_t *tc, u8 restore_tx_order);
 u8 tcp_bt_is_sane_post_recovery (tcp_connection_t *tc);
 u8 tcp_bt_next_rxt_range (tcp_connection_t *tc, u8 have_unsent, u8 *can_rescue, u8 *snd_limited,
 			  tcp_rxt_range_t *range);
+u8 tcp_bt_next_rack_rxt_range (tcp_connection_t *tc, tcp_rxt_range_t *range);
 u8 tcp_bt_last_rxt_range (tcp_connection_t *tc, tcp_rxt_range_t *range);
 /**
  * Check if sample to be generated is app limited
  *
- * @param tc	tcp connection
+ * @param tc		 tcp connection
+ * @param available_bytes unsent bytes available for transmission
  */
-void tcp_bt_check_app_limited (tcp_connection_t * tc);
+void tcp_bt_check_app_limited (tcp_connection_t *tc, u32 available_bytes);
 /**
  * Check if the byte tracker is in sane state
  *

@@ -451,11 +451,11 @@ quic_quicly_certkey_init_ctx (app_cert_key_pair_t *ckpair,
   app_certkey_int_ctx_t *cki;
   EVP_PKEY *pkey;
 
-  pkey = ptls_load_private_key ((char *) ckpair->key);
+  pkey = ptls_load_private_key ((char *) ckpair->key, vec_len (ckpair->key));
   if (pkey == NULL)
     return 0;
 
-  cl = ptls_load_certificate_chain ((char *) ckpair->cert);
+  cl = ptls_load_certificate_chain ((char *) ckpair->cert, vec_len (ckpair->cert));
   if (!cl)
     {
       EVP_PKEY_free (pkey);

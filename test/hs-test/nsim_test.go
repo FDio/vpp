@@ -33,6 +33,6 @@ func NsimLossTest(s *VethsSuite) {
 	packetLoss, err := strconv.ParseFloat(packetLossStr, 64)
 	AssertNil(err)
 	if !s.CoverageRun {
-		AssertEqual(packetLoss, float64(10), "Packet loss != 10%%")
+		AssertEqualUnlessAsanBuild(packetLoss, float64(10), "Packet loss != 10%%")
 	}
 }

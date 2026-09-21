@@ -78,8 +78,8 @@ plugins {
 }
 
 logging {
-  default-log-level debug
-  default-syslog-log-level debug
+  default-log-level %[6]s
+  default-syslog-log-level %[6]s
 }
 
 `
@@ -89,6 +89,9 @@ const (
 	defaultApiSocketFilePath = "/var/run/vpp/api.sock"
 	defaultLogFilePath       = "/var/log/vpp/vpp.log"
 	Consistent_qp            = 256
+
+	pcapTraceFileName              = "vppTest.pcap"
+	pcapTraceDefaultMaxBytesPerPkt = 1500
 )
 
 type VppInstance struct {
@@ -98,6 +101,7 @@ type VppInstance struct {
 	ApiStream        api.Stream
 	Cpus             []int
 	CpuConfig        VppCpuConfig
+	pcapTraceEnabled bool
 }
 
 type VppCpuConfig struct {
@@ -161,6 +165,13 @@ func (vpp *VppInstance) Start() error {
 	o, err = vpp.Container.Exec(false, "mkdir -m 777 -p "+vpp.getEtcDir())
 	AssertNil(err, o)
 
+	// formatting a log message allocates a string that vlib_log keeps in its
+	// ring buffer, which the mem-leak report then sees as a live allocation
+	logLevel := "debug"
+	if *IsLeakCheck {
+		logLevel = "disabled"
+	}
+
 	// Create startup.conf inside the container
 	configContent := fmt.Sprintf(
 		vppConfigTemplate,
@@ -169,6 +180,7 @@ func (vpp *VppInstance) Start() error {
 		defaultApiSocketFilePath,
 		defaultLogFilePath,
 		cliConfig,
+		logLevel,
 	)
 	configContent += vpp.generateVPPCpuConfig()
 	for _, c := range vpp.AdditionalConfig {
@@ -252,7 +264,17 @@ func (vpp *VppInstance) Start() error {
 
 	AddReportEntry("VPP version", vpp.Vppctl("show version verbose"), ReportEntryVisibilityNever)
 
+	if *IsPcap {
+		vpp.EnablePcapTrace()
+	}
+
 	return nil
+}
+
+// isRunning reports whether the VPP process is still alive
+func (vpp *VppInstance) isRunning() bool {
+	pid, err := vpp.Container.Exec(false, "pidof vpp")
+	return err == nil && strings.TrimSpace(pid) != ""
 }
 
 func (vpp *VppInstance) Stop() {
@@ -854,6 +876,7 @@ func (vpp *VppInstance) GetMemoryTrace() ([]VppMemTrace, error) {
 	return trace, nil
 }
 
+// Frames that are noise on their own, no matter who called them.
 var defaultMemLeakReportNoiseFrames = []string{
 	"unix_cli",
 	"vlib_buffer_validate_alloc_free",
@@ -862,24 +885,47 @@ var defaultMemLeakReportNoiseFrames = []string{
 	"http_add_postponed_ho_cleanups",
 }
 
-func memTraceContainsAnyFrame(trace VppMemTrace, tracebackFrames []string) bool {
+// Frame pairs {callee, caller} for generic helpers that are noise only under one
+// specific caller. Frames must be adjacent, callee first. Traceback is capped at
+// 12 frames, so anchor pairs deep in the stack.
+var defaultMemLeakReportNoiseFramePairs = [][2]string{
+	// per worker scratch vectors, grow to a high-water mark and are never freed
+	{"_vec_validate", "session_tx_fifo_read_and_snd_i"},
+}
+
+// memTraceIsReportNoise reports whether a trace is expected noise and what matched.
+func memTraceIsReportNoise(trace VppMemTrace) (bool, string) {
 	for i := 0; i < len(trace.Traceback); i++ {
-		for j := 0; j < len(tracebackFrames); j++ {
-			if strings.Contains(trace.Traceback[i], tracebackFrames[j]) {
-				return true
+		for j := 0; j < len(defaultMemLeakReportNoiseFrames); j++ {
+			if strings.Contains(trace.Traceback[i], defaultMemLeakReportNoiseFrames[j]) {
+				return true, defaultMemLeakReportNoiseFrames[j]
+			}
+		}
+		if i+1 >= len(trace.Traceback) {
+			continue
+		}
+		for j := 0; j < len(defaultMemLeakReportNoiseFramePairs); j++ {
+			pair := defaultMemLeakReportNoiseFramePairs[j]
+			if strings.Contains(trace.Traceback[i], pair[0]) &&
+				strings.Contains(trace.Traceback[i+1], pair[1]) {
+				return true, pair[0] + " <- " + pair[1]
 			}
 		}
 	}
-	return false
+	return false, ""
 }
 
 // memTracesSuppressReportNoise filters out expected allocations unrelated to the code under test.
 func memTracesSuppressReportNoise(traces []VppMemTrace) []VppMemTrace {
 	var filtered []VppMemTrace
 	for i := range traces {
-		if !memTraceContainsAnyFrame(traces[i], defaultMemLeakReportNoiseFrames) {
-			filtered = append(filtered, traces[i])
+		noise, match := memTraceIsReportNoise(traces[i])
+		if noise {
+			Log("mem trace suppressed as report noise [%s]: %d byte(s) in %d allocation(s) from %s",
+				match, traces[i].Size, traces[i].Count, strings.Join(traces[i].Traceback, " <- "))
+			continue
 		}
+		filtered = append(filtered, traces[i])
 	}
 	return filtered
 }
@@ -934,14 +980,37 @@ func (vpp *VppInstance) CollectEventLogs() {
 
 // EnablePcapTrace enables packet capture on all interfaces and maximum 10000 packets
 func (vpp *VppInstance) EnablePcapTrace() {
-	Log(vpp.Vppctl("pcap trace rx tx max 10000 max-bytes-per-pkt 1500 intfc any file vppTest.pcap"))
+	vpp.EnablePcapTraceMaxBytes(pcapTraceDefaultMaxBytesPerPkt)
 }
 
-// CollectPcapTrace saves pcap trace to the test execution directory
-func (vpp *VppInstance) CollectPcapTrace() {
+// EnablePcapTraceMaxBytes enables packet capture on all interfaces and maximum 10000 packets,
+// capturing at most 'maxBytesPerPkt' bytes of each packet
+func (vpp *VppInstance) EnablePcapTraceMaxBytes(maxBytesPerPkt int) {
+	// VPP rejects a capture while another one is running
+	if vpp.pcapTraceEnabled {
+		vpp.DisablePcapTrace()
+	}
+	Log(vpp.Vppctl("pcap trace rx tx max 10000 max-bytes-per-pkt %d intfc any file %s",
+		maxBytesPerPkt, pcapTraceFileName))
+	vpp.pcapTraceEnabled = true
+}
+
+// DisablePcapTrace stops packet capture and saves it to a file inside the container
+func (vpp *VppInstance) DisablePcapTrace() {
 	Log(vpp.Vppctl("pcap trace off"))
-	targetDir := vpp.Container.Suite.getLogDirPath()
-	err := vpp.Container.GetFile("/tmp/vppTest.pcap", targetDir+"/"+vpp.Container.Name+".pcap")
+	vpp.pcapTraceEnabled = false
+}
+
+// PcapTracePath is where CollectPcapTrace saves the packet capture of this instance
+func (vpp *VppInstance) PcapTracePath() string {
+	// BaseName, not Name: same reasoning as in Container.saveLogs()
+	return vpp.Container.Suite.getLogDirPath() + vpp.Container.BaseName + ".pcap"
+}
+
+// CollectPcapTrace stops packet capture and saves it to the test execution directory
+func (vpp *VppInstance) CollectPcapTrace() {
+	vpp.DisablePcapTrace()
+	err := vpp.Container.GetFile("/tmp/"+pcapTraceFileName, vpp.PcapTracePath())
 	if err != nil {
 		Log(fmt.Sprint(err))
 	}

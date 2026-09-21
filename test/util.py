@@ -625,6 +625,9 @@ def fragment_rfc8200(packet, identification, fragsize, logger=null_logger):
     len_ext_and_upper_layer_payload = len(ext_and_upper_layer.payload)
     if not len_ext_and_upper_layer_payload and hasattr(ext_and_upper_layer, "data"):
         len_ext_and_upper_layer_payload = len(ext_and_upper_layer.data)
+    # Handle Raw layer (e.g. DCCP, UDP-Lite) which stores data in .load
+    if not len_ext_and_upper_layer_payload and isinstance(ext_and_upper_layer, Raw):
+        len_ext_and_upper_layer_payload = len(ext_and_upper_layer.load)
 
     if (
         len(per_fragment_headers)

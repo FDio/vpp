@@ -8,6 +8,7 @@
 #include <vppinfra/lock.h>
 #include <vnet/tls/tls.h>
 #include <vnet/tls/tls_inlines.h>
+#include <vnet/tls/tls_record.h>
 
 static tls_main_t tls_main;
 tls_engine_vft_t *tls_vfts;
@@ -201,12 +202,11 @@ tls_notify_app_accept (tls_ctx_t * ctx)
   int rv;
 
   lctx = tls_listener_ctx_get (ctx->listener_ctx_index);
-  app_listener = listen_session_get_from_handle (lctx->app_session_handle);
-
   app_session = session_alloc (ctx->c_thread_index);
+  app_listener = listen_session_get_from_handle (lctx->app_session_handle);
   app_session->session_state = SESSION_STATE_ACCEPTING;
   app_session->session_type = app_listener->session_type;
-  app_session->listener_handle = listen_session_get_handle (app_listener);
+  app_session->listener_handle = lctx->app_session_handle;
   app_session->connection_index = ctx->tls_ctx_handle;
   ctx->c_s_index = app_session->session_index;
 
@@ -217,6 +217,8 @@ tls_notify_app_accept (tls_ctx_t * ctx)
       ctx->flags |= TLS_CONN_F_NO_APP_SESSION;
       return rv;
     }
+  app_session->rx_fifo->shr->min_alloc =
+    clib_min (TLS_FRAGMENT_MAX_LEN, app_session->rx_fifo->shr->min_alloc);
   ctx->app_session_handle = session_handle (app_session);
   ctx->parent_app_wrk_index = app_session->app_wrk_index;
   app_wrk = app_worker_get (app_session->app_wrk_index);
@@ -273,6 +275,8 @@ tls_notify_app_connected (tls_ctx_t * ctx, session_error_t err)
     }
 
   app_session->session_state = SESSION_STATE_READY;
+  app_session->rx_fifo->shr->min_alloc =
+    clib_min (TLS_FRAGMENT_MAX_LEN, app_session->rx_fifo->shr->min_alloc);
   parent_app_api_ctx = ctx->parent_app_api_context;
   ctx->app_session_handle = session_handle (app_session);
 
