@@ -2772,6 +2772,286 @@ tcp_test_cwnd_limited_growth (void)
   return 0;
 }
 
+static void
+tcp_test_cubic_hystart_init (tcp_connection_t *tc, clib_thread_index_t thread_index, u32 snd_mss)
+{
+  clib_memset (tc, 0, sizeof (*tc));
+  tc->c_thread_index = thread_index;
+  tc->snd_mss = snd_mss;
+  tc->snd_una = snd_mss;
+  tc->snd_nxt = 11 * snd_mss;
+  tc->tx_fifo_size = 1 << 30;
+  tc->mrtt_us = 0.01;
+  tc->srtt = 0.01 / TCP_TICK;
+  tc->rcv_opts.flags |= TCP_OPTS_FLAG_TSTAMP;
+  tc->cc_algo = tcp_cc_algo_get (TCP_CC_CUBIC);
+  tc->cc_algo->init (tc);
+}
+
+static void
+tcp_test_cubic_hystart_ack (tcp_connection_t *tc, u32 ack, u32 snd_nxt, u32 bytes_acked,
+			    f64 rtt_time)
+{
+  tcp_ack_ctx_t ac = {
+    .bytes_acked = bytes_acked,
+    .acked_and_sacked = bytes_acked,
+    .rtt_time = rtt_time,
+  };
+
+  tc->snd_una = ack;
+  tc->snd_nxt = snd_nxt;
+  tc->cwnd_limited_seq = ack;
+  tc->cc_algo->rcv_ack (tc, &ac);
+}
+
+/* Establish a 10 ms baseline round followed by eight 20 ms samples. */
+static u32
+tcp_test_cubic_hystart_enter_css (tcp_connection_t *tc, u32 snd_mss)
+{
+  u32 ack = tc->snd_una;
+  u32 first_round_end = tc->snd_nxt;
+  u32 next_round_end = first_round_end + 29 * snd_mss;
+  u32 i;
+
+  /* Nine baseline samples remain below the initial round boundary. */
+  for (i = 0; i < 9; i++)
+    {
+      ack += snd_mss;
+      tcp_test_cubic_hystart_ack (tc, ack, first_round_end, snd_mss, 0.010);
+    }
+
+  /* The boundary ACK supplies the new round's first sample. */
+  ack += snd_mss;
+  tcp_test_cubic_hystart_ack (tc, ack, next_round_end, snd_mss, 0.020);
+  for (i = 1; i < 8; i++)
+    {
+      ack += snd_mss;
+      tcp_test_cubic_hystart_ack (tc, ack, next_round_end, snd_mss, 0.020);
+    }
+
+  return ack;
+}
+
+/* Draining and refilling a flight must count only one CSS round. */
+static int
+tcp_test_cubic_hystart_drained_rounds (void)
+{
+  const clib_thread_index_t thread_index = 0;
+  const u32 snd_mss = 1000;
+  const struct
+  {
+    u32 seq_offset;
+    u8 ack_each_segment;
+    const char *name;
+  } cases[] = {
+    { 0, 1, "per-segment ACKs" },
+    { 0, 0, "one cumulative ACK" },
+    { ~0U - 29999, 1, "sequence wrap" },
+  };
+  tcp_connection_t _tc, *tc = &_tc;
+  u32 ack, round_end, bytes_acked, i, round;
+
+  tcp_test_set_time (thread_index, 1);
+  for (i = 0; i < ARRAY_LEN (cases); i++)
+    {
+      tcp_test_cubic_hystart_init (tc, thread_index, snd_mss);
+      if (cases[i].seq_offset)
+	{
+	  tc->snd_una += cases[i].seq_offset;
+	  tc->snd_nxt += cases[i].seq_offset;
+	  tc->cc_algo->init (tc);
+	}
+      tc->connection.flags |= TRANSPORT_CONNECTION_F_IS_TX_PACED;
+      ack = tcp_test_cubic_hystart_enter_css (tc, snd_mss);
+      round_end = tc->snd_nxt;
+
+      for (round = 1; round <= 5; round++)
+	{
+	  while (seq_lt (ack, round_end))
+	    {
+	      bytes_acked = cases[i].ack_each_segment ? snd_mss : round_end - ack;
+	      ack += bytes_acked;
+	      tcp_test_cubic_hystart_ack (tc, ack, round_end, bytes_acked, 0.020);
+	    }
+	  if (round < 5)
+	    {
+	      TCP_TEST ((tcp_in_slowstart (tc)), "CSS remains after drained round %u (%s)", round,
+			cases[i].name);
+	      round_end += (tc->cwnd / snd_mss) * snd_mss;
+	    }
+	  else
+	    TCP_TEST ((tc->ssthresh == tc->cwnd), "CSS exits after five drained rounds (%s)",
+		      cases[i].name);
+	}
+    }
+
+  return 0;
+}
+
+static void
+tcp_test_cubic_config (char *cfg)
+{
+  unformat_input_t input;
+
+  unformat_init_string (&input, cfg, strlen (cfg));
+  tcp_cc_algo_get (TCP_CC_CUBIC)->unformat_cfg (&input);
+  unformat_free (&input);
+}
+
+static int
+tcp_test_cubic_hystart (void)
+{
+  const clib_thread_index_t thread_index = 0;
+  const u32 snd_mss = 1000;
+  tcp_connection_t _tc, *tc = &_tc;
+  u32 ack, before, initial_cwnd, initial_ssthresh, i;
+  u64 pacing_rate;
+
+  tcp_test_set_time (thread_index, 1);
+  tcp_test_cubic_hystart_init (tc, thread_index, snd_mss);
+  TCP_TEST ((tcp_cc_get_pacing_rate (tc) == (u64) (2.0 * tc->cwnd / 0.010)),
+	    "HyStart++ standard slow start paces at 2x");
+  ack = tcp_test_cubic_hystart_enter_css (tc, snd_mss);
+  TCP_TEST ((tcp_cc_get_pacing_rate (tc) == (u64) (1.25 * tc->cwnd / 0.010)),
+	    "CSS paces at 1.25x despite the high ssthresh");
+  initial_ssthresh = tc->ssthresh;
+  tc->ssthresh = tc->cwnd;
+  pacing_rate = tcp_cc_get_pacing_rate (tc);
+  tc->ssthresh = initial_ssthresh;
+  TCP_TEST ((pacing_rate == (u64) ((f64) tc->cwnd / 0.010)),
+	    "CSS uses 1x pacing once cwnd reaches ssthresh");
+
+  /* The ACK after the delay trigger grows cwnd at one quarter the normal
+   * slow-start rate. */
+  before = tc->cwnd;
+  ack += snd_mss;
+  tcp_test_cubic_hystart_ack (tc, ack, 40 * snd_mss, snd_mss, 0.020);
+  TCP_TEST ((tc->cwnd == before + snd_mss / 4), "HyStart++ enters conservative slow start");
+
+  /* Eight low-delay samples in the next round prove that the spike was
+   * transient.  The following ACK must use standard slow-start growth. */
+  ack = 40 * snd_mss;
+  tcp_test_cubic_hystart_ack (tc, ack, 80 * snd_mss, snd_mss, 0.010);
+  for (i = 1; i < 8; i++)
+    {
+      ack += snd_mss;
+      tcp_test_cubic_hystart_ack (tc, ack, 80 * snd_mss, snd_mss, 0.010);
+    }
+  before = tc->cwnd;
+  ack += snd_mss;
+  tcp_test_cubic_hystart_ack (tc, ack, 80 * snd_mss, snd_mss, 0.010);
+  TCP_TEST ((tc->cwnd == before + snd_mss), "HyStart++ resumes standard slow start");
+  TCP_TEST ((tcp_cc_get_pacing_rate (tc) == (u64) (2.0 * tc->cwnd / 0.010)),
+	    "HyStart++ restores 2x pacing after a transient delay increase");
+
+  /* Persistent inflation for five CSS rounds exits into CUBIC avoidance. A
+   * mid-round CSS ACK leaves cwnd fractional, which the exit rounds down. */
+  tcp_test_cubic_hystart_init (tc, thread_index, snd_mss);
+  ack = tcp_test_cubic_hystart_enter_css (tc, snd_mss);
+  tcp_test_cubic_hystart_ack (tc, ack + snd_mss, 40 * snd_mss, snd_mss, 0.020);
+  for (i = 0; i < 5; i++)
+    {
+      ack = (40 + i * 40) * snd_mss;
+      tcp_test_cubic_hystart_ack (tc, ack, ack + 40 * snd_mss, snd_mss, 0.020);
+    }
+  TCP_TEST ((tc->ssthresh == tc->cwnd), "HyStart++ exits CSS after five rounds");
+  TCP_TEST ((tc->cwnd % snd_mss == 0), "lossless HyStart++ exit rounds cwnd to segments");
+  TCP_TEST ((tcp_cc_get_pacing_rate (tc) == (u64) ((f64) tc->cwnd / 0.010)),
+	    "HyStart++ exit restores 1x avoidance pacing");
+
+  /* Non-paced senders cap one ACK's slow-start credit at 8 SMSS. */
+  tcp_test_cubic_hystart_init (tc, thread_index, snd_mss);
+  before = tc->cwnd;
+  tcp_test_cubic_hystart_ack (tc, 2 * snd_mss, 40 * snd_mss, 16 * snd_mss, 0.010);
+  TCP_TEST ((tc->cwnd == before + 8 * snd_mss), "HyStart++ caps unpaced ACK growth");
+
+  /* Pacing removes the burst concern, so all newly acknowledged bytes count. */
+  tcp_test_cubic_hystart_init (tc, thread_index, snd_mss);
+  tc->connection.flags |= TRANSPORT_CONNECTION_F_IS_TX_PACED;
+  before = tc->cwnd;
+  tcp_test_cubic_hystart_ack (tc, 2 * snd_mss, 40 * snd_mss, 16 * snd_mss, 0.010);
+  TCP_TEST ((tc->cwnd == before + 16 * snd_mss), "HyStart++ preserves paced ACK growth");
+
+  /* FIFO-limited ACKs must still supply RTT samples, but cannot grow cwnd
+   * in either standard or conservative slow start. */
+  tcp_test_cubic_hystart_init (tc, thread_index, snd_mss);
+  before = tc->cwnd;
+  tc->tx_fifo_size = before;
+  ack = tcp_test_cubic_hystart_enter_css (tc, snd_mss);
+  TCP_TEST ((tc->cwnd == before), "HyStart++ respects FIFO ceiling in standard slow start");
+  tcp_test_cubic_hystart_ack (tc, ack + snd_mss, 40 * snd_mss, snd_mss, 0.020);
+  TCP_TEST ((tc->cwnd == before), "HyStart++ respects FIFO ceiling in conservative slow start");
+  tc->tx_fifo_size *= 2;
+  tcp_test_cubic_hystart_ack (tc, ack + 2 * snd_mss, 40 * snd_mss, snd_mss, 0.020);
+  TCP_TEST ((tc->cwnd == before + snd_mss / 4), "FIFO-limited RTT samples still trigger CSS");
+
+  /* Undoing a spurious initial loss restarts HyStart++ instead of leaving the
+   * connection in CUBIC avoidance. */
+  tcp_test_cubic_hystart_init (tc, thread_index, snd_mss);
+  initial_cwnd = tc->cwnd;
+  initial_ssthresh = tc->ssthresh;
+  tc->cc_algo->congestion (tc);
+  tc->cwnd = initial_cwnd;
+  tc->ssthresh = initial_ssthresh;
+  tc->cc_algo->undo_recovery (tc);
+  tcp_test_cubic_hystart_ack (tc, 2 * snd_mss, 40 * snd_mss, snd_mss, 0.010);
+  TCP_TEST ((tc->cwnd == initial_cwnd + snd_mss), "spurious loss restores HyStart++");
+
+  /* Without TCP timestamps or byte tracking there is one RTT sample per
+   * round. RFC 9406 recommends N_RTT_SAMPLE samples before the delay check,
+   * so a delay increase must not move HyStart++ into CSS. */
+  tcp_test_cubic_hystart_init (tc, thread_index, snd_mss);
+  tc->rcv_opts.flags &= ~TCP_OPTS_FLAG_TSTAMP;
+  tcp_test_cubic_hystart_ack (tc, 2 * snd_mss, 11 * snd_mss, snd_mss, 0.010);
+  tcp_test_cubic_hystart_ack (tc, 11 * snd_mss, 40 * snd_mss, snd_mss, 0.020);
+  before = tc->cwnd;
+  tcp_test_cubic_hystart_ack (tc, 12 * snd_mss, 40 * snd_mss, snd_mss, 0.020);
+  TCP_TEST ((tc->cwnd == before + snd_mss), "HyStart++ needs N_RTT_SAMPLE samples per round");
+
+  /* With CSS disabled, the delay increase ends slow start directly and the
+   * next ACK grows cwnd neither at the slow-start nor at the CSS rate. */
+  tcp_test_cubic_config ("no-hystart-css");
+  tcp_test_cubic_hystart_init (tc, thread_index, snd_mss);
+  ack = tcp_test_cubic_hystart_enter_css (tc, snd_mss);
+  /* Restore config before assertions can return. */
+  tcp_test_cubic_config ("hystart-css");
+  TCP_TEST ((tc->ssthresh == tc->cwnd), "HyStart++ without CSS exits slow start");
+  before = tc->cwnd;
+  ack += snd_mss;
+  tcp_test_cubic_hystart_ack (tc, ack, 40 * snd_mss, snd_mss, 0.020);
+  TCP_TEST ((tc->cwnd < before + snd_mss / 4), "HyStart++ without CSS skips CSS growth");
+
+  /* Once the flight drains, snd_una equals window_end on every ACK. ACKs that
+   * acknowledge nothing new must not end rounds and finish CSS early. */
+  tcp_test_cubic_hystart_init (tc, thread_index, snd_mss);
+  ack = tcp_test_cubic_hystart_enter_css (tc, snd_mss);
+  tcp_test_cubic_hystart_ack (tc, 40 * snd_mss, 40 * snd_mss, 40 * snd_mss - ack, 0.020);
+  for (i = 0; i < 5; i++)
+    tcp_test_cubic_hystart_ack (tc, 40 * snd_mss, 40 * snd_mss, 0, 0);
+  TCP_TEST ((tcp_in_slowstart (tc)), "HyStart++ ignores empty ACKs for CSS rounds");
+
+  /* A lossless exit keeps cwnd, so the Reno-friendly estimate must start from
+   * the exit window (RFC 9438 Sec. 4.3) and grow it within ten RTTs. */
+  tcp_test_cubic_hystart_init (tc, thread_index, snd_mss);
+  tc->cwnd = 28 * snd_mss;
+  tc->ssthresh = tc->cwnd;
+  before = tc->cwnd;
+  ack = tc->snd_una;
+  for (u32 rtt = 1; rtt <= 10; rtt++)
+    {
+      tcp_test_set_time (thread_index, 1 + rtt * 0.010);
+      for (i = 0; i < 28; i++)
+	{
+	  ack += snd_mss;
+	  tcp_test_cubic_hystart_ack (tc, ack, ack + tc->cwnd, snd_mss, 0.010);
+	}
+    }
+  TCP_TEST ((tc->cwnd > before), "lossless HyStart++ exit grows the Reno-friendly window");
+  tcp_test_set_time (thread_index, 1);
+
+  return 0;
+}
+
 /* RFC 9438 excludes continuously application-limited time from the CUBIC
  * epoch even when the flight never drains and START_TX is not generated. */
 static int
@@ -3057,6 +3337,12 @@ tcp_test_cubic (vlib_main_t *vm, unformat_input_t *input)
     return rv;
 
   if ((rv = tcp_test_cwnd_limited_growth ()))
+    return rv;
+
+  if ((rv = tcp_test_cubic_hystart ()))
+    return rv;
+
+  if ((rv = tcp_test_cubic_hystart_drained_rounds ()))
     return rv;
 
   if ((rv = tcp_test_cubic_app_limited ()))
@@ -6723,6 +7009,7 @@ tcp_test_delivery (vlib_main_t * vm, unformat_input_t * input)
   TCP_TEST (ac->delivered == 2 * burst, "delivered should be 200 is %u", ac->delivered);
   TCP_TEST (ac->prior_delivered == 3 * burst + 30, "sample delivered should be %u", 3 * burst + 30);
   TCP_TEST (ac->flags & TCP_BTS_IS_RXT, "is retransmitted");
+  TCP_TEST (ac->rtt_time == 0, "BT does not export an ambiguous retransmit RTT");
   /* Sample is app limited because of the retransmits */
   TCP_TEST (ac->flags & TCP_BTS_IS_APP_LIMITED, "is app limited");
   TCP_TEST (tc->app_limited, "app limited should be set");
