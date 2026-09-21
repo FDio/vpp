@@ -1,6 +1,23 @@
 {
   "comments": [
     {
+      "unresolved": true,
+      "key": {
+        "uuid": "366ae0e3_fe83ea4c",
+        "filename": "src/plugins/lb/lbhash.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 34,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-09-21T07:55:39Z",
+      "side": 1,
+      "message": "Could we drop `LB_HASH_DO_NOT_USE_VEC128_BUCKETS` and guard the vector path directly with `CLIB_HAVE_VEC128_MSB_MASK`? The negative opt-out name plus a default of `0` makes the selection harder to read, and this macro has no other users.",
+      "revId": "f03babac83a57a20540028ccfe08b198fe953c9c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": false,
       "key": {
         "uuid": "d18cbe7f_f7ee9508",
