@@ -68,7 +68,8 @@ class VppCFLOW(VppObject):
     ):
         self._test = test
         self._intf = intf
-        self._intf_obj = getattr(self._test, intf)
+        # intf is an attribute name of the test case, or an interface object
+        self._intf_obj = getattr(self._test, intf) if isinstance(intf, str) else intf
         self._active = active
         if passive == 0 or passive < active:
             self._passive = active + 1
@@ -1314,6 +1315,172 @@ class DatapathRx(MethodHolder, DatapathTestsHolder):
     intf2 = "pg3"
     intf3 = "pg5"
     direction = "rx"
+
+
+@unittest.skipIf(
+    "flowprobe" in config.excluded_plugins, "Exclude Flowprobe plugin tests"
+)
+class DatapathSubInterface(MethodHolder):
+    """L2 datapath enabled on a VLAN sub-interface (no timers)"""
+
+    def test_L2onSubInterface(self):
+        """L2, L3 and L4 data on the L2 datapath of a sub-interface"""
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pkts = []
+
+        # a dot1ad sub-interface on a physical port
+        subif = VppDot1ADSubint(self, self.pg7, 0, 300, 400)
+        subif.admin_up()
+        subif.config_ip4()
+        subif.config_ip6()
+
+        # enable the feature on the sub-interface, not on the physical port
+        ipfix = VppCFLOW(test=self, intf=subif, layer="l2 l3 l4", direction="rx")
+        ipfix.add_vpp_config()
+
+        ipfix_decoder = IPFIXDecoder()
+        tmpl_l2_field_count = TMPL_COMMON_FIELD_COUNT + TMPL_L2_FIELD_COUNT
+        tmpl_ip_field_count = (
+            TMPL_COMMON_FIELD_COUNT
+            + TMPL_L2_FIELD_COUNT
+            + TMPL_L3_FIELD_COUNT
+            + TMPL_L4_FIELD_COUNT
+        )
+        # template 0 is L2 only, 1 is IPv4 and 2 is IPv6
+        templates = ipfix.verify_templates(
+            ipfix_decoder,
+            count=3,
+            field_count_in=(tmpl_l2_field_count, tmpl_ip_field_count),
+        )
+
+        for ip_ver in ("v4", "v6"):
+            pkt = Ether(src=subif.remote_mac, dst=self.pg7.local_mac)
+            if ip_ver == "v4":
+                src_ip, dst_ip = subif.remote_ip4, "9.0.0.1"
+                src_ip_id = IPFIX_SRC_IP4_ADDR_ID
+                dst_ip_id = IPFIX_DST_IP4_ADDR_ID
+                ethertype = 8
+                family = socket.AF_INET
+                pkt /= IP(src=src_ip, dst=dst_ip)
+            else:
+                src_ip, dst_ip = subif.remote_ip6, "2001:db8:9::1"
+                src_ip_id = 27
+                dst_ip_id = 28
+                ethertype = 56710
+                family = socket.AF_INET6
+                pkt /= IPv6(src=src_ip, dst=dst_ip)
+            pkt /= UDP(sport=1234, dport=4321)
+            pkt /= Raw(b"\xa5" * 32)
+
+            self.pkts = [subif.add_dot1ad_layer(pkt, 300, 400)]
+            self.pg7.add_stream(self.pkts)
+            self.pg_start()
+
+            # make sure the flow we expect actually showed up
+            self.vapi.ipfix_flush()
+            cflow = self.wait_for_cflow_packet(
+                self.collector, templates[1 if ip_ver == "v4" else 2], 15
+            )
+            data = ipfix_decoder.decode_data_set(cflow.getlayer(Set))
+            self.assertEqual(len(data), 1)
+            record = data[0]
+            self.assertEqual(len(record), tmpl_ip_field_count)
+            # the flow is keyed on the sub-interface, not on its parent
+            self.assertEqual(int(binascii.hexlify(record[10]), 16), subif.sw_if_index)
+            self.assertEqual(int(binascii.hexlify(record[256]), 16), ethertype)
+            self.assertEqual(int(binascii.hexlify(record[4]), 16), 17)
+            self.assertEqual(int(binascii.hexlify(record[7]), 16), 1234)
+            self.assertEqual(int(binascii.hexlify(record[11]), 16), 4321)
+            self.assertEqual(
+                int(binascii.hexlify(record[IPFIX_FLOW_DIRECTION_ID]), 16), 0
+            )
+            self.assertEqual(
+                int(binascii.hexlify(record[src_ip_id]), 16),
+                int(binascii.hexlify(socket.inet_pton(family, src_ip)), 16),
+            )
+            self.assertEqual(
+                int(binascii.hexlify(record[dst_ip_id]), 16),
+                int(binascii.hexlify(socket.inet_pton(family, dst_ip)), 16),
+            )
+
+        # cleanup, the feature must be disabled before the sub-interface goes away
+        ipfix.remove_vpp_config()
+        subif.remove_vpp_config()
+
+    def test_L2onSubInterfaceTx(self):
+        """L2, L3 and L4 data on the egress side of a sub-interface"""
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pkts = []
+
+        # a dot1ad sub-interface on a physical port; different tags than
+        # test_L2onSubInterface, so that one leaving its sub-interface behind
+        # cannot fail this test
+        subif = VppDot1ADSubint(self, self.pg7, 1, 301, 401)
+        subif.admin_up()
+        subif.config_ip4()
+        subif.configure_ipv4_neighbors()
+
+        # enable the feature on the sub-interface, not on the physical port
+        ipfix = VppCFLOW(test=self, intf=subif, layer="l2 l3 l4", direction="tx")
+        ipfix.add_vpp_config()
+
+        ipfix_decoder = IPFIXDecoder()
+        tmpl_l2_field_count = TMPL_COMMON_FIELD_COUNT + TMPL_L2_FIELD_COUNT
+        tmpl_ip_field_count = (
+            TMPL_COMMON_FIELD_COUNT
+            + TMPL_L2_FIELD_COUNT
+            + TMPL_L3_FIELD_COUNT
+            + TMPL_L4_FIELD_COUNT
+        )
+        templates = ipfix.verify_templates(
+            ipfix_decoder,
+            count=3,
+            field_count_in=(tmpl_l2_field_count, tmpl_ip_field_count),
+        )
+
+        # route the traffic out of the sub-interface
+        route = VppIpRoute(
+            self,
+            "9.0.0.0",
+            24,
+            [VppRoutePath(subif.remote_ip4, subif.sw_if_index)],
+        )
+        route.add_vpp_config()
+
+        self.pkts = [
+            Ether(src=self.pg8.remote_mac, dst=self.pg8.local_mac)
+            / IP(src=self.pg8.remote_ip4, dst="9.0.0.1")
+            / UDP(sport=1234, dport=4321)
+            / Raw(b"\xa5" * 32)
+        ]
+        self.pg8.add_stream(self.pkts)
+        self.pg_start()
+
+        # make sure the flow we expect actually showed up
+        self.vapi.ipfix_flush()
+        cflow = self.wait_for_cflow_packet(self.collector, templates[1], 15)
+        data = ipfix_decoder.decode_data_set(cflow.getlayer(Set))
+        self.assertEqual(len(data), 1)
+        record = data[0]
+        self.assertEqual(len(record), tmpl_ip_field_count)
+        # the flow belongs to the sub-interface the frames left through
+        self.assertEqual(int(binascii.hexlify(record[14]), 16), subif.sw_if_index)
+        self.assertEqual(int(binascii.hexlify(record[10]), 16), self.pg8.sw_if_index)
+        # the ethertype of the tagged frame is the inner one
+        self.assertEqual(int(binascii.hexlify(record[256]), 16), 8)
+        self.assertEqual(int(binascii.hexlify(record[4]), 16), 17)
+        self.assertEqual(int(binascii.hexlify(record[7]), 16), 1234)
+        self.assertEqual(int(binascii.hexlify(record[11]), 16), 4321)
+        self.assertEqual(int(binascii.hexlify(record[IPFIX_FLOW_DIRECTION_ID]), 16), 1)
+        self.assertEqual(
+            int(binascii.hexlify(record[IPFIX_DST_IP4_ADDR_ID]), 16),
+            int(binascii.hexlify(socket.inet_pton(socket.AF_INET, "9.0.0.1")), 16),
+        )
+
+        # cleanup, the feature must be disabled before the sub-interface goes away
+        ipfix.remove_vpp_config()
+        route.remove_vpp_config()
+        subif.remove_vpp_config()
 
 
 @unittest.skipUnless(config.extended, "part of extended tests")

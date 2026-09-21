@@ -132,6 +132,53 @@ typedef enum
     [FLOWPROBE_NEXT_IP4_LOOKUP] = "ip4-lookup",		\
 }
 
+/*
+ * The L2 variant runs on two different kinds of arc.  On device-input /
+ * interface-output (physical ports) current_data points at the Ethernet
+ * header.  On the L3 feature arcs ethernet-input has already consumed the L2
+ * header on RX, so the Ethernet header must be taken from l2_hdr_offset; on TX
+ * the rewritten header is again at current_data.
+ */
+static_always_inline ethernet_header_t *
+flowprobe_eth_header (vlib_buffer_t *b, flowprobe_direction_t direction)
+{
+  if (direction == FLOW_DIRECTION_RX && (b->flags & VNET_BUFFER_F_L2_HDR_OFFSET_VALID))
+    return ethernet_buffer_get_header (b);
+  return vlib_buffer_get_current (b);
+}
+
+/*
+ * Walk the (possibly stacked) VLAN tags and return the innermost ethertype,
+ * counting the tags in *n_tags.  The walk stops at the end of the frame, so a
+ * truncated tag header is never read.
+ */
+static_always_inline u16
+flowprobe_vlan_walk (vlib_buffer_t *b, flowprobe_direction_t direction, u16 *n_tags)
+{
+  ethernet_header_t *eth = flowprobe_eth_header (b, direction);
+  ethernet_vlan_header_tv_t *ethv = (ethernet_vlan_header_tv_t *) &eth->type;
+  u8 *end = b->data + b->current_data + b->current_length;
+  u16 ethertype = clib_net_to_host_u16 (ethv->type);
+
+  *n_tags = 0;
+  while (ethernet_frame_is_tagged (ethertype) && (u8 *) (ethv + 1) + sizeof (ethv->type) <= end)
+    {
+      ethv++;
+      (*n_tags)++;
+      ethertype = clib_net_to_host_u16 (ethv->type);
+    }
+  return ethertype;
+}
+
+/* Innermost ethertype, skipping any (stacked) VLAN tags. */
+static_always_inline u16
+flowprobe_inner_ethertype (vlib_buffer_t *b, flowprobe_direction_t direction)
+{
+  u16 n_tags;
+
+  return flowprobe_vlan_walk (b, direction, &n_tags);
+}
+
 static inline flowprobe_variant_t
 flowprobe_get_variant (flowprobe_variant_t which,
 		       flowprobe_record_t flags, u16 ethertype)
@@ -377,11 +424,11 @@ add_to_flow_record_state (vlib_main_t *vm, vlib_node_runtime_t *node,
   flowprobe_record_t flags = fm->context[which].flags;
   bool collect_ip4 = false, collect_ip6 = false;
   ASSERT (b);
-  ethernet_header_t *eth = (direction == FLOW_DIRECTION_TX) ?
-				   vlib_buffer_get_current (b) :
-				   ethernet_buffer_get_header (b);
-  u16 ethertype = clib_net_to_host_u16 (eth->type);
-  i16 l3_hdr_offset = (u8 *) eth - b->data + sizeof (ethernet_header_t);
+  ethernet_header_t *eth = flowprobe_eth_header (b, direction);
+  u16 n_tags = 0;
+  u16 ethertype = flowprobe_vlan_walk (b, direction, &n_tags);
+  i16 l3_hdr_offset =
+    (u8 *) eth - b->data + sizeof (ethernet_header_t) + n_tags * sizeof (ethernet_vlan_header_tv_t);
   flowprobe_key_t k = {};
   ip4_header_t *ip4 = 0;
   ip6_header_t *ip6 = 0;
@@ -400,25 +447,12 @@ add_to_flow_record_state (vlib_main_t *vm, vlib_node_runtime_t *node,
 
   k.which = which;
   k.direction = direction;
+  k.ethertype = ethertype;
 
   if (flags & FLOW_RECORD_L2)
     {
       clib_memcpy_fast (k.src_mac, eth->src_address, 6);
       clib_memcpy_fast (k.dst_mac, eth->dst_address, 6);
-      k.ethertype = ethertype;
-    }
-  if (ethertype == ETHERNET_TYPE_VLAN)
-    {
-      /*VLAN TAG*/
-      ethernet_vlan_header_tv_t *ethv =
-	(ethernet_vlan_header_tv_t *) (&(eth->type));
-      /*Q in Q possibility */
-      while (clib_net_to_host_u16 (ethv->type) == ETHERNET_TYPE_VLAN)
-	{
-	  ethv++;
-	  l3_hdr_offset += sizeof (ethernet_vlan_header_tv_t);
-	}
-      k.ethertype = ethertype = clib_net_to_host_u16 ((ethv)->type);
     }
   if (collect_ip6 && ethertype == ETHERNET_TYPE_IP6)
     {
@@ -548,7 +582,6 @@ flowprobe_export_send (vlib_main_t * vm, vlib_buffer_t * b0,
   ipfix_message_header_t *h;
   ip4_header_t *ip;
   udp_header_t *udp;
-  flowprobe_record_t flags = fm->context[which].flags;
   u32 my_cpu_number = vm->thread_index;
 
   /* Fill in header */
@@ -599,10 +632,8 @@ flowprobe_export_send (vlib_main_t * vm, vlib_buffer_t * b0,
   h->sequence_number = stream->sequence_number++;
   h->sequence_number = clib_host_to_net_u32 (h->sequence_number);
 
-  s->set_id_length = ipfix_set_id_length (fm->template_reports[flags],
-					  b0->current_length -
-					  (sizeof (*ip) + sizeof (*udp) +
-					   sizeof (*h)));
+  s->set_id_length = ipfix_set_id_length (
+    fm->template_reports[which], b0->current_length - (sizeof (*ip) + sizeof (*udp) + sizeof (*h)));
   h->version_length = version_length (b0->current_length -
 				      (sizeof (*ip) + sizeof (*udp)));
 
@@ -738,7 +769,7 @@ flowprobe_export_entry (vlib_main_t * vm, flowprobe_entry_t * e)
 
   fm->context[which].next_record_offset_per_worker[my_cpu_number] = offset;
   /* Time to flush the buffer? */
-  if (offset + fm->template_size[flags] > exp->path_mtu)
+  if (offset + fm->template_size[which] > exp->path_mtu)
     flowprobe_export_send (vm, b0, which);
 }
 
@@ -801,8 +832,7 @@ flowprobe_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  vnet_feature_next (&next1, b1);
 
 	  len0 = vlib_buffer_length_in_chain (vm, b0);
-	  ethernet_header_t *eh0 = vlib_buffer_get_current (b0);
-	  u16 ethertype0 = clib_net_to_host_u16 (eh0->type);
+	  u16 ethertype0 = flowprobe_inner_ethertype (b0, direction);
 
 	  if (PREDICT_TRUE ((b0->flags & VNET_BUFFER_F_FLOW_REPORT) == 0))
 	    add_to_flow_record_state (
@@ -812,8 +842,7 @@ flowprobe_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
 	      direction, 0);
 
 	  len1 = vlib_buffer_length_in_chain (vm, b1);
-	  ethernet_header_t *eh1 = vlib_buffer_get_current (b1);
-	  u16 ethertype1 = clib_net_to_host_u16 (eh1->type);
+	  u16 ethertype1 = flowprobe_inner_ethertype (b1, direction);
 
 	  if (PREDICT_TRUE ((b1->flags & VNET_BUFFER_F_FLOW_REPORT) == 0))
 	    add_to_flow_record_state (
@@ -848,8 +877,7 @@ flowprobe_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  vnet_feature_next (&next0, b0);
 
 	  len0 = vlib_buffer_length_in_chain (vm, b0);
-	  ethernet_header_t *eh0 = vlib_buffer_get_current (b0);
-	  u16 ethertype0 = clib_net_to_host_u16 (eh0->type);
+	  u16 ethertype0 = flowprobe_inner_ethertype (b0, direction);
 
 	  if (PREDICT_TRUE ((b0->flags & VNET_BUFFER_F_FLOW_REPORT) == 0))
 	    {

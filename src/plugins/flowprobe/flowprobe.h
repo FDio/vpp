@@ -29,7 +29,6 @@ typedef enum
   FLOW_RECORD_L4 = 1 << 2,
   FLOW_RECORD_L2_IP4 = 1 << 3,
   FLOW_RECORD_L2_IP6 = 1 << 4,
-  FLOW_N_RECORDS = 1 << 5,
 } flowprobe_record_t;
 
 typedef enum __attribute__ ((__packed__))
@@ -117,8 +116,11 @@ typedef struct
   u16 msg_id_base;
 
   flowprobe_protocol_context_t context[FLOW_N_VARIANTS];
-  u16 template_reports[FLOW_N_RECORDS];
-  u16 template_size[FLOW_N_RECORDS];
+  /* Indexed by flowprobe_variant_t.  Each variant owns an independent
+   * template slot so that IP4, IP6, L2, L2_IP4 and L2_IP6 cannot overwrite
+   * one another when they share the same record flags. */
+  u16 template_reports[FLOW_N_VARIANTS];
+  u16 template_size[FLOW_N_VARIANTS];
 
   /** Time reference pair */
   u64 nanosecond_time_0;

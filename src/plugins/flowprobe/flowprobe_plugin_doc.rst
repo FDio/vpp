@@ -16,3 +16,13 @@ Sample configuration
 
   flowprobe params record l3 active 20 passive 120
   flowprobe feature add-del GigabitEthernet2/3/0 l2
+
+The ``l2`` datapath can also be enabled on a VLAN sub-interface, where it is
+installed on the IPv4 and IPv6 feature arcs of that sub-interface.  When the
+record includes ``l2``, it records the MAC addresses and the inner ethertype
+of IPv4 and IPv6 frames of the enabled directions.  Non-IP frames are not
+recorded on a sub-interface.
+
+::
+
+  flowprobe feature add-del GigabitEthernet2/3/0.10 l2 both

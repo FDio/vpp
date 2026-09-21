@@ -4,6 +4,7 @@ maintainer: Ole Troan <ot@cisco.com>
 features:
   - L2 input and output feature path
   - IPv4 / IPv6 input and output feature path
+  - L2 record on VLAN sub-interfaces for IPv4 / IPv6 traffic
   - Recording of L2, L3, and L4 information
 description: "IPFIX flow probe. Works in the L2 or IP feature path both input and output."
 missing:

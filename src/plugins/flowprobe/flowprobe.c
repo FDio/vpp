@@ -77,6 +77,46 @@ VNET_FEATURE_INIT (flowprobe_output_l2, static) = {
   .runs_before = VNET_FEATURES ("interface-output-arc-end"),
 };
 
+/*
+ * On a VLAN sub-interface the L2 variant cannot use the device-input and
+ * interface-output arcs: both are evaluated against the physical interface
+ * index (device-input runs before ethernet-input has matched the tag, and
+ * interface-output uses the parent port's runtime index).  Register the same
+ * node on the L3 input/output arcs instead; there VLIB_RX/VLIB_TX already
+ * hold the sub-interface index.  flowprobe_feature_enable_disable() selects
+ * between the two sets based on vnet_sw_interface_is_sub().
+ */
+VNET_FEATURE_INIT (flowprobe_input_l2_ip4_unicast, static) = {
+  .arc_name = "ip4-unicast",
+  .node_name = "flowprobe-input-l2",
+  .runs_before = VNET_FEATURES ("ip4-lookup", "ip4-inacl"),
+};
+VNET_FEATURE_INIT (flowprobe_input_l2_ip4_multicast, static) = {
+  .arc_name = "ip4-multicast",
+  .node_name = "flowprobe-input-l2",
+  .runs_before = VNET_FEATURES ("ip4-mfib-forward-lookup"),
+};
+VNET_FEATURE_INIT (flowprobe_input_l2_ip6_unicast, static) = {
+  .arc_name = "ip6-unicast",
+  .node_name = "flowprobe-input-l2",
+  .runs_before = VNET_FEATURES ("ip6-lookup", "ip6-inacl"),
+};
+VNET_FEATURE_INIT (flowprobe_input_l2_ip6_multicast, static) = {
+  .arc_name = "ip6-multicast",
+  .node_name = "flowprobe-input-l2",
+  .runs_before = VNET_FEATURES ("ip6-mfib-forward-lookup"),
+};
+VNET_FEATURE_INIT (flowprobe_output_l2_ip4, static) = {
+  .arc_name = "ip4-output",
+  .node_name = "flowprobe-output-l2",
+  .runs_before = VNET_FEATURES ("interface-output"),
+};
+VNET_FEATURE_INIT (flowprobe_output_l2_ip6, static) = {
+  .arc_name = "ip6-output",
+  .node_name = "flowprobe-output-l2",
+  .runs_before = VNET_FEATURES ("interface-output"),
+};
+
 #define FINISH                                                                \
   vec_add1 (s, 0);                                                            \
   vlib_cli_output (handle, (char *) s);                                       \
@@ -307,7 +347,7 @@ flowprobe_template_rewrite_inline (ipfix_exporter_t *exp, flow_report_t *fr,
   /* Field count in this template */
   t->id_count = ipfix_id_count (fr->template_id, f - first_field);
 
-  fm->template_size[flags] = (u8 *) f - (u8 *) s;
+  fm->template_size[which] = (u8 *) f - (u8 *) s;
 
   /* set length in octets */
   s->set_id_length =
@@ -430,7 +470,11 @@ flowprobe_template_add_del (u32 domain_id, u16 src_port,
 
 typedef struct
 {
-  flowprobe_record_t report_flags;
+  /* Variant that owns the template slot.  The raw record flags cannot be used
+   * as the slot key: IP4, IP6 and L2-plain all report the same flags value, so
+   * indexing the per-variant template tables by flags makes them overwrite
+   * each other. */
+  flowprobe_variant_t variant;
   vnet_flow_data_callback_t *flow_data_callback;
   vnet_flow_rewrite_callback_t *rewrite_callback;
 } flowprobe_template_spec_t;
@@ -445,19 +489,19 @@ flowprobe_get_template_specs (flowprobe_variant_t which, flowprobe_record_t flag
     {
       if (flags & FLOW_RECORD_L2)
 	specs[n_specs++] = (flowprobe_template_spec_t) {
-	  .report_flags = flags,
+	  .variant = FLOW_VARIANT_L2,
 	  .flow_data_callback = flowprobe_data_callback_l2,
 	  .rewrite_callback = flowprobe_template_rewrite_l2,
 	};
       if (flags & FLOW_RECORD_L3 || flags & FLOW_RECORD_L4)
 	{
 	  specs[n_specs++] = (flowprobe_template_spec_t) {
-	    .report_flags = flags | FLOW_RECORD_L2_IP4,
+	    .variant = FLOW_VARIANT_L2_IP4,
 	    .flow_data_callback = flowprobe_data_callback_l2,
 	    .rewrite_callback = flowprobe_template_rewrite_l2_ip4,
 	  };
 	  specs[n_specs++] = (flowprobe_template_spec_t) {
-	    .report_flags = flags | FLOW_RECORD_L2_IP6,
+	    .variant = FLOW_VARIANT_L2_IP6,
 	    .flow_data_callback = flowprobe_data_callback_l2,
 	    .rewrite_callback = flowprobe_template_rewrite_l2_ip6,
 	  };
@@ -465,13 +509,13 @@ flowprobe_get_template_specs (flowprobe_variant_t which, flowprobe_record_t flag
     }
   else if (which == FLOW_VARIANT_IP4)
     specs[n_specs++] = (flowprobe_template_spec_t) {
-      .report_flags = flags,
+      .variant = FLOW_VARIANT_IP4,
       .flow_data_callback = flowprobe_data_callback_ip4,
       .rewrite_callback = flowprobe_template_rewrite_ip4,
     };
   else if (which == FLOW_VARIANT_IP6)
     specs[n_specs++] = (flowprobe_template_spec_t) {
-      .report_flags = flags,
+      .variant = FLOW_VARIANT_IP6,
       .flow_data_callback = flowprobe_data_callback_ip6,
       .rewrite_callback = flowprobe_template_rewrite_ip6,
     };
@@ -497,7 +541,7 @@ flowprobe_templates_add_del (flowprobe_main_t *fm, flowprobe_variant_t which,
 
   for (i = 0; i < n_specs; i++)
     {
-      old_template_ids[i] = fm->template_reports[specs[i].report_flags];
+      old_template_ids[i] = fm->template_reports[specs[i].variant];
       template_id = old_template_ids[i];
       rv = flowprobe_template_add_del (1, UDP_DST_PORT_ipfix, flags, specs[i].flow_data_callback,
 				       specs[i].rewrite_callback, is_add, &template_id);
@@ -505,7 +549,7 @@ flowprobe_templates_add_del (flowprobe_main_t *fm, flowprobe_variant_t which,
 	goto rollback;
 
       changed[i] = rv == 0;
-      fm->template_reports[specs[i].report_flags] = is_add ? template_id : 0;
+      fm->template_reports[specs[i].variant] = is_add ? template_id : 0;
     }
 
   return 0;
@@ -518,7 +562,7 @@ rollback:
       i--;
       if (!changed[i])
 	{
-	  fm->template_reports[specs[i].report_flags] = old_template_ids[i];
+	  fm->template_reports[specs[i].variant] = old_template_ids[i];
 	  continue;
 	}
 
@@ -531,7 +575,7 @@ rollback:
 	  *state_restored = false;
 	  continue;
 	}
-      fm->template_reports[specs[i].report_flags] = is_add ? old_template_ids[i] : template_id;
+      fm->template_reports[specs[i].variant] = is_add ? old_template_ids[i] : template_id;
     }
 
   return rv;
@@ -687,6 +731,12 @@ flowprobe_flush_callback (flowprobe_variant_t which)
 static void
 flowprobe_feature_enable_disable (u32 sw_if_index, u8 which, u8 direction, int enable)
 {
+  flowprobe_main_t *fm = &flowprobe_main;
+
+  /* Only meaningful on enable, where the interface type picks the arc set.  On
+     disable both sets are cleared anyway, see below. */
+  bool is_sub = enable && vnet_sw_interface_is_sub (fm->vnet_main, sw_if_index);
+
   if (direction == FLOW_DIRECTION_RX || direction == FLOW_DIRECTION_BOTH)
     {
       if (which == FLOW_VARIANT_IP4)
@@ -704,8 +754,29 @@ flowprobe_feature_enable_disable (u32 sw_if_index, u8 which, u8 direction, int e
 				       0, 0);
 	}
       else if (which == FLOW_VARIANT_L2)
-	vnet_feature_enable_disable ("device-input", "flowprobe-input-l2", sw_if_index, enable, 0,
-				     0);
+	{
+	  /*
+	   * A VLAN sub-interface is reached through the L3 feature arcs, a
+	   * physical port through device-input.  On disable both sets are
+	   * cleared: the interface may have changed type, or its index may have
+	   * been reused, since the feature was enabled, and clearing a feature
+	   * that was never set on an arc is a no-op.
+	   */
+	  if (!enable || is_sub)
+	    {
+	      vnet_feature_enable_disable ("ip4-unicast", "flowprobe-input-l2", sw_if_index, enable,
+					   0, 0);
+	      vnet_feature_enable_disable ("ip4-multicast", "flowprobe-input-l2", sw_if_index,
+					   enable, 0, 0);
+	      vnet_feature_enable_disable ("ip6-unicast", "flowprobe-input-l2", sw_if_index, enable,
+					   0, 0);
+	      vnet_feature_enable_disable ("ip6-multicast", "flowprobe-input-l2", sw_if_index,
+					   enable, 0, 0);
+	    }
+	  if (!enable || !is_sub)
+	    vnet_feature_enable_disable ("device-input", "flowprobe-input-l2", sw_if_index, enable,
+					 0, 0);
+	}
     }
 
   if (direction == FLOW_DIRECTION_TX || direction == FLOW_DIRECTION_BOTH)
@@ -717,8 +788,19 @@ flowprobe_feature_enable_disable (u32 sw_if_index, u8 which, u8 direction, int e
 	vnet_feature_enable_disable ("ip6-output", "flowprobe-output-ip6", sw_if_index, enable, 0,
 				     0);
       else if (which == FLOW_VARIANT_L2)
-	vnet_feature_enable_disable ("interface-output", "flowprobe-output-l2", sw_if_index, enable,
-				     0, 0);
+	{
+	  /* Same split as RX above, see flowprobe-input-l2. */
+	  if (!enable || is_sub)
+	    {
+	      vnet_feature_enable_disable ("ip4-output", "flowprobe-output-l2", sw_if_index, enable,
+					   0, 0);
+	      vnet_feature_enable_disable ("ip6-output", "flowprobe-output-l2", sw_if_index, enable,
+					   0, 0);
+	    }
+	  if (!enable || !is_sub)
+	    vnet_feature_enable_disable ("interface-output", "flowprobe-output-l2", sw_if_index,
+					 enable, 0, 0);
+	}
     }
 }
 
