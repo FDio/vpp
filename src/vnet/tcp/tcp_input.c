@@ -433,13 +433,15 @@ tcp_update_rtt (tcp_connection_t *tc, tcp_ack_ctx_t *ac, u32 ack)
       mrtt = clib_max (tcp_tstamp (tc) - tc->rcv_opts.tsecr, 1);
       mrtt *= TCP_TSTP_TO_HZ;
     }
-
 estimate_rtt:
 
   /* Ignore dubious measurements */
   if (mrtt == 0 || mrtt > TCP_RTT_MAX)
     goto done;
 
+  /* Preserve the byte tracker's raw RTT, including rejected samples. */
+  if (!(tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER))
+    ac->rtt_time = (f64) mrtt * TCP_TICK;
   tcp_estimate_rtt (tc, mrtt);
 
 done:
