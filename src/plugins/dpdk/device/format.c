@@ -553,22 +553,24 @@ format_dpdk_device (u8 * s, va_list * args)
   struct rte_eth_xstat *xstat;
   struct rte_eth_xstat_name *xstat_names = 0;
   int len = vec_len (xd->xstats);
-  vec_validate (xstat_names, len - 1);
-  int ret = rte_eth_xstats_get_names (xd->port_id, xstat_names, len);
 
-  if (ret >= 0 && ret <= len)
+  if (len > 0)
     {
-      vec_foreach_index(i, xd->xstats)
-        {
-          xstat = vec_elt_at_index(xd->xstats, i);
-          if (verbose == 2 || (verbose && xstat->value))
-            {
-              xs = format(xs, "\n%U%-38s%16Lu",
-                          format_white_space, indent + 4,
-                          xstat_names[i].name,
-                          xstat->value);
-            }
-        }
+      vec_validate (xstat_names, len - 1);
+      int ret = rte_eth_xstats_get_names (xd->port_id, xstat_names, len);
+
+      if (ret >= 0 && ret <= len)
+	{
+	  vec_foreach_index (i, xd->xstats)
+	    {
+	      xstat = vec_elt_at_index (xd->xstats, i);
+	      if (verbose == 2 || (verbose && xstat->value))
+		{
+		  xs = format (xs, "\n%U%-38s%16Lu", format_white_space, indent + 4,
+			       xstat_names[i].name, xstat->value);
+		}
+	    }
+	}
 
       vec_free (xstat_names);
     }

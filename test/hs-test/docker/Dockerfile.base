@@ -60,20 +60,16 @@ RUN /build_curl.sh
 
 ARG CODENAME
 # Because of http/3 support we can't use stock nginx in ubuntu 24.04
-RUN if ["${UBUNTU_VERSION}" = "26.04"]; then \
-        apt-get install -y nginx; \
-    else \
-        curl https://nginx.org/keys/nginx_signing.key | gpg --dearmor \
-        | tee /usr/share/keyrings/nginx-archive-keyring.gpg >/dev/null \
-        && echo "deb [signed-by=/usr/share/keyrings/nginx-archive-keyring.gpg] \
-        https://nginx.org/packages/ubuntu ${CODENAME} nginx" \
-        | tee /etc/apt/sources.list.d/nginx.list \
-        && bash -c 'echo -e "Package: *\nPin: origin nginx.org\nPin: release o=nginx\nPin-Priority: 900\n" \
-        | tee /etc/apt/preferences.d/99nginx' \
-        && apt-get update && apt-get install -y nginx=1.28.3* \
-        && apt-get clean \
-        && rm -rf /var/lib/apt/lists/*; \
-    fi
+RUN curl https://nginx.org/keys/nginx_signing.key | gpg --dearmor \
+    | tee /usr/share/keyrings/nginx-archive-keyring.gpg >/dev/null \
+    && echo "deb [signed-by=/usr/share/keyrings/nginx-archive-keyring.gpg] \
+    https://nginx.org/packages/ubuntu ${CODENAME} nginx" \
+    | tee /etc/apt/sources.list.d/nginx.list \
+    && bash -c 'echo -e "Package: *\nPin: origin nginx.org\nPin: release o=nginx\nPin-Priority: 900\n" \
+    | tee /etc/apt/preferences.d/99nginx' \
+    && apt-get update && apt-get install -y nginx=1.30.4* \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*;
 
 # Add a non-root user (useful for containers that need it)
 RUN groupadd -r vpp && useradd -r -g vpp -s /bin/bash vpp

@@ -69,6 +69,35 @@ rdma_api_rss6 (const vl_api_rdma_rss6_t rss6)
 }
 
 static void
+vl_api_rdma_create_v5_t_handler (vl_api_rdma_create_v5_t *mp)
+{
+  vlib_main_t *vm = vlib_get_main ();
+  rdma_main_t *rm = &rdma_main;
+  vl_api_rdma_create_v5_reply_t *rmp;
+  rdma_create_if_args_t args;
+  int rv;
+
+  clib_memset (&args, 0, sizeof (rdma_create_if_args_t));
+
+  args.ifname = mp->host_if;
+  args.name = mp->name;
+  args.rxq_num = mp->rxq_num;
+  args.rxq_size = mp->rxq_size;
+  args.txq_size = mp->txq_size;
+  args.mode = rdma_api_mode (mp->mode);
+  args.disable_striding_rq = 0;
+  args.no_multi_seg = mp->no_multi_seg;
+  args.max_pktlen = mp->max_pktlen;
+  args.rss4 = rdma_api_rss4 (mp->rss4);
+  args.rss6 = rdma_api_rss6 (mp->rss6);
+  args.port_num = mp->port_num;
+  rdma_create_if (vm, &args);
+  rv = args.rv;
+
+  REPLY_MACRO2_END (VL_API_RDMA_CREATE_V5_REPLY, ({ rmp->sw_if_index = args.sw_if_index; }));
+}
+
+static void
 vl_api_rdma_create_v4_t_handler (vl_api_rdma_create_v4_t *mp)
 {
   vlib_main_t *vm = vlib_get_main ();

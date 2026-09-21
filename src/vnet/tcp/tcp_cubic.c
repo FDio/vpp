@@ -156,6 +156,10 @@ static void
 cubic_recovered (tcp_connection_t * tc)
 {
   cubic_data_t *cd = (cubic_data_t *) tcp_cc_data (tc);
+
+  if (tcp_in_recovery (tc))
+    return;
+
   cd->t_start = cubic_time (tc->c_thread_index);
   tc->cwnd = tc->ssthresh;
   cd->K = K_cubic (cd, tc->cwnd / tc->snd_mss);
@@ -258,8 +262,8 @@ cubic_rcv_ack (tcp_connection_t *tc, tcp_ack_ctx_t *ac)
     }
 }
 
-static void
-cubic_conn_init (tcp_connection_t * tc)
+static int
+cubic_conn_init (tcp_connection_t *tc)
 {
   cubic_data_t *cd = (cubic_data_t *) tcp_cc_data (tc);
   tc->ssthresh = cubic_cfg.ssthresh;
@@ -268,6 +272,7 @@ cubic_conn_init (tcp_connection_t * tc)
   cd->prev_w_max = 0;
   cd->K = 0;
   cd->t_start = cubic_time (tc->c_thread_index);
+  return 0;
 }
 
 static uword

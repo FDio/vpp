@@ -253,6 +253,111 @@ class TestPolicerInput(VppTestCase):
 
         policer.remove_vpp_config()
 
+    def test_policer_del_while_bound(self):
+        """Delete policer while bound to interface"""
+        action_tx = PolicerAction(
+            VppEnum.vl_api_sse2_qos_action_type_t.SSE2_QOS_ACTION_API_TRANSMIT, 0
+        )
+        policer = VppPolicer(
+            self,
+            "pol1",
+            80,
+            0,
+            1000,
+            0,
+            conform_action=action_tx,
+            exceed_action=action_tx,
+            violate_action=action_tx,
+        )
+        policer.add_vpp_config()
+
+        # Apply policer to pg0 RX
+        policer.apply_vpp_config(self.pg0.sw_if_index, Dir.RX, True)
+
+        # Attempt to delete while applied — must fail
+        with self.assertRaises(Exception):
+            policer.remove_vpp_config()
+
+        # Policer should still exist
+        self.assertTrue(policer.query_vpp_config())
+
+        # Unapply from interface
+        policer.apply_vpp_config(self.pg0.sw_if_index, Dir.RX, False)
+
+        # Now delete should succeed
+        policer.remove_vpp_config()
+
+        # Policer should be gone
+        self.assertFalse(policer.query_vpp_config())
+
+    def test_policer_del_while_bound_output(self):
+        """Delete policer while bound to output interface"""
+        action_tx = PolicerAction(
+            VppEnum.vl_api_sse2_qos_action_type_t.SSE2_QOS_ACTION_API_TRANSMIT, 0
+        )
+        policer = VppPolicer(
+            self,
+            "pol1",
+            80,
+            0,
+            1000,
+            0,
+            conform_action=action_tx,
+            exceed_action=action_tx,
+            violate_action=action_tx,
+        )
+        policer.add_vpp_config()
+
+        # Apply policer to pg1 TX
+        policer.apply_vpp_config(self.pg1.sw_if_index, Dir.TX, True)
+
+        # Attempt to delete while applied — must fail
+        with self.assertRaises(Exception):
+            policer.remove_vpp_config()
+
+        # Policer should still exist
+        self.assertTrue(policer.query_vpp_config())
+
+        # Unapply from interface
+        policer.apply_vpp_config(self.pg1.sw_if_index, Dir.TX, False)
+
+        # Now delete should succeed
+        policer.remove_vpp_config()
+
+        # Policer should be gone
+        self.assertFalse(policer.query_vpp_config())
+
+    def test_policer_unapply_never_applied(self):
+        """Unapply policer from interface that was never applied"""
+        action_tx = PolicerAction(
+            VppEnum.vl_api_sse2_qos_action_type_t.SSE2_QOS_ACTION_API_TRANSMIT, 0
+        )
+        policer = VppPolicer(
+            self,
+            "pol1",
+            80,
+            0,
+            1000,
+            0,
+            conform_action=action_tx,
+            exceed_action=action_tx,
+            violate_action=action_tx,
+        )
+        policer.add_vpp_config()
+
+        # Create a loopback interface that has never had a policer applied.
+        loop0 = self.vapi.create_loopback()
+
+        with self.vapi.assert_negative_api_retval():
+            self.vapi.policer_input_v2(
+                policer_index=policer.policer_index,
+                sw_if_index=loop0.sw_if_index,
+                apply=False,
+            )
+
+        self.vapi.delete_loopback(sw_if_index=loop0.sw_if_index)
+        policer.remove_vpp_config()
+
     def test_policer_handoff_input(self):
         """Worker thread handoff policer input"""
         self.policer_handoff_test(Dir.RX)

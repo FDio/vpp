@@ -2,6 +2,7 @@ package hst
 
 import (
 	"bufio"
+	"errors"
 	"flag"
 	"fmt"
 	"hash/fnv"
@@ -40,9 +41,11 @@ var IsVerbose = flag.Bool("verbose", false, "verbose test output")
 var ParallelTotal = flag.Lookup("ginkgo.parallel.total")
 var IsVppDebug = flag.Bool("debug", false, "attach gdb to vpp")
 var DryRun = flag.Bool("dryrun", false, "set up containers but don't run tests")
+var IsPcap = flag.Bool("pcap", false, "capture packets on all VPP instances")
 var Timeout = flag.Int("timeout", 5, "test timeout override (in minutes)")
 var HostPpid = flag.Int("host_ppid", os.Getppid(), "automatically set in Makefile")
 var RunId = flag.String("run_id", "", "unique identifier of this test run, automatically set in Makefile")
+var ImageTag = flag.String("image_tag", "latest", "tag of the hs-test docker images to use, automatically set in Makefile")
 var CpuOffset = flag.Int("cpu_offset", 0, "initial CPU offset")
 var CpuOffsetNumaNode = flag.Int("cpu_offset_numa_node", 0, "NUMA node containing the initial CPU offset")
 var HyperThreading = flag.Bool("hyperthread", false, "whether to use hyperthreads in CPU allocation")
@@ -80,6 +83,32 @@ func SetRunIdentity(runIdentity string) {
 // the name used in the Makefile.
 func GinkgoContainerName() string {
 	return "ginkgo-" + RunIdentity
+}
+
+// cpusPerWorker is the CPU budget assumed for one Ginkgo process. Must match
+// CPUS_PER_WORKER in hs_test.sh, which uses it to size PARALLEL=auto.
+const cpusPerWorker = 4
+
+// hsTestImagePrefix identifies the images hs-test builds, which carry a per-run tag.
+const hsTestImagePrefix = "hs-test/"
+
+// imageHasTag reports whether a reference already names a tag. Only the part after
+// the last '/' can hold one - a registry host may contain a colon too.
+func imageHasTag(image string) bool {
+	if i := strings.LastIndex(image, "/"); i != -1 {
+		return strings.Contains(image[i+1:], ":")
+	}
+	return strings.Contains(image, ":")
+}
+
+// ImageReference adds this run's tag to images hs-test builds, so two checkouts
+// testing different VPP versions do not overwrite each other's. References that
+// already name a tag, and images from elsewhere, are returned unchanged.
+func ImageReference(image string) string {
+	if !strings.HasPrefix(image, hsTestImagePrefix) || imageHasTag(image) {
+		return image
+	}
+	return image + ":" + *ImageTag
 }
 
 const (
@@ -216,6 +245,24 @@ func (s *HstSuite) newDockerClient() {
 	Log("docker client created")
 }
 
+// settleCpuReservation agrees this run's share with the other runs on the machine
+// and narrows the allocator to it. A run holding everything is left alone, so a
+// machine with a single run behaves as it did before reservations existed.
+func (s *HstSuite) settleCpuReservation() {
+	if RunIdentity == "" {
+		return
+	}
+	reserved, err := s.reserveCpus(s.CpuAllocator.allocatableCpus())
+	if err != nil {
+		var busy busyError
+		if errors.As(err, &busy) {
+			Skip("not enough CPUs for this run: " + busy.Error())
+		}
+		Fail("could not reserve CPUs: " + fmt.Sprint(err))
+	}
+	s.CpuAllocator.applyReservation(reserved)
+}
+
 // AllocateCpus takes the unscoped name, so a run id containing "vpp" cannot make
 // every container look like a VPP one.
 func (s *HstSuite) AllocateCpus(containerName string) []int {
@@ -225,7 +272,8 @@ func (s *HstSuite) AllocateCpus(containerName string) []int {
 	if strings.Contains(containerName, "vpp") {
 		// CPUs are allocated sequentially using 'lastCpu' as the offset.
 		// Each parallel Ginkgo process gets a non-overlapping CPU block via
-		// lastCpu = (GinkgoParallelProcess() - 1) * 4 set in SetupTest().
+		// lastCpu = CpuAllocator.WorkerOffset(GinkgoParallelProcess()) set in
+		// SetupTest(), which spaces the processes over the cores this run holds.
 		// In the NUMA-aware path, if the allocation doesn't fit in numa0,
 		// it falls back to numa1 with an independent offset.
 		// 'lastCpu' is reset on test teardown.make
@@ -280,10 +328,11 @@ func (s *HstSuite) SetupSuite() {
 
 	var err error
 	s.CpuAllocator, err = CpuAllocator()
-	s.CpuAllocator.suite = s
 	if err != nil {
 		Fail("failed to init cpu allocator: " + fmt.Sprint(err))
 	}
+	s.CpuAllocator.suite = s
+	s.settleCpuReservation()
 	s.CpusPerContainer = *NConfiguredCpus
 	s.CpusPerVppContainer = *NConfiguredVppCpus
 	s.CoverageRun = *IsCoverage
@@ -311,11 +360,14 @@ func (s *HstSuite) TeardownSuite() {
 func (s *HstSuite) SetupTest() {
 	TestCounterFunc()
 	Log("[* TEST SETUP]")
+	// another run may have started or finished since the last test, changing this
+	// run's share; settle it before any container is pinned
+	s.settleCpuReservation()
 	if *NumaPerProcess {
 		s.CpuAllocator.lastCpu = 0
 	} else {
 		// doesn't impact MW/solo tests
-		s.CpuAllocator.lastCpu = (GinkgoParallelProcess() - 1) * 4
+		s.CpuAllocator.lastCpu = s.CpuAllocator.WorkerOffset(GinkgoParallelProcess())
 	}
 	s.StartedContainers = s.StartedContainers[:0]
 	s.SetupContainers()
@@ -330,11 +382,29 @@ func (s *HstSuite) TeardownTest() {
 	// reset to defaults
 	s.CpusPerContainer = *NConfiguredCpus
 	s.CpusPerVppContainer = *NConfiguredVppCpus
+	s.CollectPcapTraces()
 	coreDump := s.WaitForCoreDump()
 	s.ResetContainers()
 
 	if coreDump {
 		Fail("VPP crashed")
+	}
+}
+
+// CollectPcapTraces saves the packet capture of every VPP instance still running one
+func (s *HstSuite) CollectPcapTraces() {
+	for _, container := range s.StartedContainers {
+		vpp := container.VppInstance
+		if vpp == nil || !vpp.pcapTraceEnabled {
+			continue
+		}
+		// only VPP itself can write the capture out, and failing to reach it here
+		// would mask the crash that killed it
+		if !vpp.isRunning() {
+			Log("%s: VPP is not running, skipping pcap trace collection", container.Name)
+			continue
+		}
+		vpp.CollectPcapTrace()
 	}
 }
 
@@ -514,7 +584,7 @@ func (s *HstSuite) WaitForCoreDump() bool {
 					// this was most likely LDP and we want symbol table
 					libPath = fmt.Sprintf("build-root/build-vpp%s-native/vpp/lib/%s-linux-gnu", debug, archStr)
 				}
-				cmd := fmt.Sprintf("sudo gdb %s -c %s -ex 'set solib-search-path %s/%s' -ex 'bt full' -batch", binPath, corePath, *VppSourceFileDir, libPath)
+				cmd := fmt.Sprintf("sudo gdb %s -c %s -ex 'set solib-search-path %s/%s' -ex 'thread apply all bt full' -batch", binPath, corePath, *VppSourceFileDir, libPath)
 				Log(cmd)
 				output, _ := exechelper.Output(cmd)
 				if strings.Contains(core.binPath, "vpp") {

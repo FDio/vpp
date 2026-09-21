@@ -207,6 +207,8 @@ app_worker_flush_events_inline (app_worker_t *app_wrk,
 	    evt->as_u64[1] & 0xffffffff);
 	  if (!s)
 	    break;
+	  /* regrab session as application might have grown the pool */
+	  s = session_get (evt->session_index, thread_index);
 	  if (rv)
 	    {
 	      session_detach_app (s);

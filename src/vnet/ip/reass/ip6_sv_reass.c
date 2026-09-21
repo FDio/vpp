@@ -400,6 +400,181 @@ ip6_sv_reass_is_complete (ip6_sv_reass_t *reass, bool extended)
   return reass->first_fragment_seen;
 }
 
+/**
+ * @brief Extract L4 information from an IPv6 packet.
+ *
+ * Walks the IPv6 extension header chain to find the L4 header and
+ * extracts ports, ICMP type/TCP flags, and TCP sequence/ack numbers.
+ *
+ * Supports TCP, UDP, DCCP, UDP-Lite, SCTP (all have src/dst ports at
+ * offsets 0 and 2) and ICMP6 (uses identifier as "port", and extracts
+ * the inner packet's ports from ICMP error messages).
+ *
+ * Packets carrying an unsupported protocol (e.g. ICMP6 neighbor/router
+ * discovery, GRE, ESP) are not a failure - the reassembly features must
+ * stay transparent for such traffic. They pass through with zeroed port
+ * fields, matching the historical behavior of ip6_get_port().
+ *
+ * @param vm                VLIB main.
+ * @param b                 Buffer containing the packet.
+ * @param ip6               IPv6 header.
+ * @param buffer_len        Buffer length.
+ * @param ip_protocol       Output: L4 protocol number.
+ * @param src_port          Output: source port (network byte order).
+ * @param dst_port          Output: destination port (network byte order).
+ * @param icmp_type_or_tcp_flags  Output: ICMP type or TCP flags.
+ * @param tcp_ack_number    Output: TCP ack number.
+ * @param tcp_seq_number    Output: TCP seq number.
+ * @param l4_hdr            Output: pointer to L4 header.
+ *
+ * @returns 0 on success (unsupported protocols succeed with zeroed
+ * ports), -1 on parse failure, non-first fragment or truncated L4
+ * header of a supported protocol.
+ */
+always_inline int
+ip6_sv_reass_get_l4_info_and_ports (vlib_main_t *vm, vlib_buffer_t *b, ip6_header_t *ip6,
+				    u16 buffer_len, u8 *ip_protocol, u16 *src_port, u16 *dst_port,
+				    u8 *icmp_type_or_tcp_flags, u32 *tcp_ack_number,
+				    u32 *tcp_seq_number, void **l4_hdr)
+{
+  u8 l4_protocol;
+  u16 l4_offset;
+  u16 frag_offset;
+  u8 *l4;
+  u8 *data_end = u8_ptr_add (vlib_buffer_get_current (b), b->current_length);
+
+  if (ip6_parse (vm, b, ip6, buffer_len, &l4_protocol, &l4_offset, &frag_offset))
+    {
+      return -1;
+    }
+  if (frag_offset && ip6_frag_hdr_offset (((ip6_frag_hdr_t *) u8_ptr_add (ip6, frag_offset))))
+    return -1;
+
+  if (ip_protocol)
+    *ip_protocol = l4_protocol;
+  l4 = u8_ptr_add (ip6, l4_offset);
+  if (l4_hdr)
+    *l4_hdr = l4;
+
+  if (PREDICT_TRUE ((l4_protocol == IP_PROTOCOL_TCP) || (l4_protocol == IP_PROTOCOL_UDP) ||
+		    (l4_protocol == IP_PROTOCOL_DCCP) || (l4_protocol == IP_PROTOCOL_SCTP) ||
+		    (l4_protocol == IP_PROTOCOL_UDP_LITE)))
+    {
+      if (l4_protocol == IP_PROTOCOL_TCP)
+	{
+	  if (l4 + sizeof (tcp_header_t) > data_end)
+	    return -1;
+	}
+      else
+	{
+	  if (l4 + sizeof (udp_header_t) > data_end)
+	    return -1;
+	}
+      if (src_port)
+	*src_port = ((udp_header_t *) l4)->src_port;
+      if (dst_port)
+	*dst_port = ((udp_header_t *) l4)->dst_port;
+      if (icmp_type_or_tcp_flags && l4_protocol == IP_PROTOCOL_TCP)
+	*icmp_type_or_tcp_flags = ((tcp_header_t *) l4)->flags;
+      if (tcp_ack_number && l4_protocol == IP_PROTOCOL_TCP)
+	*tcp_ack_number = ((tcp_header_t *) l4)->ack_number;
+      if (tcp_seq_number && l4_protocol == IP_PROTOCOL_TCP)
+	*tcp_seq_number = ((tcp_header_t *) l4)->seq_number;
+      return 0;
+    }
+  else if (l4_protocol == IP_PROTOCOL_ICMP6)
+    {
+      if (l4 + sizeof (icmp46_header_t) > data_end)
+	return -1;
+      icmp46_header_t *icmp = (icmp46_header_t *) l4;
+      if (icmp_type_or_tcp_flags)
+	*icmp_type_or_tcp_flags = icmp->type;
+      if (icmp->type == ICMP6_echo_request || icmp->type == ICMP6_echo_reply)
+	{
+	  if (l4 + sizeof (icmp46_header_t) + 2 > data_end)
+	    return -1;
+	  u16 id = ((u16 *) icmp)[2];
+	  if (src_port)
+	    *src_port = id;
+	  if (dst_port)
+	    *dst_port = id;
+	  return 0;
+	}
+      /*
+       * ICMP6 error message: extract ports from inner IPv6 packet.
+       * ICMP6 errors: 1=dest_unreachable, 2=packet_too_big,
+       * 3=time_exceeded, 4=parameter_problem.
+       */
+      if (clib_net_to_host_u16 (ip6->payload_length) >= 64 &&
+	  icmp->type >= ICMP6_destination_unreachable && icmp->type <= ICMP6_parameter_problem)
+	{
+	  u16 ip6_pay_len = clib_net_to_host_u16 (ip6->payload_length);
+	  ip6_header_t *inner_ip6 = (ip6_header_t *) u8_ptr_add (icmp, 8);
+	  u8 inner_l4_protocol;
+	  u16 inner_l4_offset;
+	  u16 inner_frag_offset;
+	  u8 *inner_l4;
+
+	  if (ip6_parse (vm, b, inner_ip6, ip6_pay_len - 8, &inner_l4_protocol, &inner_l4_offset,
+			 &inner_frag_offset))
+	    goto zero_ports;
+
+	  if (inner_frag_offset &&
+	      ip6_frag_hdr_offset (((ip6_frag_hdr_t *) u8_ptr_add (inner_ip6, inner_frag_offset))))
+	    goto zero_ports;
+
+	  inner_l4 = u8_ptr_add (inner_ip6, inner_l4_offset);
+	  if ((inner_l4_protocol == IP_PROTOCOL_TCP) || (inner_l4_protocol == IP_PROTOCOL_UDP) ||
+	      (inner_l4_protocol == IP_PROTOCOL_DCCP) || (inner_l4_protocol == IP_PROTOCOL_SCTP) ||
+	      (inner_l4_protocol == IP_PROTOCOL_UDP_LITE))
+	    {
+	      if (inner_l4 + sizeof (udp_header_t) > data_end)
+		goto zero_ports;
+	      if (src_port)
+		*src_port = ((udp_header_t *) inner_l4)->dst_port;
+	      if (dst_port)
+		*dst_port = ((udp_header_t *) inner_l4)->src_port;
+	      return 0;
+	    }
+	  else if (inner_l4_protocol == IP_PROTOCOL_ICMP6)
+	    {
+	      icmp46_header_t *inner_icmp = (icmp46_header_t *) inner_l4;
+	      if (inner_icmp->type == ICMP6_echo_request || inner_icmp->type == ICMP6_echo_reply)
+		{
+		  if (inner_l4 + sizeof (icmp46_header_t) + 2 > data_end)
+		    goto zero_ports;
+		  u16 id = ((u16 *) inner_icmp)[2];
+		  if (src_port)
+		    *src_port = id;
+		  if (dst_port)
+		    *dst_port = id;
+		  return 0;
+		}
+	    }
+	}
+    }
+
+  /*
+   * Unsupported protocol, or an ICMP6 message whose inner packet could
+   * not be used for port extraction. Not a failure - the reassembly
+   * features must stay transparent for such traffic (e.g. ICMP6
+   * neighbor/router discovery, GRE, ESP). Zero the port fields so the
+   * result is deterministic; consumers only use the ports for protocols
+   * they can classify.
+   */
+zero_ports:
+  if (src_port)
+    *src_port = 0;
+  if (dst_port)
+    *dst_port = 0;
+  if (tcp_ack_number)
+    *tcp_ack_number = 0;
+  if (tcp_seq_number)
+    *tcp_seq_number = 0;
+  if (icmp_type_or_tcp_flags && l4_protocol != IP_PROTOCOL_ICMP6)
+    *icmp_type_or_tcp_flags = 0;
+  return 0;
+}
 always_inline ip6_sv_reass_rc_t
 ip6_sv_reass_update (vlib_main_t *vm, vlib_node_runtime_t *node,
 		     ip6_sv_reass_main_t *rm, ip6_sv_reass_t *reass, u32 bi0,
@@ -437,11 +612,10 @@ ip6_sv_reass_update (vlib_main_t *vm, vlib_node_runtime_t *node,
   void *l4_hdr = NULL;
   if (0 == fragment_first)
     {
-      if (!ip6_get_port (vm, fb, fip, fb->current_length, &reass->ip_proto,
-			 &reass->l4_src_port, &reass->l4_dst_port,
-			 &reass->icmp_type_or_tcp_flags,
-			 &reass->tcp_ack_number, &reass->tcp_seq_number,
-			 &l4_hdr))
+      if (ip6_sv_reass_get_l4_info_and_ports (
+	    vm, fb, fip, fb->current_length, &reass->ip_proto, &reass->l4_src_port,
+	    &reass->l4_dst_port, &reass->icmp_type_or_tcp_flags, &reass->tcp_ack_number,
+	    &reass->tcp_seq_number, &l4_hdr))
 	return IP6_SV_REASS_RC_UNSUPP_IP_PROTO;
 
       reass->first_fragment_seen = true;
@@ -641,9 +815,8 @@ ip6_sv_reassembly_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	      void *l4_hdr;
 	      // this is a regular unfragmented packet or an atomic
 	      // fragment
-	      if (!ip6_get_port (
-		    vm, b0, ip0, b0->current_length,
-		    &(vnet_buffer (b0)->ip.reass.ip_proto),
+	      if (ip6_sv_reass_get_l4_info_and_ports (
+		    vm, b0, ip0, b0->current_length, &(vnet_buffer (b0)->ip.reass.ip_proto),
 		    &(vnet_buffer (b0)->ip.reass.l4_src_port),
 		    &(vnet_buffer (b0)->ip.reass.l4_dst_port),
 		    &(vnet_buffer (b0)->ip.reass.icmp_type_or_tcp_flags),

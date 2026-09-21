@@ -55,5 +55,6 @@ int vls_set_libc_epfd (vls_handle_t ep_vlsh, int libc_epfd);
 int vls_get_libc_epfd (vls_handle_t ep_vlsh);
 void vls_set_epoll_fns (vls_epoll_fns_t ep_fns);
 void vls_register_vcl_worker (void);
+int vls_unregister_vcl_worker (void);
 
 #endif /* SRC_VCL_VCL_LOCKED_H_ */

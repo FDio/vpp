@@ -452,6 +452,184 @@ ip4_sv_reass_is_complete (ip4_sv_reass_t *reass, bool extended)
   return reass->first_fragment_seen;
 }
 
+/**
+ * @brief Check if the L4 header is truncated in the given IPv4 packet.
+ *
+ * @param ip   IPv4 header.
+ *
+ * @returns true if the L4 header is truncated, false otherwise.
+ */
+always_inline int
+ip4_sv_reass_l4_hdr_truncated (ip4_header_t *ip)
+{
+  u8 *data_end = (u8 *) ip + clib_net_to_host_u16 (ip->length);
+  u8 *l4_start = (u8 *) ip + ip4_header_bytes (ip);
+
+  switch (ip->protocol)
+    {
+    case IP_PROTOCOL_UDP:
+    case IP_PROTOCOL_DCCP:
+    case IP_PROTOCOL_SCTP:
+    case IP_PROTOCOL_UDP_LITE:
+      return (l4_start + sizeof (udp_header_t) > data_end);
+    case IP_PROTOCOL_ICMP:
+      return (l4_start + sizeof (icmp46_header_t) > data_end);
+    case IP_PROTOCOL_TCP:
+      {
+	tcp_header_t *th = (tcp_header_t *) l4_start;
+	const u32 tcp_opts_len = (tcp_doff (th) << 2) - sizeof (tcp_header_t);
+	return (l4_start + sizeof (tcp_header_t) + tcp_opts_len > data_end);
+      }
+    default:
+      return false;
+    }
+}
+
+/**
+ * @brief Extract L4 source and destination ports from an IPv4 packet.
+ *
+ * Supports TCP, UDP, DCCP, UDP-Lite, SCTP (all have src/dst ports at
+ * offsets 0 and 2) and ICMP (uses identifier as "port").
+ *
+ * @param ip         IPv4 header.
+ * @param src_port   Output: source port (network byte order).
+ * @param dst_port   Output: destination port (network byte order).
+ *
+ * @returns 0 on success (unsupported protocols succeed with zeroed
+ * ports), -1 on truncated L4 header of a supported protocol.
+ */
+always_inline int
+ip4_sv_reass_get_l4_ports (ip4_header_t *ip, u16 *src_port, u16 *dst_port)
+{
+  u8 *data_end = (u8 *) ip + clib_net_to_host_u16 (ip->length);
+  u8 *l4_start = (u8 *) ip + ip4_header_bytes (ip);
+
+  if (PREDICT_TRUE ((ip->protocol == IP_PROTOCOL_TCP) || (ip->protocol == IP_PROTOCOL_UDP) ||
+		    (ip->protocol == IP_PROTOCOL_DCCP) || (ip->protocol == IP_PROTOCOL_SCTP) ||
+		    (ip->protocol == IP_PROTOCOL_UDP_LITE)))
+    {
+      if (l4_start + sizeof (udp_header_t) > data_end)
+	return -1;
+      udp_header_t *uh = (udp_header_t *) l4_start;
+      *src_port = uh->src_port;
+      *dst_port = uh->dst_port;
+      return 0;
+    }
+  else if (ip->protocol == IP_PROTOCOL_ICMP)
+    {
+      if (l4_start + sizeof (icmp46_header_t) + 2 > data_end)
+	return -1;
+      icmp46_header_t *icmp = (icmp46_header_t *) l4_start;
+      if (icmp->type == ICMP4_echo_request || icmp->type == ICMP4_echo_reply)
+	{
+	  u16 id = *((u16 *) (icmp + 1));
+	  *src_port = id;
+	  *dst_port = id;
+	  return 0;
+	}
+      /*
+       * ICMP error message: extract ports from the inner IP packet.
+       * Minimum length: outer IP + outer ICMP (8 bytes) + inner IP header
+       * + 8 bytes of inner payload.
+       */
+      if (clib_net_to_host_u16 (ip->length) >=
+	    2 * sizeof (ip4_header_t) + 2 * sizeof (icmp46_header_t) + 8 &&
+	  icmp_type_is_error_message (icmp->type))
+	{
+	  ip4_header_t *inner_ip = (ip4_header_t *) (icmp + 2);
+	  u8 *inner_l4 = (u8 *) inner_ip + ip4_header_bytes (inner_ip);
+	  u8 *inner_data_end = (u8 *) ip + clib_net_to_host_u16 (ip->length);
+	  if (inner_l4 + sizeof (udp_header_t) <= inner_data_end &&
+	      (inner_ip->protocol == IP_PROTOCOL_TCP || inner_ip->protocol == IP_PROTOCOL_UDP ||
+	       inner_ip->protocol == IP_PROTOCOL_DCCP || inner_ip->protocol == IP_PROTOCOL_SCTP ||
+	       inner_ip->protocol == IP_PROTOCOL_UDP_LITE))
+	    {
+	      udp_header_t *inner_uh = (udp_header_t *) inner_l4;
+	      *src_port = inner_uh->dst_port;
+	      *dst_port = inner_uh->src_port;
+	      return 0;
+	    }
+	  else if (inner_ip->protocol == IP_PROTOCOL_ICMP &&
+		   inner_l4 + sizeof (icmp46_header_t) + 2 <= inner_data_end)
+	    {
+	      icmp46_header_t *inner_icmp = (icmp46_header_t *) inner_l4;
+	      if (inner_icmp->type == ICMP4_echo_request || inner_icmp->type == ICMP4_echo_reply)
+		{
+		  u16 id = *((u16 *) (inner_icmp + 1));
+		  *src_port = id;
+		  *dst_port = id;
+		  return 0;
+		}
+	    }
+	}
+    }
+
+  /*
+   * Unsupported protocol (e.g. GRE, ESP, OSPF) or an ICMP error message
+   * whose inner packet could not be used for port extraction. Not a
+   * failure - the reassembly features must stay transparent for such
+   * traffic. Zero the port fields so the result is deterministic;
+   * consumers only use the ports for protocols they can classify.
+   */
+  *src_port = 0;
+  *dst_port = 0;
+  return 0;
+}
+
+/**
+ * @brief Extract L4 information from an IPv4 packet.
+ *
+ * Populates icmp_type_or_tcp_flags, tcp_ack_number, tcp_seq_number
+ * for TCP and ICMP protocols.
+ *
+ * @param ip                        IPv4 header.
+ * @param icmp_type_or_tcp_flags    Output: ICMP type or TCP flags.
+ * @param tcp_ack_number            Output: TCP ack number.
+ * @param tcp_seq_number            Output: TCP seq number.
+ *
+ * @returns 0 on success, -1 if L4 header is truncated.
+ */
+always_inline int
+ip4_sv_reass_get_l4_info (ip4_header_t *ip, u8 *icmp_type_or_tcp_flags, u32 *tcp_ack_number,
+			  u32 *tcp_seq_number)
+{
+  if (IP_PROTOCOL_TCP == ip->protocol)
+    {
+      tcp_header_t *th = (tcp_header_t *) ((u8 *) ip + ip4_header_bytes (ip));
+      *icmp_type_or_tcp_flags = th->flags;
+      *tcp_ack_number = th->ack_number;
+      *tcp_seq_number = th->seq_number;
+    }
+  else if (IP_PROTOCOL_ICMP == ip->protocol)
+    {
+      icmp46_header_t *icmp = (icmp46_header_t *) ((u8 *) ip + ip4_header_bytes (ip));
+      *icmp_type_or_tcp_flags = icmp->type;
+      *tcp_ack_number = 0;
+      *tcp_seq_number = 0;
+    }
+  else
+    {
+      /*
+       * Unsupported protocol - not an error, but leave no stale values
+       * behind (the buffer metadata may be recycled).
+       */
+      *icmp_type_or_tcp_flags = 0;
+      *tcp_ack_number = 0;
+      *tcp_seq_number = 0;
+    }
+  return 0;
+}
+
+always_inline void
+ip4_sv_reass_clear_l4_info (vlib_buffer_t *b)
+{
+  vnet_buffer (b)->ip.reass.icmp_type_or_tcp_flags = 0;
+  vnet_buffer (b)->ip.reass.tcp_ack_number = 0;
+  vnet_buffer (b)->ip.reass.tcp_seq_number = 0;
+  vnet_buffer (b)->ip.reass.l4_src_port = 0;
+  vnet_buffer (b)->ip.reass.l4_dst_port = 0;
+}
+
 always_inline ip4_sv_reass_rc_t
 ip4_sv_reass_update (vlib_main_t *vm, vlib_node_runtime_t *node,
 		     ip4_sv_reass_main_t *rm, ip4_header_t *ip0,
@@ -466,22 +644,10 @@ ip4_sv_reass_update (vlib_main_t *vm, vlib_node_runtime_t *node,
   if (0 == fragment_first)
     {
       reass->ip_proto = ip0->protocol;
-      reass->l4_src_port = ip4_get_port (ip0, 1);
-      reass->l4_dst_port = ip4_get_port (ip0, 0);
-      if (!reass->l4_src_port || !reass->l4_dst_port)
+      if (ip4_sv_reass_get_l4_ports (ip0, &reass->l4_src_port, &reass->l4_dst_port))
 	return IP4_SV_REASS_RC_UNSUPP_IP_PROTO;
-      if (IP_PROTOCOL_TCP == reass->ip_proto)
-	{
-	  tcp_header_t *th = ip4_next_header (ip0);
-	  reass->icmp_type_or_tcp_flags = th->flags;
-	  reass->tcp_ack_number = th->ack_number;
-	  reass->tcp_seq_number = th->seq_number;
-	}
-      else if (IP_PROTOCOL_ICMP == reass->ip_proto)
-	{
-	  reass->icmp_type_or_tcp_flags =
-	    ((icmp46_header_t *) (ip4_next_header (ip0)))->type;
-	}
+      ip4_sv_reass_get_l4_info (ip0, &reass->icmp_type_or_tcp_flags, &reass->tcp_ack_number,
+				&reass->tcp_seq_number);
       reass->first_fragment_seen = true;
       if (extended)
 	{
@@ -532,27 +698,6 @@ ip4_sv_reass_update (vlib_main_t *vm, vlib_node_runtime_t *node,
 	}
     }
   return rc;
-}
-
-always_inline int
-l4_hdr_truncated (ip4_header_t *ip)
-{
-  if (IP_PROTOCOL_UDP == ip->protocol)
-    return ((u8 *) ip + ip4_header_bytes (ip) + sizeof (udp_header_t) >
-	    (u8 *) ip + clib_net_to_host_u16 (ip->length));
-  if (IP_PROTOCOL_ICMP == ip->protocol)
-    return ((u8 *) ip + ip4_header_bytes (ip) + sizeof (icmp46_header_t) >
-	    (u8 *) ip + clib_net_to_host_u16 (ip->length));
-
-  if (IP_PROTOCOL_TCP != ip->protocol)
-    return false;
-
-  tcp_header_t *th = ip4_next_header (ip);
-  const u32 tcp_opts_len = (tcp_doff (th) << 2) - sizeof (tcp_header_t);
-
-  return ((u8 *) ip + ip4_header_bytes (ip) + sizeof (tcp_header_t) +
-	    tcp_opts_len >
-	  (u8 *) ip + clib_net_to_host_u16 (ip->length));
 }
 
 always_inline void
@@ -667,29 +812,19 @@ ip4_sv_reass_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       if (a.extended)
 	ip4_sv_reass_reset_vnet_buffer2 (b0);
 
-      if (l4_hdr_truncated (ip0))
+      if (ip4_sv_reass_l4_hdr_truncated (ip0))
 	{
 	  vnet_buffer (b0)->ip.reass.l4_hdr_truncated = 1;
+	  ip4_sv_reass_clear_l4_info (b0);
 	}
       else
 	{
 	  vnet_buffer (b0)->ip.reass.l4_hdr_truncated = 0;
-	  if (IP_PROTOCOL_TCP == ip0->protocol)
-	    {
-	      vnet_buffer (b0)->ip.reass.icmp_type_or_tcp_flags =
-		((tcp_header_t *) (ip4_next_header (ip0)))->flags;
-	      vnet_buffer (b0)->ip.reass.tcp_ack_number =
-		((tcp_header_t *) (ip4_next_header (ip0)))->ack_number;
-	      vnet_buffer (b0)->ip.reass.tcp_seq_number =
-		((tcp_header_t *) (ip4_next_header (ip0)))->seq_number;
-	    }
-	  else if (IP_PROTOCOL_ICMP == ip0->protocol)
-	    {
-	      vnet_buffer (b0)->ip.reass.icmp_type_or_tcp_flags =
-		((icmp46_header_t *) (ip4_next_header (ip0)))->type;
-	    }
-	  vnet_buffer (b0)->ip.reass.l4_src_port = ip4_get_port (ip0, 1);
-	  vnet_buffer (b0)->ip.reass.l4_dst_port = ip4_get_port (ip0, 0);
+	  ip4_sv_reass_get_l4_info (ip0, &vnet_buffer (b0)->ip.reass.icmp_type_or_tcp_flags,
+				    &vnet_buffer (b0)->ip.reass.tcp_ack_number,
+				    &vnet_buffer (b0)->ip.reass.tcp_seq_number);
+	  ip4_sv_reass_get_l4_ports (ip0, &vnet_buffer (b0)->ip.reass.l4_src_port,
+				     &vnet_buffer (b0)->ip.reass.l4_dst_port);
 	}
       if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 	{
@@ -716,29 +851,19 @@ ip4_sv_reass_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       if (a.extended)
 	ip4_sv_reass_reset_vnet_buffer2 (b1);
 
-      if (l4_hdr_truncated (ip1))
+      if (ip4_sv_reass_l4_hdr_truncated (ip1))
 	{
 	  vnet_buffer (b1)->ip.reass.l4_hdr_truncated = 1;
+	  ip4_sv_reass_clear_l4_info (b1);
 	}
       else
 	{
 	  vnet_buffer (b1)->ip.reass.l4_hdr_truncated = 0;
-	  if (IP_PROTOCOL_TCP == ip1->protocol)
-	    {
-	      vnet_buffer (b1)->ip.reass.icmp_type_or_tcp_flags =
-		((tcp_header_t *) (ip4_next_header (ip1)))->flags;
-	      vnet_buffer (b1)->ip.reass.tcp_ack_number =
-		((tcp_header_t *) (ip4_next_header (ip1)))->ack_number;
-	      vnet_buffer (b1)->ip.reass.tcp_seq_number =
-		((tcp_header_t *) (ip4_next_header (ip1)))->seq_number;
-	    }
-	  else if (IP_PROTOCOL_ICMP == ip1->protocol)
-	    {
-	      vnet_buffer (b1)->ip.reass.icmp_type_or_tcp_flags =
-		((icmp46_header_t *) (ip4_next_header (ip1)))->type;
-	    }
-	  vnet_buffer (b1)->ip.reass.l4_src_port = ip4_get_port (ip1, 1);
-	  vnet_buffer (b1)->ip.reass.l4_dst_port = ip4_get_port (ip1, 0);
+	  ip4_sv_reass_get_l4_info (ip1, &vnet_buffer (b1)->ip.reass.icmp_type_or_tcp_flags,
+				    &vnet_buffer (b1)->ip.reass.tcp_ack_number,
+				    &vnet_buffer (b1)->ip.reass.tcp_seq_number);
+	  ip4_sv_reass_get_l4_ports (ip1, &vnet_buffer (b1)->ip.reass.l4_src_port,
+				     &vnet_buffer (b1)->ip.reass.l4_dst_port);
 	}
       if (PREDICT_FALSE (b1->flags & VLIB_BUFFER_IS_TRACED))
 	{
@@ -797,29 +922,19 @@ ip4_sv_reass_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       if (a.extended)
 	ip4_sv_reass_reset_vnet_buffer2 (b0);
 
-      if (l4_hdr_truncated (ip0))
+      if (ip4_sv_reass_l4_hdr_truncated (ip0))
 	{
 	  vnet_buffer (b0)->ip.reass.l4_hdr_truncated = 1;
+	  ip4_sv_reass_clear_l4_info (b0);
 	}
       else
 	{
 	  vnet_buffer (b0)->ip.reass.l4_hdr_truncated = 0;
-	  if (IP_PROTOCOL_TCP == ip0->protocol)
-	    {
-	      vnet_buffer (b0)->ip.reass.icmp_type_or_tcp_flags =
-		((tcp_header_t *) (ip4_next_header (ip0)))->flags;
-	      vnet_buffer (b0)->ip.reass.tcp_ack_number =
-		((tcp_header_t *) (ip4_next_header (ip0)))->ack_number;
-	      vnet_buffer (b0)->ip.reass.tcp_seq_number =
-		((tcp_header_t *) (ip4_next_header (ip0)))->seq_number;
-	    }
-	  else if (IP_PROTOCOL_ICMP == ip0->protocol)
-	    {
-	      vnet_buffer (b0)->ip.reass.icmp_type_or_tcp_flags =
-		((icmp46_header_t *) (ip4_next_header (ip0)))->type;
-	    }
-	  vnet_buffer (b0)->ip.reass.l4_src_port = ip4_get_port (ip0, 1);
-	  vnet_buffer (b0)->ip.reass.l4_dst_port = ip4_get_port (ip0, 0);
+	  ip4_sv_reass_get_l4_info (ip0, &vnet_buffer (b0)->ip.reass.icmp_type_or_tcp_flags,
+				    &vnet_buffer (b0)->ip.reass.tcp_ack_number,
+				    &vnet_buffer (b0)->ip.reass.tcp_seq_number);
+	  ip4_sv_reass_get_l4_ports (ip0, &vnet_buffer (b0)->ip.reass.l4_src_port,
+				     &vnet_buffer (b0)->ip.reass.l4_dst_port);
 	}
       if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 	{
@@ -884,33 +999,19 @@ slow_path:
 	      vnet_buffer (b0)->ip.reass.is_fragment = 0;
 	      vnet_buffer (b0)->ip.reass.is_non_first_fragment = 0;
 	      vnet_buffer (b0)->ip.reass.ip_proto = ip0->protocol;
-	      if (l4_hdr_truncated (ip0))
+	      if (ip4_sv_reass_l4_hdr_truncated (ip0))
 		{
 		  vnet_buffer (b0)->ip.reass.l4_hdr_truncated = 1;
-		  vnet_buffer (b0)->ip.reass.l4_src_port = 0;
-		  vnet_buffer (b0)->ip.reass.l4_dst_port = 0;
+		  ip4_sv_reass_clear_l4_info (b0);
 		}
 	      else
 		{
 		  vnet_buffer (b0)->ip.reass.l4_hdr_truncated = 0;
-		  if (IP_PROTOCOL_TCP == ip0->protocol)
-		    {
-		      vnet_buffer (b0)->ip.reass.icmp_type_or_tcp_flags =
-			((tcp_header_t *) (ip4_next_header (ip0)))->flags;
-		      vnet_buffer (b0)->ip.reass.tcp_ack_number =
-			((tcp_header_t *) (ip4_next_header (ip0)))->ack_number;
-		      vnet_buffer (b0)->ip.reass.tcp_seq_number =
-			((tcp_header_t *) (ip4_next_header (ip0)))->seq_number;
-		    }
-		  else if (IP_PROTOCOL_ICMP == ip0->protocol)
-		    {
-		      vnet_buffer (b0)->ip.reass.icmp_type_or_tcp_flags =
-			((icmp46_header_t *) (ip4_next_header (ip0)))->type;
-		    }
-		  vnet_buffer (b0)->ip.reass.l4_src_port =
-		    ip4_get_port (ip0, 1);
-		  vnet_buffer (b0)->ip.reass.l4_dst_port =
-		    ip4_get_port (ip0, 0);
+		  ip4_sv_reass_get_l4_info (ip0, &vnet_buffer (b0)->ip.reass.icmp_type_or_tcp_flags,
+					    &vnet_buffer (b0)->ip.reass.tcp_ack_number,
+					    &vnet_buffer (b0)->ip.reass.tcp_seq_number);
+		  ip4_sv_reass_get_l4_ports (ip0, &vnet_buffer (b0)->ip.reass.l4_src_port,
+					     &vnet_buffer (b0)->ip.reass.l4_dst_port);
 		}
 	      if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 		{

@@ -11,7 +11,7 @@ import (
 )
 
 func init() {
-	RegisterKubeTests(KubeTcpIperfVclTest, KubeUdpIperfVclTest, NginxRpsTest, NginxProxyMirroringTest, VppPingTest, EchoBuiltinEchobytesTest, NginxRpsVclTest,
+	RegisterKubeTests(KubeTcpIperfVclTest, KubeUdpIperfVclTest, NginxRpsTest, NginxProxyMirroringTest, VppPingTest, VperfBuiltinEchobytesTest, NginxRpsVclTest,
 		HttpClientStaticServerTest)
 	RegisterKubeMWTests(KubeTcpIperfVclMWTest, KubeUdpIperfVclMWTest)
 	RegisterLargeMtuTests(KubeTcpIperfVclLargeMTUTest)
@@ -103,7 +103,7 @@ func nginxRps(s *KubeSuite, isVcl bool) {
 	if isVcl {
 		out, err := s.Pods.Nginx.Exec(ctx, []string{"/bin/bash", "-c", VclConfNginx})
 		AssertNil(err, out)
-		_, err = s.Pods.Ab.Exec(ctx, []string{"/bin/bash", "-c", VclConfIperf})
+		_, err = s.Pods.Ab.Exec(ctx, []string{"/bin/bash", "-c", VclConfNginx})
 		AssertNil(err)
 		vclLdpPath = fmt.Sprintf("%s %s ", ldp, vcl)
 	}
@@ -181,7 +181,7 @@ func VppPingTest(s *KubeSuite) {
 	AssertContains(o, "5 sent, 5 received")
 }
 
-func EchoBuiltinEchobytesTest(s *KubeSuite) {
+func VperfBuiltinEchobytesTest(s *KubeSuite) {
 	s.DeployPod(s.Pods.ClientGeneric, nil)
 	s.DeployPod(s.Pods.ServerGeneric, nil)
 	ctx, cancel := context.WithTimeout(s.MainContext, time.Minute*2)

@@ -1057,7 +1057,7 @@ clear_session_command_fn (vlib_main_t *vm, unformat_input_t *input,
   session_main_t *smm = &session_main;
   clib_thread_index_t thread_index = 0, clear_all = 0;
   session_worker_t *wrk;
-  u32 session_index = ~0;
+  u32 session_index = ~0, thread = 0;
   session_t *session;
 
   if (!smm->is_enabled)
@@ -1067,8 +1067,10 @@ clear_session_command_fn (vlib_main_t *vm, unformat_input_t *input,
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (input, "thread %d", &thread_index))
-	;
+      if (unformat (input, "thread %d", &thread))
+	{
+	  thread_index = thread;
+	}
       else if (unformat (input, "session %d", &session_index))
 	;
       else if (unformat (input, "all"))

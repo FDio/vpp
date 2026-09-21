@@ -244,6 +244,247 @@ class TestPolicerSubinterface(VppTestCase):
         sub_if1.admin_down()
         sub_if1.remove_vpp_config()
 
+    def test_policer_l3_subif_input_mark(self):
+        """Input DSCP Mark-and-Transmit on L3 routed sub-interface"""
+
+        # Create VLAN 50 sub-interface on pg0 and pg1
+        sub_if0 = VppDot1QSubint(self, self.pg0, 50)
+        sub_if0.admin_up()
+        sub_if0.config_ip4()
+        sub_if0.resolve_arp()
+
+        sub_if1 = VppDot1QSubint(self, self.pg1, 50)
+        sub_if1.admin_up()
+        sub_if1.config_ip4()
+        sub_if1.resolve_arp()
+
+        # Create policer with mark-and-transmit violate action (DSCP AF11 = 10)
+        action_tx = PolicerAction(
+            VppEnum.vl_api_sse2_qos_action_type_t.SSE2_QOS_ACTION_API_TRANSMIT, 0
+        )
+        action_mark = PolicerAction(
+            VppEnum.vl_api_sse2_qos_action_type_t.SSE2_QOS_ACTION_API_MARK_AND_TRANSMIT,
+            10,
+        )
+        policer = VppPolicer(
+            self,
+            "subif_l3_mark_pol",
+            80,
+            0,
+            1000,
+            0,
+            conform_action=action_tx,
+            exceed_action=action_mark,
+            violate_action=action_mark,
+        )
+        policer.add_vpp_config()
+
+        # Apply policer to sub-interface input on pg0
+        policer.apply_vpp_config(sub_if0.sw_if_index, Dir.RX, True)
+
+        # Send packets with VLAN tag and DSCP=0
+        pkts = []
+        for i in range(NUM_PKTS):
+            pkt = (
+                Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
+                / Dot1Q(vlan=50)
+                / IP(src=sub_if0.remote_ip4, dst=sub_if1.remote_ip4, tos=0)
+                / UDP(sport=1234, dport=1234)
+                / Raw(b"\xa5" * 100)
+            )
+            pkts.append(pkt)
+
+        rx = self.send_and_expect(self.pg0, pkts, self.pg1)
+        stats = policer.get_stats()
+
+        # Verify at least some packets were marked (exceed + violate)
+        marked = stats["exceed_packets"] + stats["violate_packets"]
+        self.assertGreater(marked, 0)
+
+        # Verify DSCP marking on received packets
+        for p in rx:
+            dscp = p[IP].tos >> 2
+            # Packet was either conform (DSCP=0) or marked (DSCP=10/AF11)
+            self.assertIn(dscp, [0, 10], f"Unexpected DSCP {dscp}")
+
+        # At least one packet should have been marked
+        marked_pkts = [p for p in rx if (p[IP].tos >> 2) == 10]
+        self.assertGreater(len(marked_pkts), 0)
+
+        self.logger.info(
+            f"L3 sub-interface input mark: {len(marked_pkts)}/{len(rx)} marked"
+        )
+
+        # Cleanup
+        policer.apply_vpp_config(sub_if0.sw_if_index, Dir.RX, False)
+        policer.remove_vpp_config()
+        sub_if0.unconfig_ip4()
+        sub_if0.admin_down()
+        sub_if0.remove_vpp_config()
+        sub_if1.unconfig_ip4()
+        sub_if1.admin_down()
+        sub_if1.remove_vpp_config()
+
+    def test_policer_l2_subif_input_mark(self):
+        """Input DSCP Mark-and-Transmit on L2 bridge-domain sub-interface"""
+
+        # Create VLAN sub-interfaces on pg0 and pg1
+        sub_if0 = VppDot1QSubint(self, self.pg0, 60)
+        sub_if0.admin_up()
+
+        sub_if1 = VppDot1QSubint(self, self.pg1, 60)
+        sub_if1.admin_up()
+
+        # Add both sub-interfaces to bridge domain 3
+        self.vapi.sw_interface_set_l2_bridge(sub_if0.sw_if_index, bd_id=3)
+        self.vapi.sw_interface_set_l2_bridge(sub_if1.sw_if_index, bd_id=3)
+
+        # Create policer with mark-and-transmit violate action (DSCP AF11 = 10)
+        action_tx = PolicerAction(
+            VppEnum.vl_api_sse2_qos_action_type_t.SSE2_QOS_ACTION_API_TRANSMIT, 0
+        )
+        action_mark = PolicerAction(
+            VppEnum.vl_api_sse2_qos_action_type_t.SSE2_QOS_ACTION_API_MARK_AND_TRANSMIT,
+            10,
+        )
+        policer = VppPolicer(
+            self,
+            "subif_l2_mark_pol",
+            80,
+            0,
+            1000,
+            0,
+            conform_action=action_tx,
+            exceed_action=action_mark,
+            violate_action=action_mark,
+        )
+        policer.add_vpp_config()
+
+        # Apply policer to L2 sub-interface input
+        policer.apply_vpp_config(sub_if0.sw_if_index, Dir.RX, True)
+
+        # Send L2 packets with VLAN tag and DSCP=0
+        pkts = []
+        for i in range(NUM_PKTS):
+            pkt = (
+                Ether(src=self.pg0.remote_mac, dst=self.pg1.remote_mac)
+                / Dot1Q(vlan=60)
+                / IP(src="10.0.0.1", dst="10.0.0.2", tos=0)
+                / UDP(sport=1234, dport=1234)
+                / Raw(b"\xa5" * 100)
+            )
+            pkts.append(pkt)
+
+        rx = self.send_and_expect(self.pg0, pkts, self.pg1)
+        stats = policer.get_stats()
+
+        # Verify at least some packets were marked
+        marked = stats["exceed_packets"] + stats["violate_packets"]
+        self.assertGreater(marked, 0)
+
+        # Verify DSCP marking on received packets
+        for p in rx:
+            dscp = p[IP].tos >> 2
+            self.assertIn(dscp, [0, 10], f"Unexpected DSCP {dscp}")
+
+        # At least one packet should have been marked
+        marked_pkts = [p for p in rx if (p[IP].tos >> 2) == 10]
+        self.assertGreater(len(marked_pkts), 0)
+
+        self.logger.info(
+            f"L2 sub-interface input mark: {len(marked_pkts)}/{len(rx)} marked"
+        )
+
+        # Cleanup
+        policer.apply_vpp_config(sub_if0.sw_if_index, Dir.RX, False)
+        policer.remove_vpp_config()
+        self.vapi.sw_interface_set_l2_bridge(sub_if0.sw_if_index, bd_id=3, enable=0)
+        self.vapi.sw_interface_set_l2_bridge(sub_if1.sw_if_index, bd_id=3, enable=0)
+        sub_if0.admin_down()
+        sub_if0.remove_vpp_config()
+        sub_if1.admin_down()
+        sub_if1.remove_vpp_config()
+
+    def test_policer_l3_subif_output_mark(self):
+        """Output DSCP Mark-and-Transmit on L3 routed sub-interface"""
+
+        # Create VLAN 70 sub-interface on pg0 and pg1
+        sub_if0 = VppDot1QSubint(self, self.pg0, 70)
+        sub_if0.admin_up()
+        sub_if0.config_ip4()
+        sub_if0.resolve_arp()
+
+        sub_if1 = VppDot1QSubint(self, self.pg1, 70)
+        sub_if1.admin_up()
+        sub_if1.config_ip4()
+        sub_if1.resolve_arp()
+
+        # Create policer with mark-and-transmit violate action (DSCP AF11 = 10)
+        action_tx = PolicerAction(
+            VppEnum.vl_api_sse2_qos_action_type_t.SSE2_QOS_ACTION_API_TRANSMIT, 0
+        )
+        action_mark = PolicerAction(
+            VppEnum.vl_api_sse2_qos_action_type_t.SSE2_QOS_ACTION_API_MARK_AND_TRANSMIT,
+            10,
+        )
+        policer = VppPolicer(
+            self,
+            "subif_l3_out_mark_pol",
+            80,
+            0,
+            1000,
+            0,
+            conform_action=action_tx,
+            exceed_action=action_mark,
+            violate_action=action_mark,
+        )
+        policer.add_vpp_config()
+
+        # Apply policer to sub-interface output on pg1
+        policer.apply_vpp_config(sub_if1.sw_if_index, Dir.TX, True)
+
+        # Send packets from sub_if0 to sub_if1 to trigger output policing
+        pkts = []
+        for i in range(NUM_PKTS):
+            pkt = (
+                Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
+                / Dot1Q(vlan=70)
+                / IP(src=sub_if0.remote_ip4, dst=sub_if1.remote_ip4, tos=0)
+                / UDP(sport=1234, dport=1234)
+                / Raw(b"\xa5" * 100)
+            )
+            pkts.append(pkt)
+
+        rx = self.send_and_expect(self.pg0, pkts, self.pg1)
+        stats = policer.get_stats()
+
+        # Verify at least some packets were marked
+        marked = stats["exceed_packets"] + stats["violate_packets"]
+        self.assertGreater(marked, 0)
+
+        # Verify DSCP marking on received packets
+        for p in rx:
+            dscp = p[IP].tos >> 2
+            self.assertIn(dscp, [0, 10], f"Unexpected DSCP {dscp}")
+
+        # At least one packet should have been marked
+        marked_pkts = [p for p in rx if (p[IP].tos >> 2) == 10]
+        self.assertGreater(len(marked_pkts), 0)
+
+        self.logger.info(
+            f"L3 sub-interface output mark: {len(marked_pkts)}/{len(rx)} marked"
+        )
+
+        # Cleanup
+        policer.apply_vpp_config(sub_if1.sw_if_index, Dir.TX, False)
+        policer.remove_vpp_config()
+        sub_if0.unconfig_ip4()
+        sub_if0.admin_down()
+        sub_if0.remove_vpp_config()
+        sub_if1.unconfig_ip4()
+        sub_if1.admin_down()
+        sub_if1.remove_vpp_config()
+
     def test_policer_l2_subif_output(self):
         """Output Policing on L2 bridge-domain sub-interface"""
 

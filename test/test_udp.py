@@ -737,7 +737,7 @@ class TestUDP(VppTestCase):
         super(TestUDP, self).tearDown()
 
     def test_udp_transfer(self):
-        """UDP echo client/server transfer"""
+        """UDP vperf client/server transfer"""
 
         # Add inter-table routes
         ip_t01 = VppIpRoute(

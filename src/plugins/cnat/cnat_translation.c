@@ -594,7 +594,8 @@ cnat_translation_cli_add_del (vlib_main_t * vm,
   cnat_endpoint_tuple_t tmp, *paths = NULL, *path;
   unformat_input_t _line_input, *line_input = &_line_input;
   clib_error_t *e = 0;
-  cnat_lb_type_t lb_type;
+  cnat_lb_type_t lb_type = CNAT_LB_DEFAULT;
+  u8 have_vip = 0;
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -612,9 +613,15 @@ cnat_translation_cli_add_del (vlib_main_t * vm,
       else if (unformat (line_input, "noclient"))
 	flags |= CNAT_TR_FLAG_NO_CLIENT;
       else if (unformat (line_input, "vip %U", unformat_cnat_ep, &vip))
-	flags |= CNAT_TR_FLAG_EXCLUSIVE;
+	{
+	  flags |= CNAT_TR_FLAG_EXCLUSIVE;
+	  have_vip = 1;
+	}
       else if (unformat (line_input, "real %U", unformat_cnat_ep, &vip))
-	flags &= ~CNAT_TR_FLAG_EXCLUSIVE;
+	{
+	  flags &= ~CNAT_TR_FLAG_EXCLUSIVE;
+	  have_vip = 1;
+	}
       else if (unformat (line_input, "to %U", unformat_cnat_ep_tuple, &tmp))
 	{
 	  vec_add2 (paths, path, 1);
@@ -632,7 +639,14 @@ cnat_translation_cli_add_del (vlib_main_t * vm,
 
   flow_hash_config_t fhc = 0;
   if (INDEX_INVALID == del_index)
-    cnat_translation_update (&vip, proto, paths, flags, lb_type, fhc);
+    {
+      if (!have_vip)
+	{
+	  e = clib_error_return (0, "missing vip or real address");
+	  goto done;
+	}
+      cnat_translation_update (&vip, proto, paths, flags, lb_type, fhc);
+    }
   else
     cnat_translation_delete (del_index, CNAT_FIB_TABLE);
 

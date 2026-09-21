@@ -565,8 +565,8 @@ vperf_server_handle_ctrl_cfg (vperf_server_worker_t *wrk, vperf_cfg_t *rx_cfg,
     {
     case VPERF_TEST_TYPE_NONE:
     case VPERF_TEST_TYPE_ECHO:
-      /* post-test sync, send our rx stats to the client, builtin echo use it to show datagram loss
-       * rate */
+      /* post-test sync, send our rx stats to the client; the builtin vperf
+       * client uses them to show datagram loss rate */
       if (conn->is_done)
 	{
 	  rx_cfg->total_bytes = conn->stats.rx_bytes;
@@ -734,6 +734,9 @@ vperf_server_worker_loop (void *arg)
 		}
 	      else
 		{
+		  /* Skip if already cleaned up earlier in this batch. */
+		  if (!conn->is_open)
+		    continue;
 		  /* if close return 1 we can delete session, otherwise keep
 		   * session (e.g. quic half-close stream) */
 		  if (!tp->close (conn, ep_evts[i].events))
@@ -767,6 +770,11 @@ vperf_server_worker_loop (void *arg)
 	  if (ep_evts[i].data.u32 == VPERF_DATA_LISTENER)
 	    {
 	      conn = vperf_server_accept_client (wrk, wrk->listener.fd);
+	      if (!conn)
+		{
+		  vperf_warn ("accept failed");
+		  goto fail;
+		}
 	      conn->cfg = vsm->ctrl->cfg;
 	      continue;
 	    }
@@ -853,6 +861,8 @@ done:
     {
       if (!wrk->wrk_index)
 	vsm->ctrl = 0;
+      /* Drain leftover sessions before freeing the pool. */
+      vperf_server_wrk_cleanup_all (wrk);
       free (wrk->conn_pool);
     }
   vsm->active_workers -= 1;

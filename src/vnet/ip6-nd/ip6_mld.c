@@ -470,21 +470,13 @@ static uword
 ip6_mld_event_process (vlib_main_t * vm,
 		       vlib_node_runtime_t * node, vlib_frame_t * frame)
 {
-  uword event_type;
-
-  /* init code here */
-
   while (1)
     {
       vlib_process_wait_for_event_or_clock (vm, 1. /* seconds */ );
+      vlib_process_get_events (vm, NULL);
 
-      if (!vlib_process_get_event_data (vm, &event_type))
-	{
-	  /* No events found: timer expired. */
-	  /* process interface list and send RAs as appropriate, update timer info */
-	  ip6_mld_timer_event (vm, node, frame);
-	}
-      /* else; no events */
+      /* process interface list and send RAs as appropriate, update timer info */
+      ip6_mld_timer_event (vm, node, frame);
     }
   return frame->n_vectors;
 }

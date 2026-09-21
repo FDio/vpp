@@ -32,6 +32,7 @@ from ipaddress import ip_network
 from vpp_object import VppObject
 from vpp_papi import VppEnum
 from vpp_neighbor import VppNeighbor
+from vpp_papi_provider import CliFailedCommandError
 
 N_PKTS = 15
 N_REMOTE_HOSTS = 3
@@ -1037,6 +1038,45 @@ class TestCNatTranslation(CnatCommonTestCase):
 
 
 @unittest.skipIf("cnat" in config.excluded_plugins, "Exclude CNAT plugin tests")
+class TestCNatTranslationCLI(CnatCommonTestCase):
+    """CNat translation CLI validation"""
+
+    def test_cnat_cli_translation_validation(self):
+        # The CLI defaults to the default load-balancing algorithm when no
+        # algorithm is specified and rejects add commands without a VIP/real.
+        before_ids = {t.translation.id for t in self.vapi.cnat_translation_dump()}
+
+        try:
+            self.vapi.cli(
+                "cnat translation add proto tcp vip 30.0.0.99 5555 "
+                "to ->20.0.0.1 4000"
+            )
+            created = [
+                t
+                for t in self.vapi.cnat_translation_dump()
+                if t.translation.id not in before_ids
+            ]
+            self.assertEqual(len(created), 1)
+            translation_id = created[0].translation.id
+            translation_lines = [
+                line
+                for line in self.vapi.cli("show cnat translation").splitlines()
+                if line.startswith(f"[{translation_id}]")
+            ]
+            self.assertEqual(len(translation_lines), 1)
+            self.assertIn("lb:default", translation_lines[0])
+
+            with self.assertRaises(CliFailedCommandError):
+                self.vapi.cli("cnat translation add proto tcp to ->20.0.0.2 4000")
+            after_ids = {t.translation.id for t in self.vapi.cnat_translation_dump()}
+            self.assertEqual(after_ids, before_ids | {translation_id})
+        finally:
+            for t in self.vapi.cnat_translation_dump():
+                if t.translation.id not in before_ids:
+                    self.vapi.cnat_translation_del(id=t.translation.id)
+
+
+@unittest.skipIf("cnat" in config.excluded_plugins, "Exclude CNAT plugin tests")
 class TestCNatSourceNAT(CnatCommonTestCase):
     """CNat Source NAT"""
 
@@ -1484,6 +1524,133 @@ class TestCNatDHCP(CnatCommonTestCase):
             self.add_del_address(pg, addr_id=1, is_add=False, is_v6=False)
             self.add_del_address(pg, addr_id=1, is_add=False, is_v6=True)
         self.vapi.cnat_set_snat_addresses(sw_if_index=INVALID_INDEX)
+
+    def _test_dhcp_snat_output_drops_unresolved_address(self, is_v6):
+        self.create_pg_interfaces(range(3))
+
+        for pg in self.pg_interfaces:
+            pg.admin_up()
+
+        self.pg0.generate_remote_hosts(1)
+        self.pg1.generate_remote_hosts(1)
+
+        for pg in (self.pg0, self.pg1):
+            if is_v6:
+                pg.config_ip6()
+                pg.resolve_ndp()
+            else:
+                pg.config_ip4()
+                pg.resolve_arp()
+
+        snat_addr = self.make_addr(self.pg2.sw_if_index, 0, is_v6=is_v6)
+        snat_configured = False
+        snat_address_present = False
+        enabled_interfaces = []
+
+        try:
+            # Configure interface-based SNAT before pg2 has an address.
+            self.vapi.cnat_set_snat_addresses(
+                sw_if_index=self.pg2.sw_if_index,
+            )
+            snat_configured = True
+
+            # Resolve the SNAT endpoint and retain the resolver watch.
+            self.add_del_address(
+                self.pg2,
+                addr_id=0,
+                is_add=True,
+                is_v6=is_v6,
+            )
+            snat_address_present = True
+
+            # cnat-lookup-ip{4,6} sets b->flow_id on ingress, while
+            # cnat-output-ip{4,6} processes the output SNAT rewrite. A single
+            # feature_cnat_enable_disable arms both address families.
+            for pg in (self.pg0, self.pg1):
+                self.vapi.feature_cnat_enable_disable(
+                    sw_if_index=pg.sw_if_index,
+                    enable_disable=True,
+                )
+                enabled_interfaces.append(pg)
+
+            ip_layer = IPv6 if is_v6 else IP
+
+            def make_packet(sport):
+                src_host = self.pg0.remote_hosts[0]
+                dst_host = self.pg1.remote_hosts[0]
+                if is_v6:
+                    ip = IPv6(src=src_host.ip6, dst=dst_host.ip6)
+                else:
+                    ip = IP(src=src_host.ip4, dst=dst_host.ip4)
+                return (
+                    Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
+                    / ip
+                    / UDP(sport=sport, dport=6661)
+                    / Raw()
+                )
+
+            # Confirm that the output feature initially performs SNAT. The
+            # source check, not the packet count, is what keeps the negative
+            # leg below honest: an unresolved neighbour would put an NS on pg1
+            # (is_ipv6_misc does not filter NS), satisfying len(rxs) == 1.
+            rxs = self.send_and_expect(
+                self.pg0,
+                make_packet(1234),
+                self.pg1,
+            )
+            self.assertEqual(len(rxs), 1)
+            self.assertEqual(rxs[0][ip_layer].src, snat_addr)
+
+            self.vapi.cnat_session_purge()
+
+            # Removing the last address clears RESOLVED but leaves ce_ip cached.
+            self.add_del_address(
+                self.pg2,
+                addr_id=0,
+                is_add=False,
+                is_v6=is_v6,
+            )
+            snat_address_present = False
+
+            # A new flow must not use the stale cached address.
+            self.send_and_assert_no_replies(
+                self.pg0,
+                make_packet(1235),
+                self.pg1,
+            )
+        finally:
+            for pg in reversed(enabled_interfaces):
+                self.vapi.feature_cnat_enable_disable(
+                    sw_if_index=pg.sw_if_index,
+                    enable_disable=False,
+                )
+
+            if snat_address_present:
+                self.add_del_address(
+                    self.pg2,
+                    addr_id=0,
+                    is_add=False,
+                    is_v6=is_v6,
+                )
+
+            self.vapi.cnat_session_purge()
+
+            if snat_configured:
+                self.vapi.cnat_set_snat_addresses(
+                    sw_if_index=INVALID_INDEX,
+                )
+
+            for pg in (self.pg0, self.pg1):
+                if is_v6:
+                    pg.unconfig_ip6()
+                else:
+                    pg.unconfig_ip4()
+
+    def test_dhcp_snat_output_drops_unresolved_address_v4(self):
+        self._test_dhcp_snat_output_drops_unresolved_address(False)
+
+    def test_dhcp_snat_output_drops_unresolved_address_v6(self):
+        self._test_dhcp_snat_output_drops_unresolved_address(True)
 
 
 if __name__ == "__main__":

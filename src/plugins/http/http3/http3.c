@@ -259,9 +259,10 @@ http3_conn_init (u32 parent_index, clib_thread_index_t thread_index, http_ctx_t 
   http_stats_ctrl_streams_opened_inc (thread_index);
 
   vec_reset_length (http_tx_buf (ctrl_stream));
-  /* write stream type first */
-  p = http_encode_varint (http_tx_buf (ctrl_stream), HTTP3_STREAM_TYPE_CONTROL);
-  vec_set_len (http_tx_buf (ctrl_stream), (p - http_tx_buf (ctrl_stream)));
+  /* write stream type first; reserve the bytes via vec_add2() so the
+   * buffer is grown/unpoisoned before writing through the raw pointer */
+  vec_add2 (http_tx_buf (ctrl_stream), p, http_varint_len (HTTP3_STREAM_TYPE_CONTROL));
+  http_encode_varint (p, HTTP3_STREAM_TYPE_CONTROL);
   /* write settings frame */
   http3_frame_settings_write (&hm->h3_settings, &http_tx_buf (ctrl_stream));
   /* this should not fail, it's fresh fifo with 4kB chunk */
@@ -414,6 +415,7 @@ http3_req_state_wait_app_reply (http_ctx_t *stream, http_ctx_t *req, transport_s
 			  http_io_ts_fifo_size (stream, 0)))))
     {
       HTTP_DBG (1, "http_io_ts_provision_chunks failed");
+      http_stats_ts_fifo_egrow_inc (stream->c_thread_index);
       return HTTP_SM_STOP;
     }
 
@@ -517,6 +519,7 @@ http3_req_state_wait_app_method (http_ctx_t *stream, http_ctx_t *req, transport_
 			  http_io_ts_fifo_size (stream, 0)))))
     {
       HTTP_DBG (1, "http_io_ts_provision_chunks failed");
+      http_stats_ts_fifo_egrow_inc (stream->c_thread_index);
       return HTTP_SM_STOP;
     }
 
@@ -636,6 +639,7 @@ http3_req_state_app_io_more_data (http_ctx_t *stream, http_ctx_t *req, transport
   if (max_write <= HTTP3_FRAME_HEADER_MAX_LEN)
     {
       HTTP_DBG (1, "ts tx fifo full");
+      http_stats_ts_fifo_efull_inc (stream->c_thread_index);
       http_req_deschedule (req, sp);
       http_io_ts_add_want_deq_ntf (stream);
       return HTTP_SM_STOP;
@@ -655,6 +659,7 @@ http3_req_state_app_io_more_data (http_ctx_t *stream, http_ctx_t *req, transport
   if (PREDICT_FALSE (http_io_ts_provision_chunks (stream, n_read + HTTP3_FRAME_HEADER_MAX_LEN)))
     {
       HTTP_DBG (1, "http_io_ts_provision_chunks failed");
+      http_stats_ts_fifo_egrow_inc (stream->c_thread_index);
       return HTTP_SM_STOP;
     }
 
@@ -708,6 +713,7 @@ http3_req_state_tunnel_tx (http_ctx_t *stream, http_ctx_t *req, transport_send_p
   if (max_write <= HTTP3_FRAME_HEADER_MAX_LEN)
     {
       HTTP_DBG (1, "ts tx fifo full");
+      http_stats_ts_fifo_efull_inc (stream->c_thread_index);
       http_req_deschedule (req, sp);
       http_io_ts_add_want_deq_ntf (stream);
       return HTTP_SM_STOP;
@@ -721,6 +727,7 @@ http3_req_state_tunnel_tx (http_ctx_t *stream, http_ctx_t *req, transport_send_p
   if (PREDICT_FALSE (http_io_ts_provision_chunks (stream, n_read + HTTP3_FRAME_HEADER_MAX_LEN)))
     {
       HTTP_DBG (1, "http_io_ts_provision_chunks failed");
+      http_stats_ts_fifo_egrow_inc (stream->c_thread_index);
       return HTTP_SM_STOP;
     }
 
@@ -773,6 +780,7 @@ http3_req_state_udp_tunnel_tx_inline (http_ctx_t *stream, http_ctx_t *req,
 				  HTTP_UDP_PROXY_DATAGRAM_CAPSULE_OVERHEAD)))
     {
       HTTP_DBG (1, "ts tx fifo full");
+      http_stats_ts_fifo_efull_inc (stream->c_thread_index);
       http_req_deschedule (req, sp);
       http_io_ts_add_want_deq_ntf (stream);
       return HTTP_SM_STOP;
@@ -784,6 +792,7 @@ http3_req_state_udp_tunnel_tx_inline (http_ctx_t *stream, http_ctx_t *req,
 					       HTTP_UDP_PROXY_DATAGRAM_CAPSULE_OVERHEAD)))
     {
       HTTP_DBG (1, "http_io_ts_provision_chunks failed");
+      http_stats_ts_fifo_egrow_inc (stream->c_thread_index);
       return HTTP_SM_STOP;
     }
 
@@ -1297,6 +1306,7 @@ http3_req_state_transport_io_more_data (http_ctx_t *stream, http_ctx_t *req,
   if (max_enq == 0)
     {
       HTTP_DBG (1, "app's rx fifo full");
+      http_stats_as_fifo_efull_inc (stream->c_thread_index);
       http_io_as_add_want_deq_ntf (req);
       *n_deq = 0;
       return HTTP_SM_STOP;
@@ -1376,6 +1386,7 @@ http3_req_state_tunnel_rx (http_ctx_t *stream, http_ctx_t *req, transport_send_p
   if (max_enq == 0)
     {
       HTTP_DBG (1, "app's rx fifo full");
+      http_stats_as_fifo_efull_inc (stream->c_thread_index);
       http_io_as_add_want_deq_ntf (req);
       *n_deq = 0;
       return HTTP_SM_STOP;
@@ -1458,6 +1469,7 @@ http3_req_state_udp_tunnel_rx_inline (http_ctx_t *stream, http_ctx_t *req,
   if (http_io_as_max_write (req) < dgram_size)
     {
       HTTP_DBG (1, "app's rx fifo full");
+      http_stats_as_fifo_efull_inc (stream->c_thread_index);
       http_io_as_add_want_deq_ntf (req);
       *n_deq = 0;
       return HTTP_SM_STOP;
@@ -1681,6 +1693,7 @@ http3_stream_read_goaway (http_ctx_t *req, http_ctx_t *stream, u32 *to_deq,
       return -1;
     }
   hc = http_ctx_get_w_thread (stream->hc_http_conn_index, stream->c_thread_index);
+  http_stats_goaway_received_inc (hc->c_thread_index);
   /* graceful shutdown (no new streams for client) */
   if (!(stream->flags & HTTP_CONN_F_IS_SERVER) && hc->hc_parent_req_index != SESSION_INVALID_INDEX)
     {
@@ -1876,7 +1889,14 @@ http3_stream_transport_rx_req (http_ctx_t *req, http_ctx_t *stream, http_req_sta
   if (res == HTTP_SM_ERROR)
     {
     error:
-      if (err != HTTP3_ERROR_INCOMPLETE)
+      if (err == HTTP3_ERROR_INCOMPLETE)
+	{
+	  /* this should prevent quic stream to stuck if we can't read all data in fifo, quic want
+	   * notification on transition from full or to empty */
+	  http_io_ts_force_rx_evt (stream);
+	  return 0;
+	}
+      else
 	http3_stream_error_terminate_conn (stream, req, err);
     }
 

@@ -62,7 +62,7 @@ class TestTCP(VppAsfTestCase):
         super(TestTCP, self).tearDown()
 
     def test_tcp_transfer(self):
-        """TCP echo client/server transfer"""
+        """TCP vperf client/server transfer"""
 
         # Add inter-table routes
         ip_t01 = VppIpRoute(
@@ -133,8 +133,11 @@ class TestTCPUnitTests(VppAsfTestCase):
             "persist",
             "rto",
             "rst",
+            "fin-rst",
+            "timewait",
             "cubic",
             "bt",
+            "rack",
             "tamper fin",
             "tamper lost-ack",
             "tamper peer-fin",

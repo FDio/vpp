@@ -50,7 +50,7 @@ ip_neighbor_event_process (vlib_main_t * vm,
 	  break;
 	}
 
-      vec_reset_length (ipnes);
+      vlib_process_put_event_data (vm, ipnes);
     }
   return 0;
 }

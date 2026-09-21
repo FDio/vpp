@@ -9,5 +9,6 @@ Adding a new plugin or feature
     :maxdepth: 2
 
     add_plugin
+    libvnet_export_check
     sample_plugin_doc
     handoffdemo

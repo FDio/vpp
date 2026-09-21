@@ -8,6 +8,7 @@
 #include <vnet/fib/ip6_fib.h>
 #include <vnet/tcp/tcp.h>
 #include <vnet/tcp/tcp_inlines.h>
+#include <vnet/tcp/tcp_tlp.h>
 #include <vnet/session/session.h>
 #include <math.h>
 
@@ -479,6 +480,9 @@ tcp_estimate_initial_rtt (tcp_connection_t * tc)
       /* First measurement as per RFC 6298 */
       tc->srtt = mrtt;
       tc->rttvar = mrtt >> 1;
+      if (tcp_rack_enabled (tc))
+	tcp_rack_note_rtt_sample (tcp_rack_get_state (tc), (f64) mrtt * TCP_TICK,
+				  tcp_time_now_us (tc->c_thread_index));
     }
   tcp_update_rto (tc);
 }
@@ -601,6 +605,7 @@ tcp_loss_account_recovery_ack (tcp_connection_t *tc, tcp_ack_ctx_t *ac, u8 has_s
     {
       tc->rxt_delivered += ac->rxt_sacked;
       tc->prr_delivered += ac->acked_and_sacked;
+      ASSERT (tcp_loss_recovery_state_is_sane (tc));
     }
   else
     {
@@ -659,26 +664,45 @@ tcp_cc_handle_event (tcp_connection_t *tc, tcp_ack_ctx_t *ac)
 {
   u8 has_sack = tcp_opts_sack_permitted (&tc->rcv_opts);
 
-  /* If reneging, wait for timer based retransmits */
-  if (PREDICT_FALSE (tcp_is_lost_fin (tc) || tcp_scoreboard_is_reneging (&tc->sack_sb)))
-    return;
+  /* Reneging and lost FINs require timer-based retransmits. A FIN is sent only
+   * after all data is acked, so neither reneging nor TLP recovery applies. */
+  if (PREDICT_FALSE (tcp_scoreboard_is_reneging (&tc->sack_sb) || tcp_is_lost_fin (tc)))
+    {
+      tcp_loss_recovery_state_sync (tc);
+      return;
+    }
 
   /*
    * If not in recovery, figure out if we should enter
    */
   if (!tcp_in_cong_recovery (tc))
     {
+      if (ac->ack_flags & TCP_ACK_F_TLP_RECOVERY)
+	{
+	  tcp_loss_tlp_recovery (tc, ac);
+	  return;
+	}
+
       if (ac->ack_flags & TCP_ACK_F_DSACK_SPURIOUS)
 	tcp_loss_dsack_undo (tc);
 
-      if (ac->ack_flags & TCP_ACK_F_DUPACK)
+      if (!(ac->ack_flags & TCP_ACK_F_DUPACK))
 	{
-	  tc->rcv_dupacks++;
-	  TCP_EVT (TCP_EVT_DUPACK_RCVD, tc, 1);
-	  tcp_cc_rcv_cong_ack (tc, TCP_CC_DUPACK, ac);
+	  /* Time-based loss can be exposed by a cumulative ACK */
+	  if (tcp_loss_should_enter_recovery (tc, ac, has_sack))
+	    {
+	      tc->rcv_dupacks = 0;
+	      tc->tsecr_last_ack = tc->rcv_opts.tsecr;
+	      tcp_loss_enter_recovery (tc);
+	    }
+	  else
+	    tcp_cc_update (tc, ac);
+	  return;
 	}
-      else
-	tcp_cc_update (tc, ac);
+
+      tc->rcv_dupacks++;
+      TCP_EVT (TCP_EVT_DUPACK_RCVD, tc, 1);
+      tcp_cc_rcv_cong_ack (tc, TCP_CC_DUPACK, ac);
 
       if (tcp_loss_should_enter_recovery (tc, ac, has_sack))
 	tcp_loss_enter_recovery (tc);
@@ -734,15 +758,59 @@ tcp_cc_handle_event (tcp_connection_t *tc, tcp_ack_ctx_t *ac)
     tcp_cc_rcv_cong_ack (tc, TCP_CC_PARTIALACK, ac);
 }
 
+/** Classify repeated ACK and duplicate congestion feedback. */
+static_always_inline tcp_ack_flag_t
+tcp_ack_classify_duplicate (tcp_connection_t *tc, vlib_buffer_t *b, u32 prev_snd_wnd,
+			    tcp_ack_ctx_t *ac)
+{
+  tcp_ack_flag_t flags = 0;
+  u8 repeated;
+
+  repeated = !ac->bytes_acked && vnet_buffer (b)->tcp.seq_end == vnet_buffer (b)->tcp.seq_number &&
+	     prev_snd_wnd == tc->snd_wnd;
+
+  flags |= repeated ? TCP_ACK_F_REPEATED : 0;
+  /* Per RFC 6675, an ACK that SACKs new data is a DupACK as well. A
+   * repeated ACK additionally needs outstanding data for congestion
+   * control, but not for TLP probe outcome detection. */
+  flags |= (ac->last_sacked_bytes || (repeated && seq_gt (tc->snd_nxt, tc->snd_una))) ?
+	     TCP_ACK_F_DUPACK :
+	     0;
+
+  return flags;
+}
+
+/** Checks if an ACK needs loss or congestion slow-path processing. */
+static_always_inline u32
+tcp_ack_needs_slow_path (tcp_connection_t *tc, tcp_ack_ctx_t *ac)
+{
+  return (ac->ack_flags & (TCP_ACK_F_DUPACK | TCP_ACK_F_DSACK_SPURIOUS | TCP_ACK_F_DETECT_LOSS |
+			   TCP_ACK_F_TLP_RECOVERY)) |
+	 (tc->flags & (TCP_CONN_FAST_RECOVERY | TCP_CONN_RECOVERY | TCP_CONN_TLP_PENDING));
+}
+
+static_always_inline u8
+tcp_old_ack_is_cc_event (tcp_connection_t *tc, tcp_ack_ctx_t *ac)
+{
+  /* A D-SACK-only old ACK is not a recovery duplicate ACK unless it also
+   * carries new SACK or loss evidence. */
+  return ac->last_lost || (ac->ack_flags & (TCP_ACK_F_DSACK_SPURIOUS | TCP_ACK_F_TLP_RECOVERY)) ||
+	 (tcp_in_cong_recovery (tc) &&
+	  (!(ac->ack_flags & TCP_ACK_F_DSACK) || ac->last_sacked_bytes));
+}
+
 static void
 tcp_handle_old_ack (tcp_connection_t *tc, tcp_ack_ctx_t *ac, u32 ack)
 {
-  if (!tcp_in_cong_recovery (tc))
+  if (!tcp_in_cong_recovery (tc) && !tcp_loss_old_ack_needs_full_feedback (tc))
     {
       /* An old ACK can still expose network duplication. RFC 3708 requires
        * disabling D-SACK undo if the reported range was never retransmitted. */
       if (tcp_opts_sack (&tc->rcv_opts))
 	tcp_rcv_dsack (tc, ack, ac);
+
+      if (PREDICT_FALSE (tcp_tlp_is_pending (tc)))
+	tcp_tlp_process_ack (tc, ack, ac);
 
       if (ac->ack_flags & TCP_ACK_F_DSACK_SPURIOUS)
 	tcp_loss_dsack_undo (tc);
@@ -753,46 +821,22 @@ tcp_handle_old_ack (tcp_connection_t *tc, tcp_ack_ctx_t *ac, u32 ack)
   if (ac->ack_flags & TCP_ACK_F_DETECT_LOSS)
     tcp_loss_on_ack (tc, ac);
 
-  if ((ac->ack_flags & TCP_ACK_F_DSACK) && !ac->last_sacked_bytes &&
-      !(ac->ack_flags & TCP_ACK_F_DSACK_SPURIOUS))
-    return;
+  if (ac->last_sacked_bytes)
+    ac->ack_flags |= TCP_ACK_F_DUPACK;
 
-  ac->ack_flags |= ac->last_sacked_bytes != 0;
-  tcp_cc_handle_event (tc, ac);
-}
+  if (PREDICT_FALSE (tcp_tlp_is_pending (tc)))
+    tcp_tlp_process_ack (tc, ack, ac);
 
-/**
- * Check if duplicate ack as per RFC5681 Sec. 2
- */
-always_inline u8
-tcp_ack_is_dupack (tcp_connection_t *tc, vlib_buffer_t *b, u32 prev_snd_wnd, tcp_ack_ctx_t *ac)
-{
-  return ((!ac->bytes_acked) && seq_gt (tc->snd_nxt, tc->snd_una) &&
-	  (vnet_buffer (b)->tcp.seq_end == vnet_buffer (b)->tcp.seq_number) &&
-	  (prev_snd_wnd == tc->snd_wnd));
-}
-
-/**
- * Checks if ack is a congestion control event.
- */
-static u8
-tcp_ack_is_cc_event (tcp_connection_t *tc, vlib_buffer_t *b, u32 prev_snd_wnd, tcp_ack_ctx_t *ac)
-{
-  /* Check if ack is duplicate. Per RFC 6675, ACKs that SACK new data are
-   * defined to be 'duplicate' as well. TCP_ACK_F_DUPACK is bit zero, so the
-   * boolean result can be ORed into ack_flags directly. */
-  ac->ack_flags |= ac->last_sacked_bytes || tcp_ack_is_dupack (tc, b, prev_snd_wnd, ac);
-
-  return ((ac->ack_flags & (TCP_ACK_F_DUPACK | TCP_ACK_F_DSACK_SPURIOUS | TCP_ACK_F_DETECT_LOSS)) ||
-	  tcp_in_cong_recovery (tc));
+  if (tcp_old_ack_is_cc_event (tc, ac))
+    tcp_cc_handle_event (tc, ac);
 }
 
 /**
  * Process incoming ACK
  */
 static int
-tcp_rcv_ack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc, vlib_buffer_t * b,
-	     tcp_header_t * th, u32 * error)
+tcp_rcv_ack (tcp_worker_ctx_t *wrk, tcp_connection_t *tc, vlib_buffer_t *b, tcp_header_t *th,
+	     u32 *error)
 {
   u32 ack = vnet_buffer (b)->tcp.ack_number, prev_snd_wnd;
   tcp_ack_ctx_t ac = { 0 };
@@ -847,14 +891,19 @@ tcp_rcv_ack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc, vlib_buffer_t * b,
 	tcp_program_dequeue (wrk, tc, &ac);
     }
 
+  ac.ack_flags |= tcp_ack_classify_duplicate (tc, b, prev_snd_wnd, &ac);
+
   TCP_EVT (TCP_EVT_ACK_RCVD, tc, &ac);
 
   /*
    * Check if we have congestion event
    */
 
-  if (tcp_ack_is_cc_event (tc, b, prev_snd_wnd, &ac))
+  if (tcp_ack_needs_slow_path (tc, &ac))
     {
+      if (tcp_tlp_is_pending (tc))
+	tcp_tlp_process_ack (tc, ack, &ac);
+
       if (ac.ack_flags & TCP_ACK_F_DETECT_LOSS)
 	tcp_loss_on_ack (tc, &ac);
 
@@ -904,6 +953,9 @@ tcp_handle_disconnects (tcp_worker_ctx_t * wrk)
 	  tc = tcp_worker_connection_get (wrk, pending_disconnects[i]);
 	  tcp_disconnect_pending_off (tc);
 	  session_transport_closing_notify (&tc->connection);
+	  /* An RST after a FIN in the same dispatch leaves the connection CLOSED. */
+	  if (tc->state == TCP_STATE_CLOSED)
+	    session_transport_closed_notify (&tc->connection);
 	}
       vec_set_len (wrk->pending_disconnects, 0);
     }
@@ -1807,6 +1859,7 @@ tcp46_syn_sent_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  new_tc->tx_fifo_size = transport_tx_fifo_size (&new_tc->connection);
 	  /* Update rtt with the syn-ack sample */
 	  tcp_estimate_initial_rtt (new_tc);
+	  tcp_connection_tx_pacer_update (new_tc);
 	  TCP_EVT (TCP_EVT_SYNACK_RCVD, new_tc);
 	  error = TCP_ERROR_SYN_ACKS_RCVD;
 	}

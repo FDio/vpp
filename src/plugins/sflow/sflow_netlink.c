@@ -178,7 +178,7 @@ sflow_netlink_set_attr (SFLOWNL *nl, int field, void *val, int len)
   psa->attr.nla_type = field;
   psa->attr.nla_len = sizeof (psa->attr) + len;
   int len_w_pad = NLMSG_ALIGN (len);
-  psa->val.iov_len = len_w_pad;
+  psa->val.iov_len = len;
   psa->val.iov_base = val;
   nl->n_attrs++;
   nl->attrs_len += sizeof (psa->attr);
@@ -259,29 +259,37 @@ sflow_netlink_send_attrs (SFLOWNL *nl, bool ge)
       iov[frag].iov_len = sizeof (nl->ge);
       frag++;
     }
+
+  static const u8 nl_pad[NLMSG_ALIGNTO] = { 0 };
   int nn = 0;
   for (u32 ii = 0; ii <= nl->attr_max; ii++)
     {
       SFLOWNLAttr *psa = &nl->attr[ii];
       if (psa->included)
 	{
+	  ASSERT (frag + 3 <= nl->iov_max + 1);
 	  nn++;
 	  iov[frag].iov_base = &psa->attr;
 	  iov[frag].iov_len = sizeof (psa->attr);
 	  frag++;
 	  iov[frag] = psa->val; // struct copy
 	  frag++;
+	  u32 pad = NLMSG_ALIGN (psa->val.iov_len) - psa->val.iov_len;
+	  if (pad)
+	    {
+	      iov[frag].iov_base = (void *) nl_pad;
+	      iov[frag].iov_len = pad;
+	      frag++;
+	    }
 	}
     }
   ASSERT (nn == nl->n_attrs);
 
-  struct sockaddr_nl da = { .nl_family = AF_NETLINK,
-			    .nl_groups = (1 << (nl->group_id - 1)) };
+  struct sockaddr_nl da = { .nl_family = AF_NETLINK, .nl_groups = (1 << (nl->group_id - 1)) };
 
-  struct msghdr msg = { .msg_name = &da,
-			.msg_namelen = sizeof (da),
-			.msg_iov = iov,
-			.msg_iovlen = frag };
+  struct msghdr msg = {
+    .msg_name = &da, .msg_namelen = sizeof (da), .msg_iov = iov, .msg_iovlen = frag
+  };
 
   return sendmsg (nl->nl_sock, &msg, 0);
 }
@@ -365,6 +373,7 @@ sflow_netlink_generic_read (SFLOWNL *nl, struct nlmsghdr *nlh, int numbytes)
 		 attr1 = SFNLA_NEXT (attr1, attr0_len))
 	      {
 		char *grp_name = NULL;
+		u32 grp_name_len = 0;
 		u32 grp_id = 0;
 		struct nlattr *attr2 = SFNLA_DATA (attr1);
 		for (int attr1_len = SFNLA_PAYLOAD (attr1);
@@ -376,7 +385,8 @@ sflow_netlink_generic_read (SFLOWNL *nl, struct nlmsghdr *nlh, int numbytes)
 		      {
 		      case CTRL_ATTR_MCAST_GRP_NAME:
 			grp_name = SFNLA_DATA (attr2);
-			SFLOW_DBG ("netlink multicast group: %s\n", grp_name);
+			grp_name_len = SFNLA_PAYLOAD (attr2);
+			SFLOW_DBG ("netlink multicast group: %.*s\n", (int) grp_name_len, grp_name);
 			break;
 		      case CTRL_ATTR_MCAST_GRP_ID:
 			grp_id = *(u32 *) SFNLA_DATA (attr2);
@@ -384,13 +394,18 @@ sflow_netlink_generic_read (SFLOWNL *nl, struct nlmsghdr *nlh, int numbytes)
 			break;
 		      }
 		  }
-		if (nl->group_id == 0 && grp_name &&
-		    (((nl->join_group_id != 0) &&
-		      grp_id == nl->join_group_id) ||
-		     ((nl->join_group_name != NULL) &&
-		      !strcmp (grp_name, nl->join_group_name))))
+		int name_match = 0;
+		if (grp_name && nl->join_group_name)
 		  {
-		    SFLOW_DBG ("netlink found group %s=%u\n", grp_name,
+		    u32 join_len = strlen (nl->join_group_name);
+		    u32 name_len = strnlen (grp_name, grp_name_len);
+		    name_match = (name_len == join_len &&
+				  memcmp (grp_name, nl->join_group_name, join_len) == 0);
+		  }
+		if (nl->group_id == 0 && grp_name &&
+		    (((nl->join_group_id != 0) && grp_id == nl->join_group_id) || name_match))
+		  {
+		    SFLOW_DBG ("netlink found group %.*s=%u\n", (int) grp_name_len, grp_name,
 			       grp_id);
 		    nl->group_id = grp_id;
 		    // We don't need to actually join the group if we

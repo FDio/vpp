@@ -114,3 +114,12 @@ func AssertGreaterEqualUnlessCoverageBuild(actual, expected any, msgAndArgs ...a
 	}
 	AssertGreaterEqual(actual, expected, msgAndArgs...)
 }
+
+// Same as AssertEqual but won't assert on instrumented (ASan) builds
+func AssertEqualUnlessAsanBuild(expected, actual any, msgAndArgs ...any) {
+	if IsAsanBuild() {
+		Log("ASan build; not asserting")
+		return
+	}
+	AssertEqual(expected, actual, msgAndArgs...)
+}

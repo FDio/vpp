@@ -381,7 +381,7 @@ ct_fwrk_flush_connects (void *rpc_args)
   clib_thread_index_t thread_index, fwrk_index, n_workers;
   ct_main_t *cm = &ct_main;
   ct_worker_t *wrk;
-  u8 need_rpc;
+  u8 need_rpc = 0;
 
   fwrk_index = cm->fwrk_thread;
   n_workers = vec_len (cm->fwrk_pending_connects);
@@ -710,6 +710,20 @@ ct_program_cleanup (ct_connection_t *ct)
 }
 
 static void
+ct_session_half_close (u32 ct_index, clib_thread_index_t thread_index)
+{
+  ct_connection_t *ct, *peer_ct;
+
+  ct = ct_connection_get (ct_index, thread_index);
+  if (!ct)
+    return;
+
+  peer_ct = ct_connection_get (ct->peer_index, thread_index);
+  if (peer_ct)
+    session_transport_closing_notify (&peer_ct->connection);
+}
+
+static void
 ct_session_close (u32 ct_index, clib_thread_index_t thread_index)
 {
   ct_connection_t *ct, *peer_ct;
@@ -974,6 +988,7 @@ static const transport_proto_vft_t cut_thru_proto = {
   .cleanup = ct_session_cleanup,
   .cleanup_ho = ct_cleanup_ho,
   .connect = ct_session_connect,
+  .half_close = ct_session_half_close,
   .close = ct_session_close,
   .reset = ct_session_reset,
   .custom_tx = ct_custom_tx,
