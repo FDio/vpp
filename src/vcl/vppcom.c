@@ -371,8 +371,10 @@ vcl_session_accepted_get_stream_listener (vcl_worker_t *wrk, session_accepted_ms
 
   if (!accept_ls || accept_ls->parent_handle != parent_handle)
     {
-      VDBG (0, "ERROR: stream [0x%llx] listener session %lu does not match parent handle %u",
-	    mp->handle, accept_ls->session_index, mp->listener_handle);
+      VDBG (
+	0,
+	"ERROR: stream [0x%llx] listener session invalid or does not match parent handle [0x%llx]",
+	mp->handle, mp->listener_handle);
     }
 
   return accept_ls;
