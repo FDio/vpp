@@ -272,6 +272,7 @@ func TcpCubicStartupConfigDiagTest(s *VethsSuite) {
 		Append("byte-tracker").
 		NewStanza("cubic").
 		Append("no-fast-convergence").
+		Append("no-hystart").
 		Append("ssthresh 12345").
 		Close().
 		Close()
