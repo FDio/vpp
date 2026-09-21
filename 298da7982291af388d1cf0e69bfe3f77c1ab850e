@@ -1,0 +1,40 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b5fe94a5_68872529",
+        "filename": "src/plugins/lb/lbhash.h",
+        "patchSetId": 7
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-09-21T14:04:37Z",
+      "side": 1,
+      "message": "Addressed in PS6 and PS7: LB_HASH_DO_NOT_USE_VEC128_BUCKETS has been removed and the vector path is guarded directly by CLIB_HAVE_VEC128_MSB_MASK. The full PS7 CI and all 21 local ARM64 test_lb tests pass.",
+      "parentUuid": "366ae0e3_fe83ea4c",
+      "revId": "298da7982291af388d1cf0e69bfe3f77c1ab850e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "fcec3073_7bd6ed32",
+        "filename": "src/plugins/lb/lbhash.h",
+        "patchSetId": 7
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-09-21T14:04:37Z",
+      "side": 1,
+      "message": "Addressed since PS4 and retained in PS7: the vector path is guarded by CLIB_HAVE_VEC128_MSB_MASK, restricting it to backends that provide u8x16_msb_mask(). The full PS7 CI, including ARM64, is Verified +1.",
+      "parentUuid": "55dd3a3d_163fccf7",
+      "revId": "298da7982291af388d1cf0e69bfe3f77c1ab850e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
