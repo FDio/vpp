@@ -811,7 +811,7 @@ vapi_sock_client_connect (vapi_ctx_t ctx, char *path, const char *name)
 
 fail:
   clib_socket_close (sock);
-  clib_memset (sock, 0, sizeof (*sock));
+  clib_socket_free (sock);
   vec_free (msg);
   return rv;
 }
