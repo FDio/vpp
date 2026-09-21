@@ -409,11 +409,11 @@ tcp_update_rtt (tcp_connection_t *tc, tcp_ack_ctx_t *ac, u32 ack)
    * RTT because they're ambiguous. */
   if (tcp_in_cong_recovery (tc))
     {
-      /* Accept rtt estimates for samples that have not been retransmitted */
-      if (!(tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER) || (ac->flags & TCP_BTS_IS_RXT))
+      /* Accept rtt estimates for samples that have not been retransmitted.
+       * The byte tracker zeroes rtt_time for retransmitted samples */
+      if (!(tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER) || ac->rtt_time <= 0)
 	goto done;
-      if (ac->rtt_time)
-	tcp_estimate_rtt_us (tc, ac->rtt_time);
+      tcp_estimate_rtt_us (tc, ac->rtt_time);
       mrtt = ac->rtt_time * THZ;
       goto estimate_rtt;
     }
@@ -426,10 +426,9 @@ tcp_update_rtt (tcp_connection_t *tc, tcp_ack_ctx_t *ac, u32 ack)
       /* Allow measuring of a new RTT */
       tc->rtt_ts = 0;
     }
-  /* Rate samples are per segment, so they are valid for sack-only acks as
-   * long as the newest delivered segment was not retransmitted */
-  else if ((tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER) && ac->rtt_time > 0 &&
-	   !(ac->flags & TCP_BTS_IS_RXT))
+  /* Rate samples are per segment, so they are valid for sack-only acks. As
+   * above, rtt_time is zero if the newest delivered segment was retransmitted */
+  else if ((tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER) && ac->rtt_time > 0)
     {
       mrtt = clib_max ((u32) (ac->rtt_time * THZ), 1);
     }
@@ -441,13 +440,16 @@ tcp_update_rtt (tcp_connection_t *tc, tcp_ack_ctx_t *ac, u32 ack)
       mrtt = clib_max (tcp_tstamp (tc) - tc->rcv_opts.tsecr, 1);
       mrtt *= TCP_TSTP_TO_HZ;
     }
-
 estimate_rtt:
 
   /* Ignore dubious measurements */
   if (mrtt == 0 || mrtt > TCP_RTT_MAX)
     goto done;
 
+  /* Without the byte tracker, the accepted sample is the ack's rtt sample.
+   * With it, rtt_time keeps the tracker's latest-sent segment sample */
+  if (!(tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER))
+    ac->rtt_time = (f64) mrtt * TCP_TICK;
   tcp_estimate_rtt (tc, mrtt);
 
 done:
