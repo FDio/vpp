@@ -936,6 +936,19 @@ void vl_api_flowprobe_tx_interface_add_del_t_handler
 
   VALIDATE_SW_IF_INDEX (mp);
 
+  /*
+   * The field is documented as a bitmask of forwarding paths and typed as one,
+   * but it is passed to the datapath as a flowprobe_variant_t.  The two sets
+   * of values only overlap on 0, 1 and 2; the rest either name a variant this
+   * message cannot reach or fall outside the variant arrays, so reject them.
+   */
+  if ((u8) mp->which > (u8) FLOW_VARIANT_L2)
+    {
+      clib_warning ("Invalid value of which");
+      rv = VNET_API_ERROR_INVALID_VALUE;
+      goto out;
+    }
+
   if (fm->record == 0)
     {
       clib_warning ("Please specify flowprobe params record first...");

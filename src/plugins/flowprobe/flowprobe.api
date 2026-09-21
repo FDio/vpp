@@ -41,7 +41,7 @@ enum flowprobe_direction : u8
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param is_add - add address if non-zero, else delete
-    @param which - flags indicating forwarding path
+    @param which - datapath on which to record flows (flowprobe_which_flags_t)
     @param sw_if_index - index of the interface
 */
 autoreply define flowprobe_tx_interface_add_del

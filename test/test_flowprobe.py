@@ -679,6 +679,24 @@ class Flowprobe(MethodHolder):
         ipfix.remove_vpp_config()
         self.logger.info("FFP_TEST_FINISH_0004")
 
+    def test_tx_interface_add_del_invalid_which(self):
+        """the replaced tx message rejects a which that names no variant"""
+        self.logger.info("FFP_TEST_START_TX_WHICH")
+
+        # the message used to carry a bitmask of forwarding paths; 3 is
+        # FLOWPROBE_WHICH_FLAG_IP4 | FLOWPROBE_WHICH_FLAG_L2 and names no
+        # variant, while 5 is past the end of the variant arrays
+        for which in (3, 5):
+            with self.subTest(which=which):
+                with self.vapi.assert_negative_api_retval():
+                    self.vapi.flowprobe_tx_interface_add_del(
+                        is_add=1,
+                        which=which,
+                        sw_if_index=self.pg0.sw_if_index,
+                    )
+
+        self.logger.info("FFP_TEST_FINISH_TX_WHICH")
+
 
 class DatapathTestsHolder(object):
     """collect information on Ethernet, IP4 and IP6 datapath (no timers)"""
