@@ -189,9 +189,6 @@ teib_entry_add (u32 sw_if_index,
   u32 nh_fib_index, peer_fib_index;
   index_t tei;
 
-  if (ip_addr_version (nh) != ip_addr_version (peer))
-    return (VNET_API_ERROR_INVALID_ADDRESS_FAMILY);
-
   nh_proto = (AF_IP4 == ip_addr_version (nh) ?
 	      FIB_PROTOCOL_IP4 : FIB_PROTOCOL_IP6);
 

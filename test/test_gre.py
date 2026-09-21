@@ -6,7 +6,7 @@ import scapy.compat
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether, Dot1Q, GRE
 from scapy.layers.inet import IP, UDP
-from scapy.layers.inet6 import IPv6
+from scapy.layers.inet6 import IPv6, ICMPv6EchoRequest
 from scapy.volatile import RandMAC, RandIP
 
 from framework import VppTestCase
@@ -19,6 +19,7 @@ from vpp_ip_route import (
     VppIpRoute,
     VppRoutePath,
     VppIpTable,
+    VppIpInterfaceAddress,
     VppMplsLabel,
 )
 from vpp_mpls_tunnel_interface import VppMPLSTunnelInterface
@@ -870,7 +871,8 @@ class TestGRE(VppTestCase):
                 },
             )
 
-    def test_teib_next_hop_family_matches_gre_underlay(self):
+    def test_teib_ipv6_peer_over_ipv4_underlay(self):
+        """a TEIB peer may use a different family than its next hop"""
         e = VppEnum.vl_api_tunnel_mode_t
         gre_if = VppGreInterface(
             self,
@@ -882,18 +884,33 @@ class TestGRE(VppTestCase):
         gre_if.admin_up()
         gre_if.config_ip4()
 
-        with self.vapi.assert_negative_api_retval():
-            self.vapi.teib_entry_add_del(
-                is_add=1,
-                entry={
-                    "nh_table_id": 0,
-                    "sw_if_index": gre_if.sw_if_index,
-                    "peer": self.pg3.remote_ip4,
-                    "nh": self.pg2.remote_ip6,
-                },
-            )
+        ll1 = "fe80:1::1"
+        ll2 = "fe80:2::2"
 
-        gre_if.unconfig_ip4()
+        VppIpInterfaceAddress(self, gre_if, ll1, 128).add_vpp_config()
+
+        p_echo_request = (
+            Ether(src=self.pg3.remote_mac, dst=self.pg3.local_mac)
+            / IP(src=self.pg3.remote_ip4, dst=self.pg3.local_ip4)
+            / GRE()
+            / IPv6(src=ll2, dst=ll1)
+            / ICMPv6EchoRequest()
+        )
+
+        # the tunnel has no peer in the link-local table yet
+        self.send_and_assert_no_replies(self.pg3, [p_echo_request])
+
+        # the peer is IPv6 link-local, the next hop is IPv4
+        teib = VppTeib(self, gre_if, ll2, self.pg3.remote_ip4)
+        teib.add_vpp_config()
+        self.assertTrue(teib.query_vpp_config())
+
+        self.logger.info(self.vapi.cli("sh ip6-ll %s %s" % (gre_if.name, ll2)))
+        self.send_and_expect(self.pg3, [p_echo_request], self.pg3)
+
+        # the tunnel is gone, so is its teib entry; the registry removes the
+        # remaining objects in reverse order
+        teib.remove_vpp_config()
         gre_if.admin_down()
         gre_if.remove_vpp_config()
 
