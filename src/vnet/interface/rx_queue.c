@@ -150,7 +150,10 @@ vnet_hw_if_set_rx_queue_file_index (vnet_main_t *vnm, u32 queue_index,
   vnet_hw_interface_t *hi = vnet_get_hw_interface (vnm, rxq->hw_if_index);
 
   rxq->file_index = file_index;
-  clib_file_set_polling_thread (&file_main, file_index, rxq->thread_index);
+  /* ~0 means the queue has no clib file; any other value must name a live
+     one, because the poller is programmed for it. */
+  if (file_index != ~0)
+    clib_file_set_polling_thread (&file_main, file_index, rxq->thread_index);
   log_debug ("set_file_index: interface %v queue-id %u file-index %u",
 	     hi->name, rxq->queue_id, file_index);
 }
@@ -223,7 +226,23 @@ vnet_hw_if_set_rx_queue_thread_index (vnet_main_t *vnm, u32 queue_index,
   rxq->thread_index = thread_index;
 
   if (rxq->file_index != ~0)
-    clib_file_set_polling_thread (&file_main, rxq->file_index, thread_index);
+    {
+      clib_file_t *f = clib_file_get (&file_main, rxq->file_index);
+
+      if (f)
+	clib_file_set_polling_thread (&file_main, rxq->file_index,
+				      thread_index);
+      else
+	{
+	  /* The file was removed without clearing the queue's copy, which
+	     drivers do when they close their interrupt files.  Drop the stale
+	     index rather than resolving it again on the next placement. */
+	  log_debug ("set_rx_queue_thread_index: interface %v queue-id %u "
+		     "file-index %u is gone",
+		     hi->name, rxq->queue_id, rxq->file_index);
+	  rxq->file_index = ~0;
+	}
+    }
 
   log_debug ("set_rx_queue_thread_index: interface %v queue-id %u "
 	     "thread-index set to %u",

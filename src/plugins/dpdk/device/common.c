@@ -371,6 +371,7 @@ static void
 dpdk_remove_interrupt_files (dpdk_device_t *xd)
 {
   clib_file_main_t *fm = &file_main;
+  vnet_main_t *vnm = vnet_get_main ();
 
   for (int q = 0; q < vec_len (xd->rx_queues); q++)
     {
@@ -386,6 +387,10 @@ dpdk_remove_interrupt_files (dpdk_device_t *xd)
 	  fm->file_update (f, UNIX_FILE_UPDATE_ADD);
 	  rxq->clib_file_registered = 1;
 	}
+      /* The vnet rx queue keeps its own copy of the index for rx-placement
+         updates.  Clear it before the file's pool slot is released, or the
+         next placement change on this queue resolves a freed file. */
+      vnet_hw_if_set_rx_queue_file_index (vnm, rxq->queue_index, ~0);
       clib_file_del_by_index (fm, rxq->clib_file_index);
       rxq->clib_file_index = ~0;
       rxq->clib_file_registered = 0;
