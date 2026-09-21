@@ -701,6 +701,7 @@ void vnet_crypto_ctx_destroy (vlib_main_t *vm, vnet_crypto_ctx_t *ctx);
 void vnet_crypto_ctx_set_engine (vnet_crypto_ctx_t *ctx, vnet_crypto_handler_type_t t,
 				 vnet_crypto_engine_id_t engine);
 void vnet_crypto_ctx_set_default_engine (vnet_crypto_ctx_t *ctx, vnet_crypto_handler_type_t t);
+u8 report_and_abort (u8 *name, u8 alg, u8 type, u32 len_handl);
 
 format_function_t format_vnet_crypto_alg;
 format_function_t format_vnet_crypto_engine;
