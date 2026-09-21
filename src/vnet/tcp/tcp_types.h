@@ -531,6 +531,7 @@ typedef struct _tcp_connection
 struct _tcp_cc_algorithm
 {
   const char *name;
+  format_function_t *format;
   uword (*unformat_cfg) (unformat_input_t *input);
   int (*init) (tcp_connection_t *tc);
   void (*cleanup) (tcp_connection_t * tc);
