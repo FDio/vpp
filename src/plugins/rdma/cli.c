@@ -18,7 +18,7 @@ static clib_error_t *
 rdma_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 			vlib_cli_command_t * cmd)
 {
-  rdma_create_if_args_t args;
+  rdma_create_if_args_t args = { };
 
   if (!unformat_user (input, unformat_rdma_create_if_args, &args))
     {
