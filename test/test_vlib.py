@@ -366,5 +366,22 @@ class TestVlibFrameLeak(VppTestCase):
             self.assertEqual(frame_allocated[key], alloc)
 
 
+class TestVlibProcess(VppTestCase):
+    """Vlib Process Scheduler Test Cases"""
+
+    # The process scheduler and its timing wheel only run on the main thread
+    vpp_worker_count = 0
+    # A failing test waits up to 10s for its target process before replying
+    vapi_response_timeout = 20
+
+    def test_vlib_process_clock_event_collision(self):
+        """Timed event and sleep timer expiring together resume a process once"""
+        self.logger.info(self.vapi.cli("test vlib-process clock-event-collision"))
+
+    def test_vlib_process_timed_event_early_wake(self):
+        """Early event wake cancels the sleep timer, not a scheduled event"""
+        self.logger.info(self.vapi.cli("test vlib-process timed-event-early-wake"))
+
+
 if __name__ == "__main__":
     unittest.main(testRunner=VppTestRunner)
