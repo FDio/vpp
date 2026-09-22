@@ -501,6 +501,7 @@ cnat_session_scan (vlib_main_t *vm, f64 start_time, int i)
 {
   cnat_bihash_kv_t *stale = NULL, *key;
   BVT (clib_bihash) * h = &cnat_session_db;
+  f64 budget_start;
   int j, k;
 
   cnat_log_scanner_start (i);
@@ -529,10 +530,20 @@ cnat_session_scan (vlib_main_t *vm, f64 start_time, int i)
   if (!h->instantiated)
 	goto remove_stale;
 
+  /*
+   * The budget below is how long this scan may keep the workers off between
+   * two pauses, so it has to start here rather than at the caller's start
+   * time, which also counts the wait for the barrier.  On a busy system that
+   * wait exceeds the budget on its own, the loop would then leave before its
+   * first bucket, hand the same starting point back to the caller and never
+   * examine a session.
+   */
+  budget_start = vlib_time_now (vm);
+
   for ( /* caller saves starting point */ ; i < h->nbuckets; i++)
     {
       /* allow no more than 100us without a pause */
-      if ((vlib_time_now (vm) - start_time) > 10e-5)
+      if ((vlib_time_now (vm) - budget_start) > 10e-5)
 	goto remove_stale;
 
       if (i < (h->nbuckets - 3))
