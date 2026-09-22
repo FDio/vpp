@@ -1,0 +1,94 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b2ecfb60_9987af50",
+        "filename": "src/drivers/iavf/port.c",
+        "patchSetId": 38
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-09-22T07:28:48Z",
+      "side": 1,
+      "message": "Resolved in PS38: frame overhead uses the named IAVF_RX_FRAME_FCS_SIZE and IAVF_RX_FRAME_VLAN_TAGS constants.",
+      "parentUuid": "737993c8_d2993577",
+      "revId": "5c1ea2e7738e49b320152a36254cfd7c4d2dcc1b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "db3a39f4_5293f4e3",
+        "filename": "src/drivers/iavf/queue.c",
+        "patchSetId": 38
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-09-22T07:28:48Z",
+      "side": 1,
+      "message": "Resolved in PS38: the TX RS slot ring size uses the named IAVF_TX_RS_SLOT_RING_SIZE constant.",
+      "parentUuid": "f9034ad6_1fd8a976",
+      "revId": "5c1ea2e7738e49b320152a36254cfd7c4d2dcc1b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "5b597659_0db3140a",
+        "filename": "src/drivers/iavf/tx_node.c",
+        "patchSetId": 38
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-09-22T07:28:48Z",
+      "side": 1,
+      "message": "Resolved in PS38: buffers and n_left are updated for every packet consumed by iavf_tx_prepare(), independently of n_desc.",
+      "parentUuid": "ac30eb0f_8a7a20f8",
+      "revId": "5c1ea2e7738e49b320152a36254cfd7c4d2dcc1b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "df3a81bd_a2456947",
+        "filename": "src/drivers/iavf/tx_node.c",
+        "patchSetId": 38
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-09-22T07:28:48Z",
+      "side": 1,
+      "message": "Resolved in PS38: the variable is named hdr_sz.",
+      "parentUuid": "9f806aed_12d9bc8b",
+      "revId": "5c1ea2e7738e49b320152a36254cfd7c4d2dcc1b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "9eee3d89_998a35d4",
+        "filename": "src/drivers/iavf/tx_node.c",
+        "patchSetId": 38
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-09-22T07:28:48Z",
+      "side": 1,
+      "message": "Resolved in PS38: GSO preparation is isolated in iavf_tx_prepare_gso().",
+      "parentUuid": "684eafd0_62009650",
+      "revId": "5c1ea2e7738e49b320152a36254cfd7c4d2dcc1b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
