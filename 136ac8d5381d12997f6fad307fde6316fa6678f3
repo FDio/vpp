@@ -16,6 +16,24 @@
       "message": "FYI: I\u0027m aware of VppConnectProxyIperfTcpMWTest issue and working on fix",
       "revId": "136ac8d5381d12997f6fad307fde6316fa6678f3",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "c8f99744_8442d78c",
+        "filename": "src/plugins/hsi/hsi_tracker_tcp.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-09-22T07:29:05Z",
+      "side": 1,
+      "message": "Resolved in PS6: the test-driven HSI behavior change was removed; the current patch only schedules TX after a drain is installed on its owning worker.",
+      "parentUuid": "126ecfbe_175c5254",
+      "revId": "136ac8d5381d12997f6fad307fde6316fa6678f3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
