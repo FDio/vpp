@@ -123,12 +123,14 @@ crypto_dispatch_frame (vlib_main_t *vm, vlib_node_runtime_t *node, vnet_crypto_t
 	      ct->nexts[i + n_cache] = CRYPTO_DISPATCH_NEXT_ERR_DROP;
 	      vlib_node_increment_counter (vm, node->node_index,
 					   VNET_CRYPTO_ASYNC_ERROR_FAIL_ENGINE_ERR, 1);
+	      abort ();
 	    }
 	  else if (uword_bitmap_is_bit_set (cf->bad_hmac_bitmap, i))
 	    {
 	      ct->nexts[i + n_cache] = CRYPTO_DISPATCH_NEXT_ERR_DROP;
 	      vlib_node_increment_counter (vm, node->node_index,
 					   VNET_CRYPTO_ASYNC_ERROR_FAIL_BAD_HMAC, 1);
+	      abort ();
 	    }
 	  else
 	    ct->nexts[i + n_cache] = cf->next_node_index[i];
@@ -206,6 +208,12 @@ crypto_dequeue_frame (vlib_main_t * vm, vlib_node_runtime_t * node,
     }
 
   return n_cache;
+}
+
+static u8
+report_and_abort (u8 *name, u8 algo, u8 ttype)
+{
+  abort ();
 }
 
 VLIB_NODE_FN (crypto_enq_node)
@@ -295,13 +303,14 @@ VLIB_NODE_FN (crypto_enq_node)
       vnet_crypto_frame_enq_fn_t *fn = 0;
       u32 j;
       int ret;
+      vnet_crypto_engine_t *e = 0;
 
       engine = vnet_crypto_ctx_get_engine (f->ctxs[0], VNET_CRYPTO_HANDLER_TYPE_ASYNC);
       if (engine == VNET_CRYPTO_ENGINE_ID_NONE)
 	engine = cm->active_op_engine_index[f->alg][f->type][VNET_CRYPTO_HANDLER_TYPE_ASYNC];
       if (engine != VNET_CRYPTO_ENGINE_ID_NONE)
 	{
-	  vnet_crypto_engine_t *e = vec_elt_at_index (cm->engines, engine);
+	  e = vec_elt_at_index (cm->engines, engine);
 
 	  fn = e->ops[f->alg][f->type].handlers[VNET_CRYPTO_HANDLER_TYPE_ASYNC];
 	}
@@ -317,6 +326,8 @@ VLIB_NODE_FN (crypto_enq_node)
 	  vnet_crypto_async_complete_frame (vm, f);
 	  vlib_node_set_interrupt_pending (vm, cm->crypto_node_index);
 	  ret = -1;
+	  u8 *name = format (0, "%U%c", format_vnet_crypto_engine, engine, 0);
+	  report_and_abort (name, f->alg, f->type);
 	}
       else
 	{
@@ -335,6 +346,7 @@ VLIB_NODE_FN (crypto_enq_node)
 	      f->state = VNET_CRYPTO_FRAME_STATE_COMPLETED;
 	      vnet_crypto_async_complete_frame (vm, f);
 	      vlib_node_set_interrupt_pending (vm, cm->crypto_node_index);
+	      abort ();
 	    }
 	}
 
