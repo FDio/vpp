@@ -91,7 +91,7 @@ class TestNsimCli(VppTestCase):
     def setUpClass(cls):
         super(TestNsimCli, cls).setUpClass()
         try:
-            cls.create_pg_interfaces(range(2))
+            cls.create_pg_interfaces(range(3))
             for i in cls.pg_interfaces:
                 i.config_ip4()
                 i.resolve_arp()
@@ -108,6 +108,21 @@ class TestNsimCli(VppTestCase):
             i.unconfig_ip4()
             i.admin_down()
         super(TestNsimCli, cls).tearDownClass()
+
+    def tearDown(self):
+        self.vapi.cli("nsim cross-connect enable-disable pg0 pg1 disable")
+        self.vapi.cli("nsim output-feature enable-disable pg0 disable")
+        super().tearDown()
+
+    def enable_cross_connect(self):
+        self.vapi.cli("nsim cross-connect enable-disable pg0 pg1")
+
+    def send_and_capture(self, count, timeout=2):
+        packets = create_stream(self, self.pg0, self.pg1, count)
+        self.pg0.add_stream(packets)
+        self.pg1.enable_capture()
+        self.pg_start()
+        return self.pg1.get_capture(count, timeout=timeout)
 
     def test_nsim_delay(self):
         """Add 100ms delay and serialize queued packets"""
@@ -147,6 +162,7 @@ class TestNsimCli(VppTestCase):
         self.vapi.cli(
             "set nsim delay 1 us bandwidth 1 gbit packet-size 128 drop-fraction 1.0 packets-per-drop 0"
         )
+        self.enable_cross_connect()
 
         self.pg_start()
         self.pg1.assert_nothing_captured()
@@ -154,6 +170,194 @@ class TestNsimCli(VppTestCase):
         self.assertIn("uniform: drop fraction 1", reply)
         reply = self.vapi.cli("show trace")
         self.assertIn("sw_if_index -1", reply)
+
+    def test_rate_cycle_uses_service_time(self):
+        """Queued packets straddling a rate transition use both rates"""
+        self.vapi.cli(
+            "set nsim delay 1 ms bandwidth 800 kbps buffer 100 ms "
+            "packet-size 1000 rate-cycle bandwidth 400 kbps "
+            "good 15 ms bad 100 ms seed 7"
+        )
+        self.enable_cross_connect()
+        capture = self.send_and_capture(3)
+
+        first_gap = float(capture[1].time - capture[0].time)
+        second_gap = float(capture[2].time - capture[1].time)
+        # Packet one takes 10 ms. Packet two starts 5 ms before the transition,
+        # then serializes its remaining half at the 20 ms/packet bad rate.
+        self.assertGreater(first_gap, 0.012)
+        self.assertLess(first_gap, 0.019)
+        self.assertGreater(second_gap, 0.017)
+        self.assertLess(second_gap, 0.026)
+
+        reply = self.vapi.cli("show nsim verbose")
+        self.assertIn("cycle:", reply)
+        self.assertRegex(reply, r"currently bad, [1-9]\d* transitions")
+
+    def test_release_batching(self):
+        """Release batching preserves FIFO order and aligns departures"""
+        self.vapi.cli(
+            "set nsim delay 1 ms bandwidth 8 mbps buffer 20 ms "
+            "packet-size 1000 batch-interval 5.5 ms seed 11"
+        )
+        self.enable_cross_connect()
+        capture = self.send_and_capture(7)
+
+        indexes = [self.payload_to_info(packet[Raw]).index for packet in capture]
+        self.assertEqual(indexes, sorted(indexes))
+        self.assertLess(float(capture[5].time - capture[0].time), 0.002)
+        boundary_gap = float(capture[6].time - capture[5].time)
+        self.assertGreater(boundary_gap, 0.003)
+        self.assertLess(boundary_gap, 0.009)
+
+        reply = self.vapi.cli("show nsim verbose")
+        self.assertIn("batch interval: 5.5 ms", reply)
+        self.assertRegex(
+            reply,
+            r"batching: delayed 7 batches 2 extended 0 max gap 5.5 ms max batch 6",
+        )
+
+    def test_release_batch_packet_budget(self):
+        """A batch packet budget drains queued packets over later boundaries"""
+        self.vapi.cli(
+            "set nsim delay 1 ms bandwidth 8 mbps buffer 20 ms "
+            "packet-size 1000 batch-interval 5 ms batch-packets 2 seed 12"
+        )
+        self.enable_cross_connect()
+        capture = self.send_and_capture(6)
+
+        indexes = [self.payload_to_info(packet[Raw]).index for packet in capture]
+        self.assertEqual(indexes, sorted(indexes))
+        self.assertLess(float(capture[1].time - capture[0].time), 0.002)
+        self.assertGreater(float(capture[2].time - capture[1].time), 0.003)
+        self.assertLess(float(capture[3].time - capture[2].time), 0.002)
+        self.assertGreater(float(capture[4].time - capture[3].time), 0.003)
+
+        reply = self.vapi.cli("show nsim verbose")
+        self.assertIn("batch packet budget: 2", reply)
+        self.assertRegex(reply, r"batches 3 extended 0 max gap 5.0 ms max batch 2")
+
+    def test_release_batch_gap_distribution(self):
+        """Weighted release gaps extend a batch and reserve holding space"""
+        self.vapi.cli(
+            "set nsim delay 1 ms bandwidth 8 mbps buffer 20 ms "
+            "packet-size 1000 batch-interval 5 ms "
+            "batch-gap 15 ms probability 1.0 seed 13"
+        )
+        reply = self.vapi.cli("show nsim verbose")
+        self.assertIn("batch gap distribution: 15.0 ms 1.00000 base 0.00000", reply)
+        # 20 kB bottleneck queue + 15 kB maximum hold, plus the ring sentinel.
+        self.assertIn("worker wheel size: 36", reply)
+
+        self.enable_cross_connect()
+        capture = self.send_and_capture(20)
+        indexes = [self.payload_to_info(packet[Raw]).index for packet in capture]
+        self.assertEqual(indexes, sorted(indexes))
+        self.assertLess(float(capture[15].time - capture[0].time), 0.002)
+        self.assertGreater(float(capture[16].time - capture[15].time), 0.010)
+
+        reply = self.vapi.cli("show nsim verbose")
+        self.assertRegex(reply, r"batches 2 extended 2 max gap 15.0 ms")
+
+    def test_fixed_rate_reorder(self):
+        """Fixed-rate late reordering remains available without other models"""
+        self.vapi.cli(
+            "set nsim delay 1 ms bandwidth 8 mbps buffer 20 ms "
+            "packet-size 1000 reorder-fraction 1.0 reorder-delay 5 ms seed 17"
+        )
+        self.enable_cross_connect()
+        packets = [
+            Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac)
+            / IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4)
+            / UDP(sport=49152 + index, dport=5678)
+            / Raw(bytes([index]))
+            for index in range(5)
+        ]
+        self.pg0.add_stream(packets)
+        self.pg1.enable_capture()
+        self.pg_start()
+        capture = self.pg1.get_capture(5, timeout=2)
+        self.assertEqual([packet[Raw].load[0] for packet in capture], list(range(5)))
+        self.assertIn("reorder fraction: 1.00000", self.vapi.cli("show nsim verbose"))
+        self.assertRegex(self.vapi.cli("show errors"), r"\s+5\s+nsim\s+Packets reordered")
+
+    def test_batch_capacity_and_reconfiguration_guard(self):
+        """Batch holding space is separate and live nsim cannot be replaced"""
+        self.vapi.cli(
+            "set nsim delay 1 ms bandwidth 8 mbps buffer 10 ms "
+            "packet-size 1000 batch-interval 5 ms seed 19"
+        )
+        reply = self.vapi.cli("show nsim verbose")
+        # 10 kB bottleneck queue + 5 kB held batch, plus the ring sentinel.
+        self.assertIn("worker wheel size: 16", reply)
+
+        self.enable_cross_connect()
+        response = self.vapi.cli_return_response(
+            "set nsim delay 2 ms bandwidth 8 mbps packet-size 1000"
+        )
+        self.assertNotEqual(response.retval, 0)
+        self.assertIn("disable nsim before reconfiguring it", response.reply)
+
+    def test_cross_connect_state(self):
+        """A second pair cannot invalidate the active cross-connect"""
+        self.vapi.cli("set nsim delay 1 ms bandwidth 8 mbps packet-size 1000")
+        self.enable_cross_connect()
+
+        for command in (
+            "nsim cross-connect enable-disable pg0 pg2",
+            "nsim cross-connect enable-disable pg0 pg2 disable",
+        ):
+            response = self.vapi.cli_return_response(command)
+            self.assertNotEqual(response.retval, 0)
+
+        reply = self.vapi.cli("show nsim")
+        self.assertIn("pg0 and pg1", reply)
+
+    def test_unknown_input_rejected(self):
+        """Unknown input cannot partially replace a configuration"""
+        self.vapi.cli("set nsim delay 1 ms bandwidth 8 mbps packet-size 1000")
+        response = self.vapi.cli_return_response(
+            "set nsim delay 2 ms bandwidth 8 mbps packet-size 1000 unsupported"
+        )
+        self.assertNotEqual(response.retval, 0)
+        self.assertIn("unknown input", response.reply)
+        self.assertIn("delay: 1.0 ms", self.vapi.cli("show nsim"))
+
+@unittest.skipIf("nsim" in config.excluded_plugins, "Exclude NSIM plugin tests")
+class TestNsimWorkers(VppTestCase):
+    """NSIM per-worker model state"""
+
+    vpp_worker_count = 2
+
+    def test_worker_state_and_rng_streams(self):
+        command = (
+            "set nsim delay 1 ms bandwidth 8 mbps buffer 10 ms "
+            "packet-size 1000 rate-cycle bandwidth 4 mbps "
+            "good 10 ms bad 10 ms seed 12345"
+        )
+        self.vapi.cli(command)
+        first = self.vapi.cli("show nsim verbose")
+        workers = re.findall(
+            r"worker (\d+): queue 0/(\d+).*seeds loss (\d+) reorder (\d+) "
+            r"rate (\d+) batch (\d+)",
+            first,
+        )
+        self.assertEqual(len(workers), 2)
+        self.assertEqual(workers[0][1], workers[1][1])
+        for worker in workers:
+            self.assertEqual(len(set(worker[2:])), 4)
+        self.assertNotEqual(workers[0][2:], workers[1][2:])
+
+        self.vapi.cli(command)
+        second = self.vapi.cli("show nsim verbose")
+        self.assertEqual(
+            workers,
+            re.findall(
+                r"worker (\d+): queue 0/(\d+).*seeds loss (\d+) reorder (\d+) "
+                r"rate (\d+) batch (\d+)",
+                second,
+            ),
+        )
 
 
 @unittest.skipIf("nsim" in config.excluded_plugins, "Exclude NSIM plugin tests")
