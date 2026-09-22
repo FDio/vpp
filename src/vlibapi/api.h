@@ -88,8 +88,8 @@ vl_msg_api_get_msg_length_inline (void *msg_arg)
 int vl_msg_api_rx_trace_enabled (api_main_t * am);
 int vl_msg_api_tx_trace_enabled (api_main_t * am);
 void vl_msg_api_trace (api_main_t * am, vl_api_trace_t * tp, void *msg);
-int vl_msg_api_trace_onoff (api_main_t * am, vl_api_trace_which_t which,
-			    int onoff);
+void vl_msg_api_trace_with_size (api_main_t *am, vl_api_trace_t *tp, void *msg, uword msg_len);
+int vl_msg_api_trace_onoff (api_main_t *am, vl_api_trace_which_t which, int onoff);
 int vl_msg_api_trace_free (api_main_t * am, vl_api_trace_which_t which);
 int vl_msg_api_trace_configure (api_main_t * am, vl_api_trace_which_t which,
 				u32 nitems);

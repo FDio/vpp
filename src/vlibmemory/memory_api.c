@@ -751,9 +751,9 @@ void (*vl_mem_api_fuzz_hook) (u16, void *);
 
 /* This is only to be called from a vlib/vnet app */
 static void
-vl_mem_api_handler_with_vm_node (api_main_t *am, svm_region_t *vlib_rp,
-				 void *the_msg, vlib_main_t *vm,
-				 vlib_node_runtime_t *node, u8 is_private)
+vl_mem_api_handler_with_vm_node (api_main_t *am, svm_region_t *vlib_rp, void *the_msg,
+				 vlib_main_t *vm, vlib_node_runtime_t *node, u8 is_private,
+				 uword msg_len)
 {
   u16 id = clib_net_to_host_u16 (*((u16 *) the_msg));
   vl_api_msg_data_t *m = vl_api_get_msg_data (am, id);
@@ -784,7 +784,7 @@ vl_mem_api_handler_with_vm_node (api_main_t *am, svm_region_t *vlib_rp,
       handler = (void *) m->handler;
 
       if (PREDICT_FALSE (am->rx_trace && am->rx_trace->enabled))
-	vl_msg_api_trace (am, am->rx_trace, the_msg);
+	vl_msg_api_trace_with_size (am, am->rx_trace, the_msg, msg_len);
 
       if (PREDICT_FALSE (am->msg_print_flag))
 	{
@@ -880,10 +880,35 @@ vl_mem_api_handler_with_vm_node (api_main_t *am, svm_region_t *vlib_rp,
     }
 }
 
+/*
+ * Validate that the API message at mp and the body length it announces lie
+ * inside the shared region vlib_rp.  Both mp and msgbuf_t.data_len are
+ * written by the API client, so neither is trusted: a bogus pointer, or a
+ * bogus length, would otherwise make the trace path and VL_MSG_API_UNPOISON
+ * read outside the region.  Returns 0 and stores the length on success.
+ */
+static int
+vl_mem_api_msg_len (svm_region_t *vlib_rp, uword mp, uword *msg_len)
+{
+  uword region_start = (uword) vlib_rp->virtual_base;
+  uword region_end = region_start + vlib_rp->virtual_size;
+  msgbuf_t *hdr;
+
+  if (mp < region_start + sizeof (msgbuf_t) || mp > region_end)
+    return -1;
+
+  hdr = (msgbuf_t *) (mp - sizeof (msgbuf_t));
+  *msg_len = (uword) clib_net_to_host_u32 (hdr->data_len);
+
+  if (*msg_len > region_end - mp)
+    return -1;
+
+  return 0;
+}
+
 static inline int
-void_mem_api_handle_msg_i (api_main_t * am, svm_region_t * vlib_rp,
-			   vlib_main_t * vm, vlib_node_runtime_t * node,
-			   u8 is_private)
+void_mem_api_handle_msg_i (api_main_t *am, svm_region_t *vlib_rp, vlib_main_t *vm,
+			   vlib_node_runtime_t *node, u8 is_private)
 {
   svm_queue_t *q;
   uword mp;
@@ -892,9 +917,16 @@ void_mem_api_handle_msg_i (api_main_t * am, svm_region_t * vlib_rp,
 
   if (!svm_queue_sub2 (q, (u8 *) & mp))
     {
+      uword msg_len;
+
+      if (vl_mem_api_msg_len (vlib_rp, mp, &msg_len))
+	{
+	  clib_warning ("dropping API message outside the region (0x%lx)", mp);
+	  return 0;
+	}
+
       VL_MSG_API_UNPOISON ((void *) mp);
-      vl_mem_api_handler_with_vm_node (am, vlib_rp, (void *) mp, vm, node,
-				       is_private);
+      vl_mem_api_handler_with_vm_node (am, vlib_rp, (void *) mp, vm, node, is_private, msg_len);
       return 0;
     }
   return -1;
@@ -942,9 +974,16 @@ vl_mem_api_handle_rpc (vlib_main_t * vm, vlib_node_runtime_t * node)
       vl_msg_api_barrier_sync ();
       for (i = 0; i < vec_len (vm->processing_rpc_requests); i++)
 	{
+	  uword msg_len;
+
 	  mp = vm->processing_rpc_requests[i];
-	  vl_mem_api_handler_with_vm_node (am, am->vlib_rp, (void *) mp, vm,
-					   node, 0 /* is_private */);
+	  if (vl_mem_api_msg_len (am->vlib_rp, mp, &msg_len))
+	    {
+	      clib_warning ("dropping RPC message outside the region (0x%lx)", mp);
+	      continue;
+	    }
+	  vl_mem_api_handler_with_vm_node (am, am->vlib_rp, (void *) mp, vm, node,
+					   0 /* is_private */, msg_len);
 	}
       vl_msg_api_barrier_release ();
     }
