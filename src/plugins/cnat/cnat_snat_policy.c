@@ -524,6 +524,48 @@ cnat_if_addr_add_del_snat_cb (addr_resolution_t *ar, ip_address_t *address, u8 i
     }
 }
 
+/*
+ * The lookup of an index answers with the default policy when the index names
+ * no policy of its own, and the update path then records the policy it found
+ * under that index, so the slots of several indexes can name one entry.
+ * Freeing the entry has to empty all of them, and the default pointer too, or
+ * a later lookup follows a freed pool entry.
+ */
+static void
+cnat_snat_policy_unregister (cnat_snat_policy_entry_t *cpe)
+{
+  cnat_snat_policy_main_t *cpm = &cnat_snat_policy_main;
+  u32 *slots[2] = { cpm->snat_policy_per_fwd_fib_index4, cpm->snat_policy_per_fwd_fib_index6 };
+  u32 index = cpe - cpm->snat_policies_pool;
+
+  for (int v = 0; v < ARRAY_LEN (slots); v++)
+    for (u32 i = 0; i < vec_len (slots[v]); i++)
+      if (index == vec_elt (slots[v], i))
+	vec_elt (slots[v], i) = INDEX_INVALID;
+
+  if (cpm->snat_default_policy == cpe)
+    cpm->snat_default_policy = 0;
+}
+
+/*
+ * Whether the fib index names this entry, that is whether one of the slots of
+ * that index holds the pool index of the entry.  Because of the fallback
+ * above, what a lookup answers with is not necessarily what the index names.
+ */
+static u8
+cnat_snat_policy_fib_names_entry (u32 index, u32 fwd_fib_index)
+{
+  cnat_snat_policy_main_t *cpm = &cnat_snat_policy_main;
+
+  if (fwd_fib_index < vec_len (cpm->snat_policy_per_fwd_fib_index4) &&
+      index == vec_elt (cpm->snat_policy_per_fwd_fib_index4, fwd_fib_index))
+    return 1;
+  if (fwd_fib_index < vec_len (cpm->snat_policy_per_fwd_fib_index6) &&
+      index == vec_elt (cpm->snat_policy_per_fwd_fib_index6, fwd_fib_index))
+    return 1;
+  return 0;
+}
+
 static void
 cnat_snat_cleanup (cnat_snat_policy_main_t *cpm, cnat_snat_policy_entry_t *cpe, u32 fwd_fib_index)
 {
@@ -539,15 +581,34 @@ cnat_snat_cleanup (cnat_snat_policy_main_t *cpm, cnat_snat_policy_entry_t *cpe, 
 				0 /* is_session */);
     }
 
-  if (fwd_fib_index < vec_len (cpm->snat_policy_per_fwd_fib_index4))
-    vec_elt (cpm->snat_policy_per_fwd_fib_index4, fwd_fib_index) = ~0;
-  if (fwd_fib_index < vec_len (cpm->snat_policy_per_fwd_fib_index6))
-    vec_elt (cpm->snat_policy_per_fwd_fib_index6, fwd_fib_index) = ~0;
+  cnat_snat_policy_unregister (cpe);
 
   cnat_snat_policy_entry_cleanup (cpe);
   cnat_free_port_allocator (fwd_fib_index);
 
   pool_put_index (cpm->snat_policies_pool, index);
+}
+
+/*
+ * A fib index only means something if the FIB of that address family is
+ * there, which is the same condition fib_table_get_or_null() checks.  Both
+ * indices of a policy are used as vector indices and, for the return
+ * direction, as an index into the FIB pool.
+ */
+static u8
+cnat_snat_fib_index_is_valid (u32 fib_index, fib_protocol_t proto)
+{
+  switch (proto)
+    {
+    case FIB_PROTOCOL_IP4:
+      return (fib_index < vec_len (ip4_main.fibs) &&
+	      !pool_is_free_index (ip4_main.fibs, fib_index));
+    case FIB_PROTOCOL_IP6:
+      return (fib_index < vec_len (ip6_main.fibs) &&
+	      !pool_is_free_index (ip6_main.fibs, fib_index));
+    default:
+      return 0;
+    }
 }
 
 __clib_export int
@@ -567,6 +628,20 @@ cnat_set_snat (u32 fwd_fib_index, u32 ret_fib_index, const ip4_address_t *ip4, u
   if ((ip4_set && ip4_pfx_len > 32) || (ip6_set && (ip6_pfx_len < 64 || ip6_pfx_len > 128)))
     return VNET_API_ERROR_INVALID_VALUE;
 
+  /*
+   * The policy is kept in vectors indexed by the fwd fib index and the return
+   * path is installed in the ret fib index, both of which the caller (API or
+   * CLI) picked.  Without this check an index such as ~0 makes the
+   * vec_validate() calls below reserve room for 2^32 entries.
+   */
+  if ((sw_if_set || ip4_set) && (!cnat_snat_fib_index_is_valid (fwd_fib_index, FIB_PROTOCOL_IP4) ||
+				 !cnat_snat_fib_index_is_valid (ret_fib_index, FIB_PROTOCOL_IP4)))
+    return VNET_API_ERROR_NO_SUCH_FIB;
+
+  if ((sw_if_set || ip6_set) && (!cnat_snat_fib_index_is_valid (fwd_fib_index, FIB_PROTOCOL_IP6) ||
+				 !cnat_snat_fib_index_is_valid (ret_fib_index, FIB_PROTOCOL_IP6)))
+    return VNET_API_ERROR_NO_SUCH_FIB;
+
   cnat_lazy_init ();
 
   /* we can either:
@@ -582,6 +657,13 @@ cnat_set_snat (u32 fwd_fib_index, u32 ret_fib_index, const ip4_address_t *ip4, u
     {
       /* entry found */
       index = cpe - cpm->snat_policies_pool;
+      /*
+       * The lookup answers with the default policy when the fib index names
+       * no policy of its own; only the policy an index names may be deleted,
+       * and a refused delete has to leave the policy untouched.
+       */
+      if (is_delete && !cnat_snat_policy_fib_names_entry (index, fwd_fib_index))
+	return VNET_API_ERROR_NO_SUCH_FIB;
       /* if the interface is changed, unwatch it (note: also works for delete)
        */
       if (cpe->snat_ip4.ce_sw_if_index != sw_if_index)
@@ -723,7 +805,10 @@ cnat_set_snat_cli (vlib_main_t *vm, unformat_input_t *input,
 		      CNAT_SNAT_POLICY_FLAG_USE_AS_DEFAULT);
   if (rv)
     {
-      e = clib_error_return (0, "unknown error %d", rv);
+      if (VNET_API_ERROR_NO_SUCH_FIB == rv)
+	e = clib_error_return (0, "no such fib %d or rfib %d", fwd_fib_index, ret_fib_index);
+      else
+	e = clib_error_return (0, "unknown error %d", rv);
       goto done;
     }
 

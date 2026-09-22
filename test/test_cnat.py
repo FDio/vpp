@@ -1110,6 +1110,9 @@ class TestCNatTranslationCLI(CnatCommonTestCase):
 class TestCNatSourceNAT(CnatCommonTestCase):
     """CNat Source NAT"""
 
+    # vnet/error.h: no such FIB / VRF
+    VNET_API_ERROR_NO_SUCH_FIB = -3
+
     @classmethod
     def setUpClass(cls):
         super(TestCNatSourceNAT, cls).setUpClass()
@@ -1431,6 +1434,138 @@ class TestCNatSourceNAT(CnatCommonTestCase):
         self.assertEqual(err6, n_pkts - N_SESSIONS_MAX + N_SESSIONS_PER_VRF + 1)
 
         self.vapi.cnat_session_purge()
+
+    def test_snat_invalid_fib_index(self):
+        """CNat Source Nat policy for a fib index that has no table"""
+        snat_ip4 = self.pg2.remote_hosts[0].ip4
+
+        # Both fib indices of the policy size the per-VRF state, so an index
+        # that names no table is refused instead of being allocated for.  A
+        # request for ~0 entries used to abort vpp.
+        with self.vapi.assert_negative_api_retval():
+            reply = self.vapi.cnat_set_snat_addresses_v2(
+                fwd_fib_index=0xFFFFFFFF,
+                ret_fib_index=0,
+                snat_ip4=snat_ip4,
+                snat_ip6=None,
+                sw_if_index=INVALID_INDEX,
+                flags=0,
+            )
+        self.assertEqual(reply.retval, self.VNET_API_ERROR_NO_SUCH_FIB)
+
+        # Same for the fib index the return path is installed in.
+        with self.vapi.assert_negative_api_retval():
+            reply = self.vapi.cnat_set_snat_addresses_v2(
+                fwd_fib_index=0,
+                ret_fib_index=0xFFFFFFFF,
+                snat_ip4=snat_ip4,
+                snat_ip6=None,
+                sw_if_index=INVALID_INDEX,
+                flags=0,
+            )
+        self.assertEqual(reply.retval, self.VNET_API_ERROR_NO_SUCH_FIB)
+
+        # vpp is still there and the same call with valid fib indices goes
+        # through
+        reply = self.vapi.cnat_set_snat_addresses_v2(
+            fwd_fib_index=0,
+            ret_fib_index=0,
+            snat_ip4=snat_ip4,
+            snat_ip6=None,
+            sw_if_index=INVALID_INDEX,
+            flags=0,
+        )
+        self.assertEqual(reply.retval, 0)
+        self.assertIn(snat_ip4, self.vapi.cli("show cnat snat-policy"))
+
+    def test_snat_delete_only_named_fib_index(self):
+        """CNat Source Nat delete only removes the policy its fib index names"""
+        cli = self.vapi.cli
+        snat_ip4 = self.pg2.remote_hosts[0].ip4
+
+        # The lookup answers with the default policy when a fib index names no
+        # policy of its own, and the update then records that policy under the
+        # index, so the slots of several indexes end up naming one entry.  The
+        # CLI marks the entry it creates for fib index 0 as the default policy.
+        self.vapi.cnat_set_snat_addresses(sw_if_index=INVALID_INDEX)
+        cli("set cnat snat-policy addr %s" % snat_ip4)
+        self.vapi.ip_table_add_del_v2(is_add=1, table={"table_id": 5})
+        cli("set cnat snat-policy addr %s fib 1" % snat_ip4)
+
+        # The delete of the index the entry was created for removes it, and
+        # every slot that named it has to be empty afterwards instead of naming
+        # the freed entry, so fib index 1 can be configured again.
+        reply = self.vapi.cnat_set_snat_addresses(
+            snat_ip4=None, snat_ip6=None, sw_if_index=INVALID_INDEX
+        )
+        self.assertEqual(reply.retval, 0)
+        reply = self.vapi.cnat_set_snat_addresses_v2(
+            fwd_fib_index=1,
+            ret_fib_index=1,
+            snat_ip4=snat_ip4,
+            snat_ip6=None,
+            sw_if_index=INVALID_INDEX,
+            flags=0,
+        )
+        self.assertEqual(reply.retval, 0)
+
+        # A delete names one fib index and must not be answered with the
+        # policy of another one.
+        cli("set cnat snat-policy addr %s" % snat_ip4)
+        with self.vapi.assert_negative_api_retval():
+            reply = self.vapi.cnat_set_snat_addresses_v2(
+                fwd_fib_index=0xFFFFFFFF,
+                ret_fib_index=0,
+                snat_ip4=None,
+                snat_ip6=None,
+                sw_if_index=INVALID_INDEX,
+                flags=0,
+            )
+        self.assertEqual(reply.retval, self.VNET_API_ERROR_NO_SUCH_FIB)
+        self.assertIn(snat_ip4, cli("show cnat snat-policy"))
+
+    def test_snat_refused_delete_keeps_the_watch(self):
+        """A refused CNat Source Nat delete leaves the policy alone"""
+        # vnet/cnat/cnat_snat_policy.h: CNAT_SNAT_POLICY_FLAG_USE_AS_DEFAULT
+        CNAT_SNAT_POLICY_FLAG_USE_AS_DEFAULT = 4
+
+        # The policy setUp configured holds fib index 0, so it has to go before
+        # one that is marked as the default policy can take its place.
+        self.vapi.cnat_set_snat_addresses(sw_if_index=INVALID_INDEX)
+
+        # The policy is created for an interface that carries no address yet,
+        # so cnat_resolve_addr() fails and the endpoint is watched instead of
+        # being resolved right away.
+        loopback = self.create_loopback_interfaces(1)[0]
+        reply = self.vapi.cnat_set_snat_addresses_v2(
+            fwd_fib_index=0,
+            ret_fib_index=0,
+            snat_ip4=None,
+            snat_ip6=None,
+            sw_if_index=loopback.sw_if_index,
+            flags=CNAT_SNAT_POLICY_FLAG_USE_AS_DEFAULT,
+        )
+        self.assertEqual(reply.retval, 0)
+
+        # A delete names a fib index that holds no policy of its own, so the
+        # lookup answers with the default policy.  The call has to be refused,
+        # and it may not have dropped the watch of that policy on the way.
+        with self.vapi.assert_negative_api_retval():
+            reply = self.vapi.cnat_set_snat_addresses_v2(
+                fwd_fib_index=0xFFFFFFFF,
+                ret_fib_index=0,
+                snat_ip4=None,
+                snat_ip6=None,
+                sw_if_index=INVALID_INDEX,
+                flags=0,
+            )
+        self.assertEqual(reply.retval, self.VNET_API_ERROR_NO_SUCH_FIB)
+
+        # The watch still has to answer the address that appears now.
+        self.vapi.sw_interface_add_del_address(
+            sw_if_index=loopback.sw_if_index, is_add=1, prefix="10.199.0.1/24"
+        )
+        self.assertIn("(10.199.0.1)", self.vapi.cli("show cnat snat-policy"))
 
 
 @unittest.skipIf("cnat" in config.excluded_plugins, "Exclude CNAT plugin tests")

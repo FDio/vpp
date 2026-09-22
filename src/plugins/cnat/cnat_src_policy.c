@@ -120,7 +120,12 @@ void
 cnat_free_port_allocator (u32 fib_index)
 {
   cnat_src_policy_main_t *cspm = &cnat_src_policy_main;
-  cnat_src_port_allocator_t *src_ports = vec_elt (cspm->src_ports, fib_index);
+  cnat_src_port_allocator_t *src_ports;
+
+  if (fib_index >= vec_len (cspm->src_ports))
+    return; /* nothing was allocated for this fib */
+
+  src_ports = vec_elt (cspm->src_ports, fib_index);
   for (int i = 0; i < CNAT_N_SPORT_PROTO; i++)
     {
       clib_bitmap_free (src_ports[i].bmap);
