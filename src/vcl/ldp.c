@@ -2038,8 +2038,13 @@ getsockopt (int fd, int level, int optname,
 		rv = -EFAULT;
 	      break;
 	    case TCP_CONGESTION:
+	      if (*optlen < (socklen_t) sizeof ("cubic"))
+		{
+		  rv = -EINVAL;
+		  break;
+		}
+	      clib_memcpy_fast (optval, "cubic", sizeof ("cubic"));
 	      *optlen = strlen ("cubic");
-	      strncpy (optval, "cubic", *optlen + 1);
 	      rv = 0;
 	      break;
 	    default:
@@ -2086,7 +2091,8 @@ getsockopt (int fd, int level, int optname,
 	      break;
 	    case SO_PROTOCOL:
 	      rv = vls_attr (vlsh, VPPCOM_ATTR_GET_PROTOCOL, optval, optlen);
-	      *(int *) optval = *(int *) optval ? SOCK_DGRAM : SOCK_STREAM;
+	      if (rv == VPPCOM_OK && *optlen >= sizeof (int))
+		*(int *) optval = *(int *) optval ? SOCK_DGRAM : SOCK_STREAM;
 	      break;
 	    case SO_SNDBUF:
 	      rv = vls_attr (vlsh, VPPCOM_ATTR_GET_TX_FIFO_LEN,
