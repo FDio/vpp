@@ -28,14 +28,6 @@ jobs:
       - name: Disable APT cache cleanup
         run: rm -f /etc/apt/apt.conf.d/docker-clean
 
-      - name: Restore apt archive cache
-        uses: actions/cache/restore@v4
-        with:
-          path: /var/cache/apt/archives
-          key: apt-debian13-${{ runner.arch }}-${{ github.run_id }}
-          restore-keys: |
-            apt-debian13-${{ runner.arch }}-
-
       - name: Install base tools
         run: |
           apt-get update -qq
@@ -45,6 +37,37 @@ jobs:
         run: |
           git clone --depth 1 --branch "$GITHUB_REF_NAME" \
             "https://github.com/$GITHUB_REPOSITORY.git" .
+          # The branch can move between the event and this clone, so check out
+          # the commit the run is for instead of whatever the branch points at
+          # now; otherwise the debs and their version string would name a
+          # different commit than the run and the release body do.
+          git config --global --add safe.directory "$PWD"
+          if [ "$(git rev-parse HEAD)" != "$GITHUB_SHA" ]; then
+            git fetch --no-tags --depth 1 origin "$GITHUB_SHA"
+            git checkout --detach FETCH_HEAD
+          fi
+
+      # "make install-dep" below is the only step that reads this cache, and
+      # the package list it installs, $(DEB_DEPENDS), is defined in the
+      # Makefile.  Key the cache by that file, so the key moves when the
+      # package list moves: the run that first needs a new package is then the
+      # run that stores it.  Hash it into an output rather than with
+      # hashFiles, because the install step rewrites the Makefile between the
+      # restore and the save and both steps have to ask for the same key.
+      # Reading the file at all needs the clone, and the base tools install
+      # above runs before this point, so it reads no cache.
+      - name: Hash the dependency list
+        id: deps
+        shell: bash
+        run: echo "hash=$(git hash-object Makefile)" >> $GITHUB_OUTPUT
+
+      - name: Restore apt archive cache
+        uses: actions/cache/restore@v4
+        with:
+          path: /var/cache/apt/archives
+          key: apt-debian13-${{ runner.arch }}-${{ steps.deps.outputs.hash }}
+          restore-keys: |
+            apt-debian13-${{ runner.arch }}-
 
       - name: Compute short SHA
         id: vars
@@ -63,21 +86,34 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: /var/cache/apt/archives
-          key: apt-debian13-${{ runner.arch }}-${{ github.run_id }}
+          key: apt-debian13-${{ runner.arch }}-${{ steps.deps.outputs.hash }}
 
       - name: Restore ccache
         uses: actions/cache/restore@v4
         with:
           path: build-root/.ccache
-          key: ccache-debian13-${{ runner.arch }}-${{ github.ref_name }}
+          # Keyed by commit, not by ref alone.  With a fixed key only the
+          # first build of a ref could save this entry; every later build
+          # asked to save a key that was already stored, so the ccache stayed
+          # at whatever the first build left in it.  A commit key gives each
+          # build a fresh entry to save, and the prefix in restore-keys still
+          # lends a run the newest entry of another commit on the same ref.
+          key: ccache-debian13-${{ runner.arch }}-${{ github.ref_name }}-${{ github.sha }}
           restore-keys: |
+            ccache-debian13-${{ runner.arch }}-${{ github.ref_name }}-
             ccache-debian13-${{ runner.arch }}-
 
       - name: Build VPP DEB packages
         run: |
           git config --global --add safe.directory "$PWD"
           git fetch --tags --force 2>/dev/null || true
-          if ! git describe --tags --long --match 'v*' 2>/dev/null; then
+          # Only a VPP release tag (vYY.MM...) should win over the synthesised
+          # version.  A bare 'v*' also matches this workflow's own deb release
+          # tags (vpp-trixie-<n>), which would leave .version unwritten and
+          # send src/scripts/version to its own git describe; that one does not
+          # look at lightweight tags, so it would find none and exit 1, leaving
+          # the package version empty.
+          if ! git describe --tags --long --match 'v[0-9]*' 2>/dev/null; then
             # No matching tag in this repo, so synthesise one.  The build
             # identifier must vary per commit, otherwise every build of this
             # branch produces the same version string and apt skips packages
@@ -92,6 +128,11 @@ jobs:
             #
             # Use the commit timestamp rather than git rev-list --count:
             # this job clones with --depth 1, where the count is always 1.
+            # Keep the separator in front of the hash: src/scripts/version
+            # turns it into "~g<sha>" in the package version.  Glued to the
+            # timestamp the hash joins the same digit run, and Debian compares
+            # digit runs by length before value, so a build whose hash starts
+            # with a digit outranks every later build with a shorter run.
             echo "0.0.0-release+$(git log -1 --format=%ct)-g$(git rev-parse --short=7 HEAD)" \
               > src/scripts/.version
           fi
@@ -106,7 +147,7 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: build-root/.ccache
-          key: ccache-debian13-${{ runner.arch }}-${{ github.ref_name }}
+          key: ccache-debian13-${{ runner.arch }}-${{ github.ref_name }}-${{ github.sha }}
 
       - name: Upload DEB artifacts
         uses: actions/upload-artifact@v4
