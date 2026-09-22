@@ -1,0 +1,40 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "85c1bf1e_45caf792",
+        "filename": "src/plugins/lb/lbhash.h",
+        "patchSetId": 8
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-09-22T07:28:20Z",
+      "side": 1,
+      "message": "Resolved in PS8: the vector path is guarded by CLIB_HAVE_VEC128_MSB_MASK, so unsupported Vec128 backends keep using the scalar path.",
+      "parentUuid": "55dd3a3d_163fccf7",
+      "revId": "8b9281788f0d1fb2bf4c865a824912dbfae41879",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "265cbffc_316109f4",
+        "filename": "src/plugins/lb/lbhash.h",
+        "patchSetId": 8
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-09-22T07:28:20Z",
+      "side": 1,
+      "message": "Resolved in PS8: LB_HASH_DO_NOT_USE_VEC128_BUCKETS has been removed and the vector path is selected directly with CLIB_HAVE_VEC128_MSB_MASK.",
+      "parentUuid": "366ae0e3_fe83ea4c",
+      "revId": "8b9281788f0d1fb2bf4c865a824912dbfae41879",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
