@@ -74,7 +74,8 @@ static void
 bbr_update_max_bw (tcp_connection_t *tc, bbr_data_t *bd, tcp_ack_ctx_t *rs, f64 sample_bw)
 {
   bbr_update_round (tc, bd, rs);
-  if (sample_bw <= 0.0 || ((rs->flags & TCP_BTS_IS_APP_LIMITED) && sample_bw < bbr_max_bw (bd)))
+  if (sample_bw <= 0.0 ||
+      (!bbr_sample_filled_pipe (tc, bd, rs) && sample_bw < bbr_max_bw (bd)))
     return;
 
   bd->bw_hi[1] = clib_max (bd->bw_hi[1], (u64) sample_bw);
@@ -110,6 +111,9 @@ bbr_update_latest_delivery_signals (tcp_connection_t *tc, bbr_data_t *bd, tcp_ac
 
   bd->bw_latest = clib_max (bd->bw_latest, sample_bw);
   bd->inflight_latest = clib_max (bd->inflight_latest, rs->delivered);
+  if (!bbr_has_flag (bd, BBR_F_PIPE_FILLED_IN_ROUND) &&
+      bbr_sample_filled_pipe (tc, bd, rs))
+    bd->flags |= BBR_F_PIPE_FILLED_IN_ROUND;
 
   if (rs->prior_delivered >= bd->loss_round_delivered)
     {
@@ -120,15 +124,16 @@ bbr_update_latest_delivery_signals (tcp_connection_t *tc, bbr_data_t *bd, tcp_ac
     }
 }
 
-static void
+static u8
 bbr_update_congestion_signals (tcp_connection_t *tc, bbr_data_t *bd, tcp_ack_ctx_t *rs,
 			       f64 sample_bw)
 {
   bbr_update_max_bw (tc, bd, rs, sample_bw);
   if (!bbr_has_flag (bd, BBR_F_LOSS_ROUND_START))
-    return;
+    return 0;
   bbr_adapt_lower_bounds (tc, bd);
   bd->flags &= ~BBR_F_LOSS_IN_ROUND;
+  return bbr_adapt_to_bw_deficit (bd);
 }
 
 static void
@@ -158,19 +163,21 @@ bbr_update_ack_aggregation (tcp_connection_t *tc, bbr_data_t *bd, tcp_ack_ctx_t 
 }
 
 static void
-bbr_check_full_bw_reached (bbr_data_t *bd, tcp_ack_ctx_t *rs, f64 sample_bw)
+bbr_check_full_bw_reached (tcp_connection_t *tc, bbr_data_t *bd, tcp_ack_ctx_t *rs,
+			   f64 sample_bw)
 {
-  if (bbr_full_bw_now (bd) || (rs->flags & TCP_BTS_IS_APP_LIMITED))
+  if (bbr_full_bw_now (bd))
     return;
 
-  if (sample_bw >= bd->full_bw * BBR_FULL_BW_THRESH)
+  if (bbr_sample_filled_pipe (tc, bd, rs) && sample_bw >= bd->full_bw * BBR_FULL_BW_THRESH)
     {
       bbr_reset_full_bw (bd);
       bd->full_bw = sample_bw;
       return;
     }
 
-  if (!bbr_has_flag (bd, BBR_F_ROUND_START))
+  if (!bbr_has_flag (bd, BBR_F_ROUND_START) ||
+      !bbr_has_flag (bd, BBR_F_PIPE_FILLED_IN_ROUND))
     return;
 
   bd->full_bw_count++;
@@ -289,7 +296,8 @@ bbr_lost_sample (tcp_connection_t *tc, const tcp_cc_loss_sample_t *sample)
 
 /* Gate feedback to the packet-timed REFILL/UP interval. */
 static u8
-bbr_adapt_long_term_model (tcp_connection_t *tc, bbr_data_t *bd, tcp_ack_ctx_t *rs)
+bbr_adapt_long_term_model (tcp_connection_t *tc, bbr_data_t *bd, tcp_ack_ctx_t *rs,
+			   u8 bw_filter_advanced)
 {
   u8 too_high = bbr_is_inflight_too_high (rs);
 
@@ -305,7 +313,7 @@ bbr_adapt_long_term_model (tcp_connection_t *tc, bbr_data_t *bd, tcp_ack_ctx_t *
       bd->ack_phase = BBR_ACKS_INIT;
       if (bbr_is_probe_bw (bd))
 	{
-	  if (!(rs->flags & TCP_BTS_IS_APP_LIMITED))
+	  if (!bw_filter_advanced && !(rs->flags & TCP_BTS_IS_APP_LIMITED))
 	    bbr_advance_max_bw_filter (bd);
 	  if (bbr_has_flag (bd, BBR_F_PREV_PROBE_PRECAUTIONARY) &&
 	      !bbr_has_flag (bd, BBR_F_PREV_PROBE_TOO_HIGH))
@@ -541,14 +549,14 @@ bbr_update (tcp_connection_t *tc, tcp_ack_ctx_t *rs)
 {
   bbr_data_t *bd = bbr_data (tc);
   f64 sample_bw = bbr_sample_bw (rs);
-  u8 pacing_rate_changed, probe_rtt_expired, probe_rtt_active;
+  u8 bw_filter_advanced, pacing_rate_changed, probe_rtt_expired, probe_rtt_active;
 
   bbr_note_loss (tc, bd);
   bbr_count_loss_event (bd);
   bbr_update_latest_delivery_signals (tc, bd, rs, sample_bw);
-  bbr_update_congestion_signals (tc, bd, rs, sample_bw);
+  bw_filter_advanced = bbr_update_congestion_signals (tc, bd, rs, sample_bw);
   bbr_update_ack_aggregation (tc, bd, rs);
-  bbr_check_full_bw_reached (bd, rs, sample_bw);
+  bbr_check_full_bw_reached (tc, bd, rs, sample_bw);
 
   /* Keep separate branches so state transitions can advance on this ACK. */
   if (bd->mode == BBR_STARTUP)
@@ -564,7 +572,7 @@ bbr_update (tcp_connection_t *tc, tcp_ack_ctx_t *rs)
 
       if (bd->ack_phase != BBR_ACKS_INIT || bd->inflight_hi != BBR_INFLIGHT_INFINITY ||
 	  bbr_has_flag (bd, BBR_F_IS_BW_PROBE_SAMPLE))
-	probe_transitioned = bbr_adapt_long_term_model (tc, bd, rs);
+	probe_transitioned = bbr_adapt_long_term_model (tc, bd, rs, bw_filter_advanced);
       if (!probe_transitioned && bd->mode == BBR_PROBE_BW)
 	bbr_update_probe_bw_cycle (tc, bd, rs);
     }
@@ -581,7 +589,7 @@ bbr_update (tcp_connection_t *tc, tcp_ack_ctx_t *rs)
   if (rs->delivered)
     bd->flags &= ~BBR_F_IDLE_RESTART;
 
-  bbr_advance_latest_delivery_signals (bd, rs, sample_bw);
+  bbr_advance_latest_delivery_signals (tc, bd, rs, sample_bw);
   pacing_rate_changed = bbr_set_pacing_rate_with_gain (tc, bd, bbr_pacing_gain (bd));
   if (pacing_rate_changed || bd->offload_mss != tc->snd_mss)
     bbr_update_offload_budget (tc, bd);
@@ -799,15 +807,27 @@ format_tcp_bbr (u8 *s, va_list *args)
 {
   tcp_connection_t *tc = va_arg (*args, tcp_connection_t *);
   bbr_data_t *bd = bbr_data (tc);
+  u32 bdp = bbr_bdp_multiple (tc, bd, 1.0);
+  u32 extra_acked = bbr_minmax_get (&bd->extra_acked);
+  u32 inflight_target = bbr_max_inflight (tc, bd);
 
+  s = format (s,
+	      "state %u/%u ack_phase %u round %u bw %.3f/%.3fMbit/s "
+	      "bw_hi %.3f/%.3fMbit/s bw_lo ",
+	      bd->mode, bd->probe_bw_phase, bd->ack_phase, bd->round_count, bbr_bw (bd) * 8e-6,
+	      bbr_max_bw (bd) * 8e-6, bd->bw_hi[0] * 8e-6, bd->bw_hi[1] * 8e-6);
+  if (bd->bw_lo == BBR_BW_INFINITY)
+    s = format (s, "inf");
+  else
+    s = format (s, "%.3fMbit/s", bd->bw_lo * 8e-6);
   return format (s,
-		 "state %u/%u ack_phase %u round %u bw %.3f/%.3fMbit/s "
-		 "min_rtt %.3fms pace %.3fMbit/s inflight hi/lo %u/%u latest %u "
-		 "loss %u/%u",
-		 bd->mode, bd->probe_bw_phase, bd->ack_phase, bd->round_count, bbr_bw (bd) * 8e-6,
-		 bbr_max_bw (bd) * 8e-6, bd->min_rtt * 1e3, bd->pacing_rate * 8e-6, bd->inflight_hi,
-		 bd->inflight_lo, bd->inflight_latest, bd->loss_events,
-		 bbr_has_flag (bd, BBR_F_LOSS_IN_ROUND));
+		 " latest %.3fMbit/s min_rtt %.3fms bdp %u extra_acked %u "
+		 "ack_epoch %llu offload %u target %u pace %.3fMbit/s gains %.2f/%.2f "
+		 "inflight hi/lo %u/%u latest %u loss %u/%u",
+		 bd->bw_latest * 8e-6, bd->min_rtt * 1e3, bdp, extra_acked, bd->ack_epoch_acked,
+		 bd->offload_budget, inflight_target, bd->pacing_rate * 8e-6, bbr_pacing_gain (bd),
+		 bbr_cwnd_gain (bd), bd->inflight_hi, bd->inflight_lo, bd->inflight_latest,
+		 bd->loss_events, bbr_has_flag (bd, BBR_F_LOSS_IN_ROUND));
 }
 
 const static tcp_cc_algorithm_t tcp_bbr = {

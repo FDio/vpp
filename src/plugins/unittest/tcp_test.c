@@ -2320,6 +2320,58 @@ tcp_test_bbr (vlib_main_t *vm, unformat_input_t *input)
   bbr_advance_max_bw_filter (&bd);
   TCP_TEST (bd.bw_hi[0] == 1000.0, "bbr retains max bw across an empty filter window");
 
+  clib_memset (&bd, 0, sizeof (bd));
+  tc->snd_mss = 1000;
+  bd.bw_hi[0] = 40000000;
+  bd.bw_lo = BBR_BW_INFINITY;
+  bd.min_rtt = 0.02;
+  bd.extra_acked.s[0].v = 8000000;
+  TCP_TEST (bbr_ack_aggregation_cwnd (&bd) == 1200000, "bbr caps ack aggregation allowance by bdp");
+
+  /* Two pipe-filled rounds below the retained peak should age one bandwidth
+   * window even when ACK aggregation is large. */
+  bd.mode = BBR_PROBE_BW;
+  bd.probe_bw_phase = BBR_BW_CRUISE;
+  bd.flags = BBR_F_FULL_BW_REACHED | BBR_F_LOSS_ROUND_START |
+	     BBR_F_PIPE_FILLED_IN_ROUND;
+  bd.bw_hi[0] = 40000000;
+  bd.bw_hi[1] = 30000000;
+  bd.bw_lo = BBR_BW_INFINITY;
+  bd.bw_latest = 20000000;
+  bbr_adapt_to_bw_deficit (&bd);
+  TCP_TEST (bbr_max_bw (&bd) == 40000000 && bd.bw_deficit_rounds == 1,
+	    "bbr tolerates one low delivery round");
+  bbr_adapt_to_bw_deficit (&bd);
+  TCP_TEST (bd.bw_hi[0] == 30000000 && bd.bw_hi[1] == 0 &&
+	      bd.bw_deficit_rounds == 0,
+	    "bbr ages one bandwidth window after a persistent deficit");
+
+  bd.bw_hi[1] = 20000000;
+  bd.bw_latest = 15000000;
+  bbr_adapt_to_bw_deficit (&bd);
+  bbr_adapt_to_bw_deficit (&bd);
+  TCP_TEST (bbr_max_bw (&bd) == 20000000,
+	    "bbr expires both stale bandwidth windows after persistent deficit");
+
+  bd.bw_deficit_rounds = 1;
+  bd.flags &= ~BBR_F_PIPE_FILLED_IN_ROUND;
+  bbr_adapt_to_bw_deficit (&bd);
+  TCP_TEST (bbr_max_bw (&bd) == 20000000 && bd.bw_deficit_rounds == 0,
+	    "bbr ignores a deficit without pipe-filling evidence");
+
+  bd.bw_hi[0] = 40000000;
+  bd.bw_hi[1] = 0;
+  clib_memset (&ac, 0, sizeof (ac));
+  ac.delivered = 1000;
+  ac.interval_time = 0.01;
+  ac.flags = TCP_BTS_IS_APP_LIMITED;
+  ac.tx_in_flight = 799999;
+  TCP_TEST (!bbr_sample_filled_pipe (tc, &bd, &ac),
+	    "bbr rejects an app-limited sample below model bdp");
+  ac.tx_in_flight = 800000;
+  TCP_TEST (bbr_sample_filled_pipe (tc, &bd, &ac),
+	    "bbr accepts a stale app-limited mark with model bdp in flight");
+
   /* VPP initializes CC before measuring the handshake RTT. Once that sample
    * arrives, replace BBR's nominal 1 ms rate with the real smoothed RTT. */
   clib_memset (tc, 0, sizeof (*tc));
