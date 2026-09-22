@@ -14,6 +14,7 @@
 
 #include <vppinfra/hash.h>
 #include <vppinfra/error.h>
+#include <nsim/nsim_model.h>
 
 #define NSIM_MAX_TX_BURST 32	/**< max packets in a tx burst */
 
@@ -24,7 +25,6 @@ typedef struct
   u32 tx_sw_if_index;
   u32 output_next_index;
   u32 buffer_index;
-  u32 pad;			/* pad to 32-bytes */
 } nsim_wheel_entry_t;
 
 typedef struct
@@ -42,7 +42,6 @@ typedef struct
 
 typedef struct nsim_node_ctx
 {
-  vnet_feature_config_main_t *fcm;
   f64 expires;
   f64 now;
   u32 *drop;
@@ -73,16 +72,46 @@ typedef enum nsm_action
 /* Loss models. Included after NSIM_ACTION_* so the datapath-inline appliers can
  * set the DROP action bit. */
 #include <nsim/nsim_loss.h>
-/* Time-varying bottleneck-rate models (only used by the queued model). */
-#include <nsim/nsim_rate.h>
+
+typedef struct
+{
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+  nsim_wheel_t *wheel;
+  nsim_wheel_t *reorder_wheel;
+
+  /* Serialization completions for packets admitted to the bottleneck queue.
+   * This queue releases buffer capacity at service completion, independently
+   * of propagation, batching and reorder holding time. */
+  f64 *service_departures;
+  u32 service_head;
+  u32 service_tail;
+  u32 service_cursize;
+  u32 storage_cursize;
+  u32 max_service_cursize;
+  u32 max_storage_cursize;
+  f64 max_service_backlog;
+
+  /* Loss and link-model state is private to the worker. Independent random
+   * streams ensure that enabling one impairment cannot perturb another. */
+  nsim_loss_model_t loss;
+  nsim_model_state_t model;
+  u32 loss_seed;
+  u32 reorder_seed;
+  u32 reorder_delay_seed;
+  u64 packets;
+  u64 drops;
+  u64 queue_drops;
+  u64 reordered;
+  u64 transmitted;
+} nsim_worker_t;
+
+STATIC_ASSERT (sizeof (nsim_worker_t) % CLIB_CACHE_LINE_BYTES == 0,
+	       "nsim worker state must not share cache lines");
 
 typedef struct
 {
   /* API message ID base */
   u16 msg_id_base;
-
-  /* output feature arc index */
-  u16 arc_index;
 
   /* Two interfaces, cross-connected with delay */
   u32 sw_if_index0, sw_if_index1;
@@ -91,36 +120,28 @@ typedef struct
   /* N interfaces, using the output feature */
   u32 *output_next_index_by_sw_if_index;
 
-  /* Random seed for loss-rate simulation */
+  /* Base seed used to derive independent per-worker model streams. */
   u32 seed;
 
-  /* Per-thread scheduler wheels */
-  nsim_wheel_t **wheel_by_thread;
-  /* Per-thread side wheels for late-reordered packets if reorder_fraction > 0 */
-  nsim_wheel_t **reorder_wheel_by_thread;
+  /* Per-thread scheduler and mutable model state. A configured bandwidth and
+   * buffer apply independently to each worker; aggregate shared-link shaping
+   * is not modeled. */
+  nsim_worker_t *workers;
 
   /* Config parameters */
   f64 delay;
   f64 bandwidth;
-  /* Active packet-loss model (uniform/burst/one-shot/targeted). See
-   * nsim_loss.h. A single model is active at a time. */
-  nsim_loss_model_t loss;
+  /* Loss model template copied into each worker on configuration. */
+  nsim_loss_model_t loss_config;
   /* Reorder is an impairment orthogonal to the loss model; it composes with any
    * of them. Fraction of packets delayed out of order. */
   f64 reorder_fraction;
   /* Max extra delay (seconds) applied to a reordered packet, on top of the base delay */
   f64 reorder_delay;
-  /* Bottleneck buffer, in seconds of bandwidth. When non-zero, nsim models a
-   * rate-limited server with a FIFO buffer of this depth (queued/bufferbloat
-   * model) instead of the default fixed-delay line. */
-  f64 buffer_time;
-  /* Per-packet serialization time at the bottleneck (packet_size/bandwidth),
-   * cached for the datapath. Only used when buffer_time > 0. */
-  f64 serialization_time;
-  /* Optional time-varying bottleneck rate (queued model only). When active it
-   * modulates serialization_time per departure; type NONE => constant rate. */
-  nsim_rate_model_t rate;
+  /* Immutable queued-link model shared by all workers. */
+  nsim_model_config_t model;
   u32 packet_size;
+  u32 queue_slots_per_wrk;
   u32 wheel_slots_per_wrk;
   u32 poll_main_thread;
 
@@ -135,6 +156,9 @@ typedef struct
 } nsim_main_t;
 
 extern nsim_main_t nsim_main;
+
+unformat_function_t unformat_nsim_delay;
+unformat_function_t unformat_nsim_bandwidth;
 
 extern vlib_node_registration_t nsim_node;
 extern vlib_node_registration_t nsim_input_node;
