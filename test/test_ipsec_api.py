@@ -44,6 +44,37 @@ class IpsecApiTestCase(VppTestCase):
                 return dump
         self.fail("SA not found in VPP")
 
+    def test_rejected_protect_gives_the_sa_back(self):
+        """a rejected tunnel protection must not pin the SA"""
+        sa_out = VppIpsecSA(
+            self,
+            self.ipv4_params.scapy_tun_sa_id,
+            self.ipv4_params.scapy_tun_spi,
+            self.ipv4_params.auth_algo_vpp_id,
+            self.ipv4_params.auth_key,
+            self.ipv4_params.crypt_algo_vpp_id,
+            self.ipv4_params.crypt_key,
+            self.vpp_esp_protocol,
+        )
+        sa_out.add_vpp_config()
+
+        # pg0's device class protects no tunnel, so this is refused
+        with self.vapi.assert_negative_api_retval():
+            self.vapi.ipsec_tunnel_protect_update(
+                tunnel={
+                    "sw_if_index": self.pg0.sw_if_index,
+                    "n_sa_in": 0,
+                    "sa_out": sa_out.id,
+                    "sa_in": [],
+                    "nh": "0.0.0.0",
+                }
+            )
+
+        # the refused call must have released the SA, or it stays locked and
+        # can never be deleted again
+        sa_out.remove_vpp_config()
+        self.assertFalse(sa_out.query_vpp_config())
+
     def test_sa_basic(self):
         """basic SA API tests"""
         sa = VppIpsecSA(

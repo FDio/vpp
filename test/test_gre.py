@@ -13,6 +13,7 @@ from framework import VppTestCase
 from asfframework import VppTestRunner, tag_fixme_vpp_workers
 from vpp_sub_interface import L2_VTR_OP, VppDot1QSubint
 from vpp_gre_interface import VppGreInterface
+from vpp_ipsec import VppIpsecSA
 from vpp_teib import VppTeib
 from vpp_ip import DpoProto
 from vpp_ip_route import (
@@ -911,6 +912,54 @@ class TestGRE(VppTestCase):
         # the tunnel is gone, so is its teib entry; the registry removes the
         # remaining objects in reverse order
         teib.remove_vpp_config()
+        gre_if.admin_down()
+        gre_if.remove_vpp_config()
+
+    def test_ipsec_protect_rejects_tunnel_subinterface(self):
+        """IPsec protect on a sub-interface of a GRE tunnel is rejected"""
+
+        gre_if = VppGreInterface(
+            self,
+            self.pg0.local_ip4,
+            self.pg0.remote_ip4,
+            type=(VppEnum.vl_api_gre_tunnel_type_t.GRE_API_TUNNEL_TYPE_TEB),
+        )
+        gre_if.add_vpp_config()
+        gre_if.admin_up()
+
+        # only the tunnel's own interface is in the lookup table, so asking
+        # about this one must not run off the end of the table
+        sub_if = VppDot1QSubint(self, gre_if, 500)
+
+        sa_out = VppIpsecSA(
+            self,
+            1,
+            100,
+            VppEnum.vl_api_ipsec_integ_alg_t.IPSEC_API_INTEG_ALG_SHA1_96,
+            b"b" * 20,
+            VppEnum.vl_api_ipsec_crypto_alg_t.IPSEC_API_CRYPTO_ALG_AES_CBC_128,
+            b"a" * 16,
+            VppEnum.vl_api_ipsec_proto_t.IPSEC_API_PROTO_ESP,
+        )
+        sa_out.add_vpp_config()
+
+        with self.vapi.assert_negative_api_retval():
+            self.vapi.ipsec_tunnel_protect_update(
+                tunnel={
+                    "sw_if_index": sub_if.sw_if_index,
+                    "n_sa_in": 0,
+                    "sa_out": sa_out.id,
+                    "sa_in": [],
+                    "nh": "0.0.0.0",
+                }
+            )
+
+        # the rejected call may not have recorded a protection for the
+        # sub-interface either
+        for entry in self.vapi.ipsec_tunnel_protect_dump(sw_if_index=0xFFFFFFFF):
+            self.assertNotEqual(entry.tun.sw_if_index, sub_if.sw_if_index)
+
+        sub_if.remove_vpp_config()
         gre_if.admin_down()
         gre_if.remove_vpp_config()
 

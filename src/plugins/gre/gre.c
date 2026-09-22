@@ -194,28 +194,50 @@ gre_proto_from_vnet_link (vnet_link_t link)
   return (GRE_PROTOCOL_ip4);
 }
 
-static u8 *
-gre_build_rewrite (vnet_main_t *vnm, u32 sw_if_index, vnet_link_t link_type,
-		   const void *dst_address)
+/*
+ * The mapping holds an entry for the tunnel's own interface only, so a
+ * sub-interface of a tunnel is not one of ours; indexing the vector with such
+ * an index reads past its end and has to be rejected first.
+ */
+static gre_tunnel_t *
+gre_tunnel_find_by_sw_if_index (u32 sw_if_index)
 {
   gre_main_t *gm = &gre_main;
-  const ip46_address_t *dst;
-  ip4_and_gre_header_t *h4;
-  ip6_and_gre_header_t *h6;
-  gre_header_t *gre;
-  u8 *rewrite = NULL;
-  gre_tunnel_t *t;
   u32 ti;
-  u8 is_ipv6;
 
-  dst = dst_address;
+  if (vec_len (gm->tunnel_index_by_sw_if_index) <= sw_if_index)
+    return (0);
+
   ti = gm->tunnel_index_by_sw_if_index[sw_if_index];
 
   if (~0 == ti)
     /* not one of ours */
     return (0);
 
-  t = pool_elt_at_index (gm->tunnels, ti);
+  if (pool_is_free_index (gm->tunnels, ti))
+    return (0);
+
+  return (pool_elt_at_index (gm->tunnels, ti));
+}
+
+static u8 *
+gre_build_rewrite (vnet_main_t *vnm, u32 sw_if_index, vnet_link_t link_type,
+		   const void *dst_address)
+{
+  const ip46_address_t *dst;
+  ip4_and_gre_header_t *h4;
+  ip6_and_gre_header_t *h6;
+  gre_header_t *gre;
+  u8 *rewrite = NULL;
+  gre_tunnel_t *t;
+  u8 is_ipv6;
+
+  dst = dst_address;
+  t = gre_tunnel_find_by_sw_if_index (sw_if_index);
+
+  if (0 == t)
+    /* not one of ours */
+    return (0);
 
   is_ipv6 = t->tunnel_dst.fp_proto == FIB_PROTOCOL_IP6 ? 1 : 0;
 
@@ -402,19 +424,14 @@ gre_get_fixup (fib_protocol_t fproto, vnet_link_t lt)
 void
 gre_update_adj (vnet_main_t *vnm, u32 sw_if_index, adj_index_t ai)
 {
-  gre_main_t *gm = &gre_main;
   gre_tunnel_t *t;
   adj_flags_t af;
-  u32 ti;
 
-  if ((vec_len (gm->tunnel_index_by_sw_if_index) <= sw_if_index) ||
-      (~0 == gm->tunnel_index_by_sw_if_index[sw_if_index]) ||
-      pool_is_free_index (gm->tunnels,
-			  gm->tunnel_index_by_sw_if_index[sw_if_index]))
+  t = gre_tunnel_find_by_sw_if_index (sw_if_index);
+
+  if (0 == t)
     return;
 
-  ti = gm->tunnel_index_by_sw_if_index[sw_if_index];
-  t = pool_elt_at_index (gm->tunnels, ti);
   af = ADJ_FLAG_NONE;
 
   /*
@@ -479,21 +496,16 @@ mgre_mk_incomplete_walk (adj_index_t ai, void *data)
 void
 mgre_update_adj (vnet_main_t *vnm, u32 sw_if_index, adj_index_t ai)
 {
-  gre_main_t *gm = &gre_main;
   ip_adjacency_t *adj;
   teib_entry_t *ne;
   gre_tunnel_t *t;
-  u32 ti;
 
-  if ((vec_len (gm->tunnel_index_by_sw_if_index) <= sw_if_index) ||
-      (~0 == gm->tunnel_index_by_sw_if_index[sw_if_index]) ||
-      pool_is_free_index (gm->tunnels,
-			  gm->tunnel_index_by_sw_if_index[sw_if_index]))
+  t = gre_tunnel_find_by_sw_if_index (sw_if_index);
+
+  if (0 == t)
     return;
 
   adj = adj_get (ai);
-  ti = gm->tunnel_index_by_sw_if_index[sw_if_index];
-  t = pool_elt_at_index (gm->tunnels, ti);
 
   ne = teib_entry_find_46 (sw_if_index, adj->ia_nh_proto,
 			   &adj->sub_type.nbr.next_hop);
@@ -740,17 +752,13 @@ static int
 gre_tunnel_desc (u32 sw_if_index, ip46_address_t *src, ip46_address_t *dst,
 		 u8 *is_l2)
 {
-  gre_main_t *gm = &gre_main;
   gre_tunnel_t *t;
-  u32 ti;
 
-  ti = gm->tunnel_index_by_sw_if_index[sw_if_index];
+  t = gre_tunnel_find_by_sw_if_index (sw_if_index);
 
-  if (~0 == ti)
+  if (0 == t)
     /* not one of ours */
     return -1;
-
-  t = pool_elt_at_index (gm->tunnels, ti);
 
   *src = t->tunnel_src;
   *dst = t->tunnel_dst.fp_addr;

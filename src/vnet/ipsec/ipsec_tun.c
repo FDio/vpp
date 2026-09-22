@@ -557,9 +557,16 @@ ipsec_tun_protect_update (u32 sw_if_index,
 			  const ip_address_t * nh, u32 sa_out, u32 * sas_in)
 {
   ipsec_tun_protect_t *itp;
+  ipsec_tun_protect_t *itp_new;
   u32 itpi, ii, *saip;
+  u32 n_sa_in_locked;
   ipsec_main_t *im;
+  u8 sa_out_locked;
   int rv;
+
+  itp_new = 0;
+  n_sa_in_locked = 0;
+  sa_out_locked = 0;
 
   if (NULL == nh)
     nh = &IP_ADDR_ALL_0;
@@ -584,10 +591,12 @@ ipsec_tun_protect_update (u32 sw_if_index,
     if (~0 == sas_in[ii])
       {
 	rv = VNET_API_ERROR_INVALID_VALUE;
+	n_sa_in_locked = ii;
 	goto out;
       }
   }
 
+  n_sa_in_locked = vec_len (sas_in);
   sa_out = ipsec_sa_find_and_lock (sa_out);
 
   if (~0 == sa_out)
@@ -595,6 +604,8 @@ ipsec_tun_protect_update (u32 sw_if_index,
       rv = VNET_API_ERROR_INVALID_VALUE;
       goto out;
     }
+
+  sa_out_locked = 1;
 
   if (INDEX_INVALID == itpi)
     {
@@ -614,6 +625,7 @@ ipsec_tun_protect_update (u32 sw_if_index,
 	}
 
       pool_get_zero (ipsec_tun_protect_pool, itp);
+      itp_new = itp;
 
       itp->itp_sw_if_index = sw_if_index;
       itp->itp_ai = ADJ_INDEX_INVALID;
@@ -698,8 +710,29 @@ ipsec_tun_protect_update (u32 sw_if_index,
   ipsec_sa_unlock (sa_out);
   vec_foreach (saip, sas_in) ipsec_sa_unlock (*saip);
   vec_free (sas_in);
+  return (rv);
 
 out:
+  /*
+   * Nothing was configured, so this call may not keep what it took: a still
+   * locked SA can never be deleted again, and a pool entry that never
+   * reached the database shows up in the walk that lists the protections.
+   * Only the first n_sa_in_locked entries of sas_in hold locked SA indices;
+   * the entries after those are still the ids the caller passed, and the
+   * caller keeps ownership of the vector on the error paths.
+   */
+  if (0 != itp_new)
+    {
+      clib_mem_free (itp_new->itp_key);
+      pool_put (ipsec_tun_protect_pool, itp_new);
+    }
+
+  for (ii = 0; ii < n_sa_in_locked; ii++)
+    ipsec_sa_unlock (sas_in[ii]);
+
+  if (sa_out_locked)
+    ipsec_sa_unlock (sa_out);
+
   return (rv);
 }
 
