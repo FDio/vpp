@@ -21,6 +21,7 @@
 #include <vnet/adj/adj.h>
 #include <vnet/adj/adj_delegate.h>
 #include <vnet/adj/adj_midchain.h>
+#include <vnet/api_errno.h>
 #include <vnet/dpo/lookup_dpo.h>
 #include <vnet/fib/fib_table.h>
 #include <vnet/fib/fib_entry_track.h>
@@ -369,6 +370,12 @@ sixrd_del_tunnel (u32 sw_if_index)
       clib_warning ("SIXRD tunnel delete: tunnel does not exist: %d",
 		    sw_if_index);
       return -1;
+    }
+
+  if (IPIP_MODE_6RD != t->mode)
+    {
+      clib_warning ("SIXRD tunnel delete: not a 6RD tunnel: %d", sw_if_index);
+      return VNET_API_ERROR_INVALID_VALUE;
     }
 
   fib_prefix_t pfx6 = {

@@ -29,14 +29,14 @@ IPIP tests.
 """
 
 
-def ipip_add_tunnel(test, src, dst, table_id=0, dscp=0x0, flags=0):
+def ipip_add_tunnel(test, src, dst, table_id=0, dscp=0x0, flags=0, instance=0xFFFFFFFF):
     """Add a IPIP tunnel"""
     return test.vapi.ipip_add_tunnel(
         tunnel={
             "src": src,
             "dst": dst,
             "table_id": table_id,
-            "instance": 0xFFFFFFFF,
+            "instance": instance,
             "dscp": dscp,
             "flags": flags,
         }
@@ -1597,6 +1597,65 @@ class TestIPIPMPLS(VppTestCase):
 
         tun4.disable_mpls()
         tun6.disable_mpls()
+
+
+@unittest.skipIf("ipip" in config.excluded_plugins, "Exclude IPIP plugin tests")
+class TestIPIP6rdTunnelDelete(VppTestCase):
+    """6RD tunnel delete test case"""
+
+    # src/vnet/error.h: VNET_API_ERROR_INVALID_VALUE
+    VNET_API_ERROR_INVALID_VALUE = -7
+
+    def setUp(self):
+        super(TestIPIP6rdTunnelDelete, self).setUp()
+        self.ip4_table = VppIpTable(self, 4).add_vpp_config()
+        self.ip6_table = VppIpTable(self, 6, True).add_vpp_config()
+
+    def test_sixrd_del_tunnel_rejects_plain_ipip_tunnel(self):
+        """delete a plain IPIP tunnel through the 6RD entry point"""
+        tunnel = ipip_add_tunnel(self, "1.1.1.1", "2.2.2.2", instance=100)
+        sw_if_index = tunnel.sw_if_index
+
+        with self.vapi.assert_known_api_retval(
+            retvals=[self.VNET_API_ERROR_INVALID_VALUE]
+        ):
+            self.vapi.ipip_6rd_del_tunnel(sw_if_index=sw_if_index)
+
+        self.assertFalse(self.vpp_dead)
+        tunnels = self.vapi.ipip_tunnel_dump(sw_if_index=sw_if_index)
+        self.assertEqual(1, len(tunnels))
+        self.assertEqual(sw_if_index, tunnels[0].tunnel.sw_if_index)
+
+        self.vapi.ipip_del_tunnel(sw_if_index=sw_if_index)
+
+    def test_sixrd_del_tunnel_cli_rejects_plain_ipip_tunnel(self):
+        """delete a plain IPIP tunnel through the 6RD CLI entry point"""
+        tunnel = ipip_add_tunnel(self, "3.3.3.3", "4.4.4.4", instance=101)
+        sw_if_index = tunnel.sw_if_index
+
+        self.vapi.cli("delete 6rd tunnel sw_if_index %d" % sw_if_index)
+
+        self.assertFalse(self.vpp_dead)
+        tunnels = self.vapi.ipip_tunnel_dump(sw_if_index=sw_if_index)
+        self.assertEqual(1, len(tunnels))
+
+        self.vapi.ipip_del_tunnel(sw_if_index=sw_if_index)
+
+    def test_sixrd_del_tunnel_removes_6rd_tunnel(self):
+        """delete a 6RD tunnel through the 6RD entry point"""
+        tunnel = self.vapi.ipip_6rd_add_tunnel(
+            ip6_table_id=self.ip6_table.table_id,
+            ip4_table_id=self.ip4_table.table_id,
+            ip6_prefix="2002::/16",
+            ip4_prefix="0.0.0.0/0",
+            ip4_src="10.0.0.1",
+            security_check=True,
+        )
+        sw_if_index = tunnel.sw_if_index
+
+        self.vapi.ipip_6rd_del_tunnel(sw_if_index=sw_if_index)
+
+        self.assertEqual([], self.vapi.ipip_tunnel_dump(sw_if_index=sw_if_index))
 
 
 if __name__ == "__main__":
