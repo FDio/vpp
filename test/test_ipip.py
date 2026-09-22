@@ -689,6 +689,116 @@ class TestIPIP(VppTestCase):
             ipip_if.unconfig_ip4()
             ipip_if.set_table_ip4(0)
 
+    def test_teib_on_interface_past_tunnel_mapping(self):
+        """a TEIB entry on an interface past the tunnel mapping is ignored"""
+
+        #
+        # the mapping from sw_if_index to tunnel grows to cover every index a
+        # tunnel ever took, so the index equal to its length is the one with no
+        # slot at all.  The loopbacks created first take every free interface
+        # index, which leaves the tunnel created next at the top of the
+        # interface pool, and the loopback created after it takes exactly the
+        # index one past the end of the mapping.  The TEIB entry added on that
+        # loopback reaches the ipip teib callback with such an index.  An
+        # index further past the end is rejected before the read, so the index
+        # has to be this one.
+        #
+        loops = self.create_loopback_interfaces(32)
+
+        tun = VppIpIpTunInterface(
+            self,
+            self.pg0,
+            self.pg0.local_ip4,
+            "0.0.0.0",
+            mode=(VppEnum.vl_api_tunnel_mode_t.TUNNEL_API_MODE_MP),
+        )
+        tun.add_vpp_config()
+        self.logger.info("ipip tunnel sw_if_index=%d" % tun.sw_if_index)
+
+        lo = self.create_loopback_interfaces(1)[0]
+        loops.append(lo)
+
+        #
+        # the loopback created before the tunnel and the tunnel itself have to
+        # be consecutive, otherwise a free interface index survived the
+        # loopbacks, the tunnel did not take the top of the pool, and the
+        # mapping can already reach past the index of the loopback created
+        # after it, which would leave the entry below short of the read.
+        #
+        self.assertEqual(loops[-2].sw_if_index + 1, tun.sw_if_index)
+        self.assertEqual(lo.sw_if_index, tun.sw_if_index + 1)
+
+        teib = VppTeib(self, lo, "10.0.0.1", self.pg0.remote_ip4)
+        teib.add_vpp_config()
+        self.assertTrue(teib.query_vpp_config())
+
+        #
+        # the loopback is not a tunnel, so the tunnel database must still
+        # hold the one tunnel; before the bound was fixed the lookup ran off
+        # the end of the mapping and registered a key built from whatever
+        # followed it.
+        #
+        self.assertEqual(
+            len(self.vapi.cli("show ipip tunnel-hash").strip().splitlines()), 1
+        )
+
+        teib.remove_vpp_config()
+        for loop in loops:
+            loop.remove_vpp_config()
+        tun.remove_vpp_config()
+
+    def test_route_via_mipip_subif(self):
+        """a route via a sub-interface on a stale tunnel mapping slot"""
+
+        #
+        # ipip deletes a tunnel by putting the invalid sentinel in its slot
+        # of the sw_if_index to tunnel mapping and leaving the mapping at its
+        # length, so the next interface to be created reuses the sentinel's
+        # sw_if_index.  The adjacency of a p2mp tunnel is built through the
+        # tunnel's update_adjacency callback, which is handed that interface's
+        # own index; unguarded it dereferenced the sentinel as a pool index.
+        #
+        t1 = VppIpIpTunInterface(
+            self,
+            self.pg0,
+            self.pg0.local_ip4,
+            "0.0.0.0",
+            mode=(VppEnum.vl_api_tunnel_mode_t.TUNNEL_API_MODE_MP),
+        )
+        t1.add_vpp_config()
+        t1_index = t1.sw_if_index
+
+        t2 = VppIpIpTunInterface(
+            self,
+            self.pg0,
+            "10.9.9.9",
+            "0.0.0.0",
+            mode=(VppEnum.vl_api_tunnel_mode_t.TUNNEL_API_MODE_MP),
+        )
+        t2.add_vpp_config()
+        t2.admin_up()
+
+        t1.remove_vpp_config()
+
+        r = self.vapi.create_vlan_subif(t2.sw_if_index, 100)
+        sub_index = r.sw_if_index
+        self.assertEqual(sub_index, t1_index)
+
+        route = VppIpRoute(
+            self, "10.99.0.0", 24, [VppRoutePath("192.0.2.1", sub_index)]
+        )
+        route.add_vpp_config()
+
+        #
+        # the interface is not a tunnel, so the next hop stays unresolved and
+        # the route must be installed as a drop rather than taking the tunnel
+        # from the slot the index pointed at.
+        #
+        self.assertIn("dpo-drop ip4", self.vapi.cli("show ip fib 10.99.0.0/24"))
+
+        route.remove_vpp_config()
+        t2.remove_vpp_config()
+
 
 @unittest.skipIf("ipip" in config.excluded_plugins, "Exclude IPIP plugin tests")
 class TestIPIP6(VppTestCase):

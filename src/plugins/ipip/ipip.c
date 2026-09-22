@@ -440,18 +440,17 @@ mipip_mk_incomplete_walk (adj_index_t ai, void *data)
 void
 mipip_update_adj (vnet_main_t * vnm, u32 sw_if_index, adj_index_t ai)
 {
-  ipip_main_t *gm = &ipip_main;
   adj_midchain_fixup_t fixup;
   ip_adjacency_t *adj;
   teib_entry_t *ne;
   ipip_tunnel_t *t;
   adj_flags_t af;
-  u32 ti;
 
   af = ADJ_FLAG_NONE;
   adj = adj_get (ai);
-  ti = gm->tunnel_index_by_sw_if_index[sw_if_index];
-  t = pool_elt_at_index (gm->tunnels, ti);
+  t = ipip_tunnel_db_find_by_sw_if_index (sw_if_index);
+  if (!t)
+    return;
 
   ne = teib_entry_find_46 (sw_if_index,
 			   adj->ia_nh_proto, &adj->sub_type.nbr.next_hop);
@@ -584,10 +583,12 @@ ipip_tunnel_t *
 ipip_tunnel_db_find_by_sw_if_index (u32 sw_if_index)
 {
   ipip_main_t *gm = &ipip_main;
+  u32 ti;
+
   if (vec_len (gm->tunnel_index_by_sw_if_index) <= sw_if_index)
     return NULL;
-  u32 ti = gm->tunnel_index_by_sw_if_index[sw_if_index];
-  if (ti == ~0)
+  ti = gm->tunnel_index_by_sw_if_index[sw_if_index];
+  if (ti == ~0 || pool_is_free_index (gm->tunnels, ti))
     return NULL;
   return pool_elt_at_index (gm->tunnels, ti);
 }
@@ -655,7 +656,7 @@ ipip_teib_entry_added (const teib_entry_t * ne)
   u32 t_idx;
 
   sw_if_index = teib_entry_get_sw_if_index (ne);
-  if (vec_len (gm->tunnel_index_by_sw_if_index) < sw_if_index)
+  if (vec_len (gm->tunnel_index_by_sw_if_index) <= sw_if_index)
     return;
 
   t_idx = gm->tunnel_index_by_sw_if_index[sw_if_index];
@@ -692,7 +693,7 @@ ipip_teib_entry_deleted (const teib_entry_t * ne)
   u32 t_idx;
 
   sw_if_index = teib_entry_get_sw_if_index (ne);
-  if (vec_len (gm->tunnel_index_by_sw_if_index) < sw_if_index)
+  if (vec_len (gm->tunnel_index_by_sw_if_index) <= sw_if_index)
     return;
 
   t_idx = gm->tunnel_index_by_sw_if_index[sw_if_index];
