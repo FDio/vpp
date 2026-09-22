@@ -3415,6 +3415,8 @@ http2_rx_expect_server_preface (http_ctx_t *hc)
   u32 to_deq;
   u8 *rx_buf;
   http2_frame_header_t fh;
+  clib_thread_index_t thread_index = hc->c_thread_index;
+  u32 hc_index = hc->hc_hc_index;
 
   HTTP_DBG (1, "hc [%u]%x", hc->c_thread_index, hc->hc_hc_index);
 
@@ -3457,6 +3459,8 @@ http2_rx_expect_server_preface (http_ctx_t *hc)
   http_io_ts_drain (hc, HTTP2_FRAME_HEADER_SIZE);
   to_deq -= fh.length;
   rv = http2_handle_settings_frame (hc, &fh);
+  /* pool might grow, regrab connection */
+  hc = http_ctx_get_w_thread (hc_index, thread_index);
   if (PREDICT_FALSE (rv != HTTP2_ERROR_NO_ERROR))
     {
       http2_connection_error (hc, rv, 0);
