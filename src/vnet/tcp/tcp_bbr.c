@@ -548,6 +548,7 @@ bbr_update (tcp_connection_t *tc, tcp_ack_ctx_t *rs)
   bbr_update_latest_delivery_signals (tc, bd, rs, sample_bw);
   bbr_update_congestion_signals (tc, bd, rs, sample_bw);
   bbr_update_ack_aggregation (tc, bd, rs);
+  bbr_adapt_to_bw_deficit (tc, bd, rs);
   bbr_check_full_bw_reached (bd, rs, sample_bw);
 
   /* Keep separate branches so state transitions can advance on this ACK. */
@@ -799,15 +800,27 @@ format_tcp_bbr (u8 *s, va_list *args)
 {
   tcp_connection_t *tc = va_arg (*args, tcp_connection_t *);
   bbr_data_t *bd = bbr_data (tc);
+  u32 bdp = bbr_bdp_multiple (tc, bd, 1.0);
+  u32 extra_acked = bbr_minmax_get (&bd->extra_acked);
+  u32 inflight_target = bbr_max_inflight (tc, bd);
 
+  s = format (s,
+	      "state %u/%u ack_phase %u round %u bw %.3f/%.3fMbit/s "
+	      "bw_hi %.3f/%.3fMbit/s bw_lo ",
+	      bd->mode, bd->probe_bw_phase, bd->ack_phase, bd->round_count, bbr_bw (bd) * 8e-6,
+	      bbr_max_bw (bd) * 8e-6, bd->bw_hi[0] * 8e-6, bd->bw_hi[1] * 8e-6);
+  if (bd->bw_lo == BBR_BW_INFINITY)
+    s = format (s, "inf");
+  else
+    s = format (s, "%.3fMbit/s", bd->bw_lo * 8e-6);
   return format (s,
-		 "state %u/%u ack_phase %u round %u bw %.3f/%.3fMbit/s "
-		 "min_rtt %.3fms pace %.3fMbit/s inflight hi/lo %u/%u latest %u "
-		 "loss %u/%u",
-		 bd->mode, bd->probe_bw_phase, bd->ack_phase, bd->round_count, bbr_bw (bd) * 8e-6,
-		 bbr_max_bw (bd) * 8e-6, bd->min_rtt * 1e3, bd->pacing_rate * 8e-6, bd->inflight_hi,
-		 bd->inflight_lo, bd->inflight_latest, bd->loss_events,
-		 bbr_has_flag (bd, BBR_F_LOSS_IN_ROUND));
+		 " latest %.3fMbit/s min_rtt %.3fms bdp %u extra_acked %u "
+		 "ack_epoch %llu offload %u target %u pace %.3fMbit/s gains %.2f/%.2f "
+		 "inflight hi/lo %u/%u latest %u loss %u/%u",
+		 bd->bw_latest * 8e-6, bd->min_rtt * 1e3, bdp, extra_acked, bd->ack_epoch_acked,
+		 bd->offload_budget, inflight_target, bd->pacing_rate * 8e-6, bbr_pacing_gain (bd),
+		 bbr_cwnd_gain (bd), bd->inflight_hi, bd->inflight_lo, bd->inflight_latest,
+		 bd->loss_events, bbr_has_flag (bd, BBR_F_LOSS_IN_ROUND));
 }
 
 const static tcp_cc_algorithm_t tcp_bbr = {
