@@ -367,6 +367,12 @@ vcl_sapi_add_cert_key_pair (vppcom_cert_key_pair_t *ckpair)
   mp->certkey_len = cert_len + key_len;
   mp->is_add = 1;
 
+  if (cert_len + key_len == 0)
+    {
+      clib_warning ("cert and key lengths are both zero");
+      goto done;
+    }
+
   certkey_len = cert_len + key_len;
   vec_validate (certkey, certkey_len - 1);
   clib_memcpy_fast (certkey, ckpair->cert, cert_len);
