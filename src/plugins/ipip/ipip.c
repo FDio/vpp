@@ -857,6 +857,20 @@ ipip_del_tunnel (u32 sw_if_index)
   if (t == NULL)
     return VNET_API_ERROR_NO_SUCH_ENTRY;
 
+  /*
+   * A 6RD tunnel carries IPv6 FIB state that only sixrd_del_tunnel()
+   * releases, and no caller of this function can ask for that mode:
+   * ipip_add_tunnel() maps its tunnel_mode_t argument to IPIP_MODE_P2P or
+   * IPIP_MODE_P2MP, and a 6RD tunnel is created by sixrd_add_tunnel() and
+   * deleted by sixrd_del_tunnel().
+   */
+  if (IPIP_MODE_6RD == t->mode)
+    {
+      clib_warning ("IPIP tunnel delete: tunnel is a 6RD tunnel: %d",
+		    sw_if_index);
+      return VNET_API_ERROR_INVALID_VALUE;
+    }
+
   if (t->mode == IPIP_MODE_P2MP)
     teib_walk_itf (t->sw_if_index, ipip_tunnel_delete_teib_walk, t);
 
