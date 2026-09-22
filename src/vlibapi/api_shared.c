@@ -77,10 +77,15 @@ vl_msg_api_trace_with_size (api_main_t *am, vl_api_trace_t *tp, void *msg,
   if (!m || !m->trace_enable)
     return;
 
+  /*
+   * Copy the whole message. msg_len is the size of the message buffer, and
+   * a message with a variable length array member must be copied in full: a
+   * shorter copy keeps the larger element count, so the endian, format and
+   * json handlers read and write past the end of the copy. m->trace_size is
+   * not a bound for the copy, it sizes the initializer array printed by
+   * "api trace initializers".
+   */
   length = msg_len;
-  if (m->trace_size >= (int) sizeof (u16) &&
-      length > (uword) m->trace_size)
-    length = m->trace_size;
 
   msg_copy = 0;
 
