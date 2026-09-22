@@ -68,6 +68,7 @@ add_vpp_plugin(unittest
   util_test.c
   vlib_test.c
   virtio_clone_test.c
+  vlib_process_test.c
   counter_test.c
   ring_buffer_test.c
   histogram_test.c
