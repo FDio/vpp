@@ -1036,6 +1036,36 @@ class TestCNatTranslation(CnatCommonTestCase):
         self._make_multi_backend_translations()
         self.cnat_fhc_translation()
 
+    def test_cnat_zero_paths(self):
+        # """ CNat Translation with an empty path list """
+        self.translations = []
+        self.mbtranslations = []
+        translation = Translation(
+            self,
+            TCP,
+            Endpoint(ip="30.0.0.8", port=8888, is_v6=False),
+            [],
+            0x9F,
+        ).add_vpp_config()
+        self.translations.append(translation)
+        try:
+            self.assertIsNotNone(translation.id)
+            dump = translation.query_vpp_config()
+            self.assertIsNotNone(dump)
+            self.assertEqual(0, dump.n_paths)
+            translation_lines = [
+                line
+                for line in self.vapi.cli("show cnat translation").splitlines()
+                if line.startswith(f"[{translation.id}]")
+            ]
+            self.logger.info(translation_lines)
+            self.assertEqual(1, len(translation_lines))
+            self.assertIn("30.0.0.8;8888 TCP", translation_lines[0])
+            self.assertIn("lb:default", translation_lines[0])
+        finally:
+            self.translations.remove(translation)
+            translation.remove_vpp_config()
+
 
 @unittest.skipIf("cnat" in config.excluded_plugins, "Exclude CNAT plugin tests")
 class TestCNatTranslationCLI(CnatCommonTestCase):

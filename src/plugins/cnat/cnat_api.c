@@ -156,7 +156,10 @@ vl_api_cnat_translation_update_t_handler (vl_api_cnat_translation_update_t
     goto done;
 
   n_paths = clib_net_to_host_u32 (mp->translation.n_paths);
-  vec_validate (paths, n_paths - 1);
+  /* An empty path list is a valid message: n_paths - 1 would wrap to
+   * ~0 and request an absurd allocation. */
+  if (n_paths)
+    vec_validate (paths, n_paths - 1);
 
   for (pi = 0; pi < n_paths; pi++)
     {
