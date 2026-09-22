@@ -629,8 +629,8 @@ typedef struct
   /* Process state. */
   vlib_process_state_t state;
 
-  /* Process is added to resume list due to pending event  */
-  u8 event_resume_pending : 1;
+  /* A restore record (event or clock) is queued for the current suspension */
+  u8 resume_pending : 1;
 
   /* Size of process stack. */
   u16 log2_n_stack_bytes;
@@ -662,7 +662,7 @@ typedef struct
    */
   u64 resume_clock_interval;
 
-  /* Handle from timer code, to cancel an unexpired timer */
+  /* Sleep-timer handle, to cancel the timer on an early event wake */
   u32 stop_timer_handle;
 
   /* Default output function and its argument for any CLI outputs

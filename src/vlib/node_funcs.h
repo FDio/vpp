@@ -154,8 +154,6 @@ vlib_node_set_state (vlib_main_t * vm, u32 node_index,
     {
       vlib_process_t *p = vec_elt (nm->processes, n->runtime_index);
       r = &p->node_runtime;
-
-      p->event_resume_pending = 0;
     }
   else
     r = vec_elt_at_index (nm->nodes_by_type[n->type], n->runtime_index);
@@ -1039,13 +1037,14 @@ vlib_process_signal_event_helper (vlib_main_t *vm, vlib_node_main_t *nm,
      already running. */
   add_to_pending &= nm->current_process_index != n->runtime_index;
 
-  if (add_to_pending && p->event_resume_pending == 0)
+  /* A queued clock restore also delivers the event data appended above */
+  if (add_to_pending && p->resume_pending == 0)
     {
       vlib_process_restore_t restore = {
 	.runtime_index = n->runtime_index,
 	.reason = VLIB_PROCESS_RESTORE_REASON_EVENT,
       };
-      p->event_resume_pending = 1;
+      p->resume_pending = 1;
       vec_add1 (nm->process_restore_current, restore);
     }
 
@@ -1131,13 +1130,13 @@ vlib_process_signal_event_at_time (vlib_main_t * vm,
       te->process_node_index = n->index;
       te->event_type_index = t;
 
-      p->stop_timer_handle =
-	vlib_tw_timer_start (vm,
-			     (vlib_tw_event_t){
-			       .type = VLIB_TW_EVENT_T_TIMED_EVENT,
-			       .index = te - nm->signal_timed_event_data_pool,
-			     },
-			     dt * VLIB_TW_TICKS_PER_SECOND);
+      /* Nothing stops a timed event: don't clobber the sleep-timer handle */
+      vlib_tw_timer_start (vm,
+			   (vlib_tw_event_t) {
+			     .type = VLIB_TW_EVENT_T_TIMED_EVENT,
+			     .index = te - nm->signal_timed_event_data_pool,
+			   },
+			   dt * VLIB_TW_TICKS_PER_SECOND);
 
       /* Inline data big enough to hold event? */
       if (te->n_data_bytes < sizeof (te->inline_event_data))

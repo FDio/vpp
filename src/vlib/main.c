@@ -1195,9 +1195,8 @@ vlib_process_resume (vlib_main_t * vm, vlib_process_t * p)
 {
   uword r;
 
-  if (p->state == VLIB_PROCESS_STATE_WAIT_FOR_EVENT ||
-      p->state == VLIB_PROCESS_STATE_WAIT_FOR_EVENT_OR_CLOCK)
-    p->event_resume_pending = 0;
+  /* The queued restore is consumed here, whatever its reason */
+  p->resume_pending = 0;
 
   p->state = VLIB_PROCESS_STATE_RUNNING;
   r = clib_setjmp (&p->return_longjmp, VLIB_PROCESS_RETURN_LONGJMP_RETURN);
@@ -1220,6 +1219,8 @@ process_timer_start (vlib_main_t *vm, vlib_process_t *p, u32 runtime_index)
   if (p->resume_clock_interval == 0)
     return;
 
+  /* At most one sleep timer per process */
+  ASSERT (p->stop_timer_handle == ~0);
   p->stop_timer_handle = vlib_tw_timer_start (vm, e, p->resume_clock_interval);
 }
 
@@ -1339,10 +1340,16 @@ dispatch_suspended_process (vlib_main_t *vm, vlib_process_restore_t *r,
   p = vec_elt (nm->processes, process_index);
 
   if (PREDICT_FALSE (p->state == VLIB_PROCESS_STATE_NOT_STARTED))
-    return last_time_stamp;
+    {
+      /* Restore record is dropped here, so no longer pending */
+      p->resume_pending = 0;
+      return last_time_stamp;
+    }
 
   if (resume_permissons[r->reason][p->state] == 0)
     {
+      /* A clock restore deferring means an orphaned sleep timer */
+      ASSERT (r->reason != VLIB_PROCESS_RESTORE_REASON_CLOCK);
       vec_add1 (nm->process_restore_next, *r);
       return last_time_stamp;
     }
@@ -1423,8 +1430,12 @@ process_expired_timers (u32 *v)
 	{
 	  vlib_process_t *p = vec_elt (nm->processes, e.index);
 	  p->stop_timer_handle = ~0;
+	  /* A sleep timer is stopped whenever a restore is queued */
+	  ASSERT (p->resume_pending == 0);
 	  restore.reason = VLIB_PROCESS_RESTORE_REASON_CLOCK;
 	  restore.runtime_index = e.index;
+	  /* An event must not queue a second restore for this suspension */
+	  p->resume_pending = 1;
 	  vec_add1 (nm->process_restore_current, restore);
 	}
       else if (e.type == VLIB_TW_EVENT_T_SCHED_NODE)
@@ -1647,9 +1658,7 @@ vlib_main_or_worker_loop (vlib_main_t * vm, int is_main)
 		      pool_elt_at_index (nm->signal_timed_event_data_pool, di);
 		    vlib_node_t *n =
 		      vlib_get_node (vm, te->process_node_index);
-		    vlib_process_t *p =
-		      vec_elt (nm->processes, n->runtime_index);
-		    p->stop_timer_handle = ~0;
+		    vlib_process_t *p = vec_elt (nm->processes, n->runtime_index);
 		    void *data;
 		    data = vlib_process_signal_event_helper (
 		      vm, nm, n, p, te->event_type_index, te->n_data_elts,
