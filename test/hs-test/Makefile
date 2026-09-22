@@ -178,7 +178,8 @@ DOCKER_VOLUMES:=-v $(WS_ROOT):$(WS_ROOT) -v /var/run/docker.sock:/var/run/docker
 	-v $(HS_ROOT)/.go_cache/build:/root/.cache/go-build
 DOCKER_PROXY:=-e HTTP_PROXY=$(HTTP_PROXY) -e HTTPS_PROXY=$(HTTPS_PROXY) -e NO_PROXY=$(NO_PROXY)
 DOCKER_COMMON_ARGS:=$(DOCKER_TTY) --rm $(DOCKER_CAPABILITIES) $(DOCKER_DEVICES) $(DOCKER_PROXY) \
-		-e GITHUB_REPO_URL=$(GITHUB_REPO_URL) $(DOCKER_VOLUMES) --name $(GINKGO_CONTAINER) \
+		-e GITHUB_REPO_URL=$(GITHUB_REPO_URL) -e HST_EXTENDED_WIFI=$(HST_EXTENDED_WIFI) \
+		$(DOCKER_VOLUMES) --name $(GINKGO_CONTAINER) \
 		--label io.fd.hs-test.run=$(RUN_ID) hs-test/ginkgo:$(RUN_ID) \
 		.$(HS_ROOT)/hs_test.sh --persist=$(PERSIST) --verbose=$(VERBOSE) \
 		--debug=$(DEBUG) --cpus=$(CPUS) --vppsrc=$(VPPSRC) --parallel=$(PARALLEL) \
