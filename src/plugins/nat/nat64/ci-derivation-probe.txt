@@ -1,2 +1,0 @@
-Temporary probe: makes this pull request touch src/plugins/nat/nat64/ so the
-suite derivation for that package is exercised in CI. Removed in the next commit.
