@@ -9,6 +9,75 @@
 #include <vppinfra/format.h>
 #include <nsim/nsim.h>
 
+static uword
+unformat_loss_delay (unformat_input_t *input, va_list *args)
+{
+  f64 *result = va_arg (*args, f64 *), value;
+
+  if (unformat (input, "%f us", &value))
+    *result = value * 1e-6;
+  else if (unformat (input, "%f ms", &value))
+    *result = value * 1e-3;
+  else if (unformat (input, "%f sec", &value))
+    *result = value;
+  else
+    return 0;
+  return 1;
+}
+
+uword
+unformat_nsim_loss_spec (unformat_input_t *input, va_list *args)
+{
+  nsim_loss_spec_t *spec = va_arg (*args, nsim_loss_spec_t *);
+  u32 packets_per_drop;
+
+  if (unformat (input, "packets-per-drop %u", &packets_per_drop))
+    {
+      if (packets_per_drop)
+	spec->drop_fraction = 1.0 / (f64) packets_per_drop;
+    }
+  else if (unformat (input, "drop-fraction %f", &spec->drop_fraction))
+    ;
+  else if (unformat (input, "burst-loss-prob %f", &spec->burst_probability))
+    ;
+  else if (unformat (input, "burst-duration %U", unformat_loss_delay, &spec->burst_duration))
+    ;
+  else if (unformat (input, "drop-once after %U for %U", unformat_loss_delay, &spec->once_at,
+		     unformat_loss_delay, &spec->once_duration))
+    ;
+  else if (unformat (input, "drop-seq %u retransmits %u", &spec->target_offset,
+		     &spec->target_retransmits))
+    spec->target_set = 1;
+  else if (unformat (input, "drop-seq %u", &spec->target_offset))
+    spec->target_set = 1;
+  else
+    return 0;
+  return 1;
+}
+
+clib_error_t *
+nsim_loss_validate (const nsim_loss_spec_t *spec)
+{
+  if (spec->drop_fraction < 0.0 || spec->drop_fraction > 1.0)
+    return clib_error_return (0, "drop fraction must be between zero and 1");
+  if (spec->burst_probability < 0.0 || spec->burst_probability > 1.0)
+    return clib_error_return (0, "burst loss probability must be between zero and 1");
+  return 0;
+}
+
+void
+nsim_loss_configure (nsim_loss_model_t *m, const nsim_loss_spec_t *spec)
+{
+  if (spec->target_set)
+    nsim_loss_model_target_seq (m, spec->target_offset, spec->target_retransmits);
+  else if (spec->once_duration > 0.0)
+    nsim_loss_model_once (m, spec->once_at, spec->once_duration);
+  else if (spec->burst_probability > 0.0)
+    nsim_loss_model_burst (m, spec->burst_probability, spec->burst_duration);
+  else
+    nsim_loss_model_uniform (m, spec->drop_fraction);
+}
+
 static u8 *
 format_delay_secs (u8 *s, va_list *args)
 {
