@@ -8788,7 +8788,7 @@ tcp_test_tlp_probe_output (vlib_main_t *vm, tcp_connection_t *tc, clib_thread_in
   tcp_header_t *th;
   session_t *s = 0;
   vlib_buffer_t *b;
-  u32 initial_seq = 1000, mss = 100, bi, i;
+  u32 initial_seq = 1000, mss = 100, data_len, bi, i;
   u8 data[200], rack_initialized = 0;
   int rv = 0;
 
@@ -8815,8 +8815,9 @@ tcp_test_tlp_probe_output (vlib_main_t *vm, tcp_connection_t *tc, clib_thread_in
       rv = 1;
       goto cleanup;
     }
-  if (!TCP_TEST_I (svm_fifo_enqueue (s->tx_fifo, sizeof (data), data) == sizeof (data),
-		   "TLP output queued original and probe data"))
+  data_len = expect_retransmit ? mss : sizeof (data);
+  if (!TCP_TEST_I (svm_fifo_enqueue (s->tx_fifo, data_len, data) == data_len,
+		   "TLP output queued test data"))
     {
       rv = 1;
       goto cleanup;
@@ -8831,7 +8832,7 @@ tcp_test_tlp_probe_output (vlib_main_t *vm, tcp_connection_t *tc, clib_thread_in
   tc->snd_una = initial_seq;
   tc->snd_nxt = initial_seq;
   tc->snd_wnd = 4 * mss;
-  tc->cwnd = expect_retransmit ? mss : 4 * mss;
+  tc->cwnd = mss;
   tc->rcv_nxt = 5000;
   tc->rcv_wnd = TCP_WND_MAX;
 
@@ -9106,15 +9107,6 @@ tcp_test_rack (vlib_main_t *vm, unformat_input_t *input)
 	      rack->reo_deadline == 0.0 && rack->rto_deadline == rto_deadline,
 	    "an earlier PTO preempts the REO deadline");
 
-  tc->snd_una = 0;
-  tc->snd_nxt = 2 * tc->snd_mss;
-  tc->snd_wnd = 4 * tc->snd_mss;
-  tc->cwnd = 2 * tc->snd_mss;
-  TCP_TEST (!tcp_tlp_new_data_fits_cwnd (tc, tc->snd_mss),
-	    "TLP uses a tail retransmission instead of exceeding cwnd");
-  tc->cwnd += tc->snd_mss;
-  TCP_TEST (tcp_tlp_new_data_fits_cwnd (tc, tc->snd_mss),
-	    "TLP prefers new data when one segment fits within cwnd");
   tcp_test_rack_cleanup (tc);
 
   /* TLP recovery detection retains an exactly ACKed retransmission until

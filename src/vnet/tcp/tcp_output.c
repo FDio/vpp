@@ -1322,18 +1322,14 @@ tcp_tlp_send_probe (tcp_connection_t *tc)
   outstanding = tc->snd_nxt - tc->snd_una;
   max_deq = transport_max_tx_dequeue (&tc->connection);
 
-  /* Prefer one unsent segment when the peer's receive window permits it. */
+  /* Prefer one unsent segment when the peer's receive window permits it.
+   * A TLP may exceed cwnd by one segment (RFC 8985, section 7.3). */
   if (max_deq > outstanding && tc->snd_wnd > outstanding)
     {
       available = clib_min (max_deq - outstanding, tc->snd_wnd - outstanding);
       available = clib_min (available, (u32) tc->snd_mss);
-      /* RFC 8985 permits a one-segment cwnd overshoot, but it can amplify
-       * drops under backpressure. Retransmit the tail unless new data fits. */
-      if (tcp_tlp_new_data_fits_cwnd (tc, available))
-	{
-	  tcp_bt_check_app_limited (tc, max_deq - outstanding);
-	  n_bytes = tcp_prepare_segment (wrk, tc, outstanding, available, &b);
-	}
+      tcp_bt_check_app_limited (tc, max_deq - outstanding);
+      n_bytes = tcp_prepare_segment (wrk, tc, outstanding, available, &b);
     }
 
   if (n_bytes)
