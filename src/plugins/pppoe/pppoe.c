@@ -79,21 +79,43 @@ format_pppoe_header_with_length (u8 * s, va_list * args)
   return s;
 }
 
+/*
+ * Find the session that owns a sw_if_index.  The mapping is indexed with
+ * the interface the caller was handed, which for a sub-interface is the
+ * sub-interface's own index, so it can be one past the end of the mapping
+ * and the slot it names can be free or hold the invalid sentinel.
+ */
+static pppoe_session_t *
+pppoe_session_find_by_sw_if_index (u32 sw_if_index)
+{
+  pppoe_main_t *pem = &pppoe_main;
+  u32 session_id;
+
+  if (vec_len (pem->session_index_by_sw_if_index) <= sw_if_index)
+    return NULL;
+
+  session_id = pem->session_index_by_sw_if_index[sw_if_index];
+
+  if (session_id == ~0 || pool_is_free_index (pem->sessions, session_id))
+    return NULL;
+
+  return pool_elt_at_index (pem->sessions, session_id);
+}
+
 static u8 *
 pppoe_build_rewrite (vnet_main_t * vnm,
 		     u32 sw_if_index,
 		     vnet_link_t link_type, const void *dst_address)
 {
-  pppoe_main_t *pem = &pppoe_main;
   pppoe_session_t *t;
   vnet_hw_interface_t *hi;
   vnet_sw_interface_t *si;
   pppoe_header_t *pppoe;
-  u32 session_id;
   u8 *rw = 0;
 
-  session_id = pem->session_index_by_sw_if_index[sw_if_index];
-  t = pool_elt_at_index (pem->sessions, session_id);
+  t = pppoe_session_find_by_sw_if_index (sw_if_index);
+  if (!t)
+    return 0;
 
   int len = sizeof (pppoe_header_t) + sizeof (ethernet_header_t);
   si = vnet_get_sw_interface (vnm, t->encap_if_index);
@@ -173,18 +195,17 @@ pppoe_fixup (vlib_main_t * vm,
 static void
 pppoe_update_adj (vnet_main_t * vnm, u32 sw_if_index, adj_index_t ai)
 {
-  pppoe_main_t *pem = &pppoe_main;
   dpo_id_t dpo = DPO_INVALID;
   ip_adjacency_t *adj;
   pppoe_session_t *t;
   vnet_sw_interface_t *si;
-  u32 session_id;
 
   ASSERT (ADJ_INDEX_INVALID != ai);
 
   adj = adj_get (ai);
-  session_id = pem->session_index_by_sw_if_index[sw_if_index];
-  t = pool_elt_at_index (pem->sessions, session_id);
+  t = pppoe_session_find_by_sw_if_index (sw_if_index);
+  if (!t)
+    return;
 
   uword len = sizeof (ethernet_header_t);
 
