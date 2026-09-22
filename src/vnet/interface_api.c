@@ -664,8 +664,9 @@ vl_api_sw_interface_get_table_t_handler (vl_api_sw_interface_get_table_t * mp)
   fib_index = fib_table_get_index_for_sw_if_index (fib_proto, sw_if_index);
   if (fib_index != ~0)
     {
-      fib_table = fib_table_get (fib_index, fib_proto);
-      table_id = fib_table->ft_table_id;
+      fib_table = fib_table_get_or_null (fib_index, fib_proto);
+      if (fib_table)
+	table_id = fib_table->ft_table_id;
     }
 
   BAD_SW_IF_INDEX_LABEL;

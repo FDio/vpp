@@ -68,7 +68,7 @@ fib_table_lookup_i (fib_table_t *fib_table,
  * its binding is torn down.  Validate here so that a bad index produces an
  * empty lookup rather than a read through a wild pointer.
  */
-static fib_table_t *
+fib_table_t *
 fib_table_get_or_null (u32 fib_index, fib_protocol_t proto)
 {
     if (~0 == fib_index)
@@ -1137,7 +1137,7 @@ fib_table_get_table_id_for_sw_if_index (fib_protocol_t proto,
 {
     fib_table_t *fib_table;
 
-    fib_table = fib_table_get(fib_table_get_index_for_sw_if_index(
+    fib_table = fib_table_get_or_null(fib_table_get_index_for_sw_if_index(
 				  proto, sw_if_index),
 			      proto);
 
@@ -1150,7 +1150,7 @@ fib_table_get_table_id (u32 fib_index,
 {
     fib_table_t *fib_table;
 
-    fib_table = fib_table_get(fib_index, proto);
+    fib_table = fib_table_get_or_null(fib_index, proto);
 
     return ((NULL != fib_table ? fib_table->ft_table_id : ~0));
 }

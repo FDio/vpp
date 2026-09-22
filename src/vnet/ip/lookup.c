@@ -500,7 +500,13 @@ vnet_show_ip_table_cmd (vlib_main_t *vm, unformat_input_t *main_input,
 	  goto done;
 	}
 
-      fib = fib_table_get (fib_index, fproto);
+      fib = fib_table_get_or_null (fib_index, fproto);
+      if (NULL == fib)
+	{
+	  error = clib_error_return (0, "table with table_id %u no longer exists", table_id);
+	  goto done;
+	}
+
       vlib_cli_output (vm, "[%u] table_id:%u %v", fib->ft_index,
 		       fib->ft_table_id, fib->ft_desc);
     }

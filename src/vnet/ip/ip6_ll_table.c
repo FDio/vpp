@@ -246,9 +246,9 @@ ip6_ll_show_fib (vlib_main_t * vm,
     if (~0 == fib_index)
       continue;
 
-    fib_table = fib_table_get (fib_index, FIB_PROTOCOL_IP6);
+    fib_table = fib_table_get_or_null (fib_index, FIB_PROTOCOL_IP6);
 
-    if (!(fib_table->ft_flags & FIB_TABLE_FLAG_IP6_LL))
+    if (NULL == fib_table || !(fib_table->ft_flags & FIB_TABLE_FLAG_IP6_LL))
       continue;
 
     ip6_fib_table_show (vm, fib_table, !verbose);

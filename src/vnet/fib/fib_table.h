@@ -905,6 +905,18 @@ extern fib_table_t *fib_table_get(fib_node_index_t index,
 				  fib_protocol_t proto);
 
 /**
+ * @brief
+ * Get a pointer to a FIB table, validating the index
+ *
+ * Unlike fib_table_get(), this rejects ~0, an out-of-range index and a
+ * free pool slot, and returns NULL instead. Callers that derive the index
+ * from an interface binding or from another untrusted source must use this
+ * accessor.
+ */
+extern fib_table_t *fib_table_get_or_null(u32 fib_index,
+					  fib_protocol_t proto);
+
+/**
  * @brief return code controlling how a table walk proceeds
  */
 typedef enum fib_table_walk_rc_t_
