@@ -5,7 +5,6 @@ on:
   pull_request:
     branches: [master]
     types: [opened, synchronize, reopened]
-  workflow_dispatch:
 
 # One run per ref: a new push to the same branch cancels the previous run.
 concurrency:
@@ -21,6 +20,12 @@ jobs:
     runs-on: ubuntu-24.04
     container:
       image: debian:trixie
+    # A job that runs in a container gets `sh` for `run:` unless it says
+    # otherwise, and debian:trixie's /bin/sh is dash, which rejects the
+    # parameter expansions this repository's scripts use.
+    defaults:
+      run:
+        shell: bash
     env:
       # extras/scripts/checkstyle.sh picks clang-format-${CLANG_FORMAT_VER};
       # the Makefile sets 19 for Debian 13, and the same value has to reach the
@@ -33,7 +38,7 @@ jobs:
       - name: Install base tools
         run: |
           apt-get update -qq
-          apt-get install -y -qq sudo make git
+          apt-get install -y -qq sudo make git bash
 
       - name: Check out the pull request
         uses: actions/checkout@v4
@@ -79,7 +84,10 @@ jobs:
           fi
           checked_out=$(git rev-parse HEAD)
           trap 'git checkout --quiet "${checked_out}"' EXIT
-          for commit in $(git rev-list --reverse "${base}..${head}"); do
+          # A merge commit has no feature id in its subject, and
+          # check_commit_msg.sh rejects a subject without one, so only the
+          # commits the pull request author wrote are checked.
+          for commit in $(git rev-list --reverse --no-merges "${base}..${head}"); do
             echo "Checking commit message of ${commit}"
             git checkout --quiet "${commit}"
             extras/scripts/check_commit_msg.sh
@@ -93,6 +101,9 @@ jobs:
       # The test framework reserves SHM_PER_PROCESS per worker on top of a
       # 1 GiB minimum; the 64 MiB container default is far too small.
       options: --shm-size=2g
+    defaults:
+      run:
+        shell: bash
     env:
       CCACHE_COMPRESS: "true"
       CCACHE_MAXSIZE: 2G
@@ -103,7 +114,7 @@ jobs:
       - name: Install base tools
         run: |
           apt-get update -qq
-          apt-get install -y -qq sudo make git
+          apt-get install -y -qq sudo make git bash
 
       - name: Check out the pull request
         uses: actions/checkout@v4
