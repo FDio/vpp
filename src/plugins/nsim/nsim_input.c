@@ -55,7 +55,8 @@ typedef enum
 } nsim_next_t;
 
 always_inline uword
-nsim_drain_wheel (vlib_main_t *vm, vlib_node_runtime_t *node, nsim_wheel_t *wp, f64 now)
+nsim_drain_wheel (vlib_main_t *vm, vlib_node_runtime_t *node, nsim_worker_t *nsw, nsim_wheel_t *wp,
+		  f64 now)
 {
   nsim_wheel_entry_t *ep;
 
@@ -78,9 +79,9 @@ nsim_drain_wheel (vlib_main_t *vm, vlib_node_runtime_t *node, nsim_wheel_t *wp, 
       if (ep->tx_time > now)
 	break;
 
-      /* prefetch one line / 2 entries ahead */
+      /* Prefetch the next cache line while draining a due backlog. */
       if ((((uword) ep) & (CLIB_CACHE_LINE_BYTES - 1)) == 0)
-	clib_prefetch_load ((ep + 2));
+	clib_prefetch_load ((u8 *) ep + CLIB_CACHE_LINE_BYTES);
 
       from[0] = ep->buffer_index;
       next[0] = ep->output_next_index;
@@ -95,9 +96,15 @@ nsim_drain_wheel (vlib_main_t *vm, vlib_node_runtime_t *node, nsim_wheel_t *wp, 
     }
 
   wp->cursize -= n_tx_packets;
+  if (nsw->reorder_wheel)
+    {
+      ASSERT (nsw->storage_cursize >= n_tx_packets);
+      nsw->storage_cursize -= n_tx_packets;
+    }
   vlib_buffer_enqueue_to_next (vm, node, froms, nexts, n_tx_packets);
   vlib_node_increment_counter (vm, node->node_index,
 			       NSIM_TX_ERROR_TRANSMITTED, n_tx_packets);
+  nsw->transmitted += n_tx_packets;
   return n_tx_packets;
 }
 
@@ -105,18 +112,17 @@ always_inline uword
 nsim_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *f, int is_trace)
 {
   nsim_main_t *nsm = &nsim_main;
-  nsim_wheel_t *wp = nsm->wheel_by_thread[vm->thread_index];
+  nsim_worker_t *nsw = vec_elt_at_index (nsm->workers, vm->thread_index);
+  nsim_wheel_t *wp = nsw->wheel;
   f64 now = vlib_time_now (vm);
   uword n_tx;
 
-  n_tx = nsim_drain_wheel (vm, node, wp, now);
+  n_tx = nsim_drain_wheel (vm, node, nsw, wp, now);
 
   /* Also drain the side wheel of late-reordered packets, if present. */
-  if (PREDICT_FALSE (nsm->reorder_wheel_by_thread != 0))
+  if (PREDICT_FALSE (nsw->reorder_wheel != 0))
     {
-      nsim_wheel_t *rwp = nsm->reorder_wheel_by_thread[vm->thread_index];
-      if (rwp)
-	n_tx += nsim_drain_wheel (vm, node, rwp, now);
+      n_tx += nsim_drain_wheel (vm, node, nsw, nsw->reorder_wheel, now);
     }
 
   return n_tx;

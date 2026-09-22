@@ -28,8 +28,8 @@ format_nsim_trace (u8 * s, va_list * args)
   nsim_trace_t *t = va_arg (*args, nsim_trace_t *);
 
   if (t->is_drop)
-    s = format (s, "NSIM: dropped, %s", t->is_lost ?
-		"simulated network loss" : "no space in ring");
+    s = format (s, "NSIM: dropped, %s",
+		t->is_lost ? "simulated network loss" : "scheduler storage full");
   else
     s = format (s, "NSIM: tx time %.6f sw_if_index %d",
 		t->expires, t->tx_sw_if_index);
@@ -69,52 +69,97 @@ typedef enum
 } nsim_next_t;
 
 static void
-nsim_set_actions (nsim_main_t * nsm, vlib_buffer_t ** b,
-		  nsim_node_ctx_t * ctx, u32 n_actions)
+nsim_set_actions (nsim_main_t *nsm, nsim_worker_t *nsw, vlib_buffer_t **b, nsim_node_ctx_t *ctx,
+		  u32 n_actions, int is_reordering)
 {
   int i;
 
   memset (ctx->action, 0, n_actions * sizeof (ctx->action[0]));
 
-  if (PREDICT_FALSE (nsm->loss.type != NSIM_LOSS_NONE))
-    nsim_loss_apply (&nsm->loss, &nsm->seed, ctx->now, b, ctx->action, n_actions);
+  if (PREDICT_FALSE (nsw->loss.type != NSIM_LOSS_NONE))
+    nsim_loss_apply (&nsw->loss, &nsw->loss_seed, ctx->now, b, ctx->action, n_actions);
 
-  if (PREDICT_FALSE (nsm->reorder_fraction != 0.0))
+  if (is_reordering)
     {
       for (i = 0; i < n_actions; i++)
-	if (random_f64 (&nsm->seed) <= nsm->reorder_fraction)
+	if (random_f64 (&nsw->reorder_seed) <= nsm->reorder_fraction)
 	  ctx->action[i] |= NSIM_ACTION_REORDER;
     }
 }
 
 static void
-nsim_trace_buffer (vlib_main_t * vm, vlib_node_runtime_t * node,
-		   vlib_buffer_t * b, nsim_node_ctx_t * ctx, u32 is_drop)
+nsim_trace_buffer (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_buffer_t *b, f64 tx_time,
+		   u8 is_drop, u8 is_lost)
 {
   if (b->flags & VLIB_BUFFER_IS_TRACED)
     {
       nsim_trace_t *t = vlib_add_trace (vm, node, b, sizeof (*t));
-      t->expires = ctx->expires;
+      t->expires = tx_time;
       t->is_drop = is_drop;
-      t->is_lost = ctx->action[0] & NSIM_ACTION_DROP;
+      t->is_lost = is_lost;
       t->tx_sw_if_index = vnet_buffer (b)->sw_if_index[VLIB_TX];
     }
 }
 
+always_inline u32
+nsim_worker_storage_size (const nsim_worker_t *nsw, int is_reordering)
+{
+  return is_reordering ? nsw->storage_cursize : nsw->wheel->cursize;
+}
+
 always_inline void
-nsim_buffer_fwd_lookup (nsim_main_t * nsm, vlib_buffer_t * b,
-			u32 * next, u8 is_cross_connect)
+nsim_service_queue_drain (nsim_worker_t *nsw, f64 now)
+{
+  u32 size = vec_len (nsw->service_departures), low = 0, high = nsw->service_cursize;
+
+  ASSERT (size != 0);
+  if (PREDICT_TRUE (!high || nsw->service_departures[nsw->service_head] > now))
+    return;
+
+  /* Completion times are monotonic. Find the first future completion without
+   * linearly walking a large queue after an idle period. */
+  while (low < high)
+    {
+      u32 middle = low + (high - low) / 2;
+      u32 index = nsw->service_head + middle;
+
+      if (index >= size)
+	index -= size;
+      if (nsw->service_departures[index] <= now)
+	low = middle + 1;
+      else
+	high = middle;
+    }
+
+  nsw->service_head += low;
+  if (nsw->service_head >= size)
+    nsw->service_head -= size;
+  nsw->service_cursize -= low;
+}
+
+always_inline void
+nsim_service_queue_enqueue (nsim_worker_t *nsw, f64 departure)
+{
+  ASSERT (nsw->service_cursize < vec_len (nsw->service_departures));
+  nsw->service_departures[nsw->service_tail] = departure;
+  if (++nsw->service_tail == vec_len (nsw->service_departures))
+    nsw->service_tail = 0;
+  nsw->service_cursize++;
+}
+
+always_inline void
+nsim_buffer_fwd_lookup (nsim_main_t *nsm, vlib_buffer_t *b, u32 *next, u8 is_cross_connect)
 {
   if (is_cross_connect)
     {
       vnet_buffer (b)->sw_if_index[VLIB_TX] =
-	(vnet_buffer (b)->sw_if_index[VLIB_RX] == nsm->sw_if_index0) ?
-	nsm->sw_if_index1 : nsm->sw_if_index0;
-      *next =
-	(vnet_buffer (b)->sw_if_index[VLIB_TX] == nsm->sw_if_index0) ?
-	nsm->output_next_index0 : nsm->output_next_index1;
+	(vnet_buffer (b)->sw_if_index[VLIB_RX] == nsm->sw_if_index0) ? nsm->sw_if_index1 :
+								       nsm->sw_if_index0;
+      *next = (vnet_buffer (b)->sw_if_index[VLIB_TX] == nsm->sw_if_index0) ?
+		nsm->output_next_index0 :
+		nsm->output_next_index1;
     }
-  else				/* output feature, even easier... */
+  else /* output feature, even easier... */
     {
       u32 sw_if_index = vnet_buffer (b)->sw_if_index[VLIB_TX];
       *next = nsm->output_next_index_by_sw_if_index[sw_if_index];
@@ -124,14 +169,16 @@ nsim_buffer_fwd_lookup (nsim_main_t * nsm, vlib_buffer_t * b,
 /* Enqueue a buffer onto a wheel with the given departure time, filling the
  * entry's forwarding info. Caller guarantees space. */
 always_inline void
-nsim_wheel_enqueue (nsim_main_t *nsm, nsim_wheel_t *wp, vlib_buffer_t *b, u32 bi, f64 tx_time,
-		    u8 is_cross_connect)
+nsim_wheel_enqueue (nsim_main_t *nsm, nsim_worker_t *nsw, nsim_wheel_t *wp, vlib_buffer_t *b,
+		    u32 bi, f64 tx_time, u8 is_cross_connect, int is_reordering)
 {
   nsim_wheel_entry_t *ep = wp->entries + wp->tail;
   wp->tail++;
   if (wp->tail == wp->wheel_size)
     wp->tail = 0;
   wp->cursize++;
+  if (is_reordering)
+    nsw->storage_cursize++;
 
   ep->tx_time = tx_time;
   ep->rx_sw_if_index = vnet_buffer (b)->sw_if_index[VLIB_RX];
@@ -140,29 +187,45 @@ nsim_wheel_enqueue (nsim_main_t *nsm, nsim_wheel_t *wp, vlib_buffer_t *b, u32 bi
   ep->buffer_index = bi;
 }
 
-always_inline void
-nsim_dispatch_buffer (vlib_main_t * vm, vlib_node_runtime_t * node,
-		      nsim_main_t * nsm, nsim_wheel_t * wp, vlib_buffer_t * b,
-		      u32 bi, nsim_node_ctx_t * ctx, u8 is_cross_connect,
-		      u8 is_trace)
+always_inline f64
+nsim_schedule_buffer (nsim_main_t *nsm, nsim_worker_t *nsw, nsim_wheel_t *wp, vlib_buffer_t *b,
+		      u32 bi, f64 tx_time, u8 is_cross_connect, int is_batching, int is_reordering)
 {
-  f64 tx_time;
+  if (is_batching)
+    tx_time = nsim_batch_release_time (&nsm->model.batch, &nsw->model.batch, &nsw->model.batch_seed,
+				       tx_time);
+
+  nsim_wheel_enqueue (nsm, nsw, wp, b, bi, tx_time, is_cross_connect, is_reordering);
+  return tx_time;
+}
+
+always_inline void
+nsim_dispatch_buffer (vlib_main_t *vm, vlib_node_runtime_t *node, nsim_main_t *nsm,
+		      nsim_worker_t *nsw, nsim_wheel_t *wp, vlib_buffer_t *b, u32 bi,
+		      nsim_node_ctx_t *ctx, u8 is_cross_connect, u8 is_trace, int is_queued,
+		      int is_batching, int is_reordering)
+{
+  f64 tx_time = ctx->expires;
+  u8 is_drop = 0, is_lost = 0;
 
   if (PREDICT_TRUE (!(ctx->action[0] & NSIM_ACTION_DROP)))
     {
       /* Base departure time: fixed-delay line, or queued (bufferbloat) model
        * serializing at the bottleneck rate then adding propagation delay. */
-      if (PREDICT_FALSE (nsm->buffer_time > 0.0))
+      if (is_queued)
 	{
-	  f64 ser = nsm->serialization_time;
-	  if (PREDICT_FALSE (nsm->rate.type != NSIM_RATE_NONE))
-	    ser = nsim_rate_serialization_time (&nsm->rate, &nsm->seed, ctx->now);
-	  f64 depart = clib_max (ctx->now, wp->last_tx_time) + ser;
+	  f64 service_start = clib_max (ctx->now, wp->last_tx_time);
+	  f64 depart;
+
+	  if (PREDICT_FALSE (nsm->model.rate.type != NSIM_RATE_NONE))
+	    depart = nsim_rate_departure_time (&nsm->model.rate, &nsw->model.rate,
+					       &nsw->model.rate_seed, service_start);
+	  else
+	    depart = service_start + nsm->model.serialization_time;
 	  wp->last_tx_time = depart;
+	  nsim_service_queue_enqueue (nsw, depart);
 	  tx_time = depart + nsm->delay;
 	}
-      else
-	tx_time = ctx->expires;
 
       if (PREDICT_FALSE (ctx->action[0] & NSIM_ACTION_REORDER))
 	{
@@ -170,26 +233,20 @@ nsim_dispatch_buffer (vlib_main_t * vm, vlib_node_runtime_t * node,
 	   * uniformly in [0, reorder_delay], so the packet departs behind the
 	   * ones that followed it here. Clamp to the reorder wheel's last
 	   * departure to keep that wheel's ring monotonic (as the queued model
-	   * does for the main wheel). Drop if the side wheel is full. */
-	  nsim_wheel_t *rwp = nsm->reorder_wheel_by_thread[vm->thread_index];
-	  if (PREDICT_TRUE (rwp->cursize < rwp->wheel_size))
-	    {
-	      f64 extra = random_f64 (&nsm->seed) * nsm->reorder_delay;
-	      tx_time = clib_max (tx_time + extra, rwp->last_tx_time);
-	      rwp->last_tx_time = tx_time;
-	      nsim_wheel_enqueue (nsm, rwp, b, bi, tx_time, is_cross_connect);
-	      ctx->n_reordered += 1;
-	    }
-	  else
-	    {
-	      ctx->n_loss += 1;
-	      ctx->drop[0] = bi;
-	      ctx->drop += 1;
-	    }
+	   * does for the main wheel). */
+	  nsim_wheel_t *rwp = nsw->reorder_wheel;
+	  f64 extra = random_f64 (&nsw->reorder_delay_seed) * nsm->reorder_delay;
+
+	  tx_time = clib_max (tx_time + extra, rwp->last_tx_time);
+	  rwp->last_tx_time = tx_time;
+	  tx_time = nsim_schedule_buffer (nsm, nsw, rwp, b, bi, tx_time, is_cross_connect,
+					  is_batching, is_reordering);
+	  ctx->n_reordered += 1;
 	  goto trace;
 	}
 
-      nsim_wheel_enqueue (nsm, wp, b, bi, tx_time, is_cross_connect);
+      tx_time = nsim_schedule_buffer (nsm, nsw, wp, b, bi, tx_time, is_cross_connect, is_batching,
+				      is_reordering);
       ctx->n_buffered += 1;
     }
   else
@@ -197,24 +254,25 @@ nsim_dispatch_buffer (vlib_main_t * vm, vlib_node_runtime_t * node,
       ctx->n_loss += 1;
       ctx->drop[0] = bi;
       ctx->drop += 1;
+      is_drop = is_lost = 1;
     }
 
 trace:
 
   if (PREDICT_FALSE (is_trace))
-    nsim_trace_buffer (vm, node, b, ctx, 0);
+    nsim_trace_buffer (vm, node, b, tx_time, is_drop, is_lost);
 
   ctx->action += 1;
 }
 
 always_inline uword
-nsim_inline (vlib_main_t * vm,
-	     vlib_node_runtime_t * node, vlib_frame_t * frame, int is_trace,
-	     int is_cross_connect)
+nsim_inline (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame, int is_trace,
+	     int is_cross_connect, int is_queued, int is_batching, int is_reordering)
 {
   nsim_main_t *nsm = &nsim_main;
+  nsim_worker_t *nsw = vec_elt_at_index (nsm->workers, vm->thread_index);
   u32 n_left_from, *from, drops[VLIB_FRAME_SIZE];
-  nsim_wheel_t *wp = nsm->wheel_by_thread[vm->thread_index];
+  nsim_wheel_t *wp = nsw->wheel;
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
   u8 actions[VLIB_FRAME_SIZE];
   nsim_node_ctx_t ctx;
@@ -227,7 +285,6 @@ nsim_inline (vlib_main_t * vm,
   vlib_get_buffers (vm, from, bufs, n_left_from);
   b = bufs;
 
-  ctx.fcm = vnet_feature_get_config_main (nsm->arc_index);
   ctx.n_loss = 0;
   ctx.n_buffered = 0;
   ctx.n_reordered = 0;
@@ -236,7 +293,10 @@ nsim_inline (vlib_main_t * vm,
   ctx.now = vlib_time_now (vm);
   ctx.expires = ctx.now + nsm->delay;
 
-  nsim_set_actions (nsm, b, &ctx, n_left_from);
+  if (is_queued)
+    nsim_service_queue_drain (nsw, ctx.now);
+
+  nsim_set_actions (nsm, nsw, b, &ctx, n_left_from, is_reordering);
 
   while (n_left_from >= 8)
     {
@@ -245,17 +305,18 @@ nsim_inline (vlib_main_t * vm,
       vlib_prefetch_buffer_header (b[6], STORE);
       vlib_prefetch_buffer_header (b[7], STORE);
 
-      if (PREDICT_FALSE (wp->cursize + 4 >= wp->wheel_size))
+      if (PREDICT_FALSE (wp->wheel_size - nsim_worker_storage_size (nsw, is_reordering) < 4 ||
+			 (is_queued && nsm->queue_slots_per_wrk - nsw->service_cursize < 4)))
 	goto slow_path;
 
-      nsim_dispatch_buffer (vm, node, nsm, wp, b[0], from[0], &ctx,
-			    is_cross_connect, is_trace);
-      nsim_dispatch_buffer (vm, node, nsm, wp, b[1], from[1], &ctx,
-			    is_cross_connect, is_trace);
-      nsim_dispatch_buffer (vm, node, nsm, wp, b[2], from[2], &ctx,
-			    is_cross_connect, is_trace);
-      nsim_dispatch_buffer (vm, node, nsm, wp, b[3], from[3], &ctx,
-			    is_cross_connect, is_trace);
+      nsim_dispatch_buffer (vm, node, nsm, nsw, wp, b[0], from[0], &ctx, is_cross_connect, is_trace,
+			    is_queued, is_batching, is_reordering);
+      nsim_dispatch_buffer (vm, node, nsm, nsw, wp, b[1], from[1], &ctx, is_cross_connect, is_trace,
+			    is_queued, is_batching, is_reordering);
+      nsim_dispatch_buffer (vm, node, nsm, nsw, wp, b[2], from[2], &ctx, is_cross_connect, is_trace,
+			    is_queued, is_batching, is_reordering);
+      nsim_dispatch_buffer (vm, node, nsm, nsw, wp, b[3], from[3], &ctx, is_cross_connect, is_trace,
+			    is_queued, is_batching, is_reordering);
 
       b += 4;
       from += 4;
@@ -266,20 +327,21 @@ slow_path:
 
   while (n_left_from > 0)
     {
-      /* Drop if out of wheel space and not drop or reorder */
-      if (PREDICT_TRUE (wp->cursize < wp->wheel_size
-			|| (ctx.action[0] & NSIM_ACTION_DROP)
-			|| (ctx.action[0] & NSIM_ACTION_REORDER)))
+      /* Simulated loss does not need storage. All other packets share physical
+	 storage, and queued mode additionally enforces bottleneck admission. */
+      if (PREDICT_TRUE ((ctx.action[0] & NSIM_ACTION_DROP) ||
+			(nsim_worker_storage_size (nsw, is_reordering) < wp->wheel_size &&
+			 (!is_queued || nsw->service_cursize < nsm->queue_slots_per_wrk))))
 	{
-	  nsim_dispatch_buffer (vm, node, nsm, wp, b[0], from[0], &ctx,
-				is_cross_connect, is_trace);
+	  nsim_dispatch_buffer (vm, node, nsm, nsw, wp, b[0], from[0], &ctx, is_cross_connect,
+				is_trace, is_queued, is_batching, is_reordering);
 	}
       else
 	{
 	  ctx.drop[0] = from[0];
 	  ctx.drop += 1;
 	  if (PREDICT_FALSE (is_trace))
-	    nsim_trace_buffer (vm, node, b[0], &ctx, 1);
+	    nsim_trace_buffer (vm, node, b[0], ctx.expires, 1, 0);
 	  ctx.action += 1;
 	}
 
@@ -292,27 +354,53 @@ slow_path:
     {
       u32 n_left_to_drop = ctx.drop - drops;
       vlib_buffer_free (vm, drops, n_left_to_drop);
-      vlib_node_increment_counter (vm, node->node_index, NSIM_ERROR_LOSS,
-				   ctx.n_loss);
+      vlib_node_increment_counter (vm, node->node_index, NSIM_ERROR_LOSS, ctx.n_loss);
       vlib_node_increment_counter (vm, node->node_index, NSIM_ERROR_DROPPED,
 				   n_left_to_drop - ctx.n_loss);
+      nsw->drops += ctx.n_loss;
+      nsw->queue_drops += n_left_to_drop - ctx.n_loss;
     }
   if (PREDICT_FALSE (ctx.n_reordered))
-    vlib_node_increment_counter (vm, node->node_index, NSIM_ERROR_REORDERED, ctx.n_reordered);
-  vlib_node_increment_counter (vm, node->node_index,
-			       NSIM_ERROR_BUFFERED, ctx.n_buffered);
+    {
+      vlib_node_increment_counter (vm, node->node_index, NSIM_ERROR_REORDERED, ctx.n_reordered);
+      nsw->reordered += ctx.n_reordered;
+    }
+  if (is_queued)
+    {
+      nsw->max_service_cursize = clib_max (nsw->max_service_cursize, nsw->service_cursize);
+      nsw->max_service_backlog = clib_max (nsw->max_service_backlog, wp->last_tx_time - ctx.now);
+    }
+  nsw->max_storage_cursize =
+    clib_max (nsw->max_storage_cursize, nsim_worker_storage_size (nsw, is_reordering));
+  nsw->packets += frame->n_vectors;
+  vlib_node_increment_counter (vm, node->node_index, NSIM_ERROR_BUFFERED, ctx.n_buffered);
   return frame->n_vectors;
 }
 
-VLIB_NODE_FN (nsim_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
-			  vlib_frame_t * frame)
+always_inline uword
+nsim_inline_select (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame, int is_trace,
+		    int is_cross_connect)
+{
+  nsim_main_t *nsm = &nsim_main;
+  int is_queued = nsm->model.buffer_time > 0.0;
+  int is_batching = nsm->model.batch.interval > 0.0;
+  int is_reordering = nsm->reorder_fraction != 0.0;
+
+  /* Preserve a fully specialized default path, but keep one generic modeled
+   * path instead of generating every combination into both graph nodes. */
+  if (PREDICT_TRUE (!is_queued && !is_batching && !is_reordering))
+    return nsim_inline (vm, node, frame, is_trace, is_cross_connect, 0, 0, 0);
+  return nsim_inline (vm, node, frame, is_trace, is_cross_connect, is_queued, is_batching,
+		      is_reordering);
+}
+
+VLIB_NODE_FN (nsim_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   if (PREDICT_FALSE (node->flags & VLIB_NODE_FLAG_TRACE))
-    return nsim_inline (vm, node, frame,
-			1 /* is_trace */ , 1 /* is_cross_connect */ );
+    return nsim_inline_select (vm, node, frame, 1 /* is_trace */, 1 /* is_cross_connect */);
   else
-    return nsim_inline (vm, node, frame,
-			0 /* is_trace */ , 1 /* is_cross_connect */ );
+    return nsim_inline_select (vm, node, frame, 0 /* is_trace */, 1 /* is_cross_connect */);
 }
 
 #ifndef CLIB_MARCH_VARIANT
@@ -340,11 +428,9 @@ VLIB_NODE_FN (nsim_feature_node) (vlib_main_t * vm,
 				  vlib_frame_t * frame)
 {
   if (PREDICT_FALSE (node->flags & VLIB_NODE_FLAG_TRACE))
-    return nsim_inline (vm, node, frame,
-			1 /* is_trace */ , 0 /* is_cross_connect */ );
+    return nsim_inline_select (vm, node, frame, 1 /* is_trace */, 0 /* is_cross_connect */);
   else
-    return nsim_inline (vm, node, frame,
-			0 /* is_trace */ , 0 /* is_cross_connect */ );
+    return nsim_inline_select (vm, node, frame, 0 /* is_trace */, 0 /* is_cross_connect */);
 }
 
 #ifndef CLIB_MARCH_VARIANT
