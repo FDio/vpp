@@ -295,7 +295,7 @@ vcl_send_worker_rpc (u32 dst_wrk_index, void *data, u32 data_len)
   int ret = -1;
 
   if (data_len > sizeof (mp->data))
-    goto done;
+    return -1;
 
   clib_spinlock_lock (&vcm->workers_lock);
 
