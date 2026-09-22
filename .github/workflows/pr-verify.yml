@@ -203,12 +203,17 @@ jobs:
           path: build-root/.ccache
           key: ccache-debug-debian13-${{ runner.arch }}-${{ github.ref_name }}-${{ github.sha }}
 
-      # Turn the changed paths into a focused TEST filter. A src/plugins/<name>
-      # change selects <name> when a test_<name>*.py module exists; a
-      # src/vnet/<name> change selects <name> only when test_<name>.py exists
-      # exactly, because a prefix match on a directory such as ip would pull in
-      # every ip4/ip6/ipip/ipsec suite. Changes under src/vppinfra, src/svm and
-      # src/vlib select nothing here and use the fallback smoke suite.
+      # Turn the changed paths into a focused TEST filter. Every emitted name
+      # must have an exact test_<name>.py module, because the runner resolves a
+      # bare filter to that file name and matches it literally: a name with no
+      # such module selects no test and fails the job instead of the suite
+      # falling back. For src/plugins/<pkg>/<sub>/... the subdirectory is tried
+      # first, so src/plugins/nat/nat64/nat64_db.c selects nat64 (test_nat64.py)
+      # rather than the package name nat, which has no module of its own and
+      # would match nothing. src/vnet/<name> selects <name> only on an exact
+      # module too, because a prefix match on a directory such as ip would pull
+      # in every ip4/ip6/ipip/ipsec suite. Changes under src/vppinfra, src/svm
+      # and src/vlib select nothing here and use the fallback smoke suite.
       - name: Derive a test filter from the changed paths
         id: tests
         run: |
@@ -223,23 +228,29 @@ jobs:
                     git diff --name-only "${base}..${head}" 2>/dev/null || true)
           suites=""
           for path in ${changed}; do
+            name=""
             case "${path}" in
               src/plugins/*/*)
-                name=${path#src/plugins/}
-                name=${name%%/*}
-                name=${name//-/_}
-                compgen -G "test/test_${name}*.py" >/dev/null || continue
+                rest=${path#src/plugins/}
+                dir=${rest%%/*}
+                sub=${rest#*/}
+                sub=${sub%%/*}
+                for candidate in "${sub}" "${dir}"; do
+                  candidate=${candidate//-/_}
+                  if [ -f "test/test_${candidate}.py" ]; then
+                    name=${candidate}
+                    break
+                  fi
+                done
                 ;;
               src/vnet/*/*)
                 name=${path#src/vnet/}
                 name=${name%%/*}
                 name=${name//-/_}
-                [ -f "test/test_${name}.py" ] || continue
-                ;;
-              *)
-                continue
+                [ -f "test/test_${name}.py" ] || name=""
                 ;;
             esac
+            [ -n "${name}" ] || continue
             suites="${suites} ${name}"
           done
           suites=$(echo "${suites}" | tr ' ' '\n' | sed '/^$/d' |
