@@ -1009,6 +1009,34 @@ vapi_memfd_client_connect (vapi_ctx_t ctx, const char *path, const char *name,
   return VAPI_OK;
 }
 
+/*
+ * Newly allocated slots must read as VAPI_INVALID_MSG_ID for unknown
+ * vl_msg_ids; realloc() leaves garbage in them.
+ */
+static vapi_error_e
+vapi_grow_vl_msg_id_table (vapi_ctx_t ctx, u16 vl_msg_id)
+{
+  size_t first_new;
+  vapi_msg_id_t *tmp;
+
+  if (ctx->vl_msg_id_to_vapi_msg_t && vl_msg_id <= ctx->vl_msg_id_max)
+    {
+      return VAPI_OK;
+    }
+
+  first_new = ctx->vl_msg_id_to_vapi_msg_t ? ctx->vl_msg_id_max + 1 : 0;
+  tmp = realloc (ctx->vl_msg_id_to_vapi_msg_t,
+		 sizeof (*ctx->vl_msg_id_to_vapi_msg_t) * (vl_msg_id + 1));
+  if (!tmp)
+    {
+      return VAPI_ENOMEM;
+    }
+  clib_memset (tmp + first_new, ~0, (vl_msg_id + 1 - first_new) * sizeof (*tmp));
+  ctx->vl_msg_id_to_vapi_msg_t = tmp;
+  ctx->vl_msg_id_max = vl_msg_id;
+  return VAPI_OK;
+}
+
 vapi_error_e
 vapi_connect_ex (vapi_ctx_t ctx, const char *name, const char *path, int max_outstanding_requests,
 		 int response_queue_size, vapi_mode_e mode, bool handle_keepalives,
@@ -1062,18 +1090,10 @@ vapi_connect_ex (vapi_ctx_t ctx, const char *name, const char *path, int max_out
 	      rv = VAPI_EINVAL;
 	      goto fail;
 	    }
-	  if (id > ctx->vl_msg_id_max)
+	  rv = vapi_grow_vl_msg_id_table (ctx, id);
+	  if (VAPI_OK != rv)
 	    {
-	      vapi_msg_id_t *tmp =
-		realloc (ctx->vl_msg_id_to_vapi_msg_t,
-			 sizeof (*ctx->vl_msg_id_to_vapi_msg_t) * (id + 1));
-	      if (!tmp)
-		{
-		  rv = VAPI_ENOMEM;
-		  goto fail;
-		}
-	      ctx->vl_msg_id_to_vapi_msg_t = tmp;
-	      ctx->vl_msg_id_max = id;
+	      goto fail;
 	    }
 	  ctx->vl_msg_id_to_vapi_msg_t[id] = m->id;
 	  ctx->vapi_msg_id_t_to_vl_msg_id[m->id] = id;
@@ -1179,18 +1199,10 @@ vapi_connect_from_vpp (vapi_ctx_t ctx, const char *name,
 	      rv = VAPI_EINVAL;
 	      goto fail;
 	    }
-	  if (id > ctx->vl_msg_id_max)
+	  rv = vapi_grow_vl_msg_id_table (ctx, id);
+	  if (VAPI_OK != rv)
 	    {
-	      vapi_msg_id_t *tmp =
-		realloc (ctx->vl_msg_id_to_vapi_msg_t,
-			 sizeof (*ctx->vl_msg_id_to_vapi_msg_t) * (id + 1));
-	      if (!tmp)
-		{
-		  rv = VAPI_ENOMEM;
-		  goto fail;
-		}
-	      ctx->vl_msg_id_to_vapi_msg_t = tmp;
-	      ctx->vl_msg_id_max = id;
+	      goto fail;
 	    }
 	  ctx->vl_msg_id_to_vapi_msg_t[id] = m->id;
 	  ctx->vapi_msg_id_t_to_vl_msg_id[m->id] = id;
