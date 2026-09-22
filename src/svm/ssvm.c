@@ -274,6 +274,14 @@ ssvm_server_init_memfd (ssvm_private_t * memfd)
   sh->heap = clib_mem_create_heap (((u8 *) sh) + page_size,
 				   memfd->ssvm_size - page_size,
 				   1 /* locked */ , "ssvm server memfd");
+  if (sh->heap == 0)
+    {
+      clib_unix_warning ("heap alloc");
+      clib_mem_vm_unmap (memfd->sh);
+      close (memfd->fd);
+      memfd->fd = -1;
+      return SSVM_API_ERROR_CREATE_FAILURE;
+    }
   oldheap = ssvm_push_heap (sh);
   sh->name = format (0, "%s", memfd->name, 0);
   ssvm_pop_heap (oldheap);
@@ -389,7 +397,8 @@ ssvm_server_init_private (ssvm_private_t * ssvm)
   if (heap == 0)
     {
       clib_unix_warning ("heap alloc");
-      return -1;
+      clib_mem_vm_unmap (sh);
+      return SSVM_API_ERROR_CREATE_FAILURE;
     }
 
   rnd_size = clib_mem_get_heap_free_space (heap);
