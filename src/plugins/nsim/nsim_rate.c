@@ -35,27 +35,46 @@ format_dwell_secs (u8 *s, va_list *args)
   return format (s, "%.0f ms", d * 1e3);
 }
 
+static u8 *
+format_nsim_rate (u8 *s, nsim_rate_model_t *m, u32 packet_size, u8 show_state)
+{
+  switch (m->type)
+    {
+    case NSIM_RATE_MARKOV:
+      s = format (s, "markov (good/bad): good %U for ~%U, bad %U for ~%U", format_rate_bps,
+		  m->good_ser, packet_size, format_dwell_secs, m->good_dwell, format_rate_bps,
+		  m->bad_ser, packet_size, format_dwell_secs, m->bad_dwell);
+      break;
+    case NSIM_RATE_CYCLE:
+      s = format (s, "cycle: good %U for %U, bad %U for %U", format_rate_bps, m->good_ser,
+		  packet_size, format_dwell_secs, m->good_dwell, format_rate_bps, m->bad_ser,
+		  packet_size, format_dwell_secs, m->bad_dwell);
+      break;
+    default:
+      return format (s, "none");
+    }
+
+  if (show_state)
+    s = format (s, " (currently %s, %llu transitions)", m->state ? "bad" : "good", m->transitions);
+  return s;
+}
+
 u8 *
 format_nsim_rate_model (u8 *s, va_list *args)
 {
   nsim_rate_model_t *m = va_arg (*args, nsim_rate_model_t *);
   u32 packet_size = va_arg (*args, u32);
 
-  switch (m->type)
-    {
-    case NSIM_RATE_MARKOV:
-      s = format (s,
-		  "markov (good/bad): good %U for ~%U, bad %U for ~%U "
-		  "(currently %s)",
-		  format_rate_bps, m->good_ser, packet_size, format_dwell_secs,
-		  m->markov.good_dwell, format_rate_bps, m->bad_ser, packet_size, format_dwell_secs,
-		  m->markov.bad_dwell, m->markov.state ? "bad" : "good");
-      break;
-    default:
-      s = format (s, "none");
-      break;
-    }
-  return s;
+  return format_nsim_rate (s, m, packet_size, 1);
+}
+
+u8 *
+format_nsim_rate_config (u8 *s, va_list *args)
+{
+  nsim_rate_model_t *m = va_arg (*args, nsim_rate_model_t *);
+  u32 packet_size = va_arg (*args, u32);
+
+  return format_nsim_rate (s, m, packet_size, 0);
 }
 
 void
@@ -75,8 +94,20 @@ nsim_rate_model_markov (nsim_rate_model_t *m, f64 good_ser, f64 bad_ser, f64 goo
   m->type = NSIM_RATE_MARKOV;
   m->good_ser = good_ser;
   m->bad_ser = bad_ser;
-  m->markov.good_dwell = good_dwell;
-  m->markov.bad_dwell = bad_dwell;
-  m->markov.state = 0; /* start in the good state */
-  m->markov.next_transition = 0.0;
+  m->good_dwell = good_dwell;
+  m->bad_dwell = bad_dwell;
+}
+
+void
+nsim_rate_model_cycle (nsim_rate_model_t *m, f64 good_ser, f64 bad_ser, f64 good_dwell,
+		       f64 bad_dwell)
+{
+  nsim_rate_model_reset (m);
+  if (bad_dwell <= 0.0 || good_dwell <= 0.0)
+    return;
+  m->type = NSIM_RATE_CYCLE;
+  m->good_ser = good_ser;
+  m->bad_ser = bad_ser;
+  m->good_dwell = good_dwell;
+  m->bad_dwell = bad_dwell;
 }

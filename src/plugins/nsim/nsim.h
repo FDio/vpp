@@ -16,6 +16,7 @@
 #include <vppinfra/error.h>
 
 #define NSIM_MAX_TX_BURST 32	/**< max packets in a tx burst */
+#define NSIM_MAX_BATCH_GAPS 8
 
 typedef struct
 {
@@ -24,7 +25,6 @@ typedef struct
   u32 tx_sw_if_index;
   u32 output_next_index;
   u32 buffer_index;
-  u32 pad;			/* pad to 32-bytes */
 } nsim_wheel_entry_t;
 
 typedef struct
@@ -75,6 +75,44 @@ typedef enum nsm_action
 #include <nsim/nsim_loss.h>
 /* Time-varying bottleneck-rate models (only used by the queued model). */
 #include <nsim/nsim_rate.h>
+typedef struct
+{
+  f64 interval;
+  f64 probability;
+} nsim_batch_gap_t;
+
+typedef struct
+{
+  f64 next_boundary;
+  f64 max_gap;
+  u64 delayed_packets;
+  u64 batches;
+  u64 extended_batches;
+  u32 current_batch_size;
+  u32 max_batch_size;
+} nsim_batch_state_t;
+
+typedef struct
+{
+  nsim_wheel_t *wheel;
+  nsim_wheel_t *reorder_wheel;
+
+  /* Model configuration is copied per worker because the loss and rate
+   * models also contain live state. Keep independent random streams so
+   * enabling one impairment cannot perturb another model's sequence. */
+  nsim_loss_model_t loss;
+  nsim_rate_model_t rate;
+  u32 loss_seed;
+  u32 reorder_seed;
+  u32 rate_seed;
+  u32 batch_seed;
+  nsim_batch_state_t batch;
+  nsim_batch_state_t reorder_batch;
+  u64 packets;
+  u64 drops;
+  u64 queue_drops;
+  u64 reordered;
+} nsim_worker_t;
 
 typedef struct
 {
@@ -91,20 +129,20 @@ typedef struct
   /* N interfaces, using the output feature */
   u32 *output_next_index_by_sw_if_index;
 
-  /* Random seed for loss-rate simulation */
+  /* Base seed used to derive independent per-worker model streams. */
   u32 seed;
 
-  /* Per-thread scheduler wheels */
-  nsim_wheel_t **wheel_by_thread;
-  /* Per-thread side wheels for late-reordered packets if reorder_fraction > 0 */
-  nsim_wheel_t **reorder_wheel_by_thread;
+  /* Per-thread scheduler and mutable model state. A configured bandwidth and
+   * buffer apply independently to each worker; aggregate shared-link shaping
+   * is not modeled. */
+  nsim_worker_t *workers;
 
   /* Config parameters */
   f64 delay;
   f64 bandwidth;
-  /* Active packet-loss model (uniform/burst/one-shot/targeted). See
-   * nsim_loss.h. A single model is active at a time. */
-  nsim_loss_model_t loss;
+  /* Immutable model templates copied into each worker on configuration. Live
+   * counters and transition state exist only in nsim_worker_t. */
+  nsim_loss_model_t loss_config;
   /* Reorder is an impairment orthogonal to the loss model; it composes with any
    * of them. Fraction of packets delayed out of order. */
   f64 reorder_fraction;
@@ -114,15 +152,26 @@ typedef struct
    * rate-limited server with a FIFO buffer of this depth (queued/bufferbloat
    * model) instead of the default fixed-delay line. */
   f64 buffer_time;
+  /* Optional release batching after serialization and propagation delay. */
+  f64 batch_interval;
+  /* Maximum packets released at one batch boundary. Zero is unlimited. */
+  u32 batch_packets;
+  /* Optional weighted alternatives to batch_interval. The unused probability
+   * mass selects batch_interval. */
+  nsim_batch_gap_t batch_gaps[NSIM_MAX_BATCH_GAPS];
+  f64 batch_max_gap;
+  u8 n_batch_gaps;
   /* Per-packet serialization time at the bottleneck (packet_size/bandwidth),
    * cached for the datapath. Only used when buffer_time > 0. */
   f64 serialization_time;
-  /* Optional time-varying bottleneck rate (queued model only). When active it
-   * modulates serialization_time per departure; type NONE => constant rate. */
-  nsim_rate_model_t rate;
+  /* Optional configured time-varying bottleneck rate (queued model only). */
+  nsim_rate_model_t rate_config;
   u32 packet_size;
   u32 wheel_slots_per_wrk;
   u32 poll_main_thread;
+
+  u32 n_output_features;
+  u8 cross_connect_enabled;
 
   u64 mmap_size;
 

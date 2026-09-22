@@ -38,6 +38,7 @@ typedef enum nsim_rate_type_
 {
   NSIM_RATE_NONE = 0,
   NSIM_RATE_MARKOV, /**< two-state good/bad correlated rate variation */
+  NSIM_RATE_CYCLE,  /**< deterministic two-state good/bad cycle */
   NSIM_RATE_N_TYPES,
 } nsim_rate_type_t;
 
@@ -51,19 +52,14 @@ typedef struct nsim_rate_model_
   f64 good_ser;
   f64 bad_ser;
 
-  union
-  {
-    /* Two-state Markov: exponential dwell in each state with the given means.
-     * `state` is live (0 good / 1 bad); `next_transition` is the wall-clock time
-     * of the next flip (0 => not yet initialized). */
-    struct
-    {
-      f64 good_dwell; /**< mean seconds at full rate before a stall */
-      f64 bad_dwell;  /**< mean seconds of a stall */
-      f64 next_transition;
-      u8 state;
-    } markov;
-  };
+  /* Dwell times are exact for a deterministic cycle and means for Markov.
+   * The remaining fields are live per-worker state. A transition time of zero
+   * means the model has not seen its first packet. */
+  f64 good_dwell;
+  f64 bad_dwell;
+  f64 next_transition;
+  u64 transitions;
+  u8 state;
 } nsim_rate_model_t;
 
 /* Sample an exponential dwell with the given mean (seconds). `random_f64`
@@ -77,32 +73,71 @@ nsim_rate_dwell (u32 *seed, f64 mean)
   return -mean * log (u);
 }
 
-/* Effective per-packet serialization time for the next departure, advancing the
- * rate-model state to `now`. Only call when m->type != NSIM_RATE_NONE. */
 static_always_inline f64
-nsim_rate_serialization_time (nsim_rate_model_t *m, u32 *seed, f64 now)
+nsim_rate_state_dwell (nsim_rate_model_t *m, u32 *seed)
 {
-  if (PREDICT_FALSE (m->markov.next_transition == 0.0))
-    m->markov.next_transition = now + nsim_rate_dwell (seed, m->markov.good_dwell);
+  f64 dwell = m->state ? m->bad_dwell : m->good_dwell;
 
-  /* Lazy single flip: at most one state change per packet. Between packets the
-   * gap is microseconds in a bulk transfer, so a state spans many packets and
-   * transitions land at the right cadence; after a long idle we simply resync on
-   * the next packet (rate is irrelevant while nothing is queued). */
-  if (now >= m->markov.next_transition)
+  return m->type == NSIM_RATE_MARKOV ? nsim_rate_dwell (seed, dwell) : dwell;
+}
+
+static_always_inline void
+nsim_rate_advance (nsim_rate_model_t *m, u32 *seed)
+{
+  m->state ^= 1;
+  m->next_transition += nsim_rate_state_dwell (m, seed);
+  m->transitions++;
+}
+
+/* Return the departure time of a packet whose service starts at
+ * `service_start`. If the packet straddles a rate transition, serialize the
+ * corresponding fraction of its bits at each rate. */
+static_always_inline f64
+nsim_rate_departure_time_slow (nsim_rate_model_t *m, u32 *seed, f64 service_start)
+{
+  f64 remaining = 1.0, now = service_start;
+
+  if (PREDICT_FALSE (m->next_transition == 0.0))
+    m->next_transition = now + nsim_rate_state_dwell (m, seed);
+
+  while (PREDICT_FALSE (now >= m->next_transition))
+    nsim_rate_advance (m, seed);
+
+  while (1)
     {
-      m->markov.state ^= 1;
-      m->markov.next_transition =
-	now + nsim_rate_dwell (seed, m->markov.state ? m->markov.bad_dwell : m->markov.good_dwell);
-    }
+      f64 serialization = m->state ? m->bad_ser : m->good_ser;
+      f64 departure = now + remaining * serialization;
 
-  return m->markov.state ? m->bad_ser : m->good_ser;
+      if (PREDICT_TRUE (departure <= m->next_transition))
+	return departure;
+
+      remaining = clib_max (remaining - (m->next_transition - now) / serialization, 0.0);
+      now = m->next_transition;
+      nsim_rate_advance (m, seed);
+    }
+}
+
+static_always_inline f64
+nsim_rate_departure_time (nsim_rate_model_t *m, u32 *seed, f64 service_start)
+{
+  f64 serialization = m->state ? m->bad_ser : m->good_ser;
+  f64 departure = service_start + serialization;
+
+  /* A continuously busy link normally takes this one-comparison path. The
+   * slow path initializes or catches up state and integrates a straddling
+   * packet across one or more transitions. */
+  if (PREDICT_TRUE (departure <= m->next_transition))
+    return departure;
+  return nsim_rate_departure_time_slow (m, seed, service_start);
 }
 
 /* Control-plane helpers (nsim_rate.c). */
 format_function_t format_nsim_rate_model;
+format_function_t format_nsim_rate_config;
 void nsim_rate_model_reset (nsim_rate_model_t *m);
 void nsim_rate_model_markov (nsim_rate_model_t *m, f64 good_ser, f64 bad_ser, f64 good_dwell,
 			     f64 bad_dwell);
+void nsim_rate_model_cycle (nsim_rate_model_t *m, f64 good_ser, f64 bad_ser, f64 good_dwell,
+			    f64 bad_dwell);
 
 #endif /* __included_nsim_rate_h__ */
