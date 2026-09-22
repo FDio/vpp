@@ -246,6 +246,20 @@ public:
   }
 
   /**
+   * @brief get the underlying vapi context
+   *
+   * @note use this to call C API functions, e.g. vapi_stop_rx_thread (), on
+   * this connection
+   *
+   * @return vapi context
+   */
+  vapi_ctx_t
+  get_ctx ()
+  {
+    return vapi_ctx;
+  }
+
+  /**
    * @brief wait for responses from vpp and assign them to appropriate objects
    *
    * @param limit stop dispatch after the limit object received it's response
@@ -267,6 +281,15 @@ public:
           {
             return rv;
           }
+	u16 vpp_id = be16toh (*static_cast<u16 *> (shm_data));
+	if (VAPI_INVALID_MSG_ID == vapi_lookup_vapi_msg_id_t (vapi_ctx, vpp_id))
+	  {
+	    VAPI_ERR ("Unknown msg ID received, id `%u' marked as not supported",
+		      (unsigned) vpp_id);
+	    /* not yet tracked by on_shm_data_alloc (), so no msg_free () */
+	    vapi_msg_free (vapi_ctx, shm_data);
+	    return VAPI_EINVAL;
+	  }
 #if VAPI_CPP_DEBUG_LEAKS
         on_shm_data_alloc (shm_data);
 #endif

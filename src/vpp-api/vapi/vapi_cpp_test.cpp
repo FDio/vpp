@@ -390,6 +390,22 @@ START_TEST (test_unsupported)
 
 END_TEST;
 
+START_TEST (test_unknown_msg)
+{
+  printf ("--- Unknown message ids ---\n");
+  if (use_uds)
+    {
+      /* vapi_stop_rx_thread () only works with the shared memory queue */
+      return;
+    }
+  /* rx_thread_exit has no VAPI type, so no client can register its id */
+  vapi_stop_rx_thread (con.get_ctx ());
+  vapi_error_e rv = con.dispatch (nullptr, 1);
+  ck_assert_int_eq (VAPI_EINVAL, rv);
+}
+
+END_TEST;
+
 START_TEST (test_pmtu)
 {
   printf ("--- Set ip_path_mtu to test stream rpc ---\n");
@@ -456,6 +472,7 @@ Suite *test_suite (void)
   tcase_add_test (tc_cpp_api, test_loopbacks_1);
   tcase_add_test (tc_cpp_api, test_loopbacks_2);
   tcase_add_test (tc_cpp_api, test_unsupported);
+  tcase_add_test (tc_cpp_api, test_unknown_msg);
   tcase_add_test (tc_cpp_api, test_pmtu);
   suite_add_tcase (s, tc_cpp_api);
 
