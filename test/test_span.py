@@ -15,6 +15,7 @@ from vpp_gre_interface import VppGreInterface
 from vpp_vxlan_tunnel import VppVxlanTunnel
 from collections import namedtuple
 from vpp_papi import VppEnum
+from vpp_papi_exceptions import UnexpectedApiReturnValueError
 from config import config
 
 Tag = namedtuple("Tag", ["dot1", "vlan"])
@@ -207,6 +208,24 @@ class TestSpan(VppTestCase):
         self.xconnect(self.pg0.sw_if_index, self.pg1.sw_if_index, is_add=0)
 
         self.verify_capture(pg1_pkts, pg2_pkts)
+
+    def test_span_api_invalid_index(self):
+        """SPAN API rejects an invalid sw_if_index from/to"""
+
+        # larger than any interface, and deliberately not the ~0 sentinel
+        invalid_sw_if_index = 0xFFFFFFFE
+
+        with self.assertRaises(UnexpectedApiReturnValueError) as e:
+            self.vapi.sw_interface_span_enable_disable(
+                invalid_sw_if_index, self.pg2.sw_if_index
+            )
+        self.assertEqual(e.exception.retval, -2)  # VNET_API_ERROR_INVALID_SW_IF_INDEX
+
+        with self.assertRaises(UnexpectedApiReturnValueError) as e:
+            self.vapi.sw_interface_span_enable_disable(
+                self.pg0.sw_if_index, invalid_sw_if_index
+            )
+        self.assertEqual(e.exception.retval, -2)
 
     def test_span_l2_rx(self):
         """SPAN l2 rx mirror"""

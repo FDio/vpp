@@ -25,14 +25,23 @@ static void
   (vl_api_sw_interface_span_enable_disable_t * mp)
 {
   vl_api_sw_interface_span_enable_disable_reply_t *rmp;
-  int rv;
+  int rv = 0;
 
   vlib_main_t *vm = vlib_get_main ();
+
+  if (!vnet_sw_if_index_is_api_valid (ntohl (mp->sw_if_index_from)) ||
+      (ntohl (mp->sw_if_index_to) != ~0 &&
+       !vnet_sw_if_index_is_api_valid (ntohl (mp->sw_if_index_to))))
+    {
+      rv = VNET_API_ERROR_INVALID_SW_IF_INDEX;
+      goto bad_sw_if_index;
+    }
 
   rv = span_add_delete_entry (vm, ntohl (mp->sw_if_index_from),
 			      ntohl (mp->sw_if_index_to), ntohl (mp->state),
 			      mp->is_l2 ? SPAN_FEAT_L2 : SPAN_FEAT_DEVICE);
 
+  BAD_SW_IF_INDEX_LABEL;
   REPLY_MACRO (VL_API_SW_INTERFACE_SPAN_ENABLE_DISABLE_REPLY);
 }
 
