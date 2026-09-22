@@ -65,6 +65,48 @@ dpdk_set_mac_address (vnet_hw_interface_t * hi,
 
   error = rte_eth_dev_default_mac_addr_set (xd->port_id, (void *) address);
 
+  /*
+   * rte_eth_dev_default_mac_addr_set() refuses to set a default MAC that
+   * already exists in another entry of the port's MAC address list and
+   * returns -EEXIST ("New default address for port %u was already in the
+   * address list. Please remove it first.").
+   * The entry is either a secondary MAC configured through
+   * vnet_hw_interface_add_del_mac_address(), or one the PMD synced from
+   * the kernel at probe time (e.g. mlx5 after an unclean restart).
+   * Follow the API's own guidance: remove the duplicate entry first, then
+   * retry setting it as the default MAC. If the removal fails, report it
+   * explicitly instead of the generic -EEXIST.
+   */
+  if (error == -EEXIST)
+    {
+      int rv;
+
+      dpdk_log_info ("[%u] default mac address %U already in address list, "
+		     "removing it and retrying",
+		     xd->port_id, format_ethernet_address, address);
+
+      rv = rte_eth_dev_mac_addr_remove (xd->port_id, (void *) address);
+      if (rv)
+	return clib_error_return (0, "mac address EEXIST but remove failed: %U",
+				  format_dpdk_rte_err, rv);
+
+      error = rte_eth_dev_default_mac_addr_set (xd->port_id, (void *) address);
+      if (error == 0)
+	ethernet_interface_add_del_address (&ethernet_main, hi->hw_if_index, address,
+					    0 /* is_add */);
+      else
+	{
+	  rv = rte_eth_dev_mac_addr_add (xd->port_id, (void *) address, 0);
+	  if (rv)
+	    {
+	      dpdk_log_err ("[%u] failed to restore secondary mac address %U: %U", xd->port_id,
+			    format_ethernet_address, address, format_dpdk_rte_err, rv);
+	      ethernet_interface_add_del_address (&ethernet_main, hi->hw_if_index, address,
+						  0 /* is_add */);
+	    }
+	}
+    }
+
   if (error)
     {
       return clib_error_return (0, "mac address set failed: %U", format_dpdk_rte_err, error);
