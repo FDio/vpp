@@ -11,8 +11,8 @@
  *
  * A single loss model is active at a time, selected by nsim_loss_type_t. Models
  * fall in two families:
- *  - statistical: content-blind, decide via RNG / wall-clock (uniform, burst,
- *    one-shot). No packet inspection.
+ *  - statistical: content-blind, decide via RNG / wall-clock (uniform, burst).
+ *    No packet inspection.
  *  - stateful: content-aware, track flow/sequence state to drop a specific
  *    segment and its retransmits (targeted). Requires TCP inspection.
  *
@@ -22,6 +22,8 @@
  */
 
 #include <vppinfra/clib.h>
+#include <vppinfra/error.h>
+#include <vppinfra/format.h>
 #include <vppinfra/random.h>
 #include <vlib/buffer.h>
 #include <vnet/ethernet/ethernet.h>
@@ -33,7 +35,6 @@ typedef enum nsim_loss_type_
   NSIM_LOSS_NONE = 0,
   NSIM_LOSS_UNIFORM,	/**< statistical: independent per-packet drop prob */
   NSIM_LOSS_BURST,	/**< statistical: time-correlated burst loss */
-  NSIM_LOSS_ONCE,	/**< statistical: single timed drop window */
   NSIM_LOSS_TARGET_SEQ, /**< stateful: a segment + its retransmits */
   NSIM_LOSS_N_TYPES,
 } nsim_loss_type_t;
@@ -69,18 +70,6 @@ typedef struct nsim_loss_model_
       f64 until;
     } burst;
 
-    /* Statistical: `at` seconds after the first datapath packet, drop
-     * everything for `duration` seconds (once), then disable. `start` is stamped
-     * on the first packet; `done` latches; `count` tallies dropped packets. */
-    struct
-    {
-      f64 at;
-      f64 duration;
-      f64 start;
-      u8 done;
-      u32 count;
-    } once;
-
     /* Stateful: drop the data segment covering byte `offset` into the first
      * full-size (>= NSIM_LOSS_MIN_SEG) flow seen, plus its next `rxt`
      * retransmits, then disable. `isn`/`target` are learned once; `remaining`
@@ -96,6 +85,16 @@ typedef struct nsim_loss_model_
     } target_seq;
   };
 } nsim_loss_model_t;
+
+typedef struct
+{
+  f64 drop_fraction;
+  f64 burst_probability;
+  f64 burst_duration;
+  u32 target_offset;
+  u32 target_retransmits;
+  u8 target_set;
+} nsim_loss_spec_t;
 
 /* Parse an IPv4/TCP data segment on the output path. Returns 1 and fills seq
  * (host order) and seg_len (TCP payload bytes) for a TCP packet carrying data;
@@ -189,24 +188,6 @@ nsim_loss_apply (nsim_loss_model_t *m, u32 *seed, f64 now, vlib_buffer_t **b, u8
 	}
       break;
 
-    case NSIM_LOSS_ONCE:
-      if (!m->once.done)
-	{
-	  f64 elapsed;
-	  if (m->once.start == 0.0)
-	    m->once.start = now;
-	  elapsed = now - m->once.start;
-	  if (elapsed >= m->once.at && elapsed < m->once.at + m->once.duration)
-	    for (i = 0; i < n; i++)
-	      {
-		action[i] |= NSIM_ACTION_DROP;
-		m->once.count++;
-	      }
-	  else if (elapsed >= m->once.at + m->once.duration)
-	    m->once.done = 1;
-	}
-      break;
-
     case NSIM_LOSS_TARGET_SEQ:
       for (i = 0; i < n; i++)
 	if (nsim_loss_target_seq_match (m, b[i]))
@@ -219,9 +200,12 @@ nsim_loss_apply (nsim_loss_model_t *m, u32 *seed, f64 now, vlib_buffer_t **b, u8
 }
 
 format_function_t format_nsim_loss_model;
+format_function_t format_nsim_loss_config;
+unformat_function_t unformat_nsim_loss_spec;
+clib_error_t *nsim_loss_validate (const nsim_loss_spec_t *spec);
+void nsim_loss_configure (nsim_loss_model_t *m, const nsim_loss_spec_t *spec);
 void nsim_loss_model_uniform (nsim_loss_model_t *m, f64 fraction);
 void nsim_loss_model_burst (nsim_loss_model_t *m, f64 prob, f64 duration);
-void nsim_loss_model_once (nsim_loss_model_t *m, f64 at, f64 duration);
 void nsim_loss_model_target_seq (nsim_loss_model_t *m, u32 offset, u32 rxt);
 void nsim_loss_model_reset (nsim_loss_model_t *m);
 
