@@ -65,6 +65,21 @@ dpdk_set_mac_address (vnet_hw_interface_t * hi,
 
   error = rte_eth_dev_default_mac_addr_set (xd->port_id, (void *) address);
 
+  /*
+   * rte_eth_dev_default_mac_addr_set() refuses to set a
+   * default MAC that already exists in the port's MAC address list and
+   * returns -EEXIST ("New default address for port %u was already in the
+   * address list. Please remove it first.").
+   * Follow the API's own guidance: remove the duplicate entry first, then
+   * retry setting it as the default MAC.
+   */
+  if (error == -EEXIST)
+    {
+      int rem_rv = rte_eth_dev_mac_addr_remove (xd->port_id, (void *) address);
+      if (rem_rv == 0)
+	error = rte_eth_dev_default_mac_addr_set (xd->port_id, (void *) address);
+    }
+
   if (error)
     {
       return clib_error_return (0, "mac address set failed: %U", format_dpdk_rte_err, error);
