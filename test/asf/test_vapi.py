@@ -19,9 +19,16 @@ class VAPITestCase(VppAsfTestCase):
     def tearDownClass(cls):
         super(VAPITestCase, cls).tearDownClass()
 
+    # MALLOC_PERTURB_: poison fresh heap so uninitialized reads fail deterministically.
+    vapi_test_env = {"MALLOC_PERTURB_": "165"}
+
     def run_vapi_c(self, path, transport):
         executable = f"{config.vpp_build_dir}/vpp/bin/vapi_c_test"
-        worker = Worker([executable, "vapi client", path, transport], self.logger)
+        worker = Worker(
+            [executable, "vapi client", path, transport],
+            self.logger,
+            env=self.vapi_test_env,
+        )
         worker.start()
         timeout = 60
         worker.join(timeout)
@@ -51,7 +58,11 @@ class VAPITestCase(VppAsfTestCase):
     def run_vapi_cpp(self, path, transport):
         """run C++ VAPI tests"""
         executable = f"{config.vpp_build_dir}/vpp/bin/vapi_cpp_test"
-        worker = Worker([executable, "vapi client", path, transport], self.logger)
+        worker = Worker(
+            [executable, "vapi client", path, transport],
+            self.logger,
+            env=self.vapi_test_env,
+        )
         worker.start()
         timeout = 120
         worker.join(timeout)

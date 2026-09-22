@@ -11,6 +11,7 @@
 #include <check.h>
 #include <vppinfra/string.h>
 #include <vapi/vapi.h>
+#include <vapi/vapi_internal.h>
 #include <vapi/memclnt.api.vapi.h>
 #include <vapi/vlib.api.vapi.h>
 #include <vapi/vpe.api.vapi.h>
@@ -951,6 +952,52 @@ START_TEST (test_unsupported)
 
 END_TEST;
 
+/*
+ * Unregistered vl_msg_ids must map to VAPI_INVALID_MSG_ID. Deterministic
+ * only with MALLOC_PERTURB_ set, which test_vapi.py does.
+ */
+START_TEST (test_unknown_msg_ids)
+{
+  printf ("--- Unknown message ids ---\n");
+  const size_t count = vapi_get_message_count ();
+  u8 *known = NULL; /* indexed by vl_msg_id */
+  size_t n_unknown = 0;
+  vapi_msg_id_t id;
+  u16 vl_id;
+
+  for (id = 0; id < count; ++id)
+    {
+      vl_id = vapi_lookup_vl_msg_id (ctx, id);
+      if (UINT16_MAX == vl_id)
+	{
+	  /* message not available in this VPP, e.g. test_fake_msg */
+	  continue;
+	}
+      vec_validate_init_empty (known, vl_id, 0);
+      known[vl_id] = 1;
+      /* known messages must round-trip */
+      ck_assert_int_eq (id, vapi_lookup_vapi_msg_id_t (ctx, vl_id));
+    }
+
+  for (vl_id = 0; vl_id < vec_len (known); ++vl_id)
+    {
+      if (known[vl_id])
+	{
+	  continue;
+	}
+      ++n_unknown;
+      id = vapi_lookup_vapi_msg_id_t (ctx, vl_id);
+      ck_assert_msg (VAPI_INVALID_MSG_ID == id, "vl_msg_id %u -> %u, want VAPI_INVALID_MSG_ID",
+		     (unsigned) vl_id, (unsigned) id);
+    }
+  /* the test would be vacuous if this client knew every VPP message */
+  ck_assert (n_unknown > 0);
+
+  vec_free (known);
+}
+
+END_TEST;
+
 START_TEST (test_api_strings)
 {
   printf ("--- Invalid api strings ---\n");
@@ -1059,6 +1106,7 @@ test_suite (void)
   TCase *tc_unsupported = tcase_create ("Unsupported message");
   tcase_add_checked_fixture (tc_unsupported, setup_blocking, teardown);
   tcase_add_test (tc_unsupported, test_unsupported);
+  tcase_add_test (tc_unsupported, test_unknown_msg_ids);
   suite_add_tcase (s, tc_unsupported);
 
   TCase *tc_dynamic = tcase_create ("Dynamic message size");
