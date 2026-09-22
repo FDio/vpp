@@ -112,6 +112,9 @@ process_input (int sock_fd, unsigned char *rx_buf, int rx_buf_len,
     {
       if (rx_buf[i] == IAC)
 	{
+	  /* a truncated IAC negotiation needs 2 bytes past i; don't overrun */
+	  if (i + 2 >= rx_buf_len)
+	    break;
 	  if (rx_buf[i + 1] == SB)
 	    {
 	      char opt = rx_buf[i + 2];
