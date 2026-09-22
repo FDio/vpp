@@ -2320,6 +2320,38 @@ tcp_test_bbr (vlib_main_t *vm, unformat_input_t *input)
   bbr_advance_max_bw_filter (&bd);
   TCP_TEST (bd.bw_hi[0] == 1000.0, "bbr retains max bw across an empty filter window");
 
+  clib_memset (&bd, 0, sizeof (bd));
+  tc->snd_mss = 1000;
+  bd.bw_hi[0] = 40000000;
+  bd.bw_lo = BBR_BW_INFINITY;
+  bd.min_rtt = 0.02;
+  bd.extra_acked.s[0].v = 8000000;
+  TCP_TEST (bbr_ack_aggregation_cwnd (&bd) == 1200000, "bbr caps ack aggregation allowance by bdp");
+
+  bd.mode = BBR_PROBE_BW;
+  bd.probe_bw_phase = BBR_BW_CRUISE;
+  bd.flags = BBR_F_FULL_BW_REACHED | BBR_F_LOSS_ROUND_START;
+  bd.bw_hi[0] = 40000000;
+  bd.bw_hi[1] = 0;
+  bd.bw_lo = BBR_BW_INFINITY;
+  bd.bw_latest = 20000000;
+  bbr_minmax_reset (&bd.extra_acked, 0, 0);
+  clib_memset (&ac, 0, sizeof (ac));
+  bbr_adapt_to_bw_deficit (tc, &bd, &ac);
+  TCP_TEST (bd.bw_lo == BBR_BW_INFINITY, "bbr tolerates one low delivery round");
+  bbr_adapt_to_bw_deficit (tc, &bd, &ac);
+  TCP_TEST (bd.bw_lo == 20000000, "bbr adapts to a persistent delivery deficit");
+  bd.bw_latest = 10000000;
+  bbr_adapt_to_bw_deficit (tc, &bd, &ac);
+  TCP_TEST (bd.bw_lo == 20000000, "bbr bounds once per probe cycle");
+
+  bd.bw_lo = BBR_BW_INFINITY;
+  bd.bw_deficit_rounds = 1;
+  bd.extra_acked.s[0].v = 800001;
+  bbr_adapt_to_bw_deficit (tc, &bd, &ac);
+  TCP_TEST (bd.bw_lo == BBR_BW_INFINITY && bd.bw_deficit_rounds == 0,
+	    "bbr ignores delivery deficit with ambiguous ack feedback");
+
   /* VPP initializes CC before measuring the handshake RTT. Once that sample
    * arrives, replace BBR's nominal 1 ms rate with the real smoothed RTT. */
   clib_memset (tc, 0, sizeof (*tc));

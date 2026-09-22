@@ -42,6 +42,8 @@
 #define BBR_LOSS_THRESH		  0.02
 #define BBR_BETA		  0.7
 #define BBR_HEADROOM		  0.15
+#define BBR_BW_DEFICIT_THRESH	  0.75
+#define BBR_BW_DEFICIT_ROUNDS	  2
 
 #define BBR_MIN_PIPE_PKTS	   4
 #define BBR_MIN_RTT_FILTER_LEN	   10.0
@@ -51,6 +53,8 @@
 #define BBR_PROBE_WAIT_RAND	   1.0
 #define BBR_RENO_ROUNDS_MAX	   63
 #define BBR_EXTRA_ACKED_FILTER_LEN 10
+#define BBR_EXTRA_ACKED_MAX_INTERVAL 0.1
+#define BBR_EXTRA_ACKED_MAX_BDP_GAIN 1.5
 #define BBR_SEND_QUANTUM_INTERVAL  0.001
 #define BBR_SEND_QUANTUM_MAX	   (64 << 10)
 
@@ -233,7 +237,11 @@ typedef struct
   bbr_ack_phase_t ack_phase;
   bbr_undo_state_t undo_state;
   u8 full_bw_count;
-  u8 drain_rounds;
+  union
+  {
+    u8 drain_rounds;
+    u8 bw_deficit_rounds;
+  };
   u8 bw_probe_up_rounds;
   u8 loss_events;
   u8 rounds_since_probe_up;
@@ -461,6 +469,7 @@ bbr_reset_congestion_signals (bbr_data_t *bd)
   bd->flags &= ~(BBR_F_LOSS_IN_ROUND | BBR_F_LOSS_ROUND_HAD_LOSS | BBR_F_LOSS_EVENT_PENDING |
 		 BBR_F_RECOVERY_IN_ROUND);
   bd->loss_events = 0;
+  bd->bw_deficit_rounds = 0;
   bd->bw_latest = 0.0;
   bd->inflight_latest = 0;
 }
@@ -572,6 +581,37 @@ bbr_adapt_lower_bounds (tcp_connection_t *tc, bbr_data_t *bd)
   bd->inflight_lo = clib_max (bd->inflight_latest, (u32) (BBR_BETA * bd->inflight_lo));
 }
 
+/* Persistent low delivery can reveal a lossless capacity drop before the
+ * two-cycle bandwidth filter expires. Use the bound once per probe cycle;
+ * REFILL clears it. Aggregated feedback makes the signal ambiguous. */
+static inline void
+bbr_adapt_to_bw_deficit (tcp_connection_t *tc, bbr_data_t *bd, tcp_ack_ctx_t *rs)
+{
+  if (!bbr_has_flag (bd, BBR_F_LOSS_ROUND_START) || bd->mode != BBR_PROBE_BW ||
+      bbr_is_probing_bw (bd))
+    return;
+  if (bbr_has_flag (bd, BBR_F_LOSS_ROUND_HAD_LOSS) || (rs->flags & TCP_BTS_IS_APP_LIMITED) ||
+      bbr_minmax_get (&bd->extra_acked) > bbr_bdp_multiple (tc, bd, 1.0))
+    {
+      bd->bw_deficit_rounds = 0;
+      return;
+    }
+
+  if (bd->bw_latest >= BBR_BW_DEFICIT_THRESH * bbr_max_bw (bd))
+    {
+      bd->bw_deficit_rounds = 0;
+      return;
+    }
+  if (bd->bw_deficit_rounds >= BBR_BW_DEFICIT_ROUNDS)
+    return;
+
+  bd->bw_deficit_rounds++;
+  if (bd->bw_deficit_rounds < BBR_BW_DEFICIT_ROUNDS)
+    return;
+
+  bd->bw_lo = clib_min (bd->bw_lo, bd->bw_latest);
+}
+
 static inline u8
 bbr_is_inflight_too_high (tcp_ack_ctx_t *rs)
 {
@@ -656,11 +696,22 @@ bbr_cwnd_gain (const bbr_data_t *bd)
 }
 
 static inline u32
+bbr_ack_aggregation_cwnd (bbr_data_t *bd)
+{
+  f64 max_interval = BBR_EXTRA_ACKED_MAX_INTERVAL;
+
+  /* Bound reverse-path ACK compression by both elapsed time and model RTT. */
+  if (bd->min_rtt != BBR_BW_INFINITY)
+    max_interval = clib_min (max_interval, BBR_EXTRA_ACKED_MAX_BDP_GAIN * bd->min_rtt);
+  return clib_min (bbr_minmax_get (&bd->extra_acked), bbr_u32_bytes (bbr_bw (bd) * max_interval));
+}
+
+static inline u32
 bbr_max_inflight (tcp_connection_t *tc, bbr_data_t *bd)
 {
   u64 target = bbr_bdp_multiple (tc, bd, bbr_cwnd_gain (bd));
 
-  target += bbr_minmax_get (&bd->extra_acked);
+  target += bbr_ack_aggregation_cwnd (bd);
   return bbr_quantization_budget (tc, bd, clib_min (target, (u64) BBR_INFLIGHT_INFINITY));
 }
 
