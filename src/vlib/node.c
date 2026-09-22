@@ -499,6 +499,7 @@ vlib_register_node (vlib_main_t *vm, vlib_node_registration_t *r, char *fmt,
 	p = clib_mem_alloc_aligned (sizeof (p[0]), CLIB_CACHE_LINE_BYTES);
 	clib_memset (p, 0, sizeof (p[0]));
 	p->log2_n_stack_bytes = log2_n_stack_bytes;
+	p->stop_timer_handle = ~0;
 
 	p->stack = clib_mem_vm_map_stack (1ULL << log2_n_stack_bytes,
 					  CLIB_MEM_PAGE_SZ_DEFAULT,
