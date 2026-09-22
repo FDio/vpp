@@ -69,12 +69,16 @@ jobs:
           restore-keys: |
             apt-debian13-${{ runner.arch }}-
 
-      - name: Compute short SHA
+      - name: Compute short SHA and build date
         id: vars
         shell: bash
         run: |
           git config --global --add safe.directory "$PWD"
           echo "short_sha=$(git rev-parse --short=7 HEAD)" >> $GITHUB_OUTPUT
+          # The release body used github.event.head_commit.timestamp, which a
+          # workflow_dispatch run does not carry; the github context has no run
+          # start time either, so record one here.
+          echo "date=$(date -u '+%Y-%m-%dT%H:%M:%SZ')" >> $GITHUB_OUTPUT
 
       - name: Install VPP build dependencies
         run: |
@@ -107,6 +111,15 @@ jobs:
         run: |
           git config --global --add safe.directory "$PWD"
           git fetch --tags --force 2>/dev/null || true
+          # The version below counts the commits in the history, so it needs
+          # the whole history; the clone above is shallow.  Asking for the
+          # unshallow only when the history is short keeps a full repository
+          # from erroring out, and the warning keeps a failure here from
+          # quietly turning the count into a constant 1.
+          if [ "$(git rev-parse --is-shallow-repository)" = true ]; then
+            git fetch --unshallow --quiet ||
+              echo "::warning::full history unavailable, the commit count in the version is not reliable"
+          fi
           # Only a VPP release tag (vYY.MM...) should win over the synthesised
           # version.  A bare 'v*' also matches this workflow's own deb release
           # tags (vpp-trixie-<n>), which would leave .version unwritten and
@@ -126,14 +139,20 @@ jobs:
             # outrank digits) and apt would refuse it.  Extending the existing
             # "-release" revision keeps every new build strictly newer.
             #
-            # Use the commit timestamp rather than git rev-list --count:
-            # this job clones with --depth 1, where the count is always 1.
+            # The commit timestamp alone does not order two commits made in
+            # the same second: Debian then falls through to the hash, which
+            # carries no order, so the child can sort below its parent and apt
+            # keeps the older deb.  Append the commit count, which grows
+            # strictly along the parent chain.  Counting commits is why the
+            # fetch above has to unshallow the clone; at --depth 1 the count
+            # is 1 for every commit.
+            #
             # Keep the separator in front of the hash: src/scripts/version
             # turns it into "~g<sha>" in the package version.  Glued to the
             # timestamp the hash joins the same digit run, and Debian compares
             # digit runs by length before value, so a build whose hash starts
             # with a digit outranks every later build with a shorter run.
-            echo "0.0.0-release+$(git log -1 --format=%ct)-g$(git rev-parse --short=7 HEAD)" \
+            echo "0.0.0-release+$(git log -1 --format=%ct).$(git rev-list --count HEAD)-g$(git rev-parse --short=7 HEAD)" \
               > src/scripts/.version
           fi
           ccache -z
@@ -165,6 +184,6 @@ jobs:
           body: |
             VPP build from commit ${{ github.sha }}
             - Branch: ${{ github.ref_name }}
-            - Build date: ${{ github.event.head_commit.timestamp }}
+            - Build date: ${{ steps.vars.outputs.date }}
           draft: false
           prerelease: true
