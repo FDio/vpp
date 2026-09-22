@@ -905,7 +905,6 @@ vapi_sock_client_disconnect (vapi_ctx_t ctx)
 {
   vl_api_sockclnt_delete_reply_t *rp;
   u8 *msg = 0;
-  msgbuf_t *msgbuf;
   int rv;
   f64 deadline;
 
@@ -929,18 +928,15 @@ vapi_sock_client_disconnect (vapi_ctx_t ctx)
       if (vapi_sock_recv_internal (ctx, &msg, 0) != VAPI_OK)
 	continue;
 
-      msgbuf = (void *) msg;
-      rp = (void *) msgbuf->data;
+      rp = (void *) msg;
       /* drain the queue */
       if (ntohs (rp->_vl_msg_id) != VL_API_SOCKCLNT_DELETE_REPLY)
 	{
 	  clib_warning ("queue drain: %d", ntohs (rp->_vl_msg_id));
-	  msgbuf = (msgbuf_t *) ((u8 *) rp - offsetof (msgbuf_t, data));
-	  vl_msg_api_handler ((void *) rp, ntohl (msgbuf->data_len));
+	  vec_free (msg);
 	  continue;
 	}
-      msgbuf = (msgbuf_t *) ((u8 *) rp - offsetof (msgbuf_t, data));
-      vl_msg_api_handler ((void *) rp, ntohl (msgbuf->data_len));
+      vec_free (msg);
       break;
     }
 
