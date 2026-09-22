@@ -16,7 +16,9 @@
 #include <plugins/linux-cp/lcp_interface.h>
 #include <plugins/osi/osi.h>
 
-lcp_main_t lcp_main;
+lcp_main_t lcp_main = {
+  .default_ns_fd = -1,
+};
 
 u8 *
 lcp_get_default_ns (void)
@@ -56,9 +58,9 @@ lcp_set_default_ns (u8 *ns)
   if (!p || *p == 0)
     {
       lcpm->default_namespace = NULL;
-      if (lcpm->default_ns_fd > 0)
+      if (lcpm->default_ns_fd >= 0)
 	close (lcpm->default_ns_fd);
-      lcpm->default_ns_fd = 0;
+      lcpm->default_ns_fd = -1;
       return 0;
     }
 

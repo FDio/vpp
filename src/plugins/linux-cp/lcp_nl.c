@@ -939,7 +939,7 @@ lcp_nl_open_socket (void)
   nl_socket_disable_seq_check (nm->sk_route);
 
   dest_ns_fd = lcp_get_default_ns_fd ();
-  if (dest_ns_fd > 0)
+  if (dest_ns_fd >= 0)
     {
       curr_ns_fd = clib_netns_open (NULL /* self */);
       if (curr_ns_fd < 0)
@@ -1060,7 +1060,7 @@ lcp_nl_open_sync_socket (nl_sock_type_t sock_type)
     return -NLE_NOMEM;
 
   dest_ns_fd = lcp_get_default_ns_fd ();
-  if (dest_ns_fd > 0)
+  if (dest_ns_fd >= 0)
     {
       curr_ns_fd = clib_netns_open (NULL /* self */);
       if (curr_ns_fd < 0)
