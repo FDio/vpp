@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c3591db3_2d407910",
+        "filename": "src/plugins/dpdk/device/device.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 78,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-09-23T07:26:42Z",
+      "side": 1,
+      "message": "Could we also remove `address` from VPP\u0027s secondary-MAC state once the retry succeeds? `vnet_hw_interface_add_del_mac_address()` records it in `ethernet_interface_t::secondary_addrs`, but this direct DPDK removal bypasses that bookkeeping. After promoting a secondary MAC to default, VPP retains it as a secondary address, and a later delete fails with DPDK `-EADDRINUSE` because it is now the default MAC. Please keep the VPP and DPDK lists in sync, including rollback if the retry fails, and add regression coverage for this sequence.",
+      "revId": "4c4cb6c4b93cde9eafa68056479a2eae655debdf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
