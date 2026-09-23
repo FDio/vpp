@@ -2848,6 +2848,8 @@ set_ip6_flow_hash_command_fn (vlib_main_t * vm,
 
 /*?
  * Configure the set of IPv6 fields used by the flow hash.
+ * The optional icmpid flag uses the Echo identifier as both port inputs.
+ * It is disabled by default and requires sport and/or dport to be enabled.
  *
  * @cliexpar
  * @parblock
@@ -2924,7 +2926,7 @@ set_ip6_flow_hash_command_fn (vlib_main_t * vm,
 VLIB_CLI_COMMAND (set_ip6_flow_hash_command, static) = {
   .path = "set ip6 flow-hash",
   .short_help = "set ip6 flow-hash table <table-id> [src] [dst] [sport] "
-		"[dport] [proto] [reverse] [flowlabel]",
+		"[dport] [proto] [reverse] [flowlabel] [icmpid]",
   .function = set_ip6_flow_hash_command_fn,
 };
 

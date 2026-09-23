@@ -163,6 +163,12 @@ typedef CLIB_PACKED (struct
     u16 checksum;
 }) icmp46_header_t;
 
+typedef CLIB_PACKED (struct {
+  icmp46_header_t icmp;
+  u16 id;
+  u16 sequence;
+}) icmp46_echo_header_t;
+
 /* ip6 neighbor discovery */
 #define foreach_icmp6_neighbor_discovery_option	\
   _ (1, source_link_layer_address)		\
