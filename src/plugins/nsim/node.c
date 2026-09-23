@@ -168,11 +168,12 @@ nsim_buffer_fwd_lookup (nsim_main_t *nsm, vlib_buffer_t *b, u32 *next, u8 is_cro
 
 /* Enqueue a buffer onto a wheel with the given departure time, filling the
  * entry's forwarding info. Caller guarantees space. */
-always_inline void
-nsim_wheel_enqueue (nsim_main_t *nsm, nsim_worker_t *nsw, nsim_wheel_t *wp, vlib_buffer_t *b,
-		    u32 bi, f64 tx_time, u8 is_cross_connect, int is_reordering)
+always_inline u32
+nsim_wheel_enqueue (nsim_worker_t *nsw, nsim_wheel_t *wp, vlib_buffer_t *b, u32 bi, f64 tx_time,
+		    u32 output_next_index, int is_reordering)
 {
-  nsim_wheel_entry_t *ep = wp->entries + wp->tail;
+  u32 wheel_index = wp->tail;
+  nsim_wheel_entry_t *ep = wp->entries + wheel_index;
   wp->tail++;
   if (wp->tail == wp->wheel_size)
     wp->tail = 0;
@@ -183,19 +184,52 @@ nsim_wheel_enqueue (nsim_main_t *nsm, nsim_worker_t *nsw, nsim_wheel_t *wp, vlib
   ep->tx_time = tx_time;
   ep->rx_sw_if_index = vnet_buffer (b)->sw_if_index[VLIB_RX];
   ep->tx_sw_if_index = vnet_buffer (b)->sw_if_index[VLIB_TX];
-  nsim_buffer_fwd_lookup (nsm, b, &ep->output_next_index, is_cross_connect);
+  ep->output_next_index = output_next_index;
   ep->buffer_index = bi;
+  return wheel_index;
 }
 
 always_inline f64
-nsim_schedule_buffer (nsim_main_t *nsm, nsim_worker_t *nsw, nsim_wheel_t *wp, vlib_buffer_t *b,
-		      u32 bi, f64 tx_time, u8 is_cross_connect, int is_batching, int is_reordering)
+nsim_schedule_buffer (vlib_main_t *vm, nsim_main_t *nsm, nsim_worker_t *nsw, nsim_wheel_t *wp,
+		      vlib_buffer_t *b, u32 bi, f64 tx_time, u8 is_cross_connect, int is_batching,
+		      int is_reordering)
 {
-  if (is_batching)
-    tx_time = nsim_batch_release_time (&nsm->model.batch, &nsw->model.batch, &nsw->model.batch_seed,
-				       tx_time);
+  nsim_ack_action_t ack_action = NSIM_ACK_EMIT_UNTRACKED;
+  nsim_ack_parse_result_t ack_parse = NSIM_ACK_PARSE_NONE;
+  nsim_ack_info_t ack_info;
+  f64 arrival_time = tx_time;
+  u32 wheel_index, output_next_index;
 
-  nsim_wheel_enqueue (nsm, nsw, wp, b, bi, tx_time, is_cross_connect, is_reordering);
+  /* Cross-connect lookup also initializes the buffer's TX interface. Do this
+   * before ACK replacement so both emitted and replacement buffers receive
+   * the same forwarding metadata. */
+  nsim_buffer_fwd_lookup (nsm, b, &output_next_index, is_cross_connect);
+
+  if (is_batching)
+    {
+      tx_time = nsim_batch_prepare_release (&nsm->model.batch, &nsw->model.batch,
+					    &nsw->model.batch_seed, tx_time);
+      if (PREDICT_FALSE (nsm->model.batch.coalesce_acks))
+	ack_parse = nsim_ack_parse (b, vnet_buffer (b)->sw_if_index[VLIB_TX], &ack_info);
+      if (ack_parse == NSIM_ACK_PARSE_BARRIER)
+	nsim_ack_barrier (nsw->ack, &ack_info);
+      else if (ack_parse == NSIM_ACK_PARSE_CANDIDATE)
+	{
+	  ack_action = nsim_ack_prepare (vm, nsw->ack, wp, &ack_info, bi, tx_time);
+	  if (ack_action == NSIM_ACK_REPLACED)
+	    {
+	      if (arrival_time < tx_time)
+		nsw->model.batch.delayed_packets++;
+	      return tx_time;
+	    }
+	}
+      tx_time = nsim_batch_commit_release (&nsm->model.batch, &nsw->model.batch,
+					   &nsw->model.batch_seed, arrival_time);
+    }
+
+  wheel_index = nsim_wheel_enqueue (nsw, wp, b, bi, tx_time, output_next_index, is_reordering);
+  if (ack_action == NSIM_ACK_EMIT_TRACKED)
+    nsim_ack_track (nsw->ack, &ack_info, wheel_index);
   return tx_time;
 }
 
@@ -239,14 +273,14 @@ nsim_dispatch_buffer (vlib_main_t *vm, vlib_node_runtime_t *node, nsim_main_t *n
 
 	  tx_time = clib_max (tx_time + extra, rwp->last_tx_time);
 	  rwp->last_tx_time = tx_time;
-	  tx_time = nsim_schedule_buffer (nsm, nsw, rwp, b, bi, tx_time, is_cross_connect,
+	  tx_time = nsim_schedule_buffer (vm, nsm, nsw, rwp, b, bi, tx_time, is_cross_connect,
 					  is_batching, is_reordering);
 	  ctx->n_reordered += 1;
 	  goto trace;
 	}
 
-      tx_time = nsim_schedule_buffer (nsm, nsw, wp, b, bi, tx_time, is_cross_connect, is_batching,
-				      is_reordering);
+      tx_time = nsim_schedule_buffer (vm, nsm, nsw, wp, b, bi, tx_time, is_cross_connect,
+				      is_batching, is_reordering);
       ctx->n_buffered += 1;
     }
   else

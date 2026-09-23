@@ -6,7 +6,8 @@ import re
 import time
 
 from scapy.layers.l2 import Ether
-from scapy.layers.inet import IP, UDP
+from scapy.layers.inet import IP, TCP, UDP
+from scapy.layers.inet6 import IPv6
 from scapy.packet import Raw
 from random import randint
 from util import ppp
@@ -337,6 +338,63 @@ class TestNsimCli(VppTestCase):
         self.assertRegex(
             reply, r"batch gap samples: 15.0 ms 2 base 0 mean 15.0 ms"
         )
+
+    def test_ack_coalescing(self):
+        """ACK coalescing retains the newest safe cumulative ACK per flow"""
+        self.vapi.cli(
+            "set nsim delay 1 ms bandwidth 8 mbps buffer 20 ms "
+            "packet-size 64 ack-coalesce-interval 5 ms seed 14"
+        )
+        self.assertIn("worker wheel size: 407", self.vapi.cli("show nsim verbose"))
+        self.enable_cross_connect()
+
+        def exchange(packets, expected):
+            self.pg0.add_stream(packets)
+            self.pg1.enable_capture()
+            self.pg_start()
+            return self.pg1.get_capture(expected, timeout=1)
+
+        def ack4(number, flags="A", window=4096, payload=None):
+            packet = (
+                Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac)
+                / IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4)
+                / TCP(sport=12345, dport=443, seq=1, ack=number, flags=flags,
+                      window=window)
+            )
+            return packet / Raw(payload) if payload is not None else packet
+
+        capture = exchange([ack4(number) for number in range(100, 600, 100)], 1)
+        self.assertEqual(capture[0][TCP].ack, 500)
+
+        # ECN transitions, payload, and non-advancing duplicate ACKs are
+        # barriers: retain them and do not move a later ACK ahead of them.
+        capture = exchange(
+            [ack4(600), ack4(700, flags="AE"), ack4(800, payload=b"x")], 3
+        )
+        self.assertEqual([packet[TCP].ack for packet in capture], [600, 700, 800])
+        capture = exchange([ack4(900), ack4(900), ack4(1000)], 3)
+        self.assertEqual([packet[TCP].ack for packet in capture], [900, 900, 1000])
+
+        # An advancing ACK's newer advertised window supersedes the older one.
+        capture = exchange(
+            [ack4(1100, window=4096), ack4(1200, window=8192),
+             ack4(1300, window=8192)],
+            1,
+        )
+        self.assertEqual(capture[0][TCP].ack, 1300)
+
+        ack6 = [
+            Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac)
+            / IPv6(src="2001:db8::1", dst="2001:db8::2")
+            / TCP(sport=23456, dport=443, seq=1, ack=number, flags="A")
+            for number in (100, 200, 300)
+        ]
+        capture = exchange(ack6, 1)
+        self.assertEqual(capture[0][TCP].ack, 300)
+
+        reply = self.vapi.cli("show nsim verbose")
+        self.assertIn("ACK coalescing interval: 5.0 ms", reply)
+        self.assertRegex(reply, r"ACK coalescing: candidates 15 coalesced 8 tracked 6")
 
     def test_fixed_rate_reorder(self):
         """Fixed-rate late reordering remains available without other models"""
