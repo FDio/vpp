@@ -56,7 +56,7 @@ typedef enum
 
 always_inline uword
 nsim_drain_wheel (vlib_main_t *vm, vlib_node_runtime_t *node, nsim_worker_t *nsw, nsim_wheel_t *wp,
-		  f64 now)
+		  f64 now, int is_ack_coalescing)
 {
   nsim_wheel_entry_t *ep;
 
@@ -78,6 +78,9 @@ nsim_drain_wheel (vlib_main_t *vm, vlib_node_runtime_t *node, nsim_worker_t *nsw
       ep = wp->entries + wp->head;
       if (ep->tx_time > now)
 	break;
+
+      if (is_ack_coalescing)
+	nsim_ack_release (nsw->ack, wp->head);
 
       /* Prefetch the next cache line while draining a due backlog. */
       if ((((uword) ep) & (CLIB_CACHE_LINE_BYTES - 1)) == 0)
@@ -117,12 +120,15 @@ nsim_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *f, 
   f64 now = vlib_time_now (vm);
   uword n_tx;
 
-  n_tx = nsim_drain_wheel (vm, node, nsw, wp, now);
+  if (PREDICT_FALSE (nsw->ack != 0))
+    n_tx = nsim_drain_wheel (vm, node, nsw, wp, now, 1);
+  else
+    n_tx = nsim_drain_wheel (vm, node, nsw, wp, now, 0);
 
   /* Also drain the side wheel of late-reordered packets, if present. */
   if (PREDICT_FALSE (nsw->reorder_wheel != 0))
     {
-      n_tx += nsim_drain_wheel (vm, node, nsw, nsw->reorder_wheel, now);
+      n_tx += nsim_drain_wheel (vm, node, nsw, nsw->reorder_wheel, now, 0);
     }
 
   return n_tx;

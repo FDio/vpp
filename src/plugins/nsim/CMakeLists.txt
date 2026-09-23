@@ -14,6 +14,7 @@
 add_vpp_plugin(nsim
   SOURCES
   nsim.c
+  nsim_ack.c
   nsim_loss.c
   nsim_model.c
   node.c
