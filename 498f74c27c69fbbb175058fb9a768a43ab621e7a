@@ -16,6 +16,24 @@
       "message": "if rem_rv 1\u003d 0, \nthen tHere should be an else case here that returns a combined error message that indicates that rte_eth_dev_mac_adddr_remove() failed with \"rem_rv decode\" during handling of error -EEXIST.",
       "revId": "498f74c27c69fbbb175058fb9a768a43ab621e7a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ec2a34a0_fa598ed2",
+        "filename": "src/plugins/dpdk/device/device.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 81,
+      "author": {
+        "id": 3369
+      },
+      "writtenOn": "2026-09-23T03:10:55Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "da970382_e9b4234f",
+      "revId": "498f74c27c69fbbb175058fb9a768a43ab621e7a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
