@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "5fe9fea5_e0ee4eef",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3121
+      },
+      "writtenOn": "2026-09-23T17:37:59Z",
+      "side": 1,
+      "message": "`CHECKSTYLE FAILED` on the CI.\n\nPlease run `make fixstyle` to fix the errors and `make checkstyle` to confirm.\n\nAlso, `Type: \u003ctype\u003e` is missing in the commit message.\n```\n# Type can be\n#    feature     (new feature)\n#    fix         (bug fix)\n#    refactor    (refactoring production code)\n#    improvement (minor improvements in existing feature)\n#    style       (formatting, missing semi colons, etc; no code change)\n#    docs        (changes to documentation)\n#    test        (adding or refactoring tests; no production code change)\n#    make        (change the build process, or tools, or infrastructure)\n#    ci          (continuous integration)\n```\nPlease add it and run `make checkstyle-commit` to verify. Thanks.",
+      "revId": "8938dbcaeb4586a30ab13f3386ffc59eb37e845c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
