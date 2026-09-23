@@ -187,6 +187,9 @@ unformat_nsim_model_spec (unformat_input_t *input, va_list *args)
     ;
   else if (unformat (input, "batch-interval %U", unformat_nsim_delay, &spec->batch_interval))
     ;
+  else if (unformat (input, "ack-coalesce-interval %U", unformat_nsim_delay,
+		     &spec->ack_coalesce_interval))
+    spec->ack_coalesce = 1;
   else if (unformat (input, "batch-packets %u", &spec->batch_packet_limit))
     ;
   else if (unformat (input, "batch-gap %U probability %f", unformat_nsim_delay, &interval,
@@ -219,7 +222,7 @@ unformat_nsim_model_spec (unformat_input_t *input, va_list *args)
 clib_error_t *
 nsim_model_validate (const nsim_model_spec_t *spec, f64 bandwidth)
 {
-  f64 probability = 0.0;
+  f64 probability = 0.0, batch_interval;
 
   if (spec->batch_gaps_overflow)
     return clib_error_return (0, "at most %u batch gaps may be configured", NSIM_MAX_BATCH_GAPS);
@@ -227,13 +230,20 @@ nsim_model_validate (const nsim_model_spec_t *spec, f64 bandwidth)
     return clib_error_return (0, "buffer time must not be negative");
   if (spec->batch_interval < 0.0)
     return clib_error_return (0, "batch interval must not be negative");
-  if (spec->n_batch_gaps && spec->batch_interval <= 0.0)
-    return clib_error_return (0, "batch gaps require 'batch-interval <time>'");
-  if (spec->batch_packet_limit && spec->batch_interval <= 0.0)
-    return clib_error_return (0, "batch packet budget requires 'batch-interval <time>'");
+  if (spec->ack_coalesce_interval < 0.0)
+    return clib_error_return (0, "ACK coalescing interval must not be negative");
+  if (spec->ack_coalesce && spec->ack_coalesce_interval <= 0.0)
+    return clib_error_return (0, "ACK coalescing interval must be positive");
+  if (spec->ack_coalesce && spec->batch_interval > 0.0)
+    return clib_error_return (0, "configure either release batching or ACK coalescing");
+  batch_interval = spec->ack_coalesce ? spec->ack_coalesce_interval : spec->batch_interval;
+  if (spec->n_batch_gaps && batch_interval <= 0.0)
+    return clib_error_return (0, "batch gaps require a release interval");
+  if (spec->batch_packet_limit && batch_interval <= 0.0)
+    return clib_error_return (0, "batch packet budget requires a release interval");
   for (u32 i = 0; i < spec->n_batch_gaps; i++)
     {
-      if (spec->batch_gaps[i].interval < spec->batch_interval)
+      if (spec->batch_gaps[i].interval < batch_interval)
 	return clib_error_return (0, "batch gaps must not be shorter than the batch interval");
       if (spec->batch_gaps[i].probability <= 0.0 || spec->batch_gaps[i].probability > 1.0)
 	return clib_error_return (0, "batch gap probability must be between zero and 1");
@@ -270,10 +280,11 @@ nsim_model_configure (nsim_model_config_t *c, const nsim_model_spec_t *spec, f64
   clib_memset (c, 0, sizeof (*c));
   c->buffer_time = spec->buffer_time;
   c->serialization_time = bandwidth > 0.0 ? (f64) (packet_size * 8) / bandwidth : 0.0;
-  c->batch.interval = spec->batch_interval;
+  c->batch.interval = spec->ack_coalesce ? spec->ack_coalesce_interval : spec->batch_interval;
+  c->batch.coalesce_acks = spec->ack_coalesce;
   c->batch.packet_limit = spec->batch_packet_limit;
   c->batch.n_gaps = spec->n_batch_gaps;
-  c->batch.max_gap = spec->batch_interval;
+  c->batch.max_gap = c->batch.interval;
   for (u32 i = 0; i < spec->n_batch_gaps; i++)
     {
       c->batch.gaps[i] = spec->batch_gaps[i];
@@ -381,7 +392,8 @@ format_nsim_model_config (u8 *s, va_list *args)
     s = format (s, " rate model: %U\n", format_nsim_rate_config, &c->rate, packet_size);
   if (c->batch.interval > 0.0)
     {
-      s = format (s, " batch interval: %U\n", format_model_delay, c->batch.interval);
+      s = format (s, " %s interval: %U\n", c->batch.coalesce_acks ? "ACK coalescing" : "batch",
+		  format_model_delay, c->batch.interval);
       if (c->batch.packet_limit)
 	s = format (s, " batch packet budget: %u (base capacity %.1f packets/s)\n",
 		    c->batch.packet_limit, c->batch.packet_limit / c->batch.interval);

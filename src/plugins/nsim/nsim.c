@@ -220,6 +220,7 @@ nsim_workers_free (nsim_worker_t *workers, u64 mmap_size)
 	clib_mem_vm_free (nsw->wheel, mmap_size);
       if (nsw->reorder_wheel)
 	clib_mem_vm_free (nsw->reorder_wheel, mmap_size);
+      nsim_ack_state_free (nsw->ack);
       vec_free (nsw->service_departures);
     }
   vec_free (workers);
@@ -324,6 +325,8 @@ nsim_configure (nsim_main_t *nsm, f64 bandwidth, f64 delay, u32 packet_size,
       /* Side wheel for late-reordered packets, same geometry */
       if (reorder_fraction > 0.0)
 	new_workers[i].reorder_wheel = nsim_wheel_alloc (wheel_slots_per_wrk, mmap_size);
+      if (model->batch.coalesce_acks)
+	new_workers[i].ack = nsim_ack_state_alloc (wheel_slots_per_wrk);
     }
 
   vlib_worker_thread_barrier_sync (vm);
@@ -777,8 +780,7 @@ nsim_service_queue_occupancy (const nsim_worker_t *nsw, f64 now)
 {
   u32 head = nsw->service_head, count = nsw->service_cursize;
 
-  /* Verbose diagnostics are a best-effort live snapshot. Do not stop workers
-   * merely to make queue and wheel counters mutually atomic. */
+  /* The show command stops workers while taking a live verbose snapshot. */
   while (count && nsw->service_departures[head] <= now)
     {
       if (++head == vec_len (nsw->service_departures))
@@ -833,6 +835,7 @@ format_nsim_config (u8 *s, va_list *args)
 	  total_memory += nsw->wheel ? nsm->mmap_size : 0;
 	  total_memory += nsw->reorder_wheel ? nsm->mmap_size : 0;
 	  total_memory += nsw->service_departures ? vec_mem_size (nsw->service_departures) : 0;
+	  total_memory += nsim_ack_memory_size (nsw->ack);
 	}
       s = format (s, " memory: %U per wheel, %U total\n", format_memory_size, nsm->mmap_size,
 		  format_memory_size, total_memory);
@@ -860,6 +863,12 @@ format_nsim_config (u8 *s, va_list *args)
 		      nsw->wheel->wheel_size);
 	  s = format (s, "  loss: %U\n", format_nsim_loss_model, &nsw->loss);
 	  s = format (s, "%U", format_nsim_model_state, &nsm->model, &nsw->model, nsm->packet_size);
+	  if (nsw->ack)
+	    s = format (s,
+			"  ACK coalescing: candidates %llu coalesced %llu tracked %llu "
+			"active %u max active %u\n",
+			nsw->ack->candidates, nsw->ack->coalesced, nsw->ack->tracked,
+			pool_elts (nsw->ack->flows), nsw->ack->max_active);
 	}
     }
 
@@ -954,7 +963,8 @@ set_nsim_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_
     return error;
   if ((error = nsim_model_validate (&model_spec, bandwidth)))
     return error;
-  if (reorder_fraction > 0.0 && model_spec.batch_interval > 0.0)
+  if (reorder_fraction > 0.0 &&
+      (model_spec.batch_interval > 0.0 || model_spec.ack_coalesce_interval > 0.0))
     return clib_error_return (0, "release batching cannot be combined with packet reordering");
 
   nsim_loss_configure (&loss, &loss_spec);
@@ -1024,6 +1034,7 @@ VLIB_CLI_COMMAND (set_nsim_command, static) = {
   .path = "set nsim",
   .short_help = "set nsim delay <time> bandwidth <bps> packet-size <nbytes>\n"
 		"    [buffer <time>] [batch-interval <time>] [batch-packets <count>]\n"
+		"    [ack-coalesce-interval <time>]\n"
 		"    [batch-gap <time> probability <f64>]\n"
 		"    [packets-per-drop <nn>] "
 		"[drop-fraction <f64: 0.0 - 1.0>]\n"
@@ -1046,7 +1057,11 @@ show_nsim_command_fn (vlib_main_t * vm,
   if (unformat (input, "verbose"))
     verbose = 1;
 
+  if (verbose)
+    vlib_worker_thread_barrier_sync (vm);
   vlib_cli_output (vm, "%U", format_nsim_config, verbose);
+  if (verbose)
+    vlib_worker_thread_barrier_release (vm);
 
   return 0;
 }

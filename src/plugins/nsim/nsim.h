@@ -14,6 +14,7 @@
 
 #include <vppinfra/hash.h>
 #include <vppinfra/error.h>
+#include <nsim/nsim_ack.h>
 #include <nsim/nsim_model.h>
 
 #define NSIM_MAX_TX_BURST 32	/**< max packets in a tx burst */
@@ -27,7 +28,7 @@ typedef struct
   u32 buffer_index;
 } nsim_wheel_entry_t;
 
-typedef struct
+typedef struct nsim_wheel_
 {
   u32 wheel_size;
   u32 cursize;
@@ -95,6 +96,7 @@ typedef struct
    * streams ensure that enabling one impairment cannot perturb another. */
   nsim_loss_model_t loss;
   nsim_model_state_t model;
+  nsim_ack_state_t *ack;
   u32 loss_seed;
   u32 reorder_seed;
   u32 reorder_delay_seed;

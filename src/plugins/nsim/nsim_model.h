@@ -80,6 +80,7 @@ typedef struct
    * packet-rate service limit; excess packets wait for later opportunities. */
   u32 packet_limit;
   u8 n_gaps;
+  u8 coalesce_acks;
 } nsim_batch_config_t;
 
 typedef struct
@@ -110,6 +111,7 @@ typedef struct
 {
   f64 buffer_time;
   f64 batch_interval;
+  f64 ack_coalesce_interval;
   nsim_batch_gap_t batch_gaps[NSIM_MAX_BATCH_GAPS];
   f64 rate_bad_bandwidth;
   f64 rate_good_dwell;
@@ -120,6 +122,7 @@ typedef struct
   u8 wifi_preset;
   u8 rate_stall;
   u8 rate_cycle;
+  u8 ack_coalesce;
 } nsim_model_spec_t;
 
 typedef struct
@@ -154,8 +157,8 @@ nsim_rate_departure_time (const nsim_rate_config_t *c, nsim_rate_state_t *s, u32
 f64 nsim_batch_gap (const nsim_batch_config_t *c, nsim_batch_state_t *s, u32 *seed);
 
 static_always_inline f64
-nsim_batch_release_time (const nsim_batch_config_t *c, nsim_batch_state_t *s, u32 *seed,
-			 f64 tx_time)
+nsim_batch_prepare_release (const nsim_batch_config_t *c, nsim_batch_state_t *s, u32 *seed,
+			    f64 tx_time)
 {
   if (PREDICT_FALSE (s->next_boundary == 0.0))
     {
@@ -180,6 +183,13 @@ nsim_batch_release_time (const nsim_batch_config_t *c, nsim_batch_state_t *s, u3
       s->batches++;
     }
 
+  return s->next_boundary;
+}
+
+static_always_inline f64
+nsim_batch_commit_release (const nsim_batch_config_t *c, nsim_batch_state_t *s, u32 *seed,
+			   f64 tx_time)
+{
   if (PREDICT_FALSE (c->packet_limit && s->current_batch_size >= c->packet_limit))
     {
       s->next_boundary += nsim_batch_gap (c, s, seed);
@@ -193,6 +203,14 @@ nsim_batch_release_time (const nsim_batch_config_t *c, nsim_batch_state_t *s, u3
   s->current_batch_size++;
   s->max_batch_size = clib_max (s->max_batch_size, s->current_batch_size);
   return s->next_boundary;
+}
+
+static_always_inline f64
+nsim_batch_release_time (const nsim_batch_config_t *c, nsim_batch_state_t *s, u32 *seed,
+			 f64 tx_time)
+{
+  nsim_batch_prepare_release (c, s, seed, tx_time);
+  return nsim_batch_commit_release (c, s, seed, tx_time);
 }
 
 /* Control-plane helpers (nsim_model.c). */
