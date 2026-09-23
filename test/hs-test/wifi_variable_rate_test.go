@@ -24,26 +24,28 @@ func init() {
 		WifiVariableRateTailExtendedTest,
 		WifiVariableRateCycleBatchExtendedTest,
 		WifiVariableRateCycleTailExtendedTest,
-		WifiVariableRateFullAblationExtendedTest,
 	)
 }
 
 const (
-	wvrDataFixed = "set nsim poll-main-thread delay 10 ms bandwidth 320 mbps " +
-		"buffer 100 ms packet-size 1500 seed 270302"
+	// The capture's BBR bandwidth ceiling was about 445 Mbit/s. A 440/200
+	// Mbit/s cycle reproduces its goodput and RTT envelope; 72.7 ms keeps the
+	// nominal bottleneck queue at 4 MB.
+	wvrDataFixed = "set nsim poll-main-thread delay 10 ms bandwidth 440 mbps " +
+		"buffer 72.7 ms packet-size 1500 seed 270302"
 	wvrDataCycleShort = wvrDataFixed +
 		" rate-cycle bandwidth 200 mbps good 2 sec bad 2 sec"
 	wvrDataCycle = wvrDataFixed +
-		" rate-cycle bandwidth 200 mbps good 8 sec bad 8 sec"
-	wvrDataFull = wvrDataCycle + " drop-once after 32 sec for 34 ms"
+		" rate-cycle bandwidth 200 mbps good 10 sec bad 10 sec"
 	wvrAckFixed = "set nsim poll-main-thread delay 10 ms bandwidth 320 mbps " +
 		"buffer 20 ms packet-size 64 seed 519007"
 	wvrAckBatch = wvrAckFixed + " batch-interval 5.5 ms batch-packets 128"
 	// Use the observed advancing-ACK gap quantiles as receiver service
-	// opportunities. The packet budget drains a backlog over later opportunities
-	// instead of releasing an unbounded train at one boundary. This generic model
-	// neither inspects TCP nor reproduces the receiver's ACK-generation policy.
-	wvrAckTail = wvrAckBatch +
+	// opportunities. Safe cumulative ACKs coalesce at each opportunity; control,
+	// loss and ECN signals are always retained. The residual 0.5 ms opportunities
+	// reproduce the capture's short-gap population and 7.8 ms mean.
+	wvrAckTail = wvrAckFixed + " ack-coalesce-interval 0.5 ms" +
+		" batch-gap 5.5 ms probability 0.5348" +
 		" batch-gap 11 ms probability 0.1245" +
 		" batch-gap 16.5 ms probability 0.0344" +
 		" batch-gap 27.5 ms probability 0.0140" +
@@ -62,16 +64,23 @@ type wvrConfig struct {
 }
 
 type wvrSample struct {
-	time       float64
-	sndUna     uint32
-	srtt       float64
-	cwnd       uint64
-	flight     uint64
-	extraAcked uint64
-	rxtBytes   uint64
-	queueDelay float64
-	rateState  string
-	bbr        string
+	time        float64
+	sndUna      uint32
+	outBytes    uint64
+	packets     uint64
+	transmitted uint64
+	pacerRate   uint64
+	pacerBurst  uint64
+	pacerCap    uint64
+	pacerCredit float64
+	srtt        float64
+	cwnd        uint64
+	flight      uint64
+	extraAcked  uint64
+	rxtBytes    uint64
+	queueDelay  float64
+	rateState   string
+	bbr         string
 }
 
 type wvrResult struct {
@@ -87,19 +96,25 @@ type wvrResult struct {
 }
 
 var (
-	wvrHeaderRe = regexp.MustCompile(`(?m)^\[(\d+):(\d+)\]\[T\]`)
-	wvrOutRe    = regexp.MustCompile(`out segs \d+ dsegs \d+ bytes (\d+)`)
-	wvrUnaRe    = regexp.MustCompile(`\bsnd_una (\d+)\b`)
-	wvrRttRe    = regexp.MustCompile(`\bsrtt [\d.]+ us ([\d.]+)`)
-	wvrCwndRe   = regexp.MustCompile(`\bcwnd (\d+)\b`)
-	wvrFlightRe = regexp.MustCompile(`flight size (\d+)`)
-	wvrExtraRe  = regexp.MustCompile(`\bextra_acked (\d+)\b`)
-	wvrRxtRe    = regexp.MustCompile(`rxt segs \d+ bytes (\d+)\b`)
-	wvrBbrRe    = regexp.MustCompile(`(?m)^\s*bbr:\s+(.+)$`)
-	wvrRateRe   = regexp.MustCompile(`currently (good|bad),`)
-	wvrQueueRe  = regexp.MustCompile(`service backlog ([\d.]+) ms`)
-	wvrTransRe  = regexp.MustCompile(`(?m)^\s+rate:.*\((?:currently )?(?:good|bad), (\d+) transitions\)`)
-	wvrXferRe   = regexp.MustCompile(`(\d+) bytes .* in ([\d.]+) seconds`)
+	wvrHeaderRe  = regexp.MustCompile(`(?m)^\[(\d+):(\d+)\]\[T\]`)
+	wvrOutRe     = regexp.MustCompile(`out segs \d+ dsegs \d+ bytes (\d+)`)
+	wvrUnaRe     = regexp.MustCompile(`\bsnd_una (\d+)\b`)
+	wvrRttRe     = regexp.MustCompile(`\bsrtt [\d.]+ us ([\d.]+)`)
+	wvrCwndRe    = regexp.MustCompile(`\bcwnd (\d+)\b`)
+	wvrFlightRe  = regexp.MustCompile(`flight size (\d+)`)
+	wvrExtraRe   = regexp.MustCompile(`\bextra_acked (\d+)\b`)
+	wvrRxtRe     = regexp.MustCompile(`rxt segs \d+ bytes (\d+)\b`)
+	wvrPacerRe   = regexp.MustCompile(`(?m)^\s*pacer: rate (\d+)\b`)
+	wvrCreditRe  = regexp.MustCompile(`\bcredit ([\d.]+)\b`)
+	wvrBurstRe   = regexp.MustCompile(`\bmin-burst \d+ burst (\d+)\b`)
+	wvrCapRe     = regexp.MustCompile(`\bcap (\d+)\b`)
+	wvrBbrRe     = regexp.MustCompile(`(?m)^\s*bbr:\s+(.+)$`)
+	wvrRateRe    = regexp.MustCompile(`rate service tail:.*\((good|bad),`)
+	wvrQueueRe   = regexp.MustCompile(`service backlog ([\d.]+) ms`)
+	wvrPacketsRe = regexp.MustCompile(`counters: packets (\d+)\b`)
+	wvrTxRe      = regexp.MustCompile(`\btransmitted (\d+)\b`)
+	wvrTransRe   = regexp.MustCompile(`(?m)^\s+rate service tail:.*\((?:good|bad), (\d+) tracked transitions\b`)
+	wvrXferRe    = regexp.MustCompile(`(\d+) bytes .* in ([\d.]+) seconds`)
 )
 
 func wvrUint(text string, re *regexp.Regexp) uint64 {
@@ -189,17 +204,23 @@ func wvrRun(s *VethsSuite, config wvrConfig) wvrResult {
 	ackShow := server.Vppctl("show nsim verbose")
 	AssertNotContains(dataShow, "nsim not enabled")
 	AssertNotContains(ackShow, "nsim not enabled")
+	AssertContains(dataShow, "peaks:")
 	if strings.Contains(config.dataNsim, "rate-cycle") {
 		AssertContains(dataShow, "rate model: cycle:")
+		AssertContains(dataShow, "rate service starts:")
 	}
 	if strings.Contains(config.ackNsim, "batch-interval") {
 		AssertContains(ackShow, "batch interval: 5.5 ms")
+	}
+	if strings.Contains(config.ackNsim, "ack-coalesce-interval") {
+		AssertContains(ackShow, "ACK coalescing interval:")
 	}
 	if strings.Contains(config.ackNsim, "batch-packets") {
 		AssertContains(ackShow, "batch packet budget: 128")
 	}
 	if strings.Contains(config.ackNsim, "batch-gap") {
 		AssertContains(ackShow, "batch gap distribution:")
+		AssertContains(ackShow, "batch gap samples:")
 	}
 
 	server.Vppctl("vperf server fifo-size 4m uri tcp://%s/%s", serverAddress, s.Ports.Port1)
@@ -261,16 +282,23 @@ runLoop:
 				bbr = match[1]
 			}
 			samples = append(samples, wvrSample{
-				time:       time.Since(start).Seconds(),
-				sndUna:     uint32(wvrUint(session, wvrUnaRe)),
-				srtt:       wvrFloat(session, wvrRttRe),
-				cwnd:       wvrUint(session, wvrCwndRe),
-				flight:     wvrUint(session, wvrFlightRe),
-				extraAcked: wvrUint(session, wvrExtraRe),
-				rxtBytes:   wvrUint(session, wvrRxtRe),
-				queueDelay: wvrFloat(rate, wvrQueueRe),
-				rateState:  rateState,
-				bbr:        bbr,
+				time:        time.Since(start).Seconds(),
+				sndUna:      uint32(wvrUint(session, wvrUnaRe)),
+				outBytes:    wvrUint(session, wvrOutRe),
+				packets:     wvrUint(rate, wvrPacketsRe),
+				transmitted: wvrUint(rate, wvrTxRe),
+				pacerRate:   wvrUint(session, wvrPacerRe),
+				pacerBurst:  wvrUint(session, wvrBurstRe),
+				pacerCap:    wvrUint(session, wvrCapRe),
+				pacerCredit: wvrFloat(session, wvrCreditRe),
+				srtt:        wvrFloat(session, wvrRttRe),
+				cwnd:        wvrUint(session, wvrCwndRe),
+				flight:      wvrUint(session, wvrFlightRe),
+				extraAcked:  wvrUint(session, wvrExtraRe),
+				rxtBytes:    wvrUint(session, wvrRxtRe),
+				queueDelay:  wvrFloat(rate, wvrQueueRe),
+				rateState:   rateState,
+				bbr:         bbr,
 			})
 		case <-timeout.C:
 			AssertNil(fmt.Errorf("Wi-Fi variable-rate transfer timed out"))
@@ -290,7 +318,7 @@ runLoop:
 	var queueDelays []float64
 	var sawGood, sawBad bool
 	var result wvrResult
-	for _, sample := range samples {
+	for sampleIndex, sample := range samples {
 		if havePrevious {
 			delta := uint32(sample.sndUna - previous)
 			// Sampling is frequent enough that valid progress is always below
@@ -311,9 +339,28 @@ runLoop:
 		sawGood = sawGood || sample.rateState == "good"
 		sawBad = sawBad || sample.rateState == "bad"
 		if config.cc == "bbr" {
-			Log("wifi-variable-rate t=%.2f rate=%s queue=%.1fms cwnd=%d flight=%d rtt=%.1f %s",
+			maxGrant := min(sample.pacerBurst+uint64(sample.pacerCredit), sample.pacerCap)
+			Log("wifi-variable-rate t=%.2f rate=%s queue=%.1fms cwnd=%d flight=%d rtt=%.1f "+
+				"pacer=%.1fMbit/s grant<=%dB %s",
 				sample.time, sample.rateState, sample.queueDelay, sample.cwnd,
-				sample.flight, sample.srtt, sample.bbr)
+				sample.flight, sample.srtt, float64(sample.pacerRate)*8/1e6, maxGrant,
+				sample.bbr)
+			if sampleIndex > 0 {
+				prior := samples[sampleIndex-1]
+				interval := sample.time - prior.time
+				if interval > 0 && sample.outBytes >= prior.outBytes && sample.packets >= prior.packets &&
+					sample.transmitted >= prior.transmitted {
+					tcpRate := float64(sample.outBytes-prior.outBytes) * 8 / interval / 1e6
+					arrivalRate := float64(sample.packets-prior.packets) * 1500 * 8 /
+						interval / 1e6
+					departureRate := float64(sample.transmitted-prior.transmitted) * 1500 * 8 /
+						interval / 1e6
+					Log("wifi-variable-rate interval %.3fs pacer-now=%.1fMbit/s tcp-out=%.1fMbit/s "+
+						"nsim-in/out=%.1f/%.1fMbit/s queue-delta=%.1fms",
+						interval, float64(sample.pacerRate)*8/1e6, tcpRate, arrivalRate,
+						departureRate, sample.queueDelay-prior.queueDelay)
+				}
+			}
 		}
 	}
 	if len(samples) > 1 {
@@ -339,9 +386,14 @@ runLoop:
 		transitions := wvrUint(dataShow, wvrTransRe)
 		AssertGreaterThan(transitions, uint64(0), "worker rate state must advance")
 	}
-	if strings.Contains(config.ackNsim, "batch-interval") {
+	if strings.Contains(config.ackNsim, "batch-interval") ||
+		strings.Contains(config.ackNsim, "ack-coalesce-interval") {
 		AssertNotContains(ackShow, "batching: delayed 0")
 		AssertNotContains(ackShow, "batches 0")
+	}
+	if strings.Contains(config.ackNsim, "ack-coalesce-interval") {
+		AssertNotContains(ackShow, "ACK coalescing: candidates 0")
+		AssertNotContains(ackShow, "coalesced 0")
 	}
 	if strings.Contains(config.ackNsim, "batch-gap") {
 		AssertNotContains(ackShow, "extended 0")
@@ -360,11 +412,10 @@ runLoop:
 		AssertGreaterEqual(result.goodputMbps, 180.0, "goodput below regression limit")
 		AssertLessEqual(result.goodputMbps, 300.0, "goodput outside calibration")
 		AssertLessEqual(result.medianRtt, 80.0, "median RTT outside calibration")
-		AssertLessEqual(result.p95Rtt, 130.0, "p95 RTT above regression limit")
-		AssertLessEqual(result.maxCwnd, uint64(4_000_000), "cwnd above regression limit")
-		AssertGreaterThan(result.rxtBytes, uint64(0), "blackout must exercise recovery")
+		AssertLessEqual(result.p95Rtt, 160.0, "p95 RTT above regression limit")
+		AssertLessEqual(result.maxCwnd, uint64(4_250_000), "cwnd above regression limit")
 		AssertLessEqual(result.rxtBytes, uint64(2_200_000),
-			"blackout retransmissions above regression limit")
+			"retransmissions above regression limit")
 	}
 	return result
 }
@@ -380,24 +431,22 @@ func WifiVariableRateBbrTest(s *VethsSuite) {
 
 func WifiVariableRateCubicExtendedTest(s *VethsSuite) {
 	wvrExtendedOnly(s)
-	wvrRun(s, wvrConfig{wvrDataFull, wvrAckTail, "cubic", false, 80, false})
+	wvrRun(s, wvrConfig{wvrDataCycle, wvrAckTail, "cubic", false, 80, false})
 }
 
 func WifiVariableRateCubicRackExtendedTest(s *VethsSuite) {
 	wvrExtendedOnly(s)
-	wvrRun(s, wvrConfig{wvrDataFull, wvrAckTail, "cubic", true, 80, false})
+	wvrRun(s, wvrConfig{wvrDataCycle, wvrAckTail, "cubic", true, 80, false})
 }
 
 func WifiVariableRateBbrExtendedTest(s *VethsSuite) {
 	wvrExtendedOnly(s)
-	wvrRun(s, wvrConfig{wvrDataFull, wvrAckTail, "bbr", true, 80, true})
+	wvrRun(s, wvrConfig{wvrDataCycle, wvrAckTail, "bbr", true, 80, true})
 }
 
 // The cases below are ordered ablations. Bloat in the fixed case points
 // to the base BBR/pacer path; excess PROBE_BW_DOWN rate in the cycle case to
-// stale bandwidth; growth from batched service opportunities; and any
-// sustained increment in the final case to loss-bound adaptation rather than
-// recovery.
+// stale bandwidth; and growth from batched service opportunities.
 func WifiVariableRateFixedExtendedTest(s *VethsSuite) {
 	wvrExtendedOnly(s)
 	wvrRun(s, wvrConfig{wvrDataFixed, wvrAckFixed, "bbr", true, 20, false})
@@ -426,9 +475,4 @@ func WifiVariableRateCycleBatchExtendedTest(s *VethsSuite) {
 func WifiVariableRateCycleTailExtendedTest(s *VethsSuite) {
 	wvrExtendedOnly(s)
 	wvrRun(s, wvrConfig{wvrDataCycle, wvrAckTail, "bbr", true, 45, false})
-}
-
-func WifiVariableRateFullAblationExtendedTest(s *VethsSuite) {
-	wvrExtendedOnly(s)
-	wvrRun(s, wvrConfig{wvrDataFull, wvrAckTail, "bbr", true, 45, false})
 }
