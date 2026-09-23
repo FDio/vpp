@@ -16,6 +16,23 @@
       "message": "docs-only 26.10 stable branch first commit",
       "revId": "28e8c47f79c12c938d14058a19a54064040b3cc6",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b794e162_3ad4c706",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2026-09-23T13:07:31Z",
+      "side": 1,
+      "message": "recheck",
+      "revId": "28e8c47f79c12c938d14058a19a54064040b3cc6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
