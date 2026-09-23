@@ -7,5 +7,4 @@ Release notes
     :maxdepth: 2
 
     v26.06
-    v26.02
     past
