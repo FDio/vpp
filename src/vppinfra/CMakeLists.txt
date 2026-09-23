@@ -26,6 +26,7 @@ vpp_find_library(LIBUNWIND_LIB NAMES unwind libunwind)
 
 if (LIBUNWIND_INCLUDE_DIR AND LIBUNWIND_LIB)
   message(STATUS "libunwind found at ${LIBUNWIND_LIB}")
+  include_directories(${LIBUNWIND_INCLUDE_DIR})
   list(APPEND VPPINFRA_LIBS ${LIBUNWIND_LIB})
   add_definitions(-DHAVE_LIBUNWIND=1)
 else()
