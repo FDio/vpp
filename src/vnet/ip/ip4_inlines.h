@@ -12,6 +12,7 @@
 #include <vnet/ip/ip4_packet.h>
 #include <vnet/tcp/tcp_packet.h>
 #include <vnet/udp/udp_packet.h>
+#include <vnet/ip/icmp46_packet.h>
 
 #define IP_DF 0x4000		/* don't fragment */
 
@@ -24,6 +25,7 @@ ip4_compute_flow_hash (const ip4_header_t * ip,
   tcp_header_t *tcp = (void *) (ip + 1);
   udp_header_t *udp = (void *) (ip + 1);
   gtpv1u_header_t *gtpu = (void *) (udp + 1);
+  icmp46_echo_header_t *echo = (void *) (ip + 1);
   u32 a, b, c, t1, t2;
   uword is_udp = ip->protocol == IP_PROTOCOL_UDP;
   uword is_tcp_udp = (ip->protocol == IP_PROTOCOL_TCP || is_udp);
@@ -36,8 +38,20 @@ ip4_compute_flow_hash (const ip4_header_t * ip,
   a = (flow_hash_config & IP_FLOW_HASH_REVERSE_SRC_DST) ? t2 : t1;
   b = (flow_hash_config & IP_FLOW_HASH_REVERSE_SRC_DST) ? t1 : t2;
 
-  t1 = is_tcp_udp ? tcp->src : 0;
-  t2 = is_tcp_udp ? tcp->dst : 0;
+  if (is_tcp_udp)
+    {
+      t1 = tcp->src;
+      t2 = tcp->dst;
+    }
+  else if (ip->protocol == IP_PROTOCOL_ICMP &&
+	   (echo->icmp.type == ICMP4_echo_request || echo->icmp.type == ICMP4_echo_reply))
+    {
+      t1 = t2 = echo->id;
+    }
+  else
+    {
+      t1 = t2 = 0;
+    }
 
   t1 = (flow_hash_config & IP_FLOW_HASH_SRC_PORT) ? t1 : 0;
   t2 = (flow_hash_config & IP_FLOW_HASH_DST_PORT) ? t2 : 0;

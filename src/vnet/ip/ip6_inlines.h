@@ -10,6 +10,7 @@
 
 #include <vnet/ip/ip6_packet.h>
 #include <vnet/ip/ip6_hop_by_hop_packet.h>
+#include <vnet/ip/icmp46_packet.h>
 
 /* Compute flow hash.  We'll use it to select which Sponge to use for this
    flow.  And other things. */
@@ -20,10 +21,12 @@ ip6_compute_flow_hash (const ip6_header_t * ip,
   const tcp_header_t *tcp;
   const udp_header_t *udp = (void *) (ip + 1);
   const gtpv1u_header_t *gtpu = (void *) (udp + 1);
+  const icmp46_echo_header_t *echo = 0;
   u64 a, b, c;
   u64 t1, t2;
   u32 t3;
   uword is_tcp_udp = 0;
+  uword is_icmp_echo = 0;
   u8 protocol = ip->protocol;
   uword is_udp = protocol == IP_PROTOCOL_UDP;
 
@@ -51,6 +54,12 @@ ip6_compute_flow_hash (const ip6_header_t * ip,
 	  is_tcp_udp = 1;
 	  tcp = cur;
 	}
+      else if (protocol == IP_PROTOCOL_ICMP6)
+	{
+	  echo = cur;
+	  is_icmp_echo =
+	    echo->icmp.type == ICMP6_echo_request || echo->icmp.type == ICMP6_echo_reply;
+	}
     }
 
   t1 = (ip->src_address.as_u64[0] ^ ip->src_address.as_u64[1]);
@@ -62,8 +71,19 @@ ip6_compute_flow_hash (const ip6_header_t * ip,
   a = (flow_hash_config & IP_FLOW_HASH_REVERSE_SRC_DST) ? t2 : t1;
   b = (flow_hash_config & IP_FLOW_HASH_REVERSE_SRC_DST) ? t1 : t2;
 
-  t1 = is_tcp_udp ? tcp->src : 0;
-  t2 = is_tcp_udp ? tcp->dst : 0;
+  if (is_tcp_udp)
+    {
+      t1 = tcp->src;
+      t2 = tcp->dst;
+    }
+  else if (is_icmp_echo)
+    {
+      t1 = t2 = echo->id;
+    }
+  else
+    {
+      t1 = t2 = 0;
+    }
 
   t1 = (flow_hash_config & IP_FLOW_HASH_SRC_PORT) ? t1 : 0;
   t2 = (flow_hash_config & IP_FLOW_HASH_DST_PORT) ? t2 : 0;

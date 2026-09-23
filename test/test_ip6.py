@@ -2398,6 +2398,7 @@ class TestIP6LoadBalance(VppTestCase):
         #  - MPLS non-EOS with an entropy label
         #
         port_ip_pkts = []
+        echo_ip_pkts = []
         port_mpls_pkts = []
         port_mpls_neos_pkts = []
         port_ent_pkts = []
@@ -2416,6 +2417,12 @@ class TestIP6LoadBalance(VppTestCase):
             )
             port_ip_pkts.append(
                 (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) / port_ip_hdr)
+            )
+            echo_ip_pkts.append(
+                Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
+                / IPv6(dst="3000::1", src="3000:1::1", fl=0)
+                / ICMPv6EchoRequest(id=ii)
+                / Raw(b"echo")
             )
             port_mpls_pkts.append(
                 (
@@ -2531,6 +2538,26 @@ class TestIP6LoadBalance(VppTestCase):
         )
         self.assertNotEqual(n_mpls_pg0, len(rx[0]))
 
+        # Echo IDs spread flows; reply type and sequence keep the same path.
+        p = echo_ip_pkts[0].copy()
+        p[IPv6].remove_payload()
+        rxs = self.send_and_expect_load_balancing(
+            self.pg0, echo_ip_pkts, [self.pg1, self.pg2]
+        )
+        for output, rx in zip((self.pg1, self.pg2), rxs):
+            self.send_and_expect_only(
+                self.pg0,
+                [
+                    p
+                    / ICMPv6EchoReply(id=packet[IPv6].payload.id, seq=1)
+                    / Raw(b"echo")
+                    for packet in rx
+                ],
+                output,
+            )
+            if any(packet[IPv6].payload.id == 0 for packet in rx):
+                zero_id_output = output
+
         #
         # The packets with Entropy label in should not load-balance,
         # since the Entropy value is fixed.
@@ -2551,6 +2578,7 @@ class TestIP6LoadBalance(VppTestCase):
             self.pg0, src_mpls_pkts, [self.pg1, self.pg2]
         )
         self.send_and_expect_only(self.pg0, port_ip_pkts, self.pg2)
+        self.send_and_expect_only(self.pg0, echo_ip_pkts, zero_id_output)
 
         #
         # change the flow hash config back to defaults

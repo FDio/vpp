@@ -1368,6 +1368,7 @@ class TestIPLoadBalance(VppTestCase):
         # An array of packets that differ only in the destination port
         #
         port_ip_pkts = []
+        echo_ip_pkts = []
         port_mpls_pkts = []
         port_gtp_pkts = []
 
@@ -1388,6 +1389,12 @@ class TestIPLoadBalance(VppTestCase):
             )
             port_ip_pkts.append(
                 (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) / port_ip_hdr)
+            )
+            echo_ip_pkts.append(
+                Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
+                / internal_src_ip_hdr
+                / ICMP(id=ii)
+                / Raw(b"echo")
             )
             port_mpls_pkts.append(
                 (
@@ -1482,6 +1489,24 @@ class TestIPLoadBalance(VppTestCase):
         )
         self.assertNotEqual(n_mpls_pg0, len(rx[0]))
 
+        # Echo IDs spread flows; reply type and sequence keep the same path.
+        p = echo_ip_pkts[0].copy()
+        p[IP].remove_payload()
+        rxs = self.send_and_expect_load_balancing(
+            self.pg0, echo_ip_pkts, [self.pg1, self.pg2]
+        )
+        for output, rx in zip((self.pg1, self.pg2), rxs):
+            self.send_and_expect_only(
+                self.pg0,
+                [
+                    p / ICMP(type=0, id=packet[IP].payload.id, seq=1) / Raw(b"echo")
+                    for packet in rx
+                ],
+                output,
+            )
+            if any(packet[IP].payload.id == 0 for packet in rx):
+                zero_id_output = output
+
         #
         # change the flow hash config so it's only IP src,dst
         #  - now only the stream with differing source address will
@@ -1503,6 +1528,7 @@ class TestIPLoadBalance(VppTestCase):
         )
 
         self.send_and_expect_only(self.pg0, port_ip_pkts, self.pg2)
+        self.send_and_expect_only(self.pg0, echo_ip_pkts, zero_id_output)
 
         #
         # this case gtp v1 teid key LB
