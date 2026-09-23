@@ -42,6 +42,10 @@ typedef struct picotls_main_
   picotls_listen_ctx_t *lctx_pool;
   u8 **tx_bufs;
   u8 **rx_bufs;
+  /* Staging for app plaintext gathered from multiple tx fifo chunks. Must be
+   * distinct from rx_bufs, which can hold not-yet-delivered plaintext across
+   * calls, and from tx_bufs, which may be the record output buffer. */
+  u8 **app_bufs;
   ptls_context_t *client_ptls_ctx;
   clib_rwlock_t crypto_keys_rw_lock;
 } picotls_main_t;
