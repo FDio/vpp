@@ -290,6 +290,35 @@ picotls_do_handshake (picotls_ctx_t *ptls_ctx, session_t *tcp_session)
   return rv < 0 ? -1 : write;
 }
 
+#define PICOTLS_RX_OK	       0
+#define PICOTLS_RX_ERROR       -1
+#define PICOTLS_RX_PEER_CLOSED 1
+
+/* ptls_receive() folds PTLS_ERROR_IN_PROGRESS into 0, so anything non-zero is
+ * either a peer close_notify or a fatal protocol error. Both are driven by
+ * what the peer put on the wire and must never abort the data plane. */
+static inline int
+picotls_rx_error (int ret)
+{
+  if (ret == PTLS_ERROR_CLASS_PEER_ALERT + PTLS_ALERT_CLOSE_NOTIFY)
+    return PICOTLS_RX_PEER_CLOSED;
+
+  TLS_DBG (1, "ptls_receive error %d (class 0x%x alert %u)", ret, PTLS_ERROR_GET_CLASS (ret),
+	   ret & 0xff);
+  return PICOTLS_RX_ERROR;
+}
+
+/* ptls_buffer_dispose() clears buf->base for buf->off bytes whether or not
+ * picotls owns that memory. Disposing a buffer that still points into a fifo
+ * would wipe the record we just wrote there, so only dispose buffers picotls
+ * allocated for itself. */
+static inline void
+picotls_buf_dispose (ptls_buffer_t *buf)
+{
+  if (buf->is_allocated)
+    ptls_buffer_dispose (buf);
+}
+
 static inline int
 ptls_copy_buf_to_fs (ptls_buffer_t *buf, u32 to_copy, svm_fifo_seg_t *fs,
 		     u32 *fs_idx, u32 max_fs)
@@ -323,28 +352,32 @@ ptls_copy_buf_to_fs (ptls_buffer_t *buf, u32 to_copy, svm_fifo_seg_t *fs,
   return to_copy;
 }
 
-static u32
-ptls_tcp_to_app_write (picotls_ctx_t *ptls_ctx, svm_fifo_t *app_rx_fifo,
-		       svm_fifo_t *tcp_rx_fifo)
+/* Returns PICOTLS_RX_OK, PICOTLS_RX_ERROR or PICOTLS_RX_PEER_CLOSED. The number of
+ * plaintext bytes handed to the app is reported through n_wrote. */
+static int
+ptls_tcp_to_app_write (picotls_ctx_t *ptls_ctx, svm_fifo_t *app_rx_fifo, svm_fifo_t *tcp_rx_fifo,
+		       u32 *n_wrote)
 {
   u32 ai = 0, thread_index, min_buf_len, to_copy, left, wrote = 0;
   ptls_buffer_t *buf = &ptls_ctx->read_buffer;
   int ret, i = 0, read = 0, tcp_len, n_fs_app;
+  int rv = PICOTLS_RX_OK;
   u32 n_segs = 4, max_len = 1 << 16;
   svm_fifo_seg_t tcp_fs[n_segs], app_fs[n_segs];
   picotls_main_t *pm = &picotls_main;
   uword deq_now;
   u8 is_nocopy;
 
+  *n_wrote = 0;
   thread_index = ptls_ctx->ctx.c_thread_index;
 
   n_fs_app = svm_fifo_provision_chunks (app_rx_fifo, app_fs, n_segs, max_len);
   if (n_fs_app <= 0)
-    return 0;
+    return PICOTLS_RX_OK;
 
   tcp_len = svm_fifo_segments (tcp_rx_fifo, 0, tcp_fs, &n_segs, max_len);
   if (tcp_len <= 0)
-    return 0;
+    return PICOTLS_RX_OK;
 
   if (ptls_ctx->read_buffer_offset)
     {
@@ -368,7 +401,12 @@ ptls_tcp_to_app_write (picotls_ctx_t *ptls_ctx, svm_fifo_t *app_rx_fifo,
 	{
 	  ptls_buffer_init (buf, app_fs[ai].data, app_fs[ai].len);
 	  ret = ptls_receive (ptls_ctx->tls, buf, tcp_fs[i].data, &deq_now);
-	  assert (ret == 0 || ret == PTLS_ERROR_IN_PROGRESS);
+	  if (PREDICT_FALSE (ret != 0))
+	    {
+	      rv = picotls_rx_error (ret);
+	      read += deq_now;
+	      goto do_checks;
+	    }
 
 	  wrote += buf->off;
 	  if (buf->off == app_fs[ai].len)
@@ -386,7 +424,12 @@ ptls_tcp_to_app_write (picotls_ctx_t *ptls_ctx, svm_fifo_t *app_rx_fifo,
 	  vec_validate (pm->rx_bufs[thread_index], min_buf_len);
 	  ptls_buffer_init (buf, pm->rx_bufs[thread_index], min_buf_len);
 	  ret = ptls_receive (ptls_ctx->tls, buf, tcp_fs[i].data, &deq_now);
-	  assert (ret == 0 || ret == PTLS_ERROR_IN_PROGRESS);
+	  if (PREDICT_FALSE (ret != 0))
+	    {
+	      rv = picotls_rx_error (ret);
+	      read += deq_now;
+	      goto do_checks;
+	    }
 
 	  left = ptls_copy_buf_to_fs (buf, buf->off, app_fs, &ai, n_fs_app);
 	  if (!left)
@@ -401,7 +444,7 @@ ptls_tcp_to_app_write (picotls_ctx_t *ptls_ctx, svm_fifo_t *app_rx_fifo,
 	    }
 	}
 
-      assert (deq_now <= tcp_fs[i].len);
+      ASSERT (deq_now <= tcp_fs[i].len);
       read += deq_now;
       if (deq_now < tcp_fs[i].len)
 	{
@@ -428,7 +471,8 @@ do_checks:
   if (wrote)
     svm_fifo_enqueue_nocopy (app_rx_fifo, wrote);
 
-  return wrote;
+  *n_wrote = wrote;
+  return rv;
 }
 
 static inline int
@@ -437,7 +481,8 @@ picotls_ctx_read (tls_ctx_t *ctx, session_t *tcp_session)
   picotls_ctx_t *ptls_ctx = (picotls_ctx_t *) ctx;
   svm_fifo_t *tcp_rx_fifo;
   session_t *app_session;
-  int wrote;
+  u32 wrote;
+  int rv;
 
   if (PREDICT_FALSE (!ptls_handshake_is_complete (ptls_ctx->tls)))
     {
@@ -481,10 +526,21 @@ picotls_ctx_read (tls_ctx_t *ctx, session_t *tcp_session)
 
   tcp_rx_fifo = tcp_session->rx_fifo;
   app_session = session_get_from_handle (ctx->app_session_handle);
-  wrote = ptls_tcp_to_app_write (ptls_ctx, app_session->rx_fifo, tcp_rx_fifo);
+  rv = ptls_tcp_to_app_write (ptls_ctx, app_session->rx_fifo, tcp_rx_fifo, &wrote);
 
   if (wrote)
     tls_notify_app_enqueue (ctx, app_session);
+
+  /* The peer sent us a close_notify or something we cannot parse. Tear the
+   * session down rather than asserting, this input is peer controlled. */
+  if (PREDICT_FALSE (rv != PICOTLS_RX_OK))
+    {
+      if (rv == PICOTLS_RX_PEER_CLOSED)
+	session_transport_closing_notify (&ctx->connection);
+      else
+	tls_notify_app_io_error (ctx);
+      return 0;
+    }
 
   if (ptls_ctx->read_buffer_offset || svm_fifo_max_dequeue (tcp_rx_fifo))
     tls_add_vpp_q_builtin_rx_evt (tcp_session);
@@ -558,12 +614,13 @@ ptls_app_to_tcp_write (picotls_ctx_t *ptls_ctx, session_t *app_session,
       if (app_fs[i].len < min_chunk && min_chunk < left)
 	{
 	  app_buf_len = app_fs[i].len + app_fs[i + 1].len;
-	  app_buf = pm->rx_bufs[thread_index];
-	  vec_validate (pm->rx_bufs[thread_index], app_buf_len);
-	  clib_memcpy_fast (pm->rx_bufs[thread_index], app_fs[i].data,
-			    app_fs[i].len);
-	  clib_memcpy_fast (pm->rx_bufs[thread_index] + app_fs[i].len,
-			    app_fs[i + 1].data, app_buf_len - app_fs[i].len);
+	  /* Read the vector only after vec_validate, it is NULL the first
+	   * time this thread gets here and may move when it grows. */
+	  vec_validate (pm->app_bufs[thread_index], app_buf_len);
+	  app_buf = pm->app_bufs[thread_index];
+	  clib_memcpy_fast (app_buf, app_fs[i].data, app_fs[i].len);
+	  clib_memcpy_fast (app_buf + app_fs[i].len, app_fs[i + 1].data,
+			    app_buf_len - app_fs[i].len);
 	  first_chunk_len = app_fs[i].len;
 	  i += 1;
 	}
@@ -582,28 +639,51 @@ ptls_app_to_tcp_write (picotls_ctx_t *ptls_ctx, session_t *app_session,
 				      max_enq, &is_nocopy);
       if (is_nocopy)
 	{
-	  ptls_buffer_init (buf, tcp_fs[ti].data, tcp_fs[ti].len);
+	  u8 *fs_data = tcp_fs[ti].data;
+
+	  ptls_buffer_init (buf, fs_data, tcp_fs[ti].len);
 	  rv = ptls_send (ptls_ctx->tls, buf, app_buf, deq_len);
+	  if (PREDICT_FALSE (rv != 0))
+	    {
+	      TLS_DBG (1, "ptls_send failed %d", rv);
+	      picotls_buf_dispose (buf);
+	      break;
+	    }
 
-	  assert (rv == 0);
-	  wrote += buf->off;
-
-	  tcp_fs[ti].len -= buf->off;
-	  tcp_fs[ti].data += buf->off;
-	  if (!tcp_fs[ti].len)
-	    ti += 1;
+	  if (PREDICT_TRUE (buf->base == fs_data))
+	    {
+	      wrote += buf->off;
+	      tcp_fs[ti].len -= buf->off;
+	      tcp_fs[ti].data += buf->off;
+	      if (!tcp_fs[ti].len)
+		ti += 1;
+	    }
+	  else
+	    {
+	      /* picotls would not write into the fifo and used a buffer of
+	       * its own, so the records are not where we asked for them */
+	      left = ptls_copy_buf_to_fs (buf, buf->off, tcp_fs, &ti, n_tcp_segs);
+	      wrote += buf->off - left;
+	      ASSERT (left == 0);
+	      picotls_buf_dispose (buf);
+	    }
 	}
       else
 	{
 	  vec_validate (pm->tx_bufs[thread_index], max_enq);
 	  ptls_buffer_init (buf, pm->tx_bufs[thread_index], max_enq);
 	  rv = ptls_send (ptls_ctx->tls, buf, app_buf, deq_len);
-
-	  assert (rv == 0);
-	  wrote += buf->off;
+	  if (PREDICT_FALSE (rv != 0))
+	    {
+	      TLS_DBG (1, "ptls_send failed %d", rv);
+	      picotls_buf_dispose (buf);
+	      break;
+	    }
 
 	  left = ptls_copy_buf_to_fs (buf, buf->off, tcp_fs, &ti, n_tcp_segs);
-	  assert (left == 0);
+	  wrote += buf->off - left;
+	  ASSERT (left == 0);
+	  picotls_buf_dispose (buf);
 	}
 
       read += deq_len;
@@ -798,6 +878,7 @@ tls_picotls_init (vlib_main_t * vm)
   vec_validate (pm->ctx_pool, num_threads - 1);
   vec_validate (pm->rx_bufs, num_threads - 1);
   vec_validate (pm->tx_bufs, num_threads - 1);
+  vec_validate (pm->app_bufs, num_threads - 1);
 
   clib_rwlock_init (&picotls_main.crypto_keys_rw_lock);
 

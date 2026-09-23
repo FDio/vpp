@@ -19,7 +19,8 @@ func init() {
 		VperfBuiltinTcpNoTxCsumOffloadTest, VperfBuiltinTcpChainedBufferTest,
 		VperfBuiltinUdpNoTxCsumOffloadTest, VperfBuiltinHttpTest, VperfBuiltinHttpsTest, VperfBuiltinHttp2Test,
 		VperfBuiltinHttp3Test, VperfBuiltinHttpTestBytesTest, VperfBuiltinHttp2ConnectTcpTest, VperfBuiltinHttp3ConnectTcpTest,
-		VperfBuiltinHttp2ConnectUdpTest, VperfBuiltinHttp3ConnectUdpTest, VperfBuiltinHttp2ConnectUdpBackpressureTest)
+		VperfBuiltinHttp2ConnectUdpTest, VperfBuiltinHttp3ConnectUdpTest, VperfBuiltinHttp2ConnectUdpBackpressureTest,
+		TlsPicotlsTransferTest, TlsPicotlsSmallFifoTransferTest)
 	RegisterVperfMWTests(TcpWithLossMWTest, TcpChainedBufferWithLossMWTest, VperfBuiltinHttp1CpsMWTest,
 		VperfBuiltinHttp2CpsMWTest, VperfBuiltinHttp3CpsMWTest, VperfBuiltinHttp2ConnectUdpBackpressureMWTest)
 	RegisterVperf6Tests(TcpWithLoss6Test)
@@ -541,6 +542,39 @@ func tcpWithLossAndNoLoss(s tcpWithLossInterface, clientVpp *VppInstance,
 	Log("\nBaseline:  %d bytes/s\nWith loss: %d bytes/s", baseline, withLoss)
 	AssertGreaterEqualUnlessCoverageBuild(baseline, withLoss, "Tcp vperf: baseline bitrate is lower than bitrate with loss applied")
 	AssertGreaterEqualUnlessCoverageBuild(withLoss, uint64(float64(baseline)*threshold), "Tcp vperf: bitrate below threshold")
+}
+
+// Moves bulk data over the picotls TLS transport and verifies every byte.
+// The picotls tests in tls_test.go only cover the handshake, so nothing else
+// exercises its record encrypt and decrypt paths.
+func TlsPicotlsTransferTest(s *VperfSuite) {
+	tlsPicotlsTransferTest(s, "")
+}
+
+// Same, but with an app fifo small enough that the engine is handed short
+// leading tx segments, which takes its gather-into-a-staging-buffer path.
+func TlsPicotlsSmallFifoTransferTest(s *VperfSuite) {
+	tlsPicotlsTransferTest(s, " fifo-size 32k")
+}
+
+func tlsPicotlsTransferTest(s *VperfSuite, extraArgs string) {
+	serverVpp := s.Containers.ServerVpp.VppInstance
+	clientVpp := s.Containers.ClientVpp.VppInstance
+	uri := "tls://" + s.Interfaces.Server.Ip4AddressString() + "/" + s.Ports.Port1
+
+	Log(serverVpp.Vppctl("vperf server uri " + uri + " tls-engine 2"))
+
+	o := clientVpp.Vppctl("vperf client uri " + uri +
+		" tls-engine 2 bytes 32M test-bytes verbose" + extraArgs)
+	Log(o)
+	AssertNotContains(o, "failed:")
+
+	throughput, err := ParseVperfClientTransfer(o)
+	AssertNil(err)
+	AssertGreaterThan(throughput, uint64(0), "throughput must be > 0")
+
+	// test-bytes mismatches are reported by the receiving side only
+	AssertNotContains(serverVpp.Vppctl("show log"), "expected")
 }
 
 func TlsSingleConnectionTest(s *VperfSuite) {
