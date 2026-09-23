@@ -20,6 +20,20 @@ oct_plt_log (oct_plt_log_level_t level, oct_plt_log_class_t cls, char *fmt,
   vlib_log ((vlib_log_level_t) level, cls, fmt);
 }
 
+/* plt_dump callback to dump into active CLI connection */
+static void
+oct_plt_console (const char *fmt, ...)
+{
+  va_list va;
+  u8 *s;
+
+  va_start (va, fmt);
+  s = va_format (0, (char *) fmt, &va);
+  va_end (va);
+  vlib_cli_output (vlib_get_main (), "%v", s);
+  vec_free (s);
+}
+
 static inline void
 oct_plt_spinlock_init (oct_plt_spinlock_t *p)
 {
@@ -417,6 +431,7 @@ oct_plt_init_param_t oct_plt_init_param = {
   .oct_plt_log_reg_class = vlib_log_register_class,
   .oct_plt_log = oct_plt_log,
   .oct_plt_free = oct_plt_free,
+  .oct_plt_console = oct_plt_console,
   .oct_plt_zmalloc = oct_plt_zmalloc,
   .oct_plt_realloc = oct_plt_realloc,
   .oct_plt_memzone_free = oct_plt_memzone_free,
