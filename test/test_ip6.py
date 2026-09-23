@@ -2390,6 +2390,9 @@ class TestIP6LoadBalance(VppTestCase):
     def test_ip6_load_balance(self):
         """IPv6 Load-Balancing"""
 
+        fhcv2 = VppEnum.vl_api_ip_flow_hash_config_v2_t
+        af = VppEnum.vl_api_address_family_t
+
         #
         # An array of packets that differ only in the destination port
         #  - IP only
@@ -2398,6 +2401,7 @@ class TestIP6LoadBalance(VppTestCase):
         #  - MPLS non-EOS with an entropy label
         #
         port_ip_pkts = []
+        echo_ip_pkts = []
         port_mpls_pkts = []
         port_mpls_neos_pkts = []
         port_ent_pkts = []
@@ -2416,6 +2420,12 @@ class TestIP6LoadBalance(VppTestCase):
             )
             port_ip_pkts.append(
                 (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) / port_ip_hdr)
+            )
+            echo_ip_pkts.append(
+                Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
+                / IPv6(dst="3000::1", src="3000:1::1", fl=0)
+                / ICMPv6EchoRequest(id=ii)
+                / Raw(b"echo")
             )
             port_mpls_pkts.append(
                 (
@@ -2531,6 +2541,50 @@ class TestIP6LoadBalance(VppTestCase):
         )
         self.assertNotEqual(n_mpls_pg0, len(rx[0]))
 
+        # Echo identifiers do not affect the default path.
+        self.pg_send(self.pg0, echo_ip_pkts)
+        rxs = [output._get_capture() or [] for output in (self.pg1, self.pg2)]
+        self.assertEqual(sorted(map(len, rxs)), [0, len(echo_ip_pkts)])
+        default_output = self.pg1 if rxs[0] else self.pg2
+
+        default_hash = (
+            fhcv2.IP_API_V2_FLOW_HASH_SRC_IP
+            | fhcv2.IP_API_V2_FLOW_HASH_DST_IP
+            | fhcv2.IP_API_V2_FLOW_HASH_SRC_PORT
+            | fhcv2.IP_API_V2_FLOW_HASH_DST_PORT
+            | fhcv2.IP_API_V2_FLOW_HASH_PROTO
+            | fhcv2.IP_API_V2_FLOW_HASH_FLOW_LABEL
+        )
+        self.vapi.set_ip_flow_hash_v3(
+            af=af.ADDRESS_IP6,
+            table_id=0,
+            flow_hash_config=default_hash | fhcv2.IP_API_V2_FLOW_HASH_ICMP_ECHO,
+        )
+
+        # Echo IDs spread flows; reply type and sequence keep the same path.
+        p = echo_ip_pkts[0].copy()
+        p[IPv6].remove_payload()
+        rxs = self.send_and_expect_load_balancing(
+            self.pg0, echo_ip_pkts, [self.pg1, self.pg2]
+        )
+        for output, rx in zip((self.pg1, self.pg2), rxs):
+            self.send_and_expect_only(
+                self.pg0,
+                [
+                    p
+                    / ICMPv6EchoReply(id=packet[IPv6].payload.id, seq=1)
+                    / Raw(b"echo")
+                    for packet in rx
+                ],
+                output,
+            )
+
+        # Disabling the option restores the original hash for every Echo ID.
+        self.vapi.set_ip_flow_hash_v3(
+            af=af.ADDRESS_IP6, table_id=0, flow_hash_config=default_hash
+        )
+        self.send_and_expect_only(self.pg0, echo_ip_pkts, default_output)
+
         #
         # The packets with Entropy label in should not load-balance,
         # since the Entropy value is fixed.
@@ -2542,8 +2596,15 @@ class TestIP6LoadBalance(VppTestCase):
         #  - now only the stream with differing source address will
         #    load-balance
         #
-        self.vapi.set_ip_flow_hash(
-            vrf_id=0, src=1, dst=1, proto=1, sport=0, dport=0, is_ipv6=1
+        self.vapi.set_ip_flow_hash_v3(
+            af=af.ADDRESS_IP6,
+            table_id=0,
+            flow_hash_config=(
+                fhcv2.IP_API_V2_FLOW_HASH_SRC_IP
+                | fhcv2.IP_API_V2_FLOW_HASH_DST_IP
+                | fhcv2.IP_API_V2_FLOW_HASH_PROTO
+                | fhcv2.IP_API_V2_FLOW_HASH_ICMP_ECHO
+            ),
         )
 
         self.send_and_expect_load_balancing(self.pg0, src_ip_pkts, [self.pg1, self.pg2])
@@ -2551,6 +2612,7 @@ class TestIP6LoadBalance(VppTestCase):
             self.pg0, src_mpls_pkts, [self.pg1, self.pg2]
         )
         self.send_and_expect_only(self.pg0, port_ip_pkts, self.pg2)
+        self.send_and_expect_only(self.pg0, echo_ip_pkts, default_output)
 
         #
         # change the flow hash config back to defaults

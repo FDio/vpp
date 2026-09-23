@@ -394,6 +394,8 @@ autoreply define set_ip_flow_hash_v2
     @param symmetric - include symmetry in flow hash
     @param flowlabel - include flowlabel in flow hash
     @param gtpv1teid - include gtpv1teid in flow hash
+    @param icmp_echo - use the ICMP Echo identifier as both port inputs;
+                      opt-in, also requires src_port and/or dst_port
 */
 enumflag ip_flow_hash_config_v2
 {
@@ -406,6 +408,7 @@ enumflag ip_flow_hash_config_v2
   IP_API_V2_FLOW_HASH_SYMETRIC = 0x40,
   IP_API_V2_FLOW_HASH_FLOW_LABEL = 0x80,
   IP_API_V2_FLOW_HASH_GTPV1_TEID = 0x100,
+  IP_API_V2_FLOW_HASH_ICMP_ECHO = 0x200,
 };
 
 autoreply define set_ip_flow_hash_v3

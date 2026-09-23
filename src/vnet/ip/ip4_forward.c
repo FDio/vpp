@@ -2692,6 +2692,8 @@ set_ip_flow_hash_command_fn (vlib_main_t * vm,
 
 /*?
  * Configure the set of IPv4 fields used by the flow hash.
+ * The optional icmpid flag uses the Echo identifier as both port inputs.
+ * It is disabled by default and requires sport and/or dport to be enabled.
  *
  * @cliexpar
  * Example of how to set the flow hash on a given table:
@@ -2776,7 +2778,7 @@ set_ip_flow_hash_command_fn (vlib_main_t * vm,
 VLIB_CLI_COMMAND (set_ip_flow_hash_command, static) = {
   .path = "set ip flow-hash",
   .short_help = "set ip flow-hash table <table-id> [src] [dst] [sport] "
-		"[dport] [proto] [reverse] [gtpv1teid]",
+		"[dport] [proto] [reverse] [gtpv1teid] [icmpid]",
   .function = set_ip_flow_hash_command_fn,
 };
 
