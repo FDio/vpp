@@ -1,0 +1,22 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "d428795d_013e8c16",
+        "filename": "src/scripts/check_vnet_exports.sh",
+        "patchSetId": 18
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-09-24T11:51:36Z",
+      "side": 1,
+      "message": "Resolved in PS18: the checker now defaults to the standard awk command while retaining the AWK override.",
+      "parentUuid": "c443e3ef_5460acbe",
+      "revId": "8ccce3b0a8d47aec6c20e09ee370b5f25c3a1630",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
