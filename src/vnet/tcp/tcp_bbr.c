@@ -160,7 +160,8 @@ bbr_update_ack_aggregation (tcp_connection_t *tc, bbr_data_t *bd, tcp_ack_ctx_t 
 static void
 bbr_check_full_bw_reached (bbr_data_t *bd, tcp_ack_ctx_t *rs, f64 sample_bw)
 {
-  if (bbr_full_bw_now (bd) || (rs->flags & TCP_BTS_IS_APP_LIMITED))
+  if (bbr_full_bw_now (bd) || !bbr_has_flag (bd, BBR_F_ROUND_START) ||
+      (rs->flags & TCP_BTS_IS_APP_LIMITED))
     return;
 
   if (sample_bw >= bd->full_bw * BBR_FULL_BW_THRESH)
@@ -169,9 +170,6 @@ bbr_check_full_bw_reached (bbr_data_t *bd, tcp_ack_ctx_t *rs, f64 sample_bw)
       bd->full_bw = sample_bw;
       return;
     }
-
-  if (!bbr_has_flag (bd, BBR_F_ROUND_START))
-    return;
 
   bd->full_bw_count++;
   if (bbr_full_bw_now (bd))
@@ -799,13 +797,33 @@ format_tcp_bbr (u8 *s, va_list *args)
 {
   tcp_connection_t *tc = va_arg (*args, tcp_connection_t *);
   bbr_data_t *bd = bbr_data (tc);
+  u32 bdp = bbr_bdp_multiple (tc, bd, 1.0);
+  u32 extra_acked = bbr_minmax_get (&bd->extra_acked);
+  u32 inflight_target = bbr_max_inflight (tc, bd);
+  u32 indent = format_get_indent (s);
 
-  return format (s,
-		 "state %u/%u ack_phase %u round %u bw %.3f/%.3fMbit/s "
-		 "min_rtt %.3fms pace %.3fMbit/s inflight hi/lo %u/%u latest %u "
-		 "loss %u/%u",
-		 bd->mode, bd->probe_bw_phase, bd->ack_phase, bd->round_count, bbr_bw (bd) * 8e-6,
-		 bbr_max_bw (bd) * 8e-6, bd->min_rtt * 1e3, bd->pacing_rate * 8e-6, bd->inflight_hi,
+  if (bd->mode == BBR_PROBE_RTT)
+    inflight_target = clib_min (inflight_target, bbr_probe_rtt_cwnd (tc, bd));
+  inflight_target = bbr_bound_cwnd_for_model (tc, bd, inflight_target);
+  inflight_target = clib_min (inflight_target, tc->tx_fifo_size);
+
+  s = format (s,
+	      "state %u/%u ack_phase %u probe_wait %.3f round %u full_bw %.3fMbit/s "
+	      "full_bw_count %u\n",
+	      bd->mode, bd->probe_bw_phase, bd->ack_phase, bd->bw_probe_wait, bd->round_count,
+	      bd->full_bw * 8e-6, bd->full_bw_count);
+  s = format (s, "%Ubw %.3f/%.3fMbit/s bw_hi %.3f/%.3fMbit/s bw_lo ", format_white_space, indent,
+	      bbr_bw (bd) * 8e-6, bbr_max_bw (bd) * 8e-6, bd->bw_hi[0] * 8e-6, bd->bw_hi[1] * 8e-6);
+  if (bd->bw_lo == BBR_BW_INFINITY)
+    s = format (s, "inf");
+  else
+    s = format (s, "%.3fMbit/s", bd->bw_lo * 8e-6);
+  s = format (s, " latest %.3fMbit/s pace %.3fMbit/s gains %.2f/%.2f\n", bd->bw_latest * 8e-6,
+	      bd->pacing_rate * 8e-6, bbr_pacing_gain (bd), bbr_cwnd_gain (bd));
+  s = format (s, "%Umin_rtt %.3fms bdp %u extra_acked %u ack_epoch %llu\n", format_white_space,
+	      indent, bd->min_rtt * 1e3, bdp, extra_acked, bd->ack_epoch_acked);
+  return format (s, "%Uoffload %u target %u inflight hi/lo %u/%u latest %u loss %u/%u",
+		 format_white_space, indent, bd->offload_budget, inflight_target, bd->inflight_hi,
 		 bd->inflight_lo, bd->inflight_latest, bd->loss_events,
 		 bbr_has_flag (bd, BBR_F_LOSS_IN_ROUND));
 }
