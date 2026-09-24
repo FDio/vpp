@@ -1047,9 +1047,9 @@ session_tx_copy_data (session_worker_t *wrk, session_tx_context_t *ctx,
 		      vlib_buffer_t *b, u32 len_to_deq, u8 *data0)
 {
   int n_bytes_read;
-  if (PREDICT_TRUE (!wrk->dma_enabled))
-    n_bytes_read =
-      svm_fifo_peek (ctx->s->tx_fifo, ctx->sp.tx_offset, len_to_deq, data0);
+  if (PREDICT_TRUE (!wrk->dma_enabled || ctx->s->tx_buffer_index))
+    n_bytes_read = session_tx_fifo_peek_bytes (
+	ctx->tc, data0, ctx->sp.tx_offset, len_to_deq);
   else
     n_bytes_read = session_tx_fill_dma_transfers (wrk, ctx, b);
   return n_bytes_read;
@@ -1060,9 +1060,9 @@ session_tx_copy_data_tail (session_worker_t *wrk, session_tx_context_t *ctx,
 			   vlib_buffer_t *b, u32 len_to_deq, u8 *data)
 {
   int n_bytes_read;
-  if (PREDICT_TRUE (!wrk->dma_enabled))
-    n_bytes_read =
-      svm_fifo_peek (ctx->s->tx_fifo, ctx->sp.tx_offset, len_to_deq, data);
+  if (PREDICT_TRUE (!wrk->dma_enabled || ctx->s->tx_buffer_index))
+    n_bytes_read = session_tx_fifo_peek_bytes (
+	ctx->tc, data, ctx->sp.tx_offset, len_to_deq);
   else
     n_bytes_read =
       session_tx_fill_dma_transfers_tail (wrk, ctx, b, len_to_deq, data);
@@ -1299,7 +1299,7 @@ session_tx_set_dequeue_params (vlib_main_t * vm, session_tx_context_t * ctx,
   u32 n_bytes_per_buf, n_bytes_per_seg;
 
   n_bytes_per_buf = vlib_buffer_get_default_data_size (vm);
-  ctx->max_dequeue = svm_fifo_max_dequeue_cons (ctx->s->tx_fifo);
+  ctx->max_dequeue = transport_max_tx_dequeue (ctx->tc);
 
   if (peek_data)
     {
@@ -1441,7 +1441,7 @@ session_tx_maybe_reschedule (session_worker_t * wrk,
   session_t *s = ctx->s;
 
   svm_fifo_unset_event (s->tx_fifo);
-  if (svm_fifo_max_dequeue_cons (s->tx_fifo) > ctx->sp.tx_offset)
+  if (transport_max_tx_dequeue (ctx->tc) > ctx->sp.tx_offset)
     {
       if (svm_fifo_set_event (s->tx_fifo))
 	session_evt_add_head_old (wrk, elt);
@@ -1571,6 +1571,44 @@ session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
       return SESSION_TX_NO_DATA;
     }
 
+  if (transport_connection_is_tx_paced (ctx->tc))
+    transport_connection_tx_pacer_update_bytes (ctx->tc, ctx->max_len_to_snd);
+
+  ctx->left_to_snd = ctx->max_len_to_snd;
+  n_left = ctx->n_segs_per_evt;
+  n_bufs = 0;
+
+  vec_validate (ctx->transport_pending_bufs, n_left);
+
+  /* An in-process application may already own packet-buffer-backed TX
+   * payload.  Let it construct immutable packet views first; arbitrary or
+   * busy slices fall back to the regular peek-and-copy path below. */
+  if (PREDICT_FALSE (ctx->s->tx_buffer_index))
+    {
+      u16 n_direct = ctx->n_segs_per_evt;
+      u32 direct_bytes = 0;
+
+      vec_validate_aligned (ctx->tx_buffers, n_direct - 1,
+			    CLIB_CACHE_LINE_BYTES);
+      if (session_tx_buffer_build_packets (
+	    ctx->s, vm, ctx->sp.tx_offset, ctx->max_len_to_snd,
+	    ctx->sp.snd_mss, ctx->tx_buffers, &n_direct, &direct_bytes) == 0 &&
+	  n_direct == ctx->n_segs_per_evt &&
+	  direct_bytes == ctx->max_len_to_snd)
+	{
+	  u16 i;
+	  for (i = 0; i < n_direct; i++)
+	    {
+	      u32 bi = ctx->tx_buffers[i];
+	      ctx->transport_pending_bufs[i] = vlib_get_buffer (vm, bi);
+	      session_tx_add_pending_buffer (wrk, bi, next_index);
+	    }
+	  ctx->sp.tx_offset += direct_bytes;
+	  ctx->left_to_snd = 0;
+	  goto push_headers;
+	}
+    }
+
   vec_validate_aligned (ctx->tx_buffers, ctx->n_bufs_needed - 1,
 			CLIB_CACHE_LINE_BYTES);
   n_bufs = vlib_buffer_alloc (vm, ctx->tx_buffers, ctx->n_bufs_needed);
@@ -1583,14 +1621,6 @@ session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
 				   SESSION_QUEUE_ERROR_NO_BUFFER, 1);
       return SESSION_TX_NO_BUFFERS;
     }
-
-  if (transport_connection_is_tx_paced (ctx->tc))
-    transport_connection_tx_pacer_update_bytes (ctx->tc, ctx->max_len_to_snd);
-
-  ctx->left_to_snd = ctx->max_len_to_snd;
-  n_left = ctx->n_segs_per_evt;
-
-  vec_validate (ctx->transport_pending_bufs, n_left);
 
   while (n_left >= 4)
     {
@@ -1642,6 +1672,7 @@ session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
       session_tx_add_pending_buffer (wrk, bi0, next_index);
     }
 
+push_headers:
   /* Ask transport to push headers */
   ctx->transport_vft->push_header (ctx->tc, ctx->transport_pending_bufs, ctx->n_segs_per_evt,
 				   ctx->max_dequeue);

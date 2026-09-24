@@ -265,6 +265,8 @@ session_free (session_t * s)
   session_worker_t *wrk = &session_main.wrk[s->thread_index];
 
   SESSION_EVT (SESSION_EVT_FREE, s);
+  if (PREDICT_FALSE (s->tx_buffer_index))
+    session_tx_buffer_unregister (s);
   if (CLIB_DEBUG)
     clib_memset (s, 0xFA, sizeof (*s));
   pool_put (wrk->sessions, s);
@@ -733,6 +735,17 @@ session_tx_fifo_peek_bytes (transport_connection_t * tc, u8 * buffer,
 			    u32 offset, u32 max_bytes)
 {
   session_t *s = session_get (tc->s_index, tc->thread_index);
+  session_worker_t *wrk;
+  session_tx_buffer_t *txb;
+
+  if (PREDICT_FALSE (s->tx_buffer_index))
+    {
+      wrk = session_main_get_worker (s->thread_index);
+      txb = pool_elt_at_index (wrk->tx_buffer_stores,
+			       s->tx_buffer_index - 1);
+      ASSERT (txb->session_handle == session_handle (s));
+      return txb->vft->peek (txb->ctx, offset, max_bytes, buffer);
+    }
   return svm_fifo_peek (s->tx_fifo, offset, max_bytes, buffer);
 }
 
@@ -740,15 +753,97 @@ u32
 session_tx_fifo_dequeue_drop (transport_connection_t * tc, u32 max_bytes)
 {
   session_t *s = session_get (tc->s_index, tc->thread_index);
+  session_worker_t *wrk;
+  session_tx_buffer_t *txb;
   u32 rv;
 
-  rv = svm_fifo_dequeue_drop (s->tx_fifo, max_bytes);
+  if (PREDICT_FALSE (s->tx_buffer_index))
+    {
+      wrk = session_main_get_worker (s->thread_index);
+      txb = pool_elt_at_index (wrk->tx_buffer_stores,
+			       s->tx_buffer_index - 1);
+      ASSERT (txb->session_handle == session_handle (s));
+      rv = txb->vft->dequeue_drop (txb->ctx, max_bytes);
+    }
+  else
+    rv = svm_fifo_dequeue_drop (s->tx_fifo, max_bytes);
   session_fifo_tuning (s, s->tx_fifo, SESSION_FT_ACTION_DEQUEUED, rv);
 
   if (svm_fifo_needs_deq_ntf (s->tx_fifo, max_bytes))
     session_dequeue_notify (s);
 
   return rv;
+}
+
+int
+session_tx_buffer_register (session_t *s,
+			    const session_tx_buffer_vft_t *vft, void *ctx)
+{
+  session_worker_t *wrk;
+  session_tx_buffer_t *txb;
+
+  if (!vft || !vft->max_dequeue || !vft->peek || !vft->dequeue_drop ||
+      !vft->build_packets || s->tx_buffer_index)
+    return -1;
+
+  ASSERT (s->thread_index == vlib_get_thread_index ());
+  wrk = session_main_get_worker (s->thread_index);
+  pool_get_zero (wrk->tx_buffer_stores, txb);
+  txb->vft = vft;
+  txb->ctx = ctx;
+  txb->session_handle = session_handle (s);
+  s->tx_buffer_index = (txb - wrk->tx_buffer_stores) + 1;
+  return 0;
+}
+
+void
+session_tx_buffer_unregister (session_t *s)
+{
+  session_worker_t *wrk;
+  session_tx_buffer_t *txb;
+
+  if (!s->tx_buffer_index)
+    return;
+
+  wrk = session_main_get_worker (s->thread_index);
+  txb = pool_elt_at_index (wrk->tx_buffer_stores, s->tx_buffer_index - 1);
+  ASSERT (txb->session_handle == session_handle (s));
+  s->tx_buffer_index = 0;
+  if (txb->vft->cleanup)
+    txb->vft->cleanup (txb->ctx);
+  pool_put (wrk->tx_buffer_stores, txb);
+}
+
+u32
+session_tx_buffer_max_dequeue (session_t *s)
+{
+  session_worker_t *wrk;
+  session_tx_buffer_t *txb;
+
+  ASSERT (s->tx_buffer_index);
+  wrk = session_main_get_worker (s->thread_index);
+  txb = pool_elt_at_index (wrk->tx_buffer_stores, s->tx_buffer_index - 1);
+  ASSERT (txb->session_handle == session_handle (s));
+  return txb->vft->max_dequeue (txb->ctx);
+}
+
+int
+session_tx_buffer_build_packets (session_t *s, vlib_main_t *vm,
+				 u32 offset, u32 max_bytes, u32 segment_size,
+				 u32 *buffer_indices, u16 *n_packets,
+				 u32 *n_bytes)
+{
+  session_worker_t *wrk;
+  session_tx_buffer_t *txb;
+
+  if (!s->tx_buffer_index)
+    return -1;
+  wrk = session_main_get_worker (s->thread_index);
+  txb = pool_elt_at_index (wrk->tx_buffer_stores, s->tx_buffer_index - 1);
+  ASSERT (txb->session_handle == session_handle (s));
+  return txb->vft->build_packets (txb->ctx, vm, offset, max_bytes,
+				  segment_size, buffer_indices, n_packets,
+				  n_bytes);
 }
 
 int

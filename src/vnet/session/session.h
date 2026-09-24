@@ -42,6 +42,32 @@ typedef struct session_tx_context_
   vlib_buffer_t **transport_pending_bufs;
 } session_tx_context_t;
 
+/**
+ * Optional in-process TX storage provider.
+ *
+ * The regular shared-memory FIFO remains the default.  Built-in applications
+ * may opt a session into an alternate byte store that can also construct
+ * packet buffer chains without copying payload data.  The peek callback is
+ * mandatory so transports can still materialize arbitrary retransmissions.
+ */
+typedef struct session_tx_buffer_vft_
+{
+  u32 (*max_dequeue) (void *ctx);
+  int (*peek) (void *ctx, u32 offset, u32 max_bytes, u8 *dst);
+  u32 (*dequeue_drop) (void *ctx, u32 max_bytes);
+  int (*build_packets) (void *ctx, vlib_main_t *vm, u32 offset,
+			u32 max_bytes, u32 segment_size, u32 *buffer_indices,
+			u16 *n_packets, u32 *n_bytes);
+  void (*cleanup) (void *ctx);
+} session_tx_buffer_vft_t;
+
+typedef struct session_tx_buffer_
+{
+  const session_tx_buffer_vft_t *vft;
+  void *ctx;
+  session_handle_t session_handle;
+} session_tx_buffer_t;
+
 typedef struct session_evt_elt
 {
   clib_llist_anchor_t evt_list;
@@ -85,6 +111,9 @@ typedef struct session_worker_
 
   /** Worker session pool */
   session_t *sessions;
+
+  /** Optional in-process TX buffer providers */
+  session_tx_buffer_t *tx_buffer_stores;
 
   /** vpp event message queue for worker */
   svm_msg_q_t *vpp_event_queue;
@@ -638,6 +667,14 @@ void session_queue_run_on_main_thread (vlib_main_t *vm);
 int session_tx_fifo_peek_bytes (transport_connection_t * tc, u8 * buffer,
 				u32 offset, u32 max_bytes);
 u32 session_tx_fifo_dequeue_drop (transport_connection_t * tc, u32 max_bytes);
+int session_tx_buffer_register (session_t *s,
+				const session_tx_buffer_vft_t *vft, void *ctx);
+void session_tx_buffer_unregister (session_t *s);
+u32 session_tx_buffer_max_dequeue (session_t *s);
+int session_tx_buffer_build_packets (session_t *s, vlib_main_t *vm,
+				     u32 offset, u32 max_bytes,
+				     u32 segment_size, u32 *buffer_indices,
+				     u16 *n_packets, u32 *n_bytes);
 int session_enqueue_dgram_connection_cl (session_t *s,
 					 session_dgram_hdr_t *hdr,
 					 vlib_buffer_t *b, u8 proto,
@@ -924,6 +961,8 @@ always_inline u32
 transport_max_tx_dequeue (transport_connection_t * tc)
 {
   session_t *s = session_get (tc->s_index, tc->thread_index);
+  if (PREDICT_FALSE (s->tx_buffer_index))
+    return session_tx_buffer_max_dequeue (s);
   return svm_fifo_max_dequeue_cons (s->tx_fifo);
 }
 
