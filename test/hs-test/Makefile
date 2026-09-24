@@ -295,7 +295,7 @@ test-leak: .deps.ok .build_debug.ok
 	docker run $(DOCKER_TTY) --rm $(DOCKER_CAPABILITIES) $(DOCKER_DEVICES) $(DOCKER_PROXY)\
 		-e GITHUB_REPO_URL=$(GITHUB_REPO_URL) $(DOCKER_VOLUMES) --name $(GINKGO_CONTAINER) \
 		--label io.fd.hs-test.run=$(RUN_ID) hs-test/ginkgo:$(RUN_ID) \
-		.$(HS_ROOT)/hs_test.sh --test=$(TEST) --debug_build=true --leak_check=true --vppsrc=$(VPPSRC) \
+		.$(HS_ROOT)/hs_test.sh --test=$(TEST) --skip=$(SKIP) --debug_build=true --leak_check=true --vppsrc=$(VPPSRC) \
 		--timeout=$(TIMEOUT) --ginkgo_timeout=$(GINKGO_TIMEOUT) --vpp_cpus=$(VPP_CPUS) --hs_root=$(HS_ROOT) \
 		$(LABEL_ARG) --host_ppid=$$PPID --run_id=$(RUN_ID) --image_tag=$(RUN_ID) $(SEED_ARG); \
 
