@@ -2351,8 +2351,8 @@ tcp_test_bbr (vlib_main_t *vm, unformat_input_t *input)
   vec_free (state);
   tcp_test_bbr_cleanup (tc);
 
-  /* A faster sample within a round must reset STARTUP plateau detection.
-   * Only the no-growth counter itself is advanced at round boundaries. */
+  /* Full-pipe detection evaluates one sample per round. Faster samples later
+   * in the same round must not move its bandwidth baseline. */
   tcp_test_bbr_init (tc, thread_index, 1000, 0.1);
   for (i = 0; i < 4; i++)
     {
@@ -2374,8 +2374,9 @@ tcp_test_bbr (vlib_main_t *vm, unformat_input_t *input)
       tc->cc_algo->rcv_ack (tc, &ac);
     }
   state = format (0, "%U%c", tc->cc_algo->format, tc, 0);
-  TCP_TEST (strstr ((char *) state, "state 0/") != 0,
-	    "bbr startup observes intra-round bandwidth growth: %s", state);
+  TCP_TEST (strstr ((char *) state, "state 0/") == 0 &&
+	      strstr ((char *) state, "full_bw_count 3") != 0,
+	    "bbr startup ignores intra-round bandwidth growth: %s", state);
   vec_free (state);
   tcp_test_bbr_cleanup (tc);
 
