@@ -26,6 +26,9 @@ func init() {
 		WifiVariableRateCycleTailExtendedTest,
 		WifiVariableRateFastCycleExtendedTest,
 		WifiVariableRatePersistentDropExtendedTest,
+		WifiVariableRateContentionCubicExtendedTest,
+		WifiVariableRateContentionCubicRackExtendedTest,
+		WifiVariableRateContentionBbrExtendedTest,
 	)
 }
 
@@ -43,6 +46,10 @@ const (
 		" rate-cycle bandwidth 200 mbps good 2 sec bad 30 sec"
 	wvrDataCycle = wvrDataFixed +
 		" rate-cycle bandwidth 200 mbps good 10 sec bad 10 sec"
+	wvrDataContention = "set nsim poll-main-thread delay 10 ms bandwidth 440 mbps " +
+		"buffer 72.7 ms packet-size 1500 seed 2107" +
+		" rate-cycle bandwidth 200 mbps good 10 sec bad 10 sec" +
+		" contention mean-idle 32 sec mean-busy 90 ms buffer-occupancy 0.45"
 	wvrAckFixed = "set nsim poll-main-thread delay 10 ms bandwidth 320 mbps " +
 		"buffer 20 ms packet-size 64 seed 519007"
 	wvrAckBatch = wvrAckFixed + " batch-interval 5.5 ms batch-packets 128"
@@ -84,43 +91,50 @@ type wvrSample struct {
 	flight      uint64
 	extraAcked  uint64
 	rxtBytes    uint64
+	queueDrops  uint64
 	queueDelay  float64
 	rateState   string
 	bbr         string
 }
 
 type wvrResult struct {
-	goodputMbps float64
-	minRtt      float64
-	medianRtt   float64
-	p95Rtt      float64
-	medianQueue float64
-	p95Queue    float64
-	maxCwnd     uint64
-	maxExtra    uint64
-	rxtBytes    uint64
+	goodputMbps  float64
+	minRtt       float64
+	medianRtt    float64
+	p95Rtt       float64
+	medianQueue  float64
+	p95Queue     float64
+	maxCwnd      uint64
+	maxExtra     uint64
+	rxtBytes     uint64
+	queueDrops   uint64
+	contentions  uint64
+	dropEpisodes uint64
+	maxDropBurst uint64
 }
 
 var (
-	wvrHeaderRe  = regexp.MustCompile(`(?m)^\[(\d+):(\d+)\]\[T\]`)
-	wvrOutRe     = regexp.MustCompile(`out segs \d+ dsegs \d+ bytes (\d+)`)
-	wvrUnaRe     = regexp.MustCompile(`\bsnd_una (\d+)\b`)
-	wvrRttRe     = regexp.MustCompile(`\bsrtt [\d.]+ us ([\d.]+)`)
-	wvrCwndRe    = regexp.MustCompile(`\bcwnd (\d+)\b`)
-	wvrFlightRe  = regexp.MustCompile(`flight size (\d+)`)
-	wvrExtraRe   = regexp.MustCompile(`\bextra_acked (\d+)\b`)
-	wvrRxtRe     = regexp.MustCompile(`rxt segs \d+ bytes (\d+)\b`)
-	wvrPacerRe   = regexp.MustCompile(`(?m)^\s*pacer: rate (\d+)\b`)
-	wvrCreditRe  = regexp.MustCompile(`\bcredit ([\d.]+)\b`)
-	wvrBurstRe   = regexp.MustCompile(`\bmin-burst \d+ burst (\d+)\b`)
-	wvrCapRe     = regexp.MustCompile(`\bcap (\d+)\b`)
-	wvrBbrRe     = regexp.MustCompile(`(?m)^\s*bbr:\s+(.+)$`)
-	wvrRateRe    = regexp.MustCompile(`rate service tail:.*\((good|bad),`)
-	wvrQueueRe   = regexp.MustCompile(`service backlog ([\d.]+) ms`)
-	wvrPacketsRe = regexp.MustCompile(`counters: packets (\d+)\b`)
-	wvrTxRe      = regexp.MustCompile(`\btransmitted (\d+)\b`)
-	wvrTransRe   = regexp.MustCompile(`(?m)^\s+rate service tail:.*\((?:good|bad), (\d+) tracked transitions\b`)
-	wvrXferRe    = regexp.MustCompile(`(\d+) bytes .* in ([\d.]+) seconds`)
+	wvrHeaderRe     = regexp.MustCompile(`(?m)^\[(\d+):(\d+)\]\[T\]`)
+	wvrOutRe        = regexp.MustCompile(`out segs \d+ dsegs \d+ bytes (\d+)`)
+	wvrUnaRe        = regexp.MustCompile(`\bsnd_una (\d+)\b`)
+	wvrRttRe        = regexp.MustCompile(`\bsrtt [\d.]+ us ([\d.]+)`)
+	wvrCwndRe       = regexp.MustCompile(`\bcwnd (\d+)\b`)
+	wvrFlightRe     = regexp.MustCompile(`flight size (\d+)`)
+	wvrExtraRe      = regexp.MustCompile(`\bextra_acked (\d+)\b`)
+	wvrRxtRe        = regexp.MustCompile(`rxt segs \d+ bytes (\d+)\b`)
+	wvrPacerRe      = regexp.MustCompile(`(?m)^\s*pacer: rate (\d+)\b`)
+	wvrCreditRe     = regexp.MustCompile(`\bcredit ([\d.]+)\b`)
+	wvrBurstRe      = regexp.MustCompile(`\bmin-burst \d+ burst (\d+)\b`)
+	wvrCapRe        = regexp.MustCompile(`\bcap (\d+)\b`)
+	wvrBbrRe        = regexp.MustCompile(`(?m)^\s*bbr:\s+(.+)$`)
+	wvrRateRe       = regexp.MustCompile(`rate service tail:.*\((good|bad),`)
+	wvrQueueRe      = regexp.MustCompile(`service backlog ([\d.]+) ms`)
+	wvrPacketsRe    = regexp.MustCompile(`counters: packets (\d+)\b`)
+	wvrTxRe         = regexp.MustCompile(`\btransmitted (\d+)\b`)
+	wvrTransRe      = regexp.MustCompile(`(?m)^\s+rate service tail:.*\((?:good|bad), (\d+) tracked transitions\b`)
+	wvrContentionRe = regexp.MustCompile(`(?m)^\s+contention: events (\d+)\b`)
+	wvrQueueDropRe  = regexp.MustCompile(`\bqueue-full (\d+)\b`)
+	wvrXferRe       = regexp.MustCompile(`(\d+) bytes .* in ([\d.]+) seconds`)
 )
 
 func wvrUint(text string, re *regexp.Regexp) uint64 {
@@ -215,6 +229,10 @@ func wvrRun(s *VethsSuite, config wvrConfig) wvrResult {
 		AssertContains(dataShow, "rate model: cycle:")
 		AssertContains(dataShow, "rate service starts:")
 	}
+	if strings.Contains(config.dataNsim, "contention") {
+		AssertContains(dataShow, "contention: mean idle/busy")
+		AssertContains(dataShow, "contention: events")
+	}
 	if strings.Contains(config.ackNsim, "batch-interval") {
 		AssertContains(ackShow, "batch interval: 5.5 ms")
 	}
@@ -302,6 +320,7 @@ runLoop:
 				flight:      wvrUint(session, wvrFlightRe),
 				extraAcked:  wvrUint(session, wvrExtraRe),
 				rxtBytes:    wvrUint(session, wvrRxtRe),
+				queueDrops:  wvrUint(rate, wvrQueueDropRe),
 				queueDelay:  wvrFloat(rate, wvrQueueRe),
 				rateState:   rateState,
 				bbr:         bbr,
@@ -324,6 +343,7 @@ runLoop:
 	var queueDelays []float64
 	var sawGood, sawBad bool
 	var result wvrResult
+	var previousQueueDrops, currentDropBurst uint64
 	for sampleIndex, sample := range samples {
 		if havePrevious {
 			delta := uint32(sample.sndUna - previous)
@@ -342,13 +362,21 @@ runLoop:
 		result.maxCwnd = max(result.maxCwnd, sample.cwnd)
 		result.maxExtra = max(result.maxExtra, sample.extraAcked)
 		result.rxtBytes = max(result.rxtBytes, sample.rxtBytes)
+		if sample.queueDrops > previousQueueDrops {
+			currentDropBurst += sample.queueDrops - previousQueueDrops
+		} else if currentDropBurst > 0 {
+			result.dropEpisodes++
+			result.maxDropBurst = max(result.maxDropBurst, currentDropBurst)
+			currentDropBurst = 0
+		}
+		previousQueueDrops = sample.queueDrops
 		sawGood = sawGood || sample.rateState == "good"
 		sawBad = sawBad || sample.rateState == "bad"
 		if config.cc == "bbr" {
 			maxGrant := min(sample.pacerBurst+uint64(sample.pacerCredit), sample.pacerCap)
-			Log("wifi-variable-rate t=%.2f rate=%s queue=%.1fms cwnd=%d flight=%d rtt=%.1f "+
+			Log("wifi-variable-rate t=%.2f rate=%s queue=%.1fms drops=%d cwnd=%d flight=%d rtt=%.1f "+
 				"pacer=%.1fMbit/s grant<=%dB %s",
-				sample.time, sample.rateState, sample.queueDelay, sample.cwnd,
+				sample.time, sample.rateState, sample.queueDelay, sample.queueDrops, sample.cwnd,
 				sample.flight, sample.srtt, float64(sample.pacerRate)*8/1e6, maxGrant,
 				sample.bbr)
 			if sampleIndex > 0 {
@@ -385,12 +413,25 @@ runLoop:
 
 	dataShow = client.Vppctl("show nsim verbose")
 	ackShow = server.Vppctl("show nsim verbose")
+	result.queueDrops = wvrUint(dataShow, wvrQueueDropRe)
+	result.contentions = wvrUint(dataShow, wvrContentionRe)
+	if result.queueDrops > previousQueueDrops {
+		currentDropBurst += result.queueDrops - previousQueueDrops
+	}
+	if currentDropBurst > 0 {
+		result.dropEpisodes++
+		result.maxDropBurst = max(result.maxDropBurst, currentDropBurst)
+	}
 	Log("wifi-variable-rate data nsim:\n%s", dataShow)
 	Log("wifi-variable-rate ACK nsim:\n%s", ackShow)
 	if strings.Contains(config.dataNsim, "rate-cycle") {
 		AssertEqual(true, sawGood && sawBad, "deterministic rate cycle must visit both states")
 		transitions := wvrUint(dataShow, wvrTransRe)
 		AssertGreaterThan(transitions, uint64(0), "worker rate state must advance")
+	}
+	if strings.Contains(config.dataNsim, "contention") {
+		AssertGreaterThan(result.contentions, uint64(0),
+			"seeded virtual contention must activate")
 	}
 	if strings.Contains(config.ackNsim, "batch-interval") ||
 		strings.Contains(config.ackNsim, "ack-coalesce-interval") {
@@ -407,10 +448,12 @@ runLoop:
 
 	Log("wifi-variable-rate result: goodput %.1f Mbit/s configured base RTT 20.0 ms "+
 		"load RTT min/median/p95 %.1f/%.1f/%.1f ms forward queue median/p95 %.1f/%.1f ms "+
-		"cwnd %d extra_acked %d retransmitted %d",
+		"cwnd %d extra_acked %d retransmitted %d contention-events %d queue-full %d "+
+		"drop-runs %d max-drop-burst %d",
 		result.goodputMbps, result.minRtt, result.medianRtt, result.p95Rtt,
 		result.medianQueue, result.p95Queue, result.maxCwnd, result.maxExtra,
-		result.rxtBytes)
+		result.rxtBytes, result.contentions, result.queueDrops, result.dropEpisodes,
+		result.maxDropBurst)
 
 	if config.hardened {
 		AssertGreaterEqual(result.minRtt, 18.0, "minimum RTT outside calibration")
@@ -497,4 +540,24 @@ func WifiVariableRatePersistentDropExtendedTest(s *VethsSuite) {
 	result := wvrRun(s, wvrConfig{wvrDataPersistentDrop, wvrAckTail, "bbr", true, 20, false})
 	AssertLessEqual(result.p95Queue, 80.0,
 		"recovery probes must not sustain a queue after a capacity drop")
+}
+
+func WifiVariableRateContentionCubicExtendedTest(s *VethsSuite) {
+	wvrExtendedOnly(s)
+	wvrRun(s, wvrConfig{wvrDataContention, wvrAckTail, "cubic", false, 45, false})
+}
+
+func WifiVariableRateContentionCubicRackExtendedTest(s *VethsSuite) {
+	wvrExtendedOnly(s)
+	wvrRun(s, wvrConfig{wvrDataContention, wvrAckTail, "cubic", true, 45, false})
+}
+
+func WifiVariableRateContentionBbrExtendedTest(s *VethsSuite) {
+	wvrExtendedOnly(s)
+	result := wvrRun(s, wvrConfig{wvrDataContention, wvrAckTail, "bbr", true, 45, true})
+	AssertGreaterEqual(result.queueDrops, uint64(400),
+		"contention must create a tail-drop episode")
+	AssertLessEqual(result.queueDrops, uint64(1800),
+		"contention loss is outside the calibrated envelope")
+	AssertLessEqual(result.p95Rtt, 90.0, "BBR must drain the contention queue")
 }
