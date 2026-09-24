@@ -535,8 +535,9 @@ tcp_bt_check_app_limited (tcp_connection_t *tc, u32 available_bytes)
 {
   u32 flight_size = tcp_flight_size (tc);
 
-  /* Not enough bytes to fill the cwnd */
-  if (available_bytes + flight_size + tc->snd_mss < tc->cwnd
+  /* No full segment is waiting and congestion control allows more data. */
+  if (available_bytes < tc->snd_mss &&
+      flight_size < tc->cwnd
       /* Bytes considered lost have been retransmitted */
       && tc->sack_sb.lost_bytes <= tc->snd_rxt_bytes)
     tc->app_limited = tc->delivered + flight_size ? : 1;

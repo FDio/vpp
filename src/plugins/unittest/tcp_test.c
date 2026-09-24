@@ -8555,8 +8555,26 @@ tcp_test_bt (vlib_main_t * vm, unformat_input_t * input)
   tc->sack_sb.lost_bytes = 0;
   tc->app_limited = 0;
 
-  tcp_bt_check_app_limited (tc, 0);
+  tcp_bt_check_app_limited (tc, tc->snd_mss);
+  TCP_TEST (!tc->app_limited, "one unsent segment should not be app limited");
+
+  tcp_bt_check_app_limited (tc, tc->snd_mss - 1);
   TCP_TEST (tc->app_limited == 500, "app limited should include delivered and flight bytes");
+
+  tc->app_limited = 0;
+  tc->snd_nxt = tc->snd_una + tc->cwnd;
+  tcp_bt_check_app_limited (tc, 0);
+  TCP_TEST (!tc->app_limited, "cwnd-limited sender should not be app limited");
+
+  tc->snd_nxt = tc->snd_una + 200;
+  tc->sack_sb.lost_bytes = tc->snd_mss;
+  tcp_bt_check_app_limited (tc, 0);
+  TCP_TEST (!tc->app_limited, "unretransmitted loss should not be app limited");
+
+  tc->snd_rxt_bytes = tc->snd_mss;
+  tcp_bt_check_app_limited (tc, 0);
+  TCP_TEST (tc->app_limited == tc->delivered + tcp_flight_size (tc),
+	    "retransmitted loss permits app-limited marking");
 
   fifo_segment_free_fifo (fs, s->tx_fifo);
   session_free (s);
