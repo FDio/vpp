@@ -302,15 +302,15 @@ rdma_mlx5_tso_inline_ds (u16 hdr_sz)
 }
 
 static_always_inline u8
-rdma_mlx5_tso_total_ds (u16 hdr_sz)
+rdma_mlx5_tso_total_ds (u16 hdr_sz, u8 has_first_payload)
 {
-  return 4 + rdma_mlx5_tso_inline_ds (hdr_sz);
+  return 3 + rdma_mlx5_tso_inline_ds (hdr_sz) + has_first_payload;
 }
 
 static_always_inline u8
 rdma_mlx5_tso_n_wqebb (u16 hdr_sz)
 {
-  return RDMA_TXQ_DV_DSEG2WQE (rdma_mlx5_tso_total_ds (hdr_sz));
+  return RDMA_TXQ_DV_DSEG2WQE (rdma_mlx5_tso_total_ds (hdr_sz, 1));
 }
 
 static_always_inline u8
@@ -330,7 +330,7 @@ rdma_mlx5_wqe_init_tso (vlib_main_t *vm, rdma_txq_t *txq, vlib_buffer_t *b, cons
     return 0;
 
   u32 pay_len = b->current_length - hdr_sz;
-  u8 total_ds = rdma_mlx5_tso_total_ds (hdr_sz);
+  u8 total_ds = rdma_mlx5_tso_total_ds (hdr_sz, pay_len != 0);
   u8 n_wqebb = RDMA_TXQ_DV_DSEG2WQE (total_ds);
   rdma_mlx5_wqe_t *wqe0 = txq->dv_sq_wqes + (tail & sq_mask);
   u32 dseg_mask = RDMA_TXQ_DV_DSEG_SZ (txq) - 1;
@@ -363,12 +363,17 @@ rdma_mlx5_wqe_init_tso (vlib_main_t *vm, rdma_txq_t *txq, vlib_buffer_t *b, cons
 	}
     }
 
-  u32 dseg_idx = tail * RDMA_MLX5_WQE_DS + total_ds - 1;
-  struct mlx5_wqe_data_seg *dseg = (void *) txq->dv_sq_wqes;
-  dseg += dseg_idx & dseg_mask;
-  dseg->byte_count = htobe32 (pay_len);
-  dseg->lkey = clib_host_to_net_u32 (lkey);
-  dseg->addr = htobe64 (vlib_buffer_get_current_va (b) + hdr_sz);
+  /* A header-only first buffer is valid when the payload is chained.  mlx5
+   * rejects a zero-length data segment with a local length error. */
+  if (pay_len != 0)
+    {
+      u32 dseg_idx = tail * RDMA_MLX5_WQE_DS + total_ds - 1;
+      struct mlx5_wqe_data_seg *dseg = (void *) txq->dv_sq_wqes;
+      dseg += dseg_idx & dseg_mask;
+      dseg->byte_count = htobe32 (pay_len);
+      dseg->lkey = clib_host_to_net_u32 (lkey);
+      dseg->addr = htobe64 (vlib_buffer_get_current_va (b) + hdr_sz);
+    }
 
   return total_ds;
 }
