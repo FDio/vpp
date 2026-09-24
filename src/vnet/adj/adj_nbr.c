@@ -200,6 +200,9 @@ adj_nbr_evaluate_feature (adj_index_t ai)
     case VNET_LINK_MPLS:
         arc_index = mpls_main.output_feature_arc_index;
         break;
+    case VNET_LINK_ETHERNET:
+        arc_index = ethernet_main.output_feature_arc_index;
+        break;
     default:
         return;
     }

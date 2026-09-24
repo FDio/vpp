@@ -116,10 +116,12 @@ adj_l2_rewrite_inline (vlib_main_t * vm,
 
 		/*
 		 * Follow the feature ARC. this will result eventually in
-		 * the midchain-tx node
+		 * the midchain-tx node. adj-l2-midchain is the arc's only
+		 * start node, so only it may start the arc.
 		 */
-                if (PREDICT_FALSE (adj0->rewrite_header.flags &
-                                   VNET_REWRITE_HAS_FEATURES))
+                if (PREDICT_FALSE (is_midchain &&
+                                   (adj0->rewrite_header.flags &
+                                    VNET_REWRITE_HAS_FEATURES)))
                     vnet_feature_arc_start_w_cfg_index (
                         em->output_feature_arc_index,
                         tx_sw_if_index0,
