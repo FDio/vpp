@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"math/big"
 	"net"
+	"os"
 	"reflect"
 	"runtime"
 	"strings"
@@ -19,6 +20,7 @@ import (
 
 var vethTests = map[string][]func(s *VethsSuite){}
 var vethSoloTests = map[string][]func(s *VethsSuite){}
+var vethManualSoloTests = map[string][]func(s *VethsSuite){}
 var vethMWTests = map[string][]func(s *VethsSuite){}
 var vethStartupTests = map[string][]func(s *VethsSuite){}
 
@@ -45,6 +47,11 @@ func RegisterVethTests(tests ...func(s *VethsSuite)) {
 }
 func RegisterSoloVethTests(tests ...func(s *VethsSuite)) {
 	vethSoloTests[GetTestFilename()] = tests
+}
+
+// RegisterManualSoloVethTests marks opt-in diagnostics pending in CI.
+func RegisterManualSoloVethTests(tests ...func(s *VethsSuite)) {
+	vethManualSoloTests[GetTestFilename()] = tests
 }
 func RegisterVethMWTests(tests ...func(s *VethsSuite)) {
 	vethMWTests[GetTestFilename()] = tests
@@ -296,6 +303,23 @@ var _ = Describe("VethsSuiteSolo", Ordered, ContinueOnFailure, Serial, Label("Ve
 				Log("[* TEST BEGIN]: " + testName)
 				test(&s)
 			}, SpecTimeout(TestTimeout))
+		}
+	}
+	for filename, tests := range vethManualSoloTests {
+		for _, test := range tests {
+			test := test
+			pc := reflect.ValueOf(test).Pointer()
+			funcValue := runtime.FuncForPC(pc)
+			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
+			decorators := []any{Label("Manual"), SpecTimeout(TestTimeout)}
+			if os.Getenv("GITHUB_REPO_URL") != "" {
+				decorators = append(decorators, Pending)
+			}
+			decorators = append(decorators, func(ctx SpecContext) {
+				Log("[* TEST BEGIN]: " + testName)
+				test(&s)
+			})
+			It(testName, decorators...)
 		}
 	}
 })
