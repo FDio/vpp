@@ -30,11 +30,10 @@ add_type (ethernet_main_t * em, ethernet_type_t type, char *type_name)
 }
 
 /* Built-in ip4 tx feature path definition */
-VNET_FEATURE_ARC_INIT (ethernet_output, static) =
-{
-  .arc_name  = "ethernet-output",
+VNET_FEATURE_ARC_INIT (ethernet_output, static) = {
+  .arc_name = "ethernet-output",
   .last_in_arc = "error-drop",
-  .start_nodes = VNET_FEATURES ("adj-l2-midchain"),
+  .start_nodes = VNET_FEATURES ("adj-l2-midchain", "adj-l2-rewrite"),
   .arc_index_ptr = &ethernet_main.output_feature_arc_index,
 };
 
