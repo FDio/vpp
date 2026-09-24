@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "4bd2b0f5_6b171eee",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3122
+      },
+      "writtenOn": "2026-09-24T02:52:28Z",
+      "side": 1,
+      "message": "The problem:\n\nWhen building VPP directly with CMake:\ncmake -DCMAKE_INCLUDE_PATH\u003d\"${MY_LIBS_DIR}/include/libunwind\"\n\nThe build fails with:\nvpp/src/vppinfra/stack.c:15:10: fatal error: libunwind.h: No such file or directory\n15 | #include \u003clibunwind.h\u003e\n|          ^~~~~~~~~~~~~",
+      "revId": "cf0f65a4ca06947fd5c9ff8967f853b8a3b77856",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
