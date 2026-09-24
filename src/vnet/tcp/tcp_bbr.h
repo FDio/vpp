@@ -43,7 +43,15 @@
 #define BBR_BETA		  0.7
 #define BBR_HEADROOM		  0.15
 #define BBR_BW_DEFICIT_THRESH	  0.75
-#define BBR_BW_DEFICIT_ROUNDS	  2
+#define BBR_BW_DEFICIT_ROUNDS	  3
+#define BBR_BW_DEFICIT_PROBE_WAIT 0.25
+#define BBR_BW_DEFICIT_RTT_GAIN	  4.0
+/* Five fast probes preserve roughly one normal ProbeBW filter interval. */
+#define BBR_BW_DEFICIT_FILTER_LEN 5
+/* Reach a retained ceiling within two packet-timed rounds when possible. */
+#define BBR_BW_RECOVERY_PACING_GAIN 1.5
+#define BBR_BW_RECOVERY_GROWTH	    1.08
+#define BBR_BW_RECOVERY_THRESH	    0.90
 
 #define BBR_MIN_PIPE_PKTS	   4
 #define BBR_MIN_RTT_FILTER_LEN	   10.0
@@ -114,6 +122,7 @@ typedef enum
   BBR_F_IDLE_RESTART = 1 << 11,
   BBR_F_HAS_SEEN_RTT = 1 << 12,
   BBR_F_PIPE_FILLED_IN_ROUND = 1 << 13,
+  BBR_F_BW_DEFICIT_BOUND = 1 << 14,
 } bbr_flag_t;
 
 /*
@@ -246,6 +255,7 @@ typedef struct
   u8 bw_probe_up_rounds;
   u8 loss_events;
   u8 rounds_since_probe_up;
+  u8 bw_deficit_probes;
 } bbr_data_t;
 
 STATIC_ASSERT (sizeof (bbr_data_t) <= 240, "bbr state size");
@@ -462,6 +472,8 @@ bbr_reset_short_term_model (bbr_data_t *bd)
 {
   bd->bw_lo = BBR_BW_INFINITY;
   bd->inflight_lo = BBR_INFLIGHT_INFINITY;
+  bd->bw_deficit_probes = 0;
+  bd->flags &= ~BBR_F_BW_DEFICIT_BOUND;
 }
 
 static inline void
@@ -493,6 +505,19 @@ bbr_pick_probe_wait (bbr_data_t *bd)
 {
   bd->rounds_since_probe_up = random_u32 (&bd->random_seed) & 1;
   bd->bw_probe_wait = BBR_PROBE_WAIT_BASE + BBR_PROBE_WAIT_RAND * random_f64 (&bd->random_seed);
+}
+
+static inline void
+bbr_shorten_probe_wait (bbr_data_t *bd)
+{
+  f64 probe_wait = BBR_BW_DEFICIT_PROBE_WAIT;
+
+  if (bd->bw_probe_wait <= 0.0)
+    return;
+
+  if (bd->min_rtt != BBR_BW_INFINITY)
+    probe_wait = clib_max (probe_wait, BBR_BW_DEFICIT_RTT_GAIN * bd->min_rtt);
+  bd->bw_probe_wait = clib_min (bd->bw_probe_wait, probe_wait);
 }
 
 static inline void
@@ -599,33 +624,55 @@ bbr_adapt_lower_bounds (tcp_connection_t *tc, bbr_data_t *bd)
 }
 
 /* A sustained delivery deficit can reveal a lossless capacity drop before
- * the two-cycle max filter expires. Age one window only after two pipe-filled
- * rounds agree; a fixed-rate path retains its high sample in the next window. */
-static inline u8
+ * the two-cycle max filter expires. Constrain the short-term model after
+ * several pipe-filled rounds instead of expiring the long-term estimate. */
+static inline void
 bbr_adapt_to_bw_deficit (bbr_data_t *bd)
 {
-  u8 advanced;
-
   ASSERT (bbr_has_flag (bd, BBR_F_LOSS_ROUND_START));
   if (bd->mode != BBR_PROBE_BW || bbr_is_probing_bw (bd))
-    return 0;
+    return;
 
-  if (bbr_has_flag (bd, BBR_F_LOSS_ROUND_HAD_LOSS) ||
-      !bbr_has_flag (bd, BBR_F_PIPE_FILLED_IN_ROUND) ||
-      bd->bw_latest >= BBR_BW_DEFICIT_THRESH * bbr_max_bw (bd))
+  if (bbr_has_flag (bd, BBR_F_LOSS_ROUND_HAD_LOSS))
+    {
+      bd->flags &= ~BBR_F_BW_DEFICIT_BOUND;
+      bd->bw_deficit_probes = 0;
+      bd->bw_deficit_rounds = 0;
+      return;
+    }
+
+  if (!bbr_has_flag (bd, BBR_F_PIPE_FILLED_IN_ROUND) ||
+      bd->bw_latest >= BBR_BW_DEFICIT_THRESH * bbr_bw (bd))
     {
       bd->bw_deficit_rounds = 0;
-      return 0;
+      return;
     }
 
   bd->bw_deficit_rounds++;
   if (bd->bw_deficit_rounds < BBR_BW_DEFICIT_ROUNDS)
-    return 0;
+    return;
 
-  advanced = bd->bw_hi[1] != 0;
-  bbr_advance_max_bw_filter (bd);
+  if (!bbr_has_flag (bd, BBR_F_BW_DEFICIT_BOUND))
+    bd->bw_deficit_probes = 0;
+  bd->bw_lo = clib_min (bd->bw_lo, bd->bw_latest);
+  bd->flags |= BBR_F_BW_DEFICIT_BOUND;
+  bbr_shorten_probe_wait (bd);
   bd->bw_deficit_rounds = 0;
-  return advanced;
+}
+
+static inline void
+bbr_update_bw_deficit_probe (bbr_data_t *bd, f64 sample_bw)
+{
+  f64 probe_ceiling;
+
+  if (!bbr_has_flag (bd, BBR_F_BW_DEFICIT_BOUND) || bd->mode != BBR_PROBE_BW ||
+      bd->probe_bw_phase != BBR_BW_UP || sample_bw <= bd->bw_lo)
+    return;
+
+  probe_ceiling = BBR_BW_RECOVERY_PACING_GAIN * bd->bw_lo;
+  bd->bw_lo = clib_min (sample_bw, clib_min (probe_ceiling, bbr_max_bw (bd)));
+  if (bd->bw_lo >= BBR_BW_RECOVERY_THRESH * bbr_max_bw (bd))
+    bbr_reset_short_term_model (bd);
 }
 
 static inline u8
@@ -696,9 +743,15 @@ bbr_pacing_gain (const bbr_data_t *bd)
     return BBR_DRAIN_PACING_GAIN;
   if (bd->mode == BBR_PROBE_RTT)
     return 1.0;
-  return bd->probe_bw_phase == BBR_BW_DOWN ? BBR_PROBE_DOWN_GAIN :
-	 bd->probe_bw_phase == BBR_BW_UP   ? BBR_PROBE_UP_PACING_GAIN :
-					     1.0;
+  if (bd->probe_bw_phase == BBR_BW_DOWN)
+    return BBR_PROBE_DOWN_GAIN;
+  if (bd->probe_bw_phase == BBR_BW_UP)
+    {
+      if (bbr_has_flag (bd, BBR_F_BW_DEFICIT_BOUND))
+	return BBR_BW_RECOVERY_PACING_GAIN;
+      return BBR_PROBE_UP_PACING_GAIN;
+    }
+  return 1.0;
 }
 
 static_always_inline f64

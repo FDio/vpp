@@ -24,6 +24,8 @@ bbr_start_probe_bw_down (tcp_connection_t *tc, bbr_data_t *bd)
   bbr_reset_congestion_signals (bd);
   bd->probe_up_acked_per_inc = BBR_INFLIGHT_INFINITY;
   bbr_pick_probe_wait (bd);
+  if (bbr_has_flag (bd, BBR_F_BW_DEFICIT_BOUND))
+    bbr_shorten_probe_wait (bd);
   bd->cycle_stamp = bbr_now (tc);
   bd->ack_phase = BBR_ACKS_PROBE_STOPPING;
   bbr_start_round (tc, bd);
@@ -34,7 +36,11 @@ bbr_start_probe_bw_down (tcp_connection_t *tc, bbr_data_t *bd)
 static void
 bbr_start_probe_bw_refill (tcp_connection_t *tc, bbr_data_t *bd)
 {
-  bbr_reset_short_term_model (bd);
+  if (bbr_has_flag (bd, BBR_F_BW_DEFICIT_BOUND) &&
+      bd->bw_lo < BBR_BW_RECOVERY_THRESH * bbr_max_bw (bd))
+    bd->inflight_lo = BBR_INFLIGHT_INFINITY;
+  else
+    bbr_reset_short_term_model (bd);
   bd->bw_probe_up_rounds = 0;
   bd->bw_probe_up_acked = 0;
   bd->flags &= ~BBR_F_PREV_PROBE_PRECAUTIONARY;
@@ -50,7 +56,10 @@ bbr_start_probe_bw_up (tcp_connection_t *tc, bbr_data_t *bd, tcp_ack_ctx_t *rs)
   bd->ack_phase = BBR_ACKS_PROBE_STARTING;
   bbr_start_round (tc, bd);
   bbr_reset_full_bw (bd);
-  bd->full_bw = bbr_sample_bw (rs);
+  if (bbr_has_flag (bd, BBR_F_BW_DEFICIT_BOUND))
+    bd->full_bw = bbr_bw (bd);
+  else
+    bd->full_bw = bbr_sample_bw (rs);
   bd->probe_bw_phase = BBR_BW_UP;
   bbr_raise_inflight_hi_slope (tc, bd);
 }
@@ -124,16 +133,16 @@ bbr_update_latest_delivery_signals (tcp_connection_t *tc, bbr_data_t *bd, tcp_ac
     }
 }
 
-static u8
+static void
 bbr_update_congestion_signals (tcp_connection_t *tc, bbr_data_t *bd, tcp_ack_ctx_t *rs,
 			       f64 sample_bw)
 {
   bbr_update_max_bw (tc, bd, rs, sample_bw);
   if (!bbr_has_flag (bd, BBR_F_LOSS_ROUND_START))
-    return 0;
+    return;
   bbr_adapt_lower_bounds (tc, bd);
   bd->flags &= ~BBR_F_LOSS_IN_ROUND;
-  return bbr_adapt_to_bw_deficit (bd);
+  bbr_adapt_to_bw_deficit (bd);
 }
 
 static void
@@ -166,10 +175,18 @@ static void
 bbr_check_full_bw_reached (tcp_connection_t *tc, bbr_data_t *bd, tcp_ack_ctx_t *rs,
 			   f64 sample_bw)
 {
+  f64 growth = BBR_FULL_BW_THRESH;
+
   if (bbr_full_bw_now (bd))
     return;
 
-  if (bbr_sample_filled_pipe (tc, bd, rs) && sample_bw >= bd->full_bw * BBR_FULL_BW_THRESH)
+  /* Accept smaller growth steps while recovering toward the retained peak. */
+  if (bbr_has_flag (bd, BBR_F_BW_DEFICIT_BOUND))
+    {
+      growth = BBR_BW_RECOVERY_GROWTH;
+      sample_bw = clib_min (sample_bw, bd->bw_lo);
+    }
+  if (bbr_sample_filled_pipe (tc, bd, rs) && sample_bw >= bd->full_bw * growth)
     {
       bbr_reset_full_bw (bd);
       bd->full_bw = sample_bw;
@@ -296,8 +313,7 @@ bbr_lost_sample (tcp_connection_t *tc, const tcp_cc_loss_sample_t *sample)
 
 /* Gate feedback to the packet-timed REFILL/UP interval. */
 static u8
-bbr_adapt_long_term_model (tcp_connection_t *tc, bbr_data_t *bd, tcp_ack_ctx_t *rs,
-			   u8 bw_filter_advanced)
+bbr_adapt_long_term_model (tcp_connection_t *tc, bbr_data_t *bd, tcp_ack_ctx_t *rs)
 {
   u8 too_high = bbr_is_inflight_too_high (rs);
 
@@ -313,8 +329,16 @@ bbr_adapt_long_term_model (tcp_connection_t *tc, bbr_data_t *bd, tcp_ack_ctx_t *
       bd->ack_phase = BBR_ACKS_INIT;
       if (bbr_is_probe_bw (bd))
 	{
-	  if (!bw_filter_advanced && !(rs->flags & TCP_BTS_IS_APP_LIMITED))
-	    bbr_advance_max_bw_filter (bd);
+	  if (!(rs->flags & TCP_BTS_IS_APP_LIMITED))
+	    {
+	      /* Extra recovery probes must not shorten the max-filter horizon. */
+	      if (!bbr_has_flag (bd, BBR_F_BW_DEFICIT_BOUND) ||
+		  ++bd->bw_deficit_probes >= BBR_BW_DEFICIT_FILTER_LEN)
+		{
+		  bbr_advance_max_bw_filter (bd);
+		  bd->bw_deficit_probes = 0;
+		}
+	    }
 	  if (bbr_has_flag (bd, BBR_F_PREV_PROBE_PRECAUTIONARY) &&
 	      !bbr_has_flag (bd, BBR_F_PREV_PROBE_TOO_HIGH))
 	    {
@@ -430,7 +454,10 @@ bbr_update_min_rtt (tcp_connection_t *tc, bbr_data_t *bd, tcp_ack_ctx_t *rs)
 static void
 bbr_exit_probe_rtt (tcp_connection_t *tc, bbr_data_t *bd)
 {
-  bbr_reset_short_term_model (bd);
+  if (bbr_has_flag (bd, BBR_F_BW_DEFICIT_BOUND))
+    bd->inflight_lo = BBR_INFLIGHT_INFINITY;
+  else
+    bbr_reset_short_term_model (bd);
   if (bbr_has_flag (bd, BBR_F_FULL_BW_REACHED))
     {
       bbr_start_probe_bw_down (tc, bd);
@@ -549,12 +576,15 @@ bbr_update (tcp_connection_t *tc, tcp_ack_ctx_t *rs)
 {
   bbr_data_t *bd = bbr_data (tc);
   f64 sample_bw = bbr_sample_bw (rs);
-  u8 bw_filter_advanced, pacing_rate_changed, probe_rtt_expired, probe_rtt_active;
+  u8 pacing_rate_changed, probe_rtt_expired, probe_rtt_active;
 
   bbr_note_loss (tc, bd);
   bbr_count_loss_event (bd);
   bbr_update_latest_delivery_signals (tc, bd, rs, sample_bw);
-  bw_filter_advanced = bbr_update_congestion_signals (tc, bd, rs, sample_bw);
+  bbr_update_congestion_signals (tc, bd, rs, sample_bw);
+  if (bbr_has_flag (bd, BBR_F_ROUND_START) && bbr_has_flag (bd, BBR_F_BW_DEFICIT_BOUND) &&
+      bbr_sample_filled_pipe (tc, bd, rs))
+    bbr_update_bw_deficit_probe (bd, clib_max (sample_bw, bd->full_bw));
   bbr_update_ack_aggregation (tc, bd, rs);
   bbr_check_full_bw_reached (tc, bd, rs, sample_bw);
 
@@ -572,7 +602,7 @@ bbr_update (tcp_connection_t *tc, tcp_ack_ctx_t *rs)
 
       if (bd->ack_phase != BBR_ACKS_INIT || bd->inflight_hi != BBR_INFLIGHT_INFINITY ||
 	  bbr_has_flag (bd, BBR_F_IS_BW_PROBE_SAMPLE))
-	probe_transitioned = bbr_adapt_long_term_model (tc, bd, rs, bw_filter_advanced);
+	probe_transitioned = bbr_adapt_long_term_model (tc, bd, rs);
       if (!probe_transitioned && bd->mode == BBR_PROBE_BW)
 	bbr_update_probe_bw_cycle (tc, bd, rs);
     }
@@ -812,10 +842,10 @@ format_tcp_bbr (u8 *s, va_list *args)
   u32 inflight_target = bbr_max_inflight (tc, bd);
 
   s = format (s,
-	      "state %u/%u ack_phase %u round %u bw %.3f/%.3fMbit/s "
+	      "state %u/%u ack_phase %u probe_wait %.3f round %u bw %.3f/%.3fMbit/s "
 	      "bw_hi %.3f/%.3fMbit/s bw_lo ",
-	      bd->mode, bd->probe_bw_phase, bd->ack_phase, bd->round_count, bbr_bw (bd) * 8e-6,
-	      bbr_max_bw (bd) * 8e-6, bd->bw_hi[0] * 8e-6, bd->bw_hi[1] * 8e-6);
+	      bd->mode, bd->probe_bw_phase, bd->ack_phase, bd->bw_probe_wait, bd->round_count,
+	      bbr_bw (bd) * 8e-6, bbr_max_bw (bd) * 8e-6, bd->bw_hi[0] * 8e-6, bd->bw_hi[1] * 8e-6);
   if (bd->bw_lo == BBR_BW_INFINITY)
     s = format (s, "inf");
   else

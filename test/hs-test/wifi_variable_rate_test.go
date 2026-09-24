@@ -24,6 +24,8 @@ func init() {
 		WifiVariableRateTailExtendedTest,
 		WifiVariableRateCycleBatchExtendedTest,
 		WifiVariableRateCycleTailExtendedTest,
+		WifiVariableRateFastCycleExtendedTest,
+		WifiVariableRatePersistentDropExtendedTest,
 	)
 }
 
@@ -35,6 +37,10 @@ const (
 		"buffer 72.7 ms packet-size 1500 seed 270302"
 	wvrDataCycleShort = wvrDataFixed +
 		" rate-cycle bandwidth 200 mbps good 2 sec bad 2 sec"
+	wvrDataCycleFast = wvrDataFixed +
+		" rate-cycle bandwidth 200 mbps good 1 sec bad 1 sec"
+	wvrDataPersistentDrop = wvrDataFixed +
+		" rate-cycle bandwidth 200 mbps good 2 sec bad 30 sec"
 	wvrDataCycle = wvrDataFixed +
 		" rate-cycle bandwidth 200 mbps good 10 sec bad 10 sec"
 	wvrAckFixed = "set nsim poll-main-thread delay 10 ms bandwidth 320 mbps " +
@@ -421,12 +427,14 @@ runLoop:
 }
 
 func WifiVariableRateBbrTest(s *VethsSuite) {
-	wvrRun(s, wvrConfig{
+	result := wvrRun(s, wvrConfig{
 		dataNsim: wvrDataCycleShort,
 		ackNsim:  wvrAckTail,
 		cc:       "bbr",
 		duration: 12,
 	})
+	AssertGreaterEqual(result.goodputMbps, 235.0,
+		"BBR must recover during two-second high-rate intervals")
 }
 
 func WifiVariableRateCubicExtendedTest(s *VethsSuite) {
@@ -475,4 +483,18 @@ func WifiVariableRateCycleBatchExtendedTest(s *VethsSuite) {
 func WifiVariableRateCycleTailExtendedTest(s *VethsSuite) {
 	wvrExtendedOnly(s)
 	wvrRun(s, wvrConfig{wvrDataCycle, wvrAckTail, "bbr", true, 45, false})
+}
+
+func WifiVariableRateFastCycleExtendedTest(s *VethsSuite) {
+	wvrExtendedOnly(s)
+	result := wvrRun(s, wvrConfig{wvrDataCycleFast, wvrAckTail, "bbr", true, 20, false})
+	AssertGreaterEqual(result.goodputMbps, 225.0,
+		"BBR must recover during one-second high-rate intervals")
+}
+
+func WifiVariableRatePersistentDropExtendedTest(s *VethsSuite) {
+	wvrExtendedOnly(s)
+	result := wvrRun(s, wvrConfig{wvrDataPersistentDrop, wvrAckTail, "bbr", true, 20, false})
+	AssertLessEqual(result.p95Queue, 80.0,
+		"recovery probes must not sustain a queue after a capacity drop")
 }

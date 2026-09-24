@@ -2328,8 +2328,8 @@ tcp_test_bbr (vlib_main_t *vm, unformat_input_t *input)
   bd.extra_acked.s[0].v = 8000000;
   TCP_TEST (bbr_ack_aggregation_cwnd (&bd) == 1200000, "bbr caps ack aggregation allowance by bdp");
 
-  /* Two pipe-filled rounds below the retained peak should age one bandwidth
-   * window even when ACK aggregation is large. */
+  /* Sustained pipe-filled rounds below the retained peak constrain the
+   * working bandwidth even when ACK aggregation is large. */
   bd.mode = BBR_PROBE_BW;
   bd.probe_bw_phase = BBR_BW_CRUISE;
   bd.flags = BBR_F_FULL_BW_REACHED | BBR_F_LOSS_ROUND_START |
@@ -2338,29 +2338,59 @@ tcp_test_bbr (vlib_main_t *vm, unformat_input_t *input)
   bd.bw_hi[1] = 30000000;
   bd.bw_lo = BBR_BW_INFINITY;
   bd.bw_latest = 20000000;
+  bd.min_rtt = 0.02;
+  bd.bw_probe_wait = 2.5;
+  for (i = 1; i < BBR_BW_DEFICIT_ROUNDS; i++)
+    {
+      bbr_adapt_to_bw_deficit (&bd);
+      TCP_TEST (!bbr_has_flag (&bd, BBR_F_BW_DEFICIT_BOUND),
+		"bbr waits for a persistent bandwidth deficit");
+    }
   bbr_adapt_to_bw_deficit (&bd);
-  TCP_TEST (bbr_max_bw (&bd) == 40000000 && bd.bw_deficit_rounds == 1,
-	    "bbr tolerates one low delivery round");
-  bbr_adapt_to_bw_deficit (&bd);
-  TCP_TEST (bd.bw_hi[0] == 30000000 && bd.bw_hi[1] == 0 &&
-	      bd.bw_deficit_rounds == 0,
-	    "bbr ages one bandwidth window after a persistent deficit");
+  TCP_TEST (bd.bw_hi[0] == 40000000 && bd.bw_hi[1] == 30000000 && bd.bw_lo == 20000000 &&
+	      bd.bw_deficit_rounds == 0 && bbr_has_flag (&bd, BBR_F_BW_DEFICIT_BOUND) &&
+	      bd.bw_probe_wait == 0.25,
+	    "bbr constrains a persistent bandwidth deficit");
 
+  bd.probe_bw_phase = BBR_BW_UP;
+  bbr_update_bw_deficit_probe (&bd, 35000000);
+  TCP_TEST (bd.bw_lo == 30000000 && bbr_has_flag (&bd, BBR_F_BW_DEFICIT_BOUND),
+	    "bbr bounds growth during a recovery probe");
+  bd.bw_lo = 35000000;
+  bbr_update_bw_deficit_probe (&bd, 40000000);
+  TCP_TEST (bd.bw_lo == BBR_BW_INFINITY && !bbr_has_flag (&bd, BBR_F_BW_DEFICIT_BOUND),
+	    "bbr clears the deficit bound after recovering bandwidth");
+
+  bd.probe_bw_phase = BBR_BW_CRUISE;
+  bd.bw_lo = 20000000;
+  bd.flags |= BBR_F_BW_DEFICIT_BOUND;
   bd.bw_hi[1] = 20000000;
   bd.bw_latest = 15000000;
-  bbr_adapt_to_bw_deficit (&bd);
-  bbr_adapt_to_bw_deficit (&bd);
-  TCP_TEST (bbr_max_bw (&bd) == 20000000,
-	    "bbr expires both stale bandwidth windows after persistent deficit");
+  for (i = 0; i < BBR_BW_DEFICIT_ROUNDS; i++)
+    bbr_adapt_to_bw_deficit (&bd);
+
+  TCP_TEST (bbr_max_bw (&bd) == 40000000 && bd.bw_lo == 20000000,
+	    "bbr retains the long-term estimate across a persistent deficit");
+
+  bd.bw_latest = 14000000;
+  for (i = 0; i < BBR_BW_DEFICIT_ROUNDS; i++)
+    bbr_adapt_to_bw_deficit (&bd);
+  TCP_TEST (bd.bw_lo == 14000000, "bbr follows a second material drop from the active bound");
 
   bd.bw_deficit_rounds = 1;
   bd.flags &= ~BBR_F_PIPE_FILLED_IN_ROUND;
   bbr_adapt_to_bw_deficit (&bd);
-  TCP_TEST (bbr_max_bw (&bd) == 20000000 && bd.bw_deficit_rounds == 0,
+  TCP_TEST (bbr_max_bw (&bd) == 40000000 && bd.bw_lo == 14000000 && bd.bw_deficit_rounds == 0,
 	    "bbr ignores a deficit without pipe-filling evidence");
+
+  bd.flags |= BBR_F_PIPE_FILLED_IN_ROUND | BBR_F_LOSS_ROUND_HAD_LOSS;
+  bbr_adapt_to_bw_deficit (&bd);
+  TCP_TEST (!bbr_has_flag (&bd, BBR_F_BW_DEFICIT_BOUND),
+	    "bbr leaves lossless deficit recovery after loss");
 
   bd.bw_hi[0] = 40000000;
   bd.bw_hi[1] = 0;
+  bd.bw_lo = BBR_BW_INFINITY;
   clib_memset (&ac, 0, sizeof (ac));
   ac.delivered = 1000;
   ac.interval_time = 0.01;
