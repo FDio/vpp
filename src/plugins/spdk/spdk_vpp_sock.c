@@ -37,11 +37,22 @@ typedef struct spdk_vpp_sock spdk_vpp_sock_t;
 typedef struct spdk_vpp_group spdk_vpp_group_t;
 typedef struct spdk_vpp_tx_reservation spdk_vpp_tx_reservation_t;
 
+typedef struct
+{
+  u64 stream_offset;
+  u32 buffer_index;
+  u16 data_offset;
+  u16 len;
+} spdk_vpp_tx_buffer_t;
+
 struct spdk_vpp_tx_reservation
 {
   spdk_vpp_sock_t *sock;
   u32 len;
+  u32 first_buffer;
+  u32 n_buffers;
   u8 committed;
+  u8 vlib_backed;
   TAILQ_ENTRY (spdk_vpp_tx_reservation) link;
   SLIST_ENTRY (spdk_vpp_tx_reservation) cache_link;
 };
@@ -77,6 +88,12 @@ struct spdk_vpp_sock
   SLIST_HEAD (, spdk_vpp_tx_reservation) tx_reservation_cache;
   u32 tx_reserved;
   u32 tx_reservation_cache_count;
+  spdk_vpp_tx_buffer_t *tx_buffers;
+  u32 tx_buffer_head;
+  u64 tx_stream_head;
+  u64 tx_stream_committed;
+  u64 tx_stream_reserved;
+  u8 tx_buffer_registered;
   u64 tx_async_reqs;
   u64 tx_flush_calls;
   u64 tx_flush_cb_busy;
@@ -87,6 +104,22 @@ struct spdk_vpp_sock
   u64 tx_fifo_wraps;
   u64 tx_events_programmed;
   u64 tx_events_coalesced;
+  u64 tx_vlib_direct_packets;
+  u64 tx_vlib_direct_bytes;
+  u64 tx_vlib_edge_copy_bytes;
+  u64 tx_vlib_fallback_bytes;
+  u64 tx_vlib_copy_fallbacks;
+  u64 tx_vlib_busy_fallbacks;
+  u64 tx_vlib_alignment_fallbacks;
+  u64 tx_vlib_alloc_fallbacks;
+  u64 tx_vlib_reserved_buffers;
+  u64 tx_vlib_reservation_bytes;
+  u64 tx_vlib_iov_rejects;
+  u32 tx_vlib_last_mss;
+  u32 tx_vlib_last_reservation_iovs;
+  u32 tx_vlib_last_packet_size;
+  u32 tx_vlib_last_first_skip;
+  u32 tx_vlib_last_first_segment_len;
   u64 rx_calls;
   u64 rx_bytes;
   TAILQ_ENTRY (spdk_vpp_sock) accept_link;
@@ -160,6 +193,16 @@ static struct spdk_sock_impl_opts g_vpp_impl_opts = {
 #define __vpp_group(g)			  ((spdk_vpp_group_t *) (g))
 #define SPDK_VPP_TX_RESERVATION_CACHE_MAX 256
 #define SPDK_VPP_GROUP_SWEEP_INTERVAL	  1024
+
+/* Experimental, opt-in, in-process TX payload store.  The byte budget is
+ * deliberately expressed in bytes; the number of VLIB buffers follows the
+ * configured buffer data size. */
+static u8 spdk_vpp_tx_vlib_enabled;
+static u32 spdk_vpp_tx_vlib_max_bytes = 16 << 20;
+/* Zero selects the full VLIB data size.  A smaller logical chunk makes more
+ * packet interiors directly referenceable at the cost of additional packet
+ * buffers and SPDK iovecs. */
+static u32 spdk_vpp_tx_vlib_chunk_bytes;
 
 static void spdk_vpp_sock_event (spdk_vpp_sock_t *sock);
 
@@ -500,7 +543,10 @@ spdk_vpp_tx_reservation_release (spdk_vpp_tx_reservation_t *reservation, u8 cach
   spdk_vpp_sock_t *sock = reservation->sock;
 
   reservation->len = 0;
+  reservation->first_buffer = 0;
+  reservation->n_buffers = 0;
   reservation->committed = 0;
+  reservation->vlib_backed = 0;
   if (cache && !sock->closed &&
       sock->tx_reservation_cache_count < SPDK_VPP_TX_RESERVATION_CACHE_MAX)
     {
@@ -512,9 +558,349 @@ spdk_vpp_tx_reservation_release (spdk_vpp_tx_reservation_t *reservation, u8 cach
 }
 
 static void
+spdk_vpp_tx_vlib_reset (spdk_vpp_sock_t *sock)
+{
+  vlib_main_t *vm = vlib_get_main_by_index (vlib_get_thread_index ());
+  spdk_vpp_tx_reservation_t *reservation;
+  u32 i;
+
+  for (i = sock->tx_buffer_head; i < vec_len (sock->tx_buffers); i++)
+    vlib_buffer_free_no_next (vm, &sock->tx_buffers[i].buffer_index, 1);
+
+  vec_free (sock->tx_buffers);
+  sock->tx_buffer_head = 0;
+  sock->tx_stream_head = 0;
+  sock->tx_stream_committed = 0;
+  sock->tx_stream_reserved = 0;
+
+  TAILQ_FOREACH (reservation, &sock->tx_reservations, link)
+    {
+      reservation->first_buffer = 0;
+      reservation->n_buffers = 0;
+      reservation->vlib_backed = 0;
+    }
+}
+
+static u32
+spdk_vpp_tx_vlib_max_dequeue (void *ctx)
+{
+  spdk_vpp_sock_t *sock = ctx;
+  session_t *s;
+  u64 available = sock->tx_stream_committed - sock->tx_stream_head;
+
+  if (available)
+    return clib_min (available, (u64) UINT32_MAX);
+
+  /* Once the alternate store drains, ordinary socket writes may continue to
+   * use the FIFO without unregistering and reallocating the provider. */
+  s = sock->handle != SESSION_INVALID_HANDLE ?
+	  session_get_from_handle_if_valid (sock->handle) : 0;
+  return s && s->tx_fifo ? svm_fifo_max_dequeue_cons (s->tx_fifo) : 0;
+}
+
+static int
+spdk_vpp_tx_vlib_peek (void *ctx, u32 offset, u32 max_bytes, u8 *dst)
+{
+  spdk_vpp_sock_t *sock = ctx;
+  session_t *s;
+  u64 available = sock->tx_stream_committed - sock->tx_stream_head;
+  u64 absolute;
+  u32 copied = 0, i;
+
+  if (!available)
+    {
+      s = sock->handle != SESSION_INVALID_HANDLE ?
+	    session_get_from_handle_if_valid (sock->handle) : 0;
+      return s && s->tx_fifo ? svm_fifo_peek (s->tx_fifo, offset, max_bytes, dst) : 0;
+    }
+
+  if (offset >= available)
+    return 0;
+  max_bytes = clib_min ((u64) max_bytes, available - offset);
+  absolute = sock->tx_stream_head + offset;
+
+  for (i = sock->tx_buffer_head;
+       i < vec_len (sock->tx_buffers) && copied < max_bytes; i++)
+    {
+      spdk_vpp_tx_buffer_t *seg = &sock->tx_buffers[i];
+      vlib_buffer_t *b;
+      u32 skip, n;
+
+      if (absolute >= seg->stream_offset + seg->len)
+	continue;
+      if (absolute < seg->stream_offset)
+	break;
+      skip = absolute - seg->stream_offset;
+      n = clib_min ((u32) seg->len - skip, max_bytes - copied);
+      b = vlib_get_buffer (vlib_get_main_by_index (vlib_get_thread_index ()),
+			   seg->buffer_index);
+      clib_memcpy_fast (dst + copied, b->data + seg->data_offset + skip, n);
+      copied += n;
+      absolute += n;
+    }
+  return copied;
+}
+
+static void
+spdk_vpp_tx_vlib_compact (spdk_vpp_sock_t *sock)
+{
+  spdk_vpp_tx_reservation_t *reservation;
+  u32 removed = sock->tx_buffer_head;
+
+  if (removed < 4096)
+    return;
+  vec_delete (sock->tx_buffers, removed, 0);
+  TAILQ_FOREACH (reservation, &sock->tx_reservations, link)
+    if (reservation->vlib_backed)
+      {
+	ASSERT (reservation->first_buffer >= removed);
+	reservation->first_buffer -= removed;
+      }
+  sock->tx_buffer_head = 0;
+}
+
+static u32
+spdk_vpp_tx_vlib_dequeue_drop (void *ctx, u32 max_bytes)
+{
+  spdk_vpp_sock_t *sock = ctx;
+  vlib_main_t *vm = vlib_get_main_by_index (vlib_get_thread_index ());
+  session_t *s;
+  u64 available = sock->tx_stream_committed - sock->tx_stream_head;
+  u32 dropped, left;
+
+  if (!available)
+    {
+      s = sock->handle != SESSION_INVALID_HANDLE ?
+	    session_get_from_handle_if_valid (sock->handle) : 0;
+      return s && s->tx_fifo ? svm_fifo_dequeue_drop (s->tx_fifo, max_bytes) : 0;
+    }
+
+  dropped = left = clib_min ((u64) max_bytes, available);
+  while (left && sock->tx_buffer_head < vec_len (sock->tx_buffers))
+    {
+      spdk_vpp_tx_buffer_t *seg = &sock->tx_buffers[sock->tx_buffer_head];
+
+      if (left < seg->len)
+	{
+	  seg->stream_offset += left;
+	  seg->data_offset += left;
+	  seg->len -= left;
+	  left = 0;
+	  break;
+	}
+
+      left -= seg->len;
+      vlib_buffer_free_no_next (vm, &seg->buffer_index, 1);
+      sock->tx_buffer_head++;
+    }
+  ASSERT (left == 0);
+  sock->tx_stream_head += dropped;
+
+  if (sock->tx_stream_head == sock->tx_stream_reserved &&
+      TAILQ_EMPTY (&sock->tx_reservations))
+    {
+      vec_reset_length (sock->tx_buffers);
+      sock->tx_buffer_head = 0;
+      sock->tx_stream_head = 0;
+      sock->tx_stream_committed = 0;
+      sock->tx_stream_reserved = 0;
+    }
+  else
+    spdk_vpp_tx_vlib_compact (sock);
+  return dropped;
+}
+
+static int
+spdk_vpp_tx_vlib_build_packets (void *ctx, vlib_main_t *vm, u32 offset,
+				u32 max_bytes, u32 segment_size,
+				u32 *buffer_indices, u16 *n_packets,
+				u32 *n_bytes)
+{
+  spdk_vpp_sock_t *sock = ctx;
+  u64 available = sock->tx_stream_committed - sock->tx_stream_head;
+  u64 absolute = sock->tx_stream_head + offset;
+  u32 remaining = max_bytes, i = sock->tx_buffer_head;
+  u64 direct_bytes = 0, edge_copy_bytes = 0;
+  u16 capacity = *n_packets, built = 0;
+  u8 packet_pending = 0;
+
+  *n_packets = 0;
+  *n_bytes = 0;
+  if (!available || offset >= available || !max_bytes || !segment_size)
+    return -ENOTSUP;
+
+  while (i < vec_len (sock->tx_buffers) &&
+	 sock->tx_buffers[i].stream_offset + sock->tx_buffers[i].len <= absolute)
+    i++;
+  if (i == vec_len (sock->tx_buffers) ||
+      sock->tx_buffers[i].stream_offset > absolute)
+    {
+      sock->tx_vlib_alignment_fallbacks++;
+      goto fallback;
+    }
+
+  sock->tx_vlib_last_packet_size = segment_size;
+  sock->tx_vlib_last_first_skip =
+    absolute - sock->tx_buffers[i].stream_offset;
+  sock->tx_vlib_last_first_segment_len = sock->tx_buffers[i].len;
+
+  while (remaining && built < capacity)
+    {
+      u32 packet_len = clib_min (remaining, segment_size);
+      u64 packet_end = absolute + packet_len;
+      u32 head_bi;
+      vlib_buffer_t *head, *prev;
+
+      if (vlib_buffer_alloc (vm, &head_bi, 1) != 1)
+	{
+	  sock->tx_vlib_alloc_fallbacks++;
+	  goto fallback;
+	}
+      buffer_indices[built] = head_bi;
+      packet_pending = 1;
+
+      head = vlib_get_buffer (vm, head_bi);
+      head->error = 0;
+      head->flags = VNET_BUFFER_F_LOCALLY_ORIGINATED |
+	VLIB_BUFFER_TOTAL_LENGTH_VALID;
+      head->current_data = 0;
+      head->current_length = 0;
+      vlib_buffer_make_headroom (head, TRANSPORT_MAX_HDRS_LEN);
+      head->next_buffer = 0;
+      head->total_length_not_including_first_buffer = 0;
+      prev = head;
+
+      while (absolute < packet_end && i < vec_len (sock->tx_buffers))
+	{
+	  spdk_vpp_tx_buffer_t *seg = &sock->tx_buffers[i];
+	  vlib_buffer_t *b = vlib_get_buffer (vm, seg->buffer_index);
+	  u32 skip, len;
+
+	  if (absolute < seg->stream_offset ||
+	      absolute >= seg->stream_offset + seg->len)
+	    {
+	      sock->tx_vlib_alignment_fallbacks++;
+	      goto fallback;
+	    }
+	  skip = absolute - seg->stream_offset;
+	  len = clib_min ((u32) seg->len - skip,
+			  (u32) (packet_end - absolute));
+
+	  if (skip == 0 && len == seg->len)
+	    {
+	      if (clib_atomic_load_relax_n (&b->ref_count) != 1)
+		{
+		  sock->tx_vlib_busy_fallbacks++;
+		  goto fallback;
+		}
+	      b->current_data = seg->data_offset;
+	      b->current_length = seg->len;
+	      b->flags = 0;
+	      b->total_length_not_including_first_buffer = 0;
+	      b->next_buffer = 0;
+	      prev->flags |= VLIB_BUFFER_NEXT_PRESENT;
+	      prev->next_buffer = seg->buffer_index;
+	      prev = b;
+	      clib_atomic_add_fetch (&b->ref_count, 1);
+	      direct_bytes += len;
+	    }
+	  else if (prev == head &&
+		   head->current_length + len <=
+		     vlib_buffer_get_default_data_size (vm) -
+		       TRANSPORT_MAX_HDRS_LEN)
+	    {
+	      clib_memcpy_fast (vlib_buffer_get_current (head) +
+				head->current_length,
+				b->data + seg->data_offset + skip, len);
+	      head->current_length += len;
+	      edge_copy_bytes += len;
+	    }
+	  else
+	    {
+	      u32 copy_bi;
+	      vlib_buffer_t *copy;
+
+	      if (vlib_buffer_alloc (vm, &copy_bi, 1) != 1)
+		{
+		  sock->tx_vlib_alloc_fallbacks++;
+		  goto fallback;
+		}
+	      copy = vlib_get_buffer (vm, copy_bi);
+	      copy->current_data = 0;
+	      copy->current_length = len;
+	      copy->flags = 0;
+	      copy->next_buffer = 0;
+	      copy->total_length_not_including_first_buffer = 0;
+	      clib_memcpy_fast (vlib_buffer_get_current (copy),
+				b->data + seg->data_offset + skip, len);
+	      prev->flags |= VLIB_BUFFER_NEXT_PRESENT;
+	      prev->next_buffer = copy_bi;
+	      prev = copy;
+	      edge_copy_bytes += len;
+	    }
+
+	  absolute += len;
+	  if (skip + len == seg->len)
+	    i++;
+	}
+
+      if (absolute != packet_end)
+	{
+	  sock->tx_vlib_alignment_fallbacks++;
+	  goto fallback;
+	}
+      head->total_length_not_including_first_buffer =
+	packet_len - head->current_length;
+      packet_pending = 0;
+      built++;
+      remaining -= packet_len;
+    }
+
+  if (remaining)
+    goto fallback;
+
+  *n_packets = built;
+  *n_bytes = max_bytes;
+  sock->tx_vlib_direct_packets += built;
+  sock->tx_vlib_direct_bytes += direct_bytes;
+  sock->tx_vlib_edge_copy_bytes += edge_copy_bytes;
+  return 0;
+
+fallback:
+  if (built + packet_pending)
+    vlib_buffer_free (vm, buffer_indices, built + packet_pending);
+  sock->tx_vlib_copy_fallbacks++;
+  sock->tx_vlib_fallback_bytes += max_bytes;
+  *n_packets = 0;
+  *n_bytes = 0;
+  return -ENOTSUP;
+}
+
+static void
+spdk_vpp_tx_vlib_cleanup (void *ctx)
+{
+  spdk_vpp_sock_t *sock = ctx;
+
+  spdk_vpp_tx_vlib_reset (sock);
+  sock->tx_buffer_registered = 0;
+}
+
+static const session_tx_buffer_vft_t spdk_vpp_tx_vlib_vft = {
+  .max_dequeue = spdk_vpp_tx_vlib_max_dequeue,
+  .peek = spdk_vpp_tx_vlib_peek,
+  .dequeue_drop = spdk_vpp_tx_vlib_dequeue_drop,
+  .build_packets = spdk_vpp_tx_vlib_build_packets,
+  .cleanup = spdk_vpp_tx_vlib_cleanup,
+};
+
+static void
 spdk_vpp_sock_free (spdk_vpp_sock_t *sock)
 {
   spdk_vpp_tx_reservation_t *reservation;
+
+  /* Close must detach the provider on the owning session worker first. */
+  if (sock->tx_buffer_registered)
+    ASSERT (0);
 
   while ((reservation = TAILQ_FIRST (&sock->tx_reservations)) != NULL)
     {
@@ -551,6 +937,7 @@ typedef struct
   vnet_listen_args_t listen_args;
   vnet_unlisten_args_t unlisten_args;
   vnet_connect_args_t connect_args;
+  session_handle_t session_handle;
 } spdk_vpp_rpc_op_t;
 
 static void
@@ -564,10 +951,9 @@ spdk_vpp_rpc_done (spdk_vpp_rpc_op_t *op, int rv)
 }
 
 static int
-spdk_vpp_rpc_wait (void (*fn) (void *), spdk_vpp_rpc_op_t *op)
+spdk_vpp_rpc_wait_on_thread (clib_thread_index_t thread_index,
+			     void (*fn) (void *), spdk_vpp_rpc_op_t *op)
 {
-  clib_thread_index_t thread_index = transport_cl_thread ();
-
   pthread_mutex_init (&op->lock, 0);
   pthread_cond_init (&op->cond, 0);
 
@@ -589,6 +975,12 @@ spdk_vpp_rpc_wait (void (*fn) (void *), spdk_vpp_rpc_op_t *op)
   return op->rv;
 }
 
+static int
+spdk_vpp_rpc_wait (void (*fn) (void *), spdk_vpp_rpc_op_t *op)
+{
+  return spdk_vpp_rpc_wait_on_thread (transport_cl_thread (), fn, op);
+}
+
 static void
 spdk_vpp_listen_rpc (void *arg)
 {
@@ -608,6 +1000,17 @@ spdk_vpp_connect_rpc (void *arg)
 {
   spdk_vpp_rpc_op_t *op = arg;
   spdk_vpp_rpc_done (op, vnet_connect (&op->connect_args));
+}
+
+static void
+spdk_vpp_tx_buffer_unregister_rpc (void *arg)
+{
+  spdk_vpp_rpc_op_t *op = arg;
+  session_t *s = session_get_from_handle_if_valid (op->session_handle);
+
+  if (s && s->tx_buffer_index)
+    session_tx_buffer_unregister (s);
+  spdk_vpp_rpc_done (op, 0);
 }
 
 static int
@@ -1037,11 +1440,21 @@ spdk_vpp_sock_close (struct spdk_sock *_sock)
   spdk_vpp_sock_t *sock = __vpp_sock (_sock);
   spdk_vpp_rpc_op_t op = {};
   spdk_vpp_sock_t *accepted;
+  u32 owner_thread;
 
   spdk_vpp_sock_unmap_opaque (sock);
 
   clib_spinlock_lock (&sock->lock);
   sock->closed = 1;
+  if (sock->tx_buffer_registered &&
+      !spdk_vpp_sock_owner_thread (sock, &owner_thread))
+    {
+      op.session_handle = sock->handle;
+      clib_spinlock_unlock (&sock->lock);
+      spdk_vpp_rpc_wait_on_thread (owner_thread,
+				   spdk_vpp_tx_buffer_unregister_rpc, &op);
+      clib_spinlock_lock (&sock->lock);
+    }
   spdk_vpp_sock_unmap_session (sock);
   if (sock->handle != SESSION_INVALID_HANDLE)
     {
@@ -1171,7 +1584,8 @@ spdk_vpp_sock_writev_internal (spdk_vpp_sock_t *sock, struct iovec *iov, int iov
   /* Direct C2H reservations already own the bytes starting at the current
    * FIFO tail.  Keep regular socket writes queued until those reservations
    * have been published so they cannot overwrite the reserved regions. */
-  if (sock->tx_reserved)
+  if (sock->tx_reserved ||
+      sock->tx_stream_reserved != sock->tx_stream_head)
     {
       sock->tx_no_space++;
       return -EAGAIN;
@@ -1230,6 +1644,123 @@ spdk_vpp_sock_writev_internal (spdk_vpp_sock_t *sock, struct iovec *iov, int iov
 }
 
 static int
+spdk_vpp_sock_tx_vlib_reserve (spdk_vpp_sock_t *sock, session_t *s,
+			       spdk_vpp_tx_reservation_t *reservation,
+			       size_t len, struct iovec *iov, int capacity,
+			       int *n_iovs)
+{
+  transport_endpt_attr_t attr = { .type = TRANSPORT_ENDPT_ATTR_MSS };
+  vlib_main_t *vm = vlib_get_main_by_index (s->thread_index);
+  u64 owned = sock->tx_stream_reserved - sock->tx_stream_head;
+  u64 stream_offset, simulated;
+  u32 data_size, chunk_size, first, count = 0, i, remaining;
+  int rv = -ENOTSUP;
+
+  if (!spdk_vpp_tx_vlib_enabled || !capacity ||
+      svm_fifo_max_dequeue_cons (s->tx_fifo) != 0 ||
+      session_get_transport_proto (s) != TRANSPORT_PROTO_TCP)
+    return -ENOTSUP;
+  if (owned + len > spdk_vpp_tx_vlib_max_bytes ||
+      owned + len > svm_fifo_size (s->tx_fifo))
+    return -EAGAIN;
+  if (session_transport_attribute (s, 1 /* is_get */, &attr) || !attr.mss)
+    return -ENOTSUP;
+
+  data_size = vlib_buffer_get_default_data_size (vm);
+  if (!data_size || data_size > UINT16_MAX)
+    return -ENOTSUP;
+  chunk_size = spdk_vpp_tx_vlib_chunk_bytes ?
+		 clib_min (spdk_vpp_tx_vlib_chunk_bytes, data_size) :
+		 data_size;
+
+  /* Count first, so a small caller iovec never leaves a partial allocation.
+   * Boundaries are inserted at every TCP MSS; a GSO packet is an integral
+   * number of these records and therefore never needs to split a payload
+   * buffer. */
+  simulated = sock->tx_stream_reserved;
+  remaining = len;
+  while (remaining)
+    {
+      u32 to_mss = attr.mss - (simulated % attr.mss);
+      u32 n = clib_min (
+	remaining, spdk_vpp_tx_vlib_chunk_bytes ? chunk_size :
+						  clib_min (chunk_size, to_mss));
+      count++;
+      simulated += n;
+      remaining -= n;
+    }
+  if (count > (u32) capacity)
+    {
+      sock->tx_vlib_iov_rejects++;
+      return -ENOBUFS;
+    }
+
+  first = vec_len (sock->tx_buffers);
+  stream_offset = sock->tx_stream_reserved;
+  remaining = len;
+  for (i = 0; i < count; i++)
+    {
+      spdk_vpp_tx_buffer_t seg = {};
+      vlib_buffer_t *b;
+      u32 to_mss, n;
+
+      if (vlib_buffer_alloc (vm, &seg.buffer_index, 1) != 1)
+	{
+	  rv = -EAGAIN;
+	  goto rollback;
+	}
+      to_mss = attr.mss - (stream_offset % attr.mss);
+      n = clib_min (
+	remaining, spdk_vpp_tx_vlib_chunk_bytes ? chunk_size :
+						  clib_min (chunk_size, to_mss));
+      seg.stream_offset = stream_offset;
+      seg.data_offset = 0;
+      seg.len = n;
+      b = vlib_get_buffer (vm, seg.buffer_index);
+      b->current_data = 0;
+      b->current_length = n;
+      b->flags = 0;
+      b->next_buffer = 0;
+      vec_add1 (sock->tx_buffers, seg);
+      iov[i].iov_base = b->data;
+      iov[i].iov_len = n;
+      stream_offset += n;
+      remaining -= n;
+    }
+  ASSERT (remaining == 0);
+
+  if (!sock->tx_buffer_registered)
+    {
+      if (session_tx_buffer_register (s, &spdk_vpp_tx_vlib_vft, sock))
+	{
+	  rv = -ENOTSUP;
+	  goto rollback;
+	}
+      sock->tx_buffer_registered = 1;
+    }
+
+  reservation->first_buffer = first;
+  reservation->n_buffers = count;
+  reservation->vlib_backed = 1;
+  sock->tx_stream_reserved = stream_offset;
+  sock->tx_vlib_reserved_buffers += count;
+  sock->tx_vlib_reservation_bytes += len;
+  sock->tx_vlib_last_mss = attr.mss;
+  sock->tx_vlib_last_reservation_iovs = count;
+  *n_iovs = count;
+  return 0;
+
+rollback:
+  while (vec_len (sock->tx_buffers) > first)
+    {
+      u32 last = vec_len (sock->tx_buffers) - 1;
+      vlib_buffer_free_no_next (vm, &sock->tx_buffers[last].buffer_index, 1);
+      vec_set_len (sock->tx_buffers, last);
+    }
+  return rv;
+}
+
+static int
 spdk_vpp_sock_tx_reserve (struct spdk_sock *_sock, size_t len, struct iovec *iov, int *iovcnt,
 			  void **ctx)
 {
@@ -1238,6 +1769,7 @@ spdk_vpp_sock_tx_reserve (struct spdk_sock *_sock, size_t len, struct iovec *iov
   svm_fifo_seg_t segs[IOV_BATCH_SIZE];
   session_t *s;
   u32 mapped = 0;
+  u8 vlib_active;
   int capacity, i, n_segs, rv;
 
   if (!len || len > UINT32_MAX)
@@ -1272,28 +1804,13 @@ spdk_vpp_sock_tx_reserve (struct spdk_sock *_sock, size_t len, struct iovec *iov
       goto error;
     }
 
-  n_segs =
-    svm_fifo_provision_chunks_at_offset (s->tx_fifo, sock->tx_reserved, segs, capacity, (u32) len);
-  if (n_segs < 0)
-    {
-      rv = n_segs == SVM_FIFO_EFULL ? -EAGAIN : -ENOBUFS;
-      goto error;
-    }
-
-  for (i = 0; i < n_segs; i++)
-    mapped += segs[i].len;
-  if (mapped != len)
-    {
-      rv = -ENOBUFS;
-      goto error;
-    }
-
   reservation = SLIST_FIRST (&sock->tx_reservation_cache);
   if (reservation)
     {
       SLIST_REMOVE_HEAD (&sock->tx_reservation_cache, cache_link);
       ASSERT (sock->tx_reservation_cache_count > 0);
       sock->tx_reservation_cache_count--;
+      clib_memset (reservation, 0, sizeof (*reservation));
     }
   else
     reservation = calloc (1, sizeof (*reservation));
@@ -1302,16 +1819,40 @@ spdk_vpp_sock_tx_reserve (struct spdk_sock *_sock, size_t len, struct iovec *iov
       rv = -ENOMEM;
       goto error;
     }
-
   reservation->sock = sock;
   reservation->len = (u32) len;
-  reservation->committed = 0;
+
+  vlib_active = sock->tx_stream_reserved != sock->tx_stream_head;
+  rv = spdk_vpp_sock_tx_vlib_reserve (sock, s, reservation, len, iov,
+				      capacity, &n_segs);
+  if (rv == 0)
+    goto mapped;
+  if (vlib_active)
+    goto reservation_error;
+
+  n_segs =
+    svm_fifo_provision_chunks_at_offset (s->tx_fifo, sock->tx_reserved, segs, capacity, (u32) len);
+  if (n_segs < 0)
+    {
+      rv = n_segs == SVM_FIFO_EFULL ? -EAGAIN : -ENOBUFS;
+      goto reservation_error;
+    }
+
+  for (i = 0; i < n_segs; i++)
+    mapped += segs[i].len;
+  if (mapped != len)
+    {
+      rv = -ENOBUFS;
+      goto reservation_error;
+    }
+
   for (i = 0; i < n_segs; i++)
     {
       iov[i].iov_base = segs[i].data;
       iov[i].iov_len = segs[i].len;
     }
 
+mapped:
   TAILQ_INSERT_TAIL (&sock->tx_reservations, reservation, link);
   sock->tx_reserved += (u32) len;
   if (sock->group)
@@ -1324,6 +1865,9 @@ spdk_vpp_sock_tx_reserve (struct spdk_sock *_sock, size_t len, struct iovec *iov
   *ctx = reservation;
   clib_spinlock_unlock (&sock->lock);
   return 0;
+
+reservation_error:
+  spdk_vpp_tx_reservation_release (reservation, 1);
 
 error:
   clib_spinlock_unlock (&sock->lock);
@@ -1384,7 +1928,14 @@ spdk_vpp_sock_tx_commit (struct spdk_sock *_sock, void *ctx)
       u32 reservation_len = it->len;
 
       ASSERT (sock->tx_reserved >= reservation_len);
-      svm_fifo_enqueue_nocopy (s->tx_fifo, reservation_len);
+      if (it->vlib_backed)
+	{
+	  ASSERT (sock->tx_stream_committed + reservation_len <=
+		  sock->tx_stream_reserved);
+	  sock->tx_stream_committed += reservation_len;
+	}
+      else
+	svm_fifo_enqueue_nocopy (s->tx_fifo, reservation_len);
       sock->tx_reserved -= reservation_len;
       published += reservation_len;
       TAILQ_REMOVE (&sock->tx_reservations, it, link);
@@ -1444,6 +1995,19 @@ spdk_vpp_sock_tx_abort (struct spdk_sock *_sock, void *ctx)
     }
 
   ASSERT (sock->tx_reserved >= reservation->len);
+  if (reservation->vlib_backed)
+    {
+      vlib_main_t *vm = vlib_get_main_by_index (vlib_get_thread_index ());
+      u32 first = reservation->first_buffer;
+      u32 i;
+
+      ASSERT (first + reservation->n_buffers == vec_len (sock->tx_buffers));
+      for (i = first; i < vec_len (sock->tx_buffers); i++)
+	vlib_buffer_free_no_next (vm, &sock->tx_buffers[i].buffer_index, 1);
+      vec_set_len (sock->tx_buffers, first);
+      ASSERT (sock->tx_stream_reserved >= reservation->len);
+      sock->tx_stream_reserved -= reservation->len;
+    }
   sock->tx_reserved -= reservation->len;
   TAILQ_REMOVE (&sock->tx_reservations, reservation, link);
   if (sock->group)
@@ -1880,14 +2444,26 @@ format_spdk_vpp_state (u8 *s)
   spdk_vpp_group_t *group;
   u64 tx_reservations = 0, tx_reservation_bytes = 0, tx_commits = 0, tx_aborts = 0;
   u64 tx_ooo_commits = 0, tx_publish_batches = 0, tx_events = 0, tx_max_reserved = 0;
+  u64 tx_vlib_direct_packets = 0, tx_vlib_direct_bytes = 0;
+  u64 tx_vlib_edge_copy_bytes = 0, tx_vlib_fallback_bytes = 0;
+  u64 tx_vlib_copy_fallbacks = 0, tx_vlib_busy_fallbacks = 0;
+  u64 tx_vlib_alignment_fallbacks = 0, tx_vlib_alloc_fallbacks = 0;
+  u64 tx_vlib_reserved_buffers = 0;
+  u64 tx_vlib_reservation_bytes = 0, tx_vlib_iov_rejects = 0;
 
   spdk_vpp_main_init ();
   clib_spinlock_lock (&vm->lock);
   s = format (s, "socket backend: vpp hoststack\n");
+  s = format (s, "tx-vlib prototype: %s max-bytes %u chunk-bytes %u%s\n",
+	      spdk_vpp_tx_vlib_enabled ? "enabled" : "disabled",
+	      spdk_vpp_tx_vlib_max_bytes, spdk_vpp_tx_vlib_chunk_bytes,
+	      spdk_vpp_tx_vlib_chunk_bytes ? "" : " (full-buffer)");
   s = format (s, "placements: hits %llu misses %llu affinity-errors %llu\n", vm->placement_hits,
 	      vm->placement_misses, vm->affinity_errors);
   TAILQ_FOREACH (group, &vm->groups, link)
   {
+    struct spdk_sock *base_sock;
+
     tx_reservations += group->tx_reservations;
     tx_reservation_bytes += group->tx_reservation_bytes;
     tx_commits += group->tx_commits;
@@ -1896,6 +2472,21 @@ format_spdk_vpp_state (u8 *s)
     tx_publish_batches += group->tx_publish_batches;
     tx_events += group->tx_events;
     tx_max_reserved = clib_max (tx_max_reserved, group->tx_max_reserved);
+    TAILQ_FOREACH (base_sock, &group->base.socks, link)
+      {
+	spdk_vpp_sock_t *sock = __vpp_sock (base_sock);
+	tx_vlib_direct_packets += sock->tx_vlib_direct_packets;
+	tx_vlib_direct_bytes += sock->tx_vlib_direct_bytes;
+	tx_vlib_edge_copy_bytes += sock->tx_vlib_edge_copy_bytes;
+	tx_vlib_fallback_bytes += sock->tx_vlib_fallback_bytes;
+	tx_vlib_copy_fallbacks += sock->tx_vlib_copy_fallbacks;
+	tx_vlib_busy_fallbacks += sock->tx_vlib_busy_fallbacks;
+	tx_vlib_alignment_fallbacks += sock->tx_vlib_alignment_fallbacks;
+	tx_vlib_alloc_fallbacks += sock->tx_vlib_alloc_fallbacks;
+	tx_vlib_reserved_buffers += sock->tx_vlib_reserved_buffers;
+	tx_vlib_reservation_bytes += sock->tx_vlib_reservation_bytes;
+	tx_vlib_iov_rejects += sock->tx_vlib_iov_rejects;
+      }
   }
   s = format (s, "direct-tx: reservations %llu bytes %llu commits %llu aborts %llu\n",
 	      tx_reservations, tx_reservation_bytes, tx_commits, tx_aborts);
@@ -1903,6 +2494,22 @@ format_spdk_vpp_state (u8 *s)
 	      "direct-tx completion: non-creation-order %llu commit-batches %llu "
 	      "events %llu max-reserved %llu\n",
 	      tx_ooo_commits, tx_publish_batches, tx_events, tx_max_reserved);
+  s = format (s,
+	      "tx-vlib: direct-packets %llu direct-bytes %llu edge-copy-bytes %llu "
+	      "fallback-bytes %llu copy-fallbacks %llu busy %llu alignment %llu "
+	      "alloc %llu\n",
+	      tx_vlib_direct_packets, tx_vlib_direct_bytes,
+	      tx_vlib_edge_copy_bytes, tx_vlib_fallback_bytes,
+	      tx_vlib_copy_fallbacks, tx_vlib_busy_fallbacks,
+	      tx_vlib_alignment_fallbacks, tx_vlib_alloc_fallbacks);
+  s = format (s,
+	      "tx-vlib reservation: bytes %llu buffers %llu "
+	      "bytes-per-buffer %.1f iov-rejects %llu\n",
+	      tx_vlib_reservation_bytes, tx_vlib_reserved_buffers,
+	      tx_vlib_reserved_buffers ?
+		(f64) tx_vlib_reservation_bytes / tx_vlib_reserved_buffers :
+		0.0,
+	      tx_vlib_iov_rejects);
   s = format (s, "socket groups:");
   TAILQ_FOREACH (group, &vm->groups, link)
   s = format (s, " vpp%u=lcore%u", group->vpp_thread_index, group->lcore);
@@ -1948,6 +2555,16 @@ format_spdk_vpp_state (u8 *s)
 		  0;
       if (session && session->rx_fifo && svm_fifo_max_dequeue_cons (session->rx_fifo))
 	rx_ready_socks++;
+      if (sock->tx_vlib_last_reservation_iovs ||
+	  sock->tx_vlib_last_packet_size)
+	s = format (s,
+		    "    tx-vlib last: mss %u reservation-iovs %u "
+		    "packet-size %u first-skip %u first-segment %u\n",
+		    sock->tx_vlib_last_mss,
+		    sock->tx_vlib_last_reservation_iovs,
+		    sock->tx_vlib_last_packet_size,
+		    sock->tx_vlib_last_first_skip,
+		    sock->tx_vlib_last_first_segment_len);
     }
     s = format (s,
 		"  vpp%u/lcore%u sockets %u flush-pending %u polls %llu "
@@ -1972,6 +2589,58 @@ format_spdk_vpp_state (u8 *s)
   clib_spinlock_unlock (&vm->lock);
   return s;
 }
+
+static clib_error_t *
+spdk_vpp_tx_vlib_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			     vlib_cli_command_t *cmd)
+{
+  u64 max_bytes = spdk_vpp_tx_vlib_max_bytes;
+  u64 chunk_bytes = spdk_vpp_tx_vlib_chunk_bytes;
+  u8 enable = spdk_vpp_tx_vlib_enabled;
+
+  (void) cmd;
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "enable"))
+	enable = 1;
+      else if (unformat (input, "disable"))
+	enable = 0;
+      else if (unformat (input, "max-bytes %U", unformat_memory_size,
+			 &max_bytes))
+	;
+      else if (unformat (input, "chunk-bytes %U", unformat_memory_size,
+			 &chunk_bytes))
+	;
+      else
+	return clib_error_return (0, "unknown input `%U'",
+				  format_unformat_error, input);
+    }
+
+  if (max_bytes < (64 << 10))
+    return clib_error_return (0, "max-bytes must be at least 64KiB");
+  if (max_bytes > UINT32_MAX)
+    return clib_error_return (0, "max-bytes must not exceed 4GiB-1");
+  if (chunk_bytes > UINT16_MAX)
+    return clib_error_return (0, "chunk-bytes must not exceed 65535");
+  spdk_vpp_tx_vlib_max_bytes = (u32) max_bytes;
+  spdk_vpp_tx_vlib_chunk_bytes = (u32) chunk_bytes;
+  spdk_vpp_tx_vlib_enabled = enable;
+  vlib_cli_output (vm,
+		   "SPDK VPP TX VLIB prototype %s, max-bytes %U, "
+		   "chunk-bytes %U%s",
+		   enable ? "enabled" : "disabled", format_memory_size,
+		   (u64) max_bytes, format_memory_size, (u64) chunk_bytes,
+		   chunk_bytes ? "" : " (full-buffer)");
+  return 0;
+}
+
+VLIB_CLI_COMMAND (spdk_vpp_tx_vlib_command, static) = {
+  .path = "spdk vpp tx-vlib",
+  .short_help =
+    "spdk vpp tx-vlib [enable|disable] [max-bytes <size>] "
+    "[chunk-bytes <size>]",
+  .function = spdk_vpp_tx_vlib_command_fn,
+};
 
 static int
 spdk_vpp_sock_impl_get_opts (struct spdk_sock_impl_opts *opts, size_t *len)
