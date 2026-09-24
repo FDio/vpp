@@ -286,6 +286,9 @@ typedef struct session_
   /** Opaque, for general use */
   u32 opaque;
 
+  /** Optional in-process TX buffer provider, stored as pool index + 1 */
+  u32 tx_buffer_index;
+
     CLIB_CACHE_LINE_ALIGN_MARK (pad);
 } session_t;
 

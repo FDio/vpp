@@ -1166,7 +1166,7 @@ transport_connection_reschedule (transport_connection_t * tc)
     {
       session_t *s = session_get (tc->s_index, tc->thread_index);
       svm_fifo_unset_event (s->tx_fifo);
-      if (svm_fifo_max_dequeue_cons (s->tx_fifo))
+      if (transport_max_tx_dequeue (tc))
 	if (svm_fifo_set_event (s->tx_fifo))
 	  sesssion_reschedule_tx (tc);
     }
