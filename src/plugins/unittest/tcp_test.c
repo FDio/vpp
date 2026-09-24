@@ -2316,6 +2316,13 @@ tcp_test_bbr (vlib_main_t *vm, unformat_input_t *input)
   TCP_TEST (bbr_offload_budget (BBR_SEND_QUANTUM_MAX, 12500000000.0) == 16 * BBR_SEND_QUANTUM_MAX,
 	    "bbr high-rate offload budget is bounded");
 
+  TCP_TEST (!bbr_is_inflight_too_high (&(tcp_ack_ctx_t) { .lost = 3000 }),
+	    "bbr ignores loss without sampled inflight");
+  TCP_TEST (!bbr_is_inflight_too_high (&(tcp_ack_ctx_t) { .lost = 1000, .tx_in_flight = 100000 }),
+	    "bbr tolerates low loss with sampled inflight");
+  TCP_TEST (bbr_is_inflight_too_high (&(tcp_ack_ctx_t) { .lost = 3000, .tx_in_flight = 100000 }),
+	    "bbr acts on high loss with sampled inflight");
+
   bd.bw_hi[0] = 1000.0;
   bbr_advance_max_bw_filter (&bd);
   TCP_TEST (bd.bw_hi[0] == 1000.0, "bbr retains max bw across an empty filter window");

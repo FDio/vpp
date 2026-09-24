@@ -15,7 +15,7 @@ import (
 func init() {
 	RegisterVperfTests(TcpBbrBufferbloatTest, TcpBbrRandomLossStartupTest)
 	RegisterManualVperfTests(TcpCcComparisonCubicTest, TcpCcComparisonCubicRackTest,
-		TcpCcComparisonBbrTest)
+		TcpCcComparisonBbrTest, TcpBbrRandomLossSteadyStateTest)
 }
 
 const (
@@ -389,6 +389,22 @@ func TcpBbrRandomLossStartupTest(s *VperfSuite) {
 		dataNsim:        "set nsim poll-main-thread delay 50 ms bandwidth 100 mbps buffer 1000 ms packet-size 1500 drop-fraction 0.001 seed 112933",
 		ackNsim:         "set nsim poll-main-thread delay 50 ms bandwidth 100 mbps buffer 20 ms packet-size 64 seed 112934",
 		minGoodputMbps:  70,
+		requireNoQDrops: true,
+		requireLoss:     true,
+		requireProbeBw:  true,
+	})
+}
+
+func TcpBbrRandomLossSteadyStateTest(s *VperfSuite) {
+	runTcpCcComparison(s, ccCmpConfig{
+		name:            "bbr-random-loss-steady-state",
+		algo:            "bbr",
+		runTime:         20 * time.Second,
+		warmup:          2 * time.Second,
+		baseRttMs:       100,
+		dataNsim:        "set nsim poll-main-thread delay 50 ms bandwidth 100 mbps buffer 1000 ms packet-size 1500 drop-fraction 0.001 seed 112933",
+		ackNsim:         "set nsim poll-main-thread delay 50 ms bandwidth 100 mbps buffer 20 ms packet-size 64 seed 112934",
+		minGoodputMbps:  85,
 		requireNoQDrops: true,
 		requireLoss:     true,
 		requireProbeBw:  true,
