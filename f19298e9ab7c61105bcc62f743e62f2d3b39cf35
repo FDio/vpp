@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "83a434ee_5f4d0bf7",
+        "filename": "src/vlib/pool_cache.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 328,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-09-24T09:52:47Z",
+      "side": 1,
+      "message": "nit: some typos in this comment if you could please address them (\"wan\u0027t\", \"n_elmts\", \"allocatation\")",
+      "revId": "f19298e9ab7c61105bcc62f743e62f2d3b39cf35",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6383c48a_bd4e64eb",
+        "filename": "src/vlib/pool_cache.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 339,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-09-24T09:52:47Z",
+      "side": 1,
+      "message": "Could we replace `(u32) ~0` by `UINT32_MAX` for clarity ?",
+      "revId": "f19298e9ab7c61105bcc62f743e62f2d3b39cf35",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8767cbc3_ed4662e3",
+        "filename": "src/vlib/pool_cache.h",
+        "patchSetId": 6
+      },
+      "lineNbr": 334,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-09-24T09:52:47Z",
+      "side": 1,
+      "message": "nit: For external quiescence in the VPP context, I assume you mean that a barrier must be called beforehand to ensure the pool cache is not modified while running the iterator ? Could this be made clearer in the comment description ?\n\ne.g. barrier example if CLI/API function running on main thread calls `vlib_foreach_pool_cache`:\n\n```\nvlib_worker_thread_barrier_sync (vm);\n\nvlib_foreach_pool_cache (elt, index, \u0026my_main.cache)..;\n\nvlib_worker_thread_barrier_release (vm);\n\n```",
+      "revId": "f19298e9ab7c61105bcc62f743e62f2d3b39cf35",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
