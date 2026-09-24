@@ -260,6 +260,62 @@ class TestNsimCli(VppTestCase):
             r"[1-9]\d* bounded service approximations",
         )
 
+    def test_contention_pauses_service(self):
+        """Seeded contention composes with variable-rate service"""
+        self.vapi.cli(
+            "set nsim delay 1 ms bandwidth 8 mbps buffer 100 ms "
+            "packet-size 1000 rate-cycle bandwidth 4 mbps "
+            "good 100 ms bad 100 ms contention mean-idle 1 ms "
+            "mean-busy 50 ms buffer-occupancy 0.25 seed 23"
+        )
+        self.enable_cross_connect()
+        capture = self.send_plain_and_capture(20)
+
+        gaps = [
+            float(capture[index].time - capture[index - 1].time)
+            for index in range(1, len(capture))
+        ]
+        self.assertGreater(max(gaps), 0.005)
+        reply = self.vapi.cli("show nsim verbose")
+        self.assertIn(
+            "contention: mean idle/busy 1.0 ms/50.0 ms, buffer occupancy .250",
+            reply,
+        )
+        self.assertRegex(
+            reply, r"contention: events [1-9]\d* service deferrals [1-9]\d*"
+        )
+
+    def test_contention_reserves_shared_buffer(self):
+        """Background occupancy makes visible packets tail-drop"""
+        self.vapi.cli(
+            "set nsim delay 1 ms bandwidth 8 mbps buffer 10 ms "
+            "packet-size 1000 contention mean-idle 1 us "
+            "mean-busy 100 ms buffer-occupancy 0.5 seed 12"
+        )
+        self.enable_cross_connect()
+        packets = [
+            Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac)
+            / IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4)
+            / UDP(sport=49152 + index, dport=5678)
+            / Raw(bytes([index]))
+            for index in range(20)
+        ]
+        self.pg0.add_stream(packets)
+        self.pg_start()
+        time.sleep(0.2)
+
+        reply = self.vapi.cli("show nsim verbose")
+        match = re.search(r"queue-full (\d+)", reply)
+        self.assertIsNotNone(match)
+        self.assertGreater(int(match.group(1)), 0)
+        self.assertIn("drops 0", reply)
+        for _ in range(100):
+            if re.search(r"storage 0/", reply):
+                break
+            time.sleep(0.02)
+            reply = self.vapi.cli("show nsim verbose")
+        self.assertRegex(reply, r"storage 0/")
+
     def test_release_batching(self):
         """Release batching preserves FIFO order and aligns departures"""
         self.vapi.cli(
@@ -508,6 +564,12 @@ class TestNsimCli(VppTestCase):
             "packets-per-reorder -1",
             "set nsim delay 1 ms bandwidth 8 mbps packet-size 1000 "
             "batch-interval 5 ms reorder-fraction 0.1",
+            "set nsim delay 1 ms bandwidth 8 mbps packet-size 1000 "
+            "contention mean-idle 1 ms mean-busy 1 ms",
+            "set nsim delay 1 ms bandwidth 8 mbps buffer 10 ms packet-size 1000 "
+            "contention mean-idle 0 ms mean-busy 1 ms",
+            "set nsim delay 1 ms bandwidth 8 mbps buffer 10 ms packet-size 1000 "
+            "contention mean-idle 1 ms mean-busy 1 ms buffer-occupancy 1",
         )
         for command in commands:
             response = self.vapi.cli_return_response(command)
@@ -554,13 +616,13 @@ class TestNsimWorkers(VppTestCase):
         first = self.vapi.cli("show nsim verbose")
         workers = re.findall(
             r"worker (\d+): queue 0/(\d+).*seeds loss (\d+) reorder (\d+) "
-            r"reorder-delay (\d+) rate (\d+) batch (\d+)",
+            r"reorder-delay (\d+) rate (\d+) contention (\d+) batch (\d+)",
             first,
         )
         self.assertEqual(len(workers), 2)
         self.assertEqual(workers[0][1], workers[1][1])
         for worker in workers:
-            self.assertEqual(len(set(worker[2:])), 5)
+            self.assertEqual(len(set(worker[2:])), 6)
         self.assertNotEqual(workers[0][2:], workers[1][2:])
 
         self.vapi.cli(command)
@@ -569,7 +631,7 @@ class TestNsimWorkers(VppTestCase):
             workers,
             re.findall(
                 r"worker (\d+): queue 0/(\d+).*seeds loss (\d+) reorder (\d+) "
-                r"reorder-delay (\d+) rate (\d+) batch (\d+)",
+                r"reorder-delay (\d+) rate (\d+) contention (\d+) batch (\d+)",
                 second,
             ),
         )

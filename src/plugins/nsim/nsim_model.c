@@ -18,7 +18,7 @@
 /* Sample an exponential dwell with the given mean (seconds). `random_f64`
  * returns [0,1]; clamp away from 0 so the log is finite. */
 static_always_inline f64
-nsim_rate_dwell (u32 *seed, f64 mean)
+nsim_exponential_dwell (u32 *seed, f64 mean)
 {
   f64 u = random_f64 (seed);
 
@@ -32,7 +32,7 @@ nsim_rate_state_dwell (const nsim_rate_config_t *c, const nsim_rate_state_t *s, 
 {
   f64 dwell = s->state ? c->bad_dwell : c->good_dwell;
 
-  return c->type == NSIM_RATE_MARKOV ? nsim_rate_dwell (seed, dwell) : dwell;
+  return c->type == NSIM_RATE_MARKOV ? nsim_exponential_dwell (seed, dwell) : dwell;
 }
 
 static_always_inline void
@@ -148,6 +148,46 @@ nsim_rate_departure_time_slow (const nsim_rate_config_t *c, nsim_rate_state_t *s
     }
 }
 
+/* Advance a seeded contention cursor to the requested time. Service and queue
+ * admission use identical streams but separate cursors because service can be
+ * scheduled ahead of wall time by the current backlog. */
+void
+nsim_contention_sync_slow (const nsim_contention_config_t *c, nsim_contention_state_t *s,
+			   u32 *seed, f64 service_start)
+{
+  u32 transitions = 0;
+
+  if (s->next_start == 0.0)
+    {
+      s->next_start = service_start + nsim_exponential_dwell (seed, c->mean_idle);
+      return;
+    }
+
+  while (service_start >= s->next_start)
+    {
+      f64 duration = nsim_exponential_dwell (seed, c->mean_busy);
+      f64 end = s->next_start + duration;
+
+      s->events++;
+      s->pause_total += duration;
+      s->max_pause = clib_max (s->max_pause, duration);
+      s->active_until = end;
+      s->next_start = end + nsim_exponential_dwell (seed, c->mean_idle);
+      if (service_start < end)
+	return;
+      else
+	s->idle_events++;
+      if (++transitions == NSIM_RATE_MAX_PACKET_TRANSITIONS)
+	{
+	  /* After a long idle period, restart from the exponential residual
+	   * instead of walking an unbounded number of irrelevant intervals. */
+	  s->next_start = service_start + nsim_exponential_dwell (seed, c->mean_idle);
+	  s->bounded_catchups++;
+	  break;
+	}
+    }
+}
+
 f64
 nsim_batch_gap (const nsim_batch_config_t *c, nsim_batch_state_t *s, u32 *seed)
 {
@@ -212,6 +252,14 @@ unformat_nsim_model_spec (unformat_input_t *input, va_list *args)
 		     &spec->rate_bad_bandwidth, unformat_nsim_delay, &spec->rate_good_dwell,
 		     unformat_nsim_delay, &spec->rate_bad_dwell))
     spec->rate_cycle = 1;
+  else if (unformat (input,
+		     "contention mean-idle %U mean-busy %U buffer-occupancy %f",
+		     unformat_nsim_delay, &spec->contention_idle, unformat_nsim_delay,
+		     &spec->contention_busy, &spec->contention_buffer_occupancy))
+	;
+  else if (unformat (input, "contention mean-idle %U mean-busy %U", unformat_nsim_delay,
+		     &spec->contention_idle, unformat_nsim_delay, &spec->contention_busy))
+    ;
   else if (unformat (input, "wifi"))
     spec->wifi_preset = 1;
   else
@@ -252,6 +300,17 @@ nsim_model_validate (const nsim_model_spec_t *spec, f64 bandwidth)
   if (probability > 1.0 + 1e-9)
     return clib_error_return (0, "batch gap probabilities exceed 1");
 
+  if (spec->contention_idle < 0.0 || spec->contention_busy < 0.0)
+    return clib_error_return (0, "contention times must not be negative");
+  if ((spec->contention_idle == 0.0) != (spec->contention_busy == 0.0))
+    return clib_error_return (0, "contention requires positive idle and busy times");
+  if (spec->contention_buffer_occupancy < 0.0 || spec->contention_buffer_occupancy >= 1.0)
+    return clib_error_return (0, "contention buffer occupancy must be between zero and 1");
+  if (spec->contention_buffer_occupancy > 0.0 && spec->contention_idle == 0.0)
+    return clib_error_return (0, "contention buffer occupancy requires contention");
+  if (spec->contention_idle > 0.0 && spec->buffer_time <= 0.0)
+    return clib_error_return (0, "contention requires the queued model; set 'buffer <time>'");
+
   if (spec->rate_cycle && (spec->wifi_preset || spec->rate_stall))
     return clib_error_return (0, "configure only one rate model");
   if ((spec->rate_cycle || spec->wifi_preset || spec->rate_stall) && spec->buffer_time <= 0.0)
@@ -280,6 +339,9 @@ nsim_model_configure (nsim_model_config_t *c, const nsim_model_spec_t *spec, f64
   clib_memset (c, 0, sizeof (*c));
   c->buffer_time = spec->buffer_time;
   c->serialization_time = bandwidth > 0.0 ? (f64) (packet_size * 8) / bandwidth : 0.0;
+  c->contention.mean_idle = spec->contention_idle;
+  c->contention.mean_busy = spec->contention_busy;
+  c->contention.buffer_occupancy = spec->contention_buffer_occupancy;
   c->batch.interval = spec->ack_coalesce ? spec->ack_coalesce_interval : spec->batch_interval;
   c->batch.coalesce_acks = spec->ack_coalesce;
   c->batch.packet_limit = spec->batch_packet_limit;
@@ -390,6 +452,14 @@ format_nsim_model_config (u8 *s, va_list *args)
     s = format (s, " buffer: 1 bdp (fixed-delay model)\n");
   if (c->rate.type != NSIM_RATE_NONE)
     s = format (s, " rate model: %U\n", format_nsim_rate_config, &c->rate, packet_size);
+  if (c->contention.mean_idle > 0.0)
+    {
+      s = format (s, " contention: mean idle/busy %U/%U", format_model_delay,
+		  c->contention.mean_idle, format_model_delay, c->contention.mean_busy);
+      if (c->contention.buffer_occupancy > 0.0)
+	s = format (s, ", buffer occupancy %.3f", c->contention.buffer_occupancy);
+      s = format (s, "\n");
+    }
   if (c->batch.interval > 0.0)
     {
       s = format (s, " %s interval: %U\n", c->batch.coalesce_acks ? "ACK coalescing" : "batch",
@@ -432,6 +502,16 @@ format_nsim_model_state (u8 *s, va_list *args)
 		  state->rate.service_packets[1], state->rate.service_packets[1] * packet_size,
 		  state->rate.straddled_packets);
     }
+  if (c->contention.mean_idle > 0.0)
+    s = format (s,
+		"  contention: events %llu service deferrals %llu idle %llu bounded catchups %llu "
+		"mean/max pause %U/%U next %.6f\n",
+		state->contention.events, state->contention.service_deferrals,
+		state->contention.idle_events, state->contention.bounded_catchups,
+		format_model_delay,
+		state->contention.events ? state->contention.pause_total / state->contention.events :
+					   0.0,
+		format_model_delay, state->contention.max_pause, state->contention.next_start);
   if (c->batch.interval > 0.0)
     {
       s = format (s,

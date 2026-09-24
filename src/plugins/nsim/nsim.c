@@ -205,6 +205,8 @@ nsim_worker_models_init (nsim_main_t *nsm)
       nsw->reorder_seed = nsim_worker_seed (nsm->seed, i, 0x72656f72);
       nsw->reorder_delay_seed = nsim_worker_seed (nsm->seed, i, 0x72646c79);
       nsw->model.rate_seed = nsim_worker_seed (nsm->seed, i, 0x72617465);
+      nsw->model.contention_seed = nsim_worker_seed (nsm->seed, i, 0x636f6e74);
+      nsw->model.contention_queue_seed = nsw->model.contention_seed;
       nsw->model.batch_seed = nsim_worker_seed (nsm->seed, i, 0x62617463);
     }
 }
@@ -847,13 +849,13 @@ format_nsim_config (u8 *s, va_list *args)
 	    continue;
 	  s = format (s,
 		      " worker %u: queue %u/%u service backlog %.3f ms storage %u/%u reorder %u/%u "
-		      "seeds loss %u reorder %u reorder-delay %u rate %u batch %u\n",
+		      "seeds loss %u reorder %u reorder-delay %u rate %u contention %u batch %u\n",
 		      i, nsim_service_queue_occupancy (nsw, now), nsm->queue_slots_per_wrk,
 		      clib_max (nsw->wheel->last_tx_time - now, 0.0) * 1e3, nsw->wheel->cursize,
 		      nsw->wheel->wheel_size, nsw->reorder_wheel ? nsw->reorder_wheel->cursize : 0,
 		      nsw->reorder_wheel ? nsw->reorder_wheel->wheel_size : 0, nsw->loss_seed,
 		      nsw->reorder_seed, nsw->reorder_delay_seed, nsw->model.rate_seed,
-		      nsw->model.batch_seed);
+		      nsw->model.contention_seed, nsw->model.batch_seed);
 	  s = format (
 	    s,
 	    "  counters: packets %llu drops %llu queue-full %llu reordered %llu transmitted %llu\n",
@@ -1037,6 +1039,8 @@ VLIB_CLI_COMMAND (set_nsim_command, static) = {
 		"    [buffer <time>] [batch-interval <time>] [batch-packets <count>]\n"
 		"    [ack-coalesce-interval <time>]\n"
 		"    [batch-gap <time> probability <f64>]\n"
+		"    [contention mean-idle <time> mean-busy <time> "
+		"[buffer-occupancy <fraction>]]\n"
 		"    [packets-per-drop <nn>] "
 		"[drop-fraction <f64: 0.0 - 1.0>]\n"
 		"    [seed <u32>]\n"

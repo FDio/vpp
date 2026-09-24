@@ -63,6 +63,29 @@ typedef struct nsim_rate_state_
 
 #define NSIM_RATE_MAX_PACKET_TRANSITIONS 256
 
+/* Exponentially distributed contention intervals remove service opportunities
+ * without injecting loss. An optional fraction of the shared buffer is also
+ * reserved for virtual competing traffic, so visible packets tail-drop under
+ * pressure without constructing or storing competitor packets. */
+typedef struct
+{
+  f64 mean_idle;
+  f64 mean_busy;
+  f64 buffer_occupancy;
+} nsim_contention_config_t;
+
+typedef struct
+{
+  f64 next_start;
+  f64 active_until;
+  f64 pause_total;
+  f64 max_pause;
+  u64 events;
+  u64 service_deferrals;
+  u64 idle_events;
+  u64 bounded_catchups;
+} nsim_contention_state_t;
+
 #define NSIM_MAX_BATCH_GAPS 8
 
 typedef struct
@@ -101,6 +124,7 @@ typedef struct
 {
   f64 buffer_time;
   nsim_rate_config_t rate;
+  nsim_contention_config_t contention;
   nsim_batch_config_t batch;
   f64 serialization_time;
 } nsim_model_config_t;
@@ -116,6 +140,9 @@ typedef struct
   f64 rate_bad_bandwidth;
   f64 rate_good_dwell;
   f64 rate_bad_dwell;
+  f64 contention_idle;
+  f64 contention_busy;
+  f64 contention_buffer_occupancy;
   u32 batch_packet_limit;
   u8 n_batch_gaps;
   u8 batch_gaps_overflow;
@@ -128,8 +155,12 @@ typedef struct
 typedef struct
 {
   nsim_rate_state_t rate;
+  nsim_contention_state_t contention;
+  nsim_contention_state_t contention_queue;
   nsim_batch_state_t batch;
   u32 rate_seed;
+  u32 contention_seed;
+  u32 contention_queue_seed;
   u32 batch_seed;
 } nsim_model_state_t;
 
@@ -152,6 +183,41 @@ nsim_rate_departure_time (const nsim_rate_config_t *c, nsim_rate_state_t *s, u32
       return departure;
     }
   return nsim_rate_departure_time_slow (c, s, seed, service_start);
+}
+
+void nsim_contention_sync_slow (const nsim_contention_config_t *c,
+				nsim_contention_state_t *s, u32 *seed,
+				f64 service_start);
+
+static_always_inline void
+nsim_contention_sync (const nsim_contention_config_t *c, nsim_contention_state_t *s, u32 *seed,
+		      f64 service_start)
+{
+  if (PREDICT_FALSE (s->next_start == 0.0 || service_start >= s->next_start))
+    nsim_contention_sync_slow (c, s, seed, service_start);
+}
+
+static_always_inline f64
+nsim_contention_service_start (const nsim_contention_config_t *c, nsim_contention_state_t *s,
+			       u32 *seed, f64 service_start)
+{
+  nsim_contention_sync (c, s, seed, service_start);
+  if (PREDICT_FALSE (service_start < s->active_until))
+    {
+      s->service_deferrals++;
+      return s->active_until;
+    }
+  return service_start;
+}
+
+static_always_inline u32
+nsim_contention_queue_slots (const nsim_contention_config_t *c, nsim_contention_state_t *s,
+			     u32 *seed, f64 now, u32 queue_slots)
+{
+  nsim_contention_sync (c, s, seed, now);
+  if (PREDICT_FALSE (now < s->active_until))
+    return clib_max ((u32) (queue_slots * (1.0 - c->buffer_occupancy)), 1);
+  return queue_slots;
 }
 
 f64 nsim_batch_gap (const nsim_batch_config_t *c, nsim_batch_state_t *s, u32 *seed);

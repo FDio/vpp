@@ -251,6 +251,10 @@ nsim_dispatch_buffer (vlib_main_t *vm, vlib_node_runtime_t *node, nsim_main_t *n
 	  f64 service_start = clib_max (ctx->now, wp->last_tx_time);
 	  f64 depart;
 
+	  if (PREDICT_FALSE (nsm->model.contention.mean_idle > 0.0))
+	    service_start = nsim_contention_service_start (
+	      &nsm->model.contention, &nsw->model.contention,
+	      &nsw->model.contention_seed, service_start);
 	  if (PREDICT_FALSE (nsm->model.rate.type != NSIM_RATE_NONE))
 	    depart = nsim_rate_departure_time (&nsm->model.rate, &nsw->model.rate,
 					       &nsw->model.rate_seed, service_start);
@@ -308,6 +312,7 @@ nsim_inline (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame, in
   u32 n_left_from, *from, drops[VLIB_FRAME_SIZE];
   nsim_wheel_t *wp = nsw->wheel;
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
+  u32 queue_slots = nsm->queue_slots_per_wrk;
   u8 actions[VLIB_FRAME_SIZE];
   nsim_node_ctx_t ctx;
 
@@ -327,6 +332,18 @@ nsim_inline (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame, in
   ctx.now = vlib_time_now (vm);
   ctx.expires = ctx.now + nsm->delay;
 
+  if (PREDICT_FALSE (nsm->model.contention.buffer_occupancy > 0.0))
+    {
+      /* Anchor both cursors to the same first packet even if impairment loss
+	 prevents that packet from reaching bottleneck service. */
+      if (PREDICT_FALSE (nsw->model.contention.next_start == 0.0))
+	nsim_contention_sync (&nsm->model.contention, &nsw->model.contention,
+			      &nsw->model.contention_seed, ctx.now);
+      queue_slots = nsim_contention_queue_slots (
+	&nsm->model.contention, &nsw->model.contention_queue,
+	&nsw->model.contention_queue_seed, ctx.now, nsm->queue_slots_per_wrk);
+    }
+
   if (is_queued)
     nsim_service_queue_drain (nsw, ctx.now);
 
@@ -340,7 +357,7 @@ nsim_inline (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame, in
       vlib_prefetch_buffer_header (b[7], STORE);
 
       if (PREDICT_FALSE (wp->wheel_size - nsim_worker_storage_size (nsw, is_reordering) < 4 ||
-			 (is_queued && nsm->queue_slots_per_wrk - nsw->service_cursize < 4)))
+			 (is_queued && nsw->service_cursize + 4 > queue_slots)))
 	goto slow_path;
 
       nsim_dispatch_buffer (vm, node, nsm, nsw, wp, b[0], from[0], &ctx, is_cross_connect, is_trace,
@@ -365,7 +382,7 @@ slow_path:
 	 storage, and queued mode additionally enforces bottleneck admission. */
       if (PREDICT_TRUE ((ctx.action[0] & NSIM_ACTION_DROP) ||
 			(nsim_worker_storage_size (nsw, is_reordering) < wp->wheel_size &&
-			 (!is_queued || nsw->service_cursize < nsm->queue_slots_per_wrk))))
+			 (!is_queued || nsw->service_cursize < queue_slots))))
 	{
 	  nsim_dispatch_buffer (vm, node, nsm, nsw, wp, b[0], from[0], &ctx, is_cross_connect,
 				is_trace, is_queued, is_batching, is_reordering);
