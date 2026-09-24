@@ -11,6 +11,7 @@
 #include <vnet/adj/adj_delegate.h>
 #include <vnet/fib/fib_node_list.h>
 #include <vnet/fib/fib_walk.h>
+#include <vnet/ethernet/ethernet.h>
 
 /* Adjacency packet/byte counters indexed by adjacency index. */
 vlib_combined_counter_main_t adjacency_counters = {
@@ -420,7 +421,9 @@ adj_feature_update_walk_cb (adj_index_t ai,
         ((ctx->arc == ip4_main.lookup_main.output_feature_arc_index) &&
          (VNET_LINK_IP4 == adj->ia_link)) ||
         ((ctx->arc == mpls_main.output_feature_arc_index) &&
-         (VNET_LINK_MPLS == adj->ia_link)))
+         (VNET_LINK_MPLS == adj->ia_link)) ||
+        ((ctx->arc == ethernet_main.output_feature_arc_index) &&
+         (VNET_LINK_ETHERNET == adj->ia_link)))
     {
         vnet_feature_main_t *fm = &feature_main;
         vnet_feature_config_main_t *cm;
