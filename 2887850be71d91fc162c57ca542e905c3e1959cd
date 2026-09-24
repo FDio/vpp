@@ -26,6 +26,30 @@
     {
       "unresolved": false,
       "key": {
+        "uuid": "afcb6b6d_2733a40c",
+        "filename": ".github/workflows/periodic-vpp-verify-hst.yml",
+        "patchSetId": 2
+      },
+      "lineNbr": 62,
+      "author": {
+        "id": 3347
+      },
+      "writtenOn": "2026-09-24T21:24:33Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "2d3676ef_682d4a01",
+      "range": {
+        "startLine": 62,
+        "startChar": 0,
+        "endLine": 62,
+        "endChar": 28
+      },
+      "revId": "2887850be71d91fc162c57ca542e905c3e1959cd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
         "uuid": "e8310024_d381bde0",
         "filename": "/PATCHSET_LEVEL",
         "patchSetId": 2
