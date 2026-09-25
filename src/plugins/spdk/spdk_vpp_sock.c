@@ -36,6 +36,29 @@
 typedef struct spdk_vpp_sock spdk_vpp_sock_t;
 typedef struct spdk_vpp_group spdk_vpp_group_t;
 typedef struct spdk_vpp_tx_reservation spdk_vpp_tx_reservation_t;
+typedef struct spdk_vpp_rx_batch spdk_vpp_rx_batch_t;
+typedef struct spdk_vpp_rx_token spdk_vpp_rx_token_t;
+struct spdk_vpp_rx_batch
+{
+  spdk_vpp_group_t *group;
+  session_deferred_rx_batch_t deferred;
+  u32 refcnt;
+  u32 n_buffer_refs;
+  u32 n_buffers;
+  u32 n_bytes;
+  u32 owner_thread;
+  u64 take_tsc;
+};
+
+struct spdk_vpp_rx_token
+{
+  struct spdk_sock_buf_token base;
+  spdk_vpp_rx_batch_t *batch;
+  void *buf;
+  u32 len;
+  u8 copied;
+  STAILQ_ENTRY (spdk_vpp_rx_token) link;
+};
 
 struct spdk_vpp_tx_reservation
 {
@@ -62,6 +85,13 @@ struct spdk_vpp_sock
   u8 event_queued;
   u8 flush_queued;
 
+  u8 *rx_spill;
+  u32 rx_spill_offset;
+  u8 rx_direct_active;
+  session_t *rx_direct_session;
+  u8 *tx_deferred;
+  u32 tx_deferred_offset;
+
   spdk_sock_connect_cb_fn connect_cb_fn;
   void *connect_cb_arg;
   u32 opaque;
@@ -73,6 +103,7 @@ struct spdk_vpp_sock
 
   spdk_vpp_group_t *group;
   TAILQ_HEAD (, spdk_vpp_sock) acceptq;
+  STAILQ_HEAD (, spdk_vpp_rx_token) rx_segments;
   TAILQ_HEAD (, spdk_vpp_tx_reservation) tx_reservations;
   SLIST_HEAD (, spdk_vpp_tx_reservation) tx_reservation_cache;
   u32 tx_reserved;
@@ -89,6 +120,19 @@ struct spdk_vpp_sock
   u64 tx_events_coalesced;
   u64 rx_calls;
   u64 rx_bytes;
+  u64 rx_direct_callbacks;
+  u64 rx_direct_bytes;
+  u64 rx_direct_spill_bytes;
+  u64 rx_direct_fallbacks;
+  u64 rx_direct_tx_deferred_calls;
+  u64 rx_direct_tx_deferred_bytes;
+  u64 rx_direct_flush_deferrals;
+  u64 rx_direct_reserve_calls;
+  u64 rx_direct_commit_calls;
+  u64 rx_zcopy_segments;
+  u64 rx_zcopy_bytes;
+  u64 rx_copy_segments;
+  u64 rx_copy_bytes;
   TAILQ_ENTRY (spdk_vpp_sock) accept_link;
   TAILQ_ENTRY (spdk_vpp_sock) event_link;
   TAILQ_ENTRY (spdk_vpp_sock) flush_link;
@@ -101,9 +145,9 @@ struct spdk_vpp_group
   TAILQ_HEAD (, spdk_vpp_sock) events;
   TAILQ_HEAD (, spdk_vpp_sock) flush_socks;
   u32 flush_count;
-  u32 listener_count;
   u32 lcore;
   u32 vpp_thread_index;
+  struct spdk_thread *thread;
   u64 tx_reservations;
   u64 tx_reservation_bytes;
   u64 tx_commits;
@@ -116,6 +160,19 @@ struct spdk_vpp_group
   u64 full_sweeps;
   u64 rx_sweep_ready;
   u64 tx_sweep_queued;
+  u64 rx_zcopy_releases;
+  u64 rx_loan_batches;
+  u64 rx_loan_limit_fallbacks;
+  u64 rx_loan_current_refs;
+  u64 rx_loan_current_buffers;
+  u64 rx_loan_current_bytes;
+  u64 rx_loan_peak_refs;
+  u64 rx_loan_peak_buffers;
+  u64 rx_loan_peak_bytes;
+  u64 rx_loan_released_refs;
+  u64 rx_loan_lifetime_tsc;
+  u64 rx_loan_lifetime_max_tsc;
+  u64 rx_loan_lifetime_hist[32];
   TAILQ_ENTRY (spdk_vpp_group) link;
 };
 
@@ -127,7 +184,6 @@ typedef struct
   u32 next_opaque;
   uword *sock_by_handle;
   uword *sock_by_opaque;
-  spdk_vpp_sock_t ***sock_by_session;
   TAILQ_HEAD (, spdk_vpp_group) groups;
   u64 placement_hits;
   u64 placement_misses;
@@ -139,7 +195,22 @@ static spdk_vpp_main_t spdk_vpp_main = {
   .app_index = APP_INVALID_INDEX,
 };
 
-static int spdk_vpp_sock_close (struct spdk_sock *_sock);
+static uword spdk_vpp_direct_rx_enabled = 1;
+static uword spdk_vpp_rx_group_loan_limit = 256ULL << 20;
+
+static inline u8
+spdk_vpp_direct_rx_is_enabled (void)
+{
+  return !!clib_atomic_load_acq_n (&spdk_vpp_direct_rx_enabled);
+}
+
+static inline void
+spdk_vpp_direct_rx_enable (u8 enabled)
+{
+  clib_atomic_store_rel_n (&spdk_vpp_direct_rx_enabled, !!enabled);
+}
+
+static int spdk_vpp_sock_close (struct spdk_sock_group_impl *_group, struct spdk_sock *_sock);
 
 static struct spdk_sock_impl_opts g_vpp_impl_opts = {
   .recv_buf_size = DEFAULT_SO_RCVBUF_SIZE,
@@ -160,8 +231,14 @@ static struct spdk_sock_impl_opts g_vpp_impl_opts = {
 #define __vpp_group(g)			  ((spdk_vpp_group_t *) (g))
 #define SPDK_VPP_TX_RESERVATION_CACHE_MAX 256
 #define SPDK_VPP_GROUP_SWEEP_INTERVAL	  1024
+#define SPDK_VPP_RX_COPY_SEGMENT_SIZE	  (64 << 10)
 
 static void spdk_vpp_sock_event (spdk_vpp_sock_t *sock);
+static int spdk_vpp_sock_group_impl_add_sock (struct spdk_sock_group_impl *_group,
+					      struct spdk_sock *_sock);
+static int spdk_vpp_sock_group_impl_remove_sock (struct spdk_sock_group_impl *_group,
+						 struct spdk_sock *_sock);
+static struct spdk_net_impl g_vpp_net_impl;
 
 static void
 spdk_vpp_main_init (void)
@@ -173,7 +250,6 @@ spdk_vpp_main_init (void)
 
   clib_spinlock_init (&vm->lock);
   TAILQ_INIT (&vm->groups);
-  vec_validate (vm->sock_by_session, vlib_get_n_threads () - 1);
   vm->locks_inited = 1;
 }
 
@@ -228,71 +304,28 @@ static spdk_vpp_sock_t *
 spdk_vpp_sock_get_by_handle (session_handle_t handle)
 {
   spdk_vpp_main_t *vm = &spdk_vpp_main;
+  spdk_vpp_sock_t *sock;
   uword *p;
 
   clib_spinlock_lock (&vm->lock);
   p = hash_get (vm->sock_by_handle, handle);
+  sock = p ? uword_to_pointer (*p, spdk_vpp_sock_t *) : 0;
   clib_spinlock_unlock (&vm->lock);
-  return p ? uword_to_pointer (*p, spdk_vpp_sock_t *) : 0;
-}
-
-static spdk_vpp_sock_t *
-spdk_vpp_sock_get_by_session (session_t *s)
-{
-  spdk_vpp_main_t *vm = &spdk_vpp_main;
-  spdk_vpp_sock_t **socks;
-
-  if (PREDICT_FALSE (s->thread_index >= vec_len (vm->sock_by_session)))
-    return 0;
-
-  socks = vm->sock_by_session[s->thread_index];
-  if (PREDICT_FALSE (s->session_index >= vec_len (socks)))
-    return 0;
-
-  return socks[s->session_index];
-}
-
-static void
-spdk_vpp_sock_map_session (spdk_vpp_sock_t *sock, session_t *s)
-{
-  spdk_vpp_main_t *vm = &spdk_vpp_main;
-  spdk_vpp_sock_t **socks;
-
-  ASSERT (s->thread_index < vec_len (vm->sock_by_session));
-  socks = vm->sock_by_session[s->thread_index];
-  if (s->session_index >= vec_len (socks))
-    vec_validate (socks, s->session_index);
-  ASSERT (socks[s->session_index] == 0);
-  socks[s->session_index] = sock;
-  vm->sock_by_session[s->thread_index] = socks;
-}
-
-static void
-spdk_vpp_sock_unmap_session (spdk_vpp_sock_t *sock)
-{
-  spdk_vpp_main_t *vm = &spdk_vpp_main;
-  spdk_vpp_sock_t **socks;
-  session_handle_tu_t handle = { .handle = sock->handle };
-
-  if (sock->handle == SESSION_INVALID_HANDLE ||
-      handle.thread_index >= vec_len (vm->sock_by_session))
-    return;
-
-  socks = vm->sock_by_session[handle.thread_index];
-  if (handle.session_index < vec_len (socks) && socks[handle.session_index] == sock)
-    socks[handle.session_index] = 0;
+  return sock;
 }
 
 static spdk_vpp_sock_t *
 spdk_vpp_sock_get_by_opaque (u32 opaque)
 {
   spdk_vpp_main_t *vm = &spdk_vpp_main;
+  spdk_vpp_sock_t *sock;
   uword *p;
 
   clib_spinlock_lock (&vm->lock);
   p = hash_get (vm->sock_by_opaque, opaque);
+  sock = p ? uword_to_pointer (*p, spdk_vpp_sock_t *) : 0;
   clib_spinlock_unlock (&vm->lock);
-  return p ? uword_to_pointer (*p, spdk_vpp_sock_t *) : 0;
+  return sock;
 }
 
 static void
@@ -352,19 +385,6 @@ spdk_vpp_group_enqueue (spdk_vpp_group_t *group, spdk_vpp_sock_t *sock)
   if (!group)
     return;
 
-  /* Data sockets and their SPDK groups are deliberately placed on the same
-   * VPP worker.  Listener notifications are the only events that may cross
-   * workers, so keep those on the locked path. */
-  if (PREDICT_TRUE (!sock->is_listener && group->vpp_thread_index == vlib_get_thread_index ()))
-    {
-      if (!sock->event_queued)
-	{
-	  TAILQ_INSERT_TAIL (&group->events, sock, event_link);
-	  sock->event_queued = 1;
-	}
-      return;
-    }
-
   clib_spinlock_lock (&group->lock);
   if (!sock->event_queued)
     {
@@ -380,16 +400,14 @@ spdk_vpp_group_enqueue_flush (spdk_vpp_group_t *group, spdk_vpp_sock_t *sock)
   if (!group)
     return;
 
-  /* SPDK invokes writev_async and group polling on the group's bound worker.
-   * The flush queue therefore has a single producer and a single consumer on
-   * the same thread. */
-  ASSERT (group->vpp_thread_index == vlib_get_thread_index ());
+  clib_spinlock_lock (&group->lock);
   if (!sock->flush_queued)
     {
       TAILQ_INSERT_TAIL (&group->flush_socks, sock, flush_link);
       sock->flush_queued = 1;
       group->flush_count++;
     }
+  clib_spinlock_unlock (&group->lock);
 }
 
 static void
@@ -397,29 +415,11 @@ spdk_vpp_sock_event (spdk_vpp_sock_t *sock)
 {
   spdk_vpp_group_t *group;
 
-  if (PREDICT_TRUE (!sock->is_listener &&
-		    session_thread_from_handle (sock->handle) == vlib_get_thread_index ()))
-    {
-      group = sock->group;
-      spdk_vpp_group_enqueue (group, sock);
-      return;
-    }
-
-  /* Publish the listener's group and event atomically with respect to group
-   * removal.  Listener callbacks may arrive on any VPP worker. */
   clib_spinlock_lock (&sock->lock);
   group = sock->group;
-  if (group)
-    {
-      clib_spinlock_lock (&group->lock);
-      if (!sock->event_queued)
-	{
-	  TAILQ_INSERT_TAIL (&group->events, sock, event_link);
-	  sock->event_queued = 1;
-	}
-      clib_spinlock_unlock (&group->lock);
-    }
   clib_spinlock_unlock (&sock->lock);
+
+  spdk_vpp_group_enqueue (group, sock);
 }
 
 static void
@@ -486,12 +486,61 @@ spdk_vpp_sock_alloc (void)
   TAILQ_INIT (&sock->base.queued_reqs);
   TAILQ_INIT (&sock->base.pending_reqs);
   TAILQ_INIT (&sock->acceptq);
+  STAILQ_INIT (&sock->rx_segments);
   TAILQ_INIT (&sock->tx_reservations);
   SLIST_INIT (&sock->tx_reservation_cache);
   clib_spinlock_init (&sock->lock);
   sock->handle = SESSION_INVALID_HANDLE;
   sock->listener_handle = SESSION_INVALID_HANDLE;
   return sock;
+}
+
+static void
+spdk_vpp_rx_token_release (spdk_vpp_rx_token_t *token)
+{
+  spdk_vpp_rx_batch_t *batch = token->batch;
+
+  ASSERT (batch != 0 && batch->refcnt > 0);
+  if (token->copied)
+    free (token->buf);
+  else
+    {
+      ASSERT (batch->group != 0);
+      ASSERT (batch->owner_thread == batch->group->vpp_thread_index);
+      batch->group->rx_zcopy_releases++;
+    }
+
+  if (--batch->refcnt == 0)
+    {
+      if (!token->copied)
+	{
+	  spdk_vpp_group_t *group = batch->group;
+	  vlib_main_t *vlib_vm = vlib_get_main ();
+	  u64 lifetime, lifetime_us;
+	  u32 bucket;
+
+	  ASSERT (batch->owner_thread == vlib_get_thread_index ());
+	  ASSERT (group->rx_loan_current_refs >= batch->n_buffer_refs);
+	  ASSERT (group->rx_loan_current_buffers >= batch->n_buffers);
+	  ASSERT (group->rx_loan_current_bytes >= batch->n_bytes);
+
+	  session_release_deferred_rx_segments (&batch->deferred);
+	  group->rx_loan_current_refs -= batch->n_buffer_refs;
+	  group->rx_loan_current_buffers -= batch->n_buffers;
+	  group->rx_loan_current_bytes -= batch->n_bytes;
+	  group->rx_loan_released_refs += batch->n_buffer_refs;
+
+	  lifetime = clib_cpu_time_now () - batch->take_tsc;
+	  group->rx_loan_lifetime_tsc += lifetime * batch->n_buffer_refs;
+	  group->rx_loan_lifetime_max_tsc = clib_max (group->rx_loan_lifetime_max_tsc, lifetime);
+	  lifetime_us = vlib_vm->clib_time.clocks_per_second ?
+			  (lifetime * 1000000ULL) / vlib_vm->clib_time.clocks_per_second :
+			  0;
+	  bucket = lifetime_us ? clib_min ((u32) max_log2 ((uword) lifetime_us), 31U) : 0;
+	  group->rx_loan_lifetime_hist[bucket] += batch->n_buffer_refs;
+	}
+      free (batch);
+    }
 }
 
 static void
@@ -514,7 +563,14 @@ spdk_vpp_tx_reservation_release (spdk_vpp_tx_reservation_t *reservation, u8 cach
 static void
 spdk_vpp_sock_free (spdk_vpp_sock_t *sock)
 {
+  spdk_vpp_rx_token_t *token;
   spdk_vpp_tx_reservation_t *reservation;
+
+  while ((token = STAILQ_FIRST (&sock->rx_segments)) != NULL)
+    {
+      STAILQ_REMOVE_HEAD (&sock->rx_segments, link);
+      spdk_vpp_rx_token_release (token);
+    }
 
   while ((reservation = TAILQ_FIRST (&sock->tx_reservations)) != NULL)
     {
@@ -526,6 +582,8 @@ spdk_vpp_sock_free (spdk_vpp_sock_t *sock)
       SLIST_REMOVE_HEAD (&sock->tx_reservation_cache, cache_link);
       free (reservation);
     }
+  vec_free (sock->rx_spill);
+  vec_free (sock->tx_deferred);
   clib_spinlock_free (&sock->lock);
   free (sock);
 }
@@ -610,14 +668,127 @@ spdk_vpp_connect_rpc (void *arg)
   spdk_vpp_rpc_done (op, vnet_connect (&op->connect_args));
 }
 
+static u32
+spdk_vpp_take_deferred_rx (spdk_vpp_sock_t *sock, session_t *s,
+			   const session_deferred_rx_segment_t *segs, u32 n_segs)
+{
+  spdk_vpp_group_t *group = sock->group;
+  spdk_vpp_rx_batch_t *batch;
+  spdk_vpp_rx_token_t *tokens, *token;
+  const session_deferred_rx_segment_t *seg;
+  uword token_addr, loan_limit;
+  size_t alloc_size;
+  u32 i, n_bytes = 0;
+  int rv;
+
+  if (!group || !group->thread || sock->closed || !n_segs)
+    return 0;
+  if (s->thread_index != vlib_get_thread_index () || s->thread_index != group->vpp_thread_index)
+    return 0;
+
+  /* The deferred segments form the FIFO prefix; ordinary chunks may follow. */
+  for (i = 0, seg = segs; seg; i++, seg = seg->next)
+    n_bytes += seg->len;
+  if (PREDICT_FALSE (i != n_segs))
+    return 0;
+
+  loan_limit = clib_atomic_load_acq_n (&spdk_vpp_rx_group_loan_limit);
+  if (group->rx_loan_current_bytes + n_bytes > loan_limit)
+    {
+      group->rx_loan_limit_fallbacks++;
+      return 0;
+    }
+
+  alloc_size = sizeof (*batch) + __alignof__ (spdk_vpp_rx_token_t) - 1 + n_segs * sizeof (*tokens);
+  batch = calloc (1, alloc_size);
+  if (!batch)
+    return 0;
+
+  rv = session_acquire_deferred_rx_segments (s, &batch->deferred);
+  if (PREDICT_FALSE (rv != n_bytes))
+    {
+      if (rv > 0)
+	session_release_deferred_rx_segments (&batch->deferred);
+      free (batch);
+      return 0;
+    }
+
+  segs = batch->deferred.segments;
+  ASSERT (batch->deferred.n_segments == n_segs);
+  batch->group = group;
+  batch->refcnt = n_segs;
+  batch->n_buffer_refs = n_segs;
+  batch->n_buffers = n_segs;
+  batch->n_bytes = n_bytes;
+  batch->owner_thread = s->thread_index;
+  token_addr = (uword) (batch + 1);
+  token_addr = round_pow2 (token_addr, __alignof__ (spdk_vpp_rx_token_t));
+  tokens = uword_to_pointer (token_addr, spdk_vpp_rx_token_t *);
+
+  for (i = 0, seg = segs; i < n_segs; i++, seg = seg->next)
+    {
+      ASSERT (seg != 0);
+      token = &tokens[i];
+      token->base.group_impl = &group->base;
+      token->batch = batch;
+      token->buf = (void *) seg->data;
+      token->len = seg->len;
+      token->copied = 0;
+    }
+
+  batch->take_tsc = clib_cpu_time_now ();
+  for (i = 0; i < n_segs; i++)
+    STAILQ_INSERT_TAIL (&sock->rx_segments, &tokens[i], link);
+
+  group->rx_loan_batches++;
+  group->rx_loan_current_refs += n_segs;
+  group->rx_loan_current_buffers += n_segs;
+  group->rx_loan_current_bytes += n_bytes;
+  group->rx_loan_peak_refs = clib_max (group->rx_loan_peak_refs, group->rx_loan_current_refs);
+  group->rx_loan_peak_buffers =
+    clib_max (group->rx_loan_peak_buffers, group->rx_loan_current_buffers);
+  group->rx_loan_peak_bytes = clib_max (group->rx_loan_peak_bytes, group->rx_loan_current_bytes);
+
+  sock->rx_direct_callbacks++;
+  sock->rx_direct_bytes += n_bytes;
+  sock->rx_zcopy_segments += n_segs;
+  sock->rx_zcopy_bytes += n_bytes;
+  return n_bytes;
+}
+
+/* Resolve the buffer-backed FIFO prefix before an ordinary read.  Both RX
+ * dispatch and recv_next may be first to observe it; use the same ownership
+ * decision on the session's worker.  Taking never copies the payload. */
+static int
+spdk_vpp_resolve_deferred_rx (spdk_vpp_sock_t *sock, session_t *s)
+{
+  const session_deferred_rx_segment_t *segs;
+  u32 n_segs;
+
+  segs = session_get_deferred_rx_segments (s, &n_segs);
+  if (!n_segs ||
+      (spdk_vpp_direct_rx_is_enabled () && spdk_vpp_take_deferred_rx (sock, s, segs, n_segs)))
+    return 0;
+
+  if (session_flush_deferred_rx (s) < 0)
+    return -EAGAIN;
+  sock->rx_direct_fallbacks++;
+  return 0;
+}
+
 static int
 spdk_vpp_app_rx_callback (session_t *s)
 {
-  spdk_vpp_sock_t *sock = spdk_vpp_sock_get_by_session (s);
+  spdk_vpp_sock_t *sock = spdk_vpp_sock_get_by_handle (session_handle (s));
 
-  if (sock)
-    spdk_vpp_sock_event (sock);
+  if (!sock)
+    return 0;
 
+  /* On a failed materialization the prefix remains pending; schedule the
+   * socket so recv_next can retry without advancing the stream. */
+  spdk_vpp_resolve_deferred_rx (sock, s);
+
+  spdk_vpp_sock_event (sock);
   return 0;
 }
 
@@ -663,7 +834,6 @@ spdk_vpp_session_accept_callback (session_t *s)
   sock->listener_handle = s->listener_handle;
   sock->connected = 1;
   spdk_vpp_save_endpoints (sock, s);
-  spdk_vpp_sock_map_session (sock, s);
   spdk_vpp_sock_map_handle (sock, sock->handle);
 
   clib_spinlock_lock (&listener->lock);
@@ -692,11 +862,12 @@ spdk_vpp_session_connected_callback (u32 app_wrk_index, u32 opaque, session_t *s
   if (!status)
     {
       s->session_state = SESSION_STATE_READY;
+      if (spdk_vpp_direct_rx_is_enabled ())
+	session_set_deferred_rx (s, 1);
       sock->session = s;
       sock->handle = session_handle (s);
       sock->connected = 1;
       spdk_vpp_save_endpoints (sock, s);
-      spdk_vpp_sock_map_session (sock, s);
       spdk_vpp_sock_map_handle (sock, sock->handle);
     }
   else
@@ -720,7 +891,7 @@ spdk_vpp_session_connected_callback (u32 app_wrk_index, u32 opaque, session_t *s
 static void
 spdk_vpp_session_disconnect_callback (session_t *s)
 {
-  spdk_vpp_sock_t *sock = spdk_vpp_sock_get_by_session (s);
+  spdk_vpp_sock_t *sock = spdk_vpp_sock_get_by_handle (session_handle (s));
 
   if (!sock)
     return;
@@ -742,7 +913,7 @@ spdk_vpp_session_reset_callback (session_t *s)
 static void
 spdk_vpp_session_cleanup_callback (session_t *s, session_cleanup_ntf_t ntf)
 {
-  spdk_vpp_sock_t *sock = spdk_vpp_sock_get_by_session (s);
+  spdk_vpp_sock_t *sock = spdk_vpp_sock_get_by_handle (session_handle (s));
 
   (void) ntf;
 
@@ -750,7 +921,6 @@ spdk_vpp_session_cleanup_callback (session_t *s, session_cleanup_ntf_t ntf)
     return;
 
   clib_spinlock_lock (&sock->lock);
-  spdk_vpp_sock_unmap_session (sock);
   sock->session = 0;
   sock->closed = 1;
   clib_spinlock_unlock (&sock->lock);
@@ -875,14 +1045,20 @@ spdk_vpp_sock_get_numa_id (struct spdk_sock *_sock)
 static struct spdk_sock *
 spdk_vpp_sock_listen (const char *ip, int port, struct spdk_sock_opts *opts)
 {
+  struct spdk_sock_group_impl *group;
   spdk_vpp_sock_t *sock;
   spdk_vpp_rpc_op_t op = {};
   int rv;
 
-  (void) opts;
-
   if (spdk_vpp_attach ())
     return 0;
+
+  group = spdk_sock_group_get_impl (opts->group, &g_vpp_net_impl);
+  if (!group)
+    {
+      errno = EINVAL;
+      return 0;
+    }
 
   sock = spdk_vpp_sock_alloc ();
   if (!sock)
@@ -916,6 +1092,13 @@ spdk_vpp_sock_listen (const char *ip, int port, struct spdk_sock_opts *opts)
     spdk_strcpy_pad (sock->lcl_addr, "0.0.0.0", sizeof (sock->lcl_addr), '\0');
   sock->lcl_port = port;
   spdk_vpp_sock_map_handle (sock, sock->handle);
+  rv = spdk_vpp_sock_group_impl_add_sock (group, &sock->base);
+  if (rv)
+    {
+      spdk_vpp_sock_close (0, &sock->base);
+      errno = -rv;
+      return 0;
+    }
   return &sock->base;
 }
 
@@ -941,18 +1124,24 @@ spdk_vpp_sock_accept (struct spdk_sock *_sock)
 }
 
 static struct spdk_sock *
-spdk_vpp_sock_connect_async (const char *ip, int port, struct spdk_sock_opts *opts,
-			     spdk_sock_connect_cb_fn cb_fn, void *cb_arg)
+spdk_vpp_sock_connect (const char *ip, int port, struct spdk_sock_opts *opts,
+		       spdk_sock_connect_cb_fn cb_fn, void *cb_arg)
 {
+  struct spdk_sock_group_impl *group;
   spdk_vpp_sock_t *sock;
   spdk_vpp_rpc_op_t op = {};
   int rv;
 
-  (void) opts;
-
   if (spdk_vpp_attach ())
     {
       errno = ENODEV;
+      return 0;
+    }
+
+  group = spdk_sock_group_get_impl (opts->group, &g_vpp_net_impl);
+  if (!group)
+    {
+      errno = EINVAL;
       return 0;
     }
 
@@ -965,9 +1154,17 @@ spdk_vpp_sock_connect_async (const char *ip, int port, struct spdk_sock_opts *op
 
   sock->connect_cb_fn = cb_fn;
   sock->connect_cb_arg = cb_arg;
+  rv = spdk_vpp_sock_group_impl_add_sock (group, &sock->base);
+  if (rv)
+    {
+      spdk_vpp_sock_free (sock);
+      errno = -rv;
+      return 0;
+    }
   rv = spdk_vpp_fill_sep (ip, port, &op.connect_args.sep_ext);
   if (rv)
     {
+      spdk_vpp_sock_group_impl_remove_sock (group, &sock->base);
       spdk_vpp_sock_free (sock);
       errno = -rv;
       return 0;
@@ -979,6 +1176,7 @@ spdk_vpp_sock_connect_async (const char *ip, int port, struct spdk_sock_opts *op
   if (rv)
     {
       spdk_vpp_sock_unmap_opaque (sock);
+      spdk_vpp_sock_group_impl_remove_sock (group, &sock->base);
       spdk_vpp_sock_free (sock);
       rv = spdk_vpp_session_error_to_errno (rv);
       errno = -rv;
@@ -988,61 +1186,20 @@ spdk_vpp_sock_connect_async (const char *ip, int port, struct spdk_sock_opts *op
   return &sock->base;
 }
 
-static void
-spdk_vpp_sync_connect_cb (void *cb_arg, int status)
-{
-  spdk_vpp_rpc_op_t *op = cb_arg;
-  spdk_vpp_rpc_done (op, status);
-}
-
-static struct spdk_sock *
-spdk_vpp_sock_connect (const char *ip, int port, struct spdk_sock_opts *opts)
-{
-  spdk_vpp_rpc_op_t op = {};
-  struct spdk_sock *sock;
-  int rv;
-
-  pthread_mutex_init (&op.lock, 0);
-  pthread_cond_init (&op.cond, 0);
-
-  sock = spdk_vpp_sock_connect_async (ip, port, opts, spdk_vpp_sync_connect_cb, &op);
-  if (!sock)
-    {
-      pthread_cond_destroy (&op.cond);
-      pthread_mutex_destroy (&op.lock);
-      return 0;
-    }
-
-  pthread_mutex_lock (&op.lock);
-  while (!op.done)
-    pthread_cond_wait (&op.cond, &op.lock);
-  rv = op.rv;
-  pthread_mutex_unlock (&op.lock);
-  pthread_cond_destroy (&op.cond);
-  pthread_mutex_destroy (&op.lock);
-
-  if (rv)
-    {
-      spdk_vpp_sock_close (sock);
-      errno = -rv;
-      return 0;
-    }
-
-  return sock;
-}
-
 static int
-spdk_vpp_sock_close (struct spdk_sock *_sock)
+spdk_vpp_sock_close (struct spdk_sock_group_impl *_group, struct spdk_sock *_sock)
 {
   spdk_vpp_sock_t *sock = __vpp_sock (_sock);
   spdk_vpp_rpc_op_t op = {};
   spdk_vpp_sock_t *accepted;
 
+  if (_group)
+    spdk_vpp_sock_group_impl_remove_sock (_group, _sock);
+
   spdk_vpp_sock_unmap_opaque (sock);
 
   clib_spinlock_lock (&sock->lock);
   sock->closed = 1;
-  spdk_vpp_sock_unmap_session (sock);
   if (sock->handle != SESSION_INVALID_HANDLE)
     {
       if (sock->is_listener)
@@ -1067,7 +1224,7 @@ spdk_vpp_sock_close (struct spdk_sock *_sock)
   while ((accepted = TAILQ_FIRST (&sock->acceptq)) != NULL)
     {
       TAILQ_REMOVE (&sock->acceptq, accepted, accept_link);
-      spdk_vpp_sock_close (&accepted->base);
+      spdk_vpp_sock_close (0, &accepted->base);
     }
 
   spdk_sock_abort_requests (_sock);
@@ -1085,6 +1242,21 @@ spdk_vpp_sock_recv (struct spdk_sock *_sock, void *buf, size_t len)
   u8 requeue = 0;
   int rv;
 
+  if (PREDICT_FALSE (sock->rx_spill_offset < vec_len (sock->rx_spill)))
+    {
+      rv = clib_min ((u32) len, vec_len (sock->rx_spill) - sock->rx_spill_offset);
+      clib_memcpy_fast (buf, sock->rx_spill + sock->rx_spill_offset, rv);
+      sock->rx_spill_offset += rv;
+      if (sock->rx_spill_offset == vec_len (sock->rx_spill))
+	{
+	  vec_reset_length (sock->rx_spill);
+	  sock->rx_spill_offset = 0;
+	}
+      sock->rx_calls++;
+      sock->rx_bytes += rv;
+      return rv;
+    }
+
   rv = spdk_vpp_sock_check_affinity (sock);
   if (rv)
     return rv;
@@ -1100,6 +1272,17 @@ spdk_vpp_sock_recv (struct spdk_sock *_sock, void *buf, size_t len)
     {
       clib_spinlock_unlock (&sock->lock);
       return -EAGAIN;
+    }
+  /* A copied recv cannot read the buffer-backed FIFO prefix.  Materialize
+   * it first; recv_next can instead acquire the buffers directly. */
+  if (svm_fifo_n_async_segments (s->rx_fifo))
+    {
+      if (session_flush_deferred_rx (s) < 0)
+	{
+	  clib_spinlock_unlock (&sock->lock);
+	  return -EAGAIN;
+	}
+      sock->rx_direct_fallbacks++;
     }
   max_deq = svm_fifo_max_dequeue_cons (s->rx_fifo);
   if (!max_deq)
@@ -1229,6 +1412,37 @@ spdk_vpp_sock_writev_internal (spdk_vpp_sock_t *sock, struct iovec *iov, int iov
   return rv;
 }
 
+static ssize_t
+spdk_vpp_sock_defer_writev (spdk_vpp_sock_t *sock, struct iovec *iov, int iovcnt)
+{
+  u8 *dst;
+  size_t total = 0;
+  int i;
+
+  for (i = 0; i < iovcnt; i++)
+    {
+      if (iov[i].iov_len > UINT32_MAX - total)
+	return -E2BIG;
+      total += iov[i].iov_len;
+    }
+
+  if (!total)
+    return 0;
+
+  vec_add2 (sock->tx_deferred, dst, total);
+  for (i = 0; i < iovcnt; i++)
+    {
+      clib_memcpy_fast (dst, iov[i].iov_base, iov[i].iov_len);
+      dst += iov[i].iov_len;
+    }
+
+  sock->rx_direct_tx_deferred_calls++;
+  sock->rx_direct_tx_deferred_bytes += total;
+  spdk_vpp_group_enqueue_flush (sock->group, sock);
+  return total;
+}
+
+#ifdef SPDK_VPP_TX_RESERVATION_API
 static int
 spdk_vpp_sock_tx_reserve (struct spdk_sock *_sock, size_t len, struct iovec *iov, int *iovcnt,
 			  void **ctx)
@@ -1242,6 +1456,9 @@ spdk_vpp_sock_tx_reserve (struct spdk_sock *_sock, size_t len, struct iovec *iov
 
   if (!len || len > UINT32_MAX)
     return -E2BIG;
+
+  if (PREDICT_FALSE (sock->rx_direct_active))
+    sock->rx_direct_reserve_calls++;
 
   rv = spdk_vpp_sock_check_affinity (sock);
   if (rv)
@@ -1265,7 +1482,14 @@ spdk_vpp_sock_tx_reserve (struct spdk_sock *_sock, size_t len, struct iovec *iov
       goto error;
     }
 
-  s = sock->handle != SESSION_INVALID_HANDLE ? session_get_from_handle_if_valid (sock->handle) : 0;
+  if (sock->rx_direct_active)
+    {
+      ASSERT (sock->rx_direct_session != 0);
+      s = sock->rx_direct_session;
+    }
+  else
+    s =
+      sock->handle != SESSION_INVALID_HANDLE ? session_get_from_handle_if_valid (sock->handle) : 0;
   if (!s || !s->tx_fifo)
     {
       rv = -ENOTCONN;
@@ -1343,6 +1567,9 @@ spdk_vpp_sock_tx_commit (struct spdk_sock *_sock, void *ctx)
   rv = spdk_vpp_sock_check_affinity (sock);
   if (rv)
     return rv;
+
+  if (PREDICT_FALSE (sock->rx_direct_active))
+    sock->rx_direct_commit_calls++;
 
   clib_spinlock_lock (&sock->lock);
   if (sock->closed)
@@ -1456,6 +1683,7 @@ out:
     spdk_vpp_tx_reservation_release (reservation, 1);
   return rv;
 }
+#endif
 
 static int
 spdk_vpp_sock_flush (struct spdk_sock *_sock)
@@ -1463,15 +1691,39 @@ spdk_vpp_sock_flush (struct spdk_sock *_sock)
   spdk_vpp_sock_t *sock = __vpp_sock (_sock);
   struct spdk_sock_request *req;
   struct iovec iovs[IOV_BATCH_SIZE];
+  struct iovec deferred_iov;
   uint64_t requested;
   ssize_t rv;
   int iovcnt, rc;
 
   sock->tx_flush_calls++;
+  if (PREDICT_FALSE (sock->rx_direct_active))
+    {
+      sock->rx_direct_flush_deferrals++;
+      return -EAGAIN;
+    }
   if (_sock->cb_cnt > 0)
     {
       sock->tx_flush_cb_busy++;
       return -EAGAIN;
+    }
+
+  if (sock->tx_deferred_offset < vec_len (sock->tx_deferred))
+    {
+      deferred_iov.iov_base = sock->tx_deferred + sock->tx_deferred_offset;
+      deferred_iov.iov_len = vec_len (sock->tx_deferred) - sock->tx_deferred_offset;
+      clib_spinlock_lock (&sock->lock);
+      rv = spdk_vpp_sock_writev_internal (sock, &deferred_iov, 1);
+      clib_spinlock_unlock (&sock->lock);
+      if (rv < 0)
+	return rv;
+
+      sock->tx_deferred_offset += rv;
+      if (sock->tx_deferred_offset != vec_len (sock->tx_deferred))
+	return -EAGAIN;
+
+      vec_reset_length (sock->tx_deferred);
+      sock->tx_deferred_offset = 0;
     }
 
   /* Complete one asynchronous request at a time.  A completion callback may
@@ -1514,6 +1766,9 @@ spdk_vpp_sock_writev (struct spdk_sock *_sock, struct iovec *iov, int iovcnt)
   ssize_t rv;
   int frc;
 
+  if (PREDICT_FALSE (sock->rx_direct_active))
+    return spdk_vpp_sock_defer_writev (sock, iov, iovcnt);
+
   frc = spdk_vpp_sock_flush (_sock);
   if (frc < 0 && frc != -EAGAIN)
     return frc;
@@ -1527,12 +1782,119 @@ spdk_vpp_sock_writev (struct spdk_sock *_sock, struct iovec *iov, int iovcnt)
 }
 
 static int
-spdk_vpp_sock_recv_next (struct spdk_sock *_sock, void **buf, void **ctx)
+spdk_vpp_sock_recv_next (struct spdk_sock *_sock, void **buf,
+			 struct spdk_sock_buf_token **token_out)
+{
+  spdk_vpp_sock_t *sock = __vpp_sock (_sock);
+  spdk_vpp_rx_batch_t *batch;
+  spdk_vpp_rx_token_t *token;
+  session_t *s;
+  void *copy_buf;
+  ssize_t rv;
+
+  token = STAILQ_FIRST (&sock->rx_segments);
+  if (token)
+    {
+      STAILQ_REMOVE_HEAD (&sock->rx_segments, link);
+      *buf = token->buf;
+      *token_out = &token->base;
+      return token->len;
+    }
+
+  rv = spdk_vpp_sock_check_affinity (sock);
+  if (rv)
+    return rv;
+  s = sock->handle != SESSION_INVALID_HANDLE ? session_get_from_handle_if_valid (sock->handle) : 0;
+  if (s && s->rx_fifo)
+    {
+      rv = spdk_vpp_resolve_deferred_rx (sock, s);
+      if (rv)
+	return rv;
+      token = STAILQ_FIRST (&sock->rx_segments);
+      if (token)
+	{
+	  STAILQ_REMOVE_HEAD (&sock->rx_segments, link);
+	  *buf = token->buf;
+	  *token_out = &token->base;
+	  return token->len;
+	}
+    }
+
+  /* Resolve deferred data first, then avoid allocating a copied segment for
+   * an empty read.  Preserve recv's spill-before-close ordering.  The session
+   * and its FIFO are accessed only on their owner worker after the affinity
+   * check above. */
+  if (sock->rx_spill_offset >= vec_len (sock->rx_spill))
+    {
+      if (sock->closed)
+	return -ENOTCONN;
+      if (!s || !s->rx_fifo || !svm_fifo_max_dequeue_cons (s->rx_fifo))
+	return 0;
+    }
+
+  /* The retained-buffer path can be disabled at runtime for an A/B test, or
+   * temporarily fall back to the session FIFO.  recv_next remains the SPDK
+   * API in both cases, so materialize one bounded stream segment here. */
+  batch = calloc (1, sizeof (*batch) + __alignof__ (spdk_vpp_rx_token_t) - 1 + sizeof (*token));
+  if (!batch)
+    return -ENOBUFS;
+  copy_buf = malloc (SPDK_VPP_RX_COPY_SEGMENT_SIZE);
+  if (!copy_buf)
+    {
+      free (batch);
+      return -ENOBUFS;
+    }
+
+  rv = spdk_vpp_sock_recv (_sock, copy_buf, SPDK_VPP_RX_COPY_SEGMENT_SIZE);
+  if (rv <= 0)
+    {
+      free (copy_buf);
+      free (batch);
+      if (rv == 0)
+	return -ENOTCONN;
+      return rv == -EAGAIN ? 0 : rv;
+    }
+
+  batch->group = sock->group;
+  batch->refcnt = 1;
+  batch->n_buffer_refs = 0;
+  batch->n_buffers = 0;
+  batch->n_bytes = 0;
+  batch->owner_thread = vlib_get_thread_index ();
+  token = uword_to_pointer (round_pow2 ((uword) (batch + 1), __alignof__ (spdk_vpp_rx_token_t)),
+			    spdk_vpp_rx_token_t *);
+  token->base.group_impl = &sock->group->base;
+  token->batch = batch;
+  token->buf = copy_buf;
+  token->len = rv;
+  token->copied = 1;
+  sock->rx_copy_segments++;
+  sock->rx_copy_bytes += rv;
+  *buf = copy_buf;
+  *token_out = &token->base;
+  return rv;
+}
+
+static int
+spdk_vpp_sock_group_impl_release_buf (struct spdk_sock_group_impl *_group, void *buf,
+				      struct spdk_sock_buf_token *token_out)
+{
+  spdk_vpp_rx_token_t *token = (spdk_vpp_rx_token_t *) token_out;
+
+  (void) _group;
+  if (!token || token->buf != buf)
+    return -EINVAL;
+  spdk_vpp_rx_token_release (token);
+  return 0;
+}
+
+static struct spdk_memory_domain *
+spdk_vpp_sock_get_memory_domain (struct spdk_sock *_sock)
 {
   (void) _sock;
-  (void) buf;
-  (void) ctx;
-  return -ENOTSUP;
+  if (!spdk_vpp_direct_rx_is_enabled ())
+    return 0;
+  return spdk_memory_domain_get_system_domain ();
 }
 
 static void
@@ -1543,7 +1905,7 @@ spdk_vpp_sock_writev_async (struct spdk_sock *sock, struct spdk_sock_request *re
   vpp_sock->tx_async_reqs++;
   spdk_sock_request_queue (sock, req);
   spdk_vpp_group_enqueue_flush (vpp_sock->group, vpp_sock);
-  if (sock->queued_iovcnt >= IOV_BATCH_SIZE)
+  if (!vpp_sock->rx_direct_active && sock->queued_iovcnt >= IOV_BATCH_SIZE)
     {
       int rv = spdk_vpp_sock_flush (sock);
       if (rv < 0 && rv != -EAGAIN)
@@ -1672,7 +2034,10 @@ spdk_vpp_sock_group_impl_create (void)
 
   thread = spdk_get_thread ();
   if (thread)
-    spdk_thread_bind (thread, true);
+    {
+      spdk_thread_bind (thread, true);
+      group->thread = thread;
+    }
 
   clib_spinlock_lock (&vm->lock);
   TAILQ_INSERT_TAIL (&vm->groups, group, link);
@@ -1700,20 +2065,21 @@ spdk_vpp_sock_group_impl_add_sock (struct spdk_sock_group_impl *_group, struct s
       return -EXDEV;
     }
 
-  if (sock->is_listener)
-    {
-      clib_spinlock_lock (&group->lock);
-      group->listener_count++;
-      clib_spinlock_unlock (&group->lock);
-    }
-
   clib_spinlock_lock (&sock->lock);
   sock->group = group;
   s = sock->handle != SESSION_INVALID_HANDLE ? session_get_from_handle_if_valid (sock->handle) : 0;
-  if ((sock->is_listener && !TAILQ_EMPTY (&sock->acceptq)) ||
-      (!sock->is_listener && s && svm_fifo_max_dequeue_cons (s->rx_fifo)))
+  /* Accepted sockets are first visible without a backend poll group.  Enable
+   * deferred RX only after the socket has an owner that can take the buffers;
+   * bytes received during the accept-to-group window remain in the FIFO. */
+  if (!sock->is_listener && s && spdk_vpp_direct_rx_is_enabled () &&
+      !(s->flags & SESSION_F_DEFERRED_RX))
+    session_set_deferred_rx (s, 1);
+  if ((sock->is_listener && !TAILQ_EMPTY (&sock->acceptq)) || !STAILQ_EMPTY (&sock->rx_segments) ||
+      (!sock->is_listener && s &&
+       (svm_fifo_max_dequeue_cons (s->rx_fifo) || svm_fifo_n_async_segments (s->rx_fifo))))
     spdk_vpp_group_enqueue (group, sock);
-  if (!TAILQ_EMPTY (&sock->base.queued_reqs))
+  if (!TAILQ_EMPTY (&sock->base.queued_reqs) ||
+      sock->tx_deferred_offset < vec_len (sock->tx_deferred))
     spdk_vpp_group_enqueue_flush (group, sock);
   clib_spinlock_unlock (&sock->lock);
 
@@ -1727,8 +2093,6 @@ spdk_vpp_sock_group_impl_remove_sock (struct spdk_sock_group_impl *_group, struc
   spdk_vpp_sock_t *sock = __vpp_sock (_sock);
   spdk_vpp_sock_t *it, *next;
 
-  if (sock->is_listener)
-    clib_spinlock_lock (&sock->lock);
   clib_spinlock_lock (&group->lock);
   if (sock->flush_queued)
     {
@@ -1747,22 +2111,11 @@ spdk_vpp_sock_group_impl_remove_sock (struct spdk_sock_group_impl *_group, struc
 	  break;
 	}
     }
-  if (sock->is_listener)
-    {
-      ASSERT (group->listener_count > 0);
-      group->listener_count--;
-      sock->group = 0;
-    }
   clib_spinlock_unlock (&group->lock);
 
-  if (sock->is_listener)
-    clib_spinlock_unlock (&sock->lock);
-  else
-    {
-      clib_spinlock_lock (&sock->lock);
-      sock->group = 0;
-      clib_spinlock_unlock (&sock->lock);
-    }
+  clib_spinlock_lock (&sock->lock);
+  sock->group = 0;
+  clib_spinlock_unlock (&sock->lock);
   spdk_sock_abort_requests (_sock);
   return 0;
 }
@@ -1784,21 +2137,29 @@ spdk_vpp_sock_group_impl_poll (struct spdk_sock_group_impl *_group, int max_even
   /* Process only sockets with queued TX work on the hot path.  Bound the
    * pass to the number that was pending at entry so a socket blocked on FIFO
    * space is retried by the next poll instead of spinning in this one. */
+  clib_spinlock_lock (&group->lock);
   flush_budget = group->flush_count;
+  clib_spinlock_unlock (&group->lock);
   while (flush_budget--)
     {
+      clib_spinlock_lock (&group->lock);
       sock = TAILQ_FIRST (&group->flush_socks);
       if (!sock)
-	break;
+	{
+	  clib_spinlock_unlock (&group->lock);
+	  break;
+	}
       TAILQ_REMOVE (&group->flush_socks, sock, flush_link);
       sock->flush_queued = 0;
       ASSERT (group->flush_count > 0);
       group->flush_count--;
+      clib_spinlock_unlock (&group->lock);
 
       rv = spdk_vpp_sock_flush (&sock->base);
       if (rv < 0 && rv != -EAGAIN)
 	spdk_sock_abort_requests (&sock->base);
-      else if (!TAILQ_EMPTY (&sock->base.queued_reqs))
+      else if (!TAILQ_EMPTY (&sock->base.queued_reqs) ||
+	       sock->tx_deferred_offset < vec_len (sock->tx_deferred))
 	spdk_vpp_group_enqueue_flush (group, sock);
     }
 
@@ -1820,8 +2181,10 @@ spdk_vpp_sock_group_impl_poll (struct spdk_sock_group_impl *_group, int max_even
 		      session_get_from_handle_if_valid (sock->handle) :
 		      0;
 	  rx_ready = (sock->is_listener && !TAILQ_EMPTY (&sock->acceptq)) ||
+		     !STAILQ_EMPTY (&sock->rx_segments) ||
 		     (!sock->is_listener && session && session->rx_fifo &&
-		      svm_fifo_max_dequeue_cons (session->rx_fifo));
+		      (svm_fifo_max_dequeue_cons (session->rx_fifo) ||
+		       svm_fifo_n_async_segments (session->rx_fifo)));
 	  clib_spinlock_unlock (&sock->lock);
 	  if (rx_ready)
 	    {
@@ -1829,7 +2192,8 @@ spdk_vpp_sock_group_impl_poll (struct spdk_sock_group_impl *_group, int max_even
 	      spdk_vpp_group_enqueue (group, sock);
 	    }
 
-	  if (!TAILQ_EMPTY (&base_sock->queued_reqs))
+	  if (!TAILQ_EMPTY (&base_sock->queued_reqs) ||
+	      sock->tx_deferred_offset < vec_len (sock->tx_deferred))
 	    {
 	      group->tx_sweep_queued++;
 	      spdk_vpp_group_enqueue_flush (group, sock);
@@ -1838,16 +2202,14 @@ spdk_vpp_sock_group_impl_poll (struct spdk_sock_group_impl *_group, int max_even
 	}
     }
 
-  if (PREDICT_FALSE (group->listener_count))
-    clib_spinlock_lock (&group->lock);
+  clib_spinlock_lock (&group->lock);
   while (count < max_events && (sock = TAILQ_FIRST (&group->events)) != NULL)
     {
       TAILQ_REMOVE (&group->events, sock, event_link);
       sock->event_queued = 0;
       socks[count++] = &sock->base;
     }
-  if (PREDICT_FALSE (group->listener_count))
-    clib_spinlock_unlock (&group->lock);
+  clib_spinlock_unlock (&group->lock);
 
   return count;
 }
@@ -1865,12 +2227,47 @@ spdk_vpp_sock_group_impl_close (struct spdk_sock_group_impl *_group)
   spdk_vpp_main_t *vm = &spdk_vpp_main;
   spdk_vpp_group_t *group = __vpp_group (_group);
 
+  /* recv_next() buffers are owned by the socket group, not by their socket.
+   * SPDK must release all of them before closing the group.  Do not free the
+   * backend accounting object if that lifecycle contract is violated. */
+  if (PREDICT_FALSE (group->rx_loan_current_refs || group->rx_loan_current_buffers ||
+		     group->rx_loan_current_bytes))
+    {
+      SPDK_ERRLOG ("refusing to close VPP socket group for thread %u with "
+		   "%llu RX refs, %llu buffers and %llu bytes still on loan\n",
+		   group->vpp_thread_index, (unsigned long long) group->rx_loan_current_refs,
+		   (unsigned long long) group->rx_loan_current_buffers,
+		   (unsigned long long) group->rx_loan_current_bytes);
+      ASSERT (group->rx_loan_current_refs == 0 && group->rx_loan_current_buffers == 0 &&
+	      group->rx_loan_current_bytes == 0);
+      return -EBUSY;
+    }
+
   clib_spinlock_lock (&vm->lock);
   TAILQ_REMOVE (&vm->groups, group, link);
   clib_spinlock_unlock (&vm->lock);
   clib_spinlock_free (&group->lock);
   free (group);
   return 0;
+}
+
+static u64
+spdk_vpp_rx_loan_p99_us (spdk_vpp_group_t *group)
+{
+  u64 cumulative = 0;
+  u64 target;
+  u32 i;
+
+  if (!group->rx_loan_released_refs)
+    return 0;
+  target = (group->rx_loan_released_refs * 99 + 99) / 100;
+  for (i = 0; i < ARRAY_LEN (group->rx_loan_lifetime_hist); i++)
+    {
+      cumulative += group->rx_loan_lifetime_hist[i];
+      if (cumulative >= target)
+	return 1ULL << i;
+    }
+  return 1ULL << (ARRAY_LEN (group->rx_loan_lifetime_hist) - 1);
 }
 
 u8 *
@@ -1884,6 +2281,9 @@ format_spdk_vpp_state (u8 *s)
   spdk_vpp_main_init ();
   clib_spinlock_lock (&vm->lock);
   s = format (s, "socket backend: vpp hoststack\n");
+  s = format (s, "direct-rx runtime: %s\n", spdk_vpp_direct_rx_is_enabled () ? "on" : "off");
+  s = format (s, "direct-rx loan limit: %U per socket group\n", format_memory_size,
+	      clib_atomic_load_acq_n (&spdk_vpp_rx_group_loan_limit));
   s = format (s, "placements: hits %llu misses %llu affinity-errors %llu\n", vm->placement_hits,
 	      vm->placement_misses, vm->affinity_errors);
   TAILQ_FOREACH (group, &vm->groups, link)
@@ -1917,6 +2317,13 @@ format_spdk_vpp_state (u8 *s)
     u64 tx_bytes_enqueued = 0, tx_fifo_wraps = 0;
     u64 tx_events_programmed = 0, tx_events_coalesced = 0;
     u64 rx_calls = 0, rx_bytes = 0;
+    u64 rx_direct_callbacks = 0, rx_direct_bytes = 0;
+    u64 rx_direct_spill_bytes = 0, rx_direct_fallbacks = 0;
+    u64 rx_direct_tx_deferred_calls = 0, rx_direct_tx_deferred_bytes = 0;
+    u64 rx_direct_flush_deferrals = 0, rx_direct_reserve_calls = 0;
+    u64 rx_direct_commit_calls = 0;
+    u64 rx_zcopy_segments = 0, rx_zcopy_bytes = 0;
+    u64 rx_copy_segments = 0, rx_copy_bytes = 0;
     u32 n_socks = 0, queued_socks = 0, queued_iovs = 0;
     u32 cb_busy_socks = 0, rx_ready_socks = 0;
 
@@ -1936,7 +2343,21 @@ format_spdk_vpp_state (u8 *s)
       tx_events_coalesced += sock->tx_events_coalesced;
       rx_calls += sock->rx_calls;
       rx_bytes += sock->rx_bytes;
-      if (!TAILQ_EMPTY (&base_sock->queued_reqs))
+      rx_direct_callbacks += sock->rx_direct_callbacks;
+      rx_direct_bytes += sock->rx_direct_bytes;
+      rx_direct_spill_bytes += sock->rx_direct_spill_bytes;
+      rx_direct_fallbacks += sock->rx_direct_fallbacks;
+      rx_direct_tx_deferred_calls += sock->rx_direct_tx_deferred_calls;
+      rx_direct_tx_deferred_bytes += sock->rx_direct_tx_deferred_bytes;
+      rx_direct_flush_deferrals += sock->rx_direct_flush_deferrals;
+      rx_direct_reserve_calls += sock->rx_direct_reserve_calls;
+      rx_direct_commit_calls += sock->rx_direct_commit_calls;
+      rx_zcopy_segments += sock->rx_zcopy_segments;
+      rx_zcopy_bytes += sock->rx_zcopy_bytes;
+      rx_copy_segments += sock->rx_copy_segments;
+      rx_copy_bytes += sock->rx_copy_bytes;
+      if (!TAILQ_EMPTY (&base_sock->queued_reqs) ||
+	  sock->tx_deferred_offset < vec_len (sock->tx_deferred))
 	{
 	  queued_socks++;
 	  queued_iovs += base_sock->queued_iovcnt;
@@ -1946,7 +2367,9 @@ format_spdk_vpp_state (u8 *s)
       session = sock->handle != SESSION_INVALID_HANDLE ?
 		  session_get_from_handle_if_valid (sock->handle) :
 		  0;
-      if (session && session->rx_fifo && svm_fifo_max_dequeue_cons (session->rx_fifo))
+      if (!STAILQ_EMPTY (&sock->rx_segments) || (session && session->rx_fifo &&
+						 (svm_fifo_max_dequeue_cons (session->rx_fifo) ||
+						  svm_fifo_n_async_segments (session->rx_fifo))))
 	rx_ready_socks++;
     }
     s = format (s,
@@ -1968,10 +2391,135 @@ format_spdk_vpp_state (u8 *s)
 		"coalesced %llu; rx calls %llu bytes %llu\n",
 		tx_bytes_enqueued, tx_fifo_wraps, tx_events_programmed, tx_events_coalesced,
 		rx_calls, rx_bytes);
+    s = format (s, "    direct-rx callbacks %llu bytes %llu spill-bytes %llu fallbacks %llu\n",
+		rx_direct_callbacks, rx_direct_bytes, rx_direct_spill_bytes, rx_direct_fallbacks);
+    s = format (s,
+		"    recv-next direct segments %llu bytes %llu releases %llu; "
+		"copied segments %llu bytes %llu\n",
+		rx_zcopy_segments, rx_zcopy_bytes, group->rx_zcopy_releases, rx_copy_segments,
+		rx_copy_bytes);
+    {
+      vlib_main_t *worker_vm = vlib_get_main_by_index (group->vpp_thread_index);
+      f64 cps = worker_vm->clib_time.clocks_per_second;
+      f64 avg_us =
+	group->rx_loan_released_refs && cps ?
+	  (f64) group->rx_loan_lifetime_tsc * 1e6 / ((f64) group->rx_loan_released_refs * cps) :
+	  0;
+      f64 max_us = cps ? (f64) group->rx_loan_lifetime_max_tsc * 1e6 / cps : 0;
+
+      s = format (s,
+		  "    rx loans current refs %llu buffers %llu bytes %U; "
+		  "peak refs %llu buffers %llu bytes %U\n",
+		  group->rx_loan_current_refs, group->rx_loan_current_buffers, format_memory_size,
+		  group->rx_loan_current_bytes, group->rx_loan_peak_refs,
+		  group->rx_loan_peak_buffers, format_memory_size, group->rx_loan_peak_bytes);
+      s = format (s,
+		  "    rx loan batches %llu released-refs %llu limit-fallbacks %llu; "
+		  "lifetime avg %.3f us p99<=%llu us max %.3f us\n",
+		  group->rx_loan_batches, group->rx_loan_released_refs,
+		  group->rx_loan_limit_fallbacks, avg_us, spdk_vpp_rx_loan_p99_us (group), max_us);
+    }
+    s = format (s,
+		"    direct-rx deferred-tx calls %llu bytes %llu flushes %llu "
+		"reserves %llu commits %llu\n",
+		rx_direct_tx_deferred_calls, rx_direct_tx_deferred_bytes, rx_direct_flush_deferrals,
+		rx_direct_reserve_calls, rx_direct_commit_calls);
   }
   clib_spinlock_unlock (&vm->lock);
   return s;
 }
+
+static clib_error_t *
+test_spdk_direct_rx_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
+{
+  u8 enabled;
+
+  if (unformat (input, "on") || unformat (input, "enable"))
+    enabled = 1;
+  else if (unformat (input, "off") || unformat (input, "disable"))
+    enabled = 0;
+  else
+    return clib_error_return (0, "expected on|off");
+
+  if (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    return clib_error_return (0, "unknown input `%U'", format_unformat_error, input);
+
+  spdk_vpp_direct_rx_enable (enabled);
+  vlib_cli_output (vm, "SPDK direct RX %s", enabled ? "enabled" : "disabled");
+  return 0;
+}
+
+VLIB_CLI_COMMAND (test_spdk_direct_rx_command, static) = {
+  .path = "test spdk direct-rx",
+  .short_help = "test spdk direct-rx on|off",
+  .function = test_spdk_direct_rx_command_fn,
+};
+
+static clib_error_t *
+test_spdk_rx_loan_limit_command_fn (vlib_main_t *vm, unformat_input_t *input,
+				    vlib_cli_command_t *cmd)
+{
+  uword limit;
+
+  if (!unformat (input, "%U", unformat_memory_size, &limit) || !limit)
+    return clib_error_return (0, "expected a non-zero memory size");
+  if (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    return clib_error_return (0, "unknown input `%U'", format_unformat_error, input);
+
+  clib_atomic_store_rel_n (&spdk_vpp_rx_group_loan_limit, limit);
+  vlib_cli_output (vm, "SPDK RX loan limit set to %U per socket group", format_memory_size, limit);
+  return 0;
+}
+
+VLIB_CLI_COMMAND (test_spdk_rx_loan_limit_command, static) = {
+  .path = "test spdk rx-loan-limit",
+  .short_help = "test spdk rx-loan-limit <memory-size>",
+  .function = test_spdk_rx_loan_limit_command_fn,
+};
+
+static clib_error_t *
+test_spdk_rx_loan_stats_reset_command_fn (vlib_main_t *vlib_vm, unformat_input_t *input,
+					  vlib_cli_command_t *cmd)
+{
+  spdk_vpp_main_t *vm = &spdk_vpp_main;
+  spdk_vpp_group_t *group;
+
+  if (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    return clib_error_return (0, "unexpected input `%U'", format_unformat_error, input);
+
+  spdk_vpp_main_init ();
+  clib_spinlock_lock (&vm->lock);
+  TAILQ_FOREACH (group, &vm->groups, link)
+  {
+    if (group->rx_loan_current_buffers)
+      {
+	clib_spinlock_unlock (&vm->lock);
+	return clib_error_return (0, "cannot reset with outstanding group RX loans");
+      }
+  }
+  TAILQ_FOREACH (group, &vm->groups, link)
+  {
+    group->rx_loan_batches = 0;
+    group->rx_loan_limit_fallbacks = 0;
+    group->rx_loan_peak_refs = 0;
+    group->rx_loan_peak_buffers = 0;
+    group->rx_loan_peak_bytes = 0;
+    group->rx_loan_released_refs = 0;
+    group->rx_loan_lifetime_tsc = 0;
+    group->rx_loan_lifetime_max_tsc = 0;
+    clib_memset (group->rx_loan_lifetime_hist, 0, sizeof (group->rx_loan_lifetime_hist));
+  }
+  clib_spinlock_unlock (&vm->lock);
+
+  vlib_cli_output (vlib_vm, "SPDK RX loan statistics reset");
+  return 0;
+}
+
+VLIB_CLI_COMMAND (test_spdk_rx_loan_stats_reset_command, static) = {
+  .path = "test spdk rx-loan-stats reset",
+  .short_help = "test spdk rx-loan-stats reset",
+  .function = test_spdk_rx_loan_stats_reset_command_fn,
+};
 
 static int
 spdk_vpp_sock_impl_get_opts (struct spdk_sock_impl_opts *opts, size_t *len)
@@ -1995,13 +2543,20 @@ spdk_vpp_sock_impl_set_opts (const struct spdk_sock_impl_opts *opts, size_t len)
   return 0;
 }
 
+#ifdef SPDK_VPP_TX_RESERVATION_API
+#define SPDK_VPP_NET_IMPL_TX_RESERVATION                                                           \
+  .tx_reserve = spdk_vpp_sock_tx_reserve, .tx_commit = spdk_vpp_sock_tx_commit,                    \
+  .tx_abort = spdk_vpp_sock_tx_abort,
+#else
+#define SPDK_VPP_NET_IMPL_TX_RESERVATION
+#endif
+
 #define SPDK_VPP_NET_IMPL_COMMON                                                                   \
   .init = spdk_vpp_net_impl_init, .getaddr = spdk_vpp_sock_getaddr,                                \
   .get_interface_name = spdk_vpp_sock_get_interface_name,                                          \
   .get_numa_id = spdk_vpp_sock_get_numa_id, .connect = spdk_vpp_sock_connect,                      \
-  .connect_async = spdk_vpp_sock_connect_async, .listen = spdk_vpp_sock_listen,                    \
-  .accept = spdk_vpp_sock_accept, .close = spdk_vpp_sock_close, .recv = spdk_vpp_sock_recv,        \
-  .readv = spdk_vpp_sock_readv, .writev = spdk_vpp_sock_writev,                                    \
+  .listen = spdk_vpp_sock_listen, .accept = spdk_vpp_sock_accept, .close = spdk_vpp_sock_close,    \
+  .recv = spdk_vpp_sock_recv, .readv = spdk_vpp_sock_readv, .writev = spdk_vpp_sock_writev,        \
   .recv_next = spdk_vpp_sock_recv_next, .writev_async = spdk_vpp_sock_writev_async,                \
   .readv_async = NULL, .flush = spdk_vpp_sock_flush, .set_recvlowat = spdk_vpp_sock_set_recvlowat, \
   .set_recvbuf = spdk_vpp_sock_set_recvbuf, .set_sendbuf = spdk_vpp_sock_set_sendbuf,              \
@@ -2013,9 +2568,10 @@ spdk_vpp_sock_impl_set_opts (const struct spdk_sock_impl_opts *opts, size_t len)
   .group_impl_remove_sock = spdk_vpp_sock_group_impl_remove_sock,                                  \
   .group_impl_poll = spdk_vpp_sock_group_impl_poll,                                                \
   .group_impl_get_interruptfd = spdk_vpp_sock_group_impl_get_interruptfd,                          \
-  .group_impl_close = spdk_vpp_sock_group_impl_close, .get_opts = spdk_vpp_sock_impl_get_opts,     \
-  .set_opts = spdk_vpp_sock_impl_set_opts, .tx_reserve = spdk_vpp_sock_tx_reserve,                 \
-  .tx_commit = spdk_vpp_sock_tx_commit, .tx_abort = spdk_vpp_sock_tx_abort
+  .group_impl_close = spdk_vpp_sock_group_impl_close,                                              \
+  .group_impl_release_buf = spdk_vpp_sock_group_impl_release_buf,                                  \
+  .get_opts = spdk_vpp_sock_impl_get_opts, .set_opts = spdk_vpp_sock_impl_set_opts,                \
+  SPDK_VPP_NET_IMPL_TX_RESERVATION.get_memory_domain = spdk_vpp_sock_get_memory_domain
 
 static struct spdk_net_impl g_vpp_net_impl = {
   .name = "vpp",
