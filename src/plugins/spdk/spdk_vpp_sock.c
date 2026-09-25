@@ -139,7 +139,7 @@ static spdk_vpp_main_t spdk_vpp_main = {
   .app_index = APP_INVALID_INDEX,
 };
 
-static int spdk_vpp_sock_close (struct spdk_sock *_sock);
+static int spdk_vpp_sock_close (struct spdk_sock_group_impl *_group, struct spdk_sock *_sock);
 
 static struct spdk_sock_impl_opts g_vpp_impl_opts = {
   .recv_buf_size = DEFAULT_SO_RCVBUF_SIZE,
@@ -162,6 +162,11 @@ static struct spdk_sock_impl_opts g_vpp_impl_opts = {
 #define SPDK_VPP_GROUP_SWEEP_INTERVAL	  1024
 
 static void spdk_vpp_sock_event (spdk_vpp_sock_t *sock);
+static int spdk_vpp_sock_group_impl_add_sock (struct spdk_sock_group_impl *_group,
+					      struct spdk_sock *_sock);
+static int spdk_vpp_sock_group_impl_remove_sock (struct spdk_sock_group_impl *_group,
+						 struct spdk_sock *_sock);
+static struct spdk_net_impl g_vpp_net_impl;
 
 static void
 spdk_vpp_main_init (void)
@@ -875,14 +880,20 @@ spdk_vpp_sock_get_numa_id (struct spdk_sock *_sock)
 static struct spdk_sock *
 spdk_vpp_sock_listen (const char *ip, int port, struct spdk_sock_opts *opts)
 {
+  struct spdk_sock_group_impl *group;
   spdk_vpp_sock_t *sock;
   spdk_vpp_rpc_op_t op = {};
   int rv;
 
-  (void) opts;
-
   if (spdk_vpp_attach ())
     return 0;
+
+  group = spdk_sock_group_get_impl (opts->group, &g_vpp_net_impl);
+  if (!group)
+    {
+      errno = EINVAL;
+      return 0;
+    }
 
   sock = spdk_vpp_sock_alloc ();
   if (!sock)
@@ -916,6 +927,13 @@ spdk_vpp_sock_listen (const char *ip, int port, struct spdk_sock_opts *opts)
     spdk_strcpy_pad (sock->lcl_addr, "0.0.0.0", sizeof (sock->lcl_addr), '\0');
   sock->lcl_port = port;
   spdk_vpp_sock_map_handle (sock, sock->handle);
+  rv = spdk_vpp_sock_group_impl_add_sock (group, &sock->base);
+  if (rv)
+    {
+      spdk_vpp_sock_close (0, &sock->base);
+      errno = -rv;
+      return 0;
+    }
   return &sock->base;
 }
 
@@ -941,18 +959,24 @@ spdk_vpp_sock_accept (struct spdk_sock *_sock)
 }
 
 static struct spdk_sock *
-spdk_vpp_sock_connect_async (const char *ip, int port, struct spdk_sock_opts *opts,
-			     spdk_sock_connect_cb_fn cb_fn, void *cb_arg)
+spdk_vpp_sock_connect (const char *ip, int port, struct spdk_sock_opts *opts,
+		       spdk_sock_connect_cb_fn cb_fn, void *cb_arg)
 {
+  struct spdk_sock_group_impl *group;
   spdk_vpp_sock_t *sock;
   spdk_vpp_rpc_op_t op = {};
   int rv;
 
-  (void) opts;
-
   if (spdk_vpp_attach ())
     {
       errno = ENODEV;
+      return 0;
+    }
+
+  group = spdk_sock_group_get_impl (opts->group, &g_vpp_net_impl);
+  if (!group)
+    {
+      errno = EINVAL;
       return 0;
     }
 
@@ -965,9 +989,17 @@ spdk_vpp_sock_connect_async (const char *ip, int port, struct spdk_sock_opts *op
 
   sock->connect_cb_fn = cb_fn;
   sock->connect_cb_arg = cb_arg;
+  rv = spdk_vpp_sock_group_impl_add_sock (group, &sock->base);
+  if (rv)
+    {
+      spdk_vpp_sock_free (sock);
+      errno = -rv;
+      return 0;
+    }
   rv = spdk_vpp_fill_sep (ip, port, &op.connect_args.sep_ext);
   if (rv)
     {
+      spdk_vpp_sock_group_impl_remove_sock (group, &sock->base);
       spdk_vpp_sock_free (sock);
       errno = -rv;
       return 0;
@@ -979,6 +1011,7 @@ spdk_vpp_sock_connect_async (const char *ip, int port, struct spdk_sock_opts *op
   if (rv)
     {
       spdk_vpp_sock_unmap_opaque (sock);
+      spdk_vpp_sock_group_impl_remove_sock (group, &sock->base);
       spdk_vpp_sock_free (sock);
       rv = spdk_vpp_session_error_to_errno (rv);
       errno = -rv;
@@ -988,55 +1021,15 @@ spdk_vpp_sock_connect_async (const char *ip, int port, struct spdk_sock_opts *op
   return &sock->base;
 }
 
-static void
-spdk_vpp_sync_connect_cb (void *cb_arg, int status)
-{
-  spdk_vpp_rpc_op_t *op = cb_arg;
-  spdk_vpp_rpc_done (op, status);
-}
-
-static struct spdk_sock *
-spdk_vpp_sock_connect (const char *ip, int port, struct spdk_sock_opts *opts)
-{
-  spdk_vpp_rpc_op_t op = {};
-  struct spdk_sock *sock;
-  int rv;
-
-  pthread_mutex_init (&op.lock, 0);
-  pthread_cond_init (&op.cond, 0);
-
-  sock = spdk_vpp_sock_connect_async (ip, port, opts, spdk_vpp_sync_connect_cb, &op);
-  if (!sock)
-    {
-      pthread_cond_destroy (&op.cond);
-      pthread_mutex_destroy (&op.lock);
-      return 0;
-    }
-
-  pthread_mutex_lock (&op.lock);
-  while (!op.done)
-    pthread_cond_wait (&op.cond, &op.lock);
-  rv = op.rv;
-  pthread_mutex_unlock (&op.lock);
-  pthread_cond_destroy (&op.cond);
-  pthread_mutex_destroy (&op.lock);
-
-  if (rv)
-    {
-      spdk_vpp_sock_close (sock);
-      errno = -rv;
-      return 0;
-    }
-
-  return sock;
-}
-
 static int
-spdk_vpp_sock_close (struct spdk_sock *_sock)
+spdk_vpp_sock_close (struct spdk_sock_group_impl *_group, struct spdk_sock *_sock)
 {
   spdk_vpp_sock_t *sock = __vpp_sock (_sock);
   spdk_vpp_rpc_op_t op = {};
   spdk_vpp_sock_t *accepted;
+
+  if (_group)
+    spdk_vpp_sock_group_impl_remove_sock (_group, _sock);
 
   spdk_vpp_sock_unmap_opaque (sock);
 
@@ -1067,7 +1060,7 @@ spdk_vpp_sock_close (struct spdk_sock *_sock)
   while ((accepted = TAILQ_FIRST (&sock->acceptq)) != NULL)
     {
       TAILQ_REMOVE (&sock->acceptq, accepted, accept_link);
-      spdk_vpp_sock_close (&accepted->base);
+      spdk_vpp_sock_close (0, &accepted->base);
     }
 
   spdk_sock_abort_requests (_sock);
@@ -1229,6 +1222,7 @@ spdk_vpp_sock_writev_internal (spdk_vpp_sock_t *sock, struct iovec *iov, int iov
   return rv;
 }
 
+#ifdef SPDK_VPP_TX_RESERVATION_API
 static int
 spdk_vpp_sock_tx_reserve (struct spdk_sock *_sock, size_t len, struct iovec *iov, int *iovcnt,
 			  void **ctx)
@@ -1457,6 +1451,8 @@ out:
   return rv;
 }
 
+#endif
+
 static int
 spdk_vpp_sock_flush (struct spdk_sock *_sock)
 {
@@ -1527,12 +1523,59 @@ spdk_vpp_sock_writev (struct spdk_sock *_sock, struct iovec *iov, int iovcnt)
 }
 
 static int
-spdk_vpp_sock_recv_next (struct spdk_sock *_sock, void **buf, void **ctx)
+spdk_vpp_sock_recv_next (struct spdk_sock *_sock, void **buf, struct spdk_sock_buf_token **token)
+{
+  spdk_vpp_sock_t *sock = __vpp_sock (_sock);
+  struct spdk_sock_buf_token *copy;
+  session_t *s;
+  u32 len;
+  int rv;
+
+  *buf = NULL;
+  *token = NULL;
+  rv = spdk_vpp_sock_check_affinity (sock);
+  if (rv)
+    return rv;
+  if (sock->closed)
+    return -ENOTCONN;
+  s = sock->handle != SESSION_INVALID_HANDLE ? session_get_from_handle_if_valid (sock->handle) : 0;
+  if (!s || !s->rx_fifo || !sock->group)
+    return -ENOTCONN;
+  len = clib_min (svm_fifo_max_dequeue_cons (s->rx_fifo), 64 << 10);
+  if (!len)
+    return 0;
+
+  /* The new receive API also supports a copied backend. The following
+   * RX binding change replaces this with deferred-buffer acquisition. */
+  copy = malloc (sizeof (*copy) + len);
+  if (!copy)
+    return -ENOBUFS;
+  copy->group_impl = &sock->group->base;
+  rv = spdk_vpp_sock_recv (_sock, copy + 1, len);
+  if (rv <= 0)
+    {
+      free (copy);
+      return rv;
+    }
+  *buf = copy + 1;
+  *token = copy;
+  return rv;
+}
+
+static int
+spdk_vpp_sock_group_impl_release_buf (struct spdk_sock_group_impl *_group, void *buf,
+				      struct spdk_sock_buf_token *token)
+{
+  ASSERT (token->group_impl == _group && buf == token + 1);
+  free (token);
+  return 0;
+}
+
+static struct spdk_memory_domain *
+spdk_vpp_sock_get_memory_domain (struct spdk_sock *_sock)
 {
   (void) _sock;
-  (void) buf;
-  (void) ctx;
-  return -ENOTSUP;
+  return NULL;
 }
 
 static void
@@ -1995,13 +2038,20 @@ spdk_vpp_sock_impl_set_opts (const struct spdk_sock_impl_opts *opts, size_t len)
   return 0;
 }
 
+#ifdef SPDK_VPP_TX_RESERVATION_API
+#define SPDK_VPP_NET_IMPL_TX_RESERVATION                                                           \
+  .tx_reserve = spdk_vpp_sock_tx_reserve, .tx_commit = spdk_vpp_sock_tx_commit,                    \
+  .tx_abort = spdk_vpp_sock_tx_abort,
+#else
+#define SPDK_VPP_NET_IMPL_TX_RESERVATION
+#endif
+
 #define SPDK_VPP_NET_IMPL_COMMON                                                                   \
   .init = spdk_vpp_net_impl_init, .getaddr = spdk_vpp_sock_getaddr,                                \
   .get_interface_name = spdk_vpp_sock_get_interface_name,                                          \
   .get_numa_id = spdk_vpp_sock_get_numa_id, .connect = spdk_vpp_sock_connect,                      \
-  .connect_async = spdk_vpp_sock_connect_async, .listen = spdk_vpp_sock_listen,                    \
-  .accept = spdk_vpp_sock_accept, .close = spdk_vpp_sock_close, .recv = spdk_vpp_sock_recv,        \
-  .readv = spdk_vpp_sock_readv, .writev = spdk_vpp_sock_writev,                                    \
+  .listen = spdk_vpp_sock_listen, .accept = spdk_vpp_sock_accept, .close = spdk_vpp_sock_close,    \
+  .recv = spdk_vpp_sock_recv, .readv = spdk_vpp_sock_readv, .writev = spdk_vpp_sock_writev,        \
   .recv_next = spdk_vpp_sock_recv_next, .writev_async = spdk_vpp_sock_writev_async,                \
   .readv_async = NULL, .flush = spdk_vpp_sock_flush, .set_recvlowat = spdk_vpp_sock_set_recvlowat, \
   .set_recvbuf = spdk_vpp_sock_set_recvbuf, .set_sendbuf = spdk_vpp_sock_set_sendbuf,              \
@@ -2013,9 +2063,10 @@ spdk_vpp_sock_impl_set_opts (const struct spdk_sock_impl_opts *opts, size_t len)
   .group_impl_remove_sock = spdk_vpp_sock_group_impl_remove_sock,                                  \
   .group_impl_poll = spdk_vpp_sock_group_impl_poll,                                                \
   .group_impl_get_interruptfd = spdk_vpp_sock_group_impl_get_interruptfd,                          \
-  .group_impl_close = spdk_vpp_sock_group_impl_close, .get_opts = spdk_vpp_sock_impl_get_opts,     \
-  .set_opts = spdk_vpp_sock_impl_set_opts, .tx_reserve = spdk_vpp_sock_tx_reserve,                 \
-  .tx_commit = spdk_vpp_sock_tx_commit, .tx_abort = spdk_vpp_sock_tx_abort
+  .group_impl_close = spdk_vpp_sock_group_impl_close,                                              \
+  .group_impl_release_buf = spdk_vpp_sock_group_impl_release_buf,                                  \
+  .get_opts = spdk_vpp_sock_impl_get_opts, .set_opts = spdk_vpp_sock_impl_set_opts,                \
+  SPDK_VPP_NET_IMPL_TX_RESERVATION.get_memory_domain = spdk_vpp_sock_get_memory_domain
 
 static struct spdk_net_impl g_vpp_net_impl = {
   .name = "vpp",
