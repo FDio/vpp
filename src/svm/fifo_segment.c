@@ -939,6 +939,7 @@ fifo_segment_duplicate_fifo (fifo_segment_t *fs, svm_fifo_t *f)
 {
   svm_fifo_t *nf = fs_fifo_alloc (fs, 0);
   clib_memcpy (nf, f, sizeof (*f));
+  nf->async_state = 0;
   return nf;
 }
 
@@ -990,6 +991,7 @@ fifo_segment_free_fifo (fifo_segment_t * fs, svm_fifo_t * f)
 
   svm_fifo_free_chunk_lookup (f);
   svm_fifo_free_ooo_data (f);
+  svm_fifo_free_async_data (f);
 
   if (CLIB_DEBUG)
     {
@@ -1008,6 +1010,7 @@ fifo_segment_free_fifo (fifo_segment_t * fs, svm_fifo_t * f)
 void
 fifo_segment_free_client_fifo (fifo_segment_t *fs, svm_fifo_t *f)
 {
+  svm_fifo_free_async_data (f);
   fs_fifo_free (fs, f, 0 /* clients attach fifos in slice 0 */);
 }
 
@@ -1034,6 +1037,7 @@ fifo_segment_detach_fifo (fifo_segment_t *fs, svm_fifo_t **f)
   fss_fifo_free_list_push (fs->h, fss, svm_fifo_hdr_at_attach (of));
   svm_fifo_hdr_at_attach (of) = 0;
 
+  svm_fifo_free_async_data (of);
   clib_mem_bulk_free (pfss->fifos, *f);
   *f = 0;
 }
@@ -1046,8 +1050,10 @@ fifo_segment_attach_fifo (fifo_segment_t *fs, svm_fifo_t **f, u32 slice_index)
   fifo_segment_slice_t *fss;
   svm_fifo_t *nf, *of;
 
+  of = *f;
   nf = fs_fifo_alloc (fs, slice_index);
   clib_memcpy_fast (nf, *f, sizeof (*nf));
+  of->async_state = 0;
 
   fss = fsh_slice_get (fs->h, slice_index);
   pfss = fs_slice_private_get (fs, slice_index);
@@ -1058,7 +1064,6 @@ fifo_segment_attach_fifo (fifo_segment_t *fs, svm_fifo_t **f, u32 slice_index)
 
   /* Allocate shared hdr and chunks to be collected at detach in return
    * for those that are being attached now */
-  of = *f;
   svm_fifo_hdr_at_attach (of) = fsh_try_alloc_fifo_hdr (fs->h, fss);
 
   c = fs_chunk_ptr (fs->h, nf->shr->start_chunk);
