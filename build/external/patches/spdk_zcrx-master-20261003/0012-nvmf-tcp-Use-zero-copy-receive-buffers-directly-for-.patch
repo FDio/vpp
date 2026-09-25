@@ -1,0 +1,263 @@
+From 80d6ee66bee0968e2a140e1744e54e3be81dbaee Mon Sep 17 00:00:00 2001
+From: Ben Walker <ben@nvidia.com>
+Date: Mon, 30 Sep 2024 10:19:36 -0700
+Subject: [PATCH 12/15] nvmf/tcp: Use zero copy receive buffers directly for
+ H2C capsules
+
+We used zero copy receive buffers for in-capsule data in the previous
+commit. Now we extend this to use them directly in H2C capsules as well,
+removing a data copy.
+
+Receive buffers only stand in for bdev buffers on H2C transfers, so the
+condition disabling bdev zero copy is now restricted to that direction.
+C2H requests never consume a receive buffer and keep the bdev zero copy
+path, which otherwise costs them a copy out of the bdev's memory.
+
+Change-Id: I0cceac0fb1ab5aed54d2d9f9dbd65f715c63abcc
+Signed-off-by: Ben Walker <ben@nvidia.com>
+---
+ lib/nvmf/tcp.c                    | 109 +++++++++++++++++-------------
+ test/unit/lib/nvmf/tcp.c/tcp_ut.c |   3 +
+ 2 files changed, 64 insertions(+), 48 deletions(-)
+
+diff --git a/lib/nvmf/tcp.c b/lib/nvmf/tcp.c
+index 72e586b02..00c1c9a1e 100644
+--- a/lib/nvmf/tcp.c
++++ b/lib/nvmf/tcp.c
+@@ -2132,8 +2132,17 @@ nvmf_tcp_h2c_data_hdr_handle(struct spdk_nvmf_tcp_transport *ttransport,
+ 
+ 	pdu->req = tcp_req;
+ 
+-	nvme_tcp_pdu_set_data_buf(pdu, tcp_req->req.iov, tcp_req->req.iovcnt,
+-				  h2c_data->datao, h2c_data->datal);
++	if (tqpair->use_zero_copy_rx) {
++
++		/* Zero-copy receive appends segments to pdu->data_iov and tcp_req->req.iov
++		 * in order.  datao is validated above to match h2c_offset, so the ordering
++		 * guarantee means offsets are handled implicitly. */
++		pdu->data_iovcnt = 0;
++		pdu->data_len = h2c_data->datal;
++	} else {
++		nvme_tcp_pdu_set_data_buf(pdu, tcp_req->req.iov, tcp_req->req.iovcnt,
++					  h2c_data->datao, h2c_data->datal);
++	}
+ 	nvmf_tcp_qpair_set_recv_state(tqpair, NVME_TCP_PDU_RECV_STATE_AWAIT_PDU_PAYLOAD);
+ 	return;
+ 
+@@ -2641,7 +2650,8 @@ nvmf_tcp_double_buffer_scattered_payload(struct spdk_nvmf_tcp_qpair *tqpair,
+ 		total_sz += pdu->data_iov[i].iov_len;
+ 	}
+ 
+-	double_buf = spdk_malloc(total_sz, 4096, NULL, SPDK_ENV_SOCKET_ID_ANY, 0);
++	SPDK_WARNLOG("Double buffering scattered zero-copy payload on tqpair=%p\n", tqpair);
++	double_buf = spdk_malloc(total_sz, PAGE_SIZE, NULL, SPDK_ENV_SOCKET_ID_ANY, 0);
+ 	if (double_buf == NULL) {
+ 		SPDK_ERRLOG("Failed to allocate buffer for scattered payload\n");
+ 		return -ENOMEM;
+@@ -2735,8 +2745,7 @@ nvmf_tcp_read_data_zcopy(struct spdk_nvmf_tcp_qpair *tqpair, struct spdk_nvmf_tc
+ 			tqpair->stream_offset = 0;
+ 			STAILQ_REMOVE_HEAD(&tqpair->pending_stream, link);
+ 
+-			assert(segment->refcnt > 0);
+-			segment->refcnt--;
++			nvmf_tcp_segment_put(tqpair, segment);
+ 			assert(segment->refcnt != 0);
+ 		}
+ 	}
+@@ -2819,7 +2828,8 @@ nvmf_tcp_read_payload_data(struct spdk_nvmf_tcp_qpair *tqpair, struct nvme_tcp_p
+ 	assert(tqpair->sock != NULL);
+ 
+ 	tcp_req = pdu->req;
+-	if (tqpair->use_zero_copy_rx && tcp_req != NULL && tcp_req->has_in_capsule_data) {
++	if (tqpair->use_zero_copy_rx) {
++		assert(tcp_req != NULL);
+ 		/* We'll do a zero copy recv into the PDU. */
+ 		return nvmf_tcp_read_data_zcopy(tqpair, tcp_req, pdu);
+ 	}
+@@ -2909,7 +2919,7 @@ nvmf_tcp_sock_process(struct spdk_nvmf_tcp_qpair *tqpair)
+ 			rc = nvmf_tcp_read_data(tqpair,
+ 						sizeof(struct spdk_nvme_tcp_common_pdu_hdr) - pdu->ch_valid_bytes,
+ 						(void *)&pdu->hdr.common + pdu->ch_valid_bytes);
+-			if (rc < 0) {
++			if (spdk_unlikely(rc < 0)) {
+ 				SPDK_DEBUGLOG(nvmf_tcp, "will disconnect tqpair=%p\n", tqpair);
+ 				nvmf_tcp_qpair_set_recv_state(tqpair, NVME_TCP_PDU_RECV_STATE_QUIESCING);
+ 				break;
+@@ -2930,7 +2940,7 @@ nvmf_tcp_sock_process(struct spdk_nvmf_tcp_qpair *tqpair)
+ 			rc = nvmf_tcp_read_data(tqpair,
+ 						pdu->psh_len - pdu->psh_valid_bytes,
+ 						(void *)&pdu->hdr.raw + sizeof(struct spdk_nvme_tcp_common_pdu_hdr) + pdu->psh_valid_bytes);
+-			if (rc < 0) {
++			if (spdk_unlikely(rc < 0)) {
+ 				nvmf_tcp_qpair_set_recv_state(tqpair, NVME_TCP_PDU_RECV_STATE_QUIESCING);
+ 				break;
+ 			} else if (rc > 0) {
+@@ -2967,7 +2977,7 @@ nvmf_tcp_sock_process(struct spdk_nvmf_tcp_qpair *tqpair)
+ 			}
+ 
+ 			rc = nvmf_tcp_read_payload_data(tqpair, pdu);
+-			if (rc < 0) {
++			if (spdk_unlikely(rc < 0)) {
+ 				nvmf_tcp_qpair_set_recv_state(tqpair, NVME_TCP_PDU_RECV_STATE_QUIESCING);
+ 				break;
+ 			}
+@@ -3066,23 +3076,28 @@ nvmf_tcp_req_parse_sgl(struct spdk_nvmf_tcp_req *tcp_req,
+ 			goto fatal_err;
+ 		}
+ 
+-		/* fill request length and populate iovs */
++		/* fill the request length */
+ 		req->length = length;
+ 
+ 		SPDK_DEBUGLOG(nvmf_tcp, "Data requested length= 0x%x\n", length);
+ 
+-		if (!tqpair->use_zero_copy_rx && nvmf_ctrlr_use_zcopy(req)) {
++		if ((req->xfer != SPDK_NVME_DATA_HOST_TO_CONTROLLER ||
++		     !tqpair->use_zero_copy_rx) && nvmf_ctrlr_use_zcopy(req)) {
+ 			SPDK_DEBUGLOG(nvmf_tcp, "Using zero-copy to execute request %p\n", tcp_req);
+ 			req->data_from_pool = false;
+ 			nvmf_tcp_req_set_state(tcp_req, TCP_REQUEST_STATE_HAVE_BUFFER);
+ 			return;
+ 		}
+ 
+-		if (spdk_nvmf_request_get_buffers(req, group, transport, length)) {
+-			/* No available buffers. Queue this request up. */
+-			SPDK_DEBUGLOG(nvmf_tcp, "No available large data buffers. Queueing request %p\n",
+-				      tcp_req);
+-			return;
++		if (tcp_req->req.xfer != SPDK_NVME_DATA_HOST_TO_CONTROLLER || !tqpair->use_zero_copy_rx) {
++			if (spdk_nvmf_request_get_buffers(req, group, transport, length)) {
++				/* No available buffers. Queue this request up. */
++				SPDK_DEBUGLOG(nvmf_tcp, "No available large data buffers. Queueing request %p\n",
++					      tcp_req);
++				return;
++			}
++		} else {
++			req->data_from_pool = false;
+ 		}
+ 
+ 		nvmf_tcp_req_set_state(tcp_req, TCP_REQUEST_STATE_HAVE_BUFFER);
+@@ -3162,8 +3177,6 @@ nvmf_tcp_req_parse_sgl(struct spdk_nvmf_tcp_req *tcp_req,
+ 		req->length = length;
+ 		req->data_from_pool = false;
+ 
+-		req->iov[0].iov_len = length;
+-		req->iovcnt = 1;
+ 		nvmf_tcp_req_set_state(tcp_req, TCP_REQUEST_STATE_HAVE_BUFFER);
+ 
+ 		return;
+@@ -3444,11 +3457,10 @@ nvmf_tcp_req_process(struct spdk_nvmf_tcp_transport *ttransport,
+ 				break;
+ 			}
+ 
+-			assert(tqpair->use_zero_copy_rx || tcp_req->req.iovcnt > 0);
+ 
+ 			/* If data is transferring from host to controller, we need to do a transfer from the host. */
+ 			if (tcp_req->req.xfer == SPDK_NVME_DATA_HOST_TO_CONTROLLER) {
+-				if (tcp_req->req.data_from_pool) {
++				if (!tcp_req->has_in_capsule_data) {
+ 					SPDK_DEBUGLOG(nvmf_tcp, "Sending R2T for tcp_req(%p) on tqpair=%p\n", tcp_req, tqpair);
+ 					nvmf_tcp_send_r2t_pdu(tqpair, tcp_req);
+ 				} else {
+@@ -3620,10 +3632,20 @@ nvmf_tcp_req_process(struct spdk_nvmf_tcp_transport *ttransport,
+ 
+ 			if (tcp_req->req.data_from_pool) {
+ 				spdk_nvmf_request_free_buffers(&tcp_req->req, group, transport);
+-			} else if (tcp_req->has_in_capsule_data) {
++			} else if (tcp_req->req.zcopy_bdev_io != NULL) {
++				/* If the request has an unreleased zcopy bdev_io, it's either a
++				 * read, a failed write, or the qpair is being disconnected */
++				assert(spdk_nvmf_request_using_zcopy(&tcp_req->req));
++				assert(tcp_req->req.xfer == SPDK_NVME_DATA_CONTROLLER_TO_HOST ||
++				       spdk_nvme_cpl_is_error(&tcp_req->req.rsp->nvme_cpl) ||
++				       !spdk_nvmf_qpair_is_active(&tqpair->qpair));
++				nvmf_tcp_req_set_state(tcp_req, TCP_REQUEST_STATE_AWAITING_ZCOPY_RELEASE);
++				spdk_nvmf_request_zcopy_end(&tcp_req->req, false);
++				break;
++			} else if (!tqpair->use_zero_copy_rx) {
+ 				tgroup = SPDK_CONTAINEROF(group, struct spdk_nvmf_tcp_poll_group, group);
+ 
+-				if (!tqpair->use_zero_copy_rx) {
++				if (tcp_req->has_in_capsule_data) {
+ 					if (spdk_unlikely((tcp_req->cmd.opc == SPDK_NVME_OPC_FABRIC || tqpair->qpair.qid == 0) &&
+ 							  tcp_req->req.length > transport->opts.in_capsule_data_size)) {
+ 						assert(tgroup->control_msg_list);
+@@ -3631,34 +3653,25 @@ nvmf_tcp_req_process(struct spdk_nvmf_tcp_transport *ttransport,
+ 						nvmf_tcp_control_msg_put(tgroup->control_msg_list,
+ 									 tcp_req->req.iov[0].iov_base);
+ 					}
+-				} else {
+-					struct spdk_nvmf_tcp_stream_segment *segment;
+-					uint32_t i;
+-
+-					assert(tcp_req->segment_refs != NULL);
+-					for (i = 0; i < tcp_req->segment_cnt; i++) {
+-						segment = tcp_req->segment_refs[i];
+-
+-						if (segment == NULL) {
+-							/* This signals a double buffer */
+-							spdk_free(tcp_req->req.iov[i].iov_base);
+-						} else {
+-							nvmf_tcp_segment_put(tqpair, segment);
+-						}
+-					}
++				}
++			} else {
++				struct spdk_nvmf_tcp_stream_segment *segment;
++				uint32_t i;
+ 
+-					tcp_req->segment_cnt = 0;
++				assert(tcp_req->segment_refs != NULL);
++
++				for (i = 0; i < tcp_req->segment_cnt; i++) {
++					segment = tcp_req->segment_refs[i];
++
++					if (segment == NULL) {
++						/* This signals a double buffer */
++						spdk_free(tcp_req->req.iov[i].iov_base);
++					} else {
++						nvmf_tcp_segment_put(tqpair, segment);
++					}
+ 				}
+-			} else if (tcp_req->req.zcopy_bdev_io != NULL) {
+-				/* If the request has an unreleased zcopy bdev_io, it's either a
+-				 * read, a failed write, or the qpair is being disconnected */
+-				assert(spdk_nvmf_request_using_zcopy(&tcp_req->req));
+-				assert(tcp_req->req.xfer == SPDK_NVME_DATA_CONTROLLER_TO_HOST ||
+-				       spdk_nvme_cpl_is_error(&tcp_req->req.rsp->nvme_cpl) ||
+-				       !spdk_nvmf_qpair_is_active(&tqpair->qpair));
+-				nvmf_tcp_req_set_state(tcp_req, TCP_REQUEST_STATE_AWAITING_ZCOPY_RELEASE);
+-				spdk_nvmf_request_zcopy_end(&tcp_req->req, false);
+-				break;
++
++				tcp_req->segment_cnt = 0;
+ 			}
+ 
+ 			tcp_req->req.length = 0;
+diff --git a/test/unit/lib/nvmf/tcp.c/tcp_ut.c b/test/unit/lib/nvmf/tcp.c/tcp_ut.c
+index 32bd5124f..79cfa16ab 100644
+--- a/test/unit/lib/nvmf/tcp.c/tcp_ut.c
++++ b/test/unit/lib/nvmf/tcp.c/tcp_ut.c
+@@ -880,12 +880,14 @@ test_nvmf_tcp_qpair_init_mem_resource(void)
+ 	CU_ASSERT(rc == 0);
+ 	CU_ASSERT(tqpair->resource_count == SPDK_NVMF_TCP_DEFAULT_MAX_IO_QUEUE_DEPTH);
+ 	CU_ASSERT(tqpair->reqs != NULL);
++	CU_ASSERT(tqpair->bufs != NULL);
+ 	CU_ASSERT(tqpair->pdus != NULL);
+ 	/* Just to check the first and last entry */
+ 	CU_ASSERT(tqpair->reqs[0].ttag == 1);
+ 	CU_ASSERT(tqpair->reqs[0].req.qpair == &tqpair->qpair);
+ 	CU_ASSERT(tqpair->reqs[0].pdu == &tqpair->pdus[0]);
+ 	CU_ASSERT(tqpair->reqs[0].pdu->qpair == &tqpair->qpair);
++	CU_ASSERT(tqpair->reqs[0].buf == (void *)((uintptr_t)tqpair->bufs));
+ 	CU_ASSERT(tqpair->reqs[0].req.rsp == (void *)&tqpair->reqs[0].rsp);
+ 	CU_ASSERT(tqpair->reqs[0].req.cmd == (void *)&tqpair->reqs[0].cmd);
+ 	CU_ASSERT(tqpair->reqs[0].state == TCP_REQUEST_STATE_FREE);
+@@ -893,6 +895,7 @@ test_nvmf_tcp_qpair_init_mem_resource(void)
+ 	CU_ASSERT(tqpair->reqs[127].req.qpair == &tqpair->qpair);
+ 	CU_ASSERT(tqpair->reqs[127].pdu == &tqpair->pdus[127]);
+ 	CU_ASSERT(tqpair->reqs[127].pdu->qpair == &tqpair->qpair);
++	CU_ASSERT(tqpair->reqs[127].buf == (void *)((uintptr_t)tqpair->bufs) + 127 * 4096);
+ 	CU_ASSERT(tqpair->reqs[127].req.rsp == (void *)&tqpair->reqs[127].rsp);
+ 	CU_ASSERT(tqpair->reqs[127].req.cmd == (void *)&tqpair->reqs[127].cmd);
+ 	CU_ASSERT(tqpair->reqs[127].state == TCP_REQUEST_STATE_FREE);

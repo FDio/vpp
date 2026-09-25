@@ -102,7 +102,7 @@ DEB_DEPENDS += clang gcovr lcov chrpath
 DEB_DEPENDS += python3-all python3-setuptools check
 DEB_DEPENDS += python3-ply libunwind-dev
 DEB_DEPENDS += cmake ninja-build python3-jsonschema python3-yaml
-DEB_DEPENDS += python3-tabulate # for SPDK scripts/genrpc.py
+DEB_DEPENDS += python3-tabulate python3-jinja2 # for SPDK scripts/genrpc.py
 DEB_DEPENDS += python3-venv  # ensurepip
 DEB_DEPENDS += python3-dev python3-pip
 DEB_DEPENDS += libnl-3-dev libnl-route-3-dev libmnl-dev
@@ -117,6 +117,10 @@ DEB_DEPENDS += tshark
 DEB_DEPENDS += jq # for extracting test summary from .json report (hs-test)
 DEB_DEPENDS += libiberty-dev
 DEB_DEPENDS += nasm libnuma-dev libaio-dev uuid-dev # for make-ext-deps
+# Clang can select a newer GCC runtime than the default g++. SPDK's trace
+# parser also needs the C++ headers for that selected GCC installation.
+DEB_DEPENDS += $(shell $(CC) -print-libgcc-file-name 2>/dev/null | \
+	sed -n 's|.*/gcc/[^/]*/\([0-9][0-9]*\)/[^/]*$$|libstdc++-\1-dev|p')
 
 LIBFFI=libffi6 # works on all but 20.04 and debian-testing
 ifeq ($(OS_VERSION_ID),26.04)

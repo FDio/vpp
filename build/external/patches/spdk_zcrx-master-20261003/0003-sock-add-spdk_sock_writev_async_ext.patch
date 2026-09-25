@@ -1,0 +1,266 @@
+From 3af6456516626317d82389177b7f589bd744585e Mon Sep 17 00:00:00 2001
+From: Konrad Sztyber <ksztyber@nvidia.com>
+Date: Tue, 8 Sep 2026 10:29:54 -0700
+Subject: [PATCH 03/15] sock: add spdk_sock_writev_async_ext()
+
+A sock module that can send from device memory needs to be told which
+memory domain the request payload lives in, and spdk_sock_writev_async()
+has nowhere to put that. Add spdk_sock_writev_async_ext(), which takes a
+struct spdk_sock_request_opts carrying the memory domain and its context,
+plus a matching writev_async_ext hook in struct spdk_net_impl.
+
+spdk_sock_writev_async() becomes a wrapper that passes NULL opts. A
+module that doesn't implement the new hook fails a request naming a
+memory domain with -ENOTSUP instead of writing from a buffer it can't
+reach.
+
+The xlio module added later in this series implements the hook.
+
+Change-Id: I9743c2ebe3aeb5384ffb5e659e56c577aabe31ce
+Signed-off-by: Konrad Sztyber <ksztyber@nvidia.com>
+Signed-off-by: Ben Walker <ben@nvidia.com>
+---
+ include/spdk/sock.h                 | 24 +++++++
+ include/spdk_internal/sock_module.h |  2 +
+ lib/sock/sock.c                     | 29 +++++++++
+ lib/sock/spdk_sock.map              |  1 +
+ test/common/lib/test_sock.c         |  2 +
+ test/unit/lib/sock/sock.c/sock_ut.c | 98 +++++++++++++++++++++++++++++
+ 6 files changed, 156 insertions(+)
+
+diff --git a/include/spdk/sock.h b/include/spdk/sock.h
+index d798433fa..af909339d 100644
+--- a/include/spdk/sock.h
++++ b/include/spdk/sock.h
+@@ -72,6 +72,19 @@ SPDK_STATIC_ASSERT(sizeof(struct spdk_sock_request) == 64, "Incorrect size.");
+ 
+ #define SPDK_SOCK_REQUEST_IOV(req, i) ((struct iovec *)(((uint8_t *)req + sizeof(struct spdk_sock_request)) + (sizeof(struct iovec) * i)))
+ 
++struct spdk_sock_request_opts {
++	/** Size of this structure in bytes. Use SPDK_SIZEOF(opts, last_member) to obtain it. */
++	size_t				size;
++
++	/** Optional memory domain describing the request payload buffers. */
++	struct spdk_memory_domain	*memory_domain;
++
++	/** Context associated with the memory domain. */
++	void				*memory_domain_ctx;
++};
++
++SPDK_STATIC_ASSERT(sizeof(struct spdk_sock_request_opts) == 24, "Incorrect size.");
++
+ enum spdk_placement_mode {
+ 	PLACEMENT_NONE,
+ 	PLACEMENT_NAPI,
+@@ -503,6 +516,17 @@ ssize_t spdk_sock_writev(struct spdk_sock *sock, struct iovec *iov, int iovcnt);
+  */
+ void spdk_sock_writev_async(struct spdk_sock *sock, struct spdk_sock_request *req);
+ 
++/**
++ * Write data to the given socket asynchronously with optional request metadata.
++ *
++ * \param sock Socket to write to.
++ * \param req The write request to submit.
++ * \param opts Optional request metadata. The socket layer consumes this structure before
++ * returning and does not retain the pointer.
++ */
++void spdk_sock_writev_async_ext(struct spdk_sock *sock, struct spdk_sock_request *req,
++				const struct spdk_sock_request_opts *opts);
++
+ /**
+  * Read message from the given socket to the I/O vector array.
+  *
+diff --git a/include/spdk_internal/sock_module.h b/include/spdk_internal/sock_module.h
+index d8ea1adaa..9b8e95e10 100644
+--- a/include/spdk_internal/sock_module.h
++++ b/include/spdk_internal/sock_module.h
+@@ -87,6 +87,8 @@ struct spdk_net_impl {
+ 	ssize_t (*writev)(struct spdk_sock *sock, struct iovec *iov, int iovcnt);
+ 
+ 	void (*writev_async)(struct spdk_sock *sock, struct spdk_sock_request *req);
++	void (*writev_async_ext)(struct spdk_sock *sock, struct spdk_sock_request *req,
++				 const struct spdk_sock_request_opts *opts);
+ 	void (*readv_async)(struct spdk_sock *sock, struct spdk_sock_request *req);
+ 	int (*flush)(struct spdk_sock *sock);
+ 
+diff --git a/lib/sock/sock.c b/lib/sock/sock.c
+index 215e6f24d..b3ac3825e 100644
+--- a/lib/sock/sock.c
++++ b/lib/sock/sock.c
+@@ -877,6 +877,35 @@ spdk_sock_writev_async(struct spdk_sock *sock, struct spdk_sock_request *req)
+ 	sock->net_impl->writev_async(sock, req);
+ }
+ 
++void
++spdk_sock_writev_async_ext(struct spdk_sock *sock, struct spdk_sock_request *req,
++			   const struct spdk_sock_request_opts *opts)
++{
++	assert(req->cb_fn != NULL);
++
++	if (sock == NULL || sock->flags.closed) {
++		req->cb_fn(req->cb_arg, -EBADF);
++		return;
++	}
++
++	if (opts != NULL && opts->size < SPDK_SIZEOF(opts, memory_domain_ctx)) {
++		req->cb_fn(req->cb_arg, -EINVAL);
++		return;
++	}
++
++	if (sock->net_impl->writev_async_ext != NULL) {
++		sock->net_impl->writev_async_ext(sock, req, opts);
++		return;
++	}
++
++	if (opts != NULL && opts->memory_domain != NULL) {
++		req->cb_fn(req->cb_arg, -ENOTSUP);
++		return;
++	}
++
++	sock->net_impl->writev_async(sock, req);
++}
++
+ int
+ spdk_sock_flush(struct spdk_sock *sock)
+ {
+diff --git a/lib/sock/spdk_sock.map b/lib/sock/spdk_sock.map
+index f09adf39f..b6735a695 100644
+--- a/lib/sock/spdk_sock.map
++++ b/lib/sock/spdk_sock.map
+@@ -17,6 +17,7 @@
+ 	spdk_sock_recv;
+ 	spdk_sock_writev;
+ 	spdk_sock_writev_async;
++	spdk_sock_writev_async_ext;
+ 	spdk_sock_readv;
+ 	spdk_sock_set_recvlowat;
+ 	spdk_sock_set_recvbuf;
+diff --git a/test/common/lib/test_sock.c b/test/common/lib/test_sock.c
+index 0a7ff222a..358ccdc13 100644
+--- a/test/common/lib/test_sock.c
++++ b/test/common/lib/test_sock.c
+@@ -28,6 +28,8 @@ DEFINE_STUB(spdk_sock_set_recvlowat, int, (struct spdk_sock *sock, int nbytes),
+ DEFINE_STUB(spdk_sock_set_recvbuf, int, (struct spdk_sock *sock, int sz), 0);
+ DEFINE_STUB(spdk_sock_set_sendbuf, int, (struct spdk_sock *sock, int sz), 0);
+ DEFINE_STUB_V(spdk_sock_writev_async, (struct spdk_sock *sock, struct spdk_sock_request *req));
++DEFINE_STUB_V(spdk_sock_writev_async_ext, (struct spdk_sock *sock, struct spdk_sock_request *req,
++		const struct spdk_sock_request_opts *opts));
+ DEFINE_STUB(spdk_sock_flush, int, (struct spdk_sock *sock), 0);
+ DEFINE_STUB(spdk_sock_is_ipv6, bool, (struct spdk_sock *sock), false);
+ DEFINE_STUB(spdk_sock_is_ipv4, bool, (struct spdk_sock *sock), true);
+diff --git a/test/unit/lib/sock/sock.c/sock_ut.c b/test/unit/lib/sock/sock.c/sock_ut.c
+index 836472daa..951c02a3c 100644
+--- a/test/unit/lib/sock/sock.c/sock_ut.c
++++ b/test/unit/lib/sock/sock.c/sock_ut.c
+@@ -1398,6 +1398,103 @@ posix_get_interface_name(void)
+ 	CU_ASSERT(rc == 0);
+ }
+ 
++struct ut_async_write_ctx {
++	int legacy_calls;
++	int ext_calls;
++	int callback_calls;
++	int status;
++	const struct spdk_sock_request_opts *opts;
++};
++
++static void
++ut_async_write_cb(void *arg, int status)
++{
++	struct ut_async_write_ctx *ctx = arg;
++
++	ctx->callback_calls++;
++	ctx->status = status;
++}
++
++static void
++ut_async_write(struct spdk_sock *sock, struct spdk_sock_request *req)
++{
++	struct ut_async_write_ctx *ctx = req->cb_arg;
++
++	ctx->legacy_calls++;
++}
++
++static void
++ut_async_write_ext(struct spdk_sock *sock, struct spdk_sock_request *req,
++		   const struct spdk_sock_request_opts *opts)
++{
++	struct ut_async_write_ctx *ctx = req->cb_arg;
++
++	ctx->ext_calls++;
++	ctx->opts = opts;
++}
++
++static void
++sock_writev_async_dispatch(void)
++{
++	struct ut_async_write_ctx ctx = {};
++	struct spdk_net_impl impl = {
++		.writev_async = ut_async_write,
++		.writev_async_ext = ut_async_write_ext,
++	};
++	struct spdk_sock sock = {.net_impl = &impl};
++	struct spdk_sock_request req = {.cb_fn = ut_async_write_cb, .cb_arg = &ctx};
++	struct spdk_sock_request_opts opts = {.size = sizeof(opts)};
++
++	spdk_sock_writev_async(&sock, &req);
++	CU_ASSERT_EQUAL(ctx.legacy_calls, 1);
++	CU_ASSERT_EQUAL(ctx.ext_calls, 0);
++	CU_ASSERT_EQUAL(ctx.callback_calls, 0);
++
++	spdk_sock_writev_async_ext(&sock, &req, &opts);
++	CU_ASSERT_EQUAL(ctx.ext_calls, 1);
++	CU_ASSERT(ctx.opts == &opts);
++	spdk_sock_writev_async_ext(&sock, &req, NULL);
++	CU_ASSERT_EQUAL(ctx.ext_calls, 2);
++	CU_ASSERT(ctx.opts == NULL);
++
++	opts.size = SPDK_SIZEOF(&opts, memory_domain_ctx) - 1;
++	spdk_sock_writev_async_ext(&sock, &req, &opts);
++	CU_ASSERT_EQUAL(ctx.callback_calls, 1);
++	CU_ASSERT_EQUAL(ctx.status, -EINVAL);
++	CU_ASSERT_EQUAL(ctx.ext_calls, 2);
++	opts.size = sizeof(opts);
++
++	impl.writev_async_ext = NULL;
++	spdk_sock_writev_async(&sock, &req);
++	CU_ASSERT_EQUAL(ctx.legacy_calls, 2);
++	spdk_sock_writev_async_ext(&sock, &req, NULL);
++	CU_ASSERT_EQUAL(ctx.legacy_calls, 3);
++	spdk_sock_writev_async_ext(&sock, &req, &opts);
++	CU_ASSERT_EQUAL(ctx.legacy_calls, 4);
++
++	opts.memory_domain = (struct spdk_memory_domain *)&ctx;
++	spdk_sock_writev_async_ext(&sock, &req, &opts);
++	CU_ASSERT_EQUAL(ctx.callback_calls, 2);
++	CU_ASSERT_EQUAL(ctx.status, -ENOTSUP);
++	CU_ASSERT_EQUAL(ctx.legacy_calls, 4);
++
++	spdk_sock_writev_async(NULL, &req);
++	CU_ASSERT_EQUAL(ctx.callback_calls, 3);
++	CU_ASSERT_EQUAL(ctx.status, -EBADF);
++	spdk_sock_writev_async_ext(NULL, &req, NULL);
++	CU_ASSERT_EQUAL(ctx.callback_calls, 4);
++	CU_ASSERT_EQUAL(ctx.status, -EBADF);
++	sock.flags.closed = true;
++	spdk_sock_writev_async(&sock, &req);
++	CU_ASSERT_EQUAL(ctx.callback_calls, 5);
++	CU_ASSERT_EQUAL(ctx.status, -EBADF);
++	spdk_sock_writev_async_ext(&sock, &req, NULL);
++	CU_ASSERT_EQUAL(ctx.callback_calls, 6);
++	CU_ASSERT_EQUAL(ctx.status, -EBADF);
++	CU_ASSERT_EQUAL(ctx.legacy_calls, 4);
++	CU_ASSERT_EQUAL(ctx.ext_calls, 2);
++}
++
+ int
+ main(int argc, char **argv)
+ {
+@@ -1421,6 +1518,7 @@ main(int argc, char **argv)
+ 	CU_ADD_TEST(suite, override_impl_opts);
+ 	CU_ADD_TEST(suite, ut_sock_group_get_ctx);
+ 	CU_ADD_TEST(suite, posix_get_interface_name);
++	CU_ADD_TEST(suite, sock_writev_async_dispatch);
+ 
+ 
+ 	num_failures = spdk_ut_run_tests(argc, argv, NULL);
