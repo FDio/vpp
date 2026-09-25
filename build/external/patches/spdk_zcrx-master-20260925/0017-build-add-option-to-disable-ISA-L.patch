@@ -1,0 +1,53 @@
+From 3338118db25df1a1281d72730acf0e03bc312a48 Mon Sep 17 00:00:00 2001
+From: Jerome Tollet <jtollet@cisco.com>
+Date: Fri, 4 Sep 2026 09:55:18 +0200
+Subject: [PATCH 17/17] build: add option to disable ISA-L
+
+ISA-L is enabled on supported architectures unless an external
+installation is selected. This forces minimal builds to initialize and
+build the ISA-L submodule even when compression and crypto are not
+needed.
+
+Add --without-isal and disable the dependent features in the same way
+as when ISA-L is unavailable. This complements the existing
+--without-isal-crypto option.
+
+Change-Id: I800f8a78859b99644a0f070d25219a24dfce2cbb
+Signed-off-by: Jerome Tollet <jtollet@cisco.com>
+---
+ configure | 8 +++++++-
+ 1 file changed, 7 insertions(+), 1 deletion(-)
+
+diff --git a/configure b/configure
+index 7d4f80514..fcebb37d5 100755
+--- a/configure
++++ b/configure
+@@ -67,6 +67,7 @@ function usage() {
+ 	echo " --with-crypto             Build isa-l-crypto and vbdev crypto module. No path required."
+ 	echo " --without-crypto          Disable isa-l-crypto and vbdev crypto module."
+ 	echo " --with-isal[=DIR]         Don't build isa-l, use external library instead."
++	echo " --without-isal            Disable isa-l and dependent features."
+ 	echo " --with-isal-crypto[=DIR]  Don't build isa-l_crypto, use external library instead."
+ 	echo " --without-isal-crypto     Disable isa-l_crypto and any feature that requires it."
+ 	echo "                           Implies --without-crypto (SW crypto needs isa-l_crypto)."
+@@ -600,6 +601,9 @@ for i in "$@"; do
+ 			CONFIG[ISAL]=y
+ 			CONFIG[ISAL_INSTALLED]=y
+ 			;;
++		--without-isal)
++			CONFIG[ISAL]=n
++			;;
+ 		--with-isal-crypto) ;&
+ 		--with-isal-crypto=*)
+ 			# if set, set a default value
+@@ -1297,7 +1301,9 @@ if [[ "${CONFIG[FUZZER]}" = "y" && "$CC_TYPE" != "clang" ]]; then
+ 	exit 1
+ fi
+ 
+-if [[ "${CONFIG[ISAL_INSTALLED]}" = "y" ]]; then
++if [[ "${CONFIG[ISAL]}" = "n" ]]; then
++	:
++elif [[ "${CONFIG[ISAL_INSTALLED]}" = "y" ]]; then
+ 	if [[ "${CONFIG[SHARED]}" != "y" ]]; then
+ 		echo "External isa-l only supported with --with-shared"
+ 		exit 1
