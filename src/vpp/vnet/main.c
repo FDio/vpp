@@ -75,12 +75,12 @@ done:
 static void
 print_help (const char *progname)
 {
-  fformat (
+  fprintf (
     stdout,
-    "Usage: %s [options] [startup configuration]\n"
+    "Usage: %s [-c startup configuration] | [-i | {JSON config}] | [-v|-h]\n"
     "  -c, --config <file>         Read startup configuration from file\n"
     "  -i, --interactive           Run in interactive mode\n"
-    "      --no-alloc-intercept    Disable memory alloc/free interception\n"
+    "      --no-alloc-intercept    Disable memory alloc/free interception if [-c|-i]\n"
     "  -v, --version               Print version information and exit\n"
     "  -h, --help                  Show this help message and exit\n",
     progname);
@@ -89,7 +89,7 @@ print_help (const char *progname)
 static void
 print_version (void)
 {
-  fformat (stdout, "vpp v%s built by %s on %s at %s\n", VPP_BUILD_VER,
+  fprintf (stdout, "vpp v%s built by %s on %s at %s\n", VPP_BUILD_VER,
 	   VPP_BUILD_USER, VPP_BUILD_HOST, VPP_BUILD_DATE);
 }
 
@@ -129,7 +129,11 @@ main (int argc, char *argv[])
     {},
   };
 
-  clib_mem_init (0, 1 << 20);
+  if (argc == 1)
+    {
+      print_help(argv[0]);
+      return 0;
+    } 
 
   opterr = 0;
   while ((opt = getopt_long (argc, argv, "c:ivh", long_options, 0)) != -1)
@@ -163,8 +167,19 @@ main (int argc, char *argv[])
 	  print_help (argv[0]);
 	  return 1;
 	case OPT_NO_ALLOC_INTERCEPT:
-	  mem_init_args.alloc_free_intercept = 0;
-	  break;
+	  if ((unix_main.flags & UNIX_FLAG_INTERACTIVE) || config_file)
+            {
+	       mem_init_args.alloc_free_intercept = 0;
+	       break;
+	    }
+	  else
+            {
+	       fprintf (stderr, "%s: --no-alloc-intercept works if the -c or -i option is used\n", argv[0]);
+	       fprintf (stderr, "%s -c /etc/vpp/startup.conf --no-alloc-intercept\n", argv[0]);
+	       fprintf (stderr, "%s -i --no-alloc-intercept | unix {exec startup.vpp} api-trace {on} ...\n", argv[0]);
+	       fprintf (stderr, "memory alloc/free interception is enabled by default\n");
+	       return 1;
+	    }
 	default:
 	  break;
 	}
@@ -242,7 +257,7 @@ main (int argc, char *argv[])
 
       close (fd);
 
-      if (n_read < 0)
+      if (n_read < 0 || cfg_len == 0)
 	{
 	  fprintf (stderr, "failed to read startup config file '%s'\n",
 		   config_file);
@@ -263,6 +278,8 @@ main (int argc, char *argv[])
 			    cfg_len ? " " : "", argv[i]);
       config[cfg_len] = 0;
     }
+
+  clib_mem_init (0, 1 << 20);
 
   unformat_init_string (&input, (const char *) config, (int) cfg_len);
 
