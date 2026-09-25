@@ -1,0 +1,93 @@
+From d87d58b3d6c03f3d6d4d54a4eb72604c2a1458f5 Mon Sep 17 00:00:00 2001
+From: Konrad Sztyber <ksztyber@nvidia.com>
+Date: Tue, 22 Jul 2025 14:54:34 +0200
+Subject: [PATCH 02/17] sock: add API to get socket's memory domain
+
+Change-Id: I19604fe93b71655d887ffe9ee60e8aea342cda74
+Signed-off-by: Konrad Sztyber <ksztyber@nvidia.com>
+---
+ include/spdk/sock.h                 | 15 +++++++++++++++
+ include/spdk_internal/sock_module.h |  2 ++
+ lib/sock/sock.c                     | 10 ++++++++++
+ lib/sock/spdk_sock.map              |  1 +
+ 4 files changed, 28 insertions(+)
+
+diff --git a/include/spdk/sock.h b/include/spdk/sock.h
+index 77975a1c3..e97b0a925 100644
+--- a/include/spdk/sock.h
++++ b/include/spdk/sock.h
+@@ -12,6 +12,7 @@
+ 
+ #include "spdk/stdinc.h"
+ 
++#include "spdk/dma.h"
+ #include "spdk/queue.h"
+ #include "spdk/json.h"
+ #include "spdk/assert.h"
+@@ -733,6 +734,20 @@ void spdk_sock_write_config_json(struct spdk_json_write_ctx *w);
+  */
+ int spdk_sock_group_get_interruptfd(struct spdk_sock_group *group);
+ 
++/**
++ * Get memory domain associated with the socket, or NULL if the socket module doesn't support memory
++ * domains.
++ *
++ * A socket exposes at most one memory domain because the domain is tied to the socket
++ * implementation and connection. Callers that need to choose among multiple device domain types
++ * should perform that selection at the higher layer that owns those devices.
++ *
++ * \param sock Socket.
++ *
++ * \return Memory domain or NULL.
++ */
++struct spdk_memory_domain *spdk_sock_get_memory_domain(struct spdk_sock *sock);
++
+ #ifdef __cplusplus
+ }
+ #endif
+diff --git a/include/spdk_internal/sock_module.h b/include/spdk_internal/sock_module.h
+index b49deada0..d8ea1adaa 100644
+--- a/include/spdk_internal/sock_module.h
++++ b/include/spdk_internal/sock_module.h
+@@ -111,6 +111,8 @@ struct spdk_net_impl {
+ 	int (*get_opts)(struct spdk_sock_impl_opts *opts, size_t *len);
+ 	int (*set_opts)(const struct spdk_sock_impl_opts *opts, size_t len);
+ 
++	struct spdk_memory_domain *(*get_memory_domain)(struct spdk_sock *);
++
+ 	STAILQ_ENTRY(spdk_net_impl) link;
+ };
+ 
+diff --git a/lib/sock/sock.c b/lib/sock/sock.c
+index f270a80c9..22953e18d 100644
+--- a/lib/sock/sock.c
++++ b/lib/sock/sock.c
+@@ -1408,6 +1408,16 @@ spdk_sock_group_get_interruptfd(struct spdk_sock_group *group)
+ 	return spdk_fd_group_get_fd(group->fgrp);
+ }
+ 
++struct spdk_memory_domain *
++spdk_sock_get_memory_domain(struct spdk_sock *sock)
++{
++	if (sock->net_impl->get_memory_domain) {
++		return sock->net_impl->get_memory_domain(sock);
++	}
++
++	return NULL;
++}
++
+ SPDK_LOG_REGISTER_COMPONENT(sock)
+ 
+ static void
+diff --git a/lib/sock/spdk_sock.map b/lib/sock/spdk_sock.map
+index 606a940d4..f09adf39f 100644
+--- a/lib/sock/spdk_sock.map
++++ b/lib/sock/spdk_sock.map
+@@ -38,6 +38,7 @@
+ 	spdk_sock_write_config_json;
+ 	spdk_sock_get_impl_name;
+ 	spdk_sock_group_get_interruptfd;
++	spdk_sock_get_memory_domain;
+ 
+ 	# internal function in spdk_internal/sock_module.h
+ 	spdk_net_impl_register;
