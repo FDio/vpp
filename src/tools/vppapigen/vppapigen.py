@@ -1278,8 +1278,8 @@ def foldup_crcs(s):
         f.crc = foldup_blocks(f.block, binascii.crc32(f.crc) & 0xFFFFFFFF)
 
 
-def write_dependencies(output_file, dependency_file, imports):
-    r = []
+def write_dependencies(output_file, dependency_file, input_file, imports):
+    r = [os.path.abspath(input_file)]
     for i in imports:
         for d in dirlist:
             f = os.path.abspath(os.path.join(d, i.filename))
@@ -1289,8 +1289,7 @@ def write_dependencies(output_file, dependency_file, imports):
         print(f"{output_file}: \\", file=f)
         for i in r[:-1]:
             print(f" {i} \\", file=f)
-        if imports:
-            print(f" {r[-1]}", file=f)
+        print(f" {r[-1]}", file=f)
 
 
 def run_vppapigen(
@@ -1385,7 +1384,7 @@ def run_vppapigen(
         s["imported"] = parser.process(imports)
 
     if dependency_file and isinstance(output, TextIOWrapper):
-        write_dependencies(output.name, dependency_file[0], s["Import"])
+        write_dependencies(output.name, dependency_file[0], input_file, s["Import"])
 
     # Add msg_id field
     s["Define"] = add_msg_id(s["Define"])
