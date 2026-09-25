@@ -1,0 +1,22 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "8e4fce5d_bda8fed4",
+        "filename": "test/hs-test/docker/Dockerfile.base",
+        "patchSetId": 2
+      },
+      "lineNbr": 93,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-09-25T14:11:26Z",
+      "side": 1,
+      "message": "Addressed in PS2: the nginx APT transaction now uses the same retry and index-refresh logic. The Ubuntu 24.04 ARM64 base image builds successfully with both APT transactions enabled.",
+      "parentUuid": "31412382_3d112c8d",
+      "revId": "4747e45339126cd394a7152c8f4545b6656d9a1a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
