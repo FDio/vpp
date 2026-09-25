@@ -523,21 +523,29 @@ class TestLB(VppTestCase):
             self.vapi.cli("lb as 91.0.0.0/8 10.0.0.2")
 
             flows = [("91.0.0.1", 1000)] + [("90.0.0.1", 2000 + i) for i in range(3)]
-            pkts = [
-                Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac)
-                / IP(src="40.0.0.1", dst=dst)
-                / UDP(sport=sport, dport=20000)
-                / Raw(b"\xa5" * 100)
-                for dst, sport in flows + flows[1:]
-            ]
-            self.pg0.add_stream(pkts)
-            self.pg_enable_capture(self.pg_interfaces)
-            self.pg_start()
-
+            # Wrap the four-slot prefetch ring repeatedly, including its tail,
+            # then repeat the same flows to exercise sticky-table hits.
+            alternating = [("90.0.0.1", 2000), ("91.0.0.1", 1000)] * 32
+            alternating += [("90.0.0.1", 2000)]
             expect = {"90.0.0.1": "10.0.0.1", "91.0.0.1": "10.0.0.2"}
-            for p in self.pg1.get_capture(len(pkts)):
-                inner = IP(scapy.compat.raw(p[GRE].payload))
-                self.assertEqual(p[IP].dst, expect[inner.dst])
+            for burst, burst_flows in enumerate(
+                (flows + flows[1:], alternating, alternating)
+            ):
+                with self.subTest(burst=burst):
+                    pkts = [
+                        Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac)
+                        / IP(src="40.0.0.1", dst=dst)
+                        / UDP(sport=sport, dport=20000)
+                        / Raw(b"\xa5" * 100)
+                        for dst, sport in burst_flows
+                    ]
+                    self.pg0.add_stream(pkts)
+                    self.pg_enable_capture(self.pg_interfaces)
+                    self.pg_start()
+
+                    for p in self.pg1.get_capture(len(pkts)):
+                        inner = IP(scapy.compat.raw(p[GRE].payload))
+                        self.assertEqual(p[IP].dst, expect[inner.dst])
 
         finally:
             self.vapi.cli("lb as 90.0.0.0/8 10.0.0.1 del")
