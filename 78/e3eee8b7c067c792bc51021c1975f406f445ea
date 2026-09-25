@@ -1,0 +1,8 @@
+Verified+1: FDio GitHub Actions <releng+fdio-github@linuxfoundation.org>
+Code-Review+2: Dave Barach <vpp2@barachs.net>
+Code-Review+1: Matus Fabian <matfabia@cisco.com>
+Submitted-by: Dave Barach <vpp2@barachs.net>
+Submitted-at: Fri, 25 Sep 2026 15:09:52 +0000
+Reviewed-on: https://gerrit.fd.io/r/c/vpp/+/46891
+Project: vpp
+Branch: refs/heads/master
