@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "31412382_3d112c8d",
+        "filename": "test/hs-test/docker/Dockerfile.base",
+        "patchSetId": 1
+      },
+      "lineNbr": 93,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-09-25T11:26:35Z",
+      "side": 1,
+      "message": "we use apt here too, so we should apply same as above. I think I\u0027ve seen fail this too",
+      "revId": "75f71e12590a865ab9730d77aabea8fb2f1201b7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
