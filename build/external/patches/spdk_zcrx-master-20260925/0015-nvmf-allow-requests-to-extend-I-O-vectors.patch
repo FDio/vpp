@@ -1,0 +1,522 @@
+From fc226252baea54391d39a8eb60dd1c4d89ada41e Mon Sep 17 00:00:00 2001
+From: Jerome Tollet <jtollet@cisco.com>
+Date: Fri, 4 Sep 2026 18:02:38 +0200
+Subject: [PATCH 15/17] nvmf: allow requests to extend I/O vectors
+
+Some transports can receive a payload in more segments than fit in the
+request's inline iovec array. Increasing the inline array penalizes every
+request, including transports and workloads that never need the extra
+capacity.
+
+Add an optional transport-owned extended iovec and accessors for the
+active vector and its capacity. Keep the existing 33-entry inline array
+as the default and update common NVMf paths to use the active vector.
+
+Change-Id: Iacf1a63a2609d595cb103941cf4e086824b89314
+Signed-off-by: Jerome Tollet <jtollet@cisco.com>
+---
+ CHANGELOG.md                  |  6 +++++
+ include/spdk/nvmf_transport.h | 21 ++++++++++++++-
+ lib/nvmf/Makefile             |  2 +-
+ lib/nvmf/auth.c               |  7 ++---
+ lib/nvmf/ctrlr.c              | 50 ++++++++++++++++++-----------------
+ lib/nvmf/ctrlr_bdev.c         | 28 ++++++++++++--------
+ lib/nvmf/ctrlr_discovery.c    |  5 ++--
+ lib/nvmf/subsystem.c          |  8 +++---
+ lib/nvmf/transport.c          | 13 +++++----
+ 9 files changed, 89 insertions(+), 51 deletions(-)
+
+diff --git a/CHANGELOG.md b/CHANGELOG.md
+index e8a69505e..2101e80d7 100644
+--- a/CHANGELOG.md
++++ b/CHANGELOG.md
+@@ -2,6 +2,12 @@
+ 
+ ## v27.01: (Upcoming Release)
+ 
++### nvmf
++
++Added an optional transport-owned extended payload iovec to `struct spdk_nvmf_request` while
++retaining the existing inline array for the common case. This changes the size of the public
++request structure, so the nvmf library major SO version has been increased to 25.
++
+ ## v26.09
+ 
+ ### accel
+diff --git a/include/spdk/nvmf_transport.h b/include/spdk/nvmf_transport.h
+index 5ba0056cf..d4fa7795a 100644
+--- a/include/spdk/nvmf_transport.h
++++ b/include/spdk/nvmf_transport.h
+@@ -106,6 +106,13 @@ struct spdk_nvmf_request {
+ 	struct spdk_accel_sequence	*accel_sequence;
+ 
+ 	struct iovec			iov[NVMF_REQ_MAX_BUFFERS];
++	/*
++	 * Transports may provide a larger payload vector when the inline array is
++	 * too small.  Keeping the inline array preserves the allocation cost of
++	 * the common path; iov_ext is allocated only by transports that need it.
++	 */
++	struct iovec			*iov_ext;
++	uint16_t			iov_ext_capacity;
+ 
+ 	struct spdk_bdev_io_wait_entry	bdev_io_wait;
+ 	spdk_nvmf_nvme_passthru_cmd_cb	cmd_cb_fn;
+@@ -126,11 +133,23 @@ struct spdk_nvmf_request {
+ 	union spdk_nvme_parameter_error_location	error_location;
+ 	STAILQ_ENTRY(spdk_nvmf_request)	reservation_link;
+ };
++static inline struct iovec *
++spdk_nvmf_request_get_iov(struct spdk_nvmf_request *req)
++{
++	return req->iov_ext != NULL ? req->iov_ext : req->iov;
++}
++
++static inline uint16_t
++spdk_nvmf_request_get_iov_capacity(const struct spdk_nvmf_request *req)
++{
++	return req->iov_ext != NULL ? req->iov_ext_capacity : NVMF_REQ_MAX_BUFFERS;
++}
++
+ /* The iov array grows by two iovecs for every additional SGL entry, so the
+  * expected size can be derived from the size of the default configuration.
+  */
+ SPDK_STATIC_ASSERT(sizeof(struct spdk_nvmf_request) ==
+-		   752 + (SPDK_NVMF_MAX_SGL_ENTRIES - 16) * 2 * sizeof(struct iovec),
++		   768 + (SPDK_NVMF_MAX_SGL_ENTRIES - 16) * 2 * sizeof(struct iovec),
+ 		   "Incorrect size");
+ 
+ enum spdk_nvmf_qpair_state {
+diff --git a/lib/nvmf/Makefile b/lib/nvmf/Makefile
+index fcdd77674..8396a1720 100644
+--- a/lib/nvmf/Makefile
++++ b/lib/nvmf/Makefile
+@@ -6,7 +6,7 @@
+ SPDK_ROOT_DIR := $(abspath $(CURDIR)/../..)
+ include $(SPDK_ROOT_DIR)/mk/spdk.common.mk
+ 
+-SO_VER := 24
++SO_VER := 25
+ SO_MINOR := 0
+ 
+ C_SRCS = ctrlr.c ctrlr_discovery.c ctrlr_bdev.c \
+diff --git a/lib/nvmf/auth.c b/lib/nvmf/auth.c
+index 69064df43..424b7f796 100644
+--- a/lib/nvmf/auth.c
++++ b/lib/nvmf/auth.c
+@@ -212,8 +212,9 @@ nvmf_auth_check_command(struct spdk_nvmf_request *req, uint8_t secp,
+ static void *
+ nvmf_auth_get_message(struct spdk_nvmf_request *req, size_t size)
+ {
+-	if (req->length > 0 && req->iovcnt == 1 && req->iov[0].iov_len >= size) {
+-		return req->iov[0].iov_base;
++	if (req->length > 0 && req->iovcnt == 1 &&
++	    spdk_nvmf_request_get_iov(req)[0].iov_len >= size) {
++		return spdk_nvmf_request_get_iov(req)[0].iov_base;
+ 	}
+ 
+ 	return NULL;
+@@ -788,7 +789,7 @@ nvmf_auth_recv_exec(struct spdk_nvmf_request *req)
+ 		return;
+ 	}
+ 
+-	spdk_iov_memset(req->iov, req->iovcnt, 0);
++	spdk_iov_memset(spdk_nvmf_request_get_iov(req), req->iovcnt, 0);
+ 	switch (auth->state) {
+ 	case NVMF_QPAIR_AUTH_CHALLENGE:
+ 		rc = nvmf_auth_recv_challenge(req);
+diff --git a/lib/nvmf/ctrlr.c b/lib/nvmf/ctrlr.c
+index 5d4ca6501..7a614acdb 100644
+--- a/lib/nvmf/ctrlr.c
++++ b/lib/nvmf/ctrlr.c
+@@ -888,7 +888,7 @@ _nvmf_ctrlr_add_io_qpair(void *ctx)
+ 
+ 	assert(req->iovcnt == 1);
+ 
+-	data = req->iov[0].iov_base;
++	data = spdk_nvmf_request_get_iov(req)[0].iov_base;
+ 
+ 	SPDK_DEBUGLOG(nvmf, "Connect I/O Queue for controller id 0x%x\n", data->cntlid);
+ 
+@@ -981,7 +981,7 @@ nvmf_qpair_access_allowed(struct spdk_nvmf_qpair *qpair, struct spdk_nvmf_subsys
+ static int
+ _nvmf_ctrlr_connect(struct spdk_nvmf_request *req)
+ {
+-	struct spdk_nvmf_fabric_connect_data *data = req->iov[0].iov_base;
++	struct spdk_nvmf_fabric_connect_data *data = spdk_nvmf_request_get_iov(req)[0].iov_base;
+ 	struct spdk_nvmf_fabric_connect_cmd *cmd = &req->cmd->connect_cmd;
+ 	struct spdk_nvmf_fabric_connect_rsp *rsp = &req->rsp->connect_rsp;
+ 	struct spdk_nvmf_qpair *qpair = req->qpair;
+@@ -1095,7 +1095,7 @@ nvmf_subsystem_pg_from_connect_cmd(struct spdk_nvmf_request *req)
+ 	assert(req->qpair->ctrlr == NULL);
+ 	assert(req->iovcnt == 1);
+ 
+-	data = req->iov[0].iov_base;
++	data = spdk_nvmf_request_get_iov(req)[0].iov_base;
+ 	tgt = req->qpair->transport->tgt;
+ 
+ 	subsystem = spdk_nvmf_tgt_find_subsystem(tgt, data->subnqn);
+@@ -1109,7 +1109,7 @@ nvmf_subsystem_pg_from_connect_cmd(struct spdk_nvmf_request *req)
+ static int
+ nvmf_ctrlr_cmd_connect(struct spdk_nvmf_request *req)
+ {
+-	struct spdk_nvmf_fabric_connect_data *data = req->iov[0].iov_base;
++	struct spdk_nvmf_fabric_connect_data *data = spdk_nvmf_request_get_iov(req)[0].iov_base;
+ 	struct spdk_nvmf_fabric_connect_rsp *rsp = &req->rsp->connect_rsp;
+ 	struct spdk_nvmf_transport *transport = req->qpair->transport;
+ 	struct spdk_nvmf_subsystem *subsystem;
+@@ -2039,7 +2039,7 @@ nvmf_ctrlr_get_features_host_identifier(struct spdk_nvmf_request *req)
+ 		return SPDK_NVMF_REQUEST_EXEC_STATUS_COMPLETE;
+ 	}
+ 
+-	spdk_iov_xfer_init(&ix, req->iov, req->iovcnt);
++	spdk_iov_xfer_init(&ix, spdk_nvmf_request_get_iov(req), req->iovcnt);
+ 	spdk_iov_xfer_from_buf(&ix, &ctrlr->hostid, sizeof(ctrlr->hostid));
+ 
+ 	return SPDK_NVMF_REQUEST_EXEC_STATUS_COMPLETE;
+@@ -2184,7 +2184,7 @@ nvmf_ctrlr_get_features_host_behavior_support(struct spdk_nvmf_request *req)
+ 	host_behavior.acre = ctrlr->acre_enabled;
+ 	host_behavior.lbafee = ctrlr->lbafee_enabled;
+ 
+-	spdk_iov_xfer_init(&ix, req->iov, req->iovcnt);
++	spdk_iov_xfer_init(&ix, spdk_nvmf_request_get_iov(req), req->iovcnt);
+ 	spdk_iov_xfer_from_buf(&ix, &host_behavior, sizeof(host_behavior));
+ 
+ 	return SPDK_NVMF_REQUEST_EXEC_STATUS_COMPLETE;
+@@ -2204,14 +2204,15 @@ nvmf_ctrlr_set_features_host_behavior_support(struct spdk_nvmf_request *req)
+ 		response->status.sc = SPDK_NVME_SC_INVALID_FIELD;
+ 		return SPDK_NVMF_REQUEST_EXEC_STATUS_COMPLETE;
+ 	}
+-	if (req->iov[0].iov_len != sizeof(struct spdk_nvme_host_behavior)) {
+-		SPDK_ERRLOG("Host Behavior Support invalid iov_len: %zd\n", req->iov[0].iov_len);
++	if (spdk_nvmf_request_get_iov(req)[0].iov_len != sizeof(struct spdk_nvme_host_behavior)) {
++		SPDK_ERRLOG("Host Behavior Support invalid iov_len: %zd\n",
++			    spdk_nvmf_request_get_iov(req)[0].iov_len);
+ 		response->status.sct = SPDK_NVME_SCT_GENERIC;
+ 		response->status.sc = SPDK_NVME_SC_INVALID_FIELD;
+ 		return SPDK_NVMF_REQUEST_EXEC_STATUS_COMPLETE;
+ 	}
+ 
+-	host_behavior = (struct spdk_nvme_host_behavior *)req->iov[0].iov_base;
++	host_behavior = (struct spdk_nvme_host_behavior *)spdk_nvmf_request_get_iov(req)[0].iov_base;
+ 	if (host_behavior->acre == 0) {
+ 		ctrlr->acre_enabled = false;
+ 	} else if (host_behavior->acre == 1) {
+@@ -3111,6 +3112,7 @@ nvmf_ctrlr_get_log_page(struct spdk_nvmf_request *req)
+ 	uint64_t offset, len;
+ 	uint32_t rae, numdl, numdu;
+ 	uint8_t lid = cmd->cdw10_bits.get_log_page.lid;
++	struct iovec *iovs = spdk_nvmf_request_get_iov(req);
+ 	int rc = 0;
+ 	bool extdlpe;
+ 
+@@ -3151,7 +3153,7 @@ nvmf_ctrlr_get_log_page(struct spdk_nvmf_request *req)
+ 		switch (lid) {
+ 		/* If you are adding support for new log pages, please update g_supported_log_pages_discover[] to reflect it. */
+ 		case SPDK_NVME_LOG_SUPPORTED_LOG_PAGES:
+-			rc = nvmf_get_supported_log_pages(ctrlr, req->iov, req->iovcnt, offset, len);
++			rc = nvmf_get_supported_log_pages(ctrlr, iovs, req->iovcnt, offset, len);
+ 			break;
+ 		case SPDK_NVME_LOG_DISCOVERY:
+ 			if (spdk_nvmf_qpair_get_listen_trid(req->qpair, &cmd_source_trid)) {
+@@ -3166,7 +3168,7 @@ nvmf_ctrlr_get_log_page(struct spdk_nvmf_request *req)
+ 			nvmf_get_discovery_log_page_async(req, offset, len, &cmd_source_trid, rae, extdlpe);
+ 			return SPDK_NVMF_REQUEST_EXEC_STATUS_ASYNCHRONOUS;
+ 		case SPDK_NVME_LOG_FEATURE_IDS_EFFECTS:
+-			rc = nvmf_get_feature_ids_effects_log_page(ctrlr, req->iov, req->iovcnt, offset, len);
++			rc = nvmf_get_feature_ids_effects_log_page(ctrlr, iovs, req->iovcnt, offset, len);
+ 			break;
+ 		default:
+ 			SPDK_INFOLOG(nvmf, "Unsupported Get Log Page Identifier for discovery subsystem 0x%02X\n", lid);
+@@ -3182,37 +3184,37 @@ nvmf_ctrlr_get_log_page(struct spdk_nvmf_request *req)
+ 	switch (lid) {
+ 	/* If you are adding support for new log pages, please update g_supported_log_pages[] to reflect it. */
+ 	case SPDK_NVME_LOG_SUPPORTED_LOG_PAGES:
+-		rc = nvmf_get_supported_log_pages(ctrlr, req->iov, req->iovcnt, offset, len);
++		rc = nvmf_get_supported_log_pages(ctrlr, iovs, req->iovcnt, offset, len);
+ 		break;
+ 	case SPDK_NVME_LOG_ERROR:
+-		rc = nvmf_get_error_log_page(ctrlr, req->iov, req->iovcnt, offset, len, rae);
++		rc = nvmf_get_error_log_page(ctrlr, iovs, req->iovcnt, offset, len, rae);
+ 		break;
+ 	case SPDK_NVME_LOG_HEALTH_INFORMATION:
+ 		/* TODO: actually fill out log page data */
+ 		break;
+ 	case SPDK_NVME_LOG_FIRMWARE_SLOT:
+-		rc = nvmf_get_firmware_slot_log_page(req->iov, req->iovcnt, offset, len);
++		rc = nvmf_get_firmware_slot_log_page(iovs, req->iovcnt, offset, len);
+ 		break;
+ 	case SPDK_NVME_LOG_ASYMMETRIC_NAMESPACE_ACCESS:
+ 		if (subsystem->opts.ana_reporting) {
+ 			uint32_t rgo = cmd->cdw10_bits.get_log_page.lsp & 1;
+-			rc = nvmf_get_ana_log_page(ctrlr, req->iov, req->iovcnt, offset, len, rae, rgo);
++			rc = nvmf_get_ana_log_page(ctrlr, iovs, req->iovcnt, offset, len, rae, rgo);
+ 			break;
+ 		} else {
+ 			SPDK_INFOLOG(nvmf, "Get Log Page for Asymmetric Namespace Access is not supported\n");
+ 			goto invalid_log_page;
+ 		}
+ 	case SPDK_NVME_LOG_COMMAND_EFFECTS_LOG:
+-		rc = nvmf_get_cmds_and_effects_log_page(ctrlr, req->iov, req->iovcnt, offset, len);
++		rc = nvmf_get_cmds_and_effects_log_page(ctrlr, iovs, req->iovcnt, offset, len);
+ 		break;
+ 	case SPDK_NVME_LOG_CHANGED_NS_LIST:
+-		rc = nvmf_get_changed_ns_list_log_page(ctrlr, req->iov, req->iovcnt, offset, len, rae);
++		rc = nvmf_get_changed_ns_list_log_page(ctrlr, iovs, req->iovcnt, offset, len, rae);
+ 		break;
+ 	case SPDK_NVME_LOG_RESERVATION_NOTIFICATION:
+-		rc = nvmf_get_reservation_notification_log_page(ctrlr, req->iov, req->iovcnt, offset, len, rae);
++		rc = nvmf_get_reservation_notification_log_page(ctrlr, iovs, req->iovcnt, offset, len, rae);
+ 		break;
+ 	case SPDK_NVME_LOG_FEATURE_IDS_EFFECTS:
+-		rc = nvmf_get_feature_ids_effects_log_page(ctrlr, req->iov, req->iovcnt, offset, len);
++		rc = nvmf_get_feature_ids_effects_log_page(ctrlr, iovs, req->iovcnt, offset, len);
+ 		break;
+ 	case SPDK_NVME_LOG_NVME_MI_COMMANDS_EFFECTS:
+ 		/* To comply with id-ctrl LPA bit 5, don't fail this log but return zeroed buffer instead. */
+@@ -3962,7 +3964,7 @@ nvmf_ctrlr_identify(struct spdk_nvmf_request *req)
+ 	 * We must use a temporary buffer: it's entirely possible the out buffer
+ 	 * is split across more than one IOV.
+ 	 */
+-	spdk_iov_xfer_init(&ix, req->iov, req->iovcnt);
++	spdk_iov_xfer_init(&ix, spdk_nvmf_request_get_iov(req), req->iovcnt);
+ 
+ 	SPDK_DEBUGLOG(nvmf, "Received identify command with CNS 0x%02x\n", cns);
+ 
+@@ -4565,7 +4567,7 @@ nvmf_ctrlr_process_admin_cmd(struct spdk_nvmf_request *req)
+ 	}
+ 
+ 	if (req->iovcnt && spdk_nvme_opc_get_data_transfer(cmd->opc) == SPDK_NVME_DATA_CONTROLLER_TO_HOST) {
+-		spdk_iov_memset(req->iov, req->iovcnt, 0);
++		spdk_iov_memset(spdk_nvmf_request_get_iov(req), req->iovcnt, 0);
+ 	}
+ 
+ 	if (spdk_nvmf_subsystem_is_discovery(ctrlr->subsys)) {
+@@ -5187,7 +5189,7 @@ spdk_nvmf_request_zcopy_start(struct spdk_nvmf_request *req)
+ 	assert(req->zcopy_phase == NVMF_ZCOPY_PHASE_INIT);
+ 
+ 	/* Set iovcnt to be the maximum number of iovs that the ZCOPY can use */
+-	req->iovcnt = NVMF_REQ_MAX_BUFFERS;
++	req->iovcnt = spdk_nvmf_request_get_iov_capacity(req);
+ 
+ 	spdk_nvmf_request_exec(req);
+ }
+@@ -5906,7 +5908,7 @@ spdk_nvmf_request_copy_from_buf(struct spdk_nvmf_request *req,
+ {
+ 	struct spdk_iov_xfer ix;
+ 
+-	spdk_iov_xfer_init(&ix, req->iov, req->iovcnt);
++	spdk_iov_xfer_init(&ix, spdk_nvmf_request_get_iov(req), req->iovcnt);
+ 	return spdk_iov_xfer_from_buf(&ix, buf, buflen);
+ }
+ 
+@@ -5916,7 +5918,7 @@ spdk_nvmf_request_copy_to_buf(struct spdk_nvmf_request *req,
+ {
+ 	struct spdk_iov_xfer ix;
+ 
+-	spdk_iov_xfer_init(&ix, req->iov, req->iovcnt);
++	spdk_iov_xfer_init(&ix, spdk_nvmf_request_get_iov(req), req->iovcnt);
+ 	return spdk_iov_xfer_to_buf(&ix, buf, buflen);
+ }
+ 
+diff --git a/lib/nvmf/ctrlr_bdev.c b/lib/nvmf/ctrlr_bdev.c
+index 3a14536d0..62ac52a51 100644
+--- a/lib/nvmf/ctrlr_bdev.c
++++ b/lib/nvmf/ctrlr_bdev.c
+@@ -463,7 +463,8 @@ nvmf_bdev_ctrlr_read_cmd(struct spdk_bdev *bdev, struct spdk_bdev_desc *desc,
+ 
+ 	assert(!spdk_nvmf_request_using_zcopy(req));
+ 
+-	rc = spdk_bdev_readv_blocks_ext(desc, ch, req->iov, req->iovcnt, start_lba, num_blocks,
++	rc = spdk_bdev_readv_blocks_ext(desc, ch, spdk_nvmf_request_get_iov(req), req->iovcnt,
++					start_lba, num_blocks,
+ 					nvmf_bdev_ctrlr_complete_cmd, req, &opts);
+ 	if (spdk_unlikely(rc)) {
+ 		if (rc == -ENOMEM) {
+@@ -517,7 +518,8 @@ nvmf_bdev_ctrlr_write_cmd(struct spdk_bdev *bdev, struct spdk_bdev_desc *desc,
+ 
+ 	assert(!spdk_nvmf_request_using_zcopy(req));
+ 
+-	rc = spdk_bdev_writev_blocks_ext(desc, ch, req->iov, req->iovcnt, start_lba, num_blocks,
++	rc = spdk_bdev_writev_blocks_ext(desc, ch, spdk_nvmf_request_get_iov(req), req->iovcnt,
++					 start_lba, num_blocks,
+ 					 nvmf_bdev_ctrlr_complete_cmd, req, &opts);
+ 	if (spdk_unlikely(rc)) {
+ 		if (rc == -ENOMEM) {
+@@ -562,7 +564,8 @@ nvmf_bdev_ctrlr_compare_cmd(struct spdk_bdev *bdev, struct spdk_bdev_desc *desc,
+ 		return SPDK_NVMF_REQUEST_EXEC_STATUS_COMPLETE;
+ 	}
+ 
+-	rc = spdk_bdev_comparev_blocks(desc, ch, req->iov, req->iovcnt, start_lba, num_blocks,
++	rc = spdk_bdev_comparev_blocks(desc, ch, spdk_nvmf_request_get_iov(req), req->iovcnt,
++				       start_lba, num_blocks,
+ 				       nvmf_bdev_ctrlr_complete_cmd, req);
+ 	if (spdk_unlikely(rc)) {
+ 		if (rc == -ENOMEM) {
+@@ -621,7 +624,8 @@ nvmf_bdev_ctrlr_compare_and_write_cmd(struct spdk_bdev *bdev, struct spdk_bdev_d
+ 		return SPDK_NVMF_REQUEST_EXEC_STATUS_COMPLETE;
+ 	}
+ 
+-	rc = spdk_bdev_comparev_and_writev_blocks(desc, ch, cmp_req->iov, cmp_req->iovcnt, write_req->iov,
++	rc = spdk_bdev_comparev_and_writev_blocks(desc, ch, spdk_nvmf_request_get_iov(cmp_req),
++			cmp_req->iovcnt, spdk_nvmf_request_get_iov(write_req),
+ 			write_req->iovcnt, write_start_lba, write_num_blocks, nvmf_bdev_ctrlr_complete_cmd, write_req);
+ 	if (spdk_unlikely(rc)) {
+ 		if (rc == -ENOMEM) {
+@@ -823,7 +827,7 @@ nvmf_bdev_ctrlr_unmap(struct spdk_bdev *bdev, struct spdk_bdev_desc *desc,
+ 	}
+ 
+ 	/* Resume reading DSM ranges from where we left off on resubmission. */
+-	spdk_iov_xfer_init(&ix, req->iov, req->iovcnt);
++	spdk_iov_xfer_init(&ix, spdk_nvmf_request_get_iov(req), req->iovcnt);
+ 	ix.cur_iov_idx = unmap_ctx->cur_iov_idx;
+ 	ix.cur_iov_offset = unmap_ctx->cur_iov_offset;
+ 
+@@ -942,7 +946,7 @@ nvmf_bdev_ctrlr_copy_cmd(struct spdk_bdev *bdev, struct spdk_bdev_desc *desc,
+ 		return SPDK_NVMF_REQUEST_EXEC_STATUS_COMPLETE;
+ 	}
+ 
+-	spdk_iov_xfer_init(&ix, req->iov, req->iovcnt);
++	spdk_iov_xfer_init(&ix, spdk_nvmf_request_get_iov(req), req->iovcnt);
+ 	spdk_iov_xfer_to_buf(&ix, &range, sizeof(range));
+ 
+ 	rc = spdk_bdev_copy_blocks(desc, ch, sdlba, range.slba, range.nlb + 1,
+@@ -967,7 +971,8 @@ nvmf_bdev_ctrlr_nvme_passthru_io(struct spdk_bdev *bdev, struct spdk_bdev_desc *
+ {
+ 	int rc;
+ 
+-	rc = spdk_bdev_nvme_iov_passthru_md(desc, ch, &req->cmd->nvme_cmd, req->iov, req->iovcnt,
++	rc = spdk_bdev_nvme_iov_passthru_md(desc, ch, &req->cmd->nvme_cmd,
++					    spdk_nvmf_request_get_iov(req), req->iovcnt,
+ 					    req->length, NULL, 0, nvmf_bdev_ctrlr_complete_cmd, req);
+ 
+ 	if (spdk_unlikely(rc)) {
+@@ -1000,7 +1005,8 @@ spdk_nvmf_bdev_ctrlr_nvme_passthru_admin(struct spdk_bdev *bdev, struct spdk_bde
+ 
+ 	req->cmd_cb_fn = cb_fn;
+ 
+-	rc = spdk_bdev_nvme_admin_passthru(desc, ch, &req->cmd->nvme_cmd, req->iov[0].iov_base, req->length,
++	rc = spdk_bdev_nvme_admin_passthru(desc, ch, &req->cmd->nvme_cmd,
++					   spdk_nvmf_request_get_iov(req)[0].iov_base, req->length,
+ 					   nvmf_bdev_ctrlr_complete_admin_cmd, req);
+ 	if (spdk_unlikely(rc)) {
+ 		if (rc == -ENOMEM) {
+@@ -1091,12 +1097,12 @@ nvmf_bdev_ctrlr_zcopy_start_complete(struct spdk_bdev_io *bdev_io, bool success,
+ 
+ 	spdk_bdev_io_get_iovec(bdev_io, &iov, &iovcnt);
+ 
+-	assert(iovcnt <= NVMF_REQ_MAX_BUFFERS);
++	assert(iovcnt <= spdk_nvmf_request_get_iov_capacity(req));
+ 	assert(iovcnt > 0);
+ 
+ 	req->iovcnt = iovcnt;
+ 
+-	assert(req->iov == iov);
++	assert(spdk_nvmf_request_get_iov(req) == iov);
+ 
+ 	req->zcopy_bdev_io = bdev_io; /* Preserve the bdev_io for the end zcopy */
+ 
+@@ -1138,7 +1144,7 @@ nvmf_bdev_ctrlr_zcopy_start(struct spdk_bdev *bdev,
+ 
+ 	bool populate = cmd->opc == SPDK_NVME_OPC_READ;
+ 
+-	rc = spdk_bdev_zcopy_start(desc, ch, req->iov, req->iovcnt, start_lba,
++	rc = spdk_bdev_zcopy_start(desc, ch, spdk_nvmf_request_get_iov(req), req->iovcnt, start_lba,
+ 				   num_blocks, populate, nvmf_bdev_ctrlr_zcopy_start_complete, req);
+ 	if (spdk_unlikely(rc != 0)) {
+ 		if (rc == -ENOMEM) {
+diff --git a/lib/nvmf/ctrlr_discovery.c b/lib/nvmf/ctrlr_discovery.c
+index 9cfb545a5..6bbae365d 100644
+--- a/lib/nvmf/ctrlr_discovery.c
++++ b/lib/nvmf/ctrlr_discovery.c
+@@ -322,7 +322,8 @@ nvmf_get_discovery_log_page(void *arg)
+ 
+ 	/* Copy the valid part of the discovery log page, if any */
+ 	if (discovery_log_page) {
+-		for (tmp = req->iov; tmp < req->iov + req->iovcnt; tmp++) {
++		for (tmp = spdk_nvmf_request_get_iov(req);
++		     tmp < spdk_nvmf_request_get_iov(req) + req->iovcnt; tmp++) {
+ 			copy_len = spdk_min(tmp->iov_len, length);
+ 			copy_len = spdk_min(log_page_size - offset, copy_len);
+ 
+@@ -340,7 +341,7 @@ nvmf_get_discovery_log_page(void *arg)
+ 			memset((char *)tmp->iov_base + copy_len, 0, zero_len);
+ 		}
+ 
+-		for (++tmp; tmp < req->iov + req->iovcnt; tmp++) {
++		for (++tmp; tmp < spdk_nvmf_request_get_iov(req) + req->iovcnt; tmp++) {
+ 			memset((char *)tmp->iov_base, 0, tmp->iov_len);
+ 		}
+ 
+diff --git a/lib/nvmf/subsystem.c b/lib/nvmf/subsystem.c
+index 36a6e628e..c22273f29 100644
+--- a/lib/nvmf/subsystem.c
++++ b/lib/nvmf/subsystem.c
+@@ -3677,7 +3677,7 @@ nvmf_ns_reservation_register(struct spdk_nvmf_ns *ns,
+ 
+ 	if (req->iovcnt > 0 && req->length >= sizeof(key)) {
+ 		struct spdk_iov_xfer ix;
+-		spdk_iov_xfer_init(&ix, req->iov, req->iovcnt);
++		spdk_iov_xfer_init(&ix, spdk_nvmf_request_get_iov(req), req->iovcnt);
+ 		spdk_iov_xfer_to_buf(&ix, &key, sizeof(key));
+ 	} else {
+ 		SPDK_ERRLOG("No key provided. Failing request.\n");
+@@ -3832,7 +3832,7 @@ nvmf_ns_reservation_acquire(struct spdk_nvmf_ns *ns,
+ 
+ 	if (req->iovcnt > 0 && req->length >= sizeof(key)) {
+ 		struct spdk_iov_xfer ix;
+-		spdk_iov_xfer_init(&ix, req->iov, req->iovcnt);
++		spdk_iov_xfer_init(&ix, spdk_nvmf_request_get_iov(req), req->iovcnt);
+ 		spdk_iov_xfer_to_buf(&ix, &key, sizeof(key));
+ 	} else {
+ 		SPDK_ERRLOG("No key provided. Failing request.\n");
+@@ -4023,7 +4023,7 @@ nvmf_ns_reservation_release(struct spdk_nvmf_ns *ns,
+ 
+ 	if (req->iovcnt > 0 && req->length >= sizeof(crkey)) {
+ 		struct spdk_iov_xfer ix;
+-		spdk_iov_xfer_init(&ix, req->iov, req->iovcnt);
++		spdk_iov_xfer_init(&ix, spdk_nvmf_request_get_iov(req), req->iovcnt);
+ 		spdk_iov_xfer_to_buf(&ix, &crkey, sizeof(crkey));
+ 	} else {
+ 		SPDK_ERRLOG("No key provided. Failing request.\n");
+@@ -4140,7 +4140,7 @@ nvmf_ns_reservation_report(const struct spdk_nvmf_ns *ns,
+ 		goto exit;
+ 	}
+ 
+-	spdk_iov_xfer_init(&ix, req->iov, req->iovcnt);
++	spdk_iov_xfer_init(&ix, spdk_nvmf_request_get_iov(req), req->iovcnt);
+ 
+ 	status_data.data.gen = ns->gen;
+ 	status_data.data.rtype = ns->rtype;
+diff --git a/lib/nvmf/transport.c b/lib/nvmf/transport.c
+index 033dd51eb..22d427f53 100644
+--- a/lib/nvmf/transport.c
++++ b/lib/nvmf/transport.c
+@@ -874,11 +874,12 @@ spdk_nvmf_request_free_buffers(struct spdk_nvmf_request *req,
+ 			       struct spdk_nvmf_transport *transport)
+ {
+ 	uint32_t i;
++	struct iovec *iovs = spdk_nvmf_request_get_iov(req);
+ 
+ 	for (i = 0; i < req->iovcnt; i++) {
+-		spdk_iobuf_put(group->buf_cache, req->iov[i].iov_base, req->iov[i].iov_len);
+-		req->iov[i].iov_base = NULL;
+-		req->iov[i].iov_len = 0;
++		spdk_iobuf_put(group->buf_cache, iovs[i].iov_base, iovs[i].iov_len);
++		iovs[i].iov_base = NULL;
++		iovs[i].iov_len = 0;
+ 	}
+ 	req->iovcnt = 0;
+ 	req->data_from_pool = false;
+@@ -887,8 +888,10 @@ spdk_nvmf_request_free_buffers(struct spdk_nvmf_request *req,
+ static inline void
+ nvmf_request_set_buffer(struct spdk_nvmf_request *req, void *buf, uint32_t length)
+ {
+-	req->iov[req->iovcnt].iov_base = buf;
+-	req->iov[req->iovcnt].iov_len  = length;
++	struct iovec *iovs = spdk_nvmf_request_get_iov(req);
++
++	iovs[req->iovcnt].iov_base = buf;
++	iovs[req->iovcnt].iov_len  = length;
+ 	req->iovcnt++;
+ 	req->data_from_pool = true;
+ }
