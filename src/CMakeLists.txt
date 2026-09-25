@@ -425,15 +425,25 @@ if(TARGET vnet AND CMAKE_READELF)
     endif()
   endforeach()
 
-  add_custom_target(check-vnet-exports ALL
+  set(_vnet_export_check_stamp
+    ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/check-vnet-exports.stamp)
+
+  add_custom_command(OUTPUT ${_vnet_export_check_stamp}
     COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/scripts/check_vnet_exports.sh
       ${CMAKE_READELF}
       $<TARGET_FILE:vnet>
       ${_vnet_export_check_consumers}
-    DEPENDS ${_vnet_export_check_dependencies}
+    COMMAND ${CMAKE_COMMAND} -E touch ${_vnet_export_check_stamp}
+    DEPENDS
+      ${CMAKE_CURRENT_SOURCE_DIR}/scripts/check_vnet_exports.sh
+      ${_vnet_export_check_dependencies}
     COMMENT "Checking libvnet exports used by in-tree consumers"
     COMMAND_EXPAND_LISTS
     VERBATIM
+  )
+
+  add_custom_target(check-vnet-exports ALL
+    DEPENDS ${_vnet_export_check_stamp}
   )
 endif()
 
