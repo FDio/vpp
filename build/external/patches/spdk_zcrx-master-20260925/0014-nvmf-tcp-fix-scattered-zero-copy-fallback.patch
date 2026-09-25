@@ -1,0 +1,149 @@
+From 800ab4cd077be83ffb2c75c40c01571f859b1dbe Mon Sep 17 00:00:00 2001
+From: Jerome Tollet <jtollet@cisco.com>
+Date: Fri, 4 Sep 2026 10:13:56 +0200
+Subject: [PATCH 14/17] nvmf/tcp: fix scattered zero-copy fallback
+
+The receive zero-copy fallback can run after bytes were already
+consumed from the pending stream. Do not overwrite the accumulated
+return count with the fallback status, otherwise the caller loses
+progress made in the current invocation.
+
+Allocate the materialized fallback buffer with SPDK_MALLOC_DMA
+because it becomes request I/O data passed to the bdev layer.
+
+Add a unit test that triggers fallback after consuming a segment and
+checks the byte count, iovec layout, data, and segment ownership.
+
+Change-Id: I844907188d0482be4091392c7d63288250b8bba2
+Signed-off-by: Jerome Tollet <jtollet@cisco.com>
+---
+ lib/nvmf/tcp.c                    | 11 +++--
+ test/unit/lib/nvmf/tcp.c/tcp_ut.c | 79 +++++++++++++++++++++++++++++++
+ 2 files changed, 86 insertions(+), 4 deletions(-)
+
+diff --git a/lib/nvmf/tcp.c b/lib/nvmf/tcp.c
+index 00c1c9a1e..d5cebd37d 100644
+--- a/lib/nvmf/tcp.c
++++ b/lib/nvmf/tcp.c
+@@ -2651,7 +2651,8 @@ nvmf_tcp_double_buffer_scattered_payload(struct spdk_nvmf_tcp_qpair *tqpair,
+ 	}
+ 
+ 	SPDK_WARNLOG("Double buffering scattered zero-copy payload on tqpair=%p\n", tqpair);
+-	double_buf = spdk_malloc(total_sz, PAGE_SIZE, NULL, SPDK_ENV_SOCKET_ID_ANY, 0);
++	double_buf = spdk_malloc(total_sz, PAGE_SIZE, NULL, SPDK_ENV_SOCKET_ID_ANY,
++				 SPDK_MALLOC_DMA);
+ 	if (double_buf == NULL) {
+ 		SPDK_ERRLOG("Failed to allocate buffer for scattered payload\n");
+ 		return -ENOMEM;
+@@ -2719,9 +2720,11 @@ nvmf_tcp_read_data_zcopy(struct spdk_nvmf_tcp_qpair *tqpair, struct spdk_nvmf_tc
+ 
+ 		if (pdu->data_iovcnt >= SPDK_COUNTOF(pdu->data_iov) - 1 ||
+ 		    tcp_req->req.iovcnt >= SPDK_COUNTOF(tcp_req->req.iov) - 1) {
+-			ret = nvmf_tcp_double_buffer_scattered_payload(tqpair, tcp_req, pdu);
+-			if (ret != 0) {
+-				return ret;
++			int rc;
++
++			rc = nvmf_tcp_double_buffer_scattered_payload(tqpair, tcp_req, pdu);
++			if (rc != 0) {
++				return rc;
+ 			}
+ 		}
+ 
+diff --git a/test/unit/lib/nvmf/tcp.c/tcp_ut.c b/test/unit/lib/nvmf/tcp.c/tcp_ut.c
+index 79cfa16ab..2b579cd5a 100644
+--- a/test/unit/lib/nvmf/tcp.c/tcp_ut.c
++++ b/test/unit/lib/nvmf/tcp.c/tcp_ut.c
+@@ -772,6 +772,84 @@ test_nvmf_tcp_in_capsule_data_handle(void)
+ 	CU_ASSERT(tcp_req1.state == TCP_REQUEST_STATE_TRANSFERRING_HOST_TO_CONTROLLER);
+ }
+ 
++static void
++test_nvmf_tcp_read_data_zcopy_fallback(void)
++{
++	struct spdk_nvmf_tcp_stream_segment segments[NVME_TCP_MAX_SGL_DESCRIPTORS] = {};
++	struct spdk_nvmf_tcp_stream_segment *segment_refs[NVMF_REQ_MAX_BUFFERS] = {};
++	struct spdk_nvmf_tcp_poll_group tgroup = {};
++	struct spdk_nvmf_tcp_qpair tqpair = {};
++	struct spdk_nvmf_tcp_req tcp_req = {};
++	struct nvme_tcp_pdu pdu = {};
++	uint8_t existing_data[NVME_TCP_MAX_SGL_DESCRIPTORS] = {};
++	uint8_t expected[NVME_TCP_MAX_SGL_DESCRIPTORS - 1] = {};
++	uint8_t pending_data[] = { 0xa5, 0x5a };
++	uint32_t initial_segments, i;
++	int rc;
++
++	/* Start one entry below the PDU iovec fallback threshold. The first byte
++	 * is consumed directly and the second iteration must preserve that byte
++	 * count while materializing all previously retained segments.
++	 */
++	initial_segments = SPDK_COUNTOF(pdu.data_iov) - 2;
++	SPDK_CU_ASSERT_FATAL(initial_segments + 2 <= SPDK_COUNTOF(segments));
++	SPDK_CU_ASSERT_FATAL(initial_segments + 1 <= SPDK_COUNTOF(expected));
++
++	STAILQ_INIT(&tgroup.free_segments);
++	STAILQ_INIT(&tqpair.pending_stream);
++	tgroup.sock_group = (struct spdk_sock_group *)0x1;
++	tqpair.group = &tgroup;
++	tcp_req.segment_refs = segment_refs;
++
++	for (i = 0; i < initial_segments; i++) {
++		existing_data[i] = (uint8_t)i;
++		expected[i] = existing_data[i];
++		pdu.data_iov[i].iov_base = &existing_data[i];
++		pdu.data_iov[i].iov_len = 1;
++		tcp_req.req.iov[i] = pdu.data_iov[i];
++		segments[i].buf = &existing_data[i];
++		segments[i].len = 1;
++		segments[i].refcnt = 1;
++		segment_refs[i] = &segments[i];
++	}
++	pdu.data_iovcnt = initial_segments;
++	tcp_req.req.iovcnt = initial_segments;
++	tcp_req.segment_cnt = initial_segments;
++
++	segments[initial_segments].buf = &pending_data[0];
++	segments[initial_segments].len = 1;
++	segments[initial_segments].refcnt = 1;
++	STAILQ_INSERT_TAIL(&tqpair.pending_stream, &segments[initial_segments], link);
++
++	segments[initial_segments + 1].buf = &pending_data[1];
++	segments[initial_segments + 1].len = 1;
++	segments[initial_segments + 1].refcnt = 1;
++	STAILQ_INSERT_TAIL(&tqpair.pending_stream, &segments[initial_segments + 1], link);
++
++	expected[initial_segments] = pending_data[0];
++	pdu.data_len = sizeof(pending_data);
++	rc = nvmf_tcp_read_data_zcopy(&tqpair, &tcp_req, &pdu);
++
++	CU_ASSERT(rc == (int)sizeof(pending_data));
++	CU_ASSERT(STAILQ_EMPTY(&tqpair.pending_stream));
++	CU_ASSERT(tcp_req.req.iovcnt == 2);
++	CU_ASSERT(tcp_req.segment_cnt == 2);
++	CU_ASSERT(tcp_req.segment_refs[0] == NULL);
++	CU_ASSERT(tcp_req.segment_refs[1] == &segments[initial_segments + 1]);
++	for (i = 0; i <= initial_segments; i++) {
++		CU_ASSERT(segments[i].refcnt == 0);
++	}
++	CU_ASSERT(segments[initial_segments + 1].refcnt == 1);
++	SPDK_CU_ASSERT_FATAL(tcp_req.req.iov[0].iov_base != NULL);
++	CU_ASSERT(tcp_req.req.iov[0].iov_len == initial_segments + 1);
++	CU_ASSERT(memcmp(tcp_req.req.iov[0].iov_base, expected, sizeof(expected)) == 0);
++	CU_ASSERT(pdu.data_iovcnt == 1);
++	CU_ASSERT(pdu.data_iov[0].iov_base == &pending_data[1]);
++
++	spdk_free(tcp_req.req.iov[0].iov_base);
++	nvmf_tcp_segment_put(&tqpair, tcp_req.segment_refs[1]);
++}
++
+ static void
+ test_nvmf_sock_cb(void *arg, struct spdk_sock_group *group, struct spdk_sock *sock)
+ {
+@@ -1672,6 +1750,7 @@ main(int argc, char **argv)
+ 	CU_ADD_TEST(suite, test_nvmf_tcp_send_c2h_data);
+ 	CU_ADD_TEST(suite, test_nvmf_tcp_h2c_data_hdr_handle);
+ 	CU_ADD_TEST(suite, test_nvmf_tcp_in_capsule_data_handle);
++	CU_ADD_TEST(suite, test_nvmf_tcp_read_data_zcopy_fallback);
+ 	CU_ADD_TEST(suite, test_nvmf_tcp_qpair_init_mem_resource);
+ 	CU_ADD_TEST(suite, test_nvmf_tcp_handle_connect);
+ 	CU_ADD_TEST(suite, test_nvmf_tcp_send_c2h_term_req);
