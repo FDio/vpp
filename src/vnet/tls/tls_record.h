@@ -232,19 +232,15 @@ tls_record_hdr_is_valid (tls_record_header_t rec_hdr)
   return 1;
 }
 
-tls_handshake_parse_error_t
-tls_handshake_message_try_parse (u8 *msg, int len,
-				 tls_handshake_msg_info_t *info);
+__clib_export tls_handshake_parse_error_t
+tls_handshake_message_try_parse (u8 *msg, int len, tls_handshake_msg_info_t *info);
 tls_handshake_parse_error_t
 tls_hanshake_extensions_parse (tls_handshake_msg_info_t *info,
 			       tls_handshake_ext_info_t **exts);
-tls_handshake_parse_error_t
-tls_hanshake_extensions_try_parse (tls_handshake_msg_info_t *info,
-				   tls_handshake_ext_info_t *req_exts,
-				   u32 n_reqs);
-tls_handshake_parse_error_t
-tls_handshake_ext_parse (tls_handshake_ext_info_t *ext_info,
-			 tls_handshake_ext_t *ext);
-void tls_handshake_ext_free (tls_handshake_ext_t *ext);
+__clib_export tls_handshake_parse_error_t tls_hanshake_extensions_try_parse (
+  tls_handshake_msg_info_t *info, tls_handshake_ext_info_t *req_exts, u32 n_reqs);
+__clib_export tls_handshake_parse_error_t
+tls_handshake_ext_parse (tls_handshake_ext_info_t *ext_info, tls_handshake_ext_t *ext);
+__clib_export void tls_handshake_ext_free (tls_handshake_ext_t *ext);
 
 #endif /* SRC_VNET_TLS_TLS_RECORD_H__ */

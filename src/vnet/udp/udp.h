@@ -164,8 +164,8 @@ extern vlib_node_registration_t udp4_input_node;
 extern vlib_node_registration_t udp6_input_node;
 extern vlib_node_registration_t udp4_local_node;
 extern vlib_node_registration_t udp6_local_node;
-extern vlib_node_registration_t udp4_output_node;
-extern vlib_node_registration_t udp6_output_node;
+__clib_export extern vlib_node_registration_t udp4_output_node;
+__clib_export extern vlib_node_registration_t udp6_output_node;
 
 always_inline u16 *
 udp_dst_port_table (udp_main_t *um, u8 is_ip4)

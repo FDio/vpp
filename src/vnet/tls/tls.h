@@ -166,7 +166,7 @@ typedef struct tls_engine_vft_
   const char *name;
 } tls_engine_vft_t;
 
-extern tls_engine_vft_t *tls_vfts;
+__clib_export extern tls_engine_vft_t *tls_vfts;
 
 __clib_export tls_main_t *vnet_tls_get_main (void);
 __clib_export void tls_register_engine (const tls_engine_vft_t *vft, crypto_engine_type_t type);

@@ -220,7 +220,7 @@ u8 *format_transport_connection (u8 * s, va_list * args);
 u8 *format_transport_listen_connection (u8 * s, va_list * args);
 u8 *format_transport_half_open_connection (u8 * s, va_list * args);
 
-uword unformat_transport_proto (unformat_input_t * input, va_list * args);
+__clib_export uword unformat_transport_proto (unformat_input_t *input, va_list *args);
 u8 *format_transport_protos (u8 * s, va_list * args);
 u8 *format_transport_state (u8 *s, va_list *args);
 
