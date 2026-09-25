@@ -1,0 +1,252 @@
+From 63da7a7cc835e9069ab1b3a9fddd2a0578a98c6a Mon Sep 17 00:00:00 2001
+From: Ben Walker <ben@nvidia.com>
+Date: Tue, 15 Jul 2025 11:09:56 -0700
+Subject: [PATCH 06/15] sock/uring: Implement recv_next
+
+Change-Id: I351a13e061c18b6579c0fbc53a4c93d53e6e28d1
+Signed-off-by: Ben Walker <ben@nvidia.com>
+---
+ include/spdk/sock.h                   |  5 +-
+ module/sock/uring/uring.c             | 85 +++++++++++++++++++++++----
+ test/unit/lib/sock/uring.c/uring_ut.c | 36 ++++++++++++
+ 3 files changed, 113 insertions(+), 13 deletions(-)
+
+diff --git a/include/spdk/sock.h b/include/spdk/sock.h
+index 852b01665..fca48c489 100644
+--- a/include/spdk/sock.h
++++ b/include/spdk/sock.h
+@@ -561,7 +561,10 @@ struct spdk_sock_buf_token;
+  * \param token Populated with the token for the buffer
+  *
+  * \return On success, the length of the buffer placed into buf. Zero means no buffer is
+- * available now. On failure, returns a negative errno value.
++ * available now. -EAGAIN and -ENOBUFS are retriable failures; other negative errno values
++ * indicate socket errors. A peer that closed the connection is reported as -ENOTCONN,
++ * because zero already means the stream has no data right now. spdk_sock_recv() and
++ * spdk_sock_readv() report the same condition as a zero length read.
+  */
+ int spdk_sock_recv_next(struct spdk_sock *sock, void **buf, struct spdk_sock_buf_token **token);
+ 
+diff --git a/module/sock/uring/uring.c b/module/sock/uring/uring.c
+index 45564d13e..8ac0f09a3 100644
+--- a/module/sock/uring/uring.c
++++ b/module/sock/uring/uring.c
+@@ -99,6 +99,7 @@ SPDK_STATIC_ASSERT(offsetof(struct spdk_uring_sock, buf) % 8 == 0,
+ TAILQ_HEAD(pending_recv_list, spdk_uring_sock);
+ 
+ struct spdk_uring_buf_tracker {
++	struct spdk_sock_buf_token		token;
+ 	void					*buf;
+ 	size_t					len;
+ 	int					id;
+@@ -492,11 +493,11 @@ static int uring_sock_group_impl_add_sock(struct spdk_sock_group_impl *_group,
+ 		struct spdk_sock *_sock);
+ static int uring_sock_group_impl_attach_sock(struct spdk_sock_group_impl *_group,
+ 		struct spdk_sock *_sock);
++static void uring_sock_release_tracker(struct spdk_uring_sock_group_impl *group,
++				       struct spdk_uring_buf_tracker *tracker);
+ static int uring_sock_group_impl_remove_sock(struct spdk_sock_group_impl *_group,
+ 		struct spdk_sock *_sock);
+ static int uring_sock_close(struct spdk_sock_group_impl *group, struct spdk_sock *_sock);
+-static void uring_sock_release_tracker(struct spdk_uring_sock_group_impl *group,
+-				       struct spdk_uring_buf_tracker *tracker);
+ static struct spdk_net_impl g_uring_net_impl;
+ 
+ static struct spdk_sock *
+@@ -742,6 +743,15 @@ sock_readv(int fd, struct iovec *iov, int iovcnt)
+ 
+ static int uring_sock_complete_connect(struct spdk_uring_sock *sock);
+ 
++static void
++uring_sock_clear_pending_recv(struct spdk_uring_sock_group_impl *group,
++			      struct spdk_uring_sock *sock)
++{
++	assert(sock->pending_recv == true);
++	sock->pending_recv = false;
++	TAILQ_REMOVE(&group->pending_recv, sock, link);
++}
++
+ static ssize_t
+ uring_sock_readv(struct spdk_sock *_sock, struct iovec *iovs, int iovcnt)
+ {
+@@ -756,7 +766,7 @@ uring_sock_readv(struct spdk_sock *_sock, struct iovec *iovs, int iovcnt)
+ 		return rc;
+ 	}
+ 
+-	if (sock->connection_status < 0) {
++	if (spdk_unlikely(sock->connection_status < 0)) {
+ 		return sock->connection_status;
+ 	}
+ 
+@@ -770,8 +780,7 @@ uring_sock_readv(struct spdk_sock *_sock, struct iovec *iovs, int iovcnt)
+ 			 * directly. */
+ 
+ 			if (sock->pending_recv) {
+-				sock->pending_recv = false;
+-				TAILQ_REMOVE(&(__uring_group_impl(_sock->group_impl))->pending_recv, sock, link);
++				uring_sock_clear_pending_recv(__uring_group_impl(_sock->group_impl), sock);
+ 			}
+ 
+ 			return sock_readv(sock->fd, iovs, iovcnt);
+@@ -812,8 +821,7 @@ uring_sock_readv(struct spdk_sock *_sock, struct iovec *iovs, int iovcnt)
+ 		struct spdk_uring_sock_group_impl *group;
+ 
+ 		group = __uring_group_impl(_sock->group_impl);
+-		sock->pending_recv = false;
+-		TAILQ_REMOVE(&group->pending_recv, sock, link);
++		uring_sock_clear_pending_recv(group, sock);
+ 	}
+ 
+ 	assert(total > 0);
+@@ -861,6 +869,60 @@ uring_sock_writev(struct spdk_sock *_sock, struct iovec *iov, int iovcnt)
+ 	return uring_writev(sock, iov, iovcnt, 0);
+ }
+ 
++static int
++uring_sock_group_impl_release_buf(struct spdk_sock_group_impl *_group, void *buf,
++				  struct spdk_sock_buf_token *token)
++{
++	struct spdk_uring_sock_group_impl *group = __uring_group_impl(_group);
++	struct spdk_uring_buf_tracker *tracker;
++
++	tracker = SPDK_CONTAINEROF(token, struct spdk_uring_buf_tracker, token);
++	uring_sock_release_tracker(group, tracker);
++
++	return 0;
++}
++
++static int
++uring_sock_recv_next(struct spdk_sock *_sock, void **buf, struct spdk_sock_buf_token **token)
++{
++	struct spdk_uring_sock *sock = __uring_sock(_sock);
++	struct spdk_uring_buf_tracker *tr;
++
++	if (spdk_unlikely(sock->connection_status < 0)) {
++		return sock->connection_status;
++	}
++
++	tr = STAILQ_FIRST(&sock->recv_stream);
++	if (tr == NULL) {
++		/* A zero return means no buffer is available right now, so the end of the
++		 * stream has to be reported as an error here. readv() reports it as a zero
++		 * length read instead, which is what the POSIX API does. */
++		if (spdk_unlikely(sock->eof)) {
++			return -ENOTCONN;
++		}
++
++		*buf = NULL;
++		return 0;
++	}
++
++	STAILQ_REMOVE_HEAD(&sock->recv_stream, link);
++	if (STAILQ_EMPTY(&sock->recv_stream)) {
++		struct spdk_uring_sock_group_impl *group;
++
++		group = __uring_group_impl(_sock->group_impl);
++		uring_sock_clear_pending_recv(group, sock);
++	}
++
++	/* Some of the stream may have already been consumed by readv/recv. Return only the
++	 * unread suffix and keep the original tracker as the release token.
++	 */
++	*buf = tr->buf + sock->recv_offset;
++	tr->token.group_impl = _sock->group_impl;
++	*token = &tr->token;
++
++	return tr->len - sock->recv_offset;
++}
++
+ static ssize_t
+ sock_request_advance_offset(struct spdk_sock_request *req, ssize_t rc)
+ {
+@@ -1344,9 +1406,7 @@ sock_uring_group_reap(struct spdk_uring_sock_group_impl *group, int max, int max
+ 
+ 		/* If the socket was removed from the group, do not add it to socks array */
+ 		if (spdk_unlikely(sock->group == NULL)) {
+-			assert(sock->pending_recv == true);
+-			sock->pending_recv = false;
+-			TAILQ_REMOVE(&group->pending_recv, sock, link);
++			uring_sock_clear_pending_recv(group, sock);
+ 			continue;
+ 		}
+ 
+@@ -1873,8 +1933,7 @@ uring_sock_group_impl_remove_sock(struct spdk_sock_group_impl *_group,
+ 	assert(sock->errqueue_task.status == SPDK_URING_SOCK_TASK_NOT_IN_USE);
+ 
+ 	if (sock->pending_recv) {
+-		TAILQ_REMOVE(&group->pending_recv, sock, link);
+-		sock->pending_recv = false;
++		uring_sock_clear_pending_recv(group, sock);
+ 	}
+ 	assert(sock->pending_recv == false);
+ 
+@@ -2003,6 +2062,7 @@ static struct spdk_net_impl g_uring_net_impl = {
+ 	.recv		= uring_sock_recv,
+ 	.readv		= uring_sock_readv,
+ 	.writev		= uring_sock_writev,
++	.recv_next	= uring_sock_recv_next,
+ 	.writev_async	= uring_sock_writev_async,
+ 	.flush          = uring_sock_flush,
+ 	.set_recvlowat	= uring_sock_set_recvlowat,
+@@ -2017,6 +2077,7 @@ static struct spdk_net_impl g_uring_net_impl = {
+ 	.group_impl_remove_sock	= uring_sock_group_impl_remove_sock,
+ 	.group_impl_poll	= uring_sock_group_impl_poll,
+ 	.group_impl_close	= uring_sock_group_impl_close,
++	.group_impl_release_buf = uring_sock_group_impl_release_buf,
+ 	.get_opts		= uring_sock_impl_get_opts,
+ 	.set_opts		= uring_sock_impl_set_opts,
+ };
+diff --git a/test/unit/lib/sock/uring.c/uring_ut.c b/test/unit/lib/sock/uring.c/uring_ut.c
+index 5aa51e095..4f7f19bbc 100644
+--- a/test/unit/lib/sock/uring.c/uring_ut.c
++++ b/test/unit/lib/sock/uring.c/uring_ut.c
+@@ -403,6 +403,41 @@ test_uring_sock_connect_cb_readv(void)
+ 	CU_ASSERT(g_ut_sock_destroy_cnt == 1);
+ }
+ 
++static void
++test_recv_next_token_owner(void)
++{
++	struct spdk_uring_sock_group_impl group = {};
++	struct spdk_uring_sock sock = {};
++	char data[16] = {};
++	struct spdk_uring_buf_tracker tracker = {.buf = data, .len = sizeof(data)};
++	struct spdk_sock_buf_token *token = NULL;
++	void *buf = NULL;
++	int rc;
++
++	TAILQ_INIT(&group.pending_recv);
++	STAILQ_INIT(&group.free_trackers);
++	STAILQ_INIT(&sock.recv_stream);
++	STAILQ_INSERT_TAIL(&sock.recv_stream, &tracker, link);
++	TAILQ_INSERT_TAIL(&group.pending_recv, &sock, link);
++	sock.pending_recv = true;
++	sock.base.group_impl = &group.base;
++	sock.recv_offset = 3;
++
++	rc = uring_sock_recv_next(&sock.base, &buf, &token);
++	CU_ASSERT_EQUAL(rc, sizeof(data) - 3);
++	CU_ASSERT(buf == data + 3);
++	SPDK_CU_ASSERT_FATAL(token == &tracker.token);
++	CU_ASSERT(token->group_impl == &group.base);
++	CU_ASSERT(STAILQ_EMPTY(&sock.recv_stream));
++	CU_ASSERT(!sock.pending_recv);
++
++	sock.base.group_impl = NULL;
++	rc = uring_sock_group_impl_release_buf(&group.base, buf, token);
++	CU_ASSERT_EQUAL(rc, 0);
++	CU_ASSERT(STAILQ_FIRST(&group.free_trackers) == &tracker);
++	CU_ASSERT_EQUAL(tracker.len, 0);
++}
++
+ int
+ main(int argc, char **argv)
+ {
+@@ -419,6 +454,7 @@ main(int argc, char **argv)
+ 	CU_ADD_TEST(suite, test_uring_sock_connect_cb);
+ 	CU_ADD_TEST(suite, test_uring_sock_connect_cb_is_connected);
+ 	CU_ADD_TEST(suite, test_uring_sock_connect_cb_readv);
++	CU_ADD_TEST(suite, test_recv_next_token_owner);
+ 
+ 	num_failures = spdk_ut_run_tests(argc, argv, NULL);
+ 

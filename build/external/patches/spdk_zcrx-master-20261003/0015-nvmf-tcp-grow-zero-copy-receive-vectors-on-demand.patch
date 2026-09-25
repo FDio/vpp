@@ -1,0 +1,849 @@
+From d3b4fde97fe3330025b8cb289042815bed674f59 Mon Sep 17 00:00:00 2001
+From: Jerome Tollet <jtollet@cisco.com>
+Date: Fri, 4 Sep 2026 18:02:45 +0200
+Subject: [PATCH 15/15] nvmf/tcp: grow zero-copy receive vectors on demand
+
+Highly fragmented zero-copy receives can exhaust the inline request or
+PDU iovec array and force NVMe/TCP to materialize the payload. Reserving
+the maximum number of entries in every object avoids that copy but adds a
+large permanent memory cost.
+
+Grow the request, segment-reference, and PDU vectors geometrically only
+when the inline capacity is exceeded. Retain expanded vectors for object
+reuse and keep the copied fallback at the uint8_t iovcnt limit or when an
+allocation fails.
+
+Add unit coverage for growth, reuse, the maximum capacity, and fallback.
+
+Change-Id: I8034ca47c1dced798e7597a8b5955a961fc76d3c
+Signed-off-by: Jerome Tollet <jtollet@cisco.com>
+---
+ include/spdk_internal/nvme_tcp.h  |  37 +++-
+ lib/nvmf/tcp.c                    | 273 ++++++++++++++++++++++++++----
+ test/unit/lib/nvmf/tcp.c/tcp_ut.c | 196 +++++++++++++++++++--
+ 3 files changed, 450 insertions(+), 56 deletions(-)
+
+diff --git a/include/spdk_internal/nvme_tcp.h b/include/spdk_internal/nvme_tcp.h
+index ed791ee0b..cd8ee4ca5 100644
+--- a/include/spdk_internal/nvme_tcp.h
++++ b/include/spdk_internal/nvme_tcp.h
+@@ -116,7 +116,9 @@ struct nvme_tcp_pdu {
+ 	struct iovec					iov[NVME_TCP_MAX_SGL_DESCRIPTORS * 2];
+ 
+ 	struct iovec					data_iov[NVME_TCP_MAX_SGL_DESCRIPTORS];
++	struct iovec					*data_iov_ext;
+ 	uint32_t					data_iovcnt;
++	uint16_t					data_iov_ext_capacity;
+ 	uint32_t					data_len;
+ 
+ 	uint32_t					rw_offset;
+@@ -130,6 +132,18 @@ struct nvme_tcp_pdu {
+ 	void						*qpair;
+ 	SLIST_ENTRY(nvme_tcp_pdu)			slist;
+ };
++
++static inline struct iovec *
++nvme_tcp_pdu_get_data_iovs(struct nvme_tcp_pdu *pdu)
++{
++	return pdu->data_iov_ext != NULL ? pdu->data_iov_ext : pdu->data_iov;
++}
++
++static inline uint16_t
++nvme_tcp_pdu_get_data_iov_capacity(const struct nvme_tcp_pdu *pdu)
++{
++	return pdu->data_iov_ext != NULL ? pdu->data_iov_ext_capacity : NVME_TCP_MAX_SGL_DESCRIPTORS;
++}
+ SPDK_STATIC_ASSERT(offsetof(struct nvme_tcp_pdu,
+ 			    sock_req) + sizeof(struct spdk_sock_request) == offsetof(struct nvme_tcp_pdu, iov),
+ 		   "Compiler inserted padding between iov and sock_req");
+@@ -210,9 +224,10 @@ nvme_tcp_pdu_calc_data_digest(struct nvme_tcp_pdu *pdu)
+ 	assert(pdu->data_len != 0);
+ 
+ 	if (spdk_likely(!pdu->dif_ctx)) {
+-		crc32c = spdk_crc32c_iov_update(pdu->data_iov, pdu->data_iovcnt, crc32c);
++		crc32c = spdk_crc32c_iov_update(nvme_tcp_pdu_get_data_iovs(pdu),
++						pdu->data_iovcnt, crc32c);
+ 	} else {
+-		spdk_dif_update_crc32c_stream(pdu->data_iov, pdu->data_iovcnt,
++		spdk_dif_update_crc32c_stream(nvme_tcp_pdu_get_data_iovs(pdu), pdu->data_iovcnt,
+ 					      0, pdu->data_len, &crc32c, pdu->dif_ctx);
+ 	}
+ 
+@@ -315,12 +330,15 @@ nvme_tcp_build_iovs(struct iovec *iov, int iovcnt, struct nvme_tcp_pdu *pdu,
+ 	plen += pdu->data_len;
+ 	if (spdk_likely(!pdu->dif_ctx)) {
+ 		for (i = 0; i < pdu->data_iovcnt; i++) {
+-			if (!spdk_iov_sgl_append(&sgl, pdu->data_iov[i].iov_base, pdu->data_iov[i].iov_len)) {
++			struct iovec *data_iovs = nvme_tcp_pdu_get_data_iovs(pdu);
++
++			if (!spdk_iov_sgl_append(&sgl, data_iovs[i].iov_base, data_iovs[i].iov_len)) {
+ 				goto end;
+ 			}
+ 		}
+ 	} else {
+-		if (!_nvme_tcp_sgl_append_multi_with_md(&sgl, pdu->data_iov, pdu->data_iovcnt,
++		if (!_nvme_tcp_sgl_append_multi_with_md(&sgl, nvme_tcp_pdu_get_data_iovs(pdu),
++							pdu->data_iovcnt,
+ 							pdu->data_len, pdu->dif_ctx)) {
+ 			goto end;
+ 		}
+@@ -345,8 +363,10 @@ end:
+ static void
+ nvme_tcp_pdu_set_data(struct nvme_tcp_pdu *pdu, void *data, uint32_t data_len)
+ {
+-	pdu->data_iov[0].iov_base = data;
+-	pdu->data_iov[0].iov_len = data_len;
++	struct iovec *data_iovs = nvme_tcp_pdu_get_data_iovs(pdu);
++
++	data_iovs[0].iov_base = data;
++	data_iovs[0].iov_len = data_len;
+ 	pdu->data_iovcnt = 1;
+ 	pdu->data_len = data_len;
+ }
+@@ -372,7 +392,8 @@ nvme_tcp_pdu_set_data_buf(struct nvme_tcp_pdu *pdu,
+ 	if (iovcnt == 1) {
+ 		nvme_tcp_pdu_set_data(pdu, (uint8_t *)iov[0].iov_base + buf_offset, buf_len);
+ 	} else {
+-		spdk_iov_sgl_init(&pdu_sgl, pdu->data_iov, NVME_TCP_MAX_SGL_DESCRIPTORS, 0);
++		spdk_iov_sgl_init(&pdu_sgl, nvme_tcp_pdu_get_data_iovs(pdu),
++				  nvme_tcp_pdu_get_data_iov_capacity(pdu), 0);
+ 		spdk_iov_sgl_init(&buf_sgl, iov, iovcnt, 0);
+ 
+ 		spdk_iov_sgl_advance(&buf_sgl, buf_offset);
+@@ -393,7 +414,7 @@ nvme_tcp_pdu_set_data_buf(struct nvme_tcp_pdu *pdu,
+ 		assert(remain_len == 0);
+ 		assert(pdu_sgl.total_size == buf_len);
+ 
+-		pdu->data_iovcnt = NVME_TCP_MAX_SGL_DESCRIPTORS - pdu_sgl.iovcnt;
++		pdu->data_iovcnt = nvme_tcp_pdu_get_data_iov_capacity(pdu) - pdu_sgl.iovcnt;
+ 	}
+ 	pdu->data_len = data_len;
+ }
+diff --git a/lib/nvmf/tcp.c b/lib/nvmf/tcp.c
+index d5cebd37d..b8c0d7ea0 100644
+--- a/lib/nvmf/tcp.c
++++ b/lib/nvmf/tcp.c
+@@ -264,6 +264,7 @@ struct spdk_nvmf_tcp_req  {
+ 	STAILQ_ENTRY(spdk_nvmf_tcp_req)		control_msg_link;
+ 
+ 	struct spdk_nvmf_tcp_stream_segment	**segment_refs;
++	struct spdk_nvmf_tcp_stream_segment	**segment_refs_ext;
+ 	uint32_t				segment_cnt;
+ };
+ 
+@@ -349,6 +350,35 @@ struct spdk_nvmf_tcp_qpair {
+ 	bool					pending_flush;
+ };
+ 
++static inline struct iovec *
++nvmf_tcp_req_iovs(struct spdk_nvmf_tcp_req *tcp_req)
++{
++	return spdk_nvmf_request_get_iov(&tcp_req->req);
++}
++
++static inline struct iovec *
++nvmf_tcp_pdu_data_iovs(struct nvme_tcp_pdu *pdu)
++{
++	return nvme_tcp_pdu_get_data_iovs(pdu);
++}
++
++static inline void
++nvmf_tcp_pdu_reset_data_iovs(struct nvme_tcp_pdu *pdu)
++{
++	pdu->data_iovcnt = 0;
++}
++
++static inline void
++nvmf_tcp_pdu_reset(struct nvme_tcp_pdu *pdu, size_t len)
++{
++	struct iovec *data_iov_ext = pdu->data_iov_ext;
++	uint16_t data_iov_ext_capacity = pdu->data_iov_ext_capacity;
++
++	memset(pdu, 0, len);
++	pdu->data_iov_ext = data_iov_ext;
++	pdu->data_iov_ext_capacity = data_iov_ext_capacity;
++}
++
+ struct spdk_nvmf_tcp_control_msg {
+ 	STAILQ_ENTRY(spdk_nvmf_tcp_control_msg) link;
+ };
+@@ -460,7 +490,7 @@ nvmf_tcp_req_pdu_init(struct spdk_nvmf_tcp_req *tcp_req)
+ {
+ 	assert(tcp_req->pdu_in_use == false);
+ 
+-	memset(tcp_req->pdu, 0, sizeof(*tcp_req->pdu));
++	nvmf_tcp_pdu_reset(tcp_req->pdu, sizeof(*tcp_req->pdu));
+ 	tcp_req->pdu->qpair = SPDK_CONTAINEROF(tcp_req->req.qpair, struct spdk_nvmf_tcp_qpair, qpair);
+ 
+ 	return tcp_req->pdu;
+@@ -685,6 +715,7 @@ _nvmf_tcp_qpair_destroy(void *_tqpair)
+ 	struct spdk_nvmf_tcp_qpair *tqpair = _tqpair;
+ 	spdk_nvmf_transport_qpair_fini_cb cb_fn = tqpair->fini_cb_fn;
+ 	void *cb_arg = tqpair->fini_cb_arg;
++	uint32_t i;
+ 	int rc, err = 0;
+ 
+ 	spdk_trace_record(TRACE_TCP_QP_DESTROY, tqpair->qpair.trace_id, 0, 0);
+@@ -720,6 +751,17 @@ _nvmf_tcp_qpair_destroy(void *_tqpair)
+ 	 * terminates the connection.
+ 	 */
+ 	spdk_poller_unregister(&tqpair->timeout_poller);
++	if (tqpair->reqs != NULL) {
++		for (i = 0; i < tqpair->resource_count; i++) {
++			free(tqpair->reqs[i].req.iov_ext);
++			free(tqpair->reqs[i].segment_refs_ext);
++		}
++	}
++	if (tqpair->pdus != NULL) {
++		for (i = 0; i < 2 * tqpair->resource_count + 1; i++) {
++			free(tqpair->pdus[i].data_iov_ext);
++		}
++	}
+ 	spdk_dma_free(tqpair->pdus);
+ 	free(tqpair->segment_refs);
+ 	free(tqpair->reqs);
+@@ -1333,7 +1375,8 @@ pdu_data_crc32_compute(struct nvme_tcp_pdu *pdu)
+ 		/* Only support this limitated case for the first step */
+ 		if (spdk_likely((pdu->data_len % SPDK_NVME_TCP_DIGEST_ALIGNMENT == 0)
+ 				&& tqpair->group)) {
+-			rc = spdk_accel_submit_crc32cv(tqpair->group->accel_channel, &pdu->data_digest_crc32, pdu->data_iov,
++			rc = spdk_accel_submit_crc32cv(tqpair->group->accel_channel, &pdu->data_digest_crc32,
++						       nvme_tcp_pdu_get_data_iovs(pdu),
+ 						       pdu->data_iovcnt, 0, data_crc32_accel_done, pdu);
+ 			if (spdk_likely(rc == 0)) {
+ 				return;
+@@ -2134,13 +2177,13 @@ nvmf_tcp_h2c_data_hdr_handle(struct spdk_nvmf_tcp_transport *ttransport,
+ 
+ 	if (tqpair->use_zero_copy_rx) {
+ 
+-		/* Zero-copy receive appends segments to pdu->data_iov and tcp_req->req.iov
++		/* Zero-copy receive appends segments to the request payload vector
+ 		 * in order.  datao is validated above to match h2c_offset, so the ordering
+ 		 * guarantee means offsets are handled implicitly. */
+-		pdu->data_iovcnt = 0;
++		nvmf_tcp_pdu_reset_data_iovs(pdu);
+ 		pdu->data_len = h2c_data->datal;
+ 	} else {
+-		nvme_tcp_pdu_set_data_buf(pdu, tcp_req->req.iov, tcp_req->req.iovcnt,
++		nvme_tcp_pdu_set_data_buf(pdu, nvmf_tcp_req_iovs(tcp_req), tcp_req->req.iovcnt,
+ 					  h2c_data->datao, h2c_data->datal);
+ 	}
+ 	nvmf_tcp_qpair_set_recv_state(tqpair, NVME_TCP_PDU_RECV_STATE_AWAIT_PDU_PAYLOAD);
+@@ -2392,7 +2435,8 @@ nvmf_tcp_pdu_payload_handle(struct spdk_nvmf_tcp_qpair *tqpair, struct nvme_tcp_
+ 	if (pdu->ddgst_enable) {
+ 		if (tqpair->qpair.qid != 0 && tqpair->group &&
+ 		    (pdu->data_len % SPDK_NVME_TCP_DIGEST_ALIGNMENT == 0)) {
+-			rc = spdk_accel_submit_crc32cv(tqpair->group->accel_channel, &pdu->data_digest_crc32, pdu->data_iov,
++			rc = spdk_accel_submit_crc32cv(tqpair->group->accel_channel, &pdu->data_digest_crc32,
++						       nvme_tcp_pdu_get_data_iovs(pdu),
+ 						       pdu->data_iovcnt, 0, data_crc32_calc_done, pdu);
+ 			if (spdk_likely(rc == 0)) {
+ 				return;
+@@ -2634,11 +2678,154 @@ err:
+ 	nvmf_tcp_send_c2h_term_req(tqpair, pdu, fes, error_offset);
+ }
+ 
++static int
++nvmf_tcp_req_ensure_zcopy_iov_capacity(struct spdk_nvmf_tcp_req *tcp_req,
++				       uint16_t required)
++{
++	struct spdk_nvmf_request *req = &tcp_req->req;
++	struct spdk_nvmf_tcp_stream_segment **segment_refs;
++	struct iovec *iovs;
++	uint16_t capacity;
++
++	capacity = spdk_nvmf_request_get_iov_capacity(req);
++	if (required <= capacity) {
++		return 0;
++	}
++
++	if (required > UINT8_MAX) {
++		return -ENOSPC;
++	}
++
++	while (capacity < required) {
++		capacity = spdk_min((uint16_t)(capacity * 2), (uint16_t)UINT8_MAX);
++	}
++
++	iovs = calloc(capacity, sizeof(*iovs));
++	segment_refs = calloc(capacity, sizeof(*segment_refs));
++	if (iovs == NULL || segment_refs == NULL) {
++		free(iovs);
++		free(segment_refs);
++		return -ENOMEM;
++	}
++
++	memcpy(iovs, nvmf_tcp_req_iovs(tcp_req), req->iovcnt * sizeof(*iovs));
++	memcpy(segment_refs, tcp_req->segment_refs,
++	       tcp_req->segment_cnt * sizeof(*segment_refs));
++
++	free(req->iov_ext);
++	free(tcp_req->segment_refs_ext);
++	req->iov_ext = iovs;
++	req->iov_ext_capacity = capacity;
++	tcp_req->segment_refs = segment_refs;
++	tcp_req->segment_refs_ext = segment_refs;
++
++	return 0;
++}
++
++static int
++nvmf_tcp_pdu_ensure_zcopy_iov_capacity(struct nvme_tcp_pdu *pdu, uint16_t required)
++{
++	struct iovec *iovs;
++	uint16_t capacity;
++
++	capacity = nvme_tcp_pdu_get_data_iov_capacity(pdu);
++	if (required <= capacity) {
++		return 0;
++	}
++
++	if (required > UINT8_MAX) {
++		return -ENOSPC;
++	}
++
++	while (capacity < required) {
++		capacity = spdk_min((uint16_t)(capacity * 2), (uint16_t)UINT8_MAX);
++	}
++
++	iovs = calloc(capacity, sizeof(*iovs));
++	if (iovs == NULL) {
++		return -ENOMEM;
++	}
++
++	memcpy(iovs, nvmf_tcp_pdu_data_iovs(pdu), pdu->data_iovcnt * sizeof(*iovs));
++	free(pdu->data_iov_ext);
++	pdu->data_iov_ext = iovs;
++	pdu->data_iov_ext_capacity = capacity;
++
++	return 0;
++}
++
++static int
++nvmf_tcp_double_buffer_request_payload(struct spdk_nvmf_tcp_qpair *tqpair,
++				       struct spdk_nvmf_tcp_req *tcp_req, struct nvme_tcp_pdu *pdu)
++{
++	struct spdk_nvmf_tcp_stream_segment *segment;
++	struct iovec *pdu_iovs, *req_iovs;
++	size_t total_sz = 0;
++	void *double_buf;
++	uint16_t i, iovcnt;
++	size_t copy_offset;
++
++	iovcnt = tcp_req->req.iovcnt;
++	if (iovcnt == 0) {
++		return -ENOSPC;
++	}
++
++	assert(tcp_req->segment_refs != NULL);
++	assert(tcp_req->segment_cnt == iovcnt);
++	req_iovs = nvmf_tcp_req_iovs(tcp_req);
++	for (i = 0; i < iovcnt; i++) {
++		total_sz += req_iovs[i].iov_len;
++	}
++
++	SPDK_WARNLOG("Double buffering scattered zero-copy request on tqpair=%p\n", tqpair);
++	double_buf = spdk_malloc(total_sz, PAGE_SIZE, NULL, SPDK_ENV_SOCKET_ID_ANY,
++				 SPDK_MALLOC_DMA);
++	if (double_buf == NULL) {
++		SPDK_ERRLOG("Failed to allocate buffer for scattered request\n");
++		return -ENOMEM;
++	}
++
++	copy_offset = 0;
++	for (i = 0; i < iovcnt; i++) {
++		memcpy((uint8_t *)double_buf + copy_offset, req_iovs[i].iov_base,
++		       req_iovs[i].iov_len);
++		copy_offset += req_iovs[i].iov_len;
++
++		segment = tcp_req->segment_refs[i];
++		if (segment == NULL) {
++			spdk_free(req_iovs[i].iov_base);
++		} else {
++			nvmf_tcp_segment_put(tqpair, segment);
++		}
++	}
++
++	memset(req_iovs, 0, iovcnt * sizeof(*req_iovs));
++	memset(tcp_req->segment_refs, 0,
++	       tcp_req->segment_cnt * sizeof(*tcp_req->segment_refs));
++
++	/* The current PDU iovecs are a trailing subset of the request iovecs
++	 * materialized above. Do not retain pointers to their released segments. */
++	pdu_iovs = nvmf_tcp_pdu_data_iovs(pdu);
++	memset(pdu_iovs, 0, pdu->data_iovcnt * sizeof(*pdu_iovs));
++	nvmf_tcp_pdu_reset_data_iovs(pdu);
++
++	req_iovs[0].iov_base = double_buf;
++	req_iovs[0].iov_len = total_sz;
++	tcp_req->req.iovcnt = 1;
++
++	/* A null entry is a signal that this was double buffered. */
++	tcp_req->segment_refs[0] = NULL;
++	tcp_req->segment_cnt = 1;
++
++	return 0;
++}
++
+ static int
+ nvmf_tcp_double_buffer_scattered_payload(struct spdk_nvmf_tcp_qpair *tqpair,
+ 		struct spdk_nvmf_tcp_req *tcp_req, struct nvme_tcp_pdu *pdu)
+ {
+ 	struct spdk_nvmf_tcp_stream_segment *segment;
++	struct iovec *pdu_iovs, *req_iovs;
+ 	size_t total_sz = 0;
+ 	void *double_buf;
+ 	void *buf;
+@@ -2646,8 +2833,10 @@ nvmf_tcp_double_buffer_scattered_payload(struct spdk_nvmf_tcp_qpair *tqpair,
+ 	int i, j;
+ 	size_t copy_offset;
+ 
++	pdu_iovs = nvmf_tcp_pdu_data_iovs(pdu);
++	req_iovs = nvmf_tcp_req_iovs(tcp_req);
+ 	for (i = 0; i < (int)pdu->data_iovcnt; i++) {
+-		total_sz += pdu->data_iov[i].iov_len;
++		total_sz += pdu_iovs[i].iov_len;
+ 	}
+ 
+ 	SPDK_WARNLOG("Double buffering scattered zero-copy payload on tqpair=%p\n", tqpair);
+@@ -2662,19 +2851,19 @@ nvmf_tcp_double_buffer_scattered_payload(struct spdk_nvmf_tcp_qpair *tqpair,
+ 	/* We walk backward as we copy because we may not get all the way to the beginning of the tcp_req iov array. */
+ 	copy_offset = total_sz;
+ 	for (i = (int)pdu->data_iovcnt - 1, j = tcp_req->req.iovcnt - 1; i > -1; i--, j--) {
+-		buf = pdu->data_iov[i].iov_base;
+-		len = pdu->data_iov[i].iov_len;
++		buf = pdu_iovs[i].iov_base;
++		len = pdu_iovs[i].iov_len;
+ 		segment = tcp_req->segment_refs[j];
+ 
+-		tcp_req->req.iov[j].iov_base = NULL;
+-		tcp_req->req.iov[j].iov_len = 0;
++		req_iovs[j].iov_base = NULL;
++		req_iovs[j].iov_len = 0;
+ 		tcp_req->req.iovcnt--;
+ 
+ 		tcp_req->segment_refs[j] = NULL;
+ 		tcp_req->segment_cnt--;
+ 
+-		pdu->data_iov[i].iov_base = NULL;
+-		pdu->data_iov[i].iov_len = 0;
++		pdu_iovs[i].iov_base = NULL;
++		pdu_iovs[i].iov_len = 0;
+ 		pdu->data_iovcnt--;
+ 
+ 		copy_offset -= len;
+@@ -2683,8 +2872,8 @@ nvmf_tcp_double_buffer_scattered_payload(struct spdk_nvmf_tcp_qpair *tqpair,
+ 		nvmf_tcp_segment_put(tqpair, segment);
+ 	}
+ 
+-	tcp_req->req.iov[tcp_req->req.iovcnt].iov_base = double_buf;
+-	tcp_req->req.iov[tcp_req->req.iovcnt].iov_len = total_sz;
++	req_iovs[tcp_req->req.iovcnt].iov_base = double_buf;
++	req_iovs[tcp_req->req.iovcnt].iov_len = total_sz;
+ 	tcp_req->req.iovcnt++;
+ 
+ 	/* A null entry is a signal that this was double buffered. */
+@@ -2699,6 +2888,7 @@ nvmf_tcp_read_data_zcopy(struct spdk_nvmf_tcp_qpair *tqpair, struct spdk_nvmf_tc
+ 			 struct nvme_tcp_pdu *pdu)
+ {
+ 	struct spdk_nvmf_tcp_stream_segment *segment;
++	struct iovec *pdu_iovs, *req_iovs;
+ 	uint32_t length;
+ 	int ret;
+ 
+@@ -2708,6 +2898,7 @@ nvmf_tcp_read_data_zcopy(struct spdk_nvmf_tcp_qpair *tqpair, struct spdk_nvmf_tc
+ 	ret = 0;
+ 	while (length > 0) {
+ 		int len;
++		int pdu_rc, req_rc;
+ 
+ 		segment = STAILQ_FIRST(&tqpair->pending_stream);
+ 		if (segment == NULL) {
+@@ -2718,22 +2909,31 @@ nvmf_tcp_read_data_zcopy(struct spdk_nvmf_tcp_qpair *tqpair, struct spdk_nvmf_tc
+ 
+ 		len = spdk_min(segment->len - tqpair->stream_offset, (uint32_t)length);
+ 
+-		if (pdu->data_iovcnt >= SPDK_COUNTOF(pdu->data_iov) - 1 ||
+-		    tcp_req->req.iovcnt >= SPDK_COUNTOF(tcp_req->req.iov) - 1) {
++		req_rc = nvmf_tcp_req_ensure_zcopy_iov_capacity(tcp_req,
++				tcp_req->req.iovcnt + 2);
++		pdu_rc = nvmf_tcp_pdu_ensure_zcopy_iov_capacity(pdu,
++				pdu->data_iovcnt + 2);
++		if (req_rc != 0 || pdu_rc != 0) {
+ 			int rc;
+ 
+-			rc = nvmf_tcp_double_buffer_scattered_payload(tqpair, tcp_req, pdu);
++			if (req_rc != 0) {
++				rc = nvmf_tcp_double_buffer_request_payload(tqpair, tcp_req, pdu);
++			} else {
++				rc = nvmf_tcp_double_buffer_scattered_payload(tqpair, tcp_req, pdu);
++			}
+ 			if (rc != 0) {
+ 				return rc;
+ 			}
+ 		}
+ 
+-		pdu->data_iov[pdu->data_iovcnt].iov_base = segment->buf + tqpair->stream_offset;
+-		pdu->data_iov[pdu->data_iovcnt].iov_len = len;
++		req_iovs = nvmf_tcp_req_iovs(tcp_req);
++		pdu_iovs = nvmf_tcp_pdu_data_iovs(pdu);
++		pdu_iovs[pdu->data_iovcnt].iov_base = segment->buf + tqpair->stream_offset;
++		pdu_iovs[pdu->data_iovcnt].iov_len = len;
+ 		pdu->data_iovcnt++;
+ 
+-		tcp_req->req.iov[tcp_req->req.iovcnt].iov_base = segment->buf + tqpair->stream_offset;
+-		tcp_req->req.iov[tcp_req->req.iovcnt].iov_len = len;
++		req_iovs[tcp_req->req.iovcnt].iov_base = segment->buf + tqpair->stream_offset;
++		req_iovs[tcp_req->req.iovcnt].iov_len = len;
+ 		tcp_req->req.iovcnt++;
+ 
+ 		tcp_req->segment_refs[tcp_req->segment_cnt] = segment;
+@@ -2840,7 +3040,9 @@ nvmf_tcp_read_payload_data(struct spdk_nvmf_tcp_qpair *tqpair, struct nvme_tcp_p
+ 	spdk_iov_sgl_init(&sgl, iov, NVME_TCP_MAX_SGL_DESCRIPTORS + 1, pdu->rw_offset);
+ 
+ 	for (i = 0; i < (int)pdu->data_iovcnt; i++) {
+-		if (!spdk_iov_sgl_append(&sgl, pdu->data_iov[i].iov_base, pdu->data_iov[i].iov_len)) {
++		struct iovec *data_iovs = nvmf_tcp_pdu_data_iovs(pdu);
++
++		if (!spdk_iov_sgl_append(&sgl, data_iovs[i].iov_base, data_iovs[i].iov_len)) {
+ 			goto end;
+ 		}
+ 	}
+@@ -2911,7 +3113,7 @@ nvmf_tcp_sock_process(struct spdk_nvmf_tcp_qpair *tqpair)
+ 				tqpair->pdu_in_progress = pdu;
+ 				tqpair->tcp_pdu_working_count++;
+ 			}
+-			memset(pdu, 0, offsetof(struct nvme_tcp_pdu, qpair));
++			nvmf_tcp_pdu_reset(pdu, offsetof(struct nvme_tcp_pdu, qpair));
+ 			nvmf_tcp_qpair_set_recv_state(tqpair, NVME_TCP_PDU_RECV_STATE_AWAIT_PDU_CH);
+ 		/* FALLTHROUGH */
+ 		case NVME_TCP_PDU_RECV_STATE_AWAIT_PDU_CH:
+@@ -3105,7 +3307,7 @@ nvmf_tcp_req_parse_sgl(struct spdk_nvmf_tcp_req *tcp_req,
+ 
+ 		nvmf_tcp_req_set_state(tcp_req, TCP_REQUEST_STATE_HAVE_BUFFER);
+ 		SPDK_DEBUGLOG(nvmf_tcp, "Request %p took %d buffer/s from central pool, and data=%p\n",
+-			      tcp_req, req->iovcnt, req->iov[0].iov_base);
++			      tcp_req, req->iovcnt, spdk_nvmf_request_get_iov(req)[0].iov_base);
+ 		return;
+ 	} else if (sgl->generic.type == SPDK_NVME_SGL_TYPE_DATA_BLOCK &&
+ 		   sgl->unkeyed.subtype == SPDK_NVME_SGL_SUBTYPE_OFFSET) {
+@@ -3156,14 +3358,15 @@ nvmf_tcp_req_parse_sgl(struct spdk_nvmf_tcp_req *tcp_req,
+ 				SPDK_DEBUGLOG(nvmf_tcp, "Getting a buffer from control msg list\n");
+ 				tgroup = SPDK_CONTAINEROF(group, struct spdk_nvmf_tcp_poll_group, group);
+ 				assert(tgroup->control_msg_list);
+-				req->iov[0].iov_base = nvmf_tcp_control_msg_get(tgroup->control_msg_list, tcp_req);
+-				if (!req->iov[0].iov_base) {
++				spdk_nvmf_request_get_iov(req)[0].iov_base =
++					nvmf_tcp_control_msg_get(tgroup->control_msg_list, tcp_req);
++				if (!spdk_nvmf_request_get_iov(req)[0].iov_base) {
+ 					/* No available buffers. Queue this request up. */
+ 					SPDK_DEBUGLOG(nvmf_tcp, "No available ICD buffers. Queueing request %p\n", tcp_req);
+ 					nvmf_tcp_qpair_set_recv_state(tqpair, NVME_TCP_PDU_RECV_STATE_AWAIT_PDU_BUF);
+ 					return;
+ 				}
+-				req->iov[0].iov_len = length;
++				spdk_nvmf_request_get_iov(req)[0].iov_len = length;
+ 				req->iovcnt = 1;
+ 			} else {
+ 				SPDK_ERRLOG("In-capsule data length 0x%x exceeds capsule length 0x%x\n",
+@@ -3172,8 +3375,8 @@ nvmf_tcp_req_parse_sgl(struct spdk_nvmf_tcp_req *tcp_req,
+ 				goto fatal_err;
+ 			}
+ 		} else {
+-			req->iov[0].iov_base = tcp_req->buf;
+-			req->iov[0].iov_len = length;
++			spdk_nvmf_request_get_iov(req)[0].iov_base = tcp_req->buf;
++			spdk_nvmf_request_get_iov(req)[0].iov_len = length;
+ 			req->iovcnt = 1;
+ 		}
+ 
+@@ -3244,7 +3447,7 @@ _nvmf_tcp_send_c2h_data(struct spdk_nvmf_tcp_qpair *tqpair,
+ 
+ 	c2h_data->common.plen = plen;
+ 
+-	nvme_tcp_pdu_set_data_buf(rsp_pdu, tcp_req->req.iov, tcp_req->req.iovcnt,
++	nvme_tcp_pdu_set_data_buf(rsp_pdu, nvmf_tcp_req_iovs(tcp_req), tcp_req->req.iovcnt,
+ 				  c2h_data->datao, c2h_data->datal);
+ 
+ 
+@@ -3477,9 +3680,9 @@ nvmf_tcp_req_process(struct spdk_nvmf_tcp_transport *ttransport,
+ 					/* No need to send r2t, contained in the capsuled data */
+ 					if (tqpair->use_zero_copy_rx) {
+ 						pdu->data_len = tcp_req->req.length;
+-						pdu->data_iovcnt = 0;
++						nvmf_tcp_pdu_reset_data_iovs(pdu);
+ 					} else {
+-						nvme_tcp_pdu_set_data_buf(pdu, tcp_req->req.iov, tcp_req->req.iovcnt,
++						nvme_tcp_pdu_set_data_buf(pdu, nvmf_tcp_req_iovs(tcp_req), tcp_req->req.iovcnt,
+ 									  0, tcp_req->req.length);
+ 					}
+ 					nvmf_tcp_qpair_set_recv_state(tqpair, NVME_TCP_PDU_RECV_STATE_AWAIT_PDU_PAYLOAD);
+@@ -3654,7 +3857,7 @@ nvmf_tcp_req_process(struct spdk_nvmf_tcp_transport *ttransport,
+ 						assert(tgroup->control_msg_list);
+ 						SPDK_DEBUGLOG(nvmf_tcp, "Put buf to control msg list\n");
+ 						nvmf_tcp_control_msg_put(tgroup->control_msg_list,
+-									 tcp_req->req.iov[0].iov_base);
++									 nvmf_tcp_req_iovs(tcp_req)[0].iov_base);
+ 					}
+ 				}
+ 			} else {
+@@ -3668,7 +3871,7 @@ nvmf_tcp_req_process(struct spdk_nvmf_tcp_transport *ttransport,
+ 
+ 					if (segment == NULL) {
+ 						/* This signals a double buffer */
+-						spdk_free(tcp_req->req.iov[i].iov_base);
++						spdk_free(nvmf_tcp_req_iovs(tcp_req)[i].iov_base);
+ 					} else {
+ 						nvmf_tcp_segment_put(tqpair, segment);
+ 					}
+diff --git a/test/unit/lib/nvmf/tcp.c/tcp_ut.c b/test/unit/lib/nvmf/tcp.c/tcp_ut.c
+index 2b579cd5a..672a7c02a 100644
+--- a/test/unit/lib/nvmf/tcp.c/tcp_ut.c
++++ b/test/unit/lib/nvmf/tcp.c/tcp_ut.c
+@@ -773,16 +773,73 @@ test_nvmf_tcp_in_capsule_data_handle(void)
+ }
+ 
+ static void
+-test_nvmf_tcp_read_data_zcopy_fallback(void)
++test_nvmf_tcp_zcopy_iov_growth(void)
+ {
+-	struct spdk_nvmf_tcp_stream_segment segments[NVME_TCP_MAX_SGL_DESCRIPTORS] = {};
++	struct spdk_nvmf_tcp_stream_segment segment = {};
+ 	struct spdk_nvmf_tcp_stream_segment *segment_refs[NVMF_REQ_MAX_BUFFERS] = {};
++	struct spdk_nvmf_tcp_req tcp_req = {};
++	struct nvme_tcp_pdu pdu = {};
++	uint8_t data[2] = {};
++	int rc;
++
++	tcp_req.segment_refs = segment_refs;
++	tcp_req.req.iov[0].iov_base = &data[0];
++	tcp_req.req.iov[0].iov_len = 1;
++	tcp_req.req.iovcnt = 1;
++	tcp_req.segment_refs[0] = &segment;
++	tcp_req.segment_cnt = 1;
++
++	rc = nvmf_tcp_req_ensure_zcopy_iov_capacity(&tcp_req, NVMF_REQ_MAX_BUFFERS + 1);
++	CU_ASSERT(rc == 0);
++	SPDK_CU_ASSERT_FATAL(tcp_req.req.iov_ext != NULL);
++	CU_ASSERT(tcp_req.req.iov_ext_capacity == 2 * NVMF_REQ_MAX_BUFFERS);
++	CU_ASSERT(tcp_req.req.iov_ext[0].iov_base == &data[0]);
++	CU_ASSERT(tcp_req.segment_refs_ext[0] == &segment);
++
++	rc = nvmf_tcp_req_ensure_zcopy_iov_capacity(&tcp_req,
++			2 * NVMF_REQ_MAX_BUFFERS + 1);
++	CU_ASSERT(rc == 0);
++	CU_ASSERT(tcp_req.req.iov_ext_capacity == 4 * NVMF_REQ_MAX_BUFFERS);
++	rc = nvmf_tcp_req_ensure_zcopy_iov_capacity(&tcp_req,
++			4 * NVMF_REQ_MAX_BUFFERS + 1);
++	CU_ASSERT(rc == 0);
++	CU_ASSERT(tcp_req.req.iov_ext_capacity == UINT8_MAX);
++	rc = nvmf_tcp_req_ensure_zcopy_iov_capacity(&tcp_req, UINT8_MAX + 1);
++	CU_ASSERT(rc == -ENOSPC);
++
++	pdu.data_iov[0].iov_base = &data[1];
++	pdu.data_iov[0].iov_len = 1;
++	pdu.data_iovcnt = 1;
++	rc = nvmf_tcp_pdu_ensure_zcopy_iov_capacity(&pdu,
++			NVME_TCP_MAX_SGL_DESCRIPTORS + 1);
++	CU_ASSERT(rc == 0);
++	SPDK_CU_ASSERT_FATAL(pdu.data_iov_ext != NULL);
++	CU_ASSERT(pdu.data_iov_ext_capacity == 2 * NVME_TCP_MAX_SGL_DESCRIPTORS);
++	CU_ASSERT(pdu.data_iov_ext[0].iov_base == &data[1]);
++	rc = nvmf_tcp_pdu_ensure_zcopy_iov_capacity(&pdu, UINT8_MAX);
++	CU_ASSERT(rc == 0);
++	CU_ASSERT(pdu.data_iov_ext_capacity == UINT8_MAX);
++	rc = nvmf_tcp_pdu_ensure_zcopy_iov_capacity(&pdu, UINT8_MAX + 1);
++	CU_ASSERT(rc == -ENOSPC);
++
++	free(tcp_req.req.iov_ext);
++	free(tcp_req.segment_refs_ext);
++	free(pdu.data_iov_ext);
++}
++
++static void
++test_nvmf_tcp_read_data_zcopy_fallback(void)
++{
++	struct spdk_nvmf_tcp_stream_segment segments[UINT8_MAX + 1] = {};
++	struct spdk_nvmf_tcp_stream_segment *segment_refs[UINT8_MAX] = {};
+ 	struct spdk_nvmf_tcp_poll_group tgroup = {};
+ 	struct spdk_nvmf_tcp_qpair tqpair = {};
+ 	struct spdk_nvmf_tcp_req tcp_req = {};
+ 	struct nvme_tcp_pdu pdu = {};
+-	uint8_t existing_data[NVME_TCP_MAX_SGL_DESCRIPTORS] = {};
+-	uint8_t expected[NVME_TCP_MAX_SGL_DESCRIPTORS - 1] = {};
++	struct iovec request_iovs[UINT8_MAX] = {};
++	struct iovec pdu_iovs[UINT8_MAX] = {};
++	uint8_t existing_data[UINT8_MAX] = {};
++	uint8_t expected[UINT8_MAX - 1] = {};
+ 	uint8_t pending_data[] = { 0xa5, 0x5a };
+ 	uint32_t initial_segments, i;
+ 	int rc;
+@@ -791,7 +848,7 @@ test_nvmf_tcp_read_data_zcopy_fallback(void)
+ 	 * is consumed directly and the second iteration must preserve that byte
+ 	 * count while materializing all previously retained segments.
+ 	 */
+-	initial_segments = SPDK_COUNTOF(pdu.data_iov) - 2;
++	initial_segments = UINT8_MAX - 2;
+ 	SPDK_CU_ASSERT_FATAL(initial_segments + 2 <= SPDK_COUNTOF(segments));
+ 	SPDK_CU_ASSERT_FATAL(initial_segments + 1 <= SPDK_COUNTOF(expected));
+ 
+@@ -800,13 +857,17 @@ test_nvmf_tcp_read_data_zcopy_fallback(void)
+ 	tgroup.sock_group = (struct spdk_sock_group *)0x1;
+ 	tqpair.group = &tgroup;
+ 	tcp_req.segment_refs = segment_refs;
++	tcp_req.req.iov_ext = request_iovs;
++	tcp_req.req.iov_ext_capacity = SPDK_COUNTOF(request_iovs);
++	pdu.data_iov_ext = pdu_iovs;
++	pdu.data_iov_ext_capacity = SPDK_COUNTOF(pdu_iovs);
+ 
+ 	for (i = 0; i < initial_segments; i++) {
+ 		existing_data[i] = (uint8_t)i;
+ 		expected[i] = existing_data[i];
+-		pdu.data_iov[i].iov_base = &existing_data[i];
+-		pdu.data_iov[i].iov_len = 1;
+-		tcp_req.req.iov[i] = pdu.data_iov[i];
++		pdu_iovs[i].iov_base = &existing_data[i];
++		pdu_iovs[i].iov_len = 1;
++		request_iovs[i] = pdu_iovs[i];
+ 		segments[i].buf = &existing_data[i];
+ 		segments[i].len = 1;
+ 		segments[i].refcnt = 1;
+@@ -840,16 +901,122 @@ test_nvmf_tcp_read_data_zcopy_fallback(void)
+ 		CU_ASSERT(segments[i].refcnt == 0);
+ 	}
+ 	CU_ASSERT(segments[initial_segments + 1].refcnt == 1);
+-	SPDK_CU_ASSERT_FATAL(tcp_req.req.iov[0].iov_base != NULL);
+-	CU_ASSERT(tcp_req.req.iov[0].iov_len == initial_segments + 1);
+-	CU_ASSERT(memcmp(tcp_req.req.iov[0].iov_base, expected, sizeof(expected)) == 0);
++	SPDK_CU_ASSERT_FATAL(request_iovs[0].iov_base != NULL);
++	CU_ASSERT(request_iovs[0].iov_len == initial_segments + 1);
++	CU_ASSERT(memcmp(request_iovs[0].iov_base, expected, sizeof(expected)) == 0);
+ 	CU_ASSERT(pdu.data_iovcnt == 1);
+-	CU_ASSERT(pdu.data_iov[0].iov_base == &pending_data[1]);
++	CU_ASSERT(pdu_iovs[0].iov_base == &pending_data[1]);
+ 
+-	spdk_free(tcp_req.req.iov[0].iov_base);
++	spdk_free(request_iovs[0].iov_base);
+ 	nvmf_tcp_segment_put(&tqpair, tcp_req.segment_refs[1]);
+ }
+ 
++static void
++test_nvmf_tcp_read_data_zcopy_inter_pdu_fallback(void)
++{
++	struct spdk_nvmf_tcp_stream_segment segments[UINT8_MAX] = {};
++	struct spdk_nvmf_tcp_stream_segment *segment_refs[UINT8_MAX] = {};
++	struct spdk_nvmf_tcp_poll_group tgroup = {};
++	struct spdk_nvmf_tcp_qpair tqpair = {};
++	struct spdk_nvmf_tcp_req tcp_req = {};
++	struct nvme_tcp_pdu pdu = {};
++	struct iovec request_iovs[UINT8_MAX] = {};
++	uint8_t existing_data[UINT8_MAX - 1] = {};
++	uint8_t pending_data = 0xa5;
++	void *previous_double_buf;
++	uint32_t initial_segments, i;
++	int rc;
++
++	/* Previous H2C PDUs consumed all but one request iovec. The new PDU
++	 * must reclaim those request vectors before retaining its first segment. */
++	initial_segments = UINT8_MAX - 1;
++
++	STAILQ_INIT(&tgroup.free_segments);
++	STAILQ_INIT(&tqpair.pending_stream);
++	tgroup.sock_group = (struct spdk_sock_group *)0x1;
++	tqpair.group = &tgroup;
++	tcp_req.segment_refs = segment_refs;
++	tcp_req.req.iov_ext = request_iovs;
++	tcp_req.req.iov_ext_capacity = SPDK_COUNTOF(request_iovs);
++
++	for (i = 0; i < initial_segments; i++) {
++		existing_data[i] = (uint8_t)i;
++		request_iovs[i].iov_base = &existing_data[i];
++		request_iovs[i].iov_len = 1;
++		segments[i].buf = &existing_data[i];
++		segments[i].len = 1;
++		segments[i].refcnt = 1;
++		segment_refs[i] = &segments[i];
++	}
++	/* Also cover a buffer materialized by an earlier fallback. */
++	previous_double_buf = spdk_malloc(1, PAGE_SIZE, NULL, SPDK_ENV_SOCKET_ID_ANY,
++					  SPDK_MALLOC_DMA);
++	SPDK_CU_ASSERT_FATAL(previous_double_buf != NULL);
++	*(uint8_t *)previous_double_buf = existing_data[0];
++	request_iovs[0].iov_base = previous_double_buf;
++	segment_refs[0] = NULL;
++	segments[0].refcnt = 0;
++	tcp_req.req.iovcnt = initial_segments;
++	tcp_req.segment_cnt = initial_segments;
++
++	segments[initial_segments].buf = &pending_data;
++	segments[initial_segments].len = 1;
++	segments[initial_segments].refcnt = 1;
++	STAILQ_INSERT_TAIL(&tqpair.pending_stream, &segments[initial_segments], link);
++
++	pdu.data_len = sizeof(pending_data);
++	rc = nvmf_tcp_read_data_zcopy(&tqpair, &tcp_req, &pdu);
++
++	CU_ASSERT(rc == (int)sizeof(pending_data));
++	CU_ASSERT(STAILQ_EMPTY(&tqpair.pending_stream));
++	CU_ASSERT(tcp_req.req.iovcnt == 2);
++	CU_ASSERT(tcp_req.segment_cnt == 2);
++	CU_ASSERT(tcp_req.segment_refs[0] == NULL);
++	CU_ASSERT(tcp_req.segment_refs[1] == &segments[initial_segments]);
++	CU_ASSERT(request_iovs[0].iov_len == initial_segments);
++	CU_ASSERT(memcmp(request_iovs[0].iov_base, existing_data,
++			 initial_segments) == 0);
++	CU_ASSERT(request_iovs[1].iov_base == &pending_data);
++	CU_ASSERT(pdu.data_iovcnt == 1);
++	CU_ASSERT(pdu.data_iov[0].iov_base == &pending_data);
++	for (i = 0; i < initial_segments; i++) {
++		CU_ASSERT(segments[i].refcnt == 0);
++	}
++	CU_ASSERT(segments[initial_segments].refcnt == 1);
++
++	spdk_free(request_iovs[0].iov_base);
++	nvmf_tcp_segment_put(&tqpair, tcp_req.segment_refs[1]);
++}
++
++static void
++test_nvmf_tcp_qpair_destroy_partial_resources(void)
++{
++	struct spdk_nvmf_tcp_qpair *tqpair;
++	uint32_t resource_count = 2;
++
++	/* Requests may be allocated before the PDU array allocation fails. */
++	tqpair = calloc(1, sizeof(*tqpair));
++	SPDK_CU_ASSERT_FATAL(tqpair != NULL);
++	tqpair->resource_count = resource_count;
++	tqpair->state_cntr[TCP_REQUEST_STATE_FREE] = resource_count;
++	tqpair->reqs = calloc(resource_count, sizeof(*tqpair->reqs));
++	SPDK_CU_ASSERT_FATAL(tqpair->reqs != NULL);
++	tqpair->reqs[0].req.iov_ext = calloc(1, sizeof(struct iovec));
++	tqpair->reqs[0].segment_refs_ext = calloc(1, sizeof(*tqpair->reqs[0].segment_refs_ext));
++	_nvmf_tcp_qpair_destroy(tqpair);
++
++	/* Keep the inverse partial state covered as well. */
++	tqpair = calloc(1, sizeof(*tqpair));
++	SPDK_CU_ASSERT_FATAL(tqpair != NULL);
++	tqpair->resource_count = resource_count;
++	tqpair->state_cntr[TCP_REQUEST_STATE_FREE] = resource_count;
++	tqpair->pdus = spdk_dma_zmalloc((2 * resource_count + 1) * sizeof(*tqpair->pdus),
++					0x1000, NULL);
++	SPDK_CU_ASSERT_FATAL(tqpair->pdus != NULL);
++	tqpair->pdus[0].data_iov_ext = calloc(1, sizeof(struct iovec));
++	_nvmf_tcp_qpair_destroy(tqpair);
++}
++
+ static void
+ test_nvmf_sock_cb(void *arg, struct spdk_sock_group *group, struct spdk_sock *sock)
+ {
+@@ -1750,7 +1917,10 @@ main(int argc, char **argv)
+ 	CU_ADD_TEST(suite, test_nvmf_tcp_send_c2h_data);
+ 	CU_ADD_TEST(suite, test_nvmf_tcp_h2c_data_hdr_handle);
+ 	CU_ADD_TEST(suite, test_nvmf_tcp_in_capsule_data_handle);
++	CU_ADD_TEST(suite, test_nvmf_tcp_zcopy_iov_growth);
+ 	CU_ADD_TEST(suite, test_nvmf_tcp_read_data_zcopy_fallback);
++	CU_ADD_TEST(suite, test_nvmf_tcp_read_data_zcopy_inter_pdu_fallback);
++	CU_ADD_TEST(suite, test_nvmf_tcp_qpair_destroy_partial_resources);
+ 	CU_ADD_TEST(suite, test_nvmf_tcp_qpair_init_mem_resource);
+ 	CU_ADD_TEST(suite, test_nvmf_tcp_handle_connect);
+ 	CU_ADD_TEST(suite, test_nvmf_tcp_send_c2h_term_req);
