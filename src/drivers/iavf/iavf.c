@@ -98,21 +98,35 @@ iavf_probe (vlib_main_t *vm, vnet_dev_probe_args_t *a)
 }
 
 static vnet_dev_rv_t
-iavf_reset (vlib_main_t *vm, vnet_dev_t *dev)
+iavf_wait_for_reset_done (vlib_main_t *vm, vnet_dev_t *dev)
 {
   iavf_device_t *ad = vnet_dev_get_data (dev);
-  u32 n_tries = 50;
-
-  iavf_aq_init (vm, dev);
-  iavf_vc_op_reset_vf (vm, dev);
+  u32 n_tries = 200;
+  u32 state;
 
   do
     {
       if (n_tries-- == 0)
 	return VNET_DEV_ERR_TIMEOUT;
+
+      state = iavf_reg_read (ad, IAVF_VFGEN_RSTAT) & 3;
+      if (state == VIRTCHNL_VFR_VFACTIVE || state == VIRTCHNL_VFR_COMPLETED)
+	return VNET_DEV_OK;
+
       vlib_process_suspend (vm, 0.02);
     }
-  while ((iavf_reg_read (ad, IAVF_VFGEN_RSTAT) & 3) != 2);
+  while (1);
+}
+
+static vnet_dev_rv_t
+iavf_adminq_start (vlib_main_t *vm, vnet_dev_t *dev)
+{
+  vnet_dev_rv_t rv;
+
+  /* VFIO or the PF may have initiated a reset before the device was opened.
+   * Do not issue a virtual-channel command until that reset has completed. */
+  if ((rv = iavf_wait_for_reset_done (vm, dev)))
+    return rv;
 
   iavf_aq_init (vm, dev);
   iavf_aq_poll_on (vm, dev);
@@ -144,7 +158,7 @@ iavf_init (vlib_main_t *vm, vnet_dev_t *dev)
   if ((rv = vnet_dev_pci_bus_master_enable (vm, dev)))
     return rv;
 
-  if ((rv = iavf_reset (vm, dev)))
+  if ((rv = iavf_adminq_start (vm, dev)))
     return rv;
 
   if ((rv = iavf_vc_op_version (vm, dev, &driver_virtchnl_version, &ver)))
@@ -195,19 +209,12 @@ iavf_init (vlib_main_t *vm, vnet_dev_t *dev)
 	  log_debug (dev, "VF reset detected after REQUEST_QUEUES "
 			  "(ATQLEN enable bit cleared), reinitializing");
 
-	  /* Wait for reset to complete */
-	  u32 n_tries = 50;
-	  do
+	  if ((rv = iavf_wait_for_reset_done (vm, dev)))
 	    {
-	      if (n_tries-- == 0)
-		{
-		  log_err (dev, "timeout waiting for VF reset after "
-				"REQUEST_QUEUES");
-		  return VNET_DEV_ERR_TIMEOUT;
-		}
-	      vlib_process_suspend (vm, 0.02);
+	      log_err (dev, "timeout waiting for VF reset after "
+			    "REQUEST_QUEUES");
+	      return rv;
 	    }
-	  while ((iavf_reg_read (ad, IAVF_VFGEN_RSTAT) & 3) != 2);
 
 	  /* Re-initialize admin queue after reset */
 	  iavf_aq_poll_off (vm, dev);
@@ -267,18 +274,12 @@ iavf_init (vlib_main_t *vm, vnet_dev_t *dev)
 			 "(RESET_IMPENDING=%d), reinitializing",
 			 reset_impending);
 
-	      u32 n_tries = 50;
-	      do
+	      if ((rv = iavf_wait_for_reset_done (vm, dev)))
 		{
-		  if (n_tries-- == 0)
-		    {
-		      log_err (dev, "timeout waiting for VF reset after "
-				    "REQUEST_QUEUES");
-		      return VNET_DEV_ERR_TIMEOUT;
-		    }
-		  vlib_process_suspend (vm, 0.02);
+		  log_err (dev, "timeout waiting for VF reset after "
+				"REQUEST_QUEUES");
+		  return rv;
 		}
-	      while ((iavf_reg_read (ad, IAVF_VFGEN_RSTAT) & 3) != 2);
 
 	      iavf_aq_poll_off (vm, dev);
 	      iavf_aq_init (vm, dev);

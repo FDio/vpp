@@ -330,6 +330,9 @@ iavf_aq_poll_on (vlib_main_t *vm, vnet_dev_t *dev)
 {
   iavf_device_t *ad = vnet_dev_get_data (dev);
 
+  if (ad->adminq_polling)
+    return;
+
   vnet_dev_poll_dev_add (vm, dev, IIAVF_AQ_POLL_INTERVAL, iavf_aq_poll);
 
   if (vnet_dev_get_pci_n_msix_interrupts (dev) > 0)
@@ -341,12 +344,16 @@ iavf_aq_poll_on (vlib_main_t *vm, vnet_dev_t *dev)
     vnet_dev_pci_intx_add_handler (vm, dev, iavf_adminq_intx_handler);
 
   iavf_irq_0_enable (ad);
+  ad->adminq_polling = 1;
 }
 
 void
 iavf_aq_poll_off (vlib_main_t *vm, vnet_dev_t *dev)
 {
   iavf_device_t *ad = vnet_dev_get_data (dev);
+
+  if (!ad->adminq_polling)
+    return;
 
   iavf_irq_0_disable (ad);
 
@@ -359,6 +366,8 @@ iavf_aq_poll_off (vlib_main_t *vm, vnet_dev_t *dev)
     }
   else
     vnet_dev_pci_intx_remove_handler (vm, dev);
+
+  ad->adminq_polling = 0;
 }
 
 vnet_dev_rv_t
@@ -437,7 +446,8 @@ iavf_aq_deinit (vlib_main_t *vm, vnet_dev_t *dev)
 	.flags = { .si = 1 },
       };
       log_debug (dev, "adminq queue shutdown");
-      iavf_aq_atq_enq (vm, dev, &d, 0, 0, 0);
+      if (iavf_aq_atq_enq (vm, dev, &d, 0, 0, 0.5) != VNET_DEV_OK)
+	log_warn (dev, "adminq queue shutdown did not complete");
       ad->adminq_active = 0;
     }
 }
