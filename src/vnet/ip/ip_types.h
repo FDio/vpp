@@ -120,8 +120,8 @@ __clib_export extern u8 *format_ip_prefix (u8 *s, va_list *args);
 __clib_export extern uword unformat_ip_prefix (unformat_input_t *input, va_list *args);
 
 __clib_export extern bool ip_prefix_validate (const ip_prefix_t *ip);
-extern void ip4_address_normalize (ip4_address_t * ip4, u8 preflen);
-extern void ip6_address_normalize (ip6_address_t * ip6, u8 preflen);
+__clib_export extern void ip4_address_normalize (ip4_address_t * ip4, u8 preflen);
+__clib_export extern void ip6_address_normalize (ip6_address_t * ip6, u8 preflen);
 __clib_export extern void ip4_preflen_to_mask (u8 pref_len, ip4_address_t *ip);
 extern u32 ip4_mask_to_preflen (ip4_address_t * mask);
 extern void ip4_prefix_max_address_host_order (ip4_address_t * ip, u8 plen,
