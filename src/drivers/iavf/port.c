@@ -137,12 +137,25 @@ iavf_port_init_vsi_queues (vlib_main_t *vm, vnet_dev_port_t *port)
   iavf_port_t *ap = vnet_dev_get_port_data (port);
   virtchnl_queue_pair_info_t *qpi;
   u16 vsi_id = ap->vsi_id;
-  u16 data_size = vlib_buffer_get_default_data_size (vm);
+  u32 default_data_size = vlib_buffer_get_default_data_size (vm);
+  u32 data_size = clib_min (default_data_size, IAVF_RX_MAX_DATA_BUF_SIZE);
   u16 max_frame_size = port->max_rx_frame_size;
   u8 buffer[VIRTCHNL_MSG_SZ (virtchnl_vsi_queue_config_info_t, qpair,
 			     ap->num_qp)];
   virtchnl_vsi_queue_config_info_t *ci =
     (virtchnl_vsi_queue_config_info_t *) buffer;
+
+  data_size &= ~(IAVF_RX_DATA_BUF_ALIGN - 1);
+  if (data_size < IAVF_RX_MIN_DATA_BUF_SIZE)
+    {
+      log_err (dev, "VPP buffer data size %u is too small for RX",
+	       default_data_size);
+      return VNET_DEV_ERR_UNSUPPORTED_CONFIG;
+    }
+
+  if (data_size != default_data_size)
+    log_notice (dev, "using RX data buffer size %u for VPP buffers of %u bytes",
+		data_size, default_data_size);
 
   *ci = (virtchnl_vsi_queue_config_info_t){
     .num_queue_pairs = ap->num_qp,

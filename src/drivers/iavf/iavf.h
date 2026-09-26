@@ -17,6 +17,10 @@
 #define IAVF_RX_MAX_DESC_IN_CHAIN 5
 #define IAVF_MAX_RSS_KEY_SIZE	  52
 #define IAVF_MAX_RSS_LUT_SIZE	  64
+/* virtchnl RX queue buffer sizes use 128-byte units in this range. */
+#define IAVF_RX_DATA_BUF_ALIGN	  128
+#define IAVF_RX_MIN_DATA_BUF_SIZE 1024
+#define IAVF_RX_MAX_DATA_BUF_SIZE (16 * 1024 - IAVF_RX_DATA_BUF_ALIGN)
 #define IIAVF_AQ_POLL_INTERVAL	  0.2
 #define IIAVF_AQ_BUF_SIZE	  4096
 
