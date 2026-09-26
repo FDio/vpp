@@ -25,6 +25,7 @@ typedef struct iavf_adminq_dma_mem iavf_adminq_dma_mem_t;
 typedef struct
 {
   u8 adminq_active : 1;
+  u8 adminq_polling : 1;
   void *bar0;
 
   /* Admin queues */
