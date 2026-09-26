@@ -3,6 +3,23 @@
     {
       "unresolved": false,
       "key": {
+        "uuid": "a77e9365_d3b225d4",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-09-26T09:08:27Z",
+      "side": 1,
+      "message": "This do it job, but we have another week points, I\u0027ve seen failures of golang installation and go.mod dependencies download. I think we should improve our infra, all dependencies need to be cached or baked in ci executor image instead of doing it per patch.",
+      "revId": "4747e45339126cd394a7152c8f4545b6656d9a1a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
         "uuid": "8e4fce5d_bda8fed4",
         "filename": "test/hs-test/docker/Dockerfile.base",
         "patchSetId": 2
