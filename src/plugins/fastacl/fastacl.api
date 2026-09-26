@@ -1,0 +1,147 @@
+/* SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) 2026 FastNetMon (fastnetmon.com)
+ */
+option version = "1.0.0";
+
+import "vnet/interface_types.api";
+import "vnet/ip/ip_types.api";
+
+enum fastacl_action_type : u8 {
+  FASTACL_ACTION_DROP       = 0,
+  FASTACL_ACTION_PERMIT     = 3,
+};
+
+typedef fastacl_match {
+  u32 flags;
+  vl_api_address_t dst_addr;
+  vl_api_address_t src_addr;
+  u8 dst_prefix_len;
+  u8 src_prefix_len;
+  u8 proto;
+  u16 dst_port_min;
+  u16 dst_port_max;
+  u16 src_port_min;
+  u16 src_port_max;
+  u16 either_port_min;
+  u16 either_port_max;
+  u8 icmp_type;
+  u8 icmp_code;
+  u8 tcp_flags_value;
+  u8 tcp_flags_mask;
+  u16 pkt_len_min;
+  u16 pkt_len_max;
+  u8 dscp;
+  u8 fragment_flags;
+  u8 fragment_mask;
+};
+
+typedef fastacl_action {
+  vl_api_fastacl_action_type_t type;
+  u32 sample_ratio;
+  u32 sample_group;
+};
+
+autoendian autoreply define fastacl_rule_add {
+  u32 client_index;
+  u32 context;
+  u32 order;
+  vl_api_fastacl_match_t match;
+  vl_api_fastacl_action_t action;
+};
+
+typedef fastacl_rule_entry {
+  u32 order;
+  vl_api_fastacl_match_t match;
+  vl_api_fastacl_action_t action;
+};
+
+autoendian define fastacl_rule_add_batch {
+  u32 client_index;
+  u32 context;
+  u32 count;
+  vl_api_fastacl_rule_entry_t rules[count];
+};
+
+autoendian define fastacl_rule_add_batch_reply {
+  u32 context;
+  i32 retval;
+  u32 n_added;
+};
+
+autoendian autoreply define fastacl_rule_del {
+  u32 client_index;
+  u32 context;
+  u32 rule_index;
+};
+
+autoendian define fastacl_rule_dump {
+  u32 client_index;
+  u32 context;
+};
+
+autoendian define fastacl_rule_details {
+  u32 context;
+  u32 rule_index;
+  u32 order;
+  vl_api_fastacl_match_t match;
+  vl_api_fastacl_action_t action;
+  u64 packet_count;
+  u64 byte_count;
+  f64 pps;
+  f64 l3_bps;
+  f64 l1_bps;
+  u64 sample_count;
+  u64 sample_missed;
+  u64 generation;
+};
+
+autoendian autoreply define fastacl_counters_clear {
+  u32 client_index;
+  u32 context;
+};
+
+autoendian define fastacl_counters_get {
+  u32 client_index;
+  u32 context;
+};
+
+autoendian define fastacl_counters_get_reply {
+  u32 context;
+  i32 retval;
+  u64 total_processed;
+  u64 total_dropped;
+
+  u64 total_bytes_processed;
+  u64 total_bytes_dropped;
+  f64 total_pps;
+  f64 dropped_pps;
+  f64 total_l3_bps;
+  f64 total_l1_bps;
+  f64 dropped_l3_bps;
+  f64 dropped_l1_bps;
+  u32 n_hit_rules;
+};
+
+autoendian autoreply define fastacl_interface_enable_disable {
+  u32 client_index;
+  u32 context;
+  vl_api_interface_index_t sw_if_index;
+  bool enable_disable;
+};
+
+autoendian autoreply define fastacl_psample_enable {
+  u32 client_index;
+  u32 context;
+  bool enable;
+};
+
+autoendian autoreply define fastacl_rule_del_all {
+  u32 client_index;
+  u32 context;
+};
+
+autoendian autoreply define fastacl_rule_stats_set {
+  u32 client_index;
+  u32 context;
+  bool enable;
+};
