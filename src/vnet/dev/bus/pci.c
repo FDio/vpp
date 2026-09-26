@@ -85,6 +85,7 @@ vnet_dev_bus_pci_open (vlib_main_t *vm, vnet_dev_t *dev)
       clib_error_free (err);
       return VNET_DEV_ERR_BUS;
     }
+  pdd->pci_handle_valid = 1;
 
   dev->numa_node = vlib_pci_get_numa_node (vm, pdd->handle);
 
@@ -147,7 +148,10 @@ vnet_dev_bus_pci_close (vlib_main_t *vm, vnet_dev_t *dev)
     }
 
   if (pdd->pci_handle_valid)
-    vlib_pci_device_close (vm, pdd->handle);
+    {
+      vlib_pci_device_close (vm, pdd->handle);
+      pdd->pci_handle_valid = 0;
+    }
 }
 
 static vnet_dev_rv_t

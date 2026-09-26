@@ -147,6 +147,7 @@ vnet_dev_init (vlib_main_t *vm, vnet_dev_t *dev)
 {
   vnet_dev_main_t *dm = &vnet_dev_main;
   vnet_dev_bus_t *bus = pool_elt_at_index (dm->buses, dev->bus_index);
+  vnet_dev_dma_mem_alloc_t *a;
   vnet_dev_rv_t rv;
 
   vnet_dev_validate (vm, dev);
@@ -160,27 +161,36 @@ vnet_dev_init (vlib_main_t *vm, vnet_dev_t *dev)
       if (rv != VNET_DEV_OK)
 	{
 	  log_err (dev, "device init failed [rv %d]", rv);
-	  if (dev->ops.deinit)
-	    dev->ops.deinit (vm, dev);
-	  if (dev->ops.free)
-	    dev->ops.free (vm, dev);
-	  return rv;
+	  goto failed;
 	}
     }
 
   if ((rv = dev->ops.init (vm, dev)) != VNET_DEV_OK)
     {
       log_err (dev, "device init failed [rv %d]", rv);
-      if (dev->ops.deinit)
-	dev->ops.deinit (vm, dev);
-      if (dev->ops.free)
-	dev->ops.free (vm, dev);
-      return rv;
+      goto failed;
     }
 
   dev->initialized = 1;
   dev->not_first_init = 1;
   return VNET_DEV_OK;
+
+failed:
+  if (dev->ops.deinit)
+    dev->ops.deinit (vm, dev);
+
+  if (bus->ops.device_close)
+    bus->ops.device_close (vm, dev);
+
+  vec_foreach (a, dev->dma_allocs)
+    {
+      if (a->va)
+	bus->ops.dma_mem_free_fn (vm, dev, a->va);
+      vec_free (a->description);
+    }
+  vec_reset_length (dev->dma_allocs);
+
+  return rv;
 }
 
 void
