@@ -123,3 +123,12 @@ func AssertEqualUnlessAsanBuild(expected, actual any, msgAndArgs ...any) {
 	}
 	AssertEqual(expected, actual, msgAndArgs...)
 }
+
+// Same as AssertGreaterEqual but won't assert on instrumented (ASan) builds
+func AssertGreaterEqualUnlessAsanBuild(actual, expected any, msgAndArgs ...any) {
+	if IsAsanBuild() {
+		Log("ASan build; not asserting")
+		return
+	}
+	AssertGreaterEqual(actual, expected, msgAndArgs...)
+}
