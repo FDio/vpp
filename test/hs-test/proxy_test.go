@@ -118,7 +118,7 @@ func vppProxyIperfMWTest(s *VppProxySuite, proto string) {
 	AssertNil(err, o)
 	result, err := ParseIperfText(o)
 	AssertNil(err)
-	AssertGreaterEqualUnlessCoverageBuild(result.BitrateMbps, 200, "Iperf bitrate below threshold")
+	AssertGreaterEqualUnlessASanOrCovBuild(result.BitrateMbps, 200, "Iperf bitrate below threshold")
 }
 
 func VppProxyHttpGetTcpTest(s *VppProxySuite) {

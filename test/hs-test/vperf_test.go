@@ -540,8 +540,8 @@ func tcpWithLossAndNoLoss(s tcpWithLossInterface, clientVpp *VppInstance,
 		threshold = 0.1
 	}
 	Log("\nBaseline:  %d bytes/s\nWith loss: %d bytes/s", baseline, withLoss)
-	AssertGreaterEqualUnlessCoverageBuild(baseline, withLoss, "Tcp vperf: baseline bitrate is lower than bitrate with loss applied")
-	AssertGreaterEqualUnlessCoverageBuild(withLoss, uint64(float64(baseline)*threshold), "Tcp vperf: bitrate below threshold")
+	AssertGreaterEqualUnlessASanOrCovBuild(baseline, withLoss, "Tcp vperf: baseline bitrate is lower than bitrate with loss applied")
+	AssertGreaterEqualUnlessASanOrCovBuild(withLoss, uint64(float64(baseline)*threshold), "Tcp vperf: bitrate below threshold")
 }
 
 // Moves bulk data over the picotls TLS transport and verifies every byte.
