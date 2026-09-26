@@ -1097,7 +1097,7 @@ vnet_delete_hw_interface (vnet_main_t * vnm, u32 hw_if_index)
   /* Delete software interface corresponding to hardware interface. */
   vnet_delete_sw_interface (vnm, hw->sw_if_index);
 
-  if (dev_class->tx_function)
+  if (dev_class->tx_function || dev_class->tx_fn_registrations)
     {
       /* Put output/tx nodes into recycle pool */
       vnet_hw_interface_nodes_t *dn;

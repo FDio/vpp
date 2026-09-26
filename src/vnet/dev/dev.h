@@ -757,6 +757,7 @@ typedef struct
   clib_thread_index_t thread_index;
   u8 completed;
   u8 in_order;
+  u8 disable;
   vnet_dev_port_t *port;
 } vnet_dev_rt_op_t;
 

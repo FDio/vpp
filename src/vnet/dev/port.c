@@ -168,7 +168,11 @@ vnet_dev_port_stop (vlib_main_t *vm, vnet_dev_port_t *port)
 
   for (u16 i = 0; i < n_threads; i++)
     {
-      vnet_dev_rt_op_t op = { .thread_index = i, .port = port };
+      vnet_dev_rt_op_t op = {
+	.thread_index = i,
+	.disable = 1,
+	.port = port,
+      };
       vec_add1 (ops, op);
     }
 
@@ -753,9 +757,12 @@ vnet_dev_port_if_create (vlib_main_t *vm, vnet_dev_port_t *port, void *ptr)
       dev_class->tx_function_error_counters = port->tx_node.error_counters;
       dev_class->tx_function_n_errors = port->tx_node.n_error_counters;
 
+      /* Interface and node creation updates graph data shared with workers. */
+      vlib_worker_thread_barrier_sync (vm);
+
       /* create new interface including tx and output nodes */
       hw_if_index = vnet_eth_register_interface (
-	vnm, &(vnet_eth_interface_registration_t){
+	vnm, &(vnet_eth_interface_registration_t) {
 	       .address = port->primary_hw_addr.eth_mac,
 	       .max_frame_size = port->max_rx_frame_size,
 	       .dev_class_index = driver->dev_class_index,
@@ -829,12 +836,12 @@ vnet_dev_port_if_create (vlib_main_t *vm, vnet_dev_port_t *port, void *ptr)
 	vnet_dev_default_next_index_by_port_type[port->attr.type];
 
       vlib_worker_thread_node_runtime_update ();
-      log_debug (
-	dev,
-	"port %u primary interface %s created hw_if_index %u sw_if_index %u "
-	"rx_node %u tx_node %u",
-	port->port_id, ifs->primary_interface.name, hw_if_index, sw_if_index,
-	rx_node_index, ifs->primary_interface.tx_node_index);
+      vlib_worker_thread_barrier_release (vm);
+      log_debug (dev,
+		 "port %u primary interface %s created hw_if_index %u sw_if_index %u "
+		 "rx_node %u tx_node %u",
+		 port->port_id, ifs->primary_interface.name, hw_if_index, sw_if_index,
+		 rx_node_index, ifs->primary_interface.tx_node_index);
     }
 
   foreach_vnet_dev_port_rx_queue (q, port)

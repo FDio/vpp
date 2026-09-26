@@ -27,6 +27,9 @@ _vnet_dev_rt_exec_op (vlib_main_t *vm, vnet_dev_rt_op_t *op)
 
   rtd = vlib_node_get_runtime_data (vm, node_index);
 
+  if (op->disable)
+    goto update_runtime;
+
   foreach_vnet_dev_port_rx_queue (q, port)
     {
       if (q->rx_thread_index != vm->thread_index)
@@ -46,6 +49,7 @@ _vnet_dev_rt_exec_op (vlib_main_t *vm, vnet_dev_rt_op_t *op)
       previous = q;
     }
 
+update_runtime:
   rtd->first_rx_queue = first;
   vlib_node_set_state (vm, node_index, state);
   __atomic_store_n (&op->completed, 1, __ATOMIC_RELEASE);
