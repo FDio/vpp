@@ -1,0 +1,39 @@
+---
+name: FastACL DDoS Filter
+maintainer: Denys Haryachyy <garyachy@gmail.com>
+features:
+  - RFC 8955/8956 FlowSpec matching:
+      - all 12 match types, IPv4 and IPv6 dual-stack
+      - a rule applies to the family its addresses name, and to both when it
+        names none
+  - Classification through the VPP ACL plugin:
+      - rules loaded into one ACL in RFC 8955 order and matched by its
+        TupleMerge hash tables, on stock VPP
+      - what the ACL does not carry is checked on each candidate, and a
+        rejected candidate falls through to the next rule
+  - Actions:
+      - drop, and permit to match and forward unchanged
+  - Per-rule traffic sampling:
+      - exact 1-in-N ratio per rule, taken before the action
+      - delivered over the kernel psample netlink channel
+  - Counters:
+      - per-rule packets and bytes in the stats segment
+      - exact per-rule counting on by default, switchable off
+      - aggregate wire-rate telemetry in pps, L3 bps and L1 bps
+  - Routed and bridged operation from one datapath
+
+description: |-
+        FastACL filters packets against an RFC 8955/8956 FlowSpec rule set at
+        line rate, for volumetric DDoS mitigation where the rule count is
+        large, rules change while traffic is running, and the decision is
+        almost always to drop. Rules are loaded into one ACL of VPP's ACL
+        plugin in precedence order and matched by its hash lookup; packet
+        length, DSCP, fragment bits and the FlowSpec rule for later fragments
+        are checked on each candidate. The filter attaches to the
+        ip4-unicast and ip6-unicast arcs and to l2-input-ip4 and l2-input-ip6,
+        so the same rule set serves routed and bridged deployments. Matched
+        packets can be mirrored to Linux over the kernel psample channel
+        before the action is applied, so a rule can show what it dropped.
+
+state: production
+properties: [API, CLI, STATS, MULTITHREAD]
