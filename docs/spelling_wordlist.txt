@@ -214,6 +214,7 @@ ctx
 daddr
 daemonizing
 daemontools
+Daly
 Datagram
 datagrams
 datapath
@@ -222,6 +223,7 @@ Dataplane
 Dataplanes
 datastructures
 dbg
+DDoS
 de
 deallocation
 debian
@@ -247,6 +249,8 @@ dep
 depN
 deps
 dequeue
+dereference
+dereferences
 deregister
 desc
 deselection
@@ -363,6 +367,8 @@ extranet
 Extranets
 failover
 fallback
+Fastacl
+fastacl
 fateshare
 favour
 favoured
@@ -397,6 +403,7 @@ frontend
 fs
 fsol
 fusermount
+Gb
 Gbe
 GbE
 gbit
@@ -911,6 +918,7 @@ Prebuilt
 preceed
 preconfigured
 prefetch
+prefetches
 prefetching
 preload
 prepend
@@ -1204,10 +1212,12 @@ tmp
 tmpfile
 tmpl
 Tollet
+ToN
 toolchain
 toolchains
 toolset
 topologies
+Torng
 tos
 tp
 tps
