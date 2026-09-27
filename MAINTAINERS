@@ -994,6 +994,12 @@ M:	Ole Troan <otroan@employees.org>
 M:	Mohammed Hawari <mohammed@hawari.fr>
 F:	src/plugins/sasc/
 
+Plugin - FastACL DDoS Filter
+I:	fastacl
+M:	Denys Haryachyy <garyachy@gmail.com>
+F:	src/plugins/fastacl/
+Y:	src/plugins/fastacl/FEATURE.yaml
+
 GitHub Actions
 I: gha
 M: Dave Wallace <dwallacelf@gmail.com>
