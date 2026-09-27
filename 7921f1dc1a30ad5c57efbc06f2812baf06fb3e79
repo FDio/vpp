@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f4c849c2_26a02f07",
+        "filename": "test/hs-test/infra/asserts.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 128,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-09-27T10:27:33Z",
+      "side": 1,
+      "message": "this is same as AssertGreaterEqualUnlessCoverageBuild, just different skip condition. can we have one for both asan and coverage?",
+      "revId": "7921f1dc1a30ad5c57efbc06f2812baf06fb3e79",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
