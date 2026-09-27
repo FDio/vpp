@@ -18,6 +18,69 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": true,
+      "key": {
+        "uuid": "3aee86c4_9c49f998",
+        "filename": "test/hs-test/docker/Dockerfile.base",
+        "patchSetId": 2
+      },
+      "lineNbr": 15,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-09-27T14:01:19Z",
+      "side": 1,
+      "message": "can you please create wrapper bash script for this which will take list of packages as argument. this will hide logic from docker file and can be easily reused",
+      "revId": "4747e45339126cd394a7152c8f4545b6656d9a1a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "85d09708_4dce98da",
+        "filename": "test/hs-test/docker/Dockerfile.base",
+        "patchSetId": 2
+      },
+      "lineNbr": 16,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-09-27T14:01:19Z",
+      "side": 1,
+      "message": "MAX_RETRIES\u003d5\nfor attempt in $(seq 1 $MAX_RETRIES); do",
+      "range": {
+        "startLine": 16,
+        "startChar": 2,
+        "endLine": 16,
+        "endChar": 30
+      },
+      "revId": "4747e45339126cd394a7152c8f4545b6656d9a1a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "326acdd4_c08544a1",
+        "filename": "test/hs-test/docker/Dockerfile.base",
+        "patchSetId": 2
+      },
+      "lineNbr": 75,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-09-27T14:01:19Z",
+      "side": 1,
+      "message": "exponential delay time grow instead of switch statement?\nsleep $((delay**attempt))\nand assign initial delay value before for loop",
+      "range": {
+        "startLine": 67,
+        "startChar": 0,
+        "endLine": 75,
+        "endChar": 21
+      },
+      "revId": "4747e45339126cd394a7152c8f4545b6656d9a1a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": false,
       "key": {
         "uuid": "8e4fce5d_bda8fed4",
