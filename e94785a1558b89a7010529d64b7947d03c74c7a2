@@ -16,6 +16,23 @@
       "message": "I do not think using ternary is a good idea: it makes the code harder to read, and compiler codegen is a moving target anyway.",
       "revId": "e94785a1558b89a7010529d64b7947d03c74c7a2",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "26f1ba82_36a6894d",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-09-28T10:02:07Z",
+      "side": 1,
+      "message": "Why add that by default? This looks like a pretty narrow case, where most of the traffic would be ICMP traffic between few endpoints?\nMaybe this should be an optional hash function that can be configured for specific usecases?",
+      "revId": "e94785a1558b89a7010529d64b7947d03c74c7a2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
