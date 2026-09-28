@@ -242,6 +242,21 @@ u32 ip_table_get_unused_id (fib_protocol_t fproto);
 
 u8 ip_is_local (u32 fib_index, ip46_address_t *ip46_address, u8 is_ip4);
 
+__clib_export u32 ip_buffer_trim_chain (vlib_main_t *vm, vlib_buffer_t *b, u32 len);
+
+/* Cut the buffer to the len-byte datagram; non-zero if it is shorter. */
+static_always_inline u32
+ip_buffer_trim (vlib_main_t *vm, vlib_buffer_t *b, u32 len)
+{
+  u32 cur;
+
+  if (PREDICT_FALSE (b->flags & VLIB_BUFFER_NEXT_PRESENT))
+    return ip_buffer_trim_chain (vm, b, len);
+  cur = clib_min (b->current_length, len);
+  b->current_length = cur;
+  return cur < len;
+}
+
 __clib_export void ip_feature_enable_disable (ip_address_family_t af, ip_sub_address_family_t safi,
 					      ip_feature_location_t loc, const char *feature,
 					      u32 sw_if_index, int enable_disable,

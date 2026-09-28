@@ -4,9 +4,52 @@
  */
 
 #include <vnet/ip/ip.h>
+#include <vnet/ip/ip6_input.h>
 #include <vnet/fib/fib_table.h>
 
 u32 ip_flow_hash_router_id;
+
+u32
+ip_buffer_trim_chain (vlib_main_t *vm, vlib_buffer_t *b, u32 len)
+{
+  vlib_buffer_t *last = b;
+  u32 left = len;
+  u32 cur = vlib_buffer_length_in_chain (vm, b);
+
+  if (cur <= len)
+    return cur < len;
+
+  while (last->current_length < left)
+    {
+      left -= last->current_length;
+      last = vlib_get_buffer (vm, last->next_buffer);
+    }
+
+  /* A shared tail belongs to the other clones too. */
+  if (last->ref_count > 1)
+    return 0;
+
+  last->current_length = left;
+  if (last->flags & VLIB_BUFFER_NEXT_PRESENT)
+    {
+      vlib_buffer_free_one (vm, last->next_buffer);
+      last->flags &= ~VLIB_BUFFER_NEXT_PRESENT;
+    }
+  b->total_length_not_including_first_buffer = len - b->current_length;
+  b->flags |= VLIB_BUFFER_TOTAL_LENGTH_VALID;
+  return 0;
+}
+
+u32
+ip6_input_trim_slow (vlib_main_t *vm, vlib_buffer_t *b, ip6_header_t *ip)
+{
+  u32 plen = clib_net_to_host_u16 (ip->payload_length);
+
+  /* A jumbogram is sized by its hop-by-hop option. */
+  if (plen == 0 && ip->protocol == IP_PROTOCOL_IP6_HOP_BY_HOP_OPTIONS)
+    return 0;
+  return ip_buffer_trim (vm, b, plen + sizeof (ip[0]));
+}
 
 ethernet_type_t
 ip_address_family_to_ether_type (ip_address_family_t af)

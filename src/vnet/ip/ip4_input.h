@@ -53,11 +53,10 @@ ip4_input_check_x4 (vlib_main_t * vm,
 		    u16 * next, int verify_checksum)
 {
   u8 error0, error1, error2, error3;
-  u32 ip_len0, cur_len0;
-  u32 ip_len1, cur_len1;
-  u32 ip_len2, cur_len2;
-  u32 ip_len3, cur_len3;
-  i32 len_diff0, len_diff1, len_diff2, len_diff3;
+  u32 ip_len0, cur_len0, short0;
+  u32 ip_len1, cur_len1, short1;
+  u32 ip_len2, cur_len2, short2;
+  u32 ip_len3, cur_len3, short3;
 
   error0 = error1 = error2 = error3 = IP4_ERROR_NONE;
 
@@ -97,20 +96,34 @@ ip4_input_check_x4 (vlib_main_t * vm,
   error2 = ip_len2 < sizeof (ip[2][0]) ? IP4_ERROR_TOO_SHORT : error2;
   error3 = ip_len3 < sizeof (ip[3][0]) ? IP4_ERROR_TOO_SHORT : error3;
 
-  cur_len0 = vlib_buffer_length_in_chain (vm, p[0]);
-  cur_len1 = vlib_buffer_length_in_chain (vm, p[1]);
-  cur_len2 = vlib_buffer_length_in_chain (vm, p[2]);
-  cur_len3 = vlib_buffer_length_in_chain (vm, p[3]);
+  if (PREDICT_TRUE (
+	!((p[0]->flags | p[1]->flags | p[2]->flags | p[3]->flags) & VLIB_BUFFER_NEXT_PRESENT)))
+    {
+      cur_len0 = clib_min (p[0]->current_length, ip_len0);
+      cur_len1 = clib_min (p[1]->current_length, ip_len1);
+      cur_len2 = clib_min (p[2]->current_length, ip_len2);
+      cur_len3 = clib_min (p[3]->current_length, ip_len3);
+      p[0]->current_length = cur_len0;
+      p[1]->current_length = cur_len1;
+      p[2]->current_length = cur_len2;
+      p[3]->current_length = cur_len3;
+      short0 = cur_len0 < ip_len0;
+      short1 = cur_len1 < ip_len1;
+      short2 = cur_len2 < ip_len2;
+      short3 = cur_len3 < ip_len3;
+    }
+  else
+    {
+      short0 = ip_buffer_trim_chain (vm, p[0], ip_len0);
+      short1 = ip_buffer_trim_chain (vm, p[1], ip_len1);
+      short2 = ip_buffer_trim_chain (vm, p[2], ip_len2);
+      short3 = ip_buffer_trim_chain (vm, p[3], ip_len3);
+    }
 
-  len_diff0 = cur_len0 - ip_len0;
-  len_diff1 = cur_len1 - ip_len1;
-  len_diff2 = cur_len2 - ip_len2;
-  len_diff3 = cur_len3 - ip_len3;
-
-  error0 = len_diff0 < 0 ? IP4_ERROR_BAD_LENGTH : error0;
-  error1 = len_diff1 < 0 ? IP4_ERROR_BAD_LENGTH : error1;
-  error2 = len_diff2 < 0 ? IP4_ERROR_BAD_LENGTH : error2;
-  error3 = len_diff3 < 0 ? IP4_ERROR_BAD_LENGTH : error3;
+  error0 = short0 ? IP4_ERROR_BAD_LENGTH : error0;
+  error1 = short1 ? IP4_ERROR_BAD_LENGTH : error1;
+  error2 = short2 ? IP4_ERROR_BAD_LENGTH : error2;
+  error3 = short3 ? IP4_ERROR_BAD_LENGTH : error3;
 
   if (PREDICT_FALSE (error0 != IP4_ERROR_NONE))
     {
@@ -178,9 +191,8 @@ ip4_input_check_x2 (vlib_main_t * vm,
 		    u32 * next0, u32 * next1, int verify_checksum)
 {
   u8 error0, error1;
-  u32 ip_len0, cur_len0;
-  u32 ip_len1, cur_len1;
-  i32 len_diff0, len_diff1;
+  u32 ip_len0;
+  u32 ip_len1;
 
   error0 = error1 = IP4_ERROR_NONE;
 
@@ -206,14 +218,8 @@ ip4_input_check_x2 (vlib_main_t * vm,
   error0 = ip_len0 < sizeof (ip0[0]) ? IP4_ERROR_TOO_SHORT : error0;
   error1 = ip_len1 < sizeof (ip1[0]) ? IP4_ERROR_TOO_SHORT : error1;
 
-  cur_len0 = vlib_buffer_length_in_chain (vm, p0);
-  cur_len1 = vlib_buffer_length_in_chain (vm, p1);
-
-  len_diff0 = cur_len0 - ip_len0;
-  len_diff1 = cur_len1 - ip_len1;
-
-  error0 = len_diff0 < 0 ? IP4_ERROR_BAD_LENGTH : error0;
-  error1 = len_diff1 < 0 ? IP4_ERROR_BAD_LENGTH : error1;
+  error0 = ip_buffer_trim (vm, p0, ip_len0) ? IP4_ERROR_BAD_LENGTH : error0;
+  error1 = ip_buffer_trim (vm, p1, ip_len1) ? IP4_ERROR_BAD_LENGTH : error1;
 
   if (PREDICT_FALSE (error0 != IP4_ERROR_NONE))
     {
@@ -251,8 +257,7 @@ ip4_input_check_x1 (vlib_main_t * vm,
 		    vlib_buffer_t * p0,
 		    ip4_header_t * ip0, u32 * next0, int verify_checksum)
 {
-  u32 ip_len0, cur_len0;
-  i32 len_diff0;
+  u32 ip_len0;
   u8 error0;
 
   error0 = IP4_ERROR_NONE;
@@ -272,11 +277,7 @@ ip4_input_check_x1 (vlib_main_t * vm,
   /* IP length must be at least minimal IP header. */
   error0 = ip_len0 < sizeof (ip0[0]) ? IP4_ERROR_TOO_SHORT : error0;
 
-  cur_len0 = vlib_buffer_length_in_chain (vm, p0);
-
-  len_diff0 = cur_len0 - ip_len0;
-
-  error0 = len_diff0 < 0 ? IP4_ERROR_BAD_LENGTH : error0;
+  error0 = ip_buffer_trim (vm, p0, ip_len0) ? IP4_ERROR_BAD_LENGTH : error0;
 
   if (PREDICT_FALSE (error0 != IP4_ERROR_NONE))
     {

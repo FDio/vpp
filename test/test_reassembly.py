@@ -1945,6 +1945,7 @@ class TestIPv6Reassembly(VppTestCase):
         fragments = fragment_rfc8200(p, 1, 500)
         bad_fragment = fragments[0]
         self.extend_packet(bad_fragment, len(bad_fragment) + 5)
+        bad_fragment[IPv6].plen = None
         self.pg_enable_capture()
         self.src_if.add_stream([bad_fragment])
         self.pg_start()
@@ -1977,7 +1978,7 @@ class TestIPv6Reassembly(VppTestCase):
         """IPv6 atomic fragment"""
         pkt = (
             Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
-            / IPv6(src=self.pg0.remote_ip6, dst=self.pg0.local_ip6, nh=44, plen=65535)
+            / IPv6(src=self.pg0.remote_ip6, dst=self.pg0.local_ip6, nh=44)
             / IPv6ExtHdrFragment(
                 offset=8191, m=1, res1=0xFF, res2=0xFF, nh=255, id=0xFFFF
             )
