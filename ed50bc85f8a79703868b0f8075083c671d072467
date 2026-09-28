@@ -1,0 +1,22 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "488e0880_b92e9151",
+        "filename": "src/vnet/dev/dev.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 185,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-09-28T19:17:04Z",
+      "side": 1,
+      "message": "Addressed in PS2 with vnet_dev_cleanup_bus_resources(), shared by both paths. Normal deinitialization marks the device process for exit before closing the bus and releasing tracked DMA allocations.",
+      "parentUuid": "8cefbbdc_d7882d34",
+      "revId": "ed50bc85f8a79703868b0f8075083c671d072467",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
