@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e3311bb1_36fa6ec2",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-09-28T10:00:10Z",
+      "side": 1,
+      "message": "I do not think using ternary is a good idea: it makes the code harder to read, and compiler codegen is a moving target anyway.",
+      "revId": "e94785a1558b89a7010529d64b7947d03c74c7a2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
