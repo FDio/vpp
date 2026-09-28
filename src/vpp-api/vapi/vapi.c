@@ -1782,7 +1782,7 @@ vapi_dispatch_event (vapi_ctx_t ctx, vapi_msg_id_t id, void *msg)
 bool
 vapi_msg_is_with_context (vapi_msg_id_t id)
 {
-  assert (id <= __vapi_metadata.count);
+  assert (id < __vapi_metadata.count);
   return __vapi_metadata.msgs[id]->has_context;
 }
 
