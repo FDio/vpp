@@ -16,6 +16,29 @@
       "message": "C++ part is missing a fix: its dispatch loop feeds the result of vapi_lookup_vapi_msg_id_t() straight into vapi_msg_is_with_context() without the VAPI_INVALID_MSG_ID check. While this is pre-existing, I think it\u0027s worth it bundling it with the commit as it\u0027s the ~same issue.",
       "revId": "addd6cb95646496175a56504c5a29da2055109b9",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "510234ab_70bc348b",
+        "filename": "src/vpp-api/vapi/vapi_c_test.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 957,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-09-28T14:47:37Z",
+      "side": 1,
+      "message": "I don\u0027t think MALLOC_PERTURB_ does anything useful here - because realloc is unaffected by it.\n\nRunning with MALLOC_PERTURB_\u003d165\nrun #1: vl_msg_id 0 -\u003e 3033735765 , want VAPI_INVALID_MSG_ID\nrun #2: vl_msg_id 0 -\u003e   60025725 , want VAPI_INVALID_MSG_ID\n\nI think the test hits vapi id 0\u003d\u003dmemclnt_create.",
+      "range": {
+        "startLine": 957,
+        "startChar": 13,
+        "endLine": 957,
+        "endChar": 28
+      },
+      "revId": "addd6cb95646496175a56504c5a29da2055109b9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
