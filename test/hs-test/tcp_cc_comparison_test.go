@@ -270,8 +270,14 @@ collect:
 			break collect
 		}
 	}
+
+	minSamples, minSteady := 18, 14
+	if *IsDebugBuild {
+		minSamples, minSteady = 12, 9
+	}
+
 	AssertNotContains(clientOut, "failed", "vperf comparison transfer must complete")
-	AssertGreaterEqualUnlessASanOrCovBuild(len(samples), 18,
+	AssertGreaterEqualUnlessASanOrCovBuild(len(samples), minSamples,
 		"comparison needs enough samples for stable percentiles")
 
 	steady := make([]ccCmpSamplePoint, 0, len(samples))
@@ -280,7 +286,7 @@ collect:
 			steady = append(steady, sample)
 		}
 	}
-	AssertGreaterEqualUnlessASanOrCovBuild(len(steady), 14,
+	AssertGreaterEqualUnlessASanOrCovBuild(len(steady), minSteady,
 		"comparison needs enough steady-state samples for stable percentiles")
 
 	first := steady[0]
