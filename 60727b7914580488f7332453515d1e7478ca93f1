@@ -1,0 +1,58 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "1953f132_af1e4ee1",
+        "filename": "test/hs-test/docker/Dockerfile.base",
+        "patchSetId": 3
+      },
+      "lineNbr": 15,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-09-28T19:14:46Z",
+      "side": 1,
+      "message": "Addressed in PS3. The retry logic is now in script/apt_install.sh, which accepts apt-get install options and packages and is reused for the common dependencies and nginx.",
+      "parentUuid": "3aee86c4_9c49f998",
+      "revId": "60727b7914580488f7332453515d1e7478ca93f1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "31d902ed_2675a84e",
+        "filename": "test/hs-test/docker/Dockerfile.base",
+        "patchSetId": 3
+      },
+      "lineNbr": 16,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-09-28T19:14:46Z",
+      "side": 1,
+      "message": "Addressed in PS3. The wrapper uses MAX_RETRIES\u003d5 and iterates with seq.",
+      "parentUuid": "85d09708_4dce98da",
+      "revId": "60727b7914580488f7332453515d1e7478ca93f1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "8d4e31a9_d4c7c94d",
+        "filename": "test/hs-test/docker/Dockerfile.base",
+        "patchSetId": 3
+      },
+      "lineNbr": 75,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-09-28T19:14:46Z",
+      "side": 1,
+      "message": "Addressed in PS3. INITIAL_DELAY\u003d15 and exponential growth produce delays of 15, 30, 60 and 120 seconds.",
+      "parentUuid": "326acdd4_c08544a1",
+      "revId": "60727b7914580488f7332453515d1e7478ca93f1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
