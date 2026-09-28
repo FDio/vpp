@@ -36,6 +36,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "d7646e82_90f3e3cc",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2267
+      },
+      "writtenOn": "2026-09-28T20:04:37Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "e410aece_e79ba58c",
+      "revId": "addd6cb95646496175a56504c5a29da2055109b9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "510234ab_70bc348b",
@@ -73,6 +91,30 @@
       "side": 1,
       "message": "Removed it. Zero in the unwritten slot is enough for the test to fail w/o the fix",
       "parentUuid": "510234ab_70bc348b",
+      "range": {
+        "startLine": 957,
+        "startChar": 13,
+        "endLine": 957,
+        "endChar": 28
+      },
+      "revId": "addd6cb95646496175a56504c5a29da2055109b9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "5dca0cf4_a1086635",
+        "filename": "src/vpp-api/vapi/vapi_c_test.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 957,
+      "author": {
+        "id": 2267
+      },
+      "writtenOn": "2026-09-28T20:04:37Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "1774a624_33f57b33",
       "range": {
         "startLine": 957,
         "startChar": 13,
