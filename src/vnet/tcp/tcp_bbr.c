@@ -160,20 +160,52 @@ bbr_update_ack_aggregation (tcp_connection_t *tc, bbr_data_t *bd, tcp_ack_ctx_t 
 static void
 bbr_check_full_bw_reached (bbr_data_t *bd, tcp_ack_ctx_t *rs, f64 sample_bw)
 {
-  if (bbr_full_bw_now (bd) || !bbr_has_flag (bd, BBR_F_ROUND_START) ||
-      (rs->flags & TCP_BTS_IS_APP_LIMITED))
+  if (bbr_full_bw_now (bd))
     return;
 
-  if (sample_bw >= bd->full_bw * BBR_FULL_BW_THRESH)
+  if (bbr_has_flag (bd, BBR_F_ROUND_START))
     {
-      bbr_reset_full_bw (bd);
+      /* Judge the round after its later ACKs have had a chance to show
+       * sustained growth, not by its first sample alone. */
+      if (bd->full_bw_round_samples == 1 || bd->full_bw_round_samples == 2)
+	{
+	  bd->full_bw_count++;
+	  if (bbr_full_bw_now (bd))
+	    {
+	      bd->flags |= BBR_F_FULL_BW_REACHED;
+	      return;
+	    }
+	}
+      bd->full_bw_round_samples = 0;
+    }
+
+  if (rs->flags & TCP_BTS_IS_APP_LIMITED)
+    return;
+
+  if (bd->full_bw == 0.0)
+    {
       bd->full_bw = sample_bw;
+      bd->full_bw_round_samples = 1;
       return;
     }
 
-  bd->full_bw_count++;
-  if (bbr_full_bw_now (bd))
-    bd->flags |= BBR_F_FULL_BW_REACHED;
+  if (sample_bw >= bd->full_bw * BBR_FULL_BW_THRESH)
+    {
+      /* One fast ACK can reflect compression. Require two growing samples
+       * within the same round before moving the bandwidth baseline. */
+      if (bd->full_bw_round_samples == 2)
+	{
+	  bbr_reset_full_bw (bd);
+	  bd->full_bw = sample_bw;
+	  bd->full_bw_round_samples = 3;
+	}
+      else if (bd->full_bw_round_samples != 3)
+	bd->full_bw_round_samples = 2;
+      return;
+    }
+
+  if (bd->full_bw_round_samples == 0)
+    bd->full_bw_round_samples = 1;
 }
 
 static void
