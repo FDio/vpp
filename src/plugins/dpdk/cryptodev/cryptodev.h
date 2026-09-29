@@ -157,6 +157,13 @@ cryptodev_get_key_data (vnet_crypto_ctx_t *ctx)
   return (cryptodev_key_data_t *) vnet_crypto_get_async_key_data (ctx);
 }
 
+/* fixed-ICV algs carry a placeholder in buffer metadata icv_len */
+static_always_inline u32
+cryptodev_digest_len (const vnet_crypto_alg_data_t *ad, u32 md_icv_len)
+{
+  return ad->auth_len ? ad->auth_len : md_icv_len;
+}
+
 static_always_inline u32
 cryptodev_session_index (u32 numa_node, vnet_crypto_op_type_t op_type)
 {

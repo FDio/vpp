@@ -96,6 +96,15 @@ else()
     endif()
 
     ##############################################################################
+    # IPsec-MB (QAT PMD dependency for HMAC/GMAC session precomputes)
+    ##############################################################################
+    list(FILTER rte_build_config INCLUDE REGEX "^#define[\t ]*RTE_QAT_IPSECMB")
+    if(rte_build_config AND NOT DPDK_IS_SHARED_LIB)
+      vpp_plugin_find_library(dpdk IPSECMB_LIB "libIPSec_MB.a")
+      list(APPEND DPDK_LINK_LIBRARIES ${IPSECMB_LIB})
+    endif()
+
+    ##############################################################################
     # Mellanox libraries
     ##############################################################################
     if(DPDK_RTE_NET_MLX4 OR DPDK_RTE_NET_MLX5)

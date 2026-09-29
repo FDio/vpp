@@ -298,6 +298,8 @@ cryptodev_prepare_sym_xform (struct rte_crypto_sym_xform *xform, cryptodev_op_ty
 {
   vnet_crypto_alg_data_t *ad = crypto_main.algs + ctx->alg;
 
+  digest_len = cryptodev_digest_len (ad, digest_len);
+
   if (ad->alg_type == VNET_CRYPTO_ALG_T_COMBINED)
     return prepare_linked_xform (xform, op_type, ctx);
 
