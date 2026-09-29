@@ -1,0 +1,72 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ba0fe23d_6455bba4",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2267
+      },
+      "writtenOn": "2026-09-29T22:29:38Z",
+      "side": 1,
+      "message": "Thanks for looking into this. We hit the same crash downstream and can\nconfirm the root cause: b-\u003etrace_handle refers to a record in the pool\nof the thread that traced the buffer, but dispatch_pcap_trace() looks\nthe index up in the pool of the current thread. In our case, packets\nwere handed off from a worker to the main thread, whose trace pool is\nalways NULL because it polls no NICs.\n\nIt also reproduces with stock VPP: 2 workers,\n\"set interface handoff pg0 workers 1\", a pg stream on worker 0 and\n\"pcap dispatch trace on max 1000 buffer-trace pg-input 10\". Worker 1\nthen gets SIGSEGV at address 0x0.\n\nSome comments inline. In short: pool_is_free_index() instead of the\nNULL checks, no barrier sync/release, and a shorter code comment.\n\nA regression test would be good, too. The test below fails (VPP crash)\nwithout the fix and passes with it. Feel free to add it to\ntest/test_pcap.py:\n\n    @unittest.skipIf(\n        \"dispatch-trace\" in config.excluded_plugins, \"Exclude dispatch trace plugin tests\"\n    )\n    class TestPcapDispatchTraceHandoff(VppTestCase):\n        \"\"\"Pcap dispatch trace with worker handoff\"\"\"\n\n        vpp_worker_count \u003d 2\n\n        @classmethod\n        def setUpClass(cls):\n            super(TestPcapDispatchTraceHandoff, cls).setUpClass()\n\n            cls.create_pg_interfaces(range(2))\n            for i in cls.pg_interfaces:\n                i.admin_up()\n                i.config_ip4()\n                i.resolve_arp()\n\n        @classmethod\n        def tearDownClass(cls):\n            for i in cls.pg_interfaces:\n                i.unconfig_ip4()\n                i.admin_down()\n\n            super(TestPcapDispatchTraceHandoff, cls).tearDownClass()\n\n        def test_dispatch_trace_handoff(self):\n            \"\"\"Dispatch trace of buffers traced on another worker\"\"\"\n            pcap_file \u003d \"/tmp/dispatch_handoff.pcap\"\n            if os.path.exists(pcap_file):\n                os.remove(pcap_file)\n\n            # pg-input traces the packets on worker 0, the packets are then\n            # handed off to worker 1, which has no trace records of its own\n            self.vapi.cli(\"set interface handoff pg0 workers 1\")\n            self.vapi.cli(\n                \"pcap dispatch trace on max 1000 file dispatch_handoff.pcap \"\n                \"buffer-trace pg-input 10\"\n            )\n\n            pkts \u003d [\n                Ether(src\u003dself.pg0.remote_mac, dst\u003dself.pg0.local_mac)\n                / IP(src\u003dself.pg0.remote_ip4, dst\u003dself.pg1.remote_ip4)\n                / UDP(sport\u003d1234, dport\u003d2345)\n                / Raw(b\"\\xa5\" * 100)\n            ] * 5\n            self.send_and_expect(self.pg0, pkts, self.pg1, worker\u003d0, trace\u003dFalse)\n            self.assertIn(\"HANDED-OFF: from thread 1\", self.vapi.cli(\"show trace\"))\n\n            self.vapi.cli(\"pcap dispatch trace off\")\n            self.vapi.cli(\"set interface handoff pg0 workers 1 disable\")\n            self.assertTrue(os.path.exists(pcap_file))\n            os.remove(pcap_file)",
+      "revId": "26a3a7a017762dbe28bd09b7732305018ba75b8d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e572b3bd_4e7dbec5",
+        "filename": "src/plugins/dispatch-trace/main.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 153,
+      "author": {
+        "id": 2267
+      },
+      "writtenOn": "2026-09-29T22:29:38Z",
+      "side": 1,
+      "message": "Suggest a shorter comment. The debugging details (DISP-TRACE-HANDOFF\nevidence) are already in the commit message.\n\nAlso, this code never reads the pool of another thread. It reads its\nown pool with an index that belongs to another thread. And the loss is\nnot quite zero: records on the new thread have no trace text until a\nnode there adds its own trace (vlib_add_trace() then moves the trace to\nthis thread, with a HANDED-OFF entry). For example:\n\n      /*\n       * Trace records live in per-thread pools. A buffer handed off\n       * from another thread still refers to a record in the pool of\n       * that thread, and a buffer traced before \u0027clear trace\u0027 refers\n       * to a freed record. Only records of this thread\u0027s pool can be\n       * used here, see also vlib_add_trace_inline().\n       */",
+      "revId": "26a3a7a017762dbe28bd09b7732305018ba75b8d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "66ff7c7d_455cfd15",
+        "filename": "src/plugins/dispatch-trace/main.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 155,
+      "author": {
+        "id": 2267
+      },
+      "writtenOn": "2026-09-29T22:29:38Z",
+      "side": 1,
+      "message": "Please check the pool index too, the same way vlib_add_trace_inline() does it:\n\n      u32 trace_index \u003d vlib_buffer_get_trace_index (b);\n\n      if (vlib_buffer_get_trace_thread (b) \u003d\u003d vm-\u003ethread_index \u0026\u0026\n          !pool_is_free_index (tm-\u003etrace_buffer_pool, trace_index))\n        {\n          vlib_trace_header_t **h \u003d\n            pool_elt_at_index (tm-\u003etrace_buffer_pool, trace_index);\n\n          dtt-\u003epcap_buffer \u003d format (dtt-\u003epcap_buffer, \"%U%c\",\n                                     format_vlib_trace, vm, h[0], 0);\n          string_count++;\n        }\n\npool_is_free_index() returns 1 for a NULL pool, so it covers the NULL\ncase. It also covers a stale index after \"clear trace\": that command\nfrees the pool, and when the pool grows again with fewer elements, the\nold index points past its end. pool_elt_at_index() only ASSERTs in debug\nbuilds, so a release build reads out of bounds. With this check,\n\"if (h[0] !\u003d NULL)\" (line 159) is not necessary, because\nformat_vlib_trace() already handles an empty trace.\n\nThis can\u0027t detect a slot that was freed and then reused for another\npacket, e.g. in post-mortem mode, which drops all traces every main\nloop. Then the pcap record shows the other packet\u0027s trace. But that is\nthe same trade-off vlib_add_trace_inline() makes, and it is memory-safe.",
+      "revId": "26a3a7a017762dbe28bd09b7732305018ba75b8d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "38897323_a068fa82",
+        "filename": "src/plugins/dispatch-trace/main.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 297,
+      "author": {
+        "id": 2267
+      },
+      "writtenOn": "2026-09-29T22:29:38Z",
+      "side": 1,
+      "message": "This is not necessary. \"pcap dispatch trace\" is not mp-safe, so\nvlib_cli_dispatch_sub_commands() already holds the worker barrier while\nthe handler runs. The plugin has no API handlers, so the CLI is the\nonly caller. The same applies to lines 316, 348 and 358",
+      "revId": "26a3a7a017762dbe28bd09b7732305018ba75b8d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
