@@ -2263,7 +2263,12 @@ tcp_test_bbr (vlib_main_t *vm, unformat_input_t *input)
   };
   tcp_ack_ctx_t ac = {};
   bbr_data_t bd = {};
+  const f64 growing_rates[] = { 100.0, 130.0, 170.0, 220.0 };
+  const u32 later_growth_bytes[] = { 13000, 17000, 22000, 28000 };
+  const u32 first_growth_bytes[] = { 14000, 18000, 24000, 32000 };
+  const u32 second_growth_bytes[] = { 15000, 19000, 25000, 33000 };
   u64 expected_rate;
+  u64 sample_prior_delivered;
   int switch_rv;
   u32 i;
   u8 *state, switch_rejected, no_sack_rejected, bbr_selected;
@@ -2351,32 +2356,180 @@ tcp_test_bbr (vlib_main_t *vm, unformat_input_t *input)
   vec_free (state);
   tcp_test_bbr_cleanup (tc);
 
-  /* Full-pipe detection evaluates one sample per round. Faster samples later
-   * in the same round must not move its bandwidth baseline. */
+  /* One isolated fast ACK must not move the baseline or prevent a plateau. */
   tcp_test_bbr_init (tc, thread_index, 1000, 0.1);
-  for (i = 0; i < 4; i++)
+  for (i = 0; i < 6; i++)
     {
       clib_memset (&ac, 0, sizeof (ac));
-      ac.acked_and_sacked = 1000;
-      ac.interval_time = ac.rtt_time = 0.001;
+      ac.acked_and_sacked = ac.delivered = 10000;
+      ac.interval_time = ac.rtt_time = 0.1;
       ac.prior_delivered = tc->delivered;
-      tc->delivered += 1000;
-      ac.delivered = tc->delivered - ac.prior_delivered;
+      tc->delivered += ac.delivered;
       tc->cc_algo->rcv_ack (tc, &ac);
 
-      clib_memset (&ac, 0, sizeof (ac));
-      ac.acked_and_sacked = 1500;
-      ac.interval_time = 0.001 / (1u << i);
-      ac.rtt_time = 0.001;
-      ac.prior_delivered = tc->delivered - 500;
-      tc->delivered += 1500;
-      ac.delivered = tc->delivered - ac.prior_delivered;
-      tc->cc_algo->rcv_ack (tc, &ac);
+      if (i == 1)
+	{
+	  clib_memset (&ac, 0, sizeof (ac));
+	  ac.delivered = 13000;
+	  ac.acked_and_sacked = ac.delivered - 1000;
+	  ac.interval_time = ac.rtt_time = 0.1;
+	  ac.prior_delivered = tc->delivered - 1000;
+	  tc->delivered += ac.acked_and_sacked;
+	  tc->cc_algo->rcv_ack (tc, &ac);
+	}
     }
   state = format (0, "%U%c", tc->cc_algo->format, tc, 0);
   TCP_TEST (strstr ((char *) state, "state 0/") == 0 &&
 	      strstr ((char *) state, "full_bw_count 3") != 0,
-	    "bbr startup ignores intra-round bandwidth growth: %s", state);
+	    "bbr startup ignores an isolated fast ACK: %s", state);
+  vec_free (state);
+
+  /* The same full-pipe detector also controls when PROBE_BW_UP ends. */
+  tcp_test_set_time (thread_index, 5);
+  for (i = 0; i < 2; i++)
+    {
+      clib_memset (&ac, 0, sizeof (ac));
+      ac.acked_and_sacked = ac.delivered = 10000;
+      ac.interval_time = ac.rtt_time = 0.1;
+      ac.prior_delivered = tc->delivered;
+      tc->delivered += ac.delivered;
+      tc->cc_algo->rcv_ack (tc, &ac);
+    }
+  state = format (0, "%U%c", tc->cc_algo->format, tc, 0);
+  TCP_TEST (strstr ((char *) state, "state 2/3") != 0, "bbr enters probe bandwidth up: %s", state);
+  vec_free (state);
+
+  for (i = 1; i < 4; i++)
+    {
+      clib_memset (&ac, 0, sizeof (ac));
+      ac.acked_and_sacked = ac.delivered = 100 * growing_rates[i];
+      ac.interval_time = ac.rtt_time = 0.1;
+      ac.prior_delivered = tc->delivered;
+      tc->delivered += ac.delivered;
+      tc->cc_algo->rcv_ack (tc, &ac);
+    }
+  state = format (0, "%U%c", tc->cc_algo->format, tc, 0);
+  TCP_TEST (strstr ((char *) state, "state 2/3") != 0 &&
+	      strstr ((char *) state, "full_bw_count 0") != 0,
+	    "bbr probe up confirms sparse-round growth: %s", state);
+  vec_free (state);
+  tcp_test_bbr_cleanup (tc);
+
+  /* Two faster samples in each round confirm growth even when the first
+   * sample at the round boundary is slow. */
+  tcp_test_bbr_init (tc, thread_index, 1000, 0.1);
+  for (i = 0; i < 4; i++)
+    {
+      clib_memset (&ac, 0, sizeof (ac));
+      ac.acked_and_sacked = ac.delivered = 10000;
+      ac.interval_time = ac.rtt_time = 0.1;
+      ac.prior_delivered = tc->delivered;
+      tc->delivered += ac.delivered;
+      tc->cc_algo->rcv_ack (tc, &ac);
+
+      sample_prior_delivered = tc->delivered - 1000;
+      clib_memset (&ac, 0, sizeof (ac));
+      ac.delivered = first_growth_bytes[i];
+      ac.acked_and_sacked = ac.delivered - 1000;
+      ac.interval_time = ac.rtt_time = 0.1;
+      ac.prior_delivered = sample_prior_delivered;
+      tc->delivered = sample_prior_delivered + ac.delivered;
+      tc->cc_algo->rcv_ack (tc, &ac);
+
+      ac.delivered = second_growth_bytes[i];
+      ac.acked_and_sacked = second_growth_bytes[i] - first_growth_bytes[i];
+      tc->delivered = sample_prior_delivered + ac.delivered;
+      tc->cc_algo->rcv_ack (tc, &ac);
+    }
+  state = format (0, "%U%c", tc->cc_algo->format, tc, 0);
+  TCP_TEST (strstr ((char *) state, "state 0/") != 0,
+	    "bbr startup confirms intra-round bandwidth growth: %s", state);
+  vec_free (state);
+  tcp_test_bbr_cleanup (tc);
+
+  /* A sparse round with one growing sample must not count as a plateau. */
+  tcp_test_bbr_init (tc, thread_index, 1000, 0.1);
+  for (i = 0; i < 4; i++)
+    {
+      clib_memset (&ac, 0, sizeof (ac));
+      ac.acked_and_sacked = ac.delivered = 100 * growing_rates[i];
+      ac.interval_time = 0.1;
+      ac.rtt_time = 0.1;
+      ac.prior_delivered = tc->delivered;
+      tc->delivered += ac.delivered;
+      tc->cc_algo->rcv_ack (tc, &ac);
+    }
+  state = format (0, "%U%c", tc->cc_algo->format, tc, 0);
+  TCP_TEST (strstr ((char *) state, "state 0/") != 0 &&
+	      strstr ((char *) state, "full_bw_count 0") != 0 &&
+	      strstr ((char *) state, "full_bw 1.360Mbit/s") != 0,
+	    "bbr startup confirms sparse-round growth: %s", state);
+  vec_free (state);
+  tcp_test_bbr_cleanup (tc);
+
+  /* A low first ACK and one growing later ACK in each round must not
+   * masquerade as three plateau rounds. Keep each sample interval >= RTT. */
+  tcp_test_bbr_init (tc, thread_index, 1000, 0.1);
+  for (i = 0; i < 4; i++)
+    {
+      clib_memset (&ac, 0, sizeof (ac));
+      ac.acked_and_sacked = ac.delivered = 10000;
+      ac.interval_time = ac.rtt_time = 0.1;
+      ac.prior_delivered = tc->delivered;
+      tc->delivered += ac.delivered;
+      tc->cc_algo->rcv_ack (tc, &ac);
+
+      clib_memset (&ac, 0, sizeof (ac));
+      ac.delivered = later_growth_bytes[i];
+      ac.acked_and_sacked = ac.delivered - 1000;
+      ac.interval_time = ac.rtt_time = 0.1;
+      ac.prior_delivered = tc->delivered - 1000;
+      tc->delivered += ac.acked_and_sacked;
+      tc->cc_algo->rcv_ack (tc, &ac);
+    }
+  state = format (0, "%U%c", tc->cc_algo->format, tc, 0);
+  TCP_TEST (strstr ((char *) state, "state 0/") != 0 &&
+	      strstr ((char *) state, "full_bw_count 0") != 0,
+	    "bbr startup confirms later ACK growth across rounds: %s", state);
+  vec_free (state);
+  tcp_test_bbr_cleanup (tc);
+
+  /* An app-limited round neither confirms nor discards pending growth. */
+  tcp_test_bbr_init (tc, thread_index, 1000, 0.1);
+  for (i = 0; i < 4; i++)
+    {
+      clib_memset (&ac, 0, sizeof (ac));
+      ac.acked_and_sacked = ac.delivered = i == 1 ? 13000 : i == 3 ? 17000 : 10000;
+      ac.interval_time = ac.rtt_time = 0.1;
+      ac.prior_delivered = tc->delivered;
+      tc->delivered += ac.delivered;
+      if (i == 2)
+	ac.flags = TCP_BTS_IS_APP_LIMITED;
+      tc->cc_algo->rcv_ack (tc, &ac);
+    }
+  state = format (0, "%U%c", tc->cc_algo->format, tc, 0);
+  TCP_TEST (strstr ((char *) state, "state 0/") != 0 &&
+	      strstr ((char *) state, "full_bw_count 0") != 0 &&
+	      strstr ((char *) state, "full_bw 1.360Mbit/s") != 0,
+	    "bbr ignores app-limited round during growth confirmation: %s", state);
+  vec_free (state);
+  tcp_test_bbr_cleanup (tc);
+
+  /* An invalid zero-rate ACK must not establish the first full-pipe
+   * baseline or consume a no-growth round. */
+  tcp_test_bbr_init (tc, thread_index, 1000, 0.1);
+  clib_memset (&ac, 0, sizeof (ac));
+  tc->cc_algo->rcv_cong_ack (tc, TCP_CC_DUPACK, &ac);
+  ac.acked_and_sacked = ac.delivered = 10000;
+  ac.interval_time = 0.1;
+  ac.rtt_time = 0.1;
+  ac.prior_delivered = tc->delivered;
+  tc->delivered += ac.delivered;
+  tc->cc_algo->rcv_ack (tc, &ac);
+  state = format (0, "%U%c", tc->cc_algo->format, tc, 0);
+  TCP_TEST (strstr ((char *) state, "full_bw_count 0") != 0 &&
+	      strstr ((char *) state, "full_bw .800Mbit/s") != 0,
+	    "bbr ignores invalid sample before full-pipe baseline: %s", state);
   vec_free (state);
   tcp_test_bbr_cleanup (tc);
 

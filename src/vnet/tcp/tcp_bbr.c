@@ -160,20 +160,57 @@ bbr_update_ack_aggregation (tcp_connection_t *tc, bbr_data_t *bd, tcp_ack_ctx_t 
 static void
 bbr_check_full_bw_reached (bbr_data_t *bd, tcp_ack_ctx_t *rs, f64 sample_bw)
 {
-  if (bbr_full_bw_now (bd) || !bbr_has_flag (bd, BBR_F_ROUND_START) ||
-      (rs->flags & TCP_BTS_IS_APP_LIMITED))
+  u8 usable, growing;
+
+  if (bbr_full_bw_now (bd))
+    return;
+  usable = !(rs->flags & TCP_BTS_IS_APP_LIMITED) && sample_bw > 0.0;
+  growing = usable && sample_bw >= bd->full_bw * BBR_FULL_BW_THRESH;
+
+  if (bbr_has_flag (bd, BBR_F_ROUND_START))
+    {
+      /* Leave one growing sample pending for the next round's later ACKs. */
+      if (bd->full_bw_round_samples == 2)
+	bd->flags |= BBR_F_FULL_BW_GROWTH_PENDING;
+      else if (bd->full_bw_round_samples == 1)
+	{
+	  bd->flags &= ~BBR_F_FULL_BW_GROWTH_PENDING;
+	  if (!growing && ++bd->full_bw_count >= BBR_FULL_BW_CNT)
+	    {
+	      bd->flags |= BBR_F_FULL_BW_REACHED;
+	      return;
+	    }
+	}
+      bd->full_bw_round_samples = 0;
+    }
+
+  if (!usable)
     return;
 
-  if (sample_bw >= bd->full_bw * BBR_FULL_BW_THRESH)
+  if (bd->full_bw == 0.0)
     {
-      bbr_reset_full_bw (bd);
       bd->full_bw = sample_bw;
+      bd->full_bw_round_samples = 1;
       return;
     }
 
-  bd->full_bw_count++;
-  if (bbr_full_bw_now (bd))
-    bd->flags |= BBR_F_FULL_BW_REACHED;
+  if (growing)
+    {
+      /* Two growing samples may be in one round or successive sampled
+       * rounds; a low first ACK cannot hide the later confirmation. */
+      if (bd->full_bw_round_samples == 2 || bbr_has_flag (bd, BBR_F_FULL_BW_GROWTH_PENDING))
+	{
+	  bbr_reset_full_bw (bd);
+	  bd->full_bw = sample_bw;
+	  bd->full_bw_round_samples = 3;
+	}
+      else if (bd->full_bw_round_samples != 3)
+	bd->full_bw_round_samples = 2;
+      return;
+    }
+
+  if (bd->full_bw_round_samples == 0)
+    bd->full_bw_round_samples = 1;
 }
 
 static void

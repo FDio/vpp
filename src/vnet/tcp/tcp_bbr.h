@@ -109,6 +109,7 @@ typedef enum
   BBR_F_PROBE_RTT_ROUND_DONE = 1 << 10,
   BBR_F_IDLE_RESTART = 1 << 11,
   BBR_F_HAS_SEEN_RTT = 1 << 12,
+  BBR_F_FULL_BW_GROWTH_PENDING = 1 << 13,
 } bbr_flag_t;
 
 /*
@@ -233,6 +234,8 @@ typedef struct
   bbr_ack_phase_t ack_phase;
   bbr_undo_state_t undo_state;
   u8 full_bw_count;
+  /* 0: no sample, 1: no growth, 2: one growing sample, 3: confirmed growth. */
+  u8 full_bw_round_samples;
   u8 drain_rounds;
   u8 bw_probe_up_rounds;
   u8 loss_events;
@@ -446,6 +449,8 @@ bbr_reset_full_bw (bbr_data_t *bd)
 {
   bd->full_bw = 0.0;
   bd->full_bw_count = 0;
+  bd->full_bw_round_samples = 0;
+  bd->flags &= ~BBR_F_FULL_BW_GROWTH_PENDING;
 }
 
 static inline void
