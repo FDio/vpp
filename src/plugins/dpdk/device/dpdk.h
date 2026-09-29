@@ -378,14 +378,15 @@ int dpdk_port_state_callback (dpdk_portid_t port_id,
 			      enum rte_eth_event_type type,
 			      void *param, void *ret_param);
 
-#define foreach_dpdk_error						\
-  _(NONE, "no error")							\
-  _(RX_PACKET_ERROR, "Rx packet errors")				\
-  _(RX_BAD_FCS, "Rx bad fcs")						\
-  _(IP_CHECKSUM_ERROR, "Rx ip checksum errors")				\
-  _(RX_ALLOC_FAIL, "rx buf alloc from free list failed")		\
-  _(RX_ALLOC_NO_PHYSMEM, "rx buf alloc failed no physmem")		\
-  _(RX_ALLOC_DROP_PKTS, "rx packets dropped due to alloc error")
+#define foreach_dpdk_error                                                                         \
+  _ (NONE, "no error")                                                                             \
+  _ (RX_PACKET_ERROR, "Rx packet errors")                                                          \
+  _ (RX_BAD_FCS, "Rx bad fcs")                                                                     \
+  _ (IP_CHECKSUM_ERROR, "Rx ip checksum errors")                                                   \
+  _ (RX_ALLOC_FAIL, "rx buf alloc from free list failed")                                          \
+  _ (RX_ALLOC_NO_PHYSMEM, "rx buf alloc failed no physmem")                                        \
+  _ (RX_ALLOC_DROP_PKTS, "rx packets dropped due to alloc error")                                  \
+  _ (RX_MULTISEG_DROP, "rx multi-segment packets dropped (multi-seg disabled)")
 
 typedef enum
 {
