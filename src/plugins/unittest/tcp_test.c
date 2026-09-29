@@ -2380,6 +2380,39 @@ tcp_test_bbr (vlib_main_t *vm, unformat_input_t *input)
   vec_free (state);
   tcp_test_bbr_cleanup (tc);
 
+  /* Two faster samples in each round confirm growth even when the first
+   * sample at the round boundary is slow. */
+  tcp_test_bbr_init (tc, thread_index, 1000, 0.1);
+  for (i = 0; i < 4; i++)
+    {
+      clib_memset (&ac, 0, sizeof (ac));
+      ac.acked_and_sacked = 1000;
+      ac.interval_time = ac.rtt_time = 0.001;
+      ac.prior_delivered = tc->delivered;
+      tc->delivered += 1000;
+      ac.delivered = tc->delivered - ac.prior_delivered;
+      tc->cc_algo->rcv_ack (tc, &ac);
+
+      clib_memset (&ac, 0, sizeof (ac));
+      ac.acked_and_sacked = 1500;
+      ac.interval_time = 0.001 / (1u << (2 * i));
+      ac.rtt_time = 0.001;
+      ac.prior_delivered = tc->delivered - 500;
+      tc->delivered += 1500;
+      ac.delivered = tc->delivered - ac.prior_delivered;
+      tc->cc_algo->rcv_ack (tc, &ac);
+
+      ac.prior_delivered = tc->delivered - 2000;
+      tc->delivered += 1500;
+      ac.delivered = tc->delivered - ac.prior_delivered;
+      tc->cc_algo->rcv_ack (tc, &ac);
+    }
+  state = format (0, "%U%c", tc->cc_algo->format, tc, 0);
+  TCP_TEST (strstr ((char *) state, "state 0/") != 0,
+	    "bbr startup confirms intra-round bandwidth growth: %s", state);
+  vec_free (state);
+  tcp_test_bbr_cleanup (tc);
+
   /* Restarting an idle ProbeRTT flow must not start its dwell timer. The next
    * ACK starts the timer after the pipe is drained, so ProbeRTT remains active. */
   tcp_test_set_time (thread_index, 3);
