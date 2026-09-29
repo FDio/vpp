@@ -11,9 +11,18 @@ import (
 var tlsTests = map[string][]func(s *TlsSuite){}
 var tlsSoloTests = map[string][]func(s *TlsSuite){}
 var tlsMWTests = map[string][]func(s *TlsSuite){}
+var tlsTapTests = map[string][]func(s *TlsTapSuite){}
 
 type TlsSuite struct {
 	VethsSuite
+}
+
+type TlsTapSuite struct {
+	TapSuite
+}
+
+func RegisterTlsTapTests(tests ...func(s *TlsTapSuite)) {
+	tlsTapTests[GetTestFilename()] = tests
 }
 
 func RegisterTlsTests(tests ...func(s *TlsSuite)) {
@@ -44,6 +53,27 @@ var _ = Describe("TlsSuite", Ordered, ContinueOnFailure, Label("Veth", "Tls"), f
 
 	// https://onsi.github.io/ginkgo/#dynamically-generating-specs
 	for filename, tests := range tlsTests {
+		for _, test := range tests {
+			test := test
+			pc := reflect.ValueOf(test).Pointer()
+			funcValue := runtime.FuncForPC(pc)
+			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
+			It(testName, func(ctx SpecContext) {
+				Log("[* TEST BEGIN]: " + testName)
+				test(&s)
+			}, SpecTimeout(TestTimeout))
+		}
+	}
+})
+
+var _ = Describe("TlsTapSuite", Ordered, ContinueOnFailure, Label("Tap", "Tls"), func() {
+	var s TlsTapSuite
+	BeforeAll(func() { s.SetupSuite() })
+	BeforeEach(func() { s.SetupTest() })
+	AfterAll(func() { s.TeardownSuite() })
+	AfterEach(func() { s.TeardownTest() })
+
+	for filename, tests := range tlsTapTests {
 		for _, test := range tests {
 			test := test
 			pc := reflect.ValueOf(test).Pointer()

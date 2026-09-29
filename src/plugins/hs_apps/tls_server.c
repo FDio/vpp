@@ -22,6 +22,8 @@ typedef struct
   u8 alpn_protos[4];
   vlib_main_t *vlib_main;
   u32 accepted_count;
+  u64 received_bytes;
+  u64 rx_fifo_size;
 } tls_server_main_t;
 
 tls_server_main_t tls_server_main;
@@ -29,8 +31,11 @@ tls_server_main_t tls_server_main;
 static int
 ts_ts_rx_callback (session_t *ts)
 {
-  clib_warning ("called...");
-  return -1;
+  tls_server_main_t *sm = &tls_server_main;
+  u32 n = svm_fifo_max_dequeue_cons (ts->rx_fifo);
+  svm_fifo_dequeue_drop (ts->rx_fifo, n);
+  sm->received_bytes += n;
+  return 0;
 }
 
 static int
@@ -69,6 +74,8 @@ ts_ts_disconnect_callback (session_t *s)
 {
   tls_server_main_t *sm = &tls_server_main;
   vnet_disconnect_args_t _a = { 0 }, *a = &_a;
+
+  ts_ts_rx_callback (s);
 
   a->handle = session_handle (s);
   a->app_index = sm->app_index;
@@ -135,7 +142,7 @@ ts_attach ()
   a->options = options;
   a->options[APP_OPTIONS_SEGMENT_SIZE] = 128 << 20;
   a->options[APP_OPTIONS_ADD_SEGMENT_SIZE] = 128 << 20;
-  a->options[APP_OPTIONS_RX_FIFO_SIZE] = 8 << 10;
+  a->options[APP_OPTIONS_RX_FIFO_SIZE] = sm->rx_fifo_size;
   a->options[APP_OPTIONS_TX_FIFO_SIZE] = 8 << 10;
   a->options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_IS_BUILTIN;
   a->options[APP_OPTIONS_PREALLOC_FIFO_PAIRS] = 0;
@@ -275,6 +282,7 @@ tls_server_create_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli
   sm->cert_file = 0;
   sm->key_file = 0;
   sm->use_last_ckpair = 0;
+  sm->rx_fifo_size = 8 << 10;
   sm->alpn_protos[0] = sm->alpn_protos[1] = sm->alpn_protos[2] = sm->alpn_protos[3] =
     TLS_ALPN_PROTO_NONE;
 
@@ -286,6 +294,8 @@ tls_server_create_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli
       if (unformat (line_input, "uri %_%v%_", &sm->uri))
 	;
       else if (unformat (line_input, "tls-engine %d", &sm->tls_engine))
+	;
+      else if (unformat (line_input, "rx-fifo-size %U", unformat_memory_size, &sm->rx_fifo_size))
 	;
       else if (unformat (line_input, "alpn-proto1 %d", &sm->alpn_protos[0]))
 	;
@@ -345,6 +355,7 @@ done:
 VLIB_CLI_COMMAND (tls_server_create_command, static) = {
   .path = "test tls server",
   .short_help = "test tls server uri <tls://ip/port> [tls-engine %d] "
+		"[rx-fifo-size <bytes>[k|m]] "
 		"[profile-index %d] [cert <cert-file> key <key-file>]",
   .function = tls_server_create_command_fn,
 };
@@ -359,6 +370,7 @@ show_tls_server_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t
 			      input);
 
   vlib_cli_output (vm, "accepted connections %u", sm->accepted_count);
+  vlib_cli_output (vm, "received bytes %llu", sm->received_bytes);
   return 0;
 }
 

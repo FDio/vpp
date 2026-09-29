@@ -62,17 +62,18 @@ typedef struct tls_cxt_id_
 STATIC_ASSERT (sizeof (tls_ctx_id_t) <= TRANSPORT_CONN_ID_LEN,
 	       "ctx id must be less than TRANSPORT_CONN_ID_LEN");
 
-#define foreach_tls_conn_flags                                                \
-  _ (HO_DONE, "ho-done")                                                      \
-  _ (PASSIVE_CLOSE, "passive-close")                                          \
-  _ (APP_CLOSED, "app-closed")                                                \
-  _ (MIGRATED, "migrated")                                                    \
-  _ (NO_APP_SESSION, "no-app-session")                                        \
-  _ (RESUME, "resume")                                                        \
-  _ (HS_DONE, "handshake-done")                                               \
-  _ (ASYNC_RD, "async-read")                                                  \
-  _ (SHUTDOWN_TRANSPORT, "shutdown-transport")                                \
-  _ (ASYNC_CERT, "async-cert")
+#define foreach_tls_conn_flags                                                                     \
+  _ (HO_DONE, "ho-done")                                                                           \
+  _ (PASSIVE_CLOSE, "passive-close")                                                               \
+  _ (APP_CLOSED, "app-closed")                                                                     \
+  _ (MIGRATED, "migrated")                                                                         \
+  _ (NO_APP_SESSION, "no-app-session")                                                             \
+  _ (RESUME, "resume")                                                                             \
+  _ (HS_DONE, "handshake-done")                                                                    \
+  _ (ASYNC_RD, "async-read")                                                                       \
+  _ (SHUTDOWN_TRANSPORT, "shutdown-transport")                                                     \
+  _ (ASYNC_CERT, "async-cert")                                                                     \
+  _ (RX_RESCHEDULED, "rx-rescheduled")
 
 typedef enum tls_conn_flags_bit_
 {

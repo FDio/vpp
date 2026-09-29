@@ -21,6 +21,9 @@ typedef struct
   u8 *crl_file;
   tls_verify_cfg_t verify_cfg;
   u32 cli_node_index;
+  u64 send_bytes;
+  u32 nclients;
+  u32 completed_count;
   session_endpoint_cfg_t connect_sep;
   tls_alpn_proto_t alpn_proto_selected;
   u8 *negotiated_cipher;
@@ -49,8 +52,23 @@ tc_ts_rx_callback (session_t *ts)
 static int
 tc_ts_tx_callback (session_t *ts)
 {
-  clib_warning ("called...");
-  return -1;
+  tls_client_main_t *cm = &tls_client_main;
+  vnet_shutdown_args_t shutdown = { .handle = session_handle (ts), .app_index = cm->app_index };
+
+  if (!cm->send_bytes)
+    return 0;
+  if (svm_fifo_max_dequeue_cons (ts->tx_fifo))
+    {
+      svm_fifo_add_want_deq_ntf (ts->tx_fifo, SVM_FIFO_WANT_DEQ_NOTIF);
+      return 0;
+    }
+  if (ts->opaque)
+    return 0;
+  ts->opaque = 1;
+  if (vnet_shutdown_session (&shutdown))
+    vlib_process_signal_event_mt (cm->vlib_main, cm->cli_node_index, TC_CLI_CONNECT_FAILED,
+				  SESSION_E_REFUSED);
+  return 0;
 }
 
 static int
@@ -93,6 +111,28 @@ tc_ts_connected_callback (u32 app_index, u32 api_context, session_t *s, session_
       cm->negotiated_signature_algo = 0;
     }
 
+  if (cm->send_bytes)
+    {
+      u8 *data = 0;
+      int enqueued;
+
+      vec_validate (data, cm->send_bytes - 1);
+      clib_memset (data, 0xa5, cm->send_bytes);
+      enqueued = svm_fifo_enqueue (s->tx_fifo, cm->send_bytes, data);
+      vec_free (data);
+      if (enqueued != cm->send_bytes)
+	{
+	  vlib_process_signal_event_mt (cm->vlib_main, cm->cli_node_index, TC_CLI_CONNECT_FAILED,
+					SESSION_E_REFUSED);
+	  return -1;
+	}
+      s->opaque = 0;
+      svm_fifo_add_want_deq_ntf (s->tx_fifo, SVM_FIFO_WANT_DEQ_NOTIF);
+      if (svm_fifo_set_event (s->tx_fifo))
+	session_program_tx_io_evt (s->handle, SESSION_IO_EVT_TX);
+      return 0;
+    }
+
   a->handle = session_handle (s);
   a->app_index = cm->app_index;
   vnet_disconnect_session (a);
@@ -111,6 +151,11 @@ tc_ts_disconnect_callback (session_t *s)
   a->handle = session_handle (s);
   a->app_index = cm->app_index;
   vnet_disconnect_session (a);
+  if (cm->send_bytes)
+    {
+      if (clib_atomic_add_fetch (&cm->completed_count, 1) == cm->nclients)
+	vlib_process_signal_event_mt (cm->vlib_main, cm->cli_node_index, TC_CLI_TEST_DONE, 0);
+    }
 }
 
 static void
@@ -177,7 +222,7 @@ tc_attach ()
   a->options[APP_OPTIONS_SEGMENT_SIZE] = 128 << 20;
   a->options[APP_OPTIONS_ADD_SEGMENT_SIZE] = 128 << 20;
   a->options[APP_OPTIONS_RX_FIFO_SIZE] = 8 << 10;
-  a->options[APP_OPTIONS_TX_FIFO_SIZE] = 8 << 10;
+  a->options[APP_OPTIONS_TX_FIFO_SIZE] = clib_max (8 << 10, cm->send_bytes);
   a->options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_IS_BUILTIN;
   a->options[APP_OPTIONS_PREALLOC_FIFO_PAIRS] = 0;
   a->options[APP_OPTIONS_TLS_ENGINE] = cm->tls_engine;
@@ -314,11 +359,13 @@ tc_run (vlib_main_t *vm)
   tls_client_main_t *cm = &tls_client_main;
   uword event_type, *event_data = 0;
   clib_error_t *error = 0;
+  u32 i;
 
   if (tc_attach ())
     return clib_error_return (0, "attach failed");
 
-  tc_connect ();
+  for (i = 0; i < cm->nclients; i++)
+    tc_connect ();
 
   vlib_process_wait_for_event_or_clock (vm, 10);
   event_type = vlib_process_get_events (vm, &event_data);
@@ -385,6 +432,9 @@ tls_client_run_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_co
   cm->verify_cfg = 0;
   cm->ca_cert_file = 0;
   cm->crl_file = 0;
+  cm->send_bytes = 0;
+  cm->nclients = 1;
+  cm->completed_count = 0;
 
   if (!unformat_user (input, unformat_line_input, line_input))
     return clib_error_return (0, "expected URI");
@@ -394,6 +444,10 @@ tls_client_run_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_co
       if (unformat (line_input, "uri %_%v%_", &cm->uri))
 	;
       else if (unformat (line_input, "tls-engine %d", &cm->tls_engine))
+	;
+      else if (unformat (line_input, "send-bytes %U", unformat_memory_size, &cm->send_bytes))
+	;
+      else if (unformat (line_input, "nclients %u", &cm->nclients))
 	;
       else if (unformat (line_input, "alpn-proto1 %d", &cm->alpn_protos[0]))
 	;
@@ -443,6 +497,16 @@ tls_client_run_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_co
       error = clib_error_return (0, "crl requires ca-cert");
       goto done;
     }
+  if (cm->send_bytes > (16 << 20))
+    {
+      error = clib_error_return (0, "send-bytes exceeds 16m");
+      goto done;
+    }
+  if (!cm->nclients || (cm->nclients != 1 && !cm->send_bytes))
+    {
+      error = clib_error_return (0, "nclients requires send-bytes");
+      goto done;
+    }
 
   vec_terminate_c_string (cm->uri);
   if (parse_uri ((char *) cm->uri, &cm->connect_sep))
@@ -482,6 +546,8 @@ done:
 VLIB_CLI_COMMAND (tls_client_run_command, static) = {
   .path = "test tls client",
   .short_help = "test tls client [uri <tls://ip/port>] [tls-engine %d] "
+		"[send-bytes <bytes>[k|m]] "
+		"[nclients <n>] "
 		"[profile-index %d] [verify <mode>] [ca-cert <ca-cert-file>] "
 		"[crl <crl-file>]",
   .function = tls_client_run_command_fn,
