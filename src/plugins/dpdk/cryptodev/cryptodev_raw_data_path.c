@@ -157,6 +157,7 @@ cryptodev_frame_linked_algs_enqueue_internal (vlib_main_t *vm,
       cryptodev_op_type_t sess_op_type = op_type;
       u8 *iv = vnet_crypto_buffer_metadata_get_ptr (vm, b[0], md->iv_off);
       u8 *tag = vnet_crypto_buffer_metadata_get_ptr (vm, b[0], md->icv_off);
+      u32 digest_len = cryptodev_digest_len (ad, md->icv_len);
 
       if (ad->alg_type == VNET_CRYPTO_ALG_T_AUTH)
 	sess_op_type =
@@ -179,17 +180,17 @@ cryptodev_frame_linked_algs_enqueue_internal (vlib_main_t *vm,
 
 	  if (PREDICT_FALSE (key_sess == 0))
 	    {
-	      status = cryptodev_session_create (vm, ctx, 0, md->icv_len);
+	      status = cryptodev_session_create (vm, ctx, 0, digest_len);
 	      if (PREDICT_FALSE (status < 0))
 		goto error_exit;
 	      key_sess = cryptodev_session_get (key, vm->numa_node, sess_op_type);
 	    }
 	  else if (ad->alg_type == VNET_CRYPTO_ALG_T_AUTH &&
 		   PREDICT_FALSE (rte_cryptodev_sym_session_opaque_data_get (key_sess) !=
-				  (u64) md->icv_len))
+				  (u64) digest_len))
 	    {
 	      cryptodev_sess_handler (vm, ctx);
-	      status = cryptodev_session_create (vm, ctx, 0, md->icv_len);
+	      status = cryptodev_session_create (vm, ctx, 0, digest_len);
 	      if (PREDICT_FALSE (status < 0))
 		goto error_exit;
 	      key_sess = cryptodev_session_get (key, vm->numa_node, sess_op_type);

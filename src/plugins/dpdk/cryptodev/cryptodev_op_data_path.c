@@ -205,6 +205,7 @@ cryptodev_frame_linked_algs_enqueue_internal (vlib_main_t *vm,
       u32 key_index = ctx->index;
       cryptodev_op_type_t sess_op_type = op_type;
       u8 *digest = vnet_crypto_buffer_metadata_get_ptr (vm, b, md->icv_off);
+      u32 digest_len = cryptodev_digest_len (ad, md->icv_len);
 
       if (ad->alg_type == VNET_CRYPTO_ALG_T_AUTH)
 	sess_op_type =
@@ -226,7 +227,7 @@ cryptodev_frame_linked_algs_enqueue_internal (vlib_main_t *vm,
 
 	  if (key_sess == 0)
 	    {
-	      if (PREDICT_FALSE (cryptodev_session_create (vm, ctx, 0, md->icv_len) < 0))
+	      if (PREDICT_FALSE (cryptodev_session_create (vm, ctx, 0, digest_len) < 0))
 		{
 		  ring->frames[*enq].frame_elts_errs_mask =
 		    cryptodev_mark_frame_fill_err (frame, ring->frames[*enq].frame_elts_errs_mask,
@@ -237,10 +238,10 @@ cryptodev_frame_linked_algs_enqueue_internal (vlib_main_t *vm,
 	    }
 	  else if (ad->alg_type == VNET_CRYPTO_ALG_T_AUTH &&
 		   PREDICT_FALSE (rte_cryptodev_sym_session_opaque_data_get (key_sess) !=
-				  (u64) md->icv_len))
+				  (u64) digest_len))
 	    {
 	      cryptodev_sess_handler (vm, ctx);
-	      if (PREDICT_FALSE (cryptodev_session_create (vm, ctx, 0, md->icv_len) < 0))
+	      if (PREDICT_FALSE (cryptodev_session_create (vm, ctx, 0, digest_len) < 0))
 		{
 		  ring->frames[*enq].frame_elts_errs_mask =
 		    cryptodev_mark_frame_fill_err (frame, ring->frames[*enq].frame_elts_errs_mask,
