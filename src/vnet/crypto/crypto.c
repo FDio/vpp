@@ -594,7 +594,9 @@ vnet_crypto_load_engines (vlib_main_t *vm)
 	    }
 	  log_debug ("%s crypto engine initialized", r->name);
 	}
-      vnet_crypto_engine_id_t engine = vnet_crypto_register_engine (vm, r->name, r->prio, r->desc);
+      vnet_crypto_engine_id_t engine = vnet_crypto_get_engine_index_by_name ("%s", r->name);
+      if (engine == VNET_CRYPTO_ENGINE_ID_INVALID)
+        engine = vnet_crypto_register_engine (vm, r->name, r->prio, r->desc);
       log_debug ("%s crypto engine registered with id %u", r->name, engine);
       if (r->reg_op_groups)
 	{
