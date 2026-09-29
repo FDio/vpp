@@ -70,6 +70,20 @@ dpdk_set_max_frame_size (vnet_main_t *vnm, vnet_hw_interface_t *hi,
   int rv;
   u32 mtu;
 
+  /*
+   * dpdk-input can't handle chained mbufs unless it expects them, and
+   * PMDs may enable scattered RX on their own when the frame doesn't fit
+   * into a single buffer, leaking the tail segments.
+   */
+  if (xd->max_supported_frame_size && frame_size > xd->max_supported_frame_size)
+    return vnet_error (VNET_ERR_INVALID_VALUE,
+		       "max frame size %u exceeds %u, the maximum supported "
+		       "by the device%s",
+		       frame_size, xd->max_supported_frame_size,
+		       (xd->conf.disable_multi_seg || xd->conf.disable_rx_scatter) ?
+			 " without multi-segment buffers" :
+			 "");
+
   mtu = frame_size - xd->driver_frame_overhead;
 
   rv = rte_eth_dev_set_mtu (xd->port_id, mtu);

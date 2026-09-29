@@ -222,7 +222,12 @@ dpdk_device_setup (dpdk_device_t *xd)
 	}
     }
 
-  if (xd->conf.disable_multi_seg)
+  /*
+   * Without RX scatter dpdk-input expects each packet in a single buffer,
+   * but many PMDs enable scattered RX on their own if the frame doesn't
+   * fit into one buffer, so the frame size must be limited here.
+   */
+  if (xd->conf.disable_multi_seg || xd->conf.disable_rx_scatter)
     xd->max_supported_frame_size = clib_min (dev_info.max_rx_pktlen, buf_sz);
   else
     xd->max_supported_frame_size = dev_info.max_rx_pktlen;
