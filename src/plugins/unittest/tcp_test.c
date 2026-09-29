@@ -8583,6 +8583,27 @@ tcp_test_bt (vlib_main_t * vm, unformat_input_t * input)
   fifo_segment_delete (fsm, fs);
   tcp_bt_cleanup (tc);
 
+  /* The send-path marker survives a full-cwnd restart until new delivery. */
+  memset (tc, 0, sizeof (*tc));
+  memset (ac, 0, sizeof (*ac));
+  tcp_bt_init (tc);
+  tc->cwnd = 1000;
+  tc->snd_mss = 100;
+  tc->delivered = 300;
+  tcp_bt_check_app_limited (tc, 0);
+  TCP_TEST (tc->app_limited == tc->delivered, "send-path check sets app-limited marker");
+  tcp_bt_check_app_limited (tc, tc->cwnd);
+  TCP_TEST (tc->app_limited == tc->delivered, "full-cwnd write retains app-limited marker");
+  tcp_test_set_time (thread_index, 50);
+  tcp_bt_track_tx (tc, tc->cwnd);
+  tc->snd_nxt = tc->cwnd;
+  bts = pool_elt_at_index (tc->bt->samples, tc->bt->head);
+  TCP_TEST (bts->flags & TCP_BTS_IS_APP_LIMITED, "restart sample retains app-limited flag");
+  tcp_test_set_time (thread_index, 51);
+  tcp_test_ack_handle_feedback (tc, tc->cwnd, ac);
+  TCP_TEST (tc->delivered == 1300 && !tc->app_limited, "new delivery clears app-limited marker");
+  tcp_bt_cleanup (tc);
+
   /* Delivery sampling continues after FIN and excludes the FIN sequence. */
   memset (tc, 0, sizeof (*tc));
   memset (ac, 0, sizeof (*ac));
