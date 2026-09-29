@@ -655,7 +655,8 @@ always_inline void
 ipsecmb_retire_aead_job (IMB_JOB *job, u32 *n_fail)
 {
   vnet_crypto_op_t *op = job->user_data;
-  u32 len = op->auth_len;
+  /* op->auth_len is a placeholder for fixed-tag algs; job carries the real length */
+  u32 len = job->auth_tag_output_len_in_bytes;
 
   if (PREDICT_FALSE (IMB_STATUS_COMPLETED != job->status))
     {
