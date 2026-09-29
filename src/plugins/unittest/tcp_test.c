@@ -8531,7 +8531,7 @@ tcp_test_bt (vlib_main_t * vm, unformat_input_t * input)
   }
 
   /*
-   * 9) app-limited detection uses the session tx fifo and in-flight data
+   * 9) app-limited detection includes all queued bytes and in-flight data
    */
   clib_memset (a, 0, sizeof (*a));
   a->segment_name = "tcp-bt-app-limited";
@@ -8551,16 +8551,27 @@ tcp_test_bt (vlib_main_t * vm, unformat_input_t * input)
   tc->snd_nxt = 1200;
   tc->snd_mss = 100;
   tc->cwnd = 1000;
+  tc->snd_wnd = 2000;
   tc->delivered = 300;
   tc->snd_rxt_bytes = 0;
   tc->sack_sb.lost_bytes = 0;
   tc->app_limited = 0;
 
   tcp_bt_check_app_limited (tc, tc->snd_mss);
-  TCP_TEST (!tc->app_limited, "one unsent segment should not be app limited");
+  TCP_TEST (tc->app_limited == 600, "one queued segment leaves the flight app limited");
 
-  tcp_bt_check_app_limited (tc, tc->snd_mss - 1);
-  TCP_TEST (tc->app_limited == 500, "app limited should include delivered and flight bytes");
+  tc->app_limited = 0;
+  tcp_bt_check_app_limited (tc, tc->cwnd - tcp_flight_size (tc));
+  TCP_TEST (!tc->app_limited, "a queued cwnd is not app limited");
+
+  tcp_bt_check_app_limited (tc, tc->cwnd - tcp_flight_size (tc) - 1);
+  TCP_TEST (tc->app_limited == 1299, "marker includes all queued and in-flight bytes");
+
+  tc->app_limited = 0;
+  tc->snd_wnd = 250;
+  tcp_bt_check_app_limited (tc, tc->snd_mss);
+  TCP_TEST (!tc->app_limited, "receive-window-limited sender is not app limited");
+  tc->snd_wnd = 2000;
 
   tc->app_limited = 0;
   tc->snd_nxt = tc->snd_una + tc->cwnd;
@@ -8581,6 +8592,38 @@ tcp_test_bt (vlib_main_t * vm, unformat_input_t * input)
   session_free (s);
   vec_free (a->new_segment_indices);
   fifo_segment_delete (fsm, fs);
+  tcp_bt_cleanup (tc);
+
+  /* A drained flight keeps its marker until new data is delivered. */
+  memset (tc, 0, sizeof (*tc));
+  memset (ac, 0, sizeof (*ac));
+  tcp_bt_init (tc);
+  tc->cwnd = 1000;
+  tc->snd_wnd = 2000;
+  tc->snd_mss = 100;
+  tc->delivered = 300;
+  tcp_bt_check_app_limited (tc, 100);
+  TCP_TEST (tc->app_limited == 400, "short full-MSS write marks its complete flight");
+  tcp_test_set_time (thread_index, 49);
+  tcp_bt_track_tx (tc, 100);
+  tc->snd_nxt = 100;
+  bts = pool_elt_at_index (tc->bt->samples, tc->bt->head);
+  TCP_TEST (bts->flags & TCP_BTS_IS_APP_LIMITED, "short full-MSS sample is app limited");
+  tcp_test_set_time (thread_index, 50);
+  tcp_test_ack_handle_feedback (tc, 100, ac);
+  tc->snd_una = 100;
+  TCP_TEST (tc->delivered == 400 && tc->app_limited == 400,
+	    "marker survives complete drain for next idle restart");
+  tcp_bt_track_tx (tc, 100);
+  tc->snd_nxt = 200;
+  bts = pool_elt_at_index (tc->bt->samples, tc->bt->head);
+  TCP_TEST (bts->flags & TCP_BTS_IS_APP_LIMITED, "restart sample retains app-limited flag");
+  memset (ac, 0, sizeof (*ac));
+  tcp_test_set_time (thread_index, 51);
+  tcp_test_ack_handle_feedback (tc, 200, ac);
+  tc->snd_una = 200;
+  TCP_TEST (tc->delivered == 500 && !tc->app_limited,
+	    "new delivery clears the prior idle marker");
   tcp_bt_cleanup (tc);
 
   /* Delivery sampling continues after FIN and excludes the FIN sequence. */

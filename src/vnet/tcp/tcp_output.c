@@ -314,6 +314,15 @@ tcp_update_burst_snd_vars (tcp_connection_t * tc)
 
   tcp_update_rcv_wnd (tc);
 
+  if (tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER)
+    {
+      u32 max_dequeue = transport_max_tx_dequeue (&tc->connection);
+      u32 outstanding = tc->snd_nxt - tc->snd_una;
+
+      if (max_dequeue > outstanding)
+	tcp_bt_check_app_limited (tc, max_dequeue - outstanding);
+    }
+
   if (tc->snd_una == tc->snd_nxt)
     {
       tcp_cc_event (tc, TCP_CC_EVT_START_TX);
@@ -986,9 +995,6 @@ tcp_session_push_header (transport_connection_t *tconn, vlib_buffer_t **bs, u32 
 
   if (PREDICT_FALSE (tc->cfg_flags & TCP_CFG_F_TSO))
     push_hdr_flags |= TCP_PUSH_HDR_F_MAYBE_GSO;
-
-  if (tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER)
-    tcp_bt_check_app_limited (tc, available_bytes);
 
   while (n_bufs >= 4)
     {

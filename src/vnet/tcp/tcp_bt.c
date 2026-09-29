@@ -533,14 +533,12 @@ tcp_bt_alloc_tx_sample (tcp_connection_t *tc, u32 min_seq, u32 max_seq, u64 tx_i
 void
 tcp_bt_check_app_limited (tcp_connection_t *tc, u32 available_bytes)
 {
-  u32 flight_size = tcp_flight_size (tc);
+  u64 offered = (u64) tcp_flight_size (tc) + available_bytes;
 
-  /* No full segment is waiting and congestion control allows more data. */
-  if (available_bytes < tc->snd_mss &&
-      flight_size < tc->cwnd
-      /* Bytes considered lost have been retransmitted */
-      && tc->sack_sb.lost_bytes <= tc->snd_rxt_bytes)
-    tc->app_limited = tc->delivered + flight_size ? : 1;
+  /* Include queued bytes so the marker survives ACKs that drain this flight. */
+  if (offered < tc->cwnd && offered < tc->snd_wnd &&
+      tc->sack_sb.lost_bytes <= tc->snd_rxt_bytes)
+    tc->app_limited = tc->delivered + offered ?: 1;
 }
 
 void

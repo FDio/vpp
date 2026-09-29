@@ -128,7 +128,8 @@ __clib_export u8 tcp_bt_next_rxt_range (tcp_connection_t *tc, u8 have_unsent, u8
 __clib_export u8 tcp_bt_next_rack_rxt_range (tcp_connection_t *tc, tcp_rxt_range_t *range);
 __clib_export u8 tcp_bt_last_rxt_range (tcp_connection_t *tc, tcp_rxt_range_t *range);
 /**
- * Check if sample to be generated is app limited
+ * Mark the queued flight app limited if the application cannot fill the send
+ * window. Call before sampling newly sent bytes.
  *
  * @param tc		 tcp connection
  * @param available_bytes unsent bytes available for transmission

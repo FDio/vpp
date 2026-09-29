@@ -517,6 +517,12 @@ tcp_handle_postponed_dequeues (tcp_worker_ctx_t * wrk)
       session_tx_fifo_dequeue_drop (&tc->connection, tc->burst_acked);
       tcp_validate_txf_size (tc, tc->snd_nxt - tc->snd_una);
 
+      /* Preserve the idle marker until the next application send. */
+      if (PREDICT_FALSE ((tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER) &&
+			 tc->snd_una == tc->snd_nxt &&
+			 !transport_max_tx_dequeue (&tc->connection)))
+	tcp_bt_check_app_limited (tc, 0);
+
       if (tcp_is_descheduled (tc))
 	tcp_reschedule (tc);
 
