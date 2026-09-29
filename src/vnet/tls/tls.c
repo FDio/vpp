@@ -14,6 +14,7 @@ static tls_main_t tls_main;
 tls_engine_vft_t *tls_vfts;
 
 void tls_disconnect (u32 ctx_handle, clib_thread_index_t thread_index);
+int tls_app_rx_callback (session_t *ts);
 
 void
 tls_disconnect_transport (tls_ctx_t * ctx)
@@ -74,10 +75,51 @@ tls_add_vpp_q_rx_evt (session_t * s)
   return 0;
 }
 
-int
-tls_add_vpp_q_builtin_rx_evt (session_t * s)
+static void
+tls_rx_after_disconnect (tls_ctx_t *ctx, session_t *s)
 {
-  session_enqueue_notify (s);
+  ctx->flags &= ~TLS_CONN_F_RX_RESCHEDULED;
+  tls_app_rx_callback (s);
+
+  if (!(ctx->flags & TLS_CONN_F_RX_RESCHEDULED))
+    tls_ctx_transport_close (ctx);
+}
+
+static void
+tls_rx_after_disconnect_rpc (void *arg)
+{
+  session_handle_t handle = pointer_to_uword (arg);
+  session_t *s = session_get_from_handle_if_valid (handle);
+  tls_ctx_t *ctx;
+
+  if (PREDICT_FALSE (!s || s->session_state == SESSION_STATE_TRANSPORT_DELETED))
+    return;
+
+  ctx = tls_ctx_get_w_thread (s->opaque, s->thread_index);
+  if (PREDICT_FALSE (ctx->tls_session_handle != handle || !(ctx->flags & TLS_CONN_F_PASSIVE_CLOSE)))
+    return;
+
+  tls_rx_after_disconnect (ctx, s);
+}
+
+int
+tls_add_vpp_q_builtin_rx_evt (session_t *s)
+{
+  if (s->flags & SESSION_F_TPT_INIT_CLOSE)
+    {
+      tls_ctx_t *ctx = tls_ctx_get_w_thread (s->opaque, s->thread_index);
+      if (!(ctx->flags & TLS_CONN_F_PASSIVE_CLOSE))
+	return 0;
+      /* RX events are discarded after transport-initiated close. Use an RPC
+       * until the TLS engine no longer requests another read. */
+      if (ctx->flags & TLS_CONN_F_RX_RESCHEDULED)
+	return 0;
+      ctx->flags |= TLS_CONN_F_RX_RESCHEDULED;
+      session_send_rpc_evt_to_thread_force (s->thread_index, tls_rx_after_disconnect_rpc,
+					    uword_to_pointer (session_handle (s), void *));
+    }
+  else
+    session_enqueue_notify (s);
   return 0;
 }
 
@@ -344,12 +386,12 @@ tls_session_disconnect_callback (session_t * tls_session)
   TLS_DBG (1, "TCP disconnecting handle %x session %u", tls_session->opaque,
 	   tls_session->session_index);
 
-  ASSERT (tls_session->thread_index == vlib_get_thread_index ()
-	  || vlib_thread_is_main_w_barrier ());
+  ASSERT (tls_session->thread_index == vlib_get_thread_index ());
 
   ctx = tls_ctx_get_w_thread (tls_session->opaque, tls_session->thread_index);
   ctx->flags |= TLS_CONN_F_PASSIVE_CLOSE;
-  tls_ctx_transport_close (ctx);
+  /* A read that leaves data pending will schedule the next read via RPC. */
+  tls_rx_after_disconnect (ctx, tls_session);
 }
 
 int
