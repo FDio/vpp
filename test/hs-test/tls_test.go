@@ -1,7 +1,10 @@
 package main
 
 import (
+	"time"
+
 	. "fd.io/hs-test/infra"
+	. "github.com/onsi/gomega"
 )
 
 type tlsTestEngine struct {
@@ -16,6 +19,28 @@ func init() {
 	RegisterTlsTests(TlsAlpMatchTest, TlsAlpnOverlapMatchTest, TlsAlpnServerPriorityMatchTest, TlsAlpnMismatchTest,
 		TlsAlpnEmptyServerListTest, TlsAlpnEmptyClientListTest, TlsCrlRejectThenAllowTest,
 		TlsPicotlsAlpnEmptyServerListTest, TlsPicotlsAlpnEmptyClientListTest)
+	RegisterTlsTapTests(TlsFinDrainTest)
+}
+
+// The client waits until TLS dequeues its plaintext, then half-closes. The
+// server must account for every byte when the TCP FIN reaches its TLS session.
+func TlsFinDrainTest(s *TlsTapSuite) {
+	serverVpp := s.Containers.ServerVpp.VppInstance
+	clientVpp := s.Containers.ClientVpp.VppInstance
+	uri := "tls://" + s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1
+
+	Log(serverVpp.Vppctl("test tls server uri " + uri + " rx-fifo-size 4m"))
+	o := clientVpp.Vppctl("test tls client uri " + uri + " send-bytes 1m nclients 16")
+	Log(o)
+	AssertNotContains(o, "timeout")
+	AssertNotContains(o, "connect error")
+	var stats string
+	Eventually(func() string {
+		stats = serverVpp.Vppctl("show test tls server")
+		return stats
+	}).WithTimeout(30 * time.Second).WithPolling(100 * time.Millisecond).
+		Should(ContainSubstring("received bytes 16777216"))
+	AssertContains(stats, "accepted connections 16")
 }
 
 func tlsCmd(cmd string, engine tlsTestEngine) string {
