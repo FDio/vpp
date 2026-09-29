@@ -1543,6 +1543,8 @@ vlib_main_or_worker_loop (vlib_main_t * vm, int is_main)
 		{
 		  vlib_node_runtime_t *n;
 		  n = vec_elt_at_index (nm->nodes_by_type[nt], int_num);
+		  if (n->state == VLIB_NODE_STATE_DISABLED)
+		    continue;
 		  if (n->stop_timer_handle_plus_1)
 		  {
 		    /* CLIB_U32_MAX means just expired */
