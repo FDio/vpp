@@ -509,13 +509,19 @@ tcp_handle_postponed_dequeues (tcp_worker_ctx_t * wrk)
       if (PREDICT_FALSE (!tc->burst_acked))
 	continue;
 
-      /* Preserve the time at which the local flight drained */
-      if (tc->snd_una == tc->snd_nxt)
-	tc->delivered_time = tcp_time_now_us (tc->c_thread_index);
-
       /* Dequeue the newly ACKed bytes */
       session_tx_fifo_dequeue_drop (&tc->connection, tc->burst_acked);
       tcp_validate_txf_size (tc, tc->snd_nxt - tc->snd_una);
+
+      if (tc->snd_una == tc->snd_nxt)
+	{
+	  /* Preserve the time at which the local flight drained. */
+	  tc->delivered_time = tcp_time_now_us (tc->c_thread_index);
+	  /* Remember an empty FIFO before a later application write. */
+	  if (PREDICT_FALSE ((tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER) &&
+			     !transport_max_tx_dequeue (&tc->connection)))
+	    tc->app_limited = tc->delivered ?: 1;
+	}
 
       if (tcp_is_descheduled (tc))
 	tcp_reschedule (tc);
