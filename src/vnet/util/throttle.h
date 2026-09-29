@@ -26,8 +26,7 @@ typedef struct throttle_t_
 
 #define THROTTLE_BITS	(512)
 
-extern void throttle_init (throttle_t *t, u32 n_threads, u32 buckets,
-			   f64 time);
+__clib_export extern void throttle_init (throttle_t *t, u32 n_threads, u32 buckets, f64 time);
 
 always_inline u64
 throttle_seed (throttle_t *t, clib_thread_index_t thread_index, f64 time_now)

@@ -207,7 +207,7 @@ __clib_export extern u8 *format_load_balance (u8 *s, va_list *args);
 
 __clib_export extern const dpo_id_t *load_balance_get_bucket (index_t lbi, u32 bucket);
 __clib_export extern int load_balance_is_drop (const dpo_id_t *dpo);
-extern u16 load_balance_n_buckets(index_t lbi);
+__clib_export extern u16 load_balance_n_buckets (index_t lbi);
 
 extern f64 load_balance_get_multipath_tolerance(void);
 
