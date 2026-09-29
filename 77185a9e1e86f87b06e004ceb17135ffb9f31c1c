@@ -1,0 +1,22 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "28f12751_9866e0e9",
+        "filename": "src/svm/svm_fifo.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-09-29T10:16:16Z",
+      "side": 1,
+      "message": "Marking this resolved based on the explanation above. Florin, please let me know if you still see a concern and could you please resume the review?",
+      "parentUuid": "3ef69676_b3bfe6bd",
+      "revId": "77185a9e1e86f87b06e004ceb17135ffb9f31c1c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
