@@ -1,0 +1,72 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a50913a8_86e9db52",
+        "filename": "src/vnet/ip/ip4_inlines.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 28,
+      "author": {
+        "id": 2561
+      },
+      "writtenOn": "2026-09-29T18:33:26Z",
+      "side": 1,
+      "message": "maybe icmp_echo? other vars are proto-based.",
+      "revId": "4496b9f5ea7d7e00adadfa8f0a7244446405a856",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "154fd5ec_c0b21fc5",
+        "filename": "src/vnet/ip/ip4_inlines.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 46,
+      "author": {
+        "id": 2561
+      },
+      "writtenOn": "2026-09-29T18:33:26Z",
+      "side": 1,
+      "message": "additional option gives no benefit (icmp flow hash) for the users by default, but forces all of them to pay the tax with additional checks.\n\n```\nif (PREDICT_TRUE(is_tcp_udp)) // gives the hint to handle the math traffic path almost w/o perfomance impact\n  {\n    t1 \u003d tcp-\u003esrc;\n    t2 \u003d tcp-\u003edst;\n  }\nelse\n  t1 \u003d t2 \u003d is_icmp_echo ? echo-\u003eid : 0; // reuses original fast cmov with constant instead of additional branching.\n```\n\nwith this idea almost unavoidable per-packet cost gives benefit in return - balancing for the rest of protocols, so I\u0027m afraid opt-in just steals perf here.\ndouble cmov although will give double latency due one cmov dependency on the second, so better not be used.",
+      "revId": "4496b9f5ea7d7e00adadfa8f0a7244446405a856",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ef0c8ac5_399d370d",
+        "filename": "src/vnet/ip/ip6_forward.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 2852,
+      "author": {
+        "id": 2561
+      },
+      "writtenOn": "2026-09-29T18:33:26Z",
+      "side": 1,
+      "message": "looks like excessive ai comment, do we really need it for icmp and not for the rest of options?",
+      "revId": "4496b9f5ea7d7e00adadfa8f0a7244446405a856",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5aee2bb6_c4f31201",
+        "filename": "src/vnet/ip/ip6_inlines.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 24,
+      "author": {
+        "id": 2561
+      },
+      "writtenOn": "2026-09-29T18:33:26Z",
+      "side": 1,
+      "message": "maybe icmp_echo? other vars are proto-based",
+      "revId": "4496b9f5ea7d7e00adadfa8f0a7244446405a856",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
