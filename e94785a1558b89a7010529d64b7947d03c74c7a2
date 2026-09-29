@@ -33,6 +33,42 @@
       "message": "Why add that by default? This looks like a pretty narrow case, where most of the traffic would be ICMP traffic between few endpoints?\nMaybe this should be an optional hash function that can be configured for specific usecases?",
       "revId": "e94785a1558b89a7010529d64b7947d03c74c7a2",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "61a2d764_e1e63cbc",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3370
+      },
+      "writtenOn": "2026-09-29T13:00:53Z",
+      "side": 1,
+      "message": "Agreed. I have kept the explicit if / else if / else structure in both IPv4 and IPv6 and will not pursue the nested ternary variant.",
+      "parentUuid": "e3311bb1_36fa6ec2",
+      "revId": "e94785a1558b89a7010529d64b7947d03c74c7a2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ec37a980_cc69a2d7",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3370
+      },
+      "writtenOn": "2026-09-29T13:00:53Z",
+      "side": 1,
+      "message": "The use case is sampling different ECMP paths with independent Echo identifiers to diagnose path faults, as clarified on vpp-dev. Patch set 2 makes this opt-in per IP table using the icmpid flow-hash flag. I measured both a dispatcher between hash specializations and a flag in ICMP parsing; the dispatcher was more expensive. The patch set 2 summary contains the OFF/ON results and the remaining design question. I am keeping this thread open and the change WIP because the default-path cost and configuration interface still need agreement.",
+      "parentUuid": "26f1ba82_36a6894d",
+      "revId": "e94785a1558b89a7010529d64b7947d03c74c7a2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
