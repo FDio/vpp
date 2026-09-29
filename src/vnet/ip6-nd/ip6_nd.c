@@ -39,6 +39,21 @@ typedef struct ip6_nd_t_
 static ip6_link_delegate_id_t ip6_nd_delegate_id;
 static ip6_nd_t *ip6_nd_pool;
 
+static_always_inline void
+ip6_nd_learn (u32 sw_if_index, const ip6_address_t *ip, const u8 *ethernet_address)
+{
+  ip_neighbor_learn_t learn = {
+    .sw_if_index = sw_if_index,
+    .ip = {
+      .version = AF_IP6,
+      .ip.ip6 = *ip,
+    },
+  };
+
+  memcpy (&learn.mac, ethernet_address, sizeof (learn.mac));
+  ip_neighbor_learn_dp (&learn);
+}
+
 static_always_inline uword
 icmp6_neighbor_solicitation_or_advertisement (vlib_main_t * vm,
 					      vlib_node_runtime_t * node,
@@ -136,21 +151,9 @@ icmp6_neighbor_solicitation_or_advertisement (vlib_main_t * vm,
 		 && o0->header.n_data_u64s == 1) ? o0 : 0);
 
 	  /* If src address unspecified or link local, donot learn neighbor MAC */
-	  if (PREDICT_TRUE (error0 == ICMP6_ERROR_NONE && o0 != 0 &&
-			    !ip6_sadd_unspecified))
-	    {
-	      ip_neighbor_learn_t learn = {
-		.sw_if_index = sw_if_index0,
-		.ip = {
-                  .version = AF_IP6,
-                  .ip.ip6 = (is_solicitation ?
-                             ip0->src_address :
-                             h0->target_address),
-                }
-	      };
-	      memcpy (&learn.mac, o0->ethernet_address, sizeof (learn.mac));
-	      ip_neighbor_learn_dp (&learn);
-	    }
+	  if (PREDICT_TRUE (error0 == ICMP6_ERROR_NONE && o0 != 0 && !ip6_sadd_unspecified &&
+			    !is_solicitation))
+	    ip6_nd_learn (sw_if_index0, &h0->target_address, o0->ethernet_address);
 	  /* Check if this NA conflicts with an ongoing DAD */
 	  if (!is_solicitation)
 	    {
@@ -233,6 +236,11 @@ icmp6_neighbor_solicitation_or_advertisement (vlib_main_t * vm,
 		    }
 		}
 	    }
+
+	  /* Learn from an NS only after its target has been validated. */
+	  if (PREDICT_TRUE (is_solicitation && error0 == ICMP6_ERROR_NONE && o0 != 0 &&
+			    !ip6_sadd_unspecified))
+	    ip6_nd_learn (sw_if_index0, &ip0->src_address, o0->ethernet_address);
 
 	  if (is_solicitation)
 	    {
