@@ -187,7 +187,7 @@ extern void fib_path_stack_mpls_disp(fib_node_index_t path_index,
                                      dpo_proto_t payload_proto,
                                      fib_mpls_lsp_mode_t mode,
                                      dpo_id_t *dpo);
-extern void fib_path_contribute_forwarding(fib_node_index_t path_index,
+__clib_export extern void fib_path_contribute_forwarding(fib_node_index_t path_index,
 					   fib_forward_chain_type_t type,
                                            dpo_proto_t payload_proto,
 					   dpo_id_t *dpo);
@@ -198,7 +198,7 @@ extern int fib_path_recursive_loop_detect(fib_node_index_t path_index,
 					  fib_node_index_t **entry_indicies);
 __clib_export extern u32 fib_path_get_resolving_interface(fib_node_index_t fib_entry_index);
 extern index_t fib_path_get_resolving_index(fib_node_index_t path_index);
-extern u16 fib_path_get_weight(fib_node_index_t path_index);
+__clib_export extern u16 fib_path_get_weight(fib_node_index_t path_index);
 extern u16 fib_path_get_preference(fib_node_index_t path_index);
 extern u32 fib_path_get_rpf_id(fib_node_index_t path_index);
 
