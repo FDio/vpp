@@ -156,10 +156,11 @@ dpdk_ol_flags_extract (struct rte_mbuf **mb, u32 *flags, int count)
 }
 
 static_always_inline uword
-dpdk_process_rx_burst (vlib_main_t *vm, dpdk_per_thread_data_t *ptd,
-		       uword n_rx_packets, int maybe_multiseg, u32 *or_flagsp)
+dpdk_process_rx_burst (vlib_main_t *vm, dpdk_per_thread_data_t *ptd, uword n_rx_packets,
+		       int maybe_multiseg, u32 *or_flagsp, u16 *or_nb_segsp)
 {
   u32 n_left = n_rx_packets;
+  u16 or_nb_segs = 0;
   vlib_buffer_t *b[4];
   struct rte_mbuf **mb = ptd->mbufs;
   uword n_bytes = 0;
@@ -209,6 +210,8 @@ dpdk_process_rx_burst (vlib_main_t *vm, dpdk_per_thread_data_t *ptd,
 	  n_bytes += dpdk_process_subseq_segs (vm, b[2], mb[2], &bt.template);
 	  n_bytes += dpdk_process_subseq_segs (vm, b[3], mb[3], &bt.template);
 	}
+      else
+	or_nb_segs |= mb[0]->nb_segs | mb[1]->nb_segs | mb[2]->nb_segs | mb[3]->nb_segs;
 
       /* next */
       mb += 4;
@@ -227,6 +230,8 @@ dpdk_process_rx_burst (vlib_main_t *vm, dpdk_per_thread_data_t *ptd,
 
       if (maybe_multiseg)
 	n_bytes += dpdk_process_subseq_segs (vm, b[0], mb[0], &bt.template);
+      else
+	or_nb_segs |= mb[0]->nb_segs;
 
       /* next */
       mb += 1;
@@ -234,7 +239,36 @@ dpdk_process_rx_burst (vlib_main_t *vm, dpdk_per_thread_data_t *ptd,
     }
 
   *or_flagsp = or_flags;
+  *or_nb_segsp = or_nb_segs;
   return n_bytes;
+}
+
+/*
+ * PMDs may deliver chained mbufs even without RX scatter requested, e.g.
+ * when they enable scattered RX on their own for large frames. Only the
+ * first segment is attached to the vlib buffer in that case, so free the
+ * rest and drop the packet instead of leaking the tail segments.
+ */
+static_always_inline void
+dpdk_drop_multiseg_packets (vlib_node_runtime_t *node, dpdk_per_thread_data_t *ptd,
+			    uword n_rx_packets)
+{
+  uword n;
+
+  for (n = 0; n < n_rx_packets; n++)
+    {
+      struct rte_mbuf *mb = ptd->mbufs[n];
+
+      if (PREDICT_TRUE (mb->nb_segs == 1))
+	continue;
+
+      rte_pktmbuf_free (mb->next);
+      mb->next = 0;
+      mb->nb_segs = 1;
+      mb->pkt_len = mb->data_len;
+      vlib_buffer_from_rte_mbuf (mb)->error = node->errors[DPDK_ERROR_RX_MULTISEG_DROP];
+      ptd->next[n] = VNET_DEVICE_INPUT_NEXT_DROP;
+    }
 }
 
 static_always_inline void
@@ -344,6 +378,7 @@ dpdk_device_input (vlib_main_t *vm, dpdk_main_t *dm, dpdk_device_t *xd,
   vlib_buffer_t *b0;
   u16 *next;
   u32 or_flags;
+  u16 or_nb_segs;
   u32 n;
   int single_next = 0;
 
@@ -390,9 +425,9 @@ dpdk_device_input (vlib_main_t *vm, dpdk_main_t *dm, dpdk_device_t *xd,
     vnet_feature_start_device_input (xd->sw_if_index, &next_index, bt);
 
   if (xd->flags & DPDK_DEVICE_FLAG_MAYBE_MULTISEG)
-    n_rx_bytes = dpdk_process_rx_burst (vm, ptd, n_rx_packets, 1, &or_flags);
+    n_rx_bytes = dpdk_process_rx_burst (vm, ptd, n_rx_packets, 1, &or_flags, &or_nb_segs);
   else
-    n_rx_bytes = dpdk_process_rx_burst (vm, ptd, n_rx_packets, 0, &or_flags);
+    n_rx_bytes = dpdk_process_rx_burst (vm, ptd, n_rx_packets, 0, &or_flags, &or_nb_segs);
 
   if (PREDICT_FALSE ((or_flags & RTE_MBUF_F_RX_LRO)))
     dpdk_process_lro_offload (xd, ptd, n_rx_packets);
@@ -414,7 +449,7 @@ dpdk_device_input (vlib_main_t *vm, dpdk_main_t *dm, dpdk_device_t *xd,
 	}
     }
 
-  if (PREDICT_FALSE (or_flags & RTE_MBUF_F_RX_FDIR))
+  if (PREDICT_FALSE ((or_flags & RTE_MBUF_F_RX_FDIR) || or_nb_segs > 1))
     {
       /* some packets will need to go to different next nodes */
       for (n = 0; n < n_rx_packets; n++)
@@ -425,6 +460,10 @@ dpdk_device_input (vlib_main_t *vm, dpdk_main_t *dm, dpdk_device_t *xd,
       if (PREDICT_FALSE ((xd->flags & DPDK_DEVICE_FLAG_RX_FLOW_OFFLOAD) &&
 			 (or_flags & RTE_MBUF_F_RX_FDIR)))
 	dpdk_process_flow_offload (xd, ptd, n_rx_packets);
+
+      /* chained mbufs where only single-segment packets are expected */
+      if (PREDICT_FALSE (or_nb_segs > 1))
+	dpdk_drop_multiseg_packets (node, ptd, n_rx_packets);
 
       /* enqueue buffers to the next node */
       vlib_get_buffer_indices_with_offset (vm, (void **) ptd->mbufs,
