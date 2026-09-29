@@ -16,6 +16,24 @@ func init() {
 	RegisterTlsTests(TlsAlpMatchTest, TlsAlpnOverlapMatchTest, TlsAlpnServerPriorityMatchTest, TlsAlpnMismatchTest,
 		TlsAlpnEmptyServerListTest, TlsAlpnEmptyClientListTest, TlsCrlRejectThenAllowTest,
 		TlsPicotlsAlpnEmptyServerListTest, TlsPicotlsAlpnEmptyClientListTest)
+	RegisterTlsTapTests(TlsFinDrainTest)
+}
+
+// The client waits until TLS dequeues its plaintext, then half-closes. The
+// server must account for every byte when the TCP FIN reaches its TLS session.
+func TlsFinDrainTest(s *TlsTapSuite) {
+	serverVpp := s.Containers.ServerVpp.VppInstance
+	clientVpp := s.Containers.ClientVpp.VppInstance
+	uri := "tls://" + s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1
+
+	Log(serverVpp.Vppctl("test tls server uri " + uri + " rx-fifo-size 4m"))
+	o := clientVpp.Vppctl("test tls client uri " + uri + " send-bytes 1m nclients 16")
+	Log(o)
+	AssertNotContains(o, "timeout")
+	AssertNotContains(o, "connect error")
+	stats := serverVpp.Vppctl("show test tls server")
+	AssertContains(stats, "accepted connections 16")
+	AssertContains(stats, "received bytes 16777216")
 }
 
 func tlsCmd(cmd string, engine tlsTestEngine) string {
