@@ -1144,7 +1144,7 @@ static int
 crypto_test_alg_has_fixed_auth_len (vnet_crypto_alg_t alg)
 {
   if (crypto_main.algs[alg].alg_type == VNET_CRYPTO_ALG_T_AEAD)
-    return 1;
+    return crypto_main.algs[alg].auth_len != 0;
 
   switch (alg)
     {
@@ -2311,7 +2311,7 @@ test_crypto_async_case (vlib_main_t *vm, crypto_test_main_t *tm,
       log_err (0, "%s %s %U-%U %s: fail-engine-err %U", engine_name, r->name,
 	       format_crypto_op_type_short, op_type, format_vnet_crypto_alg, r->alg,
 	       is_chained ? "chained" : "simple", format_uword_bitmap,
-	       result.frame->engine_error_bitmap);
+	       result.frame->engine_error_bitmap, VNET_CRYPTO_ASYNC_FRAME_BITMAP_N_UWORDS);
       *test_result = CRYPTO_TEST_RESULT_ERROR;
       goto done;
     }
@@ -2321,7 +2321,7 @@ test_crypto_async_case (vlib_main_t *vm, crypto_test_main_t *tm,
       log_err (0, "%s %s %U-%U %s: fail-bad-hmac %U", engine_name, r->name,
 	       format_crypto_op_type_short, op_type, format_vnet_crypto_alg, r->alg,
 	       is_chained ? "chained" : "simple", format_uword_bitmap,
-	       result.frame->bad_hmac_bitmap);
+	       result.frame->bad_hmac_bitmap, VNET_CRYPTO_ASYNC_FRAME_BITMAP_N_UWORDS);
       *test_result = CRYPTO_TEST_RESULT_FAIL;
       goto done;
     }
