@@ -16,7 +16,9 @@
 #include <vlib/dma/dma.h>
 #include <vnet/session/session_rules_table.h>
 
-session_main_t session_main;
+session_main_t session_main = {
+  .deferred_rx_max_segs = SESSION_DEFERRED_RX_MAX_SEGS,
+};
 
 typedef enum
 {
@@ -2053,6 +2055,7 @@ session_manager_main_enable (vlib_main_t *vm,
       wrk->evts_pending_main =
 	clib_llist_make_head (wrk->event_elts, evt_list);
       wrk->vm = vlib_get_main_by_index (i);
+      wrk->deferred_io.max_segs = smm->deferred_rx_max_segs;
       wrk->last_vlib_time = vlib_time_now (vm);
       wrk->last_vlib_us_time = wrk->last_vlib_time * CLIB_US_TIME_FREQ;
       wrk->timerfd = -1;
