@@ -49,6 +49,8 @@ typedef enum seg_manager_flag_
 #undef _
 } seg_manager_flag_t;
 
+typedef struct custom_segments_ctx_ custom_segments_ctx_t;
+
 typedef struct _segment_manager
 {
   /** Pool of segments allocated by this manager */
@@ -56,6 +58,12 @@ typedef struct _segment_manager
 
   /** rwlock that protects the segments pool */
   clib_rwlock_t segments_rwlock;
+
+  /** Cut-through segment contexts, indexed by client app worker.
+   * Acquire ct_ctx_lock before segments_rwlock when both are needed. */
+  custom_segments_ctx_t *ct_ctx_pool;
+  uword *ct_ctx_by_client_wrk;
+  clib_rwlock_t ct_ctx_lock;
 
   /** Owner app worker index */
   u32 app_wrk_index;

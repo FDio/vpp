@@ -968,6 +968,168 @@ session_test_namespace (vlib_main_t * vm, unformat_input_t * input)
   return 0;
 }
 
+static u32 ct_isolation_server_wrks[2], ct_isolation_client_wrks[2];
+static volatile session_handle_t ct_isolation_accepted[2];
+static volatile session_handle_t ct_isolation_connected[2];
+
+static int
+ct_isolation_accept_callback (session_t *s)
+{
+  for (u32 i = 0; i < 2; i++)
+    if (s->app_wrk_index == ct_isolation_server_wrks[i])
+      {
+	ct_isolation_accepted[i] = session_handle (s);
+	return 0;
+      }
+  return -1;
+}
+
+static int
+ct_isolation_connected_callback (u32 wrk_index, u32 opaque, session_t *s, session_error_t err)
+{
+  if (err || !s)
+    return -1;
+  for (u32 i = 0; i < 2; i++)
+    if (wrk_index == ct_isolation_client_wrks[i])
+      {
+	ct_isolation_connected[i] = session_handle (s);
+	return 0;
+      }
+  return -1;
+}
+
+static void
+ct_isolation_disconnect_callback (session_t *s)
+{
+  vnet_disconnect_args_t args = {
+    .handle = session_handle (s),
+    .app_index = app_worker_get (s->app_wrk_index)->app_index,
+  };
+  vnet_disconnect_session (&args);
+}
+
+static int
+ct_isolation_segment_callback (u32 wrk_index, u64 segment_handle)
+{
+  return 0;
+}
+
+static session_cb_vft_t ct_isolation_cbs = {
+  .session_accept_callback = ct_isolation_accept_callback,
+  .session_connected_callback = ct_isolation_connected_callback,
+  .session_disconnect_callback = ct_isolation_disconnect_callback,
+  .session_reset_callback = ct_isolation_disconnect_callback,
+  .add_segment_callback = ct_isolation_segment_callback,
+  .del_segment_callback = ct_isolation_segment_callback,
+};
+
+static int
+session_test_ct_isolation (vlib_main_t *vm, unformat_input_t *input)
+{
+  u64 options[APP_OPTIONS_N_OPTIONS] = { 0 };
+  u32 server_apps[2], client_apps[2], i, tries;
+  session_handle_t listen_handles[2];
+  vnet_app_detach_args_t detach_args = { .api_client_index = ~0 };
+  session_t *s;
+  int rv;
+
+  options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_IS_BUILTIN | APP_OPTIONS_FLAGS_USE_LOCAL_SCOPE;
+  for (i = 0; i < 2; i++)
+    {
+      vnet_app_attach_args_t attach_args = {
+	.api_client_index = ~0,
+	.options = options,
+	.session_cb_vft = &ct_isolation_cbs,
+      };
+      session_endpoint_cfg_t sep = SESSION_ENDPOINT_CFG_NULL;
+      vnet_listen_args_t listen_args = { 0 };
+
+      ct_isolation_accepted[i] = SESSION_INVALID_HANDLE;
+      ct_isolation_connected[i] = SESSION_INVALID_HANDLE;
+
+      attach_args.name = format (0, "ct-isolation-server-%u", i);
+      rv = vnet_application_attach (&attach_args);
+      vec_free (attach_args.name);
+      SESSION_TEST (rv == 0, "cut-through server %u attached", i);
+      server_apps[i] = attach_args.app_index;
+      ct_isolation_server_wrks[i] =
+	application_get_default_worker (application_get (server_apps[i]))->wrk_index;
+
+      sep.is_ip4 = 1;
+      sep.port = 43000 + i;
+      sep.transport_proto = TRANSPORT_PROTO_TCP;
+      listen_args.sep_ext = sep;
+      listen_args.app_index = server_apps[i];
+      rv = vnet_listen (&listen_args);
+      SESSION_TEST (rv == 0, "cut-through server %u listening", i);
+      listen_handles[i] = listen_args.handle;
+
+      attach_args.name = format (0, "ct-isolation-client-%u", i);
+      rv = vnet_application_attach (&attach_args);
+      vec_free (attach_args.name);
+      SESSION_TEST (rv == 0, "cut-through client %u attached", i);
+      client_apps[i] = attach_args.app_index;
+      ct_isolation_client_wrks[i] =
+	application_get_default_worker (application_get (client_apps[i]))->wrk_index;
+    }
+
+  for (i = 0; i < 2; i++)
+    {
+      vnet_connect_args_t connect_args = { .app_index = client_apps[i] };
+      connect_args.sep.is_ip4 = 1;
+      connect_args.sep.ip.ip4.as_u32 = clib_host_to_net_u32 (0x7f000001);
+      connect_args.sep.port = 43000 + i;
+      connect_args.sep.transport_proto = TRANSPORT_PROTO_TCP;
+      rv = vnet_connect (&connect_args);
+      SESSION_TEST (rv == 0, "cut-through client %u connecting", i);
+    }
+
+  tries = 0;
+  while (++tries < 100 && (ct_isolation_accepted[0] == SESSION_INVALID_HANDLE ||
+			   ct_isolation_accepted[1] == SESSION_INVALID_HANDLE ||
+			   ct_isolation_connected[0] == SESSION_INVALID_HANDLE ||
+			   ct_isolation_connected[1] == SESSION_INVALID_HANDLE))
+    {
+      vlib_worker_thread_barrier_release (vm);
+      vlib_process_suspend (vm, 10e-3);
+      vlib_worker_thread_barrier_sync (vm);
+    }
+  SESSION_TEST (ct_isolation_connected[0] != SESSION_INVALID_HANDLE &&
+		  ct_isolation_connected[1] != SESSION_INVALID_HANDLE,
+		"both cut-through clients connected");
+  SESSION_TEST (ct_isolation_accepted[0] != SESSION_INVALID_HANDLE &&
+		  ct_isolation_accepted[1] != SESSION_INVALID_HANDLE,
+		"both cut-through servers accepted");
+
+  detach_args.app_index = client_apps[0];
+  vnet_application_detach (&detach_args);
+  vnet_unlisten_args_t unlisten_args = { .app_index = server_apps[0], .handle = listen_handles[0] };
+  vnet_unlisten (&unlisten_args);
+  detach_args.app_index = server_apps[0];
+  vnet_application_detach (&detach_args);
+
+  vlib_worker_thread_barrier_release (vm);
+  vlib_process_suspend (vm, 100e-3);
+  vlib_worker_thread_barrier_sync (vm);
+
+  s = session_get_from_handle_if_valid (ct_isolation_accepted[1]);
+  SESSION_TEST (s && s->session_state == SESSION_STATE_READY && s->rx_fifo && s->tx_fifo,
+		"second cut-through remains ready after first closes");
+  s = session_get_from_handle_if_valid (ct_isolation_connected[1]);
+  SESSION_TEST (s && s->session_state == SESSION_STATE_READY && s->rx_fifo && s->tx_fifo,
+		"second client remains ready after first closes");
+
+  detach_args.app_index = client_apps[1];
+  vnet_application_detach (&detach_args);
+  unlisten_args.app_index = server_apps[1];
+  unlisten_args.handle = listen_handles[1];
+  vnet_unlisten (&unlisten_args);
+  detach_args.app_index = server_apps[1];
+  vnet_application_detach (&detach_args);
+
+  return 0;
+}
+
 static void
 session_test_disable_rt_backend_engine (vlib_main_t *vm)
 {
@@ -3110,6 +3272,8 @@ session_test (vlib_main_t * vm,
 	res = session_test_basic (vm, input);
       else if (unformat (input, "namespace"))
 	res = session_test_namespace (vm, input);
+      else if (unformat (input, "ct-isolation"))
+	res = session_test_ct_isolation (vm, input);
       else if (unformat (input, "rules-table"))
 	res = session_test_rule_table (vm, input);
       else if (unformat (input, "rules"))
@@ -3139,6 +3303,8 @@ session_test (vlib_main_t * vm,
 	  if ((res = session_test_basic (vm, input)))
 	    goto done;
 	  if ((res = session_test_namespace (vm, input)))
+	    goto done;
+	  if ((res = session_test_ct_isolation (vm, input)))
 	    goto done;
 	  if ((res = session_test_rule_table (vm, input)))
 	    goto done;
