@@ -16,6 +16,23 @@
       "message": "vr",
       "revId": "760c83563a9177fe73c2b004c884fe429e2168fa",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "942cc85a_045c6204",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2026-09-30T11:45:21Z",
+      "side": 1,
+      "message": "Still the same behavior [0] in CSIT. Is there any debug output that would confirm the DPDK libraries offered any async crypto handlers (but VPP decided not to register for some reason)?\n\n[0] https://logs.fd.io/vex-yul-rot-jenkins-1/csit-vpp-bisect-3n-emr/36707726117/csit_latest/log.html.gz#s1-s1-s1-s1-s1-t1-k3-k2-k2-k1-k1-k8-k14-k1-k1-k1-k1",
+      "revId": "760c83563a9177fe73c2b004c884fe429e2168fa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
