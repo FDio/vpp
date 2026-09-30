@@ -1047,7 +1047,7 @@ session_tx_copy_data (session_worker_t *wrk, session_tx_context_t *ctx,
 		      vlib_buffer_t *b, u32 len_to_deq, u8 *data0)
 {
   int n_bytes_read;
-  if (PREDICT_TRUE (!wrk->dma_enabled))
+  if (PREDICT_TRUE (!(wrk->flags & SESSION_WRK_F_DMA)))
     n_bytes_read =
       svm_fifo_peek (ctx->s->tx_fifo, ctx->sp.tx_offset, len_to_deq, data0);
   else
@@ -1060,7 +1060,7 @@ session_tx_copy_data_tail (session_worker_t *wrk, session_tx_context_t *ctx,
 			   vlib_buffer_t *b, u32 len_to_deq, u8 *data)
 {
   int n_bytes_read;
-  if (PREDICT_TRUE (!wrk->dma_enabled))
+  if (PREDICT_TRUE (!(wrk->flags & SESSION_WRK_F_DMA)))
     n_bytes_read =
       svm_fifo_peek (ctx->s->tx_fifo, ctx->sp.tx_offset, len_to_deq, data);
   else
@@ -1455,7 +1455,7 @@ session_tx_maybe_reschedule (session_worker_t * wrk,
 always_inline void
 session_tx_add_pending_buffer (session_worker_t *wrk, u32 bi, u32 next_index)
 {
-  if (PREDICT_TRUE (!wrk->dma_enabled))
+  if (PREDICT_TRUE (!(wrk->flags & SESSION_WRK_F_DMA)))
     {
       vec_add1 (wrk->pending_tx_buffers, bi);
       vec_add1 (wrk->pending_tx_nexts, next_index);
@@ -2049,7 +2049,7 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   n_tx_packets = vec_len (wrk->pending_tx_buffers);
   SESSION_EVT (SESSION_EVT_DSP_CNTRS, UPDATE_TIME, wrk);
 
-  if (PREDICT_FALSE (wrk->dma_enabled))
+  if (PREDICT_FALSE (wrk->flags & SESSION_WRK_F_DMA))
     {
       if (wrk->trans_head == ((wrk->trans_tail + 1) & (wrk->trans_size - 1)))
 	return 0;
@@ -2127,7 +2127,7 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	};
     }
 
-  if (PREDICT_FALSE (wrk->dma_enabled))
+  if (PREDICT_FALSE (wrk->flags & SESSION_WRK_F_DMA))
     {
       if (wrk->batch_num)
 	{
