@@ -7,6 +7,7 @@
 #define SRC_VNET_TCP_TCP_CC_H_
 
 #include <vnet/tcp/tcp_types.h>
+#include <vnet/tcp/tcp_bt.h>
 
 always_inline void
 tcp_cc_rcv_ack (tcp_connection_t *tc, tcp_ack_ctx_t *ac)
@@ -131,6 +132,24 @@ tcp_cc_update_cwnd_limited (tcp_connection_t *tc, u32 max_dequeue)
 	  (tc->cwnd - outstanding < tc->snd_mss && max_dequeue > outstanding))
 	tc->cwnd_limited_seq = tc->snd_nxt;
     }
+}
+
+/**
+ * Record whether cwnd or the application limited a send burst.
+ *
+ * Apps enqueue without notifying tcp, so it cannot check app-limited state at each write. Running
+ * dry after a burst sets the same marker the next write would, because acks move bytes from flight
+ * to delivered until more data is sent.
+ *
+ * @param tc		tcp connection
+ * @param max_dequeue	tx fifo bytes at burst start, including outstanding data
+ */
+always_inline void
+tcp_cc_check_limited (tcp_connection_t *tc, u32 max_dequeue)
+{
+  tcp_cc_update_cwnd_limited (tc, max_dequeue);
+  if (tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER)
+    tcp_bt_check_app_limited (tc, max_dequeue - (tc->snd_nxt - tc->snd_una));
 }
 
 /** Return true if this ACK covers a flight that permits cwnd growth. */
