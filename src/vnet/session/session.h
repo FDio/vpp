@@ -8,6 +8,7 @@
 
 #include <vppinfra/llist.h>
 #include <vnet/session/session_types.h>
+#include <vnet/session/session_deferred_io.h>
 #include <vnet/session/session_lookup.h>
 #include <vnet/session/session_debug.h>
 #include <svm/message_queue.h>
@@ -63,6 +64,7 @@ typedef enum session_wrk_state_
 typedef enum session_wrk_flags_
 {
   SESSION_WRK_F_ADAPTIVE = 1 << 0,
+  SESSION_WRK_F_DEFERRED_RX_PENDING = 1 << 1,
 } __clib_packed session_wrk_flag_t;
 
 #define DMA_TRANS_SIZE 1024
@@ -173,6 +175,9 @@ typedef struct session_worker_
   /** last event poll time by thread */
   clib_time_type_t last_event_poll;
 #endif
+
+  /** deferred io state */
+  session_deferred_io_ctx_t deferred_io;
 } session_worker_t;
 
 typedef int (session_fifo_rx_fn) (session_worker_t * wrk,
@@ -268,6 +273,9 @@ typedef struct session_main_
 
   /** vpp fifo event queue configured length */
   u32 configured_wrk_mq_length;
+
+  /** max deferred rx segments per worker */
+  u32 deferred_rx_max_segs;
 
   /** Session ssvm segment configs*/
   uword wrk_mqs_segment_size;
@@ -631,6 +639,24 @@ __clib_export void session_register_update_time_fn_w_thread (session_update_time
 							     clib_thread_index_t thread_index);
 void session_main_flush_enqueue_events (transport_proto_t transport_proto,
 					clib_thread_index_t thread_index);
+/** Exclude retained roots from buffer_indices and clear the pending flag. */
+__clib_export u32 session_deferred_rx_compact_buffer_indices (session_worker_t *wrk,
+							      u32 *buffer_indices, u32 n_buffers);
+
+/** Free a stream RX frame, skipping retained buffers.
+ * Use instead of vlib_buffer_free() after stream enqueues.
+ * May compact buffer_indices in place. */
+always_inline void
+session_free_frame_buffers (vlib_main_t *vm, u32 *buffer_indices, u32 n_buffers)
+{
+  session_worker_t *wrk = session_main_get_worker (vm->thread_index);
+
+  if (PREDICT_FALSE (wrk->flags & SESSION_WRK_F_DEFERRED_RX_PENDING))
+    n_buffers = session_deferred_rx_compact_buffer_indices (wrk, buffer_indices, n_buffers);
+
+  vlib_buffer_free (vm, buffer_indices, n_buffers);
+}
+
 void session_queue_run_on_main_thread (vlib_main_t *vm);
 int session_tx_fifo_peek_bytes (transport_connection_t * tc, u8 * buffer,
 				u32 offset, u32 max_bytes);
@@ -720,6 +746,11 @@ session_enqueue_stream_connection (transport_connection_t *tc,
   int enqueued = 0;
 
   s = session_get (tc->s_index, tc->thread_index);
+  if (PREDICT_FALSE (s->flags & SESSION_F_DEFERRED_RX))
+    {
+      if (session_deferred_rx_enqueue_or_seal (s, tc, b, queue_event, is_in_order, &enqueued))
+	return enqueued;
+    }
 
   if (is_in_order)
     {
