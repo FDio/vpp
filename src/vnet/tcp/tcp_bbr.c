@@ -160,8 +160,7 @@ bbr_update_ack_aggregation (tcp_connection_t *tc, bbr_data_t *bd, tcp_ack_ctx_t 
 static void
 bbr_check_full_bw_reached (bbr_data_t *bd, tcp_ack_ctx_t *rs, f64 sample_bw)
 {
-  if (bbr_full_bw_now (bd) || !bbr_has_flag (bd, BBR_F_ROUND_START) ||
-      (rs->flags & TCP_BTS_IS_APP_LIMITED))
+  if (bbr_full_bw_now (bd) || (rs->flags & TCP_BTS_IS_APP_LIMITED))
     return;
 
   if (sample_bw >= bd->full_bw * BBR_FULL_BW_THRESH)
@@ -170,6 +169,9 @@ bbr_check_full_bw_reached (bbr_data_t *bd, tcp_ack_ctx_t *rs, f64 sample_bw)
       bd->full_bw = sample_bw;
       return;
     }
+
+  if (!bbr_has_flag (bd, BBR_F_ROUND_START))
+    return;
 
   bd->full_bw_count++;
   if (bbr_full_bw_now (bd))
