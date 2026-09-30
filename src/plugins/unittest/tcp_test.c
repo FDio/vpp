@@ -2356,6 +2356,7 @@ tcp_test_bbr (vlib_main_t *vm, unformat_input_t *input)
   tcp_test_bbr_init (tc, thread_index, 1000, 0.1);
   scoreboard_init (&tc->sack_sb);
   tc->cwnd = 100000;
+  tc->app_limited = 0;
   tcp_bt_track_tx (tc, 10000);
   tc->snd_nxt += 10000;
   tcp_test_set_time (thread_index, 20.010);
@@ -6318,6 +6319,9 @@ tcp_test_delivery (vlib_main_t * vm, unformat_input_t * input)
 
   TCP_TEST (bt->last_ooo == TCP_BTS_INVALID_INDEX,
 	    "last out-of-order sample should be invalid after init");
+  TCP_TEST (tc->app_limited == 1, "tracker should start app limited");
+  /* Sample bursts from a sender that is not app limited. */
+  tc->app_limited = 0;
 
   /*
    * Track simple bursts without rxt
@@ -8074,6 +8078,7 @@ tcp_test_bt_rxt_merge_flags (void)
   tcp_bt_sample_t *bts;
 
   tcp_bt_init (tc);
+  tc->app_limited = 0;
   tcp_test_set_time (tc->c_thread_index, 1);
   tcp_bt_track_tx (tc, 100);
   tc->snd_nxt = 100;
@@ -8425,6 +8430,7 @@ tcp_test_bt (vlib_main_t * vm, unformat_input_t * input)
   memset (tc, 0, sizeof (*tc));
   tcp_bt_init (tc);
   bt = tc->bt;
+  tc->app_limited = 0;
 
   tcp_test_set_time (thread_index, 11);
   tcp_bt_track_tx (tc, 50);
@@ -8616,6 +8622,38 @@ tcp_test_bt (vlib_main_t * vm, unformat_input_t * input)
   tcp_bt_check_app_limited (tc, 0);
   TCP_TEST (tc->app_limited == tc->delivered + tcp_flight_size (tc),
 	    "retransmitted loss permits app-limited marking");
+
+  /* Sub-MSS cwnd headroom cannot carry another segment. */
+  tc->app_limited = 0;
+  tc->sack_sb.lost_bytes = tc->snd_rxt_bytes = 0;
+  tc->snd_nxt = tc->snd_una + tc->cwnd - tc->snd_mss / 2;
+  tcp_bt_check_app_limited (tc, 0);
+  TCP_TEST (!tc->app_limited, "sub-mss cwnd headroom should not be app limited");
+
+  tc->snd_nxt = tc->snd_una + tc->cwnd - tc->snd_mss;
+  tcp_bt_check_app_limited (tc, 0);
+  TCP_TEST (tc->app_limited == tc->delivered + tc->cwnd - tc->snd_mss,
+	    "one mss of cwnd headroom permits app-limited marking");
+
+  /* A write larger than one MSS, sent behind a 300-byte flight, empties the
+   * fifo. */
+  tc->app_limited = 0;
+  tc->snd_wnd = tc->cwnd;
+  tc->snd_nxt = tc->snd_una + 500;
+  tcp_cc_check_limited (tc, 500);
+  TCP_TEST (tc->app_limited == tc->delivered + 500, "burst that empties the fifo is app limited");
+
+  tc->app_limited = 0;
+  tcp_cc_check_limited (tc, 500 + tc->snd_mss);
+  TCP_TEST (!tc->app_limited, "burst that leaves a segment unsent is not app limited");
+
+  /* Sub-MSS headroom, not the application, stopped this burst even though
+   * less than a segment remains queued. */
+  tc->cwnd_limited_seq = tc->snd_una;
+  tc->snd_nxt = tc->snd_una + tc->cwnd - tc->snd_mss / 2;
+  tcp_cc_check_limited (tc, tc->cwnd);
+  TCP_TEST (!tc->app_limited && tc->cwnd_limited_seq == tc->snd_nxt,
+	    "burst stopped by cwnd is cwnd limited, not app limited");
 
   fifo_segment_free_fifo (fs, s->tx_fifo);
   session_free (s);
