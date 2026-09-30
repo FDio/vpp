@@ -1410,7 +1410,7 @@ tcp46_established_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   tcp_store_err_counters (vm, &err_counters, node->node_index);
   tcp_handle_postponed_dequeues (wrk);
   tcp_handle_disconnects (wrk);
-  vlib_buffer_free (vm, from, frame->n_vectors);
+  session_free_frame_buffers (vm, from, frame->n_vectors);
 
   return frame->n_vectors;
 }
@@ -1923,7 +1923,7 @@ tcp46_syn_sent_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
     }
 
   session_main_flush_enqueue_events (TRANSPORT_PROTO_TCP, thread_index);
-  vlib_buffer_free (vm, from, frame->n_vectors);
+  session_free_frame_buffers (vm, from, frame->n_vectors);
   tcp_handle_disconnects (wrk);
 
   return frame->n_vectors;
@@ -2369,7 +2369,7 @@ tcp46_rcv_process_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   session_main_flush_enqueue_events (TRANSPORT_PROTO_TCP, thread_index);
   tcp_handle_postponed_dequeues (wrk);
   tcp_handle_disconnects (wrk);
-  vlib_buffer_free (vm, from, frame->n_vectors);
+  session_free_frame_buffers (vm, from, frame->n_vectors);
 
   return frame->n_vectors;
 }
