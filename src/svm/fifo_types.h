@@ -97,6 +97,29 @@ typedef struct svm_fifo_shr_
 
 struct _svm_fifo;
 
+/* Embedded in producer-owned buffer metadata. The backing buffer must stay
+ * alive until the list has been acquired or materialized. */
+typedef struct svm_fifo_async_seg_
+{
+  struct svm_fifo_async_seg_ *next;
+  u8 *data;
+  u32 len;
+  u32 opaque;
+} svm_fifo_async_seg_t;
+
+#define SVM_FIFO_ASYNC_OPAQUE_INVALID ((u32) ~0)
+
+typedef struct
+{
+  svm_fifo_async_seg_t *head;
+  svm_fifo_async_seg_t *tail;
+  u32 n_segs;
+  u32 end;	   /**< prefix end */
+  u8 sealed;	   /**< later writes use chunks */
+  u8 active;	   /**< prefix pending */
+  u8 needs_rebase; /**< stale chunk offsets */
+} svm_fifo_async_state_t;
+
 typedef struct _svm_fifo
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline);
@@ -139,10 +162,16 @@ typedef struct _svm_fifo
     };
   };
 
+  svm_fifo_async_state_t *async_state; /**< async segments state */
+
 #if SVM_FIFO_TRACE
   svm_fifo_trace_elem_t *trace;
 #endif
 } svm_fifo_t;
+
+#if !SVM_FIFO_TRACE
+STATIC_ASSERT (sizeof (svm_fifo_t) <= 128, "svm_fifo_t must not exceed 128 bytes");
+#endif
 
 /* To minimize size of svm_fifo_t reuse ooo lookup for tracking chunks and
  * hdr at attach/detach. Fifo being migrated should not receive new data */
