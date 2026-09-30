@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "8ec7952f_d8a477f9",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2026-09-30T15:26:46Z",
+      "side": 1,
+      "message": "Thanks for the corroboration, Pieter. I have removed the linux-cp change from this gerrit, focusing on the narrow fix to null-deref of ip6_nd.c only. Thank you, Pieter, for the clean repro.",
+      "revId": "9e97918e20f5fc66680c08a81c8cde5eca1e8659",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
