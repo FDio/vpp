@@ -7,6 +7,8 @@
 #include <vlib/vlib.h>
 #include <svm/svm_common.h>
 #include <svm/fifo_segment.h>
+#include <vnet/session/session.h>
+#include <vnet/buffer.h>
 
 #define SFIFO_TEST_I(_cond, _comment, _args...)			\
 ({								\
@@ -2807,6 +2809,381 @@ sfifo_test_fifo_segment (vlib_main_t * vm, unformat_input_t * input)
   return 0;
 }
 
+static int
+sfifo_test_fifo_async (vlib_main_t *vm)
+{
+  fifo_segment_main_t _fsm = { 0 }, *fsm = &_fsm;
+  session_enable_disable_args_t args = {
+    .is_en = 1,
+    .rt_engine_type = RT_BACKEND_ENGINE_RULE_TABLE,
+  };
+  fifo_segment_t *fs;
+  svm_fifo_t *f;
+  svm_fifo_async_seg_t seg, seg2, *acquired;
+  session_t s = { .thread_index = vlib_get_thread_index () };
+  transport_connection_t tc = {
+    .thread_index = vlib_get_thread_index (),
+    .proto = TRANSPORT_PROTO_TCP,
+  };
+  session_deferred_rx_batch_t batch = { 0 };
+  session_deferred_io_ctx_t *deferred_ctx;
+  const session_deferred_rx_segment_t *pending;
+  vlib_buffer_t *b0, *b1;
+  u32 buffer_indices[2], n_alloc, n_acquired, n_pending;
+  u32 frame_indices[VLIB_FRAME_SIZE];
+  u32 n_frame_buffers, initial_n_segs, i;
+  u8 data[32], output[32];
+  u8 *large_data = 0, *large_output = 0;
+  int rv, enqueued;
+
+  for (i = 0; i < ARRAY_LEN (data); i++)
+    data[i] = i;
+
+  fs = fifo_segment_prepare (fsm, "fifo-test-async", 0);
+  f = fifo_prepare (fs, 65);
+  SFIFO_TEST (svm_fifo_prepare_async (f) == 0 && f->async_state, "prepare async fifo bookkeeping");
+  seg = (svm_fifo_async_seg_t) {
+    .data = data,
+    .len = 8,
+    .opaque = SVM_FIFO_ASYNC_OPAQUE_INVALID,
+  };
+  SFIFO_TEST (svm_fifo_enqueue_async_segment (f, &seg) == 8, "append first buffer-backed segment");
+  seg2 = seg;
+  seg2.data = data + 8;
+  SFIFO_TEST (svm_fifo_enqueue_async_segment (f, &seg2) == 8,
+	      "append second buffer-backed segment");
+  SFIFO_TEST (svm_fifo_max_dequeue (f) == 16 && svm_fifo_max_enqueue_prod (f) == 49,
+	      "buffer bytes use ordinary fifo capacity");
+  SFIFO_TEST (svm_fifo_acquire_async_segments (f, &acquired, &n_acquired) == 16 &&
+		n_acquired == 2 && acquired->data == data && acquired->next->data == data + 8 &&
+		svm_fifo_max_dequeue (f) == 0,
+	      "acquire the buffer prefix explicitly");
+  SFIFO_TEST (f->async_state->needs_rebase && f_start_cptr (f)->start_byte == 0,
+	      "acquire leaves the unused normal chunks untouched");
+  svm_fifo_seal_async (f);
+  SFIFO_TEST (!f->async_state->needs_rebase && f_start_cptr (f)->start_byte == f->shr->tail,
+	      "seal prepares chunks after an unsealed acquire");
+
+  seg.data = data;
+  SFIFO_TEST (svm_fifo_enqueue_async_segment (f, &seg) == 8, "start a new buffer prefix");
+  svm_fifo_seal_async (f);
+  SFIFO_TEST (!svm_fifo_enqueue_with_offset (f, 8, 8, data + 16) && f->async_state->sealed,
+	      "OOO write uses normal chunks after sealing");
+  SFIFO_TEST (svm_fifo_enqueue_async_segment (f, &seg) == SVM_FIFO_EINVAL,
+	      "cannot append a buffer after normal chunks");
+  SFIFO_TEST (svm_fifo_enqueue (f, 8, data + 8) == 16, "normal data collects OOO bytes");
+  SFIFO_TEST (svm_fifo_acquire_async_segments (f, &acquired, &n_acquired) == 8 && n_acquired == 1 &&
+		acquired->data == data,
+	      "acquire prefix after OOO collection");
+  SFIFO_TEST (svm_fifo_dequeue (f, 16, output) == 16 && !clib_memcmp (output, data + 8, 16),
+	      "normal data and collected OOO bytes remain ordered");
+
+  SFIFO_TEST (svm_fifo_enqueue_async_segment (f, &seg) == 8,
+	      "start prefix for OOO materialization");
+  svm_fifo_seal_async (f);
+  SFIFO_TEST (!svm_fifo_enqueue_with_offset (f, 8, 8, data + 16),
+	      "place OOO bytes in normal chunks");
+  SFIFO_TEST (svm_fifo_commit_async_segments (f, &acquired, &n_acquired) == 8 && n_acquired == 1,
+	      "materialize prefix while OOO data is pending");
+  SFIFO_TEST (svm_fifo_enqueue (f, 8, data + 8) == 16 && svm_fifo_dequeue (f, 24, output) == 24 &&
+		!clib_memcmp (output, data, 24),
+	      "OOO collection after prefix materialization");
+
+  SFIFO_TEST (svm_fifo_enqueue_async_segment (f, &seg) == 8, "start prefix for acquire");
+  svm_fifo_seal_async (f);
+  SFIFO_TEST (svm_fifo_enqueue (f, 8, data + 8) == 8, "append normal suffix after explicit seal");
+  SFIFO_TEST (svm_fifo_acquire_async_segments (f, &acquired, &n_acquired) == 8 && n_acquired == 1 &&
+		acquired->data == data,
+	      "acquire prefix without consuming normal suffix");
+  SFIFO_TEST (svm_fifo_dequeue (f, 8, output) == 8 && !clib_memcmp (output, data + 8, 8),
+	      "normal suffix remains readable after acquire");
+
+  SFIFO_TEST (svm_fifo_enqueue_async_segment (f, &seg) == 8, "start prefix for materialization");
+  svm_fifo_seal_async (f);
+  SFIFO_TEST (svm_fifo_enqueue (f, 8, data + 8) == 8, "append suffix before materialization");
+  SFIFO_TEST (svm_fifo_commit_async_segments (f, &acquired, &n_acquired) == 8 && n_acquired == 1 &&
+		!svm_fifo_n_async_segments (f),
+	      "materialize prefix without advancing tail");
+  SFIFO_TEST (svm_fifo_dequeue (f, 16, output) == 16 && !clib_memcmp (output, data, 16),
+	      "materialized prefix and suffix match");
+
+  for (i = 0; i < 512; i++)
+    {
+      seg.data = data;
+      seg.len = 32;
+      SFIFO_TEST (svm_fifo_enqueue_async_segment (f, &seg) == 32, "buffer append iteration %u", i);
+      SFIFO_TEST (svm_fifo_acquire_async_segments (f, &acquired, &n_acquired) == 32 &&
+		    n_acquired == 1 && acquired->data == data,
+		  "buffer acquire iteration %u", i);
+    }
+  SFIFO_TEST (f->async_state->needs_rebase && svm_fifo_is_sane (f),
+	      "repeated acquisitions leave normal chunks for later rebase");
+  s.rx_fifo = f;
+  s.flags = SESSION_F_DEFERRED_RX;
+  SFIFO_TEST (session_set_deferred_rx (&s, 0) == 0 && !(s.flags & SESSION_F_DEFERRED_RX) &&
+		!f->async_state->needs_rebase && f_start_cptr (f)->start_byte == f->shr->tail,
+	      "disabling deferred rx restores ordinary chunk offsets");
+  ft_fifo_free (fs, f);
+
+  f = fifo_prepare (fs, (64 << 10) + 1);
+  vec_validate (large_data, 64 << 10);
+  vec_validate (large_output, 64 << 10);
+  for (i = 0; i < vec_len (large_data); i++)
+    large_data[i] = i;
+  {
+    fs_sptr_t initial_end = f->shr->end_chunk;
+    seg = (svm_fifo_async_seg_t) {
+      .data = large_data,
+      .len = 64 << 10,
+      .opaque = SVM_FIFO_ASYNC_OPAQUE_INVALID,
+    };
+    SFIFO_TEST (svm_fifo_enqueue_async_segment (f, &seg) == 64 << 10 &&
+		  f->shr->end_chunk == initial_end && svm_fifo_is_sane (f),
+		"large buffer prefix allocates no normal chunks");
+    svm_fifo_seal_async (f);
+    SFIFO_TEST (svm_fifo_enqueue (f, 1, large_data + (64 << 10)) == 1 &&
+		  f->shr->end_chunk == initial_end && f_start_cptr (f)->start_byte == 64 << 10 &&
+		  svm_fifo_is_sane (f),
+		"normal suffix starts after prefix without allocation");
+    SFIFO_TEST (svm_fifo_acquire_async_segments (f, &acquired, &n_acquired) == 64 << 10 &&
+		  n_acquired == 1 && acquired->data == large_data,
+		"acquire large prefix before ordinary dequeue");
+    SFIFO_TEST (svm_fifo_dequeue (f, 1, large_output) == 1 &&
+		  large_output[0] == large_data[64 << 10],
+		"normal suffix remains readable");
+    SFIFO_TEST (svm_fifo_enqueue_async_segment (f, &seg) == 64 << 10, "stage second large prefix");
+    svm_fifo_seal_async (f);
+    SFIFO_TEST (svm_fifo_enqueue (f, 1, large_data + (64 << 10)) == 1,
+		"append suffix before large materialization");
+    {
+      svm_fifo_chunk_t *old_start = f_start_cptr (f), *c;
+      fs_sptr_t old_end = f->shr->end_chunk;
+      SFIFO_TEST (svm_fifo_commit_async_segments (f, &acquired, &n_acquired) == 64 << 10 &&
+		    n_acquired == 1,
+		  "materialize large prefix across chunks");
+      for (c = f_start_cptr (f); c && c != old_start; c = f_cptr (f, c->next))
+	;
+      SFIFO_TEST (c == old_start && f->shr->end_chunk == old_end,
+		  "materialization keeps normal suffix chunks in place");
+    }
+    SFIFO_TEST (svm_fifo_dequeue (f, (64 << 10) + 1, large_output) == (64 << 10) + 1 &&
+		  !clib_memcmp (large_output, large_data, (64 << 10) + 1),
+		"read materialized large prefix and suffix");
+  }
+  vec_free (large_data);
+  vec_free (large_output);
+  ft_fifo_free (fs, f);
+
+  SFIFO_TEST (vnet_session_enable_disable (vm, &args) == 0,
+	      "enable sessions for chained buffer test");
+  deferred_ctx = &session_main_get_worker (s.thread_index)->deferred_io;
+  initial_n_segs = deferred_ctx->n_segs;
+  f = fifo_prepare (fs, 65);
+  s.rx_fifo = f;
+  s.flags = SESSION_F_DEFERRED_RX | SESSION_F_RX_EVT;
+
+  n_alloc = vlib_buffer_alloc (vm, buffer_indices, ARRAY_LEN (buffer_indices));
+  SFIFO_TEST (n_alloc == ARRAY_LEN (buffer_indices), "allocate chained deferred buffers");
+  if (n_alloc != ARRAY_LEN (buffer_indices))
+    {
+      vlib_buffer_free (vm, buffer_indices, n_alloc);
+      return -1;
+    }
+  b0 = vlib_get_buffer (vm, buffer_indices[0]);
+  b1 = vlib_get_buffer (vm, buffer_indices[1]);
+  vlib_buffer_reset (b0);
+  vlib_buffer_reset (b1);
+  b0->current_length = b1->current_length = 8;
+  b0->flags |= VLIB_BUFFER_NEXT_PRESENT;
+  b0->next_buffer = buffer_indices[1];
+  clib_memcpy_fast (vlib_buffer_get_current (b0), data, 8);
+  clib_memcpy_fast (vlib_buffer_get_current (b1), data + 8, 8);
+
+  SFIFO_TEST (session_deferred_rx_enqueue_or_seal (&s, &tc, b0, 1, 1, &enqueued) &&
+		enqueued == 16 && svm_fifo_max_dequeue (f) == 16,
+	      "stage chained buffers as fifo bytes");
+  pending = session_get_deferred_rx_segments (&s, &n_pending);
+  SFIFO_TEST (n_pending == 2 && pending == (void *) vnet_buffer2 (b0)->unused &&
+		pending->next == (void *) vnet_buffer2 (b1)->unused && pending->len == 8 &&
+		pending->next->len == 8 && !pending->next->next,
+	      "application sees linked segments in buffer metadata");
+  n_frame_buffers = session_deferred_rx_compact_buffer_indices (deferred_ctx, buffer_indices, 1);
+  SFIFO_TEST (n_frame_buffers == 0 && deferred_ctx->n_segs == initial_n_segs + 2,
+	      "frame free excludes retained root");
+
+  {
+    u32 old_max_segs = deferred_ctx->max_segs;
+    deferred_ctx->max_segs = deferred_ctx->n_segs;
+    SFIFO_TEST (!session_deferred_rx_enqueue_or_seal (&s, &tc, b1, 1, 1, &enqueued) &&
+		  f->async_state->sealed,
+		"descriptor limit seals prefix for copy mode");
+    deferred_ctx->max_segs = old_max_segs;
+  }
+  SFIFO_TEST (svm_fifo_enqueue (f, 8, data + 16) == 8, "normal suffix follows chained buffers");
+  rv = session_acquire_deferred_rx_segments (&s, &batch);
+  SFIFO_TEST (rv == 16 && batch.n_segments == 2 && svm_fifo_max_dequeue (f) == 8,
+	      "session acquire leaves normal suffix");
+  session_release_deferred_rx_segments (&batch);
+  SFIFO_TEST (deferred_ctx->n_segs == initial_n_segs && svm_fifo_dequeue (f, 8, output) == 8 &&
+		!clib_memcmp (output, data + 16, 8),
+	      "release chained buffers and read suffix");
+
+  n_alloc = vlib_buffer_alloc (vm, buffer_indices, ARRAY_LEN (buffer_indices));
+  SFIFO_TEST (n_alloc == ARRAY_LEN (buffer_indices), "allocate two deferred packet roots");
+  b0 = vlib_get_buffer (vm, buffer_indices[0]);
+  b1 = vlib_get_buffer (vm, buffer_indices[1]);
+  vlib_buffer_reset (b0);
+  vlib_buffer_reset (b1);
+  b0->current_length = b1->current_length = 8;
+  SFIFO_TEST (session_deferred_rx_enqueue_or_seal (&s, &tc, b0, 1, 1, &enqueued) && enqueued == 8 &&
+		session_deferred_rx_enqueue_or_seal (&s, &tc, b1, 1, 1, &enqueued) && enqueued == 8,
+	      "stage two packet roots without descriptors");
+  pending = session_get_deferred_rx_segments (&s, &n_pending);
+  SFIFO_TEST (n_pending == 2 && pending == (void *) vnet_buffer2 (b0)->unused &&
+		pending->next == (void *) vnet_buffer2 (b1)->unused && !pending->next->next,
+	      "packet metadata links consecutive roots");
+  n_frame_buffers = session_deferred_rx_compact_buffer_indices (deferred_ctx, buffer_indices, 2);
+  SFIFO_TEST (n_frame_buffers == 0, "both retained roots are excluded from frame free");
+  SFIFO_TEST (session_acquire_deferred_rx_segments (&s, &batch) == 16 && batch.n_segments == 2 &&
+		batch.segments == pending,
+	      "acquire linked packet roots");
+  session_release_deferred_rx_segments (&batch);
+  SFIFO_TEST (deferred_ctx->n_segs == initial_n_segs, "release linked packet roots");
+
+  ft_fifo_free (fs, f);
+  f = fifo_prepare (fs, 4096);
+  s.rx_fifo = f;
+  s.flags = SESSION_F_DEFERRED_RX | SESSION_F_RX_EVT;
+  SFIFO_TEST (deferred_ctx->max_segs - deferred_ctx->n_segs >= VLIB_FRAME_SIZE,
+	      "default deferred limit can retain a full TCP frame");
+  n_alloc = vlib_buffer_alloc (vm, frame_indices, VLIB_FRAME_SIZE);
+  SFIFO_TEST (n_alloc == VLIB_FRAME_SIZE, "allocate one frame of deferred buffers");
+  if (n_alloc != VLIB_FRAME_SIZE)
+    {
+      vlib_buffer_free (vm, frame_indices, n_alloc);
+      return -1;
+    }
+  for (i = 0; i < VLIB_FRAME_SIZE; i++)
+    {
+      b0 = vlib_get_buffer (vm, frame_indices[i]);
+      vlib_buffer_reset (b0);
+      b0->current_length = 8;
+      clib_memcpy_fast (vlib_buffer_get_current (b0), data, 8);
+      SFIFO_TEST (session_deferred_rx_enqueue_or_seal (&s, &tc, b0, 1, 1, &enqueued) &&
+		    enqueued == 8,
+		  "retain frame buffer %u", i);
+    }
+  SFIFO_TEST (
+    session_deferred_rx_compact_buffer_indices (deferred_ctx, frame_indices, VLIB_FRAME_SIZE) == 0,
+    "frame free excludes every retained buffer");
+  SFIFO_TEST (session_acquire_deferred_rx_segments (&s, &batch) == VLIB_FRAME_SIZE * 8 &&
+		batch.n_segments == VLIB_FRAME_SIZE,
+	      "acquire a full frame without entering copy mode");
+  session_release_deferred_rx_segments (&batch);
+  SFIFO_TEST (deferred_ctx->n_segs == initial_n_segs, "release a full frame of deferred buffers");
+  SFIFO_TEST (f->async_state->needs_rebase, "frame acquisition defers normal chunk rebase");
+  n_alloc = vlib_buffer_alloc (vm, buffer_indices, 1);
+  SFIFO_TEST (n_alloc == 1, "allocate copy-mode fallback buffer");
+  if (n_alloc != 1)
+    return -1;
+  b0 = vlib_get_buffer (vm, buffer_indices[0]);
+  vlib_buffer_reset (b0);
+  b0->current_length = 8;
+  b0->ref_count = 2;
+  SFIFO_TEST (!session_deferred_rx_enqueue_or_seal (&s, &tc, b0, 1, 1, &enqueued) &&
+		!f->async_state->needs_rebase && f_start_cptr (f)->start_byte == f->shr->tail,
+	      "copy-mode fallback prepares chunks after acquisition");
+  SFIFO_TEST (svm_fifo_enqueue (f, 8, data) == 8 && svm_fifo_dequeue (f, 8, output) == 8 &&
+		!clib_memcmp (output, data, 8),
+	      "normal fifo IO works after deferred fallback");
+  b0->ref_count = 1;
+  vlib_buffer_free (vm, buffer_indices, 1);
+  ft_fifo_free (fs, f);
+  f = fifo_prepare (fs, 65);
+  s.rx_fifo = f;
+
+  n_alloc = vlib_buffer_alloc (vm, buffer_indices, 1);
+  SFIFO_TEST (n_alloc == 1, "allocate shared-root fallback buffer");
+  b0 = vlib_get_buffer (vm, buffer_indices[0]);
+  vlib_buffer_reset (b0);
+  b0->current_length = 8;
+  b0->ref_count = 2;
+  SFIFO_TEST (!session_deferred_rx_enqueue_or_seal (&s, &tc, b0, 1, 1, &enqueued) &&
+		!svm_fifo_n_async_segments (f),
+	      "shared buffer metadata stays out of the intrusive list");
+  b0->ref_count = 1;
+  vlib_buffer_free (vm, buffer_indices, 1);
+
+  n_alloc = vlib_buffer_alloc (vm, buffer_indices, ARRAY_LEN (buffer_indices));
+  SFIFO_TEST (n_alloc == ARRAY_LEN (buffer_indices), "allocate shared-chain fallback buffers");
+  b0 = vlib_get_buffer (vm, buffer_indices[0]);
+  b1 = vlib_get_buffer (vm, buffer_indices[1]);
+  vlib_buffer_reset (b0);
+  vlib_buffer_reset (b1);
+  b0->current_length = b1->current_length = 8;
+  b0->flags |= VLIB_BUFFER_NEXT_PRESENT;
+  b0->next_buffer = buffer_indices[1];
+  b1->ref_count = 2;
+  SFIFO_TEST (!session_deferred_rx_enqueue_or_seal (&s, &tc, b0, 1, 1, &enqueued) &&
+		!svm_fifo_n_async_segments (f),
+	      "shared chain segment falls back before linking any buffer");
+  b1->ref_count = 1;
+  vlib_buffer_free (vm, buffer_indices, 1);
+
+  seg = (svm_fifo_async_seg_t) {
+    .data = data,
+    .len = 8,
+    .opaque = SVM_FIFO_ASYNC_OPAQUE_INVALID,
+  };
+  SFIFO_TEST (svm_fifo_enqueue_async_segment (f, &seg) == 8, "stage prefix for session flush");
+  deferred_ctx->n_segs++;
+  {
+    fs_sptr_t old_start = f->shr->start_chunk;
+    SFIFO_TEST (session_flush_deferred_rx (&s) == 8 && deferred_ctx->n_segs == initial_n_segs &&
+		  f->shr->start_chunk == old_start,
+		"session flush reuses empty normal chunks");
+  }
+  SFIFO_TEST (svm_fifo_dequeue (f, 8, output) == 8 && !clib_memcmp (output, data, 8),
+	      "read flushed bytes");
+
+  ft_fifo_free (fs, f);
+  f = fifo_prepare (fs, 1 << 20);
+  {
+    uword max_byte_index = fs->h->max_byte_index;
+    u32 fail_len = f_chunk_end (f_end_cptr (f)) + fs->h->n_cached_bytes + 1;
+    u8 *failure_data = 0;
+    u32 old_head = f->shr->head, old_tail = f->shr->tail;
+
+    SFIFO_TEST (fail_len + 1 <= (1U << fs->h->max_log2_fifo_size),
+		"room for materialization allocation failure test");
+    vec_validate (failure_data, fail_len - 1);
+    svm_fifo_set_size (f, fail_len + 1);
+    seg = (svm_fifo_async_seg_t) {
+      .data = failure_data,
+      .len = fail_len,
+      .opaque = SVM_FIFO_ASYNC_OPAQUE_INVALID,
+    };
+    SFIFO_TEST (svm_fifo_enqueue_async_segment (f, &seg) == fail_len,
+		"stage data before failed materialization");
+    fs->h->max_byte_index = clib_atomic_load_relax_n (&fs->h->byte_index) + 1;
+    rv = svm_fifo_commit_async_segments (f, &acquired, &n_acquired);
+    fs->h->max_byte_index = max_byte_index;
+    SFIFO_TEST (rv == SVM_FIFO_EGROW && f->shr->head == old_head &&
+		  f->shr->tail == old_tail + fail_len && svm_fifo_n_async_segments (f) == 1 &&
+		  !f->async_state->sealed,
+		"failed materialization preserves buffer ownership");
+    SFIFO_TEST (svm_fifo_commit_async_segments (f, &acquired, &n_acquired) == fail_len &&
+		  n_acquired == 1,
+		"retry materialization after allocation recovers");
+    SFIFO_TEST (svm_fifo_dequeue (f, 8, output) == 8, "materialized data remains readable");
+    vec_free (failure_data);
+  }
+  ft_fifo_free (fs, f);
+  ft_fifo_segment_free (fsm, fs);
+
+  return 0;
+}
+
 static clib_error_t *
 svm_fifo_test (vlib_main_t * vm, unformat_input_t * input,
 	       vlib_cli_command_t * cmd_arg)
@@ -2832,6 +3209,8 @@ svm_fifo_test (vlib_main_t * vm, unformat_input_t * input,
 	res = sfifo_test_fifo6 (vm, input);
       else if (unformat (input, "fifo7"))
 	res = sfifo_test_fifo7 (vm, input);
+      else if (unformat (input, "async"))
+	res = sfifo_test_fifo_async (vm);
       else if (unformat (input, "large"))
 	res = sfifo_test_fifo_large (vm, input);
       else if (unformat (input, "replay"))
@@ -2897,6 +3276,9 @@ svm_fifo_test (vlib_main_t * vm, unformat_input_t * input,
 	    goto done;
 
 	  if ((res = sfifo_test_fifo7 (vm, input)))
+	    goto done;
+
+	  if ((res = sfifo_test_fifo_async (vm)))
 	    goto done;
 
 	  if ((res = sfifo_test_fifo_grow (vm, input)))
