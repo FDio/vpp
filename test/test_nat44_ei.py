@@ -2617,7 +2617,7 @@ class TestNAT44EI(MethodHolder):
         self.pg_start()
         capture = self.pg1.get_capture(1)
         self.assertTrue(capture[0].haslayer(ARP))
-        self.assertTrue(capture[0][ARP].op, ARP.is_at)
+        self.assertEqual(capture[0][ARP].op, ARP.is_at)
 
         # 1:1 NAT address
         p = Ether(src=self.pg1.remote_mac, dst="ff:ff:ff:ff:ff:ff") / ARP(
@@ -2631,7 +2631,7 @@ class TestNAT44EI(MethodHolder):
         self.pg_start()
         capture = self.pg1.get_capture(1)
         self.assertTrue(capture[0].haslayer(ARP))
-        self.assertTrue(capture[0][ARP].op, ARP.is_at)
+        self.assertEqual(capture[0][ARP].op, ARP.is_at)
 
         # send ARP to non-NAT44EI interface
         p = Ether(src=self.pg2.remote_mac, dst="ff:ff:ff:ff:ff:ff") / ARP(
