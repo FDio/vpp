@@ -101,6 +101,8 @@ func (s *NoTopoSuite) TeardownTest() {
 	defer s.HstSuite.TeardownTest()
 	if CurrentSpecReport().Failed() {
 		CollectNginxLogs(s.Containers.NginxHttp3)
+		CollectRedisServerLogs(s.Containers.ServerApp)
+		Log(s.Containers.Vpp.VppInstance.Vppctl("show error verbose"))
 	}
 }
 

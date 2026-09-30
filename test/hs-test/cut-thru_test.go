@@ -134,7 +134,7 @@ func redisCutThru(s *NoTopoSuite) {
 
 	serverAddress := s.Interfaces.Tap.Ip4AddressString()
 	cmd := fmt.Sprintf("redis-server --daemonize yes --protected-mode no --save \"\" --bind %s --loglevel notice --logfile %s",
-		serverAddress, RedisServerLogFileName(s.Containers.Vpp))
+		serverAddress, RedisServerLogFileName(s.Containers.ServerApp))
 	o, err := s.Containers.ServerApp.Exec(true, cmd)
 	AssertNil(err)
 
