@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "8e50774e_4e3c1f14",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2026-09-30T11:50:01Z",
+      "side": 1,
+      "message": "No effect while all tests related to QAT are failing in CSIT.",
+      "revId": "f00d0b4cb365a9621d84a7d7962466c9790545cd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
