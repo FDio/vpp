@@ -220,7 +220,8 @@ typedef enum
   _ (IS_CLESS, "connectionless")                                                                   \
   _ (RX_READY, "rx-ready")                                                                         \
   _ (TPT_INIT_CLOSE, "transport-init-close")                                                       \
-  _ (STREAM, "stream")
+  _ (STREAM, "stream")                                                                             \
+  _ (DIO_RX, "deferred-rx")
 
 typedef enum session_flags_bits_
 {
