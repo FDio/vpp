@@ -128,10 +128,10 @@ __clib_export u8 tcp_bt_next_rxt_range (tcp_connection_t *tc, u8 have_unsent, u8
 __clib_export u8 tcp_bt_next_rack_rxt_range (tcp_connection_t *tc, tcp_rxt_range_t *range);
 __clib_export u8 tcp_bt_last_rxt_range (tcp_connection_t *tc, tcp_rxt_range_t *range);
 /**
- * Check if sample to be generated is app limited
+ * Check if the sender ran out of application data
  *
  * @param tc		 tcp connection
- * @param available_bytes unsent bytes available for transmission
+ * @param available_bytes unsent bytes left after the last send
  */
 __clib_export void tcp_bt_check_app_limited (tcp_connection_t *tc, u32 available_bytes);
 /**
