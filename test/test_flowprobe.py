@@ -1426,12 +1426,12 @@ class ReenableIPFIX(MethodHolder):
             self.assertTrue(p.haslayer(IPFIX))
             if p.haslayer(Template):
                 nr_templates += 1
-        self.assertTrue(nr_templates, 3)
+        self.assertEqual(nr_templates, 3)
         for p in capture:
             self.assertTrue(p.haslayer(IPFIX))
             if p.haslayer(Data):
                 nr_data += 1
-        self.assertTrue(nr_templates, 1)
+        self.assertEqual(nr_data, 1)
 
         ipfix.remove_vpp_config()
         self.logger.info("FFP_TEST_FINISH_0001")
