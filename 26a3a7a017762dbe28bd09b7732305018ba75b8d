@@ -54,6 +54,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "66d937b0_4f0c9c73",
+        "filename": "src/plugins/dispatch-trace/main.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 155,
+      "author": {
+        "id": 2267
+      },
+      "writtenOn": "2026-09-30T15:27:07Z",
+      "side": 1,
+      "message": "UPD: `h[0] !\u003d NULL` check can be kept in place; without it, `format_vlib_trace()` is still safe but adds an empty string",
+      "parentUuid": "66ff7c7d_455cfd15",
+      "revId": "26a3a7a017762dbe28bd09b7732305018ba75b8d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "38897323_a068fa82",
         "filename": "src/plugins/dispatch-trace/main.c",
         "patchSetId": 4
