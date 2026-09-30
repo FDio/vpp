@@ -1314,8 +1314,26 @@ lcp_router_route_del (struct rtnl_route *rr)
   if (0 != vec_len (np.paths))
     {
       fib_source_t fib_src;
+      fib_node_index_t fei;
 
       fib_src = lcp_router_proto_fib_source (rproto);
+
+      /*
+       * Only a route that linux-cp actually installed holds a reference on
+       * the table. A delete for a route we never saw being added (e.g. one
+       * that already existed in the netns before VPP started) must not
+       * drop a reference, otherwise nlt_refs can reach zero while pairs
+       * and routes still exist, and the table's PLUGIN_LOW mfib state (the
+       * per-interface ff00::/8 and 224.0.0.0/4 Accept paths) is flushed.
+       */
+      fei = fib_table_lookup_exact_match (nlt->nlt_fib_index, &pfx);
+      if (FIB_NODE_INDEX_INVALID == fei || !fib_entry_is_sourced (fei, fib_src))
+	{
+	  LCP_ROUTER_DBG ("route del not installed by lcp, ignored: %d:%U",
+			  rtnl_route_get_table (rr), format_fib_prefix, &pfx);
+	  vec_free (np.paths);
+	  return;
+	}
 
       switch (pfx.fp_proto)
 	{
