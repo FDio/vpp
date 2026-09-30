@@ -8,6 +8,7 @@
 
 #include <vppinfra/llist.h>
 #include <vnet/session/session_types.h>
+#include <vnet/session/session_deferred_io.h>
 #include <vnet/session/session_lookup.h>
 #include <vnet/session/session_debug.h>
 #include <svm/message_queue.h>
@@ -63,6 +64,8 @@ typedef enum session_wrk_state_
 typedef enum session_wrk_flags_
 {
   SESSION_WRK_F_ADAPTIVE = 1 << 0,
+  SESSION_WRK_F_DIO_RX_PENDING = 1 << 1,
+  SESSION_WRK_F_DMA = 1 << 2,
 } __clib_packed session_wrk_flag_t;
 
 #define DMA_TRANS_SIZE 1024
@@ -131,6 +134,9 @@ typedef struct session_worker_
   /** Head of list of pending events */
   clib_llist_index_t old_head;
 
+  /** Dma config index */
+  int config_index;
+
   /** Vector of buffers to be sent */
   u32 *pending_tx_buffers;
 
@@ -158,8 +164,6 @@ typedef struct session_worker_
   session_switch_pool_args_t *session_migrate_requests_handling;
   clib_spinlock_t session_migrate_lock;
 
-  int config_index;
-  u8 dma_enabled;
   session_dma_transfer *dma_trans;
   u16 trans_head;
   u16 trans_tail;
@@ -168,6 +172,10 @@ typedef struct session_worker_
   vlib_dma_batch_t *batch;
 
   session_wrk_stats_t stats;
+
+  /** Deferred io state, in what was tail padding. Keep the worker at 512
+   * bytes, a shift when indexing workers */
+  session_dio_ctx_t dio;
 
 #if SESSION_DEBUG
   /** last event poll time by thread */
@@ -268,6 +276,9 @@ typedef struct session_main_
 
   /** vpp fifo event queue configured length */
   u32 configured_wrk_mq_length;
+
+  /** max deferred rx segments per worker */
+  u32 dio_rx_max_segs;
 
   /** Session ssvm segment configs*/
   uword wrk_mqs_segment_size;
@@ -631,6 +642,23 @@ __clib_export void session_register_update_time_fn_w_thread (session_update_time
 							     clib_thread_index_t thread_index);
 void session_main_flush_enqueue_events (transport_proto_t transport_proto,
 					clib_thread_index_t thread_index);
+/** Free a stream RX frame, skipping retained buffers.
+ * Use instead of vlib_buffer_free() after stream enqueues.
+ * May compact buffer_indices in place. */
+always_inline void
+session_free_frame_buffers (vlib_main_t *vm, u32 *buffer_indices, u32 n_buffers)
+{
+  session_worker_t *wrk = session_main_get_worker (vm->thread_index);
+
+  if (PREDICT_FALSE (wrk->flags & SESSION_WRK_F_DIO_RX_PENDING))
+    {
+      n_buffers = session_dio_rx_compact_buffer_indices (&wrk->dio, buffer_indices, n_buffers);
+      wrk->flags &= ~SESSION_WRK_F_DIO_RX_PENDING;
+    }
+
+  vlib_buffer_free (vm, buffer_indices, n_buffers);
+}
+
 void session_queue_run_on_main_thread (vlib_main_t *vm);
 int session_tx_fifo_peek_bytes (transport_connection_t * tc, u8 * buffer,
 				u32 offset, u32 max_bytes);
@@ -685,6 +713,40 @@ session_enqueue_chain (session_t *s, vlib_buffer_t *b, svm_fifo_enq_args_t *a)
   return rv;
 }
 
+/** Deferred rx stream enqueue, out of line to keep it off the rx path */
+__clib_export int session_dio_rx_enqueue_stream (session_t *s, transport_connection_t *tc,
+						 vlib_buffer_t *b, u8 queue_event,
+						 svm_fifo_enq_args_t *a);
+
+always_inline int
+session_enqueue_stream_inline (session_t *s, transport_connection_t *tc, vlib_buffer_t *b,
+			       u8 queue_event, svm_fifo_enq_args_t *a)
+{
+  int enqueued;
+
+  if (PREDICT_TRUE (!(b->flags & VLIB_BUFFER_NEXT_PRESENT)))
+    enqueued = svm_fifo_enqueue2 (s->rx_fifo, b->current_length, vlib_buffer_get_current (b), a);
+  else
+    enqueued = session_enqueue_chain (s, b, a);
+
+  if (queue_event)
+    {
+      /* Queue RX event on this fifo. Eventually these will need to be
+       * flushed by calling @ref session_main_flush_enqueue_events () */
+      if (!(s->flags & SESSION_F_RX_EVT))
+	{
+	  session_worker_t *wrk = session_main_get_worker (s->thread_index);
+	  ASSERT (s->thread_index == vlib_get_thread_index ());
+	  s->flags |= SESSION_F_RX_EVT;
+	  vec_add1 (wrk->session_to_enqueue[tc->proto], session_handle (s));
+	}
+
+      session_fifo_tuning (s, s->rx_fifo, SESSION_FT_ACTION_ENQUEUED, 0);
+    }
+
+  return enqueued;
+}
+
 /*
  * Enqueue data for delivery to app. If requested, it queues app notification
  * event for later delivery.
@@ -709,31 +771,11 @@ session_enqueue_stream_connection (transport_connection_t *tc, vlib_buffer_t *b,
 				   svm_fifo_enq_args_t *a)
 {
   session_t *s;
-  int enqueued;
 
   s = session_get (tc->s_index, tc->thread_index);
-
-  if (PREDICT_TRUE (!(b->flags & VLIB_BUFFER_NEXT_PRESENT)))
-    enqueued = svm_fifo_enqueue2 (s->rx_fifo, b->current_length, vlib_buffer_get_current (b), a);
-  else
-    enqueued = session_enqueue_chain (s, b, a);
-
-  if (queue_event)
-    {
-      /* Queue RX event on this fifo. Eventually these will need to be
-       * flushed by calling @ref session_main_flush_enqueue_events () */
-      if (!(s->flags & SESSION_F_RX_EVT))
-	{
-	  session_worker_t *wrk = session_main_get_worker (s->thread_index);
-	  ASSERT (s->thread_index == vlib_get_thread_index ());
-	  s->flags |= SESSION_F_RX_EVT;
-	  vec_add1 (wrk->session_to_enqueue[tc->proto], session_handle (s));
-	}
-
-      session_fifo_tuning (s, s->rx_fifo, SESSION_FT_ACTION_ENQUEUED, 0);
-    }
-
-  return enqueued;
+  if (PREDICT_FALSE (s->flags & SESSION_F_DIO_RX))
+    return session_dio_rx_enqueue_stream (s, tc, b, queue_event, a);
+  return session_enqueue_stream_inline (s, tc, b, queue_event, a);
 }
 
 always_inline int
