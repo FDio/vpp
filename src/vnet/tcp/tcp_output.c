@@ -987,9 +987,6 @@ tcp_session_push_header (transport_connection_t *tconn, vlib_buffer_t **bs, u32 
   if (PREDICT_FALSE (tc->cfg_flags & TCP_CFG_F_TSO))
     push_hdr_flags |= TCP_PUSH_HDR_F_MAYBE_GSO;
 
-  if (tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER)
-    tcp_bt_check_app_limited (tc, available_bytes);
-
   while (n_bufs >= 4)
     {
       vlib_prefetch_buffer_header (bs[2], STORE);
@@ -1012,7 +1009,7 @@ tcp_session_push_header (transport_connection_t *tconn, vlib_buffer_t **bs, u32 
       bs += 1;
     }
 
-  tcp_cc_update_cwnd_limited (tc, max_dequeue);
+  tcp_cc_check_limited (tc, max_dequeue);
 
   /* If not tracking an ACK, start tracking */
   if (tc->rtt_ts == 0 && !tcp_in_cong_recovery (tc))
@@ -1328,7 +1325,6 @@ tcp_tlp_send_probe (tcp_connection_t *tc)
     {
       available = clib_min (max_deq - outstanding, tc->snd_wnd - outstanding);
       available = clib_min (available, (u32) tc->snd_mss);
-      tcp_bt_check_app_limited (tc, max_deq - outstanding);
       n_bytes = tcp_prepare_segment (wrk, tc, outstanding, available, &b);
     }
 
@@ -1339,7 +1335,7 @@ tcp_tlp_send_probe (tcp_connection_t *tc)
       tcp_bt_track_tx (tc, n_bytes);
       tc->snd_nxt += n_bytes;
       tcp_validate_txf_size (tc, tc->snd_nxt - tc->snd_una);
-      tcp_cc_update_cwnd_limited (tc, max_deq);
+      tcp_cc_check_limited (tc, max_deq);
       if (tc->rtt_ts == 0)
 	{
 	  tc->rtt_ts = tcp_time_now_us (tc->c_thread_index);
@@ -1677,9 +1673,6 @@ tcp_transmit_unsent (tcp_worker_ctx_t *wrk, tcp_connection_t *tc, u32 burst_size
   available_wnd = tc->snd_wnd - offset;
   burst_size = clib_min (burst_size, available_wnd / tc->snd_mss);
 
-  if (tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER)
-    tcp_bt_check_app_limited (tc, available_bytes);
-
   while (n_segs < burst_size)
     {
       n_written = tcp_prepare_segment (wrk, tc, offset, tc->snd_mss, &b);
@@ -1699,7 +1692,7 @@ tcp_transmit_unsent (tcp_worker_ctx_t *wrk, tcp_connection_t *tc, u32 burst_size
 
 done:
   if (n_segs)
-    tcp_cc_update_cwnd_limited (tc, max_dequeue);
+    tcp_cc_check_limited (tc, max_dequeue);
   return n_segs;
 }
 
