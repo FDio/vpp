@@ -1329,6 +1329,12 @@ session_config_fn (vlib_main_t *vm, unformat_input_t *input)
 	;
       else if (unformat (input, "preallocated-sessions %d", &smm->preallocated_sessions))
 	;
+      else if (unformat (input, "deferred-rx-max-segs %u", &nitems))
+	{
+	  if (!nitems)
+	    return clib_error_return (0, "deferred-rx-max-segs must be at least 1");
+	  smm->deferred_rx_max_segs = nitems;
+	}
       else if (unformat (input, "v4-session-table-buckets %d",
 			 &smm->configured_v4_session_table_buckets))
 	;
