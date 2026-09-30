@@ -2050,6 +2050,7 @@ session_manager_main_enable (vlib_main_t *vm,
       wrk->evts_pending_main =
 	clib_llist_make_head (wrk->event_elts, evt_list);
       wrk->vm = vlib_get_main_by_index (i);
+      wrk->dio.max_segs = smm->deferred_rx_max_segs;
       wrk->last_vlib_time = vlib_time_now (vm);
       wrk->last_vlib_us_time = wrk->last_vlib_time * CLIB_US_TIME_FREQ;
       wrk->timerfd = -1;
@@ -2283,6 +2284,7 @@ session_main_init (vlib_main_t * vm)
   smm->last_transport_proto_type = TRANSPORT_PROTO_HTTP;
   smm->port_allocator_min_src_port = 1024;
   smm->port_allocator_max_src_port = 65535;
+  smm->deferred_rx_max_segs = SESSION_DIO_RX_MAX_SEGS;
 
   /* default enable app socket api */
   (void) appns_sapi_enable_disable (1 /* is_enable */);
