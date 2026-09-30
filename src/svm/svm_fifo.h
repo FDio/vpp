@@ -41,6 +41,7 @@ typedef enum
   SVM_FIFO_EFULL = -2,
   SVM_FIFO_EEMPTY = -3,
   SVM_FIFO_EGROW = -4,
+  SVM_FIFO_EINVAL = -5,
 } svm_fifo_err_t;
 
 typedef struct svm_fifo_seg_
@@ -398,6 +399,69 @@ void svm_fifo_enqueue_nocopy (svm_fifo_t * f, u32 len);
  */
 int svm_fifo_enqueue_segments (svm_fifo_t * f, const svm_fifo_seg_t segs[],
 			       u32 n_segs, u8 allow_partial);
+
+/** Allocate private async bookkeeping before the first receive packet. */
+int svm_fifo_prepare_async (svm_fifo_t *f);
+
+/** Enqueue a buffer-backed segment without copying.
+ *
+ * Enqueue overwrites seg->next; keep seg and its data valid until acquired or
+ * materialized. These bytes count toward FIFO occupancy.
+ * Acquire or materialize the prefix before generic reads or read-side chunk
+ * access (including svm_fifo_dequeue_drop_all()). Call svm_fifo_seal_async()
+ * before ordinary or zero-copy writes (including provisioning) and, after an
+ * unsealed acquisition, before chunk access.
+ */
+int svm_fifo_enqueue_async_segment (svm_fifo_t *f, svm_fifo_async_seg_t *seg);
+
+/** Copy bytes into fifo-owned segments at the end of the prefix.
+ *
+ * Fills the last fifo-owned segment before allocating chunk storage for a new
+ * one, and writes as much as fits, like svm_fifo_enqueue(). Same prefix rules
+ * as svm_fifo_enqueue_async_segment(). Return bytes written or a FIFO error.
+ */
+int svm_fifo_enqueue_async_copy (svm_fifo_t *f, const u8 *src, u32 len);
+
+/** Return a fifo-owned segment's storage to the fifo segment. */
+void svm_fifo_async_free_segment (svm_fifo_t *f, svm_fifo_async_seg_t *seg);
+
+static inline u8
+svm_fifo_async_segment_is_fifo_owned (const svm_fifo_async_seg_t *seg)
+{
+  return seg->opaque == SVM_FIFO_ASYNC_OPAQUE_FIFO;
+}
+
+/** Seal the prefix and prepare normal chunks without copying buffer data. */
+void svm_fifo_seal_async (svm_fifo_t *f);
+
+/** Check whether sealing or chunk rebasing is needed. */
+static inline u8
+svm_fifo_async_needs_seal (svm_fifo_t *f)
+{
+  svm_fifo_async_state_t *state = f->async_state;
+
+  return state && (state->active ? !state->sealed : state->needs_rebase);
+}
+
+/** Copy the prefix into normal chunks without moving head or tail.
+ *
+ * On success, return its linked segments for the caller to release the buffers.
+ */
+int svm_fifo_commit_async_segments (svm_fifo_t *f, svm_fifo_async_seg_t **segments,
+				    u32 *n_segments);
+
+/** Consume the buffer-backed prefix and transfer its linked segments to the caller. */
+int svm_fifo_acquire_async_segments (svm_fifo_t *f, svm_fifo_async_seg_t **segments,
+				     u32 *n_segments);
+
+void svm_fifo_free_async_data (svm_fifo_t *f);
+
+static inline u32
+svm_fifo_n_async_segments (svm_fifo_t *f)
+{
+  return f->async_state && f->async_state->active ? f->async_state->n_segs : 0;
+}
+
 /**
  * Enqueue array of @ref svm_fifo_seg_t with offset
  *
