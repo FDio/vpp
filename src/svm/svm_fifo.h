@@ -41,6 +41,7 @@ typedef enum
   SVM_FIFO_EFULL = -2,
   SVM_FIFO_EEMPTY = -3,
   SVM_FIFO_EGROW = -4,
+  SVM_FIFO_EINVAL = -5,
 } svm_fifo_err_t;
 
 typedef struct svm_fifo_seg_
@@ -353,6 +354,48 @@ void svm_fifo_enqueue_nocopy (svm_fifo_t * f, u32 len);
  */
 int svm_fifo_enqueue_segments (svm_fifo_t * f, const svm_fifo_seg_t segs[],
 			       u32 n_segs, u8 allow_partial);
+
+/** Allocate private async bookkeeping before the first receive packet. */
+int svm_fifo_prepare_async (svm_fifo_t *f);
+
+/** Enqueue a buffer-backed segment node without copying its bytes.
+ *
+ * The node must remain valid until it is acquired or materialized. Enqueue
+ * links it to the FIFO and overwrites its next pointer.
+ * While such segments are pending, the app must use the async segment APIs
+ * to acquire, discard or materialize them. FIFO occupancy and capacity still
+ * count these bytes, but generic data reads must wait until the prefix is
+ * acquired or materialized. Before ordinary writes or chunk access and
+ * provisioning, call svm_fifo_seal_async(); it also prepares an empty FIFO
+ * after an unsealed prefix is acquired.
+ */
+int svm_fifo_enqueue_async_segment (svm_fifo_t *f, svm_fifo_async_seg_t *seg);
+
+/**
+ * Seal the buffer-backed prefix so all subsequent writes use normal chunks.
+ * This prepares the ordinary chunk list without copying the buffer data.
+ */
+void svm_fifo_seal_async (svm_fifo_t *f);
+
+/** Copy the buffer-backed prefix into ordinary chunks.
+ *
+ * The logical head and tail do not change. On success, the returned linked
+ * segments must be used by the owner to release the backing buffers.
+ */
+int svm_fifo_commit_async_segments (svm_fifo_t *f, svm_fifo_async_seg_t **segments,
+				    u32 *n_segments);
+
+/** Consume the buffer-backed prefix and transfer its linked segments to the caller. */
+int svm_fifo_acquire_async_segments (svm_fifo_t *f, svm_fifo_async_seg_t **segments,
+				     u32 *n_segments);
+
+void svm_fifo_free_async_data (svm_fifo_t *f);
+
+static inline u32
+svm_fifo_n_async_segments (svm_fifo_t *f)
+{
+  return f->async_state && f->async_state->active ? f->async_state->n_segs : 0;
+}
 /**
  * Overwrite fifo head with new data
  *
