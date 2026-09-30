@@ -52,15 +52,15 @@ undefined_symbols()
     }'
 }
 
-symbols "$libvnet" | sort -u >"$work_dir/defined"
-dynamic_symbols "$libvnet" | sort -u >"$work_dir/exported"
+symbols "$libvnet" | LC_ALL=C sort -u >"$work_dir/defined"
+dynamic_symbols "$libvnet" | LC_ALL=C sort -u >"$work_dir/exported"
 
 for consumer in "$@"; do
   undefined_symbols "$consumer"
-done | sort -u >"$work_dir/undefined"
+done | LC_ALL=C sort -u >"$work_dir/undefined"
 
-comm -12 "$work_dir/defined" "$work_dir/undefined" >"$work_dir/required"
-comm -23 "$work_dir/required" "$work_dir/exported" >"$work_dir/missing"
+LC_ALL=C comm -12 "$work_dir/defined" "$work_dir/undefined" >"$work_dir/required"
+LC_ALL=C comm -23 "$work_dir/required" "$work_dir/exported" >"$work_dir/missing"
 
 if [ -s "$work_dir/missing" ]; then
   echo "libvnet symbols used by in-tree consumers are not exported:" >&2
