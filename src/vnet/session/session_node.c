@@ -1451,7 +1451,7 @@ session_tx_burst_stream (transport_send_params_t *sp, session_tx_burst_t *b)
 {
   session_worker_t *wrk = session_tx_sp_wrk (sp);
 
-  if (PREDICT_FALSE (wrk->dma_enabled))
+  if (PREDICT_FALSE (wrk->flags & SESSION_WRK_F_DMA))
     return session_tx_burst_dma (wrk, b, 0 /* is_dgram */);
   return session_tx_burst_inline (wrk, b, 0 /* is_dgram */, 0 /* dma */);
 }
@@ -1461,7 +1461,7 @@ session_tx_burst_dgram (transport_send_params_t *sp, session_tx_burst_t *b)
 {
   session_worker_t *wrk = session_tx_sp_wrk (sp);
 
-  if (PREDICT_FALSE (wrk->dma_enabled))
+  if (PREDICT_FALSE (wrk->flags & SESSION_WRK_F_DMA))
     return session_tx_burst_dma (wrk, b, 1 /* is_dgram */);
   return session_tx_burst_inline (wrk, b, 1 /* is_dgram */, 0 /* dma */);
 }
@@ -1979,7 +1979,7 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   n_tx_packets = vec_len (wrk->pending_tx_buffers);
   SESSION_EVT (SESSION_EVT_DSP_CNTRS, UPDATE_TIME, wrk);
 
-  if (PREDICT_FALSE (wrk->dma_enabled))
+  if (PREDICT_FALSE (wrk->flags & SESSION_WRK_F_DMA))
     {
       if (wrk->trans_head == ((wrk->trans_tail + 1) & (wrk->trans_size - 1)))
 	return 0;
@@ -2057,7 +2057,7 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	};
     }
 
-  if (PREDICT_FALSE (wrk->dma_enabled))
+  if (PREDICT_FALSE (wrk->flags & SESSION_WRK_F_DMA))
     {
       if (wrk->batch_num)
 	{
