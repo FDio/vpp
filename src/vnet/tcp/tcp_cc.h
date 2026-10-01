@@ -19,7 +19,8 @@ tcp_cc_rcv_ack (tcp_connection_t *tc, tcp_ack_ctx_t *ac)
 static inline void
 tcp_cc_rcv_cong_ack (tcp_connection_t *tc, tcp_cc_ack_t ack_type, tcp_ack_ctx_t *ac)
 {
-  tc->cc_algo->rcv_cong_ack (tc, ack_type, ac);
+  if (tc->cc_algo->rcv_cong_ack)
+    tc->cc_algo->rcv_cong_ack (tc, ack_type, ac);
 }
 
 static inline void
@@ -170,7 +171,5 @@ void tcp_cc_algo_register (tcp_cc_algorithm_type_e type,
  */
 tcp_cc_algorithm_type_e tcp_cc_algo_new_type (const tcp_cc_algorithm_t * vft);
 __clib_export tcp_cc_algorithm_t *tcp_cc_algo_get (tcp_cc_algorithm_type_e type);
-
-void newreno_rcv_cong_ack (tcp_connection_t *tc, tcp_cc_ack_t ack_type, tcp_ack_ctx_t *ac);
 
 #endif /* SRC_VNET_TCP_TCP_CC_H_ */

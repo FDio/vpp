@@ -125,9 +125,6 @@ tcp_loss_enter_recovery (tcp_connection_t *tc)
   tcp_loss_recovery_state_init (tc);
   tcp_cc_congestion (tc);
 
-  if (!tcp_opts_sack_permitted (&tc->rcv_opts))
-    tc->cwnd += TCP_DUPACK_THRESHOLD * tc->snd_mss;
-
   tc->fr_occurences += 1;
   TCP_EVT (TCP_EVT_CC_EVT, tc, 4);
 
