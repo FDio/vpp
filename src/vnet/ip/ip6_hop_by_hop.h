@@ -242,7 +242,7 @@ ip6_hbh_get_option (ip6_hop_by_hop_header_t * hbh0, u8 option_to_search)
       switch (type0)
 	{
 	case 0:		/* Pad1 */
-	  opt0 = (ip6_hop_by_hop_option_t *) ((u8 *) opt0) + 1;
+	  opt0 = (ip6_hop_by_hop_option_t *) ((u8 *) opt0 + 1);
 	  continue;
 	case 1:		/* PadN */
 	  break;
