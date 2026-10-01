@@ -738,7 +738,12 @@ tcp_cc_handle_event (tcp_connection_t *tc, tcp_ack_ctx_t *ac)
 
   if (!ac->bytes_acked)
     {
-      tcp_cc_rcv_cong_ack (tc, TCP_CC_DUPACK, ac);
+      /* Timer recovery grows cwnd from delivered data, and with sacks a
+       * duplicate ack can still report newly delivered bytes */
+      if (tcp_in_recovery (tc) && has_sack)
+	tcp_cc_rcv_ack (tc, ac);
+      else
+	tcp_cc_rcv_cong_ack (tc, TCP_CC_DUPACK, ac);
       return;
     }
 

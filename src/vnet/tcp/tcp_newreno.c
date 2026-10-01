@@ -58,7 +58,7 @@ void
 newreno_rcv_cong_ack (tcp_connection_t *tc, tcp_cc_ack_t ack_type, tcp_ack_ctx_t *ac)
 {
   /* With sacks prr controls the data in flight post congestion */
-  if (PREDICT_TRUE (tcp_opts_sack_permitted (tc)))
+  if (PREDICT_TRUE (tcp_opts_sack_permitted (&tc->rcv_opts)))
     return;
 
   if (ack_type == TCP_CC_DUPACK)
