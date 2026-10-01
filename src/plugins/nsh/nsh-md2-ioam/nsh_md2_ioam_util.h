@@ -62,29 +62,18 @@ nsh_md2_ioam_encap_decap_ioam_v4_one_inline (vlib_main_t * vm,
       return;
     }
 
-  /* Scan the set of h-b-h options, process ones that we understand */
+  /* NSH MD2 TLVs have no Pad1/PadN: every type goes through the lookup and
+   * the 4-byte header + length step */
   while (opt0 < limit0)
     {
-      u8 type0;
-      type0 = opt0->type;
-      switch (type0)
+      nsh_option = nsh_md2_lookup_option (opt0->class, opt0->type);
+      if ((nsh_option != NULL) && (hm->options[nsh_option->option_id]))
 	{
-	case 0:		/* Pad1 */
-	  opt0 = (nsh_tlv_header_t *) ((u8 *) opt0) + 1;
-	  continue;
-	case 1:		/* PadN */
-	  break;
-	default:
-	  nsh_option = nsh_md2_lookup_option (opt0->class, opt0->type);
-	  if ((nsh_option != NULL) && (hm->options[nsh_option->option_id]))
+	  if ((*hm->options[nsh_option->option_id]) (b0, opt0) < 0)
 	    {
-	      if ((*hm->options[nsh_option->option_id]) (b0, opt0) < 0)
-		{
-		  *next0 = drop_node_val;
-		  return;
-		}
+	      *next0 = drop_node_val;
+	      return;
 	    }
-	  break;
 	}
       opt0 =
 	(nsh_tlv_header_t *) (((u8 *) opt0) + opt0->length +

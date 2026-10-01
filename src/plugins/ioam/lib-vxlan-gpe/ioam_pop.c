@@ -55,7 +55,7 @@ format_vxlan_gpe_pop_ioam_v4_trace (u8 * s, va_list * args)
 	      t->next_index, fmt_trace0->length, t->trace_len);
 
   opt0 = (vxlan_gpe_ioam_option_t *) (fmt_trace0 + 1);
-  limit0 = (vxlan_gpe_ioam_option_t *) ((u8 *) fmt_trace0) + t->trace_len;
+  limit0 = (vxlan_gpe_ioam_option_t *) ((u8 *) fmt_trace0 + t->trace_len);
 
   while (opt0 < limit0)
     {
@@ -63,7 +63,7 @@ format_vxlan_gpe_pop_ioam_v4_trace (u8 * s, va_list * args)
       switch (type0)
 	{
 	case 0:		/* Pad, just stop */
-	  opt0 = (vxlan_gpe_ioam_option_t *) ((u8 *) opt0) + 1;
+	  opt0 = (vxlan_gpe_ioam_option_t *) ((u8 *) opt0 + 1);
 	  break;
 
 	default:
@@ -154,7 +154,7 @@ vxlan_gpe_pop_ioam_v4_one_inline (vlib_main_t * vm,
       switch (type0)
 	{
 	case 0:		/* Pad1 */
-	  opt0 = (vxlan_gpe_ioam_option_t *) ((u8 *) opt0) + 1;
+	  opt0 = (vxlan_gpe_ioam_option_t *) ((u8 *) opt0 + 1);
 	  continue;
 	case 1:		/* PadN */
 	  break;

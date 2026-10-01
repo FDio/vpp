@@ -559,7 +559,7 @@ ioam_pop_hop_by_hop_processing (vlib_main_t *vm, ip6_header_t *ip0, ip6_hop_by_h
       switch (type0)
 	{
 	case 0:		/* Pad1 */
-	  opt0 = (ip6_hop_by_hop_option_t *) ((u8 *) opt0) + 1;
+	  opt0 = (ip6_hop_by_hop_option_t *) ((u8 *) opt0 + 1);
 	  continue;
 	case 1:		/* PadN */
 	  break;
