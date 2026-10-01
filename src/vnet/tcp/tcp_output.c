@@ -2086,6 +2086,7 @@ static int
 tcp_send_acks (tcp_connection_t * tc, u32 max_burst_size)
 {
   int j, n_acks;
+  u8 has_sack;
 
   if (!tc->pending_dupacks)
     {
@@ -2098,9 +2099,10 @@ tcp_send_acks (tcp_connection_t * tc, u32 max_burst_size)
       return 0;
     }
 
-  /* If we're supposed to send dupacks but have no ooo data
-   * send only one ack */
-  if (!vec_len (tc->snd_sacks))
+  has_sack = tcp_opts_sack_permitted (&tc->rcv_opts);
+
+  /* If we're supposed to send dupacks but have no ooo data send only one ack */
+  if (has_sack ? !vec_len (tc->snd_sacks) : !transport_rx_fifo_has_ooo_data (&tc->connection))
     {
       tcp_send_ack (tc);
       tc->dupacks_out += 1;
@@ -2111,12 +2113,21 @@ tcp_send_acks (tcp_connection_t * tc, u32 max_burst_size)
   /* Start with first sack block */
   tc->snd_sack_pos = 0;
 
-  /* Generate enough dupacks to cover all sack blocks. Do not generate
-   * more sacks than the number of packets received. But do generate at
-   * least 3, i.e., the number needed to signal congestion, if needed. */
-  n_acks = vec_len (tc->snd_sacks) / TCP_OPTS_MAX_SACK_BLOCKS;
-  n_acks = clib_min (n_acks, tc->pending_dupacks);
-  n_acks = clib_max (n_acks, clib_min (tc->pending_dupacks, 3));
+  if (has_sack)
+    {
+      /* Generate enough dupacks to cover all sack blocks. Do not generate
+       * more sacks than the number of packets received. But do generate at
+       * least 3, i.e., the number needed to signal congestion, if needed. */
+      n_acks = vec_len (tc->snd_sacks) / TCP_OPTS_MAX_SACK_BLOCKS;
+      n_acks = clib_min (n_acks, tc->pending_dupacks);
+      n_acks = clib_max (n_acks, clib_min (tc->pending_dupacks, 3));
+    }
+  else
+    {
+      /* Without sacks, the sender counts dupacks to learn how much data left
+       * the network. RFC 5681: one per out-of-order segment */
+      n_acks = tc->pending_dupacks;
+    }
   for (j = 0; j < clib_min (n_acks, max_burst_size); j++)
     tcp_send_ack (tc);
 
