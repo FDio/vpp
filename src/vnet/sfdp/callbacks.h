@@ -3,7 +3,7 @@
  */
 
 #ifndef __included_callbacks_h
-#define __included callbacks_h
+#define __included_callbacks_h
 #include <vlib/vlib.h>
 
 #define foreach_sfdp_callback_type                                            \
@@ -16,7 +16,11 @@
    * removed. This gives the opportunity for the SFDP user to reset per-flow  \
    * state while no packet is currently being processed by this thread.       \
    * This is called before any flow state is removed. */                      \
-  _ (notify_deleted_sessions, u32, const u32 *, u32)
+  _ (notify_deleted_sessions, u32, const u32 *, u32)                          \
+  /* Called after a tenant has been created and added to the tenant table. */ \
+  _ (notify_new_tenant, void, u32)                                             \
+  /* Called before tenant state is removed. */                                 \
+  _ (notify_deleted_tenant, void, u32)
 
 #define SFDP_CB_ELT_LIST_TYPE_DECLARE(fn_ptr_type)                            \
   typedef struct sfdp_cb_elt_list_##fn_ptr_type##_s                           \
@@ -123,4 +127,18 @@ __clib_export extern sfdp_callback_main_t sfdp_callback_main;
 #define SFDP_BLACKLIST_DELETED_SESSIONS_CALLBACK(name)                        \
   SFDP_BLACKLIST_CALLBACK (sfdp_notify_deleted_sessions_cb_t,                 \
 			   head_notify_deleted_sessions, name)
+
+#define SFDP_REGISTER_NEW_TENANT_CALLBACK(name)                                \
+  SFDP_REGISTER_CALLBACK (sfdp_notify_new_tenant_cb_t,                         \
+			  head_notify_new_tenant, name)
+#define SFDP_BLACKLIST_NEW_TENANT_CALLBACK(name)                               \
+  SFDP_BLACKLIST_CALLBACK (sfdp_notify_new_tenant_cb_t,                        \
+			   head_notify_new_tenant, name)
+
+#define SFDP_REGISTER_DELETED_TENANT_CALLBACK(name)                            \
+  SFDP_REGISTER_CALLBACK (sfdp_notify_deleted_tenant_cb_t,                     \
+			  head_notify_deleted_tenant, name)
+#define SFDP_BLACKLIST_DELETED_TENANT_CALLBACK(name)                           \
+  SFDP_BLACKLIST_CALLBACK (sfdp_notify_deleted_tenant_cb_t,                    \
+			   head_notify_deleted_tenant, name)
 #endif

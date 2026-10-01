@@ -738,6 +738,18 @@ sfdp_notify_deleted_sessions (sfdp_main_t *sfdpm, u32 *deleted_sessions,
   SFDP_CALLBACKS_CALL (notify_deleted_sessions, deleted_sessions, len);
 }
 
+static_always_inline void
+sfdp_notify_new_tenant (u32 tenant_index)
+{
+  SFDP_CALLBACKS_CALL (notify_new_tenant, tenant_index);
+}
+
+static_always_inline void
+sfdp_notify_deleted_tenant (u32 tenant_index)
+{
+  SFDP_CALLBACKS_CALL (notify_deleted_tenant, tenant_index);
+}
+
 static_always_inline u32
 sfdp_alloc_session (sfdp_main_t *sfdp, sfdp_per_thread_data_t *ptd,
 		    bool bound_to_thread)
