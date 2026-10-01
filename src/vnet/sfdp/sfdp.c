@@ -296,6 +296,7 @@ sfdp_tenant_add_del (sfdp_main_t *sfdp, u32 tenant_id, u32 context_id,
 	  kv.value = tenant_idx;
 	  clib_bihash_add_del_8_8 (&sfdp->tenant_idx_by_id, &kv, 1);
 	  sfdp_tenant_clear_counters (sfdp, tenant_idx);
+	  sfdp_notify_new_tenant (tenant_idx);
 	}
       else
 	{
@@ -316,11 +317,10 @@ sfdp_tenant_add_del (sfdp_main_t *sfdp, u32 tenant_id, u32 context_id,
 	}
       else
 	{
+	  sfdp_notify_deleted_tenant (kv.value);
 	  sfdp_tenant_clear_counters (sfdp, kv.value);
 	  pool_put_index (sfdp->tenants, kv.value);
 	  clib_bihash_add_del_8_8 (&sfdp->tenant_idx_by_id, &kv, 0);
-	  /* TODO: Notify other users of "tenants" (like gw)?
-	   * maybe cb list? */
 	}
     }
   if (!err && ((n_tenants == 1 && is_del) || (n_tenants == 0 && !is_del)))
