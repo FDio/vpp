@@ -98,6 +98,8 @@ typedef struct app_listener_
 				     the app listener */
   u32 *cl_listeners;		/**< vector that maps app workers to their
 				     cl sessions with fifos */
+  u32 sm_index;			/**< segment manager for all sessions derived
+				     from the listener */
 } app_listener_t;
 
 typedef enum app_rx_mq_flags_
@@ -302,6 +304,7 @@ __clib_export app_worker_t *application_get_default_worker (application_t *app);
 app_worker_t *application_listener_select_worker (session_t * ls);
 int application_change_listener_owner (session_t * s, app_worker_t * app_wrk);
 int application_is_proxy (application_t * app);
+u8 application_is_transport (application_t *app);
 int application_is_builtin (application_t * app);
 int application_is_builtin_proxy (application_t * app);
 __clib_export u32 application_session_table (application_t *app, u8 fib_proto);
@@ -410,7 +413,7 @@ u8 *format_app_worker_listener (u8 *s, va_list *args);
 u8 *format_crypto_context (u8 * s, va_list * args);
 uword unformat_app_index (unformat_input_t *input, va_list *args);
 void app_worker_format_connects (app_worker_t * app_wrk, int verbose);
-session_error_t vnet_app_worker_add_del (vnet_app_worker_add_del_args_t *a);
+__clib_export session_error_t vnet_app_worker_add_del (vnet_app_worker_add_del_args_t *a);
 
 uword unformat_application_proto (unformat_input_t * input, va_list * args);
 

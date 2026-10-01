@@ -30,6 +30,14 @@
 
 #define SEGMENT_MANAGER_GET_INDEX_FROM_HANDLE(x) (x >> 32)
 
+#define SEG_MGR_TEST_CLEANUP(_cond, _comment, _args...)                                            \
+  do                                                                                               \
+    {                                                                                              \
+      if (!SEG_MGR_TEST_I (_cond, _comment, ##_args))                                              \
+	goto cleanup;                                                                              \
+    }                                                                                              \
+  while (0)
+
 /* placeholder callback functions */
 static void
 placeholder_session_reset_callback (session_t * s)
@@ -734,6 +742,301 @@ segment_manager_test_prealloc_hdrs (vlib_main_t * vm,
   return 0;
 }
 
+static int
+segment_manager_test_listener_limit (vlib_main_t *vm, unformat_input_t *input)
+{
+  u64 options[APP_OPTIONS_N_OPTIONS] = { 0 };
+  svm_fifo_t *rx[16] = { 0 }, *tx[16] = { 0 };
+  u32 app_index = APP_INVALID_INDEX, transport_index = APP_INVALID_INDEX;
+  u32 sm_index, owner_index, n_pairs = 0;
+  vnet_app_worker_add_del_args_t worker = { .wrk_map_index = APP_INVALID_INDEX,
+					    .api_client_index = 0xffff,
+					    .is_add = 1 };
+  vnet_listen_args_t listen = { .sep_ext = SESSION_ENDPOINT_CFG_NULL };
+  vnet_app_attach_args_t attach = { .api_client_index = APP_INVALID_INDEX,
+				    .options = options,
+				    .session_cb_vft = &placeholder_session_cbs };
+  segment_manager_t *sm;
+  app_listener_t *al;
+  app_worker_t *app_wrk;
+  int rv, result = 1;
+
+  options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_IS_BUILTIN;
+  options[APP_OPTIONS_SEGMENT_SIZE] = size_1MB;
+  options[APP_OPTIONS_ADD_SEGMENT_SIZE] = size_1MB;
+  options[APP_OPTIONS_MAX_FIFO_MEMORY] = size_1MB;
+  options[APP_OPTIONS_RX_FIFO_SIZE] = size_32KB;
+  options[APP_OPTIONS_TX_FIFO_SIZE] = size_32KB;
+  options[APP_OPTIONS_PCT_FIRST_ALLOC] = 100;
+  attach.name = format (0, "segment_manager_test_listener_limit");
+  rv = vnet_application_attach (&attach);
+  vec_free (attach.name);
+  SEG_MGR_TEST_CLEANUP (!rv, "attach listener app: %d", rv);
+  app_index = attach.app_index;
+
+  listen.app_index = app_index;
+  listen.sep_ext.is_ip4 = 1;
+  listen.sep_ext.port = clib_host_to_net_u16 (12345);
+  listen.sep_ext.transport_proto = TRANSPORT_PROTO_UDP;
+  rv = vnet_listen (&listen);
+  SEG_MGR_TEST_CLEANUP (!rv, "first worker listens with a one-segment limit: %d", rv);
+  al = app_listener_get_w_handle (listen.handle);
+  sm_index = al->sm_index;
+
+  worker.app_index = app_index;
+  rv = vnet_app_worker_add_del (&worker);
+  SEG_MGR_TEST_CLEANUP (!rv, "add second listener worker: %d", rv);
+  listen.wrk_map_index = worker.wrk_map_index;
+  rv = vnet_listen (&listen);
+  SEG_MGR_TEST_CLEANUP (!rv, "second worker has its own segment budget: %d", rv);
+
+  /* Model the listener borrowed by a builtin transport. Its fifo size also
+   * requires a private segment larger than the app's configured segment. */
+  options[APP_OPTIONS_FLAGS] |= APP_OPTIONS_FLAGS_IS_TRANSPORT_APP;
+  options[APP_OPTIONS_MAX_FIFO_MEMORY] = 0;
+  options[APP_OPTIONS_RX_FIFO_SIZE] = 512 << 10;
+  options[APP_OPTIONS_TX_FIFO_SIZE] = 512 << 10;
+  attach.name = format (0, "segment_manager_test_transport_limit");
+  rv = vnet_application_attach (&attach);
+  vec_free (attach.name);
+  SEG_MGR_TEST_CLEANUP (!rv, "attach builtin transport: %d", rv);
+  transport_index = attach.app_index;
+  listen.app_index = transport_index;
+  listen.wrk_map_index = 0;
+  listen.sep_ext.port = clib_host_to_net_u16 (12346);
+  listen.sep_ext.sm_index = sm_index;
+  rv = vnet_listen (&listen);
+  SEG_MGR_TEST_CLEANUP (!rv, "private transport fifos do not consume worker budgets: %d", rv);
+
+  app_wrk = application_get_default_worker (application_get (app_index));
+  owner_index = app_wrk->wrk_index;
+  sm = segment_manager_get (sm_index);
+  SEG_MGR_TEST_CLEANUP (pool_elts (sm->segments) == 3,
+			"two worker segments and one private transport segment");
+
+  /* Fill one owner's segment and verify that its cap is still enforced. */
+  while (n_pairs < ARRAY_LEN (rx))
+    {
+      rv = segment_manager_alloc_session_fifos_w_owner (sm, owner_index, size_128KB, size_128KB, 0,
+							&rx[n_pairs], &tx[n_pairs]);
+      if (rv)
+	break;
+      n_pairs++;
+    }
+  SEG_MGR_TEST_CLEANUP (n_pairs > 0 && n_pairs < ARRAY_LEN (rx) && rv == SESSION_E_SEG_CREATE,
+			"owner cannot allocate a second segment: %d", rv);
+  SEG_MGR_TEST_CLEANUP (pool_elts (sm->segments) == 3,
+			"failed allocation leaves no extra segments");
+
+  sm = app_worker_get_connect_segment_manager (app_wrk);
+  rv = segment_manager_add_segment (sm, size_1MB, 0);
+  SEG_MGR_TEST_CLEANUP (rv < 0, "connects manager still enforces its segment limit");
+  result = 0;
+
+cleanup:
+  while (n_pairs)
+    {
+      n_pairs--;
+      segment_manager_dealloc_fifos (rx[n_pairs], tx[n_pairs]);
+    }
+  vnet_app_detach_args_t detach = { .api_client_index = APP_INVALID_INDEX };
+  if (transport_index != APP_INVALID_INDEX)
+    {
+      detach.app_index = transport_index;
+      vnet_application_detach (&detach);
+    }
+  if (worker.wrk_map_index != APP_INVALID_INDEX)
+    {
+      worker.is_add = 0;
+      vnet_app_worker_add_del (&worker);
+    }
+  if (app_index != APP_INVALID_INDEX)
+    {
+      detach.app_index = app_index;
+      vnet_application_detach (&detach);
+    }
+  return result;
+}
+
+static volatile session_handle_t sm_ct_test_accepted, sm_ct_test_connected;
+static volatile session_error_t sm_ct_test_error;
+static u32 sm_ct_test_worker;
+static volatile u64 sm_ct_test_segment;
+
+static int
+sm_ct_test_accept (session_t *s)
+{
+  sm_ct_test_accepted = s->handle;
+  return 0;
+}
+
+static int
+sm_ct_test_connect (u32 app_wrk_index, u32 context, session_t *s, session_error_t err)
+{
+  sm_ct_test_error = err;
+  if (s)
+    sm_ct_test_connected = s->handle;
+  return 0;
+}
+
+static int
+sm_ct_test_add_segment (u32 app_wrk_index, u64 segment_handle)
+{
+  if (app_wrk_index == sm_ct_test_worker)
+    sm_ct_test_segment = segment_handle;
+  return 0;
+}
+
+static int
+sm_ct_test_wait_connected (vlib_main_t *vm)
+{
+  u32 tries = 0;
+
+  while (sm_ct_test_connected == SESSION_INVALID_HANDLE && !sm_ct_test_error && tries++ < 100)
+    {
+      vlib_worker_thread_barrier_release (vm);
+      vlib_process_suspend (vm, 10e-3);
+      vlib_worker_thread_barrier_sync (vm);
+    }
+  return sm_ct_test_connected != SESSION_INVALID_HANDLE && !sm_ct_test_error;
+}
+
+static int
+segment_manager_test_ct_worker_reuse (vlib_main_t *vm, unformat_input_t *input)
+{
+  u64 options[APP_OPTIONS_N_OPTIONS] = { 0 };
+  u32 server_index = APP_INVALID_INDEX, client_index = APP_INVALID_INDEX;
+  u32 old_worker, old_segment, sm_index;
+  svm_fifo_t *held_rx = 0, *held_tx = 0;
+  session_cb_vft_t callbacks = placeholder_session_cbs;
+  vnet_app_worker_add_del_args_t worker = { .wrk_map_index = APP_INVALID_INDEX,
+					    .api_client_index = 0xffff,
+					    .is_add = 1 };
+  vnet_app_attach_args_t attach = { .api_client_index = APP_INVALID_INDEX,
+				    .options = options,
+				    .session_cb_vft = &callbacks };
+  vnet_listen_args_t listen = { .sep_ext = SESSION_ENDPOINT_CFG_NULL };
+  vnet_connect_args_t connect = { .sep_ext = SESSION_ENDPOINT_CFG_NULL };
+  app_listener_t *al;
+  session_t *s;
+  int rv, result = 1;
+
+  sm_ct_test_accepted = sm_ct_test_connected = SESSION_INVALID_HANDLE;
+  sm_ct_test_error = SESSION_E_NONE;
+  callbacks.session_accept_callback = sm_ct_test_accept;
+  callbacks.session_connected_callback = sm_ct_test_connect;
+  callbacks.add_segment_callback = sm_ct_test_add_segment;
+  options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_IS_BUILTIN | APP_OPTIONS_FLAGS_USE_LOCAL_SCOPE;
+  options[APP_OPTIONS_SEGMENT_SIZE] = size_1MB;
+  options[APP_OPTIONS_ADD_SEGMENT_SIZE] = size_1MB;
+  attach.name = format (0, "segment_manager_test_ct_server");
+  rv = vnet_application_attach (&attach);
+  vec_free (attach.name);
+  SEG_MGR_TEST_CLEANUP (!rv, "attach cut-through server: %d", rv);
+  server_index = attach.app_index;
+  worker.app_index = server_index;
+  rv = vnet_app_worker_add_del (&worker);
+  SEG_MGR_TEST_CLEANUP (!rv, "add server worker: %d", rv);
+  old_worker =
+    application_get_worker (application_get (server_index), worker.wrk_map_index)->wrk_index;
+  sm_ct_test_worker = old_worker;
+
+  listen.app_index = server_index;
+  listen.wrk_map_index = worker.wrk_map_index;
+  listen.sep_ext.is_ip4 = 1;
+  listen.sep_ext.transport_proto = TRANSPORT_PROTO_TCP;
+  listen.sep_ext.port = clib_host_to_net_u16 (12347);
+  rv = vnet_listen (&listen);
+  SEG_MGR_TEST_CLEANUP (!rv, "server worker listens: %d", rv);
+  al = app_listener_get_w_handle (listen.handle);
+  sm_index = al->sm_index;
+
+  attach.name = format (0, "segment_manager_test_ct_client");
+  rv = vnet_application_attach (&attach);
+  vec_free (attach.name);
+  SEG_MGR_TEST_CLEANUP (!rv, "attach cut-through client: %d", rv);
+  client_index = attach.app_index;
+  connect.app_index = client_index;
+  connect.sep_ext.is_ip4 = 1;
+  connect.sep_ext.ip.ip4.as_u32 = clib_host_to_net_u32 (0x7f000001);
+  connect.sep_ext.port = listen.sep_ext.port;
+  connect.sep_ext.transport_proto = TRANSPORT_PROTO_TCP;
+  rv = vnet_connect2 (&connect);
+  SEG_MGR_TEST_CLEANUP (!rv && sm_ct_test_wait_connected (vm),
+			"first cut-through connection succeeds");
+
+  s = session_get_from_handle (sm_ct_test_accepted);
+  old_segment = s->rx_fifo->segment_index;
+  held_rx = s->rx_fifo;
+  held_tx = s->tx_fifo;
+  held_rx->refcnt++;
+  held_tx->refcnt++;
+
+  /* Keep the listener alive on the default worker, then replace the worker
+   * that owns the old segment. Extra fifo references delay CT accounting,
+   * as a zero-copy proxy can do; the client also delays its close reply. */
+  listen.wrk_map_index = 0;
+  rv = vnet_listen (&listen);
+  SEG_MGR_TEST_CLEANUP (!rv, "another worker keeps the listener alive: %d", rv);
+  worker.is_add = 0;
+  rv = vnet_app_worker_add_del (&worker);
+  SEG_MGR_TEST_CLEANUP (!rv, "detach original server worker: %d", rv);
+  worker.wrk_map_index = APP_INVALID_INDEX;
+  SEG_MGR_TEST_CLEANUP (
+    segment_manager_get_segment (segment_manager_get (sm_index), old_segment)->owner_index ==
+      SEGMENT_MANAGER_INVALID_APP_INDEX,
+    "old segment no longer has an owner");
+  worker.is_add = 1;
+  rv = vnet_app_worker_add_del (&worker);
+  SEG_MGR_TEST_CLEANUP (!rv, "add replacement worker: %d", rv);
+  SEG_MGR_TEST_CLEANUP (
+    application_get_worker (application_get (server_index), worker.wrk_map_index)->wrk_index ==
+      old_worker,
+    "replacement reuses the old worker index");
+  listen.wrk_map_index = worker.wrk_map_index;
+  rv = vnet_listen (&listen);
+  SEG_MGR_TEST_CLEANUP (!rv, "replacement joins the same listener: %d", rv);
+  al = app_listener_get_w_handle (listen.handle);
+  al->accept_rotor = worker.wrk_map_index - 1;
+  sm_ct_test_accepted = sm_ct_test_connected = SESSION_INVALID_HANDLE;
+  sm_ct_test_segment = SESSION_INVALID_HANDLE;
+  rv = vnet_connect2 (&connect);
+  SEG_MGR_TEST_CLEANUP (!rv && sm_ct_test_wait_connected (vm),
+			"replacement accepts a new connection");
+  s = session_get_from_handle (sm_ct_test_accepted);
+  SEG_MGR_TEST_CLEANUP (s->app_wrk_index == old_worker,
+			"new connection belongs to replacement worker");
+  SEG_MGR_TEST_CLEANUP (s->rx_fifo->segment_index != old_segment,
+			"replacement does not reuse the detached worker's segment");
+  SEG_MGR_TEST_CLEANUP (sm_ct_test_segment == ((u64) sm_index << 32 | s->rx_fifo->segment_index),
+			"replacement receives the new segment mapping notification");
+  result = 0;
+
+cleanup:
+  if (held_rx)
+    segment_manager_dealloc_fifos (held_rx, held_tx);
+  vnet_app_detach_args_t detach = { .api_client_index = APP_INVALID_INDEX };
+  if (client_index != APP_INVALID_INDEX)
+    {
+      detach.app_index = client_index;
+      vnet_application_detach (&detach);
+    }
+  if (worker.wrk_map_index != APP_INVALID_INDEX)
+    {
+      worker.is_add = 0;
+      vnet_app_worker_add_del (&worker);
+    }
+  if (server_index != APP_INVALID_INDEX)
+    {
+      detach.app_index = server_index;
+      vnet_application_detach (&detach);
+    }
+  vlib_worker_thread_barrier_release (vm);
+  vlib_process_suspend (vm, 100e-3);
+  vlib_worker_thread_barrier_sync (vm);
+  return result;
+}
+
 static clib_error_t *
 segment_manager_test (vlib_main_t * vm,
 		      unformat_input_t * input, vlib_cli_command_t * cmd_arg)
@@ -755,6 +1058,10 @@ segment_manager_test (vlib_main_t * vm,
 	res = segment_manager_test_fifo_balanced_alloc (vm, input);
       else if (unformat (input, "prealloc_hdrs"))
 	res = segment_manager_test_prealloc_hdrs (vm, input);
+      else if (unformat (input, "listener_limit"))
+	res = segment_manager_test_listener_limit (vm, input);
+      else if (unformat (input, "ct_worker_reuse"))
+	res = segment_manager_test_ct_worker_reuse (vm, input);
 
       else if (unformat (input, "all"))
 	{
@@ -765,6 +1072,10 @@ segment_manager_test (vlib_main_t * vm,
 	  if ((res = segment_manager_test_fifo_balanced_alloc (vm, input)))
 	    goto done;
 	  if ((res = segment_manager_test_prealloc_hdrs (vm, input)))
+	    goto done;
+	  if ((res = segment_manager_test_listener_limit (vm, input)))
+	    goto done;
+	  if ((res = segment_manager_test_ct_worker_reuse (vm, input)))
 	    goto done;
 	}
       else
@@ -780,6 +1091,7 @@ done:
 VLIB_CLI_COMMAND (tcp_test_command, static) = {
   .path = "test segment-manager",
   .short_help = "test segment manager [pressure_levels_1]"
-		"[pressure_level_2][alloc][fifo_ops][prealloc_hdrs][all]",
+		"[pressure_level_2][alloc][fifo_ops][prealloc_hdrs]"
+		"[listener_limit][ct_worker_reuse][all]",
   .function = segment_manager_test,
 };
