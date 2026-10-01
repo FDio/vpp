@@ -949,7 +949,7 @@ transport_tx_fifo_size (transport_connection_t * tc)
 always_inline u8
 transport_rx_fifo_has_ooo_data (transport_connection_t * tc)
 {
-  session_t *s = session_get (tc->c_index, tc->thread_index);
+  session_t *s = session_get (tc->s_index, tc->thread_index);
   return svm_fifo_has_ooo_data (s->rx_fifo);
 }
 

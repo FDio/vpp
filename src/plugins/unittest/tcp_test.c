@@ -6840,6 +6840,187 @@ cleanup:
   return rv;
 }
 
+typedef struct
+{
+  u32 fr;
+  u64 rto;
+  u64 rxt_segs;
+  u32 dupacks_sent; /**< by the receiver */
+  u32 drained;
+  u16 mss;
+} tcp_test_nosack_result_t;
+
+/* Run a no-sack transfer of total_bytes from client to server, after prepare
+ * sets up the connections and drop rules, and report the recovery counters */
+static int
+tcp_test_nosack_transfer (vlib_main_t *vm, tcp_e2e_params_t *params, u32 total_bytes,
+			  void (*prepare) (tcp_connection_t *client_tc,
+					   tcp_connection_t *server_tc),
+			  tcp_test_nosack_result_t *res)
+{
+  tcp_e2e_ctx_t _ctx, *ctx = &_ctx;
+  tcp_connection_t *client_tc, *server_tc;
+  session_t *client_s, *server_s;
+  u32 tries, max_iters, fr_before, dupacks_before;
+  u64 tr_before, rxt_before;
+  u8 *data = 0;
+  int error, rv = 0, i;
+
+  clib_memset (res, 0, sizeof (*res));
+  tcp_tamper_reset ();
+
+  if (!TCP_TEST_I ((tcp_e2e_setup (vm, ctx, params) == 0), "%s: e2e setup", params->name))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  client_tc = ctx->client_tc;
+  client_s = ctx->client_s;
+  server_s = session_get_if_valid (accepted_session_index, accepted_session_thread);
+  if (!TCP_TEST_I ((server_s != 0), "%s: server session resolvable", params->name))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  server_tc = (tcp_connection_t *) session_get_transport (server_s);
+  if (!TCP_TEST_I ((!tcp_rack_enabled (client_tc)), "%s: default loss detection", params->name))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+  /* Act as if neither peer offered sacks */
+  client_tc->rcv_opts.flags &= ~(TCP_OPTS_FLAG_SACK_PERMITTED | TCP_OPTS_FLAG_SACK);
+  server_tc->rcv_opts.flags &= ~(TCP_OPTS_FLAG_SACK_PERMITTED | TCP_OPTS_FLAG_SACK);
+
+  fr_before = client_tc->fr_occurences;
+  tr_before = client_tc->tr_occurences;
+  rxt_before = client_tc->segs_retrans;
+  dupacks_before = server_tc->dupacks_out;
+
+  prepare (client_tc, server_tc);
+  tcp_tamper_enable (client_tc);
+
+  vec_validate (data, total_bytes - 1);
+  for (i = 0; i < (int) total_bytes; i++)
+    data[i] = i & 0xff;
+  error = svm_fifo_enqueue (client_s->tx_fifo, total_bytes, data);
+  if (!TCP_TEST_I ((error == (int) total_bytes), "%s: client queued %u bytes", params->name,
+		   total_bytes))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  error = session_program_tx_io_evt (client_s->handle, SESSION_IO_EVT_TX);
+  if (!TCP_TEST_I ((error == 0), "%s: client tx event programmed", params->name))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+  max_iters = 2 * tcp_e2e_rxt_wait_iters (client_tc, 5e-3);
+  for (tries = 0; res->drained < total_bytes && tries < max_iters; tries++)
+    {
+      res->drained += session_test_drain_rx_fifo (server_s);
+      if (res->drained >= total_bytes)
+	break;
+      tcp_e2e_pump (vm, 5e-3);
+    }
+
+  res->fr = client_tc->fr_occurences - fr_before;
+  res->rto = client_tc->tr_occurences - tr_before;
+  res->rxt_segs = client_tc->segs_retrans - rxt_before;
+  res->dupacks_sent = server_tc->dupacks_out - dupacks_before;
+  res->mss = client_tc->snd_mss;
+
+cleanup:
+  vec_free (data);
+  tcp_e2e_teardown (vm, ctx);
+  return rv;
+}
+
+#define TCP_TEST_NOSACK_BURST (16 << 10)
+
+static void
+tcp_test_nosack_burst_prepare (tcp_connection_t *tc, tcp_connection_t *server_tc, u32 cwnd)
+{
+  /* Send the whole burst at once, unpaced, so the receiver gets it in one
+   * batch. Open the receiver's window to match */
+  tc->cfg_flags |= TCP_CFG_F_NO_TSO;
+  tc->cfg_flags &= ~TCP_CFG_F_TSO;
+  tc->connection.flags &= ~TRANSPORT_CONNECTION_F_IS_TX_PACED;
+  tc->cwnd = cwnd;
+  tc->snd_wnd = clib_max (tc->snd_wnd, 2 * TCP_TEST_NOSACK_BURST);
+  server_tc->rcv_wnd = clib_max (server_tc->rcv_wnd, 2 * TCP_TEST_NOSACK_BURST);
+}
+
+static void
+tcp_test_nosack_ooo_dupacks_prepare (tcp_connection_t *tc, tcp_connection_t *server_tc)
+{
+  tcp_test_nosack_burst_prepare (tc, server_tc, clib_max (tc->cwnd, 2 * TCP_TEST_NOSACK_BURST));
+  tcp_tamper_drop_seq (tc, tc->snd_una, 1);
+}
+
+/* Without sacks, the sender counts dupacks to learn how much data left the
+ * network, so the receiver must send one per out-of-order segment, even if a
+ * batch of them arrives at once (RFC 5681) */
+static int
+tcp_test_tamper_nosack_ooo_dupacks (vlib_main_t *vm)
+{
+  tcp_e2e_params_t params = {
+    .name = "nosack_ooo_dupacks",
+    .client_addr = 0x26262601,
+    .server_addr = 0x27272701,
+    .client_vrf = 0,
+    .server_vrf = 2,
+    .server_port = 2267,
+    .client_port = 0, /* ephemeral */
+    .secret = 2266,
+    .rx_fifo_size = 256 << 10,
+    .tx_fifo_size = 256 << 10,
+  };
+  u32 total_bytes = TCP_TEST_NOSACK_BURST, n_ooo;
+  tcp_test_nosack_result_t res;
+  int rv = 0;
+
+  if (tcp_test_nosack_transfer (vm, &params, total_bytes, tcp_test_nosack_ooo_dupacks_prepare,
+				&res))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+  n_ooo = (total_bytes + res.mss - 1) / res.mss - 1;
+  vlib_cli_output (vm, "nosack_ooo_dupacks: %u dupacks sent, fr %u, rto %llu, rxt segs %llu",
+		   res.dupacks_sent, res.fr, res.rto, res.rxt_segs);
+
+  if (!TCP_TEST_I ((res.dupacks_sent == n_ooo),
+		   "nosack_ooo_dupacks: %u dupacks sent for %u out-of-order segments",
+		   res.dupacks_sent, n_ooo))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  if (!TCP_TEST_I ((res.fr == 1 && res.rto == 0 && res.rxt_segs == 1),
+		   "nosack_ooo_dupacks: fast retransmit repaired the head (fr %u, rto %llu, "
+		   "rxt segs %llu)",
+		   res.fr, res.rto, res.rxt_segs))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  if (!TCP_TEST_I ((res.drained == total_bytes),
+		   "nosack_ooo_dupacks: all %u bytes delivered (got %u)", total_bytes, res.drained))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+cleanup:
+  tcp_tamper_reset ();
+  return rv;
+}
+
 static int
 tcp_test_tamper (vlib_main_t *vm, unformat_input_t *input)
 {
@@ -6862,6 +7043,7 @@ tcp_test_tamper (vlib_main_t *vm, unformat_input_t *input)
     { "dupack-cwnd", tcp_test_tamper_dupack_cwnd },
     { "nosack-cwnd", tcp_test_tamper_nosack_cwnd },
     { "nosack-rto", tcp_test_tamper_nosack_rto },
+    { "nosack-ooo-dupacks", tcp_test_tamper_nosack_ooo_dupacks },
   };
   int res = 0, i;
 
