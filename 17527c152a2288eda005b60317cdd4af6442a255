@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6787b23c_f5845c04",
+        "filename": "src/vppinfra/time.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 190,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-10-01T16:43:40Z",
+      "side": 1,
+      "message": "I suspect this is going to be relatively heavy unless we make sure the slow path can solve the issue with a few clib_time_verify_frequency calls. So should we treat small misalignment as acceptable?",
+      "revId": "17527c152a2288eda005b60317cdd4af6442a255",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
