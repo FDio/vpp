@@ -6220,6 +6220,448 @@ cleanup:
   return rv;
 }
 
+/* Test congestion control. Forwards to the connection's algorithm and records
+ * how duplicate acks change cwnd. */
+typedef struct
+{
+  tcp_cc_algorithm_t base; /**< connection's algorithm */
+  tcp_cc_algorithm_t vft;  /**< base with the test callbacks */
+  u32 open_dupacks;	   /**< dupacks received outside congestion recovery */
+  i32 open_dupack_growth;  /**< cwnd change across those dupacks */
+  u32 dupack_cwnd;	   /**< cwnd at the first dupack of the current run */
+  u8 dupack_run;	   /**< dupack_cwnd is valid */
+  u32 fr_acks;		   /**< congestion acks in fast recovery, without an rto */
+  u32 fr_cwnd_moved;	   /**< those acks that left cwnd away from ssthresh */
+  i32 fr_cwnd_delta;	   /**< cwnd - ssthresh after the last such ack */
+  u32 rto_sack_dupacks;	   /**< dupacks that sacked data in timer recovery */
+  i32 rto_sack_growth;	   /**< cwnd change across those dupacks */
+} tcp_test_cc_t;
+
+static tcp_test_cc_t tcp_test_cc;
+
+/* Record the cwnd change since the run's first dupack. Called before cc
+ * handles the ack or recovery entry that ends the run. */
+static void
+tcp_test_cc_end_dupack_run (tcp_test_cc_t *cc, tcp_connection_t *tc)
+{
+  if (!cc->dupack_run)
+    return;
+  cc->open_dupack_growth += (i32) (tc->cwnd - cc->dupack_cwnd);
+  cc->dupack_run = 0;
+}
+
+static void
+tcp_test_cc_rcv_ack (tcp_connection_t *tc, tcp_ack_ctx_t *ac)
+{
+  tcp_test_cc_t *cc = &tcp_test_cc;
+
+  /* A cumulative ack ends the dupack run */
+  if (!tcp_in_cong_recovery (tc))
+    tcp_test_cc_end_dupack_run (cc, tc);
+  cc->base.rcv_ack (tc, ac);
+}
+
+static void
+tcp_test_cc_rcv_cong_ack (tcp_connection_t *tc, tcp_cc_ack_t ack_type, tcp_ack_ctx_t *ac)
+{
+  tcp_test_cc_t *cc = &tcp_test_cc;
+  u32 cwnd = tc->cwnd;
+
+  if (ack_type == TCP_CC_DUPACK && !tcp_in_cong_recovery (tc))
+    {
+      cc->open_dupacks++;
+      if (!cc->dupack_run)
+	{
+	  cc->dupack_cwnd = tc->cwnd;
+	  cc->dupack_run = 1;
+	}
+    }
+  if (cc->base.rcv_cong_ack)
+    cc->base.rcv_cong_ack (tc, ack_type, ac);
+  if (ack_type == TCP_CC_DUPACK && tcp_in_recovery (tc) && ac->acked_and_sacked)
+    {
+      cc->rto_sack_dupacks++;
+      cc->rto_sack_growth += (i32) (tc->cwnd - cwnd);
+    }
+  if (tcp_in_fastrecovery (tc) && !tcp_in_recovery (tc))
+    {
+      cc->fr_acks++;
+      if (tc->cwnd != tc->ssthresh)
+	{
+	  cc->fr_cwnd_moved++;
+	  cc->fr_cwnd_delta = (i32) (tc->cwnd - tc->ssthresh);
+	}
+    }
+}
+
+static void
+tcp_test_cc_congestion (tcp_connection_t *tc)
+{
+  tcp_test_cc_t *cc = &tcp_test_cc;
+
+  /* So does fast recovery or rto entry */
+  tcp_test_cc_end_dupack_run (cc, tc);
+  cc->base.congestion (tc);
+}
+
+/* Swap the connection's cc algorithm for the test one and return the original */
+static tcp_cc_algorithm_t *
+tcp_test_cc_install (tcp_connection_t *tc)
+{
+  tcp_test_cc_t *cc = &tcp_test_cc;
+  tcp_cc_algorithm_t *cc_algo = tc->cc_algo;
+
+  clib_memset (cc, 0, sizeof (*cc));
+  cc->base = *cc_algo;
+  cc->vft = *cc_algo;
+  cc->vft.rcv_ack = tcp_test_cc_rcv_ack;
+  cc->vft.rcv_cong_ack = tcp_test_cc_rcv_cong_ack;
+  cc->vft.congestion = tcp_test_cc_congestion;
+  tc->cc_algo = &cc->vft;
+
+  return cc_algo;
+}
+
+/* With sacks, dupacks must leave cwnd unchanged both outside recovery
+ * (RFC 5681 Sec. 3.2) and during timer recovery, where only cumulative acks
+ * grow it (RFC 5681 Sec. 3.1). After a first segment opens the server's
+ * window, losing the first three of the next four segments yields a single
+ * dupack, too few for fast recovery, so an rto starts timer recovery from the
+ * open state. The ack for the timeout retransmit releases the other two lost
+ * segments and dropping the first of them makes the second arrive above a
+ * hole. */
+static int
+tcp_test_tamper_dupack_cwnd (vlib_main_t *vm)
+{
+  tcp_e2e_params_t params = {
+    .name = "dupack_cwnd",
+    .client_addr = 0x1c1c1c01,
+    .server_addr = 0x1d1d1d01,
+    .client_vrf = 0,
+    .server_vrf = 2,
+    .server_port = 2257,
+    .client_port = 0, /* ephemeral */
+    .secret = 2256,
+    .rx_fifo_size = 256 << 10,
+    .tx_fifo_size = 256 << 10,
+  };
+  tcp_test_cc_t *cc = &tcp_test_cc;
+  tcp_cc_algorithm_t *cc_algo = 0;
+  tcp_e2e_ctx_t _ctx, *ctx = &_ctx;
+  tcp_connection_t *client_tc = 0;
+  tcp_tamper_rule_t *rules;
+  session_t *client_s, *server_s;
+  u32 tries, max_iters, mss, seq, fr_before, drained = 0, total_bytes;
+  u64 tr_before;
+  u8 *data = 0;
+  int error, rv = 0, i;
+
+  tcp_tamper_reset ();
+
+  if (!TCP_TEST_I ((tcp_e2e_setup (vm, ctx, &params) == 0), "dupack_cwnd: e2e setup"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  client_tc = ctx->client_tc;
+  client_s = ctx->client_s;
+  server_s = session_get_if_valid (accepted_session_index, accepted_session_thread);
+  if (!TCP_TEST_I ((server_s != 0), "dupack_cwnd: server session resolvable"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  if (!TCP_TEST_I (
+	(tcp_opts_sack_permitted (&client_tc->rcv_opts) && !tcp_rack_enabled (client_tc)),
+	"dupack_cwnd: sack negotiated, default loss detection"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+  mss = client_tc->snd_mss;
+  total_bytes = 5 * mss;
+  vec_validate (data, total_bytes - 1);
+  for (i = 0; i < (int) total_bytes; i++)
+    data[i] = i & 0xff;
+
+  /* The server advertises its full window only once it acks data. Deliver
+   * one segment first so that the lossy flight fits in that window. */
+  error = svm_fifo_enqueue (client_s->tx_fifo, mss, data);
+  if (!TCP_TEST_I ((error == (int) mss), "dupack_cwnd: client queued %u bytes", mss))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  error = session_program_tx_io_evt (client_s->handle, SESSION_IO_EVT_TX);
+  if (!TCP_TEST_I ((error == 0), "dupack_cwnd: client tx event programmed"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  max_iters = tcp_e2e_rxt_wait_iters (client_tc, 5e-3);
+  for (tries = 0; (drained < mss || client_tc->snd_una != client_tc->snd_nxt) && tries < max_iters;
+       tries++)
+    {
+      drained += session_test_drain_rx_fifo (server_s);
+      tcp_e2e_pump (vm, 5e-3);
+    }
+  if (!TCP_TEST_I ((drained == mss && client_tc->snd_una == client_tc->snd_nxt),
+		   "dupack_cwnd: first segment delivered and acked"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+  fr_before = client_tc->fr_occurences;
+  tr_before = client_tc->tr_occurences;
+
+  /* Send the next four segments in one flight */
+  client_tc->cwnd = clib_max (client_tc->cwnd, 4 * mss);
+  client_tc->rto = TCP_RTO_MIN;
+
+  cc_algo = tcp_test_cc_install (client_tc);
+
+  /* Drop the first three segments and the first retransmit of the second */
+  seq = client_tc->snd_una;
+  tcp_tamper_drop_seq (client_tc, seq, 1);
+  tcp_tamper_drop_seq (client_tc, seq + mss, 2);
+  tcp_tamper_drop_seq (client_tc, seq + 2 * mss, 1);
+  /* Reference by index: tcp_tamper_add_rule may realloc the rule vector. */
+  rules = tcp_tamper_main.rules;
+  tcp_tamper_enable (client_tc);
+
+  error = svm_fifo_enqueue (client_s->tx_fifo, total_bytes - mss, data + mss);
+  if (!TCP_TEST_I ((error == (int) (total_bytes - mss)), "dupack_cwnd: client queued %u bytes",
+		   total_bytes - mss))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  error = session_program_tx_io_evt (client_s->handle, SESSION_IO_EVT_TX);
+  if (!TCP_TEST_I ((error == 0), "dupack_cwnd: client tx event programmed"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+  max_iters = 2 * tcp_e2e_rxt_wait_iters (client_tc, 5e-3);
+  for (tries = 0; drained < total_bytes && tries < max_iters; tries++)
+    {
+      drained += session_test_drain_rx_fifo (server_s);
+      if (drained >= total_bytes)
+	break;
+      tcp_e2e_pump (vm, 5e-3);
+    }
+
+  vlib_cli_output (vm,
+		   "dupack_cwnd: fr delta %u, tr delta %llu, %u open dupacks (cwnd %+d), "
+		   "%u rto sack dupacks (cwnd %+d)",
+		   client_tc->fr_occurences - fr_before, client_tc->tr_occurences - tr_before,
+		   cc->open_dupacks, cc->open_dupack_growth, cc->rto_sack_dupacks,
+		   cc->rto_sack_growth);
+
+  if (!TCP_TEST_I ((rules[0].n_dropped == 1 && rules[1].n_dropped == 2 && rules[2].n_dropped == 1),
+		   "dupack_cwnd: segment sends dropped %u of 1, %u of 2 and %u of 1",
+		   rules[0].n_dropped, rules[1].n_dropped, rules[2].n_dropped))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  if (!TCP_TEST_I ((client_tc->fr_occurences == fr_before && client_tc->tr_occurences > tr_before),
+		   "dupack_cwnd: timer recovery started without fast recovery (fr %u, rto %llu)",
+		   client_tc->fr_occurences - fr_before, client_tc->tr_occurences - tr_before))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  if (!TCP_TEST_I ((cc->open_dupacks > 0 && cc->open_dupack_growth == 0),
+		   "dupack_cwnd: %u dupacks outside recovery changed cwnd by %d", cc->open_dupacks,
+		   cc->open_dupack_growth))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  if (!TCP_TEST_I ((cc->rto_sack_dupacks > 0 && cc->rto_sack_growth == 0),
+		   "dupack_cwnd: %u sack dupacks in timer recovery changed cwnd by %d",
+		   cc->rto_sack_dupacks, cc->rto_sack_growth))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  if (!TCP_TEST_I ((drained == total_bytes), "dupack_cwnd: all %u bytes delivered (got %u)",
+		   total_bytes, drained))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+cleanup:
+  if (client_tc && cc_algo)
+    client_tc->cc_algo = cc_algo;
+  tcp_tamper_reset ();
+  vec_free (data);
+  tcp_e2e_teardown (vm, ctx);
+  return rv;
+}
+
+/* Without sacks, prr still controls fast recovery, using one mss of delivered
+ * data per dupack (RFC 9937 Sec. 6.2), so cwnd is neither inflated nor
+ * deflated (RFC 6582): dupacks leave it unchanged before recovery and it stays
+ * at ssthresh during recovery, including at partial acks. Two lost segments
+ * must be repaired by one fast recovery, without an rto. */
+static int
+tcp_test_tamper_nosack_cwnd (vlib_main_t *vm)
+{
+  tcp_e2e_params_t params = {
+    .name = "nosack_cwnd",
+    .client_addr = 0x1e1e1e01,
+    .server_addr = 0x1f1f1f01,
+    .client_vrf = 0,
+    .server_vrf = 2,
+    .server_port = 2259,
+    .client_port = 0, /* ephemeral */
+    .secret = 2258,
+    .rx_fifo_size = 256 << 10,
+    .tx_fifo_size = 256 << 10,
+  };
+  tcp_test_cc_t *cc = &tcp_test_cc;
+  tcp_cc_algorithm_t *cc_algo = 0;
+  tcp_e2e_ctx_t _ctx, *ctx = &_ctx;
+  tcp_connection_t *client_tc = 0, *server_tc;
+  tcp_tamper_rule_t *first_rule, *second_rule;
+  session_t *client_s, *server_s;
+  u32 tries, max_iters, mss, seq0, fr_before, drained = 0, total_bytes = 192 << 10;
+  u64 tr_before, rxt_before;
+  u8 *data = 0;
+  int error, rv = 0, i;
+
+  tcp_tamper_reset ();
+
+  if (!TCP_TEST_I ((tcp_e2e_setup (vm, ctx, &params) == 0), "nosack_cwnd: e2e setup"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  client_tc = ctx->client_tc;
+  client_s = ctx->client_s;
+  server_s = session_get_if_valid (accepted_session_index, accepted_session_thread);
+  if (!TCP_TEST_I ((server_s != 0), "nosack_cwnd: server session resolvable"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  server_tc = (tcp_connection_t *) session_get_transport (server_s);
+  if (!TCP_TEST_I ((!tcp_rack_enabled (client_tc)), "nosack_cwnd: default loss detection"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+  /* Act as if neither peer offered sacks */
+  client_tc->rcv_opts.flags &= ~(TCP_OPTS_FLAG_SACK_PERMITTED | TCP_OPTS_FLAG_SACK);
+  server_tc->rcv_opts.flags &= ~(TCP_OPTS_FLAG_SACK_PERMITTED | TCP_OPTS_FLAG_SACK);
+
+  cc_algo = tcp_test_cc_install (client_tc);
+
+  mss = client_tc->snd_mss;
+  fr_before = client_tc->fr_occurences;
+  tr_before = client_tc->tr_occurences;
+  rxt_before = client_tc->segs_retrans;
+
+  /* Without sacks, out-of-order segments that arrive together produce one
+   * dupack, so drop once the flight is large enough for limited transmit to
+   * clock out the rest. The second hole turns the ack for the fast retransmit
+   * into a partial ack. */
+  seq0 = client_tc->snd_una + 32 * mss;
+  tcp_tamper_drop_seq (client_tc, seq0, 1);
+  tcp_tamper_drop_seq (client_tc, seq0 + 8 * mss, 1);
+  /* Reference by index: tcp_tamper_add_rule may realloc the rule vector. */
+  first_rule = &tcp_tamper_main.rules[0];
+  second_rule = &tcp_tamper_main.rules[1];
+  tcp_tamper_enable (client_tc);
+
+  vec_validate (data, total_bytes - 1);
+  for (i = 0; i < (int) total_bytes; i++)
+    data[i] = i & 0xff;
+  error = svm_fifo_enqueue (client_s->tx_fifo, total_bytes, data);
+  if (!TCP_TEST_I ((error == (int) total_bytes), "nosack_cwnd: client queued %u bytes",
+		   total_bytes))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  error = session_program_tx_io_evt (client_s->handle, SESSION_IO_EVT_TX);
+  if (!TCP_TEST_I ((error == 0), "nosack_cwnd: client tx event programmed"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+  max_iters = tcp_e2e_rxt_wait_iters (client_tc, 5e-3);
+  for (tries = 0; drained < total_bytes && tries < max_iters; tries++)
+    {
+      drained += session_test_drain_rx_fifo (server_s);
+      if (drained >= total_bytes)
+	break;
+      tcp_e2e_pump (vm, 5e-3);
+    }
+
+  vlib_cli_output (vm,
+		   "nosack_cwnd: fr delta %u, tr delta %llu, rxt segs %llu, "
+		   "%u open dupacks (cwnd %+d), %u fr acks (%u moved cwnd, last to ssthresh %+d)",
+		   client_tc->fr_occurences - fr_before, client_tc->tr_occurences - tr_before,
+		   client_tc->segs_retrans - rxt_before, cc->open_dupacks, cc->open_dupack_growth,
+		   cc->fr_acks, cc->fr_cwnd_moved, cc->fr_cwnd_delta);
+
+  if (!TCP_TEST_I ((first_rule->n_dropped == 1 && second_rule->n_dropped == 1),
+		   "nosack_cwnd: dropped %u and %u of 1", first_rule->n_dropped,
+		   second_rule->n_dropped))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  if (!TCP_TEST_I ((client_tc->fr_occurences - fr_before == 1 &&
+		    client_tc->tr_occurences == tr_before &&
+		    client_tc->segs_retrans - rxt_before >= 2),
+		   "nosack_cwnd: fast recovery repaired both losses (fr %u, rto %llu, "
+		   "rxt segs %llu)",
+		   client_tc->fr_occurences - fr_before, client_tc->tr_occurences - tr_before,
+		   client_tc->segs_retrans - rxt_before))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  if (!TCP_TEST_I ((cc->open_dupacks >= TCP_DUPACK_THRESHOLD && cc->open_dupack_growth == 0),
+		   "nosack_cwnd: %u dupacks before recovery changed cwnd by %d", cc->open_dupacks,
+		   cc->open_dupack_growth))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  if (!TCP_TEST_I ((cc->fr_acks > 0 && cc->fr_cwnd_moved == 0),
+		   "nosack_cwnd: %u of %u acks in fast recovery moved cwnd from ssthresh (%+d)",
+		   cc->fr_cwnd_moved, cc->fr_acks, cc->fr_cwnd_delta))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  if (!TCP_TEST_I ((drained == total_bytes), "nosack_cwnd: all %u bytes delivered (got %u)",
+		   total_bytes, drained))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+cleanup:
+  if (client_tc && cc_algo)
+    client_tc->cc_algo = cc_algo;
+  tcp_tamper_reset ();
+  vec_free (data);
+  tcp_e2e_teardown (vm, ctx);
+  return rv;
+}
+
 static int
 tcp_test_tamper (vlib_main_t *vm, unformat_input_t *input)
 {
@@ -6239,6 +6681,8 @@ tcp_test_tamper (vlib_main_t *vm, unformat_input_t *input)
     { "dsack-early", tcp_test_tamper_dsack_early_undo },
     { "strand-head", tcp_test_tamper_stranded_head },
     { "rto", tcp_test_tamper_rto },
+    { "dupack-cwnd", tcp_test_tamper_dupack_cwnd },
+    { "nosack-cwnd", tcp_test_tamper_nosack_cwnd },
   };
   int res = 0, i;
 
