@@ -116,6 +116,7 @@ session_mq_listen_handler (session_worker_t *wrk, session_evt_elt_t *elt)
     return;
 
   clib_memset (a, 0, sizeof (*a));
+  a->sep_ext = (session_endpoint_cfg_t) SESSION_ENDPOINT_CFG_NULL;
   a->sep.is_ip4 = mp->is_ip4;
   ip_copy (&a->sep.ip, &mp->ip, mp->is_ip4);
   a->sep.port = mp->port;
@@ -191,6 +192,7 @@ session_mq_connect_one (session_connect_msg_t *mp)
     return;
 
   clib_memset (a, 0, sizeof (*a));
+  a->sep_ext = (session_endpoint_cfg_t) SESSION_ENDPOINT_CFG_NULL;
   a->sep.is_ip4 = mp->is_ip4;
   clib_memcpy_fast (&a->sep.ip, &mp->ip, sizeof (mp->ip));
   a->sep.port = mp->port;
@@ -338,6 +340,7 @@ session_mq_connect_stream_handler (session_worker_t *wrk,
     }
 
   clib_memset (a, 0, sizeof (*a));
+  a->sep_ext = (session_endpoint_cfg_t) SESSION_ENDPOINT_CFG_NULL;
   a->sep.transport_proto = mp->proto;
   a->sep_ext.parent_handle = mp->parent_handle;
   a->sep_ext.transport_flags = mp->flags;

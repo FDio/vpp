@@ -142,6 +142,30 @@ app_listener_lookup (application_t * app, session_endpoint_cfg_t * sep_ext)
   return 0;
 }
 
+static segment_manager_t *
+application_alloc_listener_sm (app_worker_t *app_wrk, session_endpoint_cfg_t *sep)
+{
+  segment_manager_t *sm;
+
+  sep->sm_index = ENDPOINT_INVALID_INDEX;
+  sm = app_worker_alloc_listener_segment_manager (app_wrk);
+  if (sm)
+    sep->sm_index = segment_manager_index (sm);
+
+  return sm;
+}
+
+static void
+application_free_listener_sm (segment_manager_t *sm)
+{
+  if (!sm)
+    return;
+
+  sm->first_is_protected = 0;
+  segment_manager_app_detach (sm);
+  segment_manager_free_safe (sm);
+}
+
 void
 app_listener_cleanup (app_listener_t * al)
 {
@@ -1277,6 +1301,7 @@ session_error_t
 vnet_listen (vnet_listen_args_t *a)
 {
   app_listener_t *app_listener;
+  segment_manager_t *sm = 0;
   app_worker_t *app_wrk;
   application_t *app;
   int rv;
@@ -1292,6 +1317,8 @@ vnet_listen (vnet_listen_args_t *a)
     return SESSION_E_INVALID_APPWRK;
 
   a->sep_ext.app_wrk_index = app_wrk->wrk_index;
+  /* Listeners do not consume connect-worker state. Keep the union slot free. */
+  a->sep_ext.app_wrk_connect_index = SESSION_INVALID_INDEX;
 
   session_endpoint_update_for_app (&a->sep_ext, app, 0 /* is_connect */ );
   if (!session_endpoint_in_ns (&a->sep_ext))
@@ -1308,11 +1335,22 @@ vnet_listen (vnet_listen_args_t *a)
       app_listener = app_listener_alloc (app);
     }
 
+  if (!application_is_transport (app))
+    {
+      sm = application_alloc_listener_sm (app_wrk, &a->sep_ext);
+      if (!sm)
+	{
+	  if (clib_bitmap_is_zero (app_listener->workers))
+	    app_listener_cleanup (app_listener);
+	  return SESSION_E_SEG_CREATE;
+	}
+    }
   if ((rv = app_worker_start_listen (app_wrk, &app_listener, &a->sep_ext)))
     {
       /* No app workers mapped to listener, clean up */
       if (clib_bitmap_is_zero (app_listener->workers))
 	app_listener_cleanup (app_listener);
+      application_free_listener_sm (sm);
       return rv;
     }
 
@@ -1539,21 +1577,35 @@ int
 application_change_listener_owner (session_t * s, app_worker_t * app_wrk)
 {
   app_worker_t *old_wrk = app_worker_get (s->app_wrk_index);
+  session_endpoint_cfg_t sep_ext = { 0 };
+  segment_manager_t *sm;
   app_listener_t *app_listener;
   int rv;
 
   if (!old_wrk)
     return SESSION_E_INVALID_APPWRK;
 
+  sm = app_worker_get_listen_segment_manager (old_wrk, s);
+  sep_ext.sm_index = segment_manager_index (sm);
   app_listener = app_listener_get (s->al_index);
-  rv = app_worker_start_listen (app_wrk, &app_listener, 0 /* sep listened on already */);
+  rv = app_worker_start_listen (app_wrk, &app_listener, &sep_ext);
   if (rv)
     return rv;
 
+  /* Nested transport listeners retain this manager, so keep it alive when
+   * the previous worker stops listening. */
+  if (sm->app_wrk_index == old_wrk->wrk_index)
+    sm->app_wrk_index = app_wrk->wrk_index;
   app_worker_stop_listen (old_wrk, app_listener);
   s->app_wrk_index = app_wrk->wrk_index;
 
   return 0;
+}
+
+app_options_flags_t
+application_is_transport (application_t *app)
+{
+  return (app->flags & APP_OPTIONS_FLAGS_IS_TRANSPORT_APP);
 }
 
 int
@@ -1600,6 +1652,7 @@ application_start_stop_proxy_fib_proto (application_t * app, u8 fib_proto,
   u8 is_ip4 = (fib_proto == FIB_PROTOCOL_IP4);
   session_endpoint_cfg_t sep = SESSION_ENDPOINT_CFG_NULL;
   transport_connection_t *tc;
+  segment_manager_t *sm;
   app_worker_t *app_wrk;
   app_listener_t *al;
   session_t *s;
@@ -1608,6 +1661,8 @@ application_start_stop_proxy_fib_proto (application_t * app, u8 fib_proto,
 
   /* TODO decide if we want proxy to be enabled for all workers */
   app_wrk = application_get_default_worker (app);
+  if (application_is_transport (app))
+    return clib_error_return (0, "Proxy listen not supported for transport app");
   if (is_start)
     {
       s = app_worker_first_listener (app_wrk, fib_proto, transport_proto);
@@ -1617,12 +1672,19 @@ application_start_stop_proxy_fib_proto (application_t * app, u8 fib_proto,
 	  sep.fib_index = app_namespace_get_fib_index (app_ns, fib_proto);
 	  sep.sw_if_index = app_ns->sw_if_index;
 	  sep.transport_proto = transport_proto;
-	  sep.app_wrk_index = app_wrk->wrk_index;	/* only default */
+	  sep.app_wrk_index = app_wrk->wrk_index; /* only default */
 
 	  /* force global scope listener */
 	  flags = app->flags;
 	  app->flags &= ~APP_OPTIONS_FLAGS_USE_LOCAL_SCOPE;
 	  al = app_listener_alloc (app);
+	  sm = application_alloc_listener_sm (app_wrk, &sep);
+	  if (!sm)
+	    {
+	      app->flags = flags;
+	      app_listener_cleanup (al);
+	      return clib_error_return (0, "Failed to create segment manager");
+	    }
 
 	  rv = app_worker_start_listen (app_wrk, &al, &sep);
 	  app->flags = flags;
@@ -1630,6 +1692,7 @@ application_start_stop_proxy_fib_proto (application_t * app, u8 fib_proto,
 	    {
 	      if (clib_bitmap_is_zero (al->workers))
 		app_listener_cleanup (al);
+	      application_free_listener_sm (sm);
 	      return clib_error_return (0, "proxy listen returned %d", rv);
 	    }
 

@@ -141,6 +141,8 @@ typedef struct _session_endpoint_cfg
     .sw_if_index = ENDPOINT_INVALID_INDEX, .ip = SESSION_IP46_ZERO,           \
     .fib_index = ENDPOINT_INVALID_INDEX, .is_ip4 = 0, .port = 0,              \
     .peer = TRANSPORT_ENDPOINT_NULL, .transport_proto = 0,                    \
+    .sm_index = ENDPOINT_INVALID_INDEX,                                       \
+    .app_wrk_connect_index = SESSION_INVALID_INDEX,                          \
     .app_wrk_index = ENDPOINT_INVALID_INDEX,                                  \
     .opaque = ENDPOINT_INVALID_INDEX,                                         \
     .parent_handle = SESSION_INVALID_HANDLE,                                  \

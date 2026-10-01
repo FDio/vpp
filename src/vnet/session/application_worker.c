@@ -86,7 +86,8 @@ app_worker_free (app_worker_t * app_wrk)
       (void) vnet_unlisten (a);
 
       sm = segment_manager_get_if_valid (sm_indices[i]);
-      if (sm && !segment_manager_app_detached (sm))
+      if (sm && sm->app_wrk_index == app_wrk->wrk_index &&
+	  !segment_manager_app_detached (sm))
 	{
 	  sm->first_is_protected = 0;
 	  segment_manager_init_free (sm);
@@ -143,7 +144,7 @@ app_worker_get_app (u32 wrk_index)
   return application_get_if_valid (app_wrk->app_index);
 }
 
-static segment_manager_t *
+segment_manager_t *
 app_worker_alloc_listener_segment_manager (app_worker_t *app_wrk)
 {
   segment_manager_t *sm;
@@ -357,10 +358,7 @@ app_worker_start_listen (app_worker_t *app_wrk, app_listener_t **app_listener,
       al = *app_listener;
     }
 
-  /* Allocate segment manager. All sessions derived out of a listen session,
-   * local and global scopes, have fifos allocated by the same segment manager.
-   * TODO(fcoras): limit memory consumption by cless listeners */
-  sm = app_worker_alloc_listener_segment_manager (app_wrk);
+  sm = segment_manager_get_if_valid (sep_ext->sm_index);
   if (sm == 0)
     return SESSION_E_SEG_CREATE;
 
@@ -432,12 +430,10 @@ app_worker_stop_listen_session (app_worker_t * app_wrk, session_t * ls)
   if (ls->flags & SESSION_F_IS_CLESS)
     app_worker_free_wrk_cl_session (app_wrk, ls);
 
-  /* Try to cleanup segment manager.
-   * sm may not be valid because the same sm is used for both local and global
-   * scope listeners. When this routine is called by the second scope, the first
-   * scope might have already freed it. */
+  /* Only the worker that allocated the listener segment manager owns its
+   * lifetime. Transport listeners only keep a reference in their table. */
   sm = segment_manager_get_if_valid (*sm_indexp);
-  if (sm)
+  if (sm && sm->app_wrk_index == app_wrk->wrk_index)
     {
       sm->first_is_protected = 0;
       segment_manager_app_detach (sm);

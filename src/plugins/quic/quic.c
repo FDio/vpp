@@ -273,6 +273,7 @@ quic_start_listen (u32 quic_listen_session_index,
   quic_main_t *qm = &quic_main;
   session_handle_t udp_handle;
   session_endpoint_cfg_t *sep;
+  session_t *quic_listen_session;
   session_t *udp_listen_session;
   app_worker_t *app_wrk;
   application_t *app;
@@ -306,6 +307,8 @@ quic_start_listen (u32 quic_listen_session_index,
   udp_handle = args->handle;
   app_listener = app_listener_get_w_handle (udp_handle);
   udp_listen_session = app_listener_get_session (app_listener);
+  quic_listen_session = listen_session_get (quic_listen_session_index);
+  udp_listen_session->listener_handle = listen_session_get_handle (quic_listen_session);
   udp_listen_session->opaque = lctx_index;
 
   lctx = quic_ctx_get (lctx_index, 0);

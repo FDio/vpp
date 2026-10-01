@@ -695,6 +695,7 @@ srtp_start_listen (u32 app_listener_index, transport_endpoint_cfg_t *tep)
   srtp_listener->opaque = lctx_index;
 
   app_listener = listen_session_get (app_listener_index);
+  srtp_listener->listener_handle = listen_session_get_handle (app_listener);
 
   lctx = srtp_listener_ctx_get (lctx_index);
   lctx->parent_app_wrk_index = sep->app_wrk_index;

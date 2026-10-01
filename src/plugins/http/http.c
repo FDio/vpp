@@ -1299,7 +1299,9 @@ static u32
 http_start_listen (u32 app_listener_index, transport_endpoint_cfg_t *tep)
 {
   vnet_listen_args_t _args = {}, *args = &_args;
+  app_listener_t *transport_app_listener;
   session_t *app_listener;
+  session_t *transport_listener;
   http_main_t *hm = &http_main;
   session_endpoint_cfg_t *sep;
   app_worker_t *app_wrk;
@@ -1442,6 +1444,18 @@ http_start_listen (u32 app_listener_index, transport_endpoint_cfg_t *tep)
 
   /* Grab application listener and link to http listener */
   app_listener = listen_session_get (app_listener_index);
+  if (lhc->hc_tl_handle_tcp != SESSION_INVALID_HANDLE)
+    {
+      transport_app_listener = app_listener_get_w_handle (lhc->hc_tl_handle_tcp);
+      transport_listener = app_listener_get_session (transport_app_listener);
+      transport_listener->listener_handle = listen_session_get_handle (app_listener);
+    }
+  if (lhc->hc_tl_handle_quic != SESSION_INVALID_HANDLE)
+    {
+      transport_app_listener = app_listener_get_w_handle (lhc->hc_tl_handle_quic);
+      transport_listener = app_listener_get_session (transport_app_listener);
+      transport_listener->listener_handle = listen_session_get_handle (app_listener);
+    }
   lhc->hc_pa_wrk_index = SESSION_INVALID_INDEX;
   lhc->hc_pa_session_handle = listen_session_get_handle (app_listener);
   lhc->c_s_index = app_listener_index;
