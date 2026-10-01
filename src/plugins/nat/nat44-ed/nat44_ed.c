@@ -3132,10 +3132,11 @@ nat44_ed_get_out2in_worker_index (vlib_buffer_t *b, ip4_header_t *ip,
       return next_worker_index;
     }
 
-  /* first try static mappings without port */
+  /* first try static mappings without port: address-only mappings are
+   * stored with port 0 and protocol 0 (nat44_ed_add_static_mapping) */
   if (PREDICT_FALSE (pool_elts (sm->static_mappings)))
     {
-      m = nat44_ed_sm_o2i_lookup (sm, ip->dst_address, 0, 0, proto);
+      m = nat44_ed_sm_o2i_lookup (sm, ip->dst_address, 0, 0, 0);
       if (m)
 	{
 	  {

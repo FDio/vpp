@@ -669,7 +669,9 @@ nat44_ed_out2in_slowpath_unknown_proto (snat_main_t *sm, vlib_buffer_t *b,
       return 0;
     }
 
-  m = nat44_ed_sm_o2i_lookup (sm, ip->dst_address, 0, 0, ip->protocol);
+  /* only address-only mappings apply to other protocols; they are stored
+   * with port 0 and protocol 0 */
+  m = nat44_ed_sm_o2i_lookup (sm, ip->dst_address, 0, 0, 0);
   if (!m)
     {
       b->error = node->errors[NAT_OUT2IN_ED_ERROR_NO_TRANSLATION];
