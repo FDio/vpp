@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "afc24a0e_b73c0092",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 9
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3368
+      },
+      "writtenOn": "2026-10-01T11:46:37Z",
+      "side": 1,
+      "message": "Hi,\nDave Barach and/or Damjan Marion Please review my change:\nhttps://gerrit.fd.io/r/c/vpp/+/46900\n\nMichal Czerwonka",
+      "revId": "cd50d2efbf6b7b0441a50578e63cfb4242aac58e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
