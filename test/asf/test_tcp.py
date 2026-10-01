@@ -155,8 +155,11 @@ class TestTCPUnitTests(VppAsfTestCase):
             "tamper rto",
             "tamper rto-head",
             "tamper dupack-run",
+            "tamper dupack-loss",
             "tamper dsack-rto",
             "tamper dsack-partial",
+            "tamper dupack-cwnd",
+            "tamper nosack-cwnd",
         )
 
         for test_case in test_cases:
