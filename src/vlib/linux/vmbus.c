@@ -26,6 +26,8 @@ static const char sysfs_vmbus_drv_path[] = "/sys/bus/vmbus/drivers";
 static const char sysfs_class_net_path[] = "/sys/class/net";
 static const char uio_drv_name[] = "uio_hv_generic";
 static const char netvsc_uuid[] = "f8615163-df3e-46c5-913f-f2d2f965ed0e";
+static const u32 mana_vendor_id = 0x1414;
+static const u32 mana_device_id = 0x00ba;
 
 typedef struct
 {
@@ -172,14 +174,18 @@ format_vlib_vmbus_addr (u8 *s, va_list *va)
   return s;
 }
 
-/* workaround for mlx bug, bring lower device up before unbind */
+/* workaround for mlx bug, bring lower device up before unbind. A MANA lower
+   must be down instead, or its PMD fails to create queues on the port. */
 static clib_error_t *
-vlib_vmbus_raise_lower (int fd, const char *upper_name)
+vlib_vmbus_set_lower_state (int fd, const char *upper_name)
 {
   clib_error_t *error = 0;
   struct dirent *e;
   struct ifreq ifr;
   u8 *dev_net_dir;
+  u8 *f = 0;
+  u32 vendor_id, device_id;
+  int want_up;
   DIR *dir;
 
   clib_memset (&ifr, 0, sizeof (ifr));
@@ -206,20 +212,30 @@ vlib_vmbus_raise_lower (int fd, const char *upper_name)
   closedir (dir);
 
   if (!e)
-    goto done;			/* no lower device */
+    goto done; /* no lower device */
+
+  f = format (0, "%s/%s/device/vendor%c", sysfs_class_net_path, ifr.ifr_name, 0);
+  if ((error = clib_sysfs_read ((char *) f, "0x%x", &vendor_id)))
+    goto done;
+  vec_reset_length (f);
+  f = format (f, "%s/%s/device/device%c", sysfs_class_net_path, ifr.ifr_name, 0);
+  if ((error = clib_sysfs_read ((char *) f, "0x%x", &device_id)))
+    goto done;
+  want_up = !(vendor_id == mana_vendor_id && device_id == mana_device_id);
 
   if (ioctl (fd, SIOCGIFFLAGS, &ifr) < 0)
     error = clib_error_return_unix (0, "ioctl fetch intf %s flags",
 				    ifr.ifr_name);
-  else if (!(ifr.ifr_flags & IFF_UP))
+  else if (want_up != !!(ifr.ifr_flags & IFF_UP))
     {
-      ifr.ifr_flags |= IFF_UP;
+      ifr.ifr_flags ^= IFF_UP;
 
       if (ioctl (fd, SIOCSIFFLAGS, &ifr) < 0)
 	error = clib_error_return_unix (0, "ioctl set intf %s flags",
 					ifr.ifr_name);
     }
 done:
+  vec_free (f);
   vec_free (dev_net_dir);
   return error;
 }
@@ -337,7 +353,7 @@ vlib_vmbus_bind_to_uio (vlib_vmbus_addr_t * addr)
       uio_new_id_needed = 0;
     }
 
-  error = vlib_vmbus_raise_lower (fd, ifname);
+  error = vlib_vmbus_set_lower_state (fd, ifname);
   close (fd);
 
   if (error)
