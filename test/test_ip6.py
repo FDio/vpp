@@ -3191,6 +3191,14 @@ class TestIP6Input(VppTestCase):
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
+    def test_hop_by_hop_pad1_options(self):
+        """Hop-by-hop Pad1 option walking unit tests"""
+
+        error = self.vapi.cli("test ip6-hbh-options")
+        if error:
+            self.logger.critical(error)
+            self.assertNotIn("failed", error)
+
 
 class TestIP6Replace(VppTestCase):
     """IPv6 Table Replace"""
