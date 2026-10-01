@@ -6235,6 +6235,10 @@ typedef struct
   i32 fr_cwnd_delta;	   /**< cwnd - ssthresh after the last such ack */
   u32 rto_sack_dupacks;	   /**< dupacks that sacked data in timer recovery */
   i32 rto_sack_growth;	   /**< cwnd change across those dupacks */
+  u32 rtos;		   /**< rtos seen by cc */
+  u32 rto_cwnd;		   /**< cwnd set by the first rto */
+  u32 rto_exit_cwnd;	   /**< cwnd when timer recovery ended */
+  u32 rto_exit_ssthresh;   /**< ssthresh when timer recovery ended */
 } tcp_test_cc_t;
 
 static tcp_test_cc_t tcp_test_cc;
@@ -6304,6 +6308,29 @@ tcp_test_cc_congestion (tcp_connection_t *tc)
   cc->base.congestion (tc);
 }
 
+static void
+tcp_test_cc_loss (tcp_connection_t *tc)
+{
+  tcp_test_cc_t *cc = &tcp_test_cc;
+
+  cc->base.loss (tc);
+  if (!cc->rtos++)
+    cc->rto_cwnd = tc->cwnd;
+}
+
+static void
+tcp_test_cc_recovered (tcp_connection_t *tc)
+{
+  tcp_test_cc_t *cc = &tcp_test_cc;
+
+  cc->base.recovered (tc);
+  if (tcp_in_recovery (tc))
+    {
+      cc->rto_exit_cwnd = tc->cwnd;
+      cc->rto_exit_ssthresh = tc->ssthresh;
+    }
+}
+
 /* Swap the connection's cc algorithm for the test one and return the original */
 static tcp_cc_algorithm_t *
 tcp_test_cc_install (tcp_connection_t *tc)
@@ -6317,6 +6344,8 @@ tcp_test_cc_install (tcp_connection_t *tc)
   cc->vft.rcv_ack = tcp_test_cc_rcv_ack;
   cc->vft.rcv_cong_ack = tcp_test_cc_rcv_cong_ack;
   cc->vft.congestion = tcp_test_cc_congestion;
+  cc->vft.loss = tcp_test_cc_loss;
+  cc->vft.recovered = tcp_test_cc_recovered;
   tc->cc_algo = &cc->vft;
 
   return cc_algo;
@@ -6604,11 +6633,12 @@ tcp_test_tamper_nosack_cwnd (vlib_main_t *vm)
       rv = 1;
       goto cleanup;
     }
+  /* RFC 6582: the partial ack retransmits only the first unacked segment */
   if (!TCP_TEST_I ((client_tc->fr_occurences - fr_before == 1 &&
 		    client_tc->tr_occurences == tr_before &&
-		    client_tc->segs_retrans - rxt_before >= 2),
-		   "nosack_cwnd: fast recovery repaired both losses (fr %u, rto %llu, "
-		   "rxt segs %llu)",
+		    client_tc->segs_retrans - rxt_before == 2),
+		   "nosack_cwnd: fast recovery retransmitted only the two losses (fr %u, "
+		   "rto %llu, rxt segs %llu)",
 		   client_tc->fr_occurences - fr_before, client_tc->tr_occurences - tr_before,
 		   client_tc->segs_retrans - rxt_before))
     {
@@ -6645,6 +6675,171 @@ cleanup:
   return rv;
 }
 
+/* Without sacks, an rto presumes all outstanding data lost, so cwnd drops to
+ * one segment (RFC 5681 Sec. 3.1) and the lost segments are retransmitted in
+ * order, each once. Dropping the fast retransmit of seq0 forces the rto, and
+ * the segments after seq0 are lost too, so timer recovery must repair them. */
+static int
+tcp_test_tamper_nosack_rto (vlib_main_t *vm)
+{
+  tcp_e2e_params_t params = {
+    .name = "nosack_rto",
+    .client_addr = 0x20202001,
+    .server_addr = 0x21212101,
+    .client_vrf = 0,
+    .server_vrf = 2,
+    .server_port = 2261,
+    .client_port = 0, /* ephemeral */
+    .secret = 2260,
+    .rx_fifo_size = 256 << 10,
+    .tx_fifo_size = 256 << 10,
+  };
+  tcp_test_cc_t *cc = &tcp_test_cc;
+  tcp_cc_algorithm_t *cc_algo = 0;
+  tcp_e2e_ctx_t _ctx, *ctx = &_ctx;
+  tcp_connection_t *client_tc = 0, *server_tc;
+  session_t *client_s, *server_s;
+  u32 tries, max_iters, mss, seq0, fr_before, n_lost, n_dropped, drained = 0;
+  u32 total_bytes = 192 << 10;
+  u64 tr_before, rxt_before, n_rxt;
+  u8 *data = 0;
+  int error, rv = 0, i;
+
+  tcp_tamper_reset ();
+
+  if (!TCP_TEST_I ((tcp_e2e_setup (vm, ctx, &params) == 0), "nosack_rto: e2e setup"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  client_tc = ctx->client_tc;
+  client_s = ctx->client_s;
+  server_s = session_get_if_valid (accepted_session_index, accepted_session_thread);
+  if (!TCP_TEST_I ((server_s != 0), "nosack_rto: server session resolvable"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  server_tc = (tcp_connection_t *) session_get_transport (server_s);
+  if (!TCP_TEST_I ((!tcp_rack_enabled (client_tc)), "nosack_rto: default loss detection"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+  /* Act as if neither peer offered sacks */
+  client_tc->rcv_opts.flags &= ~(TCP_OPTS_FLAG_SACK_PERMITTED | TCP_OPTS_FLAG_SACK);
+  server_tc->rcv_opts.flags &= ~(TCP_OPTS_FLAG_SACK_PERMITTED | TCP_OPTS_FLAG_SACK);
+
+  cc_algo = tcp_test_cc_install (client_tc);
+
+  mss = client_tc->snd_mss;
+  fr_before = client_tc->fr_occurences;
+  tr_before = client_tc->tr_occurences;
+  rxt_before = client_tc->segs_retrans;
+
+  /* Drop the original and the fast retransmit of seq0, and the originals of
+   * the segments that follow it. Like nosack-cwnd, drop late enough for
+   * limited transmit to clock out the dupacks that start fast recovery. */
+  n_lost = 4;
+  seq0 = client_tc->snd_una + 32 * mss;
+  tcp_tamper_drop_seq (client_tc, seq0, 2);
+  for (i = 1; i < n_lost; i++)
+    tcp_tamper_drop_seq (client_tc, seq0 + i * mss, 1);
+  tcp_tamper_enable (client_tc);
+
+  vec_validate (data, total_bytes - 1);
+  for (i = 0; i < (int) total_bytes; i++)
+    data[i] = i & 0xff;
+  error = svm_fifo_enqueue (client_s->tx_fifo, total_bytes, data);
+  if (!TCP_TEST_I ((error == (int) total_bytes), "nosack_rto: client queued %u bytes", total_bytes))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  error = session_program_tx_io_evt (client_s->handle, SESSION_IO_EVT_TX);
+  if (!TCP_TEST_I ((error == 0), "nosack_rto: client tx event programmed"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+  max_iters = 2 * tcp_e2e_rxt_wait_iters (client_tc, 5e-3);
+  for (tries = 0; drained < total_bytes && tries < max_iters; tries++)
+    {
+      drained += session_test_drain_rx_fifo (server_s);
+      if (drained >= total_bytes)
+	break;
+      tcp_e2e_pump (vm, 5e-3);
+    }
+
+  n_dropped = 0;
+  vec_foreach_index (i, tcp_tamper_main.rules)
+    n_dropped += tcp_tamper_main.rules[i].n_dropped;
+  n_rxt = client_tc->segs_retrans - rxt_before;
+  vlib_cli_output (vm,
+		   "nosack_rto: fr delta %u, tr delta %llu, rxt segs %llu, dropped %u, "
+		   "cwnd at rto %u (%u mss), at timer recovery exit %u (ssthresh %u)",
+		   client_tc->fr_occurences - fr_before, client_tc->tr_occurences - tr_before,
+		   n_rxt, n_dropped, cc->rto_cwnd, mss, cc->rto_exit_cwnd, cc->rto_exit_ssthresh);
+
+  if (!TCP_TEST_I ((n_dropped == n_lost + 1), "nosack_rto: dropped %u of %u", n_dropped,
+		   n_lost + 1))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  if (!TCP_TEST_I (
+	(client_tc->fr_occurences - fr_before == 1 && client_tc->tr_occurences - tr_before == 1),
+	"nosack_rto: lost fast retransmit recovered by one rto (fr %u, rto %llu)",
+	client_tc->fr_occurences - fr_before, client_tc->tr_occurences - tr_before))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  if (!TCP_TEST_I ((cc->rto_cwnd == mss), "nosack_rto: rto set cwnd to %u, one mss is %u",
+		   cc->rto_cwnd, mss))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  if (!TCP_TEST_I ((cc->rto_exit_cwnd <= cc->rto_exit_ssthresh),
+		   "nosack_rto: timer recovery ended in slow start (cwnd %u, ssthresh %u)",
+		   cc->rto_exit_cwnd, cc->rto_exit_ssthresh))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  /* Timer recovery retransmits each lost segment once. Rules are in seq
+   * order and seq0 was also fast retransmitted */
+  vec_foreach_index (i, tcp_tamper_main.rules)
+    {
+      u32 n_sent = tcp_tamper_main.rules[i].n_matched;
+      u32 n_expected = i ? 2 : 3;
+      if (!TCP_TEST_I ((n_sent == n_expected),
+		       "nosack_rto: seq0 + %u mss sent %u times, expected %u", i, n_sent,
+		       n_expected))
+	{
+	  rv = 1;
+	  goto cleanup;
+	}
+    }
+  if (!TCP_TEST_I ((drained == total_bytes), "nosack_rto: all %u bytes delivered (got %u)",
+		   total_bytes, drained))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+cleanup:
+  if (client_tc && cc_algo)
+    client_tc->cc_algo = cc_algo;
+  tcp_tamper_reset ();
+  vec_free (data);
+  tcp_e2e_teardown (vm, ctx);
+  return rv;
+}
+
 static int
 tcp_test_tamper (vlib_main_t *vm, unformat_input_t *input)
 {
@@ -6666,6 +6861,7 @@ tcp_test_tamper (vlib_main_t *vm, unformat_input_t *input)
     { "rto", tcp_test_tamper_rto },
     { "dupack-cwnd", tcp_test_tamper_dupack_cwnd },
     { "nosack-cwnd", tcp_test_tamper_nosack_cwnd },
+    { "nosack-rto", tcp_test_tamper_nosack_rto },
   };
   int res = 0, i;
 

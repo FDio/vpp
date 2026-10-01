@@ -628,7 +628,7 @@ tcp_loss_account_recovery_ack (tcp_connection_t *tc, tcp_ack_ctx_t *ac, u8 has_s
 	  ac->bytes_acked - clib_min (ac->bytes_acked, tc->snd_mss * tc->rcv_dupacks);
 
       /* If partial ack, assume that the first un-acked segment was lost */
-      if (ac->bytes_acked || tc->rcv_dupacks == TCP_DUPACK_THRESHOLD)
+      if (ac->bytes_acked)
 	tcp_fastrecovery_first_on (tc);
     }
 

@@ -210,7 +210,12 @@ tcp_loss_prepare_rto (tcp_connection_t *tc, u8 *sack_reneged)
 
   *sack_reneged = 0;
   if (!tcp_opts_sack_permitted (&tc->rcv_opts))
-    return 0;
+    {
+      /* All outstanding data, including earlier retransmits, is presumed
+       * lost (see tcp_bytes_out) */
+      tc->rxt_delivered = tc->snd_rxt_bytes;
+      return 0;
+    }
 
   /* Snapshot before reneging handling can reset high_rxt. */
   head_overlaps_rxt = tcp_in_cong_recovery (tc) && seq_gt (tc->sack_sb.high_rxt, tc->snd_una);
