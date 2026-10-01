@@ -157,6 +157,8 @@ class TestTCPUnitTests(VppAsfTestCase):
             "tamper dupack-run",
             "tamper dsack-rto",
             "tamper dsack-partial",
+            "tamper dupack-cwnd",
+            "tamper nosack-cwnd",
         )
 
         for test_case in test_cases:
