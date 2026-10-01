@@ -34,6 +34,7 @@ app_listener_alloc (application_t * app)
   app_listener->session_index = SESSION_INVALID_INDEX;
   app_listener->local_index = SESSION_INVALID_INDEX;
   app_listener->ls_handle = SESSION_INVALID_HANDLE;
+  app_listener->sm_index = APP_INVALID_SEGMENT_MANAGER_INDEX;
   return app_listener;
 }
 
@@ -166,6 +167,10 @@ app_listener_cleanup (app_listener_t * al)
       session_stop_listen (ls);
       listen_session_free (ls);
     }
+  /* Nested transport listeners stopped above, so nothing else allocates
+   * from the segment manager. Transport apps only borrow it */
+  if (al->sm_index != APP_INVALID_SEGMENT_MANAGER_INDEX && !application_is_transport (app))
+    segment_manager_release_listener (segment_manager_get (al->sm_index));
   app_listener_free (app, al);
 }
 
@@ -1000,6 +1005,7 @@ application_alloc_worker_and_init (application_t * app, app_worker_t ** wrk)
    */
   sm = segment_manager_alloc ();
   sm->app_wrk_index = app_wrk->wrk_index;
+  sm->app_index = app->app_index;
 
   if ((rv = segment_manager_init_first (sm)))
     {
@@ -1560,6 +1566,12 @@ int
 application_is_proxy (application_t * app)
 {
   return (app->flags & APP_OPTIONS_FLAGS_IS_PROXY);
+}
+
+u8
+application_is_transport (application_t *app)
+{
+  return (app->flags & APP_OPTIONS_FLAGS_IS_TRANSPORT_APP) ? 1 : 0;
 }
 
 int
