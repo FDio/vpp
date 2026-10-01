@@ -983,8 +983,43 @@ lcp_router_table_add_del_special_routes (lcp_router_table_t *nlt, u8 is_add)
     }
 }
 
+static u32
+lcp_router_table_owned_routes (lcp_router_table_t *nlt)
+{
+  u32 n_routes;
+
+  n_routes = fib_table_get_num_entries (nlt->nlt_fib_index, nlt->nlt_proto, lcp_rt_fib_src) +
+	     fib_table_get_num_entries (nlt->nlt_fib_index, nlt->nlt_proto, lcp_rt_fib_src_dynamic);
+
+  /* don't count the 255.255.255.255/32 punt special */
+  if (FIB_PROTOCOL_IP4 == nlt->nlt_proto && n_routes > 0)
+    n_routes--;
+
+  return n_routes;
+}
+
+static void
+lcp_router_table_free_if_unused (lcp_router_table_t *nlt)
+{
+  if (nlt->nlt_refs > 0)
+    return;
+
+  if (lcp_router_table_owned_routes (nlt) > 0)
+    return;
+
+  LCP_ROUTER_DBG ("table %u removed", nlt->nlt_id);
+
+  lcp_router_table_add_del_special_routes (nlt, 0);
+
+  fib_table_unlock (nlt->nlt_fib_index, nlt->nlt_proto, lcp_rt_fib_src);
+  mfib_table_unlock (nlt->nlt_mfib_index, nlt->nlt_proto, MFIB_SOURCE_PLUGIN_LOW);
+
+  hash_unset (lcp_router_table_db[nlt->nlt_proto], nlt->nlt_id);
+  pool_put (lcp_router_table_pool, nlt);
+}
+
 static lcp_router_table_t *
-lcp_router_table_add_or_lock (uint32_t id, fib_protocol_t fproto)
+lcp_router_table_find_or_create (uint32_t id, fib_protocol_t fproto)
 {
   lcp_router_table_t *nlt;
 
@@ -1009,6 +1044,16 @@ lcp_router_table_add_or_lock (uint32_t id, fib_protocol_t fproto)
       lcp_router_table_add_del_special_routes (nlt, 1);
     }
 
+  return (nlt);
+}
+
+static lcp_router_table_t *
+lcp_router_table_add_or_lock (uint32_t id, fib_protocol_t fproto)
+{
+  lcp_router_table_t *nlt;
+
+  nlt = lcp_router_table_find_or_create (id, fproto);
+
   nlt->nlt_refs++;
 
   return (nlt);
@@ -1020,16 +1065,7 @@ lcp_router_table_unlock (lcp_router_table_t *nlt)
   ASSERT (nlt->nlt_refs > 0);
   nlt->nlt_refs--;
 
-  if (0 == nlt->nlt_refs)
-    {
-      lcp_router_table_add_del_special_routes (nlt, 0);
-
-      fib_table_unlock (nlt->nlt_fib_index, nlt->nlt_proto, lcp_rt_fib_src);
-      mfib_table_unlock (nlt->nlt_mfib_index, nlt->nlt_proto, MFIB_SOURCE_PLUGIN_LOW);
-
-      hash_unset (lcp_router_table_db[nlt->nlt_proto], nlt->nlt_id);
-      pool_put (lcp_router_table_pool, nlt);
-    }
+  lcp_router_table_free_if_unused (nlt);
 }
 
 static void
@@ -1331,11 +1367,10 @@ lcp_router_route_del (struct rtnl_route *rr)
 	  fib_table_entry_path_remove2 (nlt->nlt_fib_index, &pfx, fib_src,
 					np.paths);
 	}
-
-      lcp_router_table_unlock (nlt);
     }
 
   vec_free (np.paths);
+  lcp_router_table_free_if_unused (nlt);
 }
 
 static fib_route_path_t *
@@ -1404,7 +1439,7 @@ lcp_router_route_add (struct rtnl_route *rr, int is_replace)
 
   if (0 != vec_len (np.paths))
     {
-      nlt = lcp_router_table_add_or_lock (table_id, pfx.fp_proto);
+      nlt = lcp_router_table_find_or_create (table_id, pfx.fp_proto);
 
       if (rtype == RTN_MULTICAST)
 	{
@@ -1494,6 +1529,8 @@ static void
 lcp_router_route_sync_end (void)
 {
   lcp_router_table_t *nlt;
+  u32 *stale = NULL;
+  u32 *nlti;
 
   pool_foreach (nlt, lcp_router_table_pool)
     {
@@ -1504,7 +1541,15 @@ lcp_router_route_sync_end (void)
       LCP_ROUTER_INFO ("End synchronization of %U routes in table %u",
 		       format_fib_protocol, nlt->nlt_proto,
 		       nlt->nlt_fib_index);
+
+      if (0 == lcp_router_table_owned_routes (nlt))
+	vec_add1 (stale, nlt - lcp_router_table_pool);
     }
+
+  vec_foreach (nlti, stale)
+    lcp_router_table_free_if_unused (pool_elt_at_index (lcp_router_table_pool, *nlti));
+
+  vec_free (stale);
 }
 
 typedef struct lcp_router_table_flush_entry_t
@@ -1599,7 +1644,6 @@ lcp_router_table_flush (lcp_router_table_t *nlt, u32 *sw_if_index_to_bool,
       fib_table_entry_path_remove2 (nlt->nlt_fib_index, lrtfe->lrtfe_pfx,
 				    source, lrtfe->rpaths);
       vec_free (lrtfe->rpaths);
-      lcp_router_table_unlock (nlt);
     }
 
   vec_free (ctx.lrtf_entries);

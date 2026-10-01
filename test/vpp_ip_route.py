@@ -135,6 +135,25 @@ def find_mroute(test, grp_addr, src_addr, grp_addr_len, table_id=0):
     return False
 
 
+def find_mroute_path(
+    test, src_addr, grp_addr, grp_addr_len, sw_if_index, itf_flags, table_id=0
+):
+    ip_mprefix = VppIpMPrefix(text_type(src_addr), text_type(grp_addr), grp_addr_len)
+
+    if 4 == ip_mprefix.version:
+        routes = test.vapi.ip_mroute_dump(table_id, False)
+    else:
+        routes = test.vapi.ip_mroute_dump(table_id, True)
+
+    for e in routes:
+        if table_id != e.route.table_id or ip_mprefix != e.route.prefix:
+            continue
+        for p in e.route.paths:
+            if p.path.sw_if_index == sw_if_index and (p.itf_flags & itf_flags):
+                return True
+    return False
+
+
 def find_mpls_route(test, table_id, label, eos_bit, paths=None):
     dump = test.vapi.mpls_route_dump(table_id)
     for e in dump:

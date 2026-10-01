@@ -37,7 +37,8 @@ from template_ipsec import (
 )
 from test_ipsec_tun_if_esp import TemplateIpsecItf4
 from config import config
-from vpp_ip_route import FibPathType
+from vpp_ip_route import FibPathType, find_mroute_path
+from vpp_papi import VppEnum
 from vpp_qemu_utils import (
     add_namespace_route,
     add_namespace_multipath_route,
@@ -1449,6 +1450,63 @@ class TestLinuxCPLinuxToVPP(TestLinuxCPNetNSBase):
                 for a in self.vapi.ip_address_dump(lo0_idx, is_ipv6=True)
             ),
             False,
+        )
+
+
+@unittest.skipIf(config.skip_netns_tests, "netns not available or disabled from cli")
+class TestLinuxCPPreExistingRoutes(TestLinuxCPNetNSBase):
+    """Deleting routes linux-nl never installed must not remove the LCP table
+
+    Routes can exist in the host netns before lcp opens its netlink socket
+    (i.e. before the first LCP pair is created). Such routes are never
+    installed into the VPP FIB, so only their RTM_DELROUTE notifications reach
+    the plugin. They must not release table references or flush the interface's
+    mcast Accept paths.
+    """
+
+    # Blackhole routes created in the host netns before the first LCP pair
+    pre_existing_routes = [f"192.0.2.{i}/32" for i in range(1, 5)]
+    host_prefix = "10.0.0.1/24"
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.create_pg_interfaces(range(1))
+        cls.phy = cls.pg_interfaces[0]
+
+        for prefix in cls.pre_existing_routes:
+            add_namespace_route(cls.ns_name, prefix, route_type="blackhole")
+
+        cls.vapi.cli(f"lcp create {cls.phy.name} host-if hroute netns {cls.ns_name}")
+        cls.phy.admin_up()
+
+        add_namespace_address(cls.ns_name, "hroute", cls.host_prefix)
+        set_interface_up(cls.ns_name, "hroute")
+
+    def _accept_path_present(self):
+        accept = VppEnum.vl_api_mfib_itf_flags_t.MFIB_API_ITF_FLAG_ACCEPT
+        return find_mroute_path(
+            self, "0.0.0.0", "224.0.0.0", 24, self.phy.sw_if_index, accept
+        )
+
+    def test_delete_preexisting_routes(self):
+        """Deletes of routes not installed by linux-cp keep Accept paths"""
+        self.poll_for("Accept path installed", self._accept_path_present, True)
+
+        for prefix in self.pre_existing_routes:
+            del_namespace_route(self.ns_name, prefix)
+
+        # We cannot if the removed routes were processe, so add a fake route to
+        # be sure that lcp got all the netlink events
+        barrier = "192.0.2.100/32"
+        add_namespace_route(self.ns_name, barrier, route_type="blackhole")
+        self.verify_paths(barrier, dict(type=FibPathType.FIB_PATH_TYPE_DROP))
+        del_namespace_route(self.ns_name, barrier)
+
+        self.assertTrue(
+            self._accept_path_present(),
+            "per-interface Accept path on (*,224.0.0.0/24) was flushed by "
+            "deletes of routes linux-cp never installed",
         )
 
 
