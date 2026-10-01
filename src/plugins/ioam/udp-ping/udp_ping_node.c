@@ -482,7 +482,7 @@ udp_ping_analyse_hbh (vlib_buffer_t * b0,
 	  (void) ip6_ioam_analyse_hbh_e2e (data, &e2e->e2e_hdr, len);
 	  break;
 	case 0:		/* Pad1 */
-	  opt0 = (ip6_hop_by_hop_option_t *) ((u8 *) opt0) + 1;
+	  opt0 = (ip6_hop_by_hop_option_t *) ((u8 *) opt0 + 1);
 	  continue;
 	case 1:		/* PadN */
 	  break;
