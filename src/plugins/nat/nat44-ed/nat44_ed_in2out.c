@@ -920,9 +920,9 @@ nat44_ed_in2out_slowpath_unknown_proto (snat_main_t *sm, vlib_buffer_t *b,
 
   tx_fib_index = get_tx_fib_index (rx_fib_index, ip->dst_address);
 
-  // Try to find static mapping first
-  m = nat44_ed_sm_i2o_lookup (sm, ip->src_address, 0, rx_fib_index,
-			      ip->protocol);
+  // Try to find static mapping first: only address-only mappings apply to
+  // other protocols, and they are stored with port 0 and protocol 0
+  m = nat44_ed_sm_i2o_lookup (sm, ip->src_address, 0, rx_fib_index, 0);
   if (m)
     {
       new_src_addr = m->external_addr;
