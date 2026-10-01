@@ -45,7 +45,7 @@ format_vxlan_gpe_ioam_v4_trace (u8 * s, va_list * args)
       switch (type0)
 	{
 	case 0:		/* Pad, just stop */
-	  opt0 = (vxlan_gpe_ioam_option_t *) ((u8 *) opt0) + 1;
+	  opt0 = (vxlan_gpe_ioam_option_t *) ((u8 *) opt0 + 1);
 	  break;
 
 	default:
@@ -111,7 +111,7 @@ vxlan_gpe_encap_decap_ioam_v4_one_inline (vlib_main_t * vm,
       switch (type0)
 	{
 	case 0:		/* Pad1 */
-	  opt0 = (vxlan_gpe_ioam_option_t *) ((u8 *) opt0) + 1;
+	  opt0 = (vxlan_gpe_ioam_option_t *) ((u8 *) opt0 + 1);
 	  continue;
 	case 1:		/* PadN */
 	  break;

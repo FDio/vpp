@@ -2322,7 +2322,7 @@ format_ip6_hop_by_hop_trace (u8 * s, va_list * args)
       switch (type0)
 	{
 	case 0:		/* Pad, just stop */
-	  opt0 = (ip6_hop_by_hop_option_t *) ((u8 *) opt0) + 1;
+	  opt0 = (ip6_hop_by_hop_option_t *) ((u8 *) opt0 + 1);
 	  break;
 
 	default:
@@ -2361,7 +2361,7 @@ ip6_scan_hbh_options (vlib_buffer_t * b0,
       switch (type0)
 	{
 	case 0:		/* Pad1 */
-	  opt0 = (ip6_hop_by_hop_option_t *) ((u8 *) opt0) + 1;
+	  opt0 = (ip6_hop_by_hop_option_t *) ((u8 *) opt0 + 1);
 	  continue;
 	case 1:		/* PadN */
 	  break;
