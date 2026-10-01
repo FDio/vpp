@@ -830,6 +830,11 @@ dpdk_bind_devices_to_uio (dpdk_config_main_t * conf)
     /* Google vNIC */
     else if (d->vendor_id == 0x1ae0 && d->device_id == 0x0042)
       ;
+    /* Microsoft Azure Network Adaptor (MANA) VF */
+    else if (d->vendor_id == 0x1414 && d->device_id == 0x00ba)
+      {
+	continue;
+      }
     else
       {
         dpdk_log_warn ("Unsupported PCI device 0x%04x:0x%04x found "
