@@ -16,6 +16,24 @@
       "message": "I suspect this is going to be relatively heavy unless we make sure the slow path can solve the issue with a few clib_time_verify_frequency calls. So should we treat small misalignment as acceptable?",
       "revId": "17527c152a2288eda005b60317cdd4af6442a255",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "22bd7564_b6b8e057",
+        "filename": "src/vppinfra/time.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 190,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-10-01T17:37:39Z",
+      "side": 1,
+      "message": "The added check only triggers when the CPU counter moves backward, e.g. after migrating to a CPU with a lower TSC. The slow path resets the timestamps in one call, so it does not require repeated calls to converge.\n\nAlternatively, we could treat the negative delta as zero and retain last_cpu_time. This would freeze elapsed time until the counter catches up or periodic verification resets the baseline. The freeze is bounded by the existing verification interval (~16s), assuming the counter advances normally.\n\nSo the tradeoff is avoiding the slow path for small backward jumps at the cost of temporarily stalling timers, versus resynchronizing immediately.",
+      "parentUuid": "6787b23c_f5845c04",
+      "revId": "17527c152a2288eda005b60317cdd4af6442a255",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
