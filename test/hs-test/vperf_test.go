@@ -535,10 +535,7 @@ func tcpWithLossAndNoLoss(s tcpWithLossInterface, clientVpp *VppInstance,
 	withLoss, err := ParseVperfClientTransfer(output)
 	AssertNil(err)
 
-	threshold := 0.15
-	if *IsDebugBuild {
-		threshold = 0.1
-	}
+	threshold := 0.1
 	Log("\nBaseline:  %d bytes/s\nWith loss: %d bytes/s", baseline, withLoss)
 	AssertGreaterEqualUnlessASanOrCovBuild(baseline, withLoss, "Tcp vperf: baseline bitrate is lower than bitrate with loss applied")
 	AssertGreaterEqualUnlessASanOrCovBuild(withLoss, uint64(float64(baseline)*threshold), "Tcp vperf: bitrate below threshold")
