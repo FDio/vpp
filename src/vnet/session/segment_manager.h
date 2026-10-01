@@ -33,7 +33,7 @@ typedef struct _segment_manager_props
   u8 high_watermark;			/**< memory usage high watermark % */
   u8 low_watermark;			/**< memory usage low watermark % */
   u8 pct_first_alloc;			/**< pct of fifo size to alloc */
-  u32 max_segments; /**< max number of segments, 0 for unlimited */
+  u32 max_segments; /**< max segments per worker in a manager, 0 for unlimited */
 } segment_manager_props_t;
 
 #define foreach_seg_manager_flag                                              \
@@ -57,8 +57,11 @@ typedef struct _segment_manager
   /** rwlock that protects the segments pool */
   clib_rwlock_t segments_rwlock;
 
-  /** Owner app worker index */
+  /** Owner app worker index, invalid for listener segment managers */
   u32 app_wrk_index;
+
+  /** App whose properties are used for segments and fifos */
+  u32 app_index;
 
   /**
    * First segment should not be deleted unless segment manger is deleted.
@@ -136,6 +139,16 @@ __clib_export void segment_manager_segment_reader_unlock (segment_manager_t *sm)
 __clib_export int segment_manager_alloc_session_fifos (segment_manager_t *sm,
 						       clib_thread_index_t thread_index,
 						       svm_fifo_t **rx_fifo, svm_fifo_t **tx_fifo);
+
+/**
+ * Allocate fifos in segments tagged with owner
+ *
+ * Segments of owner SEGMENT_MANAGER_INVALID_APP_INDEX are private to vpp and
+ * never shared with an app worker.
+ */
+__clib_export int segment_manager_alloc_session_fifos_w_owner (
+  segment_manager_t *sm, u32 owner_index, u32 rx_fifo_size, u32 tx_fifo_size,
+  clib_thread_index_t thread_index, svm_fifo_t **rx_fifo, svm_fifo_t **tx_fifo);
 int segment_manager_alloc_session_fifos_ct (session_t *s,
 					    segment_manager_t *sm,
 					    clib_thread_index_t thread_index,
@@ -171,6 +184,28 @@ void segment_manager_app_detach (segment_manager_t * sm);
 void segment_manager_del_sessions (segment_manager_t * sm);
 void segment_manager_del_sessions_filter (segment_manager_t *sm,
 					  session_state_t *states);
+
+/**
+ * Stop allocating from owner's segments and remove the empty ones
+ *
+ * @return number of segments still in use by owner
+ */
+u32 segment_manager_retire_owner (segment_manager_t *sm, u32 owner_index);
+
+/**
+ * Disconnect owner's sessions and drop owner from its segments
+ */
+void segment_manager_detach_owner (u32 sm_index, u32 owner_index);
+
+/**
+ * Release listener segment manager once its app listener is cleaned up
+ */
+void segment_manager_release_listener (segment_manager_t *sm);
+
+/**
+ * Close sessions left in listener segment managers released by app
+ */
+void segment_manager_drain_app_listeners (u32 app_index);
 void segment_manager_format_sessions (segment_manager_t * sm, int verbose);
 
 void segment_manager_main_init (u8 no_dump_segments);

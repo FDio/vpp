@@ -57,6 +57,7 @@ typedef struct
   uword max_byte_index;		/**< max byte index for segment */
   u32 sm_index;			/**< owner segment manager index */
   u32 fs_index;			/**< fs index in sm pool */
+  u32 owner_index;		/**< owner within segment manager */
   u8 n_slices;			/**< number of fifo segment slices */
   u8 flags;			/**< private fifo segment flags */
   u8 high_watermark;		/**< memory pressure watermark high */
