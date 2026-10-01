@@ -251,7 +251,8 @@ typedef struct quic_ctx_
   void *peer_cert; /* X509 * stored as void * to avoid including openssl headers */
   quic_app_err_code_t app_err_code;
   u64 opaque; /* engine can store something here */
-  /* 16-byte left to next cache line */
+  u32 app_wrk_connect_index;
+  /* 12-byte left to next cache line */
 } quic_ctx_t;
 
 /* Make sure our custom fields don't overlap with the fields we use in

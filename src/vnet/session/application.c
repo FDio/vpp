@@ -1003,6 +1003,13 @@ application_alloc_worker_and_init (application_t * app, app_worker_t ** wrk)
   wrk_map = app_worker_map_alloc (app);
   wrk_map->wrk_index = app_wrk->wrk_index;
   app_wrk->wrk_map_index = app_worker_map_index (app, wrk_map);
+  app_wrk->listeners_table = hash_create (0, sizeof (u64));
+
+  if (application_is_transport (app))
+    {
+      /* skip creating segment manager for transport */
+      goto skip;
+    }
 
   /*
    * Setup first segment manager
@@ -1023,8 +1030,9 @@ application_alloc_worker_and_init (application_t * app, app_worker_t ** wrk)
    * Setup app worker
    */
   app_wrk->connects_seg_manager = segment_manager_index (sm);
-  app_wrk->listeners_table = hash_create (0, sizeof (u64));
   app_wrk->event_queue = segment_manager_event_queue (sm);
+
+skip:
   app_wrk->app_is_builtin = application_is_builtin (app);
 
   *wrk = app_wrk;
@@ -1045,6 +1053,9 @@ vnet_app_worker_add_del (vnet_app_worker_add_del_args_t *a)
   app = application_get (a->app_index);
   if (!app)
     return SESSION_E_INVALID;
+
+  if (a->is_add && application_is_transport (app))
+    return SESSION_E_NOSUPPORT;
 
   if (a->is_add)
     {
@@ -1179,6 +1190,13 @@ vnet_application_attach (vnet_app_attach_args_t *a)
 
   a->app_evt_q = app_wrk->event_queue;
   app_wrk->api_client_index = a->api_client_index;
+
+  if (application_is_transport (app))
+    {
+      /* skip creating segment manager for transport */
+      goto skip;
+    }
+
   sm = segment_manager_get (app_wrk->connects_seg_manager);
   fs = segment_manager_get_segment_w_lock (sm, 0);
 
@@ -1196,6 +1214,7 @@ vnet_application_attach (vnet_app_attach_args_t *a)
 
   segment_manager_segment_reader_unlock (sm);
 
+skip:
   if (!application_is_builtin (app) && application_use_private_rx_mqs ())
     rv = app_rx_mqs_alloc (app);
 
@@ -1980,13 +1999,14 @@ format_app_mq (u8 *s, va_list *args)
 
   pool_foreach (map, app->worker_maps)  {
     wrk = app_worker_get (map->wrk_index);
-    s = format (s, "[A%d][%d]%U", app->app_index, map->wrk_index,
-		format_svm_msg_q, wrk->event_queue);
+    if (wrk->event_queue)
+      s = format (s, "[A%d][%d]%U", app->app_index, map->wrk_index,
+		  format_svm_msg_q, wrk->event_queue);
   }
 
   for (i = 0; i < vec_len (app->rx_mqs); i++)
-  s = format (s, "[A%d][R%d]%U", app->app_index, i, format_svm_msg_q,
-	      app->rx_mqs[i].mq);
+    s = format (s, "[A%d][R%d]%U", app->app_index, i, format_svm_msg_q,
+		app->rx_mqs[i].mq);
 
   return s;
 }

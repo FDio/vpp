@@ -621,7 +621,28 @@ int
 app_worker_init_connected (app_worker_t * app_wrk, session_t * s)
 {
   application_t *app = application_get (app_wrk->app_index);
+  application_t *origin_app;
   segment_manager_t *sm;
+  app_worker_t *app_wrk_connect;
+
+  if (app && application_is_transport (app))
+    {
+      if (s->app_wrk_connect_index == SESSION_INVALID_INDEX)
+	{
+	  session_log_backtrace ("init_connected with bad app_wrk_connect_index");
+	  return SESSION_E_INVALID_APPWRK;
+	}
+
+      app_wrk_connect = app_worker_get_if_valid (s->app_wrk_connect_index);
+      origin_app = app_wrk_connect ? application_get_if_valid (app_wrk_connect->app_index) : 0;
+      if (!origin_app || application_is_transport (origin_app) ||
+	  app_wrk_connect->connects_seg_manager == APP_INVALID_SEGMENT_MANAGER_INDEX)
+	{
+	  session_log_backtrace ("init_connected with invalid origin app worker");
+	  return SESSION_E_INVALID_APPWRK;
+	}
+      app_wrk = app_wrk_connect;
+    }
 
   if (app->cb_fns.fifo_tuning_callback)
     s->flags |= SESSION_F_CUSTOM_FIFO_TUNING;
@@ -789,6 +810,10 @@ app_worker_connect_session (app_worker_t *app_wrk, session_endpoint_cfg_t *sep,
     return SESSION_E_REFUSED;
 
   sep->app_wrk_index = app_wrk->wrk_index;
+  /* Ordinary apps own their connect FIFOs. Transport apps inherit the
+   * originating worker through the endpoint. */
+  if (!application_is_transport (application_get (app_wrk->app_index)))
+    sep->app_wrk_connect_index = app_wrk->wrk_index;
 
   return session_open (sep, rsh);
 }
@@ -801,6 +826,10 @@ app_worker_connect_stream (app_worker_t *app_wrk, session_endpoint_cfg_t *sep,
     return SESSION_E_REFUSED;
 
   sep->app_wrk_index = app_wrk->wrk_index;
+  /* Ordinary apps own their connect FIFOs. Transport apps inherit the
+   * originating worker through the endpoint. */
+  if (!application_is_transport (application_get (app_wrk->app_index)))
+    sep->app_wrk_connect_index = app_wrk->wrk_index;
 
   return session_open_stream (sep, rsh);
 }
@@ -1110,8 +1139,9 @@ format_app_worker (u8 * s, va_list * args)
 
   if (verbose > 1)
     {
-      sm = segment_manager_get (app_wrk->connects_seg_manager);
-      s = format (s, "%Usegment managers:\n%U%U", format_white_space, indent,
+      sm = segment_manager_get_if_valid (app_wrk->connects_seg_manager);
+      if (sm)
+	s = format (s, "%Usegment managers:\n%U%U", format_white_space, indent,
 		  format_white_space, indent, format_segment_manager, sm,
 		  1 /* verbose */);
       hash_foreach (handle, sm_index, app_wrk->listeners_table, ({

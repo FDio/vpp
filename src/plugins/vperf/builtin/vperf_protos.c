@@ -1020,7 +1020,6 @@ vp_proto_quic_connected (session_t *s, vp_test_cfg_t *cfg, vp_test_worker_t *wrk
   u32 stream_n;
   int rv;
 
-  ASSERT (s->listener_handle == SESSION_INVALID_HANDLE);
   ASSERT (!(s->flags & SESSION_F_STREAM));
 
   clib_memset (a, 0, sizeof (*a));

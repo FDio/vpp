@@ -106,6 +106,7 @@ typedef struct _session_endpoint_cfg
   u32 opaque;
   u32 ns_index;
   u32 sm_index;
+  u32 app_wrk_connect_index;
   u8 original_tp;
   u64 parent_handle;
   session_endpoint_cfg_flags_t flags;
@@ -149,6 +150,7 @@ typedef struct _session_endpoint_cfg
     .app_wrk_index = ENDPOINT_INVALID_INDEX,                                                       \
     .opaque = ENDPOINT_INVALID_INDEX,                                                              \
     .sm_index = ENDPOINT_INVALID_INDEX,                                                            \
+    .app_wrk_connect_index = SESSION_INVALID_INDEX,                                                \
     .parent_handle = SESSION_INVALID_HANDLE,                                                       \
     .ext_cfgs = TRANSPORT_ENDPT_EXT_CFGS_NULL,                                                     \
   }
@@ -285,8 +287,14 @@ typedef struct session_
     /** Parent listener session index if the result of an accept */
     session_handle_t listener_handle;
 
-    /** Index in app worker's half-open table if a half-open */
-    u32 ho_index;
+    struct
+    {
+      /** Index in app worker's half-open table if a half-open */
+      u32 ho_index;
+
+      /** App worker connect index for connect */
+      u32 app_wrk_connect_index;
+    };
   };
 
   /** Opaque, for general use */
