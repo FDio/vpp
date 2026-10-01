@@ -738,9 +738,17 @@ tcp_cc_handle_event (tcp_connection_t *tc, tcp_ack_ctx_t *ac)
 
       tc->rcv_dupacks++;
       TCP_EVT (TCP_EVT_DUPACK_RCVD, tc, 1);
-      tcp_cc_rcv_cong_ack (tc, TCP_CC_DUPACK, ac);
+      u8 enter_recovery = tcp_loss_should_enter_recovery (tc, ac, has_sack);
 
-      if (tcp_loss_should_enter_recovery (tc, ac, has_sack))
+      /* With sack, a dupack may also ack new data (RFC 6675). CC sees it only
+       * once, as a cumulative ack in that case, so cwnd can still grow, but
+       * not if it starts recovery, which must reduce cwnd as it was */
+      if (ac->bytes_acked && !enter_recovery)
+	tcp_cc_rcv_ack (tc, ac);
+      else
+	tcp_cc_rcv_cong_ack (tc, TCP_CC_DUPACK, ac);
+
+      if (enter_recovery)
 	tcp_loss_enter_recovery (tc);
 
       return;
