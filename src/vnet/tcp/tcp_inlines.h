@@ -114,9 +114,12 @@ tcp_bytes_out (const tcp_connection_t * tc)
 {
   if (tcp_opts_sack_permitted (&tc->rcv_opts))
     return tc->sack_sb.sacked_bytes + tc->sack_sb.lost_bytes;
-  else
-    return clib_min (tc->rcv_dupacks * tc->snd_mss,
-		     tc->snd_nxt - tc->snd_una);
+  /* After an rto all data sent before it is presumed lost (RFC 5681), so
+   * dupacks can only be credited against data sent since */
+  if (tcp_in_recovery (tc) && seq_lt (tc->snd_una, tc->snd_congestion))
+    return tc->snd_congestion - tc->snd_una +
+	   clib_min (tc->rcv_dupacks * tc->snd_mss, tc->snd_nxt - tc->snd_congestion);
+  return clib_min (tc->rcv_dupacks * tc->snd_mss, tc->snd_nxt - tc->snd_una);
 }
 
 static_always_inline u32
