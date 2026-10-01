@@ -18,7 +18,7 @@ typedef struct
   /* Last recorded time stamp. */
   u64 last_cpu_time;
 
-  /* CPU clock frequency. */
+  /* CPU clock frequency adjusted to slew time. */
   f64 clocks_per_second;
 
   /* 1 / cpu clock frequency: conversion factor
@@ -187,7 +187,9 @@ always_inline f64
 clib_time_now_internal (clib_time_t * c, u64 n)
 {
   u64 t;
-  if (PREDICT_FALSE ((n - c->last_verify_cpu_time) >> c->log2_clocks_per_frequency_verify))
+  if (PREDICT_FALSE (n < c->last_cpu_time ||
+		     (n - c->last_verify_cpu_time) >>
+		       c->log2_clocks_per_frequency_verify))
     {
       /* if the cpu time difference is too large, resynchronize system time
        * and cpu time
