@@ -38,6 +38,7 @@ add_vpp_plugin(unittest
   hash_test.c
   interface_test.c
   ipsec_test.c
+  ip6_hbh_options_test.c
   ip_psh_cksum_test.c
   llist_test.c
   link_speed_test.c

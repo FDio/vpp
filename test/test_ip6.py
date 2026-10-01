@@ -25,6 +25,7 @@ from scapy.layers.inet6 import (
     ICMPv6EchoReply,
     IPv6ExtHdrHopByHop,
     ICMPv6MLReport2,
+    ICMPv6ParamProblem,
 )
 from scapy.layers.l2 import Ether, Dot1Q, GRE
 from scapy.packet import Raw
@@ -3190,6 +3191,47 @@ class TestIP6Input(VppTestCase):
         self.pg0.add_stream(p)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
+
+    def test_hop_by_hop_pad1_options(self):
+        """Hop-by-hop Pad1 option walking unit tests"""
+
+        error = self.vapi.cli("test ip6-hbh-options")
+        if error:
+            self.logger.critical(error)
+            self.assertNotIn("failed", error)
+
+    def test_hop_by_hop_pad1_dataplane(self):
+        """Hop-by-hop Pad1 parsing on the forwarding data path"""
+
+        # iOAM trace enables HbH processing (im->hbh_enabled).
+        self.vapi.cli("set ioam rewrite trace")
+        try:
+            # Control: discard+ICMP option (0xc2) first must elicit a
+            # Parameter Problem, proving the HbH node is active.
+            control_hbh = bytes([17, 1, 0xC2, 0x00, 0x01, 0x0A] + [0] * 10)
+            control = (
+                Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
+                / IPv6(src=self.pg0.remote_ip6, dst=self.pg1.remote_ip6, nh=0)
+                / Raw(control_hbh)
+                / inet6.UDP(sport=1234, dport=1234)
+                / Raw(b"\xa5" * 64)
+            )
+            rx = self.send_and_expect(self.pg0, [control], self.pg0)
+            self.assertTrue(rx[0].haslayer(ICMPv6ParamProblem))
+
+            # Regression: Pad1 + skippable option 0x1e must forward; the
+            # off-by-one misreads 0xc2 as the type and drops.
+            regr_hbh = bytes([17, 1, 0x00, 0x1E, 0xC2] + [0] * 11)
+            regr = (
+                Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
+                / IPv6(src=self.pg0.remote_ip6, dst=self.pg1.remote_ip6, nh=0)
+                / Raw(regr_hbh)
+                / inet6.UDP(sport=1234, dport=1234)
+                / Raw(b"\xa5" * 64)
+            )
+            self.send_and_expect(self.pg0, regr * NUM_PKTS, self.pg1)
+        finally:
+            self.vapi.cli("clear ioam rewrite")
 
 
 class TestIP6Replace(VppTestCase):
