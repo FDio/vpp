@@ -596,7 +596,7 @@ vac_create (char *name)
             .seq = 0,
     );
 
-  clib_mem_init_thread_safe (0, 256 << 20);
+  clib_mem_init (0, 256 << 20);
 
   if (vl_client_api_map ("/vpe-api"))
     {
