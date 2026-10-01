@@ -16,6 +16,12 @@ func init() {
 		Http2TlsTransportSegmentManagerSegmentsTest,
 		Http2ConnectTransportSegmentManagerSegmentsTest,
 	)
+	RegisterH3Tests(
+		Http3ListenerSegmentManagerTest,
+		Http3ConnectSegmentManagerTest,
+		Http3TransportSegmentManagerSegmentsTest,
+		Http3ConnectTransportSegmentManagerSegmentsTest,
+	)
 }
 
 type clientProtoEntry struct {
