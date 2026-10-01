@@ -82,6 +82,7 @@ typedef struct srtp_ctx_
   u8 app_closed;
   u8 no_app_session;
   u8 is_migrated;
+  u32 app_wrk_connect_index;
   srtp_t srtp_ctx;
   srtp_policy_t srtp_policy[2];
 } srtp_tc_t;

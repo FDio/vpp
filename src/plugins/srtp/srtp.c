@@ -598,6 +598,8 @@ srtp_connect (transport_endpoint_cfg_t *tep)
   ctx_index = srtp_ctx_alloc_w_thread (thread_index);
   ctx = srtp_ctx_get_w_thread (ctx_index, thread_index);
   ctx->parent_app_wrk_index = sep->app_wrk_index;
+  ASSERT (sep->app_wrk_connect_index != SESSION_INVALID_INDEX);
+  ctx->app_wrk_connect_index = sep->app_wrk_connect_index;
   ctx->parent_app_api_context = sep->opaque;
   ctx->udp_is_ip4 = sep->is_ip4;
   ctx->srtp_ctx_handle = ctx_index;
@@ -609,6 +611,7 @@ srtp_connect (transport_endpoint_cfg_t *tep)
   clib_memcpy_fast (&cargs->sep, sep, sizeof (session_endpoint_t));
   cargs->sep.transport_proto = TRANSPORT_PROTO_UDP;
   cargs->sep_ext.transport_flags = TRANSPORT_CFG_F_CONNECTED;
+  cargs->sep_ext.app_wrk_connect_index = ctx->app_wrk_connect_index;
   cargs->app_index = sm->app_index;
   cargs->api_context = ctx_index;
   cargs->sep_ext.ns_index = app->ns_index;

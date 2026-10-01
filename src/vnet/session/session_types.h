@@ -281,8 +281,14 @@ typedef struct session_
     /** Parent listener session index if the result of an accept */
     session_handle_t listener_handle;
 
-    /** Index in app worker's half-open table if a half-open */
-    u32 ho_index;
+    struct
+    {
+      /** Index in app worker's half-open table if a half-open */
+      u32 ho_index;
+
+      /** App worker connect index for connect */
+      u32 app_wrk_connect_index;
+    };
   };
 
   /** Opaque, for general use */
