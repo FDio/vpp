@@ -36,6 +36,22 @@ class TestTime(VppAsfTestCase):
         """Test that CPU time discontinuities are handled correctly"""
         self.vapi.cli("test time discontinuity")
 
+    def test_time_small_discontinuity(self):
+        """Test a backward CPU counter within the verification interval"""
+        self.vapi.cli("test time small-discontinuity")
+
+    def test_time_accumulated_error(self):
+        """Test that accumulated phase error controls the slew rate"""
+        self.vapi.cli("test time accumulated-error")
+
+    def test_time_wall_step(self):
+        """Test that wall clock steps reanchor without erasing earlier phase error"""
+        self.vapi.cli("test time wall-step")
+
+    def test_time_virtual_offset(self):
+        """Test that virtual time offsets do not affect physical clock slewing"""
+        self.vapi.cli("test time virtual-offset")
+
     def test_time_barrier_monotonicity(self):
         """Test that barrier sync preserves time monotonicity on workers"""
         self.vapi.cli("test time barrier")

@@ -9,6 +9,10 @@
 #include <vppinfra/cpu.h>
 #include <math.h>
 
+#define CLIB_TIME_PHASE_CORRECTION_PERIOD 64.0
+/* About 0.8% maximum slew; a 27-second skew drops below 0.5s in ~57 minutes. */
+#define CLIB_TIME_MAX_RATE_CORRECTION (1.0 / 128.0)
+
 #ifdef CLIB_UNIX
 
 #include <math.h>
@@ -217,7 +221,7 @@ __clib_export void
 clib_time_verify_frequency (clib_time_t * c)
 {
   f64 now_reference, delta_reference, delta_reference_max;
-  f64 delta_clock_in_seconds;
+  f64 delta_clock_in_seconds, elapsed, rate_correction;
   u64 now_clock, delta_clock;
   f64 new_clocks_per_second, delta;
 
@@ -230,7 +234,7 @@ clib_time_verify_frequency (clib_time_t * c)
    * lower TSC). In this case, skip frequency estimation and just resync
    * timestamps to current values.
    */
-  if (PREDICT_FALSE (now_clock < c->last_verify_cpu_time))
+  if (PREDICT_FALSE (now_clock < c->last_cpu_time))
     {
       c->last_cpu_time = now_clock;
       c->last_verify_cpu_time = now_clock;
@@ -242,23 +246,14 @@ clib_time_verify_frequency (clib_time_t * c)
   /* Compute change in the reference clock */
   delta_reference = now_reference - c->last_verify_reference_time;
 
-  /* And change in the CPU clock */
-  delta_clock_in_seconds = (f64) (now_clock - c->last_verify_cpu_time) *
-    c->seconds_per_clock;
-
-  /*
-   * Recompute vpp start time reference, and total clocks
-   * using the current clock rate.
-   * Ensure total_cpu_time never decreases to guarantee monotonicity.
-   */
-  c->init_reference_time += (delta_reference - delta_clock_in_seconds);
-  c->total_cpu_time = clib_max (
-    c->total_cpu_time, (u64) ((now_reference - c->init_reference_time) * c->clocks_per_second));
-
+  /* Advance elapsed time at the current rate before changing the rate. */
+  c->total_cpu_time += now_clock - c->last_cpu_time;
   c->last_cpu_time = now_clock;
+  elapsed = c->total_cpu_time * c->seconds_per_clock;
 
   /* Calculate a new clock rate sample */
   delta_clock = c->last_cpu_time - c->last_verify_cpu_time;
+  delta_clock_in_seconds = (f64) delta_clock * c->seconds_per_clock;
 
   c->last_verify_cpu_time = c->last_cpu_time;
   c->last_verify_reference_time = now_reference;
@@ -272,9 +267,12 @@ clib_time_verify_frequency (clib_time_t * c)
     (f64) (1ULL << c->log2_clocks_per_second);
   delta_reference_max = delta_reference_max > 8.0 ? delta_reference_max : 8.0;
 
-  /* Ignore this sample */
+  /* Reanchor wall time on a rejected sample without changing elapsed time. */
   if (delta_reference <= 0.0 || delta_reference > delta_reference_max)
-    return;
+    {
+      c->init_reference_time += delta_reference - delta_clock_in_seconds;
+      return;
+    }
 
   /*
    * Reject large frequency changes, another consequence of
@@ -292,21 +290,30 @@ clib_time_verify_frequency (clib_time_t * c)
     {
       clib_warning ("Rejecting large frequency change of %.2f%%",
 		    (delta / c->clocks_per_second) * 100.0);
+      c->init_reference_time += delta_reference - delta_clock_in_seconds;
       return;
     }
+
+  /* Correct phase by changing the rate of future time, never by stepping
+   * the current time backwards. */
+  rate_correction = clib_clamp (
+    (elapsed - (now_reference - c->init_reference_time)) *
+      (1.0 / CLIB_TIME_PHASE_CORRECTION_PERIOD),
+    -CLIB_TIME_MAX_RATE_CORRECTION, CLIB_TIME_MAX_RATE_CORRECTION);
+  new_clocks_per_second /= 1.0 - rate_correction;
 
   /* Add sample to the exponentially-smoothed rate */
   c->clocks_per_second = c->clocks_per_second * c->damping_constant +
     (1.0 - c->damping_constant) * new_clocks_per_second;
   c->seconds_per_clock = 1.0 / c->clocks_per_second;
 
-  /*
-   * Recalculate total_cpu_time based on the kernel timebase, and
-   * the calculated clock rate.
-   * Ensure total_cpu_time never decreases to guarantee monotonicity.
-   */
-  c->total_cpu_time = clib_max (
-    c->total_cpu_time, (u64) ((now_reference - c->init_reference_time) * c->clocks_per_second));
+  /* total_cpu_time is expressed in cycles at the applied frequency.
+   * Rebase it so a frequency change affects only future time. */
+  c->total_cpu_time = (u64) (elapsed * c->clocks_per_second);
+  /* Rounding the rebased count back to seconds may yield less than elapsed.
+   * At large counts, one tick may not change the f64 result. */
+  while (c->total_cpu_time * c->seconds_per_clock < elapsed)
+    c->total_cpu_time++;
 }
 
 
