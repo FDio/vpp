@@ -1980,7 +1980,7 @@ tcp_retransmit_no_sack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
 			u32 burst_size)
 {
   u32 n_written = 0, offset = 0, bi, max_deq, n_segs_now, max_bytes;
-  u32 burst_bytes, sent_bytes;
+  u32 burst_bytes, sent_bytes, max_rxt_segs;
   vlib_main_t *vm = wrk->vm;
   u32 snd_space;
   int n_segs = 0;
@@ -2004,12 +2004,23 @@ tcp_retransmit_no_sack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
   snd_space = tcp_cc_recovery_snd_space (tc);
   cc_limited = snd_space < burst_bytes;
 
-  if (!tcp_fastrecovery_first (tc))
+  if (tcp_in_recovery (tc))
+    {
+      /* After an rto, resend in order, after unacked retransmits */
+      offset = tc->snd_rxt_bytes - tc->rxt_delivered;
+      max_rxt_segs = burst_size;
+    }
+  else if (tcp_fastrecovery_first (tc))
+    {
+      /* RFC 6582: [If a partial ack], retransmit the first unacknowledged segment. */
+      max_rxt_segs = 1;
+    }
+  else
     goto send_unsent;
 
-  /* RFC 6582: [If a partial ack], retransmit the first unacknowledged
-   * segment. */
-  while (snd_space > 0 && n_segs < burst_size)
+  ASSERT (offset <= tc->snd_congestion - tc->snd_una);
+
+  while (snd_space > 0 && n_segs < max_rxt_segs)
     {
       max_bytes = clib_min (tc->snd_mss,
 			    tc->snd_congestion - tc->snd_una - offset);
@@ -2024,7 +2035,7 @@ tcp_retransmit_no_sack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
 
       bi = vlib_get_buffer_index (vm, b);
       tcp_enqueue_to_output (wrk, b, bi, tc->c_is_ip4);
-      snd_space -= n_written;
+      snd_space -= clib_min (snd_space, n_written);
       offset += n_written;
       n_segs += 1;
     }
@@ -2032,8 +2043,13 @@ tcp_retransmit_no_sack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
   if (n_segs)
     tcp_fastrecovery_first_off (tc);
 
+  /* Burst limited, send the rest once the pacer allows */
   if (n_segs == burst_size)
-    goto done;
+    {
+      if (snd_space)
+	tcp_program_retransmit (tc);
+      goto done;
+    }
 
 send_unsent:
 

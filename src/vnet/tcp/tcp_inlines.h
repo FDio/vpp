@@ -114,9 +114,11 @@ tcp_bytes_out (const tcp_connection_t * tc)
 {
   if (tcp_opts_sack_permitted (&tc->rcv_opts))
     return tc->sack_sb.sacked_bytes + tc->sack_sb.lost_bytes;
-  else
-    return clib_min (tc->rcv_dupacks * tc->snd_mss,
-		     tc->snd_nxt - tc->snd_una);
+  /* Data sent before an rto is presumed lost, dupacks only count against data sent since */
+  if (tcp_in_recovery (tc))
+    return tc->snd_congestion - tc->snd_una +
+	   clib_min (tc->rcv_dupacks * tc->snd_mss, tc->snd_nxt - tc->snd_congestion);
+  return clib_min (tc->rcv_dupacks * tc->snd_mss, tc->snd_nxt - tc->snd_una);
 }
 
 static_always_inline u32
