@@ -70,7 +70,7 @@ nsh_md2_ioam_encap_decap_ioam_v4_one_inline (vlib_main_t * vm,
       switch (type0)
 	{
 	case 0:		/* Pad1 */
-	  opt0 = (nsh_tlv_header_t *) ((u8 *) opt0) + 1;
+	  opt0 = (nsh_tlv_header_t *) ((u8 *) opt0 + 1);
 	  continue;
 	case 1:		/* PadN */
 	  break;

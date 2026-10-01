@@ -66,7 +66,7 @@ ip6_ioam_find_hbh_option (ip6_hop_by_hop_header_t * hbh0, u8 option)
 
       if (0 == type0)
 	{
-	  opt0 = (ip6_hop_by_hop_option_t *) ((u8 *) opt0) + 1;
+	  opt0 = (ip6_hop_by_hop_option_t *) ((u8 *) opt0 + 1);
 	  continue;
 	}
       opt0 = (ip6_hop_by_hop_option_t *)
