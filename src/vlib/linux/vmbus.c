@@ -172,14 +172,17 @@ format_vlib_vmbus_addr (u8 *s, va_list *va)
   return s;
 }
 
-/* workaround for mlx bug, bring lower device up before unbind */
+/* workaround for mlx bug, bring lower device up before unbind. A MANA lower
+   must be down instead, or its PMD fails to create queues on the port. */
 static clib_error_t *
-vlib_vmbus_raise_lower (int fd, const char *upper_name)
+vlib_vmbus_set_lower_state (int fd, const char *upper_name)
 {
   clib_error_t *error = 0;
   struct dirent *e;
   struct ifreq ifr;
   u8 *dev_net_dir;
+  u8 *lower_driver;
+  int want_up;
   DIR *dir;
 
   clib_memset (&ifr, 0, sizeof (ifr));
@@ -208,12 +211,19 @@ vlib_vmbus_raise_lower (int fd, const char *upper_name)
   if (!e)
     goto done;			/* no lower device */
 
+  lower_driver =
+    clib_file_get_resolved_basename ("%s/%s/device/driver", sysfs_class_net_path, ifr.ifr_name);
+  if (!lower_driver)
+    clib_warning ("VMBUS lower intf %s has no driver, assuming not mana", ifr.ifr_name);
+  want_up = !lower_driver || strcmp ((char *) lower_driver, "mana") != 0;
+  vec_free (lower_driver);
+
   if (ioctl (fd, SIOCGIFFLAGS, &ifr) < 0)
     error = clib_error_return_unix (0, "ioctl fetch intf %s flags",
 				    ifr.ifr_name);
-  else if (!(ifr.ifr_flags & IFF_UP))
+  else if (want_up != !!(ifr.ifr_flags & IFF_UP))
     {
-      ifr.ifr_flags |= IFF_UP;
+      ifr.ifr_flags ^= IFF_UP;
 
       if (ioctl (fd, SIOCSIFFLAGS, &ifr) < 0)
 	error = clib_error_return_unix (0, "ioctl set intf %s flags",
@@ -337,7 +347,7 @@ vlib_vmbus_bind_to_uio (vlib_vmbus_addr_t * addr)
       uio_new_id_needed = 0;
     }
 
-  error = vlib_vmbus_raise_lower (fd, ifname);
+  error = vlib_vmbus_set_lower_state (fd, ifname);
   close (fd);
 
   if (error)
