@@ -339,7 +339,6 @@ const static tcp_cc_algorithm_t tcp_cubic = {
   .recovered = cubic_recovered,
   .undo_recovery = cubic_undo_recovery,
   .rcv_ack = cubic_rcv_ack,
-  .rcv_cong_ack = newreno_rcv_cong_ack,
   .event = cubic_event,
   .init = cubic_conn_init,
 };
