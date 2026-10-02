@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "8634ad91_70fcea80",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3360
+      },
+      "writtenOn": "2026-10-02T21:11:40Z",
+      "side": 1,
+      "message": "Please TAL at this fix for a crash when displaying responder SAs before IKE_AUTH assigns their profile.",
+      "revId": "3c7a2bd70b9d3f55d474c5f712996bdafbe0a1f8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
