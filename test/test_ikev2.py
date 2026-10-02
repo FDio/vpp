@@ -1779,7 +1779,18 @@ class TemplateResponder(IkePeer):
 
     def test_responder(self):
         self.send_sa_init_req()
+        rspi = int.from_bytes(self.sa.rspi, "big")
+        commands = ("show ikev2 sa details", f"show ikev2 sa rspi {rspi:x}")
+        for command in commands:
+            status = self.vapi.cli(command)
+            self.assertIn("profile: none\n", status)
+            self.assertIn("state: SA_INIT\n", status)
+        self.assertIn(f"rspi {rspi:x}", self.vapi.cli("show ikev2 sa"))
         self.send_sa_auth()
+        for command in commands:
+            status = self.vapi.cli(command)
+            self.assertIn(f"profile: {self.p.profile_name}\n", status)
+            self.assertIn("state: AUTHENTICATED\n", status)
         self.verify_ipsec_sas()
         self.verify_ike_sas()
         self.verify_ike_sas_v2()
