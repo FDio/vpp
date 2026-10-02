@@ -135,8 +135,6 @@ format_ikev2_sa (u8 * s, va_list * va)
   ikev2_main_t *km = &ikev2_main;
   ikev2_profile_t *p;
 
-  p = pool_elt_at_index (km->profiles, sa->profile_index);
-
   s = format (s, "iip %U ispi %lx rip %U rspi %lx",
 	      format_ip_address, &sa->iaddr, sa->ispi,
 	      format_ip_address, &sa->raddr, sa->rspi);
@@ -157,7 +155,14 @@ format_ikev2_sa (u8 * s, va_list * va)
   tr = ikev2_sa_get_td_for_type (sa->r_proposals, IKEV2_TRANSFORM_TYPE_DH);
   s = format (s, "%U", format_ikev2_sa_transform, tr);
 
-  s = format (s, "\n profile: %v", p->name);
+  /* Responder SAs have no profile until IKE_AUTH matches the peer identity. */
+  if (pool_is_free_index (km->profiles, sa->profile_index))
+    s = format (s, "\n profile: none");
+  else
+    {
+      p = pool_elt_at_index (km->profiles, sa->profile_index);
+      s = format (s, "\n profile: %v", p->name);
+    }
 
   if (sa->state <= IKEV2_STATE_NO_PROPOSAL_CHOSEN)
     {
