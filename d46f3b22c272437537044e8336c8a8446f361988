@@ -58,6 +58,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "b3d2d6c4_4a698dfc",
+        "filename": "src/plugins/unittest/ip6_hbh_options_test.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 12,
+      "author": {
+        "id": 3139
+      },
+      "writtenOn": "2026-10-02T15:04:34Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "c79e31f9_524ee303",
+      "range": {
+        "startLine": 12,
+        "startChar": 39,
+        "endLine": 12,
+        "endChar": 66
+      },
+      "revId": "d46f3b22c272437537044e8336c8a8446f361988",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "b088b4ea_9cfdcdad",
@@ -75,6 +99,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "0ca4448d_45a5714b",
+        "filename": "src/plugins/unittest/ip6_hbh_options_test.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 28,
+      "author": {
+        "id": 3139
+      },
+      "writtenOn": "2026-10-02T15:04:34Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "b088b4ea_9cfdcdad",
+      "revId": "d46f3b22c272437537044e8336c8a8446f361988",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "f0933971_61c19530",
@@ -88,6 +130,24 @@
       "writtenOn": "2026-10-02T10:01:32Z",
       "side": 1,
       "message": "use hex numbers everywhere or make macro for header extension length",
+      "revId": "d46f3b22c272437537044e8336c8a8446f361988",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "974ce53d_28ff1b04",
+        "filename": "src/plugins/unittest/ip6_hbh_options_test.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 33,
+      "author": {
+        "id": 3139
+      },
+      "writtenOn": "2026-10-02T15:04:34Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "f0933971_61c19530",
       "revId": "d46f3b22c272437537044e8336c8a8446f361988",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
