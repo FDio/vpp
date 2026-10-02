@@ -2012,8 +2012,11 @@ tcp_retransmit_no_sack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
     }
   else if (tcp_fastrecovery_first (tc))
     {
-      /* RFC 6582: [If a partial ack], retransmit the first unacknowledged segment. */
+      /* RFC 6582: [If a partial ack], retransmit the first unacknowledged segment.
+       * Data was delivered, so do it even if prr is in deficit. Nothing else may
+       * elicit the ack that moves recovery forward */
       max_rxt_segs = 1;
+      snd_space = clib_max (snd_space, tc->snd_mss);
     }
   else
     goto send_unsent;
