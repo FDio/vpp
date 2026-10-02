@@ -33,6 +33,63 @@
       "message": "recheck",
       "revId": "d46f3b22c272437537044e8336c8a8446f361988",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c79e31f9_524ee303",
+        "filename": "src/plugins/unittest/ip6_hbh_options_test.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 12,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-10-02T10:01:32Z",
+      "side": 1,
+      "message": "remove reference to defensics",
+      "range": {
+        "startLine": 12,
+        "startChar": 39,
+        "endLine": 12,
+        "endChar": 66
+      },
+      "revId": "d46f3b22c272437537044e8336c8a8446f361988",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b088b4ea_9cfdcdad",
+        "filename": "src/plugins/unittest/ip6_hbh_options_test.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 28,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-10-02T10:01:32Z",
+      "side": 1,
+      "message": "please add something like \"not including the first 8 octets\" so it\u0027s clear why it\u0027s 1 and not 2",
+      "revId": "d46f3b22c272437537044e8336c8a8446f361988",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f0933971_61c19530",
+        "filename": "src/plugins/unittest/ip6_hbh_options_test.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 33,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-10-02T10:01:32Z",
+      "side": 1,
+      "message": "use hex numbers everywhere or make macro for header extension length",
+      "revId": "d46f3b22c272437537044e8336c8a8446f361988",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
