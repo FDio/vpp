@@ -25,7 +25,7 @@ from scapy.layers.inet6 import (
     IPv6ExtHdrRouting,
     IPv6ExtHdrHopByHop,
 )
-from scapy.packet import Raw
+from scapy.packet import NoPayload, Raw
 from scapy.utils import hexdump
 from scapy.utils6 import in6_mactoifaceid
 
@@ -534,8 +534,13 @@ def fragment_rfc791(packet, fragsize, logger=null_logger):
     nfb = int((fragsize - pre_ip_len - ihl * 4) / 8)
     fo = packet[IP].frag
 
+    if nfb <= 0:
+        raise Exception(
+            "Cannot fragment this packet - fragsize %s too small" % fragsize
+        )
+
     p = packet.__class__(hex_headers + hex_payload[: nfb * 8])
-    p[IP].flags = "MF"
+    p[IP].flags |= "MF"
     p[IP].frag = fo
     p[IP].len = ihl * 4 + nfb * 8
     del p[IP].chksum
@@ -556,8 +561,8 @@ def fragment_rfc8200(packet, identification, fragsize, logger=null_logger):
     """
     Fragment an IPv6 packet per RFC 8200
     :param packet: packet to fragment
+    :param identification: fragment header identification value
     :param fragsize: size at which to fragment
-    :note: IP options are not supported
     :returns: list of fragments
     """
     packet = packet.__class__(scapy.compat.raw(packet))  # recalc. all values
@@ -565,17 +570,28 @@ def fragment_rfc8200(packet, identification, fragsize, logger=null_logger):
         return [packet]
     logger.debug(ppp("Fragmenting packet:", packet))
     pkts = []
-    counter = 0
+
+    def header_chain(p):
+        # walk the payload chain - getlayer(int) would also count
+        # packet-valued fields (e.g. HBH options) as layers
+        layers = []
+        while not isinstance(p, NoPayload):
+            layers.append(p)
+            p = p.payload
+        return layers
+
+    layers = header_chain(packet)
     routing_hdr = None
     hop_by_hop_hdr = None
     upper_layer = None
     seen_ipv6 = False
     ipv6_nr = -1
-    l = packet.getlayer(counter)
-    while l is not None:
+    for counter, l in enumerate(layers):
         if l.__class__ is IPv6:
             if seen_ipv6:
-                # ignore 2nd IPv6 header and everything below..
+                # 2nd IPv6 header is the upper layer, ignore everything below
+                if upper_layer is None:
+                    upper_layer = counter
                 break
             ipv6_nr = counter
             seen_ipv6 = True
@@ -587,12 +603,10 @@ def fragment_rfc8200(packet, identification, fragsize, logger=null_logger):
             hop_by_hop_hdr = counter
         elif (
             seen_ipv6
-            and not upper_layer
+            and upper_layer is None
             and not l.__class__.__name__.startswith("IPv6ExtHdr")
         ):
             upper_layer = counter
-        counter = counter + 1
-        l = packet.getlayer(counter)
 
     logger.debug(
         "Layers seen: IPv6(#%s), Routing(#%s), HopByHop(#%s), upper(#%s)"
@@ -611,10 +625,14 @@ def fragment_rfc8200(packet, identification, fragsize, logger=null_logger):
     logger.debug("Last per-fragment hdr is #%s" % (last_per_fragment_hdr))
 
     per_fragment_headers = packet.copy()
-    per_fragment_headers[last_per_fragment_hdr].remove_payload()
+    last_per_fragment_layer = header_chain(per_fragment_headers)[last_per_fragment_hdr]
+    last_per_fragment_layer.remove_payload()
+    # packet was dissected, so next-header fields are fixed values - let
+    # scapy recompute the one now pointing at the fragment header
+    del last_per_fragment_layer.nh
     logger.debug(ppp("Per-fragment headers:", per_fragment_headers))
 
-    ext_and_upper_layer = packet.getlayer(last_per_fragment_hdr)[1]
+    ext_and_upper_layer = layers[last_per_fragment_hdr + 1]
     hex_payload = scapy.compat.raw(ext_and_upper_layer)
     logger.debug("Payload length is %s" % len(hex_payload))
     logger.debug(ppp("Ext and upper layer:", ext_and_upper_layer))
@@ -622,20 +640,21 @@ def fragment_rfc8200(packet, identification, fragsize, logger=null_logger):
     fragment_ext_hdr = IPv6ExtHdrFragment()
     logger.debug(ppp("Fragment header:", fragment_ext_hdr))
 
-    len_ext_and_upper_layer_payload = len(ext_and_upper_layer.payload)
-    if not len_ext_and_upper_layer_payload and hasattr(ext_and_upper_layer, "data"):
-        len_ext_and_upper_layer_payload = len(ext_and_upper_layer.data)
+    # first fragment must carry all headers up to and including the upper
+    # layer header
+    upper = layers[upper_layer]
+    len_upper_layer_payload = len(upper.payload)
+    if not len_upper_layer_payload and hasattr(upper, "data"):
+        len_upper_layer_payload = len(upper.data)
     # Handle Raw layer (e.g. DCCP, UDP-Lite) which stores data in .load
-    if not len_ext_and_upper_layer_payload and isinstance(ext_and_upper_layer, Raw):
-        len_ext_and_upper_layer_payload = len(ext_and_upper_layer.load)
+    if not len_upper_layer_payload and isinstance(upper, Raw):
+        len_upper_layer_payload = len(upper.load)
+    len_header_chain = len(ext_and_upper_layer) - len_upper_layer_payload
+    first_fragment_capacity = (
+        int((fragsize - len(per_fragment_headers) - len(fragment_ext_hdr)) / 8) * 8
+    )
 
-    if (
-        len(per_fragment_headers)
-        + len(fragment_ext_hdr)
-        + len(ext_and_upper_layer)
-        - len_ext_and_upper_layer_payload
-        > fragsize
-    ):
+    if first_fragment_capacity < len_header_chain:
         raise Exception(
             "Cannot fragment this packet - MTU too small "
             "(%s, %s, %s, %s, %s)"
@@ -643,12 +662,12 @@ def fragment_rfc8200(packet, identification, fragsize, logger=null_logger):
                 len(per_fragment_headers),
                 len(fragment_ext_hdr),
                 len(ext_and_upper_layer),
-                len_ext_and_upper_layer_payload,
+                len_upper_layer_payload,
                 fragsize,
             )
         )
 
-    orig_nh = packet[IPv6].nh
+    orig_nh = layers[last_per_fragment_hdr].nh
     p = per_fragment_headers
     del p[IPv6].plen
     del p[IPv6].nh
