@@ -7021,6 +7021,87 @@ cleanup:
   return rv;
 }
 
+#define TCP_TEST_NOSACK_BURST_LOSS 7
+
+static void
+tcp_test_nosack_burst_loss_prepare (tcp_connection_t *tc, tcp_connection_t *server_tc)
+{
+  u32 n_segs = (TCP_TEST_NOSACK_BURST + tc->snd_mss - 1) / tc->snd_mss;
+  int i;
+
+  /* Fill cwnd with the burst, so after the losses more is in flight than
+   * ssthresh allows */
+  tcp_test_nosack_burst_prepare (tc, server_tc, n_segs * tc->snd_mss);
+  for (i = 0; i < TCP_TEST_NOSACK_BURST_LOSS; i++)
+    tcp_tamper_drop_seq (tc, tc->snd_una + i * tc->snd_mss, 1);
+}
+
+/* Without sacks, a burst of consecutive losses is repaired one segment per
+ * partial ack (RFC 6582). Each partial ack must keep the dupacks for data held
+ * above the next hole, else that data counts as in flight again and prr stops
+ * sending. With only a few segments after the losses, nothing else elicits an
+ * ack, so the rest of the burst would wait for an rto. Instead one fast
+ * recovery must repair it, each segment retransmitted once */
+static int
+tcp_test_tamper_nosack_burst_loss (vlib_main_t *vm)
+{
+  tcp_e2e_params_t params = {
+    .name = "nosack_burst_loss",
+    .client_addr = 0x24242401,
+    .server_addr = 0x25252501,
+    .client_vrf = 0,
+    .server_vrf = 2,
+    .server_port = 2265,
+    .client_port = 0, /* ephemeral */
+    .secret = 2264,
+    .rx_fifo_size = 256 << 10,
+    .tx_fifo_size = 256 << 10,
+  };
+  u32 total_bytes = TCP_TEST_NOSACK_BURST;
+  tcp_test_nosack_result_t res;
+  int rv = 0, i;
+
+  if (tcp_test_nosack_transfer (vm, &params, total_bytes, tcp_test_nosack_burst_loss_prepare, &res))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+  vlib_cli_output (vm, "nosack_burst_loss: fr %u, rto %llu, rxt segs %llu", res.fr, res.rto,
+		   res.rxt_segs);
+
+  vec_foreach_index (i, tcp_tamper_main.rules)
+    {
+      tcp_tamper_rule_t *rule = &tcp_tamper_main.rules[i];
+      if (!TCP_TEST_I ((rule->n_dropped == 1 && rule->n_matched == 2),
+		       "nosack_burst_loss: segment %u sent %u times, dropped %u, expected 2 "
+		       "and 1",
+		       i, rule->n_matched, rule->n_dropped))
+	{
+	  rv = 1;
+	  goto cleanup;
+	}
+    }
+  if (!TCP_TEST_I ((res.fr == 1 && res.rto == 0 && res.rxt_segs == TCP_TEST_NOSACK_BURST_LOSS),
+		   "nosack_burst_loss: one fast recovery repaired the burst (fr %u, rto %llu, "
+		   "rxt segs %llu)",
+		   res.fr, res.rto, res.rxt_segs))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  if (!TCP_TEST_I ((res.drained == total_bytes),
+		   "nosack_burst_loss: all %u bytes delivered (got %u)", total_bytes, res.drained))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+cleanup:
+  tcp_tamper_reset ();
+  return rv;
+}
+
 static int
 tcp_test_tamper (vlib_main_t *vm, unformat_input_t *input)
 {
@@ -7044,6 +7125,7 @@ tcp_test_tamper (vlib_main_t *vm, unformat_input_t *input)
     { "nosack-cwnd", tcp_test_tamper_nosack_cwnd },
     { "nosack-rto", tcp_test_tamper_nosack_rto },
     { "nosack-ooo-dupacks", tcp_test_tamper_nosack_ooo_dupacks },
+    { "nosack-burst-loss", tcp_test_tamper_nosack_burst_loss },
   };
   int res = 0, i;
 

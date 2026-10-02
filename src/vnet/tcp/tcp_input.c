@@ -615,21 +615,22 @@ tcp_loss_account_recovery_ack (tcp_connection_t *tc, tcp_ack_ctx_t *ac, u8 has_s
     }
   else
     {
+      tc->rxt_delivered = clib_min (tc->rxt_delivered + ac->bytes_acked, tc->snd_rxt_bytes);
       if (ac->ack_flags & TCP_ACK_F_DUPACK)
 	{
 	  tc->rcv_dupacks += 1;
 	  TCP_EVT (TCP_EVT_DUPACK_RCVD, tc, 1);
+	  tc->prr_delivered += clib_min (tc->snd_mss, tc->snd_nxt - tc->snd_una);
 	}
-      tc->rxt_delivered = clib_min (tc->rxt_delivered + ac->bytes_acked, tc->snd_rxt_bytes);
-      if (ac->ack_flags & TCP_ACK_F_DUPACK)
-	tc->prr_delivered += clib_min (tc->snd_mss, tc->snd_nxt - tc->snd_una);
-      else
-	tc->prr_delivered +=
-	  ac->bytes_acked - clib_min (ac->bytes_acked, tc->snd_mss * tc->rcv_dupacks);
-
-      /* If partial ack, assume that the first un-acked segment was lost */
-      if (ac->bytes_acked)
-	tcp_fastrecovery_first_on (tc);
+      else if (ac->bytes_acked)
+	{
+	  /* Dupacks already credited the acked data above the hole. Fast recovery keeps the rest */
+	  u32 n_held = clib_min (tc->rcv_dupacks, (ac->bytes_acked - 1) / tc->snd_mss);
+	  tc->prr_delivered += ac->bytes_acked - n_held * tc->snd_mss;
+	  tc->rcv_dupacks = tcp_in_recovery (tc) ? 0 : tc->rcv_dupacks - n_held;
+	  /* RFC 6582: assume the first unacked segment was lost */
+	  tcp_fastrecovery_first_on (tc);
+	}
     }
 
   ASSERT (tc->rxt_delivered <= tc->snd_rxt_bytes);
@@ -741,10 +742,6 @@ tcp_cc_handle_event (tcp_connection_t *tc, tcp_ack_ctx_t *ac)
       tcp_cc_rcv_cong_ack (tc, TCP_CC_DUPACK, ac);
       return;
     }
-
-  /* RFC6675: If the incoming ACK is a cumulative acknowledgment,
-   * reset dupacks to 0. Also needed if in congestion recovery */
-  tc->rcv_dupacks = 0;
 
   /* RFC 3522: Eifel spurious retransmit check */
   if (PREDICT_FALSE (tc->snd_rxt_ts))
