@@ -807,7 +807,7 @@ class VppAsfTestCase(CPUInterface, unittest.TestCase):
                 raise e
             if cls.debug_attach:
                 last_line = cls.vapi.cli("show thread").split("\n")[-2]
-                cls.vpp_worker_count = int(last_line.split(" ")[0])
+                cls.vpp_worker_count = int(last_line.split()[0])
                 print("Detected VPP with %s workers." % cls.vpp_worker_count)
         except vpp_papi.VPPRuntimeError as e:
             cls.logger.debug("%s" % e)
