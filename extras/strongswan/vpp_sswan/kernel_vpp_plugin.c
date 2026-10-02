@@ -75,8 +75,15 @@ METHOD (plugin_t, destroy, void, private_kernel_vpp_plugin_t *this)
   free (this);
 }
 
+#if STRONGSWAN_VERSION_MAJOR > 6 ||                                                                \
+  (STRONGSWAN_VERSION_MAJOR == 6 &&                                                                \
+   (STRONGSWAN_VERSION_MINOR > 0 ||                                                                \
+    (STRONGSWAN_VERSION_MINOR == 0 && STRONGSWAN_VERSION_PATCH >= 3)))
+PLUGIN_DEFINE (kernel_vpp)
+#else
 plugin_t *
 kernel_vpp_plugin_create ()
+#endif
 {
   private_kernel_vpp_plugin_t *this;
 
