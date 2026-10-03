@@ -30,7 +30,7 @@ lacp_tx_action_transmit (void *p1, void *p2)
 {
   vlib_main_t *vm = p1;
   member_if_t *mif = p2;
-  f64 now = vlib_time_now (vm);
+  f64 now = lacp_time_now ();
 
   if (!lacp_timer_is_running (mif->periodic_timer))
     return 0;

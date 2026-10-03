@@ -15,6 +15,7 @@
 #include <lacp/tx_machine.h>
 #include <lacp/mux_machine.h>
 #include <lacp/ptx_machine.h>
+#include <lacp/lacp_time.h>
 
 typedef enum
 {
@@ -164,7 +165,7 @@ lacp_timer_is_running (f64 timer)
 static inline u8
 lacp_timer_is_expired (vlib_main_t * vm, f64 timer)
 {
-  f64 now = vlib_time_now (vm);
+  f64 now = lacp_time_now ();
 
   return (now >= timer);
 }

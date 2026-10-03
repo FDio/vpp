@@ -141,7 +141,7 @@ show_lacp_details (vlib_main_t * vm, u32 * sw_if_indices)
   if (!sw_if_indices)
     return;
 
-  now = vlib_time_now (vm);
+  now = lacp_time_now ();
   for (i = 0; i < vec_len (sw_if_indices); i++)
     {
       mif = bond_get_member_by_sw_if_index (sw_if_indices[i]);

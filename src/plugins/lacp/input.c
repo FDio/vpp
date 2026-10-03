@@ -96,7 +96,7 @@ send_ethernet_marker_response_pdu (vlib_main_t * vm, member_if_t * mif)
   f->n_vectors = 1;
 
   vlib_put_frame_to_node (vm, hw->output_node_index, f);
-  mif->last_marker_pdu_sent_time = vlib_time_now (vm);
+  mif->last_marker_pdu_sent_time = lacp_time_now ();
   mif->marker_pdu_sent++;
 }
 
@@ -143,7 +143,7 @@ lacp_input (vlib_main_t * vm, vlib_buffer_t * b0, u32 bi0)
   marker = (marker_pdu_t *) (b0->data + b0->current_data);
   if (marker->subtype == MARKER_SUBTYPE)
     {
-      mif->last_marker_pdu_recd_time = vlib_time_now (vm);
+      mif->last_marker_pdu_recd_time = lacp_time_now ();
       if (mif->last_marker_pkt)
 	vec_set_len (mif->last_marker_pkt, 0);
       vec_validate (mif->last_marker_pkt,
@@ -181,7 +181,7 @@ lacp_input (vlib_main_t * vm, vlib_buffer_t * b0, u32 bi0)
   nbytes = vlib_buffer_contents (vm, bi0, mif->last_rx_pkt);
   ASSERT (nbytes <= vec_len (mif->last_rx_pkt));
 
-  mif->last_lacpdu_recd_time = vlib_time_now (vm);
+  mif->last_lacpdu_recd_time = lacp_time_now ();
   if (nbytes < sizeof (lacp_pdu_t))
     {
       mif->bad_pdu_received++;

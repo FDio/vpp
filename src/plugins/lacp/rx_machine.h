@@ -8,6 +8,7 @@
 
 #include <stdint.h>
 #include <lacp/machine.h>
+#include <lacp/lacp_time.h>
 
 #define foreach_lacp_rx_event          \
   _(0, BEGIN, "begin")                 \
@@ -67,7 +68,7 @@ static inline void
 lacp_start_current_while_timer (vlib_main_t * vm, member_if_t * mif,
 				u8 expiration)
 {
-  mif->current_while_timer = vlib_time_now (vm) + expiration;
+  mif->current_while_timer = lacp_time_now () + expiration;
 }
 
 #endif /* __LACP_RX_MACHINE_H__ */

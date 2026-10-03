@@ -79,7 +79,7 @@ lacp_send_ethernet_lacp_pdu (vlib_main_t * vm, member_if_t * mif)
 
   vlib_put_frame_to_node (vm, hw->output_node_index, f);
 
-  mif->last_lacpdu_sent_time = vlib_time_now (vm);
+  mif->last_lacpdu_sent_time = lacp_time_now ();
   mif->pdu_sent++;
 }
 

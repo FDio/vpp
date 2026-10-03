@@ -8,6 +8,7 @@
 
 #include <stdint.h>
 #include <lacp/machine.h>
+#include <lacp/lacp_time.h>
 
 #define foreach_lacp_ptx_event          \
   _(0, NO_PERIODIC, "no periodic")      \
@@ -56,7 +57,7 @@ void lacp_ptx_debug_func (member_if_t * mif, int event, int state,
 static inline void
 lacp_start_periodic_timer (vlib_main_t * vm, member_if_t * mif, u8 expiration)
 {
-  mif->periodic_timer = vlib_time_now (vm) + expiration;
+  mif->periodic_timer = lacp_time_now () + expiration;
 }
 
 static inline void
