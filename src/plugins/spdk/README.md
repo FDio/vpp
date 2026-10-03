@@ -82,6 +82,50 @@ Each FIFO span consumes one NVMe/TCP request iovec.  A reservation must fit in
 the current 34-entry iovec limit.  The physical benchmark configuration uses
 32 KiB VPP packet buffers for the later TCP-output stage.
 
+For host-to-controller writes, the socket backend implements SPDK's
+`spdk_sock_recv_next()` API using the FIFO-backed deferred RX interface from
+VPP change 46940, patch set 7. This experimental integration depends on that API
+and the SPDK socket receive-buffer review series; it does not change TCP or
+FIFO implementation code.
+
+The minimal ownership sequence is:
+
+1. Enable deferred RX with `session_set_deferred_rx(s, 1)` after assigning
+   the socket to its owner worker.
+2. Inspect the borrowed linked-list prefix with
+   `session_get_deferred_rx_segments(s, &count)`.
+3. Check the group byte budget and allocate token metadata before calling
+   `session_acquire_deferred_rx_segments(s, &batch)`.
+4. Return segment data, length and release tokens through `recv_next()`.
+   SPDK may retain these tokens until the NVMe/TCP request finishes.
+5. Release the complete batch with
+   `session_release_deferred_rx_segments(&batch)` after its final token is
+   returned, on the same owner worker.
+
+Both the normal RX callback and `recv_next()` resolve the FIFO prefix through
+the same helper. Readable FIFO bytes include buffer-backed bytes, so an
+ordinary dequeue must not skip ahead to a copied suffix. When direct delivery
+is disabled, metadata allocation fails, the byte budget is reached or acquire
+cannot proceed, the helper materializes the prefix with
+`session_flush_deferred_rx()`. A failed flush leaves the prefix pending and
+returns `-EAGAIN`; an empty read allocates nothing.
+
+The framework's `deferred-rx-max-segs` limit accounts for staged and acquired
+segments across sessions on each worker. The binding additionally enforces a
+socket-group byte budget. These are not a bound on total session memory or a
+new global packet-pool reserve. Acquisition, reference counting and release
+stay on the owner worker without introducing a new lock or atomic counter.
+
+Before session close, SPDK must finish or abort requests holding returned
+tokens. The socket group must outlive all its tokens; group destruction is
+rejected while outstanding loans remain. Closing a socket releases only
+tokens not yet handed to SPDK.
+
+`show spdk` reports direct/copied RX bytes, outstanding loans and fallbacks.
+The `test spdk direct-rx on|off` command is for controlled A/B measurements.
+This RX review stack does not enable the optional TX reservation API or the
+separate experimental TX-vlib-buffer path.
+
 The physical benchmark uses SPDK Malloc bdevs.  A native DMA bdev additionally
 requires every FIFO chunk exposed to the bdev to be DMA-safe and registered in
 SPDK's memory map.  The following asynchronous, non-destructive diagnostic
