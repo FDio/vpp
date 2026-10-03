@@ -44,25 +44,19 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          # Debug builds on aarch64
-          - build_type: 'debug'
-            os: ['ubuntu2204', 'ubuntu2404']
-            executor_arch: 'aarch64'
-            class: 'hst'
-            size: 'hst'
-          # Debug builds on x86_64
-          - build_type: 'debug'
-            os: 'ubuntu2204'
+        os: ['ubuntu2204', 'ubuntu2404']
+        executor_arch: ['x86_64', 'aarch64']
+        build_type: ['debug', 'release']
+        class: 'hst'
+        size: 'hst'
+        exclude:
+          # Exclude ubuntu2404 on x86_64 for all builds
+          - os: 'ubuntu2404'
             executor_arch: 'x86_64'
-            class: 'hst'
-            size: 'hst'
-          # Release builds on aarch64
-          - build_type: 'release'
-            os: ['ubuntu2204', 'ubuntu2404']
-            executor_arch: 'aarch64'
-            class: 'hst'
-            size: 'hst'
+          # Exclude ubuntu2202 on x86_64 for release build
+          - os: 'ubuntu2204'
+            executor_arch: 'x86_64'
+            build_type: 'release'
     env:
       FDIO_NAMESPACE: ${{ github.event.inputs.FDIO_NAMESPACE || 'prod' }}
       LOG_NAME: ""
