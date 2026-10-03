@@ -426,9 +426,9 @@ tcp_update_rtt (tcp_connection_t *tc, tcp_ack_ctx_t *ac, u32 ack)
       tc->rtt_ts = 0;
     }
   /* As per RFC7323 TSecr can be used for RTTM only if the segment advances
-   * snd_una, i.e., the left side of the send window:
-   * seq_lt (tc->snd_una, ack). This is a condition for calling update_rtt */
-  else if (tcp_opts_tstamp (&tc->rcv_opts) && tc->rcv_opts.tsecr)
+   * snd_una, i.e., the left side of the send window. SACK-only acks echo
+   * TS.Recent of the last in-order segment and would inflate the rtt */
+  else if (ac->bytes_acked && tcp_opts_tstamp (&tc->rcv_opts) && tc->rcv_opts.tsecr)
     {
       mrtt = clib_max (tcp_tstamp (tc) - tc->rcv_opts.tsecr, 1);
       mrtt *= TCP_TSTP_TO_HZ;
