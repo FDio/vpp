@@ -334,12 +334,13 @@ typedef struct tcp_ack_ctx_
   tcp_ack_flag_t ack_flags; /**< Flags describing the current ACK */
   tcp_bts_flags_t flags;    /**< Rate sample flags from bt sample */
 
-  /* Delivery-rate sample populated only when byte tracking is enabled */
+  /* RTT and delivery-rate sample (rate fields require byte tracking) */
   u64 prior_delivered;		/**< Delivered of sample used for rate, i.e.,
 				     total bytes delivered at prior_time */
   f64 prior_time;		/**< Delivered time of sample used for rate */
   f64 interval_time;		/**< Time to ack the bytes delivered */
-  f64 rtt_time;			/**< RTT for sample */
+  f64 rtt_time;			/**< Per-ack RTT sample (s), 0 if none. Byte tracker: latest sent,
+				     non-retransmitted segment. Else: tcp_update_rtt's sample */
   u64 tx_in_flight;		/**< In flight immediately after (re)transmit */
   u64 tx_lost;			/**< Lost over interval */
   u32 delivered;		/**< Bytes delivered in interval_time */

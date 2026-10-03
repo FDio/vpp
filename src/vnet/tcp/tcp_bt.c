@@ -1003,6 +1003,9 @@ tcp_bt_sample_to_rate_sample (tcp_connection_t *tc, tcp_bt_ack_state_t *state, t
   ac->interval_time = bts->tx_time - bts->first_tx_time;
   ac->rtt_time = state->now - bts->tx_time;
   ac->flags = bts->flags;
+  if ((bts->flags & TCP_BTS_IS_RXT) || ac->rtt_time <= 0 ||
+      ac->rtt_time > (f64) TCP_RTT_MAX * TCP_TICK)
+    ac->rtt_time = 0;
   ac->tx_in_flight = bts->tx_in_flight;
   ac->tx_lost = bts->tx_lost;
   tc->first_tx_time = bts->tx_time;

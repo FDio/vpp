@@ -397,7 +397,8 @@ tcp_estimate_rtt_us (tcp_connection_t * tc, f64 mrtt)
  * Middle boxes are known to fiddle with TCP options so we give higher
  * priority to ACK timing.
  *
- * For now, rate sample rtts are only used under congestion.
+ * Outside of congestion, rate sample rtts take precedence over TSOPT but,
+ * unlike ACK timing, they only update srtt and rttvar, not mrtt_us.
  */
 static int
 tcp_update_rtt (tcp_connection_t *tc, tcp_ack_ctx_t *ac, u32 ack)
@@ -408,11 +409,10 @@ tcp_update_rtt (tcp_connection_t *tc, tcp_ack_ctx_t *ac, u32 ack)
    * RTT because they're ambiguous. */
   if (tcp_in_cong_recovery (tc))
     {
-      /* Accept rtt estimates for samples that have not been retransmitted */
-      if (!(tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER) || (ac->flags & TCP_BTS_IS_RXT))
+      /* Accept rtt estimates for samples that have not been retransmitted. */
+      if (!(tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER) || ac->rtt_time <= 0)
 	goto done;
-      if (ac->rtt_time)
-	tcp_estimate_rtt_us (tc, ac->rtt_time);
+      tcp_estimate_rtt_us (tc, ac->rtt_time);
       mrtt = ac->rtt_time * THZ;
       goto estimate_rtt;
     }
@@ -425,6 +425,11 @@ tcp_update_rtt (tcp_connection_t *tc, tcp_ack_ctx_t *ac, u32 ack)
       /* Allow measuring of a new RTT */
       tc->rtt_ts = 0;
     }
+  /* Rate samples are per segment, so they are valid for sack-only acks */
+  else if ((tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER) && ac->rtt_time > 0)
+    {
+      mrtt = clib_max ((u32) (ac->rtt_time * THZ), 1);
+    }
   /* As per RFC7323 TSecr can be used for RTTM only if the segment advances
    * snd_una, i.e., the left side of the send window. SACK-only acks echo
    * TS.Recent of the last in-order segment and would inflate the rtt */
@@ -433,13 +438,15 @@ tcp_update_rtt (tcp_connection_t *tc, tcp_ack_ctx_t *ac, u32 ack)
       mrtt = clib_max (tcp_tstamp (tc) - tc->rcv_opts.tsecr, 1);
       mrtt *= TCP_TSTP_TO_HZ;
     }
-
 estimate_rtt:
 
   /* Ignore dubious measurements */
   if (mrtt == 0 || mrtt > TCP_RTT_MAX)
     goto done;
 
+  /* Without the byte tracker, the accepted sample is the ack's rtt sample */
+  if (!(tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER))
+    ac->rtt_time = (f64) mrtt * TCP_TICK;
   tcp_estimate_rtt (tc, mrtt);
 
 done:
