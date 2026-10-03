@@ -397,7 +397,8 @@ tcp_estimate_rtt_us (tcp_connection_t * tc, f64 mrtt)
  * Middle boxes are known to fiddle with TCP options so we give higher
  * priority to ACK timing.
  *
- * For now, rate sample rtts are only used under congestion.
+ * Outside of congestion, rate sample rtts take precedence over TSOPT but,
+ * unlike ACK timing, they only update srtt and rttvar, not mrtt_us.
  */
 static int
 tcp_update_rtt (tcp_connection_t *tc, tcp_ack_ctx_t *ac, u32 ack)
@@ -424,6 +425,13 @@ tcp_update_rtt (tcp_connection_t *tc, tcp_ack_ctx_t *ac, u32 ack)
       mrtt = clib_max ((u32) (sample * THZ), 1);
       /* Allow measuring of a new RTT */
       tc->rtt_ts = 0;
+    }
+  /* Rate samples are per segment, so they are valid for sack-only acks as
+   * long as the newest delivered segment was not retransmitted */
+  else if ((tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER) && ac->rtt_time > 0 &&
+	   !(ac->flags & TCP_BTS_IS_RXT))
+    {
+      mrtt = clib_max ((u32) (ac->rtt_time * THZ), 1);
     }
   /* As per RFC7323 TSecr can be used for RTTM only if the segment advances
    * snd_una, i.e., the left side of the send window. SACK-only acks echo
