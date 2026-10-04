@@ -1,0 +1,5 @@
+$ make build
+$ make pkg-deb
+
+$ make rebuild-release
+$ make pkg-deb
