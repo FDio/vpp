@@ -37,6 +37,12 @@ static_always_inline void
 vlib_tw_timer_stop (vlib_main_t *vm, u32 handle)
 {
   TWT (tw_timer_wheel) *tw = (TWT (tw_timer_wheel) *) vm->timing_wheel;
+
+  /* duplicate stops can occur on the same vlib timer handle
+   * they are treated as no-op from vlib accounting perspective */
+  if (TW (tw_timer_handle_is_free) (tw, handle))
+    return;
+
   ASSERT (vm->n_tw_timers > 0);
   vm->n_tw_timers--;
   TW (tw_timer_stop) (tw, handle);
