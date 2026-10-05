@@ -47,6 +47,15 @@ class StatsClientTestCase(VppTestCase):
             [0] * (1 + self.get_vpp_worker_count()),
         )
 
+    def test_scalar_read_live(self):
+        """Scalars and gauges change without a directory refresh"""
+        before = self.statistics.get_counter("/sys/heartbeat")
+        for _ in range(150):
+            self.sleep(0.1)
+            if self.statistics.get_counter("/sys/heartbeat") > before:
+                return
+        self.fail("/sys/heartbeat stayed at %s" % before)
+
     def test_client_fd_leak(self):
         """Test file descriptor count - VPP-1486"""
 

@@ -21,7 +21,7 @@ requirements = []
 
 setup(
     name="vpp_papi",
-    version="2.3.2",
+    version="2.4.2",
     description="VPP Python binding",
     author="Ole Troan",
     author_email="ot@cisco.com",

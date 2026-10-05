@@ -64,6 +64,7 @@ def recv_fd(sock):
 
 
 VEC_LEN_FMT = Struct("I")
+DIRENTRY_TYPE_VALUE_FMT = Struct("IQ")
 
 
 def get_vec_len(stats, vector_offset):
@@ -103,17 +104,18 @@ class StatsVector:
                 ]
             )
 
-    def __getitem__(self, index):
-        if index > self.vec_len:
+    def offset(self, index):
+        """Offset of an element in the stats segment"""
+        if index >= self.vec_len:
             raise IOError("Index beyond end of vector")
+        return self.vec_start + index * self.elementsize
+
+    def __getitem__(self, index):
+        offset = self.offset(index)
         with self.stats.lock:
             if self.fmtlen == 1:
-                return self.struct.unpack_from(
-                    self.statseg, self.vec_start + (index * self.elementsize)
-                )[0]
-            return self.struct.unpack_from(
-                self.statseg, self.vec_start + (index * self.elementsize)
-            )
+                return self.struct.unpack_from(self.statseg, offset)[0]
+            return self.struct.unpack_from(self.statseg, offset)
 
 
 class VPPStats:
@@ -208,7 +210,7 @@ class VPPStats:
                     ):
                         path_raw = direntry[2].find(b"\x00")
                         path = direntry[2][:path_raw].decode("ascii")
-                        directory[path] = StatsEntry(direntry[0], direntry[1])
+                        directory[path] = StatsEntry(direntry[0], direntry[1], i)
                         directory_by_idx[i] = path
                     self.directory = directory
                     self.directory_by_idx = directory_by_idx
@@ -463,9 +465,10 @@ class StatsEntry:
 
     # pylint: disable=unused-argument,no-self-use
 
-    def __init__(self, stattype, statvalue):
+    def __init__(self, stattype, statvalue, index):
         self.type = stattype
         self.value = statvalue
+        self.index = index
 
         if stattype == 1:
             self.function = self.scalar
@@ -491,8 +494,12 @@ class StatsEntry:
         return None
 
     def scalar(self, stats):
-        """Scalar counter"""
-        return self.value
+        """Scalar counter or gauge"""
+        # VPP updates the value in place without changing the epoch.
+        directory = StatsVector(stats, stats.directory_vector, stats.elementfmt)
+        offset = directory.offset(self.index)
+        with stats.lock:
+            return DIRENTRY_TYPE_VALUE_FMT.unpack_from(stats.statseg, offset)[1]
 
     def simple(self, stats):
         """Simple counter"""
