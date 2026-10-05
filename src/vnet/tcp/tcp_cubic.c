@@ -272,12 +272,17 @@ cubic_hystart_rcv_ack (tcp_connection_t *tc, tcp_ack_ctx_t *ac, cubic_data_t *cd
  * Estimates the window size of AIMD(alpha_aimd, beta_aimd) for
  * alpha_aimd=3*(1-beta_cubic)/(1+beta_cubic) and beta_aimd=beta_cubic.
  * Time (t) and rtt should be provided in seconds
+ *
+ * As in RFC 9438 Sec. 4.3, the estimate starts from cwnd_epoch, the window at
+ * the start of the epoch, which is W_cubic(0). After a congestion cut without
+ * fast convergence that equals W_max*beta_cubic, but it is larger with fast
+ * convergence, after an RTO and after a lossless slow-start exit.
  */
 static inline u32
 W_est (cubic_data_t * cd, f64 t, f64 rtt)
 {
-  /* W_est(t) = W_max*beta_cubic+[3*(1-beta_cubic)/(1+beta_cubic)]*(t/RTT) */
-  return cd->w_max * beta_cubic + west_const * (t / rtt);
+  /* W_est(t) = cwnd_epoch+[3*(1-beta_cubic)/(1+beta_cubic)]*(t/RTT) */
+  return W_cubic (cd, 0) + west_const * (t / rtt);
 }
 
 static void
