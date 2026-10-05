@@ -33,6 +33,23 @@
       "message": "I found an issue with my bisect script (it was not recompilling the pre-installed DPDK). Going to test again.",
       "revId": "f00d0b4cb365a9621d84a7d7962466c9790545cd",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "431354ca_c8f456a0",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2026-10-05T16:57:49Z",
+      "side": 1,
+      "message": "Still not a fix, [1] is. I will try to test combined changes to see performance impact next.\n\n[1] https://gerrit.fd.io/r/c/vpp/+/46976/1/build/external/packages/dpdk.mk",
+      "revId": "f00d0b4cb365a9621d84a7d7962466c9790545cd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
