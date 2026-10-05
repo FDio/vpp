@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "31206c5f_d8c14686",
+        "filename": ".github/workflows/periodic-vpp-verify-hst.yml",
+        "patchSetId": 1
+      },
+      "lineNbr": 57,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-10-05T20:36:44Z",
+      "side": 1,
+      "message": "typo is actually on this line",
+      "revId": "061f10f735948b0970f7564d31655c8498b526e4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
