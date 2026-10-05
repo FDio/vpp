@@ -189,8 +189,10 @@ DPDK_MESON_ARGS = \
 	-Db_pie=true \
 	-Dplatform=$(DPDK_MACHINE) \
 	$(DPDK_MAX_LCORES_FLAG) \
-        --buildtype=$(DPDK_BUILD_TYPE) \
+	--buildtype=$(DPDK_BUILD_TYPE) \
 	-Denable_kmods=false \
+	"-Dc_args=-I$(dpdk_install_dir)/include" \
+	"-Dc_link_args=-L$(dpdk_install_dir)/lib -L$(dpdk_install_dir)/lib64" \
 	${DPDK_MLX_CONFIG_FLAG}
 
 PIP_DOWNLOAD_DIR = $(CURDIR)/downloads/
