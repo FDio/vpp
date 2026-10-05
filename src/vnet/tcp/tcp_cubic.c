@@ -109,13 +109,14 @@ K_cubic (cubic_data_t * cd, u32 wnd)
  *
  * Estimates the window size of AIMD(alpha_aimd, beta_aimd) for
  * alpha_aimd=3*(1-beta_cubic)/(1+beta_cubic) and beta_aimd=beta_cubic.
- * Time (t) and rtt should be provided in seconds
+ * Time (t) and rtt should be provided in seconds. As per RFC 9438 Sec. 4.3, the estimate starts
+ * from cwnd_epoch, i.e., W_cubic(0).
  */
 static inline u32
 W_est (cubic_data_t * cd, f64 t, f64 rtt)
 {
-  /* W_est(t) = W_max*beta_cubic+[3*(1-beta_cubic)/(1+beta_cubic)]*(t/RTT) */
-  return cd->w_max * beta_cubic + west_const * (t / rtt);
+  /* W_est(t) = cwnd_epoch+[3*(1-beta_cubic)/(1+beta_cubic)]*(t/RTT) */
+  return W_cubic (cd, 0) + west_const * (t / rtt);
 }
 
 static void
