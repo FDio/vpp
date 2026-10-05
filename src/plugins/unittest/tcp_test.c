@@ -2981,6 +2981,63 @@ tcp_test_cubic_idle (vlib_main_t *vm)
   return 0;
 }
 
+/* The Reno-friendly estimate starts from cwnd_epoch (RFC 9438 Sec. 4.3 and 4.8) */
+static int
+tcp_test_cubic_reno_friendly (void)
+{
+  const clib_thread_index_t thread_index = 0;
+  const u32 snd_mss = 1000;
+  tcp_connection_t _tc, *tc = &_tc;
+  tcp_ack_ctx_t ac = { .bytes_acked = snd_mss, .acked_and_sacked = snd_mss };
+  u32 before, i, rtt, n_acks;
+
+  /* A cut from 39 segments leaves 27.3. Starting from that unrounded window, the
+   * estimate reaches 28 segments within 1.4 RTTs and 28 ACKs grow cwnd. */
+  tcp_test_set_time (thread_index, 1);
+  tcp_test_cubic_init_epoch (tc, thread_index, snd_mss, 39);
+  tc->mrtt_us = 0.01;
+  tc->srtt = 0.01 / TCP_TICK;
+  before = tc->cwnd;
+  tcp_test_set_time (thread_index, 1.014);
+  for (i = 0; i < 28; i++)
+    {
+      tc->snd_una += snd_mss;
+      tc->snd_nxt = tc->snd_una + tc->cwnd;
+      tc->cwnd_limited_seq = tc->snd_una;
+      tc->cc_algo->rcv_ack (tc, &ac);
+    }
+  TCP_TEST ((tc->cwnd > before), "cubic Reno-friendly estimate keeps the unrounded cut window");
+
+  /* After an RTO, the estimate starts from the window at which congestion
+   * avoidance resumes, so cwnd grows within a few RTTs. */
+  tcp_test_set_time (thread_index, 1);
+  tcp_test_cubic_init_epoch (tc, thread_index, snd_mss, 40);
+  tc->mrtt_us = 0.01;
+  tc->srtt = 0.01 / TCP_TICK;
+  tc->cc_algo->congestion (tc);
+  tc->cc_algo->loss (tc);
+
+  /* Skip the slow start back to ssthresh */
+  tc->cwnd = tc->ssthresh;
+  before = tc->cwnd;
+  for (rtt = 1; rtt <= 10; rtt++)
+    {
+      tcp_test_set_time (thread_index, 1 + rtt * 0.010);
+      n_acks = tc->cwnd / snd_mss;
+      for (i = 0; i < n_acks; i++)
+	{
+	  tc->snd_una += snd_mss;
+	  tc->snd_nxt = tc->snd_una + tc->cwnd;
+	  tc->cwnd_limited_seq = tc->snd_una;
+	  tc->cc_algo->rcv_ack (tc, &ac);
+	}
+    }
+  TCP_TEST ((tc->cwnd > before), "cubic grows the Reno-friendly window after an RTO");
+  tcp_test_set_time (thread_index, 1);
+
+  return 0;
+}
+
 static int
 tcp_test_cubic (vlib_main_t *vm, unformat_input_t *input)
 {
@@ -2999,6 +3056,9 @@ tcp_test_cubic (vlib_main_t *vm, unformat_input_t *input)
     return rv;
 
   if ((rv = tcp_test_cubic_app_limited ()))
+    return rv;
+
+  if ((rv = tcp_test_cubic_reno_friendly ()))
     return rv;
 
   if ((rv = tcp_test_cubic_undo (vm)))
