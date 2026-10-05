@@ -4,6 +4,7 @@
  */
 
 #include <vlib/vlib.h>
+#include <vlib/tw_funcs.h>
 #include <vnet/vnet.h>
 
 u8 *vlib_validate_buffers (vlib_main_t * vm,
@@ -124,6 +125,59 @@ VLIB_CLI_COMMAND (test_vlib_command, static) =
   .path = "test vlib",
   .short_help = "vlib code coverage unit test",
   .function = test_vlib_command_fn,
+};
+
+static clib_error_t *
+test_vlib_timing_wheel_command_fn (vlib_main_t *vm,
+				   unformat_input_t *input,
+				   vlib_cli_command_t *cmd)
+{
+  vlib_main_t test_vm = {};
+  vlib_tw_event_t event = {
+    .type = VLIB_TW_EVENT_T_SCHED_NODE,
+    .index = 1,
+  };
+  TWT (tw_timer_wheel) *tw;
+  clib_error_t *err = 0;
+  u32 first_handle, second_handle;
+
+  vlib_tw_init (&test_vm);
+  first_handle = vlib_tw_timer_start (&test_vm, event, 1);
+  event.index++;
+  second_handle = vlib_tw_timer_start (&test_vm, event, 1);
+
+  if (test_vm.n_tw_timers != 2)
+    {
+      err = clib_error_return (0, "expected two active timers");
+      goto done;
+    }
+
+  vlib_tw_timer_stop (&test_vm, first_handle);
+  vlib_tw_timer_stop (&test_vm, first_handle);
+
+  if (test_vm.n_tw_timers != 1 ||
+      !vlib_tw_timer_handle_is_free (&test_vm, first_handle) ||
+      vlib_tw_timer_handle_is_free (&test_vm, second_handle))
+    {
+      err = clib_error_return (0, "duplicate stop corrupted timer accounting");
+      goto done;
+    }
+
+  vlib_tw_timer_stop (&test_vm, second_handle);
+  if (test_vm.n_tw_timers != 0)
+    err = clib_error_return (0, "expected no active timers");
+
+done:
+  tw = (TWT (tw_timer_wheel) *) test_vm.timing_wheel;
+  TW (tw_timer_wheel_free) (tw);
+  clib_mem_free (tw);
+  return err;
+}
+
+VLIB_CLI_COMMAND (test_vlib_timing_wheel_command, static) = {
+  .path = "test vlib timing-wheel",
+  .short_help = "test VLIB timing wheel accounting",
+  .function = test_vlib_timing_wheel_command_fn,
 };
 
 static clib_error_t *
