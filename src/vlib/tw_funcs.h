@@ -37,9 +37,12 @@ static_always_inline void
 vlib_tw_timer_stop (vlib_main_t *vm, u32 handle)
 {
   TWT (tw_timer_wheel) *tw = (TWT (tw_timer_wheel) *) vm->timing_wheel;
-  ASSERT (vm->n_tw_timers > 0);
-  vm->n_tw_timers--;
-  TW (tw_timer_stop) (tw, handle);
+  int stopped = TW (tw_timer_stop) (tw, handle);
+  if (PREDICT_TRUE (stopped))
+    {
+      ASSERT (vm->n_tw_timers > 0);
+      vm->n_tw_timers--;
+    }
 }
 
 static_always_inline int

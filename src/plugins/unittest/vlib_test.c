@@ -4,6 +4,7 @@
  */
 
 #include <vlib/vlib.h>
+#include <vlib/tw_funcs.h>
 #include <vnet/vnet.h>
 
 u8 *vlib_validate_buffers (vlib_main_t * vm,
@@ -119,11 +120,105 @@ test_vlib_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-VLIB_CLI_COMMAND (test_vlib_command, static) =
-{
+VLIB_CLI_COMMAND (test_vlib_command, static) = {
   .path = "test vlib",
   .short_help = "vlib code coverage unit test",
   .function = test_vlib_command_fn,
+};
+
+static clib_error_t *
+test_vlib_timing_wheel_command_fn (vlib_main_t *vm, unformat_input_t *input,
+				   vlib_cli_command_t *cmd)
+{
+  vlib_main_t test_vm = { .thread_index = vm->thread_index };
+  vlib_tw_event_t event = {
+    .type = VLIB_TW_EVENT_T_SCHED_NODE,
+    .index = 1,
+  };
+  TWT (tw_timer_wheel) * tw;
+  clib_error_t *err = 0;
+  u32 first_handle, second_handle;
+  u32 *expired = 0;
+
+  /* Initialize an isolated timing wheel and time source. */
+  vlib_tw_init (&test_vm);
+  clib_time_init (&test_vm.clib_time);
+
+  /* Create two active timer entries, expiring after ten ticks */
+  first_handle = vlib_tw_timer_start (&test_vm, event, 10);
+  event.index++;
+  second_handle = vlib_tw_timer_start (&test_vm, event, 10);
+
+  /* Initialize tw's time base by doing a first advance by 1 tick */
+  test_vm.time_offset += 1.0 / VLIB_TW_TICKS_PER_SECOND;
+  expired = vlib_tw_timer_expire_timers (&test_vm, expired);
+
+  /* Both timers should still be active */
+  if (test_vm.n_tw_timers != 2)
+    {
+      err = clib_error_return (0, "expected two active timers");
+      goto done;
+    }
+
+  /* Stop first timer entry */
+  vlib_tw_timer_stop (&test_vm, first_handle);
+
+  if (test_vm.n_tw_timers != 1 || !vlib_tw_timer_handle_is_free (&test_vm, first_handle) ||
+      vlib_tw_timer_handle_is_free (&test_vm, second_handle))
+    {
+      err = clib_error_return (0, "first stop corrupted timer accounting");
+      goto done;
+    }
+
+  /* Duplicate stop on first timer entry, should be a no-op */
+  vlib_tw_timer_stop (&test_vm, first_handle);
+
+  if (test_vm.n_tw_timers != 1 || !vlib_tw_timer_handle_is_free (&test_vm, first_handle) ||
+      vlib_tw_timer_handle_is_free (&test_vm, second_handle))
+    {
+      err = clib_error_return (0, "duplicate stop corrupted timer accounting");
+      goto done;
+    }
+
+  /* Keep the second timer active and add a third for batched expiry after ten ticks */
+  event.index++;
+  vlib_tw_timer_start (&test_vm, event, 10);
+
+  /* Advance isolated time by twenty ticks, then collect both the second and third timer */
+  /* expiry events. */
+  test_vm.time_offset += 20.0 / VLIB_TW_TICKS_PER_SECOND;
+  expired = vlib_tw_timer_expire_timers (&test_vm, expired);
+
+  if (vec_len (expired) != 2 || test_vm.n_tw_timers != 0)
+    {
+      err = clib_error_return (0, "expected two expired timers and no active timers");
+      goto done;
+    }
+
+  /* Start fourth timer only and perform duplicate stop with a single existing timer */
+  event.index++;
+  first_handle = vlib_tw_timer_start (&test_vm, event, 10);
+  vlib_tw_timer_stop (&test_vm, first_handle);
+  vlib_tw_timer_stop (&test_vm, first_handle);
+
+  if (test_vm.n_tw_timers != 0 || !vlib_tw_timer_handle_is_free (&test_vm, first_handle))
+    {
+      err = clib_error_return (0,
+			       "duplicate stop of sole timer corrupted accounting");
+    }
+
+done:
+  vec_free (expired);
+  tw = (TWT (tw_timer_wheel) *) test_vm.timing_wheel;
+  TW (tw_timer_wheel_free) (tw);
+  clib_mem_free (tw);
+  return err;
+}
+
+VLIB_CLI_COMMAND (test_vlib_timing_wheel_command, static) = {
+  .path = "test vlib timing-wheel",
+  .short_help = "test VLIB timing wheel accounting",
+  .function = test_vlib_timing_wheel_command_fn,
 };
 
 static clib_error_t *

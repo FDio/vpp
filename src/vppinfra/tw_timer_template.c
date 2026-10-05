@@ -339,7 +339,7 @@ int TW (scan_for_handle) (TWT (tw_timer_wheel) * tw, u32 handle)
  * @param tw_timer_wheel_t * tw timer wheel object pointer
  * @param u32 handle timer cancellation returned by tw_timer_start
  */
-__clib_export void TW (tw_timer_stop) (TWT (tw_timer_wheel) * tw, u32 handle)
+__clib_export int TW (tw_timer_stop) (TWT (tw_timer_wheel) * tw, u32 handle)
 {
   TWT (tw_timer) * t;
 
@@ -350,7 +350,7 @@ __clib_export void TW (tw_timer_stop) (TWT (tw_timer_wheel) * tw, u32 handle)
    * That results in a duplicate tw_timer_stop.
    */
   if (pool_is_free_index (tw->timers, handle))
-    return;
+    return 0;
 #endif
 #if TW_START_STOP_TRACE_SIZE > 0
   TW (tw_timer_trace) (tw, ~0, ~0, handle);
@@ -364,6 +364,8 @@ __clib_export void TW (tw_timer_stop) (TWT (tw_timer_wheel) * tw, u32 handle)
   timer_remove (tw->timers, t);
 
   pool_put_index (tw->timers, handle);
+
+  return 1;
 }
 
 __clib_export int
