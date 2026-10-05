@@ -11,7 +11,7 @@
  *   floodguard victim add <ip4> syn-challenge
  *   floodguard victim del <ip4> syn|udp|icmp|syn-challenge
  *   floodguard victim clear
- *   floodguard syn-challenge whitelist-ttl <seconds>
+ *   floodguard syn-challenge [whitelist-ttl <seconds>] [whitelist-size <n>]
  *   show floodguard [victims]
  *
  * "enable" replaces the interface's whole Broadcast Filter configuration
@@ -20,6 +20,8 @@
  * Reset Challenge); the storm nodes only while some Broadcast Filter
  * policer is set.
  */
+
+#include <sys/random.h>
 
 #include <vlib/vlib.h>
 #include <vnet/vnet.h>
@@ -70,7 +72,7 @@ static const char *const
     [FLOODGUARD_CHALLENGE_CHALLENGED] = "challenged",
     [FLOODGUARD_CHALLENGE_VERIFIED] = "verified",
     [FLOODGUARD_CHALLENGE_PERMITTED] = "permitted",
-    [FLOODGUARD_CHALLENGE_SWEPT_PENDING] = "swept-pending",
+    [FLOODGUARD_CHALLENGE_WHITELIST_FULL] = "whitelist-full",
     [FLOODGUARD_CHALLENGE_SWEPT_WHITELIST] = "swept-whitelist",
   };
 
@@ -79,8 +81,8 @@ static const char *const
     [FLOODGUARD_CHALLENGE_CHALLENGED] = "/floodguard/challenge/challenged",
     [FLOODGUARD_CHALLENGE_VERIFIED] = "/floodguard/challenge/verified",
     [FLOODGUARD_CHALLENGE_PERMITTED] = "/floodguard/challenge/permitted",
-    [FLOODGUARD_CHALLENGE_SWEPT_PENDING] =
-      "/floodguard/challenge/swept-pending",
+    [FLOODGUARD_CHALLENGE_WHITELIST_FULL] =
+      "/floodguard/challenge/whitelist-full",
     [FLOODGUARD_CHALLENGE_SWEPT_WHITELIST] =
       "/floodguard/challenge/swept-whitelist",
   };
@@ -92,21 +94,29 @@ floodguard_challenge_count (floodguard_main_t *fm,
   return vlib_get_simple_counter (&fm->challenge_counters[c], 0);
 }
 
-/* floodguard_challenge_tables: create the SYN Reset Challenge tables on
- * the first challenge victim (about 34MB, see floodguard.h). Main thread,
- * with the workers stopped: the victim node only reads them once a
- * challenge victim exists, which is armed after this returns. */
+/* floodguard_whitelist_buckets: one bucket per two whitelist entries. */
+static u32
+floodguard_whitelist_buckets (u32 max_entries)
+{
+  return max_entries / 2;
+}
+
+/* floodguard_challenge_tables: create the SYN Reset Challenge whitelist on
+ * the first challenge victim, sized for challenge_whitelist_max. Main
+ * thread, with the workers stopped (CLI barrier): the victim node only
+ * reads it once a challenge victim exists, which is armed after this
+ * returns. */
 static void
 floodguard_challenge_tables (floodguard_main_t *fm)
 {
   if (fm->challenge_tables_ready)
     return;
+  fm->challenge_whitelist_buckets =
+    floodguard_whitelist_buckets (fm->challenge_whitelist_max);
   clib_bihash_init_8_8 (&fm->challenge_whitelist,
 			"floodguard challenge whitelist",
-			FLOODGUARD_CHALLENGE_WHITELIST_BUCKETS, 0);
-  clib_bihash_init_16_8 (&fm->challenge_pending,
-			 "floodguard challenge pending",
-			 FLOODGUARD_CHALLENGE_PENDING_BUCKETS, 0);
+			fm->challenge_whitelist_buckets, 0);
+  fm->n_whitelist = 0;
   fm->challenge_tables_ready = 1;
 }
 
@@ -460,9 +470,14 @@ show_floodguard_command_fn (vlib_main_t *vm, unformat_input_t *input,
     vm, "    Permitted (already verified):   %llu",
     floodguard_challenge_count (fm, FLOODGUARD_CHALLENGE_PERMITTED));
   vlib_cli_output (
-    vm, "    Swept (expired, never matched):  pending=%llu whitelist=%llu",
-    floodguard_challenge_count (fm, FLOODGUARD_CHALLENGE_SWEPT_PENDING),
+    vm,
+    "    Whitelist:                      %u/%u (refused at cap %llu, "
+    "expired %llu)",
+    fm->n_whitelist, fm->challenge_whitelist_max,
+    floodguard_challenge_count (fm, FLOODGUARD_CHALLENGE_WHITELIST_FULL),
     floodguard_challenge_count (fm, FLOODGUARD_CHALLENGE_SWEPT_WHITELIST));
+  if (!fm->cookie_key_ready)
+    vlib_cli_output (vm, "    Disabled: no cookie key (see VPP log)");
   return 0;
 }
 
@@ -471,58 +486,54 @@ floodguard_challenge_command_fn (vlib_main_t *vm, unformat_input_t *input,
 				 vlib_cli_command_t *cmd)
 {
   floodguard_main_t *fm = &floodguard_main;
-  u32 ttl = 0;
+  u32 ttl = 0, size = 0;
 
-  if (!unformat (input, "whitelist-ttl %u", &ttl) || ttl == 0)
-    return clib_error_return (0, "specify whitelist-ttl <seconds> (>0)");
-  fm->challenge_whitelist_ttl_sec = ttl;
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "whitelist-ttl %u", &ttl))
+	{
+	  if (ttl == 0)
+	    return clib_error_return (0, "whitelist-ttl must be > 0");
+	}
+      else if (unformat (input, "whitelist-size %u", &size))
+	{
+	  if (size < FLOODGUARD_CHALLENGE_WHITELIST_MIN ||
+	      size > FLOODGUARD_CHALLENGE_WHITELIST_MAX)
+	    return clib_error_return (0, "whitelist-size must be %u-%u",
+				      FLOODGUARD_CHALLENGE_WHITELIST_MIN,
+				      FLOODGUARD_CHALLENGE_WHITELIST_MAX);
+	}
+      else
+	return clib_error_return (0, "unknown input '%U'",
+				  format_unformat_error, input);
+    }
+  if (!ttl && !size)
+    return clib_error_return (
+      0, "specify whitelist-ttl <seconds> and/or whitelist-size <n>");
+  if (ttl)
+    fm->challenge_whitelist_ttl_sec = ttl;
+  if (size && size != fm->challenge_whitelist_max)
+    {
+      fm->challenge_whitelist_max = size;
+      /* An existing table keeps its entries while its bucket count still
+       * fits the new size; otherwise it is rebuilt and the verified
+       * clients are challenged once more. Workers are stopped (CLI
+       * barrier). */
+      if (fm->challenge_tables_ready &&
+	  floodguard_whitelist_buckets (size) !=
+	    fm->challenge_whitelist_buckets)
+	{
+	  clib_bihash_free_8_8 (&fm->challenge_whitelist);
+	  fm->challenge_tables_ready = 0;
+	  floodguard_challenge_tables (fm);
+	}
+    }
   return 0;
 }
 
-/* floodguard_challenge_sweep_pending/_whitelist: drop expired entries — a
- * bihash never evicts on its own, and every spoofed SYN leaves a pending
- * entry no RST will ever match. Walked bucket by bucket with a time
- * budget, like l2fib_scan. */
-static void
-floodguard_challenge_sweep_pending (vlib_main_t *vm, floodguard_main_t *fm)
-{
-  clib_bihash_16_8_t *h = &fm->challenge_pending;
-  u64 now = (u64) vlib_time_now (vm);
-  f64 last_start = vlib_time_now (vm);
-  u32 n_swept = 0, i, j, k;
-
-  for (i = 0; i < h->nbuckets; i++)
-    {
-      if (vlib_time_now (vm) - last_start > 20e-6)
-	{
-	  vlib_process_suspend (vm, 100e-6);
-	  last_start = vlib_time_now (vm);
-	}
-      clib_bihash_bucket_16_8_t *b = clib_bihash_get_bucket_16_8 (h, i);
-      if (clib_bihash_bucket_is_empty_16_8 (b))
-	continue;
-      clib_bihash_value_16_8_t *v = clib_bihash_get_value_16_8 (h, b->offset);
-      for (j = 0; j < (1U << b->log2_pages); j++, v++)
-	for (k = 0; k < 4 /* bihash_16_8 KVP per page */; k++)
-	  {
-	    if (clib_bihash_is_free_16_8 (&v->kvp[k]) ||
-		now < (v->kvp[k].value & 0xffffffff))
-	      continue;
-	    clib_bihash_kv_16_8_t kv = v->kvp[k];
-	    clib_bihash_add_del_16_8 (h, &kv, 0);
-	    n_swept++;
-	    /* The delete may have freed this bucket's pages. */
-	    if (clib_bihash_bucket_is_empty_16_8 (b))
-	      goto next_bucket;
-	  }
-    next_bucket:;
-    }
-  if (n_swept)
-    vlib_increment_simple_counter (
-      &fm->challenge_counters[FLOODGUARD_CHALLENGE_SWEPT_PENDING],
-      vm->thread_index, 0, n_swept);
-}
-
+/* floodguard_challenge_sweep_whitelist: drop expired entries — a bihash
+ * never evicts on its own. Walked bucket by bucket with a time budget,
+ * like l2fib_scan. */
 static void
 floodguard_challenge_sweep_whitelist (vlib_main_t *vm, floodguard_main_t *fm)
 {
@@ -549,8 +560,11 @@ floodguard_challenge_sweep_whitelist (vlib_main_t *vm, floodguard_main_t *fm)
 		now < v->kvp[k].value)
 	      continue;
 	    clib_bihash_kv_8_8_t kv = v->kvp[k];
-	    clib_bihash_add_del_8_8 (h, &kv, 0);
-	    n_swept++;
+	    if (clib_bihash_add_del_8_8 (h, &kv, 0) == 0)
+	      {
+	        clib_atomic_fetch_sub (&fm->n_whitelist, 1);
+	        n_swept++;
+	      }
 	    if (clib_bihash_bucket_is_empty_8_8 (b))
 	      goto next_bucket;
 	  }
@@ -562,9 +576,8 @@ floodguard_challenge_sweep_whitelist (vlib_main_t *vm, floodguard_main_t *fm)
       vm->thread_index, 0, n_swept);
 }
 
-/* floodguard_challenge_sweep_process: once a second, walk a table only
- * while the counters say it can hold entries (challenged minus verified
- * minus swept), so an idle box pays nothing. */
+/* floodguard_challenge_sweep_process: once a second, walk the whitelist
+ * only while it holds entries, so an idle box pays nothing. */
 static uword
 floodguard_challenge_sweep_process (vlib_main_t *vm, vlib_node_runtime_t *rt,
 				    vlib_frame_t *f)
@@ -575,18 +588,7 @@ floodguard_challenge_sweep_process (vlib_main_t *vm, vlib_node_runtime_t *rt,
     {
       vlib_process_wait_for_event_or_clock (vm, 1.0);
       vlib_process_get_events (vm, 0);
-      if (!fm->challenge_tables_ready)
-	continue;
-
-      u64 challenged =
-	floodguard_challenge_count (fm, FLOODGUARD_CHALLENGE_CHALLENGED);
-      u64 verified =
-	floodguard_challenge_count (fm, FLOODGUARD_CHALLENGE_VERIFIED);
-      if (challenged > verified + floodguard_challenge_count (
-				    fm, FLOODGUARD_CHALLENGE_SWEPT_PENDING))
-	floodguard_challenge_sweep_pending (vm, fm);
-      if (verified >
-	  floodguard_challenge_count (fm, FLOODGUARD_CHALLENGE_SWEPT_WHITELIST))
+      if (fm->challenge_tables_ready && fm->n_whitelist)
 	floodguard_challenge_sweep_whitelist (vm, fm);
     }
   return 0;
@@ -618,7 +620,8 @@ VLIB_CLI_COMMAND (floodguard_victim_command, static) = {
 
 VLIB_CLI_COMMAND (floodguard_challenge_command, static) = {
   .path = "floodguard syn-challenge",
-  .short_help = "floodguard syn-challenge whitelist-ttl <seconds>",
+  .short_help = "floodguard syn-challenge [whitelist-ttl <seconds>] "
+		"[whitelist-size <n>]",
   .function = floodguard_challenge_command_fn,
 };
 
@@ -659,6 +662,32 @@ floodguard_init (vlib_main_t *vm)
     }
   fm->challenge_whitelist_ttl_sec =
     FLOODGUARD_CHALLENGE_DEFAULT_WHITELIST_TTL_SEC;
+  fm->challenge_whitelist_max = FLOODGUARD_CHALLENGE_DEFAULT_WHITELIST_MAX;
+
+  /* The challenge cookie key: a fresh random secret every start, never
+   * shown. Without it the challenge is off (SYNs pass untouched) rather
+   * than VPP failing to start. */
+  {
+    u8 *k = (u8 *) fm->cookie_key;
+    size_t got = 0;
+    while (got < sizeof (fm->cookie_key))
+      {
+	ssize_t n = getrandom (k + got, sizeof (fm->cookie_key) - got, 0);
+	if (n < 0)
+	  {
+	    if (errno == EINTR)
+	      continue;
+	    break;
+	  }
+	got += n;
+      }
+    fm->cookie_key_ready = got == sizeof (fm->cookie_key) &&
+			   (fm->cookie_key[0] | fm->cookie_key[1]) != 0;
+    if (!fm->cookie_key_ready)
+      clib_warning ("floodguard: SYN Reset Challenge key not set (%s) - "
+		    "challenge disabled, SYNs are forwarded",
+		    strerror (errno));
+  }
   return 0;
 }
 

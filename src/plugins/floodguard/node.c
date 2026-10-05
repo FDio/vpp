@@ -33,9 +33,14 @@
  * SYN Reset Challenge (RFC 793 §3.4 case 2, same mechanism as the kernel
  * mode's handle_syn_reset_challenge and the earlier synchallenge plugin it
  * replaced): a bare SYN from an unverified source is answered with
- * a SYN-ACK whose ack is the client's own seq (not seq+1); a real TCP stack
- * answers it with a RST carrying that value, which whitelists the source,
- * and its retried SYN then passes untouched. Being after the ACL, a
+ * a SYN-ACK whose ack is a cookie (never the client's seq+1); a real TCP
+ * stack answers it with a RST carrying that value, which whitelists the
+ * source, and its retried SYN then passes untouched. Stateless: the cookie
+ * is SipHash-2-4 of the 4-tuple and a time slot under a random per-start
+ * key, recomputed for the RST (current or previous slot), so a spoofed
+ * flood leaves nothing behind, and a sender that never saw the SYN-ACK
+ * cannot produce the RST (the client's own seq, reflected before, could
+ * be paired with a forged RST by the sender itself). Being after the ACL, a
  * blocklisted source or a closed port never gets a challenge, and the
  * original SYN has already gone through ethernet-input's rx pcap capture
  * and the device-input sampling. A SYN sent to a group MAC is left alone
@@ -296,16 +301,76 @@ VLIB_NODE_FN (floodguard_l2_nonip_node)
  * Victim node
  * ------------------------------------------------------------------------ */
 
-/* floodguard_challenge_pending_key: the client->victim 4-tuple, every
- * field as on the wire, so the original SYN and the client's RST (same
- * direction) produce the same key. */
-static_always_inline void
-floodguard_challenge_pending_key (u32 client_ip, u32 victim_ip,
-				  u16 client_port, u16 victim_port,
-				  clib_bihash_kv_16_8_t *kv)
+#define FLOODGUARD_SIP_ROUND(v0, v1, v2, v3)                                  \
+  do                                                                          \
+    {                                                                         \
+      v0 += v1;                                                               \
+      v1 = rotate_left (v1, 13);                                              \
+      v1 ^= v0;                                                               \
+      v0 = rotate_left (v0, 32);                                              \
+      v2 += v3;                                                               \
+      v3 = rotate_left (v3, 16);                                              \
+      v3 ^= v2;                                                               \
+      v0 += v3;                                                               \
+      v3 = rotate_left (v3, 21);                                              \
+      v3 ^= v0;                                                               \
+      v2 += v1;                                                               \
+      v1 = rotate_left (v1, 17);                                              \
+      v1 ^= v2;                                                               \
+      v2 = rotate_left (v2, 32);                                              \
+    }                                                                         \
+  while (0)
+
+/* floodguard_challenge_cookie: SipHash-2-4 under the challenge key over the
+ * 16-byte message {client_ip, victim_ip, client_port, victim_port, slot}
+ * (addresses and ports as on the wire, so the SYN and the client's RST
+ * give the same input), folded to 32 bits. Same construction as the kernel
+ * mode's syn_cookie. */
+static_always_inline u32
+floodguard_challenge_cookie (floodguard_main_t *fm, u32 client_ip,
+			     u32 victim_ip, u16 client_port, u16 victim_port,
+			     u32 slot)
 {
-  kv->key[0] = ((u64) victim_ip << 32) | (u64) client_ip;
-  kv->key[1] = ((u64) victim_port << 16) | (u64) client_port;
+  u64 v0 = fm->cookie_key[0] ^ 0x736f6d6570736575ULL;
+  u64 v1 = fm->cookie_key[1] ^ 0x646f72616e646f6dULL;
+  u64 v2 = fm->cookie_key[0] ^ 0x6c7967656e657261ULL;
+  u64 v3 = fm->cookie_key[1] ^ 0x7465646279746573ULL;
+  u64 m[3] = {
+    ((u64) client_ip << 32) | victim_ip,
+    ((u64) (((u32) client_port << 16) | victim_port) << 32) | slot,
+    16ULL << 56, /* final block: message length, no tail bytes */
+  };
+  int i;
+
+  for (i = 0; i < 3; i++)
+    {
+      v3 ^= m[i];
+      FLOODGUARD_SIP_ROUND (v0, v1, v2, v3);
+      FLOODGUARD_SIP_ROUND (v0, v1, v2, v3);
+      v0 ^= m[i];
+    }
+  v2 ^= 0xff;
+  for (i = 0; i < 4; i++)
+    FLOODGUARD_SIP_ROUND (v0, v1, v2, v3);
+
+  u64 h = v0 ^ v1 ^ v2 ^ v3;
+  return (u32) (h ^ (h >> 32));
+}
+
+/* floodguard_challenge_slot: the cookie time slot for now. */
+static_always_inline u32
+floodguard_challenge_slot (vlib_main_t *vm)
+{
+  return (u32) ((u64) vlib_time_now (vm) /
+		FLOODGUARD_CHALLENGE_COOKIE_SLOT_SEC);
+}
+
+/* floodguard_whitelist_seen: overwrite callback — the client was already
+ * in the whitelist (an expired entry not yet swept). */
+static void
+floodguard_whitelist_seen (clib_bihash_kv_8_8_t *kv, void *arg)
+{
+  *(int *) arg = 1;
 }
 
 /* floodguard_unanswerable_src: a source no TCP stack can answer from —
@@ -318,17 +383,17 @@ floodguard_unanswerable_src (u32 src_net)
 }
 
 /* floodguard_challenge_reflect: rewrite the SYN in place into the
- * challenge SYN-ACK (ack = the client's own seq, deliberately not seq+1)
- * and send it back out the ingress port. */
+ * challenge SYN-ACK (ack = cookie, network order, never the client's
+ * seq+1) and send it back out the ingress port. */
 static_always_inline void
 floodguard_challenge_reflect (vlib_main_t *vm, vlib_buffer_t *b, u8 *eth,
-			      ip4_header_t *ip, tcp_header_t *tcp)
+			      ip4_header_t *ip, tcp_header_t *tcp,
+			      u32 ack_net)
 {
   u32 client_ip = ip->src_address.as_u32;
   u32 victim_ip = ip->dst_address.as_u32;
   u16 client_port = tcp->src_port;
   u16 victim_port = tcp->dst_port;
-  u32 client_seq = tcp->seq_number;
   u8 mac[6];
 
   clib_memcpy_fast (mac, eth, 6);
@@ -347,7 +412,7 @@ floodguard_challenge_reflect (vlib_main_t *vm, vlib_buffer_t *b, u8 *eth,
 
   tcp->src_port = victim_port;
   tcp->dst_port = client_port;
-  tcp->ack_number = client_seq;
+  tcp->ack_number = ack_net;
   tcp->data_offset_and_reserved = 5 << 4;
   tcp->flags = TCP_FLAG_SYN | TCP_FLAG_ACK;
 
@@ -368,9 +433,9 @@ floodguard_challenge (vlib_main_t *vm, floodguard_main_t *fm, vlib_buffer_t *b,
 {
   u32 thread = vm->thread_index;
   u32 client_ip = ip->src_address.as_u32;
+  u32 victim_ip = ip->dst_address.as_u32;
   u64 now = (u64) vlib_time_now (vm);
   clib_bihash_kv_8_8_t wkv, wval;
-  clib_bihash_kv_16_8_t pkv, pval;
 
   wkv.key = client_ip;
   if (!clib_bihash_search_8_8 (&fm->challenge_whitelist, &wkv, &wval) &&
@@ -385,25 +450,41 @@ floodguard_challenge (vlib_main_t *vm, floodguard_main_t *fm, vlib_buffer_t *b,
       return FLOODGUARD_VERDICT_PERMITTED;
     }
 
-  floodguard_challenge_pending_key (client_ip, ip->dst_address.as_u32,
-				    tcp->src_port, tcp->dst_port, &pkv);
+  if (PREDICT_FALSE (!fm->cookie_key_ready))
+    return is_syn ? FLOODGUARD_VERDICT_PASS : FLOODGUARD_VERDICT_DROP;
+
+  u32 slot = floodguard_challenge_slot (vm);
   if (!is_syn)
     {
-      /* Only the RST answering an outstanding challenge means anything;
-       * every other unverified RST toward the victim is dropped. */
-      if (!clib_bihash_search_16_8 (&fm->challenge_pending, &pkv, &pval) &&
-	  now < (pval.value & 0xffffffff) &&
-	  tcp->seq_number == (u32) (pval.value >> 32))
+      /* Only a RST carrying this 4-tuple's cookie (current or previous
+       * slot) answers a challenge; every other unverified RST toward the
+       * victim is dropped. */
+      u32 seq = clib_net_to_host_u32 (tcp->seq_number);
+      if (seq != floodguard_challenge_cookie (fm, client_ip, victim_ip,
+					      tcp->src_port, tcp->dst_port,
+					      slot) &&
+	  seq != floodguard_challenge_cookie (fm, client_ip, victim_ip,
+					      tcp->src_port, tcp->dst_port,
+					      slot - 1))
+	return FLOODGUARD_VERDICT_DROP;
+
+      if (fm->n_whitelist >= fm->challenge_whitelist_max)
 	{
-	  wkv.value = now + fm->challenge_whitelist_ttl_sec;
-	  clib_bihash_add_del_8_8 (&fm->challenge_whitelist, &wkv, 1);
-	  clib_bihash_add_del_16_8 (&fm->challenge_pending, &pkv, 0);
 	  vlib_increment_simple_counter (
-	    &fm->challenge_counters[FLOODGUARD_CHALLENGE_VERIFIED], thread, 0,
-	    1);
-	  return FLOODGUARD_VERDICT_VERIFIED;
+	    &fm->challenge_counters[FLOODGUARD_CHALLENGE_WHITELIST_FULL],
+	    thread, 0, 1);
+	  return FLOODGUARD_VERDICT_DROP;
 	}
-      return FLOODGUARD_VERDICT_DROP;
+      int seen = 0;
+      wkv.value = now + fm->challenge_whitelist_ttl_sec;
+      if (clib_bihash_add_with_overwrite_cb_8_8 (
+	    &fm->challenge_whitelist, &wkv, floodguard_whitelist_seen, &seen))
+	return FLOODGUARD_VERDICT_DROP;
+      if (!seen)
+	clib_atomic_fetch_add (&fm->n_whitelist, 1);
+      vlib_increment_simple_counter (
+	&fm->challenge_counters[FLOODGUARD_CHALLENGE_VERIFIED], thread, 0, 1);
+      return FLOODGUARD_VERDICT_VERIFIED;
     }
 
   /* A real client's SYN never goes to a group MAC; the storm node has
@@ -413,10 +494,15 @@ floodguard_challenge (vlib_main_t *vm, floodguard_main_t *fm, vlib_buffer_t *b,
   if (floodguard_unanswerable_src (client_ip))
     return FLOODGUARD_VERDICT_DROP;
 
-  pkv.value = ((u64) tcp->seq_number << 32) |
-	      (now + FLOODGUARD_CHALLENGE_PENDING_TTL_SEC);
-  clib_bihash_add_del_16_8 (&fm->challenge_pending, &pkv, 1);
-  floodguard_challenge_reflect (vm, b, eth, ip, tcp);
+  u32 cookie = floodguard_challenge_cookie (fm, client_ip, victim_ip,
+					    tcp->src_port, tcp->dst_port, slot);
+  /* The one ACK value the client would accept (its ISN + 1) completes its
+   * handshake instead of drawing a RST — a 1-in-2^32 chance; pass that SYN
+   * untouched rather than challenge it. */
+  if (cookie == clib_net_to_host_u32 (tcp->seq_number) + 1)
+    return FLOODGUARD_VERDICT_PASS;
+  floodguard_challenge_reflect (vm, b, eth, ip, tcp,
+				clib_host_to_net_u32 (cookie));
   vlib_increment_simple_counter (
     &fm->challenge_counters[FLOODGUARD_CHALLENGE_CHALLENGED], thread, 0, 1);
   return FLOODGUARD_VERDICT_CHALLENGED;

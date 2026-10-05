@@ -15,22 +15,22 @@
 #include <vlib/vlib.h>
 #include <vnet/vnet.h>
 #include <vppinfra/bihash_8_8.h>
-#include <vppinfra/bihash_16_8.h>
 #include <policer/policer.h>
 
 #define FLOODGUARD_VICTIM_BUCKETS 1024
 #define FLOODGUARD_VICTIM_MEMORY  (4 << 20)
 
-/* SYN Reset Challenge tables. bihash_8_8/16_8 allocate from the main heap
- * (BIHASH_USE_HEAP), so the bucket count is what bounds the chain length
- * under a spoofed flood, not a memory size: 256Ki buckets for pending
- * challenges (one per unverified SYN, spoofed ones included, ~26MB) and
- * 64Ki for verified clients (~7.5MB). */
-#define FLOODGUARD_CHALLENGE_PENDING_BUCKETS   262144
-#define FLOODGUARD_CHALLENGE_WHITELIST_BUCKETS 65536
-/* How long a reflected challenge's RST is accepted — a real client answers
- * within about a second (same as the kernel mode's pending TTL). */
-#define FLOODGUARD_CHALLENGE_PENDING_TTL_SEC 10
+/* SYN Reset Challenge whitelist (verified client IPv4s). bihash_8_8
+ * allocates from the main heap (BIHASH_USE_HEAP) with no memory bound of
+ * its own, so the entry count is capped instead (challenge_whitelist_max,
+ * set by virtserver from the link speed: "floodguard syn-challenge
+ * whitelist-size <n>"); the table gets one bucket per two entries. */
+#define FLOODGUARD_CHALLENGE_DEFAULT_WHITELIST_MAX 65536
+#define FLOODGUARD_CHALLENGE_WHITELIST_MIN	   1024
+#define FLOODGUARD_CHALLENGE_WHITELIST_MAX	   (16 << 20)
+/* Challenge cookie time slot: a RST is accepted for the cookie of the
+ * current or the previous slot, i.e. 8-16s after the challenge. */
+#define FLOODGUARD_CHALLENGE_COOKIE_SLOT_SEC 8
 /* Verified-client TTL until virtserver sets one (its own default). */
 #define FLOODGUARD_CHALLENGE_DEFAULT_WHITELIST_TTL_SEC 300
 
@@ -91,7 +91,7 @@ typedef enum
   FLOODGUARD_CHALLENGE_CHALLENGED, /* SYN-ACK reflected to an unverified source */
   FLOODGUARD_CHALLENGE_VERIFIED,   /* RST matched, source whitelisted */
   FLOODGUARD_CHALLENGE_PERMITTED,  /* verified source's SYN passed */
-  FLOODGUARD_CHALLENGE_SWEPT_PENDING,
+  FLOODGUARD_CHALLENGE_WHITELIST_FULL, /* RST matched, whitelist at its cap */
   FLOODGUARD_CHALLENGE_SWEPT_WHITELIST,
   FLOODGUARD_N_CHALLENGE_COUNTER,
 } floodguard_challenge_counter_t;
@@ -105,12 +105,20 @@ typedef struct
   u32 n_victims;
   u32 flood_policer[FLOODGUARD_N_FLOOD]; /* SYN, UDP, ICMP (~0 = none) */
 
-  /* SYN Reset Challenge, created on the first challenge victim:
-   * whitelist: verified client IPv4 -> expiry (seconds, vlib time);
-   * pending: client->victim 4-tuple -> (expected RST seq << 32) | expiry. */
+  /* SYN Reset Challenge. Stateless per challenge: the SYN-ACK's ack is a
+   * SipHash-2-4 cookie of the 4-tuple and time slot under cookie_key
+   * (random, generated at init; cookie_key_ready = 0 turns the challenge
+   * off). whitelist: verified client IPv4 -> expiry (seconds, vlib time),
+   * created on the first challenge victim with challenge_whitelist_buckets
+   * buckets, holding at most challenge_whitelist_max entries
+   * (n_whitelist, updated atomically by the workers). */
+  u64 cookie_key[2];
+  u8 cookie_key_ready;
   clib_bihash_8_8_t challenge_whitelist;
-  clib_bihash_16_8_t challenge_pending;
   u8 challenge_tables_ready;
+  u32 challenge_whitelist_buckets;
+  u32 challenge_whitelist_max;
+  volatile u32 n_whitelist;
   u32 challenge_whitelist_ttl_sec;
 
   /* The policer plugin's state, resolved on first use through its
