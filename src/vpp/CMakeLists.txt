@@ -138,6 +138,20 @@ add_vpp_test(test_dump_metrics
    DEPENDS api_headers
 )
 
+option(VPP_BUILD_SESSION_STATS_EXPORT "Build the SFDP session statistics exporter" OFF)
+
+if(VPP_BUILD_SESSION_STATS_EXPORT)
+  add_vpp_executable(vpp_session_stats_export
+    SOURCES
+      app/session_stats_export/main.c
+      app/session_stats_export/schema.c
+      app/session_stats_export/ring.c
+      app/session_stats_export/metrics.c
+    LINK_LIBRARIES vppapiclient vppinfra svm vlibmemoryclient ${EPOLL_LIB}
+    DEPENDS api_headers
+  )
+endif()
+
 install(FILES conf/startup.conf DESTINATION ${CMAKE_INSTALL_SYSCONFDIR}/vpp COMPONENT vpp)
 install(FILES conf/80-vpp.conf DESTINATION ${CMAKE_INSTALL_SYSCONFDIR}/sysctl.d COMPONENT vpp)
 
