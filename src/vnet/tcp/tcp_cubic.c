@@ -333,6 +333,16 @@ cubic_event (tcp_connection_t *tc, tcp_cc_event_t evt)
     cd->t_start = clib_min (cd->t_start + idle, now);
 }
 
+static u64
+cubic_get_pacing_rate (tcp_connection_t *tc)
+{
+  /* Add headroom in early slow start, then reduce the pacing gain as cwnd
+   * approaches ssthresh. */
+  f64 gain = tc->cwnd < tc->ssthresh / 2 ? 2.0 : 1.0;
+
+  return tcp_cc_window_pacing_rate (tc, gain);
+}
+
 const static tcp_cc_algorithm_t tcp_cubic = {
   .name = "cubic",
   .unformat_cfg = cubic_unformat_config,
@@ -344,6 +354,7 @@ const static tcp_cc_algorithm_t tcp_cubic = {
   .rcv_cong_ack = newreno_rcv_cong_ack,
   .event = cubic_event,
   .init = cubic_conn_init,
+  .get_pacing_rate = cubic_get_pacing_rate,
 };
 
 clib_error_t *

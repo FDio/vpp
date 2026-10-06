@@ -10312,6 +10312,49 @@ tcp_test_initial_cwnd (void)
   return 0;
 }
 
+/* CUBIC paces at 2x in early slow start and 1x from ssthresh / 2.
+ * NewReno uses the default window rate without a gain. */
+static int
+tcp_test_cc_pacing (void)
+{
+  const tcp_cc_algorithm_type_e cc_types[] = { TCP_CC_CUBIC, TCP_CC_NEWRENO };
+  const struct
+  {
+    u32 ssthresh;
+    u64 cubic_rate;
+    const char *phase;
+  } cases[] = {
+    { 0x7FFFFFFFU, 20000000, "initial slow start" },
+    { 200002, 20000000, "below ssthresh / 2" },
+    { 200000, 10000000, "at ssthresh / 2" },
+    { 199998, 10000000, "above ssthresh / 2" },
+    { 100000, 10000000, "at ssthresh" },
+    { 99998, 10000000, "above ssthresh" },
+  };
+  tcp_connection_t _tc = {}, *tc = &_tc;
+  u64 rate, expected_rate;
+  u32 i, j;
+
+  tc->srtt = 0.01 / TCP_TICK;
+  tc->mrtt_us = 0.01;
+  tc->cwnd = 100000;
+
+  for (i = 0; i < ARRAY_LEN (cc_types); i++)
+    {
+      tc->cc_algo = tcp_cc_algo_get (cc_types[i]);
+      for (j = 0; j < ARRAY_LEN (cases); j++)
+	{
+	  tc->ssthresh = cases[j].ssthresh;
+	  expected_rate = cc_types[i] == TCP_CC_CUBIC ? cases[j].cubic_rate : 10000000;
+	  rate = tcp_cc_get_pacing_rate (tc);
+	  TCP_TEST ((rate == expected_rate), "%s pacing in %s: %llu bytes/s (expected %llu)",
+		    tc->cc_algo->name, cases[j].phase, rate, expected_rate);
+	}
+    }
+
+  return 0;
+}
+
 static int
 tcp_test_startup (vlib_main_t *vm, unformat_input_t *input)
 {
@@ -10338,6 +10381,9 @@ tcp_test_startup (vlib_main_t *vm, unformat_input_t *input)
       return rv;
 
   if ((rv = tcp_test_initial_cwnd ()))
+    return rv;
+
+  if ((rv = tcp_test_cc_pacing ()))
     return rv;
 
   return 0;
