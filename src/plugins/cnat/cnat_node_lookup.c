@@ -72,17 +72,6 @@ VNET_FEATURE_INIT (cnat_in_ip6_feature, static) = {
 };
 
 always_inline void
-set_buffer_fib_index_from_interface (u32 *fib_index_by_sw_if_index, vlib_buffer_t *b)
-{
-  vnet_buffer (b)->ip.fib_index =
-    vec_elt (fib_index_by_sw_if_index, vnet_buffer (b)->sw_if_index[VLIB_RX]);
-  vnet_buffer (b)->ip.fib_index =
-    ((vnet_buffer (b)->sw_if_index[VLIB_TX] == (u32) ~0) ?
-       vnet_buffer (b)->ip.fib_index :
-       vec_elt (fib_index_by_sw_if_index, vnet_buffer (b)->sw_if_index[VLIB_TX]));
-}
-
-always_inline void
 cnat_writeback_new_flow (vlib_buffer_t *b, ip_address_family_t af, u16 *next)
 {
   cnat_bihash_kv_t bkey;
@@ -111,15 +100,17 @@ cnat_writeback_new_flow (vlib_buffer_t *b, ip_address_family_t af, u16 *next)
     cnat_5tuple_copy (&session->key.cs_5tuple,
 		      &ts->cts_rewrites[CNAT_LOCATION_INPUT + CNAT_IS_FWD].tuple, 1 /* swap */);
 
-  u32 *fib_index_by_sw_if_index =
-    AF_IP6 == af ? ip6_main.fib_index_by_sw_if_index : ip4_main.fib_index_by_sw_if_index;
-  set_buffer_fib_index_from_interface (fib_index_by_sw_if_index, b);
-  session->key.fib_index = vnet_buffer (b)->ip.fib_index;
+  /* Reverse-session scope:
+   *  - cnat-output-ip4 runs earlier on this same ip4-output arc and,
+   *    for SNAT'd flows, stages ts->ts_scope_id[VLIB_TX] = cpe->ret_scope_id;
+   *  - for plain VIP/DNAT translations no SNAT policy ran and ts_scope_id[TX]
+   *    is still ~0 — mirror the forward scope so return packets re-enter
+   *    under the same scope as the forward path. */
+  if (ts->ts_scope_id[VLIB_TX] == ~0)
+    ts->ts_scope_id[VLIB_TX] = ts->ts_scope_id[VLIB_RX];
+  session->key.cs_scope_id = ts->ts_scope_id[VLIB_TX];
   session->value.cs_session_index = b->flow_id;
   session->value.cs_flags = CNAT_SESSION_IS_RETURN;
-  /* record the return-direction fib_index; used by cnat_get_rsession_from_ts
-   * to reconstruct the reverse session key on deletion */
-  ts->cts_rewrites[CNAT_LOCATION_FIB + CNAT_IS_RETURN].rw_fib_index = vnet_buffer (b)->ip.fib_index;
 
   clib_atomic_add_fetch (&ts->ts_session_refcnt, 1);
 

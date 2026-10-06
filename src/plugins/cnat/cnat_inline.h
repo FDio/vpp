@@ -50,7 +50,7 @@ cnat_timestamp_get (u32 index)
 }
 
 always_inline index_t
-cnat_timestamp_alloc (u32 fib_index, bool is_v6)
+cnat_timestamp_alloc (u32 scope_id, bool is_v6)
 {
   cnat_timestamp_mpool_t *ctm = &cnat_timestamps;
   u32 log2_pool_sz = ctm->log2_pool_sz;
@@ -61,8 +61,12 @@ cnat_timestamp_alloc (u32 fib_index, bool is_v6)
   u32 pidx;
 
   clib_rwlock_writer_lock (&ctm->ts_lock);
-  int *sessions_per_vrf = is_v6 ? ctm->sessions_per_vrf_ip6 : ctm->sessions_per_vrf_ip4;
-  if (PREDICT_FALSE (vec_elt (sessions_per_vrf, fib_index) <= 0))
+  int *sessions_per_scope = is_v6 ? ctm->sessions_per_scope_ip6 : ctm->sessions_per_scope_ip4;
+  /* Per-scope budget: only enforce when scope_id is in range. Scopes
+   * beyond the configured vector (eg. tenant ids that don't map to a
+   * fib) are unbudgeted by design. */
+  if (PREDICT_FALSE (scope_id < vec_len (sessions_per_scope) &&
+		     vec_elt (sessions_per_scope, scope_id) <= 0))
     goto err;
 
   pidx = clib_bitmap_first_set (ctm->ts_free);
@@ -84,7 +88,8 @@ cnat_timestamp_alloc (u32 fib_index, bool is_v6)
   if (PREDICT_FALSE (pool_elts (pool) == pool_sz))
     ctm->ts_free = clib_bitmap_set (ctm->ts_free, pidx, 0); /* pool is full */
 
-  vec_elt (sessions_per_vrf, fib_index)--;
+  if (scope_id < vec_len (sessions_per_scope))
+    vec_elt (sessions_per_scope, scope_id)--;
 
   clib_rwlock_writer_unlock (&ctm->ts_lock);
 
@@ -126,14 +131,21 @@ cnat_timestamp_destroy (u32 index, bool is_v6)
 }
 
 always_inline index_t
-cnat_timestamp_new (u32 t, u32 fib_index, bool is_v6)
+cnat_timestamp_new (u32 t, u32 scope_id, bool is_v6)
 {
-  index_t index = cnat_timestamp_alloc (fib_index, is_v6);
+  index_t index = cnat_timestamp_alloc (scope_id, is_v6);
   if (PREDICT_FALSE (INDEX_INVALID == index))
     return INDEX_INVALID; /* alloc failure */
   cnat_timestamp_t *ts = cnat_timestamp_get (index);
   ts->last_seen = t;
   ts->lifetime = cnat_main.session_max_age;
+  /* Cache the forward session's scope on the timestamp. Used by
+   *   - cnat_get_rsession_from_ts when reconstructing the opposite
+   *     direction's key on cleanup,
+   *   - cnat_session_free__ for client cleanup and per-scope budget,
+   *   - cnat_timestamp_rewrite_free for port-pool deallocation. */
+  ts->ts_scope_id[VLIB_RX] = scope_id;
+  ts->ts_scope_id[VLIB_TX] = ~0;
   /* Initial number of timestamps for a session
    * this will be incremented when adding the reverse
    * session in cnat_rsession_create */
@@ -157,10 +169,10 @@ cnat_timestamp_exp (u32 index)
 }
 
 always_inline void
-cnat_timestamp_rewrite_free (cnat_timestamp_rewrite_t *rw)
+cnat_timestamp_rewrite_free (cnat_timestamp_rewrite_t *rw, u32 scope_id)
 {
   if (rw->cts_flags & CNAT_TS_RW_FLAG_HAS_ALLOCATED_PORT)
-    cnat_free_port_cb (rw->rw_fib_index, rw->tuple.port[VLIB_RX], rw->tuple.iproto);
+    cnat_free_port_cb (scope_id, rw->tuple.port[VLIB_RX], rw->tuple.iproto);
 }
 
 always_inline void
@@ -172,7 +184,14 @@ cnat_timestamp_free (u32 index, bool is_v6)
     {
       for (int i = 0; i < CNAT_N_LOCATIONS * VLIB_N_DIR; i++)
 	if (ts->ts_rw_bm & (1 << i))
-	  cnat_timestamp_rewrite_free (&ts->cts_rewrites[i]);
+	  {
+	    /* Slot direction is encoded by i: [0..CNAT_N_LOCATIONS) are
+	     * forward-direction rewrites, [CNAT_N_LOCATIONS..) are return.
+	     * Free the source-port from the pool keyed by the scope that
+	     * owns this rewrite's direction. */
+	    u32 scope_id = ts->ts_scope_id[i < CNAT_IS_RETURN ? VLIB_RX : VLIB_TX];
+	    cnat_timestamp_rewrite_free (&ts->cts_rewrites[i], scope_id);
+	  }
 
       cnat_timestamp_destroy (index, is_v6);
     }
@@ -199,7 +218,12 @@ cnat_lookup_create_or_return (vlib_buffer_t *b, int rv, cnat_bihash_kv_t *bkey,
     {
       if (!alloc_if_not_found)
 	goto err;
-      index_t session_index = cnat_timestamp_new (now, ksession->key.fib_index, is_v6);
+      /* Pass the forward session's effective scope (b->flow_id ?:
+       * fib_index, already computed into ksession->key.cs_scope_id by
+       * cnat_lookup_inline) so cnat_timestamp_new caches it on
+       * ts->ts_scope_id[VLIB_RX] for bookkeeping and reverse-key
+       * reconstruction. */
+      index_t session_index = cnat_timestamp_new (now, ksession->key.cs_scope_id, is_v6);
       ASSERT ((session_index < CNAT_MAX_SESSIONS || INDEX_INVALID == session_index));
       if (PREDICT_FALSE (session_index >= CNAT_MAX_SESSIONS))
 	goto err; /* too many sessions */
@@ -215,9 +239,6 @@ cnat_lookup_create_or_return (vlib_buffer_t *b, int rv, cnat_bihash_kv_t *bkey,
        * the case where we have actual rewrites this is going to be overridden.
        * Also this is used to find a reverse session of a non-natted session*/
       ts->cts_rewrites[CNAT_LOCATION_INPUT].tuple = ksession->key.cs_5tuple;
-      /* store the forward fib_index in the canonical FIB slot so
-       * cnat_get_rsession_from_ts can reconstruct the reverse session key */
-      ts->cts_rewrites[CNAT_LOCATION_FIB].rw_fib_index = ksession->key.fib_index;
     }
   else
     goto err;
@@ -238,22 +259,21 @@ static const cnat_session_location_t cnat_paired_location[] = {
   [CNAT_LOCATION_FIB] = CNAT_LOCATION_FIB,
 };
 
-/* Reconstruct the reverse session key (5-tuple + fib_index) from the
+/* Reconstruct the reverse session key (5-tuple + scope) from the
  * timestamp's rewrite array.
  *
- * fib_index: always read from cts_rewrites[CNAT_LOCATION_FIB + rdir].rw_fib_index,
- *            decoupled from the 5-tuple search below.
- * 5-tuple:   chosen from the highest-priority rewrite pair that has both
- *            a forward and a matching return entry populated in ts_rw_bm.
- *            Priority: OUTPUT > FIB > INPUT. */
+ * cs_scope_id: always read from ts->ts_scope_id[] (RX when reconstructing
+ *              the forward key, TX when reconstructing the reverse key),
+ *              decoupled from the 5-tuple search below.
+ * 5-tuple:     chosen from the highest-priority rewrite pair that has both
+ *              a forward and a matching return entry populated in ts_rw_bm.
+ *              Priority: OUTPUT > FIB > INPUT. */
 static_always_inline int
 cnat_get_rsession_from_ts (cnat_timestamp_t *ts, const cnat_timestamp_direction_t dir,
 			   cnat_session_t *session)
 {
   cnat_timestamp_direction_t rdir = (dir == CNAT_IS_FWD) ? CNAT_IS_RETURN : CNAT_IS_FWD;
-  /* fib_index always comes from the dedicated FIB slot, independent of
-   * which rewrite location provides the 5-tuple below */
-  session->key.fib_index = ts->cts_rewrites[CNAT_LOCATION_FIB + rdir].rw_fib_index;
+  session->key.cs_scope_id = ts->ts_scope_id[rdir == CNAT_IS_FWD ? VLIB_RX : VLIB_TX];
   u8 locations[] = { CNAT_LOCATION_OUTPUT, CNAT_LOCATION_FIB, CNAT_LOCATION_INPUT };
   int i;
   for (i = 0; i < ARRAY_LEN (locations); i++)

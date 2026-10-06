@@ -88,11 +88,14 @@ typedef struct cnat_snat_policy_entry_t_
 
   u32 cti;
 
-  u32 fwd_fib_index4;
-  u32 fwd_fib_index6;
+  u32 fwd_scope_id4;
+  u32 fwd_scope_id6;
 
-  u32 ret_fib_index4;
-  u32 ret_fib_index6;
+  /* Scope id stamped on the reverse session key for return traffic.
+   * Opaque to the dataplane (a fib_index or any other tenant/peer
+   * disambiguator, at the caller's discretion). */
+  u32 ret_scope_id4;
+  u32 ret_scope_id6;
 
   /* SNAT policy for the output feature node */
   cnat_snat_policy_t snat_policy;
@@ -104,14 +107,14 @@ typedef struct cnat_snat_policy_entry_t_
 typedef struct cnat_snat_policy_main_t_
 {
   cnat_snat_policy_entry_t *snat_policies_pool;
-  u32 *snat_policy_per_fwd_fib_index4;
-  u32 *snat_policy_per_fwd_fib_index6;
+  u32 *snat_policy_per_fwd_scope_id4;
+  u32 *snat_policy_per_fwd_scope_id6;
   cnat_snat_policy_entry_t *snat_default_policy;
 } cnat_snat_policy_main_t;
 
 extern cnat_snat_policy_main_t cnat_snat_policy_main;
 
-extern int cnat_set_snat (u32 fwd_fib_index, u32 ret_fib_index, const ip4_address_t *ip4,
+extern int cnat_set_snat (u32 fwd_scope_id, u32 ret_scope_id, const ip4_address_t *ip4,
 			  u8 ip4_pfx_len, const ip6_address_t *ip6, u8 ip6_pfx_len, u32 sw_if_index,
 			  cnat_snat_policy_flags_t flags);
 extern int cnat_snat_policy_add_pfx (cnat_snat_policy_entry_t *cpe, ip_prefix_t *pfx,
@@ -123,20 +126,20 @@ extern int cnat_snat_policy_add_del_if (u32 sw_if_index, u8 is_add,
 extern void cnat_snat_policy_entry_cleanup (cnat_snat_policy_entry_t *cpe);
 
 static_always_inline cnat_snat_policy_entry_t *
-cnat_snat_policy_entry_get__ (ip_address_family_t af, u32 fwd_fib_index)
+cnat_snat_policy_entry_get__ (ip_address_family_t af, u32 fwd_scope_id)
 {
   cnat_snat_policy_main_t *cpm = &cnat_snat_policy_main;
-  u32 *cp_fwd_fib_index =
-    AF_IP4 == af ? cpm->snat_policy_per_fwd_fib_index4 : cpm->snat_policy_per_fwd_fib_index6;
-  if (fwd_fib_index >= vec_len (cp_fwd_fib_index))
+  u32 *per_scope =
+    AF_IP4 == af ? cpm->snat_policy_per_fwd_scope_id4 : cpm->snat_policy_per_fwd_scope_id6;
+  if (fwd_scope_id >= vec_len (per_scope))
     return cpm->snat_default_policy;
-  u32 cpe_index = vec_elt (cp_fwd_fib_index, fwd_fib_index);
+  u32 cpe_index = vec_elt (per_scope, fwd_scope_id);
   if (~0 == cpe_index)
     return cpm->snat_default_policy;
   return pool_elt_at_index (cpm->snat_policies_pool, cpe_index);
 }
 
-cnat_snat_policy_entry_t *cnat_snat_policy_entry_get (ip_address_family_t af, u32 fwd_fib_index);
+cnat_snat_policy_entry_t *cnat_snat_policy_entry_get (ip_address_family_t af, u32 fwd_scope_id);
 
 cnat_snat_policy_entry_t *cnat_snat_policy_entry_get_default (void);
 

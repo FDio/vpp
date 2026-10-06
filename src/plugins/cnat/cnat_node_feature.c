@@ -73,8 +73,6 @@ cnat_input_feature_new_flow_inline (vlib_main_t *vm, vlib_buffer_t *b, ip_addres
 
   rw->cts_lbi = (u32) ~0;
   rw->cts_dpoi_next_node = CTS_DPOI_NEXT_UNSET;
-  /* record the forward-direction fib_index in the canonical FIB slot */
-  ts->cts_rewrites[CNAT_LOCATION_FIB].rw_fib_index = vnet_buffer (b)->ip.fib_index;
 
   cnat_make_buffer_5tuple (b, af, &rw->tuple, 0 /* iph_offset */, 0 /* swap */);
 
@@ -344,10 +342,10 @@ cnat_output_feature_new_flow_inline (vlib_main_t *vm, vlib_buffer_t *b, ip_addre
 {
   cnat_timestamp_rewrite_t *rw = NULL;
 
-  u32 fwd_fib_index = vnet_buffer (b)->ip.fib_index;
-  cnat_snat_policy_entry_t *cpe = cnat_snat_policy_entry_get__ (af, fwd_fib_index);
+  u32 fwd_scope_id = vnet_buffer (b)->ip.fib_index;
+  cnat_snat_policy_entry_t *cpe = cnat_snat_policy_entry_get__ (af, fwd_scope_id);
   if (!cpe)
-    return 0; /* no policy for this vrf */
+    return 0; /* no policy for this scope */
 
   int rv;
   u16 sport;
@@ -365,7 +363,6 @@ cnat_output_feature_new_flow_inline (vlib_main_t *vm, vlib_buffer_t *b, ip_addre
 
   rw->cts_lbi = (u32) ~0;
   rw->cts_dpoi_next_node = CTS_DPOI_NEXT_UNSET;
-  rw->rw_fib_index = ~0;
 
   if (AF_IP4 == af)
     {
@@ -389,7 +386,7 @@ cnat_output_feature_new_flow_inline (vlib_main_t *vm, vlib_buffer_t *b, ip_addre
     }
 
   sport = 0;
-  rv = cnat_allocate_port (fwd_fib_index, &sport, rw->tuple.iproto);
+  rv = cnat_allocate_port (fwd_scope_id, &sport, rw->tuple.iproto);
   if (rv)
     {
       vlib_node_registration_t *node =
@@ -408,11 +405,6 @@ cnat_output_feature_new_flow_inline (vlib_main_t *vm, vlib_buffer_t *b, ip_addre
 
   rw->cts_lbi = INDEX_INVALID;
   rw->cts_flags |= CNAT_TS_RW_FLAG_HAS_ALLOCATED_PORT;
-  /* needed by cnat_timestamp_rewrite_free to return the allocated port */
-  rw->rw_fib_index = fwd_fib_index;
-  /* record the forward-direction fib_index in the canonical FIB slot
-   * for reverse session reconstruction via cnat_get_rsession_from_ts */
-  ts->cts_rewrites[CNAT_LOCATION_FIB].rw_fib_index = fwd_fib_index;
 
   /*
    * Add the reverse flow, located in input
@@ -424,9 +416,11 @@ cnat_output_feature_new_flow_inline (vlib_main_t *vm, vlib_buffer_t *b, ip_addre
 
   rrw->cts_lbi = (u32) ~0;
   rrw->cts_dpoi_next_node = CTS_DPOI_NEXT_UNSET;
-  /* record the return-direction fib_index in the canonical FIB slot */
-  ts->cts_rewrites[CNAT_IS_RETURN + CNAT_LOCATION_FIB].rw_fib_index =
-    AF_IP4 == af ? cpe->ret_fib_index4 : cpe->ret_fib_index6;
+  /* Stage the policy-declared return scope on the timestamp.
+   * cnat-writeback-ip4 (next on the ip4-output arc) honours this
+   * value when keying the reverse session, and reverse-session
+   * deletion reads it via cnat_get_rsession_from_ts. */
+  ts->ts_scope_id[VLIB_TX] = AF_IP4 == af ? cpe->ret_scope_id4 : cpe->ret_scope_id6;
 
   cnat_make_buffer_5tuple (b, af, &rrw->tuple, iph_offset, 1 /* swap */);
 

@@ -31,7 +31,7 @@ cnat_ep_trk_delete_notify (index_t *trk_index)
   vec_add1 (cnat_ep_trk_idx_deleted[ep_trk_del_state ^ 1], *trk_index);
 }
 
-void (*cnat_free_port_cb) (u32 fib_index, u16 port, ip_protocol_t iproto);
+void (*cnat_free_port_cb) (u32 scope_id, u16 port, ip_protocol_t iproto);
 
 typedef struct cnat_session_walk_ctx_t_
 {
@@ -115,8 +115,9 @@ format_cnat_timestamp (u8 *s, va_list *args)
   cnat_timestamp_t *ts = va_arg (*args, cnat_timestamp_t *);
   u32 indent = va_arg (*args, u32);
   int verbose = va_arg (*args, int);
-  s = format (s, "%Ulast_seen:%u lifetime:%u ref:%u", format_white_space, indent, ts->last_seen,
-	      ts->lifetime, ts->ts_session_refcnt);
+  s = format (s, "%Ulast_seen:%u lifetime:%u ref:%u scope:[rx:%u tx:%u]", format_white_space,
+	      indent, ts->last_seen, ts->lifetime, ts->ts_session_refcnt, ts->ts_scope_id[VLIB_RX],
+	      ts->ts_scope_id[VLIB_TX]);
   for (int i = 0; i < CNAT_N_LOCATIONS * VLIB_N_DIR; i++)
     if ((verbose > 1) || (ts->ts_rw_bm & (1 << i)))
       s = format (s, "\n%U[%U] %U", format_white_space, indent + 2, format_cnat_rewrite_type, i,
@@ -133,9 +134,9 @@ format_cnat_session (u8 * s, va_list * args)
   cnat_timestamp_t *ts = NULL;
 
   ts = cnat_timestamp_get (sess->value.cs_session_index);
-  s = format (s, "%U => [%U]\n%Uindex:%d fib:%d\n%U%U", format_cnat_5tuple, &sess->key.cs_5tuple,
+  s = format (s, "%U => [%U]\n%Uindex:%d scope:%u\n%U%U", format_cnat_5tuple, &sess->key.cs_5tuple,
 	      format_cnat_session_flags, sess->value.cs_flags, format_white_space, indent + 2,
-	      sess->value.cs_session_index, sess->key.fib_index, format_white_space, indent + 2,
+	      sess->value.cs_session_index, sess->key.cs_scope_id, format_white_space, indent + 2,
 	      format_cnat_timestamp, ts, indent + 2, verbose);
 
   return (s);
@@ -162,7 +163,7 @@ typedef struct
   vlib_main_t *vm;
   ip46_address_t ip;
   f64 start;
-  u32 fib_index;
+  u32 scope_id;
   u32 flags;
   int verbose;
   int max;
@@ -179,7 +180,7 @@ cnat_session_show_cbak (BVT (clib_bihash_kv) * kvp, void *arg)
 
   cnat_show_yield (a->vm, &a->start);
 
-  if (a->fib_index != ~0 && a->fib_index != s->key.fib_index)
+  if (a->scope_id != ~0 && a->scope_id != s->key.cs_scope_id)
     return BIHASH_WALK_CONTINUE;
 
   if (a->flags && a->flags != (a->flags & s->value.cs_flags))
@@ -225,7 +226,7 @@ cnat_session_show (vlib_main_t * vm,
 
   arg.vm = vm;
   arg.start = vlib_time_now (vm);
-  arg.fib_index = ~0;
+  arg.scope_id = ~0;
   arg.max = 50;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
@@ -249,7 +250,7 @@ cnat_session_show (vlib_main_t * vm,
 	arg.refcount = v;
       else if (unformat (input, "max %d", &arg.max))
 	;
-      else if (unformat (input, "fib %u", &arg.fib_index))
+      else if (unformat (input, "scope %u", &arg.scope_id))
 	;
       else
 	{
@@ -270,7 +271,7 @@ VLIB_CLI_COMMAND (cnat_session_show_cmd_node, static) = {
   .path = "show cnat session",
   .function = cnat_session_show,
   .short_help = "show cnat session [verbose <N>] [return] [ip <ip>] [port <port>] "
-		"[proto <proto>] [ref <ref>] [max <max>]",
+		"[proto <proto>] [ref <ref>] [max <max>] [scope <id>]",
   .is_mp_safe = 1,
 };
 
@@ -281,20 +282,29 @@ cnat_session_free__ (cnat_session_t *session)
   bool is_v6 = !ip46_address_is_ip4 (&session->key.cs_5tuple.ip[VLIB_TX]);
 
   cnat_log_session_free (session);
+  cnat_timestamp_t *ts = cnat_timestamp_get (session->value.cs_session_index);
   if (session->value.cs_flags & CNAT_SESSION_FLAG_HAS_CLIENT)
     {
-      cnat_client_free_by_ip (&session->key.cs_5tuple.ip[VLIB_TX], session->key.fib_index,
-			      1 /* is_session */);
+      /* Client was installed under this session's own scope: forward
+       * sessions use ts_scope_id[VLIB_RX], return sessions use
+       * ts_scope_id[VLIB_TX]. */
+      u32 scope_id = (session->value.cs_flags & CNAT_SESSION_IS_RETURN) ? ts->ts_scope_id[VLIB_TX] :
+									  ts->ts_scope_id[VLIB_RX];
+      cnat_client_free_by_ip (&session->key.cs_5tuple.ip[VLIB_TX], scope_id, 1 /* is_session */);
     }
-  /* Credit the per-VRF session budget back when the non-return (forward) session is freed.
-   * The budget was debited once at timestamp alloc, keyed on the forward session's fib_index.
-   * Gating on !IS_RETURN ensures we credit exactly once regardless of the order in which
-   * the forward and return sessions are reaped by the scanner. */
+  /* Credit the per-scope session budget back when the non-return (forward)
+   * session is freed. The budget was debited once at timestamp alloc, keyed
+   * on the forward session's scope (cached in ts->ts_scope_id[VLIB_RX]).
+   * Gating on !IS_RETURN ensures we credit exactly once regardless of the
+   * order in which the forward and return sessions are reaped by the
+   * scanner. Bounds-guard for scopes outside the budget vector. */
   if (!(session->value.cs_flags & CNAT_SESSION_IS_RETURN))
     {
-      int *sessions_per_vrf = is_v6 ? ctm->sessions_per_vrf_ip6 : ctm->sessions_per_vrf_ip4;
+      int *sessions_per_scope = is_v6 ? ctm->sessions_per_scope_ip6 : ctm->sessions_per_scope_ip4;
+      u32 scope_id = ts->ts_scope_id[VLIB_RX];
       clib_rwlock_writer_lock (&ctm->ts_lock);
-      vec_elt (sessions_per_vrf, session->key.fib_index)++;
+      if (scope_id < vec_len (sessions_per_scope))
+	vec_elt (sessions_per_scope, scope_id)++;
       clib_rwlock_writer_unlock (&ctm->ts_lock);
     }
   cnat_timestamp_free (session->value.cs_session_index, is_v6);
@@ -351,8 +361,12 @@ cnat_reverse_session_free (cnat_session_t *session)
     (session->value.cs_flags & CNAT_SESSION_IS_RETURN) ? CNAT_IS_RETURN : CNAT_IS_FWD;
 
   if (cnat_get_rsession_from_ts (ts, dir, rsession))
-    /* no rewrite found, fallback: swap the session's own 5-tuple */
-    cnat_5tuple_copy (&rsession->key.cs_5tuple, &session->key.cs_5tuple, 1 /* swap */);
+    {
+      /* no rewrite found, fallback: swap the session's own 5-tuple.
+       * Scope for the opposite direction is picked from ts->ts_scope_id[]. */
+      cnat_5tuple_copy (&rsession->key.cs_5tuple, &session->key.cs_5tuple, 1 /* swap */);
+      rsession->key.cs_scope_id = ts->ts_scope_id[dir == CNAT_IS_FWD ? VLIB_TX : VLIB_RX];
+    }
 
   if (memcmp (&rsession->key, &session->key, sizeof (session->key)) == 0)
     {
@@ -513,10 +527,10 @@ cnat_session_init (vlib_main_t * vm)
    session_max * sizeof (cnat_bihash_kv_t) * 1.2 /* memory */);
   BV (clib_bihash_set_kvp_format_fn) (&cnat_session_db, format_cnat_session);
 
-  vec_validate_init_empty_aligned (ctm->sessions_per_vrf_ip4, CNAT_FIB_TABLE,
-				   ctm->max_sessions_per_vrf, CLIB_CACHE_LINE_BYTES);
-  vec_validate_init_empty_aligned (ctm->sessions_per_vrf_ip6, CNAT_FIB_TABLE,
-				   ctm->max_sessions_per_vrf, CLIB_CACHE_LINE_BYTES);
+  vec_validate_init_empty_aligned (ctm->sessions_per_scope_ip4, CNAT_FIB_TABLE,
+				   ctm->max_sessions_per_scope, CLIB_CACHE_LINE_BYTES);
+  vec_validate_init_empty_aligned (ctm->sessions_per_scope_ip6, CNAT_FIB_TABLE,
+				   ctm->max_sessions_per_scope, CLIB_CACHE_LINE_BYTES);
 
   vlib_stats_collector_reg_t reg;
   reg.entry_index = vlib_stats_add_gauge ("/cnat/sessions/total");

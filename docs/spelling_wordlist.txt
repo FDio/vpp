@@ -105,6 +105,7 @@ blackholing
 blake
 bms
 Bn
+bookkeeping
 boolean
 bootup
 bpf
@@ -268,6 +269,7 @@ Diffie
 Diffs
 dir
 dirN
+disambiguator
 disp
 distclean
 distro
@@ -576,6 +578,7 @@ jsonfiles
 kb
 kbps
 keepalives
+keying
 keychain
 kflows
 KinD
@@ -1397,6 +1400,7 @@ woohoo
 workspaces
 Workstream
 wouldn
+writeback
 wsl
 www
 xc
