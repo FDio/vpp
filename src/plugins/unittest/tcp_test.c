@@ -10169,6 +10169,31 @@ tcp_test_initial_cwnd (void)
   return 0;
 }
 
+/* Without a cc specific rate, pace at 2x while cwnd < ssthresh / 2 and at 1x after */
+static int
+tcp_test_ss_pacing (void)
+{
+  tcp_connection_t _tc = {}, *tc = &_tc;
+  u64 rate[3];
+
+  tc->cc_algo = tcp_cc_algo_get (TCP_CC_NEWRENO);
+  tc->srtt = 0.01 / TCP_TICK;
+  tc->mrtt_us = 0.01;
+  tc->cwnd = 100000;
+  tc->ssthresh = 0x7FFFFFFFU;
+  rate[0] = tcp_cc_get_pacing_rate (tc);
+  tc->ssthresh = 2 * tc->cwnd + 2;
+  rate[1] = tcp_cc_get_pacing_rate (tc);
+  tc->ssthresh = 2 * tc->cwnd;
+  rate[2] = tcp_cc_get_pacing_rate (tc);
+
+  TCP_TEST ((rate[0] == (u64) (2.0 * 100000 / 0.01)), "slow start paces at 2x (%llu)", rate[0]);
+  TCP_TEST ((rate[1] == (u64) (2.0 * 100000 / 0.01)), "2x below ssthresh / 2 (%llu)", rate[1]);
+  TCP_TEST ((rate[2] == (u64) (1.0 * 100000 / 0.01)), "1x from ssthresh / 2 (%llu)", rate[2]);
+
+  return 0;
+}
+
 static int
 tcp_test_startup (vlib_main_t *vm, unformat_input_t *input)
 {
@@ -10195,6 +10220,9 @@ tcp_test_startup (vlib_main_t *vm, unformat_input_t *input)
       return rv;
 
   if ((rv = tcp_test_initial_cwnd ()))
+    return rv;
+
+  if ((rv = tcp_test_ss_pacing ()))
     return rv;
 
   return 0;
