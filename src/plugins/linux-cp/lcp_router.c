@@ -28,6 +28,7 @@
 #include <vnet/ip/ip6_ll_table.h>
 #include <vnet/ip-neighbor/ip_neighbor.h>
 #include <vnet/ip/ip6_link.h>
+#include <vnet/interface_types.api_types.h>
 
 typedef struct lcp_router_table_t_
 {
@@ -413,21 +414,62 @@ lcp_router_link_add (struct rtnl_link *rl, void *ctx)
 	{
 	  u32 sub_phy_sw_if_index, sub_host_sw_if_index;
 	  const lcp_itf_pair_t *lip;
-	  int vlan;
-	  u8 *ns = 0; /* FIXME */
+	  u32 flags, sub_id;
+	  u16 outer_vlan = 0, inner_vlan = 0;
+	  u32 phy_parent_sw_if_index, host_parent_sw_if_index;
+	  u8 *ns = 0;
 
 	  lip = lcp_itf_pair_get (lipi);
+	  ns = lip->lip_namespace;
 
-	  vlan = rtnl_link_vlan_get_id (rl);
+	  vnet_sw_interface_t *sw = vnet_get_sw_interface (vnm, lip->lip_phy_sw_if_index);
+	  if (sw->type == VNET_SW_INTERFACE_TYPE_SUB)
+	    {
+	      /* The parent pair's phy is itself a vlan sub-interface, so this
+	       * is a QinQ (vlan-on-vlan) link. Derive both tags: the outer
+	       * tag from the parent sub-interface, the inner tag from the
+	       * new link.
+	       */
+	      outer_vlan = sw->sub.eth.outer_vlan_id;
+	      inner_vlan = (u16) rtnl_link_vlan_get_id (rl);
+
+	      flags = SUB_IF_API_FLAG_TWO_TAGS | SUB_IF_API_FLAG_EXACT_MATCH;
+	      if (sw->sub.eth.flags.dot1ad)
+		flags |= SUB_IF_API_FLAG_DOT1AD;
+
+	      /* Composite id keeps the QinQ sub-interface distinct from
+	       * single-tag sub-interfaces sharing the same HW parent.
+	       */
+	      sub_id = ((u32) outer_vlan * 10000) + inner_vlan;
+
+	      phy_parent_sw_if_index =
+		vnet_get_sup_hw_interface (vnm, lip->lip_phy_sw_if_index)->sw_if_index;
+	      host_parent_sw_if_index =
+		vnet_get_sup_hw_interface (vnm, lip->lip_host_sw_if_index)->sw_if_index;
+
+	      LCP_ROUTER_INFO (
+		"create qinq: %s -> outer %u inner %u on %U", rtnl_link_get_name (rl), outer_vlan,
+		inner_vlan, format_vnet_sw_if_index_name, vnet_get_main (), phy_parent_sw_if_index);
+	    }
+	  else
+	    {
+	      outer_vlan = (u16) rtnl_link_vlan_get_id (rl);
+	      inner_vlan = 0;
+
+	      flags = SUB_IF_API_FLAG_ONE_TAG | SUB_IF_API_FLAG_EXACT_MATCH;
+	      sub_id = outer_vlan;
+
+	      phy_parent_sw_if_index = lip->lip_phy_sw_if_index;
+	      host_parent_sw_if_index = lip->lip_host_sw_if_index;
+	    }
 
 	  /* create the vlan interface on the parent phy */
-	  if (vnet_create_sub_interface (lip->lip_phy_sw_if_index, vlan, 18, 0,
-					 vlan, &sub_phy_sw_if_index))
+	  if (vnet_create_sub_interface (phy_parent_sw_if_index, sub_id, flags, inner_vlan,
+					 outer_vlan, &sub_phy_sw_if_index))
 	    {
-	      LCP_ROUTER_INFO ("failed create phy vlan: %s on %U",
-			       rtnl_link_get_name (rl),
+	      LCP_ROUTER_INFO ("failed create phy vlan: %s on %U", rtnl_link_get_name (rl),
 			       format_vnet_sw_if_index_name, vnet_get_main (),
-			       lip->lip_phy_sw_if_index);
+			       phy_parent_sw_if_index);
 	      return;
 	    }
 
@@ -435,13 +477,12 @@ lcp_router_link_add (struct rtnl_link *rl, void *ctx)
 	  lip = lcp_itf_pair_get (lipi);
 
 	  /* create the vlan interface on the parent host */
-	  if (vnet_create_sub_interface (lip->lip_host_sw_if_index, vlan, 18,
-					 0, vlan, &sub_host_sw_if_index))
+	  if (vnet_create_sub_interface (host_parent_sw_if_index, sub_id, flags, inner_vlan,
+					 outer_vlan, &sub_host_sw_if_index))
 	    {
-	      LCP_ROUTER_INFO ("failed create vlan: %s on %U",
-			       rtnl_link_get_name (rl),
+	      LCP_ROUTER_INFO ("failed create vlan: %s on %U", rtnl_link_get_name (rl),
 			       format_vnet_sw_if_index_name, vnet_get_main (),
-			       lip->lip_host_sw_if_index);
+			       host_parent_sw_if_index);
 	      return;
 	    }
 
