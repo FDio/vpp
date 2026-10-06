@@ -256,6 +256,88 @@ def del_namespace_neighbor(ns, ifname, ip_addr):
             ) from e
 
 
+def add_namespace_vlan(ns, parent, ifname, vlan_id):
+    """Add a VLAN link to a namespace."""
+    with lock:
+        try:
+            cmd = [
+                "ip",
+                "netns",
+                "exec",
+                ns,
+                "ip",
+                "link",
+                "add",
+                "link",
+                parent,
+                "name",
+                ifname,
+                "type",
+                "vlan",
+                "id",
+                str(vlan_id),
+            ]
+            subprocess.run(cmd, capture_output=True, check=True)
+        except subprocess.CalledProcessError as e:
+            raise Exception(
+                f"Error adding vlan {ifname} (id {vlan_id}) on {parent} "
+                f"in namespace {ns}: {e.stderr.decode()}"
+            ) from e
+
+
+def add_namespace_qinq(ns, parent, ifname, vlan_id):
+    """Add a QinQ (vlan-on-vlan) link to a namespace."""
+    with lock:
+        try:
+            cmd = [
+                "ip",
+                "netns",
+                "exec",
+                ns,
+                "ip",
+                "link",
+                "add",
+                "link",
+                parent,
+                "name",
+                ifname,
+                "type",
+                "vlan",
+                "protocol",
+                "802.1Q",
+                "id",
+                str(vlan_id),
+            ]
+            subprocess.run(cmd, capture_output=True, check=True)
+        except subprocess.CalledProcessError as e:
+            raise Exception(
+                f"Error adding qinq {ifname} (id {vlan_id}) on {parent} "
+                f"in namespace {ns}: {e.stderr.decode()}"
+            ) from e
+
+
+def del_namespace_link(ns, ifname):
+    """Delete a link from a namespace."""
+    with lock:
+        try:
+            cmd = [
+                "ip",
+                "netns",
+                "exec",
+                ns,
+                "ip",
+                "link",
+                "del",
+                ifname,
+            ]
+            subprocess.run(cmd, capture_output=True, check=True)
+        except subprocess.CalledProcessError as e:
+            raise Exception(
+                f"Error deleting link {ifname} in namespace {ns}: "
+                f"{e.stderr.decode()}"
+            ) from e
+
+
 def delete_all_host_interfaces(history_file):
     """Delete all host interfaces whose names have been added to the history file."""
 
