@@ -10125,6 +10125,59 @@ tcp_test_rack (vlib_main_t *vm, unformat_input_t *input)
   return 0;
 }
 
+/* In SYN_RCVD the rx fifo exists, so the SYN-ACK advertises its space, up to
+ * the unscaled maximum, instead of the smallest fifo size. */
+static int
+tcp_test_synack_wnd (vlib_main_t *vm)
+{
+  tcp_e2e_params_t params = {
+    .name = "synack_wnd",
+    .client_addr = 0x1c1c1c01,
+    .server_addr = 0x1d1d1d01,
+    .client_vrf = 0,
+    .server_vrf = 2,
+    .server_port = 2263,
+    .client_port = 0,
+    .secret = 2262,
+    .rx_fifo_size = 64 << 10,
+    .tx_fifo_size = 64 << 10,
+  };
+  tcp_e2e_ctx_t _ctx = {}, *ctx = &_ctx;
+  int rv = 0;
+
+  if (!TCP_TEST_I ((tcp_e2e_setup (vm, ctx, &params) == 0), "synack_wnd: e2e setup"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+  /* Until the server sends anything else, the client's window is the SYN-ACK's */
+  if (!TCP_TEST_I ((ctx->client_tc->snd_wnd == TCP_WND_MAX),
+		   "syn-ack advertises the server rx fifo (wnd %u)", ctx->client_tc->snd_wnd))
+    rv = 1;
+
+cleanup:
+  tcp_e2e_teardown (vm, ctx);
+  return rv;
+}
+
+static int
+tcp_test_startup (vlib_main_t *vm, unformat_input_t *input)
+{
+  int rv;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      vlib_cli_output (vm, "parse error: '%U'", format_unformat_error, input);
+      return -1;
+    }
+
+  if ((rv = tcp_test_synack_wnd (vm)))
+    return rv;
+
+  return 0;
+}
+
 static clib_error_t *
 tcp_test (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd_arg)
 {
@@ -10193,6 +10246,10 @@ tcp_test (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd_arg)
 	{
 	  res = tcp_test_tamper (vm, input);
 	}
+      else if (unformat (input, "startup"))
+	{
+	  res = tcp_test_startup (vm, input);
+	}
       else if (unformat (input, "all"))
 	{
 	  if ((res = tcp_test_sack (vm, input)))
@@ -10220,6 +10277,8 @@ tcp_test (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd_arg)
 	  if ((res = tcp_test_rack (vm, input)))
 	    goto done;
 	  if ((res = tcp_test_tamper (vm, input)))
+	    goto done;
+	  if ((res = tcp_test_startup (vm, input)))
 	    goto done;
 	}
       else
