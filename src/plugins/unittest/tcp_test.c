@@ -2266,6 +2266,7 @@ tcp_test_bbr (vlib_main_t *vm, unformat_input_t *input)
   u64 expected_rate;
   int switch_rv;
   u32 i;
+  u16 multiplier;
   u8 *state, switch_rejected, no_sack_rejected, bbr_selected;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
@@ -2287,8 +2288,11 @@ tcp_test_bbr (vlib_main_t *vm, unformat_input_t *input)
   tcp_test_bbr_cleanup (tc);
 
   /* Refresh the cached quantum when the effective MSS changes without a
-   * pacing-rate change. */
+   * pacing-rate change. Start from a 4 segment initial window. */
+  multiplier = tcp_cfg.initial_cwnd_multiplier;
+  tcp_cfg.initial_cwnd_multiplier = 4;
   tcp_test_bbr_init (tc, thread_index, 1000, 10.0);
+  tcp_cfg.initial_cwnd_multiplier = multiplier;
   tc->snd_mss = 2000;
   ac.acked_and_sacked = 2000;
   tc->cc_algo->rcv_ack (tc, &ac);
@@ -10102,6 +10106,37 @@ cleanup:
   return rv;
 }
 
+/* RFC 6928 initial window, min (10 * MSS, max (2 * MSS, 14600)), unless the
+ * multiplier is configured */
+static int
+tcp_test_initial_cwnd (void)
+{
+  u16 multiplier = tcp_cfg.initial_cwnd_multiplier;
+  tcp_connection_t _tc = {}, *tc = &_tc;
+  u32 iw[5];
+
+  tcp_cfg.initial_cwnd_multiplier = 0;
+  tc->snd_mss = 536;
+  iw[0] = tcp_initial_cwnd (tc);
+  tc->snd_mss = 1448;
+  iw[1] = tcp_initial_cwnd (tc);
+  tc->snd_mss = 1500;
+  iw[2] = tcp_initial_cwnd (tc);
+  tc->snd_mss = 8948;
+  iw[3] = tcp_initial_cwnd (tc);
+  tcp_cfg.initial_cwnd_multiplier = 4;
+  iw[4] = tcp_initial_cwnd (tc);
+  tcp_cfg.initial_cwnd_multiplier = multiplier;
+
+  TCP_TEST ((iw[0] == 10 * 536), "initial window is 10 segments for mss 536");
+  TCP_TEST ((iw[1] == 10 * 1448), "initial window is 10 segments for mss 1448");
+  TCP_TEST ((iw[2] == 14600), "initial window is 14600 bytes for mss 1500");
+  TCP_TEST ((iw[3] == 2 * 8948), "initial window is 2 segments for mss 8948");
+  TCP_TEST ((iw[4] == 4 * 8948), "configured multiplier overrides the initial window");
+
+  return 0;
+}
+
 static int
 tcp_test_startup (vlib_main_t *vm, unformat_input_t *input)
 {
@@ -10126,6 +10161,9 @@ tcp_test_startup (vlib_main_t *vm, unformat_input_t *input)
   for (i = 0; i < ARRAY_LEN (cases); i++)
     if ((rv = tcp_test_synack_wnd (vm, cases[i].fifo_size, cases[i].expected_wnd)))
       return rv;
+
+  if ((rv = tcp_test_initial_cwnd ()))
+    return rv;
 
   return 0;
 }
