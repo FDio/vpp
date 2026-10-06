@@ -189,9 +189,12 @@ DPDK_MESON_ARGS = \
 	-Db_pie=true \
 	-Dplatform=$(DPDK_MACHINE) \
 	$(DPDK_MAX_LCORES_FLAG) \
-        --buildtype=$(DPDK_BUILD_TYPE) \
+	--buildtype=$(DPDK_BUILD_TYPE) \
 	-Denable_kmods=false \
-	${DPDK_MLX_CONFIG_FLAG}
+	${DPDK_MLX_CONFIG_FLAG} \
+	"-Dc_args=-I$(dpdk_install_dir)/include" \
+	"-Dc_link_args=-L$(dpdk_install_dir)/lib -L$(dpdk_install_dir)/lib64"
+# The last two options are needed to find dependencies like ipsec-mb for QAT.
 
 PIP_DOWNLOAD_DIR = $(CURDIR)/downloads/
 
