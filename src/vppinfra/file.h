@@ -136,10 +136,13 @@ clib_file_free_deleted (clib_file_main_t *fm, clib_thread_index_t thread_index)
 {
   u32 n_keep = 0;
 
-  if (vec_len (fm->pending_free) == 0)
-    return;
-
   CLIB_SPINLOCK_LOCK (fm->lock);
+  if (vec_len (fm->pending_free) == 0)
+    {
+      CLIB_SPINLOCK_UNLOCK (fm->lock);
+      return;
+    }
+
   vec_foreach_pointer (f, fm->pending_free)
     {
       if (f->polling_thread_index == thread_index)
