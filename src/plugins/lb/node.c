@@ -446,6 +446,54 @@ lb_node_process_packet (vlib_main_t *vm, vlib_node_runtime_t *node, lb_main_t *l
 	}
     }
 
+  else if (encap_type == LB_ENCAP_TYPE_NAT6_NOPORT)
+    {
+      /* Same full dst-address swap as NAT66 above, but with no
+       * target_port to rewrite to, so the L4 port (and therefore
+       * anything past it) is left completely alone, and every
+       * protocol is forwarded rather than only UDP - there is no
+       * NAT66-style "else asindex0 = 0" drop for non-UDP traffic
+       * here. TCP/UDP/ICMP6 checksums are all fixed up incrementally
+       * for the changed address words, same as NAT66's UDP case -
+       * ICMP6's checksum covers the same IP6 pseudo-header as
+       * TCP/UDP, so the identical old-dst/new-dst update applies. */
+      ip6_header_t *ip60;
+      ip6_address_t old_dst;
+      u32 nat6_noport_ctr;
+
+      ip60 = vlib_buffer_get_current (p0);
+
+      old_dst.as_u64[0] = ip60->dst_address.as_u64[0];
+      old_dst.as_u64[1] = ip60->dst_address.as_u64[1];
+      ip60->dst_address.as_u64[0] = lbm->ass[asindex0].address.ip6.as_u64[0];
+      ip60->dst_address.as_u64[1] = lbm->ass[asindex0].address.ip6.as_u64[1];
+
+      if (ip60->protocol == IP_PROTOCOL_UDP)
+	{
+	  udp_header_t *uh0 = (udp_header_t *) (ip60 + 1);
+	  LB_NAT6_NOPORT_FIXUP_L4_CSUM (uh0, old_dst, lbm->ass[asindex0].address.ip6);
+	  nat6_noport_ctr = LB_NAT6_NOPORT_ERROR_TRANSLATED_UDP;
+	}
+      else if (ip60->protocol == IP_PROTOCOL_TCP)
+	{
+	  tcp_header_t *th0 = (tcp_header_t *) (ip60 + 1);
+	  LB_NAT6_NOPORT_FIXUP_L4_CSUM (th0, old_dst, lbm->ass[asindex0].address.ip6);
+	  nat6_noport_ctr = LB_NAT6_NOPORT_ERROR_TRANSLATED_TCP;
+	}
+      else if (ip60->protocol == IP_PROTOCOL_ICMP6)
+	{
+	  icmp46_header_t *icmp0 = (icmp46_header_t *) (ip60 + 1);
+	  LB_NAT6_NOPORT_FIXUP_L4_CSUM (icmp0, old_dst, lbm->ass[asindex0].address.ip6);
+	  nat6_noport_ctr = LB_NAT6_NOPORT_ERROR_TRANSLATED_ICMP6;
+	}
+      else
+	{
+	  nat6_noport_ctr = LB_NAT6_NOPORT_ERROR_TRANSLATED_OTHER;
+	}
+
+      vlib_node_increment_counter (vm, node->node_index, nat6_noport_ctr, 1);
+    }
+
   u32 next0 = lbm->ass[asindex0].dpo.dpoi_next_node;
   vnet_buffer (p0)->ip.adj_index[VLIB_TX] = lbm->ass[asindex0].dpo.dpoi_index;
 
