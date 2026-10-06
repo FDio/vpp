@@ -10065,6 +10065,71 @@ tcp_test_rack (vlib_main_t *vm, unformat_input_t *input)
   return 0;
 }
 
+/* In SYN_RCVD the rx fifo exists, so the SYN-ACK advertises its size, up to
+ * the unscaled maximum, instead of the smallest fifo size. */
+static int
+tcp_test_synack_wnd (vlib_main_t *vm, u32 fifo_size, u32 expected_wnd)
+{
+  tcp_e2e_params_t params = {
+    .name = "synack_wnd",
+    .client_addr = 0x1c1c1c01,
+    .server_addr = 0x1d1d1d01,
+    .client_vrf = 0,
+    .server_vrf = 2,
+    .server_port = 2263,
+    .client_port = 0,
+    .secret = 2262,
+    .rx_fifo_size = fifo_size,
+    .tx_fifo_size = 64 << 10,
+  };
+  tcp_e2e_ctx_t _ctx = {}, *ctx = &_ctx;
+  int rv = 0;
+
+  if (!TCP_TEST_I ((tcp_e2e_setup (vm, ctx, &params) == 0), "synack_wnd: e2e setup"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+  /* Until the server sends anything else, the client's window is the SYN-ACK's */
+  if (!TCP_TEST_I ((ctx->client_tc->snd_wnd == expected_wnd),
+		   "syn-ack advertises rx fifo size %u (wnd %u, expected %u)", fifo_size,
+		   ctx->client_tc->snd_wnd, expected_wnd))
+    rv = 1;
+
+cleanup:
+  tcp_e2e_teardown (vm, ctx);
+  return rv;
+}
+
+static int
+tcp_test_startup (vlib_main_t *vm, unformat_input_t *input)
+{
+  const struct
+  {
+    u32 fifo_size;
+    u32 expected_wnd;
+  } cases[] = {
+    { 4 << 10, 4 << 10 },
+    { 32 << 10, 32 << 10 },
+    { 64 << 10, TCP_WND_MAX },
+  };
+  u32 i;
+  int rv;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      vlib_cli_output (vm, "parse error: '%U'", format_unformat_error, input);
+      return -1;
+    }
+
+  for (i = 0; i < ARRAY_LEN (cases); i++)
+    if ((rv = tcp_test_synack_wnd (vm, cases[i].fifo_size, cases[i].expected_wnd)))
+      return rv;
+
+  return 0;
+}
+
 static clib_error_t *
 tcp_test (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd_arg)
 {
@@ -10133,6 +10198,10 @@ tcp_test (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd_arg)
 	{
 	  res = tcp_test_tamper (vm, input);
 	}
+      else if (unformat (input, "startup"))
+	{
+	  res = tcp_test_startup (vm, input);
+	}
       else if (unformat (input, "all"))
 	{
 	  if ((res = tcp_test_sack (vm, input)))
@@ -10160,6 +10229,8 @@ tcp_test (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd_arg)
 	  if ((res = tcp_test_rack (vm, input)))
 	    goto done;
 	  if ((res = tcp_test_tamper (vm, input)))
+	    goto done;
+	  if ((res = tcp_test_startup (vm, input)))
 	    goto done;
 	}
       else
