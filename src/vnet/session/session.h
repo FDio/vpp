@@ -552,11 +552,11 @@ __clib_export int session_enqueue_notify (session_t *s);
 __clib_export int session_dequeue_notify (session_t *s);
 int session_enqueue_notify_cl (session_t *s);
 /* Deprecated, use session_program_* functions */
-int session_send_io_evt_to_thread (svm_fifo_t *f, session_evt_type_t evt_type);
+__clib_export int session_send_io_evt_to_thread (svm_fifo_t *f, session_evt_type_t evt_type);
 /* Deprecated, use session_program_* functions */
-int session_send_io_evt_to_thread_custom (void *data,
-					  clib_thread_index_t thread_index,
-					  session_evt_type_t evt_type);
+__clib_export int session_send_io_evt_to_thread_custom (void *data,
+							clib_thread_index_t thread_index,
+							session_evt_type_t evt_type);
 __clib_export int session_program_tx_io_evt (session_handle_tu_t sh, session_evt_type_t evt_type);
 __clib_export int session_program_rx_io_evt (session_handle_tu_t sh);
 __clib_export int session_program_transport_io_evt (session_handle_tu_t sh,

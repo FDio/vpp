@@ -26,9 +26,9 @@ __clib_export extern void fib_api_path_encode(const fib_route_path_t * api_rpath
 __clib_export extern int fib_api_path_decode(vl_api_fib_path_t *in,
                                fib_route_path_t *out);
 
-extern int fib_api_table_id_decode(fib_protocol_t fproto,
-                                   u32 table_id,
-                                   u32 *fib_index);
+__clib_export extern int fib_api_table_id_decode (fib_protocol_t fproto,
+						   u32 table_id,
+						   u32 *fib_index);
 
 /**
  * Adding routes from the API
