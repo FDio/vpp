@@ -86,10 +86,12 @@ tcp_cc_get_pacing_rate (tcp_connection_t * tc)
     return tc->cc_algo->get_pacing_rate (tc);
 
   f64 srtt = clib_min ((f64) tc->srtt * TCP_TICK, tc->mrtt_us);
+  /* In slow start, while cwnd < ssthresh / 2, pace at twice the rate so cwnd can double per rtt */
+  f64 gain = tc->cwnd < tc->ssthresh / 2 ? 2.0 : 1.0;
 
   /* TODO should constrain to interface's max throughput but
    * we don't have link speeds for sw ifs ..*/
-  return ((f64) tc->cwnd / srtt);
+  return (gain * tc->cwnd / srtt);
 }
 
 static inline void *
