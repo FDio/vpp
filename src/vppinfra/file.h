@@ -63,6 +63,7 @@ typedef struct
   clib_file_t **pending_free;
 
   u8 lock;
+  u8 has_pending_free;
 
   void (*file_update) (clib_file_t * file,
 		       clib_file_update_type_t update_type);
@@ -118,6 +119,7 @@ clib_file_del (clib_file_main_t *fm, clib_file_t *f)
     close ((int) f->file_descriptor);
   f->active = 0;
   vec_add1 (fm->pending_free, f);
+  clib_atomic_store_rel_n (&fm->has_pending_free, 1);
   pool_put_index (fm->file_pool, f->index);
   CLIB_SPINLOCK_UNLOCK (fm->lock);
 }
@@ -134,14 +136,16 @@ clib_file_del_by_index (clib_file_main_t *fm, uword index)
 always_inline void
 clib_file_free_deleted (clib_file_main_t *fm, clib_thread_index_t thread_index)
 {
+  clib_file_t *f, **fp;
   u32 n_keep = 0;
 
-  if (vec_len (fm->pending_free) == 0)
+  if (!clib_atomic_load_acq_n (&fm->has_pending_free))
     return;
 
   CLIB_SPINLOCK_LOCK (fm->lock);
-  vec_foreach_pointer (f, fm->pending_free)
+  vec_foreach (fp, fm->pending_free)
     {
+      f = *fp;
       if (f->polling_thread_index == thread_index)
 	{
 	  vec_free (f->description);
@@ -151,6 +155,7 @@ clib_file_free_deleted (clib_file_main_t *fm, clib_thread_index_t thread_index)
 	fm->pending_free[n_keep++] = f;
     }
   vec_set_len (fm->pending_free, n_keep);
+  clib_atomic_store_rel_n (&fm->has_pending_free, n_keep != 0);
   CLIB_SPINLOCK_UNLOCK (fm->lock);
 }
 
