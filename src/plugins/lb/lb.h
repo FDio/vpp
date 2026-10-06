@@ -179,12 +179,22 @@ typedef enum {
   LB_N_VIP_COUNTERS
 } lb_vip_counter_t;
 
-typedef enum {
+typedef enum
+{
   LB_ENCAP_TYPE_GRE4,
   LB_ENCAP_TYPE_GRE6,
   LB_ENCAP_TYPE_L3DSR,
   LB_ENCAP_TYPE_NAT4,
   LB_ENCAP_TYPE_NAT6,
+  /* Same full-address dst swap as NAT6, but the destination L4 port is
+   * left untouched and every protocol (not just UDP) is forwarded. Added
+   * for callers who load-balance across a set of IPv6 addresses that are
+   * already valid final destinations on their own (e.g. each AS address
+   * already embeds whatever downstream identifying data the packet needs,
+   * so no port remap/passthrough restriction is required). Appended at
+   * the end so existing LB_ENCAP_TYPE_* values, and therefore the wire
+   * encoding of lb_encap_type in the API, are unchanged. */
+  LB_ENCAP_TYPE_NAT6_NOPORT,
   LB_ENCAP_N_TYPES,
 } lb_encap_type_t;
 
@@ -203,7 +213,8 @@ typedef enum {
  * The load balancer supports IPv4 and IPv6 traffic
  * and GRE4, GRE6, L3DSR and NAT4, NAT6 encap.
  */
-typedef enum {
+typedef enum
+{
   LB_VIP_TYPE_IP6_GRE6,
   LB_VIP_TYPE_IP6_GRE4,
   LB_VIP_TYPE_IP4_GRE6,
@@ -211,6 +222,9 @@ typedef enum {
   LB_VIP_TYPE_IP4_L3DSR,
   LB_VIP_TYPE_IP4_NAT4,
   LB_VIP_TYPE_IP6_NAT6,
+  /* VIP counterpart of LB_ENCAP_TYPE_NAT6_NOPORT - appended at the end so
+   * existing lb_vip_type_t values are unchanged. */
+  LB_VIP_TYPE_IP6_NAT6_NOPORT,
   LB_VIP_N_TYPES,
 } lb_vip_type_t;
 
@@ -336,9 +350,9 @@ typedef struct {
                             || type == LB_VIP_TYPE_IP4_L3DSR \
                             || type == LB_VIP_TYPE_IP4_NAT4 )
 
-#define lb_vip_is_ip6(type) (type == LB_VIP_TYPE_IP6_GRE6 \
-                            || type == LB_VIP_TYPE_IP6_GRE4 \
-                            || type == LB_VIP_TYPE_IP6_NAT6 )
+#define lb_vip_is_ip6(type)                                                                        \
+  (type == LB_VIP_TYPE_IP6_GRE6 || type == LB_VIP_TYPE_IP6_GRE4 || type == LB_VIP_TYPE_IP6_NAT6 || \
+   type == LB_VIP_TYPE_IP6_NAT6_NOPORT)
 
 #define lb_encap_is_ip4(vip) ((vip)->type == LB_VIP_TYPE_IP6_GRE4 \
                              || (vip)->type == LB_VIP_TYPE_IP4_GRE4 \
@@ -386,6 +400,16 @@ always_inline bool
 lb_vip_is_nat6_port(const lb_vip_t *vip)
 {
   return (vip->type == LB_VIP_TYPE_IP6_NAT6 && vip->port != 0);
+}
+
+/* Unlike NAT6/NAT4 (always per-port, dispatched via the nodeport UDP-port
+ * filter path), NAT6_NOPORT is dispatched exactly like L3DSR/GRE - a plain
+ * prefix VIP with no port matching, since there is no target_port to
+ * rewrite to and thus no need for the per-port filter table at all. */
+always_inline bool
+lb_vip_is_nat6_noport (const lb_vip_t *vip)
+{
+  return (vip->type == LB_VIP_TYPE_IP6_NAT6_NOPORT && vip->port == 0);
 }
 
 format_function_t format_lb_vip;
@@ -545,6 +569,7 @@ typedef struct {
   dpo_type_t dpo_l3dsr_port_type;
   dpo_type_t dpo_nat4_port_type;
   dpo_type_t dpo_nat6_port_type;
+  dpo_type_t dpo_nat6_noport_type;
   /**
    * Node type for registering to fib changes.
    */

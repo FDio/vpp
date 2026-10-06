@@ -19,7 +19,7 @@ The load balancer is configured with a set of Virtual IPs (VIP, which
 can be prefixes), and for each VIP, with a set of Application Server
 addresses (ASs).
 
-There are four encap types to steer traffic to different ASs: 1).
+There are five encap types to steer traffic to different ASs: 1).
 IPv4+GRE and IPv6+GRE encap types: Traffic received for a given VIP (or
 VIP prefix) is tunneled using GRE towards the different ASs in a way
 that (tries to) ensure that a given session will always be tunneled to
@@ -62,6 +62,18 @@ packet is sent out.
 Please refer to below for details:
 https://schd.ws/hosted_files/ossna2017/1e/VPP_K8S_GTPU_OSSNA.pdf
 
+4). IPv6+NAT6-NOPORT encap type: Like IPv6+NAT6, this rewrites only the
+destination address to move traffic from the VIP to a chosen AS, but
+leaves the L4 port - and, unlike NAT6, any protocol other than UDP -
+completely untouched. It is intended for deployments where each AS
+address is already itself a valid, self-sufficient final destination
+(e.g. each AS embeds whatever downstream-identifying information a
+packet needs), so no port translation or protocol restriction is
+required. TCP, UDP, and ICMP6 are all forwarded, with checksums fixed
+up incrementally for the changed destination address. Unlike NAT4/NAT6,
+a NAT6-NOPORT VIP is not per-port: it is a plain prefix, matched
+independently of protocol/port, the same way GRE/L3DSR VIPs are.
+
 Performance
 -----------
 
@@ -100,7 +112,7 @@ Configure the VIPs
 
 ::
 
-   lb vip <prefix> [encap (gre6|gre4|l3dsr|nat4|nat6)] \
+   lb vip <prefix> [encap (gre6|gre4|l3dsr|nat4|nat6|nat6-noport)] \
      [dscp <n>] [port <n> target_port <n> node_port <n>] [new_len <n>] [del]
 
 new_len is the size of the new-connection-table. It should be 1 or 2
@@ -109,7 +121,9 @@ to ensure good load balancing. Encap l3dsr and dscp are used to map the
 VIP to a DSCP bit and rewrite the DSCP bit in packets, so the selected
 server can get the VIP from the DSCP bit in the packet and perform DSR.
 Encap nat4/nat6 and port/target_port/node_port are used for the
-kube-proxy data plane.
+kube-proxy data plane. Encap nat6-noport takes no port/target_port/
+node_port arguments - like gre/l3dsr, the VIP is a plain prefix - and
+forwards TCP/UDP/ICMP6 without rewriting the destination port.
 
 Examples:
 
@@ -122,6 +136,7 @@ Examples:
    lb vip 100.0.0.0/8 encap l3dsr dscp 2 new_len 32
    lb vip 90.1.2.1/32 encap nat4 port 3306 target_port 3307 node_port 30964 new_len 1024
    lb vip 2004::/16 encap nat6 port 6306 target_port 6307 node_port 30966 new_len 1024
+   lb vip 2005::/16 encap nat6-noport new_len 1024
 
 Configure the ASs (for each VIP)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

@@ -1,8 +1,8 @@
 import socket
 
 import scapy.compat
-from scapy.layers.inet import IP, UDP
-from scapy.layers.inet6 import IPv6
+from scapy.layers.inet import IP, TCP, UDP
+from scapy.layers.inet6 import IPv6, ICMPv6EchoRequest
 from scapy.layers.l2 import Ether, GRE
 from scapy.packet import Raw
 from scapy.data import IP_PROTOS
@@ -26,6 +26,7 @@ import unittest
   - IP4 to L3DSR encap on per-port vip with src_ip_sticky case
   - IP4 to NAT4 encap on per-port vip case
   - IP6 to NAT6 encap on per-port vip case
+  - IP6 to NAT6_NOPORT encap on vip case (UDP, TCP, ICMP6)
 
  As stated in comments below, GRE has issues with IPv6.
  All test cases involving IPv6 are executed, but
@@ -205,6 +206,25 @@ class TestLB(VppTestCase):
                     self.assertGreaterEqual(ip.hlim, 63)
                     udp = UDP(scapy.compat.raw(p[IPv6].payload))
                     self.assertEqual(udp.dport, 3307)
+                elif encap == "nat6-noport":
+                    ip = p[IPv6]
+                    asid = ip.dst.split(":")
+                    asid = asid[len(asid) - 1]
+                    asid = 0 if asid == "" else int(asid)
+                    self.assertEqual(ip.version, 6)
+                    self.assertEqual(ip.tc, 0)
+                    self.assertEqual(ip.fl, 0)
+                    self.assertEqual(
+                        socket.inet_pton(socket.AF_INET6, ip.dst),
+                        socket.inet_pton(socket.AF_INET6, "2002::%u" % asid),
+                    )
+                    self.assertEqual(ip.nh, 17)
+                    self.assertGreaterEqual(ip.hlim, 63)
+                    udp = p[UDP]
+                    # Unlike NAT6, NAT6_NOPORT leaves the destination port
+                    # (and everything past it) untouched.
+                    self.assertEqual(udp.dport, 20000)
+                    self.assert_udp_checksum_valid(p)
                 load[asid] += 1
 
                 # In case of source ip sticky, check that packets with same
@@ -814,4 +834,95 @@ class TestLB(VppTestCase):
                 "lb vip 2001::/16 protocol udp port 20000 encap nat6"
                 " type clusterip target_port 3307 del"
             )
+            self.vapi.cli("test lb flowtable flush")
+
+    def test_lb_ip6_nat6_noport(self):
+        """Load Balancer IP6 NAT6_NOPORT on vip case"""
+        try:
+            self.vapi.cli("lb vip 2001::/16 encap nat6-noport")
+            for asid in self.ass:
+                self.vapi.cli("lb as 2001::/16 2002::%u" % (asid))
+
+            self.pg0.add_stream(self.generatePackets(self.pg0, isv4=False))
+            self.pg_enable_capture(self.pg_interfaces)
+            self.pg_start()
+            self.checkCapture(encap="nat6-noport", isv4=False)
+
+        finally:
+            for asid in self.ass:
+                self.vapi.cli("lb as 2001::/16 2002::%u del" % (asid))
+            self.vapi.cli("lb vip 2001::/16 encap nat6-noport del")
+            self.vapi.cli("test lb flowtable flush")
+
+    def test_lb_ip6_nat6_noport_tcp(self):
+        """Load Balancer IP6 NAT6_NOPORT forwards TCP (unlike NAT6)"""
+        vip_pfx = "2001:db8:10::/64"
+        as_addr = "2002::100"
+        try:
+            self.vapi.cli("lb vip %s encap nat6-noport" % vip_pfx)
+            self.vapi.cli("lb as %s %s" % (vip_pfx, as_addr))
+
+            pkt = (
+                Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac)
+                / IPv6(src=self.pg0.remote_ip6, dst="2001:db8:10::1")
+                / TCP(sport=10000, dport=20000)
+                / Raw(b"\x5a" * 32)
+            )
+            self.pg0.add_stream([pkt])
+            self.pg_enable_capture(self.pg_interfaces)
+            self.pg_start()
+
+            rx = self.pg1.get_capture(1)
+            self.pg0.assert_nothing_captured()
+            p = rx[0]
+            ip6 = p[IPv6]
+            self.assertEqual(ip6.src, self.pg0.remote_ip6)
+            self.assertEqual(
+                socket.inet_pton(socket.AF_INET6, ip6.dst),
+                socket.inet_pton(socket.AF_INET6, as_addr),
+            )
+            # Unlike NAT6 (which drops non-UDP), NAT6_NOPORT forwards TCP
+            # with the port left untouched.
+            self.assertEqual(p[TCP].sport, 10000)
+            self.assertEqual(p[TCP].dport, 20000)
+            self.assert_tcp_checksum_valid(p)
+
+        finally:
+            self.vapi.cli("lb as %s %s del" % (vip_pfx, as_addr))
+            self.vapi.cli("lb vip %s encap nat6-noport del" % vip_pfx)
+            self.vapi.cli("test lb flowtable flush")
+
+    def test_lb_ip6_nat6_noport_icmp6(self):
+        """Load Balancer IP6 NAT6_NOPORT forwards ICMP6 (unlike NAT6)"""
+        vip_pfx = "2001:db8:10::/64"
+        as_addr = "2002::100"
+        try:
+            self.vapi.cli("lb vip %s encap nat6-noport" % vip_pfx)
+            self.vapi.cli("lb as %s %s" % (vip_pfx, as_addr))
+
+            pkt = (
+                Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac)
+                / IPv6(src=self.pg0.remote_ip6, dst="2001:db8:10::1")
+                / ICMPv6EchoRequest()
+                / Raw(b"\x5a" * 32)
+            )
+            self.pg0.add_stream([pkt])
+            self.pg_enable_capture(self.pg_interfaces)
+            self.pg_start()
+
+            rx = self.pg1.get_capture(1)
+            self.pg0.assert_nothing_captured()
+            p = rx[0]
+            ip6 = p[IPv6]
+            self.assertEqual(ip6.src, self.pg0.remote_ip6)
+            self.assertEqual(
+                socket.inet_pton(socket.AF_INET6, ip6.dst),
+                socket.inet_pton(socket.AF_INET6, as_addr),
+            )
+            self.assertIn(ICMPv6EchoRequest, p)
+            self.assert_icmpv6_checksum_valid(p)
+
+        finally:
+            self.vapi.cli("lb as %s %s del" % (vip_pfx, as_addr))
+            self.vapi.cli("lb vip %s encap nat6-noport del" % vip_pfx)
             self.vapi.cli("test lb flowtable flush")

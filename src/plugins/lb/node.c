@@ -28,6 +28,46 @@ static char *lb_error_strings[] =
 #undef _
     };
 
+#define foreach_lb_nat6_noport_error                                                               \
+  _ (NONE, "no error")                                                                             \
+  _ (TRANSLATED_UDP, "translated (udp)")                                                           \
+  _ (TRANSLATED_TCP, "translated (tcp)")                                                           \
+  _ (TRANSLATED_ICMP6, "translated (icmp6)")                                                       \
+  _ (TRANSLATED_OTHER, "translated (other proto, no csum fixup)")
+
+typedef enum
+{
+#define _(sym, str) LB_NAT6_NOPORT_ERROR_##sym,
+  foreach_lb_nat6_noport_error
+#undef _
+    LB_NAT6_NOPORT_N_ERROR,
+} lb_nat6_noport_error_t;
+
+static vlib_error_desc_t lb_nat6_noport_error_counters[] = {
+#define _(sym, string) { .name = #sym, .desc = string, .severity = VL_COUNTER_SEVERITY_INFO },
+  foreach_lb_nat6_noport_error
+#undef _
+};
+
+/* Incrementally updates an L4 checksum for the NAT6_NOPORT /128
+ * destination-address swap. TCP, UDP, and ICMP6 all qualify: their
+ * checksums cover the same IPv6 pseudo-header, so the identical
+ * old-dst/new-dst update applies to each. hdr is a pointer to a header
+ * type with a .checksum field (udp_header_t *, tcp_header_t *, or
+ * icmp46_header_t *); old_dst/new_dst are ip6_address_t (by value or
+ * reference - only ->as_u64[] is read). */
+#define LB_NAT6_NOPORT_FIXUP_L4_CSUM(hdr, old_dst, new_dst)                                        \
+  do                                                                                               \
+    {                                                                                              \
+      ip_csum_t _csum = (hdr)->checksum;                                                           \
+      _csum = ip_csum_sub_even (_csum, (old_dst).as_u64[0]);                                       \
+      _csum = ip_csum_sub_even (_csum, (old_dst).as_u64[1]);                                       \
+      _csum = ip_csum_add_even (_csum, (new_dst).as_u64[0]);                                       \
+      _csum = ip_csum_add_even (_csum, (new_dst).as_u64[1]);                                       \
+      (hdr)->checksum = ip_csum_fold (_csum);                                                      \
+    }                                                                                              \
+  while (0)
+
 typedef struct
 {
   u32 vip_index;
@@ -555,6 +595,59 @@ lb_node_fn (vlib_main_t * vm,
                     }
                 }
             }
+          else if (encap_type == LB_ENCAP_TYPE_NAT6_NOPORT)
+            {
+              /* Same full dst-address swap as NAT66 above, but with no
+               * target_port to rewrite to, so the L4 port (and therefore
+               * anything past it) is left completely alone, and every
+               * protocol is forwarded rather than only UDP - there is no
+               * NAT66-style "else asindex0 = 0" drop for non-UDP traffic
+               * here. TCP/UDP/ICMP6 checksums are all fixed up incrementally
+               * for the changed address words, same as NAT66's UDP case -
+               * ICMP6's checksum covers the same IP6 pseudo-header as
+               * TCP/UDP, so the identical old-dst/new-dst update applies. */
+              ip6_header_t *ip60;
+              ip6_address_t old_dst;
+              u32 nat6_noport_ctr;
+
+              ip60 = vlib_buffer_get_current (p0);
+
+              old_dst.as_u64[0] = ip60->dst_address.as_u64[0];
+              old_dst.as_u64[1] = ip60->dst_address.as_u64[1];
+              ip60->dst_address.as_u64[0] =
+                  lbm->ass[asindex0].address.ip6.as_u64[0];
+              ip60->dst_address.as_u64[1] =
+                  lbm->ass[asindex0].address.ip6.as_u64[1];
+
+              if (ip60->protocol == IP_PROTOCOL_UDP)
+                {
+                  udp_header_t *uh0 = (udp_header_t *) (ip60 + 1);
+                  LB_NAT6_NOPORT_FIXUP_L4_CSUM (
+                      uh0, old_dst, lbm->ass[asindex0].address.ip6);
+                  nat6_noport_ctr = LB_NAT6_NOPORT_ERROR_TRANSLATED_UDP;
+                }
+              else if (ip60->protocol == IP_PROTOCOL_TCP)
+                {
+                  tcp_header_t *th0 = (tcp_header_t *) (ip60 + 1);
+                  LB_NAT6_NOPORT_FIXUP_L4_CSUM (
+                      th0, old_dst, lbm->ass[asindex0].address.ip6);
+                  nat6_noport_ctr = LB_NAT6_NOPORT_ERROR_TRANSLATED_TCP;
+                }
+              else if (ip60->protocol == IP_PROTOCOL_ICMP6)
+                {
+                  icmp46_header_t *icmp0 = (icmp46_header_t *) (ip60 + 1);
+                  LB_NAT6_NOPORT_FIXUP_L4_CSUM (
+                      icmp0, old_dst, lbm->ass[asindex0].address.ip6);
+                  nat6_noport_ctr = LB_NAT6_NOPORT_ERROR_TRANSLATED_ICMP6;
+                }
+              else
+                {
+                  nat6_noport_ctr = LB_NAT6_NOPORT_ERROR_TRANSLATED_OTHER;
+                }
+
+              vlib_node_increment_counter (vm, node->node_index,
+                                           nat6_noport_ctr, 1);
+            }
           next0 = lbm->ass[asindex0].dpo.dpoi_next_node;
           //Note that this is going to error if asindex0 == 0
           vnet_buffer (p0)->ip.adj_index[VLIB_TX] =
@@ -1033,6 +1126,14 @@ lb6_nat6_port_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 }
 
 static uword
+lb6_nat6_noport_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
+{
+  /* per_port_vip=0: dispatched via a plain prefix VIP (like L3DSR/GRE),
+   * not the nodeport UDP-port-filter path NAT6 uses. */
+  return lb_node_fn (vm, node, frame, 0, LB_ENCAP_TYPE_NAT6_NOPORT, 0);
+}
+
+static uword
 lb4_nat4_port_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
                        vlib_frame_t * frame)
 {
@@ -1195,6 +1296,17 @@ VLIB_REGISTER_NODE (lb6_nat6_port_node) =
     .next_nodes =
         { [LB_NEXT_DROP] = "error-drop" },
   };
+
+VLIB_REGISTER_NODE (lb6_nat6_noport_node) = {
+  .function = lb6_nat6_noport_node_fn,
+  .name = "lb6-nat6-noport",
+  .vector_size = sizeof (u32),
+  .format_trace = format_lb_trace,
+  .n_errors = LB_NAT6_NOPORT_N_ERROR,
+  .error_counters = lb_nat6_noport_error_counters,
+  .n_next_nodes = LB_N_NEXT,
+  .next_nodes = { [LB_NEXT_DROP] = "error-drop" },
+};
 
 VLIB_REGISTER_NODE (lb4_nat4_port_node) =
   {

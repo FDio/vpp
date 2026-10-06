@@ -60,6 +60,8 @@ lb_vip_command_fn (vlib_main_t * vm,
       encap = LB_ENCAP_TYPE_L3DSR;
     else if (unformat(line_input, "encap nat4"))
       encap = LB_ENCAP_TYPE_NAT4;
+    else if (unformat (line_input, "encap nat6-noport"))
+      encap = LB_ENCAP_TYPE_NAT6_NOPORT;
     else if (unformat(line_input, "encap nat6"))
       encap = LB_ENCAP_TYPE_NAT6;
     else if (unformat(line_input, "dscp %d", &dscp))
@@ -112,11 +114,11 @@ lb_vip_command_fn (vlib_main_t * vm,
         args.type = LB_VIP_TYPE_IP4_L3DSR;
       else if (encap == LB_ENCAP_TYPE_NAT4)
         args.type = LB_VIP_TYPE_IP4_NAT4;
-      else if (encap == LB_ENCAP_TYPE_NAT6)
-        {
-          error = clib_error_return(0, "currently does not support NAT46");
-          goto done;
-        }
+      else if ((encap == LB_ENCAP_TYPE_NAT6) || (encap == LB_ENCAP_TYPE_NAT6_NOPORT))
+	{
+	  error = clib_error_return (0, "currently does not support NAT46");
+	  goto done;
+	}
     }
   else
     {
@@ -126,6 +128,8 @@ lb_vip_command_fn (vlib_main_t * vm,
         args.type = LB_VIP_TYPE_IP6_GRE6;
       else if (encap == LB_ENCAP_TYPE_NAT6)
         args.type = LB_VIP_TYPE_IP6_NAT6;
+      else if (encap == LB_ENCAP_TYPE_NAT6_NOPORT)
+	args.type = LB_VIP_TYPE_IP6_NAT6_NOPORT;
       else if (encap == LB_ENCAP_TYPE_NAT4)
         {
           error = clib_error_return(0, "currently does not support NAT64");
@@ -176,7 +180,7 @@ VLIB_CLI_COMMAND (lb_vip_command, static) =
   .path = "lb vip",
   .short_help = "lb vip <prefix> "
       "[protocol (tcp|udp) port <n>] "
-      "[encap (gre6|gre4|l3dsr|nat4|nat6)] "
+      "[encap (gre6|gre4|l3dsr|nat4|nat6|nat6-noport)] "
       "[dscp <n>] "
       "[type (nodeport|clusterip) target_port <n>] "
       "[new_len <n>] [src_ip_sticky] [del]",

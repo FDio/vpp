@@ -1,4 +1,4 @@
-option version = "1.2.0";
+option version = "1.3.0";
 import "plugins/lb/lb_types.api";
 import "vnet/interface_types.api";
 
@@ -115,6 +115,44 @@ autoreply  define lb_add_del_vip_v2 {
   bool src_ip_sticky;
   bool is_del;
   option vat_help = "<prefix> [protocol (tcp|udp) port <n>] [encap (gre6|gre4|l3dsr|nat4|nat6)] [dscp <n>] [type (nodeport|clusterip) target_port <n>] [new_len <n>] [src_ip_sticky] [del]";
+};
+
+/** \brief Add a virtual address (or prefix), with an encap type set that
+    also includes NAT6-NOPORT
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param pfx - ip prefix and length
+    @param protocol - tcp or udp.
+    @param port - destination port. (0) means 'all-port VIP'
+    @param encap - Encap is ip4 GRE(0) or ip6 GRE(1) or L3DSR(2) or NAT4(3) or
+           NAT6(4) or NAT6-NOPORT(5). A separate enum from lb_add_del_vip_v2's
+           (lb_encap_type_v2, not lb_encap_type) - lb_encap_type is frozen
+           because lb_add_del_vip/_v2 and lb_vip_details still reference it,
+           so NAT6-NOPORT could not be added to it without changing their CRC.
+    @param dscp - DSCP bit corresponding to VIP(applicable in L3DSR mode only).
+    @param type - service type(applicable in NAT4/NAT6 mode only).
+    @param target_port - Pod's port corresponding to specific service(applicable in NAT4/NAT6 mode only).
+    @param node_port - Node's port(applicable in NAT4/NAT6 mode only).
+    @param new_flows_table_length - Size of the new connections flow table used
+           for this VIP (must be power of 2).
+    @param src_ip_sticky - source ip based sticky session.
+    @param is_del - The VIP should be removed.
+*/
+autoreply  define lb_add_del_vip_v3 {
+  u32 client_index;
+  u32 context;
+  vl_api_address_with_prefix_t pfx;
+  u8 protocol [default=255];
+  u16 port;
+  vl_api_lb_encap_type_v2_t encap;
+  u8 dscp;
+  vl_api_lb_srv_type_t type ; /* LB_API_SRV_TYPE_CLUSTERIP */
+  u16 target_port;
+  u16 node_port;
+  u32 new_flows_table_length [default=1024];
+  bool src_ip_sticky;
+  bool is_del;
+  option vat_help = "<prefix> [protocol (tcp|udp) port <n>] [encap (gre6|gre4|l3dsr|nat4|nat6|nat6-noport)] [dscp <n>] [type (nodeport|clusterip) target_port <n>] [new_len <n>] [src_ip_sticky] [del]";
 };
 
 /** \brief Add an application server for a given VIP

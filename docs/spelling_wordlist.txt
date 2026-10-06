@@ -144,6 +144,7 @@ centric
 cfd
 cfssl
 chachapoly
+checksums
 cheng
 cisco
 Cisco
@@ -793,6 +794,8 @@ nnn
 nodaemon
 noevaluate
 nonaddress
+noport
+NOPORT
 nosyslog
 npol
 npt
