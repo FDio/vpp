@@ -139,6 +139,7 @@ class TestTCPUnitTests(VppAsfTestCase):
             "bbr",
             "bt",
             "rack",
+            "startup",
             "tamper fin",
             "tamper lost-ack",
             "tamper peer-fin",
