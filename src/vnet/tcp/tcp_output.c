@@ -82,17 +82,13 @@ tcp_window_compute_scale (u32 window)
  * TCP's initial window
  */
 always_inline u32
-tcp_initial_wnd_unscaled (tcp_connection_t * tc)
+tcp_initial_wnd_unscaled (tcp_connection_t *tc)
 {
-  /* RFC 6928 recommends the value lower. However at the time our connections
-   * are initialized, fifos may not be allocated. Therefore, advertise the
-   * smallest possible unscaled window size and update once fifos are
-   * assigned to the session.
-   */
-  /*
-     tcp_update_rcv_mss (tc);
-     TCP_IW_N_SEGMENTS * tc->mss;
-   */
+  /* In SYN_RCVD the session and its rx fifo already exist, so advertise the fifo size. An active
+   * open sends the SYN before fifos are allocated, so advertise the smallest fifo size. The peer
+   * learns the real window from the ACK that completes the handshake, before it sends any data. */
+  if (tc->state == TCP_STATE_SYN_RCVD)
+    return transport_rx_fifo_size (&tc->connection);
   return tcp_cfg.min_rx_fifo;
 }
 
@@ -107,9 +103,9 @@ tcp_initial_window_to_advertise (tcp_connection_t * tc)
   if (tc->state != TCP_STATE_SYN_RCVD || tcp_opts_wscale (&tc->rcv_opts))
     tc->rcv_wscale = tcp_window_compute_scale (tcp_cfg.max_rx_fifo);
 
-  tc->rcv_wnd = tcp_initial_wnd_unscaled (tc);
+  tc->rcv_wnd = clib_min (tcp_initial_wnd_unscaled (tc), TCP_WND_MAX);
 
-  return clib_min (tc->rcv_wnd, TCP_WND_MAX);
+  return tc->rcv_wnd;
 }
 
 static inline void
