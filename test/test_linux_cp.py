@@ -46,6 +46,9 @@ from vpp_qemu_utils import (
     del_namespace_address,
     add_namespace_neighbor,
     del_namespace_neighbor,
+    add_namespace_vlan,
+    add_namespace_qinq,
+    del_namespace_link,
     NextHop,
     create_namespace,
     delete_all_namespaces,
@@ -1450,6 +1453,68 @@ class TestLinuxCPLinuxToVPP(TestLinuxCPNetNSBase):
             ),
             False,
         )
+
+    def _subif_matches(self, name, n_tags, outer_vlan, inner_vlan, sup_sw_if_index):
+        """Check the VPP sub-interface with the given exact name exists and
+        carries the expected number of tags, tag ids and parent.
+        """
+        dump = self.vapi.sw_interface_dump(name_filter_valid=True, name_filter=name)
+        for swif in dump:
+            if swif.interface_name.rstrip(" \t\r\n\0") == name:
+                return (
+                    swif.sub_number_of_tags == n_tags
+                    and swif.sub_outer_vlan_id == outer_vlan
+                    and swif.sub_inner_vlan_id == inner_vlan
+                    and swif.sup_sw_if_index == sup_sw_if_index
+                )
+        return False
+
+    def test_linux_to_vpp_vlan_qinq(self):
+        """Linux VLAN and QinQ links sync to VPP sub-interfaces"""
+        lo0 = self.lo_interfaces[0]
+
+        # Enable auto sub-interface creation and create the parent pair
+        self.vapi.cli("lcp lcp-auto-subint on")
+        try:
+            # Create a VLAN link on the host side
+            add_namespace_vlan(self.ns_name, "hloop0", "hloop0.100", 100)
+            self.poll_for(
+                "loop0.100 single-tag sub-interface in VPP",
+                lambda: self._subif_matches("loop0.100", 1, 100, 0, lo0.sw_if_index),
+                True,
+            )
+
+            # Create a QinQ link on the host side
+            add_namespace_qinq(self.ns_name, "hloop0.100", "hloop0.100.200", 200)
+            self.poll_for(
+                "loop0.1000200 QinQ sub-interface in VPP",
+                lambda: self._subif_matches(
+                    "loop0.1000200", 2, 100, 200, lo0.sw_if_index
+                ),
+                True,
+            )
+
+            # Delete the QinQ link
+            del_namespace_link(self.ns_name, "hloop0.100.200")
+            self.poll_for(
+                "loop0.1000200 QinQ sub-interface removed from VPP",
+                lambda: not self.vapi.sw_interface_dump(
+                    name_filter_valid=True, name_filter="loop0.1000200"
+                ),
+                True,
+            )
+
+            # Delete the VLAN link
+            del_namespace_link(self.ns_name, "hloop0.100")
+            self.poll_for(
+                "loop0.100 sub-interface removed from VPP",
+                lambda: not self.vapi.sw_interface_dump(
+                    name_filter_valid=True, name_filter="loop0.100"
+                ),
+                True,
+            )
+        finally:
+            self.vapi.cli("lcp lcp-auto-subint off")
 
 
 @unittest.skipIf(config.skip_netns_tests, "netns not available or disabled from cli")
