@@ -374,7 +374,7 @@ lcp_itf_interface_add_del (vnet_main_t *vnm, u32 sw_if_index, u32 is_create)
   const vnet_sw_interface_t *sw;
   uword is_sub;
 
-  if (!lcp_auto_subint ())
+  if (!lcp_auto_subint () || lcp_get_netlink_processing_active ())
     return NULL;
 
   sw = vnet_get_sw_interface_or_null (vnm, sw_if_index);
