@@ -75,6 +75,11 @@ pppoeclient_discovery_input (vlib_main_t *vm,
 
   u32 discovery_pkts = 0;
 
+  /* This node runs on the main thread right after the dispatch feature
+   * handed the frames over, so this is the earliest point at which a VLAN
+   * tag stack published by a worker can be bound into clients. */
+  pppoeclient_bind_learned_vlans (&pppoeclient_main);
+
   from = vlib_frame_vector_args (from_frame);
 
   n_left_from = from_frame->n_vectors;
@@ -1279,29 +1284,25 @@ pppoeclient_resolve_access_sw_if_index (pppoeclient_main_t *pem, u32 sup_sw_if_i
    * clients (different host-uniq) may share a wildcard sub-interface, so
    * publish it to every client on the matched access interface.  The
    * per-packet fast path only compares the winner and skips the loop. */
-  /* Publish the concrete tag stack to the clients of the matched access
-   * interface that have not bound one yet.  An established binding is never
-   * repointed from data-plane traffic: a frame on a different VLAN (or a
-   * spoofed one) must not rewrite where an existing session transmits.
-   * Publishing only fills unbound entries, so a client that is added (or
-   * reset) later still learns the stack from the next matching frame instead
-   * of waiting for one of the already-bound clients to be the winner. */
+  /* Publish the observed tag stack of the matched access interface.  This
+   * runs on a worker, so it must not write client state: store the packed
+   * value into the per-interface slot with a single aligned 64-bit store and
+   * let the main thread bind it into clients that have none yet. */
   if (best_client)
     {
-      for (i = 0; i < vec_len (indices); i++)
-	{
-	  pppoeclient_t *c;
+      u32 access_sw_if_index = best_client->sw_if_index;
 
-	  if (pool_is_free_index (pem->clients, indices[i]))
-	    continue;
-	  c = pool_elt_at_index (pem->clients, indices[i]);
-	  if (c->sw_if_index != best_client->sw_if_index || c->session_vlan.valid)
-	    continue;
-	  c->session_vlan.n_tags = tags->n_tags;
-	  c->session_vlan.dot1ad = tags->dot1ad;
-	  c->session_vlan.outer_vlan_id = tags->outer_vlan_id;
-	  c->session_vlan.inner_vlan_id = tags->inner_vlan_id;
-	  c->session_vlan.valid = 1;
+      if (access_sw_if_index < vec_len (pem->learned_vlan_by_sw_if_index))
+	{
+	  pppoeclient_learned_vlan_t lv;
+
+	  lv.f.outer_vlan_id = tags->outer_vlan_id;
+	  lv.f.inner_vlan_id = tags->inner_vlan_id;
+	  lv.f.n_tags = tags->n_tags;
+	  lv.f.dot1ad = tags->dot1ad;
+	  lv.f.valid = 1;
+	  lv.f._pad = 0;
+	  pem->learned_vlan_by_sw_if_index[access_sw_if_index] = lv.as_u64;
 	}
     }
 

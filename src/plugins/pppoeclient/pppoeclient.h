@@ -521,6 +521,28 @@ typedef struct
 STATIC_ASSERT_SIZEOF (pppoeclient_session_key_t, 16);
 STATIC_ASSERT_OFFSET_OF (pppoeclient_session_key_t, fields.rsv1, 14);
 
+/*
+ * Packed form of the VLAN tag stack the dispatch feature observes on an
+ * access interface.  A worker publishes it with one aligned 64-bit store and
+ * the main thread unpacks it when binding clients, so nobody can observe a
+ * half-written tag stack.
+ */
+typedef union
+{
+  u64 as_u64;
+  struct
+  {
+    u16 outer_vlan_id;
+    u16 inner_vlan_id;
+    u8 n_tags;
+    u8 dot1ad;
+    u8 valid;
+    u8 _pad;
+  } f;
+} pppoeclient_learned_vlan_t;
+
+STATIC_ASSERT_SIZEOF (pppoeclient_learned_vlan_t, 8);
+
 typedef struct
 {
   /* For DP: vector of clients, */
@@ -554,6 +576,12 @@ typedef struct
    * dispatch feature is enabled so the session fast path skips re-parsing
    * the L2 header on every packet. */
   u32 *l2_encap_len_by_sw_if_index;
+
+  /* Tag stack observed by the dispatch feature, packed per access
+   * sw_if_index.  Workers publish the value with a single 64-bit store (they
+   * never touch client state) and the main thread copies it into clients
+   * that have not bound one yet; see pppoeclient_learned_vlan_t. */
+  u64 *learned_vlan_by_sw_if_index;
 
   /* Packet template for PPPoE discovery packets */
   vlib_packet_template_t packet_template;
@@ -594,6 +622,11 @@ typedef struct
 #define PPPOECLIENT_AUTH_BACKOFF_CAP_SEC  300.0
 
 extern pppoeclient_main_t pppoeclient_main;
+
+/* Bind the VLAN tag stack published by the dispatch feature into clients of
+ * the matching access interface that have none yet.  Runs on the main
+ * thread (process loop and discovery handoff). */
+void pppoeclient_bind_learned_vlans (pppoeclient_main_t *pem);
 
 /* Map the internal client state enum to the API-visible
  * pppoeclient_control_client_state enum. */
