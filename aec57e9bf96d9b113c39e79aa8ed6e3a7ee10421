@@ -50,6 +50,57 @@
       "message": "recheck",
       "revId": "aec57e9bf96d9b113c39e79aa8ed6e3a7ee10421",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9ca515b9_71b08a0b",
+        "filename": "src/vnet/flow/flow.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 166,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-10-07T07:43:45Z",
+      "side": 1,
+      "message": "Could we track reserved capacity per template instead of `first_time_enabled`? Disabling and re-enabling with a larger `n_flows` currently skips prefill, allowing allocation in the data path. Checking whether the shared pool is allocated would also miss capacity needed by additional templates.",
+      "revId": "aec57e9bf96d9b113c39e79aa8ed6e3a7ee10421",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1c19e4c0_e0dd7f51",
+        "filename": "src/vnet/flow/flow.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 170,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-10-07T07:43:45Z",
+      "side": 1,
+      "message": "If prefill fails, the driver has already enabled the template, so we return an error while leaving it enabled; a retry then returns `ALREADY_DONE`. Could we reserve capacity before enabling, or roll back the driver operation on failure?",
+      "revId": "aec57e9bf96d9b113c39e79aa8ed6e3a7ee10421",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7075bf5a_98eab569",
+        "filename": "src/vnet/flow/flow_cli.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 178,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-10-07T07:43:45Z",
+      "side": 1,
+      "message": "Both dump commands hold the worker barrier until they return, so this suspend keeps packet workers stopped during every pause. Could we snapshot entries under the barrier and release it before formatting and yielding?",
+      "revId": "aec57e9bf96d9b113c39e79aa8ed6e3a7ee10421",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
