@@ -1063,12 +1063,17 @@ send_pppoe_pkt (pppoeclient_main_t *pem, pppoeclient_t *c, u8 packet_code, u16 s
       ((packet_code == PPPOE_PADR || packet_code == PPPOE_PADS) && vec_len (c->cookie_value)) ?
 	vec_len (c->cookie_value) :
 	0;
+    /* RFC 2516 0x0110: echo the Relay-Session-Id we saw in the accepted
+     * PADO.  Only PADR answers a PADO, so only PADR carries it. */
+    u16 relay_len =
+      (packet_code == PPPOE_PADR && vec_len (c->relay_session_id)) ? vec_len (c->relay_session_id) : 0;
 
     /* Compute total packet size BEFORE writing to catch overflow early. */
     u32 total_len = pppoeclient_get_l2_encap_len (vnm, c->sw_if_index) + sizeof (pppoe_header_t) +
 		    sizeof (pppoe_tag_header_t) + service_name_len + sizeof (pppoe_tag_header_t) +
 		    sizeof (c->host_uniq) +
-		    (cookie_len ? sizeof (pppoe_tag_header_t) + cookie_len : 0);
+		    (cookie_len ? sizeof (pppoe_tag_header_t) + cookie_len : 0) +
+		    (relay_len ? sizeof (pppoe_tag_header_t) + relay_len : 0);
 
     if (PREDICT_FALSE (total_len > vlib_buffer_get_default_data_size (vm)))
       {
@@ -1113,6 +1118,17 @@ send_pppoe_pkt (pppoeclient_main_t *pem, pppoeclient_t *c, u8 packet_code, u16 s
 	clib_memcpy (cursor + sizeof (pppoe_tag_header_t), c->cookie_value, cookie_len);
 	tags_len += sizeof (pppoe_tag_header_t) + cookie_len;
 	cursor += sizeof (pppoe_tag_header_t) + cookie_len;
+      }
+
+    /* echo the Relay-Session-Id of the accepted PADO (RFC 2516 0x0110). */
+    if (relay_len)
+      {
+	pppoe_tag_header_t *pppoe_tag = (pppoe_tag_header_t *) cursor;
+	pppoe_tag->type = clib_host_to_net_u16 (PPPOE_TAG_RELAY_SESSION_ID);
+	pppoe_tag->length = clib_host_to_net_u16 (relay_len);
+	clib_memcpy (cursor + sizeof (pppoe_tag_header_t), c->relay_session_id, relay_len);
+	tags_len += sizeof (pppoe_tag_header_t) + relay_len;
+	cursor += sizeof (pppoe_tag_header_t) + relay_len;
       }
 
     pppoe->length = clib_host_to_net_u16 (tags_len);
@@ -1343,6 +1359,7 @@ pppoeclient_client_free_resources (pppoeclient_t *c)
     clib_memset (c->password, 0, vec_len (c->password));
   vec_free (c->password);
   vec_free (c->cookie_value);
+  vec_free (c->relay_session_id);
   vec_free (c->control_history);
 }
 
@@ -1533,8 +1550,19 @@ parse_pado_tags (u16 type, u16 len, unsigned char *data, void *extra)
   switch (type)
     {
     case PPPOE_TAG_SERVICE_NAME:
-    case PPPOE_TAG_RELAY_SESSION_ID:
     case PPPOE_TAG_PPP_MAX_PAYLOAD:
+      break;
+    case PPPOE_TAG_RELAY_SESSION_ID:
+      /* Kept verbatim: RFC 2516 requires the response to a discovery packet
+       * carrying Relay-Session-Id to carry the same tag unmodified. */
+      if (len > ETH_JUMBO_LEN)
+	break; /* tag too large to be legitimate, ignore */
+      vec_reset_length (c->relay_session_id);
+      if (len > 0)
+	{
+	  vec_validate (c->relay_session_id, len - 1);
+	  clib_memcpy (c->relay_session_id, data, len);
+	}
       break;
     case PPPOE_TAG_SERVICE_NAME_ERROR:
       if (len > 0)
@@ -2521,9 +2549,12 @@ consume_pppoe_discovery_pkt (u32 bi, vlib_buffer_t *b, pppoe_header_t *pppoe)
 	  break;
 	}
 
-      /* Zero old cookie before reuse to avoid leaking stale bytes. */
+      /* Zero old cookie/relay tag before reuse to avoid leaking stale bytes
+       * and to keep the PADR echo tied to the PADO we are parsing now. */
       clib_memset (c->cookie_value, 0, vec_len (c->cookie_value));
       vec_reset_length (c->cookie_value);
+      clib_memset (c->relay_session_id, 0, vec_len (c->relay_session_id));
+      vec_reset_length (c->relay_session_id);
       vec_free (c->ac_name);
       c->discovery_error = 0;
       parse_result = pppoeclient_parse_and_record_client_control_event (c, packet_code, pppoe, b,
@@ -2650,15 +2681,14 @@ consume_pppoe_discovery_pkt (u32 bi, vlib_buffer_t *b, pppoe_header_t *pppoe)
 	  break;
 	}
 
-      /* RFC 2516 §5.3: the PADS AC-Cookie must match the cookie we echoed
-       * in PADR (the one offered by the accepted PADO).  Accept only when
-       * both sides are cookie-less or byte-identical. */
-      if ((vec_len (c->cookie_value) == 0) != (event_summary.cookie_len == 0) ||
-	  (event_summary.cookie_len > 0 &&
-	   (event_summary.cookie_value_truncated ||
-	    vec_len (c->cookie_value) != event_summary.cookie_len ||
-	    clib_memcmp (c->cookie_value, event_summary.cookie_value, event_summary.cookie_len) !=
-	      0)))
+      /* RFC 2516 §6.1.1 (0x0104): the Host MUST echo the AC-Cookie in the
+       * PADR when the PADO offered one.  The AC is not required to repeat
+       * the tag in the PADS, so only verify a cookie that is actually
+       * present there — requiring it would reject conformant ACs. */
+      if (event_summary.cookie_len > 0 &&
+	  (event_summary.cookie_value_truncated ||
+	   vec_len (c->cookie_value) != event_summary.cookie_len ||
+	   clib_memcmp (c->cookie_value, event_summary.cookie_value, event_summary.cookie_len) != 0))
 	{
 	  pppoeclient_update_latest_control_disposition (c,
 							 PPPOECLIENT_CONTROL_DISPOSITION_IGNORED);
