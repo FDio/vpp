@@ -4374,9 +4374,53 @@ tcp_test_rto (vlib_main_t *vm, unformat_input_t *input)
 }
 
 /* Two RSTs for one half-open connection can be processed by the same graph
- * dispatch. A failed connect must enqueue one refusal and one half-open
+ * dispatch. A failed connect must deliver one refusal and one half-open
  * cleanup, regardless of how many copies of the RST arrive in that dispatch.
  */
+typedef struct
+{
+  u32 buffer_indices[2];
+  volatile u32 n_connected;
+  volatile u32 n_refused;
+  volatile u32 n_cleanup;
+  volatile u8 done;
+  volatile u8 in_flight;
+} tcp_test_rst_burst_ctx_t;
+
+static tcp_test_rst_burst_ctx_t tcp_test_rst_burst_ctx;
+
+static int
+tcp_test_rst_connected_callback (u32 app_index, u32 api_context, session_t *s, session_error_t err)
+{
+  tcp_test_rst_burst_ctx.n_connected++;
+  if (err == SESSION_E_REFUSED)
+    tcp_test_rst_burst_ctx.n_refused++;
+  return placeholder_session_connected_callback (app_index, api_context, s, err);
+}
+
+static void
+tcp_test_rst_cleanup_callback (session_t *s)
+{
+  tcp_test_rst_burst_ctx.n_cleanup++;
+}
+
+static void
+tcp_test_rst_burst_rpc (void *arg)
+{
+  tcp_test_rst_burst_ctx_t *a = arg;
+  vlib_main_t *vm = vlib_get_main ();
+  vlib_frame_t *frame = vlib_get_frame_to_node (vm, tcp4_syn_sent_node.index);
+  vlib_node_runtime_t *node = vlib_node_get_runtime (vm, tcp4_syn_sent_node.index);
+  u32 *to = vlib_frame_vector_args (frame);
+
+  to[0] = a->buffer_indices[0];
+  to[1] = a->buffer_indices[1];
+  frame->n_vectors = 2;
+  tcp4_syn_sent_node.function (vm, node, frame);
+  vlib_frame_free (vm, frame);
+  a->done = 1;
+}
+
 static int
 tcp_test_rst_burst (vlib_main_t *vm, unformat_input_t *input)
 {
@@ -4392,13 +4436,12 @@ tcp_test_rst_burst (vlib_main_t *vm, unformat_input_t *input)
     .client_only = 1,
   };
   tcp_e2e_ctx_t _ctx, *ctx = &_ctx;
+  tcp_test_rst_burst_ctx_t *a = &tcp_test_rst_burst_ctx;
   tcp_connection_t *tc;
-  app_worker_t *app_wrk;
-  session_event_t *events;
+  application_t *app;
   u32 buffer_indices[2] = { VLIB_BUFFER_INVALID_INDEX, VLIB_BUFFER_INVALID_INDEX };
   clib_thread_index_t thread_index;
-  uword n_events, n_refused = 0, n_cleanup = 0, i;
-  u32 n_buffers;
+  u32 n_buffers, tries, i;
   u8 buffers_enqueued = 0;
   int rv = 0;
 
@@ -4408,6 +4451,11 @@ tcp_test_rst_burst (vlib_main_t *vm, unformat_input_t *input)
       return -1;
     }
 
+  if (!TCP_TEST_I ((!a->in_flight), "rst_burst: previous test completed"))
+    return 1;
+  clib_memset (a, 0, sizeof (*a));
+  a->in_flight = 1;
+
   if (!TCP_TEST_I ((tcp_e2e_setup (vm, ctx, &params) == 0), "rst_burst: half-open setup"))
     {
       rv = 1;
@@ -4416,8 +4464,17 @@ tcp_test_rst_burst (vlib_main_t *vm, unformat_input_t *input)
 
   tc = ctx->client_tc;
   thread_index = tc->c_thread_index;
-  app_wrk = application_get_default_worker (application_get (ctx->client_index));
-  events = app_wrk->wrk_evts[thread_index];
+  app = application_get (ctx->client_index);
+  app->cb_fns.session_connected_callback = tcp_test_rst_connected_callback;
+  app->cb_fns.half_open_cleanup_callback = tcp_test_rst_cleanup_callback;
+
+  /* Block the real handshake before releasing the worker barrier to inject
+   * the RSTs. Cleanup notifications may arrive on the control thread. */
+  session_add_del_route_via_lookup_in_table (ctx->client_vrf, ctx->server_vrf, &ctx->intf_addr[1],
+					     32, 0 /* is_add */);
+  session_add_del_route_via_lookup_in_table (ctx->server_vrf, ctx->client_vrf, &ctx->intf_addr[0],
+					     32, 0 /* is_add */);
+  ctx->routes_added = 0;
 
   if (!TCP_TEST_I ((tc->state == TCP_STATE_SYN_SENT), "rst_burst: connection starts in SYN_SENT"))
     {
@@ -4457,35 +4514,24 @@ tcp_test_rst_burst (vlib_main_t *vm, unformat_input_t *input)
       tcp->flags = TCP_FLAG_ACK | TCP_FLAG_RST;
     }
 
-  {
-    vlib_frame_t *frame = vlib_get_frame_to_node (vm, tcp4_syn_sent_node.index);
-    vlib_node_runtime_t *node = vlib_node_get_runtime (vm, tcp4_syn_sent_node.index);
-    u32 *to = vlib_frame_vector_args (frame);
-    to[0] = buffer_indices[0];
-    to[1] = buffer_indices[1];
-    frame->n_vectors = 2;
-    buffers_enqueued = 1;
-    tcp4_syn_sent_node.function (vm, node, frame);
-    vlib_frame_free (vm, frame);
-  }
+  clib_memcpy (a->buffer_indices, buffer_indices, sizeof (buffer_indices));
+  buffers_enqueued = 1;
+  session_send_rpc_evt_to_thread (thread_index, tcp_test_rst_burst_rpc, a);
+  for (tries = 0; (!a->done || !a->n_connected || !a->n_cleanup) && tries < 1000; tries++)
+    tcp_e2e_pump (vm, 1e-3);
+  if (!TCP_TEST_I ((a->done && a->n_connected && a->n_cleanup),
+		   "rst_burst: RST dispatch and notifications completed"))
+    /* Keep the RPC arguments, apps and loopbacks alive until cleanup finishes. */
+    return 1;
 
-  events = app_wrk->wrk_evts[thread_index];
-  n_events = clib_fifo_elts (events);
-  for (i = 0; i < n_events; i++)
-    {
-      session_event_t *event = events + clib_fifo_elt_index (events, i);
-      if (event->event_type == SESSION_CTRL_EVT_CONNECTED &&
-	  (session_error_t) (event->as_u64[1] & 0xffffffff) == SESSION_E_REFUSED)
-	n_refused++;
-      else if (event->event_type == SESSION_CTRL_EVT_HALF_CLEANUP)
-	n_cleanup++;
-    }
-
-  if (!TCP_TEST_I ((n_refused == 1), "rst_burst: one refused notification (got %lu)", n_refused))
+  if (!TCP_TEST_I ((a->n_refused == 1), "rst_burst: one refused notification (got %u)",
+		   a->n_refused))
     rv = 1;
-  if (!TCP_TEST_I ((n_cleanup == 1), "rst_burst: one cleanup notification (got %lu)", n_cleanup))
+  if (!TCP_TEST_I ((a->n_cleanup == 1), "rst_burst: one cleanup notification (got %u)",
+		   a->n_cleanup))
     rv = 1;
-  if (!TCP_TEST_I ((n_events == 2), "rst_burst: one event pair for two RSTs (got %lu)", n_events))
+  if (!TCP_TEST_I ((a->n_connected == 1), "rst_burst: one connect notification (got %u)",
+		   a->n_connected))
     rv = 1;
 
 cleanup:
@@ -4501,6 +4547,8 @@ cleanup:
     }
   if (!tcp_e2e_teardown (vm, ctx))
     rv = 1;
+  else
+    a->in_flight = 0;
   return rv;
 }
 
@@ -5817,6 +5865,33 @@ cleanup:
  * SACK evidence above the hole. Verify that the ACK exits timeout recovery
  * before its recovery point and immediately enters a fresh fast-recovery
  * episode for the residual loss. */
+typedef struct
+{
+  tcp_connection_t *tc;
+  tcp_tamper_rule_t *ack_rule;
+  sack_block_t dsack;
+  u32 ack_matches_before;
+  volatile u8 done;
+  volatile u8 in_flight;
+} tcp_test_dsack_ack_rpc_args_t;
+
+static tcp_test_dsack_ack_rpc_args_t tcp_test_dsack_ack_rpc_args;
+
+static void
+tcp_test_dsack_ack_rpc (void *arg)
+{
+  tcp_test_dsack_ack_rpc_args_t *a = arg;
+
+  vec_insert_elts (a->tc->snd_sacks, &a->dsack, 1, 0);
+  a->tc->snd_sack_pos = 0;
+  a->ack_matches_before = a->ack_rule->n_matched;
+  /* Keep ACKs suppressed until the D-SACK is ready on the receiver's owner. */
+  a->ack_rule->n_drop = 0;
+  tcp_program_ack (a->tc);
+  a->done = 1;
+  a->in_flight = 0;
+}
+
 static int
 tcp_test_tamper_dsack_early_undo (vlib_main_t *vm)
 {
@@ -5833,20 +5908,23 @@ tcp_test_tamper_dsack_early_undo (vlib_main_t *vm)
     .tx_fifo_size = 128 << 10,
   };
   tcp_e2e_ctx_t _ctx, *ctx = &_ctx;
+  tcp_test_dsack_ack_rpc_args_t *a = &tcp_test_dsack_ack_rpc_args;
   tcp_connection_t *client_tc, *server_tc;
   tcp_tamper_rule_t *ack_rule, *loss_rule, *release_rule;
   tcp_ack_ctx_t seed_ac = { 0 };
-  sack_block_t seed_sack, dsack;
+  sack_block_t seed_sack;
   session_t *client_s, *server_s;
   const u32 n_segments = 8;
   u32 tries, max_iters, mss, spurious_seq, loss_seq;
-  u32 total_bytes, drained = 0, fr_before, tr_before, ack_matches_before;
+  u32 total_bytes, drained = 0, fr_before, tr_before;
   u32 fresh_snd_una = 0, fresh_snd_nxt = 0, fresh_snd_congestion = 0;
   u32 fresh_cwnd = 0, fresh_prev_cwnd = 0, fresh_lost = 0;
   u8 *data = 0;
   u8 saw_reentry = 0;
   int error, rv = 0, i;
 
+  if (!TCP_TEST_I ((!a->in_flight), "dsack_early: ACK rpc slot available"))
+    return 1;
   tcp_tamper_reset ();
 
   if (!TCP_TEST_I ((tcp_e2e_setup (vm, ctx, &params) == 0), "dsack_early: e2e setup"))
@@ -5964,14 +6042,19 @@ tcp_test_tamper_dsack_early_undo (vlib_main_t *vm)
       rv = 1;
       goto cleanup;
     }
-  dsack.start = spurious_seq;
-  dsack.end = spurious_seq + mss;
-  vec_insert_elts (server_tc->snd_sacks, &dsack, 1, 0);
-  server_tc->snd_sack_pos = 0;
   client_tc->snd_rxt_ts = 0;
-  ack_matches_before = ack_rule->n_matched;
-  ack_rule->n_drop = 0;
-  tcp_program_ack (server_tc);
+  clib_memset (a, 0, sizeof (*a));
+  a->tc = server_tc;
+  a->ack_rule = ack_rule;
+  a->dsack.start = spurious_seq;
+  a->dsack.end = spurious_seq + mss;
+  a->in_flight = 1;
+  session_send_rpc_evt_to_thread (server_tc->c_thread_index, tcp_test_dsack_ack_rpc, a);
+  for (tries = 0; !a->done && tries < 1000; tries++)
+    tcp_e2e_pump (vm, 1e-3);
+  if (!TCP_TEST_I ((a->done), "dsack_early: D-SACK ACK programmed on receiver thread"))
+    /* A pending RPC still owns the connection and tamper rule. */
+    return 1;
 
   for (tries = 0; tries < 50 && client_tc->snd_una == spurious_seq; tries++)
     tcp_e2e_pump (vm, 1e-3);
@@ -5979,7 +6062,7 @@ tcp_test_tamper_dsack_early_undo (vlib_main_t *vm)
 		   "dsack_early: synthetic D-SACK ACK reached sender "
 		   "(ack matches %u->%u, server sacks %u, tr %u, fr %u, flags 0x%x, "
 		   "dsack flags 0x%x, rxt ranges %u)",
-		   ack_matches_before, ack_rule->n_matched, vec_len (server_tc->snd_sacks),
+		   a->ack_matches_before, ack_rule->n_matched, vec_len (server_tc->snd_sacks),
 		   client_tc->tr_occurences - tr_before, client_tc->fr_occurences - fr_before,
 		   client_tc->flags, client_tc->sack_sb.flags,
 		   tcp_test_dsack_rxt_count (client_tc)))
