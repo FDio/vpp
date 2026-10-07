@@ -554,7 +554,7 @@ vlib_fuse_reply_releasedir (vlib_fuse_handle_t h,
 
 static void
 vlib_fuse_reply_open (vlib_main_t *vm, vlib_fuse_handle_t h,
-		      const struct fuse_in_header *in)
+		      const struct fuse_in_header *in, struct fuse_open_in *oi)
 {
   struct fuse_open_out o = {};
   vlib_fuse_node_t *n = vlib_fuse_get_node (h, in->nodeid);
@@ -578,6 +578,9 @@ vlib_fuse_reply_open (vlib_main_t *vm, vlib_fuse_handle_t h,
     .h = h,
     .type = VLIB_FUSE_FILE_OP_OPEN,
     .nodeid = in->nodeid,
+    .open = {
+      .flags = oi->flags,
+    }
   };
 
   rv = n->op_fn (vm, &od);
@@ -918,7 +921,7 @@ vlib_fuse_read (vlib_main_t *vm, vlib_fuse_handle_t h)
 	  break;
 #endif
 	case FUSE_OPEN:
-	  vlib_fuse_reply_open (vm, h, in);
+	  vlib_fuse_reply_open (vm, h, in, payload);
 	  break;
 	case FUSE_READ:
 	  vlib_fuse_reply_read (vm, h, in, payload);
