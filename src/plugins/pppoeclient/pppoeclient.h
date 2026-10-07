@@ -336,6 +336,11 @@ typedef struct
    * pppoeclient_client_free_resources.  Previously an embedded 1508-byte tag
    * struct burned ~1.5 KB per client even for typical <64-byte cookies. */
   u8 *cookie_value;
+  /* RFC 2516 0x0110: a Relay-Session-Id received in a discovery packet must
+   * be included unmodified in the response we send for that discovery
+   * transaction, so keep the value taken from the accepted PADO and put it
+   * back into the PADR. */
+  u8 *relay_session_id;
 
   pppoeclient_state_t state;
   u32 retry_count;
