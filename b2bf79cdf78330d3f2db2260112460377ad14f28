@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "79cd7f14_cb163da6",
+        "filename": "src/vlib/pool_cache.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 339,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-10-07T07:31:43Z",
+      "side": 1,
+      "message": "Could we check the required additional subpools against `max_subpools - n_subpools` before allocating? The overflow check can accept requests that exceed the cache’s actual capacity, so the growth loop eventually calls `clib_panic()` instead of returning `-1`. For example, with default geometry and one thread, `n_elts \u003d UINT32_MAX - 256` passes this check but exceeds capacity after batch headroom.",
+      "revId": "b2bf79cdf78330d3f2db2260112460377ad14f28",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6f121244_7102a7ad",
+        "filename": "src/vlib/pool_cache.h",
+        "patchSetId": 7
+      },
+      "lineNbr": 327,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-10-07T07:31:43Z",
+      "side": 1,
+      "message": "Could we use consistent names for these counters? `total_cached` and `global_free` both count free entries, while `total_allocated` counts all backing slots, including free ones. Consider `pool_cache_count_cached_free()`, `pool_cache_count_global_free()`, and `pool_cache_count_capacity()` to make the distinctions clear.",
+      "revId": "b2bf79cdf78330d3f2db2260112460377ad14f28",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
