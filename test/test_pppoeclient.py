@@ -1397,6 +1397,52 @@ class TestPPPoEClient(VppTestCase):
                 retransmit_cookie = tag.tag_value
         self.assertEqual(retransmit_cookie, good_cookie)
 
+    def test_pppoe_request_accepts_pads_without_cookie(self):
+        """A PADS may omit the AC-Cookie the PADO offered (accel-ppp does)."""
+
+        pppox_sw_if_index = self.add_client()
+
+        self.pg0.enable_capture()
+        response = self.vapi.pppox_set_auth(
+            sw_if_index=pppox_sw_if_index,
+            username=self.AUTH_USERNAME,
+            password=self.AUTH_PASSWORD,
+        )
+        self.assertEqual(response.retval, 0)
+        self.pg0.wait_for_packet(timeout=10, filter_out_fn=self.is_not_padi)
+
+        ac_mac = "02:00:00:00:00:22"
+        session_id = 0x1234
+        cookie = b"accel-ppp-cookie"
+
+        self.pg0.enable_capture()
+        self.pg0.add_stream([self.make_pado(ac_mac, self.AC_NAME, cookie=cookie)])
+        self.pg_start()
+
+        padr = self.pg0.wait_for_packet(timeout=10, filter_out_fn=self.is_not_padr)
+        echoed = [
+            tag.tag_value
+            for tag in padr.getlayer(PPPoED_Tags).tag_list
+            if tag.tag_type == 0x0104
+        ]
+        self.assertEqual(echoed, [cookie])
+
+        # A PADS that carries a different cookie is still rejected.
+        self.pg0.add_stream(
+            [self.make_pads(ac_mac, session_id, self.AC_NAME, cookie=b"other-cookie")]
+        )
+        self.pg_start()
+        self.sleep(0.5)
+        clients = self.vapi.pppoeclient_dump(sw_if_index=self.ALL_INTERFACES)
+        self.assertEqual(len(clients), 1)
+        self.assertEqual(clients[0].client_state, 2)
+        self.assertEqual(clients[0].session_id, 0)
+
+        # RFC 2516 does not require the AC to repeat the cookie in the PADS.
+        self.pg0.add_stream([self.make_pads(ac_mac, session_id, self.AC_NAME)])
+        self.pg_start()
+        self.wait_for_client_session(session_id)
+
     def test_pppoe_request_ignores_pado_from_unselected_ac(self):
         """Ignore stray PADO from a different AC after REQUEST has started."""
 
