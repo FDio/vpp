@@ -28,27 +28,37 @@ typedef hsi_tracked_action_t hsi_udp_tracked_action_t;
 #define HSI_UDP_TRACKED_ACTION_HELD    HSI_TRACKED_ACTION_HELD
 #define HSI_UDP_TRACKED_ACTION_DROP    HSI_TRACKED_ACTION_DROP
 
+#define HSI_CLEANUP_NONE	  0
+#define HSI_CLEANUP_DRAIN_FAILURE 1
+#define HSI_CLEANUP_FIN_COMPLETE  2
+
 hsi_tcp_tracked_action_t hsi_tcp_handle_tracked_connection (vlib_main_t *vm, vlib_buffer_t *b,
 							    tcp_connection_t *tc, void *ip_hdr,
-							    tcp_header_t *tcp_hdr, u8 is_ip4);
+							    tcp_header_t *tcp_hdr, u8 is_ip4,
+							    u8 *cleanup_session);
 int hsi_tcp_try_complete_drain (vlib_main_t *vm, tcp_connection_t *tc);
 hsi_tcp_tracked_action_t hsi_tcp_drain_cache_buffer (vlib_main_t *vm, vlib_buffer_t *b,
 						     tcp_connection_t *tc, void *ip_hdr,
-						     tcp_header_t *tcp_hdr, u8 is_ip4);
+						     tcp_header_t *tcp_hdr, u8 is_ip4,
+						     u8 send_rst_on_drain_fail,
+						     u8 *cleanup_session);
 void hsi_tcp_drain_update_time (f64 time_now, u8 thread_index);
 void hsi_tcp_fin_wait_update_time (f64 time_now, u8 thread_index);
 void hsi_tracker_show (vlib_main_t *vm);
 
 static_always_inline hsi_tcp_tracked_action_t
 hsi_tcp_tracked_connection_action (vlib_main_t *vm, vlib_buffer_t *b, tcp_connection_t *tc,
-				   void *ip_hdr, tcp_header_t *tcp_hdr, u8 is_ip4)
+				   void *ip_hdr, tcp_header_t *tcp_hdr, u8 is_ip4,
+				   u8 send_rst_on_drain_fail, u8 *cleanup_session)
 {
   ASSERT (tc->cfg_flags & TCP_CFG_F_TRACKED);
 
   if (tc->state == TCP_STATE_CLOSED || hsi_tcp_try_complete_drain (vm, tc))
-    return hsi_tcp_handle_tracked_connection (vm, b, tc, ip_hdr, tcp_hdr, is_ip4);
+    return hsi_tcp_handle_tracked_connection (vm, b, tc, ip_hdr, tcp_hdr, is_ip4,
+					      cleanup_session);
 
-  return hsi_tcp_drain_cache_buffer (vm, b, tc, ip_hdr, tcp_hdr, is_ip4);
+  return hsi_tcp_drain_cache_buffer (vm, b, tc, ip_hdr, tcp_hdr, is_ip4,
+				     send_rst_on_drain_fail, cleanup_session);
 }
 
 void hsi_udp_handle_tracked_connection (vlib_main_t *vm, vlib_buffer_t *b, udp_connection_t *uc,
