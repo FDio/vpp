@@ -244,16 +244,9 @@ class BaseSfdpTest(VppTestCase):
         self.assertTrue(
             disable_ip4 or disable_ip6, "SFDP must be disabled for either ip4/ip6"
         )
-        # Expire active sessions
+        # Cleanup existing sessions
         self.vapi.sfdp_kill_session(is_all=True)
-        # Sleep one second to ensure expired sessions
-        # are removed by process node 'sfdp_expire_node'
-        self.virtual_sleep(1)
-
-        sessions = self.vapi.sfdp_session_dump()
-        self.assertEqual(
-            len(sessions), 0, "SFDP sessions are still present after cleanup"
-        )
+        self.wait_no_sessions()
 
         # Disable SFDP on interfaces
         if disable_ip4:
@@ -916,10 +909,9 @@ class TestSfdp(BaseSfdpTest):
                 VppEnum.vl_api_sfdp_session_type_t.SFDP_API_SESSION_TYPE_IP4,
             )
 
-        # Cleanup - expire sessions + wait until they
-        # are deleted by expiry node
+        # Cleanup existing sessions
         self.vapi.sfdp_kill_session(is_all=True)
-        self.virtual_sleep(1)
+        self.wait_no_sessions()
 
         # Disable SFDP on interfaces
         self.vapi.sfdp_interface_input_set(
