@@ -179,8 +179,9 @@ app_listener_select_worker (app_listener_t *al)
   wrk_index = clib_bitmap_next_set (al->workers, al->accept_rotor + 1);
   if (wrk_index == ~0)
     wrk_index = clib_bitmap_first_set (al->workers);
+  if (wrk_index == ~0)
+    return 0;
 
-  ASSERT (wrk_index != ~0);
   al->accept_rotor = wrk_index;
   return application_get_worker (app, wrk_index);
 }

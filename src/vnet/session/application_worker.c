@@ -500,7 +500,7 @@ app_worker_init_accepted (session_t * s)
 
   listener = listen_session_get_from_handle (s->listener_handle);
   app_wrk = application_listener_select_worker (listener);
-  if (PREDICT_FALSE (app_worker_mq_is_congested (app_wrk)))
+  if (PREDICT_FALSE (!app_wrk || app_worker_mq_is_congested (app_wrk)))
     return -1;
 
   s->app_wrk_index = app_wrk->wrk_index;
@@ -546,7 +546,7 @@ app_worker_init_accepted_ct (session_t *s)
 
   listener = listen_session_get_from_handle (s->listener_handle);
   app_wrk = application_listener_select_worker (listener);
-  if (PREDICT_FALSE (app_worker_mq_is_congested (app_wrk)))
+  if (PREDICT_FALSE (!app_wrk || app_worker_mq_is_congested (app_wrk)))
     return -1;
 
   s->app_wrk_index = app_wrk->wrk_index;
