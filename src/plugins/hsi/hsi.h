@@ -22,4 +22,18 @@ __clib_export void hsi_intercept_proto (transport_proto_t proto, u8 is_ip4,
  */
 __clib_export int hsi_track_session_pair (session_t *s, session_handle_t peer_session_handle);
 
+struct _tcp_connection;
+struct hsi_tcp_tracker_;
+
+typedef struct hsi_app_vft_
+{
+  int (*track_session_pair) (session_t *s, session_handle_t peer_sh);
+  int (*tcp_tracked_action) (vlib_main_t *vm, vlib_buffer_t *b,
+			     struct _tcp_connection *tc, void *ip_hdr,
+			     void *tcp_hdr, u8 is_ip4);
+  struct hsi_tcp_tracker_ *(*tcp_tracker_get) (struct _tcp_connection *tc);
+} hsi_app_vft_t;
+
+__clib_export hsi_app_vft_t *hsi_app_vft_get (void);
+
 #endif /* SRC_PLUGINS_HSI_HSI_H_ */

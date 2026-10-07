@@ -33,6 +33,7 @@ typedef struct hsi_tcp_track_snapshot_
   clib_thread_index_t thread_index;
   u8 rcv_wscale;
   u8 snd_wscale;
+  u32 app_ctx;
 } hsi_tcp_track_snapshot_t;
 
 typedef struct hsi_tcp_track_commit_req_

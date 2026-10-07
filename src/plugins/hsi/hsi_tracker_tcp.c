@@ -295,6 +295,7 @@ hsi_tcp_track_snapshot (session_t *s, tcp_connection_t *tc, hsi_tcp_track_snapsh
   snap->tsval_recent = tc->tsval_recent;
   snap->rcv_wscale = tc->rcv_wscale;
   snap->snd_wscale = tc->snd_wscale;
+  snap->app_ctx = tc->next_node_opaque;
 }
 
 static_always_inline u8
@@ -557,6 +558,8 @@ hsi_tcp_tracker_init (hsi_tcp_tracker_t *trk, tcp_connection_t *tc, hsi_tcp_trac
   trk->tsval_delta = (i32) (peer->ts_now - tc->tsval_recent);
   trk->tsecr_delta = (i32) (peer->tsval_recent - tcp_tstamp (tc));
   trk->wnd_delta = (i8) tc->snd_wscale - (i8) peer->rcv_wscale;
+  trk->app_ctx = tc->next_node_opaque;
+  trk->peer_app_ctx = peer->app_ctx;
 }
 
 static void
@@ -614,6 +617,8 @@ hsi_tcp_drain_flush_cached_buffers (tcp_connection_t *tc)
   drain->cached_buffers = 0;
   drain->cached_bytes = 0;
 
+  hsi_tcp_tracker_t *trk = hsi_tcp_tracker_get (tc);
+
   for (i = 0; i < vec_len (cached); i++)
     {
       hsi_tcp_tracked_action_t action;
@@ -629,6 +634,7 @@ hsi_tcp_drain_flush_cached_buffers (tcp_connection_t *tc)
       action = hsi_tcp_handle_tracked_connection (vm, b, tc, ip_hdr, tcp_hdr, tc->c_is_ip4);
       if (action == HSI_TCP_TRACKED_ACTION_FORWARD)
 	{
+	  vnet_buffer (b)->tcp.next_node_opaque = trk->peer_app_ctx;
 	  vec_add1 (forward, cached[i]);
 	  if (PREDICT_FALSE (tcp_rst (tcp_hdr)))
 	    {
@@ -1059,6 +1065,9 @@ hsi_tcp_track_schedule_cleanup_pair (tcp_connection_t *tc, hsi_tcp_tracker_t *tr
   ASSERT (tc->state == TCP_STATE_CLOSED);
   ASSERT (trk->peer_session_handle != SESSION_INVALID_HANDLE);
 
+  if (trk->flags & HSI_TRACKER_F_CLEANUP_PENDING)
+    return;
+
   local_handle = session_make_handle (tc->c_s_index, tc->c_thread_index);
 
   peer_s = hsi_session_peer_get_if_valid (peer_sh);
@@ -1141,6 +1150,9 @@ hsi_tcp_track_maybe_cleanup_pair (tcp_connection_t *tc, hsi_tcp_tracker_t *trk)
   session_t *peer_s;
 
   if (!hsi_tcp_tracker_fin_done (trk))
+    return;
+
+  if (trk->flags & HSI_TRACKER_F_CLEANUP_PENDING)
     return;
 
   peer_s = hsi_session_peer_get_if_valid (peer_sh);

@@ -54,6 +54,9 @@ typedef struct hsi_tcp_tracker_
   u16 tx_lcl_port;
   u16 tx_rmt_port;
   i8 wnd_delta;
+  u8 pad_[3];
+  u32 app_ctx;
+  u32 peer_app_ctx;
 } hsi_tcp_tracker_t;
 
 #define HSI_TCP_TRACKER_OFFSET STRUCT_OFFSET_OF (tcp_connection_t, rcv_dupacks)

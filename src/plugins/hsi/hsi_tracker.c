@@ -331,3 +331,31 @@ hsi_tracker_show (vlib_main_t *vm)
       hsi_tracker_show_udp (vm, i, wrk, now);
     }
 }
+
+static int
+hsi_tcp_tracked_action_fn (vlib_main_t *vm, vlib_buffer_t *b,
+			   tcp_connection_t *tc, void *ip_hdr, void *tcp_hdr,
+			   u8 is_ip4)
+{
+  return (int) hsi_tcp_tracked_connection_action (vm, b, tc, ip_hdr,
+						  (tcp_header_t *) tcp_hdr,
+						  is_ip4);
+}
+
+static hsi_tcp_tracker_t *
+hsi_tcp_tracker_get_fn (tcp_connection_t *tc)
+{
+  return hsi_tcp_tracker_get (tc);
+}
+
+static hsi_app_vft_t hsi_app_vft_ = {
+  .track_session_pair = hsi_track_session_pair,
+  .tcp_tracked_action = hsi_tcp_tracked_action_fn,
+  .tcp_tracker_get = hsi_tcp_tracker_get_fn,
+};
+
+__clib_export hsi_app_vft_t *
+hsi_app_vft_get (void)
+{
+  return &hsi_app_vft_;
+}
