@@ -331,3 +331,44 @@ hsi_tracker_show (vlib_main_t *vm)
       hsi_tracker_show_udp (vm, i, wrk, now);
     }
 }
+
+static int
+hsi_tcp_tracked_action_fn (vlib_main_t *vm, vlib_buffer_t *b, tcp_connection_t *tc, void *ip_hdr,
+			   void *tcp_hdr, u8 is_ip4, u8 send_rst_on_drain_fail, u8 *cleanup_session)
+{
+  return (int) hsi_tcp_tracked_connection_action (vm, b, tc, ip_hdr, (tcp_header_t *) tcp_hdr,
+						  is_ip4, send_rst_on_drain_fail, cleanup_session);
+}
+
+static hsi_tcp_tracker_t *
+hsi_tcp_tracker_get_fn (tcp_connection_t *tc)
+{
+  return hsi_tcp_tracker_get (tc);
+}
+
+static void
+hsi_udp_tracked_action_fn (vlib_main_t *vm, vlib_buffer_t *b, udp_connection_t *uc, void *ip_hdr,
+			   udp_header_t *udp_hdr, u8 is_ip4)
+{
+  hsi_udp_handle_tracked_connection (vm, b, uc, ip_hdr, udp_hdr, is_ip4);
+}
+
+static hsi_udp_tracker_t *
+hsi_udp_tracker_get_fn (udp_connection_t *uc)
+{
+  return hsi_udp_tracker_get (uc);
+}
+
+static hsi_tracker_vft_t hsi_tracker_vft_ = {
+  .track_session_pair = hsi_track_session_pair,
+  .tcp_tracked_action = hsi_tcp_tracked_action_fn,
+  .tcp_tracker_get = hsi_tcp_tracker_get_fn,
+  .udp_tracked_action = hsi_udp_tracked_action_fn,
+  .udp_tracker_get = hsi_udp_tracker_get_fn,
+};
+
+__clib_export hsi_tracker_vft_t *
+hsi_tracker_vft_get (void)
+{
+  return &hsi_tracker_vft_;
+}

@@ -240,7 +240,7 @@ hsi_tcp_lookup_handler (vlib_main_t *vm, vlib_buffer_t *b, void *ip_hdr, u32 *ne
 	      return HSI_LOOKUP_RESULT_PASS;
 	    }
 
-	  action = hsi_tcp_tracked_connection_action (vm, b, tc, ip_hdr, tcp_hdr, is_ip4);
+	  action = hsi_tcp_tracked_connection_action (vm, b, tc, ip_hdr, tcp_hdr, is_ip4, 1, 0);
 	  return hsi_tracked_action_to_lookup_result (action, next);
 	}
       /* Lookup already done, use result */
