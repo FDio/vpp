@@ -107,7 +107,7 @@ class Expect:
 
 
 class Capture:
-    def __init__(self, interface: VppPGInterface, packets: PacketList | None):
+    def __init__(self, interface: VppPGInterface, packets: PacketList):
         self.interface = interface
         self.packets = packets
 
@@ -661,7 +661,7 @@ class VppTestCase(VppAsfTestCase):
         stats_diff: StatsDiff | None = None,
         filter_out_fn=is_ipv6_misc,
         assert_nothing_captured=[],
-    ) -> PacketList | None:
+    ) -> PacketList:
         send = Send(interface=intf, packets=pkts, worker=worker)
         if n_rx is None:
             n_rx = 1 if isinstance(pkts, Packet) else len(pkts)
@@ -714,7 +714,7 @@ class VppTestCase(VppAsfTestCase):
 
     def send_and_expect_only(
         self, intf, pkts, output, timeout=None, stats_diff=None, worker=None, trace=True
-    ):
+    ) -> PacketList:
         if stats_diff:
             stats_snapshot = self.snapshot_stats(stats_diff)
 
