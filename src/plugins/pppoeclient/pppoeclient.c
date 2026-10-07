@@ -92,6 +92,10 @@ pppoeclient_cache_l2_encap_len (pppoeclient_main_t *pem, u32 sw_if_index)
   vec_validate_init_empty (pem->l2_encap_len_by_sw_if_index, sw_if_index, 0);
   pem->l2_encap_len_by_sw_if_index[sw_if_index] =
     pppoeclient_get_l2_encap_len (pem->vnet_main, sw_if_index);
+  /* Keep room for the worker-side VLAN publication as well.  The vector is
+   * grown here, under the worker barrier held by the client add path, so the
+   * dispatch node only ever stores into an existing slot. */
+  vec_validate_init_empty (pem->learned_vlan_by_sw_if_index, sw_if_index, 0);
 }
 
 static void
@@ -632,6 +636,63 @@ pppoeclient_update_tx_l2_template (pppoeclient_t *c)
     eth->type = clib_host_to_net_u16 (ETHERNET_TYPE_PPPOE_SESSION);
 
   c->tx_l2_len = (u8) l2_len;
+}
+
+/* Bind the tag stack published by the dispatch feature into clients of the
+ * matching access interface that have not bound one yet.  Main thread only:
+ * workers publish into pem->learned_vlan_by_sw_if_index with a single store
+ * and never write client state, so an established binding can not be
+ * repointed by data-plane traffic and there is no cross-worker race on the
+ * per-client fields. */
+void
+pppoeclient_bind_learned_vlans (pppoeclient_main_t *pem)
+{
+  pppoeclient_t *c;
+
+  pool_foreach (c, pem->clients)
+    {
+      pppoeclient_learned_vlan_t lv;
+      u32 sw_if_index = c->sw_if_index;
+
+      if (c->session_vlan.valid || sw_if_index >= vec_len (pem->learned_vlan_by_sw_if_index))
+	continue;
+      /* Only a wildcard sub-interface needs a learned VLAN: an exact
+       * sub-interface already knows its tag stack from the configuration and
+       * a hardware interface has no tag at all. */
+      if (c->vlan_match.n_tags == 0 ||
+	  (!c->vlan_match.outer_any && !c->vlan_match.inner_any))
+	continue;
+
+      lv.as_u64 = pem->learned_vlan_by_sw_if_index[sw_if_index];
+      if (!lv.f.valid)
+	continue;
+
+      c->session_vlan.n_tags = lv.f.n_tags;
+      c->session_vlan.dot1ad = lv.f.dot1ad;
+      c->session_vlan.outer_vlan_id = lv.f.outer_vlan_id;
+      c->session_vlan.inner_vlan_id = lv.f.inner_vlan_id;
+      c->session_vlan.valid = 1;
+    }
+}
+
+/* Drop the learned tag stack of an access interface once no client is left
+ * on it, so a later client that reuses the sw_if_index does not inherit a
+ * stale VLAN.  Main thread only. */
+static void
+pppoeclient_forget_learned_vlan (pppoeclient_main_t *pem, u32 access_sw_if_index)
+{
+  pppoeclient_t *c;
+
+  if (access_sw_if_index >= vec_len (pem->learned_vlan_by_sw_if_index))
+    return;
+
+  pool_foreach (c, pem->clients)
+    {
+      if (c->sw_if_index == access_sw_if_index)
+	return;
+    }
+
+  pem->learned_vlan_by_sw_if_index[access_sw_if_index] = 0;
 }
 
 void
@@ -1382,6 +1443,10 @@ pppoeclient_process (vlib_main_t *vm, vlib_node_runtime_t *rt, vlib_frame_t *f)
 
       now = vlib_time_now (vm);
       timeout = PPPOECLIENT_PROCESS_IDLE_TIMEOUT;
+
+      /* Pick up any VLAN tag stack the dispatch feature learned on a worker
+       * since the last wakeup before running the state machines. */
+      pppoeclient_bind_learned_vlans (pem);
 
       switch (event_type)
 	{
@@ -2745,6 +2810,7 @@ consume_pppoe_discovery_pkt (u32 bi, vlib_buffer_t *b, pppoe_header_t *pppoe)
       /* A fresh PPPoE session means the BAS has (again) admitted us, so the
        * previous auth-failure streak no longer reflects current reality. */
       c->consecutive_auth_failures = 0;
+      pppoeclient_bind_learned_vlans (pem);
       pppoeclient_update_tx_l2_template (c);
       pppoeclient_save_session_to_file (c);
       /* when shift to session stage, just give control to user
@@ -3976,6 +4042,7 @@ pppoeclient_add_del_internal (vnet_pppoeclient_add_del_args_t *a, u32 *pppox_sw_
 
       /* Cache the session-data L2 encap; the AC MAC is filled in when the
        * session is established. */
+      pppoeclient_bind_learned_vlans (pem);
       pppoeclient_update_tx_l2_template (c);
 
       result.fields.client_index = c - pem->clients;
@@ -4043,6 +4110,8 @@ pppoeclient_add_del_internal (vnet_pppoeclient_add_del_args_t *a, u32 *pppox_sw_
     }
   else
     {
+      u32 access_sw_if_index;
+
       /* deleting a client: client must exist */
       if (result.fields.client_index == ~0)
 	return VNET_API_ERROR_NO_SUCH_ENTRY;
@@ -4085,7 +4154,12 @@ pppoeclient_add_del_internal (vnet_pppoeclient_add_del_args_t *a, u32 *pppox_sw_
       vlib_worker_thread_barrier_sync (vm);
       pem->client_index_by_pppox_sw_if_index[c->pppox_sw_if_index] = ~0;
       pppoeclient_client_free_resources (c);
+      access_sw_if_index = c->sw_if_index;
       pool_put (pem->clients, c);
+      /* Drop the learned tag stack once the last client on that access
+       * interface is gone, so a later client on a recycled sw_if_index does
+       * not inherit a stale VLAN. */
+      pppoeclient_forget_learned_vlan (pem, access_sw_if_index);
       vlib_worker_thread_barrier_release (vm);
     }
 
@@ -5871,6 +5945,7 @@ pppoeclient_exit (vlib_main_t *vm)
   pool_free (pem->clients);
   vec_free (pem->dispatch_refcount_by_sw_if_index);
   vec_free (pem->l2_encap_len_by_sw_if_index);
+  vec_free (pem->learned_vlan_by_sw_if_index);
   vec_free (pem->client_index_by_pppox_sw_if_index);
   if (pem->client_indices_by_sup_sw_if_index)
     {
