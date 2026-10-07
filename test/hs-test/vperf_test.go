@@ -5,6 +5,7 @@ import (
 	"os/exec"
 	"regexp"
 	"strconv"
+	"strings"
 	"time"
 
 	. "fd.io/hs-test/infra"
@@ -789,6 +790,23 @@ func VperfBuiltinHttp3ConnectUdpTest(s *VperfSuite) {
 	Log(o)
 	AssertNotContains(o, "failed:")
 	httpTunnelVerifyPeriodicStats(o)
+	// client closes the tunnel with echoed data unread, which resets the connection
+	vperfHttp3ClientCheckCleanup(s)
+}
+
+func vperfHttp3ClientCheckCleanup(s *VperfSuite) {
+	clientVpp := s.Containers.ClientVpp.VppInstance
+	o := ""
+	for range 10 {
+		o = clientVpp.Vppctl("show session verbose 2")
+		if !strings.Contains(o, "[Q]") && !strings.Contains(o, "[H3]") {
+			break
+		}
+		time.Sleep(1 * time.Second)
+	}
+	Log(o)
+	AssertNotContains(o, "[Q]", "client quic sessions not cleaned up")
+	AssertNotContains(o, "[H3]", "client http/3 sessions not cleaned up")
 }
 
 func VperfBuiltinHttp1CpsMWTest(s *VperfSuite) {
