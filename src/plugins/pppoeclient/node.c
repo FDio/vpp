@@ -490,6 +490,7 @@ pppoeclient_session_input_one (vlib_main_t *vm, pppoeclient_main_t *pem, vlib_bu
   vnet_main_t *vnm = pem->vnet_main;
   ethernet_header_t *h;
   pppoe_header_t *pppoe = 0;
+  u8 pppoe_hdr_valid = 0;
   u16 l2_hdr_len = sizeof (ethernet_header_t);
   u32 rx_sw_if_index;
   u32 error = 0;
@@ -540,6 +541,9 @@ pppoeclient_session_input_one (vlib_main_t *vm, pppoeclient_main_t *pem, vlib_bu
       error = PPPOECLIENT_ERROR_BAD_VER_TYPE;
       goto out;
     }
+  /* Only from here on is it safe to dereference the header (and to let the
+   * trace path read fields out of it). */
+  pppoe_hdr_valid = 1;
   {
     u16 decl_len = clib_net_to_host_u16 (pppoe->length);
 
@@ -610,13 +614,18 @@ pppoeclient_session_input_one (vlib_main_t *vm, pppoeclient_main_t *pem, vlib_bu
       pppox_buffer (b)->len = b->current_length;
       /* Run the pppd-derived state machine on the main thread only:
        * hand the packet to the pppox-input handoff queue. */
-      if (pppox_main.input_fq_index != ~0)
+      if (PREDICT_TRUE (pppox_main.input_fq_index != ~0))
 	r->handoff = 1;
       else
 	{
-	  clib_warning ("pppox: control handoff queue missing, falling back to worker-side "
-			"FSM processing");
-	  next = PPPOECLIENT_SESSION_INPUT_NEXT_PPPOX_INPUT;
+	  /* The handoff queue is created before this feature can receive a
+	   * packet.  If it is really missing the contract is broken, and
+	   * running the pppd-derived FSM here would execute control-plane
+	   * code on a worker — the exact thing the handoff prevents.  Drop
+	   * the packet (and account for it) instead of degrading silently. */
+	  clib_warning ("pppox: control handoff queue missing, dropping control packet");
+	  error = PPPOECLIENT_ERROR_HANDOFF_DROP;
+	  next = PPPOECLIENT_SESSION_INPUT_NEXT_DROP;
 	}
     }
   else
@@ -628,7 +637,7 @@ out:
   r->next = next;
   r->error = error;
   r->c = c;
-  r->pppoe = pppoe;
+  r->pppoe = pppoe_hdr_valid ? pppoe : 0;
   r->rx_sw_if_index = rx_sw_if_index;
 }
 
@@ -1270,11 +1279,14 @@ pppoeclient_resolve_access_sw_if_index (pppoeclient_main_t *pem, u32 sup_sw_if_i
    * clients (different host-uniq) may share a wildcard sub-interface, so
    * publish it to every client on the matched access interface.  The
    * per-packet fast path only compares the winner and skips the loop. */
-  if (best_client &&
-      (!best_client->session_vlan.valid || best_client->session_vlan.n_tags != tags->n_tags ||
-       best_client->session_vlan.dot1ad != tags->dot1ad ||
-       best_client->session_vlan.outer_vlan_id != tags->outer_vlan_id ||
-       best_client->session_vlan.inner_vlan_id != tags->inner_vlan_id))
+  /* Publish the concrete tag stack to the clients of the matched access
+   * interface that have not bound one yet.  An established binding is never
+   * repointed from data-plane traffic: a frame on a different VLAN (or a
+   * spoofed one) must not rewrite where an existing session transmits.
+   * Publishing only fills unbound entries, so a client that is added (or
+   * reset) later still learns the stack from the next matching frame instead
+   * of waiting for one of the already-bound clients to be the winner. */
+  if (best_client)
     {
       for (i = 0; i < vec_len (indices); i++)
 	{
@@ -1283,7 +1295,7 @@ pppoeclient_resolve_access_sw_if_index (pppoeclient_main_t *pem, u32 sup_sw_if_i
 	  if (pool_is_free_index (pem->clients, indices[i]))
 	    continue;
 	  c = pool_elt_at_index (pem->clients, indices[i]);
-	  if (c->sw_if_index != best_client->sw_if_index)
+	  if (c->sw_if_index != best_client->sw_if_index || c->session_vlan.valid)
 	    continue;
 	  c->session_vlan.n_tags = tags->n_tags;
 	  c->session_vlan.dot1ad = tags->dot1ad;
@@ -1347,10 +1359,11 @@ pppoeclient_dispatch_one (vlib_main_t *vm, vlib_node_runtime_t *node, u32 bi, u3
 	  return 1;
 	}
       /* Handoff queue unavailable: processing discovery on a worker would
-       * violate the main-thread-only control-plane invariant. */
-      clib_warning (
-	"pppoeclient: discovery handoff queue missing, falling back to worker-side processing");
-      *next = PPPOECLIENT_DISPATCH_NEXT_DISCOVERY_INPUT;
+       * violate the main-thread-only control-plane invariant, so drop the
+       * frame (and account for it) instead of falling back. */
+      clib_warning ("pppoeclient: discovery handoff queue missing, dropping discovery packet");
+      vlib_node_increment_counter (vm, node->node_index, PPPOECLIENT_ERROR_HANDOFF_DROP, 1);
+      *next = PPPOECLIENT_DISPATCH_NEXT_DROP;
     }
   else
     {
