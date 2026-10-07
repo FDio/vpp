@@ -36,6 +36,8 @@ typedef struct
   {
     struct
     {
+      u32 flags;
+
       /* return */
       u8 direct_io : 1;
       u8 nonseekable : 1;
