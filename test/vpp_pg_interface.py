@@ -334,7 +334,7 @@ class VppPGInterface(VppInterface):
 
     def get_capture(
         self, expected_count=None, remark=None, timeout=None, filter_out_fn=is_ipv6_misc
-    ):
+    ) -> PacketList:
         """Get captured packets
 
         :param expected_count: expected number of packets to capture, if None,
@@ -401,7 +401,7 @@ class VppPGInterface(VppInterface):
             raise CaptureMismatchError(f"{ppc(msg, capture)}")
         else:
             if 0 == expected_count:
-                return
+                return PacketList()
             timeout_str = "None" if timeout is None else f"{timeout}s"
             raise CaptureTimeoutError(
                 f"No packets captured on {name} (timeout is {timeout_str})"

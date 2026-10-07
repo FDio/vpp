@@ -469,7 +469,7 @@ class VppPapiProvider(object):
         self.hook.after_cli(cli)
         return r
 
-    def cli(self, cli, strip_ansi_escapes: bool = True):
+    def cli(self, cli, strip_ansi_escapes: bool = True) -> str:
         """Execute a CLI, calling the before/after hooks appropriately.
 
         :param cli: CLI to execute
@@ -478,14 +478,20 @@ class VppPapiProvider(object):
 
         """
         r = self.cli_return_response(cli)
+        reply = None
+        if hasattr(r, "reply"):
+            reply = r.reply
         if r.retval == -156:
             raise CliSyntaxError(r.reply)
         if r.retval != 0:
             raise CliFailedCommandError(r.reply)
-        if hasattr(r, "reply"):
-            if strip_ansi_escapes:
-                return self.ansi_escape.sub("", r.reply)
-            return r.reply
+        if reply is None:
+            raise CliFailedCommandError(
+                f"Returned object has no 'reply' attribute: {r}"
+            )
+        if strip_ansi_escapes:
+            return self.ansi_escape.sub("", reply)
+        return reply
 
     def ppcli(self, cli):
         """Helper method to print CLI command in case of info logging level.
