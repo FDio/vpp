@@ -2854,7 +2854,10 @@ http2_handle_settings_frame (http_ctx_t *hc, http2_frame_header_t *fh)
 	  http_req_state_change (req, HTTP_REQ_STATE_WAIT_APP_METHOD);
 	  http_stats_connections_established_inc (hc->c_thread_index);
 	  if (http_conn_established (hc, req, hc->hc_pa_app_api_ctx))
-	    return HTTP2_ERROR_INTERNAL_ERROR;
+	    {
+	      http2_conn_free_req (hc, req, hc->c_thread_index);
+	      return HTTP2_ERROR_INTERNAL_ERROR;
+	    }
 	}
     }
 
