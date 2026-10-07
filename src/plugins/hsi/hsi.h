@@ -7,6 +7,7 @@
 #define SRC_PLUGINS_HSI_HSI_H_
 
 #include <hsi/hsi_types.h>
+#include <vnet/tcp/tcp_types.h>
 
 __clib_export void hsi_intercept_proto (transport_proto_t proto, u8 is_ip4,
 					u8 is_enable);
@@ -21,5 +22,18 @@ __clib_export void hsi_intercept_proto (transport_proto_t proto, u8 is_ip4,
  * using and closing them; on failure, ownership remains with the caller.
  */
 __clib_export int hsi_track_session_pair (session_t *s, session_handle_t peer_session_handle);
+
+struct hsi_tcp_tracker_;
+
+/* VFT exported by hsi_plugin.so for other plugins to access tracker ops */
+typedef struct hsi_tracker_vft_
+{
+  int (*track_session_pair) (session_t *s, session_handle_t peer_sh);
+  int (*tcp_tracked_action) (vlib_main_t *vm, vlib_buffer_t *b, tcp_connection_t *tc, void *ip_hdr,
+			     void *tcp_hdr, u8 is_ip4);
+  struct hsi_tcp_tracker_ *(*tcp_tracker_get) (tcp_connection_t *tc);
+} hsi_tracker_vft_t;
+
+__clib_export hsi_tracker_vft_t *hsi_tracker_vft_get (void);
 
 #endif /* SRC_PLUGINS_HSI_HSI_H_ */
