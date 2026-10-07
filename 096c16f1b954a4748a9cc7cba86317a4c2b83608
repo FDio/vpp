@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "8e70901d_1d5ec8e6",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2026-10-07T08:05:54Z",
+      "side": 1,
+      "message": "Important for CSIT, should be cherry-picked to stable branch before RC2.",
+      "revId": "096c16f1b954a4748a9cc7cba86317a4c2b83608",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
