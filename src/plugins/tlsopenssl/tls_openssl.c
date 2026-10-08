@@ -166,11 +166,10 @@ openssl_read_from_ssl_into_fifo (svm_fifo_t *f, tls_ctx_t *ctx, u32 max_len)
   u32 max_enq;
   SSL *ssl = oc->ssl;
 
-  max_enq = svm_fifo_max_enqueue_prod (f);
+  max_enq = clib_min (max_len, svm_fifo_max_enqueue_prod (f));
   if (!max_enq)
     return 0;
 
-  max_enq = clib_min (max_len, max_enq);
   n_fs = svm_fifo_provision_chunks (f, fs, n_segs, max_enq);
   if (n_fs < 0)
     return 0;
@@ -580,6 +579,7 @@ openssl_ctx_read_tls (tls_ctx_t *ctx, session_t *tls_session)
   openssl_ctx_t *oc = (openssl_ctx_t *) ctx;
   const u32 max_len = 32 << 10;
   session_t *app_session;
+  u32 n_pending;
   svm_fifo_t *f;
   int read;
 
@@ -597,7 +597,10 @@ openssl_ctx_read_tls (tls_ctx_t *ctx, session_t *tls_session)
   app_session = session_get_from_handle (ctx->app_session_handle);
   f = app_session->rx_fifo;
 
-  read = openssl_read_from_ssl_into_fifo (f, ctx, max_len);
+  /* Size the read by what tcp and openssl hold, openssl keeps what doesn't
+   * fit. Growing the app fifo for more can fail and leave the read spinning */
+  n_pending = svm_fifo_max_dequeue_cons (tls_session->rx_fifo) + SSL_pending (oc->ssl);
+  read = openssl_read_from_ssl_into_fifo (f, ctx, clib_min (max_len, n_pending));
 
   /* Unrecoverable protocol error. Reset connection */
   if (PREDICT_FALSE (read < 0))
