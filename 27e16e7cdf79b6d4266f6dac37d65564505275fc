@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "329b8e53_a7715e0a",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2026-10-08T08:11:36Z",
+      "side": 1,
+      "message": "This fixes the main issue, CSIT performance results will remain unreliable due to what looks like a cabling issue.",
+      "revId": "27e16e7cdf79b6d4266f6dac37d65564505275fc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
