@@ -487,9 +487,16 @@ format_adj_glean (u8* s, va_list *ap)
     CLIB_UNUSED(u32 indent) = va_arg(*ap, u32);
     ip_adjacency_t * adj = adj_get(index);
 
-    s = format(s, "%U-glean: [src:%U] %U",
+    /*
+     * Not format_fib_prefix: that masks the address down to the prefix,
+     * while rx_pfx holds the connected prefix length together with the
+     * local address used as the source of ARP/ND requests.
+     */
+    s = format(s, "%U-glean: [src:%U/%d] %U",
                format_fib_protocol, adj->ia_nh_proto,
-               format_fib_prefix, &adj->sub_type.glean.rx_pfx,
+               format_ip46_address, &adj->sub_type.glean.rx_pfx.fp_addr,
+               adj_proto_to_46(adj->ia_nh_proto),
+               adj->sub_type.glean.rx_pfx.fp_len,
                format_vnet_rewrite,
                &adj->rewrite_header, sizeof (adj->rewrite_data), 0);
 
