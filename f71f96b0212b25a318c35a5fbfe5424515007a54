@@ -16,6 +16,23 @@
       "message": "recheck",
       "revId": "f71f96b0212b25a318c35a5fbfe5424515007a54",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "fb3c8bcd_0c7e775e",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-10-08T22:32:32Z",
+      "side": 1,
+      "message": "TLS/QUIC/HTTP need to emulate/implement some of session layer apis, so they should be doing checks before calling app worker apis. Are we sure the issue is not there?\nFor instance, app_wrk is probably needed at one point on the accept path, we should validate there",
+      "revId": "f71f96b0212b25a318c35a5fbfe5424515007a54",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
