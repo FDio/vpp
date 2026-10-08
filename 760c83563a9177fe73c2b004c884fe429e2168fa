@@ -33,6 +33,24 @@
       "message": "Still the same behavior [0] in CSIT. Is there any debug output that would confirm the DPDK libraries offered any async crypto handlers (but VPP decided not to register for some reason)?\n\n[0] https://logs.fd.io/vex-yul-rot-jenkins-1/csit-vpp-bisect-3n-emr/36707726117/csit_latest/log.html.gz#s1-s1-s1-s1-s1-t1-k3-k2-k2-k1-k1-k8-k14-k1-k1-k1-k1",
       "revId": "760c83563a9177fe73c2b004c884fe429e2168fa",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2d8c2261_a5ab4f27",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2026-10-08T09:07:45Z",
+      "side": 1,
+      "message": "I too doubt it will fix the qat dep ipsec-mb issue we now have in vpp. To me this 5 line change is a security guard - but maybe to a problem we don\u0027t have (yet).",
+      "parentUuid": "942cc85a_045c6204",
+      "revId": "760c83563a9177fe73c2b004c884fe429e2168fa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
