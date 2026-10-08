@@ -16,6 +16,24 @@
       "message": "I think everyone who was reviewing this has now signed off on the current patchset. What\u0027s the next step? Do we need a TSC vote before merging?",
       "revId": "684ffe73164496ebba12ded13a039342aad27bb7",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "56a18620_d2d16bd6",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 26
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-10-08T14:56:49Z",
+      "side": 1,
+      "message": "TSC approval, then merge.",
+      "parentUuid": "6e7ebb13_a0d2c32c",
+      "revId": "684ffe73164496ebba12ded13a039342aad27bb7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
