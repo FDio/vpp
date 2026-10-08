@@ -356,6 +356,23 @@ vl_api_rdma_create_v5_reply_t_handler (vl_api_rdma_create_v5_reply_t *mp)
   vam->regenerate_interface_table = 1;
 }
 
+/* rdma-create reply handler v6 */
+static void
+vl_api_rdma_create_v6_reply_t_handler (vl_api_rdma_create_v6_reply_t *mp)
+{
+  vat_main_t *vam = rdma_test_main.vat_main;
+  i32 retval = mp->retval;
+
+  if (retval == 0)
+    {
+      fformat (vam->ofp, "created rdma with sw_if_index %d\n", ntohl (mp->sw_if_index));
+    }
+
+  vam->retval = retval;
+  vam->result_ready = 1;
+  vam->regenerate_interface_table = 1;
+}
+
 /* rdma delete API */
 static int
 api_rdma_delete (vat_main_t * vam)
