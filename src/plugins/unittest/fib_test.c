@@ -10850,6 +10850,192 @@ fib_test_sticky (void)
     return 0;
 }
 
+/*
+ * A source that joins an existing entry with a path add forwards through
+ * the paths it adds and nothing else. The source is added with a placeholder
+ * path list, which for entry flags that map to no path list flag is an
+ * exclusive path to a drop with preference 0.
+ */
+static int
+fib_test_join (void)
+{
+    const test_main_t *tm = &test_main;
+    fib_route_path_t *r_paths = NULL;
+    fib_node_index_t fei;
+    int res = 0;
+
+    const int path_list_pool_size = fib_path_list_pool_size();
+    const int path_list_db_size = fib_path_list_db_size();
+    const int entry_pool_size = fib_entry_pool_size();
+
+    fib_table_bind (FIB_PROTOCOL_IP4, tm->hw[0]->sw_if_index, 0);
+
+    const fib_prefix_t pfx_1_1_1_1_s_32 = {
+        .fp_len = 32,
+        .fp_proto = FIB_PROTOCOL_IP4,
+        .fp_addr = {
+            .ip4.as_u32 = clib_host_to_net_u32(0x01010101),
+        },
+    };
+    const ip46_address_t nh_10_10_10_1 = {
+        .ip4.as_u32 = clib_host_to_net_u32(0x0a0a0a01),
+    };
+    const ip46_address_t nh_10_10_10_2 = {
+        .ip4.as_u32 = clib_host_to_net_u32(0x0a0a0a02),
+    };
+    const ip46_address_t nh_10_10_10_3 = {
+        .ip4.as_u32 = clib_host_to_net_u32(0x0a0a0a03),
+    };
+    adj_index_t ai_1 = adj_nbr_add_or_lock(FIB_PROTOCOL_IP4,
+                                           VNET_LINK_IP4,
+                                           &nh_10_10_10_1,
+                                           tm->hw[0]->sw_if_index);
+    adj_index_t ai_2 = adj_nbr_add_or_lock(FIB_PROTOCOL_IP4,
+                                           VNET_LINK_IP4,
+                                           &nh_10_10_10_2,
+                                           tm->hw[0]->sw_if_index);
+    adj_index_t ai_3 = adj_nbr_add_or_lock(FIB_PROTOCOL_IP4,
+                                           VNET_LINK_IP4,
+                                           &nh_10_10_10_3,
+                                           tm->hw[0]->sw_if_index);
+    fib_test_lb_bucket_t adj_o_1 = {
+        .type = FT_LB_ADJ,
+        .adj = {
+            .adj = ai_1,
+        },
+    };
+    fib_test_lb_bucket_t adj_o_2 = {
+        .type = FT_LB_ADJ,
+        .adj = {
+            .adj = ai_2,
+        },
+    };
+    fib_test_lb_bucket_t adj_o_3 = {
+        .type = FT_LB_ADJ,
+        .adj = {
+            .adj = ai_3,
+        },
+    };
+
+    /*
+     * the entry exists with the API source
+     */
+    fei = fib_table_entry_path_add(0,
+                                   &pfx_1_1_1_1_s_32,
+                                   FIB_SOURCE_API,
+                                   FIB_ENTRY_FLAG_NONE,
+                                   DPO_PROTO_IP4,
+                                   &nh_10_10_10_1,
+                                   tm->hw[0]->sw_if_index,
+                                   ~0,
+                                   1,
+                                   NULL,
+                                   FIB_ROUTE_PATH_FLAG_NONE);
+    FIB_TEST(!fib_test_validate_entry(fei,
+                                      FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
+                                      1,
+                                      &adj_o_1),
+             "1.1.1.1/32 via 10.10.10.1");
+
+    /*
+     * the SR source, better than the API source, joins it, with an entry
+     * flag that maps to no path list flag. Only its own path forwards.
+     */
+    fei = fib_table_entry_path_add(0,
+                                   &pfx_1_1_1_1_s_32,
+                                   FIB_SOURCE_SR,
+                                   FIB_ENTRY_FLAG_LOOSE_URPF_EXEMPT,
+                                   DPO_PROTO_IP4,
+                                   &nh_10_10_10_2,
+                                   tm->hw[0]->sw_if_index,
+                                   ~0,
+                                   1,
+                                   NULL,
+                                   FIB_ROUTE_PATH_FLAG_NONE);
+    FIB_TEST(!fib_test_validate_entry(fei,
+                                      FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
+                                      1,
+                                      &adj_o_2),
+             "1.1.1.1/32 joined via 10.10.10.2 only");
+
+    /*
+     * a second path add from the same source adds to its paths
+     */
+    fei = fib_table_entry_path_add(0,
+                                   &pfx_1_1_1_1_s_32,
+                                   FIB_SOURCE_SR,
+                                   FIB_ENTRY_FLAG_LOOSE_URPF_EXEMPT,
+                                   DPO_PROTO_IP4,
+                                   &nh_10_10_10_3,
+                                   tm->hw[0]->sw_if_index,
+                                   ~0,
+                                   1,
+                                   NULL,
+                                   FIB_ROUTE_PATH_FLAG_NONE);
+    FIB_TEST(!fib_test_validate_entry(fei,
+                                      FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
+                                      2,
+                                      &adj_o_2,
+                                      &adj_o_3),
+             "1.1.1.1/32 via 10.10.10.2 and 10.10.10.3");
+
+    fib_table_entry_delete(0, &pfx_1_1_1_1_s_32, FIB_SOURCE_SR);
+    FIB_TEST(!fib_test_validate_entry(fei,
+                                      FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
+                                      1,
+                                      &adj_o_1),
+             "1.1.1.1/32 back via 10.10.10.1");
+
+    /*
+     * join again with a path of preference 1. The placeholder's preference
+     * is 0, so next to it, it would take all the traffic.
+     */
+    fib_route_path_t r_path = {
+        .frp_proto = DPO_PROTO_IP4,
+        .frp_addr = nh_10_10_10_2,
+        .frp_sw_if_index = tm->hw[0]->sw_if_index,
+        .frp_fib_index = ~0,
+        .frp_weight = 1,
+        .frp_preference = 1,
+        .frp_flags = FIB_ROUTE_PATH_FLAG_NONE,
+    };
+    vec_add1(r_paths, r_path);
+
+    fei = fib_table_entry_path_add2(0,
+                                    &pfx_1_1_1_1_s_32,
+                                    FIB_SOURCE_SR,
+                                    FIB_ENTRY_FLAG_LOOSE_URPF_EXEMPT,
+                                    r_paths);
+    FIB_TEST(!fib_test_validate_entry(fei,
+                                      FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
+                                      1,
+                                      &adj_o_2),
+             "1.1.1.1/32 joined via preference 1 path to 10.10.10.2");
+
+    /*
+     * cleanup
+     */
+    fib_table_entry_delete(0, &pfx_1_1_1_1_s_32, FIB_SOURCE_SR);
+    fib_table_entry_delete(0, &pfx_1_1_1_1_s_32, FIB_SOURCE_API);
+    FIB_TEST((FIB_NODE_INDEX_INVALID ==
+              fib_table_lookup_exact_match(0, &pfx_1_1_1_1_s_32)),
+             "1.1.1.1/32 removed");
+
+    vec_free(r_paths);
+    adj_unlock(ai_3);
+    adj_unlock(ai_2);
+    adj_unlock(ai_1);
+
+    FIB_TEST((path_list_db_size == fib_path_list_db_size()),
+             "path list DB population:%d", fib_path_list_db_size());
+    FIB_TEST((path_list_pool_size == fib_path_list_pool_size()),
+             "path list pool size is %d", fib_path_list_pool_size());
+    FIB_TEST((entry_pool_size == fib_entry_pool_size()),
+             "entry pool size is %d", fib_entry_pool_size());
+
+    return (res);
+}
+
 static clib_error_t *
 fib_test (vlib_main_t * vm,
           unformat_input_t * input,
@@ -10911,6 +11097,10 @@ fib_test (vlib_main_t * vm,
     {
         res += fib_test_sticky();
     }
+    else if (unformat (input, "join"))
+    {
+        res += fib_test_join();
+    }
     else
     {
         res += fib_test_v4();
@@ -10920,6 +11110,7 @@ fib_test (vlib_main_t * vm,
         res += fib_test_pref();
         res += fib_test_label();
         res += fib_test_inherit();
+        res += fib_test_join();
         res += lfib_test();
 
         /*

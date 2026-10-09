@@ -1566,20 +1566,14 @@ fib_entry_src_action_path_add (fib_entry_t *fib_entry,
     esrc = fib_entry_src_find(fib_entry, source);
     if (NULL == esrc)
     {
-	const dpo_id_t *dpo;
-
-	if (flags == FIB_ENTRY_FLAG_EXCLUSIVE) {
-	    dpo = &rpaths->dpo;
-	} else {
-	    dpo = drop_dpo_get(fib_entry_get_dpo_proto(fib_entry));
-	}
-
-	fib_entry =
-            fib_entry_src_action_add(fib_entry,
-                                     source,
-                                     flags,
-                                     dpo);
-	esrc = fib_entry_src_find(fib_entry, source);
+	/*
+	 * The source is new to the entry, so these are all its paths. Swap
+	 * them in, as creating an entry does. Adding them to the placeholder
+	 * path-list the source is added with would keep the placeholder,
+	 * which can be a path to a drop, next to them.
+	 */
+	return (fib_entry_src_action_path_swap(fib_entry, source,
+					       flags, rpaths));
     }
 
     /*
