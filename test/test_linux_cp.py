@@ -38,8 +38,10 @@ from template_ipsec import (
 from test_ipsec_tun_if_esp import TemplateIpsecItf4
 from config import config
 from vpp_ip_route import FibPathType
+from vpp_neighbor import VppNeighbor
 from vpp_qemu_utils import (
     add_namespace_route,
+    delete_namespace_route,
     add_namespace_multipath_route,
     del_namespace_route,
     add_namespace_address,
@@ -671,15 +673,23 @@ class TestLinuxCPNetNSBase(VppTestCase):
             self.sleep(interval)
         self.assertEqual(actual, expected, description)
 
-    def route_lookup(self, prefix):
+    def route_lookup(self, prefix, exact=False):
         return self.vapi.api(
-            self.vapi.papi.ip_route_lookup,
+            self.vapi.papi.ip_route_lookup_v2,
             {
                 "table_id": 0,
-                "exact": False,
+                "exact": exact,
                 "prefix": prefix,
             },
         )
+
+    def wait_route_source(self, prefix, src, present=True):
+        # linux-cp applies kernel route changes asynchronously
+        for i in range(0, 20):
+            if (self.route_lookup(prefix, exact=True).route.src == src) == present:
+                return
+            self.sleep(0.1)
+        self.fail(f"source {src} {'not ' if present else ''}on {prefix}")
 
     def get_paths(self, prefix):
         result = []
@@ -799,6 +809,48 @@ class TestLinuxCPRoutes(TestLinuxCPNetNSBase):
         self.verify_paths("192.168.1.1/32", dict(type=FibPathType.FIB_PATH_TYPE_DROP))
         set_interface_up(self.ns_name, "hloop0")
         set_interface_up(self.ns_name, "hloop1")
+
+    def test_linux_cp_route_on_adj_fib(self):
+        """Linux CP Route On An Existing Adj-Fib Entry"""
+        # the neighbour creates the /32 adj-fib entry first, so the kernel
+        # route joins an existing entry as a new source. Its path must be
+        # the only one, with no drop next to it
+        lcp_rt = [
+            s.src.id for s in self.vapi.fib_source_dump() if s.src.name == "lcp-rt"
+        ][0]
+        VppNeighbor(
+            self, self.lo_interfaces[0].sw_if_index, "de:ad:be:ef:00:01", "10.10.1.44"
+        ).add_vpp_config()
+        self.verify_paths(
+            "10.10.1.44/32",
+            dict(
+                type=FibPathType.FIB_PATH_TYPE_NORMAL,
+                sw_if_index=self.lo_interfaces[0].sw_if_index,
+                ip4="10.10.1.44",
+            ),
+        )
+
+        add_namespace_route(self.ns_name, "10.10.1.44/32", dev="hloop0")
+        try:
+            self.wait_route_source("10.10.1.44/32", lcp_rt)
+            self.logger.info(self.vapi.cli("show ip fib 10.10.1.44/32"))
+            self.assertEqual(
+                self.get_paths("10.10.1.44/32"),
+                [
+                    dict(
+                        type=FibPathType.FIB_PATH_TYPE_NORMAL,
+                        sw_if_index=self.lo_interfaces[0].sw_if_index,
+                        ip4="10.10.1.44",
+                    )
+                ],
+            )
+        finally:
+            # best effort, so that a failure above is the one reported
+            delete_namespace_route(
+                self.ns_name, "10.10.1.44/32", dev="hloop0", check=False
+            )
+        # leave the adj-fib alone on the entry before the neighbour goes
+        self.wait_route_source("10.10.1.44/32", lcp_rt, present=False)
 
 
 ISIS_PROTO = 0x83
