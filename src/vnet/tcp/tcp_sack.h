@@ -114,10 +114,9 @@ __clib_export void scoreboard_init (sack_scoreboard_t *sb);
 __clib_export format_function_t format_tcp_scoreboard;
 
 __clib_export void tcp_update_sack_list (tcp_connection_t *tc, u32 start, u32 end);
-__clib_export void tcp_dsack_cleanup (tcp_connection_t *tc);
 __clib_export void tcp_dsack_recovery_clear (tcp_connection_t *tc);
 __clib_export void tcp_dsack_recovery_init (tcp_connection_t *tc);
-__clib_export void tcp_dsack_track_retransmit (tcp_connection_t *tc, u32 start, u32 end);
+__clib_export void tcp_track_rxt (tcp_connection_t *tc, u32 start, u32 end);
 u32 tcp_sack_list_bytes (tcp_connection_t * tc);
 __clib_export void tcp_rcv_dsack (tcp_connection_t *tc, u32 ack, tcp_ack_ctx_t *ac);
 __clib_export void tcp_ack_handle_full_feedback (tcp_connection_t *tc, u32 packet_ack, u32 ack,
@@ -131,8 +130,7 @@ tcp_ack_handle_feedback (tcp_connection_t *tc, u32 packet_ack, tcp_ack_ctx_t *ac
   u8 has_ack_state, has_byte_tracker, needs_full_feedback;
 
   ac->bytes_acked = ack - tc->snd_una;
-  has_ack_state = ((sb->flags & TCP_DSACK_RXT_ACTIVE) != 0) | (sb->sacked_bytes != 0) |
-		  (sb->head != TCP_INVALID_SACK_HOLE_INDEX);
+  has_ack_state = (sb->sacked_bytes != 0) | (sb->head != TCP_INVALID_SACK_HOLE_INDEX);
   has_byte_tracker = (tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER) != 0;
   needs_full_feedback = (tcp_opts_sack (&tc->rcv_opts) != 0) |
 			((ac->bytes_acked != 0) & (has_byte_tracker | has_ack_state));

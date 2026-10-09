@@ -281,8 +281,6 @@ tcp_connection_cleanup (tcp_connection_t * tc)
 
       if (tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER)
 	tcp_bt_cleanup (tc);
-      else
-	tcp_dsack_cleanup (tc);
 
       tcp_connection_free (tc);
     }
