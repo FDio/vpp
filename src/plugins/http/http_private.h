@@ -1261,16 +1261,23 @@ http_conn_accept_request (http_ctx_t *hc, http_ctx_t *req, u8 is_stream)
     {
       as->flags |= SESSION_F_STREAM;
       asp = session_get_from_handle (hc->hc_pa_session_handle);
-      asl = listen_session_get_from_handle (asp->listener_handle);
+      asl = session_get_from_handle_if_valid (asp->listener_handle);
       /* we need listener handle for init */
       as->listener_handle = asp->listener_handle;
     }
   else
     {
       as->listener_handle = hc->hc_pa_session_handle;
-      asl = listen_session_get_from_handle (hc->hc_pa_session_handle);
+      asl = session_get_from_handle_if_valid (hc->hc_pa_session_handle);
       /* change hc_pa_session_handle to parent session */
       hc->hc_pa_session_handle = session_handle (as);
+    }
+  /* the listener can go away while the handshake runs */
+  if (!asl || asl->session_state != SESSION_STATE_LISTENING)
+    {
+      req->c_s_index = SESSION_INVALID_INDEX;
+      session_free (as);
+      return SESSION_E_NOLISTEN;
     }
   as->session_type = asl->session_type;
 

@@ -244,6 +244,13 @@ tls_notify_app_accept (tls_ctx_t * ctx)
   int rv;
 
   lctx = tls_listener_ctx_get (ctx->listener_ctx_index);
+  /* the listener can go away while the handshake runs */
+  app_listener = session_get_from_handle_if_valid (lctx->app_session_handle);
+  if (!app_listener || app_listener->session_state != SESSION_STATE_LISTENING)
+    {
+      ctx->flags |= TLS_CONN_F_NO_APP_SESSION;
+      return SESSION_E_NOLISTEN;
+    }
   app_session = session_alloc (ctx->c_thread_index);
   app_listener = listen_session_get_from_handle (lctx->app_session_handle);
   app_session->session_state = SESSION_STATE_ACCEPTING;
