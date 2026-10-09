@@ -44,7 +44,11 @@ from log import (
     colorize,
     single_line_delim,
 )
-from discover_tests import discover_tests
+from discover_tests import (
+    discover_tests,
+    parameterized_family_names,
+    parameterized_variant_pattern,
+)
 import sanity_run_vpp
 from subprocess import check_output, CalledProcessError
 from util import (
@@ -869,8 +873,8 @@ class FilterByTestOption:
                 fn_match = fnmatch.fnmatchcase(file_name, filter_file_name)
                 if not fn_match:
                     return False
-            if filter_class_name and not fnmatch.fnmatchcase(
-                class_name, filter_class_name
+            if filter_class_name and not _class_name_matches(
+                filter_file_name, filter_class_name, file_name, class_name
             ):
                 return False
             if filter_func_name and not fnmatch.fnmatchcase(
@@ -922,8 +926,31 @@ class FilterByClassList:
 _GLOB_CHARS = set("*?[")
 
 
+def _class_name_matches(filter_file_name, filter_class_name, file_name, class_name):
+    """Match a class filter selector against a test's file and class name.
+
+    An exact (glob-free) selector also matches the variants
+    parameterized.parameterized_class generates for the family (Foo
+    matches Foo_0, Foo_1, Foo_0_ip4, ...), so filtering by the family
+    name keeps selecting the whole family even though discovery skips
+    the base class itself. The alias applies only when the test's file
+    contains the family the selector names, so a family in one test
+    file does not alias anything in another, and an unrelated Foo and
+    Foo_256 name pair keeps its exact semantics. A variant-specific
+    selector like Foo_0 still matches exactly that variant, since no
+    class is named Foo_0_<digits> or Foo_0_ip4_<digits>.
+    """
+    if fnmatch.fnmatchcase(class_name, filter_class_name):
+        return True
+    if _GLOB_CHARS.intersection(filter_class_name):
+        return False
+    if (file_name, filter_class_name) not in parameterized_family_names:
+        return False
+    return bool(parameterized_variant_pattern(filter_class_name).fullmatch(class_name))
+
+
 def _selector_kind(raw):
-    """Classify one raw filter selector exactly as the matcher treats it."""
+    """Classify one raw filter selector by its text."""
     if raw in ("", "*"):
         return "all"
     if any(c in _GLOB_CHARS for c in raw):
@@ -987,16 +1014,34 @@ def list_filtered_tests(config):
         one = FilterByTestOption([triple], skip_filters)
         sub_matched = [t for t in all_tests if one(*t)]
         raw = _split_raw_selectors(sub)
+        # a class selector naming a discovered parameterized family also
+        # matches the generated variants, so it is not just "exact"
+        class_kind = _selector_kind(raw[1])
+        if (
+            class_kind == "exact"
+            and (triple[0], triple[1]) in parameterized_family_names
+        ):
+            class_kind = "family"
         levels = (
-            ("file    ", raw[0], sorted({t[0] for t in sub_matched})),
-            ("class   ", raw[1], sorted({t[1] for t in sub_matched})),
-            ("function", raw[2], sorted({t[2] for t in sub_matched})),
+            (
+                "file    ",
+                raw[0],
+                sorted({t[0] for t in sub_matched}),
+                _selector_kind(raw[0]),
+            ),
+            ("class   ", raw[1], sorted({t[1] for t in sub_matched}), class_kind),
+            (
+                "function",
+                raw[2],
+                sorted({t[2] for t in sub_matched}),
+                _selector_kind(raw[2]),
+            ),
         )
         print(f"sub-filter {i}: {sub!r}")
-        for label, sel, vals in levels:
+        for label, sel, vals, kind in levels:
             shown = ", ".join(vals[:8]) + (" ..." if len(vals) > 8 else "")
             print(
-                f"  {label} {sel or '(omitted)':<18} [{_selector_kind(sel):<8}] "
+                f"  {label} {sel or '(omitted)':<18} [{kind:<8}] "
                 f"-> {len(vals):>3} matched: {shown}"
             )
         print()
@@ -1005,9 +1050,10 @@ def list_filtered_tests(config):
     if not matched:
         print(
             "\n*** 0 tests matched. If you targeted a parameterized test, its real\n"
-            "    name carries an index/param suffix (test_tcp -> test_tcp_0, class\n"
-            "    Foo -> Foo_0). Selectors are fnmatch globs, so an exact name like\n"
-            "    'test_tcp' won't match them — add a trailing '*': test_tcp* / Foo*."
+            "    name carries an index suffix (test_tcp becomes test_tcp_0). Class\n"
+            "    selectors also match the numbered variants of a family (Foo matches\n"
+            "    Foo_0, Foo_1, ...), but function selectors do not, so add a trailing\n"
+            "    '*': test_tcp*."
         )
         return 0
 
