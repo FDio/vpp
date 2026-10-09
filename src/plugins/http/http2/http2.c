@@ -3632,8 +3632,13 @@ http2_rx_expect_default (http_ctx_t *hc)
 
       if (PREDICT_FALSE (rv != HTTP2_ERROR_NO_ERROR))
 	{
+	  /* continuation might already be in the fifo */
 	  if (rv == HTTP2_ERROR_EXPECT_CONTINUATION)
-	    return;
+	    {
+	      if (to_deq)
+		http2_rx_expect_funcs[hc->rx_expect](hc);
+	      return;
+	    }
 	  http2_connection_error (hc, rv, 0);
 	  return;
 	}

@@ -1,8 +1,10 @@
 package main
 
 import (
+	"bytes"
 	"crypto/tls"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"strconv"
@@ -11,6 +13,7 @@ import (
 
 	"github.com/edwarnicke/exechelper"
 	"golang.org/x/net/http2"
+	"golang.org/x/net/http2/hpack"
 
 	. "fd.io/hs-test/infra"
 )
@@ -18,8 +21,8 @@ import (
 func init() {
 	RegisterH2Tests(Http2TcpGetTest, Http2TcpPostTest, Http2MultiplexingTest, Http2TlsTest, Http2ContinuationTxTest,
 		Http2ServerMemLeakTest, Http2ClientGetTest, Http2ClientPostTest, Http2ClientPostPtrTest, Http2ClientGetRepeatTest,
-		Http2ClientMultiplexingTest, Http2ClientH2cTest, Http2ClientMemLeakTest, Htttp2TlsNoAlpnTest,
-		Http2TcpClientCloseDuringHandshakeTest)
+		Http2ClientMultiplexingTest, Http2ClientH2cTest, Http2ClientContinuationH2cTest, Http2ClientMemLeakTest,
+		Htttp2TlsNoAlpnTest, Http2TcpClientCloseDuringHandshakeTest)
 	RegisterH2MWTests(Http2MultiplexingMWTest, Http2ClientMultiplexingMWTest, Http2TsFifoMemPressureMWTest)
 	RegisterVethTests(Http2CliTlsTest, Http2ClientContinuationTest, Http2ClientPostFormTest, Http2ClientPostFormPtrTest)
 }
@@ -316,6 +319,61 @@ func Http2ClientH2cTest(s *Http2Suite) {
 	AssertNil(err)
 	AssertContains(string(logContents), "HTTP/2")
 	AssertContains(string(logContents), "scheme=http conn=")
+}
+
+func Http2ClientContinuationH2cTest(s *Http2Suite) {
+	vpp := s.Containers.Vpp.VppInstance
+	serverAddress := s.HostAddr() + ":" + s.Ports.Port1
+
+	l, err := net.Listen("tcp", serverAddress)
+	AssertNil(err, fmt.Sprint(err))
+	defer l.Close()
+	go func() {
+		conn, err := l.Accept()
+		if err != nil {
+			return
+		}
+		defer conn.Close()
+		preface := make([]byte, len(http2.ClientPreface))
+		if _, err = io.ReadFull(conn, preface); err != nil {
+			return
+		}
+		framer := http2.NewFramer(conn, conn)
+		if err = framer.WriteSettings(http2.Setting{ID: http2.SettingMaxConcurrentStreams, Val: 100}); err != nil {
+			return
+		}
+		for {
+			f, err := framer.ReadFrame()
+			if err != nil {
+				return
+			}
+			if _, ok := f.(*http2.HeadersFrame); ok {
+				break
+			}
+		}
+		var block bytes.Buffer
+		enc := hpack.NewEncoder(&block)
+		enc.WriteField(hpack.HeaderField{Name: ":status", Value: "200"})
+		enc.WriteField(hpack.HeaderField{Name: "content-length", Value: "5"})
+		enc.WriteField(hpack.HeaderField{Name: "x-test", Value: "continuation"})
+		// whole response in one write, the continuation reaches the client with the headers
+		var resp bytes.Buffer
+		w := http2.NewFramer(&resp, nil)
+		w.WriteSettingsAck()
+		w.WriteHeaders(http2.HeadersFrameParam{StreamID: 1, BlockFragment: block.Bytes()[:4]})
+		w.WriteContinuation(1, true, block.Bytes()[4:])
+		w.WriteData(1, true, []byte("hello"))
+		if _, err = conn.Write(resp.Bytes()); err != nil {
+			return
+		}
+		io.Copy(io.Discard, conn)
+	}()
+
+	uri := "http://" + serverAddress + "/"
+	o := vpp.Vppctl("http client http2 verbose timeout 5 uri " + uri)
+	Log(o)
+	AssertContains(o, "HTTP/2 200 OK")
+	AssertContains(o, "x-test: continuation")
 }
 
 func http2ClientPostFile(s *Http2Suite, usePtr bool, fileSize int) {
