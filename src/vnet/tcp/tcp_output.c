@@ -1261,10 +1261,7 @@ tcp_prepare_retransmit_segment (tcp_worker_ctx_t * wrk,
     return 0;
 
   tc->snd_rxt_bytes += n_bytes;
-  if (tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER)
-    tcp_bt_track_rxt (tc, start, start + n_bytes);
-  else if (tcp_opts_sack_permitted (&tc->rcv_opts))
-    tcp_dsack_track_retransmit (tc, start, start + n_bytes);
+  tcp_track_rxt (tc, start, start + n_bytes);
 
   tc->bytes_retrans += n_bytes;
   tc->segs_retrans += 1;
@@ -1891,8 +1888,6 @@ tcp_retransmit_sack_inline (tcp_worker_ctx_t *wrk, tcp_connection_t *tc, u32 bur
 	  if (!n_written)
 	    goto done;
 
-	  /* A rescue retransmission can overlap bytes below HighRxt. */
-	  tc->sack_sb.flags |= TCP_DSACK_INELIGIBLE;
 	  sb->rescue_rxt = tc->snd_congestion;
 	  bi = vlib_get_buffer_index (vm, b);
 	  tcp_enqueue_to_output (wrk, b, bi, tc->c_is_ip4);

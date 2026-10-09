@@ -163,7 +163,7 @@ typedef struct tcp_configuration_
   /** Set if csum offloading is enabled */
   u8 csum_offload;
 
-  /** Enable D-SACK processing for new connections */
+  /** Enable D-SACK congestion undo for new connections */
   u8 enable_dsack;
 
   /** Enable byte tracking for new connections */

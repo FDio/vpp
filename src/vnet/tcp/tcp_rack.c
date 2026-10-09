@@ -465,9 +465,8 @@ tcp_rack_loss_on_ack (tcp_connection_t *tc, tcp_ack_ctx_t *ac)
 
   ASSERT (tcp_rack_enabled (tc));
 
-  /* Only a D-SACK matched to retained retransmission history is credible
-   * evidence for adapting the reordering window. */
-  if (tcp_rack_update_reo_wnd (tc, ac->ack_flags & TCP_ACK_F_DSACK_MATCHED))
+  /* Reordering feedback need not prove congestion undo. */
+  if (tcp_rack_update_reo_wnd (tc, !!(ac->ack_flags & TCP_ACK_F_DSACK_VALID)))
     ac->ack_flags |= TCP_ACK_F_REO_WND_UPDATED;
 
   /* Without a retransmitted RACK.segment, only SACKed data above SND.UNA

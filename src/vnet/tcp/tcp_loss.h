@@ -14,7 +14,7 @@ __clib_export u8 tcp_loss_old_ack_needs_full_feedback (tcp_connection_t *tc);
 u32 tcp_loss_on_rto (tcp_connection_t *tc);
 __clib_export void tcp_loss_enter_recovery (tcp_connection_t *tc);
 __clib_export void tcp_loss_exit_recovery (tcp_connection_t *tc, tcp_ack_ctx_t *ac);
-void tcp_loss_dsack_undo (tcp_connection_t *tc);
+__clib_export void tcp_loss_dsack_undo (tcp_connection_t *tc);
 __clib_export void tcp_loss_tlp_recovery (tcp_connection_t *tc, tcp_ack_ctx_t *ac);
 void tcp_loss_recovery_state_sync (tcp_connection_t *tc);
 u8 tcp_loss_recovery_state_is_sane (tcp_connection_t *tc);
@@ -31,6 +31,24 @@ tcp_loss_is_eifel_spurious (tcp_connection_t *tc, tcp_ack_ctx_t *ac)
   ASSERT (tcp_in_cong_recovery (tc) && ac->bytes_acked);
   return (tc->snd_rxt_ts && seq_lt (tc->snd_una, tc->snd_congestion) &&
 	  tcp_opts_tstamp (&tc->rcv_opts) && timestamp_lt (tc->rcv_opts.tsecr, tc->snd_rxt_ts));
+}
+
+/* Undo rto recovery only on acks that advance snd_una. A budget discharged by a duplicate ack is
+ * kept until then. */
+static_always_inline u8
+tcp_loss_dsack_undo_ready (tcp_connection_t *tc, tcp_ack_ctx_t *ac)
+{
+  if (!tcp_in_recovery (tc))
+    return (ac->ack_flags & TCP_ACK_F_DSACK_SPURIOUS) != 0;
+
+  if (ac->bytes_acked && tcp_dsack_undo_discharged (tc))
+    {
+      ac->ack_flags |= TCP_ACK_F_DSACK_SPURIOUS;
+      return 1;
+    }
+
+  ac->ack_flags &= ~TCP_ACK_F_DSACK_SPURIOUS;
+  return 0;
 }
 
 static_always_inline u8
