@@ -21,6 +21,12 @@ igmp_proxy_device_mfib_path_add_del (igmp_group_t * group, u8 add)
     mfib_table_get_index_for_sw_if_index (FIB_PROTOCOL_IP4,
 					  config->sw_if_index);
 
+  u32 mitf_flags = 0;
+  if (config->mode == IGMP_MODE_HOST)
+    mitf_flags = MFIB_ITF_FLAG_ACCEPT;
+  else if (config->mode == IGMP_MODE_ROUTER)
+    mitf_flags = MFIB_ITF_FLAG_FORWARD;
+
   mfib_prefix_t mpfx_group_addr = {
       .fp_proto = FIB_PROTOCOL_IP4,
       .fp_len = 32,
@@ -28,15 +34,14 @@ igmp_proxy_device_mfib_path_add_del (igmp_group_t * group, u8 add)
 	.ip4 = (*group->key).ip4,
       },
     };
-  fib_route_path_t via_itf_path =
-    {
-      .frp_proto = fib_proto_to_dpo (FIB_PROTOCOL_IP4),
-      .frp_addr = zero_addr,
-      .frp_sw_if_index = config->sw_if_index,
-      .frp_fib_index = 0,
-      .frp_weight = 1,
-      .frp_mitf_flags = MFIB_ITF_FLAG_FORWARD,
-    };
+  fib_route_path_t via_itf_path = {
+    .frp_proto = fib_proto_to_dpo (FIB_PROTOCOL_IP4),
+    .frp_addr = zero_addr,
+    .frp_sw_if_index = config->sw_if_index,
+    .frp_fib_index = 0,
+    .frp_weight = 1,
+    .frp_mitf_flags = mitf_flags,
+  };
 
   if (add)
     mfib_table_entry_path_update (mfib_index, &mpfx_group_addr,
