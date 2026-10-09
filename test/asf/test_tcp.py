@@ -128,6 +128,7 @@ class TestTCPUnitTests(VppAsfTestCase):
         # individual API request consumes the shared CLI response timeout.
         test_cases = (
             "sack",
+            "dsack-undo",
             "lookup",
             "delivery",
             "persist",

@@ -140,10 +140,10 @@ typedef enum tcp_connection_flag_
 } tcp_connection_flags_e;
 
 #define TCP_SCOREBOARD_TRACE (0)
-#define TCP_MAX_SACK_BLOCKS 255	/**< Max number of SACK blocks stored */
-#define TCP_MAX_DSACK_RXT_RANGES    64	/**< Max retransmit ranges retained for D-SACK */
+#define TCP_MAX_SACK_BLOCKS	    255 /**< Max number of SACK blocks stored */
 #define TCP_INVALID_SACK_HOLE_INDEX ((u32)~0)
 #define TCP_MAX_SACK_REORDER 300
+#define TCP_SEQ_HALF_SPACE	    (1ULL << 31) /**< Half the 32-bit TCP sequence space */
 
 typedef struct _scoreboard_trace_elt
 {
@@ -190,10 +190,10 @@ STATIC_ASSERT (STRUCT_OFFSET_OF (sack_scoreboard_hole_t, range.is_lost) ==
 typedef enum tcp_scoreboard_flag_
 {
   TCP_DSACK_INELIGIBLE = 1,
-  TCP_DSACK_UNDO_DISABLED = 1 << 1,
-  TCP_DSACK_RXT_OVERFLOW = 1 << 2,
-  TCP_DSACK_HISTORY = 1 << 3,
-  TCP_DSACK_RXT_ACTIVE = 1 << 4,
+  TCP_DSACK_UNDO_DISABLED = 1 << 1, /**< Disabled by configuration, not incoming reports */
+  TCP_DSACK_UNDO_ACTIVE = 1 << 2,
+  TCP_DSACK_RXT_SEEN = 1 << 3,
+  TCP_DSACK_RXT_UNCHARGED = 1 << 4, /**< Copy sent outside recovery */
   TCP_SCOREBOARD_F_RENEGING = 1 << 5,
 } __clib_packed tcp_scoreboard_flag_t;
 
@@ -225,28 +225,15 @@ tcp_scoreboard_is_reneging (const sack_scoreboard_t *sb)
   return (sb->flags & TCP_SCOREBOARD_F_RENEGING) != 0;
 }
 
-#define TCP_DSACK_RXT_INVALID_INDEX ((u32) ~0)
-
-/** Retransmitted byte range retained for conservative D-SACK undo. */
-typedef struct tcp_dsack_rxt_
+/** D-SACK report budget and saved congestion undo state. */
+typedef struct tcp_dsack_undo_
 {
-  union
-  {
-    struct
-    {
-      u32 start;
-      u32 end;
-      u32 next;
-    };
-    /* Pool element zero stores active-range metadata. */
-    struct
-    {
-      u32 head;
-      u32 tail;
-      u32 history_start;
-    };
-  };
-} tcp_dsack_rxt_t;
+  u64 snapshot_bytes_out;  /**< bytes_out minus snapshot flight, baseline for expiring bounds */
+  u32 lifetime_unreported; /**< Connection-wide report budget, in bytes */
+  u32 pending_bytes;	   /**< Episode copy bytes awaiting duplicate proof */
+  u32 start;		   /**< snd_una at the snapshot */
+  u32 end;		   /**< End of the highest copy it covers */
+} tcp_dsack_undo_t;
 
 typedef enum tcp_ack_flag_
 {
@@ -256,11 +243,11 @@ typedef enum tcp_ack_flag_
   TCP_ACK_F_EIFEL_SPURIOUS = 1 << 3,
   TCP_ACK_F_SACK = 1 << 4,
   TCP_ACK_F_DETECT_LOSS = 1 << 5,
-  TCP_ACK_F_DSACK_MATCHED = 1 << 6,
   TCP_ACK_F_REO_WND_UPDATED = 1 << 7,
   TCP_ACK_F_TLP_RECOVERY = 1 << 8,
   TCP_ACK_F_REPEATED = 1 << 9,
   TCP_ACK_F_TLP_DSACK = 1 << 10,
+  TCP_ACK_F_DSACK_VALID = 1 << 11, /**< Plausible feedback for RACK, independent of undo */
   TCP_ACK_F_SPURIOUS = TCP_ACK_F_DSACK_SPURIOUS | TCP_ACK_F_EIFEL_SPURIOUS,
 } __clib_packed tcp_ack_flag_t;
 
@@ -357,7 +344,7 @@ tcp_scoreboard_set_reneging (sack_scoreboard_t *sb, u8 is_reneging, tcp_ack_ctx_
       /* Retracted SACK evidence makes D-SACK undo ambiguous. */
       sb->flags |= TCP_DSACK_INELIGIBLE;
       if (ac)
-	ac->ack_flags &= ~(TCP_ACK_F_DSACK_SPURIOUS | TCP_ACK_F_DSACK_MATCHED);
+	ac->ack_flags &= ~TCP_ACK_F_DSACK_SPURIOUS;
     }
 }
 
@@ -514,12 +501,7 @@ typedef struct _tcp_connection
 
   tcp_errors_t errors;	/**< Soft connection errors */
 
-  union
-  {
-    tcp_dsack_rxt_t *dsack_rxt; /**< Active retransmit ranges for D-SACK undo */
-    u32 dsack_history_start;	/**< Lower sequence bound for retired history */
-  };
-  u32 dsack_pending_bytes; /**< Retransmit bytes without D-SACK evidence */
+  tcp_dsack_undo_t dsack_undo; /**< Retransmit budget for D-SACK undo */
 
   u32 iss;		/**< initial sent sequence */
   u32 irs;		/**< initial remote sequence */
@@ -581,7 +563,22 @@ tcp_cong_recovery_off (tcp_connection_t * tc)
 #define tcp_zero_rwnd_sent_on(tc) (tc)->flags |= TCP_CONN_ZERO_RWND_SENT
 #define tcp_zero_rwnd_sent_off(tc) (tc)->flags &= ~TCP_CONN_ZERO_RWND_SENT
 
-#define tcp_dsack_has_history(tc) (((tc)->sack_sb.flags & TCP_DSACK_HISTORY) != 0)
+#define tcp_dsack_has_undo(tc) (((tc)->sack_sb.flags & TCP_DSACK_RXT_SEEN) != 0)
+
+static_always_inline u32
+tcp_dsack_pending_bytes (const tcp_connection_t *tc)
+{
+  return tc->dsack_undo.pending_bytes;
+}
+
+/** Check if earlier D-SACKs discharged the undo budget */
+static_always_inline u8
+tcp_dsack_undo_discharged (const tcp_connection_t *tc)
+{
+  return (tc->sack_sb.flags & (TCP_DSACK_RXT_SEEN | TCP_DSACK_INELIGIBLE |
+			       TCP_DSACK_UNDO_DISABLED)) == TCP_DSACK_RXT_SEEN &&
+	 !tcp_dsack_pending_bytes (tc);
+}
 
 always_inline tcp_connection_t *
 tcp_get_connection_from_transport (transport_connection_t * tconn)
