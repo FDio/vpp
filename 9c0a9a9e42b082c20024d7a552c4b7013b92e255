@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "60afe47f_58c7fe47",
+        "filename": "src/vlib/linux/vmbus.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 217,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-10-09T19:17:31Z",
+      "side": 1,
+      "message": "Is there a way to explicitly determine this is not MANA instead of inferring that is the case?",
+      "range": {
+        "startLine": 216,
+        "startChar": 0,
+        "endLine": 217,
+        "endChar": 88
+      },
+      "revId": "9c0a9a9e42b082c20024d7a552c4b7013b92e255",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
