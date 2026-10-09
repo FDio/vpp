@@ -271,6 +271,11 @@ typedef struct fib_entry_src_t_ {
 	     * This source's index in the cover's list
 	     */
 	    u32 fesi_sibling;
+	    /**
+	     * The entry this source is on, for the remove callback, which
+	     * is not passed the entry
+	     */
+	    fib_node_index_t fesi_entry;
 	} interface;
 	struct {
 	    /**
