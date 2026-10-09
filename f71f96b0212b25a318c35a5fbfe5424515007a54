@@ -69,6 +69,24 @@
       "parentUuid": "2804188a_282436c7",
       "revId": "f71f96b0212b25a318c35a5fbfe5424515007a54",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "858cb352_7fe52911",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3325
+      },
+      "writtenOn": "2026-10-09T06:26:41Z",
+      "side": 1,
+      "message": "Ok, I\u0027ll go with the simple fix then. In tls_notify_app_accept I\u0027d check app_worker_get_if_valid (ctx-\u003eparent_app_wrk_index) first and refuse, and in http/quic check the listener\u0027s app_wrk_index before app_worker_init_accepted, and drop the session layer part. Will rerun the loss repro on it\n\nAbout tls_listener_ctx_get, I think it\u0027s because it\u0027s a release build, so the freed lctx was still readable with its old handle. The app had detached by then (vperf server stop detaches), so the app_wrk check should catch it",
+      "parentUuid": "463509b1_783d4542",
+      "revId": "f71f96b0212b25a318c35a5fbfe5424515007a54",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
