@@ -152,6 +152,24 @@
       "message": "was it client or server proxy app, and why it reset connection? can we have test for it?",
       "revId": "31f0f580f648ccb1d1d6091e1273e7995f55137a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8babd303_8e46dabd",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3325
+      },
+      "writtenOn": "2026-10-09T11:48:08Z",
+      "side": 1,
+      "message": "Client side, the builtin vperf client (http3 connect-udp), not the proxy apps. I think it closes the tunnel with echoed data still unread, so http3 resets the connection and quic only logs \"Trying to reset connection\". I added a client cleanup check to VperfBuiltinHttp3ConnectUdpTest, it fails on master and passes with the fix. Or would it be better to fix it in http3?",
+      "parentUuid": "4a09e637_6227859c",
+      "revId": "31f0f580f648ccb1d1d6091e1273e7995f55137a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
