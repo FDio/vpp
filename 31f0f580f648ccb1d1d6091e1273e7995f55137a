@@ -170,6 +170,24 @@
       "parentUuid": "4a09e637_6227859c",
       "revId": "31f0f580f648ccb1d1d6091e1273e7995f55137a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e135052f_fe87ff43",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-10-09T12:38:33Z",
+      "side": 1,
+      "message": "vperf is more aggressive with closing, quic fix is fine.",
+      "parentUuid": "8babd303_8e46dabd",
+      "revId": "31f0f580f648ccb1d1d6091e1273e7995f55137a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
