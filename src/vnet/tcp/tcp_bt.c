@@ -917,6 +917,7 @@ tcp_bt_track_rxt (tcp_connection_t *tc, u32 start, u32 end)
 
   if (track_dsack && tracked)
     {
+      tc->dsack_history_seen = 1;
       if (!(tc->sack_sb.flags & TCP_DSACK_HISTORY))
 	{
 	  tc->dsack_history_start = tc->snd_una;
@@ -1848,7 +1849,9 @@ tcp_bt_dsack_recovery_init (tcp_connection_t *tc)
 	{
 	  start = seq_max (bts->min_seq, tc->snd_una);
 	  if (seq_lt (start, bts->max_seq))
-	    tc->dsack_pending_bytes += bts->max_seq - start;
+	    {
+	      tc->dsack_pending_bytes += bts->max_seq - start;
+	    }
 	}
       bts = bt_next_sample (bt, bts);
     }
@@ -1856,6 +1859,7 @@ tcp_bt_dsack_recovery_init (tcp_connection_t *tc)
   if (tc->dsack_pending_bytes)
     {
       tc->dsack_history_start = tc->snd_una;
+      tc->dsack_history_seen = 1;
       tc->sack_sb.flags |= TCP_DSACK_HISTORY;
     }
 }
@@ -1891,6 +1895,7 @@ tcp_bt_cleanup (tcp_connection_t * tc)
 {
   tcp_byte_tracker_t *bt = tc->bt;
 
+  tc->dsack_history_seen = 0;
   tc->dsack_rxt = 0;
   tc->dsack_pending_bytes = 0;
   tc->sack_sb.flags &= TCP_SCOREBOARD_F_RENEGING | TCP_DSACK_UNDO_DISABLED;
@@ -1935,6 +1940,7 @@ tcp_bt_init (tcp_connection_t *tc)
 int
 tcp_bt_enable (tcp_connection_t *tc, u8 enable)
 {
+  u8 history_seen = tc->dsack_history_seen;
   bool is_enabled = tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER;
 
   if (!enable && (tc->cfg_flags & TCP_CFG_F_RACK))
@@ -1951,6 +1957,7 @@ tcp_bt_enable (tcp_connection_t *tc, u8 enable)
     }
   else
     tcp_bt_cleanup (tc);
+  tc->dsack_history_seen = history_seen;
   return 0;
 }
 

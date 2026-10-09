@@ -471,6 +471,7 @@ void
 tcp_dsack_cleanup (tcp_connection_t *tc)
 {
   ASSERT (!(tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER));
+  tc->dsack_history_seen = 0;
   if (tc->sack_sb.flags & TCP_DSACK_RXT_ACTIVE)
     pool_free (tc->dsack_rxt);
   tc->dsack_rxt = 0;
@@ -568,7 +569,10 @@ tcp_dsack_recovery_init (tcp_connection_t *tc)
       index = rxt->next;
     }
   if (tc->dsack_pending_bytes)
-    tc->sack_sb.flags |= TCP_DSACK_HISTORY;
+    {
+      tc->dsack_history_seen = 1;
+      tc->sack_sb.flags |= TCP_DSACK_HISTORY;
+    }
 }
 
 /* Prepare to add retained ranges. On overflow, discard range history and make
@@ -709,6 +713,7 @@ tcp_dsack_track_retransmit (tcp_connection_t *tc, u32 start, u32 end)
   if (tc->sack_sb.flags & (TCP_DSACK_UNDO_DISABLED | TCP_DSACK_RXT_OVERFLOW))
     return;
 
+  tc->dsack_history_seen = 1;
   if (tcp_dsack_track_range_union (tc, start, end))
     tc->sack_sb.flags |= TCP_DSACK_INELIGIBLE;
   ASSERT (tc->dsack_pending_bytes <= (u32) ~0 - tracked);
@@ -825,12 +830,22 @@ tcp_sack_extract_dsack (tcp_connection_t *tc, u32 ack, sack_block_t *dsack)
 static void
 tcp_dsack_account (tcp_connection_t *tc, const sack_block_t *dsack, tcp_ack_ctx_t *ac)
 {
-  u32 matched;
+  sack_block_t retained = *dsack;
+  u32 matched, credit, history_start;
 
   ASSERT (dsack != 0);
 
   if (!tcp_dsack_has_history (tc))
     {
+      if (tc->dsack_history_seen)
+	{
+	  /* Missing bounded history is not proof that these bytes were never
+	   * retransmitted. Give no undo credit, and keep the current episode
+	   * ineligible if it has not yet recorded any retransmissions. */
+	  if (tcp_in_cong_recovery (tc))
+	    tc->sack_sb.flags |= TCP_DSACK_INELIGIBLE;
+	  return;
+	}
       /* With bounded retransmit history, conservatively treat a D-SACK
        * without retained history as network duplication (RFC 3708 A.4). */
       tc->sack_sb.flags |= TCP_DSACK_UNDO_DISABLED;
@@ -844,30 +859,44 @@ tcp_dsack_account (tcp_connection_t *tc, const sack_block_t *dsack, tcp_ack_ctx_
   if (tc->sack_sb.flags & TCP_DSACK_RXT_OVERFLOW)
     return;
 
+  history_start = tcp_dsack_get_history_start (tc);
+  if (seq_leq (dsack->end, history_start))
+    {
+      /* No current-episode evidence remains below its history boundary. */
+      return;
+    }
+
+  /* A coalesced report can cover both discarded and retained history. Its
+   * unavailable prefix is not evidence of network duplication. Validate and
+   * credit only the suffix; unknown bytes within that suffix still disable
+   * undo through the normal unmatched-range guard. */
+  retained.start = seq_max (retained.start, history_start);
+
   /* RFC 3708 A.1: an empty SACK history and a D-SACK beginning at
    * snd_una is indistinguishable from loss of the whole ACK window. The
    * current ACK's normalized SACK ranges have not been applied yet. */
-  if (!tc->sack_sb.sacked_bytes && dsack->start == tc->snd_una)
+  if (!tc->sack_sb.sacked_bytes && retained.start == tc->snd_una)
     {
       tc->sack_sb.flags |= TCP_DSACK_INELIGIBLE;
       return;
     }
 
-  matched = tcp_dsack_mark_duplicate (tc, dsack->start, dsack->end);
+  matched = tcp_dsack_mark_duplicate (tc, retained.start, retained.end);
   if (tc->sack_sb.flags & TCP_DSACK_RXT_OVERFLOW)
     return;
-  if (matched != dsack->end - dsack->start)
+  if (matched != retained.end - retained.start)
     {
       tc->sack_sb.flags |= TCP_DSACK_UNDO_DISABLED;
       tcp_dsack_recovery_clear (tc);
       return;
     }
-  if (matched > tc->dsack_pending_bytes)
+  credit = matched;
+  if (credit > tc->dsack_pending_bytes)
     {
       tc->sack_sb.flags |= TCP_DSACK_INELIGIBLE;
       return;
     }
-  tc->dsack_pending_bytes -= matched;
+  tc->dsack_pending_bytes -= credit;
   ac->ack_flags |= TCP_ACK_F_DSACK_MATCHED;
 }
 

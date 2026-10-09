@@ -528,6 +528,9 @@ typedef struct _tcp_connection
   u16 mss;		/**< Our max seg size that includes options */
   u32 ipv6_flow_label;	/**< flow label for ipv6 header */
 
+  /* Local retransmit history can precede the bounded recovery history. */
+  u8 dsack_history_seen;
+
 #define rst_state snd_wl1
 } tcp_connection_t;
 
