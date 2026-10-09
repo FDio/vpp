@@ -7,7 +7,10 @@ import binascii
 from asfframework import VppTestRunner
 
 from scapy.layers.inet6 import UDP, TCP
+from scapy.layers.inet6 import IPv6, ICMPv6EchoRequest, ICMPv6EchoReply
+from scapy.layers.l2 import Ether
 from template_classifier import TestClassifier
+from vpp_ip import INVALID_INDEX
 
 
 class TestClassifierIP6(TestClassifier):
@@ -487,6 +490,66 @@ class TestClassifierIP6MAC(TestClassifier):
         self.verify_capture(self.pg2, pkts)
         self.pg0.assert_nothing_captured(remark="packets forwarded")
         self.pg1.assert_nothing_captured(remark="packets forwarded")
+
+
+class TestClassifierIP6Table(TestClassifier):
+    """Classifier IP6 table Test Case"""
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestClassifierIP6Table, cls).setUpClass()
+        cls.af = socket.AF_INET6
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestClassifierIP6Table, cls).tearDownClass()
+
+    def test_ip_table_other_itf(self):
+        """IP6 classify table on another interface
+
+        Test scenario for an IP6 classify table set on one interface
+            - Set a table without sessions, which drops everything, on pg3.
+            - Add the address of pg0, which has a lower sw_if_index, again.
+            - Ping the address of pg0 and expect a reply.
+            - Remove the table from pg3, delete it and ping again.
+        """
+        mask = b"\xff" * 16
+        table_index = self.vapi.classify_add_del_table(
+            is_add=True,
+            mask=mask,
+            mask_len=len(mask),
+            match_n_vectors=1,
+            miss_next_index=0,
+            current_data_flag=1,
+        ).new_table_index
+        self.vapi.classify_set_interface_ip_table(
+            is_ipv6=True, sw_if_index=self.pg3.sw_if_index, table_index=table_index
+        )
+
+        self.pg0.unconfig_ip6()
+        self.pg0.config_ip6()
+        self.pg0.resolve_ndp()
+
+        p = (
+            Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac)
+            / IPv6(src=self.pg0.remote_ip6, dst=self.pg0.local_ip6)
+            / ICMPv6EchoRequest()
+        )
+        rx = self.send_and_expect(self.pg0, [p], self.pg0)
+        self.assertTrue(rx[0].haslayer(ICMPv6EchoReply))
+
+        self.vapi.classify_set_interface_ip_table(
+            is_ipv6=True, sw_if_index=self.pg3.sw_if_index, table_index=INVALID_INDEX
+        )
+        self.vapi.classify_add_del_table(
+            is_add=False,
+            table_index=table_index,
+            mask=mask,
+            mask_len=len(mask),
+            match_n_vectors=1,
+        )
+        rx = self.send_and_expect(self.pg0, [p], self.pg0)
+        self.assertTrue(rx[0].haslayer(ICMPv6EchoReply))
 
 
 if __name__ == "__main__":
