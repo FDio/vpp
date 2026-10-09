@@ -153,4 +153,7 @@ __clib_export u8 tcp_sack_handle_reneging (tcp_connection_t *tc);
 u8 tcp_sack_is_sane_post_recovery (tcp_connection_t *tc);
 __clib_export u8 *tcp_scoreboard_replay (u8 *s, tcp_connection_t *tc, u8 verbose);
 
+void tcp_dsack_track_history (tcp_connection_t *tc, u32 start, u32 end);
+u32 tcp_dsack_match_history (tcp_connection_t *tc, u32 start, u32 end);
+
 #endif /* SRC_VNET_TCP_TCP_SACK_H_ */

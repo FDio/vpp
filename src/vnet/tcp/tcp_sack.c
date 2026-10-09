@@ -429,6 +429,71 @@ tcp_sack_is_sane_post_recovery (tcp_connection_t *tc)
 						    tcp_scoreboard_is_sane_post_recovery (tc);
 }
 
+/* Credit each byte once even if a peer repeats a report, an ACK is duplicated
+ * in transit, or later reports overlap. Keep a sorted disjoint union so a long
+ * contiguous run consumes one slot. Exhaustion abandons this episode's undo;
+ * it neither guesses coverage nor disables subsequent recovery episodes. */
+static u32
+tcp_dsack_union_add (tcp_connection_t *tc, sack_block_t **history, u32 start, u32 end)
+{
+  sack_block_t range = { start, end }, *credited = *history;
+  u32 first = 0, last, credit = end - start;
+
+  while (first < vec_len (credited) && seq_lt (credited[first].end, start))
+    first++;
+  last = first;
+  while (last < vec_len (credited) && seq_leq (credited[last].start, end))
+    {
+      u32 lo = seq_max (start, credited[last].start);
+      u32 hi = seq_min (end, credited[last].end);
+      if (seq_lt (lo, hi))
+	credit -= hi - lo;
+      range.start = seq_min (range.start, credited[last].start);
+      range.end = seq_max (range.end, credited[last].end);
+      last++;
+    }
+
+  if (first == last)
+    {
+      if (vec_len (credited) == TCP_MAX_DSACK_RXT_RANGES)
+	{
+	  tc->sack_sb.flags |= TCP_DSACK_INELIGIBLE | TCP_DSACK_RXT_OVERFLOW;
+	  return 0;
+	}
+      vec_insert (credited, 1, first);
+    }
+  else if (last > first + 1)
+    vec_delete (credited, last - first - 1, first + 1);
+  credited[first] = range;
+  *history = credited;
+  return credit;
+}
+
+void
+tcp_dsack_track_history (tcp_connection_t *tc, u32 start, u32 end)
+{
+  if (tc->sack_sb.flags & TCP_DSACK_RXT_OVERFLOW)
+    return;
+  tcp_dsack_union_add (tc, &tc->dsack_retransmitted, start, end);
+}
+
+u32
+tcp_dsack_match_history (tcp_connection_t *tc, u32 start, u32 end)
+{
+  sack_block_t *range;
+  u32 matched = 0;
+  vec_foreach (range, tc->dsack_retransmitted)
+    {
+      if (seq_leq (end, range->start))
+	break;
+      u32 lo = seq_max (start, range->start);
+      u32 hi = seq_min (end, range->end);
+      if (seq_lt (lo, hi))
+	matched += hi - lo;
+    }
+  return matched;
+}
+
 static_always_inline tcp_dsack_rxt_t *
 tcp_dsack_rxt_header (tcp_connection_t *tc)
 {
@@ -471,6 +536,8 @@ void
 tcp_dsack_cleanup (tcp_connection_t *tc)
 {
   ASSERT (!(tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER));
+  vec_free (tc->dsack_credited);
+  vec_free (tc->dsack_retransmitted);
   tc->dsack_history_seen = 0;
   if (tc->sack_sb.flags & TCP_DSACK_RXT_ACTIVE)
     pool_free (tc->dsack_rxt);
@@ -522,6 +589,8 @@ tcp_dsack_retire (tcp_connection_t *tc, u32 ack)
 void
 tcp_dsack_recovery_clear (tcp_connection_t *tc)
 {
+  vec_free (tc->dsack_credited);
+  vec_free (tc->dsack_retransmitted);
   if (PREDICT_FALSE (tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER))
     {
       tcp_bt_dsack_recovery_clear (tc);
@@ -566,6 +635,7 @@ tcp_dsack_recovery_init (tcp_connection_t *tc)
     {
       rxt = tcp_dsack_rxt_get (tc, index);
       tc->dsack_pending_bytes += rxt->end - rxt->start;
+      tcp_dsack_track_history (tc, rxt->start, rxt->end);
       index = rxt->next;
     }
   if (tc->dsack_pending_bytes)
@@ -714,6 +784,7 @@ tcp_dsack_track_retransmit (tcp_connection_t *tc, u32 start, u32 end)
     return;
 
   tc->dsack_history_seen = 1;
+  tcp_dsack_track_history (tc, start, end);
   if (tcp_dsack_track_range_union (tc, start, end))
     tc->sack_sb.flags |= TCP_DSACK_INELIGIBLE;
   ASSERT (tc->dsack_pending_bytes <= (u32) ~0 - tracked);
@@ -738,7 +809,7 @@ tcp_dsack_mark_duplicate (tcp_connection_t *tc, u32 start, u32 end)
       overlap_start = seq_max (active_start, tcp_dsack_get_history_start (tc));
       if (seq_lt (overlap_start, overlap_end))
 	{
-	  matched += overlap_end - overlap_start;
+	  matched += tcp_dsack_match_history (tc, overlap_start, overlap_end);
 	}
       active_start = overlap_end;
     }
@@ -890,7 +961,12 @@ tcp_dsack_account (tcp_connection_t *tc, const sack_block_t *dsack, tcp_ack_ctx_
       tcp_dsack_recovery_clear (tc);
       return;
     }
-  credit = matched;
+  credit = tcp_dsack_union_add (tc, &tc->dsack_credited, retained.start, retained.end);
+  if (tc->sack_sb.flags & TCP_DSACK_RXT_OVERFLOW)
+    return;
+  /* A repeated report contributes no new matched evidence to RACK. */
+  if (!credit)
+    return;
   if (credit > tc->dsack_pending_bytes)
     {
       tc->sack_sb.flags |= TCP_DSACK_INELIGIBLE;

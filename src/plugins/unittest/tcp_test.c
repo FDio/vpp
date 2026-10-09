@@ -1616,8 +1616,8 @@ tcp_test_dsack_rx (vlib_main_t *vm)
 	      tc->dsack_pending_bytes == TCP_MAX_DSACK_RXT_RANGES * 100 - 50,
 	    "D-SACK matching preserves compact active history");
 
-  /* Repeated retransmissions and D-SACKs use aggregate copy accounting, but
-   * the ambiguous retransmit path remains ineligible for undo. */
+  /* Repeated retransmissions remain ambiguous. A repeated report cannot
+   * identify a second copy or contribute new unique-byte evidence. */
   DSACK_RX_RESET ();
   tc->flags |= TCP_CONN_FAST_RECOVERY | TCP_CONN_RECOVERY;
   tcp_dsack_recovery_clear (tc);
@@ -1640,8 +1640,9 @@ tcp_test_dsack_rx (vlib_main_t *vm)
   tc->rcv_opts.n_sack_blocks = 1;
   tcp_test_rcv_sacks (tc, tc->snd_una, &ac);
   TCP_TEST (!(ac.ack_flags & TCP_ACK_F_DSACK_SPURIOUS) &&
-	      !(tc->sack_sb.flags & TCP_DSACK_UNDO_DISABLED) && !tc->dsack_pending_bytes,
-	    "repeated D-SACK accounts the second copy without enabling undo");
+	      !(tc->sack_sb.flags & TCP_DSACK_UNDO_DISABLED) &&
+	      !(ac.ack_flags & TCP_ACK_F_DSACK_MATCHED) && tc->dsack_pending_bytes == 100,
+	    "repeated D-SACK cannot identify or credit the second ambiguous copy");
 
   /* A D-SACK range containing bytes that were not retransmitted is network
    * duplication evidence, even if its total retransmitted overlap matches
@@ -1687,9 +1688,9 @@ tcp_test_dsack_rx (vlib_main_t *vm)
   tc->rcv_opts.flags |= TCP_OPTS_FLAG_SACK;
   tc->rcv_opts.n_sack_blocks = 1;
   tcp_test_rcv_sacks (tc, tc->snd_una, &ac);
-  TCP_TEST (!(ac.ack_flags & (TCP_ACK_F_DSACK_MATCHED | TCP_ACK_F_DSACK_SPURIOUS)) &&
-	      (tc->sack_sb.flags & TCP_DSACK_INELIGIBLE) && tc->dsack_pending_bytes == 100,
-	    "overlapping D-SACK cannot exceed pending retransmit evidence");
+  TCP_TEST ((ac.ack_flags & TCP_ACK_F_DSACK_MATCHED) && (ac.ack_flags & TCP_ACK_F_DSACK_SPURIOUS) &&
+	      !(tc->sack_sb.flags & TCP_DSACK_INELIGIBLE) && !tc->dsack_pending_bytes,
+	    "overlapping D-SACK credits only the missing suffix and proves the union");
 
   /* Rescue, repeated-RTO and reneging paths make an episode ineligible
    * before an ambiguous retransmission can be used for undo. */

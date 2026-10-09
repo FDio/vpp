@@ -918,6 +918,10 @@ tcp_bt_track_rxt (tcp_connection_t *tc, u32 start, u32 end)
   if (track_dsack && tracked)
     {
       tc->dsack_history_seen = 1;
+      if (tracked == end - start)
+	tcp_dsack_track_history (tc, start, end);
+      else
+	tc->sack_sb.flags |= TCP_DSACK_INELIGIBLE | TCP_DSACK_RXT_OVERFLOW;
       if (!(tc->sack_sb.flags & TCP_DSACK_HISTORY))
 	{
 	  tc->dsack_history_start = tc->snd_una;
@@ -1808,7 +1812,7 @@ tcp_bt_dsack_mark_duplicate (tcp_connection_t *tc, u32 start, u32 end)
       overlap_start = seq_max (active_start, tc->dsack_history_start);
       if (seq_lt (overlap_start, overlap_end))
 	{
-	  matched += overlap_end - overlap_start;
+	  matched += tcp_dsack_match_history (tc, overlap_start, overlap_end);
 	}
       active_start = overlap_end;
     }
@@ -1851,6 +1855,7 @@ tcp_bt_dsack_recovery_init (tcp_connection_t *tc)
 	  if (seq_lt (start, bts->max_seq))
 	    {
 	      tc->dsack_pending_bytes += bts->max_seq - start;
+	      tcp_dsack_track_history (tc, start, bts->max_seq);
 	    }
 	}
       bts = bt_next_sample (bt, bts);
@@ -1867,6 +1872,8 @@ tcp_bt_dsack_recovery_init (tcp_connection_t *tc)
 void
 tcp_bt_dsack_recovery_clear (tcp_connection_t *tc)
 {
+  vec_free (tc->dsack_credited);
+  vec_free (tc->dsack_retransmitted);
   tc->dsack_rxt = 0;
   tc->dsack_pending_bytes = 0;
   tc->sack_sb.flags &= TCP_SCOREBOARD_F_RENEGING | TCP_DSACK_UNDO_DISABLED;
@@ -1895,6 +1902,8 @@ tcp_bt_cleanup (tcp_connection_t * tc)
 {
   tcp_byte_tracker_t *bt = tc->bt;
 
+  vec_free (tc->dsack_credited);
+  vec_free (tc->dsack_retransmitted);
   tc->dsack_history_seen = 0;
   tc->dsack_rxt = 0;
   tc->dsack_pending_bytes = 0;
