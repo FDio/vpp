@@ -900,8 +900,6 @@ tcp_bt_track_rxt (tcp_connection_t *tc, u32 start, u32 end)
   tcp_rack_state_t *rack = PREDICT_FALSE (tcp_rack_enabled (tc)) ? tcp_rack_get_state (tc) : 0;
   f64 now = tcp_time_now_us (tc->c_thread_index);
   u32 replaced = 0, tracked;
-  u8 track_dsack = tcp_opts_sack_permitted (&tc->rcv_opts) &&
-		   !(tc->sack_sb.flags & TCP_DSACK_UNDO_DISABLED) && tcp_in_cong_recovery (tc);
 
   ASSERT (seq_lt (start, end));
 
@@ -914,17 +912,6 @@ tcp_bt_track_rxt (tcp_connection_t *tc, u32 start, u32 end)
     tracked = end - start;
   else
     tracked = bt_track_rxt_ranges (tc, start, end, now, &replaced);
-
-  if (track_dsack && tracked)
-    {
-      if (!(tc->sack_sb.flags & TCP_DSACK_HISTORY))
-	{
-	  tc->dsack_history_start = tc->snd_una;
-	  tc->sack_sb.flags |= TCP_DSACK_HISTORY;
-	}
-      ASSERT (tc->dsack_pending_bytes <= (u32) ~0 - tracked);
-      tc->dsack_pending_bytes += tracked;
-    }
 
   if (rack)
     {
@@ -1381,7 +1368,7 @@ tcp_bt_apply_ack (tcp_connection_t *tc, u32 ack, u32 high_sacked, tcp_ack_ctx_t 
   if (!(ac->bytes_acked | (ac->ack_flags & TCP_ACK_F_SACK)))
     {
       ASSERT (ac->ack_flags & TCP_ACK_F_DSACK);
-      if (tcp_rack_enabled (tc) && (ac->ack_flags & TCP_ACK_F_DSACK_MATCHED))
+      if (tcp_rack_enabled (tc) && (ac->ack_flags & TCP_ACK_F_DSACK_VALID))
 	ac->ack_flags |= TCP_ACK_F_DETECT_LOSS;
       return;
     }
@@ -1421,7 +1408,7 @@ tcp_bt_apply_ack (tcp_connection_t *tc, u32 ack, u32 high_sacked, tcp_ack_ctx_t 
     }
 
   /* RFC 6675 loss detection needs new SACK coverage. RACK needs a scan only
-   * when valid delivery can expose an earlier transmission or a matched
+   * when valid delivery can expose an earlier transmission or a plausible
    * D-SACK updates its reordering state. The postponed dequeue refreshes the
    * shared retransmit timer after cumulative-only progress. */
   if (state.rack)
@@ -1430,7 +1417,7 @@ tcp_bt_apply_ack (tcp_connection_t *tc, u32 ack, u32 high_sacked, tcp_ack_ctx_t 
 	seq_lt (ack, tc->snd_nxt) &&
 	((state.rack->flags & TCP_RACK_F_SEG_IS_RXT) || seq_gt (sb->high_sacked, ack));
 
-      if ((ac->ack_flags & TCP_ACK_F_DSACK_MATCHED) || (state.rack_updated && has_loss_candidate))
+      if ((ac->ack_flags & TCP_ACK_F_DSACK_VALID) || (state.rack_updated && has_loss_candidate))
 	ac->ack_flags |= TCP_ACK_F_DETECT_LOSS;
       else if (state.rack_updated)
 	state.rack->reo_deadline = 0;
@@ -1810,43 +1797,35 @@ tcp_bt_last_rxt_range (tcp_connection_t *tc, tcp_rxt_range_t *range)
   return 1;
 }
 
-u32
-tcp_bt_dsack_mark_duplicate (tcp_connection_t *tc, u32 start, u32 end)
+/** Count retransmitted bytes in unacked D-SACK range [start, end). Sacked
+ * bytes that were never retransmitted earn no credit. Returns 0, rejecting the
+ * whole report, if part of the range is untracked or neither sacked nor
+ * retransmitted. */
+u8
+tcp_bt_dsack_matches (tcp_connection_t *tc, u32 start, u32 end, u32 *rxt_bytes)
 {
   tcp_byte_tracker_t *bt = tc->bt;
-  tcp_bt_sample_t *bts = 0;
-  u32 matched = 0;
-  u32 active_start = start, overlap_start, overlap_end;
+  tcp_bt_sample_t *bts;
 
-  /* ACKed samples are no longer retained. Match their D-SACK evidence
-   * against the recovery boundary and account it with the aggregate. */
-  if (seq_lt (active_start, tc->snd_una))
+  ASSERT (seq_geq (start, tc->snd_una) && seq_lt (start, end));
+
+  *rxt_bytes = 0;
+  bts = bt_lookup_seq (bt, start);
+  while (bts)
     {
-      overlap_end = seq_min (end, tc->snd_una);
-      overlap_start = seq_max (active_start, tc->dsack_history_start);
-      if (seq_lt (overlap_start, overlap_end))
-	{
-	  matched += overlap_end - overlap_start;
-	}
-      active_start = overlap_end;
-    }
-
-  if (seq_lt (active_start, end))
-    bts = bt_lookup_seq (bt, active_start);
-
-  while (bts && seq_lt (bts->min_seq, end))
-    {
-      overlap_start = seq_max (active_start, bts->min_seq);
-      overlap_end = seq_min (end, bts->max_seq);
-
-      if (seq_lt (overlap_start, overlap_end) && (bts->flags & TCP_BTS_IS_RXT))
-	{
-	  matched += overlap_end - overlap_start;
-	}
+      if (seq_gt (bts->min_seq, start) || seq_leq (bts->max_seq, start))
+	return 0;
+      if (bts->flags & TCP_BTS_IS_RXT)
+	*rxt_bytes += seq_min (bts->max_seq, end) - start;
+      else if (!(bts->flags & TCP_BTS_IS_SACKED))
+	return 0;
+      if (seq_geq (bts->max_seq, end))
+	return 1;
+      start = bts->max_seq;
       bts = bt_next_sample (bt, bts);
     }
 
-  return matched;
+  return 0;
 }
 
 void
@@ -1856,8 +1835,8 @@ tcp_bt_dsack_recovery_init (tcp_connection_t *tc)
   tcp_bt_sample_t *bts;
   u32 start;
 
-  if (!tcp_opts_sack_permitted (&tc->rcv_opts) || (tc->sack_sb.flags & TCP_DSACK_UNDO_DISABLED))
-    return;
+  ASSERT (tcp_opts_sack_permitted (&tc->rcv_opts));
+  ASSERT (!(tc->sack_sb.flags & TCP_DSACK_UNDO_DISABLED));
 
   bts = bt_get_sample (bt, bt->head);
   while (bts)
@@ -1867,24 +1846,16 @@ tcp_bt_dsack_recovery_init (tcp_connection_t *tc)
 	{
 	  start = seq_max (bts->min_seq, tc->snd_una);
 	  if (seq_lt (start, bts->max_seq))
-	    tc->dsack_pending_bytes += bts->max_seq - start;
+	    {
+	      tc->dsack_undo.pending_bytes += bts->max_seq - start;
+	      tc->dsack_undo.end = seq_max (tc->dsack_undo.end, bts->max_seq);
+	    }
 	}
       bts = bt_next_sample (bt, bts);
     }
 
-  if (tc->dsack_pending_bytes)
-    {
-      tc->dsack_history_start = tc->snd_una;
-      tc->sack_sb.flags |= TCP_DSACK_HISTORY;
-    }
-}
-
-void
-tcp_bt_dsack_recovery_clear (tcp_connection_t *tc)
-{
-  tc->dsack_rxt = 0;
-  tc->dsack_pending_bytes = 0;
-  tc->sack_sb.flags &= TCP_SCOREBOARD_F_RENEGING | TCP_DSACK_UNDO_DISABLED;
+  if (tcp_dsack_pending_bytes (tc))
+    tc->sack_sb.flags |= TCP_DSACK_RXT_SEEN;
 }
 
 void
@@ -1902,17 +1873,14 @@ tcp_bt_flush_samples (tcp_connection_t * tc)
       bt_free_sample (bt, bts);
       bts = next;
     }
-  tcp_bt_dsack_recovery_clear (tc);
+  tcp_dsack_recovery_clear (tc);
 }
 
 void
-tcp_bt_cleanup (tcp_connection_t * tc)
+tcp_bt_cleanup (tcp_connection_t *tc)
 {
   tcp_byte_tracker_t *bt = tc->bt;
 
-  tc->dsack_rxt = 0;
-  tc->dsack_pending_bytes = 0;
-  tc->sack_sb.flags &= TCP_SCOREBOARD_F_RENEGING | TCP_DSACK_UNDO_DISABLED;
   vec_free (bt->tx_order.links);
   rb_tree_free_nodes (&bt->sample_lookup);
   pool_free (bt->samples);
@@ -1965,7 +1933,6 @@ tcp_bt_enable (tcp_connection_t *tc, u8 enable)
 
   if (enable)
     {
-      tcp_dsack_cleanup (tc);
       tcp_bt_init (tc);
     }
   else
