@@ -51,6 +51,24 @@
       "parentUuid": "fb3c8bcd_0c7e775e",
       "revId": "f71f96b0212b25a318c35a5fbfe5424515007a54",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "463509b1_783d4542",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-10-09T05:40:11Z",
+      "side": 1,
+      "message": "Agreed, but not really sure how to tackle this cleanly. My suggestion was more geared towards refusing the accept in those protocol is app_wrk is not valid. See for instance how tls_notify_app_accept retrieves app_wrk towards the end. Probably we should do it earlier and just refuse to continue and start closing the current session. \n\nWhat I\u0027m not sure I understand is why `tls_notify_app_accept` didn\u0027t stop on `lctx \u003d tls_listener_ctx_get (ctx-\u003elistener_ctx_index);`. Unless the session was reallocated that quickly. \n\nLet\u0027s do the simple fix first, then we can think about more sophisticated fixes like tracking pending accepts.",
+      "parentUuid": "2804188a_282436c7",
+      "revId": "f71f96b0212b25a318c35a5fbfe5424515007a54",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
