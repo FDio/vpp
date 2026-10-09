@@ -1687,6 +1687,12 @@ http2_req_state_wait_transport_reply (http_ctx_t *hc, http_ctx_t *req, transport
     }
   else
     {
+      if (!(req->req_flags & HTTP_REQ_F_PEER_CLOSED))
+	{
+	  HTTP_DBG (1, "no content-length and DATA frame expected");
+	  *error = HTTP2_ERROR_INTERNAL_ERROR;
+	  return HTTP_SM_ERROR;
+	}
       /* we are done wait for the next app request */
       if (transport_connection_is_descheduled (&req->connection))
 	transport_connection_reschedule (&req->connection);
