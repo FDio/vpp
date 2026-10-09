@@ -26,6 +26,7 @@ from scapy.layers.inet import IP, UDP, TCP
 from scapy.layers.inet6 import IPv6
 from scapy.contrib.mpls import MPLS
 from scapy.layers.inet6 import IPv6
+from scapy.layers.inet6 import ICMPv6ND_NS
 
 NUM_PKTS = 67
 
@@ -2206,6 +2207,242 @@ class ARPTestCase(VppTestCase):
         # cleanup
         conn3.remove_vpp_config()
         conn2.remove_vpp_config()
+
+    def check_glean_arp_src(self, itf, src, dst):
+        """send a packet to dst through itf's glean, check the ARP sender"""
+        p = (
+            Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
+            / IP(src=self.pg0.remote_ip4, dst=dst)
+            / Raw(b"0x5" * 100)
+        )
+        rxs = self.send_and_expect(self.pg0, [p], itf)
+        for rx in rxs:
+            self.verify_arp_req(rx, itf.local_mac, src, dst)
+
+    def check_glean_ns_src(self, src, dst):
+        """probe dst on pg1, check the neighbour solicitation's source"""
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        self.vapi.arping(address=dst, sw_if_index=self.pg1.sw_if_index, is_garp=0)
+        rxs = self.pg1.get_capture(1)
+        for rx in rxs:
+            self.assertEqual(rx[ICMPv6ND_NS].tgt, dst)
+            self.assertEqual(rx[IPv6].src, src)
+
+    def glean_route(self, prefix, length, itf):
+        """a route via an interface, which has its own glean"""
+        path = VppRoutePath("::" if ":" in prefix else "0.0.0.0", itf.sw_if_index)
+        return VppIpRoute(self, prefix, length, [path]).add_vpp_config()
+
+    def test_glean_src_connected_over_route(self):
+        """Glean source: connected prefix added over a route"""
+
+        #
+        # a route via the interface already covers the prefix when the
+        # address is added, so the connected prefix joins an existing entry
+        #
+        route = self.glean_route("10.0.3.0", 24, self.pg1)
+        conn = VppIpInterfaceAddress(self, self.pg1, "10.0.3.1", 24).add_vpp_config()
+        self.check_glean_arp_src(self.pg1, "10.0.3.1", "10.0.3.128")
+
+        route.remove_vpp_config()
+        self.check_glean_arp_src(self.pg1, "10.0.3.1", "10.0.3.129")
+        conn.remove_vpp_config()
+
+    def test_glean_src_connected_under_route(self):
+        """Glean source: connected prefix added under a more-specific route"""
+
+        #
+        # the address tracks the more-specific route as its cover, not the
+        # connected prefix. Hosts outside the route are reached through the
+        # prefix's glean, hosts inside it through the route's own glean,
+        # which takes the source from the prefix's
+        #
+        route = self.glean_route("10.0.4.0", 25, self.pg1)
+        conn = VppIpInterfaceAddress(self, self.pg1, "10.0.4.1", 24).add_vpp_config()
+        self.check_glean_arp_src(self.pg1, "10.0.4.1", "10.0.4.200")
+        self.check_glean_arp_src(self.pg1, "10.0.4.1", "10.0.4.100")
+
+        route.remove_vpp_config()
+        self.check_glean_arp_src(self.pg1, "10.0.4.1", "10.0.4.201")
+        conn.remove_vpp_config()
+
+    def test_glean_src_handover_under_route(self):
+        """Glean source: address in use removed under a more-specific route"""
+
+        #
+        # both addresses track the route as their cover, in either order of
+        # adding the route and the addresses
+        #
+        route = self.glean_route("10.0.5.0", 25, self.pg1)
+        conn1 = VppIpInterfaceAddress(self, self.pg1, "10.0.5.1", 24).add_vpp_config()
+        conn2 = VppIpInterfaceAddress(self, self.pg1, "10.0.5.2", 24).add_vpp_config()
+        self.check_glean_arp_src(self.pg1, "10.0.5.1", "10.0.5.200")
+
+        conn1.remove_vpp_config()
+        self.check_glean_arp_src(self.pg1, "10.0.5.2", "10.0.5.201")
+        route.remove_vpp_config()
+        self.check_glean_arp_src(self.pg1, "10.0.5.2", "10.0.5.202")
+        conn2.remove_vpp_config()
+
+        conn1 = VppIpInterfaceAddress(self, self.pg1, "10.0.6.1", 24).add_vpp_config()
+        conn2 = VppIpInterfaceAddress(self, self.pg1, "10.0.6.2", 24).add_vpp_config()
+        route = self.glean_route("10.0.6.0", 25, self.pg1)
+        self.check_glean_arp_src(self.pg1, "10.0.6.1", "10.0.6.200")
+
+        conn1.remove_vpp_config()
+        self.check_glean_arp_src(self.pg1, "10.0.6.2", "10.0.6.201")
+        route.remove_vpp_config()
+        self.check_glean_arp_src(self.pg1, "10.0.6.2", "10.0.6.202")
+        conn2.remove_vpp_config()
+
+    def test_glean_src_address_outside_route(self):
+        """Glean source: addresses inside and outside a more-specific route"""
+
+        #
+        # the address in use stays in use when another one is added, and
+        # removing the other one leaves it in use, in either order
+        #
+        route = self.glean_route("10.0.7.0", 25, self.pg1)
+        conn1 = VppIpInterfaceAddress(self, self.pg1, "10.0.7.1", 24).add_vpp_config()
+        conn2 = VppIpInterfaceAddress(self, self.pg1, "10.0.7.200", 24).add_vpp_config()
+        self.check_glean_arp_src(self.pg1, "10.0.7.1", "10.0.7.201")
+
+        conn2.remove_vpp_config()
+        self.check_glean_arp_src(self.pg1, "10.0.7.1", "10.0.7.202")
+        route.remove_vpp_config()
+        conn1.remove_vpp_config()
+
+        conn2 = VppIpInterfaceAddress(self, self.pg1, "10.0.8.200", 24).add_vpp_config()
+        route = self.glean_route("10.0.8.0", 25, self.pg1)
+        conn1 = VppIpInterfaceAddress(self, self.pg1, "10.0.8.1", 24).add_vpp_config()
+        self.check_glean_arp_src(self.pg1, "10.0.8.200", "10.0.8.201")
+
+        conn2.remove_vpp_config()
+        self.check_glean_arp_src(self.pg1, "10.0.8.1", "10.0.8.202")
+        route.remove_vpp_config()
+        conn1.remove_vpp_config()
+
+    def test_glean_src_route_churn(self):
+        """Glean source: routes added and removed below the address in use"""
+
+        #
+        # the addresses move under a deeper route and back, the one in use
+        # stays in use
+        #
+        route25 = self.glean_route("10.0.9.0", 25, self.pg1)
+        conn1 = VppIpInterfaceAddress(self, self.pg1, "10.0.9.1", 24).add_vpp_config()
+        conn2 = VppIpInterfaceAddress(self, self.pg1, "10.0.9.2", 24).add_vpp_config()
+        self.check_glean_arp_src(self.pg1, "10.0.9.1", "10.0.9.200")
+
+        route26 = self.glean_route("10.0.9.0", 26, self.pg1)
+        self.check_glean_arp_src(self.pg1, "10.0.9.1", "10.0.9.201")
+        route26.remove_vpp_config()
+        self.check_glean_arp_src(self.pg1, "10.0.9.1", "10.0.9.202")
+
+        route25.remove_vpp_config()
+        self.check_glean_arp_src(self.pg1, "10.0.9.1", "10.0.9.203")
+        conn2.remove_vpp_config()
+        conn1.remove_vpp_config()
+
+    def test_glean_src_classify(self):
+        """Glean source: address behind an IP classify table"""
+
+        #
+        # with an IP classify table on the interface, a new address gets
+        # the classify source first and its interface source is never
+        # activated; the address must still be the glean's source
+        #
+        tbl = self.vapi.classify_add_del_table(
+            is_add=True,
+            match_n_vectors=1,
+            miss_next_index=0,
+            current_data_flag=1,
+            mask_len=16,
+            mask=b"\xff" * 16,
+        ).new_table_index
+        self.vapi.classify_set_interface_ip_table(
+            is_ipv6=False, sw_if_index=self.pg2.sw_if_index, table_index=tbl
+        )
+        try:
+            conn = VppIpInterfaceAddress(
+                self, self.pg2, "10.0.10.1", 24
+            ).add_vpp_config()
+            self.check_glean_arp_src(self.pg2, "10.0.10.1", "10.0.10.128")
+        finally:
+            # the framework does not track these, so undo them even on failure
+            self.vapi.classify_set_interface_ip_table(
+                is_ipv6=False, sw_if_index=self.pg2.sw_if_index, table_index=0xFFFFFFFF
+            )
+            self.vapi.classify_add_del_table(
+                is_add=False,
+                table_index=tbl,
+                match_n_vectors=1,
+                mask_len=16,
+                mask=b"\xff" * 16,
+            )
+        conn.remove_vpp_config()
+
+    def test_glean_src_ip6(self):
+        """Glean source: IPv6 probes"""
+
+        #
+        # neighbour solicitations sent from the glean use the link-local
+        # address, but probes take their source from the glean
+        #
+        route = self.glean_route("2001:db8:3::", 64, self.pg1)
+        conn1 = VppIpInterfaceAddress(
+            self, self.pg1, "2001:db8:3::1", 64
+        ).add_vpp_config()
+        conn2 = VppIpInterfaceAddress(
+            self, self.pg1, "2001:db8:3::2", 64
+        ).add_vpp_config()
+        self.check_glean_ns_src("2001:db8:3::1", "2001:db8:3::100")
+
+        conn1.remove_vpp_config()
+        self.check_glean_ns_src("2001:db8:3::2", "2001:db8:3::101")
+        route.remove_vpp_config()
+        conn2.remove_vpp_config()
+
+    def test_glean_src_nested_replace(self):
+        """Glean source: nested connected prefixes during an address replace"""
+
+        #
+        # the overlap check ignores stale addresses, so during an address
+        # replace a stale /24 and a new /16 around it are both connected.
+        # The /16's glean is populated from the first address inside it,
+        # the stale one, so both gleans hold it. Removing that address at
+        # the end of the replace has to release both gleans, not only the
+        # nearest one
+        #
+        self.vapi.sw_interface_add_del_address(
+            sw_if_index=self.pg1.sw_if_index, prefix="10.0.12.1/24"
+        )
+        self.check_glean_arp_src(self.pg1, "10.0.12.1", "10.0.12.128")
+
+        # every address is stale after the begin; add back all but the /24
+        keep = [
+            (a.sw_if_index, a.prefix)
+            for i in self.vapi.sw_interface_dump()
+            for is_ip6 in (False, True)
+            for a in self.vapi.ip_address_dump(i.sw_if_index, is_ip6)
+            if str(a.prefix) != "10.0.12.1/24"
+        ]
+        self.vapi.sw_interface_address_replace_begin()
+        for sw_if_index, prefix in keep:
+            self.vapi.sw_interface_add_del_address(
+                sw_if_index=sw_if_index, prefix=prefix
+            )
+        outer = VppIpInterfaceAddress(self, self.pg1, "10.0.0.1", 16).add_vpp_config()
+        self.check_glean_arp_src(self.pg1, "10.0.12.1", "10.0.200.1")
+
+        self.vapi.sw_interface_address_replace_end()
+        self.assertNotIn(
+            "10.0.12.1/24",
+            [str(a.prefix) for a in self.vapi.ip_address_dump(self.pg1.sw_if_index)],
+        )
+        self.check_glean_arp_src(self.pg1, "10.0.0.1", "10.0.200.2")
+        outer.remove_vpp_config()
 
 
 class NeighborStatsTestCase(VppTestCase):
