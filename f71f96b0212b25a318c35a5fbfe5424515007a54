@@ -33,6 +33,24 @@
       "message": "TLS/QUIC/HTTP need to emulate/implement some of session layer apis, so they should be doing checks before calling app worker apis. Are we sure the issue is not there?\nFor instance, app_wrk is probably needed at one point on the accept path, we should validate there",
       "revId": "f71f96b0212b25a318c35a5fbfe5424515007a54",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2804188a_282436c7",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3325
+      },
+      "writtenOn": "2026-10-09T04:29:51Z",
+      "side": 1,
+      "message": "good point, looked at it again and my fix may just hide the crash\ntls_stop_listen frees the listener ctx, but a handshake still in progress keeps its index, so when it finishes after the app stopped listening, tls_notify_app_accept uses a listener that\u0027s already gone, or a new one if the app listened again. http does the same with hc_pa_session_handle, and quic seems to as well..\n\nI\u0027d probably move the check into tls/http/quic:\ngive the listener a generation counter that\u0027s bumped when it\u0027s freed, keep a copy in the ctx at accept, and on accept drop the connection if they don\u0027t match..that should also cover the reused index\n\nIs that a reasonable approach?",
+      "parentUuid": "fb3c8bcd_0c7e775e",
+      "revId": "f71f96b0212b25a318c35a5fbfe5424515007a54",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
