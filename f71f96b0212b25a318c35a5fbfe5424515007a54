@@ -87,6 +87,24 @@
       "parentUuid": "463509b1_783d4542",
       "revId": "f71f96b0212b25a318c35a5fbfe5424515007a54",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "09eb049e_5b12fe9e",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3325
+      },
+      "writtenOn": "2026-10-09T13:05:53Z",
+      "side": 1,
+      "message": "Pushed patchset 3: I was wrong about app_wrk, with h2 tls\u0027s app is http so its worker never goes away and it still crashed. now it checks the listener is still listening in tls_notify_app_accept and http_conn_accept_request, no crashes in the loss repro. Left quic out for now, will do it separately.",
+      "parentUuid": "858cb352_7fe52911",
+      "revId": "f71f96b0212b25a318c35a5fbfe5424515007a54",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
