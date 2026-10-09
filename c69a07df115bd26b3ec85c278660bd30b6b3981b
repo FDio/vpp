@@ -16,6 +16,24 @@
       "message": "IGMP Proxy User-plane was broken since existing proxy tests covered only control plane/mroutes, not forwarded multicast. Now, this patch fixes it by putting the right flags (ACCEPT on upstream/host leg and FORWARD on downstream/router leg) in the mfib entries and also adding test for that (New test: test_igmp.TestIgmp.test_igmp_proxy_mcast_forward).\n\nNow the Verify is green on this patch set. Please review for Code-Review+2 when you have a moment.",
       "revId": "c69a07df115bd26b3ec85c278660bd30b6b3981b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "532db161_2df6f706",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3379
+      },
+      "writtenOn": "2026-10-09T16:30:36Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "2ec240fe_753d542b",
+      "revId": "c69a07df115bd26b3ec85c278660bd30b6b3981b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
