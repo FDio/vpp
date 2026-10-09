@@ -135,6 +135,23 @@
       "message": "marking ready. HST debug keeps dying on a runner that\u0027s out of disk before any test runs, and the other failures were unrelated flaky tests (hsi proxy-lite, nsim on aarch64, one masque stress run that passed the next two times).",
       "revId": "31f0f580f648ccb1d1d6091e1273e7995f55137a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4a09e637_6227859c",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-10-09T07:38:57Z",
+      "side": 1,
+      "message": "was it client or server proxy app, and why it reset connection? can we have test for it?",
+      "revId": "31f0f580f648ccb1d1d6091e1273e7995f55137a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
