@@ -16,6 +16,23 @@
       "message": "HST debug failure is Http2ClientContinuationTest, I think it\u0027s an h2 bug this change just hits more often (CONTINUATION left in the fifo after HEADERS). fixed it in https://gerrit.fd.io/r/c/vpp/+/47017 and put this on top.",
       "revId": "8e58ccacac30ad6131da1a4cf1cc81f25ed6cbe5",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "7623fb41_2425457c",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3325
+      },
+      "writtenOn": "2026-10-09T13:50:23Z",
+      "side": 1,
+      "message": "recheck",
+      "revId": "8e58ccacac30ad6131da1a4cf1cc81f25ed6cbe5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
