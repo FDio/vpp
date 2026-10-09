@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "3605158a_55e706d7",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3325
+      },
+      "writtenOn": "2026-10-09T13:01:41Z",
+      "side": 1,
+      "message": "Patchset 2: the server crashes the same way when a request body is longer than its content-length, so the check is now in the DATA frame handler for both sides, with a test for each.\n\nh2spec still passes",
+      "revId": "30c2b90c27ddb7a9db4e8fa676c6eed7829a19dd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
