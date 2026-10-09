@@ -539,6 +539,70 @@ class TestSRv6(VppTestCase):
         # cleanup interfaces
         self.teardown_interfaces()
 
+    def test_SRv6_T_Encaps_IPv4_over_route(self):
+        """Test SRv6 Transit.Encaps for IPv4 steered over an existing route."""
+        # the steered prefix already has a route, so the steering joins an
+        # existing FIB entry as a new source. It must forward every flow
+        # into the policy, none to a drop
+        self.setup_interfaces(ipv6=[False, True], ipv4=[True, False])
+
+        VppIpRoute(
+            self, "a4::", 64, [VppRoutePath(self.pg1.remote_ip6, self.pg1.sw_if_index)]
+        ).add_vpp_config()
+        VppIpRoute(
+            self,
+            "7.1.1.0",
+            24,
+            [VppRoutePath(self.pg0.remote_ip4, self.pg0.sw_if_index)],
+        ).add_vpp_config()
+
+        # the framework does not track SR objects, so undo them even on failure
+        sr_policy = VppSRv6PolicyV2(
+            self,
+            bsid="a3::9999:1",
+            is_encap=1,
+            sr_type=SRv6PolicyType.SR_POLICY_TYPE_DEFAULT,
+            weight=1,
+            fib_table=0,
+            source="a3::",
+            encap_src="a3::",
+        )
+        sr_policy.add_vpp_config(segments=["a4::", "a5::", "a6::c7"])
+        try:
+            pol_steering = VppSRv6Steering(
+                self,
+                bsid=sr_policy.bsid,
+                prefix="7.1.1.0",
+                mask_width=24,
+                traffic_type=SRv6PolicySteeringTypes.SR_STEER_IPV4,
+                sr_policy_index=0,
+                table_id=0,
+                sw_if_index=0,
+            )
+            pol_steering.add_vpp_config()
+            try:
+                self.logger.info(self.vapi.cli("show ip fib 7.1.1.0/24"))
+
+                # many flows, so that a second path in the load-balance gets used
+                pkts = [
+                    (
+                        Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac)
+                        / IP(src="123.1.1.1", dst="7.1.1.123")
+                        / UDP(sport=1024 + i, dport=1234)
+                        / Raw(b"\xa5" * 64)
+                    )
+                    for i in range(64)
+                ]
+                rxs = self.send_and_expect(self.pg0, pkts, self.pg1)
+                for rx in rxs:
+                    self.assertEqual(rx[IPv6].src, "a3::")
+                    self.assertTrue(rx.haslayer(IPv6ExtHdrSegmentRouting))
+                    self.assertEqual(rx[IP].dst, "7.1.1.123")
+            finally:
+                pol_steering.remove_vpp_config()
+        finally:
+            sr_policy.remove_vpp_config()
+
     def test_SRv6_T_Encaps_IPv4_ECMP(self):
         """Test SRv6 Transit.Encaps behavior for IPv4 ECMP"""
         # send traffic to one destination interface using multipath
