@@ -20,7 +20,8 @@ from vpp_igmp import (
     VppHostState,
     wait_for_igmp_event,
 )
-from vpp_ip_route import find_mroute, VppIpTable
+from vpp_ip_route import find_mroute, find_mroute_itf_flags, VppIpTable
+from vpp_papi import VppEnum
 from config import config
 
 
@@ -1021,6 +1022,52 @@ class TestIgmp(VppTestCase):
         self.vapi.igmp_enable_disable(self.pg0.sw_if_index, 0, IGMP_MODE.HOST)
         self.vapi.igmp_enable_disable(self.pg2.sw_if_index, 0, IGMP_MODE.ROUTER)
         self.assertFalse(find_mroute(self, "239.1.1.1", "0.0.0.0", 32))
+
+    def test_igmp_proxy_mcast_forward(self):
+        """IGMP proxy installs Accept upstream and Forward downstream; forwards data"""
+
+        MRouteItfFlags = VppEnum.vl_api_mfib_itf_flags_t
+
+        self.vapi.cli("test igmp timers query 10 src 3 leave 1")
+
+        self.vapi.igmp_enable_disable(self.pg0.sw_if_index, 1, IGMP_MODE.HOST)
+        self.vapi.igmp_enable_disable(self.pg1.sw_if_index, 1, IGMP_MODE.ROUTER)
+
+        self.vapi.igmp_proxy_device_add_del(0, self.pg0.sw_if_index, 1)
+        self.vapi.igmp_proxy_device_add_del_interface(0, self.pg1.sw_if_index, 1)
+
+        p_j = self._create_igmpv3_pck(
+            self.pg1, "Allow New Sources", "239.1.1.1", ["10.1.1.1"]
+        )
+        self.send(self.pg1, p_j)
+
+        capture = self.pg0.get_capture(1, timeout=1)
+        self.verify_report(
+            capture[0],
+            [IgmpRecord(IgmpSG("239.1.1.1", ["10.1.1.1"]), "Allow New Sources")],
+        )
+
+        self.assertTrue(find_mroute(self, "239.1.1.1", "0.0.0.0", 32))
+        up_flags = find_mroute_itf_flags(
+            self, "239.1.1.1", "0.0.0.0", 32, self.pg0.sw_if_index
+        )
+        down_flags = find_mroute_itf_flags(
+            self, "239.1.1.1", "0.0.0.0", 32, self.pg1.sw_if_index
+        )
+        self.assertEqual(up_flags, MRouteItfFlags.MFIB_API_ITF_FLAG_ACCEPT)
+        self.assertEqual(down_flags, MRouteItfFlags.MFIB_API_ITF_FLAG_FORWARD)
+
+        p_mcast = (
+            Ether(src=self.pg0.remote_mac, dst="01:00:5e:01:01:01")
+            / IP(src="10.1.1.1", dst="239.1.1.1", ttl=16)
+            / Raw(b"igmp-proxy-mcast-forward-test")
+        )
+        rx = self.send_and_expect(self.pg0, p_mcast, self.pg1)
+        self.assertEqual(rx[0][IP].dst, "239.1.1.1")
+        self.assertEqual(bytes(rx[0][Raw]), b"igmp-proxy-mcast-forward-test")
+
+        self.vapi.igmp_enable_disable(self.pg0.sw_if_index, 0, IGMP_MODE.HOST)
+        self.vapi.igmp_enable_disable(self.pg1.sw_if_index, 0, IGMP_MODE.ROUTER)
 
     def test_igmpv3_report_aux_data(self):
         """Two-group IGMPv3 report with aux data"""
