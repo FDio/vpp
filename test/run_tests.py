@@ -44,7 +44,7 @@ from log import (
     colorize,
     single_line_delim,
 )
-from discover_tests import discover_tests
+from discover_tests import discover_tests, parameterized_family_names
 import sanity_run_vpp
 from subprocess import check_output, CalledProcessError
 from util import (
@@ -869,8 +869,8 @@ class FilterByTestOption:
                 fn_match = fnmatch.fnmatchcase(file_name, filter_file_name)
                 if not fn_match:
                     return False
-            if filter_class_name and not fnmatch.fnmatchcase(
-                class_name, filter_class_name
+            if filter_class_name and not _class_name_matches(
+                filter_class_name, class_name
             ):
                 return False
             if filter_func_name and not fnmatch.fnmatchcase(
@@ -920,6 +920,28 @@ class FilterByClassList:
 # without any of these matches a single literal name (exact); '*'/'' matches
 # everything at that level (all); anything else globs (wildcard).
 _GLOB_CHARS = set("*?[")
+
+
+def _class_name_matches(filter_class_name, class_name):
+    """Match a class filter selector against a class name.
+
+    An exact (glob-free) selector also matches the numbered variants
+    parameterized.parameterized_class generates for the family (Foo
+    matches Foo_0, Foo_1, ...), so filtering by the family name keeps
+    selecting the whole family even though discovery skips the base class
+    itself. The alias applies only to names that discovery identified as
+    parameterized family bases, so an unrelated Foo and Foo_256 name pair
+    keeps its exact semantics. A variant-specific selector like Foo_0
+    still matches exactly that variant, since no class is named
+    Foo_0_<digits>.
+    """
+    if fnmatch.fnmatchcase(class_name, filter_class_name):
+        return True
+    if _GLOB_CHARS.intersection(filter_class_name):
+        return False
+    if filter_class_name not in parameterized_family_names:
+        return False
+    return bool(re.fullmatch(r"%s_\d+" % re.escape(filter_class_name), class_name))
 
 
 def _selector_kind(raw):
@@ -1005,9 +1027,10 @@ def list_filtered_tests(config):
     if not matched:
         print(
             "\n*** 0 tests matched. If you targeted a parameterized test, its real\n"
-            "    name carries an index/param suffix (test_tcp -> test_tcp_0, class\n"
-            "    Foo -> Foo_0). Selectors are fnmatch globs, so an exact name like\n"
-            "    'test_tcp' won't match them — add a trailing '*': test_tcp* / Foo*."
+            "    name carries an index suffix (test_tcp becomes test_tcp_0). Class\n"
+            "    selectors also match the numbered variants of a family (Foo matches\n"
+            "    Foo_0, Foo_1, ...), but function selectors do not, so add a trailing\n"
+            "    '*': test_tcp*."
         )
         return 0
 
