@@ -10344,6 +10344,251 @@ tcp_test_startup (vlib_main_t *vm, unformat_input_t *input)
   return 0;
 }
 
+/* DSACK regressions: use real feedback and recovery APIs, with no
+ * scheduler or network dependency. backend: scoreboard, BT, or BT+RACK;
+ * kind: mixed history, repeated report, or overlapping reports. */
+static void
+tcp_test_dsack_probe_rxt (tcp_connection_t *tc, u32 start, u32 end)
+{
+  if (tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER)
+    tcp_bt_track_rxt (tc, start, end);
+  else
+    tcp_dsack_track_retransmit (tc, start, end);
+}
+
+static int
+tcp_test_dsack_probe (u32 backend, u32 kind, u32 wrap)
+{
+  tcp_connection_t _tc = {}, *tc = &_tc;
+  tcp_ack_ctx_t ac = {};
+  sack_block_t block;
+  u32 base = wrap ? 0xffffff00 : 1000, floor, pending_before;
+  int rv = 0;
+
+#define PROBE_CHECK(cond, comment)                                                                 \
+  do                                                                                               \
+    {                                                                                              \
+      if (!TCP_TEST_I ((cond), comment))                                                           \
+	{                                                                                          \
+	  rv = 1;                                                                                  \
+	  goto cleanup;                                                                            \
+	}                                                                                          \
+    }                                                                                              \
+  while (0)
+
+  if (backend == 2)
+    tcp_test_rack_init (tc, 0);
+  else
+    {
+      scoreboard_init (&tc->sack_sb);
+      tcp_connection_timers_init (tc);
+      tc->cc_algo = tcp_cc_algo_get (TCP_CC_NEWRENO);
+      if (backend == 1)
+	{
+	  tc->cfg_flags |= TCP_CFG_F_BYTE_TRACKER;
+	  tcp_bt_init (tc);
+	}
+    }
+  tc->c_lcl_port = clib_host_to_net_u16 (8081);
+  tc->snd_mss = 100;
+  tc->snd_wnd_max = 2000;
+  tc->snd_wnd = 2000;
+  tc->snd_una = tc->snd_nxt = tc->sack_sb.high_sacked = base;
+  tc->cwnd = 2000;
+  tc->ssthresh = 1500;
+  tc->srtt = 0.05 * THZ;
+  tc->mrtt_us = 0.05;
+  tc->rto = TCP_RTO_MIN;
+  tc->rcv_opts.flags = TCP_OPTS_FLAG_SACK_PERMITTED;
+  tcp_test_set_time (0, 1.0);
+  if (backend)
+    tcp_bt_track_tx (tc, 1000);
+  tc->snd_nxt += 1000;
+  /* These synthetic connections have no session; suppress output scheduling. */
+  tc->flags |= TCP_CONN_RXT_PENDING;
+  tcp_loss_enter_recovery (tc);
+
+  if (kind == 5 || kind == 6)
+    {
+      if (kind == 5)
+	tcp_test_dsack_probe_rxt (tc, base, base + 1000);
+      else
+	for (u32 i = 0; i <= TCP_MAX_DSACK_RXT_RANGES; i++)
+	  tcp_test_dsack_probe_rxt (tc, base + 100 + 2 * i, base + 101 + 2 * i);
+      if (kind == 5)
+	for (u32 i = 0; i <= TCP_MAX_DSACK_RXT_RANGES; i++)
+	  {
+	    vec_reset_length (tc->rcv_opts.sacks);
+	    block = (sack_block_t){ base + 100 + 2 * i, base + 101 + 2 * i };
+	    vec_add1 (tc->rcv_opts.sacks, block);
+	    block = (sack_block_t){ base + 100, base + 800 };
+	    vec_add1 (tc->rcv_opts.sacks, block);
+	    tc->rcv_opts.flags |= TCP_OPTS_FLAG_SACK;
+	    tc->rcv_opts.n_sack_blocks = 2;
+	    tcp_test_set_time (0, 1.01 + i * 0.001);
+	    tcp_test_rack_rcv_ack (tc, base + 50, &ac);
+	  }
+      PROBE_CHECK ((tc->sack_sb.flags & TCP_DSACK_RXT_OVERFLOW) &&
+		     (tc->sack_sb.flags & TCP_DSACK_INELIGIBLE) &&
+		     !(tc->sack_sb.flags & TCP_DSACK_UNDO_DISABLED) &&
+		     !(ac.ack_flags & TCP_ACK_F_DSACK_SPURIOUS),
+		   "bounded DSACK storage exhaustion disables only current undo");
+      PROBE_CHECK (vec_len (tc->dsack_credited) <= TCP_MAX_DSACK_RXT_RANGES &&
+		     vec_len (tc->dsack_retransmitted) <= TCP_MAX_DSACK_RXT_RANGES,
+		   "both DSACK maps remain bounded after exhaustion");
+      /* Retire the fragmented transmissions before starting fresh. A new
+       * episode with the same excessive outstanding history stays bounded. */
+      tc->rcv_opts.flags &= ~TCP_OPTS_FLAG_SACK;
+      tcp_test_rack_rcv_ack (tc, base + 500, &ac);
+      tcp_dsack_recovery_clear (tc);
+      PROBE_CHECK (!tc->dsack_credited && !tc->dsack_retransmitted && tc->dsack_history_seen,
+		   "recovery clear releases bounded maps and remembers older history");
+      tcp_dsack_recovery_init (tc);
+      PROBE_CHECK (!(tc->sack_sb.flags & TCP_DSACK_RXT_OVERFLOW) &&
+		     !(tc->sack_sb.flags & TCP_DSACK_UNDO_DISABLED),
+		   "a later recovery can collect fresh DSACK evidence");
+      goto cleanup;
+    }
+
+  if (kind == 0)
+    {
+      tcp_test_set_time (0, 1.01);
+      tcp_test_dsack_probe_rxt (tc, base, base + 600);
+      PROBE_CHECK (tc->dsack_pending_bytes == 600,
+		   "mixed probe records six-segment original recovery history");
+      tcp_test_set_time (0, 1.06);
+      tcp_test_rack_rcv_ack (tc, base + 500, &ac);
+      ac.ack_flags = TCP_ACK_F_EIFEL_SPURIOUS;
+      tcp_loss_exit_recovery (tc, &ac);
+      tc->flags |= TCP_CONN_RXT_PENDING;
+      tcp_loss_enter_recovery (tc);
+      floor = (tc->sack_sb.flags & TCP_DSACK_RXT_ACTIVE) ? tc->dsack_rxt[0].history_start :
+							   tc->dsack_history_start;
+      PROBE_CHECK (floor == base + 500 && tc->dsack_pending_bytes == 100,
+		   "mixed probe re-entry retains only the last retransmitted segment");
+      tcp_test_set_time (0, 1.07);
+      tcp_test_rack_rcv_ack (tc, base + 700, &ac);
+      ac.ack_flags = TCP_ACK_F_EIFEL_SPURIOUS;
+      tcp_loss_exit_recovery (tc, &ac);
+      PROBE_CHECK (tcp_dsack_has_history (tc) && tc->dsack_pending_bytes == 100 &&
+		     (tc->sack_sb.flags & TCP_DSACK_INELIGIBLE),
+		   "mixed probe retains ineligible aggregate after second Eifel exit");
+      block = (sack_block_t){ base, base + 600 };
+      vec_add1 (tc->rcv_opts.sacks, block);
+      tc->rcv_opts.flags |= TCP_OPTS_FLAG_SACK;
+      tc->rcv_opts.n_sack_blocks = 1;
+      tcp_test_set_time (0, 1.08);
+      tcp_test_rack_rcv_ack (tc, tc->snd_una, &ac);
+      fformat (stderr, "PROBE mixed backend %u wrap %u pending %u flags 0x%x ackflags 0x%x\n",
+	       backend, wrap, tc->dsack_pending_bytes, tc->sack_sb.flags, ac.ack_flags);
+      PROBE_CHECK ((ac.ack_flags & TCP_ACK_F_DSACK) && !(ac.ack_flags & TCP_ACK_F_DSACK_SPURIOUS),
+		   "mixed probe cannot undo an already-ineligible episode");
+      PROBE_CHECK (!(tc->sack_sb.flags & TCP_DSACK_UNDO_DISABLED),
+		   "mixed DSACK discarded prefix cannot permanently disable enabled undo");
+    }
+  else
+    {
+      tcp_test_set_time (0, 1.01);
+      tcp_test_dsack_probe_rxt (tc, base + 100, base + 200);
+      tcp_test_dsack_probe_rxt (tc, base + 300, base + 400);
+      PROBE_CHECK (tc->dsack_pending_bytes == 200 && !(tc->sack_sb.flags & TCP_DSACK_INELIGIBLE),
+		   "repeat probe starts with two distinct eligible retransmissions");
+      if (kind == 3 || kind == 4)
+	{
+	  tcp_test_set_time (0, 1.04);
+	  tcp_test_rack_rcv_ack (tc, base + 500, &ac);
+	  PROBE_CHECK (tc->dsack_pending_bytes == 200,
+		       "ACK retirement retains exact pending retransmission evidence");
+	}
+      if (kind == 4)
+	{
+	  tc->rcv_opts.flags |= TCP_OPTS_FLAG_SACK;
+	  block = (sack_block_t){ base + 200, base + 300 };
+	  vec_add1 (tc->rcv_opts.sacks, block);
+	  tc->rcv_opts.n_sack_blocks = 1;
+	  tcp_test_rack_rcv_ack (tc, tc->snd_una, &ac);
+	  PROBE_CHECK ((tc->sack_sb.flags & TCP_DSACK_UNDO_DISABLED) &&
+			 !(ac.ack_flags & TCP_ACK_F_DSACK_MATCHED),
+		       "unknown retired gap cannot prove an unreported retransmission");
+	  goto cleanup;
+	}
+      tc->rcv_opts.flags |= TCP_OPTS_FLAG_SACK;
+      block = (sack_block_t){ base + 100, base + (kind != 2 ? 200 : 180) };
+      vec_add1 (tc->rcv_opts.sacks, block);
+      block = (sack_block_t){ base + 100, base + 250 };
+      vec_add1 (tc->rcv_opts.sacks, block);
+      tc->rcv_opts.n_sack_blocks = 2;
+      tcp_test_set_time (0, 1.06);
+      tcp_test_rack_rcv_ack (tc, kind == 3 ? tc->snd_una : base + 50, &ac);
+      pending_before = kind != 2 ? 100 : 120;
+      PROBE_CHECK (tc->dsack_pending_bytes == pending_before &&
+		     (ac.ack_flags & TCP_ACK_F_DSACK_MATCHED) &&
+		     !(ac.ack_flags & TCP_ACK_F_DSACK_SPURIOUS),
+		   "first DSACK proves only reported bytes of the first retransmission");
+      vec_reset_length (tc->rcv_opts.sacks);
+      block = (sack_block_t){ base + (kind != 2 ? 100 : 140), base + 200 };
+      vec_add1 (tc->rcv_opts.sacks, block);
+      block = (sack_block_t){ base + 100, base + 250 };
+      vec_add1 (tc->rcv_opts.sacks, block);
+      tc->rcv_opts.n_sack_blocks = 2;
+      tcp_test_set_time (0, 1.07);
+      tcp_test_rack_rcv_ack (tc, tc->snd_una, &ac);
+      fformat (stderr,
+	       "PROBE %s backend %u wrap %u pending-before %u pending-after %u flags 0x%x "
+	       "ackflags 0x%x cwnd %u prev-cwnd %u\n",
+	       kind == 1 ? "repeat" : (kind == 3 ? "retired-repeat" : "overlap"), backend, wrap,
+	       pending_before, tc->dsack_pending_bytes, tc->sack_sb.flags, ac.ack_flags, tc->cwnd,
+	       tc->prev_cwnd);
+      PROBE_CHECK (tc->dsack_pending_bytes == 100 &&
+		     !!(ac.ack_flags & TCP_ACK_F_DSACK_MATCHED) == (kind == 2) &&
+		     !(ac.ack_flags & TCP_ACK_F_DSACK_SPURIOUS),
+		   "DSACK duplicate or overlap cannot credit an unreported retransmission");
+      vec_reset_length (tc->rcv_opts.sacks);
+      block = (sack_block_t){ base + 300, base + 400 };
+      vec_add1 (tc->rcv_opts.sacks, block);
+      block = (sack_block_t){ base + 300, base + 450 };
+      vec_add1 (tc->rcv_opts.sacks, block);
+      tc->rcv_opts.n_sack_blocks = 2;
+      tcp_test_set_time (0, 1.08);
+      tcp_test_rack_rcv_ack (tc, tc->snd_una, &ac);
+      PROBE_CHECK (!tc->dsack_pending_bytes && (ac.ack_flags & TCP_ACK_F_DSACK_SPURIOUS),
+		   "distinct DSACK coverage still proves genuine spurious recovery");
+      if (!wrap)
+	{
+	  tcp_loss_exit_recovery (tc, &ac);
+	  PROBE_CHECK (tc->cwnd == 2000 && !tcp_in_cong_recovery (tc),
+		       "complete unique evidence permits the real recovery undo API");
+	}
+    }
+cleanup:
+  if (backend == 2)
+    tcp_test_rack_cleanup (tc);
+  else
+    {
+      vec_free (tc->rcv_opts.sacks);
+      scoreboard_clear (&tc->sack_sb);
+      pool_free (tc->sack_sb.holes);
+      if (backend)
+	tcp_bt_cleanup (tc);
+      else
+	tcp_dsack_cleanup (tc);
+    }
+#undef PROBE_CHECK
+  return rv;
+}
+
+static int
+tcp_test_dsack_coverage (void)
+{
+  int rv;
+  for (u32 kind = 0; kind < 7; kind++)
+    for (u32 backend = 0; backend < 3; backend++)
+      for (u32 wrap = 0; wrap < 2; wrap++)
+	if ((rv = tcp_test_dsack_probe (backend, kind, wrap)))
+	  return rv;
+  return 0;
+}
+
 static clib_error_t *
 tcp_test (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd_arg)
 {
@@ -10416,6 +10661,8 @@ tcp_test (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd_arg)
 	{
 	  res = tcp_test_startup (vm, input);
 	}
+      else if (unformat (input, "dsack-coverage"))
+	res = tcp_test_dsack_coverage ();
       else if (unformat (input, "all"))
 	{
 	  if ((res = tcp_test_sack (vm, input)))
@@ -10445,6 +10692,8 @@ tcp_test (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd_arg)
 	  if ((res = tcp_test_tamper (vm, input)))
 	    goto done;
 	  if ((res = tcp_test_startup (vm, input)))
+	    goto done;
+	  if ((res = tcp_test_dsack_coverage ()))
 	    goto done;
 	}
       else
