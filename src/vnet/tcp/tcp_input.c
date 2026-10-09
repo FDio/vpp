@@ -690,14 +690,15 @@ tcp_cc_handle_event (tcp_connection_t *tc, tcp_ack_ctx_t *ac)
    */
   if (!tcp_in_cong_recovery (tc))
     {
+      /* Undo a reduction proven spurious before tlp recovery replaces it */
+      if (ac->ack_flags & TCP_ACK_F_DSACK_SPURIOUS)
+	tcp_loss_dsack_undo (tc);
+
       if (ac->ack_flags & TCP_ACK_F_TLP_RECOVERY)
 	{
 	  tcp_loss_tlp_recovery (tc, ac);
 	  return;
 	}
-
-      if (ac->ack_flags & TCP_ACK_F_DSACK_SPURIOUS)
-	tcp_loss_dsack_undo (tc);
 
       if (!(ac->ack_flags & TCP_ACK_F_DUPACK))
 	{
@@ -727,9 +728,10 @@ tcp_cc_handle_event (tcp_connection_t *tc, tcp_ack_ctx_t *ac)
    * Already in recovery
    */
 
-  /* Recovery ends when the recovery point is cumulatively acked (RFC 6675),
-   * or D-SACK proves the reduction spurious. */
-  if (seq_geq (tc->snd_una, tc->snd_congestion) || (ac->ack_flags & TCP_ACK_F_DSACK_SPURIOUS))
+  /* Recovery ends when D-SACK discharges the retransmission undo budget, or
+   * the recovery point is cumulatively acked (RFC 6675). Check undo first so
+   * that an ack reaching the recovery point can still undo. */
+  if (tcp_loss_dsack_undo_ready (tc, ac) || seq_geq (tc->snd_una, tc->snd_congestion))
     {
       tcp_loss_try_exit_recovery (tc, ac, has_sack);
       return;
@@ -806,8 +808,10 @@ static_always_inline u8
 tcp_old_ack_is_cc_event (tcp_connection_t *tc, tcp_ack_ctx_t *ac)
 {
   /* A D-SACK-only old ACK is not a recovery duplicate ACK unless it also
-   * carries new SACK or loss evidence. */
-  return ac->last_lost || (ac->ack_flags & (TCP_ACK_F_DSACK_SPURIOUS | TCP_ACK_F_TLP_RECOVERY)) ||
+   * carries new SACK or loss evidence. It cannot undo rto recovery, which
+   * waits for an ack that advances snd_una. */
+  return ac->last_lost || (ac->ack_flags & TCP_ACK_F_TLP_RECOVERY) ||
+	 ((ac->ack_flags & TCP_ACK_F_DSACK_SPURIOUS) && !tcp_in_recovery (tc)) ||
 	 (tcp_in_cong_recovery (tc) &&
 	  (!(ac->ack_flags & TCP_ACK_F_DSACK) || ac->last_sacked_bytes));
 }
@@ -817,8 +821,7 @@ tcp_handle_old_ack (tcp_connection_t *tc, tcp_ack_ctx_t *ac, u32 ack)
 {
   if (!tcp_in_cong_recovery (tc) && !tcp_loss_old_ack_needs_full_feedback (tc))
     {
-      /* An old ACK can still expose network duplication. RFC 3708 requires
-       * disabling D-SACK undo if the reported range was never retransmitted. */
+      /* Old ACKs can discharge the saved undo budget after recovery exit. */
       if (tcp_opts_sack (&tc->rcv_opts))
 	tcp_rcv_dsack (tc, ack, ac);
 
