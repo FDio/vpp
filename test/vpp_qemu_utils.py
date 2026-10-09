@@ -83,18 +83,10 @@ def create_namespace(history_file, ns=None, prefix="vpp_ns"):
         return ns
 
 
-def add_namespace_route(ns, prefix, gw_ip=None, dev=None, route_type=None, check=True):
-    """Add a route to a namespace.
-    arguments:
-    ns -- namespace string value
-    prefix -- NETWORK/MASK or "default"
-    gw_ip -- Gateway IP
-    dev -- Output Device
-    route_type -- Route type (e.g. "blackhole", "unreachable", "prohibit")
-    """
+def _namespace_route(op, what, ns, prefix, gw_ip, dev, route_type, check):
     with lock:
         try:
-            cmd = ["ip", "netns", "exec", ns, "ip", "route", "add"]
+            cmd = ["ip", "netns", "exec", ns, "ip", "route", op]
             if route_type is not None:
                 cmd += [route_type]
             cmd += [prefix]
@@ -104,9 +96,32 @@ def add_namespace_route(ns, prefix, gw_ip=None, dev=None, route_type=None, check
                 cmd += ["dev", dev]
             subprocess.run(cmd, capture_output=True, check=check)
         except subprocess.CalledProcessError as e:
-            raise Exception(
-                f"Error adding route to namespace: {e.stderr.decode()}"
-            ) from e
+            raise Exception(f"Error {what} namespace: {e.stderr.decode()}") from e
+
+
+def add_namespace_route(ns, prefix, gw_ip=None, dev=None, route_type=None, check=True):
+    """Add a route to a namespace.
+    arguments:
+    ns -- namespace string value
+    prefix -- NETWORK/MASK or "default"
+    gw_ip -- Gateway IP
+    dev -- Output Device
+    route_type -- Route type (e.g. "blackhole", "unreachable", "prohibit")
+    """
+    _namespace_route(
+        "add", "adding route to", ns, prefix, gw_ip, dev, route_type, check
+    )
+
+
+def delete_namespace_route(ns, prefix, gw_ip=None, dev=None, check=True):
+    """Delete a route from a namespace.
+    arguments:
+    ns -- namespace string value
+    prefix -- NETWORK/MASK or "default"
+    gw_ip -- Gateway IP
+    dev -- Output Device
+    """
+    _namespace_route("del", "deleting route from", ns, prefix, gw_ip, dev, None, check)
 
 
 class NextHop:
