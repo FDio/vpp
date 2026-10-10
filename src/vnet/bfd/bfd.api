@@ -560,11 +560,59 @@ counters bfd_udp {
   };
 };
 
+counters bfd_sbfd {
+  /* Must be first, also used as "no error". */
+  reflected {
+    severity info;
+    type counter64;
+    units "packets";
+    description "S-BFD packets reflected";
+  };
+  bad {
+    severity error;
+    type counter64;
+    units "packets";
+    description "invalid S-BFD packet";
+  };
+  auth {
+    severity error;
+    type counter64;
+    units "packets";
+    description "authentication not supported";
+  };
+  bad_sport {
+    severity error;
+    type counter64;
+    units "packets";
+    description "UDP source port 7784";
+  };
+  demand_clear {
+    severity error;
+    type counter64;
+    units "packets";
+    description "demand bit clear";
+  };
+  non_unicast {
+    severity error;
+    type counter64;
+    units "packets";
+    description "non-unicast source or destination address";
+  };
+  no_disc {
+    severity error;
+    type counter64;
+    units "packets";
+    description "unknown S-BFD discriminator";
+  };
+};
+
 paths {
   "/err/bfd-udp4-input" "bfd";
   "/err/bfd-udp6-input" "bfd";
   "/err/bfd-udp4-echo-input" "bfd";
   "/err/bfd-udp6-echo-input" "bfd";
+  "/err/bfd-sbfd-reflector4-input" "bfd_sbfd";
+  "/err/bfd-sbfd-reflector6-input" "bfd_sbfd";
 };
 
 /*

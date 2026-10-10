@@ -4,7 +4,7 @@ from random import randint
 from socket import AF_INET, AF_INET6, inet_pton
 from scapy.all import bind_layers
 from scapy.layers.inet import UDP
-from scapy.packet import Packet
+from scapy.packet import Packet, bind_bottom_up
 from scapy.fields import (
     BitField,
     BitEnumField,
@@ -20,6 +20,7 @@ from vpp_papi import VppEnum
 
 BFD_UDP_SH_PORT = 3784
 BFD_UDP_MH_PORT = 4784
+BFD_UDP_SBFD_PORT = 7784
 BFD_UDP_DEFAULT_TOS = 192
 # The synchronous Python peer needs room for runner scheduling delays.
 BFD_TEST_DETECT_MULT = 10
@@ -168,6 +169,9 @@ class BFD(Packet):
 # glue the BFD packet class to scapy parser
 bind_layers(UDP, BFD, dport=BFD_UDP_SH_PORT)
 bind_layers(UDP, BFD, dport=BFD_UDP_MH_PORT)
+# S-BFD requests and replies: parse only, keep the default ports when building
+bind_bottom_up(UDP, BFD, dport=BFD_UDP_SBFD_PORT)
+bind_bottom_up(UDP, BFD, sport=BFD_UDP_SBFD_PORT)
 
 
 class BFD_vpp_echo(Packet):
