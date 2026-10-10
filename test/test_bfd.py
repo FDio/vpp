@@ -15,8 +15,8 @@ from socket import AF_INET, AF_INET6
 from parameterized import parameterized, parameterized_class
 
 import scapy.compat
-from scapy.layers.inet import UDP, IP
-from scapy.layers.inet6 import IPv6
+from scapy.layers.inet import UDP, IP, ICMP
+from scapy.layers.inet6 import IPv6, ICMPv6DestUnreach
 from scapy.layers.l2 import Ether, GRE
 from scapy.packet import Raw
 
@@ -31,6 +31,7 @@ from bfd import (
     BFD_vpp_echo,
     BFD_UDP_SH_PORT,
     BFD_UDP_MH_PORT,
+    BFD_UDP_SBFD_PORT,
     BFD_UDP_DEFAULT_TOS,
     BFD_TEST_DETECT_MULT,
     VppSBFDReflector,
@@ -46,9 +47,12 @@ from util import ppp
 from vpp_ip import DpoProto
 from vpp_ip_route import VppIpRoute, VppRoutePath, VppIpTable
 from vpp_lo_interface import VppLoInterface
+from vpp_neighbor import VppNeighbor
 from vpp_papi_provider import UnexpectedApiReturnValueError, CliFailedCommandError
 from vpp_pg_interface import CaptureTimeoutError, is_ipv6_misc
 from vpp_gre_interface import VppGreInterface
+from vpp_qos import VppQosRecord, VppQosEgressMap, VppQosMark
+from vpp_papi import VppEnum
 
 USEC_IN_SEC = 1000000
 BFD_STATS_V4_SH_PATH = "/bfd/udp4/sessions"
@@ -1003,6 +1007,67 @@ class BFDTestSession(object):
             self.verify_sha1_auth(packet)
 
 
+class SBFDTestInitiator(BFDTestSession):
+    """S-BFD initiator as seen from test framework side"""
+
+    def __init__(self, test, interface, af, reflector, multihop=False, **kwargs):
+        super(SBFDTestInitiator, self).__init__(
+            test, interface, af, multihop=multihop, **kwargs
+        )
+        self.reflector = reflector
+        self.multihop = multihop
+        self.my_discriminator = randint(1, 0xFFFFFFFF)
+        self.your_discriminator = reflector.discriminator
+        # values the reflector must not echo back
+        self.required_min_rx = 0
+        self.required_min_echo_rx = 70000
+        self.diag = BFDDiagCode.neighbor_signaled_session_down
+        # value the reflector must copy
+        self.desired_min_tx = 150000
+
+    def create_packet(self):
+        """create an S-BFD request for the reflector discriminator"""
+        packet = super(SBFDTestInitiator, self).create_packet()
+        packet[UDP].dport = BFD_UDP_SBFD_PORT
+        packet[BFD].flags |= "D"
+        if self.multihop:
+            if self.af == AF_INET6:
+                packet[IPv6].hlim = 254
+            else:
+                packet[IP].ttl = 254
+        return packet
+
+    def verify_bfd(self, packet, poll=False):
+        """Verify correctness of BFD layer of an S-BFD reply."""
+        super(SBFDTestInitiator, self).verify_bfd(packet)
+        bfd = packet[BFD]
+        reflector = self.reflector
+        self.test.assert_equal(
+            bfd.my_discriminator, reflector.discriminator, "BFD - my discriminator"
+        )
+        if reflector.admin_up:
+            self.test.assert_equal(bfd.state, BFDState.up, BFDState)
+            self.test.assert_equal(bfd.diag, BFDDiagCode.no_diagnostic, BFDDiagCode)
+        else:
+            self.test.assert_equal(bfd.state, BFDState.admin_down, BFDState)
+            self.test.assert_equal(
+                bfd.diag, BFDDiagCode.administratively_down, BFDDiagCode
+            )
+        self.test.assert_equal(str(bfd.flags), "F" if poll else "", "BFD flags")
+        self.test.assert_equal(bfd.detect_mult, self.detect_mult, "detect multiplier")
+        self.test.assert_equal(bfd.length, BFD.bfd_pkt_len, "BFD length")
+        self.test.assert_equal(
+            bfd.desired_min_tx_interval, self.desired_min_tx, "desired min tx"
+        )
+        self.test.assert_equal(
+            bfd.required_min_rx_interval, reflector.required_min_rx, "required min rx"
+        )
+        self.test.assert_equal(
+            bfd.required_min_echo_rx_interval, 0, "required min echo rx"
+        )
+        self.test.assertFalse(bfd.payload, "unexpected payload after BFD")
+
+
 def bfd_session_up(test):
     """Bring BFD session up"""
     test.logger.info("BFD: Waiting for slow hello")
@@ -1096,19 +1161,21 @@ def verify_sbfd_reflector_config(test, reflector):
     )
 
 
-def verify_ip(test, packet, expected_tos=None):
+def verify_ip(test, packet, expected_tos=None, session=None):
     """Verify correctness of IP layer."""
-    if test.vpp_session.af == AF_INET6:
+    if session is None:
+        session = test.vpp_session
+    if session.af == AF_INET6:
         ip = packet[IPv6]
-        local_ip = test.vpp_session.local_addr
-        remote_ip = test.vpp_session.peer_addr
+        local_ip = session.local_addr
+        remote_ip = session.peer_addr
         test.assert_equal(ip.hlim, 255, "IPv6 hop limit")
         if expected_tos is not None:
             test.assert_equal(ip.tc, expected_tos, "IPv6 TOS")
     else:
         ip = packet[IP]
-        local_ip = test.vpp_session.local_addr
-        remote_ip = test.vpp_session.peer_addr
+        local_ip = session.local_addr
+        remote_ip = session.peer_addr
         test.assert_equal(ip.ttl, 255, "IPv4 TTL")
         if expected_tos is not None:
             test.assert_equal(ip.tos, expected_tos, "IPv4 TOS")
@@ -1116,13 +1183,18 @@ def verify_ip(test, packet, expected_tos=None):
     test.assert_equal(ip.dst, remote_ip, "IP destination address")
 
 
-def verify_udp(test, packet):
+def verify_udp(test, packet, sport=None, dport=None):
     """Verify correctness of UDP layer."""
     udp = packet[UDP]
-    test.assert_equal(udp.dport, BFD.udp_dport, "UDP destination port")
-    test.assert_in_range(
-        udp.sport, BFD.udp_sport_min, BFD.udp_sport_max, "UDP source port"
-    )
+    if dport is None:
+        dport = BFD.udp_dport
+    test.assert_equal(udp.dport, dport, "UDP destination port")
+    if sport is None:
+        test.assert_in_range(
+            udp.sport, BFD.udp_sport_min, BFD.udp_sport_max, "UDP source port"
+        )
+    else:
+        test.assert_equal(udp.sport, sport, "UDP source port")
 
 
 def verify_event(test, event, expected_state):
@@ -1215,6 +1287,73 @@ def bfd_stats_diff(stats_before, stats_after):
     tx = stats_after.tx - stats_before.tx
     tx_echo = stats_after.tx_echo - stats_before.tx_echo
     return BFDStats(rx, rx_echo, tx, tx_echo)
+
+
+def is_not_sbfd_reply(p):
+    """capture filter which keeps only S-BFD replies"""
+    return is_ipv6_misc(p) or not (
+        p.haslayer(UDP) and p[UDP].sport == BFD_UDP_SBFD_PORT
+    )
+
+
+def wait_for_sbfd_reply(test, initiator, interface, poll=False, timeout=2):
+    """wait for S-BFD reply to initiator and verify its correctness"""
+    p = interface.wait_for_packet(timeout, filter_out_fn=is_not_sbfd_reply)
+    test.logger.debug(ppp("S-BFD: Got reply:", p))
+    verify_ip(test, p, expected_tos=test.vapi.bfd_udp_get_tos().tos, session=initiator)
+    verify_udp(test, p, sport=BFD_UDP_SBFD_PORT, dport=initiator.udp_sport)
+    test.assert_packet_checksums_valid(p)
+    initiator.verify_bfd(p, poll)
+    return p
+
+
+def verify_no_sbfd_reply(test, interface, timeout=1):
+    """verify that no S-BFD reply is sent out of interface"""
+    with test.assertRaises(CaptureTimeoutError):
+        interface.wait_for_packet(timeout, filter_out_fn=is_not_sbfd_reply)
+
+
+def sbfd_err_counter(test, af, name):
+    """read S-BFD reflector node counter"""
+    node = (
+        "bfd-sbfd-reflector6-input" if af == AF_INET6 else "bfd-sbfd-reflector4-input"
+    )
+    return test.statistics.get_err_counter("/err/%s/%s" % (node, name))
+
+
+def sbfd_reflector_coexistence(test):
+    """S-BFD reflector answers while classic BFD session stays up"""
+    bfd_session_up(test)
+    classic_disc = test.test_session.your_discriminator
+    discriminator = randint(1, 0xFFFFFFFF)
+    while discriminator == classic_disc:
+        discriminator = randint(1, 0xFFFFFFFF)
+    reflector = VppSBFDReflector(test, discriminator)
+    reflector.add_vpp_config()
+    initiator = SBFDTestInitiator(
+        test,
+        test.pg0,
+        test.test_session.af,
+        reflector,
+        multihop=test.multihop,
+        local_addr=test.test_session.local_addr,
+        peer_addr=test.test_session.peer_addr,
+    )
+    for dummy in range(test.test_session.detect_mult * 2):
+        wait_for_bfd_packet(test)
+        test.test_session.send_packet()
+        initiator.send_packet()
+        wait_for_sbfd_reply(test, initiator, test.pg0)
+    # the classic session's discriminator is not an S-BFD discriminator
+    no_disc = sbfd_err_counter(test, initiator.af, "no_disc")
+    initiator.update(your_discriminator=classic_disc)
+    initiator.send_packet()
+    verify_no_sbfd_reply(test, test.pg0)
+    test.assert_equal(
+        sbfd_err_counter(test, initiator.af, "no_disc"), no_disc + 1, "no_disc"
+    )
+    test.assert_equal(len(test.vapi.collect_events()), 0, "number of bfd events")
+    test.assert_equal(test.vpp_session.state, BFDState.up, BFDState)
 
 
 @parameterized_class(
@@ -1361,6 +1500,10 @@ class BFD4TestCase(VppTestCase):
             wait_for_bfd_packet(self)
             self.test_session.send_packet()
         self.assert_equal(len(self.vapi.collect_events()), 0, "number of bfd events")
+
+    def test_sbfd_reflector_coexistence(self):
+        """S-BFD reflector next to an Up BFD session"""
+        sbfd_reflector_coexistence(self)
 
     def test_slow_timer(self):
         """verify slow periodic control frames while session down"""
@@ -2407,6 +2550,436 @@ class BFDPollFinalVrfTestCase(VppTestCase):
 
 @parameterized_class(
     [
+        {"af": AF_INET, "multihop": False},
+        {"af": AF_INET, "multihop": True},
+        {"af": AF_INET6, "multihop": False},
+        {"af": AF_INET6, "multihop": True},
+    ]
+)
+class SBFDReflectorTestCase(VppTestCase):
+    """S-BFD reflector"""
+
+    VRF_ID = 10
+    dst_ip_net = ""
+    dst_ip6_net = ""
+
+    @classmethod
+    def setUpClass(cls):
+        super(SBFDReflectorTestCase, cls).setUpClass()
+        af_str = "IPv6" if cls.af == AF_INET6 else "IPv4"
+        hoptype_str = "MultiHop" if cls.multihop else "SingleHop"
+        cls.__doc__ = f"""Seamless BFD (S-BFD) reflector - {af_str}, {hoptype_str}"""
+        cls.vapi.cli("set log class bfd level debug")
+        try:
+            pg_interfaces = cls.create_pg_interfaces([0, 1])
+            # pg2 marks the UDP packets it receives for checksum offload,
+            # as virtio and af_packet interfaces do
+            pg_interfaces += cls.create_pg_interfaces([2], csum_offload=1)
+            cls.pg_interfaces = pg_interfaces
+            cls.pg0.config_ip4()
+            cls.pg0.config_ip6()
+            cls.pg0.configure_ipv4_neighbors()
+            cls.pg0.configure_ipv6_neighbors()
+            cls.pg0.admin_up()
+            cls.pg0.resolve_arp()
+            cls.pg0.resolve_ndp()
+            cls.pg1.admin_up()
+            cls.pg2.config_ip4()
+            cls.pg2.config_ip6()
+            cls.pg2.admin_up()
+        except Exception:
+            super(SBFDReflectorTestCase, cls).tearDownClass()
+            raise
+
+    def setUp(self):
+        super(SBFDReflectorTestCase, self).setUp()
+        self.vrf_configured = False
+        # the default TOS is 0, so replies would not show that it is applied
+        self.saved_tos = self.vapi.bfd_udp_get_tos().tos
+        self.vapi.bfd_udp_set_tos(BFD_UDP_DEFAULT_TOS)
+        self.pg0.enable_capture()
+        self.pg1.enable_capture()
+        if self.af == AF_INET6:
+            set_ipv6_pfx_route_info(self, self.pg0, BFD_IPV6_REMOTE_ADDR, False)
+            self.local_addr = self.pg0.local_ip6
+            self.peer_addr = self.dst_ip6_net
+        else:
+            set_ipv4_pfx_route_info(self, self.pg0, BFD_IPV4_REMOTE_ADDR, False)
+            self.local_addr = self.pg0.local_ip4
+            self.peer_addr = self.dst_ip_net
+
+    def tearDown(self):
+        if not self.vpp_dead:
+            self.vapi.bfd_udp_set_tos(self.saved_tos)
+        if not self.vpp_dead and self.vrf_configured:
+            # take pg1 out of the VRF so the registry can free the table
+            if self.af == AF_INET6:
+                self.pg1.unconfig_ip6()
+                self.pg1.set_table_ip6(0)
+            else:
+                self.pg1.unconfig_ip4()
+                self.pg1.set_table_ip4(0)
+        super(SBFDReflectorTestCase, self).tearDown()
+
+    def reflector(self, discriminator=0x01020304, **kwargs):
+        """add S-BFD reflector discriminator to VPP"""
+        reflector = VppSBFDReflector(self, discriminator, **kwargs)
+        reflector.add_vpp_config()
+        return reflector
+
+    def initiator(self, reflector, interface=None, **kwargs):
+        """create S-BFD initiator for reflector discriminator"""
+        kwargs.setdefault("local_addr", self.local_addr)
+        kwargs.setdefault("peer_addr", self.peer_addr)
+        return SBFDTestInitiator(
+            self,
+            interface or self.pg0,
+            self.af,
+            reflector,
+            multihop=self.multihop,
+            **kwargs,
+        )
+
+    def counter(self, name):
+        return sbfd_err_counter(self, self.af, name)
+
+    def verify_dropped(self, packets, counter, count=1):
+        """send packets, verify no reply and the drop counter"""
+        before = self.counter(counter)
+        self.pg0.add_stream(packets)
+        self.pg_start()
+        verify_no_sbfd_reply(self, self.pg0)
+        self.assert_equal(self.counter(counter), before + count, counter)
+
+    def test_reflect(self):
+        """S-BFD request is reflected"""
+        initiator = self.initiator(self.reflector(required_min_rx=100000))
+        # a reflector sends nothing unless asked
+        verify_no_sbfd_reply(self, self.pg0)
+        reflected = self.counter("reflected")
+        initiator.send_packet()
+        wait_for_sbfd_reply(self, initiator, self.pg0)
+        self.assert_equal(self.counter("reflected"), reflected + 1, "reflected")
+
+    def test_poll_final(self):
+        """S-BFD request with Poll is answered with Final"""
+        initiator = self.initiator(self.reflector())
+        request = initiator.create_packet()
+        request[BFD].flags |= "P"
+        initiator.send_packet(request)
+        wait_for_sbfd_reply(self, initiator, self.pg0, poll=True)
+
+    def test_admin_down(self):
+        """admin-down S-BFD discriminator answers with AdminDown"""
+        initiator = self.initiator(self.reflector(admin_up=False))
+        initiator.send_packet()
+        wait_for_sbfd_reply(self, initiator, self.pg0)
+
+    def sbfd_port_registered(self):
+        """True if UDP port 7784 leads to the reflector node of this family"""
+        family = 6 if self.af == AF_INET6 else 4
+        ports = self.vapi.cli("show udp ports ip%d %d" % (family, BFD_UDP_SBFD_PORT))
+        return "bfd-sbfd-reflector%d-input" % family in ports
+
+    def test_modify(self):
+        """S-BFD discriminator modified in place answers every request"""
+        reflector = self.reflector()
+        initiator = self.initiator(reflector)
+        no_disc = self.counter("no_disc")
+        reflected = self.counter("reflected")
+        changes = (
+            {},
+            {"admin_up": False},
+            {"required_min_rx": 1000000},
+            {"admin_up": True},
+        )
+        for change in changes:
+            if change:
+                reflector.modify_parameters(**change)
+            # a modification leaves the registration alone
+            self.assertTrue(self.sbfd_port_registered(), "UDP port 7784 registered")
+            # each request is answered with the values now configured
+            for dummy in range(3):
+                initiator.send_packet()
+                wait_for_sbfd_reply(self, initiator, self.pg0)
+        self.assert_equal(self.counter("no_disc"), no_disc, "no_disc")
+        self.assert_equal(
+            self.counter("reflected"), reflected + 3 * len(changes), "reflected"
+        )
+
+    def test_request_padding(self):
+        """padding after S-BFD request is not reflected"""
+        initiator = self.initiator(self.reflector())
+        initiator.send_packet(initiator.create_packet() / Raw(b"\xa5" * 16))
+        wait_for_sbfd_reply(self, initiator, self.pg0)
+
+    def test_rx_checksum_offload(self):
+        """S-BFD reply checksums are kept with RX checksum offload"""
+        # the request comes in on pg2, which marks it for checksum offload;
+        # the reply leaves pg0, which has no TX checksum offload
+        initiator = self.initiator(self.reflector(), interface=self.pg2)
+        initiator.send_packet()
+        p = wait_for_sbfd_reply(self, initiator, self.pg0)
+        if self.af == AF_INET:
+            self.assert_equal(p[UDP].chksum, 0, "UDP checksum")
+            return
+        # Make the next reply's checksum compute to 0. The checksum is ~S,
+        # S being the ones' complement sum of the 16-bit words of the
+        # pseudo-header and the datagram. My Discriminator comes back as
+        # Your Discriminator at an even offset, so adding ~S to its low 16
+        # bits (with end-around carry) turns S into S + ~S = 0xffff. That
+        # computes to checksum 0, which UDP must send as 0xffff.
+        disc = initiator.my_discriminator
+        low = (disc & 0xFFFF) + p[UDP].chksum
+        low = (low & 0xFFFF) + (low >> 16)
+        initiator.update(my_discriminator=(disc & 0xFFFF0000) | low)
+        initiator.send_packet()
+        p = wait_for_sbfd_reply(self, initiator, self.pg0)
+        self.assert_equal(p[UDP].chksum, 0xFFFF, "UDP checksum")
+
+    def test_qos_mark(self):
+        """S-BFD reply TOS is not remarked from the request's QoS"""
+        # egress marking would turn the request's recorded TOS into 1
+        src = VppEnum.vl_api_qos_source_t.QOS_API_SOURCE_IP
+        qem = VppQosEgressMap(self, 1, [{"outputs": b"\x01" * 256}] * 4)
+        VppQosMark(self, self.pg0, qem.add_vpp_config(), src).add_vpp_config()
+        VppQosRecord(self, self.pg0, src).add_vpp_config()
+        initiator = self.initiator(self.reflector())
+        initiator.send_packet()
+        wait_for_sbfd_reply(self, initiator, self.pg0)
+
+    def test_mixed_stream(self):
+        """valid and invalid S-BFD requests in one frame"""
+        i1 = self.initiator(self.reflector(0x01020304))
+        i2 = self.initiator(self.reflector(0xFFFFFFFF))
+        # values unlike i1's, which i2's reply must copy
+        i2.update(detect_mult=3, desired_min_tx=450000)
+        unknown = self.initiator(VppSBFDReflector(self, 0x0A0B0C0D))
+        demand_clear = i1.create_packet()
+        demand_clear[BFD].flags = 0
+        names = ("reflected", "demand_clear", "no_disc")
+        before = {name: self.counter(name) for name in names}
+        self.pg0.add_stream(
+            [
+                i1.create_packet(),
+                demand_clear,
+                i2.create_packet(),
+                unknown.create_packet(),
+            ]
+        )
+        self.pg_start()
+        wait_for_sbfd_reply(self, i1, self.pg0)
+        wait_for_sbfd_reply(self, i2, self.pg0)
+        verify_no_sbfd_reply(self, self.pg0)
+        for name, delta in zip(names, (2, 1, 1)):
+            self.assert_equal(self.counter(name), before[name] + delta, name)
+
+    def test_unknown_discriminator(self):
+        """S-BFD request for unknown discriminator is dropped"""
+        self.reflector(0x01020304)
+        initiator = self.initiator(VppSBFDReflector(self, 0x0A0B0C0D))
+        # Your Discriminator 0 passes the RFC 5880 checks with state Down, and
+        # is never configured
+        zero = initiator.create_packet()
+        zero[BFD].your_discriminator = 0
+        zero[BFD].state = BFDState.down
+        self.verify_dropped([initiator.create_packet(), zero], "no_disc", 2)
+
+    def test_demand_clear(self):
+        """S-BFD request with Demand bit clear is dropped"""
+        request = self.initiator(self.reflector()).create_packet()
+        request[BFD].flags = 0
+        self.verify_dropped(request, "demand_clear")
+
+    def test_source_port_7784(self):
+        """S-BFD request from UDP source port 7784 is dropped"""
+        initiator = self.initiator(self.reflector())
+        initiator.udp_sport = BFD_UDP_SBFD_PORT
+        # the source port is checked before the Demand bit
+        demand_clear = initiator.create_packet()
+        demand_clear[BFD].flags = 0
+        self.verify_dropped([initiator.create_packet(), demand_clear], "bad_sport", 2)
+
+    def test_echo_port(self):
+        """S-BFD request to the BFD echo port is not answered"""
+        # RFC 7880 section 10: S-BFD Echo packets, to UDP port 3785 (RFC 7881
+        # section 3), are not processed by the reflector
+        request = self.initiator(self.reflector()).create_packet()
+        request[UDP].dport = BFD.udp_dport_echo
+        self.verify_dropped(request, "reflected", 0)
+
+    def test_malformed(self):
+        """malformed S-BFD requests are dropped"""
+        initiator = self.initiator(self.reflector())
+        packets = []
+        for field, value in (
+            ("version", 2),
+            ("length", BFD.bfd_pkt_len - 1),
+            ("length", BFD.bfd_pkt_len * 2),
+            ("detect_mult", 0),
+            ("my_discriminator", 0),
+        ):
+            request = initiator.create_packet()
+            setattr(request[BFD], field, value)
+            packets.append(request)
+        multipoint = initiator.create_packet()
+        multipoint[BFD].flags |= "M"
+        packets.append(multipoint)
+        # Your Discriminator 0 is allowed only with state Down or AdminDown
+        your_disc_zero = initiator.create_packet()
+        your_disc_zero[BFD].your_discriminator = 0
+        your_disc_zero[BFD].state = BFDState.up
+        packets.append(your_disc_zero)
+        # Length beyond the UDP payload by less than the UDP header. The IP
+        # length covers all the bytes, and so does the UDP checksum, as
+        # ip4-local and ip6-local compute it over the IP payload.
+        for short in (1, 4, 7):
+            request = initiator.create_packet()
+            request[UDP].len = 8 + BFD.bfd_pkt_len - short
+            packets.append(request)
+        truncated = initiator.create_packet()
+        payload = scapy.compat.raw(truncated[BFD])[: BFD.bfd_pkt_len - 4]
+        truncated[UDP].remove_payload()
+        packets.append(truncated / Raw(payload))
+        # larger than one buffer, so it arrives as a buffer chain
+        packets.append(initiator.create_packet() / Raw(b"\xa5" * 3000))
+        self.verify_dropped(packets, "bad", len(packets))
+
+    def test_udp_beyond_ip_length(self):
+        """S-BFD request running past the IP packet is dropped"""
+        request = self.initiator(self.reflector()).create_packet()
+        # the IP length covers only 4 of the 24 BFD bytes; UDP checksum 0 is
+        # accepted without reading the payload
+        request[UDP].len = 8 + BFD.bfd_pkt_len
+        request[UDP].chksum = 0
+        if self.af == AF_INET6:
+            # dropped before the reflector: payload length < UDP length
+            request[IPv6].plen = 8 + 4
+            self.verify_dropped(request, "bad", 0)
+        else:
+            request[IP].len = 20 + 8 + 4
+            self.verify_dropped(request, "bad")
+
+    def test_authenticated_request(self):
+        """S-BFD request with authentication is dropped"""
+        initiator = self.initiator(
+            self.reflector(),
+            sha1_key=AuthKeyFactory().create_random_key(self),
+            bfd_key_id=randint(0, 255),
+        )
+        self.verify_dropped(initiator.create_packet(), "auth")
+
+    def test_non_unicast(self):
+        """S-BFD requests from or to non-unicast addresses are dropped"""
+        initiator = self.initiator(self.reflector())
+        packets = []
+        if self.af == AF_INET6:
+            # a route to the martian source gets it past ip6-local's uRPF
+            default = VppRoutePath(self.pg0.remote_ip6, self.pg0.sw_if_index)
+            VppIpRoute(self, "::", 0, [default]).add_vpp_config()
+            loopback_src = initiator.create_packet()
+            loopback_src[IPv6].src = "::1"
+            multicast_dst = initiator.create_packet()
+            multicast_dst[Ether].dst = "33:33:00:00:00:01"
+            multicast_dst[IPv6].dst = "ff02::1"
+            packets = [loopback_src, multicast_dst]
+        else:
+            # a route to the martian source gets it past ip4-local's uRPF
+            default = VppRoutePath(self.pg0.remote_ip4, self.pg0.sw_if_index)
+            VppIpRoute(self, "0.0.0.0", 0, [default]).add_vpp_config()
+            loopback_src = initiator.create_packet()
+            loopback_src[IP].src = "127.0.0.1"
+            packets = [loopback_src]
+        self.verify_dropped(packets, "non_unicast", len(packets))
+
+    def test_vrf(self):
+        """S-BFD reply leaves in the table of the request"""
+        is_ip6 = self.af == AF_INET6
+        VppIpTable(self, self.VRF_ID, is_ip6=is_ip6).add_vpp_config()
+        self.vrf_configured = True
+        if is_ip6:
+            self.pg1.set_table_ip6(self.VRF_ID)
+            self.pg1.config_ip6()
+            self.pg1.configure_ipv6_neighbors()
+            self.pg1.resolve_ndp()
+            local_addr = self.pg1.local_ip6
+            next_hop = self.pg1.remote_ip6
+            remote_addr, prefix_len = BFD_IPV6_REMOTE_ADDR, 128
+        else:
+            self.pg1.set_table_ip4(self.VRF_ID)
+            self.pg1.config_ip4()
+            self.pg1.configure_ipv4_neighbors()
+            self.pg1.resolve_arp()
+            local_addr = self.pg1.local_ip4
+            next_hop = self.pg1.remote_ip4
+            remote_addr, prefix_len = BFD_IPV4_REMOTE_ADDR, 32
+        peer_addr = next_hop
+        if self.multihop:
+            # the default table routes the same prefix out of pg0
+            path = VppRoutePath(next_hop, self.pg1.sw_if_index)
+            VppIpRoute(
+                self, remote_addr, prefix_len, [path], table_id=self.VRF_ID
+            ).add_vpp_config()
+            peer_addr = remote_addr
+        initiator = self.initiator(
+            self.reflector(),
+            interface=self.pg1,
+            local_addr=local_addr,
+            peer_addr=peer_addr,
+        )
+        initiator.send_packet()
+        wait_for_sbfd_reply(self, initiator, self.pg1)
+
+    def test_last_discriminator_deleted(self):
+        """UDP port 7784 is released with the last S-BFD discriminator"""
+        r1 = self.reflector(0x01020304)
+        r2 = self.reflector(0xFFFFFFFF)
+        r1.remove_vpp_config()
+        initiator = self.initiator(r2)
+        initiator.send_packet()
+        wait_for_sbfd_reply(self, initiator, self.pg0)
+        r2.remove_vpp_config()
+        initiator.send_packet()
+        if self.af == AF_INET6:
+            p = self.pg0.wait_for_packet(
+                2, filter_out_fn=lambda p: not p.haslayer(ICMPv6DestUnreach)
+            )
+            self.assert_equal(p[ICMPv6DestUnreach].code, 4, "ICMPv6 code")
+        else:
+            p = self.pg0.wait_for_packet(
+                2, filter_out_fn=lambda p: not p.haslayer(ICMP)
+            )
+            self.assert_equal(p[ICMP].type, 3, "ICMP type")
+            self.assert_equal(p[ICMP].code, 3, "ICMP code")
+        verify_no_sbfd_reply(self, self.pg0)
+        r2.add_vpp_config()
+        initiator.send_packet()
+        wait_for_sbfd_reply(self, initiator, self.pg0)
+
+    def test_link_local(self):
+        """S-BFD request from IPv6 link-local address is reflected"""
+        if self.af != AF_INET6 or self.multihop:
+            self.skipTest("link-local addresses apply to single-hop IPv6 only")
+        # compressed form, as scapy prints it
+        remote_ip6_ll = str(ipaddress.IPv6Address(self.pg0.remote_ip6_ll))
+        VppNeighbor(
+            self,
+            self.pg0.sw_if_index,
+            self.pg0.remote_mac,
+            remote_ip6_ll,
+            is_static=True,
+        ).add_vpp_config()
+        initiator = self.initiator(
+            self.reflector(),
+            local_addr=self.pg0.local_ip6_ll,
+            peer_addr=remote_ip6_ll,
+        )
+        initiator.send_packet()
+        wait_for_sbfd_reply(self, initiator, self.pg0)
+
+
+@parameterized_class(
+    [
         {"multihop": False},
         {"multihop": True},
     ]
@@ -2548,6 +3121,10 @@ class BFD6TestCase(VppTestCase):
             self.test_session.send_packet()
         self.assert_equal(len(self.vapi.collect_events()), 0, "number of bfd events")
         self.assert_equal(self.vpp_session.state, BFDState.up, BFDState)
+
+    def test_sbfd_reflector_coexistence(self):
+        """S-BFD reflector next to an Up BFD session"""
+        sbfd_reflector_coexistence(self)
 
     def test_echo_looped_back(self):
         """echo packets looped back"""
