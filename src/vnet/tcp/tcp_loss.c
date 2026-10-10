@@ -223,7 +223,8 @@ tcp_loss_prepare_rto (tcp_connection_t *tc, u8 *sack_reneged)
       return head_overlaps_rxt;
     }
 
-  n_bytes = clib_min (tc->snd_mss, tc->snd_nxt - tc->snd_una);
+  /* The rto copy of the head stops at the first sacked byte */
+  n_bytes = tcp_sack_rxt_head_bytes (tc, clib_min (tc->snd_mss, tc->snd_nxt - tc->snd_una));
   head_was_rxt = tcp_in_cong_recovery (tc) && seq_geq (tc->sack_sb.high_rxt, tc->snd_una + n_bytes);
 
   *sack_reneged = tcp_sack_handle_reneging (tc);

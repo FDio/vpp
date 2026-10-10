@@ -387,6 +387,26 @@ tcp_sack_init_rxt (tcp_connection_t *tc, u32 snd_una)
     scoreboard_init_rxt (&tc->sack_sb, snd_una);
 }
 
+static u32
+scoreboard_rxt_head_bytes (sack_scoreboard_t *sb, u32 snd_una, u32 max_bytes)
+{
+  sack_scoreboard_hole_t *hole;
+
+  /* The first hole ends where sacked data begins */
+  hole = scoreboard_first_hole (sb);
+  if (!hole || seq_gt (hole->start, snd_una) || seq_leq (hole->end, snd_una))
+    return max_bytes;
+  return clib_min (max_bytes, hole->end - snd_una);
+}
+
+u32
+tcp_sack_rxt_head_bytes (tcp_connection_t *tc, u32 max_bytes)
+{
+  if (PREDICT_FALSE (tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER))
+    return tcp_bt_rxt_head_bytes (tc, max_bytes);
+  return scoreboard_rxt_head_bytes (&tc->sack_sb, tc->snd_una, max_bytes);
+}
+
 void
 tcp_sack_recompute_loss (tcp_connection_t *tc)
 {
