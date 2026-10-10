@@ -294,6 +294,88 @@ tcp_test_reorder_observe (tcp_connection_t *tc, tcp_test_sack_backend_t backend,
   return reorder;
 }
 
+/* The rto copy of the head stops at the first sacked byte, so it does not
+ * resend data the peer already has. */
+static int
+tcp_test_sack_rxt_head (tcp_test_sack_backend_t backend)
+{
+  const char *name = tcp_test_sack_backend_names[backend];
+  tcp_connection_t _tc, *tc = &_tc;
+  tcp_ack_ctx_t ac = {};
+  sack_block_t block;
+  int rv = 1;
+
+  clib_memset (tc, 0, sizeof (*tc));
+  tc->snd_una = 1000;
+  tc->snd_nxt = 2000;
+  tc->snd_mss = 100;
+  tc->rcv_opts.flags = TCP_OPTS_FLAG_SACK_PERMITTED | TCP_OPTS_FLAG_SACK;
+  tcp_test_sack_backend_init (tc, backend);
+
+  if (!TCP_TEST_I (tcp_sack_rxt_head_bytes (tc, 100) == 100,
+		   "%s: without sacks the head copy is a full mss", name))
+    goto done;
+
+  block = (sack_block_t) { 1050, 1200 };
+  vec_add1 (tc->rcv_opts.sacks, block);
+  tc->rcv_opts.n_sack_blocks = 1;
+  tcp_test_rcv_sacks (tc, tc->snd_una, &ac);
+  if (!TCP_TEST_I (tcp_sack_rxt_head_bytes (tc, 100) == 50 &&
+		     tcp_sack_rxt_head_bytes (tc, 30) == 30,
+		   "%s: the head copy stops at the first sacked byte", name))
+    goto done;
+  tcp_sack_rxt_mark_lost (tc);
+  if (!TCP_TEST_I (tcp_sack_rxt_head_bytes (tc, 100) == 50,
+		   "%s: rto loss marking keeps the sacked island", name))
+    goto done;
+
+  vec_reset_length (tc->rcv_opts.sacks);
+  block = (sack_block_t) { 1350, 1400 };
+  vec_add1 (tc->rcv_opts.sacks, block);
+  tc->rcv_opts.n_sack_blocks = 1;
+  tcp_test_rack_rcv_ack (tc, 1200, &ac);
+  if (!TCP_TEST_I (tcp_sack_rxt_head_bytes (tc, 100) == 100,
+		   "%s: a first hole longer than an mss does not limit the copy", name))
+    goto done;
+
+  /* An ack at the start of the first sacked block leaves it at the head */
+  vec_reset_length (tc->rcv_opts.sacks);
+  block = (sack_block_t) { 1500, 1600 };
+  vec_add1 (tc->rcv_opts.sacks, block);
+  block = (sack_block_t) { 1650, 1700 };
+  vec_add1 (tc->rcv_opts.sacks, block);
+  tc->rcv_opts.n_sack_blocks = 2;
+  tcp_test_rack_rcv_ack (tc, 1200, &ac);
+  tcp_test_rack_rcv_ack (tc, 1500, &ac);
+  if (!TCP_TEST_I (tcp_sack_rxt_head_bytes (tc, 200) == 200,
+		   "%s: a sacked head left by reneging does not limit the copy", name))
+    goto done;
+
+  /* Only the scoreboard keeps holes. An rto with nothing sacked leaves a tail
+   * hole that ends at the old snd_nxt. Data sent after it is not sacked
+   * either. */
+  if (backend == TCP_TEST_SACK_BACKEND_SCOREBOARD)
+    {
+      tcp_test_sack_backend_cleanup (tc, backend);
+      clib_memset (tc, 0, sizeof (*tc));
+      tc->snd_una = 1000;
+      tc->snd_nxt = 1050;
+      tc->snd_mss = 100;
+      tc->rcv_opts.flags = TCP_OPTS_FLAG_SACK_PERMITTED | TCP_OPTS_FLAG_SACK;
+      tcp_test_sack_backend_init (tc, backend);
+      tcp_sack_rxt_mark_lost (tc);
+      tc->snd_nxt += 1000;
+      if (!TCP_TEST_I (tcp_sack_rxt_head_bytes (tc, 100) == 100,
+		       "%s: a tail hole does not limit the copy", name))
+	goto done;
+    }
+  rv = 0;
+
+done:
+  tcp_test_sack_backend_cleanup (tc, backend);
+  return rv;
+}
+
 /* The reorder estimate must equal ceil(reordering_distance / mss) exactly,
  * neither under- nor over-estimating, and must track the maximum observed
  * distance rather than summing successive observations. */
@@ -438,6 +520,10 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
 
   if (tcp_test_sack_reorder_accuracy (TCP_TEST_SACK_BACKEND_SCOREBOARD) ||
       tcp_test_sack_reorder_accuracy (TCP_TEST_SACK_BACKEND_BT))
+    return 1;
+
+  if (tcp_test_sack_rxt_head (TCP_TEST_SACK_BACKEND_SCOREBOARD) ||
+      tcp_test_sack_rxt_head (TCP_TEST_SACK_BACKEND_BT))
     return 1;
 
   clib_memset (tc, 0, sizeof (*tc));
@@ -6398,6 +6484,145 @@ cleanup:
   return rv;
 }
 
+/* The rto copy of the head stops at the first sacked byte. Send a short
+ * segment followed by one the peer sacks, and drop the short one until a
+ * retransmit timeout resends it. */
+static int
+tcp_test_tamper_rto_head (vlib_main_t *vm)
+{
+  tcp_e2e_params_t params = {
+    .name = "rto_head",
+    .client_addr = 0x1e1e1e01,
+    .server_addr = 0x1f1f1f01,
+    .client_vrf = 0,
+    .server_vrf = 2,
+    .server_port = 2265,
+    .client_port = 0, /* ephemeral */
+    .secret = 2264,
+  };
+  const u32 head_len = 100, island_len = 200, total_bytes = head_len + island_len;
+  tcp_e2e_ctx_t _ctx, *ctx = &_ctx;
+  tcp_connection_t *client_tc;
+  tcp_tamper_rule_t *seg_rule;
+  session_t *client_s, *server_s;
+  u32 tries, max_iters, tr_before, rxt_bytes_before, rxt_segs_before, drained = 0;
+  u32 rxt_bytes, rxt_segs;
+  u8 *data = 0;
+  int error, rv = 0, i;
+
+  tcp_tamper_reset ();
+
+  if (!TCP_TEST_I ((tcp_e2e_setup (vm, ctx, &params) == 0), "rto_head: e2e setup"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  client_tc = ctx->client_tc;
+  client_s = ctx->client_s;
+  server_s = session_get_if_valid (accepted_session_index, accepted_session_thread);
+  if (!TCP_TEST_I ((server_s != 0), "rto_head: server session resolvable"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  if (!TCP_TEST_I ((total_bytes < client_tc->snd_mss),
+		   "rto_head: one mss covers both segments (mss %u)", client_tc->snd_mss))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+  /* Keep the two writes in separate segments. */
+  client_tc->cfg_flags |= TCP_CFG_F_NO_TSO;
+  client_tc->cfg_flags &= ~TCP_CFG_F_TSO;
+  client_tc->connection.flags &= ~TRANSPORT_CONNECTION_F_IS_TX_PACED;
+  client_tc->cwnd = clib_max (client_tc->cwnd, 4 * client_tc->snd_mss);
+  client_tc->snd_wnd = clib_max (client_tc->snd_wnd, client_tc->cwnd);
+  client_tc->cwnd_limited_seq = client_tc->snd_una;
+  tr_before = client_tc->tr_occurences;
+  rxt_bytes_before = client_tc->bytes_retrans;
+  rxt_segs_before = client_tc->segs_retrans;
+
+  /* Drop the short segment and its first retransmission. Whether loss
+   * detection or a timeout sends that copy, a later timeout sends the next. */
+  seg_rule = tcp_tamper_drop_seq (client_tc, client_tc->snd_una, 2);
+  seg_rule->data_only = 1;
+  tcp_tamper_enable (client_tc);
+  client_tc->rto = TCP_RTO_MIN;
+
+  vec_validate (data, total_bytes - 1);
+  for (i = 0; i < (int) total_bytes; i++)
+    data[i] = i & 0xff;
+  for (i = 0; i < 2; i++)
+    {
+      u32 len = i ? island_len : head_len;
+      error = svm_fifo_enqueue (client_s->tx_fifo, len, data + (i ? head_len : 0));
+      if (!TCP_TEST_I ((error == (int) len), "rto_head: client queued segment %u", i))
+	{
+	  rv = 1;
+	  goto cleanup;
+	}
+      error = session_program_tx_io_evt (client_s->handle, SESSION_IO_EVT_TX);
+      if (!TCP_TEST_I ((error == 0), "rto_head: segment %u tx event programmed", i))
+	{
+	  rv = 1;
+	  goto cleanup;
+	}
+      tcp_e2e_pump (vm, 1e-3);
+    }
+
+  max_iters = tcp_e2e_rxt_wait_iters (client_tc, 10e-3);
+  for (tries = 0; drained < total_bytes && tries < max_iters; tries++)
+    {
+      drained += session_test_drain_rx_fifo (server_s);
+      if (drained >= total_bytes)
+	break;
+      tcp_e2e_pump (vm, 10e-3);
+    }
+  max_iters = tcp_e2e_rxt_wait_iters (client_tc, 10e-3);
+  for (tries = 0; (tcp_in_recovery (client_tc) || client_tc->snd_una != client_tc->snd_nxt) &&
+		  tries < max_iters;
+       tries++)
+    tcp_e2e_pump (vm, 10e-3);
+
+  rxt_bytes = client_tc->bytes_retrans - rxt_bytes_before;
+  rxt_segs = client_tc->segs_retrans - rxt_segs_before;
+  if (!TCP_TEST_I ((seg_rule->n_dropped == 2),
+		   "rto_head: the short segment and one copy were dropped (dropped %u)",
+		   seg_rule->n_dropped))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  if (!TCP_TEST_I ((client_tc->tr_occurences != tr_before),
+		   "rto_head: a retransmit timeout resent the head"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  if (!TCP_TEST_I ((rxt_segs && rxt_bytes == rxt_segs * head_len),
+		   "rto_head: every copy stops at the sacked segment (%u bytes in %u copies)",
+		   rxt_bytes, rxt_segs))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  if (!TCP_TEST_I ((drained == total_bytes && client_tc->snd_una == client_tc->snd_nxt),
+		   "rto_head: all data delivered and acknowledged (got %u of %u)", drained,
+		   total_bytes))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+cleanup:
+  tcp_tamper_reset ();
+  vec_free (data);
+  if (!tcp_e2e_teardown (vm, ctx))
+    rv = 1;
+  return rv;
+}
+
 static int
 tcp_test_tamper (vlib_main_t *vm, unformat_input_t *input)
 {
@@ -6417,6 +6642,7 @@ tcp_test_tamper (vlib_main_t *vm, unformat_input_t *input)
     { "dsack-early", tcp_test_tamper_dsack_early_undo },
     { "strand-head", tcp_test_tamper_stranded_head },
     { "rto", tcp_test_tamper_rto },
+    { "rto-head", tcp_test_tamper_rto_head },
   };
   int res = 0, i;
 
@@ -6431,30 +6657,34 @@ tcp_test_tamper (vlib_main_t *vm, unformat_input_t *input)
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
-      u8 matched = 0;
+      u8 *name = 0;
 
-      if (unformat (input, "all"))
+      /* Match whole names, so a case cannot shadow longer names it prefixes */
+      if (!unformat (input, "%s", &name))
 	{
+	  vlib_cli_output (vm, "unknown tamper case: '%U'", format_unformat_error, input);
+	  return -1;
+	}
+      if (!strcmp ((char *) name, "all"))
+	{
+	  vec_free (name);
 	  for (i = 0; i < ARRAY_LEN (cases); i++)
 	    if ((res = cases[i].fn (vm)))
 	      return res;
 	  continue;
 	}
       for (i = 0; i < ARRAY_LEN (cases); i++)
+	if (!strcmp ((char *) name, cases[i].name))
+	  break;
+      if (i == ARRAY_LEN (cases))
 	{
-	  if (unformat (input, cases[i].name))
-	    {
-	      matched = 1;
-	      if ((res = cases[i].fn (vm)))
-		return res;
-	      break;
-	    }
-	}
-      if (!matched)
-	{
-	  vlib_cli_output (vm, "unknown tamper case: '%U'", format_unformat_error, input);
+	  vlib_cli_output (vm, "unknown tamper case: '%s'", name);
+	  vec_free (name);
 	  return -1;
 	}
+      vec_free (name);
+      if ((res = cases[i].fn (vm)))
+	return res;
     }
   return res;
 }

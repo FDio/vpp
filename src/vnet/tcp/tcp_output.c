@@ -1433,11 +1433,10 @@ tcp_timer_retransmit_handler (tcp_connection_t *tc)
 	  return;
 	}
 
-      tcp_loss_on_rto (tc);
+      n_bytes = tcp_loss_on_rto (tc);
 
-      /* Send the first unacked segment. If we're short on buffers, return
-       * as soon as possible */
-      n_bytes = clib_min (tc->snd_mss, tc->snd_nxt - tc->snd_una);
+      /* Send the first unacked segment, up to the first sacked byte. If we're
+       * short on buffers, return as soon as possible */
       n_bytes = tcp_prepare_retransmit_segment (wrk, tc, 0, n_bytes, &b);
       if (!n_bytes)
 	{
