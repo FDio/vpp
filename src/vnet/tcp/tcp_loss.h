@@ -10,7 +10,8 @@
 
 __clib_export void tcp_loss_on_ack (tcp_connection_t *tc, tcp_ack_ctx_t *ac);
 __clib_export u8 tcp_loss_old_ack_needs_full_feedback (tcp_connection_t *tc);
-void tcp_loss_on_rto (tcp_connection_t *tc);
+/* Apply timeout loss recovery and return the head retransmission length. */
+u32 tcp_loss_on_rto (tcp_connection_t *tc);
 __clib_export void tcp_loss_enter_recovery (tcp_connection_t *tc);
 __clib_export void tcp_loss_exit_recovery (tcp_connection_t *tc, tcp_ack_ctx_t *ac);
 void tcp_loss_dsack_undo (tcp_connection_t *tc);
