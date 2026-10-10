@@ -3,6 +3,8 @@ name: Bidirectional Forwarding Detection
 maintainer: Klement Sekera <ksekera@cisco.com>
 features:
   - BFD protocol implementation
+  - Seamless BFD (RFC 7880, RFC 7881) reflector for IPv4 and IPv6, including
+    requests sent over MPLS paths
 description: "An implementation of Bidirectional Forwarding Detection (BFD)."
 state: production
 properties: [API, CLI, STATS, MULTITHREAD]

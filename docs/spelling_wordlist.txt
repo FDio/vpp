@@ -371,6 +371,7 @@ fbfc
 fd
 fdioDocs
 fff
+ffff
 FiB
 fifo
 fifos
@@ -742,6 +743,7 @@ Multicore
 Multihoming
 multipass
 multipath
+Multipoint
 multiprotocol
 multiqueue
 Multiqueue
