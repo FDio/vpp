@@ -590,8 +590,7 @@ transport_cleanup_cb (void *cb_fn, transport_connection_t *tc)
   ((void (*) (transport_connection_t *)) cb_fn) (tc);
 }
 
-int session_stream_connect_notify (transport_connection_t * tc,
-				   session_error_t err);
+__clib_export int session_stream_connect_notify (transport_connection_t *tc, session_error_t err);
 __clib_export int session_dgram_connect_notify (transport_connection_t *tc, session_handle_tu_t osh,
 						session_t **new_session);
 __clib_export void session_migrate_accept (session_t *s);
