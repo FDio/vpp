@@ -147,6 +147,9 @@ tcp_ack_handle_feedback (tcp_connection_t *tc, u32 packet_ack, tcp_ack_ctx_t *ac
 }
 
 __clib_export void tcp_sack_init_rxt (tcp_connection_t *tc, u32 snd_una);
+/** Bytes from snd_una to the first sacked byte, at most max_bytes. Reneged
+ * sacks at the head do not limit it. */
+__clib_export u32 tcp_sack_rxt_head_bytes (tcp_connection_t *tc, u32 max_bytes);
 __clib_export void tcp_sack_recompute_loss (tcp_connection_t *tc);
 __clib_export void tcp_sack_rxt_mark_lost (tcp_connection_t *tc);
 __clib_export u8 tcp_sack_handle_reneging (tcp_connection_t *tc);

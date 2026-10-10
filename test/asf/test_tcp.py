@@ -146,10 +146,12 @@ class TestTCPUnitTests(VppAsfTestCase):
             "tamper chain-rxt",
             "tamper queued-fin",
             "tamper queued-data-loss",
+            "tamper queued-data-loss-bt",
             "tamper recov-pt",
             "tamper dsack-early",
             "tamper strand-head",
             "tamper rto",
+            "tamper rto-head",
         )
 
         for test_case in test_cases:
