@@ -117,6 +117,7 @@ __clib_export void tcp_bt_dsack_recovery_clear (tcp_connection_t *tc);
 __clib_export u32 tcp_bt_dsack_mark_duplicate (tcp_connection_t *tc, u32 start, u32 end);
 __clib_export void tcp_bt_recompute_sack_loss (tcp_connection_t *tc);
 __clib_export void tcp_bt_init_rxt (tcp_connection_t *tc, u32 snd_una);
+__clib_export u32 tcp_bt_rxt_head_bytes (tcp_connection_t *tc, u32 max_bytes);
 __clib_export void tcp_bt_rxt_mark_lost (tcp_connection_t *tc);
 /** Handle SACK reneging and optionally restore formerly SACKed samples to the
  * transmit-order index. Consumers that immediately classify all restored
