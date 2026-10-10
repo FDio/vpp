@@ -9,6 +9,9 @@ Overview
 Bidirectional Forwarding Detection in VPP currently supports single-hop
 UDP transport based on RFC 5880 and RFC 5881.
 
+VPP can also act as a Seamless BFD (S-BFD) reflector, based on RFC 7880
+and RFC 7881, see `Seamless BFD reflector`_.
+
 Usage
 -----
 
@@ -21,9 +24,10 @@ implemented, which call the APIs to manipulate the BFD:
 Show commands:
 ^^^^^^^^^^^^^^
 
-   show bfd [keys|sessions|echo-source]
+   ``show bfd [keys|sessions|echo-source|sbfd-reflectors]``
 
-Show the existing keys, sessions or echo-source.
+Show the existing keys, sessions, echo-source or S-BFD reflector
+discriminators.
 
 Key manipulation
 ^^^^^^^^^^^^^^^^
@@ -388,6 +392,312 @@ Admin-down
 Session may be put admin-down at any time. This immediately causes the
 state to be changed to AdminDown and remain so unless the session is put
 admin-up.
+
+Seamless BFD reflector
+~~~~~~~~~~~~~~~~~~~~~~
+
+VPP can answer Seamless BFD (S-BFD) requests as a reflector, as defined
+in RFC 7880 and RFC 7881, over IPv4 and IPv6. An S-BFD initiator checks
+its path to VPP by sending BFD control packets to UDP port 7784, with
+one of VPP's S-BFD discriminators as Your Discriminator. A request that
+is IP routed goes to one of VPP's local addresses. A request sent over
+an MPLS path goes to an address in 127/8 or ::ffff:127.0.0.0/104 (RFC
+7881 section 5.1) and arrives as plain IP after the last label is
+popped, with an Explicit NULL label, or with a label of VPP's own that
+is popped for a lookup in the default table. VPP answers each valid
+request at once and keeps no state per initiator, so any worker can
+answer and no session is created.
+
+S-BFD discriminators are configured one at a time. They are kept apart
+from the discriminators of classic BFD sessions and are the same in
+every FIB table. Classic BFD on UDP ports 3784 and 4784 is not affected.
+VPP listens on port 7784 only while at least one discriminator is
+configured.
+
+A request is answered if it passes the basic packet checks of RFC 5880
+section 6.8.6 (version, length, Detect Mult, Multipoint bit, My
+Discriminator), has no authentication, has the Demand bit set, does not
+come from UDP port 7784, has a unicast source address, has a TTL or hop
+limit other than 0, has a unicast destination address or one in 127/8
+or ::ffff:127.0.0.0/104, and carries a configured discriminator.
+RFC 7881 section 5.1 has the initiator send TTL or hop limit 1 to 127/8
+and ::ffff:127.0.0.0/104, but VPP does not require it: uniform-mode
+label disposition copies the label TTL into the IP header. The reply:
+
+-  swaps My Discriminator and Your Discriminator and clears Demand
+-  has state Up, or AdminDown with diagnostic 7 (Administratively Down)
+   if the discriminator is configured admin-down
+-  copies Detect Mult and Desired Min TX Interval from the request, sets
+   Required Min RX Interval to the configured value and Required Min
+   Echo RX Interval to 0
+-  answers a Poll with a Final
+-  swaps the IP addresses and UDP ports (source port 7784), uses TTL or
+   hop limit 255 and the TOS set with ``bfd_udp_set_tos``. The default
+   TOS is 0; set it to 192 (CS6, network control) to mark replies. The
+   setting applies to classic BFD too.
+-  for a request sent to 127/8 or ::ffff:127.0.0.0/104, comes from the
+   source address configured for the discriminator, or else from an
+   address of the interface the request came in on, chosen as for ICMP
+   errors (RFC 7881 section 6.1); the request is dropped if there is
+   none. For IPv6 that address is link-local only if the request came
+   from a link-local address, so from an initiator on the same link:
+   RFC 7881 section 6.1 rules out a link-local source only for an
+   initiator multiple hops away.
+-  is IP routed in the FIB table of the interface the request came in
+   on
+
+Requests sent over MPLS paths
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+VPP has no local address in 127/8 or ::ffff:127.0.0.0/104. While at
+least one discriminator is configured, the reflector adds the FIB
+entries 127.0.0.0/8 and ::ffff:127.0.0.0/104, with source ``sbfd``, to
+the default IPv4 and IPv6 tables. No route has to be configured. The
+entries lead to the nodes ``bfd-sbfd-reflector4-dpo`` and
+``bfd-sbfd-reflector6-dpo``. How a request gets there depends on how it
+arrives:
+
+-  as plain IP, after the last label is popped: through ``ip4-input``
+   or ``ip6-input`` and the FIB lookup, as any IP packet
+-  with an Explicit NULL label: from the MPLS lookup straight to the
+   FIB lookup, without the header checks of ``ip4-input`` and
+   ``ip6-input``
+-  with a label of VPP's own whose path pops it for a lookup, such as
+   ``mpls local-label add <label> eos via ip4-lookup-in-table 0``:
+   through the label disposition node, which applies the header checks
+   of ``ip4-input`` or ``ip6-input`` and counts failures under its own
+   name, for example ``ip4-mpls-label-disposition-pipe``, and then to
+   the FIB lookup. IPv4 options go to ``ip4-options``, as from
+   ``ip4-input``.
+
+Neither labelled form runs the IP input feature arcs (see
+Limitations). As Explicit NULL requests skip the header checks, the
+``-dpo`` nodes check the IP header themselves: the version, the IPv4
+header checksum, and that the IP length does not go beyond the end of
+the packet, which ``ip6-input`` and the label disposition do not check
+for IPv6. They take only IPv4 headers without options, as ``ip4-input``
+punts packets with options and ``ip4-local`` expects a 20-byte header.
+UDP datagrams to port 7784 that pass and are not fragments go to
+``ip4-local`` or ``ip6-local`` and on to the reflector, as requests to a
+local address do. All other packets are dropped.
+
+This changes how VPP handles other traffic to these prefixes, for as
+long as at least one discriminator is configured:
+
+-  Packets to 127/8 or ::ffff:127.0.0.0/104 in the default tables that
+   are not S-BFD requests are dropped, even if a route covering them,
+   such as a default route, would forward them. These addresses must
+   not appear outside a host (RFC 1122 section 3.2.1.3) and are not to
+   be forwarded (RFC 6890). Without a covering route they are dropped
+   anyway. For the same reason VPP has no route back to these
+   addresses, so packets from them to VPP's own addresses fail the
+   source check of ``ip4-local`` and ``ip6-local``, as they do without a
+   covering route.
+-  The ``sbfd`` source has a high priority, so it overrides a route to
+   127.0.0.0/8 or ::ffff:127.0.0.0/104 that the operator configured.
+   That route is used again once the last discriminator is deleted. A
+   more specific route, to part of these prefixes, is still used for
+   that part, and requests sent to it are not answered.
+
+What matters is the FIB table the IP payload is looked up in. Plain IP
+and requests with an Explicit NULL label are looked up in the table of
+the interface they came in on, so on an interface in another table they
+are not answered, and that traffic is handled as without a reflector. A
+label of VPP's own can name the default table for the lookup, and then
+takes requests to the reflector from any interface. ``ip4-local`` and
+``ip6-local`` check the source in the table of the lookup, so that table
+needs a route back to the initiator; the reply is routed in the table of
+the interface the request came in on.
+
+Configuration
+^^^^^^^^^^^^^
+
+Add a discriminator::
+
+   bfd udp sbfd reflector add discriminator <discriminator> [required-min-rx <usec>] [admin-down] [src-address <IPv4 address>] [src-address <IPv6 address>]
+
+-  discriminator - local S-BFD discriminator, non-zero and unique
+-  required-min-rx - Required Min RX Interval sent in replies, in
+   microseconds, non-zero, default 50000
+-  admin-down - reply with state AdminDown instead of Up
+-  src-address - source of replies to requests sent over MPLS paths, one
+   IPv4 and one IPv6 address at most; a unicast address of this node
+   that the initiator can reach (RFC 7881 section 6.1), not IPv6
+   link-local or IPv4-mapped (::ffff:0:0/96). VPP does not check that
+   the address is configured on this node, so it can be set before the
+   address is. Without it, an address of the interface the request came
+   in on is used. Replies to IP routed requests always come from the
+   address the request was sent to.
+
+Delete a discriminator, and show the configured ones::
+
+   bfd udp sbfd reflector del discriminator <discriminator>
+   show bfd sbfd-reflectors
+
+Example::
+
+   bfd udp sbfd reflector add discriminator 1001 required-min-rx 10000 src-address 192.0.2.1
+
+Change a discriminator in place, without deleting it. Requests for it
+are answered throughout, as long as a reply source is available, with
+the new values from the next reply on::
+
+   bfd udp sbfd reflector mod discriminator <discriminator> [admin <up|down>] [required-min-rx <usec>] [src-address <IPv4 address>] [src-address <IPv6 address>]
+
+Settings that are not given keep their values; ``src-address 0.0.0.0``
+or ``src-address ::`` removes the source of that family. Removing the
+only source a request sent over an MPLS path can be answered from, when
+the interface it comes in on has no address of that family, leaves such
+requests unanswered and counted as ``no_src_addr``. VPP does not
+start a Poll Sequence (RFC 7880 section 7.5) when the Required Min RX
+Interval changes, so an initiator that waits for one keeps its old
+transmit interval.
+
+The binary API has the same operations: ``bfd_udp_sbfd_reflector_add_del``,
+``bfd_udp_sbfd_reflector_mod``, which sets all values of a discriminator
+at once, and ``bfd_udp_sbfd_reflector_dump``, which returns one
+``bfd_udp_sbfd_reflector_details`` per discriminator. These messages are
+marked in progress and may still change.
+
+Counters
+^^^^^^^^
+
+The nodes ``bfd-sbfd-reflector4-input`` and ``bfd-sbfd-reflector6-input``
+count every packet they handle, in the counters below. Their names are
+the stats segment keys ``/err/<node>/<name>``; ``show errors`` prints
+each counter's description instead, for example "S-BFD packets
+reflected" for ``reflected``. Requests sent over MPLS paths are counted
+there too. A bad UDP length or checksum is counted as for any packet to
+a local address, under ``ip4-local``, or ``ip6-input`` for IPv6.
+
+=================  =====================================================
+Name               Meaning
+=================  =====================================================
+``reflected``      request answered
+``bad``            malformed (RFC 5880 checks, length, chained buffer)
+``auth``           Authentication Present bit set
+``bad_sport``      UDP source port 7784
+``demand_clear``   Demand bit clear: already a reply, answering would loop
+``non_unicast``    source in 0.0.0.0/8, 127.0.0.0/8 or 224.0.0.0 and
+                   above (IPv4); ::, ::1, ::ffff:0:0/96 or multicast
+                   (IPv6); destination the same, except 127/8 and
+                   ::ffff:127.0.0.0/104
+``no_disc``        Your Discriminator not configured
+``bad_ttl``        TTL or hop limit 0, whatever the destination; only
+                   requests with an Explicit NULL label get here:
+                   ``ip4-input``, ``ip6-input`` and the label
+                   disposition drop the others and send an ICMP Time
+                   Exceeded
+``no_src_addr``    request to 127/8 or ::ffff:127.0.0.0/104, no source
+                   address configured and no unicast address of that
+                   family on the receiving interface
+=================  =====================================================
+
+Everything but ``reflected`` is dropped.
+
+The nodes ``bfd-sbfd-reflector4-dpo`` and ``bfd-sbfd-reflector6-dpo``
+count every packet they get, that is every packet to 127/8 or
+::ffff:127.0.0.0/104 looked up in the default tables while a
+discriminator is configured. Plain IP and requests on a label of VPP's
+own have their IP header checked before (see `Requests sent over MPLS
+paths`_), so only requests with an Explicit NULL label can fail
+``bad_version``, ``bad_ihl`` or ``bad_checksum``; ``bad_length`` also
+catches IPv6 requests that arrive in other ways:
+
+=================  =====================================================
+Name               Meaning
+=================  =====================================================
+``request``        S-BFD request, passed to ``ip4-local`` or
+                   ``ip6-local``
+``not_request``    not UDP to port 7784, or a fragment
+``bad_version``    IP version not 4 in ``bfd-sbfd-reflector4-dpo``, or
+                   not 6 in ``bfd-sbfd-reflector6-dpo``
+``bad_ihl``        IPv4 header length not 20 bytes: options, or too
+                   short
+``bad_checksum``   bad IPv4 header checksum
+``bad_length``     IP length beyond the end of the packet, or IPv4
+                   total length below the header length
+=================  =====================================================
+
+Everything but ``request`` is dropped.
+
+Limitations
+^^^^^^^^^^^
+
+-  VPP is only a reflector; it cannot be an S-BFD initiator yet.
+-  Authentication is not supported; authenticated requests are dropped
+   and counted as ``auth``.
+-  VPP adds the 127/8 and ::ffff:127.0.0.0/104 entries only to the
+   default IPv4 and IPv6 tables. Requests sent over MPLS paths whose IP
+   payload is looked up in another table are not answered: plain IP and
+   Explicit NULL requests that arrive on interfaces in other tables, and
+   requests on a label of VPP's own that looks up in another table.
+-  The TTL expiry exception path of RFC 7881 section 5.1.1 is not
+   supported yet: requests that take it are not answered. Depending on
+   how they arrive, they are dropped before they reach the reflector or
+   by the reflector itself.
+-  Replies are IP routed (RFC 7881 section 6), never label switched.
+-  IP input features, such as the ACL plugin, classifier policers and
+   uRPF, run on IPv4 and IPv6 input. Requests that arrive as plain IP,
+   including those sent over MPLS paths after the last label is popped,
+   pass them. Requests that arrive with a label, Explicit NULL or VPP's
+   own, do not: they go from the MPLS lookup to the IPv4 or IPv6 FIB
+   lookup without the input feature arcs, even where the label
+   disposition checks the IP header. The source check of ``ip4-local``
+   and ``ip6-local`` still applies to them.
+-  IPv4 requests with options, such as the Router Alert option, are not
+   answered: VPP punts IPv4 packets with options and passes on only IGMP
+   with Router Alert, and the ``-dpo`` nodes drop them as ``bad_ihl``.
+   Initiators have to send requests without IP options.
+-  S-BFD echo is not supported.
+
+Protecting the reflector
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+The reflector answers every valid request, at whatever rate requests
+arrive. It does not filter by initiator or rate-limit. Use VPP features
+that run on the input interface, before the reflector. They run on IPv4
+and IPv6 input, so they do not see requests that arrive with a label
+(see Limitations). The examples use interface ``GigabitEthernet0/8/0``;
+repeat them for each interface that receives S-BFD requests.
+
+Accept S-BFD only from known initiators, with the ACL plugin. Here the
+initiators are in 192.0.2.0/24 and 2001:db8::/32, one ACL per address
+family, and ``acl 0`` and ``acl 1`` are the indexes printed by the first
+two commands::
+
+   set acl-plugin acl permit src 192.0.2.0/24 dst 0.0.0.0/0 proto 17 dport 7784, deny src 0.0.0.0/0 dst 0.0.0.0/0 proto 17 dport 7784, permit src 0.0.0.0/0 dst 0.0.0.0/0
+   set acl-plugin acl permit src 2001:db8::/32 dst ::/0 proto 17 dport 7784, deny src ::/0 dst ::/0 proto 17 dport 7784, permit src ::/0 dst ::/0
+   set acl-plugin interface GigabitEthernet0/8/0 input acl 0
+   set acl-plugin interface GigabitEthernet0/8/0 input acl 1
+
+Each ACL ends by permitting all other traffic of its address family.
+Apply both even if S-BFD uses only one family: on an interface with an
+input ACL, packets that match no rule are dropped.
+
+VPP already drops packets to its own addresses, and S-BFD requests sent
+to 127/8 or ::ffff:127.0.0.0/104, from sources it has no route to, so
+loose uRPF adds nothing here. Strict uRPF also drops
+requests whose source is routed through another interface, which
+catches spoofed sources. Use it, for IPv4 and IPv6, on interfaces where
+the route back to every initiator uses the same interface::
+
+   set urpf ip4 rx strict GigabitEthernet0/8/0
+   set urpf ip6 rx strict GigabitEthernet0/8/0
+
+Rate-limit S-BFD with a policer, selected by the classifier so that
+other traffic is not policed (see :ref:`policer`). Here one policer is
+shared by IPv4 and IPv6, and ``table-index 0`` and ``table-index 1`` are
+the indexes of the two classifier tables, as listed by
+``show classify tables``::
+
+   policer add name sbfd type 1r2c cir 1000 cb 10000 rate kbps conform-action transmit violate-action drop
+   classify table mask l3 ip4 proto l4 dst_port buckets 1
+   classify session policer-hit-next sbfd table-index 0 match l3 ip4 proto 17 l4 dst_port 7784
+   set policer classify interface GigabitEthernet0/8/0 ip4-table 0
+   classify table mask l3 ip6 proto l4 dst_port buckets 1
+   classify session policer-hit-next sbfd table-index 1 match l3 ip6 proto 17 l4 dst_port 7784
+   set policer classify interface GigabitEthernet0/8/0 ip6-table 1
 
 BFD implementation notes
 ------------------------
