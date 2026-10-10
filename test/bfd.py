@@ -23,6 +23,7 @@ BFD_UDP_MH_PORT = 4784
 BFD_UDP_DEFAULT_TOS = 192
 # The synchronous Python peer needs room for runner scheduling delays.
 BFD_TEST_DETECT_MULT = 10
+SBFD_DEFAULT_REQUIRED_MIN_RX = 50000
 
 
 class BFDDiagCode(NumericConstant):
@@ -508,3 +509,79 @@ class VppBFDUDPSession(VppObject):
             local_addr=self.local_addr,
             peer_addr=self.peer_addr,
         )
+
+
+class VppSBFDReflector(VppObject):
+    """Represents S-BFD reflector discriminator in VPP"""
+
+    def __init__(
+        self,
+        test,
+        discriminator,
+        admin_up=True,
+        required_min_rx=SBFD_DEFAULT_REQUIRED_MIN_RX,
+    ):
+        self._test = test
+        self._discriminator = discriminator
+        self._admin_up = admin_up
+        self._required_min_rx = required_min_rx
+
+    @property
+    def test(self):
+        """Test which created this reflector"""
+        return self._test
+
+    @property
+    def discriminator(self):
+        """local S-BFD discriminator"""
+        return self._discriminator
+
+    @property
+    def admin_up(self):
+        """True if reflecting with state Up, False if AdminDown"""
+        return self._admin_up
+
+    @property
+    def required_min_rx(self):
+        """required minimum rx interval advertised to initiators"""
+        return self._required_min_rx
+
+    def add_vpp_config(self):
+        self.test.vapi.bfd_udp_sbfd_reflector_add_del(
+            is_add=True,
+            discriminator=self._discriminator,
+            admin_up=self._admin_up,
+            required_min_rx=self._required_min_rx,
+        )
+        self._test.registry.register(self, self.test.logger)
+
+    def get_bfd_udp_sbfd_reflector_dump_entry(self):
+        """get the entry in the reflector dump corresponding to this object"""
+        result = self.test.vapi.bfd_udp_sbfd_reflector_dump()
+        for r in result:
+            if r.discriminator == self._discriminator:
+                return r
+        return None
+
+    def query_vpp_config(self):
+        return self.get_bfd_udp_sbfd_reflector_dump_entry() is not None
+
+    def remove_vpp_config(self):
+        self.test.vapi.bfd_udp_sbfd_reflector_add_del(
+            is_add=False, discriminator=self._discriminator
+        )
+
+    def modify_parameters(self, admin_up=None, required_min_rx=None):
+        """modify reflector parameters in place"""
+        if admin_up is not None:
+            self._admin_up = admin_up
+        if required_min_rx:
+            self._required_min_rx = required_min_rx
+        self.test.vapi.bfd_udp_sbfd_reflector_mod(
+            discriminator=self._discriminator,
+            admin_up=self._admin_up,
+            required_min_rx=self._required_min_rx,
+        )
+
+    def object_id(self):
+        return "bfd-sbfd-reflector-%s" % self._discriminator

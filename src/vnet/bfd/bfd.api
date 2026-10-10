@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-option version = "2.0.0";
+option version = "2.1.0";
 
 import "vnet/interface_types.api";
 import "vnet/ip/ip_types.api";
@@ -398,6 +398,72 @@ define bfd_udp_get_tos_reply
   u32 context;
   i32 retval;
   u8 tos;
+};
+
+/** \brief Add or delete an S-BFD reflector discriminator (RFC 7880)
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_add - true to add, false to delete
+    @param discriminator - local S-BFD discriminator, must be non-zero
+    @param admin_up - reflect with state Up if true, AdminDown if false
+    @param required_min_rx - required min receive interval advertised to
+                             initiators (microseconds), must be non-zero
+*/
+autoreply define bfd_udp_sbfd_reflector_add_del
+{
+  option in_progress;
+  u32 client_index;
+  u32 context;
+  bool is_add [default=true];
+  u32 discriminator;
+  bool admin_up [default=true];
+  u32 required_min_rx [default=50000];
+};
+
+/** \brief Modify an S-BFD reflector discriminator in place
+    All values are set; bfd_udp_sbfd_reflector_dump returns the current
+    ones. Requests for the discriminator are answered throughout.
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param discriminator - local S-BFD discriminator to modify
+    @param admin_up - reflect with state Up if true, AdminDown if false
+    @param required_min_rx - required min receive interval advertised to
+                             initiators (microseconds), must be non-zero
+*/
+autoreply define bfd_udp_sbfd_reflector_mod
+{
+  option in_progress;
+  u32 client_index;
+  u32 context;
+  u32 discriminator;
+  bool admin_up;
+  u32 required_min_rx;
+};
+
+/** \brief Dump S-BFD reflector discriminators
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define bfd_udp_sbfd_reflector_dump
+{
+  option in_progress;
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief S-BFD reflector discriminator details
+    @param context - sender context, to match reply w/ request
+    @param discriminator - local S-BFD discriminator
+    @param admin_up - true if reflecting with state Up, false if AdminDown
+    @param required_min_rx - required min receive interval (microseconds)
+*/
+define bfd_udp_sbfd_reflector_details
+{
+  option in_progress;
+  u32 context;
+  u32 discriminator;
+  bool admin_up;
+  u32 required_min_rx;
 };
 
 /* must be compatible with bfd_error_t */

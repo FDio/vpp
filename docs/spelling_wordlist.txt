@@ -1052,6 +1052,7 @@ rxandtx
 sa
 sasc
 SASC
+sbfd
 sbin
 scalable
 scanf
