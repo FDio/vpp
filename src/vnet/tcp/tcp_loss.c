@@ -205,40 +205,42 @@ tcp_loss_tlp_recovery (tcp_connection_t *tc, tcp_ack_ctx_t *ac)
   tcp_connection_tx_pacer_reset (tc, tc->cwnd, 0 /* start bucket */);
 }
 
-static u8
-tcp_loss_prepare_rto (tcp_connection_t *tc, u8 *sack_reneged)
+static u32
+tcp_loss_prepare_rto (tcp_connection_t *tc, u8 *sack_reneged, u8 *head_overlaps_rxt)
 {
-  u8 head_overlaps_rxt = 0, head_was_rxt;
-  u32 n_bytes;
+  u32 n_bytes = clib_min (tc->snd_mss, tc->snd_nxt - tc->snd_una), high_rxt;
+  u8 head_was_rxt;
 
   *sack_reneged = 0;
+  *head_overlaps_rxt = 0;
   if (!tcp_opts_sack_permitted (&tc->rcv_opts))
-    return 0;
+    return n_bytes;
 
   /* Snapshot before reneging handling can reset high_rxt. */
-  head_overlaps_rxt = tcp_in_cong_recovery (tc) && seq_gt (tc->sack_sb.high_rxt, tc->snd_una);
+  high_rxt = tc->sack_sb.high_rxt;
+  *head_overlaps_rxt = tcp_in_cong_recovery (tc) && seq_gt (high_rxt, tc->snd_una);
   if (tcp_rack_enabled (tc))
     {
       tcp_rack_prepare_rto (tc, sack_reneged);
-      return head_overlaps_rxt;
+      return tcp_sack_rxt_head_bytes (tc, n_bytes);
     }
-
-  n_bytes = clib_min (tc->snd_mss, tc->snd_nxt - tc->snd_una);
-  head_was_rxt = tcp_in_cong_recovery (tc) && seq_geq (tc->sack_sb.high_rxt, tc->snd_una + n_bytes);
 
   *sack_reneged = tcp_sack_handle_reneging (tc);
   tcp_sack_rxt_mark_lost (tc);
 
+  /* The rto copy of the head stops at the first sacked byte. Size it once
+   * reneging is handled and use that size to retire the copy it replaces. */
+  n_bytes = tcp_sack_rxt_head_bytes (tc, n_bytes);
+  head_was_rxt = tcp_in_cong_recovery (tc) && seq_geq (high_rxt, tc->snd_una + n_bytes);
   if (head_was_rxt)
     {
       /* rxt_delivered can already include part of the range below high_rxt.
        * Retire only retransmitted bytes still accounted in flight. */
       ASSERT (tc->rxt_delivered <= tc->snd_rxt_bytes);
-      n_bytes = clib_min (n_bytes, tc->snd_rxt_bytes - tc->rxt_delivered);
-      tc->rxt_delivered += n_bytes;
+      tc->rxt_delivered += clib_min (n_bytes, tc->snd_rxt_bytes - tc->rxt_delivered);
     }
 
-  return head_overlaps_rxt;
+  return n_bytes;
 }
 
 void
@@ -248,13 +250,14 @@ tcp_loss_rto_retransmit_failed (tcp_connection_t *tc)
     tcp_sack_init_rxt (tc, tc->snd_una);
 }
 
-void
+u32
 tcp_loss_on_rto (tcp_connection_t *tc)
 {
   u8 head_overlaps_rxt, sack_reneged;
+  u32 n_bytes;
 
   TCP_EVT (TCP_EVT_CC_EVT, tc, 6);
-  head_overlaps_rxt = tcp_loss_prepare_rto (tc, &sack_reneged);
+  n_bytes = tcp_loss_prepare_rto (tc, &sack_reneged, &head_overlaps_rxt);
 
   /* Advance the recovery point to snd_nxt on every rto (RFC 6675) */
   tc->snd_congestion = tc->snd_nxt;
@@ -292,4 +295,5 @@ tcp_loss_on_rto (tcp_connection_t *tc)
     }
 
   tcp_cc_loss (tc);
+  return n_bytes;
 }

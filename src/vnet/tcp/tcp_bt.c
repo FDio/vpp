@@ -1488,6 +1488,25 @@ tcp_bt_init_rxt (tcp_connection_t *tc, u32 snd_una)
   tc->sack_sb.rescue_rxt = snd_una - 1;
 }
 
+u32
+tcp_bt_rxt_head_bytes (tcp_connection_t *tc, u32 max_bytes)
+{
+  tcp_byte_tracker_t *bt = tc->bt;
+  u32 end = tc->snd_una + max_bytes;
+  tcp_bt_sample_t *cur;
+
+  cur = bt_get_sample (bt, bt->head);
+  while (cur && seq_lt (cur->min_seq, end))
+    {
+      ASSERT (seq_geq (cur->min_seq, tc->snd_una));
+      /* A sacked head is reneged state and does not limit the copy */
+      if (cur->flags & TCP_BTS_IS_SACKED)
+	return cur->min_seq == tc->snd_una ? max_bytes : cur->min_seq - tc->snd_una;
+      cur = bt_next_sample (bt, cur);
+    }
+  return max_bytes;
+}
+
 void
 tcp_bt_rxt_mark_lost (tcp_connection_t *tc)
 {

@@ -147,6 +147,9 @@ tcp_ack_handle_feedback (tcp_connection_t *tc, u32 packet_ack, tcp_ack_ctx_t *ac
 }
 
 __clib_export void tcp_sack_init_rxt (tcp_connection_t *tc, u32 snd_una);
+/** Bytes at snd_una the peer has not sacked, at most max_bytes. A copy of
+ * the head that stops there does not resend data the peer already has. */
+__clib_export u32 tcp_sack_rxt_head_bytes (tcp_connection_t *tc, u32 max_bytes);
 __clib_export void tcp_sack_recompute_loss (tcp_connection_t *tc);
 __clib_export void tcp_sack_rxt_mark_lost (tcp_connection_t *tc);
 __clib_export u8 tcp_sack_handle_reneging (tcp_connection_t *tc);
