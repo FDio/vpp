@@ -213,6 +213,22 @@ show_bfd (vlib_main_t * vm, unformat_input_t * input,
 	  vlib_cli_output (vm, "UDP echo source is not set.\n");
 	}
     }
+  else if (unformat (line_input, "sbfd-reflectors"))
+    {
+      bfd_sbfd_reflector_t *r = NULL;
+      u8 *s =
+	format (NULL, "%=15s %=10s %=25s\n", "Discriminator", "State", "Required Min Rx (usec)");
+      pool_foreach (r, bm->sbfd_reflectors)
+	{
+	  s = format (s, "%15u %-10s %25u\n", clib_net_to_host_u32 (r->discriminator),
+		      bfd_state_string (r->admin_up ? BFD_STATE_up : BFD_STATE_admin_down),
+		      r->required_min_rx_usec);
+	}
+      vlib_cli_output (vm, "%v\n", s);
+      vec_free (s);
+      vlib_cli_output (vm, "Number of configured S-BFD reflectors: %lu\n",
+		       (u64) pool_elts (bm->sbfd_reflectors));
+    }
   else
     {
       vlib_cli_output (vm, "Number of configured BFD sessions: %lu\n",
@@ -225,7 +241,7 @@ show_bfd (vlib_main_t * vm, unformat_input_t * input,
 
 VLIB_CLI_COMMAND (show_bfd_command, static) = {
   .path = "show bfd",
-  .short_help = "show bfd [keys|sessions|echo-source]",
+  .short_help = "show bfd [keys|sessions|echo-source|sbfd-reflectors]",
   .function = show_bfd,
 };
 
@@ -379,6 +395,8 @@ VLIB_CLI_COMMAND (bfd_cli_key_del_command, static) = {
 #define ADMIN_STR "admin"
 #define DELAYED_STR "delayed"
 #define MULTIHOP_STR	    "multihop"
+#define DISCRIMINATOR_STR   "discriminator"
+#define ADMIN_DOWN_STR	    "admin-down"
 
 static const unsigned mandatory = 1;
 static const unsigned optional = 0;
@@ -977,4 +995,187 @@ VLIB_CLI_COMMAND (bfd_cli_udp_del_echo_source_cmd, static) = {
   .path = "bfd udp echo-source del",
   .short_help = "bfd udp echo-source del",
   .function = bfd_cli_udp_del_echo_source,
+};
+
+static clib_error_t *
+bfd_cli_udp_sbfd_reflector_add (vlib_main_t *vm, unformat_input_t *input,
+				CLIB_UNUSED (vlib_cli_command_t *lmd))
+{
+  clib_error_t *ret = NULL;
+  unformat_input_t _line_input, *line_input = &_line_input;
+#define foreach_bfd_cli_udp_sbfd_reflector_add_cli_param(F)                                        \
+  F (u32, discriminator, DISCRIMINATOR_STR, mandatory, "%u")                                       \
+  F (u32, required_min_rx, REQUIRED_MIN_RX_STR, optional, "%u")                                    \
+  F (bool, admin_down, ADMIN_DOWN_STR, optional, "%_")
+
+  foreach_bfd_cli_udp_sbfd_reflector_add_cli_param (DECLARE);
+
+  /* Get a line of input. */
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      int something_parsed = 0;
+      foreach_bfd_cli_udp_sbfd_reflector_add_cli_param (UNFORMAT);
+
+      if (!something_parsed)
+	{
+	  ret = clib_error_return (0, "Unknown input `%U'", format_unformat_error, line_input);
+	  goto out;
+	}
+    }
+
+  foreach_bfd_cli_udp_sbfd_reflector_add_cli_param (CHECK_MANDATORY);
+
+  if (!have_required_min_rx)
+    required_min_rx = BFD_SBFD_DEFAULT_REQUIRED_MIN_RX_USEC;
+
+  vnet_api_error_t rv = bfd_sbfd_reflector_add (discriminator, !have_admin_down, required_min_rx);
+  if (rv)
+    {
+      ret = clib_error_return (0, "`bfd_sbfd_reflector_add' API call failed, rv=%d:%U", (int) rv,
+			       format_vnet_api_errno, rv);
+      goto out;
+    }
+
+out:
+  unformat_free (line_input);
+  return ret;
+}
+
+VLIB_CLI_COMMAND (bfd_cli_udp_sbfd_reflector_add_command, static) = {
+  .path = "bfd udp sbfd reflector add",
+  .short_help = "bfd udp sbfd reflector add"
+		" discriminator <discriminator>"
+		" [required-min-rx <required min rx interval>]"
+		" [admin-down]",
+  .function = bfd_cli_udp_sbfd_reflector_add,
+};
+
+static clib_error_t *
+bfd_cli_udp_sbfd_reflector_mod (vlib_main_t *vm, unformat_input_t *input,
+				CLIB_UNUSED (vlib_cli_command_t *lmd))
+{
+  bfd_main_t *bm = &bfd_main;
+  clib_error_t *ret = NULL;
+  unformat_input_t _line_input, *line_input = &_line_input;
+#define foreach_bfd_cli_udp_sbfd_reflector_mod_cli_param(F)                                        \
+  F (u32, discriminator, DISCRIMINATOR_STR, mandatory, "%u")                                       \
+  F (u32, required_min_rx, REQUIRED_MIN_RX_STR, optional, "%u")
+
+  foreach_bfd_cli_udp_sbfd_reflector_mod_cli_param (DECLARE);
+  u8 admin_up = 0;
+  int have_admin_up = 0;
+  const bfd_sbfd_reflector_t *r = NULL;
+  uword *p;
+
+  /* Get a line of input. */
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      int something_parsed = 0;
+      foreach_bfd_cli_udp_sbfd_reflector_mod_cli_param (UNFORMAT);
+      if (unformat (line_input, ADMIN_STR " up"))
+	{
+	  something_parsed = 1;
+	  have_admin_up = 1;
+	  admin_up = 1;
+	}
+      else if (unformat (line_input, ADMIN_STR " down"))
+	{
+	  something_parsed = 1;
+	  have_admin_up = 1;
+	  admin_up = 0;
+	}
+
+      if (!something_parsed)
+	{
+	  ret = clib_error_return (0, "Unknown input `%U'", format_unformat_error, line_input);
+	  goto out;
+	}
+    }
+
+  foreach_bfd_cli_udp_sbfd_reflector_mod_cli_param (CHECK_MANDATORY);
+
+  /* settings that are not given keep their values; the call fails if the
+     discriminator does not exist */
+  p = hash_get (bm->sbfd_reflector_by_disc, clib_host_to_net_u32 (discriminator));
+  if (p)
+    r = pool_elt_at_index (bm->sbfd_reflectors, p[0]);
+  if (!have_admin_up)
+    admin_up = r ? r->admin_up : 0;
+  if (!have_required_min_rx)
+    required_min_rx = r ? r->required_min_rx_usec : 0;
+
+  vnet_api_error_t rv = bfd_sbfd_reflector_mod (discriminator, admin_up, required_min_rx);
+  if (rv)
+    {
+      ret = clib_error_return (0, "`bfd_sbfd_reflector_mod' API call failed, rv=%d:%U", (int) rv,
+			       format_vnet_api_errno, rv);
+      goto out;
+    }
+
+out:
+  unformat_free (line_input);
+  return ret;
+}
+
+VLIB_CLI_COMMAND (bfd_cli_udp_sbfd_reflector_mod_command, static) = {
+  .path = "bfd udp sbfd reflector mod",
+  .short_help = "bfd udp sbfd reflector mod"
+		" discriminator <discriminator>"
+		" [admin <up|down>]"
+		" [required-min-rx <required min rx interval>]",
+  .function = bfd_cli_udp_sbfd_reflector_mod,
+};
+
+static clib_error_t *
+bfd_cli_udp_sbfd_reflector_del (vlib_main_t *vm, unformat_input_t *input,
+				CLIB_UNUSED (vlib_cli_command_t *lmd))
+{
+  clib_error_t *ret = NULL;
+  unformat_input_t _line_input, *line_input = &_line_input;
+#define foreach_bfd_cli_udp_sbfd_reflector_del_cli_param(F)                                        \
+  F (u32, discriminator, DISCRIMINATOR_STR, mandatory, "%u")
+
+  foreach_bfd_cli_udp_sbfd_reflector_del_cli_param (DECLARE);
+
+  /* Get a line of input. */
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      int something_parsed = 0;
+      foreach_bfd_cli_udp_sbfd_reflector_del_cli_param (UNFORMAT);
+
+      if (!something_parsed)
+	{
+	  ret = clib_error_return (0, "Unknown input `%U'", format_unformat_error, line_input);
+	  goto out;
+	}
+    }
+
+  foreach_bfd_cli_udp_sbfd_reflector_del_cli_param (CHECK_MANDATORY);
+
+  vnet_api_error_t rv = bfd_sbfd_reflector_del (discriminator);
+  if (rv)
+    {
+      ret = clib_error_return (0, "`bfd_sbfd_reflector_del' API call failed, rv=%d:%U", (int) rv,
+			       format_vnet_api_errno, rv);
+      goto out;
+    }
+
+out:
+  unformat_free (line_input);
+  return ret;
+}
+
+VLIB_CLI_COMMAND (bfd_cli_udp_sbfd_reflector_del_command, static) = {
+  .path = "bfd udp sbfd reflector del",
+  .short_help = "bfd udp sbfd reflector del discriminator <discriminator>",
+  .function = bfd_cli_udp_sbfd_reflector_del,
 };

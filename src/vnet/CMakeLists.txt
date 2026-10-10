@@ -489,6 +489,7 @@ list(APPEND VNET_SOURCES
   bfd/bfd_protocol.c
   bfd/bfd_cli.c
   bfd/bfd_api.c
+  bfd/bfd_sbfd.c
 )
 
 list(APPEND VNET_API_FILES bfd/bfd.api)

@@ -46,6 +46,19 @@ typedef struct
   bfd_auth_type_e auth_type;
 } bfd_auth_key_t;
 
+/** S-BFD reflector discriminator (RFC 7880) */
+typedef struct
+{
+  /** local S-BFD discriminator, network byte order */
+  u32 discriminator;
+
+  /** reflect with state Up if set, AdminDown otherwise */
+  u8 admin_up;
+
+  /** required min rx interval advertised to initiators (microseconds) */
+  u32 required_min_rx_usec;
+} bfd_sbfd_reflector_t;
+
 #define foreach_bfd_poll_state(F) \
   F (NOT_NEEDED)                  \
   F (NEEDED)                      \
@@ -306,6 +319,12 @@ typedef struct
   /** hashmap - index in pool auth_keys by conf_key_id */
   u32 *auth_key_by_conf_key_id;
 
+  /** pool of S-BFD reflector discriminators, modified under worker barrier */
+  bfd_sbfd_reflector_t *sbfd_reflectors;
+
+  /** hashmap - index in pool sbfd_reflectors by discriminator */
+  uword *sbfd_reflector_by_disc;
+
   /** vector of callback notification functions */
   bfd_notify_fn_t *listeners;
 
@@ -463,6 +482,9 @@ const char *bfd_hop_type_string (bfd_hop_type_e state);
 
 /** default, slow transmission interval for BFD packets, per spec at least 1s */
 #define BFD_DEFAULT_DESIRED_MIN_TX_USEC USEC_PER_SEC
+
+/** default required min rx advertised by an S-BFD reflector */
+#define BFD_SBFD_DEFAULT_REQUIRED_MIN_RX_USEC (50 * USEC_PER_MS)
 
 /**
  * minimum required min rx set locally when echo function is used, per spec

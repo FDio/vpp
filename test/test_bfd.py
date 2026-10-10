@@ -33,6 +33,8 @@ from bfd import (
     BFD_UDP_MH_PORT,
     BFD_UDP_DEFAULT_TOS,
     BFD_TEST_DETECT_MULT,
+    VppSBFDReflector,
+    SBFD_DEFAULT_REQUIRED_MIN_RX,
 )
 from framework import VppTestCase
 from asfframework import (
@@ -590,6 +592,139 @@ class BFDAPITestCase(VppTestCase):
         self.assertTrue(my_tos.tos == new_tos_value)
         self.vapi.bfd_udp_set_tos(BFD_UDP_DEFAULT_TOS)
 
+    def test_sbfd_reflector_add_del(self):
+        """add/delete S-BFD reflector discriminators"""
+        r1 = VppSBFDReflector(self, 0x01020304)
+        r2 = VppSBFDReflector(self, 0xFFFFFFFF, admin_up=False, required_min_rx=1000000)
+        r1.add_vpp_config()
+        r2.add_vpp_config()
+        self.assert_equal(
+            len(self.vapi.bfd_udp_sbfd_reflector_dump()), 2, "number of reflectors"
+        )
+        verify_sbfd_reflector_config(self, r1)
+        verify_sbfd_reflector_config(self, r2)
+        r1.remove_vpp_config()
+        self.assertFalse(r1.query_vpp_config())
+        verify_sbfd_reflector_config(self, r2)
+        r2.remove_vpp_config()
+        self.assert_equal(
+            len(self.vapi.bfd_udp_sbfd_reflector_dump()), 0, "number of reflectors"
+        )
+
+    def test_sbfd_reflector_api_defaults(self):
+        """add S-BFD reflector discriminator with API defaults"""
+        reflector = VppSBFDReflector(self, 0x01020304)
+        self.vapi.bfd_udp_sbfd_reflector_add_del(discriminator=reflector.discriminator)
+        self.registry.register(reflector, self.logger)
+        dump = reflector.get_bfd_udp_sbfd_reflector_dump_entry()
+        self.assertIsNotNone(dump)
+        self.assertTrue(dump.admin_up)
+        self.assert_equal(
+            dump.required_min_rx, SBFD_DEFAULT_REQUIRED_MIN_RX, "required min rx"
+        )
+        reflector.remove_vpp_config()
+
+    def test_sbfd_reflector_double_add(self):
+        """add the same S-BFD discriminator twice (negative case)"""
+        reflector = VppSBFDReflector(self, 0x01020304)
+        reflector.add_vpp_config()
+        duplicate = VppSBFDReflector(
+            self, reflector.discriminator, admin_up=False, required_min_rx=1000000
+        )
+        with self.vapi.assert_negative_api_retval():
+            duplicate.add_vpp_config()
+        verify_sbfd_reflector_config(self, reflector)
+        reflector.remove_vpp_config()
+
+    def test_sbfd_reflector_del_nonexistent(self):
+        """delete a non-existent S-BFD discriminator (negative case)"""
+        with self.vapi.assert_negative_api_retval():
+            self.vapi.bfd_udp_sbfd_reflector_add_del(
+                is_add=False, discriminator=0x01020304
+            )
+
+    def test_sbfd_reflector_mod(self):
+        """modify S-BFD reflector discriminator in place"""
+        reflector = VppSBFDReflector(self, 0x01020304)
+        reflector.add_vpp_config()
+        for change in (
+            {"admin_up": False, "required_min_rx": 1000000},
+            {"admin_up": True},
+            {"required_min_rx": 20000},
+        ):
+            reflector.modify_parameters(**change)
+            verify_sbfd_reflector_config(self, reflector)
+            self.assert_equal(
+                len(self.vapi.bfd_udp_sbfd_reflector_dump()), 1, "number of reflectors"
+            )
+        reflector.remove_vpp_config()
+
+    def test_sbfd_reflector_mod_nonexistent(self):
+        """modify a non-existent S-BFD discriminator (negative case)"""
+        with self.vapi.assert_negative_api_retval():
+            self.vapi.bfd_udp_sbfd_reflector_mod(
+                discriminator=0x01020304,
+                admin_up=True,
+                required_min_rx=SBFD_DEFAULT_REQUIRED_MIN_RX,
+            )
+        self.assert_equal(
+            len(self.vapi.bfd_udp_sbfd_reflector_dump()), 0, "number of reflectors"
+        )
+
+    def test_sbfd_reflector_mod_zero_required_min_rx(self):
+        """modify S-BFD discriminator to required min rx 0 (negative case)"""
+        reflector = VppSBFDReflector(self, 0x01020304)
+        reflector.add_vpp_config()
+        with self.vapi.assert_negative_api_retval():
+            self.vapi.bfd_udp_sbfd_reflector_mod(
+                discriminator=reflector.discriminator, admin_up=False, required_min_rx=0
+            )
+        verify_sbfd_reflector_config(self, reflector)
+        reflector.remove_vpp_config()
+
+    def test_sbfd_reflector_zero_discriminator(self):
+        """add S-BFD discriminator 0 (negative case)"""
+        with self.vapi.assert_negative_api_retval():
+            self.vapi.bfd_udp_sbfd_reflector_add_del(discriminator=0)
+        self.assert_equal(
+            len(self.vapi.bfd_udp_sbfd_reflector_dump()), 0, "number of reflectors"
+        )
+
+    def test_sbfd_reflector_zero_required_min_rx(self):
+        """add S-BFD discriminator with required min rx 0 (negative case)"""
+        with self.vapi.assert_negative_api_retval():
+            self.vapi.bfd_udp_sbfd_reflector_add_del(
+                discriminator=0x01020304, required_min_rx=0
+            )
+        self.assert_equal(
+            len(self.vapi.bfd_udp_sbfd_reflector_dump()), 0, "number of reflectors"
+        )
+
+    def test_sbfd_reflector_with_classic_session(self):
+        """S-BFD reflector and classic BFD session configured together"""
+        session = VppBFDUDPSession(
+            self,
+            self.interface0,
+            self.dst_ip_net,
+            local_addr=self.src_ip_net,
+            multihop=self.multihop,
+        )
+        session.add_vpp_config()
+        reflector = VppSBFDReflector(self, 0x01020304)
+        reflector.add_vpp_config()
+        self.assert_equal(
+            len(self.vapi.bfd_udp_session_dump()), 1, "number of BFD sessions"
+        )
+        self.assert_equal(
+            len(self.vapi.bfd_udp_sbfd_reflector_dump()), 1, "number of reflectors"
+        )
+        reflector.remove_vpp_config()
+        verify_bfd_session_config(self, session)
+        reflector.add_vpp_config()
+        session.remove_vpp_config()
+        verify_sbfd_reflector_config(self, reflector)
+        reflector.remove_vpp_config()
+
 
 class BFDTestSession(object):
     """BFD session as seen from test framework side"""
@@ -950,6 +1085,15 @@ def verify_bfd_session_config(test, session, state=None):
         test.assert_equal(
             dump.conf_key_id, session.sha1_key.conf_key_id, "config key id"
         )
+
+
+def verify_sbfd_reflector_config(test, reflector):
+    dump = reflector.get_bfd_udp_sbfd_reflector_dump_entry()
+    test.assertIsNotNone(dump)
+    test.assert_equal(dump.admin_up, reflector.admin_up, "admin up flag")
+    test.assert_equal(
+        dump.required_min_rx, reflector.required_min_rx, "required min rx interval"
+    )
 
 
 def verify_ip(test, packet, expected_tos=None):
@@ -4341,6 +4485,151 @@ class BFDCLITestCase(VppTestCase):
         cli_del = "bfd udp echo-source del"
         self.cli_verify_no_response(cli_del)
         self.cli_verify_response("show bfd echo-source", "UDP echo source is not set.")
+
+    def test_add_del_sbfd_reflector(self):
+        """add/show/delete S-BFD reflector discriminators"""
+        r1 = VppSBFDReflector(self, 0x01020304)
+        r2 = VppSBFDReflector(self, 0xFFFFFFFF, admin_up=False, required_min_rx=1000000)
+        cli_add_cmd = "bfd udp sbfd reflector add discriminator %s" % r1.discriminator
+        self.cli_verify_no_response(cli_add_cmd)
+        self.registry.register(r1, self.logger)
+        # 2nd add should fail
+        self.cli_verify_response(
+            cli_add_cmd,
+            "bfd udp sbfd reflector add: `bfd_sbfd_reflector_add' API call"
+            " failed, rv=-101:Duplicate BFD object",
+        )
+        self.cli_verify_no_response(
+            "bfd udp sbfd reflector add discriminator %s required-min-rx %s "
+            "admin-down" % (r2.discriminator, r2.required_min_rx)
+        )
+        self.registry.register(r2, self.logger)
+        verify_sbfd_reflector_config(self, r1)
+        verify_sbfd_reflector_config(self, r2)
+        rows = [
+            line.split()
+            for line in self.vapi.cli("show bfd sbfd-reflectors").splitlines()
+        ]
+        self.assertIn([str(r1.discriminator), "Up", str(r1.required_min_rx)], rows)
+        self.assertIn(
+            [str(r2.discriminator), "AdminDown", str(r2.required_min_rx)], rows
+        )
+        cli_del_cmd = "bfd udp sbfd reflector del discriminator %s" % r1.discriminator
+        self.cli_verify_no_response(cli_del_cmd)
+        # 2nd del is expected to fail
+        self.cli_verify_response(
+            cli_del_cmd,
+            "bfd udp sbfd reflector del: `bfd_sbfd_reflector_del' API call"
+            " failed, rv=-102:No such BFD object",
+        )
+        self.assertFalse(r1.query_vpp_config())
+        verify_sbfd_reflector_config(self, r2)
+
+    def sbfd_reflector_show_row(self, discriminator):
+        """columns of the discriminator's row in "show bfd sbfd-reflectors" """
+        for line in self.vapi.cli("show bfd sbfd-reflectors").splitlines():
+            row = line.split()
+            if row and row[0] == str(discriminator):
+                return row
+        return None
+
+    def test_mod_sbfd_reflector(self):
+        """modify S-BFD reflector discriminator in place"""
+        discriminator = 0x01020304
+        self.cli_verify_no_response(
+            "bfd udp sbfd reflector add discriminator %s" % discriminator
+        )
+        self.registry.register(VppSBFDReflector(self, discriminator), self.logger)
+        cli_mod_cmd = "bfd udp sbfd reflector mod discriminator %s " % discriminator
+        # settings that are not given keep their values
+        for args, admin_up, required_min_rx in (
+            ("admin down", False, SBFD_DEFAULT_REQUIRED_MIN_RX),
+            ("required-min-rx 1000000", False, 1000000),
+            ("admin up required-min-rx 20000", True, 20000),
+        ):
+            self.cli_verify_no_response(cli_mod_cmd + args)
+            verify_sbfd_reflector_config(
+                self,
+                VppSBFDReflector(
+                    self,
+                    discriminator,
+                    admin_up=admin_up,
+                    required_min_rx=required_min_rx,
+                ),
+            )
+            self.assert_equal(
+                self.sbfd_reflector_show_row(discriminator)[1:3],
+                ["Up" if admin_up else "AdminDown", str(required_min_rx)],
+                "state and required min rx",
+            )
+
+    def test_sbfd_reflector_cli_errors(self):
+        """S-BFD reflector CLI errors"""
+        self.cli_verify_response(
+            "bfd udp sbfd reflector add required-min-rx 1000",
+            "bfd udp sbfd reflector add: Required parameter `discriminator' missing.",
+        )
+        self.cli_verify_response(
+            "bfd udp sbfd reflector add discriminator 0",
+            "bfd udp sbfd reflector add: `bfd_sbfd_reflector_add' API call"
+            " failed, rv=-7:Invalid value",
+        )
+        self.cli_verify_response(
+            "bfd udp sbfd reflector mod admin down",
+            "bfd udp sbfd reflector mod: Required parameter `discriminator' missing.",
+        )
+        self.cli_verify_response(
+            "bfd udp sbfd reflector mod discriminator 1 admin down",
+            "bfd udp sbfd reflector mod: `bfd_sbfd_reflector_mod' API call"
+            " failed, rv=-102:No such BFD object",
+        )
+        self.cli_verify_no_response("bfd udp sbfd reflector add discriminator 1")
+        self.cli_verify_response(
+            "bfd udp sbfd reflector mod discriminator 1 required-min-rx 0",
+            "bfd udp sbfd reflector mod: `bfd_sbfd_reflector_mod' API call"
+            " failed, rv=-7:Invalid value",
+        )
+        self.cli_verify_response(
+            "bfd udp sbfd reflector mod discriminator 1 admin sideways",
+            "bfd udp sbfd reflector mod: Unknown input `admin sideways'",
+        )
+        self.cli_verify_no_response("bfd udp sbfd reflector del discriminator 1")
+        self.cli_verify_response(
+            "bfd udp sbfd reflector add discriminator 1 required-min-rx 0",
+            "bfd udp sbfd reflector add: `bfd_sbfd_reflector_add' API call"
+            " failed, rv=-7:Invalid value",
+        )
+        self.cli_verify_response(
+            "bfd udp sbfd reflector add discriminator 1 foo",
+            "bfd udp sbfd reflector add: Unknown input `foo'",
+        )
+        self.assert_equal(
+            len(self.vapi.bfd_udp_sbfd_reflector_dump()), 0, "number of reflectors"
+        )
+
+    def test_sbfd_reflector_with_classic_session(self):
+        """S-BFD reflector and classic BFD session shown together"""
+        session = VppBFDUDPSession(
+            self,
+            self.pg0,
+            self.dst_ip_net,
+            local_addr=self.src_ip_net,
+            multihop=self.multihop,
+        )
+        session.add_vpp_config()
+        reflector = VppSBFDReflector(self, 0x01020304)
+        self.cli_verify_no_response(
+            "bfd udp sbfd reflector add discriminator %s" % reflector.discriminator
+        )
+        self.registry.register(reflector, self.logger)
+        self.assertIn(
+            "Number of configured BFD sessions: 1",
+            self.vapi.cli("show bfd sessions"),
+        )
+        self.assertIn(
+            "Number of configured S-BFD reflectors: 1",
+            self.vapi.cli("show bfd sbfd-reflectors"),
+        )
 
 
 if __name__ == "__main__":

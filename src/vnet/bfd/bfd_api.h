@@ -111,4 +111,33 @@ vnet_api_error_t bfd_udp_set_echo_source (u32 loopback_sw_if_index);
  */
 vnet_api_error_t bfd_udp_del_echo_source ();
 
+/**
+ * @brief add S-BFD reflector discriminator
+ *
+ * The caller must hold the worker barrier. API and CLI handlers are not
+ * mp-safe, so VPP takes it before calling them.
+ */
+vnet_api_error_t bfd_sbfd_reflector_add (u32 discriminator, u8 admin_up, u32 required_min_rx_usec);
+
+/**
+ * @brief delete S-BFD reflector discriminator
+ *
+ * The caller must hold the worker barrier. API and CLI handlers are not
+ * mp-safe, so VPP takes it before calling them.
+ */
+vnet_api_error_t bfd_sbfd_reflector_del (u32 discriminator);
+
+/**
+ * @brief modify S-BFD reflector discriminator in place
+ *
+ * Sets the admin state and required min rx interval of an existing
+ * discriminator. Like add and del, it runs with the worker barrier held, so
+ * it is safe while requests are being answered: each one sees either the
+ * old values or the new ones, and none is left unanswered.
+ *
+ * The caller must hold the worker barrier. API and CLI handlers are not
+ * mp-safe, so VPP takes it before calling them.
+ */
+vnet_api_error_t bfd_sbfd_reflector_mod (u32 discriminator, u8 admin_up, u32 required_min_rx_usec);
+
 #endif /* __included_bfd_api_h__ */

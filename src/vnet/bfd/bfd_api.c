@@ -474,6 +474,59 @@ vl_api_bfd_udp_get_tos_t_handler (vl_api_bfd_udp_get_tos_t *mp)
   REPLY_MACRO2 (VL_API_BFD_UDP_GET_TOS_REPLY, ({ rmp->tos = bfd_main.tos; }));
 }
 
+static void
+vl_api_bfd_udp_sbfd_reflector_add_del_t_handler (vl_api_bfd_udp_sbfd_reflector_add_del_t *mp)
+{
+  vl_api_bfd_udp_sbfd_reflector_add_del_reply_t *rmp;
+  u32 discriminator = clib_net_to_host_u32 (mp->discriminator);
+  int rv;
+
+  if (mp->is_add)
+    rv = bfd_sbfd_reflector_add (discriminator, mp->admin_up,
+				 clib_net_to_host_u32 (mp->required_min_rx));
+  else
+    rv = bfd_sbfd_reflector_del (discriminator);
+
+  REPLY_MACRO (VL_API_BFD_UDP_SBFD_REFLECTOR_ADD_DEL_REPLY);
+}
+
+static void
+vl_api_bfd_udp_sbfd_reflector_mod_t_handler (vl_api_bfd_udp_sbfd_reflector_mod_t *mp)
+{
+  vl_api_bfd_udp_sbfd_reflector_mod_reply_t *rmp;
+  int rv;
+
+  rv = bfd_sbfd_reflector_mod (clib_net_to_host_u32 (mp->discriminator), mp->admin_up,
+			       clib_net_to_host_u32 (mp->required_min_rx));
+
+  REPLY_MACRO (VL_API_BFD_UDP_SBFD_REFLECTOR_MOD_REPLY);
+}
+
+static void
+vl_api_bfd_udp_sbfd_reflector_dump_t_handler (vl_api_bfd_udp_sbfd_reflector_dump_t *mp)
+{
+  vl_api_registration_t *reg;
+  vl_api_bfd_udp_sbfd_reflector_details_t *rmp;
+  bfd_sbfd_reflector_t *r;
+
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+    return;
+
+  pool_foreach (r, bfd_main.sbfd_reflectors)
+    {
+      rmp = vl_msg_api_alloc (sizeof (*rmp));
+      clib_memset (rmp, 0, sizeof (*rmp));
+      rmp->_vl_msg_id = ntohs (REPLY_MSG_ID_BASE + VL_API_BFD_UDP_SBFD_REFLECTOR_DETAILS);
+      rmp->context = mp->context;
+      /* already in network byte order */
+      rmp->discriminator = r->discriminator;
+      rmp->admin_up = r->admin_up;
+      rmp->required_min_rx = clib_host_to_net_u32 (r->required_min_rx_usec);
+      vl_api_send_msg (reg, (u8 *) rmp);
+    }
+}
+
 #include <vnet/bfd/bfd.api.c>
 static clib_error_t *
 bfd_api_hookup (vlib_main_t * vm)
