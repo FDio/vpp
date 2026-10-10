@@ -272,7 +272,7 @@ __clib_export void app_crypto_async_reply (app_crypto_async_reply_t *reply);
 /*
  * Crypto engine management
  */
-crypto_engine_type_t app_crypto_engine_type_add (void);
+__clib_export crypto_engine_type_t app_crypto_engine_type_add (void);
 u8 app_crypto_engine_n_types (void);
 __clib_export u8 *format_crypto_engine (u8 *s, va_list *args);
 uword unformat_crypto_engine (unformat_input_t *input, va_list *args);
