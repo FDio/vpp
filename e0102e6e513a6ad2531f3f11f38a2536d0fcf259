@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0761c46a_7dc423a2",
+        "filename": "src/vnet/session/application_local.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 287,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-10-11T22:03:54Z",
+      "side": 1,
+      "message": "short comment here explaining why we don\u0027t listen_session_get",
+      "revId": "e0102e6e513a6ad2531f3f11f38a2536d0fcf259",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ea366c51_f25b963e",
+        "filename": "src/vnet/session/application_local.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 294,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-10-11T22:03:54Z",
+      "side": 1,
+      "message": "Once we\u0027ve validated the listener once I think it\u0027s safe to assume it exists and it\u0027s in listening state. It shouldn\u0027t disappear while we\u0027re accepting. Same comment for lower",
+      "revId": "e0102e6e513a6ad2531f3f11f38a2536d0fcf259",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
