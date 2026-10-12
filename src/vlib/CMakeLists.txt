@@ -62,6 +62,7 @@ set(PLATFORM_SOURCES
   linux/pci.c
   linux/vfio.c
   linux/vmbus.c
+  unix/fuse.c
 )
 
 set(PLATFORM_HEADERS
@@ -123,7 +124,6 @@ add_vpp_library(vlib
   time.c
   trace.c
   unix/cli.c
-  unix/fuse.c
   unix/main.c
   unix/plugin.c
   unix/util.c
