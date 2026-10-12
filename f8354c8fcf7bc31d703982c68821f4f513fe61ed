@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "02b96bde_9b7e6611",
+        "filename": "src/plugins/fastacl/CMakeLists.txt",
+        "patchSetId": 2
+      },
+      "lineNbr": 31,
+      "author": {
+        "id": 3059
+      },
+      "writtenOn": "2026-10-12T12:17:03Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "aec2af8a_430c997d",
+      "revId": "f8354c8fcf7bc31d703982c68821f4f513fe61ed",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "b8479c37_abbccb70",
@@ -31,6 +49,42 @@
       "writtenOn": "2026-10-12T08:40:15Z",
       "side": 1,
       "message": "Could we clear enabled_interfaces when an interface is deleted? VPP removes its feature configuration, but this bitmap remains set. If a replacement interface reuses the index, enabling FastACL returns success here without attaching the filter nodes. I reproduced this by deleting and recreating an enabled loopback.",
+      "revId": "f8354c8fcf7bc31d703982c68821f4f513fe61ed",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ee668d25_6a513d99",
+        "filename": "src/plugins/fastacl/fastacl.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 203,
+      "author": {
+        "id": 3059
+      },
+      "writtenOn": "2026-10-12T12:17:03Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "b8479c37_abbccb70",
+      "revId": "f8354c8fcf7bc31d703982c68821f4f513fe61ed",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "69339bd1_1f87a33c",
+        "filename": "src/plugins/fastacl/fastacl.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 203,
+      "author": {
+        "id": 3059
+      },
+      "writtenOn": "2026-10-12T12:17:03Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "b8479c37_abbccb70",
       "revId": "f8354c8fcf7bc31d703982c68821f4f513fe61ed",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -52,6 +106,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "0f042032_83c67e02",
+        "filename": "src/plugins/fastacl/fastacl_node.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 44,
+      "author": {
+        "id": 3059
+      },
+      "writtenOn": "2026-10-12T12:17:03Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "4df2a1d2_396a1b47",
+      "revId": "f8354c8fcf7bc31d703982c68821f4f513fe61ed",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "ea21c573_e757992b",
@@ -69,6 +141,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "d343d3ff_39a33a50",
+        "filename": "src/plugins/fastacl/fastacl_node.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 151,
+      "author": {
+        "id": 3059
+      },
+      "writtenOn": "2026-10-12T12:17:03Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "ea21c573_e757992b",
+      "revId": "f8354c8fcf7bc31d703982c68821f4f513fe61ed",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "24eea485_d5752a44",
@@ -82,6 +172,24 @@
       "writtenOn": "2026-10-12T08:40:15Z",
       "side": 1,
       "message": "Could we preserve the protocol identified by the Fragment Header here? Assigning protocol 44 makes noninitial UDP fragments bypass a proto 17 drop rule, even though their Fragment Header identifies UDP. I reproduced this with first fragments being dropped and later fragments being forwarded. Transport fields should remain unavailable for noninitial fragments.",
+      "revId": "f8354c8fcf7bc31d703982c68821f4f513fe61ed",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "1111435a_02aacf38",
+        "filename": "src/plugins/fastacl/fastacl_node.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 186,
+      "author": {
+        "id": 3059
+      },
+      "writtenOn": "2026-10-12T12:17:03Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "24eea485_d5752a44",
       "revId": "f8354c8fcf7bc31d703982c68821f4f513fe61ed",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
