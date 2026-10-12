@@ -52,6 +52,24 @@
       "parentUuid": "62b347d1_278d45dc",
       "revId": "1d6dfd2d7ed5add037d91b6336a7a9b05a206a05",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "4346be6b_b59976f9",
+        "filename": "src/vnet/sfdp/sfdp.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 493,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-10-12T15:19:34Z",
+      "side": 1,
+      "message": "Sure, I went ahead and added an increment on the batch counter for every session explored, even with `expiry_pending` set.",
+      "parentUuid": "27fba425_df5d4543",
+      "revId": "1d6dfd2d7ed5add037d91b6336a7a9b05a206a05",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
