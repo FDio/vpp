@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "dadb9c5e_3a48cb9a",
+        "filename": "src/vnet/session/segment_manager.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 199,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-10-12T20:22:27Z",
+      "side": 1,
+      "message": "MADV_NOCORE instead of MADV_DONTDUMP?",
+      "revId": "1a3bfb0b16db20aed426254110269736e1630cb4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
