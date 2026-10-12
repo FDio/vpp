@@ -292,6 +292,8 @@ typedef struct {
   vlib_combined_counter_main_t *combined_acl_counters;
   /* enable/disable ACL counters for interface processing */
   u32 interface_acl_counters_enabled;
+  /* per-ACL vector of rule extensions, set by acl_plugin_add_replace_rules_ext */
+  acl_rule_ext_t **rule_ext_by_acl;
 } acl_main_t;
 
 #define acl_log_err(...) \

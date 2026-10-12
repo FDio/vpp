@@ -89,6 +89,22 @@ typedef union {
   };
 } fa_5tuple_t;
 
+#define FA_PACKET_EXT_FRAG_DF  (1 << 0)
+#define FA_PACKET_EXT_FRAG_ISF (1 << 1)
+#define FA_PACKET_EXT_FRAG_FF  (1 << 2)
+#define FA_PACKET_EXT_FRAG_LF  (1 << 3)
+
+typedef int (*fa_packet_ext_check_fn_t) (void *ctx, u32 acl_index, u32 rule_index);
+
+typedef struct
+{
+  u16 pkt_len;
+  u8 dscp;
+  u8 frag_flags;
+  fa_packet_ext_check_fn_t check;
+  void *check_ctx;
+} fa_packet_ext_t;
+
 static_always_inline u8 *
 format_fa_session_l4_key(u8 * s, va_list * args)
 {
