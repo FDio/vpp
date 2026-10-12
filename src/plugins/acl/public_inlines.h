@@ -277,9 +277,43 @@ fa_acl_match_port (u16 port, u16 port_first, u16 port_last, int is_ip6)
 }
 
 always_inline int
-single_acl_match_5tuple (acl_main_t * am, u32 acl_index, fa_5tuple_t * pkt_5tuple,
-		  int is_ip6, u8 * r_action, u32 * r_acl_match_p,
-		  u32 * r_rule_match_p, u32 * trace_bitmap)
+acl_rule_constrains_l4 (acl_rule_t *r)
+{
+  u16 last = (r->proto == IP_PROTOCOL_ICMP || r->proto == IP_PROTOCOL_ICMP6) ? 255 : 65535;
+
+  return r->src_port_or_type_first != 0 || r->src_port_or_type_last < last ||
+	 r->dst_port_or_code_first != 0 || r->dst_port_or_code_last < last ||
+	 r->tcp_flags_mask != 0;
+}
+
+always_inline int
+acl_rule_nonfirst_frag_match (acl_main_t *am, acl_rule_t *r)
+{
+  if (r->nonfirst_frag_mode == ACL_NONFIRST_FRAG_L3_ONLY)
+    return !acl_rule_constrains_l4 (r);
+  return am->l4_match_nonfirst_fragment;
+}
+
+always_inline int
+acl_rule_ext_match (acl_rule_t *r, const fa_packet_ext_t *ext)
+{
+  if (PREDICT_TRUE (!r->has_ext))
+    return 1;
+  if (!ext)
+    return 0;
+  if (ext->pkt_len < r->pkt_len_first || ext->pkt_len > r->pkt_len_last)
+    return 0;
+  if ((ext->dscp & r->dscp_mask) != r->dscp_value)
+    return 0;
+  if ((ext->frag_flags & r->frag_mask) != r->frag_value)
+    return 0;
+  return 1;
+}
+
+always_inline int
+single_acl_match_5tuple (acl_main_t *am, u32 acl_index, fa_5tuple_t *pkt_5tuple, int is_ip6,
+			 u8 *r_action, u32 *r_acl_match_p, u32 *r_rule_match_p, u32 *trace_bitmap,
+			 const fa_packet_ext_t *ext)
 {
   int i;
   acl_rule_t *r;
@@ -323,18 +357,19 @@ single_acl_match_5tuple (acl_main_t * am, u32 acl_index, fa_5tuple_t * pkt_5tupl
 	  if (pkt_5tuple->l4.proto != r->proto)
 	    continue;
 
-          if (PREDICT_FALSE (pkt_5tuple->pkt.is_nonfirst_fragment &&
-                     am->l4_match_nonfirst_fragment))
-          {
-            /* non-initial fragment with frag match configured - match this rule */
-            *trace_bitmap |= 0x80000000;
-            *r_action = r->is_permit;
-            if (r_acl_match_p)
-	      *r_acl_match_p = acl_index;
-            if (r_rule_match_p)
-	      *r_rule_match_p = i;
-            return 1;
-          }
+	  if (PREDICT_FALSE (pkt_5tuple->pkt.is_nonfirst_fragment))
+	    {
+	      if (!acl_rule_nonfirst_frag_match (am, r) || !acl_rule_ext_match (r, ext))
+		continue;
+	      /* non-initial fragment with frag match configured - match this rule */
+	      *trace_bitmap |= 0x80000000;
+	      *r_action = r->is_permit;
+	      if (r_acl_match_p)
+		*r_acl_match_p = acl_index;
+	      if (r_rule_match_p)
+		*r_rule_match_p = i;
+	      return 1;
+	    }
 
 	  /* A sanity check just to ensure we are about to match the ports extracted from the packet */
 	  if (PREDICT_FALSE (!pkt_5tuple->pkt.l4_valid))
@@ -374,6 +409,8 @@ single_acl_match_5tuple (acl_main_t * am, u32 acl_index, fa_5tuple_t * pkt_5tupl
 		  r->tcp_flags_value))
 	    continue;
 	}
+      if (!acl_rule_ext_match (r, ext))
+	continue;
       /* everything matches! */
 #ifdef FA_NODE_VERBOSE_DEBUG
       clib_warning ("ACL_FA_NODE_DBG acl %d rule %d FULL-MATCH, action %d",
@@ -395,14 +432,14 @@ acl_plugin_single_acl_match_5tuple (void *p_acl_main, u32 acl_index, fa_5tuple_t
 		  u32 * r_rule_match_p, u32 * trace_bitmap)
 {
   acl_main_t * am = p_acl_main;
-  return single_acl_match_5tuple(am, acl_index, pkt_5tuple, is_ip6, r_action,
-                                 r_acl_match_p, r_rule_match_p, trace_bitmap);
+  return single_acl_match_5tuple (am, acl_index, pkt_5tuple, is_ip6, r_action, r_acl_match_p,
+				  r_rule_match_p, trace_bitmap, 0);
 }
 
 always_inline int
-linear_multi_acl_match_5tuple (void *p_acl_main, u32 lc_index, fa_5tuple_t * pkt_5tuple,
-		       int is_ip6, u8 *r_action, u32 *acl_pos_p, u32 * acl_match_p,
-		       u32 * rule_match_p, u32 * trace_bitmap)
+linear_multi_acl_match_5tuple (void *p_acl_main, u32 lc_index, fa_5tuple_t *pkt_5tuple, int is_ip6,
+			       u8 *r_action, u32 *acl_pos_p, u32 *acl_match_p, u32 *rule_match_p,
+			       u32 *trace_bitmap, const fa_packet_ext_t *ext)
 {
   acl_main_t *am = p_acl_main;
   int i;
@@ -418,9 +455,8 @@ linear_multi_acl_match_5tuple (void *p_acl_main, u32 lc_index, fa_5tuple_t * pkt
       clib_warning ("ACL_FA_NODE_DBG: Trying to match ACL: %d",
 		    acl_vector[i]);
 #endif
-      if (single_acl_match_5tuple
-	  (am, acl_vector[i], pkt_5tuple, is_ip6, &action,
-	   acl_match_p, rule_match_p, trace_bitmap))
+      if (single_acl_match_5tuple (am, acl_vector[i], pkt_5tuple, is_ip6, &action, acl_match_p,
+				   rule_match_p, trace_bitmap, ext))
 	{
 	  *r_action = action;
           *acl_pos_p = i;
@@ -465,8 +501,8 @@ match_portranges(acl_main_t *am, fa_5tuple_t *match, u32 index)
 }
 
 always_inline int
-single_rule_match_5tuple (acl_rule_t *r, int is_ip6, fa_5tuple_t *pkt_5tuple,
-			  int l4_match_nonfirst_fragment)
+single_rule_match_5tuple (acl_main_t *am, acl_rule_t *r, int is_ip6, fa_5tuple_t *pkt_5tuple,
+			  const fa_packet_ext_t *ext)
 {
   if (is_ip6 != r->is_ipv6)
     {
@@ -499,7 +535,7 @@ single_rule_match_5tuple (acl_rule_t *r, int is_ip6, fa_5tuple_t *pkt_5tuple,
 
       /* non-initial fragment: L4 rules match by protocol alone, if so configured */
       if (PREDICT_FALSE (pkt_5tuple->pkt.is_nonfirst_fragment))
-	return l4_match_nonfirst_fragment;
+	return acl_rule_nonfirst_frag_match (am, r) && acl_rule_ext_match (r, ext);
 
       /* A sanity check just to ensure we are about to match the ports extracted from the packet */
       if (PREDICT_FALSE (!pkt_5tuple->pkt.l4_valid))
@@ -522,12 +558,15 @@ single_rule_match_5tuple (acl_rule_t *r, int is_ip6, fa_5tuple_t *pkt_5tuple,
 	      r->tcp_flags_value))
 	return 0;
     }
+  if (!acl_rule_ext_match (r, ext))
+    return 0;
   /* everything matches! */
   return 1;
 }
 
 always_inline u32
-multi_acl_match_get_applied_ace_index (acl_main_t * am, int is_ip6, fa_5tuple_t * match)
+multi_acl_match_get_applied_ace_index (acl_main_t *am, int is_ip6, fa_5tuple_t *match,
+				       const fa_packet_ext_t *ext)
 {
   clib_bihash_kv_48_8_t kv;
   clib_bihash_kv_48_8_t result;
@@ -611,8 +650,7 @@ multi_acl_match_get_applied_ace_index (acl_main_t * am, int is_ip6, fa_5tuple_t 
 		{
 		  continue;
 		}
-	      if (single_rule_match_5tuple (&crs[i].rule, is_ip6, match,
-					    am->l4_match_nonfirst_fragment))
+	      if (single_rule_match_5tuple (am, &crs[i].rule, is_ip6, match, ext))
 		{
 		  curr_match_index = crs[i].applied_entry_index;
 		}
@@ -624,13 +662,13 @@ multi_acl_match_get_applied_ace_index (acl_main_t * am, int is_ip6, fa_5tuple_t 
 }
 
 always_inline int
-hash_multi_acl_match_5tuple (void *p_acl_main, u32 lc_index, fa_5tuple_t * pkt_5tuple,
-                       int is_ip6, u8 *action, u32 *acl_pos_p, u32 * acl_match_p,
-                       u32 * rule_match_p, u32 * trace_bitmap)
+hash_multi_acl_match_5tuple (void *p_acl_main, u32 lc_index, fa_5tuple_t *pkt_5tuple, int is_ip6,
+			     u8 *action, u32 *acl_pos_p, u32 *acl_match_p, u32 *rule_match_p,
+			     u32 *trace_bitmap, const fa_packet_ext_t *ext)
 {
   acl_main_t *am = p_acl_main;
   applied_hash_ace_entry_t **applied_hash_aces = vec_elt_at_index(am->hash_entry_vec_by_lc_index, lc_index);
-  u32 match_index = multi_acl_match_get_applied_ace_index(am, is_ip6, pkt_5tuple);
+  u32 match_index = multi_acl_match_get_applied_ace_index (am, is_ip6, pkt_5tuple, ext);
   if (match_index < vec_len((*applied_hash_aces))) {
     applied_hash_ace_entry_t *pae = vec_elt_at_index((*applied_hash_aces), match_index);
     pae->hitcount++;
@@ -644,9 +682,10 @@ hash_multi_acl_match_5tuple (void *p_acl_main, u32 lc_index, fa_5tuple_t * pkt_5
 }
 
 always_inline int
-acl_plugin_match_5tuple_inline (void *p_acl_main, u32 lc_index, fa_5tuple_opaque_t *pkt_5tuple,
-				int is_ip6, u8 *r_action, u32 *r_acl_pos_p, u32 *r_acl_match_p,
-				u32 *r_rule_match_p, u32 *trace_bitmap)
+acl_plugin_match_5tuple_ext_inline (void *p_acl_main, u32 lc_index, fa_5tuple_opaque_t *pkt_5tuple,
+				    int is_ip6, u8 *r_action, u32 *r_acl_pos_p, u32 *r_acl_match_p,
+				    u32 *r_rule_match_p, u32 *trace_bitmap,
+				    const fa_packet_ext_t *ext)
 {
   acl_main_t *am = p_acl_main;
   fa_5tuple_t *pkt_5tuple_internal = (fa_5tuple_t *) pkt_5tuple;
@@ -655,14 +694,24 @@ acl_plugin_match_5tuple_inline (void *p_acl_main, u32 lc_index, fa_5tuple_opaque
     {
       return hash_multi_acl_match_5tuple (p_acl_main, lc_index, pkt_5tuple_internal, is_ip6,
 					  r_action, r_acl_pos_p, r_acl_match_p, r_rule_match_p,
-					  trace_bitmap);
+					  trace_bitmap, ext);
     }
   else
     {
       return linear_multi_acl_match_5tuple (p_acl_main, lc_index, pkt_5tuple_internal, is_ip6,
 					    r_action, r_acl_pos_p, r_acl_match_p, r_rule_match_p,
-					    trace_bitmap);
+					    trace_bitmap, ext);
     }
+}
+
+always_inline int
+acl_plugin_match_5tuple_inline (void *p_acl_main, u32 lc_index, fa_5tuple_opaque_t *pkt_5tuple,
+				int is_ip6, u8 *r_action, u32 *r_acl_pos_p, u32 *r_acl_match_p,
+				u32 *r_rule_match_p, u32 *trace_bitmap)
+{
+  return acl_plugin_match_5tuple_ext_inline (p_acl_main, lc_index, pkt_5tuple, is_ip6, r_action,
+					     r_acl_pos_p, r_acl_match_p, r_rule_match_p,
+					     trace_bitmap, 0);
 }
 
 always_inline int
@@ -678,10 +727,11 @@ acl_plugin_match_5tuple_inline_and_count (void *p_acl_main, u32 lc_index,
   if (PREDICT_TRUE(am->use_hash_acl_matching)) {
       ret =
 	hash_multi_acl_match_5tuple (p_acl_main, lc_index, pkt_5tuple_internal, is_ip6, r_action,
-				     r_acl_pos_p, r_acl_match_p, r_rule_match_p, trace_bitmap);
+				     r_acl_pos_p, r_acl_match_p, r_rule_match_p, trace_bitmap, 0);
   } else {
-    ret = linear_multi_acl_match_5tuple(p_acl_main, lc_index, pkt_5tuple_internal, is_ip6, r_action,
-                                 r_acl_pos_p, r_acl_match_p, r_rule_match_p, trace_bitmap);
+      ret =
+	linear_multi_acl_match_5tuple (p_acl_main, lc_index, pkt_5tuple_internal, is_ip6, r_action,
+				       r_acl_pos_p, r_acl_match_p, r_rule_match_p, trace_bitmap, 0);
   }
   if (PREDICT_TRUE(ret)) {
     clib_thread_index_t thread_index = os_get_thread_index ();

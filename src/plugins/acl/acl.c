@@ -177,6 +177,11 @@ acl_print_acl_x (acl_vector_print_func_t vpr, vlib_main_t * vm,
 	    format (out0, " tcpflags %d mask %d", r->tcp_flags_value,
 		    r->tcp_flags_mask);
 	}
+      if (r->has_ext)
+	out0 = format (out0, " len %d-%d dscp %d/%d frag %d/%d", r->pkt_len_first, r->pkt_len_last,
+		       r->dscp_value, r->dscp_mask, r->frag_value, r->frag_mask);
+      if (r->nonfirst_frag_mode == ACL_NONFIRST_FRAG_L3_ONLY)
+	out0 = format (out0, " non-first-fragment l3-only");
       out0 = format (out0, "\n");
       vpr (vm, out0);
     }
@@ -301,39 +306,17 @@ acl_api_invalid_prefix (const vl_api_prefix_t * prefix)
 }
 
 static int
-acl_add_list (u32 count, vl_api_acl_rule_t rules[],
-	      u32 * acl_list_index, u8 * tag)
+acl_add_rules (acl_rule_t *acl_new_rules, u32 *acl_list_index, u8 *tag)
 {
   acl_main_t *am = &acl_main;
   acl_list_t *a;
-  acl_rule_t *r;
-  acl_rule_t *acl_new_rules = 0;
   size_t tag_len;
-  int i;
 
   tag_len = clib_strnlen ((const char *) tag, sizeof (a->tag));
   if (tag_len == sizeof (a->tag))
-    return VNET_API_ERROR_INVALID_VALUE;
-
-  if (am->trace_acl > 255)
-    clib_warning ("API dbg: acl_add_list index %d tag %s", *acl_list_index,
-		  tag);
-
-  /* check if what they request is consistent */
-  for (i = 0; i < count; i++)
     {
-      if (acl_api_invalid_prefix (&rules[i].src_prefix))
-	return VNET_API_ERROR_INVALID_SRC_ADDRESS;
-      if (acl_api_invalid_prefix (&rules[i].dst_prefix))
-	return VNET_API_ERROR_INVALID_DST_ADDRESS;
-      if (rules[i].src_prefix.address.af != rules[i].dst_prefix.address.af)
-	return VNET_API_ERROR_INVALID_SRC_ADDRESS;
-      if (ntohs (rules[i].srcport_or_icmptype_first) >
-	  ntohs (rules[i].srcport_or_icmptype_last))
-	return VNET_API_ERROR_INVALID_VALUE_2;
-      if (ntohs (rules[i].dstport_or_icmpcode_first) >
-	  ntohs (rules[i].dstport_or_icmpcode_last))
-	return VNET_API_ERROR_INVALID_VALUE_2;
+      vec_free (acl_new_rules);
+      return VNET_API_ERROR_INVALID_VALUE;
     }
 
   if (*acl_list_index != ~0)
@@ -345,37 +328,15 @@ acl_add_list (u32 count, vl_api_acl_rule_t rules[],
 	  clib_warning
 	    ("acl-plugin-error: Trying to replace nonexistent ACL %d (tag %s)",
 	     *acl_list_index, tag);
+	  vec_free (acl_new_rules);
 	  return VNET_API_ERROR_NO_SUCH_ENTRY;
 	}
     }
-  if (0 == count)
+  if (0 == vec_len (acl_new_rules))
     {
       clib_warning
 	("acl-plugin-warning: supplied no rules for ACL %d (tag %s)",
 	 *acl_list_index, tag);
-    }
-
-  /* Create and populate the rules */
-  if (count > 0)
-    vec_validate (acl_new_rules, count - 1);
-
-  for (i = 0; i < count; i++)
-    {
-      r = vec_elt_at_index (acl_new_rules, i);
-      clib_memset (r, 0, sizeof (*r));
-      r->is_permit = rules[i].is_permit;
-      r->is_ipv6 = rules[i].src_prefix.address.af;
-      ip_address_decode (&rules[i].src_prefix.address, &r->src);
-      ip_address_decode (&rules[i].dst_prefix.address, &r->dst);
-      r->src_prefixlen = rules[i].src_prefix.len;
-      r->dst_prefixlen = rules[i].dst_prefix.len;
-      r->proto = rules[i].proto;
-      r->src_port_or_type_first = ntohs (rules[i].srcport_or_icmptype_first);
-      r->src_port_or_type_last = ntohs (rules[i].srcport_or_icmptype_last);
-      r->dst_port_or_code_first = ntohs (rules[i].dstport_or_icmpcode_first);
-      r->dst_port_or_code_last = ntohs (rules[i].dstport_or_icmpcode_last);
-      r->tcp_flags_value = rules[i].tcp_flags_value;
-      r->tcp_flags_mask = rules[i].tcp_flags_mask;
     }
 
   if (~0 == *acl_list_index)
@@ -405,6 +366,58 @@ acl_add_list (u32 count, vl_api_acl_rule_t rules[],
   validate_and_reset_acl_counters (am, *acl_list_index);
   acl_plugin_lookup_context_notify_acl_change (*acl_list_index);
   return 0;
+}
+
+static int
+acl_add_list (u32 count, vl_api_acl_rule_t rules[], u32 *acl_list_index, u8 *tag)
+{
+  acl_main_t *am = &acl_main;
+  acl_rule_t *r;
+  acl_rule_t *acl_new_rules = 0;
+  int i;
+
+  if (am->trace_acl > 255)
+    clib_warning ("API dbg: acl_add_list index %d tag %s", *acl_list_index, tag);
+
+  /* check if what they request is consistent */
+  for (i = 0; i < count; i++)
+    {
+      if (acl_api_invalid_prefix (&rules[i].src_prefix))
+	return VNET_API_ERROR_INVALID_SRC_ADDRESS;
+      if (acl_api_invalid_prefix (&rules[i].dst_prefix))
+	return VNET_API_ERROR_INVALID_DST_ADDRESS;
+      if (rules[i].src_prefix.address.af != rules[i].dst_prefix.address.af)
+	return VNET_API_ERROR_INVALID_SRC_ADDRESS;
+      if (ntohs (rules[i].srcport_or_icmptype_first) > ntohs (rules[i].srcport_or_icmptype_last))
+	return VNET_API_ERROR_INVALID_VALUE_2;
+      if (ntohs (rules[i].dstport_or_icmpcode_first) > ntohs (rules[i].dstport_or_icmpcode_last))
+	return VNET_API_ERROR_INVALID_VALUE_2;
+    }
+
+  /* Create and populate the rules */
+  if (count > 0)
+    vec_validate (acl_new_rules, count - 1);
+
+  for (i = 0; i < count; i++)
+    {
+      r = vec_elt_at_index (acl_new_rules, i);
+      clib_memset (r, 0, sizeof (*r));
+      r->is_permit = rules[i].is_permit;
+      r->is_ipv6 = rules[i].src_prefix.address.af;
+      ip_address_decode (&rules[i].src_prefix.address, &r->src);
+      ip_address_decode (&rules[i].dst_prefix.address, &r->dst);
+      r->src_prefixlen = rules[i].src_prefix.len;
+      r->dst_prefixlen = rules[i].dst_prefix.len;
+      r->proto = rules[i].proto;
+      r->src_port_or_type_first = ntohs (rules[i].srcport_or_icmptype_first);
+      r->src_port_or_type_last = ntohs (rules[i].srcport_or_icmptype_last);
+      r->dst_port_or_code_first = ntohs (rules[i].dstport_or_icmpcode_first);
+      r->dst_port_or_code_last = ntohs (rules[i].dstport_or_icmpcode_last);
+      r->tcp_flags_value = rules[i].tcp_flags_value;
+      r->tcp_flags_mask = rules[i].tcp_flags_mask;
+    }
+
+  return acl_add_rules (acl_new_rules, acl_list_index, tag);
 }
 
 static int
@@ -446,6 +459,25 @@ acl_del_list (u32 acl_list_index)
   /* acl_list_index is now free, notify the lookup contexts */
   acl_plugin_lookup_context_notify_acl_change (acl_list_index);
   return 0;
+}
+
+int
+acl_plugin_add_replace_rules (u32 *acl_index, acl_rule_t *rules, u8 *tag)
+{
+  acl_rule_t *r;
+
+  vec_foreach (r, rules)
+    if (r->src_port_or_type_first > r->src_port_or_type_last ||
+	r->dst_port_or_code_first > r->dst_port_or_code_last ||
+	(r->has_ext && r->pkt_len_first > r->pkt_len_last))
+      return VNET_API_ERROR_INVALID_VALUE_2;
+  return acl_add_rules (vec_dup (rules), acl_index, tag);
+}
+
+int
+acl_plugin_del_list (u32 acl_index)
+{
+  return acl_del_list (acl_index);
 }
 
 static int

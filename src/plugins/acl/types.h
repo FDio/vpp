@@ -24,8 +24,25 @@ typedef struct
   u16 dst_port_or_code_last;
   u8 tcp_flags_value;
   u8 tcp_flags_mask;
+  /* optional fields, only checked when has_ext is set */
+  u8 has_ext;
+  u8 nonfirst_frag_mode;
+  u16 pkt_len_first;
+  u16 pkt_len_last;
+  u8 dscp_value;
+  u8 dscp_mask;
+  u8 frag_value;
+  u8 frag_mask;
 } acl_rule_t;
 
+/* how a rule treats non-initial fragments */
+typedef enum
+{
+  /* follow l4-match-nonfirst-fragment */
+  ACL_NONFIRST_FRAG_GLOBAL = 0,
+  /* match only if the rule constrains no L4 field */
+  ACL_NONFIRST_FRAG_L3_ONLY = 1,
+} acl_nonfirst_frag_mode_t;
 
 #endif // included_acl_types_h
 

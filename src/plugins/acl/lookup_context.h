@@ -6,6 +6,8 @@
 #ifndef included_acl_lookup_context_h
 #define included_acl_lookup_context_h
 
+#include "types.h"
+
 typedef struct {
   /* A name of the portion of the code using the ACL infra */
   char *user_module_name;
@@ -29,6 +31,8 @@ typedef struct {
 } acl_lookup_context_t;
 
 void acl_plugin_lookup_context_notify_acl_change(u32 acl_num);
+int acl_plugin_add_replace_rules (u32 *acl_index, acl_rule_t *rules, u8 *tag);
+int acl_plugin_del_list (u32 acl_index);
 
 void acl_plugin_show_lookup_context (u32 lc_index);
 void acl_plugin_show_lookup_user (u32 user_index);

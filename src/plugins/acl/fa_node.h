@@ -65,6 +65,19 @@ int is_session_l4_key_u64_slowpath(u64 l4key) {
   return (k.l4_flags & FA_SK_L4_FLAG_IS_SLOWPATH) ? 1 : 0;
 }
 
+/* per-packet fields checked only for rules with has_ext set */
+typedef struct
+{
+  u16 pkt_len;
+  u8 dscp;
+  u8 frag_flags;
+} fa_packet_ext_t;
+
+#define FA_FRAG_DF  (1 << 0)
+#define FA_FRAG_ISF (1 << 1)
+#define FA_FRAG_FF  (1 << 2)
+#define FA_FRAG_LF  (1 << 3)
+
 typedef union {
   struct {
     union {

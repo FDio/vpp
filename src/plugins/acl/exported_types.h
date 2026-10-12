@@ -64,15 +64,26 @@ typedef int (*acl_plugin_match_5tuple_fn_t) (u32 lc_index,
                                            u32 * r_rule_match_p,
                                            u32 * trace_bitmap);
 
+/*
+ * Create an ACL, or replace the rules of an existing one, from a vector of
+ * rules. *acl_index ~0 creates; the vector is copied.
+ */
+typedef int (*acl_plugin_add_replace_rules_fn_t) (u32 *acl_index, acl_rule_t *rules, u8 *tag);
+/*
+ * Delete an ACL that no lookup context or interface uses.
+ */
+typedef int (*acl_plugin_del_list_fn_t) (u32 acl_index);
 
-#define foreach_acl_plugin_exported_method_name \
-_(acl_exists)                          \
-_(register_user_module)                \
-_(get_lookup_context_index)            \
-_(put_lookup_context_index)            \
-_(set_acl_vec_for_context)             \
-_(fill_5tuple)                         \
-_(match_5tuple)                        
+#define foreach_acl_plugin_exported_method_name                                                    \
+  _ (acl_exists)                                                                                   \
+  _ (register_user_module)                                                                         \
+  _ (get_lookup_context_index)                                                                     \
+  _ (put_lookup_context_index)                                                                     \
+  _ (set_acl_vec_for_context)                                                                      \
+  _ (fill_5tuple)                                                                                  \
+  _ (match_5tuple)                                                                                 \
+  _ (add_replace_rules)                                                                            \
+  _ (del_list)
 
 #define _(name) acl_plugin_ ## name ## _fn_t name;
 typedef struct {
