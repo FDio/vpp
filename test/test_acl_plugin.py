@@ -1173,6 +1173,76 @@ class TestACLplugin(VppTestCase):
 
         self.logger.info("ACLP_TEST_FINISH_0021")
 
+    def run_count_fragments(self, proto, ports):
+        pkts = self.create_stream(
+            self.pg0, self.pg_if_packet_sizes, 0, self.IPRANDOM, proto, ports, True
+        )
+        self.pg0.add_stream(pkts)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        return len(pkts)
+
+    def test_0021a_udp_deny_port_fragment_no_l4_match(self):
+        """deny single UDPv4/v6, permit ip any, non-initial fragments pass
+        without l4-match-nonfirst-fragment
+        """
+        port = random.randint(16384, 65535)
+        rules = [
+            self.create_rule(self.IPV4, self.DENY, port, self.proto[self.IP][self.UDP]),
+            self.create_rule(self.IPV6, self.DENY, port, self.proto[self.IP][self.UDP]),
+            self.create_rule(self.IPV4, self.PERMIT, self.PORTS_ALL, 0),
+            self.create_rule(self.IPV6, self.PERMIT, self.PORTS_ALL, 0),
+        ]
+        self.vapi.cli("set acl-plugin l4-match-nonfirst-fragment 0")
+        try:
+            self.apply_rules(rules, "deny ip4/ip6 udp %d, no l4 fragment match" % port)
+            n = self.run_count_fragments(self.proto[self.IP][self.UDP], port)
+            self.pg1.get_capture(n)
+        finally:
+            self.vapi.cli("set acl-plugin l4-match-nonfirst-fragment 1")
+
+    def test_0021c_many_udp_deny_fragment_no_l4_match(self):
+        """100 colliding UDP deny rules, permit ip any, non-initial fragments
+        pass without l4-match-nonfirst-fragment
+        """
+        rules = []
+        for port in range(20000, 20100):
+            rules.append(
+                self.create_rule(
+                    self.IPV4, self.DENY, port, self.proto[self.IP][self.UDP]
+                )
+            )
+            rules.append(
+                self.create_rule(
+                    self.IPV6, self.DENY, port, self.proto[self.IP][self.UDP]
+                )
+            )
+        rules.append(self.create_rule(self.IPV4, self.PERMIT, self.PORTS_ALL, 0))
+        rules.append(self.create_rule(self.IPV6, self.PERMIT, self.PORTS_ALL, 0))
+        self.vapi.cli("set acl-plugin l4-match-nonfirst-fragment 0")
+        try:
+            self.apply_rules(rules, "deny 100 udp ports, no l4 fragment match")
+            n = self.run_count_fragments(self.proto[self.IP][self.UDP], 20050)
+            self.pg1.get_capture(n)
+        finally:
+            self.vapi.cli("set acl-plugin l4-match-nonfirst-fragment 1")
+
+    def test_0021b_ip_deny_fragment_no_l4_match(self):
+        """deny ip any, non-initial fragments blocked
+        without l4-match-nonfirst-fragment
+        """
+        rules = [
+            self.create_rule(self.IPV4, self.DENY, self.PORTS_ALL, 0),
+            self.create_rule(self.IPV6, self.DENY, self.PORTS_ALL, 0),
+        ]
+        self.vapi.cli("set acl-plugin l4-match-nonfirst-fragment 0")
+        try:
+            self.apply_rules(rules, "deny ip4/ip6 any, no l4 fragment match")
+            self.run_count_fragments(self.proto[self.IP][self.UDP], 0)
+            self.pg1.assert_nothing_captured()
+        finally:
+            self.vapi.cli("set acl-plugin l4-match-nonfirst-fragment 1")
+
     def test_0022_zero_length_udp_ipv4(self):
         """VPP-687 zero length udp ipv4 packet"""
         self.logger.info("ACLP_TEST_START_0022")
