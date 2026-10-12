@@ -32,6 +32,7 @@ OPTIONS:
   --drivers, -D           Specify list of drivers to be built
   --help, -h              This help
   --install-dir, -i       Install directory
+  --kdi-kdir, -k          Kernel build directory for KDI
   --minimal, -m           Minimal build (no drivers, plugins, tools, tests, crypto_engines)
   --native-only, -n       Only compile for Native CPU (no multiarch)
   --option, -o            Enable specific VPP options (fib8, fib16)
@@ -73,6 +74,15 @@ while (( "$#" )); do
     -i|--install-dir)
       if [ -n "$2" ] && [ ${2:0:1} != "-" ]; then
         install_dir=$2
+        shift 2
+      else
+        echo "Error: Argument for $1 is missing" >&2
+        exit 1
+      fi
+      ;;
+    -k|--kdi-kdir)
+      if [ -n "${2:-}" ] && [ "${2:0:1}" != "-" ]; then
+        kdi_kernel_dir=$2
         shift 2
       else
         echo "Error: Argument for $1 is missing" >&2
@@ -221,6 +231,7 @@ if [ "${arch}" != "${host_arch}" ] ; then
 fi
 
 [[ -v prefix_path ]] && args+=("-DCMAKE_PREFIX_PATH=${prefix_path}")
+[[ -v kdi_kernel_dir ]] && args+=("-DVPP_KDI_KERNEL_DIR=${kdi_kernel_dir}")
 args+=("-DCMAKE_EXPORT_COMPILE_COMMANDS:BOOL=ON")
 args+=("-DCMAKE_INSTALL_PREFIX=${install_dir}")
 args+=("-DCMAKE_BUILD_TYPE:STRING=${build_type}")
@@ -238,7 +249,7 @@ $wipe && git clean -fdx --exclude=startup.\*
 
 (
   $verbose && set -o xtrace
-  cmake ${args[@]} -G Ninja -S ${src_dir}/src -B ${build_dir}
+  cmake "${args[@]}" -G Ninja -S "${src_dir}/src" -B "${build_dir}"
 )
 
 cat << __EOF__

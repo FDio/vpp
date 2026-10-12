@@ -1,0 +1,109 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Binds a platform device away from its normal kernel driver and over to a
+# generic UIO driver, so VPP can map its registers from userspace.
+#
+# Usage: ./attach-to-uio [device] [uio-driver]
+#   device     platform bus device name, e.g. 3a000000.ethernet (default)
+#   uio-driver generic UIO driver to bind it to (default: uio_pdrv_genirq)
+#
+# IMPORTANT: unbinding a network driver while its netdevs are still up can
+# hang the kernel forever inside napi_disable(), with no way back short of
+# a power cycle (seen in practice on the PPE/EDMA driver). This script
+# brings every netdev owned by the device down first to avoid that, but if
+# a step below doesn't return, that is almost certainly what is happening -
+# see the printed warning before the unbind step.
+
+# This script itself runs as the invoking user throughout - only the
+# individual commands that touch sysfs/netdevs are sudo'd. That matters
+# over a krb5-secured NFS mount: root has no krb5 ticket there, so a
+# re-exec of the whole script under sudo would fail to even open this
+# file. sudo as plain commands (tee, ip, modprobe) has no such problem.
+
+device=${1:-3a000000.ethernet}
+uio_driver=${2:-uio_pdrv_genirq}
+dev_path="/sys/bus/platform/devices/${device}"
+script_dir=${BASH_SOURCE[0]%/*}
+[ "${script_dir}" != "${BASH_SOURCE[0]}" ] || script_dir=.
+kdi_module="${script_dir}/kdi/vpp_kdi.ko"
+
+die() { echo "error: $*" >&2; exit 1; }
+step() { echo "--- $*"; }
+
+[ -d "${dev_path}" ] || die "no such platform device: ${device}"
+
+step "bringing down netdevs owned by ${device} (avoids a napi_disable() hang on unbind)"
+if [ -d "${dev_path}/net" ]; then
+  for net_dir in "${dev_path}"/net/*; do
+    [ -e "${net_dir}" ] || continue
+    ifname=$(basename "${net_dir}")
+    echo "  ${ifname} down"
+    sudo ip link set "${ifname}" down || die "could not bring ${ifname} down"
+  done
+else
+  echo "  none found"
+fi
+
+step "reloading KDI with debug logging enabled"
+[ -f "${kdi_module}" ] || die "KDI module not found: ${kdi_module}"
+if grep -q '^vpp_kdi ' /proc/modules; then
+  sudo rmmod vpp_kdi || die "could not unload vpp_kdi (a process may still have resource fds open)"
+else
+  echo "  vpp_kdi is not currently loaded"
+fi
+sudo insmod "${kdi_module}" debug=1 || die "could not load ${kdi_module}"
+
+step "ensuring ${uio_driver} is available"
+if [ -d "/sys/bus/platform/drivers/${uio_driver}" ]; then
+  echo "  already available (built-in, or already loaded)"
+else
+  sudo modprobe "${uio_driver}" 2>/dev/null || true
+  [ -d "/sys/bus/platform/drivers/${uio_driver}" ] ||
+    die "${uio_driver} is not built in and modprobe could not load it"
+fi
+
+current_driver=""
+if [ -e "${dev_path}/driver" ]; then
+  current_driver=$(basename "$(readlink -f "${dev_path}/driver")")
+fi
+
+if [ "${current_driver}" = "${uio_driver}" ]; then
+  echo "  ${device} is already bound to ${uio_driver}"
+elif [ -n "${current_driver}" ]; then
+  step "setting driver_override=${uio_driver} for ${device}"
+  echo "${uio_driver}" | sudo tee "${dev_path}/driver_override" >/dev/null ||
+    die "could not set driver_override"
+
+  step "unbinding ${device} from ${current_driver}"
+  echo "  if this does not return within a few seconds, it is stuck inside"
+  echo "  the kernel (likely napi_disable()) and will not recover without"
+  echo "  a power cycle - see README.rst"
+  echo "${device}" | sudo tee "${dev_path}/driver/unbind" >/dev/null ||
+    die "unbind from ${current_driver} failed"
+
+  step "binding ${device} to ${uio_driver}"
+  echo "${device}" |
+    sudo tee "/sys/bus/platform/drivers/${uio_driver}/bind" >/dev/null ||
+    die "bind to ${uio_driver} failed"
+else
+  step "setting driver_override=${uio_driver} for ${device}"
+  echo "${uio_driver}" | sudo tee "${dev_path}/driver_override" >/dev/null ||
+    die "could not set driver_override"
+
+  step "binding ${device} to ${uio_driver}"
+  echo "${device}" |
+    sudo tee "/sys/bus/platform/drivers/${uio_driver}/bind" >/dev/null ||
+    die "bind to ${uio_driver} failed"
+fi
+
+step "checking for a uio device"
+uio_dir="${dev_path}/uio"
+[ -d "${uio_dir}" ] || die "no uio entry under ${dev_path} - bind did not take"
+
+for entry in "${uio_dir}"/uio*; do
+  [ -e "${entry}" ] || continue
+  echo "  found $(basename "${entry}") -> /dev/$(basename "${entry}")"
+done
+
+echo "done - use 'dev platform/${device} { }' in startup.conf"
