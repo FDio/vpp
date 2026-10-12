@@ -16,6 +16,40 @@
       "message": "Can someone have a look ?",
       "revId": "aa71595bfe58cfdd6cc40e4df4dba6022482f380",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a54ddec5_c1703bfc",
+        "filename": "src/vlib/main.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1438,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-10-12T08:22:34Z",
+      "side": 1,
+      "message": "Could we add a regression test with both timers overdue in the same iteration, ordering the timed-event record before the sleep timer’s clock restore? It should verify that the event does not enqueue a second restore and that repeated collisions keep the timer count bounded.",
+      "revId": "aa71595bfe58cfdd6cc40e4df4dba6022482f380",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "563ff141_dd8bb6a4",
+        "filename": "src/vlib/node_funcs.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 1133,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-10-12T08:22:34Z",
+      "side": 1,
+      "message": "Could we test scheduling a future event for an already sleeping process, then waking it with an immediate event before either deadline? The immediate event should cancel the sleep timer, and the scheduled event should still be delivered at its deadline.",
+      "revId": "aa71595bfe58cfdd6cc40e4df4dba6022482f380",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
