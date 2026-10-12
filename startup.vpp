@@ -1,0 +1,2 @@
+set terminal pager
+set interface state lan1 up
