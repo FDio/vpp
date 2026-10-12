@@ -34,6 +34,24 @@
       "parentUuid": "12bc535d_bf304599",
       "revId": "1d6dfd2d7ed5add037d91b6336a7a9b05a206a05",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "27fba425_df5d4543",
+        "filename": "src/vnet/sfdp/sfdp.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 493,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-10-12T14:24:24Z",
+      "side": 1,
+      "message": "Agreed that reaped sessions are skipped once expiry runs. Could we increment the batch counter for every session visited, including those for which `sfdp_expire_session_now()` returns 0 because `expiry_pending` is set? This would bound active session visits per call without needing a cursor. Consecutive calls might temporarily make no progress while expiry is pending, but they would progress once expiry removes those sessions.",
+      "parentUuid": "62b347d1_278d45dc",
+      "revId": "1d6dfd2d7ed5add037d91b6336a7a9b05a206a05",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
