@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "2680e6b3_f5736b15",
+        "filename": "src/plugins/rdma/device.c",
+        "patchSetId": 68
+      },
+      "lineNbr": 977,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-10-12T19:59:49Z",
+      "side": 1,
+      "message": "Addressed in PS69.\n\nThe initial DV WR reservation is now bounded using the power-of-two maximum WQE allocation. The returned SQ is inspected and retried with fewer WRs if still oversized; SQ/CQ counts are validated against the four-bit logarithms and 16-bit counters before storing them. The requested buffer/CQ capacities are preserved. On ConnectX-6, 4096-buffer QPs create successfully with SQ\u003d32768 and CQ\u003d8192, both with and without TSO. This device rejects an unbounded 4096-WR request before SQ inspection, which is why the initial bound is also needed.",
+      "parentUuid": "024b53d4_ac9dc2ff",
+      "revId": "9742d1d65ef3f709792c8e9a8abbdd2350605ae2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "8025197e_7b6fb731",
@@ -31,6 +49,24 @@
       "writtenOn": "2026-10-12T14:19:08Z",
       "side": 1,
       "message": "When the fast loop has built a regular-send prefix, `last` initially points at the next unused WQE. If the first GSO packet returns `NO_SLOTS`, we signal that unused WQE instead of the prefix’s last WQE, so the prefix has no completion.\n\nFor example, 255 regular packets followed by GSO on an empty 256-slot buffer ring can leave subsequent TSO traffic unable to progress. Could we pass the prefix’s actual last WQE into this helper?",
+      "revId": "9742d1d65ef3f709792c8e9a8abbdd2350605ae2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "afbe0198_bc29f04f",
+        "filename": "src/plugins/rdma/output.c",
+        "patchSetId": 68
+      },
+      "lineNbr": 1007,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-10-12T19:59:49Z",
+      "side": 1,
+      "message": "Addressed in PS69.\n\nThe actual last posted WQE and consumed-packet count are now passed into the chained/TSO helper. A NO_SLOTS result or a dropped GSO packet preserves the prefix completion target. The 255 SEND + GSO case completes the SEND prefix, releases its buffers, then successfully retries and completes the GSO packet, including counter/ring wrap cases. The original PS68 fails the same completion assertion.",
+      "parentUuid": "8025197e_7b6fb731",
       "revId": "9742d1d65ef3f709792c8e9a8abbdd2350605ae2",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
