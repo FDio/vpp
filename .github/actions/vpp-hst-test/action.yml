@@ -94,10 +94,14 @@ runs:
             }
 
             check_for_core_files || true
+            "$GITHUB_ACTION_PATH/cleanup-host-anonymous-volumes.sh"
             if [ "${{ inputs.BUILD_TYPE }}" == "debug" ] ; then
                 hst_debug_build_run || true
             else
                 hst_build_run || true
+            if ! make -C "$HS_TEST_DIR" clean-hst-docker-state ; then
+                echo "FAILED 'make -C $HS_TEST_DIR clean-hst-docker-state'"
+            fi
             fi
             check_for_core_files || true
             if [ -n "$BUILD_ERROR" ] ; then
@@ -106,5 +110,8 @@ runs:
             fi
             echo -e "\n$TUI_LINE\n* VPP ${BUILD_TYPE^^} ${OS_ID^^}-${OS_VERSION_ID}-${OS_ARCH^^}" \
                     "\n* HST $BUILD_RESULT\n$TUI_LINE\n"
+            if ! make -C "$HS_TEST_DIR" clean-hst-docker-state ; then
+                echo "FAILED 'make -C $HS_TEST_DIR clean-hst-docker-state'"
+            fi
             exit $RETVAL
           } | tee "$LOG_FILE"
