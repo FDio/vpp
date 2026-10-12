@@ -34,6 +34,11 @@
 #include <unistd.h>
 #include <vcl/vppcom.h>
 
+#if defined(__FreeBSD__)
+#include <netinet/in.h>
+#undef close /* This is needed due to clash with close macro defined in epoll-shim in FreeBSD */
+#endif
+
 #define TCP_TEST_ENDPOINT_BUFSZ		      4096
 #define TCP_TEST_ENDPOINT_CTL_READ_TIMEOUT_MS 5000
 typedef struct
@@ -437,8 +442,12 @@ tcp_test_endpoint_server_set_sockopts (int fd, uint32_t rcvbuf, uint32_t window_
 
   if (rcvbuf)
     (void) setsockopt (fd, SOL_SOCKET, SO_RCVBUF, &rcvbuf, sizeof (rcvbuf));
+
+#if ! defined(__FreeBSD__)
   if (window_clamp)
     (void) setsockopt (fd, IPPROTO_TCP, TCP_WINDOW_CLAMP, &window_clamp, sizeof (window_clamp));
+#endif
+  
   (void) setsockopt (fd, IPPROTO_TCP, TCP_NODELAY, &one, sizeof (one));
 }
 
@@ -722,8 +731,11 @@ main (int argc, char **argv)
 	    control_path = argv[++i];
 	  else if (!strcmp (argv[i], "--rcvbuf") && i + 1 < argc)
 	    rcvbuf = (uint32_t) strtoul (argv[++i], 0, 10);
+	  /* WINDOW_CLAMP socket option not supported on FreeBSD */
+#if ! defined(__FreeBSD__)
 	  else if (!strcmp (argv[i], "--window-clamp") && i + 1 < argc)
 	    window_clamp = (uint32_t) strtoul (argv[++i], 0, 10);
+#endif
 	  else if (!strcmp (argv[i], "--pause-read"))
 	    paused = 1;
 	  else
