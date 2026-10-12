@@ -15,6 +15,12 @@ find_package(Python3 REQUIRED COMPONENTS Interpreter)
 set(PYTHONINTERP_FOUND ${Python3_Interpreter_FOUND})
 set(PYTHON_EXECUTABLE ${Python3_EXECUTABLE})
 
+if("${CMAKE_SYSTEM_NAME}" STREQUAL "FreeBSD")
+set(NO_BUILD_ISOLATION, "--no-build-isolation")
+else()
+set(NO_BUILD_ISOLATION, "")
+endif()
+
 install(
   CODE "
   execute_process(
@@ -22,6 +28,7 @@ install(
     COMMAND ${PYTHON_EXECUTABLE} -m pip
       install .
 	--disable-pip-version-check
+	${NO_BUILD_ISOLATION}
 	--root=\$ENV{DESTDIR}/
 	--prefix=${CMAKE_INSTALL_PREFIX}
 	--no-deps

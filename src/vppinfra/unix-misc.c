@@ -34,7 +34,9 @@
 
 __clib_export __thread clib_thread_index_t __os_thread_index = 0;
 __clib_export __thread clib_numa_node_index_t __os_numa_index = 0;
+#ifdef __linux__
 __clib_export cpu_set_t __os_affinity_cpu_set;
+#endif	/* __linux__ */
 __clib_export clib_bitmap_t *os_get_cpu_affinity_bitmap ();
 
 clib_error_t *
@@ -248,7 +250,7 @@ os_get_online_cpu_core_bitmap ()
 #if __linux__
   return clib_sysfs_read_bitmap ("/sys/devices/system/cpu/online");
 #elif defined(__FreeBSD__)
-  return os_get_cpu_affinity_bitmap (0);
+  return os_get_cpu_affinity_bitmap ();
 #else
   return 0;
 #endif

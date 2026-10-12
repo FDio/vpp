@@ -54,6 +54,41 @@ vlib_pci_get_num_msix_interrupts (vlib_main_t *vm, vlib_pci_dev_handle_t h)
   return 0;
 }
 
+u32
+vlib_pci_get_num_msi_interrupts (vlib_main_t *vm, vlib_pci_dev_handle_t h)
+{
+  return 0;
+}
+
+clib_error_t *
+vlib_pci_register_msi_handler (vlib_main_t *vm, vlib_pci_dev_handle_t h,
+			       u32 start, u32 count,
+			       pci_msix_handler_function_t *msi_handler)
+{
+  return clib_error_return(0, "not implemented on FreeBSD");
+}
+
+clib_error_t *
+vlib_pci_unregister_msi_handler (vlib_main_t *vm, vlib_pci_dev_handle_t h,
+                                 u32 start, u32 count)
+{
+  return clib_error_return(0, "not implemented on FreeBSD");
+}
+
+clib_error_t *
+vlib_pci_enable_msi_irq (vlib_main_t *vm, vlib_pci_dev_handle_t h, u16 start,
+                         u16 count)
+{
+  return clib_error_return(0, "not implemented on FreeBSD");
+}
+
+clib_error_t *
+vlib_pci_disable_msi_irq (vlib_main_t *vm, vlib_pci_dev_handle_t h, u16 start,
+                          u16 count)
+{
+  return clib_error_return(0, "not implemented on FreeBSD");
+}
+
 /* Call to allocate/initialize the pci subsystem.
    This is not an init function so that users can explicitly enable
    pci only when it's needed. */

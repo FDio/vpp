@@ -30,7 +30,7 @@ typedef struct
 {
   f64 next_expiration;
   u32 handle;
-  u32 __unused;
+  u32 unused;
 } __attribute__ ((may_alias)) sfdp_session_timer_t;
 
 #define _(name, val, str) SFDP_TIMEOUT_DECLARE (name);
