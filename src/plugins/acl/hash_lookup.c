@@ -685,7 +685,6 @@ hash_acl_apply(acl_main_t *am, u32 lc_index, int acl_index, u32 acl_position)
     pae->ace_index = ha->rules[i].ace_index;
     pae->acl_position = acl_position;
     pae->action = ha->rules[i].action;
-    pae->hitcount = 0;
     pae->hash_ace_info_index = i;
     /* we might link it in later */
     pae->collision_head_ae_index = ~0;
@@ -1179,10 +1178,11 @@ static void
 acl_plugin_print_pae (vlib_main_t * vm, int j, applied_hash_ace_entry_t * pae)
 {
   vlib_cli_output (vm,
-		   "    %4d: acl %d rule %d action %d bitmask-ready rule %d mask type index: %d colliding_rules: %d collision_head_ae_idx %d hitcount %lld acl_pos: %d",
-		   j, pae->acl_index, pae->ace_index, pae->action,
-		   pae->hash_ace_info_index, pae->mask_type_index, vec_len(pae->colliding_rules), pae->collision_head_ae_index,
-		   pae->hitcount, pae->acl_position);
+		   "    %4d: acl %d rule %d action %d bitmask-ready rule %d mask type index: %d "
+		   "colliding_rules: %d collision_head_ae_idx %d acl_pos: %d",
+		   j, pae->acl_index, pae->ace_index, pae->action, pae->hash_ace_info_index,
+		   pae->mask_type_index, vec_len (pae->colliding_rules),
+		   pae->collision_head_ae_index, pae->acl_position);
   int jj;
   for(jj=0; jj<vec_len(pae->colliding_rules); jj++)
     acl_plugin_print_colliding_rule(vm, jj, vec_elt_at_index(pae->colliding_rules, jj));

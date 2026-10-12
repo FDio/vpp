@@ -627,7 +627,6 @@ hash_multi_acl_match_5tuple (void *p_acl_main, u32 lc_index, fa_5tuple_t * pkt_5
   u32 match_index = multi_acl_match_get_applied_ace_index(am, is_ip6, pkt_5tuple);
   if (match_index < vec_len((*applied_hash_aces))) {
     applied_hash_ace_entry_t *pae = vec_elt_at_index((*applied_hash_aces), match_index);
-    pae->hitcount++;
     *acl_pos_p = pae->acl_position;
     *acl_match_p = pae->acl_index;
     *rule_match_p = pae->ace_index;

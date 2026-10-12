@@ -56,10 +56,6 @@ typedef struct {
    */
   collision_match_rule_t *colliding_rules;
   /*
-   * number of hits on this entry
-   */
-  u64 hitcount;
-  /*
    * acl position in vector of ACLs within lookup context
    */
   u32 acl_position;
