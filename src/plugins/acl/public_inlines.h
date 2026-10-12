@@ -652,12 +652,13 @@ acl_plugin_match_5tuple_inline (void *p_acl_main, u32 lc_index,
   fa_5tuple_t * pkt_5tuple_internal = (fa_5tuple_t *)pkt_5tuple;
   pkt_5tuple_internal->pkt.lc_index = lc_index;
   if (PREDICT_TRUE(am->use_hash_acl_matching)) {
-    if (PREDICT_FALSE(pkt_5tuple_internal->pkt.is_nonfirst_fragment)) {
+    if (PREDICT_FALSE(pkt_5tuple_internal->pkt.is_nonfirst_fragment &&
+                      am->l4_match_nonfirst_fragment)) {
       /*
-       * tuplemerge does not take fragments into account,
-       * and in general making fragments first class citizens has
-       * proved more overhead than it's worth - so just fall back to linear
-       * matching in that case.
+       * Matching a non-initial fragment against L4 rules by protocol alone
+       * is not expressible in the tuplemerge hash, so fall back to linear
+       * matching. Without l4-match-nonfirst-fragment the hash masks already
+       * keep L4 rules away from non-initial fragments.
        */
       return linear_multi_acl_match_5tuple(p_acl_main, lc_index, pkt_5tuple_internal, is_ip6, r_action,
                                  r_acl_pos_p, r_acl_match_p, r_rule_match_p, trace_bitmap);
@@ -687,12 +688,13 @@ acl_plugin_match_5tuple_inline_and_count (void *p_acl_main, u32 lc_index,
   fa_5tuple_t * pkt_5tuple_internal = (fa_5tuple_t *)pkt_5tuple;
   pkt_5tuple_internal->pkt.lc_index = lc_index;
   if (PREDICT_TRUE(am->use_hash_acl_matching)) {
-    if (PREDICT_FALSE(pkt_5tuple_internal->pkt.is_nonfirst_fragment)) {
+    if (PREDICT_FALSE(pkt_5tuple_internal->pkt.is_nonfirst_fragment &&
+                      am->l4_match_nonfirst_fragment)) {
       /*
-       * tuplemerge does not take fragments into account,
-       * and in general making fragments first class citizens has
-       * proved more overhead than it's worth - so just fall back to linear
-       * matching in that case.
+       * Matching a non-initial fragment against L4 rules by protocol alone
+       * is not expressible in the tuplemerge hash, so fall back to linear
+       * matching. Without l4-match-nonfirst-fragment the hash masks already
+       * keep L4 rules away from non-initial fragments.
        */
       ret = linear_multi_acl_match_5tuple(p_acl_main, lc_index, pkt_5tuple_internal, is_ip6, r_action,
                                  r_acl_pos_p, r_acl_match_p, r_rule_match_p, trace_bitmap);
