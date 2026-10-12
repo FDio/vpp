@@ -13,7 +13,6 @@ src_dir="$(dirname "$(readlink -f "$0")")"
 host_arch=$(uname -m)
 arch=${host_arch}
 native_only=false
-prefix_path="/opt/vpp/external/${arch}"
 wipe=false
 verbose=false
 args=()
@@ -38,7 +37,7 @@ OPTIONS:
   --option, -o            Enable specific VPP options (fib8, fib16)
   --platform, -p          Specify target platform
   --plugins, -P           Specify list of plugins to be built
-  --prefix, -r            Specify prefix path (default: $prefix_path)
+  --prefix, -r            Specify prefix path (default: /opt/vpp/external/<target-arch>)
   --sanitize, -s          Enable sanitizer (mem)
   --tests, -S             Specify list of tests to be built
   --tools, -T             Specify list of tools to be built
@@ -221,7 +220,7 @@ if [ "${arch}" != "${host_arch}" ] ; then
   args+=("-DCMAKE_FIND_ROOT_PATH_MODE_PACKAGE=ONLY")
 fi
 
-args+=("-DCMAKE_PREFIX_PATH=${prefix_path}")
+[[ -v prefix_path ]] && args+=("-DCMAKE_PREFIX_PATH=${prefix_path}")
 args+=("-DCMAKE_EXPORT_COMPILE_COMMANDS:BOOL=ON")
 args+=("-DCMAKE_INSTALL_PREFIX=${install_dir}")
 args+=("-DCMAKE_BUILD_TYPE:STRING=${build_type}")
