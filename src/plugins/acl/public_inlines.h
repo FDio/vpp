@@ -465,7 +465,8 @@ match_portranges(acl_main_t *am, fa_5tuple_t *match, u32 index)
 }
 
 always_inline int
-single_rule_match_5tuple (acl_rule_t * r, int is_ip6, fa_5tuple_t * pkt_5tuple)
+single_rule_match_5tuple (acl_rule_t * r, int is_ip6, fa_5tuple_t * pkt_5tuple,
+			  int l4_match_nonfirst_fragment)
 {
   if (is_ip6 != r->is_ipv6)
     {
@@ -495,6 +496,10 @@ single_rule_match_5tuple (acl_rule_t * r, int is_ip6, fa_5tuple_t * pkt_5tuple)
     {
       if (pkt_5tuple->l4.proto != r->proto)
 	return 0;
+
+      /* non-initial fragment: L4 rules match by protocol alone, if so configured */
+      if (PREDICT_FALSE (pkt_5tuple->pkt.is_nonfirst_fragment))
+	return l4_match_nonfirst_fragment;
 
       /* A sanity check just to ensure we are about to match the ports extracted from the packet */
       if (PREDICT_FALSE (!pkt_5tuple->pkt.l4_valid))
@@ -606,7 +611,8 @@ multi_acl_match_get_applied_ace_index (acl_main_t * am, int is_ip6, fa_5tuple_t 
 		{
 		  continue;
 		}
-	      if (single_rule_match_5tuple (&crs[i].rule, is_ip6, match))
+	      if (single_rule_match_5tuple (&crs[i].rule, is_ip6, match,
+					    am->l4_match_nonfirst_fragment))
 		{
 		  curr_match_index = crs[i].applied_entry_index;
 		}
@@ -637,83 +643,51 @@ hash_multi_acl_match_5tuple (void *p_acl_main, u32 lc_index, fa_5tuple_t * pkt_5
   return 0;
 }
 
-
-
 always_inline int
-acl_plugin_match_5tuple_inline (void *p_acl_main, u32 lc_index,
-                                           fa_5tuple_opaque_t * pkt_5tuple,
-                                           int is_ip6, u8 * r_action,
-                                           u32 * r_acl_pos_p,
-                                           u32 * r_acl_match_p,
-                                           u32 * r_rule_match_p,
-                                           u32 * trace_bitmap)
+acl_plugin_match_5tuple_inline (void *p_acl_main, u32 lc_index, fa_5tuple_opaque_t *pkt_5tuple,
+				int is_ip6, u8 *r_action, u32 *r_acl_pos_p, u32 *r_acl_match_p,
+				u32 *r_rule_match_p, u32 *trace_bitmap)
 {
   acl_main_t *am = p_acl_main;
-  fa_5tuple_t * pkt_5tuple_internal = (fa_5tuple_t *)pkt_5tuple;
+  fa_5tuple_t *pkt_5tuple_internal = (fa_5tuple_t *) pkt_5tuple;
   pkt_5tuple_internal->pkt.lc_index = lc_index;
-  if (PREDICT_TRUE(am->use_hash_acl_matching)) {
-    if (PREDICT_FALSE(pkt_5tuple_internal->pkt.is_nonfirst_fragment)) {
-      /*
-       * tuplemerge does not take fragments into account,
-       * and in general making fragments first class citizens has
-       * proved more overhead than it's worth - so just fall back to linear
-       * matching in that case.
-       */
-      return linear_multi_acl_match_5tuple(p_acl_main, lc_index, pkt_5tuple_internal, is_ip6, r_action,
-                                 r_acl_pos_p, r_acl_match_p, r_rule_match_p, trace_bitmap);
-    } else {
-      return hash_multi_acl_match_5tuple(p_acl_main, lc_index, pkt_5tuple_internal, is_ip6, r_action,
-                                 r_acl_pos_p, r_acl_match_p, r_rule_match_p, trace_bitmap);
+  if (PREDICT_TRUE (am->use_hash_acl_matching))
+    {
+      return hash_multi_acl_match_5tuple (p_acl_main, lc_index, pkt_5tuple_internal, is_ip6,
+					  r_action, r_acl_pos_p, r_acl_match_p, r_rule_match_p,
+					  trace_bitmap);
     }
-  } else {
-    return linear_multi_acl_match_5tuple(p_acl_main, lc_index, pkt_5tuple_internal, is_ip6, r_action,
-                                 r_acl_pos_p, r_acl_match_p, r_rule_match_p, trace_bitmap);
-  }
+  else
+    {
+      return linear_multi_acl_match_5tuple (p_acl_main, lc_index, pkt_5tuple_internal, is_ip6,
+					    r_action, r_acl_pos_p, r_acl_match_p, r_rule_match_p,
+					    trace_bitmap);
+    }
 }
-
 
 always_inline int
 acl_plugin_match_5tuple_inline_and_count (void *p_acl_main, u32 lc_index,
-                                           fa_5tuple_opaque_t * pkt_5tuple,
-                                           int is_ip6, u8 * r_action,
-                                           u32 * r_acl_pos_p,
-                                           u32 * r_acl_match_p,
-                                           u32 * r_rule_match_p,
-                                           u32 * trace_bitmap,
-					   u32 packet_size)
+					  fa_5tuple_opaque_t *pkt_5tuple, int is_ip6, u8 *r_action,
+					  u32 *r_acl_pos_p, u32 *r_acl_match_p, u32 *r_rule_match_p,
+					  u32 *trace_bitmap, u32 packet_size)
 {
   acl_main_t *am = p_acl_main;
   int ret = 0;
   fa_5tuple_t * pkt_5tuple_internal = (fa_5tuple_t *)pkt_5tuple;
   pkt_5tuple_internal->pkt.lc_index = lc_index;
   if (PREDICT_TRUE(am->use_hash_acl_matching)) {
-    if (PREDICT_FALSE(pkt_5tuple_internal->pkt.is_nonfirst_fragment)) {
-      /*
-       * tuplemerge does not take fragments into account,
-       * and in general making fragments first class citizens has
-       * proved more overhead than it's worth - so just fall back to linear
-       * matching in that case.
-       */
-      ret = linear_multi_acl_match_5tuple(p_acl_main, lc_index, pkt_5tuple_internal, is_ip6, r_action,
+    ret = hash_multi_acl_match_5tuple(p_acl_main, lc_index, pkt_5tuple_internal, is_ip6, r_action,
                                  r_acl_pos_p, r_acl_match_p, r_rule_match_p, trace_bitmap);
-    } else {
-      ret = hash_multi_acl_match_5tuple(p_acl_main, lc_index, pkt_5tuple_internal, is_ip6, r_action,
-                                 r_acl_pos_p, r_acl_match_p, r_rule_match_p, trace_bitmap);
-    }
   } else {
     ret = linear_multi_acl_match_5tuple(p_acl_main, lc_index, pkt_5tuple_internal, is_ip6, r_action,
                                  r_acl_pos_p, r_acl_match_p, r_rule_match_p, trace_bitmap);
   }
   if (PREDICT_TRUE(ret)) {
     clib_thread_index_t thread_index = os_get_thread_index ();
-    vlib_increment_combined_counter (
-      am->combined_acl_counters + *r_acl_match_p, thread_index,
-      *r_rule_match_p, 1, packet_size);
-  }
+    vlib_increment_combined_counter (am->combined_acl_counters + *r_acl_match_p, thread_index,
+				     *r_rule_match_p, 1, packet_size);
+    }
   return ret;
 }
-
-
-
 
 #endif
