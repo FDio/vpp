@@ -496,6 +496,7 @@ struct vnet_dev_driver_registration
     vnet_dev_ops_t ops;
     clib_arg_t *args;
     u16 data_sz;
+    u8 dma_address_space_bits;
   } device;
   struct
   {
@@ -621,6 +622,8 @@ __clib_export vnet_dev_rv_t vnet_dev_port_add (vlib_main_t *, vnet_dev_t *, vnet
 					       vnet_dev_port_add_args_t *);
 __clib_export vnet_dev_rv_t vnet_dev_dma_mem_alloc (vlib_main_t *, vnet_dev_t *, u32, u32, void **,
 						    char *, ...);
+__clib_export vnet_dev_rv_t vnet_dev_dma_mem_alloc_coherent (vlib_main_t *, vnet_dev_t *, u32, u32,
+							     void **, char *, ...);
 __clib_export void vnet_dev_dma_mem_free (vlib_main_t *, vnet_dev_t *, void *);
 vnet_dev_bus_t *vnet_dev_find_device_bus (vlib_main_t *, vnet_dev_device_id_t);
 void *vnet_dev_get_device_info (vlib_main_t *, vnet_dev_device_id_t);
