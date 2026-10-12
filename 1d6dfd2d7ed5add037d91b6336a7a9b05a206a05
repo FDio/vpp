@@ -16,6 +16,24 @@
       "message": "Could we retain a scan cursor and bound the number of entries inspected per call? Each batch restarts at the beginning and walks previously pending sessions while holding the worker barrier. If expiry has not drained earlier batches, stacking 1,000 batches of 1,000 against one million sessions requires roughly 500 million session visits. This could still produce substantial worker pauses despite the batch limit.",
       "revId": "1d6dfd2d7ed5add037d91b6336a7a9b05a206a05",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "62b347d1_278d45dc",
+        "filename": "src/vnet/sfdp/sfdp.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 493,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-10-12T13:48:11Z",
+      "side": 1,
+      "message": "In my opinion, I do not think we need a scan cursor here.\n\n\u003e \u0027If expiry has not drained earlier batches, stacking 1,000 batches of 1,000 against one million sessions requires roughly 500 million session visits.\u0027\n\nI think it is very unlikely to fall in this scenario. When calling `sfdp_kill_session_batch`, if a session is marked for expiry it will call `vlib_node_set_interrupt_pending(.., sfdp-expire)`. Therefore, `sfdp-expire` will be called in the next main/worker loop iteration and sfdp sessions marked for expiry will be reaped. The scenario you are describing could indeed occur if there is a quick burst of successive `sfdp_kill_session_batch` API calls, and the API handler re-acquires the worker barrier before the next main/worker loop iteration runs, but we expect consumers of the API (i.e. CSIT) to not send bursts of API requests / add a short pause in-between to avoid occurrence of this specific scenario.\n\n\u003e \u0027Each batch restarts at the beginning and walks previously pending sessions while holding the worker barrier`\n\n`sfdp_foreach_session()` iterates over valid pool indices in the sfdp session tables. Therefore if we previously visited a session, marked it for expiry, and it has been reaped by sfdp-expire, then it won\u0027t be iterated over again \u0026 the iteration will start from the next valid pool index for sfdp sessions. The exception remains freed sessions that a returned to worker freelists (they are still allocated in the pool and we iterate over them still) but they should be relatively minor compared to the global session table (1/128 session freelist ratio per thread compared to the global table).",
+      "parentUuid": "12bc535d_bf304599",
+      "revId": "1d6dfd2d7ed5add037d91b6336a7a9b05a206a05",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
