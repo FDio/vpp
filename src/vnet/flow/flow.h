@@ -13,6 +13,9 @@
 #include <vnet/ip/ip4_packet.h>
 #include <vnet/ip/ip6_packet.h>
 #include <vnet/ethernet/packet.h>
+
+/* undef needed for FreeBSD to avoid clash with a define included in net/if.h */
+#undef RSS_FUNC_TOEPLITZ
 #include <vnet/flow/flow.api_types.h>
 
 #define foreach_flow_type_inline                                                                   \

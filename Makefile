@@ -410,6 +410,7 @@ help:
 	@echo " DISABLED_PLUGINS  = $(DISABLED_PLUGINS)"
 
 $(BR)/.deps.ok:
+ifneq ($(filter freebsd,$(OS_ID)),$(OS_ID))
 ifeq ($(findstring y,$(UNATTENDED)),y)
 	$(MAKE) install-dep
 endif
@@ -432,6 +433,7 @@ else ifneq ("$(wildcard /etc/redhat-release)","")
 	  exit 1 ; \
 	fi ; \
 	exit 0
+endif
 endif
 	@touch $@
 
@@ -852,7 +854,9 @@ pkg-srpm: dist
 
 .PHONY: install-ext-deps
 install-ext-deps:
+ifneq ($(filter freebsd,$(OS_ID)),$(OS_ID))
 	$(MAKE) CC=$(CC) -C build/external install-$(PKG)
+endif
 
 .PHONY: install-ext-dep
 install-ext-dep: install-ext-deps

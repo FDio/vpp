@@ -47,7 +47,7 @@
 #endif
 
 #ifndef MAP_FIXED_NOREPLACE
-#define MAP_FIXED_NOREPLACE MAP_FIXED
+#define MAP_FIXED_NOREPLACE (MAP_FIXED | MAP_EXCL)
 #endif
 
 static void
@@ -187,10 +187,8 @@ clib_mem_vm_create_fd (clib_mem_page_sz_t log2_page_size, char *fmt, ...)
   return fd;
 }
 
-uword
-
-  __clib_export clib_mem_vm_map_hdr_t *
-  clib_mem_vm_get_next_map_hdr (clib_mem_vm_map_hdr_t *hdr)
+__clib_export clib_mem_vm_map_hdr_t *
+clib_mem_vm_get_next_map_hdr (clib_mem_vm_map_hdr_t *hdr)
 {
   /* TODO: Not yet implemented */
   return NULL;
@@ -240,8 +238,7 @@ clib_mem_vm_map_internal (void *base, clib_mem_page_sz_t log2_page_sz,
 
   size = round_pow2 (size, 1ULL << log2_page_sz);
 
-  base = (void *) clib_mem_vm_reserve ((uword) base, size, log2_page_sz,
-				       log2_align);
+  base = (void *) clib_mem_vm_reserve ((uword) base, size, log2_align);
 
   if (base == (void *) ~0)
     return CLIB_MEM_VM_MAP_FAILED;

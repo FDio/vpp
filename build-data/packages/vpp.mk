@@ -44,7 +44,10 @@ ifneq ($(VPP_EXTRA_CMAKE_ARGS),)
 vpp_cmake_args += $(VPP_EXTRA_CMAKE_ARGS)
 endif
 
+ifneq ($(filter freebsd,$(OS_ID)),$(OS_ID))
 vpp_configure_depend += external-install
+endif
+
 vpp_configure = \
   cd $(PACKAGE_BUILD_DIR) && \
   $(CMAKE) -G Ninja $(vpp_cmake_args) $(call find_source_fn,$(PACKAGE_SOURCE))

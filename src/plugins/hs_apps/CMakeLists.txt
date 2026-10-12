@@ -70,7 +70,7 @@ if(VPP_BUILD_VCL_TESTS)
 
   add_vpp_test(tcp_test_endpoint
     SOURCES vcl/tcp_test_endpoint.c
-    LINK_LIBRARIES vppcom pthread
+    LINK_LIBRARIES vppcom pthread ${EPOLL_LIB}
     NO_INSTALL
   )
 

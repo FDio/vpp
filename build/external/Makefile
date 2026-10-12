@@ -16,16 +16,16 @@ include ../packages_common.mk
 
 PKG_SUFFIX ?= $(shell git log --oneline v$(PKG_VERSION)-rc0.. . | wc -l)
 
+ifneq ($(shell uname), FreeBSD)
 include packages/daq.mk
 include packages/ipsec-mb.mk
 include packages/quicly.mk
 include packages/libcbor.mk
-ifneq ($(shell uname), FreeBSD)
 include packages/rdma-core.mk
 include packages/xdp-tools.mk
 include packages/octeon-roc.mk
-endif	# ! FreeBSD
 include packages/dpdk.mk
+endif	# ! FreeBSD
 
 .PHONY: clean
 clean:
@@ -33,7 +33,8 @@ clean:
 
 .PHONY: install
 ifeq ($(shell uname), FreeBSD)
-install: $(if $(ARCH_X86_64), ipsec-mb-install) daq-install dpdk-install quicly-install libcbor-install
+# If we are building as a FreeBSD port we can't follow the install rules, they violate the isolated ports build
+install:
 else
 install: $(if $(ARCH_X86_64), ipsec-mb-install) daq-install dpdk-install rdma-core-install quicly-install xdp-tools-install libcbor-install $(if $(AARCH64), octeon-roc-install)
 endif	# FreeBSD
