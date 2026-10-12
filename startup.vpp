@@ -1,0 +1,8 @@
+set terminal pager off
+trace add lan1-rx 50
+set interface ip address lan1 192.168.123.222/24
+set interface state wan up
+set interface state lan1 up
+set interface state lan2 up
+show dev debug
+
