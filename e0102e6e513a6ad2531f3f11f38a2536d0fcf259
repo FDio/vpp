@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "9104f1da_62177576",
+        "filename": "src/vnet/session/application_local.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 287,
+      "author": {
+        "id": 3121
+      },
+      "writtenOn": "2026-10-12T02:56:59Z",
+      "side": 1,
+      "message": "Done.",
+      "parentUuid": "0761c46a_7dc423a2",
+      "revId": "e0102e6e513a6ad2531f3f11f38a2536d0fcf259",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "ea366c51_f25b963e",
@@ -31,6 +49,24 @@
       "writtenOn": "2026-10-11T22:03:54Z",
       "side": 1,
       "message": "Once we\u0027ve validated the listener once I think it\u0027s safe to assume it exists and it\u0027s in listening state. It shouldn\u0027t disappear while we\u0027re accepting. Same comment for lower",
+      "revId": "e0102e6e513a6ad2531f3f11f38a2536d0fcf259",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "941eb06d_8998c362",
+        "filename": "src/vnet/session/application_local.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 294,
+      "author": {
+        "id": 3121
+      },
+      "writtenOn": "2026-10-12T02:56:59Z",
+      "side": 1,
+      "message": "Ack, fixed in the latest commit.",
+      "parentUuid": "ea366c51_f25b963e",
       "revId": "e0102e6e513a6ad2531f3f11f38a2536d0fcf259",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
