@@ -394,6 +394,49 @@ vnet_dev_dma_mem_alloc (vlib_main_t *vm, vnet_dev_t *dev, u32 size, u32 align, v
   return VNET_DEV_OK;
 }
 
+vnet_dev_rv_t
+vnet_dev_dma_mem_alloc_coherent (vlib_main_t *vm, vnet_dev_t *dev, u32 size, u32 align, void **pp,
+				 char *fmt, ...)
+{
+  vnet_dev_dma_mem_alloc_t *a = 0, *candidate;
+  va_list va;
+  void *p;
+
+  vnet_dev_validate (vm, dev);
+
+  p = vlib_physmem_alloc_aligned_on_numa_coherent (vm, size, align ? align : CLIB_CACHE_LINE_BYTES,
+						   dev->numa_node);
+  if (p == 0)
+    {
+      log_err (dev, "coherent DMA alloc failed (size %u align %u): %U", size, align,
+	       format_clib_error, vlib_physmem_last_error (vm));
+      return VNET_DEV_ERR_DMA_MEM_ALLOC_FAIL;
+    }
+
+  *pp = p;
+  vec_foreach (candidate, dev->dma_allocs)
+    if (candidate->va == 0)
+      {
+	a = candidate;
+	break;
+      }
+  if (a == 0)
+    vec_add2 (dev->dma_allocs, a, 1);
+
+  va_start (va, fmt);
+  a->description = va_format (0, fmt, &va);
+  va_end (va);
+  a->va = p;
+  a->pa = vnet_dev_get_dma_addr (vm, dev, p);
+  a->size = size;
+  a->align = align ? align : CLIB_CACHE_LINE_BYTES;
+
+  log_debug (dev, "%v: %u coherent bytes va %p dma-addr 0x%lx numa %u align %u", a->description,
+	     size, p, a->pa, dev->numa_node, align);
+
+  return VNET_DEV_OK;
+}
+
 void
 vnet_dev_dma_mem_free (vlib_main_t *vm, vnet_dev_t *dev, void *p)
 {
