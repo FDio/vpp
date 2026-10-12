@@ -1,0 +1,72 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e98bd449_30fd9dc7",
+        "filename": "src/plugins/rdma/output.c",
+        "patchSetId": 26
+      },
+      "lineNbr": 85,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-10-12T13:57:33Z",
+      "side": 1,
+      "message": "Could we select the TX mode once before the retry loop and pass it as a constant into the `always_inline` completion and doorbell helpers? This would eliminate repeated eMPW flag checks and allow both doorbell paths to share the completion flag, barriers, DB-record update, and MMIO write. Constant propagation can retain only the accounting and assertions applicable to each mode.",
+      "revId": "5824118f828e40cc822ffd3e04216b42f6c521c1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "695ad2c0_d7f02f01",
+        "filename": "src/plugins/rdma/output.c",
+        "patchSetId": 26
+      },
+      "lineNbr": 97,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-10-12T13:57:33Z",
+      "side": 1,
+      "message": "An inline-only WQE leaves the buffer tail unchanged. If subsequent non-inline packets fill the buffer ring before its successful CQE is processed, `buf_tail \u003d\u003d txq-\u003ehead` and the second check sees exactly `buf_sz` outstanding buffers. This valid state sets `txq-\u003eerror` and permanently stops TX. Could we allow this case and validate the completed WQE against the outstanding SQ entries?",
+      "revId": "5824118f828e40cc822ffd3e04216b42f6c521c1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8c35c1e9_64863d98",
+        "filename": "src/plugins/rdma/output.c",
+        "patchSetId": 26
+      },
+      "lineNbr": 471,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-10-12T13:57:33Z",
+      "side": 1,
+      "message": "When the fast path has already posted packets and the remaining packets are all too short, this loop drops them without updating `last`. It still points at the next unused SQ slot, so the final doorbell targets an unposted WQE and the posted packets lack a completion request. Could we preserve the last posted WQE across the fallback and drops? A frame containing four valid packets followed by four short packets reproduces this.",
+      "revId": "5824118f828e40cc822ffd3e04216b42f6c521c1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "17ac5d0c_f0b5ddda",
+        "filename": "src/plugins/rdma/output.c",
+        "patchSetId": 26
+      },
+      "lineNbr": 617,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-10-12T13:57:33Z",
+      "side": 1,
+      "message": "Could we simplify the quad length checks by comparing the shortest packet against the required minimum, then break into the local per-packet loop? That loop can count and drop short packets, continue processing, and invoke the chained helper only for chained packets. Please track consumed packets separately from posted WQEs so drops preserve buffer-index alignment.",
+      "revId": "5824118f828e40cc822ffd3e04216b42f6c521c1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
