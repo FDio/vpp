@@ -3,6 +3,7 @@ name: rdma device driver
 maintainer: Benoît Ganne <bganne@cisco.com>
 features:
   - rdma driver for Mellanox ConnectX-4/5 adapters
+  - TSO support for mlx5 (experimental)
 description: "rdma device driver support"
 state: production
 properties: [API, CLI, STATS, MULTITHREAD]
