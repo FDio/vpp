@@ -9,6 +9,7 @@
  */
 
 #include <vlibmemory/api.h>
+#include <sys/random.h>
 #include <vppinfra/random.h>
 #include <vppinfra/error.h>
 #include <vppinfra/hash.h>
@@ -1463,7 +1464,26 @@ bfd_get_session (bfd_main_t * bm, bfd_transport_e t)
   unsigned counter = 0;
   do
     {
-      result->local_discr = random_u32 (&bm->random_seed);
+      /*
+       * Draw the local discriminator from the kernel CSPRNG rather than from
+       * a PRNG seeded by random_default_seed() (getpid()). getpid() is not a
+       * reliable entropy source across VPP instances running in separate PID
+       * namespaces (the launched process can get the same PID in each), which
+       * would make the PRNG produce the same discriminator in every instance.
+       * Using getrandom() makes the value independent per instance. Note the
+       * discriminator space is only 32 bits, so cross-instance uniqueness is
+       * probabilistic, not guaranteed. A zero discriminator is reserved (it
+       * means "unknown" in Your Discriminator), so it is rejected and redrawn.
+       */
+      if (getrandom (&result->local_discr, sizeof (result->local_discr), 0) !=
+	  sizeof (result->local_discr))
+	{
+	  vlib_log_crit (bm->log_class,
+			 "getrandom() failed allocating session discriminator");
+	  pool_put (bm->sessions, result);
+	  bfd_unlock (bm);
+	  return NULL;
+	}
       if (counter > limit)
 	{
 	  vlib_log_crit (bm->log_class,
@@ -1475,7 +1495,7 @@ bfd_get_session (bfd_main_t * bm, bfd_transport_e t)
 	}
       ++counter;
     }
-  while (hash_get (bm->session_by_disc, result->local_discr));
+  while (result->local_discr == 0 || hash_get (bm->session_by_disc, result->local_discr));
   bfd_set_defaults (bm, result);
   hash_set (bm->session_by_disc, result->local_discr, result->bs_idx);
   bfd_validate_counters (bm);
