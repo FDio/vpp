@@ -196,6 +196,7 @@ help:
 	@echo " checkstyle-go            - check style of .go source files"
 	@echo " clean-hst-images         - delete this run's docker images (or RUN_ID=<id>)"
 	@echo " clean-hst-images-all     - delete the docker images of every run"
+	@echo " clean-hst-docker-state   - remove all hs-test docker resources"
 	@echo " clean-hst-registry       - delete images and repositories from local registry"
 	@echo " cleanup-hst              - removes all docker containers and namespaces from last test run"
 	@echo " fixstyle-go              - format .go source files"
@@ -441,3 +442,30 @@ test-wipe:
 .PHONY: clear-hst-registry
 clear-hst-registry:
 	@bash ./script/clean_registry.sh
+
+# Full hst cleanup. Run only when no other hst instance is running.
+# It removes all containers labelled by hs-test, all images, the local registry
+# and its contents, the hst_builder, and the default builder cache.
+.PHONY: clean-hst-docker-state
+clean-hst-docker-state:
+	@echo "Removing all hs-test containers and their anonymous volumes:"
+	@ids=$$(docker ps -a -q --filter "label=io.fd.hs-test.run"); \
+	if [ -n "$$ids" ]; then \
+		docker rm -f -v $$ids; \
+	else \
+		echo "no hs-test containers found"; \
+	fi
+	@$(MAKE) clean-hst-images-all
+	@$(MAKE) clear-hst-registry
+	@if docker container inspect local-registry >/dev/null 2>&1; then \
+		docker rm -f local-registry; \
+	else \
+		echo "local-registry not found"; \
+	fi
+	@if docker buildx inspect hst_builder >/dev/null 2>&1; then \
+		docker buildx rm --force hst_builder; \
+	else \
+		echo "hst_builder not found"; \
+	fi
+	@docker buildx prune --builder default --all --force
+	@docker volume prune --force
