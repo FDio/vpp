@@ -235,7 +235,6 @@ relax_tuple(fa_5tuple_t *mask, int is_ip6, int relax2){
           relax_ip4_addr(&mask->ip4_addr[0], relax2);
           relax_ip4_addr(&mask->ip4_addr[1], relax2);
         }
-	mask->pkt.is_nonfirst_fragment = 0;
 	mask->pkt.l4_valid = 0;
 	if(!first_mask_contains_second_mask(is_ip6, mask, &save_mask)){
 		DBG( "TM-relaxing-ERROR");
@@ -958,7 +957,8 @@ make_port_mask(u16 *portmask, u16 port_first, u16 port_last)
 }
 
 static void
-make_mask_and_match_from_rule(fa_5tuple_t *mask, acl_rule_t *r, hash_ace_info_t *hi)
+make_mask_and_match_from_rule (fa_5tuple_t *mask, acl_rule_t *r, hash_ace_info_t *hi,
+			       int match_nonfirst_fragment)
 {
   clib_memset(mask, 0, sizeof(*mask));
   clib_memset(&hi->match, 0, sizeof(hi->match));
@@ -988,26 +988,36 @@ make_mask_and_match_from_rule(fa_5tuple_t *mask, acl_rule_t *r, hash_ace_info_t 
     mask->l4.proto = ~0; /* L4 proto needs to be matched */
     hi->match.l4.proto = r->proto;
 
-    /* Calculate the src/dst port masks and make the src/dst port matches accordingly */
-    make_port_mask(&mask->l4.port[0], r->src_port_or_type_first, r->src_port_or_type_last);
-    hi->match.l4.port[0] = r->src_port_or_type_first & mask->l4.port[0];
+    if (match_nonfirst_fragment)
+      {
+	/* non-initial fragments carry no L4 header: match on L3 and proto only */
+	mask->pkt.is_nonfirst_fragment = 1;
+	hi->match.pkt.is_nonfirst_fragment = 1;
+      }
+    else
+      {
+	/* Calculate the src/dst port masks and make the src/dst port matches accordingly */
+	make_port_mask (&mask->l4.port[0], r->src_port_or_type_first, r->src_port_or_type_last);
+	hi->match.l4.port[0] = r->src_port_or_type_first & mask->l4.port[0];
 
-    make_port_mask(&mask->l4.port[1], r->dst_port_or_code_first, r->dst_port_or_code_last);
-    hi->match.l4.port[1] = r->dst_port_or_code_first & mask->l4.port[1];
-    /* L4 info must be valid in order to match */
-    mask->pkt.l4_valid = 1;
-    hi->match.pkt.l4_valid = 1;
-    /* And we must set the mask to check that it is an initial fragment */
-    mask->pkt.is_nonfirst_fragment = 1;
-    hi->match.pkt.is_nonfirst_fragment = 0;
-    if ((r->proto == IPPROTO_TCP) && (r->tcp_flags_mask != 0)) {
-      /* if we want to match on TCP flags, they must be masked off as well */
-      mask->pkt.tcp_flags = r->tcp_flags_mask;
-      hi->match.pkt.tcp_flags = r->tcp_flags_value;
-      /* and the flags need to be present within the packet being matched */
-      mask->pkt.tcp_flags_valid = 1;
-      hi->match.pkt.tcp_flags_valid = 1;
-    }
+	make_port_mask (&mask->l4.port[1], r->dst_port_or_code_first, r->dst_port_or_code_last);
+	hi->match.l4.port[1] = r->dst_port_or_code_first & mask->l4.port[1];
+	/* L4 info must be valid in order to match */
+	mask->pkt.l4_valid = 1;
+	hi->match.pkt.l4_valid = 1;
+	/* And we must set the mask to check that it is an initial fragment */
+	mask->pkt.is_nonfirst_fragment = 1;
+	hi->match.pkt.is_nonfirst_fragment = 0;
+	if ((r->proto == IPPROTO_TCP) && (r->tcp_flags_mask != 0))
+	  {
+	    /* if we want to match on TCP flags, they must be masked off as well */
+	    mask->pkt.tcp_flags = r->tcp_flags_mask;
+	    hi->match.pkt.tcp_flags = r->tcp_flags_value;
+	    /* and the flags need to be present within the packet being matched */
+	    mask->pkt.tcp_flags_valid = 1;
+	    hi->match.pkt.tcp_flags_valid = 1;
+	  }
+      }
   }
   /* Sanitize the mask and the match */
   u64 *pmask = (u64 *)mask;
@@ -1054,13 +1064,22 @@ void hash_acl_add(acl_main_t *am, int acl_index)
     ace_info.acl_index = acl_index;
     ace_info.ace_index = i;
 
-    make_mask_and_match_from_rule(&mask, &acl_rules[i], &ace_info);
+    make_mask_and_match_from_rule (&mask, &acl_rules[i], &ace_info, 0);
     mask.pkt.flags_reserved = 0b000;
     ace_info.base_mask_type_index = assign_mask_type_index(am, &mask);
     /* assign the mask type index for matching itself */
     ace_info.match.pkt.mask_type_index_lsb = ace_info.base_mask_type_index;
     DBG("ACE: %d mask_type_index: %d", i, ace_info.base_mask_type_index);
     vec_add1(ha->rules, ace_info);
+    if (acl_rules[i].proto != 0)
+      {
+	/* a second entry for the non-initial fragments of an L4 rule */
+	make_mask_and_match_from_rule (&mask, &acl_rules[i], &ace_info, 1);
+	mask.pkt.flags_reserved = 0b000;
+	ace_info.base_mask_type_index = assign_mask_type_index (am, &mask);
+	ace_info.match.pkt.mask_type_index_lsb = ace_info.base_mask_type_index;
+	vec_add1 (ha->rules, ace_info);
+      }
   }
   /*
    * if an ACL is applied somewhere, fill the corresponding lookup data structures.
