@@ -14,7 +14,11 @@
 ##############################################################################
 # Check if we want to use the system DPDK
 ##############################################################################
-option(VPP_USE_SYSTEM_DPDK "Use the system installation of DPDK." OFF)
+if("${CMAKE_SYSTEM_NAME}" STREQUAL "FreeBSD")
+    option(VPP_USE_SYSTEM_DPDK "Use the system installation of DPDK." ON)
+else()
+    option(VPP_USE_SYSTEM_DPDK "Use the system installation of DPDK." OFF)
+endif()
 if(VPP_USE_SYSTEM_DPDK)
     find_package(PkgConfig REQUIRED)
     pkg_check_modules(DPDK REQUIRED libdpdk)

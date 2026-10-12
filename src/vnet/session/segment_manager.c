@@ -195,7 +195,13 @@ segment_manager_add_segment_inline (segment_manager_t *sm, uword segment_size,
 
   if (props->no_dump_segments || smm->no_dump_segments)
     {
-      if (madvise (fs->ssvm.sh, fs->ssvm.ssvm_size, MADV_DONTDUMP) != 0)
+      int advise;
+#if defined(__FreeBSD__)
+      advise = MADV_NOCORE;
+#else
+      advise = MADV_DONTDUMP;
+#endif
+      if (madvise (fs->ssvm.sh, fs->ssvm.ssvm_size, advise) != 0)
 	clib_warning ("madvise MADV_DONTDUMP failed for seg %s", seg_name);
     }
 
