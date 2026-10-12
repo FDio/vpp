@@ -89,5 +89,13 @@ typedef struct {
 
 typedef clib_error_t * (*acl_plugin_methods_vtable_init_fn_t) (acl_plugin_methods_t *m);
 
+typedef int (*acl_plugin_match_check_fn_t) (void *ctx, u32 acl_index, u32 rule_index);
+
+typedef struct
+{
+  acl_plugin_match_check_fn_t fn;
+  void *ctx;
+} acl_plugin_match_check_t;
+
 #endif
 

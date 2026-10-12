@@ -300,6 +300,8 @@ acl_api_invalid_prefix (const vl_api_prefix_t * prefix)
   return (!valid_af) || ip_prefix_decode2 (prefix, &ip_prefix);
 }
 
+static int acl_set_rules (acl_rule_t *acl_new_rules, u32 *acl_list_index, u8 *tag, size_t tag_len);
+
 static int
 acl_add_list (u32 count, vl_api_acl_rule_t rules[],
 	      u32 * acl_list_index, u8 * tag)
@@ -378,6 +380,15 @@ acl_add_list (u32 count, vl_api_acl_rule_t rules[],
       r->tcp_flags_mask = rules[i].tcp_flags_mask;
     }
 
+  return acl_set_rules (acl_new_rules, acl_list_index, tag, tag_len);
+}
+
+static int
+acl_set_rules (acl_rule_t *acl_new_rules, u32 *acl_list_index, u8 *tag, size_t tag_len)
+{
+  acl_main_t *am = &acl_main;
+  acl_list_t *a;
+
   if (~0 == *acl_list_index)
     {
       /* Get ACL index */
@@ -405,6 +416,25 @@ acl_add_list (u32 count, vl_api_acl_rule_t rules[],
   validate_and_reset_acl_counters (am, *acl_list_index);
   acl_plugin_lookup_context_notify_acl_change (*acl_list_index);
   return 0;
+}
+
+__clib_export int
+acl_plugin_add_replace_rules (u32 *acl_list_index, acl_rule_t *rules, u8 *tag)
+{
+  acl_main_t *am = &acl_main;
+  size_t tag_len = clib_strnlen ((const char *) tag, sizeof (am->acls->tag));
+  acl_rule_t *r;
+
+  if (tag_len == sizeof (am->acls->tag))
+    return VNET_API_ERROR_INVALID_VALUE;
+  if (*acl_list_index != ~0 && pool_is_free_index (am->acls, *acl_list_index))
+    return VNET_API_ERROR_NO_SUCH_ENTRY;
+  vec_foreach (r, rules)
+    if (r->src_prefixlen > (r->is_ipv6 ? 128 : 32) || r->dst_prefixlen > (r->is_ipv6 ? 128 : 32) ||
+	r->src_port_or_type_first > r->src_port_or_type_last ||
+	r->dst_port_or_code_first > r->dst_port_or_code_last)
+      return VNET_API_ERROR_INVALID_VALUE_2;
+  return acl_set_rules (vec_dup (rules), acl_list_index, tag, tag_len);
 }
 
 static int
