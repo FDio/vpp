@@ -9,6 +9,7 @@
  */
 
 #include <vlibmemory/api.h>
+#include <sys/random.h>
 #include <vppinfra/random.h>
 #include <vppinfra/error.h>
 #include <vppinfra/hash.h>
@@ -1418,7 +1419,14 @@ bfd_main_init (vlib_main_t * vm)
   setbuf (stdout, NULL);
 #endif
   bfd_main_t *bm = &bfd_main;
-  bm->random_seed = random_default_seed ();
+  /*
+   * Seed the PRNG used for BFD discriminators (and other per-session random
+   * values) from the kernel CSPRNG, so that the seed is independent per VPP
+   * instance. Fail initialization if entropy cannot be obtained.
+   */
+  if (getrandom (&bm->random_seed, sizeof (bm->random_seed), 0) !=
+      sizeof (bm->random_seed))
+    return clib_error_return (0, "getrandom() failed to seed BFD PRNG");
   bm->vlib_main = vm;
   bm->vnet_main = vnet_get_main ();
   clib_memset (&bm->wheel, 0, sizeof (bm->wheel));
@@ -1475,7 +1483,8 @@ bfd_get_session (bfd_main_t * bm, bfd_transport_e t)
 	}
       ++counter;
     }
-  while (hash_get (bm->session_by_disc, result->local_discr));
+  /* local_discr 0 is reserved (means "unknown" as Your Discriminator). */
+  while (result->local_discr == 0 || hash_get (bm->session_by_disc, result->local_discr));
   bfd_set_defaults (bm, result);
   hash_set (bm->session_by_disc, result->local_discr, result->bs_idx);
   bfd_validate_counters (bm);
