@@ -2507,6 +2507,13 @@ unix_cli_line_edit (unix_cli_main_t * cm, unix_main_t * um,
 	      /* And tell our caller to execute cf->input_command */
 	      return 0;
 	    }
+
+	  /* matched counts the whole action, while the for loop advances
+	   * one more byte. Preserve the byte immediately after the action.
+	   * Telnet processing already returns the last consumed index.
+	   */
+	  if (matched > 0)
+	    matched--;
 	}
 
       i += matched;

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """CLI functional tests"""
 
+import socket
 import unittest
 
 from vpp_papi import VPPIOError
@@ -36,6 +37,30 @@ class TestCLI(VppAsfTestCase):
 
         rv = self.vapi.papi.cli_inband(cmd="show version")
         self.assertEqual(rv.retval, 0)
+
+    def test_interactive_control_sequence_preserves_next_character(self):
+        """Buffered control sequences must not consume the start of show."""
+        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as cli:
+            cli.settimeout(5)
+            cli.connect(self.get_cli_sock_path())
+
+            def read_prompt():
+                output = b""
+                while not output.endswith(b"# "):
+                    chunk = cli.recv(4096)
+                    self.assertTrue(chunk, "CLI closed before the prompt")
+                    output += chunk
+                return output
+
+            # Advertise an interactive terminal, preserving character mode.
+            cli.sendall(b"\xff\xfa\x18\x00xterm\xff\xf0")
+            read_prompt()
+            for control in (b"\x15", b"\x1b[H"):
+                with self.subTest(control=control):
+                    cli.sendall(control + b"show sr localsids\r")
+                    output = read_prompt()
+                    self.assertNotIn(b"unknown input", output)
+                    self.assertIn(b"SRv6 - My LocalSID Table:", output)
 
     def test_long_cli_delay(self):
         """Test that VppApiClient raises VppIOError if timeout."""  # noqa
