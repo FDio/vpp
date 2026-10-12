@@ -1,0 +1,5 @@
+set terminal pager off
+set interface ip address wan 1.0.0.2/24
+set interface ip address lan1 2.0.0.4/24
+set interface ip address lan2 192.168.123.222/24
+set interface state wan up
