@@ -26,6 +26,7 @@ typedef struct
   u8 tcp_flags_mask;
 } acl_rule_t;
 
+typedef int (*acl_plugin_add_replace_rules_fn_t) (u32 *acl_index, acl_rule_t *rules, u8 *tag);
 
 #endif // included_acl_types_h
 
