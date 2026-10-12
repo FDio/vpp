@@ -1,0 +1,20 @@
+set terminal pager off
+trace add lan2-rx 50
+trace add wan-rx 50
+set interface ip address wan 1.0.0.2/24
+set interface ip address lan1 2.0.0.4/24
+set interface ip address lan2 192.168.123.222/24
+set interface state wan up
+set interface state lan1 up
+set interface state lan2 up
+echo ============= wait 10 s =============
+wait 10
+echo ============= done waiting 10 s =============
+show dev debug counters clear
+trace add lan1-rx 10
+echo ============= wait 5 s =============
+wait 5
+echo ============= done waiting 5 s =============
+show dev debug counters clear
+show trace
+
