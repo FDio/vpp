@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8795ca33_43745de0",
+        "filename": "src/vnet/session/application_local.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 297,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-10-12T04:01:01Z",
+      "side": 1,
+      "message": "Can this ever happen? The session is in listening state, transport cannot free up by itself.",
+      "revId": "a84f7712fdba9f52e6bcaf3f3578540c774047c7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
