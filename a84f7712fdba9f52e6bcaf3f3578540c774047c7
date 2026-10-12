@@ -16,6 +16,24 @@
       "message": "Can this ever happen? The session is in listening state, transport cannot free up by itself.",
       "revId": "a84f7712fdba9f52e6bcaf3f3578540c774047c7",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "abef4f8a_3735b7ac",
+        "filename": "src/vnet/session/application_local.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 297,
+      "author": {
+        "id": 3121
+      },
+      "writtenOn": "2026-10-12T04:13:03Z",
+      "side": 1,
+      "message": "The only time I ran into a crash was while trying to run tests by `LD_PRELOAD`ing Go apps using the `WIP` \"Frida gum VCL library\". Let me check that once more to verify the exact backtrace I saw.\nYou\u0027re right, now that I think about it, this should not be needed. I will rerun the tests and clean up the unnecessary check.",
+      "parentUuid": "8795ca33_43745de0",
+      "revId": "a84f7712fdba9f52e6bcaf3f3578540c774047c7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
