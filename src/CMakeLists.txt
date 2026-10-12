@@ -13,6 +13,30 @@
 
 cmake_minimum_required(VERSION 3.19)
 
+##############################################################################
+# Auto cross-compile when VPP_PLATFORM targets a different arch than host.
+# Must happen before project() - that is when CMake picks the toolchain.
+##############################################################################
+if(DEFINED VPP_PLATFORM AND NOT VPP_PLATFORM STREQUAL "default")
+  set(_vpp_early_platform_file ${CMAKE_CURRENT_SOURCE_DIR}/cmake/platform/${VPP_PLATFORM}.cmake)
+  if(EXISTS ${_vpp_early_platform_file})
+    include(${_vpp_early_platform_file})
+  endif()
+  if(DEFINED VPP_PLATFORM_ARCH AND NOT DEFINED CMAKE_SYSTEM_PROCESSOR
+      AND NOT CMAKE_HOST_SYSTEM_PROCESSOR STREQUAL VPP_PLATFORM_ARCH)
+    set(CMAKE_SYSTEM_NAME Linux)
+    set(CMAKE_SYSTEM_PROCESSOR ${VPP_PLATFORM_ARCH})
+    set(CMAKE_C_COMPILER clang)
+    set(CMAKE_C_COMPILER_TARGET ${VPP_PLATFORM_ARCH}-linux-gnu)
+    set(CMAKE_ASM_COMPILER_TARGET ${VPP_PLATFORM_ARCH}-linux-gnu)
+    set(CMAKE_FIND_ROOT_PATH /usr/${VPP_PLATFORM_ARCH}-linux-gnu)
+    set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
+    set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY BOTH)
+    set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE BOTH)
+    set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)
+  endif()
+endif()
+
 if (DEFINED VPP_PLATFORM_C_COMPILER_NAMES)
   set(CMAKE_C_COMPILER_NAMES ${VPP_PLATFORM_C_COMPILER_NAME})
 else()
@@ -20,6 +44,27 @@ else()
 endif()
 
 project(vpp C)
+
+if(NOT DEFINED CMAKE_PREFIX_PATH)
+  set(CMAKE_PREFIX_PATH
+    /opt/vpp/external/${CMAKE_SYSTEM_PROCESSOR}
+    /opt/vpp/optional/${CMAKE_SYSTEM_PROCESSOR}
+  )
+endif()
+
+# pkg-config isn't restricted by CMAKE_FIND_ROOT_PATH on its own, so without
+# this a cross build can pick up the host's .pc files (wrong-arch libraries).
+if(CMAKE_CROSSCOMPILING AND CMAKE_FIND_ROOT_PATH)
+  list(GET CMAKE_FIND_ROOT_PATH 0 _vpp_sysroot)
+  if(NOT DEFINED ENV{PKG_CONFIG_LIBDIR})
+    set(ENV{PKG_CONFIG_LIBDIR}
+      "${_vpp_sysroot}/usr/lib/pkgconfig:${_vpp_sysroot}/usr/lib/${CMAKE_SYSTEM_PROCESSOR}-linux-gnu/pkgconfig:${_vpp_sysroot}/usr/share/pkgconfig")
+  endif()
+  if(NOT DEFINED ENV{PKG_CONFIG_SYSROOT_DIR})
+    set(ENV{PKG_CONFIG_SYSROOT_DIR} "${_vpp_sysroot}")
+  endif()
+  unset(_vpp_sysroot)
+endif()
 
 if(NOT DEFINED CMAKE_INSTALL_LIBDIR AND EXISTS "/etc/debian_version")
   set(CMAKE_INSTALL_LIBDIR "lib/${CMAKE_LIBRARY_ARCHITECTURE}")
@@ -134,6 +179,11 @@ install(
 
 if (CMAKE_BUILD_TYPE)
   add_compile_options(-g -Werror -Wall)
+  # Embed source paths relative to the build dir instead of absolute ones, so
+  # debug info still resolves when the build tree is reached through a
+  # different mount path (e.g. an NFS automount prefix on a remote target).
+  file(RELATIVE_PATH VPP_SOURCE_DIR_RELPATH ${CMAKE_BINARY_DIR} ${CMAKE_SOURCE_DIR})
+  add_compile_options(-fdebug-prefix-map=${CMAKE_SOURCE_DIR}=${VPP_SOURCE_DIR_RELPATH})
 endif()
 
 if (compiler_flag_no_address_of_packed_member)
@@ -227,6 +277,10 @@ endif()
 option(VPP_SET_RPATH "Set rpath for resulting binaries and libraries." ON)
 if(VPP_SET_RPATH)
   set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/${VPP_LIBRARY_DIR}")
+  # Keep the build-tree rpath $ORIGIN-relative rather than an absolute build
+  # path, so binaries still find their libs when the build tree is reached
+  # through a different mount path (e.g. an NFS automount prefix).
+  set(CMAKE_BUILD_RPATH_USE_ORIGIN ON)
 endif()
 set(CMAKE_INSTALL_MESSAGE NEVER)
 
