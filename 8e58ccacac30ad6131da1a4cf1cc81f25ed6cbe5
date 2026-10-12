@@ -33,6 +33,40 @@
       "message": "recheck",
       "revId": "8e58ccacac30ad6131da1a4cf1cc81f25ed6cbe5",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "2645a973_c91a2ae6",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-10-12T19:55:21Z",
+      "side": 1,
+      "message": "Rebase and comment inline.",
+      "revId": "8e58ccacac30ad6131da1a4cf1cc81f25ed6cbe5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f1acae0f_468300e8",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 600,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-10-12T19:55:21Z",
+      "side": 1,
+      "message": "Let\u0027s move this to the error handling, maybe another helper function. To avoid calling svm_fifo_max_dequeue_cons and SSL_pending for all reads.\n\nAlso, let\u0027s check impact on performance.",
+      "revId": "8e58ccacac30ad6131da1a4cf1cc81f25ed6cbe5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
