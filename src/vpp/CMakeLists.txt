@@ -126,11 +126,15 @@ add_vpp_tool(vpp_prometheus_export
   DEPENDS api_headers
 )
 
-add_vpp_tool(vpp_prometheus_push
-   SOURCES app/vpp_prometheus_push.c app/dump_metrics.c
-   LINK_LIBRARIES vppapiclient vppinfra svm vlibmemoryclient ssl crypto ${EPOLL_LIB}
-   DEPENDS api_headers
-)
+if(OPENSSL_FOUND)
+  add_vpp_tool(vpp_prometheus_push
+     SOURCES app/vpp_prometheus_push.c app/dump_metrics.c
+     LINK_LIBRARIES vppapiclient vppinfra svm vlibmemoryclient ssl crypto ${EPOLL_LIB}
+     DEPENDS api_headers
+  )
+else()
+  message(WARNING "openssl headers not found - vpp_prometheus_push tool disabled")
+endif()
 
 add_vpp_test(test_dump_metrics
    SOURCES app/dump_metrics_test.c app/dump_metrics.c

@@ -5,6 +5,7 @@
 #include <vnet/vnet.h>
 #include <vnet/dev/dev.h>
 #include <vnet/dev/bus/platform.h>
+#include <vnet/dev/kdi/kdi.h>
 #include <vlib/physmem_funcs.h>
 
 #include <sys/types.h>
@@ -15,6 +16,7 @@
 #include <errno.h>
 #include <limits.h>
 #include <stdio.h>
+#include <sys/ioctl.h>
 #include <unistd.h>
 
 VLIB_REGISTER_LOG_CLASS (dev_log, static) = {
@@ -33,6 +35,13 @@ VLIB_REGISTER_LOG_CLASS (dev_log, static) = {
 
 #define PLATFORM_DEV_PATH "/sys/bus/platform/devices"
 #define PLATFORM_UIO_PATH "/sys/class/uio"
+
+static const enum kdi_resource_kind kdi_resource_type_map[] = {
+  [VNET_DEV_PLATFORM_RESOURCE_CLOCK] = KDI_RESOURCE_CLOCK,
+  [VNET_DEV_PLATFORM_RESOURCE_RESET] = KDI_RESOURCE_RESET,
+  [VNET_DEV_PLATFORM_RESOURCE_INTERCONNECT] = KDI_RESOURCE_INTERCONNECT,
+  [VNET_DEV_PLATFORM_RESOURCE_PHY] = KDI_RESOURCE_PHY,
+};
 
 clib_dt_main_t vnet_dev_bus_platform_dt_main;
 
@@ -129,6 +138,7 @@ static void
 vnet_dev_bus_platform_close (vlib_main_t *vm, vnet_dev_t *dev)
 {
   log_debug (dev, "");
+  vnet_dev_platform_resource_close (dev);
   vnet_dev_platform_unmap_regions (dev);
 }
 
@@ -141,6 +151,104 @@ vnet_dev_platform_unmap_regions (vnet_dev_t *dev)
   vec_foreach (m, dd->mappings)
     munmap (m->base, m->size);
   vec_free (dd->mappings);
+}
+
+int
+vnet_dev_platform_resource_open (vnet_dev_t *dev, vnet_dev_platform_resource_type_t type,
+				 char *resource_name)
+{
+  vnet_dev_bus_platform_device_data_t *dd = vnet_dev_get_bus_data (dev);
+  struct kdi_resource_open request = {};
+  char *name = dev->device_id + sizeof (PLATFORM_BUS_NAME);
+  int fd;
+
+  if (dd->kdi_fd < 0)
+    return -ENODEV;
+  if (type < VNET_DEV_PLATFORM_RESOURCE_CLOCK || type > VNET_DEV_PLATFORM_RESOURCE_PHY)
+    return -EINVAL;
+  request.type = kdi_resource_type_map[type];
+  snprintf (request.device_name, sizeof (request.device_name), "%s", name);
+  snprintf (request.resource_name, sizeof (request.resource_name), "%s", resource_name);
+  fd = ioctl (dd->kdi_fd, KDI_IOC_OPEN_RESOURCE, &request);
+  if (fd < 0)
+    return -errno;
+  log_debug (dev, "opened KDI resource type %u '%s', fd %d", type, resource_name, fd);
+  return fd;
+}
+
+void
+vnet_dev_platform_resource_close_fd (int fd)
+{
+  if (fd >= 0)
+    close (fd);
+}
+
+void
+vnet_dev_platform_resource_close (vnet_dev_t *dev)
+{
+  vnet_dev_bus_platform_device_data_t *dd = vnet_dev_get_bus_data (dev);
+
+  if (dd->kdi_fd >= 0)
+    close (dd->kdi_fd);
+  dd->kdi_fd = -1;
+}
+
+int
+vnet_dev_platform_clock_enable (int fd)
+{
+  return ioctl (fd, KDI_IOC_CLOCK_ENABLE) < 0 ? -errno : 0;
+}
+
+int
+vnet_dev_platform_clock_disable (int fd)
+{
+  return ioctl (fd, KDI_IOC_CLOCK_DISABLE) < 0 ? -errno : 0;
+}
+
+int
+vnet_dev_platform_clock_set_rate (int fd, u64 rate)
+{
+  return ioctl (fd, KDI_IOC_CLOCK_SET_RATE, &rate) < 0 ? -errno : 0;
+}
+
+int
+vnet_dev_platform_reset_assert (int fd)
+{
+  return ioctl (fd, KDI_IOC_RESET_ASSERT) < 0 ? -errno : 0;
+}
+
+int
+vnet_dev_platform_reset_deassert (int fd)
+{
+  return ioctl (fd, KDI_IOC_RESET_DEASSERT) < 0 ? -errno : 0;
+}
+
+int
+vnet_dev_platform_reset_pulse (int fd)
+{
+  return ioctl (fd, KDI_IOC_RESET_PULSE) < 0 ? -errno : 0;
+}
+
+int
+vnet_dev_platform_interconnect_set_bw (int fd, u64 average_bw, u64 peak_bw)
+{
+  struct kdi_interconnect_op request = {
+    .average_bw = average_bw,
+    .peak_bw = peak_bw,
+  };
+  return ioctl (fd, KDI_IOC_INTERCONNECT_SET_BW, &request) < 0 ? -errno : 0;
+}
+
+int
+vnet_dev_platform_phy_power_on (int fd)
+{
+  return ioctl (fd, KDI_IOC_PHY_POWER_ON) < 0 ? -errno : 0;
+}
+
+int
+vnet_dev_platform_phy_power_off (int fd)
+{
+  return ioctl (fd, KDI_IOC_PHY_POWER_OFF) < 0 ? -errno : 0;
 }
 
 static int
@@ -367,7 +475,13 @@ vnet_dev_bus_platform_open (vlib_main_t *vm, vnet_dev_t *dev)
 
   *dd = (vnet_dev_bus_platform_device_data_t) {
     .node = n,
+    .kdi_fd = open ("/dev/vpp-kdi", O_RDWR | O_CLOEXEC),
   };
+  if (dd->kdi_fd < 0)
+    {
+      log_err (dev, "cannot open /dev/vpp-kdi: %s", strerror (errno));
+      return VNET_DEV_ERR_BUS;
+    }
   return VNET_DEV_OK;
 }
 
