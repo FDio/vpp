@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "024b53d4_ac9dc2ff",
+        "filename": "src/plugins/rdma/device.c",
+        "patchSetId": 68
+      },
+      "lineNbr": 977,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-10-12T14:19:08Z",
+      "side": 1,
+      "message": "Requesting 32 SGEs increases the provider’s SQ allocation. With `tx-queue-size 4096`, mlx5 allocates 65,536 WQEBBs. If hardware accepts that size, `min_log2(dv_qp.sq.wqe_cnt)` is 16, which truncates to zero in the four-bit `dv_sq_log2sz` field. Debug TX then asserts, while release TX uses incorrect ring masks. The non-TSO QP path has the same issue.\n\nCould we validate the returned SQ size against the field and counter limits, and adjust the allocation or representation accordingly?",
+      "revId": "9742d1d65ef3f709792c8e9a8abbdd2350605ae2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8025197e_7b6fb731",
+        "filename": "src/plugins/rdma/output.c",
+        "patchSetId": 68
+      },
+      "lineNbr": 1007,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-10-12T14:19:08Z",
+      "side": 1,
+      "message": "When the fast loop has built a regular-send prefix, `last` initially points at the next unused WQE. If the first GSO packet returns `NO_SLOTS`, we signal that unused WQE instead of the prefix’s last WQE, so the prefix has no completion.\n\nFor example, 255 regular packets followed by GSO on an empty 256-slot buffer ring can leave subsequent TSO traffic unable to progress. Could we pass the prefix’s actual last WQE into this helper?",
+      "revId": "9742d1d65ef3f709792c8e9a8abbdd2350605ae2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
