@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "0ac8d74b_dd196db0",
+        "filename": "src/plugins/rdma/output.c",
+        "patchSetId": 26
+      },
+      "lineNbr": 85,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-10-12T19:58:20Z",
+      "side": 1,
+      "message": "Addressed in PS27.\n\nThe TX mode is now selected once before the retry loop and passed as a constant into always_inline helpers. The DV doorbell paths share CQ_UPDATE, the DMA/MMIO barriers, the DB-record update and the MMIO write. Constant specialization retains the accounting and assertions for each mode. The dependent TSO patch adds its TSO specialization.",
+      "parentUuid": "e98bd449_30fd9dc7",
+      "revId": "5824118f828e40cc822ffd3e04216b42f6c521c1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "695ad2c0_d7f02f01",
@@ -31,6 +49,24 @@
       "writtenOn": "2026-10-12T13:57:33Z",
       "side": 1,
       "message": "An inline-only WQE leaves the buffer tail unchanged. If subsequent non-inline packets fill the buffer ring before its successful CQE is processed, `buf_tail \u003d\u003d txq-\u003ehead` and the second check sees exactly `buf_sz` outstanding buffers. This valid state sets `txq-\u003eerror` and permanently stops TX. Could we allow this case and validate the completed WQE against the outstanding SQ entries?",
+      "revId": "5824118f828e40cc822ffd3e04216b42f6c521c1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "0148fa2d_ffcb8332",
+        "filename": "src/plugins/rdma/output.c",
+        "patchSetId": 26
+      },
+      "lineNbr": 97,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-10-12T19:58:20Z",
+      "side": 1,
+      "message": "Addressed in PS27.\n\nThe completed eMPW WQE start/end are now validated against the outstanding SQ entries before either head advances. The mapped completed buffer count is checked against the outstanding buffer count, allowing zero buffers reclaimed while the buffer ring is full. Invalid completions stop the queue without advancing either head. The inline completion followed by a full non-inline buffer ring passes, including 16-bit wrap; the original PS26 rejects that valid completion.",
+      "parentUuid": "695ad2c0_d7f02f01",
       "revId": "5824118f828e40cc822ffd3e04216b42f6c521c1",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -52,6 +88,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "b612255b_5dca4176",
+        "filename": "src/plugins/rdma/output.c",
+        "patchSetId": 26
+      },
+      "lineNbr": 471,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-10-12T19:58:20Z",
+      "side": 1,
+      "message": "Addressed in PS27.\n\nThe actual last posted WQE is now carried through the quad/scalar paths and passed into the chained fallback. Drops preserve that pointer, and an all-drop frame does not ring the doorbell. Four valid packets followed by four short packets request completion on the fourth valid WQE and reclaim the buffers. The original PS26 and PS68 both fail this regression.",
+      "parentUuid": "8c35c1e9_64863d98",
+      "revId": "5824118f828e40cc822ffd3e04216b42f6c521c1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "17ac5d0c_f0b5ddda",
@@ -65,6 +119,24 @@
       "writtenOn": "2026-10-12T13:57:33Z",
       "side": 1,
       "message": "Could we simplify the quad length checks by comparing the shortest packet against the required minimum, then break into the local per-packet loop? That loop can count and drop short packets, continue processing, and invoke the chained helper only for chained packets. Please track consumed packets separately from posted WQEs so drops preserve buffer-index alignment.",
+      "revId": "5824118f828e40cc822ffd3e04216b42f6c521c1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "48bd098f_824f95c9",
+        "filename": "src/plugins/rdma/output.c",
+        "patchSetId": 26
+      },
+      "lineNbr": 617,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-10-12T19:58:20Z",
+      "side": 1,
+      "message": "Addressed in PS27.\n\nThe quad loop now compares the shortest packet with the inline minimum and breaks into the local scalar loop. That loop counts/drops short packets, posts valid single-buffer packets and invokes the chained helper only for chains. Consumed packets are tracked independently of the posted tail, and accepted buffer indices are copied to their actual ring positions. The TSO child extends the fallback to GSO. All 256 short-packet masks pass at four ring/counter positions; mixed drops followed by a chain also preserve buffer-index alignment.",
+      "parentUuid": "17ac5d0c_f0b5ddda",
       "revId": "5824118f828e40cc822ffd3e04216b42f6c521c1",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
