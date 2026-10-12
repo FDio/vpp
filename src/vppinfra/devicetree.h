@@ -78,6 +78,30 @@ clib_dt_property_get_string (clib_dt_property_t *p)
   return (char *) p->data;
 }
 
+static_always_inline char *
+foreach_clib_dt_property_string_helper (clib_dt_property_t *p, u32 *offset)
+{
+  u32 len = 0;
+  u32 remaining;
+  char *s;
+
+  if (!p || p->size == 0 || p->data[p->size - 1] != 0 || *offset >= p->size)
+    return 0;
+
+  remaining = p->size - *offset;
+  s = (char *) p->data + *offset;
+  for (; len < remaining && s[len]; len++)
+    ;
+  if (len == remaining)
+    return 0;
+  *offset += len + 1;
+  return s;
+}
+
+#define foreach_clib_dt_property_string(_s, _p)                                                    \
+  for (u32 _clib_dt_property_offset = 0; (_p) && ((_s) = foreach_clib_dt_property_string_helper (  \
+						    (_p), &_clib_dt_property_offset)) != 0;)
+
 static_always_inline clib_dt_node_t *
 clib_dt_get_root_node (clib_dt_node_t *n)
 {
