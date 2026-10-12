@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "12bc535d_bf304599",
+        "filename": "src/vnet/sfdp/sfdp.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 493,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-10-12T09:21:17Z",
+      "side": 1,
+      "message": "Could we retain a scan cursor and bound the number of entries inspected per call? Each batch restarts at the beginning and walks previously pending sessions while holding the worker barrier. If expiry has not drained earlier batches, stacking 1,000 batches of 1,000 against one million sessions requires roughly 500 million session visits. This could still produce substantial worker pauses despite the batch limit.",
+      "revId": "1d6dfd2d7ed5add037d91b6336a7a9b05a206a05",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
