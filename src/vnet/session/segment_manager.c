@@ -192,12 +192,14 @@ segment_manager_add_segment_inline (segment_manager_t *sm, uword segment_size,
       pool_put (sm->segments, fs);
       goto done;
     }
-
+  
+#if ! defined(__FreeBSD__)
   if (props->no_dump_segments || smm->no_dump_segments)
     {
       if (madvise (fs->ssvm.sh, fs->ssvm.ssvm_size, MADV_DONTDUMP) != 0)
 	clib_warning ("madvise MADV_DONTDUMP failed for seg %s", seg_name);
     }
+#endif
 
   /*
    * Initialize fifo segment

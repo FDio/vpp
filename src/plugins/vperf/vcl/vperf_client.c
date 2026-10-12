@@ -16,6 +16,10 @@
 #include <pthread.h>
 #include <signal.h>
 
+#if defined(__FreeBSD__)
+#undef close /* This is needed dues to clash with close macro defined in epoll-shim in FreeBSD */
+#endif
+
 typedef struct vperf_client_worker_ vperf_client_worker_t;
 typedef int (vperf_client_worker_run_fn) (vperf_client_worker_t *wrk);
 
