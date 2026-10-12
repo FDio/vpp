@@ -560,7 +560,16 @@ bfd_udp_add_session_internal (vlib_main_t *vm, bfd_udp_main_t *bum,
     {
       t = BFD_TRANSPORT_UDP6;
     }
-  bfd_session_t *bs = bfd_get_session (bum->bfd_main, t);
+  /*
+   * Derive per-session entropy from the local/peer address and sw_if_index.
+   * The local address is distinct per VPP instance, so this makes BFD
+   * discriminators differ across instances that share a common local address
+   * towards the same peer and would otherwise collide (see bfd_get_session).
+   */
+  u64 entropy = local_addr->as_u64[0] ^ local_addr->as_u64[1];
+  entropy ^= peer_addr->as_u64[0] ^ peer_addr->as_u64[1];
+  entropy ^= (u64) sw_if_index << 1;
+  bfd_session_t *bs = bfd_get_session (bum->bfd_main, t, (u32) entropy);
   if (!bs)
     {
       return VNET_API_ERROR_BFD_EAGAIN;

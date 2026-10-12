@@ -300,6 +300,14 @@ typedef struct
   /** for generating random numbers */
   u32 random_seed;
 
+  /**
+   * Per-instance boot-time entropy mixed into BFD discriminators.
+   * Ensures discriminators differ across VPP instances even when
+   * random_seed is identical (getpid() may be the same across separate
+   * PID namespaces).
+   */
+  u32 boot_entropy;
+
   /** pool of authentication keys */
   bfd_auth_key_t *auth_keys;
 
@@ -417,7 +425,7 @@ bfd_lock_check (bfd_main_t * bm)
 }
 
 u8 *bfd_input_format_trace (u8 * s, va_list * args);
-bfd_session_t *bfd_get_session (bfd_main_t * bm, bfd_transport_e t);
+bfd_session_t *bfd_get_session (bfd_main_t *bm, bfd_transport_e t, u32 extra_entropy);
 void bfd_put_session (bfd_main_t * bm, bfd_session_t * bs);
 bfd_session_t *bfd_find_session_by_idx (bfd_main_t * bm, uword bs_idx);
 bfd_session_t *bfd_find_session_by_disc (bfd_main_t * bm, u32 disc);

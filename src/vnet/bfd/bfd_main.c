@@ -10,6 +10,7 @@
 
 #include <vlibmemory/api.h>
 #include <vppinfra/random.h>
+#include <vppinfra/time.h>
 #include <vppinfra/error.h>
 #include <vppinfra/hash.h>
 #include <vppinfra/xxhash.h>
@@ -1419,6 +1420,16 @@ bfd_main_init (vlib_main_t * vm)
 #endif
   bfd_main_t *bm = &bfd_main;
   bm->random_seed = random_default_seed ();
+  /*
+   * Boot-time entropy, unique per VPP instance. random_default_seed()
+   * returns getpid(), which may be identical across VPP instances running
+   * in separate PID namespaces (the launched process can get the same PID
+   * in each namespace). Mixing in the CPU timestamp captured at init time
+   * makes this value differ between instances / restarts; it is combined
+   * with per-session addressing info in bfd_get_session() to keep BFD
+   * discriminators unique across instances.
+   */
+  bm->boot_entropy = (u32) clib_cpu_time_now ();
   bm->vlib_main = vm;
   bm->vnet_main = vnet_get_main ();
   clib_memset (&bm->wheel, 0, sizeof (bm->wheel));
@@ -1449,7 +1460,7 @@ bfd_main_init (vlib_main_t * vm)
 VLIB_INIT_FUNCTION (bfd_main_init);
 
 bfd_session_t *
-bfd_get_session (bfd_main_t * bm, bfd_transport_e t)
+bfd_get_session (bfd_main_t *bm, bfd_transport_e t, u32 extra_entropy)
 {
   bfd_session_t *result;
 
@@ -1463,7 +1474,15 @@ bfd_get_session (bfd_main_t * bm, bfd_transport_e t)
   unsigned counter = 0;
   do
     {
-      result->local_discr = random_u32 (&bm->random_seed);
+      /*
+       * Mix per-instance boot entropy and per-session addressing entropy
+       * (extra_entropy, derived from local/peer address and sw_if_index) into
+       * the discriminator. This guarantees discriminators differ across VPP
+       * instances that otherwise share the same PRNG seed (getpid() may be
+       * identical across separate PID namespaces), while the loop below still
+       * enforces uniqueness within this instance.
+       */
+      result->local_discr = random_u32 (&bm->random_seed) ^ bm->boot_entropy ^ extra_entropy;
       if (counter > limit)
 	{
 	  vlib_log_crit (bm->log_class,
