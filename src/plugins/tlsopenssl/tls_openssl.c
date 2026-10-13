@@ -453,7 +453,14 @@ openssl_ctx_write_tls (tls_ctx_t *ctx, session_t *app_session,
    * allocate the chunks needed. This also avoids errors from the underlying
    * custom bio to the ssl infra which at times can get stuck. */
   if (svm_fifo_provision_chunks (ts->tx_fifo, 0, 0, deq_max + TLSO_CTRL_BYTES))
-    goto check_tls_fifo;
+    {
+      /* One record usually fits the chunks the fifo already has */
+      deq_max = clib_min (deq_max, svm_fifo_max_read_chunk (f));
+      deq_max = clib_min (deq_max, SSL3_RT_MAX_PLAIN_LENGTH);
+      if (svm_fifo_provision_chunks (
+	    ts->tx_fifo, 0, 0, deq_max + SSL3_RT_HEADER_LENGTH + SSL3_RT_MAX_ENCRYPTED_OVERHEAD))
+	goto check_tls_fifo;
+    }
 
   wrote = openssl_write_from_fifo_into_ssl (f, ctx, sp, deq_max);
 
