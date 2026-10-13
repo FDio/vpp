@@ -16,6 +16,23 @@
       "message": "bganne@cisco.com",
       "revId": "c51be047679bb3238d0e8e6e6fb2ceb3459d81db",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "017f5f4f_d99dac46",
+        "filename": "src/vnet/bfd/bfd_main.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1485,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-10-13T08:19:24Z",
+      "side": 1,
+      "message": "Could we use `getrandom()` directly for discriminator allocation? This runs during control-plane session creation, and VPP already uses it when creating IPsec SAs. That would avoid the custom PID/timestamp/address entropy mixing and the extra `bfd_get_session()` argument. We should reject zero, retain the local collision retry, and handle entropy acquisition failures. Cross-instance uniqueness would remain probabilistic with a 32-bit discriminator, so the comments should avoid claiming a guarantee.",
+      "revId": "c51be047679bb3238d0e8e6e6fb2ceb3459d81db",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
