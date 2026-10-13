@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "dbc29a23_643cfe56",
+        "filename": "src/vnet/bfd/bfd_main.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 1478,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-10-13T11:30:42Z",
+      "side": 1,
+      "message": "My earlier wording was too narrow: I meant to use `getrandom()` for BFD’s entropy source itself. Could we initialize `bm-\u003erandom_seed` with `getrandom()` in `bfd_main_init()` and return an initialization error if entropy acquisition fails? Discriminator allocation can then keep `random_u32()`, with zero rejection and the existing local collision retry.",
+      "revId": "954947849923a44223060c11fd1ab5200713214c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
