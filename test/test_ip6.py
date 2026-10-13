@@ -597,6 +597,51 @@ class TestIPv6(TestIPv6ND):
         )
         self.assertFalse(find_route(self, self.pg0._remote_hosts[3].ip6_ll, 128))
 
+    def test_na_for_own_address(self):
+        """IPv6 NA for one of our own addresses is not learned
+
+        Test scenario:
+           - Send an NA whose target is the router's own link-local, as
+             if the router's own NA were looped back to it
+           - Send an NA whose target is the router's own global address
+           - Neither may be learned as a neighbour
+           - The router must still answer an NS for its link-local
+        """
+        err = "/err/ip6-icmp-input/neighbor_advertisement_target_local"
+        n_err = self.statistics.get_err_counter(err)
+
+        for tgt in (self.pg0.local_ip6_ll, self.pg0.local_ip6):
+            na = (
+                Ether(dst="33:33:00:00:00:01", src=self.pg0.local_mac)
+                / IPv6(dst="ff02::1", src=self.pg0.local_ip6_ll, hlim=255)
+                / ICMPv6ND_NA(tgt=tgt, R=1, S=0, O=1)
+                / ICMPv6NDOptDstLLAddr(lladdr=self.pg0.local_mac)
+            )
+            self.send_and_assert_no_replies(self.pg0, [na], "NA for own address")
+            self.assertFalse(find_nbr(self, self.pg0.sw_if_index, tgt))
+
+        self.assertEqual(self.statistics.get_err_counter(err), n_err + 2)
+
+        #
+        # the router still answers an NS for its own link-local
+        #
+        nsma = in6_getnsma(inet_pton(AF_INET6, self.pg0.local_ip6_ll))
+        d = inet_ntop(AF_INET6, nsma)
+        self.pg0.generate_remote_hosts(2)
+        ns = (
+            Ether(dst=in6_getnsmac(nsma), src=self.pg0.remote_mac)
+            / IPv6(dst=d, src=self.pg0._remote_hosts[1].ip6_ll)
+            / ICMPv6ND_NS(tgt=self.pg0.local_ip6_ll)
+            / ICMPv6NDOptSrcLLAddr(lladdr=self.pg0.remote_mac)
+        )
+        self.send_and_expect_na(
+            self.pg0,
+            ns,
+            "NS for own link-local after NA for own link-local",
+            dst_ip=self.pg0._remote_hosts[1].ip6_ll,
+            tgt_ip=self.pg0.local_ip6_ll,
+        )
+
     def test_nd_incomplete(self):
         """IP6-ND Incomplete"""
         self.pg1.generate_remote_hosts(3)
