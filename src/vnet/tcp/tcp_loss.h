@@ -21,16 +21,17 @@ u8 tcp_loss_recovery_state_is_sane (tcp_connection_t *tc);
 u8 tcp_loss_retransmit_timer_expired (tcp_connection_t *tc);
 void tcp_loss_rto_retransmit_failed (tcp_connection_t *tc);
 
-/* Eifel spurious-retransmit detection (RFC 3522 Sec. 3.2). Spurious if the ACK
- * echoes a timestamp older than the first retransmit and leaves part of the
- * flight outstanding. A full-flight ACK remains ambiguous and requires
- * D-SACK evidence. */
+/* Eifel spurious-retransmit detection (RFC 3522 Sec. 3.2): an advancing ACK echoes a timestamp
+ * older than the first retransmit. Conservatively require snd_una below snd_congestion and no
+ * retransmissions accounted in flight. A full-flight ACK remains ambiguous and requires D-SACK
+ * evidence. */
 static inline u8
 tcp_loss_is_eifel_spurious (tcp_connection_t *tc, tcp_ack_ctx_t *ac)
 {
   ASSERT (tcp_in_cong_recovery (tc) && ac->bytes_acked);
   return (tc->snd_rxt_ts && seq_lt (tc->snd_una, tc->snd_congestion) &&
-	  tcp_opts_tstamp (&tc->rcv_opts) && timestamp_lt (tc->rcv_opts.tsecr, tc->snd_rxt_ts));
+	  tc->rxt_delivered >= tc->snd_rxt_bytes && tcp_opts_tstamp (&tc->rcv_opts) &&
+	  timestamp_lt (tc->rcv_opts.tsecr, tc->snd_rxt_ts));
 }
 
 /* Undo rto recovery only on acks that advance snd_una. A budget discharged by a duplicate ack is
