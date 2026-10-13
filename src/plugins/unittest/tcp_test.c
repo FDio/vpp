@@ -4053,9 +4053,9 @@ tcp_test_rto_reduce_once_e2e (vlib_main_t *vm, unformat_input_t *input)
    * whether the window reduction was spurious (reordered/delayed data, not real
    * loss) and should be undone. Base state below is spurious; each case flips
    * one term. Spurious requires: retransmit stamped, part of the flight still
-   * outstanding (snd_una < snd_congestion), timestamp option present, and tsecr
-   * older than the first retransmit. Other outstanding loss is handled as a
-   * separate recovery event.
+   * outstanding (snd_una < snd_congestion), no retransmission in flight,
+   * timestamp option present, and tsecr older than the first retransmit. Other
+   * outstanding loss is handled as a separate recovery event.
    */
   {
     tcp_connection_t _stc, *stc = &_stc;
@@ -4073,6 +4073,8 @@ tcp_test_rto_reduce_once_e2e (vlib_main_t *vm, unformat_input_t *input)
       stc->snd_una = 10000;                                                                        \
       stc->snd_congestion = stc->snd_una + 10 * mss;                                               \
       stc->snd_rxt_ts = 1000;                                                                      \
+      stc->snd_rxt_bytes = mss;                                                                    \
+      stc->rxt_delivered = mss;                                                                    \
       stc->sack_sb.lost_bytes = 0;                                                                 \
       stc->rcv_opts.flags = TCP_OPTS_FLAG_TSTAMP;                                                  \
       stc->rcv_opts.tsecr = stc->snd_rxt_ts - 1;                                                   \
@@ -4126,6 +4128,17 @@ tcp_test_rto_reduce_once_e2e (vlib_main_t *vm, unformat_input_t *input)
     stc->sack_sb.lost_bytes = mss;
     if (!TCP_TEST_I ((tcp_loss_is_eifel_spurious (stc, ac)),
 		     "eifel: fast retransmit spurious despite other outstanding loss"))
+      {
+	rv = 1;
+	goto cleanup;
+      }
+
+    /* Negative: another retransmission is still in flight. It may repair real
+     * loss, which the old timestamp of the acked data cannot rule out. */
+    ARM_SPURIOUS ();
+    stc->snd_rxt_bytes = 2 * mss;
+    if (!TCP_TEST_I ((!tcp_loss_is_eifel_spurious (stc, ac)),
+		     "eifel: not spurious with a retransmission in flight"))
       {
 	rv = 1;
 	goto cleanup;
