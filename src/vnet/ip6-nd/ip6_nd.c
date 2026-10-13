@@ -54,6 +54,33 @@ ip6_nd_learn (u32 sw_if_index, const ip6_address_t *ip, const u8 *ethernet_addre
   ip_neighbor_learn_dp (&learn);
 }
 
+/**
+ * @brief Is the target one of our own addresses on this link?
+ *
+ * True if the target matches a local (receive) entry: an interface address,
+ * or the interface's link-local address in its link-local table.
+ */
+static_always_inline int
+ip6_nd_target_is_local (u32 sw_if_index, const ip6_address_t *target)
+{
+  fib_node_index_t fei = FIB_NODE_INDEX_INVALID;
+  u32 fib_index;
+
+  if (ip6_address_is_link_local_unicast (target))
+    fib_index = ip6_ll_fib_get (sw_if_index);
+  else
+    fib_index = ip6_fib_table_get_index_for_sw_if_index (sw_if_index);
+
+  if (~0 != fib_index)
+    fei = ip6_fib_table_lookup_exact_match (fib_index, target, 128);
+
+  if (FIB_NODE_INDEX_INVALID == fei)
+    return 0;
+
+  return (0 != (FIB_ENTRY_FLAG_LOCAL & (fib_entry_get_flags_for_source (fei, FIB_SOURCE_INTERFACE) |
+					fib_entry_get_flags_for_source (fei, FIB_SOURCE_IP6_ND))));
+}
+
 static_always_inline uword
 icmp6_neighbor_solicitation_or_advertisement (vlib_main_t * vm,
 					      vlib_node_runtime_t * node,
@@ -64,6 +91,7 @@ icmp6_neighbor_solicitation_or_advertisement (vlib_main_t * vm,
   uword n_packets = frame->n_vectors;
   u32 *from, *to_next;
   u32 n_left_from, n_left_to_next, next_index, n_advertisements_sent;
+  u32 n_target_local = 0;
   icmp6_neighbor_discovery_option_type_t option_type;
   vlib_node_runtime_t *error_node =
     vlib_node_get_runtime (vm, ip6_icmp_input_node.index);
@@ -153,7 +181,18 @@ icmp6_neighbor_solicitation_or_advertisement (vlib_main_t * vm,
 	  if (!is_solicitation)
 	    {
 	      if (PREDICT_TRUE (error0 == ICMP6_ERROR_NONE && o0 != 0 && !ip6_sadd_unspecified))
-		ip6_nd_learn (sw_if_index0, &h0->target_address, o0->ethernet_address);
+		{
+		  /* Never learn one of our own addresses as a neighbour. An NA
+		   * for our own address is our own NA looped back (or a
+		   * duplicate). For a link-local target the learned adj-fib
+		   * would replace the local receive in the link-local table.
+		   * Count it explicitly: NAs continue to ip6-punt, which may
+		   * redirect them to the host without counting b->error. */
+		  if (PREDICT_FALSE (ip6_nd_target_is_local (sw_if_index0, &h0->target_address)))
+		    n_target_local++;
+		  else
+		    ip6_nd_learn (sw_if_index0, &h0->target_address, o0->ethernet_address);
+		}
 	      /* Check if this NA conflicts with an ongoing DAD */
 	      ip6_dad_na_received_dp (sw_if_index0, &h0->target_address);
 	    }
@@ -281,6 +320,9 @@ icmp6_neighbor_solicitation_or_advertisement (vlib_main_t * vm,
   vlib_error_count (vm, error_node->node_index,
 		    ICMP6_ERROR_NEIGHBOR_ADVERTISEMENTS_TX,
 		    n_advertisements_sent);
+  if (n_target_local)
+    vlib_error_count (vm, error_node->node_index, ICMP6_ERROR_NEIGHBOR_ADVERTISEMENT_TARGET_LOCAL,
+		      n_target_local);
 
   return frame->n_vectors;
 }
