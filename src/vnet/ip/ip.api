@@ -1665,6 +1665,12 @@ counters icmp6 {
     units "packets";
     description "neighbor advertisements received";
   };
+  neighbor_advertisement_target_local {
+    severity error;
+    type counter64;
+    units "packets";
+    description "neighbor advertisements for local targets";
+  };
   router_solicitation_source_not_on_link {
     severity error;
     type counter64;
