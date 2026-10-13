@@ -22,6 +22,30 @@
       },
       "revId": "f1fa01d3343b8afb21867baa935392c547bf6e03",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9a7bf69f_5ae75101",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 432,
+      "author": {
+        "id": 3325
+      },
+      "writtenOn": "2026-10-13T19:24:11Z",
+      "side": 1,
+      "message": "It\u0027s for the partial records, openssl_write_from_fifo_into_ssl does one SSL_write per fifo segment (up to 2), and each can end with a partial record. I can make the comment clearer if needed.",
+      "parentUuid": "7ff63d11_b961720b",
+      "range": {
+        "startLine": 432,
+        "startChar": 48,
+        "endLine": 432,
+        "endChar": 49
+      },
+      "revId": "f1fa01d3343b8afb21867baa935392c547bf6e03",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
