@@ -597,6 +597,90 @@ class TestIPv6(TestIPv6ND):
         )
         self.assertFalse(find_route(self, self.pg0._remote_hosts[3].ip6_ll, 128))
 
+    def test_na_for_own_address(self):
+        """IPv6 NA for one of our own addresses is not learned
+
+        Test scenario:
+           - Send an NA whose target is the router's own link-local, as
+             if the router's own NA were looped back to it
+           - Send an NA whose target is the router's own global address
+           - Neither may be learned as a neighbour
+           - The router must still answer an NS for its link-local
+        """
+        err = "/err/ip6-icmp-input/neighbor_advertisement_target_local"
+        n_err = self.statistics.get_err_counter(err)
+
+        for tgt in (self.pg0.local_ip6_ll, self.pg0.local_ip6):
+            na = (
+                Ether(dst="33:33:00:00:00:01", src=self.pg0.local_mac)
+                / IPv6(dst="ff02::1", src=self.pg0.local_ip6_ll, hlim=255)
+                / ICMPv6ND_NA(tgt=tgt, R=1, S=0, O=1)
+                / ICMPv6NDOptDstLLAddr(lladdr=self.pg0.local_mac)
+            )
+            self.send_and_assert_no_replies(self.pg0, [na], "NA for own address")
+            self.assertFalse(find_nbr(self, self.pg0.sw_if_index, tgt))
+
+        self.assertEqual(self.statistics.get_err_counter(err), n_err + 2)
+
+        #
+        # the router still answers an NS for its own link-local
+        #
+        nsma = in6_getnsma(inet_pton(AF_INET6, self.pg0.local_ip6_ll))
+        d = inet_ntop(AF_INET6, nsma)
+        self.pg0.generate_remote_hosts(2)
+        ns = (
+            Ether(dst=in6_getnsmac(nsma), src=self.pg0.remote_mac)
+            / IPv6(dst=d, src=self.pg0._remote_hosts[1].ip6_ll)
+            / ICMPv6ND_NS(tgt=self.pg0.local_ip6_ll)
+            / ICMPv6NDOptSrcLLAddr(lladdr=self.pg0.remote_mac)
+        )
+        self.send_and_expect_na(
+            self.pg0,
+            ns,
+            "NS for own link-local after NA for own link-local",
+            dst_ip=self.pg0._remote_hosts[1].ip6_ll,
+            tgt_ip=self.pg0.local_ip6_ll,
+        )
+
+    def test_ns_for_own_address(self):
+        """An NS cannot learn our own link-local source address."""
+        nsma = in6_getnsma(inet_pton(AF_INET6, self.pg0.local_ip6))
+        for mac in (self.pg0.local_mac, self.pg0.remote_mac):
+            ns = (
+                Ether(dst=in6_getnsmac(nsma), src=mac)
+                / IPv6(
+                    src=self.pg0.local_ip6_ll,
+                    dst=inet_ntop(AF_INET6, nsma),
+                    hlim=255,
+                )
+                / ICMPv6ND_NS(tgt=self.pg0.local_ip6)
+                / ICMPv6NDOptSrcLLAddr(lladdr=mac)
+            )
+            reply = self.send_and_expect(self.pg0, ns, self.pg0)[0]
+            self.assertEqual(reply[Ether].dst, mac)
+            self.assertEqual(reply[IPv6].dst, self.pg0.local_ip6_ll)
+            self.assertEqual(reply[ICMPv6ND_NA].tgt, self.pg0.local_ip6)
+            self.assertFalse(
+                find_nbr(self, self.pg0.sw_if_index, self.pg0.local_ip6_ll)
+            )
+
+        # The local receive entry still resolves ordinary peer solicitations.
+        nsma = in6_getnsma(inet_pton(AF_INET6, self.pg0.local_ip6_ll))
+        ns = (
+            Ether(dst=in6_getnsmac(nsma), src=self.pg0.remote_mac)
+            / IPv6(src=self.pg0.remote_ip6_ll, dst=inet_ntop(AF_INET6, nsma), hlim=255)
+            / ICMPv6ND_NS(tgt=self.pg0.local_ip6_ll)
+            / ICMPv6NDOptSrcLLAddr(lladdr=self.pg0.remote_mac)
+        )
+        self.send_and_expect_na(
+            self.pg0,
+            ns,
+            "NS for own link-local after NS from own link-local",
+            dst_ip=self.pg0.remote_ip6_ll,
+            tgt_ip=self.pg0.local_ip6_ll,
+        )
+        self.assertTrue(find_nbr(self, self.pg0.sw_if_index, self.pg0.remote_ip6_ll))
+
     def test_nd_incomplete(self):
         """IP6-ND Incomplete"""
         self.pg1.generate_remote_hosts(3)
@@ -1381,6 +1465,89 @@ class TestIPv6(TestIPv6ND):
             0,
             "secondary MAC for second updated link-local leaked",
         )
+
+
+class TestIPv6NALocalTarget(VppTestCase):
+    """IPv6 NA target ownership is scoped to the receiving link and VRF."""
+
+    def setUp(self):
+        super().setUp()
+        self.create_pg_interfaces(range(3))
+        VppIpTable(self, 10, is_ip6=1).add_vpp_config()
+        self.pg2.set_table_ip6(10)
+        for interface in self.pg_interfaces:
+            interface.admin_up()
+            interface.config_ip6()
+
+    def tearDown(self):
+        for interface in reversed(self.pg_interfaces):
+            interface.unconfig_ip6()
+            interface.admin_down()
+        self.pg2.set_table_ip6(0)
+        super().tearDown()
+
+    def send_na(self, interface, target, solicited=False):
+        packet = (
+            Ether(
+                dst=interface.local_mac if solicited else "33:33:00:00:00:01",
+                src=interface.remote_mac,
+            )
+            / IPv6(
+                src=interface.remote_ip6_ll,
+                dst=interface.local_ip6_ll if solicited else "ff02::1",
+                hlim=255,
+            )
+            / ICMPv6ND_NA(tgt=target, R=0, S=int(solicited), O=1)
+            / ICMPv6NDOptDstLLAddr(lladdr=interface.remote_mac)
+        )
+        self.send_and_assert_no_replies(interface, [packet], "NA target ownership")
+
+    def test_global_target_vrf_scope(self):
+        """An address local in one VRF can still be learned in another."""
+        # A local target on another interface in the same VRF is rejected.
+        self.send_na(self.pg1, self.pg0.local_ip6)
+        self.assertFalse(find_nbr(self, self.pg1.sw_if_index, self.pg0.local_ip6))
+
+        # The same target is a valid neighbor in a different VRF.
+        self.send_na(self.pg2, self.pg0.local_ip6)
+        self.assertTrue(find_nbr(self, self.pg2.sw_if_index, self.pg0.local_ip6))
+        self.send_na(self.pg2, self.pg2.local_ip6)
+        self.assertFalse(find_nbr(self, self.pg2.sw_if_index, self.pg2.local_ip6))
+
+    def test_link_local_target_interface_scope(self):
+        """A link-local address on another link remains learnable here."""
+        self.assertNotEqual(self.pg0.local_ip6_ll, self.pg1.local_ip6_ll)
+        self.send_na(self.pg1, self.pg0.local_ip6_ll)
+        self.assertTrue(find_nbr(self, self.pg1.sw_if_index, self.pg0.local_ip6_ll))
+        self.assertFalse(find_nbr(self, self.pg0.sw_if_index, self.pg0.local_ip6_ll))
+        self.send_na(self.pg1, self.pg1.local_ip6_ll)
+        self.assertFalse(find_nbr(self, self.pg1.sw_if_index, self.pg1.local_ip6_ll))
+
+    def test_link_local_ns_source_interface_scope(self):
+        """An NS source local to another link is still learned here."""
+        self.assertNotEqual(self.pg0.local_ip6_ll, self.pg1.local_ip6_ll)
+        nsma = in6_getnsma(inet_pton(AF_INET6, self.pg1.local_ip6))
+        ns = (
+            Ether(dst=in6_getnsmac(nsma), src=self.pg1.remote_mac)
+            / IPv6(src=self.pg0.local_ip6_ll, dst=inet_ntop(AF_INET6, nsma), hlim=255)
+            / ICMPv6ND_NS(tgt=self.pg1.local_ip6)
+            / ICMPv6NDOptSrcLLAddr(lladdr=self.pg1.remote_mac)
+        )
+        reply = self.send_and_expect(self.pg1, ns, self.pg1)[0]
+        self.assertEqual(reply[ICMPv6ND_NA].tgt, self.pg1.local_ip6)
+        self.assertEqual(reply[IPv6].dst, self.pg0.local_ip6_ll)
+        self.assertTrue(find_nbr(self, self.pg1.sw_if_index, self.pg0.local_ip6_ll))
+        self.assertFalse(find_nbr(self, self.pg0.sw_if_index, self.pg0.local_ip6_ll))
+
+    def test_foreign_mac_for_own_target_is_not_learned(self):
+        """Solicited and unsolicited NAs cannot learn a local target."""
+        counter = "/err/ip6-icmp-input/neighbor_advertisement_target_local"
+        before = self.statistics.get_err_counter(counter)
+        for solicited in (False, True):
+            for target in (self.pg0.local_ip6, self.pg0.local_ip6_ll):
+                self.send_na(self.pg0, target, solicited)
+                self.assertFalse(find_nbr(self, self.pg0.sw_if_index, target))
+        self.assertEqual(self.statistics.get_err_counter(counter), before + 4)
 
 
 class TestIPv6RouteLookup(VppTestCase):
