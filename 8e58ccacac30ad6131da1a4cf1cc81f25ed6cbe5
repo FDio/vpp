@@ -52,6 +52,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "3e80a26d_c5461f38",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3325
+      },
+      "writtenOn": "2026-10-13T12:43:30Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "ece1ba40_1068caa4",
+      "revId": "8e58ccacac30ad6131da1a4cf1cc81f25ed6cbe5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "f1acae0f_468300e8",
@@ -83,6 +101,24 @@
       "side": 1,
       "message": "Done, it\u0027s a helper now that only runs when provisioning fails, the normal read is as before. Will check perf numbers later today.",
       "parentUuid": "f1acae0f_468300e8",
+      "revId": "8e58ccacac30ad6131da1a4cf1cc81f25ed6cbe5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "f05a14a7_38f5f00b",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 600,
+      "author": {
+        "id": 3325
+      },
+      "writtenOn": "2026-10-13T12:43:30Z",
+      "side": 1,
+      "message": "Checked throughput and connection rate over tls with h1 and h2, no measurable difference.",
+      "parentUuid": "857db298_b8e3bdec",
       "revId": "8e58ccacac30ad6131da1a4cf1cc81f25ed6cbe5",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
