@@ -134,7 +134,7 @@ jobs:
 
       - name: ASAN HST Test VPP
         if: success()
-        uses: fdio/vpp/.github/actions/vpp-hst-test@5c0def01c0f8a17f90a1b16c9039077e298e0adc
+        uses: fdio/vpp/.github/actions/vpp-hst-test@22d12e5159c193637925d8f7b1eba26325c2f9fa
         timeout-minutes: 180
         with:
           LOG_DIR: ${{ env.LOG_DIR }}
