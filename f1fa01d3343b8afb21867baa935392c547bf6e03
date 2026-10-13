@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7ff63d11_b961720b",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 432,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-10-13T17:34:42Z",
+      "side": 1,
+      "message": "why we need 2 more records?",
+      "range": {
+        "startLine": 432,
+        "startChar": 48,
+        "endLine": 432,
+        "endChar": 49
+      },
+      "revId": "f1fa01d3343b8afb21867baa935392c547bf6e03",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
