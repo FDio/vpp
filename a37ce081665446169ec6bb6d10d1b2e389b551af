@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "66e7b4ef_e2622fca",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-10-13T10:47:46Z",
+      "side": 1,
+      "message": "hs-test issue fixed in 47068, tested locally with your patch",
+      "revId": "a37ce081665446169ec6bb6d10d1b2e389b551af",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
