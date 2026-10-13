@@ -15,7 +15,14 @@ ENV LDP_DEBUG=0
 ENV VCL_DEBUG=0
 ENV LDP_SID_BIT=8
 
-# copy vpp-data last to take advantage of caching (do not change)
-COPY vpp-data/lib/* /usr/lib/
+# copy ldpreload and dependencies last to take advantage of caching (do not change)
+COPY \
+    vpp-data/lib/libvcl_ldpreload.so* \
+    vpp-data/lib/libvppcom.so* \
+    vpp-data/lib/libvlibmemoryclient.so* \
+    vpp-data/lib/libvlibapi.so* \
+    vpp-data/lib/libsvm.so* \
+    vpp-data/lib/libvppinfra.so* \
+    /usr/lib/
 
 ENTRYPOINT ["nginx_ldp.sh", "nginx", "-c", "/nginx.conf"]
