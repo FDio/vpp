@@ -209,6 +209,24 @@
       "message": "How does this classifier differ from the existing ACL implementation, and what prevents reusing or improving ACL as a service for this use case? It already provides stateless, mask-based hash lookup through lookup contexts. Could the additional FlowSpec fields and incremental updates be supported there? Are there comparative measurements showing where a separate implementation is needed?",
       "revId": "f8354c8fcf7bc31d703982c68821f4f513fe61ed",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "1db62733_3adfa283",
+        "filename": "src/plugins/fastacl/fastacl_tss.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 658,
+      "author": {
+        "id": 3059
+      },
+      "writtenOn": "2026-10-13T18:13:19Z",
+      "side": 1,
+      "message": "Done in patchset 4. The TSS classifier is gone and FastACL reuses the ACL plugin as a service:\n- rules are loaded into one ACL, in RFC 8955 precedence order, through the ACL plugin\u0027s acl_add_replace handler, and matched against the TupleMerge tables of a lookup context of its own, as ABF does;\n- what an ACL entry cannot carry (packet length, DSCP, fragment flags, and the RFC 8955 rule that ports never match a later fragment) is checked on each candidate the tables offer, and a rejected candidate falls through to the next one;\n- no ACL plugin changes are needed. A rule change rebuilds the ACL; a batch add rebuilds it once.\n\nOn 62 workers, 6 ports and 64-byte frames with 65,001 rules, it drops 442 Mpps of a single-vector flood and 434 Mpps of a non-initial fragment flood.",
+      "parentUuid": "cab3ab17_803b0eaa",
+      "revId": "f8354c8fcf7bc31d703982c68821f4f513fe61ed",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
