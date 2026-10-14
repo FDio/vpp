@@ -2,9 +2,16 @@
  * Copyright (c) 2025 Cisco Systems, Inc.
  */
 
-option version = "1.0.1";
+option version = "1.0.2";
 import "vnet/ip/ip_types.api";
 import "vnet/sfdp/sfdp_types.api";
+
+typedef sfdp_per_thread_data
+{
+  u32 thread_index;
+  u32 session_active;
+  u32 session_in_freelist;
+};
 
 /** \brief
     @param client_index - opaque cookie to identify the sender
@@ -33,6 +40,36 @@ autoreply define sfdp_set_services
   vl_api_sfdp_session_direction_t dir;
   u8 n_services;
   vl_api_sfdp_service_name_t services[n_services];
+};
+
+/** \brief Get SFDP infrastructure status */
+define sfdp_status
+{
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief SFDP infrastructure status
+    @param tenant_active - current number of tenant entries
+    @param tenant_capacity - configured maximum number of tenants
+    @param session_active - active sessions across all threads
+    @param session_capacity - configured total number of session slots
+    @param session_global_free - free session slots outside thread caches
+    @param n_threads - number of per-thread status entries, including VPP main
+    @param per_thread_data - per-thread active session and cache status
+*/
+define sfdp_status_reply
+{
+  u32 context;
+  i32 retval;
+
+  u64 tenant_capacity;
+  u64 session_capacity;
+  u64 session_active;
+  u64 session_global_free;
+  u32 tenant_active;
+  u32 n_threads;
+  vl_api_sfdp_per_thread_data_t per_thread_data[n_threads];
 };
 
 define sfdp_session_dump

@@ -375,6 +375,98 @@ class TestSfdpKillMultiWorker(VppTestCase):
     "sfdp_services" in config.excluded_plugins,
     "SFDP_Services plugin is required to run SFDP tests",
 )
+class TestSfdpStatusTwoWorkers(BaseSfdpTest):
+    """SFDP status API test"""
+
+    # A separate test class is created on purpose to test the
+    # SFDP status API. We want to ensure that (1) SFDP infrastructure
+    # is not initialized before the test runs, (2) have VPP/SFDP
+    # running with two workers to validate multi-worker functionality
+    vpp_worker_count = 2
+    extra_vpp_config = ["statseg {size 64M}"]
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        try:
+            cls.create_pg_interfaces(range(1))
+            cls.pg0.config_ip4()
+            cls.pg0.admin_up()
+        except Exception:
+            super().tearDownClass()
+            raise
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.pg0.unconfig_ip4()
+        cls.pg0.admin_down()
+        super().tearDownClass()
+
+    def test_sfdp_status(self):
+        """Test SFDP status API"""
+
+        # SFDP is not initialized by default
+        # Requesting status in this case should return an error
+        with self.vapi.assert_negative_api_retval():
+            status = self.vapi.sfdp_status()
+        self.assertEqual(status.retval, -1)
+
+        # Initialize SFDP by creating first tenant
+        # and check status
+        reply = self.vapi.sfdp_tenant_add_del(tenant_id=1, context_id=100, is_del=False)
+        self.assertEqual(reply.retval, 0)
+        self.vapi.sfdp_interface_input_set(
+            sw_if_index=self.pg0.sw_if_index, tenant_id=1, is_disable=False
+        )
+        status = self.vapi.sfdp_status()
+        self.assertEqual(status.tenant_active, 1)
+        self.assertEqual(status.session_active, 0)
+
+        # Add two sessions, with one session on each worker thread
+        # Traffic is expected to be dropped, since default service chain drops traffic.
+        for worker, sport in ((0, 62001), (1, 62002)):
+            packet = self.create_tcp_packet(
+                self.pg0.remote_mac,
+                self.pg0.local_mac,
+                self.pg0.remote_ip4,
+                "198.51.100.2",
+                sport,
+                80,
+            )
+            self.pg0.add_stream([packet], worker=worker)
+            self.pg_enable_capture(self.pg_interfaces)
+            self.pg_start()
+            self.pg0.assert_nothing_captured()
+
+        # Verify SFDP status after initialization
+        status = self.vapi.sfdp_status()
+        self.assertEqual(status.tenant_active, 1)
+        self.assertEqual(status.session_active, 2)
+        self.assertEqual(status.n_threads, self.vpp_worker_count + 1)
+        # Per-thread data should contain entries for main thread + two workers
+        self.assertEqual(
+            {ptd.thread_index for ptd in status.per_thread_data}, {0, 1, 2}
+        )
+        worker_status = [ptd for ptd in status.per_thread_data if ptd.thread_index != 0]
+        self.assertEqual(len(worker_status), self.vpp_worker_count)
+        self.assertTrue(
+            all(ptd.session_active == 1 for ptd in worker_status),
+            "Expected one active session on each worker",
+        )
+
+        # Cleanup SFDP configuration
+        self.vapi.sfdp_kill_session(is_all=True)
+        self.wait_no_sessions()
+        self.vapi.sfdp_interface_input_set(
+            sw_if_index=self.pg0.sw_if_index, tenant_id=1, is_disable=True
+        )
+        self.vapi.sfdp_tenant_add_del(tenant_id=1, is_del=True)
+
+
+@unittest.skipIf(
+    "sfdp_services" in config.excluded_plugins,
+    "SFDP_Services plugin is required to run SFDP tests",
+)
 class TestSfdpKillTwoWorkers(VppTestCase):
     """SFDP kill immediacy with sessions spread across two worker threads"""
 
