@@ -142,7 +142,7 @@ func (c *Container) getContainerArguments() string {
 		"--cap-add=IPC_LOCK --cap-add=SYS_PTRACE --device /dev/net/tun:/dev/net/tun --device /dev/vhost-net:/dev/vhost-net"
 	args += c.getVolumesAsCliOption()
 	args += c.getEnvVarsAsCliOption()
-	if *IsVppDebug && *VppSourceFileDir != "" {
+	if (*IsVppDebug || *IsCoverage) && *VppSourceFileDir != "" {
 		args += fmt.Sprintf(" -v %s:%s", *VppSourceFileDir, *VppSourceFileDir)
 	}
 	args += " --name " + c.Name + " " + c.Image
@@ -391,7 +391,7 @@ func (c *Container) addVolume(hostDir string, containerDir string, isDefaultWork
 func (c *Container) getVolumesAsSlice() []string {
 	var volumeSlice []string
 
-	if *IsVppDebug && *VppSourceFileDir != "" {
+	if (*IsVppDebug || *IsCoverage) && *VppSourceFileDir != "" {
 		volumeSlice = append(volumeSlice, fmt.Sprintf("%s:%s", *VppSourceFileDir, *VppSourceFileDir))
 	}
 
