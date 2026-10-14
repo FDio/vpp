@@ -155,6 +155,10 @@ tcp_loss_exit_recovery (tcp_connection_t *tc, tcp_ack_ctx_t *ac)
   tc->flags &=
     ~(TCP_CONN_RECOVERY | TCP_CONN_FAST_RECOVERY | TCP_CONN_FRXT_FIRST | TCP_CONN_RXT_PENDING);
 
+  /* Out of recovery, keep only the loss marks detection would set now */
+  if (spurious_flags && tcp_rack_enabled (tc))
+    tcp_rack_recheck_losses (tc, ac);
+
   TCP_EVT (TCP_EVT_CC_EVT, tc, 3);
 
   ASSERT (tc->rto_boff == 0);

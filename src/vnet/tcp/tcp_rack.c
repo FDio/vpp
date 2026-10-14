@@ -484,6 +484,46 @@ tcp_rack_loss_on_ack (tcp_connection_t *tc, tcp_ack_ctx_t *ac)
   tcp_rack_arm_reorder_timer (tc, next_to, ac->bytes_acked != 0);
 }
 
+void
+tcp_rack_recheck_losses (tcp_connection_t *tc, tcp_ack_ctx_t *ac)
+{
+  tcp_rack_state_t *rack = tcp_rack_get_state (tc);
+  tcp_byte_tracker_t *bt = tc->bt;
+  tcp_bt_sample_t *bts;
+  f64 now, reo_wnd, next_to = 0.0;
+  u32 index, lost;
+  u8 in_window = 0;
+
+  ASSERT (!tcp_in_cong_recovery (tc));
+  now = tcp_time_now_us (tc->c_thread_index);
+  reo_wnd = tcp_rack_reo_wnd (tc);
+  index = bt->head;
+  while (index != TCP_BTS_INVALID_INDEX)
+    {
+      bts = pool_elt_at_index (bt->samples, index);
+      index = bts->next;
+      if (!(bts->flags & TCP_BTS_TX_LOST) || (bts->flags & (TCP_BTS_IS_RXT | TCP_BTS_IS_SACKED)))
+	continue;
+      /* Keep the mark if loss detection would set it now */
+      if (rack->rtt > 0.0 &&
+	  tcp_bt_tx_sent_after (rack->xmit_ts, rack->end_seq, bts->tx_time, bts->max_seq))
+	{
+	  if (bts->tx_time + rack->rtt + reo_wnd - now <= 0.0)
+	    continue;
+	  in_window = 1;
+	}
+      tcp_bt_clear_lost (tc, bts);
+    }
+
+  /* Data still inside the reordering window needs the reorder timer */
+  if (!in_window)
+    return;
+  lost = tcp_rack_detect_loss (tc, &next_to);
+  ac->last_lost += lost;
+  ac->lost += lost;
+  tcp_rack_arm_reorder_timer (tc, next_to, ac->bytes_acked != 0);
+}
+
 static_always_inline f64
 tcp_rack_timer_deadline (f64 now, u32 interval)
 {

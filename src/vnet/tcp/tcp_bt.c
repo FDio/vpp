@@ -1454,6 +1454,22 @@ tcp_bt_recompute_sack_loss (tcp_connection_t *tc)
 }
 
 void
+tcp_bt_clear_lost (tcp_connection_t *tc, tcp_bt_sample_t *bts)
+{
+  tcp_byte_tracker_t *bt = tc->bt;
+  sack_scoreboard_t *sb = &tc->sack_sb;
+  u32 len = bts->max_seq - bts->min_seq;
+
+  ASSERT ((bts->flags & TCP_BTS_IS_LOST) && !(bts->flags & (TCP_BTS_IS_RXT | TCP_BTS_IS_SACKED)));
+  ASSERT (sb->lost_bytes >= len);
+  bts->flags &= ~(TCP_BTS_IS_LOST | TCP_BTS_TX_LOST);
+  sb->lost_bytes -= clib_min (len, sb->lost_bytes);
+  bt->cur_rxt_end = sb->high_rxt;
+  if (PREDICT_FALSE (bt->tx_order.links != 0))
+    tcp_bt_tx_order_insert (bt, bts);
+}
+
+void
 tcp_bt_init_rxt (tcp_connection_t *tc, u32 snd_una)
 {
   tcp_byte_tracker_t *bt = tc->bt;
