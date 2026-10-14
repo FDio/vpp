@@ -115,6 +115,8 @@ void tcp_bt_loss_on_ack (tcp_connection_t *tc, tcp_ack_ctx_t *ac);
 void tcp_bt_dsack_recovery_init (tcp_connection_t *tc);
 __clib_export u8 tcp_bt_dsack_matches (tcp_connection_t *tc, u32 start, u32 end, u32 *rxt_bytes);
 __clib_export void tcp_bt_recompute_sack_loss (tcp_connection_t *tc);
+/** Clear the loss marks of a sample that was never retransmitted. */
+void tcp_bt_clear_lost (tcp_connection_t *tc, tcp_bt_sample_t *bts);
 __clib_export void tcp_bt_init_rxt (tcp_connection_t *tc, u32 snd_una);
 u32 tcp_bt_rxt_head_bytes (tcp_connection_t *tc, u32 max_bytes);
 __clib_export void tcp_bt_rxt_mark_lost (tcp_connection_t *tc);

@@ -62,6 +62,9 @@ tcp_rack_note_rtt_sample (tcp_rack_state_t *rack, f64 rtt, f64 now)
 
 __clib_export void tcp_rack_init (tcp_connection_t *tc);
 void tcp_rack_loss_on_ack (tcp_connection_t *tc, tcp_ack_ctx_t *ac);
+/** After an undo, clear loss marks on never retransmitted data that loss
+ * detection would not set now, e.g., ones set by an rto. */
+void tcp_rack_recheck_losses (tcp_connection_t *tc, tcp_ack_ctx_t *ac);
 __clib_export u8 tcp_rack_update_reo_wnd (tcp_connection_t *tc, u8 is_dsack);
 __clib_export u32 tcp_rack_mark_sample_lost (tcp_connection_t *tc, tcp_bt_sample_t *bts);
 __clib_export void tcp_rack_recovery_init (tcp_connection_t *tc);
