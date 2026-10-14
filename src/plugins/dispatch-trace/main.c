@@ -136,12 +136,25 @@ dispatch_pcap_trace (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  /* Is this packet traced? */
 	  if (PREDICT_FALSE (b->flags & VLIB_BUFFER_IS_TRACED))
 	    {
-	      vlib_trace_header_t **h = pool_elt_at_index (
-		tm->trace_buffer_pool, vlib_buffer_get_trace_index (b));
-
-	      dtt->pcap_buffer = format (dtt->pcap_buffer, "%U%c",
-					 format_vlib_trace, vm, h[0], 0);
-	      string_count++;
+	      /*
+	       * Trace records live in per-thread pools. A handed-off buffer may
+	       * refer to another thread's pool, and a trace index may be stale
+	       * after 'clear trace'. Only use records from this thread's pool;
+	       * see also vlib_add_trace_inline().
+	       */
+	      u32 traced_thread = vlib_buffer_get_trace_thread (b);
+	      u32 trace_index = vlib_buffer_get_trace_index (b);
+	      if (traced_thread == vm->thread_index &&
+		  !pool_is_free_index (tm->trace_buffer_pool, trace_index))
+		{
+		  vlib_trace_header_t **h = pool_elt_at_index (tm->trace_buffer_pool, trace_index);
+		  if (h[0] != NULL)
+		    {
+		      dtt->pcap_buffer =
+			format (dtt->pcap_buffer, "%U%c", format_vlib_trace, vm, h[0], 0);
+		      string_count++;
+		    }
+		}
 	    }
 
 	  /* Save the string count */
