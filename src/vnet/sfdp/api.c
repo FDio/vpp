@@ -105,6 +105,58 @@ vl_api_sfdp_set_icmp_error_node_t_handler (
   REPLY_MACRO (VL_API_SFDP_SET_ICMP_ERROR_NODE_REPLY);
 }
 
+static void
+sfdp_status_reply_encode (vl_api_sfdp_status_reply_t *rmp, sfdp_main_t *sfdp, u32 n_threads)
+{
+  vl_api_sfdp_per_thread_data_t *rmp_ptd;
+  sfdp_per_thread_data_t *ptd;
+
+  rmp->n_threads = clib_host_to_net_u32 (n_threads);
+  /* Initially configured capacity for tenants and sessions. */
+  rmp->tenant_capacity = clib_host_to_net_u64 (1ULL << sfdp->log2_tenants);
+  rmp->session_capacity = clib_host_to_net_u64 (sfdp_num_sessions ());
+  /* Currently active tenants. */
+  rmp->tenant_active = clib_host_to_net_u32 (pool_elts (sfdp->tenants));
+  /* Active sessions across all threads, excluding per-thread freelists. */
+  rmp->session_active = clib_host_to_net_u64 (sfdp_real_active_sessions ());
+  /* Free sessions in the global table, excluding per-thread freelists. */
+  rmp->session_global_free = clib_host_to_net_u64 (sfdp_remaining_sessions_in_pool ());
+
+  vec_foreach (ptd, sfdp->per_thread_data)
+    {
+      u32 thread_index = ptd - sfdp->per_thread_data;
+
+      rmp_ptd = &rmp->per_thread_data[thread_index];
+      rmp_ptd->thread_index = clib_host_to_net_u32 (thread_index);
+      rmp_ptd->session_active = clib_host_to_net_u32 (ptd->n_sessions);
+      rmp_ptd->session_in_freelist = clib_host_to_net_u32 (vec_len (ptd->session_freelist));
+    }
+}
+
+static void
+vl_api_sfdp_status_t_handler (vl_api_sfdp_status_t *mp)
+{
+  sfdp_main_t *sfdp = &sfdp_main;
+  vl_api_sfdp_status_reply_t *rmp;
+  u32 n_threads = 0;
+  int rv = 0;
+
+  /* if SFDP has not been enabled yet, return error */
+  if (!sfdp->init_done)
+    {
+      rv = -1;
+      goto fail;
+    }
+
+  n_threads = vec_len (sfdp->per_thread_data);
+
+fail:
+  REPLY_MACRO3_ZERO (VL_API_SFDP_STATUS_REPLY, n_threads * sizeof (rmp->per_thread_data[0]), ({
+		       if (!rv)
+			 sfdp_status_reply_encode (rmp, sfdp, n_threads);
+		     }));
+}
+
 static vl_api_sfdp_session_state_t
 sfdp_session_state_encode (sfdp_session_state_t x)
 {
