@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5feceb10_fef7771a",
+        "filename": "src/vlib/buffer.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 602,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-10-14T20:17:19Z",
+      "side": 1,
+      "message": "This should be conditionally compiled for ASAN image, not added to all images.\n\nPlease create a macro , e.g. vlib_buffer_poison_asan(), in src/vlib/buffer.h that is conditionally compiled to this for ASAN builds only.",
+      "revId": "39af7043477adda059290bb634a47510f8e54600",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
