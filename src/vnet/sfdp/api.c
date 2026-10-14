@@ -105,6 +105,55 @@ vl_api_sfdp_set_icmp_error_node_t_handler (
   REPLY_MACRO (VL_API_SFDP_SET_ICMP_ERROR_NODE_REPLY);
 }
 
+static void
+vl_api_sfdp_status_t_handler (vl_api_sfdp_status_t *mp)
+{
+  sfdp_main_t *sfdp = &sfdp_main;
+  vl_api_sfdp_status_reply_t *rmp;
+  vl_api_registration_t *reg;
+  vl_api_sfdp_per_thread_data_t *rmp_ptd;
+  sfdp_per_thread_data_t *ptd;
+  bool is_initialized = sfdp->init_done;
+  u32 n_threads = is_initialized ? vec_len (sfdp->per_thread_data) : 0;
+  size_t msg_size = sizeof (*rmp) + n_threads * sizeof (rmp->per_thread_data[0]);
+
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+    return;
+
+  rmp = vl_msg_api_alloc_zero (msg_size);
+  rmp->_vl_msg_id = ntohs (VL_API_SFDP_STATUS_REPLY + sfdp->msg_id_base);
+  rmp->context = mp->context;
+
+  /* verify sfdp infrastructure initialization */
+  /* since it is lazily-initialized (e.g. on first tenant creation..) */
+  rmp->is_initialized = is_initialized;
+  rmp->n_threads = clib_host_to_net_u32 (n_threads);
+  /* initially configured capacity for tenants and sessions */
+  rmp->tenant_capacity = clib_host_to_net_u64 (1ULL << sfdp->log2_tenants);
+  rmp->session_capacity = clib_host_to_net_u64 (sfdp_num_sessions ());
+  /* currently active tenants */
+  rmp->tenant_active = clib_host_to_net_u32 (pool_elts (sfdp->tenants));
+  /* current active sessions across all threads (ignores sessions in per-thread freelists) */
+  rmp->session_active = clib_host_to_net_u64 (sfdp_real_active_sessions ());
+  /* current free sessions in global table (ignores sessions in per-thread freelists) */
+  rmp->session_global_free = clib_host_to_net_u64 (sfdp_remaining_sessions_in_pool ());
+
+  if (is_initialized)
+    {
+      vec_foreach (ptd, sfdp->per_thread_data)
+	{
+	  u32 thread_index = ptd - sfdp->per_thread_data;
+	  rmp_ptd = &rmp->per_thread_data[thread_index];
+	  rmp_ptd->thread_index = clib_host_to_net_u32 (thread_index);
+	  rmp_ptd->session_active = clib_host_to_net_u32 (ptd->n_sessions);
+	  rmp_ptd->session_in_freelist = clib_host_to_net_u32 (vec_len (ptd->session_freelist));
+	}
+    }
+
+  vl_api_send_msg (reg, (u8 *) rmp);
+}
+
 static vl_api_sfdp_session_state_t
 sfdp_session_state_encode (sfdp_session_state_t x)
 {
