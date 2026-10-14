@@ -25,7 +25,8 @@ func init() {
 //  2. server VPP runs the built-in vperf server and the app-evt-collector, which
 //     connects to the sink and pushes per-session TCP stats when sessions close.
 //  3. Client VPP runs vperf client to generate traffic.
-//  4. After the run the sink output must contain at least one "[tcp]" stat line.
+//  4. The sink is paused until its FIFO fills, then resumed.  All queued stats
+//     must drain without another session event to retry the send.
 //  5. The collector is deleted and must no longer appear in show output.
 func EvtCollectorSinkTest(s *VethsSuite) {
 	s.SetupAppContainers()
@@ -40,13 +41,15 @@ func EvtCollectorSinkTest(s *VethsSuite) {
 
 	/* Write VCL config for the sink process (runs against server VPP) */
 	srvAppCont := s.Containers.ServerApp
-	srvAppCont.CreateFile("/vcl.conf", getVclConfig(s.Containers.ServerVpp))
-	srvAppCont.AddEnvVar("VCL_CONFIG", "/vcl.conf")
+	createSmallFifoVclConfig(s.Containers.ServerVpp)
+	srvAppCont.AddEnvVar("VCL_CONFIG",
+		s.Containers.ServerVpp.GetContainerWorkDir()+"/vcl.conf")
 
 	/* Run the sink as a background process */
 	ctx, cancel := context.WithCancel(context.Background())
 	var wg sync.WaitGroup
-	sinkCmd := "evt_collector_sink " + sinkAddr + " " + sinkPort
+	sinkCmd := "sh -c 'echo $$ > /tmp/evt-collector-sink.pid; exec evt_collector_sink " +
+		sinkAddr + " " + sinkPort + "'"
 	Log(sinkCmd)
 
 	sinkOut := ""
@@ -62,7 +65,7 @@ func EvtCollectorSinkTest(s *VethsSuite) {
 	serverVpp.WaitForApp("evt-collector-sink", 5)
 
 	/* Enable app eventing on the server VPP */
-	o := serverVpp.Vppctl("app evt-collector enable")
+	o := serverVpp.Vppctl("app evt-collector enable fifo-size 64k")
 	Log(o)
 
 	/* Wait until the sink's session listener appears in VPP, then add the
@@ -97,17 +100,28 @@ func EvtCollectorSinkTest(s *VethsSuite) {
 	o = serverVpp.Vppctl("app evt-collector app vperf_srv_builtin")
 	Log(o)
 
-	/* Run vperf client — returns after all sessions close */
-	o = clientVpp.Vppctl("vperf client nclients 2 bytes 1024"+
+	/* Stop sink reads and generate enough records to fill its receive FIFO. */
+	o, err := srvAppCont.Exec(false,
+		"sh -c 'kill -STOP $(cat /tmp/evt-collector-sink.pid)'")
+	AssertNil(err, o)
+
+	const backpressuredSessions = 512
+	o = clientVpp.Vppctl("vperf client nclients %d bytes 1024"+
 		" syn-timeout 10 test-timeout 30"+
-		" uri tcp://%s/%s", vperfAddr, vperfPort)
+		" uri tcp://%s/%s", backpressuredSessions, vperfAddr, vperfPort)
 	Log(o)
 	AssertNotContains(o, "failed:")
+
+	/* Resume reads.  The dequeue notification must flush any collector backlog
+	 * left after the FIFO filled, without another session event. */
+	o, err = srvAppCont.Exec(false,
+		"sh -c 'kill -CONT $(cat /tmp/evt-collector-sink.pid)'")
+	AssertNil(err, o)
 
 	o = serverVpp.Vppctl("show app evt-collector")
 	Log("evt-collector state after vperf run:\n" + o)
 
-	/* Give stats a moment to arrive, then stop the sink */
+	/* Give the dequeue notification time to flush, then stop the sink. */
 	time.Sleep(time.Second)
 	cancel()
 	wg.Wait()
@@ -122,7 +136,8 @@ func EvtCollectorSinkTest(s *VethsSuite) {
 			statLines = append(statLines, l)
 		}
 	}
-	AssertGreaterThan(uint64(len(statLines)), uint64(0), "no stat lines found")
+	AssertGreaterEqual(uint64(len(statLines)), uint64(backpressuredSessions),
+		"collector did not flush all backpressured records")
 	for _, l := range statLines {
 		AssertContains(l, "is_ip4=1")
 		AssertContains(l, "proto=0")
