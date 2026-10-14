@@ -86,17 +86,22 @@ snort_enq_qpair (vlib_main_t *vm, vlib_node_runtime_t *node,
 	qp->enq_ring[head++ & mask] = desc_index;
       }
 
-  __atomic_store_n (&qp->hdr->enq.head, head, __ATOMIC_RELEASE);
-  qp->n_free_descs = n_free_descs;
-  qp->next_free_desc = next_free_desc;
-
-  if (!__atomic_exchange_n (&qp->hdr->enq.interrupt_pending, 1,
-			    __ATOMIC_RELAXED))
+  /* Activate new interrupt for snort with each batch of packets.
+   * Duplicate 'shared' head index value with a sent message
+   * to properly control deactivation of interrupts on the snort side
+   * (i.e. reading from enq_fd)
+   */
+  if (i > 0)
     {
-      if (write (qp->enq_fd, &(u64){ 1 }, sizeof (u64)) < 0)
+      if (write (qp->enq_fd, &head, sizeof (u64)) < 0)
 	vlib_node_increment_counter (vm, node->node_index,
 				     SNORT_ENQ_ERROR_SOCKET_ERROR, 1);
     }
+
+  /* Head value gets shared with the daq thread */
+  __atomic_store_n (&qp->hdr->enq.head, head, __ATOMIC_RELEASE);
+  qp->n_free_descs = n_free_descs;
+  qp->next_free_desc = next_free_desc;
 
   for (; i < n_enq; i++)
     if (single_qpair || hashes[i] == qpi)

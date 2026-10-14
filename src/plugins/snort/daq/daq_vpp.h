@@ -93,6 +93,7 @@ typedef struct _vpp_qpair
   daq_vpp_desc_index_t *enq_ring;
   daq_vpp_desc_index_t *deq_ring;
   daq_vpp_empty_buf_desc_t *empty_buf_ring;
+  daq_vpp_head_tail_t head_read;
   daq_vpp_head_tail_t tail;
   uint16_t queue_size;
   uint16_t empty_buf_queue_size;
