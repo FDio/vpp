@@ -476,6 +476,9 @@ typedef struct
 
   /* If this is set, don't run polling nodes on main */
   int no_main;
+
+  /* If this is set, SFDP runtime state has been initialized. */
+  int init_done;
 } sfdp_main_t;
 
 typedef struct
