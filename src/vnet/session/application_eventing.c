@@ -33,6 +33,7 @@ app_evt_collector_wrk_send (app_evt_collector_wrk_t *cwrk)
   u32 max_enq, to_send = 0, next_c;
   app_evt_buffer_chunk_t *c;
   svm_fifo_seg_t *seg;
+  svm_fifo_t *tx_fifo;
   session_t *cs;
   int wrote;
 
@@ -42,11 +43,22 @@ app_evt_collector_wrk_send (app_evt_collector_wrk_t *cwrk)
       clib_warning ("session not found");
       return;
     }
-  max_enq = svm_fifo_max_enqueue_prod (cs->tx_fifo);
+
+  tx_fifo = cs->tx_fifo;
+  if (!session_has_transport (cs))
+    {
+      /* Special handling of client cut-throughs */
+      ct_connection_t *cct;
+
+      cct = (ct_connection_t *) session_get_transport (cs);
+      tx_fifo = cct->client_tx_fifo;
+    }
+
+  max_enq = svm_fifo_max_enqueue_prod (tx_fifo);
 
   if (!max_enq)
     {
-      svm_fifo_add_want_deq_ntf (cs->tx_fifo, SVM_FIFO_WANT_DEQ_NOTIF);
+      svm_fifo_add_want_deq_ntf (tx_fifo, SVM_FIFO_WANT_DEQ_NOTIF);
       return;
     }
 
@@ -63,22 +75,8 @@ app_evt_collector_wrk_send (app_evt_collector_wrk_t *cwrk)
 
       c = app_evt_buffer_get_chunk (&cwrk->buf, c->next_index);
     }
-
-  if (session_has_transport (cs))
-    {
-      wrote = svm_fifo_enqueue_segments (
-	cs->tx_fifo, cwrk->segs, vec_len (cwrk->segs), 0 /* allow partial*/);
-    }
-  else
-    {
-      /* Special handling of client cut-throughs */
-      ct_connection_t *cct;
-
-      cct = (ct_connection_t *) session_get_transport (cs);
-      wrote =
-	svm_fifo_enqueue_segments (cct->client_tx_fifo, cwrk->segs,
-				   vec_len (cwrk->segs), 0 /* allow partial*/);
-    }
+  wrote = svm_fifo_enqueue_segments (tx_fifo, cwrk->segs,
+				     vec_len (cwrk->segs), 0 /* allow partial*/);
 
   if (wrote > 0 && svm_fifo_set_event (cs->tx_fifo))
     session_program_tx_io_evt (cs->handle, SESSION_IO_EVT_TX);
@@ -101,7 +99,7 @@ app_evt_collector_wrk_send (app_evt_collector_wrk_t *cwrk)
 
   vec_reset_length (cwrk->segs);
   if (cwrk->buf.len)
-    svm_fifo_add_want_deq_ntf (cs->tx_fifo, SVM_FIFO_WANT_DEQ_NOTIF);
+    svm_fifo_add_want_deq_ntf (tx_fifo, SVM_FIFO_WANT_DEQ_NOTIF);
 
   return;
 }
