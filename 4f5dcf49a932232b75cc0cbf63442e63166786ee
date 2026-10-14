@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a163a862_2249b7f2",
+        "filename": "src/vnet/flow/flow.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 169,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-10-14T08:23:34Z",
+      "side": 1,
+      "message": "Could we change this to `f-\u003en_allocated \u003c n_flows`? With `n_allocated` initially zero, the current condition skips prefill for every positive request, leaving workers to allocate backing storage in the data path.",
+      "revId": "4f5dcf49a932232b75cc0cbf63442e63166786ee",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ddf0bb9e_973b0eb2",
+        "filename": "src/vnet/flow/flow_cli.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 227,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-10-14T08:23:34Z",
+      "side": 1,
+      "message": "Could we resolve this index against the supplied `flow_pool`? `show flow template index N` currently looks in the ordinary flow pool, so it can display an unrelated flow or report no entry for an existing template.",
+      "revId": "4f5dcf49a932232b75cc0cbf63442e63166786ee",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "876131ca_1fbe6151",
+        "filename": "src/vnet/flow/flow_cli.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 260,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-10-14T08:23:34Z",
+      "side": 1,
+      "message": "Could we snapshot flow contents under the existing barrier, including a copy of `generic_pattern_t`, then format and yield after releasing it? Snapshotting only indices allows deletion before lookup to trigger the allocation assertion, or deletion during formatting to expose poisoned storage or a freed generic pattern. Copying here would avoid adding locks to the data path.",
+      "revId": "4f5dcf49a932232b75cc0cbf63442e63166786ee",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
