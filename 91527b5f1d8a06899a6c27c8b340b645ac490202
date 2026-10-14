@@ -110,6 +110,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "35c1a828_dc55bd82",
+        "filename": "src/vnet/ipsec/ipsec.h",
+        "patchSetId": 7
+      },
+      "lineNbr": 31,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-10-14T12:54:36Z",
+      "side": 1,
+      "message": "Exactly, my point is I\u0027d rather not have pointer cbacks and just have iptfs in eg. src/vnet/ipsec/iptfs/ and core ipsec calling directly the relevant functions.",
+      "parentUuid": "0aedb9af_89352973",
+      "revId": "91527b5f1d8a06899a6c27c8b340b645ac490202",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "3b4d170f_0feed702",
         "filename": "src/vnet/ipsec/ipsec_api.c",
         "patchSetId": 7
