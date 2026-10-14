@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8363173a_ddcc7a5e",
+        "filename": "src/vlib/pool_cache.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 341,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-10-14T08:22:58Z",
+      "side": 1,
+      "message": "Could we use `\u003e` here? `max_subpools` is a valid total count, so `\u003e\u003d` rejects requests that would fill the final permitted subpool. For example, with `log2_subpool_size \u003d 31`, `max_subpools` is 1 and even `pool_cache_prefill(c, 1)` returns `-1`.",
+      "revId": "4d212af2c5f610cf8182e471aa9dc822c71e33a7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
