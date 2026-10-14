@@ -35,6 +35,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "a43fcbae_b3cc475c",
+        "filename": "src/plugins/dispatch-trace/main.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 153,
+      "author": {
+        "id": 3357
+      },
+      "writtenOn": "2026-10-14T08:12:31Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "e572b3bd_4e7dbec5",
+      "revId": "26a3a7a017762dbe28bd09b7732305018ba75b8d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "66ff7c7d_455cfd15",
@@ -70,6 +88,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "2ead6545_dcf1df61",
+        "filename": "src/plugins/dispatch-trace/main.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 155,
+      "author": {
+        "id": 3357
+      },
+      "writtenOn": "2026-10-14T08:12:31Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "66d937b0_4f0c9c73",
+      "revId": "26a3a7a017762dbe28bd09b7732305018ba75b8d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "38897323_a068fa82",
@@ -83,6 +119,24 @@
       "writtenOn": "2026-09-29T22:29:38Z",
       "side": 1,
       "message": "This is not necessary. \"pcap dispatch trace\" is not mp-safe, so\nvlib_cli_dispatch_sub_commands() already holds the worker barrier while\nthe handler runs. The plugin has no API handlers, so the CLI is the\nonly caller. The same applies to lines 316, 348 and 358",
+      "revId": "26a3a7a017762dbe28bd09b7732305018ba75b8d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "035d3333_45a0b16e",
+        "filename": "src/plugins/dispatch-trace/main.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 297,
+      "author": {
+        "id": 3357
+      },
+      "writtenOn": "2026-10-14T08:12:31Z",
+      "side": 1,
+      "message": "Thank you for your suggestion. I have made the corresponding modifications",
+      "parentUuid": "38897323_a068fa82",
       "revId": "26a3a7a017762dbe28bd09b7732305018ba75b8d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
