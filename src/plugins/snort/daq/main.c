@@ -540,7 +540,7 @@ uint32_t
 daq_vpp_msg_receive_one (daq_vpp_ctx_t *ctx, daq_vpp_qpair_t *qp,
 			 const DAQ_Msg_t *msgs[], unsigned max_recv)
 {
-  uint32_t n_recv, n_left, desc_index, next_desc_index;
+  uint32_t n_recv, n_left, desc_index;
   daq_vpp_head_tail_t head, tail, mask = qp->queue_size - 1;
   struct timeval tv;
 
@@ -557,19 +557,29 @@ daq_vpp_msg_receive_one (daq_vpp_ctx_t *ctx, daq_vpp_qpair_t *qp,
   if (n_recv > max_recv)
     n_recv = max_recv;
 
-  next_desc_index = qp->enq_ring[tail++ & mask];
-
-  gettimeofday (&tv, NULL);
-  for (n_left = n_recv; n_left > 1; n_left--, msgs++)
+  /*
+   * It's time to clean up event_fd buffer
+   * by reading one u64-sized index at a time
+   * until a matching announcement of the 'head' value.
+   */
+  ssize_t size;
+  while (qp->head_read < head)
     {
-      desc_index = next_desc_index;
-
-      msgs[0] = daq_vpp_fill_msg (ctx, qp, desc_index, tv);
-      next_desc_index = qp->enq_ring[tail++ & mask];
+      size = read (qp->enq_fd, &qp->head_read, sizeof (daq_vpp_head_tail_t));
+      /* should never happen */
+      if (qp->head_read > head || size < sizeof (daq_vpp_head_tail_t))
+	{
+	  qp->head_read = head;
+	  break;
+	}
     }
 
-  /* last packet */
-  msgs[0] = daq_vpp_fill_msg (ctx, qp, next_desc_index, tv);
+  gettimeofday (&tv, NULL);
+  for (n_left = n_recv; n_left; n_left--, msgs++)
+    {
+      desc_index = qp->enq_ring[tail++ & mask];
+      msgs[0] = daq_vpp_fill_msg (ctx, qp, desc_index, tv);
+    }
 
   qp->tail = tail;
 
@@ -630,7 +640,8 @@ daq_vpp_msg_receive (void *handle, unsigned max_recv, const DAQ_Msg_t *msgs[],
        * next qpair */
       uint16_t num_qpairs = ctx->num_qpairs;
       uint16_t next_qp = ctx->next_qpair;
-      for (uint32_t n, left = num_qpairs; left; left--)
+
+      for (uint32_t n, left = num_qpairs; left && max_recv > n_recv; left--)
 	{
 	  daq_vpp_qpair_t *qp = ctx->qpairs[next_qp];
 
@@ -644,8 +655,7 @@ daq_vpp_msg_receive (void *handle, unsigned max_recv, const DAQ_Msg_t *msgs[],
 	  /* next */
 	  next_qp = next_qp + 1 < num_qpairs ? next_qp + 1 : 0;
 	}
-      ctx->next_qpair =
-	ctx->next_qpair + 1 < num_qpairs ? ctx->next_qpair + 1 : 0;
+      ctx->next_qpair = next_qp;
     }
 
   if (n_recv)
@@ -695,14 +705,11 @@ daq_vpp_msg_receive (void *handle, unsigned max_recv, const DAQ_Msg_t *msgs[],
   if (rstat != DAQ_RSTAT_OK)
     goto done;
 
-  for (struct epoll_event *e = epoll_events; e - epoll_events < n_events; e++)
+  for (struct epoll_event *e = epoll_events; e - epoll_events < n_events && max_recv > n_recv; e++)
     if (e->data.ptr > (void *) 1)
       {
 	daq_vpp_qpair_t *qp = e->data.ptr;
 	uint32_t n;
-
-	__atomic_store_n (&qp->hdr->enq.interrupt_pending, 0,
-			  __ATOMIC_RELAXED);
 
 	n = daq_vpp_msg_receive_one (ctx, qp, msgs, max_recv - n_recv);
 	if (n)
@@ -710,7 +717,6 @@ daq_vpp_msg_receive (void *handle, unsigned max_recv, const DAQ_Msg_t *msgs[],
 	    msgs += n;
 	    n_recv += n;
 	  }
-	daq_vpp_flush_eventfd (qp->enq_fd);
       }
 
 done:
