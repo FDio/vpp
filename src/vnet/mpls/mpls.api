@@ -269,6 +269,12 @@ counters mpls {
     units "packets";
     description "MPLS output packets needs fragmentation";
   };
+  no_space {
+    severity error;
+    type counter64;
+    units "packets";
+    description "MPLS rewrite with insufficient headroom";
+  };
   no_label {
     severity error;
     type counter64;
