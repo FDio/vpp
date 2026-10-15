@@ -46,12 +46,6 @@ tcp_tlp_can_schedule (tcp_connection_t *tc)
 	 !tc->sack_sb.sacked_bytes && !tcp_tlp_is_pending (tc);
 }
 
-u8
-tcp_tlp_new_data_fits_cwnd (tcp_connection_t *tc, u32 n_bytes)
-{
-  return n_bytes && tcp_available_cc_snd_space (tc) >= n_bytes;
-}
-
 u32
 tcp_tlp_pto_ticks (tcp_connection_t *tc)
 {

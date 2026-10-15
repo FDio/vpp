@@ -532,12 +532,12 @@ STATIC_ASSERT (sizeof (vnet_buffer_opaque2_t) ==
    vnet_buffer (b)->l4_hdr_offset - vnet_buffer (b)->l3_hdr_offset +          \
    gso_mtu_tunnel_size (b))
 
-format_function_t format_vnet_buffer_no_chain;
+__clib_export format_function_t format_vnet_buffer_no_chain;
 format_function_t format_vnet_buffer;
 format_function_t format_vnet_buffer_offload;
-format_function_t format_vnet_buffer_flags;
-format_function_t format_vnet_buffer_opaque;
-format_function_t format_vnet_buffer_opaque2;
+__clib_export format_function_t format_vnet_buffer_flags;
+__clib_export format_function_t format_vnet_buffer_opaque;
+__clib_export format_function_t format_vnet_buffer_opaque2;
 
 static_always_inline void
 vnet_buffer_offload_flags_set (vlib_buffer_t *b, vnet_buffer_oflags_t oflags)

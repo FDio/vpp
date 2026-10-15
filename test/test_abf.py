@@ -472,6 +472,59 @@ class TestAbf(VppTestCase):
         )
         self.send_and_expect(self.pg0, p_permit * NUM_PKTS, self.pg1)
 
+    def test_abf_path_via_local0(self):
+        """Policy path via local0 must not crash"""
+
+        #
+        # An all-zero path (next-hop 0.0.0.0 via sw_if_index 0) is an
+        # attached path via local0, whose interface class cannot build
+        # a rewrite.  Resolving it used to feed a NULL rewrite into
+        # vnet_rewrite_set_data_internal and assert on debug images.
+        #
+        rule = AclRule(
+            is_permit=1,
+            proto=17,
+            ports=1234,
+            src_prefix=IPv4Network("1.1.1.1/32"),
+            dst_prefix=IPv4Network("1.1.1.2/32"),
+        )
+        acl = VppAcl(self, rules=[rule])
+        acl.add_vpp_config()
+
+        policy = {
+            "policy_id": 20,
+            "acl_index": acl.acl_index,
+            "n_paths": 1,
+            "paths": [VppRoutePath("0.0.0.0", 0).encode()],
+        }
+        rv = self.vapi.papi.abf_policy_add_del(is_add=1, policy=policy)
+        self.assertEqual(rv.retval, 0)
+        self.assertTrue(find_abf_policy(self, 20))
+
+        rv = self.vapi.papi.abf_policy_add_del(is_add=0, policy=policy)
+        self.assertEqual(rv.retval, 0)
+        self.assertFalse(find_abf_policy(self, 20))
+
+    def test_abf_attach_unknown_policy(self):
+        """Attachment to an unknown policy is rejected"""
+
+        #
+        # The CLI validates the policy id, the binary API used to
+        # assert instead of failing the request.
+        #
+        rv = self.vapi.papi.abf_itf_attach_add_del(
+            is_add=1,
+            attach={
+                "policy_id": 4242,
+                "sw_if_index": self.pg0.sw_if_index,
+                "priority": 100,
+                "is_ipv6": 0,
+            },
+        )
+        # VNET_API_ERROR_NO_SUCH_ENTRY
+        self.assertEqual(rv.retval, -6)
+        self.assertFalse(find_abf_itf_attach(self, 4242, self.pg0.sw_if_index))
+
 
 if __name__ == "__main__":
     unittest.main(testRunner=VppTestRunner)

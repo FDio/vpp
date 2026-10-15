@@ -332,6 +332,14 @@ i8x16_msb_mask (i8x16 v)
   return _mm_movemask_epi8 ((__m128i) v);
 }
 
+/* Creates a mask from the result of a four-lane 32-bit comparison. */
+static_always_inline u8
+u32x4_compare_mask (u32x4 v)
+{
+  return _mm_movemask_ps ((__m128) v);
+}
+
+#define CLIB_HAVE_VEC128_COMPARE_MASK
 #define CLIB_HAVE_VEC128_MSB_MASK
 
 #undef _signed_binop

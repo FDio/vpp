@@ -128,6 +128,7 @@ class TestTCPUnitTests(VppAsfTestCase):
         # individual API request consumes the shared CLI response timeout.
         test_cases = (
             "sack",
+            "dsack-undo",
             "lookup",
             "delivery",
             "persist",
@@ -136,18 +137,22 @@ class TestTCPUnitTests(VppAsfTestCase):
             "fin-rst",
             "timewait",
             "cubic",
+            "bbr",
             "bt",
             "rack",
+            "startup",
             "tamper fin",
             "tamper lost-ack",
             "tamper peer-fin",
             "tamper chain-rxt",
             "tamper queued-fin",
             "tamper queued-data-loss",
+            "tamper queued-data-loss-bt",
             "tamper recov-pt",
             "tamper dsack-early",
             "tamper strand-head",
             "tamper rto",
+            "tamper rto-head",
         )
 
         for test_case in test_cases:

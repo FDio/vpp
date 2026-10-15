@@ -18,7 +18,7 @@
 
 /* Global mapping of flow_name to flow_id */
 extern uword *vnet_tm_flow_name_to_id_hash;
-extern u32 vnet_tm_flow_id_start;
+__clib_export extern u32 vnet_tm_flow_id_start;
 
 typedef struct vnet_tm_node_params_
 {
@@ -573,7 +573,7 @@ u32 vnet_tm_create_flow_id (const char *flow_name);
  *
  * @return 0 on success.
  */
-u32 vnet_tm_get_flow_id (const char *flow_name);
+__clib_export u32 vnet_tm_get_flow_id (const char *flow_name);
 
 /**
  * @brief Add a new traffic management node and connect it to an
@@ -715,5 +715,5 @@ int vnet_tm_sys_stop_tm (u32 hw_if_idx);
  *
  * @return 0 on success.
  */
-int vnet_tm_system_register (vnet_tm_system_t *tm_sys, u32 hw_if_idx);
+__clib_export int vnet_tm_system_register (vnet_tm_system_t *tm_sys, u32 hw_if_idx);
 #endif // _VNET_TM_H_

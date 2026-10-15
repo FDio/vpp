@@ -1687,6 +1687,12 @@ http2_req_state_wait_transport_reply (http_ctx_t *hc, http_ctx_t *req, transport
     }
   else
     {
+      if (!(req->req_flags & HTTP_REQ_F_PEER_CLOSED))
+	{
+	  HTTP_DBG (1, "no content-length and DATA frame expected");
+	  *error = HTTP2_ERROR_INTERNAL_ERROR;
+	  return HTTP_SM_ERROR;
+	}
       /* we are done wait for the next app request */
       if (transport_connection_is_descheduled (&req->connection))
 	transport_connection_reschedule (&req->connection);
@@ -2694,6 +2700,12 @@ http2_handle_data_frame (http_ctx_t *hc, http2_frame_header_t *fh)
       return HTTP2_ERROR_NO_ERROR;
     }
 
+  if (!http2_req_state_is_rx_valid (req))
+    {
+      HTTP_DBG (1, "unexpected DATA frame");
+      return HTTP2_ERROR_PROTOCOL_ERROR;
+    }
+
   rx_buf = http_get_rx_buf_len (hc, fh->length);
   http_io_ts_read (hc, rx_buf, fh->length, 0);
 
@@ -2854,7 +2866,10 @@ http2_handle_settings_frame (http_ctx_t *hc, http2_frame_header_t *fh)
 	  http_req_state_change (req, HTTP_REQ_STATE_WAIT_APP_METHOD);
 	  http_stats_connections_established_inc (hc->c_thread_index);
 	  if (http_conn_established (hc, req, hc->hc_pa_app_api_ctx))
-	    return HTTP2_ERROR_INTERNAL_ERROR;
+	    {
+	      http2_conn_free_req (hc, req, hc->c_thread_index);
+	      return HTTP2_ERROR_INTERNAL_ERROR;
+	    }
 	}
     }
 
@@ -3415,6 +3430,8 @@ http2_rx_expect_server_preface (http_ctx_t *hc)
   u32 to_deq;
   u8 *rx_buf;
   http2_frame_header_t fh;
+  clib_thread_index_t thread_index = hc->c_thread_index;
+  u32 hc_index = hc->hc_hc_index;
 
   HTTP_DBG (1, "hc [%u]%x", hc->c_thread_index, hc->hc_hc_index);
 
@@ -3457,6 +3474,8 @@ http2_rx_expect_server_preface (http_ctx_t *hc)
   http_io_ts_drain (hc, HTTP2_FRAME_HEADER_SIZE);
   to_deq -= fh.length;
   rv = http2_handle_settings_frame (hc, &fh);
+  /* pool might grow, regrab connection */
+  hc = http_ctx_get_w_thread (hc_index, thread_index);
   if (PREDICT_FALSE (rv != HTTP2_ERROR_NO_ERROR))
     {
       http2_connection_error (hc, rv, 0);
@@ -3625,8 +3644,13 @@ http2_rx_expect_default (http_ctx_t *hc)
 
       if (PREDICT_FALSE (rv != HTTP2_ERROR_NO_ERROR))
 	{
+	  /* continuation might already be in the fifo */
 	  if (rv == HTTP2_ERROR_EXPECT_CONTINUATION)
-	    return;
+	    {
+	      if (to_deq)
+		http2_rx_expect_funcs[hc->rx_expect](hc);
+	      return;
+	    }
 	  http2_connection_error (hc, rv, 0);
 	  return;
 	}

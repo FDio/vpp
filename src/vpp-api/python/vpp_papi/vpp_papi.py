@@ -103,14 +103,14 @@ def add_convenience_methods():
             return VppEnum.vl_api_address_family_t.ADDRESS_IP6.value
         if 4 == self.version:
             return VppEnum.vl_api_address_family_t.ADDRESS_IP4.value
-        raise ValueError("Invalid version.")
+        raise ValueError(f"Invalid IP address family version: {self.version}")
 
     def _vapi_af_name(self):
         if 6 == self.version:
             return "ip6"
         if 4 == self.version:
             return "ip4"
-        raise ValueError("Invalid version.")
+        raise ValueError(f"Invalid IP address family version: {self.version}")
 
     ipaddress._IPAddressBase.vapi_af = property(_vapi_af)
     ipaddress._IPAddressBase.vapi_af_name = property(_vapi_af_name)

@@ -40,7 +40,7 @@ class TestPNAT(VppTestCase):
                 i.admin_down()
 
     def validate(self, rx, expected):
-        self.assertTrue(bytes(rx), bytes(expected))
+        self.assertEqual(bytes(rx), bytes(expected))
 
     def validate_bytes(self, rx, expected):
         self.assertEqual(rx, expected)

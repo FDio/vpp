@@ -51,13 +51,9 @@ typedef vl_counter_ip_frag_enum_t ip_frag_error_t;
 void ip_frag_set_vnet_buffer (vlib_buffer_t * b, u16 mtu,
 			      u8 next_index, u8 flags);
 
-extern ip_frag_error_t ip4_frag_do_fragment (vlib_main_t * vm,
-					     u32 from_bi,
-					     u16 mtu,
-					     u16 encapsize, u32 ** buffer);
-extern ip_frag_error_t ip6_frag_do_fragment (vlib_main_t * vm,
-					     u32 from_bi,
-					     u16 mtu,
-					     u16 encapsize, u32 ** buffer);
+__clib_export extern ip_frag_error_t ip4_frag_do_fragment (vlib_main_t *vm, u32 from_bi, u16 mtu,
+							   u16 encapsize, u32 **buffer);
+__clib_export extern ip_frag_error_t ip6_frag_do_fragment (vlib_main_t *vm, u32 from_bi, u16 mtu,
+							   u16 encapsize, u32 **buffer);
 
 #endif /* ifndef IP_FRAG_H */

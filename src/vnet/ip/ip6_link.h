@@ -9,16 +9,14 @@
  * IPv6 Configuration on an interface
  */
 
-extern int ip6_link_enable (u32 sw_if_index,
-			    const ip6_address_t * link_local_addr);
-extern bool ip6_link_is_enabled (u32 sw_if_index);
-extern int ip6_link_disable (u32 sw_if_index);
+__clib_export extern int ip6_link_enable (u32 sw_if_index, const ip6_address_t *link_local_addr);
+__clib_export extern bool ip6_link_is_enabled (u32 sw_if_index);
+__clib_export extern int ip6_link_disable (u32 sw_if_index);
 
-extern const ip6_address_t *ip6_get_link_local_address (u32 sw_if_index);
+__clib_export extern const ip6_address_t *ip6_get_link_local_address (u32 sw_if_index);
 
-extern int ip6_link_set_local_address (u32 sw_if_index,
-				       const ip6_address_t * address);
-extern adj_index_t ip6_link_get_mcast_adj (u32 sw_if_index);
+__clib_export extern int ip6_link_set_local_address (u32 sw_if_index, const ip6_address_t *address);
+__clib_export extern adj_index_t ip6_link_get_mcast_adj (u32 sw_if_index);
 
 /**
  * Delegates for the interfaces
@@ -49,13 +47,11 @@ typedef struct ip6_link_delegate_vft_t_
 
 typedef u32 ip6_link_delegate_id_t;
 
-
-extern ip6_link_delegate_id_t ip6_link_delegate_register (const
-							  ip6_link_delegate_vft_t
-							  * vft);
+__clib_export extern ip6_link_delegate_id_t
+ip6_link_delegate_register (const ip6_link_delegate_vft_t *vft);
 extern index_t ip6_link_delegate_get (u32 sw_if_index,
 				      ip6_link_delegate_id_t id);
-extern bool ip6_link_delegate_update (u32 sw_if_index,
-				      ip6_link_delegate_id_t id, index_t ii);
+__clib_export extern bool ip6_link_delegate_update (u32 sw_if_index, ip6_link_delegate_id_t id,
+						    index_t ii);
 extern void ip6_link_delegate_remove (u32 sw_if_index,
 				      ip6_link_delegate_id_t id, index_t ii);

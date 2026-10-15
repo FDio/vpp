@@ -487,26 +487,30 @@ class TestIPv6(TestIPv6ND):
         #
         # An NS whose target address is one the router does not own
         #
-        nsma = in6_getnsma(inet_pton(AF_INET6, self.pg0.local_ip6))
-        d = inet_ntop(AF_INET6, nsma)
+        self.pg0.generate_remote_hosts(4)
+        source = self.pg0.remote_hosts[1]
+        unknown_target = "fd::ffff"
+        unknown_nsma = in6_getnsma(inet_pton(AF_INET6, unknown_target))
+        unknown_dst = inet_ntop(AF_INET6, unknown_nsma)
 
         p = (
-            Ether(dst=in6_getnsmac(nsma))
-            / IPv6(dst=d, src=self.pg0.remote_ip6)
-            / ICMPv6ND_NS(tgt="fd::ffff")
-            / ICMPv6NDOptSrcLLAddr(lladdr=self.pg0.remote_mac)
+            Ether(dst=in6_getnsmac(unknown_nsma), src=source.mac)
+            / IPv6(dst=unknown_dst, src=source.ip6)
+            / ICMPv6ND_NS(tgt=unknown_target)
+            / ICMPv6NDOptSrcLLAddr(lladdr=source.mac)
         )
         pkts = [p]
 
         self.send_and_assert_no_replies(
             self.pg0, pkts, "No response to NS for unknown target"
         )
+        self.assertFalse(find_nbr(self, self.pg0.sw_if_index, source.ip6))
+        self.assertFalse(find_route(self, source.ip6, 128))
         self.assert_equal(self.get_ip6_nd_rx_requests(self.pg0), n_rx_req_pg0 + 2)
 
         #
         # A neighbor entry that has no associated FIB-entry
         #
-        self.pg0.generate_remote_hosts(4)
         nd_entry = VppNeighbor(
             self,
             self.pg0.sw_if_index,

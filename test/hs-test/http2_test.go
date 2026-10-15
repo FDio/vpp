@@ -1,8 +1,10 @@
 package main
 
 import (
+	"bytes"
 	"crypto/tls"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"strconv"
@@ -11,6 +13,7 @@ import (
 
 	"github.com/edwarnicke/exechelper"
 	"golang.org/x/net/http2"
+	"golang.org/x/net/http2/hpack"
 
 	. "fd.io/hs-test/infra"
 )
@@ -18,8 +21,9 @@ import (
 func init() {
 	RegisterH2Tests(Http2TcpGetTest, Http2TcpPostTest, Http2MultiplexingTest, Http2TlsTest, Http2ContinuationTxTest,
 		Http2ServerMemLeakTest, Http2ClientGetTest, Http2ClientPostTest, Http2ClientPostPtrTest, Http2ClientGetRepeatTest,
-		Http2ClientMultiplexingTest, Http2ClientH2cTest, Http2ClientMemLeakTest, Htttp2TlsNoAlpnTest,
-		Http2TcpClientCloseDuringHandshakeTest)
+		Http2ClientMultiplexingTest, Http2ClientH2cTest, Http2ClientContinuationH2cTest, Http2ClientNoContentLengthTest, Http2ServerExtraDataTest,
+		Http2ClientMemLeakTest,
+		Htttp2TlsNoAlpnTest, Http2TcpClientCloseDuringHandshakeTest)
 	RegisterH2MWTests(Http2MultiplexingMWTest, Http2ClientMultiplexingMWTest, Http2TsFifoMemPressureMWTest)
 	RegisterVethTests(Http2CliTlsTest, Http2ClientContinuationTest, Http2ClientPostFormTest, Http2ClientPostFormPtrTest)
 }
@@ -316,6 +320,121 @@ func Http2ClientH2cTest(s *Http2Suite) {
 	AssertNil(err)
 	AssertContains(string(logContents), "HTTP/2")
 	AssertContains(string(logContents), "scheme=http conn=")
+}
+
+// h2c server answering the first request with the frames from resp, written at once
+func http2RawServer(s *Http2Suite, resp func(w *http2.Framer)) (net.Listener, string) {
+	serverAddress := s.HostAddr() + ":" + s.Ports.Port1
+	l, err := net.Listen("tcp", serverAddress)
+	AssertNil(err, fmt.Sprint(err))
+	go func() {
+		conn, err := l.Accept()
+		if err != nil {
+			return
+		}
+		defer conn.Close()
+		preface := make([]byte, len(http2.ClientPreface))
+		if _, err = io.ReadFull(conn, preface); err != nil {
+			return
+		}
+		framer := http2.NewFramer(conn, conn)
+		if err = framer.WriteSettings(http2.Setting{ID: http2.SettingMaxConcurrentStreams, Val: 100}); err != nil {
+			return
+		}
+		for {
+			f, err := framer.ReadFrame()
+			if err != nil {
+				return
+			}
+			if _, ok := f.(*http2.HeadersFrame); ok {
+				break
+			}
+		}
+		var out bytes.Buffer
+		w := http2.NewFramer(&out, nil)
+		w.WriteSettingsAck()
+		resp(w)
+		if _, err = conn.Write(out.Bytes()); err != nil {
+			return
+		}
+		io.Copy(io.Discard, conn)
+	}()
+	return l, serverAddress
+}
+
+func http2HeaderBlock(fields ...hpack.HeaderField) []byte {
+	var block bytes.Buffer
+	enc := hpack.NewEncoder(&block)
+	for _, f := range fields {
+		enc.WriteField(f)
+	}
+	return block.Bytes()
+}
+
+func Http2ClientContinuationH2cTest(s *Http2Suite) {
+	vpp := s.Containers.Vpp.VppInstance
+	block := http2HeaderBlock(hpack.HeaderField{Name: ":status", Value: "200"},
+		hpack.HeaderField{Name: "content-length", Value: "5"},
+		hpack.HeaderField{Name: "x-test", Value: "continuation"})
+	// the continuation reaches the client together with the headers
+	l, serverAddress := http2RawServer(s, func(w *http2.Framer) {
+		w.WriteHeaders(http2.HeadersFrameParam{StreamID: 1, BlockFragment: block[:4]})
+		w.WriteContinuation(1, true, block[4:])
+		w.WriteData(1, true, []byte("hello"))
+	})
+	defer l.Close()
+
+	o := vpp.Vppctl("http client http2 verbose timeout 5 uri http://" + serverAddress + "/")
+	Log(o)
+	AssertContains(o, "HTTP/2 200 OK")
+	AssertContains(o, "x-test: continuation")
+}
+
+func Http2ClientNoContentLengthTest(s *Http2Suite) {
+	vpp := s.Containers.Vpp.VppInstance
+	block := http2HeaderBlock(hpack.HeaderField{Name: ":status", Value: "200"})
+	l, serverAddress := http2RawServer(s, func(w *http2.Framer) {
+		w.WriteHeaders(http2.HeadersFrameParam{StreamID: 1, BlockFragment: block, EndHeaders: true})
+		w.WriteData(1, true, []byte("hello"))
+	})
+	defer l.Close()
+
+	Log(vpp.Vppctl("http client http2 verbose timeout 5 uri http://" + serverAddress + "/"))
+	// a body without content-length can't be framed yet, the client drops the connection
+	o := vpp.Vppctl("show http stats")
+	Log(o)
+	AssertContains(o, "1 connections protocol error")
+}
+
+func Http2ServerExtraDataTest(s *Http2Suite) {
+	vpp := s.Containers.Vpp.VppInstance
+	serverAddress := s.VppAddr() + ":" + s.Ports.Port1
+	Log(vpp.Vppctl("http tps uri http://" + serverAddress + " no-zc"))
+
+	conn, err := net.DialTimeout("tcp", serverAddress, 5*time.Second)
+	AssertNil(err, fmt.Sprint(err))
+	defer conn.Close()
+	block := http2HeaderBlock(hpack.HeaderField{Name: ":method", Value: "POST"},
+		hpack.HeaderField{Name: ":scheme", Value: "http"},
+		hpack.HeaderField{Name: ":path", Value: "/test"},
+		hpack.HeaderField{Name: ":authority", Value: serverAddress},
+		hpack.HeaderField{Name: "content-length", Value: "5"})
+	var out bytes.Buffer
+	out.WriteString(http2.ClientPreface)
+	w := http2.NewFramer(&out, nil)
+	w.WriteSettings(http2.Setting{ID: http2.SettingMaxConcurrentStreams, Val: 100})
+	w.WriteHeaders(http2.HeadersFrameParam{StreamID: 1, BlockFragment: block, EndHeaders: true})
+	// body longer than its content-length
+	w.WriteData(1, false, []byte("hello"))
+	w.WriteData(1, true, []byte("x"))
+	_, err = conn.Write(out.Bytes())
+	AssertNil(err, fmt.Sprint(err))
+	conn.SetReadDeadline(time.Now().Add(5 * time.Second))
+	io.Copy(io.Discard, conn)
+
+	o := vpp.Vppctl("show http stats")
+	Log(o)
+	AssertContains(o, "1 connections protocol error")
 }
 
 func http2ClientPostFile(s *Http2Suite, usePtr bool, fileSize int) {

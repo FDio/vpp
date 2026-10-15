@@ -558,33 +558,24 @@ func (s *HstSuite) WaitForCoreDump() bool {
 				if *IsDebugBuild {
 					debug = "_debug"
 				}
-				var binPath, libPath string
+				libDir := fmt.Sprintf("%s/build-root/build-vpp%s-native/vpp/lib/%s-linux-gnu",
+					*VppSourceFileDir, debug, archStr)
+				var binPath string
 				if strings.Contains(core.binPath, "vpp") {
 					binPath = fmt.Sprintf("../../build-root/build-vpp%s-native/vpp/bin/vpp", debug)
-					libPath = fmt.Sprintf("build-root/build-vpp%s-native/vpp/lib/%s-linux-gnu/vpp_plugins",
-						debug, archStr)
 				} else if strings.Contains(core.binPath, "vperf_client") {
 					binPath = fmt.Sprintf("../../build-root/build-vpp%s-native/vpp/bin/vperf_client", debug)
-					libPath = fmt.Sprintf("build-root/build-vpp%s-native/vpp/lib/%s-linux-gnu/vpp_plugins",
-						debug, archStr)
 				} else if strings.Contains(core.binPath, "vperf_server") {
 					binPath = fmt.Sprintf("../../build-root/build-vpp%s-native/vpp/bin/vperf_server", debug)
-					libPath = fmt.Sprintf("build-root/build-vpp%s-native/vpp/lib/%s-linux-gnu/vpp_plugins",
-						debug, archStr)
 				} else if strings.Contains(core.binPath, "vperf_cl_udp") {
 					binPath = fmt.Sprintf("../../build-root/build-vpp%s-native/vpp/bin/vperf_cl_udp", debug)
-					libPath = fmt.Sprintf("build-root/build-vpp%s-native/vpp/lib/%s-linux-gnu/vpp_plugins",
-						debug, archStr)
 				} else if strings.Contains(core.binPath, "vpp_echo") {
 					binPath = fmt.Sprintf("../../build-root/build-vpp%s-native/vpp/bin/vpp_echo", debug)
-					libPath = fmt.Sprintf("build-root/build-vpp%s-native/vpp/lib/%s-linux-gnu/vpp_plugins",
-						debug, archStr)
 				} else {
 					binPath = core.binPath
-					// this was most likely LDP and we want symbol table
-					libPath = fmt.Sprintf("build-root/build-vpp%s-native/vpp/lib/%s-linux-gnu", debug, archStr)
 				}
-				cmd := fmt.Sprintf("sudo gdb %s -c %s -ex 'set solib-search-path %s/%s' -ex 'thread apply all bt full' -batch", binPath, corePath, *VppSourceFileDir, libPath)
+				cmd := fmt.Sprintf("sudo gdb %s -c %s -ex 'set solib-search-path %s:%s/vpp_plugins:%s/vpp_crypto_engines' -ex 'thread apply all bt full' -batch",
+					binPath, corePath, libDir, libDir, libDir)
 				Log(cmd)
 				output, _ := exechelper.Output(cmd)
 				if strings.Contains(core.binPath, "vpp") {

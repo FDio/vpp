@@ -1,6 +1,7 @@
 package hst
 
 import (
+	"os"
 	"reflect"
 	"runtime"
 	"strings"
@@ -10,6 +11,7 @@ import (
 
 var vperfTests = map[string][]func(s *VperfSuite){}
 var vperfSoloTests = map[string][]func(s *VperfSuite){}
+var vperfManualTests = map[string][]func(s *VperfSuite){}
 var vperfMWTests = map[string][]func(s *VperfSuite){}
 
 type VperfSuite struct {
@@ -21,6 +23,9 @@ func RegisterVperfTests(tests ...func(s *VperfSuite)) {
 }
 func RegisterSoloVperfTests(tests ...func(s *VperfSuite)) {
 	vperfSoloTests[GetTestFilename()] = tests
+}
+func RegisterManualVperfTests(tests ...func(s *VperfSuite)) {
+	vperfManualTests[GetTestFilename()] = tests
 }
 func RegisterVperfMWTests(tests ...func(s *VperfSuite)) {
 	vperfMWTests[GetTestFilename()] = tests
@@ -53,6 +58,23 @@ var _ = Describe("VperfSuite", Ordered, ContinueOnFailure, Label("Tap", "Vperf")
 				Log("[* TEST BEGIN]: " + testName)
 				test(&s)
 			}, SpecTimeout(TestTimeout))
+		}
+	}
+	for filename, tests := range vperfManualTests {
+		for _, test := range tests {
+			test := test
+			pc := reflect.ValueOf(test).Pointer()
+			funcValue := runtime.FuncForPC(pc)
+			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
+			decorators := []any{Label("Manual"), SpecTimeout(TestTimeout)}
+			if os.Getenv("GITHUB_REPO_URL") != "" {
+				decorators = append(decorators, Pending)
+			}
+			decorators = append(decorators, func(ctx SpecContext) {
+				Log("[* TEST BEGIN]: " + testName)
+				test(&s)
+			})
+			It(testName, decorators...)
 		}
 	}
 })

@@ -156,6 +156,22 @@ openssl_lctx_get (u32 lctx_index)
   return pool_elt_at_index (openssl_main.lctx_pool, lctx_index);
 }
 
+/* What tcp and openssl hold usually fits the chunks the fifo already has */
+static int
+openssl_provision_pending (svm_fifo_t *f, tls_ctx_t *ctx, svm_fifo_seg_t *fs, u32 n_segs,
+			   u32 max_enq)
+{
+  openssl_ctx_t *oc = (openssl_ctx_t *) ctx;
+  session_t *ts = session_get_from_handle (ctx->tls_session_handle);
+  u32 n_pending;
+
+  n_pending = svm_fifo_max_dequeue_cons (ts->rx_fifo) + SSL_pending (oc->ssl);
+  if (!n_pending || n_pending >= max_enq)
+    return -1;
+
+  return svm_fifo_provision_chunks (f, fs, n_segs, n_pending);
+}
+
 int
 openssl_read_from_ssl_into_fifo (svm_fifo_t *f, tls_ctx_t *ctx, u32 max_len)
 {
@@ -172,8 +188,12 @@ openssl_read_from_ssl_into_fifo (svm_fifo_t *f, tls_ctx_t *ctx, u32 max_len)
 
   max_enq = clib_min (max_len, max_enq);
   n_fs = svm_fifo_provision_chunks (f, fs, n_segs, max_enq);
-  if (n_fs < 0)
-    return 0;
+  if (PREDICT_FALSE (n_fs < 0))
+    {
+      n_fs = openssl_provision_pending (f, ctx, fs, n_segs, max_enq);
+      if (n_fs < 0)
+	return 0;
+    }
 
   /* Return early if we can't read anything */
   read = SSL_read (ssl, fs[0].data, fs[0].len);

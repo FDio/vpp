@@ -12,7 +12,7 @@
 
 static dpo_id_t drop_dpos[DPO_PROTO_NUM];
 
-const dpo_id_t *
+__clib_export const dpo_id_t *
 drop_dpo_get (dpo_proto_t proto)
 {
     dpo_set(&drop_dpos[proto], DPO_DROP, proto, proto);
@@ -20,7 +20,7 @@ drop_dpo_get (dpo_proto_t proto)
     return (&drop_dpos[proto]);
 }
 
-int
+__clib_export int
 dpo_is_drop (const dpo_id_t *dpo)
 {
     return (dpo->dpoi_type == DPO_DROP);

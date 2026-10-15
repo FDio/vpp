@@ -134,7 +134,7 @@ func redisCutThru(s *NoTopoSuite) {
 
 	serverAddress := s.Interfaces.Tap.Ip4AddressString()
 	cmd := fmt.Sprintf("redis-server --daemonize yes --protected-mode no --save \"\" --bind %s --loglevel notice --logfile %s",
-		serverAddress, RedisServerLogFileName(s.Containers.Vpp))
+		serverAddress, RedisServerLogFileName(s.Containers.ServerApp))
 	o, err := s.Containers.ServerApp.Exec(true, cmd)
 	AssertNil(err)
 
@@ -157,20 +157,20 @@ func redisCutThru(s *NoTopoSuite) {
 }
 
 func LdpIperfTcpCutThruTest(s *NoTopoSuite) {
-	AssertGreaterEqualUnlessCoverageBuild(ldPreloadIperfCutThru(s, ""), 100, "Iperf bitrate below threshold")
+	AssertGreaterEqualUnlessASanOrCovBuild(ldPreloadIperfCutThru(s, ""), 100, "Iperf bitrate below threshold")
 }
 
 func LdpIperfTcpCutThruMWTest(s *NoTopoSuite) {
 	s.CpusPerVppContainer = 3
 	s.CpusPerContainer = 3
 	s.SetupTest()
-	AssertGreaterEqualUnlessCoverageBuild(ldPreloadIperfCutThru(s, ""), 100, "Iperf bitrate below threshold")
+	AssertGreaterEqualUnlessASanOrCovBuild(ldPreloadIperfCutThru(s, ""), 100, "Iperf bitrate below threshold")
 }
 
 // hangs
 func LdpIperfUdpCutThruTest(s *NoTopoSuite) {
 	s.Skip("Broken")
-	AssertGreaterEqualUnlessCoverageBuild(ldPreloadIperfCutThru(s, "-u -b 10g"), 100, "Iperf bitrate below threshold")
+	AssertGreaterEqualUnlessASanOrCovBuild(ldPreloadIperfCutThru(s, "-u -b 10g"), 100, "Iperf bitrate below threshold")
 }
 
 // hangs
@@ -178,7 +178,7 @@ func LdpIperfUdpCutThruMWTest(s *NoTopoSuite) {
 	s.Skip("Broken")
 	s.CpusPerVppContainer = 3
 	s.SetupTest()
-	AssertGreaterEqualUnlessCoverageBuild(ldPreloadIperfCutThru(s, "-u -b 10g"), 100, "Iperf bitrate below threshold")
+	AssertGreaterEqualUnlessASanOrCovBuild(ldPreloadIperfCutThru(s, "-u -b 10g"), 100, "Iperf bitrate below threshold")
 }
 
 func LdpWgetVppProxyNginxCutThruTest(s *VppProxySuite) {

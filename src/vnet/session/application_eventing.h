@@ -184,8 +184,8 @@ app_evt_buffer_free_chunk (app_evt_buffer_t *buf,
   pool_put (buf->chunks, chunk);
 }
 
-void app_evt_buffer_append_chunk (app_evt_buffer_t *buf,
-				  app_evt_buffer_chunk_t *chunk);
+__clib_export void app_evt_buffer_append_chunk (app_evt_buffer_t *buf,
+						app_evt_buffer_chunk_t *chunk);
 
 typedef struct app_evt_collector_wrk_
 {
@@ -224,8 +224,8 @@ app_evt_collector_wrk_get (app_evt_collector_t *c,
 }
 
 int app_evt_collector_add (app_evt_collector_cfg_t *cfg);
-app_evt_collector_t *app_evt_collector_get (u32 c_index);
+__clib_export app_evt_collector_t *app_evt_collector_get (u32 c_index);
 void *app_evt_collector_get_cb_fn ();
-void app_evt_collector_wrk_send (app_evt_collector_wrk_t *cwrk);
+__clib_export void app_evt_collector_wrk_send (app_evt_collector_wrk_t *cwrk);
 
 #endif /* SRC_VNET_SESSION_APP_EVENTING_H_ */

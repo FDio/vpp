@@ -150,7 +150,7 @@ typedef struct ethernet_interface
   ethernet_interface_address_t *secondary_addrs;
 } ethernet_interface_t;
 
-extern vnet_hw_interface_class_t ethernet_hw_interface_class;
+__clib_export extern vnet_hw_interface_class_t ethernet_hw_interface_class;
 
 typedef struct
 {
@@ -311,7 +311,7 @@ typedef struct ethernet_main_t_
 
 } ethernet_main_t;
 
-extern ethernet_main_t ethernet_main;
+__clib_export extern ethernet_main_t ethernet_main;
 
 always_inline ethernet_type_info_t *
 ethernet_get_type_info (ethernet_main_t * em, ethernet_type_t type)
@@ -320,19 +320,17 @@ ethernet_get_type_info (ethernet_main_t * em, ethernet_type_t type)
   return p ? vec_elt_at_index (em->type_infos, p[0]) : 0;
 }
 
-ethernet_interface_t *ethernet_get_interface (ethernet_main_t * em,
-					      u32 hw_if_index);
+__clib_export ethernet_interface_t *ethernet_get_interface (ethernet_main_t *em, u32 hw_if_index);
 mac_address_t *ethernet_interface_add_del_address (ethernet_main_t * em,
 						   u32 hw_if_index,
 						   const u8 * address,
 						   u8 is_add);
 
-void ethernet_delete_interface (vnet_main_t * vnm, u32 hw_if_index);
+__clib_export void ethernet_delete_interface (vnet_main_t *vnm, u32 hw_if_index);
 
 /* Register given node index to take input for given ethernet type. */
-void
-ethernet_register_input_type (vlib_main_t * vm,
-			      ethernet_type_t type, u32 node_index);
+void __clib_export ethernet_register_input_type (vlib_main_t *vm, ethernet_type_t type,
+						 u32 node_index);
 
 /* Register given node index to take input for packet from L2 interfaces. */
 void ethernet_register_l2_input (vlib_main_t * vm, u32 node_index);
@@ -341,35 +339,33 @@ void ethernet_register_l2_input (vlib_main_t * vm, u32 node_index);
 void ethernet_register_l3_redirect (vlib_main_t * vm, u32 node_index);
 
 /* Formats ethernet address X:X:X:X:X:X */
-u8 *format_mac_address (u8 * s, va_list * args);
-u8 *format_ethernet_address (u8 * s, va_list * args);
+__clib_export u8 *format_mac_address (u8 *s, va_list *args);
+__clib_export u8 *format_ethernet_address (u8 *s, va_list *args);
 u8 *format_ethernet_type (u8 * s, va_list * args);
-u8 *format_ethernet_vlan_tci (u8 * s, va_list * va);
+__clib_export u8 *format_ethernet_vlan_tci (u8 *s, va_list *va);
 u8 *format_ethernet_header (u8 * s, va_list * args);
-u8 *format_ethernet_header_with_length (u8 * s, va_list * args);
+__clib_export u8 *format_ethernet_header_with_length (u8 *s, va_list *args);
 
 /* Parse ethernet address in either X:X:X:X:X:X unix or X.X.X cisco format. */
-uword unformat_ethernet_address (unformat_input_t * input, va_list * args);
-uword unformat_mac_address (unformat_input_t * input, va_list * args);
+__clib_export uword unformat_ethernet_address (unformat_input_t *input, va_list *args);
+__clib_export uword unformat_mac_address (unformat_input_t *input, va_list *args);
 
 /* Parse ethernet type as 0xXXXX or type name from ethernet/types.def.
    In either host or network byte order. */
-uword
-unformat_ethernet_type_host_byte_order (unformat_input_t * input,
-					va_list * args);
+uword __clib_export unformat_ethernet_type_host_byte_order (unformat_input_t *input, va_list *args);
 uword
 unformat_ethernet_type_net_byte_order (unformat_input_t * input,
 				       va_list * args);
 
 /* Parse ethernet header. */
-uword unformat_ethernet_header (unformat_input_t * input, va_list * args);
+__clib_export uword unformat_ethernet_header (unformat_input_t *input, va_list *args);
 
 /* Parse ethernet interface name; return hw_if_index. */
 uword unformat_ethernet_interface (unformat_input_t * input, va_list * args);
 
 uword unformat_pg_ethernet_header (unformat_input_t * input, va_list * args);
 
-void ethernet_setup_node (vlib_main_t *vm, u32 node_index);
+__clib_export void ethernet_setup_node (vlib_main_t *vm, u32 node_index);
 
 always_inline ethernet_header_t *
 ethernet_buffer_get_header (vlib_buffer_t * b)
@@ -422,7 +418,7 @@ ethernet_buffer_get_header (vlib_buffer_t * b)
 )
 
 ethernet_main_t *ethernet_get_main (vlib_main_t * vm);
-u32 ethernet_set_flags (vnet_main_t * vnm, u32 hw_if_index, u32 flags);
+__clib_export u32 ethernet_set_flags (vnet_main_t *vnm, u32 hw_if_index, u32 flags);
 void ethernet_sw_interface_set_l2_mode (vnet_main_t * vnm, u32 sw_if_index,
 					u32 l2);
 void ethernet_sw_interface_set_l2_mode_noport (vnet_main_t * vnm,
@@ -434,13 +430,12 @@ clib_error_t *next_by_ethertype_init (next_by_ethertype_t * l3_next);
 clib_error_t *next_by_ethertype_register (next_by_ethertype_t * l3_next,
 					  u32 ethertype, u32 next_index);
 
-int vnet_create_loopback_interface (u32 * sw_if_indexp, u8 * mac_address,
-				    u8 is_specified, u32 user_instance);
-int vnet_delete_loopback_interface (u32 sw_if_index);
-int vnet_create_sub_interface (u32 sw_if_index, u32 id,
-			       u32 flags, u16 inner_vlan_id,
-			       u16 outer_vlan_id, u32 * sub_sw_if_index);
-int vnet_delete_sub_interface (u32 sw_if_index);
+__clib_export int vnet_create_loopback_interface (u32 *sw_if_indexp, u8 *mac_address,
+						  u8 is_specified, u32 user_instance);
+__clib_export int vnet_delete_loopback_interface (u32 sw_if_index);
+__clib_export int vnet_create_sub_interface (u32 sw_if_index, u32 id, u32 flags, u16 inner_vlan_id,
+					     u16 outer_vlan_id, u32 *sub_sw_if_index);
+__clib_export int vnet_delete_sub_interface (u32 sw_if_index);
 
 // Perform ethernet subinterface classification table lookups given
 // the ports's sw_if_index and fields extracted from the ethernet header.
@@ -550,12 +545,11 @@ typedef struct
   const u8 *address;
 } vnet_eth_interface_registration_t;
 
-u32 vnet_eth_register_interface (vnet_main_t *vnm,
-				 vnet_eth_interface_registration_t *r);
+__clib_export u32 vnet_eth_register_interface (vnet_main_t *vnm,
+					       vnet_eth_interface_registration_t *r);
 void ethernet_update_adjacency (vnet_main_t * vnm, u32 sw_if_index, u32 ai);
-u8 *ethernet_build_rewrite (vnet_main_t * vnm,
-			    u32 sw_if_index,
-			    vnet_link_t link_type, const void *dst_address);
+__clib_export u8 *ethernet_build_rewrite (vnet_main_t *vnm, u32 sw_if_index, vnet_link_t link_type,
+					  const void *dst_address);
 void ethernet_input_init (vlib_main_t * vm, ethernet_main_t * em);
 
 extern vlib_node_registration_t ethernet_input_node;

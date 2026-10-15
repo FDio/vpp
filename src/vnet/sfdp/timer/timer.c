@@ -12,7 +12,7 @@
 sfdp_timer_main_t sfdp_timer_main;
 
 #define _(id, value, string)                                                                       \
-  sfdp_timeout_registration_t sfdp_timeout_registration_##id = {              \
+  __clib_export sfdp_timeout_registration_t sfdp_timeout_registration_##id = { \
     .timeout = {                                                                \
       .name = string,                                                           \
       .val = value,                                                             \

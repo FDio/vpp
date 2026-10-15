@@ -62,17 +62,18 @@ typedef struct tls_cxt_id_
 STATIC_ASSERT (sizeof (tls_ctx_id_t) <= TRANSPORT_CONN_ID_LEN,
 	       "ctx id must be less than TRANSPORT_CONN_ID_LEN");
 
-#define foreach_tls_conn_flags                                                \
-  _ (HO_DONE, "ho-done")                                                      \
-  _ (PASSIVE_CLOSE, "passive-close")                                          \
-  _ (APP_CLOSED, "app-closed")                                                \
-  _ (MIGRATED, "migrated")                                                    \
-  _ (NO_APP_SESSION, "no-app-session")                                        \
-  _ (RESUME, "resume")                                                        \
-  _ (HS_DONE, "handshake-done")                                               \
-  _ (ASYNC_RD, "async-read")                                                  \
-  _ (SHUTDOWN_TRANSPORT, "shutdown-transport")                                \
-  _ (ASYNC_CERT, "async-cert")
+#define foreach_tls_conn_flags                                                                     \
+  _ (HO_DONE, "ho-done")                                                                           \
+  _ (PASSIVE_CLOSE, "passive-close")                                                               \
+  _ (APP_CLOSED, "app-closed")                                                                     \
+  _ (MIGRATED, "migrated")                                                                         \
+  _ (NO_APP_SESSION, "no-app-session")                                                             \
+  _ (RESUME, "resume")                                                                             \
+  _ (HS_DONE, "handshake-done")                                                                    \
+  _ (ASYNC_RD, "async-read")                                                                       \
+  _ (SHUTDOWN_TRANSPORT, "shutdown-transport")                                                     \
+  _ (ASYNC_CERT, "async-cert")                                                                     \
+  _ (RX_RESCHEDULED, "rx-rescheduled")
 
 typedef enum tls_conn_flags_bit_
 {
@@ -166,21 +167,20 @@ typedef struct tls_engine_vft_
   const char *name;
 } tls_engine_vft_t;
 
-extern tls_engine_vft_t *tls_vfts;
+__clib_export extern tls_engine_vft_t *tls_vfts;
 
-tls_main_t *vnet_tls_get_main (void);
-void tls_register_engine (const tls_engine_vft_t * vft,
-			  crypto_engine_type_t type);
+__clib_export tls_main_t *vnet_tls_get_main (void);
+__clib_export void tls_register_engine (const tls_engine_vft_t *vft, crypto_engine_type_t type);
 int tls_add_vpp_q_rx_evt (session_t * s);
-int tls_add_vpp_q_tx_evt (session_t * s);
+__clib_export int tls_add_vpp_q_tx_evt (session_t *s);
 int tls_add_vpp_q_builtin_tx_evt (session_t * s);
-int tls_add_vpp_q_builtin_rx_evt (session_t * s);
-int tls_notify_app_accept (tls_ctx_t * ctx);
-int tls_notify_app_connected (tls_ctx_t * ctx, session_error_t err);
-void tls_notify_app_enqueue (tls_ctx_t * ctx, session_t * app_session);
-void tls_notify_app_io_error (tls_ctx_t *ctx);
-void tls_disconnect_transport (tls_ctx_t * ctx);
-void tls_shutdown_transport (tls_ctx_t *ctx);
+__clib_export int tls_add_vpp_q_builtin_rx_evt (session_t *s);
+__clib_export int tls_notify_app_accept (tls_ctx_t *ctx);
+__clib_export int tls_notify_app_connected (tls_ctx_t *ctx, session_error_t err);
+__clib_export void tls_notify_app_enqueue (tls_ctx_t *ctx, session_t *app_session);
+__clib_export void tls_notify_app_io_error (tls_ctx_t *ctx);
+__clib_export void tls_disconnect_transport (tls_ctx_t *ctx);
+__clib_export void tls_shutdown_transport (tls_ctx_t *ctx);
 
 void tls_add_postponed_ho_cleanups (u32 ho_index);
 void tls_flush_postponed_ho_cleanups ();

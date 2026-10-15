@@ -217,8 +217,7 @@ __clib_export void
 clib_time_verify_frequency (clib_time_t * c)
 {
   f64 now_reference, delta_reference, delta_reference_max;
-  f64 delta_clock_in_seconds;
-  f64 elapsed_time;
+  f64 delta_clock_in_seconds, elapsed, rate_correction;
   u64 now_clock, delta_clock;
   f64 new_clocks_per_second, delta;
 
@@ -231,8 +230,7 @@ clib_time_verify_frequency (clib_time_t * c)
    * lower TSC). In this case, skip frequency estimation and just resync
    * timestamps to current values.
    */
-  if (PREDICT_FALSE (now_clock < c->last_verify_cpu_time ||
-		     now_clock < c->last_cpu_time))
+  if (PREDICT_FALSE (now_clock < c->last_cpu_time))
     {
       c->last_cpu_time = now_clock;
       c->last_verify_cpu_time = now_clock;
@@ -244,19 +242,14 @@ clib_time_verify_frequency (clib_time_t * c)
   /* Compute change in the reference clock */
   delta_reference = now_reference - c->last_verify_reference_time;
 
-  /* And change in the CPU clock */
-  delta_clock_in_seconds = (f64) (now_clock - c->last_verify_cpu_time) *
-    c->seconds_per_clock;
-
-  /* Recompute vpp start time reference using the current clock rate. */
-  c->init_reference_time += (delta_reference - delta_clock_in_seconds);
-
-  /* Account for elapsed clocks before advancing the sample baseline. */
+  /* Advance elapsed time at the current rate before changing the rate. */
   c->total_cpu_time += now_clock - c->last_cpu_time;
   c->last_cpu_time = now_clock;
+  elapsed = c->total_cpu_time * c->seconds_per_clock;
 
   /* Calculate a new clock rate sample */
   delta_clock = c->last_cpu_time - c->last_verify_cpu_time;
+  delta_clock_in_seconds = (f64) delta_clock * c->seconds_per_clock;
 
   c->last_verify_cpu_time = c->last_cpu_time;
   c->last_verify_reference_time = now_reference;
@@ -270,9 +263,12 @@ clib_time_verify_frequency (clib_time_t * c)
     (f64) (1ULL << c->log2_clocks_per_second);
   delta_reference_max = delta_reference_max > 8.0 ? delta_reference_max : 8.0;
 
-  /* Ignore this sample */
+  /* Reanchor wall time on a rejected sample without changing elapsed time. */
   if (delta_reference <= 0.0 || delta_reference > delta_reference_max)
-    return;
+    {
+      c->init_reference_time += delta_reference - delta_clock_in_seconds;
+      return;
+    }
 
   /*
    * Reject large frequency changes, another consequence of
@@ -290,19 +286,29 @@ clib_time_verify_frequency (clib_time_t * c)
     {
       clib_warning ("Rejecting large frequency change of %.2f%%",
 		    (delta / c->clocks_per_second) * 100.0);
+      c->init_reference_time += delta_reference - delta_clock_in_seconds;
       return;
     }
 
-  elapsed_time = c->total_cpu_time * c->seconds_per_clock;
+  /* Correct phase by changing the future rate without stepping time.
+   * Frequency samples are compared with the slewed rate, so cap the slew
+   * at 0.8% to leave headroom below the 1% rejection threshold. */
+  rate_correction =
+    clib_clamp ((elapsed - (now_reference - c->init_reference_time)) / 60.0, -0.008, 0.008);
+  new_clocks_per_second /= 1.0 - rate_correction;
 
   /* Add sample to the exponentially-smoothed rate */
   c->clocks_per_second = c->clocks_per_second * c->damping_constant +
     (1.0 - c->damping_constant) * new_clocks_per_second;
   c->seconds_per_clock = 1.0 / c->clocks_per_second;
 
-  /* Keep reported elapsed time continuous across the frequency change. */
-  c->total_cpu_time = clib_max (
-    c->total_cpu_time, (u64) (elapsed_time * c->clocks_per_second));
+  /* total_cpu_time is expressed in cycles at the applied frequency.
+   * Rebase it so a frequency change affects only future time. */
+  c->total_cpu_time = (u64) (elapsed * c->clocks_per_second);
+  /* Rounding the rebased count back to seconds may yield less than elapsed.
+   * At large counts, one tick may not change the f64 result. */
+  while (c->total_cpu_time * c->seconds_per_clock < elapsed)
+    c->total_cpu_time++;
 }
 
 

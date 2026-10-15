@@ -75,6 +75,7 @@ do {						\
   return error;
 }
 
+__clib_export extern vlib_init_function_t *VLIB_INIT_FUNCTION_SYMBOL (ip_main_init);
 VLIB_INIT_FUNCTION (ip_main_init) = {
   .init_order = VLIB_INITS ("vnet_main_init", "ip4_init", "ip6_init", "icmp4_init", "icmp6_init",
 			    "ip6_hop_by_hop_init", "udp_local_init", "udp_init", "ip_classify_init",

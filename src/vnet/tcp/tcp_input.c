@@ -397,7 +397,8 @@ tcp_estimate_rtt_us (tcp_connection_t * tc, f64 mrtt)
  * Middle boxes are known to fiddle with TCP options so we give higher
  * priority to ACK timing.
  *
- * For now, rate sample rtts are only used under congestion.
+ * Outside of congestion, rate sample rtts take precedence over TSOPT but,
+ * unlike ACK timing, they only update srtt and rttvar, not mrtt_us.
  */
 static int
 tcp_update_rtt (tcp_connection_t *tc, tcp_ack_ctx_t *ac, u32 ack)
@@ -408,11 +409,10 @@ tcp_update_rtt (tcp_connection_t *tc, tcp_ack_ctx_t *ac, u32 ack)
    * RTT because they're ambiguous. */
   if (tcp_in_cong_recovery (tc))
     {
-      /* Accept rtt estimates for samples that have not been retransmitted */
-      if (!(tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER) || (ac->flags & TCP_BTS_IS_RXT))
+      /* Accept rtt estimates for samples that have not been retransmitted. */
+      if (!(tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER) || ac->rtt_time <= 0)
 	goto done;
-      if (ac->rtt_time)
-	tcp_estimate_rtt_us (tc, ac->rtt_time);
+      tcp_estimate_rtt_us (tc, ac->rtt_time);
       mrtt = ac->rtt_time * THZ;
       goto estimate_rtt;
     }
@@ -425,21 +425,28 @@ tcp_update_rtt (tcp_connection_t *tc, tcp_ack_ctx_t *ac, u32 ack)
       /* Allow measuring of a new RTT */
       tc->rtt_ts = 0;
     }
+  /* Rate samples are per segment, so they are valid for sack-only acks */
+  else if ((tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER) && ac->rtt_time > 0)
+    {
+      mrtt = clib_max ((u32) (ac->rtt_time * THZ), 1);
+    }
   /* As per RFC7323 TSecr can be used for RTTM only if the segment advances
-   * snd_una, i.e., the left side of the send window:
-   * seq_lt (tc->snd_una, ack). This is a condition for calling update_rtt */
-  else if (tcp_opts_tstamp (&tc->rcv_opts) && tc->rcv_opts.tsecr)
+   * snd_una, i.e., the left side of the send window. SACK-only acks echo
+   * TS.Recent of the last in-order segment and would inflate the rtt */
+  else if (ac->bytes_acked && tcp_opts_tstamp (&tc->rcv_opts) && tc->rcv_opts.tsecr)
     {
       mrtt = clib_max (tcp_tstamp (tc) - tc->rcv_opts.tsecr, 1);
       mrtt *= TCP_TSTP_TO_HZ;
     }
-
 estimate_rtt:
 
   /* Ignore dubious measurements */
   if (mrtt == 0 || mrtt > TCP_RTT_MAX)
     goto done;
 
+  /* Without the byte tracker, the accepted sample is the ack's rtt sample */
+  if (!(tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER))
+    ac->rtt_time = (f64) mrtt * TCP_TICK;
   tcp_estimate_rtt (tc, mrtt);
 
 done:
@@ -509,13 +516,19 @@ tcp_handle_postponed_dequeues (tcp_worker_ctx_t * wrk)
       if (PREDICT_FALSE (!tc->burst_acked))
 	continue;
 
-      /* Preserve the time at which the local flight drained */
-      if (tc->snd_una == tc->snd_nxt)
-	tc->delivered_time = tcp_time_now_us (tc->c_thread_index);
-
       /* Dequeue the newly ACKed bytes */
       session_tx_fifo_dequeue_drop (&tc->connection, tc->burst_acked);
       tcp_validate_txf_size (tc, tc->snd_nxt - tc->snd_una);
+
+      if (tc->snd_una == tc->snd_nxt)
+	{
+	  /* Preserve the time at which the local flight drained. */
+	  tc->delivered_time = tcp_time_now_us (tc->c_thread_index);
+	  /* Remember an empty FIFO before a later application write. */
+	  if (PREDICT_FALSE ((tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER) &&
+			     !transport_max_tx_dequeue (&tc->connection)))
+	    tc->app_limited = tc->delivered ?: 1;
+	}
 
       if (tcp_is_descheduled (tc))
 	tcp_reschedule (tc);
@@ -677,14 +690,15 @@ tcp_cc_handle_event (tcp_connection_t *tc, tcp_ack_ctx_t *ac)
    */
   if (!tcp_in_cong_recovery (tc))
     {
+      /* Undo a reduction proven spurious before tlp recovery replaces it */
+      if (ac->ack_flags & TCP_ACK_F_DSACK_SPURIOUS)
+	tcp_loss_dsack_undo (tc);
+
       if (ac->ack_flags & TCP_ACK_F_TLP_RECOVERY)
 	{
 	  tcp_loss_tlp_recovery (tc, ac);
 	  return;
 	}
-
-      if (ac->ack_flags & TCP_ACK_F_DSACK_SPURIOUS)
-	tcp_loss_dsack_undo (tc);
 
       if (!(ac->ack_flags & TCP_ACK_F_DUPACK))
 	{
@@ -714,9 +728,10 @@ tcp_cc_handle_event (tcp_connection_t *tc, tcp_ack_ctx_t *ac)
    * Already in recovery
    */
 
-  /* Recovery ends when the recovery point is cumulatively acked (RFC 6675),
-   * or D-SACK proves the reduction spurious. */
-  if (seq_geq (tc->snd_una, tc->snd_congestion) || (ac->ack_flags & TCP_ACK_F_DSACK_SPURIOUS))
+  /* Recovery ends when D-SACK discharges the retransmission undo budget, or
+   * the recovery point is cumulatively acked (RFC 6675). Check undo first so
+   * that an ack reaching the recovery point can still undo. */
+  if (tcp_loss_dsack_undo_ready (tc, ac) || seq_geq (tc->snd_una, tc->snd_congestion))
     {
       tcp_loss_try_exit_recovery (tc, ac, has_sack);
       return;
@@ -793,8 +808,10 @@ static_always_inline u8
 tcp_old_ack_is_cc_event (tcp_connection_t *tc, tcp_ack_ctx_t *ac)
 {
   /* A D-SACK-only old ACK is not a recovery duplicate ACK unless it also
-   * carries new SACK or loss evidence. */
-  return ac->last_lost || (ac->ack_flags & (TCP_ACK_F_DSACK_SPURIOUS | TCP_ACK_F_TLP_RECOVERY)) ||
+   * carries new SACK or loss evidence. It cannot undo rto recovery, which
+   * waits for an ack that advances snd_una. */
+  return ac->last_lost || (ac->ack_flags & TCP_ACK_F_TLP_RECOVERY) ||
+	 ((ac->ack_flags & TCP_ACK_F_DSACK_SPURIOUS) && !tcp_in_recovery (tc)) ||
 	 (tcp_in_cong_recovery (tc) &&
 	  (!(ac->ack_flags & TCP_ACK_F_DSACK) || ac->last_sacked_bytes));
 }
@@ -804,8 +821,7 @@ tcp_handle_old_ack (tcp_connection_t *tc, tcp_ack_ctx_t *ac, u32 ack)
 {
   if (!tcp_in_cong_recovery (tc) && !tcp_loss_old_ack_needs_full_feedback (tc))
     {
-      /* An old ACK can still expose network duplication. RFC 3708 requires
-       * disabling D-SACK undo if the reported range was never retransmitted. */
+      /* Old ACKs can discharge the saved undo budget after recovery exit. */
       if (tcp_opts_sack (&tc->rcv_opts))
 	tcp_rcv_dsack (tc, ack, ac);
 

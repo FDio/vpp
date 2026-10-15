@@ -81,7 +81,7 @@ extern u8 *format_ip_neighbor_flags (u8 * s, va_list * args);
 extern u8 *format_ip_neighbor_key (u8 * s, va_list * args);
 extern u8 *format_ip_neighbor (u8 * s, va_list * args);
 
-extern ip_neighbor_t *ip_neighbor_get (index_t ipni);
+__clib_export extern ip_neighbor_t *ip_neighbor_get (index_t ipni);
 
 typedef struct ip_neighbor_learn_t_
 {

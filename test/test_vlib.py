@@ -223,6 +223,14 @@ class TestVlib(VppTestCase):
                     self.logger.info(cmd + " FAIL retval " + str(r.retval))
 
 
+class TestVlibTimingWheel(VppTestCase):
+    """VLIB timing-wheel unit test"""
+
+    def test_vlib_timer_wheel(self):
+        r = self.vapi.cli_return_response("test vlib timing-wheel")
+        self.assertEqual(r.retval, 0, getattr(r, "reply", ""))
+
+
 class TemplatePoolCacheWorkers(VppTestCase):
     """VLIB Multi Workers Pool Test Cases"""
 

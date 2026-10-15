@@ -138,6 +138,22 @@ obvious. Add -DVPP_BUILD_G2=ON to vpp_cmake_args.
 
 That would work, of course, but it's not a particularly elegant solution.
 
+libvnet symbol visibility
+-------------------------
+
+By default, libvnet is built with hidden symbol visibility. Functions and data
+that form its dynamic interface are marked explicitly with ``__clib_export``.
+
+To retain the legacy behavior where all non-static libvnet symbols are
+exported, disable ``VPP_LIBVNET_HIDDEN_VISIBILITY``:
+
+::
+
+   $ make build VPP_EXTRA_CMAKE_ARGS=-DVPP_LIBVNET_HIDDEN_VISIBILITY=OFF
+
+The ``__clib_export`` annotations remain in place in this compatibility mode,
+but do not restrict the other symbols from being exported.
+
 Tinkering with build options: ccmake
 ------------------------------------
 

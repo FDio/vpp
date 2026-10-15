@@ -244,7 +244,7 @@ typedef struct fib_entry_src_vft_t_ {
 extern const fib_entry_src_vft_t*fib_entry_src_get_vft(
     const fib_entry_src_t *esrc);
 
-extern fib_entry_src_t * fib_entry_src_find (const fib_entry_t *fib_entry,
+__clib_export extern fib_entry_src_t * fib_entry_src_find (const fib_entry_t *fib_entry,
                                              fib_source_t source);
 extern u8* fib_entry_src_format(fib_entry_t *entry,
 				fib_source_t source,
@@ -308,7 +308,7 @@ extern fib_entry_t* fib_entry_src_action_installed(fib_entry_t *fib_entry,
 extern void fib_entry_src_inherit (const fib_entry_t *cover,
                                    fib_entry_t *covered);
 
-extern fib_forward_chain_type_t fib_entry_get_default_chain_type(
+__clib_export extern fib_forward_chain_type_t fib_entry_get_default_chain_type(
     const fib_entry_t *fib_entry);
 extern fib_source_t fib_entry_get_source_i(const fib_entry_t *fib_entry);
 extern fib_entry_flag_t fib_entry_get_flags_i(const fib_entry_t *fib_entry);

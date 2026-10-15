@@ -113,7 +113,7 @@ typedef enum fib_entry_flag_t_ {
     FIB_ENTRY_FLAG_INTERPOSE = (1 << FIB_ENTRY_ATTRIBUTE_INTERPOSE),
 } __attribute__((packed)) fib_entry_flag_t;
 
-extern u8 * format_fib_entry_flags(u8 *s, va_list *args);
+__clib_export extern u8 * format_fib_entry_flags(u8 *s, va_list *args);
 
 /**
  * Flags for the source data
@@ -357,7 +357,7 @@ typedef struct fib_entry_t_ {
 #define FIB_ENTRY_FORMAT_DETAIL2 (0x2)
 
 extern u8 *format_fib_entry (u8 * s, va_list * args);
-extern u8 *format_fib_source (u8 * s, va_list * args);
+__clib_export extern u8 *format_fib_source (u8 * s, va_list * args);
 
 extern fib_node_index_t fib_entry_create_special(u32 fib_index,
 						 const fib_prefix_t *prefix,
@@ -404,11 +404,11 @@ extern void fib_entry_recalculate_forwarding(
     fib_node_index_t fib_entry_index);
 extern void fib_entry_contribute_urpf(fib_node_index_t path_index,
 				      index_t urpf);
-extern void fib_entry_contribute_forwarding(
+__clib_export extern void fib_entry_contribute_forwarding(
     fib_node_index_t fib_entry_index,
     fib_forward_chain_type_t type,
     dpo_id_t *dpo);
-extern const dpo_id_t * fib_entry_contribute_ip_forwarding(
+__clib_export extern const dpo_id_t * fib_entry_contribute_ip_forwarding(
     fib_node_index_t fib_entry_index);
 extern adj_index_t fib_entry_get_adj_for_source(
     fib_node_index_t fib_entry_index,
@@ -421,7 +421,7 @@ extern fib_node_index_t fib_entry_get_path_list_for_source (
     fib_node_index_t fib_entry_index,
     fib_source_t source);
 
-extern adj_index_t fib_entry_get_adj(fib_node_index_t fib_entry_index);
+__clib_export extern adj_index_t fib_entry_get_adj(fib_node_index_t fib_entry_index);
 
 extern int fib_entry_cmp_for_sort(void *i1, void *i2);
 
@@ -433,32 +433,32 @@ extern int fib_entry_recursive_loop_detect(fib_node_index_t entry_index,
 extern void fib_entry_lock(fib_node_index_t fib_entry_index);
 extern void fib_entry_unlock(fib_node_index_t fib_entry_index);
 
-extern u32 fib_entry_child_add(fib_node_index_t fib_entry_index,
+__clib_export extern u32 fib_entry_child_add(fib_node_index_t fib_entry_index,
 			       fib_node_type_t type,
 			       fib_node_index_t child_index);
-extern void fib_entry_child_remove(fib_node_index_t fib_entry_index,
+__clib_export extern void fib_entry_child_remove(fib_node_index_t fib_entry_index,
 				   u32 sibling_index);
-extern u32 fib_entry_get_resolving_interface(fib_node_index_t fib_entry_index);
+__clib_export extern u32 fib_entry_get_resolving_interface(fib_node_index_t fib_entry_index);
 extern u32 fib_entry_get_any_resolving_interface(fib_node_index_t fib_entry_index);
 extern u32 fib_entry_get_resolving_interface_for_source(
     fib_node_index_t fib_entry_index,
     fib_source_t source);
 
 extern fib_route_path_t* fib_entry_encode(fib_node_index_t fib_entry_index);
-extern const fib_prefix_t* fib_entry_get_prefix(fib_node_index_t fib_entry_index);
-extern u32 fib_entry_get_fib_index(fib_node_index_t fib_entry_index);
-extern void fib_entry_set_source_data(fib_node_index_t fib_entry_index,
+__clib_export extern const fib_prefix_t* fib_entry_get_prefix(fib_node_index_t fib_entry_index);
+__clib_export extern u32 fib_entry_get_fib_index(fib_node_index_t fib_entry_index);
+__clib_export extern void fib_entry_set_source_data(fib_node_index_t fib_entry_index,
                                       fib_source_t source,
                                       const void *data);
-extern const void* fib_entry_get_source_data(fib_node_index_t fib_entry_index,
+__clib_export extern const void* fib_entry_get_source_data(fib_node_index_t fib_entry_index,
                                              fib_source_t source);
 
-extern fib_entry_flag_t fib_entry_get_flags(fib_node_index_t fib_entry_index);
+__clib_export extern fib_entry_flag_t fib_entry_get_flags(fib_node_index_t fib_entry_index);
 extern fib_entry_flag_t fib_entry_get_flags_for_source(
     fib_node_index_t fib_entry_index,
     fib_source_t source);
 extern fib_source_t fib_entry_get_best_source(fib_node_index_t fib_entry_index);
-extern int fib_entry_is_sourced(fib_node_index_t fib_entry_index,
+__clib_export extern int fib_entry_is_sourced(fib_node_index_t fib_entry_index,
                                 fib_source_t source);
 
 extern fib_node_index_t fib_entry_get_path_list(fib_node_index_t fib_entry_index);
@@ -478,11 +478,11 @@ extern u32 fib_entry_get_stats_index(fib_node_index_t fib_entry_index);
  * unsafe... beware the raw pointer.
  */
 extern fib_node_index_t fib_entry_get_index(const fib_entry_t * fib_entry);
-extern fib_entry_t * fib_entry_get(fib_node_index_t fib_entry_index);
+__clib_export extern fib_entry_t * fib_entry_get(fib_node_index_t fib_entry_index);
 
 /*
  * for testing purposes.
  */
-extern u32 fib_entry_pool_size(void);
+__clib_export extern u32 fib_entry_pool_size(void);
 
 #endif

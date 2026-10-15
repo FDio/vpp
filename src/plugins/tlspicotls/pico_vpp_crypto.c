@@ -104,6 +104,12 @@ ptls_vpp_crypto_cipher_setup_crypto (ptls_cipher_context_t * _ctx, int is_enc,
     vnet_crypto_ctx_set_cipher_key (ctx->ctx, key, _ctx->algo->key_size);
   clib_rwlock_writer_unlock (&picotls_main.crypto_keys_rw_lock);
 
+  if (!ctx->ctx)
+    {
+      TLS_DBG (1, "%s, failed to create crypto ctx for %s", __func__, _ctx->algo->name);
+      return -1;
+    }
+
   return 0;
 }
 
@@ -129,7 +135,11 @@ ptls_vpp_crypto_aead_decrypt (ptls_aead_context_t *_ctx, void *_output,
   ctx->op.auth = ctx->op.src + ctx->op.len;
 
   vnet_crypto_process_ops (vm, &(ctx->op), 0, 1);
-  assert (ctx->op.status == VNET_CRYPTO_OP_STATUS_COMPLETED);
+
+  /* Authentication failures are peer controlled. picotls expects SIZE_MAX
+   * and turns that into a bad-record-mac alert, so never abort here. */
+  if (PREDICT_FALSE (ctx->op.status != VNET_CRYPTO_OP_STATUS_COMPLETED))
+    return SIZE_MAX;
 
   return ctx->op.len;
 }
@@ -252,6 +262,9 @@ ptls_vpp_crypto_aead_dispose_crypto (ptls_aead_context_t * _ctx)
   vlib_main_t *vm = vlib_get_main ();
   struct vpp_aead_context_t *ctx = (struct vpp_aead_context_t *) _ctx;
 
+  if (!ctx->ctx)
+    return;
+
   clib_rwlock_writer_lock (&picotls_main.crypto_keys_rw_lock);
   vnet_crypto_ctx_destroy (vm, ctx->ctx);
   clib_rwlock_writer_unlock (&picotls_main.crypto_keys_rw_lock);
@@ -290,6 +303,12 @@ ptls_vpp_crypto_aead_setup_crypto (ptls_aead_context_t *_ctx, int is_enc,
   if (ctx->ctx)
     vnet_crypto_ctx_set_cipher_key (ctx->ctx, key, key_len);
   clib_rwlock_writer_unlock (&picotls_main.crypto_keys_rw_lock);
+
+  if (!ctx->ctx)
+    {
+      TLS_DBG (1, "%s, failed to create crypto ctx for %s", __func__, _ctx->algo->name);
+      return -1;
+    }
 
   if (is_enc)
     {
@@ -356,38 +375,41 @@ ptls_cipher_algorithm_t ptls_vpp_crypto_aes256ctr = { "AES256-CTR",
 						      sizeof (struct cipher_context_t),
 						      ptls_vpp_crypto_aes256ctr_setup_crypto };
 
-#define PTLS_X86_CACHE_LINE_ALIGN_BITS 6
-ptls_aead_algorithm_t ptls_vpp_crypto_aes128gcm = {
-  "AES128-GCM",
-  PTLS_AESGCM_CONFIDENTIALITY_LIMIT,
-  PTLS_AESGCM_INTEGRITY_LIMIT,
-  &ptls_vpp_crypto_aes128ctr,
-  NULL,
-  PTLS_AES128_KEY_SIZE,
-  PTLS_AESGCM_IV_SIZE,
-  PTLS_AESGCM_TAG_SIZE,
-  { PTLS_TLS12_AESGCM_FIXED_IV_SIZE, PTLS_TLS12_AESGCM_RECORD_IV_SIZE },
-  1,
-  PTLS_X86_CACHE_LINE_ALIGN_BITS,
-  sizeof (struct vpp_aead_context_t),
-  ptls_vpp_crypto_aead_aes128gcm_setup_crypto
-};
+/* Records are encrypted into the transport tx fifo with ordinary stores and
+ * vnet_crypto imposes no alignment on src/dst, so non_temporal and align_bits
+ * must both be 0. A non-zero align_bits makes ptls_buffer_reserve_aligned()
+ * silently replace the fifo buffer handed to ptls_send() with a private
+ * aligned allocation, after which the fifo is enqueued without ever having
+ * been written. */
+ptls_aead_algorithm_t ptls_vpp_crypto_aes128gcm = { "AES128-GCM",
+						    PTLS_AESGCM_CONFIDENTIALITY_LIMIT,
+						    PTLS_AESGCM_INTEGRITY_LIMIT,
+						    &ptls_vpp_crypto_aes128ctr,
+						    NULL,
+						    PTLS_AES128_KEY_SIZE,
+						    PTLS_AESGCM_IV_SIZE,
+						    PTLS_AESGCM_TAG_SIZE,
+						    { PTLS_TLS12_AESGCM_FIXED_IV_SIZE,
+						      PTLS_TLS12_AESGCM_RECORD_IV_SIZE },
+						    0 /* non_temporal */,
+						    0 /* align_bits */,
+						    sizeof (struct vpp_aead_context_t),
+						    ptls_vpp_crypto_aead_aes128gcm_setup_crypto };
 
-ptls_aead_algorithm_t ptls_vpp_crypto_aes256gcm = {
-  "AES256-GCM",
-  PTLS_AESGCM_CONFIDENTIALITY_LIMIT,
-  PTLS_AESGCM_INTEGRITY_LIMIT,
-  &ptls_vpp_crypto_aes256ctr,
-  NULL,
-  PTLS_AES256_KEY_SIZE,
-  PTLS_AESGCM_IV_SIZE,
-  PTLS_AESGCM_TAG_SIZE,
-  { PTLS_TLS12_AESGCM_FIXED_IV_SIZE, PTLS_TLS12_AESGCM_RECORD_IV_SIZE },
-  1,
-  PTLS_X86_CACHE_LINE_ALIGN_BITS,
-  sizeof (struct vpp_aead_context_t),
-  ptls_vpp_crypto_aead_aes256gcm_setup_crypto
-};
+ptls_aead_algorithm_t ptls_vpp_crypto_aes256gcm = { "AES256-GCM",
+						    PTLS_AESGCM_CONFIDENTIALITY_LIMIT,
+						    PTLS_AESGCM_INTEGRITY_LIMIT,
+						    &ptls_vpp_crypto_aes256ctr,
+						    NULL,
+						    PTLS_AES256_KEY_SIZE,
+						    PTLS_AESGCM_IV_SIZE,
+						    PTLS_AESGCM_TAG_SIZE,
+						    { PTLS_TLS12_AESGCM_FIXED_IV_SIZE,
+						      PTLS_TLS12_AESGCM_RECORD_IV_SIZE },
+						    0 /* non_temporal */,
+						    0 /* align_bits */,
+						    sizeof (struct vpp_aead_context_t),
+						    ptls_vpp_crypto_aead_aes256gcm_setup_crypto };
 
 ptls_cipher_suite_t ptls_vpp_crypto_aes128gcmsha256 =
   { PTLS_CIPHER_SUITE_AES_128_GCM_SHA256,

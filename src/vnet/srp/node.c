@@ -856,4 +856,5 @@ static clib_error_t * srp_init (vlib_main_t * vm)
   return 0;
 }
 
+__clib_export extern vlib_init_function_t *VLIB_INIT_FUNCTION_SYMBOL (srp_init);
 VLIB_INIT_FUNCTION (srp_init);

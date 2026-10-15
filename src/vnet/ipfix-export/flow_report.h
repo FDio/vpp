@@ -196,7 +196,7 @@ typedef struct flow_report_main
   u16 msg_id_base;
 } flow_report_main_t;
 
-extern flow_report_main_t flow_report_main;
+__clib_export extern flow_report_main_t flow_report_main;
 
 extern vlib_node_registration_t flow_report_process_node;
 
@@ -218,9 +218,8 @@ typedef struct
   u32 flow_report_index;
 } vnet_flow_report_add_del_args_t;
 
-int vnet_flow_report_add_del (ipfix_exporter_t *exp,
-			      vnet_flow_report_add_del_args_t *a,
-			      u16 *template_id);
+__clib_export int vnet_flow_report_add_del (ipfix_exporter_t *exp,
+					    vnet_flow_report_add_del_args_t *a, u16 *template_id);
 
 clib_error_t *flow_report_add_del_error_to_clib_error (int error);
 

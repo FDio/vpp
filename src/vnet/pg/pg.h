@@ -426,7 +426,7 @@ typedef struct pg_main_t
 } pg_main_t;
 
 /* Global main structure. */
-extern pg_main_t pg_main;
+__clib_export extern pg_main_t pg_main;
 
 /* Global node. */
 extern vlib_node_registration_t pg_input_node;

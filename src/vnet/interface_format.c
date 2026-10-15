@@ -280,9 +280,8 @@ format_vnet_hw_if_index_name (u8 * s, va_list * args)
   return format (s, "%v", hi->name);
 }
 
-u8 *
-format_vnet_sw_interface_cntrs (u8 * s, vnet_interface_main_t * im,
-				vnet_sw_interface_t * si, int json)
+__clib_export u8 *
+format_vnet_sw_interface_cntrs (u8 *s, vnet_interface_main_t *im, vnet_sw_interface_t *si, int json)
 {
   u32 indent, n_printed;
   int j, n_counters;

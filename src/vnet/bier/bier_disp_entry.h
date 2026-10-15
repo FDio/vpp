@@ -66,7 +66,7 @@ extern u8* format_bier_disp_entry(u8* s, va_list *ap);
 extern void bier_disp_entry_contribute_forwarding(index_t bdi,
                                                   dpo_id_t *dpo);
 
-extern bier_disp_entry_t *bier_disp_entry_pool;
+__clib_export extern bier_disp_entry_t *bier_disp_entry_pool;
 
 always_inline bier_disp_entry_t*
 bier_disp_entry_get (index_t bdi)

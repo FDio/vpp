@@ -2609,7 +2609,7 @@ class TestIPDirectedBroadcast(VppTestCase):
         # test packet is L2 broadcast
         #
         rx = self.send_and_expect(self.pg1, p0 * NUM_PKTS, self.pg0)
-        self.assertTrue(rx[0][Ether].dst, "ff:ff:ff:ff:ff:ff")
+        self.assertEqual(rx[0][Ether].dst, "ff:ff:ff:ff:ff:ff")
 
         self.send_and_assert_no_replies(
             self.pg0, p1 * NUM_PKTS, "directed broadcast disabled"

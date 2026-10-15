@@ -9,7 +9,7 @@ from asfframework import VppTestRunner
 from scapy.packet import Raw
 
 from scapy.layers.l2 import Ether
-from scapy.layers.inet import IP, UDP, TCP
+from scapy.layers.inet import IP, UDP, TCP, ICMP
 from scapy.layers.inet6 import IPv6
 from template_classifier import TestClassifier, VarMask, VarMatch
 from vpp_ip_route import VppIpRoute, VppRoutePath, VppIpTable
@@ -1372,6 +1372,65 @@ class TestClassifierPuntIPv6(TestClassifier):
         self.vapi.punt_acl_add_del(ip6_table_index=table_index, is_add=0)
         self.vapi.sw_interface_set_table(self.pg0.sw_if_index, 0, 0)
         tbl.remove_vpp_config()
+
+
+class TestClassifierIPTable(TestClassifier):
+    """Classifier IP table Test Case"""
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestClassifierIPTable, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestClassifierIPTable, cls).tearDownClass()
+
+    def test_ip_table_other_itf(self):
+        """IP classify table on another interface
+
+        Test scenario for an IP classify table set on one interface
+            - Set a table without sessions, which drops everything, on pg3.
+            - Add the address of pg0, which has a lower sw_if_index, again.
+            - Ping the address of pg0 and expect a reply.
+            - Remove the table from pg3, delete it and ping again.
+        """
+        mask = b"\xff" * 16
+        table_index = self.vapi.classify_add_del_table(
+            is_add=True,
+            mask=mask,
+            mask_len=len(mask),
+            match_n_vectors=1,
+            miss_next_index=0,
+            current_data_flag=1,
+        ).new_table_index
+        self.vapi.classify_set_interface_ip_table(
+            is_ipv6=False, sw_if_index=self.pg3.sw_if_index, table_index=table_index
+        )
+
+        self.pg0.unconfig_ip4()
+        self.pg0.config_ip4()
+        self.pg0.resolve_arp()
+
+        p = (
+            Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac)
+            / IP(src=self.pg0.remote_ip4, dst=self.pg0.local_ip4)
+            / ICMP(type="echo-request")
+        )
+        rx = self.send_and_expect(self.pg0, [p], self.pg0)
+        self.assertEqual(rx[0][ICMP].type, 0)  # echo-reply
+
+        self.vapi.classify_set_interface_ip_table(
+            is_ipv6=False, sw_if_index=self.pg3.sw_if_index, table_index=INVALID_INDEX
+        )
+        self.vapi.classify_add_del_table(
+            is_add=False,
+            table_index=table_index,
+            mask=mask,
+            mask_len=len(mask),
+            match_n_vectors=1,
+        )
+        rx = self.send_and_expect(self.pg0, [p], self.pg0)
+        self.assertEqual(rx[0][ICMP].type, 0)  # echo-reply
 
 
 if __name__ == "__main__":

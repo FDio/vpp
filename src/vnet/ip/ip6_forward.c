@@ -2796,6 +2796,7 @@ ip6_lookup_init (vlib_main_t * vm)
   return error;
 }
 
+__clib_export extern vlib_init_function_t *VLIB_INIT_FUNCTION_SYMBOL (ip6_lookup_init);
 VLIB_INIT_FUNCTION (ip6_lookup_init);
 
 static clib_error_t *
@@ -2990,7 +2991,7 @@ vnet_set_ip6_classify_intfc (vlib_main_t *vm, u32 sw_if_index, u32 table_index)
   if (table_index != ~0 && pool_is_free_index (cm->tables, table_index))
     return VNET_API_ERROR_NO_SUCH_ENTRY;
 
-  vec_validate (lm->classify_table_index_by_sw_if_index, sw_if_index);
+  vec_validate_init_empty (lm->classify_table_index_by_sw_if_index, sw_if_index, ~0);
   lm->classify_table_index_by_sw_if_index[sw_if_index] = table_index;
 
   if_addr = ip6_interface_first_address (ipm, sw_if_index);

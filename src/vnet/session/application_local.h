@@ -44,7 +44,7 @@ typedef struct ct_connection_
   ct_connection_flags_t flags;
 } ct_connection_t;
 
-session_t *ct_session_get_peer (session_t * s);
+__clib_export session_t *ct_session_get_peer (session_t *s);
 void ct_session_endpoint (session_t * ll, session_endpoint_t * sep);
 int ct_session_connect_notify (session_t *ls, session_error_t err);
 int ct_session_tx (session_t * s);
