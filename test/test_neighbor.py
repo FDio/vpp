@@ -2404,6 +2404,21 @@ class ARPTestCase(VppTestCase):
         route.remove_vpp_config()
         conn2.remove_vpp_config()
 
+    def begin_replace_except(self, stale):
+        """begin an address replace, add back every address but stale"""
+        keep = [
+            (a.sw_if_index, a.prefix)
+            for i in self.vapi.sw_interface_dump()
+            for is_ip6 in (False, True)
+            for a in self.vapi.ip_address_dump(i.sw_if_index, is_ip6)
+            if str(a.prefix) != stale
+        ]
+        self.vapi.sw_interface_address_replace_begin()
+        for sw_if_index, prefix in keep:
+            self.vapi.sw_interface_add_del_address(
+                sw_if_index=sw_if_index, prefix=prefix
+            )
+
     def test_glean_src_nested_replace(self):
         """Glean source: nested connected prefixes during an address replace"""
 
@@ -2420,19 +2435,7 @@ class ARPTestCase(VppTestCase):
         )
         self.check_glean_arp_src(self.pg1, "10.0.12.1", "10.0.12.128")
 
-        # every address is stale after the begin; add back all but the /24
-        keep = [
-            (a.sw_if_index, a.prefix)
-            for i in self.vapi.sw_interface_dump()
-            for is_ip6 in (False, True)
-            for a in self.vapi.ip_address_dump(i.sw_if_index, is_ip6)
-            if str(a.prefix) != "10.0.12.1/24"
-        ]
-        self.vapi.sw_interface_address_replace_begin()
-        for sw_if_index, prefix in keep:
-            self.vapi.sw_interface_add_del_address(
-                sw_if_index=sw_if_index, prefix=prefix
-            )
+        self.begin_replace_except("10.0.12.1/24")
         outer = VppIpInterfaceAddress(self, self.pg1, "10.0.0.1", 16).add_vpp_config()
         self.check_glean_arp_src(self.pg1, "10.0.12.1", "10.0.200.1")
 
@@ -2443,6 +2446,29 @@ class ARPTestCase(VppTestCase):
         )
         self.check_glean_arp_src(self.pg1, "10.0.0.1", "10.0.200.2")
         outer.remove_vpp_config()
+
+    def test_glean_src_moved_replace(self):
+        """Glean source: subnet moved to another interface during a replace"""
+
+        #
+        # the overlap check ignores stale addresses, so during an address
+        # replace the subnet of a stale address on pg1 can be added on pg2
+        # with another address. The connected prefix is then added again,
+        # for pg2: the interface source stays the best source and gets a
+        # path through pg2, with a new glean, which is populated from pg2's
+        # address
+        #
+        self.vapi.sw_interface_add_del_address(
+            sw_if_index=self.pg1.sw_if_index, prefix="10.0.13.1/24"
+        )
+        self.check_glean_arp_src(self.pg1, "10.0.13.1", "10.0.13.128")
+
+        self.begin_replace_except("10.0.13.1/24")
+        moved = VppIpInterfaceAddress(self, self.pg2, "10.0.13.2", 24).add_vpp_config()
+        self.check_glean_arp_src(self.pg2, "10.0.13.2", "10.0.13.129")
+
+        self.vapi.sw_interface_address_replace_end()
+        moved.remove_vpp_config()
 
 
 class NeighborStatsTestCase(VppTestCase):

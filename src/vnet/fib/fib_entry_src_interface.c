@@ -376,9 +376,25 @@ fib_entry_src_interface_activate (fib_entry_src_t *src,
     return (!0);
 }
 
+/*
+ * Source reactivate.
+ * Called when the source is updated and remains the best source on the
+ * entry. A connected prefix added again for another interface, which an
+ * address replace allows for the subnet of a stale address, gets a path
+ * through that interface, with a new glean that holds the network address.
+ */
+static int
+fib_entry_src_interface_reactivate (fib_entry_src_t *src,
+				    const fib_entry_t *fib_entry)
+{
+  if (fib_entry_src_interface_is_connected (src))
+    fib_entry_src_interface_glean_populate (fib_entry);
+
+  return (!0);
+}
 
 /*
- * Source Deactivate. 
+ * Source Deactivate.
  * Called when the source is no longer best source on the entry
  */
 static void
@@ -463,6 +479,7 @@ const static fib_entry_src_vft_t interface_src_vft = {
     .fesv_remove = fib_entry_src_interface_remove,
     .fesv_path_swap = fib_entry_src_interface_path_swap,
     .fesv_activate = fib_entry_src_interface_activate,
+    .fesv_reactivate = fib_entry_src_interface_reactivate,
     .fesv_deactivate = fib_entry_src_interface_deactivate,
     .fesv_format = fib_entry_src_interface_format,
     .fesv_installed = fib_entry_src_interface_installed,
