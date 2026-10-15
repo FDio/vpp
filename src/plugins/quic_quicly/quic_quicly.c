@@ -350,6 +350,24 @@ get_stream_session_and_ctx_from_stream (quicly_stream_t *stream,
 /* Quicly callbacks */
 
 static void
+quic_quicly_stream_shutdown_tx (quic_ctx_t *ctx, session_t *stream_session)
+{
+  quicly_stream_t *stream = ctx->stream;
+  int rv;
+
+  /* quicly ignore STOP_SENDING once final_size is set, keep send side open
+   * until all queued data is acknowledged, so peer can cancel blocked stream */
+  if (svm_fifo_max_dequeue (stream_session->tx_fifo))
+    return;
+
+  quicly_sendstate_shutdown (&stream->sendstate, ctx->bytes_written);
+  rv = quicly_stream_sync_sendbuf (stream, 1);
+  ASSERT (!rv);
+  quic_quicly_reschedule_ctx (
+    quic_quicly_get_quic_ctx (ctx->quic_connection_ctx_id, ctx->c_thread_index));
+}
+
+static void
 quic_quicly_on_stream_destroy (quicly_stream_t *stream, quicly_error_t err)
 {
   quic_stream_data_t *stream_data = (quic_stream_data_t *) stream->data;
@@ -433,6 +451,8 @@ quic_quicly_fifo_egress_shift (quicly_stream_t *stream, size_t delta)
 	    quic_quicly_reschedule_ctx (quic_quicly_get_quic_ctx (
 	      sctx->quic_connection_ctx_id, sctx->c_thread_index));
 	  }
+      if ((sctx->flags & QUIC_F_APP_CLOSED_TX) && quicly_sendstate_is_open (&stream->sendstate))
+	quic_quicly_stream_shutdown_tx (sctx, stream_session);
     }
 }
 
@@ -1092,7 +1112,6 @@ quic_quicly_get_quic_ctx_if_valid (u32 ctx_index,
 static void
 quic_quicly_on_app_closed (u32 ctx_index, clib_thread_index_t thread_index)
 {
-  int rv;
   quic_ctx_t *ctx =
     quic_quicly_get_quic_ctx_if_valid (ctx_index, thread_index);
   if (!ctx)
@@ -1132,16 +1151,10 @@ quic_quicly_on_app_closed (u32 ctx_index, clib_thread_index_t thread_index)
 	  QUIC_DBG (2, "send side already closed");
 	  return;
 	}
-      QUIC_DBG (2, "App closed stream, ctx_index %u thread_index %u",
-		ctx->c_c_index, ctx->c_thread_index);
-      quicly_sendstate_shutdown (
-	&stream->sendstate,
-	ctx->bytes_written + svm_fifo_max_dequeue (stream_session->tx_fifo));
+      QUIC_DBG (2, "App closed stream, ctx_index %u thread_index %u", ctx->c_c_index,
+		ctx->c_thread_index);
       ctx->flags |= QUIC_F_APP_CLOSED_TX;
-      rv = quicly_stream_sync_sendbuf (stream, 1);
-      ASSERT (!rv);
-      quic_quicly_reschedule_ctx (quic_quicly_get_quic_ctx (
-	ctx->quic_connection_ctx_id, ctx->c_thread_index));
+      quic_quicly_stream_shutdown_tx (ctx, stream_session);
       return;
     }
   else
@@ -1216,15 +1229,10 @@ quic_quicly_on_app_closed_tx (u32 ctx_index, clib_thread_index_t thread_index)
     }
 
   stream_session = session_get (ctx->c_s_index, ctx->c_thread_index);
-  QUIC_DBG (2, "App half-closing session 0x%lx ctx_index %u",
-	    session_handle (stream_session), ctx->c_c_index);
-  quicly_sendstate_shutdown (&stream->sendstate,
-			     ctx->bytes_written +
-			       svm_fifo_max_dequeue (stream_session->tx_fifo));
+  QUIC_DBG (2, "App half-closing session 0x%lx ctx_index %u", session_handle (stream_session),
+	    ctx->c_c_index);
   ctx->flags |= QUIC_F_APP_CLOSED_TX;
-  quicly_stream_sync_sendbuf (stream, 1);
-  quic_quicly_reschedule_ctx (quic_quicly_get_quic_ctx (
-    ctx->quic_connection_ctx_id, ctx->c_thread_index));
+  quic_quicly_stream_shutdown_tx (ctx, stream_session);
 }
 
 static void
@@ -1520,6 +1528,8 @@ quic_quicly_format_stream_stats (u8 *s, va_list *args)
 	}
       if (quicly_stream_has_send_side (is_client, stream->stream_id))
 	{
+	  if (ctx->flags & QUIC_F_APP_CLOSED_TX)
+	    s = format (s, " app-tx-closed\n");
 	  if (!quicly_sendstate_is_open (&stream->sendstate))
 	    s = format (s, " snd-side-closed\n");
 	  s = format (s, " snd-blocked %u\n", stream->_send_aux.blocked);
