@@ -6,7 +6,7 @@ from cryptography import x509
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.cmac import CMAC
 from cryptography.hazmat.primitives import hashes, hmac
-from cryptography.hazmat.primitives.asymmetric import dh, padding
+from cryptography.hazmat.primitives.asymmetric import dh, ec, padding
 from cryptography.hazmat.primitives.serialization import load_pem_private_key
 from cryptography.hazmat.primitives.ciphers import (
     Cipher,
@@ -81,6 +81,13 @@ DH = {
         2,
         384,
     ),
+}
+
+# RFC 5903 ECP groups, keyed by the scapy GroupDesc names
+ECP = {
+    "256randECPgr": ec.SECP256R1(),
+    "384randECPgr": ec.SECP384R1(),
+    "521randECPgr": ec.SECP521R1(),
 }
 
 
@@ -295,6 +302,7 @@ class IKEv2SA(object):
             self.dport = 500
         self.msg_id = 0
         self.dh_params = None
+        self.ecdh_private_key = None
         self.test = test
         self.priv_key = priv_key
         self.is_initiator = is_initiator
@@ -338,8 +346,20 @@ class IKEv2SA(object):
         return self.i_natt or self.r_natt
 
     def compute_secret(self):
-        priv = self.dh_private_key
         peer = self.peer_dh_pub_key
+        if self.ike_dh in ECP:
+            curve = ECP[self.ike_dh]
+            clen = (curve.key_size + 7) // 8
+            pub = ec.EllipticCurvePublicNumbers(
+                int.from_bytes(peer[:clen], "big"),
+                int.from_bytes(peer[clen:], "big"),
+                curve,
+            ).public_key()
+            if self.ecdh_private_key is None:
+                raise ValueError("ECDH private key is not generated")
+            # RFC 5903 section 7: the shared secret is the x coordinate only
+            return self.ecdh_private_key.exchange(ec.ECDH(), pub)
+        priv = self.dh_private_key
         p, g, l = self.ike_group
         return pow(
             int.from_bytes(peer, "big"), int.from_bytes(priv, "big"), p
@@ -347,6 +367,20 @@ class IKEv2SA(object):
 
     def generate_dh_data(self):
         # generate DH keys
+        if self.ike_dh in ECP:
+            # RFC 5903 section 7: the KE public value is x | y, each
+            # left-padded to the coordinate length
+            curve = ECP[self.ike_dh]
+            clen = (curve.key_size + 7) // 8
+            self.ecdh_private_key = ec.generate_private_key(curve)
+            n = self.ecdh_private_key.public_key().public_numbers()
+            data = n.x.to_bytes(clen, "big") + n.y.to_bytes(clen, "big")
+            if self.is_initiator:
+                self.i_dh_data = data
+            else:
+                self.r_dh_data = data
+            return
+
         if self.ike_dh not in DH:
             raise NotImplementedError("%s not in DH group" % self.ike_dh)
 
@@ -640,7 +674,7 @@ class IKEv2SA(object):
         self.ike_prf = prf
         self.ike_prf_alg = PRF_ALGOS[prf]
         self.ike_dh = dh
-        self.ike_group = DH[self.ike_dh]
+        self.ike_group = ECP[dh] if dh in ECP else DH[dh]
 
     def set_esp_props(self, crypto, crypto_key_len, integ):
         self.esp_crypto_key_len = crypto_key_len
@@ -1289,12 +1323,15 @@ class TemplateInitiator(IkePeer):
         self.assertEqual(prop.trans[2].transform_id, self.p.ike_transforms["dh_group"])
 
         self.verify_nat_detection(packet)
+        # IANA DH group number -> scapy GroupDesc name
+        groups = ikev2.IKEv2TransformTypes["GroupDesc"][1]
+        dh_names = {v: k for k, v in groups.items()}
         self.sa.set_ike_props(
             crypto="AES-GCM-16ICV",
             crypto_key_len=32,
             integ="NULL",
             prf="PRF_HMAC_SHA2_256",
-            dh="3072MODPgr",
+            dh=dh_names[prop.trans[2].transform_id],
         )
         self.sa.set_esp_props(crypto="AES-CBC", crypto_key_len=32, integ="SHA2-256-128")
         self.sa.generate_dh_data()
@@ -2216,6 +2253,38 @@ class TestInitiatorPsk(TemplateInitiator, Ikev2Params):
         )
 
 
+class TestInitiatorEcp384(TemplateInitiator, Ikev2Params):
+    """test ikev2 initiator - ecp384 key exchange (RFC 5903 shared secret)"""
+
+    vpp_worker_count = 2
+
+    def config_tc(self):
+        self.config_params(
+            {
+                "is_initiator": False,  # seen from test case perspective
+                # thus vpp is initiator
+                "ike-crypto": ("AES-GCM-16ICV", 32),
+                "ike-integ": "NULL",
+                "ike-dh": "384randECPgr",
+                "ike_transforms": {
+                    "crypto_alg": 20,  # "aes-gcm-16"
+                    "crypto_key_size": 256,
+                    "dh_group": 20,  # "ecp-384"
+                },
+                "esp_transforms": {
+                    "crypto_alg": 12,  # "aes-cbc"
+                    "crypto_key_size": 256,
+                    # "hmac-sha2-256-128"
+                    "integ_alg": 12,
+                },
+                "responder_hostname": {
+                    "hostname": "vpp.responder.org",
+                    "sw_if_index": self.pg0.sw_if_index,
+                },
+            }
+        )
+
+
 class TestInitiatorRequestWindowSize(TestInitiatorPsk):
     """test initiator - request window size (1)"""
 
@@ -2673,6 +2742,44 @@ class TestAES_CBC_128_SHA256_128_MODP3072_ESP_AES_GCM_16(
                 "esp-crypto": ("AES-GCM-16ICV", 32),
                 "esp-integ": "NULL",
                 "ike-dh": "3072MODPgr",
+            }
+        )
+
+
+class TestAES_GCM_16_256_ECP256_ESP_AES_GCM_16(TemplateResponder, Ikev2Params):
+    """
+    IKE:AES_GCM_16_256,DH=ecp256 ESP:AES_GCM_16 (RFC 5903 shared secret)
+    """
+
+    vpp_worker_count = 2
+
+    def config_tc(self):
+        self.config_params(
+            {
+                "ike-crypto": ("AES-GCM-16ICV", 32),
+                "ike-integ": "NULL",
+                "esp-crypto": ("AES-GCM-16ICV", 32),
+                "esp-integ": "NULL",
+                "ike-dh": "256randECPgr",
+            }
+        )
+
+
+class TestAES_CBC_256_SHA256_128_ECP384_ESP_AES_GCM_16(TemplateResponder, Ikev2Params):
+    """
+    IKE:AES_CBC_256_SHA256_128,DH=ecp384 ESP:AES_GCM_16 (RFC 5903 shared secret)
+    """
+
+    vpp_worker_count = 2
+
+    def config_tc(self):
+        self.config_params(
+            {
+                "ike-crypto": ("AES-CBC", 32),
+                "ike-integ": "SHA2-256-128",
+                "esp-crypto": ("AES-GCM-16ICV", 32),
+                "esp-integ": "NULL",
+                "ike-dh": "384randECPgr",
             }
         )
 
