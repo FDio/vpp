@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "dd65ccbb_80b0b077",
+        "filename": "src/vnet/sfdp/api.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 130,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-10-15T13:09:39Z",
+      "side": 1,
+      "message": "why not returning an error if sfdp is not initialized, rather than a bunch of meaningless counters?",
+      "revId": "556775d78b0d2597e4f44ec2a0f033bf458a7f2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
