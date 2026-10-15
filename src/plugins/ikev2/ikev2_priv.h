@@ -162,6 +162,10 @@ typedef struct
   u8 is_expired;
   i8 rekey_retries;
 
+  /* N(USE_TRANSPORT_MODE) received in IKE_AUTH: in the request on the
+     responder, in the response on the initiator */
+  u8 use_transport_mode;
+
   f64 timestamp;
 } ikev2_child_sa_t;
 
@@ -175,6 +179,9 @@ typedef struct
 {
   u16 notify_type;
   u8 kex;
+  /* N(USE_TRANSPORT_MODE) received in CREATE_CHILD_SA: in the request on the
+     responder, in the response on the initiator */
+  u8 use_transport_mode;
   u8 protocol_id;
   u32 spi;
   u32 ispi;
@@ -411,6 +418,9 @@ typedef struct
 
   /* pointer to find tunnel by ipip tunnel key function in ipip plugin */
   __typeof__ (ipip_tunnel_db_find_sw_if_index) *ipip_tunnel_db_find_sw_if_index_fn_ptr;
+
+  /* pointer to ipip interface check function in ipip plugin */
+  __typeof__ (ipip_sw_if_index_is_tunnel) *ipip_sw_if_index_is_tunnel_fn_ptr;
 
   /* flag indicating whether lazy init is done or not */
   int lazy_init_done;
