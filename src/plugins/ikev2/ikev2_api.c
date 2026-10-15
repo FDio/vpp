@@ -81,6 +81,14 @@ cp_ts (vl_api_ikev2_ts_t * vl_api_ts, ikev2_ts_t * ts, u8 is_local)
   ip_address_encode2 (&ts->end_addr, &vl_api_ts->end_addr);
 }
 
+/* the key arrays of the API types have a fixed size */
+static void
+cp_key (u8 *dst, u8 *dst_len, uword dst_size, u8 *src)
+{
+  *dst_len = clib_min (vec_len (src), dst_size);
+  clib_memcpy (dst, src, *dst_len);
+}
+
 static void
 cp_auth (vl_api_ikev2_auth_t * vl_api_auth, ikev2_auth_t * auth)
 {
@@ -245,26 +253,19 @@ send_sa (ikev2_sa_t * sa, vl_api_ikev2_sa_dump_t * mp, u32 api_sa_index)
     if (tr)
       cp_sa_transform (&rsa->dh, tr);
 
-    k->sk_d_len = vec_len (sa->sk_d);
-    clib_memcpy (&k->sk_d, sa->sk_d, k->sk_d_len);
+    cp_key (k->sk_d, &k->sk_d_len, sizeof (k->sk_d), sa->sk_d);
 
-    k->sk_ai_len = vec_len (sa->sk_ai);
-    clib_memcpy (&k->sk_ai, sa->sk_ai, k->sk_ai_len);
+    cp_key (k->sk_ai, &k->sk_ai_len, sizeof (k->sk_ai), sa->sk_ai);
 
-    k->sk_ar_len = vec_len (sa->sk_ar);
-    clib_memcpy (&k->sk_ar, sa->sk_ar, k->sk_ar_len);
+    cp_key (k->sk_ar, &k->sk_ar_len, sizeof (k->sk_ar), sa->sk_ar);
 
-    k->sk_ei_len = vec_len (sa->sk_ei);
-    clib_memcpy (&k->sk_ei, sa->sk_ei, k->sk_ei_len);
+    cp_key (k->sk_ei, &k->sk_ei_len, sizeof (k->sk_ei), sa->sk_ei);
 
-    k->sk_er_len = vec_len (sa->sk_er);
-    clib_memcpy (&k->sk_er, sa->sk_er, k->sk_er_len);
+    cp_key (k->sk_er, &k->sk_er_len, sizeof (k->sk_er), sa->sk_er);
 
-    k->sk_pi_len = vec_len (sa->sk_pi);
-    clib_memcpy (&k->sk_pi, sa->sk_pi, k->sk_pi_len);
+    cp_key (k->sk_pi, &k->sk_pi_len, sizeof (k->sk_pi), sa->sk_pi);
 
-    k->sk_pr_len = vec_len (sa->sk_pr);
-    clib_memcpy (&k->sk_pr, sa->sk_pr, k->sk_pr_len);
+    cp_key (k->sk_pr, &k->sk_pr_len, sizeof (k->sk_pr), sa->sk_pr);
 
     ikev2_copy_stats (&rsa->stats, &sa->stats);
 
@@ -331,26 +332,19 @@ send_sa_v2 (ikev2_sa_t *sa, vl_api_ikev2_sa_v2_dump_t *mp, u32 api_sa_index)
     if (tr)
       cp_sa_transform (&rsa->dh, tr);
 
-    k->sk_d_len = vec_len (sa->sk_d);
-    clib_memcpy (&k->sk_d, sa->sk_d, k->sk_d_len);
+    cp_key (k->sk_d, &k->sk_d_len, sizeof (k->sk_d), sa->sk_d);
 
-    k->sk_ai_len = vec_len (sa->sk_ai);
-    clib_memcpy (&k->sk_ai, sa->sk_ai, k->sk_ai_len);
+    cp_key (k->sk_ai, &k->sk_ai_len, sizeof (k->sk_ai), sa->sk_ai);
 
-    k->sk_ar_len = vec_len (sa->sk_ar);
-    clib_memcpy (&k->sk_ar, sa->sk_ar, k->sk_ar_len);
+    cp_key (k->sk_ar, &k->sk_ar_len, sizeof (k->sk_ar), sa->sk_ar);
 
-    k->sk_ei_len = vec_len (sa->sk_ei);
-    clib_memcpy (&k->sk_ei, sa->sk_ei, k->sk_ei_len);
+    cp_key (k->sk_ei, &k->sk_ei_len, sizeof (k->sk_ei), sa->sk_ei);
 
-    k->sk_er_len = vec_len (sa->sk_er);
-    clib_memcpy (&k->sk_er, sa->sk_er, k->sk_er_len);
+    cp_key (k->sk_er, &k->sk_er_len, sizeof (k->sk_er), sa->sk_er);
 
-    k->sk_pi_len = vec_len (sa->sk_pi);
-    clib_memcpy (&k->sk_pi, sa->sk_pi, k->sk_pi_len);
+    cp_key (k->sk_pi, &k->sk_pi_len, sizeof (k->sk_pi), sa->sk_pi);
 
-    k->sk_pr_len = vec_len (sa->sk_pr);
-    clib_memcpy (&k->sk_pr, sa->sk_pr, k->sk_pr_len);
+    cp_key (k->sk_pr, &k->sk_pr_len, sizeof (k->sk_pr), sa->sk_pr);
 
     ikev2_copy_stats (&rsa->stats, &sa->stats);
 
@@ -420,26 +414,19 @@ send_sa_v3 (ikev2_sa_t *sa, vl_api_ikev2_sa_v3_dump_t *mp, u32 api_sa_index)
     if (tr)
       cp_sa_transform (&rsa->dh, tr);
 
-    k->sk_d_len = vec_len (sa->sk_d);
-    clib_memcpy (&k->sk_d, sa->sk_d, k->sk_d_len);
+    cp_key (k->sk_d, &k->sk_d_len, sizeof (k->sk_d), sa->sk_d);
 
-    k->sk_ai_len = vec_len (sa->sk_ai);
-    clib_memcpy (&k->sk_ai, sa->sk_ai, k->sk_ai_len);
+    cp_key (k->sk_ai, &k->sk_ai_len, sizeof (k->sk_ai), sa->sk_ai);
 
-    k->sk_ar_len = vec_len (sa->sk_ar);
-    clib_memcpy (&k->sk_ar, sa->sk_ar, k->sk_ar_len);
+    cp_key (k->sk_ar, &k->sk_ar_len, sizeof (k->sk_ar), sa->sk_ar);
 
-    k->sk_ei_len = vec_len (sa->sk_ei);
-    clib_memcpy (&k->sk_ei, sa->sk_ei, k->sk_ei_len);
+    cp_key (k->sk_ei, &k->sk_ei_len, sizeof (k->sk_ei), sa->sk_ei);
 
-    k->sk_er_len = vec_len (sa->sk_er);
-    clib_memcpy (&k->sk_er, sa->sk_er, k->sk_er_len);
+    cp_key (k->sk_er, &k->sk_er_len, sizeof (k->sk_er), sa->sk_er);
 
-    k->sk_pi_len = vec_len (sa->sk_pi);
-    clib_memcpy (&k->sk_pi, sa->sk_pi, k->sk_pi_len);
+    cp_key (k->sk_pi, &k->sk_pi_len, sizeof (k->sk_pi), sa->sk_pi);
 
-    k->sk_pr_len = vec_len (sa->sk_pr);
-    clib_memcpy (&k->sk_pr, sa->sk_pr, k->sk_pr_len);
+    cp_key (k->sk_pr, &k->sk_pr_len, sizeof (k->sk_pr), sa->sk_pr);
 
     ikev2_copy_stats (&rsa->stats, &sa->stats);
 
@@ -494,21 +481,15 @@ send_child_sa (ikev2_child_sa_t * child,
     if (tr)
       cp_sa_transform (&rmp->child_sa.esn, tr);
 
-    k->sk_ei_len = vec_len (child->sk_ei);
-    clib_memcpy (&k->sk_ei, child->sk_ei, k->sk_ei_len);
+    cp_key (k->sk_ei, &k->sk_ei_len, sizeof (k->sk_ei), child->sk_ei);
 
-    k->sk_er_len = vec_len (child->sk_er);
-    clib_memcpy (&k->sk_er, child->sk_er, k->sk_er_len);
+    cp_key (k->sk_er, &k->sk_er_len, sizeof (k->sk_er), child->sk_er);
 
     if (vec_len (child->sk_ai))
       {
-        k->sk_ai_len = vec_len (child->sk_ai);
-        clib_memcpy (&k->sk_ai, child->sk_ai,
-		     k->sk_ai_len);
+	cp_key (k->sk_ai, &k->sk_ai_len, sizeof (k->sk_ai), child->sk_ai);
 
-        k->sk_ar_len = vec_len (child->sk_ar);
-        clib_memcpy (&k->sk_ar, child->sk_ar,
-		     k->sk_ar_len);
+	cp_key (k->sk_ar, &k->sk_ar_len, sizeof (k->sk_ar), child->sk_ar);
       }
 
     vl_api_ikev2_child_sa_t_endian (&rmp->child_sa, 1 /* to network */);
@@ -567,19 +548,15 @@ send_child_sa_v2 (ikev2_child_sa_t *child, vl_api_ikev2_child_sa_v2_dump_t *mp,
     if (tr)
       cp_sa_transform (&rmp->child_sa.esn, tr);
 
-    k->sk_ei_len = vec_len (child->sk_ei);
-    clib_memcpy (&k->sk_ei, child->sk_ei, k->sk_ei_len);
+    cp_key (k->sk_ei, &k->sk_ei_len, sizeof (k->sk_ei), child->sk_ei);
 
-    k->sk_er_len = vec_len (child->sk_er);
-    clib_memcpy (&k->sk_er, child->sk_er, k->sk_er_len);
+    cp_key (k->sk_er, &k->sk_er_len, sizeof (k->sk_er), child->sk_er);
 
     if (vec_len (child->sk_ai))
       {
-	k->sk_ai_len = vec_len (child->sk_ai);
-	clib_memcpy (&k->sk_ai, child->sk_ai, k->sk_ai_len);
+	cp_key (k->sk_ai, &k->sk_ai_len, sizeof (k->sk_ai), child->sk_ai);
 
-	k->sk_ar_len = vec_len (child->sk_ar);
-	clib_memcpy (&k->sk_ar, child->sk_ar, k->sk_ar_len);
+	cp_key (k->sk_ar, &k->sk_ar_len, sizeof (k->sk_ar), child->sk_ar);
       }
 
     vl_api_ikev2_child_sa_v2_t_endian (&rmp->child_sa, 1 /* to network */);
