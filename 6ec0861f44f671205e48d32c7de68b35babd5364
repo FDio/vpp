@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "26675711_88e80801",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-10-15T07:32:24Z",
+      "side": 1,
+      "message": "This is a good improvement but is only partial: `make test-debug VPP_EXTRA_CMAKE_ARGS\u003d-DVPP_ENABLE_SANITIZE_ADDR\u003dON` is failing.",
+      "revId": "6ec0861f44f671205e48d32c7de68b35babd5364",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "09440d55_84258588",
+        "filename": "src/vlib/buffer.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 552,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-10-15T07:32:24Z",
+      "side": 1,
+      "message": "This poisons the entire buffer pool immediately but with DPDK enabled, dpdk_buffer_pools_create() later iterates existing VLIB pools and calls dpdk_buffer_pool_init(), which writes the external rte_mempool_objhdr, rte_mbuf, and VPP buffer template for every buffer.\nThe initial poison should either happen after DPDK’s pool initialization, or DPDK init needs to unpoison each object before populating the headers and then re-poison it once initialized.\nThis can be reproduced with eg.\n\n    gdb --args ./build-root/install-vpp_debug-native/vpp/bin/vpp \u0027unix { interactive } dpdk { no-pci }\u0027",
+      "revId": "6ec0861f44f671205e48d32c7de68b35babd5364",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}

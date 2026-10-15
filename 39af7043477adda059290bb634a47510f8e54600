@@ -16,6 +16,24 @@
       "message": "This should be conditionally compiled for ASAN image, not added to all images.\n\nPlease create a macro , e.g. vlib_buffer_poison_asan(), in src/vlib/buffer.h that is conditionally compiled to this for ASAN builds only.",
       "revId": "39af7043477adda059290bb634a47510f8e54600",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "977f8e2d_3fb913b8",
+        "filename": "src/vlib/buffer.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 602,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-10-15T07:32:24Z",
+      "side": 1,
+      "message": "Note that clib_mem_poison() already compiles to a no-op for non-ASAN builds, and is already use like this in vppinfra, but I am fine either way.\nMy biggest concern is this patch breaks make test under ASAN because not all corner-cases are taken care-of.\nOverall I think it would be useful, but this probably need more polishing.",
+      "parentUuid": "5feceb10_fef7771a",
+      "revId": "39af7043477adda059290bb634a47510f8e54600",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
