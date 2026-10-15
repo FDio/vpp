@@ -144,6 +144,89 @@ tcp_ack_handle_feedback (tcp_connection_t *tc, u32 packet_ack, tcp_ack_ctx_t *ac
   ac->acked_and_sacked = ac->bytes_acked;
 }
 
+static inline u8
+tcp_dsack_report_enabled (tcp_connection_t *tc)
+{
+  return tcp_opts_sack_permitted (&tc->rcv_opts) && !(tc->sack_sb.flags & TCP_DSACK_UNDO_DISABLED);
+}
+
+/** Report [start, end), received again (RFC 2883). A duplicate that touches
+ * the last one extends it, others are reported in separate ACKs. */
+static inline void
+tcp_dsack_report (tcp_connection_t *tc, u32 start, u32 end)
+{
+  sack_block_t *last;
+
+  if (!tcp_dsack_report_enabled (tc) || !seq_lt (start, end))
+    return;
+  if (vec_len (tc->snd_dsacks))
+    {
+      last = vec_end (tc->snd_dsacks) - 1;
+      if (seq_leq (start, last->end) && seq_leq (last->start, end))
+	{
+	  last->start = seq_min (last->start, start);
+	  last->end = seq_max (last->end, end);
+	  return;
+	}
+    }
+  /* Keep the most recent ones */
+  if (vec_len (tc->snd_dsacks) >= TCP_MAX_DSACK_BLOCKS)
+    vec_delete (tc->snd_dsacks, 1, 0);
+  vec_add2 (tc->snd_dsacks, last, 1);
+  last->start = start;
+  last->end = end;
+}
+
+/** Report the part of a segment already received out of order. */
+static inline void
+tcp_dsack_report_ooo (tcp_connection_t *tc, u32 start, u32 end)
+{
+  sack_block_t *blk;
+
+  if (!tcp_dsack_report_enabled (tc))
+    return;
+  vec_foreach (blk, tc->snd_sacks)
+    if (seq_lt (blk->start, end) && seq_lt (start, blk->end))
+      {
+	tcp_dsack_report (tc, seq_max (start, blk->start), seq_min (end, blk->end));
+	return;
+      }
+}
+
+static inline u8
+tcp_dsack_is_pending (tcp_connection_t *tc)
+{
+  return vec_len (tc->snd_dsacks) != 0;
+}
+
+/** Fill blks with the oldest pending D-SACK, the block that contains it, if
+ * any, and the next blocks in rotation. Each D-SACK is reported once. */
+static inline u32
+tcp_dsack_make_sacks (tcp_connection_t *tc, sack_block_t *blks)
+{
+  sack_block_t *sacks = tc->snd_sacks, dsack;
+  u32 i, n = 0, n_sacks = vec_len (sacks), contains = ~0;
+
+  ASSERT (tcp_dsack_is_pending (tc));
+  dsack = tc->snd_dsacks[0];
+  vec_delete (tc->snd_dsacks, 1, 0);
+  blks[n++] = dsack;
+  for (i = 0; i < n_sacks; i++)
+    if (seq_leq (sacks[i].start, dsack.start) && seq_leq (dsack.end, sacks[i].end))
+      {
+	blks[n++] = sacks[i];
+	contains = i;
+	break;
+      }
+  if (tc->snd_sack_pos >= n_sacks)
+    tc->snd_sack_pos = 0;
+  for (i = tc->snd_sack_pos; i < n_sacks && n < TCP_OPTS_MAX_SACK_BLOCKS; i++)
+    if (i != contains)
+      blks[n++] = sacks[i];
+  tc->snd_sack_pos = i;
+  return n;
+}
+
 __clib_export void tcp_sack_init_rxt (tcp_connection_t *tc, u32 snd_una);
 /** Bytes from snd_una to the first sacked byte, at most max_bytes. Reneged
  * sacks at the head do not limit it. */

@@ -1598,6 +1598,71 @@ tcp_test_sack_tx (vlib_main_t * vm, unformat_input_t * input)
   TCP_TEST ((tc->snd_sacks[0].start == 300),
 	    "first sack block start %u expected %u", tc->snd_sacks[0].start,
 	    300);
+
+  /*
+   * D-SACK reports (RFC 2883)
+   */
+  {
+    sack_block_t blks[TCP_OPTS_MAX_SACK_BLOCKS];
+    u32 n;
+
+    vec_free (tc->snd_sacks);
+    vec_free (tc->snd_sacks_fl);
+    clib_memset (tc, 0, sizeof (*tc));
+    tc->rcv_opts.flags = TCP_OPTS_FLAG_SACK_PERMITTED;
+    tc->rcv_nxt = 1000;
+
+    tcp_dsack_report (tc, 800, 900);
+    n = tcp_dsack_make_sacks (tc, blks);
+    TCP_TEST ((n == 1 && blks[0].start == 800 && blks[0].end == 900 && !tcp_dsack_is_pending (tc)),
+	      "old duplicate is reported once, as the only block");
+
+    tcp_dsack_report (tc, 100, 200);
+    tcp_dsack_report (tc, 200, 300);
+    tcp_dsack_report (tc, 150, 250);
+    tcp_dsack_report (tc, 500, 600);
+    TCP_TEST ((vec_len (tc->snd_dsacks) == 2 && tc->snd_dsacks[0].start == 100 &&
+	       tc->snd_dsacks[0].end == 300 && tc->snd_dsacks[1].start == 500),
+	      "touching duplicates merge, others are reported separately");
+    n = tcp_dsack_make_sacks (tc, blks);
+    TCP_TEST ((n == 1 && blks[0].start == 100 && vec_len (tc->snd_dsacks) == 1),
+	      "oldest duplicate is reported first, one per ack");
+    vec_reset_length (tc->snd_dsacks);
+    for (i = 0; i < TCP_MAX_DSACK_BLOCKS + 2; i++)
+      tcp_dsack_report (tc, 100 * i, 100 * i + 50);
+    TCP_TEST ((vec_len (tc->snd_dsacks) == TCP_MAX_DSACK_BLOCKS && tc->snd_dsacks[0].start == 200),
+	      "pending duplicates are capped, keeping the most recent");
+    vec_reset_length (tc->snd_dsacks);
+
+    tcp_update_sack_list (tc, 1200, 1300);
+    tcp_update_sack_list (tc, 1500, 1800);
+    tcp_update_sack_list (tc, 2000, 2100);
+    tcp_dsack_report_ooo (tc, 1600, 1700);
+    n = tcp_dsack_make_sacks (tc, blks);
+    TCP_TEST ((n == 3 && blks[0].start == 1600 && blks[0].end == 1700 && blks[1].start == 1500 &&
+	       blks[1].end == 1800 && blks[2].start == 2000 && tc->snd_sack_pos == 1),
+	      "out-of-order duplicate is followed by the block that contains it");
+
+    tcp_dsack_report_ooo (tc, 1250, 1400);
+    TCP_TEST ((vec_len (tc->snd_dsacks) == 1 && tc->snd_dsacks[0].start == 1250 &&
+	       tc->snd_dsacks[0].end == 1300),
+	      "partial out-of-order duplicate reports only the overlap");
+    tcp_dsack_report_ooo (tc, 1300, 1500);
+    TCP_TEST ((vec_len (tc->snd_dsacks) == 1), "new out-of-order data is not a duplicate");
+    vec_reset_length (tc->snd_dsacks);
+
+    tc->sack_sb.flags |= TCP_DSACK_UNDO_DISABLED;
+    tcp_dsack_report (tc, 800, 900);
+    tcp_dsack_report_ooo (tc, 1600, 1700);
+    TCP_TEST ((!tcp_dsack_is_pending (tc)), "no reports with dsack disabled");
+    tc->sack_sb.flags = 0;
+    tc->rcv_opts.flags = 0;
+    tcp_dsack_report (tc, 800, 900);
+    TCP_TEST ((!tcp_dsack_is_pending (tc)), "no reports without sack");
+    vec_free (tc->snd_sacks);
+    vec_free (tc->snd_sacks_fl);
+    vec_free (tc->snd_dsacks);
+  }
   return 0;
 }
 
@@ -6481,6 +6546,135 @@ cleanup:
   return rv;
 }
 
+/* Drop the server's acks for a flight, so a timeout resends the head. The
+ * server reports the copy with a D-SACK, which undoes the timeout. */
+static int
+tcp_test_tamper_dsack_rto (vlib_main_t *vm)
+{
+  tcp_e2e_params_t params = {
+    .name = "dsack_rto",
+    .client_addr = 0x20202001,
+    .server_addr = 0x21212101,
+    .client_vrf = 0,
+    .server_vrf = 2,
+    .server_port = 2267,
+    .client_port = 0, /* ephemeral */
+    .secret = 2266,
+  };
+  tcp_e2e_ctx_t _ctx, *ctx = &_ctx;
+  tcp_connection_t *client_tc, *server_tc;
+  tcp_tamper_rule_t *ack_rule;
+  session_t *client_s, *server_s;
+  u32 tries, max_iters, tr_before, cwnd_before, total_bytes, start, drained;
+  u8 *data = 0;
+  int error, rv = 0, i;
+
+  tcp_tamper_reset ();
+
+  if (!TCP_TEST_I ((tcp_e2e_setup (vm, ctx, &params) == 0), "dsack_rto: e2e setup"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  client_tc = ctx->client_tc;
+  client_s = ctx->client_s;
+  server_s = session_get_if_valid (accepted_session_index, accepted_session_thread);
+  if (!TCP_TEST_I ((server_s != 0), "dsack_rto: server session resolvable"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  server_tc = (tcp_connection_t *) session_get_transport (server_s);
+
+  client_tc->cfg_flags |= TCP_CFG_F_NO_TSO;
+  client_tc->cfg_flags &= ~TCP_CFG_F_TSO;
+  client_tc->connection.flags &= ~TRANSPORT_CONNECTION_F_IS_TX_PACED;
+  client_tc->rto = TCP_RTO_MIN;
+  total_bytes = 2 * client_tc->snd_mss;
+  start = client_tc->snd_una;
+  tr_before = client_tc->tr_occurences;
+
+  ack_rule = tcp_tamper_drop_pure_ack (server_tc, ~0);
+  tcp_tamper_enable (server_tc);
+
+  vec_validate (data, total_bytes - 1);
+  for (i = 0; i < (int) total_bytes; i++)
+    data[i] = i & 0xff;
+  error = svm_fifo_enqueue (client_s->tx_fifo, total_bytes, data);
+  if (!TCP_TEST_I ((error == (int) total_bytes), "dsack_rto: client queued %u bytes", total_bytes))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  error = session_program_tx_io_evt (client_s->handle, SESSION_IO_EVT_TX);
+  if (!TCP_TEST_I ((error == 0), "dsack_rto: client tx event programmed"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+  /* Wait for the flight to arrive while its acks are dropped */
+  for (tries = 0; server_tc->rcv_nxt - start < total_bytes && tries < 200; tries++)
+    tcp_e2e_pump (vm, 1e-3);
+  if (!TCP_TEST_I ((server_tc->rcv_nxt - start == total_bytes && ack_rule->n_dropped &&
+		    client_tc->snd_una == start && client_tc->tr_occurences == tr_before),
+		   "dsack_rto: flight arrived, its acks were dropped (dropped %u)",
+		   ack_rule->n_dropped))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+  /* Let the ack that reports the duplicate through. Drain the server only
+   * afterwards, as a window update would ack the flight first. */
+  cwnd_before = client_tc->cwnd;
+  ack_rule->n_drop = 0;
+  max_iters = tcp_e2e_rxt_wait_iters (client_tc, 10e-3);
+  for (tries = 0; (tcp_in_cong_recovery (client_tc) || client_tc->snd_una != client_tc->snd_nxt) &&
+		  tries < max_iters;
+       tries++)
+    tcp_e2e_pump (vm, 10e-3);
+  drained = session_test_drain_rx_fifo (server_s);
+
+  if (!TCP_TEST_I (
+	(client_tc->tr_occurences != tr_before && client_tc->snd_una == client_tc->snd_nxt),
+	"dsack_rto: a timeout resent the head and all data was acked (timeouts %u, "
+	"acked %u of %u)",
+	client_tc->tr_occurences - tr_before, client_tc->snd_una - start,
+	client_tc->snd_nxt - start))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  if (!TCP_TEST_I ((client_tc->dsack_undo.lifetime_unreported == 0),
+		   "dsack_rto: the server reported the copy with a D-SACK (unreported %u)",
+		   client_tc->dsack_undo.lifetime_unreported))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  if (!TCP_TEST_I ((client_tc->cwnd >= cwnd_before),
+		   "dsack_rto: the D-SACK undid the timeout (cwnd %u before %u)", client_tc->cwnd,
+		   cwnd_before))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  if (!TCP_TEST_I ((drained == total_bytes), "dsack_rto: all data delivered (got %u of %u)",
+		   drained, total_bytes))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+cleanup:
+  tcp_tamper_reset ();
+  vec_free (data);
+  if (!tcp_e2e_teardown (vm, ctx))
+    rv = 1;
+  return rv;
+}
+
 static int
 tcp_test_tamper (vlib_main_t *vm, unformat_input_t *input)
 {
@@ -6501,6 +6695,7 @@ tcp_test_tamper (vlib_main_t *vm, unformat_input_t *input)
     { "strand-head", tcp_test_tamper_stranded_head },
     { "rto", tcp_test_tamper_rto },
     { "rto-head", tcp_test_tamper_rto_head },
+    { "dsack-rto", tcp_test_tamper_dsack_rto },
   };
   int res = 0, i;
 
