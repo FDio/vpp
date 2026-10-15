@@ -2326,6 +2326,11 @@ ikev2_add_tunnel_from_main (ikev2_add_ipsec_tunnel_args_t * a)
 	}
       hash_set1 (km->sw_if_indices, sw_if_index);
     }
+  else if (!vnet_sw_interface_is_valid (vnet_get_main (), a->sw_if_index))
+    {
+      log_err ("tunnel interface %u does not exist! local spi: %x", a->sw_if_index, a->local_spi);
+      return;
+    }
   else
     {
       sw_if_index = a->sw_if_index;
@@ -2755,11 +2760,14 @@ ikev2_del_tunnel_from_main (ikev2_del_ipsec_tunnel_args_t * a)
       else
 	sw_if_index = INDEX_INVALID;
     }
-  else
+  else if (vnet_sw_interface_is_valid (vnet_get_main (), a->sw_if_index))
     {
       sw_if_index = a->sw_if_index;
       vnet_sw_interface_admin_down (vnet_get_main (), sw_if_index);
     }
+  else
+    /* the tunnel interface of the profile has been deleted */
+    sw_if_index = INDEX_INVALID;
 
   if (INDEX_INVALID != sw_if_index)
     ipsec_tun_protect_del (sw_if_index, NULL);
@@ -5487,6 +5495,9 @@ ikev2_mngr_process_child_sa (vlib_main_t *vm, ikev2_sa_t *sa, ikev2_child_sa_t *
        if (INDEX_INVALID == sw_if_index)
 	 return res;
 	}
+      else if (!vnet_sw_interface_is_valid (vnet_get_main (), sw_if_index))
+	/* the tunnel interface of the profile has been deleted */
+	return res;
 
       u32 *sas_in = NULL;
       vec_add1 (sas_in, csa->remote_sa_id);

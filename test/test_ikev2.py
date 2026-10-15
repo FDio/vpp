@@ -824,10 +824,10 @@ class IkePeer(VppTestCase):
         return self.use_transport_mode and self.transport_mode_on_wire()
 
     def config_gre_tunnel(self):
-        gre = VppGreInterface(self, self.pg0.local_ip4, self.pg0.remote_ip4)
-        gre.add_vpp_config()
-        gre.admin_up()
-        self.p.set_tunnel_interface(gre.sw_if_index)
+        self.gre_itf = VppGreInterface(self, self.pg0.local_ip4, self.pg0.remote_ip4)
+        self.gre_itf.add_vpp_config()
+        self.gre_itf.admin_up()
+        self.p.set_tunnel_interface(self.gre_itf.sw_if_index)
 
     @classmethod
     def setUpClass(cls):
@@ -2658,6 +2658,17 @@ class TestResponderGreTransportMode(TestResponderRekey):
 
     use_transport_mode = True
     gre_tunnel = True
+
+
+class TestResponderGreItfDeleted(TestResponderPsk):
+    """test ikev2 responder - delete SAs after the tunnel interface"""
+
+    gre_tunnel = True
+
+    def test_responder(self):
+        super(TestResponderGreItfDeleted, self).test_responder()
+        # tearDown deletes the IKE SA after the tunnel interface is gone
+        self.gre_itf.remove_vpp_config()
 
 
 class TestResponderGreTunnelMode(TestResponderRekey):
