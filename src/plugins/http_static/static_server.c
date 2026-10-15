@@ -1074,9 +1074,11 @@ hss_listener_del (hss_listener_t *l_cfg)
 
   vnet_unlisten_args_t args = { .handle = l->session_handle, hsm->app_index };
 
+  if (l->www_root)
+    hss_cache_free (&l->cache);
+
   vec_free (l->www_root);
   vec_free (l->max_age_formatted);
-  hss_cache_free (&l->cache);
   pool_put (hsm->listeners, l);
 
   return vnet_unlisten (&args);
