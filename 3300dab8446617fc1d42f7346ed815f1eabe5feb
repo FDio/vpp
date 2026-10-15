@@ -33,6 +33,23 @@
       "message": "recheck",
       "revId": "3300dab8446617fc1d42f7346ed815f1eabe5feb",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "bce5d25a_2dd489d5",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 7
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3121
+      },
+      "writtenOn": "2026-10-15T19:00:43Z",
+      "side": 1,
+      "message": "Can you please rebase on latest `master`. CI is failing on unrelated `test_ip6_dad_autoremove` tests which were flaky and have since been disabled in [440d8ec](https://github.com/FDio/vpp/commit/440d8ec) which is missing in your tree.",
+      "revId": "3300dab8446617fc1d42f7346ed815f1eabe5feb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
