@@ -716,7 +716,10 @@ session_enqueue_chain (session_t *s, vlib_buffer_t *b, u32 offset, u8 is_in_orde
 	      f->ooos_newest = newest;
 	      return 0;
 	    }
-	  newest = f->ooos_newest;
+	  /* An enqueue that changes no segment, e.g., of duplicate data, resets
+	   * it as well. Keep the one changed by an earlier buffer */
+	  if (f->ooos_newest != OOO_SEGMENT_INVALID_INDEX)
+	    newest = f->ooos_newest;
 	  written += len;
 	  offset += len;
 	}
@@ -724,6 +727,7 @@ session_enqueue_chain (session_t *s, vlib_buffer_t *b, u32 offset, u8 is_in_orde
 			  vlib_get_buffer (vm, chain_b->next_buffer) :
 			  0));
 
+      f->ooos_newest = newest;
       return 0;
     }
 }
