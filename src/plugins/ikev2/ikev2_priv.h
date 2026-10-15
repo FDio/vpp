@@ -162,6 +162,9 @@ typedef struct
   u8 is_expired;
   i8 rekey_retries;
 
+  /* peer sent N(USE_TRANSPORT_MODE) for this child SA */
+  u8 use_transport_mode;
+
   f64 timestamp;
 } ikev2_child_sa_t;
 
@@ -175,6 +178,7 @@ typedef struct
 {
   u16 notify_type;
   u8 kex;
+  u8 use_transport_mode;
   u8 protocol_id;
   u32 spi;
   u32 ispi;
