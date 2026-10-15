@@ -63,4 +63,6 @@ class TestVapiAf(unittest.TestCase):
                 for attr in ("vapi_af", "vapi_af_name"):
                     with self.assertRaises(ValueError) as cm:
                         getattr(addr, attr)
-                    self.assertIn("Invalid IP address family version", str(cm.exception))
+                    self.assertIn(
+                        "Invalid IP address family version", str(cm.exception)
+                    )
