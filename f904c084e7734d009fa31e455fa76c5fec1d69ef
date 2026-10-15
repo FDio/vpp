@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "2ab7963c_a850fd1a",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-10-15T17:37:45Z",
+      "side": 1,
+      "message": "Isn\u0027t the onus on downstream/previous node in the graph? We can assert here to catch bugs, but do we need to defend against misuse by internal nodes?",
+      "revId": "f904c084e7734d009fa31e455fa76c5fec1d69ef",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
