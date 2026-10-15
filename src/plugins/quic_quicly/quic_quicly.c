@@ -87,6 +87,11 @@ quic_quicly_connection_delete (quic_ctx_t *ctx)
   quic_disconnect_transport (ctx, qm->app_index);
   quicly_free (ctx->conn);
   ctx->conn = NULL;
+  if (ctx->alpn_list)
+    {
+      clib_mem_free (ctx->alpn_list);
+      ctx->alpn_list = NULL;
+    }
   if (ctx->c_s_index != QUIC_SESSION_INVALID && !(ctx->flags & QUIC_F_NO_APP_SESSION))
     session_transport_delete_notify (&ctx->connection);
 }
@@ -1417,10 +1422,8 @@ quic_quicly_connect (quic_ctx_t *ctx, u32 ctx_index,
 		     clib_thread_index_t thread_index, struct sockaddr *sa)
 {
   quicly_context_t *quicly_ctx;
-  ptls_iovec_t alpn_list[4];
-  ptls_handshake_properties_t hs_properties = {
-    .client.negotiated_protocols.list = alpn_list
-  };
+  ptls_iovec_t *alpn_list = NULL;
+  ptls_handshake_properties_t hs_properties = {};
   const tls_alpn_proto_id_t *alpn_proto;
   quic_quicly_main_t *qqm = &quic_quicly_main;
   int i;
@@ -1436,7 +1439,14 @@ quic_quicly_connect (quic_ctx_t *ctx, u32 ctx_index,
 
   ctx->opaque = quic_quicly_crypto_engine_is_vpp () ? QUIC_QUICLY_RX_STATE_HANDSHAKE_VPP_CRYPTO :
 						      QUIC_QUICLY_RX_STATE_HANDSHAKE;
-  /* build alpn list if app provided something */
+  /* quicly retains the list for subsequent ClientHellos after a
+   * HelloRetryRequest, so it must live until the connection is freed. */
+  if (ctx->alpn_protos[0])
+    {
+      alpn_list = clib_mem_alloc (sizeof (ctx->alpn_protos) * sizeof (*alpn_list));
+      ctx->alpn_list = alpn_list;
+      hs_properties.client.negotiated_protocols.list = alpn_list;
+    }
   for (i = 0; i < sizeof (ctx->alpn_protos) && ctx->alpn_protos[i]; i++)
     {
       alpn_proto = &tls_alpn_proto_ids[ctx->alpn_protos[i]];
