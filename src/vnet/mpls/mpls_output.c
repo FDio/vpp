@@ -117,10 +117,6 @@ mpls_output_inline (vlib_main_t * vm,
           hdr0 = vlib_buffer_get_current (p0);
           hdr1 = vlib_buffer_get_current (p1);
 
-          /* Guess we are only writing on simple Ethernet header. */
-          vnet_rewrite_two_headers (adj0[0], adj1[0], hdr0, hdr1,
-                                   sizeof (ethernet_header_t));
-
           /* Update packet buffer attributes/set output interface. */
           rw_len0 = adj0[0].rewrite_header.data_bytes;
           rw_len1 = adj1[0].rewrite_header.data_bytes;
@@ -188,11 +184,20 @@ mpls_output_inline (vlib_main_t * vm,
                                            MPLS_ERROR_PKTS_NEED_FRAG,
                                            1);
             }
-          if (mode == MPLS_OUTPUT_MIDCHAIN_MODE)
-          {
-	    adj_midchain_fixup (vm, adj0, p0, VNET_LINK_MPLS);
-	    adj_midchain_fixup (vm, adj1, p1, VNET_LINK_MPLS);
-	  }
+	  if (PREDICT_FALSE (error0 != IP4_ERROR_NONE || error1 != IP4_ERROR_NONE))
+	    {
+	      if (error0 == IP4_ERROR_NONE)
+		vnet_rewrite_one_header (adj0[0], hdr0, sizeof (ethernet_header_t));
+	      if (error1 == IP4_ERROR_NONE)
+		vnet_rewrite_one_header (adj1[0], hdr1, sizeof (ethernet_header_t));
+	    }
+	  else
+	    vnet_rewrite_two_headers (adj0[0], adj1[0], hdr0, hdr1, sizeof (ethernet_header_t));
+	  if (mode == MPLS_OUTPUT_MIDCHAIN_MODE)
+	    {
+	      adj_midchain_fixup (vm, adj0, p0, VNET_LINK_MPLS);
+	      adj_midchain_fixup (vm, adj1, p1, VNET_LINK_MPLS);
+	    }
 
 	  p0->error = error_node->errors[error0];
 	  p1->error = error_node->errors[error1];
@@ -234,10 +239,6 @@ mpls_output_inline (vlib_main_t * vm,
 	  adj0 = adj_get(adj_index0);
 	  hdr0 = vlib_buffer_get_current (p0);
 
-	  /* Guess we are only writing on simple Ethernet header. */
-          vnet_rewrite_one_header (adj0[0], hdr0,
-                                   sizeof (ethernet_header_t));
-
           /* Update packet buffer attributes/set output interface. */
           rw_len0 = adj0[0].rewrite_header.data_bytes;
           vnet_buffer (p0)->mpls.save_rewrite_length = rw_len0;
@@ -254,10 +255,10 @@ mpls_output_inline (vlib_main_t * vm,
                            adj0[0].rewrite_header.max_l3_packet_bytes))
             {
               vlib_buffer_advance(p0, -rw_len0);
+	      vnet_rewrite_one_header (adj0[0], hdr0, sizeof (ethernet_header_t));
 
-              vnet_buffer (p0)->sw_if_index[VLIB_TX] =
-                  adj0[0].rewrite_header.sw_if_index;
-              next0 = adj0[0].rewrite_header.next_index;
+	      vnet_buffer (p0)->sw_if_index[VLIB_TX] = adj0[0].rewrite_header.sw_if_index;
+	      next0 = adj0[0].rewrite_header.next_index;
               error0 = IP4_ERROR_NONE;
 
               if (PREDICT_FALSE(adj0[0].rewrite_header.flags & VNET_REWRITE_HAS_FEATURES))

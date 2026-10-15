@@ -1753,6 +1753,7 @@ ip6_rewrite_inline_with_gso (vlib_main_t * vm,
   u32 n_left_from, n_left_to_next, *to_next, next_index;
   vlib_node_runtime_t *error_node =
     vlib_node_get_runtime (vm, ip6_input_node.index);
+  u32 most_likely_size = is_midchain ? sizeof (ip6_header_t) : sizeof (ethernet_header_t);
 
   n_left_from = frame->n_vectors;
   next_index = node->cached_next_index;
@@ -1893,6 +1894,12 @@ ip6_rewrite_inline_with_gso (vlib_main_t * vm,
 			 adj1[0].rewrite_header.max_l3_packet_bytes,
 			 is_locally_originated1, &next1, is_midchain,
 			 &error1);
+
+	  if (PREDICT_FALSE (error0 == IP6_ERROR_NONE && !vlib_buffer_has_pre_data (p0, rw_len0)))
+	    error0 = IP6_ERROR_NO_SPACE;
+	  if (PREDICT_FALSE (error1 == IP6_ERROR_NONE && !vlib_buffer_has_pre_data (p1, rw_len1)))
+	    error1 = IP6_ERROR_NO_SPACE;
+
 	  /* Don't adjust the buffer for hop count issue; icmp-error node
 	   * wants to see the IP header */
 	  if (PREDICT_TRUE (error0 == IP6_ERROR_NONE))
@@ -1929,14 +1936,15 @@ ip6_rewrite_inline_with_gso (vlib_main_t * vm,
 	      p1->error = error_node->errors[error1];
 	    }
 
-	  if (is_midchain)
-	    /* Guess we are only writing on ipv6 header. */
-	    vnet_rewrite_two_headers (adj0[0], adj1[0], ip0, ip1,
-				      sizeof (ip6_header_t));
+	  if (PREDICT_FALSE (error0 != IP6_ERROR_NONE || error1 != IP6_ERROR_NONE))
+	    {
+	      if (error0 == IP6_ERROR_NONE)
+		vnet_rewrite_one_header (adj0[0], ip0, most_likely_size);
+	      if (error1 == IP6_ERROR_NONE)
+		vnet_rewrite_one_header (adj1[0], ip1, most_likely_size);
+	    }
 	  else
-	    /* Guess we are only writing on simple Ethernet header. */
-	    vnet_rewrite_two_headers (adj0[0], adj1[0],
-				      ip0, ip1, sizeof (ethernet_header_t));
+	    vnet_rewrite_two_headers (adj0[0], adj1[0], ip0, ip1, most_likely_size);
 
 	  if (do_counters)
 	    {
@@ -2043,6 +2051,10 @@ ip6_rewrite_inline_with_gso (vlib_main_t * vm,
 			 adj0[0].rewrite_header.max_l3_packet_bytes,
 			 is_locally_originated0, &next0, is_midchain,
 			 &error0);
+
+	  if (PREDICT_FALSE (error0 == IP6_ERROR_NONE && !vlib_buffer_has_pre_data (p0, rw_len0)))
+	    error0 = IP6_ERROR_NO_SPACE;
+
 	  /* Don't adjust the buffer for hop count issue; icmp-error node
 	   * wants to see the IP header */
 	  if (PREDICT_TRUE (error0 == IP6_ERROR_NONE))
@@ -2059,13 +2071,7 @@ ip6_rewrite_inline_with_gso (vlib_main_t * vm,
 		  lm->output_feature_arc_index, tx_sw_if_index0, &next0, p0,
 		  adj0->ia_cfg_index);
 
-	      if (is_midchain)
-		/* Guess we are only writing on ip6 header. */
-		vnet_rewrite_one_header (adj0[0], ip0, sizeof (ip6_header_t));
-	      else
-		/* Guess we are only writing on simple Ethernet header. */
-		vnet_rewrite_one_header (adj0[0], ip0,
-					 sizeof (ethernet_header_t));
+	      vnet_rewrite_one_header (adj0[0], ip0, most_likely_size);
 
 	      if (do_counters)
 		{
