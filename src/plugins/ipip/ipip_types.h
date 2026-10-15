@@ -42,5 +42,6 @@ extern int ipip_add_tunnel (ipip_transport_t transport, u32 instance, ip46_addre
 			    ip_dscp_t dscp, tunnel_mode_t mode, u32 *sw_if_indexp);
 extern int ipip_del_tunnel (u32 sw_if_index);
 extern u32 ipip_tunnel_db_find_sw_if_index (const ipip_tunnel_key_t *key);
+extern int ipip_sw_if_index_is_tunnel (u32 sw_if_index);
 
 #endif /* __included_ipip_types_h__ */
