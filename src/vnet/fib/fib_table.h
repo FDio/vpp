@@ -913,7 +913,7 @@ __clib_export extern fib_table_t *fib_table_get(fib_node_index_t index,
  * from an interface binding or from another untrusted source must use this
  * accessor.
  */
-extern fib_table_t *fib_table_get_or_null(u32 fib_index,
+__clib_export extern fib_table_t *fib_table_get_or_null(u32 fib_index,
 					  fib_protocol_t proto);
 
 /**
