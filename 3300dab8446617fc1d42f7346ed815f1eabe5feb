@@ -50,6 +50,23 @@
       "message": "Can you please rebase on latest `master`. CI is failing on unrelated `test_ip6_dad_autoremove` tests which were flaky and have since been disabled in [440d8ec](https://github.com/FDio/vpp/commit/440d8ec) which is missing in your tree.",
       "revId": "3300dab8446617fc1d42f7346ed815f1eabe5feb",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "77d353d5_73ff1464",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 7
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2267
+      },
+      "writtenOn": "2026-10-15T21:22:29Z",
+      "side": 1,
+      "message": "Thanks, the code looks good now from my side.\nThe commit message still describes patch set 4, though: it says the fix checks\n\"tm-\u003etrace_buffer_pool !\u003d NULL\" and wraps the CLI loops with\nvlib_worker_thread_barrier_sync/release, and neither is true anymore.\nPlease update it to describe the current checks (trace thread and\npool_is_free_index()). The \"earlier fix\" paragraph and the CLIB_DEBUG\npackaging note can go, and there is a duplicate Signed-off-by line.",
+      "revId": "3300dab8446617fc1d42f7346ed815f1eabe5feb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
