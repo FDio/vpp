@@ -1119,6 +1119,12 @@ counters ip4 {
     units "packets";
     description "ip4 egress interface same as ingress";
   };
+  no_space {
+    severity error;
+    type counter64;
+    units "packets";
+    description "ip4 rewrite with insufficient headroom";
+  };
 
   /* errors signalled by ip4-local. */
   unknown_protocol {
@@ -1309,6 +1315,12 @@ counters ip6 {
     type counter64;
     units "packets";
     description "ip6 MTU exceeded";
+  };
+  no_space {
+    severity error;
+    type counter64;
+    units "packets";
+    description "ip6 rewrite with insufficient headroom";
   };
   dst_lookup_miss {
     severity error;
