@@ -38,6 +38,8 @@ KEY_PAD = b"Key Pad for IKEv2"
 SALT_SIZE = 4
 GCM_ICV_SIZE = 16
 GCM_IV_SIZE = 8
+# RFC 7296 section 3.10.1
+USE_TRANSPORT_MODE = 16391
 AEAD_CRYPTOS = {"AES-GCM-16ICV", "CHACHA20-POLY1305"}
 
 
@@ -740,6 +742,29 @@ class IKEv2SA(object):
 class IkePeer(VppTestCase):
     """common class for initiator and responder"""
 
+    # peer requests transport mode with N(USE_TRANSPORT_MODE)
+    use_transport_mode = False
+
+    @staticmethod
+    def has_notify(plain, first_payload, notify_type):
+        # walk the generic payload headers (RFC 7296 section 3.2): scapy
+        # does not account for the SPI of N(REKEY_SA) and misparses the
+        # payloads that follow it
+        np, off = first_payload, 0
+        while np != 0 and off + 8 <= len(plain):
+            length = int.from_bytes(plain[off + 2 : off + 4], "big")
+            ntype = int.from_bytes(plain[off + 6 : off + 8], "big")
+            if np == 41 and ntype == notify_type:
+                return True
+            if length < 4:
+                break
+            np, off = plain[off], off + length
+        return False
+
+    def expect_transport_mode_resp(self):
+        # VPP installs a tunnel mode SA when UDP encapsulation is configured
+        return self.use_transport_mode and not self.sa.udp_encap
+
     @classmethod
     def setUpClass(cls):
         import scapy.contrib.ikev2 as _ikev2
@@ -1331,6 +1356,9 @@ class TemplateInitiator(IkePeer):
         else:
             idr = ikev2.IKEv2_payload_IDr(bytes(idi.payload))
             self.assertEqual(idr.load, self.sa.r_id)
+        self.assertEqual(
+            self.has_notify(plain, 35, USE_TRANSPORT_MODE), not self.sa.udp_encap
+        )
         prop = idi[ikev2.IKEv2_payload_Proposal]
         c = self.sa.child_sas[0]
         c.ispi = prop.SPI
@@ -1689,7 +1717,7 @@ class TemplateResponder(IkePeer):
                     length=8 + len(c.ispi),
                     next_payload="Notify",
                 )
-                / ikev2.IKEv2_payload_Notify(type="ESP_TFC_PADDING_NOT_SUPPORTED")
+                / self.last_notify("ESP_TFC_PADDING_NOT_SUPPORTED")
             )
         else:
             first_payload = "IDi"
@@ -1706,9 +1734,16 @@ class TemplateResponder(IkePeer):
             plain = ids / plain
         return plain, first_payload
 
+    def last_notify(self, notify_type):
+        n = ikev2.IKEv2_payload_Notify(type=notify_type)
+        if self.use_transport_mode:
+            n.next_payload = "Notify"
+            n = n / ikev2.IKEv2_payload_Notify(type=USE_TRANSPORT_MODE)
+        return n
+
     def send_sa_auth(self):
         plain, first_payload = self.generate_auth_payload(last_payload="Notify")
-        plain = plain / ikev2.IKEv2_payload_Notify(type="INITIAL_CONTACT")
+        plain = plain / self.last_notify("INITIAL_CONTACT")
         header = ikev2.IKEv2(
             init_SPI=self.sa.ispi,
             resp_SPI=self.sa.rspi,
@@ -1755,6 +1790,10 @@ class TemplateResponder(IkePeer):
         self.assertEqual(ike.id, self.sa.msg_id)
         plain = self.sa.hmac_and_decrypt(ike)
         idr = ikev2.IKEv2_payload_IDr(plain)
+        self.assertEqual(
+            self.has_notify(plain, 36, USE_TRANSPORT_MODE),
+            self.expect_transport_mode_resp(),
+        )
         prop = idr[ikev2.IKEv2_payload_Proposal]
         self.assertEqual(prop.SPIsize, 4)
         self.sa.child_sas[0].rspi = prop.SPI
@@ -2283,6 +2322,9 @@ class TestInitiatorRekey(TestInitiatorPsk):
         self.assertIn("Initiator", ih.flags)
         plain = self.sa.hmac_and_decrypt(ih)
         sa = ikev2.IKEv2_payload_SA(plain)
+        self.assertEqual(
+            self.has_notify(plain, 33, USE_TRANSPORT_MODE), not self.sa.udp_encap
+        )
         prop = sa[ikev2.IKEv2_payload_Proposal]
         self.sa.i_nonce = sa[ikev2.IKEv2_payload_Nonce].load
         self.sa.r_nonce = self.sa.i_nonce
@@ -2454,6 +2496,10 @@ class TestResponderRekey(TestResponderPsk):
         ih = self.get_ike_header(capture[0])
         plain = self.sa.hmac_and_decrypt(ih)
         sa = ikev2.IKEv2_payload_SA(plain)
+        self.assertEqual(
+            self.has_notify(plain, 33, USE_TRANSPORT_MODE),
+            self.expect_transport_mode_resp(),
+        )
         prop = sa[ikev2.IKEv2_payload_Proposal]
         self.sa.r_nonce = sa[ikev2.IKEv2_payload_Nonce].load
         # update new responder SPI
@@ -2474,6 +2520,12 @@ class TestResponderRekey(TestResponderPsk):
         self.assertEqual(r[0].sa.stats.n_rekey_req, 1)
         r = self.vapi.ikev2_sa_v2_dump()
         self.assertEqual(r[0].sa.stats.n_rekey_req, 1)
+
+
+class TestResponderTransportMode(TestResponderRekey):
+    """test ikev2 responder - USE_TRANSPORT_MODE in IKE_AUTH and rekey"""
+
+    use_transport_mode = True
 
 
 class TestResponderRekeyRepeat(TestResponderRekey):
@@ -2631,6 +2683,12 @@ class TestResponderRsaSign(TemplateResponder, Ikev2Params):
                 "server-cert": "server-cert.pem",
             }
         )
+
+
+class TestResponderUdpEncapTransportMode(TestResponderRsaSign):
+    """test ikev2 responder - no USE_TRANSPORT_MODE with UDP encapsulation"""
+
+    use_transport_mode = True
 
 
 class Test_IKE_AES_CBC_128_SHA256_128_MODP2048_ESP_AES_CBC_192_SHA_384_192(
