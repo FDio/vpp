@@ -154,8 +154,7 @@ quic_quicly_crypto_context_make_key_from_ctx (clib_bihash_kv_40_8_t *kv, quic_ct
   kv->key[1] = ((u64) ctx->parent_app_id) << 32 | ctx->connection_timeout;
   kv->key[2] = ((u64) ctx->crypto_owner_app_wrk_id << 32) | ctx->ca_trust_index;
   kv->key[3] = ((u64) ctx->max_streams_bidi << 32) | ctx->max_streams_uni;
-  /* for server we must include alpn list */
-  kv->key[4] = ctx->listener_ctx_id == QUIC_CTX_INVALID_INDEX ? 0 : ctx->alpn_protos_as_u32;
+  kv->key[4] = ctx->alpn_protos_as_u32;
 }
 
 static_always_inline void
@@ -618,6 +617,8 @@ quic_quicly_crypto_context_init_data (quic_quicly_crypto_ctx_t *crctx, quic_ctx_
   app_crypto_ctx_t *app_cctx;
   app_crypto_ca_trust_int_ctx_t *cti;
   app_certkey_int_ctx_t *cki;
+  const tls_alpn_proto_id_t *alpn_proto;
+  u32 i;
 
   QUIC_DBG (2, "Init crctx: crctx_ndx 0x%08lx", crctx->ctx.ctx_index);
 
@@ -625,9 +626,13 @@ quic_quicly_crypto_context_init_data (quic_quicly_crypto_ctx_t *crctx, quic_ctx_
   ptls_ctx = &crctx->ptls_ctx;
 
   crctx->client_hello_ctx.super.cb = quic_quicly_on_client_hello_ptls;
-  /* we want this to be set only for server, because it is used in crypto ctx key */
-  crctx->client_hello_ctx.alpn_protos_as_u32 =
-    ctx->listener_ctx_id == QUIC_CTX_INVALID_INDEX ? 0 : ctx->alpn_protos_as_u32;
+  crctx->client_hello_ctx.alpn_protos_as_u32 = ctx->alpn_protos_as_u32;
+  for (i = 0; i < ARRAY_LEN (crctx->alpn_list) && ctx->alpn_protos[i]; i++)
+    {
+      alpn_proto = &tls_alpn_proto_ids[ctx->alpn_protos[i]];
+      crctx->alpn_list[i] = ptls_iovec_init (alpn_proto->base, alpn_proto->len);
+    }
+  crctx->alpn_count = i;
 
   ptls_ctx->random_bytes = ptls_openssl_random_bytes;
   ptls_ctx->get_time = &quic_quicly_crypto_get_time_cb;
