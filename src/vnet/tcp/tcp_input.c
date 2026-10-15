@@ -198,6 +198,18 @@ tcp_rcv_rst (tcp_worker_ctx_t * wrk, tcp_connection_t * tc)
     }
 }
 
+/* Report data below rcv_nxt received again. Returns 1 if reported. */
+static_always_inline u8
+tcp_dsack_report_old (tcp_connection_t *tc, vlib_buffer_t *b)
+{
+  u32 seq = vnet_buffer (b)->tcp.seq_number;
+
+  if (!seq_lt (seq, tc->rcv_nxt))
+    return 0;
+  tcp_dsack_report (tc, seq, seq_min (vnet_buffer (b)->tcp.seq_end, tc->rcv_nxt));
+  return tcp_dsack_is_pending (tc);
+}
+
 /**
  * Validate incoming segment as per RFC793 p. 69 and RFC1323 p. 19
  *
@@ -237,7 +249,11 @@ tcp_segment_validate (tcp_worker_ctx_t * wrk, tcp_connection_t * tc0,
        * SEG.TSval */
       else if (!tcp_rst (th0))
 	{
-	  tcp_program_ack (tc0);
+	  /* An original delayed past its retransmission fails paws */
+	  if (tcp_dsack_report_old (tc0, b0))
+	    tcp_program_dupack (tc0);
+	  else
+	    tcp_program_ack (tc0);
 	  TCP_EVT (TCP_EVT_DUPACK_SENT, tc0, vnet_buffer (b0)->tcp);
 	  goto error;
 	}
@@ -298,6 +314,7 @@ tcp_segment_validate (tcp_worker_ctx_t * wrk, tcp_connection_t * tc0,
       /* If not RST, send dup ack */
       if (!tcp_rst (th0))
 	{
+	  tcp_dsack_report_old (tc0, b0);
 	  tcp_program_dupack (tc0);
 	  TCP_EVT (TCP_EVT_DUPACK_SENT, tc0, vnet_buffer (b0)->tcp);
 	}
@@ -1190,11 +1207,16 @@ tcp_segment_rcv (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
 	   * retransmissions since we may not have any data to send */
 	  if (seq_leq (vnet_buffer (b)->tcp.seq_end, tc->rcv_nxt))
 	    {
+	      tcp_dsack_report_old (tc, b);
 	      tcp_program_dupack (tc);
 	      tc->errors.below_data_wnd++;
 	      error = TCP_ERROR_SEGMENT_OLD;
 	      goto done;
 	    }
+
+	  /* Report the duplicate prefix right away */
+	  if (tcp_dsack_report_old (tc, b))
+	    tcp_program_dupack (tc);
 
 	  /* Chop off the bytes in the past and see if what is left
 	   * can be enqueued in order */
@@ -1210,6 +1232,7 @@ tcp_segment_rcv (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
 	}
 
       /* RFC2581: Enqueue and send DUPACK for fast retransmit */
+      tcp_dsack_report_ooo (tc, vnet_buffer (b)->tcp.seq_number, vnet_buffer (b)->tcp.seq_end);
       error = tcp_session_enqueue_ooo (tc, b, n_data_bytes);
       tcp_program_dupack (tc);
       TCP_EVT (TCP_EVT_DUPACK_SENT, tc, vnet_buffer (b)->tcp);

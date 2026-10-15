@@ -109,6 +109,9 @@ typedef struct tcp_worker_ctx_
   /** cached 'on the wire' options for bursts */
   u8 cached_opts[40];
 
+  /** SACK blocks of an ACK that reports a D-SACK */
+  sack_block_t ack_sacks[TCP_OPTS_MAX_SACK_BLOCKS];
+
   /** tx buffer free list */
   u32 *tx_buffers;
 
@@ -163,7 +166,7 @@ typedef struct tcp_configuration_
   /** Set if csum offloading is enabled */
   u8 csum_offload;
 
-  /** Enable D-SACK congestion undo for new connections */
+  /** Enable D-SACK reports and congestion undo for new connections */
   u8 enable_dsack;
 
   /** Enable byte tracking for new connections */
