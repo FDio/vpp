@@ -141,6 +141,7 @@ typedef enum tcp_connection_flag_
 
 #define TCP_SCOREBOARD_TRACE (0)
 #define TCP_MAX_SACK_BLOCKS	    255 /**< Max number of SACK blocks stored */
+#define TCP_MAX_DSACK_BLOCKS	    8	/**< Max number of D-SACK blocks pending */
 #define TCP_INVALID_SACK_HOLE_INDEX ((u32)~0)
 #define TCP_MAX_SACK_REORDER 300
 #define TCP_SEQ_HALF_SPACE	    (1ULL << 31) /**< Half the 32-bit TCP sequence space */
@@ -441,6 +442,7 @@ typedef struct _tcp_connection
   tcp_options_t snd_opts;	/**< Tx options for connection */
   tcp_options_t rcv_opts;	/**< Rx options for connection */
 
+  sack_block_t *snd_dsacks;	/**< Duplicates to report, one per ACK */
   sack_block_t *snd_sacks;	/**< Vector of SACKs to send. XXX Fixed size? */
   sack_block_t *snd_sacks_fl;	/**< Vector for building new list */
   sack_scoreboard_t sack_sb;	/**< SACK "scoreboard" that tracks holes */
