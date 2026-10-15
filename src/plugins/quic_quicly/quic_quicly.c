@@ -1416,14 +1416,12 @@ static int
 quic_quicly_connect (quic_ctx_t *ctx, u32 ctx_index,
 		     clib_thread_index_t thread_index, struct sockaddr *sa)
 {
-  quicly_context_t *quicly_ctx;
-  ptls_iovec_t alpn_list[4];
+  quic_quicly_crypto_ctx_t *crctx = quic_quicly_crypto_context_get (ctx->crypto_context_index);
   ptls_handshake_properties_t hs_properties = {
-    .client.negotiated_protocols.list = alpn_list
+    .client.negotiated_protocols.list = crctx->alpn_list,
+    .client.negotiated_protocols.count = crctx->alpn_count,
   };
-  const tls_alpn_proto_id_t *alpn_proto;
   quic_quicly_main_t *qqm = &quic_quicly_main;
-  int i;
   quicly_error_t ret;
   session_t *udp_session;
   size_t num_packets = 1;
@@ -1436,24 +1434,15 @@ quic_quicly_connect (quic_ctx_t *ctx, u32 ctx_index,
 
   ctx->opaque = quic_quicly_crypto_engine_is_vpp () ? QUIC_QUICLY_RX_STATE_HANDSHAKE_VPP_CRYPTO :
 						      QUIC_QUICLY_RX_STATE_HANDSHAKE;
-  /* build alpn list if app provided something */
-  for (i = 0; i < sizeof (ctx->alpn_protos) && ctx->alpn_protos[i]; i++)
-    {
-      alpn_proto = &tls_alpn_proto_ids[ctx->alpn_protos[i]];
-      alpn_list[i].base = alpn_proto->base;
-      alpn_list[i].len = (size_t) alpn_proto->len;
-      hs_properties.client.negotiated_protocols.count++;
-    }
 
   udp_session = session_get_from_handle (ctx->udp_session_handle);
   udp_session->tx_fifo->shr->min_alloc =
     clib_min (QUIC_QUICLY_TX_FIFO_MIN_ALLOC_CAP, udp_session->tx_fifo->shr->min_alloc);
 
-  quicly_ctx = quic_quicly_get_quicly_ctx_from_ctx (ctx);
-  ret =
-    quicly_connect ((quicly_conn_t **) &ctx->conn, quicly_ctx, (char *) ctx->srv_hostname, sa, NULL,
-		    &qqm->next_cid[thread_index], ptls_iovec_init (NULL, 0), &hs_properties, NULL,
-		    (void *) (((u64) ctx->c_thread_index) << 32 | (u64) ctx->c_c_index));
+  ret = quicly_connect ((quicly_conn_t **) &ctx->conn, &crctx->quicly_ctx,
+			(char *) ctx->srv_hostname, sa, NULL, &qqm->next_cid[thread_index],
+			ptls_iovec_init (NULL, 0), &hs_properties, NULL,
+			(void *) (((u64) ctx->c_thread_index) << 32 | (u64) ctx->c_c_index));
   ++qqm->next_cid[thread_index].master_id;
   ASSERT (ret == 0);
 
