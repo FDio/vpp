@@ -19,7 +19,7 @@ func init() {
 		HttpStaticPostTest, HttpStaticBuildInUrlGetIfListTest, HttpStaticBuildInUrlGetVersionTest,
 		HttpStaticMacTimeTest, HttpStaticBuildInUrlGetVersionVerboseTest, HttpStaticPathSanitizationTest, HttpStaticFileHandlerTest, HttpStaticFileHandlerDefaultMaxAgeTest,
 		HttpStaticFileHandlerWrkTest, HttpStaticUrlHandlerWrkTest, HttpStaticHttp1OnlyTest, HttpStaticRedirectTest, HttpStaticPromTest, PromConcurrentConnectionsTest,
-		PromConsecutiveConnectionsTest)
+		PromConsecutiveConnectionsTest, HttpStaticListenerAddDelTest)
 	RegisterHttpStaticSrvSoloTests(PromMemLeakTest)
 }
 
@@ -532,4 +532,27 @@ func HttpStaticMacTimeTest(s *HttpStaticSrvSuite) {
 	AssertNil(err, fmt.Sprint(err))
 	AssertTimeEqualWithinThreshold(parsedTime, time.Now(), time.Minute*5)
 	AssertEqual(len(resp.Header.Get("Date")), 29)
+}
+
+func HttpStaticListenerAddDelTest(s *HttpStaticSrvSuite) {
+	vpp := s.Containers.Vpp.VppInstance
+	serverAddress := s.VppAddr() + ":" + s.Ports.Https
+
+	Log(vpp.Vppctl("http static server"))
+
+	o := vpp.Vppctl("show http static server listeners")
+	Log(o)
+	AssertNotContains(o, "listener")
+
+	Log(vpp.Vppctl("http static listener add uri http://" + serverAddress + " url-handlers"))
+
+	o = vpp.Vppctl("show http static server listeners")
+	Log(o)
+	AssertContains(o, "listener")
+
+	Log(vpp.Vppctl("http static listener del uri http://" + serverAddress + " url-handlers"))
+
+	o = vpp.Vppctl("show http static server listeners")
+	Log(o)
+	AssertNotContains(o, "listener")
 }
