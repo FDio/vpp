@@ -2078,6 +2078,7 @@ ip4_rewrite_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   u32 n_left_from;
   vlib_node_runtime_t *error_node =
     vlib_node_get_runtime (vm, ip4_input_node.index);
+  u32 most_likely_size = is_midchain ? sizeof (ip4_header_t) : sizeof (ethernet_header_t);
 
   n_left_from = frame->n_vectors;
   clib_thread_index_t thread_index = vm->thread_index;
@@ -2180,6 +2181,11 @@ ip4_rewrite_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 		    IP4_ERROR_SAME_INTERFACE : error1);
 	}
 
+      if (PREDICT_FALSE (error0 == IP4_ERROR_NONE && !vlib_buffer_has_pre_data (b[0], rw_len0)))
+	error0 = IP4_ERROR_NO_SPACE;
+      if (PREDICT_FALSE (error1 == IP4_ERROR_NONE && !vlib_buffer_has_pre_data (b[1], rw_len1)))
+	error1 = IP4_ERROR_NO_SPACE;
+
       /* Don't adjust the buffer for ttl issue; icmp-error node wants
        * to see the IP header */
       if (PREDICT_TRUE (error0 == IP4_ERROR_NONE))
@@ -2228,14 +2234,15 @@ ip4_rewrite_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	    ip4_ttl_inc (b[1], ip1);
 	}
 
-      if (is_midchain)
-	/* Guess we are only writing on ipv4 header. */
-	vnet_rewrite_two_headers (adj0[0], adj1[0],
-				  ip0, ip1, sizeof (ip4_header_t));
+      if (PREDICT_FALSE (error0 != IP4_ERROR_NONE || error1 != IP4_ERROR_NONE))
+	{
+	  if (error0 == IP4_ERROR_NONE)
+	    vnet_rewrite_one_header (adj0[0], ip0, most_likely_size);
+	  if (error1 == IP4_ERROR_NONE)
+	    vnet_rewrite_one_header (adj1[0], ip1, most_likely_size);
+	}
       else
-	/* Guess we are only writing on simple Ethernet header. */
-	vnet_rewrite_two_headers (adj0[0], adj1[0],
-				  ip0, ip1, sizeof (ethernet_header_t));
+	vnet_rewrite_two_headers (adj0[0], adj1[0], ip0, ip1, most_likely_size);
 
       if (do_counters)
 	{
@@ -2350,6 +2357,9 @@ ip4_rewrite_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 		    IP4_ERROR_SAME_INTERFACE : error0);
 	}
 
+      if (PREDICT_FALSE (error0 == IP4_ERROR_NONE && !vlib_buffer_has_pre_data (b[0], rw_len0)))
+	error0 = IP4_ERROR_NO_SPACE;
+
       /* Don't adjust the buffer for ttl issue; icmp-error node wants
        * to see the IP header */
       if (PREDICT_TRUE (error0 == IP4_ERROR_NONE))
@@ -2367,15 +2377,7 @@ ip4_rewrite_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 						adj0->ia_cfg_index);
 	  next[0] = next_index;
 
-	  if (is_midchain)
-	    {
-	      /* Guess we are only writing on ipv4 header. */
-	      vnet_rewrite_one_header (adj0[0], ip0, sizeof (ip4_header_t));
-	    }
-	  else
-	    /* Guess we are only writing on simple Ethernet header. */
-	    vnet_rewrite_one_header (adj0[0], ip0,
-				     sizeof (ethernet_header_t));
+	  vnet_rewrite_one_header (adj0[0], ip0, most_likely_size);
 
 	  /*
 	   * Bump the per-adjacency counters
@@ -2453,6 +2455,9 @@ ip4_rewrite_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 		    IP4_ERROR_SAME_INTERFACE : error0);
 	}
 
+      if (PREDICT_FALSE (error0 == IP4_ERROR_NONE && !vlib_buffer_has_pre_data (b[0], rw_len0)))
+	error0 = IP4_ERROR_NO_SPACE;
+
       /* Don't adjust the buffer for ttl issue; icmp-error node wants
        * to see the IP header */
       if (PREDICT_TRUE (error0 == IP4_ERROR_NONE))
@@ -2470,15 +2475,7 @@ ip4_rewrite_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 						adj0->ia_cfg_index);
 	  next[0] = next_index;
 
-	  if (is_midchain)
-	    {
-	      /* Guess we are only writing on ipv4 header. */
-	      vnet_rewrite_one_header (adj0[0], ip0, sizeof (ip4_header_t));
-	    }
-	  else
-	    /* Guess we are only writing on simple Ethernet header. */
-	    vnet_rewrite_one_header (adj0[0], ip0,
-				     sizeof (ethernet_header_t));
+	  vnet_rewrite_one_header (adj0[0], ip0, most_likely_size);
 
 	  if (do_counters)
 	    vlib_increment_combined_counter
