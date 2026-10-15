@@ -77,7 +77,7 @@ extern u8* format_mpls_disp_dpo(u8 *s, va_list *args);
 /*
  * Encapsulation violation for fast data-path access
  */
-extern mpls_disp_dpo_t *mpls_disp_dpo_pool;
+__clib_export extern mpls_disp_dpo_t *mpls_disp_dpo_pool;
 
 static inline mpls_disp_dpo_t *
 mpls_disp_dpo_get (index_t index)

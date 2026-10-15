@@ -146,6 +146,9 @@ format_tcp_congestion (u8 * s, va_list * args)
   s = format (s, "%Uprr_start %u prr_delivered %u prr space %u\n",
 	      format_white_space, indent, tc->prr_start - tc->iss,
 	      tc->prr_delivered, prr_space);
+  if (tc->cc_algo->format)
+    s = format (s, "%U%s: %U\n", format_white_space, indent, tc->cc_algo->name, tc->cc_algo->format,
+		tc);
   return s;
 }
 
@@ -936,6 +939,26 @@ VLIB_CLI_COMMAND (show_tcp_cfg_command, static) = {
   .function = show_tcp_cfg_fn,
 };
 
+uword
+unformat_tcp_cc_algo (unformat_input_t *input, va_list *va)
+{
+  tcp_cc_algorithm_type_e *result = va_arg (*va, tcp_cc_algorithm_type_e *);
+  tcp_main_t *tm = &tcp_main;
+  char *cc_algo_name;
+  u8 found = 0;
+  uword *p;
+
+  if (unformat (input, "%s", &cc_algo_name) &&
+      ((p = hash_get_mem (tm->cc_algo_by_name, cc_algo_name))))
+    {
+      *result = *p;
+      found = 1;
+    }
+
+  vec_free (cc_algo_name);
+  return found;
+}
+
 static clib_error_t *
 tcp_set_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
 {
@@ -945,6 +968,7 @@ tcp_set_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
   u8 mtu_set = 0;
   u8 initial_cwnd_set = 0;
   u8 rack_set = 0;
+  u8 cc_algo_set = 0;
   u32 mtu, min_mtu = 1280, initial_cwnd_multiplier;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
@@ -1014,14 +1038,19 @@ tcp_set_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
 	  tcp_cfg.initial_cwnd_multiplier = initial_cwnd_multiplier;
 	  initial_cwnd_set = 1;
 	}
+      else if (unformat (input, "cc-algo %U", unformat_tcp_cc_algo, &tcp_cfg.cc_algo))
+	{
+	  cc_algo_set = 1;
+	}
       else
 	return clib_error_return (0, "unknown input `%U'", format_unformat_error, input);
     }
 
   if (!byte_tracker_set && !csum_offload_set && !dsack_set && !mtu_set && !initial_cwnd_set &&
-      !rack_set)
+      !rack_set && !cc_algo_set)
     return clib_error_return (0, "expected byte-tracker, csum-offload, "
-				 "dsack, mtu, initial-cwnd-multiplier or [no-]rack");
+				 "dsack, mtu, initial-cwnd-multiplier, [no-]rack "
+				 "or cc-algo");
 
   if (byte_tracker_set)
     vlib_cli_output (vm, "TCP byte tracker for new connections: %s",
@@ -1039,6 +1068,9 @@ tcp_set_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
   if (rack_set)
     vlib_cli_output (vm, "TCP RACK loss detection: %s",
 		     tcp_cfg.enable_rack ? "enabled" : "disabled");
+  if (cc_algo_set)
+    vlib_cli_output (vm, "TCP congestion control for new connections: %s",
+		     tcp_cc_algo_get (tcp_cfg.cc_algo)->name);
   return 0;
 }
 
@@ -1046,7 +1078,8 @@ VLIB_CLI_COMMAND (tcp_set_command, static) = {
   .path = "set tcp",
   .short_help = "set tcp [byte-tracker [enable|disable]] "
 		"[csum-offload [enable|disable]] [dsack [enable|disable]] "
-		"[mtu <mtu>] [initial-cwnd-multiplier <n>] [rack|no-rack]",
+		"[mtu <mtu>] [initial-cwnd-multiplier <n>] [rack|no-rack] "
+		"[cc-algo <name>]",
   .function = tcp_set_fn,
 };
 
@@ -1114,26 +1147,6 @@ VLIB_CLI_COMMAND (clear_tcp_stats_command, static) =
   .short_help = "clear tcp stats",
   .function = clear_tcp_stats_fn,
 };
-
-uword
-unformat_tcp_cc_algo (unformat_input_t * input, va_list * va)
-{
-  tcp_cc_algorithm_type_e *result = va_arg (*va, tcp_cc_algorithm_type_e *);
-  tcp_main_t *tm = &tcp_main;
-  char *cc_algo_name;
-  u8 found = 0;
-  uword *p;
-
-  if (unformat (input, "%s", &cc_algo_name)
-      && ((p = hash_get_mem (tm->cc_algo_by_name, cc_algo_name))))
-    {
-      *result = *p;
-      found = 1;
-    }
-
-  vec_free (cc_algo_name);
-  return found;
-}
 
 uword
 unformat_tcp_cc_algo_cfg (unformat_input_t * input, va_list * va)

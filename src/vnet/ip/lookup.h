@@ -28,7 +28,7 @@
 ///#include <vnet/feature/feature.h>
 
 /* An all zeros address */
-extern const ip46_address_t zero_addr;
+__clib_export extern const ip46_address_t zero_addr;
 
 typedef enum ip_interface_address_flags_t_
 {
@@ -128,7 +128,7 @@ typedef struct ip_lookup_main_t
   u8 builtin_protocol_by_ip_protocol[256];
 } ip_lookup_main_t;
 
-u8 *format_ip_flow_hash_config (u8 * s, va_list * args);
+__clib_export u8 *format_ip_flow_hash_config (u8 *s, va_list *args);
 uword unformat_ip_flow_hash_config (unformat_input_t *input, va_list *args);
 
 always_inline void

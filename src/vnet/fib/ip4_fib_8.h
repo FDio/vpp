@@ -41,9 +41,9 @@ typedef struct ip4_fib_8_t_
   ip4_fib_hash_t hash;
 } ip4_fib_8_t;
 
-extern ip4_fib_8_t *ip4_fib_8s;
+__clib_export extern ip4_fib_8_t *ip4_fib_8s;
 
-extern fib_node_index_t ip4_fib_8_table_lookup(const ip4_fib_8_t *fib,
+__clib_export extern fib_node_index_t ip4_fib_8_table_lookup(const ip4_fib_8_t *fib,
                                                const ip4_address_t *addr,
                                                u32 len);
 extern fib_node_index_t ip4_fib_8_table_lookup_exact_match(const ip4_fib_8_t *fib,
@@ -71,7 +71,7 @@ extern void ip4_fib_8_table_fwding_dpo_remove(ip4_fib_8_t *fib,
                                               u32 len,
                                               const dpo_id_t *dpo,
                                               fib_node_index_t cover_index);
-extern u32 ip4_fib_8_table_lookup_lb (ip4_fib_8_t *fib,
+__clib_export extern u32 ip4_fib_8_table_lookup_lb (ip4_fib_8_t *fib,
                                       const ip4_address_t * dst);
 
 /**

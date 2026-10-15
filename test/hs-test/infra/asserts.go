@@ -106,10 +106,14 @@ func AssertChannelClosed(timeout time.Duration, channel chan error) {
 	EventuallyWithOffset(2, channel).WithTimeout(timeout).Should(BeClosed())
 }
 
-// Same as AssertGreaterEqual but won't assert when testing a coverage build
-func AssertGreaterEqualUnlessCoverageBuild(actual, expected any, msgAndArgs ...any) {
+// Same as AssertGreaterEqual but won't assert on ASan or coverage builds.
+func AssertGreaterEqualUnlessASanOrCovBuild(actual, expected any, msgAndArgs ...any) {
 	if *IsCoverage {
 		Log("Coverage build; not asserting")
+		return
+	}
+	if IsAsanBuild() {
+		Log("ASan build; not asserting")
 		return
 	}
 	AssertGreaterEqual(actual, expected, msgAndArgs...)

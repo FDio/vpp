@@ -4,13 +4,26 @@ FROM ubuntu:${UBUNTU_VERSION} AS base
 # Set environment variables
 ENV DEBIAN_FRONTEND=noninteractive
 # set proxy env vars because nginx might fail to download without them
+ARG http_proxy
 ENV http_proxy=${http_proxy}
 ENV https_proxy=${http_proxy}
 ENV HTTP_PROXY=${http_proxy}
 ENV HTTPS_PROXY=${http_proxy}
 
+# Add a non-root user (useful for containers that need it)
+RUN groupadd -r vpp && useradd -r -g vpp -s /bin/bash vpp
+
+COPY script/apt_install.sh /usr/local/bin/apt-install-with-retries
+
+# Install common dependencies needed across multiple containers. Ubuntu
+# mirrors can briefly publish an index before all referenced packages are
+# available, so refresh the index and retry the complete transaction.
 # Install common dependencies needed across multiple containers
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    rm -f /etc/apt/apt.conf.d/docker-clean \
+    && echo 'Binary::apt::APT::Keep-Downloaded-Packages "true";' > /etc/apt/apt.conf.d/keep-cache \
+    && apt-install-with-retries --no-install-recommends \
     # Basic utilities
     ca-certificates \
     wget \
@@ -54,25 +67,22 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Because of http/3 we can't use stock curl in ubuntu 24.04 and 26.04
 # Note: curl version 8.18.0 is available in ubuntu 26.04 but without http/3
-ARG TARGETARCH
-COPY script/build_curl.sh /build_curl.sh
-RUN /build_curl.sh
+RUN --mount=type=bind,source=script/install_curl.sh,target=/tmp/install_curl.sh \
+    --mount=type=cache,target=/var/cache/downloads \
+    /tmp/install_curl.sh
 
 ARG CODENAME
 # Because of http/3 support we can't use stock nginx in ubuntu 24.04
-RUN curl https://nginx.org/keys/nginx_signing.key | gpg --dearmor \
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    curl https://nginx.org/keys/nginx_signing.key | gpg --dearmor \
     | tee /usr/share/keyrings/nginx-archive-keyring.gpg >/dev/null \
     && echo "deb [signed-by=/usr/share/keyrings/nginx-archive-keyring.gpg] \
     https://nginx.org/packages/ubuntu ${CODENAME} nginx" \
     | tee /etc/apt/sources.list.d/nginx.list \
     && bash -c 'echo -e "Package: *\nPin: origin nginx.org\nPin: release o=nginx\nPin-Priority: 900\n" \
-    | tee /etc/apt/preferences.d/99nginx' \
-    && apt-get update && apt-get install -y nginx=1.30.4* \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*;
-
-# Add a non-root user (useful for containers that need it)
-RUN groupadd -r vpp && useradd -r -g vpp -s /bin/bash vpp
+    | tee /etc/apt/preferences.d/99nginx'; \
+    apt-install-with-retries nginx=1.30.4*
 
 # Set default command
 CMD ["/bin/bash"]

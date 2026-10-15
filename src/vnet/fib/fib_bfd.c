@@ -43,7 +43,7 @@ fib_bfd_update_walk (fib_node_index_t fei)
  * of the CRUD of BFD sessions
  * would be static but for the fact it's called from the unit-tests
  */
-void
+__clib_export void
 fib_bfd_notify (bfd_listen_event_e event,
                 const bfd_session_t *session)
 {

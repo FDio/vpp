@@ -103,6 +103,18 @@ vnet_rewrite_for_sw_interface (vnet_main_t * vnm,
   ASSERT (hc->build_rewrite);
   rewrite = hc->build_rewrite (vnm, sw_if_index, link_type, dst_address);
 
+  if (NULL == rewrite)
+    {
+      /* the interface class cannot build a rewrite for this link type
+       * (e.g. the local class's default_build_rewrite); a NULL rewrite
+       * string means an empty rewrite, as in adj_nbr_update_rewrite */
+      clib_warning ("no rewrite for %U link on %U",
+		    format_vnet_link, link_type,
+		    format_vnet_sw_if_index_name, vnm, sw_if_index);
+      vnet_rewrite_clear_data_internal (rw, max_rewrite_bytes);
+      return;
+    }
+
   ASSERT (vec_len (rewrite) < max_rewrite_bytes);
   vnet_rewrite_set_data_internal (rw, max_rewrite_bytes, rewrite,
 				  vec_len (rewrite));

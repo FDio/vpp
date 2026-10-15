@@ -80,12 +80,18 @@ if [ -n "$CLI_SOCK" ]; then
   CLI_LISTEN_CFG="cli-listen $CLI_SOCK"
 fi
 
+DPDK_TSO=""
+if [[ -n "$TSO_ENABLE" ]]; then
+  DPDK_TSO="tso on"
+fi
+
 if [[ -z "$DPDK_DISABLE" ]]; then
   DPDK_CFG="dpdk {   	                                        \
 		dev $DPDK_DEV {                                 \
                 	num-tx-desc $IF_TX_DESC                 \
                         num-rx-desc $IF_RX_DESC                 \
   	       		num-rx-queues $CFG_RX_QS		\
+			$DPDK_TSO                               \
              	}                                               \
 		$SOCK_MEM_CFG					\
 		$DPDK_CSUM					\
@@ -118,6 +124,7 @@ function start_vpp
   		full-coredump 					\
   		exec $CFG_DIR/$CFG_FILE				\
 		$CLI_LISTEN_CFG					\
+		cli-no-pager                                    \
 		poll-sleep-usec 0				\
   	}							\
         memory { main-heap-size $HEAP_SIZE }			\

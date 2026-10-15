@@ -107,7 +107,7 @@ typedef struct
   vnet_main_t *vnet_main;
 } vnet_feature_main_t;
 
-extern vnet_feature_main_t feature_main;
+__clib_export extern vnet_feature_main_t feature_main;
 
 #ifndef CLIB_MARCH_VARIANT
 #define VNET_FEATURE_ARC_INIT(x,...)				\
@@ -193,10 +193,9 @@ vnet_config_update_feature_count (vnet_feature_main_t * fm, u8 arc,
 				  u32 sw_if_index, int is_add);
 
 u32 vnet_get_feature_index (u8 arc, const char *s);
-u8 vnet_get_feature_arc_index (const char *s);
-vnet_feature_registration_t *vnet_get_feature_reg (const char *arc_name,
-						   const char *node_name);
-
+__clib_export u8 vnet_get_feature_arc_index (const char *s);
+__clib_export vnet_feature_registration_t *vnet_get_feature_reg (const char *arc_name,
+								 const char *node_name);
 
 int
 vnet_feature_enable_disable_with_index (u8 arc_index, u32 feature_index,
@@ -204,11 +203,9 @@ vnet_feature_enable_disable_with_index (u8 arc_index, u32 feature_index,
 					void *feature_config,
 					u32 n_feature_config_bytes);
 
-int
-vnet_feature_enable_disable (const char *arc_name, const char *node_name,
-			     u32 sw_if_index, int enable_disable,
-			     void *feature_config,
-			     u32 n_feature_config_bytes);
+int __clib_export vnet_feature_enable_disable (const char *arc_name, const char *node_name,
+					       u32 sw_if_index, int enable_disable,
+					       void *feature_config, u32 n_feature_config_bytes);
 
 u32
 vnet_feature_modify_end_node (u8 arc_index, u32 sw_if_index, u32 node_index);
@@ -368,10 +365,9 @@ typedef void (*vnet_feature_update_cb_t) (u32 sw_if_index,
 					  u8 arc_index,
 					  u8 is_enable, void *cb);
 
-extern void vnet_feature_register (vnet_feature_update_cb_t cb, void *data);
+__clib_export extern void vnet_feature_register (vnet_feature_update_cb_t cb, void *data);
 
-int
-vnet_feature_is_enabled (const char *arc_name, const char *feature_node_name,
-			 u32 sw_if_index);
+int __clib_export vnet_feature_is_enabled (const char *arc_name, const char *feature_node_name,
+					   u32 sw_if_index);
 
 #endif /* included_feature_h */

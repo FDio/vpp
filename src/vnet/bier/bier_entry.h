@@ -77,10 +77,9 @@ extern int bier_entry_path_remove(index_t bei,
 
 extern u8* format_bier_entry(u8* s, va_list *ap);
 
-extern void bier_entry_contribute_forwarding(index_t bei,
-                                             dpo_id_t *dpo);
+__clib_export extern void bier_entry_contribute_forwarding (index_t bei, dpo_id_t *dpo);
 
-extern bier_entry_t *bier_entry_pool;
+__clib_export extern bier_entry_t *bier_entry_pool;
 always_inline bier_entry_t* bier_entry_get(index_t bei)
 {
     return (&bier_entry_pool[bei]);

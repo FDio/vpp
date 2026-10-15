@@ -33,7 +33,7 @@
  * @param sw_if_index
  *  The interface on which to mcast
  */
-extern adj_index_t adj_mcast_add_or_lock(fib_protocol_t proto,
+__clib_export extern adj_index_t adj_mcast_add_or_lock(fib_protocol_t proto,
                                          vnet_link_t link_type,
 					 u32 sw_if_index);
 
@@ -76,7 +76,7 @@ extern void adj_mcast_update_rewrite(adj_index_t adj_index,
  * @param
  *  The new rewrite
  */
-extern void adj_mcast_midchain_update_rewrite(adj_index_t adj_index,
+__clib_export extern void adj_mcast_midchain_update_rewrite(adj_index_t adj_index,
                                               adj_midchain_fixup_t fixup,
                                               const void *fixup_data,
                                               adj_flags_t flags,
@@ -100,7 +100,7 @@ extern u8* format_adj_mcast_midchain(u8* s, va_list *ap);
 /**
  * @brief Get the sze of the mcast adj DB. Test purposes only.
  */
-extern u32 adj_mcast_db_size(void);
+__clib_export extern u32 adj_mcast_db_size(void);
 
 /**
  * @brief

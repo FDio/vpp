@@ -599,7 +599,7 @@ ct_session_connect (transport_endpoint_cfg_t * tep)
 
 global_scope:
   if (session_endpoint_is_local (sep))
-    return SESSION_E_NOROUTE;
+    return SESSION_E_REFUSED;
 
   if (!application_has_global_scope (app))
     return SESSION_E_SCOPE;

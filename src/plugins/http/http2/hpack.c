@@ -320,7 +320,7 @@ hpack_decode_header (u8 **src, u8 *end, u8 **buf, uword *buf_len, u32 *name_len,
   u8 *p;
   u8 value_is_indexed = 0, add_new_entry = 0;
   uword old_len, new_max, index = 0;
-  http_token_t name, value;
+  http_token_t name = { 0 }, value = { 0 };
   hpack_error_t rv;
 
   ASSERT (*src < end);

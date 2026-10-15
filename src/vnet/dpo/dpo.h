@@ -210,7 +210,7 @@ dpo_id_is_valid (const dpo_id_t *dpoi)
 	    dpoi->dpoi_index != INDEX_INVALID);
 }
 
-extern dpo_proto_t vnet_link_to_dpo_proto(vnet_link_t linkt);
+__clib_export extern dpo_proto_t vnet_link_to_dpo_proto(vnet_link_t linkt);
 
 /**
  * @brief
@@ -222,7 +222,7 @@ extern void dpo_lock(dpo_id_t *dpo);
  * @brief
  *  Release a reference counting lock on the DPO
  */
-extern void dpo_unlock(dpo_id_t *dpo);
+__clib_export extern void dpo_unlock(dpo_id_t *dpo);
 
 /**
  * @brief
@@ -248,7 +248,7 @@ extern void dpo_mk_interpose(const dpo_id_t *original,
  * @param index
  *  The type specific index of the DPO
  */
-extern void dpo_set(dpo_id_t *dpo,
+__clib_export extern void dpo_set(dpo_id_t *dpo,
 		    dpo_type_t type,
 		    dpo_proto_t proto,
 		    index_t index);
@@ -260,12 +260,12 @@ extern void dpo_set(dpo_id_t *dpo,
  * @param dpo
  *  The DPO object to reset
  */
-extern void dpo_reset(dpo_id_t *dpo);
+__clib_export extern void dpo_reset(dpo_id_t *dpo);
 
 /**
  * @brief compare two DPOs for equality
  */
-extern int dpo_cmp(const dpo_id_t *dpo1,
+__clib_export extern int dpo_cmp(const dpo_id_t *dpo1,
 		   const dpo_id_t *dpo2);
 
 /**
@@ -273,7 +273,7 @@ extern int dpo_cmp(const dpo_id_t *dpo1,
  *  atomic copy a data-plane object.
  * This is safe to use when the dst DPO is currently switching packets
  */
-extern void dpo_copy(dpo_id_t *dst,
+__clib_export extern void dpo_copy(dpo_id_t *dst,
 		     const dpo_id_t *src);
 
 /**
@@ -284,17 +284,17 @@ extern int dpo_is_adj(const dpo_id_t *dpo);
 /**
  * @brief Format a DPO_id_t oject
  */
-extern u8 *format_dpo_id(u8 * s, va_list * args);
+__clib_export extern u8 *format_dpo_id(u8 * s, va_list * args);
 
 /**
  * @brief format a DPO type
  */
-extern u8 *format_dpo_type(u8 * s, va_list * args);
+__clib_export extern u8 *format_dpo_type(u8 * s, va_list * args);
 
 /**
  * @brief format a DPO protocol
  */
-extern u8 *format_dpo_proto(u8 * s, va_list * args);
+__clib_export extern u8 *format_dpo_proto(u8 * s, va_list * args);
 
 /**
  * @brief format a DPO protocol
@@ -320,7 +320,7 @@ extern vnet_link_t dpo_proto_to_link(dpo_proto_t dp);
  * @paren parent_dpo
  *  The parent DPO to stack onto.
  */
-extern void dpo_stack(dpo_type_t child_type,
+__clib_export extern void dpo_stack(dpo_type_t child_type,
                       dpo_proto_t child_proto,
                       dpo_id_t *dpo,
                       const dpo_id_t *parent_dpo);
@@ -340,7 +340,7 @@ extern void dpo_stack(dpo_type_t child_type,
  * @param parent_dpo
  *  The parent DPO to stack onto.
  */
-extern void dpo_stack_from_node(u32 child_node,
+__clib_export extern void dpo_stack_from_node(u32 child_node,
                                 dpo_id_t *dpo,
                                 const dpo_id_t *parent);
 
@@ -468,7 +468,7 @@ typedef struct dpo_vft_t_
  * @param nodes
  *  The string description of the per-protocol VLIB graph nodes.
  */
-extern void dpo_register(dpo_type_t type,
+__clib_export extern void dpo_register(dpo_type_t type,
 			 const dpo_vft_t *vft,
 			 const char * const * const * nodes);
 
@@ -486,7 +486,7 @@ extern void dpo_register(dpo_type_t type,
  *
  * @return The new dpo_type_t
  */
-extern dpo_type_t dpo_register_new_type(const dpo_vft_t *vft,
+__clib_export extern dpo_type_t dpo_register_new_type(const dpo_vft_t *vft,
 					const char * const * const * nodes);
 
 /**

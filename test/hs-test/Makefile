@@ -173,9 +173,9 @@ HST_TMP_DIR:=/tmp/hst
 # privileged is needed for "ip netns" otherwise we are not able to create namespace
 DOCKER_CAPABILITIES:=--privileged
 DOCKER_DEVICES:=--device /dev/vhost-net:/dev/vhost-net --device /dev/net/tun:/dev/net/tun
+# Keep the Go build cache outside the workspace and reuse it across test runs.
 DOCKER_VOLUMES:=-v $(WS_ROOT):$(WS_ROOT) -v /var/run/docker.sock:/var/run/docker.sock -v $(HST_TMP_DIR):$(HST_TMP_DIR) \
-	-v /etc/localtime:/etc/localtime:ro $(CORE_VOLUME) -v $(HS_ROOT)/.go_cache/mod:/root/go/pkg/mod \
-	-v $(HS_ROOT)/.go_cache/build:/root/.cache/go-build
+	-v /etc/localtime:/etc/localtime:ro $(CORE_VOLUME) -v hs-test-go-build-cache:/root/.cache/go-build
 DOCKER_PROXY:=-e HTTP_PROXY=$(HTTP_PROXY) -e HTTPS_PROXY=$(HTTPS_PROXY) -e NO_PROXY=$(NO_PROXY)
 DOCKER_COMMON_ARGS:=$(DOCKER_TTY) --rm $(DOCKER_CAPABILITIES) $(DOCKER_DEVICES) $(DOCKER_PROXY) \
 		-e GITHUB_REPO_URL=$(GITHUB_REPO_URL) $(DOCKER_VOLUMES) --name $(GINKGO_CONTAINER) \
@@ -196,6 +196,7 @@ help:
 	@echo " checkstyle-go            - check style of .go source files"
 	@echo " clean-hst-images         - delete this run's docker images (or RUN_ID=<id>)"
 	@echo " clean-hst-images-all     - delete the docker images of every run"
+	@echo " clean-hst-docker-state   - remove all hs-test docker resources"
 	@echo " clean-hst-registry       - delete images and repositories from local registry"
 	@echo " cleanup-hst              - removes all docker containers and namespaces from last test run"
 	@echo " fixstyle-go              - format .go source files"
@@ -295,7 +296,7 @@ test-leak: .deps.ok .build_debug.ok
 	docker run $(DOCKER_TTY) --rm $(DOCKER_CAPABILITIES) $(DOCKER_DEVICES) $(DOCKER_PROXY)\
 		-e GITHUB_REPO_URL=$(GITHUB_REPO_URL) $(DOCKER_VOLUMES) --name $(GINKGO_CONTAINER) \
 		--label io.fd.hs-test.run=$(RUN_ID) hs-test/ginkgo:$(RUN_ID) \
-		.$(HS_ROOT)/hs_test.sh --test=$(TEST) --debug_build=true --leak_check=true --vppsrc=$(VPPSRC) \
+		.$(HS_ROOT)/hs_test.sh --test=$(TEST) --skip=$(SKIP) --debug_build=true --leak_check=true --vppsrc=$(VPPSRC) \
 		--timeout=$(TIMEOUT) --ginkgo_timeout=$(GINKGO_TIMEOUT) --vpp_cpus=$(VPP_CPUS) --hs_root=$(HS_ROOT) \
 		$(LABEL_ARG) --host_ppid=$$PPID --run_id=$(RUN_ID) --image_tag=$(RUN_ID) $(SEED_ARG); \
 
@@ -441,3 +442,30 @@ test-wipe:
 .PHONY: clear-hst-registry
 clear-hst-registry:
 	@bash ./script/clean_registry.sh
+
+# Full hst cleanup. Run only when no other hst instance is running.
+# It removes all containers labelled by hs-test, all images, the local registry
+# and its contents, the hst_builder, and the default builder cache.
+.PHONY: clean-hst-docker-state
+clean-hst-docker-state:
+	@echo "Removing all hs-test containers and their anonymous volumes:"
+	@ids=$$(docker ps -a -q --filter "label=io.fd.hs-test.run"); \
+	if [ -n "$$ids" ]; then \
+		docker rm -f -v $$ids; \
+	else \
+		echo "no hs-test containers found"; \
+	fi
+	@$(MAKE) clean-hst-images-all
+	@$(MAKE) clear-hst-registry
+	@if docker container inspect local-registry >/dev/null 2>&1; then \
+		docker rm -f local-registry; \
+	else \
+		echo "local-registry not found"; \
+	fi
+	@if docker buildx inspect hst_builder >/dev/null 2>&1; then \
+		docker buildx rm --force hst_builder; \
+	else \
+		echo "hst_builder not found"; \
+	fi
+	@docker buildx prune --builder default --all --force
+	@docker volume prune --force

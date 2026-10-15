@@ -151,20 +151,15 @@ tcp_flight_size (const tcp_connection_t * tc)
 }
 
 /**
- * Initial cwnd as per RFC5681
+ * Initial cwnd as per RFC 6928, min (10 * MSS, max (2 * MSS, 14600))
  */
 always_inline u32
-tcp_initial_cwnd (const tcp_connection_t * tc)
+tcp_initial_cwnd (const tcp_connection_t *tc)
 {
   if (tcp_cfg.initial_cwnd_multiplier > 0)
     return tcp_cfg.initial_cwnd_multiplier * tc->snd_mss;
 
-  if (tc->snd_mss > 2190)
-    return 2 * tc->snd_mss;
-  else if (tc->snd_mss > 1095)
-    return 3 * tc->snd_mss;
-  else
-    return 4 * tc->snd_mss;
+  return clib_min (TCP_IW_N_SEGMENTS * tc->snd_mss, clib_max (2 * tc->snd_mss, 14600));
 }
 
 /*

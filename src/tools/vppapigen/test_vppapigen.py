@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+import os
+import tempfile
 import unittest
 from vppapigen import VPPAPI, Option, ParseError, Union, foldup_crcs, global_types
 import vppapigen
@@ -18,6 +20,18 @@ class TestVersion(unittest.TestCase):
         version_string = 'option version = "1.0.0";'
         r = self.parser.parse_string(version_string)
         self.assertTrue(isinstance(r[0], Option))
+
+
+class TestDependencies(unittest.TestCase):
+    def test_no_imports(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            input_file = os.path.join(tmpdir, "input.api")
+            dependency_file = os.path.join(tmpdir, "output.d")
+            vppapigen.write_dependencies("output.h", dependency_file, input_file, [])
+
+            with open(dependency_file, encoding="utf8") as f:
+                expected = f"output.h: \\\n {input_file}\n"
+                self.assertEqual(f.read(), expected)
 
 
 class TestUnion(unittest.TestCase):

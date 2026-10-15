@@ -17,14 +17,21 @@
 #define IAVF_RX_MAX_DESC_IN_CHAIN 5
 #define IAVF_MAX_RSS_KEY_SIZE	  52
 #define IAVF_MAX_RSS_LUT_SIZE	  64
+/* virtchnl RX queue buffer sizes use 128-byte units in this range. */
+#define IAVF_RX_DATA_BUF_ALIGN	  128
+#define IAVF_RX_MIN_DATA_BUF_SIZE 1024
+#define IAVF_RX_MAX_DATA_BUF_SIZE (16 * 1024 - IAVF_RX_DATA_BUF_ALIGN)
 #define IIAVF_AQ_POLL_INTERVAL	  0.2
 #define IIAVF_AQ_BUF_SIZE	  4096
+
+#define IAVF_FCS_LEN 4
 
 typedef struct iavf_adminq_dma_mem iavf_adminq_dma_mem_t;
 
 typedef struct
 {
   u8 adminq_active : 1;
+  u8 adminq_polling : 1;
   void *bar0;
 
   /* Admin queues */
@@ -194,9 +201,11 @@ typedef struct
   iavf_rx_tail_t tails[IAVF_RX_VECTOR_SZ];
 } iavf_rt_data_t;
 
-#define foreach_iavf_tx_node_counter                                          \
-  _ (SEG_SZ_EXCEEDED, seg_sz_exceeded, ERROR, "segment size exceeded")        \
-  _ (NO_FREE_SLOTS, no_free_slots, ERROR, "no free tx slots")
+#define foreach_iavf_tx_node_counter                                                               \
+  _ (SEG_SZ_EXCEEDED, seg_sz_exceeded, ERROR, "segment size exceeded")                             \
+  _ (NO_FREE_SLOTS, no_free_slots, ERROR, "no free tx slots")                                      \
+  _ (PH_BUF_ALLOC, ph_buf_alloc, ERROR, "ph buf alloc")                                            \
+  _ (GSO_PACKET_DROP, gso_packet_drop, ERROR, "gso packet drop")
 
 typedef enum
 {

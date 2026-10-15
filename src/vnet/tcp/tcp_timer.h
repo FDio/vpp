@@ -9,11 +9,11 @@
 #include <vnet/tcp/tcp_types.h>
 
 /* RACK-TLP timer hooks. All callers are guarded by TCP_CFG_F_RACK. */
-void tcp_rack_timer_rto_set (tcp_connection_t *tc, u32 interval);
-void tcp_rack_timer_reset (tcp_connection_t *tc);
-u32 tcp_rack_timer_rto_update (tcp_connection_t *tc, u32 interval);
+__clib_export void tcp_rack_timer_rto_set (tcp_connection_t *tc, u32 interval);
+__clib_export void tcp_rack_timer_reset (tcp_connection_t *tc);
+__clib_export u32 tcp_rack_timer_rto_update (tcp_connection_t *tc, u32 interval);
 /* Update the shared RTO/REO/PTO timer after new data. */
-void tcp_rack_timer_update_on_new_data (tcp_connection_t *tc);
+__clib_export void tcp_rack_timer_update_on_new_data (tcp_connection_t *tc);
 
 static inline u8
 tcp_timer_thread_is_valid (tcp_connection_t *tc)

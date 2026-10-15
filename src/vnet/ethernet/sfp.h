@@ -183,7 +183,7 @@ typedef enum
 #undef _
 } sfp_connector_t;
 
-format_function_t format_sfp_eeprom;
+__clib_export format_function_t format_sfp_eeprom;
 format_function_t format_sfp_id;
 format_function_t format_sfp_encoding;
 format_function_t format_sfp_connector;

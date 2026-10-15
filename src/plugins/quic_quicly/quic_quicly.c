@@ -1240,8 +1240,8 @@ quic_quicly_on_app_reset (u32 ctx_index, clib_thread_index_t thread_index)
     }
   if (!quic_ctx_is_stream (ctx))
     {
-      /* TODO: handle as connection close? */
-      QUIC_ERR ("Trying to reset connection");
+      /* quic has no connection reset, close it */
+      quic_quicly_on_app_closed (ctx_index, thread_index);
       return;
     }
 

@@ -68,21 +68,38 @@ typedef struct
 } tcp_e2e_cleanup_req_t;
 
 static inline void
-tcp_e2e_session_cleanup_rpc (void *arg)
+tcp_e2e_session_reset_rpc (void *arg)
 {
   tcp_e2e_cleanup_req_t *req = arg;
   session_t *s = session_get_from_handle_if_valid (req->handle);
+  tcp_connection_t *tc;
 
   if (s)
-    session_transport_cleanup (s);
+    {
+      tc = s->session_state < SESSION_STATE_TRANSPORT_DELETED ?
+	     (tcp_connection_t *) session_get_transport (s) :
+	     0;
+      /* A closed or deleted transport already has cleanup queued. Acknowledge
+       * the app close without scheduling a second transport cleanup. */
+      if (!tc || tc->state == TCP_STATE_CLOSED)
+	session_close (s);
+      else if (s->flags & SESSION_F_APP_CLOSED)
+	{
+	  /* Abort transports still closing, including TIME_WAIT. */
+	  transport_reset (TRANSPORT_PROTO_TCP, s->connection_index, s->thread_index);
+	}
+      else
+	session_reset (s);
+    }
   req->done = 1;
 }
 
 /* Unit-test teardown must not leave closing transports that can emit packets
- * after their loopback interfaces are deleted. Clean both endpoint sessions
- * on their owner threads and wait for the cleanup RPCs to complete. */
+ * after their loopback interfaces are deleted. Reset both endpoints on their
+ * owner threads and wait for normal transport and session cleanup. Freeing a
+ * connection directly can leave queued cleanup referencing its reused slot. */
 static inline int
-tcp_e2e_force_session_cleanup (vlib_main_t *vm)
+tcp_e2e_cleanup_sessions (vlib_main_t *vm)
 {
   tcp_e2e_cleanup_req_t *reqs;
   session_handle_t handles[2];
@@ -101,12 +118,14 @@ tcp_e2e_force_session_cleanup (vlib_main_t *vm)
     {
       reqs[i].handle = handles[i];
       session_send_rpc_evt_to_thread (session_thread_from_handle (handles[i]),
-				      tcp_e2e_session_cleanup_rpc, &reqs[i]);
+				      tcp_e2e_session_reset_rpc, &reqs[i]);
     }
 
   for (i = 0; i < 1000; i++)
     {
-      for (n_done = 0; n_done < n_reqs && reqs[n_done].done; n_done++)
+      for (n_done = 0; n_done < n_reqs && reqs[n_done].done &&
+		       !session_get_from_handle_if_valid (reqs[n_done].handle);
+	   n_done++)
 	;
       if (n_done == n_reqs)
 	{
@@ -116,7 +135,12 @@ tcp_e2e_force_session_cleanup (vlib_main_t *vm)
       tcp_e2e_pump (vm, 1e-3);
     }
 
-  /* The requests retain these arguments and may still complete later. */
+  /* An outstanding RPC retains its argument until it completes. */
+  for (n_done = 0; n_done < n_reqs && reqs[n_done].done; n_done++)
+    ;
+  if (n_done == n_reqs)
+    clib_mem_free (reqs);
+  clib_warning ("session cleanup did not complete");
   return 0;
 }
 
@@ -171,7 +195,8 @@ tcp_e2e_teardown_timeouts (void)
   return total;
 }
 
-static inline void tcp_e2e_teardown (vlib_main_t *vm, tcp_e2e_ctx_t *ctx);
+/* Returns non-zero after both session cleanup and graph draining complete. */
+static inline int tcp_e2e_teardown (vlib_main_t *vm, tcp_e2e_ctx_t *ctx);
 
 /* Bring up client+server apps over loopbacks and connect them. Fills ctx
  * incrementally so a failure can be unwound by tcp_e2e_teardown. Returns 0 on
@@ -331,10 +356,16 @@ tcp_e2e_setup (vlib_main_t *vm, tcp_e2e_ctx_t *ctx, tcp_e2e_params_t *p)
   return 0;
 }
 
-static inline void
+static inline int
 tcp_e2e_teardown (vlib_main_t *vm, tcp_e2e_ctx_t *ctx)
 {
-  int sessions_cleaned = tcp_e2e_force_session_cleanup (vm);
+  int success = 0;
+
+  if (!tcp_e2e_cleanup_sessions (vm))
+    {
+      clib_warning ("preserving test apps and loopbacks with pending cleanup");
+      goto done;
+    }
 
   if (ctx->listen_handle != SESSION_INVALID_HANDLE)
     {
@@ -387,7 +418,7 @@ tcp_e2e_teardown (vlib_main_t *vm, tcp_e2e_ctx_t *ctx)
       vnet_sw_interface_set_flags (vnet_get_main (), ctx->sw_if_index[i], 0);
     }
 
-  if (!sessions_cleaned || !tcp_e2e_drain_graph_frames (vm))
+  if (!tcp_e2e_drain_graph_frames (vm))
     {
       clib_warning ("graph frames did not quiesce; preserving test loopbacks");
       goto done;
@@ -399,9 +430,11 @@ tcp_e2e_teardown (vlib_main_t *vm, tcp_e2e_ctx_t *ctx)
 	continue;
       (void) vnet_delete_loopback_interface (ctx->sw_if_index[i]);
     }
+  success = 1;
 
 done:
   vec_free (ctx->appns_id);
+  return success;
 }
 
 #endif /* SRC_PLUGINS_UNITTEST_TCP_TCP_E2E_HELPERS_H_ */

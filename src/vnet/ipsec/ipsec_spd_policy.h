@@ -91,15 +91,12 @@ typedef struct ipsec_policy_t_
 /**
  * @brief Add/Delete a SPD
  */
-extern int ipsec_add_del_policy (vlib_main_t * vm,
-				 ipsec_policy_t * policy,
-				 int is_add, u32 * stat_index);
+__clib_export extern int ipsec_add_del_policy (vlib_main_t *vm, ipsec_policy_t *policy, int is_add,
+					       u32 *stat_index);
 
 extern u8 *format_ipsec_policy (u8 * s, va_list * args);
 extern u8 *format_ipsec_policy_action (u8 * s, va_list * args);
-extern uword unformat_ipsec_policy_action (unformat_input_t * input,
-					   va_list * args);
-
+__clib_export extern uword unformat_ipsec_policy_action (unformat_input_t *input, va_list *args);
 
 extern int ipsec_policy_mk_type (bool is_outbound,
 				 bool is_ipv6,

@@ -142,9 +142,9 @@ required_symbols()
 LC_ALL=C
 export LC_ALL
 
-defined_symbols "$libvnet" | sort -u >"$work_dir/defined"
-cut -f1 "$work_dir/defined" | sort -u >"$work_dir/defined-names"
-exported_symbols "$libvnet" | sort -u >"$work_dir/exported"
+defined_symbols "$libvnet" | LC_ALL=C sort -u >"$work_dir/defined"
+cut -f1 "$work_dir/defined" | LC_ALL=C sort -u >"$work_dir/defined-names"
+exported_symbols "$libvnet" | LC_ALL=C sort -u >"$work_dir/exported"
 
 [ -s "$work_dir/defined-names" ] ||
   fail "no libvnet definitions found in $libvnet"
@@ -154,10 +154,10 @@ checked=0
 
 for plugin in "$@"; do
   checked=$((checked + 1))
-  required_symbols "$plugin" | sort -u >"$work_dir/undefined"
-  comm -12 "$work_dir/defined-names" "$work_dir/undefined" \
+  required_symbols "$plugin" | LC_ALL=C sort -u >"$work_dir/undefined"
+  LC_ALL=C comm -12 "$work_dir/defined-names" "$work_dir/undefined" \
     >"$work_dir/required"
-  comm -23 "$work_dir/required" "$work_dir/exported" >"$work_dir/missing"
+  LC_ALL=C comm -23 "$work_dir/required" "$work_dir/exported" >"$work_dir/missing"
 
   required_count=$("$awk_bin" 'END { print NR }' "$work_dir/required")
   if [ -s "$work_dir/missing" ]; then

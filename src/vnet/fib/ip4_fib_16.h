@@ -41,9 +41,9 @@ typedef struct ip4_fib_16_t_
   ip4_fib_hash_t hash;
 } ip4_fib_16_t;
 
-extern ip4_fib_16_t *ip4_fib_16s;
+__clib_export extern ip4_fib_16_t *ip4_fib_16s;
 
-extern fib_node_index_t ip4_fib_16_table_lookup(const ip4_fib_16_t *fib,
+__clib_export extern fib_node_index_t ip4_fib_16_table_lookup(const ip4_fib_16_t *fib,
                                                 const ip4_address_t *addr,
                                                 u32 len);
 extern fib_node_index_t ip4_fib_16_table_lookup_exact_match(const ip4_fib_16_t *fib,
@@ -71,8 +71,8 @@ extern void ip4_fib_16_table_fwding_dpo_remove(ip4_fib_16_t *fib,
                                                u32 len,
                                                const dpo_id_t *dpo,
                                                fib_node_index_t cover_index);
-extern u32 ip4_fib_16_table_lookup_lb (ip4_fib_16_t *fib,
-                                       const ip4_address_t * dst);
+__clib_export extern u32 ip4_fib_16_table_lookup_lb (ip4_fib_16_t *fib,
+						      const ip4_address_t *dst);
 
 /**
  * @brief Walk all entries in a FIB table
@@ -94,4 +94,3 @@ extern void ip4_fib_16_table_sub_tree_walk(ip4_fib_16_t *fib,
                                            void *ctx);
 
 #endif
-

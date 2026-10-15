@@ -153,7 +153,7 @@ class ARPTestCase(VppTestCase):
         self.assertEqual(ether.type, 0x8847)
 
         mpls = rx[MPLS]
-        self.assertTrue(mpls.label, label)
+        self.assertEqual(mpls.label, label)
 
         ip = rx[IP]
         self.assertEqual(ip.src, sip)

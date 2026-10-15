@@ -931,7 +931,8 @@ func memTracesSuppressReportNoise(traces []VppMemTrace) []VppMemTrace {
 }
 
 // MemLeakCheck compares memory traces at different point in time, analyzes if memory leaks happen and produces report
-func (vpp *VppInstance) MemLeakCheck(first, second []VppMemTrace) {
+// Returns total leaked bytes and allocations.
+func (vpp *VppInstance) MemLeakCheck(first, second []VppMemTrace) (int, int) {
 	totalBytes := 0
 	totalCounts := 0
 	trace1 := memTracesSuppressReportNoise(first)
@@ -966,6 +967,7 @@ func (vpp *VppInstance) MemLeakCheck(first, second []VppMemTrace) {
 	}
 	summary := fmt.Sprintf("\nSUMMARY: %d byte(s) leaked in %d allocation(s)\n", totalBytes, totalCounts)
 	AddReportEntry(summary, report)
+	return totalBytes, totalCounts
 }
 
 // CollectEventLogs saves event logs to the test execution directory

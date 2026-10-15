@@ -129,7 +129,10 @@ done:
     bus->ops.free_device_info (vm, bus_dev_info);
 
   if (rv != VNET_DEV_OK && dev)
-    vnet_dev_process_call_op_no_rv (vm, dev, vnet_dev_free);
+    {
+      vnet_dev_process_quit (vm, dev);
+      vnet_dev_free (vm, dev);
+    }
   else if (dev)
     args->dev_index = dev->index;
 

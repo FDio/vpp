@@ -159,7 +159,7 @@ extern void session_rules_table_add_tag (session_rules_table_t *srt, u8 *tag,
 extern void session_rules_table_del_tag (session_rules_table_t *srt, u8 *tag,
 					 u8 is_ip4);
 
-extern const session_rt_engine_vft_t *session_rt_engine_vft;
+__clib_export extern const session_rt_engine_vft_t *session_rt_engine_vft;
 extern clib_error_t *session_rules_table_enable_disable (int enable);
 extern clib_error_t *
 session_rt_backend_enable_disable (session_rt_engine_type_t rt_engine_type);

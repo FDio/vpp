@@ -807,7 +807,7 @@ class VppAsfTestCase(CPUInterface, unittest.TestCase):
                 raise e
             if cls.debug_attach:
                 last_line = cls.vapi.cli("show thread").split("\n")[-2]
-                cls.vpp_worker_count = int(last_line.split(" ")[0])
+                cls.vpp_worker_count = int(last_line.split()[0])
                 print("Detected VPP with %s workers." % cls.vpp_worker_count)
         except vpp_papi.VPPRuntimeError as e:
             cls.logger.debug("%s" % e)
@@ -1675,11 +1675,18 @@ class VppTestRunner(unittest.TextTestRunner):
         :param test:
 
         """
-        faulthandler.enable()  # emit stack trace to stderr if killed by signal
+        # Use the real stderr file descriptor. The test stream is a
+        # multiprocessing queue whose fd must not receive unframed writes
+        # from faulthandler.
+        faulthandler.enable(file=sys.__stderr__, all_threads=True)
+        faulthandler.register(signal.SIGUSR2, file=sys.__stderr__, all_threads=True)
         # the parent uses SIGUSR1 to ask us to stop after the current test
         signal.signal(signal.SIGUSR1, _request_graceful_stop)
 
-        result = super(VppTestRunner, self).run(test)
+        try:
+            result = super(VppTestRunner, self).run(test)
+        finally:
+            faulthandler.unregister(signal.SIGUSR2)
         if not self.print_summary:
             self.stream = self.orig_stream
             result.stream = self.orig_stream

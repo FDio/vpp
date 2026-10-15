@@ -169,9 +169,9 @@ typedef enum
     VNET_N_ERROR,
 } vnet_error_t;
 
-clib_error_t __clib_warn_unused_result *vnet_error (vnet_error_t code,
-						    char *fmt, ...);
+__clib_export clib_error_t __clib_warn_unused_result *vnet_error (vnet_error_t code, char *fmt,
+								  ...);
 
-format_function_t format_vnet_api_errno;
+__clib_export format_function_t format_vnet_api_errno;
 
 #endif

@@ -23,12 +23,16 @@ TARGET=libstrongswan-kernel-vpp.so
 
 # tested only with 5.9.5 and 5.9.6 version of strongSwan
 VERSION_SSWAN=5.9.6
+SSWAN_VERSION_PARTS=$(subst ., ,$(VERSION_SSWAN))
 
 CFLAGS=-O2 -g -Wall -Wextra -fpic
 
 CFLAGS_I=-include $(CONFIGH) \
 	-I$(SWANDIR)/src/libstrongswan \
-	-I$(SWANDIR)/src/libcharon
+	-I$(SWANDIR)/src/libcharon \
+	-DSTRONGSWAN_VERSION_MAJOR=$(word 1,$(SSWAN_VERSION_PARTS)) \
+	-DSTRONGSWAN_VERSION_MINOR=$(word 2,$(SSWAN_VERSION_PARTS)) \
+	-DSTRONGSWAN_VERSION_PATCH=$(word 3,$(SSWAN_VERSION_PARTS))
 
 LDFLAGS= -lvppinfra \
 	-lvlibmemoryclient \

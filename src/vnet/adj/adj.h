@@ -130,7 +130,7 @@ typedef enum
 /**
  * The special broadcast address (to construct a broadcast adjacency
  */
-extern const ip46_address_t ADJ_BCAST_ADDR;
+__clib_export extern const ip46_address_t ADJ_BCAST_ADDR;
 
 /**
  * Forward declaration
@@ -367,7 +367,7 @@ extern void adj_lock(adj_index_t adj_index);
  * @brief
  *   Release a reference counting lock on the adjacency
  */
-extern void adj_unlock(adj_index_t adj_index);
+__clib_export extern void adj_unlock(adj_index_t adj_index);
 
 /**
  * @brief
@@ -395,18 +395,18 @@ extern void adj_walk (u32 sw_if_index,
 /**
  * @brief Return the link type of the adjacency
  */
-extern vnet_link_t adj_get_link_type (adj_index_t ai);
+__clib_export extern vnet_link_t adj_get_link_type (adj_index_t ai);
 
 /**
  * @brief Return the sw interface index of the adjacency.
  */
-extern u32 adj_get_sw_if_index (adj_index_t ai);
+__clib_export extern u32 adj_get_sw_if_index (adj_index_t ai);
 
 /**
  * @brief Return true if the adjacency is 'UP', i.e. can be used for forwarding.
  * 0 is down, !0 is up.
  */
-extern int adj_is_up (adj_index_t ai);
+__clib_export extern int adj_is_up (adj_index_t ai);
 
 /**
  * @brief Return the link type of the adjacency
@@ -429,13 +429,13 @@ extern int adj_recursive_loop_detect (adj_index_t ai,
  * @brief
  * The global adjacency pool. Exposed for fast/inline data-plane access
  */
-extern ip_adjacency_t *adj_pool;
+__clib_export extern ip_adjacency_t *adj_pool;
 
 /**
  * @brief 
  * Adjacency packet counters
  */
-extern vlib_combined_counter_main_t adjacency_counters;
+__clib_export extern vlib_combined_counter_main_t adjacency_counters;
 
 /**
  * @brief Global Config for enabling per-adjacency counters

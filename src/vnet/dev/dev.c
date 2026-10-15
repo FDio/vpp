@@ -142,6 +142,24 @@ vnet_dev_alloc (vlib_main_t *vm, vnet_dev_device_id_t id,
   return 0;
 }
 
+static void
+vnet_dev_cleanup_bus_resources (vlib_main_t *vm, vnet_dev_t *dev)
+{
+  vnet_dev_bus_t *bus = vnet_dev_get_bus (dev);
+  vnet_dev_dma_mem_alloc_t *a;
+
+  if (bus->ops.device_close)
+    bus->ops.device_close (vm, dev);
+
+  vec_foreach (a, dev->dma_allocs)
+    {
+      if (a->va)
+	bus->ops.dma_mem_free_fn (vm, dev, a->va);
+      vec_free (a->description);
+    }
+  vec_reset_length (dev->dma_allocs);
+}
+
 vnet_dev_rv_t
 vnet_dev_init (vlib_main_t *vm, vnet_dev_t *dev)
 {
@@ -160,35 +178,33 @@ vnet_dev_init (vlib_main_t *vm, vnet_dev_t *dev)
       if (rv != VNET_DEV_OK)
 	{
 	  log_err (dev, "device init failed [rv %d]", rv);
-	  if (dev->ops.deinit)
-	    dev->ops.deinit (vm, dev);
-	  if (dev->ops.free)
-	    dev->ops.free (vm, dev);
-	  return rv;
+	  goto failed;
 	}
     }
 
   if ((rv = dev->ops.init (vm, dev)) != VNET_DEV_OK)
     {
       log_err (dev, "device init failed [rv %d]", rv);
-      if (dev->ops.deinit)
-	dev->ops.deinit (vm, dev);
-      if (dev->ops.free)
-	dev->ops.free (vm, dev);
-      return rv;
+      goto failed;
     }
 
   dev->initialized = 1;
   dev->not_first_init = 1;
   return VNET_DEV_OK;
+
+failed:
+  if (dev->ops.deinit)
+    dev->ops.deinit (vm, dev);
+
+  vnet_dev_cleanup_bus_resources (vm, dev);
+
+  return rv;
 }
 
 void
 vnet_dev_deinit (vlib_main_t *vm, vnet_dev_t *dev)
 {
   ASSERT (dev->initialized == 1);
-  vnet_dev_bus_t *bus;
-  vnet_dev_dma_mem_alloc_t *a;
 
   vnet_dev_validate (vm, dev);
 
@@ -198,19 +214,8 @@ vnet_dev_deinit (vlib_main_t *vm, vnet_dev_t *dev)
   if (dev->ops.deinit)
     dev->ops.deinit (vm, dev);
 
-  bus = vnet_dev_get_bus (dev);
-  if (bus->ops.device_close)
-    bus->ops.device_close (vm, dev);
-
   vnet_dev_process_quit (vm, dev);
-
-  vec_foreach (a, dev->dma_allocs)
-    {
-      if (a->va)
-	bus->ops.dma_mem_free_fn (vm, dev, a->va);
-      vec_free (a->description);
-    }
-  vec_reset_length (dev->dma_allocs);
+  vnet_dev_cleanup_bus_resources (vm, dev);
 
   dev->initialized = 0;
 }
