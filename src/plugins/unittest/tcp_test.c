@@ -1598,6 +1598,68 @@ tcp_test_sack_tx (vlib_main_t * vm, unformat_input_t * input)
   TCP_TEST ((tc->snd_sacks[0].start == 300),
 	    "first sack block start %u expected %u", tc->snd_sacks[0].start,
 	    300);
+
+  /*
+   * D-SACK reports (RFC 2883)
+   */
+  {
+    sack_block_t blks[TCP_OPTS_MAX_SACK_BLOCKS];
+    u32 n;
+
+    vec_free (tc->snd_sacks);
+    vec_free (tc->snd_sacks_fl);
+    clib_memset (tc, 0, sizeof (*tc));
+    tc->rcv_opts.flags = TCP_OPTS_FLAG_SACK_PERMITTED;
+    tc->rcv_nxt = 1000;
+
+    tcp_dsack_report (tc, 800, 900);
+    n = tcp_dsack_make_sacks (tc, blks);
+    TCP_TEST ((n == 1 && blks[0].start == 800 && blks[0].end == 900 && !tcp_dsack_is_pending (tc)),
+	      "old duplicate is reported once, as the only block");
+
+    tcp_dsack_report (tc, 100, 200);
+    tcp_dsack_report (tc, 200, 300);
+    tcp_dsack_report (tc, 150, 250);
+    tcp_dsack_report (tc, 500, 600);
+    TCP_TEST ((vec_len (tc->snd_dsacks) == 2 && tc->snd_dsacks[0].start == 100 &&
+	       tc->snd_dsacks[0].end == 300 && tc->snd_dsacks[1].start == 500),
+	      "touching duplicates merge, others are reported separately");
+    n = tcp_dsack_make_sacks (tc, blks);
+    TCP_TEST ((n == 1 && blks[0].start == 100 && vec_len (tc->snd_dsacks) == 1),
+	      "oldest duplicate is reported first, one per ack");
+    vec_reset_length (tc->snd_dsacks);
+    for (i = 0; i < TCP_MAX_DSACK_BLOCKS + 2; i++)
+      tcp_dsack_report (tc, 100 * i, 100 * i + 50);
+    TCP_TEST ((vec_len (tc->snd_dsacks) == TCP_MAX_DSACK_BLOCKS && tc->snd_dsacks[0].start == 200),
+	      "pending duplicates are capped, keeping the most recent");
+    vec_reset_length (tc->snd_dsacks);
+
+    tcp_update_sack_list (tc, 1200, 1300);
+    tcp_update_sack_list (tc, 1500, 1800);
+    tcp_update_sack_list (tc, 2000, 2100);
+    tcp_dsack_report (tc, 1600, 1700);
+    n = tcp_dsack_make_sacks (tc, blks);
+    TCP_TEST ((n == 3 && blks[0].start == 1600 && blks[0].end == 1700 && blks[1].start == 1500 &&
+	       blks[1].end == 1800 && blks[2].start == 2000 && tc->snd_sack_pos == 1),
+	      "out-of-order duplicate is followed by the block that contains it");
+
+    tc->snd_sack_pos = 0;
+    tcp_dsack_report (tc, 800, 900);
+    n = tcp_dsack_make_sacks (tc, blks);
+    TCP_TEST ((n == 3 && blks[0].start == 800 && blks[1].start == 2000 && blks[2].start == 1500),
+	      "old duplicate is followed by the blocks in rotation");
+
+    tc->sack_sb.flags |= TCP_DSACK_UNDO_DISABLED;
+    tcp_dsack_report (tc, 800, 900);
+    TCP_TEST ((!tcp_dsack_is_pending (tc)), "no reports with dsack disabled");
+    tc->sack_sb.flags = 0;
+    tc->rcv_opts.flags = 0;
+    tcp_dsack_report (tc, 800, 900);
+    TCP_TEST ((!tcp_dsack_is_pending (tc)), "no reports without sack");
+    vec_free (tc->snd_sacks);
+    vec_free (tc->snd_sacks_fl);
+    vec_free (tc->snd_dsacks);
+  }
   return 0;
 }
 
@@ -6511,6 +6573,181 @@ cleanup:
   return rv;
 }
 
+/* Drop the server's acks for a flight, so a timeout resends the head. The
+ * server reports the copy with a D-SACK, which undoes the timeout. With
+ * partial, the first of two short segments is also lost, so the timeout copy
+ * spans both and only the second is a duplicate, which the server already
+ * holds out of order. */
+static int
+tcp_test_tamper_dsack_mode (vlib_main_t *vm, u8 partial)
+{
+  tcp_e2e_params_t params = {
+    .name = partial ? "dsack_partial" : "dsack_rto",
+    .client_addr = partial ? 0x22222201 : 0x20202001,
+    .server_addr = partial ? 0x23232301 : 0x21212101,
+    .client_vrf = 0,
+    .server_vrf = 2,
+    .server_port = partial ? 2269 : 2267,
+    .client_port = 0, /* ephemeral */
+    .secret = partial ? 2268 : 2266,
+  };
+  const u32 head_len = 100, island_len = 200;
+  tcp_e2e_ctx_t _ctx, *ctx = &_ctx;
+  tcp_connection_t *client_tc, *server_tc;
+  tcp_tamper_rule_t *ack_rule, *seg_rule;
+  session_t *client_s, *server_s;
+  u32 tries, max_iters, tr_before, cwnd_before, total_bytes, start, drained, unreported;
+  u8 *data = 0, arrived;
+  int error, rv = 0, i;
+
+  tcp_tamper_reset ();
+
+  if (!TCP_TEST_I ((tcp_e2e_setup (vm, ctx, &params) == 0), "dsack_rto: e2e setup"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  client_tc = ctx->client_tc;
+  client_s = ctx->client_s;
+  server_s = session_get_if_valid (accepted_session_index, accepted_session_thread);
+  if (!TCP_TEST_I ((server_s != 0), "dsack_rto: server session resolvable"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  server_tc = (tcp_connection_t *) session_get_transport (server_s);
+
+  client_tc->cfg_flags |= TCP_CFG_F_NO_TSO;
+  client_tc->cfg_flags &= ~TCP_CFG_F_TSO;
+  client_tc->connection.flags &= ~TRANSPORT_CONNECTION_F_IS_TX_PACED;
+  client_tc->rto = TCP_RTO_MIN;
+  total_bytes = partial ? head_len + island_len : 2 * client_tc->snd_mss;
+  start = client_tc->snd_una;
+  tr_before = client_tc->tr_occurences;
+
+  ack_rule = tcp_tamper_drop_pure_ack (server_tc, ~0);
+  tcp_tamper_enable (server_tc);
+  if (partial)
+    {
+      seg_rule = tcp_tamper_drop_seq (client_tc, start, 1);
+      seg_rule->data_only = 1;
+      tcp_tamper_enable (client_tc);
+      /* Adding a rule can move the rule vector */
+      ack_rule = &tcp_tamper_main.rules[0];
+    }
+
+  vec_validate (data, total_bytes - 1);
+  for (i = 0; i < (int) total_bytes; i++)
+    data[i] = i & 0xff;
+  /* In partial mode, keep the two writes in separate segments */
+  for (i = 0; i < (partial ? 2 : 1); i++)
+    {
+      u32 len = !partial ? total_bytes : i ? island_len : head_len;
+      error = svm_fifo_enqueue (client_s->tx_fifo, len, data + (i ? head_len : 0));
+      if (!TCP_TEST_I ((error == (int) len), "%s: client queued %u bytes", params.name, len))
+	{
+	  rv = 1;
+	  goto cleanup;
+	}
+      error = session_program_tx_io_evt (client_s->handle, SESSION_IO_EVT_TX);
+      if (!TCP_TEST_I ((error == 0), "%s: client tx event programmed", params.name))
+	{
+	  rv = 1;
+	  goto cleanup;
+	}
+      tcp_e2e_pump (vm, 1e-3);
+    }
+
+  /* Wait for the flight to arrive while its acks are dropped. In partial
+   * mode, the second segment is held out of order. */
+  for (tries = 0, arrived = 0; !arrived && tries < 200; tries++)
+    {
+      arrived = partial ? (server_tc->rcv_nxt == start && vec_len (server_tc->snd_sacks) == 1) :
+			  server_tc->rcv_nxt - start == total_bytes;
+      arrived = arrived && ack_rule->n_dropped;
+      if (!arrived)
+	tcp_e2e_pump (vm, 1e-3);
+    }
+  if (!TCP_TEST_I ((arrived && ack_rule->n_dropped && client_tc->snd_una == start &&
+		    client_tc->tr_occurences == tr_before),
+		   "%s: flight arrived, its acks were dropped (dropped %u)", params.name,
+		   ack_rule->n_dropped))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+  /* Let the ack that reports the duplicate through. Drain the server only
+   * afterwards, as a window update would ack the flight first. */
+  cwnd_before = client_tc->cwnd;
+  ack_rule->n_drop = 0;
+  max_iters = tcp_e2e_rxt_wait_iters (client_tc, 10e-3);
+  for (tries = 0; (tcp_in_cong_recovery (client_tc) || client_tc->snd_una != client_tc->snd_nxt) &&
+		  tries < max_iters;
+       tries++)
+    tcp_e2e_pump (vm, 10e-3);
+  drained = session_test_drain_rx_fifo (server_s);
+
+  if (!TCP_TEST_I (
+	(client_tc->tr_occurences != tr_before && client_tc->snd_una == client_tc->snd_nxt),
+	"%s: a timeout resent the head and all data was acked (timeouts %u, "
+	"acked %u of %u)",
+	params.name, client_tc->tr_occurences - tr_before, client_tc->snd_una - start,
+	client_tc->snd_nxt - start))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  /* Only the copy of the second segment is a duplicate in partial mode */
+  unreported = client_tc->dsack_undo.lifetime_unreported;
+  if (!TCP_TEST_I ((unreported == (partial ? head_len : 0)),
+		   "%s: the server reported the duplicate with a D-SACK (unreported %u)",
+		   params.name, unreported))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  if (!partial && !TCP_TEST_I ((client_tc->cwnd >= cwnd_before),
+			       "%s: the D-SACK undid the timeout (cwnd %u before %u)", params.name,
+			       client_tc->cwnd, cwnd_before))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  if (partial && !TCP_TEST_I ((client_tc->cwnd < cwnd_before),
+			      "%s: the lost head keeps the timeout's reduction (cwnd %u before %u)",
+			      params.name, client_tc->cwnd, cwnd_before))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  if (!TCP_TEST_I ((drained == total_bytes), "%s: all data delivered (got %u of %u)", params.name,
+		   drained, total_bytes))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+cleanup:
+  tcp_tamper_reset ();
+  vec_free (data);
+  if (!tcp_e2e_teardown (vm, ctx))
+    rv = 1;
+  return rv;
+}
+
+static int
+tcp_test_tamper_dsack_rto (vlib_main_t *vm)
+{
+  return tcp_test_tamper_dsack_mode (vm, 0 /* partial */);
+}
+
+static int
+tcp_test_tamper_dsack_partial (vlib_main_t *vm)
+{
+  return tcp_test_tamper_dsack_mode (vm, 1 /* partial */);
+}
+
 static int
 tcp_test_tamper (vlib_main_t *vm, unformat_input_t *input)
 {
@@ -6531,6 +6768,8 @@ tcp_test_tamper (vlib_main_t *vm, unformat_input_t *input)
     { "strand-head", tcp_test_tamper_stranded_head },
     { "rto", tcp_test_tamper_rto },
     { "rto-head", tcp_test_tamper_rto_head },
+    { "dsack-rto", tcp_test_tamper_dsack_rto },
+    { "dsack-partial", tcp_test_tamper_dsack_partial },
   };
   int res = 0, i;
 
