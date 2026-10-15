@@ -10552,7 +10552,7 @@ tcp_test_dsack_report (tcp_connection_t *tc, u32 start, u32 end, u32 ack, tcp_ac
   vec_add1 (tc->rcv_opts.sacks, block);
   if (seq_gt (start, ack))
     {
-      block.end = seq_min (tc->snd_nxt, end + 100);
+      block.end = seq_min (tc->snd_nxt, (u32) ((u64) end + 100));
       vec_add1 (tc->rcv_opts.sacks, block);
     }
   tc->rcv_opts.flags |= TCP_OPTS_FLAG_SACK;
@@ -10574,7 +10574,9 @@ tcp_test_dsack_undo_case (u32 backend, tcp_test_undo_case_t kind, u32 wrap)
 {
   tcp_connection_t _tc = {}, *tc = &_tc;
   tcp_ack_ctx_t ac = {};
-  u32 base = wrap ? 0xffffff00 : 1000;
+  /* Compute offsets in 64 bits and truncate to the 32-bit TCP sequence space
+   * at call/assignment boundaries and when comparing expected sequences. */
+  u64 base = wrap ? 0xffffff00 : 1000;
   int rv = 0;
 
 #define UNDO_CHECK(cond, msg)                                                                      \
@@ -10613,7 +10615,7 @@ tcp_test_dsack_undo_case (u32 backend, tcp_test_undo_case_t kind, u32 wrap)
       tc->bt->cur_rxt_end = tc->bt->sack_loss_high = base;
       tcp_bt_track_tx (tc, 1000);
     }
-  tc->snd_nxt += 1000;
+  tc->snd_nxt = (u32) (base + 1000);
   tc->bytes_out = 1000;
   tc->flags |= TCP_CONN_RXT_PENDING;
 
@@ -10652,7 +10654,8 @@ tcp_test_dsack_undo_case (u32 backend, tcp_test_undo_case_t kind, u32 wrap)
       tc->dsack_undo.pending_bytes = (u32) ~0 - 50;
       tcp_test_bt_track_output_rxt (tc, base + 300, base + 400);
       UNDO_CHECK (tcp_dsack_pending_bytes (tc) == (u32) ~0 - 50 &&
-		    (tc->sack_sb.flags & TCP_DSACK_INELIGIBLE) && tc->dsack_undo.end == base + 400,
+		    (tc->sack_sb.flags & TCP_DSACK_INELIGIBLE) &&
+		    tc->dsack_undo.end == (u32) (base + 400),
 		  "retransmit budget overflow fails this episode without wrapping");
       tcp_test_dsack_ack (tc, base + 200, &ac);
       ac.ack_flags = TCP_ACK_F_EIFEL_SPURIOUS;
@@ -10691,7 +10694,7 @@ tcp_test_dsack_undo_case (u32 backend, tcp_test_undo_case_t kind, u32 wrap)
 	}
       if (backend)
 	tcp_bt_track_tx (tc, 1000);
-      tc->snd_nxt += 1000;
+      tc->snd_nxt = (u32) ((u64) tc->snd_nxt + 1000);
       tc->bytes_out += 1000;
       tc->flags |= TCP_CONN_RXT_PENDING;
       tcp_loss_enter_recovery (tc);
@@ -10740,7 +10743,7 @@ tcp_test_dsack_undo_case (u32 backend, tcp_test_undo_case_t kind, u32 wrap)
       tc->flags |= TCP_CONN_RXT_PENDING;
       tcp_loss_enter_recovery (tc);
       UNDO_CHECK (!(tc->sack_sb.flags & TCP_DSACK_INELIGIBLE) && !tcp_dsack_pending_bytes (tc) &&
-		    tc->dsack_undo.end == base + 200,
+		    tc->dsack_undo.end == (u32) (base + 200),
 		  "unretransmitted old flight cannot make a new reduction ambiguous");
       tcp_test_bt_track_output_rxt (tc, base + 500, base + 600);
       tcp_test_dsack_report (tc, base + 500, base + 600, base + 700, &ac);
@@ -10794,7 +10797,7 @@ tcp_test_dsack_undo_case (u32 backend, tcp_test_undo_case_t kind, u32 wrap)
       tcp_test_bt_track_output_rxt (tc, base, base + head);
       tcp_test_bt_track_output_rxt (tc, base + 500, base + 600);
       UNDO_CHECK (head == 50 && tcp_dsack_pending_bytes (tc) == 150 &&
-		    tc->dsack_undo.end == base + 600,
+		    tc->dsack_undo.end == (u32) (base + 600),
 		  "the rto head copy is charged up to the sacked island");
       if (kind == TCP_TEST_UNDO_ISLAND_DUP)
 	{
@@ -10831,14 +10834,15 @@ tcp_test_dsack_undo_case (u32 backend, tcp_test_undo_case_t kind, u32 wrap)
   UNDO_CHECK (
     tcp_dsack_pending_bytes (tc) == (kind == TCP_TEST_UNDO_OVERLAP ? 160 : 200) &&
       tc->dsack_undo.end ==
-	base + (kind == TCP_TEST_UNDO_REPEAT_COPY || kind == TCP_TEST_UNDO_OVERLAP ? 200 : 400),
+	(u32) (base +
+	       (kind == TCP_TEST_UNDO_REPEAT_COPY || kind == TCP_TEST_UNDO_OVERLAP ? 200 : 400)),
     "each copy is charged and extends only the retransmitted scope");
 
   if (kind == TCP_TEST_UNDO_RETIRED_GAP || kind == TCP_TEST_UNDO_ACTIVE_GAP ||
       kind == TCP_TEST_UNDO_ACTIVE_PARTIAL || kind == TCP_TEST_UNDO_RETRY_ACTIVE)
     {
-      u32 start = base + (kind == TCP_TEST_UNDO_ACTIVE_PARTIAL ? 150 : 200);
-      u32 end = base + (kind == TCP_TEST_UNDO_ACTIVE_PARTIAL ? 350 : 300);
+      u64 start = base + (kind == TCP_TEST_UNDO_ACTIVE_PARTIAL ? 150 : 200);
+      u64 end = base + (kind == TCP_TEST_UNDO_ACTIVE_PARTIAL ? 350 : 300);
       if (kind == TCP_TEST_UNDO_RETIRED_GAP)
 	tcp_test_dsack_ack (tc, base + 500, &ac);
       tcp_test_dsack_report (tc, start, end, tc->snd_una, &ac);
@@ -10861,7 +10865,7 @@ tcp_test_dsack_undo_case (u32 backend, tcp_test_undo_case_t kind, u32 wrap)
 
   if (kind == TCP_TEST_UNDO_UNRETRANSMITTED_TAIL || kind == TCP_TEST_UNDO_LIFETIME_BOUND)
     {
-      u32 start = kind == TCP_TEST_UNDO_UNRETRANSMITTED_TAIL ? base + 700 : base - 100;
+      u64 start = kind == TCP_TEST_UNDO_UNRETRANSMITTED_TAIL ? base + 700 : base - 100;
       for (u32 i = 0; i < 2; i++)
 	{
 	  tcp_test_dsack_report (tc, start, start + 100, tc->snd_una, &ac);
