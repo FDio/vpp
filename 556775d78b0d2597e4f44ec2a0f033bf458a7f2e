@@ -16,6 +16,24 @@
       "message": "why not returning an error if sfdp is not initialized, rather than a bunch of meaningless counters?",
       "revId": "556775d78b0d2597e4f44ec2a0f033bf458a7f2e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "db37f014_27ea4fc3",
+        "filename": "src/vnet/sfdp/api.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 130,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-10-15T15:04:16Z",
+      "side": 1,
+      "message": "Initial intention was to let the user check `is_initialized`, and ignore counters if false.\n\nHowever, I agree returning an error makes more sense. We now return an error if SFDP is not initialized \u0026 the `is_initialized` field was removed as it was redundant.\n\nI\u0027ve also updated the API handler to use REPLY_MACRO3_ZERO for proper formatting of API reply and retval \u0026 updated the tests.",
+      "parentUuid": "dd65ccbb_80b0b077",
+      "revId": "556775d78b0d2597e4f44ec2a0f033bf458a7f2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
