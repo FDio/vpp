@@ -90,6 +90,7 @@ session_test_rx_chain_run (vlib_main_t *vm, transport_connection_t *tc, svm_fifo
   const u16 partial_lengths[] = { 128, 0, 64, 0 };
   const u16 ooo_lengths[] = { 32, 0, 64, 0 };
   const u16 empty_ooo_lengths[] = { 0, 0, 32, 64 };
+  const u16 repeat_lengths[] = { 32, 128 };
   const u16 *ooo_cases[] = { ooo_lengths, empty_ooo_lengths, lengths[2] };
   const u32 ooo_n_buffers[] = { 4, 4, 1 };
   ooo_segment_t *newest;
@@ -172,6 +173,20 @@ session_test_rx_chain_run (vlib_main_t *vm, transport_connection_t *tc, svm_fifo
       SESSION_TEST (rv == 4064 && !memcmp (actual, expected, 4064),
 		    "partially enqueued out-of-order rx case %u preserves payload", i);
     }
+  /* An OOO chain that only repeats queued data before failing adds nothing. */
+  rv = svm_fifo_enqueue_with_offset (f, 4000, 32, expected + 4000);
+  SESSION_TEST (rv == 0, "buffered out-of-order data near the fifo end");
+  svm_fifo_newest_ooo_segment_reset (f);
+  session_test_rx_chain_prepare (vm, buffers, repeat_lengths, 2, expected + 4000);
+  rv = session_enqueue_stream_connection (tc, vlib_get_buffer (vm, buffers[0]), 4000, 0, 0);
+  SESSION_TEST (rv == SVM_FIFO_EFULL && !svm_fifo_newest_ooo_segment (f) &&
+		  svm_fifo_n_ooo_segments (f) == 1,
+		"out-of-order rx chain that repeats queued data and fails reports failure");
+  rv = svm_fifo_enqueue (f, 4000, expected);
+  SESSION_TEST (rv == 4032, "filled gap before repeated out-of-order data");
+  rv = svm_fifo_dequeue (f, 4032, actual);
+  SESSION_TEST (rv == 4032 && !memcmp (actual, expected, 4032),
+		"repeated out-of-order rx case preserves payload");
   SESSION_TEST (vec_len (session_main_get_worker (tc->thread_index)->rx_segs) == 0,
 		"rx segment vector reset");
 

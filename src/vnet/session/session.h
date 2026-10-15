@@ -657,7 +657,8 @@ session_fifo_tuning (session_t *s, svm_fifo_t *f, session_ft_action_t act, u32 l
  *
  * In order, returns number of bytes enqueued, including any collected
  * out-of-order bytes, or a negative svm fifo error. Out of order, returns 0
- * if at least a prefix of the chain was enqueued or a negative svm fifo error.
+ * if the chain, or a prefix of it that adds data, was enqueued or a negative
+ * svm fifo error.
  */
 always_inline int
 session_enqueue_chain (session_t *s, vlib_buffer_t *b, u32 offset, u8 is_in_order)
@@ -693,7 +694,7 @@ session_enqueue_chain (session_t *s, vlib_buffer_t *b, u32 offset, u8 is_in_orde
     {
       vlib_main_t *vm = vlib_get_main ();
       svm_fifo_t *f = s->rx_fifo;
-      u32 len, written = 0, newest = OOO_SEGMENT_INVALID_INDEX;
+      u32 len, newest = OOO_SEGMENT_INVALID_INDEX;
       int rv = 0;
       u8 *data;
 
@@ -709,21 +710,26 @@ session_enqueue_chain (session_t *s, vlib_buffer_t *b, u32 offset, u8 is_in_orde
 	  rv = svm_fifo_enqueue_with_offset (f, offset, len, data);
 	  if (rv)
 	    {
-	      if (!written)
+	      /* Nothing new was enqueued if no earlier buffer changed a segment,
+	       * e.g., if they only repeated queued data */
+	      if (newest == OOO_SEGMENT_INVALID_INDEX)
 		return rv;
 	      /* Failed enqueue resets newest segment. Restore it so transports can
 	       * track the partially enqueued prefix, e.g., for sacks. */
 	      f->ooos_newest = newest;
 	      return 0;
 	    }
-	  newest = f->ooos_newest;
-	  written += len;
+	  /* An enqueue that changes no segment, e.g., of duplicate data, resets
+	   * it as well. Keep the one changed by an earlier buffer */
+	  if (f->ooos_newest != OOO_SEGMENT_INVALID_INDEX)
+	    newest = f->ooos_newest;
 	  offset += len;
 	}
       while ((chain_b = (chain_b->flags & VLIB_BUFFER_NEXT_PRESENT) ?
 			  vlib_get_buffer (vm, chain_b->next_buffer) :
 			  0));
 
+      f->ooos_newest = newest;
       return 0;
     }
 }
@@ -740,9 +746,9 @@ session_enqueue_chain (session_t *s, vlib_buffer_t *b, u32 offset, u8 is_in_orde
  *                    enqueued and only one event is to be generated.
  * @param is_in_order Flag to indicate if data is in order
  * @return If in order, number of bytes enqueued, which may exceed the buffer
- *         length if out-of-order data was collected. If out of order, 0 if at
- *         least a prefix of the buffer was enqueued. Negative svm fifo error
- *         if nothing could be enqueued.
+ *         length if out-of-order data was collected. If out of order, 0 if the
+ *         buffer, or a prefix of it that adds data, was enqueued. Negative svm
+ *         fifo error if nothing new could be enqueued.
  */
 always_inline int
 session_enqueue_stream_connection (transport_connection_t *tc,
