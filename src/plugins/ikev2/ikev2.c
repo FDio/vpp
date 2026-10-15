@@ -1295,6 +1295,26 @@ ikev2_parse_auth_payload (const void *p, u32 rlen, ikev2_auth_t * a)
   return 1;
 }
 
+/*
+ * A child SA without IPSEC_SA_FLAG_IS_TUNNEL on a protected tunnel interface
+ * puts ESP after the outer IP header of the tunnel. On an ipip interface (the
+ * default when the profile has no tunnel interface) the ESP payload is IP,
+ * which is tunnel mode on the wire. On another interface, e.g. GRE, the ESP
+ * payload is the tunnel encapsulation, which is transport mode: it is
+ * negotiated with N(USE_TRANSPORT_MODE) (RFC 7296 section 1.3.1), and the
+ * child SA gets IPSEC_SA_FLAG_IS_TUNNEL when the negotiation does not select
+ * it. UDP encapsulation always installs tunnel mode SAs.
+ */
+static int
+ikev2_transport_mode_capable (ikev2_sa_t *sa)
+{
+  ikev2_main_t *km = &ikev2_main;
+
+  if (sa->udp_encap || !sa->is_tun_itf_set || ~0 == sa->tun_itf)
+    return 0;
+  return !km->ipip_sw_if_index_is_tunnel_fn_ptr (sa->tun_itf);
+}
+
 static int
 ikev2_process_auth_req (vlib_main_t * vm, ikev2_sa_t * sa,
 			ike_header_t * ike, u32 len)
@@ -1343,7 +1363,7 @@ ikev2_process_auth_req (vlib_main_t * vm, ikev2_sa_t * sa,
       ikev2_sa_free_all_child_sa (&sa->childs);
       vec_add2 (sa->childs, first_child_sa, 1);
     }
-
+  first_child_sa->use_transport_mode = 0;
 
   /* process encrypted payload */
   while (p < dlen && payload != IKEV2_PAYLOAD_NONE)
@@ -1403,6 +1423,10 @@ ikev2_process_auth_req (vlib_main_t * vm, ikev2_sa_t * sa,
 	    {
 	      sa->initial_contact = 1;
 	    }
+	  else if (n->msg_type == IKEV2_NOTIFY_MSG_USE_TRANSPORT_MODE)
+	    {
+	      first_child_sa->use_transport_mode = 1;
+	    }
 	  vec_free (n);
 	}
       else if (payload == IKEV2_PAYLOAD_VENDOR)	/* 43 */
@@ -1435,6 +1459,10 @@ ikev2_process_auth_req (vlib_main_t * vm, ikev2_sa_t * sa,
       payload = ikep->nextpayload;
       p += plen;
     }
+
+  if (sa->is_initiator && first_child_sa->r_proposals && !first_child_sa->use_transport_mode &&
+      ikev2_transport_mode_capable (sa))
+    log_debug ("ispi %lx USE_TRANSPORT_MODE declined, tunnel mode child SA", sa->ispi);
 
   return 1;
 
@@ -1687,6 +1715,7 @@ ikev2_process_create_child_sa_req (vlib_main_t * vm,
   u16 plen;
   const u8 *nonce = 0;
   int nonce_len = 0;
+  u8 use_transport_mode = 0;
   ikev2_sa_t sar;
 
   clib_memset (&sar, 0, sizeof (sar));
@@ -1747,7 +1776,11 @@ ikev2_process_create_child_sa_req (vlib_main_t * vm,
 	      n = n0;
 	    }
 	  else
-	    vec_free (n0);
+	    {
+	      if (n0->msg_type == IKEV2_NOTIFY_MSG_USE_TRANSPORT_MODE)
+		use_transport_mode = 1;
+	      vec_free (n0);
+	    }
 	}
       else if (payload == IKEV2_PAYLOAD_DELETE)
 	{
@@ -1802,6 +1835,7 @@ ikev2_process_create_child_sa_req (vlib_main_t * vm,
       rekey->r_proposal = proposal;
       rekey->tsi = tsi;
       rekey->tsr = tsr;
+      rekey->use_transport_mode = use_transport_mode;
       /* update Nr */
       vec_reset_length (sa->r_nonce);
       vec_add (sa->r_nonce, nonce, nonce_len);
@@ -1824,6 +1858,7 @@ ikev2_process_create_child_sa_req (vlib_main_t * vm,
 	  vec_add2 (sa->rekey, rekey, 1);
 	  rekey->notify_type = 0;
 	  rekey->kex = 0;
+	  rekey->use_transport_mode = use_transport_mode;
 	  rekey->protocol_id = n->protocol_id;
 	  rekey->spi = n->spi;
 	  if (sa->old_remote_id_present)
@@ -1857,6 +1892,7 @@ ikev2_process_create_child_sa_req (vlib_main_t * vm,
 	  vec_add2 (sa->new_child, rekey, 1);
 	  rekey->notify_type = 0;
 	  rekey->kex = 0;
+	  rekey->use_transport_mode = use_transport_mode;
 	  if (!ikev2_process_create_child_sa_rekey (
 		sa, &sar, rekey, proposal, tsi, tsr, nonce, nonce_len))
 	    {
@@ -2393,6 +2429,8 @@ ikev2_create_tunnel_interface (vlib_main_t *vm, ikev2_sa_t *sa,
       a.flags |= IPSEC_SA_FLAG_IS_TUNNEL;
       a.flags |= IPSEC_SA_FLAG_UDP_ENCAP;
     }
+  else if (ikev2_transport_mode_capable (sa) && !child->use_transport_mode)
+    a.flags |= IPSEC_SA_FLAG_IS_TUNNEL;
   if (ikev2_natt_active (sa))
     a.flags |= IPSEC_SA_FLAG_UDP_ENCAP;
   a.is_rekey = is_rekey;
@@ -2800,6 +2838,8 @@ ikev2_add_create_child_resp (ikev2_sa_t *sa, ikev2_rekey_t *rekey,
     ikev2_payload_add_ke (chain, sa->dh_group, sa->r_dh_data);
   ikev2_payload_add_ts (chain, rekey->tsi, IKEV2_PAYLOAD_TSI);
   ikev2_payload_add_ts (chain, rekey->tsr, IKEV2_PAYLOAD_TSR);
+  if (rekey->use_transport_mode && ikev2_transport_mode_capable (sa))
+    ikev2_payload_add_notify (chain, IKEV2_NOTIFY_MSG_USE_TRANSPORT_MODE, 0);
 }
 
 static u32
@@ -2882,6 +2922,8 @@ ikev2_generate_message (vlib_main_t *vm, vlib_buffer_t *b, ikev2_sa_t *sa, ike_h
 	  ikev2_payload_add_sa (chain, sa->childs[0].r_proposals, 0);
 	  ikev2_payload_add_ts (chain, sa->childs[0].tsi, IKEV2_PAYLOAD_TSI);
 	  ikev2_payload_add_ts (chain, sa->childs[0].tsr, IKEV2_PAYLOAD_TSR);
+	  if (sa->childs[0].use_transport_mode && ikev2_transport_mode_capable (sa))
+	    ikev2_payload_add_notify (chain, IKEV2_NOTIFY_MSG_USE_TRANSPORT_MODE, 0);
 	}
       else if (sa->state == IKEV2_STATE_AUTH_FAILED)
 	{
@@ -2930,6 +2972,8 @@ ikev2_generate_message (vlib_main_t *vm, vlib_buffer_t *b, ikev2_sa_t *sa, ike_h
 	  ikev2_payload_add_ts (chain, sa->childs[0].tsr, IKEV2_PAYLOAD_TSR);
 	  ikev2_payload_add_notify (chain, IKEV2_NOTIFY_MSG_INITIAL_CONTACT,
 				    0);
+	  if (ikev2_transport_mode_capable (sa))
+	    ikev2_payload_add_notify (chain, IKEV2_NOTIFY_MSG_USE_TRANSPORT_MODE, 0);
 	}
       else
 	{
@@ -3011,6 +3055,8 @@ ikev2_generate_message (vlib_main_t *vm, vlib_buffer_t *b, ikev2_sa_t *sa, ike_h
 	  ikev2_payload_add_ts (chain, sa->childs[0].tsr, IKEV2_PAYLOAD_TSR);
 	  ikev2_payload_add_notify_2 (chain, IKEV2_NOTIFY_MSG_REKEY_SA, data,
 				      &notify);
+	  if (ikev2_transport_mode_capable (sa))
+	    ikev2_payload_add_notify (chain, IKEV2_NOTIFY_MSG_USE_TRANSPORT_MODE, 0);
 
 	  vec_free (data);
 	}
@@ -3793,6 +3839,7 @@ ikev2_node_internal (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *f
 		      child->i_proposals = sa0->rekey[0].i_proposal;
 		      child->tsi = sa0->rekey[0].tsi;
 		      child->tsr = sa0->rekey[0].tsr;
+		      child->use_transport_mode = sa0->rekey[0].use_transport_mode;
 		      ikev2_create_tunnel_interface (vm, sa0, child, p[0],
 						     child - sa0->childs, 1,
 						     sa0->rekey[0].kex);
@@ -3822,6 +3869,7 @@ ikev2_node_internal (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *f
 		  c->i_proposals = sa0->new_child[0].i_proposal;
 		  c->tsi = sa0->new_child[0].tsi;
 		  c->tsr = sa0->new_child[0].tsr;
+		  c->use_transport_mode = sa0->new_child[0].use_transport_mode;
 		  ikev2_create_tunnel_interface (vm, sa0, c, p[0],
 						 c - sa0->childs, 0,
 						 sa0->new_child[0].kex);
@@ -5345,8 +5393,10 @@ ikev2_init (vlib_main_t * vm)
   km->ipip_del_tunnel_fn_ptr = vlib_get_plugin_symbol ("ipip_plugin.so", "ipip_del_tunnel");
   km->ipip_tunnel_db_find_sw_if_index_fn_ptr =
     vlib_get_plugin_symbol ("ipip_plugin.so", "ipip_tunnel_db_find_sw_if_index");
+  km->ipip_sw_if_index_is_tunnel_fn_ptr =
+    vlib_get_plugin_symbol ("ipip_plugin.so", "ipip_sw_if_index_is_tunnel");
   if (!km->ipip_add_tunnel_fn_ptr || !km->ipip_del_tunnel_fn_ptr ||
-      !km->ipip_tunnel_db_find_sw_if_index_fn_ptr)
+      !km->ipip_tunnel_db_find_sw_if_index_fn_ptr || !km->ipip_sw_if_index_is_tunnel_fn_ptr)
     {
       log_err ("cannot load symbols from ipip plugin");
       return clib_error_return (0, "cannot load symbols from ipip plugin");
