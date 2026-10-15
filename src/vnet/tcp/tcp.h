@@ -121,7 +121,10 @@ typedef struct tcp_worker_ctx_
   /** worker timer wheel */
   tcp_timer_wheel_t timer_wheel;
 
-    CLIB_CACHE_LINE_ALIGN_MARK (cacheline2);
+  /** Sack blocks of an ack that reports a dsack */
+  sack_block_t ack_sacks[TCP_OPTS_MAX_SACK_BLOCKS];
+
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline2);
 
   tcp_wrk_stats_t stats;
 } tcp_worker_ctx_t;
@@ -163,7 +166,7 @@ typedef struct tcp_configuration_
   /** Set if csum offloading is enabled */
   u8 csum_offload;
 
-  /** Enable D-SACK congestion undo for new connections */
+  /** Enable D-SACK reports and congestion undo for new connections */
   u8 enable_dsack;
 
   /** Enable byte tracking for new connections */

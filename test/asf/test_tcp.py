@@ -129,6 +129,7 @@ class TestTCPUnitTests(VppAsfTestCase):
         test_cases = (
             "sack",
             "dsack-undo",
+            "dsack-rx",
             "lookup",
             "delivery",
             "persist",
@@ -154,6 +155,8 @@ class TestTCPUnitTests(VppAsfTestCase):
             "tamper rto",
             "tamper rto-head",
             "tamper dupack-run",
+            "tamper dsack-rto",
+            "tamper dsack-partial",
         )
 
         for test_case in test_cases:
