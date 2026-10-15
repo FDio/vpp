@@ -872,6 +872,12 @@ ipip_del_tunnel (u32 sw_if_index)
   return 0;
 }
 
+__clib_export int
+ipip_sw_if_index_is_tunnel (u32 sw_if_index)
+{
+  return NULL != ipip_tunnel_db_find_by_sw_if_index (sw_if_index);
+}
+
 __clib_export u32
 ipip_tunnel_db_find_sw_if_index (const ipip_tunnel_key_t *key)
 {
