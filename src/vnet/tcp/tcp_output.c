@@ -222,8 +222,8 @@ tcp_make_synack_options (tcp_connection_t * tc, tcp_options_t * opts)
   return len;
 }
 
-static int
-tcp_make_established_options (tcp_connection_t * tc, tcp_options_t * opts)
+always_inline int
+tcp_make_established_options (tcp_connection_t *tc, tcp_options_t *opts, u8 is_ack)
 {
   u8 len = 0;
 
@@ -238,7 +238,17 @@ tcp_make_established_options (tcp_connection_t * tc, tcp_options_t * opts)
     }
   if (tcp_opts_sack_permitted (&tc->rcv_opts))
     {
-      if (vec_len (tc->snd_sacks))
+      /* Every report programs a dupack. Burst options are reused by all
+       * segments, so only acks carry dsacks */
+      if (PREDICT_FALSE (is_ack && tc->pending_dupacks && tcp_dsack_is_pending (tc)))
+	{
+	  sack_block_t *blks = tcp_get_worker (tc->c_thread_index)->ack_sacks;
+	  opts->flags |= TCP_OPTS_FLAG_SACK;
+	  opts->sacks = blks;
+	  opts->n_sack_blocks = tcp_dsack_make_sacks (tc, blks);
+	  len += 2 + TCP_OPTION_LEN_SACK_BLOCK * opts->n_sack_blocks;
+	}
+      else if (vec_len (tc->snd_sacks))
 	{
 	  opts->flags |= TCP_OPTS_FLAG_SACK;
 	  if (tc->snd_sack_pos >= vec_len (tc->snd_sacks))
@@ -271,7 +281,7 @@ tcp_make_options (tcp_connection_t * tc, tcp_options_t * opts,
     case TCP_STATE_FIN_WAIT_2:
     case TCP_STATE_TIME_WAIT:
     case TCP_STATE_CLOSED:
-      return tcp_make_established_options (tc, opts);
+      return tcp_make_established_options (tc, opts, 0 /* is_ack */);
     case TCP_STATE_SYN_RCVD:
       return tcp_make_synack_options (tc, opts);
     case TCP_STATE_SYN_SENT:
@@ -422,7 +432,7 @@ tcp_make_ack_i (tcp_connection_t * tc, vlib_buffer_t * b, tcp_state_t state,
   wnd = tcp_window_to_advertise (tc, state);
 
   /* Make and write options */
-  tcp_opts_len = tcp_make_established_options (tc, snd_opts);
+  tcp_opts_len = tcp_make_established_options (tc, snd_opts, 1 /* is_ack */);
   tcp_hdr_opts_len = tcp_opts_len + sizeof (tcp_header_t);
 
   th = vlib_buffer_push_tcp (b, tc->c_lcl_port, tc->c_rmt_port, tc->snd_nxt,
@@ -473,7 +483,7 @@ tcp_make_wnd_probe (tcp_connection_t *tc, vlib_buffer_t *b)
 
   wnd = tcp_window_to_advertise (tc, TCP_STATE_ESTABLISHED);
 
-  tcp_opts_len = tcp_make_established_options (tc, snd_opts);
+  tcp_opts_len = tcp_make_established_options (tc, snd_opts, 0 /* is_ack */);
   tcp_hdr_opts_len = tcp_opts_len + sizeof (tcp_header_t);
 
   th = vlib_buffer_push_tcp (b, tc->c_lcl_port, tc->c_rmt_port, tc->snd_una - 1, tc->rcv_nxt,
@@ -2072,14 +2082,20 @@ tcp_send_acks (tcp_connection_t * tc, u32 max_burst_size)
       return 0;
     }
 
-  /* If we're supposed to send dupacks but have no ooo data
-   * send only one ack */
+  /* If we're supposed to send dupacks but have no ooo data send only one
+   * ack, or one per duplicate to report */
   if (!vec_len (tc->snd_sacks))
     {
-      tcp_send_ack (tc);
-      tc->dupacks_out += 1;
+      n_acks = clib_min (clib_max (vec_len (tc->snd_dsacks), 1), max_burst_size);
+      for (j = 0; j < n_acks; j++)
+	tcp_send_ack (tc);
+
+      tc->dupacks_out += n_acks;
       tc->pending_dupacks = 0;
-      return 1;
+      if (tcp_dsack_is_pending (tc))
+	tcp_program_dupack (tc);
+
+      return n_acks;
     }
 
   /* Start with first sack block */
@@ -2091,6 +2107,8 @@ tcp_send_acks (tcp_connection_t * tc, u32 max_burst_size)
   n_acks = vec_len (tc->snd_sacks) / TCP_OPTS_MAX_SACK_BLOCKS;
   n_acks = clib_min (n_acks, tc->pending_dupacks);
   n_acks = clib_max (n_acks, clib_min (tc->pending_dupacks, 3));
+  /* Each ack reports at most one duplicate */
+  n_acks = clib_max (n_acks, vec_len (tc->snd_dsacks));
   for (j = 0; j < clib_min (n_acks, max_burst_size); j++)
     tcp_send_ack (tc);
 

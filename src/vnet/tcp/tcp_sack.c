@@ -522,17 +522,20 @@ tcp_track_rxt (tcp_connection_t *tc, u32 start, u32 end)
 
   if (tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER)
     tcp_bt_track_rxt (tc, start, end);
+
   /* All retransmissions add to the report budget, regardless of undo eligibility. */
   undo = &tc->dsack_undo;
   undo->lifetime_unreported += clib_min (bytes, (u32) ~0 - undo->lifetime_unreported);
   if (!tcp_opts_sack_permitted (&tc->rcv_opts) || (tc->sack_sb.flags & TCP_DSACK_UNDO_DISABLED))
     return;
+
   /* The next snapshot charges copies sent outside recovery */
   if (!tcp_in_cong_recovery (tc))
     {
       tc->sack_sb.flags |= TCP_DSACK_RXT_UNCHARGED;
       return;
     }
+
   /* Entering recovery takes the snapshot */
   ASSERT (tc->sack_sb.flags & TCP_DSACK_UNDO_ACTIVE);
   if (PREDICT_FALSE (!(tc->sack_sb.flags & TCP_DSACK_UNDO_ACTIVE)))
@@ -543,6 +546,7 @@ tcp_track_rxt (tcp_connection_t *tc, u32 start, u32 end)
   tc->sack_sb.flags |= TCP_DSACK_RXT_SEEN;
   if (undo->end - undo->start >= TCP_SEQ_HALF_SPACE)
     tc->sack_sb.flags |= TCP_DSACK_INELIGIBLE;
+
   if (bytes > (u32) ~0 - undo->pending_bytes)
     {
       tc->sack_sb.flags |= TCP_DSACK_INELIGIBLE;
@@ -607,10 +611,9 @@ tcp_sack_extract_dsack (tcp_connection_t *tc, u32 ack, sack_block_t *dsack)
 static void
 tcp_dsack_update (tcp_connection_t *tc, const sack_block_t *dsack, tcp_ack_ctx_t *ac)
 {
-  tcp_dsack_undo_t *undo;
+  tcp_dsack_undo_t *undo = &tc->dsack_undo;
   u32 start = dsack->start, end = dsack->end, credit = end - start, acked, rxt_bytes;
 
-  undo = &tc->dsack_undo;
   if (tcp_tlp_dsack_matches (tc, dsack))
     {
       /* The probe's copy was added to the budget when it was sent */
@@ -626,18 +629,22 @@ tcp_dsack_update (tcp_connection_t *tc, const sack_block_t *dsack, tcp_ack_ctx_t
       undo->lifetime_unreported = 0;
       return;
     }
+
   undo->lifetime_unreported -= credit;
   ac->ack_flags |= TCP_ACK_F_DSACK_VALID;
 
   if (tc->sack_sb.flags & (TCP_DSACK_UNDO_DISABLED | TCP_DSACK_INELIGIBLE))
     return;
+
   tcp_dsack_expire (tc);
   if (!tcp_dsack_has_undo (tc))
     return;
+
   start = seq_max (start, undo->start);
   end = seq_min (end, undo->end);
   if (!seq_lt (start, end))
     return;
+
   /* Bytes the byte tracker still tracks earn credit only if they were
    * retransmitted. Others, ACKed or, on the scoreboard, cumulatively ACKed by
    * this ack, use aggregate evidence. The scoreboard cannot tell bytes still
@@ -645,6 +652,7 @@ tcp_dsack_update (tcp_connection_t *tc, const sack_block_t *dsack, tcp_ack_ctx_t
   acked = tc->snd_una;
   if (!(tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER))
     acked += ac->bytes_acked;
+
   credit = seq_lt (start, acked) ? seq_min (end, acked) - start : 0;
   start = seq_max (start, acked);
   if (seq_lt (start, end) && (tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER))
@@ -653,8 +661,10 @@ tcp_dsack_update (tcp_connection_t *tc, const sack_block_t *dsack, tcp_ack_ctx_t
 	return;
       credit += rxt_bytes;
     }
+
   if (!credit)
     return;
+
   undo->pending_bytes -= clib_min (credit, undo->pending_bytes);
   if (!undo->pending_bytes)
     ac->ack_flags |= TCP_ACK_F_DSACK_SPURIOUS;
@@ -978,6 +988,83 @@ tcp_sack_vector_is_sane (sack_block_t * sacks)
   return 1;
 }
 
+/* Queue [start, end), received again. A duplicate that touches the last one
+ * extends it, others are reported in separate acks. Callers check that
+ * reporting is enabled and that the range is not empty. */
+static __clib_noinline void
+tcp_dsack_add (tcp_connection_t *tc, u32 start, u32 end)
+{
+  sack_block_t *last;
+
+  if (tcp_dsack_is_pending (tc))
+    {
+      last = vec_end (tc->snd_dsacks) - 1;
+      if (seq_leq (start, last->end) && seq_leq (last->start, end))
+	{
+	  last->start = seq_min (last->start, start);
+	  last->end = seq_max (last->end, end);
+	  return;
+	}
+    }
+
+  /* Keep the most recent ones */
+  if (vec_len (tc->snd_dsacks) >= TCP_MAX_DSACK_BLOCKS)
+    vec_delete (tc->snd_dsacks, 1, 0);
+
+  vec_add2 (tc->snd_dsacks, last, 1);
+  last->start = start;
+  last->end = end;
+}
+
+void
+tcp_dsack_report (tcp_connection_t *tc, u32 start, u32 end)
+{
+  if (tcp_dsack_report_enabled (tc) && seq_lt (start, end))
+    tcp_dsack_add (tc, start, end);
+}
+
+u32
+tcp_dsack_make_sacks (tcp_connection_t *tc, sack_block_t *blks)
+{
+  sack_block_t *sacks = tc->snd_sacks, dsack;
+  u32 i, n = 0, n_sacks = vec_len (sacks), contains = ~0;
+
+  ASSERT (tcp_dsack_is_pending (tc));
+  dsack = tc->snd_dsacks[0];
+  vec_delete (tc->snd_dsacks, 1, 0);
+  blks[n++] = dsack;
+
+  /* Sack blocks are above rcv_nxt, so only out-of-order duplicates have one */
+  for (i = 0; seq_geq (dsack.start, tc->rcv_nxt) && i < n_sacks; i++)
+    if (seq_leq (sacks[i].start, dsack.start) && seq_leq (dsack.end, sacks[i].end))
+      {
+	blks[n++] = sacks[i];
+	contains = i;
+	break;
+      }
+
+  if (tc->snd_sack_pos >= n_sacks)
+    tc->snd_sack_pos = 0;
+
+  for (i = tc->snd_sack_pos; i < n_sacks && n < TCP_OPTS_MAX_SACK_BLOCKS; i++)
+    if (i != contains)
+      blks[n++] = sacks[i];
+
+  tc->snd_sack_pos = i;
+  return n;
+}
+
+/* Report what the segment repeated of a block it delivered or merged with.
+ * Duplicates are rare, so check the overlap before calling */
+static_always_inline void
+tcp_dsack_report_overlap (tcp_connection_t *tc, sack_block_t *blk, u32 seg_start, u32 seg_end)
+{
+  u32 start = seq_max (seg_start, blk->start), end = seq_min (seg_end, blk->end);
+
+  if (PREDICT_FALSE (seq_lt (start, end)))
+    tcp_dsack_add (tc, start, end);
+}
+
 /**
  * Build SACK list as per RFC2018.
  *
@@ -985,14 +1072,22 @@ tcp_sack_vector_is_sane (sack_block_t * sacks)
  * ACK and the following ones are the ones most recently reported in SACK
  * blocks.
  *
+ * [start, end) is the newest out-of-order block, empty if the segment the
+ * receiver got last, [seg_start, seg_end), was enqueued in order. What the
+ * segment overlaps of the blocks it delivered or merged with was received
+ * twice and is reported as a dsack.
+ *
  * @param tc TCP connection for which the SACK list is updated
- * @param start Start sequence number of the newest SACK block
- * @param end End sequence of the newest SACK block
+ * @param start Start sequence number of the newest out-of-order block
+ * @param end End sequence number of the newest out-of-order block
+ * @param seg_start Start sequence number of the segment received last
+ * @param seg_end End sequence number of the segment received last
  */
 void
-tcp_update_sack_list (tcp_connection_t * tc, u32 start, u32 end)
+tcp_update_sack_list (tcp_connection_t *tc, u32 start, u32 end, u32 seg_start, u32 seg_end)
 {
   sack_block_t *new_list = tc->snd_sacks_fl, *block = 0;
+  u8 dsack_report = tcp_dsack_report_enabled (tc);
   int i;
 
   /* If the first segment is ooo add it to the list. Last write might've moved
@@ -1009,12 +1104,18 @@ tcp_update_sack_list (tcp_connection_t * tc, u32 start, u32 end)
     {
       /* Discard if rcv_nxt advanced beyond current block */
       if (seq_leq (tc->snd_sacks[i].start, tc->rcv_nxt))
-	continue;
+	{
+	  if (dsack_report)
+	    tcp_dsack_report_overlap (tc, &tc->snd_sacks[i], seg_start, seg_end);
+	  continue;
+	}
 
       /* Merge or drop if segment overlapped by the new segment */
       if (block && (seq_geq (tc->snd_sacks[i].end, new_list[0].start)
 		    && seq_leq (tc->snd_sacks[i].start, new_list[0].end)))
 	{
+	  if (dsack_report)
+	    tcp_dsack_report_overlap (tc, &tc->snd_sacks[i], seg_start, seg_end);
 	  if (seq_lt (tc->snd_sacks[i].start, new_list[0].start))
 	    new_list[0].start = tc->snd_sacks[i].start;
 	  if (seq_lt (new_list[0].end, tc->snd_sacks[i].end))

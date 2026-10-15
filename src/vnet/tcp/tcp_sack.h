@@ -113,7 +113,13 @@ __clib_export void scoreboard_init (sack_scoreboard_t *sb);
 
 __clib_export format_function_t format_tcp_scoreboard;
 
-__clib_export void tcp_update_sack_list (tcp_connection_t *tc, u32 start, u32 end);
+__clib_export void tcp_update_sack_list (tcp_connection_t *tc, u32 start, u32 end, u32 seg_start,
+					 u32 seg_end);
+/** Report [start, end), received again (RFC 2883), if reporting is enabled */
+__clib_export void tcp_dsack_report (tcp_connection_t *tc, u32 start, u32 end);
+/** Fill blks with the oldest pending dsack, the block that contains it, if
+ * any, and the next blocks in rotation. Each dsack is reported once. */
+__clib_export u32 tcp_dsack_make_sacks (tcp_connection_t *tc, sack_block_t *blks);
 __clib_export void tcp_dsack_recovery_clear (tcp_connection_t *tc);
 __clib_export void tcp_dsack_recovery_init (tcp_connection_t *tc);
 __clib_export void tcp_track_rxt (tcp_connection_t *tc, u32 start, u32 end);
@@ -142,6 +148,19 @@ tcp_ack_handle_feedback (tcp_connection_t *tc, u32 packet_ack, tcp_ack_ctx_t *ac
     }
 
   ac->acked_and_sacked = ac->bytes_acked;
+}
+
+static inline u8
+tcp_dsack_report_enabled (tcp_connection_t *tc)
+{
+  return tcp_opts_sack_permitted (&tc->rcv_opts) && !(tc->sack_sb.flags & TCP_DSACK_UNDO_DISABLED);
+}
+
+/** Pending dsacks */
+static inline u8
+tcp_dsack_is_pending (tcp_connection_t *tc)
+{
+  return vec_len (tc->snd_dsacks) != 0;
 }
 
 __clib_export void tcp_sack_init_rxt (tcp_connection_t *tc, u32 snd_una);
