@@ -1411,7 +1411,8 @@ hss_add_del_listener_command_fn (vlib_main_t *vm, unformat_input_t *input,
 
   if (!is_add)
     {
-      hss_listener_del (l);
+      if (hss_listener_del (l))
+	error = clib_error_return (0, "Listener with given endpoint not found");
       goto done;
     }
 
