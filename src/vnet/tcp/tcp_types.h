@@ -141,6 +141,7 @@ typedef enum tcp_connection_flag_
 
 #define TCP_SCOREBOARD_TRACE (0)
 #define TCP_MAX_SACK_BLOCKS	    255 /**< Max number of SACK blocks stored */
+#define TCP_MAX_DSACK_BLOCKS	    8	/**< Max number of dsack blocks pending */
 #define TCP_INVALID_SACK_HOLE_INDEX ((u32)~0)
 #define TCP_MAX_SACK_REORDER 300
 #define TCP_SEQ_HALF_SPACE	    (1ULL << 31) /**< Half the 32-bit TCP sequence space */
@@ -509,6 +510,8 @@ typedef struct _tcp_connection
   u32 last_fib_check;	/**< Last time we checked fib route for peer */
   u16 mss;		/**< Our max seg size that includes options */
   u32 ipv6_flow_label;	/**< flow label for ipv6 header */
+
+  sack_block_t *snd_dsacks; /**< Duplicates to report, one per ack */
 
 #define rst_state snd_wl1
 } tcp_connection_t;
