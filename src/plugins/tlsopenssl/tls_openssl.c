@@ -1862,6 +1862,22 @@ openssl_tls_ctx_attribute (tls_ctx_t *ctx, u8 is_get,
 	  rv = -1;
       }
       break;
+    case TRANSPORT_ENDPT_ATTR_TLS_SERVER_NAME:
+      {
+	const char *server_name;
+
+	attr->tls_server_name = 0;
+	if (!oc->ssl)
+	  {
+	    rv = -1;
+	    break;
+	  }
+
+	server_name = SSL_get_servername (oc->ssl, TLSEXT_NAMETYPE_host_name);
+	if (server_name)
+	  attr->tls_server_name = format (0, "%s", server_name);
+      }
+      break;
     case TRANSPORT_ENDPT_ATTR_TLS_PROFILE_INFO:
       {
 	const char *cipher_name;
