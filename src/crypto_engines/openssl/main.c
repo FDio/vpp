@@ -3,6 +3,7 @@
  */
 
 #include <vppinfra/crypto/constant_time.h>
+#include <limits.h>
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
 #include <openssl/rand.h>
@@ -180,206 +181,196 @@ typedef struct
   _ (SHA2_384, EVP_sha384)                                                                         \
   _ (SHA2_512, EVP_sha512)
 
+/* CBC may retain a partial block between updates. Stage chained output in a
+ * buffer sized from the complete input and publish it only after finalization. */
+static_always_inline int
+openssl_cipher_process (EVP_CIPHER_CTX *ctx, vnet_crypto_op_t *op, vnet_crypto_op_chunk_t *chunks,
+			int is_enc)
+{
+  u8 *out = 0;
+  u8 final[EVP_MAX_BLOCK_LENGTH];
+  u32 total = 0, offset = 0;
+  int len = 0, final_len = 0;
+  int ok = 0;
+  int chained = op->flags & VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS;
+
+  if (ctx == 0)
+    return 0;
+
+  if (chained)
+    {
+      for (u32 j = 0; j < op->n_chunks; j++)
+	{
+	  u32 n = chunks[op->chunk_index + j].len;
+	  if (n > INT_MAX - total)
+	    return 0;
+	  total += n;
+	}
+    }
+  else
+    {
+      if (op->len > INT_MAX)
+	return 0;
+      total = op->len;
+    }
+
+  if (total % EVP_CIPHER_CTX_block_size (ctx))
+    return 0;
+  if (EVP_CipherInit_ex (ctx, NULL, NULL, NULL, op->iv, is_enc) != 1)
+    return 0;
+
+  if (chained)
+    {
+      vec_validate (out, (uword) total + EVP_MAX_BLOCK_LENGTH - 1);
+      for (u32 j = 0; j < op->n_chunks; j++)
+	{
+	  vnet_crypto_op_chunk_t *ch = chunks + op->chunk_index + j;
+	  if (EVP_CipherUpdate (ctx, out + offset, &len, ch->src, ch->len) != 1)
+	    goto done;
+	  if (len < 0 || (u32) len > total - offset)
+	    goto done;
+	  offset += len;
+	}
+      if (EVP_CipherFinal_ex (ctx, out + offset, &final_len) != 1 || final_len < 0 ||
+	  (u32) final_len != total - offset)
+	goto done;
+
+      offset = 0;
+      for (u32 j = 0; j < op->n_chunks; j++)
+	{
+	  vnet_crypto_op_chunk_t *ch = chunks + op->chunk_index + j;
+	  clib_memcpy_fast (ch->dst, out + offset, ch->len);
+	  offset += ch->len;
+	}
+    }
+  else
+    {
+      if (EVP_CipherUpdate (ctx, op->dst, &len, op->src, total) != 1 ||
+	  EVP_CipherFinal_ex (ctx, final, &final_len) != 1 || len != total || final_len != 0)
+	goto done;
+    }
+  ok = 1;
+done:
+  vec_free (out);
+  return ok;
+}
+
+static_always_inline int
+openssl_hmac_process (HMAC_CTX *ctx, vnet_crypto_op_t *op, vnet_crypto_op_chunk_t *chunks, u8 *out,
+		      u32 len)
+{
+  unsigned int out_len = 0;
+  if (ctx == 0 || len > EVP_MAX_MD_SIZE || HMAC_Init_ex (ctx, NULL, 0, NULL, NULL) != 1)
+    return 0;
+
+  if (op->flags & VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS)
+    {
+      for (u32 j = 0; j < op->auth_n_chunks; j++)
+	{
+	  vnet_crypto_op_chunk_t *ch = chunks + op->auth_chunk_index + j;
+	  if (HMAC_Update (ctx, ch->src, ch->len) != 1)
+	    return 0;
+	}
+    }
+  else if (HMAC_Update (ctx, op->auth_src, op->auth_src_len) != 1)
+    return 0;
+
+  return HMAC_Final (ctx, out, &out_len) == 1 && out_len >= len;
+}
+
+static_always_inline u32
+openssl_ops_cbc_hmac (vnet_crypto_op_t *ops[], vnet_crypto_op_chunk_t *chunks, u32 n_ops,
+		      u32 auth_len, clib_thread_index_t thread_index, int is_enc)
+{
+  u32 n_fail = 0;
+  for (u32 i = 0; i < n_ops; i++)
+    {
+      vnet_crypto_op_t *op = ops[i];
+      openssl_combined_key_data_t *kd =
+	(openssl_combined_key_data_t *) (chunks ? vnet_crypto_get_chained_key_data_for_thread (
+						    op->ctx, thread_index) :
+						  vnet_crypto_get_simple_key_data_for_thread (
+						    op->ctx, thread_index));
+      u32 len = auth_len ? auth_len : op->auth_len;
+      u8 auth[EVP_MAX_MD_SIZE];
+      op->status = VNET_CRYPTO_OP_STATUS_FAIL_ENGINE_ERR;
+
+      if (!is_enc)
+	{
+	  if (!openssl_hmac_process (kd->hmac_ctx, op, chunks, auth, len))
+	    goto fail;
+	  if (!clib_mem_equal_constant_time (op->auth, auth, len))
+	    {
+	      op->status = VNET_CRYPTO_OP_STATUS_FAIL_BAD_HMAC;
+	      goto fail;
+	    }
+	}
+      if (!openssl_cipher_process (is_enc ? kd->evp_cipher_enc_ctx : kd->evp_cipher_dec_ctx, op,
+				   chunks, is_enc))
+	goto fail;
+      if (is_enc)
+	{
+	  if (!openssl_hmac_process (kd->hmac_ctx, op, chunks, auth, len))
+	    goto fail;
+	  clib_memcpy_fast (op->auth, auth, len);
+	}
+      op->status = VNET_CRYPTO_OP_STATUS_COMPLETED;
+      continue;
+    fail:
+      n_fail++;
+    }
+  return n_ops - n_fail;
+}
+
 static_always_inline u32
 openssl_ops_enc_cbc_hmac (vnet_crypto_op_t *ops[], u32 n_ops, u32 auth_len,
 			  clib_thread_index_t thread_index)
 {
-  EVP_CIPHER_CTX *enc_ctx;
-  HMAC_CTX *hmac_ctx;
-  u32 i;
-  u8 buffer[64];
-
-  for (i = 0; i < n_ops; i++)
-    {
-      vnet_crypto_op_t *op = ops[i];
-      u32 len = auth_len ? auth_len : op->auth_len;
-      int out_len = 0;
-      unsigned int hmac_out_len = 0;
-
-      openssl_combined_key_data_t *kd =
-	(openssl_combined_key_data_t *) vnet_crypto_get_simple_key_data_for_thread (op->ctx,
-										    thread_index);
-      enc_ctx = kd->evp_cipher_enc_ctx;
-      hmac_ctx = kd->hmac_ctx;
-      EVP_EncryptInit_ex (enc_ctx, NULL, NULL, NULL, op->iv);
-      HMAC_Init_ex (hmac_ctx, NULL, 0, NULL, NULL);
-
-      EVP_EncryptUpdate (enc_ctx, op->dst, &out_len, op->src, op->len);
-      if (out_len < op->len)
-	EVP_EncryptFinal_ex (enc_ctx, op->dst + out_len, &out_len);
-
-      HMAC_Update (hmac_ctx, op->auth_src, op->auth_src_len);
-      HMAC_Final (hmac_ctx, buffer, &hmac_out_len);
-      clib_memcpy_fast (op->auth, buffer, len);
-      op->status = VNET_CRYPTO_OP_STATUS_COMPLETED;
-    }
-  return n_ops;
+  return openssl_ops_cbc_hmac (ops, 0, n_ops, auth_len, thread_index, 1);
 }
 
 static_always_inline u32
 openssl_ops_hmac_dec_cbc (vnet_crypto_op_t *ops[], u32 n_ops, u32 auth_len,
 			  clib_thread_index_t thread_index)
 {
-  HMAC_CTX *hmac_ctx;
-  EVP_CIPHER_CTX *dec_ctx;
-  u32 i, n_fail = 0;
-  u8 buffer[64];
-
-  for (i = 0; i < n_ops; i++)
-    {
-      vnet_crypto_op_t *op = ops[i];
-      u32 len = auth_len ? auth_len : op->auth_len;
-      int out_len = 0;
-      unsigned int hmac_out_len = 0;
-
-      openssl_combined_key_data_t *kd =
-	(openssl_combined_key_data_t *) vnet_crypto_get_simple_key_data_for_thread (op->ctx,
-										    thread_index);
-      hmac_ctx = kd->hmac_ctx;
-      dec_ctx = kd->evp_cipher_dec_ctx;
-      HMAC_Init_ex (hmac_ctx, NULL, 0, NULL, NULL);
-      EVP_DecryptInit_ex (dec_ctx, NULL, NULL, NULL, op->iv);
-
-      HMAC_Update (hmac_ctx, op->auth_src, op->auth_src_len);
-      HMAC_Final (hmac_ctx, buffer, &hmac_out_len);
-      if ((!clib_mem_equal_constant_time (op->auth, buffer, len)))
-	{
-	  n_fail++;
-	  op->status = VNET_CRYPTO_OP_STATUS_FAIL_BAD_HMAC;
-	  continue;
-	}
-      EVP_DecryptUpdate (dec_ctx, op->dst, &out_len, op->src, op->len);
-      if (out_len < op->len)
-	EVP_DecryptFinal_ex (dec_ctx, op->dst + out_len, &out_len);
-
-      op->status = VNET_CRYPTO_OP_STATUS_COMPLETED;
-    }
-  return n_ops - n_fail;
+  return openssl_ops_cbc_hmac (ops, 0, n_ops, auth_len, thread_index, 0);
 }
 
 static_always_inline u32
 openssl_ops_enc_cbc_hmac_chained (vnet_crypto_op_t *ops[], vnet_crypto_op_chunk_t *chunks,
 				  u32 n_ops, u32 auth_len, clib_thread_index_t thread_index)
 {
-  EVP_CIPHER_CTX *enc_ctx;
-  HMAC_CTX *hmac_ctx;
-  vnet_crypto_op_chunk_t *chp;
-  u32 i, j, curr_len = 0;
-  u8 out_buf[VLIB_BUFFER_DEFAULT_DATA_SIZE * 5];
-  u8 buffer[64];
-
-  for (i = 0; i < n_ops; i++)
-    {
-      vnet_crypto_op_t *op = ops[i];
-      u32 len = auth_len ? auth_len : op->auth_len;
-      int out_len = 0;
-      unsigned int hmac_out_len = 0;
-
-      openssl_combined_key_data_t *kd =
-	(openssl_combined_key_data_t *) vnet_crypto_get_chained_key_data_for_thread (op->ctx,
-										     thread_index);
-      enc_ctx = kd->evp_cipher_enc_ctx;
-      hmac_ctx = kd->hmac_ctx;
-      EVP_EncryptInit_ex (enc_ctx, NULL, NULL, NULL, op->iv);
-      HMAC_Init_ex (hmac_ctx, NULL, 0, NULL, NULL);
-
-      chp = chunks + op->chunk_index;
-      u32 offset = 0;
-      for (j = 0; j < op->n_chunks; j++)
-	{
-	  EVP_EncryptUpdate (enc_ctx, out_buf + offset, &out_len, chp->src,
-			     chp->len);
-	  curr_len = chp->len;
-	  offset += out_len;
-	  chp += 1;
-	}
-      if (out_len < curr_len)
-	EVP_EncryptFinal_ex (enc_ctx, out_buf + offset, &out_len);
-
-      offset = 0;
-      chp = chunks + op->chunk_index;
-      for (j = 0; j < op->n_chunks; j++)
-	{
-	  clib_memcpy_fast (chp->dst, out_buf + offset, chp->len);
-	  offset += chp->len;
-	  chp += 1;
-	}
-      chp = chunks + op->auth_chunk_index;
-      for (j = 0; j < op->auth_n_chunks; j++)
-	{
-	  HMAC_Update (hmac_ctx, chp->src, chp->len);
-	  chp += 1;
-	}
-
-      HMAC_Final (hmac_ctx, buffer, &hmac_out_len);
-      clib_memcpy_fast (op->auth, buffer, len);
-      op->status = VNET_CRYPTO_OP_STATUS_COMPLETED;
-    }
-  return n_ops;
+  return openssl_ops_cbc_hmac (ops, chunks, n_ops, auth_len, thread_index, 1);
 }
 
 static_always_inline u32
 openssl_ops_hmac_dec_cbc_chained (vnet_crypto_op_t *ops[], vnet_crypto_op_chunk_t *chunks,
 				  u32 n_ops, u32 auth_len, clib_thread_index_t thread_index)
 {
-  HMAC_CTX *hmac_ctx;
-  EVP_CIPHER_CTX *dec_ctx;
-  vnet_crypto_op_chunk_t *chp;
-  u32 i, j, curr_len = 0, n_fail = 0;
-  u8 out_buf[VLIB_BUFFER_DEFAULT_DATA_SIZE * 5];
-  u8 buffer[64];
+  return openssl_ops_cbc_hmac (ops, chunks, n_ops, auth_len, thread_index, 0);
+}
 
-  for (i = 0; i < n_ops; i++)
+static_always_inline u32
+openssl_ops_cbc (vnet_crypto_op_t *ops[], vnet_crypto_op_chunk_t *chunks, u32 n_ops,
+		 clib_thread_index_t thread_index, int is_enc)
+{
+  u32 n_fail = 0;
+  for (u32 i = 0; i < n_ops; i++)
     {
       vnet_crypto_op_t *op = ops[i];
-      u32 len = auth_len ? auth_len : op->auth_len;
-      int out_len = 0;
-      unsigned int hmac_out_len = 0;
-
-      openssl_combined_key_data_t *kd =
-	(openssl_combined_key_data_t *) vnet_crypto_get_chained_key_data_for_thread (op->ctx,
-										     thread_index);
-      hmac_ctx = kd->hmac_ctx;
-      dec_ctx = kd->evp_cipher_dec_ctx;
-      HMAC_Init_ex (hmac_ctx, NULL, 0, NULL, NULL);
-      EVP_DecryptInit_ex (dec_ctx, NULL, NULL, NULL, op->iv);
-
-      chp = chunks + op->auth_chunk_index;
-      for (j = 0; j < op->auth_n_chunks; j++)
+      openssl_cipher_key_data_t *kd =
+	(openssl_cipher_key_data_t *) (chunks ? vnet_crypto_get_chained_key_data_for_thread (
+						  op->ctx, thread_index) :
+						vnet_crypto_get_simple_key_data_for_thread (
+						  op->ctx, thread_index));
+      if (openssl_cipher_process (is_enc ? kd->evp_cipher_enc_ctx : kd->evp_cipher_dec_ctx, op,
+				  chunks, is_enc))
+	op->status = VNET_CRYPTO_OP_STATUS_COMPLETED;
+      else
 	{
-	  HMAC_Update (hmac_ctx, chp->src, chp->len);
-	  chp += 1;
-	}
-      HMAC_Final (hmac_ctx, buffer, &hmac_out_len);
-      if ((!clib_mem_equal_constant_time (op->auth, buffer, len)))
-	{
+	  op->status = VNET_CRYPTO_OP_STATUS_FAIL_ENGINE_ERR;
 	  n_fail++;
-	  op->status = VNET_CRYPTO_OP_STATUS_FAIL_BAD_HMAC;
-	  continue;
 	}
-
-      chp = chunks + op->chunk_index;
-      u32 offset = 0;
-      for (j = 0; j < op->n_chunks; j++)
-	{
-	  EVP_DecryptUpdate (dec_ctx, out_buf + offset, &out_len, chp->src,
-			     chp->len);
-	  curr_len = chp->len;
-	  offset += out_len;
-	  chp += 1;
-	}
-      if (out_len < curr_len)
-	EVP_DecryptFinal_ex (dec_ctx, out_buf + offset, &out_len);
-
-      offset = 0;
-      chp = chunks + op->chunk_index;
-      for (j = 0; j < op->n_chunks; j++)
-	{
-	  clib_memcpy_fast (chp->dst, out_buf + offset, chp->len);
-	  offset += chp->len;
-	  chp += 1;
-	}
-      op->status = VNET_CRYPTO_OP_STATUS_COMPLETED;
     }
   return n_ops - n_fail;
 }
@@ -388,116 +379,14 @@ static_always_inline u32
 openssl_ops_enc_cbc (vnet_crypto_op_t *ops[], vnet_crypto_op_chunk_t *chunks, u32 n_ops,
 		     clib_thread_index_t thread_index)
 {
-  EVP_CIPHER_CTX *ctx;
-  vnet_crypto_op_chunk_t *chp;
-  u32 i, j, curr_len = 0;
-  u8 out_buf[VLIB_BUFFER_DEFAULT_DATA_SIZE * 5];
-
-  for (i = 0; i < n_ops; i++)
-    {
-      vnet_crypto_op_t *op = ops[i];
-      openssl_cipher_key_data_t *kd =
-	chunks ?
-	  (openssl_cipher_key_data_t *) vnet_crypto_get_chained_key_data_for_thread (op->ctx,
-										     thread_index) :
-	  (openssl_cipher_key_data_t *) vnet_crypto_get_simple_key_data_for_thread (op->ctx,
-										    thread_index);
-      int out_len = 0;
-
-      ctx = kd->evp_cipher_enc_ctx;
-      EVP_EncryptInit_ex (ctx, NULL, NULL, NULL, op->iv);
-
-      if (op->flags & VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS)
-	{
-	  chp = chunks + op->chunk_index;
-	  u32 offset = 0;
-	  for (j = 0; j < op->n_chunks; j++)
-	    {
-	      EVP_EncryptUpdate (ctx, out_buf + offset, &out_len, chp->src,
-				 chp->len);
-	      curr_len = chp->len;
-	      offset += out_len;
-	      chp += 1;
-	    }
-	  if (out_len < curr_len)
-	    EVP_EncryptFinal_ex (ctx, out_buf + offset, &out_len);
-
-	  offset = 0;
-	  chp = chunks + op->chunk_index;
-	  for (j = 0; j < op->n_chunks; j++)
-	    {
-	      clib_memcpy_fast (chp->dst, out_buf + offset, chp->len);
-	      offset += chp->len;
-	      chp += 1;
-	    }
-	}
-      else
-	{
-	  EVP_EncryptUpdate (ctx, op->dst, &out_len, op->src, op->len);
-	  if (out_len < op->len)
-	    EVP_EncryptFinal_ex (ctx, op->dst + out_len, &out_len);
-	}
-      op->status = VNET_CRYPTO_OP_STATUS_COMPLETED;
-    }
-  return n_ops;
+  return openssl_ops_cbc (ops, chunks, n_ops, thread_index, 1);
 }
 
 static_always_inline u32
 openssl_ops_dec_cbc (vnet_crypto_op_t *ops[], vnet_crypto_op_chunk_t *chunks, u32 n_ops,
 		     clib_thread_index_t thread_index)
 {
-  EVP_CIPHER_CTX *ctx;
-  vnet_crypto_op_chunk_t *chp;
-  u32 i, j, curr_len = 0;
-  u8 out_buf[VLIB_BUFFER_DEFAULT_DATA_SIZE * 5];
-
-  for (i = 0; i < n_ops; i++)
-    {
-      vnet_crypto_op_t *op = ops[i];
-      openssl_cipher_key_data_t *kd =
-	chunks ?
-	  (openssl_cipher_key_data_t *) vnet_crypto_get_chained_key_data_for_thread (op->ctx,
-										     thread_index) :
-	  (openssl_cipher_key_data_t *) vnet_crypto_get_simple_key_data_for_thread (op->ctx,
-										    thread_index);
-      int out_len = 0;
-
-      ctx = kd->evp_cipher_dec_ctx;
-      EVP_DecryptInit_ex (ctx, NULL, NULL, NULL, op->iv);
-
-      if (op->flags & VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS)
-	{
-	  chp = chunks + op->chunk_index;
-	  u32 offset = 0;
-	  for (j = 0; j < op->n_chunks; j++)
-	    {
-	      EVP_DecryptUpdate (ctx, out_buf + offset, &out_len, chp->src,
-				 chp->len);
-	      curr_len = chp->len;
-	      offset += out_len;
-	      chp += 1;
-	    }
-	  if (out_len < curr_len)
-	    EVP_DecryptFinal_ex (ctx, out_buf + offset, &out_len);
-
-	  offset = 0;
-	  chp = chunks + op->chunk_index;
-	  for (j = 0; j < op->n_chunks; j++)
-	    {
-	      clib_memcpy_fast (chp->dst, out_buf + offset, chp->len);
-	      offset += chp->len;
-	      chp += 1;
-	    }
-	}
-      else
-	{
-	  EVP_DecryptUpdate (ctx, op->dst, &out_len, op->src, op->len);
-	  if (out_len < op->len)
-	    EVP_DecryptFinal_ex (ctx, op->dst + out_len, &out_len);
-	}
-      op->status = VNET_CRYPTO_OP_STATUS_COMPLETED;
-    }
-  return n_ops;
+  return openssl_ops_cbc (ops, chunks, n_ops, thread_index, 0);
 }
 
 static_always_inline u32
