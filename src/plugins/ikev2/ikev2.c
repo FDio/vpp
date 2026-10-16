@@ -1288,7 +1288,11 @@ static int
 ikev2_parse_auth_payload (const void *p, u32 rlen, ikev2_auth_t * a)
 {
   const ike_auth_payload_header_t *ah = p;
+  if (rlen < sizeof (*ah))
+    return 0;
   u16 plen = clib_net_to_host_u16 (ah->length);
+  if (plen < sizeof (*ah) || plen > rlen)
+    return 0;
 
   a->method = ah->auth_method;
   vec_reset_length (a->data);
