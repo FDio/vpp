@@ -46,7 +46,12 @@ oct_hw_ctx_cache_enable (void)
 }
 
 static_always_inline i32
-oct_crypto_session_create (oct_crypto_key_t *ckey, vnet_crypto_ctx_t *ctx __clib_unused,
+oct_crypto_session_init (vlib_main_t *vm, oct_crypto_sess_t *session,
+                         vnet_crypto_ctx_t *ctx, vnet_crypto_alg_t alg_id,
+                         int op_type);
+
+static_always_inline i32
+oct_crypto_session_create (oct_crypto_key_t *ckey, vnet_crypto_ctx_t *ctx,
 			   int op_type)
 {
   oct_crypto_main_t *ocm = &oct_crypto_main;
@@ -62,6 +67,12 @@ oct_crypto_session_create (oct_crypto_key_t *ckey, vnet_crypto_ctx_t *ctx __clib
       return -1;
     }
   session->crypto_dev = ocd;
+  /* Key callbacks run with workers stopped; publish only a complete session. */
+  if (oct_crypto_session_init (vlib_get_main (), session, ctx, ctx->alg, op_type))
+    {
+      oct_plt_init_param.oct_plt_free (session);
+      return -1;
+    }
   ckey->sess[op_type] = session;
   return 0;
 }
@@ -85,7 +96,7 @@ oct_crypto_key_change_handler (vnet_crypto_ctx_t *ctx, vnet_crypto_key_change_ar
 	  if (ckey->sess[type] == NULL && oct_crypto_session_create (ckey, ctx, type))
 	    {
 	      log_err (ocd->dev, "Unable to create crypto session");
-	      return;
+	      goto cleanup;
 	    }
 	}
 
@@ -95,6 +106,7 @@ oct_crypto_key_change_handler (vnet_crypto_ctx_t *ctx, vnet_crypto_key_change_ar
 
   ASSERT (args->action == VNET_CRYPTO_KEY_DATA_REMOVE);
 
+cleanup:
   ctx_cache_enabled = oct_hw_ctx_cache_enable ();
 
   for (type = VNET_CRYPTO_OP_TYPE_ENCRYPT; type <= VNET_CRYPTO_OP_TYPE_DECRYPT; type++)
@@ -109,12 +121,6 @@ oct_crypto_key_change_handler (vnet_crypto_ctx_t *ctx, vnet_crypto_key_change_ar
       oct_plt_init_param.oct_plt_free (ckey->sess[type]);
       ckey->sess[type] = NULL;
     }
-}
-
-static_always_inline void
-oct_crypto_session_free (vlib_main_t *vm __clib_unused, oct_crypto_sess_t *sess)
-{
-  oct_plt_init_param.oct_plt_free (sess);
 }
 
 #ifdef PLATFORM_OCTEON9
@@ -1146,10 +1152,7 @@ oct_crypto_session_init (vlib_main_t *vm, oct_crypto_sess_t *session, vnet_crypt
     rv = oct_crypto_aead_session_update (vm, session, ctx, alg_id, op_type);
 
   if (rv)
-    {
-      oct_crypto_session_free (vm, session);
-      return -1;
-    }
+    return -1;
 
   session->crypto_dev = ocd;
 
@@ -1157,8 +1160,6 @@ oct_crypto_session_init (vlib_main_t *vm, oct_crypto_sess_t *session, vnet_crypt
 
   if (oct_hw_ctx_cache_enable ())
     roc_se_ctx_init (&session->cpt_ctx);
-
-  session->initialised = 1;
 
   return 0;
 }
@@ -1235,14 +1236,6 @@ oct_crypto_enq (vlib_main_t *vm, vnet_crypto_async_frame_t *frame, const u8 is_a
 	}
 
       sess = ckey->sess[type];
-
-      if (PREDICT_FALSE (!sess->initialised))
-	ret = oct_crypto_session_init (vm, sess, ctx, frame->alg, type);
-      if (ret)
-	{
-	  oct_crypto_update_frame_error_status (frame, i, VNET_CRYPTO_OP_STATUS_FAIL_ENGINE_ERR);
-	  return -1;
-	}
 
       crypto_dev = sess->crypto_dev;
 

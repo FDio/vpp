@@ -52,8 +52,6 @@ typedef struct
   u8 iv_length;
   /** CPT inst word 7 */
   u64 cpt_inst_w7;
-  /* initialise as part of first packet */
-  u8 initialised;
   oct_crypto_dev_t *crypto_dev;
   struct roc_se_ctx cpt_ctx;
 } oct_crypto_sess_t;
