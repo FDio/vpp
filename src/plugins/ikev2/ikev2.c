@@ -5313,14 +5313,39 @@ ikev2_sw_interface_add_del (vnet_main_t * vnm, u32 sw_if_index, u32 is_add)
 {
   ikev2_main_t *km = &ikev2_main;
   ikev2_profile_t *p;
+  ikev2_sa_t *sa, **sap, **sa_vec = 0;
+  u64 *ispi, *ispi_vec = 0;
 
   if (is_add)
     return 0;
 
-  pool_foreach (p, km->profiles)  {
-    if (p->responder.sw_if_index == sw_if_index)
-      ikev2_sa_del (p, sw_if_index);
-  }
+  pool_foreach (p, km->profiles)
+    {
+      if (p->responder.sw_if_index == sw_if_index)
+	ikev2_sa_del (p, sw_if_index);
+      if (p->tun_itf == sw_if_index)
+	p->tun_itf = ~0;
+    }
+
+  /* the index of a deleted tunnel interface is reused by the next
+     interface: delete the IKE SAs that protect it while it exists */
+  pool_foreach (sa, km->sas)
+    {
+      if (sa->is_tun_itf_set && sa->tun_itf == sw_if_index)
+	vec_add1 (sa_vec, sa);
+    }
+  vec_foreach (sap, sa_vec)
+    ikev2_initiate_delete_ike_sa_internal (vlib_get_main (), *sap, 1);
+  vec_free (sa_vec);
+
+  pool_foreach (sa, km->sais)
+    {
+      if (sa->is_tun_itf_set && sa->tun_itf == sw_if_index)
+	vec_add1 (ispi_vec, sa->ispi);
+    }
+  vec_foreach (ispi, ispi_vec)
+    ikev2_del_sa_init_from_main (ispi);
+  vec_free (ispi_vec);
 
   return 0;
 }

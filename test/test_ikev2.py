@@ -27,6 +27,7 @@ from asfframework import (
     VppTestRunner,
 )
 from vpp_ikev2 import Profile, IDType, AuthMethod
+from vpp_ipip_tun_interface import VppIpIpTunInterface
 from vpp_papi import VppEnum
 
 try:
@@ -2363,6 +2364,41 @@ class TestResponderPsk(TemplateResponder, Ikev2Params):
 
     def config_tc(self):
         self.config_params()
+
+
+class TestResponderTunItfDeleted(TestResponderPsk):
+    """test ikev2 responder - delete the profile tunnel interface"""
+
+    def config_tc(self):
+        super(TestResponderTunItfDeleted, self).config_tc()
+        self.tun_itf = VppIpIpTunInterface(
+            self, self.pg0, self.pg0.local_ip4, self.pg0.remote_ip4
+        )
+        self.tun_itf.add_vpp_config()
+        self.tun_itf.admin_up()
+        self.p.set_tunnel_interface(self.tun_itf.sw_if_index)
+
+    def tearDown(self):
+        # the IKE SA is deleted with the tunnel interface in test_responder
+        super(IkePeer, self).tearDown()
+        self.p.remove_vpp_config()
+
+    def test_responder(self):
+        super(TestResponderTunItfDeleted, self).test_responder()
+        self.pg0.enable_capture()
+        self.pg_start()
+        self.tun_itf.remove_vpp_config()
+        capture = self.pg0.get_capture(1)
+        ih = self.get_ike_header(capture[0])
+        self.assertEqual(ih.exch_type, 37)  # INFORMATIONAL
+        self.assertNotIn("Response", ih.flags)
+        plain = self.sa.hmac_and_decrypt(ih)
+        d = ikev2.IKEv2_payload_Delete(plain)
+        self.assertEqual(d.proto, 1)  # proto=IKEv2
+        self.assertEqual(len(self.vapi.ikev2_sa_dump()), 0)
+        self.assertEqual(len(self.vapi.ipsec_sa_dump()), 0)
+        r = self.vapi.ikev2_profile_dump()
+        self.assertEqual(r[0].profile.tun_itf, 0xFFFFFFFF)
 
 
 class TestResponderPskNullEsp(TestResponderPsk):
