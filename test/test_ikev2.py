@@ -981,22 +981,23 @@ class IkePeer(VppTestCase):
             else:
                 sa_count = 2
         self.assertEqual(len(sas), sa_count)
-        if self.sa.is_initiator:
-            if is_rekey:
-                sa0 = sas[0].entry
-                sa1 = sas[2].entry
-            else:
-                sa0 = sas[0].entry
-                sa1 = sas[1].entry
-        else:
-            if is_rekey:
-                sa0 = sas[2].entry
-                sa1 = sas[0].entry
-            else:
-                sa1 = sas[0].entry
-                sa0 = sas[1].entry
-
         c = self.sa.child_sas[0]
+        inbound_flag = VppEnum.vl_api_ipsec_sad_flags_t.IPSEC_API_SAD_FLAG_IS_INBOUND
+
+        def find_sa(spi, inbound):
+            matches = [
+                sa.entry
+                for sa in sas
+                if sa.entry.spi == int.from_bytes(spi, "big")
+                and bool(sa.entry.flags & inbound_flag) == inbound
+            ]
+            self.assertEqual(len(matches), 1)
+            return matches[0]
+
+        # Pool indices can change when old crypto contexts retire asynchronously.
+        # Match both SPI and direction: a peer may choose equal SPIs in each direction.
+        sa0 = find_sa(c.ispi, not self.sa.is_initiator)
+        sa1 = find_sa(c.rspi, self.sa.is_initiator)
 
         self.verify_udp_encap(sa0)
         self.verify_udp_encap(sa1)
@@ -2486,6 +2487,145 @@ class TestResponderPsk(TemplateResponder, Ikev2Params):
 
     def config_tc(self):
         self.config_params()
+
+
+class TestResponderMalformedInit(TestResponderPsk):
+    """reject malformed unauthenticated IKE payloads"""
+
+    def send_malformed(self, message):
+        packet = self.create_packet(
+            self.pg0, message, self.sa.sport, self.sa.dport, self.sa.natt, self.ip6
+        )
+        self.send_and_assert_no_replies(self.pg0, packet)
+
+    def test_responder(self):
+        # A proposal with More=2 and length zero must not loop forever.
+        message = bytearray(
+            raw(
+                ikev2.IKEv2(
+                    init_SPI=self.sa.ispi, flags="Initiator", exch_type="IKE_SA_INIT"
+                )
+                / self.generate_sa_init_payload()
+            )
+        )
+        message[32] = 2
+        message[34:36] = b"\x00\x00"
+        self.send_malformed(bytes(message))
+
+        # Generic headers alone do not satisfy the typed payload lengths.
+        for payload_type, data in (
+            (34, b"\x00\x00\x00\x04"),  # short KE
+            (40, b"\x00\x00\x00\x05\x00"),  # short nonce
+            (41, b"\x00\x00\x00\x08\x00\x00\x40\x04"),  # empty NAT digest
+        ):
+            self.send_malformed(
+                ikev2.IKEv2(
+                    init_SPI=self.sa.ispi,
+                    flags="Initiator",
+                    exch_type="IKE_SA_INIT",
+                    next_payload=payload_type,
+                )
+                / Raw(data)
+            )
+
+        self.send_sa_init_req()
+        # A retransmission nonce must fit the saved nonce before comparison.
+        self.send_malformed(
+            ikev2.IKEv2(
+                init_SPI=self.sa.ispi, flags="Initiator", exch_type="IKE_SA_INIT"
+            )
+            / self.generate_sa_init_payload(nonce=self.sa.i_nonce + b"x" * 1024)
+        )
+        # Repeating a forged request must not require an absent cached reply.
+        header = ikev2.IKEv2(
+            init_SPI=self.sa.ispi,
+            resp_SPI=self.sa.rspi,
+            flags="Initiator",
+            exch_type="INFORMATIONAL",
+            id=65536,
+        )
+        forged = bytearray(raw(self.encrypt_ike_msg(header, b"", None)))
+        forged[-1] ^= 1
+        self.send_malformed(bytes(forged))
+        self.send_malformed(bytes(forged))
+        self.send_sa_auth()
+        self.verify_ipsec_sas()
+        # Bad integrity must not advance an established SA's message window.
+        self.send_malformed(bytes(forged))
+        # A forged IKE_AUTH must not delete the established SA either.
+        header.exch_type = "IKE_AUTH"
+        header.length = None
+        forged_auth = bytearray(raw(self.encrypt_ike_msg(header, b"", None)))
+        forged_auth[-1] ^= 1
+        self.send_malformed(bytes(forged_auth))
+        # tearDown sends the next valid request and deletes the SA.
+
+
+class TestResponderInvalidPadding(TestResponderPsk):
+    """reject authenticated CBC ciphertext with an invalid padding length"""
+
+    def test_responder(self):
+        self.send_sa_init_req()
+        self.send_sa_auth()
+        header = ikev2.IKEv2(
+            init_SPI=self.sa.ispi,
+            resp_SPI=self.sa.rspi,
+            flags="Initiator",
+            exch_type="INFORMATIONAL",
+            id=self.sa.msg_id + 1,
+        )
+        crypto = self.sa.ike_crypto_alg
+        original_pad = crypto.pad
+        try:
+            crypto.pad = lambda data: b"\xff" * crypto.bs
+            message = self.encrypt_ike_msg(header, b"", None)
+        finally:
+            crypto.pad = original_pad
+        packet = self.create_packet(
+            self.pg0, message, self.sa.sport, self.sa.dport, self.sa.natt, self.ip6
+        )
+        self.send_and_assert_no_replies(self.pg0, packet)
+        # tearDown sends the next valid request and deletes the SA.
+
+
+class TestResponderInvalidAeadPadding(TestResponderInvalidPadding):
+    """reject authenticated GCM ciphertext with an invalid padding length"""
+
+    def config_tc(self):
+        self.config_params({"ike-crypto": ("AES-GCM-16ICV", 32), "ike-integ": "NULL"})
+
+
+class TestResponderPskEmptyAuth(TestResponderPsk):
+    """reject an empty shared key authenticator"""
+
+    auth_length = 0
+
+    def tearDown(self):
+        # Rejected IKE_AUTH already deletes the SA; no Delete exchange remains.
+        super(IkePeer, self).tearDown()
+        self.assertEqual(len(self.vapi.ikev2_sa_dump()), 0)
+        self.assertEqual(len(self.vapi.ikev2_sa_v2_dump()), 0)
+        self.assertEqual(len(self.vapi.ipsec_sa_dump()), 0)
+        self.p.remove_vpp_config()
+        self.assertIsNone(self.p.query_vpp_config())
+
+    def verify_sa_auth_resp(self, packet):
+        ike = self.get_ike_header(packet)
+        plain = self.sa.hmac_and_decrypt(ike)
+        notification = ikev2.IKEv2_payload_Notify(plain)
+        self.assertEqual(notification.type, 24)  # AUTHENTICATION_FAILED
+
+    def test_responder(self):
+        self.send_sa_init_req()
+        self.sa.auth_data = self.sa.auth_data[: self.auth_length]
+        self.send_sa_auth()
+        self.assertEqual(len(self.vapi.ipsec_sa_dump()), 0)
+
+
+class TestResponderPskTruncatedAuth(TestResponderPskEmptyAuth):
+    """reject a correct one-byte prefix of the shared key authenticator"""
+
+    auth_length = 1
 
 
 class TestResponderTunItfDeleted(TestResponderPsk):
