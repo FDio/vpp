@@ -1473,11 +1473,6 @@ http1_req_state_wait_app_method (http_ctx_t *hc, http_ctx_t *req, transport_send
     }
   else if (msg.method_type == HTTP_REQ_POST)
     {
-      if (!msg.data.body_len)
-	{
-	  clib_warning ("POST request should include data");
-	  goto error;
-	}
       /*
        * Add "protocol layer" headers:
        * - host
@@ -1494,8 +1489,9 @@ http1_req_state_wait_app_method (http_ctx_t *hc, http_ctx_t *req, transport_send
 				 /* Content-Length */
 				 msg.data.body_len);
 
-      next_state = HTTP_REQ_STATE_APP_IO_MORE_DATA;
-      sm_result = HTTP_SM_CONTINUE;
+      next_state =
+	msg.data.body_len ? HTTP_REQ_STATE_APP_IO_MORE_DATA : HTTP_REQ_STATE_WAIT_TRANSPORT_REPLY;
+      sm_result = msg.data.body_len ? HTTP_SM_CONTINUE : HTTP_SM_STOP;
     }
   else if (msg.method_type == HTTP_REQ_PUT)
     {
