@@ -308,6 +308,7 @@ wg_add_to_async_frame (vlib_main_t *vm, wg_per_thread_data_t *ptd, u32 *async_bi
 
   *vnet_crypto_buffer_get_metadata (b) = md;
   async_bi[0] = bi;
+  vnet_crypto_ctx_acquire (kp->send_ctx);
   async_ctx[0] = pointer_to_uword (kp->send_ctx);
 
   /* If our values are still within tolerances, but we are approaching

@@ -997,6 +997,8 @@ ipsec_sa_add_and_lock (u32 id, u32 spi, ipsec_protocol_t proto,
 	}
 
       sa->ctx = ctx;
+      ctx->async_post = 1;
+      ctx->on_free_arg = sa_index;
     }
 
   ipsec_sa_set_async_mode (sa, im->async_mode || ipsec_sa_is_set_IS_ASYNC (sa));
@@ -1067,24 +1069,12 @@ fail:
 }
 
 static void
-ipsec_sa_del (ipsec_sa_t * sa)
+ipsec_sa_free (uword sa_index)
 {
-  vlib_main_t *vm = vlib_get_main ();
   ipsec_main_t *im = &ipsec_main;
-  u32 sa_index;
+  ipsec_sa_t *sa = ipsec_sa_get (sa_index);
   ipsec_sa_inb_rt_t *irt = ipsec_sa_get_inb_rt (sa);
   ipsec_sa_outb_rt_t *ort = ipsec_sa_get_outb_rt (sa);
-
-  sa_index = sa - im->sa_pool;
-  hash_unset (im->sa_index_by_sa_id, sa->id);
-  tunnel_unresolve (&sa->tunnel);
-
-  if (sa->ctx)
-    vnet_crypto_ctx_destroy (vm, sa->ctx);
-
-  if (ipsec_sa_is_set_UDP_ENCAP (sa) && ipsec_sa_is_set_IS_INBOUND (sa))
-    ipsec_unregister_udp_port (sa->udp_dst_port,
-			       !ipsec_sa_is_set_IS_TUNNEL_V6 (sa));
 
   if (ipsec_sa_is_set_IS_TUNNEL (sa) && !ipsec_sa_is_set_IS_INBOUND (sa))
     dpo_reset (&ort->dpo);
@@ -1094,8 +1084,32 @@ ipsec_sa_del (ipsec_sa_t * sa)
 
   im->inb_sa_runtimes[sa_index] = 0;
   im->outb_sa_runtimes[sa_index] = 0;
+  pool_put_index (im->sa_pool, sa_index);
+}
 
-  pool_put (im->sa_pool, sa);
+static void
+ipsec_sa_del (ipsec_sa_t *sa)
+{
+  vlib_main_t *vm = vlib_get_main ();
+  ipsec_main_t *im = &ipsec_main;
+  u32 sa_index = sa - im->sa_pool;
+
+  hash_unset (im->sa_index_by_sa_id, sa->id);
+  tunnel_unresolve (&sa->tunnel);
+
+  if (ipsec_sa_is_set_UDP_ENCAP (sa) && ipsec_sa_is_set_IS_INBOUND (sa))
+    ipsec_unregister_udp_port (sa->udp_dst_port, !ipsec_sa_is_set_IS_TUNNEL_V6 (sa));
+
+  /* Keep the SA index, runtime and outbound DPO alive through backend and ESP
+   * post processing. The finalizer runs on the main thread under a barrier. */
+  if (sa->ctx)
+    {
+      sa->ctx->on_free = ipsec_sa_free;
+      sa->ctx->on_free_arg = sa_index;
+      vnet_crypto_ctx_destroy (vm, sa->ctx);
+    }
+  else
+    ipsec_sa_free (sa_index);
 }
 
 int
@@ -1211,6 +1225,8 @@ ipsec_sa_walk (ipsec_sa_walk_cb_t cb, void *ctx)
 
   pool_foreach (sa, im->sa_pool)
     {
+      if (sa->ctx && sa->ctx->pending_destroy)
+	continue;
       if (WALK_CONTINUE != cb (sa, ctx))
 	break;
     }

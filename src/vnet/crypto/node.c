@@ -157,6 +157,19 @@ crypto_dispatch_frame (vlib_main_t *vm, vlib_node_runtime_t *node, vnet_crypto_t
 	    vnet_crypto_async_add_trace (vm, node, b, cf->alg, cf->type, status);
 	}
     }
+  for (u32 i = 0; i < cf->n_elts; i++)
+    {
+      vnet_crypto_ctx_t *ctx = cf->ctxs[i];
+      if (ctx->async_post && !uword_bitmap_is_bit_set (cf->bad_hmac_bitmap, i) &&
+	  !uword_bitmap_is_bit_set (cf->engine_error_bitmap, i))
+	{
+	  vlib_buffer_t *b = vlib_get_buffer (vm, cf->buffer_indices[i]);
+	  clib_memcpy_fast (vnet_crypto_buffer_get_metadata (b), &ctx, sizeof (ctx));
+	}
+      else
+	vnet_crypto_ctx_release (ctx);
+    }
+
   if (cf->enqueue_thread_index == vm->thread_index)
     pool_put (ct->frame_pool, cf);
   else
@@ -263,6 +276,7 @@ VLIB_NODE_FN (crypto_enq_node)
 	    }
 	  if (PREDICT_FALSE (f == 0))
 	    {
+	      vnet_crypto_ctx_release (ctx[0]);
 	      drop_bi[n_drop++] = bi;
 	      vlib_node_increment_counter (vm, node->node_index,
 					   VNET_CRYPTO_ASYNC_ERROR_ENQUEUE_FAIL_NO_FRAME, 1);

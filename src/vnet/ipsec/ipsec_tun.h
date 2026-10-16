@@ -108,6 +108,7 @@ typedef struct ipsec_ep_t_
 typedef struct ipsec_tun_protect_t_
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+  u64 itp_generation;
   index_t itp_out_sa;
 
   /* not using a vector since we want the memory inline
@@ -178,6 +179,16 @@ ipsec_tun_protect_get (u32 index)
 }
 
 extern index_t *ipsec_tun_protect_sa_by_adj_index;
+extern u32 *ipsec_tun_protect_generation_by_adj_index;
+
+always_inline u32
+ipsec_tun_protect_get_adj_generation (adj_index_t ai)
+{
+  return ai < vec_len (ipsec_tun_protect_generation_by_adj_index) ?
+	   ipsec_tun_protect_generation_by_adj_index[ai] :
+	   0;
+}
+
 always_inline index_t
 ipsec_tun_protect_get_sa_out (adj_index_t ai)
 {

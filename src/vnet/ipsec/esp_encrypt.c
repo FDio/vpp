@@ -1080,7 +1080,15 @@ esp_encrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	}
       else
 	{
+	  esp_post_data_t *post = esp_post_data (b[0]);
+	  post->encrypt_data.refresh_dpo = rt.is_tunnel && !is_tun;
+	  post->encrypt_data.check_adj = is_tun;
+	  post->encrypt_data.adj_generation =
+	    is_tun ?
+	      ipsec_tun_protect_get_adj_generation (vnet_buffer (b[0])->ip.adj_index[VLIB_TX]) :
+	      0;
 	  async_bi[n_async] = from[b - bufs];
+	  vnet_crypto_ctx_acquire (ort->ctx);
 	  async_ctx[n_async] = pointer_to_uword (ort->ctx);
 	  n_async++;
 	}
@@ -1118,8 +1126,40 @@ esp_encrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   return frame->n_vectors;
 }
 
+always_inline u16
+esp_encrypt_post_next (vlib_buffer_t *b, u16 drop_next)
+{
+  esp_post_data_t *post = esp_post_data (b);
+  vnet_crypto_ctx_t *ctx = vnet_crypto_async_get_post_ctx (b);
+
+  if (PREDICT_FALSE (__atomic_load_n (&ctx->pending_destroy, __ATOMIC_ACQUIRE)))
+    return drop_next;
+
+  /* An SA's outbound DPO can be restacked while its crypto operation is in
+   * flight. Resolve the current DPO after completion instead of forwarding
+   * through a stale numeric DPO saved at enqueue. Worker barriers protect
+   * the remaining downstream graph dispatch. */
+  if (post->encrypt_data.refresh_dpo)
+    {
+      const ipsec_sa_outb_rt_t *ort = ipsec_sa_get_outb_rt_by_index (ctx->on_free_arg);
+      vnet_buffer (b)->ip.adj_index[VLIB_TX] = ort->dpo.dpoi_index;
+      return ort->dpo.dpoi_next_node;
+    }
+  if (post->encrypt_data.check_adj)
+    {
+      adj_index_t ai = vnet_buffer (b)->ip.adj_index[VLIB_TX];
+      if (!post->encrypt_data.adj_generation ||
+	  post->encrypt_data.adj_generation != ipsec_tun_protect_get_adj_generation (ai) ||
+	  ai >= vec_len (ipsec_tun_protect_sa_by_adj_index) ||
+	  ipsec_tun_protect_sa_by_adj_index[ai] != ctx->on_free_arg)
+	return drop_next;
+    }
+  return post->encrypt_data.next_index;
+}
+
 always_inline uword
-esp_encrypt_post_inline (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
+esp_encrypt_post_inline (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame,
+			 u16 drop_next)
 {
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b = bufs;
   u16 nexts[VLIB_FRAME_SIZE], *next = nexts;
@@ -1143,10 +1183,10 @@ esp_encrypt_post_inline (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_
       vlib_prefetch_buffer_header (b[6], LOAD);
       vlib_prefetch_buffer_header (b[7], LOAD);
 
-      next[0] = (esp_post_data (b[0]))->next_index;
-      next[1] = (esp_post_data (b[1]))->next_index;
-      next[2] = (esp_post_data (b[2]))->next_index;
-      next[3] = (esp_post_data (b[3]))->next_index;
+      next[0] = esp_encrypt_post_next (b[0], drop_next);
+      next[1] = esp_encrypt_post_next (b[1], drop_next);
+      next[2] = esp_encrypt_post_next (b[2], drop_next);
+      next[3] = esp_encrypt_post_next (b[3], drop_next);
 
       if (PREDICT_FALSE (node->flags & VLIB_NODE_FLAG_TRACE))
 	{
@@ -1183,7 +1223,7 @@ esp_encrypt_post_inline (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_
 
   while (n_left > 0)
     {
-      next[0] = (esp_post_data (b[0]))->next_index;
+      next[0] = esp_encrypt_post_next (b[0], drop_next);
 
       if (PREDICT_FALSE (b[0]->flags & VLIB_BUFFER_IS_TRACED))
 	{
@@ -1196,6 +1236,11 @@ esp_encrypt_post_inline (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_
       next += 1;
       n_left -= 1;
     }
+
+  /* Traces and post metadata are complete; downstream graph nodes no longer
+   * access the SA. Final reclamation is deferred to a main-thread barrier. */
+  for (u32 i = 0; i < frame->n_vectors; i++)
+    vnet_crypto_ctx_release (vnet_crypto_async_get_post_ctx (bufs[i]));
 
   vlib_node_increment_counter (vm, node->node_index,
 			       ESP_ENCRYPT_ERROR_POST_RX_PKTS,
@@ -1236,7 +1281,7 @@ VLIB_NODE_FN (esp4_encrypt_post_node) (vlib_main_t * vm,
 				       vlib_node_runtime_t * node,
 				       vlib_frame_t * from_frame)
 {
-  return esp_encrypt_post_inline (vm, node, from_frame);
+  return esp_encrypt_post_inline (vm, node, from_frame, ESP_ENCRYPT_NEXT_DROP4);
 }
 
 VLIB_REGISTER_NODE (esp4_encrypt_post_node) = {
@@ -1273,7 +1318,7 @@ VLIB_NODE_FN (esp6_encrypt_post_node) (vlib_main_t * vm,
 				       vlib_node_runtime_t * node,
 				       vlib_frame_t * from_frame)
 {
-  return esp_encrypt_post_inline (vm, node, from_frame);
+  return esp_encrypt_post_inline (vm, node, from_frame, ESP_ENCRYPT_NEXT_DROP6);
 }
 
 VLIB_REGISTER_NODE (esp6_encrypt_post_node) = {
@@ -1321,7 +1366,7 @@ VLIB_NODE_FN (esp4_encrypt_tun_post_node) (vlib_main_t * vm,
 				  vlib_node_runtime_t * node,
 				  vlib_frame_t * from_frame)
 {
-  return esp_encrypt_post_inline (vm, node, from_frame);
+  return esp_encrypt_post_inline (vm, node, from_frame, ESP_ENCRYPT_NEXT_DROP4);
 }
 
 VLIB_REGISTER_NODE (esp4_encrypt_tun_post_node) = {
@@ -1369,7 +1414,7 @@ VLIB_NODE_FN (esp6_encrypt_tun_post_node) (vlib_main_t * vm,
 					   vlib_node_runtime_t * node,
 					   vlib_frame_t * from_frame)
 {
-  return esp_encrypt_post_inline (vm, node, from_frame);
+  return esp_encrypt_post_inline (vm, node, from_frame, ESP_ENCRYPT_NEXT_DROP6);
 }
 
 VLIB_REGISTER_NODE (esp6_encrypt_tun_post_node) = {
@@ -1415,7 +1460,7 @@ VLIB_REGISTER_NODE (esp_mpls_encrypt_tun_node) = {
 VLIB_NODE_FN (esp_mpls_encrypt_tun_post_node)
 (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *from_frame)
 {
-  return esp_encrypt_post_inline (vm, node, from_frame);
+  return esp_encrypt_post_inline (vm, node, from_frame, ESP_ENCRYPT_NEXT_DROP_MPLS);
 }
 
 VLIB_REGISTER_NODE (esp_mpls_encrypt_tun_post_node) = {

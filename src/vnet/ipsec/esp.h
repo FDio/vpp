@@ -185,8 +185,16 @@ esp_decrypt_set_next_index (vlib_buffer_t *b, vlib_node_runtime_t *node,
  **/
 typedef struct
 {
-  vlib_buffer_t *lb;
-  u32 sa_index;
+  union
+  {
+    vlib_buffer_t *lb;
+    u64 protect_generation;
+  };
+  union
+  {
+    u32 sa_index;
+    u32 protect_index;
+  };
   u32 seq;
   u32 seq_hi;
   u16 hdr_sz;
@@ -199,8 +207,31 @@ STATIC_ASSERT_OFFSET_OF (esp_decrypt_packet_data_t, sa_index, sizeof (u64));
 typedef union
 {
   u16 next_index;
+  struct
+  {
+    u16 next_index;
+    u8 refresh_dpo;
+    u8 check_adj;
+    /* Preserve TX adjacency and flow hash. The SA index is recovered from
+     * the retained context, freeing its old slot for an adjacency token. */
+    u32 __pad32[2];
+    u32 adj_generation;
+  } encrypt_data;
   esp_decrypt_packet_data_t decrypt_data;
 } esp_post_data_t;
+
+STATIC_ASSERT (STRUCT_OFFSET_OF (esp_post_data_t, encrypt_data.check_adj) + sizeof (u8) <=
+		 STRUCT_OFFSET_OF (vnet_buffer_opaque_t, ip.adj_index[VLIB_TX]) -
+		   STRUCT_OFFSET_OF (vnet_buffer_opaque_t, unused),
+	       "Encrypt post flags must preserve the TX adjacency");
+STATIC_ASSERT (STRUCT_OFFSET_OF (esp_post_data_t, encrypt_data.adj_generation) ==
+		 STRUCT_OFFSET_OF (vnet_buffer_opaque_t, ipsec.sad_index) -
+		   STRUCT_OFFSET_OF (vnet_buffer_opaque_t, unused),
+	       "Encrypt adjacency generation must occupy the retired SA-index slot");
+STATIC_ASSERT (STRUCT_SIZE_OF (esp_post_data_t, encrypt_data) <=
+		 STRUCT_OFFSET_OF (vnet_buffer_opaque_t, ip.save_rewrite_length) -
+		   STRUCT_OFFSET_OF (vnet_buffer_opaque_t, unused),
+	       "Encrypt post metadata must preserve IP rewrite metadata");
 
 STATIC_ASSERT (sizeof (esp_post_data_t) <=
 	       STRUCT_SIZE_OF (vnet_buffer_opaque_t, unused),

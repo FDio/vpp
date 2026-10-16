@@ -16,14 +16,16 @@ VLIB_REGISTER_LOG_CLASS (crypto_log, static) = {
 };
 
 static void
-vnet_crypto_ctx_destroy_cb (vlib_main_t *vm __clib_unused, uword arg)
+vnet_crypto_ctx_free_rpc (void *arg)
 {
   vnet_crypto_main_t *cm = &crypto_main;
-  vnet_crypto_ctx_t *ctx = (vnet_crypto_ctx_t *) arg;
+  vnet_crypto_ctx_t *ctx = *(vnet_crypto_ctx_t **) arg;
   u8 **indirect_auth_key = 0;
   vnet_crypto_handler_type_t t;
   uword key_sz = sizeof (vnet_crypto_ctx_t) + ctx->total_data_sz;
   u32 index = ctx->index;
+  void (*on_free) (uword) = ctx->on_free;
+  uword on_free_arg = ctx->on_free_arg;
 
   for (t = 0; t < VNET_CRYPTO_HANDLER_N_TYPES; t++)
     vnet_crypto_ctx_set_engine (ctx, t, VNET_CRYPTO_ENGINE_ID_NONE);
@@ -41,9 +43,32 @@ vnet_crypto_ctx_destroy_cb (vlib_main_t *vm __clib_unused, uword arg)
 
   clib_memset_u8 (ctx->_data, 0, ctx->total_data_sz);
 
+  /* Keep the context valid while owner teardown runs: DPO release may invoke
+   * callbacks that walk retained SAs and inspect their pending context. */
+  if (on_free)
+    on_free (on_free_arg);
+
   clib_memset (ctx, 0xfe, key_sz);
   clib_mem_free (ctx);
+  CLIB_SPINLOCK_LOCK (cm->ctx_pool_lock);
   pool_put_index (cm->ctxs, index);
+  CLIB_SPINLOCK_UNLOCK (cm->ctx_pool_lock);
+}
+
+void
+vnet_crypto_ctx_release (vnet_crypto_ctx_t *ctx)
+{
+  ASSERT (__atomic_load_n (&ctx->references, __ATOMIC_RELAXED) != 0);
+  if (__atomic_sub_fetch (&ctx->references, 1, __ATOMIC_ACQ_REL) == 0)
+    /* Always defer destruction, even on the main thread. Backends and context
+     * pools must be reclaimed under a worker barrier outside graph dispatch. */
+    vlib_force_rpc_call_main_thread (vnet_crypto_ctx_free_rpc, (u8 *) &ctx, sizeof (ctx));
+}
+
+static void
+vnet_crypto_ctx_destroy_rpc (void *arg)
+{
+  vnet_crypto_ctx_release (*(vnet_crypto_ctx_t **) arg);
 }
 
 static_always_inline void
@@ -97,6 +122,14 @@ vnet_crypto_ctx_set_engine (vnet_crypto_ctx_t *ctx, vnet_crypto_handler_type_t t
   u8 key_data_per_thread;
   uword key_data_size;
 
+  /* The scheduler may still use SIMPLE/CHAINED handlers after asynchronous
+   * enqueue. Pin every backend region until all work references retire.
+   * Final reclamation is the sole permitted mutation of a retired context. */
+  if (!vnet_crypto_ctx_is_mutable (ctx) &&
+      !(engine == VNET_CRYPTO_ENGINE_ID_NONE &&
+	__atomic_load_n (&ctx->references, __ATOMIC_ACQUIRE) == 0))
+    return;
+
   if (old_engine != VNET_CRYPTO_ENGINE_ID_NONE)
     {
       e = vec_elt_at_index (cm->engines, old_engine);
@@ -144,6 +177,9 @@ vnet_crypto_ctx_set_default_engine (vnet_crypto_ctx_t *ctx, vnet_crypto_handler_
   u8 key_data_per_thread;
   uword key_data_size;
   vnet_crypto_op_type_t type;
+
+  if (!vnet_crypto_ctx_is_mutable (ctx))
+    return;
 
   ctx->engine_index[t] = VNET_CRYPTO_ENGINE_ID_NONE;
   ctx->key_data_stride[t] = 0;
@@ -289,6 +325,7 @@ vnet_crypto_ctx_alloc (const vnet_crypto_ctx_layout_t *kl)
   vnet_crypto_handler_type_t t;
   vnet_crypto_ctx_t tmpl = {};
 
+  tmpl.references = 1;
   tmpl.auth_key_offset = kl->cipher_key_len;
 
   o = kl->cipher_key_len + kl->auth_key_len;
@@ -321,6 +358,10 @@ vnet_crypto_ctx_set_key_internal (vnet_crypto_ctx_t *ctx, const u8 *key, u16 key
   u8 *old_auth_key = 0;
   u8 *new_auth_key = 0;
   const char *key_name = is_auth ? "auth" : "cipher";
+
+  /* Refuse rekey before modifying raw key bytes or any backend key data. */
+  if (!vnet_crypto_ctx_is_mutable (ctx))
+    return 0;
 
   if (is_auth && ad->variable_auth_key_len)
     max_key_len = CLIB_U16_MAX;
@@ -425,10 +466,11 @@ vnet_crypto_ctx_set_auth_key (vnet_crypto_ctx_t *ctx, const u8 *auth_key, u16 au
 void
 vnet_crypto_ctx_destroy (vlib_main_t *vm __clib_unused, vnet_crypto_ctx_t *ctx)
 {
-  if (ctx->pending_destroy)
+  if (__atomic_exchange_n (&ctx->pending_destroy, 1, __ATOMIC_ACQ_REL))
     return;
 
-  ctx->pending_destroy = 1;
-
-  vlib_worker_thread_register_one_time_release_fn (vnet_crypto_ctx_destroy_cb, (uword) ctx);
+  /* Force an owner-release RPC so reclamation progresses even when no later
+   * configuration operation takes a worker barrier. The RPC itself supplies
+   * the barrier needed to quiesce synchronous users and graph producers. */
+  vlib_force_rpc_call_main_thread (vnet_crypto_ctx_destroy_rpc, (u8 *) &ctx, sizeof (ctx));
 }

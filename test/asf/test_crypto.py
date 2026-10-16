@@ -36,6 +36,10 @@ class TestCrypto(VppAsfTestCase):
         self.assertNotIn("FAIL", output)
         self.assertIn("OK", output)
 
+    def test_crypto_lifetime(self):
+        """Retain async contexts until final work retirement and reclaim on main"""
+        self.assertEqual("OK", self.vapi.cli("test crypto lifetime").strip())
+
     def test_crypto_perf(self):
         """Crypto+HMAC Performance Tests"""
 
@@ -62,7 +66,7 @@ class TestCryptoWorker(TestCrypto):
     # Opt-in allowlist: only tests named here run under the worker variant.
     # New tests added to TestCrypto are skipped here by default; add them
     # explicitly if they should also run with workers.
-    worker_tests = {"test_crypto_leak"}
+    worker_tests = {"test_crypto_leak", "test_crypto_lifetime"}
 
     def setUp(self):
         if self._testMethodName not in self.worker_tests:

@@ -2284,6 +2284,8 @@ test_crypto_async_case (vlib_main_t *vm, crypto_test_main_t *tm,
 
     enq_frame->n_vectors = n_elts;
     clib_memcpy_fast (to, head_indices, n_elts * sizeof (head_indices[0]));
+    for (i = 0; i < n_elts; i++)
+      vnet_crypto_ctx_acquire (ctxs[i]);
     clib_memcpy_fast (aux, ctxs, n_elts * sizeof (ctxs[0]));
     *scalar = (vnet_crypto_deq_scalar_data_t){
       .next_node_index = post_next_index,
@@ -2381,6 +2383,9 @@ done:
     {
       vnet_crypto_thread_t *ct = crypto_main.threads + result.frame->enqueue_thread_index;
 
+      /* This test consumes the completed frame without crypto-deq. */
+      for (i = 0; i < result.frame->n_elts; i++)
+	vnet_crypto_ctx_release (result.frame->ctxs[i]);
       pool_put (ct->frame_pool, result.frame);
     }
   if (enq_frame)
@@ -2978,6 +2983,11 @@ leak_test_run_alg (vlib_main_t *vm, vnet_crypto_alg_t alg)
   vlib_worker_thread_barrier_sync (vm);
   vlib_worker_thread_barrier_release (vm);
 
+  /* Destruction now defers both owner release and final free through the main
+   * RPC queue. Drain these before restoring the instrumented key handlers. */
+  vlib_rpc_call_main_thread_process (vm);
+  vlib_rpc_call_main_thread_process (vm);
+
   /* Mid-lifecycle sanity: every unmatched ADD means a leaked key_data.
      The buggy path grows (add - remove) linearly across rekeys; the
      fixed path keeps it bounded by the number of live ctx slots
@@ -3047,6 +3057,125 @@ test_crypto_leak_fn (vlib_main_t *vm)
   vlib_cli_output (vm, "OK");
   return 0;
 }
+
+typedef struct
+{
+  u32 freed;
+  u32 finalizer_thread;
+} crypto_lifetime_test_state_t;
+
+static void
+crypto_lifetime_test_finalizer (uword arg)
+{
+  crypto_lifetime_test_state_t *state = (void *) arg;
+  state->finalizer_thread = vlib_get_thread_index ();
+  state->freed++;
+}
+
+static int
+crypto_lifetime_test_mutation_rejected (vnet_crypto_ctx_t *ctx, const vnet_crypto_ctx_t *saved,
+					const u8 *saved_keydata)
+{
+  u8 replacement_key[16] = { 1 };
+
+  if (vnet_crypto_ctx_set_cipher_key (ctx, replacement_key, sizeof (replacement_key)) ||
+      vnet_crypto_ctx_set_auth_key (ctx, NULL, 0))
+    return 0;
+
+  for (vnet_crypto_handler_type_t t = 0; t < VNET_CRYPTO_HANDLER_N_TYPES; t++)
+    {
+      vnet_crypto_ctx_set_engine (ctx, t, VNET_CRYPTO_ENGINE_ID_NONE);
+      if (ctx->engine_index[t] != saved->engine_index[t] ||
+	  memcmp (ctx->handlers, saved->handlers, sizeof (saved->handlers)) ||
+	  memcmp (ctx->_data, saved_keydata, saved->total_data_sz))
+	return 0;
+      vnet_crypto_ctx_set_default_engine (ctx, t);
+      if (ctx->engine_index[t] != saved->engine_index[t] ||
+	  memcmp (ctx->handlers, saved->handlers, sizeof (saved->handlers)) ||
+	  memcmp (ctx->_data, saved_keydata, saved->total_data_sz))
+	return 0;
+    }
+  return 1;
+}
+
+static clib_error_t *
+test_crypto_lifetime_fn (vlib_main_t *vm, unformat_input_t *input __clib_unused,
+			 vlib_cli_command_t *cmd __clib_unused)
+{
+  crypto_lifetime_test_state_t *state = clib_mem_alloc (sizeof (*state));
+  vnet_crypto_ctx_t *ctx = vnet_crypto_ctx_create (VNET_CRYPTO_ALG_AES_128_GCM);
+  u32 index = ctx->index, held = 2;
+  u8 key[16] = {};
+  clib_error_t *err = 0;
+  f64 deadline;
+
+  clib_memset (state, 0, sizeof (*state));
+  state->finalizer_thread = ~0;
+  ctx->on_free = crypto_lifetime_test_finalizer;
+  ctx->on_free_arg = (uword) state;
+  if (!vnet_crypto_ctx_set_cipher_key (ctx, key, sizeof (key)))
+    err = clib_error_return (0, "FAIL lifetime: key initialization");
+  vnet_crypto_ctx_t saved = *ctx;
+  u8 *saved_keydata = vec_new (u8, ctx->total_data_sz);
+  clib_memcpy_fast (saved_keydata, ctx->_data, ctx->total_data_sz);
+  vnet_crypto_ctx_acquire (ctx);
+  vnet_crypto_ctx_acquire (ctx);
+  if (!err && !crypto_lifetime_test_mutation_rejected (ctx, &saved, saved_keydata))
+    err = clib_error_return (0, "FAIL lifetime: busy context mutated");
+
+  /* Repeat destroy before its RPC runs: the owner must retire exactly once. */
+  vnet_crypto_ctx_destroy (vm, ctx);
+  vnet_crypto_ctx_destroy (vm, ctx);
+  deadline = vlib_time_now (vm) + 2;
+  while (!state->freed && __atomic_load_n (&ctx->references, __ATOMIC_ACQUIRE) != held &&
+	 vlib_time_now (vm) < deadline)
+    /* Yield to the normal main loop; no configuration or barrier command is
+     * allowed to supply the quiescence needed for owner-release progress. */
+    vlib_process_suspend (vm, 0.001);
+
+  if (!err && (state->freed || __atomic_load_n (&ctx->references, __ATOMIC_ACQUIRE) != held ||
+	       pool_is_free_index (crypto_main.ctxs, index)))
+    err = clib_error_return (0, "FAIL lifetime: owner release or premature reclamation");
+
+  if (!state->freed)
+    {
+      vnet_crypto_ctx_release (ctx);
+      held--;
+      vlib_process_suspend (vm, 0.001);
+      if (!err && (state->freed || pool_is_free_index (crypto_main.ctxs, index)))
+	err = clib_error_return (0, "FAIL lifetime: freed before final work reference");
+      if (!err && !crypto_lifetime_test_mutation_rejected (ctx, &saved, saved_keydata))
+	err = clib_error_return (0, "FAIL lifetime: retired context mutated");
+    }
+
+  if (!state->freed)
+    {
+      for (; held; held--)
+	vnet_crypto_ctx_release (ctx);
+      deadline = vlib_time_now (vm) + 2;
+      while (!state->freed && vlib_time_now (vm) < deadline)
+	vlib_process_suspend (vm, 0.001);
+    }
+
+  if (!err && (state->freed != 1 || state->finalizer_thread != 0 ||
+	       !pool_is_free_index (crypto_main.ctxs, index)))
+    err = clib_error_return (0, "FAIL lifetime: final main-thread reclamation");
+
+  vec_free (saved_keydata);
+  /* On failure a pending callback may still own state; preserve its storage. */
+  if (state->freed)
+    clib_mem_free (state);
+  if (!err)
+    vlib_cli_output (vm, "OK");
+  return err;
+}
+
+VLIB_CLI_COMMAND (test_crypto_lifetime_command, static) = {
+  .path = "test crypto lifetime",
+  .short_help = "test crypto lifetime",
+  .function = test_crypto_lifetime_fn,
+  .is_mp_safe = 1,
+};
 
 static clib_error_t *
 test_crypto_command_dispatch (vlib_main_t *vm, unformat_input_t *input, u8 force_async)

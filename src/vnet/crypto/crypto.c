@@ -117,6 +117,10 @@ crypto_update_key_handler_for_alg (vnet_crypto_main_t *cm, vnet_crypto_alg_t alg
 	continue;
 
       ctx = cm->ctxs[i];
+      /* Defaults may change while queued work retains this context. Keep its
+       * existing handlers/key data pinned until its owner replaces it. */
+      if (!vnet_crypto_ctx_is_mutable (ctx))
+	continue;
       vnet_crypto_ctx_set_engine (ctx, t, ei);
       n_rekeyed++;
     }

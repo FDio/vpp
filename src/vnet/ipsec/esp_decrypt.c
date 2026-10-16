@@ -548,7 +548,7 @@ esp_decrypt_prepare_async_frame (vlib_main_t *vm, ipsec_per_thread_data_t *ptd,
 static_always_inline void
 esp_decrypt_post_crypto (vlib_main_t *vm, vlib_node_runtime_t *node, const u16 *next_by_next_header,
 			 const esp_decrypt_packet_data_t *pd, vlib_buffer_t *b, u16 *next,
-			 int is_ip6, int is_tun, int is_async)
+			 int is_ip6, int is_tun, int is_async, u32 protect_index)
 {
   ipsec_sa_inb_rt_t *irt = ipsec_sa_get_inb_rt_by_index (pd->sa_index);
   vlib_buffer_t *lb = b;
@@ -793,8 +793,7 @@ esp_decrypt_post_crypto (vlib_main_t *vm, vlib_node_runtime_t *node, const u16 *
 	       */
 	      const ipsec_tun_protect_t *itp;
 
-	      itp =
-		ipsec_tun_protect_get (vnet_buffer (b)->ipsec.protect_index);
+	      itp = ipsec_tun_protect_get (protect_index);
 
 	      if (irt->is_tunnel) // IPSec tunnel mode
 		{
@@ -882,6 +881,7 @@ esp_decrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   while (n_left > 0)
     {
       u8 *payload;
+      u32 protect_index = is_tun ? vnet_buffer (b[0])->ipsec.protect_index : ~0;
 
       err = ESP_DECRYPT_ERROR_RX_PKTS;
       if (n_left > 2)
@@ -1034,7 +1034,12 @@ esp_decrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	}
       else
 	{
+	  esp_decrypt_packet_data_t *post = &esp_post_data (b[0])->decrypt_data;
+	  post->protect_index = protect_index;
+	  post->protect_generation =
+	    is_tun ? ipsec_tun_protect_get (protect_index)->itp_generation : 0;
 	  async_bi[n_async] = from[b - bufs];
+	  vnet_crypto_ctx_acquire (irt->ctx);
 	  async_ctx[n_async] = pointer_to_uword (irt->ctx);
 	  n_async++;
 	}
@@ -1098,7 +1103,7 @@ esp_decrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 
       if (sync_next[0] >= ESP_DECRYPT_N_NEXT)
 	esp_decrypt_post_crypto (vm, node, next_by_next_header, pd, b[0], sync_next, is_ip6, is_tun,
-				 0);
+				 0, vnet_buffer (b[0])->ipsec.protect_index);
 
       /* trace: */
       if (PREDICT_FALSE (b[0]->flags & VLIB_BUFFER_IS_TRACED))
@@ -1149,7 +1154,16 @@ esp_decrypt_post_inline (vlib_main_t * vm,
 
   while (n_left > 0)
     {
-      esp_decrypt_packet_data_t *pd = &(esp_post_data (b[0]))->decrypt_data;
+      esp_decrypt_packet_data_t post_data = esp_post_data (b[0])->decrypt_data;
+      esp_decrypt_packet_data_t *pd = &post_data;
+      vnet_crypto_ctx_t *ctx = vnet_crypto_async_get_post_ctx (b[0]);
+
+      /* A detached SA may no longer own its tunnel-protect object. */
+      if (PREDICT_FALSE (__atomic_load_n (&ctx->pending_destroy, __ATOMIC_ACQUIRE)))
+	{
+	  next[0] = ESP_DECRYPT_NEXT_DROP;
+	  goto release_ctx;
+	}
 
       if (n_left > 2)
 	{
@@ -1157,7 +1171,27 @@ esp_decrypt_post_inline (vlib_main_t * vm,
 	  vlib_prefetch_buffer_header (b[1], LOAD);
 	}
 
-      esp_decrypt_post_crypto (vm, node, next_by_next_header, pd, b[0], next, is_ip6, is_tun, 1);
+      u32 protect_index = pd->protect_index;
+      if (is_tun &&
+	  (protect_index >= vec_len (ipsec_tun_protect_pool) ||
+	   pool_is_free_index (ipsec_tun_protect_pool, protect_index) || !pd->protect_generation ||
+	   ipsec_tun_protect_get (protect_index)->itp_generation != pd->protect_generation))
+	{
+	  next[0] = ESP_DECRYPT_NEXT_DROP;
+	  goto release_ctx;
+	}
+
+      /* The retained context supplies the SA index. The queued packet used
+       * these two slots for binding identity instead of its last-buffer pointer
+       * and SA index, keeping post data within buffer opaque. */
+      pd->sa_index = ctx->on_free_arg;
+      pd->lb = b[0];
+      if (pd->is_chain)
+	while (pd->lb->flags & VLIB_BUFFER_NEXT_PRESENT)
+	  pd->lb = vlib_get_buffer (vm, pd->lb->next_buffer);
+
+      esp_decrypt_post_crypto (vm, node, next_by_next_header, pd, b[0], next, is_ip6, is_tun, 1,
+			       protect_index);
 
       /*trace: */
       if (PREDICT_FALSE (b[0]->flags & VLIB_BUFFER_IS_TRACED))
@@ -1165,11 +1199,9 @@ esp_decrypt_post_inline (vlib_main_t * vm,
 	  ipsec_sa_t *sa;
 	  ipsec_sa_inb_rt_t *irt;
 	  esp_decrypt_trace_t *tr;
-	  esp_decrypt_packet_data_t *async_pd =
-	    &(esp_post_data (b[0]))->decrypt_data;
 	  tr = vlib_add_trace (vm, node, b[0], sizeof (*tr));
-	  sa = ipsec_sa_get (async_pd->sa_index);
-	  irt = ipsec_sa_get_inb_rt_by_index (async_pd->sa_index);
+	  sa = ipsec_sa_get (pd->sa_index);
+	  irt = ipsec_sa_get_inb_rt_by_index (pd->sa_index);
 
 	  tr->crypto_alg = sa->crypto_alg;
 	  tr->integ_alg = sa->integ_alg;
@@ -1178,6 +1210,8 @@ esp_decrypt_post_inline (vlib_main_t * vm,
 	  tr->pkt_seq_hi = pd->seq_hi;
 	}
 
+    release_ctx:
+      vnet_crypto_ctx_release (ctx);
       n_left--;
       next++;
       b++;

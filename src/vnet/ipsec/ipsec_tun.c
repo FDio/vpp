@@ -33,6 +33,18 @@ vlib_log_class_t ipsec_tun_protect_logger;
  */
 ipsec_tun_protect_t *ipsec_tun_protect_pool;
 
+/* Configured on the main thread; distinguish changed or reused bindings from
+ * the binding that accepted an asynchronous ESP packet. Zero means no binding. */
+static u64 ipsec_tun_protect_generation;
+
+static void
+ipsec_tun_protect_bump_generation (ipsec_tun_protect_t *itp)
+{
+  ASSERT (vlib_get_thread_index () == 0);
+  itp->itp_generation = ++ipsec_tun_protect_generation;
+  ASSERT (itp->itp_generation != 0);
+}
+
 /**
  * Adj delegate registered type
  */
@@ -42,6 +54,8 @@ static adj_delegate_type_t ipsec_tun_adj_delegate_type;
  * Adj index to TX SA mapping
  */
 index_t *ipsec_tun_protect_sa_by_adj_index;
+u32 *ipsec_tun_protect_generation_by_adj_index;
+static u32 ipsec_tun_protect_adj_generation;
 
 const ip_address_t IP_ADDR_ALL_0 = IP_ADDRESS_V4_ALL_0S;
 
@@ -180,6 +194,11 @@ ipsec_tun_protect_add_adj (adj_index_t ai, const ipsec_tun_protect_t * itp)
 {
   vec_validate_init_empty (ipsec_tun_protect_sa_by_adj_index, ai,
 			   INDEX_INVALID);
+  vec_validate_init_empty (ipsec_tun_protect_generation_by_adj_index, ai, 0);
+  /* Never repeat a token: after exhaustion, changed adjacencies fail closed
+   * for asynchronous interface forwarding until restart. */
+  ipsec_tun_protect_generation_by_adj_index[ai] =
+    ipsec_tun_protect_adj_generation != ~0u ? ++ipsec_tun_protect_adj_generation : 0;
 
   if (NULL == itp)
     {
@@ -479,6 +498,8 @@ ipsec_tun_protect_config (ipsec_main_t * im,
   index_t sai;
   u32 ii;
 
+  ipsec_tun_protect_bump_generation (itp);
+
   itp->itp_n_sa_in = vec_len (sas_in);
   for (ii = 0; ii < itp->itp_n_sa_in; ii++)
     itp->itp_in_sas[ii] = sas_in[ii];
@@ -514,6 +535,8 @@ ipsec_tun_protect_unconfig (ipsec_main_t * im, ipsec_tun_protect_t * itp)
   ipsec_sa_t *sa;
   index_t sai;
 
+  ipsec_tun_protect_bump_generation (itp);
+
   FOR_EACH_IPSEC_PROTECT_INPUT_SA(itp, sa,
   ({
     ipsec_sa_unset_IS_PROTECT (sa);
@@ -540,6 +563,8 @@ static void
 ipsec_tun_protect_update_from_teib (ipsec_tun_protect_t * itp,
 				    const teib_entry_t * ne)
 {
+  ipsec_tun_protect_bump_generation (itp);
+
   if (NULL != ne)
     {
       const fib_prefix_t *pfx;

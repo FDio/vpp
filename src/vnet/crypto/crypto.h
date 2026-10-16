@@ -364,7 +364,12 @@ typedef struct
   void *handlers[VNET_CRYPTO_OP_N_TYPES][VNET_CRYPTO_HANDLER_N_TYPES];
   vnet_crypto_alg_t alg : 8;
   u8 indirect_auth_key : 1;
-  u8 pending_destroy : 1;
+  u8 async_post : 1;
+  u8 pending_destroy;
+  u32 references;
+  /* Optional owner reclamation after every async and post reference retires. */
+  void (*on_free) (uword arg);
+  uword on_free_arg;
   u8 _data[] __clib_aligned (64);
 } __clib_aligned (64)
 vnet_crypto_ctx_t;
@@ -702,10 +707,28 @@ __clib_export int vnet_crypto_ctx_set_cipher_key (vnet_crypto_ctx_t *ctx, const 
 						  u16 cipher_key_len);
 __clib_export int vnet_crypto_ctx_set_auth_key (vnet_crypto_ctx_t *ctx, const u8 *auth_key,
 						u16 auth_key_len);
+/* The owner reference is dropped by a main-thread RPC under a worker barrier.
+ * Every asynchronous producer takes a reference before publishing its context
+ * pointer to another graph node, transferring it through crypto completion. */
+static_always_inline int
+vnet_crypto_ctx_is_mutable (vnet_crypto_ctx_t *ctx)
+{
+  return !__atomic_load_n (&ctx->pending_destroy, __ATOMIC_ACQUIRE) &&
+	 __atomic_load_n (&ctx->references, __ATOMIC_ACQUIRE) == 1;
+}
+
+static_always_inline void
+vnet_crypto_ctx_acquire (vnet_crypto_ctx_t *ctx)
+{
+  __atomic_add_fetch (&ctx->references, 1, __ATOMIC_RELAXED);
+}
+
+__clib_export void vnet_crypto_ctx_release (vnet_crypto_ctx_t *ctx);
 __clib_export void vnet_crypto_ctx_destroy (vlib_main_t *vm, vnet_crypto_ctx_t *ctx);
 __clib_export void vnet_crypto_ctx_set_engine (vnet_crypto_ctx_t *ctx, vnet_crypto_handler_type_t t,
 					       vnet_crypto_engine_id_t engine);
-void vnet_crypto_ctx_set_default_engine (vnet_crypto_ctx_t *ctx, vnet_crypto_handler_type_t t);
+__clib_export void vnet_crypto_ctx_set_default_engine (vnet_crypto_ctx_t *ctx,
+                                                     vnet_crypto_handler_type_t t);
 
 __clib_export format_function_t format_vnet_crypto_alg;
 __clib_export format_function_t format_vnet_crypto_engine;
@@ -803,6 +826,18 @@ vnet_crypto_get_async_key_data (vnet_crypto_ctx_t *ctx)
 }
 
 /** async crypto inline functions **/
+
+/* Successful completion can transfer its reference to a protocol post node.
+ * Crypto metadata is no longer needed by the backend at this point; protocol
+ * post data lives separately in buffer opaque, not opaque2. */
+static_always_inline vnet_crypto_ctx_t *
+vnet_crypto_async_get_post_ctx (vlib_buffer_t *b)
+{
+  vnet_crypto_ctx_t *ctx;
+  clib_memcpy_fast (&ctx, vnet_crypto_buffer_get_metadata (b), sizeof (ctx));
+  return ctx;
+}
+
 
 static_always_inline u8 *
 vnet_crypto_async_get_data_ptr (vlib_main_t *vm, vlib_buffer_t *b, i16 offset)
