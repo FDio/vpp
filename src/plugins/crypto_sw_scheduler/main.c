@@ -575,11 +575,13 @@ crypto_sw_scheduler_config (vlib_main_t *vm, unformat_input_t *input)
       if (unformat (input, "crypto-sw-scheduler-queue-size %d",
 		    &crypto_sw_scheduler_queue_size))
 	{
-	  if (!is_pow2 (crypto_sw_scheduler_queue_size))
+	  if (crypto_sw_scheduler_queue_size == 0 ||
+	      crypto_sw_scheduler_queue_size > CRYPTO_SW_SCHEDULER_QUEUE_SIZE ||
+	      !is_pow2 (crypto_sw_scheduler_queue_size))
 	    {
-	      return clib_error_return (0, "input %d is not pow2",
-					format_unformat_error,
-					crypto_sw_scheduler_queue_size);
+	      return clib_error_return (
+		0, "queue size %u must be a power of two between 1 and %u",
+		crypto_sw_scheduler_queue_size, CRYPTO_SW_SCHEDULER_QUEUE_SIZE);
 	    }
 	}
       else
