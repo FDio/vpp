@@ -815,8 +815,7 @@ ikev2_compute_nat_sha1 (u64 ispi, u64 rspi, ip_address_t *ia, u16 port)
 }
 
 static int
-ikev2_parse_ke_payload (const void *p, u32 rlen, ikev2_sa_t * sa,
-			u8 ** ke_data)
+ikev2_parse_ke_payload (const void *p, u32 rlen, ikev2_sa_t *sa, u8 **ke_data)
 {
   const ike_ke_payload_header_t *ke = p;
   if (sizeof (*ke) > rlen)
@@ -1036,7 +1035,7 @@ ikev2_process_sa_init_resp (vlib_main_t * vm,
 	  ikev2_sa_free_proposal_vector (&sa->r_proposals);
 	  sa->r_proposals = ikev2_parse_sa_payload (ikep, current_length);
 	  if (!sa->r_proposals)
-            return;
+	    return;
 	}
       else if (payload == IKEV2_PAYLOAD_KE)
 	{
@@ -1115,8 +1114,7 @@ ikev2_process_sa_init_resp (vlib_main_t * vm,
 }
 
 static u8 *
-ikev2_decrypt_sk_payload (ikev2_sa_t * sa, ike_header_t * ike,
-			  u8 * payload, u32 rlen, u32 * out_len)
+ikev2_decrypt_sk_payload (ikev2_sa_t *sa, ike_header_t *ike, u8 *payload, u32 rlen, u32 *out_len)
 {
   int p = 0;
   u8 last_payload = 0, *hmac = 0, *plaintext = 0;
@@ -1192,20 +1190,18 @@ ikev2_decrypt_sk_payload (ikev2_sa_t * sa, ike_header_t * ike,
       if (rlen < tr_integ->key_trunc)
 	return 0;
 
-      hmac =
-	ikev2_calc_integr (tr_integ, sa->is_initiator ? sa->sk_ar : sa->sk_ai,
-			   (u8 *) ike, rlen - tr_integ->key_trunc);
+      hmac = ikev2_calc_integr (tr_integ, sa->is_initiator ? sa->sk_ar : sa->sk_ai, (u8 *) ike,
+				rlen - tr_integ->key_trunc);
 
       if (!hmac || plen < sizeof (*ikep) + tr_integ->key_trunc)
-        {
-          vec_free (hmac);
-          return 0;
-        }
+	{
+	  vec_free (hmac);
+	  return 0;
+	}
 
       plen = plen - sizeof (*ikep) - tr_integ->key_trunc;
 
-      if (!clib_mem_equal_constant_time (hmac, &ikep->payload[plen],
-                                         tr_integ->key_trunc))
+      if (!clib_mem_equal_constant_time (hmac, &ikep->payload[plen], tr_integ->key_trunc))
 	{
 	  log_err ("message integrity check failed");
 	  vec_free (hmac);
@@ -1301,7 +1297,7 @@ ikev2_parse_id_payload (const void *p, u16 rlen, ikev2_id_t * sa_id)
 }
 
 static int
-ikev2_parse_auth_payload (const void *p, u32 rlen, ikev2_auth_t * a)
+ikev2_parse_auth_payload (const void *p, u32 rlen, ikev2_auth_t *a)
 {
   const ike_auth_payload_header_t *ah = p;
   if (rlen < sizeof (*ah))
@@ -2080,7 +2076,7 @@ ikev2_select_profile (vlib_main_t *vm, ikev2_main_t *km, ikev2_sa_t *sa,
 	  auth = ikev2_calc_prf (tr_prf, psk, authmsg);
 
 	  if (vec_len (sa_auth->data) == tr_prf->key_trunc &&
-              clib_mem_equal_constant_time (auth, sa_auth->data, tr_prf->key_trunc))
+	      clib_mem_equal_constant_time (auth, sa_auth->data, tr_prf->key_trunc))
 	    {
 	    sa->state = IKEV2_STATE_AUTHENTICATED;
 	    log_debug ("ispi %lx SA state changed to AUTHENTICATED", sa->ispi);
@@ -3154,17 +3150,15 @@ ikev2_generate_message (vlib_main_t *vm, vlib_buffer_t *b, ikev2_sa_t *sa, ike_h
 	      tlen = ~0;
 	      goto done;
 	    }
-	  integ =
-	    ikev2_calc_integr (tr_integ,
-			       sa->is_initiator ? sa->sk_ai : sa->sk_ar,
-			       (u8 *) ike, tlen - tr_integ->key_trunc);
-          if (!integ)
-            {
-              tlen = ~0;
-              goto done;
-            }
-	  clib_memcpy_fast (ike->payload + tlen - tr_integ->key_trunc -
-			    sizeof (*ike), integ, tr_integ->key_trunc);
+	  integ = ikev2_calc_integr (tr_integ, sa->is_initiator ? sa->sk_ai : sa->sk_ar, (u8 *) ike,
+				     tlen - tr_integ->key_trunc);
+	  if (!integ)
+	    {
+	      tlen = ~0;
+	      goto done;
+	    }
+	  clib_memcpy_fast (ike->payload + tlen - tr_integ->key_trunc - sizeof (*ike), integ,
+			    tr_integ->key_trunc);
 	}
 
       /* store whole IKE payload - needed for retransmit */
@@ -3200,16 +3194,15 @@ ikev2_retransmit_sa_init_one (ikev2_sa_t * sa, ike_header_t * ike,
 
   while (p < rlen && payload != IKEV2_PAYLOAD_NONE)
     {
-      ike_payload_header_t *ikep = (ike_payload_header_t *) & ike->payload[p];
+      ike_payload_header_t *ikep = (ike_payload_header_t *) &ike->payload[p];
       if (rlen - p < sizeof (*ikep))
-        return ~0;
+	return ~0;
       u32 plen = clib_net_to_host_u16 (ikep->length);
 
       if (plen < sizeof (*ikep) || plen > rlen - p)
 	return ~0;
 
-      if (payload == IKEV2_PAYLOAD_NONCE &&
-          plen - sizeof (*ikep) == vec_len (sa->i_nonce) &&
+      if (payload == IKEV2_PAYLOAD_NONCE && plen - sizeof (*ikep) == vec_len (sa->i_nonce) &&
 	  !clib_memcmp (sa->i_nonce, ikep->payload, plen - sizeof (*ikep)))
 	{
 	  /* req is retransmit */
@@ -3217,12 +3210,11 @@ ikev2_retransmit_sa_init_one (ikev2_sa_t * sa, ike_header_t * ike,
 	    {
 	      sa->stats.n_init_retransmit++;
 	      if (vec_len (sa->last_sa_init_res_packet_data) < sizeof (*ike))
-                return ~0;
-              tmp = (ike_header_t *) sa->last_sa_init_res_packet_data;
+		return ~0;
+	      tmp = (ike_header_t *) sa->last_sa_init_res_packet_data;
 	      u32 slen = clib_net_to_host_u32 (tmp->length);
-              if (slen < sizeof (*ike) ||
-                  slen > vec_len (sa->last_sa_init_res_packet_data))
-                return ~0;
+	      if (slen < sizeof (*ike) || slen > vec_len (sa->last_sa_init_res_packet_data))
+		return ~0;
 	      ike->ispi = tmp->ispi;
 	      ike->rspi = tmp->rspi;
 	      ike->nextpayload = tmp->nextpayload;
@@ -3302,11 +3294,11 @@ ikev2_retransmit_resp (ikev2_sa_t * sa, ike_header_t * ike)
     {
       sa->stats.n_retransmit++;
       if (vec_len (sa->last_res_packet_data) < sizeof (*ike))
-        return ~0;
+	return ~0;
       ike_header_t *tmp = (ike_header_t *) sa->last_res_packet_data;
       u32 slen = clib_net_to_host_u32 (tmp->length);
       if (slen < sizeof (*ike) || slen > vec_len (sa->last_res_packet_data))
-        return ~0;
+	return ~0;
       ike->ispi = tmp->ispi;
       ike->rspi = tmp->rspi;
       ike->nextpayload = tmp->nextpayload;

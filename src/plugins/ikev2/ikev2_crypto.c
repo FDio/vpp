@@ -328,7 +328,7 @@ ikev2_calc_prfplus (ikev2_sa_transform_t * tr, u8 * key, u8 * seed, int len)
 }
 
 v8 *
-ikev2_calc_integr (ikev2_sa_transform_t * tr, v8 * key, u8 * data, int len)
+ikev2_calc_integr (ikev2_sa_transform_t *tr, v8 *key, u8 *data, int len)
 {
   v8 *r;
   unsigned int l = 0;
@@ -352,11 +352,11 @@ ikev2_calc_integr (ikev2_sa_transform_t * tr, v8 * key, u8 * data, int len)
       CMAC_CTX *ctx = CMAC_CTX_new ();
 
       int ok = ctx && CMAC_Init (ctx, key, vec_len (key), tr->cipher, NULL) == 1 &&
-        CMAC_Update (ctx, (const u8 *) data, len) == 1 &&
-        CMAC_Final (ctx, r, &cmac_len) == 1;
+	       CMAC_Update (ctx, (const u8 *) data, len) == 1 &&
+	       CMAC_Final (ctx, r, &cmac_len) == 1;
       CMAC_CTX_free (ctx);
       if (!ok)
-        goto fail;
+	goto fail;
       l = cmac_len;
     }
   else
@@ -366,9 +366,8 @@ ikev2_calc_integr (ikev2_sa_transform_t * tr, v8 * key, u8 * data, int len)
 
       /* verify integrity of data */
       if (!ctx || HMAC_Init_ex (ctx, key, vec_len (key), tr->md, NULL) != 1 ||
-          HMAC_Update (ctx, (const u8 *) data, len) != 1 ||
-          HMAC_Final (ctx, r, &l) != 1)
-        goto fail;
+	  HMAC_Update (ctx, (const u8 *) data, len) != 1 || HMAC_Final (ctx, r, &l) != 1)
+	goto fail;
     }
   if (l != tr->key_len)
     goto fail;
@@ -381,7 +380,7 @@ fail:
 }
 
 static_always_inline void
-ikev2_init_gcm_nonce (u8 * nonce, u8 * salt, u8 * iv)
+ikev2_init_gcm_nonce (u8 *nonce, u8 *salt, u8 *iv)
 {
   clib_memcpy (nonce, salt, IKEV2_GCM_SALT_SIZE);
   clib_memcpy (nonce + IKEV2_GCM_SALT_SIZE, iv, IKEV2_GCM_IV_SIZE);
@@ -412,15 +411,14 @@ ikev2_decrypt_aead_data (ikev2_sa_t *sa, ikev2_sa_transform_t *tr_encr, u8 *data
       EVP_CIPHER_CTX_ctrl (ctx, EVP_CTRL_AEAD_SET_IVLEN, 12, 0) != 1 ||
       EVP_DecryptInit_ex (ctx, 0, 0, key, nonce) != 1 ||
       EVP_DecryptUpdate (ctx, 0, &len, aad, aad_len) != 1 ||
-      EVP_DecryptUpdate (ctx, data, &len, data, data_len) != 1 ||
-      len != data_len ||
+      EVP_DecryptUpdate (ctx, data, &len, data, data_len) != 1 || len != data_len ||
       EVP_CIPHER_CTX_ctrl (ctx, EVP_CTRL_AEAD_SET_TAG, IKEV2_GCM_ICV_SIZE, tag) != 1)
     return 0;
 
   if (EVP_DecryptFinal_ex (ctx, data + len, &len) > 0)
     {
       if (data[data_len - 1] >= data_len)
-        return 0;
+	return 0;
       *out_len = data_len - data[data_len - 1] - 1;
       return 1;
     }
@@ -455,7 +453,7 @@ ikev2_decrypt_data (ikev2_sa_t *sa, ikev2_sa_transform_t *tr_encr, u8 *data, int
   if (EVP_DecryptFinal_ex (ctx, data + tmp_len, &tmp_len) > 0)
     {
       if (data[len - 1] >= len)
-        return 0;
+	return 0;
       *out_len = len - data[len - 1] - 1;
       return 1;
     }
@@ -478,8 +476,7 @@ ikev2_encrypt_aead_data (ikev2_sa_t *sa, ikev2_sa_transform_t *tr_encr, v8 *src,
   /* generate IV; its length must be 8 octets for aes-gcm (rfc5282) */
   if (RAND_bytes (dst, IKEV2_GCM_IV_SIZE) != 1)
     return 0;
-  ikev2_init_gcm_nonce (nonce, key + vec_len (key) - IKEV2_GCM_SALT_SIZE,
-			dst);
+  ikev2_init_gcm_nonce (nonce, key + vec_len (key) - IKEV2_GCM_SALT_SIZE, dst);
   dst += IKEV2_GCM_IV_SIZE;
 
   if (EVP_EncryptInit_ex (ctx, tr_encr->cipher, 0, 0, 0) != 1 ||
