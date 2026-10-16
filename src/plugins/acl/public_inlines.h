@@ -318,6 +318,10 @@ single_acl_match_5tuple (acl_main_t * am, u32 acl_index, fa_5tuple_t * pkt_5tupl
 	continue;
       }
 
+      if (PREDICT_FALSE (am->match_check_fn && pkt_5tuple->pkt.is_nonfirst_fragment && r->proto &&
+			 pkt_5tuple->l4.proto == r->proto && am->l4_match_nonfirst_fragment &&
+			 !am->match_check_fn (pkt_5tuple->pkt.lc_index, acl_index, i)))
+	continue;
       if (r->proto)
 	{
 	  if (pkt_5tuple->l4.proto != r->proto)
@@ -375,6 +379,9 @@ single_acl_match_5tuple (acl_main_t * am, u32 acl_index, fa_5tuple_t * pkt_5tupl
 	    continue;
 	}
       /* everything matches! */
+      if (PREDICT_FALSE (am->match_check_fn != 0) &&
+	  !am->match_check_fn (pkt_5tuple->pkt.lc_index, acl_index, i))
+	continue;
 #ifdef FA_NODE_VERBOSE_DEBUG
       clib_warning ("ACL_FA_NODE_DBG acl %d rule %d FULL-MATCH, action %d",
 		    acl_index, i, r->is_permit);
@@ -606,7 +613,9 @@ multi_acl_match_get_applied_ace_index (acl_main_t * am, int is_ip6, fa_5tuple_t 
 		{
 		  continue;
 		}
-	      if (single_rule_match_5tuple (&crs[i].rule, is_ip6, match))
+	      if (single_rule_match_5tuple (&crs[i].rule, is_ip6, match) &&
+		  (PREDICT_TRUE (!am->match_check_fn) ||
+		   am->match_check_fn (lc_index, crs[i].acl_index, crs[i].ace_index)))
 		{
 		  curr_match_index = crs[i].applied_entry_index;
 		}
