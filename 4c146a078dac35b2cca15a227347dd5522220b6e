@@ -52,6 +52,24 @@
       "parentUuid": "07a47d37_c07f1d77",
       "revId": "4c146a078dac35b2cca15a227347dd5522220b6e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "f28a44d7_8f4c706c",
+        "filename": "src/vppinfra/file.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 139,
+      "author": {
+        "id": 3121
+      },
+      "writtenOn": "2026-10-16T19:48:57Z",
+      "side": 0,
+      "message": "Yes, the potential lock contention was my concern. I didn\u0027t take into consideration that `clib_file_free_deleted()` is not called often. Moved the empty check under `fm-\u003elock` and return when nothing is pending in the latest patchset.",
+      "parentUuid": "d6d487cb_7ab99006",
+      "revId": "4c146a078dac35b2cca15a227347dd5522220b6e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
