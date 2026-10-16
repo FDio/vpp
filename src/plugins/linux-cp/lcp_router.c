@@ -1025,7 +1025,9 @@ lcp_router_table_unlock (lcp_router_table_t *nlt)
       lcp_router_table_add_del_special_routes (nlt, 0);
 
       fib_table_unlock (nlt->nlt_fib_index, nlt->nlt_proto, lcp_rt_fib_src);
-      mfib_table_unlock (nlt->nlt_mfib_index, nlt->nlt_proto, MFIB_SOURCE_PLUGIN_LOW);
+      /* MPLS has no mfib: find_or_create_and_lock returned ~0 */
+      if (FIB_PROTOCOL_MPLS != nlt->nlt_proto)
+	mfib_table_unlock (nlt->nlt_mfib_index, nlt->nlt_proto, MFIB_SOURCE_PLUGIN_LOW);
 
       hash_unset (lcp_router_table_db[nlt->nlt_proto], nlt->nlt_id);
       pool_put (lcp_router_table_pool, nlt);

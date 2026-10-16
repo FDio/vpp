@@ -2,6 +2,7 @@
 
 import unittest
 import socket
+import subprocess
 from ipaddress import ip_address, ip_interface
 
 from scapy.layers.inet import IP, UDP
@@ -1336,6 +1337,32 @@ class TestLinuxCPLinuxToVPP(TestLinuxCPNetNSBase):
                 if mac is None or mac == str(n.neighbor.mac_address):
                     return True
         return False
+
+    def test_linux_to_vpp_mpls_route_delete(self):
+        """Linux MPLS route delete releases the lcp MPLS table"""
+        ns = ["ip", "netns", "exec", self.ns_name]
+        r = subprocess.run(
+            ns + ["sysctl", "-w", "net.mpls.platform_labels=1100"], capture_output=True
+        )
+        if r.returncode:
+            self.skipTest("kernel MPLS (mpls_router) not available")
+        route = ["1001", "via", "inet", "10.10.1.1", "dev", "hloop0"]
+        subprocess.run(ns + ["ip", "-f", "mpls", "route", "add"] + route, check=True)
+        self.poll_for(
+            "MPLS route synced to VPP",
+            lambda: "1001:neos" in self.vapi.cli("show mpls fib 1001"),
+            True,
+        )
+
+        # The last lcp route in the MPLS table drops the table reference;
+        # MPLS has no mfib to unlock.
+        subprocess.run(ns + ["ip", "-f", "mpls", "route", "del", "1001"], check=True)
+        self.poll_for(
+            "MPLS route removed from VPP",
+            lambda: "1001:neos" in self.vapi.cli("show mpls fib 1001"),
+            False,
+        )
+        self.assertIn("vpp", self.vapi.cli("show version"))
 
     def test_linux_to_vpp_neighbor_ipv4(self):
         """Linux ARP neighbor entries sync to VPP"""
