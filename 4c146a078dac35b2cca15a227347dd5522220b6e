@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a7cd0a16_7943a9e1",
+        "filename": "src/vppinfra/file.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 139,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-10-16T04:09:19Z",
+      "side": 0,
+      "message": "can\u0027t we just move the check under the lock then drop if and return if nothing pending?",
+      "revId": "4c146a078dac35b2cca15a227347dd5522220b6e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
