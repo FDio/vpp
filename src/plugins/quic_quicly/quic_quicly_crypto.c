@@ -937,7 +937,7 @@ quic_quicly_crypto_encrypt_packet (struct st_quicly_crypto_engine_t *engine,
     datagram.base[payload_from + i - QUICLY_SEND_PN_SIZE] ^= hpout[i + 1];
 }
 
-void
+int
 quic_quicly_crypto_decrypt_packet (quic_ctx_t *qctx,
 				   quic_quicly_rx_packet_ctx_t *pctx)
 {
@@ -950,18 +950,21 @@ quic_quicly_crypto_decrypt_packet (quic_ctx_t *qctx,
 
   /* Long Header packets are not decrypted by vpp */
   if (QUICLY_PACKET_IS_LONG_HEADER (pctx->packet.octets.base[0]))
-    return;
+    return 0;
 
   uint64_t next_expected_packet_number =
     quicly_get_next_expected_packet_number (qctx->conn);
   if (next_expected_packet_number == UINT64_MAX)
-    return;
+    return 0;
 
   ptls_aead_ctx = (ptls_aead_context_t *) qctx->ingress_keys.aead_ctx;
   header_protection = (ptls_cipher_context_t *) qctx->ingress_keys.hp_ctx;
 
   if (!ptls_aead_ctx || !header_protection)
-    return;
+    return 0;
+
+  if (pctx->packet.encrypted_off > pctx->packet.octets.len)
+    return -1;
 
   size_t encrypted_len = pctx->packet.octets.len - pctx->packet.encrypted_off;
   uint8_t hpmask[5] = { 0 };
@@ -970,7 +973,7 @@ quic_quicly_crypto_decrypt_packet (quic_ctx_t *qctx,
 
   /* decipher the header protection, as well as obtaining pnbits, pnlen */
   if (encrypted_len < header_protection->algo->iv_size + QUICLY_MAX_PN_SIZE)
-    return;
+    return 0;
 
   hp_ctx = (struct cipher_context_t *) header_protection;
   vnet_crypto_op_init (0, &hp_ctx->op);
@@ -980,8 +983,9 @@ quic_quicly_crypto_decrypt_packet (quic_ctx_t *qctx,
   hp_ctx->op.src = hpmask;
   hp_ctx->op.dst = hpmask;
   hp_ctx->op.len = sizeof (hpmask);
-  vnet_crypto_process_ops (vm, &(hp_ctx->op), 0, 1);
-  assert (hp_ctx->op.status == VNET_CRYPTO_OP_STATUS_COMPLETED);
+  if (vnet_crypto_process_ops (vm, &(hp_ctx->op), 0, 1) != 1 ||
+      hp_ctx->op.status != VNET_CRYPTO_OP_STATUS_COMPLETED)
+    return -1;
   pctx->packet.octets.base[0] ^= hpmask[0] & 0x1f;
   pnlen = (pctx->packet.octets.base[0] & 0x3) + 1;
   for (i = 0; i != pnlen; ++i)
@@ -1008,8 +1012,11 @@ quic_quicly_crypto_decrypt_packet (quic_ctx_t *qctx,
 	  pctx->packet.octets.base[pctx->packet.encrypted_off + i] ^=
 	    hpmask[i + 1];
 	}
-      return;
+      return 0;
     }
+
+  if (pctx->packet.octets.len - aead_off < ptls_aead_ctx->algo->tag_size)
+    return -1;
 
   /* AEAD decrypt */
   aead_crctx = (struct aead_crypto_context_t *) ptls_aead_ctx;
@@ -1026,19 +1033,20 @@ quic_quicly_crypto_decrypt_packet (quic_ctx_t *qctx,
   aead_crctx->op.len = pctx->packet.octets.len - aead_off - aead_crctx->super.algo->tag_size;
   aead_crctx->op.auth_len = aead_crctx->super.algo->tag_size;
   aead_crctx->op.auth = aead_crctx->op.src + aead_crctx->op.len;
-  vnet_crypto_process_ops (vm, &(aead_crctx->op), 0, 1);
-  ptlen = aead_crctx->op.len;
-  if (ptlen == SIZE_MAX)
+  if (vnet_crypto_process_ops (vm, &(aead_crctx->op), 0, 1) != 1 ||
+      aead_crctx->op.status != VNET_CRYPTO_OP_STATUS_COMPLETED)
     {
-      QUIC_ERR ("aead decryption failure (pn: %d)", pn);
-      return;
+      QUIC_DBG (3, "aead decryption failure (pn: %lu)", pn);
+      return -1;
     }
 
+  ptlen = aead_crctx->op.len;
   pctx->packet.encrypted_off = aead_off;
   pctx->packet.octets.len = ptlen + aead_off;
 
   pctx->packet.decrypted.pn = pn;
   pctx->packet.decrypted.key_phase = qctx->key_phase_ingress;
+  return 0;
 }
 
 static void

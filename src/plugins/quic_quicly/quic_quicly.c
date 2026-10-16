@@ -1661,8 +1661,8 @@ quic_quicly_receive_a_packet (quic_ctx_t *ctx, quic_quicly_rx_packet_ctx_t *pctx
   QUIC_DBG (2, "ctx_index %u, thread_index %u, vpp_crypto %u, try_establish %u", ctx->c_c_index,
 	    ctx->c_thread_index, is_vpp_crypto, try_establish);
 
-  if (is_vpp_crypto)
-    quic_quicly_crypto_decrypt_packet (ctx, pctx);
+  if (is_vpp_crypto && quic_quicly_crypto_decrypt_packet (ctx, pctx))
+    return QUIC_QUICLY_RX_ERROR_WARNING;
 
   quicly_error_t rv = quicly_receive (ctx->conn, NULL, src_addr, &pctx->packet);
   /* bail out if fatal error */
