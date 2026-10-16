@@ -218,7 +218,10 @@ app_crypto_async_req (app_crypto_async_req_t *areq)
 
   /* Hand over request to app */
   if (app->cb_fns.app_crypto_async (req))
-    return APP_CRYPTO_ASYNC_INVALID_TICKET;
+    {
+      pool_put_index (crypto_wrk->reqs, ticket.req_index);
+      return APP_CRYPTO_ASYNC_INVALID_TICKET;
+    }
 
   return ticket;
 }
