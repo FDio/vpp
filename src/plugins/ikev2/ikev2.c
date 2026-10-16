@@ -982,6 +982,10 @@ ikev2_process_sa_init_req (vlib_main_t *vm, ikev2_sa_t *sa, ike_header_t *ike,
       p += plen;
     }
 
+  if (!sa->i_proposals || !vec_len (sa->i_dh_data) || !vec_len (sa->i_nonce) ||
+      payload != IKEV2_PAYLOAD_NONE || p != len)
+    return 0;
+
   sa->state = IKEV2_STATE_SA_INIT;
   log_debug ("ispi %lx SA state changed to SA_INIT", sa->ispi);
   return 1;
@@ -1029,13 +1033,8 @@ ikev2_process_sa_init_resp (vlib_main_t * vm,
 	{
 	  ikev2_sa_free_proposal_vector (&sa->r_proposals);
 	  sa->r_proposals = ikev2_parse_sa_payload (ikep, current_length);
-	  if (sa->r_proposals)
-	    {
-	      sa->state = IKEV2_STATE_SA_INIT;
-	      log_debug ("ispi %lx SA state changed to SA_INIT", sa->ispi);
-	      ike->msgid =
-		clib_host_to_net_u32 (clib_net_to_host_u32 (ike->msgid) + 1);
-	    }
+	  if (!sa->r_proposals)
+            return;
 	}
       else if (payload == IKEV2_PAYLOAD_KE)
 	{
@@ -1105,6 +1104,12 @@ ikev2_process_sa_init_resp (vlib_main_t * vm,
       payload = ikep->nextpayload;
       p += plen;
     }
+
+  if (!sa->r_proposals || !vec_len (sa->r_dh_data) || !vec_len (sa->r_nonce) ||
+      payload != IKEV2_PAYLOAD_NONE || p != len)
+    return;
+  sa->state = IKEV2_STATE_SA_INIT;
+  ike->msgid = clib_host_to_net_u32 (clib_net_to_host_u32 (ike->msgid) + 1);
 }
 
 static u8 *
