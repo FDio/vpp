@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "d9edf34b_3fd15c2a",
+        "filename": "src/vnet/flow/flow.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 169,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2026-10-16T10:42:32Z",
+      "side": 1,
+      "message": "right, I inverted it",
+      "parentUuid": "a163a862_2249b7f2",
+      "revId": "4f5dcf49a932232b75cc0cbf63442e63166786ee",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "ddf0bb9e_973b0eb2",
@@ -35,6 +53,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "c0db3119_81dde271",
+        "filename": "src/vnet/flow/flow_cli.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 227,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2026-10-16T10:42:32Z",
+      "side": 1,
+      "message": "good catch, thanks",
+      "parentUuid": "ddf0bb9e_973b0eb2",
+      "revId": "4f5dcf49a932232b75cc0cbf63442e63166786ee",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "876131ca_1fbe6151",
@@ -48,6 +84,24 @@
       "writtenOn": "2026-10-14T08:23:34Z",
       "side": 1,
       "message": "Could we snapshot flow contents under the existing barrier, including a copy of `generic_pattern_t`, then format and yield after releasing it? Snapshotting only indices allows deletion before lookup to trigger the allocation assertion, or deletion during formatting to expose poisoned storage or a freed generic pattern. Copying here would avoid adding locks to the data path.",
+      "revId": "4f5dcf49a932232b75cc0cbf63442e63166786ee",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "50a4e376_be0d84ce",
+        "filename": "src/vnet/flow/flow_cli.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 260,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2026-10-16T10:42:32Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "876131ca_1fbe6151",
       "revId": "4f5dcf49a932232b75cc0cbf63442e63166786ee",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
