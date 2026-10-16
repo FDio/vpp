@@ -214,8 +214,8 @@ cryptodev_frame_linked_algs_enqueue_internal (vlib_main_t *vm,
       vec->len = max_end - min_ofs;
       if (cmt->iova_mode == RTE_IOVA_VA)
 	{
-	  vec[0].base = (void *) (b[0]->data + min_ofs);
-	  vec[0].iova = pointer_to_uword (b[0]->data) + min_ofs;
+	  vec[0].base = (void *) (vlib_buffer_get_current (b[0]) + min_ofs);
+	  vec[0].iova = pointer_to_uword (vlib_buffer_get_current (b[0])) + min_ofs;
 	  iv_vec.va = (void *) iv;
 	  iv_vec.iova = pointer_to_uword (iv);
 	  digest_vec.va = (void *) tag;
@@ -223,8 +223,8 @@ cryptodev_frame_linked_algs_enqueue_internal (vlib_main_t *vm,
 	}
       else
 	{
-	  vec[0].base = (void *) (b[0]->data + min_ofs);
-	  vec[0].iova = vlib_buffer_get_pa (vm, b[0]) + min_ofs;
+	  vec[0].base = (void *) (vlib_buffer_get_current (b[0]) + min_ofs);
+	  vec[0].iova = vlib_buffer_get_pa (vm, b[0]) + b[0]->current_data + min_ofs;
 	  iv_vec.va = (void *) iv;
 	  iv_vec.iova = vlib_physmem_get_pa (vm, iv);
 	  digest_vec.va = (void *) tag;
@@ -233,7 +233,7 @@ cryptodev_frame_linked_algs_enqueue_internal (vlib_main_t *vm,
 
       if (PREDICT_FALSE (md->is_chained_buffers))
 	{
-	  vec[0].len = clib_min ((u32) (b[0]->current_data + b[0]->current_length - min_ofs),
+	  vec[0].len = clib_min ((u32) (b[0]->current_length - min_ofs),
 				 max_end - min_ofs);
 	  if (cryptodev_frame_build_sgl (vm, cmt->iova_mode, vec, &n_seg, b[0],
 					 max_end - min_ofs - vec->len) < 0)
