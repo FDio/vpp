@@ -13,6 +13,7 @@
 
 #define foreach_wg_input_error                                                \
   _ (NONE, "No error")                                                        \
+  _ (INVALID_LENGTH, "Invalid message length")                                \
   _ (HANDSHAKE_MAC, "Invalid MAC handshake")                                  \
   _ (HANDSHAKE_RATELIMITED, "Handshake ratelimited")                          \
   _ (PEER, "Peer error")                                                      \
@@ -671,8 +672,39 @@ wg_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       other_next[n_other] = WG_INPUT_NEXT_PUNT;
       data_nexts[n_data] = WG_INPUT_N_NEXT;
 
-      header_type =
-	((message_header_t *) vlib_buffer_get_current (b[0]))->type;
+      /* Validate lengths before reading any message-specific fields. */
+      header_type = 0;
+      peer_idx = NULL;
+      if ((b[0]->flags & VLIB_BUFFER_NEXT_PRESENT) &&
+          vlib_buffer_chain_linearize (vm, b[0]) == 0)
+        goto invalid_length;
+      u32 packet_len = vlib_buffer_length_in_chain (vm, b[0]);
+      if (b[0]->current_length < sizeof (message_header_t) || packet_len > CLIB_U16_MAX)
+        goto invalid_length;
+      header_type = ((message_header_t *) vlib_buffer_get_current (b[0]))->type;
+      u32 min_len;
+      switch (header_type)
+        {
+        case MESSAGE_DATA:
+          min_len = sizeof (message_data_t);
+          if (packet_len < min_len + NOISE_AUTHTAG_LEN || b[0]->current_length < min_len)
+            goto invalid_length;
+          break;
+        case MESSAGE_HANDSHAKE_INITIATION:
+          min_len = sizeof (message_handshake_initiation_t);
+          break;
+        case MESSAGE_HANDSHAKE_RESPONSE:
+          min_len = sizeof (message_handshake_response_t);
+          break;
+        case MESSAGE_HANDSHAKE_COOKIE:
+          min_len = sizeof (message_handshake_cookie_t);
+          break;
+        default:
+          goto invalid_length;
+        }
+      if (header_type != MESSAGE_DATA &&
+          (packet_len != min_len || b[0]->current_length < min_len))
+        goto invalid_length;
 
       if (PREDICT_TRUE (header_type == MESSAGE_DATA))
 	{
@@ -841,6 +873,13 @@ wg_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	      n_other += 1;
 	    }
 	}
+
+      goto out;
+
+    invalid_length:
+      other_next[n_other] = WG_INPUT_NEXT_ERROR;
+      b[0]->error = node->errors[WG_INPUT_ERROR_INVALID_LENGTH];
+      other_bi[n_other++] = from[b - bufs];
 
     out:
       if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE) &&
