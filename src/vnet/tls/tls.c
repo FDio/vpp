@@ -1257,6 +1257,7 @@ tls_session_attribute (u32 ctx_handle, clib_thread_index_t thread_index,
   switch (attr->type)
     {
     case TRANSPORT_ENDPT_ATTR_TLS_PEER_CERT:
+    case TRANSPORT_ENDPT_ATTR_TLS_SERVER_NAME:
       if (tls_ctx_attribute (ctx, 1 /* is_get */, attr) < 0)
 	return -1;
       break;
