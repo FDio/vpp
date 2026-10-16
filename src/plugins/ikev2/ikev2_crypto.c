@@ -809,64 +809,59 @@ ikev2_complete_dh (ikev2_sa_t * sa, ikev2_sa_transform_t * t)
 }
 
 int
-ikev2_verify_sign (EVP_PKEY * pkey, u8 * sigbuf, u8 * data)
+ikev2_verify_sign (EVP_PKEY *pkey, u8 *sigbuf, u8 *data)
 {
-  int verify;
+  int verify = 0;
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
-  EVP_MD_CTX *md_ctx = EVP_MD_CTX_new ();
+  EVP_MD_CTX *ctx = EVP_MD_CTX_new ();
 #else
-  EVP_MD_CTX md_ctx;
-  EVP_MD_CTX_init (&md_ctx);
+  EVP_MD_CTX storage;
+  EVP_MD_CTX *ctx = &storage;
+  EVP_MD_CTX_init (ctx);
 #endif
 
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
-  EVP_VerifyInit (md_ctx, EVP_sha1 ());
-  EVP_VerifyUpdate (md_ctx, data, vec_len (data));
-#else
-  EVP_VerifyInit_ex (&md_ctx, EVP_sha1 (), NULL);
-  EVP_VerifyUpdate (&md_ctx, data, vec_len (data));
-#endif
+  if (!ctx || !pkey || !sigbuf || !data || EVP_VerifyInit_ex (ctx, EVP_sha1 (), NULL) != 1 ||
+      EVP_VerifyUpdate (ctx, data, vec_len (data)) != 1)
+    goto done;
+  verify = EVP_VerifyFinal (ctx, sigbuf, vec_len (sigbuf), pkey);
 
+done:
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
-  verify = EVP_VerifyFinal (md_ctx, sigbuf, vec_len (sigbuf), pkey);
-  EVP_MD_CTX_free (md_ctx);
+  EVP_MD_CTX_free (ctx);
 #else
-  verify = EVP_VerifyFinal (&md_ctx, sigbuf, vec_len (sigbuf), pkey);
-  EVP_MD_CTX_cleanup (&md_ctx);
+  EVP_MD_CTX_cleanup (ctx);
 #endif
   return verify;
 }
 
 u8 *
-ikev2_calc_sign (EVP_PKEY * pkey, u8 * data)
+ikev2_calc_sign (EVP_PKEY *pkey, u8 *data)
 {
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
-  EVP_MD_CTX *md_ctx = EVP_MD_CTX_new ();
-#else
-  EVP_MD_CTX md_ctx;
-  EVP_MD_CTX_init (&md_ctx);
-#endif
   unsigned int sig_len = 0;
-  u8 *sign;
-
+  u8 *sign = 0;
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
-  EVP_SignInit (md_ctx, EVP_sha1 ());
-  EVP_SignUpdate (md_ctx, data, vec_len (data));
-  /* get sign len */
-  EVP_SignFinal (md_ctx, NULL, &sig_len, pkey);
-  sign = vec_new (u8, sig_len);
-  /* calc sign */
-  EVP_SignFinal (md_ctx, sign, &sig_len, pkey);
-  EVP_MD_CTX_free (md_ctx);
+  EVP_MD_CTX *ctx = EVP_MD_CTX_new ();
 #else
-  EVP_SignInit (&md_ctx, EVP_sha1 ());
-  EVP_SignUpdate (&md_ctx, data, vec_len (data));
-  /* get sign len */
-  EVP_SignFinal (&md_ctx, NULL, &sig_len, pkey);
+  EVP_MD_CTX storage;
+  EVP_MD_CTX *ctx = &storage;
+  EVP_MD_CTX_init (ctx);
+#endif
+
+  if (!ctx || !pkey || !data || EVP_SignInit_ex (ctx, EVP_sha1 (), NULL) != 1 ||
+      EVP_SignUpdate (ctx, data, vec_len (data)) != 1 ||
+      EVP_SignFinal (ctx, NULL, &sig_len, pkey) != 1 || !sig_len)
+    goto done;
   sign = vec_new (u8, sig_len);
-  /* calc sign */
-  EVP_SignFinal (&md_ctx, sign, &sig_len, pkey);
-  EVP_MD_CTX_cleanup (&md_ctx);
+  if (EVP_SignFinal (ctx, sign, &sig_len, pkey) != 1 || !sig_len)
+    vec_free (sign);
+  else
+    vec_set_len (sign, sig_len);
+
+done:
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+  EVP_MD_CTX_free (ctx);
+#else
+  EVP_MD_CTX_cleanup (ctx);
 #endif
   return sign;
 }
