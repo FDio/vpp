@@ -243,11 +243,13 @@ static const char modp_dh_2048_256_generator[] =
   "5E2327CFEF98C582664B4C0F6CC41659";
 
 v8 *
-ikev2_calc_prf (ikev2_sa_transform_t * tr, v8 * key, v8 * data)
+ikev2_calc_prf (ikev2_sa_transform_t *tr, v8 *key, v8 *data)
 {
-  v8 *prf;
+  v8 *prf = 0;
   unsigned int len = 0;
 
+  if (!key || !data)
+    return 0;
   prf = vec_new (u8, tr->key_trunc);
   if (tr->prf_type == IKEV2_TRANSFORM_PRF_TYPE_PRF_AES128_CMAC)
     {
@@ -256,33 +258,42 @@ ikev2_calc_prf (ikev2_sa_transform_t * tr, v8 * key, v8 * data)
       size_t cmac_len = 0;
       CMAC_CTX *ctx = CMAC_CTX_new ();
       u8 *key_data = key;
+      int ok = 0;
 
+      if (!ctx)
+	goto fail;
       if (vec_len (key) != tr->key_len)
 	{
-	  CMAC_Init (ctx, zero_key, sizeof (zero_key), tr->cipher, NULL);
-	  CMAC_Update (ctx, key, vec_len (key));
-	  CMAC_Final (ctx, cmac_key, &cmac_len);
+	  if (CMAC_Init (ctx, zero_key, sizeof (zero_key), tr->cipher, NULL) != 1 ||
+	      CMAC_Update (ctx, key, vec_len (key)) != 1 ||
+	      CMAC_Final (ctx, cmac_key, &cmac_len) != 1 || cmac_len != sizeof (cmac_key))
+	    goto cmac_done;
 	  key_data = cmac_key;
 	}
 
-      CMAC_Init (ctx, key_data, tr->key_len, tr->cipher, NULL);
-      CMAC_Update (ctx, data, vec_len (data));
-      CMAC_Final (ctx, prf, &cmac_len);
+      ok = CMAC_Init (ctx, key_data, tr->key_len, tr->cipher, NULL) == 1 &&
+	   CMAC_Update (ctx, data, vec_len (data)) == 1 && CMAC_Final (ctx, prf, &cmac_len) == 1;
+    cmac_done:
       CMAC_CTX_free (ctx);
+      if (!ok)
+	goto fail;
       len = cmac_len;
     }
   else
     {
       ikev2_main_t *km = &ikev2_main;
       HMAC_CTX *ctx = km->hmac_ctx;
-
-      HMAC_Init_ex (ctx, key, vec_len (key), tr->md, NULL);
-      HMAC_Update (ctx, data, vec_len (data));
-      HMAC_Final (ctx, prf, &len);
+      if (!ctx || HMAC_Init_ex (ctx, key, vec_len (key), tr->md, NULL) != 1 ||
+	  HMAC_Update (ctx, data, vec_len (data)) != 1 || HMAC_Final (ctx, prf, &len) != 1)
+	goto fail;
     }
-  ASSERT (len == tr->key_trunc);
-
+  if (len != tr->key_trunc)
+    goto fail;
   return prf;
+
+fail:
+  vec_free (prf);
+  return 0;
 }
 
 u8 *
@@ -312,6 +323,12 @@ ikev2_calc_prfplus (ikev2_sa_transform_t * tr, u8 * key, u8 * seed, int len)
       vec_add2 (s, tmp, 1);
       *tmp = x + 1;
       t = ikev2_calc_prf (tr, key, s);
+      if (!t)
+	{
+	  vec_free (s);
+	  vec_free (ret);
+	  return 0;
+	}
       vec_append (ret, t);
       vec_free (s);
       x++;

@@ -595,9 +595,11 @@ ikev2_complete_sa_data (ikev2_sa_t * sa, ikev2_sa_t * sai)
 
 }
 
-static void
+static int
 ikev2_calc_keys_internal (ikev2_sa_t *sa, u8 *skeyseed)
 {
+  if (!skeyseed)
+    return 0;
   u8 *tmp;
   /* calculate SKEYSEED = prf(Ni | Nr, g^ir) */
   u8 *s = 0;
@@ -636,6 +638,8 @@ ikev2_calc_keys_internal (ikev2_sa_t *sa, u8 *skeyseed)
 
   keymat = ikev2_calc_prfplus (tr_prf, skeyseed, s, len);
   vec_free (s);
+  if (!keymat)
+    return 0;
 
   int pos = 0;
 
@@ -679,9 +683,10 @@ ikev2_calc_keys_internal (ikev2_sa_t *sa, u8 *skeyseed)
 
   vec_free (keymat);
   sa->keys_generated = 1;
+  return 1;
 }
 
-static void
+static int
 ikev2_calc_keys_rekey (ikev2_sa_t *sa_new, ikev2_sa_t *sa_old)
 {
   u8 *s = 0, *skeyseed = 0;
@@ -693,15 +698,18 @@ ikev2_calc_keys_rekey (ikev2_sa_t *sa_new, ikev2_sa_t *sa_old)
   vec_append (s, sa_new->r_nonce);
   skeyseed = ikev2_calc_prf (tr_prf, sa_old->sk_d, s);
 
-  ikev2_calc_keys_internal (sa_new, skeyseed);
+  int ok = ikev2_calc_keys_internal (sa_new, skeyseed);
 
   vec_free (skeyseed);
   vec_free (s);
+  return ok;
 }
 
-static void
+static int
 ikev2_calc_keys (ikev2_sa_t *sa)
 {
+  if (sa->keys_generated)
+    return 1;
   u8 *s = 0, *skeyseed = 0;
   ikev2_sa_transform_t *tr_prf =
     ikev2_sa_get_td_for_type (sa->r_proposals, IKEV2_TRANSFORM_TYPE_PRF);
@@ -710,13 +718,14 @@ ikev2_calc_keys (ikev2_sa_t *sa)
   vec_append (s, sa->r_nonce);
   skeyseed = ikev2_calc_prf (tr_prf, s, sa->dh_shared_key);
 
-  ikev2_calc_keys_internal (sa, skeyseed);
+  int ok = ikev2_calc_keys_internal (sa, skeyseed);
 
   vec_free (skeyseed);
   vec_free (s);
+  return ok;
 }
 
-static void
+static int
 ikev2_calc_child_keys (ikev2_sa_t *sa, ikev2_child_sa_t *child, u8 kex)
 {
   u8 *s = 0;
@@ -752,6 +761,9 @@ ikev2_calc_child_keys (ikev2_sa_t *sa, ikev2_child_sa_t *child, u8 kex)
   int len = (ctr_encr->key_len + salt_len) * 2 + integ_key_len * 2;
 
   keymat = ikev2_calc_prfplus (tr_prf, sa->sk_d, s, len);
+  vec_free (s);
+  if (!keymat)
+    return 0;
 
   int pos = 0;
 
@@ -796,6 +808,7 @@ ikev2_calc_child_keys (ikev2_sa_t *sa, ikev2_child_sa_t *child, u8 kex)
   ASSERT (pos == len);
 
   vec_free (keymat);
+  return 1;
 }
 
 static u8 *
@@ -1335,7 +1348,8 @@ ikev2_process_auth_req (vlib_main_t * vm, ikev2_sa_t * sa,
 	       format_ip6_address,
 	       sa->is_initiator ? &ip_addr_v6 (&sa->raddr) : &ip_addr_v6 (&sa->iaddr));
 
-  ikev2_calc_keys (sa);
+  if (!ikev2_calc_keys (sa))
+    goto malformed;
 
   plaintext = ikev2_decrypt_sk_payload (sa, ike, &payload, len, &dlen);
 
@@ -1581,10 +1595,21 @@ ikev2_process_create_child_sa_rekey (ikev2_sa_t *sa, ikev2_sa_t *sar,
   return 1;
 }
 
-static void
-ikev2_complete_sa_rekey (ikev2_sa_t *sa_new, ikev2_sa_t *sa_old,
-			 ikev2_sa_rekey_t *sa_rekey)
+static int
+ikev2_complete_sa_rekey (ikev2_sa_t *sa_new, ikev2_sa_t *sa_old, ikev2_sa_rekey_t *sa_rekey)
 {
+  /* Derive keys before transferring any SA ownership. */
+  ikev2_sa_t keys = {
+    .r_proposals = sa_rekey->r_proposals,
+    .i_nonce = sa_rekey->i_nonce,
+    .r_nonce = sa_rekey->r_nonce,
+    .ispi = sa_rekey->ispi,
+    .rspi = sa_rekey->rspi,
+    .dh_shared_key = sa_rekey->dh_shared_key,
+  };
+  if (!ikev2_calc_keys_rekey (&keys, sa_old))
+    return 0;
+
   sa_new->del = 0;
   sa_new->rekey = 0;
   sa_new->new_child = 0;
@@ -1608,14 +1633,14 @@ ikev2_complete_sa_rekey (ikev2_sa_t *sa_new, ikev2_sa_t *sa_old,
   sa_new->i_proposals = sa_rekey->i_proposals;
   sa_new->r_proposals = sa_rekey->r_proposals;
 
-  sa_new->sk_d = 0;
-  sa_new->sk_ai = 0;
-  sa_new->sk_ar = 0;
-  sa_new->sk_ei = 0;
-  sa_new->sk_er = 0;
-  sa_new->sk_pi = 0;
-  sa_new->sk_pr = 0;
-  ikev2_calc_keys_rekey (sa_new, sa_old);
+  sa_new->sk_d = keys.sk_d;
+  sa_new->sk_ai = keys.sk_ai;
+  sa_new->sk_ar = keys.sk_ar;
+  sa_new->sk_ei = keys.sk_ei;
+  sa_new->sk_er = keys.sk_er;
+  sa_new->sk_pi = keys.sk_pi;
+  sa_new->sk_pr = keys.sk_pr;
+  sa_new->keys_generated = keys.keys_generated;
 
   sa_new->i_auth.data = vec_dup (sa_old->i_auth.data);
   sa_new->i_auth.key = sa_old->i_auth.key;
@@ -1638,6 +1663,7 @@ ikev2_complete_sa_rekey (ikev2_sa_t *sa_new, ikev2_sa_t *sa_old,
   sa_old->old_remote_id_present = 0;
   sa_old->childs = 0;
   sa_old->sw_if_index = ~0;
+  return 1;
 }
 
 static void
@@ -1930,6 +1956,11 @@ ikev2_sa_generate_authmsg (ikev2_sa_t * sa, int is_responder)
   vec_append (data, id->data);
 
   u8 *id_hash = ikev2_calc_prf (tr_prf, key, data);
+  if (!id_hash)
+    {
+      vec_free (data);
+      return 0;
+    }
   vec_append (authmsg, packet_data);
   vec_append (authmsg, nonce);
   vec_append (authmsg, id_hash);
@@ -2047,6 +2078,8 @@ ikev2_select_profile (vlib_main_t *vm, ikev2_main_t *km, ikev2_sa_t *sa,
   u8 *authmsg, *psk = 0, *auth = 0;
 
   authmsg = ikev2_sa_generate_authmsg (sa, sa->is_initiator);
+  if (!authmsg)
+    return 0;
 
   if (sa->is_initiator)
     {
@@ -2072,10 +2105,12 @@ ikev2_select_profile (vlib_main_t *vm, ikev2_main_t *km, ikev2_sa_t *sa,
 	      p->auth.method != IKEV2_AUTH_METHOD_SHARED_KEY_MIC)
 	    continue;
 
+	  vec_free (psk);
+	  vec_free (auth);
 	  psk = ikev2_calc_prf (tr_prf, p->auth.data, key_pad);
 	  auth = ikev2_calc_prf (tr_prf, psk, authmsg);
 
-	  if (vec_len (sa_auth->data) == tr_prf->key_trunc &&
+	  if (auth && vec_len (sa_auth->data) == tr_prf->key_trunc &&
 	      clib_mem_equal_constant_time (auth, sa_auth->data, tr_prf->key_trunc))
 	    {
 	    sa->state = IKEV2_STATE_AUTHENTICATED;
@@ -2110,6 +2145,8 @@ ikev2_select_profile (vlib_main_t *vm, ikev2_main_t *km, ikev2_sa_t *sa,
 	}
     }
   vec_free (authmsg);
+  vec_free (psk);
+  vec_free (auth);
   return ret;
 }
 
@@ -2153,6 +2190,12 @@ ikev2_sa_auth (ikev2_sa_t *sa, vlib_main_t *vm)
 
 	  /* generate our auth data */
 	  authmsg = ikev2_sa_generate_authmsg (sa, 1);
+	  if (!authmsg)
+	    {
+	    sa->state = IKEV2_STATE_AUTH_FAILED;
+	    vec_free (key_pad);
+	    return;
+	    }
 	  if (sel_p->auth.method == IKEV2_AUTH_METHOD_SHARED_KEY_MIC)
 	    {
 	      vec_free (sa->r_auth.data);
@@ -2168,6 +2211,12 @@ ikev2_sa_auth (ikev2_sa_t *sa, vlib_main_t *vm)
 	      sa->r_auth.method = IKEV2_AUTH_METHOD_RSA_SIG;
 	    }
 	  vec_free (authmsg);
+	  if (!sa->r_auth.data)
+	    {
+	      sa->state = IKEV2_STATE_AUTH_FAILED;
+	      vec_free (key_pad);
+	      return;
+	    }
 
 	  /* select transforms for 1st child sa */
 	  ikev2_sa_free_proposal_vector (&sa->childs[0].r_proposals);
@@ -2191,8 +2240,8 @@ ikev2_sa_auth (ikev2_sa_t *sa, vlib_main_t *vm)
   vec_free (key_pad);
 }
 
-static void
-ikev2_sa_auth_init (ikev2_sa_t * sa)
+static int
+ikev2_sa_auth_init (ikev2_sa_t *sa)
 {
   ikev2_main_t *km = &ikev2_main;
   u8 *authmsg, *key_pad, *psk = 0;
@@ -2208,10 +2257,12 @@ ikev2_sa_auth_init (ikev2_sa_t * sa)
       log_err ("unsupported authentication method %u", sa->i_auth.method);
       sa->state = IKEV2_STATE_AUTH_FAILED;
       log_debug ("ispi %lx SA state changed to AUTH_FAILED", sa->ispi);
-      return;
+      return 0;
     }
 
   authmsg = ikev2_sa_generate_authmsg (sa, 0);
+  if (!authmsg)
+    return 0;
 
   if (sa->i_auth.method == IKEV2_AUTH_METHOD_SHARED_KEY_MIC)
     {
@@ -2230,6 +2281,7 @@ ikev2_sa_auth_init (ikev2_sa_t * sa)
       sa->i_auth.method = IKEV2_AUTH_METHOD_RSA_SIG;
     }
   vec_free (authmsg);
+  return sa->i_auth.data != 0;
 }
 
 static u32
@@ -2576,7 +2628,8 @@ ikev2_create_tunnel_interface (vlib_main_t *vm, ikev2_sa_t *sa,
 
   a.encr_type = encr_type;
   a.integ_type = integ_type;
-  ikev2_calc_child_keys (sa, child, kex);
+  if (!ikev2_calc_child_keys (sa, child, kex))
+    return 1;
 
   if (sa->is_initiator)
     {
@@ -3628,8 +3681,11 @@ ikev2_node_internal (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *f
 			  (&sai->init_response_received, 0, 1))
 			{
 			  ikev2_complete_sa_data (sa0, sai);
-			  ikev2_calc_keys (sa0);
-			  ikev2_sa_auth_init (sa0);
+			  if (!ikev2_calc_keys (sa0) || !ikev2_sa_auth_init (sa0))
+			    {
+			      ikev2_sa_free_all_vec (sa0);
+			      goto dispatch0;
+			    }
 			  ike0->flags = IKEV2_HDR_FLAG_INITIATOR;
 			  ike0->msgid =
 			    clib_net_to_host_u32 (sai->last_init_msg_id);
@@ -3886,7 +3942,13 @@ ikev2_node_internal (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *f
 		      sa0 = tmp;
 		      hash_set (km->sa_by_rspi, sa0->rspi, sa0 - km->sas);
 		      p = hash_get (km->sa_by_rspi, sa0->rspi);
-		      ikev2_complete_sa_rekey (sar, sa0, &sa0->sa_rekey[0]);
+		      if (!ikev2_complete_sa_rekey (sar, sa0, &sa0->sa_rekey[0]))
+			{
+			  /* Preserve the old SA if key derivation failed. */
+			  pool_put (km->sas, tmp);
+			  sa0 = sar;
+			  sa0->sa_rekey[0].notify_type = IKEV2_NOTIFY_MSG_TEMPORARY_FAILURE;
+			}
 		      hash_set (km->sa_by_rspi, sar->rspi, sar - km->sas);
 		    }
 		  if (ike_hdr_is_response (ike0))
