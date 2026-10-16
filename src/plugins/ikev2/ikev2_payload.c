@@ -362,10 +362,10 @@ ikev2_parse_sa_payload (ike_payload_header_t * ikep, u32 rlen)
   ike_sa_proposal_data_t *sap;
   int proposal_ptr = 0;
 
-  if (sizeof (*ikep) > rlen)
+  if (sizeof (*ikep) > rlen || plen < sizeof (*ikep) || plen > rlen)
     return 0;
 
-  rlen -= sizeof (*ikep);
+  rlen = plen - sizeof (*ikep);
   do
     {
       if (proposal_ptr + sizeof (*sap) > rlen)
@@ -373,6 +373,11 @@ ikev2_parse_sa_payload (ike_payload_header_t * ikep, u32 rlen)
 
       sap = (ike_sa_proposal_data_t *) & ikep->payload[proposal_ptr];
       int i, transform_ptr;
+      u32 proposal_len = clib_net_to_host_u16 (sap->proposal_len);
+      if (proposal_len < sizeof (*sap) + sap->spi_size ||
+          proposal_len > rlen - proposal_ptr)
+        goto data_corrupted;
+      u32 proposal_end = proposal_ptr + proposal_len;
 
       /* IKE proposal should have 8 bytes or no SPI */
       if (sap->protocol_id == IKEV2_PROTOCOL_IKE && sap->spi_size != 0 &&
@@ -384,7 +389,7 @@ ikev2_parse_sa_payload (ike_payload_header_t * ikep, u32 rlen)
 	goto data_corrupted;
 
       transform_ptr = proposal_ptr + sizeof (*sap) + sap->spi_size;
-      if (transform_ptr > rlen)
+      if (transform_ptr > proposal_end)
         goto data_corrupted;
 
       vec_add2 (v, proposal, 1);
@@ -406,7 +411,7 @@ ikev2_parse_sa_payload (ike_payload_header_t * ikep, u32 rlen)
 	{
 	  ike_sa_transform_data_t *tr =
             (ike_sa_transform_data_t *) & ikep->payload[transform_ptr];
-          if (transform_ptr + sizeof (*tr) > rlen)
+          if (transform_ptr + sizeof (*tr) > proposal_end)
             goto data_corrupted;
 	  u16 tlen = clib_net_to_host_u16 (tr->transform_len);
 
@@ -417,14 +422,16 @@ ikev2_parse_sa_payload (ike_payload_header_t * ikep, u32 rlen)
 
 	  transform->type = tr->transform_type;
 	  transform->transform_id = clib_net_to_host_u16 (tr->transform_id);
-          if (transform_ptr + tlen > rlen)
+          if (transform_ptr + tlen > proposal_end)
             goto data_corrupted;
 	  if (tlen > sizeof (*tr))
 	    vec_add (transform->attrs, tr->attributes, tlen - sizeof (*tr));
           transform_ptr += tlen;
 	}
 
-      proposal_ptr += clib_net_to_host_u16 (sap->proposal_len);
+      if (transform_ptr != proposal_end)
+        goto data_corrupted;
+      proposal_ptr = proposal_end;
     }
   while (proposal_ptr < (plen - sizeof (*ikep)) && sap->last_or_more == 2);
 
