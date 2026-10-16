@@ -522,11 +522,13 @@ ikev2_notify_t *
 ikev2_parse_notify_payload (ike_payload_header_t * ikep, u32 rlen)
 {
   ike_notify_payload_header_t *n = (ike_notify_payload_header_t *) ikep;
-  u32 plen = clib_net_to_host_u16 (n->length);
   ikev2_notify_t *r = 0;
   u32 spi;
 
   if (sizeof (*n) > rlen)
+    return 0;
+  u32 plen = clib_net_to_host_u16 (n->length);
+  if (plen < sizeof (*n) + n->spi_size || plen > rlen)
     return 0;
 
   r = vec_new (ikev2_notify_t, 1);
@@ -535,9 +537,6 @@ ikev2_parse_notify_payload (ike_payload_header_t * ikep, u32 rlen)
 
   if (n->spi_size == 4)
     {
-      if (sizeof (spi) + sizeof (*n) > rlen)
-        goto cleanup;
-
       clib_memcpy (&spi, n->payload, n->spi_size);
       r->spi = clib_net_to_host_u32 (spi);
     }
@@ -551,18 +550,13 @@ ikev2_parse_notify_payload (ike_payload_header_t * ikep, u32 rlen)
       goto cleanup;
     }
 
-  if (plen > (sizeof (*n) + n->spi_size))
-    {
-      if (plen <= sizeof (*n) + n->spi_size)
-        goto cleanup;
-
-      u32 data_len = plen - sizeof (*n) - n->spi_size;
-      if ((r->msg_type == IKEV2_NOTIFY_MSG_NAT_DETECTION_SOURCE_IP ||
-	   r->msg_type == IKEV2_NOTIFY_MSG_NAT_DETECTION_DESTINATION_IP) &&
-	  data_len != SHA_DIGEST_LENGTH)
-	goto cleanup;
-      vec_add (r->data, n->payload + n->spi_size, data_len);
-    }
+  u32 data_len = plen - sizeof (*n) - n->spi_size;
+  if ((r->msg_type == IKEV2_NOTIFY_MSG_NAT_DETECTION_SOURCE_IP ||
+       r->msg_type == IKEV2_NOTIFY_MSG_NAT_DETECTION_DESTINATION_IP) &&
+      data_len != SHA_DIGEST_LENGTH)
+    goto cleanup;
+  if (data_len)
+    vec_add (r->data, n->payload + n->spi_size, data_len);
   return r;
 
 cleanup:
