@@ -2686,20 +2686,25 @@ update_map_register_auth_data (map_register_hdr_t * map_reg_hdr,
   vnet_crypto_ctx_t *ctx;
 
   ctx = vnet_crypto_ctx_create (lisp_key_type_to_crypto_alg (key_id));
-  if (ctx)
-    vnet_crypto_ctx_set_auth_key (ctx, key, vec_len (key));
+  if (!ctx)
+    return -1;
+  if (!vnet_crypto_ctx_set_auth_key (ctx, key, vec_len (key)))
+    {
+      vnet_crypto_ctx_destroy (lcm->vlib_main, ctx);
+      return -1;
+    }
   vnet_crypto_op_init (ctx, op);
   op->type = VNET_CRYPTO_OP_TYPE_HMAC;
-  op->len = msg_len;
+  op->auth_src_len = msg_len;
   op->auth = MREG_DATA (map_reg_hdr);
-  op->src = (u8 *) map_reg_hdr;
+  op->auth_src = (u8 *) map_reg_hdr;
   op->auth_len = 0;
   op->iv = 0;
 
-  vnet_crypto_process_ops (lcm->vlib_main, op, 0, 1);
+  u32 completed = vnet_crypto_process_ops (lcm->vlib_main, op, 0, 1);
   vnet_crypto_ctx_destroy (lcm->vlib_main, ctx);
 
-  return 0;
+  return completed == 1 && op->status == VNET_CRYPTO_OP_STATUS_COMPLETED ? 0 : -1;
 }
 
 static vlib_buffer_t *
@@ -2729,8 +2734,11 @@ build_map_register (lisp_cp_main_t * lcm, ip_address_t * sloc,
 					   auth_data_len, nonce_res,
 					   &msg_len);
 
-  update_map_register_auth_data (map_reg_hdr, key_id, key, auth_data_len,
-				 msg_len);
+  if (update_map_register_auth_data (map_reg_hdr, key_id, key, auth_data_len, msg_len))
+    {
+      vlib_buffer_free_one (vm, bi);
+      return 0;
+    }
 
   /* push outer ip header */
   pkt_push_udp_and_ip (vm, b, LISP_CONTROL_PORT, LISP_CONTROL_PORT, sloc,
@@ -3850,13 +3858,14 @@ is_auth_data_valid (map_notify_hdr_t * h, u32 msg_len,
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
   u8 *auth_data = 0;
   u16 auth_data_len;
-  int result;
+  int result = 0;
   vnet_crypto_op_t _op, *op = &_op;
   vnet_crypto_ctx_t *ctx;
   u8 out[EVP_MAX_MD_SIZE] = { 0, };
 
   auth_data_len = auth_data_len_by_key_id (key_id);
-  if ((u16) ~ 0 == auth_data_len)
+  if (auth_data_len == 0 || auth_data_len > sizeof (out) ||
+      msg_len < sizeof (*h) + auth_data_len)
     {
       clib_warning ("invalid length for key_id %d!", key_id);
       return 0;
@@ -3870,24 +3879,30 @@ is_auth_data_valid (map_notify_hdr_t * h, u32 msg_len,
   clib_memset (MNOTIFY_DATA (h), 0, auth_data_len);
 
   ctx = vnet_crypto_ctx_create (lisp_key_type_to_crypto_alg (key_id));
-  if (ctx)
-    vnet_crypto_ctx_set_auth_key (ctx, key, vec_len (key));
+  if (!ctx)
+    goto done;
+  if (!vnet_crypto_ctx_set_auth_key (ctx, key, vec_len (key)))
+    {
+      vnet_crypto_ctx_destroy (lcm->vlib_main, ctx);
+      goto done;
+    }
   vnet_crypto_op_init (ctx, op);
   op->type = VNET_CRYPTO_OP_TYPE_HMAC;
-  op->len = msg_len;
+  op->auth_src_len = msg_len;
   op->auth = out;
-  op->src = (u8 *) h;
+  op->auth_src = (u8 *) h;
   op->auth_len = 0;
   op->iv = 0;
 
-  vnet_crypto_process_ops (lcm->vlib_main, op, 0, 1);
+  u32 completed = vnet_crypto_process_ops (lcm->vlib_main, op, 0, 1);
   vnet_crypto_ctx_destroy (lcm->vlib_main, ctx);
+  if (completed == 1 && op->status == VNET_CRYPTO_OP_STATUS_COMPLETED)
+    result = memcmp (out, auth_data, auth_data_len) == 0;
 
-  result = memcmp (out, auth_data, auth_data_len);
-
+done:
+  clib_memcpy (MNOTIFY_DATA (h), auth_data, auth_data_len);
   vec_free (auth_data);
-
-  return !result;
+  return result;
 }
 
 static void
