@@ -122,6 +122,9 @@ ptls_vpp_crypto_aead_decrypt (ptls_aead_context_t *_ctx, void *_output,
   struct vpp_aead_context_t *ctx = (struct vpp_aead_context_t *) _ctx;
   int tag_size = ctx->super.algo->tag_size;
 
+  if (PREDICT_FALSE (inlen < tag_size))
+    return SIZE_MAX;
+
   vnet_crypto_op_init (ctx->ctx, &ctx->op);
   ctx->op.type = ctx->type;
   ctx->op.aad = (u8 *) aad;
@@ -134,11 +137,11 @@ ptls_vpp_crypto_aead_decrypt (ptls_aead_context_t *_ctx, void *_output,
   ctx->op.auth_len = tag_size;
   ctx->op.auth = ctx->op.src + ctx->op.len;
 
-  vnet_crypto_process_ops (vm, &(ctx->op), 0, 1);
+  u32 n_completed = vnet_crypto_process_ops (vm, &(ctx->op), 0, 1);
 
   /* Authentication failures are peer controlled. picotls expects SIZE_MAX
    * and turns that into a bad-record-mac alert, so never abort here. */
-  if (PREDICT_FALSE (ctx->op.status != VNET_CRYPTO_OP_STATUS_COMPLETED))
+  if (PREDICT_FALSE (n_completed != 1 || ctx->op.status != VNET_CRYPTO_OP_STATUS_COMPLETED))
     return SIZE_MAX;
 
   return ctx->op.len;
