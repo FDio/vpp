@@ -10,6 +10,7 @@
 #include <vnet/vnet.h>
 #include <vppinfra/error.h>
 #include <vppinfra/random.h>
+#include <vppinfra/crypto/constant_time.h>
 #include <vnet/udp/udp.h>
 #include <vnet/ipsec/ipsec.h>
 #include <vnet/ipsec/ipsec_tun.h>
@@ -1196,7 +1197,8 @@ ikev2_decrypt_sk_payload (ikev2_sa_t * sa, ike_header_t * ike,
 
       plen = plen - sizeof (*ikep) - tr_integ->key_trunc;
 
-      if (clib_memcmp (hmac, &ikep->payload[plen], tr_integ->key_trunc))
+      if (!clib_mem_equal_constant_time (hmac, &ikep->payload[plen],
+                                         tr_integ->key_trunc))
 	{
 	  log_err ("message integrity check failed");
 	  vec_free (hmac);
@@ -2071,7 +2073,7 @@ ikev2_select_profile (vlib_main_t *vm, ikev2_main_t *km, ikev2_sa_t *sa,
 	  auth = ikev2_calc_prf (tr_prf, psk, authmsg);
 
 	  if (vec_len (sa_auth->data) == tr_prf->key_trunc &&
-              !clib_memcmp (auth, sa_auth->data, tr_prf->key_trunc))
+              clib_mem_equal_constant_time (auth, sa_auth->data, tr_prf->key_trunc))
 	    {
 	    sa->state = IKEV2_STATE_AUTHENTICATED;
 	    log_debug ("ispi %lx SA state changed to AUTHENTICATED", sa->ispi);
