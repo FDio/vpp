@@ -300,9 +300,8 @@ acl_api_invalid_prefix (const vl_api_prefix_t * prefix)
   return (!valid_af) || ip_prefix_decode2 (prefix, &ip_prefix);
 }
 
-static int
-acl_add_list (u32 count, vl_api_acl_rule_t rules[],
-	      u32 * acl_list_index, u8 * tag)
+__clib_export int
+acl_add_list (u32 count, vl_api_acl_rule_t rules[], u32 *acl_list_index, u8 *tag)
 {
   acl_main_t *am = &acl_main;
   acl_list_t *a;
