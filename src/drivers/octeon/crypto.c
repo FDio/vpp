@@ -1256,14 +1256,14 @@ oct_crypto_enq (vlib_main_t *vm, vnet_crypto_async_frame_t *frame, const u8 is_a
       if (is_aead)
 	{
 	  crypto_total_length = md->cipher_data_len;
-	  ASSERT (md->cipher_data_start_off + VLIB_BUFFER_PRE_DATA_SIZE >= 0);
-	  crypto_start_offset = md->cipher_data_start_off + VLIB_BUFFER_PRE_DATA_SIZE;
+	  ASSERT (md->cipher_data_start_off + adj_len >= 0);
+	  crypto_start_offset = md->cipher_data_start_off + adj_len;
 	  integ_start_offset = 0;
 	  auth_start_offset = 0;
 	  auth_len = 0;
 	  aad_inline_len = (sess->aes_gcm || crypto_total_length == 0) ? aad_len : 16;
 
-	  if (aad_len && md->cipher_data_start_off == buffer->current_data)
+	  if (aad_len && md->cipher_data_start_off == 0)
 	    {
 	      ASSERT (adj_len >= aad_inline_len);
 	      if (aad_inline_len != aad_len)
@@ -1290,10 +1290,10 @@ oct_crypto_enq (vlib_main_t *vm, vnet_crypto_async_frame_t *frame, const u8 is_a
 	}
       else
 	{
-	  ASSERT (md->cipher_data_start_off + VLIB_BUFFER_PRE_DATA_SIZE >= 0);
-	  ASSERT (md->auth_data_start_off + VLIB_BUFFER_PRE_DATA_SIZE >= 0);
-	  crypto_start_offset = md->cipher_data_start_off + VLIB_BUFFER_PRE_DATA_SIZE;
-	  integ_start_offset = md->auth_data_start_off + VLIB_BUFFER_PRE_DATA_SIZE;
+	  ASSERT (md->cipher_data_start_off + adj_len >= 0);
+	  ASSERT (md->auth_data_start_off + adj_len >= 0);
+	  crypto_start_offset = md->cipher_data_start_off + adj_len;
+	  integ_start_offset = md->auth_data_start_off + adj_len;
 	  enc_auth_len = md->auth_data_len;
 	  crypto_total_length = md->cipher_data_len;
 
