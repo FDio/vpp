@@ -211,7 +211,9 @@ mbedtls_ctx_init_client (tls_ctx_t * ctx)
       return -1;
     }
 
-  mbedtls_ssl_conf_authmode (&mc->conf, MBEDTLS_SSL_VERIFY_OPTIONAL);
+  mbedtls_ssl_conf_authmode (&mc->conf,
+			     (ctx->verify_cfg & ~TLS_VERIFY_F_NONE) || ctx->srv_hostname ?
+			       MBEDTLS_SSL_VERIFY_REQUIRED : MBEDTLS_SSL_VERIFY_OPTIONAL);
   mbedtls_ssl_conf_ca_chain (&mc->conf, &mm->cacert, NULL);
   mbedtls_ssl_conf_rng (&mc->conf, mbedtls_ctr_drbg_random,
 			tls_get_ctr_drbg ());
@@ -220,6 +222,17 @@ mbedtls_ctx_init_client (tls_ctx_t * ctx)
   if ((rv = mbedtls_ssl_setup (&mc->ssl, &mc->conf)) != 0)
     {
       TLS_DBG (1, "failed\n  ! mbedtls_ssl_setup returned %d\n", rv);
+      return -1;
+    }
+
+  /* This backend has only a global CA chain and no application verification
+   * callback or TLS profile support. Never silently replace these policies. */
+  if (ctx->ca_trust_index || ctx->tls_profile_index != ~0 ||
+      (ctx->verify_cfg & TLS_VERIFY_F_PEER_CERT_APP_VERIFY) ||
+      ((ctx->verify_cfg & (TLS_VERIFY_F_HOSTNAME | TLS_VERIFY_F_HOSTNAME_STRICT)) &&
+       !ctx->srv_hostname))
+    {
+      TLS_DBG (1, "Requested TLS verification policy is not supported");
       return -1;
     }
 
@@ -403,9 +416,9 @@ mbedtls_ctx_handshake_rx (tls_ctx_t * ctx)
 	  TLS_DBG (1, "%s\n", buf);
 
 	  /*
-	   * Presence of hostname enforces strict certificate verification
+	   * Requested peer verification also applies without a hostname
 	   */
-	  if (ctx->srv_hostname)
+	  if ((ctx->verify_cfg & ~TLS_VERIFY_F_NONE) || ctx->srv_hostname)
 	    {
 	      tls_notify_app_connected (ctx, SESSION_E_TLS_HANDSHAKE);
 	      return -1;
