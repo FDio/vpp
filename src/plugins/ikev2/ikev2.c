@@ -1152,7 +1152,11 @@ ikev2_decrypt_sk_payload (ikev2_sa_t *sa, ike_header_t *ike, u8 *payload, u32 rl
     ikev2_sa_get_td_for_type (sa->r_proposals, IKEV2_TRANSFORM_TYPE_INTEG);
   tr_encr =
     ikev2_sa_get_td_for_type (sa->r_proposals, IKEV2_TRANSFORM_TYPE_ENCR);
+  if (!tr_encr)
+    return 0;
   int is_aead = ikev2_encr_is_aead (tr_encr->encr_type);
+  if (!is_aead && !tr_integ)
+    return 0;
 
   if (((!sa->sk_ar || !sa->sk_ai) && !is_aead) || (!sa->sk_ei || !sa->sk_er))
     return 0;
@@ -1178,7 +1182,6 @@ ikev2_decrypt_sk_payload (ikev2_sa_t *sa, ike_header_t *ike, u8 *payload, u32 rl
 	  log_err ("Unknown payload! type=%d", *payload);
 	  if (ikep->flags & IKEV2_PAYLOAD_FLAG_CRITICAL)
 	    {
-	      sa->unsupported_cp = *payload;
 	      return 0;
 	    }
 	}
@@ -1366,15 +1369,7 @@ ikev2_process_auth_req (vlib_main_t * vm, ikev2_sa_t * sa,
   plaintext = ikev2_decrypt_sk_payload (sa, ike, &payload, len, &dlen);
 
   if (!plaintext)
-    {
-      if (sa->unsupported_cp)
-	{
-	sa->state = IKEV2_STATE_NOTIFY_AND_DELETE;
-	log_debug ("ispi %lx SA state changed to NOTIFY_AND_DELETE", sa->ispi);
-	return 0;
-	}
-      goto malformed;
-    }
+    return 0;
 
   /* select or create 1st child SA */
   if (sa->is_initiator)
@@ -3761,13 +3756,16 @@ ikev2_node_internal (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *f
 		  goto dispatch0;
 		}
 
-	      sa0->dst_port = clib_net_to_host_u16 (udp0->src_port);
 	      res = ikev2_process_auth_req (vm, sa0, ike0, rlen);
-	      if (res)
-		ikev2_sa_auth (sa0, vm);
-	      else
-		vlib_node_increment_counter (vm, node->node_index,
-					     IKEV2_ERROR_MALFORMED_PACKET, 1);
+	      if (!res)
+		{
+		  vlib_node_increment_counter (vm, node->node_index, IKEV2_ERROR_MALFORMED_PACKET,
+					       1);
+		  slen = ~0;
+		  goto dispatch0;
+		}
+	      sa0->dst_port = clib_net_to_host_u16 (udp0->src_port);
+	      ikev2_sa_auth (sa0, vm);
 	      if (sa0->state == IKEV2_STATE_AUTHENTICATED)
 		{
 		  ikev2_initial_contact_cleanup (sa0);
