@@ -793,6 +793,15 @@ picotls_ctx_init_client (tls_ctx_t *ctx)
   session_t *tls_session = session_get_from_handle (ctx->tls_session_handle);
   ptls_buffer_t hs_buf;
 
+  /* The shared client context has no certificate verifier or per-application
+   * trust/profile support. Reject authenticated connections until it does. */
+  if ((ctx->verify_cfg & ~TLS_VERIFY_F_NONE) || ctx->ca_trust_index ||
+      ctx->tls_profile_index != ~0)
+    {
+      TLS_DBG (1, "Requested TLS verification policy is not supported");
+      return -1;
+    }
+
   ptls_ctx->tls = ptls_new (client_ptls_ctx, 0);
   if (ptls_ctx->tls == NULL)
     {
