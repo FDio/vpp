@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "796deeeb_84c43987",
+        "filename": "src/plugins/ikev2/ikev2.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 5338,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-10-16T07:50:38Z",
+      "side": 1,
+      "message": "Could we skip IPsec cleanup for child SAs that have not been installed yet? An initiator awaiting IKE_AUTH matches this callback, but its child\u0027s local_sa_id and remote_sa_id are still zero. Deleting it calls ikev2_del_tunnel_from_main(), which unlocks unrelated SA IDs 0 and 2048.\n\nI reproduced this under debug ASAN: configure an independent IPsec SA with ID 0, complete IKE_SA_INIT without replying to IKE_AUTH, then delete the profile\u0027s tunnel interface. The unrelated SA disappears. Please also cover this handshake window in the regression test.",
+      "revId": "dbf19074cdaf6e6a8ec3cdd2287676b3c4ead02d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
