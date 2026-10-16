@@ -612,6 +612,162 @@ class TestWg(VppTestCase):
         # delete interface
         wg0.remove_vpp_config()
 
+    def _test_wg_runt_messages(self, is_ip6, is_async):
+        self.vapi.wg_set_async_mode(async_enable=is_async)
+        port = 12312
+        src = self.pg1.local_ip6 if is_ip6 else self.pg1.local_ip4
+        endpoint = self.pg1.remote_ip6 if is_ip6 else self.pg1.remote_ip4
+        wg0 = VppWgInterface(self, src, port).add_vpp_config()
+        wg0.admin_up()
+        peer = VppWgPeer(self, wg0, endpoint, port + 1, ["10.11.3.0/24"])
+        peer.add_vpp_config()
+        init = peer.mk_handshake(self.pg1, is_ip6=is_ip6)
+        response = self.send_and_expect(
+            self.pg1,
+            [init],
+            self.pg1,
+            filter_out_fn=filter_out_misc_and_handshake_init,
+        )
+        peer.consume_response(response[0], is_ip6=is_ip6)
+
+        # Use a live receiver index so runt transport packets reach the
+        # cryptographic boundary rather than failing peer lookup.
+        data = struct.pack("<IIQ", 4, peer.sender, 0) + bytes(16)
+        malformed = [data[:length] for length in range(32)]
+        for message_type, size in ((1, 148), (2, 92), (3, 64)):
+            for length in (4, size - 1, size + 1):
+                malformed.append(struct.pack("<I", message_type) + bytes(length - 4))
+        error = self.wg6_input_node_name if is_ip6 else self.wg4_input_node_name
+        error += "Invalid message length"
+        before = self.statistics.get_err_counter(error)
+        packets = [
+            peer.mk_tunnel_header(self.pg1, is_ip6) / Raw(payload)
+            for payload in malformed
+        ]
+        self.send_and_assert_no_replies_ignoring_init(self.pg1, packets)
+        self.assertEqual(self.statistics.get_err_counter(error), before + len(packets))
+
+        # The exact minimum transport size is an authenticated keepalive.
+        keepalive = peer.encrypt_transport(b"")
+        packet = peer.mk_tunnel_header(self.pg1, is_ip6) / (
+            Wireguard(message_type=4, reserved_zero=0)
+            / WireguardTransport(
+                receiver_index=peer.sender,
+                counter=0,
+                encrypted_encapsulated_packet=keepalive,
+            )
+        )
+        self.send_and_assert_no_replies_ignoring_init(self.pg1, [packet])
+        self.assertEqual(self.statistics.get_err_counter(error), before + len(packets))
+        peer.remove_vpp_config()
+        wg0.remove_vpp_config()
+
+    def test_wg_runt_messages_v4_sync(self):
+        """Reject truncated WireGuard messages before crypto (IPv4, sync)"""
+        self._test_wg_runt_messages(False, False)
+
+    def test_wg_runt_messages_v4_async(self):
+        """Reject truncated WireGuard messages before crypto (IPv4, async)"""
+        self._test_wg_runt_messages(False, True)
+
+    def test_wg_runt_messages_v6_sync(self):
+        """Reject truncated WireGuard messages before crypto (IPv6, sync)"""
+        self._test_wg_runt_messages(True, False)
+
+    def test_wg_runt_messages_v6_async(self):
+        """Reject truncated WireGuard messages before crypto (IPv6, async)"""
+        self._test_wg_runt_messages(True, True)
+
+    def _test_wg_pending_key_bad_tag(self, is_async):
+        self.vapi.wg_set_async_mode(async_enable=is_async)
+        port = 12312
+        wg0 = VppWgInterface(self, self.pg1.local_ip4, port).add_vpp_config()
+        wg0.admin_up()
+        wg0.config_ip4()
+        peer = VppWgPeer(
+            self, wg0, self.pg1.remote_ip4, port + 1, ["10.11.3.0/24"]
+        ).add_vpp_config()
+        route = VppIpRoute(
+            self, "10.11.3.0", 24, [VppRoutePath("10.11.3.1", wg0.sw_if_index)]
+        )
+        route.add_vpp_config()
+
+        def handshake():
+            init = peer.mk_handshake(self.pg1)
+            response = self.send_and_expect(
+                self.pg1,
+                [init],
+                self.pg1,
+                filter_out_fn=filter_out_misc_and_handshake_init,
+            )
+            peer.consume_response(response[0])
+
+        def confirmation(encrypted):
+            return peer.mk_tunnel_header(self.pg1) / (
+                Wireguard(message_type=4, reserved_zero=0)
+                / WireguardTransport(
+                    receiver_index=peer.sender,
+                    counter=0,
+                    encrypted_encapsulated_packet=encrypted,
+                )
+            )
+
+        def outbound(noise):
+            inner = (
+                Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac)
+                / IP(src=self.pg0.remote_ip4, dst="10.11.3.2")
+                / UDP(sport=555, dport=556)
+                / Raw(b"pending key regression")
+            )
+            captured = self.send_and_expect(
+                self.pg0,
+                [inner],
+                self.pg1,
+                filter_out_fn=filter_out_misc_and_handshake_init,
+            )
+            transport = Wireguard(bytes(captured[0][Raw]))[WireguardTransport]
+            decrypted = IP(noise.decrypt(transport.encrypted_encapsulated_packet))
+            self.assertEqual(decrypted.dst, "10.11.3.2")
+            self.assertEqual(bytes(decrypted[Raw]), b"pending key regression")
+
+        handshake()
+        self.send_and_assert_no_replies_ignoring_init(
+            self.pg1, [confirmation(peer.encrypt_transport(b""))]
+        )
+        old_noise = peer.noise
+        outbound(old_noise)
+
+        # A responder's second session is pending until valid data arrives.
+        peer.noise = NoiseConnection.from_name(NOISE_HANDSHAKE_NAME)
+        handshake()
+        encrypted = peer.encrypt_transport(b"")
+        corrupted = encrypted[:-1] + bytes([encrypted[-1] ^ 1])
+        self.send_and_assert_no_replies_ignoring_init(
+            self.pg1, [confirmation(corrupted)]
+        )
+
+        # A forged confirmation must leave transmission on the established
+        # session. Premature promotion encrypts this with the pending key.
+        outbound(old_noise)
+
+        # The valid packet with the same counter must still confirm the new
+        # session; the failed tag must not consume its replay counter.
+        self.send_and_assert_no_replies_ignoring_init(
+            self.pg1, [confirmation(encrypted)]
+        )
+        outbound(peer.noise)
+        route.remove_vpp_config()
+        peer.remove_vpp_config()
+        wg0.remove_vpp_config()
+
+    def test_wg_pending_key_bad_tag_sync(self):
+        """Failed authentication must not promote a pending key (sync)"""
+        self._test_wg_pending_key_bad_tag(False)
+
+    def test_wg_pending_key_bad_tag_async(self):
+        """Failed authentication must not promote a pending key (async)"""
+        self._test_wg_pending_key_bad_tag(True)
+
     def test_handshake_hash(self):
         """test hashing an init message"""
         # a init packet generated by linux given the key below
