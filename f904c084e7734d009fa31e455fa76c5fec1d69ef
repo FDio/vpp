@@ -16,6 +16,24 @@
       "message": "Isn\u0027t the onus on downstream/previous node in the graph? We can assert here to catch bugs, but do we need to defend against misuse by internal nodes?",
       "revId": "f904c084e7734d009fa31e455fa76c5fec1d69ef",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "df93cba8_5315a31f",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2220
+      },
+      "writtenOn": "2026-10-16T09:20:23Z",
+      "side": 1,
+      "message": "Hi Florin,\n\nThanks for the review. I was helping Pieter[0] to investigate the root-cause for their crashes. The first crash was triggered by mid-convergence issue in their setup - there was a route over a BVI that forwarded traffic to a vxlan tunnel and the vtep dst was looped again to the BVI and therefore the tunnel again and so on. So, the first packet triggered the infinite encapsulation issue (vxlan4-encap -\u003e ip4-rewrite -\u003e ... l2-input .. l2-output -\u003e vxlan4-encap and so on). The legitimate use-case to trigger this issue is a bit of a stretch I agree (roughly like vxlan-over-vxlan-over-vxlan or srv6_3sids-over-ipsec or srv6-5sids and so on).\n\nI also think that the onus is in the rewrite nodes themselves (and also the encap ones, I will send the vxlan encap fix if/when this patch is merged) - they write before current_data with vnet_rewrite_one_header/vnet_rewrite_two_headers.\n\nBut in my opinion, the last thing I want is vpp to crash :) With branch predictor hint it should be cheap enough to check the available headroom in runtime, what do you think?\n\n[0] - https://lists.fd.io/g/vpp-dev/topic/26_06_worker_crashes_with/121592811",
+      "parentUuid": "2ab7963c_a850fd1a",
+      "revId": "f904c084e7734d009fa31e455fa76c5fec1d69ef",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
