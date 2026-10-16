@@ -62,6 +62,7 @@ typedef enum
   IKEV2_GENERATE_SA_INIT_OK,
   IKEV2_GENERATE_SA_INIT_ERR_NO_DH,
   IKEV2_GENERATE_SA_INIT_ERR_UNSUPPORTED_DH,
+  IKEV2_GENERATE_SA_INIT_ERR_RNG,
 } ikev2_generate_sa_error_t;
 
 static u8 *
@@ -77,6 +78,9 @@ format_ikev2_gen_sa_error (u8 * s, va_list * args)
       break;
     case IKEV2_GENERATE_SA_INIT_ERR_UNSUPPORTED_DH:
       s = format (s, IKEV2_GENERATE_SA_INIT_OK_ERR_UNSUPP_STR);
+      break;
+    case IKEV2_GENERATE_SA_INIT_ERR_RNG:
+      s = format (s, "random generation failed");
       break;
     }
   return s;
@@ -289,7 +293,11 @@ ikev2_select_proposal (ikev2_sa_proposal_t * proposals,
       {
 	rv->proposal_num = proposal->proposal_num;
 	rv->protocol_id = proposal->protocol_id;
-	RAND_bytes ((u8 *) & rv->spi, sizeof (rv->spi));
+	if (RAND_bytes ((u8 *) &rv->spi, sizeof (rv->spi)) != 1)
+	{
+	  ikev2_sa_free_proposal_vector (&rv);
+	  return 0;
+	}
 	if (rv->protocol_id != IKEV2_PROTOCOL_IKE)
 	  rv->spi &= 0xffffffff;
 	goto done;
@@ -509,20 +517,24 @@ ikev2_generate_sa_init_data (ikev2_sa_t * sa)
   if (sa->is_initiator)
     {
       /* generate rspi */
-      RAND_bytes ((u8 *) & sa->ispi, 8);
+      if (RAND_bytes ((u8 *) &sa->ispi, 8) != 1)
+      return IKEV2_GENERATE_SA_INIT_ERR_RNG;
 
       /* generate nonce */
       sa->i_nonce = vec_new (u8, IKEV2_NONCE_SIZE);
-      RAND_bytes ((u8 *) sa->i_nonce, IKEV2_NONCE_SIZE);
+      if (RAND_bytes ((u8 *) sa->i_nonce, IKEV2_NONCE_SIZE) != 1)
+      return IKEV2_GENERATE_SA_INIT_ERR_RNG;
     }
   else
     {
       /* generate rspi */
-      RAND_bytes ((u8 *) & sa->rspi, 8);
+      if (RAND_bytes ((u8 *) &sa->rspi, 8) != 1)
+      return IKEV2_GENERATE_SA_INIT_ERR_RNG;
 
       /* generate nonce */
       sa->r_nonce = vec_new (u8, vec_len (sa->i_nonce));
-      RAND_bytes ((u8 *) sa->r_nonce, vec_len (sa->i_nonce));
+      if (RAND_bytes ((u8 *) sa->r_nonce, vec_len (sa->i_nonce)) != 1)
+      return IKEV2_GENERATE_SA_INIT_ERR_RNG;
     }
 
   /* generate dh keys */
@@ -1555,8 +1567,12 @@ ikev2_process_create_child_sa_rekey (ikev2_sa_t *sa, ikev2_sa_t *sar,
 {
   ikev2_sa_transform_t *tr;
 
-  rekey->i_proposal = proposal;
   rekey->r_proposal = ikev2_select_proposal (proposal, IKEV2_PROTOCOL_ESP);
+  if (!rekey->r_proposal)
+    {
+      rekey->notify_type = IKEV2_NOTIFY_MSG_NO_PROPOSAL_CHOSEN;
+      return 0;
+    }
 
   if (sar->dh_group)
     {
@@ -1587,8 +1603,14 @@ ikev2_process_create_child_sa_rekey (ikev2_sa_t *sa, ikev2_sa_t *sar,
   vec_add (sa->i_nonce, nonce, nonce_len);
 
   vec_validate (sa->r_nonce, nonce_len - 1);
-  RAND_bytes ((u8 *) sa->r_nonce, nonce_len);
+  if (RAND_bytes ((u8 *) sa->r_nonce, nonce_len) != 1)
+    {
+      rekey->notify_type = IKEV2_NOTIFY_MSG_TEMPORARY_FAILURE;
+      ikev2_sa_free_proposal_vector (&rekey->r_proposal);
+      return 0;
+    }
 
+  rekey->i_proposal = proposal;
   rekey->tsi = tsi;
   rekey->tsr = tsr;
 
@@ -1841,6 +1863,8 @@ ikev2_process_create_child_sa_req (vlib_main_t * vm,
       rekey->protocol_id = proposal->protocol_id;
       rekey->i_proposal =
 	ikev2_select_proposal (proposal, IKEV2_PROTOCOL_ESP);
+      if (!rekey->i_proposal)
+	goto cleanup_and_exit;
       rekey->i_proposal->spi = rekey->spi;
       rekey->r_proposal = proposal;
       rekey->tsi = tsi;
@@ -3454,10 +3478,9 @@ ikev2_generate_sa_init_data_and_log (ikev2_sa_t * sa)
   if (PREDICT_TRUE (rc == IKEV2_GENERATE_SA_INIT_OK))
     return;
 
-  if (rc == IKEV2_GENERATE_SA_INIT_ERR_NO_DH)
-    log_err (IKEV2_GENERATE_SA_INIT_OK_ERR_NO_DH_STR);
-  else if (rc == IKEV2_GENERATE_SA_INIT_ERR_UNSUPPORTED_DH)
-    log_err (IKEV2_GENERATE_SA_INIT_OK_ERR_UNSUPP_STR);
+  log_err ("%U", format_ikev2_gen_sa_error, rc);
+  if (rc == IKEV2_GENERATE_SA_INIT_ERR_RNG)
+    sa->state = IKEV2_STATE_UNKNOWN;
 }
 
 static void
@@ -5087,8 +5110,13 @@ ikev2_initiate_sa_init (vlib_main_t * vm, u8 * name)
 				 &sa.childs[0].i_proposals, 0);
   sa.childs[0].i_proposals[0].proposal_num = 1;
   sa.childs[0].i_proposals[0].protocol_id = IKEV2_PROTOCOL_ESP;
-  RAND_bytes ((u8 *) & sa.childs[0].i_proposals[0].spi,
-	      sizeof (sa.childs[0].i_proposals[0].spi));
+  if (RAND_bytes ((u8 *) &sa.childs[0].i_proposals[0].spi,
+		  sizeof (sa.childs[0].i_proposals[0].spi)) != 1)
+    {
+      ikev2_sa_free_all_vec (&sa);
+      ikev2_payload_destroy_chain (chain);
+      return clib_error_return (0, "random generation failed");
+    }
   sa.childs[0].i_proposals[0].spi &= 0xffffffff;
 
   /* Add NAT detection notification messages (mandatory) */
@@ -5322,7 +5350,13 @@ ikev2_rekey_child_sa_internal (vlib_main_t * vm, ikev2_sa_t * sa,
   ikev2_sa_proposal_t *proposals = vec_dup (csa->i_proposals);
 
   /*need new ispi */
-  RAND_bytes ((u8 *) & proposals[0].spi, sizeof (proposals[0].spi));
+  if (RAND_bytes ((u8 *) &proposals[0].spi, sizeof (proposals[0].spi)) != 1)
+    {
+      vec_free (proposals);
+      vec_reset_length (sa->rekey);
+      vlib_buffer_free (vm, &bi0, 1);
+      return;
+    }
   proposals[0].spi &= 0xffffffff;
   rekey->spi = proposals[0].spi;
   rekey->ispi = csa->i_proposals->spi;
