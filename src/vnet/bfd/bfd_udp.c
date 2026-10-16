@@ -1448,7 +1448,8 @@ bfd_udp_input (vlib_main_t * vm, vlib_node_runtime_t * rt,
 	    {
 	      b0->current_data = 0;
 	      b0->current_length = 0;
-	      bfd_init_final_control_frame (vm, b0, bs);
+              if (!bfd_init_final_control_frame (vm, b0, bs))
+                goto done;
 	      if (is_ipv6)
 		{
 		  vlib_node_increment_counter (vm, bfd_udp6_input_node.index,
@@ -1488,6 +1489,7 @@ bfd_udp_input (vlib_main_t * vm, vlib_node_runtime_t * rt,
 	    }
 	}
 
+    done:
       bfd_unlock (bm);
       vlib_set_next_frame_buffer (vm, rt, next0, bi0);
 

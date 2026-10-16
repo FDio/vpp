@@ -431,7 +431,7 @@ bfd_error_t bfd_verify_pkt_common (const bfd_pkt_t *pkt);
 int bfd_verify_pkt_auth (vlib_main_t * vm, const bfd_pkt_t * pkt,
 			 u16 pkt_size, bfd_session_t * bs);
 void bfd_event (bfd_main_t * bm, bfd_session_t * bs);
-void bfd_init_final_control_frame (vlib_main_t *vm, vlib_buffer_t *b,
+int bfd_init_final_control_frame (vlib_main_t *vm, vlib_buffer_t *b,
 				   bfd_session_t *bs);
 u8 *format_bfd_session (u8 * s, va_list * args);
 u8 *format_bfd_session_brief (u8 * s, va_list * args);

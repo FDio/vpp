@@ -804,7 +804,7 @@ bfd_transport_echo (vlib_main_t *vm, vlib_node_runtime_t *rt, u32 bi,
   return 0;
 }
 
-static void
+static int
 bfd_add_sha1_auth_section (vlib_main_t *vm, vlib_buffer_t *b,
 			   bfd_session_t *bs)
 {
@@ -834,19 +834,23 @@ bfd_add_sha1_auth_section (vlib_main_t *vm, vlib_buffer_t *b,
   unsigned char hash[sizeof (auth->hash)];
 
   ctx = vnet_crypto_hash_ctx_create (VNET_CRYPTO_HASH_ALG_SHA1_160);
-  ASSERT (ctx != 0);
+  if (!ctx)
+    return 0;
   vnet_crypto_hash_op_init (&op);
   op.ctx = ctx;
   op.src = (u8 *) pkt;
   op.len = sizeof (*pkt);
   op.digest = hash;
-  vnet_crypto_process_hash_ops (vm, &op, 0, 1);
+  u32 completed = vnet_crypto_process_hash_ops (vm, &op, 0, 1);
   vnet_crypto_hash_ctx_destroy (ctx);
+  if (completed != 1 || op.status != VNET_CRYPTO_OP_STATUS_COMPLETED)
+    return 0;
   BFD_DBG ("hashing: %U", format_hex_bytes, pkt, sizeof (*pkt));
   clib_memcpy (auth->hash, hash, sizeof (hash));
+  return 1;
 }
 
-static void
+static int
 bfd_add_auth_section (vlib_main_t *vm, vlib_buffer_t *b, bfd_session_t *bs)
 {
   bfd_main_t *bm = &bfd_main;
@@ -865,14 +869,14 @@ bfd_add_auth_section (vlib_main_t *vm, vlib_buffer_t *b, bfd_session_t *bs)
 	  vlib_log_crit (bm->log_class,
 			 "internal error, unexpected BFD auth type '%d'",
 			 auth_type);
-	  break;
+	  return 0;
 	case BFD_AUTH_TYPE_keyed_sha1:
 	  /* fallthrough */
 	case BFD_AUTH_TYPE_meticulous_keyed_sha1:
-	  bfd_add_sha1_auth_section (vm, b, bs);
-	  break;
+          return bfd_add_sha1_auth_section (vm, b, bs);
 	}
     }
+  return 1;
 }
 
 static int
@@ -1066,7 +1070,12 @@ bfd_send_periodic (vlib_main_t *vm, vlib_node_runtime_t *rt, bfd_main_t *bm,
 	  /* fallthrough */
 	  break;
 	}
-      bfd_add_auth_section (vm, b, bs);
+      if (!bfd_add_auth_section (vm, b, bs))
+        {
+          vlib_buffer_free_one (vm, bi);
+          bfd_calc_next_tx (bm, bs, now);
+          return;
+        }
       bfd_process_trace_buf (vm, rt, b, bs);
       bfd_add_transport_layer (vm, bi, bs);
       if (!bfd_transport_control_frame (vm, rt, bi, bs))
@@ -1084,14 +1093,15 @@ bfd_send_periodic (vlib_main_t *vm, vlib_node_runtime_t *rt, bfd_main_t *bm,
     }
 }
 
-void
+int
 bfd_init_final_control_frame (vlib_main_t *vm, vlib_buffer_t *b,
 			      bfd_session_t *bs)
 {
   BFD_DBG ("Send final control frame for bs_idx=%lu", bs->bs_idx);
   bfd_init_control_frame (bs, b);
   bfd_pkt_set_final (vlib_buffer_get_current (b));
-  bfd_add_auth_section (vm, b, bs);
+  if (!bfd_add_auth_section (vm, b, bs))
+    return 0;
   u32 bi = vlib_get_buffer_index (vm, b);
   bfd_add_transport_layer (vm, bi, bs);
   bs->last_tx_nsec = bfd_time_now_nsec (vm, NULL);
@@ -1100,6 +1110,7 @@ bfd_init_final_control_frame (vlib_main_t *vm, vlib_buffer_t *b,
    * pending, we already did that, thus we can clear any pending poll needs
    */
   bfd_set_poll_state (bs, BFD_POLL_NOT_NEEDED);
+  return 1;
 }
 
 static void
@@ -1744,18 +1755,25 @@ bfd_verify_pkt_auth_key_sha1 (vlib_main_t *vm, const bfd_pkt_t *pkt,
   clib_memcpy (with_sha1->sha1_auth.hash, auth_key->key,
 	       sizeof (auth_key->key));
   ctx = vnet_crypto_hash_ctx_create (VNET_CRYPTO_HASH_ALG_SHA1_160);
-  ASSERT (ctx != 0);
+  if (!ctx)
+    {
+      clib_memcpy (with_sha1->sha1_auth.hash, hash_from_packet, sizeof (hash_from_packet));
+      return 0;
+    }
   vnet_crypto_hash_op_init (&op);
   op.ctx = ctx;
   op.src = (u8 *) with_sha1;
   op.len = sizeof (*with_sha1);
   op.digest = calculated_hash;
-  vnet_crypto_process_hash_ops (vm, &op, 0, 1);
+  u32 completed = vnet_crypto_process_hash_ops (vm, &op, 0, 1);
   vnet_crypto_hash_ctx_destroy (ctx);
 
   /* Restore the modified data within the packet */
   clib_memcpy (with_sha1->sha1_auth.hash, hash_from_packet,
 	       sizeof (with_sha1->sha1_auth.hash));
+
+  if (completed != 1 || op.status != VNET_CRYPTO_OP_STATUS_COMPLETED)
+    return 0;
 
   if (0 ==
       memcmp (calculated_hash, hash_from_packet, sizeof (calculated_hash)))
