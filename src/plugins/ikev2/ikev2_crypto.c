@@ -465,7 +465,8 @@ ikev2_encrypt_aead_data (ikev2_sa_t *sa, ikev2_sa_transform_t *tr_encr, v8 *src,
     return 0;
 
   /* generate IV; its length must be 8 octets for aes-gcm (rfc5282) */
-  RAND_bytes (dst, IKEV2_GCM_IV_SIZE);
+  if (RAND_bytes (dst, IKEV2_GCM_IV_SIZE) != 1)
+    return 0;
   ikev2_init_gcm_nonce (nonce, key + vec_len (key) - IKEV2_GCM_SALT_SIZE,
 			dst);
   dst += IKEV2_GCM_IV_SIZE;
@@ -496,7 +497,8 @@ ikev2_encrypt_data (ikev2_sa_t *sa, ikev2_sa_transform_t *tr_encr, v8 *src, u8 *
 
   /* generate IV */
   u8 *iv = dst;
-  RAND_bytes (iv, bs);
+  if (RAND_bytes (iv, bs) != 1)
+    return 0;
   dst += bs;
 
   EVP_EncryptInit_ex (ctx, tr_encr->cipher, NULL, key, iv);
