@@ -409,6 +409,8 @@ ikev2_decrypt_aead_data (ikev2_sa_t *sa, ikev2_sa_transform_t *tr_encr, u8 *data
 
   if (EVP_DecryptFinal_ex (ctx, data + len, &len) > 0)
     {
+      if (data[data_len - 1] >= data_len)
+        return 0;
       *out_len = data_len - data[data_len - 1] - 1;
       return 1;
     }
@@ -427,7 +429,7 @@ ikev2_decrypt_data (ikev2_sa_t *sa, ikev2_sa_transform_t *tr_encr, u8 *data, int
   u8 *iv = data;
 
   /* check if data is multiplier of cipher block size */
-  if (len % block_size)
+  if (block_size <= 0 || len <= block_size || len % block_size)
     {
       log_err ("wrong data length");
       return 0;
@@ -441,6 +443,8 @@ ikev2_decrypt_data (ikev2_sa_t *sa, ikev2_sa_transform_t *tr_encr, u8 *data, int
 
   if (EVP_DecryptFinal_ex (ctx, data + tmp_len, &tmp_len) > 0)
     {
+      if (data[len - 1] >= len)
+        return 0;
       *out_len = len - data[len - 1] - 1;
       return 1;
     }
