@@ -409,6 +409,8 @@ ikev2_decrypt_aead_data (ikev2_sa_t *sa, ikev2_sa_transform_t *tr_encr, u8 *data
 {
   ikev2_main_t *km = &ikev2_main;
   EVP_CIPHER_CTX *ctx = km->evp_ctx;
+  if (!ctx)
+    return 0;
   int len = 0;
   u8 *key = sa->is_initiator ? sa->sk_er : sa->sk_ei;
   u8 nonce[IKEV2_GCM_NONCE_SIZE];
@@ -448,6 +450,8 @@ ikev2_decrypt_data (ikev2_sa_t *sa, ikev2_sa_transform_t *tr_encr, u8 *data, int
 {
   ikev2_main_t *km = &ikev2_main;
   EVP_CIPHER_CTX *ctx = km->evp_ctx;
+  if (!ctx)
+    return 0;
   int tmp_len = 0, block_size;
   u8 *key = sa->is_initiator ? sa->sk_er : sa->sk_ei;
   block_size = tr_encr->block_size;
@@ -484,6 +488,8 @@ ikev2_encrypt_aead_data (ikev2_sa_t *sa, ikev2_sa_transform_t *tr_encr, v8 *src,
 {
   ikev2_main_t *km = &ikev2_main;
   EVP_CIPHER_CTX *ctx = km->evp_ctx;
+  if (!ctx)
+    return 0;
   int out_len = 0, len = 0;
   u8 nonce[IKEV2_GCM_NONCE_SIZE];
   u8 *key = sa->is_initiator ? sa->sk_ei : sa->sk_er;
@@ -516,6 +522,8 @@ ikev2_encrypt_data (ikev2_sa_t *sa, ikev2_sa_transform_t *tr_encr, v8 *src, u8 *
 {
   ikev2_main_t *km = &ikev2_main;
   EVP_CIPHER_CTX *ctx = km->evp_ctx;
+  if (!ctx)
+    return 0;
   int out_len = 0, len = 0;
   int bs = tr_encr->block_size;
   u8 *key = sa->is_initiator ? sa->sk_ei : sa->sk_er;
