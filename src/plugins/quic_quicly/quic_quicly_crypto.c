@@ -194,21 +194,11 @@ quic_quicly_crypto_context_alloc ()
 }
 
 static void
-quic_quicly_crypto_context_free_if_needed (quic_quicly_crypto_ctx_t *crctx)
+quic_quicly_crypto_context_free_data (quic_quicly_crypto_ctx_t *crctx)
 {
   quic_quicly_crypto_main_t *qqcm = &quic_quicly_crypto_main;
-  clib_bihash_kv_40_8_t kv;
-  u32 idx;
+  u32 idx = QUIC_CRCTX_CTX_INDEX_DECODE_INDEX (crctx->ctx.ctx_index);
 
-  /* crypto context is shared between threads */
-  u32 cnt = clib_atomic_sub_fetch (&crctx->ctx.n_subscribers, 1);
-  if (cnt)
-    return;
-
-  idx = QUIC_CRCTX_CTX_INDEX_DECODE_INDEX (crctx->ctx.ctx_index);
-  QUIC_DBG (2, "Free crctx: crctx_ndx 0x%08lx, index %u", crctx->ctx.ctx_index, idx);
-  quic_quicly_crypto_context_make_key_from_crctx (&kv, crctx);
-  clib_bihash_add_del_40_8 (&qqcm->crypto_ctx_hash, &kv, 0 /* is_add */);
   if (crctx->filtered_cipher_suites)
     {
       clib_mem_free (crctx->filtered_cipher_suites);
@@ -219,7 +209,7 @@ quic_quicly_crypto_context_free_if_needed (quic_quicly_crypto_ctx_t *crctx)
       clib_mem_free (crctx->filtered_key_exchanges);
       crctx->filtered_key_exchanges = NULL;
     }
-  if (crctx->ctx.verify_cfg)
+  if (crctx->ptls_ctx.verify_certificate)
     {
       ptls_openssl_dispose_verify_certificate (&crctx->verify_cert.super);
       crctx->ptls_ctx.verify_certificate = NULL;
@@ -231,12 +221,28 @@ quic_quicly_crypto_context_free_if_needed (quic_quicly_crypto_ctx_t *crctx)
     }
   if (crctx->quicly_ctx.tls)
     {
-      ptls_release_private_key (&crctx->sc);
+      if (crctx->ptls_ctx.sign_certificate)
+	ptls_release_private_key (&crctx->sc);
       ptls_free_certificate_chain (crctx->quicly_ctx.tls);
     }
   if (CLIB_DEBUG)
     memset (crctx, 0xfe, sizeof (*crctx));
   pool_put_index (qqcm->crypto_ctx_pool, idx);
+}
+
+static void
+quic_quicly_crypto_context_free_if_needed (quic_quicly_crypto_ctx_t *crctx)
+{
+  quic_quicly_crypto_main_t *qqcm = &quic_quicly_crypto_main;
+  clib_bihash_kv_40_8_t kv;
+
+  /* crypto context is shared between threads */
+  if (clib_atomic_sub_fetch (&crctx->ctx.n_subscribers, 1))
+    return;
+
+  quic_quicly_crypto_context_make_key_from_crctx (&kv, crctx);
+  clib_bihash_add_del_40_8 (&qqcm->crypto_ctx_hash, &kv, 0 /* is_add */);
+  quic_quicly_crypto_context_free_data (crctx);
 }
 
 static int
@@ -731,6 +737,8 @@ quic_quicly_crypto_context_init_data (quic_quicly_crypto_ctx_t *crctx, quic_ctx_
   clib_memcpy (crctx->cid_key, app_cctx->quic_cid_key, QUIC_CID_KEY_LEN);
   key_vec = ptls_iovec_init (crctx->cid_key, QUIC_CID_KEY_LEN);
   quicly_ctx->cid_encryptor = qqcm->new_cid_encryptor (key_vec);
+  if (!quicly_ctx->cid_encryptor)
+    return -1;
 
   ckpair = app_cert_key_pair_get_if_valid (crctx->ctx.ckpair_index);
   if (!ckpair || !ckpair->key || !ckpair->cert)
@@ -751,7 +759,8 @@ quic_quicly_crypto_context_init_data (quic_quicly_crypto_ctx_t *crctx, quic_ctx_
     }
 
   ptls_assign_private_key (&crctx->sc, quicly_ctx->tls, cki->key);
-  ptls_assign_certificate_chain (quicly_ctx->tls, cki->cert);
+  if (ptls_assign_certificate_chain (quicly_ctx->tls, cki->cert))
+    return -1;
 
   return 0;
 }
@@ -789,7 +798,6 @@ quic_quicly_crypto_context_get_or_alloc (quic_ctx_t *ctx)
     }
 
   crctx = quic_quicly_crypto_context_alloc ();
-  ctx->crypto_context_index = crctx->ctx.ctx_index;
   kv.value = crctx->ctx.ctx_index;
   crctx->ctx.crypto_engine = ctx->crypto_engine;
   crctx->ctx.ckpair_index = ctx->ckpair_index;
@@ -798,9 +806,20 @@ quic_quicly_crypto_context_get_or_alloc (quic_ctx_t *ctx)
   crctx->ctx.crypto_owner_app_wrk_id = ctx->crypto_owner_app_wrk_id;
   crctx->ctx.tls_profile_index = ctx->tls_profile_index;
   crctx->ctx.parent_app_id = ctx->parent_app_id;
-  clib_bihash_add_del_40_8 (&qqcm->crypto_ctx_hash, &kv, 1 /* is_add */);
-  quic_quicly_crypto_context_init_data (crctx, ctx);
-  clib_atomic_add_fetch (&crctx->ctx.n_subscribers, 1);
+  if (quic_quicly_crypto_context_init_data (crctx, ctx))
+    {
+      quic_quicly_crypto_context_free_data (crctx);
+      return NULL;
+    }
+
+  /* Publish only after initialization and the initial subscription succeed. */
+  crctx->ctx.n_subscribers = 1;
+  if (clib_bihash_add_del_40_8 (&qqcm->crypto_ctx_hash, &kv, 1 /* is_add */))
+    {
+      quic_quicly_crypto_context_free_data (crctx);
+      return NULL;
+    }
+  ctx->crypto_context_index = crctx->ctx.ctx_index;
   return crctx;
 }
 

@@ -256,9 +256,23 @@ ptls_assign_certificate_chain (ptls_context_t *ctx,
       return PTLS_ERROR_NO_MEMORY;
     }
 
-  memcpy (ctx->certificates.list, cl->certs,
-	  cl->count * sizeof (ptls_iovec_t));
-  ctx->certificates.count = cl->count;
+  /* Each context owns its chain, including on initialization rollback. */
+  ctx->certificates.count = 0;
+  for (int i = 0; i < cl->count; i++)
+    {
+      ptls_iovec_t *cert = &ctx->certificates.list[i];
+      cert->base = malloc (cl->certs[i].len);
+      if (!cert->base)
+	{
+	  ptls_free_certificate_chain (ctx);
+	  free (ctx->certificates.list);
+	  ctx->certificates.list = NULL;
+	  return PTLS_ERROR_NO_MEMORY;
+	}
+      cert->len = cl->certs[i].len;
+      memcpy (cert->base, cl->certs[i].base, cert->len);
+      ctx->certificates.count++;
+    }
 
   return 0;
 }

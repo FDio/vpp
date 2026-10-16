@@ -974,6 +974,8 @@ static_always_inline int
 quic_quicly_crypto_ctx_get_or_init (quic_ctx_t *ctx)
 {
   quic_quicly_crypto_ctx_t *crctx = quic_quicly_crypto_context_get_or_alloc (ctx);
+  if (PREDICT_FALSE (!crctx))
+    return -1;
   if (PREDICT_FALSE (!crctx->quicly_ctx.stream_open))
     {
       crctx->quicly_ctx.stream_open = &on_stream_open;
