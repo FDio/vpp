@@ -2,6 +2,7 @@
  * Copyright (c) 2024-2026 Cisco Systems, Inc.
  */
 
+#include <vppinfra/crypto/constant_time.h>
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
 #include <openssl/rand.h>
@@ -241,7 +242,7 @@ openssl_ops_hmac_dec_cbc (vnet_crypto_op_t *ops[], u32 n_ops, u32 auth_len,
 
       HMAC_Update (hmac_ctx, op->auth_src, op->auth_src_len);
       HMAC_Final (hmac_ctx, buffer, &hmac_out_len);
-      if ((memcmp (op->auth, buffer, len)))
+      if ((!clib_mem_equal_constant_time (op->auth, buffer, len)))
 	{
 	  n_fail++;
 	  op->status = VNET_CRYPTO_OP_STATUS_FAIL_BAD_HMAC;
@@ -350,7 +351,7 @@ openssl_ops_hmac_dec_cbc_chained (vnet_crypto_op_t *ops[], vnet_crypto_op_chunk_
 	  chp += 1;
 	}
       HMAC_Final (hmac_ctx, buffer, &hmac_out_len);
-      if ((memcmp (op->auth, buffer, len)))
+      if ((!clib_mem_equal_constant_time (op->auth, buffer, len)))
 	{
 	  n_fail++;
 	  op->status = VNET_CRYPTO_OP_STATUS_FAIL_BAD_HMAC;
@@ -742,7 +743,7 @@ openssl_ops_hmac (vnet_crypto_op_t *ops[], vnet_crypto_op_chunk_t *chunks, u32 n
 
       if (op->flags & VNET_CRYPTO_OP_FLAG_HMAC_CHECK)
 	{
-	  if ((memcmp (op->auth, buffer, sz)))
+	  if ((!clib_mem_equal_constant_time (op->auth, buffer, sz)))
 	    {
 	      n_fail++;
 	      op->status = VNET_CRYPTO_OP_STATUS_FAIL_BAD_HMAC;

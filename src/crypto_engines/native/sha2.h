@@ -3,6 +3,7 @@
  */
 
 #pragma once
+#include <vppinfra/crypto/constant_time.h>
 #include <vppinfra/crypto/sha2.h>
 #include <vnet/crypto/crypto.h>
 #include <native/crypto_native.h>
@@ -41,7 +42,7 @@ crypto_native_ops_hmac_sha2 (vnet_crypto_op_t *ops[], u32 n_ops, vnet_crypto_op_
 
       if (op->flags & VNET_CRYPTO_OP_FLAG_HMAC_CHECK)
 	{
-	  if ((memcmp (op->auth, buffer, sz)))
+	  if ((!clib_mem_equal_constant_time (op->auth, buffer, sz)))
 	    {
 	      n_fail++;
 	      op->status = VNET_CRYPTO_OP_STATUS_FAIL_BAD_HMAC;

@@ -2,6 +2,7 @@
  * Copyright (c) 2019-2026 Cisco and/or its affiliates.
  */
 
+#include <vppinfra/crypto/constant_time.h>
 #include <vlib/vlib.h>
 #include <vnet/plugin/plugin.h>
 #include <vppinfra/crypto/aes_cbc.h>
@@ -102,7 +103,7 @@ aes_ops_hmac_dec_aes_cbc (vnet_crypto_op_t *ops[], u32 n_ops, aes_key_size_t ks,
       clib_sha2_hmac_update (&ctx, op->auth_src, op->auth_src_len);
       clib_sha2_hmac_final (&ctx, buffer);
 
-      if ((memcmp (op->auth, buffer, len)))
+      if ((!clib_mem_equal_constant_time (op->auth, buffer, len)))
 	{
 	  n_fail++;
 	  op->status = VNET_CRYPTO_OP_STATUS_FAIL_BAD_HMAC;

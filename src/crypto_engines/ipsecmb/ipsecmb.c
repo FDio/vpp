@@ -2,6 +2,7 @@
  * Copyright (c) 2024-2026 Cisco Systems, Inc.
  */
 
+#include <vppinfra/crypto/constant_time.h>
 #include <fcntl.h>
 
 #include <intel-ipsec-mb.h>
@@ -199,7 +200,7 @@ ipsecmb_retire_hmac_job (IMB_JOB *job, u32 *n_fail, u32 digest_size, u32 out_len
 
   if (op->flags & VNET_CRYPTO_OP_FLAG_HMAC_CHECK)
     {
-      if ((memcmp (op->auth, job->auth_tag_output, len)))
+      if ((!clib_mem_equal_constant_time (op->auth, job->auth_tag_output, len)))
 	{
 	  *n_fail = *n_fail + 1;
 	  op->status = VNET_CRYPTO_OP_STATUS_FAIL_BAD_HMAC;
@@ -571,7 +572,7 @@ ipsecmb_ops_gcm (vnet_crypto_op_t *ops[], vnet_crypto_op_chunk_t *chunks, u32 n_
 			aadlen, tag, taglen);
 	}
 
-      if (a.is_dec && (memcmp (op->auth, tag, taglen)))
+      if (a.is_dec && (!clib_mem_equal_constant_time (op->auth, tag, taglen)))
 	{
 	  op->status = VNET_CRYPTO_OP_STATUS_FAIL_BAD_HMAC;
 	  n_failed++;
@@ -666,7 +667,7 @@ ipsecmb_retire_aead_job (IMB_JOB *job, u32 *n_fail)
 
   if (op->flags & VNET_CRYPTO_OP_FLAG_HMAC_CHECK)
     {
-      if (memcmp (op->auth, job->auth_tag_output, len))
+      if (!clib_mem_equal_constant_time (op->auth, job->auth_tag_output, len))
 	{
 	  *n_fail = *n_fail + 1;
 	  op->status = VNET_CRYPTO_OP_STATUS_FAIL_BAD_HMAC;
@@ -840,7 +841,7 @@ foreach_chacha_poly_fixed_aad_lengths
 
 	  IMB_CHACHA20_POLY1305_DEC_FINALIZE (m, &ctx, scratch, tag_len ? tag_len : op->auth_len);
 
-	  if (memcmp (op->auth, scratch, tag_len ? tag_len : op->auth_len))
+	  if (!clib_mem_equal_constant_time (op->auth, scratch, tag_len ? tag_len : op->auth_len))
 	    {
 	      n_fail = n_fail + 1;
 	      op->status = VNET_CRYPTO_OP_STATUS_FAIL_BAD_HMAC;
