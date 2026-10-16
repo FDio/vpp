@@ -1,0 +1,22 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e2e92c9e_9fd5b290",
+        "filename": "src/plugins/ikev2/ikev2_api.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 86,
+      "author": {
+        "id": 3383
+      },
+      "writtenOn": "2026-10-16T08:30:28Z",
+      "side": 1,
+      "message": "Done in patch set 3: cp_key (u8 *dst, u8 *copied_len, u8 max_size, const u8 *src).",
+      "parentUuid": "57ad369b_a287fc99",
+      "revId": "7a2fc497b7f135693c33f9533b1d5e55225a95e3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
