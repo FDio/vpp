@@ -3172,15 +3172,22 @@ ikev2_retransmit_sa_init_one (ikev2_sa_t * sa, ike_header_t * ike,
       return 0;
     }
 
+  if (rlen < sizeof (*ike))
+    return ~0;
+  rlen -= sizeof (*ike);
+
   while (p < rlen && payload != IKEV2_PAYLOAD_NONE)
     {
       ike_payload_header_t *ikep = (ike_payload_header_t *) & ike->payload[p];
+      if (rlen - p < sizeof (*ikep))
+        return ~0;
       u32 plen = clib_net_to_host_u16 (ikep->length);
 
-      if (plen < sizeof (ike_payload_header_t))
+      if (plen < sizeof (*ikep) || plen > rlen - p)
 	return ~0;
 
       if (payload == IKEV2_PAYLOAD_NONCE &&
+          plen - sizeof (*ikep) == vec_len (sa->i_nonce) &&
 	  !clib_memcmp (sa->i_nonce, ikep->payload, plen - sizeof (*ikep)))
 	{
 	  /* req is retransmit */
