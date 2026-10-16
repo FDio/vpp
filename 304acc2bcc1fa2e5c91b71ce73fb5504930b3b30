@@ -1,0 +1,22 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a48f30de_0607d165",
+        "filename": "src/plugins/ikev2/ikev2.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 5338,
+      "author": {
+        "id": 3383
+      },
+      "writtenOn": "2026-10-16T08:33:35Z",
+      "side": 1,
+      "message": "Done in patch set 4. ikev2_delete_tunnel_interface() returns early when child-\u003elocal_sa_id is 0: ikev2_mk_local_sa_id() always sets 0x80000000, so a child SA that is not installed yet is the only case with ID 0. The check is in the shared function, so the profile deletion and responder interface deletion paths, which delete the same pending initiator SA, are covered as well. TestInitiatorTunItfDeletedAuth adds IPsec SAs with IDs 0 and 0x800, exchanges IKE_SA_INIT, leaves IKE_AUTH unanswered, deletes the profile tunnel interface and checks that both SAs remain, the IKE SA is gone and the profile tunnel interface is ~0. Against patch set 3 the test fails; with patch set 4 test_ikev2 passes 35/35 (41/41 together with 47112 and 47115).",
+      "parentUuid": "796deeeb_84c43987",
+      "revId": "304acc2bcc1fa2e5c91b71ce73fb5504930b3b30",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
