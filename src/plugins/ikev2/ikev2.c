@@ -3194,8 +3194,13 @@ ikev2_retransmit_sa_init_one (ikev2_sa_t * sa, ike_header_t * ike,
 	  if (sa->state == IKEV2_STATE_SA_INIT)
 	    {
 	      sa->stats.n_init_retransmit++;
-	      tmp = (ike_header_t *) sa->last_sa_init_res_packet_data;
+	      if (vec_len (sa->last_sa_init_res_packet_data) < sizeof (*ike))
+                return ~0;
+              tmp = (ike_header_t *) sa->last_sa_init_res_packet_data;
 	      u32 slen = clib_net_to_host_u32 (tmp->length);
+              if (slen < sizeof (*ike) ||
+                  slen > vec_len (sa->last_sa_init_res_packet_data))
+                return ~0;
 	      ike->ispi = tmp->ispi;
 	      ike->rspi = tmp->rspi;
 	      ike->nextpayload = tmp->nextpayload;
@@ -3275,8 +3280,12 @@ ikev2_retransmit_resp (ikev2_sa_t * sa, ike_header_t * ike)
   if (msg_id == sa->last_msg_id)
     {
       sa->stats.n_retransmit++;
+      if (vec_len (sa->last_res_packet_data) < sizeof (*ike))
+        return ~0;
       ike_header_t *tmp = (ike_header_t *) sa->last_res_packet_data;
       u32 slen = clib_net_to_host_u32 (tmp->length);
+      if (slen < sizeof (*ike) || slen > vec_len (sa->last_res_packet_data))
+        return ~0;
       ike->ispi = tmp->ispi;
       ike->rspi = tmp->rspi;
       ike->nextpayload = tmp->nextpayload;
