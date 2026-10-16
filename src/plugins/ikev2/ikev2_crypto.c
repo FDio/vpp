@@ -331,7 +331,7 @@ v8 *
 ikev2_calc_integr (ikev2_sa_transform_t * tr, v8 * key, u8 * data, int len)
 {
   v8 *r;
-  unsigned int l;
+  unsigned int l = 0;
 
   ASSERT (tr->type == IKEV2_TRANSFORM_TYPE_INTEG);
 
@@ -351,10 +351,12 @@ ikev2_calc_integr (ikev2_sa_transform_t * tr, v8 * key, u8 * data, int len)
       size_t cmac_len = 0;
       CMAC_CTX *ctx = CMAC_CTX_new ();
 
-      CMAC_Init (ctx, key, vec_len (key), tr->cipher, NULL);
-      CMAC_Update (ctx, (const u8 *) data, len);
-      CMAC_Final (ctx, r, &cmac_len);
+      int ok = ctx && CMAC_Init (ctx, key, vec_len (key), tr->cipher, NULL) == 1 &&
+        CMAC_Update (ctx, (const u8 *) data, len) == 1 &&
+        CMAC_Final (ctx, r, &cmac_len) == 1;
       CMAC_CTX_free (ctx);
+      if (!ok)
+        goto fail;
       l = cmac_len;
     }
   else
@@ -363,13 +365,19 @@ ikev2_calc_integr (ikev2_sa_transform_t * tr, v8 * key, u8 * data, int len)
       HMAC_CTX *ctx = km->hmac_ctx;
 
       /* verify integrity of data */
-      HMAC_Init_ex (ctx, key, vec_len (key), tr->md, NULL);
-      HMAC_Update (ctx, (const u8 *) data, len);
-      HMAC_Final (ctx, r, &l);
+      if (!ctx || HMAC_Init_ex (ctx, key, vec_len (key), tr->md, NULL) != 1 ||
+          HMAC_Update (ctx, (const u8 *) data, len) != 1 ||
+          HMAC_Final (ctx, r, &l) != 1)
+        goto fail;
     }
-  ASSERT (l == tr->key_len);
+  if (l != tr->key_len)
+    goto fail;
 
   return r;
+
+fail:
+  vec_free (r);
+  return 0;
 }
 
 static_always_inline void

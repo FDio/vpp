@@ -1188,8 +1188,11 @@ ikev2_decrypt_sk_payload (ikev2_sa_t * sa, ike_header_t * ike,
 	ikev2_calc_integr (tr_integ, sa->is_initiator ? sa->sk_ar : sa->sk_ai,
 			   (u8 *) ike, rlen - tr_integ->key_trunc);
 
-      if (plen < sizeof (*ikep) + tr_integ->key_trunc)
-	return 0;
+      if (!hmac || plen < sizeof (*ikep) + tr_integ->key_trunc)
+        {
+          vec_free (hmac);
+          return 0;
+        }
 
       plen = plen - sizeof (*ikep) - tr_integ->key_trunc;
 
@@ -3145,6 +3148,11 @@ ikev2_generate_message (vlib_main_t *vm, vlib_buffer_t *b, ikev2_sa_t *sa, ike_h
 	    ikev2_calc_integr (tr_integ,
 			       sa->is_initiator ? sa->sk_ai : sa->sk_ar,
 			       (u8 *) ike, tlen - tr_integ->key_trunc);
+          if (!integ)
+            {
+              tlen = ~0;
+              goto done;
+            }
 	  clib_memcpy_fast (ike->payload + tlen - tr_integ->key_trunc -
 			    sizeof (*ike), integ, tr_integ->key_trunc);
 	}
