@@ -4,6 +4,7 @@
  * Copyright (c) 2019-2020 Matt Dunwoodie <ncon@noconroy.net>.
  */
 
+#include <vppinfra/crypto/constant_time.h>
 #include <stddef.h>
 #include <openssl/rand.h>
 #include <vlib/vlib.h>
@@ -142,7 +143,7 @@ cookie_checker_validate_macs (vlib_main_t *vm, cookie_checker_t *cc,
   cookie_macs_mac1 (&our_cm, buf, len, cc->cc_mac1_key);
 
   /* If mac1 is invalid, we want to drop the packet */
-  if (clib_memcmp (our_cm.mac1, cm->mac1, COOKIE_MAC_SIZE) != 0)
+  if (!clib_mem_equal_constant_time (our_cm.mac1, cm->mac1, COOKIE_MAC_SIZE))
     return INVALID_MAC;
 
   if (!busy)
@@ -152,7 +153,7 @@ cookie_checker_validate_macs (vlib_main_t *vm, cookie_checker_t *cc,
   cookie_macs_mac2 (&our_cm, buf, len, cookie);
 
   /* If the mac2 is invalid, we want to send a cookie response */
-  if (clib_memcmp (our_cm.mac2, cm->mac2, COOKIE_MAC_SIZE) != 0)
+  if (!clib_mem_equal_constant_time (our_cm.mac2, cm->mac2, COOKIE_MAC_SIZE))
     return VALID_MAC_BUT_NO_COOKIE;
 
   /* If the mac2 is valid, we may want to rate limit the peer */

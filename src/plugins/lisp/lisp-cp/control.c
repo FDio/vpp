@@ -3,6 +3,7 @@
  * Copyright (c) 2016-2026 Cisco and/or its affiliates.
  */
 
+#include <vppinfra/crypto/constant_time.h>
 #include <vlibmemory/api.h>
 #include <lisp/lisp-cp/control.h>
 #include <lisp/lisp-cp/packets.h>
@@ -3897,7 +3898,7 @@ is_auth_data_valid (map_notify_hdr_t * h, u32 msg_len,
   u32 completed = vnet_crypto_process_ops (lcm->vlib_main, op, 0, 1);
   vnet_crypto_ctx_destroy (lcm->vlib_main, ctx);
   if (completed == 1 && op->status == VNET_CRYPTO_OP_STATUS_COMPLETED)
-    result = memcmp (out, auth_data, auth_data_len) == 0;
+    result = clib_mem_equal_constant_time (out, auth_data, auth_data_len);
 
 done:
   clib_memcpy (MNOTIFY_DATA (h), auth_data, auth_data_len);

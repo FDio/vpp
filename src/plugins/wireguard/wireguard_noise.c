@@ -5,6 +5,7 @@
  * Copyright (c) 2026 Cisco and/or its affiliates.
  */
 
+#include <vppinfra/crypto/constant_time.h>
 #include <openssl/hmac.h>
 #include <wireguard/wireguard.h>
 #include <wireguard/wireguard_chachapoly.h>
@@ -623,7 +624,7 @@ noise_mix_ss (uint8_t ck[NOISE_HASH_LEN],
 	      const uint8_t ss[NOISE_PUBLIC_KEY_LEN])
 {
   static uint8_t null_point[NOISE_PUBLIC_KEY_LEN];
-  if (clib_memcmp (ss, null_point, NOISE_PUBLIC_KEY_LEN) == 0)
+  if (clib_mem_equal_constant_time (ss, null_point, NOISE_PUBLIC_KEY_LEN))
     return false;
   noise_kdf (ck, key, NULL, ss,
 	     NOISE_HASH_LEN, NOISE_SYMMETRIC_KEY_LEN, 0, NOISE_PUBLIC_KEY_LEN,

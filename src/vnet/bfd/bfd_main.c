@@ -13,6 +13,7 @@
 #include <vppinfra/random.h>
 #include <vppinfra/error.h>
 #include <vppinfra/hash.h>
+#include <vppinfra/crypto/constant_time.h>
 #include <vppinfra/xxhash.h>
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/ethernet/packet.h>
@@ -1775,8 +1776,8 @@ bfd_verify_pkt_auth_key_sha1 (vlib_main_t *vm, const bfd_pkt_t *pkt,
   if (completed != 1 || op.status != VNET_CRYPTO_OP_STATUS_COMPLETED)
     return 0;
 
-  if (0 ==
-      memcmp (calculated_hash, hash_from_packet, sizeof (calculated_hash)))
+  if (clib_mem_equal_constant_time (calculated_hash, hash_from_packet,
+                                    sizeof (calculated_hash)))
     {
       clib_memcpy (with_sha1->sha1_auth.hash, hash_from_packet,
 		   sizeof (hash_from_packet));
