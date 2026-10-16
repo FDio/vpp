@@ -276,14 +276,30 @@ publish_metrics (struct Config *config, u8 **patterns, u8 v2,
     {
       const SSL_METHOD *method = TLS_client_method ();
       SSL_CTX *ctx = SSL_CTX_new (method);
+      SSL *ssl = NULL;
       if (!ctx)
+	goto tls_setup_error;
+      SSL_CTX_set_verify (ctx, SSL_VERIFY_PEER, NULL);
+      /* Honor the system trust store and OpenSSL SSL_CERT_FILE / SSL_CERT_DIR. */
+      if (SSL_CTX_set_default_verify_paths (ctx) != 1)
+	goto tls_setup_error;
+
+      ssl = SSL_new (ctx);
+      if (!ssl || SSL_set_fd (ssl, sock) != 1)
+	goto tls_setup_error;
+
+      struct in_addr addr4;
+      struct in6_addr addr6;
+      if (inet_pton (AF_INET, config->url.hostname, &addr4) == 1 ||
+	  inet_pton (AF_INET6, config->url.hostname, &addr6) == 1)
 	{
-	  fprintf (stderr, "Unable to create SSL context\n");
-	  return -1;
+	  if (X509_VERIFY_PARAM_set1_ip_asc (SSL_get0_param (ssl), config->url.hostname) != 1)
+	    goto tls_setup_error;
 	}
-      // Create SSL object
-      SSL *ssl = SSL_new (ctx);
-      SSL_set_fd (ssl, sock);
+      else if (SSL_set1_host (ssl, config->url.hostname) != 1 ||
+	       SSL_set_tlsext_host_name (ssl, config->url.hostname) != 1)
+	goto tls_setup_error;
+
       int ret = SSL_connect (ssl);
       if (ret <= 0)
 	{
@@ -300,7 +316,7 @@ publish_metrics (struct Config *config, u8 **patterns, u8 v2,
       if (config->debug > 0)
 	{
 	  fprintf (stderr, "Sending header %zu\n", header_size);
-	  fprintf (stderr, "%s", header);
+	  /* Headers can contain Basic credentials. */
 	}
       SSL_write (ssl, header, header_size);
       if (config->debug > 1)
@@ -331,13 +347,23 @@ publish_metrics (struct Config *config, u8 **patterns, u8 v2,
       SSL_shutdown (ssl);
       SSL_free (ssl);
       SSL_CTX_free (ctx);
+      goto request_done;
+
+    tls_setup_error:
+      fprintf (stderr, "Unable to configure authenticated TLS\n");
+      SSL_free (ssl);
+      SSL_CTX_free (ctx);
+      close (sock);
+      free (data);
+      free (header);
+      return -1;
     }
   else
     {
       if (config->debug > 1)
 	{
 	  fprintf (stderr, "Sending header %zu\n", header_size);
-	  fprintf (stderr, "%s", header);
+	  /* Headers can contain Basic credentials. */
 	}
       if (write (sock, header, header_size) < 0)
 	{
@@ -376,6 +402,7 @@ publish_metrics (struct Config *config, u8 **patterns, u8 v2,
 	  handleResponse (buffer, bytes_read, config, &first);
 	}
     }
+request_done:
   close (sock);
   return 0;
 }
