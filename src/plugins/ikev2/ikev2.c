@@ -2070,7 +2070,8 @@ ikev2_select_profile (vlib_main_t *vm, ikev2_main_t *km, ikev2_sa_t *sa,
 	  psk = ikev2_calc_prf (tr_prf, p->auth.data, key_pad);
 	  auth = ikev2_calc_prf (tr_prf, psk, authmsg);
 
-	  if (!clib_memcmp (auth, sa_auth->data, vec_len (sa_auth->data)))
+	  if (vec_len (sa_auth->data) == tr_prf->key_trunc &&
+              !clib_memcmp (auth, sa_auth->data, tr_prf->key_trunc))
 	    {
 	    sa->state = IKEV2_STATE_AUTHENTICATED;
 	    log_debug ("ispi %lx SA state changed to AUTHENTICATED", sa->ispi);
