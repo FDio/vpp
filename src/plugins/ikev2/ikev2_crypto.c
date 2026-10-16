@@ -400,12 +400,14 @@ ikev2_decrypt_aead_data (ikev2_sa_t *sa, ikev2_sa_transform_t *tr_encr, u8 *data
   data += IKEV2_GCM_IV_SIZE;
   data_len -= IKEV2_GCM_IV_SIZE;
 
-  EVP_DecryptInit_ex (ctx, tr_encr->cipher, 0, 0, 0);
-  EVP_CIPHER_CTX_ctrl (ctx, EVP_CTRL_AEAD_SET_IVLEN, 12, 0);
-  EVP_DecryptInit_ex (ctx, 0, 0, key, nonce);
-  EVP_DecryptUpdate (ctx, 0, &len, aad, aad_len);
-  EVP_DecryptUpdate (ctx, data, &len, data, data_len);
-  EVP_CIPHER_CTX_ctrl (ctx, EVP_CTRL_AEAD_SET_TAG, IKEV2_GCM_ICV_SIZE, tag);
+  if (EVP_DecryptInit_ex (ctx, tr_encr->cipher, 0, 0, 0) != 1 ||
+      EVP_CIPHER_CTX_ctrl (ctx, EVP_CTRL_AEAD_SET_IVLEN, 12, 0) != 1 ||
+      EVP_DecryptInit_ex (ctx, 0, 0, key, nonce) != 1 ||
+      EVP_DecryptUpdate (ctx, 0, &len, aad, aad_len) != 1 ||
+      EVP_DecryptUpdate (ctx, data, &len, data, data_len) != 1 ||
+      len != data_len ||
+      EVP_CIPHER_CTX_ctrl (ctx, EVP_CTRL_AEAD_SET_TAG, IKEV2_GCM_ICV_SIZE, tag) != 1)
+    return 0;
 
   if (EVP_DecryptFinal_ex (ctx, data + len, &len) > 0)
     {
@@ -437,9 +439,10 @@ ikev2_decrypt_data (ikev2_sa_t *sa, ikev2_sa_transform_t *tr_encr, u8 *data, int
   data += block_size;
   len -= block_size;
 
-  EVP_DecryptInit_ex (ctx, tr_encr->cipher, NULL, key, iv);
-  EVP_CIPHER_CTX_set_padding (ctx, 0);
-  EVP_DecryptUpdate (ctx, data, &tmp_len, data, len);
+  if (EVP_DecryptInit_ex (ctx, tr_encr->cipher, NULL, key, iv) != 1 ||
+      EVP_CIPHER_CTX_set_padding (ctx, 0) != 1 ||
+      EVP_DecryptUpdate (ctx, data, &tmp_len, data, len) != 1 || tmp_len != len)
+    return 0;
 
   if (EVP_DecryptFinal_ex (ctx, data + tmp_len, &tmp_len) > 0)
     {
@@ -471,15 +474,17 @@ ikev2_encrypt_aead_data (ikev2_sa_t *sa, ikev2_sa_transform_t *tr_encr, v8 *src,
 			dst);
   dst += IKEV2_GCM_IV_SIZE;
 
-  EVP_EncryptInit_ex (ctx, tr_encr->cipher, 0, 0, 0);
-  EVP_CIPHER_CTX_ctrl (ctx, EVP_CTRL_AEAD_SET_IVLEN, 12, NULL);
-  EVP_EncryptInit_ex (ctx, 0, 0, key, nonce);
-  EVP_EncryptUpdate (ctx, NULL, &out_len, aad, aad_len);
-  EVP_EncryptUpdate (ctx, dst, &out_len, src, vec_len (src));
-  EVP_EncryptFinal_ex (ctx, dst + out_len, &len);
-  EVP_CIPHER_CTX_ctrl (ctx, EVP_CTRL_AEAD_GET_TAG, 16, tag);
+  if (EVP_EncryptInit_ex (ctx, tr_encr->cipher, 0, 0, 0) != 1 ||
+      EVP_CIPHER_CTX_ctrl (ctx, EVP_CTRL_AEAD_SET_IVLEN, 12, NULL) != 1 ||
+      EVP_EncryptInit_ex (ctx, 0, 0, key, nonce) != 1 ||
+      EVP_EncryptUpdate (ctx, NULL, &out_len, aad, aad_len) != 1 ||
+      EVP_EncryptUpdate (ctx, dst, &out_len, src, vec_len (src)) != 1 ||
+      EVP_EncryptFinal_ex (ctx, dst + out_len, &len) != 1 ||
+      EVP_CIPHER_CTX_ctrl (ctx, EVP_CTRL_AEAD_GET_TAG, 16, tag) != 1)
+    return 0;
   out_len += len;
-  ASSERT (vec_len (src) == out_len);
+  if (vec_len (src) != out_len)
+    return 0;
 
   return out_len + IKEV2_GCM_IV_SIZE;
 }
@@ -501,14 +506,16 @@ ikev2_encrypt_data (ikev2_sa_t *sa, ikev2_sa_transform_t *tr_encr, v8 *src, u8 *
     return 0;
   dst += bs;
 
-  EVP_EncryptInit_ex (ctx, tr_encr->cipher, NULL, key, iv);
   /* disable padding as pad data were added before */
-  EVP_CIPHER_CTX_set_padding (ctx, 0);
-  EVP_EncryptUpdate (ctx, dst, &out_len, src, vec_len (src));
-  EVP_EncryptFinal_ex (ctx, dst + out_len, &len);
+  if (EVP_EncryptInit_ex (ctx, tr_encr->cipher, NULL, key, iv) != 1 ||
+      EVP_CIPHER_CTX_set_padding (ctx, 0) != 1 ||
+      EVP_EncryptUpdate (ctx, dst, &out_len, src, vec_len (src)) != 1 ||
+      EVP_EncryptFinal_ex (ctx, dst + out_len, &len) != 1)
+    return 0;
 
   out_len += len;
-  ASSERT (vec_len (src) == out_len);
+  if (vec_len (src) != out_len)
+    return 0;
 
   return out_len + bs;
 }
