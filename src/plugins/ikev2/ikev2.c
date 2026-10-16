@@ -838,10 +838,12 @@ static int
 ikev2_parse_nonce_payload (const void *p, u32 rlen, const u8 **nonce)
 {
   const ike_payload_header_t *ikep = p;
+  if (rlen < sizeof (*ikep))
+    return 0;
   u16 plen = clib_net_to_host_u16 (ikep->length);
-  ASSERT (plen >= sizeof (*ikep) && plen <= rlen);
+  if (plen < sizeof (*ikep) || plen > rlen)
+    return 0;
   int len = plen - sizeof (*ikep);
-  ASSERT (len >= 16 && len <= 256);
   if (PREDICT_FALSE (len < 16 || len > 256))
     {
       log_err ("NONCE: bad size");
