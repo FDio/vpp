@@ -342,6 +342,29 @@ wg_input_post_process (vlib_main_t *vm, vlib_buffer_t *b, u16 *next,
       return -1;
     }
 
+  /* Only an authenticated, replay-checked packet may confirm a keypair. */
+  noise_remote_t *r = &peer->remote;
+  bool confirmed = false;
+  if (kp == r->r_next)
+    {
+      clib_rwlock_writer_lock (&r->r_keypair_lock);
+      if (kp == r->r_next && kp->kp_local_index == data->receiver_index)
+        {
+          noise_remote_keypair_free (vm, r, &r->r_previous);
+          r->r_previous = r->r_current;
+          r->r_current = r->r_next;
+          r->r_next = NULL;
+          confirmed = true;
+        }
+      clib_rwlock_writer_unlock (&r->r_keypair_lock);
+    }
+  if (confirmed)
+    wg_timers_handshake_complete (peer);
+  else if (kp == r->r_current && kp->kp_valid && kp->kp_is_initiator &&
+           wg_birthdate_has_expired_opt (kp->kp_birthdate, REKEY_AFTER_TIME_RECV,
+                                        clib_time_now (&vm->clib_time) + vm->time_offset))
+    wg_send_handshake_from_mt (peer - wg_peer_pool, false);
+
   lb = b;
   /* Find last buffer in the chain */
   while (lb->flags & VLIB_BUFFER_NEXT_PRESENT)
@@ -556,38 +579,6 @@ wg_input_process (vlib_main_t *vm, wg_per_thread_data_t *ptd, vnet_crypto_op_t *
       wg_prepare_sync_dec_op (vm, ptd, b, lb, crypto_ops, src, srclen, dst, NULL, 0, kp->recv_ctx,
 			      from_idx, iv);
     }
-
-  /* If we've received the handshake confirming data packet then move the
-   * next keypair into current. If we do slide the next keypair in, then
-   * we skip the REKEY_AFTER_TIME_RECV check. This is safe to do as a
-   * data packet can't confirm a session that we are an INITIATOR of. */
-  if (kp == r->r_next)
-    {
-      clib_rwlock_writer_lock (&r->r_keypair_lock);
-      if (kp == r->r_next && kp->kp_local_index == r_idx)
-	{
-	  noise_remote_keypair_free (vm, r, &r->r_previous);
-	  r->r_previous = r->r_current;
-	  r->r_current = r->r_next;
-	  r->r_next = NULL;
-
-	  ret = SC_CONN_RESET;
-	  clib_rwlock_writer_unlock (&r->r_keypair_lock);
-	  goto error;
-	}
-      clib_rwlock_writer_unlock (&r->r_keypair_lock);
-    }
-
-  /* Similar to when we encrypt, we want to notify the caller when we
-   * are approaching our tolerances. We notify if:
-   *  - we're the initiator and the current keypair is older than
-   *    REKEY_AFTER_TIME_RECV seconds. */
-  ret = SC_KEEP_KEY_FRESH;
-  kp = r->r_current;
-  if (kp != NULL && kp->kp_valid && kp->kp_is_initiator &&
-      wg_birthdate_has_expired_opt (kp->kp_birthdate, REKEY_AFTER_TIME_RECV,
-				    time))
-    goto error;
 
   ret = SC_OK;
 error:
@@ -834,18 +825,7 @@ wg_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	      n_async += 1;
 	    }
 
-	  if (PREDICT_FALSE (state_cr == SC_CONN_RESET))
-	    {
-	      wg_timers_handshake_complete (peer);
-	      goto next;
-	    }
-	  else if (PREDICT_FALSE (state_cr == SC_KEEP_KEY_FRESH))
-	    {
-	      wg_send_handshake_from_mt (peeri, false);
-	      goto next;
-	    }
-	  else if (PREDICT_TRUE (state_cr == SC_OK))
-	    goto next;
+          goto next;
 	}
       else
 	{
