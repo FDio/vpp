@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "57ad369b_a287fc99",
+        "filename": "src/plugins/ikev2/ikev2_api.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 86,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-10-16T07:48:29Z",
+      "side": 1,
+      "message": "Could we clarify the parameter names, align `max_size` with the `u8` length field, and make `src` const? For example:\n\n```c\ncp_key (u8 *dst, u8 *copied_len, u8 max_size, const u8 *src)\n```",
+      "revId": "281a69693ab49605cd2dd3fc46fd2759d32d5909",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
