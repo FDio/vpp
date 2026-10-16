@@ -16,6 +16,24 @@
       "message": "can\u0027t we just move the check under the lock then drop if and return if nothing pending?",
       "revId": "4c146a078dac35b2cca15a227347dd5522220b6e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "07a47d37_c07f1d77",
+        "filename": "src/vppinfra/file.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 139,
+      "author": {
+        "id": 3121
+      },
+      "writtenOn": "2026-10-16T17:37:57Z",
+      "side": 0,
+      "message": "The earlier commit `f1586f14` introduced the **unlocked** empty check as part of the thread-safe file refactor. I considered moving the check under `fm-\u003elock`, which should fix the race.\nHowever, AI review pointed out that `clib_file_free_deleted()` is called **unconditionally** at the end of each completed `vlib_file_poll()` cycle on every main/worker thread. Moving the check would then acquire the shared file lock even in the common case where nothing is pending.\n`has_pending_free` preserves the lockless empty fast path, while the `pending_free` vector itself is accessed **only** under `fm-\u003elock`.",
+      "parentUuid": "a7cd0a16_7943a9e1",
+      "revId": "4c146a078dac35b2cca15a227347dd5522220b6e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
