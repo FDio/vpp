@@ -1209,6 +1209,10 @@ ikev2_decrypt_sk_payload (ikev2_sa_t * sa, ike_header_t * ike,
 	}
     }
 
+  /* Only authenticated requests may advance the receive window. */
+  if (plaintext && ike_hdr_is_request (ike))
+    sa->last_msg_id = clib_net_to_host_u32 (ike->msgid);
+
   return plaintext;
 }
 
@@ -3272,7 +3276,6 @@ ikev2_retransmit_resp (ikev2_sa_t * sa, ike_header_t * ike)
   /* new req */
   if (msg_id > sa->last_msg_id || sa->last_msg_id == ~0)
     {
-      sa->last_msg_id = msg_id;
       return 0;
     }
 
