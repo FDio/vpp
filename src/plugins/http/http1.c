@@ -983,6 +983,14 @@ http1_req_state_wait_transport_method (http_ctx_t *hc, http_ctx_t *req, transpor
   if (rv)
     goto error;
 
+  /* RFC9112 3.2: Host is required even for absolute and authority-form */
+  if (req->host_header_index == ~0)
+    {
+      HTTP_DBG (1, "Host header missing");
+      ec = HTTP_STATUS_BAD_REQUEST;
+      goto error;
+    }
+
   http1_target_fixup (hc, req);
   http1_check_connection_upgrade (req, rx_buf);
 

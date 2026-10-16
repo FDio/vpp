@@ -26,7 +26,7 @@ func init() {
 	RegisterSoloVethTests(HttpClientGetMemLeakTest)
 	RegisterHttp1Tests(HeaderServerTest, HttpPersistentConnectionTest, HttpPipeliningTest,
 		HttpCliMethodNotAllowedTest, HttpAbsoluteFormUriTest, HttpCliBadRequestTest,
-		HttpInvalidRequestLineTest, HttpMethodNotImplementedTest, HttpInvalidHeadersTest,
+		HttpInvalidRequestLineTest, HttpMethodNotImplementedTest, HttpInvalidHeadersTest, HttpMissingHostHeaderTest,
 		HttpContentLengthTest, HttpVersionNotSupportedTest, HttpInvalidContentLengthTest, HttpInvalidTargetSyntaxTest, HttpUriDecodeTest,
 		HttpHeadersTest, HttpClientTest, HttpClientErrRespTest, HttpClientPostFormTest, HttpClientPostFormPtrTest,
 		HttpClientGet128kbResponseTest, HttpClientGetResponseBodyTest, HttpClientGetTlsNoRespBodyTest, HttpClientPostFileTest, HttpClientPostFilePtrTest,
@@ -1580,7 +1580,7 @@ func HttpAbsoluteFormUriTest(s *Http1Suite) {
 	serverAddress := s.VppAddr() + ":" + s.Ports.Http
 	vpp.Vppctl("http cli server uri http://" + serverAddress)
 
-	resp, err := TcpSendReceive(serverAddress, "GET http://"+serverAddress+"/show/version HTTP/1.1\r\n\r\n")
+	resp, err := TcpSendReceive(serverAddress, "GET http://"+serverAddress+"/show/version HTTP/1.1\r\nHost: "+serverAddress+"\r\n\r\n")
 	AssertNil(err, fmt.Sprint(err))
 	AssertContains(resp, "HTTP/1.1 200 OK")
 }
@@ -1590,35 +1590,35 @@ func HttpInvalidAuthorityFormUriTest(s *Http1Suite) {
 	serverAddress := s.VppAddr() + ":" + s.Ports.Http
 	vpp.Vppctl("test proxy server fifo-size 512k server-uri http://%s", serverAddress)
 
-	resp, err := TcpSendReceive(serverAddress, "CONNECT 1.2.3.4:80a HTTP/1.1\r\n\r\n")
+	resp, err := TcpSendReceive(serverAddress, "CONNECT 1.2.3.4:80a HTTP/1.1\r\nHost: example.com\r\n\r\n")
 	AssertNil(err, fmt.Sprint(err))
 	AssertContains(resp, "HTTP/1.1 400 Bad Request")
 
-	resp, err = TcpSendReceive(serverAddress, "CONNECT 1.2.3.4:80000000 HTTP/1.1\r\n\r\n")
+	resp, err = TcpSendReceive(serverAddress, "CONNECT 1.2.3.4:80000000 HTTP/1.1\r\nHost: example.com\r\n\r\n")
 	AssertNil(err, fmt.Sprint(err))
 	AssertContains(resp, "HTTP/1.1 400 Bad Request")
 
-	resp, err = TcpSendReceive(serverAddress, "CONNECT 1.2a3.4:80 HTTP/1.1\r\n\r\n")
+	resp, err = TcpSendReceive(serverAddress, "CONNECT 1.2a3.4:80 HTTP/1.1\r\nHost: example.com\r\n\r\n")
 	AssertNil(err, fmt.Sprint(err))
 	AssertContains(resp, "HTTP/1.1 400 Bad Request")
 
-	resp, err = TcpSendReceive(serverAddress, "CONNECT 1.2.4:80 HTTP/1.1\r\n\r\n")
+	resp, err = TcpSendReceive(serverAddress, "CONNECT 1.2.4:80 HTTP/1.1\r\nHost: example.com\r\n\r\n")
 	AssertNil(err, fmt.Sprint(err))
 	AssertContains(resp, "HTTP/1.1 400 Bad Request")
 
-	resp, err = TcpSendReceive(serverAddress, "CONNECT [dead:beef::1234:443 HTTP/1.1\r\n\r\n")
+	resp, err = TcpSendReceive(serverAddress, "CONNECT [dead:beef::1234:443 HTTP/1.1\r\nHost: example.com\r\n\r\n")
 	AssertNil(err, fmt.Sprint(err))
 	AssertContains(resp, "HTTP/1.1 400 Bad Request")
 
-	resp, err = TcpSendReceive(serverAddress, "CONNECT [zyx:beef::1234]:443 HTTP/1.1\r\n\r\n")
+	resp, err = TcpSendReceive(serverAddress, "CONNECT [zyx:beef::1234]:443 HTTP/1.1\r\nHost: example.com\r\n\r\n")
 	AssertNil(err, fmt.Sprint(err))
 	AssertContains(resp, "HTTP/1.1 400 Bad Request")
 
-	resp, err = TcpSendReceive(serverAddress, "CONNECT dead:beef::1234:443 HTTP/1.1\r\n\r\n")
+	resp, err = TcpSendReceive(serverAddress, "CONNECT dead:beef::1234:443 HTTP/1.1\r\nHost: example.com\r\n\r\n")
 	AssertNil(err, fmt.Sprint(err))
 	AssertContains(resp, "HTTP/1.1 400 Bad Request")
 
-	resp, err = TcpSendReceive(serverAddress, "CONNECT example.org:443 HTTP/1.1\r\n\r\n")
+	resp, err = TcpSendReceive(serverAddress, "CONNECT example.org:443 HTTP/1.1\r\nHost: example.com\r\n\r\n")
 	AssertNil(err, fmt.Sprint(err))
 	AssertContains(resp, "HTTP/1.1 400 Bad Request", "name resolution not supported")
 }
@@ -1674,6 +1674,31 @@ func HttpHeadersTest(s *Http1Suite) {
 		}
 		time.Sleep(1 * time.Second)
 	}
+}
+
+func HttpMissingHostHeaderTest(s *Http1Suite) {
+	vpp := s.Containers.Vpp.VppInstance
+	serverAddress := s.VppAddr() + ":" + s.Ports.Http
+	vpp.Vppctl("http cli server uri http://" + serverAddress)
+
+	requestLines := []string{
+		"GET /show/version HTTP/1.1\r\n",
+		"GET http://" + serverAddress + "/show/version HTTP/1.1\r\n",
+		"CONNECT 1.2.3.4:443 HTTP/1.1\r\n",
+	}
+	for _, requestLine := range requestLines {
+		for _, headers := range []string{"", "User-Agent: hs-test\r\n"} {
+			request := requestLine + headers + "\r\n"
+			resp, err := TcpSendReceive(serverAddress, request)
+			AssertNil(err, fmt.Sprint(err))
+			AssertContains(resp, "HTTP/1.1 400 Bad Request", fmt.Sprintf("missing Host accepted: %q", request))
+		}
+	}
+
+	// Host field name is case-insensitive
+	resp, err := TcpSendReceive(serverAddress, "GET /show/version HTTP/1.1\r\nhOsT: "+serverAddress+"\r\n\r\n")
+	AssertNil(err, fmt.Sprint(err))
+	AssertContains(resp, "HTTP/1.1 200 OK")
 }
 
 func HttpInvalidHeadersTest(s *Http1Suite) {
