@@ -20,13 +20,17 @@ typedef struct
 static_always_inline aes_ctr_key_data_t *
 aes_ctr_get_key_data (vnet_crypto_op_t *op)
 {
-  return (aes_ctr_key_data_t *) vnet_crypto_get_simple_key_data (op->ctx);
+  return (aes_ctr_key_data_t *) (op->flags & VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS ?
+				   vnet_crypto_get_chained_key_data (op->ctx) :
+				   vnet_crypto_get_simple_key_data (op->ctx));
 }
 
 static_always_inline aes_ctr_hmac_key_data_t *
 aes_ctr_hmac_get_key_data (vnet_crypto_op_t *op)
 {
-  return (aes_ctr_hmac_key_data_t *) vnet_crypto_get_simple_key_data (op->ctx);
+  return (aes_ctr_hmac_key_data_t *) (op->flags & VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS ?
+					vnet_crypto_get_chained_key_data (op->ctx) :
+					vnet_crypto_get_simple_key_data (op->ctx));
 }
 
 static_always_inline u32
