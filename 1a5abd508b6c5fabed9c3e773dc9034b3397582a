@@ -16,6 +16,23 @@
       "message": "VppConnectProxyHttp3IperfTcpMWTest failure already fixed by 47109, your patch need rebase",
       "revId": "1a5abd508b6c5fabed9c3e773dc9034b3397582a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ac642fab_2f186870",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 18
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-10-17T20:35:13Z",
+      "side": 1,
+      "message": "This is not really optional, maybe you meant to use build/optional?",
+      "revId": "1a5abd508b6c5fabed9c3e773dc9034b3397582a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
