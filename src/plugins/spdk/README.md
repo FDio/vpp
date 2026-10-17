@@ -34,7 +34,10 @@ not enable the plugin; the existing `VPP_EXTRA_CMAKE_ARGS` mechanism passes
 the explicit CMake option without adding SPDK-specific build glue.
 
 `build/optional/packages/spdk.mk` pins an upstream SPDK v27.01-pre snapshot by
-full commit and archive SHA256. No downstream SPDK patches are applied. ISA-L,
+full commit and archive SHA256. This RX review stack applies ten patches from
+`build/optional/patches/spdk_zcrx-public-20261025`; its README records their
+public provenance through 29602 PS1, including the separately reviewed stream
+tracker exhaustion fix. Change 29257 is upstream and is not reapplied. ISA-L,
 DPDK, RDMA and VFIO-user dependencies are disabled; VPP supplies the SPDK
 environment implementation in `spdk_vpp_env.c`. This is independent of the NIC
 driver selected by VPP, including whether VPP itself uses DPDK.
@@ -91,17 +94,18 @@ authorization policy. Stop initiator I/O and disconnect controllers before:
 spdk app stop
 ```
 
-## Initial scope
+## Scope of the RX review stack
 
-- Standard copied RX and TX using upstream SPDK and existing VPP session APIs.
+- FIFO-backed RX zero-copy with a copied fallback and standard copied TX.
 - Software bdevs such as Malloc and Null; `no-pci` is required. Native PCI NVMe
   requires a separate environment/DMA integration and is not supported here.
 - Busy polling, not interrupt/eventfd-driven operation.
 - Plain TCP only. TLS/kTLS/PSK socket options are rejected, not silently
   interpreted as an unencrypted connection.
-- No FIFO reservations, `c2h_direct_sock`, deferred RX buffers, `recv_next`
-  zero-copy backend, or TX-vlib-buffer prototype. These remain separate work.
-- No changes to TCP, FIFO layout, NIC drivers or VPP's DPDK dependency.
+- No FIFO TX reservations, `c2h_direct_sock` or TX-vlib-buffer prototype.
+- The dependency is the public 46940 PS16, on top of the merged plugin
+  baseline. This binding adds no further TCP/FIFO changes, NIC driver
+  changes or changes to VPP's DPDK dependency.
 
 SPDK and its modules share the VPP process and failure domain. A fault in an
 embedded module can terminate VPP. The environment implementation, scheduling
@@ -124,5 +128,79 @@ SPDK, TAP, ping and unittest plugins. Pass the executable paths with `--vpp`,
 `--vppctl`, the plugin directory with `--plugins`, upstream SPDK's `rpc.py`
 with `--rpc`, and a new results directory with `--results`. Main/worker CPU
 IDs and the cycle count are configurable; use `--help` for all arguments.
-The test defaults to a 1 GiB main heap, configurable with `--main-heap-size`,
-to leave headroom for aligned Malloc-bdev and iobuf allocations on restart.
+The test reserves a 1 GiB VPP main heap; `--main-heap-size` overrides it.
+SPDK's large software-bdev allocations can fall back to this heap when
+hugepages are unavailable. Leave headroom for aligned allocations and repeated
+startup/shutdown; system-wide free RAM alone does not measure that capacity.
+The test records main-heap usage around each cycle.
+The default MTU is 1500; use `--mtu 9000` to exercise jumbo packets with the
+same 2 KiB VPP buffers. The test sets both TAP endpoints and the TCP MTU.
+It leaves the framework's per-worker retained-segment limit at its default.
+
+For this RX stack, repeat with `--rx-mode direct`, `--rx-mode copied` and
+`--rx-mode pressure`. The latter sets the group loan budget to one byte to
+force the copied fallback. Tests require direct/copied counters consistent
+with the selected mode and no outstanding loans after disconnect.
+
+## FIFO-backed RX ownership
+
+For host-to-controller writes, the socket backend implements SPDK's
+`spdk_sock_recv_next()` API using the FIFO-backed deferred RX interface from
+VPP change 46940, patch set 16. This experimental integration depends on that API
+and the SPDK socket receive-buffer review series; it does not change TCP or
+FIFO implementation code.
+
+The minimal ownership sequence is:
+
+1. Enable deferred RX with `session_dio_rx_enable_disable(s, 1)` after assigning
+   the socket to its owner worker.
+2. Inspect the borrowed linked-list prefix with
+   `session_dio_rx_get_segments(s, &count)`.
+3. Check the group byte budget and allocate token metadata before calling
+   `session_dio_rx_acquire(s, &batch)`.
+4. Return segment data, length and release tokens through `recv_next()`.
+   SPDK may retain these tokens until the NVMe/TCP request finishes.
+5. Release the complete batch with
+   `session_dio_rx_release(&batch)` after its final token is
+   returned, on the same owner worker.
+
+Both the normal RX callback and `recv_next()` resolve the FIFO prefix through
+the same helper. Readable FIFO bytes include buffer-backed bytes, so an
+ordinary dequeue must not skip ahead to a copied suffix. When direct delivery
+is disabled, metadata allocation fails, the byte budget is reached or acquire
+cannot proceed, the helper materializes the prefix with
+`session_dio_rx_flush()`. A failed flush leaves the prefix pending and
+returns `-EAGAIN`; an empty read allocates nothing.
+
+The framework's `deferred-rx-max-segs` limit accounts for staged and acquired
+packet-buffer segments across sessions on each worker. Segments that cannot
+retain packet buffers are copied into FIFO-owned storage and may share the
+same acquired batch with direct segments. The binding releases both through
+the batch API, without an additional payload copy, and counts FIFO-owned
+segments as copied bytes rather than zero-copy bytes. The binding additionally
+enforces a socket-group byte budget. These are not a bound on total session
+memory or a new global packet-pool reserve. Acquisition, reference counting
+and release stay on the owner worker without introducing a new lock or
+atomic counter.
+
+Before session close, SPDK must finish or abort requests holding returned
+tokens. Each acquired batch holds references to the session FIFO pair so
+FIFO-owned segments remain valid if session cleanup precedes the final token
+return. The references are released with the batch on its owner worker. If
+the FIFO reference count cannot hold another batch, the backend uses copied
+delivery instead. Group destruction is rejected while outstanding loans
+remain. Closing a socket releases only tokens not yet handed to SPDK.
+Disconnect and final session cleanup discard any unacquired deferred prefix
+on the session's owner worker, including after the socket has been unmapped.
+
+Use `--rx-mode direct --deferred-rx-max-segs 2 --expect-mixed-rx` to require
+both retained and FIFO-owned copied RX data in the integration test. Run the
+default-limit matrix as well: the FIFO self-tests assume the default limit
+and are not run in a process configured with a custom limit.
+
+`show spdk` reports direct/copied RX bytes, outstanding loans and fallbacks.
+The `test spdk direct-rx on|off` command is for controlled A/B measurements.
+This RX review stack does not enable the optional TX reservation API or the
+separate experimental TX-vlib-buffer path.
+
+Native-NVMe DMA is not supported by this software-bdev review stack.
