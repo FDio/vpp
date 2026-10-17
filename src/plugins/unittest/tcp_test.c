@@ -1623,6 +1623,31 @@ tcp_test_snd_wnd_max (void)
 }
 
 static int
+tcp_test_dupack (void)
+{
+  tcp_connection_t _tc, *tc = &_tc;
+  tcp_ack_ctx_t ac = {};
+
+  clib_memset (tc, 0, sizeof (*tc));
+  tc->snd_una = 1000;
+  tc->snd_nxt = 2000;
+  tc->rcv_opts.flags = TCP_OPTS_FLAG_SACK_PERMITTED;
+  TCP_TEST (!tcp_loss_is_dupack (tc, &ac, 1 /* repeated */),
+	    "with sack, a repeated ack that sacks no new data is not a dupack");
+  ac.last_sacked_bytes = 100;
+  TCP_TEST (tcp_loss_is_dupack (tc, &ac, 0 /* repeated */),
+	    "with sack, an ack that sacks new data is a dupack");
+  ac.last_sacked_bytes = 0;
+  tc->rcv_opts.flags = 0;
+  TCP_TEST (tcp_loss_is_dupack (tc, &ac, 1 /* repeated */),
+	    "without sack, a repeated ack is a dupack");
+  tc->snd_nxt = tc->snd_una;
+  TCP_TEST (!tcp_loss_is_dupack (tc, &ac, 1 /* repeated */),
+	    "without outstanding data, a repeated ack is not a dupack");
+  return 0;
+}
+
+static int
 tcp_test_sack (vlib_main_t * vm, unformat_input_t * input)
 {
   int res = 0;
@@ -1646,6 +1671,11 @@ tcp_test_sack (vlib_main_t * vm, unformat_input_t * input)
 	}
 
       if (tcp_test_snd_wnd_max ())
+	{
+	  return -1;
+	}
+
+      if (tcp_test_dupack ())
 	{
 	  return -1;
 	}
