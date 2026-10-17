@@ -1623,6 +1623,31 @@ tcp_test_snd_wnd_max (void)
 }
 
 static int
+tcp_test_dupack (void)
+{
+  tcp_connection_t _tc, *tc = &_tc;
+  tcp_ack_ctx_t ac = {};
+
+  clib_memset (tc, 0, sizeof (*tc));
+  tc->snd_una = 1000;
+  tc->snd_nxt = 2000;
+  tc->rcv_opts.flags = TCP_OPTS_FLAG_SACK_PERMITTED;
+  TCP_TEST (!tcp_loss_is_dupack (tc, &ac, 1 /* repeated */),
+	    "with sack, a repeated ack that sacks no new data is not a dupack");
+  ac.last_sacked_bytes = 100;
+  TCP_TEST (tcp_loss_is_dupack (tc, &ac, 0 /* repeated */),
+	    "with sack, an ack that sacks new data is a dupack");
+  ac.last_sacked_bytes = 0;
+  tc->rcv_opts.flags = 0;
+  TCP_TEST (tcp_loss_is_dupack (tc, &ac, 1 /* repeated */),
+	    "without sack, a repeated ack is a dupack");
+  tc->snd_nxt = tc->snd_una;
+  TCP_TEST (!tcp_loss_is_dupack (tc, &ac, 1 /* repeated */),
+	    "without outstanding data, a repeated ack is not a dupack");
+  return 0;
+}
+
+static int
 tcp_test_sack (vlib_main_t * vm, unformat_input_t * input)
 {
   int res = 0;
@@ -1646,6 +1671,11 @@ tcp_test_sack (vlib_main_t * vm, unformat_input_t * input)
 	}
 
       if (tcp_test_snd_wnd_max ())
+	{
+	  return -1;
+	}
+
+      if (tcp_test_dupack ())
 	{
 	  return -1;
 	}
@@ -6481,6 +6511,245 @@ cleanup:
   return rv;
 }
 
+/* Only acks that sack new data extend the run of dupacks that can start fast
+ * recovery. Acks that sack nothing new leave a pending run as is, cumulative
+ * progress resets it, and an ack that does both resets it before counting.
+ * The receiver's own acks are dropped and each crafted ack carries a single
+ * sack block that grows by less than an mss, so neither lost bytes nor sack
+ * blocks can start recovery before the third dupack of a run. */
+typedef struct
+{
+  u32 ack;	/**< cumulative ack, relative to the first byte sent */
+  u32 sack_len; /**< length of the sack block above the first hole */
+  u32 dupacks;	/**< run length expected after the ack */
+  const char *what;
+} tcp_test_dupack_run_step_t;
+
+typedef struct
+{
+  tcp_connection_t *tc;
+  const tcp_test_dupack_run_step_t *steps;
+  u32 n_steps;
+  u32 n_done;
+  u32 base;
+  u32 sack_start;
+  u32 dupacks[16];
+  u32 fr[16];
+  u32 sacked[16];
+  volatile u8 done;
+  volatile u8 in_flight;
+} tcp_test_dupack_run_args_t;
+
+static tcp_test_dupack_run_args_t tcp_test_dupack_run_args;
+
+static void
+tcp_test_dupack_run_rpc (void *arg)
+{
+  tcp_test_dupack_run_args_t *a = arg;
+  vlib_main_t *vm = vlib_get_main ();
+  vlib_node_runtime_t *node = vlib_node_get_runtime (vm, tcp4_established_node.index);
+  tcp_connection_t *tc = a->tc;
+  u16 wnd = tc->snd_wnd >> tc->snd_wscale;
+  u32 i;
+
+  for (i = 0; i < a->n_steps; i++)
+    {
+      u32 ack = a->base + a->steps[i].ack, bi, *to;
+      vlib_frame_t *frame;
+      vlib_buffer_t *b;
+      tcp_header_t *th;
+      u8 *opts;
+
+      if (vlib_buffer_alloc (vm, &bi, 1) != 1)
+	break;
+      b = vlib_get_buffer (vm, bi);
+      vlib_buffer_reset (b);
+      /* nop, nop and one sack block */
+      b->current_length = sizeof (*th) + 12;
+      vnet_buffer (b)->tcp.connection_index = tc->c_c_index;
+      vnet_buffer (b)->tcp.seq_number = tc->rcv_nxt;
+      vnet_buffer (b)->tcp.seq_end = tc->rcv_nxt;
+      vnet_buffer (b)->tcp.ack_number = ack;
+      vnet_buffer (b)->tcp.hdr_offset = 0;
+      vnet_buffer (b)->tcp.data_offset = b->current_length;
+      vnet_buffer (b)->tcp.data_len = 0;
+
+      th = vlib_buffer_get_current (b);
+      clib_memset (th, 0, b->current_length);
+      th->src_port = tc->c_rmt_port;
+      th->dst_port = tc->c_lcl_port;
+      th->seq_number = clib_host_to_net_u32 (tc->rcv_nxt);
+      th->ack_number = clib_host_to_net_u32 (ack);
+      th->data_offset_and_reserved = (b->current_length / 4) << 4;
+      th->flags = TCP_FLAG_ACK;
+      th->window = clib_host_to_net_u16 (wnd);
+
+      opts = (u8 *) (th + 1);
+      opts[0] = TCP_OPTION_NOOP;
+      opts[1] = TCP_OPTION_NOOP;
+      opts[2] = TCP_OPTION_SACK_BLOCK;
+      opts[3] = 2 + TCP_OPTION_LEN_SACK_BLOCK;
+      *(u32 *) (opts + 4) = clib_host_to_net_u32 (a->sack_start);
+      *(u32 *) (opts + 8) = clib_host_to_net_u32 (a->sack_start + a->steps[i].sack_len);
+
+      frame = vlib_get_frame_to_node (vm, tcp4_established_node.index);
+      to = vlib_frame_vector_args (frame);
+      to[0] = bi;
+      frame->n_vectors = 1;
+      tcp4_established_node.function (vm, node, frame);
+      vlib_frame_free (vm, frame);
+
+      a->dupacks[i] = tc->rcv_dupacks;
+      a->fr[i] = tc->fr_occurences;
+      a->sacked[i] = tc->sack_sb.sacked_bytes;
+    }
+  a->n_done = i;
+  a->done = 1;
+  a->in_flight = 0;
+}
+
+static int
+tcp_test_tamper_dupack_run (vlib_main_t *vm)
+{
+  tcp_e2e_params_t params = {
+    .name = "dupack_run",
+    .client_addr = 0x20202001,
+    .server_addr = 0x21212101,
+    .client_vrf = 0,
+    .server_vrf = 2,
+    .server_port = 2267,
+    .client_port = 0, /* ephemeral */
+    .secret = 2266,
+    .rx_fifo_size = 128 << 10,
+    .tx_fifo_size = 128 << 10,
+  };
+  static const tcp_test_dupack_run_step_t steps[] = {
+    { 0, 100, 1, "new sack data starts a run" },
+    { 0, 200, 2, "more new sack data extends the run" },
+    { 0, 200, 2, "an ack with no new sack data leaves the run" },
+    { 100, 200, 0, "cumulative progress without new sack data resets the run" },
+    { 100, 300, 1, "new sack data starts another run" },
+    { 100, 400, 2, "more new sack data extends the run" },
+    { 200, 500, 1, "cumulative progress resets the run before counting new sack data" },
+    { 200, 600, 2, "more new sack data extends the run" },
+    { 200, 700, 3, "the third dupack of the run starts fast recovery" },
+  };
+  tcp_test_dupack_run_args_t *a = &tcp_test_dupack_run_args;
+  tcp_e2e_ctx_t _ctx, *ctx = &_ctx;
+  tcp_connection_t *client_tc, *server_tc;
+  session_t *client_s, *server_s;
+  u32 tries, total_bytes, fr_before, fr_expected, i;
+  u8 *data = 0;
+  int error, rv = 0;
+
+  STATIC_ASSERT (ARRAY_LEN (steps) <= ARRAY_LEN (a->dupacks), "too many steps");
+  if (!TCP_TEST_I ((!a->in_flight), "dupack_run: ACK rpc slot available"))
+    return 1;
+  tcp_tamper_reset ();
+
+  if (!TCP_TEST_I ((tcp_e2e_setup (vm, ctx, &params) == 0), "dupack_run: e2e setup"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  client_tc = ctx->client_tc;
+  client_s = ctx->client_s;
+  server_s = session_get_if_valid (accepted_session_index, accepted_session_thread);
+  if (!TCP_TEST_I ((server_s != 0), "dupack_run: server session resolvable"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  server_tc = (tcp_connection_t *) session_get_transport (server_s);
+
+  client_tc->cfg_flags |= TCP_CFG_F_NO_TSO;
+  client_tc->cfg_flags &= ~TCP_CFG_F_TSO;
+  client_tc->connection.flags &= ~TRANSPORT_CONNECTION_F_IS_TX_PACED;
+  total_bytes = 3 * client_tc->snd_mss;
+  client_tc->cwnd = clib_max (client_tc->cwnd, total_bytes);
+  client_tc->snd_wnd = clib_max (client_tc->snd_wnd, total_bytes);
+
+  /* Only the crafted acks reach the sender */
+  tcp_tamper_drop_pure_ack (server_tc, ~0u);
+  tcp_tamper_enable (server_tc);
+
+  a->base = client_tc->snd_una;
+  vec_validate (data, total_bytes - 1);
+  error = svm_fifo_enqueue (client_s->tx_fifo, total_bytes, data);
+  if (!TCP_TEST_I ((error == (int) total_bytes), "dupack_run: client queued %u bytes", total_bytes))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  error = session_program_tx_io_evt (client_s->handle, SESSION_IO_EVT_TX);
+  if (!TCP_TEST_I ((error == 0), "dupack_run: client tx event programmed"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  for (tries = 0; client_tc->snd_nxt != a->base + total_bytes && tries < 100; tries++)
+    tcp_e2e_pump (vm, 1e-3);
+  if (!TCP_TEST_I ((client_tc->snd_nxt == a->base + total_bytes && client_tc->snd_una == a->base &&
+		    !tcp_in_cong_recovery (client_tc)),
+		   "dupack_run: burst sent and unacked (sent %u of %u)",
+		   client_tc->snd_nxt - a->base, total_bytes))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  if (!TCP_TEST_I ((tcp_opts_sack_permitted (&client_tc->rcv_opts)), "dupack_run: sack negotiated"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  if (!TCP_TEST_I ((client_tc->sack_sb.reorder == TCP_DUPACK_THRESHOLD),
+		   "dupack_run: recovery starts at %u dupacks (reorder %u)", TCP_DUPACK_THRESHOLD,
+		   client_tc->sack_sb.reorder))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+  fr_before = client_tc->fr_occurences;
+  a->tc = client_tc;
+  a->steps = steps;
+  a->n_steps = ARRAY_LEN (steps);
+  a->n_done = 0;
+  a->sack_start = a->base + 2 * client_tc->snd_mss;
+  a->done = 0;
+  a->in_flight = 1;
+  session_send_rpc_evt_to_thread (client_tc->c_thread_index, tcp_test_dupack_run_rpc, a);
+  for (tries = 0; !a->done && tries < 1000; tries++)
+    tcp_e2e_pump (vm, 1e-3);
+  if (!TCP_TEST_I ((a->done && a->n_done == a->n_steps),
+		   "dupack_run: crafted acks processed (%u of %u)", a->n_done, a->n_steps))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+  for (i = 0; i < a->n_steps; i++)
+    {
+      fr_expected = fr_before + (i == a->n_steps - 1);
+      if (!TCP_TEST_I ((a->dupacks[i] == steps[i].dupacks && a->fr[i] == fr_expected),
+		       "dupack_run: ack %u: %s (dupacks %u, expected %u, fr %u, expected %u, "
+		       "sacked %u)",
+		       i + 1, steps[i].what, a->dupacks[i], steps[i].dupacks, a->fr[i] - fr_before,
+		       fr_expected - fr_before, a->sacked[i]))
+	{
+	  rv = 1;
+	  goto cleanup;
+	}
+    }
+
+cleanup:
+  tcp_tamper_reset ();
+  vec_free (data);
+  if (!tcp_e2e_teardown (vm, ctx))
+    rv = 1;
+  return rv;
+}
+
 static int
 tcp_test_tamper (vlib_main_t *vm, unformat_input_t *input)
 {
@@ -6501,6 +6770,7 @@ tcp_test_tamper (vlib_main_t *vm, unformat_input_t *input)
     { "strand-head", tcp_test_tamper_stranded_head },
     { "rto", tcp_test_tamper_rto },
     { "rto-head", tcp_test_tamper_rto_head },
+    { "dupack-run", tcp_test_tamper_dupack_run },
   };
   int res = 0, i;
 
