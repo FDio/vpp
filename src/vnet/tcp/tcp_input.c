@@ -666,7 +666,8 @@ tcp_cc_update (tcp_connection_t *tc, tcp_ack_ctx_t *ac)
   tcp_cc_rcv_ack (tc, ac);
 
   /* If a cumulative ack, make sure dupacks is 0 */
-  tc->rcv_dupacks = 0;
+  if (ac->bytes_acked)
+    tc->rcv_dupacks = 0;
 }
 
 /**
@@ -784,13 +785,10 @@ tcp_ack_classify_duplicate (tcp_connection_t *tc, vlib_buffer_t *b, u32 prev_snd
   repeated = !ac->bytes_acked && vnet_buffer (b)->tcp.seq_end == vnet_buffer (b)->tcp.seq_number &&
 	     prev_snd_wnd == tc->snd_wnd;
 
+  /* TLP probe outcome detection uses repeated ACKs, congestion control
+   * only DupAcks */
   flags |= repeated ? TCP_ACK_F_REPEATED : 0;
-  /* Per RFC 6675, an ACK that SACKs new data is a DupACK as well. A
-   * repeated ACK additionally needs outstanding data for congestion
-   * control, but not for TLP probe outcome detection. */
-  flags |= (ac->last_sacked_bytes || (repeated && seq_gt (tc->snd_nxt, tc->snd_una))) ?
-	     TCP_ACK_F_DUPACK :
-	     0;
+  flags |= tcp_loss_is_dupack (tc, ac, repeated) ? TCP_ACK_F_DUPACK : 0;
 
   return flags;
 }
