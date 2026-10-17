@@ -635,7 +635,10 @@ func TcpRackLostRetransmitRecoveryTest(s *TcpHarnessSuite) {
 }
 
 func TcpFastRecoveryTwoHolesPartialAckTest(s *TcpHarnessSuite) {
-	const controlledDataSegments = 5
+	/* Six segments with drops 2 and 4 leave three segments SACKed above
+	 * the first hole, enough to mark it lost and enter fast recovery.
+	 */
+	const controlledDataSegments = 6
 	Log(s.Containers.ClientVpp.VppInstance.Vppctl(
 		"set tcp initial-cwnd-multiplier %d", controlledDataSegments))
 
@@ -696,6 +699,10 @@ func TcpFastRecoveryTwoHolesPartialAckTest(s *TcpHarnessSuite) {
 		WaitServerStats(20*time.Second, BytesReadExactly(sendBytes), &serverStats),
 		WaitClientSend(&sendHandle, 20*time.Second, &sendResult),
 		WaitClientStats(5*time.Second, BytesSentExactly(sendBytes), &clientStats),
+		/* Final stats, once all data is acked, so a late RTO is not missed */
+		WaitClientSessionStats(5*time.Second, func(stats TcpHarnessClientSessionStats) bool {
+			return stats.FlightSize == 0
+		}, &sessionStats),
 		CloseTcpTestEndpointClient(),
 		WaitServerStats(5*time.Second, IsPeerClosed, &peerClosed),
 		StopClientPcap(),

@@ -661,12 +661,11 @@ static void
 tcp_cc_update (tcp_connection_t *tc, tcp_ack_ctx_t *ac)
 {
   ASSERT (!tcp_in_cong_recovery (tc) || tcp_is_lost_fin (tc));
+  /* Cumulative acks reach here only after the run of dupacks was reset */
+  ASSERT (!ac->bytes_acked || !tc->rcv_dupacks);
 
   /* Congestion avoidance */
   tcp_cc_rcv_ack (tc, ac);
-
-  /* If a cumulative ack, make sure dupacks is 0 */
-  tc->rcv_dupacks = 0;
 }
 
 /**
@@ -690,6 +689,11 @@ tcp_cc_handle_event (tcp_connection_t *tc, tcp_ack_ctx_t *ac)
    */
   if (!tcp_in_cong_recovery (tc))
     {
+      /* RFC 6675: reset on cumulative progress before counting any new sack evidence
+       * carried by the same ack. */
+      if (ac->bytes_acked)
+	tc->rcv_dupacks = 0;
+
       /* Undo a reduction proven spurious before tlp recovery replaces it */
       if (ac->ack_flags & TCP_ACK_F_DSACK_SPURIOUS)
 	tcp_loss_dsack_undo (tc);
@@ -751,8 +755,8 @@ tcp_cc_handle_event (tcp_connection_t *tc, tcp_ack_ctx_t *ac)
       return;
     }
 
-  /* RFC6675: If the incoming ACK is a cumulative acknowledgment,
-   * reset dupacks to 0. Also needed if in congestion recovery */
+  /* Reset on cumulative progress after non-sack recovery accounting has
+   * consumed the previous dupack count. */
   tc->rcv_dupacks = 0;
 
   /* RFC 3522: Eifel spurious retransmit check */
@@ -784,13 +788,9 @@ tcp_ack_classify_duplicate (tcp_connection_t *tc, vlib_buffer_t *b, u32 prev_snd
   repeated = !ac->bytes_acked && vnet_buffer (b)->tcp.seq_end == vnet_buffer (b)->tcp.seq_number &&
 	     prev_snd_wnd == tc->snd_wnd;
 
+  /* TLP probe outcome detection uses repeated acks, congestion control only dupacks */
   flags |= repeated ? TCP_ACK_F_REPEATED : 0;
-  /* Per RFC 6675, an ACK that SACKs new data is a DupACK as well. A
-   * repeated ACK additionally needs outstanding data for congestion
-   * control, but not for TLP probe outcome detection. */
-  flags |= (ac->last_sacked_bytes || (repeated && seq_gt (tc->snd_nxt, tc->snd_una))) ?
-	     TCP_ACK_F_DUPACK :
-	     0;
+  flags |= tcp_loss_is_dupack (tc, ac, repeated) ? TCP_ACK_F_DUPACK : 0;
 
   return flags;
 }
@@ -799,7 +799,9 @@ tcp_ack_classify_duplicate (tcp_connection_t *tc, vlib_buffer_t *b, u32 prev_snd
 static_always_inline u32
 tcp_ack_needs_slow_path (tcp_connection_t *tc, tcp_ack_ctx_t *ac)
 {
-  return (ac->ack_flags & (TCP_ACK_F_DUPACK | TCP_ACK_F_DSACK_SPURIOUS | TCP_ACK_F_DETECT_LOSS |
+  /* A pending run of dupacks is handled on the slow path */
+  return tc->rcv_dupacks |
+	 (ac->ack_flags & (TCP_ACK_F_DUPACK | TCP_ACK_F_DSACK_SPURIOUS | TCP_ACK_F_DETECT_LOSS |
 			   TCP_ACK_F_TLP_RECOVERY)) |
 	 (tc->flags & (TCP_CONN_FAST_RECOVERY | TCP_CONN_RECOVERY | TCP_CONN_TLP_PENDING));
 }
