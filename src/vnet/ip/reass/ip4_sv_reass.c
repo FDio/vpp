@@ -2178,7 +2178,8 @@ ip4_sv_reass_extended_lock (vlib_buffer_t *b,
     per_thread->pool, vnet_buffer2 (b)->ip.reass.pool_index);
   if (vnet_buffer2 (b)->ip.reass.id == reass->id)
     {
-      *a->total_ip_payload_length = reass->total_ip_payload_length;
+      if (a->total_ip_payload_length)
+	*a->total_ip_payload_length = reass->total_ip_payload_length;
 
       *a->first_fragment_buffer_index = reass->first_fragment_clone_bi;
       *a->first_fragment_total_ip_header_length =
