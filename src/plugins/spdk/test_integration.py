@@ -38,6 +38,12 @@ def main():
     parser.add_argument("--worker", default=1, type=int)
     parser.add_argument("--cycles", default=3, type=int)
     parser.add_argument("--main-heap-size", default="1g")
+    parser.add_argument("--mtu", default=1500, choices=(1500, 9000), type=int)
+    parser.add_argument(
+        "--rx-mode",
+        choices=("baseline", "direct", "copied", "pressure"),
+        default="baseline",
+    )
     args = parser.parse_args()
     if os.geteuid() != 0:
         parser.error("run as root in an isolated Linux test environment")
@@ -102,6 +108,11 @@ def main():
             "data-size",
             "2048",
             "}",
+            "tcp",
+            "{",
+            "mtu",
+            str(args.mtu),
+            "}",
             "session",
             "{",
             "enable",
@@ -141,7 +152,14 @@ def main():
         stderr=subprocess.STDOUT,
     )
     connected = False
-    report = {"nqn": nqn, "tap": tap, "cycles": [], "cleanup_errors": []}
+    report = {
+        "nqn": nqn,
+        "tap": tap,
+        "rx_mode": args.rx_mode,
+        "mtu": args.mtu,
+        "cycles": [],
+        "cleanup_errors": [],
+    }
 
     def cli(*words):
         output = command([args.vppctl, "-s", cli_socket, *words])
@@ -167,6 +185,16 @@ def main():
 
     try:
         wait_state("SPDK app: stopped")
+        if args.rx_mode != "baseline":
+            cli(
+                "test", "spdk", "direct-rx", "off" if args.rx_mode == "copied" else "on"
+            )
+            cli(
+                "test",
+                "spdk",
+                "rx-loan-limit",
+                "1" if args.rx_mode == "pressure" else "256m",
+            )
         # Security options must fail startup, never silently use plaintext TCP.
         for option, value in (("tls_version", 13), ("enable_ktls", True)):
             config = args.results / f"reject-{option}.json"
@@ -229,8 +257,9 @@ def main():
         if not re.fullmatch(r"tap\d+", interface):
             raise RuntimeError(f"unexpected new TAP interface: {interface}")
         cli("set", "interface", "ip", "address", interface, "198.18.16.2/30")
+        cli("set", "interface", "mtu", str(args.mtu), interface)
         cli("set", "interface", "state", interface, "up")
-        command(["ip", "link", "set", tap, "up"])
+        command(["ip", "link", "set", tap, "mtu", str(args.mtu), "up"])
         command(["ping", "-I", tap, "-c", "2", "-W", "2", "198.18.16.2"])
         for cycle in range(1, args.cycles + 1):
             cli(
@@ -247,7 +276,16 @@ def main():
             )
             running = wait_state("framework: started")
             (args.results / f"running-{cycle}.txt").write_text(running)
-            rpc("bdev_malloc_create", "64", "4096", "-b", "IntegrationMalloc")
+            (args.results / f"memory-before-{cycle}.txt").write_text(
+                cli("show", "memory", "main-heap")
+            )
+            try:
+                rpc("bdev_malloc_create", "64", "4096", "-b", "IntegrationMalloc")
+            except RuntimeError:
+                (args.results / f"memory-failed-{cycle}.txt").write_text(
+                    cli("show", "memory", "main-heap")
+                )
+                raise
             rpc("nvmf_create_transport", "-t", "TCP", "-m", "4")
             rpc("nvmf_create_subsystem", nqn, "-a")
             rpc("nvmf_subsystem_add_ns", nqn, "IntegrationMalloc")
@@ -334,13 +372,75 @@ def main():
                     )
             stats = rpc("nvmf_get_stats")
             (args.results / f"nvmf-{cycle}.json").write_text(stats)
+            (args.results / f"interface-{cycle}.txt").write_text(
+                cli("show", "interface", interface)
+            )
+            (args.results / f"errors-{cycle}.txt").write_text(cli("show", "errors"))
+            if args.rx_mode != "baseline":
+                state = cli("show", "spdk")
+                (args.results / f"rx-state-{cycle}.txt").write_text(state)
+                matches = re.findall(
+                    r"recv-next direct segments (\d+) bytes (\d+) releases (\d+); "
+                    r"copied segments (\d+) bytes (\d+)",
+                    state,
+                )
+                if not matches:
+                    raise RuntimeError("missing RX counters")
+                direct_bytes = sum(int(m[1]) for m in matches)
+                copied_bytes = sum(int(m[4]) for m in matches)
+                fifo_read_bytes = sum(
+                    int(x) for x in re.findall(r"; rx calls \d+ bytes (\d+)", state)
+                )
+                fallbacks = sum(
+                    int(x) for x in re.findall(r"limit-fallbacks (\d+)", state)
+                )
+                if args.rx_mode == "direct" and not direct_bytes:
+                    raise RuntimeError("RX direct mode did not deliver direct bytes")
+                # With direct RX disabled, the backend has no memory domain;
+                # SPDK uses ordinary recv/readv rather than recv_next.
+                if args.rx_mode == "copied" and (
+                    direct_bytes or not (copied_bytes or fifo_read_bytes)
+                ):
+                    raise RuntimeError("copied control did not use copied socket reads")
+                if args.rx_mode == "pressure" and (direct_bytes or not copied_bytes):
+                    raise RuntimeError(
+                        "copied/pressure control did not use the copied path"
+                    )
+                if args.rx_mode == "pressure" and not fallbacks:
+                    raise RuntimeError(
+                        "pressure control did not exercise the loan-limit fallback"
+                    )
+                report.setdefault("rx_counters", []).append(
+                    {
+                        "cycle": cycle,
+                        "direct_bytes": direct_bytes,
+                        "copied_bytes": copied_bytes,
+                        "fifo_read_bytes": fifo_read_bytes,
+                        "limit_fallbacks": fallbacks,
+                    }
+                )
             command(["nvme", "disconnect", "-n", nqn])
             connected = False
+            if args.rx_mode != "baseline":
+                for _ in range(80):
+                    state = cli("show", "spdk")
+                    refs = re.findall(
+                        r"rx loans current refs (\d+) buffers (\d+)", state
+                    )
+                    if all(int(a) == int(b) == 0 for a, b in refs):
+                        break
+                    time.sleep(0.1)
+                else:
+                    raise RuntimeError("RX loans did not drain after disconnect")
+                (args.results / f"rx-drained-{cycle}.txt").write_text(state)
             cli("spdk", "app", "stop")
             stopped = wait_state("SPDK app: stopped")
             if "SPDK threads: 0" not in stopped or "last rc: 0" not in stopped:
                 raise RuntimeError("SPDK did not stop cleanly")
             (args.results / f"stopped-{cycle}.txt").write_text(stopped)
+            (args.results / f"memory-stopped-{cycle}.txt").write_text(
+                cli("show", "memory", "main-heap")
+            )
             report["cycles"].append(
                 {"cycle": cycle, "integrity_4k": "PASS", "integrity_128k": "PASS"}
             )
@@ -370,7 +470,10 @@ def main():
         (args.results / "report.json").write_text(json.dumps(report, indent=2) + "\n")
         if report["cleanup_errors"]:
             raise RuntimeError(report["cleanup_errors"])
-    print("PASS: SPDK integration with unpatched upstream and copied RX/TX", flush=True)
+    print(
+        f"PASS: SPDK integration integrity/lifecycle, RX mode {args.rx_mode}",
+        flush=True,
+    )
 
 
 if __name__ == "__main__":
