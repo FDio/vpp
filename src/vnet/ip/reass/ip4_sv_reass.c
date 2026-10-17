@@ -1099,6 +1099,7 @@ slow_path:
 		{
 		  next0 = IP4_SV_REASSEMBLY_NEXT_INPUT;
 		}
+	      vnet_buffer (b0)->ip.reass.l4_hdr_truncated = 0;
 	      vnet_buffer (b0)->ip.reass.is_fragment = 1;
 	      vnet_buffer (b0)->ip.reass.is_non_first_fragment =
 		!!fragment_first;
@@ -1175,6 +1176,7 @@ slow_path:
 		  to_next[0] = bi0;
 		  to_next += 1;
 		  n_left_to_next -= 1;
+		  vnet_buffer (b0)->ip.reass.l4_hdr_truncated = 0;
 		  vnet_buffer (b0)->ip.reass.is_fragment = 1;
 		  vnet_buffer (b0)->ip.reass.is_non_first_fragment =
 		    !!ip4_get_fragment_offset (ip0);
