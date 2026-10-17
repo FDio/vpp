@@ -52,6 +52,17 @@ tcp_loss_dsack_undo_ready (tcp_connection_t *tc, tcp_ack_ctx_t *ac)
   return 0;
 }
 
+/* With SACK, a DupAck is an ACK that SACKs new data (RFC 6675). Others, e.g.,
+ * ones that only report a D-SACK, do not signal loss. Without SACK, it is a
+ * repeated ACK while data is outstanding (RFC 5681). */
+static_always_inline u8
+tcp_loss_is_dupack (tcp_connection_t *tc, tcp_ack_ctx_t *ac, u8 repeated)
+{
+  if (ac->last_sacked_bytes)
+    return 1;
+  return repeated && !tcp_opts_sack_permitted (&tc->rcv_opts) && seq_gt (tc->snd_nxt, tc->snd_una);
+}
+
 static_always_inline u8
 tcp_loss_default_should_enter_recovery (tcp_connection_t *tc, tcp_ack_ctx_t *ac, u8 has_sack)
 {
