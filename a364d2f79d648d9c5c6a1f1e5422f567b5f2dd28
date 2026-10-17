@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6dbdab17_931c293e",
+        "filename": "src/svm/svm_fifo.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 1320,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-10-17T19:11:53Z",
+      "side": 1,
+      "message": "Do you really need the extra function, or just keep svm_fifo_provision_chunks as is and call it from svm_fifo_provision_chunks_at_offset?",
+      "revId": "a364d2f79d648d9c5c6a1f1e5422f567b5f2dd28",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
