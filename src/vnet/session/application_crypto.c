@@ -430,11 +430,76 @@ show_certificate_command_fn (vlib_main_t *vm, unformat_input_t *input,
   return 0;
 }
 
+/* To be deprecated in favor of "show app crypto certificate". */
 VLIB_CLI_COMMAND (show_certificate_command, static) = {
   .path = "show app certificate",
   .short_help = "list app certs and keys present in store",
   .function = show_certificate_command_fn,
 };
+
+static u8 *
+format_app_ca_trust (u8 *s, va_list *args)
+{
+  app_crypto_ca_trust_t *ct = va_arg (*args, app_crypto_ca_trust_t *);
+  int verbose = va_arg (*args, int);
+
+  s = format (s, "[%u] ca-chain: %wu bytes, crl: %wu bytes", ct->ca_trust_index,
+	      vec_len (ct->ca_chain), vec_len (ct->crl));
+  if (verbose)
+    {
+      if (vec_len (ct->ca_chain))
+	s = format (s, "\nCA chain:\n%v", ct->ca_chain);
+      if (vec_len (ct->crl))
+	s = format (s, "\nCRL:\n%v", ct->crl);
+    }
+
+  return s;
+}
+
+static clib_error_t *
+show_app_ca_trust_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
+{
+  u32 app_index = 0;
+  int verbose = 0;
+  app_crypto_ca_trust_t *ct;
+  application_t *app;
+
+  session_cli_return_if_not_enabled ();
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "app %U", unformat_app_index, &app_index))
+	;
+      else if (unformat (input, "verbose"))
+	verbose = 1;
+      else
+	return clib_error_return (0, "unknown input '%U'", format_unformat_error, input);
+    }
+
+  app = application_get_if_valid (app_index);
+  if (!app)
+    {
+      vlib_cli_output (vm, "Invalid application index %u", app_index);
+      return 0;
+    }
+
+  /* Index 0 is reserved and does not contain a CA trust store. */
+  if (pool_elts (app->crypto_ctx.ca_trust_stores) <= 1)
+    {
+      vlib_cli_output (vm, "No CA trust stores for app %u", app_index);
+      return 0;
+    }
+
+  vlib_cli_output (vm, "CA trust stores for app %u:", app_index);
+  pool_foreach (ct, app->crypto_ctx.ca_trust_stores)
+    {
+      if (!ct->ca_trust_index)
+	continue;
+      vlib_cli_output (vm, "  %U", format_app_ca_trust, ct, verbose);
+    }
+
+  return 0;
+}
 
 static uword
 unformat_app_tls_version (unformat_input_t *input, va_list *args)
@@ -638,10 +703,41 @@ show_tls_profile_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_
   return 0;
 }
 
+/* To be deprecated in favor of "show app crypto tls-profile". */
 VLIB_CLI_COMMAND (show_tls_profile_command, static) = {
   .path = "show app tls-profile",
   .short_help = "show app tls-profile [app <app-name|app-index>]",
   .function = show_tls_profile_command_fn,
+};
+
+static clib_error_t *
+show_app_crypto_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
+{
+  session_cli_return_if_not_enabled ();
+
+  if (unformat_check_input (input) == UNFORMAT_END_OF_INPUT)
+    {
+      vlib_cli_output (vm, "%s", cmd->short_help);
+      return 0;
+    }
+
+  if (unformat (input, "certificate"))
+    return show_certificate_command_fn (vm, input, cmd);
+  else if (unformat (input, "ca-trust"))
+    return show_app_ca_trust_command_fn (vm, input, cmd);
+  else if (unformat (input, "tls-profile"))
+    return show_tls_profile_command_fn (vm, input, cmd);
+
+  return clib_error_return (0, "expected certificate, ca-trust or tls-profile, got '%U'",
+			    format_unformat_error, input);
+}
+
+VLIB_CLI_COMMAND (show_app_crypto_command, static) = {
+  .path = "show app crypto",
+  .short_help = "show app crypto <certificate | "
+		"ca-trust [app <app-name|app-index>] [verbose] | "
+		"tls-profile [app <app-name|app-index>]>",
+  .function = show_app_crypto_command_fn,
 };
 
 crypto_engine_type_t
