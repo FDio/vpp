@@ -1,0 +1,27 @@
+---
+name: "Restore HST images and caches"
+description: |
+  Restore baked HST images and BuildKit cache mounts for one VPP branch.
+
+inputs:
+  BRANCH:
+    description: "VPP branch whose baked HST images and caches should be restored"
+    required: false
+    default: master
+
+runs:
+  using: "composite"
+  steps:
+    - name: Restore baked HST images and caches
+      shell: bash
+      env:
+        HST_BRANCH: ${{ inputs.BRANCH }}
+      run: |
+        set -euo pipefail
+        executor_root="${DOT_GITHUB_ROOT:-/scratch/docker-build/.github}"
+        cache_script="$executor_root/docker/scripts/hst_cache.sh"
+        if [ ! -f "$cache_script" ]; then
+          echo "Executor has no HST cache helper; HST will build images normally."
+          exit 0
+        fi
+        bash "$cache_script" restore "$HST_BRANCH"
