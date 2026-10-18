@@ -114,10 +114,16 @@ vnet_api_error_t bfd_udp_del_echo_source ();
 /**
  * @brief add S-BFD reflector discriminator
  *
+ * src_ip4 and src_ip6 are the sources of replies to requests sent over MPLS
+ * paths, to 127/8 and ::ffff:127.0.0.0/104 (RFC 7881). NULL or an all-zero
+ * address means an address of the receiving interface is used.
+ *
  * The caller must hold the worker barrier. API and CLI handlers are not
  * mp-safe, so VPP takes it before calling them.
  */
-vnet_api_error_t bfd_sbfd_reflector_add (u32 discriminator, u8 admin_up, u32 required_min_rx_usec);
+vnet_api_error_t bfd_sbfd_reflector_add (u32 discriminator, u8 admin_up, u32 required_min_rx_usec,
+					 const ip4_address_t *src_ip4,
+					 const ip6_address_t *src_ip6);
 
 /**
  * @brief delete S-BFD reflector discriminator
@@ -130,14 +136,19 @@ vnet_api_error_t bfd_sbfd_reflector_del (u32 discriminator);
 /**
  * @brief modify S-BFD reflector discriminator in place
  *
- * Sets the admin state and required min rx interval of an existing
- * discriminator. Like add and del, it runs with the worker barrier held, so
- * it is safe while requests are being answered: each one sees either the
- * old values or the new ones, and none is left unanswered.
+ * Sets the admin state, required min rx interval and sources of an existing
+ * discriminator; the sources as for bfd_sbfd_reflector_add. Like add and
+ * del, it runs with the worker barrier held, so it is safe while requests
+ * are being answered: each one sees either the old values or the new ones,
+ * and the discriminator never goes missing. A request sent over an MPLS
+ * path is still dropped as no_src_addr if the new values leave no source
+ * for its reply.
  *
  * The caller must hold the worker barrier. API and CLI handlers are not
  * mp-safe, so VPP takes it before calling them.
  */
-vnet_api_error_t bfd_sbfd_reflector_mod (u32 discriminator, u8 admin_up, u32 required_min_rx_usec);
+vnet_api_error_t bfd_sbfd_reflector_mod (u32 discriminator, u8 admin_up, u32 required_min_rx_usec,
+					 const ip4_address_t *src_ip4,
+					 const ip6_address_t *src_ip6);
 
 #endif /* __included_bfd_api_h__ */
