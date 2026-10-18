@@ -33,6 +33,24 @@
       "message": "This is not really optional, maybe you meant to use build/optional?",
       "revId": "1a5abd508b6c5fabed9c3e773dc9034b3397582a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "6c726d9e_ecef3cc4",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 18
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-10-18T12:47:56Z",
+      "side": 1,
+      "message": "Thanks, agreed. The updated patchset moves the SPDK recipe and environment description to build/optional; build/external no longer has any SPDK target. VPP_WITH_SPDK\u003dy selects the optional dependency, installed explicitly with install-opt-deps, and enables the plugin. The SPDK-enabled optional package has a distinct revision so an installed OpenSSL-only package cannot satisfy that request. The dependent plugin documentation and MAINTAINERS paths are updated. Validation passed on ARM and x86: builds with SPDK disabled and enabled from the optional prefix, followed by three Malloc-backed 4K/128K CRC and restart cycles. Socket datapath sources are unchanged.",
+      "parentUuid": "ac642fab_2f186870",
+      "revId": "1a5abd508b6c5fabed9c3e773dc9034b3397582a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
