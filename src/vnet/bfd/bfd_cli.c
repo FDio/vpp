@@ -216,13 +216,22 @@ show_bfd (vlib_main_t * vm, unformat_input_t * input,
   else if (unformat (line_input, "sbfd-reflectors"))
     {
       bfd_sbfd_reflector_t *r = NULL;
-      u8 *s =
-	format (NULL, "%=15s %=10s %=25s\n", "Discriminator", "State", "Required Min Rx (usec)");
+      u8 *s = format (NULL, "%=15s %=10s %=25s %=15s %s\n", "Discriminator", "State",
+		      "Required Min Rx (usec)", "IPv4 Source", "IPv6 Source");
       pool_foreach (r, bm->sbfd_reflectors)
 	{
-	  s = format (s, "%15u %-10s %25u\n", clib_net_to_host_u32 (r->discriminator),
+	  s = format (s, "%15u %-10s %25u ", clib_net_to_host_u32 (r->discriminator),
 		      bfd_state_string (r->admin_up ? BFD_STATE_up : BFD_STATE_admin_down),
 		      r->required_min_rx_usec);
+	  /* sources of replies to requests sent over MPLS paths, "-" if none */
+	  if (r->src_ip4.as_u32)
+	    s = format (s, "%-15U ", format_ip4_address, &r->src_ip4);
+	  else
+	    s = format (s, "%-15s ", "-");
+	  if (ip6_address_is_zero (&r->src_ip6))
+	    s = format (s, "-\n");
+	  else
+	    s = format (s, "%U\n", format_ip6_address, &r->src_ip6);
 	}
       vlib_cli_output (vm, "%v\n", s);
       vec_free (s);
@@ -397,6 +406,7 @@ VLIB_CLI_COMMAND (bfd_cli_key_del_command, static) = {
 #define MULTIHOP_STR	    "multihop"
 #define DISCRIMINATOR_STR   "discriminator"
 #define ADMIN_DOWN_STR	    "admin-down"
+#define SRC_ADDRESS_STR	    "src-address"
 
 static const unsigned mandatory = 1;
 static const unsigned optional = 0;
@@ -997,6 +1007,36 @@ VLIB_CLI_COMMAND (bfd_cli_udp_del_echo_source_cmd, static) = {
   .function = bfd_cli_udp_del_echo_source,
 };
 
+/* sources of replies to requests sent over MPLS paths, as given on the CLI */
+typedef struct
+{
+  ip4_address_t ip4;
+  ip6_address_t ip6;
+  int have_ip4;
+  int have_ip6;
+} bfd_cli_sbfd_src_t;
+
+/* "src-address <IPv4 address>" or "src-address <IPv6 address>": one keyword
+   for both families, at most once each. Returns 1 if one was parsed, and sets
+   *error if its family was given before. */
+static int
+bfd_cli_unformat_sbfd_src (unformat_input_t *line_input, bfd_cli_sbfd_src_t *src,
+			   clib_error_t **error)
+{
+  int *have;
+
+  if (unformat (line_input, SRC_ADDRESS_STR " %U", unformat_ip4_address, &src->ip4))
+    have = &src->have_ip4;
+  else if (unformat (line_input, SRC_ADDRESS_STR " %U", unformat_ip6_address, &src->ip6))
+    have = &src->have_ip6;
+  else
+    return 0;
+  if (*have)
+    *error = clib_error_return (0, "Only one `%s' per address family.", SRC_ADDRESS_STR);
+  *have = 1;
+  return 1;
+}
+
 static clib_error_t *
 bfd_cli_udp_sbfd_reflector_add (vlib_main_t *vm, unformat_input_t *input,
 				CLIB_UNUSED (vlib_cli_command_t *lmd))
@@ -1009,6 +1049,7 @@ bfd_cli_udp_sbfd_reflector_add (vlib_main_t *vm, unformat_input_t *input,
   F (bool, admin_down, ADMIN_DOWN_STR, optional, "%_")
 
   foreach_bfd_cli_udp_sbfd_reflector_add_cli_param (DECLARE);
+  bfd_cli_sbfd_src_t src = {};
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -1018,6 +1059,12 @@ bfd_cli_udp_sbfd_reflector_add (vlib_main_t *vm, unformat_input_t *input,
     {
       int something_parsed = 0;
       foreach_bfd_cli_udp_sbfd_reflector_add_cli_param (UNFORMAT);
+      if (bfd_cli_unformat_sbfd_src (line_input, &src, &ret))
+	{
+	  something_parsed = 1;
+	  if (ret)
+	    goto out;
+	}
 
       if (!something_parsed)
 	{
@@ -1031,7 +1078,8 @@ bfd_cli_udp_sbfd_reflector_add (vlib_main_t *vm, unformat_input_t *input,
   if (!have_required_min_rx)
     required_min_rx = BFD_SBFD_DEFAULT_REQUIRED_MIN_RX_USEC;
 
-  vnet_api_error_t rv = bfd_sbfd_reflector_add (discriminator, !have_admin_down, required_min_rx);
+  vnet_api_error_t rv =
+    bfd_sbfd_reflector_add (discriminator, !have_admin_down, required_min_rx, &src.ip4, &src.ip6);
   if (rv)
     {
       ret = clib_error_return (0, "`bfd_sbfd_reflector_add' API call failed, rv=%d:%U", (int) rv,
@@ -1049,7 +1097,8 @@ VLIB_CLI_COMMAND (bfd_cli_udp_sbfd_reflector_add_command, static) = {
   .short_help = "bfd udp sbfd reflector add"
 		" discriminator <discriminator>"
 		" [required-min-rx <required min rx interval>]"
-		" [admin-down]",
+		" [admin-down]"
+		" [src-address <IPv4 address>] [src-address <IPv6 address>]",
   .function = bfd_cli_udp_sbfd_reflector_add,
 };
 
@@ -1067,6 +1116,7 @@ bfd_cli_udp_sbfd_reflector_mod (vlib_main_t *vm, unformat_input_t *input,
   foreach_bfd_cli_udp_sbfd_reflector_mod_cli_param (DECLARE);
   u8 admin_up = 0;
   int have_admin_up = 0;
+  bfd_cli_sbfd_src_t src = {};
   const bfd_sbfd_reflector_t *r = NULL;
   uword *p;
 
@@ -1090,6 +1140,12 @@ bfd_cli_udp_sbfd_reflector_mod (vlib_main_t *vm, unformat_input_t *input,
 	  have_admin_up = 1;
 	  admin_up = 0;
 	}
+      else if (bfd_cli_unformat_sbfd_src (line_input, &src, &ret))
+	{
+	  something_parsed = 1;
+	  if (ret)
+	    goto out;
+	}
 
       if (!something_parsed)
 	{
@@ -1109,8 +1165,13 @@ bfd_cli_udp_sbfd_reflector_mod (vlib_main_t *vm, unformat_input_t *input,
     admin_up = r ? r->admin_up : 0;
   if (!have_required_min_rx)
     required_min_rx = r ? r->required_min_rx_usec : 0;
+  if (!src.have_ip4 && r)
+    src.ip4 = r->src_ip4;
+  if (!src.have_ip6 && r)
+    src.ip6 = r->src_ip6;
 
-  vnet_api_error_t rv = bfd_sbfd_reflector_mod (discriminator, admin_up, required_min_rx);
+  vnet_api_error_t rv =
+    bfd_sbfd_reflector_mod (discriminator, admin_up, required_min_rx, &src.ip4, &src.ip6);
   if (rv)
     {
       ret = clib_error_return (0, "`bfd_sbfd_reflector_mod' API call failed, rv=%d:%U", (int) rv,
@@ -1128,7 +1189,8 @@ VLIB_CLI_COMMAND (bfd_cli_udp_sbfd_reflector_mod_command, static) = {
   .short_help = "bfd udp sbfd reflector mod"
 		" discriminator <discriminator>"
 		" [admin <up|down>]"
-		" [required-min-rx <required min rx interval>]",
+		" [required-min-rx <required min rx interval>]"
+		" [src-address <IPv4 address>] [src-address <IPv6 address>]",
   .function = bfd_cli_udp_sbfd_reflector_mod,
 };
 

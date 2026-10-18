@@ -479,11 +479,17 @@ vl_api_bfd_udp_sbfd_reflector_add_del_t_handler (vl_api_bfd_udp_sbfd_reflector_a
 {
   vl_api_bfd_udp_sbfd_reflector_add_del_reply_t *rmp;
   u32 discriminator = clib_net_to_host_u32 (mp->discriminator);
+  ip4_address_t src_ip4;
+  ip6_address_t src_ip6;
   int rv;
 
   if (mp->is_add)
-    rv = bfd_sbfd_reflector_add (discriminator, mp->admin_up,
-				 clib_net_to_host_u32 (mp->required_min_rx));
+    {
+      ip4_address_decode (mp->src_ip4, &src_ip4);
+      ip6_address_decode (mp->src_ip6, &src_ip6);
+      rv = bfd_sbfd_reflector_add (discriminator, mp->admin_up,
+				   clib_net_to_host_u32 (mp->required_min_rx), &src_ip4, &src_ip6);
+    }
   else
     rv = bfd_sbfd_reflector_del (discriminator);
 
@@ -494,10 +500,14 @@ static void
 vl_api_bfd_udp_sbfd_reflector_mod_t_handler (vl_api_bfd_udp_sbfd_reflector_mod_t *mp)
 {
   vl_api_bfd_udp_sbfd_reflector_mod_reply_t *rmp;
+  ip4_address_t src_ip4;
+  ip6_address_t src_ip6;
   int rv;
 
+  ip4_address_decode (mp->src_ip4, &src_ip4);
+  ip6_address_decode (mp->src_ip6, &src_ip6);
   rv = bfd_sbfd_reflector_mod (clib_net_to_host_u32 (mp->discriminator), mp->admin_up,
-			       clib_net_to_host_u32 (mp->required_min_rx));
+			       clib_net_to_host_u32 (mp->required_min_rx), &src_ip4, &src_ip6);
 
   REPLY_MACRO (VL_API_BFD_UDP_SBFD_REFLECTOR_MOD_REPLY);
 }
@@ -523,6 +533,8 @@ vl_api_bfd_udp_sbfd_reflector_dump_t_handler (vl_api_bfd_udp_sbfd_reflector_dump
       rmp->discriminator = r->discriminator;
       rmp->admin_up = r->admin_up;
       rmp->required_min_rx = clib_host_to_net_u32 (r->required_min_rx_usec);
+      ip4_address_encode (&r->src_ip4, rmp->src_ip4);
+      ip6_address_encode (&r->src_ip6, rmp->src_ip6);
       vl_api_send_msg (reg, (u8 *) rmp);
     }
 }

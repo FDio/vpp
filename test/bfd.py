@@ -524,11 +524,15 @@ class VppSBFDReflector(VppObject):
         discriminator,
         admin_up=True,
         required_min_rx=SBFD_DEFAULT_REQUIRED_MIN_RX,
+        src_ip4=None,
+        src_ip6=None,
     ):
         self._test = test
         self._discriminator = discriminator
         self._admin_up = admin_up
         self._required_min_rx = required_min_rx
+        self._src_ip4 = src_ip4
+        self._src_ip6 = src_ip6
 
     @property
     def test(self):
@@ -550,12 +554,33 @@ class VppSBFDReflector(VppObject):
         """required minimum rx interval advertised to initiators"""
         return self._required_min_rx
 
+    @property
+    def src_ip4(self):
+        """source of replies to requests sent to 127/8, if configured"""
+        return self._src_ip4
+
+    @property
+    def src_ip6(self):
+        """source of replies to requests sent to ::ffff:127.0.0.0/104,
+        if configured"""
+        return self._src_ip6
+
+    def _src_args(self):
+        """API arguments for the configured sources; left out means none"""
+        src = {}
+        if self._src_ip4:
+            src["src_ip4"] = self._src_ip4
+        if self._src_ip6:
+            src["src_ip6"] = self._src_ip6
+        return src
+
     def add_vpp_config(self):
         self.test.vapi.bfd_udp_sbfd_reflector_add_del(
             is_add=True,
             discriminator=self._discriminator,
             admin_up=self._admin_up,
             required_min_rx=self._required_min_rx,
+            **self._src_args(),
         )
         self._test.registry.register(self, self.test.logger)
 
@@ -575,16 +600,24 @@ class VppSBFDReflector(VppObject):
             is_add=False, discriminator=self._discriminator
         )
 
-    def modify_parameters(self, admin_up=None, required_min_rx=None):
-        """modify reflector parameters in place"""
+    def modify_parameters(
+        self, admin_up=None, required_min_rx=None, src_ip4=None, src_ip6=None
+    ):
+        """modify reflector parameters in place; a source of 0.0.0.0 or ::
+        removes it"""
         if admin_up is not None:
             self._admin_up = admin_up
         if required_min_rx:
             self._required_min_rx = required_min_rx
+        if src_ip4:
+            self._src_ip4 = src_ip4
+        if src_ip6:
+            self._src_ip6 = src_ip6
         self.test.vapi.bfd_udp_sbfd_reflector_mod(
             discriminator=self._discriminator,
             admin_up=self._admin_up,
             required_min_rx=self._required_min_rx,
+            **self._src_args(),
         )
 
     def object_id(self):

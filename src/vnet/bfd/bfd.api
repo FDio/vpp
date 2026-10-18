@@ -408,6 +408,12 @@ define bfd_udp_get_tos_reply
     @param admin_up - reflect with state Up if true, AdminDown if false
     @param required_min_rx - required min receive interval advertised to
                              initiators (microseconds), must be non-zero
+    @param src_ip4 - source of replies to requests sent to 127/8 over an
+                     MPLS path (RFC 7881), 0.0.0.0 to use an address of the
+                     receiving interface
+    @param src_ip6 - source of replies to requests sent to
+                     ::ffff:127.0.0.0/104 over an MPLS path, :: to use an
+                     address of the receiving interface
 */
 autoreply define bfd_udp_sbfd_reflector_add_del
 {
@@ -418,17 +424,26 @@ autoreply define bfd_udp_sbfd_reflector_add_del
   u32 discriminator;
   bool admin_up [default=true];
   u32 required_min_rx [default=50000];
+  vl_api_ip4_address_t src_ip4;
+  vl_api_ip6_address_t src_ip6;
 };
 
 /** \brief Modify an S-BFD reflector discriminator in place
     All values are set; bfd_udp_sbfd_reflector_dump returns the current
-    ones. Requests for the discriminator are answered throughout.
+    ones. The discriminator stays configured, so requests for it are
+    answered throughout, as long as a reply source is available.
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param discriminator - local S-BFD discriminator to modify
     @param admin_up - reflect with state Up if true, AdminDown if false
     @param required_min_rx - required min receive interval advertised to
                              initiators (microseconds), must be non-zero
+    @param src_ip4 - source of replies to requests sent to 127/8 over an
+                     MPLS path (RFC 7881), 0.0.0.0 to use an address of the
+                     receiving interface
+    @param src_ip6 - source of replies to requests sent to
+                     ::ffff:127.0.0.0/104 over an MPLS path, :: to use an
+                     address of the receiving interface
 */
 autoreply define bfd_udp_sbfd_reflector_mod
 {
@@ -438,6 +453,8 @@ autoreply define bfd_udp_sbfd_reflector_mod
   u32 discriminator;
   bool admin_up;
   u32 required_min_rx;
+  vl_api_ip4_address_t src_ip4;
+  vl_api_ip6_address_t src_ip6;
 };
 
 /** \brief Dump S-BFD reflector discriminators
@@ -456,6 +473,10 @@ define bfd_udp_sbfd_reflector_dump
     @param discriminator - local S-BFD discriminator
     @param admin_up - true if reflecting with state Up, false if AdminDown
     @param required_min_rx - required min receive interval (microseconds)
+    @param src_ip4 - source of replies to requests sent to 127/8, 0.0.0.0 if
+                     not configured
+    @param src_ip6 - source of replies to requests sent to
+                     ::ffff:127.0.0.0/104, :: if not configured
 */
 define bfd_udp_sbfd_reflector_details
 {
@@ -464,6 +485,8 @@ define bfd_udp_sbfd_reflector_details
   u32 discriminator;
   bool admin_up;
   u32 required_min_rx;
+  vl_api_ip4_address_t src_ip4;
+  vl_api_ip6_address_t src_ip6;
 };
 
 /* must be compatible with bfd_error_t */
@@ -604,6 +627,58 @@ counters bfd_sbfd {
     units "packets";
     description "unknown S-BFD discriminator";
   };
+  bad_ttl {
+    severity error;
+    type counter64;
+    units "packets";
+    description "TTL or hop limit 0";
+  };
+  no_src_addr {
+    severity error;
+    type counter64;
+    units "packets";
+    description "no source address for reply";
+  };
+};
+
+counters bfd_sbfd_dpo {
+  /* Must be first, also used as "no error". */
+  request {
+    severity info;
+    type counter64;
+    units "packets";
+    description "S-BFD request to 127/8 or ::ffff:127.0.0.0/104";
+  };
+  not_request {
+    severity info;
+    type counter64;
+    units "packets";
+    description "not a UDP datagram to port 7784, or a fragment";
+  };
+  bad_version {
+    severity error;
+    type counter64;
+    units "packets";
+    description "IP version not 4 or 6 as expected";
+  };
+  bad_ihl {
+    severity error;
+    type counter64;
+    units "packets";
+    description "IPv4 header length not 20 bytes";
+  };
+  bad_checksum {
+    severity error;
+    type counter64;
+    units "packets";
+    description "bad IPv4 header checksum";
+  };
+  bad_length {
+    severity error;
+    type counter64;
+    units "packets";
+    description "IP length beyond received data or below IP header";
+  };
 };
 
 paths {
@@ -613,6 +688,8 @@ paths {
   "/err/bfd-udp6-echo-input" "bfd";
   "/err/bfd-sbfd-reflector4-input" "bfd_sbfd";
   "/err/bfd-sbfd-reflector6-input" "bfd_sbfd";
+  "/err/bfd-sbfd-reflector4-dpo" "bfd_sbfd_dpo";
+  "/err/bfd-sbfd-reflector6-dpo" "bfd_sbfd_dpo";
 };
 
 /*

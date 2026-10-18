@@ -57,6 +57,13 @@ typedef struct
 
   /** required min rx interval advertised to initiators (microseconds) */
   u32 required_min_rx_usec;
+
+  /** source of replies to requests sent to 127/8, zero if not configured */
+  ip4_address_t src_ip4;
+
+  /** source of replies to requests sent to ::ffff:127.0.0.0/104, zero if
+      not configured */
+  ip6_address_t src_ip6;
 } bfd_sbfd_reflector_t;
 
 #define foreach_bfd_poll_state(F) \

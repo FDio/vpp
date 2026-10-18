@@ -15,8 +15,9 @@ from socket import AF_INET, AF_INET6
 from parameterized import parameterized, parameterized_class
 
 import scapy.compat
-from scapy.layers.inet import UDP, IP, ICMP
-from scapy.layers.inet6 import IPv6, ICMPv6DestUnreach
+from scapy.contrib.mpls import MPLS
+from scapy.layers.inet import UDP, IP, ICMP, IPOption, TCP, fragment
+from scapy.layers.inet6 import IPv6, ICMPv6DestUnreach, ICMPv6EchoRequest
 from scapy.layers.l2 import Ether, GRE
 from scapy.packet import Raw
 
@@ -45,7 +46,15 @@ from asfframework import (
 )
 from util import ppp
 from vpp_ip import DpoProto
-from vpp_ip_route import VppIpRoute, VppRoutePath, VppIpTable
+from vpp_ip_route import (
+    VppIpRoute,
+    VppRoutePath,
+    VppIpTable,
+    VppMplsTable,
+    find_route,
+    VppMplsRoute,
+    FibPathProto,
+)
 from vpp_lo_interface import VppLoInterface
 from vpp_neighbor import VppNeighbor
 from vpp_papi_provider import UnexpectedApiReturnValueError, CliFailedCommandError
@@ -63,6 +72,10 @@ BFD_IPV4_REMOTE_ADDR = "2.2.2.2"
 BFD_IPV6_REMOTE_ADDR = "2::2"
 BFD_IPV4_REMOTE_ADDR2 = "3.3.3.3"
 BFD_IPV6_REMOTE_ADDR2 = "3::3"
+# S-BFD requests sent over MPLS paths go to these ranges (RFC 7881 section 5.1)
+SBFD_MPLS_PATH_DST4 = ("127.0.0.1", "127.255.255.254")
+SBFD_MPLS_PATH_DST6 = ("::ffff:127.0.0.1", "::ffff:127.255.255.254")
+SBFD_MPLS_PATH_PREFIXES = (("127.0.0.0", 8), ("::ffff:127.0.0.0", 104))
 
 
 def set_ipv4_pfx_route_info(cls, pg_if, dst_ip, set_src):
@@ -704,6 +717,68 @@ class BFDAPITestCase(VppTestCase):
             len(self.vapi.bfd_udp_sbfd_reflector_dump()), 0, "number of reflectors"
         )
 
+    def test_sbfd_reflector_src_address(self):
+        """S-BFD reflector source addresses for replies over MPLS paths"""
+        r1 = VppSBFDReflector(self, 0x01020304, src_ip4="192.0.2.20")
+        r2 = VppSBFDReflector(
+            self, 0xFFFFFFFF, src_ip4="192.0.2.21", src_ip6="2001:db8::21"
+        )
+        r1.add_vpp_config()
+        r2.add_vpp_config()
+        verify_sbfd_reflector_config(self, r1)
+        verify_sbfd_reflector_config(self, r2)
+        # in place: add a source, remove both
+        r1.modify_parameters(src_ip6="2001:db8::22")
+        verify_sbfd_reflector_config(self, r1)
+        r2.modify_parameters(src_ip4="0.0.0.0", src_ip6="::")
+        verify_sbfd_reflector_config(self, r2)
+        r2.remove_vpp_config()
+        for invalid in (
+            {"src_ip4": "127.0.0.1"},
+            {"src_ip4": "0.1.2.3"},
+            {"src_ip4": "224.0.0.1"},
+            {"src_ip4": "240.0.0.1"},
+            {"src_ip4": "255.255.255.255"},
+            {"src_ip6": "::1"},
+            {"src_ip6": "::ffff:127.0.0.1"},
+            {"src_ip6": "fe80::1"},
+            {"src_ip6": "ff02::1"},
+        ):
+            with self.vapi.assert_negative_api_retval():
+                self.vapi.bfd_udp_sbfd_reflector_add_del(
+                    discriminator=r2.discriminator, **invalid
+                )
+            # rejected by mod too, before anything is changed
+            with self.vapi.assert_negative_api_retval():
+                self.vapi.bfd_udp_sbfd_reflector_mod(
+                    discriminator=r1.discriminator,
+                    admin_up=not r1.admin_up,
+                    required_min_rx=r1.required_min_rx,
+                    **invalid,
+                )
+            verify_sbfd_reflector_config(self, r1)
+        # all of ::ffff:0:0/96 is no source (RFC 6890), not only
+        # ::ffff:127.0.0.0/104: add and mod fail with
+        # VNET_API_ERROR_INVALID_SRC_ADDRESS, as the CLI test checks too
+        mapped = {"src_ip6": "::ffff:10.1.2.3"}
+        invalid_src_address = -57
+        with self.vapi.assert_known_api_retval([invalid_src_address]):
+            self.vapi.bfd_udp_sbfd_reflector_add_del(
+                discriminator=r2.discriminator, **mapped
+            )
+        with self.vapi.assert_known_api_retval([invalid_src_address]):
+            self.vapi.bfd_udp_sbfd_reflector_mod(
+                discriminator=r1.discriminator,
+                admin_up=not r1.admin_up,
+                required_min_rx=r1.required_min_rx,
+                **mapped,
+            )
+        verify_sbfd_reflector_config(self, r1)
+        r1.remove_vpp_config()
+        self.assert_equal(
+            len(self.vapi.bfd_udp_sbfd_reflector_dump()), 0, "number of reflectors"
+        )
+
     def test_sbfd_reflector_with_classic_session(self):
         """S-BFD reflector and classic BFD session configured together"""
         session = VppBFDUDPSession(
@@ -1010,12 +1085,26 @@ class BFDTestSession(object):
 class SBFDTestInitiator(BFDTestSession):
     """S-BFD initiator as seen from test framework side"""
 
-    def __init__(self, test, interface, af, reflector, multihop=False, **kwargs):
+    def __init__(
+        self,
+        test,
+        interface,
+        af,
+        reflector,
+        multihop=False,
+        ttl=None,
+        reply_src=None,
+        **kwargs,
+    ):
         super(SBFDTestInitiator, self).__init__(
             test, interface, af, multihop=multihop, **kwargs
         )
         self.reflector = reflector
         self.multihop = multihop
+        # TTL or hop limit of the requests, if not the usual 255 or 254
+        self.ttl = ttl
+        # expected source of the replies, if not the requests' destination
+        self.reply_src = reply_src if reply_src else self.local_addr
         self.my_discriminator = randint(1, 0xFFFFFFFF)
         self.your_discriminator = reflector.discriminator
         # values the reflector must not echo back
@@ -1030,11 +1119,14 @@ class SBFDTestInitiator(BFDTestSession):
         packet = super(SBFDTestInitiator, self).create_packet()
         packet[UDP].dport = BFD_UDP_SBFD_PORT
         packet[BFD].flags |= "D"
-        if self.multihop:
+        ttl = self.ttl
+        if ttl is None and self.multihop:
+            ttl = 254
+        if ttl is not None:
             if self.af == AF_INET6:
-                packet[IPv6].hlim = 254
+                packet[IPv6].hlim = ttl
             else:
-                packet[IP].ttl = 254
+                packet[IP].ttl = ttl
         return packet
 
     def verify_bfd(self, packet, poll=False):
@@ -1159,9 +1251,19 @@ def verify_sbfd_reflector_config(test, reflector):
     test.assert_equal(
         dump.required_min_rx, reflector.required_min_rx, "required min rx interval"
     )
+    test.assert_equal(
+        dump.src_ip4,
+        ipaddress.IPv4Address(reflector.src_ip4 or "0.0.0.0"),
+        "IPv4 source address",
+    )
+    test.assert_equal(
+        dump.src_ip6,
+        ipaddress.IPv6Address(reflector.src_ip6 or "::"),
+        "IPv6 source address",
+    )
 
 
-def verify_ip(test, packet, expected_tos=None, session=None):
+def verify_ip(test, packet, expected_tos=None, session=None, src=None):
     """Verify correctness of IP layer."""
     if session is None:
         session = test.vpp_session
@@ -1179,6 +1281,8 @@ def verify_ip(test, packet, expected_tos=None, session=None):
         test.assert_equal(ip.ttl, 255, "IPv4 TTL")
         if expected_tos is not None:
             test.assert_equal(ip.tos, expected_tos, "IPv4 TOS")
+    if src is not None:
+        local_ip = src
     test.assert_equal(ip.src, local_ip, "IP source address")
     test.assert_equal(ip.dst, remote_ip, "IP destination address")
 
@@ -1300,7 +1404,13 @@ def wait_for_sbfd_reply(test, initiator, interface, poll=False, timeout=2):
     """wait for S-BFD reply to initiator and verify its correctness"""
     p = interface.wait_for_packet(timeout, filter_out_fn=is_not_sbfd_reply)
     test.logger.debug(ppp("S-BFD: Got reply:", p))
-    verify_ip(test, p, expected_tos=test.vapi.bfd_udp_get_tos().tos, session=initiator)
+    verify_ip(
+        test,
+        p,
+        expected_tos=test.vapi.bfd_udp_get_tos().tos,
+        session=initiator,
+        src=initiator.reply_src,
+    )
     verify_udp(test, p, sport=BFD_UDP_SBFD_PORT, dport=initiator.udp_sport)
     test.assert_packet_checksums_valid(p)
     initiator.verify_bfd(p, poll)
@@ -1313,12 +1423,12 @@ def verify_no_sbfd_reply(test, interface, timeout=1):
         interface.wait_for_packet(timeout, filter_out_fn=is_not_sbfd_reply)
 
 
-def sbfd_err_counter(test, af, name):
-    """read S-BFD reflector node counter"""
-    node = (
-        "bfd-sbfd-reflector6-input" if af == AF_INET6 else "bfd-sbfd-reflector4-input"
+def sbfd_err_counter(test, af, name, node="input"):
+    """read counter of the S-BFD reflector "input" or "dpo" node"""
+    family = 6 if af == AF_INET6 else 4
+    return test.statistics.get_err_counter(
+        "/err/bfd-sbfd-reflector%d-%s/%s" % (family, node, name)
     )
-    return test.statistics.get_err_counter("/err/%s/%s" % (node, name))
 
 
 def sbfd_reflector_coexistence(test):
@@ -1339,11 +1449,28 @@ def sbfd_reflector_coexistence(test):
         local_addr=test.test_session.local_addr,
         peer_addr=test.test_session.peer_addr,
     )
+    if test.test_session.af == AF_INET6:
+        mpls_path_dst, reply_src = SBFD_MPLS_PATH_DST6[0], test.pg0.local_ip6
+    else:
+        mpls_path_dst, reply_src = SBFD_MPLS_PATH_DST4[0], test.pg0.local_ip4
+    mpls_path = SBFDTestInitiator(
+        test,
+        test.pg0,
+        test.test_session.af,
+        reflector,
+        multihop=test.multihop,
+        local_addr=mpls_path_dst,
+        peer_addr=test.test_session.peer_addr,
+        ttl=1,
+        reply_src=reply_src,
+    )
     for dummy in range(test.test_session.detect_mult * 2):
         wait_for_bfd_packet(test)
         test.test_session.send_packet()
         initiator.send_packet()
         wait_for_sbfd_reply(test, initiator, test.pg0)
+        mpls_path.send_packet()
+        wait_for_sbfd_reply(test, mpls_path, test.pg0)
     # the classic session's discriminator is not an S-BFD discriminator
     no_disc = sbfd_err_counter(test, initiator.af, "no_disc")
     initiator.update(your_discriminator=classic_disc)
@@ -2594,6 +2721,7 @@ class SBFDReflectorTestCase(VppTestCase):
     def setUp(self):
         super(SBFDReflectorTestCase, self).setUp()
         self.vrf_configured = False
+        self.mpls_enabled = False
         # the default TOS is 0, so replies would not show that it is applied
         self.saved_tos = self.vapi.bfd_udp_get_tos().tos
         self.vapi.bfd_udp_set_tos(BFD_UDP_DEFAULT_TOS)
@@ -2603,14 +2731,22 @@ class SBFDReflectorTestCase(VppTestCase):
             set_ipv6_pfx_route_info(self, self.pg0, BFD_IPV6_REMOTE_ADDR, False)
             self.local_addr = self.pg0.local_ip6
             self.peer_addr = self.dst_ip6_net
+            self.mpls_path_dsts = SBFD_MPLS_PATH_DST6
+            self.mpls_path_prefix = ("::ffff:127.0.0.0", 104)
         else:
             set_ipv4_pfx_route_info(self, self.pg0, BFD_IPV4_REMOTE_ADDR, False)
             self.local_addr = self.pg0.local_ip4
             self.peer_addr = self.dst_ip_net
+            self.mpls_path_dsts = SBFD_MPLS_PATH_DST4
+            self.mpls_path_prefix = ("127.0.0.0", 8)
 
     def tearDown(self):
         if not self.vpp_dead:
             self.vapi.bfd_udp_set_tos(self.saved_tos)
+        if not self.vpp_dead and self.mpls_enabled:
+            # disable MPLS so the registry can free the MPLS table
+            self.pg0.disable_mpls()
+            self.pg1.disable_mpls()
         if not self.vpp_dead and self.vrf_configured:
             # take pg1 out of the VRF so the registry can free the table
             if self.af == AF_INET6:
@@ -2640,16 +2776,39 @@ class SBFDReflectorTestCase(VppTestCase):
             **kwargs,
         )
 
-    def counter(self, name):
-        return sbfd_err_counter(self, self.af, name)
+    def mpls_path_initiator(self, reflector, dst=None, **kwargs):
+        """create S-BFD initiator which sends as over an MPLS path: to 127/8
+        or ::ffff:127.0.0.0/104 with TTL 1; pg0's address answers"""
+        kwargs.setdefault("ttl", 1)
+        kwargs.setdefault("reply_src", self.local_addr)
+        return self.initiator(
+            reflector, local_addr=dst or self.mpls_path_dsts[0], **kwargs
+        )
 
-    def verify_dropped(self, packets, counter, count=1):
-        """send packets, verify no reply and the drop counter"""
-        before = self.counter(counter)
-        self.pg0.add_stream(packets)
+    def labelled(self, request, interface, label, length=None):
+        """put the IP packet of an S-BFD request, or its first length bytes,
+        behind an MPLS label"""
+        ip = request[IPv6] if self.af == AF_INET6 else request[IP]
+        if length is not None:
+            ip = Raw(scapy.compat.raw(ip)[:length])
+        return (
+            Ether(src=interface.remote_mac, dst=interface.local_mac)
+            / MPLS(label=label, ttl=255)
+            / ip
+        )
+
+    def counter(self, name, node="input"):
+        return sbfd_err_counter(self, self.af, name, node)
+
+    def verify_dropped(self, packets, counter, count=1, node="input", interface=None):
+        """send packets on interface, pg0 by default, verify no reply and the
+        drop counter"""
+        interface = interface or self.pg0
+        before = self.counter(counter, node)
+        interface.add_stream(packets)
         self.pg_start()
-        verify_no_sbfd_reply(self, self.pg0)
-        self.assert_equal(self.counter(counter), before + count, counter)
+        verify_no_sbfd_reply(self, interface)
+        self.assert_equal(self.counter(counter, node), before + count, counter)
 
     def test_reflect(self):
         """S-BFD request is reflected"""
@@ -2698,6 +2857,8 @@ class SBFDReflectorTestCase(VppTestCase):
                 reflector.modify_parameters(**change)
             # a modification leaves the registration alone
             self.assertTrue(self.sbfd_port_registered(), "UDP port 7784 registered")
+            for prefix in SBFD_MPLS_PATH_PREFIXES:
+                self.assertTrue(find_route(self, *prefix), "%s/%d entry" % prefix)
             # each request is answered with the values now configured
             for dummy in range(3):
                 initiator.send_packet()
@@ -2882,36 +3043,67 @@ class SBFDReflectorTestCase(VppTestCase):
             multicast_dst = initiator.create_packet()
             multicast_dst[Ether].dst = "33:33:00:00:00:01"
             multicast_dst[IPv6].dst = "ff02::1"
-            packets = [loopback_src, multicast_dst]
+            unspecified_src = initiator.create_packet()
+            unspecified_src[IPv6].src = "::"
+            # all of ::ffff:0:0/96 is no source (RFC 6890), not only
+            # ::ffff:127.0.0.0/104
+            mapped_src = initiator.create_packet()
+            mapped_src[IPv6].src = "::ffff:10.1.2.3"
+            packets = [unspecified_src, loopback_src, mapped_src, multicast_dst]
+            from_127 = initiator.create_packet()
+            from_127[IPv6].src = SBFD_MPLS_PATH_DST6[0]
+            # ip6-local counts its errors as ip6-input
+            src_lookup_miss = "/err/ip6-input/src_lookup_miss"
         else:
             # a route to the martian source gets it past ip4-local's uRPF
             default = VppRoutePath(self.pg0.remote_ip4, self.pg0.sw_if_index)
             VppIpRoute(self, "0.0.0.0", 0, [default]).add_vpp_config()
-            loopback_src = initiator.create_packet()
-            loopback_src[IP].src = "127.0.0.1"
-            packets = [loopback_src]
+            zero_net_src = initiator.create_packet()
+            zero_net_src[IP].src = "0.1.2.3"
+            # the all-hosts group is delivered locally, as ff02::1 is
+            multicast_dst = initiator.create_packet()
+            multicast_dst[Ether].dst = "01:00:5e:00:00:01"
+            multicast_dst[IP].dst = "224.0.0.1"
+            packets = [zero_net_src, multicast_dst]
+            from_127 = initiator.create_packet()
+            from_127[IP].src = "127.0.0.1"
+            src_lookup_miss = "/err/ip4-local/src_lookup_miss"
         self.verify_dropped(packets, "non_unicast", len(packets))
+        # here the source lookup resolves through the sbfd entry, which gives
+        # no route back to 127/8 or ::ffff:127.0.0.0/104, so ip4-local or
+        # ip6-local drops requests from there first; the reflector's own
+        # check of these sources applies when other routes let them through
+        before = self.statistics.get_err_counter(src_lookup_miss)
+        self.verify_dropped(from_127, "non_unicast", 0)
+        self.assert_equal(
+            self.statistics.get_err_counter(src_lookup_miss),
+            before + 1,
+            src_lookup_miss,
+        )
 
-    def test_vrf(self):
-        """S-BFD reply leaves in the table of the request"""
-        is_ip6 = self.af == AF_INET6
-        VppIpTable(self, self.VRF_ID, is_ip6=is_ip6).add_vpp_config()
+    def pg1_in_vrf(self):
+        """move pg1 to table VRF_ID, with an address and a resolved
+        neighbour; return pg1's local and remote addresses"""
+        VppIpTable(self, self.VRF_ID, is_ip6=self.af == AF_INET6).add_vpp_config()
         self.vrf_configured = True
-        if is_ip6:
+        if self.af == AF_INET6:
             self.pg1.set_table_ip6(self.VRF_ID)
             self.pg1.config_ip6()
             self.pg1.configure_ipv6_neighbors()
             self.pg1.resolve_ndp()
-            local_addr = self.pg1.local_ip6
-            next_hop = self.pg1.remote_ip6
+            return self.pg1.local_ip6, self.pg1.remote_ip6
+        self.pg1.set_table_ip4(self.VRF_ID)
+        self.pg1.config_ip4()
+        self.pg1.configure_ipv4_neighbors()
+        self.pg1.resolve_arp()
+        return self.pg1.local_ip4, self.pg1.remote_ip4
+
+    def test_vrf(self):
+        """S-BFD reply leaves in the table of the request"""
+        local_addr, next_hop = self.pg1_in_vrf()
+        if self.af == AF_INET6:
             remote_addr, prefix_len = BFD_IPV6_REMOTE_ADDR, 128
         else:
-            self.pg1.set_table_ip4(self.VRF_ID)
-            self.pg1.config_ip4()
-            self.pg1.configure_ipv4_neighbors()
-            self.pg1.resolve_arp()
-            local_addr = self.pg1.local_ip4
-            next_hop = self.pg1.remote_ip4
             remote_addr, prefix_len = BFD_IPV4_REMOTE_ADDR, 32
         peer_addr = next_hop
         if self.multihop:
@@ -2969,11 +3161,439 @@ class SBFDReflectorTestCase(VppTestCase):
             remote_ip6_ll,
             is_static=True,
         ).add_vpp_config()
+        reflector = self.reflector()
         initiator = self.initiator(
-            self.reflector(),
+            reflector,
             local_addr=self.pg0.local_ip6_ll,
             peer_addr=remote_ip6_ll,
         )
+        initiator.send_packet()
+        wait_for_sbfd_reply(self, initiator, self.pg0)
+        # over an MPLS path, pg0's link-local address answers: the initiator
+        # is on the same link, where RFC 7881 section 6.1 allows it
+        initiator = self.mpls_path_initiator(
+            reflector, peer_addr=remote_ip6_ll, reply_src=self.pg0.local_ip6_ll
+        )
+        initiator.send_packet()
+        wait_for_sbfd_reply(self, initiator, self.pg0)
+
+    def test_mpls_path(self):
+        """S-BFD request over an MPLS path is answered from the interface"""
+        reflector = self.reflector()
+        reflected = self.counter("reflected")
+        for dst in self.mpls_path_dsts:
+            initiator = self.mpls_path_initiator(reflector, dst)
+            initiator.send_packet()
+            wait_for_sbfd_reply(self, initiator, self.pg0)
+        self.assert_equal(
+            self.counter("reflected"),
+            reflected + len(self.mpls_path_dsts),
+            "reflected",
+        )
+
+    def test_mpls_path_src_address(self):
+        """S-BFD reply over an MPLS path comes from the configured source"""
+        src = {"src_ip4": "192.0.2.20", "src_ip6": "2001:db8::20"}
+        configured = src["src_ip6"] if self.af == AF_INET6 else src["src_ip4"]
+        reflector = self.reflector(**src)
+        initiator = self.mpls_path_initiator(reflector, reply_src=configured)
+        initiator.send_packet()
+        wait_for_sbfd_reply(self, initiator, self.pg0)
+        # a routed request is still answered from its destination
+        routed = self.initiator(reflector)
+        routed.send_packet()
+        wait_for_sbfd_reply(self, routed, self.pg0)
+        # with the source removed in place, pg0's address answers
+        reflector.modify_parameters(src_ip4="0.0.0.0", src_ip6="::")
+        initiator = self.mpls_path_initiator(reflector)
+        initiator.send_packet()
+        wait_for_sbfd_reply(self, initiator, self.pg0)
+        # and the configured source again once it is set back
+        reflector.modify_parameters(**src)
+        initiator = self.mpls_path_initiator(reflector, reply_src=configured)
+        initiator.send_packet()
+        wait_for_sbfd_reply(self, initiator, self.pg0)
+
+    def test_mpls_path_ttl(self):
+        """S-BFD request is answered with any TTL or hop limit but 0"""
+        reflector = self.reflector()
+        label = self.explicit_null_label()
+        # RFC 7881 section 5.1 has the initiator send TTL 1, but a uniform-mode
+        # penultimate hop copies the label TTL into the IP header
+        for ttl in (2, 64, 255):
+            initiator = self.mpls_path_initiator(reflector, ttl=ttl)
+            initiator.send_packet()
+            wait_for_sbfd_reply(self, initiator, self.pg0)
+        # the same with an explicit-null label
+        for ttl in (64, 255):
+            initiator = self.mpls_path_initiator(reflector, ttl=ttl)
+            initiator.send_packet(
+                self.labelled(initiator.create_packet(), self.pg0, label)
+            )
+            wait_for_sbfd_reply(self, initiator, self.pg0)
+        # ip4-input and ip6-input drop TTL 0, so only a labelled request
+        # brings one to the reflector
+        request = self.mpls_path_initiator(reflector, ttl=0).create_packet()
+        self.verify_dropped(self.labelled(request, self.pg0, label), "bad_ttl")
+        # the same for a request to a local address: TTL 1 is answered, as
+        # plain IP and with an explicit-null label, and TTL 0 is dropped
+        routed = self.initiator(reflector, ttl=1)
+        routed.send_packet()
+        wait_for_sbfd_reply(self, routed, self.pg0)
+        routed.send_packet(self.labelled(routed.create_packet(), self.pg0, label))
+        wait_for_sbfd_reply(self, routed, self.pg0)
+        request = self.initiator(reflector, ttl=0).create_packet()
+        self.verify_dropped(self.labelled(request, self.pg0, label), "bad_ttl")
+
+    def test_mpls_path_bad_checksum(self):
+        """S-BFD request to 127/8 with bad UDP checksum is dropped"""
+        request = self.mpls_path_initiator(self.reflector()).create_packet()
+        if self.af == AF_INET6:
+            good = IPv6(scapy.compat.raw(request[IPv6]))[UDP].chksum
+            # ip6-local counts its errors as ip6-input
+            path = "/err/ip6-input/udp_checksum"
+        else:
+            good = IP(scapy.compat.raw(request[IP]))[UDP].chksum
+            path = "/err/ip4-local/udp_checksum"
+        # 0 and 0xffff stand for the same checksum, so avoid both
+        request[UDP].chksum = 1 if good != 1 else 2
+        bad_checksum = self.statistics.get_err_counter(path)
+        # dropped by ip4-local or ip6-local, as a routed request would be
+        self.verify_dropped(request, "reflected", 0)
+        self.assert_equal(self.statistics.get_err_counter(path), bad_checksum + 1, path)
+
+    def enable_mpls(self):
+        """enable MPLS on pg0 and pg1"""
+        VppMplsTable(self, 0).add_vpp_config()
+        self.pg0.enable_mpls()
+        self.pg1.enable_mpls()
+        self.mpls_enabled = True
+
+    def explicit_null_label(self):
+        """enable MPLS on pg0 and pg1, return the IPv4 or IPv6 Explicit NULL
+        label (RFC 3032)"""
+        self.enable_mpls()
+        return 2 if self.af == AF_INET6 else 0
+
+    def test_mpls_explicit_null(self):
+        """S-BFD request with an explicit-null label is answered"""
+        label = self.explicit_null_label()
+        reflector = self.reflector()
+        requests = self.counter("request", "dpo")
+        initiator = self.mpls_path_initiator(reflector)
+        initiator.send_packet(self.labelled(initiator.create_packet(), self.pg0, label))
+        wait_for_sbfd_reply(self, initiator, self.pg0)
+        # pg1 has no address to answer from
+        no_src_addr = self.counter("no_src_addr")
+        initiator = self.mpls_path_initiator(reflector, interface=self.pg1)
+        initiator.send_packet(self.labelled(initiator.create_packet(), self.pg1, label))
+        verify_no_sbfd_reply(self, self.pg0)
+        self.assert_equal(self.counter("no_src_addr"), no_src_addr + 1, "no_src_addr")
+        self.assert_equal(self.counter("request", "dpo"), requests + 2, "request")
+
+    def local_label(self, label=34):
+        """enable MPLS on pg0 and pg1, add a local label that is popped for a
+        lookup in the default table, return it"""
+        self.enable_mpls()
+        if self.af == AF_INET6:
+            nh, eos_proto = "::", FibPathProto.FIB_PATH_NH_PROTO_IP6
+        else:
+            nh, eos_proto = "0.0.0.0", FibPathProto.FIB_PATH_NH_PROTO_IP4
+        VppMplsRoute(
+            self,
+            label,
+            1,
+            [VppRoutePath(nh, 0xFFFFFFFF, nh_table_id=0)],
+            eos_proto=eos_proto,
+        ).add_vpp_config()
+        return label
+
+    def test_mpls_local_label(self):
+        """S-BFD request on a local label popped for an IP lookup is answered"""
+        label = self.local_label()
+        initiator = self.mpls_path_initiator(self.reflector())
+        initiator.send_packet(self.labelled(initiator.create_packet(), self.pg0, label))
+        wait_for_sbfd_reply(self, initiator, self.pg0)
+
+    def test_mpls_local_label_other_table(self):
+        """S-BFD request on a local label is answered on a VRF interface"""
+        local_addr, next_hop = self.pg1_in_vrf()
+        label = self.local_label()
+        # The label, not pg1's table, picks the default table for the lookup.
+        # ip4-local and ip6-local check the source in that table, so it needs
+        # a route back to the initiator. Here that route goes out pg0, so a
+        # reply routed in the default table would leave pg0; the reply is
+        # routed in pg1's table and leaves pg1.
+        prefix_len = 128 if self.af == AF_INET6 else 32
+        self.route_via_pg0(next_hop, prefix_len)
+        initiator = self.mpls_path_initiator(
+            self.reflector(),
+            interface=self.pg1,
+            peer_addr=next_hop,
+            reply_src=local_addr,
+        )
+        initiator.send_packet(self.labelled(initiator.create_packet(), self.pg1, label))
+        wait_for_sbfd_reply(self, initiator, self.pg1)
+        verify_no_sbfd_reply(self, self.pg0)
+
+    def explicit_null_request(self, **ip_fields):
+        """S-BFD request over an MPLS path, with the given IP header fields"""
+        request = self.mpls_path_initiator(self.reflector()).create_packet()
+        ip = request[IPv6] if self.af == AF_INET6 else request[IP]
+        for name, value in ip_fields.items():
+            setattr(ip, name, value)
+        return request
+
+    def verify_explicit_null_dropped(self, request, counter, length=None):
+        """send request, or its first length bytes, with an explicit-null
+        label, verify that the -dpo node drops and counts it"""
+        label = self.explicit_null_label()
+        self.verify_dropped(
+            self.labelled(request, self.pg0, label, length), counter, node="dpo"
+        )
+
+    def test_mpls_explicit_null_truncated_header(self):
+        """S-BFD request with explicit-null label and truncated headers is dropped"""
+        label = self.explicit_null_label()
+        # covers dropping a truncated header; the -dpo node checks the length
+        # first so that it reads nothing beyond the received data, and for
+        # IPv6 the payload length check would drop this packet too
+        # one byte short of the base header, which still holds enough of the
+        # destination for the 127/8 or ::ffff:127.0.0.0/104 entry to match
+        length = (40 if self.af == AF_INET6 else 20) - 1
+        # a destination no other test uses, so that what an earlier packet
+        # left in the buffer is unlikely to complete the cut-off byte
+        dst = "::ffff:127.0.0.77" if self.af == AF_INET6 else "127.0.0.77"
+        request = self.explicit_null_request(dst=dst)
+        self.verify_dropped(
+            self.labelled(request, self.pg0, label, length), "bad_length", node="dpo"
+        )
+        # The IP header alone, then the IP and UDP headers alone, with the IP
+        # and UDP lengths to match: exactly what the -dpo node reads. It drops
+        # the first as no request and passes the second to the reflector,
+        # which drops it as malformed.
+        if self.af == AF_INET6:
+            ip_only = request[IPv6].copy()
+            ip_only.nh = 17
+        else:
+            ip_only = request[IP].copy()
+            ip_only.proto = 17
+        ip_only.remove_payload()
+        udp_only = ip_only / UDP(sport=request[UDP].sport, dport=BFD_UDP_SBFD_PORT)
+        self.verify_dropped(
+            self.labelled(ip_only, self.pg0, label), "not_request", node="dpo"
+        )
+        bad = self.counter("bad")
+        self.verify_dropped(
+            self.labelled(udp_only, self.pg0, label), "request", node="dpo"
+        )
+        self.assert_equal(self.counter("bad"), bad + 1, "bad")
+
+    def test_mpls_explicit_null_ip4_options(self):
+        """S-BFD request with explicit-null label and IPv4 options is dropped"""
+        if self.af == AF_INET6:
+            self.skipTest("IPv4 only")
+        # eight zero option bytes, where ip4-local, which expects a 20-byte
+        # header, would find a UDP checksum of 0, which means none
+        request = self.explicit_null_request(options=IPOption(b"\x00" * 8))
+        good = IP(scapy.compat.raw(request[IP]))[UDP].chksum
+        request[UDP].chksum = 1 if good != 1 else 2
+        self.verify_explicit_null_dropped(request, "bad_ihl")
+
+    def test_mpls_explicit_null_bad_version(self):
+        """S-BFD request with explicit-null label and bad IP version is dropped"""
+        version = 4 if self.af == AF_INET6 else 6
+        request = self.explicit_null_request(version=version)
+        self.verify_explicit_null_dropped(request, "bad_version")
+
+    def test_mpls_explicit_null_bad_ihl(self):
+        """S-BFD request with explicit-null label and IPv4 IHL 4 is dropped"""
+        if self.af == AF_INET6:
+            self.skipTest("IPv4 only")
+        self.verify_explicit_null_dropped(self.explicit_null_request(ihl=4), "bad_ihl")
+
+    def test_mpls_explicit_null_bad_ip4_checksum(self):
+        """S-BFD request with explicit-null label and bad IPv4 checksum is dropped"""
+        if self.af == AF_INET6:
+            self.skipTest("IPv4 only")
+        request = self.explicit_null_request()
+        good = IP(scapy.compat.raw(request[IP])).chksum
+        request[IP].chksum = 1 if good != 1 else 2
+        self.verify_explicit_null_dropped(request, "bad_checksum")
+
+    def test_mpls_explicit_null_bad_length(self):
+        """S-BFD request with explicit-null label and wrong IP length is dropped"""
+        label = self.explicit_null_label()
+        request = self.explicit_null_request()
+        if self.af == AF_INET6:
+            request[IPv6].plen = len(request[UDP]) + 1
+        else:
+            request[IP].len = len(request[IP]) + 1
+            # without a UDP checksum, ip4-local does not notice either
+            request[UDP].chksum = 0
+        self.verify_dropped(
+            self.labelled(request, self.pg0, label), "bad_length", node="dpo"
+        )
+        if self.af == AF_INET:
+            # a total length of just the header is not below the header
+            # length: the -dpo node passes it on, and the UDP datagram after
+            # the header does not fit in it, so it is not answered
+            request[IP].len = 20
+            self.verify_dropped(
+                self.labelled(request, self.pg0, label), "request", node="dpo"
+            )
+
+    def other_traffic(self, ttl, dst=None):
+        """packets to 127/8 or ::ffff:127.0.0.0/104 which are not S-BFD"""
+        dst = dst or self.mpls_path_dsts[0]
+        ether = Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
+        if self.af == AF_INET6:
+            ip, echo = IPv6(src=self.peer_addr, dst=dst, hlim=ttl), ICMPv6EchoRequest()
+        else:
+            ip, echo = IP(src=self.peer_addr, dst=dst, ttl=ttl), ICMP()
+        return [
+            ether / ip / UDP(sport=50000, dport=1234) / Raw(b"\xa5" * 24),
+            # TCP has its destination port where UDP has it
+            ether / ip / TCP(sport=50000, dport=BFD_UDP_SBFD_PORT),
+            ether / ip / echo,
+        ]
+
+    def route_via_pg0(self, prefix, prefix_len):
+        """add route to prefix via pg0's remote host"""
+        nh = self.pg0.remote_ip6 if self.af == AF_INET6 else self.pg0.remote_ip4
+        route = VppIpRoute(
+            self, prefix, prefix_len, [VppRoutePath(nh, self.pg0.sw_if_index)]
+        )
+        route.add_vpp_config()
+        return route
+
+    def verify_forwarded(self, packets, dst=None):
+        """send packets with TTL 64 and verify they leave pg0 with TTL 63"""
+        dst = dst or self.mpls_path_dsts[0]
+        for p in self.send_and_expect(self.pg0, packets, self.pg0):
+            if self.af == AF_INET6:
+                self.assert_equal(p[IPv6].hlim, 63, "IPv6 hop limit")
+                self.assert_equal(p[IPv6].dst, dst, "IPv6 dst")
+            else:
+                self.assert_equal(p[IP].ttl, 63, "IPv4 TTL")
+                self.assert_equal(p[IP].dst, dst, "IPv4 dst")
+
+    def test_mpls_path_other_traffic(self):
+        """other traffic to 127/8 is dropped while a reflector exists"""
+        names = ("reflected", "bad", "bad_ttl", "no_src_addr")
+        packets = self.other_traffic(1) + self.other_traffic(64)
+        not_request = self.counter("not_request", "dpo")
+        # without a route covering 127/8, dropped with or without a reflector
+        self.send_and_assert_no_replies(self.pg0, packets)
+        r0 = self.reflector(0x0A0B0C0D)
+        before = {name: self.counter(name) for name in names}
+        self.send_and_assert_no_replies(self.pg0, packets)
+        r0.remove_vpp_config()
+        # a default route forwards it, but not while a reflector exists
+        if self.af == AF_INET6:
+            self.route_via_pg0("::", 0)
+        else:
+            self.route_via_pg0("0.0.0.0", 0)
+        self.verify_forwarded(self.other_traffic(64))
+        r1 = self.reflector(0x01020304)
+        r2 = self.reflector(0xFFFFFFFF)
+        self.send_and_assert_no_replies(self.pg0, packets)
+        r1.remove_vpp_config()
+        self.send_and_assert_no_replies(self.pg0, packets)
+        r2.remove_vpp_config()
+        self.verify_forwarded(self.other_traffic(64))
+        for name in names:
+            self.assert_equal(self.counter(name), before[name], name)
+        # sent three times while a reflector existed
+        self.assert_equal(
+            self.counter("not_request", "dpo"),
+            not_request + 3 * len(packets),
+            "not_request",
+        )
+
+    def test_mpls_path_fragments(self):
+        """fragments of an S-BFD request to 127/8 are dropped"""
+        if self.af == AF_INET6:
+            self.skipTest("IPv4 only")
+        request = self.mpls_path_initiator(self.reflector()).create_packet()
+        # the first fragment holds the UDP header, to port 7784
+        self.verify_dropped(fragment(request, fragsize=16), "not_request", 2, "dpo")
+
+    def test_mpls_path_operator_route(self):
+        """an operator route to 127/8 is overridden while a reflector exists"""
+        self.route_via_pg0(*self.mpls_path_prefix)
+        packets = self.other_traffic(64)
+        self.verify_forwarded(packets)
+        reflector = self.reflector()
+        initiator = self.mpls_path_initiator(reflector)
+        initiator.send_packet()
+        wait_for_sbfd_reply(self, initiator, self.pg0)
+        self.send_and_assert_no_replies(self.pg0, packets)
+        reflector.remove_vpp_config()
+        self.verify_forwarded(packets)
+
+    def test_mpls_path_longer_prefix(self):
+        """a route to part of 127/8 is still used while a reflector exists"""
+        if self.af == AF_INET6:
+            dst, prefix_len = "::ffff:127.1.2.3", 128
+        else:
+            dst, prefix_len = "127.1.2.3", 32
+        self.route_via_pg0(dst, prefix_len)
+        reflector = self.reflector()
+        names = ("request", "not_request")
+        before = {name: self.counter(name, "dpo") for name in names}
+        reflected = self.counter("reflected")
+        # an S-BFD request to that address is forwarded too, not answered
+        request = self.mpls_path_initiator(reflector, dst, ttl=64).create_packet()
+        self.verify_forwarded(self.other_traffic(64, dst) + [request], dst)
+        for name in names:
+            self.assert_equal(self.counter(name, "dpo"), before[name], name)
+        self.assert_equal(self.counter("reflected"), reflected, "reflected")
+
+    def test_mpls_path_vrf(self):
+        """S-BFD request over an MPLS path in another table is not answered"""
+        local_addr, next_hop = self.pg1_in_vrf()
+        label = self.explicit_null_label()
+        initiator = self.mpls_path_initiator(
+            self.reflector(),
+            interface=self.pg1,
+            peer_addr=next_hop,
+            reply_src=local_addr,
+        )
+        request = initiator.create_packet()
+        # only the default tables have the 127/8 and ::ffff:127.0.0.0/104
+        # entries, so neither form reaches the -dpo node
+        for packet in (request, self.labelled(request, self.pg1, label)):
+            self.verify_dropped(packet, "request", 0, "dpo", self.pg1)
+
+    def test_mpls_path_last_discriminator_deleted(self):
+        """MPLS path delivery is removed with the last S-BFD discriminator"""
+        names = ("reflected", "bad", "bad_ttl", "no_disc")
+        self.assertFalse(find_route(self, *self.mpls_path_prefix))
+        r1 = self.reflector(0x01020304)
+        r2 = self.reflector(0xFFFFFFFF)
+        self.assertTrue(find_route(self, *self.mpls_path_prefix))
+        # the entry and its path show the S-BFD DPO; the CLI takes no dotted
+        # quad in an IPv6 address
+        if self.af == AF_INET6:
+            show_entry = "show ip6 fib ::ffff:7f00:0/104"
+        else:
+            show_entry = "show ip fib 127.0.0.0/8"
+        for cli in (show_entry, "show fib paths"):
+            self.assertIn("bfd-sbfd-reflector", self.vapi.cli(cli), cli)
+        r1.remove_vpp_config()
+        self.assertTrue(find_route(self, *self.mpls_path_prefix))
+        initiator = self.mpls_path_initiator(r2)
+        initiator.send_packet()
+        wait_for_sbfd_reply(self, initiator, self.pg0)
+        r2.remove_vpp_config()
+        self.assertFalse(find_route(self, *self.mpls_path_prefix))
+        before = {name: self.counter(name) for name in names}
+        self.send_and_assert_no_replies(self.pg0, initiator.create_packet())
+        for name in names:
+            self.assert_equal(self.counter(name), before[name], name)
+        r2.add_vpp_config()
+        self.assertTrue(find_route(self, *self.mpls_path_prefix))
         initiator.send_packet()
         wait_for_sbfd_reply(self, initiator, self.pg0)
 
@@ -5066,7 +5686,14 @@ class BFDCLITestCase(VppTestCase):
     def test_add_del_sbfd_reflector(self):
         """add/show/delete S-BFD reflector discriminators"""
         r1 = VppSBFDReflector(self, 0x01020304)
-        r2 = VppSBFDReflector(self, 0xFFFFFFFF, admin_up=False, required_min_rx=1000000)
+        r2 = VppSBFDReflector(
+            self,
+            0xFFFFFFFF,
+            admin_up=False,
+            required_min_rx=1000000,
+            src_ip4="192.0.2.20",
+            src_ip6="2001:db8::20",
+        )
         cli_add_cmd = "bfd udp sbfd reflector add discriminator %s" % r1.discriminator
         self.cli_verify_no_response(cli_add_cmd)
         self.registry.register(r1, self.logger)
@@ -5078,7 +5705,8 @@ class BFDCLITestCase(VppTestCase):
         )
         self.cli_verify_no_response(
             "bfd udp sbfd reflector add discriminator %s required-min-rx %s "
-            "admin-down" % (r2.discriminator, r2.required_min_rx)
+            "admin-down src-address %s src-address %s"
+            % (r2.discriminator, r2.required_min_rx, r2.src_ip6, r2.src_ip4)
         )
         self.registry.register(r2, self.logger)
         verify_sbfd_reflector_config(self, r1)
@@ -5087,9 +5715,18 @@ class BFDCLITestCase(VppTestCase):
             line.split()
             for line in self.vapi.cli("show bfd sbfd-reflectors").splitlines()
         ]
-        self.assertIn([str(r1.discriminator), "Up", str(r1.required_min_rx)], rows)
         self.assertIn(
-            [str(r2.discriminator), "AdminDown", str(r2.required_min_rx)], rows
+            [str(r1.discriminator), "Up", str(r1.required_min_rx), "-", "-"], rows
+        )
+        self.assertIn(
+            [
+                str(r2.discriminator),
+                "AdminDown",
+                str(r2.required_min_rx),
+                r2.src_ip4,
+                r2.src_ip6,
+            ],
+            rows,
         )
         cli_del_cmd = "bfd udp sbfd reflector del discriminator %s" % r1.discriminator
         self.cli_verify_no_response(cli_del_cmd)
@@ -5139,14 +5776,73 @@ class BFDCLITestCase(VppTestCase):
                 ["Up" if admin_up else "AdminDown", str(required_min_rx)],
                 "state and required min rx",
             )
+        # a source of 0.0.0.0 or :: removes it, shown as "-"
+        for args, src_ip4, src_ip6 in (
+            (
+                "src-address 192.0.2.30 src-address 2001:db8::30",
+                "192.0.2.30",
+                "2001:db8::30",
+            ),
+            ("src-address 0.0.0.0", None, "2001:db8::30"),
+            ("src-address ::", None, None),
+        ):
+            self.cli_verify_no_response(cli_mod_cmd + args)
+            verify_sbfd_reflector_config(
+                self,
+                VppSBFDReflector(
+                    self,
+                    discriminator,
+                    required_min_rx=20000,
+                    src_ip4=src_ip4,
+                    src_ip6=src_ip6,
+                ),
+            )
+            self.assert_equal(
+                self.sbfd_reflector_show_row(discriminator)[3:],
+                [src_ip4 or "-", src_ip6 or "-"],
+                "sources",
+            )
+
+    def cli_verify_sbfd_reflector_not_added(self, cli, expected):
+        """execute a CLI that must fail with the expected response and add no
+        S-BFD reflector. One it adds anyway is deleted before the checks, even
+        if the CLI raises, so that the failure stays in this test; it is
+        registered first, so that teardown retries a delete that fails."""
+        before = {r.discriminator for r in self.vapi.bfd_udp_sbfd_reflector_dump()}
+        returned = False
+        try:
+            try:
+                reply = self.vapi.cli(cli)
+            except CliFailedCommandError as cli_error:
+                reply = str(cli_error)
+            returned = True
+        finally:
+            try:
+                added = [
+                    VppSBFDReflector(self, r.discriminator)
+                    for r in self.vapi.bfd_udp_sbfd_reflector_dump()
+                    if r.discriminator not in before
+                ]
+                for reflector in added:
+                    self.registry.register(reflector, self.logger)
+                for reflector in added:
+                    reflector.remove_vpp_config()
+            except Exception:
+                # if the CLI raised, its exception is the one to report
+                if returned:
+                    raise
+        self.assert_equal(reply.strip(), expected, "CLI command response")
+        self.assert_equal(
+            [r.discriminator for r in added], [], "S-BFD reflectors added"
+        )
 
     def test_sbfd_reflector_cli_errors(self):
         """S-BFD reflector CLI errors"""
-        self.cli_verify_response(
+        self.cli_verify_sbfd_reflector_not_added(
             "bfd udp sbfd reflector add required-min-rx 1000",
             "bfd udp sbfd reflector add: Required parameter `discriminator' missing.",
         )
-        self.cli_verify_response(
+        self.cli_verify_sbfd_reflector_not_added(
             "bfd udp sbfd reflector add discriminator 0",
             "bfd udp sbfd reflector add: `bfd_sbfd_reflector_add' API call"
             " failed, rv=-7:Invalid value",
@@ -5161,6 +5857,7 @@ class BFDCLITestCase(VppTestCase):
             " failed, rv=-102:No such BFD object",
         )
         self.cli_verify_no_response("bfd udp sbfd reflector add discriminator 1")
+        self.registry.register(VppSBFDReflector(self, 1), self.logger)
         self.cli_verify_response(
             "bfd udp sbfd reflector mod discriminator 1 required-min-rx 0",
             "bfd udp sbfd reflector mod: `bfd_sbfd_reflector_mod' API call"
@@ -5171,15 +5868,51 @@ class BFDCLITestCase(VppTestCase):
             "bfd udp sbfd reflector mod: Unknown input `admin sideways'",
         )
         self.cli_verify_no_response("bfd udp sbfd reflector del discriminator 1")
-        self.cli_verify_response(
+        self.cli_verify_sbfd_reflector_not_added(
             "bfd udp sbfd reflector add discriminator 1 required-min-rx 0",
             "bfd udp sbfd reflector add: `bfd_sbfd_reflector_add' API call"
             " failed, rv=-7:Invalid value",
         )
-        self.cli_verify_response(
+        self.cli_verify_sbfd_reflector_not_added(
             "bfd udp sbfd reflector add discriminator 1 foo",
             "bfd udp sbfd reflector add: Unknown input `foo'",
         )
+        self.cli_verify_sbfd_reflector_not_added(
+            "bfd udp sbfd reflector add discriminator 1 src-address 127.0.0.1",
+            "bfd udp sbfd reflector add: `bfd_sbfd_reflector_add' API call"
+            " failed, rv=-57:Invalid src address",
+        )
+        self.cli_verify_sbfd_reflector_not_added(
+            "bfd udp sbfd reflector add discriminator 1 src-address fe80::1",
+            "bfd udp sbfd reflector add: `bfd_sbfd_reflector_add' API call"
+            " failed, rv=-57:Invalid src address",
+        )
+        # ::ffff:10.1.2.3, IPv4-mapped; the CLI takes no dotted quad in an
+        # IPv6 address
+        self.cli_verify_sbfd_reflector_not_added(
+            "bfd udp sbfd reflector add discriminator 1 src-address ::ffff:a01:203",
+            "bfd udp sbfd reflector add: `bfd_sbfd_reflector_add' API call"
+            " failed, rv=-57:Invalid src address",
+        )
+        self.cli_verify_no_response("bfd udp sbfd reflector add discriminator 2")
+        self.registry.register(VppSBFDReflector(self, 2), self.logger)
+        self.cli_verify_response(
+            "bfd udp sbfd reflector mod discriminator 2 src-address 127.0.0.1",
+            "bfd udp sbfd reflector mod: `bfd_sbfd_reflector_mod' API call"
+            " failed, rv=-57:Invalid src address",
+        )
+        for verb in ("add", "mod"):
+            for second in (
+                "192.0.2.1 src-address 192.0.2.2",
+                "2001:db8::1 src-address 2001:db8::2",
+            ):
+                self.cli_verify_response(
+                    "bfd udp sbfd reflector %s discriminator 2 src-address %s"
+                    % (verb, second),
+                    "bfd udp sbfd reflector %s: Only one `src-address' per address"
+                    " family." % verb,
+                )
+        self.cli_verify_no_response("bfd udp sbfd reflector del discriminator 2")
         self.assert_equal(
             len(self.vapi.bfd_udp_sbfd_reflector_dump()), 0, "number of reflectors"
         )
