@@ -576,15 +576,14 @@ zero_ports:
   return 0;
 }
 always_inline ip6_sv_reass_rc_t
-ip6_sv_reass_update (vlib_main_t *vm, vlib_node_runtime_t *node,
-		     ip6_sv_reass_main_t *rm, ip6_sv_reass_t *reass, u32 bi0,
-		     ip6_frag_hdr_t *frag_hdr, bool extended)
+ip6_sv_reass_update (vlib_main_t *vm, vlib_node_runtime_t *node, ip6_sv_reass_main_t *rm,
+		     ip6_header_t *fip, ip6_sv_reass_t *reass, u32 bi0, ip6_frag_hdr_t *frag_hdr,
+		     bool extended)
 {
   vlib_buffer_t *fb = vlib_get_buffer (vm, bi0);
   vnet_buffer_opaque_t *fvnb = vnet_buffer (fb);
   fvnb->ip.reass.ip6_frag_hdr_offset =
     (u8 *) frag_hdr - (u8 *) vlib_buffer_get_current (fb);
-  ip6_header_t *fip = vlib_buffer_get_current (fb);
 
   vec_add1 (reass->cached_buffers, bi0);
 
@@ -939,8 +938,7 @@ ip6_sv_reassembly_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	    }
 
 	  u32 counter = ~0;
-	  switch (ip6_sv_reass_update (vm, node, rm, reass, bi0, frag_hdr,
-				       a.extended))
+	  switch (ip6_sv_reass_update (vm, node, rm, ip0, reass, bi0, frag_hdr, a.extended))
 	    {
 	    case IP6_SV_REASS_RC_OK:
 	      /* nothing to do here */
