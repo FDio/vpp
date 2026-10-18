@@ -3,6 +3,7 @@
 import unittest
 from framework import VppTestCase
 from asfframework import VppTestRunner
+from vpp_papi import VppEnum
 from scapy.layers.l2 import Ether
 from scapy.packet import Raw
 from scapy.layers.inet import IP, UDP
@@ -29,6 +30,9 @@ class SFlowDropTestCase(VppTestCase):
             i.resolve_arp()  # resolve ARP, so that we know VPP MAC
 
     def tearDown(self):
+        self.vapi.sflow_enable_disable(hw_if_index=1, enable_disable=False)
+        self.vapi.sflow_enable_disable(hw_if_index=2, enable_disable=False)
+        self.vapi.sflow_drop_monitoring_set(drop_M=0)
         for i in self.pg_interfaces:
             i.admin_down()
             i.unconfig()
@@ -147,3 +151,27 @@ class SFlowDropTestCase(VppTestCase):
         self.sleep(1.0)
         # verify sflow counters
         self.verify_sflow(count)
+
+    def test_punt(self):
+        self.enable_sflow_via_api()
+        punt = {
+            "type": VppEnum.vl_api_punt_type_t.PUNT_API_TYPE_L4,
+            "punt": {
+                "l4": {
+                    "af": VppEnum.vl_api_address_family_t.ADDRESS_IP4,
+                    "protocol": VppEnum.vl_api_ip_proto_t.IP_API_PROTO_UDP,
+                    "port": 1234,
+                }
+            },
+        }
+        self.vapi.set_punt(is_add=1, punt=punt)
+        pkt = (
+            Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac)
+            / IP(src=self.pg0.remote_ip4, dst=self.pg0.local_ip4)
+            / UDP(dport=1234)
+            / Raw(b"\xa5" * 100)
+        )
+        self.pg0.add_stream([pkt])
+        self.pg_start()
+        self.vapi.cli("show errors")
+        self.vapi.set_punt(is_add=0, punt=punt)

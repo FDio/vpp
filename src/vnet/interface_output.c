@@ -1044,10 +1044,15 @@ interface_drop_punt (vlib_main_t * vm,
 	  (cm, thread_index, sw_if0->sup_sw_if_index, count);
     }
 
-  vnet_interface_main_t *im = &vnm->interface_main;
-  u8 arc_index = im->drop_feature_arc_index;
   u32 nextAll = 0;
-  vnet_feature_arc_start (arc_index, sw_if_index[0], &nextAll, bufs[0]);
+
+  if (disposition == VNET_ERROR_DISPOSITION_DROP)
+    {
+      vnet_interface_main_t *im = &vnm->interface_main;
+      u8 arc_index = im->drop_feature_arc_index;
+      vnet_feature_arc_start (arc_index, sw_if_index[0], &nextAll, bufs[0]);
+    }
+
   vlib_buffer_enqueue_to_single_next (vm, node, from, nextAll,
 				      frame->n_vectors);
 
