@@ -16,6 +16,24 @@
       "message": "Do you really need the extra function, or just keep svm_fifo_provision_chunks as is and call it from svm_fifo_provision_chunks_at_offset?",
       "revId": "a364d2f79d648d9c5c6a1f1e5422f567b5f2dd28",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "3331935e_ced8c81c",
+        "filename": "src/svm/svm_fifo.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 1320,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-10-18T12:47:58Z",
+      "side": 1,
+      "message": "Thanks, agreed. The updated patchset removes the private zero_offset helper and keeps svm_fifo_provision_chunks() unchanged. For a nonzero offset, the new function calls its capacity-only mode with no output vector, then maps only the requested range. This avoids constructing and trimming a prefix vector and adds no payload copy. Added empty-range, overflow, limited-vector and chunk-boundary checks. The reservation test passed 25 repetitions plus the complete FIFO suite on both ARM and x86.",
+      "parentUuid": "6dbdab17_931c293e",
+      "revId": "a364d2f79d648d9c5c6a1f1e5422f567b5f2dd28",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
