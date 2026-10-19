@@ -2048,3 +2048,127 @@ class TestLinuxCPOSPFMcast(TestLinuxCPNetNSBase):
         self.assertEqual(rx[Ether].dst, self.ospf_mcast_mac)
         self.assertEqual(rx[IP].dst, self.ospf_mcast_ip4)
         self.assertEqual(rx[IP].proto, self.ospf_ip_proto)
+
+
+@unittest.skipIf(config.skip_netns_tests, "netns not available or disabled from cli")
+@unittest.skipIf("linux-cp" in config.excluded_plugins, "Exclude linux-cp plugin tests")
+class TestLinuxCPNetlinkRecovery(TestLinuxCPNetNSBase):
+    """Linux CP netlink polling error recovery.
+
+    The polling error callback registered by the linux_nl plugin for the
+    netlink route socket is invoked directly by the test plugin CLI. That
+    simulates the EPOLLERR event the file poller reports, it does not create a
+    real socket error. Recovery, the counters reported by `show lcp netlink`
+    and a subsequent real Linux update are then checked.
+    """
+
+    extra_vpp_plugin_config = TestLinuxCPNetNSBase.extra_vpp_plugin_config + [
+        "plugin",
+        "linux_cp_unittest_plugin.so",
+        "{",
+        "enable",
+        "}",
+    ]
+
+    # State reported by `show lcp netlink` while notifications are processed.
+    NETLINK_STATE_NORMAL = "notification"
+    # Bounds the wait for a recovery cycle, which is delayed by the 2s retry
+    # delay of the netlink process node.
+    NETLINK_RECOVERY_TIMEOUT = 20.0
+    # Route added on the Linux side to check that an update still reaches VPP
+    # through the reopened notification socket.
+    route_blackhole = "192.168.60.0/24"
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.create_loopback_interfaces(1)
+        cls.vapi.cli(f"lcp create loop0 host-if hloop0 netns {cls.ns_name}")
+        cls.lo_interfaces[0].admin_up()
+
+    def _netlink_stats(self):
+        """Return `show lcp netlink` as a dict of normalized field to value."""
+        stats = {}
+        for line in self.vapi.cli("show lcp netlink").splitlines():
+            key, separator, value = line.partition(":")
+            if not separator:
+                continue
+            key = key.strip().lower().replace("-", " ").replace("_", " ")
+            stats[key] = value.strip()
+        return stats
+
+    def _netlink_count(self, stats, name):
+        value = stats.get(name)
+        self.assertIsNotNone(
+            value, f"'{name}' missing from 'show lcp netlink': {stats}"
+        )
+        self.assertRegex(value, r"^\d+$", f"'{name}' is not a count: {value!r}")
+        return int(value)
+
+    def _netlink_completed(self):
+        return self._netlink_count(self._netlink_stats(), "synchronization completed")
+
+    def _invoke_netlink_error_callback(self, *args):
+        """Invoke the polling error callback registered for the route socket."""
+        return self.vapi.cli(" ".join(["test lcp netlink-error", *args]))
+
+    def _check_recovery(self, attempts_before, completed_before, description):
+        """Wait for a recovery cycle and check the state it reports afterwards."""
+        self.poll_for(
+            f"{description}: synchronization did not complete",
+            lambda: self._netlink_completed() > completed_before,
+            True,
+            timeout=self.NETLINK_RECOVERY_TIMEOUT,
+            interval=0.25,
+        )
+        self.poll_for(
+            f"{description}: state not back to notification processing",
+            lambda: self._netlink_stats().get("state"),
+            self.NETLINK_STATE_NORMAL,
+            timeout=self.NETLINK_RECOVERY_TIMEOUT,
+            interval=0.25,
+        )
+        stats = self._netlink_stats()
+        self.assertGreater(
+            self._netlink_count(stats, "synchronization attempts"),
+            attempts_before,
+            f"{description}: no synchronization attempt recorded: {stats}",
+        )
+
+    def _check_linux_update_reaches_vpp(self):
+        """Add a blackhole route on the Linux side and look it up in the VPP FIB."""
+        route = self.route_blackhole
+        lookup = str(ip_interface(route).network[1]) + "/32"
+        try:
+            add_namespace_route(self.ns_name, route, route_type="blackhole")
+            self.verify_paths(lookup, dict(type=FibPathType.FIB_PATH_TYPE_DROP))
+        finally:
+            del_namespace_route(self.ns_name, route, check=False)
+
+    def test_netlink_poll_error_recovery(self):
+        """Netlink polling error callback triggers a recovery cycle"""
+        stats = self._netlink_stats()
+        attempts_before = self._netlink_count(stats, "synchronization attempts")
+        completed_before = self._netlink_count(stats, "synchronization completed")
+        self.assertEqual(stats.get("state"), self.NETLINK_STATE_NORMAL, stats)
+
+        output = self._invoke_netlink_error_callback()
+        self.assertIn("netlink-error: target fd", output)
+        self.assertNotIn("(copy with invalid-fd)", output)
+        self.assertIn("netlink-error: callback", output)
+
+        self._check_recovery(attempts_before, completed_before, "polling error")
+        self._check_linux_update_reaches_vpp()
+
+    def test_netlink_poll_error_invalid_fd(self):
+        """Netlink polling error callback handles a failed socket error query"""
+        stats = self._netlink_stats()
+        attempts_before = self._netlink_count(stats, "synchronization attempts")
+        completed_before = self._netlink_count(stats, "synchronization completed")
+
+        output = self._invoke_netlink_error_callback("invalid-fd")
+        self.assertIn("netlink-error: target fd -1 (copy with invalid-fd)", output)
+        self.assertIn("netlink-error: callback", output)
+
+        self._check_recovery(attempts_before, completed_before, "invalid-fd")
+        self._check_linux_update_reaches_vpp()

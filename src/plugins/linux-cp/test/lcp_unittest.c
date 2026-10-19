@@ -4,11 +4,19 @@
  */
 
 #include <vlib/vlib.h>
+#include <vlib/file.h>
+
+#include <vppinfra/file.h>
 
 #include <plugins/linux-cp/lcp_interface.h>
 
 static u32 host_vif;
 const static char *host_template = "tap%d";
+
+/* Description the linux_nl plugin uses when it registers the notification
+ * netlink socket with the vlib file poller.
+ */
+#define LCP_NETLINK_ROUTE_FILE "linux-cp netlink route socket"
 
 static clib_error_t *
 lcp_add_pair_command_fn (vlib_main_t *vm, unformat_input_t *input,
@@ -73,6 +81,82 @@ VLIB_CLI_COMMAND (test_time_range_command, static) = {
   .path = "test lcp",
   .short_help = "lcp [add|del] phy <SW_IF_INDEX> host <SW_IF_INDEX>",
   .function = lcp_add_pair_command_fn,
+};
+
+static clib_file_t *
+lcp_nl_route_file_get (void)
+{
+  clib_file_main_t *fm = &file_main;
+  u32 description_len = sizeof (LCP_NETLINK_ROUTE_FILE) - 1;
+  clib_file_t **fp;
+
+  pool_foreach (fp, fm->file_pool)
+    {
+      clib_file_t *f = fp[0];
+
+      if (!f || !f->description || !f->error_function)
+	continue;
+
+      if (strncmp ((char *) f->description, LCP_NETLINK_ROUTE_FILE, description_len) == 0)
+	return f;
+    }
+
+  return 0;
+}
+
+static clib_error_t *
+lcp_nl_error_cmd (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
+{
+  clib_file_t *file, *target;
+  clib_file_t file_copy;
+  clib_error_t *error;
+  u8 use_invalid_fd = 0;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "invalid-fd"))
+	use_invalid_fd = 1;
+      else
+	return clib_error_return (0, "unknown input:%U", format_unformat_error, input);
+    }
+
+  file = lcp_nl_route_file_get ();
+  if (!file)
+    return clib_error_return (0, "no file \"%s\" is registered", LCP_NETLINK_ROUTE_FILE);
+
+  target = file;
+  if (use_invalid_fd)
+    {
+      /* Only the copy gets an unusable descriptor, the registered file and
+       * its descriptor are left untouched. */
+      file_copy = *file;
+      file_copy.file_descriptor = (u32) ~0;
+      target = &file_copy;
+    }
+
+  vlib_cli_output (vm, "netlink-error: target fd %d%s", (int) target->file_descriptor,
+		   use_invalid_fd ? " (copy with invalid-fd)" : "");
+
+  /* Mirror the vlib file poller: count the error event, then invoke the
+   * registered callback. */
+  target->error_events++;
+
+  error = target->error_function (target);
+  if (error)
+    {
+      vlib_cli_output (vm, "netlink-error: callback error: %v", error->what);
+      clib_error_free (error);
+    }
+  else
+    vlib_cli_output (vm, "netlink-error: callback returned no error");
+
+  return 0;
+}
+
+VLIB_CLI_COMMAND (test_lcp_netlink_error_command, static) = {
+  .path = "test lcp netlink-error",
+  .short_help = "test lcp netlink-error [invalid-fd]",
+  .function = lcp_nl_error_cmd,
 };
 
 #include <vnet/plugin/plugin.h>
