@@ -852,6 +852,175 @@ class TestGRE(VppTestCase):
         route_via_tun.remove_vpp_config()
         gre_if.remove_vpp_config()
 
+    def verify_gre_header_copy(self, capture, expected_inner, tunnel, tunnel_dst):
+        outer_type = IPv6 if ":" in tunnel.t_src else IP
+        outer = capture[outer_type]
+        gre = GRE(scapy.compat.raw(outer.payload))
+        inner = gre.payload
+        self.assertEqual(outer.src, tunnel.t_src)
+        self.assertEqual(outer.dst, tunnel_dst)
+        self.assertEqual(gre.key_present, bool(tunnel.t_gre_key))
+        self.assertEqual(
+            gre.proto, 0x0800 if isinstance(expected_inner, IP) else 0x86DD
+        )
+        if tunnel.t_gre_key:
+            self.assertEqual(gre.key, tunnel.t_gre_key)
+        gre_length = 8 if tunnel.t_gre_key else 4
+        outer_length = 20 if outer_type is IP else 40
+        self.assertEqual(len(outer) - len(inner), outer_length + gre_length)
+        self.assertEqual(scapy.compat.raw(inner), scapy.compat.raw(expected_inner))
+
+        flags = tunnel.t_flags
+        e = VppEnum.vl_api_tunnel_encap_decap_flags_t
+        expected_tc = 0
+        if flags & e.TUNNEL_API_ENCAP_DECAP_FLAG_ENCAP_COPY_DSCP:
+            expected_tc |= 5 << 2
+        if flags & e.TUNNEL_API_ENCAP_DECAP_FLAG_ENCAP_COPY_ECN:
+            expected_tc |= 1
+        expected_hop = 254 if outer_type is IP else 255
+        if flags & e.TUNNEL_API_ENCAP_DECAP_FLAG_ENCAP_COPY_HOP_LIMIT:
+            expected_hop = 63
+        # The inner midchain and the outer underlay each decrement their header.
+        if outer_type is IP:
+            self.assertEqual(outer.tos, expected_tc)
+            self.assertEqual(outer.ttl, expected_hop - 1)
+            self.assertEqual(outer.len, len(outer))
+            self.assertEqual(
+                int(outer.flags),
+                2 if flags & e.TUNNEL_API_ENCAP_DECAP_FLAG_ENCAP_COPY_DF else 0,
+            )
+        else:
+            self.assertEqual(outer.tc, expected_tc)
+            self.assertEqual(outer.hlim, expected_hop - 1)
+            self.assertEqual(outer.plen, len(gre))
+            self.assertEqual(
+                outer.fl,
+                (
+                    0xABCDE
+                    if flags & e.TUNNEL_API_ENCAP_DECAP_FLAG_ENCAP_COPY_FLOW_LABEL
+                    else 0
+                ),
+            )
+        self.assert_packet_checksums_valid(outer)
+
+    def send_gre_header_copy(self, tunnel, inner_type, tunnel_dst=None):
+        if inner_type is IP:
+            inner = IP(
+                src="5.5.5.5", dst="4.4.4.4", tos=0x15, ttl=64, id=0x2233, flags="DF"
+            )
+        else:
+            inner = IPv6(src="2001::2", dst="2001::1", tc=0x15, hlim=64, fl=0xABCDE)
+        ingress = self.pg0 if inner_type is IP else self.pg2
+        egress = self.pg0 if ":" not in tunnel.t_src else self.pg2
+        tunnel_dst = tunnel.t_dst if tunnel_dst is None else tunnel_dst
+        for count in (1, 65):
+            with self.subTest(count=count):
+                packets = [
+                    Ether(src=ingress.remote_mac, dst=ingress.local_mac)
+                    / inner
+                    / UDP(sport=1234, dport=4321)
+                    / Raw(b"gre-header-copy" + sequence.to_bytes(2, "big"))
+                    for sequence in range(count)
+                ]
+                capture = self.send_and_expect(ingress, packets, egress)
+                self.assertEqual(len(capture), count)
+                for sent, received in zip(packets, capture):
+                    expected_inner = inner_type(scapy.compat.raw(sent[inner_type]))
+                    if inner_type is IP:
+                        expected_inner.ttl -= 1
+                        del expected_inner.chksum
+                    else:
+                        expected_inner.hlim -= 1
+                    self.verify_gre_header_copy(
+                        received, expected_inner, tunnel, tunnel_dst
+                    )
+
+    def gre_header_copy(self, inner_type, outer_type):
+        e = VppEnum.vl_api_tunnel_encap_decap_flags_t
+        copy_flags = (
+            e.TUNNEL_API_ENCAP_DECAP_FLAG_ENCAP_COPY_DSCP,
+            e.TUNNEL_API_ENCAP_DECAP_FLAG_ENCAP_COPY_ECN,
+            e.TUNNEL_API_ENCAP_DECAP_FLAG_ENCAP_COPY_HOP_LIMIT,
+        )
+        combined = copy_flags[0] | copy_flags[1] | copy_flags[2]
+        if inner_type is IP and outer_type is IP:
+            combined |= e.TUNNEL_API_ENCAP_DECAP_FLAG_ENCAP_COPY_DF
+        if inner_type is IPv6 and outer_type is IPv6:
+            combined |= e.TUNNEL_API_ENCAP_DECAP_FLAG_ENCAP_COPY_FLOW_LABEL
+        underlay = self.pg0 if outer_type is IP else self.pg2
+        tunnel_src = underlay.local_ip4 if outer_type is IP else underlay.local_ip6
+        tunnel_dst = underlay.remote_ip4 if outer_type is IP else underlay.remote_ip6
+        for key in (0, 0x0FFF0304):
+            for flags in (0, *copy_flags, combined):
+                with self.subTest(key=key, flags=flags):
+                    tunnel = VppGreInterface(
+                        self, tunnel_src, tunnel_dst, flags=flags, gre_key=key
+                    )
+                    tunnel.add_vpp_config()
+                    tunnel.admin_up()
+                    if inner_type is IP:
+                        tunnel.config_ip4()
+                        destination, prefix, next_hop = "4.4.4.4", 32, "0.0.0.0"
+                    else:
+                        tunnel.config_ip6()
+                        destination, prefix, next_hop = "2001::1", 128, "::"
+                    route = VppIpRoute(
+                        self,
+                        destination,
+                        prefix,
+                        [VppRoutePath(next_hop, tunnel.sw_if_index)],
+                    )
+                    route.add_vpp_config()
+                    self.send_gre_header_copy(tunnel, inner_type)
+                    route.remove_vpp_config()
+                    tunnel.remove_vpp_config()
+
+    def test_gre_header_copy_4o4(self):
+        """GRE IPv4-in-IPv4 header copying with and without a key"""
+        self.gre_header_copy(IP, IP)
+
+    def test_gre_header_copy_6o4(self):
+        """GRE IPv6-in-IPv4 header copying with and without a key"""
+        self.gre_header_copy(IPv6, IP)
+
+    def test_gre_header_copy_4o6(self):
+        """GRE IPv4-in-IPv6 header copying with and without a key"""
+        self.gre_header_copy(IP, IPv6)
+
+    def test_gre_header_copy_6o6(self):
+        """GRE IPv6-in-IPv6 header copying with and without a key"""
+        self.gre_header_copy(IPv6, IPv6)
+
+    def test_mgre_header_copy_with_key(self):
+        """Keyed mGRE header copying through a completed TEIB adjacency"""
+        e = VppEnum.vl_api_tunnel_encap_decap_flags_t
+        tunnel = VppGreInterface(
+            self,
+            self.pg0.local_ip4,
+            "0.0.0.0",
+            mode=VppEnum.vl_api_tunnel_mode_t.TUNNEL_API_MODE_MP,
+            gre_key=0x0FFF0304,
+            flags=(
+                e.TUNNEL_API_ENCAP_DECAP_FLAG_ENCAP_COPY_DSCP
+                | e.TUNNEL_API_ENCAP_DECAP_FLAG_ENCAP_COPY_ECN
+                | e.TUNNEL_API_ENCAP_DECAP_FLAG_ENCAP_COPY_HOP_LIMIT
+                | e.TUNNEL_API_ENCAP_DECAP_FLAG_ENCAP_COPY_DF
+            ),
+        )
+        tunnel.add_vpp_config()
+        tunnel.admin_up()
+        tunnel.config_ip4()
+        teib = VppTeib(self, tunnel, tunnel.remote_ip4, self.pg0.remote_ip4)
+        teib.add_vpp_config()
+        route = VppIpRoute(
+            self, "4.4.4.4", 32, [VppRoutePath(tunnel.remote_ip4, tunnel.sw_if_index)]
+        )
+        route.add_vpp_config()
+        self.send_gre_header_copy(tunnel, IP, self.pg0.remote_ip4)
+        route.remove_vpp_config()
+        teib.remove_vpp_config()
+        tunnel.remove_vpp_config()
+
     def test_non_erspan_session_id_is_rejected(self):
         tunnel_type = VppEnum.vl_api_gre_tunnel_type_t.GRE_API_TUNNEL_TYPE_L3
         tunnel_mode = VppEnum.vl_api_tunnel_mode_t.TUNNEL_API_MODE_P2P
