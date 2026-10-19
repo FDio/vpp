@@ -77,7 +77,78 @@ There is no root `package.json`, `Cargo.toml`, or `pyproject.toml`. The main bui
 is C with GNU extensions; C++ also appears in API clients and some components.
 Python, shell, and Go support tooling, tests, and documentation.
 
-## Build and Run
+## Validation Policy
+
+The pipeline validates; a session on this tree edits. Work here produces a
+committed, reviewable diff. Compiling the tree, installing its dependencies,
+running its test suites, and building its packages happen in the pull-request
+pipeline once the branch is pushed, and a pipeline run is the evidence for any
+statement that a change compiles or passes a suite.
+
+Work expected inside a session, none of which compiles C:
+
+- Read source, `MAINTAINERS`, `INFO.yaml`, `docs/`, and `.github/workflows/`.
+- Edit source and inspect the result with `git diff`, `git diff --stat`, and
+  `git show`.
+- Run over your own work the checks that need no compiler: `extras/scripts/
+  checkstyle.sh` (formatting, trailing whitespace, SPDX header, INDENT-ON/OFF
+  over a commit range), `extras/scripts/check_commit_msg.sh`,
+  `extras/scripts/fts.py --validate --all`,
+  `extras/scripts/crcchecker.py --check-patchset` on a clean tree, which compares
+  the latest commit against its parent, and a Python syntax parse such as
+  `python3 -c 'import ast,sys; ast.parse(open(f).read())' <file>`.
+- Read the CI configuration to predict which jobs and suites a change triggers.
+
+Steps that belong to the pipeline, and so are left out of a session:
+
+- Compilation of any kind: `make build`, `make build-release`, `make compdb`,
+  `ninja -C build-root/...`, `./configure`, and single-file compiler runs such as
+  `-fsyntax-only`.
+- Dependency installation and environment setup: `make install-dep`,
+  `make install-ext-deps`, `make install-opt-deps`, `make test-dep`, and creating
+  `build-root/test/venv`.
+- Test execution: `make test*` and `make retest*` for the Python functional
+  harness, `make -C test/hs-test ...`, `extras/kube-test` targets, the coverage
+  targets, and the built `vpp` binary.
+- Packaging and rendering: `make pkg-*`, `make dist`, `make verify`,
+  `make pkg-verify`, `make docs`, and `make docs-spell`.
+
+Where a check exists both as a static script and as a pipeline job, run the static
+script when its tool is already installed — the C style check needs the matching
+`clang-format-19` and a `clang-format-diff` helper, and `fts.py` needs PyYAML — and
+leave the job to the pipeline otherwise. Installing a missing tool is itself a
+pipeline step.
+
+State a change as building or as passing a suite only after the pipeline job that
+covers it reports success; until then describe it as unverified.
+
+### What the pipeline runs
+
+`.github/workflows/pr-verify.yml` runs on pull requests to `master`, on
+GitHub-hosted Ubuntu runners inside Debian Trixie containers, with Bash as the
+container shell, and has two jobs:
+
+- `style` installs the checkstyle dependencies and runs `make checkfeaturelist`,
+  `make checkstyle`, `make checkstyle-api`, `make checkstyle-python`, and
+  `extras/scripts/check_commit_msg.sh` on every non-merge commit of the pull
+  request. It sets `CLANG_FORMAT_VER=19`, matching the value the root Makefile
+  selects for Debian 13. `checkstyle-api` runs before the Python check because
+  `crcchecker.py` refuses to run against a dirty working tree.
+- `build-test` installs the build dependencies, builds debug VPP with ccache, then
+  runs `make TEST_JOBS=auto RETRIES=2 TEST="<suite>" test-debug` for up to three
+  suites derived from the changed paths, falling back to `ip4` when no suite
+  derives. The `vpp-docker-runtime-setup` action remounts `/dev/shm` and sets
+  `LOG_DIR=build-root/test-logs`.
+
+Outside PR verification, and therefore run only in a packaging or maintainer
+environment: Go formatting, documentation spelling and rendering, release builds,
+coverage, host-stack and Kubernetes suites, and package builds.
+
+## Build Reference
+
+The commands and paths below describe what the pipeline does and how the tree is
+laid out. They are reference for editing build files and CMake declarations, not a
+procedure to run locally.
 
 Run commands from the repository root unless a command explicitly uses `-C`.
 `make` or `make help` lists supported targets. The build requires Bash and uses
@@ -87,6 +158,8 @@ compilers. The root Makefile prefers Clang when `CC` is the default `cc`.
 Configured build types add `-Werror -Wall`; release uses `-O3`, debug uses `-O0`
 and `CLIB_DEBUG`. Full VPP source builds are configured for Linux and FreeBSD;
 the Darwin CMake path builds `vppinfra` only.
+
+Pipeline commands:
 
 ```bash
 make install-dep              # Installs OS packages with sudo; sets Git commit template
@@ -99,32 +172,39 @@ make compdb                   # Generate root compile_commands.json for tooling
 
 Debug outputs use `build-root/build-vpp_debug-native/vpp` and
 `build-root/install-vpp_debug-native/vpp`; release outputs use the corresponding
-`vpp-native` paths. Existing configured trees support focused incremental builds:
+`vpp-native` paths. A configured tree supports a focused incremental build through a
+single Ninja target, which a maintainer uses instead of rebuilding the whole tree:
 
 ```bash
 ninja -C build-root/build-vpp_debug-native/vpp gre_plugin
+```
+
+Run/debug targets execute the built binary; they use `sudo -E` by default and
+belong to a maintainer with a built image, not to a session on this tree. With no
+startup file, the root Makefile supplies an interactive minimal configuration and
+defaults DPDK to `no-pci`. Runtime configuration can enable hardware access and
+allocate shared memory or hugepages; inspect the reference startup configuration
+before changing host networking. `STARTUP_DIR`, `DISABLED_PLUGINS`, `DPDK_CONFIG`,
+`PLATFORM`, and `V=1` are supported Make controls.
+
+```bash
 make run STARTUP_CONF=/absolute/path/startup.conf
 make run-release STARTUP_CONF=/absolute/path/startup.conf
 make debug STARTUP_CONF=/absolute/path/startup.conf
 ```
 
-Run/debug Make targets use `sudo -E` by default. With no startup file, the root
-Makefile supplies an interactive minimal configuration and defaults DPDK to
-`no-pci`. Runtime configuration can enable hardware access and allocate shared
-memory or hugepages; inspect the reference startup configuration before changing
-host networking. `STARTUP_DIR`, `DISABLED_PLUGINS`, `DPDK_CONFIG`, `PLATFORM`, and
-`V=1` are supported Make controls.
-
 Pass additional CMake settings using `VPP_EXTRA_CMAKE_ARGS`. For example,
 `-DVPP_ENABLE_SANITIZE_ADDR=ON` enables AddressSanitizer. Plugin build selection
 uses `VPP_PLUGINS` or `VPP_EXCLUDED_PLUGINS`; runtime disabling uses the startup
-`plugins` stanza or `DISABLED_PLUGINS`.
+`plugins` stanza or `DISABLED_PLUGINS`. The `build-test` job passes
+`-DCMAKE_C_COMPILER_LAUNCHER=ccache` and `-DCMAKE_CXX_COMPILER_LAUNCHER=ccache`
+through that variable and builds with ccache.
 
 `./configure` is an experimental standalone CMake/Ninja driver for out-of-tree,
-minimal, and cross builds. Read its source/help before using it; its header asks
-contributors to consult the maintainer before changing it. Its `--wipe` option
-executes `git clean -fdx` with only `startup.*` excluded. Use existing incremental
-build trees for normal edits; wipe/rebuild targets remove build and test state.
+minimal, and cross builds. Read its source/help before changing it; its header asks
+contributors to consult the maintainer. Its `--wipe` option executes
+`git clean -fdx` with only `startup.*` excluded. Build trees are cache and output,
+never a source of truth; wipe and rebuild targets remove build and test state.
 
 ## Component Development
 
@@ -150,10 +230,17 @@ component sources and `MULTIARCH_SOURCES`.
 For binary API changes, read
 `docs/interfacing/binapi/vpp_api_language.rst` and the neighboring `.api` files.
 Edit API definitions and generators rather than generated headers. Semantic
-versions and message CRCs are compatibility contracts; `make checkstyle-api`
-checks incompatible changes. `make json-api-files`, `make json-api-files-debug`,
-and `make go-api-files` provide generation entry points. Keep feature metadata
-consistent with actual capabilities and validate it with `make checkfeaturelist`.
+versions and message CRCs are compatibility contracts, and the `style` job runs
+`make checkstyle-api` over the change. The same check runs in a session as
+`extras/scripts/crcchecker.py --check-patchset`, which reads the `.api` files
+without compiling and compares the latest commit against its parent, so commit
+before running it and keep the tree clean. Keep feature metadata consistent with
+actual capabilities and validate it with `extras/scripts/fts.py --validate --all`.
+
+API JSON and Go binding regeneration writes into the build-root install tree, so it
+runs in the pipeline rather than a session: `make json-api-files`,
+`make json-api-files-debug`, and `make go-api-files`. Change the inputs those
+generators read, and leave the generated trees to the pipeline.
 
 ## Style and Documentation
 
@@ -161,30 +248,39 @@ consistent with actual capabilities and validate it with `make checkfeaturelist`
   continuation indent, and unsorted includes. The minimum formatter configuration
   version is 11; `CLANG_FORMAT_VER` is selected by the root Makefile for the OS
   (19 for Debian 13). Use the configured formatter, not an arbitrary local major.
-- Add SPDX license identifiers to new source/build files. The style script also
-  rejects trailing whitespace and added legacy Emacs indentation-control markers.
-- `make checkstyle` includes feature validation and invokes
-  `extras/scripts/checkstyle.sh`; the default comparison is the latest commit,
-  with `CHECKSTYLE_COMMIT` available to select a different comparison. Inspect
-  the script when checking uncommitted work so the intended diff is covered.
-- Python uses Black with target `py39`: `make checkstyle-python` and
-  `make fixstyle-python`. These operate through the test virtual environment.
-- Go uses each module's Makefile formatter target. `make checkstyle-go` checks
-  both modules; host-stack tests currently use goimports v0.39.0 and kube-test
-  uses v0.35.0. Follow `go.mod` for each module's language/toolchain requirements.
+- Add SPDX license identifiers to new source/build files. The style checks also
+  reject trailing whitespace and added legacy Emacs indentation-control markers.
+- Check your own diff before committing: `extras/scripts/checkstyle.sh` reports the
+  formatting, whitespace, and SPDX problems the `style` job would report, and
+  honors `CHECKSTYLE_COMMIT`, which defaults to the latest commit.
+- Python formatting is Black with target `py39`, checked in the `style` job by
+  `make checkstyle-python`, which operates through the test virtual environment and
+  has no local equivalent without dependency installation.
+- Go uses each module's Makefile formatter target; `make checkstyle-go` checks both
+  modules but is not part of PR verification. Host-stack tests currently use
+  goimports v0.39.0 and kube-test uses v0.35.0. Follow `go.mod` for each module's
+  language/toolchain requirements.
 - Use a lowercase imperative commit subject `<feature-id>: <subject>` with a
-  maximum of 50 characters, and a body explaining why with a `Type:` field.
-  Select the identifier from `MAINTAINERS`; consult `.git_commit_template.txt`
-  and run `make checkstyle-commit` for commit validation.
+  maximum of 50 characters, and a body explaining why with a `Type:` field. Select
+  the identifier from `MAINTAINERS` (`I:` lines) and the type from
+  `feature fix refactor improvement style docs test make ci`. Consult
+  `.git_commit_template.txt` and run `extras/scripts/check_commit_msg.sh`, which is
+  the same script the `style` job runs.
 
 Documentation is reStructuredText and Markdown, including component-local files
 linked into `docs`. When adding component documentation, inspect
 `extras/scripts/check_documentation.sh` and `docs/docsignore` for inclusion rules.
-`make docs` builds HTML in `build-root/docs/html`; `make docs-spell` checks
-spelling. The Sphinx build uses warnings-as-errors. Update affected documentation
-and feature metadata when behavior changes.
+The Sphinx build (`make docs`, HTML under `build-root/docs/html`, warnings as
+errors) and the spelling check (`make docs-spell`) need the documentation
+toolchain, and PR verification does not run either, so keep documentation edits
+consistent with the sources they describe and with neighboring documents.
 
-## Testing and Verification
+## Test Suites
+
+The suites described here run in the pipeline. The map exists so that a source
+change comes with the matching suite update: the `build-test` job derives its
+filter from changed paths, so a plugin or `vnet` change is exercised only where an
+exact `test/test_<name>.py` module exists for the changed directory.
 
 ### Python Functional Tests
 
@@ -193,34 +289,39 @@ and feature metadata when behavior changes.
 `test/vpp_*.py` contains API-backed object helpers. Extend the relevant existing
 feature suite and preserve plugin exclusion handling.
 
+The `build-test` job invokes the harness with a filter derived from the changed
+paths:
+
 ```bash
-make TEST=gre test-debug                    # Builds and tests the debug image
-make TEST=gre test                          # Builds and tests the release image
-make TEST=gre retest-debug                  # Uses existing debug build
-make TEST='bfd.BFDAPITestCase.test_add_bfd' test-debug
-make TEST_JOBS=auto test-debug
-make test-all                              # Includes extended tests
-make TEST=gre test-list                     # Lists selection; may build/setup dependencies
-make test-help                             # All filters and environment controls
+make TEST_JOBS=auto RETRIES=2 TEST='bfd.BFDAPITestCase.test_add_bfd' test-debug
 ```
 
 Simple filters select exact `test_<name>.py` modules; advanced filters use
 `file.class.method` with shell-style wildcards, and comma-separated filters are
-supported. Confirm selection before interpreting an empty run as success.
+supported. The `build-test` job derives up to three suite names from the changed
+paths: `src/plugins/<pkg>/<sub>/...` tries `<sub>` then `<pkg>`, `src/vnet/<name>/...`
+uses `<name>`, and a name counts only when `test/test_<name>.py` exists; changes
+under `src/vppinfra`, `src/svm`, and `src/vlib` select no suite and fall back to
+`ip4`.
 
-The harness manages `build-root/test/venv`, preferring `uv` when available and
-otherwise using pip/pip-tools. It installs the API binding editable and applies
-`test/patches/scapy-*` patches. Dependency inputs and the hash-pinned lockfile
-must be maintained together; `make test-refresh-deps` regenerates dependencies.
-
-Useful controls include `TEST_JOBS`, `MAX_VPP_CPUS`, `VPP_WORKER_COUNT`,
-`USE_SMT`, `TIMEOUT`, `RETRIES`, `RND_SEED`, `SKIP_TESTS`, `DEBUG`, and `VARIANT`.
-The harness needs adequate CPUs and shared memory. Tests leave temporary logs,
-packet captures, and failure artifacts under `/tmp/vpp-unittest-*` and
-`/tmp/vpp-failed-unittests/`. Test setup/reset targets remove prior harness state;
-retain needed failure evidence before another run.
+Harness controls such as `TEST_JOBS`, `MAX_VPP_CPUS`, `VPP_WORKER_COUNT`, `USE_SMT`,
+`TIMEOUT`, `RETRIES`, `RND_SEED`, `SKIP_TESTS`, `DEBUG`, and `VARIANT` exist for the
+pipeline and for a maintainer running the harness directly; a session reading or
+editing the suites has no use for them. The harness needs adequate CPUs and shared
+memory, manages `build-root/test/venv` itself, installs the API binding editable,
+and applies `test/patches/scapy-*` patches; dependency inputs and the hash-pinned
+lockfile must be maintained together. Test logs, packet captures, and failure
+artifacts land in `build-root/test-logs` and the job output.
 
 ### Host-Stack, Kubernetes, and C Tests
+
+Host-stack tests (`test/hs-test`) use Ginkgo/Gomega, Docker containers, and network
+namespaces, and require privileged container capabilities, Docker access, and
+suitable `kernel.core_pattern` configuration. Read `test/hs-test/README.rst` before
+changing them. `RUN_ID` isolates container names and cleanup; `TIMEOUT` is in
+minutes there, unlike the Python harness's seconds; `MW_PARALLEL=true` requires
+`PARALLEL=auto`. Generated state is under `/tmp/hst` and the suite's `summary`
+directory. Maintainer commands, for reference:
 
 ```bash
 make -C test/hs-test build
@@ -230,46 +331,40 @@ make -C test/hs-test RUN_ID=my-run PARALLEL=auto test
 make -C test/hs-test RUN_ID=my-run cleanup-hst
 ```
 
-Host-stack tests use Ginkgo/Gomega, Docker containers, and network namespaces.
-They require privileged container capabilities, Docker access, and suitable
-`kernel.core_pattern` configuration. Read `test/hs-test/README.rst` before
-running them. `RUN_ID` isolates container names and cleanup; `TIMEOUT` here is in
-minutes, unlike the Python harness's seconds. `MW_PARALLEL=true` requires
-`PARALLEL=auto`. Logs and generated state are under `/tmp/hst` and the suite's
-`summary` directory.
-
-Kubernetes integration lives separately in `extras/kube-test`; consult its
-Makefile and documentation for `test-kind`, `test-kind-debug`, and `test-bm` and
-required cluster setup. These commands can change containers, pods, and namespaces.
+Kubernetes integration lives separately in `extras/kube-test`; consult its Makefile
+and documentation for `test-kind`, `test-kind-debug`, and `test-bm` and the required
+cluster setup. These commands change containers, pods, and namespaces, and they run
+in a maintainer environment rather than a session.
 
 C/component tests include `src/vppinfra/test`, API client tests, and plugin test
-libraries. Inspect the owning `CMakeLists.txt` for test selection and options such
-as `VPP_BUILD_VPPINFRA_TESTS`. The API compiler has
-`src/tools/vppapigen/test_vppapigen.py`.
+libraries; they need a compiled tree, so the pipeline or a maintainer runs them.
+Inspect the owning `CMakeLists.txt` for test selection and options such as
+`VPP_BUILD_VPPINFRA_TESTS`. The API compiler has
+`src/tools/vppapigen/test_vppapigen.py`, which runs under the test environment.
 
-Coverage targets include `make test-cov`, `make test-cov-hs`, and
-`make test-cov-both`; merged HTML is under
-`build-root/test-coverage-merged/html`. Coverage uses GCC/gcov and lcov.
-`make verify` performs package verification first; its subsequent API-generator
-and functional-test phase is OS-gated by `MAKE_VERIFY_GATE_OS`, defaulting to
-Ubuntu 22.04. A successful invocation on another OS does not prove those tests ran.
+### Coverage and Package Verification
 
-### CI Gates
+Coverage targets (`make test-cov`, `make test-cov-hs`, `make test-cov-both`) need a
+GCC/gcov build and lcov; merged HTML is under
+`build-root/test-coverage-merged/html`. `make verify` performs package verification
+first, and its subsequent API-generator and functional-test phase is OS-gated by
+`MAKE_VERIFY_GATE_OS`, defaulting to Ubuntu 22.04; a successful invocation on
+another OS does not prove those tests ran. Both are pipeline or maintainer
+commands.
 
-`.github/workflows/pr-verify.yml` runs on pull requests to `master`, on
-GitHub-hosted Ubuntu runners inside Debian Trixie containers. The style job checks
-feature metadata, C style, API compatibility, Python style, and author commit
-messages. The build job builds debug VPP with ccache and runs focused Python
-suites inferred from changed paths, falling back to `ip4`. It uses the local
-`vpp-docker-runtime-setup` action and provisions shared memory for the harness.
-The jobs explicitly use Bash for container scripts.
-
-Run focused tests and relevant style checks for the changed component. API
-compatibility checks require a clean tracked worktree. Root `make checkstyle-all`
-combines commit, C, Python, spelling, and Go checks; API checking is a separate
-target. Record the commands actually executed and any skipped or blocked checks.
+Coverage, release builds, documentation, Go style, and the host-stack and Kubernetes
+suites are not PR gates; when you rely on one of them, say that it did not run.
 
 ## Packaging and Deployment
+
+Packages are built by `.github/workflows/build-deb-trixie.yml`, which builds Debian
+13 packages on pushes to `master` and on manual dispatch, uploads
+`build-root/*.deb`, and can publish a prerelease on manual request. The workflow
+checks out the triggering commit and supplies a timestamp/commit-count/hash version
+when no VPP release tag is reachable; preserve package version ordering when
+changing that logic so package managers recognize new builds.
+
+Maintainer package targets, for reference:
 
 ```bash
 make pkg-deb                  # Release Debian packages in build-root
@@ -282,14 +377,7 @@ make dist                     # Source archive under build-root
 
 Packaging rules are in `src/pkg`, `extras/deb`, `extras/rpm`, and `extras/snap`.
 `make pkg-verify` also builds the sample plugin and libmemif and wipes build
-products; it is broader than an incremental validation command.
-
-`.github/workflows/build-deb-trixie.yml` builds Debian 13 packages on pushes to
-`master` and manual dispatch. It uploads `build-root/*.deb` and can publish a
-prerelease on manual request. The workflow checks out the triggering commit and
-supplies a timestamp/commit-count/hash version when no VPP release tag is
-reachable. Preserve package version ordering when changing this logic so package
-managers recognize new builds.
+products; it is broader than any incremental validation.
 
 The runtime configuration reference is `src/vpp/conf/startup.conf`; packaged
 installations use `/etc/vpp/startup.conf`. Consult packaging files and
