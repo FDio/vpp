@@ -213,16 +213,17 @@ jobs:
           key: ccache-debug-debian13-${{ runner.arch }}-${{ github.ref_name }}-${{ github.sha }}
 
       # Turn the changed paths into a focused TEST filter. Every emitted name
-      # must have an exact test_<name>.py module, because the runner resolves a
-      # bare filter to that file name and matches it literally: a name with no
-      # such module selects no test and fails the job instead of the suite
-      # falling back. For src/plugins/<pkg>/<sub>/... the subdirectory is tried
-      # first, so src/plugins/nat/nat64/nat64_db.c selects nat64 (test_nat64.py)
-      # rather than the package name nat, which has no module of its own and
-      # would match nothing. src/vnet/<name> selects <name> only on an exact
-      # module too, because a prefix match on a directory such as ip would pull
-      # in every ip4/ip6/ipip/ipsec suite. Changes under src/vppinfra, src/svm
-      # and src/vlib select nothing here and use the fallback smoke suite.
+      # must have an exact test_<name>.py module under test/ or test/asf/,
+      # because the runner resolves a bare filter to that file name and matches
+      # it literally: a name with no such module selects no test and fails the
+      # job instead of the suite falling back. For src/plugins/<pkg>/<sub>/...
+      # the subdirectory is tried first, so src/plugins/nat/nat64/nat64_db.c
+      # selects nat64 (test_nat64.py) rather than the package name nat, which
+      # has no module of its own and would match nothing. src/vnet/<name>
+      # selects <name> only on an exact module too, because a prefix match on a
+      # directory such as ip would pull in every ip4/ip6/ipip/ipsec suite.
+      # Changes under src/vppinfra, src/svm and src/vlib select nothing here
+      # and use the fallback smoke suite.
       - name: Derive a test filter from the changed paths
         id: tests
         run: |
@@ -246,7 +247,8 @@ jobs:
                 sub=${sub%%/*}
                 for candidate in "${sub}" "${dir}"; do
                   candidate=${candidate//-/_}
-                  if [ -f "test/test_${candidate}.py" ]; then
+                  if [ -f "test/test_${candidate}.py" ] ||
+                     [ -f "test/asf/test_${candidate}.py" ]; then
                     name=${candidate}
                     break
                   fi
@@ -256,14 +258,31 @@ jobs:
                 name=${path#src/vnet/}
                 name=${name%%/*}
                 name=${name//-/_}
-                [ -f "test/test_${name}.py" ] || name=""
+                if [ ! -f "test/test_${name}.py" ] &&
+                   [ ! -f "test/asf/test_${name}.py" ]; then
+                  name=""
+                fi
                 ;;
             esac
             [ -n "${name}" ] || continue
             suites="${suites} ${name}"
           done
-          suites=$(echo "${suites}" | tr ' ' '\n' | sed '/^$/d' |
-                   sort -u | head -n 3 | tr '\n' ' ')
+          suites=$(echo "${suites}" | tr ' ' '\n' | sed '/^$/d' | sort -u)
+          # Prioritize source-derived suites whose exact test module also changed.
+          # Keep alphabetical order within each group and select at most three.
+          prioritized=""
+          remaining=""
+          for suite in ${suites}; do
+            case $'\n'"${changed}"$'\n' in
+              *$'\n'"test/test_${suite}.py"$'\n'*|\
+              *$'\n'"test/asf/test_${suite}.py"$'\n'*)
+                prioritized="${prioritized} ${suite}"
+                ;;
+              *) remaining="${remaining} ${suite}" ;;
+            esac
+          done
+          suites=$(echo "${prioritized} ${remaining}" | tr ' ' '\n' |
+                   sed '/^$/d' | head -n 3 | tr '\n' ' ')
           if [ -z "${suites}" ]; then
             echo "No test derives from the changed paths; running the ip4 smoke suite"
             suites="ip4"
