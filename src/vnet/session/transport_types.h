@@ -441,6 +441,8 @@ typedef struct transport_endpt_ext_cfgs_
     .len = 0, .tail_offset = 0, .data = 0,                                    \
   }
 
+/* TLS_SERVER_NAME is get-only and returns a caller-owned vector without a
+ * trailing NUL. A missing SNI hostname is returned as a NULL vector. */
 #define foreach_transport_attr_fields                                                              \
   _ (u64, next_output_node, NEXT_OUTPUT_NODE)                                                      \
   _ (u16, mss, MSS)                                                                                \
@@ -451,7 +453,8 @@ typedef struct transport_endpt_ext_cfgs_
   _ (tls_alpn_proto_t, tls_alpn, TLS_ALPN)                                                         \
   _ (tls_profile_info_t, tls_profile_info, TLS_PROFILE_INFO)                                       \
   _ (u64, next_transport, NEXT_TRANSPORT)                                                          \
-  _ (u64, app_proto_err_code, APP_PROTO_ERR_CODE)
+  _ (u64, app_proto_err_code, APP_PROTO_ERR_CODE)                                                  \
+  _ (u8 *, tls_server_name, TLS_SERVER_NAME)
 
 typedef enum transport_endpt_attr_type_
 {

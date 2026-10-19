@@ -350,6 +350,24 @@ get_stream_session_and_ctx_from_stream (quicly_stream_t *stream,
 /* Quicly callbacks */
 
 static void
+quic_quicly_stream_shutdown_tx (quic_ctx_t *ctx, session_t *stream_session)
+{
+  quicly_stream_t *stream = ctx->stream;
+  int rv;
+
+  /* quicly ignore STOP_SENDING once final_size is set, keep send side open
+   * until all queued data is acknowledged, so peer can cancel blocked stream */
+  if (svm_fifo_max_dequeue (stream_session->tx_fifo))
+    return;
+
+  quicly_sendstate_shutdown (&stream->sendstate, ctx->bytes_written);
+  rv = quicly_stream_sync_sendbuf (stream, 1);
+  ASSERT (!rv);
+  quic_quicly_reschedule_ctx (
+    quic_quicly_get_quic_ctx (ctx->quic_connection_ctx_id, ctx->c_thread_index));
+}
+
+static void
 quic_quicly_on_stream_destroy (quicly_stream_t *stream, quicly_error_t err)
 {
   quic_stream_data_t *stream_data = (quic_stream_data_t *) stream->data;
@@ -433,6 +451,8 @@ quic_quicly_fifo_egress_shift (quicly_stream_t *stream, size_t delta)
 	    quic_quicly_reschedule_ctx (quic_quicly_get_quic_ctx (
 	      sctx->quic_connection_ctx_id, sctx->c_thread_index));
 	  }
+      if ((sctx->flags & QUIC_F_APP_CLOSED_TX) && quicly_sendstate_is_open (&stream->sendstate))
+	quic_quicly_stream_shutdown_tx (sctx, stream_session);
     }
 }
 
@@ -1092,7 +1112,6 @@ quic_quicly_get_quic_ctx_if_valid (u32 ctx_index,
 static void
 quic_quicly_on_app_closed (u32 ctx_index, clib_thread_index_t thread_index)
 {
-  int rv;
   quic_ctx_t *ctx =
     quic_quicly_get_quic_ctx_if_valid (ctx_index, thread_index);
   if (!ctx)
@@ -1132,16 +1151,10 @@ quic_quicly_on_app_closed (u32 ctx_index, clib_thread_index_t thread_index)
 	  QUIC_DBG (2, "send side already closed");
 	  return;
 	}
-      QUIC_DBG (2, "App closed stream, ctx_index %u thread_index %u",
-		ctx->c_c_index, ctx->c_thread_index);
-      quicly_sendstate_shutdown (
-	&stream->sendstate,
-	ctx->bytes_written + svm_fifo_max_dequeue (stream_session->tx_fifo));
+      QUIC_DBG (2, "App closed stream, ctx_index %u thread_index %u", ctx->c_c_index,
+		ctx->c_thread_index);
       ctx->flags |= QUIC_F_APP_CLOSED_TX;
-      rv = quicly_stream_sync_sendbuf (stream, 1);
-      ASSERT (!rv);
-      quic_quicly_reschedule_ctx (quic_quicly_get_quic_ctx (
-	ctx->quic_connection_ctx_id, ctx->c_thread_index));
+      quic_quicly_stream_shutdown_tx (ctx, stream_session);
       return;
     }
   else
@@ -1216,15 +1229,10 @@ quic_quicly_on_app_closed_tx (u32 ctx_index, clib_thread_index_t thread_index)
     }
 
   stream_session = session_get (ctx->c_s_index, ctx->c_thread_index);
-  QUIC_DBG (2, "App half-closing session 0x%lx ctx_index %u",
-	    session_handle (stream_session), ctx->c_c_index);
-  quicly_sendstate_shutdown (&stream->sendstate,
-			     ctx->bytes_written +
-			       svm_fifo_max_dequeue (stream_session->tx_fifo));
+  QUIC_DBG (2, "App half-closing session 0x%lx ctx_index %u", session_handle (stream_session),
+	    ctx->c_c_index);
   ctx->flags |= QUIC_F_APP_CLOSED_TX;
-  quicly_stream_sync_sendbuf (stream, 1);
-  quic_quicly_reschedule_ctx (quic_quicly_get_quic_ctx (
-    ctx->quic_connection_ctx_id, ctx->c_thread_index));
+  quic_quicly_stream_shutdown_tx (ctx, stream_session);
 }
 
 static void
@@ -1416,14 +1424,12 @@ static int
 quic_quicly_connect (quic_ctx_t *ctx, u32 ctx_index,
 		     clib_thread_index_t thread_index, struct sockaddr *sa)
 {
-  quicly_context_t *quicly_ctx;
-  ptls_iovec_t alpn_list[4];
+  quic_quicly_crypto_ctx_t *crctx = quic_quicly_crypto_context_get (ctx->crypto_context_index);
   ptls_handshake_properties_t hs_properties = {
-    .client.negotiated_protocols.list = alpn_list
+    .client.negotiated_protocols.list = crctx->alpn_list,
+    .client.negotiated_protocols.count = crctx->alpn_count,
   };
-  const tls_alpn_proto_id_t *alpn_proto;
   quic_quicly_main_t *qqm = &quic_quicly_main;
-  int i;
   quicly_error_t ret;
   session_t *udp_session;
   size_t num_packets = 1;
@@ -1436,24 +1442,15 @@ quic_quicly_connect (quic_ctx_t *ctx, u32 ctx_index,
 
   ctx->opaque = quic_quicly_crypto_engine_is_vpp () ? QUIC_QUICLY_RX_STATE_HANDSHAKE_VPP_CRYPTO :
 						      QUIC_QUICLY_RX_STATE_HANDSHAKE;
-  /* build alpn list if app provided something */
-  for (i = 0; i < sizeof (ctx->alpn_protos) && ctx->alpn_protos[i]; i++)
-    {
-      alpn_proto = &tls_alpn_proto_ids[ctx->alpn_protos[i]];
-      alpn_list[i].base = alpn_proto->base;
-      alpn_list[i].len = (size_t) alpn_proto->len;
-      hs_properties.client.negotiated_protocols.count++;
-    }
 
   udp_session = session_get_from_handle (ctx->udp_session_handle);
   udp_session->tx_fifo->shr->min_alloc =
     clib_min (QUIC_QUICLY_TX_FIFO_MIN_ALLOC_CAP, udp_session->tx_fifo->shr->min_alloc);
 
-  quicly_ctx = quic_quicly_get_quicly_ctx_from_ctx (ctx);
-  ret =
-    quicly_connect ((quicly_conn_t **) &ctx->conn, quicly_ctx, (char *) ctx->srv_hostname, sa, NULL,
-		    &qqm->next_cid[thread_index], ptls_iovec_init (NULL, 0), &hs_properties, NULL,
-		    (void *) (((u64) ctx->c_thread_index) << 32 | (u64) ctx->c_c_index));
+  ret = quicly_connect ((quicly_conn_t **) &ctx->conn, &crctx->quicly_ctx,
+			(char *) ctx->srv_hostname, sa, NULL, &qqm->next_cid[thread_index],
+			ptls_iovec_init (NULL, 0), &hs_properties, NULL,
+			(void *) (((u64) ctx->c_thread_index) << 32 | (u64) ctx->c_c_index));
   ++qqm->next_cid[thread_index].master_id;
   ASSERT (ret == 0);
 
@@ -1520,6 +1517,8 @@ quic_quicly_format_stream_stats (u8 *s, va_list *args)
 	}
       if (quicly_stream_has_send_side (is_client, stream->stream_id))
 	{
+	  if (ctx->flags & QUIC_F_APP_CLOSED_TX)
+	    s = format (s, " app-tx-closed\n");
 	  if (!quicly_sendstate_is_open (&stream->sendstate))
 	    s = format (s, " snd-side-closed\n");
 	  s = format (s, " snd-blocked %u\n", stream->_send_aux.blocked);
