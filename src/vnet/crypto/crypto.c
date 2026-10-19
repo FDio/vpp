@@ -243,9 +243,10 @@ vnet_crypto_process_ops (vlib_main_t *vm, vnet_crypto_op_t ops[], vnet_crypto_op
 
   while (n_left)
     {
-      while (ops[first_slot].status != VNET_CRYPTO_OP_STATUS_UNPROCESSED)
-	if (++first_slot == n_ops)
-	  return rv;
+      while (first_slot < n_ops && ops[first_slot].status != VNET_CRYPTO_OP_STATUS_UNPROCESSED)
+	first_slot++;
+      if (first_slot == n_ops)
+	return rv;
       rv += vnet_crypto_process_ops_one_batch (vm, ops, queue, op_q_sz, chunks, n_ops, first_slot,
 					       &n_left, 0);
     }
