@@ -157,6 +157,8 @@ typedef struct hss_listener_
   u32 rx_buff_thresh;
   /** Timeout during which client connection will stay open */
   u32 keepalive_timeout;
+  /** UDP port advertised for HTTP/3, or zero to disable */
+  u16 h3_alt_svc_port;
   /** How long a response is considered fresh (in seconds) */
   u32 max_age;
   /** Formatted max_age: "max-age=xyz" */

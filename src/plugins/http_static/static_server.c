@@ -973,7 +973,10 @@ hss_listen (hss_listener_t *l, session_handle_t *lh)
   u8 need_crypto;
   transport_endpt_ext_cfg_t *ext_cfg;
   int rv;
-  transport_endpt_cfg_http_t http_cfg = { l->keepalive_timeout, 0 };
+  transport_endpt_cfg_http_t http_cfg = {
+    .timeout = l->keepalive_timeout,
+    .h3_alt_svc_port = l->h3_alt_svc_port,
+  };
 
   clib_memset (a, 0, sizeof (*a));
   a->app_index = hsm->app_index;
@@ -1162,6 +1165,7 @@ hss_create_command_fn (vlib_main_t *vm, unformat_input_t *input,
   clib_error_t *error = 0;
   char *uri = 0;
   u64 seg_size;
+  u32 h3_alt_svc_port;
   int rv;
 
   /* Get a line of input. */
@@ -1193,6 +1197,7 @@ hss_create_command_fn (vlib_main_t *vm, unformat_input_t *input,
   l->rx_buff_thresh = HSS_DEFAULT_RX_BUFFER_THRESH;
   l->keepalive_timeout = HSS_DEFAULT_KEEPALIVE_TIMEOUT;
   l->flags = 0;
+  l->h3_alt_svc_port = 0;
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
@@ -1238,6 +1243,16 @@ hss_create_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	l->flags |= HSS_LISTENER_F_HTTP1_ONLY;
       else if (unformat (line_input, "http3"))
 	l->flags |= HSS_LISTENER_F_HTTP3;
+      else if (unformat (line_input, "h3-alt-svc-port %u",
+                         &h3_alt_svc_port))
+  {
+    if (h3_alt_svc_port == 0 || h3_alt_svc_port > 65535)
+      {
+        error = clib_error_return (0, "h3-alt-svc-port must be between 1 and 65535");
+        break;
+      }
+	  l->h3_alt_svc_port = h3_alt_svc_port;
+  }
       /* Deprecated */
       else if (unformat (line_input, "max-body-size %U", unformat_memory_size,
 			 &l->max_req_body_size))
@@ -1251,6 +1266,9 @@ hss_create_command_fn (vlib_main_t *vm, unformat_input_t *input,
     }
 
   unformat_free (line_input);
+
+  if (error)
+    goto done;
 
   if (l->flags & HSS_LISTENER_F_HTTP1_ONLY && l->flags & HSS_LISTENER_F_HTTP3)
     {
@@ -1309,7 +1327,7 @@ done:
  * [fifo-size <nbytes>] [prealloc-fifos <nn>] [debug <nn>] [uri <uri>]
  * [www-root <path>] [url-handlers] [cache-size <nn>] [max-age <nseconds>]
  * [max-req-body-size <nn>] [rx-buff-thresh <nn>] [keepalive-timeout <nn>]
- * [ptr-thresh <nn>] [http1-only] [http3] [disable]}
+ * [ptr-thresh <nn>] [http1-only] [http3] [h3-alt-svc-port <port>] [disable]}
 ?*/
 VLIB_CLI_COMMAND (hss_create_command, static) = {
   .path = "http static server",
@@ -1317,7 +1335,7 @@ VLIB_CLI_COMMAND (hss_create_command, static) = {
 		"[prealloc-fifos <nn>] [debug <nn>] [uri <uri>] [www-root <path>]\n"
 		"[url-handlers] [cache-size <nn>] [max-age <nseconds>]\n"
 		"[max-req-body-size <nn>] [rx-buff-thresh <nn>] [keepalive-timeout <nn>]\n"
-		"[ptr-thresh <nn>] [http1-only] [http3]\n",
+		"[ptr-thresh <nn>] [http1-only] [http3] [h3-alt-svc-port <port>] [disable]\n",
   .function = hss_create_command_fn,
 };
 
@@ -1331,6 +1349,7 @@ hss_add_del_listener_command_fn (vlib_main_t *vm, unformat_input_t *input,
   hss_listener_t _l = {}, *l = &_l;
   u8 is_add = 1;
   char *uri = 0;
+  u32 h3_alt_svc_port;
 
   if (!hsm->is_init)
     return clib_error_return (0, "Static server not initialized");
@@ -1343,6 +1362,7 @@ hss_add_del_listener_command_fn (vlib_main_t *vm, unformat_input_t *input,
   l->max_req_body_size = HSS_DEFAULT_MAX_BODY_SIZE;
   l->rx_buff_thresh = HSS_DEFAULT_RX_BUFFER_THRESH;
   l->keepalive_timeout = HSS_DEFAULT_KEEPALIVE_TIMEOUT;
+  l->h3_alt_svc_port = 0;
   l->flags = 0;
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
@@ -1378,18 +1398,30 @@ hss_add_del_listener_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	l->flags |= HSS_LISTENER_F_HTTP1_ONLY;
       else if (unformat (line_input, "http3"))
 	l->flags |= HSS_LISTENER_F_HTTP3;
+      else if (unformat (line_input, "h3-alt-svc-port %u",
+                         &h3_alt_svc_port))
+  {
+    if (h3_alt_svc_port == 0 || h3_alt_svc_port > 65535)
+      {
+        error = clib_error_return (0, "h3-alt-svc-port must be between 1 and 65535");
+        break;
+      }
+	  l->h3_alt_svc_port = h3_alt_svc_port;
+  }
       /* Deprecated */
       else if (unformat (line_input, "max-body-size %U", unformat_memory_size,
 			 &l->max_req_body_size))
 	;
       else
 	{
-	  error = clib_error_return (0, "unknown input `%U'",
-				     format_unformat_error, line_input);
+	  error = clib_error_return (0, "unknown input `%U'", format_unformat_error, line_input);
 	  break;
 	}
     }
   unformat_free (line_input);
+
+  if (error)
+    goto done;
 
   if (l->flags & HSS_LISTENER_F_HTTP1_ONLY && l->flags & HSS_LISTENER_F_HTTP3)
     {
@@ -1453,14 +1485,14 @@ done:
  * @cliexcmd{http static listener [uri <uri>] [www-root <path>] [url-handlers]
  * [cache-size <nn>] [max-age <nseconds>] [max-req-body-size <nn>]
  * [rx-buff-thresh <nn>] [keepalive-timeout <nn>] [ptr-thresh <nn>]
- * [http1-only] [http3]}
+ * [http1-only] [http3] [h3-alt-svc-port <port>]}
 ?*/
 VLIB_CLI_COMMAND (hss_add_del_listener_command, static) = {
   .path = "http static listener",
   .short_help = "http static listener [add|del] [uri <uri>] [www-root <path>]\n"
 		"[url-handlers] [cache-size <nn>] [max-age <nseconds>]\n"
 		"[max-req-body-size <nn>] [rx-buff-thresh <nn>] [keepalive-timeout <nn>]\n"
-		"[ptr-thresh <nn>] [http1-only] [http3]\n",
+		"[ptr-thresh <nn>] [http1-only] [http3] [h3-alt-svc-port <port>]\n",
   .function = hss_add_del_listener_command_fn,
 };
 
@@ -1482,11 +1514,24 @@ format_hss_listener (u8 *s, va_list *args)
   hss_listener_t *l = va_arg (*args, hss_listener_t *);
   int __clib_unused verbose = va_arg (*args, int);
 
+  if (l->h3_alt_svc_port)
+  {
   s = format (
-    s, "listener %d, uri %U:%u, www-root %s, cache-size %U url-handlers %d",
+    s, "listener %d, uri %U:%u, www-root %s, cache-size %U, url-handlers %d, h3-alt-svc-port %d",
     l->l_index, format_ip46_address, &l->sep.ip, l->sep.is_ip4,
     clib_net_to_host_u16 (l->sep.port), l->www_root, format_memory_size,
-    l->cache_size, l->enable_url_handlers);
+    l->cache_size, l->enable_url_handlers,
+    l->h3_alt_svc_port);
+  }
+  else
+  {
+  s = format (
+    s, "listener %d, uri %U:%u, www-root %s, cache-size %U, url-handlers %d",
+    l->l_index, format_ip46_address, &l->sep.ip, l->sep.is_ip4,
+    clib_net_to_host_u16 (l->sep.port), l->www_root, format_memory_size,
+    l->cache_size, l->enable_url_handlers,
+    l->h3_alt_svc_port);
+  }
   return s;
 }
 

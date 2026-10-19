@@ -59,6 +59,10 @@ typedef struct transport_endpt_cfg_http
   u32 timeout; /**< HTTP session timeout in seconds */
   http_udp_tunnel_mode_t udp_tunnel_mode; /**< connect-udp mode */
   http_endpt_cfg_flags_t flags;
+  /** UDP port advertised for HTTP/3, in host byte order. A nonzero value
+   * overrides the compound TLS and QUIC listener's port. Zero uses that
+   * listener's port, or disables advertisement for other listeners. */
+  u16 h3_alt_svc_port;
 } transport_endpt_cfg_http_t;
 
 typedef struct
