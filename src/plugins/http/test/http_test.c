@@ -1217,7 +1217,7 @@ http_test_hpack (vlib_main_t *vm)
 
   vlib_cli_output (vm, "hpack_serialize_response");
 
-  hpack_response_control_data_t resp_cd;
+  hpack_response_control_data_t resp_cd = {};
   u8 *server_name;
   u8 *date;
 

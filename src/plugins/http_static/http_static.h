@@ -163,6 +163,8 @@ typedef struct hss_listener_
   u8 *max_age_formatted;
   /** Enable the use of builtinurls */
   u8 enable_url_handlers;
+  /** UDP port advertised for HTTP/3, or zero to disable */
+  u16 h3_alt_svc_port;
   /** Index in listener pool */
   u32 l_index;
   /** Listener session handle */

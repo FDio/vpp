@@ -595,3 +595,4 @@ The example below sets HTTP session timeout to 30 seconds (server application):
     /* don't forget to free extended config */
     session_endpoint_free_ext_cfgs (&a->sep_ext);
     /* ... */
+
