@@ -11,7 +11,7 @@ bool
 wg_chacha20poly1305_calc (vlib_main_t *vm, u8 *src, u32 src_len, u8 *dst, u8 *aad, u32 aad_len,
 			  u64 nonce, vnet_crypto_op_type_t type, vnet_crypto_ctx_t *ctx)
 {
-  vnet_crypto_op_t _op, *op = &_op;
+  vnet_crypto_op_t _op = { }, *op = &_op;
   u8 iv[12];
   u8 tag_[NOISE_AUTHTAG_LEN] = {};
   u8 src_[] = {};
