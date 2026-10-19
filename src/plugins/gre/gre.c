@@ -313,7 +313,8 @@ gre44_fixup (vlib_main_t *vm, const ip_adjacency_t *adj, vlib_buffer_t *b0,
    * that was applied at the midchain node */
   ip0->ip4.length =
     clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b0));
-  tunnel_encap_fixup_4o4 (flags, (ip4_header_t *) (ip0 + 1), &ip0->ip4);
+  tunnel_encap_fixup_4o4 (
+    flags, (ip4_header_t *) ((u8 *) ip0 + adj->rewrite_header.data_bytes), &ip0->ip4);
   ip0->ip4.checksum = ip4_header_checksum (&ip0->ip4);
 }
 
@@ -331,7 +332,8 @@ gre64_fixup (vlib_main_t *vm, const ip_adjacency_t *adj, vlib_buffer_t *b0,
    * that was applied at the midchain node */
   ip0->ip4.length =
     clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b0));
-  tunnel_encap_fixup_6o4 (flags, (ip6_header_t *) (ip0 + 1), &ip0->ip4);
+  tunnel_encap_fixup_6o4 (
+    flags, (ip6_header_t *) ((u8 *) ip0 + adj->rewrite_header.data_bytes), &ip0->ip4);
   ip0->ip4.checksum = ip4_header_checksum (&ip0->ip4);
 }
 
@@ -363,7 +365,8 @@ gre46_fixup (vlib_main_t *vm, const ip_adjacency_t *adj, vlib_buffer_t *b0,
    * at the midchain node */
   ip0->ip6.payload_length = clib_host_to_net_u16 (
     vlib_buffer_length_in_chain (vm, b0) - sizeof (ip0->ip6));
-  tunnel_encap_fixup_4o6 (flags, b0, (ip4_header_t *) (ip0 + 1), &ip0->ip6);
+  tunnel_encap_fixup_4o6 (
+    flags, b0, (ip4_header_t *) ((u8 *) ip0 + adj->rewrite_header.data_bytes), &ip0->ip6);
 }
 
 static void
@@ -380,7 +383,8 @@ gre66_fixup (vlib_main_t *vm, const ip_adjacency_t *adj, vlib_buffer_t *b0,
    * at the midchain node */
   ip0->ip6.payload_length = clib_host_to_net_u16 (
     vlib_buffer_length_in_chain (vm, b0) - sizeof (ip0->ip6));
-  tunnel_encap_fixup_6o6 (flags, (ip6_header_t *) (ip0 + 1), &ip0->ip6);
+  tunnel_encap_fixup_6o6 (
+    flags, (ip6_header_t *) ((u8 *) ip0 + adj->rewrite_header.data_bytes), &ip0->ip6);
 }
 
 static void
