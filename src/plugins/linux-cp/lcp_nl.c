@@ -80,6 +80,10 @@ typedef struct nl_main
   u32 sync_batch_delay_ms;
   u32 sync_attempt_delay_ms;
 
+  u64 sync_attempts;
+  u64 sync_completed;
+  u64 sync_failed;
+
 } nl_main_t;
 
 #define NL_RX_BUF_SIZE_DEF    (1 << 27) /* 128 MB */
@@ -607,6 +611,9 @@ nl_route_process (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  lcp_nl_close_socket ();
 	  lcp_nl_route_discard_msgs ();
 
+	  nm->sync_attempts++;
+	  NL_INFO ("Starting synchronization attempt %lu", nm->sync_attempts);
+
 	  /* Wait some time before next synchronization attempt. Allows to
 	   * reduce the number of failed attempts that stall the main thread by
 	   * waiting out the notification storm
@@ -708,6 +715,17 @@ nl_route_process (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  wait_time = (vec_len (nm->nl_msg_queue) != 0) ? 1e-3 : DAY_F64;
 
 	sync_later:
+	  if (nm->nl_status == NL_STATUS_NOTIF_PROC)
+	    {
+	      nm->sync_completed++;
+	      NL_INFO ("Synchronization attempt %lu completed", nm->sync_attempts);
+	    }
+	  else
+	    {
+	      nm->sync_failed++;
+	      NL_ERROR ("Synchronization attempt %lu failed", nm->sync_attempts);
+	    }
+
 	  /* Close netlink synchronization sockets */
 #define _(stype, mtype, tname, fn) lcp_nl_close_sync_socket (stype);
 	  foreach_sock_type
@@ -818,14 +836,29 @@ nl_route_read_cb (clib_file_t *f)
 static clib_error_t *
 nl_route_error_cb (clib_file_t *f)
 {
-  NL_ERROR ("Error polling netlink socket (fd %d)", f->file_descriptor);
+  int socket_err = 0;
+  socklen_t socket_err_len = sizeof (socket_err);
 
-  /* notify process node */
+  /* SO_ERROR clears the pending error; recovery is required even if the query
+   * fails or reports zero.
+   */
+  if (getsockopt (f->file_descriptor, SOL_SOCKET, SO_ERROR, &socket_err, &socket_err_len) < 0)
+    {
+      int query_err = errno;
+
+      NL_ERROR ("Error polling netlink socket (fd %d): getsockopt(SO_ERROR) "
+		"failed: %s (%d)",
+		f->file_descriptor, strerror (query_err), query_err);
+    }
+  else
+    NL_ERROR ("Error polling netlink socket (fd %d): SO_ERROR: %s (%d)", f->file_descriptor,
+	      strerror (socket_err), socket_err);
+
   vlib_process_signal_event (vlib_get_main (), nl_route_process_node.index,
 			     NL_EVENT_ERR, 0);
 
-  return clib_error_return (0, "Error polling netlink socket %d",
-			    f->file_descriptor);
+  /* The logger owns this diagnostic; do not log it again through file_main. */
+  return NULL;
 }
 
 struct nl_cache *
@@ -841,11 +874,18 @@ void
 lcp_nl_set_buffer_size (u32 buf_size)
 {
   nl_main_t *nm = &nl_main;
+  int err;
 
   nm->rx_buf_size = buf_size;
 
   if (nm->sk_route)
-    nl_socket_set_buffer_size (nm->sk_route, nm->rx_buf_size, nm->tx_buf_size);
+    {
+      /* The socket is in use, apply the new size to it right away */
+      err = nl_socket_set_buffer_size (nm->sk_route, nm->rx_buf_size, nm->tx_buf_size);
+      if (err < 0)
+	NL_ERROR ("Unable to set netlink socket buffer size to %u: %s", nm->rx_buf_size,
+		  nl_geterror (err));
+    }
 }
 
 /* Set the batch size - maximum netlink messages to process at one time */
@@ -985,9 +1025,14 @@ lcp_nl_open_socket (void)
   if (err < 0)
     goto error;
 
-  /* Set socket in nonblocking mode and increase buffer sizes */
-  nl_socket_set_nonblocking (nm->sk_route);
-  nl_socket_set_buffer_size (nm->sk_route, nm->rx_buf_size, nm->tx_buf_size);
+  /* Set socket in nonblocking mode and increase buffer sizes. A socket that
+   * cannot be put in nonblocking mode would stall the main thread on reads,
+   * so treat the failure as an error and let the caller retry
+   */
+  if ((err = nl_socket_set_nonblocking (nm->sk_route)) < 0)
+    goto error;
+  if ((err = nl_socket_set_buffer_size (nm->sk_route, nm->rx_buf_size, nm->tx_buf_size)) < 0)
+    goto error;
 
   if (nm->clib_file_index == ~0)
     {
@@ -1137,6 +1182,28 @@ lcp_nl_close_sync_socket (nl_sock_type_t sock_type)
       nm->sk_route_sync[sock_type] = NULL;
     }
 }
+
+static clib_error_t *
+lcp_nl_show_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
+{
+  nl_main_t *nm = &nl_main;
+  const char *state = nm->nl_status == NL_STATUS_SYNC ? "synchronizing" : "notification";
+
+  vlib_cli_output (vm, "State: %s", state);
+  vlib_cli_output (vm, "Socket: %d", nm->sk_route ? nl_socket_get_fd (nm->sk_route) : -1);
+  vlib_cli_output (vm, "Queued messages: %u", vec_len (nm->nl_msg_queue));
+  vlib_cli_output (vm, "Synchronization attempts: %lu", nm->sync_attempts);
+  vlib_cli_output (vm, "Synchronization completed: %lu", nm->sync_completed);
+  vlib_cli_output (vm, "Synchronization failed: %lu", nm->sync_failed);
+
+  return 0;
+}
+
+VLIB_CLI_COMMAND (lcp_nl_show_command, static) = {
+  .path = "show lcp netlink",
+  .short_help = "show lcp netlink",
+  .function = lcp_nl_show_command_fn,
+};
 
 #include <vnet/plugin/plugin.h>
 clib_error_t *
