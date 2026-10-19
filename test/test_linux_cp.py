@@ -23,15 +23,8 @@ from scapy.data import IP_PROTOS
 from util import reassemble4
 from host_interface import HostInterface
 from vpp_object import VppObject
-from vpp_papi import VPPRuntimeError
-from vpp_papi_exceptions import (
-    CliFailedCommandError,
-    CliSyntaxError,
-    UnexpectedApiReturnValueError,
-)
 from framework import VppTestCase
 from asfframework import (
-    VppDiedError,
     VppTestRunner,
     get_testcase_dirname,
 )
@@ -1571,6 +1564,182 @@ class TestLinuxCPPairManagement(TestLinuxCPNetNSBase):
                 return p
         return None
 
+    def _gre_linux_route_source_present(self, prefix):
+        output = self.vapi.cli(f"show ip fib table 0 {prefix} detail")
+        in_prefix = False
+        for line in output.splitlines():
+            fields = line.split()
+            if not fields:
+                continue
+            if not line[0].isspace():
+                in_prefix = fields[0] == prefix
+            elif (
+                in_prefix
+                and fields[0] == "lcp-rt"
+                and len(fields) > 1
+                and fields[1].startswith("refs:")
+            ):
+                return True
+        return False
+
+    def _exact_route_paths(self, prefix):
+        is_ipv6 = ip_interface(prefix).version == 6
+        routes = [
+            entry.route
+            for entry in self.vapi.ip_route_dump(0, is_ipv6)
+            if str(entry.route.prefix) == prefix
+        ]
+        self.assertLessEqual(len(routes), 1)
+        if not routes:
+            return None
+        return sorted(
+            (
+                path.type,
+                path.sw_if_index,
+                str(path.nh.address.ip6 if is_ipv6 else path.nh.address.ip4),
+            )
+            for path in routes[0].paths
+        )
+
+    def _verify_exact_route_paths(self, prefix, *expected):
+        self.poll_for(
+            f"exact paths for {prefix}",
+            lambda: self._exact_route_paths(prefix),
+            sorted(expected),
+        )
+
+    def _test_pair_route_cleanup(self, protocol, is_ipv6):
+        self.create_loopback_interfaces(3)
+        pair_a, pair_b, api_interface = self.lo_interfaces
+        prefix = "2001:db8:100::/64" if is_ipv6 else "198.18.100.0/24"
+        gateways = (
+            ("2001:db8:10::1", "2001:db8:20::1", "2001:db8:30::1")
+            if is_ipv6
+            else ("10.10.1.1", "10.20.1.1", "10.30.1.1")
+        )
+        addresses = (
+            ("2001:db8:10::2/64", "2001:db8:20::2/64", "2001:db8:30::2/64")
+            if is_ipv6
+            else ("10.10.1.2/24", "10.20.1.2/24", "10.30.1.2/24")
+        )
+        active_pairs = []
+        api_route = None
+        try:
+            for interface, host in ((pair_a, "hclean0"), (pair_b, "hclean1")):
+                self.vapi.cli(
+                    f"lcp create {interface.name} host-if {host} netns {self.ns_name}"
+                )
+                active_pairs.append(interface)
+            for interface, address in zip(self.lo_interfaces, addresses):
+                self.vapi.sw_interface_add_del_address(
+                    sw_if_index=interface.sw_if_index, prefix=address
+                )
+                interface.admin_up()
+            for host, address in zip(("hclean0", "hclean1"), addresses):
+                self.poll_for(
+                    f"{host} has {address}",
+                    lambda: _prefix_tuple(address)
+                    in get_interface_addresses(
+                        self.ns_name, host, family="inet6" if is_ipv6 else "inet"
+                    ),
+                    True,
+                )
+
+            network = ip_interface(prefix).network
+            api_route = VppIpRoute(
+                self,
+                str(network.network_address),
+                network.prefixlen,
+                [VppRoutePath(gateways[2], api_interface.sw_if_index)],
+            ).add_vpp_config()
+            paths = [
+                (FibPathType.FIB_PATH_TYPE_NORMAL, interface.sw_if_index, gateway)
+                for interface, gateway in zip(self.lo_interfaces, gateways)
+            ]
+            self._verify_exact_route_paths(prefix, paths[2])
+            subprocess.run(
+                [
+                    "ip",
+                    "-n",
+                    self.ns_name,
+                    "-6" if is_ipv6 else "-4",
+                    "route",
+                    "add",
+                    prefix,
+                    "proto",
+                    str(protocol),
+                    *NextHop(gw_ip=gateways[0], dev="hclean0").args(),
+                    *NextHop(gw_ip=gateways[1], dev="hclean1").args(),
+                ],
+                capture_output=True,
+                check=True,
+            )
+            self._verify_exact_route_paths(prefix, paths[0], paths[1])
+
+            self.vapi.cli(f"lcp delete {pair_a.name}")
+            active_pairs.remove(pair_a)
+            self.assertIsNone(self._find_lcp_pair(pair_a.sw_if_index))
+            self.assertIsNotNone(self._find_lcp_pair(pair_b.sw_if_index))
+            self._verify_exact_route_paths(prefix, paths[1])
+
+            self.vapi.cli(f"lcp delete {pair_b.name}")
+            active_pairs.remove(pair_b)
+            self.assertIsNone(self._find_lcp_pair(pair_b.sw_if_index))
+            self._verify_exact_route_paths(prefix, paths[2])
+            for interface, address in zip(self.lo_interfaces, addresses):
+                self.assertEqual(
+                    [
+                        str(entry.prefix)
+                        for entry in self.vapi.ip_address_dump(
+                            interface.sw_if_index, is_ipv6=is_ipv6
+                        )
+                    ],
+                    [address],
+                )
+            api_route.remove_vpp_config()
+            api_route = None
+            self.poll_for(
+                f"{prefix} absent after API removal",
+                lambda: self._exact_route_paths(prefix),
+                None,
+            )
+        finally:
+            for interface in active_pairs:
+                self.vapi.cli(f"lcp delete {interface.name}")
+            if api_route is not None:
+                api_route.remove_vpp_config()
+            for interface in self.lo_interfaces:
+                interface.admin_down()
+                interface.remove_vpp_config()
+
+    @unittest.skipIf(
+        "linux-cp" in config.excluded_plugins, "Exclude linux-cp plugin tests"
+    )
+    def test_pair_delete_static_routes_ipv4(self):
+        """Pair deletion preserves IPv4 static multipath and API ownership"""
+        self._test_pair_route_cleanup(4, False)
+
+    @unittest.skipIf(
+        "linux-cp" in config.excluded_plugins, "Exclude linux-cp plugin tests"
+    )
+    def test_pair_delete_dynamic_routes_ipv4(self):
+        """Pair deletion preserves IPv4 dynamic multipath and API ownership"""
+        self._test_pair_route_cleanup(186, False)
+
+    @unittest.skipIf(
+        "linux-cp" in config.excluded_plugins, "Exclude linux-cp plugin tests"
+    )
+    def test_pair_delete_static_routes_ipv6(self):
+        """Pair deletion preserves IPv6 static multipath and API ownership"""
+        self._test_pair_route_cleanup(4, True)
+
+    @unittest.skipIf(
+        "linux-cp" in config.excluded_plugins, "Exclude linux-cp plugin tests"
+    )
+    def test_pair_delete_dynamic_routes_ipv6(self):
+        """Pair deletion preserves IPv6 dynamic multipath and API ownership"""
+        self._test_pair_route_cleanup(186, True)
+
     def test_pair_create_delete_tun(self):
         """Create and delete TUN LCP pair on loopback"""
         self.create_loopback_interfaces(1)
@@ -1625,112 +1794,7 @@ class TestLinuxCPPairManagement(TestLinuxCPNetNSBase):
         go_file = os.path.join(self.tempdir, "gre_lcp_sender_go")
         inner_dst = "198.18.0.1"
 
-        # Temporary CI diagnostics; remove once the GRE FIB churn is diagnosed.
-        def record(stage, label, read):
-            try:
-                self.logger.info("[GRE-FIB] %s %s: %r", stage, label, read())
-            except UnexpectedApiReturnValueError as error:
-                self.logger.info(
-                    "[GRE-FIB] %s %s: %s retval=%r reply=%r",
-                    stage,
-                    label,
-                    "NO_SUCH_ENTRY" if error.retval == -6 else "diagnostic-error",
-                    error.retval,
-                    error.reply,
-                )
-            except (
-                CliFailedCommandError,
-                CliSyntaxError,
-                OSError,
-                subprocess.TimeoutExpired,
-                VppDiedError,
-                VPPRuntimeError,
-            ) as error:
-                self.logger.info(
-                    "[GRE-FIB] %s %s diagnostic-error: %r", stage, label, error
-                )
-
-        def snapshot(stage, detail=False):
-            if gre_created:
-                for exact in (False, True):
-                    record(
-                        stage,
-                        f"ip_route_lookup exact={exact}",
-                        lambda: self.vapi.api(
-                            self.vapi.papi.ip_route_lookup,
-                            {
-                                "table_id": 0,
-                                "exact": exact,
-                                "prefix": f"{inner_dst}/32",
-                            },
-                        ),
-                    )
-                record(
-                    stage,
-                    "ip_route_dump exact prefix",
-                    lambda: [
-                        entry
-                        for entry in self.vapi.ip_route_dump(0, False)
-                        if str(entry.route.prefix) == f"{inner_dst}/32"
-                    ],
-                )
-                record(
-                    stage,
-                    "ip_address_dump GRE",
-                    lambda: self.vapi.ip_address_dump(
-                        gre_if.sw_if_index, is_ipv6=False
-                    ),
-                )
-                record(
-                    stage,
-                    "sw_interface_dump GRE/host",
-                    lambda: [
-                        interface
-                        for interface in self.vapi.sw_interface_dump()
-                        if interface.sw_if_index == gre_if.sw_if_index
-                        or interface.interface_name == "hgre0"
-                        or interface.interface_name.startswith("tun")
-                    ],
-                )
-                commands = [
-                    f"show ip fib table 0 {inner_dst}/32 detail",
-                    "show lcp",
-                    "show lcp netlink",
-                    "show log",
-                ]
-                if detail:
-                    commands += [
-                        "show fib path-lists",
-                        "show fib paths",
-                        "show fib source",
-                        "show adj",
-                    ]
-                for command in commands:
-                    record(stage, command, lambda: self.vapi.cli(command))
-            for args in (
-                ["link", "show"],
-                ["address", "show"],
-                ["route", "show", "table", "all"],
-            ):
-                record(
-                    stage,
-                    "Linux " + " ".join(args),
-                    lambda: subprocess.run(
-                        ["ip", "-n", self.ns_name, "-details", "-json", *args],
-                        capture_output=True,
-                        text=True,
-                        timeout=2,
-                        check=False,
-                    ),
-                )
-
         try:
-            for log_class in ("linux-cp", "nl"):
-                record(
-                    "logging-setup",
-                    log_class,
-                    lambda: self.vapi.cli(f"set logging class {log_class} level debug"),
-                )
             underlay.admin_up()
             underlay.config_ip4()
             underlay.resolve_arp()
@@ -1760,7 +1824,6 @@ class TestLinuxCPPairManagement(TestLinuxCPNetNSBase):
             )
             route.add_vpp_config()
             route_created = True
-            snapshot("api-route-added-before-linux-add")
             expected_path = dict(
                 type=FibPathType.FIB_PATH_TYPE_NORMAL,
                 sw_if_index=gre_if.sw_if_index,
@@ -1775,7 +1838,16 @@ class TestLinuxCPPairManagement(TestLinuxCPNetNSBase):
             )
             add_namespace_route(self.ns_name, f"{inner_dst}/32", dev="hgre0")
             linux_route_present = True
-            snapshot("linux-route-added")
+            self.poll_for(
+                "GRE Linux route source present",
+                lambda: self._gre_linux_route_source_present(f"{inner_dst}/32"),
+                True,
+            )
+            self.verify_paths(f"{inner_dst}/32", expected_path)
+            self._verify_exact_route_paths(
+                f"{inner_dst}/32",
+                (FibPathType.FIB_PATH_TYPE_NORMAL, gre_if.sw_if_index, inner_dst),
+            )
 
             sender_script = """
 import os
@@ -1843,14 +1915,12 @@ for sequence in range(100, 130):
                 lambda: is_interface_up(self.ns_name, "hgre0"),
                 False,
             )
-            snapshot("admin-down")
             gre_if.admin_up()
             self.poll_for(
                 "hgre0 up after GRE admin_up",
                 lambda: is_interface_up(self.ns_name, "hgre0"),
                 True,
             )
-            snapshot("before-pair-delete", detail=True)
 
             self.vapi.cli(f"lcp delete {gre_if.name}")
             pair_created = False
@@ -1864,10 +1934,26 @@ for sequence in range(100, 130):
                 lambda: interface_exists(self.ns_name, "hgre0"),
                 False,
             )
-            snapshot("after-pair-delete-before-linux-delete", detail=True)
+            self.poll_for(
+                "GRE Linux route source removed after pair delete",
+                lambda: self._gre_linux_route_source_present(f"{inner_dst}/32"),
+                False,
+            )
+            self._verify_exact_route_paths(
+                f"{inner_dst}/32",
+                (FibPathType.FIB_PATH_TYPE_NORMAL, gre_if.sw_if_index, inner_dst),
+            )
+            self.assertEqual(
+                [
+                    str(address.prefix)
+                    for address in self.vapi.ip_address_dump(
+                        gre_if.sw_if_index, is_ipv6=False
+                    )
+                ],
+                [gre_if.local_ip4_prefix],
+            )
             del_namespace_route(self.ns_name, f"{inner_dst}/32", check=False)
             linux_route_present = False
-            snapshot("after-linux-delete")
             self.assertIsNone(self.vpp.poll(), "VPP must be alive after pair delete")
 
             self.vapi.cli(
@@ -1884,7 +1970,6 @@ for sequence in range(100, 130):
                 lambda: interface_exists(self.ns_name, "hgre0"),
                 True,
             )
-            snapshot("recreated-before-checks-and-sync", detail=True)
             self.assertEqual(
                 [
                     str(address.prefix)
@@ -1903,7 +1988,6 @@ for sequence in range(100, 130):
             )
             add_namespace_route(self.ns_name, f"{inner_dst}/32", dev="hgre0")
             linux_route_present = True
-            snapshot("linux-route-added")
             self.verify_paths(f"{inner_dst}/32", expected_path)
             self.assertTrue(gre_if.query_vpp_config())
             self.assertIn(gre_if.name, self.vapi.cli("show adj"))
@@ -1940,12 +2024,21 @@ for sequence in range(100, 130):
             inner_sequences = _capture_inner_sequences()
             self.assertTrue(any(sequence < 20 for sequence in inner_sequences))
             self.assertTrue(any(sequence >= 100 for sequence in inner_sequences))
-        except AssertionError as error:
-            self.logger.info("[GRE-FIB] assertion-failure: %r", error)
-            snapshot("assertion-failure-before-finally", detail=True)
-            raise
+
+            self.vapi.cli(f"lcp delete {gre_if.name}")
+            pair_created = False
+            self._verify_exact_route_paths(
+                f"{inner_dst}/32",
+                (FibPathType.FIB_PATH_TYPE_NORMAL, gre_if.sw_if_index, inner_dst),
+            )
+            route.remove_vpp_config()
+            route_created = False
+            self.poll_for(
+                "GRE route absent after API removal",
+                lambda: find_route(self, inner_dst, 32),
+                False,
+            )
         finally:
-            snapshot("before-cleanup", detail=True)
             if sender is not None and sender.poll() is None:
                 sender.terminate()
                 sender.wait(timeout=5)
@@ -1953,16 +2046,12 @@ for sequence in range(100, 130):
                 underlay.disable_capture()
             if pair_created:
                 self.vapi.cli(f"lcp delete {gre_if.name}")
-                snapshot("cleanup-after-pair-delete", detail=True)
             if linux_route_present:
                 del_namespace_route(self.ns_name, f"{inner_dst}/32", check=False)
             if route_created:
-                snapshot("before-api-route-remove", detail=True)
                 route.remove_vpp_config()
-                snapshot("after-api-route-remove", detail=True)
             if gre_created:
                 gre_if.remove_vpp_config()
-                snapshot("after-gre-remove", detail=True)
             underlay.unconfig_ip4()
             underlay.admin_down()
 
