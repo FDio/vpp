@@ -124,11 +124,14 @@ fib_entry_src_api_add (fib_entry_src_t *src,
 		       dpo_proto_t proto,
 		       const dpo_id_t *dpo)
 {
-    if (FIB_ENTRY_FLAG_NONE != flags)
+    fib_path_list_flags_t pl_flags;
+
+    pl_flags = fib_entry_src_flags_2_path_list_flags(flags);
+    if (FIB_PATH_LIST_FLAG_NONE != pl_flags)
     {
 	src->fes_pl = fib_path_list_create_special(
 	                  proto,
-			  fib_entry_src_flags_2_path_list_flags(flags),
+			  pl_flags,
 			  dpo);
     }
 }

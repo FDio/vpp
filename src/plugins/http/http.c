@@ -1834,6 +1834,9 @@ http_session_attribute (u32 rh, clib_thread_index_t thread_index, u8 is_get,
   switch (attr->type)
     {
     case TRANSPORT_ENDPT_ATTR_TLS_PEER_CERT:
+    case TRANSPORT_ENDPT_ATTR_TLS_SERVER_NAME:
+      if (hc->hc_tc_session_handle == SESSION_INVALID_HANDLE)
+	return -1;
       ts = session_get_from_handle (hc->hc_tc_session_handle);
       if (session_transport_attribute (ts, 1 /* is_get */, attr) < 0)
 	return -1;

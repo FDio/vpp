@@ -100,7 +100,16 @@ jobs:
       image: debian:trixie
       # The test framework reserves SHM_PER_PROCESS per worker on top of a
       # 1 GiB minimum; the 64 MiB container default is far too small.
-      options: --shm-size=2g
+      # ip netns needs mount/unshare/setns; link and TAP setup need NET_ADMIN.
+      # Docker's default seccomp permits these calls with SYS_ADMIN, but its
+      # AppArmor profile denies mount. Allow only the TAP/vhost misc devices.
+      options: >-
+        --shm-size=2g
+        --cap-add=SYS_ADMIN
+        --cap-add=NET_ADMIN
+        --security-opt=apparmor=unconfined
+        --device-cgroup-rule="c 10:200 rwm"
+        --device-cgroup-rule="c 10:238 rwm"
     defaults:
       run:
         shell: bash
@@ -114,7 +123,7 @@ jobs:
       - name: Install base tools
         run: |
           apt-get update -qq
-          apt-get install -y -qq sudo make git bash
+          apt-get install -y -qq sudo make git bash iproute2
 
       - name: Check out the pull request
         uses: actions/checkout@v4
@@ -204,16 +213,17 @@ jobs:
           key: ccache-debug-debian13-${{ runner.arch }}-${{ github.ref_name }}-${{ github.sha }}
 
       # Turn the changed paths into a focused TEST filter. Every emitted name
-      # must have an exact test_<name>.py module, because the runner resolves a
-      # bare filter to that file name and matches it literally: a name with no
-      # such module selects no test and fails the job instead of the suite
-      # falling back. For src/plugins/<pkg>/<sub>/... the subdirectory is tried
-      # first, so src/plugins/nat/nat64/nat64_db.c selects nat64 (test_nat64.py)
-      # rather than the package name nat, which has no module of its own and
-      # would match nothing. src/vnet/<name> selects <name> only on an exact
-      # module too, because a prefix match on a directory such as ip would pull
-      # in every ip4/ip6/ipip/ipsec suite. Changes under src/vppinfra, src/svm
-      # and src/vlib select nothing here and use the fallback smoke suite.
+      # must have an exact test_<name>.py module under test/ or test/asf/,
+      # because the runner resolves a bare filter to that file name and matches
+      # it literally: a name with no such module selects no test and fails the
+      # job instead of the suite falling back. For src/plugins/<pkg>/<sub>/...
+      # the subdirectory is tried first, so src/plugins/nat/nat64/nat64_db.c
+      # selects nat64 (test_nat64.py) rather than the package name nat, which
+      # has no module of its own and would match nothing. src/vnet/<name>
+      # selects <name> only on an exact module too, because a prefix match on a
+      # directory such as ip would pull in every ip4/ip6/ipip/ipsec suite.
+      # Changes under src/vppinfra, src/svm and src/vlib select nothing here
+      # and use the fallback smoke suite.
       - name: Derive a test filter from the changed paths
         id: tests
         run: |
@@ -237,7 +247,8 @@ jobs:
                 sub=${sub%%/*}
                 for candidate in "${sub}" "${dir}"; do
                   candidate=${candidate//-/_}
-                  if [ -f "test/test_${candidate}.py" ]; then
+                  if [ -f "test/test_${candidate}.py" ] ||
+                     [ -f "test/asf/test_${candidate}.py" ]; then
                     name=${candidate}
                     break
                   fi
@@ -247,14 +258,31 @@ jobs:
                 name=${path#src/vnet/}
                 name=${name%%/*}
                 name=${name//-/_}
-                [ -f "test/test_${name}.py" ] || name=""
+                if [ ! -f "test/test_${name}.py" ] &&
+                   [ ! -f "test/asf/test_${name}.py" ]; then
+                  name=""
+                fi
                 ;;
             esac
             [ -n "${name}" ] || continue
             suites="${suites} ${name}"
           done
-          suites=$(echo "${suites}" | tr ' ' '\n' | sed '/^$/d' |
-                   sort -u | head -n 3 | tr '\n' ' ')
+          suites=$(echo "${suites}" | tr ' ' '\n' | sed '/^$/d' | sort -u)
+          # Prioritize source-derived suites whose exact test module also changed.
+          # Keep alphabetical order within each group and select at most three.
+          prioritized=""
+          remaining=""
+          for suite in ${suites}; do
+            case $'\n'"${changed}"$'\n' in
+              *$'\n'"test/test_${suite}.py"$'\n'*|\
+              *$'\n'"test/asf/test_${suite}.py"$'\n'*)
+                prioritized="${prioritized} ${suite}"
+                ;;
+              *) remaining="${remaining} ${suite}" ;;
+            esac
+          done
+          suites=$(echo "${prioritized} ${remaining}" | tr ' ' '\n' |
+                   sed '/^$/d' | head -n 3 | tr '\n' ' ')
           if [ -z "${suites}" ]; then
             echo "No test derives from the changed paths; running the ip4 smoke suite"
             suites="ip4"
@@ -269,11 +297,172 @@ jobs:
           SHM_SIZE: 2G
           LOG_DIR: ${{ github.workspace }}/build-root/test-logs
 
+      - name: Check namespace support for linux_cp
+        if: contains(format(' {0} ', steps.tests.outputs.suites), ' linux_cp ')
+        run: |
+          set -Eeuo pipefail
+          namespace="vpp-ci-netns-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          cleanup() {
+            result=$?
+            trap - EXIT
+            if [ -e "/run/netns/${namespace}" ]; then
+              ip netns del "${namespace}" || result=1
+            fi
+            exit "${result}"
+          }
+          trap cleanup EXIT
+          trap 'echo "::error::Namespace preflight: ${BASH_COMMAND}" >&2' ERR
+          command -v ip
+          id
+          # Report the effective capabilities and active security filters.
+          sed -n '/^Cap/p; /^NoNewPrivs:/p; /^Seccomp/p' /proc/self/status
+          if [ -r /proc/self/attr/current ]; then
+            cat /proc/self/attr/current || true
+          fi
+          set -x
+          ip netns add "${namespace}"
+          ip netns exec "${namespace}" ip link set lo up
+          ip netns exec "${namespace}" ip link show lo
+          # VPP's TAP backend opens both devices when it creates an LCP pair.
+          mkdir -p /dev/net
+          if [ ! -e /dev/net/tun ]; then
+            mknod /dev/net/tun c 10 200
+          fi
+          if [ ! -e /dev/vhost-net ]; then
+            mknod /dev/vhost-net c 10 238
+          fi
+          for device in /dev/net/tun /dev/vhost-net; do
+            test -c "${device}"
+            (: <> "${device}")
+          done
+          ip netns exec "${namespace}" ip tuntap add dev vpp-ci-tap mode tap
+          ip netns exec "${namespace}" ip link del vpp-ci-tap
+
       - name: Run the Python functional tests
         run: |
           git config --global --add safe.directory "$PWD"
           set -eu
           for suite in ${{ steps.tests.outputs.suites }}; do
             echo "Running TEST=${suite}"
+            if [ "${suite}" = linux_cp ]; then
+              recovery_log=/tmp/vpp-unittest-TestLinuxCPNetlinkRecovery/log.txt
+              rm -f "${recovery_log}"
+            fi
             make UNATTENDED=yes TEST_JOBS=auto RETRIES=2 TEST="${suite}" test-debug
+            if [ "${suite}" = linux_cp ]; then
+              python3 - "${recovery_log}" <<'PY'
+          import re
+          import sys
+          from pathlib import Path
+
+          path = Path(sys.argv[1])
+          if not path.is_file():
+              sys.exit(f"::error::Missing recovery test results: {path}")
+          results = {}
+          # VppTestResult.log_result records the callback and exact test name.
+          pattern = (r" --- (add\w+)\(\) TestLinuxCPNetlinkRecovery\."
+                     r"(\w+)\(")
+          for callback, method in re.findall(pattern, path.read_text()):
+              results.setdefault(method, []).append(callback)
+          for method in ("test_netlink_poll_error_recovery",
+                         "test_netlink_poll_error_invalid_fd"):
+              callbacks = results.get(method, [])
+              if callbacks != ["addSuccess"]:
+                  sys.exit(f"::error::{method}: expected addSuccess, "
+                           f"got {callbacks}; see {path}")
+              print(f"Verified {method}: addSuccess")
+          PY
+            fi
           done
+
+      - name: Collect failed test diagnostics
+        if: failure()
+        run: |
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          import re
+          import stat
+
+          output = Path(os.environ["RUNNER_TEMP"]) / "vpp-test-diagnostics"
+          output.mkdir(parents=True, exist_ok=True)
+          # Retry directories are real siblings of the current test directory.
+          # Do not rely on upload-artifact following the -FAILED symlinks.
+          failed = Path("/tmp/vpp-failed-unittests")
+          test_dirs = sorted(Path("/tmp").glob("vpp-unittest-*"))
+          failed_names = set()
+          report = ["Limits: 256 MiB total, 32 MiB per file, 2000 files.",
+                    "Oversized text logs retain their tail; oversized binary traces/pcaps are skipped.",
+                    "Collect .txt/.log/.pcap/.pcapng and api_post_mortem.<pid>; exclude cores/sockets.",
+                    "Symlinks are recorded, never traversed.",
+                    "Staged filenames use unique numeric IDs with safe extensions; this report maps back to originals.",
+                    "Copied paths below map original -> staged, relative to this report."]
+          if failed.is_dir() and not failed.is_symlink():
+              for link in sorted(failed.iterdir()):
+                  if link.is_symlink():
+                      target = os.readlink(link)
+                      report.append(f"LINK {link} -> {target}")
+                      failed_names.add(Path(target).name)
+          test_dirs.sort(key=lambda path: (path.name not in failed_names, path.name))
+          roots = [failed, *test_dirs, Path("build-root/test-logs").absolute()]
+          candidates = []
+          for root in roots:
+              if root.is_symlink() or not root.is_dir():
+                  report.append(f"MISSING OR UNSAFE directory: {root}")
+                  continue
+              for directory, subdirs, names in os.walk(root, followlinks=False):
+                  subdirs[:] = sorted(name for name in subdirs
+                                      if not (Path(directory) / name).is_symlink())
+                  for name in sorted(names):
+                      source = Path(directory) / name
+                      post_mortem = re.fullmatch(r"api_post_mortem\.[0-9]+", name) is not None
+                      if not post_mortem and source.suffix not in (".txt", ".log", ".pcap", ".pcapng"):
+                          continue
+                      if not stat.S_ISREG(source.lstat().st_mode):
+                          continue
+                      # Preserve logs and API traces before packet captures.
+                      priority = (0 if name in ("log.txt", "vpp_stdout.txt", "vpp_stderr.txt",
+                                               "failed_tests.txt") else
+                                  2 if source.suffix in (".pcap", ".pcapng") else 1)
+                      binary = (post_mortem or name.startswith("vpp_api_trace") or
+                                source.suffix in (".pcap", ".pcapng"))
+                      candidates.append((priority, source, binary))
+          remaining = 256 * 1024 * 1024
+          file_limit = 32 * 1024 * 1024
+          count = 0
+          for _, source, binary in sorted(candidates, key=lambda item: item[0]):
+              size = source.stat().st_size
+              length = min(size, file_limit)
+              reason = ("32 MiB binary file limit" if binary and size > file_limit else
+                        "2000-file limit" if count >= 2000 else
+                        "256 MiB total limit" if length > remaining else "")
+              if reason:
+                  report.append(f"SKIPPED ({reason}): {source} ({size} bytes)")
+                  continue
+              suffix = source.suffix if source.suffix in (".txt", ".log", ".pcap", ".pcapng") else ".bin"
+              staged = Path(f"{count + 1:04d}{suffix}")
+              destination = output / staged
+              with source.open("rb") as reader, destination.open("wb") as writer:
+                  if size > length:
+                      reader.seek(size - length)
+                  writer.write(reader.read(length))
+              remaining -= length
+              count += 1
+              status = "TAIL" if size > length else "COPIED"
+              report.append(f"{status}: {str(source)!r} -> {str(staged)!r} ({length}/{size} bytes)")
+          if not count:
+              print("::warning::No test diagnostic files found; uploading collection report only")
+          report.append(f"Collected {count} files, {256 * 1024 * 1024 - remaining} bytes.")
+          (output / "collection-report.txt").write_text("\n".join(report) + "\n")
+          print(report[-1])
+          PY
+
+      - name: Upload failed test diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vpp-test-diagnostics-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/vpp-test-diagnostics/
+          retention-days: 7
+          if-no-files-found: warn
+          compression-level: 6

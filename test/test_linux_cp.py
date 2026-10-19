@@ -39,7 +39,7 @@ from template_ipsec import (
 )
 from test_ipsec_tun_if_esp import TemplateIpsecItf4
 from config import config
-from vpp_ip_route import FibPathType, VppRoutePath
+from vpp_ip_route import FibPathType, VppIpRoute, VppRoutePath, find_route
 from vpp_gre_interface import VppGreInterface
 from vpp_qemu_utils import (
     add_namespace_route,
@@ -1564,6 +1564,182 @@ class TestLinuxCPPairManagement(TestLinuxCPNetNSBase):
                 return p
         return None
 
+    def _gre_linux_route_source_present(self, prefix):
+        output = self.vapi.cli(f"show ip fib table 0 {prefix} detail")
+        in_prefix = False
+        for line in output.splitlines():
+            fields = line.split()
+            if not fields:
+                continue
+            if not line[0].isspace():
+                in_prefix = fields[0] == prefix
+            elif (
+                in_prefix
+                and fields[0] == "lcp-rt"
+                and len(fields) > 1
+                and fields[1].startswith("refs:")
+            ):
+                return True
+        return False
+
+    def _exact_route_paths(self, prefix):
+        is_ipv6 = ip_interface(prefix).version == 6
+        routes = [
+            entry.route
+            for entry in self.vapi.ip_route_dump(0, is_ipv6)
+            if str(entry.route.prefix) == prefix
+        ]
+        self.assertLessEqual(len(routes), 1)
+        if not routes:
+            return None
+        return sorted(
+            (
+                path.type,
+                path.sw_if_index,
+                str(path.nh.address.ip6 if is_ipv6 else path.nh.address.ip4),
+            )
+            for path in routes[0].paths
+        )
+
+    def _verify_exact_route_paths(self, prefix, *expected):
+        self.poll_for(
+            f"exact paths for {prefix}",
+            lambda: self._exact_route_paths(prefix),
+            sorted(expected),
+        )
+
+    def _test_pair_route_cleanup(self, protocol, is_ipv6):
+        self.create_loopback_interfaces(3)
+        pair_a, pair_b, api_interface = self.lo_interfaces
+        prefix = "2001:db8:100::/64" if is_ipv6 else "198.18.100.0/24"
+        gateways = (
+            ("2001:db8:10::1", "2001:db8:20::1", "2001:db8:30::1")
+            if is_ipv6
+            else ("10.10.1.1", "10.20.1.1", "10.30.1.1")
+        )
+        addresses = (
+            ("2001:db8:10::2/64", "2001:db8:20::2/64", "2001:db8:30::2/64")
+            if is_ipv6
+            else ("10.10.1.2/24", "10.20.1.2/24", "10.30.1.2/24")
+        )
+        active_pairs = []
+        api_route = None
+        try:
+            for interface, host in ((pair_a, "hclean0"), (pair_b, "hclean1")):
+                self.vapi.cli(
+                    f"lcp create {interface.name} host-if {host} netns {self.ns_name}"
+                )
+                active_pairs.append(interface)
+            for interface, address in zip(self.lo_interfaces, addresses):
+                self.vapi.sw_interface_add_del_address(
+                    sw_if_index=interface.sw_if_index, prefix=address
+                )
+                interface.admin_up()
+            for host, address in zip(("hclean0", "hclean1"), addresses):
+                self.poll_for(
+                    f"{host} has {address}",
+                    lambda: _prefix_tuple(address)
+                    in get_interface_addresses(
+                        self.ns_name, host, family="inet6" if is_ipv6 else "inet"
+                    ),
+                    True,
+                )
+
+            network = ip_interface(prefix).network
+            api_route = VppIpRoute(
+                self,
+                str(network.network_address),
+                network.prefixlen,
+                [VppRoutePath(gateways[2], api_interface.sw_if_index)],
+            ).add_vpp_config()
+            paths = [
+                (FibPathType.FIB_PATH_TYPE_NORMAL, interface.sw_if_index, gateway)
+                for interface, gateway in zip(self.lo_interfaces, gateways)
+            ]
+            self._verify_exact_route_paths(prefix, paths[2])
+            subprocess.run(
+                [
+                    "ip",
+                    "-n",
+                    self.ns_name,
+                    "-6" if is_ipv6 else "-4",
+                    "route",
+                    "add",
+                    prefix,
+                    "proto",
+                    str(protocol),
+                    *NextHop(gw_ip=gateways[0], dev="hclean0").args(),
+                    *NextHop(gw_ip=gateways[1], dev="hclean1").args(),
+                ],
+                capture_output=True,
+                check=True,
+            )
+            self._verify_exact_route_paths(prefix, paths[0], paths[1])
+
+            self.vapi.cli(f"lcp delete {pair_a.name}")
+            active_pairs.remove(pair_a)
+            self.assertIsNone(self._find_lcp_pair(pair_a.sw_if_index))
+            self.assertIsNotNone(self._find_lcp_pair(pair_b.sw_if_index))
+            self._verify_exact_route_paths(prefix, paths[1])
+
+            self.vapi.cli(f"lcp delete {pair_b.name}")
+            active_pairs.remove(pair_b)
+            self.assertIsNone(self._find_lcp_pair(pair_b.sw_if_index))
+            self._verify_exact_route_paths(prefix, paths[2])
+            for interface, address in zip(self.lo_interfaces, addresses):
+                self.assertEqual(
+                    [
+                        str(entry.prefix)
+                        for entry in self.vapi.ip_address_dump(
+                            interface.sw_if_index, is_ipv6=is_ipv6
+                        )
+                    ],
+                    [address],
+                )
+            api_route.remove_vpp_config()
+            api_route = None
+            self.poll_for(
+                f"{prefix} absent after API removal",
+                lambda: self._exact_route_paths(prefix),
+                None,
+            )
+        finally:
+            for interface in active_pairs:
+                self.vapi.cli(f"lcp delete {interface.name}")
+            if api_route is not None:
+                api_route.remove_vpp_config()
+            for interface in self.lo_interfaces:
+                interface.admin_down()
+                interface.remove_vpp_config()
+
+    @unittest.skipIf(
+        "linux-cp" in config.excluded_plugins, "Exclude linux-cp plugin tests"
+    )
+    def test_pair_delete_static_routes_ipv4(self):
+        """Pair deletion preserves IPv4 static multipath and API ownership"""
+        self._test_pair_route_cleanup(4, False)
+
+    @unittest.skipIf(
+        "linux-cp" in config.excluded_plugins, "Exclude linux-cp plugin tests"
+    )
+    def test_pair_delete_dynamic_routes_ipv4(self):
+        """Pair deletion preserves IPv4 dynamic multipath and API ownership"""
+        self._test_pair_route_cleanup(186, False)
+
+    @unittest.skipIf(
+        "linux-cp" in config.excluded_plugins, "Exclude linux-cp plugin tests"
+    )
+    def test_pair_delete_static_routes_ipv6(self):
+        """Pair deletion preserves IPv6 static multipath and API ownership"""
+        self._test_pair_route_cleanup(4, True)
+
+    @unittest.skipIf(
+        "linux-cp" in config.excluded_plugins, "Exclude linux-cp plugin tests"
+    )
+    def test_pair_delete_dynamic_routes_ipv6(self):
+        """Pair deletion preserves IPv6 dynamic multipath and API ownership"""
+        self._test_pair_route_cleanup(186, True)
+
     def test_pair_create_delete_tun(self):
         """Create and delete TUN LCP pair on loopback"""
         self.create_loopback_interfaces(1)
@@ -1651,6 +1827,7 @@ class TestLinuxCPPairManagement(TestLinuxCPNetNSBase):
             expected_path = dict(
                 type=FibPathType.FIB_PATH_TYPE_NORMAL,
                 sw_if_index=gre_if.sw_if_index,
+                ip4=inner_dst,
             )
             self.verify_paths(f"{inner_dst}/32", expected_path)
             expected_address = [_prefix_tuple(gre_if.local_ip4_prefix)]
@@ -1661,6 +1838,16 @@ class TestLinuxCPPairManagement(TestLinuxCPNetNSBase):
             )
             add_namespace_route(self.ns_name, f"{inner_dst}/32", dev="hgre0")
             linux_route_present = True
+            self.poll_for(
+                "GRE Linux route source present",
+                lambda: self._gre_linux_route_source_present(f"{inner_dst}/32"),
+                True,
+            )
+            self.verify_paths(f"{inner_dst}/32", expected_path)
+            self._verify_exact_route_paths(
+                f"{inner_dst}/32",
+                (FibPathType.FIB_PATH_TYPE_NORMAL, gre_if.sw_if_index, inner_dst),
+            )
 
             sender_script = """
 import os
@@ -1670,19 +1857,18 @@ from scapy.error import Scapy_Exception
 from scapy.all import IP, Raw, UDP, send
 
 iface, source, destination, ready, go = sys.argv[1:]
-def send_packet(sequence):
+def send_packet(sequence, tolerate_errors=False):
     try:
         send(IP(src=source, dst=destination) / UDP(sport=1234, dport=1234) / Raw(str(sequence).encode()), iface=iface, verbose=0)
     except (OSError, Scapy_Exception, ValueError):
-        pass
+        if not tolerate_errors:
+            raise
 
 for sequence in range(20):
     send_packet(sequence)
 open(ready, "w").close()
-sequence = 20
 while not os.path.exists(go):
-    send_packet(sequence)
-    sequence += 1
+    send_packet(20, tolerate_errors=True)
     time.sleep(0.01)
 for sequence in range(100, 130):
     send_packet(sequence)
@@ -1708,10 +1894,18 @@ for sequence in range(100, 130):
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
             )
+
+            def _sender_ready():
+                self.assertIsNone(
+                    sender.poll(), "inner IPv4 sender exited before churn"
+                )
+                return os.path.exists(ready_file)
+
             self.poll_for(
                 "inner IPv4 sender is active",
-                lambda: os.path.exists(ready_file),
+                _sender_ready,
                 True,
+                timeout=10,
             )
             self.assertIsNone(self.vpp.poll(), "VPP must be alive before churn")
 
@@ -1740,6 +1934,24 @@ for sequence in range(100, 130):
                 lambda: interface_exists(self.ns_name, "hgre0"),
                 False,
             )
+            self.poll_for(
+                "GRE Linux route source removed after pair delete",
+                lambda: self._gre_linux_route_source_present(f"{inner_dst}/32"),
+                False,
+            )
+            self._verify_exact_route_paths(
+                f"{inner_dst}/32",
+                (FibPathType.FIB_PATH_TYPE_NORMAL, gre_if.sw_if_index, inner_dst),
+            )
+            self.assertEqual(
+                [
+                    str(address.prefix)
+                    for address in self.vapi.ip_address_dump(
+                        gre_if.sw_if_index, is_ipv6=False
+                    )
+                ],
+                [gre_if.local_ip4_prefix],
+            )
             del_namespace_route(self.ns_name, f"{inner_dst}/32", check=False)
             linux_route_present = False
             self.assertIsNone(self.vpp.poll(), "VPP must be alive after pair delete")
@@ -1758,6 +1970,17 @@ for sequence in range(100, 130):
                 lambda: interface_exists(self.ns_name, "hgre0"),
                 True,
             )
+            self.assertEqual(
+                [
+                    str(address.prefix)
+                    for address in self.vapi.ip_address_dump(
+                        gre_if.sw_if_index, is_ipv6=False
+                    )
+                ],
+                [gre_if.local_ip4_prefix],
+            )
+            self.verify_paths(f"{inner_dst}/32", expected_path)
+            self.vapi.cli("lcp lcp-sync on")
             self.poll_for(
                 "hgre0 has GRE IPv4 address after recreation",
                 lambda: get_interface_addresses(self.ns_name, "hgre0", family="inet"),
@@ -1796,10 +2019,25 @@ for sequence in range(100, 130):
                 True,
                 timeout=10,
             )
+            underlay.disable_capture()
             capture_active = False
             inner_sequences = _capture_inner_sequences()
             self.assertTrue(any(sequence < 20 for sequence in inner_sequences))
             self.assertTrue(any(sequence >= 100 for sequence in inner_sequences))
+
+            self.vapi.cli(f"lcp delete {gre_if.name}")
+            pair_created = False
+            self._verify_exact_route_paths(
+                f"{inner_dst}/32",
+                (FibPathType.FIB_PATH_TYPE_NORMAL, gre_if.sw_if_index, inner_dst),
+            )
+            route.remove_vpp_config()
+            route_created = False
+            self.poll_for(
+                "GRE route absent after API removal",
+                lambda: find_route(self, inner_dst, 32),
+                False,
+            )
         finally:
             if sender is not None and sender.poll() is None:
                 sender.terminate()
@@ -2048,3 +2286,137 @@ class TestLinuxCPOSPFMcast(TestLinuxCPNetNSBase):
         self.assertEqual(rx[Ether].dst, self.ospf_mcast_mac)
         self.assertEqual(rx[IP].dst, self.ospf_mcast_ip4)
         self.assertEqual(rx[IP].proto, self.ospf_ip_proto)
+
+
+@unittest.skipIf(config.skip_netns_tests, "netns not available or disabled from cli")
+@unittest.skipIf("linux-cp" in config.excluded_plugins, "Exclude linux-cp plugin tests")
+class TestLinuxCPNetlinkRecovery(TestLinuxCPNetNSBase):
+    """Linux CP netlink polling error recovery.
+
+    The polling error callback registered by the linux_nl plugin for the
+    netlink route socket is invoked directly by the test plugin CLI. That
+    simulates the EPOLLERR event the file poller reports, it does not create a
+    real socket error. Recovery, the counters reported by `show lcp netlink`
+    and a subsequent real Linux update are then checked.
+    """
+
+    extra_vpp_plugin_config = TestLinuxCPNetNSBase.extra_vpp_plugin_config + [
+        "plugin",
+        "linux_cp_unittest_plugin.so",
+        "{",
+        "enable",
+        "}",
+    ]
+
+    # State reported by `show lcp netlink` while notifications are processed.
+    NETLINK_STATE_NORMAL = "notification"
+    # Bounds the wait for a recovery cycle, which is delayed by the 2s retry
+    # delay of the netlink process node.
+    NETLINK_RECOVERY_TIMEOUT = 20.0
+    # Route added on the Linux side to check that an update still reaches VPP
+    # through the reopened notification socket.
+    route_blackhole = "192.168.60.0/24"
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.create_loopback_interfaces(1)
+        cls.vapi.cli(f"lcp create loop0 host-if hloop0 netns {cls.ns_name}")
+        cls.lo_interfaces[0].admin_up()
+
+    def _netlink_stats(self):
+        """Return `show lcp netlink` as a dict of normalized field to value."""
+        stats = {}
+        for line in self.vapi.cli("show lcp netlink").splitlines():
+            key, separator, value = line.partition(":")
+            if not separator:
+                continue
+            key = key.strip().lower().replace("-", " ").replace("_", " ")
+            stats[key] = value.strip()
+        return stats
+
+    def _netlink_count(self, stats, name):
+        value = stats.get(name)
+        self.assertIsNotNone(
+            value, f"'{name}' missing from 'show lcp netlink': {stats}"
+        )
+        self.assertRegex(value, r"^\d+$", f"'{name}' is not a count: {value!r}")
+        return int(value)
+
+    def _netlink_completed(self):
+        return self._netlink_count(self._netlink_stats(), "synchronization completed")
+
+    def _invoke_netlink_error_callback(self, *args):
+        """Invoke the polling error callback registered for the route socket."""
+        return self.vapi.cli(" ".join(["test lcp netlink-error", *args]))
+
+    def _check_recovery(self, attempts_before, completed_before, description):
+        """Wait for a recovery cycle and check the state it reports afterwards."""
+        self.poll_for(
+            f"{description}: synchronization did not complete",
+            lambda: self._netlink_completed() > completed_before,
+            True,
+            timeout=self.NETLINK_RECOVERY_TIMEOUT,
+            interval=0.25,
+        )
+        self.poll_for(
+            f"{description}: state not back to notification processing",
+            lambda: self._netlink_stats().get("state"),
+            self.NETLINK_STATE_NORMAL,
+            timeout=self.NETLINK_RECOVERY_TIMEOUT,
+            interval=0.25,
+        )
+        stats = self._netlink_stats()
+        self.assertGreater(
+            self._netlink_count(stats, "synchronization attempts"),
+            attempts_before,
+            f"{description}: no synchronization attempt recorded: {stats}",
+        )
+
+    def _check_linux_update_reaches_vpp(self):
+        """Add a blackhole route on the Linux side and look it up in the VPP FIB."""
+        route = self.route_blackhole
+        network = ip_interface(route).network
+        lookup = str(network[1]) + "/32"
+
+        def route_present():
+            return find_route(self, str(network.network_address), network.prefixlen)
+
+        self.assertFalse(
+            route_present(), f"{route} already present before Linux update"
+        )
+        try:
+            add_namespace_route(self.ns_name, route, route_type="blackhole")
+            self.poll_for(f"{route} present in VPP FIB", route_present, True)
+            self.verify_paths(lookup, dict(type=FibPathType.FIB_PATH_TYPE_DROP))
+        finally:
+            del_namespace_route(self.ns_name, route, check=False)
+            self.poll_for(f"{route} removed from VPP FIB", route_present, False)
+
+    def test_netlink_poll_error_recovery(self):
+        """Netlink polling error callback triggers a recovery cycle"""
+        stats = self._netlink_stats()
+        attempts_before = self._netlink_count(stats, "synchronization attempts")
+        completed_before = self._netlink_count(stats, "synchronization completed")
+        self.assertEqual(stats.get("state"), self.NETLINK_STATE_NORMAL, stats)
+
+        output = self._invoke_netlink_error_callback()
+        self.assertIn("netlink-error: target fd", output)
+        self.assertNotIn("(copy with invalid-fd)", output)
+        self.assertIn("netlink-error: callback", output)
+
+        self._check_recovery(attempts_before, completed_before, "polling error")
+        self._check_linux_update_reaches_vpp()
+
+    def test_netlink_poll_error_invalid_fd(self):
+        """Netlink polling error callback handles a failed socket error query"""
+        stats = self._netlink_stats()
+        attempts_before = self._netlink_count(stats, "synchronization attempts")
+        completed_before = self._netlink_count(stats, "synchronization completed")
+
+        output = self._invoke_netlink_error_callback("invalid-fd")
+        self.assertIn("netlink-error: target fd -1 (copy with invalid-fd)", output)
+        self.assertIn("netlink-error: callback", output)
+
+        self._check_recovery(attempts_before, completed_before, "invalid-fd")
+        self._check_linux_update_reaches_vpp()

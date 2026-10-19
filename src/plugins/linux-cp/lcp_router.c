@@ -1514,7 +1514,8 @@ lcp_router_route_sync_end (void)
 
 typedef struct lcp_router_table_flush_entry_t
 {
-  const fib_prefix_t *lrtfe_pfx;
+  fib_prefix_t lrtfe_pfx;
+  fib_node_index_t lrtfe_fib_entry_index;
   fib_route_path_t *rpaths;
 } lcp_router_table_flush_entry_t;
 
@@ -1570,8 +1571,10 @@ lcp_router_table_flush_cb (fib_node_index_t fib_entry_index, void *arg)
     {
       lcp_router_table_flush_entry_t *lrtfe;
       vec_add2 (ctx->lrtf_entries, lrtfe, 1);
-      lrtfe->lrtfe_pfx = fib_entry_get_prefix (fib_entry_index);
+      lrtfe->lrtfe_pfx = *fib_entry_get_prefix (fib_entry_index);
+      lrtfe->lrtfe_fib_entry_index = fib_entry_index;
       lrtfe->rpaths = ctx->path_ctx.rpaths;
+      fib_node_lock (&fib_entry->fe_node);
     }
 
   return (FIB_TABLE_WALK_CONTINUE);
@@ -1601,10 +1604,14 @@ lcp_router_table_flush (lcp_router_table_t *nlt, u32 *sw_if_index_to_bool,
 
   vec_foreach (lrtfe, ctx.lrtf_entries)
     {
-      fib_table_entry_path_remove2 (nlt->nlt_fib_index, lrtfe->lrtfe_pfx,
-				    source, lrtfe->rpaths);
+      int is_sourced;
+
+      fib_table_entry_path_remove2 (nlt->nlt_fib_index, &lrtfe->lrtfe_pfx, source, lrtfe->rpaths);
+      is_sourced = fib_entry_is_sourced (lrtfe->lrtfe_fib_entry_index, source);
+      fib_node_unlock (&fib_entry_get (lrtfe->lrtfe_fib_entry_index)->fe_node);
       vec_free (lrtfe->rpaths);
-      lcp_router_table_unlock (nlt);
+      if (!is_sourced)
+	lcp_router_table_unlock (nlt);
     }
 
   vec_free (ctx.lrtf_entries);
@@ -1654,19 +1661,29 @@ static void
 lcp_router_interface_del_cb (lcp_itf_pair_t *lip)
 {
   u32 table_id;
+  u32 *sw_if_index_to_bool = NULL;
   fib_protocol_t proto;
   lcp_router_table_t *nlt;
 
   lcp_router_ip4_mroutes_add_del (lip->lip_phy_sw_if_index, 0);
   lcp_router_ip6_mroutes_add_del (lip->lip_phy_sw_if_index, 0);
 
+  vec_validate_init_empty (sw_if_index_to_bool, lip->lip_phy_sw_if_index, false);
+  sw_if_index_to_bool[lip->lip_phy_sw_if_index] = true;
+
   FOR_EACH_FIB_IP_PROTOCOL (proto)
   {
     table_id = fib_table_get_table_id_for_sw_if_index (proto, lip->lip_phy_sw_if_index);
     nlt = lcp_router_table_find (table_id, proto);
     if (nlt)
-      lcp_router_table_unlock (nlt);
+      {
+	lcp_router_table_flush (nlt, sw_if_index_to_bool, lcp_rt_fib_src);
+	lcp_router_table_flush (nlt, sw_if_index_to_bool, lcp_rt_fib_src_dynamic);
+	lcp_router_table_unlock (nlt);
+      }
   }
+
+  vec_free (sw_if_index_to_bool);
 }
 
 static void

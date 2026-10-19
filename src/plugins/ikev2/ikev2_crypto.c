@@ -644,7 +644,6 @@ ikev2_generate_dh (ikev2_sa_t * sa, ikev2_sa_transform_t * t)
 #else
 	  EC_POINT_set_affine_coordinates_GFp (group, i_point, x, y, bn_ctx);
 #endif
-	  sa->dh_shared_key = vec_new (u8, t->key_len);
 	  EC_POINT_mul (group, shared_point, NULL, i_point,
 			EC_KEY_get0_private_key (ec), NULL);
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
@@ -653,12 +652,11 @@ ikev2_generate_dh (ikev2_sa_t * sa, ikev2_sa_transform_t * t)
 	  EC_POINT_get_affine_coordinates_GFp (group, shared_point, x, y,
 					       bn_ctx);
 #endif
+	  /* RFC 5903 section 7: the shared secret is the x coordinate only */
+	  sa->dh_shared_key = vec_new (u8, len);
 	  x_off = len - BN_num_bytes (x);
 	  clib_memset (sa->dh_shared_key, 0, x_off);
 	  BN_bn2bin (x, sa->dh_shared_key + x_off);
-	  y_off = t->key_len - BN_num_bytes (y);
-	  clib_memset (sa->dh_shared_key + len, 0, y_off - len);
-	  BN_bn2bin (y, sa->dh_shared_key + y_off);
 	}
 
       EC_KEY_free (ec);
@@ -720,7 +718,7 @@ ikev2_complete_dh (ikev2_sa_t * sa, ikev2_sa_transform_t * t)
       const EC_GROUP *group = EC_KEY_get0_group (ec);
       BIGNUM *x = NULL, *y = NULL;
       BN_CTX *bn_ctx = BN_CTX_new ();
-      u16 x_off, y_off, len;
+      u16 x_off, len;
       BIGNUM *prv;
 
       prv =
@@ -758,13 +756,11 @@ ikev2_complete_dh (ikev2_sa_t * sa, ikev2_sa_transform_t * t)
 #else
       EC_POINT_get_affine_coordinates_GFp (group, shared_point, x, y, bn_ctx);
 #endif
-      sa->dh_shared_key = vec_new (u8, t->key_len);
+      /* RFC 5903 section 7: the shared secret is the x coordinate only */
+      sa->dh_shared_key = vec_new (u8, len);
       x_off = len - BN_num_bytes (x);
       clib_memset (sa->dh_shared_key, 0, x_off);
       BN_bn2bin (x, sa->dh_shared_key + x_off);
-      y_off = t->key_len - BN_num_bytes (y);
-      clib_memset (sa->dh_shared_key + len, 0, y_off - len);
-      BN_bn2bin (y, sa->dh_shared_key + y_off);
 
       EC_KEY_free (ec);
       BN_free (x);
