@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "495c4494_10c5c954",
+        "filename": "Makefile",
+        "patchSetId": 19
+      },
+      "lineNbr": 105,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-10-19T22:40:22Z",
+      "side": 1,
+      "message": "Not ideal but I would take these out of the main makefile. Either document or we we somehow include them in the optional deps makefile",
+      "revId": "0b88d77422d098374aa47a5fd1d7dccc543b9785",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a31dc010_784acc14",
+        "filename": "build-data/packages/vpp.mk",
+        "patchSetId": 19
+      },
+      "lineNbr": 30,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-10-19T22:40:22Z",
+      "side": 1,
+      "message": "can we get rid of this?",
+      "revId": "0b88d77422d098374aa47a5fd1d7dccc543b9785",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
