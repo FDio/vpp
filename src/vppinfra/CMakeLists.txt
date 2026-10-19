@@ -329,6 +329,7 @@ set(test_files
   test/array_mask.c
   test/compress.c
   test/count_equal.c
+  test/cpu.c
   test/crc32c.c
   test/dynamic_shuffle.c
   test/index_to_ptr.c

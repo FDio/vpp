@@ -283,15 +283,14 @@ clib_get_cpuid (const u32 lev, u32 * eax, u32 * ebx, u32 * ecx, u32 * edx)
   return 1;
 }
 
-#define _(flag, func, reg, bit) \
-static inline int							\
-clib_cpu_supports_ ## flag()						\
-{									\
-  u32 __attribute__((unused)) eax, ebx = 0, ecx = 0, edx  = 0;		\
-  clib_get_cpuid (func, &eax, &ebx, &ecx, &edx);			\
-									\
-  return ((reg & (1 << bit)) != 0);					\
-}
+#define _(flag, func, reg, bit)                                                                    \
+  static inline int clib_cpu_supports_##flag ()                                                    \
+  {                                                                                                \
+    u32 __attribute__ ((unused)) eax, ebx = 0, ecx = 0, edx = 0;                                   \
+    clib_get_cpuid (func, &eax, &ebx, &ecx, &edx);                                                 \
+                                                                                                   \
+    return ((reg & (1U << bit)) != 0);                                                             \
+  }
 foreach_x86_64_flags
 #undef _
 #else /* __x86_64__ */
