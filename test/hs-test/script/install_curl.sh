@@ -1,7 +1,7 @@
 #!/bin/bash
 set -eux
 OS_ARCH="$(uname -m)"
-CURL_VERSION="8.18.0"
+CURL_VERSION="8.23.0"
 CURL_TARBALL=curl-linux-"${OS_ARCH}"-glibc-"$CURL_VERSION".tar.xz
 CURL_TARBALL_PATH=/var/cache/downloads/"$CURL_TARBALL"
 if [ ! -s "$CURL_TARBALL_PATH" ] || ! tar -tf "$CURL_TARBALL_PATH" >/dev/null 2>&1; then

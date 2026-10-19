@@ -6,7 +6,7 @@ from cryptography import x509
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.cmac import CMAC
 from cryptography.hazmat.primitives import hashes, hmac
-from cryptography.hazmat.primitives.asymmetric import dh, padding
+from cryptography.hazmat.primitives.asymmetric import dh, ec, padding
 from cryptography.hazmat.primitives.serialization import load_pem_private_key
 from cryptography.hazmat.primitives.ciphers import (
     Cipher,
@@ -27,6 +27,8 @@ from asfframework import (
     VppTestRunner,
 )
 from vpp_ikev2 import Profile, IDType, AuthMethod
+from vpp_ipip_tun_interface import VppIpIpTunInterface
+from vpp_ipsec import VppIpsecSA
 from vpp_papi import VppEnum
 
 try:
@@ -81,6 +83,22 @@ DH = {
         2,
         384,
     ),
+}
+
+# RFC 5903 ECP groups, keyed by the scapy GroupDesc names
+ECP = {
+    "256randECPgr": ec.SECP256R1(),
+    "384randECPgr": ec.SECP384R1(),
+    "521randECPgr": ec.SECP521R1(),
+}
+
+# IANA Transform Type 4 IDs of the groups above, by scapy GroupDesc name
+DH_GROUP_IDS = {
+    14: "2048MODPgr",
+    15: "3072MODPgr",
+    19: "256randECPgr",
+    20: "384randECPgr",
+    21: "521randECPgr",
 }
 
 
@@ -295,6 +313,7 @@ class IKEv2SA(object):
             self.dport = 500
         self.msg_id = 0
         self.dh_params = None
+        self.ecdh_private_key = None
         self.test = test
         self.priv_key = priv_key
         self.is_initiator = is_initiator
@@ -338,8 +357,20 @@ class IKEv2SA(object):
         return self.i_natt or self.r_natt
 
     def compute_secret(self):
-        priv = self.dh_private_key
         peer = self.peer_dh_pub_key
+        if self.ike_dh in ECP:
+            curve = ECP[self.ike_dh]
+            clen = (curve.key_size + 7) // 8
+            pub = ec.EllipticCurvePublicNumbers(
+                int.from_bytes(peer[:clen], "big"),
+                int.from_bytes(peer[clen:], "big"),
+                curve,
+            ).public_key()
+            if self.ecdh_private_key is None:
+                raise ValueError("ECDH private key is not generated")
+            # RFC 5903 section 7: the shared secret is the x coordinate only
+            return self.ecdh_private_key.exchange(ec.ECDH(), pub)
+        priv = self.dh_private_key
         p, g, l = self.ike_group
         return pow(
             int.from_bytes(peer, "big"), int.from_bytes(priv, "big"), p
@@ -347,6 +378,20 @@ class IKEv2SA(object):
 
     def generate_dh_data(self):
         # generate DH keys
+        if self.ike_dh in ECP:
+            # RFC 5903 section 7: the KE public value is x | y, each
+            # left-padded to the coordinate length
+            curve = ECP[self.ike_dh]
+            clen = (curve.key_size + 7) // 8
+            self.ecdh_private_key = ec.generate_private_key(curve)
+            n = self.ecdh_private_key.public_key().public_numbers()
+            data = n.x.to_bytes(clen, "big") + n.y.to_bytes(clen, "big")
+            if self.is_initiator:
+                self.i_dh_data = data
+            else:
+                self.r_dh_data = data
+            return
+
         if self.ike_dh not in DH:
             raise NotImplementedError("%s not in DH group" % self.ike_dh)
 
@@ -640,7 +685,8 @@ class IKEv2SA(object):
         self.ike_prf = prf
         self.ike_prf_alg = PRF_ALGOS[prf]
         self.ike_dh = dh
-        self.ike_group = DH[self.ike_dh]
+        # MODP parameters; ECP groups are handled through ECP[dh]
+        self.ike_group = None if dh in ECP else DH[dh]
 
     def set_esp_props(self, crypto, crypto_key_len, integ):
         self.esp_crypto_key_len = crypto_key_len
@@ -1294,7 +1340,7 @@ class TemplateInitiator(IkePeer):
             crypto_key_len=32,
             integ="NULL",
             prf="PRF_HMAC_SHA2_256",
-            dh="3072MODPgr",
+            dh=DH_GROUP_IDS[prop.trans[2].transform_id],
         )
         self.sa.set_esp_props(crypto="AES-CBC", crypto_key_len=32, integ="SHA2-256-128")
         self.sa.generate_dh_data()
@@ -2216,6 +2262,83 @@ class TestInitiatorPsk(TemplateInitiator, Ikev2Params):
         )
 
 
+class TestInitiatorEcp384(TemplateInitiator, Ikev2Params):
+    """test ikev2 initiator - ecp384 key exchange (RFC 5903 shared secret)"""
+
+    vpp_worker_count = 2
+
+    def config_tc(self):
+        self.config_params(
+            {
+                "is_initiator": False,  # seen from test case perspective
+                # thus vpp is initiator
+                "ike-crypto": ("AES-GCM-16ICV", 32),
+                "ike-integ": "NULL",
+                "ike-dh": "384randECPgr",
+                "ike_transforms": {
+                    "crypto_alg": 20,  # "aes-gcm-16"
+                    "crypto_key_size": 256,
+                    "dh_group": 20,  # "ecp-384"
+                },
+                "esp_transforms": {
+                    "crypto_alg": 12,  # "aes-cbc"
+                    "crypto_key_size": 256,
+                    # "hmac-sha2-256-128"
+                    "integ_alg": 12,
+                },
+                "responder_hostname": {
+                    "hostname": "vpp.responder.org",
+                    "sw_if_index": self.pg0.sw_if_index,
+                },
+            }
+        )
+
+
+class TestInitiatorTunItfDeletedAuth(TestInitiatorPsk):
+    """test ikev2 initiator - delete the tunnel interface before IKE_AUTH"""
+
+    def config_tc(self):
+        super(TestInitiatorTunItfDeletedAuth, self).config_tc()
+        self.tun_itf = VppIpIpTunInterface(
+            self, self.pg0, self.pg0.local_ip4, self.pg0.remote_ip4
+        )
+        self.tun_itf.add_vpp_config()
+        self.tun_itf.admin_up()
+        self.p.set_tunnel_interface(self.tun_itf.sw_if_index)
+
+    def tearDown(self):
+        # the IKE SA is deleted with the tunnel interface in test_initiator
+        super(IkePeer, self).tearDown()
+        self.p.remove_vpp_config()
+
+    def test_initiator(self):
+        # unrelated SAs with the IDs of a child SA that is not installed:
+        # 0 and 0 with the alternate bit (ikev2_flip_alternate_sa_bit)
+        sas = [
+            VppIpsecSA(
+                self,
+                sa_id,
+                1000 + sa_id,
+                VppEnum.vl_api_ipsec_integ_alg_t.IPSEC_API_INTEG_ALG_SHA1_96,
+                b"C91KUR9GYMm5GfkEvNjX",
+                VppEnum.vl_api_ipsec_crypto_alg_t.IPSEC_API_CRYPTO_ALG_AES_CBC_128,
+                b"JPjyOWBciTmuwbBr",
+                VppEnum.vl_api_ipsec_proto_t.IPSEC_API_PROTO_ESP,
+            )
+            for sa_id in (0, 0x800)
+        ]
+        for sa in sas:
+            sa.add_vpp_config()
+        # IKE_SA_INIT exchanged, IKE_AUTH sent by VPP and not answered
+        self.initiate_sa_init()
+        self.tun_itf.remove_vpp_config()
+        for sa in sas:
+            self.assertTrue(sa.query_vpp_config())
+        self.assertEqual(len(self.vapi.ikev2_sa_dump()), 0)
+        r = self.vapi.ikev2_profile_dump()
+        self.assertEqual(r[0].profile.tun_itf, 0xFFFFFFFF)
+
+
 class TestInitiatorRequestWindowSize(TestInitiatorPsk):
     """test initiator - request window size (1)"""
 
@@ -2363,6 +2486,41 @@ class TestResponderPsk(TemplateResponder, Ikev2Params):
 
     def config_tc(self):
         self.config_params()
+
+
+class TestResponderTunItfDeleted(TestResponderPsk):
+    """test ikev2 responder - delete the profile tunnel interface"""
+
+    def config_tc(self):
+        super(TestResponderTunItfDeleted, self).config_tc()
+        self.tun_itf = VppIpIpTunInterface(
+            self, self.pg0, self.pg0.local_ip4, self.pg0.remote_ip4
+        )
+        self.tun_itf.add_vpp_config()
+        self.tun_itf.admin_up()
+        self.p.set_tunnel_interface(self.tun_itf.sw_if_index)
+
+    def tearDown(self):
+        # the IKE SA is deleted with the tunnel interface in test_responder
+        super(IkePeer, self).tearDown()
+        self.p.remove_vpp_config()
+
+    def test_responder(self):
+        super(TestResponderTunItfDeleted, self).test_responder()
+        self.pg0.enable_capture()
+        self.pg_start()
+        self.tun_itf.remove_vpp_config()
+        capture = self.pg0.get_capture(1)
+        ih = self.get_ike_header(capture[0])
+        self.assertEqual(ih.exch_type, 37)  # INFORMATIONAL
+        self.assertNotIn("Response", ih.flags)
+        plain = self.sa.hmac_and_decrypt(ih)
+        d = ikev2.IKEv2_payload_Delete(plain)
+        self.assertEqual(d.proto, 1)  # proto=IKEv2
+        self.assertEqual(len(self.vapi.ikev2_sa_dump()), 0)
+        self.assertEqual(len(self.vapi.ipsec_sa_dump()), 0)
+        r = self.vapi.ikev2_profile_dump()
+        self.assertEqual(r[0].profile.tun_itf, 0xFFFFFFFF)
 
 
 class TestResponderPskNullEsp(TestResponderPsk):
@@ -2526,6 +2684,13 @@ class TestResponderRekeyKEX(TestResponderRekey):
     vpp_worker_count = 2
 
 
+class TestResponderRekeyKEXEcp384(TestResponderRekeyKEX):
+    """test ikev2 responder - rekey with key exchange, ecp384"""
+
+    def config_tc(self):
+        self.config_params({"ike-dh": "384randECPgr"})
+
+
 class TestResponderRekeyRepeatKEX(TestResponderRekeyRepeat):
     """test ikev2 responder - rekey repeat with key exchange"""
 
@@ -2673,6 +2838,44 @@ class TestAES_CBC_128_SHA256_128_MODP3072_ESP_AES_GCM_16(
                 "esp-crypto": ("AES-GCM-16ICV", 32),
                 "esp-integ": "NULL",
                 "ike-dh": "3072MODPgr",
+            }
+        )
+
+
+class TestAES_GCM_16_256_ECP256_ESP_AES_GCM_16(TemplateResponder, Ikev2Params):
+    """
+    IKE:AES_GCM_16_256,DH=ecp256 ESP:AES_GCM_16 (RFC 5903 shared secret)
+    """
+
+    vpp_worker_count = 2
+
+    def config_tc(self):
+        self.config_params(
+            {
+                "ike-crypto": ("AES-GCM-16ICV", 32),
+                "ike-integ": "NULL",
+                "esp-crypto": ("AES-GCM-16ICV", 32),
+                "esp-integ": "NULL",
+                "ike-dh": "256randECPgr",
+            }
+        )
+
+
+class TestAES_CBC_256_SHA256_128_ECP384_ESP_AES_GCM_16(TemplateResponder, Ikev2Params):
+    """
+    IKE:AES_CBC_256_SHA256_128,DH=ecp384 ESP:AES_GCM_16 (RFC 5903 shared secret)
+    """
+
+    vpp_worker_count = 2
+
+    def config_tc(self):
+        self.config_params(
+            {
+                "ike-crypto": ("AES-CBC", 32),
+                "ike-integ": "SHA2-256-128",
+                "esp-crypto": ("AES-GCM-16ICV", 32),
+                "esp-integ": "NULL",
+                "ike-dh": "384randECPgr",
             }
         )
 

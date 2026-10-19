@@ -12,7 +12,8 @@ import (
 )
 
 func init() {
-	RegisterQuicTests(QuicAlpnMatchTest, QuicAlpnOverlapMatchTest, QuicAlpnServerPriorityMatchTest, QuicAlpnMismatchTest,
+	RegisterQuicTests(QuicAlpnMatchTest, QuicClientHelloRetryTest, QuicAlpnOverlapMatchTest,
+		QuicAlpnServerPriorityMatchTest, QuicAlpnMismatchTest,
 		QuicAlpnEmptyServerListTest, QuicAlpnEmptyClientListTest, QuicBuiltinVperfZeroCopyTest,
 		QuicBuiltinVperfBidirectionalZeroCopyTest, QuicBuiltinVperfTest, QuicBuiltinVperfBidirectionalTest,
 		QuicReorderTest, QuicCrlRejectThenAllowTest)
@@ -60,6 +61,45 @@ func QuicAlpnMatchTest(s *QuicSuite) {
 	AssertNotContains(o, "timeout")
 	// selected based on 1:1 match
 	AssertContains(o, "ALPN selected: h3")
+}
+
+func QuicClientHelloRetryTest(s *QuicSuite) {
+	serverVpp := s.Containers.ServerVpp.VppInstance
+	clientVpp := s.Containers.ClientVpp.VppInstance
+	serverAddress := s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1
+	Log(serverVpp.Vppctl("test tls server uri quic://" + serverAddress))
+
+	o := clientVpp.Vppctl("test tls client uri quic://" + serverAddress)
+	Log(o)
+	AssertContains(o, "TLS version: 1.3")
+	group := regexp.MustCompile(`Key agreement: ([^\r\n]+)`).FindStringSubmatch(o)
+	AssertEqual(2, len(group), "Expected the client's initial key-share group")
+
+	serverGroup := "P-256"
+	if strings.TrimSpace(group[1]) == "secp256r1" {
+		serverGroup = "X25519"
+	}
+	Log("Initial client key share: " + strings.TrimSpace(group[1]) + "; server requires: " + serverGroup)
+	o = serverVpp.Vppctl("app crypto add tls-profile app test_tls_server groups " + serverGroup)
+	Log(o)
+	AssertContains(o, "profile 0")
+
+	serverAddress2 := s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port2
+	o = serverVpp.Vppctl("test tls server alpn-proto1 3 profile-index 0 uri quic://" + serverAddress2)
+	Log(o)
+	AssertNotContains(o, "failed")
+	AssertNotContains(o, "error")
+
+	o = clientVpp.Vppctl("test tls client alpn-proto1 2 alpn-proto2 3 uri quic://" + serverAddress2)
+	Log(o)
+	AssertNotContains(o, "connect error")
+	AssertNotContains(o, "timeout")
+	AssertContains(o, "ALPN selected: h3")
+	AssertContains(o, "TLS version: 1.3")
+
+	o = serverVpp.Vppctl("show test tls server")
+	Log(o)
+	AssertContains(o, "accepted connections 2")
 }
 
 func QuicAlpnOverlapMatchTest(s *QuicSuite) {

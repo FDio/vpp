@@ -66,6 +66,9 @@ typedef struct quic_quicly_crypto_ctx_
   ptls_openssl_sign_certificate_t sc;
   quic_quicly_verify_certificate_t verify_cert;
   quic_quicly_on_client_hello_t client_hello_ctx;
+  /* Client ALPN list retained for HelloRetryRequest handling. */
+  ptls_iovec_t alpn_list[4];
+  u32 alpn_count;
   /* Profile-filtered arrays (NULL if no profile applied, freed on context free) */
   ptls_cipher_suite_t **filtered_cipher_suites;
   ptls_key_exchange_algorithm_t **filtered_key_exchanges;

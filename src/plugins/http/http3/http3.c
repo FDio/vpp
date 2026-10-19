@@ -2446,6 +2446,13 @@ http3_transport_stream_reset_callback (http_ctx_t *stream)
   error_code = http3_get_application_error_code (stream);
   HTTP_DBG (1, "stream [%u]%x req %x, error code: %U", stream->c_thread_index, stream->hc_hc_index,
 	    stream->http_req_index, format_http3_error, error_code);
+  /* client may have moved its request to new stream before reset notification is delivered */
+  if ((stream->flags & HTTP_CONN_F_BIDIRECTIONAL_STREAM) &&
+      stream->http_req_index == SESSION_INVALID_INDEX)
+    {
+      HTTP_DBG (1, "request moved to another stream, ignoring reset");
+      return;
+    }
   req = http_ctx_get_w_thread (stream->http_req_index, stream->c_thread_index);
   if (stream->flags & HTTP_CONN_F_UNIDIRECTIONAL_STREAM)
     {
