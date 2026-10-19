@@ -427,9 +427,10 @@ typedef struct
 
 } ikev2_main_t;
 
-extern ikev2_main_t ikev2_main;
+extern __clib_export ikev2_main_t ikev2_main;
 
 void ikev2_sa_free_proposal_vector (ikev2_sa_proposal_t ** v);
+__clib_export format_function_t format_ikev2_sa;
 ikev2_sa_transform_t *ikev2_sa_get_td_for_type (ikev2_sa_proposal_t * p,
 						ikev2_transform_type_t type);
 
