@@ -325,5 +325,33 @@ jobs:
           set -eu
           for suite in ${{ steps.tests.outputs.suites }}; do
             echo "Running TEST=${suite}"
+            if [ "${suite}" = linux_cp ]; then
+              recovery_log=/tmp/vpp-unittest-TestLinuxCPNetlinkRecovery/log.txt
+              rm -f "${recovery_log}"
+            fi
             make UNATTENDED=yes TEST_JOBS=auto RETRIES=2 TEST="${suite}" test-debug
+            if [ "${suite}" = linux_cp ]; then
+              python3 - "${recovery_log}" <<'PY'
+          import re
+          import sys
+          from pathlib import Path
+
+          path = Path(sys.argv[1])
+          if not path.is_file():
+              sys.exit(f"::error::Missing recovery test results: {path}")
+          results = {}
+          # VppTestResult.log_result records the callback and exact test name.
+          pattern = (r" --- (add\w+)\(\) TestLinuxCPNetlinkRecovery\."
+                     r"(\w+)\(")
+          for callback, method in re.findall(pattern, path.read_text()):
+              results.setdefault(method, []).append(callback)
+          for method in ("test_netlink_poll_error_recovery",
+                         "test_netlink_poll_error_invalid_fd"):
+              callbacks = results.get(method, [])
+              if callbacks != ["addSuccess"]:
+                  sys.exit(f"::error::{method}: expected addSuccess, "
+                           f"got {callbacks}; see {path}")
+              print(f"Verified {method}: addSuccess")
+          PY
+            fi
           done
