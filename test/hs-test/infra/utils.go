@@ -142,11 +142,12 @@ func (s *Stanza) SaveToFile(fileName string) error {
 
 // NewHttpClient creates [http.Client] with disabled proxy and redirects.
 func NewHttpClient(timeout time.Duration, enableHTTP2 bool) *http.Client {
-	transport := http.DefaultTransport
-	transport.(*http.Transport).Proxy = nil
-	transport.(*http.Transport).DisableKeepAlives = true
-	transport.(*http.Transport).ForceAttemptHTTP2 = enableHTTP2
-	transport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+	transport.Proxy = nil
+	transport.DisableKeepAlives = true
+	transport.ForceAttemptHTTP2 = enableHTTP2
+	transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+
 	client := &http.Client{
 		Transport: transport,
 		Timeout:   timeout,

@@ -753,6 +753,11 @@ hpack_serialize_response (u8 *app_headers, u32 app_headers_len,
   if (control_data->content_len != HPACK_ENCODER_SKIP_CONTENT_LEN)
     p = hpack_encode_content_len (p, control_data->content_len);
 
+  /* ALT-SVC */
+  if (control_data->alt_svc)
+    p = hpack_encode_header (p, HTTP_HEADER_ALT_SVC, control_data->alt_svc,
+			     vec_len (control_data->alt_svc), 0);
+
   if (!app_headers_len)
     {
       *dst = p;
