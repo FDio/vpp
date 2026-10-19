@@ -1606,8 +1606,7 @@ lcp_router_table_flush (lcp_router_table_t *nlt, u32 *sw_if_index_to_bool,
     {
       int is_sourced;
 
-      fib_table_entry_path_remove2 (nlt->nlt_fib_index, &lrtfe->lrtfe_pfx,
-				    source, lrtfe->rpaths);
+      fib_table_entry_path_remove2 (nlt->nlt_fib_index, &lrtfe->lrtfe_pfx, source, lrtfe->rpaths);
       is_sourced = fib_entry_is_sourced (lrtfe->lrtfe_fib_entry_index, source);
       fib_node_unlock (&fib_entry_get (lrtfe->lrtfe_fib_entry_index)->fe_node);
       vec_free (lrtfe->rpaths);
