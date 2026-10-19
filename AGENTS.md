@@ -79,11 +79,12 @@ Python, shell, and Go support tooling, tests, and documentation.
 
 ## Validation Policy
 
-The pipeline validates; a session on this tree edits. Work here produces a
-committed, reviewable diff. Compiling the tree, installing its dependencies,
-running its test suites, and building its packages happen in the pull-request
-pipeline once the branch is pushed, and a pipeline run is the evidence for any
-statement that a change compiles or passes a suite.
+CI validates; a session on this tree edits. Work here produces a committed,
+reviewable diff. Compiling the tree, installing its dependencies, and running its
+test suites happen in the pull-request pipeline once the branch is pushed, and a
+pipeline run is the evidence for any statement that a change compiles or passes a
+suite. Packages are built separately, by a workflow triggered on pushes to `master`
+and on manual request.
 
 Work expected inside a session, none of which compiles C:
 
@@ -99,7 +100,7 @@ Work expected inside a session, none of which compiles C:
   `python3 -c 'import ast,sys; ast.parse(open(sys.argv[1]).read())' <file>`.
 - Read the CI configuration to predict which jobs and suites a change triggers.
 
-Steps that belong to the pipeline, and so are left out of a session:
+Steps reserved for CI or a maintainer environment, and left out of a session:
 
 - Compilation of any kind: `make build`, `make build-release`, `make compdb`,
   `ninja -C build-root/...`, `./configure`, and single-file compiler runs such as
@@ -112,17 +113,17 @@ Steps that belong to the pipeline, and so are left out of a session:
   targets, and the built `vpp` binary.
 - Packaging: `make pkg-*`, `make dist`, `make verify`, and `make pkg-verify`.
 
-A compiler-free check or a documentation build runs in a session once its tools are
-already installed — the C style check needs the matching `clang-format-19` and a
-`clang-format-diff` helper, and `fts.py` needs PyYAML and `python3-jsonschema` —
-and waits for the pipeline otherwise. Installing a missing tool is itself a
-pipeline step.
+A compiler-free check runs in a session once its tools are already installed — the C
+style check needs the matching `clang-format-19` and a `clang-format-diff` helper,
+and `fts.py` needs PyYAML and `python3-jsonschema` — and waits for the pipeline
+otherwise; the documentation build has no pipeline job, so without its toolchain it
+is left unrun. Installing a missing tool is itself a pipeline step.
 
 State a change as building or as passing a suite only after the run that covers it —
 the pipeline job, or a maintainer's — reports success; until then describe it as
 unverified.
 
-### What the pipeline runs
+### What PR verification runs
 
 `.github/workflows/pr-verify.yml` runs on pull requests to `master`, on
 GitHub-hosted Ubuntu runners inside Debian Trixie containers, with Bash as the
@@ -146,9 +147,9 @@ coverage, host-stack and Kubernetes suites, and package builds.
 
 ## Build Reference
 
-The commands and paths below describe what the pipeline does and how the tree is
-laid out. They are reference for editing build files and CMake declarations, not a
-procedure to run locally.
+The commands and paths below describe how the tree is built and laid out, and which
+of them the pipeline runs. They are reference for editing build files and CMake
+declarations, not a procedure to run locally.
 
 Run commands from the repository root unless a command explicitly uses `-C`.
 `make` or `make help` lists supported targets. The build requires Bash and uses
