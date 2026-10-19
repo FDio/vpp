@@ -726,7 +726,7 @@ nl_route_process (vlib_main_t *vm, vlib_node_runtime_t *node,
 	      NL_ERROR ("Synchronization attempt %lu failed", nm->sync_attempts);
 	    }
 
-	  /* Close netlink synchronization sockets */
+	    /* Close netlink synchronization sockets */
 #define _(stype, mtype, tname, fn) lcp_nl_close_sync_socket (stype);
 	  foreach_sock_type
 #undef _
