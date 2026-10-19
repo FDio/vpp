@@ -1651,6 +1651,7 @@ class TestLinuxCPPairManagement(TestLinuxCPNetNSBase):
             expected_path = dict(
                 type=FibPathType.FIB_PATH_TYPE_NORMAL,
                 sw_if_index=gre_if.sw_if_index,
+                ip4=inner_dst,
             )
             self.verify_paths(f"{inner_dst}/32", expected_path)
             expected_address = [_prefix_tuple(gre_if.local_ip4_prefix)]
@@ -1670,19 +1671,18 @@ from scapy.error import Scapy_Exception
 from scapy.all import IP, Raw, UDP, send
 
 iface, source, destination, ready, go = sys.argv[1:]
-def send_packet(sequence):
+def send_packet(sequence, tolerate_errors=False):
     try:
         send(IP(src=source, dst=destination) / UDP(sport=1234, dport=1234) / Raw(str(sequence).encode()), iface=iface, verbose=0)
     except (OSError, Scapy_Exception, ValueError):
-        pass
+        if not tolerate_errors:
+            raise
 
 for sequence in range(20):
     send_packet(sequence)
 open(ready, "w").close()
-sequence = 20
 while not os.path.exists(go):
-    send_packet(sequence)
-    sequence += 1
+    send_packet(20, tolerate_errors=True)
     time.sleep(0.01)
 for sequence in range(100, 130):
     send_packet(sequence)
@@ -1708,10 +1708,18 @@ for sequence in range(100, 130):
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
             )
+
+            def _sender_ready():
+                self.assertIsNone(
+                    sender.poll(), "inner IPv4 sender exited before churn"
+                )
+                return os.path.exists(ready_file)
+
             self.poll_for(
                 "inner IPv4 sender is active",
-                lambda: os.path.exists(ready_file),
+                _sender_ready,
                 True,
+                timeout=10,
             )
             self.assertIsNone(self.vpp.poll(), "VPP must be alive before churn")
 
@@ -1758,6 +1766,17 @@ for sequence in range(100, 130):
                 lambda: interface_exists(self.ns_name, "hgre0"),
                 True,
             )
+            self.assertEqual(
+                [
+                    str(address.prefix)
+                    for address in self.vapi.ip_address_dump(
+                        gre_if.sw_if_index, is_ipv6=False
+                    )
+                ],
+                [gre_if.local_ip4_prefix],
+            )
+            self.verify_paths(f"{inner_dst}/32", expected_path)
+            self.vapi.cli("lcp lcp-sync on")
             self.poll_for(
                 "hgre0 has GRE IPv4 address after recreation",
                 lambda: get_interface_addresses(self.ns_name, "hgre0", family="inet"),
@@ -1796,6 +1815,7 @@ for sequence in range(100, 130):
                 True,
                 timeout=10,
             )
+            underlay.disable_capture()
             capture_active = False
             inner_sequences = _capture_inner_sequences()
             self.assertTrue(any(sequence < 20 for sequence in inner_sequences))
