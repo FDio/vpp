@@ -39,7 +39,7 @@ from template_ipsec import (
 )
 from test_ipsec_tun_if_esp import TemplateIpsecItf4
 from config import config
-from vpp_ip_route import FibPathType, VppRoutePath, find_route
+from vpp_ip_route import FibPathType, VppIpRoute, VppRoutePath, find_route
 from vpp_gre_interface import VppGreInterface
 from vpp_qemu_utils import (
     add_namespace_route,
