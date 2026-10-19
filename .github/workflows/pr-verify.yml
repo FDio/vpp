@@ -100,7 +100,16 @@ jobs:
       image: debian:trixie
       # The test framework reserves SHM_PER_PROCESS per worker on top of a
       # 1 GiB minimum; the 64 MiB container default is far too small.
-      options: --shm-size=2g
+      # ip netns needs mount/unshare/setns; link and TAP setup need NET_ADMIN.
+      # Docker's default seccomp permits these calls with SYS_ADMIN, but its
+      # AppArmor profile denies mount. Allow only the TAP/vhost misc devices.
+      options: >-
+        --shm-size=2g
+        --cap-add=SYS_ADMIN
+        --cap-add=NET_ADMIN
+        --security-opt=apparmor=unconfined
+        --device-cgroup-rule="c 10:200 rwm"
+        --device-cgroup-rule="c 10:238 rwm"
     defaults:
       run:
         shell: bash
@@ -114,7 +123,7 @@ jobs:
       - name: Install base tools
         run: |
           apt-get update -qq
-          apt-get install -y -qq sudo make git bash
+          apt-get install -y -qq sudo make git bash iproute2
 
       - name: Check out the pull request
         uses: actions/checkout@v4
@@ -268,6 +277,47 @@ jobs:
           WORKSPACE: ${{ github.workspace }}
           SHM_SIZE: 2G
           LOG_DIR: ${{ github.workspace }}/build-root/test-logs
+
+      - name: Check namespace support for linux_cp
+        if: contains(format(' {0} ', steps.tests.outputs.suites), ' linux_cp ')
+        run: |
+          set -Eeuo pipefail
+          namespace="vpp-ci-netns-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          cleanup() {
+            result=$?
+            trap - EXIT
+            if [ -e "/run/netns/${namespace}" ]; then
+              ip netns del "${namespace}" || result=1
+            fi
+            exit "${result}"
+          }
+          trap cleanup EXIT
+          trap 'echo "::error::Namespace preflight: ${BASH_COMMAND}" >&2' ERR
+          command -v ip
+          id
+          # Report the effective capabilities and active security filters.
+          sed -n '/^Cap/p; /^NoNewPrivs:/p; /^Seccomp/p' /proc/self/status
+          if [ -r /proc/self/attr/current ]; then
+            cat /proc/self/attr/current || true
+          fi
+          set -x
+          ip netns add "${namespace}"
+          ip netns exec "${namespace}" ip link set lo up
+          ip netns exec "${namespace}" ip link show lo
+          # VPP's TAP backend opens both devices when it creates an LCP pair.
+          mkdir -p /dev/net
+          if [ ! -e /dev/net/tun ]; then
+            mknod /dev/net/tun c 10 200
+          fi
+          if [ ! -e /dev/vhost-net ]; then
+            mknod /dev/vhost-net c 10 238
+          fi
+          for device in /dev/net/tun /dev/vhost-net; do
+            test -c "${device}"
+            (: <> "${device}")
+          done
+          ip netns exec "${namespace}" ip tuntap add dev vpp-ci-tap mode tap
+          ip netns exec "${namespace}" ip link del vpp-ci-tap
 
       - name: Run the Python functional tests
         run: |
