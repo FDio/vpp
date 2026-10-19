@@ -1166,6 +1166,9 @@ mfib_entry_path_remove (fib_node_index_t mfib_entry_index,
 
             mfib_itf = mfib_entry_itf_find(msrc->mfes_itfs,
                                            rpath->frp_sw_if_index);
+            if (NULL == mfib_itf)
+              continue;
+
             was_accept = !!(MFIB_ITF_FLAG_ACCEPT & mfib_itf->mfi_flags);
 
             if (mfib_itf_update(mfib_itf,
