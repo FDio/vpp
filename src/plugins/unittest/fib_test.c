@@ -834,6 +834,176 @@ fib_test_multipath_v4 (const test_main_t *tm, const u32 fib_index,
 }
 
 static int
+fib_test_api_special_flags (u32 fib_index, const fib_prefix_t *prefix,
+                            fib_source_t source)
+{
+    const struct {
+        fib_entry_flag_t flags;
+        dpo_type_t type;
+    } special[] = {
+        { FIB_ENTRY_FLAG_DROP, DPO_DROP },
+        { FIB_ENTRY_FLAG_LOCAL, DPO_RECEIVE },
+        { FIB_ENTRY_FLAG_EXCLUSIVE, DPO_PUNT },
+        { FIB_ENTRY_FLAG_DROP | FIB_ENTRY_FLAG_EXCLUSIVE, DPO_DROP },
+        { FIB_ENTRY_FLAG_LOCAL | FIB_ENTRY_FLAG_EXCLUSIVE, DPO_RECEIVE },
+    };
+    const dpo_id_t *dpo;
+    fib_entry_src_t *entry_source;
+    fib_node_index_t fei;
+    u32 flag, metadata;
+    int res = 0;
+
+    for (flag = 0; flag < ARRAY_LEN(special); flag++)
+    {
+        for (metadata = 0; metadata < 2; metadata++)
+        {
+            fei = fib_table_entry_special_dpo_add(
+                fib_index, prefix, source,
+                special[flag].flags | (metadata ? FIB_ENTRY_FLAG_ATTACHED : 0),
+                punt_dpo_get(DPO_PROTO_IP4));
+            entry_source = fib_entry_src_find(fib_entry_get(fei), source);
+            FIB_TEST(NULL != entry_source, "special API behaviour source present");
+            FIB_TEST(1 == fib_path_list_get_n_paths(entry_source->fes_pl),
+                     "special API behaviour source has exactly one path");
+            dpo = fib_entry_contribute_ip_forwarding(fei);
+            FIB_TEST(1 == load_balance_get(dpo->dpoi_index)->lb_n_buckets,
+                     "special API behaviour source has exactly one bucket");
+            dpo = load_balance_get_bucket(dpo->dpoi_index, 0);
+            FIB_TEST(special[flag].type == dpo->dpoi_type,
+                     "special API behaviour preserves forwarding with metadata");
+            fib_table_entry_special_remove(fib_index, prefix, source);
+            FIB_TEST(!fib_entry_is_sourced(fei, source), "special source removed");
+        }
+    }
+    return res;
+}
+
+static int
+fib_test_api_source_flags (const test_main_t *tm, u32 fib_index)
+{
+    static fib_source_t source = FIB_SOURCE_INVALID;
+    const u32 path_list_pool_size = fib_path_list_pool_size();
+    const u32 path_list_db_size = fib_path_list_db_size();
+    const u32 entry_pool_size = fib_entry_pool_size();
+    const fib_entry_flag_t metadata_flags[] = {
+        FIB_ENTRY_FLAG_ATTACHED,
+        FIB_ENTRY_FLAG_CONNECTED | FIB_ENTRY_FLAG_ATTACHED,
+        FIB_ENTRY_FLAG_NO_ATTACHED_EXPORT,
+        FIB_ENTRY_FLAG_LOOSE_URPF_EXEMPT,
+        FIB_ENTRY_FLAG_COVERED_INHERIT,
+    };
+    const fib_prefix_t prefix = {
+        .fp_len = 32,
+        .fp_proto = FIB_PROTOCOL_IP4,
+        .fp_addr.ip4.as_u32 = clib_host_to_net_u32(0xc6336410),
+    };
+    fib_route_path_t paths[3] = {};
+    fib_test_lb_bucket_t buckets[3] = {};
+    fib_route_path_t *rpaths = NULL;
+    fib_entry_src_t *entry_source;
+    fib_node_index_t fei, api_path_list;
+    u32 path, flag;
+    int res = 0;
+
+    if (FIB_SOURCE_INVALID == source)
+        source = fib_source_allocate("test-api-flags", FIB_SOURCE_PRIORITY_HI,
+                                     FIB_SOURCE_BH_API);
+
+    for (path = 0; path < ARRAY_LEN(paths); path++)
+    {
+        paths[path].frp_proto = DPO_PROTO_IP4;
+        paths[path].frp_addr.ip4.as_u32 = clib_host_to_net_u32(0xc6336401 + path);
+        paths[path].frp_sw_if_index = tm->hw[path]->sw_if_index;
+        paths[path].frp_fib_index = ~0;
+        paths[path].frp_weight = 1;
+        buckets[path].type = FT_LB_ADJ;
+        buckets[path].adj.adj = adj_nbr_add_or_lock(FIB_PROTOCOL_IP4,
+                                                  VNET_LINK_IP4,
+                                                  &paths[path].frp_addr,
+                                                  paths[path].frp_sw_if_index);
+    }
+
+    vec_add1(rpaths, paths[0]);
+    fei = fib_table_entry_path_add2(fib_index, &prefix, FIB_SOURCE_API,
+                                    FIB_ENTRY_FLAG_NONE, rpaths);
+    entry_source = fib_entry_src_find(fib_entry_get(fei), FIB_SOURCE_API);
+    FIB_TEST(NULL != entry_source, "original API source present");
+    api_path_list = entry_source->fes_pl;
+    FIB_TEST(!fib_test_validate_entry(fei, FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
+                                      1, &buckets[0]),
+             "original API path forwards via its adjacency");
+
+    for (flag = 0; flag < ARRAY_LEN(metadata_flags); flag++)
+    {
+        rpaths[0] = paths[1];
+        fib_table_entry_path_add2(fib_index, &prefix, source,
+                                  metadata_flags[flag], rpaths);
+        entry_source = fib_entry_src_find(fib_entry_get(fei), source);
+        FIB_TEST(NULL != entry_source, "flagged API behaviour source present");
+        FIB_TEST(metadata_flags[flag] == entry_source->fes_entry_flags,
+                 "route metadata retained");
+        FIB_TEST(1 == fib_path_list_get_n_paths(entry_source->fes_pl),
+                 "flagged new source has exactly one real path");
+        FIB_TEST(!fib_test_validate_entry(fei, FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
+                                          1, &buckets[1]),
+                 "flagged new source forwards without a synthetic drop");
+
+        rpaths[0] = paths[2];
+        fib_table_entry_path_add2(fib_index, &prefix, source,
+                                  metadata_flags[flag], rpaths);
+        entry_source = fib_entry_src_find(fib_entry_get(fei), source);
+        FIB_TEST(2 == fib_path_list_get_n_paths(entry_source->fes_pl),
+                 "second real path produces exactly two paths");
+        FIB_TEST(!fib_test_validate_entry(fei, FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
+                                          2, &buckets[1], &buckets[2]),
+                 "both real paths forward without a synthetic drop");
+
+        rpaths[0] = paths[1];
+        fib_table_entry_path_remove2(fib_index, &prefix, source, rpaths);
+        entry_source = fib_entry_src_find(fib_entry_get(fei), source);
+        FIB_TEST(NULL != entry_source, "source remains with its second path");
+        FIB_TEST(1 == fib_path_list_get_n_paths(entry_source->fes_pl),
+                 "removing first path leaves exactly one path");
+        FIB_TEST(!fib_test_validate_entry(fei, FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
+                                          1, &buckets[2]),
+                 "remaining real path forwards");
+
+        rpaths[0] = paths[2];
+        fib_table_entry_path_remove2(fib_index, &prefix, source, rpaths);
+        FIB_TEST(!fib_entry_is_sourced(fei, source),
+                 "removing last real path removes flagged source");
+        FIB_TEST(fei == fib_table_lookup_exact_match(fib_index, &prefix),
+                 "original API prefix remains");
+        entry_source = fib_entry_src_find(fib_entry_get(fei), FIB_SOURCE_API);
+        FIB_TEST(NULL != entry_source, "original API source remains");
+        FIB_TEST(api_path_list == entry_source->fes_pl,
+                 "original API path list remains intact");
+        FIB_TEST(FIB_ENTRY_FLAG_NONE == entry_source->fes_entry_flags,
+                 "original API metadata remains intact");
+        FIB_TEST(!fib_test_validate_entry(fei, FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
+                                          1, &buckets[0]),
+                 "removing flagged source reveals original API forwarding");
+    }
+
+    FIB_TEST(0 == fib_test_api_special_flags(fib_index, &prefix, source),
+             "API special flags preserve their forwarding");
+    FIB_TEST(!fib_test_validate_entry(fei, FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
+                                      1, &buckets[0]),
+             "removing special source reveals original API forwarding");
+    fib_table_entry_delete(fib_index, &prefix, FIB_SOURCE_API);
+    FIB_TEST(FIB_NODE_INDEX_INVALID ==
+             fib_table_lookup_exact_match(fib_index, &prefix), "prefix removed");
+    vec_free(rpaths);
+    for (path = 0; path < ARRAY_LEN(paths); path++)
+        adj_unlock(buckets[path].adj.adj);
+
+    FIB_TEST(path_list_db_size == fib_path_list_db_size(), "no leaked path list DB entries");
+    FIB_TEST(path_list_pool_size == fib_path_list_pool_size(), "no leaked path lists");
+    FIB_TEST(entry_pool_size == fib_entry_pool_size(), "no leaked FIB entries");
+    return res;
+}
+
+static int
 fib_test_v4 (void)
 {
     /*
@@ -946,6 +1116,8 @@ fib_test_v4 (void)
              fib_path_list_pool_size());
     FIB_TEST((ENBR == fib_entry_pool_size()), "entry pool size is %d",
              fib_entry_pool_size());
+    FIB_TEST(0 == fib_test_api_source_flags(tm, fib_index),
+             "API source metadata and paths");
 
     /*
      * add interface routes.
