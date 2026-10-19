@@ -17,7 +17,7 @@ import (
 )
 
 func init() {
-	RegisterH3Tests(Http3GetTest, Http3DownloadTest, Http3PostTest, Http3UploadTest, Http3ClientGetRepeatTest,
+	RegisterH3Tests(Http3GetTest, Http3AltSvcCompoundListenerTest, Http3DownloadTest, Http3PostTest, Http3UploadTest, Http3ClientGetRepeatTest,
 		Http3ClientGetMultiplexingTest, Http3PeerResetStream, Http3ClientRequestIncompleteTest,
 		Http3MissingPseudoHeaderTest, Http3MissingSchemePseudoHeaderTest, Http3MissingPathPseudoHeaderTest,
 		Http3MissingAuthorityPseudoHeaderTest, Http3ConnectWithSchemePathPseudoHeadersTest,
@@ -111,6 +111,35 @@ func Http3GetTest(s *Http3Suite) {
 	Log(vpp.Vppctl("http cli server listener del uri https://" + serverAddress))
 	o = vpp.Vppctl("show session verbose")
 	AssertNotContains(o, "LISTEN")
+}
+
+func Http3AltSvcCompoundListenerTest(s *Http3Suite) {
+	vpp := s.Containers.Vpp.VppInstance
+	uri := "https://" + net.JoinHostPort(s.VppAddr(), s.Ports.Port1)
+	o := vpp.Vppctl("http cli server http3-enabled listener add uri " + uri)
+	Log(o)
+	AssertEmpty(strings.TrimSpace(o))
+
+	Log(vpp.Vppctl("show session verbose 2"))
+
+	// The compound listener advertises its own port without an explicit Alt-Svc port.
+	for _, protoMajor := range []int{1, 2} {
+		client := NewHttpClient(defaultHttpTimeout, protoMajor == 2)
+		defer client.CloseIdleConnections()
+		resp, err := client.Get(uri + "/show/version")
+		AssertNil(err, fmt.Sprint(err))
+		defer resp.Body.Close()
+		Log(DumpHttpResp(resp, false))
+
+		AssertHttpStatus(resp, http.StatusOK)
+		AssertEqual(protoMajor, resp.ProtoMajor)
+		AssertHttpHeaderWithValue(resp, "Alt-Svc", fmt.Sprintf(`h3=":%s"`, s.Ports.Port1))
+	}
+
+	// Verify that HTTP/3 is reachable on the advertised UDP port.
+	args := fmt.Sprintf("-k --max-time 10 --noproxy '*' --http3-only %s/show/version", uri)
+	_, log := RunCurlContainer(s.Containers.Curl, args)
+	AssertContains(log, "HTTP/3 200")
 }
 
 func Http3DownloadTest(s *Http3Suite) {

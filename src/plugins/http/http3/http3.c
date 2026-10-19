@@ -893,7 +893,7 @@ http3_stream_resp_not_implemented (http_ctx_t *stream, http_ctx_t *req)
 static void
 http3_send_431 (http_ctx_t *stream, http_ctx_t *req)
 {
-  hpack_response_control_data_t control_data;
+  hpack_response_control_data_t control_data = {};
   u8 *date;
   u8 fh_buf[HTTP3_FRAME_HEADER_MAX_LEN];
   u8 fh_len;
@@ -1162,7 +1162,7 @@ http3_req_state_wait_transport_reply (http_ctx_t *stream, http_ctx_t *req,
 				      transport_send_params_t *sp, http3_error_t *error, u32 *n_deq)
 {
   http_ctx_t *hc;
-  hpack_response_control_data_t control_data;
+  hpack_response_control_data_t control_data = {};
   http_msg_t msg;
   http_req_state_t new_state = HTTP_REQ_STATE_WAIT_APP_METHOD;
   http_worker_t *wrk = http_worker_get (stream->c_thread_index);

@@ -595,3 +595,15 @@ The example below sets HTTP session timeout to 30 seconds (server application):
     /* don't forget to free extended config */
     session_endpoint_free_ext_cfgs (&a->sep_ext);
     /* ... */
+
+HTTP/3 advertisement
+^^^^^^^^^^^^^^^^^^^^
+
+The plugin adds ``Alt-Svc: h3=":<port>"`` to HTTP/1 and HTTP/2 responses when a
+server application creates a compound TLS and QUIC listener. The advertised UDP
+port is always the listener's port, regardless of ``h3_alt_svc_port``.
+
+Applications that create separate listeners can set ``h3_alt_svc_port`` in
+``transport_endpt_cfg_http_t`` on the HTTP/1 and HTTP/2 listener. The port is in
+host byte order. A nonzero value advertises the configured UDP port; zero
+disables advertisement for listeners that do not combine TLS and QUIC.

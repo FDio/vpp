@@ -1007,7 +1007,7 @@ http_sched_dispatch_431 (http_ctx_t *req, http_ctx_t *hc, u8 *n_emissions,
 {
   u8 *date;
   u32 headers_len;
-  hpack_response_control_data_t control_data;
+  hpack_response_control_data_t control_data = {};
   u8 fh[HTTP2_FRAME_HEADER_SIZE];
 
   vec_reset_length (http_tx_buf (hc));
@@ -1157,7 +1157,7 @@ http2_sched_dispatch_resp_headers (http_ctx_t *req, http_ctx_t *hc, u8 *n_emissi
   http_msg_t msg;
   u8 *date, *app_headers = 0;
   u8 fh[HTTP2_FRAME_HEADER_SIZE];
-  hpack_response_control_data_t control_data;
+  hpack_response_control_data_t control_data = {};
   u8 flags = 0;
   u32 n_written, stream_id, n_deq, max_write, headers_len, headers_left;
 
@@ -1193,6 +1193,8 @@ http2_sched_dispatch_resp_headers (http_ctx_t *req, http_ctx_t *hc, u8 *n_emissi
 	}
     }
   control_data.sc = msg.code;
+  control_data.alt_svc = hc->h3_alt_svc_port;
+  control_data.alt_svc_len = vec_len (hc->h3_alt_svc_port);
 
   if (msg.data.headers_len)
     {
@@ -1628,7 +1630,7 @@ static http_sm_result_t
 http2_req_state_wait_transport_reply (http_ctx_t *hc, http_ctx_t *req, transport_send_params_t *sp,
 				      http2_error_t *error)
 {
-  hpack_response_control_data_t control_data;
+  hpack_response_control_data_t control_data = {};
   http_msg_t msg;
   int rv;
   http_worker_t *wrk = http_worker_get (hc->c_thread_index);
