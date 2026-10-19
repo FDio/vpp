@@ -364,7 +364,6 @@ jobs:
           from pathlib import Path
           import re
           import stat
-          from urllib.parse import quote
 
           output = Path(os.environ["RUNNER_TEMP"]) / "vpp-test-diagnostics"
           output.mkdir(parents=True, exist_ok=True)
@@ -377,7 +376,7 @@ jobs:
                     "Oversized text logs retain their tail; oversized binary traces/pcaps are skipped.",
                     "Collect .txt/.log/.pcap/.pcapng and api_post_mortem.<pid>; exclude cores/sockets.",
                     "Symlinks are recorded, never traversed.",
-                    "Staged paths percent-encode each component, including %; decode with urllib.parse.unquote.",
+                    "Staged filenames use unique numeric IDs with safe extensions; this report maps back to originals.",
                     "Copied paths below map original -> staged, relative to this report."]
           if failed.is_dir() and not failed.is_symlink():
               for link in sorted(failed.iterdir()):
@@ -421,10 +420,9 @@ jobs:
               if reason:
                   report.append(f"SKIPPED ({reason}): {source} ({size} bytes)")
                   continue
-              staged = Path(*(quote(part, safe="")
-                              for part in source.relative_to(source.anchor).parts))
+              suffix = source.suffix if source.suffix in (".txt", ".log", ".pcap", ".pcapng") else ".bin"
+              staged = Path(f"{count + 1:04d}{suffix}")
               destination = output / staged
-              destination.parent.mkdir(parents=True, exist_ok=True)
               with source.open("rb") as reader, destination.open("wb") as writer:
                   if size > length:
                       reader.seek(size - length)
