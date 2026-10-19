@@ -141,9 +141,8 @@ container shell, and has two jobs:
   derives. The `vpp-docker-runtime-setup` action remounts `/dev/shm` and sets
   `LOG_DIR=build-root/test-logs`.
 
-Outside PR verification, and therefore run only in a packaging or maintainer
-environment: Go formatting, documentation spelling and rendering, release builds,
-coverage, host-stack and Kubernetes suites, and package builds.
+PR verification does not cover Go formatting, documentation spelling and rendering,
+release builds, coverage, host-stack and Kubernetes suites, or package builds.
 
 ## Build Reference
 
@@ -359,8 +358,8 @@ first, and its subsequent API-generator and functional-test phase is OS-gated by
 `MAKE_VERIFY_GATE_OS`, defaulting to Ubuntu 22.04; a successful invocation on
 another OS does not prove those tests ran. Both are maintainer commands.
 
-Coverage, release builds, documentation, Go style, and the host-stack and Kubernetes
-suites are not PR gates; when you rely on one of them, say that it did not run.
+For checks outside PR verification, report their actual execution status and the
+evidence for any result; describe checks that did not run as unverified.
 
 ## Packaging and Deployment
 
