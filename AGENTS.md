@@ -96,7 +96,7 @@ Work expected inside a session, none of which compiles C:
   `extras/scripts/fts.py --validate --all`,
   `extras/scripts/crcchecker.py --check-patchset` on a clean tree, which compares
   the latest commit against its parent, and a Python syntax parse such as
-  `python3 -c 'import ast,sys; ast.parse(open(f).read())' <file>`.
+  `python3 -c 'import ast,sys; ast.parse(open(sys.argv[1]).read())' <file>`.
 - Read the CI configuration to predict which jobs and suites a change triggers.
 
 Steps that belong to the pipeline, and so are left out of a session:
@@ -110,17 +110,17 @@ Steps that belong to the pipeline, and so are left out of a session:
 - Test execution: `make test*` and `make retest*` for the Python functional
   harness, `make -C test/hs-test ...`, `extras/kube-test` targets, the coverage
   targets, and the built `vpp` binary.
-- Packaging and rendering: `make pkg-*`, `make dist`, `make verify`,
-  `make pkg-verify`, `make docs`, and `make docs-spell`.
+- Packaging: `make pkg-*`, `make dist`, `make verify`, and `make pkg-verify`.
 
-Where a check exists both as a static script and as a pipeline job, run the static
-script when its tool is already installed — the C style check needs the matching
-`clang-format-19` and a `clang-format-diff` helper, and `fts.py` needs PyYAML — and
-leave the job to the pipeline otherwise. Installing a missing tool is itself a
+A compiler-free check or a documentation build runs in a session once its tools are
+already installed — the C style check needs the matching `clang-format-19` and a
+`clang-format-diff` helper, and `fts.py` needs PyYAML and `python3-jsonschema` —
+and waits for the pipeline otherwise. Installing a missing tool is itself a
 pipeline step.
 
-State a change as building or as passing a suite only after the pipeline job that
-covers it reports success; until then describe it as unverified.
+State a change as building or as passing a suite only after the run that covers it —
+the pipeline job, or a maintainer's — reports success; until then describe it as
+unverified.
 
 ### What the pipeline runs
 
@@ -159,7 +159,8 @@ Configured build types add `-Werror -Wall`; release uses `-O3`, debug uses `-O0`
 and `CLIB_DEBUG`. Full VPP source builds are configured for Linux and FreeBSD;
 the Darwin CMake path builds `vppinfra` only.
 
-Pipeline commands:
+Build commands (the `build-test` job runs `make install-dep` and `make build`;
+the rest are maintainer references):
 
 ```bash
 make install-dep              # Installs OS packages with sudo; sets Git commit template
@@ -238,9 +239,9 @@ before running it and keep the tree clean. Keep feature metadata consistent with
 actual capabilities and validate it with `extras/scripts/fts.py --validate --all`.
 
 API JSON and Go binding regeneration writes into the build-root install tree, so it
-runs in the pipeline rather than a session: `make json-api-files`,
+is a maintainer step like the other non-gated targets: `make json-api-files`,
 `make json-api-files-debug`, and `make go-api-files`. Change the inputs those
-generators read, and leave the generated trees to the pipeline.
+generators read, and leave the generated trees to them.
 
 ## Style and Documentation
 
@@ -271,14 +272,16 @@ Documentation is reStructuredText and Markdown, including component-local files
 linked into `docs`. When adding component documentation, inspect
 `extras/scripts/check_documentation.sh` and `docs/docsignore` for inclusion rules.
 The Sphinx build (`make docs`, HTML under `build-root/docs/html`, warnings as
-errors) and the spelling check (`make docs-spell`) need the documentation
-toolchain, and PR verification does not run either, so keep documentation edits
-consistent with the sources they describe and with neighboring documents.
+errors) and the spelling check (`make docs-spell`) run from a session once the
+documentation toolchain is already installed; they write under `build-root/docs`
+and PR verification runs neither, so keep documentation edits consistent with the
+sources they describe and with neighboring documents.
 
 ## Test Suites
 
-The suites described here run in the pipeline. The map exists so that a source
-change comes with the matching suite update: the `build-test` job derives its
+The Python functional suites described here run in the pipeline; the host-stack,
+Kubernetes, C, and coverage suites are maintainer steps. The map exists so that a
+source change comes with the matching suite update: the `build-test` job derives its
 filter from changed paths, so a plugin or `vnet` change is exercised only where an
 exact `test/test_<name>.py` module exists for the changed directory.
 
@@ -309,9 +312,13 @@ Harness controls such as `TEST_JOBS`, `MAX_VPP_CPUS`, `VPP_WORKER_COUNT`, `USE_S
 pipeline and for a maintainer running the harness directly; a session reading or
 editing the suites has no use for them. The harness needs adequate CPUs and shared
 memory, manages `build-root/test/venv` itself, installs the API binding editable,
-and applies `test/patches/scapy-*` patches; dependency inputs and the hash-pinned
-lockfile must be maintained together. Test logs, packet captures, and failure
-artifacts land in `build-root/test-logs` and the job output.
+and applies `test/patches/scapy-*` patches. Dependency inputs in
+`test/requirements.txt` and the hash-pinned lockfile `test/requirements-3.txt` are
+maintained together, and `make test-refresh-deps` regenerates the lockfile from a
+maintainer environment. Tests leave temporary logs, packet captures, and failure
+artifacts under `/tmp/vpp-unittest-*` and `/tmp/vpp-failed-unittests/`; the run
+summary appears in the job console, and `build-root/test-logs` holds only the
+runtime-setup log.
 
 ### Host-Stack, Kubernetes, and C Tests
 
@@ -337,8 +344,8 @@ cluster setup. These commands change containers, pods, and namespaces, and they 
 in a maintainer environment rather than a session.
 
 C/component tests include `src/vppinfra/test`, API client tests, and plugin test
-libraries; they need a compiled tree, so the pipeline or a maintainer runs them.
-Inspect the owning `CMakeLists.txt` for test selection and options such as
+libraries; they need a compiled tree, so they are maintainer steps. Inspect the
+owning `CMakeLists.txt` for test selection and options such as
 `VPP_BUILD_VPPINFRA_TESTS`. The API compiler has
 `src/tools/vppapigen/test_vppapigen.py`, which runs under the test environment.
 
@@ -349,8 +356,7 @@ GCC/gcov build and lcov; merged HTML is under
 `build-root/test-coverage-merged/html`. `make verify` performs package verification
 first, and its subsequent API-generator and functional-test phase is OS-gated by
 `MAKE_VERIFY_GATE_OS`, defaulting to Ubuntu 22.04; a successful invocation on
-another OS does not prove those tests ran. Both are pipeline or maintainer
-commands.
+another OS does not prove those tests ran. Both are maintainer commands.
 
 Coverage, release builds, documentation, Go style, and the host-stack and Kubernetes
 suites are not PR gates; when you rely on one of them, say that it did not run.
