@@ -1626,34 +1626,35 @@ class TestLinuxCPPairManagement(TestLinuxCPNetNSBase):
         inner_dst = "198.18.0.1"
 
         # Temporary CI diagnostics; remove once the GRE FIB churn is diagnosed.
-        def snapshot(stage, detail=False):
-            def record(label, read):
-                try:
-                    self.logger.info("[GRE-FIB] %s %s: %r", stage, label, read())
-                except UnexpectedApiReturnValueError as error:
-                    self.logger.info(
-                        "[GRE-FIB] %s %s: %s retval=%r reply=%r",
-                        stage,
-                        label,
-                        "NO_SUCH_ENTRY" if error.retval == -6 else "diagnostic-error",
-                        error.retval,
-                        error.reply,
-                    )
-                except (
-                    CliFailedCommandError,
-                    CliSyntaxError,
-                    OSError,
-                    subprocess.TimeoutExpired,
-                    VppDiedError,
-                    VPPRuntimeError,
-                ) as error:
-                    self.logger.info(
-                        "[GRE-FIB] %s %s diagnostic-error: %r", stage, label, error
-                    )
+        def record(stage, label, read):
+            try:
+                self.logger.info("[GRE-FIB] %s %s: %r", stage, label, read())
+            except UnexpectedApiReturnValueError as error:
+                self.logger.info(
+                    "[GRE-FIB] %s %s: %s retval=%r reply=%r",
+                    stage,
+                    label,
+                    "NO_SUCH_ENTRY" if error.retval == -6 else "diagnostic-error",
+                    error.retval,
+                    error.reply,
+                )
+            except (
+                CliFailedCommandError,
+                CliSyntaxError,
+                OSError,
+                subprocess.TimeoutExpired,
+                VppDiedError,
+                VPPRuntimeError,
+            ) as error:
+                self.logger.info(
+                    "[GRE-FIB] %s %s diagnostic-error: %r", stage, label, error
+                )
 
+        def snapshot(stage, detail=False):
             if gre_created:
                 for exact in (False, True):
                     record(
+                        stage,
                         f"ip_route_lookup exact={exact}",
                         lambda: self.vapi.api(
                             self.vapi.papi.ip_route_lookup,
@@ -1665,6 +1666,7 @@ class TestLinuxCPPairManagement(TestLinuxCPNetNSBase):
                         ),
                     )
                 record(
+                    stage,
                     "ip_route_dump exact prefix",
                     lambda: [
                         entry
@@ -1673,12 +1675,14 @@ class TestLinuxCPPairManagement(TestLinuxCPNetNSBase):
                     ],
                 )
                 record(
+                    stage,
                     "ip_address_dump GRE",
                     lambda: self.vapi.ip_address_dump(
                         gre_if.sw_if_index, is_ipv6=False
                     ),
                 )
                 record(
+                    stage,
                     "sw_interface_dump GRE/host",
                     lambda: [
                         interface
@@ -1702,13 +1706,14 @@ class TestLinuxCPPairManagement(TestLinuxCPNetNSBase):
                         "show adj",
                     ]
                 for command in commands:
-                    record(command, lambda: self.vapi.cli(command))
+                    record(stage, command, lambda: self.vapi.cli(command))
             for args in (
                 ["link", "show"],
                 ["address", "show"],
                 ["route", "show", "table", "all"],
             ):
                 record(
+                    stage,
                     "Linux " + " ".join(args),
                     lambda: subprocess.run(
                         ["ip", "-n", self.ns_name, "-details", "-json", *args],
@@ -1721,10 +1726,11 @@ class TestLinuxCPPairManagement(TestLinuxCPNetNSBase):
 
         try:
             for log_class in ("linux-cp", "nl"):
-                try:
-                    self.vapi.cli(f"set logging class {log_class} level debug")
-                except (CliFailedCommandError, CliSyntaxError) as error:
-                    self.logger.info("[GRE-FIB] enable %s debug: %r", log_class, error)
+                record(
+                    "logging-setup",
+                    log_class,
+                    lambda: self.vapi.cli(f"set logging class {log_class} level debug"),
+                )
             underlay.admin_up()
             underlay.config_ip4()
             underlay.resolve_arp()
