@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "aabe33a8_7edfe26b",
+        "filename": ".github/actions/vpp-hst-cache/action.yml",
+        "patchSetId": 1
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-10-19T18:52:33Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "c398e982_07e3e29d",
+      "revId": "085f5d222ef0c13604934418dff776021c45a7c7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "ded8a177_abfac6da",
@@ -31,6 +49,30 @@
       "writtenOn": "2026-10-19T18:20:50Z",
       "side": 1,
       "message": "Please include full path \u0027fdio/vpp/\u0027, not \u0027./\u0027 for this.\nAlso, this needs to be pinned to the commit hash of the action or it is insecure.",
+      "range": {
+        "startLine": 136,
+        "startChar": 14,
+        "endLine": 136,
+        "endChar": 45
+      },
+      "revId": "085f5d222ef0c13604934418dff776021c45a7c7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "2d7e357b_e33530ed",
+        "filename": ".github/workflows/periodic-vpp-verify-asan-hst.yml",
+        "patchSetId": 1
+      },
+      "lineNbr": 136,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-10-19T18:52:33Z",
+      "side": 1,
+      "message": "will be fixed in the next patch",
+      "parentUuid": "ded8a177_abfac6da",
       "range": {
         "startLine": 136,
         "startChar": 14,
@@ -64,6 +106,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "1e0c3afe_05286926",
+        "filename": ".github/workflows/periodic-vpp-verify-hst.yml",
+        "patchSetId": 1
+      },
+      "lineNbr": 140,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-10-19T18:52:33Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "09eb97c5_596fef8a",
+      "range": {
+        "startLine": 140,
+        "startChar": 14,
+        "endLine": 140,
+        "endChar": 45
+      },
+      "revId": "085f5d222ef0c13604934418dff776021c45a7c7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "d35a06c9_26e4a5f4",
@@ -87,6 +153,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "19f2d251_1100eec3",
+        "filename": ".github/workflows/vpp-verify-hst-u2204.yml",
+        "patchSetId": 1
+      },
+      "lineNbr": 207,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-10-19T18:52:33Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "d35a06c9_26e4a5f4",
+      "range": {
+        "startLine": 207,
+        "startChar": 14,
+        "endLine": 207,
+        "endChar": 45
+      },
+      "revId": "085f5d222ef0c13604934418dff776021c45a7c7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "8b907f68_3bee06cf",
@@ -100,6 +190,30 @@
       "writtenOn": "2026-10-19T18:20:50Z",
       "side": 1,
       "message": "Please include full path \u0027fdio/vpp/\u0027, not \u0027./\u0027 for this.\nAlso, this needs to be pinned to the commit hash of the action or it is insecure.",
+      "range": {
+        "startLine": 207,
+        "startChar": 14,
+        "endLine": 207,
+        "endChar": 45
+      },
+      "revId": "085f5d222ef0c13604934418dff776021c45a7c7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "820c38d4_8991ecd1",
+        "filename": ".github/workflows/vpp-verify-hst.yml",
+        "patchSetId": 1
+      },
+      "lineNbr": 207,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-10-19T18:52:33Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "8b907f68_3bee06cf",
       "range": {
         "startLine": 207,
         "startChar": 14,
