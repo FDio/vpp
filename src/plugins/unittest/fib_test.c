@@ -27,6 +27,7 @@
 #include <vnet/fib/fib_test.h>
 #include <vnet/fib/fib_path_list.h>
 #include <vnet/fib/fib_entry_src.h>
+#include <vnet/fib/fib_entry_delegate.h>
 #include <vnet/fib/fib_walk.h>
 #include <vnet/fib/fib_node_list.h>
 #include <vnet/fib/fib_urpf_list.h>
@@ -5504,6 +5505,8 @@ fib_test_v6 (void)
 static int
 fib_test_ae (void)
 {
+    const u32 path_list_pool_size = fib_path_list_pool_size();
+    const u32 entry_pool_size = fib_entry_pool_size();
     const dpo_id_t *dpo, *dpo_drop;
     const u32 fib_index = 0;
     fib_node_index_t dfrt, fei;
@@ -5644,28 +5647,66 @@ fib_test_ae (void)
     FIB_TEST((fei == dfrt), "default route removed");
 
     /*
-     * Add an attached route in the import FIB
+     * The recursive path resolves through the import table's default drop.
+     * Incrementally add the only resolving interface using the same source.
      */
+    const ip46_address_t unresolved_nh = {
+        .ip4.as_u32 = clib_host_to_net_u32(0xc0000201),
+    };
+    fib_node_index_t import_fei;
+
     local_pfx.fp_len = 24;
-    fib_table_entry_update_one_path(import_fib_index1,
-                                    &local_pfx,
-                                    FIB_SOURCE_API,
-                                    FIB_ENTRY_FLAG_NONE,
-                                    DPO_PROTO_IP4,
-                                    NULL,
-                                    tm->hw[0]->sw_if_index,
-                                    ~0, // invalid fib index
-                                    1,
-                                    NULL,
-                                    FIB_ROUTE_PATH_FLAG_NONE);
+    import_fei = fib_table_entry_update_one_path(import_fib_index1,
+                                                &local_pfx,
+                                                FIB_SOURCE_API,
+                                                FIB_ENTRY_FLAG_NONE,
+                                                DPO_PROTO_IP4,
+                                                &unresolved_nh,
+                                                ~0,
+                                                import_fib_index1,
+                                                1,
+                                                NULL,
+                                                FIB_ROUTE_PATH_FLAG_NONE);
+    FIB_TEST(!(FIB_ENTRY_FLAG_IMPORT & fib_entry_get_flags(import_fei)),
+             "recursive route does not import");
+    FIB_TEST((~0 == fib_entry_get_resolving_interface(import_fei)),
+             "recursive route has no resolving interface");
+    FIB_TEST((NULL == fib_entry_delegate_find(fib_entry_get(import_fei),
+                                            FIB_ENTRY_DELEGATE_ATTACHED_IMPORT)),
+             "recursive route has no import delegate");
+    local_pfx.fp_len = 32;
     fei = fib_table_lookup_exact_match(import_fib_index1, &local_pfx);
-    FIB_TEST((FIB_NODE_INDEX_INVALID != fei), "attached export created");
+    FIB_TEST((FIB_NODE_INDEX_INVALID == fei), "recursive route has no local import");
+    fei = fib_table_lookup_exact_match(import_fib_index1, &pfx_10_10_10_1_s_32);
+    FIB_TEST((FIB_NODE_INDEX_INVALID == fei), "recursive route has no ADJ import");
+
+    local_pfx.fp_len = 24;
+    fei = fib_table_entry_path_add(import_fib_index1,
+                                  &local_pfx,
+                                  FIB_SOURCE_API,
+                                  FIB_ENTRY_FLAG_NONE,
+                                  DPO_PROTO_IP4,
+                                  NULL,
+                                  tm->hw[0]->sw_if_index,
+                                  ~0,
+                                  1,
+                                  NULL,
+                                  FIB_ROUTE_PATH_FLAG_NONE);
+    FIB_TEST((fei == import_fei), "incremental add retains the entry");
+    FIB_TEST((FIB_ENTRY_FLAG_IMPORT & fib_entry_get_flags(import_fei)),
+             "incremental add sets import flags");
+    FIB_TEST((tm->hw[0]->sw_if_index == fib_entry_get_resolving_interface(import_fei)),
+             "incremental add resolves through the export interface");
+    FIB_TEST((NULL != fib_entry_delegate_find(fib_entry_get(import_fei),
+                                            FIB_ENTRY_DELEGATE_ATTACHED_IMPORT)),
+             "incremental add creates import delegate");
 
     /*
      * check for the presence of the adj-fibs in the import table
      */
     fei = fib_table_lookup_exact_match(import_fib_index1, &pfx_10_10_10_1_s_32);
     FIB_TEST((FIB_NODE_INDEX_INVALID != fei), "ADJ-fib1 imported");
+    FIB_TEST(fib_entry_is_sourced(fei, FIB_SOURCE_AE), "ADJ-fib1 has AE source");
     FIB_TEST((ai == fib_entry_get_adj(fei)),
              "adj-fib1 Import uses same adj as export");
 
@@ -5675,6 +5716,7 @@ fib_test_ae (void)
     local_pfx.fp_len = 32;
     fei = fib_table_lookup_exact_match(import_fib_index1, &local_pfx);
     FIB_TEST((FIB_NODE_INDEX_INVALID != fei), "local imported");
+    FIB_TEST(fib_entry_is_sourced(fei, FIB_SOURCE_AE), "local has AE source");
 
     /*
      * Add another adj-fin in the export table. Expect this
@@ -5706,11 +5748,85 @@ fib_test_ae (void)
 
     fei = fib_table_lookup_exact_match(import_fib_index1, &pfx_10_10_10_2_s_32);
     FIB_TEST((FIB_NODE_INDEX_INVALID != fei), "ADJ-fib2 imported");
+    FIB_TEST(fib_entry_is_sourced(fei, FIB_SOURCE_AE), "later ADJ-fib2 has AE source");
     FIB_TEST((ai == fib_entry_get_adj(fei)),
              "Import uses same adj as export");
     FIB_TEST((FIB_ENTRY_FLAG_ATTACHED & fib_entry_get_flags(fei)),
              "ADJ-fib2 imported flags %d",
              fib_entry_get_flags(fei));
+
+    fib_entry_lock(import_fei);
+    local_pfx.fp_len = 24;
+    fib_table_entry_delete(import_fib_index1, &local_pfx, FIB_SOURCE_API);
+    fei = fib_table_lookup_exact_match(import_fib_index1, &local_pfx);
+    FIB_TEST((FIB_NODE_INDEX_INVALID == fei), "incremental importer removed");
+    FIB_TEST((NULL == fib_entry_delegate_find(fib_entry_get(import_fei),
+                                            FIB_ENTRY_DELEGATE_ATTACHED_IMPORT)),
+             "deleting incremental importer removes delegate");
+    fei = fib_table_lookup_exact_match(import_fib_index1, &pfx_10_10_10_1_s_32);
+    FIB_TEST((FIB_NODE_INDEX_INVALID == fei), "deleting importer removes ADJ-fib1");
+    fei = fib_table_lookup_exact_match(import_fib_index1, &pfx_10_10_10_2_s_32);
+    FIB_TEST((FIB_NODE_INDEX_INVALID == fei), "deleting importer removes ADJ-fib2");
+    local_pfx.fp_len = 32;
+    fei = fib_table_lookup_exact_match(import_fib_index1, &local_pfx);
+    FIB_TEST((FIB_NODE_INDEX_INVALID == fei), "deleting importer removes local");
+    fib_entry_unlock(import_fei);
+
+    local_pfx.fp_len = 24;
+    import_fei = fib_table_entry_update_one_path(import_fib_index1,
+                                                &local_pfx,
+                                                FIB_SOURCE_API,
+                                                FIB_ENTRY_FLAG_NONE,
+                                                DPO_PROTO_IP4,
+                                                NULL,
+                                                tm->hw[0]->sw_if_index,
+                                                ~0,
+                                                1,
+                                                NULL,
+                                                FIB_ROUTE_PATH_FLAG_NONE);
+    FIB_TEST((NULL != fib_entry_delegate_find(fib_entry_get(import_fei),
+                                            FIB_ENTRY_DELEGATE_ATTACHED_IMPORT)),
+             "replacement creates import delegate before special update");
+    fei = fib_table_lookup_exact_match(import_fib_index1, &pfx_10_10_10_1_s_32);
+    FIB_TEST((FIB_NODE_INDEX_INVALID != fei), "ADJ-fib1 present before special update");
+    fei = fib_table_lookup_exact_match(import_fib_index1, &pfx_10_10_10_2_s_32);
+    FIB_TEST((FIB_NODE_INDEX_INVALID != fei), "ADJ-fib2 present before special update");
+    local_pfx.fp_len = 32;
+    fei = fib_table_lookup_exact_match(import_fib_index1, &local_pfx);
+    FIB_TEST((FIB_NODE_INDEX_INVALID != fei), "local present before special update");
+
+    local_pfx.fp_len = 24;
+    fei = fib_table_entry_special_dpo_update(import_fib_index1,
+                                            &local_pfx,
+                                            FIB_SOURCE_API,
+                                            FIB_ENTRY_FLAG_DROP,
+                                            dpo_drop);
+    FIB_TEST((fei == import_fei), "special update retains the entry");
+    FIB_TEST(!(FIB_ENTRY_FLAG_IMPORT & fib_entry_get_flags(import_fei)),
+             "special update clears import flags");
+    FIB_TEST((NULL == fib_entry_delegate_find(fib_entry_get(import_fei),
+                                            FIB_ENTRY_DELEGATE_ATTACHED_IMPORT)),
+             "special update purges import delegate");
+    fei = fib_table_lookup_exact_match(import_fib_index1, &pfx_10_10_10_1_s_32);
+    FIB_TEST((FIB_NODE_INDEX_INVALID == fei), "special update purges ADJ-fib1");
+    fei = fib_table_lookup_exact_match(import_fib_index1, &pfx_10_10_10_2_s_32);
+    FIB_TEST((FIB_NODE_INDEX_INVALID == fei), "special update purges ADJ-fib2");
+    local_pfx.fp_len = 32;
+    fei = fib_table_lookup_exact_match(import_fib_index1, &local_pfx);
+    FIB_TEST((FIB_NODE_INDEX_INVALID == fei), "special update purges local");
+
+    local_pfx.fp_len = 24;
+    fib_table_entry_update_one_path(import_fib_index1,
+                                    &local_pfx,
+                                    FIB_SOURCE_API,
+                                    FIB_ENTRY_FLAG_NONE,
+                                    DPO_PROTO_IP4,
+                                    NULL,
+                                    tm->hw[0]->sw_if_index,
+                                    ~0,
+                                    1,
+                                    NULL,
+                                    FIB_ROUTE_PATH_FLAG_NONE);
 
     /*
      * create a 2nd FIB table into which routes will be imported
@@ -6085,6 +6201,10 @@ fib_test_ae (void)
     fib_table_unlock(import_fib_index1, FIB_PROTOCOL_IP4, FIB_SOURCE_CLI);
     fib_table_unlock(import_fib_index2, FIB_PROTOCOL_IP4, FIB_SOURCE_CLI);
 
+    FIB_TEST((path_list_pool_size == fib_path_list_pool_size()),
+             "attached export leaves no path lists");
+    FIB_TEST((entry_pool_size == fib_entry_pool_size()),
+             "attached export leaves no FIB entries");
     FIB_TEST((0 == adj_nbr_db_size()), "ADJ DB size is %d",
              adj_nbr_db_size());
 
