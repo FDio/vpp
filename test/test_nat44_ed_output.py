@@ -5,7 +5,7 @@ import random
 import unittest
 import struct
 import socket
-from scapy.layers.inet import Ether, IP, TCP
+from scapy.layers.inet import Ether, IP, TCP, UDP, ICMP
 from scapy.packet import Raw
 from scapy.data import IP_PROTOS
 from framework import VppTestCase
@@ -35,6 +35,7 @@ class TestNAT44EDOutput(VppTestCase):
         super().setUpClass()
         cls.create_pg_interfaces(range(2))
         cls.interfaces = list(cls.pg_interfaces)
+        cls.pg0.generate_remote_hosts(2)
 
     @classmethod
     def tearDownClass(cls):
@@ -256,6 +257,88 @@ class TestNAT44EDOutput(VppTestCase):
 
         sessions = self.vapi.nat44_user_session_dump(pg0.remote_ip4, 0)
         self.assertEqual(2, len(sessions))
+
+    def test_forwarding_static_only(self):
+        """Forwarding with static mappings only: unmapped hosts not translated"""
+
+        mapped = self.pg0.remote_hosts[0]
+        unmapped = self.pg0.remote_hosts[1]
+        remote_host = self.pg1.remote_ip4
+        nat_ip = "10.0.0.3"
+        drops = "/err/nat44-ed-in2out-output-slowpath/out of ports"
+
+        self.pg0.configure_ipv4_neighbors()
+        self.vapi.nat44_forwarding_enable_disable(enable=1)
+        self.vapi.nat44_ed_add_del_output_interface(
+            sw_if_index=self.pg1.sw_if_index, is_add=1
+        )
+        self.vapi.nat44_add_del_static_mapping(
+            is_add=1,
+            local_ip_address=mapped.ip4,
+            external_ip_address=nat_ip,
+            external_sw_if_index=0xFFFFFFFF,
+            flags=VppEnum.vl_api_nat_config_flags_t.NAT_IS_ADDR_ONLY,
+        )
+
+        def in2out(host, port):
+            eth = Ether(src=host.mac, dst=self.pg0.local_mac)
+            ip = IP(src=host.ip4, dst=remote_host)
+            return [
+                eth / ip / TCP(sport=port, dport=80, flags="S"),
+                eth / ip / UDP(sport=port, dport=53),
+                eth / ip / ICMP(id=port, type="echo-request"),
+            ]
+
+        def assert_src(capture, src, port):
+            for p in capture:
+                self.assertEqual(p[IP].src, src)
+                if ICMP in p:
+                    self.assertEqual(p[ICMP].id, port)
+                else:
+                    self.assertEqual(p[IP].payload.sport, port)
+
+        # unmapped host: forwarded untranslated, return traffic too
+        capture = self.send_and_expect(
+            self.pg0,
+            in2out(unmapped, 6000),
+            self.pg1,
+            stats_diff={"err": {drops: 0}},
+        )
+        assert_src(capture, unmapped.ip4, 6000)
+        eth = Ether(src=self.pg1.remote_mac, dst=self.pg1.local_mac)
+        ip = IP(src=remote_host, dst=unmapped.ip4)
+        out2in = [
+            eth / ip / TCP(sport=80, dport=6000, flags="SA"),
+            eth / ip / UDP(sport=53, dport=6000),
+            eth / ip / ICMP(id=6000, type="echo-reply"),
+        ]
+        capture = self.send_and_expect(self.pg1, out2in, self.pg0)
+        for p in capture:
+            self.assertEqual(p[IP].dst, unmapped.ip4)
+
+        # mapped host: translated
+        capture = self.send_and_expect(self.pg0, in2out(mapped, 6001), self.pg1)
+        assert_src(capture, nat_ip, 6001)
+
+        # forwarding disabled: unmapped host dropped as before
+        self.vapi.nat44_forwarding_enable_disable(enable=0)
+        pkts = in2out(unmapped, 6002)
+        self.send_and_assert_no_replies(
+            self.pg0, pkts, stats_diff={"err": {drops: len(pkts)}}
+        )
+
+        # forwarding enabled with a pool: unmapped host dynamically translated
+        self.vapi.nat44_forwarding_enable_disable(enable=1)
+        self.vapi.nat44_add_del_address_range(
+            first_ip_address=self.pg1.local_ip4,
+            last_ip_address=self.pg1.local_ip4,
+            vrf_id=0xFFFFFFFF,
+            is_add=1,
+            flags=0,
+        )
+        capture = self.send_and_expect(self.pg0, in2out(unmapped, 6003), self.pg1)
+        for p in capture:
+            self.assertEqual(p[IP].src, self.pg1.local_ip4)
 
 
 if __name__ == "__main__":
