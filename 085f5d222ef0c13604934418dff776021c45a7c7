@@ -1,0 +1,113 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c398e982_07e3e29d",
+        "filename": ".github/actions/vpp-hst-cache/action.yml",
+        "patchSetId": 1
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-10-19T18:20:50Z",
+      "side": 1,
+      "message": "Please separate this into a separate gerrit change.",
+      "revId": "085f5d222ef0c13604934418dff776021c45a7c7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ded8a177_abfac6da",
+        "filename": ".github/workflows/periodic-vpp-verify-asan-hst.yml",
+        "patchSetId": 1
+      },
+      "lineNbr": 136,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-10-19T18:20:50Z",
+      "side": 1,
+      "message": "Please include full path \u0027fdio/vpp/\u0027, not \u0027./\u0027 for this.\nAlso, this needs to be pinned to the commit hash of the action or it is insecure.",
+      "range": {
+        "startLine": 136,
+        "startChar": 14,
+        "endLine": 136,
+        "endChar": 45
+      },
+      "revId": "085f5d222ef0c13604934418dff776021c45a7c7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "09eb97c5_596fef8a",
+        "filename": ".github/workflows/periodic-vpp-verify-hst.yml",
+        "patchSetId": 1
+      },
+      "lineNbr": 140,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-10-19T18:20:50Z",
+      "side": 1,
+      "message": "Please include full path \u0027fdio/vpp/\u0027, not \u0027./\u0027 for this.\nAlso, this needs to be pinned to the commit hash of the action or it is insecure.",
+      "range": {
+        "startLine": 140,
+        "startChar": 14,
+        "endLine": 140,
+        "endChar": 45
+      },
+      "revId": "085f5d222ef0c13604934418dff776021c45a7c7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d35a06c9_26e4a5f4",
+        "filename": ".github/workflows/vpp-verify-hst-u2204.yml",
+        "patchSetId": 1
+      },
+      "lineNbr": 207,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-10-19T18:20:50Z",
+      "side": 1,
+      "message": "Please include full path \u0027fdio/vpp/\u0027, not \u0027./\u0027 for this.\nAlso, this needs to be pinned to the commit hash of the action or it is insecure.",
+      "range": {
+        "startLine": 207,
+        "startChar": 14,
+        "endLine": 207,
+        "endChar": 45
+      },
+      "revId": "085f5d222ef0c13604934418dff776021c45a7c7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8b907f68_3bee06cf",
+        "filename": ".github/workflows/vpp-verify-hst.yml",
+        "patchSetId": 1
+      },
+      "lineNbr": 207,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-10-19T18:20:50Z",
+      "side": 1,
+      "message": "Please include full path \u0027fdio/vpp/\u0027, not \u0027./\u0027 for this.\nAlso, this needs to be pinned to the commit hash of the action or it is insecure.",
+      "range": {
+        "startLine": 207,
+        "startChar": 14,
+        "endLine": 207,
+        "endChar": 45
+      },
+      "revId": "085f5d222ef0c13604934418dff776021c45a7c7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
