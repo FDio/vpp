@@ -136,6 +136,9 @@ jobs:
           START_DOCKER_SCRIPT: start-docker.sh
           TUI_LINE: ${{ env.TUI_LINE }}
 
+      - name: Restore Baked HST Images and Caches
+        uses: fdio/vpp/.github/actions/vpp-hst-cache@9481ac391a7d0f43a99e4ca7f1ab97ba8c8886c8
+
       - name: HST Test VPP
         if: success()
         uses: fdio/vpp/.github/actions/vpp-hst-test@22d12e5159c193637925d8f7b1eba26325c2f9fa
