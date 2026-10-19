@@ -80,10 +80,18 @@ wg_handoff (vlib_main_t * vm,
 	  message_data_t *data = vlib_buffer_get_current (b[0]);
 	  u32 *entry =
 	    wg_index_table_lookup (&wmp->index_table, data->receiver_index);
-	  peeri = *entry;
-	  peer = wg_peer_get (peeri);
 
-	  ti[0] = peer->input_thread_index;
+	  if (PREDICT_TRUE (entry != NULL))
+	    {
+	      peeri = *entry;
+	      peer = wg_peer_get (peeri);
+	      ti[0] = peer->input_thread_index;
+	    }
+	  else
+	    {
+	      peer = NULL;
+	      ti[0] = 0;
+	    }
 	}
       else
 	{
