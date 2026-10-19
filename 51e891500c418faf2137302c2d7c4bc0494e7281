@@ -20,6 +20,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "5ec8d689_2ec5a92e",
+        "filename": "src/plugins/hsi/hsi.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 25,
+      "author": {
+        "id": 3339
+      },
+      "writtenOn": "2026-10-19T14:47:36Z",
+      "side": 1,
+      "message": "Do you want me to add two more functions for UDP, into this hsi_app_vft_t? I can find two existing functions that can be added here: udp_tracked_action(...) and udp_tracker_get(...)",
+      "parentUuid": "88add518_e426e764",
+      "revId": "51e891500c418faf2137302c2d7c4bc0494e7281",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "9d801fd2_6756f329",
         "filename": "src/plugins/hsi/hsi_tracker_private.h",
         "patchSetId": 1
@@ -37,6 +55,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "959167de_7c4c662f",
+        "filename": "src/plugins/hsi/hsi_tracker_private.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 57,
+      "author": {
+        "id": 3339
+      },
+      "writtenOn": "2026-10-19T14:47:36Z",
+      "side": 1,
+      "message": "If you wanted field hsi_tcp_track_snapshot_t.app_ctx to be renamed to hsi_tcp_track_snapshot_t.next_node_opaque, then probably we should have the field names as next_node_opaque and peer_next_node_opaque inside hsi_tcp_tracker_t",
+      "parentUuid": "9d801fd2_6756f329",
+      "revId": "51e891500c418faf2137302c2d7c4bc0494e7281",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "2706fbf8_da9f746c",
         "filename": "src/plugins/hsi/hsi_tracker_tcp.c",
         "patchSetId": 1
@@ -48,6 +84,24 @@
       "writtenOn": "2026-10-10T01:42:04Z",
       "side": 1,
       "message": "let\u0027s track that as something more generic. We could actually call it next_node_opaque :)",
+      "revId": "51e891500c418faf2137302c2d7c4bc0494e7281",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "77dbca7f_2d72d72d",
+        "filename": "src/plugins/hsi/hsi_tracker_tcp.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 298,
+      "author": {
+        "id": 3339
+      },
+      "writtenOn": "2026-10-19T14:47:36Z",
+      "side": 1,
+      "message": "Ok, so rename field hsi_tcp_track_snapshot_t.app_ctx to hsi_tcp_track_snapshot_t.next_node_opaque?",
+      "parentUuid": "2706fbf8_da9f746c",
       "revId": "51e891500c418faf2137302c2d7c4bc0494e7281",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
