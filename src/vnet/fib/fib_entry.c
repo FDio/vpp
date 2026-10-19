@@ -835,13 +835,15 @@ fib_entry_special_add (fib_node_index_t fib_entry_index,
 		       const dpo_id_t *dpo)
 {
     fib_source_t best_source;
+    fib_entry_flag_t bflags;
     fib_entry_t *fib_entry;
 
     fib_entry = fib_entry_get(fib_entry_index);
     best_source = fib_entry_get_best_source(fib_entry_index);
+    bflags = fib_entry_get_flags_i(fib_entry);
 
     fib_entry = fib_entry_src_action_add(fib_entry, source, flags, dpo);
-    fib_entry_source_change(fib_entry, best_source, source);
+    fib_entry_source_change_w_flags(fib_entry, best_source, bflags, source);
     FIB_ENTRY_DBG(fib_entry, "special-add:%U", format_fib_source, source);
 }
 
@@ -852,13 +854,15 @@ fib_entry_special_update (fib_node_index_t fib_entry_index,
 			  const dpo_id_t *dpo)
 {
     fib_source_t best_source;
+    fib_entry_flag_t bflags;
     fib_entry_t *fib_entry;
 
     fib_entry = fib_entry_get(fib_entry_index);
     best_source = fib_entry_get_best_source(fib_entry_index);
+    bflags = fib_entry_get_flags_i(fib_entry);
 
     fib_entry = fib_entry_src_action_update(fib_entry, source, flags, dpo);
-    fib_entry_source_change(fib_entry, best_source, source);
+    fib_entry_source_change_w_flags(fib_entry, best_source, bflags, source);
 
     FIB_ENTRY_DBG(fib_entry, "special-updated:%U", format_fib_source, source);
 }
@@ -871,6 +875,7 @@ fib_entry_path_add (fib_node_index_t fib_entry_index,
 		    const fib_route_path_t *rpaths)
 {
     fib_source_t best_source;
+    fib_entry_flag_t bflags;
     fib_entry_t *fib_entry;
     fib_entry_src_t *bsrc;
 
@@ -879,10 +884,11 @@ fib_entry_path_add (fib_node_index_t fib_entry_index,
 
     bsrc = fib_entry_get_best_src_i(fib_entry);
     best_source = fib_entry_src_get_source(bsrc);
-    
+    bflags = fib_entry_get_flags_i(fib_entry);
+
     fib_entry = fib_entry_src_action_path_add(fib_entry, source, flags, rpaths);
 
-    fib_entry_source_change(fib_entry, best_source, source);
+    fib_entry_source_change_w_flags(fib_entry, best_source, bflags, source);
 
     FIB_ENTRY_DBG(fib_entry, "path add:%U", format_fib_source, source);
 }
