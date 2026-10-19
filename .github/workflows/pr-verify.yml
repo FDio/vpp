@@ -375,7 +375,9 @@ jobs:
           report = ["Limits: 256 MiB total, 32 MiB per file, 2000 files.",
                     "Oversized text logs retain their tail; oversized binary traces/pcaps are skipped.",
                     "Collect .txt/.log/.pcap/.pcapng and api_post_mortem.<pid>; exclude cores/sockets.",
-                    "Symlinks are recorded, never traversed."]
+                    "Symlinks are recorded, never traversed.",
+                    "Staged filenames use unique numeric IDs with safe extensions; this report maps back to originals.",
+                    "Copied paths below map original -> staged, relative to this report."]
           if failed.is_dir() and not failed.is_symlink():
               for link in sorted(failed.iterdir()):
                   if link.is_symlink():
@@ -418,8 +420,9 @@ jobs:
               if reason:
                   report.append(f"SKIPPED ({reason}): {source} ({size} bytes)")
                   continue
-              destination = output / source.relative_to(source.anchor)
-              destination.parent.mkdir(parents=True, exist_ok=True)
+              suffix = source.suffix if source.suffix in (".txt", ".log", ".pcap", ".pcapng") else ".bin"
+              staged = Path(f"{count + 1:04d}{suffix}")
+              destination = output / staged
               with source.open("rb") as reader, destination.open("wb") as writer:
                   if size > length:
                       reader.seek(size - length)
@@ -427,7 +430,7 @@ jobs:
               remaining -= length
               count += 1
               status = "TAIL" if size > length else "COPIED"
-              report.append(f"{status}: {source} ({length}/{size} bytes)")
+              report.append(f"{status}: {str(source)!r} -> {str(staged)!r} ({length}/{size} bytes)")
           if not count:
               print("::warning::No test diagnostic files found; uploading collection report only")
           report.append(f"Collected {count} files, {256 * 1024 * 1024 - remaining} bytes.")
