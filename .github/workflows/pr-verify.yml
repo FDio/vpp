@@ -362,6 +362,7 @@ jobs:
           python3 - <<'PY'
           import os
           from pathlib import Path
+          import re
           import stat
 
           output = Path(os.environ["RUNNER_TEMP"]) / "vpp-test-diagnostics"
@@ -373,7 +374,7 @@ jobs:
           failed_names = set()
           report = ["Limits: 256 MiB total, 32 MiB per file, 2000 files.",
                     "Oversized text logs retain their tail; oversized binary traces/pcaps are skipped.",
-                    "Only .txt/.log/.pcap/.pcapng files are collected; cores and sockets are excluded.",
+                    "Collect .txt/.log/.pcap/.pcapng and api_post_mortem.<pid>; exclude cores/sockets.",
                     "Symlinks are recorded, never traversed."]
           if failed.is_dir() and not failed.is_symlink():
               for link in sorted(failed.iterdir()):
@@ -393,7 +394,8 @@ jobs:
                                       if not (Path(directory) / name).is_symlink())
                   for name in sorted(names):
                       source = Path(directory) / name
-                      if source.suffix not in (".txt", ".log", ".pcap", ".pcapng"):
+                      post_mortem = re.fullmatch(r"api_post_mortem\.[0-9]+", name) is not None
+                      if not post_mortem and source.suffix not in (".txt", ".log", ".pcap", ".pcapng"):
                           continue
                       if not stat.S_ISREG(source.lstat().st_mode):
                           continue
@@ -401,14 +403,14 @@ jobs:
                       priority = (0 if name in ("log.txt", "vpp_stdout.txt", "vpp_stderr.txt",
                                                "failed_tests.txt") else
                                   2 if source.suffix in (".pcap", ".pcapng") else 1)
-                      candidates.append((priority, source))
+                      binary = (post_mortem or name.startswith("vpp_api_trace") or
+                                source.suffix in (".pcap", ".pcapng"))
+                      candidates.append((priority, source, binary))
           remaining = 256 * 1024 * 1024
           file_limit = 32 * 1024 * 1024
           count = 0
-          for _, source in sorted(candidates, key=lambda item: item[0]):
+          for _, source, binary in sorted(candidates, key=lambda item: item[0]):
               size = source.stat().st_size
-              binary = (source.name.startswith("vpp_api_trace") or
-                        source.suffix in (".pcap", ".pcapng"))
               length = min(size, file_limit)
               reason = ("32 MiB binary file limit" if binary and size > file_limit else
                         "2000-file limit" if count >= 2000 else
