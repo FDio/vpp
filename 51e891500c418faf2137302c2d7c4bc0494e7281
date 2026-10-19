@@ -38,6 +38,41 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "86a97ed2_01e1cfe3",
+        "filename": "src/plugins/hsi/hsi.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 25,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-10-19T23:05:44Z",
+      "side": 1,
+      "message": "I was talking about `struct _tcp_connection;` Can\u0027t we have a dependency on tcp_types.h?",
+      "parentUuid": "5ec8d689_2ec5a92e",
+      "revId": "51e891500c418faf2137302c2d7c4bc0494e7281",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3fab061f_2ab54581",
+        "filename": "src/plugins/hsi/hsi_tracker.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 358,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-10-19T23:05:44Z",
+      "side": 1,
+      "message": "I\u0027m guessing this is meant to just access the handlers from other plugins. Let\u0027s add a comment about that and maybe rename some of these to `hsi_tracker*` as opposed to `hsi_app*`",
+      "revId": "51e891500c418faf2137302c2d7c4bc0494e7281",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "9d801fd2_6756f329",
         "filename": "src/plugins/hsi/hsi_tracker_private.h",
         "patchSetId": 1
@@ -73,6 +108,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "22756ae3_0a00c3eb",
+        "filename": "src/plugins/hsi/hsi_tracker_private.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 57,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-10-19T23:05:44Z",
+      "side": 1,
+      "message": "Yup, that should work",
+      "parentUuid": "959167de_7c4c662f",
+      "revId": "51e891500c418faf2137302c2d7c4bc0494e7281",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "2706fbf8_da9f746c",
         "filename": "src/plugins/hsi/hsi_tracker_tcp.c",
         "patchSetId": 1
@@ -102,6 +155,41 @@
       "side": 1,
       "message": "Ok, so rename field hsi_tcp_track_snapshot_t.app_ctx to hsi_tcp_track_snapshot_t.next_node_opaque?",
       "parentUuid": "2706fbf8_da9f746c",
+      "revId": "51e891500c418faf2137302c2d7c4bc0494e7281",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "43c31379_457b1a28",
+        "filename": "src/plugins/hsi/hsi_tracker_tcp.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 298,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-10-19T23:05:44Z",
+      "side": 1,
+      "message": "Yup, that\u0027s what it\u0027s called in tcp",
+      "parentUuid": "77dbca7f_2d72d72d",
+      "revId": "51e891500c418faf2137302c2d7c4bc0494e7281",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1d5a93b0_384ceab6",
+        "filename": "src/vnet/session/application_crypto.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 275,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-10-19T23:05:44Z",
+      "side": 1,
+      "message": "Maybe rebase, I think this is in already.",
       "revId": "51e891500c418faf2137302c2d7c4bc0494e7281",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
