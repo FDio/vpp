@@ -39,7 +39,7 @@ from template_ipsec import (
 )
 from test_ipsec_tun_if_esp import TemplateIpsecItf4
 from config import config
-from vpp_ip_route import FibPathType, VppRoutePath
+from vpp_ip_route import FibPathType, VppRoutePath, find_route
 from vpp_gre_interface import VppGreInterface
 from vpp_qemu_utils import (
     add_namespace_route,
@@ -2138,12 +2138,22 @@ class TestLinuxCPNetlinkRecovery(TestLinuxCPNetNSBase):
     def _check_linux_update_reaches_vpp(self):
         """Add a blackhole route on the Linux side and look it up in the VPP FIB."""
         route = self.route_blackhole
-        lookup = str(ip_interface(route).network[1]) + "/32"
+        network = ip_interface(route).network
+        lookup = str(network[1]) + "/32"
+
+        def route_present():
+            return find_route(self, str(network.network_address), network.prefixlen)
+
+        self.assertFalse(
+            route_present(), f"{route} already present before Linux update"
+        )
         try:
             add_namespace_route(self.ns_name, route, route_type="blackhole")
+            self.poll_for(f"{route} present in VPP FIB", route_present, True)
             self.verify_paths(lookup, dict(type=FibPathType.FIB_PATH_TYPE_DROP))
         finally:
             del_namespace_route(self.ns_name, route, check=False)
+            self.poll_for(f"{route} removed from VPP FIB", route_present, False)
 
     def test_netlink_poll_error_recovery(self):
         """Netlink polling error callback triggers a recovery cycle"""
