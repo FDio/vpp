@@ -1,0 +1,21 @@
+ARG UBUNTU_VERSION=22.04
+FROM ubuntu:${UBUNTU_VERSION}
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# install-dep shells out to sudo and git
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    git \
+    make \
+    sudo \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY Makefile /vpp-src/Makefile
+# install-dep ends by setting a repo local git config
+RUN git init -q /vpp-src \
+    && make -C /vpp-src UNATTENDED=yes install-dep \
+    && rm -rf /var/lib/apt/lists/*
+
+# under sudo the build runs as root on the user's tree
+RUN git config --system --add safe.directory '*'

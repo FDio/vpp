@@ -264,6 +264,19 @@ Two runs from the *same* checkout are not supported: Ginkgo compiles the suite t
 ``hs-test.test`` in the package directory and removes it when the run ends, so the
 runs would delete it under each other.
 
+Running on another Ubuntu version
+---------------------------------
+
+The images are built from ``ubuntu:$UBUNTU_VERSION``, the host's version by default.
+For any other version VPP is built in a container of that version, so pass it to
+every ``make build`` and ``make test``::
+
+    $ make build UBUNTU_VERSION=24.04
+    $ make test TEST=... UBUNTU_VERSION=24.04
+
+``build-root`` is not kept per version. To switch versions, run ``make wipe-release``
+(``make wipe`` for debug, ``make test-wipe-cov`` for gcov) in the VPP root first.
+
 Modifying the framework
 -----------------------
 
