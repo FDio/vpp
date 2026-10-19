@@ -420,6 +420,28 @@ is_destination_resolvable (u32 rx_fib_index, ip4_address_t addr)
   return 0;
 }
 
+/*
+ * With forwarding enabled, translation only occurs if an active session or
+ * static configuration exists. In output-feature mode a new flow that matches
+ * neither still reaches slow_path_ed and needs a pool address; when no pool
+ * is configured there is nothing to translate it to, so forward it
+ * untranslated instead of dropping it as out of ports.
+ */
+static_always_inline int
+nat44_ed_fwd_no_pool (snat_main_t *sm, u32 tx_sw_if_index)
+{
+  snat_address_resolve_t *rp;
+
+  if (!sm->forwarding_enabled || tx_sw_if_index == ~0 || vec_len (sm->addresses))
+    return 0;
+  vec_foreach (rp, sm->addr_to_resolve)
+    {
+      if (!rp->is_twice_nat)
+	return 0;
+    }
+  return 1;
+}
+
 static u32
 slow_path_ed (vlib_main_t *vm, snat_main_t *sm, vlib_buffer_t *b,
 	      ip4_address_t l_addr, ip4_address_t r_addr, u16 l_port,
@@ -466,6 +488,15 @@ slow_path_ed (vlib_main_t *vm, snat_main_t *sm, vlib_buffer_t *b,
 	  return next;
 	}
       is_sm = 1;
+    }
+
+  // forwarding mode, no static mapping, no pool and not hairpinning
+  ip4_address_t placeholder_addr;
+  if (!is_sm && nat44_ed_fwd_no_pool (sm, tx_sw_if_index) &&
+      !nat44_ed_external_sm_lookup (sm, r_addr, r_port, proto, &placeholder_addr, 0))
+    {
+      *sessionp = NULL;
+      return next;
     }
 
   if (PREDICT_TRUE (proto == IP_PROTOCOL_TCP))
