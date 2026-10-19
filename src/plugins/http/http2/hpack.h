@@ -60,6 +60,7 @@ typedef struct
   u8 *headers;
   u32 headers_len;
   u32 control_data_len;
+  u8 *alt_svc;
 } hpack_response_control_data_t;
 
 /**

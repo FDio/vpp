@@ -59,6 +59,8 @@ typedef struct transport_endpt_cfg_http
   u32 timeout; /**< HTTP session timeout in seconds */
   http_udp_tunnel_mode_t udp_tunnel_mode; /**< connect-udp mode */
   http_endpt_cfg_flags_t flags;
+  /** HTTP/3 port, in host byte order, zero if not set. */
+  u16 h3_alt_svc_port;
 } transport_endpt_cfg_http_t;
 
 typedef struct
