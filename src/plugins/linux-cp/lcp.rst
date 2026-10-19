@@ -49,6 +49,92 @@ netlink to VPP also). This means that Linux will send packets with the
 peer's MAC address in the rewrite to VPP. The receiving TAP interface
 must therefore be in promiscuous mode.
 
+Netlink listener
+________________
+
+The ``linux_nl`` plugin mirrors kernel link, address, neighbor, and route
+state into VPP through netlink notifications. A notification socket
+receives messages into a queue that is processed in batches. Creating
+an interface pair opens the socket if necessary; deleting the last pair
+closes it. These callbacks do not cancel an active recovery loop.
+
+Recovery
+^^^^^^^^
+
+The following conditions request synchronization with the kernel:
+
+* the poller reports an error on the notification socket;
+* reading the notification socket fails with an error other than EAGAIN;
+* opening the notification socket fails when an interface pair is created.
+
+The polling error callback logs the notification socket descriptor and
+queries ``SO_ERROR``. A successful query logs the pending error text and
+code, including zero; a failed query logs the query's errno text and
+code. Reading ``SO_ERROR`` clears the pending error, so recovery is
+requested even if the query fails or returns zero. This diagnostic does
+not establish the cause of an earlier incident; in particular, a past
+receive-buffer overflow cannot be confirmed without a recorded error.
+
+Each existing recovery attempt performs these steps:
+
+1. Close the notification socket and discard queued notifications.
+2. Wait for the synchronization attempt delay (2 seconds by default).
+3. Open separate dump sockets for links, addresses, neighbors, and routes,
+   then reopen the notification socket. Failure to set nonblocking mode
+   or the initial notification socket buffers follows the socket-open
+   cleanup and retry path.
+4. Request and process the kernel dumps in batches while new notifications
+   are queued. A dump read failure, EOF, or notification error event
+   observed between batches abandons the attempt.
+5. Run the synchronization-end callbacks and resume queued notification
+   processing after all dumps complete.
+
+Failed attempts close the dump sockets and repeat the same loop with
+its fixed delay; there is no retry limit or increasing delay. The
+notification socket is opened before the dump requests to collect
+updates during synchronization. The diagnostics add no new recovery
+trigger and do not change this synchronization sequence. Updating the
+receive buffer size at runtime logs a failure to apply the new size to
+an open socket; it does not trigger synchronization.
+
+Diagnostics
+^^^^^^^^^^^
+
+``show lcp netlink`` reads listener state without starting recovery or
+changing configuration. For example::
+
+  State: notification
+  Socket: 7
+  Queued messages: 0
+  Synchronization attempts: 1
+  Synchronization completed: 1
+  Synchronization failed: 0
+
+``State`` is ``notification`` during normal notification processing,
+including before any socket has been opened, and ``synchronizing``
+during recovery and its retry delay. ``Socket`` is the notification
+socket descriptor, or -1 when that socket is closed. ``Queued messages``
+counts messages received by the plugin that have not yet been applied.
+
+The synchronization counters are cumulative for the lifetime of the
+process and have no reset command. An attempt is counted before its
+delay; completion is counted after all dump and synchronization-end
+callbacks finish, and failure is counted when an attempt is abandoned.
+An active attempt can make attempts exceed completed plus failed by one.
+The logger records each attempt's start and result. Associated error
+messages provide further details where available.
+
+Limits
+^^^^^^
+
+The queue count does not measure notifications dropped before delivery.
+The synchronization counters describe the recovery loop; they do not
+verify that all Linux and VPP forwarding information base (FIB) entries
+are consistent, or that every callback successfully applied each entry.
+A completed attempt can still have queued notifications to process.
+These diagnostics do not add periodic reconciliation or guarantee
+recovery from changes for which no error was detected.
+
 Forwarding
 __________
 
