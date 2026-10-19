@@ -141,7 +141,7 @@ extern void fib_entry_delegate_remove(fib_entry_t *fib_entry,
 
 extern fib_entry_delegate_t *fib_entry_delegate_find_or_add(fib_entry_t *fib_entry,
                                                             fib_entry_delegate_type_t fdt);
-extern fib_entry_delegate_t *fib_entry_delegate_find(const fib_entry_t *fib_entry,
+__clib_export extern fib_entry_delegate_t *fib_entry_delegate_find(const fib_entry_t *fib_entry,
                                                     fib_entry_delegate_type_t type);
 
 extern fib_forward_chain_type_t fib_entry_delegate_type_to_chain_type(

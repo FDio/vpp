@@ -430,8 +430,8 @@ extern void fib_entry_cover_updated(fib_node_index_t fib_entry);
 extern int fib_entry_recursive_loop_detect(fib_node_index_t entry_index,
 					   fib_node_index_t **entry_indicies);
 
-extern void fib_entry_lock(fib_node_index_t fib_entry_index);
-extern void fib_entry_unlock(fib_node_index_t fib_entry_index);
+__clib_export extern void fib_entry_lock(fib_node_index_t fib_entry_index);
+__clib_export extern void fib_entry_unlock(fib_node_index_t fib_entry_index);
 
 __clib_export extern u32 fib_entry_child_add(fib_node_index_t fib_entry_index,
 			       fib_node_type_t type,
