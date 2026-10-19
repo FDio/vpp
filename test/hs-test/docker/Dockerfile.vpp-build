@@ -1,0 +1,23 @@
+ARG UBUNTU_VERSION=22.04
+FROM ubuntu:${UBUNTU_VERSION}
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# install-dep shells out to sudo and git
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    git \
+    make \
+    sudo \
+    && rm -rf /var/lib/apt/lists/*
+
+# DEB_DEPENDS is picked by OS_VERSION_ID from /etc/os-release, so this installs
+# what this image's Ubuntu needs rather than what the host needs
+COPY Makefile /vpp-src/Makefile
+# install-dep ends by setting a repo local git config
+RUN git init -q /vpp-src \
+    && make -C /vpp-src UNATTENDED=yes install-dep \
+    && rm -rf /var/lib/apt/lists/*
+
+# the build can run as another user than the tree's owner, e.g. under sudo
+RUN git config --system --add safe.directory '*'
