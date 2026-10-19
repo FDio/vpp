@@ -279,11 +279,10 @@ sources they describe and with neighboring documents.
 
 ## Test Suites
 
-The Python functional suites described here run in the pipeline; the host-stack,
-Kubernetes, C, and coverage suites are maintainer steps. The map exists so that a
-source change comes with the matching suite update: the `build-test` job derives its
-filter from changed paths, so a plugin or `vnet` change is exercised only where an
-exact `test/test_<name>.py` module exists for the changed directory.
+The Python functional suites described here run in the pipeline; host-stack,
+Kubernetes, coverage, and C tests without a selected Python wrapper are maintainer
+steps. The `build-test` job selects suites from changed source paths using the
+rules below; confirm the emitted filters before interpreting a pipeline result.
 
 ### Python Functional Tests
 
@@ -301,11 +300,14 @@ make TEST_JOBS=auto RETRIES=2 TEST='bfd.BFDAPITestCase.test_add_bfd' test-debug
 
 Simple filters select exact `test_<name>.py` modules; advanced filters use
 `file.class.method` with shell-style wildcards, and comma-separated filters are
-supported. The `build-test` job derives up to three suite names from the changed
-paths: `src/plugins/<pkg>/<sub>/...` tries `<sub>` then `<pkg>`, `src/vnet/<name>/...`
-uses `<name>`, and a name counts only when `test/test_<name>.py` exists; changes
-under `src/vppinfra`, `src/svm`, and `src/vlib` select no suite and fall back to
-`ip4`.
+supported. For source-derived candidates, `src/plugins/<pkg>/<sub>/...` tries
+`<sub>` then `<pkg>`; `src/vnet/<name>/...` uses `<name>`. Hyphens become
+underscores, and the exact module must exist under `test/` or `test/asf/`.
+Candidates whose exact test module also changed take priority; remaining candidates
+follow alphabetically, with duplicates removed and at most three suites selected.
+Test-only changes add no candidate. With no source-derived candidate, including
+changes confined to `src/vppinfra`, `src/svm`, or `src/vlib`, the job uses `ip4`.
+The ASF `fib` suite invokes `test fib`, which runs the C FIB unit tests.
 
 Harness controls such as `TEST_JOBS`, `MAX_VPP_CPUS`, `VPP_WORKER_COUNT`, `USE_SMT`,
 `TIMEOUT`, `RETRIES`, `RND_SEED`, `SKIP_TESTS`, `DEBUG`, and `VARIANT` exist for the
