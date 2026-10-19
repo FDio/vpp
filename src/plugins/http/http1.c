@@ -36,6 +36,8 @@ static const char *response_template = "HTTP/1.1 %s\r\n"
 
 static const char *content_len_template = "Content-Length: %llu\r\n";
 
+static const char *alt_svc_template = "Alt-Svc: h3=\":%u\"\r\n";
+
 static const char *connection_upgrade_template = "Connection: upgrade\r\n"
 						 "Upgrade: %s\r\n";
 
@@ -1339,6 +1341,9 @@ http1_req_state_wait_app_reply (http_ctx_t *hc, http_ctx_t *req, transport_send_
 			     format_http_time_now, hc,
 			     /* Server */
 			     hc->app_name);
+
+  if (hc->h3_alt_svc_port)
+    http_tx_buf (hc) = format (http_tx_buf (hc), alt_svc_template, hc->h3_alt_svc_port);
 
   /* RFC9110 8.6: A server MUST NOT send Content-Length header field in a
    * 2xx (Successful) response to CONNECT or with a status code of 101

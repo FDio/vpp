@@ -7,6 +7,7 @@ import (
 	"math/rand"
 	"net"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -19,7 +20,10 @@ func init() {
 		HttpStaticPostTest, HttpStaticBuildInUrlGetIfListTest, HttpStaticBuildInUrlGetVersionTest,
 		HttpStaticMacTimeTest, HttpStaticBuildInUrlGetVersionVerboseTest, HttpStaticPathSanitizationTest, HttpStaticFileHandlerTest, HttpStaticFileHandlerDefaultMaxAgeTest,
 		HttpStaticFileHandlerWrkTest, HttpStaticUrlHandlerWrkTest, HttpStaticHttp1OnlyTest, HttpStaticRedirectTest, HttpStaticPromTest, PromConcurrentConnectionsTest,
-		PromConsecutiveConnectionsTest, HttpStaticListenerAddDelTest, HttpStaticListenerAddDelMismatchTest)
+		PromConsecutiveConnectionsTest, HttpStaticListenerAddDelTest, HttpStaticListenerAddDelMismatchTest,
+		HttpStaticAltSvcNoHdrTest, HttpStaticAltSvcInvalidPortTest, HttpStaticAltSvcBorderlinePortTest,
+		HttpStaticAltSvcHttp1Test, HttpStaticAltSvcHttps1Test, HttpStaticAltSvcHttp2Test, HttpStaticAltSvcHttps2Test,
+		HttpStaticAltSvcListenerNoHdrTest, HttpStaticAltSvcListenerDelTest)
 	RegisterHttpStaticSrvSoloTests(PromMemLeakTest)
 }
 
@@ -597,4 +601,266 @@ func HttpStaticListenerAddDelMismatchTest(s *HttpStaticSrvSuite) {
 	o = vpp.Vppctl("show http static server listeners")
 	Log(o)
 	AssertNotContains(o, "listener")
+}
+
+func HttpStaticAltSvcInvalidPortTest(s *HttpStaticSrvSuite) {
+	vpp := s.Containers.Vpp.VppInstance
+
+	serverAddress := s.VppAddr() + ":" + s.Ports.Http
+	o := vpp.Vppctl("http static server uri http://" + serverAddress +
+		" url-handlers h3-alt-svc-port")
+	Log(o)
+	AssertContains(o, "unknown input `h3-alt-svc-port'")
+
+	vpp.Vppctl("http static server")
+	o = vpp.Vppctl("http static listener add uri http://" + serverAddress +
+		" url-handlers h3-alt-svc-port")
+	Log(o)
+	AssertContains(o, "unknown input `h3-alt-svc-port'")
+
+	Log(vpp.Vppctl("http static server disable"))
+	for _, port := range []string{"0", "65536"} {
+		o := vpp.Vppctl("http static server uri http://" + serverAddress +
+			" url-handlers h3-alt-svc-port " + port)
+		Log(o)
+		AssertContains(o, "h3-alt-svc-port must be between 1 and 65535")
+	}
+
+	Log(vpp.Vppctl("http static server"))
+	for _, port := range []string{"0", "65536"} {
+		o := vpp.Vppctl("http static listener add uri http://" + serverAddress +
+			" url-handlers h3-alt-svc-port " + port)
+		AssertContains(o, "h3-alt-svc-port must be between 1 and 65535")
+	}
+}
+
+func HttpStaticAltSvcBorderlinePortTest(s *HttpStaticSrvSuite) {
+	vpp := s.Containers.Vpp.VppInstance
+	serverAddress := s.VppAddr() + ":" + s.Ports.Http
+	client := NewHttpClient(defaultHttpTimeout, false)
+	defer client.CloseIdleConnections()
+
+	runCLI := func(command string) {
+		o := vpp.Vppctl(command)
+		Log(o)
+		AssertEmpty(strings.TrimSpace(o), command)
+	}
+	checkPort := func(port string) {
+		o := vpp.Vppctl("show http static server listeners")
+		Log(o)
+		AssertContains(o, "h3-alt-svc-port "+port)
+
+		resp, err := client.Get("http://" + serverAddress + "/version.json")
+		AssertNil(err, fmt.Sprint(err))
+		defer resp.Body.Close()
+		Log(DumpHttpResp(resp, false))
+
+		AssertHttpStatus(resp, http.StatusOK)
+		AssertEqual(1, resp.ProtoMajor)
+		AssertHttpHeaderWithValue(resp, "Alt-Svc", fmt.Sprintf(`h3=":%s"`, port))
+		_, err = io.Copy(io.Discard, resp.Body)
+		AssertNil(err, fmt.Sprint(err))
+	}
+
+	for _, port := range []string{"1", "65535"} {
+		runCLI("http static server uri http://" + serverAddress +
+			" url-handlers h3-alt-svc-port " + port)
+		checkPort(port)
+		runCLI("http static server disable")
+	}
+
+	runCLI("http static server")
+	for _, port := range []string{"1", "65535"} {
+		runCLI("http static listener add uri http://" + serverAddress +
+			" url-handlers h3-alt-svc-port " + port)
+		checkPort(port)
+		runCLI("http static listener del uri http://" + serverAddress)
+		runCLI("show http static server listeners")
+	}
+}
+
+func HttpStaticAltSvcHttp1Test(s *HttpStaticSrvSuite) {
+	vpp := s.Containers.Vpp.VppInstance
+	serverAddress := s.VppAddr() + ":" + s.Ports.Http
+	Log(vpp.Vppctl("http static server uri http://" + serverAddress +
+		" url-handlers http1-only h3-alt-svc-port 8443"))
+
+	client := NewHttpClient(defaultHttpTimeout, false)
+	req, err := http.NewRequest("GET", "http://"+serverAddress+"/version.json", nil)
+	AssertNil(err, fmt.Sprint(err))
+	resp, err := client.Do(req)
+	Log(DumpHttpResp(resp, false))
+	AssertNil(err, fmt.Sprint(err))
+	defer resp.Body.Close()
+
+	AssertHttpStatus(resp, 200)
+	AssertEqual(1, resp.ProtoMajor)
+	AssertHttpHeaderWithValue(resp, "Alt-Svc", `h3=":8443"`)
+
+	o := vpp.Vppctl("show http static server listeners")
+	Log(o)
+	AssertContains(o, "h3-alt-svc-port 8443")
+}
+
+func HttpStaticAltSvcHttps1Test(s *HttpStaticSrvSuite) {
+	vpp := s.Containers.Vpp.VppInstance
+	serverAddress := s.VppAddr() + ":" + s.Ports.Https
+	Log(vpp.Vppctl("http static server uri https://" + serverAddress +
+		" url-handlers http1-only h3-alt-svc-port 8443"))
+
+	client := NewHttpClient(defaultHttpTimeout, false)
+	req, err := http.NewRequest("GET", "https://"+serverAddress+"/version.json", nil)
+	AssertNil(err, fmt.Sprint(err))
+	resp, err := client.Do(req)
+	Log(DumpHttpResp(resp, false))
+	AssertNil(err, fmt.Sprint(err))
+	defer resp.Body.Close()
+
+	AssertHttpStatus(resp, 200)
+	AssertEqual(1, resp.ProtoMajor)
+	AssertHttpHeaderWithValue(resp, "Alt-Svc", `h3=":8443"`)
+
+	o := vpp.Vppctl("show http static server listeners")
+	Log(o)
+	AssertContains(o, "h3-alt-svc-port 8443")
+}
+
+func HttpStaticAltSvcHttp2Test(s *HttpStaticSrvSuite) {
+	vpp := s.Containers.Vpp.VppInstance
+	serverAddress := s.VppAddr() + ":" + s.Ports.Http
+	Log(vpp.Vppctl("http static server uri http://" + serverAddress +
+		" url-handlers h3-alt-svc-port 8443"))
+
+	client := NewHttpClient(defaultHttpTimeout, true)
+	// allow HTTP 2.0 unencrypted
+	transport := client.Transport.(*http.Transport)
+	transport.Protocols = new(http.Protocols)
+	transport.Protocols.SetUnencryptedHTTP2(true)
+
+	req, err := http.NewRequest("GET", "http://"+serverAddress+"/version.json", nil)
+	AssertNil(err, fmt.Sprint(err))
+	resp, err := client.Do(req)
+	Log(DumpHttpResp(resp, false))
+	AssertNil(err, fmt.Sprint(err))
+	defer resp.Body.Close()
+
+	AssertHttpStatus(resp, 200)
+	AssertEqual(2, resp.ProtoMajor)
+	AssertHttpHeaderWithValue(resp, "Alt-Svc", `h3=":8443"`)
+
+	o := vpp.Vppctl("show http static server listeners")
+	Log(o)
+	AssertContains(o, "h3-alt-svc-port 8443")
+}
+
+func HttpStaticAltSvcHttps2Test(s *HttpStaticSrvSuite) {
+	vpp := s.Containers.Vpp.VppInstance
+	serverAddress := s.VppAddr() + ":" + s.Ports.Https
+	Log(vpp.Vppctl("http static server uri https://" + serverAddress +
+		" url-handlers h3-alt-svc-port 8443"))
+
+	client := NewHttpClient(defaultHttpTimeout, true)
+	req, err := http.NewRequest("GET", "https://"+serverAddress+"/version.json", nil)
+	AssertNil(err, fmt.Sprint(err))
+	resp, err := client.Do(req)
+	Log(DumpHttpResp(resp, false))
+	AssertNil(err, fmt.Sprint(err))
+	defer resp.Body.Close()
+
+	AssertHttpStatus(resp, 200)
+	AssertEqual(2, resp.ProtoMajor)
+	AssertHttpHeaderWithValue(resp, "Alt-Svc", `h3=":8443"`)
+
+	o := vpp.Vppctl("show http static server listeners")
+	Log(o)
+	AssertContains(o, "h3-alt-svc-port 8443")
+}
+
+func HttpStaticAltSvcNoHdrTest(s *HttpStaticSrvSuite) {
+	vpp := s.Containers.Vpp.VppInstance
+	serverAddress := s.VppAddr() + ":" + s.Ports.Https
+	Log(vpp.Vppctl("http static server uri https://" + serverAddress +
+		" url-handlers"))
+
+	o := vpp.Vppctl("show http static server listeners")
+	Log(o)
+	AssertNotContains(o, "h3-alt-svc-port 8443")
+
+	client := NewHttpClient(defaultHttpTimeout, false)
+	req, err := http.NewRequest("GET", "https://"+serverAddress+"/version.json", nil)
+	AssertNil(err, fmt.Sprint(err))
+	resp, err := client.Do(req)
+	Log(DumpHttpResp(resp, false))
+	AssertNil(err, fmt.Sprint(err))
+	defer resp.Body.Close()
+
+	AssertHttpStatus(resp, 200)
+	AssertEqual(1, resp.ProtoMajor)
+	AssertHttpHeaderNotPresent(resp, "Alt-Svc")
+}
+
+func HttpStaticAltSvcListenerNoHdrTest(s *HttpStaticSrvSuite) {
+	vpp := s.Containers.Vpp.VppInstance
+	serverAddress := s.VppAddr() + ":" + s.Ports.Https
+	Log(vpp.Vppctl("http static server debug"))
+
+	o := vpp.Vppctl("show http static server listeners")
+	Log(o)
+	AssertNotContains(o, "h3-alt-svc-port 8443")
+
+	Log(vpp.Vppctl("http static listener add uri https://" + serverAddress +
+		" url-handlers"))
+
+	o = vpp.Vppctl("show http static server listeners")
+	Log(o)
+
+	client := NewHttpClient(defaultHttpTimeout, false)
+	req, err := http.NewRequest("GET", "https://"+serverAddress+"/version.json", nil)
+	AssertNil(err, fmt.Sprint(err))
+	resp, err := client.Do(req)
+	Log(DumpHttpResp(resp, false))
+	AssertNil(err, fmt.Sprint(err))
+	defer resp.Body.Close()
+
+	AssertHttpStatus(resp, 200)
+	AssertEqual(1, resp.ProtoMajor)
+	AssertHttpHeaderNotPresent(resp, "Alt-Svc")
+}
+
+// listener del checks only uri not h3-alt-svc-port
+func HttpStaticAltSvcListenerDelTest(s *HttpStaticSrvSuite) {
+	vpp := s.Containers.Vpp.VppInstance
+	serverAddress := s.VppAddr() + ":" + s.Ports.Https
+	Log(vpp.Vppctl("http static server debug"))
+
+	o := vpp.Vppctl("show http static server listeners")
+	Log(o)
+	AssertNotContains(o, "h3-alt-svc-port 8443")
+
+	Log(vpp.Vppctl("http static listener add uri https://" + serverAddress +
+		" url-handlers h3-alt-svc-port 8443"))
+
+	o = vpp.Vppctl("show http static server listeners")
+	Log(o)
+	AssertContains(o, "h3-alt-svc-port 8443")
+
+	client := NewHttpClient(defaultHttpTimeout, false)
+	req, err := http.NewRequest("GET", "https://"+serverAddress+"/version.json", nil)
+	AssertNil(err, fmt.Sprint(err))
+	resp, err := client.Do(req)
+	Log(DumpHttpResp(resp, false))
+	AssertNil(err, fmt.Sprint(err))
+	defer resp.Body.Close()
+
+	AssertHttpStatus(resp, 200)
+	AssertEqual(1, resp.ProtoMajor)
+	AssertHttpHeaderWithValue(resp, "Alt-Svc", `h3=":8443"`)
+
+	o = vpp.Vppctl("http static listener del uri https://" + serverAddress)
+	Log(o)
+	AssertNotContains(o, "endpoint not found")
+
+	o = vpp.Vppctl("show http static server listeners")
+	Log(o)
+	AssertNotContains(o, "h3-alt-svc-port 8443")
 }

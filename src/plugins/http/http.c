@@ -1333,6 +1333,7 @@ http_start_listen (u32 app_listener_index, transport_endpoint_cfg_t *tep)
       transport_endpt_cfg_http_t *http_cfg = (transport_endpt_cfg_http_t *) ext_cfg->data;
       HTTP_DBG (1, "app set timeout %u", http_cfg->timeout);
       lhc->hc_timeout = http_cfg->timeout;
+      lhc->h3_alt_svc_port = http_cfg->h3_alt_svc_port;
       lhc->flags |=
 	http_cfg->udp_tunnel_mode == HTTP_UDP_TUNNEL_DGRAM ? HTTP_CONN_F_UDP_TUNNEL_DGRAM : 0;
       if (http_cfg->flags & HTTP_ENDPT_CFG_F_ENABLE_CONNECT_UDP_DRAFT03)
@@ -1439,6 +1440,8 @@ http_start_listen (u32 app_listener_index, transport_endpoint_cfg_t *tep)
       lhc->hc_tl_handle_tcp = args->handle;
       http_listener_link_with_tl (args->handle, lhc_index);
     }
+  if (listen_quic && listen_tls && !lhc->h3_alt_svc_port)
+    lhc->h3_alt_svc_port = clib_net_to_host_u16 (sep->port);
 
   /* Grab application listener and link to http listener */
   app_listener = listen_session_get (app_listener_index);
