@@ -347,6 +347,7 @@ typedef struct http_ctx_
       u32 timer_handle;
       u8 *app_name;
       u8 *host;
+      u8 *h3_alt_svc_port;
       http_conn_settings_t peer_settings;
       http_conn_settings_t settings;
       union

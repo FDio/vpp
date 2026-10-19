@@ -310,6 +310,7 @@ static void
 http_listener_free (http_ctx_t *lhc)
 {
   vec_free (lhc->app_name);
+  vec_free (lhc->h3_alt_svc_port);
   http_ctx_free (lhc);
 }
 
@@ -1333,6 +1334,8 @@ http_start_listen (u32 app_listener_index, transport_endpoint_cfg_t *tep)
       transport_endpt_cfg_http_t *http_cfg = (transport_endpt_cfg_http_t *) ext_cfg->data;
       HTTP_DBG (1, "app set timeout %u", http_cfg->timeout);
       lhc->hc_timeout = http_cfg->timeout;
+      if (http_cfg->h3_alt_svc_port)
+	lhc->h3_alt_svc_port = format (0, "h3=\":%u\"", http_cfg->h3_alt_svc_port);
       lhc->flags |=
 	http_cfg->udp_tunnel_mode == HTTP_UDP_TUNNEL_DGRAM ? HTTP_CONN_F_UDP_TUNNEL_DGRAM : 0;
       if (http_cfg->flags & HTTP_ENDPT_CFG_F_ENABLE_CONNECT_UDP_DRAFT03)
@@ -1378,7 +1381,6 @@ http_start_listen (u32 app_listener_index, transport_endpoint_cfg_t *tep)
 	      cc->alpn_protos[i] = TLS_ALPN_PROTO_NONE;
 	    }
 	}
-
       if (listen_quic)
 	{
 	  HTTP_DBG (1, "app want listen quic");
@@ -1391,6 +1393,12 @@ http_start_listen (u32 app_listener_index, transport_endpoint_cfg_t *tep)
 						  sizeof (quic_cfg));
 	  clib_memcpy (ext_cfg->data, &quic_cfg, sizeof (quic_cfg));
 	  cc->alpn_protos[0] = TLS_ALPN_PROTO_HTTP_3;
+
+	  if (listen_tls)
+	    {
+	      vec_free (lhc->h3_alt_svc_port);
+	      lhc->h3_alt_svc_port = format (0, "h3=\":%u\"", clib_net_to_host_u16 (sep->port));
+	    }
 
 	  if (vnet_listen (args))
 	    {
