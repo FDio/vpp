@@ -211,7 +211,7 @@ class PollHook(Hook):
                 extract_coredumpctl_core(
                     self.logger, self.test.tempdir, self.test.vpp.pid
                 )
-            core_path = get_core_path(self.test.tempdir)
+            core_path = get_core_path(self.test.tempdir, self.test.vpp.pid)
             if os.path.isfile(core_path):
                 self.on_crash(core_path)
             raise asfframework.VppDiedError(rv=rv)

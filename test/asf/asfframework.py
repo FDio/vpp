@@ -43,7 +43,7 @@ from log import (
     colorize,
 )
 from vpp_object import VppObjectRegistry
-from util import is_core_present
+from util import get_core_path, is_core_present
 from test_result_code import TestResultCode
 
 logger = logging.getLogger(__name__)
@@ -643,7 +643,8 @@ class VppAsfTestCase(CPUInterface, unittest.TestCase):
 
     @classmethod
     def wait_for_coredump(cls):
-        corefile = cls.tempdir + "/core"
+        vpp = getattr(cls, "vpp", None)
+        corefile = get_core_path(cls.tempdir, vpp.pid if vpp else None)
         if os.path.isfile(corefile):
             cls.logger.error("Waiting for coredump to complete: %s", corefile)
             curr_size = os.path.getsize(corefile)
@@ -1436,7 +1437,10 @@ class VppTestResult(unittest.TestResult):
             )
             self.symlink_failed()
             self.failed_test_cases_info.add(self.current_test_case_info)
-            if is_core_present(self.current_test_case_info.tempdir):
+            if is_core_present(
+                self.current_test_case_info.tempdir,
+                self.current_test_case_info.vpp_pid,
+            ):
                 if not self.current_test_case_info.core_crash_test:
                     if isinstance(test, unittest.suite._ErrorHolder):
                         test_name = str(test)
