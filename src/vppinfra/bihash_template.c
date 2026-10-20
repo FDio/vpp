@@ -229,7 +229,13 @@ BV (clib_bihash_free) (BVT (clib_bihash) * h)
   int i;
 
   if (PREDICT_FALSE (h->instantiated == 0))
-    goto never_initialized;
+    {
+#if BIHASH_32_64_SVM == 0
+      if (h->alloc_lock)
+	clib_mem_free ((void *) h->alloc_lock);
+#endif
+      goto never_initialized;
+    }
 
   h->instantiated = 0;
 
