@@ -46,6 +46,30 @@
       },
       "revId": "f1fa01d3343b8afb21867baa935392c547bf6e03",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "7b828a3e_a2570a02",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 432,
+      "author": {
+        "id": 3325
+      },
+      "writtenOn": "2026-10-20T14:13:59Z",
+      "side": 1,
+      "message": "patchset 3 writes just one record in the fallback, so the 2 is gone",
+      "parentUuid": "9a7bf69f_5ae75101",
+      "range": {
+        "startLine": 432,
+        "startChar": 48,
+        "endLine": 432,
+        "endChar": 49
+      },
+      "revId": "f1fa01d3343b8afb21867baa935392c547bf6e03",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
