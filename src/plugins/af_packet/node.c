@@ -379,8 +379,12 @@ af_packet_v3_device_input_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
 			  vlan->priority_cfi_and_id =
 			    clib_host_to_net_u16 (tph->hv1.tp_vlan_tci);
 			  vlan->type = eth->type;
-			  eth->type =
-			    clib_host_to_net_u16 (ETHERNET_TYPE_VLAN);
+#ifdef TP_STATUS_VLAN_TPID_VALID
+			  if (tph->tp_status & TP_STATUS_VLAN_TPID_VALID)
+			    eth->type = clib_host_to_net_u16 (tph->hv1.tp_vlan_tpid);
+			  else
+#endif
+			    eth->type = clib_host_to_net_u16 (ETHERNET_TYPE_VLAN);
 			  vlan_len = sizeof (ethernet_vlan_header_t);
 			  bytes_copied = sizeof (ethernet_header_t);
 			}
@@ -633,7 +637,12 @@ af_packet_v2_device_input_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
 		      vlan->priority_cfi_and_id =
 			clib_host_to_net_u16 (tph->tp_vlan_tci);
 		      vlan->type = eth->type;
-		      eth->type = clib_host_to_net_u16 (ETHERNET_TYPE_VLAN);
+#ifdef TP_STATUS_VLAN_TPID_VALID
+		      if (tph->tp_status & TP_STATUS_VLAN_TPID_VALID)
+			eth->type = clib_host_to_net_u16 (tph->tp_vlan_tpid);
+		      else
+#endif
+			eth->type = clib_host_to_net_u16 (ETHERNET_TYPE_VLAN);
 		      vlan_len = sizeof (ethernet_vlan_header_t);
 		      bytes_copied = sizeof (ethernet_header_t);
 		    }
