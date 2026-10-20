@@ -749,15 +749,22 @@ vl_mem_api_dead_client_scan (api_main_t * am, vl_shmem_hdr_t * shm, f64 now)
 
 void (*vl_mem_api_fuzz_hook) (u16, void *);
 
+/* API handlers take message-specific pointers; the registry erases that type. */
+#ifdef __clang__
+__attribute__ ((no_sanitize ("function"), noinline))
+#endif
+static void
+vl_mem_api_call_handler (void (*handler) (void *), void *msg)
+{
+  handler (msg);
+}
+
 /* This is only to be called from a vlib/vnet app */
 static void
-vl_mem_api_handler_with_vm_node (api_main_t *am, svm_region_t *vlib_rp,
-				 void *the_msg, vlib_main_t *vm,
-				 vlib_node_runtime_t *node, u8 is_private)
+vl_mem_api_handler (api_main_t *am, svm_region_t *vlib_rp, void *the_msg, u8 is_private)
 {
   u16 id = clib_net_to_host_u16 (*((u16 *) the_msg));
   vl_api_msg_data_t *m = vl_api_get_msg_data (am, id);
-  u8 *(*handler) (void *, void *, void *);
   svm_region_t *old_vlib_rp;
   void *save_shmem_hdr;
   int is_mp_safe = 1;
@@ -781,8 +788,6 @@ vl_mem_api_handler_with_vm_node (api_main_t *am, svm_region_t *vlib_rp,
 
   if (m && m->handler)
     {
-      handler = (void *) m->handler;
-
       if (PREDICT_FALSE (am->rx_trace && am->rx_trace->enabled))
 	vl_msg_api_trace (am, am->rx_trace, the_msg);
 
@@ -818,7 +823,7 @@ vl_mem_api_handler_with_vm_node (api_main_t *am, svm_region_t *vlib_rp,
       if (PREDICT_FALSE (vec_len (am->perf_counter_cbs) != 0))
 	clib_call_callbacks (am->perf_counter_cbs, am, id, 0 /* before */);
 
-      (*handler) (the_msg, vm, node);
+      vl_mem_api_call_handler (m->handler, the_msg);
 
       if (PREDICT_FALSE (vec_len (am->perf_counter_cbs) != 0))
 	clib_call_callbacks (am->perf_counter_cbs, am, id, 1 /* after */);
@@ -893,8 +898,7 @@ void_mem_api_handle_msg_i (api_main_t * am, svm_region_t * vlib_rp,
   if (!svm_queue_sub2 (q, (u8 *) & mp))
     {
       VL_MSG_API_UNPOISON ((void *) mp);
-      vl_mem_api_handler_with_vm_node (am, vlib_rp, (void *) mp, vm, node,
-				       is_private);
+      vl_mem_api_handler (am, vlib_rp, (void *) mp, is_private);
       return 0;
     }
   return -1;
@@ -943,8 +947,7 @@ vl_mem_api_handle_rpc (vlib_main_t * vm, vlib_node_runtime_t * node)
       for (i = 0; i < vec_len (vm->processing_rpc_requests); i++)
 	{
 	  mp = vm->processing_rpc_requests[i];
-	  vl_mem_api_handler_with_vm_node (am, am->vlib_rp, (void *) mp, vm,
-					   node, 0 /* is_private */);
+	  vl_mem_api_handler (am, am->vlib_rp, (void *) mp, 0 /* is_private */);
 	}
       vl_msg_api_barrier_release ();
     }
