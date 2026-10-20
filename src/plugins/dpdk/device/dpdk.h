@@ -460,6 +460,13 @@ clib_error_t *unformat_rss_fn (unformat_input_t * input, uword * rss_fn);
 clib_error_t *dpdk_read_eeprom (vnet_main_t *vnm, vnet_hw_interface_t *hi,
 				vnet_interface_eeprom_t **eeprom);
 
+/* eeprom.c */
+clib_error_t *dpdk_eeprom_read (dpdk_device_t *xd, vnet_hw_interface_t *hi,
+				vnet_interface_eeprom_t **eeprom);
+void dpdk_eeprom_hw_lock (dpdk_device_t *xd);
+void dpdk_eeprom_hw_unlock (dpdk_device_t *xd);
+format_function_t format_dpdk_device_module_info;
+
 struct rte_pci_device *dpdk_get_pci_device (const struct rte_eth_dev_info
 					    *info);
 struct rte_vmbus_device *
