@@ -17,7 +17,7 @@ func init() {
 	RegisterVperfTests(VperfBuiltinTest, VperfBuiltinClientSessionDisconnectTest, VperfBuiltinBandwidthTest,
 		VperfBuiltinEchoBytesTest, VperfBuiltinRoundtripTest, VperfBuiltinUdpLossTest, VperfBuiltinPeriodicReportTest,
 		VperfBuiltinPeriodicReportTotalTest, TlsSingleConnectionTest, VperfBuiltinPeriodicReportUDPTest, VperfBuiltinUdpTest,
-		VperfBuiltinTcpNoTxCsumOffloadTest, VperfBuiltinTcpChainedBufferTest,
+		VperfBuiltinTestBytesTest, VperfBuiltinUdpTestBytesTest, VperfBuiltinTcpNoTxCsumOffloadTest, VperfBuiltinTcpChainedBufferTest,
 		VperfBuiltinUdpNoTxCsumOffloadTest, VperfBuiltinHttpTest, VperfBuiltinHttpsTest, VperfBuiltinHttp2Test,
 		VperfBuiltinHttp3Test, VperfBuiltinHttpTestBytesTest, VperfBuiltinHttp2ConnectTcpTest, VperfBuiltinHttp3ConnectTcpTest,
 		VperfBuiltinHttp2ConnectUdpTest, VperfBuiltinHttp3ConnectUdpTest, VperfBuiltinHttp2ConnectUdpBackpressureTest,
@@ -107,6 +107,32 @@ func VperfBuiltinUdpTest(s *VperfSuite) {
 		" uri udp://" + s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1)
 	Log(o)
 	AssertNotContains(o, "failed:")
+}
+
+func VperfBuiltinTestBytesTest(s *VperfSuite) {
+	serverVpp := s.Containers.ServerVpp.VppInstance
+	clientVpp := s.Containers.ClientVpp.VppInstance
+
+	serverVpp.Vppctl("vperf server uri tcp://%s/%s", s.Interfaces.Server.Ip4AddressString(), s.Ports.Port1)
+
+	o := clientVpp.Vppctl("vperf client bytes 32m test-bytes verbose uri tcp://%s/%s",
+		s.Interfaces.Server.Ip4AddressString(), s.Ports.Port1)
+	Log(o)
+	AssertNotContains(o, "failed")
+	AssertContains(o, "33554432 bytes")
+}
+
+func VperfBuiltinUdpTestBytesTest(s *VperfSuite) {
+	serverVpp := s.Containers.ServerVpp.VppInstance
+	clientVpp := s.Containers.ClientVpp.VppInstance
+
+	serverVpp.Vppctl("vperf server uri udp://%s/%s", s.Interfaces.Server.Ip4AddressString(), s.Ports.Port1)
+
+	o := clientVpp.Vppctl("vperf client bytes 6000k throughput 12m test-bytes verbose uri udp://%s/%s",
+		s.Interfaces.Server.Ip4AddressString(), s.Ports.Port1)
+	Log(o)
+	AssertNotContains(o, "failed")
+	AssertContains(o, "lost 0 datagrams")
 }
 
 func VperfBuiltinTcpNoTxCsumOffloadTest(s *VperfSuite) {

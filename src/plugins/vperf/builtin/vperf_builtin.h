@@ -140,6 +140,7 @@ typedef struct
   int (*server_rx) (vp_test_session_t *es, session_t *s, u8 *rx_buf);
   int (*server_rx_test_bytes) (vp_test_session_t *es, session_t *s, u8 *rx_buf);
   void (*server_rx_no_echo) (vp_test_session_t *es, session_t *s);
+  void (*server_rx_no_echo_test_bytes) (vp_test_session_t *es, session_t *s, u8 *rx_buf);
   int (*connect) (vnet_connect_args_t *a, vp_test_cfg_t *cfg);
   u32 (*connected) (session_t *s, vp_test_cfg_t *cfg, vp_test_worker_t *wrk, u32 app_index);
   u8 (*client_rx) (vp_test_session_t *es, session_t *s, u8 *rx_buf);
