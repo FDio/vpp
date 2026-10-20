@@ -135,6 +135,7 @@ add_vpp_plugin(dpdk
   device/common.c
   device/device.c
   device/driver.c
+  device/eeprom.c
   device/flow.c
   device/format.c
   device/init.c
