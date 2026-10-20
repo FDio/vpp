@@ -2892,56 +2892,58 @@ class TestResponderGreNewChildDeleteOld(TestResponderPsk):
             0
         ].tun
         self.assertEqual(len(self.vapi.ipsec_sa_dump()), 2)
-        old_child = self.sa.child_sas[0]
-        self.sa.child_sas[0] = IKEv2ChildSA(
-            old_child.local_ts, old_child.remote_ts, True
-        )
-        self.sa.i_nonce = os.urandom(32)
-        self.pg0.add_stream(self.create_rekey_request(rekey_notify=False))
-        self.pg0.enable_capture()
-        self.pg_start()
-        reply = self.pg0.get_capture(1)[0]
-        self.assertEqual(self.get_ike_header(reply).exch_type, 36)
-        self.assertEqual(len(self.vapi.ikev2_sa_dump()), 1)
-        new_protect = self.vapi.ipsec_tunnel_protect_dump(sw_if_index=self.p.tun_itf)[
-            0
-        ].tun
-        self.assertNotEqual(new_protect.sa_out, old_protect.sa_out)
-        self.assertEqual(len(self.vapi.ipsec_sa_dump()), 4)
+        for _ in range(2):
+            old_child = self.sa.child_sas[0]
+            self.sa.child_sas[0] = IKEv2ChildSA(
+                old_child.local_ts, old_child.remote_ts, True
+            )
+            self.sa.i_nonce = os.urandom(32)
+            self.pg0.add_stream(self.create_rekey_request(rekey_notify=False))
+            self.pg0.enable_capture()
+            self.pg_start()
+            reply = self.pg0.get_capture(1)[0]
+            self.assertEqual(self.get_ike_header(reply).exch_type, 36)
+            self.assertEqual(len(self.vapi.ikev2_sa_dump()), 1)
+            new_protect = self.vapi.ipsec_tunnel_protect_dump(
+                sw_if_index=self.p.tun_itf
+            )[0].tun
+            self.assertNotEqual(new_protect.sa_out, old_protect.sa_out)
+            self.assertEqual(len(self.vapi.ipsec_sa_dump()), 4)
 
-        header = ikev2.IKEv2(
-            init_SPI=self.sa.ispi,
-            resp_SPI=self.sa.rspi,
-            id=self.sa.new_msg_id(),
-            flags="Initiator",
-            exch_type="INFORMATIONAL",
-        )
-        delete = ikev2.IKEv2_payload_Delete(
-            proto="ESP", SPIsize=4, SPInum=1, SPIs=old_child.ispi
-        )
-        packet = self.create_packet(
-            self.pg0,
-            self.encrypt_ike_msg(header, delete, "Delete"),
-            self.sa.sport,
-            self.sa.dport,
-            self.sa.natt,
-            self.ip6,
-        )
-        self.pg0.add_stream(packet)
-        self.pg0.enable_capture()
-        self.pg_start()
-        self.pg0.get_capture(1)
-        self.assertEqual(
-            self.vapi.ipsec_tunnel_protect_dump(sw_if_index=self.p.tun_itf)[
-                0
-            ].tun.sa_out,
-            new_protect.sa_out,
-        )
-        self.assertEqual(len(self.vapi.ipsec_sa_dump()), 2)
-        self.assertEqual(
-            self.vapi.sw_interface_dump(sw_if_index=self.p.tun_itf)[0].flags & 1,
-            1,
-        )
+            header = ikev2.IKEv2(
+                init_SPI=self.sa.ispi,
+                resp_SPI=self.sa.rspi,
+                id=self.sa.new_msg_id(),
+                flags="Initiator",
+                exch_type="INFORMATIONAL",
+            )
+            delete = ikev2.IKEv2_payload_Delete(
+                proto="ESP", SPIsize=4, SPInum=1, SPIs=old_child.ispi
+            )
+            packet = self.create_packet(
+                self.pg0,
+                self.encrypt_ike_msg(header, delete, "Delete"),
+                self.sa.sport,
+                self.sa.dport,
+                self.sa.natt,
+                self.ip6,
+            )
+            self.pg0.add_stream(packet)
+            self.pg0.enable_capture()
+            self.pg_start()
+            self.pg0.get_capture(1)
+            self.assertEqual(
+                self.vapi.ipsec_tunnel_protect_dump(sw_if_index=self.p.tun_itf)[
+                    0
+                ].tun.sa_out,
+                new_protect.sa_out,
+            )
+            self.assertEqual(len(self.vapi.ipsec_sa_dump()), 2)
+            self.assertEqual(
+                self.vapi.sw_interface_dump(sw_if_index=self.p.tun_itf)[0].flags & 1,
+                1,
+            )
+            old_protect = new_protect
 
         # The next lifetime rekey must also replace the protected outbound SA.
         current_child = self.sa.child_sas[0]
