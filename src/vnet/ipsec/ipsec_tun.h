@@ -150,6 +150,8 @@ __clib_export extern int ipsec_tun_protect_update (u32 sw_if_index, const ip_add
 
 __clib_export extern int ipsec_tun_protect_del (u32 sw_if_index, const ip_address_t *nh);
 
+__clib_export extern u32 ipsec_tun_protect_get_out_sa_id (u32 sw_if_index);
+
 typedef walk_rc_t (*ipsec_tun_protect_walk_cb_t) (index_t itpi, void *arg);
 extern void ipsec_tun_protect_walk (ipsec_tun_protect_walk_cb_t fn,
 				    void *cttx);

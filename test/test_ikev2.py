@@ -891,8 +891,10 @@ class IkePeer(VppTestCase):
         node_name = "/err/ikev2-%s/" % version + name
         self.assertEqual(count, self.statistics.get_err_counter(node_name))
 
-    def create_rekey_request(self, kex=False):
-        sa, first_payload = self.generate_auth_payload(is_rekey=True, kex=kex)
+    def create_rekey_request(self, kex=False, rekey_notify=True):
+        sa, first_payload = self.generate_auth_payload(
+            is_rekey=True, kex=kex, rekey_notify=rekey_notify
+        )
         header = ikev2.IKEv2(
             init_SPI=self.sa.ispi,
             resp_SPI=self.sa.rspi,
@@ -1740,7 +1742,9 @@ class TemplateResponder(IkePeer):
         capture = self.pg0.get_capture(1)
         self.verify_sa_init(capture[0])
 
-    def generate_auth_payload(self, last_payload=None, is_rekey=False, kex=False):
+    def generate_auth_payload(
+        self, last_payload=None, is_rekey=False, kex=False, rekey_notify=True
+    ):
         tr_attr = self.sa.esp_crypto_attr()
         last_payload = last_payload or "Notify"
         trans_nb = 3
@@ -1800,18 +1804,16 @@ class TemplateResponder(IkePeer):
                 head = ikev2.IKEv2_payload_Nonce(
                     load=self.sa.i_nonce, next_payload="SA"
                 )
-            plain = (
-                head
-                / plain
-                / ikev2.IKEv2_payload_Notify(
+            plain = head / plain
+            if rekey_notify:
+                plain /= ikev2.IKEv2_payload_Notify(
                     type="REKEY_SA",
                     proto="ESP",
                     SPI=c.ispi,
                     length=8 + len(c.ispi),
                     next_payload="Notify",
                 )
-                / self.last_notify("ESP_TFC_PADDING_NOT_SUPPORTED")
-            )
+            plain /= self.last_notify("ESP_TFC_PADDING_NOT_SUPPORTED")
         else:
             first_payload = "IDi"
             if self.no_idr_auth:
@@ -2871,6 +2873,70 @@ class TestResponderGreAutoNATT(TestResponderRekey):
         self.process_rekey_response(self.send_rekey_from_initiator())
         self.verify_ipsec_sas(is_rekey=True)
         self.verify_esp()
+
+
+class TestResponderGreNewChildDeleteOld(TestResponderPsk):
+    """Deleting an old Child SA must preserve GRE protected by a newer one."""
+
+    use_transport_mode = True
+    gre_tunnel = True
+
+    def test_responder(self):
+        super().test_responder()
+        old_protect = self.vapi.ipsec_tunnel_protect_dump(sw_if_index=self.p.tun_itf)[
+            0
+        ].tun
+        self.assertEqual(len(self.vapi.ipsec_sa_dump()), 2)
+        old_child = self.sa.child_sas[0]
+        self.sa.child_sas[0] = IKEv2ChildSA(
+            old_child.local_ts, old_child.remote_ts, True
+        )
+        self.sa.i_nonce = os.urandom(32)
+        self.pg0.add_stream(self.create_rekey_request(rekey_notify=False))
+        self.pg0.enable_capture()
+        self.pg_start()
+        reply = self.pg0.get_capture(1)[0]
+        self.assertEqual(self.get_ike_header(reply).exch_type, 36)
+        self.assertEqual(len(self.vapi.ikev2_sa_dump()), 1)
+        new_protect = self.vapi.ipsec_tunnel_protect_dump(sw_if_index=self.p.tun_itf)[
+            0
+        ].tun
+        self.assertNotEqual(new_protect.sa_out, old_protect.sa_out)
+        self.assertEqual(len(self.vapi.ipsec_sa_dump()), 4)
+
+        header = ikev2.IKEv2(
+            init_SPI=self.sa.ispi,
+            resp_SPI=self.sa.rspi,
+            id=self.sa.new_msg_id(),
+            flags="Initiator",
+            exch_type="INFORMATIONAL",
+        )
+        delete = ikev2.IKEv2_payload_Delete(
+            proto="ESP", SPIsize=4, SPInum=1, SPIs=old_child.ispi
+        )
+        packet = self.create_packet(
+            self.pg0,
+            self.encrypt_ike_msg(header, delete, "Delete"),
+            self.sa.sport,
+            self.sa.dport,
+            self.sa.natt,
+            self.ip6,
+        )
+        self.pg0.add_stream(packet)
+        self.pg0.enable_capture()
+        self.pg_start()
+        self.pg0.get_capture(1)
+        self.assertEqual(
+            self.vapi.ipsec_tunnel_protect_dump(sw_if_index=self.p.tun_itf)[
+                0
+            ].tun.sa_out,
+            new_protect.sa_out,
+        )
+        self.assertEqual(len(self.vapi.ipsec_sa_dump()), 2)
+        self.assertEqual(
+            self.vapi.sw_interface_dump(sw_if_index=self.p.tun_itf)[0].flags & 1,
+            1,
+        )
 
 
 class TestResponderGreTunnelMode(TestResponderRekey):

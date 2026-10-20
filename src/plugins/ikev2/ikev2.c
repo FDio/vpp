@@ -2741,7 +2741,7 @@ ikev2_flip_alternate_sa_bit (u32 id)
 }
 
 static void
-ikev2_del_tunnel_from_main (ikev2_del_ipsec_tunnel_args_t * a)
+ikev2_del_tunnel_from_main (ikev2_del_ipsec_tunnel_args_t *a)
 {
   ikev2_main_t *km = &ikev2_main;
   u32 ipip_sw_if_index = INDEX_INVALID;
@@ -2749,27 +2749,32 @@ ikev2_del_tunnel_from_main (ikev2_del_ipsec_tunnel_args_t * a)
 
   if (INDEX_INVALID == a->sw_if_index)
     {
-    ipip_tunnel_key_t key = {
-      .src = a->local_ip,
-      .dst = a->remote_ip,
-      .transport = IPIP_TRANSPORT_IP4,
-      .fib_index = 0,
-    };
+      ipip_tunnel_key_t key = {
+	.src = a->local_ip,
+	.dst = a->remote_ip,
+	.transport = IPIP_TRANSPORT_IP4,
+	.fib_index = 0,
+      };
 
-    ipip_sw_if_index = km->ipip_tunnel_db_find_sw_if_index_fn_ptr (&key);
+      ipip_sw_if_index = km->ipip_tunnel_db_find_sw_if_index_fn_ptr (&key);
 
-    if (INDEX_INVALID != ipip_sw_if_index)
-      {
-	sw_if_index = ipip_sw_if_index;
-	hash_unset (km->sw_if_indices, ipip_sw_if_index);
-      }
+      if (INDEX_INVALID != ipip_sw_if_index)
+	{
+	  sw_if_index = ipip_sw_if_index;
+	  hash_unset (km->sw_if_indices, ipip_sw_if_index);
+	}
       else
 	sw_if_index = INDEX_INVALID;
     }
   else
     {
       sw_if_index = a->sw_if_index;
-      vnet_sw_interface_admin_down (vnet_get_main (), sw_if_index);
+      /* A replacement Child SA may already protect the same GRE interface. */
+      u32 out_id = ipsec_tun_protect_get_out_sa_id (sw_if_index);
+      if (out_id != INDEX_INVALID && out_id != a->local_sa_id)
+	sw_if_index = INDEX_INVALID;
+      else
+	vnet_sw_interface_admin_down (vnet_get_main (), sw_if_index);
     }
 
   if (INDEX_INVALID != sw_if_index)
