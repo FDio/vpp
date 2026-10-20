@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "07e92d15_6b16c176",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3325
+      },
+      "writtenOn": "2026-10-20T16:24:27Z",
+      "side": 1,
+      "message": "Done, added a short section to README.rst.",
+      "parentUuid": "340f9a35_80fb85ba",
+      "revId": "7387950f4d6d3659aa8db2235939ccfa9ad2daf3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "0ae1dbb6_7f9cf638",
@@ -31,6 +49,24 @@
       "writtenOn": "2026-10-20T12:36:38Z",
       "side": 1,
       "message": "calling make wipe/wipe-release/test-wipe-cov from WS_ROOT is not enough?",
+      "revId": "7387950f4d6d3659aa8db2235939ccfa9ad2daf3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e188f5e0_02eb4ac0",
+        "filename": "test/hs-test/script/build_vpp.sh",
+        "patchSetId": 2
+      },
+      "lineNbr": 31,
+      "author": {
+        "id": 3325
+      },
+      "writtenOn": "2026-10-20T16:24:27Z",
+      "side": 1,
+      "message": "Thanks for pointing this out, it is now, I moved the stamp into the vpp dir so wipe removes it, and the error names the wipe target.",
+      "parentUuid": "0ae1dbb6_7f9cf638",
       "revId": "7387950f4d6d3659aa8db2235939ccfa9ad2daf3",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
