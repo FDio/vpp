@@ -216,6 +216,15 @@ ipsec_tun_protect_find (u32 sw_if_index, const ip_address_t * nh)
   return (p[0]);
 }
 
+u32
+ipsec_tun_protect_get_out_sa_id (u32 sw_if_index)
+{
+  index_t itpi = ipsec_tun_protect_find (sw_if_index, &IP_ADDR_ALL_0);
+  if (itpi == INDEX_INVALID)
+    return INDEX_INVALID;
+  return ipsec_sa_get (ipsec_tun_protect_get (itpi)->itp_out_sa)->id;
+}
+
 static void
 ipsec_tun_protect_rx_db_add (ipsec_main_t * im,
 			     const ipsec_tun_protect_t * itp)
