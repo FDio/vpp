@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "60f5f453_2a3cca61",
+        "filename": ".github/workflows/periodic-vpp-verify-asan-hst.yml",
+        "patchSetId": 1
+      },
+      "lineNbr": 136,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-10-20T01:08:23Z",
+      "side": 1,
+      "message": "this hash may change when 47176 is merged, so it can be left as is for now, verified again after 47176 is merged and fixed if it did in fact change.",
+      "range": {
+        "startLine": 136,
+        "startChar": 53,
+        "endLine": 136,
+        "endChar": 93
+      },
+      "revId": "fcc996f79a60179ab4fa41ca7fa37da6e51c5b1b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
