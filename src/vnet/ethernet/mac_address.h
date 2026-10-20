@@ -74,8 +74,7 @@ ethernet_mac_address_generate (u8 * mac)
 static inline int
 ethernet_mac_address_equal (const u8 * a, const u8 * b)
 {
-  return ((*((u32 *) a) == (*((u32 *) b))) &&
-	  (*((u16 *) (a + 4)) == (*((u16 *) (b + 4)))));
+  return (*(u32u *) a == *(u32u *) b) && (*(u16u *) (a + 4) == *(u16u *) (b + 4));
 }
 
 static_always_inline void
