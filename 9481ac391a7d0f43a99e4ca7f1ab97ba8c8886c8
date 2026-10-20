@@ -1,0 +1,44 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0f4d3354_9148259e",
+        "filename": ".github/actions/vpp-hst-cache/README.md",
+        "patchSetId": 2
+      },
+      "lineNbr": 24,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-10-20T01:01:34Z",
+      "side": 1,
+      "message": "Update this line per whatever modification is made to the action.yml file",
+      "revId": "9481ac391a7d0f43a99e4ca7f1ab97ba8c8886c8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "aa478664_1338ea0a",
+        "filename": ".github/actions/vpp-hst-cache/action.yml",
+        "patchSetId": 2
+      },
+      "lineNbr": 21,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-10-20T01:01:34Z",
+      "side": 1,
+      "message": "The env var, DOT_GITHUB_ROOT, is not used anywhere else in this file, so this line can be removed and the full path to hst_cache.sh specified on line 22.\n\nIf you want to be able to specify the path to the .github root directory from the calling workflow, then add another input to the action with the default path \u003d \u0027/scratch/docker-build/.github\u0027.  Then create the env var from the input variable as is done for HST_BRANCH on line 18.",
+      "range": {
+        "startLine": 21,
+        "startChar": 25,
+        "endLine": 21,
+        "endChar": 40
+      },
+      "revId": "9481ac391a7d0f43a99e4ca7f1ab97ba8c8886c8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
