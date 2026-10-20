@@ -225,6 +225,7 @@ typedef struct
   u32 lifetime_jitter;
   u32 handover;
   u16 ipsec_over_udp_port;
+  u32 anti_replay_window_size;
 
   u32 tun_itf;
   u8 udp_encap;
