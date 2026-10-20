@@ -139,6 +139,15 @@ l2learn_process (vlib_node_runtime_t * node,
 
       counter_base[L2LEARN_ERROR_HIT_UPDATE] += 1;
       *count += 1;
+
+      /*
+       * An obsolete sequence number means the entry was flushed and is only
+       * waiting for the ager, which would delete it and report that to the
+       * MAC event client. Refreshing it re-learns the MAC instead, so report
+       * it like a new learn, or the client never hears of the MAC again.
+       */
+      if (dsn && msm->client_pid != 0)
+	l2fib_entry_result_set_LRN_EVT (result0);
     }
   else if (result0->raw == ~0)
     {
