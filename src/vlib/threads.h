@@ -144,24 +144,23 @@ vlib_smp_unsafe_warning (void)
     }
 }
 
-always_inline int
-__foreach_vlib_main_helper (vlib_main_t *ii, vlib_main_t **p, int checks)
+always_inline vlib_main_t *
+__foreach_vlib_main_helper (u32 index, int checks)
 {
   vlib_main_t *vm;
-  u32 index = ii - (vlib_main_t *) 0;
 
   if (index >= vec_len (vlib_global_main.vlib_mains))
     return 0;
 
-  *p = vm = vlib_global_main.vlib_mains[index];
-  ASSERT (!checks || index == 0 || vm->parked_at_barrier == 1);
-  return 1;
+  vm = vlib_global_main.vlib_mains[index];
+  ASSERT (!checks || index == 0 || !vm || vm->parked_at_barrier == 1);
+  return vm;
 }
 
-#define foreach_vlib_main__(checks)                                           \
-  for (vlib_main_t *ii = 0, *this_vlib_main;                                  \
-       __foreach_vlib_main_helper (ii, &this_vlib_main, checks); ii++)        \
-    if (this_vlib_main)
+#define foreach_vlib_main__(checks)                                                                \
+  for (u32 ii = 0; ii < vec_len (vlib_global_main.vlib_mains); ii++)                               \
+    for (vlib_main_t *this_vlib_main = __foreach_vlib_main_helper (ii, checks); this_vlib_main;    \
+	 this_vlib_main = 0)
 
 #define foreach_vlib_main() foreach_vlib_main__ (1)
 
