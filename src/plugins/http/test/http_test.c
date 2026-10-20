@@ -2395,6 +2395,87 @@ http_test_h2_window_update_scheduling (vlib_main_t *vm)
 }
 
 static int
+http_test_app_name_ownership (vlib_main_t *vm)
+{
+  http_ctx_t listener = { 0 }, conn = { 0 }, sibling = { 0 };
+  http_ctx_t outgoing = { 0 }, incoming = { 0 }, replacement = { 0 };
+  http_ctx_t *owners[] = { &listener, &conn, &sibling, &outgoing, &incoming, &replacement };
+  u8 *expected = format (0, "HTTP ownership test");
+  u32 i, j;
+  int res = 0;
+
+#define HTTP_NAME_TEST(_cond, _message)                                                            \
+  do                                                                                               \
+    {                                                                                              \
+      if (!HTTP_TEST_I (_cond, "%s", _message))                                                    \
+        {                                                                                          \
+          res = 1;                                                                                 \
+          goto done;                                                                               \
+        }                                                                                          \
+    }                                                                                              \
+  while (0)
+
+  listener.app_name = vec_dup (expected);
+  listener.host = expected;
+  listener.flags = HTTP_CONN_F_IS_SERVER;
+  http_conn_copy (&conn, &listener);
+  http_conn_copy (&sibling, &listener);
+  HTTP_NAME_TEST (conn.app_name != listener.app_name && sibling.app_name != listener.app_name &&
+                   sibling.app_name != conn.app_name,
+                 "accepted connections own separate names");
+  listener.app_name[0] = 'X';
+  HTTP_NAME_TEST (vec_cmp (conn.app_name, expected) == 0 &&
+                   vec_cmp (sibling.app_name, expected) == 0,
+                 "listener changes do not alter accepted names");
+  http_conn_free_name (&sibling);
+  HTTP_NAME_TEST (sibling.app_name == 0 && vec_cmp (conn.app_name, expected) == 0 &&
+                   listener.app_name[0] == 'X',
+                 "closing one connection retains its sibling and listener");
+  http_conn_free_name (&listener);
+  HTTP_NAME_TEST (listener.app_name == 0 && vec_cmp (conn.app_name, expected) == 0,
+                 "accepted name survives listener disposal");
+
+  conn.version = HTTP_VERSION_3;
+  http_conn_copy (&outgoing, &conn);
+  outgoing.flags |= HTTP_CONN_F_UNIDIRECTIONAL_STREAM;
+  http_conn_copy (&incoming, &conn);
+  incoming.flags |= HTTP_CONN_F_BIDIRECTIONAL_STREAM;
+  HTTP_NAME_TEST (outgoing.app_name != conn.app_name && incoming.app_name != conn.app_name &&
+                   outgoing.app_name != incoming.app_name && outgoing.host == conn.host &&
+                   incoming.host == conn.host,
+                 "QUIC streams own names and keep borrowed host pointers");
+  http_conn_free_name (&outgoing);
+  http_conn_free_name (&incoming);
+  HTTP_NAME_TEST (outgoing.app_name == 0 && incoming.app_name == 0 &&
+                   vec_cmp (conn.app_name, expected) == 0,
+                 "stream rollback disposal retains the connection name");
+
+  http_conn_copy (&outgoing, &conn);
+  outgoing.http_req_index = SESSION_INVALID_INDEX;
+  http_conn_copy (&replacement, &conn);
+  replacement.flags |= HTTP_CONN_F_BIDIRECTIONAL_STREAM;
+  http_conn_free_name (&outgoing);
+  http_conn_free_name (&conn);
+  HTTP_NAME_TEST (vec_cmp (replacement.app_name, expected) == 0,
+                 "replacement stream name survives old stream and connection disposal");
+  http_conn_free_name (&replacement);
+  http_conn_copy (&replacement, &listener);
+  HTTP_NAME_TEST (replacement.app_name == 0, "empty names can be copied and disposed");
+
+done:
+  for (i = 0; i < ARRAY_LEN (owners); i++)
+    {
+      for (j = i + 1; j < ARRAY_LEN (owners); j++)
+	if (owners[j]->app_name == owners[i]->app_name)
+	  owners[j]->app_name = 0;
+      http_conn_free_name (owners[i]);
+    }
+  vec_free (expected);
+#undef HTTP_NAME_TEST
+  return res;
+}
+
+static int
 http_test_decode_varint (vlib_main_t *vm)
 {
   u8 *p, *end;
@@ -2480,8 +2561,12 @@ test_http_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	res = http_test_parse_content_length (vm);
       else if (unformat (input, "decode-varint"))
 	res = http_test_decode_varint (vm);
+      else if (unformat (input, "app-name-ownership"))
+	res = http_test_app_name_ownership (vm);
       else if (unformat (input, "all"))
 	{
+	  if ((res = http_test_app_name_ownership (vm)))
+	    goto done;
 	  if ((res = http_test_decode_varint (vm)))
 	    goto done;
 	  if ((res = http_test_parse_authority (vm)))
