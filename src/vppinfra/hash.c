@@ -406,7 +406,7 @@ lookup (void *v, uword key, enum lookup_opcode op,
   if (op == UNSET)
     h->elts -= found_key;
 
-  return &p->direct;
+  return p ? &p->direct : 0;
 }
 
 /* Fetch value of key. */
