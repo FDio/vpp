@@ -346,8 +346,8 @@ icmp_to_icmp6 (vlib_buffer_t * p, ip4_to_ip6_set_fn_t fn, void *ctx,
 	}
       else
 	{
-	  /* To shut up Coverity */
-	  os_panic ();
+	  /* Inner protocol we cannot translate (e.g. GRE, ESP): drop. */
+	  return -1;
 	}
 
       inner_ip6->ip_version_traffic_class_and_flow_label =

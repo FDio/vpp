@@ -1152,6 +1152,40 @@ class TestNAT64(VppTestCase):
                 self.logger.error(ppp("Unexpected or invalid packet:", packet))
                 raise
 
+    def test_icmp_error_unsupported_inner_protocol(self):
+        """NAT64 out2in ICMP error with untranslatable inner protocol"""
+        self.vapi.nat64_add_del_pool_addr_range(
+            start_addr=self.nat_addr,
+            end_addr=self.nat_addr,
+            vrf_id=0xFFFFFFFF,
+            is_add=1,
+        )
+        flags = self.config_flags.NAT_IS_INSIDE
+        self.vapi.nat64_add_del_interface(
+            is_add=1, flags=flags, sw_if_index=self.pg0.sw_if_index
+        )
+        self.vapi.nat64_add_del_interface(
+            is_add=1, flags=0, sw_if_index=self.pg1.sw_if_index
+        )
+
+        # ICMPv4 errors quoting a packet whose protocol cannot be
+        # translated (GRE, ESP) must be dropped, not crash VPP.
+        pkts = [
+            Ether(dst=self.pg1.local_mac, src=self.pg1.remote_mac)
+            / IP(src=self.pg1.remote_ip4, dst=self.nat_addr)
+            / ICMP(type=3, code=13)
+            / IP(src=self.nat_addr, dst=self.pg1.remote_ip4, proto=proto)
+            / Raw(b"\x00" * 8)
+            for proto in (47, 50)
+        ]
+        self.pg1.add_stream(pkts)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        self.pg0.assert_nothing_captured()
+
+        # VPP must still be alive
+        self.vapi.cli("show nat64 session table all")
+
     def test_hairpinning(self):
         """NAT64 hairpinning"""
 
