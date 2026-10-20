@@ -16,6 +16,24 @@
       "message": "This makes an explicit dependency between policer and punt, I do not know if we want that. Maybe a better way would be to introdcuce a policer refcount that external users can increment?\nSomething like policer_lock()/policer_unlock() similar to fib etc.",
       "revId": "6cd07909b7c6bafc3a509e8b71d7eeb8192445df",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "2f45c25d_3762a86a",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2026-10-20T09:31:08Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "8436b25e_f542a976",
+      "revId": "6cd07909b7c6bafc3a509e8b71d7eeb8192445df",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
