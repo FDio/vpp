@@ -476,6 +476,167 @@ test_bihash (bihash_test_main_t * tm)
   return 0;
 }
 
+typedef struct
+{
+  BVT (clib_bihash) hash;
+  clib_mem_heap_t *heap;
+  clib_mem_heap_t *original_heap;
+  clib_mem_usage_t baseline;
+  clib_mem_usage_t usage;
+  uword registry_length;
+} bihash_lifecycle_test_t;
+
+static uword
+bihash_lifecycle_registry_count (BVT (clib_bihash) *h)
+{
+  uword count = 0;
+
+  for (uword i = 0; i < vec_len (clib_all_bihashes); i++)
+    if (clib_all_bihashes[i] == h)
+      count++;
+  return count;
+}
+
+static const char *
+bihash_lifecycle_free (bihash_lifecycle_test_t *test)
+{
+  static const BVT (clib_bihash) zero;
+
+  BV (clib_bihash_free) (&test->hash);
+  clib_mem_get_heap_usage (test->heap, &test->usage);
+  clib_mem_set_heap (test->original_heap);
+  if (test->usage.bytes_used != test->baseline.bytes_used)
+    return "free did not restore heap bytes_used";
+  if (memcmp (&test->hash, &zero, sizeof (zero)) != 0)
+    return "free did not clear hash";
+  if (vec_len (clib_all_bihashes) != test->registry_length ||
+      bihash_lifecycle_registry_count (&test->hash) != 0)
+    return "free did not restore registry";
+
+  /* A second free warns about the absent registry entry on the original heap. */
+  BV (clib_bihash_free) (&test->hash);
+  clib_mem_get_heap_usage (test->heap, &test->usage);
+  if (test->usage.bytes_used != test->baseline.bytes_used)
+    return "second free changed heap bytes_used";
+  if (memcmp (&test->hash, &zero, sizeof (zero)) != 0)
+    return "second free did not preserve cleared hash";
+  if (vec_len (clib_all_bihashes) != test->registry_length ||
+      bihash_lifecycle_registry_count (&test->hash) != 0)
+    return "second free changed registry";
+  return 0;
+}
+
+static const char *
+bihash_lifecycle_cycle (bihash_lifecycle_test_t *test, u8 unregistered, u32 cycle)
+{
+  BVT (clib_bihash_init2_args) args = { 0 };
+  BVT (clib_bihash_kv) kv = { .key = 1, .value = 2 }, result;
+  BVT (clib_bihash) *h = &test->hash;
+  const char *failure = 0, *free_failure;
+
+  args.h = h;
+  args.name = "bihash lifecycle";
+  args.nbuckets = 2;
+  args.dont_add_to_all_bihash_list = unregistered;
+  args.instantiate_immediately = cycle == 8;
+  clib_mem_set_heap (test->heap);
+  BV (clib_bihash_init2) (&args);
+  clib_mem_get_heap_usage (test->heap, &test->usage);
+  if (test->usage.bytes_used <= test->baseline.bytes_used)
+    {
+      failure = "init did not increase heap bytes_used";
+      goto done;
+    }
+  if (!h->alloc_lock || h->instantiated != args.instantiate_immediately)
+    {
+      failure = "unexpected initial lock or instantiation state";
+      goto done;
+    }
+  if (vec_len (clib_all_bihashes) != test->registry_length + !unregistered ||
+      bihash_lifecycle_registry_count (h) != !unregistered)
+    {
+      failure = "unexpected initial registry membership";
+      goto done;
+    }
+  if (cycle == 9)
+    {
+      if (BV (clib_bihash_add_del) (h, &kv, 1) != 0 || !h->instantiated)
+	{
+	  failure = "add did not instantiate hash";
+	  goto done;
+	}
+      if (BV (clib_bihash_search) (h, &kv, &result) != 0 || result.value != kv.value)
+	{
+	  failure = "search did not find inserted value";
+	  goto done;
+	}
+      if (BV (clib_bihash_add_del) (h, &kv, 0) != 0 || !h->instantiated ||
+	  BV (clib_bihash_search) (h, &kv, &result) == 0)
+	failure = "delete did not empty instantiated hash";
+    }
+  else if (!args.instantiate_immediately)
+    {
+      if (BV (clib_bihash_search) (h, &kv, &result) == 0 ||
+	  BV (clib_bihash_add_del) (h, &kv, 0) == 0 || h->instantiated)
+	failure = "empty search or delete instantiated hash";
+    }
+
+done:
+  free_failure = bihash_lifecycle_free (test);
+  return failure ? failure : free_failure;
+}
+
+static clib_error_t *
+test_bihash_lifecycle_command_fn (vlib_main_t *vm, unformat_input_t *input,
+				 vlib_cli_command_t *cmd)
+{
+  bihash_lifecycle_test_t test = { 0 };
+  const char *failure = 0;
+  void *old_heap;
+  u32 cycle;
+  u8 unregistered;
+
+  if (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    return clib_error_return (0, "bihash lifecycle: unexpected input");
+
+  old_heap = clib_all_bihash_set_heap ();
+  vec_add1 (clib_all_bihashes, &test.hash);
+  (void) vec_pop (clib_all_bihashes);
+  clib_mem_set_heap (old_heap);
+  test.original_heap = clib_mem_get_heap ();
+  test.registry_length = vec_len (clib_all_bihashes);
+  test.heap = clib_mem_create_heap (0, 4 << 20, 1, "bihash lifecycle");
+  if (!test.heap)
+    return clib_error_return (0, "bihash lifecycle: could not create heap");
+  clib_mem_get_heap_usage (test.heap, &test.baseline);
+
+  for (unregistered = 0; unregistered < 2; unregistered++)
+    for (cycle = 0; cycle < 10; cycle++)
+      {
+	failure = bihash_lifecycle_cycle (&test, unregistered, cycle);
+	if (failure)
+	  goto done;
+      }
+
+done:
+  clib_mem_destroy_heap (test.heap);
+  if (failure)
+    return clib_error_return (
+      0,
+      "bihash lifecycle: %s (unregistered %u cycle %u case %s bytes_used %llu baseline %llu)",
+      failure, unregistered, cycle,
+      cycle < 8 ? "lazy-empty" : (cycle == 8 ? "immediate-empty" : "add-search-delete"),
+      (u64) test.usage.bytes_used, (u64) test.baseline.bytes_used);
+  vlib_cli_output (vm, "bihash lifecycle: passed");
+  return 0;
+}
+
+VLIB_CLI_COMMAND (test_bihash_lifecycle_command, static) = {
+  .path = "test bihash-lifecycle",
+  .short_help = "test bihash-lifecycle",
+  .function = test_bihash_lifecycle_command_fn,
+};
+
 static clib_error_t *
 test_bihash_command_fn (vlib_main_t * vm,
 			unformat_input_t * input, vlib_cli_command_t * cmd)

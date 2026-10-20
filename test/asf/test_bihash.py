@@ -34,6 +34,14 @@ class TestBihash(VppAsfTestCase):
             self.logger.critical(error)
             self.assertNotIn("failed", error)
 
+    def test_bihash_lifecycle(self):
+        """Bihash lifecycle allocation accounting"""
+        reply = self.vapi.cli_return_response("test bihash-lifecycle")
+        self.logger.info("bihash lifecycle CLI retval: %d", reply.retval)
+        self.logger.info("%s", reply.reply)
+        self.assertEqual(reply.retval, 0, reply.reply)
+        self.assertEqual(reply.reply.strip(), "bihash lifecycle: passed")
+
     @tag_fixme_asan
     def test_bihash_thread(self):
         """Bihash Thread Test"""
