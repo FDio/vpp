@@ -9,6 +9,7 @@
 #include <vpp/app/version.h>
 #include <vnet/vnet.h>
 #include <vppinfra/error.h>
+#include <vppinfra/bitmap.h>
 #include <vppinfra/random.h>
 #include <vnet/udp/udp.h>
 #include <vnet/ipsec/ipsec.h>
@@ -2682,6 +2683,44 @@ ikev2_create_tunnel_interface (vlib_main_t *vm, ikev2_sa_t *sa, ikev2_child_sa_t
   if (thread_index & 0xffffffc0)
     log_err ("error: thread index exceeds max range 0x3f!");
 
+  /* Vector indices shift on Delete; SA IDs must not reuse a live slot. */
+  u32 remote_mask = is_rekey && !sa->current_remote_id_mask ? 0x800 : 0;
+  u32 local_base = ikev2_mk_local_sa_id (sa_index, 0, thread_index);
+  u32 remote_base = ikev2_mk_remote_sa_id (sa_index, 0, thread_index) | remote_mask;
+  const u32 slot_mask = 0x7ff;
+  uword used[0x800 / BITS (uword)] = { 0 };
+  ikev2_child_sa_t *existing;
+
+  if ((old_local_sa_id & ~slot_mask) == local_base)
+    clib_bitmap_set_no_check (used, old_local_sa_id & slot_mask, 1);
+  if ((old_remote_sa_id & ~slot_mask) == remote_base)
+    clib_bitmap_set_no_check (used, old_remote_sa_id & slot_mask, 1);
+  if (sa->old_remote_id_present && (sa->old_remote_id & ~slot_mask) == remote_base)
+    clib_bitmap_set_no_check (used, sa->old_remote_id & slot_mask, 1);
+  vec_foreach (existing, sa->childs)
+    {
+      if (existing == child)
+	continue;
+      if ((existing->local_sa_id & ~slot_mask) == local_base)
+	clib_bitmap_set_no_check (used, existing->local_sa_id & slot_mask, 1);
+      if ((existing->remote_sa_id & ~slot_mask) == remote_base)
+	clib_bitmap_set_no_check (used, existing->remote_sa_id & slot_mask, 1);
+    }
+  child_index = 0x800;
+  for (u32 i = 0; i < ARRAY_LEN (used); i++)
+    {
+      if (~used[i])
+	{
+	  child_index = i * BITS (uword) + log2_first_set (~used[i]);
+	  break;
+	}
+    }
+  if (child_index == 0x800)
+    {
+      log_err ("error: no free child SA ID");
+      return 1;
+    }
+
   if (child_index & 0xfffff000 || sa_index & 0xfffff000)
     log_err ("error: sa/child index exceeds max range 0xfff!");
 
@@ -3880,8 +3919,12 @@ ikev2_node_internal (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *f
 		  c->tsi = sa0->new_child[0].tsi;
 		  c->tsr = sa0->new_child[0].tsr;
 		  c->use_transport_mode = sa0->new_child[0].use_transport_mode;
-		  ikev2_create_tunnel_interface (vm, sa0, c, p[0], c - sa0->childs, 0,
-						 sa0->new_child[0].kex, 0, 0);
+		  if (ikev2_create_tunnel_interface (vm, sa0, c, p[0], c - sa0->childs, 0,
+						     sa0->new_child[0].kex, 0, 0))
+		    {
+		      ikev2_sa_del_child_sa (sa0, c);
+		      sa0->new_child[0].notify_type = IKEV2_NOTIFY_MSG_NO_ADDITIONAL_SAS;
+		    }
 		  if (ike_hdr_is_request (ike0))
 		    {
 		      ike0->flags = IKEV2_HDR_FLAG_RESPONSE;

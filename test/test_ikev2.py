@@ -2880,34 +2880,40 @@ class TestResponderGreAutoNATT(TestResponderRekey):
         self.verify_esp()
 
 
-class TestResponderGreNewChildDeleteOld(TestResponderPsk):
-    """Deleting an old Child SA must preserve GRE protected by a newer one."""
-
-    use_transport_mode = True
-    gre_tunnel = True
+class TestResponderChildSaExhaustion(TestResponderPsk):
+    """Reject exhausted Child SA IDs and reuse a slot released by Delete."""
 
     def test_responder(self):
         super().test_responder()
-        old_protect = self.vapi.ipsec_tunnel_protect_dump(sw_if_index=self.p.tun_itf)[
-            0
-        ].tun
-        self.assertEqual(len(self.vapi.ipsec_sa_dump()), 2)
-        old_child = self.sa.child_sas[0]
-        self.sa.child_sas[0] = IKEv2ChildSA(
-            old_child.local_ts, old_child.remote_ts, True
-        )
-        self.sa.i_nonce = os.urandom(32)
-        self.pg0.add_stream(self.create_rekey_request(rekey_notify=False))
-        self.pg0.enable_capture()
-        self.pg_start()
-        reply = self.pg0.get_capture(1)[0]
-        self.assertEqual(self.get_ike_header(reply).exch_type, 36)
-        self.assertEqual(len(self.vapi.ikev2_sa_dump()), 1)
-        new_protect = self.vapi.ipsec_tunnel_protect_dump(sw_if_index=self.p.tun_itf)[
-            0
-        ].tun
-        self.assertNotEqual(new_protect.sa_out, old_protect.sa_out)
-        self.assertEqual(len(self.vapi.ipsec_sa_dump()), 4)
+        child = self.sa.child_sas[0]
+        for first in range(1, 2048, 32):
+            packets = []
+            for slot in range(first, min(first + 32, 2048)):
+                child.ispi = (0x10000000 + slot).to_bytes(4, "big")
+                packets.append(self.create_rekey_request(rekey_notify=False))
+            self.send_and_expect(
+                self.pg0, packets, self.pg0, trace=False, log_packets=False
+            )
+
+        sa_index = self.vapi.ikev2_sa_dump()[0].sa.sa_index
+        self.assertEqual(len(self.vapi.ikev2_child_sa_dump(sa_index=sa_index)), 2048)
+        self.assertEqual(len(self.vapi.ipsec_sa_dump()), 4096)
+        child.ispi = (0x10000800).to_bytes(4, "big")
+        request = self.create_rekey_request(rekey_notify=False)
+        for _ in range(2):
+            reply = self.send_and_expect(self.pg0, [request], self.pg0)[0]
+            ih = self.get_ike_header(reply)
+            self.assertIn("Response", ih.flags)
+            self.assertEqual(ih.id, self.get_ike_header(request).id)
+            self.assertEqual(ih.exch_type, 36)
+            self.assertEqual(ih[ikev2.IKEv2_payload_Encrypted].next_payload, 41)
+            notify = ikev2.IKEv2_payload_Notify(self.sa.hmac_and_decrypt(ih))
+            self.assertEqual(notify.type, 35)  # NO_ADDITIONAL_SAS
+            self.assertEqual(notify.next_payload, 0)
+            self.assertEqual(
+                len(self.vapi.ikev2_child_sa_dump(sa_index=sa_index)), 2048
+            )
+            self.assertEqual(len(self.vapi.ipsec_sa_dump()), 4096)
 
         header = ikev2.IKEv2(
             init_SPI=self.sa.ispi,
@@ -2917,7 +2923,7 @@ class TestResponderGreNewChildDeleteOld(TestResponderPsk):
             exch_type="INFORMATIONAL",
         )
         delete = ikev2.IKEv2_payload_Delete(
-            proto="ESP", SPIsize=4, SPInum=1, SPIs=old_child.ispi
+            proto="ESP", SPIsize=4, SPInum=1, SPIs=(0x10000400).to_bytes(4, "big")
         )
         packet = self.create_packet(
             self.pg0,
@@ -2927,21 +2933,131 @@ class TestResponderGreNewChildDeleteOld(TestResponderPsk):
             self.sa.natt,
             self.ip6,
         )
-        self.pg0.add_stream(packet)
-        self.pg0.enable_capture()
-        self.pg_start()
-        self.pg0.get_capture(1)
-        self.assertEqual(
-            self.vapi.ipsec_tunnel_protect_dump(sw_if_index=self.p.tun_itf)[
-                0
-            ].tun.sa_out,
-            new_protect.sa_out,
-        )
+        self.send_and_expect(self.pg0, [packet], self.pg0)
+        self.assertEqual(len(self.vapi.ipsec_sa_dump()), 4094)
+        reply = self.send_and_expect(
+            self.pg0, [self.create_rekey_request(rekey_notify=False)], self.pg0
+        )[0]
+        ih = self.get_ike_header(reply)
+        self.assertEqual(ih[ikev2.IKEv2_payload_Encrypted].next_payload, 33)  # SA
+        self.assertEqual(len(self.vapi.ikev2_child_sa_dump(sa_index=sa_index)), 2048)
+        self.assertEqual(len(self.vapi.ipsec_sa_dump()), 4096)
+
+
+class TestResponderGreNewChildDeleteOld(TestResponderPsk):
+    """Deleting an old Child SA must preserve GRE protected by a newer one."""
+
+    use_transport_mode = True
+    gre_tunnel = True
+
+    def setUp(self):
+        super().setUp()
+        self.gre_if.config_ip4()
+
+    def tearDown(self):
+        self.gre_if.unconfig_ip4()
+        super().tearDown()
+
+    def test_responder(self):
+        super().test_responder()
+        VppIpRoute(
+            self,
+            "1.1.1.2",
+            32,
+            [VppRoutePath(self.pg0.remote_ip4, self.gre_if.sw_if_index)],
+        ).add_vpp_config()
+        old_protect = self.vapi.ipsec_tunnel_protect_dump(sw_if_index=self.p.tun_itf)[
+            0
+        ].tun
         self.assertEqual(len(self.vapi.ipsec_sa_dump()), 2)
-        self.assertEqual(
-            self.vapi.sw_interface_dump(sw_if_index=self.p.tun_itf)[0].flags & 1,
-            1,
-        )
+        for _ in range(2):
+            old_child = self.sa.child_sas[0]
+            self.sa.child_sas[0] = IKEv2ChildSA(
+                old_child.local_ts, old_child.remote_ts, True
+            )
+            self.sa.i_nonce = os.urandom(32)
+            self.pg0.add_stream(self.create_rekey_request(rekey_notify=False))
+            self.pg0.enable_capture()
+            self.pg_start()
+            reply = self.pg0.get_capture(1)[0]
+            self.assertEqual(self.get_ike_header(reply).exch_type, 36)
+            sa_payload = ikev2.IKEv2_payload_SA(
+                self.sa.hmac_and_decrypt(self.get_ike_header(reply))
+            )
+            self.sa.r_nonce = sa_payload[ikev2.IKEv2_payload_Nonce].load
+            self.sa.child_sas[0].rspi = sa_payload[ikev2.IKEv2_payload_Proposal].SPI
+            self.sa.calc_child_keys()
+            self.assertEqual(len(self.vapi.ikev2_sa_dump()), 1)
+            new_protect = self.vapi.ipsec_tunnel_protect_dump(
+                sw_if_index=self.p.tun_itf
+            )[0].tun
+            self.assertNotEqual(new_protect.sa_out, old_protect.sa_out)
+            self.assertEqual(len(self.vapi.ipsec_sa_dump()), 4)
+
+            header = ikev2.IKEv2(
+                init_SPI=self.sa.ispi,
+                resp_SPI=self.sa.rspi,
+                id=self.sa.new_msg_id(),
+                flags="Initiator",
+                exch_type="INFORMATIONAL",
+            )
+            delete = ikev2.IKEv2_payload_Delete(
+                proto="ESP", SPIsize=4, SPInum=1, SPIs=old_child.ispi
+            )
+            packet = self.create_packet(
+                self.pg0,
+                self.encrypt_ike_msg(header, delete, "Delete"),
+                self.sa.sport,
+                self.sa.dport,
+                self.sa.natt,
+                self.ip6,
+            )
+            self.pg0.add_stream(packet)
+            self.pg0.enable_capture()
+            self.pg_start()
+            self.pg0.get_capture(1)
+            self.assertEqual(
+                self.vapi.ipsec_tunnel_protect_dump(sw_if_index=self.p.tun_itf)[
+                    0
+                ].tun.sa_out,
+                new_protect.sa_out,
+            )
+            self.assertEqual(len(self.vapi.ipsec_sa_dump()), 2)
+            self.assertEqual(
+                self.vapi.sw_interface_dump(sw_if_index=self.p.tun_itf)[0].flags & 1,
+                1,
+            )
+            outbound = (
+                Ether(src=self.pg1.remote_mac, dst=self.pg1.local_mac)
+                / IP(src=self.pg1.remote_ip4, dst="1.1.1.2")
+                / UDP(sport=2233, dport=1144)
+                / Raw(b"GRE replacement")
+            )
+            received = self.send_and_expect(self.pg1, [outbound], self.pg0)[0]
+            self.assertEqual(
+                received[ESP].spi, int.from_bytes(self.sa.child_sas[0].ispi, "big")
+            )
+            child = self.sa.child_sas[0]
+            peer_to_vpp = SecurityAssociation(
+                ESP,
+                spi=int.from_bytes(child.rspi, "big"),
+                crypt_algo=self.sa.esp_crypto,
+                crypt_key=child.sk_ei,
+                auth_algo=self.sa.esp_integ,
+                auth_key=child.sk_ai,
+            )
+            inbound = Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) / (
+                peer_to_vpp.encrypt(
+                    IP(src=self.pg0.remote_ip4, dst=self.pg0.local_ip4)
+                    / GRE()
+                    / IP(src=self.pg1.local_ip4, dst=self.pg1.remote_ip4)
+                    / UDP(sport=1144, dport=2233)
+                    / Raw(b"GRE replacement")
+                )
+            )
+            received = self.send_and_expect(self.pg0, [inbound], self.pg1)[0]
+            self.assertEqual(received[IP].dst, self.pg1.remote_ip4)
+            old_protect = new_protect
 
         # The next lifetime rekey must also replace the protected outbound SA.
         current_child = self.sa.child_sas[0]
