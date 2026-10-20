@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "340f9a35_80fb85ba",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-10-20T12:36:38Z",
+      "side": 1,
+      "message": "could you please document this in README.rst? just short description how hs-test works with UBUNTU_VERSION set and that you need to cleanup build-root",
+      "revId": "7387950f4d6d3659aa8db2235939ccfa9ad2daf3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0ae1dbb6_7f9cf638",
+        "filename": "test/hs-test/script/build_vpp.sh",
+        "patchSetId": 2
+      },
+      "lineNbr": 31,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-10-20T12:36:38Z",
+      "side": 1,
+      "message": "calling make wipe/wipe-release/test-wipe-cov from WS_ROOT is not enough?",
+      "revId": "7387950f4d6d3659aa8db2235939ccfa9ad2daf3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
