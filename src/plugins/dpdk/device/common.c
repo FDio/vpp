@@ -424,7 +424,15 @@ dpdk_setup_interrupts (dpdk_device_t *xd)
     }
 
   if (int_mode)
-    vnet_hw_if_set_caps (vnm, hi->hw_if_index, VNET_HW_IF_CAP_INT_MODE);
+    {
+      vnet_hw_if_set_caps (vnm, hi->hw_if_index, VNET_HW_IF_CAP_INT_MODE);
+      for (int q = 0; q < xd->conf.n_rx_queues; q++)
+        {
+          dpdk_rx_queue_t *rxq = vec_elt_at_index (xd->rx_queues, q);
+          vnet_hw_if_set_rx_queue_mode (vnm, rxq->queue_index,
+                                        VNET_HW_IF_RX_MODE_DEFAULT);
+        }
+    }
   else
     vnet_hw_if_unset_caps (vnm, hi->hw_if_index, VNET_HW_IF_CAP_INT_MODE);
   vnet_hw_if_update_runtime_data (vnm, xd->hw_if_index);
