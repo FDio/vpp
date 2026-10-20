@@ -188,8 +188,7 @@ ip_neighbor_flags_decode (vl_api_ip_neighbor_flags_t v)
 }
 
 static void
-vl_api_ip_neighbor_add_del_t_handler (vl_api_ip_neighbor_add_del_t * mp,
-				      vlib_main_t * vm)
+vl_api_ip_neighbor_add_del_t_handler (vl_api_ip_neighbor_add_del_t *mp)
 {
   vl_api_ip_neighbor_add_del_reply_t *rmp;
   ip_neighbor_flags_t flags;

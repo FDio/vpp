@@ -454,8 +454,7 @@ ip_punt_redirect_t_handler_common (u8 is_add, u32 rx_sw_if_index,
 }
 
 static void
-vl_api_ip_punt_redirect_t_handler (vl_api_ip_punt_redirect_t *mp,
-				   vlib_main_t *vm)
+vl_api_ip_punt_redirect_t_handler (vl_api_ip_punt_redirect_t *mp)
 {
   vl_api_ip_punt_redirect_reply_t *rmp;
   fib_route_path_t *rpaths = NULL, rpath = {
@@ -486,8 +485,7 @@ vl_api_ip_punt_redirect_t_handler (vl_api_ip_punt_redirect_t *mp,
 }
 
 static void
-vl_api_add_del_ip_punt_redirect_v2_t_handler (
-  vl_api_add_del_ip_punt_redirect_v2_t *mp, vlib_main_t *vm)
+vl_api_add_del_ip_punt_redirect_v2_t_handler (vl_api_add_del_ip_punt_redirect_v2_t *mp)
 {
   vl_api_add_del_ip_punt_redirect_v2_reply_t *rmp;
   fib_route_path_t *rpaths = NULL, *rpath;
