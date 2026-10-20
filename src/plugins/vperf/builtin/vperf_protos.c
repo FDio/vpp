@@ -139,19 +139,38 @@ vp_proto_server_stream_rx_test_bytes (vp_test_session_t *es, session_t *s, u8 *r
   return vp_proto_server_stream_rx_inline (es, s, rx_buf, 1);
 }
 
-static void
-vp_proto_server_stream_rx_no_echo (vp_test_session_t *es, session_t *s)
+always_inline void
+vp_proto_server_stream_rx_no_echo_inline (vp_test_session_t *es, session_t *s, u8 *rx_buf,
+					  u8 test_bytes)
 {
   svm_fifo_t *rx_fifo = s->rx_fifo;
-  u32 n_read = svm_fifo_max_dequeue_cons (rx_fifo);
+  int rv;
 
-  es->bytes_received += n_read;
-  int rv = svm_fifo_dequeue_drop (rx_fifo, n_read);
-  if (rv > 0 && svm_fifo_needs_deq_ntf (rx_fifo, rv))
+  if (test_bytes)
+    rv = svm_fifo_dequeue (rx_fifo, vec_len (rx_buf), rx_buf);
+  else
+    rv = svm_fifo_dequeue_drop (rx_fifo, svm_fifo_max_dequeue_cons (rx_fifo));
+  if (rv <= 0)
+    return;
+
+  es->bytes_received += rv;
+  if (svm_fifo_needs_deq_ntf (rx_fifo, rv))
     {
       svm_fifo_clear_deq_ntf (rx_fifo);
       session_program_transport_io_evt (s->handle, SESSION_IO_EVT_RX);
     }
+}
+
+static void
+vp_proto_server_stream_rx_no_echo (vp_test_session_t *es, session_t *s)
+{
+  vp_proto_server_stream_rx_no_echo_inline (es, s, 0, 0);
+}
+
+static void
+vp_proto_server_stream_rx_no_echo_test_bytes (vp_test_session_t *es, session_t *s, u8 *rx_buf)
+{
+  vp_proto_server_stream_rx_no_echo_inline (es, s, rx_buf, 1);
 }
 
 always_inline u8
@@ -289,6 +308,7 @@ static vp_test_proto_vft_t vp_test_tcp = {
   .server_rx = vp_proto_server_stream_rx,
   .server_rx_test_bytes = vp_proto_server_stream_rx_test_bytes,
   .server_rx_no_echo = vp_proto_server_stream_rx_no_echo,
+  .server_rx_no_echo_test_bytes = vp_proto_server_stream_rx_no_echo_test_bytes,
   .connect = vp_proto_tcp_connect,
   .connected = vp_proto_connected,
   .client_rx = vp_proto_client_stream_rx,
@@ -412,8 +432,9 @@ vp_proto_udp_server_rx_test_bytes (vp_test_session_t *es, session_t *s, u8 *rx_b
   return vp_proto_server_dgram_rx (es, s, rx_buf, 1);
 }
 
-static void
-vp_proto_udp_server_rx_no_echo (vp_test_session_t *es, session_t *s)
+always_inline void
+vp_proto_udp_server_rx_no_echo_inline (vp_test_session_t *es, session_t *s, u8 *rx_buf,
+				       u8 test_bytes)
 {
   svm_fifo_t *rx_fifo = s->rx_fifo;
   session_dgram_pre_hdr_t ph;
@@ -428,6 +449,9 @@ vp_proto_udp_server_rx_no_echo (vp_test_session_t *es, session_t *s)
       dgram_size = sizeof (session_dgram_hdr_t) + ph.data_length;
       if (left_deq < dgram_size)
 	break;
+      if (test_bytes)
+	svm_fifo_peek (rx_fifo, sizeof (session_dgram_hdr_t),
+		       clib_min (ph.data_length, vec_len (rx_buf)), rx_buf);
       es->dgrams_received++;
       bytes_received += ph.data_length;
       left_deq -= svm_fifo_dequeue_drop (rx_fifo, sizeof (session_dgram_hdr_t) + ph.data_length);
@@ -439,6 +463,18 @@ vp_proto_udp_server_rx_no_echo (vp_test_session_t *es, session_t *s)
       svm_fifo_clear_deq_ntf (rx_fifo);
       session_program_transport_io_evt (s->handle, SESSION_IO_EVT_RX);
     }
+}
+
+static void
+vp_proto_udp_server_rx_no_echo (vp_test_session_t *es, session_t *s)
+{
+  vp_proto_udp_server_rx_no_echo_inline (es, s, 0, 0);
+}
+
+static void
+vp_proto_udp_server_rx_no_echo_test_bytes (vp_test_session_t *es, session_t *s, u8 *rx_buf)
+{
+  vp_proto_udp_server_rx_no_echo_inline (es, s, rx_buf, 1);
 }
 
 always_inline u8
@@ -697,6 +733,7 @@ static vp_test_proto_vft_t vp_test_udp = {
   .server_rx = vp_proto_udp_server_rx,
   .server_rx_test_bytes = vp_proto_udp_server_rx_test_bytes,
   .server_rx_no_echo = vp_proto_udp_server_rx_no_echo,
+  .server_rx_no_echo_test_bytes = vp_proto_udp_server_rx_no_echo_test_bytes,
   .connect = vp_proto_udp_connect,
   .connected = vp_proto_connected,
   .client_rx = vp_proto_client_dgram_rx,
@@ -809,6 +846,7 @@ static vp_test_proto_vft_t vp_test_udp_uso = {
   .server_rx = vp_proto_udp_server_rx,
   .server_rx_test_bytes = vp_proto_udp_server_rx_test_bytes,
   .server_rx_no_echo = vp_proto_udp_server_rx_no_echo,
+  .server_rx_no_echo_test_bytes = vp_proto_udp_server_rx_no_echo_test_bytes,
   .connect = vp_proto_udp_connect,
   .connected = vp_proto_connected,
   .client_rx = vp_proto_client_dgram_rx,
@@ -931,6 +969,7 @@ static vp_test_proto_vft_t vp_test_tls = {
   .server_rx = vp_proto_tls_server_rx,
   .server_rx_test_bytes = vp_proto_tls_server_rx_test_bytes,
   .server_rx_no_echo = vp_proto_server_stream_rx_no_echo,
+  .server_rx_no_echo_test_bytes = vp_proto_server_stream_rx_no_echo_test_bytes,
   .connect = vp_proto_tls_connect,
   .connected = vp_proto_connected,
   .client_rx = vp_proto_client_stream_rx,
@@ -1093,6 +1132,7 @@ static vp_test_proto_vft_t vp_test_quic = {
   .server_rx = vp_proto_quic_server_rx,
   .server_rx_test_bytes = vp_proto_quic_server_rx_test_bytes,
   .server_rx_no_echo = vp_proto_server_stream_rx_no_echo,
+  .server_rx_no_echo_test_bytes = vp_proto_server_stream_rx_no_echo_test_bytes,
   .connect = vp_proto_quic_connect,
   .connected = vp_proto_quic_connected,
   .client_rx = vp_proto_client_stream_rx,
@@ -1407,6 +1447,7 @@ static vp_test_proto_vft_t vp_test_http = {
   .server_rx = vp_proto_http_server_rx,
   .server_rx_test_bytes = vp_proto_http_server_rx_test_bytes,
   .server_rx_no_echo = vp_proto_server_stream_rx_no_echo,
+  .server_rx_no_echo_test_bytes = vp_proto_server_stream_rx_no_echo_test_bytes,
   .connect = vp_proto_http_connect,
   .connected = vp_proto_http_connected,
   .client_rx = vp_proto_http_client_rx,
@@ -1589,6 +1630,13 @@ vp_proto_http_connect_tcp_accept_no_echo (vp_test_session_t *es, session_t *s)
   vp_proto_http_proxy_send_resp (s, 0);
 }
 
+static void
+vp_proto_http_connect_tcp_accept_no_echo_test_bytes (vp_test_session_t *es, session_t *s,
+						     u8 *rx_buf)
+{
+  vp_proto_http_connect_tcp_accept_no_echo (es, s);
+}
+
 static int
 vp_proto_http_connect_tcp_accept_echo (vp_test_session_t *es, session_t *s, u8 *rx_buf)
 {
@@ -1603,6 +1651,7 @@ vp_test_proto_vft_t vp_proto_http_connect_tcp_vft[2] = {
     .server_rx = vp_proto_http_connect_tcp_accept_echo,
     .server_rx_test_bytes = vp_proto_http_connect_tcp_accept_echo,
     .server_rx_no_echo = vp_proto_http_connect_tcp_accept_no_echo,
+    .server_rx_no_echo_test_bytes = vp_proto_http_connect_tcp_accept_no_echo_test_bytes,
     .client_rx = vp_proto_http_connect_read_resp,
     .client_rx_test_bytes = vp_proto_http_connect_read_resp,
   },
@@ -1610,6 +1659,7 @@ vp_test_proto_vft_t vp_proto_http_connect_tcp_vft[2] = {
     .server_rx = vp_proto_http_server_rx,
     .server_rx_test_bytes = vp_proto_http_server_rx_test_bytes,
     .server_rx_no_echo = vp_proto_server_stream_rx_no_echo,
+    .server_rx_no_echo_test_bytes = vp_proto_server_stream_rx_no_echo_test_bytes,
     .client_rx = vp_proto_client_stream_rx,
     .client_rx_test_bytes = vp_proto_client_stream_rx_test_bytes,
   },
@@ -1631,6 +1681,13 @@ static void
 vp_proto_http_connect_tcp_server_rx_no_echo (vp_test_session_t *es, session_t *s)
 {
   vp_proto_http_connect_tcp_vft[es->opaque].server_rx_no_echo (es, s);
+}
+
+static void
+vp_proto_http_connect_tcp_server_rx_no_echo_test_bytes (vp_test_session_t *es, session_t *s,
+							u8 *rx_buf)
+{
+  vp_proto_http_connect_tcp_vft[es->opaque].server_rx_no_echo_test_bytes (es, s, rx_buf);
 }
 
 static u8
@@ -1738,6 +1795,7 @@ static vp_test_proto_vft_t vp_test_http_connect_tcp = {
   .server_rx = vp_proto_http_connect_tcp_server_rx,
   .server_rx_test_bytes = vp_proto_http_connect_tcp_server_rx_test_bytes,
   .server_rx_no_echo = vp_proto_http_connect_tcp_server_rx_no_echo,
+  .server_rx_no_echo_test_bytes = vp_proto_http_connect_tcp_server_rx_no_echo_test_bytes,
   .connect = vp_proto_http_masque_connect,
   .connected = vp_proto_http_connect_tcp_connected,
   .client_rx = vp_proto_http_connect_tcp_client_rx,
@@ -1770,6 +1828,13 @@ vp_proto_http_connect_udp_accept_no_echo (vp_test_session_t *es, session_t *s)
   es->opaque = 1;
   vp_proto_http_read_connect_udp_req (s);
   vp_proto_http_proxy_send_resp (s, 1);
+}
+
+static void
+vp_proto_http_connect_udp_accept_no_echo_test_bytes (vp_test_session_t *es, session_t *s,
+						     u8 *rx_buf)
+{
+  vp_proto_http_connect_udp_accept_no_echo (es, s);
 }
 
 static int
@@ -1942,6 +2007,7 @@ vp_test_proto_vft_t vp_proto_http_connect_udp_vft[2] = {
     .server_rx = vp_proto_http_connect_udp_accept_echo,
     .server_rx_test_bytes = vp_proto_http_connect_udp_accept_echo,
     .server_rx_no_echo = vp_proto_http_connect_udp_accept_no_echo,
+    .server_rx_no_echo_test_bytes = vp_proto_http_connect_udp_accept_no_echo_test_bytes,
     .client_rx = vp_proto_http_connect_read_resp,
     .client_rx_test_bytes = vp_proto_http_connect_read_resp,
   },
@@ -1949,6 +2015,7 @@ vp_test_proto_vft_t vp_proto_http_connect_udp_vft[2] = {
     .server_rx = vp_proto_http_server_rx_dgram,
     .server_rx_test_bytes = vp_proto_http_server_rx_test_bytes_dgram,
     .server_rx_no_echo = vp_proto_udp_server_rx_no_echo,
+    .server_rx_no_echo_test_bytes = vp_proto_udp_server_rx_no_echo_test_bytes,
     .client_rx = vp_proto_http_client_dgram_rx,
     .client_rx_test_bytes = vp_proto_http_client_dgram_rx_test_bytes,
   },
@@ -1970,6 +2037,13 @@ static void
 vp_proto_http_connect_udp_server_rx_no_echo (vp_test_session_t *es, session_t *s)
 {
   vp_proto_http_connect_udp_vft[es->opaque].server_rx_no_echo (es, s);
+}
+
+static void
+vp_proto_http_connect_udp_server_rx_no_echo_test_bytes (vp_test_session_t *es, session_t *s,
+							u8 *rx_buf)
+{
+  vp_proto_http_connect_udp_vft[es->opaque].server_rx_no_echo_test_bytes (es, s, rx_buf);
 }
 
 static u8
@@ -2077,6 +2151,7 @@ static vp_test_proto_vft_t vp_test_http_connect_udp = {
   .server_rx = vp_proto_http_connect_udp_server_rx,
   .server_rx_test_bytes = vp_proto_http_connect_udp_server_rx_test_bytes,
   .server_rx_no_echo = vp_proto_http_connect_udp_server_rx_no_echo,
+  .server_rx_no_echo_test_bytes = vp_proto_http_connect_udp_server_rx_no_echo_test_bytes,
   .connect = vp_proto_http_masque_connect,
   .connected = vp_proto_http_connect_udp_connected,
   .client_rx = vp_proto_http_connect_udp_client_rx,

@@ -310,11 +310,8 @@ vp_server_rx_ctrl_callback (session_t *s)
   return 0;
 }
 
-/*
- * If no-echo, just drop the data and be done with it.
- */
-static int
-vp_server_rx_no_echo_callback (session_t *s)
+always_inline int
+vp_server_rx_no_echo (session_t *s, u8 test_bytes)
 {
   vp_server_main_t *vpsm = &vp_server_main;
   vp_test_worker_t *wrk;
@@ -331,9 +328,27 @@ vp_server_rx_no_echo_callback (session_t *s)
   tp = &vp_test_main.protos[vpsm->cfg.proto];
   wrk = vp_server_worker_get (s->thread_index);
   es = vp_server_session_get (wrk, s->opaque);
-  tp->server_rx_no_echo (es, s);
+  if (test_bytes)
+    tp->server_rx_no_echo_test_bytes (es, s, wrk->rx_buf);
+  else
+    tp->server_rx_no_echo (es, s);
 
   return 0;
+}
+
+/*
+ * If no-echo, just drop the data and be done with it.
+ */
+static int
+vp_server_rx_no_echo_callback (session_t *s)
+{
+  return vp_server_rx_no_echo (s, 0);
+}
+
+static int
+vp_server_rx_no_echo_test_bytes_callback (session_t *s)
+{
+  return vp_server_rx_no_echo (s, 1);
 }
 
 always_inline int
@@ -383,7 +398,10 @@ vp_server_setup_test (vperf_cfg_t *c)
   if (c->test == VPERF_TEST_TYPE_UNI)
     {
       vpsm->cfg.echo_bytes = 0;
-      vpsm->rx_callback = vp_server_rx_no_echo_callback;
+      if (c->test_bytes)
+	vpsm->rx_callback = vp_server_rx_no_echo_test_bytes_callback;
+      else
+	vpsm->rx_callback = vp_server_rx_no_echo_callback;
     }
   else
     {
