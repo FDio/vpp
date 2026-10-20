@@ -378,6 +378,18 @@ test_hash_main (unformat_input_t * input)
 
   if_verbose ("testing %d iterations, seed %d", ht->n_iterations, ht->seed);
 
+  word *missing = hash_create (0, sizeof (word));
+  hash_set (missing, 1, 2);
+  error = CLIB_ERROR_ASSERT (hash_get (missing, 3) == 0);
+  if (!error)
+    error = CLIB_ERROR_ASSERT (hash_get_pair (missing, 3) == 0);
+  hash_free (missing);
+  if (error)
+    {
+      clib_error_report (error);
+      return 1;
+    }
+
   error = test_word_key (ht);
   if (error)
     clib_error_report (error);
