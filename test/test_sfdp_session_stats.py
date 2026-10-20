@@ -80,10 +80,10 @@ class TestSfdpSessionStats(VppTestCase):
                 f"Provided schema has unsupported type: {type(schema_data).__name__}"
             )
 
-        # Reconstruct ABI ID for the version 2 ring entry marker message.
-        abi_prefix = "sfdp_session_stats_ring_entry_v2_abi_id_"
+        # Reconstruct ABI ID for the version 3 ring entry marker message.
+        abi_prefix = "sfdp_session_stats_ring_entry_v3_abi_id_"
         expected_abi_id = None
-        msg = self.vapi.vpp.messages.get("sfdp_session_stats_ring_entry_v2_abi_id")
+        msg = self.vapi.vpp.messages.get("sfdp_session_stats_ring_entry_v3_abi_id")
         msg_crc = getattr(msg, "crc", None)
         msg_crc = msg_crc.lower()
         msg_crc = msg_crc[2:]  # Remove prefix '0x' from msg crc string
@@ -100,15 +100,20 @@ class TestSfdpSessionStats(VppTestCase):
 
         # Get common ring buffer entry type defined in VPP API
         ring_entry_type = self.vapi.vpp.get_type(
-            "vl_api_sfdp_session_stats_ring_entry_v2_t"
+            "vl_api_sfdp_session_stats_ring_entry_v3_t"
         )
         if ring_entry_type is None:
             raise ValueError(
-                "vl_api_sfdp_session_stats_ring_entry_v2_t type does not exist"
+                "vl_api_sfdp_session_stats_ring_entry_v3_t type does not exist"
             )
 
         # Check that ring entry size from stats ring config matches API typedef size.
         entry_size = ring_entry_type.size
+        legacy_entry_type = self.vapi.vpp.get_type(
+            "vl_api_sfdp_session_stats_ring_entry_v2_t"
+        )
+        self.assertEqual(legacy_entry_type.size, 304)
+        self.assertEqual(entry_size, 306)
         if ring_entry_size != entry_size:
             raise ValueError(
                 f"Ring entry size mismatch: schema/config={ring_entry_size}, api={entry_size}"
@@ -1210,6 +1215,20 @@ class TestSfdpSessionStats(VppTestCase):
             enable_ring_buffer=True,
             ring_size=32,
         )
+        checkpoint_before = self.vapi.sfdp_session_stats_ring_checkpoint()
+        self.assertEqual(checkpoint_before.retval, 0)
+        self.assertTrue(checkpoint_before.enabled)
+        self.assertGreater(checkpoint_before.process_epoch, 0)
+        self.assertEqual(checkpoint_before.ring_size, 32)
+        self.assertEqual(checkpoint_before.entry_size, 306)
+        self.assertEqual(checkpoint_before.schema_version, 3)
+        self.assertEqual(
+            checkpoint_before.n_threads, len(checkpoint_before.positions)
+        )
+        self.assertEqual(
+            self.statistics.get_counter("/sfdp/session/stats-instance"),
+            checkpoint_before.process_epoch,
+        )
         sport = 41000
         dport = 8443
 
@@ -1222,6 +1241,16 @@ class TestSfdpSessionStats(VppTestCase):
             dport=dport,
         )
         self.pg_send(self.pg0, pkt)
+        checkpoint_created = self.vapi.sfdp_session_stats_ring_checkpoint()
+        self.assertEqual(checkpoint_created.retval, 0)
+        self.assertEqual(checkpoint_created.process_epoch, checkpoint_before.process_epoch)
+        self.assertEqual(
+            checkpoint_created.config_generation, checkpoint_before.config_generation
+        )
+        self.assertGreater(
+            checkpoint_created.positions[0].write_sequence,
+            checkpoint_before.positions[0].write_sequence,
+        )
 
         ring_buffer = self.statistics.get_ring_buffer("/sfdp/session/stats")
         schema_data = ring_buffer.get_schema_string(thread_index=0)
@@ -1229,7 +1258,8 @@ class TestSfdpSessionStats(VppTestCase):
         decode_entry, schema = self.create_ring_buffer_decoder(
             schema_data, ring_config["entry_size"]
         )
-        self.assertEqual(schema["schema_version"], 2)
+        self.assertEqual(schema["schema_version"], 3)
+        self.assertEqual(schema["entry_size"], 306)
 
         created_data = ring_buffer.consume_data(thread_index=0)
         self.assertEqual(len(created_data), 1)
@@ -1245,6 +1275,7 @@ class TestSfdpSessionStats(VppTestCase):
         self.assertGreater(created["exported_at_unix_micros"], 0)
         self.assertGreater(created["first_packet_time_unix_micros"], 0)
         self.assertEqual(created["last_packet_time_unix_micros"], 0)
+        self.assertEqual(created["update_sequence"], 0)
 
         reply = self.vapi.sfdp_session_stats_export_now()
         self.assertEqual(reply.retval, 0)
@@ -1262,6 +1293,35 @@ class TestSfdpSessionStats(VppTestCase):
             created["exported_at_unix_micros"],
         )
         self.assertEqual(updated["last_packet_time_unix_micros"], 0)
+        self.assertEqual(updated["update_sequence"], 0)
+
+        reply = self.vapi.sfdp_session_stats_export_now()
+        self.assertEqual(reply.retval, 0)
+        self.virtual_sleep(0.2)
+        next_updated_data = ring_buffer.consume_data(thread_index=0)
+        self.assertEqual(len(next_updated_data), 1)
+        next_updated = decode_entry(next_updated_data[0])
+        self.assertEqual(next_updated["event_type"], 2)
+        self.assertEqual(next_updated["update_sequence"], 1)
+
+        # Counter clearing preserves the session generation and update sequence.
+        reply = self.vapi.sfdp_session_stats_clear()
+        self.assertEqual(reply.retval, 0)
+        self.pg_send(self.pg0, pkt)
+        self.assertEqual(len(ring_buffer.consume_data(thread_index=0)), 0)
+
+        reply = self.vapi.sfdp_session_stats_export_now()
+        self.assertEqual(reply.retval, 0)
+        self.virtual_sleep(0.2)
+        post_clear_data = ring_buffer.consume_data(thread_index=0)
+        self.assertEqual(len(post_clear_data), 1)
+        post_clear = decode_entry(post_clear_data[0])
+        self.assertEqual(post_clear["event_type"], 2)
+        self.assertEqual(post_clear["update_sequence"], 2)
+        self.assertEqual(
+            post_clear["first_packet_time_unix_micros"],
+            created["first_packet_time_unix_micros"],
+        )
 
         reply = self.vapi.sfdp_kill_session(is_all=True)
         self.assertEqual(reply.retval, 0)
@@ -1278,6 +1338,33 @@ class TestSfdpSessionStats(VppTestCase):
             closed["last_packet_time_unix_micros"],
             closed["first_packet_time_unix_micros"],
         )
+        self.assertEqual(closed["update_sequence"], 0)
+
+        # A reused pool slot starts a new sequence at zero.
+        reused_sport = sport + 1
+        reused_pkt = self.create_tcp_packet(
+            src_mac=self.pg0.remote_mac,
+            dst_mac=self.pg0.local_mac,
+            src_ip=self.pg0.remote_ip4,
+            dst_ip=self.pg1.remote_ip4,
+            sport=reused_sport,
+            dport=dport,
+        )
+        self.pg_send(self.pg0, reused_pkt)
+        reused_created_data = ring_buffer.consume_data(thread_index=0)
+        self.assertEqual(len(reused_created_data), 1)
+        reused_created = decode_entry(reused_created_data[0])
+        self.assertEqual(reused_created["event_type"], 1)
+        self.assertEqual(reused_created["session_index"], created["session_index"])
+
+        reply = self.vapi.sfdp_session_stats_export_now()
+        self.assertEqual(reply.retval, 0)
+        self.virtual_sleep(0.2)
+        reused_updated_data = ring_buffer.consume_data(thread_index=0)
+        self.assertEqual(len(reused_updated_data), 1)
+        reused_updated = decode_entry(reused_updated_data[0])
+        self.assertEqual(reused_updated["event_type"], 2)
+        self.assertEqual(reused_updated["update_sequence"], 0)
 
         self._cleanup_sfdp_session_stats(config)
 
@@ -1480,8 +1567,7 @@ class TestSfdpSessionStats(VppTestCase):
 
     def test_session_stats_batched_ring_buffer_export(self):
         """Test batched periodic export with ring_size < number of sessions"""
-        # TODO - Upon session expiration, a worker thread will export the session stats to the ring buffer from its dedicated thread
-        # In this test, we currently only test periodic export which occurs in main thread
+        # This fixture has no workers; the main thread owns these sessions.
         ring_size = 3
         num_sessions = 8
         export_interval = 5.0
@@ -1531,8 +1617,7 @@ class TestSfdpSessionStats(VppTestCase):
         # Set up ring buffer decoder
         ring_buffer = self.statistics.get_ring_buffer("/sfdp/session/stats")
 
-        # Using periodic export, all session information is expected
-        # to be written on main-thread ring buffer data
+        # The fixture's owning thread exports into its own ring.
         schema_data = ring_buffer.get_schema_string(thread_index=0)
         ring_config = ring_buffer.get_config()
         decode_entry, _ = self.create_ring_buffer_decoder(

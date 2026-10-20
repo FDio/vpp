@@ -94,6 +94,7 @@ typedef struct
   u64 session_opaque;			    /**< Per-session opaque data */
   u64 session_opaque_mask;		    /**< Bits owned by per-session data */
   u8 create_exported;			    /**< Create record committed to the ring */
+  u16 next_update_sequence;		    /**< Updated only by the session owner after commit */
 } sfdp_session_stats_entry_t;
 
 /* Default value for opaque data when no tenant-specific value is set */
@@ -115,11 +116,26 @@ typedef enum
 #undef _
 } sfdp_session_stats_export_reason_t;
 
-/* Per-thread data for session stats */
+/* Worker-owned export state; only export_requested is written by the main thread. */
 typedef struct
 {
-  f64 last_export_time; /**< Last time stats were exported to ring */
-  u64 total_exports;	/**< Per-thread export counter */
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+  u64 total_exports;
+  u64 ring_write_sequence;
+  u64 update_sequence_allocations;
+  u64 update_sequence_wraps;
+  uword *active_sessions;
+  u64 ring_generation;
+  u64 config_generation;
+  f64 last_export_time;
+  f64 next_export_time;
+  f64 cycle_started_at;
+  f64 active_since;
+  u32 next_session;
+  u32 batch_exports;
+  u32 active_count;
+  u32 export_requested;
+  u8 export_reason; /* Zero means idle. */
 } sfdp_session_stats_per_thread_t;
 
 /*
@@ -133,6 +149,9 @@ typedef struct
   u8 reserved[3];
 } sfdp_session_stats_custom_data_entry_t;
 
+#define SFDP_SESSION_STATS_UPDATE_SEQUENCE_FIRST	  ((u16) 0)
+#define SFDP_SESSION_STATS_UPDATE_SEQUENCE_NEXT(sequence) ((u16) ((sequence) + 1))
+
 /*
  * Main session stats structure
  */
@@ -141,15 +160,16 @@ typedef struct
   sfdp_session_stats_entry_t *stats;	       /**< vec indexed by session-index */
   sfdp_session_stats_per_thread_t *per_thread; /**< Per-thread data */
 
-  u32 ring_buffer_index;      /**< Stats segment ring buffer index */
-  u32 ring_buffer_size;	      /**< Ring buffer size */
-  f64 export_interval;	      /**< Export interval in seconds */
-  f64 export_batch_interval;  /**< Export batch interval in seconds */
-  u8 ring_buffer_enabled;     /**< Ring buffer enabled flag */
-  u8 periodic_export_enabled; /**< Enable periodic export */
-  u8 export_on_expiry;	      /**< Export stats when session expires */
+  u32 ring_buffer_index;	    /**< Stats segment ring buffer index */
+  u32 ring_buffer_size;		    /**< Ring buffer size */
+  f64 export_interval;		    /**< Export interval in seconds */
+  f64 export_batch_interval;	    /**< Export batch interval in seconds */
+  u8 ring_buffer_enabled;	    /**< Ring buffer enabled flag */
+  u8 periodic_export_enabled;	    /**< Enable periodic export */
+  u8 export_on_expiry;		    /**< Export stats when session expires */
   clib_spinlock_t ring_config_lock; /**< Protects ring lifetime for health reads */
   u64 ring_config_generation;
+  u64 process_epoch; /**< API and mapped stats lifetime marker */
 
   /* Per-tenant custom data, vec indexed by compact SFDP tenant pool index */
   sfdp_session_stats_custom_data_entry_t *custom_data_entries;
@@ -157,6 +177,9 @@ typedef struct
 
   u16 msg_id_base;	   /**< API message ID base */
   i64 unix_time_offset_us; /**< Unix epoch offset for monotonic timestamps */
+  u64 export_config_generation;
+  u64 ring_reservation_failures;
+  u64 ring_commit_failures;
 } sfdp_session_stats_main_t;
 
 extern sfdp_session_stats_main_t sfdp_session_stats_main;
@@ -184,13 +207,10 @@ sfdp_session_stats_total_exports (sfdp_session_stats_main_t *ssm)
 
 /* Ring buffer functions */
 int sfdp_session_stats_ring_init (vlib_main_t *vm, u32 ring_size);
-int sfdp_session_stats_ring_health_get_v1 (
-  u32 worker_index, u32 abi_version, u32 output_size,
-  sfdp_session_stats_ring_health_v1_t *output);
+int sfdp_session_stats_ring_health_get_v1 (u32 worker_index, u32 abi_version, u32 output_size,
+					   sfdp_session_stats_ring_health_v1_t *output);
 int sfdp_session_stats_export_session (vlib_main_t *vm, u32 session_index,
 				       sfdp_session_stats_export_reason_t reason);
-void sfdp_session_stats_export_all_sessions (vlib_main_t *vm,
-					     sfdp_session_stats_export_reason_t reason);
 u32 sfdp_session_stats_export_batch (vlib_main_t *vm, sfdp_session_stats_export_reason_t reason,
 				     u32 start_index, u32 max_entries, f64 active_since);
 
@@ -214,7 +234,8 @@ int sfdp_session_stats_set_tenant_custom_data (u32 tenant_id, u64 value);
 int sfdp_session_stats_clear_tenant_custom_data (u32 tenant_id);
 u64 sfdp_session_stats_get_tenant_custom_data (u32 tenant_id, u8 *has_value);
 
-/* Export and periodic node control functions */
+/* Periodic configuration uses the normal VPP barrier; export requests are MP-safe. */
+void sfdp_session_stats_wake_workers (u8 export_now);
 int sfdp_session_stats_periodic_export_enable (vlib_main_t *vm, f64 interval, f64 batch_interval);
 void sfdp_session_stats_periodic_export_disable (vlib_main_t *vm);
 void sfdp_session_stats_export_now (vlib_main_t *vm);
