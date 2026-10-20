@@ -39,7 +39,7 @@
 
 socket_main_t socket_main;
 
-#define SOCK_API_REG_HANDLE_BIT (1<<31)
+#define SOCK_API_REG_HANDLE_BIT (1U << 31)
 
 static u32
 sock_api_registration_handle (vl_api_registration_t * regp)
