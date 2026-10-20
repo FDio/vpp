@@ -54,6 +54,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "61dd193b_c7d2be0a",
+        "filename": "src/plugins/hsi/hsi.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 25,
+      "author": {
+        "id": 3339
+      },
+      "writtenOn": "2026-10-20T15:36:34Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "86a97ed2_01e1cfe3",
+      "revId": "51e891500c418faf2137302c2d7c4bc0494e7281",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "3fab061f_2ab54581",
@@ -67,6 +85,24 @@
       "writtenOn": "2026-10-19T23:05:44Z",
       "side": 1,
       "message": "I\u0027m guessing this is meant to just access the handlers from other plugins. Let\u0027s add a comment about that and maybe rename some of these to `hsi_tracker*` as opposed to `hsi_app*`",
+      "revId": "51e891500c418faf2137302c2d7c4bc0494e7281",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ced06324_7a6a1f57",
+        "filename": "src/plugins/hsi/hsi_tracker.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 358,
+      "author": {
+        "id": 3339
+      },
+      "writtenOn": "2026-10-20T15:36:34Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3fab061f_2ab54581",
       "revId": "51e891500c418faf2137302c2d7c4bc0494e7281",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -124,6 +160,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "478e73b3_ff632836",
+        "filename": "src/plugins/hsi/hsi_tracker_private.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 57,
+      "author": {
+        "id": 3339
+      },
+      "writtenOn": "2026-10-20T15:36:34Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "22756ae3_0a00c3eb",
+      "revId": "51e891500c418faf2137302c2d7c4bc0494e7281",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "2706fbf8_da9f746c",
@@ -177,6 +231,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "3d978fac_ef58e32e",
+        "filename": "src/plugins/hsi/hsi_tracker_tcp.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 298,
+      "author": {
+        "id": 3339
+      },
+      "writtenOn": "2026-10-20T15:36:34Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "43c31379_457b1a28",
+      "revId": "51e891500c418faf2137302c2d7c4bc0494e7281",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "1d5a93b0_384ceab6",
@@ -190,6 +262,24 @@
       "writtenOn": "2026-10-19T23:05:44Z",
       "side": 1,
       "message": "Maybe rebase, I think this is in already.",
+      "revId": "51e891500c418faf2137302c2d7c4bc0494e7281",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "dc31de86_fdd2579d",
+        "filename": "src/vnet/session/application_crypto.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 275,
+      "author": {
+        "id": 3339
+      },
+      "writtenOn": "2026-10-20T15:36:34Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "1d5a93b0_384ceab6",
       "revId": "51e891500c418faf2137302c2d7c4bc0494e7281",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
