@@ -394,6 +394,7 @@ clib_error_t *ikev2_set_profile_esp_transforms (vlib_main_t * vm, u8 * name,
 clib_error_t *ikev2_set_profile_sa_lifetime (vlib_main_t * vm, u8 * name,
 					     u64 lifetime, u32 jitter,
 					     u32 handover, u64 maxdata);
+clib_error_t *ikev2_set_profile_anti_replay_window (u8 *name, u32 window_size);
 clib_error_t *ikev2_set_profile_tunnel_interface (vlib_main_t * vm, u8 * name,
 						  u32 sw_if_index);
 vnet_api_error_t ikev2_set_profile_ipsec_udp_port (vlib_main_t * vm,

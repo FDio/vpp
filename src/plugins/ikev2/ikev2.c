@@ -2246,6 +2246,7 @@ typedef struct
   u16 ipsec_over_udp_port;
   u16 src_port;
   u16 dst_port;
+  u32 anti_replay_window_size;
 } ikev2_add_ipsec_tunnel_args_t;
 
 static void
@@ -2323,10 +2324,9 @@ ikev2_add_tunnel_from_main (ikev2_add_ipsec_tunnel_args_t * a)
     goto err0;
 
   rv = ipsec_sa_add_and_lock (
-    a->remote_sa_id, a->remote_spi, IPSEC_PROTOCOL_ESP, a->encr_type,
-    &a->rem_ckey, a->integ_type, &a->rem_ikey,
-    (a->flags | IPSEC_SA_FLAG_IS_INBOUND), a->salt_remote,
-    a->ipsec_over_udp_port, a->ipsec_over_udp_port, 0, &tun_in, NULL);
+    a->remote_sa_id, a->remote_spi, IPSEC_PROTOCOL_ESP, a->encr_type, &a->rem_ckey, a->integ_type,
+    &a->rem_ikey, (a->flags | IPSEC_SA_FLAG_IS_INBOUND), a->salt_remote, a->ipsec_over_udp_port,
+    a->ipsec_over_udp_port, a->anti_replay_window_size, &tun_in, NULL);
   if (rv)
     goto err1;
 
@@ -2388,6 +2388,11 @@ ikev2_create_tunnel_interface (vlib_main_t *vm, ikev2_sa_t *sa,
     }
 
   a.flags = IPSEC_SA_FLAG_USE_ANTI_REPLAY;
+  if (sa->profile_index != ~0)
+    {
+      ikev2_profile_t *profile = pool_elt_at_index (km->profiles, sa->profile_index);
+      a.anti_replay_window_size = profile->anti_replay_window_size;
+    }
   if (sa->udp_encap)
     {
       a.flags |= IPSEC_SA_FLAG_IS_TUNNEL;
@@ -4839,6 +4844,20 @@ ikev2_set_profile_sa_lifetime (vlib_main_t * vm, u8 * name,
   p->lifetime_jitter = jitter;
   p->handover = handover;
   p->lifetime_maxdata = maxdata;
+  return 0;
+}
+
+clib_error_t *
+ikev2_set_profile_anti_replay_window (u8 *name, u32 window_size)
+{
+  ikev2_profile_t *p = ikev2_profile_index_by_name (name);
+
+  if (!p)
+    return clib_error_return (0, "unknown profile %v", name);
+  if (window_size < 64 || window_size > 4096 || (window_size & (window_size - 1)))
+    return clib_error_return (0, "anti-replay window must be a power of two from 64 to 4096");
+
+  p->anti_replay_window_size = window_size;
   return 0;
 }
 
