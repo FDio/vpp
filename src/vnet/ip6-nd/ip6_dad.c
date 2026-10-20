@@ -108,7 +108,7 @@ create_dad_ns_buffer (vlib_main_t *vm, ip6_dad_entry_t *entry)
   ASSERT (bogus_length == 0);
 
   /* Ethernet header: multicast destination */
-  ip6_multicast_ethernet_address (dst_mac, id | (0xff << 24));
+  ip6_multicast_ethernet_address (dst_mac, id | (0xffU << 24));
   rewrite = ethernet_build_rewrite (vnm, entry->sw_if_index, VNET_LINK_IP6, dst_mac);
   rewrite_len = vec_len (rewrite);
   vlib_buffer_advance (b, -rewrite_len);

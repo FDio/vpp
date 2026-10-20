@@ -117,7 +117,7 @@ ip6_set_solicited_node_multicast_address (ip6_address_t * a, u32 id)
   a->as_u16[0] = clib_host_to_net_u16 (0xff02);
   a->as_u8[11] = 1;
   ASSERT ((id >> 24) == 0);
-  id |= 0xff << 24;
+  id |= 0xffU << 24;
   a->as_u32[3] = clib_host_to_net_u32 (id);
 }
 
