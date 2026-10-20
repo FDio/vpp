@@ -632,8 +632,8 @@ done:
 }
 
 VLIB_CLI_COMMAND (test_bihash_lifecycle_command, static) = {
-  .path = "test bihash lifecycle",
-  .short_help = "test bihash lifecycle",
+  .path = "test bihash-lifecycle",
+  .short_help = "test bihash-lifecycle",
   .function = test_bihash_lifecycle_command_fn,
 };
 

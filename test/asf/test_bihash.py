@@ -36,7 +36,7 @@ class TestBihash(VppAsfTestCase):
 
     def test_bihash_lifecycle(self):
         """Bihash lifecycle allocation accounting"""
-        reply = self.vapi.cli_return_response("test bihash lifecycle")
+        reply = self.vapi.cli_return_response("test bihash-lifecycle")
         self.logger.info("bihash lifecycle CLI retval: %d", reply.retval)
         self.logger.info("%s", reply.reply)
         self.assertEqual(reply.retval, 0, reply.reply)
