@@ -1,0 +1,72 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "469dcc14_9916f3a1",
+        "filename": "test/test_ipsec_esp.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 1121,
+      "author": {
+        "id": 259
+      },
+      "writtenOn": "2026-10-20T04:06:05Z",
+      "side": 1,
+      "message": "Width here comes from samples[0] only. If samples have different lengths, a longer one produces bits above all_bits, which land in both masks and fail the assert with a misleading “stuck bits” message. Shorter is silently zero-extended.\n\nIf lengths are supposed to be fixed, assert it up front:\n\n   self.assertTrue(all(len(s) \u003d\u003d len(samples[0]) for s in samples))",
+      "revId": "d02abe96e14b48a53e4b56e4f970e9c08ec42f50",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "29e4564e_d61340dc",
+        "filename": "test/test_ipsec_esp.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 1129,
+      "author": {
+        "id": 259
+      },
+      "writtenOn": "2026-10-20T04:06:05Z",
+      "side": 1,
+      "message": "“Catches truncated stores” depends on how samples are captured.\n\nIt works if the IV buffer is a fixed size and a short write leaves some bytes zero (or stale). If the truncated output is itself shorter (e.g., the function returns 12 bytes instead of 16), and all samples are short, width shrinks to match and the test passes. Checking len(samples[0]) against the expected IV size would close this gap.",
+      "revId": "d02abe96e14b48a53e4b56e4f970e9c08ec42f50",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8199a109_77121a31",
+        "filename": "test/test_ipsec_esp.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 1158,
+      "author": {
+        "id": 259
+      },
+      "writtenOn": "2026-10-20T04:06:05Z",
+      "side": 1,
+      "message": "The failure message still makes you compute the stuck mask by hand; printing all_bits \u0026 ~(bits_set \u0026 bits_clear) would point straight at the bad bits.",
+      "revId": "d02abe96e14b48a53e4b56e4f970e9c08ec42f50",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "797a21ce_e08c553c",
+        "filename": "test/test_ipsec_esp.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 1168,
+      "author": {
+        "id": 259
+      },
+      "writtenOn": "2026-10-20T04:06:05Z",
+      "side": 1,
+      "message": "An empty samples raises IndexError, but a zero-length sample gives all_bits \u003d\u003d 0, so 0 \u003d\u003d 0 passes vacuously. A single sample always fails. A len(samples) \u003e\u003d 2 check (realistically 16 or more) would make the intent explicit.\n\nsame comment here applies above as well",
+      "revId": "d02abe96e14b48a53e4b56e4f970e9c08ec42f50",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
