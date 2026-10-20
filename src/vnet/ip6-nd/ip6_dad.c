@@ -580,7 +580,7 @@ format_ip6_dad_entry (u8 *s, va_list *args)
 static clib_error_t *
 ip6_dad_enable_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
 {
-  u8 transmits = 0;
+  u32 transmits = 0;
   f64 delay = 0;
   bool has_transmits = false;
   bool has_delay = false;
@@ -594,6 +594,9 @@ ip6_dad_enable_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_co
       else
 	return clib_error_return (0, "unknown input '%U'", format_unformat_error, input);
     }
+
+  if (has_transmits && (transmits < 1 || transmits > 10))
+    return clib_error_return (0, "transmits must be 1-10");
 
   DAD_DBG (" enable command, has_transmits=%d", has_transmits);
 
@@ -619,7 +622,7 @@ ip6_dad_enable_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_co
       if (!has_delay)
 	delay = cur_delay;
 
-      error = ip6_dad_config (transmits, delay);
+      error = ip6_dad_config ((u8) transmits, delay);
       if (error)
 	{
 	  /* Rollback: restore initial DAD state */
