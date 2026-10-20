@@ -325,30 +325,7 @@ format_dpdk_device_errors (u8 * s, va_list * args)
   return s;
 }
 
-static u8 *
-format_dpdk_device_module_info (u8 * s, va_list * args)
-{
-  dpdk_device_t *xd = va_arg (*args, dpdk_device_t *);
-  struct rte_eth_dev_module_info mi = { 0 };
-  struct rte_dev_eeprom_info ei = { 0 };
-
-  if (rte_eth_dev_get_module_info (xd->port_id, &mi) != 0)
-    return format (s, "unknown");
-
-  ei.length = mi.eeprom_len;
-  ei.data = clib_mem_alloc (mi.eeprom_len);
-
-  if (rte_eth_dev_get_module_eeprom (xd->port_id, &ei) == 0)
-    {
-      s = format (s, "%U", format_sfp_eeprom, ei.data +
-		  (mi.type == RTE_ETH_MODULE_SFF_8436 ? 0x80 : 0));
-    }
-  else
-    s = format (s, "eeprom read error");
-
-  clib_mem_free (ei.data);
-  return s;
-}
+/* format_dpdk_device_module_info: see eeprom.c (cache only, non-blocking) */
 
 u8 *
 format_dpdk_burst_fn (u8 *s, va_list *args)
