@@ -145,22 +145,23 @@ vlib_smp_unsafe_warning (void)
 }
 
 always_inline int
-__foreach_vlib_main_helper (vlib_main_t *ii, vlib_main_t **p, int checks)
+__foreach_vlib_main_helper (u32 index, vlib_main_t **p, int checks)
 {
   vlib_main_t *vm;
-  u32 index = ii - (vlib_main_t *) 0;
 
   if (index >= vec_len (vlib_global_main.vlib_mains))
     return 0;
 
   *p = vm = vlib_global_main.vlib_mains[index];
-  ASSERT (!checks || index == 0 || vm->parked_at_barrier == 1);
+  ASSERT (!checks || index == 0 || !vm || vm->parked_at_barrier == 1);
   return 1;
 }
 
-#define foreach_vlib_main__(checks)                                           \
-  for (vlib_main_t *ii = 0, *this_vlib_main;                                  \
-       __foreach_vlib_main_helper (ii, &this_vlib_main, checks); ii++)        \
+#define foreach_vlib_main__(checks)                                                                \
+  for (vlib_main_t **ii = vlib_global_main.vlib_mains, *this_vlib_main;                            \
+       ii && ii < vec_end (vlib_global_main.vlib_mains) &&                                         \
+       __foreach_vlib_main_helper (ii - vlib_global_main.vlib_mains, &this_vlib_main, checks);     \
+       ii++)                                                                                       \
     if (this_vlib_main)
 
 #define foreach_vlib_main() foreach_vlib_main__ (1)
