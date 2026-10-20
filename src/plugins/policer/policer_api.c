@@ -427,7 +427,7 @@ vl_api_policer_dump_v2_t_handler (vl_api_policer_dump_v2_t *mp)
 }
 
 static void
-vl_api_ip_punt_police_t_handler (vl_api_ip_punt_police_t *mp, vlib_main_t *vm)
+vl_api_ip_punt_police_t_handler (vl_api_ip_punt_police_t *mp)
 {
   vl_api_ip_punt_police_reply_t *rmp;
   int rv = 0;
