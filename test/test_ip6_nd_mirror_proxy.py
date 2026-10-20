@@ -14,6 +14,7 @@ from scapy.layers.inet6 import (
     ipv6nh,
     ICMPv6ND_NS,
     ICMPv6ND_NA,
+    ICMPv6ND_RA,
     ICMPv6NDOptSrcLLAddr,
     ICMPv6NDOptDstLLAddr,
     ICMPv6EchoRequest,
@@ -47,6 +48,25 @@ class TestNDPROXY(VppTestCase):
             for i in self.pg_interfaces:
                 i.unconfig_ip6()
                 i.admin_down()
+
+    def test_ra_punt(self):
+        """Router advertisements reach the host punt path"""
+        VppIpPuntRedirect(
+            self, self.pg0.sw_if_index, self.pg1.sw_if_index, self.pg1.remote_ip6
+        ).add_vpp_config()
+        self.pg1.resolve_ndp()
+
+        ra = (
+            Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac)
+            / IPv6(src=self.pg0.remote_ip6_ll, dst=self.pg0.local_ip6_ll, hlim=255)
+            / ICMPv6ND_RA()
+        )
+        rx = self.send_and_expect(self.pg0, [ra], self.pg1)
+        self.assertEqual(bytes(rx[0][IPv6]), bytes(ra[IPv6]))
+
+        # A non-link-local source must still fail RA validation.
+        ra[IPv6].src = self.pg0.remote_ip6
+        self.send_and_assert_no_replies(self.pg0, [ra])
 
     def test_nd_mirror_proxy(self):
         """Interface (Mirror) Proxy ND"""

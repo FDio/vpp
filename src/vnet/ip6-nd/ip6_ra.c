@@ -978,6 +978,17 @@ icmp6_router_advertisement (vlib_main_t * vm,
 		}
 	    }
 
+	  /* Linux routing daemons need RAs for unnumbered peer discovery.
+	   * Preserve VPP's RA processing, then let the punt path deliver the
+	   * original packet to an LCP peer. No local RA configuration is
+	   * required when the host owns neighbor discovery. */
+	  if (error0 == ICMP6_ERROR_NONE ||
+	      error0 == ICMP6_ERROR_ROUTER_SOLICITATION_RADV_NOT_CONFIG)
+	    {
+	      next0 = ICMP6_ROUTER_SOLICITATION_NEXT_PUNT;
+	      error0 = ICMP6_ERROR_NONE;
+	    }
+
 	  p0->error = error_node->errors[error0];
 
 	  if (error0 != ICMP6_ERROR_NONE)
@@ -1008,9 +1019,10 @@ VLIB_REGISTER_NODE (ip6_icmp_router_advertisement_node,static) =
 
   .format_trace = format_icmp6_input_trace,
 
-  .n_next_nodes = 1,
+  .n_next_nodes = ICMP6_ROUTER_SOLICITATION_N_NEXT,
   .next_nodes = {
-    [0] = "ip6-drop",
+    [ICMP6_ROUTER_SOLICITATION_NEXT_DROP] = "ip6-drop",
+    [ICMP6_ROUTER_SOLICITATION_NEXT_PUNT] = "ip6-punt",
   },
 };
 
