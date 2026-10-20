@@ -4,6 +4,25 @@
 import unittest
 import http.client
 from asfframework import VppAsfTestCase, VppTestRunner
+from config import config
+
+
+@unittest.skipIf(
+    "http" in config.excluded_plugins or "http_unittest" in config.excluded_plugins,
+    "Exclude HTTP plugin unit tests",
+)
+class TestHttpNameOwnership(VppAsfTestCase):
+    """HTTP transport name ownership tests"""
+
+    extra_vpp_plugin_config = ["plugin http_unittest_plugin.so { enable }"]
+
+    def test_app_name_ownership(self):
+        """Transport copies retain independent application names"""
+        reply = self.vapi.cli("test http app-name-ownership")
+        self.assertIn("accepted connections own separate names", reply)
+        self.assertIn("empty names can be copied and disposed", reply)
+        self.assertIn("SUCCESS", reply)
+        self.assertNotIn("FAIL", reply)
 
 
 @unittest.skip("Requires root")

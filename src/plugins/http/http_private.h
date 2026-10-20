@@ -467,6 +467,19 @@ typedef struct http_ctx_
 #define http_ctx_is_stream(_hc)                                                                    \
   ((_hc)->flags & (HTTP_CONN_F_UNIDIRECTIONAL_STREAM | HTTP_CONN_F_BIDIRECTIONAL_STREAM))
 
+static_always_inline void
+http_conn_copy (http_ctx_t *dst, const http_ctx_t *src)
+{
+  clib_memcpy_fast (dst, src, sizeof (*src));
+  dst->app_name = vec_dup (src->app_name);
+}
+
+static_always_inline void
+http_conn_free_name (http_ctx_t *hc)
+{
+  vec_free (hc->app_name);
+}
+
 typedef enum http_ctrl_msg_type_ : u8
 {
   HTTP_CTRL_MSG_ACK_SETTINGS,

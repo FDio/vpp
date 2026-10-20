@@ -309,7 +309,7 @@ http_listener_get (u32 lhc_index)
 static void
 http_listener_free (http_ctx_t *lhc)
 {
-  vec_free (lhc->app_name);
+  http_conn_free_name (lhc);
   http_ctx_free (lhc);
 }
 
@@ -364,7 +364,7 @@ http_connect_transport_stream (u32 parent_index, clib_thread_index_t thread_inde
   hc_index = http_ctx_alloc_w_thread (thread_index);
   hc = http_ctx_get_w_thread (hc_index, thread_index);
   parent = http_ctx_get_w_thread (parent_index, thread_index);
-  clib_memcpy_fast (hc, parent, sizeof (*parent));
+  http_conn_copy (hc, parent);
   hc->hc_hc_index = hc_index;
   hc->hc_http_conn_index = parent->hc_hc_index;
   hc->hc_ho_index = SESSION_INVALID_INDEX;
@@ -384,9 +384,12 @@ http_connect_transport_stream (u32 parent_index, clib_thread_index_t thread_inde
   else
     hc->flags |= HTTP_CONN_F_BIDIRECTIONAL_STREAM;
 
-  if ((error = vnet_connect_stream (cargs)))
+  error = vnet_connect_stream (cargs);
+  hc = http_ctx_get_w_thread (hc_index, thread_index);
+  if (error)
     {
       HTTP_DBG (1, "stream connect failed: %U", format_session_error, error);
+      http_conn_free_name (hc);
       http_ctx_free (hc);
       return error;
     }
@@ -601,7 +604,7 @@ http_ts_accept_connection (session_t *ts)
   hc_index = http_ctx_alloc_w_thread (ts->thread_index);
   hc = http_ctx_get_w_thread (hc_index, ts->thread_index);
   lhc = http_listener_get (ts_listener->opaque);
-  clib_memcpy_fast (hc, lhc, sizeof (*lhc));
+  http_conn_copy (hc, lhc);
   hc->timer_handle = HTTP_TIMER_HANDLE_INVALID;
   hc->c_thread_index = ts->thread_index;
   hc->hc_hc_index = hc_index;
@@ -640,7 +643,8 @@ http_ts_accept_connection (session_t *ts)
 	  hc->version = HTTP_VERSION_1;
 	  break;
 	default:
-	  ASSERT (0);
+	  http_conn_free_name (hc);
+	  http_ctx_free (hc);
 	  return -1;
 	}
     }
@@ -700,7 +704,7 @@ http_ts_accept_stream (session_t *stream_session)
   ASSERT (hc->version == HTTP_VERSION_3);
 
   stream = http_ctx_get_w_thread (stream_index, thread_index);
-  clib_memcpy_fast (stream, hc, sizeof (*hc));
+  http_conn_copy (stream, hc);
   stream->hc_hc_index = stream_index;
   stream->flags |= HTTP_CONN_F_NO_APP_SESSION;
   stream->flags |= stream_session->flags & SESSION_F_UNIDIRECTIONAL ?
@@ -711,15 +715,16 @@ http_ts_accept_stream (session_t *stream_session)
   stream->state = HTTP_CONN_STATE_ESTABLISHED;
   stream->hc_http_conn_index = hc->hc_hc_index;
 
-  if ((rv = http_vfts[stream->version].transport_stream_accept_callback (stream, hc)))
-    {
-      http_ctx_free (stream);
-      return rv;
-    }
-
+  rv = http_vfts[stream->version].transport_stream_accept_callback (stream, hc);
   /* the accept callback may allocate http ctxs and grow (realloc) the pool,
    * invalidating hc/stream; regrab stream. hc is not dereferenced afterwards */
   stream = http_ctx_get_w_thread (stream_index, thread_index);
+  if (rv)
+    {
+      http_conn_free_name (stream);
+      http_ctx_free (stream);
+      return rv;
+    }
 
   hc_handle.version = stream->version;
   hc_handle.conn_index = stream_index;
@@ -985,11 +990,9 @@ http_ts_cleanup_callback (session_t *ts, session_cleanup_ntf_t ntf)
 	http_vfts[hc->version].conn_cleanup_callback (hc);
 
       if (!(hc->flags & HTTP_CONN_F_IS_SERVER))
-	{
-	  vec_free (hc->app_name);
-	  vec_free (hc->host);
-	}
+	vec_free (hc->host);
     }
+  http_conn_free_name (hc);
   http_ctx_free (hc);
 }
 
@@ -1214,7 +1217,7 @@ http_connect_connection (session_endpoint_cfg_t *sep)
 
   if ((error = vnet_connect (cargs)))
     {
-      vec_free (ho_hc->app_name);
+      http_conn_free_name (ho_hc);
       vec_free (ho_hc->host);
       http_ctx_free (ho_hc);
       return error;
