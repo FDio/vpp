@@ -405,7 +405,10 @@ http2_stream_error (http_ctx_t *hc, http_ctx_t *req, http2_error_t error)
   req->stream_state = HTTP2_STREAM_STATE_CLOSED;
 
   if (!(req->req_flags & HTTP_REQ_F_APP_CLOSED))
-    session_transport_reset_notify (&req->connection);
+    {
+      http_io_as_drain_unread (req);
+      session_transport_reset_notify (&req->connection);
+    }
   else
     session_transport_closed_notify (&req->connection);
 
@@ -2920,7 +2923,10 @@ http2_handle_rst_stream_frame (http_ctx_t *hc, http2_frame_header_t *fh)
   http_stats_stream_reset_by_peer_inc (hc->c_thread_index);
 
   if (!(req->req_flags & HTTP_REQ_F_APP_CLOSED))
-    session_transport_reset_notify (&req->connection);
+    {
+      http_io_as_drain_unread (req);
+      session_transport_reset_notify (&req->connection);
+    }
   else
     session_transport_closed_notify (&req->connection);
 
