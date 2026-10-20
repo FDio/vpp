@@ -473,7 +473,7 @@ ipfix_classify_table_add_del_command_fn (vlib_main_t * vm,
 
 VLIB_CLI_COMMAND (ipfix_classify_table_add_del_command, static) = {
   .path = "ipfix classify table",
-  .short_help = "ipfix classify table add|del <table-index>",
+  .short_help = "ipfix classify table add|del <table-index> [ip4|ip6] [tcp|udp]",
   .function = ipfix_classify_table_add_del_command_fn,
 };
 
