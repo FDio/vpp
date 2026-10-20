@@ -1,7 +1,6 @@
 import ast
 import functools
 import inspect
-import os
 import sys
 import textwrap
 import traceback
@@ -17,6 +16,7 @@ from util import (
     died_with_core_signal,
     extract_coredumpctl_core,
     get_core_path,
+    is_recent_core,
     uses_coredumpctl,
 )
 from debug import log_core_backtrace
@@ -211,8 +211,8 @@ class PollHook(Hook):
                 extract_coredumpctl_core(
                     self.logger, self.test.tempdir, self.test.vpp.pid
                 )
-            core_path = get_core_path(self.test.tempdir)
-            if os.path.isfile(core_path):
+            core_path = get_core_path(self.test.tempdir, self.test.vpp.pid)
+            if is_recent_core(core_path):
                 self.on_crash(core_path)
             raise asfframework.VppDiedError(rv=rv)
 
