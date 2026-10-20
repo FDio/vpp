@@ -891,9 +891,9 @@ class IkePeer(VppTestCase):
         node_name = "/err/ikev2-%s/" % version + name
         self.assertEqual(count, self.statistics.get_err_counter(node_name))
 
-    def create_rekey_request(self, kex=False, rekey_notify=True):
+    def create_rekey_request(self, kex=False, rekey_notify=True, rekey_spi=None):
         sa, first_payload = self.generate_auth_payload(
-            is_rekey=True, kex=kex, rekey_notify=rekey_notify
+            is_rekey=True, kex=kex, rekey_notify=rekey_notify, rekey_spi=rekey_spi
         )
         header = ikev2.IKEv2(
             init_SPI=self.sa.ispi,
@@ -1743,7 +1743,12 @@ class TemplateResponder(IkePeer):
         self.verify_sa_init(capture[0])
 
     def generate_auth_payload(
-        self, last_payload=None, is_rekey=False, kex=False, rekey_notify=True
+        self,
+        last_payload=None,
+        is_rekey=False,
+        kex=False,
+        rekey_notify=True,
+        rekey_spi=None,
     ):
         tr_attr = self.sa.esp_crypto_attr()
         last_payload = last_payload or "Notify"
@@ -1809,8 +1814,8 @@ class TemplateResponder(IkePeer):
                 plain /= ikev2.IKEv2_payload_Notify(
                     type="REKEY_SA",
                     proto="ESP",
-                    SPI=c.ispi,
-                    length=8 + len(c.ispi),
+                    SPI=rekey_spi or c.ispi,
+                    length=8 + len(rekey_spi or c.ispi),
                     next_payload="Notify",
                 )
             plain /= self.last_notify("ESP_TFC_PADDING_NOT_SUPPORTED")
@@ -2936,6 +2941,34 @@ class TestResponderGreNewChildDeleteOld(TestResponderPsk):
         self.assertEqual(
             self.vapi.sw_interface_dump(sw_if_index=self.p.tun_itf)[0].flags & 1,
             1,
+        )
+
+        # The next lifetime rekey must also replace the protected outbound SA.
+        current_child = self.sa.child_sas[0]
+        self.sa.child_sas[0] = IKEv2ChildSA(
+            current_child.local_ts, current_child.remote_ts, True
+        )
+        self.sa.i_nonce = os.urandom(32)
+        self.pg0.add_stream(self.create_rekey_request(rekey_spi=current_child.ispi))
+        self.pg0.enable_capture()
+        self.pg_start()
+        reply = self.pg0.get_capture(1)[0]
+        self.assertEqual(self.get_ike_header(reply).exch_type, 36)
+        renewed_protect = self.vapi.ipsec_tunnel_protect_dump(
+            sw_if_index=self.p.tun_itf
+        )[0].tun
+        self.assertNotEqual(renewed_protect.sa_out, new_protect.sa_out)
+        self.vapi.ikev2_plugin_set_sleep_interval(timeout=0.1)
+        for _ in range(50):
+            if len(self.vapi.ipsec_sa_dump()) == 2:
+                break
+            time.sleep(0.1)
+        self.assertEqual(len(self.vapi.ipsec_sa_dump()), 2)
+        self.assertEqual(
+            self.vapi.ipsec_tunnel_protect_dump(sw_if_index=self.p.tun_itf)[
+                0
+            ].tun.sa_out,
+            renewed_protect.sa_out,
         )
 
 
