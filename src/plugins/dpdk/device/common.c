@@ -438,7 +438,9 @@ dpdk_device_start (dpdk_device_t * xd)
   if (xd->flags & DPDK_DEVICE_FLAG_PMD_INIT_FAIL)
     return;
 
+  dpdk_eeprom_hw_lock (xd);
   rv = rte_eth_dev_start (xd->port_id);
+  dpdk_eeprom_hw_unlock (xd);
 
   if (rv)
     {
@@ -478,7 +480,9 @@ dpdk_device_stop (dpdk_device_t * xd)
     return;
 
   rte_eth_allmulticast_disable (xd->port_id);
+  dpdk_eeprom_hw_lock (xd);
   rte_eth_dev_stop (xd->port_id);
+  dpdk_eeprom_hw_unlock (xd);
   clib_memset (&xd->link, 0, sizeof (struct rte_eth_link));
 
   dpdk_log_info ("Interface %U stopped", format_dpdk_device_name,
@@ -557,10 +561,7 @@ dpdk_read_eeprom (vnet_main_t *vnm, vnet_hw_interface_t *hi,
 {
   dpdk_main_t *dm = &dpdk_main;
   vnet_interface_main_t *im = &vnm->interface_main;
-  dpdk_device_t *xd;
   vnet_device_class_t *dc;
-  struct rte_eth_dev_module_info mi = { 0 };
-  struct rte_dev_eeprom_info ei = { 0 };
 
   dc = vec_elt_at_index (im->device_classes, hi->dev_class_index);
   *eeprom = NULL;
@@ -577,40 +578,6 @@ dpdk_read_eeprom (vnet_main_t *vnm, vnet_hw_interface_t *hi,
 				hi->dev_instance);
     }
 
-  xd = vec_elt_at_index (dm->devices, hi->dev_instance);
-
-  /* Get module info */
-  if (rte_eth_dev_get_module_info (xd->port_id, &mi) != 0)
-    {
-      return clib_error_return (
-	0, "Module info not available for interface %v", hi->name);
-    }
-  if (mi.eeprom_len > 1024)
-    {
-      return clib_error_return (0, "EEPROM invalid length: %u bytes",
-				mi.eeprom_len);
-    }
-
-  /* Allocate EEPROM structure */
-  *eeprom = clib_mem_alloc (sizeof (vnet_interface_eeprom_t));
-  if (!*eeprom)
-    {
-      return clib_error_return (0, "Memory allocation failed");
-    }
-
-  /* Get EEPROM data */
-  ei.length = mi.eeprom_len;
-  ei.data = (*eeprom)->eeprom_raw;
-
-  if (rte_eth_dev_get_module_eeprom (xd->port_id, &ei) != 0)
-    {
-      clib_mem_free (*eeprom);
-      *eeprom = NULL;
-      return clib_error_return (0, "EEPROM read error for interface %v",
-				hi->name);
-    }
-
-  (*eeprom)->eeprom_len = mi.eeprom_len;
-  (*eeprom)->eeprom_type = mi.type;
-  return 0;
+  /* asynchronous, see eeprom.c */
+  return dpdk_eeprom_read (vec_elt_at_index (dm->devices, hi->dev_instance), hi, eeprom);
 }
