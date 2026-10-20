@@ -1,6 +1,24 @@
 {
   "comments": [
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "a8a79847_2d70d92a",
+        "filename": "Makefile",
+        "patchSetId": 19
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-10-20T07:51:54Z",
+      "side": 1,
+      "message": "Removed all SPDK-specific additions from the main Makefile, including the library prerequisites. Its contents are now identical to the VPP base. The dependent plugin README documents the separately installed Debian/Ubuntu and Fedora/RHEL prerequisites, including the C++ toolchain headers.",
+      "parentUuid": "495c4494_10c5c954",
+      "revId": "0b88d77422d098374aa47a5fd1d7dccc543b9785",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "495c4494_10c5c954",
@@ -14,6 +32,24 @@
       "writtenOn": "2026-10-19T22:40:22Z",
       "side": 1,
       "message": "Not ideal but I would take these out of the main makefile. Either document or we we somehow include them in the optional deps makefile",
+      "revId": "0b88d77422d098374aa47a5fd1d7dccc543b9785",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "07a35e9e_a817483b",
+        "filename": "build-data/packages/vpp.mk",
+        "patchSetId": 19
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-10-20T07:51:54Z",
+      "side": 1,
+      "message": "Removed. vpp.mk is now identical to the VPP base. VPP_WITH_SPDK\u003dy selects only the optional dependency; the plugin stays OFF by default and is enabled through the existing VPP_EXTRA_CMAKE_ARGS\u003d-DVPP_BUILD_SPDK_PLUGIN\u003dON mechanism. The dependent plugin README shows the updated commands.",
+      "parentUuid": "a31dc010_784acc14",
       "revId": "0b88d77422d098374aa47a5fd1d7dccc543b9785",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
