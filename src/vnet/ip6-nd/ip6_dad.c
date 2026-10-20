@@ -291,20 +291,23 @@ ip6_dad_process (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame
 
   ASSERT (vm->thread_index == 0); /* Main thread only */
 
-  /* Initialize */
-  next_timeout = 1e70; /* Far in the future */
+  /* No active DAD timer until an entry is added. */
+  next_timeout = 0;
 
   while (1)
     {
       /* Wait for event or timeout */
-      vlib_process_wait_for_event_or_clock (vm, next_timeout);
+      if (next_timeout == 0)
+	vlib_process_wait_for_event (vm);
+      else
+	vlib_process_wait_for_event_or_clock (vm, next_timeout);
 
       /* Get events */
       event_type = vlib_process_get_events (vm, &event_data);
 
       /* Current time */
       now = vlib_time_now (vm);
-      next_timeout = 1e70;
+      next_timeout = 0;
 
       /* Process events */
       if (event_type == IP6_DAD_EVENT_START)
@@ -344,14 +347,14 @@ ip6_dad_process (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame
 
 	  /* Update next timeout */
 	  due_time = entry->dad_next_send_time;
-	  if (due_time < next_timeout)
+	  if (next_timeout == 0 || due_time < next_timeout)
 	    next_timeout = due_time;
 	}
 
       /* Calculate sleep time */
       if (next_timeout > now)
 	next_timeout = next_timeout - now;
-      else
+      else if (next_timeout != 0)
 	next_timeout = 0.001; /* Wake up soon */
 
       vec_reset_length (event_data);
