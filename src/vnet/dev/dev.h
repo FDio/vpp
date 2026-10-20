@@ -496,6 +496,7 @@ struct vnet_dev_driver_registration
     vnet_dev_ops_t ops;
     clib_arg_t *args;
     u16 data_sz;
+    u8 dma_address_space_bits;
   } device;
   struct
   {
