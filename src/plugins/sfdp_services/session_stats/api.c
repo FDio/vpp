@@ -5,6 +5,7 @@
 #include <vnet/sfdp/sfdp.h>
 #include <sfdp_services/session_stats/session_stats.h>
 #include <vlib/stats/stats.h>
+#include <vlib/threads.h>
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
 #include <vnet/ip/ip_types_api.h>
@@ -110,6 +111,18 @@ vl_api_sfdp_session_stats_ring_entry_v2_abi_id_t_handler (
   int rv = 0;
 
   REPLY_MACRO (VL_API_SFDP_SESSION_STATS_RING_ENTRY_V2_ABI_ID_REPLY);
+}
+
+/* no-op api handler for sfdp_session_stats_ring_entry_v3_abi_id */
+static void
+vl_api_sfdp_session_stats_ring_entry_v3_abi_id_t_handler (
+  vl_api_sfdp_session_stats_ring_entry_v3_abi_id_t *mp)
+{
+  vl_api_sfdp_session_stats_ring_entry_v3_abi_id_reply_t *rmp;
+  sfdp_session_stats_main_t *ssm = &sfdp_session_stats_main;
+  int rv = 0;
+
+  REPLY_MACRO (VL_API_SFDP_SESSION_STATS_RING_ENTRY_V3_ABI_ID_REPLY);
 }
 
 static void
@@ -355,6 +368,49 @@ vl_api_sfdp_session_stats_get_tenant_custom_data_t_handler (
 		}));
 }
 
+static void
+vl_api_sfdp_session_stats_ring_checkpoint_t_handler (
+  vl_api_sfdp_session_stats_ring_checkpoint_t *mp)
+{
+  sfdp_session_stats_main_t *ssm = &sfdp_session_stats_main;
+  vl_api_registration_t *rp = vl_api_client_index_to_registration (mp->client_index);
+  vl_api_sfdp_session_stats_ring_checkpoint_reply_t *rmp;
+
+  ASSERT (vlib_get_thread_index () == 0);
+  if (!rp)
+    return;
+
+  u32 n_threads = ssm->ring_buffer_enabled ? vec_len (ssm->per_thread) : 0;
+  rmp = vl_msg_api_alloc (sizeof (*rmp) + n_threads * sizeof (rmp->positions[0]));
+  rmp->_vl_msg_id =
+    clib_host_to_net_u16 (ssm->msg_id_base + VL_API_SFDP_SESSION_STATS_RING_CHECKPOINT_REPLY);
+  rmp->context = mp->context;
+  rmp->retval = 0;
+  rmp->process_epoch = clib_host_to_net_u64 (ssm->process_epoch);
+  rmp->config_generation = clib_host_to_net_u64 (ssm->ring_config_generation);
+  rmp->enabled = ssm->ring_buffer_enabled;
+  rmp->ring_size = clib_host_to_net_u32 (ssm->ring_buffer_size);
+  rmp->entry_size = clib_host_to_net_u32 (sizeof (vl_api_sfdp_session_stats_ring_entry_v3_t));
+  rmp->schema_version = clib_host_to_net_u32 (3);
+  rmp->n_threads = clib_host_to_net_u32 (n_threads);
+
+  vlib_stats_ring_buffer_t *ring =
+    n_threads ? vlib_stats_get_entry_data_pointer (ssm->ring_buffer_index) : 0;
+
+  for (u32 i = 0; i < n_threads; i++)
+    {
+      vlib_stats_ring_metadata_t *meta =
+	(void *) ((u8 *) ring + ring->metadata_offset + i * sizeof (*meta));
+      u64 sequence = clib_atomic_load_acq_n (&meta->sequence);
+      u64 write_sequence = clib_atomic_load_acq_n (&ssm->per_thread[i].ring_write_sequence);
+      rmp->positions[i].head = clib_host_to_net_u32 (sequence % ssm->ring_buffer_size);
+      rmp->positions[i].sequence = clib_host_to_net_u64 (sequence);
+      rmp->positions[i].write_sequence = clib_host_to_net_u64 (write_sequence);
+    }
+
+  vl_api_send_msg (rp, (u8 *) rmp);
+}
+
 #include <sfdp_services/session_stats/session_stats.api.c>
 
 static clib_error_t *
@@ -362,6 +418,8 @@ sfdp_session_stats_plugin_api_hookup (vlib_main_t *vm)
 {
   sfdp_session_stats_main_t *ssm = &sfdp_session_stats_main;
   ssm->msg_id_base = setup_message_id_table ();
+  vl_api_set_msg_thread_safe (vlibapi_get_main (),
+			      ssm->msg_id_base + VL_API_SFDP_SESSION_STATS_RING_CHECKPOINT, 1);
   return 0;
 }
 

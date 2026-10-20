@@ -42,6 +42,11 @@ sfdp_session_stats_show_command_fn (vlib_main_t *vm, unformat_input_t *input,
 		   ssm->periodic_export_enabled ? "enabled" : "disabled", ssm->export_interval,
 		   ssm->export_batch_interval);
   vlib_cli_output (vm, "  Total exports: %lu", sfdp_session_stats_total_exports (ssm));
+  vlib_cli_output (vm, "  Update sequences: allocations %lu, wraps %lu",
+		   ssm->update_sequence_allocations, ssm->update_sequence_wraps);
+  vlib_cli_output (vm, "  Ring reservation failures: %lu",
+		   __atomic_load_n (&ssm->ring_reservation_failures, __ATOMIC_RELAXED));
+  vlib_cli_output (vm, "  Ring commit failures: %lu", ssm->ring_commit_failures);
   vlib_cli_output (vm, "");
 
   vlib_cli_output (vm, "%-18s %-6s %-10s %-12s %-12s %-12s %-12s", "Session", "Proto", "Tenant",

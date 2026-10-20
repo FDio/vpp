@@ -96,10 +96,10 @@ segment. This is the recommended path for external consumption.
 
 - **Schema identifier**: to ensure consistency between VPP and external consumers,
   the current ring buffer entry format is defined in API typedef
-  ``sfdp_session_stats_ring_entry_v2``. The version 1 typedef remains available
-  for source and ABI compatibility.
+  ``sfdp_session_stats_ring_entry_v3``. The version 1 and 2 typedefs remain
+  available for source and ABI compatibility.
   An ABI ID is generated from a dedicated API marker message CRC
-  (``sfdp_session_stats_ring_entry_v2_abi_id_<crc>``) and published alongside
+  (``sfdp_session_stats_ring_entry_v3_abi_id_<crc>``) and published alongside
   ring data at ``/sfdp/session/stats``, so that external consumers can
   verify if they are using the appropriate entry format.
 
@@ -119,11 +119,13 @@ Lifecycle Records
 Every ring entry contains an ``event_type`` describing why the snapshot was
 published:
 
-- ``CREATED`` is emitted after the first packet has been accounted. If the
-  ring is enabled after a session starts, the next observation emits the
-  session's first ``CREATED`` record.
-- ``UPDATED`` is emitted by periodic and on-demand exports after a
-  ``CREATED`` record has been committed.
+- ``CREATED`` is emitted by the owning dataplane worker after a packet has
+  been accounted. If the ring is enabled after a session starts, the next
+  packet observation attempts the session's first ``CREATED`` record.
+- ``UPDATED`` is emitted by periodic and on-demand exports. It carries a
+  per-session ``update_sequence`` that starts at zero and advances through
+  65,535 before wrapping to zero after a successful ring commit. Event type
+  determines whether the ordinal is meaningful; zero is a valid update value.
 - ``CLOSED`` is emitted from the session deletion callback before the
   per-session statistics are cleared.
 
@@ -131,6 +133,8 @@ published:
 on every lifecycle record. ``last_packet_time_unix_micros`` is populated only
 for ``CLOSED`` records. Endpoints retain the initiator/responder orientation of
 the first packet rather than the normalized lookup-key order.
+Clearing counters preserves the first-packet timestamp and update sequence;
+it does not create a new session generation.
 
 Custom Data
 ~~~~~~~~~~~
@@ -241,7 +245,33 @@ setup, and ring buffer configuration — see
 Known Limitations
 ~~~~~~~~~~~~~~~~~
 
-- **Ring buffer overflow**: API-triggered exports (``export-now``) dump all
-  sessions in a single unbatched call. If the number of active sessions
-  exceeds the ring buffer size, older entries will be overwritten.
+- **Ring buffer overflow**: API-triggered exports (``export-now``) export all
+  sessions without waiting for the consumer between snapshot chunks. If the
+  number of active sessions exceeds the ring buffer size, older entries will
+  be overwritten.
 - **Testing**: No IPv6-specific tests are currently present.
+
+Concurrency and performance
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+UPDATE sequences are main-thread-owned and advance only after commit. Worker
+barriers protect snapshots in groups of at most 256 candidates. A 50-us budget
+is checked every 16 candidates; this is cooperative, not a hard deadline. Empty
+bitmap ranges need no barrier. Large exports yield with workers running and
+abort if the ring changes. An inherited barrier permits one chunk per call.
+Packet stats updates are unchanged. Create/delete each add one relaxed atomic
+bitmap operation; export counters use separate cache lines and no atomic RMW.
+
+DNA brackets each shared-memory copy with two position checkpoints and verifies
+the mapped process marker. It consumes records committed before the copy whose
+slots were not touched through the second checkpoint, including aborted writes.
+Unrelated writes need no retry. Actual overruns are counted and the cursor
+advances; finite rings cannot retain an unlimited backlog. Workers run during
+the copy and checkpoints. Each export publishes its write position before
+touching the slot, using an atomic store and a release fence; checkpoints read
+atomic positions without pausing workers.
+
+At 524288 slots, sequence state costs 12 MiB and the bitmap about 64 KiB. Ring
+entries add 2 bytes each; bookkeeping uses one cache line per thread. Validate
+throughput, tail latency, barrier pauses and ring loss with matching images
+under sparse/dense tables and high session churn before rollout.

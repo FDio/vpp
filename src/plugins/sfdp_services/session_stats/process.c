@@ -68,6 +68,7 @@ sfdp_session_stats_process_fn (vlib_main_t *vm, vlib_node_runtime_t *rt, vlib_fr
   u32 batch_cycle_index = 0; /* used for debugging logs */
   f64 batch_start_time = 0;
   f64 batch_active_since = 0;
+  u64 ring_generation = ssm->ring_config_generation;
 
   while (1)
     {
@@ -81,6 +82,13 @@ sfdp_session_stats_process_fn (vlib_main_t *vm, vlib_node_runtime_t *rt, vlib_fr
       vlib_process_wait_for_event_or_clock (vm, timeout);
 
       event_type = vlib_process_get_events (vm, &event_data);
+
+      if (ring_generation != ssm->ring_config_generation)
+	{
+	  ring_generation = ssm->ring_config_generation;
+	  batch_in_progress = 0;
+	  ssm->per_thread[ti].last_export_time = 0;
+	}
 
       switch (event_type)
 	{

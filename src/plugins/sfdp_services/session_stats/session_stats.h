@@ -118,8 +118,10 @@ typedef enum
 /* Per-thread data for session stats */
 typedef struct
 {
-  f64 last_export_time; /**< Last time stats were exported to ring */
-  u64 total_exports;	/**< Per-thread export counter */
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+  f64 last_export_time;	   /**< Last time stats were exported to ring */
+  u64 total_exports;	   /**< Per-thread export counter */
+  u64 ring_write_sequence; /**< Last slot touched, including uncommitted writes */
 } sfdp_session_stats_per_thread_t;
 
 /*
@@ -133,12 +135,26 @@ typedef struct
   u8 reserved[3];
 } sfdp_session_stats_custom_data_entry_t;
 
+/* Main-thread-only state; generation fields distinguish reused session slots. */
+typedef struct
+{
+  u64 session_id;
+  f64 first_seen;
+  session_version_t session_version;
+  u16 next_update_sequence;
+} sfdp_session_stats_update_sequence_t;
+
+#define SFDP_SESSION_STATS_UPDATE_SEQUENCE_FIRST	  ((u16) 0)
+#define SFDP_SESSION_STATS_UPDATE_SEQUENCE_NEXT(sequence) ((u16) ((sequence) + 1))
+
 /*
  * Main session stats structure
  */
 typedef struct
 {
   sfdp_session_stats_entry_t *stats;	       /**< vec indexed by session-index */
+  sfdp_session_stats_update_sequence_t *update_sequences; /**< main-thread-only */
+  uword *active_sessions;		       /**< fixed bitmap, atomic lifecycle updates */
   sfdp_session_stats_per_thread_t *per_thread; /**< Per-thread data */
 
   u32 ring_buffer_index;      /**< Stats segment ring buffer index */
@@ -150,6 +166,7 @@ typedef struct
   u8 export_on_expiry;	      /**< Export stats when session expires */
   clib_spinlock_t ring_config_lock; /**< Protects ring lifetime for health reads */
   u64 ring_config_generation;
+  u64 process_epoch; /**< API and mapped stats lifetime marker */
 
   /* Per-tenant custom data, vec indexed by compact SFDP tenant pool index */
   sfdp_session_stats_custom_data_entry_t *custom_data_entries;
@@ -157,6 +174,10 @@ typedef struct
 
   u16 msg_id_base;	   /**< API message ID base */
   i64 unix_time_offset_us; /**< Unix epoch offset for monotonic timestamps */
+  u64 update_sequence_allocations;
+  u64 update_sequence_wraps;
+  u64 ring_reservation_failures;
+  u64 ring_commit_failures;
 } sfdp_session_stats_main_t;
 
 extern sfdp_session_stats_main_t sfdp_session_stats_main;

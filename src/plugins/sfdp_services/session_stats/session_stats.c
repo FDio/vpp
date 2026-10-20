@@ -3,18 +3,36 @@
  */
 
 #include <stddef.h>
+#include <errno.h>
+#include <sys/random.h>
+#include <unistd.h>
 #include <sfdp_services/session_stats/session_stats.h>
 #include <sfdp_services/session_stats/session_stats.api_types.h>
 #include <vlib/stats/stats.h>
+#include <vlib/threads.h>
 #include <vppinfra/time.h>
+#include <vppinfra/xxhash.h>
 
 #define vl_endianfun
 #include <sfdp_services/session_stats/session_stats.api.h>
 #undef vl_endianfun
 
 STATIC_ASSERT (sizeof (vl_api_sfdp_session_stats_ring_entry_v2_t) == 304,
-	       "sfdp_session_stats_ring_entry_v2_t size changed, "
+	       "sfdp_session_stats_ring_entry_v2_t size changed");
+STATIC_ASSERT (sizeof (vl_api_sfdp_session_stats_ring_entry_v3_t) == 306,
+	       "sfdp_session_stats_ring_entry_v3_t size changed, "
 	       "update consumers and bump API version");
+STATIC_ASSERT (offsetof (vl_api_sfdp_session_stats_ring_entry_v3_t, update_sequence) == 304,
+	       "update sequence offset changed, update consumers and bump API version");
+STATIC_ASSERT (SFDP_SESSION_STATS_UPDATE_SEQUENCE_NEXT (65534) == 65535,
+	       "update sequence must advance from 65534 to 65535");
+STATIC_ASSERT (SFDP_SESSION_STATS_UPDATE_SEQUENCE_NEXT (65535) == 0,
+	       "update sequence must wrap from 65535 to 0");
+STATIC_ASSERT (SFDP_SESSION_STATS_UPDATE_SEQUENCE_NEXT (0) == 1,
+	       "update sequence must advance from 0 to 1");
+
+/* Keep the process marker exactly representable in GoVPP's float64 gauge. */
+#define SFDP_SESSION_STATS_PROCESS_EPOCH_MAX ((1ULL << 53) - 1)
 
 sfdp_session_stats_main_t sfdp_session_stats_main;
 
@@ -24,8 +42,8 @@ sfdp_session_stats_ring_init (vlib_main_t *vm, u32 ring_size)
   sfdp_session_stats_main_t *ssm = &sfdp_session_stats_main;
   sfdp_session_stats_entry_t *stats;
 
-  /* Copy the ABI ID associated with the version 2 ring entry. */
-  const char *schema_id = VL_API_SFDP_SESSION_STATS_RING_ENTRY_V2_ABI_ID_CRC;
+  /* Copy the ABI ID associated with the version 3 ring entry. */
+  const char *schema_id = VL_API_SFDP_SESSION_STATS_RING_ENTRY_V3_ABI_ID_CRC;
   u32 schema_size = clib_strnlen (schema_id, 128);
 
   clib_spinlock_lock (&ssm->ring_config_lock);
@@ -38,14 +56,14 @@ sfdp_session_stats_ring_init (vlib_main_t *vm, u32 ring_size)
     }
 
   /* Worker threads can be configured after plugin initialization. */
-  vec_validate (ssm->per_thread, vlib_get_n_threads () - 1);
+  vec_validate_aligned (ssm->per_thread, vlib_get_n_threads () - 1, CLIB_CACHE_LINE_BYTES);
 
   vlib_stats_ring_config_t config = { .entry_size =
-					sizeof (vl_api_sfdp_session_stats_ring_entry_v2_t),
+					sizeof (vl_api_sfdp_session_stats_ring_entry_v3_t),
 				      .ring_size = ring_size,
 				      .n_threads = vlib_get_n_threads (),
 				      .schema_size = schema_size,
-				      .schema_version = 2 };
+				      .schema_version = 3 };
 
   ssm->ring_buffer_index =
     vlib_stats_add_ring_buffer (&config, (const void *) schema_id, "/sfdp/session/stats");
@@ -57,6 +75,8 @@ sfdp_session_stats_ring_init (vlib_main_t *vm, u32 ring_size)
       return -1;
     }
 
+  for (u32 i = 0; i < vec_len (ssm->per_thread); i++)
+    clib_atomic_store_relax_n (&ssm->per_thread[i].ring_write_sequence, 0);
   ssm->ring_buffer_size = ring_size;
   vec_foreach (stats, ssm->stats)
     stats->create_exported = 0;
@@ -68,15 +88,14 @@ sfdp_session_stats_ring_init (vlib_main_t *vm, u32 ring_size)
 }
 
 __clib_export int
-sfdp_session_stats_ring_health_get_v1 (
-  u32 worker_index, u32 abi_version, u32 output_size,
-  sfdp_session_stats_ring_health_v1_t *output)
+sfdp_session_stats_ring_health_get_v1 (u32 worker_index, u32 abi_version, u32 output_size,
+				       sfdp_session_stats_ring_health_v1_t *output)
 {
   sfdp_session_stats_main_t *ssm = &sfdp_session_stats_main;
   sfdp_session_stats_ring_health_v1_t health = { 0 };
   vlib_stats_ring_buffer_t *ring;
   vlib_stats_ring_metadata_t *metadata;
-  const char *schema_id = VL_API_SFDP_SESSION_STATS_RING_ENTRY_V2_ABI_ID_CRC;
+  const char *schema_id = VL_API_SFDP_SESSION_STATS_RING_ENTRY_V3_ABI_ID_CRC;
   u32 schema_id_len;
 
   if (!output || abi_version != SFDP_SESSION_STATS_RING_HEALTH_ABI_V1 ||
@@ -106,15 +125,13 @@ sfdp_session_stats_ring_health_get_v1 (
   health.schema_version = metadata->schema_version;
   health.entry_size = ring->config.entry_size;
   health.capacity = ring->config.ring_size;
-  health.producer_sequence =
-    __atomic_load_n (&metadata->sequence, __ATOMIC_ACQUIRE);
+  health.producer_sequence = __atomic_load_n (&metadata->sequence, __ATOMIC_ACQUIRE);
   /* Sequence identifies committed entries in this ring lifetime. The export
    * counter remains monotonic across ring recreation within the VPP process. */
   health.records_produced =
     __atomic_load_n (&ssm->per_thread[worker_index].total_exports, __ATOMIC_RELAXED);
   health.config_generation = ssm->ring_config_generation;
-  clib_memcpy_fast (health.ring_abi,
-		    schema_id + schema_id_len - sizeof (health.ring_abi),
+  clib_memcpy_fast (health.ring_abi, schema_id + schema_id_len - sizeof (health.ring_abi),
 		    sizeof (health.ring_abi));
   clib_spinlock_unlock (&ssm->ring_config_lock);
 
@@ -122,17 +139,22 @@ sfdp_session_stats_ring_health_get_v1 (
   return SFDP_SESSION_STATS_RING_HEALTH_OK;
 }
 
-int
-sfdp_session_stats_export_session (vlib_main_t *vm, u32 session_index,
-				   sfdp_session_stats_export_reason_t reason)
+static int
+sfdp_session_stats_export_session_snapshot (vlib_main_t *vm, u32 session_index,
+					    sfdp_session_stats_export_reason_t reason)
 {
   sfdp_session_stats_main_t *ssm = &sfdp_session_stats_main;
   sfdp_main_t *sfdp = &sfdp_main;
-  vl_api_sfdp_session_stats_ring_entry_v2_t *entry;
+  vl_api_sfdp_session_stats_ring_entry_v3_t *entry;
   sfdp_session_stats_entry_t *stats;
+  sfdp_session_stats_update_sequence_t *sequence_state = 0;
   sfdp_session_t *session;
   sfdp_tenant_t *tenant;
   u32 thread_index;
+  u16 update_sequence = SFDP_SESSION_STATS_UPDATE_SEQUENCE_FIRST;
+  u8 is_create = reason == SFDP_SESSION_STATS_EXPORT_CREATE;
+  u8 is_update =
+    reason == SFDP_SESSION_STATS_EXPORT_PERIODIC || reason == SFDP_SESSION_STATS_EXPORT_API_REQUEST;
   u8 swap_endpoints;
 
   if (!ssm->ring_buffer_enabled)
@@ -147,7 +169,9 @@ sfdp_session_stats_export_session (vlib_main_t *vm, u32 session_index,
   if (stats->packets[SFDP_FLOW_FORWARD] == 0 && stats->packets[SFDP_FLOW_REVERSE] == 0)
     return 0;
 
-  session = sfdp_session_at_index (session_index);
+  session = sfdp_session_at_index_if_valid (session_index);
+  if (!session)
+    return 0;
 
   /* Validate session version */
   if (stats->version != session->session_version)
@@ -158,21 +182,49 @@ sfdp_session_stats_export_session (vlib_main_t *vm, u32 session_index,
     return 0;
 
   thread_index = vlib_get_thread_index ();
+  ASSERT (!is_update || (thread_index == 0 && vlib_worker_thread_barrier_held ()));
+
+  if (is_update)
+    {
+      if (PREDICT_FALSE (stats->first_seen == 0))
+	return 0;
+      sequence_state = vec_elt_at_index (ssm->update_sequences, session_index);
+      if (sequence_state->session_version == session->session_version &&
+	  sequence_state->session_id == session->session_id &&
+	  sequence_state->first_seen == stats->first_seen)
+	{
+	  update_sequence = sequence_state->next_update_sequence;
+	}
+    }
 
   /* Reserve a slot in the ring buffer */
   entry = vlib_stats_ring_reserve_slot (ssm->ring_buffer_index, thread_index);
   if (!entry)
-    return 0;
+    {
+      __atomic_fetch_add (&ssm->ring_reservation_failures, 1, __ATOMIC_RELAXED);
+      return 0;
+    }
+
+  vlib_stats_ring_buffer_t *ring = vlib_stats_get_entry_data_pointer (ssm->ring_buffer_index);
+  vlib_stats_ring_metadata_t *meta =
+    (void *) ((u8 *) ring + ring->metadata_offset + thread_index * sizeof (*meta));
+  sfdp_session_stats_per_thread_t *pt = &ssm->per_thread[thread_index];
+  /* Publish before touching the slot, including writes that later abort. */
+  clib_atomic_store_relax_n (&pt->ring_write_sequence, meta->sequence + 1);
+  clib_atomic_fence_rel ();
 
   /* Fill in the entry */
   clib_memset (entry, 0, sizeof (*entry));
 
   if (reason == SFDP_SESSION_STATS_EXPORT_EXPIRY)
     entry->event_type = SFDP_SESSION_STATS_EVENT_TYPE_CLOSED;
-  else if (!stats->create_exported)
+  else if (is_create)
     entry->event_type = SFDP_SESSION_STATS_EVENT_TYPE_CREATED;
   else
     entry->event_type = SFDP_SESSION_STATS_EVENT_TYPE_UPDATED;
+
+  if (is_update)
+    entry->update_sequence = update_sequence;
 
   entry->session_id = session->session_id;
   entry->session_index = session_index;
@@ -300,67 +352,176 @@ sfdp_session_stats_export_session (vlib_main_t *vm, u32 session_index,
   /* ring entries are stored in network-byte order for decoding compatibility in consumers */
   /* TODO - for performance, it would be change this to avoid encoding/decoding to network-byte
   order and directly copy entries to the ring buffer for consumption by an external consumer  */
-  vl_api_sfdp_session_stats_ring_entry_v2_t_endian (entry, /* to_net */ 1);
+  vl_api_sfdp_session_stats_ring_entry_v3_t_endian (entry, /* to_net */ 1);
 
   /* Commit the slot */
-  vlib_stats_ring_commit_slot (ssm->ring_buffer_index, thread_index);
+  if (PREDICT_FALSE (vlib_stats_ring_commit_slot (ssm->ring_buffer_index, thread_index) != 0))
+    {
+      vlib_stats_ring_abort_slot (ssm->ring_buffer_index, thread_index);
+      __atomic_fetch_add (&ssm->ring_commit_failures, 1, __ATOMIC_RELAXED);
+      return 0;
+    }
 
-  /* Update per-thread export counter */
-  __atomic_fetch_add (&ssm->per_thread[thread_index].total_exports, 1, __ATOMIC_RELAXED);
-  if (entry->event_type == SFDP_SESSION_STATS_EVENT_TYPE_CREATED)
+  /* Single writer; relaxed atomics support concurrent health reads. */
+  u64 total_exports = clib_atomic_load_relax_n (&pt->total_exports);
+  clib_atomic_store_relax_n (&pt->total_exports, total_exports + 1);
+  if (is_create)
     stats->create_exported = 1;
+  if (is_update)
+    {
+      sequence_state->session_version = session->session_version;
+      sequence_state->session_id = session->session_id;
+      sequence_state->first_seen = stats->first_seen;
+      sequence_state->next_update_sequence =
+	SFDP_SESSION_STATS_UPDATE_SEQUENCE_NEXT (update_sequence);
+      ssm->update_sequence_allocations++;
+      if (update_sequence == CLIB_U16_MAX)
+	ssm->update_sequence_wraps++;
+    }
 
   return 1;
 }
 
-void
-sfdp_session_stats_export_all_sessions (vlib_main_t *vm, sfdp_session_stats_export_reason_t reason)
+/* UPDATE snapshots hold the worker barrier through commit and sequence advance. */
+int
+sfdp_session_stats_export_session (vlib_main_t *vm, u32 session_index,
+				   sfdp_session_stats_export_reason_t reason)
 {
-  sfdp_session_stats_main_t *ssm = &sfdp_session_stats_main;
-  u32 i;
+  u8 is_update =
+    reason == SFDP_SESSION_STATS_EXPORT_PERIODIC || reason == SFDP_SESSION_STATS_EXPORT_API_REQUEST;
+  u8 acquired_barrier = 0;
+  int exported;
 
-  if (!ssm->ring_buffer_enabled)
-    return;
-
-  vec_foreach_index (i, ssm->stats)
+  if (is_update)
     {
-      sfdp_session_stats_export_session (vm, i, reason);
+      if (PREDICT_FALSE (vlib_get_thread_index () != 0 ||
+			 !sfdp_session_stats_main.ring_buffer_enabled))
+	return 0;
+      if (!vlib_worker_thread_barrier_held ())
+	{
+	  vlib_worker_thread_barrier_sync (vm);
+	  acquired_barrier = 1;
+	}
     }
+  exported = sfdp_session_stats_export_session_snapshot (vm, session_index, reason);
+  if (acquired_barrier)
+    vlib_worker_thread_barrier_release (vm);
+  return exported;
 }
+
+/* Atomic bitmap is a hint; read session data only under the worker barrier. */
+static u32
+sfdp_session_stats_collect_active (sfdp_session_stats_main_t *ssm, u32 *cursor, u32 *candidates,
+				   u32 capacity)
+{
+  uword word_index = *cursor / BITS (uword);
+  uword bit_index = *cursor % BITS (uword);
+  u32 count = 0;
+
+  ASSERT (capacity > 0);
+  while (word_index < vec_len (ssm->active_sessions))
+    {
+      uword bits = clib_atomic_load_relax_n (&ssm->active_sessions[word_index]);
+      bits &= ~((uword) 0) << bit_index;
+      while (bits)
+	{
+	  u32 index = word_index * BITS (uword) + count_trailing_zeros (bits);
+	  if (index >= vec_len (ssm->stats))
+	    goto done;
+	  candidates[count++] = index;
+	  bits &= bits - 1;
+	  if (count == capacity)
+	    {
+	      *cursor = index + 1;
+	      return count;
+	    }
+	}
+      word_index++;
+      bit_index = 0;
+    }
+done:
+  *cursor = vec_len (ssm->stats);
+  return count;
+}
+
+/* Bound candidates per worker pause; scan empty ranges without a barrier. */
+#define SFDP_SESSION_STATS_SNAPSHOT_CHUNK	   256
+#define SFDP_SESSION_STATS_SNAPSHOT_BUDGET_SECONDS 50e-6
 
 u32
 sfdp_session_stats_export_batch (vlib_main_t *vm, sfdp_session_stats_export_reason_t reason,
 				 u32 start_index, u32 max_entries, f64 active_since)
 {
   sfdp_session_stats_main_t *ssm = &sfdp_session_stats_main;
-  sfdp_session_stats_entry_t *stats;
-  u32 index, exported = 0;
+  u32 index = start_index, exported = 0;
 
+  if (PREDICT_FALSE (vlib_get_thread_index () != 0 ||
+		     (reason != SFDP_SESSION_STATS_EXPORT_PERIODIC &&
+		      reason != SFDP_SESSION_STATS_EXPORT_API_REQUEST)))
+    return 0;
   if (!ssm->ring_buffer_enabled)
     return 0;
 
-  /* TODO - we are currently iterating over all of ssm->stats
-   * to find valid entries - this is not ideal, as ssm->stats is
-   * pre-allocated at init to have size equal to max number of possible sessions..
-   * can an approach be taken to avoid expensive iteration i.e. using a bitmap to track
-   * session stats validity */
-  for (index = start_index; index < vec_len (ssm->stats); index++)
+  u64 config_generation = ssm->ring_config_generation;
+  u8 can_yield = vlib_in_process_context (vm) &&
+		 (vlib_get_n_threads () < 2 || !vlib_worker_thread_barrier_held ());
+
+  while (index < vec_len (ssm->stats))
     {
-      stats = vec_elt_at_index (ssm->stats, index);
+      u32 candidates[SFDP_SESSION_STATS_SNAPSHOT_CHUNK];
+      u32 capacity = ARRAY_LEN (candidates);
+      if (max_entries > 0)
+	capacity = clib_min (capacity, max_entries - exported);
+      u32 n_candidates = sfdp_session_stats_collect_active (ssm, &index, candidates, capacity);
+      if (n_candidates == 0)
+	break;
 
-      /* Skip stats entries which did not see traffic since the batch cycle started */
-      if (stats->last_seen < active_since)
-	continue;
-
-      if (sfdp_session_stats_export_session (vm, index, reason))
-	exported++;
-
-      /* Batch limit reached — return next index to continue from */
-      if (max_entries > 0 && exported >= max_entries)
-	return index + 1;
+      u8 acquired_barrier = !vlib_worker_thread_barrier_held ();
+      if (acquired_barrier)
+	vlib_worker_thread_barrier_sync (vm);
+      f64 deadline = vlib_time_now (vm) + SFDP_SESSION_STATS_SNAPSHOT_BUDGET_SECONDS;
+      for (u32 i = 0; i < n_candidates; i++)
+	{
+	  u32 session_index = candidates[i];
+	  sfdp_session_stats_entry_t *stats = vec_elt_at_index (ssm->stats, session_index);
+	  if (stats->last_seen >= active_since &&
+	      sfdp_session_stats_export_session_snapshot (vm, session_index, reason))
+	    exported++;
+	  if ((max_entries > 0 && exported >= max_entries) ||
+	      (((i + 1) & 15) == 0 && vlib_time_now (vm) >= deadline))
+	    {
+	      /* Resume after the last processed candidate. */
+	      index = session_index + 1;
+	      break;
+	    }
+	}
+      if (acquired_barrier)
+	vlib_worker_thread_barrier_release (vm);
+      if ((max_entries > 0 && exported >= max_entries) ||
+	  (!acquired_barrier && vlib_get_n_threads () > 1))
+	return index < vec_len (ssm->stats) ? index : 0;
+      if (can_yield && index < vec_len (ssm->stats))
+	{
+	  vlib_process_yield (vm);
+	  if (!ssm->ring_buffer_enabled || ssm->ring_config_generation != config_generation)
+	    return 0;
+	}
     }
-
   return 0;
+}
+
+void
+sfdp_session_stats_export_all_sessions (vlib_main_t *vm, sfdp_session_stats_export_reason_t reason)
+{
+  if (PREDICT_FALSE (vlib_get_thread_index () != 0))
+    return;
+  if (!vlib_in_process_context (vm) ||
+      (vlib_get_n_threads () > 1 && vlib_worker_thread_barrier_held ()))
+    {
+      sfdp_session_stats_export_now (vm);
+      return;
+    }
+  (void) sfdp_session_stats_export_batch (vm, reason, 0, 0, 0);
 }
 
 int
@@ -376,11 +537,13 @@ sfdp_session_stats_clear_sessions (u64 session_id)
 	{
 	  sfdp_session_stats_entry_t *stats = vec_elt_at_index (ssm->stats, i);
 	  session_version_t v = stats->version;
+	  f64 first_seen = stats->first_seen;
 	  u64 session_opaque = stats->session_opaque;
 	  u64 session_opaque_mask = stats->session_opaque_mask;
 	  u8 create_exported = stats->create_exported;
 	  clib_memset (stats, 0, sizeof (sfdp_session_stats_entry_t));
 	  stats->version = v;
+	  stats->first_seen = first_seen;
 	  stats->session_opaque = session_opaque;
 	  stats->session_opaque_mask = session_opaque_mask;
 	  stats->create_exported = create_exported;
@@ -400,12 +563,14 @@ sfdp_session_stats_clear_sessions (u64 session_id)
 	  {
 	    sfdp_session_stats_entry_t *stats = vec_elt_at_index (ssm->stats, session_index);
 	    session_version_t v = stats->version;
+	    f64 first_seen = stats->first_seen;
 	    u64 session_opaque = stats->session_opaque;
 	    u64 session_opaque_mask = stats->session_opaque_mask;
 	    u8 create_exported = stats->create_exported;
 	    session_found = 1;
 	    clib_memset (stats, 0, sizeof (sfdp_session_stats_entry_t));
 	    stats->version = v;
+	    stats->first_seen = first_seen;
 	    stats->session_opaque = session_opaque;
 	    stats->session_opaque_mask = session_opaque_mask;
 	    stats->create_exported = create_exported;
@@ -495,6 +660,8 @@ sfdp_session_stats_notify_deleted_sessions (const u32 *deleted_sessions, u32 len
 	{
 	  sfdp_session_stats_entry_t *stats = vec_elt_at_index (ssm->stats, session_index);
 	  clib_memset (stats, 0, sizeof (*stats));
+	  __atomic_fetch_and (&ssm->active_sessions[session_index / BITS (uword)],
+			      ~((uword) 1 << (session_index % BITS (uword))), __ATOMIC_RELAXED);
 	}
     }
 
@@ -522,6 +689,8 @@ sfdp_session_stats_notify_new_sessions (const u32 *new_sessions, u32 len)
       session = sfdp_session_at_index (session_index);
       stats->version = session->session_version; /* set session version */
       stats->first_seen = 0;			 /* Will be set on first packet */
+      __atomic_fetch_or (&ssm->active_sessions[session_index / BITS (uword)],
+			 (uword) 1 << (session_index % BITS (uword)), __ATOMIC_RELAXED);
     }
 
   return 0;
@@ -543,7 +712,28 @@ sfdp_session_stats_init (vlib_main_t *vm)
   sfdp_session_stats_main_t *ssm = &sfdp_session_stats_main;
 
   vec_validate (ssm->stats, sfdp_num_sessions ());
-  vec_validate (ssm->per_thread, vlib_get_n_threads () - 1);
+  vec_validate (ssm->update_sequences, sfdp_num_sessions ());
+  vec_validate (ssm->active_sessions, (vec_len (ssm->stats) - 1) / BITS (uword));
+  vec_validate_aligned (ssm->per_thread, vlib_get_n_threads () - 1, CLIB_CACHE_LINE_BYTES);
+
+  /* Publish the process marker in both API replies and the mapped stats segment. */
+  ssize_t n;
+  do
+    n = getrandom (&ssm->process_epoch, sizeof (ssm->process_epoch), GRND_NONBLOCK);
+  while (n < 0 && errno == EINTR);
+  ssm->process_epoch &= SFDP_SESSION_STATS_PROCESS_EPOCH_MAX;
+  if (n != (ssize_t) sizeof (ssm->process_epoch) || ssm->process_epoch == 0)
+    {
+      ssm->process_epoch =
+	clib_xxhash (unix_time_now_nsec () ^ clib_cpu_time_now () ^ ((u64) getpid () << 32)) &
+	SFDP_SESSION_STATS_PROCESS_EPOCH_MAX;
+      if (ssm->process_epoch == 0)
+	ssm->process_epoch = 1;
+    }
+  u32 instance_index = vlib_stats_add_gauge ("/sfdp/session/stats-instance");
+  if (instance_index == CLIB_U32_MAX)
+    return clib_error_return (0, "failed to publish session stats process instance");
+  vlib_stats_set_gauge (instance_index, ssm->process_epoch);
 
   ssm->ring_buffer_index = CLIB_U32_MAX;
   clib_spinlock_init (&ssm->ring_config_lock);
