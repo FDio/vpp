@@ -479,6 +479,17 @@ dpdk_device_stop (dpdk_device_t * xd)
 
   rte_eth_allmulticast_disable (xd->port_id);
   rte_eth_dev_stop (xd->port_id);
+  for (int q = 0; q < xd->conf.n_rx_queues; q++)
+    {
+      dpdk_rx_queue_t *rxq = vec_elt_at_index (xd->rx_queues, q);
+      if (rxq->clib_file_index)
+	{
+	  clib_file_main_t *fm = &file_main;
+	  clib_file_t *f = clib_file_get (fm, rxq->clib_file_index);
+	  clib_file_del (fm, f);
+	  rxq->clib_file_index = 0;
+	}
+    }
   clib_memset (&xd->link, 0, sizeof (struct rte_eth_link));
 
   dpdk_log_info ("Interface %U stopped", format_dpdk_device_name,
