@@ -430,6 +430,7 @@ static session_cb_vft_t vp_server_session_cb_vft = {
   .add_segment_callback = vp_server_add_segment_callback,
   .del_segment_callback = vp_server_del_segment_callback,
   .builtin_app_rx_callback = vp_server_rx_callback_common,
+  .builtin_app_tx_callback = vp_server_rx_callback_common,
   .session_reset_callback = vp_server_session_reset_callback
 };
 
