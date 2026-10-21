@@ -274,6 +274,15 @@ pmalloc_update_lookup_table (clib_pmalloc_main_t *pm, u32 first, u32 count)
   fd = open ((char *) "/proc/self/pagemap", O_RDONLY);
   while (p < (uword) elts_per_page * count)
     {
+      clib_pmalloc_page_t *pp = vec_elt_at_index (pm->pages, p / elts_per_page);
+      clib_pmalloc_arena_t *pa_arena = pm->arenas + pp->arena_index;
+
+      if (pa_arena->coherent)
+	{
+	  p++;
+	  continue;
+	}
+
       va = pointer_to_uword (pm->base) + (p << pm->lookup_log2_page_sz);
       pa = 0;
       seek = (va >> clib_mem_get_log2_page_size ()) * sizeof (pa);
@@ -352,6 +361,7 @@ pmalloc_map_pages (clib_pmalloc_main_t * pm, clib_pmalloc_arena_t * a,
   void *va = MAP_FAILED;
   uword size = (uword) n_pages << pm->def_log2_page_sz;
   uword page;
+  uword coherent_pa = 0;
 
   clib_error_free (pm->error);
 
@@ -388,7 +398,7 @@ pmalloc_map_pages (clib_pmalloc_main_t * pm, clib_pmalloc_arena_t * a,
     pmalloc_order_hugepages (a->log2_subpage_sz, size >> a->log2_subpage_sz);
 #endif /* __linux__ */
 
-  if (a->flags & CLIB_PMALLOC_ARENA_F_SHARED_MEM)
+  if (a->shared_mem)
     {
       mmap_flags |= MAP_SHARED;
       a->fd = clib_mem_vm_create_fd (a->log2_subpage_sz, "%s", a->name);
@@ -450,19 +460,33 @@ pmalloc_map_pages (clib_pmalloc_main_t * pm, clib_pmalloc_arena_t * a,
     {
       u16 allocated_at = ~0;
       if (stats.unknown)
-	clib_error_return (0,
-			   "unable to get information about numa allocation");
+	pm->error = clib_error_return (0, "unable to get information about numa allocation");
 
       for (u16 i = 0; i < CLIB_MAX_NUMAS; i++)
 	if (stats.per_numa[i] == 1)
 	  allocated_at = i;
 
-      clib_error_return (0,
-			 "page allocated on the wrong numa node (%u), "
-			 "expected %u",
-			 allocated_at, numa_node);
+      if (pm->error == 0)
+	pm->error = clib_error_return (0,
+				       "page allocated on the wrong numa node (%u), "
+				       "expected %u",
+				       allocated_at, numa_node);
 
       goto error;
+    }
+
+  if (a->coherent)
+    {
+      if (pm->coherent_page_map_fn == 0)
+	{
+	  pm->error = clib_error_return (0, "no coherent page map handler registered");
+	  goto error;
+	}
+      if (pm->coherent_page_map_fn (va, size, &coherent_pa) != 0)
+	{
+	  pm->error = clib_error_return (0, "coherent page map handler failed");
+	  goto error;
+	}
     }
 
   for (i = 0; i < n_pages; i++)
@@ -486,6 +510,18 @@ pmalloc_map_pages (clib_pmalloc_main_t * pm, clib_pmalloc_arena_t * a,
     }
   else
     pmalloc_update_lookup_table (pm, 0, vec_len (pm->pages));
+
+  if (a->coherent)
+    {
+      u32 elts_per_page = 1U << (pm->def_log2_page_sz - pm->lookup_log2_page_sz);
+      uword offset = pointer_to_uword (va) - coherent_pa;
+      uword first_elt = (pp - (n_pages - 1))->index * elts_per_page;
+      uword n_elts = n_pages * elts_per_page;
+      uword k;
+
+      for (k = 0; k < n_elts; k++)
+	pm->lookup_table[first_elt + k] = offset;
+    }
 
   /* return pointer to 1st page */
   return pp - (n_pages - 1);
@@ -535,7 +571,7 @@ clib_pmalloc_create_shared_arena (clib_pmalloc_main_t * pm, char *name,
   a->index = a - pm->arenas;
   a->name = format (0, "%s%c", name, 0);
   a->numa_node = numa_node;
-  a->flags = CLIB_PMALLOC_ARENA_F_SHARED_MEM;
+  a->shared_mem = 1;
   a->log2_subpage_sz = log2_page_sz;
   a->subpages_per_page = 1U << (pm->def_log2_page_sz - log2_page_sz);
 
@@ -551,8 +587,8 @@ clib_pmalloc_create_shared_arena (clib_pmalloc_main_t * pm, char *name,
 }
 
 static inline void *
-clib_pmalloc_alloc_inline (clib_pmalloc_main_t * pm, clib_pmalloc_arena_t * a,
-			   uword size, uword align, u32 numa_node)
+clib_pmalloc_alloc_inline (clib_pmalloc_main_t *pm, clib_pmalloc_arena_t *a, uword size,
+			   uword align, u32 numa_node, u8 coherent)
 {
   clib_pmalloc_page_t *pp;
   u32 n_blocks, block_align, *page_index;
@@ -564,24 +600,28 @@ clib_pmalloc_alloc_inline (clib_pmalloc_main_t * pm, clib_pmalloc_arena_t * a,
 
   if (a == 0)
     {
+      u32 **default_arena_for_numa_node =
+	coherent ? &pm->coherent_arena_for_numa_node : &pm->default_arena_for_numa_node;
+      char *default_arena_name = coherent ? "coherent-numa-%u%c" : "default-numa-%u%c";
+
       if (size > 1ULL << pm->def_log2_page_sz)
 	return 0;
 
-      vec_validate_init_empty (pm->default_arena_for_numa_node,
-			       numa_node, ~0);
-      if (pm->default_arena_for_numa_node[numa_node] == ~0)
+      vec_validate_init_empty (*default_arena_for_numa_node, numa_node, ~0);
+      if ((*default_arena_for_numa_node)[numa_node] == ~0)
 	{
 	  pool_get (pm->arenas, a);
 	  a->index = a - pm->arenas;
-	  pm->default_arena_for_numa_node[numa_node] = a->index;
-	  a->name = format (0, "default-numa-%u%c", numa_node, 0);
+	  (*default_arena_for_numa_node)[numa_node] = a->index;
+	  a->name = format (0, default_arena_name, numa_node, 0);
 	  a->numa_node = numa_node;
 	  a->log2_subpage_sz = pm->def_log2_page_sz;
 	  a->subpages_per_page = 1;
+	  if (coherent)
+	    a->coherent = 1;
 	}
       else
-	a = pool_elt_at_index (pm->arenas,
-			       pm->default_arena_for_numa_node[numa_node]);
+	a = pool_elt_at_index (pm->arenas, (*default_arena_for_numa_node)[numa_node]);
     }
   else if (size > 1ULL << a->log2_subpage_sz)
     return 0;
@@ -599,8 +639,7 @@ clib_pmalloc_alloc_inline (clib_pmalloc_main_t * pm, clib_pmalloc_arena_t * a,
       return rv;
   }
 
-  if ((a->flags & CLIB_PMALLOC_ARENA_F_SHARED_MEM) == 0 &&
-      (pp = pmalloc_map_pages (pm, a, numa_node, 1)))
+  if (!a->shared_mem && (pp = pmalloc_map_pages (pm, a, numa_node, 1)))
     return alloc_chunk_from_page (pm, pp, n_blocks, block_align, numa_node);
 
   return 0;
@@ -610,14 +649,20 @@ __clib_export void *
 clib_pmalloc_alloc_aligned_on_numa (clib_pmalloc_main_t * pm, uword size,
 				    uword align, u32 numa_node)
 {
-  return clib_pmalloc_alloc_inline (pm, 0, size, align, numa_node);
+  return clib_pmalloc_alloc_inline (pm, 0, size, align, numa_node, 0);
+}
+
+__clib_export void *
+clib_pmalloc_alloc_aligned_on_numa_coherent (clib_pmalloc_main_t *pm, uword size, uword align,
+					     u32 numa_node)
+{
+  return clib_pmalloc_alloc_inline (pm, 0, size, align, numa_node, 1);
 }
 
 __clib_export void *
 clib_pmalloc_alloc_aligned (clib_pmalloc_main_t *pm, uword size, uword align)
 {
-  return clib_pmalloc_alloc_inline (pm, 0, size, align,
-				    CLIB_PMALLOC_NUMA_LOCAL);
+  return clib_pmalloc_alloc_inline (pm, 0, size, align, CLIB_PMALLOC_NUMA_LOCAL, 0);
 }
 
 __clib_export void *
@@ -625,7 +670,7 @@ clib_pmalloc_alloc_from_arena (clib_pmalloc_main_t *pm, void *arena_va,
 			       uword size, uword align)
 {
   clib_pmalloc_arena_t *a = clib_pmalloc_get_arena (pm, arena_va);
-  return clib_pmalloc_alloc_inline (pm, a, size, align, 0);
+  return clib_pmalloc_alloc_inline (pm, a, size, align, 0, 0);
 }
 
 static inline int
@@ -648,6 +693,12 @@ pmalloc_chunks_mergeable (clib_pmalloc_arena_t * a, clib_pmalloc_page_t * pp,
     return 0;
 
   return 1;
+}
+
+__clib_export void
+clib_pmalloc_set_coherent_page_map_fn (clib_pmalloc_main_t *pm, int (*fn) (void *, uword, uword *))
+{
+  pm->coherent_page_map_fn = fn;
 }
 
 __clib_export void
