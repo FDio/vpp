@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "378abdf1_9a9679d2",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 10
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-10-21T16:37:02Z",
+      "side": 1,
+      "message": "Why merge, don\u0027t think it works for anybody in gerrit. Just rebase the patch on top of this one.",
+      "revId": "375611b57e83a8ec3e7636188637dfcee3a144d0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
