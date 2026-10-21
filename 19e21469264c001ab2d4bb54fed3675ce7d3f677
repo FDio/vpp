@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ee054d58_f175cc49",
+        "filename": "src/plugins/vperf/builtin/vperf_protos.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 398,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-10-21T20:42:58Z",
+      "side": 1,
+      "message": "I think this block of code is always same everywhere now. maybe make helper function?",
+      "range": {
+        "startLine": 385,
+        "startChar": 0,
+        "endLine": 398,
+        "endChar": 5
+      },
+      "revId": "19e21469264c001ab2d4bb54fed3675ce7d3f677",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
