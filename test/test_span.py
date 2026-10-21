@@ -7,12 +7,17 @@ from scapy.layers.l2 import Ether, GRE
 from scapy.contrib.erspan import ERSPAN
 from scapy.layers.inet import IP, UDP
 from scapy.layers.vxlan import VXLAN
+from scapy.contrib.mpls import MPLS
 
 from framework import VppTestCase
 from asfframework import VppTestRunner
 from vpp_sub_interface import L2_VTR_OP, VppDot1QSubint, VppDot1ADSubint
 from vpp_gre_interface import VppGreInterface
 from vpp_vxlan_tunnel import VppVxlanTunnel
+from vpp_ipip_tun_interface import VppIpIpTunInterface
+from vpp_mpls_tunnel_interface import VppMPLSTunnelInterface
+from vpp_ip_route import VppRoutePath, VppMplsLabel
+from vpp_papi_exceptions import UnexpectedApiReturnValueError
 from collections import namedtuple
 from vpp_papi import VppEnum
 from config import config
@@ -207,6 +212,130 @@ class TestSpan(VppTestCase):
         self.xconnect(self.pg0.sw_if_index, self.pg1.sw_if_index, is_add=0)
 
         self.verify_capture(pg1_pkts, pg2_pkts)
+
+    def device_span_into(self, dst_if):
+        """Mirror a pg0 -> pg1 stream into dst_if with a device SPAN,
+        return what pg1 and pg2 received"""
+        self.xconnect(self.pg0.sw_if_index, self.pg1.sw_if_index)
+        pkts = self.create_stream(self.pg0, self.pg_if_packet_sizes)
+        self.pg0.add_stream(pkts)
+
+        self.vapi.sw_interface_span_enable_disable(
+            self.pg0.sw_if_index, dst_if.sw_if_index
+        )
+
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        n_pkts = len(pkts)
+        pg1_pkts = self.pg1.get_capture(n_pkts)
+        pg2_pkts = self.pg2.get_capture(n_pkts)
+
+        self.vapi.sw_interface_span_enable_disable(
+            self.pg0.sw_if_index, dst_if.sw_if_index, state=0
+        )
+        self.xconnect(self.pg0.sw_if_index, self.pg1.sw_if_index, is_add=0)
+        return pg1_pkts, pg2_pkts
+
+    def test_device_span_dst_gre_teb(self):
+        """SPAN device rx mirror into gre-teb"""
+
+        gre_if = VppGreInterface(
+            self,
+            self.pg2.local_ip4,
+            self.pg2.remote_ip4,
+            type=(VppEnum.vl_api_gre_tunnel_type_t.GRE_API_TUNNEL_TYPE_TEB),
+        )
+        gre_if.add_vpp_config()
+        gre_if.admin_up()
+
+        pg1_pkts, pg2_pkts = self.device_span_into(gre_if)
+        gre_if.remove_vpp_config()
+
+        self.verify_capture(pg1_pkts, [self.decap_gre(p) for p in pg2_pkts])
+
+    def test_device_span_dst_mpls_l2(self):
+        """SPAN device rx mirror into an l2 mpls tunnel"""
+
+        mpls_tun = VppMPLSTunnelInterface(
+            self,
+            [
+                VppRoutePath(
+                    self.pg2.remote_ip4,
+                    self.pg2.sw_if_index,
+                    labels=[VppMplsLabel(33)],
+                )
+            ],
+            is_l2=1,
+        )
+        mpls_tun.add_vpp_config()
+        mpls_tun.admin_up()
+
+        pg1_pkts, pg2_pkts = self.device_span_into(mpls_tun)
+        mpls_tun.remove_vpp_config()
+
+        for p in pg2_pkts:
+            self.assertEqual(p[MPLS].label, 33)
+        self.verify_capture(pg1_pkts, [Ether(bytes(p[MPLS].payload)) for p in pg2_pkts])
+
+    def assert_span_dst_refused(self, dst_if):
+        """A SPAN into dst_if, which can't send the mirrored frames, is
+        refused, device and l2 alike"""
+        for is_l2 in (0, 1):
+            try:
+                with self.vapi.assert_negative_api_retval():
+                    self.vapi.sw_interface_span_enable_disable(
+                        self.pg0.sw_if_index, dst_if.sw_if_index, is_l2=is_l2
+                    )
+            except UnexpectedApiReturnValueError:
+                #
+                # Accepted: remove the SPAN before failing, or the traffic of
+                # the next tests is mirrored into dst_if. tearDown deletes
+                # dst_if, but not a SPAN into it.
+                #
+                self.vapi.sw_interface_span_enable_disable(
+                    self.pg0.sw_if_index, dst_if.sw_if_index, state=0, is_l2=is_l2
+                )
+                raise
+            self.assertEqual(len(self.vapi.sw_interface_span_dump(is_l2=is_l2)), 0)
+
+    def test_span_dst_gre_l3(self):
+        """SPAN into an l3 gre tunnel is refused"""
+
+        gre_if = VppGreInterface(self, self.pg2.local_ip4, self.pg2.remote_ip4)
+        gre_if.add_vpp_config()
+
+        self.assert_span_dst_refused(gre_if)
+        gre_if.remove_vpp_config()
+
+    def test_span_dst_ipip(self):
+        """SPAN into an ipip tunnel is refused"""
+
+        ipip_if = VppIpIpTunInterface(
+            self, self.pg2, self.pg2.local_ip4, self.pg2.remote_ip4
+        )
+        ipip_if.add_vpp_config()
+
+        self.assert_span_dst_refused(ipip_if)
+        ipip_if.remove_vpp_config()
+
+    def test_span_dst_mpls_l3(self):
+        """SPAN into an l3 mpls tunnel is refused"""
+
+        mpls_tun = VppMPLSTunnelInterface(
+            self,
+            [
+                VppRoutePath(
+                    self.pg2.remote_ip4,
+                    self.pg2.sw_if_index,
+                    labels=[VppMplsLabel(33)],
+                )
+            ],
+        )
+        mpls_tun.add_vpp_config()
+
+        self.assert_span_dst_refused(mpls_tun)
+        mpls_tun.remove_vpp_config()
 
     def test_span_l2_rx(self):
         """SPAN l2 rx mirror"""
