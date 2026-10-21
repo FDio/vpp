@@ -265,6 +265,24 @@ VLIB_CLI_COMMAND (mssc_show_command, static) = {
 };
 
 static clib_error_t *
+mssc_sw_interface_add_del (vnet_main_t *vnm, u32 sw_if_index, u32 is_add)
+{
+  mssc_main_t *cm = &mssc_main;
+
+  if (is_add)
+    return 0;
+
+  if (sw_if_index >= vec_len (cm->dir_enabled4))
+    return 0;
+
+  /* reset the features and the state before the sw_if_index is reused */
+  mssc_enable_disable (sw_if_index, MSS_CLAMP_DIR_NONE, MSS_CLAMP_DIR_NONE, 0, 0);
+  return 0;
+}
+
+VNET_SW_INTERFACE_ADD_DEL_FUNCTION (mssc_sw_interface_add_del);
+
+static clib_error_t *
 mssc_init (vlib_main_t *vm)
 {
   return NULL;
