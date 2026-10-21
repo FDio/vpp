@@ -836,7 +836,7 @@ vp_proto_client_udp_uso_tx_test_bytes (vp_test_session_t *es, u8 *test_data, u32
 				  { test_data + test_buf_offset, n_transfer } };
 
   rv = svm_fifo_enqueue_segments (f, data_segs, 2, 0 /* allow partial */);
-  n_sent = vp_protos_check_tx_rv (rv);
+  n_sent = vp_protos_check_tx_rv (rv) ? n_transfer : 0;
   if (svm_fifo_set_event (es->tx_fifo))
     session_program_tx_io_evt (es->tx_fifo->vpp_sh, SESSION_IO_EVT_TX);
 
