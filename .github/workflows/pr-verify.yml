@@ -93,8 +93,56 @@ jobs:
             extras/scripts/check_commit_msg.sh
           done
 
+  test-plan:
+    runs-on: ubuntu-24.04
+    outputs:
+      variants: ${{ steps.plan.outputs.variants }}
+      tunnel_control: ${{ steps.plan.outputs.tunnel_control }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Plan isolated ESP builds from the committed candidate
+        id: plan
+        env:
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          python3 - <<'PY'
+          import ast
+          import json
+          import os
+          import subprocess
+
+          def git(*args):
+              return subprocess.check_output(["git", *args])
+
+          changed = git("diff", "--name-only", os.environ["PR_BASE"] + "..." +
+                        os.environ["PR_HEAD"]).decode().splitlines()
+          enabled = False
+          if "src/vnet/tunnel/tunnel_dp.h" in changed:
+              path = "test/test_ipsec_esp.py"
+              exists = subprocess.run(["git", "cat-file", "-e",
+                                       os.environ["PR_HEAD"] + ":" + path]).returncode == 0
+              if exists:
+                  tree = ast.parse(git("show", os.environ["PR_HEAD"] + ":" + path))
+                  enabled = any(isinstance(node, ast.ClassDef) and node.name == "TestIpsecEspTun"
+                                and any(isinstance(method, ast.FunctionDef) and
+                                        method.name == "test_tun_df44" for method in node.body)
+                                for node in tree.body)
+          variants = ["fixed", "original-df"] if enabled else ["fixed"]
+          with open(os.environ["GITHUB_OUTPUT"], "a") as output:
+              output.write("variants=" + json.dumps(variants) + "\n")
+              output.write("tunnel_control=" + str(enabled).lower() + "\n")
+          PY
+
   build-test:
-    name: build and test
+    name: build and test (${{ matrix.variant }})
+    needs: test-plan
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: ${{ fromJSON(needs.test-plan.outputs.variants) }}
     runs-on: ubuntu-24.04
     container:
       image: debian:trixie
@@ -177,10 +225,10 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: build-root/.ccache
-          key: ccache-debug-debian13-${{ runner.arch }}-${{ github.ref_name }}-${{ github.sha }}
+          key: ccache-debug-debian13-${{ runner.arch }}-${{ matrix.variant }}-${{ github.ref_name }}-${{ github.sha }}
           restore-keys: |
-            ccache-debug-debian13-${{ runner.arch }}-${{ github.ref_name }}-
-            ccache-debug-debian13-${{ runner.arch }}-
+            ccache-debug-debian13-${{ runner.arch }}-${{ matrix.variant }}-${{ github.ref_name }}-
+            ccache-debug-debian13-${{ runner.arch }}-${{ matrix.variant }}-
 
       # src/scripts/version calls git describe without --tags, and origin
       # (sunoaki/vpp) has no v* tags, so the version is empty and the CMake
@@ -194,23 +242,6 @@ jobs:
             echo "0.0.0-release+$(git log -1 --format=%ct).$(git rev-list --count HEAD)-g$(git rev-parse --short=7 HEAD)" \
               > src/scripts/.version
           fi
-
-      - name: Build VPP debug
-        run: |
-          git config --global --add safe.directory "$PWD"
-          export VPP_EXTRA_CMAKE_ARGS="\
-            -DCMAKE_C_COMPILER_LAUNCHER=ccache \
-            -DCMAKE_CXX_COMPILER_LAUNCHER=ccache"
-          ccache -z
-          make UNATTENDED=yes build
-          ccache -s
-
-      - name: Save ccache
-        if: steps.ccache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v4
-        with:
-          path: build-root/.ccache
-          key: ccache-debug-debian13-${{ runner.arch }}-${{ github.ref_name }}-${{ github.sha }}
 
       # Turn the changed paths into a focused TEST filter. Every emitted name
       # must have an exact test_<name>.py module under test/ or test/asf/,
@@ -289,6 +320,129 @@ jobs:
           fi
           echo "Running TEST suites:${suites}"
           echo "suites=${suites}" >> "$GITHUB_OUTPUT"
+          tunnel_regression=false
+          case $'\n'"${changed}"$'\n' in
+            *$'\n'src/vnet/tunnel/tunnel_dp.h$'\n'*)
+              if [ -f test/test_ipsec_esp.py ]; then
+                tunnel_regression=true
+              fi
+              ;;
+          esac
+          echo "tunnel_regression=${tunnel_regression}" >> "$GITHUB_OUTPUT"
+
+      - name: Prepare exact ESP source variant and provenance
+        if: needs.test-plan.outputs.tunnel_control == 'true'
+        env:
+          ESP_VARIANT: ${{ matrix.variant }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          python3 - <<'PY'
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+          import subprocess
+
+          def git(*args):
+              return subprocess.check_output(["git", *args]).decode().strip()
+
+          def blob(data):
+              return hashlib.sha1(b"blob " + str(len(data)).encode() + b"\0" + data).hexdigest()
+
+          output = Path(os.environ["RUNNER_TEMP"]) / "esp-evidence"
+          output.mkdir()
+          production = Path("src/vnet/tunnel/tunnel_dp.h")
+          test = Path("test/test_ipsec_esp.py")
+          before = production.read_bytes()
+          test_before = test.read_bytes()
+          expected_fixed = "468c628236393f184ab64736441fe1b7bbd40e36"
+          expected_negative = "fd0d60c0a1a3021b22dad1d52fc3e54049bade46"
+          expected_test = "093794c2074bbdf66f9350308439e833a03dccc6"
+          report = {
+              "run": os.environ["GITHUB_RUN_ID"], "attempt": os.environ["GITHUB_RUN_ATTEMPT"],
+              "variant": os.environ["ESP_VARIANT"], "base": os.environ["PR_BASE"],
+              "head": os.environ["PR_HEAD"], "checkout": git("rev-parse", "HEAD"),
+              "candidate_tree": git("rev-parse", "HEAD^{tree}"),
+              "reviewed_product": "815eaa339772c4c715ac0890fe2c2b136f694fe9",
+              "expected_fixed": expected_fixed, "expected_negative": expected_negative,
+              "expected_test": expected_test, "before_header": blob(before),
+              "before_test": blob(test_before), "replacement_count": 0,
+          }
+          (output / "provenance.json").write_text(json.dumps(report, indent=2) + "\n")
+          assert blob(before) == expected_fixed, "candidate header differs from reviewed M40"
+          assert blob(test_before) == expected_test, "candidate test differs from reviewed M40"
+          assert git("diff", "--name-only", "HEAD", "--", str(production), str(test)) == ""
+          old = (b'      u16 old_flags = outer->flags_and_fragment_offset;\n'
+                 b'\n'
+                 b'      ip4_header_set_df (outer);\n'
+                 b'\n'
+                 b'      sum = ip_csum_update (outer->checksum, old_flags, outer->flags_and_fragment_offset,\n'
+                 b'\t\t\t    ip4_header_t, flags_and_fragment_offset);\n')
+          new = (b'      u16 tos = outer->flags_and_fragment_offset;\n'
+                 b'\n'
+                 b'      ip4_header_set_df (outer);\n'
+                 b'\n'
+                 b'      sum =\n'
+                 b'\tip_csum_update (outer->checksum, tos, outer->tos, ip4_header_t,\n'
+                 b'\t\t\tflags_and_fragment_offset);\n')
+          if os.environ["ESP_VARIANT"] == "original-df":
+              assert before.count(old) == 1 and before.count(new) == 0
+              negative = before.replace(old, new, 1)
+              assert blob(negative) == expected_negative
+              assert negative.replace(new, old, 1) == before
+              production.write_bytes(negative)
+              report["replacement_count"] = 1
+          assert test.read_bytes() == test_before
+          report["built_header"] = blob(production.read_bytes())
+          report["built_test"] = blob(test.read_bytes())
+          index = output / "source.index"
+          env = dict(os.environ, GIT_INDEX_FILE=str(index))
+          subprocess.run(["git", "read-tree", "HEAD"], env=env, check=True)
+          for path in git("diff", "--name-only", "HEAD").splitlines():
+              subprocess.run(["git", "add", "--", path], env=env, check=True)
+          version = Path("src/scripts/.version")
+          assert not version.is_symlink(), "unsafe build version input"
+          if version.exists():
+              assert version.is_file() and 0 < version.stat().st_size <= 4096, "invalid build version input"
+              version_bytes = version.read_bytes()
+              (output / "build-version.raw").write_bytes(version_bytes)
+              report["build_version"] = {"source": str(version), "blob": blob(version_bytes),
+                                         "sha256": hashlib.sha256(version_bytes).hexdigest()}
+              subprocess.run(["git", "add", "-f", "--", str(version)], env=env, check=True)
+          else:
+              version_bytes = subprocess.check_output(["git", "describe", "--long", "--match", "v*"])
+              assert version_bytes.strip(), "missing tag-derived build version"
+              (output / "build-version.raw").write_bytes(version_bytes)
+              report["build_version"] = {"source": "git describe --long --match v*",
+                                         "blob": blob(version_bytes),
+                                         "sha256": hashlib.sha256(version_bytes).hexdigest()}
+          report["built_source_tree"] = subprocess.check_output(["git", "write-tree"], env=env).decode().strip()
+          index.unlink()
+          manifest = subprocess.check_output(["git", "ls-tree", "-r", "-z", report["built_source_tree"]])
+          (output / "built-source-manifest.txt").write_bytes(manifest)
+          report["built_manifest_sha256"] = hashlib.sha256(manifest).hexdigest()
+          (output / "provenance.json").write_text(json.dumps(report, indent=2) + "\n")
+          subprocess.run(["git", "diff", "--check"], check=True)
+          PY
+
+      - name: Build VPP debug
+        id: build
+        run: |
+          git config --global --add safe.directory "$PWD"
+          export VPP_EXTRA_CMAKE_ARGS="\
+            -DCMAKE_C_COMPILER_LAUNCHER=ccache \
+            -DCMAKE_CXX_COMPILER_LAUNCHER=ccache"
+          ccache -z
+          make UNATTENDED=yes build
+          ccache -s
+
+      - name: Save ccache
+        if: steps.ccache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: build-root/.ccache
+          key: ccache-debug-debian13-${{ runner.arch }}-${{ matrix.variant }}-${{ github.ref_name }}-${{ github.sha }}
 
       - name: Remount /dev/shm for the test harness
         uses: ./.github/actions/vpp-docker-runtime-setup
@@ -338,17 +492,97 @@ jobs:
           ip netns exec "${namespace}" ip tuntap add dev vpp-ci-tap mode tap
           ip netns exec "${namespace}" ip link del vpp-ci-tap
 
+      - name: Run the original DF checksum control
+        id: negative
+        if: matrix.variant == 'original-df'
+        run: |
+          set -eu
+          evidence="${RUNNER_TEMP}/esp-evidence"
+          mkdir "${RUNNER_TEMP}/esp-observer"
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+
+          source = '''import json
+          import os
+          import traceback
+          import unittest
+
+          original = unittest.TestResult.addSubTest
+          def record(self, test, subtest, error):
+              if test.id() == "test_ipsec_esp.TestIpsecEspTun.test_tun_df44":
+                  event = {"test": test.id(), "params": dict(subtest.params),
+                           "error": None if error is None else error[0].__name__,
+                           "trace": "" if error is None else "".join(traceback.format_exception(*error))}
+                  path = os.path.join(os.environ["ESP_EVIDENCE"], "subtests-" + str(os.getpid()) + ".jsonl")
+                  data = (json.dumps(event) + "\\n").encode()
+                  if os.path.exists(path) and os.path.getsize(path) + len(data) > 1048576:
+                      raise RuntimeError("ESP subtest evidence exceeds 1 MiB")
+                  with open(path, "ab") as output:
+                      output.write(data)
+              return original(self, test, subtest, error)
+          unittest.TestResult.addSubTest = record
+          '''
+          (Path(os.environ["RUNNER_TEMP"]) / "esp-observer/sitecustomize.py").write_text(source)
+          PY
+          export ESP_EVIDENCE="${evidence}"
+          export PYTHONPATH="${RUNNER_TEMP}/esp-observer${PYTHONPATH:+:${PYTHONPATH}}"
+          rm -f /tmp/vpp-unittest-TestIpsecEspTun/log.txt
+          set +e
+          make UNATTENDED=yes TEST_JOBS=auto RETRIES=0 \
+            TEST=ipsec_esp.TestIpsecEspTun.test_tun_df44 test-debug 2>&1 |
+            (ulimit -f 32768; tee "${evidence}/command.log")
+          statuses=("${PIPESTATUS[@]}")
+          set -e
+          printf '%s\n' "${statuses[0]}" > "${evidence}/raw-returncode.txt"
+          printf '%s\n' "${statuses[1]}" > "${evidence}/capture-returncode.txt"
+          printf '%s\n' 'make UNATTENDED=yes TEST_JOBS=auto RETRIES=0 TEST=ipsec_esp.TestIpsecEspTun.test_tun_df44 test-debug' > "${evidence}/command.txt"
+          test "${statuses[1]}" = 0
+
       - name: Run the Python functional tests
+        id: positive
+        if: matrix.variant == 'fixed'
         run: |
           git config --global --add safe.directory "$PWD"
           set -eu
-          for suite in ${{ steps.tests.outputs.suites }}; do
+          suites=(${{ steps.tests.outputs.suites }})
+          if [ '${{ steps.tests.outputs.tunnel_regression }}' = true ]; then
+            case " ${suites[*]} " in
+              *' ipsec_esp '*) ;;
+              *) suites+=(ipsec_esp) ;;
+            esac
+          fi
+          for suite in "${suites[@]}"; do
             echo "Running TEST=${suite}"
             if [ "${suite}" = linux_cp ]; then
               recovery_log=/tmp/vpp-unittest-TestLinuxCPNetlinkRecovery/log.txt
               rm -f "${recovery_log}"
             fi
-            make UNATTENDED=yes TEST_JOBS=auto RETRIES=2 TEST="${suite}" test-debug
+            if [ "${suite}" = ipsec_esp ] && [ '${{ needs.test-plan.outputs.tunnel_control }}' = true ]; then
+              rm -f /tmp/vpp-unittest-TestIpsecEspTun/log.txt
+              evidence="${RUNNER_TEMP}/esp-evidence"
+              set +e
+              make UNATTENDED=yes TEST_JOBS=auto RETRIES=2 TEST="${suite}" test-debug 2>&1 |
+                (ulimit -f 32768; tee "${evidence}/command.log")
+              statuses=("${PIPESTATUS[@]}")
+              set -e
+              printf '%s\n' "${statuses[0]}" > "${evidence}/raw-returncode.txt"
+              printf '%s\n' "${statuses[1]}" > "${evidence}/capture-returncode.txt"
+              printf '%s\n' 'make UNATTENDED=yes TEST_JOBS=auto RETRIES=2 TEST=ipsec_esp test-debug' > "${evidence}/command.txt"
+              python3 - <<'PY'
+          import os
+          from pathlib import Path
+
+          source = Path("/tmp/vpp-unittest-TestIpsecEspTun/log.txt")
+          if not source.is_file() or source.is_symlink() or source.stat().st_size > 8 * 1024 * 1024:
+              raise SystemExit("Missing, unsafe or oversized ESP named log")
+          (Path(os.environ["RUNNER_TEMP"]) / "esp-evidence/named-test.log").write_bytes(source.read_bytes())
+          PY
+              test "${statuses[1]}" = 0
+              test "${statuses[0]}" = 0
+            else
+              make UNATTENDED=yes TEST_JOBS=auto RETRIES=2 TEST="${suite}" test-debug
+            fi
             if [ "${suite}" = linux_cp ]; then
               python3 - "${recovery_log}" <<'PY'
           import re
@@ -374,6 +608,119 @@ jobs:
           PY
             fi
           done
+
+      - name: Verify complete ESP evidence
+        if: always() && needs.test-plan.outputs.tunnel_control == 'true'
+        env:
+          ESP_VARIANT: ${{ matrix.variant }}
+          BUILD_OUTCOME: ${{ steps.build.outcome }}
+          TEST_OUTCOME: ${{ matrix.variant == 'fixed' && steps.positive.outcome || steps.negative.outcome }}
+        run: |
+          python3 - <<'PY'
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+          import re
+          import subprocess
+
+          output = Path(os.environ["RUNNER_TEMP"]) / "esp-evidence"
+          output.mkdir(exist_ok=True)
+          result = {"accepted": False, "build": os.environ["BUILD_OUTCOME"],
+                    "test_step": os.environ["TEST_OUTCOME"]}
+          try:
+              if not (output / "named-test.log").exists():
+                  source = Path("/tmp/vpp-unittest-TestIpsecEspTun/log.txt")
+                  assert source.is_file() and not source.is_symlink(), "missing named ESP log"
+                  assert source.stat().st_size <= 8 * 1024 * 1024, "named ESP log exceeds 8 MiB"
+                  (output / "named-test.log").write_bytes(source.read_bytes())
+              provenance = json.loads((output / "provenance.json").read_text())
+              manifest = (output / "built-source-manifest.txt").read_bytes()
+              assert hashlib.sha256(manifest).hexdigest() == provenance["built_manifest_sha256"]
+              assert manifest == subprocess.check_output(["git", "ls-tree", "-r", "-z", provenance["built_source_tree"]])
+              assert subprocess.check_output(["git", "rev-parse", "HEAD"]).decode().strip() == provenance["checkout"]
+              version_bytes = (output / "build-version.raw").read_bytes()
+              version_info = provenance["build_version"]
+              assert 0 < len(version_bytes) <= 4096, "missing or oversized build version evidence"
+              version_blob = hashlib.sha1(b"blob " + str(len(version_bytes)).encode() + b"\0" + version_bytes).hexdigest()
+              assert version_blob == version_info["blob"]
+              assert hashlib.sha256(version_bytes).hexdigest() == version_info["sha256"]
+              version = Path("src/scripts/.version")
+              assert not version.is_symlink(), "unsafe post-build version input"
+              if version_info["source"] == str(version):
+                  assert version.is_file() and version.read_bytes() == version_bytes, "build version drift"
+                  assert subprocess.check_output(["git", "show", provenance["built_source_tree"] + ":" + str(version)]) == version_bytes
+              else:
+                  assert version_info["source"] == "git describe --long --match v*" and not version.exists()
+                  assert subprocess.check_output(["git", "describe", "--long", "--match", "v*"]) == version_bytes
+              for key, path in (("built_header", "src/vnet/tunnel/tunnel_dp.h"),
+                                ("built_test", "test/test_ipsec_esp.py")):
+                  data = Path(path).read_bytes()
+                  actual = hashlib.sha1(b"blob " + str(len(data)).encode() + b"\0" + data).hexdigest()
+                  assert actual == provenance[key], "post-build source drift: " + path
+              raw = (output / "command.log").read_text()
+              named = (output / "named-test.log").read_text()
+              rc = int((output / "raw-returncode.txt").read_text())
+              result["raw_returncode"] = rc
+              assert int((output / "capture-returncode.txt").read_text()) == 0
+              assert os.environ["BUILD_OUTCOME"] == "success", "build did not succeed"
+              assert os.environ["TEST_OUTCOME"] == "success", "command/capture step failed"
+              assert (output / "command.txt").stat().st_size > 0 and raw and named
+              assert (output / "command.log").stat().st_size <= 32 * 1024 * 1024
+              callbacks = re.findall(r" --- (add\w+)\(\) TestIpsecEspTun\.test_tun_df44\(", named)
+              if os.environ["ESP_VARIANT"] == "fixed":
+                  assert rc == 0 and callbacks == ["addSuccess"], "missing exact positive success"
+                  assert provenance["built_header"] == provenance["expected_fixed"]
+              else:
+                  assert 0 < rc < 128 and callbacks == [], "unexpected return code or method callback"
+                  assert provenance["replacement_count"] == 1
+                  assert provenance["built_header"] == provenance["expected_negative"]
+                  events = []
+                  for path in sorted(output.glob("subtests-*.jsonl")):
+                      assert path.stat().st_size <= 1024 * 1024
+                      events.extend(json.loads(line) for line in path.read_text().splitlines())
+                  expected = {(flag, tos, df, size) for flag, tos in ((1, 0), (1, 171), (13, 171), (0, 171))
+                              for df in (0, 1) for size in (0, 1, 54, 511)}
+                  actual = [(e["params"]["tun_flags"], e["params"]["inner_tos"],
+                             e["params"]["inner_df"], e["params"]["payload_size"]) for e in events]
+                  assert len(events) == 32 and set(actual) == expected, "incomplete subtest matrix"
+                  failures = [event for event in events if event["error"] is not None]
+                  assert failures and actual[:4] == [(1, 0, 0, size) for size in (0, 1, 54, 511)]
+                  assert all(event["error"] is None for event in events[:4]), "DF0 controls failed"
+                  first = failures[0]
+                  assert first["params"] == {"tun_flags": 1, "inner_tos": 0, "inner_df": 1, "payload_size": 0}
+                  for event in events:
+                      assert event["test"] == "test_ipsec_esp.TestIpsecEspTun.test_tun_df44"
+                  for event in failures:
+                      trace = event["trace"]
+                      assert event["error"] == "AssertionError"
+                      assert 'test_ipsec_esp.py", line 604, in test_tun_df44' in trace
+                      assert 'test_ipsec_esp.py", line 565, in verify_encrypted' in trace
+                      assert "self.assertEqual(checksum(header[:header_len]), 0)" in trace
+                      assert re.search(r"AssertionError: [1-9][0-9]* != 0", trace)
+                  assert "AssertionError: 49151 != 0" in first["trace"]
+                  assert "FAIL:" in raw and "AssertionError: 49151 != 0" in raw
+                  assert not re.search(r"^ERROR:|CoreDump|TimeoutExpired", raw, re.MULTILINE)
+                  (output / "checksum-witness.txt").write_text(first["trace"])
+                  result["subtests"] = len(events)
+                  result["checksum_failures"] = len(failures)
+              result["accepted"] = True
+          except Exception as error:
+              result["error"] = str(error)
+              raise
+          finally:
+              (output / "result.json").write_text(json.dumps(result, indent=2) + "\n")
+          PY
+
+      - name: Upload ESP evidence
+        if: always() && needs.test-plan.outputs.tunnel_control == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: esp-evidence-${{ matrix.variant }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/esp-evidence/
+          retention-days: 7
+          if-no-files-found: error
+          compression-level: 6
 
       - name: Collect failed test diagnostics
         if: failure()
@@ -461,7 +808,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: vpp-test-diagnostics-${{ github.run_id }}-${{ github.run_attempt }}
+          name: vpp-test-diagnostics-${{ matrix.variant }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ runner.temp }}/vpp-test-diagnostics/
           retention-days: 7
           if-no-files-found: warn
