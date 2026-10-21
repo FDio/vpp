@@ -90,6 +90,180 @@ format_get_visible_length (u8 *s)
 
   return len;
 }
+
+static int
+format_word_wrap_is_numeric (u8 *w, uword len)
+{
+  uword i;
+
+  if (len == 0)
+    return 0;
+
+  if (len > 2 && w[0] == '0' && (w[1] == 'x' || w[1] == 'X'))
+    {
+      for (i = 2; i < len; i++)
+	if (!((w[i] >= '0' && w[i] <= '9') || (w[i] >= 'a' && w[i] <= 'f') ||
+	      (w[i] >= 'A' && w[i] <= 'F')))
+	  return 0;
+      return 1;
+    }
+
+  for (i = 0; i < len; i++)
+    if (w[i] < '0' || w[i] > '9')
+      return 0;
+  return 1;
+}
+
+static u8 *
+format_word_wrap_line (u8 *r, u8 *line, uword line_len, uword indent, uword extra_indent,
+		       u32 max_width)
+{
+  uword pos = 0;
+  uword col = 0;
+  uword wrap_indent = indent + extra_indent;
+  int at_line_start = 1;
+
+  while (pos < indent && pos < line_len)
+    {
+      vec_add1 (r, line[pos]);
+      pos++;
+      col++;
+    }
+
+  while (pos < line_len)
+    {
+      uword word_start, word_end, chunk_end, chunk_len;
+
+      while (pos < line_len && line[pos] == ' ')
+	pos++;
+      if (pos >= line_len)
+	break;
+
+      word_start = pos;
+      while (pos < line_len && line[pos] != ' ')
+	pos++;
+      word_end = pos;
+      chunk_end = word_end;
+
+      if (!format_word_wrap_is_numeric (line + word_start, word_end - word_start))
+	{
+	  uword look = pos;
+
+	  while (look < line_len && line[look] == ' ')
+	    look++;
+	  if (look < line_len)
+	    {
+	      uword val_start = look, val_end = look;
+
+	      while (val_end < line_len && line[val_end] != ' ')
+		val_end++;
+	      if (format_word_wrap_is_numeric (line + val_start, val_end - val_start))
+		{
+		  chunk_end = val_end;
+		  pos = val_end;
+		}
+	    }
+	}
+
+      chunk_len = chunk_end - word_start;
+
+      if (at_line_start)
+	;
+      else if (col + 1 + chunk_len > max_width && col > wrap_indent)
+	{
+	  uword k;
+
+	  vec_add1 (r, '\n');
+	  for (k = 0; k < wrap_indent; k++)
+	    vec_add1 (r, ' ');
+	  col = wrap_indent;
+	}
+      else
+	{
+	  vec_add1 (r, ' ');
+	  col++;
+	}
+
+      vec_add (r, line + word_start, chunk_len);
+      col += chunk_len;
+      at_line_start = 0;
+    }
+
+  return r;
+}
+
+__clib_export u8 *
+format_word_wrap (u8 *s, u32 max_width)
+{
+  return format_word_wrap_with_indent (s, max_width, 0);
+}
+
+__clib_export u8 *
+format_word_wrap_with_indent (u8 *s, u32 max_width, u32 extra_indent)
+{
+  u8 *r = 0;
+  uword len, pos;
+
+  if (s == 0)
+    return s;
+
+  len = vec_len (s);
+  pos = 0;
+  while (1)
+    {
+      uword line_end, indent;
+
+      for (line_end = pos; line_end < len && s[line_end] != '\n'; line_end++)
+	;
+
+      indent = 0;
+      while (pos + indent < line_end && s[pos + indent] == ' ')
+	indent++;
+
+      r = format_word_wrap_line (r, s + pos, line_end - pos, indent, extra_indent, max_width);
+
+      if (line_end >= len)
+	break;
+
+      vec_add1 (r, '\n');
+      pos = line_end + 1;
+    }
+
+  vec_free (s);
+  return r;
+}
+
+__clib_export u8 *
+format_word_wrap_last_line (u8 *s, u32 max_width)
+{
+  return format_word_wrap_last_line_with_indent (s, max_width, 0);
+}
+
+__clib_export u8 *
+format_word_wrap_last_line_with_indent (u8 *s, u32 max_width, u32 extra_indent)
+{
+  u8 *r = 0;
+  uword len, line_start, indent;
+
+  if (s == 0)
+    return s;
+
+  len = vec_len (s);
+  line_start = len;
+  while (line_start > 0 && s[line_start - 1] != '\n')
+    line_start--;
+
+  indent = 0;
+  while (line_start + indent < len && s[line_start + indent] == ' ')
+    indent++;
+
+  vec_add (r, s, line_start);
+  r = format_word_wrap_line (r, s + line_start, len - line_start, indent, extra_indent, max_width);
+
+  vec_free (s);
+  return r;
+}
+
 typedef struct
 {
   /* String justification: + => right, - => left, = => center. */
