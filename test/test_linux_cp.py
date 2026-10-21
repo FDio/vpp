@@ -1244,6 +1244,7 @@ class TestLinuxCPLinuxToVPP(TestLinuxCPNetNSBase):
     route_blackhole = "192.168.50.0/24"
     route_unreachable = "192.168.51.0/24"
     route_prohibit = "192.168.52.0/24"
+    route_unicast = "192.168.53.0/24"
 
     @classmethod
     def setUpClass(cls):
@@ -1272,6 +1273,28 @@ class TestLinuxCPLinuxToVPP(TestLinuxCPNetNSBase):
             return True
         except Exception:
             return False
+
+    def test_linux_to_vpp_ipv4_unicast_delete_by_prefix(self):
+        """Deleting Linux and CLI paths to the same prefix leaves no FIB entry."""
+        self.vapi.cli(f"ip route add {self.route_unicast} via loop0")
+        add_namespace_route(self.ns_name, self.route_unicast, dev="hloop0")
+        self.poll_for(
+            "Linux route sourced in VPP",
+            lambda: "lcp-rt refs" in self.vapi.cli(f"show ip fib {self.route_unicast}"),
+            True,
+        )
+        fib = self.vapi.cli(f"show ip fib {self.route_unicast}")
+        self.assertNotIn("exclusive", fib, fib)
+
+        del_namespace_route(self.ns_name, self.route_unicast)
+        fib = self.vapi.cli(f"show ip fib {self.route_unicast}")
+        self.assertNotIn("lcp-rt refs", fib, fib)
+        self.vapi.cli(f"ip route del {self.route_unicast} via loop0")
+        self.sleep(0.2)
+        self.assertFalse(
+            self._route_exists(self.route_unicast),
+            self.vapi.cli(f"show ip fib {self.route_unicast}"),
+        )
 
     def test_linux_to_vpp_route_blackhole(self):
         """Linux blackhole route syncs to VPP as DROP"""
