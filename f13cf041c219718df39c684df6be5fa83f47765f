@@ -16,6 +16,23 @@
       "message": "Re-run failed jobs via GitHub UI",
       "revId": "f13cf041c219718df39c684df6be5fa83f47765f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ea753b39_38ad1e31",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-10-21T01:18:42Z",
+      "side": 1,
+      "message": "Override non-related CI failures for this branch as this is a critical bug that has been successfully verified in master and the other newer stable branches.",
+      "revId": "f13cf041c219718df39c684df6be5fa83f47765f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
