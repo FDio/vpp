@@ -90,8 +90,14 @@ snort_enq_qpair (vlib_main_t *vm, vlib_node_runtime_t *node,
   qp->n_free_descs = n_free_descs;
   qp->next_free_desc = next_free_desc;
 
-  if (!__atomic_exchange_n (&qp->hdr->enq.interrupt_pending, 1,
-			    __ATOMIC_RELAXED))
+  /* The head store above must be visible before the flag is read, see
+   * the fence in daq_vpp_msg_receive (). The seq_cst exchange orders it
+   * without a separate fence on the supported targets: xchg is a full
+   * barrier on x86, and stlr is ordered before an acquire RMW on arm64.
+   * (C11 alone guarantees this only for a seq_cst head store.) Acquire
+   * pairs with the DAQ's release store of 0, so the eventfd write below
+   * comes after the DAQ's eventfd read. */
+  if (!__atomic_exchange_n (&qp->hdr->enq.interrupt_pending, 1, __ATOMIC_SEQ_CST))
     {
       if (write (qp->enq_fd, &(u64){ 1 }, sizeof (u64)) < 0)
 	vlib_node_increment_counter (vm, node->node_index,
