@@ -39,6 +39,7 @@ add_vpp_plugin(unittest
   interface_test.c
   ipsec_test.c
   ip_psh_cksum_test.c
+  l2fib_test.c
   llist_test.c
   link_speed_test.c
   mactime_test.c

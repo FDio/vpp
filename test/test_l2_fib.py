@@ -62,6 +62,7 @@
 
 import unittest
 import random
+import time
 
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether
@@ -670,6 +671,64 @@ class TestL2fib(VppTestCase):
         self.vapi.want_l2_macs_events2(enable_disable=0)
         self.assertEqual(fib_macs, macs)
         self.assertEqual(fib_macs - learned_macs, set())
+
+
+class TestL2fibFlushRefresh(VppTestCase):
+    """L2 FIB re-learn notification before a stale entry is scanned."""
+
+    def test_stale_hit_event(self):
+        """Refreshing a stale MAC reports an ADD without depending on a race."""
+        self.create_pg_interfaces(range(2))
+        self.vapi.bridge_domain_add_del_v2(
+            bd_id=1, learn=1, uu_flood=0, flood=1, forward=1
+        )
+        for interface in self.pg_interfaces:
+            interface.admin_up()
+            self.vapi.sw_interface_set_l2_bridge(
+                rx_sw_if_index=interface.sw_if_index, bd_id=1
+            )
+
+        mac = mac_pton(self.pg0.remote_mac)
+        packet = Ether(dst="ff:ff:ff:ff:ff:ff", src=self.pg0.remote_mac)
+        action = VppEnum.vl_api_mac_event_action_t.MAC_EVENT_ACTION_API_ADD
+        counter = "/err/l2-learn/L2 learn hit updates"
+
+        def expect_add():
+            deadline = time.monotonic() + 5
+            while time.monotonic() < deadline:
+                for event in self.vapi.collect_events():
+                    for entry in event.mac[: event.n_macs]:
+                        if entry.mac_addr.packed == mac and entry.action == action:
+                            self.assertEqual(entry.sw_if_index, self.pg0.sw_if_index)
+                            return
+                self.sleep(0.01)
+            self.fail("No ADD event for the learned MAC")
+
+        self.vapi.want_l2_macs_events2()
+        try:
+            self.pg0.add_stream([packet])
+            self.pg_start()
+            expect_add()
+
+            # The initial event is emitted after the first scan completes.
+            # Invalidate the sequence number without waking the ager, so the
+            # packet must take the stale-hit path rather than a fresh miss.
+            before = self.statistics.get_err_counter(counter)
+            self.vapi.cli("test l2fib invalidate %s" % self.pg0.name)
+            self.pg0.add_stream([packet])
+            self.pg_start()
+            self.assertEqual(self.statistics.get_err_counter(counter), before + 1)
+
+            entries = {
+                entry.mac.packed: entry
+                for entry in self.vapi.l2_fib_table_dump(bd_id=1)
+            }
+            self.assertIn(mac, entries)
+            self.assertFalse(entries[mac].static_mac)
+            self.assertEqual(entries[mac].sw_if_index, self.pg0.sw_if_index)
+            expect_add()
+        finally:
+            self.vapi.want_l2_macs_events2(enable_disable=0)
 
 
 if __name__ == "__main__":
