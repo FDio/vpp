@@ -12,6 +12,10 @@ from scapy.layers.inet6 import IPv6
 from scapy.layers.l2 import Ether
 from scapy.packet import Raw
 
+from vpp_ip import INVALID_INDEX
+from vpp_papi import VppEnum
+from vpp_sub_interface import VppDot1QSubint
+
 
 class TestMSSClamp(VppTestCase):
     """TCP MSS Clamping Test Case"""
@@ -446,6 +450,137 @@ class TestMSSClamp(VppTestCase):
 
         # Send the packets again and ensure they are unchanged.
         self.send_and_verify_ip6(self.pg1, self.pg0, 1460, 1460)
+
+
+class TestMSSClampIfaceDelete(VppTestCase):
+    """TCP MSS Clamping - interface delete and sw_if_index reuse"""
+
+    def setUp(self):
+        super(TestMSSClampIfaceDelete, self).setUp()
+
+        self.create_pg_interfaces(range(2))
+
+        for i in self.pg_interfaces:
+            i.admin_up()
+            i.config_ip4()
+            i.resolve_arp()
+
+    def tearDown(self):
+        for i in self.pg_interfaces:
+            i.unconfig_ip4()
+            i.admin_down()
+        super(TestMSSClampIfaceDelete, self).tearDown()
+
+    def clamp_dump(self):
+        # get the clamp state of all interfaces
+        _, details = self.vapi.mss_clamp_get(sw_if_index=INVALID_INDEX)
+        return details
+
+    def enable_clamp(self, sw_if_index, mss=1424, direction=None):
+        if direction is None:
+            direction = (
+                VppEnum.vl_api_mss_clamp_dir_t.MSS_CLAMP_DIR_RX
+                | VppEnum.vl_api_mss_clamp_dir_t.MSS_CLAMP_DIR_TX
+            )
+        self.vapi.mss_clamp_enable_disable(
+            sw_if_index,
+            ipv4_mss=mss,
+            ipv6_mss=mss,
+            ipv4_direction=direction,
+            ipv6_direction=direction,
+        )
+
+    def verify_features(self, itf, present):
+        feats = self.vapi.cli("show interface features %s" % itf.name)
+        for node in (
+            "tcp-mss-clamping-ip4-in",
+            "tcp-mss-clamping-ip4-out",
+            "tcp-mss-clamping-ip6-in",
+            "tcp-mss-clamping-ip6-out",
+        ):
+            if present:
+                self.assertIn(node, feats)
+            else:
+                self.assertNotIn(node, feats)
+
+    def send_syn_and_verify(self, dst, mss, expected_mss):
+        syn = (
+            Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac)
+            / IP(src=self.pg0.remote_ip4, dst=dst.remote_ip4)
+            / TCP(sport=1234, dport=1234, flags="S", options=[("MSS", mss)])
+            / Raw(b"\xa5" * 100)
+        )
+        rxs = self.send_and_expect(self.pg0, syn * 5, self.pg1)
+        for rx in rxs:
+            self.assertEqual(rx[TCP].options[0], ("MSS", expected_mss))
+
+    def test_loopback_delete(self):
+        """Clamp state is reset when an interface is deleted"""
+
+        (lo,) = self.create_loopback_interfaces(1)
+        sw_if_index = lo.sw_if_index
+        try:
+            self.enable_clamp(sw_if_index)
+            self.verify_features(lo, True)
+            self.assertEqual([d.sw_if_index for d in self.clamp_dump()], [sw_if_index])
+
+            lo.remove_vpp_config()
+
+            # Verify that no clamp state is left for the deleted interface.
+            self.assertEqual(self.clamp_dump(), [])
+
+            # Create the interface again and verify that it gets the same sw_if_index
+            # and has no clamp state.
+            (lo,) = self.create_loopback_interfaces(1)
+            self.assertEqual(lo.sw_if_index, sw_if_index)
+            self.assertEqual(self.clamp_dump(), [])
+            self.verify_features(lo, False)
+
+            # Enable the feature again with the same parameters and verify that it
+            # is enabled.
+            self.enable_clamp(sw_if_index)
+            self.verify_features(lo, True)
+        finally:
+            if lo.query_vpp_config():
+                self.enable_clamp(lo.sw_if_index, mss=0, direction=0)
+                lo.remove_vpp_config()
+
+    def test_subif_delete(self):
+        """A re-created sub-interface does not inherit clamping"""
+
+        tx = VppEnum.vl_api_mss_clamp_dir_t.MSS_CLAMP_DIR_TX
+        sub = VppDot1QSubint(self, self.pg1, 10)
+        try:
+            sub.admin_up()
+            sub.config_ip4()
+            sub.resolve_arp()
+            sw_if_index = sub.sw_if_index
+            self.enable_clamp(sw_if_index, direction=tx)
+            self.send_syn_and_verify(sub, 1460, 1424)
+
+            sub.unconfig_ip4()
+            sub.admin_down()
+            sub.remove_vpp_config()
+
+            sub = VppDot1QSubint(self, self.pg1, 10)
+            self.assertEqual(sub.sw_if_index, sw_if_index)
+            sub.admin_up()
+            sub.config_ip4()
+            sub.resolve_arp()
+
+            # Send syn packets and verify that the MSS value is unchanged.
+            self.send_syn_and_verify(sub, 1460, 1460)
+
+            # Enable the feature again with the same parameters and verify that
+            # the MSS value is lowered.
+            self.enable_clamp(sw_if_index, direction=tx)
+            self.send_syn_and_verify(sub, 1460, 1424)
+        finally:
+            if sub.query_vpp_config():
+                self.enable_clamp(sub.sw_if_index, mss=0, direction=0)
+                sub.unconfig_ip4()
+                sub.admin_down()
+                sub.remove_vpp_config()
 
 
 if __name__ == "__main__":
