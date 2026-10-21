@@ -90,8 +90,11 @@ snort_enq_qpair (vlib_main_t *vm, vlib_node_runtime_t *node,
   qp->n_free_descs = n_free_descs;
   qp->next_free_desc = next_free_desc;
 
-  if (!__atomic_exchange_n (&qp->hdr->enq.interrupt_pending, 1,
-			    __ATOMIC_RELAXED))
+  /* the head store above before the flag read below, see the fence in
+   * daq_vpp_msg_receive (); acquire pairs with the DAQ's release store of
+   * 0, so the eventfd write below comes after the DAQ's eventfd read */
+  __atomic_thread_fence (__ATOMIC_SEQ_CST);
+  if (!__atomic_exchange_n (&qp->hdr->enq.interrupt_pending, 1, __ATOMIC_ACQUIRE))
     {
       if (write (qp->enq_fd, &(u64){ 1 }, sizeof (u64)) < 0)
 	vlib_node_increment_counter (vm, node->node_index,
