@@ -429,11 +429,14 @@ vnet_gre_tunnel_add (vnet_gre_tunnel_add_del_args_t *a, u32 outer_fib_index,
       hw_if_index = vnet_eth_register_interface (vnm, &eir);
     }
 
-  /* Set GRE tunnel interface output node (not used for L3 payload) */
+  /*
+   * Set GRE tunnel interface output node for the L2 payload. L3 tunnels
+   * have no L2 adjacency for it to use, so they get none.
+   */
   if (GRE_TUNNEL_TYPE_ERSPAN == t->type)
     vnet_set_interface_output_node (vnm, hw_if_index,
 				    gre_erspan_encap_node.index);
-  else
+  else if (GRE_TUNNEL_TYPE_TEB == t->type)
     vnet_set_interface_output_node (vnm, hw_if_index,
 				    gre_teb_encap_node.index);
 
