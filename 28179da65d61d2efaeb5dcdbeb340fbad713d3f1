@@ -35,6 +35,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "ee30d77f_a1298a8a",
+        "filename": "src/plugins/http/http.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1443,
+      "author": {
+        "id": 431
+      },
+      "writtenOn": "2026-10-21T14:42:01Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "d8770c8d_92f7769d",
+      "revId": "28179da65d61d2efaeb5dcdbeb340fbad713d3f1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "0631c8ed_eeedfeae",
@@ -48,6 +66,24 @@
       "writtenOn": "2026-10-19T18:40:15Z",
       "side": 1,
       "message": "can we keep it shorter? most important is byte order",
+      "revId": "28179da65d61d2efaeb5dcdbeb340fbad713d3f1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "03f4f2e9_79de796d",
+        "filename": "src/plugins/http/http.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 62,
+      "author": {
+        "id": 431
+      },
+      "writtenOn": "2026-10-21T14:42:01Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "0631c8ed_eeedfeae",
       "revId": "28179da65d61d2efaeb5dcdbeb340fbad713d3f1",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -69,6 +105,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "e9ac36ba_0d606e79",
+        "filename": "src/plugins/http/http2/hpack.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 759,
+      "author": {
+        "id": 431
+      },
+      "writtenOn": "2026-10-21T14:42:01Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "a50080c6_be68620c",
+      "revId": "28179da65d61d2efaeb5dcdbeb340fbad713d3f1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "a8ce281b_aa7e25e3",
@@ -82,6 +136,24 @@
       "writtenOn": "2026-10-19T18:40:15Z",
       "side": 1,
       "message": "this is not used",
+      "revId": "28179da65d61d2efaeb5dcdbeb340fbad713d3f1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a3d26ebc_099f5872",
+        "filename": "src/plugins/http/http2/http2.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1159,
+      "author": {
+        "id": 431
+      },
+      "writtenOn": "2026-10-21T14:42:01Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "a8ce281b_aa7e25e3",
       "revId": "28179da65d61d2efaeb5dcdbeb340fbad713d3f1",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -103,6 +175,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "a9f53081_58390a81",
+        "filename": "src/plugins/http/http3/http3.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 400,
+      "author": {
+        "id": 431
+      },
+      "writtenOn": "2026-10-21T14:42:01Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "cb687e2d_7f8b7c2e",
+      "revId": "28179da65d61d2efaeb5dcdbeb340fbad713d3f1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "0f4f4810_4d2725af",
@@ -120,6 +210,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "2010333d_41f54fda",
+        "filename": "src/plugins/http_static/http_static.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 161,
+      "author": {
+        "id": 431
+      },
+      "writtenOn": "2026-10-21T14:42:01Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "0f4f4810_4d2725af",
+      "revId": "28179da65d61d2efaeb5dcdbeb340fbad713d3f1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "afb032a3_bffa9098",
@@ -133,6 +241,24 @@
       "writtenOn": "2026-10-19T18:40:15Z",
       "side": 1,
       "message": "with format you can do append to just add alt-svc port if configured\ns \u003d format(s, \", h3-alt-svc-port %d\", l-\u003eh3_alt_svc_port);",
+      "revId": "28179da65d61d2efaeb5dcdbeb340fbad713d3f1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "8ff9da0f_f94d2f1e",
+        "filename": "src/plugins/http_static/static_server.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1517,
+      "author": {
+        "id": 431
+      },
+      "writtenOn": "2026-10-21T14:42:01Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "afb032a3_bffa9098",
       "revId": "28179da65d61d2efaeb5dcdbeb340fbad713d3f1",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
