@@ -1102,9 +1102,11 @@ static const http3_error_t hpack_error_to_http3_error[] = {
   [HPACK_ERROR_UNKNOWN] = HTTP3_ERROR_INTERNAL_ERROR,
 };
 
-#define encode_static_entry(_index)                                           \
-  vec_add2 (dst, a, 1);                                                       \
-  *a++ = 0xC0 | _index;
+/* Static table indices fit in at most two bytes with a 6-bit prefix. */
+#define encode_static_entry(_index)                                                                \
+  vec_add2 (dst, a, (_index) < 63 ? 1 : 2);                                                        \
+  *a = 0xC0;                                                                                       \
+  hpack_encode_int (a, (_index), 6);
 
 static u8 *
 qpack_encode_status_code (u8 *dst, http_status_code_t sc)

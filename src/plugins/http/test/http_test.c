@@ -1838,6 +1838,18 @@ http_test_qpack (vlib_main_t *vm)
 	     "response encoded as: %U", format_hex_bytes, buf, vec_len (buf));
   vec_free (buf);
 
+  /* Static index 67 needs a continuation byte after the 6-bit prefix. */
+  resp_control_data.sc = HTTP_STATUS_BAD_REQUEST;
+  u8 expected_bad_request[] =
+    "\x00\x00\xFF\x04\x5F\x4D\x8B\x9D\x29\xAD\x4B\x6A\x32\x54\x49\x50\x94\x7F\x56"
+    "\x96\xD0\x7A\xBE\x94\x10\x54\xD4\x44\xA8\x20\x05\x95\x04\x0B\x81\x66\xE0\x82"
+    "\xA6\x2D\x1B\xFF\xC4";
+  _qpack_serialize_response (0, 0, &resp_control_data, &buf);
+  HTTP_TEST ((vec_len (buf) == sizeof (expected_bad_request) - 1 &&
+	      !memcmp (buf, expected_bad_request, vec_len (buf))),
+	     "400 response encoded as: %U", format_hex_bytes, buf, vec_len (buf));
+  vec_free (buf);
+
   resp_control_data.sc = HTTP_STATUS_OK;
   resp_control_data.content_len = 1024;
   http_headers_ctx_t headers_ctx;
