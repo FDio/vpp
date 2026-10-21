@@ -18,6 +18,10 @@ typedef u8 *(format_function_t) (u8 * s, va_list * args);
 u8 *va_format (u8 * s, const char *format, va_list * args);
 u8 *format (u8 * s, const char *format, ...);
 u32 format_get_visible_length (u8 *s);
+u8 *format_word_wrap (u8 *s, u32 max_width);
+u8 *format_word_wrap_last_line (u8 *s, u32 max_width);
+u8 *format_word_wrap_with_indent (u8 *s, u32 max_width, u32 extra_indent);
+u8 *format_word_wrap_last_line_with_indent (u8 *s, u32 max_width, u32 extra_indent);
 
 #ifdef CLIB_UNIX
 
