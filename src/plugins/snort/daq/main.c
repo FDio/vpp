@@ -701,8 +701,17 @@ daq_vpp_msg_receive (void *handle, unsigned max_recv, const DAQ_Msg_t *msgs[],
 	daq_vpp_qpair_t *qp = e->data.ptr;
 	uint32_t n;
 
-	__atomic_store_n (&qp->hdr->enq.interrupt_pending, 0,
-			  __ATOMIC_RELAXED);
+	/* Consume the event, then clear interrupt_pending, then read the
+	 * head, in this order. vpp writes the eventfd only when it changes
+	 * interrupt_pending from 0 to 1, so an event must never be consumed
+	 * after the flag was cleared: the flag would stay set with no event
+	 * left. The release store keeps the read before the clear. The
+	 * fence pairs with the one in snort_enq_qpair (): either the head
+	 * read below sees the new packets, or vpp sees the cleared flag and
+	 * writes a new event. */
+	daq_vpp_flush_eventfd (qp->enq_fd);
+	__atomic_store_n (&qp->hdr->enq.interrupt_pending, 0, __ATOMIC_RELEASE);
+	__atomic_thread_fence (__ATOMIC_SEQ_CST);
 
 	n = daq_vpp_msg_receive_one (ctx, qp, msgs, max_recv - n_recv);
 	if (n)
@@ -710,7 +719,6 @@ daq_vpp_msg_receive (void *handle, unsigned max_recv, const DAQ_Msg_t *msgs[],
 	    msgs += n;
 	    n_recv += n;
 	  }
-	daq_vpp_flush_eventfd (qp->enq_fd);
       }
 
 done:
