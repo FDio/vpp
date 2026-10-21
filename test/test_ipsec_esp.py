@@ -5,6 +5,7 @@ from scapy.layers.inet import IP, ICMP, UDP
 from scapy.layers.inet6 import IPv6
 from scapy.layers.l2 import Ether
 from scapy.packet import Raw
+from scapy.utils import checksum
 
 from template_ipsec import (
     IpsecTra46Tests,
@@ -517,6 +518,10 @@ class TestIpsecEspTun(TemplateIpsecEsp, IpsecTun46Tests):
     def setUp(self):
         self.ipv4_params = IPsecIPv4Params()
         self.ipv6_params = IPsecIPv6Params()
+        self.inner_tos = 5
+        self.inner_df = 0
+        self.outer_tos = 4
+        self.outer_df = 0
 
         c = (
             VppEnum.vl_api_tunnel_encap_decap_flags_t.TUNNEL_API_ENCAP_DECAP_FLAG_ENCAP_COPY_DSCP
@@ -531,10 +536,9 @@ class TestIpsecEspTun(TemplateIpsecEsp, IpsecTun46Tests):
         super(TestIpsecEspTun, self).setUp()
 
     def gen_pkts(self, sw_intf, src, dst, count=1, payload_size=54):
-        # set the DSCP + ECN - flags are set to copy only DSCP
         return [
             Ether(src=sw_intf.remote_mac, dst=sw_intf.local_mac)
-            / IP(src=src, dst=dst, tos=5)
+            / IP(src=src, dst=dst, tos=self.inner_tos, flags=self.inner_df << 1)
             / UDP(sport=4444, dport=4444)
             / Raw(b"X" * payload_size)
             for i in range(count)
@@ -551,9 +555,53 @@ class TestIpsecEspTun(TemplateIpsecEsp, IpsecTun46Tests):
         ]
 
     def verify_encrypted(self, p, sa, rxs):
-        # just check that only the DSCP is copied
         for rx in rxs:
-            self.assertEqual(rx[IP].tos, 4)
+            header = rx[IP].original
+            self.assertGreaterEqual(len(header), 20)
+            self.assertEqual(header[0] >> 4, 4)
+            header_len = (header[0] & 0xF) * 4
+            self.assertGreaterEqual(header_len, 20)
+            self.assertGreaterEqual(len(header), header_len)
+            self.assertEqual(checksum(header[:header_len]), 0)
+            self.assertEqual(int.from_bytes(header[2:4], "big"), len(header))
+            self.assertEqual(header[1], self.outer_tos)
+            self.assertEqual(
+                int.from_bytes(header[6:8], "big") & 0x4000, self.outer_df << 14
+            )
+
+    def test_tun_df44(self):
+        """ipsec 4o4 tunnel DF copy and raw header checksum"""
+        flags = VppEnum.vl_api_tunnel_encap_decap_flags_t
+        copy_df = flags.TUNNEL_API_ENCAP_DECAP_FLAG_ENCAP_COPY_DF
+        copy_all = (
+            copy_df
+            | flags.TUNNEL_API_ENCAP_DECAP_FLAG_ENCAP_COPY_DSCP
+            | flags.TUNNEL_API_ENCAP_DECAP_FLAG_ENCAP_COPY_ECN
+        )
+        for tun_flags, dscp, inner_tos, outer_tos in (
+            (copy_df, 0, 0, 0),
+            (copy_df, 46, 0xAB, 46 << 2),
+            (copy_all, 46, 0xAB, 0xAB),
+            (0, 46, 0xAB, 46 << 2),
+        ):
+            self.unconfig_network()
+            p = self.params[socket.AF_INET]
+            p.tun_flags = tun_flags
+            p.dscp = dscp
+            self.config_network(self.params.values())
+            self.inner_tos = inner_tos
+            self.outer_tos = outer_tos
+            for inner_df in (0, 1):
+                self.inner_df = inner_df
+                self.outer_df = inner_df if tun_flags & copy_df else 0
+                for payload_size in (0, 1, 54, 511):
+                    with self.subTest(
+                        tun_flags=tun_flags,
+                        inner_tos=inner_tos,
+                        inner_df=inner_df,
+                        payload_size=payload_size,
+                    ):
+                        self.verify_tun_44(p, count=5, payload_size=payload_size)
 
     def verify_encrypted6(self, p, sa, rxs):
         # just check that the DSCP & ECN are copied

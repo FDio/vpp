@@ -49,13 +49,12 @@ tunnel_encap_fixup_4o4_w_chksum (tunnel_encap_decap_flags_t flags,
 		     ip4_header_get_df (inner)))
     {
       ip_csum_t sum = outer->checksum;
-      u16 tos = outer->flags_and_fragment_offset;
+      u16 old_flags = outer->flags_and_fragment_offset;
 
       ip4_header_set_df (outer);
 
-      sum =
-	ip_csum_update (outer->checksum, tos, outer->tos, ip4_header_t,
-			flags_and_fragment_offset);
+      sum = ip_csum_update (outer->checksum, old_flags, outer->flags_and_fragment_offset,
+			    ip4_header_t, flags_and_fragment_offset);
       outer->checksum = ip_csum_fold (sum);
     }
 }
