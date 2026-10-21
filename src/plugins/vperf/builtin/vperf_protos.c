@@ -161,6 +161,7 @@ vp_proto_client_stream_rx_inline (vp_test_session_t *es, session_t *s, u8 *rx_bu
   int n_read, i;
   svm_fifo_t *rx_fifo;
   u8 *rx_buf_start;
+  u8 rv = 0;
 
   rx_fifo = es->rx_fifo;
   rx_buf_start = rx_buf;
@@ -179,7 +180,8 @@ vp_proto_client_stream_rx_inline (vp_test_session_t *es, session_t *s, u8 *rx_bu
 	    {
 	      vp_proto_err ("read %d error at byte %lld, 0x%x not 0x%x", n_read,
 			    test_buf_offset + i, rx_buf_start[i], ((test_buf_offset + i) & 0xff));
-	      return 1;
+	      rv = 1;
+	      break;
 	    }
 	}
     }
@@ -206,7 +208,7 @@ vp_proto_client_stream_rx_inline (vp_test_session_t *es, session_t *s, u8 *rx_bu
   es->bytes_to_receive -= n_read;
   es->bytes_received += n_read;
 
-  return 0;
+  return rv;
 }
 
 static u8
@@ -218,7 +220,7 @@ vp_proto_client_stream_rx (vp_test_session_t *es, session_t *s, u8 *rx_buf)
 static u8
 vp_proto_client_stream_rx_test_bytes (vp_test_session_t *es, session_t *s, u8 *rx_buf)
 {
-  return vp_proto_client_stream_rx_inline (es, s, rx_buf, 0);
+  return vp_proto_client_stream_rx_inline (es, s, rx_buf, 1);
 }
 
 static u32

@@ -279,9 +279,9 @@ vp_client_rx_data (session_t *s, u8 test_bytes)
   es = vp_client_session_get (wrk, s->opaque);
   tp = &vp_test_main.protos[vpcm->cfg.proto];
   if (test_bytes)
-    vpcm->test_failed = tp->client_rx_test_bytes (es, s, wrk->rx_buf);
+    vpcm->test_failed |= tp->client_rx_test_bytes (es, s, wrk->rx_buf);
   else
-    vpcm->test_failed = tp->client_rx (es, s, wrk->rx_buf);
+    vpcm->test_failed |= tp->client_rx (es, s, wrk->rx_buf);
 }
 
 static void
