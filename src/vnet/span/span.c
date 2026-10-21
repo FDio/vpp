@@ -38,6 +38,28 @@ span_dst_set (span_mirror_t * sm, u32 dst_sw_if_index, int enable)
   return last;
 }
 
+/*
+ * Does dst_sw_if_index exist, and does its hardware interface have an
+ * interface output node? The mirrored frames go to that node; without one,
+ * they would go to node 0, null-node, and crash VPP. Whether the node can
+ * send an Ethernet frame is not checked, as the hardware interface doesn't
+ * tell: L2 tunnels such as L2-only MPLS tunnels and L2TPv3 sessions are not
+ * Ethernet class, and neither is a memif in IP mode or a tun. Such an
+ * interface sends the copies out like any other packet: a useless SPAN, but
+ * not a crash.
+ */
+static int
+span_dst_has_output_node (vnet_main_t *vnm, u32 dst_sw_if_index)
+{
+  vnet_hw_interface_t *hi;
+
+  if (!vnet_sw_interface_is_valid (vnm, dst_sw_if_index))
+    return 0;
+
+  hi = vnet_get_sup_hw_interface (vnm, dst_sw_if_index);
+  return hi->output_node_index != 0;
+}
+
 int
 span_add_delete_entry (vlib_main_t * vm,
 		       u32 src_sw_if_index, u32 dst_sw_if_index, u8 state,
@@ -51,6 +73,14 @@ span_add_delete_entry (vlib_main_t * vm,
   if ((src_sw_if_index == ~0) || (dst_sw_if_index == ~0 && state > 0)
       || (src_sw_if_index == dst_sw_if_index))
     return VNET_API_ERROR_INVALID_INTERFACE;
+
+  /*
+   * The mirrored frames, Ethernet header included, go to the destination's
+   * interface output node. L3-only interfaces, such as L3 GRE, IPIP or L3
+   * MPLS tunnels, have none.
+   */
+  if (state > 0 && !span_dst_has_output_node (sm->vnet_main, dst_sw_if_index))
+    return VNET_API_ERROR_INVALID_SW_IF_INDEX_2;
 
   vec_validate_aligned (sm->interfaces, src_sw_if_index,
 			CLIB_CACHE_LINE_BYTES);
@@ -153,6 +183,11 @@ set_interface_span_command_fn (vlib_main_t * vm,
     span_add_delete_entry (vm, src_sw_if_index, dst_sw_if_index, state, sf);
   if (rv == VNET_API_ERROR_INVALID_INTERFACE)
     return clib_error_return (0, "Invalid interface");
+  if (rv == VNET_API_ERROR_INVALID_SW_IF_INDEX_2)
+    return clib_error_return (0,
+			      "%U can't be a SPAN destination: it has no "
+			      "output node for the mirrored frames",
+			      format_vnet_sw_if_index_name, sm->vnet_main, dst_sw_if_index);
   return 0;
 }
 
