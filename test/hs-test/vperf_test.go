@@ -21,7 +21,7 @@ func init() {
 		VperfBuiltinUdpNoTxCsumOffloadTest, VperfBuiltinHttpTest, VperfBuiltinHttpsTest, VperfBuiltinHttp2Test,
 		VperfBuiltinHttp3Test, VperfBuiltinHttpTestBytesTest, VperfBuiltinHttp2ConnectTcpTest, VperfBuiltinHttp3ConnectTcpTest,
 		VperfBuiltinHttp2ConnectUdpTest, VperfBuiltinHttp3ConnectUdpTest, VperfBuiltinHttp2ConnectUdpBackpressureTest,
-		TlsPicotlsTransferTest, TlsPicotlsSmallFifoTransferTest)
+		TlsPicotlsTransferTest, TlsPicotlsSmallFifoTransferTest, VperfBuiltinUdpUsoTestBytesTest)
 	RegisterVperfMWTests(TcpWithLossMWTest, TcpChainedBufferWithLossMWTest, VperfBuiltinHttp1CpsMWTest,
 		VperfBuiltinHttp2CpsMWTest, VperfBuiltinHttp3CpsMWTest, VperfBuiltinHttp2ConnectUdpBackpressureMWTest)
 	RegisterVperf6Tests(TcpWithLoss6Test)
@@ -389,6 +389,19 @@ func VperfBuiltinUdpLossTest(s *VperfSuite) {
 	AssertNotContains(o, "failed")
 	AssertContains(o, "lost")
 	AssertContains(o, " bytes out of 32768 sent (32768 target)")
+}
+
+func VperfBuiltinUdpUsoTestBytesTest(s *VperfSuite) {
+	serverVpp := s.Containers.ServerVpp.VppInstance
+	clientVpp := s.Containers.ClientVpp.VppInstance
+
+	serverVpp.Vppctl("vperf server uri udp://%s/%s", s.Interfaces.Server.Ip4AddressString(), s.Ports.Port1)
+
+	o := clientVpp.Vppctl("vperf client uso bytes 6000k throughput 12m test-bytes verbose uri udp://%s/%s",
+		s.Interfaces.Server.Ip4AddressString(), s.Ports.Port1)
+	Log(o)
+	AssertNotContains(o, "failed")
+	AssertContains(o, "lost 0 datagrams")
 }
 
 func setTcpChainedBufferLinuxLinkMTU(ifName string, mtu int) {
