@@ -173,7 +173,7 @@ mssc_inline (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame,
 	  if (IP_PROTOCOL_TCP == ip1->protocol &&
 	      b[1]->current_length >= sizeof (*ip1) + sizeof (tcp_header_t))
 	    {
-	      clamped1 = mssc_mss_fixup (ip4_next_header (ip1), cm->max_mss4[sw_if_index0],
+	      clamped1 = mssc_mss_fixup (ip4_next_header (ip1), cm->max_mss4[sw_if_index1],
 					 b[1]->current_length - sizeof (*ip1));
 	    }
 	}
