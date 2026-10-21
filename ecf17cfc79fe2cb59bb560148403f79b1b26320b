@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3f3608ca_ce4daeee",
+        "filename": "src/vnet/adj/adj_l2.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 122,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-10-21T20:43:58Z",
+      "side": 1,
+      "message": "Hi Taran, does the failing SONiC case traverse adj-l2-rewrite or adj-l2-midchain?\n\nPS1/PS2 added adj-l2-rewrite as an arc start, but PS5 drops that change and explicitly limits dispatch here to midchains. The commit message still describes missing features on plain L2 rewrite adjacencies.\n\nI reproduced an ignored ethernet-output/error-drop feature on a GRE TEB midchain without the fix. PS5 fixes it, and the feature enable/disable checks pass with 0 and 2 workers. This validates the midchain path, not plain adj-l2-rewrite.\n\nIf midchains are the intended scope, could you update the description accordingly? If plain L2 rewrite is required, that part remains unaddressed in PS5.",
+      "revId": "ecf17cfc79fe2cb59bb560148403f79b1b26320b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
