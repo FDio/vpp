@@ -1425,6 +1425,7 @@ lcp_router_route_add (struct rtnl_route *rr, int is_replace)
       else
 	{
 	  fib_source_t fib_src;
+	  fib_node_index_t fei;
 	  const fib_route_path_t *rpath;
 
 	  vec_foreach (rpath, np.paths)
@@ -1443,7 +1444,9 @@ lcp_router_route_add (struct rtnl_route *rr, int is_replace)
 	      /* in order to avoid double-frees, we duplicate the paths. */
 	      fib_route_path_t *pathdup =
 		lcp_router_fib_route_path_dup (np.paths);
-	      if (is_replace)
+	      fei = fib_table_lookup_exact_match (nlt->nlt_fib_index, &pfx);
+	      if (is_replace || fei == FIB_NODE_INDEX_INVALID ||
+		  !fib_entry_is_sourced (fei, fib_src))
 		fib_table_entry_update (nlt->nlt_fib_index, &pfx, fib_src,
 					entry_flags, pathdup);
 	      else
@@ -1456,9 +1459,10 @@ lcp_router_route_add (struct rtnl_route *rr, int is_replace)
 	      pfx.fp_payload_proto = np.paths[0].frp_proto;
 	    }
 
-	  if (is_replace)
-	    fib_table_entry_update (nlt->nlt_fib_index, &pfx, fib_src,
-				    entry_flags, np.paths);
+	  /* A new source must swap out its initial drop path. */
+	  fei = fib_table_lookup_exact_match (nlt->nlt_fib_index, &pfx);
+	  if (is_replace || fei == FIB_NODE_INDEX_INVALID || !fib_entry_is_sourced (fei, fib_src))
+	    fib_table_entry_update (nlt->nlt_fib_index, &pfx, fib_src, entry_flags, np.paths);
 	  else
 	    fib_table_entry_path_add2 (nlt->nlt_fib_index, &pfx, fib_src,
 				       entry_flags, np.paths);
