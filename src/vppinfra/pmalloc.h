@@ -35,8 +35,8 @@ typedef struct
 typedef struct
 {
   u32 index;
-  u32 flags;
-#define CLIB_PMALLOC_ARENA_F_SHARED_MEM (1 << 0)
+  u32 shared_mem : 1;
+  u32 coherent : 1;
   int fd;
   u32 numa_node;
   u32 first_page_index;
@@ -79,6 +79,10 @@ typedef struct
      each numa node have own default privat alloc arena */
   u32 *default_arena_for_numa_node;
 
+  u32 *coherent_arena_for_numa_node;
+
+  int (*coherent_page_map_fn) (void *va, uword size, uword *pa);
+
   /* VA to PA lookup table */
   uword *lookup_table;
   uword linear_pa_offset;
@@ -98,6 +102,10 @@ void *clib_pmalloc_alloc_aligned_on_numa (clib_pmalloc_main_t * pm,
 					  u32 numa_node);
 void *clib_pmalloc_alloc_aligned (clib_pmalloc_main_t * pm, uword size,
 				  uword align);
+void *clib_pmalloc_alloc_aligned_on_numa_coherent (clib_pmalloc_main_t *pm, uword size, uword align,
+						   u32 numa_node);
+void clib_pmalloc_set_coherent_page_map_fn (clib_pmalloc_main_t *pm,
+					    int (*fn) (void *, uword, uword *));
 void clib_pmalloc_free (clib_pmalloc_main_t * pm, void *va);
 
 void *clib_pmalloc_create_shared_arena (clib_pmalloc_main_t * pm, char *name,
