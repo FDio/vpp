@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "d117371d_262af601",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-10-21T01:18:10Z",
+      "side": 1,
+      "message": "Override non-related CI failures for this branch as this is a critical bug that has been successfully verified in master and the other newer stable branches.",
+      "revId": "a394eb1491204589254e1b4ec3be411ec7079a0e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
