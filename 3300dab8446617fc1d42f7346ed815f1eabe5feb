@@ -67,6 +67,42 @@
       "message": "Thanks, the code looks good now from my side.\nThe commit message still describes patch set 4, though: it says the fix checks\n\"tm-\u003etrace_buffer_pool !\u003d NULL\" and wraps the CLI loops with\nvlib_worker_thread_barrier_sync/release, and neither is true anymore.\nPlease update it to describe the current checks (trace thread and\npool_is_free_index()). The \"earlier fix\" paragraph and the CLIB_DEBUG\npackaging note can go, and there is a duplicate Signed-off-by line.",
       "revId": "3300dab8446617fc1d42f7346ed815f1eabe5feb",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "2c698d2c_7b50c4fe",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 7
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3357
+      },
+      "writtenOn": "2026-10-21T02:36:38Z",
+      "side": 1,
+      "message": "ok",
+      "parentUuid": "bce5d25a_2dd489d5",
+      "revId": "3300dab8446617fc1d42f7346ed815f1eabe5feb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "716dc9a5_75279d8a",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 7
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3357
+      },
+      "writtenOn": "2026-10-21T02:36:38Z",
+      "side": 1,
+      "message": "Thank you for your review. I have revised the commit message",
+      "parentUuid": "77d353d5_73ff1464",
+      "revId": "3300dab8446617fc1d42f7346ed815f1eabe5feb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
