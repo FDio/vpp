@@ -19,8 +19,8 @@ class TestMSSClamp(VppTestCase):
     def setUp(self):
         super(TestMSSClamp, self).setUp()
 
-        # create 2 pg interfaces
-        self.create_pg_interfaces(range(2))
+        # create 3 pg interfaces for mixed-egress packets
+        self.create_pg_interfaces(range(3))
 
         for i in self.pg_interfaces:
             i.admin_up()
@@ -212,6 +212,34 @@ class TestMSSClamp(VppTestCase):
 
         # Send the packets again and ensure they are unchanged.
         self.send_and_verify_ip4(self.pg0, self.pg1, 1460, 1460)
+
+    def test_tcp_mss_clamping_ip4_tx_mixed_egress(self):
+        """Each SYN uses the MSS of its own egress interface."""
+        for interface, mss in ((self.pg1, 1360), (self.pg2, 1328)):
+            self.vapi.mss_clamp_enable_disable(
+                interface.sw_if_index,
+                ipv4_mss=mss,
+                ipv6_mss=0,
+                ipv4_direction=2,
+                ipv6_direction=0,
+            )
+
+        packets = []
+        for i in range(64):
+            for dst in (self.pg1, self.pg2):
+                packets.append(
+                    Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac)
+                    / IP(src=self.pg0.remote_ip4, dst=dst.remote_ip4)
+                    / TCP(sport=1234 + i, dport=179, flags="S", options=[("MSS", 1460)])
+                    / Raw("\xa5" * 100)
+                )
+        self.pg0.add_stream(packets)
+        self.pg_enable_capture([self.pg1, self.pg2])
+        self.pg_start()
+
+        for interface, mss in ((self.pg1, 1360), (self.pg2, 1328)):
+            for packet in interface.get_capture(expected_count=64):
+                self.verify_pkt(packet, mss)
 
     def test_tcp_mss_clamping_ip4_rx(self):
         """IP4 TCP MSS Clamping RX"""
