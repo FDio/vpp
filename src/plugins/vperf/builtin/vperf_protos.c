@@ -56,6 +56,27 @@ vp_proto_connected (session_t *s, vp_test_cfg_t *cfg, vp_test_worker_t *wrk, u32
   return 1;
 }
 
+always_inline void
+vp_proto_server_rx_self_tap (vp_test_session_t *es, session_t *s)
+{
+  /* Program self-tap to retry */
+  if (svm_fifo_set_event (s->rx_fifo))
+    {
+      /* Session node unsets the rx fifo event before notifying the app */
+      if (session_program_transport_io_evt (s->handle, SESSION_IO_EVT_BUILTIN_RX))
+	vp_proto_err ("failed to enqueue self-tap");
+
+#if CLIB_DEBUG > 0
+      if (es->rx_retries == 500000)
+	{
+	  vp_proto_err ("session stuck: %U", format_session, s, 2);
+	}
+      if (es->rx_retries < 500001)
+	es->rx_retries++;
+#endif
+    }
+}
+
 always_inline int
 vp_proto_server_stream_rx_inline (vp_test_session_t *es, session_t *s, u8 *rx_buf, u8 test_bytes)
 {
@@ -82,21 +103,7 @@ vp_proto_server_stream_rx_inline (vp_test_session_t *es, session_t *s, u8 *rx_bu
   if (PREDICT_FALSE (max_transfer == 0))
     {
     rx_event:
-      /* Program self-tap to retry */
-      if (svm_fifo_set_event (rx_fifo))
-	{
-	  if (session_enqueue_notify (s))
-	    vp_proto_err ("failed to enqueue self-tap");
-
-#if CLIB_DEBUG > 0
-	  if (es->rx_retries == 500000)
-	    {
-	      vp_proto_err ("session stuck: %U", format_session, s, 2);
-	    }
-	  if (es->rx_retries < 500001)
-	    es->rx_retries++;
-#endif
-	}
+      vp_proto_server_rx_self_tap (es, s);
 
       return 0;
     }
@@ -401,21 +408,7 @@ rx_stale:
   return 0;
 
 rx_event:
-  /* Program self-tap to retry */
-  if (svm_fifo_set_event (rx_fifo))
-    {
-      if (session_enqueue_notify (s))
-	vp_proto_err ("failed to enqueue self-tap");
-
-#if CLIB_DEBUG > 0
-      if (es->rx_retries == 500000)
-	{
-	  vp_proto_err ("session stuck: %U", format_session, s, 2);
-	}
-      if (es->rx_retries < 500001)
-	es->rx_retries++;
-#endif
-    }
+  vp_proto_server_rx_self_tap (es, s);
 
   return 0;
 }
@@ -906,22 +899,7 @@ vp_proto_tls_server_rx_inline (vp_test_session_t *es, session_t *s, u8 *rx_buf, 
   if (PREDICT_FALSE (max_transfer == 0))
     {
     rx_event:
-      /* Program self-tap to retry */
-      if (svm_fifo_set_event (rx_fifo))
-	{
-	  /* NOTE: session_enqueue_notify() do not work with tls */
-	  if (session_program_transport_io_evt (s->handle, SESSION_IO_EVT_BUILTIN_RX))
-	    vp_proto_err ("failed to enqueue self-tap");
-
-#if CLIB_DEBUG > 0
-	  if (es->rx_retries == 500000)
-	    {
-	      vp_proto_err ("session stuck: %U", format_session, s, 2);
-	    }
-	  if (es->rx_retries < 500001)
-	    es->rx_retries++;
-#endif
-	}
+      vp_proto_server_rx_self_tap (es, s);
 
       return 0;
     }
@@ -1017,22 +995,7 @@ vp_proto_quic_server_rx_inline (vp_test_session_t *es, session_t *s, u8 *rx_buf,
   if (PREDICT_FALSE (max_transfer == 0))
     {
     rx_event:
-      /* Program self-tap to retry */
-      if (svm_fifo_set_event (rx_fifo))
-	{
-	  /* NOTE: session_enqueue_notify() do not work with quic */
-	  if (session_program_transport_io_evt (s->handle, SESSION_IO_EVT_BUILTIN_RX))
-	    vp_proto_err ("failed to enqueue self-tap");
-
-#if CLIB_DEBUG > 0
-	  if (es->rx_retries == 500000)
-	    {
-	      vp_proto_err ("session stuck: %U", format_session, s, 2);
-	    }
-	  if (es->rx_retries < 500001)
-	    es->rx_retries++;
-#endif
-	}
+      vp_proto_server_rx_self_tap (es, s);
 
       return 0;
     }
@@ -1316,22 +1279,7 @@ vp_proto_http_server_rx_inline (vp_test_session_t *es, session_t *s, u8 *rx_buf,
   if (PREDICT_FALSE (max_transfer == 0))
     {
     rx_event:
-      /* Program self-tap to retry */
-      if (svm_fifo_set_event (rx_fifo))
-	{
-	  /* NOTE: session_enqueue_notify() do not work with http */
-	  if (session_program_transport_io_evt (s->handle, SESSION_IO_EVT_BUILTIN_RX))
-	    vp_proto_err ("failed to enqueue self-tap");
-
-#if CLIB_DEBUG > 0
-	  if (es->rx_retries == 500000)
-	    {
-	      vp_proto_err ("session stuck: %U", format_session, s, 2);
-	    }
-	  if (es->rx_retries < 500001)
-	    es->rx_retries++;
-#endif
-	}
+      vp_proto_server_rx_self_tap (es, s);
 
       return 0;
     }
@@ -1876,22 +1824,7 @@ vp_proto_http_server_dgram_rx (vp_test_session_t *es, session_t *s, u8 *rx_buf, 
       /* No space in tx fifo */
       if (PREDICT_FALSE (max_enqueue < dgram_size))
 	{
-	  /* Program self-tap to retry */
-	  if (svm_fifo_set_event (rx_fifo))
-	    {
-	      /* NOTE: session_enqueue_notify() do not work with http */
-	      if (session_program_transport_io_evt (s->handle, SESSION_IO_EVT_BUILTIN_RX))
-		vp_proto_err ("failed to enqueue self-tap");
-
-#if CLIB_DEBUG > 0
-	      if (es->rx_retries == 500000)
-		{
-		  vp_proto_err ("session stuck: %U", format_session, s, 2);
-		}
-	      if (es->rx_retries < 500001)
-		es->rx_retries++;
-#endif
-	    }
+	  vp_proto_server_rx_self_tap (es, s);
 
 	  return 0;
 	}
