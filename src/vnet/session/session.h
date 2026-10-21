@@ -639,74 +639,28 @@ int session_enqueue_dgram_connection_cl (session_t *s,
 					 session_dgram_hdr_t *hdr,
 					 vlib_buffer_t *b, u8 proto,
 					 u8 queue_event);
-void session_fifo_tuning (session_t *s, svm_fifo_t *f, session_ft_action_t act,
-			  u32 len);
+__clib_export void session_fifo_tuning (session_t *s, svm_fifo_t *f, session_ft_action_t act,
+					u32 len);
 
 /**
- * Discards bytes from buffer chain
+ * Enqueue buffer chain
  *
- * It discards n_bytes_to_drop starting at first buffer after chain_b
- */
-always_inline void
-session_enqueue_discard_chain_bytes (vlib_main_t *vm, vlib_buffer_t *b,
-				     vlib_buffer_t **chain_b,
-				     u32 n_bytes_to_drop)
-{
-  vlib_buffer_t *next = *chain_b;
-  u32 to_drop = n_bytes_to_drop;
-  ASSERT (b->flags & VLIB_BUFFER_NEXT_PRESENT);
-  while (to_drop && (next->flags & VLIB_BUFFER_NEXT_PRESENT))
-    {
-      next = vlib_get_buffer (vm, next->next_buffer);
-      if (next->current_length > to_drop)
-	{
-	  vlib_buffer_advance (next, to_drop);
-	  to_drop = 0;
-	}
-      else
-	{
-	  to_drop -= next->current_length;
-	  next->current_length = 0;
-	}
-    }
-  *chain_b = next;
-
-  if (to_drop == 0)
-    b->total_length_not_including_first_buffer -= n_bytes_to_drop;
-}
-
-/**
- * Enqueue buffer chain tail
+ * In order, returns number of bytes enqueued, including any collected
+ * out-of-order bytes, or a negative svm fifo error. Out of order, returns 0
+ * if at least a prefix of the chain was enqueued or a negative svm fifo error.
  */
 always_inline int
-session_enqueue_chain_tail (session_t *s, vlib_buffer_t *b, u32 offset,
-			    u8 is_in_order)
+session_enqueue_chain (session_t *s, vlib_buffer_t *b, u32 offset, u8 is_in_order)
 {
   vlib_buffer_t *chain_b;
-  u32 chain_bi;
 
   if (is_in_order)
     {
       session_worker_t *wrk = session_main_get_worker (s->thread_index);
-      u32 diff, written = 0;
-
-      if (offset)
-	{
-	  diff = offset - b->current_length;
-	  if (diff > b->total_length_not_including_first_buffer)
-	    return 0;
-	  chain_b = b;
-	  session_enqueue_discard_chain_bytes (wrk->vm, b, &chain_b, diff);
-	  chain_bi = vlib_get_buffer_index (wrk->vm, chain_b);
-	}
-      else
-	{
-	  chain_bi = b->next_buffer;
-	}
-
-      chain_b = vlib_get_buffer (wrk->vm, chain_bi);
       svm_fifo_seg_t *seg;
+      int written;
 
+      chain_b = b;
       while (chain_b)
 	{
 	  vec_add2 (wrk->rx_segs, seg, 1);
@@ -728,31 +682,37 @@ session_enqueue_chain_tail (session_t *s, vlib_buffer_t *b, u32 offset,
   else
     {
       vlib_main_t *vm = vlib_get_main ();
+      svm_fifo_t *f = s->rx_fifo;
+      u32 len, written = 0, newest = OOO_SEGMENT_INVALID_INDEX;
       int rv = 0;
       u8 *data;
-      u32 len;
 
       /* TODO svm_fifo_enqueue_segments with offset */
-      chain_bi = b->next_buffer;
+      chain_b = b;
       do
 	{
-	  chain_b = vlib_get_buffer (vm, chain_bi);
 	  data = vlib_buffer_get_current (chain_b);
 	  len = chain_b->current_length;
 	  if (!len)
 	    continue;
 
-	  rv = svm_fifo_enqueue_with_offset (s->rx_fifo, offset, len, data);
+	  rv = svm_fifo_enqueue_with_offset (f, offset, len, data);
 	  if (rv)
 	    {
-	      clib_warning ("failed to enqueue multi-buffer seg");
-	      return -1;
+	      if (!written)
+		return rv;
+	      /* Failed enqueue resets newest segment. Restore it so transports can
+	       * track the partially enqueued prefix, e.g., for sacks. */
+	      f->ooos_newest = newest;
+	      return 0;
 	    }
+	  newest = f->ooos_newest;
+	  written += len;
 	  offset += len;
 	}
-      while ((chain_bi = (chain_b->flags & VLIB_BUFFER_NEXT_PRESENT) ?
-			   chain_b->next_buffer :
-			   0));
+      while ((chain_b = (chain_b->flags & VLIB_BUFFER_NEXT_PRESENT) ?
+			  vlib_get_buffer (vm, chain_b->next_buffer) :
+			  0));
 
       return 0;
     }
@@ -769,7 +729,10 @@ session_enqueue_chain_tail (session_t *s, vlib_buffer_t *b, u32 offset,
  *                    is to be queued. The former is useful when more data is
  *                    enqueued and only one event is to be generated.
  * @param is_in_order Flag to indicate if data is in order
- * @return Number of bytes enqueued or a negative value if enqueueing failed.
+ * @return If in order, number of bytes enqueued, which may exceed the buffer
+ *         length if out-of-order data was collected. If out of order, 0 if at
+ *         least a prefix of the buffer was enqueued. Negative svm fifo error
+ *         if nothing could be enqueued.
  */
 always_inline int
 session_enqueue_stream_connection (transport_connection_t *tc,
@@ -777,32 +740,23 @@ session_enqueue_stream_connection (transport_connection_t *tc,
 				   u8 queue_event, u8 is_in_order)
 {
   session_t *s;
-  int enqueued = 0, rv, in_order_off;
+  int enqueued = 0;
 
   s = session_get (tc->s_index, tc->thread_index);
 
   if (is_in_order)
     {
-      enqueued = svm_fifo_enqueue (s->rx_fifo, b->current_length,
-				   vlib_buffer_get_current (b));
-      if (PREDICT_FALSE ((b->flags & VLIB_BUFFER_NEXT_PRESENT) &&
-			 enqueued >= 0))
-	{
-	  in_order_off = enqueued > b->current_length ? enqueued : 0;
-	  rv = session_enqueue_chain_tail (s, b, in_order_off, 1);
-	  if (rv > 0)
-	    enqueued += rv;
-	}
+      if (PREDICT_TRUE (!(b->flags & VLIB_BUFFER_NEXT_PRESENT)))
+	enqueued = svm_fifo_enqueue (s->rx_fifo, b->current_length, vlib_buffer_get_current (b));
+      else
+	enqueued = session_enqueue_chain (s, b, 0, 1);
     }
   else
     {
-      rv = svm_fifo_enqueue_with_offset (s->rx_fifo, offset, b->current_length,
-					 vlib_buffer_get_current (b));
-      if (PREDICT_FALSE ((b->flags & VLIB_BUFFER_NEXT_PRESENT) && !rv))
-	session_enqueue_chain_tail (s, b, offset + b->current_length, 0);
-      /* if something was enqueued, report even this as success for ooo
-       * segment handling */
-      return rv;
+      if (PREDICT_TRUE (!(b->flags & VLIB_BUFFER_NEXT_PRESENT)))
+	return svm_fifo_enqueue_with_offset (s->rx_fifo, offset, b->current_length,
+					     vlib_buffer_get_current (b));
+      return session_enqueue_chain (s, b, offset, 0);
     }
 
   if (queue_event)
