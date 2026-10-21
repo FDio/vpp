@@ -16,6 +16,7 @@ const tcpChainedBufferMTU = 9000
 func init() {
 	RegisterVperfTests(VperfBuiltinTest, VperfBuiltinClientSessionDisconnectTest, VperfBuiltinBandwidthTest,
 		VperfBuiltinEchoBytesTest, VperfBuiltinRoundtripTest, VperfBuiltinUdpLossTest, VperfBuiltinPeriodicReportTest,
+		VperfBuiltinTcpEchoBytesTest,
 		VperfBuiltinPeriodicReportTotalTest, TlsSingleConnectionTest, VperfBuiltinPeriodicReportUDPTest, VperfBuiltinUdpTest,
 		VperfBuiltinTcpNoTxCsumOffloadTest, VperfBuiltinTcpChainedBufferTest,
 		VperfBuiltinUdpNoTxCsumOffloadTest, VperfBuiltinHttpTest, VperfBuiltinHttpsTest, VperfBuiltinHttp2Test,
@@ -354,6 +355,19 @@ func VperfBuiltinRoundtripTest(s *VperfSuite) {
 	} else {
 		AssertEmpty("invalid vperf client output")
 	}
+}
+
+func VperfBuiltinTcpEchoBytesTest(s *VperfSuite) {
+	serverVpp := s.Containers.ServerVpp.VppInstance
+	clientVpp := s.Containers.ClientVpp.VppInstance
+
+	serverVpp.Vppctl("vperf server uri tcp://%s/%s", s.Interfaces.Server.Ip4AddressString(), s.Ports.Port1)
+
+	o := clientVpp.Vppctl("vperf client bytes 8m echo-bytes test-timeout 10 uri tcp://%s/%s",
+		s.Interfaces.Server.Ip4AddressString(), s.Ports.Port1)
+	Log(o)
+	AssertNotContains(o, "failed")
+	AssertContains(o, "8388608 bytes")
 }
 
 func VperfBuiltinEchoBytesTest(s *VperfSuite) {

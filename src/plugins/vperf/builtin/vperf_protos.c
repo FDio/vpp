@@ -85,7 +85,7 @@ vp_proto_server_stream_rx_inline (vp_test_session_t *es, session_t *s, u8 *rx_bu
       /* Program self-tap to retry */
       if (svm_fifo_set_event (rx_fifo))
 	{
-	  if (session_enqueue_notify (s))
+	  if (session_program_transport_io_evt (s->handle, SESSION_IO_EVT_BUILTIN_RX))
 	    vp_proto_err ("failed to enqueue self-tap");
 
 #if CLIB_DEBUG > 0
@@ -384,7 +384,7 @@ rx_event:
   /* Program self-tap to retry */
   if (svm_fifo_set_event (rx_fifo))
     {
-      if (session_enqueue_notify (s))
+      if (session_program_transport_io_evt (s->handle, SESSION_IO_EVT_BUILTIN_RX))
 	vp_proto_err ("failed to enqueue self-tap");
 
 #if CLIB_DEBUG > 0
