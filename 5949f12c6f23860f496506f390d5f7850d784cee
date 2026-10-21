@@ -16,6 +16,24 @@
       "message": "did you check impact on performance? this might have impact on instruction cache, so maybe keep it as helper function to get code out of hot path",
       "revId": "5949f12c6f23860f496506f390d5f7850d784cee",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "60c3201c_fc6ce5a8",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 456,
+      "author": {
+        "id": 3325
+      },
+      "writtenOn": "2026-10-21T09:59:49Z",
+      "side": 1,
+      "message": "I didn\u0027t see a change in tls throughput, but good point, moved it back into a __clib_noinline helper in patchset 4.",
+      "parentUuid": "630d1540_de2377ea",
+      "revId": "5949f12c6f23860f496506f390d5f7850d784cee",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
