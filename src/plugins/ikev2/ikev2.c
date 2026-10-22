@@ -3140,9 +3140,12 @@ ikev2_generate_message (vlib_main_t *vm, vlib_buffer_t *b, ikev2_sa_t *sa, ike_h
 			    sizeof (*ike), integ, tr_integ->key_trunc);
 	}
 
-      /* store whole IKE payload - needed for retransmit */
-      vec_reset_length (sa->last_res_packet_data);
-      vec_add (sa->last_res_packet_data, ike, tlen);
+      /* Locally initiated exchanges must not overwrite a peer's response. */
+      if (ike_hdr_is_response (ike))
+	{
+	  vec_reset_length (sa->last_res_packet_data);
+	  vec_add (sa->last_res_packet_data, ike, tlen);
+	}
     }
 
 done:
@@ -3262,9 +3265,15 @@ ikev2_retransmit_resp (ikev2_sa_t * sa, ike_header_t * ike)
   /* retransmitted req */
   if (msg_id == sa->last_msg_id)
     {
-      sa->stats.n_retransmit++;
+      if (vec_len (sa->last_res_packet_data) < sizeof (*ike))
+	return ~0;
       ike_header_t *tmp = (ike_header_t *) sa->last_res_packet_data;
       u32 slen = clib_net_to_host_u32 (tmp->length);
+      if (!ike_hdr_is_response (tmp) || tmp->msgid != ike->msgid ||
+	  tmp->exchange != ike->exchange || slen < sizeof (*ike) ||
+	  slen > vec_len (sa->last_res_packet_data))
+	return ~0;
+      sa->stats.n_retransmit++;
       ike->ispi = tmp->ispi;
       ike->rspi = tmp->rspi;
       ike->nextpayload = tmp->nextpayload;
