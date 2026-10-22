@@ -65,8 +65,6 @@ include_directories(${CMAKE_THREADS_INCLUDE_DIRS})
 
 if(DEFINED LIBMEMIF_CACHELINE_SIZE)
   # Cache line size assigned via cmake args
-elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64.*|AARCH64.*)")
-  set(LIBMEMIF_CACHELINE_SIZE 128)
 else()
   set(LIBMEMIF_CACHELINE_SIZE 64)
 endif()
