@@ -1573,18 +1573,31 @@ http_serialize_authority (http_uri_authority_t *authority)
  *
  * @param path     Path in format "{target_host}/{target_port}/".
  * @param path_len Length of given path.
- * @param parsed   Parsed target in case of success..
+ * @param parsed   Parsed target in case of success.
  *
  * @return @c 0 on success.
  *
- * @note Only IPv4 literals and IPv6 literals supported.
+ * @pre The caller must validate URI syntax before calling this function.
+ *
+ * @note Registered names are validated after percent-decoding. The returned
+ * reg_name references the original path and may still be percent-encoded.
+ * The caller must keep the path valid while using reg_name.
  */
 always_inline int
 http_parse_masque_host_port (u8 *path, u32 path_len,
 			     http_uri_authority_t *parsed)
 {
-  u8 *p, *end, *decoded_host, *p4, *p6;
+  u8 *p, *end, *decoded_host, *host_end, *p4, *p6;
   u32 host_len;
+
+  static uword valid_chars[4] = {
+    /* -.0123456789 */
+    0x03ff600000000000,
+    /* ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz */
+    0x07fffffe07fffffe,
+    0x0000000000000000,
+    0x0000000000000000,
+  };
 
   p = path;
   end = path + path_len;
@@ -1597,17 +1610,34 @@ http_parse_masque_host_port (u8 *path, u32 path_len,
   if (!host_len || (host_len == path_len) || (host_len + 1 == path_len))
     return -1;
   decoded_host = http_percent_decode (path, host_len);
+  host_end = decoded_host + vec_len (decoded_host);
   p4 = p6 = decoded_host;
-  if (0 == _http_parse_ip6 (&p6, p6 + vec_len (decoded_host), &parsed->ip.ip6))
+  if (0 == _http_parse_ip6 (&p6, host_end, &parsed->ip.ip6) && p6 == host_end)
     parsed->host_type = HTTP_URI_HOST_TYPE_IP6;
-  else if (0 ==
-	   _http_parse_ip4 (&p4, p4 + vec_len (decoded_host), &parsed->ip.ip4))
+  else if (0 == _http_parse_ip4 (&p4, host_end, &parsed->ip.ip4) && p4 == host_end)
     parsed->host_type = HTTP_URI_HOST_TYPE_IP4;
   else
     {
-      vec_free (decoded_host);
-      clib_warning ("unsupported target_host format");
-      return -1;
+      u8 *name;
+
+      if (vec_len (decoded_host) > 255)
+	{
+	  vec_free (decoded_host);
+	  clib_warning ("reg-name too long");
+	  return -1;
+	}
+      for (name = decoded_host; name != host_end; name++)
+	{
+	  if (!clib_bitmap_get_no_check (valid_chars, *name))
+	    {
+	      clib_warning ("invalid target_host character '%u'", *name);
+	      vec_free (decoded_host);
+	      return -1;
+	    }
+	}
+      parsed->host_type = HTTP_URI_HOST_TYPE_REG_NAME;
+      parsed->reg_name.base = (char *) path;
+      parsed->reg_name.len = host_len;
     }
   vec_free (decoded_host);
 
