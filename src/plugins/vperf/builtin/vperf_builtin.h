@@ -133,14 +133,18 @@ vp_test_session_alloc (vp_test_worker_t *wrk)
   return es;
 }
 
+typedef enum vp_server_rx_flag_ : u8
+{
+  VP_SERVER_RX_F_COPY = 1 << 0,
+  VP_SERVER_RX_F_ECHO = 1 << 1,
+  VP_SERVER_RX_F_CHECK = 1 << 2,
+} vp_server_rx_flag_t;
+
 typedef struct
 {
   void (*test_init) (vlib_main_t *vm, u32 cli_node_index, vp_test_cfg_t *cfg);
   int (*listen) (vnet_listen_args_t *a, vp_test_cfg_t *cfg);
-  int (*server_rx) (vp_test_session_t *es, session_t *s, u8 *rx_buf);
-  int (*server_rx_test_bytes) (vp_test_session_t *es, session_t *s, u8 *rx_buf);
-  void (*server_rx_no_echo) (vp_test_session_t *es, session_t *s);
-  void (*server_rx_no_echo_test_bytes) (vp_test_session_t *es, session_t *s, u8 *rx_buf);
+  int (*server_rx) (vp_test_session_t *es, session_t *s, u8 *rx_buf, vp_server_rx_flag_t flags);
   int (*connect) (vnet_connect_args_t *a, vp_test_cfg_t *cfg);
   u32 (*connected) (session_t *s, vp_test_cfg_t *cfg, vp_test_worker_t *wrk, u32 app_index);
   u8 (*client_rx) (vp_test_session_t *es, session_t *s, u8 *rx_buf);
