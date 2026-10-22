@@ -8,6 +8,8 @@
 #include <http/http_status_codes.h>
 
 #define HTTP3_SERVER_MAX_STREAM_ID (HTTP_VARINT_MAX - 3)
+/* RFC-9114 doesn't specify any limit, this is used to prevent suspicious activity fast */
+#define HTTP3_SETTINGS_FRAME_MAX_LENGTH 4096
 
 /* estimated http response/request overhead, excluded app headers and target */
 #define HTTP3_HEADERS_OVERHEAD 256
@@ -1651,6 +1653,13 @@ http3_stream_read_settings (http_ctx_t *req, http_ctx_t *stream, u32 *to_deq,
   hc->flags &= ~HTTP_CONN_F_EXPECT_PEER_SETTINGS;
   if (fh->length == 0)
     return 0;
+  if (PREDICT_FALSE (fh->length > HTTP3_SETTINGS_FRAME_MAX_LENGTH))
+    {
+      HTTP_DBG (1, "settings frame length too large");
+      http3_stream_error_terminate_conn (stream, req, HTTP3_ERROR_EXCESSIVE_LOAD);
+      return -1;
+    }
+
   rx_buf = http_get_rx_buf (stream);
   http_io_ts_read (stream, rx_buf, fh->length, 0);
   *to_deq -= fh->length;
@@ -1681,6 +1690,13 @@ http3_stream_read_goaway (http_ctx_t *req, http_ctx_t *stream, u32 *to_deq,
   http_ctx_t *hc;
   u8 *rx_buf;
   u64 stream_or_push_id;
+
+  if (PREDICT_FALSE (fh->length > HTTP_VARINT_MAX_LEN))
+    {
+      HTTP_DBG (1, "invalid goaway length");
+      http3_stream_error_terminate_conn (stream, req, HTTP3_ERROR_FRAME_ERROR);
+      return -1;
+    }
 
   rx_buf = http_get_rx_buf (stream);
   http_io_ts_read (stream, rx_buf, fh->length, 0);
