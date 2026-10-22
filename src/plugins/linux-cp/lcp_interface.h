@@ -29,7 +29,9 @@ extern vlib_log_class_t lcp_itf_pair_logger;
 
 #define LCP_ITF_PAIR_ERR(...) vlib_log_err (lcp_itf_pair_logger, __VA_ARGS__);
 
-#define foreach_lcp_itf_pair_flag _ (STALE, 0, "stale")
+#define foreach_lcp_itf_pair_flag                                                                  \
+  _ (STALE, 0, "stale")                                                                            \
+  _ (FLUSH_PATHS, 1, "flush-paths")
 
 typedef enum lip_flag_t_
 {

@@ -63,6 +63,13 @@ lcp_itf_pair_sync_state (lcp_itf_pair_t *lip)
 	sw->mtu[VNET_MTU_L3], sup_sw->mtu[VNET_MTU_L3]);
       state = 0;
     }
+
+  /* The kernel drops the IPv4 routes through a link that goes down without
+   * telling us, so have the RTM_NEWLINK for this down flush them from the FIB
+   * (lcp_router_link_add).
+   */
+  if (!state)
+    lip->lip_flags |= LIP_FLAG_FLUSH_PATHS;
   lcp_itf_set_link_state (lip, state);
 
   /* Linux will clamp MTU of children when the parent is lower. VPP is fine
