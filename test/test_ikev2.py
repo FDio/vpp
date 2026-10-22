@@ -927,7 +927,7 @@ class IkePeer(VppTestCase):
             init_SPI=self.sa.ispi,
             resp_SPI=self.sa.rspi,
             id=self.sa.new_msg_id(),
-            flags="Initiator",
+            flags="Initiator" if self.sa.is_initiator else 0,
             exch_type="INFORMATIONAL",
             next_payload="Encrypted",
         )
@@ -3387,6 +3387,28 @@ class TestInitiatorKeepaliveMsg(TestInitiatorPsk):
     def test_initiator(self):
         super(TestInitiatorKeepaliveMsg, self).test_initiator()
         self.send_empty_req_from_responder()
+
+
+class TestInitiatorResponseCache(TestInitiatorPsk):
+    """Local requests must not replace the cached response to a peer request."""
+
+    def test_initiator(self):
+        super().test_initiator()
+        request = self.create_empty_request()
+        self.pg0.add_stream(request)
+        self.pg0.enable_capture()
+        self.pg_start()
+        response = self.get_ike_header(self.pg0.get_capture(1)[0])
+        self.assertEqual(response.exch_type, 37)
+        ispi = int.from_bytes(self.sa.child_sas[0].ispi, "little")
+        self.pg0.enable_capture()
+        self.vapi.ikev2_initiate_rekey_child_sa(ispi=ispi)
+        self.pg0.get_capture(1)
+        self.pg0.add_stream(request)
+        self.pg0.enable_capture()
+        self.pg_start()
+        replay = self.get_ike_header(self.pg0.get_capture(1)[0])
+        self.assertEqual(bytes(replay), bytes(response))
 
 
 class TestMalformedMessages(TemplateResponder, Ikev2Params):
