@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "819d1d95_5ead4727",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3325
+      },
+      "writtenOn": "2026-10-22T14:05:29Z",
+      "side": 1,
+      "message": "patchset 3: TCP was still spinning with a full tx fifo, so I switched it to dequeue notifications. Local tests of this approach showed lower session-input cost.",
+      "revId": "5a7c98c40706f076050dca526c1f04870c9a916a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
