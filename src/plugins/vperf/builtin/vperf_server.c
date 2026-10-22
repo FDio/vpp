@@ -310,49 +310,8 @@ vp_server_rx_ctrl_callback (session_t *s)
   return 0;
 }
 
-always_inline int
-vp_server_rx_no_echo (session_t *s, u8 test_bytes)
-{
-  vp_server_main_t *vpsm = &vp_server_main;
-  vp_test_worker_t *wrk;
-  const vp_test_proto_vft_t *tp;
-  vp_test_session_t *es;
-
-  /* Closes are treated as half-closes by session layer */
-  if (PREDICT_FALSE (s->flags & SESSION_F_APP_CLOSED))
-    return 0;
-
-  if (PREDICT_FALSE (vpsm->ctrl_listener_handle == s->listener_handle))
-    return vp_server_rx_ctrl_callback (s);
-
-  tp = &vp_test_main.protos[vpsm->cfg.proto];
-  wrk = vp_server_worker_get (s->thread_index);
-  es = vp_server_session_get (wrk, s->opaque);
-  if (test_bytes)
-    tp->server_rx_no_echo_test_bytes (es, s, wrk->rx_buf);
-  else
-    tp->server_rx_no_echo (es, s);
-
-  return 0;
-}
-
-/*
- * If no-echo, just drop the data and be done with it.
- */
 static int
-vp_server_rx_no_echo_callback (session_t *s)
-{
-  return vp_server_rx_no_echo (s, 0);
-}
-
-static int
-vp_server_rx_no_echo_test_bytes_callback (session_t *s)
-{
-  return vp_server_rx_no_echo (s, 1);
-}
-
-always_inline int
-vp_server_rx (session_t *s, u8 test_bytes)
+vp_server_rx_callback (session_t *s)
 {
   vp_server_main_t *vpsm = &vp_server_main;
   clib_thread_index_t thread_index = s->thread_index;
@@ -372,22 +331,7 @@ vp_server_rx (session_t *s, u8 test_bytes)
   tp = &vp_test_main.protos[vpsm->cfg.proto];
   wrk = vp_server_worker_get (thread_index);
   es = vp_server_session_get (wrk, s->opaque);
-  if (test_bytes)
-    return tp->server_rx_test_bytes (es, s, wrk->rx_buf);
-  else
-    return tp->server_rx (es, s, wrk->rx_buf);
-}
-
-static int
-vp_server_rx_callback (session_t *s)
-{
-  return vp_server_rx (s, 0);
-}
-
-static int
-vp_server_rx_test_bytes_callback (session_t *s)
-{
-  return vp_server_rx (s, 1);
+  return tp->server_rx (es, s, wrk->rx_buf, vpsm->rx_flags);
 }
 
 int
@@ -398,29 +342,16 @@ vp_server_setup_test (vperf_cfg_t *c)
   if (c->test == VPERF_TEST_TYPE_UNI)
     {
       vpsm->cfg.echo_bytes = 0;
-      if (c->test_bytes)
-	vpsm->rx_callback = vp_server_rx_no_echo_test_bytes_callback;
-      else
-	vpsm->rx_callback = vp_server_rx_no_echo_callback;
+      vpsm->rx_flags = c->test_bytes ? VP_SERVER_RX_F_COPY : 0;
     }
   else
     {
       vpsm->cfg.echo_bytes = 1;
-      if (c->test_bytes)
-	vpsm->rx_callback = vp_server_rx_test_bytes_callback;
-      else
-	vpsm->rx_callback = vp_server_rx_callback;
+      vpsm->rx_flags = VP_SERVER_RX_F_ECHO | (c->test_bytes ? VP_SERVER_RX_F_CHECK : 0);
     }
 
   vp_server_foreach_thread (vp_server_wrk_prealloc_sessions);
   return 0;
-}
-
-int
-vp_server_rx_callback_common (session_t *s)
-{
-  vp_server_main_t *vpsm = &vp_server_main;
-  return vpsm->rx_callback (s);
 }
 
 static session_cb_vft_t vp_server_session_cb_vft = {
@@ -429,8 +360,8 @@ static session_cb_vft_t vp_server_session_cb_vft = {
   .session_connected_callback = vp_server_session_connected_callback,
   .add_segment_callback = vp_server_add_segment_callback,
   .del_segment_callback = vp_server_del_segment_callback,
-  .builtin_app_rx_callback = vp_server_rx_callback_common,
-  .builtin_app_tx_callback = vp_server_rx_callback_common,
+  .builtin_app_rx_callback = vp_server_rx_callback,
+  .builtin_app_tx_callback = vp_server_rx_callback,
   .session_reset_callback = vp_server_session_reset_callback
 };
 
@@ -446,7 +377,7 @@ vp_server_attach (u8 *appns_id, u64 appns_flags, u64 appns_secret)
   clib_memset (a, 0, sizeof (*a));
   clib_memset (options, 0, sizeof (options));
 
-  vpsm->rx_callback = vp_server_rx_callback;
+  vpsm->rx_flags = VP_SERVER_RX_F_ECHO;
 
   a->api_client_index = ~0;
   a->name = format (0, "vperf_srv_builtin");

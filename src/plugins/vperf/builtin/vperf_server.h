@@ -21,7 +21,7 @@ typedef struct
    * Test state
    */
   vp_test_worker_t *wrk;
-  int (*rx_callback) (session_t *session);
+  vp_server_rx_flag_t rx_flags;
   session_handle_t listener_handle; /**< Session handle of the root listener */
   session_handle_t ctrl_listener_handle;
 
