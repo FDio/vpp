@@ -23,9 +23,13 @@ VPP_BASE_REF=$BASE
 # [KinD only] sets VPP's mtu. Only works if kind network is configured to use MTU=9000
 export CALICO_NETWORK_CONFIG=${CALICO_NETWORK_CONFIG:-"mtu: 9000"}
 # used for Calico images
-export TIGERA_VERSION="${TIGERA_VERSION:-"v3.32.0"}"
+export TIGERA_VERSION="${TIGERA_VERSION:-"v3.32.2"}"
 export KIND_CALICO_VERSION=$TIGERA_VERSION
 export TIGERA_OPERATOR_VERSION=$KIND_CALICO_VERSION
+# KinD node image, pinned by digest to an image pre-built for the KinD version
+# installed by 'make install-kube-deps'. Kubernetes 1.36 is the newest version
+# Calico v3.32 is tested against.
+KIND_NODE_IMAGE=${KIND_NODE_IMAGE:-"kindest/node:v1.36.4@sha256:099e049362a1526b2db71494e1947aae99bd16290d7c895f2b7ea312e3cbfaed"}
 export DOCKER_BUILD_PROXY=$HTTP_PROXY
 export DOCKER_BUILD_PROXY=$HTTP_PROXY
 export TAG=$TAG
@@ -38,14 +42,17 @@ kind_config=$(cat kubernetes/kind-config.yaml)
 kind_config=$(cat <<EOF
 $kind_config
 - role: control-plane
+  image: $KIND_NODE_IMAGE
   extraMounts:
     - hostPath: $HOME
       containerPath: $HOME
 - role: worker
+  image: $KIND_NODE_IMAGE
   extraMounts:
     - hostPath: $HOME
       containerPath: $HOME
 - role: worker
+  image: $KIND_NODE_IMAGE
   extraMounts:
     - hostPath: $HOME
       containerPath: $HOME
@@ -83,7 +90,7 @@ help() {
   echo "'release-cluster' starts up a KinD cluster and uses latest CalicoVPP release (e.g. v3.32.0),
     or you can override versions by using env variables 'CALICOVPP_VERSION' and 'TIGERA_VERSION':
     CALICOVPP_VERSION: latest | v[x].[y].[z] (default="v3.32.0")
-    TIGERA_VERSION:    master | v[x].[y].[z] (default="v3.32.0")"
+    TIGERA_VERSION:    master | v[x].[y].[z] (default="v3.32.2")"
 
   echo -e "\nTo shut down the cluster, use 'kind delete cluster'"
 }

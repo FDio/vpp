@@ -170,7 +170,7 @@ build-debug: .deps.ok build-vpp-debug
 install-kube-deps: .deps.ok
 	-@if ! command -v kind >/dev/null 2>&1; then \
 		echo "Installing KinD"; \
-		go install sigs.k8s.io/kind@v0.30.0; \
+		go install sigs.k8s.io/kind@v0.33.0; \
 		echo "Creating symlink from '$(HOME)/go/bin/kind' to '/usr/bin/kind'"; \
 		sudo ln -s $(HOME)/go/bin/kind /usr/bin/kind; \
 	else \
@@ -179,9 +179,9 @@ install-kube-deps: .deps.ok
 	@if ! command -v kubectl >/dev/null 2>&1; then \
         echo "kubectl not found. Installing kubectl..."; \
         sudo -E apt-get update && sudo apt-get install -y apt-transport-https ca-certificates curl gnupg; \
-        curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.31/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg; \
+        curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.36/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg; \
         sudo -E chmod 644 /etc/apt/keyrings/kubernetes-apt-keyring.gpg; \
-        echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.31/deb/ /' | sudo tee /etc/apt/sources.list.d/kubernetes.list; \
+        echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.36/deb/ /' | sudo tee /etc/apt/sources.list.d/kubernetes.list; \
         sudo -E chmod 644 /etc/apt/sources.list.d/kubernetes.list; \
         sudo apt-get update && sudo apt-get install -y kubectl; \
     else \
@@ -193,11 +193,11 @@ install-kube-deps: .deps.ok
 install-deps:
 	@rm -f .deps.ok
 	@if [ -d "/usr/local/go" ]; then \
-        echo "Go is already installed. You may have to update it manually if version < 1.23.10"; \
+        echo "Go is already installed. You may have to update it manually if version < 1.27.3"; \
 		go version; \
     else \
-        echo "Installing Go 1.23"; \
-		wget -t 2 https://go.dev/dl/go1.23.10.linux-$(ARCH).tar.gz -O /tmp/go1.23.10.linux-$(ARCH).tar.gz && sudo tar -C /usr/local -xzf /tmp/go1.23.10.linux-$(ARCH).tar.gz; \
+        echo "Installing Go 1.27.3"; \
+		wget -t 2 https://go.dev/dl/go1.27.3.linux-$(ARCH).tar.gz -O /tmp/go1.27.3.linux-$(ARCH).tar.gz && sudo tar -C /usr/local -xzf /tmp/go1.27.3.linux-$(ARCH).tar.gz; \
 		echo "Go installed successfully. Add it to your PATH by running:"; \
         echo "echo 'export PATH=/usr/local/go/bin:\$$PATH' >> ~/.bashrc && source ~/.bashrc"; \
 	fi
@@ -218,7 +218,7 @@ install-deps:
 
 .PHONY: checkstyle-go
 checkstyle-go:
-	@output=$$(find . -type f -name '*.go' -not -path './.go_cache/*' -exec go run golang.org/x/tools/cmd/goimports@v0.35.0 -d {} +); \
+	@output=$$(find . -type f -name '*.go' -not -path './.go_cache/*' -exec go run golang.org/x/tools/cmd/goimports@v0.52.0 -d {} +); \
 	status=$$?; \
 	if [ $$status -ne 0 ]; then \
 		exit $$status; \
@@ -237,7 +237,7 @@ checkstyle-go:
 .PHONY: fixstyle-go
 fixstyle-go:
 	@echo "Modified files:"
-	@find . -type f -name '*.go' -not -path './.go_cache/*' -exec go run golang.org/x/tools/cmd/goimports@v0.35.0 -w -l {} +
+	@find . -type f -name '*.go' -not -path './.go_cache/*' -exec go run golang.org/x/tools/cmd/goimports@v0.52.0 -w -l {} +
 	@go mod tidy
 	@echo "*******************************************************************"
 	@echo "Fixstyle done."
