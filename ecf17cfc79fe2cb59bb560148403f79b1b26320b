@@ -34,6 +34,24 @@
       "parentUuid": "3f3608ca_ce4daeee",
       "revId": "ecf17cfc79fe2cb59bb560148403f79b1b26320b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "fd7660d4_25eda44f",
+        "filename": "src/vnet/adj/adj_l2.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 122,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-10-22T18:48:46Z",
+      "side": 1,
+      "message": "Thanks Taran, that clarifies the intended scope. The PS6 title and description now match the midchain implementation, so this concern is resolved.",
+      "parentUuid": "78534a09_b2f59491",
+      "revId": "ecf17cfc79fe2cb59bb560148403f79b1b26320b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
