@@ -765,6 +765,35 @@ class TestLinuxCPRoutes(TestLinuxCPNetNSBase):
         set_interface_up(self.ns_name, "hloop0")
         set_interface_up(self.ns_name, "hloop1")
 
+    def test_linux_cp_route_vpp_admin_down(self):
+        """Linux CP Route removed on admin-down in VPP"""
+        add_namespace_route(
+            self.ns_name, "192.168.200.0/24", dev="hloop0", gw_ip="10.10.1.1"
+        )
+        self.verify_paths(
+            "192.168.200.1/32",
+            dict(
+                type=FibPathType.FIB_PATH_TYPE_NORMAL,
+                sw_if_index=self.lo_interfaces[0].sw_if_index,
+                ip4="10.10.1.1",
+            ),
+        )
+
+        # lcp-sync takes hloop0 down, and the kernel drops the route without
+        # sending RTM_DELROUTE
+        self.lo_interfaces[0].admin_down()
+        self.poll_for(
+            "hloop0 down", lambda: is_interface_up(self.ns_name, "hloop0"), False
+        )
+        self.verify_paths("192.168.200.1/32", dict(type=FibPathType.FIB_PATH_TYPE_DROP))
+
+        # the kernel does not restore the route, so VPP must not have it either
+        self.lo_interfaces[0].admin_up()
+        self.poll_for(
+            "hloop0 up", lambda: is_interface_up(self.ns_name, "hloop0"), True
+        )
+        self.verify_paths("192.168.200.1/32", dict(type=FibPathType.FIB_PATH_TYPE_DROP))
+
     def test_linux_cp_multipath_route(self):
         """Linux CP Multipath Route"""
         add_namespace_multipath_route(

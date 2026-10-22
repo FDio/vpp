@@ -354,10 +354,13 @@ lcp_router_link_add (struct rtnl_link *rl, void *ctx)
 	  vnet_sw_interface_admin_up (vnet_get_main (),
 				      lip->lip_phy_sw_if_index);
 	}
-      else if (sw_if_up && !up)
+      else if (!up)
 	{
-	  vnet_sw_interface_admin_down (vnet_get_main (),
-					lip->lip_phy_sw_if_index);
+	  /* With lcp-sync, an admin-down in VPP takes the host link down
+	   * first, so VPP is already down here. Flush anyway.
+	   */
+	  if (sw_if_up)
+	    vnet_sw_interface_admin_down (vnet_get_main (), lip->lip_phy_sw_if_index);
 
 	  /* When an interface is brought down administratively, the kernel
 	   * removes routes which resolve through that interface. For IPv4
