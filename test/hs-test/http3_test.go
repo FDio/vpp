@@ -22,7 +22,7 @@ func init() {
 		Http3MissingPseudoHeaderTest, Http3MissingSchemePseudoHeaderTest, Http3MissingPathPseudoHeaderTest,
 		Http3MissingAuthorityPseudoHeaderTest, Http3ConnectWithSchemePathPseudoHeadersTest,
 		Http3PseudoHeaderAfterRegularTest, Http3ReservedFrameTest, Http3DataFrameOnCtrlStreamTest,
-		Http3GoawayOnReqStreamTest, Http3SecondSettingsFrameTest,
+		Http3GoawayOnReqStreamTest, Http3GoawayInvalidLengthTest, Http3SecondSettingsFrameTest,
 		Http3ReservedSettingsTest, Http3MissingSettingsTest, Http3SecondCtrlStreamTest,
 		Http3SecondQpackDecoderStreamTest, Http3SecondQpackEncoderStreamTest, Http3CtrlStreamClosedTest,
 		Http3QpackDecompressionFailedTest, Http3ClientOpenPushStreamTest, Http3DataBeforeHeadersTest,
@@ -564,6 +564,16 @@ func Http3DataFrameOnCtrlStreamTest(s *Http3Suite) {
 
 func Http3GoawayOnReqStreamTest(s *Http3Suite) {
 	http3SendReqExpectConnError(s, []byte{0x07, 0x02, 0x7B, 0xBD}, http3.ErrCodeFrameUnexpected)
+}
+
+func Http3GoawayInvalidLengthTest(s *Http3Suite) {
+	http3SendCtrlExpectConnError(
+		s,
+		[]byte{
+			0x04, 0x00, 0x07, 0x09,
+			0xC0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		},
+		http3.ErrCodeFrameError)
 }
 
 func Http3SecondSettingsFrameTest(s *Http3Suite) {
