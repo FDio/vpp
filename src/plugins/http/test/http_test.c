@@ -291,7 +291,13 @@ http_test_parse_masque_host_port (vlib_main_t *vm)
 
   path = format (0, "example.com/443/");
   rv = http_parse_masque_host_port (path, vec_len (path), &target);
-  HTTP_TEST ((rv != 0), "'%v' reg-name not supported", path);
+  HTTP_TEST ((rv == 0), "'%v' should be valid", path);
+  vec_free (path);
+
+  /* A port in the registered-name segment is invalid. */
+  path = format (0, "example.com%%3A443/443/");
+  rv = http_parse_masque_host_port (path, vec_len (path), &target);
+  HTTP_TEST ((rv != 0), "'%v' should be invalid", path);
   vec_free (path);
 
   path = format (0, "10.10.2.45/443443/");

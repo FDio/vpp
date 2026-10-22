@@ -636,12 +636,6 @@ proxy_http_connect (session_t *s, vnet_connect_args_t *a)
 	  PROXY_DBG ("authority parsing failed");
 	  goto bad_req;
 	}
-      /* TODO reg-name resolution */
-      if (target_uri.host_type == HTTP_URI_HOST_TYPE_REG_NAME)
-	{
-	  PROXY_DBG ("reg-name resolution not supported");
-	  goto bad_req;
-	}
       target_sep.transport_proto =
 	msg.method_type == HTTP_REQ_CONNECT_UDP ? TRANSPORT_PROTO_UDP : TRANSPORT_PROTO_TCP;
     }
@@ -705,6 +699,12 @@ proxy_http_connect (session_t *s, vnet_connect_args_t *a)
       proxy_send_http_resp (s, HTTP_STATUS_BAD_REQUEST, 0);
       svm_fifo_dequeue_drop_all (s->rx_fifo);
       return 1;
+    }
+  /* TODO reg-name resolution */
+  if (target_uri.host_type == HTTP_URI_HOST_TYPE_REG_NAME)
+    {
+      PROXY_DBG ("reg-name resolution not supported");
+      goto bad_req;
     }
   PROXY_DBG ("proxy target %U:%u", format_ip46_address, &target_uri.ip,
 	     target_uri.host_type == HTTP_URI_HOST_TYPE_IP4,
