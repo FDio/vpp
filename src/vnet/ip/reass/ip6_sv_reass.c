@@ -608,7 +608,6 @@ ip6_sv_reass_update (vlib_main_t *vm, vlib_node_runtime_t *node,
     fragment_first + fragment_length - 1;
   fvnb->ip.reass.range_first = fragment_first;
   fvnb->ip.reass.range_last = fragment_last;
-  fvnb->ip.reass.next_range_bi = ~0;
   void *l4_hdr = NULL;
   if (0 == fragment_first)
     {
