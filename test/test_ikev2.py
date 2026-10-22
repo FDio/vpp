@@ -966,7 +966,7 @@ class IkePeer(VppTestCase):
             init_SPI=self.sa.ispi,
             resp_SPI=self.sa.rspi,
             id=self.sa.new_msg_id(),
-            flags="Initiator",
+            flags="Initiator" if self.sa.is_initiator else 0,
             exch_type="INFORMATIONAL",
             next_payload="Encrypted",
         )
@@ -3724,6 +3724,33 @@ class TestResponderLongEcp256(TestResponderShortEcp256):
     """An ECP-256 request with a trailing byte must be rejected."""
 
     append_ke_byte = True
+
+
+class TestInitiatorResponseCache(TestInitiatorPsk):
+    """Local requests must not replace the cached response to a peer request."""
+
+    def test_initiator(self):
+        super().test_initiator()
+        request = self.create_empty_request()
+        invalid = request.copy()
+        encrypted = bytes(invalid[UDP].payload)
+        invalid[UDP].remove_payload()
+        invalid /= Raw(encrypted[:-1] + bytes([encrypted[-1] ^ 1]))
+        self.send_and_assert_no_replies(self.pg0, invalid)
+        self.pg0.add_stream(request)
+        self.pg0.enable_capture()
+        self.pg_start()
+        response = self.get_ike_header(self.pg0.get_capture(1)[0])
+        self.assertEqual(response.exch_type, 37)
+        ispi = int.from_bytes(self.sa.child_sas[0].ispi, "little")
+        self.pg0.enable_capture()
+        self.vapi.ikev2_initiate_rekey_child_sa(ispi=ispi)
+        self.pg0.get_capture(1)
+        self.pg0.add_stream(request)
+        self.pg0.enable_capture()
+        self.pg_start()
+        replay = self.get_ike_header(self.pg0.get_capture(1)[0])
+        self.assertEqual(bytes(replay), bytes(response))
 
 
 class TestMalformedMessages(TemplateResponder, Ikev2Params):
