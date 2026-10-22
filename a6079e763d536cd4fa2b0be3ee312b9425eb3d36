@@ -1,0 +1,61 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "788fcb5c_c6b81c15",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-10-22T10:02:41Z",
+      "side": 1,
+      "message": "Same \"prepends\" error is in commit message.\n\nOverall, the amount of comment related to the code change itself is a bit too much for my taste, I\u0027d unslop it.\n\nThe \"Non-preload workers are unaffected\" is unneeded (and not entirely true), everyone goes through the same path. I don\u0027t see any value in that sentence.",
+      "revId": "a6079e763d536cd4fa2b0be3ee312b9425eb3d36",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "bc196aef_0598d540",
+        "filename": "test/asf/asfframework.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 1807,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-10-22T10:02:41Z",
+      "side": 1,
+      "message": "This is incorrect:\n\n\u003e LD_PRELOAD\u003dlibm.so.6 stdbuf -o0 sh -c \u0027echo $LD_PRELOAD\u0027\nlibm.so.6:/usr/libexec/coreutils/libstdbuf.so",
+      "range": {
+        "startLine": 1807,
+        "startChar": 61,
+        "endLine": 1807,
+        "endChar": 69
+      },
+      "revId": "a6079e763d536cd4fa2b0be3ee312b9425eb3d36",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2b214a83_243fc736",
+        "filename": "test/asf/asfframework.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 1820,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-10-22T10:02:41Z",
+      "side": 1,
+      "message": "env.get() leaves LD_PRELOAD in the environment.\n\nwe could replace it with env.pop(\"LD_PRELOAD\", None) and that way sh and stdbuf don\u0027t see our preloads at all, but the app gets \"vcl:libstdbuf\" as intended. I\u0027ve no idea what rust uutils stdbuf does internally, but because src/vcl/ldp.c defines a bunch of libc wrapper functions (like read, close, write, poll, ...), I\u0027d rather be safe than sorry by NOT exposing these to the new uutils.",
+      "revId": "a6079e763d536cd4fa2b0be3ee312b9425eb3d36",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
