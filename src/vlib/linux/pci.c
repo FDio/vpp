@@ -1213,7 +1213,7 @@ add_device_vfio (vlib_main_t * vm, linux_pci_device_t * p,
 	  vlib_physmem_map_t *pm;
 	  pm = vlib_physmem_get_map (vm, bp->physmem_map_index);
 	  for (i = 0; i < pm->n_pages; i++)
-	    vfio_map_physmem_page (vm, pm->base + (i << pm->log2_page_size));
+	    vfio_map_physmem_page (vm, pm->base + ((uword) i << pm->log2_page_size));
 	}
     }
 

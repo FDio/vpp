@@ -47,7 +47,7 @@ vfio_map_physmem_page (vlib_main_t * vm, void *addr)
 
   dm.argsz = sizeof (struct vfio_iommu_type1_dma_map);
   dm.flags = VFIO_DMA_MAP_FLAG_READ | VFIO_DMA_MAP_FLAG_WRITE;
-  dm.vaddr = physmem_start + (page_index << log2_page_size);
+  dm.vaddr = physmem_start + ((uword) page_index << log2_page_size);
   dm.size = 1ULL << log2_page_size;
   dm.iova = dm.vaddr;
   vlib_log_debug (lvm->log_default, "map DMA page:%u va:0x%lx iova:%lx "
