@@ -126,7 +126,7 @@ func (c *ConnectUdpClient) ReadDgramCapsule() ([]byte, error) {
 		return nil, err
 	}
 	r := bufio.NewReader(c.Conn)
-	capsuleType, payloadReader, err := http3.ParseCapsule(r)
+	capsuleType, payloadReader, err := http3.NewCapsuleParser(r).Next()
 	if err != nil {
 		return nil, err
 	}

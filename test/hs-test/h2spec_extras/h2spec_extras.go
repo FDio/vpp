@@ -550,7 +550,7 @@ func readCapsule(conn *spec.Conn, streamID uint32) ([]byte, error) {
 	}
 	df, _ := actual.(spec.DataFrameEvent)
 	r := bytes.NewReader(df.Data())
-	capsuleType, payloadReader, err := http3.ParseCapsule(r)
+	capsuleType, payloadReader, err := http3.NewCapsuleParser(r).Next()
 	if err != nil {
 		return nil, err
 	}
@@ -599,7 +599,7 @@ func readCapsuleDraft03(conn *spec.Conn, streamID uint32) ([]byte, error) {
 	}
 	df, _ := actual.(spec.DataFrameEvent)
 	r := bytes.NewReader(df.Data())
-	streamChunkType, payloadReader, err := http3.ParseCapsule(r)
+	streamChunkType, payloadReader, err := http3.NewCapsuleParser(r).Next()
 	if err != nil {
 		return nil, err
 	}
