@@ -22,6 +22,30 @@
       },
       "revId": "19e21469264c001ab2d4bb54fed3675ce7d3f677",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "d40d7302_b6e2da26",
+        "filename": "src/plugins/vperf/builtin/vperf_protos.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 398,
+      "author": {
+        "id": 3325
+      },
+      "writtenOn": "2026-10-22T07:22:57Z",
+      "side": 1,
+      "message": "Moved the self-tap blocks into one helper for all protos.",
+      "parentUuid": "ee054d58_f175cc49",
+      "range": {
+        "startLine": 385,
+        "startChar": 0,
+        "endLine": 398,
+        "endChar": 5
+      },
+      "revId": "19e21469264c001ab2d4bb54fed3675ce7d3f677",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
