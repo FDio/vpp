@@ -61,7 +61,16 @@ show_or_clear_hw_interfaces (vlib_main_t * vm,
 
       /* See if user wants to show an interface with a specific hw_if_index. */
       else if (unformat (line_input, "%u", &hw_if_index))
-	vec_add1 (hw_if_indices, hw_if_index);
+	{
+	  /* validate here: the name sort and the clear path index directly */
+	  if (!vnet_get_hw_interface_or_null (vnm, hw_if_index))
+	    {
+	      error = clib_error_return (0, "unknown interface index %u", hw_if_index);
+	      unformat_free (line_input);
+	      goto done;
+	    }
+	  vec_add1 (hw_if_indices, hw_if_index);
+	}
 
       else if (unformat (line_input, "verbose"))
 	verbose = 1;		/* this is also the default */
@@ -107,24 +116,30 @@ skip_unformat:
       vlib_cli_output (vm, "%U\n", format_vnet_hw_interface, vnm, 0, verbose);
       for (i = 0; i < vec_len (hw_if_indices); i++)
 	{
-	  hi = vnet_get_hw_interface (vnm, hw_if_indices[i]);
+	  /* not under the barrier: re-validate each index */
+	  hi = vnet_get_hw_interface_or_null (vnm, hw_if_indices[i]);
+	  if (!hi)
+	    continue;
 	  if (show_bond == 0)	/* show all interfaces */
 	    vlib_cli_output (vm, "%U\n", format_vnet_hw_interface, vnm,
 			     hi, verbose);
 	  else if ((hi->bond_info) &&
 		   (hi->bond_info != VNET_HW_INTERFACE_BOND_INFO_SLAVE))
 	    {			/* show only bonded interface and all its slave interfaces */
+	      /* snapshot: hi may not survive a CLI output (pager) */
+	      uword *bond_info = clib_bitmap_dup (hi->bond_info);
 	      int hw_idx;
 	      vnet_hw_interface_t *shi;
 	      vlib_cli_output (vm, "%U\n", format_vnet_hw_interface, vnm,
 			       hi, verbose);
 
-	      clib_bitmap_foreach (hw_idx, hi->bond_info)
-               {
-                shi = vnet_get_hw_interface(vnm, hw_idx);
-                vlib_cli_output (vm, "%U\n",
-                                 format_vnet_hw_interface, vnm, shi, verbose);
-              }
+	      clib_bitmap_foreach (hw_idx, bond_info)
+		{
+		  shi = vnet_get_hw_interface_or_null (vnm, hw_idx);
+		  if (shi)
+		    vlib_cli_output (vm, "%U\n", format_vnet_hw_interface, vnm, shi, verbose);
+		}
+	      clib_bitmap_free (bond_info);
 	    }
 	}
     }
@@ -221,10 +236,12 @@ clear_hw_interfaces (vlib_main_t * vm,
 VLIB_CLI_COMMAND (show_hw_interfaces_command, static) = {
   .path = "show hardware-interfaces",
   .short_help = "show hardware-interfaces [brief|verbose|detail] [bond] "
-    "[<interface> [<interface> [..]]] [<sw_idx> [<sw_idx> [..]]]",
+		"[<interface> [<interface> [..]]] [<sw_idx> [<sw_idx> [..]]]",
   .function = show_hw_interfaces,
+  /* read-only; device format functions only do control-path queries that
+   * device processes already run on the main thread without the barrier */
+  .is_mp_safe = 1,
 };
-
 
 /*?
  * Clear the extended statistics for all or a list of given interfaces
