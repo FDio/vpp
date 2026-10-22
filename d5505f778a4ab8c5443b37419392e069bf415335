@@ -35,6 +35,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "d4d1cac7_5b47b4c1",
+        "filename": "src/plugins/http/http.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1397,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-10-22T13:53:54Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "90794438_1b1f8aad",
+      "revId": "d5505f778a4ab8c5443b37419392e069bf415335",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "54123c60_357d8ecd",
@@ -48,6 +66,24 @@
       "writtenOn": "2026-10-22T06:34:15Z",
       "side": 1,
       "message": "move it to http_listener_free",
+      "revId": "d5505f778a4ab8c5443b37419392e069bf415335",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "0873cd1e_b1d10356",
+        "filename": "src/plugins/http/http.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1502,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-10-22T13:53:54Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "54123c60_357d8ecd",
       "revId": "d5505f778a4ab8c5443b37419392e069bf415335",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -69,6 +105,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "d87270f0_25926553",
+        "filename": "src/plugins/http/http2/hpack.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 759,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-10-22T13:53:54Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "8ba9a1f7_ee35e527",
+      "revId": "d5505f778a4ab8c5443b37419392e069bf415335",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "89e109a8_129d58cb",
@@ -86,6 +140,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "2a75f982_80bca00c",
+        "filename": "src/plugins/http/http2/http2.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1159,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-10-22T13:53:54Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "89e109a8_129d58cb",
+      "revId": "d5505f778a4ab8c5443b37419392e069bf415335",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "692d3aa3_eef85af3",
@@ -99,6 +171,30 @@
       "writtenOn": "2026-10-22T06:34:15Z",
       "side": 1,
       "message": "this should not be here, move it to http static cli doc comment blocks",
+      "range": {
+        "startLine": 612,
+        "startChar": 0,
+        "endLine": 622,
+        "endChar": 0
+      },
+      "revId": "d5505f778a4ab8c5443b37419392e069bf415335",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "cba534f5_70b86d95",
+        "filename": "src/plugins/http/http_plugin.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 622,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-10-22T13:53:54Z",
+      "side": 1,
+      "message": "you remove it all, I want you to remove only http static server part",
+      "parentUuid": "692d3aa3_eef85af3",
       "range": {
         "startLine": 612,
         "startChar": 0,
