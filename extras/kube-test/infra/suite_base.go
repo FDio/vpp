@@ -285,7 +285,7 @@ func (s *BaseSuite) loadDockerImages() {
 	var err error
 	for _, image := range s.images {
 		Log("loading docker image %s...", image)
-		cmd = exec.Command("go", "run", "sigs.k8s.io/kind@v0.29.0", "load", "docker-image", image)
+		cmd = exec.Command("go", "run", "sigs.k8s.io/kind@v0.33.0", "load", "docker-image", image)
 		out, err = cmd.CombinedOutput()
 		Log(string(out))
 		AssertNil(err, string(out))
