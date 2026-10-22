@@ -211,14 +211,16 @@ class TestIPMcast(VppTestCase):
             if is_ip6
             else FibPathProto.FIB_PATH_NH_PROTO_IP4
         )
-        source, group, length = (
-            ("::", "ff3e::4343", 128) if is_ip6 else ("0.0.0.0", "239.43.43.43", 32)
-        )
+        source, length = ("::", 128) if is_ip6 else ("0.0.0.0", 32)
+        route_id = 0
 
         def path(interface, itf_flags, nh=None):
             return VppMRoutePath(interface.sw_if_index, itf_flags, nh=nh, proto=proto)
 
         def route(paths):
+            nonlocal route_id
+            route_id += 1
+            group = f"ff3e::43:{route_id}" if is_ip6 else f"239.43.43.{route_id}"
             return VppIpMRoute(
                 self,
                 source,

@@ -344,42 +344,73 @@ mfib_test_zero_flags_transitions (u32 fib_index, const mfib_prefix_t *prefix, fi
 }
 
 static int
+mfib_test_zero_flags_path_count (fib_node_index_t mfei, u32 expected)
+{
+  mfib_entry_src_t *source = vec_elt_at_index (mfib_entry_get (mfei)->mfe_srcs, 0);
+  int res = 0;
+
+  MFIB_TEST (expected == fib_path_list_get_n_paths (source->mfes_pl),
+	     "shared interface retains expected paths");
+  MFIB_TEST (expected == hash_elts (source->mfes_exts),
+	     "shared interface retains expected extensions");
+  return res;
+}
+
+static int
+mfib_test_zero_flags_shared_remove (u32 fib_index, const mfib_prefix_t *prefix,
+				    fib_route_path_t *paths, int remove_zero_first)
+{
+  fib_node_index_t mfei = mfib_table_lookup_exact_match (fib_index, prefix);
+  int res = 0;
+
+  mfib_table_entry_path_remove (fib_index, prefix, MFIB_SOURCE_API,
+				remove_zero_first ? &paths[0] : &paths[1]);
+  MFIB_TEST_NS (!mfib_test_zero_flags_path_count (mfei, 1));
+  if (remove_zero_first)
+    {
+      MFIB_TEST_NS (!mfib_test_entry_itf (mfei, paths[0].frp_sw_if_index, MFIB_ITF_FLAG_FORWARD));
+    }
+  else
+    {
+      MFIB_TEST_NS (!mfib_test_entry_no_itf (mfei, paths[0].frp_sw_if_index));
+    }
+  mfib_table_entry_path_remove (fib_index, prefix, MFIB_SOURCE_API,
+				remove_zero_first ? &paths[1] : &paths[0]);
+  MFIB_TEST (FIB_NODE_INDEX_INVALID == mfib_table_lookup_exact_match (fib_index, prefix),
+	     "shared interface route removed");
+  return res;
+}
+
+static int
 mfib_test_zero_flags_shared_interface (u32 fib_index, const mfib_prefix_t *prefix,
 				       fib_route_path_t path, const ip46_address_t *neighbor)
 {
   fib_route_path_t other = path, *paths = NULL;
   fib_node_index_t mfei;
-  mfib_entry_src_t *source;
   int res = 0;
 
   other.frp_addr = *neighbor;
   other.frp_mitf_flags = MFIB_ITF_FLAG_FORWARD;
-  for (u32 remove_zero_first = 0; remove_zero_first < 2; remove_zero_first++)
-    {
-      vec_add1 (paths, path);
-      vec_add1 (paths, other);
-      mfei = mfib_table_entry_paths_update (fib_index, prefix, MFIB_SOURCE_API,
-					    MFIB_ENTRY_FLAG_NONE, paths);
-      MFIB_TEST_NS (!mfib_test_entry_itf (mfei, path.frp_sw_if_index, MFIB_ITF_FLAG_FORWARD));
-      mfib_table_entry_path_remove (fib_index, prefix, MFIB_SOURCE_API,
-				    remove_zero_first ? &path : &other);
-      source = vec_elt_at_index (mfib_entry_get (mfei)->mfe_srcs, 0);
-      MFIB_TEST (1 == hash_elts (source->mfes_exts),
-		 "shared interface retains only remaining extension");
-      if (remove_zero_first)
-	{
-	  MFIB_TEST_NS (!mfib_test_entry_itf (mfei, path.frp_sw_if_index, MFIB_ITF_FLAG_FORWARD));
-	}
-      else
-	{
-	  MFIB_TEST_NS (!mfib_test_entry_no_itf (mfei, path.frp_sw_if_index));
-	}
-      mfib_table_entry_path_remove (fib_index, prefix, MFIB_SOURCE_API,
-				    remove_zero_first ? &other : &path);
-      MFIB_TEST (FIB_NODE_INDEX_INVALID == mfib_table_lookup_exact_match (fib_index, prefix),
-		 "shared interface route removed");
-      vec_reset_length (paths);
-    }
+  vec_add1 (paths, path);
+  vec_add1 (paths, other);
+  for (u32 sequential = 0; sequential < 2; sequential++)
+    for (u32 remove_zero_first = 0; remove_zero_first < 2; remove_zero_first++)
+      {
+	if (sequential)
+	  {
+	    mfib_table_entry_path_update (fib_index, prefix, MFIB_SOURCE_API, MFIB_ENTRY_FLAG_NONE,
+					  &paths[0]);
+	    mfei = mfib_table_entry_path_update (fib_index, prefix, MFIB_SOURCE_API,
+						 MFIB_ENTRY_FLAG_NONE, &paths[1]);
+	  }
+	else
+	  mfei = mfib_table_entry_paths_update (fib_index, prefix, MFIB_SOURCE_API,
+						MFIB_ENTRY_FLAG_NONE, paths);
+	MFIB_TEST_NS (!mfib_test_zero_flags_path_count (mfei, 2));
+	MFIB_TEST_NS (!mfib_test_entry_itf (mfei, path.frp_sw_if_index, MFIB_ITF_FLAG_FORWARD));
+	MFIB_TEST_NS (
+	  !mfib_test_zero_flags_shared_remove (fib_index, prefix, paths, remove_zero_first));
+      }
   vec_free (paths);
   return res;
 }

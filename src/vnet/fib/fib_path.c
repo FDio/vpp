@@ -1710,7 +1710,10 @@ fib_path_cmp_w_route_path (fib_node_index_t path_index,
 	    }
 	    break;
 	case FIB_PATH_TYPE_ATTACHED:
-	    res = (path->attached.fp_interface - rpath->frp_sw_if_index);
+	    if (ip46_address_is_zero (&rpath->frp_addr))
+	    {
+		res = (path->attached.fp_interface - rpath->frp_sw_if_index);
+	    }
 	    break;
 	case FIB_PATH_TYPE_RECURSIVE:
             if (DPO_PROTO_MPLS == path->fp_nh_proto)
