@@ -54,6 +54,7 @@ const static fib_prefix_t pfx_all1s = {
 
 static fib_source_t lcp_rt_fib_src;
 static fib_source_t lcp_rt_fib_src_dynamic;
+static fib_source_t lcp_rt_fib_src_special;
 
 #define LCP_ROUTER_DBG(...) vlib_log_debug (lcp_router_logger, __VA_ARGS__);
 
@@ -932,10 +933,10 @@ lcp_router_table_add_del_special_routes (lcp_router_table_t *nlt, u8 is_add)
     {
       /* Set the all 1s address in this table to punt */
       if (is_add)
-	fib_table_entry_special_add (nlt->nlt_fib_index, &pfx_all1s, lcp_rt_fib_src,
+	fib_table_entry_special_add (nlt->nlt_fib_index, &pfx_all1s, lcp_rt_fib_src_special,
 				     FIB_ENTRY_FLAG_LOCAL);
       else
-	fib_table_entry_special_remove (nlt->nlt_fib_index, &pfx_all1s, lcp_rt_fib_src);
+	fib_table_entry_special_remove (nlt->nlt_fib_index, &pfx_all1s, lcp_rt_fib_src_special);
 
       const fib_route_path_t path = {
 	.frp_proto = DPO_PROTO_IP4,
@@ -988,12 +989,10 @@ lcp_router_table_owned_routes (lcp_router_table_t *nlt)
 {
   u32 n_routes;
 
+  /* the 255.255.255.255/32 punt special has its own source, so it is not
+   * counted here */
   n_routes = fib_table_get_num_entries (nlt->nlt_fib_index, nlt->nlt_proto, lcp_rt_fib_src) +
 	     fib_table_get_num_entries (nlt->nlt_fib_index, nlt->nlt_proto, lcp_rt_fib_src_dynamic);
-
-  /* don't count the 255.255.255.255/32 punt special */
-  if (FIB_PROTOCOL_IP4 == nlt->nlt_proto && n_routes > 0)
-    n_routes--;
 
   return n_routes;
 }
@@ -1777,6 +1776,14 @@ lcp_router_init (vlib_main_t *vm)
 
   lcp_rt_fib_src_dynamic = fib_source_allocate (
     "lcp-rt-dynamic", FIB_SOURCE_PRIORITY_HI + 1, FIB_SOURCE_BH_API);
+
+  /*
+   * the table's own special routes get a source of their own: they are not
+   * routes from the kernel, so a resync must not sweep them and they must not
+   * count as routes keeping the table in use.
+   */
+  lcp_rt_fib_src_special =
+    fib_source_allocate ("lcp-rt-special", FIB_SOURCE_PRIORITY_HI, FIB_SOURCE_BH_SIMPLE);
 
   return (NULL);
 }

@@ -1,7 +1,11 @@
 #!/usr/bin/env python3
 
 import unittest
+import os
+import signal
 import socket
+import subprocess
+import tempfile
 from ipaddress import ip_address, ip_interface
 
 from scapy.layers.inet import IP, UDP
@@ -1508,6 +1512,89 @@ class TestLinuxCPPreExistingRoutes(TestLinuxCPNetNSBase):
             "per-interface Accept path on (*,224.0.0.0/24) was flushed by "
             "deletes of routes linux-cp never installed",
         )
+
+
+@unittest.skipIf(config.skip_netns_tests, "netns not available or disabled from cli")
+@unittest.skipIf(config.running_vpp, "needs to pause the VPP it started")
+class TestLinuxCPResync(TestLinuxCPNetNSBase):
+    """Linux CP resync of a table with no LCP pairs
+
+    Table 7 has no interfaces, so only the routes linux-cp installs keep it.
+    A resync must not remove the table's 255.255.255.255/32 punt route, nor
+    let the table go while it still has a route.
+    """
+
+    table_id = 7
+    n_routes = 1000
+
+    @classmethod
+    def setUpNetNS(cls):
+        super().setUpNetNS()
+        # A small receive buffer, so the routes below overflow it
+        cls.vpp_cmdline.extend(["linux-nl", "{", "nl-rx-buffer-size", "4096", "}"])
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.create_loopback_interfaces(1)
+        cls.vapi.cli(f"lcp create loop0 host-if hloop0 netns {cls.ns_name}")
+
+    def _route(self, i):
+        return f"10.200.{i // 256}.{i % 256}/32"
+
+    def _ip_batch(self, op, indexes):
+        with tempfile.NamedTemporaryFile("w") as f:
+            for i in indexes:
+                f.write(
+                    f"route {op} blackhole {self._route(i)} table {self.table_id}\n"
+                )
+            f.flush()
+            subprocess.run(
+                ["ip", "-n", self.ns_name, "-batch", f.name],
+                capture_output=True,
+                check=True,
+            )
+
+    def _table_header(self):
+        """The table's header line, or "" if VPP has no such table."""
+        out = self.vapi.cli(f"show ip fib table {self.table_id} summary")
+        return next((ln for ln in out.splitlines() if "locks:[" in ln), "")
+
+    def _has_route(self, prefix):
+        out = self.vapi.cli(f"show ip fib table {self.table_id} {prefix}")
+        return any(ln.startswith(prefix) for ln in out.splitlines())
+
+    def test_resync_keeps_punt_and_last_route(self):
+        """Resync keeps the punt route, and the table while it has a route"""
+        first, last = self._route(0), self._route(self.n_routes - 1)
+
+        # The table has to exist before the overflow for the resync to mark
+        # its routes, so add one route first.
+        self._ip_batch("add", [0])
+        self.poll_for("first route in VPP", lambda: self._has_route(first), True, 10)
+
+        # Where this was found the overflow came from load: 100k routes added
+        # at once. Stopping VPP while the rest are added gives the same overflow
+        # with far fewer routes, on any machine: nothing reads the netlink socket
+        # until VPP continues, and linux-nl then resynchronises.
+        os.kill(self.vpp.pid, signal.SIGSTOP)
+        try:
+            self._ip_batch("add", range(1, self.n_routes))
+        finally:
+            os.kill(self.vpp.pid, signal.SIGCONT)
+        self.poll_for("last route in VPP", lambda: self._has_route(last), True, 10)
+        self.assertNotIn("epoch:0 ", self._table_header(), "table 7 was not resynced")
+
+        out = self.vapi.cli(f"show ip fib table {self.table_id} 255.255.255.255/32")
+        self.assertIn("dpo-receive", out, "255.255.255.255/32 no longer punts")
+
+        self._ip_batch("del", range(self.n_routes - 1))
+        self.poll_for("first route gone", lambda: self._has_route(first), False, 10)
+        self.sleep(1)
+        self.assertTrue(self._has_route(last), f"{last} lost from VPP")
+
+        self._ip_batch("del", [self.n_routes - 1])
+        self.poll_for("table released", self._table_header, "", 10)
 
 
 @unittest.skipIf(config.skip_netns_tests, "netns not available or disabled from cli")
