@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "2f73a5ef_4aa97a88",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3121
+      },
+      "writtenOn": "2026-10-22T18:04:39Z",
+      "side": 1,
+      "message": "Ack. Cut the code comment down to 4 lines and dropped the \"Non-preload workers\" sentence. My understanding was wrong - every worker does go through the same `Worker.run`. Also fixed \"prepends\" in the commit message.",
+      "parentUuid": "788fcb5c_c6b81c15",
+      "revId": "a6079e763d536cd4fa2b0be3ee312b9425eb3d36",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "bc196aef_0598d540",
@@ -41,6 +59,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "a85c85c3_212aeeca",
+        "filename": "test/asf/asfframework.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 1807,
+      "author": {
+        "id": 3121
+      },
+      "writtenOn": "2026-10-22T18:04:39Z",
+      "side": 1,
+      "message": "Thanks for catching this. Fixed the comment in the latest patchset.",
+      "parentUuid": "bc196aef_0598d540",
+      "range": {
+        "startLine": 1807,
+        "startChar": 61,
+        "endLine": 1807,
+        "endChar": 69
+      },
+      "revId": "a6079e763d536cd4fa2b0be3ee312b9425eb3d36",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "2b214a83_243fc736",
@@ -54,6 +96,24 @@
       "writtenOn": "2026-10-22T10:02:41Z",
       "side": 1,
       "message": "env.get() leaves LD_PRELOAD in the environment.\n\nwe could replace it with env.pop(\"LD_PRELOAD\", None) and that way sh and stdbuf don\u0027t see our preloads at all, but the app gets \"vcl:libstdbuf\" as intended. I\u0027ve no idea what rust uutils stdbuf does internally, but because src/vcl/ldp.c defines a bunch of libc wrapper functions (like read, close, write, poll, ...), I\u0027d rather be safe than sorry by NOT exposing these to the new uutils.",
+      "revId": "a6079e763d536cd4fa2b0be3ee312b9425eb3d36",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "7a28ed39_b44e1207",
+        "filename": "test/asf/asfframework.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 1820,
+      "author": {
+        "id": 3121
+      },
+      "writtenOn": "2026-10-22T18:04:39Z",
+      "side": 1,
+      "message": "Done. Switched to `env.pop()`. Verified with a small probe `.so` that logs which process loads it:\n```\nget(): loaded in stdbuf, sh and the app on 24.04 (GNU); stdbuf and the app on 26.04 (uutils)\npop(): loaded in only the app on both, which sees \u003cpreload\u003e:\u003clibstdbuf.so\u003e\n```\nThis also stops the LDP constructor from attaching `stdbuf`/`sh` to VPP as separate VCL apps.",
+      "parentUuid": "2b214a83_243fc736",
       "revId": "a6079e763d536cd4fa2b0be3ee312b9425eb3d36",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
