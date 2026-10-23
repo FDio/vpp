@@ -6,11 +6,13 @@ import (
 	"os/exec"
 	"reflect"
 	"runtime"
+	"strconv"
 	"strings"
 
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
+	"github.com/onsi/ginkgo/v2/types"
 )
 
 type MasqueSuite struct {
@@ -36,6 +38,7 @@ type MasqueSuite struct {
 	NetNamespaces struct {
 		Client string
 	}
+	ExpectedConnectTimeouts int
 }
 
 var masqueTests = map[string][]func(s *MasqueSuite){}
@@ -120,6 +123,7 @@ func (s *MasqueSuite) SetupSuite() {
 }
 
 func (s *MasqueSuite) SetupTest(serverExtraArgs ...string) {
+	s.ExpectedConnectTimeouts = 0
 	s.HstSuite.SetupTest()
 
 	var memoryConfig Stanza
@@ -225,23 +229,44 @@ func (s *MasqueSuite) TeardownTest() {
 
 	clientVpp := s.Containers.VppClient.VppInstance
 	serverVpp := s.Containers.VppServer.VppInstance
-	if CurrentSpecReport().Failed() {
-		CollectNginxLogs(s.Containers.NginxServer)
-		CollectIperfLogs(s.Containers.IperfServer)
-		Log(clientVpp.Vppctl("show session verbose 2"))
-		Log(clientVpp.Vppctl("show error"))
-		Log(clientVpp.Vppctl("show http connect proxy client listeners sessions stats"))
-		Log(clientVpp.Vppctl("show http stats"))
-		Log(clientVpp.Vppctl("show http"))
-		Log(clientVpp.Vppctl("show tcp stats"))
-		Log(clientVpp.Vppctl("show quic"))
-		Log(serverVpp.Vppctl("show session verbose 2"))
-		Log(serverVpp.Vppctl("show error"))
-		Log(serverVpp.Vppctl("show http stats"))
-		Log(serverVpp.Vppctl("show http"))
-		Log(serverVpp.Vppctl("show tcp stats"))
-		Log(serverVpp.Vppctl("show quic"))
+	defer func() {
+		if CurrentSpecReport().Failed() {
+			CollectNginxLogs(s.Containers.NginxServer)
+			CollectIperfLogs(s.Containers.IperfServer)
+			Log(clientVpp.Vppctl("show session verbose 2"))
+			Log(clientVpp.Vppctl("show error"))
+			Log(clientVpp.Vppctl("show http connect proxy client listeners sessions stats"))
+			Log(clientVpp.Vppctl("show http stats"))
+			Log(clientVpp.Vppctl("show http"))
+			Log(clientVpp.Vppctl("show tcp stats"))
+			Log(clientVpp.Vppctl("show quic"))
+			Log(serverVpp.Vppctl("show session verbose 2"))
+			Log(serverVpp.Vppctl("show error"))
+			Log(serverVpp.Vppctl("show http stats"))
+			Log(serverVpp.Vppctl("show http"))
+			Log(serverVpp.Vppctl("show tcp stats"))
+			Log(serverVpp.Vppctl("show quic"))
+		}
+	}()
+	if !CurrentSpecReport().Failed() && !CurrentSpecReport().State.Is(types.SpecStateSkipped) {
+		AssertEqual(s.ExpectedConnectTimeouts, s.ConnectTimeouts(), "unexpected number of CONNECT response timeouts")
 	}
+}
+
+func (s *MasqueSuite) ConnectTimeouts() int {
+	stats := s.Containers.VppClient.VppInstance.Vppctl("show http connect proxy client stats")
+	AssertContains(stats, "http connection state:")
+	total := 0
+	for _, line := range strings.Split(stats, "\n") {
+		fields := strings.Fields(line)
+		if len(fields) != 3 || fields[1] != "connect" || fields[2] != "timeouts" {
+			continue
+		}
+		count, err := strconv.Atoi(fields[0])
+		AssertNil(err)
+		total += count
+	}
+	return total
 }
 
 func (s *MasqueSuite) ProxyClientConnect(proto, port string, extraArgs ...string) {

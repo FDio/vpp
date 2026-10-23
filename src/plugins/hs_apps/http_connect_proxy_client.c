@@ -23,6 +23,12 @@
 
 #define HCPC_TIMER_HANDLE_INVALID ((u32) ~0)
 
+typedef enum
+{
+  HCPC_TIMER_UDP_IDLE,
+  HCPC_TIMER_CONNECT,
+} hcpc_timer_t;
+
 #define foreach_hcpc_event                                                    \
   _ (PROXY_CONNECTED, "proxy-connected")                                      \
   _ (PROXY_CONNECT_REFUSED, "proxy-connect-refused")                          \
@@ -98,18 +104,18 @@ typedef struct
   session_handle_t session_handle;
 } hcpc_listener_t;
 
-#define foreach_hcpc_wrk_stat                                                 \
-  _ (tunnels_opened, "tunnels opened")                                        \
-  _ (udp_idle_timeouts, "udp idle timeouts")                                  \
-  _ (tunnels_reset_by_client, "tunnels reset by client")                      \
-  _ (tunnels_reset_by_target, "tunnels reset by target")                      \
-  _ (max_streams_hit, "max streams hit")                                      \
-  _ (http_conns_reset_by_server, "http connections reset by server")          \
-  _ (target_unreachable, "target unreachable")                                \
-  _ (client_closed_before_stream_opened, "client closed before stream "       \
-					 "opened")                            \
-  _ (client_closed_before_tunnel_connected,                                   \
-     "client closed before tunnel connected")
+#define foreach_hcpc_wrk_stat                                                                      \
+  _ (tunnels_opened, "tunnels opened")                                                             \
+  _ (udp_idle_timeouts, "udp idle timeouts")                                                       \
+  _ (connect_timeouts, "connect timeouts")                                                         \
+  _ (tunnels_reset_by_client, "tunnels reset by client")                                           \
+  _ (tunnels_reset_by_target, "tunnels reset by target")                                           \
+  _ (max_streams_hit, "max streams hit")                                                           \
+  _ (http_conns_reset_by_server, "http connections reset by server")                               \
+  _ (target_unreachable, "target unreachable")                                                     \
+  _ (client_closed_before_stream_opened, "client closed before stream "                            \
+					 "opened")                                                 \
+  _ (client_closed_before_tunnel_connected, "client closed before tunnel connected")
 
 typedef struct
 {
@@ -165,6 +171,7 @@ typedef struct
   u32 prealloc_fifos;
   u64 private_segment_size;
   u32 udp_idle_timeout;
+  u32 connect_timeout;
   u8 *cert_file;
   u8 *key_file;
   u8 is_http3;
@@ -365,6 +372,8 @@ hcpc_session_get (u32 s_index)
   return pool_elt_at_index (hcpcm->sessions, s_index);
 }
 
+static void hcpc_reset_session_rpc (void *handlep);
+
 static void
 hcpc_timer_expired_cb (u32 *expired_timers)
 {
@@ -373,7 +382,7 @@ hcpc_timer_expired_cb (u32 *expired_timers)
   u32 ps_index;
   hcpc_session_t *ps;
 
-  clib_spinlock_lock_if_init (&hcpcm->sessions_lock);
+  ASSERT (!vlib_num_workers () || CLIB_SPINLOCK_IS_LOCKED (&hcpcm->sessions_lock));
   for (i = 0; i < vec_len (expired_timers); i++)
     {
       ps_index = expired_timers[i] & 0x7FFFFFFF;
@@ -381,33 +390,54 @@ hcpc_timer_expired_cb (u32 *expired_timers)
       if (!ps)
 	continue;
       HCPC_DBG ("session [%u]", ps_index);
+      ps->timer_handle = HCPC_TIMER_HANDLE_INVALID;
+      if ((expired_timers[i] >> 31) == HCPC_TIMER_CONNECT)
+	{
+	  if (!ps->http_establishing || ps->http_disconnected)
+	    continue;
+	  ps->state = HCPC_SESSION_CLOSED;
+	  ps->http_establishing = 0;
+	  ASSERT (ps->http.session_handle != SESSION_INVALID_HANDLE);
+	  session_send_rpc_evt_to_thread_force (
+	    session_thread_from_handle (ps->http.session_handle), hcpc_reset_session_rpc,
+	    uword_to_pointer (ps->http.session_handle, void *));
+	  ps->http_disconnected = 1;
+	  if (!ps->intercept_diconnected)
+	    {
+	      ASSERT (ps->intercept.session_handle != SESSION_INVALID_HANDLE);
+	      session_send_rpc_evt_to_thread_force (
+		session_thread_from_handle (ps->intercept.session_handle), hcpc_reset_session_rpc,
+		uword_to_pointer (ps->intercept.session_handle, void *));
+	      ps->intercept_diconnected = 1;
+	    }
+	  hcpc_worker_stats_inc (vlib_get_thread_index (), connect_timeouts, 1);
+	  continue;
+	}
       ASSERT (ps->flags & HCPC_SESSION_F_IS_UDP);
       ASSERT (ps->http_establishing == 0);
       ps->state = HCPC_SESSION_CLOSED;
-      ps->timer_handle = HCPC_TIMER_HANDLE_INVALID;
       if (!ps->intercept_diconnected)
 	hcpc_session_close_intercept (ps);
       if (!ps->http_disconnected)
 	hcpc_session_close_http (ps);
+      hcpc_worker_stats_inc (vlib_get_thread_index (), udp_idle_timeouts, 1);
     }
-  clib_spinlock_unlock_if_init (&hcpc_main.sessions_lock);
-  hcpc_worker_stats_inc (vlib_get_thread_index (), udp_idle_timeouts,
-			 vec_len (expired_timers));
 }
 
 static inline void
-hcpc_timer_start (hcpc_session_t *ps)
+hcpc_timer_start (hcpc_session_t *ps, hcpc_timer_t timer)
 {
   hcpc_main_t *hcpcm = &hcpc_main;
 
   ASSERT (ps->timer_handle == HCPC_TIMER_HANDLE_INVALID);
-  ASSERT (ps->flags & HCPC_SESSION_F_IS_UDP);
+  ASSERT (timer == HCPC_TIMER_CONNECT || (ps->flags & HCPC_SESSION_F_IS_UDP));
   ASSERT (!vlib_num_workers () ||
 	  CLIB_SPINLOCK_IS_LOCKED (&hcpcm->sessions_lock));
 
   clib_spinlock_lock_if_init (&hcpcm->tw_lock);
   ps->timer_handle = tw_timer_start_2t_1w_2048sl (
-    &hcpcm->tw, ps->session_index, 0, hcpcm->udp_idle_timeout);
+    &hcpcm->tw, ps->session_index, timer,
+    timer == HCPC_TIMER_CONNECT ? hcpcm->connect_timeout : hcpcm->udp_idle_timeout);
   clib_spinlock_unlock_if_init (&hcpcm->tw_lock);
 }
 
@@ -421,8 +451,6 @@ hcpc_timer_stop (hcpc_session_t *ps)
 
   if (ps->timer_handle == HCPC_TIMER_HANDLE_INVALID)
     return;
-
-  ASSERT (ps->flags & HCPC_SESSION_F_IS_UDP);
 
   clib_spinlock_lock_if_init (&hcpcm->tw_lock);
   tw_timer_stop_2t_1w_2048sl (&hcpcm->tw, ps->timer_handle);
@@ -438,7 +466,7 @@ hcpc_timer_update (hcpc_session_t *ps)
   ASSERT (!vlib_num_workers () ||
 	  CLIB_SPINLOCK_IS_LOCKED (&hcpcm->sessions_lock));
 
-  if (ps->timer_handle == HCPC_TIMER_HANDLE_INVALID)
+  if (ps->timer_handle == HCPC_TIMER_HANDLE_INVALID || ps->http_establishing)
     return;
 
   ASSERT (ps->flags & HCPC_SESSION_F_IS_UDP);
@@ -488,7 +516,9 @@ hcpc_delete_session (session_t *s, u8 is_http)
   ps = hcpc_session_get (s->opaque);
   ASSERT (ps);
 
-  hcpc_timer_stop (ps);
+  /* keep waiting for CONNECT response, we should deliver data from client */
+  if (is_http || !ps->http_establishing)
+    hcpc_timer_stop (ps);
 
   if (is_http)
     {
@@ -955,6 +985,7 @@ hcpc_open_http_stream (u32 session_index)
       return;
     }
 
+  hcpc_timer_start (ps, HCPC_TIMER_CONNECT);
   clib_spinlock_unlock_if_init (&hcpcm->sessions_lock);
 
   if (svm_fifo_max_dequeue (s->tx_fifo))
@@ -1353,6 +1384,7 @@ hcpc_http_rx_callback (session_t *s)
   ASSERT (ps);
   if (ps->http_establishing)
     {
+      hcpc_timer_stop (ps);
       ps->http_establishing = 0;
       if (ps->intercept_diconnected || hcpc_read_http_connect_resp (s))
 	{
@@ -1376,7 +1408,7 @@ hcpc_http_rx_callback (session_t *s)
 	}
       ps->state = HCPC_SESSION_ESTABLISHED;
       if (ps->flags & HCPC_SESSION_F_IS_UDP)
-	hcpc_timer_start (ps);
+	hcpc_timer_start (ps, HCPC_TIMER_UDP_IDLE);
       else
 	{
 	  /* rollback cwnd and reschedule tcp intercept transport */
@@ -1951,9 +1983,11 @@ hcpc_event_process (vlib_main_t *vm, vlib_node_runtime_t *rt, vlib_frame_t *f)
 	    }
 	  /* expire timers */
 	  now = vlib_time_now (vm);
+	  clib_spinlock_lock_if_init (&hcpcm->sessions_lock);
 	  clib_spinlock_lock_if_init (&hcpcm->tw_lock);
 	  tw_timer_expire_timers_2t_1w_2048sl (&hcpcm->tw, now);
 	  clib_spinlock_unlock_if_init (&hcpcm->tw_lock);
+	  clib_spinlock_unlock_if_init (&hcpcm->sessions_lock);
 	  break;
 	default:
 	  HCPC_DBG ("unknown event %u", event_type);
@@ -2114,6 +2148,8 @@ hcpc_create_command_fn (vlib_main_t *vm, unformat_input_t *input,
       else if (unformat (line_input, "udp-idle-timeout %u",
 			 &hcpcm->udp_idle_timeout))
 	;
+      else if (unformat (line_input, "connect-timeout %u", &hcpcm->connect_timeout))
+	;
       else if (unformat (line_input, "cert %s", &hcpcm->cert_file))
 	;
       else if (unformat (line_input, "key %s", &hcpcm->key_file))
@@ -2143,6 +2179,11 @@ hcpc_create_command_fn (vlib_main_t *vm, unformat_input_t *input,
   if (!listener_uri)
     {
       err = clib_error_return (0, "listener uri not provided");
+      goto done;
+    }
+  if (!hcpcm->connect_timeout)
+    {
+      err = clib_error_return (0, "connect timeout must be positive");
       goto done;
     }
 
@@ -2191,6 +2232,7 @@ VLIB_CLI_COMMAND (hcpc_create_command, static) = {
   .path = "http connect proxy client enable",
   .short_help = "http connect proxy client enable server-uri <http[s]://ip:port>\n"
 		"interface <intfc> listener <tcp|udp://ip:port> [udp-idle-timeout <n>]\n"
+		"[connect-timeout <seconds>]\n"
 		"[fifo-size <nM|G>] [private-segment-size <nM|G>] [prealloc-fifos <n>]\n"
 		"[cert <cert> key <key>] [http3] [masque-draft-03]",
   .function = hcpc_create_command_fn,
@@ -2439,6 +2481,7 @@ hcpc_main_init (vlib_main_t *vm)
   hcpcm->prealloc_fifos = 0;
   hcpcm->sw_if_index = ~0;
   hcpcm->udp_idle_timeout = 600;
+  hcpcm->connect_timeout = 30;
 
   vec_validate (hcpcm->capsule_proto_header_buf, 10);
   http_init_headers_ctx (&hcpcm->capsule_proto_header,
