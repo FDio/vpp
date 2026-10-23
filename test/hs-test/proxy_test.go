@@ -53,7 +53,8 @@ func init() {
 		VppConnectProxyHttp3FinDrainTcpMWTest)
 	RegisterMasqueMWControlTests(VppConnectProxyDraft03MWTest, VppConnectProxyClientStressMWTest,
 		VppConnectProxyHttp3Draft03MWTest, VppConnectProxyHttp3TargetUnreachableMWTest,
-		VppConnectProxyHttp3StressMWTest, VppConnectProxyHttp2FinDrainTcpMWTest)
+		VppConnectProxyHttp3StressMWTest, VppConnectProxyHttp2FinDrainTcpMWTest,
+		VppConnectProxyClientConnectTimeoutMWTest)
 }
 
 func VppProxyHttpGetTcpMWTest(s *VppProxySuite) {
@@ -1047,6 +1048,62 @@ func VppConnectProxyClientUdpIdleMWTest(s *MasqueSuite) {
 	}()
 	AssertNil(<-finished)
 
+	vppConnectProxyClientCheckCleanup(s)
+	vppConnectProxyServerCheckCleanup(s, false)
+}
+
+func VppConnectProxyClientConnectTimeoutMWTest(s *MasqueSuite) {
+	s.CpusPerVppContainer = 3
+	s.SetupTest()
+	s.ExpectedConnectTimeouts = 1
+	s.StartNginxServer()
+	s.ProxyClientConnect("tcp", s.Ports.Nginx, "connect-timeout 5")
+	clientVpp := s.Containers.VppClient.VppInstance
+	serverVpp := s.Containers.VppServer.VppInstance
+	parentConnection := clientVpp.Vppctl("show http connect proxy client")
+
+	// Suppress CONNECT replies
+	AssertContains(serverVpp.Vppctl("set nsim poll-main-thread delay 0.01 ms bandwidth 1 gbit packet-size 1400 drop-fraction 1"),
+		"drop fraction 1.000000")
+	nsim := "nsim output-feature enable-disable " + s.Interfaces.TunnelServer.VppName()
+	AssertEmpty(serverVpp.Vppctl(nsim))
+
+	uri := fmt.Sprintf("http://%s:%s/64B", s.NginxAddr(), s.Ports.Nginx)
+	cmd := CommandInNetns([]string{"curl", "--noproxy", "*", "--max-time", "1", "--silent", "--show-error", uri}, s.NetNamespaces.Client)
+	output, err := cmd.CombinedOutput()
+	Log(string(output))
+	AssertNotNil(err)
+	AssertEqual(cmd.ProcessState.ExitCode(), 28, "curl should time out waiting for the response")
+	Eventually(func() string {
+		return serverVpp.Vppctl("show http stats")
+	}, 2*time.Second, time.Second).Should(ContainSubstring("1 responses sent"))
+	Eventually(s.ConnectTimeouts, 8*time.Second, time.Second).Should(Equal(1))
+
+	vppConnectProxyClientCheckCleanup(s)
+
+	// Release the late response after the client has reset the timed-out stream.
+	AssertEmpty(serverVpp.Vppctl(nsim + " disable"))
+	// Allow for the parent TCP retransmission timer's backoff under packet loss.
+	Eventually(func() bool {
+		return strings.Contains(clientVpp.Vppctl("show http stats"), "connections protocol error") ||
+			strings.Contains(serverVpp.Vppctl("show http stats"), "1 streams reset by peer")
+	}, 15*time.Second, time.Second).Should(BeTrue(), "late response or stream reset was not processed")
+	AssertNotContains(clientVpp.Vppctl("show http stats"), "connections protocol error")
+	vppConnectProxyServerCheckCleanup(s, false)
+
+	// Verify that another tunnel works on the original parent connection.
+	cmd = CommandInNetns([]string{"curl", "--noproxy", "*", "--max-time", "15", "--fail", "--silent", "--show-error", uri}, s.NetNamespaces.Client)
+	output, err = cmd.CombinedOutput()
+	Log(string(output))
+	AssertNil(err)
+	AssertEqual(strings.Repeat("x", 64), string(output))
+	AssertEqual(parentConnection, clientVpp.Vppctl("show http connect proxy client"), "parent connection changed")
+	clientStats := clientVpp.Vppctl("show http stats")
+	serverStats := serverVpp.Vppctl("show http stats")
+	AssertContains(clientStats, "1 connections established")
+	AssertContains(serverStats, "1 connections accepted")
+	AssertNotContains(clientStats, "connections protocol error")
+	AssertNotContains(serverStats, "connections protocol error")
 	vppConnectProxyClientCheckCleanup(s)
 	vppConnectProxyServerCheckCleanup(s, false)
 }
