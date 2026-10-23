@@ -1277,9 +1277,6 @@ hss_create_command_fn (vlib_main_t *vm, unformat_input_t *input,
 
 no_input:
 
-  if (error)
-    goto done;
-
   if (l->www_root)
     {
       /* Maintain legacy default uri behavior */
