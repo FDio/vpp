@@ -1040,6 +1040,78 @@ vl (void *v)
   return vec_len (v);
 }
 
+static void
+validate_vec_cached_capacity (void *vec, uword elt_sz)
+{
+  uword capacity = _vec_max_len (vec, elt_sz);
+  uword lengths[] = { 255, 0, 256, 0, 128, 256, 384, 384,
+		      capacity - 1, capacity, capacity - 16 };
+
+  ALWAYS_ASSERT (capacity >= 512 && capacity < (u32) ~0);
+  ALWAYS_ASSERT (_vec_find (vec)->grow_elts == 255);
+  for (uword index = 0; index < ARRAY_LEN (lengths); index++)
+    {
+      _vec_set_len (vec, lengths[index], elt_sz);
+      ALWAYS_ASSERT (_vec_len (vec) == lengths[index]);
+      ALWAYS_ASSERT (_vec_find (vec)->grow_elts <= capacity - lengths[index]);
+      if (lengths[index] == 255)
+	ALWAYS_ASSERT (_vec_find (vec)->grow_elts == 0);
+      if (lengths[index] == 256)
+	ALWAYS_ASSERT (_vec_find (vec)->grow_elts == 255);
+    }
+}
+
+static void
+run_cached_capacity_tests (void)
+{
+  for (uword with_header = 0; with_header < 2; with_header++)
+    {
+      uword hdr_bytes = with_header ? sizeof (hdr_t) : 0;
+      uword alignment = with_header ? CLIB_CACHE_LINE_BYTES : 0;
+
+#define _(type)                                                               \
+  do                                                                          \
+    {                                                                         \
+      type *vec = 0;                                                          \
+      type sentinel;                                                          \
+      uword capacity;                                                         \
+                                                                              \
+      vec_alloc_ha (vec, 512, hdr_bytes, alignment);                            \
+      ALWAYS_ASSERT (vec_len (vec) == 0);                                      \
+      validate_vec_cached_capacity (vec, sizeof (type));                       \
+      vec_reset_length (vec);                                                 \
+      ALWAYS_ASSERT (vec_len (vec) == 0);                                      \
+      ALWAYS_ASSERT (_vec_find (vec)->grow_elts == 255);                        \
+      capacity = vec_max_len (vec);                                           \
+      if (hdr_bytes)                                                          \
+	clib_memset (vec_header (vec), 0x5a, hdr_bytes);                         \
+      vec_set_len (vec, capacity);                                            \
+      ALWAYS_ASSERT (_vec_find (vec)->grow_elts == 0);                          \
+      clib_memset (vec, 0x3c, vec_bytes (vec));                                 \
+      clib_memset (&sentinel, 0xa5, sizeof (sentinel));                         \
+      vec_add1_ha (vec, sentinel, hdr_bytes, alignment);                        \
+      ALWAYS_ASSERT (vec_len (vec) == capacity + 1);                           \
+      ALWAYS_ASSERT (vec_max_len (vec) >= vec_len (vec));                       \
+      ALWAYS_ASSERT (_vec_find (vec)->grow_elts <=                              \
+		     vec_max_len (vec) - vec_len (vec));                        \
+      ALWAYS_ASSERT (memcmp (&vec[capacity], &sentinel, sizeof (type)) == 0);   \
+      for (uword index = 0; index < capacity * sizeof (type); index++)          \
+	ALWAYS_ASSERT (((u8 *) vec)[index] == 0x3c);                             \
+      for (uword index = 0; index < hdr_bytes; index++)                         \
+	ALWAYS_ASSERT (((u8 *) vec_header (vec))[index] == 0x5a);                \
+      ALWAYS_ASSERT (((uword) vec & (_vec_align (vec, alignment) - 1)) == 0);    \
+      vec_free (vec);                                                         \
+    }                                                                         \
+  while (0)
+
+      _ (u8);
+      _ (u32);
+      _ (u64);
+      _ (elt_t);
+#undef _
+    }
+}
+
 int
 test_vec_main (unformat_input_t * input)
 {
@@ -1110,6 +1182,7 @@ test_vec_main (unformat_input_t * input)
   if (help)
     goto usage;
 
+  run_cached_capacity_tests ();
   prob_init ();
   run_validator (iter);
   run_validator_wh (iter);
