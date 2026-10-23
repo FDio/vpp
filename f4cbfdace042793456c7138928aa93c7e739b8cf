@@ -16,6 +16,24 @@
       "message": "I suspect we should be checking if fifo is non-empty, to avoid spurious tx events",
       "revId": "f4cbfdace042793456c7138928aa93c7e739b8cf",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "762977be_d6fce973",
+        "filename": "src/plugins/hsi/hsi_tracker_private.h",
+        "patchSetId": 7
+      },
+      "lineNbr": 362,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-10-23T20:26:26Z",
+      "side": 1,
+      "message": "Done in PS8. hsi_drain_program_tx() now checks svm_fifo_max_dequeue_cons(s-\u003etx_fifo) before setting the event, so empty TX FIFOs do not schedule a TX event. The wakeup remains after drain installation on the owning worker.\n\nValidation on ARM64 Linux, Clang 18 release: all nine focused HSI tests pass, covering TCP/UDP drain completion, timeout and cache overflow, plus repeated offload across workers. Five additional passes of the three multi-worker tests also pass: 24 successful test executions in total, including 18 multi-worker executions. Formatting and commit-message checks pass as well.",
+      "parentUuid": "9efee652_27708b44",
+      "revId": "f4cbfdace042793456c7138928aa93c7e739b8cf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
