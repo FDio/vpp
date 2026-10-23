@@ -2417,6 +2417,33 @@ http2_req_run_state_machine (http_ctx_t *hc, http_ctx_t *req, transport_send_par
 /******************/
 
 static http2_error_t
+http2_discard_headers (http_ctx_t *hc, u8 *payload, u32 payload_len)
+{
+  http_worker_t *wrk = http_worker_get (hc->c_thread_index);
+  http_field_line_t *headers = 0;
+  http2_error_t rv;
+
+  /* headers can race with local reset, decode them to keep the connection's
+   * HPACK table synchronized */
+  if (hc->flags & HTTP_CONN_F_IS_SERVER)
+    {
+      hpack_request_control_data_t control_data = {};
+      rv = hpack_parse_request (payload, payload_len, wrk->header_list,
+				hc->settings.max_header_list_size, &control_data, &headers,
+				&hc->decoder_dynamic_table);
+    }
+  else
+    {
+      hpack_response_control_data_t control_data = {};
+      rv = hpack_parse_response (payload, payload_len, wrk->header_list,
+				 hc->settings.max_header_list_size, &control_data, &headers,
+				 &hc->decoder_dynamic_table);
+    }
+  vec_free (headers);
+  return rv;
+}
+
+static http2_error_t
 http2_handle_headers_frame (http_ctx_t *hc, http2_frame_header_t *fh)
 {
   http_ctx_t *req;
@@ -2479,38 +2506,18 @@ http2_handle_headers_frame (http_ctx_t *hc, http2_frame_header_t *fh)
 	  req->req_flags |= HTTP_REQ_F_PEER_CLOSED;
 	  req->stream_state = HTTP2_STREAM_STATE_HALF_CLOSED;
 	}
-
-      if (!(fh->flags & HTTP2_FRAME_FLAG_END_HEADERS))
-	{
-	  HTTP_DBG (1, "fragmented headers stream id %u", stream_id_ho);
-	  hc->rx_expect = HTTP2_RX_EXPECT_CONTINUATION;
-	  vec_validate (hc->unparsed_headers, fh->length - 1);
-	  http_io_ts_read (hc, hc->unparsed_headers, fh->length, 0);
-	  rv = http2_frame_read_headers (&headers_start, &headers_len, hc->unparsed_headers,
-					 fh->length, fh->flags);
-	  if (rv != HTTP2_ERROR_NO_ERROR)
-	    return rv;
-
-	  /* in case frame has padding */
-	  if (PREDICT_FALSE (headers_start != hc->unparsed_headers))
-	    {
-	      n_dec = fh->length - headers_len;
-	      n_del = headers_start - hc->unparsed_headers;
-	      n_dec -= n_del;
-	      vec_delete (hc->unparsed_headers, n_del, 0);
-	      vec_dec_len (hc->unparsed_headers, n_dec);
-	    }
-
-	  return HTTP2_ERROR_EXPECT_CONTINUATION;
-	}
     }
   else
     {
       req = http2_conn_get_req (hc, fh->stream_id);
       if (!req)
-	return HTTP2_ERROR_PROTOCOL_ERROR;
+	{
+	  stream_id_ho = clib_net_to_host_u32 (fh->stream_id);
+	  if (!(stream_id_ho & 1) || stream_id_ho > hc->last_opened_stream_id)
+	    return HTTP2_ERROR_PROTOCOL_ERROR;
+	}
 
-      if (!http2_req_state_is_rx_valid (req))
+      if (req && !http2_req_state_is_rx_valid (req))
 	{
 	  if (req->req_state == HTTP_REQ_STATE_APP_IO_MORE_DATA)
 	    {
@@ -2526,45 +2533,50 @@ http2_handle_headers_frame (http_ctx_t *hc, http2_frame_header_t *fh)
 	    return HTTP2_ERROR_INTERNAL_ERROR;
 	}
 
-      if (fh->flags & HTTP2_FRAME_FLAG_END_STREAM)
+      if (req && (fh->flags & HTTP2_FRAME_FLAG_END_STREAM))
 	{
 	  req->req_flags |= HTTP_REQ_F_PEER_CLOSED;
 	  req->stream_state = HTTP2_STREAM_STATE_CLOSED;
 	}
+    }
 
-      if (!(fh->flags & HTTP2_FRAME_FLAG_END_HEADERS))
+  if (!(fh->flags & HTTP2_FRAME_FLAG_END_HEADERS))
+    {
+      HTTP_DBG (1, "fragmented headers stream id %u", clib_net_to_host_u32 (fh->stream_id));
+      hc->rx_expect = HTTP2_RX_EXPECT_CONTINUATION;
+      hc->continuation_stream_id = fh->stream_id;
+      vec_validate (hc->unparsed_headers, fh->length - 1);
+      http_io_ts_read (hc, hc->unparsed_headers, fh->length, 0);
+      rv = http2_frame_read_headers (&headers_start, &headers_len, hc->unparsed_headers, fh->length,
+				     fh->flags);
+      if (rv != HTTP2_ERROR_NO_ERROR)
+	return rv;
+
+      /* in case frame has padding */
+      if (PREDICT_FALSE (headers_start != hc->unparsed_headers))
 	{
-	  HTTP_DBG (1, "fragmented headers stream id %u", clib_net_to_host_u32 (fh->stream_id));
-	  hc->rx_expect = HTTP2_RX_EXPECT_CONTINUATION;
-	  vec_validate (hc->unparsed_headers, fh->length - 1);
-	  http_io_ts_read (hc, hc->unparsed_headers, fh->length, 0);
-	  rv = http2_frame_read_headers (&headers_start, &headers_len, hc->unparsed_headers,
-					 fh->length, fh->flags);
-	  if (rv != HTTP2_ERROR_NO_ERROR)
-	    return rv;
-
-	  /* in case frame has padding */
-	  if (PREDICT_FALSE (headers_start != hc->unparsed_headers))
-	    {
-	      n_dec = fh->length - headers_len;
-	      n_del = headers_start - hc->unparsed_headers;
-	      n_dec -= n_del;
-	      vec_delete (hc->unparsed_headers, n_del, 0);
-	      vec_dec_len (hc->unparsed_headers, n_dec);
-	    }
-
-	  return HTTP2_ERROR_EXPECT_CONTINUATION;
+	  n_dec = fh->length - headers_len;
+	  n_del = headers_start - hc->unparsed_headers;
+	  n_dec -= n_del;
+	  vec_delete (hc->unparsed_headers, n_del, 0);
+	  vec_dec_len (hc->unparsed_headers, n_dec);
 	}
+
+      return HTTP2_ERROR_EXPECT_CONTINUATION;
     }
 
   rx_buf = http_get_rx_buf_len (hc, fh->length);
   http_io_ts_read (hc, rx_buf, fh->length, 0);
 
-  rv = http2_frame_read_headers (&req->payload, &req->payload_len, rx_buf,
-				 fh->length, fh->flags);
+  rv = http2_frame_read_headers (&headers_start, &headers_len, rx_buf, fh->length, fh->flags);
   if (rv != HTTP2_ERROR_NO_ERROR)
     return rv;
 
+  if (!req)
+    return http2_discard_headers (hc, headers_start, headers_len);
+
+  req->payload = headers_start;
+  req->payload_len = headers_len;
   HTTP_DBG (1, "run state machine");
   return http2_req_run_state_machine (hc, req, 0, 0);
 }
@@ -2582,7 +2594,7 @@ http2_handle_continuation_frame (http_ctx_t *hc, http2_frame_header_t *fh)
       return HTTP2_ERROR_FRAME_SIZE_ERROR;
     }
 
-  if (clib_net_to_host_u32 (fh->stream_id) != hc->last_opened_stream_id)
+  if (fh->stream_id != hc->continuation_stream_id)
     {
       HTTP_DBG (1, "invalid stream id %u", clib_net_to_host_u32 (fh->stream_id));
       return HTTP2_ERROR_PROTOCOL_ERROR;
@@ -2602,13 +2614,16 @@ http2_handle_continuation_frame (http_ctx_t *hc, http2_frame_header_t *fh)
   if (fh->flags & HTTP2_FRAME_FLAG_END_HEADERS)
     {
       req = http2_conn_get_req (hc, fh->stream_id);
-      if (!req)
-	return HTTP2_ERROR_PROTOCOL_ERROR;
       hc->rx_expect = HTTP2_RX_EXPECT_DEFAULT;
-      req->payload = hc->unparsed_headers;
-      req->payload_len = vec_len (hc->unparsed_headers);
-      HTTP_DBG (1, "run state machine");
-      rv = http2_req_run_state_machine (hc, req, 0, 0);
+      if (!req)
+	rv = http2_discard_headers (hc, hc->unparsed_headers, vec_len (hc->unparsed_headers));
+      else
+	{
+	  req->payload = hc->unparsed_headers;
+	  req->payload_len = vec_len (hc->unparsed_headers);
+	  HTTP_DBG (1, "run state machine");
+	  rv = http2_req_run_state_machine (hc, req, 0, 0);
+	}
       vec_free (hc->unparsed_headers);
     }
 

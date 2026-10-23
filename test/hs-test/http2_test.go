@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/edwarnicke/exechelper"
+	. "github.com/onsi/ginkgo/v2"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/hpack"
 
@@ -22,7 +23,7 @@ func init() {
 	RegisterH2Tests(Http2TcpGetTest, Http2TcpPostTest, Http2MultiplexingTest, Http2TlsTest, Http2ContinuationTxTest,
 		Http2ServerMemLeakTest, Http2ClientGetTest, Http2ClientPostTest, Http2ClientPostPtrTest, Http2ClientGetRepeatTest,
 		Http2ClientMultiplexingTest, Http2ClientH2cTest, Http2ClientContinuationH2cTest, Http2ClientNoContentLengthTest, Http2ServerExtraDataTest,
-		Http2ClientMemLeakTest,
+		Http2ClientMemLeakTest, Http2ClientClosedHeadersTest,
 		Htttp2TlsNoAlpnTest, Http2TcpClientCloseDuringHandshakeTest)
 	RegisterH2MWTests(Http2MultiplexingMWTest, Http2ClientMultiplexingMWTest, Http2TsFifoMemPressureMWTest)
 	RegisterVethTests(Http2CliTlsTest, Http2ClientContinuationTest, Http2ClientPostFormTest, Http2ClientPostFormPtrTest)
@@ -369,6 +370,76 @@ func http2HeaderBlock(fields ...hpack.HeaderField) []byte {
 		enc.WriteField(f)
 	}
 	return block.Bytes()
+}
+
+func Http2ClientClosedHeadersTest(s *Http2Suite) {
+	vpp := s.Containers.Vpp.VppInstance
+	address := net.JoinHostPort(s.HostAddr(), s.Ports.Port1)
+	listener, err := net.Listen("tcp", address)
+	AssertNil(err)
+	defer listener.Close()
+	done := make(chan struct{})
+	go func() {
+		defer GinkgoRecover()
+		defer close(done)
+		conn, err := listener.Accept()
+		AssertNil(err)
+		defer conn.Close()
+		AssertNil(conn.SetDeadline(time.Now().Add(10 * time.Second)))
+		preface := make([]byte, len(http2.ClientPreface))
+		_, err = io.ReadFull(conn, preface)
+		AssertNil(err)
+		framer := http2.NewFramer(conn, conn)
+		AssertNil(framer.WriteSettings(http2.Setting{ID: http2.SettingMaxConcurrentStreams, Val: 100}))
+		readHeaders := func() uint32 {
+			for {
+				frame, err := framer.ReadFrame()
+				AssertNil(err)
+				switch frame := frame.(type) {
+				case *http2.SettingsFrame:
+					if !frame.IsAck() {
+						AssertNil(framer.WriteSettingsAck())
+					}
+				case *http2.HeadersFrame:
+					return frame.StreamID
+				}
+			}
+		}
+		var block bytes.Buffer
+		encoder := hpack.NewEncoder(&block)
+		encode := func(fields ...hpack.HeaderField) []byte {
+			block.Reset()
+			for _, field := range fields {
+				AssertNil(encoder.WriteField(field))
+			}
+			return block.Bytes()
+		}
+		status := hpack.HeaderField{Name: ":status", Value: "200"}
+		length := hpack.HeaderField{Name: "content-length", Value: "1"}
+		first := readHeaders()
+		AssertNil(framer.WriteHeaders(http2.HeadersFrameParam{
+			StreamID: first, BlockFragment: encode(status, length), EndHeaders: true,
+		}))
+		AssertNil(framer.WriteData(first, true, []byte("x")))
+		second := readHeaders()
+		// A late, fragmented response for the closed stream adds a dynamic entry.
+		// The next response references it, proving the discarded block was decoded.
+		late := hpack.HeaderField{Name: "x-late", Value: "retained-in-dynamic-table"}
+		fragment := encode(status, late)
+		AssertNil(framer.WriteHeaders(http2.HeadersFrameParam{
+			StreamID: first, BlockFragment: fragment[:2], EndStream: true,
+		}))
+		AssertNil(framer.WriteContinuation(first, true, fragment[2:]))
+		AssertNil(framer.WriteHeaders(http2.HeadersFrameParam{
+			StreamID: second, BlockFragment: encode(status, length, late), EndHeaders: true,
+		}))
+		AssertNil(framer.WriteData(second, true, []byte("x")))
+	}()
+	output := vpp.Vppctl("http client http2 repeat 2 timeout 5 uri http://" + address + "/")
+	Log(output)
+	AssertContains(output, "2 request(s)")
+	AssertNotContains(vpp.Vppctl("show http stats"), "connections protocol error")
+	<-done
 }
 
 func Http2ClientContinuationH2cTest(s *Http2Suite) {
