@@ -1,0 +1,754 @@
+# SPDX-License-Identifier: Apache-2.0
+name: Isolated MFIB positive acceptance
+
+on:
+  push:
+    branches: [validation/mfib-positive-20261024]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mfib-positive-3a88599e67631f9e8316dca40932dfb8ed2bb4af
+  cancel-in-progress: false
+
+jobs:
+  positive:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 210
+    container:
+      image: debian:trixie
+      options: >-
+        --shm-size=2g
+        --cap-add=SYS_ADMIN
+        --cap-add=NET_ADMIN
+        --security-opt=apparmor=unconfined
+        --device-cgroup-rule="c 10:200 rwm"
+        --device-cgroup-rule="c 10:238 rwm"
+    defaults:
+      run:
+        shell: bash
+    env:
+      SOURCE_SHA: 3a88599e67631f9e8316dca40932dfb8ed2bb4af
+      SOURCE_TREE: a9064c35a35488c092f14872eb17fde54591a4f9
+      SOURCE_BASE: 415599eade17cc745989b5c92e7f3c12e5d0ce60
+      CLANG_FORMAT_VER: "19"
+      CCACHE_COMPRESS: "true"
+      CCACHE_MAXSIZE: 2G
+      VPP_EXTRA_CMAKE_ARGS: >-
+        -DCMAKE_C_COMPILER_LAUNCHER=ccache
+        -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+    steps:
+      - name: Install base tools
+        timeout-minutes: 5
+        run: |
+          set -Eeuo pipefail
+          rm -f /etc/apt/apt.conf.d/docker-clean
+          apt-get update -qq
+          apt-get install -y -qq sudo make git bash python3 iproute2 binutils ca-certificates
+
+      - name: Check out workflow carrier
+        uses: actions/checkout@v4
+        with:
+          path: control
+          persist-credentials: false
+
+      - name: Check out exact product source
+        uses: actions/checkout@v4
+        with:
+          ref: 3a88599e67631f9e8316dca40932dfb8ed2bb4af
+          path: candidate
+          fetch-depth: 0
+          fetch-tags: true
+          persist-credentials: false
+
+      - name: Check out independent style workspace
+        uses: actions/checkout@v4
+        with:
+          ref: 3a88599e67631f9e8316dca40932dfb8ed2bb4af
+          path: style-source
+          fetch-depth: 0
+          fetch-tags: true
+          persist-credentials: false
+
+      - name: Prepare evidence and verify identities
+        run: |
+          set -Eeuo pipefail
+          export MFIB_EVIDENCE="${RUNNER_TEMP}/mfib-positive-evidence"
+          echo "MFIB_EVIDENCE=${MFIB_EVIDENCE}" >> "$GITHUB_ENV"
+          mkdir "$MFIB_EVIDENCE"
+          cat > "${RUNNER_TEMP}/mfib-positive.py" <<'PY'
+          import ast
+          from collections import Counter
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+          import re
+          import shutil
+          import signal
+          import stat
+          import subprocess
+          import sys
+          import time
+          import traceback
+
+          root = Path(os.environ['MFIB_EVIDENCE'])
+          workspace = Path(os.environ['GITHUB_WORKSPACE'])
+          candidate = workspace / 'candidate'
+          source = os.environ['SOURCE_SHA']
+          tree = os.environ['SOURCE_TREE']
+          base = os.environ['SOURCE_BASE']
+          chain = [base, '069df973c9eee590073f237554b3d5b968015316',
+                   '5f8b1e2c3a171be6a00956566f997fd1bfb3d17b', source]
+          suites = ['ip_mcast', 'fib', 'ip4']
+          blobs = {
+              'src/plugins/unittest/mfib_test.c': '09564a7f69984e867d736db60d56fdf96a642057',
+              'src/vnet/fib/fib_path.c': 'affb4cfa9b3962657751c4313b498dd571d9da2d',
+              'src/vnet/ip/ip4_forward.c': 'cda10cbcf51092ce292777678d11efdf839f2ce1',
+              'src/vnet/mfib/mfib_entry.c': '66f8faf3543beae2666aad39f4961de4a1496f91',
+              'test/test_ip_mcast.py': '5d292789c24b92aee7386d2a85c6cf9977716351',
+          }
+          owners = ['test_mfib_ip4_address_lifetime', 'test_mfib_ip4_address_rebind',
+                    'test_mfib_ip4_interface_delete', 'test_mfib_ip4_unnumbered_lifetime',
+                    'test_mfib_ip4_mixed_borrower_removal', 'test_mfib_ip4_mixed_donor_removal']
+          required = {
+              'ip_mcast': {'TestIPMcast': ['test_mfib_zero_flags_ip4', 'test_mfib_zero_flags_ip6'] + owners,
+                           'TestMFIB': ['test_mfib']},
+              'fib': {'TestFIB': ['test_fib']},
+              'ip4': {},
+          }
+          callbacks = re.compile(r'--- (add\w+)\(\) (\w+)\.(test_\w+)\(')
+
+          def save(path, value):
+              path.parent.mkdir(parents=True, exist_ok=True)
+              path.write_text(json.dumps(value, indent=2, sort_keys=True) + '\n')
+
+          def load(path):
+              return json.loads(path.read_text())
+
+          def sha(data):
+              return hashlib.sha256(data).hexdigest()
+
+          def git(*args, cwd=candidate):
+              return subprocess.check_output(['git', *args], cwd=cwd)
+
+          def text(*args, cwd=candidate):
+              return git(*args, cwd=cwd).decode().strip()
+
+          def command(label, args, cwd=candidate, seconds=1200):
+              directory = root / 'commands' / label
+              directory.mkdir(parents=True)
+              report = {'argv': args, 'cwd': str(cwd), 'start': time.time(), 'timeout_seconds': seconds}
+              save(directory / 'command.json', report)
+              with (directory / 'raw.log').open('wb') as output:
+                  proc = subprocess.Popen(args, cwd=cwd, stdout=output, stderr=subprocess.STDOUT,
+                                          start_new_session=True)
+                  try:
+                      raw_exit = proc.wait(timeout=seconds)
+                      report['timed_out'] = False
+                  except subprocess.TimeoutExpired:
+                      report['timed_out'] = True
+                      os.killpg(proc.pid, signal.SIGTERM)
+                      try:
+                          raw_exit = proc.wait(timeout=10)
+                      except subprocess.TimeoutExpired:
+                          os.killpg(proc.pid, signal.SIGKILL)
+                          raw_exit = proc.wait(timeout=10)
+              report.update(raw_exit=raw_exit, end=time.time(), size=(directory / 'raw.log').stat().st_size,
+                            sha256=sha((directory / 'raw.log').read_bytes()))
+              save(directory / 'command.json', report)
+              print(json.dumps(report), flush=True)
+              if raw_exit != 0 or report['timed_out']:
+                  raise RuntimeError('Command failed: ' + label)
+              return (directory / 'raw.log').read_text(errors='replace')
+
+          def verify_source():
+              assert text('rev-parse', 'HEAD') == source
+              assert text('rev-parse', 'HEAD^{tree}') == tree
+              assert not text('status', '--porcelain', '--untracked-files=no'), 'Tracked source drift'
+              for name, expected in blobs.items():
+                  assert text('hash-object', name) == expected, name
+              provenance = root / 'provenance.json'
+              if provenance.exists():
+                  version = candidate / 'src/scripts/.version'
+                  info = load(provenance)
+                  assert not version.is_symlink()
+                  raw = version.read_bytes() if info['version_origin'] == 'src/scripts/.version' else git('describe', '--long', '--match', 'v*')
+                  assert sha(raw) == info['version_sha256'], 'Build version drift'
+                  if info['version_origin'] != 'src/scripts/.version':
+                      assert not version.exists()
+              binaries = root / 'binaries.json'
+              if binaries.exists():
+                  for name, record in load(binaries).items():
+                      assert file_identity(Path(name)) == record, 'Installed binary drift: ' + name
+
+          def identity():
+              for directory in ['candidate', 'control', 'style-source']:
+                  subprocess.run(['git', 'config', '--global', '--add', 'safe.directory', str(workspace / directory)], check=True)
+              verify_source()
+              assert text('rev-list', '--reverse', base + '..' + source).splitlines() == chain[1:]
+              for previous, commit in zip(chain, chain[1:]):
+                  assert text('show', '-s', '--format=%P', commit) == previous
+              changed = text('diff', '--name-only', base, source).splitlines()
+              assert set(changed) == set(blobs)
+              data = git('ls-tree', '-r', '-z', tree)
+              (root / 'source-manifest.nul').write_bytes(data)
+              outside = [row for row in data.split(b'\0') if row and row.split(b'\t', 1)[1].decode() not in blobs]
+              baseline = [row for row in git('ls-tree', '-r', '-z', base).split(b'\0')
+                          if row and row.split(b'\t', 1)[1].decode() not in blobs]
+              assert outside == baseline, 'Out-of-scope source changed'
+              control = workspace / 'control'
+              assert text('rev-parse', 'HEAD', cwd=control) == os.environ['GITHUB_SHA']
+              save(root / 'identity.json', {
+                  'source_sha': source, 'source_tree': tree, 'source_base': base, 'chain': chain,
+                  'source_manifest_sha256': sha(data), 'source_blobs': blobs,
+                  'carrier_sha': text('rev-parse', 'HEAD', cwd=control),
+                  'carrier_tree': text('rev-parse', 'HEAD^{tree}', cwd=control),
+                  'workflow_blob': text('rev-parse', 'HEAD:.github/workflows/mfib-positive.yml', cwd=control),
+                  'workflow_ref': os.environ['GITHUB_WORKFLOW_REF'], 'run_id': os.environ['GITHUB_RUN_ID'],
+                  'attempt': os.environ['GITHUB_RUN_ATTEMPT'], 'job': os.environ['GITHUB_JOB'],
+                  'limitations': ['private global extension pool unmeasured', 'negative rejected/HOLD',
+                                  'all-class worker0 unfulfilled', 'CI01 OPEN', 'r5 SEALED', 'cap HOLD', 'merge HOLD'],
+              })
+              save(root / 'suite-status.json', {suite: 'NOT_RUN' for suite in suites})
+              assert not (candidate / 'build-root/build-vpp_debug-native/vpp').exists(), 'Build is not fresh'
+              command('resources', ['bash', '-c', 'id; uname -a; nproc; free -b; df -B1; cat /etc/os-release'], seconds=60)
+
+          def dependencies():
+              command('install-dep', ['make', 'UNATTENDED=yes', 'install-dep'], seconds=1500)
+              verify_source()
+
+          def style():
+              directory = workspace / 'style-source'
+              try:
+                  for commit in chain[1:]:
+                      subprocess.run(['git', 'checkout', '--detach', commit], cwd=directory, check=True)
+                      assert not text('status', '--porcelain', '--untracked-files=no', cwd=directory)
+                      command('feature-' + commit[:8], ['make', 'checkfeaturelist'], directory, 300)
+                      command('style-' + commit[:8], ['env', 'CHECKSTYLE_COMMIT=' + commit, 'make', 'checkstyle'], directory, 600)
+                      command('api-' + commit[:8], ['make', 'checkstyle-api'], directory, 300)
+                      command('message-' + commit[:8], ['bash', 'extras/scripts/check_commit_msg.sh'], directory, 60)
+                  command('python-style', ['make', 'checkstyle-python'], directory, 1200)
+              finally:
+                  subprocess.run(['git', 'checkout', '--detach', source], cwd=directory, check=True)
+              verify_source()
+
+          def provenance():
+              verify_source()
+              version = candidate / 'src/scripts/.version'
+              assert not version.exists() and not version.is_symlink(), 'Unexpected version input'
+              described = subprocess.run(['git', 'describe', '--long', '--match', 'v*'], cwd=candidate,
+                                         stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+              if described.returncode:
+                  version.write_text('0.0.0-release+' + text('log', '-1', '--format=%ct') + '.' +
+                                     text('rev-list', '--count', 'HEAD') + '-g' + text('rev-parse', '--short=7', 'HEAD') + '\n')
+              origin = 'src/scripts/.version' if version.exists() else 'git describe --long --match v*'
+              raw = version.read_bytes() if version.exists() else described.stdout
+              assert 0 < len(raw) <= 4096
+              (root / 'build-version.raw').write_bytes(raw)
+              index = Path(os.environ['RUNNER_TEMP']) / 'mfib-build.index'
+              env = dict(os.environ, GIT_INDEX_FILE=str(index))
+              try:
+                  subprocess.run(['git', 'read-tree', source], cwd=candidate, env=env, check=True)
+                  if version.exists():
+                      subprocess.run(['git', 'add', '-f', '--', 'src/scripts/.version'], cwd=candidate, env=env, check=True)
+                  built_tree = subprocess.check_output(['git', 'write-tree'], cwd=candidate, env=env).decode().strip()
+              finally:
+                  index.unlink(missing_ok=True)
+              assert set(text('diff', '--name-only', tree, built_tree).splitlines()) <= {'src/scripts/.version'}
+              manifest = git('ls-tree', '-r', '-z', built_tree)
+              (root / 'built-source-manifest.nul').write_bytes(manifest)
+              save(root / 'provenance.json', {'source_sha': source, 'source_tree': tree,
+                   'built_source_tree': built_tree, 'built_manifest_sha256': sha(manifest),
+                   'version_origin': origin, 'version_sha256': sha(raw),
+                   'cmake_args': os.environ['VPP_EXTRA_CMAKE_ARGS']})
+              verify_source()
+
+          def file_identity(path):
+              info = path.stat()
+              return {'sha256': sha(path.read_bytes()), 'size': info.st_size,
+                      'inode': info.st_ino, 'device': info.st_dev}
+
+          def install_layout(cache, manifest, install):
+              keys = ['CMAKE_INSTALL_PREFIX', 'VPP_LIBRARY_DIR', 'CMAKE_INSTALL_LIBDIR']
+              values = {key: [] for key in keys}
+              for line in cache.splitlines():
+                  match = re.fullmatch(r'([^:#=]+):[^=]+=(.*)', line)
+                  if match and match.group(1) in values:
+                      values[match.group(1)].append(match.group(2))
+              assert all(len(values[key]) == 1 for key in keys[:2]), 'Missing or duplicate install cache key'
+              prefix, library = [values[key][0] for key in keys[:2]]
+              assert prefix == str(install), 'Install prefix differs from fixed candidate root'
+              relative = Path(library)
+              assert (library and not relative.is_absolute() and '..' not in relative.parts
+                      and str(relative) == library and library != '.'), 'Noncanonical library directory'
+              assert values[keys[2]] in ([], [library]), 'Conflicting install library directory'
+              assert install.is_absolute() and install.resolve(strict=True) == install, 'Aliased install root'
+              assert install.is_dir() and not install.is_symlink(), 'Missing or unsafe install root'
+              patterns = [(r'vpp', install / 'bin'), (r'libvnet\.so(?:\..+)?', install / relative),
+                          (r'unittest_plugin\.so', install / relative / 'vpp_plugins')]
+              entries = manifest.splitlines()
+              files = []
+              def walk_error(error):
+                  raise error
+              installed = []
+              for directory, directories, names in os.walk(install, followlinks=False, onerror=walk_error):
+                  installed.extend(Path(directory) / name for name in names)
+                  installed.extend(Path(directory) / name for name in directories
+                                   if (Path(directory) / name).is_symlink())
+              for pattern, directory in patterns:
+                  assert directory.resolve(strict=True) == directory, 'Aliased binary directory'
+                  assert directory.is_dir(), 'Missing binary directory'
+                  matches = sorted(path for path in installed if re.fullmatch(pattern, path.name))
+                  associated = sorted(line for line in entries if re.fullmatch(pattern, Path(line).name))
+                  assert matches and associated == [str(path) for path in matches], 'Missing or ambiguous manifest association: ' + pattern
+                  targets = set()
+                  for path in matches:
+                      assert path.parent == directory, 'Binary outside configured directory: ' + str(path)
+                      target = path.resolve(strict=True)
+                      assert install in target.parents and target.parent == directory, 'Escaping binary target: ' + str(path)
+                      assert target.is_file() and not target.is_symlink(), 'Nonregular binary target: ' + str(path)
+                      assert str(target) in associated, 'Real target missing from install manifest: ' + str(target)
+                      targets.add(target)
+                  assert len(targets) == 1, 'Missing or ambiguous real binary target: ' + pattern
+                  files.append(targets.pop())
+              assert len(set(files)) == len(patterns), 'Binary roles share a real target'
+              return files
+
+          def build():
+              verify_source()
+              command('build', ['make', 'UNATTENDED=yes', 'build'], seconds=5400)
+              install = candidate / 'build-root/install-vpp_debug-native/vpp'
+              build_dir = candidate / 'build-root/build-vpp_debug-native/vpp'
+              for name in ['CMakeCache.txt', 'install_manifest.txt']:
+                  shutil.copyfile(build_dir / name, root / name)
+              cache = (root / 'CMakeCache.txt').read_text()
+              assert str(candidate / 'src') in cache, 'CMake source identity missing'
+              files = install_layout(cache, (root / 'install_manifest.txt').read_text(), install)
+              identities = {str(path): file_identity(path) for path in files}
+              save(root / 'binaries.json', identities)
+              for number, path in enumerate(identities):
+                  command('elf-' + str(number), ['readelf', '-n', path], seconds=60)
+              verify_source()
+
+          def snapshot(directory):
+              records = []
+              for source_root in sorted(Path('/tmp').glob('vpp-unittest-*')):
+                  assert source_root.is_dir() and not source_root.is_symlink(), str(source_root)
+                  for current, directories, names in os.walk(source_root, followlinks=False):
+                      for name in directories + names:
+                          path = Path(current) / name
+                          if path.is_symlink():
+                              records.append({'source': str(path), 'symlink': os.readlink(path)})
+                      directories[:] = [name for name in directories if not (Path(current) / name).is_symlink()]
+                      for name in sorted(names):
+                          path = Path(current) / name
+                          if path.is_symlink():
+                              continue
+                          if not stat.S_ISREG(path.lstat().st_mode):
+                              records.append({'source': str(path), 'nonregular_mode': path.lstat().st_mode})
+                              continue
+                          before = path.stat()
+                          target = directory / 'logs' / source_root.name / path.relative_to(source_root)
+                          target.parent.mkdir(parents=True, exist_ok=True)
+                          shutil.copyfile(path, target)
+                          after = path.stat()
+                          copied = target.read_bytes()
+                          assert (before.st_ino, before.st_size, before.st_mtime_ns) == (after.st_ino, after.st_size, after.st_mtime_ns)
+                          assert len(copied) == before.st_size and sha(copied) == sha(path.read_bytes()), 'Evidence copy changed'
+                          records.append({'source': str(path), 'stored': str(target.relative_to(root)),
+                                          'size': len(copied), 'sha256': sha(copied)})
+              save(directory / 'snapshot.json', records)
+
+          def discovery(suite, directory):
+              program = '''import json, sys
+          from discover_tests import discover_tests
+          tests = []
+          def collect(file_name, cls, method):
+              if file_name == "test_" + suite + ".py":
+                  tests.append(cls.__name__ + "." + method)
+          suite = sys.argv[1]
+          sys.argv = [sys.argv[0], "--vpp-ws-dir=" + sys.argv[2], "--vpp-tag=vpp_debug", "--use-smt", "--vpp-worker-count=0"]
+          import asfframework
+          import framework
+          discover_tests(sys.argv[1].split("=", 1)[1] + "/test", collect)
+          print("MFIB_INVENTORY=" + json.dumps(sorted(tests)))
+          '''
+              # Discovery imports the same modules as test-list without starting VPP.
+              output = command(suite + '-inventory', [str(candidate / 'build-root/test/venv/bin/python'),
+                               '-c', program, suite, str(candidate)], cwd=candidate / 'test', seconds=300)
+              lines = [line.removeprefix('MFIB_INVENTORY=') for line in output.splitlines() if line.startswith('MFIB_INVENTORY=')]
+              assert len(lines) == 1
+              methods = json.loads(lines[0])
+              assert methods and len(methods) == len(set(methods)), 'Empty or duplicate discovery'
+              selected = (root / 'commands' / (suite + '-list') / 'raw.log').read_text()
+              counts = re.findall(r'^total: (\d+) test\(s\) selected', selected, re.M)
+              assert counts == [str(len(methods))], 'Discovery differs from test-list total'
+              classes = {}
+              for cls, values in re.findall(r'^    (\w+): (.+)$', selected, re.M):
+                  assert cls not in classes, 'Duplicate discovered class'
+                  count = re.fullmatch(r'(\d+) test\(s\)', values)
+                  classes[cls] = int(count.group(1)) if count else len(values.split(', '))
+              assert classes == dict(Counter(name.split('.')[0] for name in methods)), 'Discovery class counts differ'
+              if suite == 'ip_mcast':
+                  parsed = ast.parse((candidate / 'test/test_ip_mcast.py').read_text())
+                  actual = sorted(cls.name + '.' + method.name for cls in parsed.body if isinstance(cls, ast.ClassDef)
+                                  for method in cls.body if isinstance(method, ast.FunctionDef) and method.name.startswith('test_'))
+                  assert len(methods) == 18 and methods == actual
+              save(directory / 'discovered.json', methods)
+              return methods
+
+          def worker_config(argv):
+              if not isinstance(argv, list) or not all(isinstance(arg, str) for arg in argv):
+                  raise RuntimeError('Startup argv must be a list of strings')
+              count = argv.count('corelist-workers')
+              if count == 0:
+                  return []
+              if count != 1 or argv.index('corelist-workers') + 1 == len(argv):
+                  raise RuntimeError('Missing or duplicate worker core configuration')
+              value = argv[argv.index('corelist-workers') + 1]
+              if value == '':
+                  return []
+              if not re.fullmatch(r'[0-9]+(?:,[0-9]+)*', value):
+                  raise RuntimeError('Malformed worker core configuration')
+              cores = value.split(',')
+              if len({int(core) for core in cores}) != len(cores):
+                  raise RuntimeError('Duplicate worker CPU in startup argv')
+              return cores
+
+          def inventory(suite, directory, methods):
+              results, startups, teardown = {}, {}, {}
+              classes = {name.split('.')[0] for name in methods}
+              logs = {path.parent.name.removeprefix('vpp-unittest-'): path
+                      for path in (directory / 'logs').glob('*/log.txt')}
+              assert set(logs) == classes | {'SanityTestCase'}, 'Missing or unexpected authoritative class logs'
+              for cls, path in sorted(logs.items()):
+                  content = path.read_text(errors='replace')
+                  markers = ['--- setUpClass() for ' + cls + ' called ---',
+                             '--- END setUpClass() ' + cls + ' ---',
+                             '--- START tearDownClass() ' + cls + ' ---',
+                             '--- END tearDownClass() ' + cls + ' ---']
+                  positions = [content.find(marker) for marker in markers]
+                  assert all(content.count(marker) == 1 for marker in markers), cls + ': incomplete teardown'
+                  assert positions == sorted(positions), cls + ': invalid lifecycle order'
+                  teardown[cls] = {'log': str(path.relative_to(root)), 'markers': markers, 'positions': positions}
+                  raw = list(re.finditer(r'vpp_cmdline args: (.+)', content))
+                  assert len(raw) == 1 and positions[0] < raw[0].start() < positions[1], cls + ': ambiguous startup'
+                  argv = ast.literal_eval(raw[0][1])
+                  cores = worker_config(argv)
+                  executable = Path(argv[0]).resolve()
+                  assert str(executable) in load(root / 'binaries.json'), 'Harness executable is not the built binary'
+                  assert argv.count('runtime-dir') == 1
+                  assert argv[argv.index('runtime-dir') + 1] == '/tmp/vpp-unittest-' + cls
+                  startups[cls] = {'argv': argv, 'configured_worker_cores': cores,
+                                   'configured_worker_count': len(cores), 'actual_worker_threads': 'UNKNOWN'}
+                  if cls in required[suite]:
+                      assert not cores, cls + ': required worker0 configuration missing'
+                  found = list(callbacks.finditer(content))
+                  if cls == 'SanityTestCase':
+                      assert not found and 'addSkip' not in content
+                      continue
+                  for match in found:
+                      callback, owner, method = match.groups()
+                      assert owner == cls and positions[1] < match.start() < positions[2]
+                      teardown_start = list(re.finditer(re.escape('--- START tearDown() ' + cls + '.' + method + '('), content))
+                      teardown_end = list(re.finditer(re.escape('--- END tearDown() ' + cls + '.' + method + '('), content))
+                      assert len(teardown_start) == len(teardown_end) == 1, cls + '.' + method + ': method teardown missing'
+                      assert positions[1] < teardown_start[0].start() < teardown_end[0].start() < match.start()
+                      results.setdefault(owner + '.' + method, []).append(callback)
+                  assert 'addSkip' not in content and 'addError' not in content and 'addFailure' not in content
+              save(directory / 'actual-methods.json', results)
+              save(directory / 'worker-config.json', startups)
+              save(directory / 'teardown.json', teardown)
+              assert set(results) == set(methods), 'Missing or unexpected method'
+              assert all(values == ['addSuccess'] for values in results.values()), 'Nonunique successful result'
+              for cls, names in required[suite].items():
+                  assert all(results.get(cls + '.' + name) == ['addSuccess'] for name in names)
+              raw = (root / 'commands' / suite / 'raw.log').read_text(errors='replace')
+              assert re.search(r'vpp_worker_count=0(?:[,\)])', raw) and re.search(r'retries=0(?:[,\)])', raw)
+              assert raw.splitlines().count('Running sanity test case.') == 1
+              assert raw.splitlines().count('Sanity test case passed.') == 1
+              if suite == 'ip_mcast':
+                  save(directory / 'pool-evidence.json', {
+                      'owner_methods': owners, 'owner_assertions': 'strict Entry/Path/Path-list restoration',
+                      'c_method': 'TestMFIB.test_mfib',
+                      'c_assertions': 'MFIB entry/interface/replicate/path-list restoration',
+                      'source_blobs': blobs, 'successful_methods': sorted(results),
+                      'private_global_extension_pool': 'UNMEASURED',
+                  })
+
+          def run_suites():
+              states = load(root / 'suite-status.json')
+              for suite in suites:
+                  directory = root / 'suites' / suite
+                  directory.mkdir(parents=True)
+                  states[suite] = 'RUNNING'
+                  save(root / 'suite-status.json', states)
+                  try:
+                      verify_source()
+                      args = ['make', 'UNATTENDED=yes', 'TEST_JOBS=1', 'USE_SMT=yes', 'VPP_WORKER_COUNT=0', 'RETRIES=0', 'TEST=' + suite]
+                      run_error = None
+                      try:
+                          command(suite + '-list', args + ['test-list'], seconds=300)
+                          methods = discovery(suite, directory)
+                          command(suite, args + ['test-debug'], seconds=1200)
+                      except Exception as error:
+                          run_error = error
+                          raise
+                      finally:
+                          try:
+                              snapshot(directory)
+                          except Exception as error:
+                              save(directory / 'snapshot-error.json', {'error': str(error), 'traceback': traceback.format_exc()})
+                              if run_error is None:
+                                  raise
+                      inventory(suite, directory, methods)
+                      verify_source()
+                      states[suite] = 'PASS'
+                  except Exception as error:
+                      states[suite] = 'FAIL: ' + str(error)
+                      save(directory / 'error.json', {'error': str(error), 'traceback': traceback.format_exc()})
+                  save(root / 'suite-status.json', states)
+                  assert (directory / 'snapshot.json').exists(), 'No next harness reset without a preserved snapshot'
+              assert all(value == 'PASS' for value in states.values()), states
+
+          def seal():
+              entries = []
+              for path in sorted(root.rglob('*')):
+                  assert not path.is_symlink(), 'Artifact symlink'
+                  if path.is_file() and path.name != 'manifest.json':
+                      raw = path.read_bytes()
+                      entries.append({'path': str(path.relative_to(root)), 'size': len(raw), 'sha256': sha(raw)})
+              assert entries
+              save(root / 'manifest.json', entries)
+
+          stage = sys.argv[1]
+          started = time.time()
+          error = None
+          try:
+              globals()[stage]()
+          except Exception:
+              error = traceback.format_exc()
+              print(error, flush=True)
+          finally:
+              if stage != 'seal':
+                  save(root / 'stages' / (stage + '.json'), {'start': started, 'end': time.time(), 'error': error,
+                                                          'source_sha': source, 'source_tree': tree})
+          if error:
+              raise SystemExit(1)
+          PY
+          cat > "${RUNNER_TEMP}/mfib-transport.py" <<'PY'
+          import hashlib
+          import json
+          import os
+          from pathlib import Path, PurePosixPath
+          import stat
+          import sys
+          import tarfile
+
+          def record(raw):
+              return {'size': len(raw), 'sha256': hashlib.sha256(raw).hexdigest()}
+
+          def canonical(name):
+              path = PurePosixPath(name)
+              assert name and '\0' not in name and not path.is_absolute() and '..' not in path.parts
+              assert str(path) == name and name != '.', 'Noncanonical archive path'
+              return path
+
+          def manifest_records(raw):
+              entries = json.loads(raw)
+              records = {}
+              for entry in entries:
+                  name = entry['path']
+                  canonical(name)
+                  assert name != 'manifest.json' and name not in records, 'Duplicate manifest path'
+                  records[name] = {'size': entry['size'], 'sha256': entry['sha256']}
+              assert records, 'Empty manifest'
+              records['manifest.json'] = record(raw)
+              for name in records:
+                  assert not any(str(parent) in records for parent in canonical(name).parents), 'File/directory alias'
+              return records
+
+          def inventory(directory):
+              assert directory.resolve(strict=True) == directory and directory.is_dir(), 'Aliased evidence root'
+              records = {}
+              def walk_error(error):
+                  raise error
+              for current, directories, files in os.walk(directory, followlinks=False, onerror=walk_error):
+                  for name in directories:
+                      assert not (Path(current) / name).is_symlink(), 'Evidence directory link'
+                  for name in files:
+                      path = Path(current) / name
+                      assert stat.S_ISREG(path.lstat().st_mode), 'Nonregular evidence file'
+                      relative = str(path.relative_to(directory))
+                      canonical(relative)
+                      records[relative] = record(path.read_bytes())
+              assert records == manifest_records((directory / 'manifest.json').read_bytes()), 'Evidence manifest mismatch'
+              return records
+
+          def checked_archive(archive):
+              members = archive.getmembers()
+              names = [member.name for member in members]
+              assert len(set(names)) == len(names), 'Duplicate archive member'
+              for member in members:
+                  canonical(member.name)
+                  assert member.isfile() and member.sparse is None, 'Nonregular archive member'
+              assert 'manifest.json' in names, 'Missing manifest'
+              records = manifest_records(archive.extractfile('manifest.json').read())
+              assert set(names) == set(records), 'Archive member set differs from manifest'
+              for member in members:
+                  assert member.size == records[member.name]['size'], 'Archive member size mismatch'
+                  assert record(archive.extractfile(member).read()) == records[member.name], 'Archive member hash mismatch'
+              return records
+
+          def pack(directory, destination):
+              assert destination.name == 'mfib-positive-evidence.tar'
+              assert directory not in destination.resolve().parents, 'Archive inside evidence root'
+              before = inventory(directory)
+              with destination.open('xb') as output:
+                  with tarfile.open(fileobj=output, mode='w', format=tarfile.PAX_FORMAT, dereference=True) as archive:
+                      for name in sorted(before):
+                          path = directory / name
+                          assert stat.S_ISREG(path.lstat().st_mode), 'Evidence file changed type'
+                          with path.open('rb') as source:
+                              member = archive.gettarinfo(str(path), arcname=name)
+                              assert member.isfile(), 'Nonregular evidence member'
+                              archive.addfile(member, source)
+              with tarfile.open(destination, 'r:') as archive:
+                  assert checked_archive(archive) == before, 'Archive differs from pre-copy inventory'
+              assert inventory(directory) == before, 'Evidence changed during archive'
+              print(json.dumps({'archive': str(destination), **record(destination.read_bytes())}), flush=True)
+
+          def unpack(directory, destination):
+              assert directory.resolve(strict=True) == directory and directory.is_dir(), 'Aliased download root'
+              source = directory / 'mfib-positive-evidence.tar'
+              assert list(directory.iterdir()) == [source], 'Unexpected downloaded files'
+              assert stat.S_ISREG(source.lstat().st_mode), 'Nonregular downloaded archive'
+              with tarfile.open(source, 'r:') as archive:
+                  records = checked_archive(archive)
+                  destination.mkdir()
+                  assert destination.resolve(strict=True) == destination, 'Aliased verification root'
+                  for member in archive.getmembers():
+                      path = destination / member.name
+                      path.parent.mkdir(parents=True, exist_ok=True)
+                      assert destination in path.resolve().parents, 'Escaping verification path'
+                      with path.open('xb') as output:
+                          output.write(archive.extractfile(member).read())
+                  assert inventory(destination) == records, 'Unpacked evidence differs from archive'
+
+          if __name__ == '__main__':
+              operation, directory, destination = sys.argv[1:]
+              {'pack': pack, 'unpack': unpack}[operation](Path(directory), Path(destination))
+          PY
+          python3 "${RUNNER_TEMP}/mfib-positive.py" identity
+
+      - name: Install standard dependencies
+        timeout-minutes: 26
+        run: python3 "${RUNNER_TEMP}/mfib-positive.py" dependencies
+
+      - name: Check all three source commits
+        timeout-minutes: 35
+        run: python3 "${RUNNER_TEMP}/mfib-positive.py" style
+
+      - name: Record exact build inputs
+        run: python3 "${RUNNER_TEMP}/mfib-positive.py" provenance
+
+      - name: Build fresh debug source and identify binaries
+        timeout-minutes: 92
+        run: python3 "${RUNNER_TEMP}/mfib-positive.py" build
+
+      - name: Set up shared memory
+        uses: ./candidate/.github/actions/vpp-docker-runtime-setup
+        with:
+          WORKSPACE: ${{ github.workspace }}/candidate
+          SHM_SIZE: 2G
+          LOG_DIR: ${{ env.MFIB_EVIDENCE }}/runtime
+
+      - name: Run complete ip_mcast fib and ip4 suites
+        timeout-minutes: 75
+        run: python3 "${RUNNER_TEMP}/mfib-positive.py" run_suites
+
+      - name: Check final source and binary identity
+        if: always() && env.MFIB_EVIDENCE != ''
+        run: python3 "${RUNNER_TEMP}/mfib-positive.py" verify_source
+
+      - name: Seal all available evidence
+        id: seal
+        if: always() && env.MFIB_EVIDENCE != ''
+        run: python3 "${RUNNER_TEMP}/mfib-positive.py" seal
+
+      - name: Archive intact sealed evidence
+        id: archive
+        if: always() && steps.seal.outcome == 'success'
+        run: python3 "${RUNNER_TEMP}/mfib-transport.py" pack "$MFIB_EVIDENCE" "${RUNNER_TEMP}/mfib-positive-evidence.tar"
+
+      - name: Upload evidence
+        id: upload
+        if: always() && steps.archive.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: mfib-positive-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/mfib-positive-evidence.tar
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 1
+          include-hidden-files: true
+
+      - name: Download actual uploaded evidence
+        if: always() && steps.upload.outcome == 'success'
+        uses: actions/download-artifact@v4
+        with:
+          artifact-ids: ${{ steps.upload.outputs.artifact-id }}
+          path: ${{ runner.temp }}/mfib-positive-downloaded
+          merge-multiple: true
+
+      - name: Verify artifact bytes and positive contract
+        if: always() && steps.upload.outcome == 'success'
+        env:
+          ARTIFACT_URL: ${{ steps.upload.outputs.artifact-url }}
+          ARTIFACT_DIGEST: ${{ steps.upload.outputs.artifact-digest }}
+        run: |
+          set -Eeuo pipefail
+          python3 "${RUNNER_TEMP}/mfib-transport.py" unpack "${RUNNER_TEMP}/mfib-positive-downloaded" "${RUNNER_TEMP}/mfib-positive-verified"
+          python3 - <<'PY'
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+          root = Path(os.environ['RUNNER_TEMP']) / 'mfib-positive-verified'
+          entries = json.loads((root / 'manifest.json').read_text())
+          expected = {entry['path'] for entry in entries}
+          assert len(expected) == len(entries), 'Duplicate artifact path'
+          actual = {str(path.relative_to(root)) for path in root.rglob('*') if path.is_file()}
+          assert actual == expected | {'manifest.json'}, 'Incomplete artifact set'
+          for entry in entries:
+              relative = Path(entry['path'])
+              assert not relative.is_absolute() and '..' not in relative.parts
+              path = root / relative
+              assert not path.is_symlink()
+              raw = path.read_bytes()
+              assert len(raw) == entry['size'] and hashlib.sha256(raw).hexdigest() == entry['sha256']
+          identity = json.loads((root / 'identity.json').read_text())
+          assert identity['source_sha'] == os.environ['SOURCE_SHA'] and identity['source_tree'] == os.environ['SOURCE_TREE']
+          assert identity['carrier_sha'] == os.environ['GITHUB_SHA']
+          for stage in ['identity', 'dependencies', 'style', 'provenance', 'build', 'run_suites', 'verify_source']:
+              assert json.loads((root / 'stages' / (stage + '.json')).read_text())['error'] is None, stage
+          states = json.loads((root / 'suite-status.json').read_text())
+          assert states == {'ip_mcast': 'PASS', 'fib': 'PASS', 'ip4': 'PASS'}, states
+          for suite in states:
+              for label in [suite + '-list', suite + '-inventory', suite]:
+                  command = json.loads((root / 'commands' / label / 'command.json').read_text())
+                  assert command['raw_exit'] == 0 and not command['timed_out']
+              directory = root / 'suites' / suite
+              discovered = json.loads((directory / 'discovered.json').read_text())
+              methods = json.loads((directory / 'actual-methods.json').read_text())
+              assert set(discovered) == set(methods) and all(value == ['addSuccess'] for value in methods.values())
+              assert json.loads((directory / 'teardown.json').read_text())
+              assert json.loads((directory / 'snapshot.json').read_text())
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as summary:
+              summary.write('Isolated MFIB positive suites PASS on ' + identity['source_sha'] + '\n\n')
+              summary.write('Artifact: ' + os.environ['ARTIFACT_URL'] + '\n\n')
+              summary.write('Artifact digest: ' + os.environ['ARTIFACT_DIGEST'] + '\n\n')
+              summary.write('Private global extension pool UNMEASURED; all-class worker0 UNFULFILLED; CI01 OPEN; negative rejected/HOLD; r5 SEALED; cap/merge HOLD.\n')
+          PY
