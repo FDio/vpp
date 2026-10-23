@@ -971,6 +971,7 @@ static void
   switch (rv)
     {
     case MODE_ERROR_ETH:
+    case MODE_ERROR_NO_OUTPUT:
       rv = VNET_API_ERROR_NON_ETHERNET;
       break;
     case MODE_ERROR_BVI_DEF:
@@ -1039,6 +1040,8 @@ static void
   switch (rv)
     {
     case MODE_ERROR_ETH:
+    case MODE_ERROR_NO_OUTPUT:
+    case MODE_ERROR_BVI_NO_MAC:
       rv = VNET_API_ERROR_NON_ETHERNET;
       break;
     case MODE_ERROR_BVI_DEF:

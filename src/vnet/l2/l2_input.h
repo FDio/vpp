@@ -273,6 +273,8 @@ walk_rc_t l2input_recache (u32 bd_index, u32 sw_if_index);
 
 #define MODE_ERROR_ETH        1
 #define MODE_ERROR_BVI_DEF    2
+#define MODE_ERROR_NO_OUTPUT  3
+#define MODE_ERROR_BVI_NO_MAC 4
 
 u32 set_int_l2_mode (vlib_main_t * vm,
 		     vnet_main_t * vnet_main,
