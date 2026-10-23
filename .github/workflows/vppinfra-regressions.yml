@@ -1,0 +1,243 @@
+# SPDX-License-Identifier: Apache-2.0
+name: Vppinfra standalone regressions
+
+# yamllint disable-line rule:truthy
+on:
+  pull_request:
+    branches: [master]
+    paths:
+      - src/vppinfra/**
+      - src/cmake/**
+      - src/CMakeLists.txt
+      - src/scripts/version
+      - Makefile
+      - .github/workflows/vppinfra-regressions.yml
+  workflow_dispatch:
+    inputs:
+      source_sha:
+        description: Full 40-character source commit SHA
+        required: true
+        type: string
+      base_sha:
+        description: Full 40-character comparison base SHA
+        required: true
+        default: 415599eade17cc745989b5c92e7f3c12e5d0ce60
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: vppinfra-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  standalone:
+    name: standalone (${{ matrix.variant }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    container:
+      image: debian:trixie
+    defaults:
+      run:
+        shell: bash
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - variant: debug
+            build_type: debug
+            asan: "OFF"
+          - variant: release
+            build_type: release
+            asan: "OFF"
+          - variant: release-asan
+            build_type: release
+            asan: "ON"
+    env:
+      CLANG_FORMAT_VER: "19"
+      EVIDENCE: ${{ runner.temp }}/vppinfra-evidence
+      BUILD_DIR: ${{ runner.temp }}/vppinfra-build
+      BUILD_TYPE: ${{ matrix.build_type }}
+      ENABLE_ASAN: ${{ matrix.asan }}
+      VARIANT: ${{ matrix.variant }}
+      ASAN_OPTIONS: abort_on_error=1:halt_on_error=1:detect_leaks=0:disable_coredump=1
+    steps:
+      - name: Validate pinned source identity
+        id: pin
+        env:
+          REQUESTED_SHA: ${{ inputs.source_sha || github.sha }}
+          BASE_SHA: ${{ inputs.base_sha || github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+          [[ "$REQUESTED_SHA" =~ ^[0-9a-f]{40}$ ]] || exit 1
+          [[ "$BASE_SHA" =~ ^[0-9a-f]{40}$ ]] || exit 1
+          printf 'sha=%s\nbase=%s\n' "$REQUESTED_SHA" "$BASE_SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Install base tools
+        run: |
+          set -euo pipefail
+          mkdir -p "$EVIDENCE"
+          rm -f /etc/apt/apt.conf.d/docker-clean
+          apt-get update -qq
+          apt-get install -y -qq sudo make git bash python3
+
+      - name: Check out the exact source commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.pin.outputs.sha }}
+          fetch-depth: 0
+          fetch-tags: true
+          persist-credentials: false
+
+      - name: Build and run heap and vec regressions
+        env:
+          EXPECTED_SHA: ${{ steps.pin.outputs.sha }}
+          BASE_SHA: ${{ steps.pin.outputs.base }}
+          WORKFLOW_SHA: ${{ github.workflow_sha }}
+          WORKFLOW_REF: ${{ github.workflow_ref }}
+          PR_HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          python3 - <<'PY'
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+          import subprocess
+
+          evidence = Path(os.environ["EVIDENCE"])
+          build = Path(os.environ["BUILD_DIR"])
+          evidence.mkdir(exist_ok=True)
+          records = []
+
+          def git(*args, **kwargs):
+              return subprocess.check_output(["git", *args], **kwargs)
+
+          def run(name, command):
+              record = {"name": name, "argv": command, "cwd": os.getcwd(), "exit": None}
+              records.append(record)
+              try:
+                  with (evidence / (name + ".log")).open("wb") as log:
+                      record["exit"] = subprocess.run(command, stdout=log,
+                                                      stderr=subprocess.STDOUT).returncode
+              finally:
+                  (evidence / "commands.json").write_text(json.dumps(records, indent=2) + "\n")
+              print(json.dumps(record), flush=True)
+              return record["exit"] == 0
+
+          def require(name, command):
+              if not run(name, command):
+                  raise RuntimeError(name + " failed; see raw log and commands.json")
+
+          def source_tree():
+              git("diff", "--exit-code", "HEAD", "--")
+              index = evidence / "source.index"
+              env = dict(os.environ, GIT_INDEX_FILE=str(index))
+              try:
+                  git("read-tree", "HEAD", env=env)
+                  if Path("src/scripts/.version").exists():
+                      git("add", "-f", "--", "src/scripts/.version", env=env)
+                  return git("write-tree", env=env).decode().strip()
+              finally:
+                  index.unlink(missing_ok=True)
+
+          require("safe-directory", ["git", "config", "--global", "--add", "safe.directory", os.getcwd()])
+          checkout = git("rev-parse", "HEAD").decode().strip()
+          if checkout != os.environ["EXPECTED_SHA"]:
+              raise RuntimeError("checkout SHA does not match requested source")
+          base = git("rev-parse", "--verify", os.environ["BASE_SHA"] + "^{commit}").decode().strip()
+          require("base-ancestor", ["git", "merge-base", "--is-ancestor", base, checkout])
+          commits = git("rev-list", "--reverse", base + ".." + checkout).decode().splitlines()
+          if not commits:
+              raise RuntimeError("comparison range contains no source commits")
+          version = Path("src/scripts/.version")
+          if not version.exists() and subprocess.run(
+                  ["git", "describe", "--long", "--match", "v*"],
+                  stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode:
+              timestamp = git("log", "-1", "--format=%ct").decode().strip()
+              count = git("rev-list", "--count", "HEAD").decode().strip()
+              version.write_text(f"0.0.0-release+{timestamp}.{count}-g{checkout[:7]}\n")
+          tree = source_tree()
+          manifest = git("ls-tree", "-r", "-z", tree)
+          (evidence / "source-manifest.raw").write_bytes(manifest)
+          provenance = {
+              "repository": os.environ["GITHUB_REPOSITORY"],
+              "run": os.environ["GITHUB_RUN_ID"], "attempt": os.environ["GITHUB_RUN_ATTEMPT"],
+              "workflow_sha": os.environ["WORKFLOW_SHA"], "workflow_ref": os.environ["WORKFLOW_REF"],
+              "pr_head": os.environ["PR_HEAD"], "source_sha": checkout, "base_sha": base,
+              "style_commits": commits, "style_range": base + ".." + checkout,
+              "source_tree": git("rev-parse", "HEAD^{tree}").decode().strip(),
+              "built_source_tree": tree, "manifest_sha256": hashlib.sha256(manifest).hexdigest(),
+              "variant": os.environ["VARIANT"], "asan_options": os.environ["ASAN_OPTIONS"],
+          }
+          (evidence / "source.json").write_text(json.dumps(provenance, indent=2) + "\n")
+          if version.exists():
+              (evidence / "build-version.raw").write_bytes(version.read_bytes())
+          result = {"passed": False}
+          try:
+              require("install-deps", ["make", "UNATTENDED=yes", "install-dep"])
+              require("formatter", ["clang-format-19", "--version"])
+              try:
+                  for commit in commits:
+                      require("checkout-" + commit, ["git", "checkout", "--quiet", "--detach", commit])
+                      require("style-" + commit, ["env", "CHECKSTYLE_COMMIT=" + commit,
+                                                  "extras/scripts/checkstyle.sh"])
+              finally:
+                  require("restore-source", ["git", "checkout", "--quiet", "--detach", checkout])
+              require("compiler", ["clang", "--version"])
+              require("configure", ["cmake", "-S", "src", "-B", str(build), "-G", "Ninja",
+                                    "-DCMAKE_C_COMPILER=clang", "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON",
+                                    "-DCMAKE_BUILD_TYPE=" + os.environ["BUILD_TYPE"],
+                                    "-DVPP_BUILD_VPPINFRA_TESTS=ON", "-DVPP_TESTS=test_heap,test_vec",
+                                    "-DVPP_PLUGINS=none", "-DVPP_DRIVERS=none",
+                                    "-DVPP_CRYPTO_ENGINES=none", "-DVPP_TOOLS=none",
+                                    "-DVPP_ENABLE_SANITIZE_ADDR=" + os.environ["ENABLE_ASAN"]])
+              require("build", ["cmake", "--build", str(build), "--target", "test_heap", "test_vec",
+                                "--parallel", "2", "--verbose"])
+              binaries = []
+              for path in [build / "bin/test_heap", build / "bin/test_vec",
+                           *sorted((build / "lib").rglob("libvppinfra.so*"))]:
+                  binaries.append({"path": str(path), "resolved": str(path.resolve(strict=True)),
+                                   "sha256": hashlib.sha256(path.read_bytes()).hexdigest()})
+              if not any(Path(item["path"]).name.startswith("libvppinfra.so") for item in binaries):
+                  raise RuntimeError("built libvppinfra is missing")
+              (evidence / "binaries.json").write_text(json.dumps(binaries, indent=2) + "\n")
+              passed = run("heap-preflight", ["timeout", "300", str(build / "bin/test_heap"),
+                                              "0", "1", "0"])
+              passed = run("heap-stress", ["timeout", "300", str(build / "bin/test_heap"),
+                                           "1000", "1", "7"]) and passed
+              passed = run("heap-aligned", ["timeout", "300", str(build / "bin/test_heap"),
+                                            "1000", "1", "7", "3"]) and passed
+              passed = run("vec-preflight", ["timeout", "300", str(build / "bin/test_vec"),
+                                             "iter", "0", "verbose", "0"]) and passed
+              passed = run("vec-stress", ["timeout", "300", str(build / "bin/test_vec"),
+                                          "iter", "1000", "seed", "1", "verbose", "0"]) and passed
+              heap_marker = b"heap duplication tests passed"
+              for name in ("heap-preflight", "heap-stress", "heap-aligned"):
+                  passed = heap_marker in (evidence / (name + ".log")).read_bytes() and passed
+              if not passed:
+                  raise RuntimeError("standalone regression failed or heap preflight marker missing")
+              result["passed"] = True
+          finally:
+              try:
+                  if source_tree() != tree:
+                      raise RuntimeError("source changed during build or test")
+              except Exception:
+                  result["passed"] = False
+                  raise
+              finally:
+                  (evidence / "result.json").write_text(json.dumps(result, indent=2) + "\n")
+                  for name in ("CMakeCache.txt", "compile_commands.json", "build.ninja"):
+                      path = build / name
+                      if path.is_file():
+                          (evidence / name).write_bytes(path.read_bytes())
+          PY
+
+      - name: Upload raw regression evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vppinfra-${{ matrix.variant }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/vppinfra-evidence/
+          if-no-files-found: error
+          retention-days: 7
