@@ -1,6 +1,7 @@
 import os
 import socket
 import time
+from copy import copy
 from socket import inet_pton
 from cryptography import x509
 from cryptography.hazmat.backends import default_backend
@@ -1091,22 +1092,20 @@ class IkePeer(VppTestCase):
             else:
                 sa_count = 2
         self.assertEqual(len(sas), sa_count)
-        if self.sa.is_initiator:
-            if is_rekey:
-                sa0 = sas[0].entry
-                sa1 = sas[2].entry
-            else:
-                sa0 = sas[0].entry
-                sa1 = sas[1].entry
-        else:
-            if is_rekey:
-                sa0 = sas[2].entry
-                sa1 = sas[0].entry
-            else:
-                sa1 = sas[0].entry
-                sa0 = sas[1].entry
-
         c = self.sa.child_sas[0]
+        inbound = VppEnum.vl_api_ipsec_sad_flags_t.IPSEC_API_SAD_FLAG_IS_INBOUND
+        sa0 = next(
+            sa.entry
+            for sa in sas
+            if sa.entry.spi == int.from_bytes(c.ispi, "big")
+            and bool(sa.entry.flags & inbound) != self.sa.is_initiator
+        )
+        sa1 = next(
+            sa.entry
+            for sa in sas
+            if sa.entry.spi == int.from_bytes(c.rspi, "big")
+            and bool(sa.entry.flags & inbound) == self.sa.is_initiator
+        )
 
         self.verify_udp_encap(sa0)
         self.verify_udp_encap(sa1)
@@ -2666,10 +2665,14 @@ class TestInitiatorPeerRekey(TestInitiatorPsk):
     """An original IKE responder can initiate a Child SA rekey."""
 
     pfs_group = 0
+    additional_child = False
+    delete_new_child = False
 
     def test_initiator(self):
         super().test_initiator()
         old_spi = self.sa.child_sas[0].rspi
+        old_local_spi = self.sa.child_sas[0].ispi
+        old_child = copy(self.sa.child_sas[0])
         original_nonces = self.sa.i_nonce, self.sa.r_nonce
         new_spi = os.urandom(4)
         self.sa.r_nonce = os.urandom(32)
@@ -2690,6 +2693,13 @@ class TestInitiatorPeerRekey(TestInitiatorPsk):
             plain /= ikev2.IKEv2_payload_KE(
                 group=self.pfs_group, load=self.sa.my_dh_pub_key, next_payload="SA"
             )
+        notification = ikev2.IKEv2_payload_Notify(
+            type="REKEY_SA", proto="ESP", SPI=old_spi
+        )
+        if self.additional_child:
+            notification = ikev2.IKEv2_payload_Notify(
+                type=USE_TRANSPORT_MODE, next_payload="Notify"
+            ) / ikev2.IKEv2_payload_Notify(type=16394)
         plain /= (
             ikev2.IKEv2_payload_SA(prop=proposal, next_payload="TSi")
             / ikev2.IKEv2_payload_TSi(
@@ -2698,7 +2708,7 @@ class TestInitiatorPeerRekey(TestInitiatorPsk):
             / ikev2.IKEv2_payload_TSr(
                 number_of_TSs=len(tsi), traffic_selector=tsi, next_payload="Notify"
             )
-            / ikev2.IKEv2_payload_Notify(type="REKEY_SA", proto="ESP", SPI=old_spi)
+            / notification
         )
         header = ikev2.IKEv2(
             init_SPI=self.sa.ispi,
@@ -2793,8 +2803,40 @@ class TestInitiatorPeerRekey(TestInitiatorPsk):
         child.sk_ei, child.sk_er = child.sk_er, child.sk_ei
         child.sk_ai, child.sk_ar = child.sk_ar, child.sk_ai
         self.sa.i_nonce, self.sa.r_nonce = original_nonces
+        if self.additional_child:
+            self.assertEqual(len(self.vapi.ipsec_sa_dump()), 4)
+            protection = self.vapi.ipsec_tunnel_protect_dump(sw_if_index=0xFFFFFFFF)[
+                0
+            ].tun
+            self.assertEqual(protection.n_sa_in, 2)
+            header.id = self.sa.new_msg_id()
+            header.exch_type = 37
+            delete = ikev2.IKEv2_payload_Delete(
+                proto="ESP",
+                SPIsize=4,
+                SPInum=1,
+                SPIs=child.rspi if self.delete_new_child else old_spi,
+            )
+            packet = self.create_packet(
+                self.pg0, self.encrypt_ike_msg(header, delete, "Delete")
+            )
+            reply = self.get_ike_header(
+                self.send_and_expect(self.pg0, packet, self.pg0)[0]
+            )
+            deleted = ikev2.IKEv2_payload_Delete(self.sa.hmac_and_decrypt(reply))
+            self.assertEqual(
+                deleted.SPIs, child.ispi if self.delete_new_child else old_local_spi
+            )
+            current = self.vapi.ipsec_tunnel_protect_dump(sw_if_index=0xFFFFFFFF)[0].tun
+            if self.delete_new_child:
+                self.assertNotEqual(current.sa_out, protection.sa_out)
+                child = self.sa.child_sas[0] = old_child
+            else:
+                self.assertEqual(current.sa_out, protection.sa_out)
+            self.assertEqual(current.n_sa_in, 1)
+            self.assertEqual(len(self.vapi.ipsec_sa_dump()), 2)
         self.verify_ike_sas()
-        self.verify_ipsec_sas(is_rekey=True)
+        self.verify_ipsec_sas(is_rekey=not self.additional_child)
         self.check_esp(child)
         self.vapi.ikev2_plugin_set_sleep_interval(timeout=0.1)
         for _ in range(50):
@@ -2828,8 +2870,9 @@ class TestInitiatorPeerRekey(TestInitiatorPsk):
             / UDP(sport=44444, dport=44445)
             / Raw(b"peer-rekey")
         )
+        outer = IP(src=self.pg0.remote_ip4, dst=self.pg0.local_ip4)
         encrypted = inbound.encrypt(
-            IP(src=self.pg0.remote_ip4, dst=self.pg0.local_ip4) / inner
+            outer / GRE() / inner if self.gre_tunnel else outer / inner
         )
         result = self.send_and_expect(
             self.pg0,
@@ -2861,6 +2904,23 @@ class TestInitiatorPeerPfsRekey(TestInitiatorPeerRekey):
     """Peer-initiated Child SA rekey with ECP-384 PFS."""
 
     pfs_group = 20
+
+
+@unittest.skipIf(
+    "gre" in config.excluded_plugins, "Exclude tests depending on GRE plugin"
+)
+class TestInitiatorPeerAdditionalChild(TestInitiatorPeerPfsRekey):
+    """An original responder can add a Child SA, then delete the old one."""
+
+    additional_child = True
+    use_transport_mode = True
+    gre_tunnel = True
+
+
+class TestInitiatorPeerAdditionalChildRejected(TestInitiatorPeerAdditionalChild):
+    """Deleting a new Child restores the still-live old protection."""
+
+    delete_new_child = True
 
 
 class TestInitiatorDelSAFromResponder(TemplateInitiator, Ikev2Params):
@@ -3830,6 +3890,110 @@ class TestInitiatorInvalidModp(TestInitiatorPsk):
         response = self.create_init_response(dh_pub_key=key)
         self.send_and_assert_no_replies(self.pg0, response)
         self.assertEqual(len(self.vapi.ipsec_sa_dump()), 0)
+
+
+@unittest.skipIf(
+    "gre" in config.excluded_plugins, "Exclude tests depending on GRE plugin"
+)
+class TestResponderChildDeleteFailure(TestResponderPsk):
+    """A failed Child SA batch Delete keeps Children for a retransmission."""
+
+    use_transport_mode = True
+    gre_tunnel = True
+
+    def protected_sa_out(self):
+        protect = self.vapi.ipsec_tunnel_protect_dump(sw_if_index=self.p.tun_itf)
+        return protect[0].tun.sa_out
+
+    def child_count(self):
+        sa_index = self.vapi.ikev2_sa_dump()[0].sa.sa_index
+        return len(self.vapi.ikev2_child_sa_dump(sa_index=sa_index))
+
+    def add_child(self):
+        current = self.sa.child_sas[0]
+        self.sa.child_sas[0] = IKEv2ChildSA(current.local_ts, current.remote_ts, True)
+        self.sa.i_nonce = os.urandom(32)
+        self.pg0.add_stream(self.create_rekey_request(rekey_notify=False))
+        self.pg0.enable_capture()
+        self.pg_start()
+        reply = self.pg0.get_capture(1)[0]
+        sa_payload = ikev2.IKEv2_payload_SA(
+            self.sa.hmac_and_decrypt(self.get_ike_header(reply))
+        )
+        self.sa.child_sas[0].rspi = sa_payload[ikev2.IKEv2_payload_Proposal].SPI
+        return self.sa.child_sas[0]
+
+    def test_responder(self):
+        super().test_responder()
+        first_child = self.sa.child_sas[0]
+        survivor_id = self.protected_sa_out()
+        survivor = next(
+            sa.entry
+            for sa in self.vapi.ipsec_sa_dump()
+            if sa.entry.sad_id == survivor_id
+        )
+        second_child = self.add_child()
+        third_child = self.add_child()
+        current_id = self.protected_sa_out()
+        self.assertNotEqual(current_id, survivor_id)
+        self.assertEqual(self.child_count(), 3)
+        self.assertEqual(len(self.vapi.ipsec_sa_dump()), 6)
+
+        # Removing the survivor's outbound SA makes the second Delete fail.
+        self.vapi.ipsec_sad_entry_del(id=survivor_id)
+        header = ikev2.IKEv2(
+            init_SPI=self.sa.ispi,
+            resp_SPI=self.sa.rspi,
+            id=self.sa.new_msg_id(),
+            flags="Initiator",
+            exch_type="INFORMATIONAL",
+        )
+        delete = ikev2.IKEv2_payload_Delete(
+            proto="ESP",
+            SPIsize=4,
+            SPInum=2,
+            SPIs=second_child.ispi + third_child.ispi,
+        )
+        request = self.create_packet(
+            self.pg0,
+            self.encrypt_ike_msg(header, delete, "Delete"),
+            self.sa.sport,
+            self.sa.dport,
+            self.sa.natt,
+            self.ip6,
+        )
+        for _ in range(2):
+            self.pg0.add_stream(request)
+            self.pg0.enable_capture()
+            self.pg_start()
+            self.pg0.assert_nothing_captured(remark="failed Child Delete replied")
+            self.assertEqual(self.protected_sa_out(), current_id)
+            # Only the second Child is released; the third keeps its two SAs.
+            self.assertEqual(len(self.vapi.ipsec_sa_dump()), 3)
+            self.assertEqual(self.child_count(), 3)
+
+        VppIpsecSA(
+            self,
+            survivor_id,
+            survivor.spi,
+            survivor.integrity_algorithm,
+            survivor.integrity_key.data[: survivor.integrity_key.length],
+            survivor.crypto_algorithm,
+            survivor.crypto_key.data[: survivor.crypto_key.length],
+            survivor.protocol,
+        ).add_vpp_config()
+
+        self.pg0.add_stream(request)
+        self.pg0.enable_capture()
+        self.pg_start()
+        reply = self.get_ike_header(self.pg0.get_capture(1)[0])
+        self.assertEqual(reply.exch_type, 37)
+        deleted = ikev2.IKEv2_payload_Delete(self.sa.hmac_and_decrypt(reply))
+        self.assertEqual(deleted.SPIs, second_child.rspi + third_child.rspi)
+        self.assertEqual(self.protected_sa_out(), survivor_id)
+        self.assertEqual(len(self.vapi.ipsec_sa_dump()), 2)
+        self.assertEqual(self.child_count(), 1)
+        self.sa.child_sas[0] = first_child
 
 
 class TestResponderInvalidNewChildModp(TestResponderPsk):
