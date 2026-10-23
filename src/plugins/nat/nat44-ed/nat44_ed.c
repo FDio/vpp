@@ -2673,6 +2673,7 @@ nat44_plugin_disable ()
 {
   snat_main_t *sm = &snat_main;
   int rc, error = 0;
+  u32 i;
 
   fail_if_disabled ();
 
@@ -2694,6 +2695,14 @@ nat44_plugin_disable ()
 
   nat44_ed_del_vrf_tables ();
 
+  vec_foreach_index (i, sm->source_policies)
+    {
+      if (sm->source_policies[i].enabled)
+	fib_table_unlock (i, FIB_PROTOCOL_IP4, sm->fib_src_low);
+      vec_free (sm->source_policies[i].prefixes);
+    }
+  vec_free (sm->source_policies);
+
   vec_free (sm->max_translations_per_fib);
   sm->max_translations_per_fib = 0;
 
@@ -2707,6 +2716,49 @@ nat44_plugin_disable ()
   sm->enabled = 0;
 
   return error;
+}
+
+int
+nat44_ed_set_source_policy (u32 vrf_id, u8 enable, nat44_ed_source_prefix_t *prefixes)
+{
+  snat_main_t *sm = &snat_main;
+  nat44_ed_source_policy_t *policy;
+  nat44_ed_source_prefix_t *normalized, *p;
+  u32 fib_index;
+
+  fail_if_disabled ();
+  fib_index = fib_table_find (FIB_PROTOCOL_IP4, vrf_id);
+  if (fib_index == ~0)
+    return VNET_API_ERROR_NO_SUCH_FIB;
+  if (!enable && vec_len (prefixes))
+    return VNET_API_ERROR_INVALID_VALUE;
+  vec_foreach (p, prefixes)
+    if (p->len > 32)
+      return VNET_API_ERROR_INVALID_VALUE;
+
+  if (!enable)
+    {
+      if (nat44_ed_source_policy_enabled (sm, fib_index))
+	{
+	  policy = &sm->source_policies[fib_index];
+	  vec_free (policy->prefixes);
+	  policy->enabled = 0;
+	  fib_table_unlock (fib_index, FIB_PROTOCOL_IP4, sm->fib_src_low);
+	}
+      return 0;
+    }
+
+  normalized = vec_dup (prefixes);
+  vec_foreach (p, normalized)
+    p->address.as_u32 &= ip4_main.fib_masks[p->len];
+  vec_validate (sm->source_policies, fib_index);
+  policy = &sm->source_policies[fib_index];
+  if (!policy->enabled)
+    fib_table_lock (fib_index, FIB_PROTOCOL_IP4, sm->fib_src_low);
+  vec_free (policy->prefixes);
+  policy->prefixes = normalized;
+  policy->enabled = 1;
+  return 0;
 }
 
 void

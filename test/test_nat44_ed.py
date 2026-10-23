@@ -1371,6 +1371,166 @@ class TestNAT44ED(VppTestCase):
         """NAT44ED Twice NAT local service load balancing"""
         self.twice_nat_common(lb=True)
 
+    def test_source_policy(self):
+        """Source-prefix policy preserves routing outside dynamic NAT."""
+        for output in (False, True):
+            self.vapi.nat44_forwarding_enable_disable(enable=1)
+            self.nat_add_address(self.nat_addr)
+            if output:
+                self.vapi.nat44_ed_add_del_output_interface(
+                    sw_if_index=self.pg1.sw_if_index, is_add=1
+                )
+            else:
+                self.nat_add_inside_interface(self.pg0)
+                self.nat_add_outside_interface(self.pg1)
+            selected, routed = self.pg0.remote_hosts[0], self.pg0.remote_hosts[2]
+            self.vapi.nat44_ed_source_policy_set(
+                vrf_id=0, enable=True, count=1, prefixes=[f"{selected.ip4}/31"]
+            )
+            for host in (selected, routed):
+                packets = [
+                    Ether(src=host.mac, dst=self.pg0.local_mac)
+                    / IP(src=host.ip4, dst=self.pg1.remote_ip4)
+                    / layer
+                    for layer in (
+                        TCP(sport=12345, dport=80, flags="S"),
+                        UDP(sport=12346, dport=80),
+                        ICMP(type="echo-request", id=12347),
+                    )
+                ]
+                if host == selected:
+                    established = packets
+                captured = self.send_and_expect(self.pg0, packets, self.pg1)
+                for packet in captured:
+                    self.assertEqual(
+                        packet[IP].src, self.nat_addr if host == selected else host.ip4
+                    )
+                    self.assert_packet_checksums_valid(packet)
+                replies = []
+                for packet in captured:
+                    if TCP in packet:
+                        layer = TCP(
+                            sport=80, dport=packet[TCP].sport, flags="SA", ack=1
+                        )
+                    elif UDP in packet:
+                        layer = UDP(sport=80, dport=packet[UDP].sport)
+                    else:
+                        layer = ICMP(type="echo-reply", id=packet[ICMP].id)
+                    replies.append(
+                        Ether(src=self.pg1.remote_mac, dst=self.pg1.local_mac)
+                        / IP(src=self.pg1.remote_ip4, dst=packet[IP].src)
+                        / layer
+                    )
+                returned = self.send_and_expect(self.pg1, replies, self.pg0)
+                for packet in returned:
+                    self.assertEqual(packet[IP].dst, host.ip4)
+                    self.assert_packet_checksums_valid(packet)
+            self.vapi.nat44_ed_source_policy_set(vrf_id=0, enable=True, count=0)
+            # Existing sessions retain their translation after a policy change.
+            again = self.send_and_expect(self.pg0, established, self.pg1)
+            self.assertTrue(all(p[IP].src == self.nat_addr for p in again))
+            new_flow = established[1].copy()
+            new_flow[UDP].sport += 100
+            sessions = self.statistics["/nat44-ed/total-sessions"][:, 0].sum()
+            self.assertEqual(
+                self.send_and_expect(self.pg0, [new_flow], self.pg1)[0][IP].src,
+                selected.ip4,
+            )
+            self.assertEqual(
+                self.statistics["/nat44-ed/total-sessions"][:, 0].sum(), sessions
+            )
+            self.nat_add_static_mapping(
+                selected.ip4, self.nat_addr, 23456, 23457, proto=IP_PROTOS.udp
+            )
+            static = new_flow.copy()
+            static[UDP].sport = 23456
+            translated = self.send_and_expect(self.pg0, [static], self.pg1)[0]
+            self.assertEqual(translated[IP].src, self.nat_addr)
+            self.assertEqual(translated[UDP].sport, 23457)
+            unselected_gre = (
+                Ether(src=routed.mac, dst=self.pg0.local_mac)
+                / IP(src=routed.ip4, dst=self.pg1.remote_ip4)
+                / GRE()
+                / IP(src="192.0.2.1", dst="192.0.2.2")
+            )
+            self.assertEqual(
+                self.send_and_expect(self.pg0, [unselected_gre], self.pg1)[0][IP].src,
+                routed.ip4,
+            )
+            self.configure_ip4_interface(self.pg7, table_id=22)
+            self.configure_ip4_interface(self.pg8, table_id=22)
+            if output:
+                self.vapi.nat44_ed_add_del_output_interface(
+                    sw_if_index=self.pg8.sw_if_index, is_add=1
+                )
+            else:
+                self.nat_add_inside_interface(self.pg7)
+                self.nat_add_outside_interface(self.pg8)
+            self.vapi.nat44_ed_source_policy_set(
+                vrf_id=22, enable=True, count=1, prefixes=[f"{self.pg7.remote_ip4}/32"]
+            )
+            # Keep this flow in VRF 22 instead of the global outside's default route.
+            self.vapi.nat44_ed_add_del_vrf_table(table_vrf_id=22, is_add=1)
+            self.vapi.nat44_ed_add_del_vrf_route(table_vrf_id=22, vrf_id=22, is_add=1)
+            vrf_flow = (
+                Ether(src=self.pg7.remote_mac, dst=self.pg7.local_mac)
+                / IP(src=self.pg7.remote_ip4, dst=self.pg8.remote_ip4)
+                / UDP(sport=34567, dport=80)
+            )
+            vrf_translated = self.send_and_expect(self.pg7, [vrf_flow], self.pg8)[0]
+            self.assertEqual(vrf_translated[IP].src, self.nat_addr)
+            vrf_reply = (
+                Ether(src=self.pg8.remote_mac, dst=self.pg8.local_mac)
+                / IP(src=self.pg8.remote_ip4, dst=self.nat_addr)
+                / UDP(sport=80, dport=vrf_translated[UDP].sport)
+            )
+            self.assertEqual(
+                self.send_and_expect(self.pg8, [vrf_reply], self.pg7)[0][IP].dst,
+                self.pg7.remote_ip4,
+            )
+            self.plugin_disable()
+            self.pg7.unconfig()
+            self.pg8.unconfig()
+            self.vapi.ip_table_add_del_v2(is_add=0, table={"table_id": 22})
+            self.plugin_enable()
+
+    def test_source_policy_api(self):
+        """Source policy validation, per-VRF state and plugin cleanup."""
+        for vrf in (0, 10):
+            for _ in range(2):
+                self.vapi.nat44_ed_source_policy_set(
+                    vrf_id=vrf,
+                    enable=True,
+                    count=1,
+                    prefixes=[{"address": "198.51.100.129", "len": 25}],
+                )
+        policies = self.vapi.nat44_ed_source_policy_dump()
+        self.assertEqual({p.vrf_id for p in policies}, {0, 10})
+        for policy in policies:
+            self.assertEqual([str(p) for p in policy.prefixes], ["198.51.100.128/25"])
+        self.vapi.cli("nat44 source policy vrf 0 enable 198.51.100.129/25")
+        self.assertIn("198.51.100.128/25", self.vapi.cli("show nat44 source policy"))
+        with self.vapi.assert_negative_api_retval():
+            self.vapi.nat44_ed_source_policy_set(
+                vrf_id=0,
+                enable=True,
+                count=1,
+                prefixes=[{"address": "192.0.2.1", "len": 33}],
+            )
+        with self.vapi.assert_negative_api_retval():
+            self.vapi.nat44_ed_source_policy_set(vrf_id=987654, enable=True, count=0)
+        self.assertEqual(len(self.vapi.nat44_ed_source_policy_dump()), 2)
+        self.vapi.nat44_ed_source_policy_set(vrf_id=10, enable=True, count=0)
+        empty = next(
+            p for p in self.vapi.nat44_ed_source_policy_dump() if p.vrf_id == 10
+        )
+        self.assertEqual(empty.prefixes, [])
+        self.vapi.nat44_ed_source_policy_set(vrf_id=0, enable=False, count=0)
+        self.assertEqual(len(self.vapi.nat44_ed_source_policy_dump()), 1)
+        self.plugin_disable()
+        self.plugin_enable()
+        self.assertEqual(self.vapi.nat44_ed_source_policy_dump(), [])
+
     def test_output_feature(self):
         """NAT44ED interface output feature (in2out postrouting)"""
         self.vapi.nat44_forwarding_enable_disable(enable=1)

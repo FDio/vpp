@@ -19,6 +19,26 @@
 #include <nat/nat44-ed/nat44_ed.h>
 #include <vnet/ip/ip4_to_ip6.h>
 
+static_always_inline int
+nat44_ed_source_policy_enabled (snat_main_t *sm, u32 fib_index)
+{
+  return fib_index < vec_len (sm->source_policies) && sm->source_policies[fib_index].enabled;
+}
+
+static_always_inline int
+nat44_ed_source_allowed (snat_main_t *sm, u32 fib_index, ip4_address_t address)
+{
+  nat44_ed_source_prefix_t *p;
+
+  if (!nat44_ed_source_policy_enabled (sm, fib_index))
+    return 1;
+
+  vec_foreach (p, sm->source_policies[fib_index].prefixes)
+    if ((address.as_u32 & ip4_main.fib_masks[p->len]) == p->address.as_u32)
+      return 1;
+  return 0;
+}
+
 always_inline void
 init_ed_k (clib_bihash_kv_16_8_t *kv, u32 l_addr, u16 l_port, u32 r_addr,
 	   u16 r_port, u32 fib_index, ip_protocol_t proto)

@@ -129,6 +129,29 @@ f) forwarding - if enabled translation only occurs if active session or
    static configuration exist, rest of the traffic is passed without
    being translated
 
+Source-prefix selection
+-----------------------
+
+Dynamic translation can be restricted to source prefixes in an inside IPv4
+table. The policy is disabled by default. Replacing a policy affects new
+dynamic sessions only; existing sessions and static mappings take precedence.
+Unmatched sources are routed without translation. Enable forwarding to pass
+their untranslated return traffic. An enabled empty list selects no sources.
+The policy applies to both input and output NAT features; it is not an ACL
+and does not deny forwarding.
+Existing NAT routing and pool selection still apply.
+
+::
+
+   nat44 forwarding enable
+   nat44 source policy vrf 0 enable 192.0.2.0/24 198.51.100.0/25
+   show nat44 source policy
+   nat44 source policy vrf 0 disable
+
+The ``nat44_ed_source_policy_set`` API atomically replaces one policy;
+``nat44_ed_source_policy_dump`` returns enabled policies, including empty ones.
+Disabling the plugin releases all policies and their IPv4 table references.
+
 Session Table
 -------------
 
