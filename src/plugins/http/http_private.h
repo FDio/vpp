@@ -357,6 +357,7 @@ typedef struct http_ctx_
 	  /* http2 */
 	  u32 last_opened_stream_id;	/* host order */
 	  u32 last_processed_stream_id; /* network order */
+	  u32 continuation_stream_id;	/* network order */
 	  u32 peer_window;
 	  u32 our_window;
 	  u32 unsent_headers_offset;
