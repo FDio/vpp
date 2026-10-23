@@ -20,6 +20,123 @@ vl (void *p)
   return (vec_len (p));
 }
 
+static void
+test_heap_dup_typed (void)
+{
+#define test_heap_dup_type(type)                                               \
+  do                                                                          \
+    {                                                                         \
+      type *original = 0, *copy;                                               \
+      uword handle, offset;                                                   \
+      ALWAYS_ASSERT (heap_dup (original) == 0);                                \
+      heap_new (original);                                                    \
+      copy = heap_dup (original);                                             \
+      ALWAYS_ASSERT (copy && copy != original && vec_len (copy) == 0);          \
+      ALWAYS_ASSERT (heap_header (copy)->elt_bytes == sizeof (type));          \
+      heap_free (original);                                                   \
+      offset = heap_alloc (copy, 100, handle);                                 \
+      ALWAYS_ASSERT (offset == 0 && vec_len (copy) == 100);                     \
+      for (uword i = 0; i < 100; i++)                                          \
+        copy[i] = (type) (~(type) 0 - i);                                      \
+      original = heap_dup (copy);                                             \
+      ALWAYS_ASSERT (original != copy && vec_len (original) == 100);           \
+      ALWAYS_ASSERT (heap_header (original)->elt_bytes == sizeof (type));      \
+      ALWAYS_ASSERT (vec_max_bytes (original) >= 100 * sizeof (type));          \
+      ALWAYS_ASSERT (vec_is_equal (original, copy));                           \
+      original[99] = 0;                                                       \
+      ALWAYS_ASSERT (copy[99] == (type) (~(type) 0 - 99));                      \
+      heap_free (original);                                                   \
+      for (uword i = 0; i < 100; i++)                                          \
+        ALWAYS_ASSERT (copy[i] == (type) (~(type) 0 - i));                      \
+      heap_dealloc (copy, handle);                                            \
+      original = heap_dup (copy);                                             \
+      ALWAYS_ASSERT (vec_len (original) == 100 && heap_elts (original) == 0);    \
+      heap_free (copy);                                                       \
+      offset = heap_alloc (original, 100, handle);                             \
+      ALWAYS_ASSERT (offset == 0 && heap_len (original, handle) == 100);        \
+      heap_free (original);                                                   \
+    }                                                                         \
+  while (0)
+
+  test_heap_dup_type (u8);
+  test_heap_dup_type (u32);
+  test_heap_dup_type (u64);
+#undef test_heap_dup_type
+}
+
+static void
+test_heap_dup_metadata (void)
+{
+  u8 *original = 0, *copy;
+  heap_header_t *original_header, *copy_header;
+  uword handles[4], handle, offset, free_count;
+
+  for (uword i = 0; i < ARRAY_LEN (handles); i++)
+    {
+      offset = heap_alloc (original, 16, handles[i]);
+      ALWAYS_ASSERT (offset == 16 * i);
+    }
+  clib_memset (original, 0xa5, vec_len (original));
+  heap_dealloc (original, handles[1]);
+  heap_dealloc (original, handles[2]);
+  copy = heap_dup (original);
+  original_header = heap_header (original);
+  copy_header = heap_header (copy);
+
+  ALWAYS_ASSERT (vec_is_equal (original, copy));
+  ALWAYS_ASSERT (original_header->elts != copy_header->elts);
+  ALWAYS_ASSERT (vec_is_equal (original_header->elts, copy_header->elts));
+  ALWAYS_ASSERT (vec_len (original_header->free_elts) > 0);
+  ALWAYS_ASSERT (original_header->free_elts != copy_header->free_elts);
+  ALWAYS_ASSERT (vec_is_equal (original_header->free_elts, copy_header->free_elts));
+  ALWAYS_ASSERT (original_header->free_lists != copy_header->free_lists);
+  ALWAYS_ASSERT (vec_len (original_header->free_lists) == vec_len (copy_header->free_lists));
+  free_count = 0;
+  for (uword i = 0; i < vec_len (original_header->free_lists); i++)
+    {
+      ALWAYS_ASSERT (vec_is_equal (original_header->free_lists[i], copy_header->free_lists[i]));
+      if (vec_len (original_header->free_lists[i]))
+	{
+	  ALWAYS_ASSERT (original_header->free_lists[i] != copy_header->free_lists[i]);
+	  free_count += vec_len (original_header->free_lists[i]);
+	}
+    }
+  ALWAYS_ASSERT (free_count > 0);
+  ALWAYS_ASSERT (vec_len (original_header->small_free_elt_free_index) > 0);
+  ALWAYS_ASSERT (original_header->small_free_elt_free_index !=
+		 copy_header->small_free_elt_free_index);
+  ALWAYS_ASSERT (vec_is_equal (original_header->small_free_elt_free_index,
+			      copy_header->small_free_elt_free_index));
+  if (CLIB_DEBUG > 0)
+    {
+      ALWAYS_ASSERT (vec_len (original_header->used_elt_bitmap) > 0);
+      ALWAYS_ASSERT (original_header->used_elt_bitmap != copy_header->used_elt_bitmap);
+      ALWAYS_ASSERT (vec_is_equal (original_header->used_elt_bitmap, copy_header->used_elt_bitmap));
+    }
+
+  copy[48] = 0x5a;
+  ALWAYS_ASSERT (original[48] == 0xa5);
+  offset = heap_alloc (copy, 8, handle);
+  ALWAYS_ASSERT (offset >= 16 && offset + 8 <= 48);
+  heap_dealloc (copy, handles[0]);
+  ALWAYS_ASSERT (heap_elts (original) == 2);
+  ALWAYS_ASSERT (!heap_is_free_handle (original, handles[0]));
+  ALWAYS_ASSERT (vec_len (original_header->free_elts) == 2);
+  ALWAYS_ASSERT (heap_len (original, handles[0]) == 16);
+  ALWAYS_ASSERT (heap_len (original, handles[3]) == 16);
+  if (CLIB_DEBUG > 0)
+    {
+      heap_validate (original);
+      heap_validate (copy);
+    }
+  heap_free (original);
+  ALWAYS_ASSERT (copy[48] == 0x5a && heap_len (copy, handle) == 8);
+  heap_dealloc (copy, handle);
+  heap_dealloc (copy, handles[3]);
+  ALWAYS_ASSERT (heap_elts (copy) == 0);
+  heap_free (copy);
+}
+
 int
 main (int argc, char *argv[])
 {
@@ -32,6 +149,10 @@ main (int argc, char *argv[])
   uword align;
 
   clib_mem_init (0, 10 << 20);
+
+  test_heap_dup_typed ();
+  test_heap_dup_metadata ();
+  fformat (stdout, "heap duplication tests passed\n");
 
   n = 10;
   seed = (u32) getpid ();
