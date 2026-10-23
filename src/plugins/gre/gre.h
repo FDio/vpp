@@ -263,12 +263,12 @@ typedef struct
   uword *protocol_info_by_name, *protocol_info_by_protocol;
 
   /**
-   * Hash mapping to tunnels with ipv4 src/dst addr
+   * IPv4 ingress ownership, including TEIB aliases; configuration uses the pool
    */
   uword *tunnel_by_key4;
 
   /**
-   * Hash mapping to tunnels with ipv6 src/dst addr
+   * IPv6 ingress ownership, including TEIB aliases; configuration uses the pool
    */
   uword *tunnel_by_key6;
 

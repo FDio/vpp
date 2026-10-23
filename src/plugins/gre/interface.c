@@ -77,55 +77,62 @@ gre_tunnel_db_find (const vnet_gre_tunnel_add_del_args_t *a,
 		    u32 outer_fib_index, gre_tunnel_key_t *key)
 {
   gre_main_t *gm = &gre_main;
-  uword *p;
+  gre_tunnel_t *t;
+  gre_tunnel_key_t configured;
+  fib_protocol_t proto = a->is_ipv6 ? FIB_PROTOCOL_IP6 : FIB_PROTOCOL_IP4;
 
   if (!a->is_ipv6)
-    {
-      gre_mk_key4 (a->src.ip4, a->dst.ip4, outer_fib_index, a->type, a->mode,
-		   a->session_id, a->gre_key, &key->gtk_v4);
-      p = hash_get_mem (gm->tunnel_by_key4, &key->gtk_v4);
-    }
+    gre_mk_key4 (a->src.ip4, a->dst.ip4, outer_fib_index, a->type, a->mode, a->session_id,
+		 a->gre_key, &key->gtk_v4);
   else
+    gre_mk_key6 (&a->src.ip6, &a->dst.ip6, outer_fib_index, a->type, a->mode, a->session_id,
+		 a->gre_key, &key->gtk_v6);
+
+  /* Ingress aliases do not identify configured tunnels. */
+  pool_foreach (t, gm->tunnels)
     {
-      gre_mk_key6 (&a->src.ip6, &a->dst.ip6, outer_fib_index, a->type, a->mode,
-		   a->session_id, a->gre_key, &key->gtk_v6);
-      p = hash_get_mem (gm->tunnel_by_key6, &key->gtk_v6);
+      if (t->tunnel_dst.fp_proto != proto)
+	continue;
+      if (!a->is_ipv6)
+	{
+	  gre_mk_key4 (t->tunnel_src.ip4, t->tunnel_dst.fp_addr.ip4, t->outer_fib_index, t->type,
+		       t->mode, t->session_id, t->gre_key, &configured.gtk_v4);
+	  if (gre_match_key4 (&key->gtk_v4, &configured.gtk_v4))
+	    return t;
+	}
+      else
+	{
+	  gre_mk_key6 (&t->tunnel_src.ip6, &t->tunnel_dst.fp_addr.ip6, t->outer_fib_index, t->type,
+		       t->mode, t->session_id, t->gre_key, &configured.gtk_v6);
+	  if (gre_match_key6 (&key->gtk_v6, &configured.gtk_v6))
+	    return t;
+	}
     }
 
-  if (NULL == p)
-    return (NULL);
-
-  return (pool_elt_at_index (gm->tunnels, p[0]));
+  return NULL;
 }
 
 static void
 gre_tunnel_db_add (gre_tunnel_t *t, gre_tunnel_key_t *key)
 {
   gre_main_t *gm = &gre_main;
+  uword *p;
+
+  p = t->tunnel_dst.fp_proto == FIB_PROTOCOL_IP6 ? hash_get_mem (gm->tunnel_by_key6, &key->gtk_v6) :
+						   hash_get_mem (gm->tunnel_by_key4, &key->gtk_v4);
+
+  /* P2P configuration takes precedence over indistinguishable MP aliases. */
+  if (p)
+    {
+      if (t->mode == TUNNEL_MODE_P2P)
+	p[0] = t->dev_instance;
+      return;
+    }
 
   if (t->tunnel_dst.fp_proto == FIB_PROTOCOL_IP6)
-    {
-      hash_set_mem_alloc (&gm->tunnel_by_key6, &key->gtk_v6, t->dev_instance);
-    }
+    hash_set_mem_alloc (&gm->tunnel_by_key6, &key->gtk_v6, t->dev_instance);
   else
-    {
-      hash_set_mem_alloc (&gm->tunnel_by_key4, &key->gtk_v4, t->dev_instance);
-    }
-}
-
-static void
-gre_tunnel_db_remove (gre_tunnel_t *t, gre_tunnel_key_t *key)
-{
-  gre_main_t *gm = &gre_main;
-
-  if (t->tunnel_dst.fp_proto == FIB_PROTOCOL_IP6)
-    {
-      hash_unset_mem_free (&gm->tunnel_by_key6, &key->gtk_v6);
-    }
-  else
-    {
-      hash_unset_mem_free (&gm->tunnel_by_key4, &key->gtk_v4);
-    }
+    hash_set_mem_alloc (&gm->tunnel_by_key4, &key->gtk_v4, t->dev_instance);
 }
 
 /**
@@ -260,6 +267,73 @@ gre_teib_mk_key (const gre_tunnel_t *t, const teib_entry_t *ne,
 		 t->gre_key, &key->gtk_v6);
 }
 
+typedef struct
+{
+  const gre_tunnel_t *tunnel;
+  const gre_tunnel_key_t *key;
+  const teib_entry_t *excluded;
+  bool matched;
+} gre_teib_match_ctx_t;
+
+static walk_rc_t
+gre_teib_match_walk (index_t nei, void *arg)
+{
+  gre_teib_match_ctx_t *ctx = arg;
+  const teib_entry_t *ne = teib_entry_get (nei);
+  gre_tunnel_key_t key;
+
+  if (ne == ctx->excluded || teib_entry_get_nh (ne)->fp_proto != ctx->tunnel->tunnel_dst.fp_proto)
+    return WALK_CONTINUE;
+
+  gre_teib_mk_key (ctx->tunnel, ne, &key);
+  if (ctx->tunnel->tunnel_dst.fp_proto == FIB_PROTOCOL_IP6)
+    ctx->matched |= gre_match_key6 (&key.gtk_v6, &ctx->key->gtk_v6);
+  else
+    ctx->matched |= gre_match_key4 (&key.gtk_v4, &ctx->key->gtk_v4);
+
+  return WALK_CONTINUE;
+}
+
+static void
+gre_tunnel_db_remove (gre_tunnel_t *t, gre_tunnel_key_t *key, const teib_entry_t *excluded)
+{
+  gre_main_t *gm = &gre_main;
+  gre_tunnel_t *candidate, *replacement = NULL;
+  bool is_ip6 = t->tunnel_dst.fp_proto == FIB_PROTOCOL_IP6;
+  uword *p = is_ip6 ? hash_get_mem (gm->tunnel_by_key6, &key->gtk_v6) :
+		      hash_get_mem (gm->tunnel_by_key4, &key->gtk_v4);
+
+  if (!p || p[0] != t->dev_instance)
+    return;
+
+  pool_foreach (candidate, gm->tunnels)
+    {
+      if (candidate->mode != TUNNEL_MODE_MP ||
+	  candidate->tunnel_dst.fp_proto != t->tunnel_dst.fp_proto ||
+	  (candidate == t && excluded == NULL))
+	continue;
+
+      gre_teib_match_ctx_t ctx = { .tunnel = candidate, .key = key, .excluded = excluded };
+      teib_walk_itf (candidate->sw_if_index, gre_teib_match_walk, &ctx);
+      if (!ctx.matched)
+	continue;
+
+      /* Keep a shared alias on its current owner while any peer needs it. */
+      if (candidate == t)
+	return;
+      if (replacement == NULL || candidate->dev_instance < replacement->dev_instance)
+	replacement = candidate;
+    }
+
+  if (is_ip6)
+    hash_unset_mem_free (&gm->tunnel_by_key6, &key->gtk_v6);
+  else
+    hash_unset_mem_free (&gm->tunnel_by_key4, &key->gtk_v4);
+
+  if (replacement)
+    gre_tunnel_db_add (replacement, key);
+}
+
 /**
  * An TEIB entry has been added
  */
@@ -285,7 +359,7 @@ gre_teib_entry_added (const teib_entry_t *ne)
   /* entry has been added on an interface for which there is a GRE tunnel */
   t = pool_elt_at_index (gm->tunnels, t_idx);
 
-  if (t->mode != TUNNEL_MODE_MP)
+  if (t->mode != TUNNEL_MODE_MP || teib_entry_get_nh (ne)->fp_proto != t->tunnel_dst.fp_proto)
     return;
 
   /* the next-hop (underlay) of the NHRP entry will form part of the key for
@@ -324,9 +398,12 @@ gre_teib_entry_deleted (const teib_entry_t *ne)
 
   t = pool_elt_at_index (gm->tunnels, t_idx);
 
+  if (t->mode != TUNNEL_MODE_MP || teib_entry_get_nh (ne)->fp_proto != t->tunnel_dst.fp_proto)
+    return;
+
   /* remove the next-hop as an ingress lookup key */
   gre_teib_mk_key (t, ne, &key);
-  gre_tunnel_db_remove (t, &key);
+  gre_tunnel_db_remove (t, &key, ne);
 
   nh = teib_entry_get_peer (ne);
 
@@ -343,8 +420,11 @@ gre_tunnel_delete_teib_walk (index_t nei, void *ctx)
   gre_tunnel_t *t = ctx;
   gre_tunnel_key_t key;
 
+  if (teib_entry_get_nh (teib_entry_get (nei))->fp_proto != t->tunnel_dst.fp_proto)
+    return WALK_CONTINUE;
+
   gre_teib_mk_key (t, teib_entry_get (nei), &key);
-  gre_tunnel_db_remove (t, &key);
+  gre_tunnel_db_remove (t, &key, NULL);
 
   return (WALK_CONTINUE);
 }
@@ -354,6 +434,9 @@ gre_tunnel_add_teib_walk (index_t nei, void *ctx)
 {
   gre_tunnel_t *t = ctx;
   gre_tunnel_key_t key = {};
+
+  if (teib_entry_get_nh (teib_entry_get (nei))->fp_proto != t->tunnel_dst.fp_proto)
+    return WALK_CONTINUE;
 
   gre_teib_mk_key (t, teib_entry_get (nei), &key);
   gre_tunnel_db_add (t, &key);
@@ -573,7 +656,7 @@ vnet_gre_tunnel_delete (vnet_gre_tunnel_add_del_args_t *a, u32 outer_fib_index,
 
   vnet_reset_interface_l3_output_node (gm->vlib_main, sw_if_index);
   hash_unset (gm->instance_used, t->user_instance);
-  gre_tunnel_db_remove (t, &key);
+  gre_tunnel_db_remove (t, &key, NULL);
   pool_put (gm->tunnels, t);
 
   if (sw_if_indexp)
