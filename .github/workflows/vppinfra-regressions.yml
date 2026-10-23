@@ -177,13 +177,28 @@ jobs:
           try:
               require("install-deps", ["make", "UNATTENDED=yes", "install-dep"])
               require("formatter", ["clang-format-19", "--version"])
+              message_commits = git("rev-list", "--reverse", "--no-merges",
+                                    base + ".." + checkout).decode().splitlines()
               try:
-                  for commit in commits:
+                  for commit in message_commits:
                       require("checkout-" + commit, ["git", "checkout", "--quiet", "--detach", commit])
-                      require("style-" + commit, ["env", "CHECKSTYLE_COMMIT=" + commit,
-                                                  "extras/scripts/checkstyle.sh"])
+                      require("message-" + commit, ["extras/scripts/check_commit_msg.sh"])
               finally:
                   require("restore-source", ["git", "checkout", "--quiet", "--detach", checkout])
+              source_tree_sha = provenance["source_tree"]
+              require("style-comparison", ["git", "-c", "user.name=VPP CI",
+                                           "-c", "user.email=ci@invalid", "commit-tree",
+                                           source_tree_sha, "-p", base,
+                                           "-m", "build: compare final source formatting"])
+              comparison = (evidence / "style-comparison.log").read_text().strip()
+              if git("rev-parse", comparison + "^{tree}").decode().strip() != source_tree_sha:
+                  raise RuntimeError("style comparison tree differs from pinned source")
+              if git("rev-parse", comparison + "^1").decode().strip() != base:
+                  raise RuntimeError("style comparison parent differs from frozen base")
+              provenance.update(style_comparison=comparison, message_commits=message_commits)
+              (evidence / "source.json").write_text(json.dumps(provenance, indent=2) + "\n")
+              require("style-final", ["env", "CHECKSTYLE_COMMIT=" + comparison,
+                                       "extras/scripts/checkstyle.sh"])
               require("compiler", ["clang", "--version"])
               require("configure", ["cmake", "-S", "src", "-B", str(build), "-G", "Ninja",
                                     "-DCMAKE_C_COMPILER=clang", "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON",
