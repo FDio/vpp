@@ -18,8 +18,54 @@ var (
 func init() {
 	RegisterTlsTests(TlsAlpMatchTest, TlsAlpnOverlapMatchTest, TlsAlpnServerPriorityMatchTest, TlsAlpnMismatchTest,
 		TlsAlpnEmptyServerListTest, TlsAlpnEmptyClientListTest, TlsCrlRejectThenAllowTest,
-		TlsPicotlsAlpnEmptyServerListTest, TlsPicotlsAlpnEmptyClientListTest)
+		TlsPicotlsAlpnEmptyServerListTest, TlsPicotlsAlpnEmptyClientListTest, TlsPeerCertCloseTest)
 	RegisterTlsTapTests(TlsFinDrainTest)
+}
+
+func TlsPeerCertCloseTest(s *TlsSuite) {
+	tlsPeerCertClose(&s.VethsSuite, "tls")
+}
+
+// Retrieve borrowed leaf and chain certificates in separate calls (leaf only for
+// QUIC), then wait for connection teardown before reusing the pools.
+func tlsPeerCertClose(s *VethsSuite, proto string) {
+	serverVpp := s.Containers.ServerVpp.VppInstance
+	clientVpp := s.Containers.ClientVpp.VppInstance
+	uri := proto + "://" + s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1
+	a := s.CreateTlsCrlTestArtifacts(proto + "-peer-cert")
+	cleanupTimeout := 5 * time.Second
+	if proto == "tls" {
+		// TCP retains closed TLS sessions during its ten-second TIME_WAIT.
+		cleanupTimeout = 15 * time.Second
+	}
+
+	o := serverVpp.Vppctl("test tls server cert " + a.ServerCert + " key " + a.ServerKey + " uri " + uri)
+	Log(o)
+	AssertContains(o, "server started")
+	serverSessions := serverVpp.Vppctl("show session")
+	clientSessions := clientVpp.Vppctl("show session")
+
+	for range 2 {
+		o = clientVpp.Vppctl("test tls client verify peer ca-cert " + a.CaCert + " get-peer-cert uri " + uri)
+		Log(o)
+		AssertContains(o, "Peer certificate lookup succeeded")
+		AssertContains(o, "TLS version: 1.3")
+		AssertNotContains(o, "timeout")
+		AssertNotContains(o, "connect error")
+
+		Eventually(func() string {
+			return clientVpp.Vppctl("show session")
+		}).WithTimeout(cleanupTimeout).WithPolling(1*time.Second).
+			Should(Equal(clientSessions), "client connection not cleaned up")
+		Eventually(func() string {
+			return serverVpp.Vppctl("show session")
+		}).WithTimeout(cleanupTimeout).WithPolling(1*time.Second).
+			Should(Equal(serverSessions), "server connection not cleaned up")
+	}
+
+	o = serverVpp.Vppctl("show test tls server")
+	Log(o)
+	AssertContains(o, "accepted connections 2")
 }
 
 // The client waits until TLS dequeues its plaintext, then half-closes. The

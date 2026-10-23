@@ -17,6 +17,7 @@ typedef struct
   u32 ca_trust_index;
   u32 tls_profile_index;
   u8 cert_type; /* 0 = RSA (default), 1 = ECDSA */
+  u8 get_peer_cert;
   u8 *ca_cert_file;
   u8 *crl_file;
   tls_verify_cfg_t verify_cfg;
@@ -38,6 +39,7 @@ typedef enum
 {
   TC_CLI_TEST_DONE = 1,
   TC_CLI_CONNECT_FAILED,
+  TC_CLI_PEER_CERT_FAILED,
 } tc_cli_signal_t;
 
 tls_client_main_t tls_client_main;
@@ -79,6 +81,29 @@ tc_ts_accept_callback (session_t *ts)
 }
 
 static int
+tc_check_peer_cert (session_t *s)
+{
+  u32 nrequests = session_get_transport_proto (s) == TRANSPORT_PROTO_QUIC ? 1 : 2;
+
+  for (u32 i = 0; i < nrequests; i++)
+    {
+      u32 requested = i ? TLS_CERT_F_CHAIN : TLS_CERT_F_LEAF;
+      transport_endpt_attr_t attr = {
+	.type = TRANSPORT_ENDPT_ATTR_TLS_PEER_CERT,
+	.tls_peer_cert.flags = requested,
+      };
+      if (session_transport_attribute (s, 1 /* is_get */, &attr))
+	return -1;
+
+      void *cert =
+	requested == TLS_CERT_F_LEAF ? attr.tls_peer_cert.cert : attr.tls_peer_cert.chain;
+      if (!cert || attr.tls_peer_cert.flags != requested)
+	return -1;
+    }
+  return 0;
+}
+
+static int
 tc_ts_connected_callback (u32 app_index, u32 api_context, session_t *s, session_error_t err)
 {
   tls_client_main_t *cm = &tls_client_main;
@@ -88,6 +113,12 @@ tc_ts_connected_callback (u32 app_index, u32 api_context, session_t *s, session_
   if (err)
     {
       vlib_process_signal_event_mt (cm->vlib_main, cm->cli_node_index, TC_CLI_CONNECT_FAILED, err);
+      return -1;
+    }
+
+  if (cm->get_peer_cert && tc_check_peer_cert (s))
+    {
+      vlib_process_signal_event_mt (cm->vlib_main, cm->cli_node_index, TC_CLI_PEER_CERT_FAILED, 0);
       return -1;
     }
 
@@ -360,8 +391,12 @@ tc_run (vlib_main_t *vm)
   uword event_type, *event_data = 0;
   clib_error_t *error = 0;
   u32 i;
+  int rv;
 
-  if (tc_attach ())
+  vlib_worker_thread_barrier_sync (vm);
+  rv = tc_attach ();
+  vlib_worker_thread_barrier_release (vm);
+  if (rv)
     return clib_error_return (0, "attach failed");
 
   for (i = 0; i < cm->nclients; i++)
@@ -375,6 +410,8 @@ tc_run (vlib_main_t *vm)
       error = clib_error_return (0, "timeout");
       break;
     case TC_CLI_TEST_DONE:
+      if (cm->get_peer_cert)
+	vlib_cli_output (vm, "Peer certificate lookup succeeded");
       vlib_cli_output (vm, "ALPN selected: %U", format_tls_alpn_proto,
 		       cm->alpn_proto_selected);
       if (cm->negotiated_cipher)
@@ -385,6 +422,9 @@ tc_run (vlib_main_t *vm)
 	vlib_cli_output (vm, "Key agreement: %v", cm->negotiated_key_agreement);
       if (cm->negotiated_signature_algo)
 	vlib_cli_output (vm, "Signature algorithm: %v", cm->negotiated_signature_algo);
+      break;
+    case TC_CLI_PEER_CERT_FAILED:
+      error = clib_error_return (0, "peer certificate lookup failed");
       break;
     case TC_CLI_CONNECT_FAILED:
       error = clib_error_return (0, "connect error %U", format_session_error,
@@ -424,11 +464,13 @@ tls_client_run_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_co
   tls_client_main_t *cm = &tls_client_main;
   unformat_input_t _line_input, *line_input = &_line_input;
   clib_error_t *error = 0;
+  int rv;
 
   cm->tls_engine = CRYPTO_ENGINE_OPENSSL;
   cm->tls_profile_index = ~0;
   cm->ca_trust_index = 0;
   cm->cert_type = 0;
+  cm->get_peer_cert = 0;
   cm->verify_cfg = 0;
   cm->ca_cert_file = 0;
   cm->crl_file = 0;
@@ -447,6 +489,8 @@ tls_client_run_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_co
 	;
       else if (unformat (line_input, "send-bytes %U", unformat_memory_size, &cm->send_bytes))
 	;
+      else if (unformat (line_input, "get-peer-cert"))
+	cm->get_peer_cert = 1;
       else if (unformat (line_input, "nclients %u", &cm->nclients))
 	;
       else if (unformat (line_input, "alpn-proto1 %d", &cm->alpn_protos[0]))
@@ -524,7 +568,10 @@ tls_client_run_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_co
 
   error = tc_run (vm);
 
-  if (tc_detach ())
+  vlib_worker_thread_barrier_sync (vm);
+  rv = tc_detach ();
+  vlib_worker_thread_barrier_release (vm);
+  if (rv)
     {
       if (!error)
 	error = clib_error_return (0, "detach failed");
@@ -549,8 +596,9 @@ VLIB_CLI_COMMAND (tls_client_run_command, static) = {
 		"[send-bytes <bytes>[k|m]] "
 		"[nclients <n>] "
 		"[profile-index %d] [verify <mode>] [ca-cert <ca-cert-file>] "
-		"[crl <crl-file>]",
+		"[crl <crl-file>] [get-peer-cert]",
   .function = tls_client_run_command_fn,
+  .is_mp_safe = 1,
 };
 
 clib_error_t *

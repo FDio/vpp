@@ -71,6 +71,13 @@ quic_quicly_connection_delete (quic_ctx_t *ctx)
   quic_quicly_main_t *qqm = &quic_quicly_main;
   quic_main_t *qm = qqm->qm;
 
+  /* Free the connection's peer certificate, including failed handshakes. */
+  if (ctx->peer_cert)
+    {
+      X509_free ((X509 *) ctx->peer_cert);
+      ctx->peer_cert = NULL;
+    }
+
   if (ctx->conn == NULL)
     {
       QUIC_DBG (2, "Skipping redundant delete of connection %u",
@@ -1156,15 +1163,6 @@ quic_quicly_on_app_closed (u32 ctx_index, clib_thread_index_t thread_index)
       ctx->flags |= QUIC_F_APP_CLOSED_TX;
       quic_quicly_stream_shutdown_tx (ctx, stream_session);
       return;
-    }
-  else
-    {
-      /* Cleaning up now to avoid ossl dependency in quic.c */
-      if (ctx->peer_cert)
-	{
-	  X509_free ((X509 *) ctx->peer_cert);
-	  ctx->peer_cert = 0;
-	}
     }
 
   switch (ctx->conn_state)

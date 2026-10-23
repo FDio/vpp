@@ -398,10 +398,12 @@ typedef enum tls_cert_flags_
   TLS_CERT_F_CHAIN = 1 << 1,
 } tls_cert_flags_t;
 
+/* Certificates are borrowed from the transport and must not be freed by the
+ * caller. Clone them if needed beyond the synchronous attribute API call. */
 typedef struct tls_cert_
 {
-  void *cert;  /**< leaf cert, engine native; OpenSSL: caller-owned X509* */
-  void *chain; /**< cert chain, engine native; OpenSSL: borrowed STACK_OF(X509)* */
+  void *cert;  /**< borrowed leaf certificate, engine native */
+  void *chain; /**< borrowed certificate chain, engine native */
   u32 flags;   /**< requested on input and valid TLS_CERT_F_* values on output */
 } tls_cert_t;
 
