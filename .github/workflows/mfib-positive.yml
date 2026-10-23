@@ -270,24 +270,66 @@ jobs:
               return {'sha256': sha(path.read_bytes()), 'size': info.st_size,
                       'inode': info.st_ino, 'device': info.st_dev}
 
+          def install_layout(cache, manifest, install):
+              keys = ['CMAKE_INSTALL_PREFIX', 'VPP_LIBRARY_DIR', 'CMAKE_INSTALL_LIBDIR']
+              values = {key: [] for key in keys}
+              for line in cache.splitlines():
+                  match = re.fullmatch(r'([^:#=]+):[^=]+=(.*)', line)
+                  if match and match.group(1) in values:
+                      values[match.group(1)].append(match.group(2))
+              assert all(len(values[key]) == 1 for key in keys[:2]), 'Missing or duplicate install cache key'
+              prefix, library = [values[key][0] for key in keys[:2]]
+              assert prefix == str(install), 'Install prefix differs from fixed candidate root'
+              relative = Path(library)
+              assert (library and not relative.is_absolute() and '..' not in relative.parts
+                      and str(relative) == library and library != '.'), 'Noncanonical library directory'
+              assert values[keys[2]] in ([], [library]), 'Conflicting install library directory'
+              assert install.is_absolute() and install.resolve(strict=True) == install, 'Aliased install root'
+              assert install.is_dir() and not install.is_symlink(), 'Missing or unsafe install root'
+              patterns = [(r'vpp', install / 'bin'), (r'libvnet\.so(?:\..+)?', install / relative),
+                          (r'unittest_plugin\.so', install / relative / 'vpp_plugins')]
+              entries = manifest.splitlines()
+              files = []
+              def walk_error(error):
+                  raise error
+              installed = []
+              for directory, directories, names in os.walk(install, followlinks=False, onerror=walk_error):
+                  installed.extend(Path(directory) / name for name in names)
+                  installed.extend(Path(directory) / name for name in directories
+                                   if (Path(directory) / name).is_symlink())
+              for pattern, directory in patterns:
+                  assert directory.resolve(strict=True) == directory, 'Aliased binary directory'
+                  assert directory.is_dir(), 'Missing binary directory'
+                  matches = sorted(path for path in installed if re.fullmatch(pattern, path.name))
+                  associated = sorted(line for line in entries if re.fullmatch(pattern, Path(line).name))
+                  assert matches and associated == [str(path) for path in matches], 'Missing or ambiguous manifest association: ' + pattern
+                  targets = set()
+                  for path in matches:
+                      assert path.parent == directory, 'Binary outside configured directory: ' + str(path)
+                      target = path.resolve(strict=True)
+                      assert install in target.parents and target.parent == directory, 'Escaping binary target: ' + str(path)
+                      assert target.is_file() and not target.is_symlink(), 'Nonregular binary target: ' + str(path)
+                      assert str(target) in associated, 'Real target missing from install manifest: ' + str(target)
+                      targets.add(target)
+                  assert len(targets) == 1, 'Missing or ambiguous real binary target: ' + pattern
+                  files.append(targets.pop())
+              assert len(set(files)) == len(patterns), 'Binary roles share a real target'
+              return files
+
           def build():
               verify_source()
               command('build', ['make', 'UNATTENDED=yes', 'build'], seconds=5400)
               install = candidate / 'build-root/install-vpp_debug-native/vpp'
-              files = [install / 'bin/vpp']
-              for pattern in ['lib*/libvnet.so*', 'lib*/vpp_plugins/unittest_plugin.so']:
-                  found = [path for path in install.glob(pattern) if path.is_file() and not path.is_symlink()]
-                  assert found, 'Missing installed binary: ' + pattern
-                  files.extend(found)
-              identities = {str(path.resolve()): file_identity(path) for path in files}
-              save(root / 'binaries.json', identities)
-              for number, path in enumerate(identities):
-                  command('elf-' + str(number), ['readelf', '-n', path], seconds=60)
               build_dir = candidate / 'build-root/build-vpp_debug-native/vpp'
               for name in ['CMakeCache.txt', 'install_manifest.txt']:
                   shutil.copyfile(build_dir / name, root / name)
-              cache = (build_dir / 'CMakeCache.txt').read_text()
+              cache = (root / 'CMakeCache.txt').read_text()
               assert str(candidate / 'src') in cache, 'CMake source identity missing'
+              files = install_layout(cache, (root / 'install_manifest.txt').read_text(), install)
+              identities = {str(path): file_identity(path) for path in files}
+              save(root / 'binaries.json', identities)
+              for number, path in enumerate(identities):
+                  command('elf-' + str(number), ['readelf', '-n', path], seconds=60)
               verify_source()
 
           def snapshot(directory):
