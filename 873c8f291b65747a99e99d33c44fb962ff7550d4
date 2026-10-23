@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ee64d322_72e1ae2b",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-10-23T17:25:35Z",
+      "side": 1,
+      "message": "Thanks for your contribution.\n\nVPP 26.10 Release is past the RC2 milestone where the only bug fixes to be merged are those fixing performance issues found by CSIT.\n\nTypically, bug fixes are submitted to master branch, then cherry-picked to release branches (e.g. stable/2610).  Is there a reason you chose to submit this fix to stable/2610 instead of master?",
+      "revId": "873c8f291b65747a99e99d33c44fb962ff7550d4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
