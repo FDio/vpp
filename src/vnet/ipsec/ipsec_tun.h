@@ -152,6 +152,9 @@ __clib_export extern int ipsec_tun_protect_del (u32 sw_if_index, const ip_addres
 
 __clib_export extern u32 ipsec_tun_protect_get_out_sa_id (u32 sw_if_index);
 
+/* Append a copy of installed inbound IDs; the caller owns the vector. */
+__clib_export extern int ipsec_tun_protect_get_sa_ids (u32 sw_if_index, u32 *sa_out, u32 **sas_in);
+
 typedef walk_rc_t (*ipsec_tun_protect_walk_cb_t) (index_t itpi, void *arg);
 extern void ipsec_tun_protect_walk (ipsec_tun_protect_walk_cb_t fn,
 				    void *cttx);
