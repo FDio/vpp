@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b152b6ff_86057f8d",
+        "filename": "src/plugins/ikev2/ikev2.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 3268,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-10-23T07:47:13Z",
+      "side": 1,
+      "message": "Could we assert the cache invariant here too? It should be either empty, or contain a complete response where `slen \u003e sizeof(*ike)` and `slen \u003d\u003d vec_len(sa-\u003elast_res_packet_data)`. Keep the runtime guard so an empty or invalid cache is ignored when assertions are disabled; make the assertion short-circuit before reading `tmp-\u003elength` unless the vector contains a full header.",
+      "revId": "1894d04aeb78b46d8e17d23c75c28886b150fdc2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
