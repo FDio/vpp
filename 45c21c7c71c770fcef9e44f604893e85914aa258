@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2d6c5369_4a430af4",
+        "filename": "src/plugins/ikev2/ikev2.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 2687,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-10-23T13:29:11Z",
+      "side": 1,
+      "message": "Could we build a temporary bitmap of unavailable slots and then select the first free bit? The nested search scans every child for each candidate, making allocation quadratic as occupancy grows. A 2,048-bit bitmap needs 256 bytes and avoids maintaining persistent allocation state. We’d need to preserve the checks for pending-old SAs and the remote rekey bit.",
+      "revId": "45c21c7c71c770fcef9e44f604893e85914aa258",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "50710e3f_c6d0d645",
+        "filename": "src/plugins/ikev2/ikev2.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 2703,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-10-23T13:29:11Z",
+      "side": 1,
+      "message": "Could we propagate allocation failure to the CREATE_CHILD_SA handler, remove the appended child, and return NO_ADDITIONAL_SAS? The caller currently ignores this return value and sends success without installing the IPsec SAs. I reproduced this under debug ASAN: with 2,048 live children, the next request receives an SA payload while the SAD remains at 4,096 entries.",
+      "revId": "45c21c7c71c770fcef9e44f604893e85914aa258",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
