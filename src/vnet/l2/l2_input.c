@@ -262,6 +262,24 @@ set_int_l2_mode (vlib_main_t * vm, vnet_main_t * vnet_main,	/*           */
   hi = vnet_get_sup_hw_interface (vnet_main, sw_if_index);
   config = l2input_intf_config (sw_if_index);
 
+  /*
+   * An interface without an output node, such as an L3-only tunnel, can't
+   * send L2 frames, so it can't be in a bridge domain or at either end of an
+   * xconnect. The BVI's MAC goes into the l2fib, so an interface without one
+   * can't be a BVI. Check before changing anything.
+   */
+  if (mode == MODE_L2_BRIDGE || mode == MODE_L2_XC)
+    {
+      if (hi->output_node_index == 0)
+	return MODE_ERROR_NO_OUTPUT;
+      if (mode == MODE_L2_XC &&
+	  vnet_get_sup_hw_interface (vnet_main, xc_sw_if_index)->output_node_index == 0)
+	return MODE_ERROR_NO_OUTPUT;
+      if (mode == MODE_L2_BRIDGE && port_type == L2_BD_PORT_TYPE_BVI &&
+	  vec_len (hi->hw_address) < sizeof (mac_address_t))
+	return MODE_ERROR_BVI_NO_MAC;
+    }
+
   if (l2fib_main.mac_table_initialized == 0)
     l2fib_table_init ();
 
@@ -597,6 +615,15 @@ int_l2_bridge (vlib_main_t * vm,
 	    clib_error_return (0, "bridge-domain already has a bvi interface",
 			       format_unformat_error, input);
 	}
+      else if (rc == MODE_ERROR_NO_OUTPUT)
+	{
+	  error = clib_error_return (0, "%U has no output node for L2 frames",
+				     format_vnet_sw_if_index_name, vnm, sw_if_index);
+	}
+      else if (rc == MODE_ERROR_BVI_NO_MAC)
+	{
+	  error = clib_error_return (0, "a bvi interface needs a mac address");
+	}
       else
 	{
 	  error = clib_error_return (0, "invalid configuration for interface",
@@ -654,6 +681,7 @@ int_l2_xc (vlib_main_t * vm,
   clib_error_t *error = 0;
   u32 sw_if_index;
   u32 xc_sw_if_index;
+  u32 rc;
 
   if (!unformat_user (input, unformat_vnet_sw_interface, vnm, &sw_if_index))
     {
@@ -671,9 +699,17 @@ int_l2_xc (vlib_main_t * vm,
     }
 
   /* set the interface mode */
-  if (set_int_l2_mode
-      (vm, vnm, MODE_L2_XC, sw_if_index, 0, L2_BD_PORT_TYPE_NORMAL,
-       0, xc_sw_if_index))
+  rc = set_int_l2_mode (vm, vnm, MODE_L2_XC, sw_if_index, 0, L2_BD_PORT_TYPE_NORMAL, 0,
+			xc_sw_if_index);
+  if (rc == MODE_ERROR_NO_OUTPUT)
+    {
+      if (vnet_get_sup_hw_interface (vnm, sw_if_index)->output_node_index)
+	sw_if_index = xc_sw_if_index;
+      error = clib_error_return (0, "%U has no output node for L2 frames",
+				 format_vnet_sw_if_index_name, vnm, sw_if_index);
+      goto done;
+    }
+  if (rc)
     {
       error = clib_error_return (0, "invalid configuration for interface",
 				 format_unformat_error, input);
