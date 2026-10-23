@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 
 import os
+import sys
 import tempfile
 import unittest
+from io import StringIO
 from vppapigen import VPPAPI, Option, ParseError, Union, foldup_crcs, global_types
 import vppapigen
 
@@ -32,6 +34,34 @@ class TestDependencies(unittest.TestCase):
             with open(dependency_file, encoding="utf8") as f:
                 expected = f"output.h: \\\n {input_file}\n"
                 self.assertEqual(f.read(), expected)
+
+
+class TestOutputPlugins(unittest.TestCase):
+    def test_generate_and_reload(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            input_file = os.path.join(tmpdir, "output.api")
+            with open(input_file, "w", encoding="utf8") as f:
+                f.write(
+                    "autoreply define output_probe { u32 client_index; u32 context; };"
+                )
+            for backend in ("JSON", "C"):
+                previous = None
+                for _ in range(2):
+                    with self.subTest(backend=backend):
+                        output = StringIO()
+                        self.assertEqual(
+                            vppapigen.run_vppapigen(
+                                input_file=input_file,
+                                output=output,
+                                output_module=backend,
+                                outputdir=tmpdir,
+                            ),
+                            0,
+                        )
+                        self.assertIn("output_probe", output.getvalue())
+                        if previous is not None:
+                            self.assertIs(sys.modules[backend], previous)
+                        previous = sys.modules[backend]
 
 
 class TestUnion(unittest.TestCase):

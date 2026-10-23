@@ -1329,7 +1329,7 @@ def run_vppapigen(
     #
     # Generate representation
     #
-    from importlib.machinery import SourceFileLoader
+    from importlib.util import module_from_spec, spec_from_file_location
 
     # Default path
     pluginpath = ""
@@ -1349,9 +1349,17 @@ def run_vppapigen(
         return 1
     module_path = "{}vppapigen_{}.py".format(pluginpath, output_module.lower())
 
+    previous_plugin = sys.modules.get(output_module)
     try:
-        plugin = SourceFileLoader(output_module, module_path).load_module()
+        spec = spec_from_file_location(output_module, module_path)
+        plugin = previous_plugin
+        if plugin is None:
+            plugin = module_from_spec(spec)
+            sys.modules[output_module] = plugin
+        spec.loader.exec_module(plugin)
     except Exception as err:
+        if previous_plugin is None:
+            sys.modules.pop(output_module, None)
         log.exception("Error importing output plugin: %s, %s", module_path, err)
         return 1
 
