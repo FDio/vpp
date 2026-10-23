@@ -11,6 +11,11 @@ from framework import VppTestCase
 from asfframework import VppTestRunner
 from util import Host, ppp
 from vpp_sub_interface import VppDot1QSubint, VppDot1ADSubint
+from vpp_ip_route import VppRoutePath, VppMplsLabel
+from vpp_l2 import L2_PORT_TYPE
+from vpp_gre_interface import VppGreInterface
+from vpp_ipip_tun_interface import VppIpIpTunInterface
+from vpp_mpls_tunnel_interface import VppMPLSTunnelInterface
 
 
 class TestL2bd(VppTestCase):
@@ -305,6 +310,90 @@ class TestL2bd(VppTestCase):
         """
 
         self.run_l2bd_test(self.dl_pkts_per_burst)
+
+
+class TestL2bdL3Tunnels(VppTestCase):
+    """L2 bridge domain and xconnect with L3 tunnels"""
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestL2bdL3Tunnels, cls).setUpClass()
+        cls.create_pg_interfaces(range(1))
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestL2bdL3Tunnels, cls).tearDownClass()
+
+    def setUp(self):
+        super(TestL2bdL3Tunnels, self).setUp()
+
+        self.vapi.bridge_domain_add_del_v2(
+            bd_id=1, is_add=1, flood=1, uu_flood=1, forward=1, learn=1
+        )
+
+        #
+        # An L3 GRE, an IPIP and an L3 MPLS tunnel: interfaces without an
+        # output node, which can't send L2 frames
+        #
+        self.tunnels = [
+            VppGreInterface(self, "10.0.0.1", "10.0.0.2"),
+            VppIpIpTunInterface(self, self.pg0, "10.0.0.1", "10.0.0.4"),
+            VppMPLSTunnelInterface(
+                self,
+                [
+                    VppRoutePath(
+                        "10.0.0.5", self.pg0.sw_if_index, labels=[VppMplsLabel(33)]
+                    )
+                ],
+            ),
+        ]
+        for t in self.tunnels:
+            t.add_vpp_config()
+
+    def tearDown(self):
+        for t in self.tunnels:
+            t.remove_vpp_config()
+        self.vapi.bridge_domain_add_del_v2(bd_id=1, is_add=0)
+        super(TestL2bdL3Tunnels, self).tearDown()
+
+    def test_bridge_l3_tunnels(self):
+        """L3 tunnels can't be bridged"""
+
+        #
+        # Each tunnel is refused as a member and as the BVI: it has no output
+        # node for L2 frames, and no MAC address for the l2fib
+        #
+        for t in self.tunnels:
+            for port_type in (L2_PORT_TYPE.NORMAL, L2_PORT_TYPE.BVI):
+                with self.vapi.assert_negative_api_retval():
+                    self.vapi.sw_interface_set_l2_bridge(
+                        rx_sw_if_index=t.sw_if_index, bd_id=1, port_type=port_type
+                    )
+
+        #
+        # The bridge domain has no members and no BVI
+        #
+        bd = self.vapi.bridge_domain_dump(bd_id=1)[0]
+        self.assertEqual(bd.n_sw_ifs, 0)
+        self.assertEqual(bd.bvi_sw_if_index, 0xFFFFFFFF)
+
+    def test_xconnect_l3_tunnels(self):
+        """L3 tunnels can't be cross-connected"""
+
+        #
+        # Refused at either end: frames would have to go out of the tunnel
+        #
+        for t in self.tunnels:
+            for rx, tx in ((self.pg0, t), (t, self.pg0)):
+                with self.vapi.assert_negative_api_retval():
+                    self.vapi.sw_interface_set_l2_xconnect(
+                        rx.sw_if_index, tx.sw_if_index, enable=1
+                    )
+
+        #
+        # Nothing is cross-connected
+        #
+        self.assertEqual(len(self.vapi.l2_xconnect_dump()), 0)
 
 
 if __name__ == "__main__":
