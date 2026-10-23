@@ -1,0 +1,44 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "683a1e39_18e2276b",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 15
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-10-23T12:55:11Z",
+      "side": 1,
+      "message": "Just a small nit. Could you please rebase on master ?",
+      "revId": "726c527c2147d4b2ca112e688c3f20ee91d12653",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a678ee46_8ef4a4c2",
+        "filename": "src/vnet/flow/flow_cli.c",
+        "patchSetId": 15
+      },
+      "lineNbr": 415,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-10-23T12:55:11Z",
+      "side": 1,
+      "message": "nit: `[max \u003cn\u003e]` should also be present in the short_help, since `show flow template` calls `show_flow_pool()` which leverages this parameter.",
+      "range": {
+        "startLine": 415,
+        "startChar": 36,
+        "endLine": 415,
+        "endChar": 53
+      },
+      "revId": "726c527c2147d4b2ca112e688c3f20ee91d12653",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
