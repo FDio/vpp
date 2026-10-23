@@ -762,7 +762,7 @@ vlib_load_new_plugins (plugin_main_t * pm, int from_early_init)
 	  filename = format (0, "%s/%s%c", plugin_path[i], entry->d_name, 0);
 
 	  /* Only accept .so */
-	  char *ext = strrchr ((const char *) filename, '.');
+          const char *ext = strrchr ((const char *) filename, '.');
 	  /* unreadable */
 	  if (!ext || (strcmp (ext, ".so") != 0) ||
 	      stat ((char *) filename, &statb) < 0)
