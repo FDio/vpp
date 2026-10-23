@@ -153,16 +153,15 @@ always_inline void *
 _heap_dup (void *v_old, uword v_bytes)
 {
   heap_header_t *h_old, *h_new;
-  vec_attr_t va = { .align = HEAP_DATA_ALIGN,
-		    .hdr_sz = sizeof (heap_header_t),
-		    .elt_sz = 1 };
   void *v_new;
-
-  h_old = heap_header (v_old);
 
   if (!v_old)
     return v_old;
 
+  h_old = heap_header (v_old);
+  vec_attr_t va = { .align = HEAP_DATA_ALIGN,
+		    .hdr_sz = sizeof (heap_header_t),
+		    .elt_sz = h_old->elt_bytes };
   v_new = _vec_alloc_internal (_vec_len (v_old), &va);
   h_new = heap_header (v_new);
   heap_dup_header (h_old, h_new);
