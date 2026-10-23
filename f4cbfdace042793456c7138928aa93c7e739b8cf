@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9efee652_27708b44",
+        "filename": "src/plugins/hsi/hsi_tracker_private.h",
+        "patchSetId": 7
+      },
+      "lineNbr": 362,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-10-23T19:36:52Z",
+      "side": 1,
+      "message": "I suspect we should be checking if fifo is non-empty, to avoid spurious tx events",
+      "revId": "f4cbfdace042793456c7138928aa93c7e739b8cf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
