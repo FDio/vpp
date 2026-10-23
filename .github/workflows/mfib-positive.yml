@@ -538,6 +538,109 @@ jobs:
           if error:
               raise SystemExit(1)
           PY
+          cat > "${RUNNER_TEMP}/mfib-transport.py" <<'PY'
+          import hashlib
+          import json
+          import os
+          from pathlib import Path, PurePosixPath
+          import stat
+          import sys
+          import tarfile
+
+          def record(raw):
+              return {'size': len(raw), 'sha256': hashlib.sha256(raw).hexdigest()}
+
+          def canonical(name):
+              path = PurePosixPath(name)
+              assert name and '\0' not in name and not path.is_absolute() and '..' not in path.parts
+              assert str(path) == name and name != '.', 'Noncanonical archive path'
+              return path
+
+          def manifest_records(raw):
+              entries = json.loads(raw)
+              records = {}
+              for entry in entries:
+                  name = entry['path']
+                  canonical(name)
+                  assert name != 'manifest.json' and name not in records, 'Duplicate manifest path'
+                  records[name] = {'size': entry['size'], 'sha256': entry['sha256']}
+              assert records, 'Empty manifest'
+              records['manifest.json'] = record(raw)
+              for name in records:
+                  assert not any(str(parent) in records for parent in canonical(name).parents), 'File/directory alias'
+              return records
+
+          def inventory(directory):
+              assert directory.resolve(strict=True) == directory and directory.is_dir(), 'Aliased evidence root'
+              records = {}
+              def walk_error(error):
+                  raise error
+              for current, directories, files in os.walk(directory, followlinks=False, onerror=walk_error):
+                  for name in directories:
+                      assert not (Path(current) / name).is_symlink(), 'Evidence directory link'
+                  for name in files:
+                      path = Path(current) / name
+                      assert stat.S_ISREG(path.lstat().st_mode), 'Nonregular evidence file'
+                      relative = str(path.relative_to(directory))
+                      canonical(relative)
+                      records[relative] = record(path.read_bytes())
+              assert records == manifest_records((directory / 'manifest.json').read_bytes()), 'Evidence manifest mismatch'
+              return records
+
+          def checked_archive(archive):
+              members = archive.getmembers()
+              names = [member.name for member in members]
+              assert len(set(names)) == len(names), 'Duplicate archive member'
+              for member in members:
+                  canonical(member.name)
+                  assert member.isfile() and member.sparse is None, 'Nonregular archive member'
+              assert 'manifest.json' in names, 'Missing manifest'
+              records = manifest_records(archive.extractfile('manifest.json').read())
+              assert set(names) == set(records), 'Archive member set differs from manifest'
+              for member in members:
+                  assert member.size == records[member.name]['size'], 'Archive member size mismatch'
+                  assert record(archive.extractfile(member).read()) == records[member.name], 'Archive member hash mismatch'
+              return records
+
+          def pack(directory, destination):
+              assert destination.name == 'mfib-positive-evidence.tar'
+              assert directory not in destination.resolve().parents, 'Archive inside evidence root'
+              before = inventory(directory)
+              with destination.open('xb') as output:
+                  with tarfile.open(fileobj=output, mode='w', format=tarfile.PAX_FORMAT, dereference=True) as archive:
+                      for name in sorted(before):
+                          path = directory / name
+                          assert stat.S_ISREG(path.lstat().st_mode), 'Evidence file changed type'
+                          with path.open('rb') as source:
+                              member = archive.gettarinfo(str(path), arcname=name)
+                              assert member.isfile(), 'Nonregular evidence member'
+                              archive.addfile(member, source)
+              with tarfile.open(destination, 'r:') as archive:
+                  assert checked_archive(archive) == before, 'Archive differs from pre-copy inventory'
+              assert inventory(directory) == before, 'Evidence changed during archive'
+              print(json.dumps({'archive': str(destination), **record(destination.read_bytes())}), flush=True)
+
+          def unpack(directory, destination):
+              assert directory.resolve(strict=True) == directory and directory.is_dir(), 'Aliased download root'
+              source = directory / 'mfib-positive-evidence.tar'
+              assert list(directory.iterdir()) == [source], 'Unexpected downloaded files'
+              assert stat.S_ISREG(source.lstat().st_mode), 'Nonregular downloaded archive'
+              with tarfile.open(source, 'r:') as archive:
+                  records = checked_archive(archive)
+                  destination.mkdir()
+                  assert destination.resolve(strict=True) == destination, 'Aliased verification root'
+                  for member in archive.getmembers():
+                      path = destination / member.name
+                      path.parent.mkdir(parents=True, exist_ok=True)
+                      assert destination in path.resolve().parents, 'Escaping verification path'
+                      with path.open('xb') as output:
+                          output.write(archive.extractfile(member).read())
+                  assert inventory(destination) == records, 'Unpacked evidence differs from archive'
+
+          if __name__ == '__main__':
+              operation, directory, destination = sys.argv[1:]
+              {'pack': pack, 'unpack': unpack}[operation](Path(directory), Path(destination))
+          PY
           python3 "${RUNNER_TEMP}/mfib-positive.py" identity
 
       - name: Install standard dependencies
@@ -571,16 +674,22 @@ jobs:
         run: python3 "${RUNNER_TEMP}/mfib-positive.py" verify_source
 
       - name: Seal all available evidence
+        id: seal
         if: always() && env.MFIB_EVIDENCE != ''
         run: python3 "${RUNNER_TEMP}/mfib-positive.py" seal
 
+      - name: Archive intact sealed evidence
+        id: archive
+        if: always() && steps.seal.outcome == 'success'
+        run: python3 "${RUNNER_TEMP}/mfib-transport.py" pack "$MFIB_EVIDENCE" "${RUNNER_TEMP}/mfib-positive-evidence.tar"
+
       - name: Upload evidence
         id: upload
-        if: always() && env.MFIB_EVIDENCE != ''
+        if: always() && steps.archive.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
           name: mfib-positive-${{ github.run_id }}-${{ github.run_attempt }}
-          path: ${{ env.MFIB_EVIDENCE }}
+          path: ${{ runner.temp }}/mfib-positive-evidence.tar
           if-no-files-found: error
           retention-days: 14
           compression-level: 1
@@ -600,12 +709,14 @@ jobs:
           ARTIFACT_URL: ${{ steps.upload.outputs.artifact-url }}
           ARTIFACT_DIGEST: ${{ steps.upload.outputs.artifact-digest }}
         run: |
+          set -Eeuo pipefail
+          python3 "${RUNNER_TEMP}/mfib-transport.py" unpack "${RUNNER_TEMP}/mfib-positive-downloaded" "${RUNNER_TEMP}/mfib-positive-verified"
           python3 - <<'PY'
           import hashlib
           import json
           import os
           from pathlib import Path
-          root = Path(os.environ['RUNNER_TEMP']) / 'mfib-positive-downloaded'
+          root = Path(os.environ['RUNNER_TEMP']) / 'mfib-positive-verified'
           entries = json.loads((root / 'manifest.json').read_text())
           expected = {entry['path'] for entry in entries}
           assert len(expected) == len(entries), 'Duplicate artifact path'
