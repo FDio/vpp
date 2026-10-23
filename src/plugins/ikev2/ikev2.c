@@ -38,6 +38,7 @@ typedef struct
   ikev2_rekey_t child;
   ikev2_sa_t keys;
   uword child_index;
+  u8 additional_child;
 } ikev2_peer_rekey_t;
 
 typedef struct
@@ -1854,18 +1855,35 @@ ikev2_process_create_child_sa_req (vlib_main_t *vm, ikev2_sa_t *sa, ike_header_t
 
   use_transport_mode &= ikev2_transport_mode_capable (sa);
 
-  if (ike_hdr_is_request (ike) && sa->is_initiator && n)
+  if (ike_hdr_is_request (ike) && sa->is_initiator && proposal->protocol_id == IKEV2_PROTOCOL_ESP)
     {
       rekey = &peer->child;
       rekey->protocol_id = IKEV2_PROTOCOL_ESP;
-      child_sa = ikev2_sa_get_child (sa, n->spi, n->protocol_id, 0);
-      if (!child_sa || n->protocol_id != IKEV2_PROTOCOL_ESP)
+      child_sa = n ? ikev2_sa_get_child (sa, n->spi, n->protocol_id, 0) : 0;
+      if (n && (!child_sa || n->protocol_id != IKEV2_PROTOCOL_ESP))
 	goto cleanup_and_exit;
-      peer->child_index = child_sa - sa->childs;
+      peer->additional_child = n == 0;
+      if (!n)
+	{
+	  ikev2_child_sa_t *existing;
+	  vec_foreach (existing, sa->childs)
+	    if (vec_len (tsi) == 1 && vec_len (tsr) == 1 && ikev2_ts_cmp (tsi, existing->tsr) &&
+		ikev2_ts_cmp (tsr, existing->tsi))
+	      {
+		child_sa = existing;
+		break;
+	      }
+	}
+      peer->child_index = child_sa ? child_sa - sa->childs : INDEX_INVALID;
+      /* shortcut: one additional Child until Delete; widen with multi-Child rekey support. */
       if (vec_len (sa->rekey) || sa->old_remote_id_present)
 	rekey->notify_type = IKEV2_NOTIFY_MSG_TEMPORARY_FAILURE;
-      else if (vec_len (tsi) != 1 || vec_len (tsr) != 1 || !ikev2_ts_cmp (tsi, child_sa->tsr) ||
-	       !ikev2_ts_cmp (tsr, child_sa->tsi))
+      else if (peer->additional_child && vec_len (sa->childs) != 1)
+	rekey->notify_type = IKEV2_NOTIFY_MSG_NO_ADDITIONAL_SAS;
+      else if (!peer->additional_child && vec_len (sa->childs) != 1)
+	rekey->notify_type = IKEV2_NOTIFY_MSG_TEMPORARY_FAILURE;
+      else if (!child_sa || vec_len (tsi) != 1 || vec_len (tsr) != 1 ||
+	       !ikev2_ts_cmp (tsi, child_sa->tsr) || !ikev2_ts_cmp (tsr, child_sa->tsi))
 	rekey->notify_type = IKEV2_NOTIFY_MSG_TS_UNACCEPTABLE;
       else
 	{
@@ -2447,13 +2465,8 @@ ikev2_add_tunnel_from_main (ikev2_add_ipsec_tunnel_args_t * a)
 
   u32 *sas_in = NULL;
   vec_add1 (sas_in, a->remote_sa_id);
-  if (a->is_rekey)
+  if (a->old_remote_sa_id)
     {
-      ipsec_tun_protect_del (sw_if_index, NULL);
-
-      /* replace local SA immediately */
-      ipsec_sa_unlock_id (a->old_local_sa_id);
-
       /* keep the old sa */
       vec_add1 (sas_in, a->old_remote_sa_id);
     }
@@ -2476,6 +2489,9 @@ ikev2_add_tunnel_from_main (ikev2_add_ipsec_tunnel_args_t * a)
   rv = ipsec_tun_protect_update (sw_if_index, NULL, a->local_sa_id, sas_in);
   if (rv)
     goto err2;
+
+  if (a->is_rekey)
+    ipsec_sa_unlock_id (a->old_local_sa_id);
 
   return;
 
@@ -2830,6 +2846,8 @@ ikev2_create_tunnel_interface (vlib_main_t *vm, ikev2_sa_t *sa, ikev2_child_sa_t
       sa->old_id_expiration = 3.0;
       sa->old_remote_id_present = 1;
     }
+  else
+    a.old_remote_sa_id = old_remote_sa_id;
 
   child->remote_sa_id = a.remote_sa_id = remote_sa_id;
 
@@ -2847,6 +2865,7 @@ typedef struct
   u32 remote_sa_id;
   u32 old_remote_sa_id;
   u32 local_sa_id;
+  u32 survivor_local_sa_id;
   u32 sw_if_index;
 } ikev2_del_ipsec_tunnel_args_t;
 
@@ -2855,9 +2874,9 @@ ikev2_del_tunnel_from_main (ikev2_del_ipsec_tunnel_args_t *a)
 {
   ikev2_main_t *km = &ikev2_main;
   u32 ipip_sw_if_index = INDEX_INVALID;
-  u32 sw_if_index;
+  u32 sw_if_index = a->sw_if_index;
 
-  if (INDEX_INVALID == a->sw_if_index)
+  if (INDEX_INVALID == sw_if_index)
     {
       ipip_tunnel_key_t key = {
 	.src = a->local_ip,
@@ -2865,26 +2884,36 @@ ikev2_del_tunnel_from_main (ikev2_del_ipsec_tunnel_args_t *a)
 	.transport = IPIP_TRANSPORT_IP4,
 	.fib_index = 0,
       };
+      sw_if_index = ipip_sw_if_index = km->ipip_tunnel_db_find_sw_if_index_fn_ptr (&key);
+    }
 
-      ipip_sw_if_index = km->ipip_tunnel_db_find_sw_if_index_fn_ptr (&key);
-
-      if (INDEX_INVALID != ipip_sw_if_index)
+  if (INDEX_INVALID != sw_if_index)
+    {
+      u32 sa_out, *sas_in = 0;
+      int rv = ipsec_tun_protect_get_sa_ids (sw_if_index, &sa_out, &sas_in);
+      /* Keep a live sibling even when the peer rejects the current Child. */
+      if (!rv && (sa_out != a->local_sa_id || a->survivor_local_sa_id))
 	{
-	  sw_if_index = ipip_sw_if_index;
-	  hash_unset (km->sw_if_indices, ipip_sw_if_index);
+	  for (u32 i = vec_len (sas_in); i > 0; i--)
+	    if (sas_in[i - 1] == a->remote_sa_id || sas_in[i - 1] == a->old_remote_sa_id)
+	      vec_del1 (sas_in, i - 1);
+	  if (sa_out == a->local_sa_id)
+	    sa_out = a->survivor_local_sa_id;
+	  rv = ipsec_tun_protect_update (sw_if_index, NULL, sa_out, sas_in);
+	  if (rv)
+	    {
+	      vec_free (sas_in);
+	      log_err ("removing Child SA from surviving protection failed: %d", rv);
+	      return;
+	    }
+	  sw_if_index = ipip_sw_if_index = INDEX_INVALID;
 	}
       else
-	sw_if_index = INDEX_INVALID;
-    }
-  else
-    {
-      sw_if_index = a->sw_if_index;
-      /* A replacement Child SA may already protect the same GRE interface. */
-      u32 out_id = ipsec_tun_protect_get_out_sa_id (sw_if_index);
-      if (out_id != INDEX_INVALID && out_id != a->local_sa_id)
-	sw_if_index = INDEX_INVALID;
-      else
-	vnet_sw_interface_admin_down (vnet_get_main (), sw_if_index);
+	{
+	  vec_free (sas_in);
+	  if (INDEX_INVALID != a->sw_if_index)
+	    vnet_sw_interface_admin_down (vnet_get_main (), sw_if_index);
+	}
     }
 
   if (INDEX_INVALID != sw_if_index)
@@ -2896,7 +2925,10 @@ ikev2_del_tunnel_from_main (ikev2_del_ipsec_tunnel_args_t *a)
     ipsec_sa_unlock_id (a->old_remote_sa_id);
 
   if (INDEX_INVALID != ipip_sw_if_index)
-    km->ipip_del_tunnel_fn_ptr (ipip_sw_if_index);
+    {
+      hash_unset (km->sw_if_indices, ipip_sw_if_index);
+      km->ipip_del_tunnel_fn_ptr (ipip_sw_if_index);
+    }
 }
 
 static int
@@ -2925,6 +2957,13 @@ ikev2_delete_tunnel_interface (vnet_main_t *vnm, ikev2_sa_t *sa, ikev2_child_sa_
   a.remote_sa_id = child->remote_sa_id;
   a.old_remote_sa_id = sa->old_remote_id_present ? sa->old_remote_id : 0;
   a.local_sa_id = child->local_sa_id;
+  ikev2_child_sa_t *sibling;
+  vec_foreach (sibling, sa->childs)
+    if (sibling != child && sibling->local_sa_id)
+      {
+	a.survivor_local_sa_id = sibling->local_sa_id;
+	break;
+      }
   a.sw_if_index = (sa->is_tun_itf_set ? sa->tun_itf : ~0);
 
   vlib_rpc_call_main_thread (ikev2_del_tunnel_from_main, (u8 *) &a, sizeof (a));
@@ -3125,7 +3164,7 @@ ikev2_generate_message (vlib_main_t *vm, vlib_buffer_t *b, ikev2_sa_t *sa, ike_h
 		ikev2_payload_add_delete (chain, sa->del);
 
 	      /* The response to a request that deletes the IKE SA is an empty
-	         INFORMATIONAL response. */
+		 INFORMATIONAL response. */
 	      sa->state = IKEV2_STATE_NOTIFY_AND_DELETE;
 	      log_debug ("ispi %lx SA state changed to NOTIFY_AND_DELETE", sa->ispi);
 	    }
@@ -3775,7 +3814,7 @@ ikev2_node_internal (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *f
 		    }
 		}
 	    }
-	  else			//received sa_init without initiator flag
+	  else // received sa_init without initiator flag
 	    {
 	      if (is_ip4)
 		ikev2_set_ip_address (sa0, &ip40->dst_address,
@@ -3927,16 +3966,17 @@ ikev2_node_internal (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *f
 			if (ch_sa)
 			  {
 			    ikev2_delete_tunnel_interface (vnet_get_main (), sa0, ch_sa);
-			    if (!sa0->is_initiator)
+			    if (ike_hdr_is_request (ike0))
 			      {
 				vec_add2 (resp, tmp, 1);
 				tmp->protocol_id = d->protocol_id;
-				tmp->spi = ch_sa->r_proposals[0].spi;
+				tmp->spi = sa0->is_initiator ? ch_sa->i_proposals[0].spi :
+								     ch_sa->r_proposals[0].spi;
 			      }
 			    ikev2_sa_del_child_sa (sa0, ch_sa);
 			  }
 		      }
-		      if (!sa0->is_initiator)
+		      if (ike_hdr_is_request (ike0))
 			{
 			  vec_free (sa0->del);
 			  sa0->del = resp;
@@ -3995,7 +4035,10 @@ ikev2_node_internal (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *f
 			  child = &sa0->childs[peer.child_index];
 			  old_local_sa_id = child->local_sa_id;
 			  old_remote_sa_id = child->remote_sa_id;
-			  ikev2_sa_free_child_sa (child);
+			  if (peer.additional_child)
+			    vec_add2 (sa0->childs, child, 1);
+			  else
+			    ikev2_sa_free_child_sa (child);
 			}
 		      else
 			{
@@ -4015,8 +4058,9 @@ ikev2_node_internal (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *f
 		      child->tsi = peer.child.protocol_id ? rekey->tsr : rekey->tsi;
 		      child->tsr = peer.child.protocol_id ? rekey->tsi : rekey->tsr;
 		      child->use_transport_mode = rekey->use_transport_mode;
-		      ikev2_create_tunnel_interface (vm, sa0, child, p[0], child - sa0->childs, 1,
-						     rekey->kex, old_local_sa_id, old_remote_sa_id,
+		      ikev2_create_tunnel_interface (vm, sa0, child, p[0], child - sa0->childs,
+						     !peer.additional_child, rekey->kex,
+						     old_local_sa_id, old_remote_sa_id,
 						     peer.child.protocol_id ? &peer.keys : 0);
 		    }
 		  if (ike_hdr_is_response (ike0))
@@ -5486,6 +5530,8 @@ ikev2_initiate_rekey_child_sa (vlib_main_t * vm, u32 ispi)
     }
   else
     {
+      if (vec_len (fsa->childs) != 1)
+	return clib_error_return (0, "Additional Child SA is pending Delete");
       ikev2_rekey_child_sa_internal (vm, fsa, fchild);
     }
 
@@ -5623,6 +5669,11 @@ ikev2_mngr_process_child_sa (vlib_main_t *vm, ikev2_sa_t *sa, ikev2_child_sa_t *
   if (sa->is_initiator && p && csa->time_to_expiration
       && now > csa->time_to_expiration)
     {
+      if (vec_len (sa->childs) != 1)
+	{
+	  ikev2_delete_child_sa_internal (vm, sa, csa);
+	  return 1;
+	}
       if (!csa->is_expired || csa->rekey_retries > 0)
 	{
 	  ikev2_rekey_child_sa_internal (vm, sa, csa);
@@ -5653,7 +5704,7 @@ ikev2_mngr_process_child_sa (vlib_main_t *vm, ikev2_sa_t *sa, ikev2_child_sa_t *
 	}
     }
 
-  if (del_old_ids)
+  if (del_old_ids && vec_len (sa->childs) == 1)
     {
       u32 sw_if_index = sa->is_tun_itf_set ? sa->tun_itf : INDEX_INVALID;
       if (INDEX_INVALID == sw_if_index)
@@ -5988,7 +6039,7 @@ ikev2_mngr_process_fn (vlib_main_t * vm, vlib_node_runtime_t * rt,
 	  else
 	    sa->old_id_expiration -= 1;
 
-	  vec_foreach (c, sa->childs)
+	  vec_foreach_backwards (c, sa->childs)
 	    ikev2_mngr_process_child_sa (vm, sa, c, del_old_ids);
 
 	  if (!km->dpd_disabled && ikev2_mngr_process_responder_sas (vm, sa))
@@ -6000,8 +6051,9 @@ ikev2_mngr_process_fn (vlib_main_t * vm, vlib_node_runtime_t * rt,
 	  sa = pool_elt_at_index (km->sas, sai[0]);
 	  const u32 profile_index = sa->profile_index;
 	  const int reinitiate = (sa->is_initiator && profile_index != ~0);
-	  vec_foreach (c, sa->childs)
+	  while (vec_len (sa->childs))
 	    {
+	      c = &sa->childs[0];
 	      ikev2_delete_tunnel_interface (vnet_get_main (), sa, c);
 	      ikev2_sa_del_child_sa (sa, c);
 	    }
