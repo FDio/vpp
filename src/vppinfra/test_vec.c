@@ -244,9 +244,10 @@ validate_vec_hdr (elt_t * vec, uword hdr_bytes)
 
   vh = _vec_find (vec);
   hdr = vec_header (vec);
-  hdr_end = vec_header_end (hdr);
+  hdr_end = hdr + vec_get_header_size (vec);
 
   ASSERT (hdr_end == (u8 *) vec);
+  ASSERT (hdr <= (u8 *) vh);
   ASSERT ((u8 *) vh - (u8 *) hdr >= hdr_bytes);
 }
 
