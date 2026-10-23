@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0af03397_2d9b525f",
+        "filename": "src/vnet/flow/flow_cli.c",
+        "patchSetId": 16
+      },
+      "lineNbr": 243,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-10-23T13:54:37Z",
+      "side": 1,
+      "message": "Could we pass `\u0026snapshot` here? `format_flow` reads a `vnet_flow_t *` from its arguments, but this passes the struct by value. With the debug ASAN build, both `show flow entry index N` and `show flow template index N` crash VPP in `format_flow` for an existing entry.",
+      "revId": "98080881ab7d307d5ed43288fa44610739491531",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4a1a6d58_594c6fc6",
+        "filename": "src/vnet/flow/flow_cli.c",
+        "patchSetId": 16
+      },
+      "lineNbr": 323,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-10-23T13:54:37Z",
+      "side": 1,
+      "message": "Could we preserve the generic pattern’s spec and mask in the snapshot output, including the full-batch path above? `format_flow` currently prints `pattern unknown type \u0027generic_pattern_t\u0027`, so removing the explicit spec/mask output makes generic-flow matches unavailable in `show flow entry`.",
+      "revId": "98080881ab7d307d5ed43288fa44610739491531",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
