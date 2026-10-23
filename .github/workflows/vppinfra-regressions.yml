@@ -182,7 +182,7 @@ jobs:
               try:
                   for commit in message_commits:
                       require("checkout-" + commit, ["git", "checkout", "--quiet", "--detach", commit])
-                      require("message-" + commit, ["extras/scripts/check_commit_msg.sh"])
+                      require("message-" + commit, ["bash", "extras/scripts/check_commit_msg.sh"])
               finally:
                   require("restore-source", ["git", "checkout", "--quiet", "--detach", checkout])
               source_tree_sha = provenance["source_tree"]
