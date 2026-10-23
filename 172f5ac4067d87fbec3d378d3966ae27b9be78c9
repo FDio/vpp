@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "fc971087_74799c32",
+        "filename": "src/plugins/policer/ip4_punt.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 98,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-10-23T09:45:35Z",
+      "side": 1,
+      "message": "Could we release the previous punt policer\u0027s reference when replacing it, and handle reapplying the same index without accumulating references? Configuring A, replacing it with B, then removing B leaves A undeletable with INSTANCE_IN_USE. I reproduced this for both IPv4 and IPv6; ip6_punt_policer_add_del() needs the same adjustment.",
+      "revId": "172f5ac4067d87fbec3d378d3966ae27b9be78c9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7496551b_6607a404",
+        "filename": "src/plugins/policer/policer.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 71,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-10-23T09:45:35Z",
+      "side": 1,
+      "message": "Could we use a wider reference counter here, including the saved value in policer_update()? Applying one policer to RX and TX on 128 interfaces wraps this u8 to zero, allowing policer_del() to free it while all 256 bindings remain active. I reproduced the successful deletion under debug ASAN.",
+      "revId": "172f5ac4067d87fbec3d378d3966ae27b9be78c9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
