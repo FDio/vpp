@@ -523,7 +523,7 @@ jobs:
               entries = []
               for path in sorted(root.rglob('*')):
                   assert not path.is_symlink(), 'Artifact symlink'
-                  if path.is_file() and path.name != 'manifest.json':
+                  if path.is_file() and path != root / 'manifest.json':
                       raw = path.read_bytes()
                       entries.append({'path': str(path.relative_to(root)), 'size': len(raw), 'sha256': sha(raw)})
               assert entries
