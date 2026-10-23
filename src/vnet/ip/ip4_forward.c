@@ -605,6 +605,19 @@ ip4_sw_interface_enable_disable (u32 sw_if_index, u32 is_enable)
   }
 }
 
+static int
+ip4_interface_has_owned_address (u32 sw_if_index)
+{
+  ip_interface_address_t *address;
+
+  pool_foreach (address, ip4_main.lookup_main.if_address_pool)
+    {
+      if (address->sw_if_index == sw_if_index)
+	return 1;
+    }
+  return 0;
+}
+
 static clib_error_t *
 ip4_add_del_interface_address_internal (vlib_main_t * vm,
 					u32 sw_if_index,
@@ -766,7 +779,8 @@ ip4_add_del_interface_address_internal (vlib_main_t * vm,
     goto done;
 
   ip4_sw_interface_enable_disable (sw_if_index, !is_del);
-  ip4_mfib_interface_enable_disable (sw_if_index, !is_del);
+  if (!is_del || !ip4_interface_has_owned_address (sw_if_index))
+    ip4_mfib_interface_enable_disable (sw_if_index, !is_del);
 
   /* intf addr routes are added/deleted on admin up/down */
   if (vnet_sw_interface_is_admin_up (vnm, sw_if_index))

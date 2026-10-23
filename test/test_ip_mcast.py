@@ -9,10 +9,13 @@ from vpp_ip_route import (
     VppMRoutePath,
     VppMFibSignal,
     VppIpTable,
+    VppIpInterfaceAddress,
     FibPathProto,
     FibPathType,
 )
 from vpp_gre_interface import VppGreInterface
+from vpp_lo_interface import VppLoInterface
+from vpp_neighbor import find_nbr
 from vpp_papi import VppEnum
 from config import config
 
@@ -194,6 +197,614 @@ class TestIPMcast(VppTestCase):
             self.assertEqual(rx_ip.dst, tx_ip.dst)
             # IP processing post pop has decremented the TTL
             self.assertEqual(rx_ip.hlim + 1, tx_ip.hlim)
+
+    def test_mfib_zero_flags_ip4(self):
+        """IPv4 MFIB zero flag path removal"""
+        self.mfib_zero_flags(False)
+
+    def test_mfib_zero_flags_ip6(self):
+        """IPv6 MFIB zero flag path removal"""
+        self.mfib_zero_flags(True)
+
+    def mfib_zero_flags(self, is_ip6):
+        flags = VppEnum.vl_api_mfib_itf_flags_t
+        none = flags.MFIB_API_ITF_FLAG_NONE
+        proto = (
+            FibPathProto.FIB_PATH_NH_PROTO_IP6
+            if is_ip6
+            else FibPathProto.FIB_PATH_NH_PROTO_IP4
+        )
+        source, length = ("::", 128) if is_ip6 else ("0.0.0.0", 32)
+        route_id = 0
+
+        def path(interface, itf_flags, nh=None):
+            return VppMRoutePath(interface.sw_if_index, itf_flags, nh=nh, proto=proto)
+
+        def route(paths):
+            nonlocal route_id
+            route_id += 1
+            group = f"ff3e::43:{route_id}" if is_ip6 else f"239.43.43.{route_id}"
+            return VppIpMRoute(
+                self,
+                source,
+                group,
+                length,
+                VppEnum.vl_api_mfib_entry_flags_t.MFIB_API_ENTRY_FLAG_NONE,
+                paths,
+            )
+
+        mroute = route([path(self.pg0, none)]).add_vpp_config()
+        self.mfib_check_paths(mroute, mroute.paths)
+        mroute.remove_vpp_config()
+        self.mfib_check_paths(mroute, [])
+        self.mfib_zero_flags_transitions(path, route)
+        self.mfib_zero_flags_shared_interface(path, route, is_ip6)
+        self.mfib_zero_flags_batch(path, route)
+
+    def mfib_check_paths(self, mroute, expected):
+        is_ip6 = mroute.prefix.version == 6
+        entries = [
+            entry.route
+            for entry in self.vapi.ip_mroute_dump(0, is_ip6)
+            if mroute.prefix == entry.route.prefix
+        ]
+        if not expected:
+            self.assertEqual(entries, [])
+            return
+        self.assertEqual(len(entries), 1)
+        self.assertEqual(entries[0].n_paths, len(expected))
+        interface_flags = {}
+        for expected_path in expected:
+            interface_flags[expected_path.nh_itf] = (
+                interface_flags.get(expected_path.nh_itf, 0) | expected_path.nh_i_flags
+            )
+        self.assertCountEqual(
+            [
+                (
+                    p.path.sw_if_index,
+                    p.itf_flags,
+                    str(p.path.nh.address.ip6 if is_ip6 else p.path.nh.address.ip4),
+                )
+                for p in entries[0].paths
+            ],
+            [(p.nh_itf, interface_flags[p.nh_itf], str(p.nh.addr)) for p in expected],
+        )
+
+    def mfib_zero_flags_transitions(self, path, route):
+        flags = VppEnum.vl_api_mfib_itf_flags_t
+        none = flags.MFIB_API_ITF_FLAG_NONE
+        forward = flags.MFIB_API_ITF_FLAG_FORWARD
+        accept = flags.MFIB_API_ITF_FLAG_ACCEPT
+        for initial, updated in (
+            (none, none),
+            (forward, none),
+            (accept, none),
+            (none, forward),
+        ):
+            with self.subTest(initial=initial, updated=updated):
+                mroute = route([path(self.pg0, initial)]).add_vpp_config()
+                self.mfib_check_paths(mroute, mroute.paths)
+                for _ in range(2):
+                    mroute.update_path_flags(self.pg0.sw_if_index, updated)
+                    self.mfib_check_paths(mroute, mroute.paths)
+                mroute.remove_vpp_config()
+                self.mfib_check_paths(mroute, [])
+
+    def mfib_zero_flags_shared_interface(self, path, route, is_ip6):
+        flags = VppEnum.vl_api_mfib_itf_flags_t
+        neighbor = self.pg0.remote_ip6 if is_ip6 else self.pg0.remote_ip4
+        for remove_zero_first in (True, False):
+            with self.subTest(remove_zero_first=remove_zero_first):
+                zero_path = path(self.pg0, flags.MFIB_API_ITF_FLAG_NONE)
+                forward_path = path(self.pg0, flags.MFIB_API_ITF_FLAG_FORWARD, neighbor)
+                mroute = route([zero_path, forward_path]).add_vpp_config()
+                self.mfib_check_paths(mroute, mroute.paths)
+                first, last = (
+                    (zero_path, forward_path)
+                    if remove_zero_first
+                    else (forward_path, zero_path)
+                )
+                reply = self.vapi.ip_mroute_add_del(
+                    route=mroute.encode(paths=[first.encode()]),
+                    is_multipath=1,
+                    is_add=0,
+                )
+                self.assertEqual(reply.retval, 0)
+                self.mfib_check_paths(mroute, [last])
+                mroute.remove_vpp_config()
+                self.mfib_check_paths(mroute, [])
+
+    def mfib_zero_flags_batch(self, path, route):
+        flags = VppEnum.vl_api_mfib_itf_flags_t
+        zero_path = path(self.pg0, flags.MFIB_API_ITF_FLAG_NONE)
+        accept_path = path(self.pg1, flags.MFIB_API_ITF_FLAG_ACCEPT)
+        remaining_path = path(self.pg2, flags.MFIB_API_ITF_FLAG_FORWARD)
+        mroute = route([zero_path, accept_path, remaining_path]).add_vpp_config()
+        self.mfib_check_paths(mroute, mroute.paths)
+        reply = self.vapi.ip_mroute_add_del(
+            route=mroute.encode(paths=[zero_path.encode(), accept_path.encode()]),
+            is_multipath=1,
+            is_add=0,
+        )
+        self.assertEqual(reply.retval, 0)
+        self.mfib_check_paths(mroute, [remaining_path])
+        mroute.remove_vpp_config()
+        self.mfib_check_paths(mroute, [])
+
+    def mfib_special_paths(self):
+        paths = {}
+        for table_id in (0, 10):
+            routes = [
+                entry.route for entry in self.vapi.ip_mroute_dump(table_id, False)
+            ]
+            for group in ("224.0.0.1", "224.0.0.2"):
+                matches = [
+                    route
+                    for route in routes
+                    if route.table_id == table_id
+                    and route.prefix.af == VppEnum.vl_api_address_family_t.ADDRESS_IP4
+                    and route.prefix.grp_address_length == 32
+                    and str(route.prefix.src_address.ip4) == "0.0.0.0"
+                    and str(route.prefix.grp_address.ip4) == group
+                ]
+                self.assertEqual(len(matches), 1)
+                self.assertEqual(matches[0].n_paths, len(matches[0].paths))
+                paths[table_id, group] = list(matches[0].paths)
+        return paths
+
+    def mfib_special_baseline(self):
+        paths = self.mfib_special_paths()
+        flags = VppEnum.vl_api_mfib_itf_flags_t
+        for (table_id, group), entries in paths.items():
+            interfaces = self.pg_interfaces[:8] if table_id == 0 else [self.pg8]
+            self.assertCountEqual(
+                [
+                    entry.path.sw_if_index
+                    for entry in entries
+                    if entry.itf_flags == flags.MFIB_API_ITF_FLAG_ACCEPT
+                ],
+                [interface.sw_if_index for interface in interfaces],
+            )
+            local = [
+                entry
+                for entry in entries
+                if entry.path.type == FibPathType.FIB_PATH_TYPE_LOCAL
+            ]
+            self.assertEqual(len(local), 1)
+            self.assertEqual(local[0].itf_flags, flags.MFIB_API_ITF_FLAG_NONE)
+            self.assertEqual(len(entries), len(interfaces) + 1)
+        return paths
+
+    def mfib_assert_special_paths(self, expected):
+        actual = self.mfib_special_paths()
+        self.assertEqual(set(actual), set(expected))
+        for key in expected:
+            with self.subTest(table=key[0], group=key[1]):
+                self.assertCountEqual(actual[key], expected[key])
+
+    def mfib_special_interface(self, baseline, sw_if_index, table_id=None):
+        accept = VppEnum.vl_api_mfib_itf_flags_t.MFIB_API_ITF_FLAG_ACCEPT
+        expected = {
+            key: [entry for entry in entries if entry.path.sw_if_index != sw_if_index]
+            for key, entries in baseline.items()
+        }
+        if table_id is not None:
+            for group in ("224.0.0.1", "224.0.0.2"):
+                template = next(
+                    entry
+                    for entry in baseline[0, group]
+                    if entry.path.sw_if_index == self.pg0.sw_if_index
+                    and entry.itf_flags == accept
+                )
+                expected[table_id, group].append(
+                    template._replace(
+                        path=template.path._replace(sw_if_index=sw_if_index)
+                    )
+                )
+        return expected
+
+    def mfib_fib_pool_counts(self):
+        counts = {}
+        for line in self.vapi.cli("show fib memory").splitlines():
+            fields = line.split()
+            if fields and fields[0] in ("Entry", "Path", "Path-list"):
+                if fields[0] == "Entry" and not fields[1].isdigit():
+                    continue
+                counts[fields[0]] = int(fields[2])
+        self.assertEqual(set(counts), {"Entry", "Path", "Path-list"})
+        return counts
+
+    def mfib_assert_addresses(self, interface, prefixes):
+        self.assertCountEqual(
+            [
+                str(entry.prefix)
+                for entry in self.vapi.ip_address_dump(interface.sw_if_index)
+            ],
+            prefixes,
+        )
+
+    def mfib_remove_addresses(self, addresses):
+        for address in addresses:
+            prefixes = [
+                str(entry.prefix)
+                for entry in self.vapi.ip_address_dump(address.intf.sw_if_index)
+            ]
+            if address.prefix in prefixes:
+                address.remove_vpp_config()
+
+    def mfib_restore_ip4_neighbor(self):
+        self.pg0.resolve_arp()
+        self.assertTrue(
+            find_nbr(
+                self,
+                self.pg0.sw_if_index,
+                self.pg0.remote_ip4,
+                mac=self.pg0.remote_mac,
+            )
+        )
+
+    def mfib_address_removal(self, baseline, extras, remove_index):
+        addresses = [
+            VppIpInterfaceAddress(self, self.pg0, address, 24) for address in extras
+        ]
+        prefixes = [self.pg0.local_ip4_prefix] + [
+            address.prefix for address in addresses
+        ]
+        try:
+            for address in addresses:
+                address.add_vpp_config()
+            self.mfib_assert_addresses(self.pg0, prefixes)
+            self.mfib_assert_special_paths(baseline)
+            if remove_index == 0:
+                self.pg0.unconfig_ip4()
+            else:
+                addresses[remove_index - 1].remove_vpp_config()
+            self.mfib_assert_addresses(
+                self.pg0,
+                [
+                    prefix
+                    for index, prefix in enumerate(prefixes)
+                    if index != remove_index
+                ],
+            )
+            self.mfib_assert_special_paths(baseline)
+        finally:
+            if not self.pg0.has_ip4_config:
+                self.pg0.config_ip4()
+            self.mfib_remove_addresses(addresses)
+        self.mfib_assert_addresses(self.pg0, [self.pg0.local_ip4_prefix])
+        self.mfib_assert_special_paths(baseline)
+        self.mfib_restore_ip4_neighbor()
+
+    def test_mfib_ip4_address_lifetime(self):
+        """IPv4 special ACCEPT survives removal of any non-final address"""
+        baseline = self.mfib_special_baseline()
+        pools = self.mfib_fib_pool_counts()
+        subnet = self.pg0.local_ip4.rsplit(".", 1)[0]
+        scenarios = (
+            (f"{subnet}.10", f"{subnet}.20"),
+            ("198.18.43.1", "198.18.44.1"),
+        )
+        for extras in scenarios:
+            for remove_index in range(3):
+                with self.subTest(extras=extras, remove_index=remove_index):
+                    self.mfib_address_removal(baseline, extras, remove_index)
+                    self.assertEqual(self.mfib_fib_pool_counts(), pools)
+        self.pg0.admin_down()
+        try:
+            self.mfib_assert_special_paths(baseline)
+        finally:
+            self.pg0.admin_up()
+        self.mfib_assert_special_paths(baseline)
+        self.mfib_restore_ip4_neighbor()
+        self.pg0.resolve_ndp()
+        self.assertTrue(
+            find_nbr(
+                self,
+                self.pg0.sw_if_index,
+                self.pg0.remote_ip6,
+                mac=self.pg0.remote_mac,
+            )
+        )
+        self.assertEqual(self.mfib_fib_pool_counts(), pools)
+
+    def mfib_rebound_addresses(self, baseline):
+        empty = self.mfib_special_interface(baseline, self.pg0.sw_if_index)
+        rebound = self.mfib_special_interface(baseline, self.pg0.sw_if_index, 10)
+        addresses = [
+            VppIpInterfaceAddress(self, self.pg0, address, 24)
+            for address in ("198.18.45.1", "198.18.45.2")
+        ]
+        try:
+            self.mfib_assert_special_paths(empty)
+            for address in addresses:
+                address.add_vpp_config()
+                self.mfib_assert_special_paths(rebound)
+            self.mfib_assert_addresses(
+                self.pg0, [address.prefix for address in addresses]
+            )
+            for index, address in enumerate(addresses):
+                address.remove_vpp_config()
+                remaining = addresses[index + 1 :]
+                self.mfib_assert_addresses(
+                    self.pg0, [entry.prefix for entry in remaining]
+                )
+                self.mfib_assert_special_paths(rebound if remaining else empty)
+        finally:
+            self.mfib_remove_addresses(addresses)
+
+    def test_mfib_ip4_address_rebind(self):
+        """IPv4 special ACCEPT follows first and last address across tables"""
+        baseline = self.mfib_special_baseline()
+        pools = self.mfib_fib_pool_counts()
+        with self.vapi.assert_negative_api_retval():
+            reply = self.vapi.sw_interface_set_table(self.pg0.sw_if_index, 0, 10)
+        self.assertLess(reply.retval, 0)
+        self.mfib_assert_special_paths(baseline)
+        self.mfib_assert_addresses(self.pg0, [self.pg0.local_ip4_prefix])
+        try:
+            self.pg0.unconfig_ip4()
+            self.mfib_assert_addresses(self.pg0, [])
+            self.mfib_assert_special_paths(
+                self.mfib_special_interface(baseline, self.pg0.sw_if_index)
+            )
+            self.pg0.set_table_ip4(10)
+            self.mfib_rebound_addresses(baseline)
+        finally:
+            self.pg0.set_table_ip4(0)
+            if not self.pg0.has_ip4_config:
+                self.pg0.config_ip4()
+            self.mfib_assert_addresses(self.pg0, [self.pg0.local_ip4_prefix])
+            self.mfib_assert_special_paths(baseline)
+            self.mfib_restore_ip4_neighbor()
+        self.assertEqual(self.mfib_fib_pool_counts(), pools)
+
+    def mfib_delete_addressed_loopback(self, baseline, table_id):
+        interface = VppLoInterface(self)
+        deleted = False
+        try:
+            self.mfib_assert_special_paths(baseline)
+            interface.set_table_ip4(table_id)
+            expected = self.mfib_special_interface(
+                baseline, interface.sw_if_index, table_id
+            )
+            for address in ("198.18.46.1", "198.18.46.2"):
+                self.vapi.sw_interface_add_del_address(
+                    sw_if_index=interface.sw_if_index, prefix=f"{address}/24"
+                )
+                self.mfib_assert_special_paths(expected)
+            self.mfib_assert_addresses(interface, ["198.18.46.1/24", "198.18.46.2/24"])
+            interface.remove_vpp_config()
+            deleted = True
+            self.mfib_assert_special_paths(baseline)
+        finally:
+            if not deleted:
+                interface.remove_vpp_config()
+
+    def mfib_recreated_loopback(self, baseline):
+        interface = VppLoInterface(self)
+        try:
+            self.mfib_assert_special_paths(baseline)
+            interface.config_ip4()
+            self.mfib_assert_special_paths(
+                self.mfib_special_interface(baseline, interface.sw_if_index, 0)
+            )
+            interface.unconfig_ip4()
+            self.mfib_assert_special_paths(baseline)
+        finally:
+            interface.remove_vpp_config()
+        self.mfib_assert_special_paths(baseline)
+
+    def test_mfib_ip4_interface_delete(self):
+        """IPv4 special ACCEPT is removed when an addressed interface is deleted"""
+        baseline = self.mfib_special_baseline()
+        pools = self.mfib_fib_pool_counts()
+        for table_id in (0, 10):
+            with self.subTest(table=table_id):
+                self.mfib_delete_addressed_loopback(baseline, table_id)
+                self.assertEqual(self.mfib_fib_pool_counts(), pools)
+                self.mfib_recreated_loopback(baseline)
+                self.assertEqual(self.mfib_fib_pool_counts(), pools)
+
+    def mfib_unnumbered_lifetime(self, baseline, interface):
+        donor = self.pg0.sw_if_index
+        try:
+            for _ in range(2):
+                interface.set_unnumbered(donor)
+                self.mfib_assert_special_paths(baseline)
+            for _ in range(2):
+                interface.unset_unnumbered(donor)
+                self.mfib_assert_special_paths(baseline)
+            self.mfib_assert_addresses(interface, [])
+            interface.config_ip4()
+            self.mfib_assert_special_paths(
+                self.mfib_special_interface(baseline, interface.sw_if_index, 0)
+            )
+            interface.unconfig_ip4()
+            self.mfib_assert_special_paths(baseline)
+            interface.set_unnumbered(donor)
+            self.mfib_assert_special_paths(baseline)
+        finally:
+            interface.unconfig_ip4()
+            interface.unset_unnumbered(donor)
+
+    def test_mfib_ip4_unnumbered_lifetime(self):
+        """IPv4 unnumbered borrowing does not create special ACCEPT paths"""
+        baseline = self.mfib_special_baseline()
+        pools = self.mfib_fib_pool_counts()
+        interface = VppLoInterface(self)
+        try:
+            self.mfib_unnumbered_lifetime(baseline, interface)
+            interface.set_unnumbered(self.pg0.sw_if_index)
+            self.mfib_assert_special_paths(baseline)
+        finally:
+            interface.remove_vpp_config()
+        self.mfib_assert_special_paths(baseline)
+        self.assertEqual(self.mfib_fib_pool_counts(), pools)
+
+    def mfib_assert_local_address(self, interface, prefix, present):
+        routes = [
+            entry.route
+            for entry in self.vapi.ip_route_dump(0, False)
+            if str(entry.route.prefix) == f"{prefix.split('/')[0]}/32"
+        ]
+        if not present:
+            self.assertEqual(routes, [])
+            return
+        self.assertEqual(len(routes), 1)
+        self.assertEqual(routes[0].n_paths, 1)
+        self.assertEqual(routes[0].paths[0].sw_if_index, interface.sw_if_index)
+        self.assertEqual(routes[0].paths[0].type, FibPathType.FIB_PATH_TYPE_LOCAL)
+
+    def mfib_mixed_address(self, interface, prefix, is_add):
+        self.vapi.sw_interface_add_del_address(
+            sw_if_index=interface.sw_if_index, prefix=prefix, is_add=is_add
+        )
+        self.mfib_assert_local_address(interface, prefix, bool(is_add))
+
+    def mfib_mixed_borrower_removal(self, baseline, donor, borrower):
+        expected = self.mfib_special_interface(baseline, donor.sw_if_index, 0)
+        expected = self.mfib_special_interface(expected, borrower.sw_if_index, 0)
+        active = []
+        try:
+            borrower.set_unnumbered(donor.sw_if_index)
+            for prefix in ("198.18.48.1/24", "198.18.49.1/24"):
+                self.vapi.sw_interface_add_del_address(
+                    sw_if_index=borrower.sw_if_index, prefix=prefix
+                )
+                active.append(prefix)
+                self.mfib_assert_local_address(borrower, prefix, True)
+                self.mfib_assert_special_paths(expected)
+            borrower.unset_unnumbered(donor.sw_if_index)
+            self.mfib_assert_special_paths(expected)
+            for prefix in list(active):
+                self.vapi.sw_interface_add_del_address(
+                    sw_if_index=borrower.sw_if_index, prefix=prefix, is_add=0
+                )
+                active.remove(prefix)
+                self.mfib_assert_local_address(borrower, prefix, False)
+                remaining = (
+                    expected
+                    if active
+                    else self.mfib_special_interface(expected, borrower.sw_if_index)
+                )
+                self.mfib_assert_special_paths(remaining)
+                for retained in active:
+                    self.mfib_assert_local_address(borrower, retained, True)
+                self.mfib_assert_local_address(donor, donor.local_ip4_prefix, True)
+        finally:
+            borrower.unset_unnumbered(donor.sw_if_index)
+            for prefix in active:
+                self.mfib_mixed_address(borrower, prefix, 0)
+
+    def test_mfib_ip4_mixed_borrower_removal(self):
+        """IPv4 special ACCEPT follows borrower-owned address deletion"""
+        baseline = self.mfib_special_baseline()
+        pools = self.mfib_fib_pool_counts()
+        donor = VppLoInterface(self)
+        borrower = VppLoInterface(self)
+        try:
+            donor.admin_up()
+            borrower.admin_up()
+            donor.config_ip4()
+            self.mfib_mixed_borrower_removal(baseline, donor, borrower)
+            self.mfib_assert_local_address(donor, donor.local_ip4_prefix, True)
+        finally:
+            borrower.remove_vpp_config()
+            donor.remove_vpp_config()
+        self.mfib_assert_special_paths(baseline)
+        self.assertEqual(self.mfib_fib_pool_counts(), pools)
+
+    def mfib_set_borrowed_address(self, interface, donor, is_add):
+        reply = self.vapi.sw_interface_set_unnumbered(
+            sw_if_index=donor.sw_if_index,
+            unnumbered_sw_if_index=interface.sw_if_index,
+            is_add=is_add,
+        )
+        self.assertEqual(reply.retval, 0)
+
+    def mfib_assert_prefix_absent(self, prefix):
+        self.assertEqual(
+            [
+                entry.route
+                for entry in self.vapi.ip_route_dump(0, False)
+                if str(entry.route.prefix) == prefix
+            ],
+            [],
+        )
+
+    def mfib_delete_loopback(self, interface):
+        reply = self.vapi.delete_loopback(interface.sw_if_index)
+        self.assertEqual(reply.retval, 0)
+        self.assertEqual(
+            self.vapi.sw_interface_dump(sw_if_index=interface.sw_if_index), []
+        )
+
+    def mfib_clear_donor_head(self, donor):
+        self.mfib_set_borrowed_address(donor, self.pg0, True)
+        self.mfib_set_borrowed_address(donor, self.pg0, False)
+
+    def mfib_mixed_donor_cleanup(self, donor, borrower, active):
+        self.mfib_set_borrowed_address(borrower, donor, False)
+        if not active["donor"]:
+            self.mfib_clear_donor_head(donor)
+        if active["borrower"]:
+            self.vapi.sw_interface_add_del_address(
+                sw_if_index=borrower.sw_if_index,
+                prefix="198.18.50.1/24",
+                is_add=0,
+            )
+            active["borrower"] = False
+        if active["donor"]:
+            donor.unconfig_ip4()
+            active["donor"] = False
+
+    def mfib_mixed_donor_removal(self, baseline, donor, borrower, active):
+        donor.config_ip4()
+        active["donor"] = True
+        self.mfib_set_borrowed_address(borrower, donor, True)
+        self.vapi.sw_interface_add_del_address(
+            sw_if_index=borrower.sw_if_index, prefix="198.18.50.1/24"
+        )
+        active["borrower"] = True
+        self.mfib_set_borrowed_address(borrower, donor, False)
+        donor.unconfig_ip4()
+        active["donor"] = False
+        expected = self.mfib_special_interface(baseline, borrower.sw_if_index, 0)
+        self.mfib_assert_special_paths(expected)
+        self.mfib_assert_local_address(donor, donor.local_ip4_prefix, False)
+        subnet = donor.local_ip4.rsplit(".", 1)[0]
+        self.mfib_assert_prefix_absent(f"{subnet}.0/24")
+        self.mfib_assert_local_address(borrower, "198.18.50.1/24", True)
+
+    def mfib_assert_mixed_cleanup(self, baseline, donor, borrower):
+        self.mfib_assert_special_paths(baseline)
+        self.mfib_assert_local_address(borrower, "198.18.50.1/24", False)
+        self.mfib_assert_prefix_absent("198.18.50.0/24")
+        self.mfib_assert_local_address(donor, donor.local_ip4_prefix, False)
+        for interface in (donor, borrower):
+            self.assertEqual(self.vapi.ip_unnumbered_dump(interface.sw_if_index), [])
+
+    def test_mfib_ip4_mixed_donor_removal(self):
+        """IPv4 special ACCEPT uses address owner when donor loses its address"""
+        baseline = self.mfib_special_baseline()
+        pools = self.mfib_fib_pool_counts()
+        donor = VppLoInterface(self)
+        borrower = VppLoInterface(self)
+        active = {"donor": False, "borrower": False}
+        try:
+            donor.admin_up()
+            borrower.admin_up()
+            self.mfib_mixed_donor_removal(baseline, donor, borrower, active)
+        finally:
+            self.mfib_mixed_donor_cleanup(donor, borrower, active)
+            try:
+                self.mfib_assert_mixed_cleanup(baseline, donor, borrower)
+            finally:
+                self.mfib_delete_loopback(borrower)
+                self.mfib_delete_loopback(donor)
+        self.mfib_assert_special_paths(baseline)
+        self.assertEqual(self.mfib_fib_pool_counts(), pools)
 
     def test_ip_mcast(self):
         """IP Multicast Replication"""
