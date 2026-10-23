@@ -16,9 +16,13 @@ func init() {
 		QuicAlpnServerPriorityMatchTest, QuicAlpnMismatchTest,
 		QuicAlpnEmptyServerListTest, QuicAlpnEmptyClientListTest, QuicBuiltinVperfZeroCopyTest,
 		QuicBuiltinVperfBidirectionalZeroCopyTest, QuicBuiltinVperfTest, QuicBuiltinVperfBidirectionalTest,
-		QuicReorderTest, QuicCrlRejectThenAllowTest)
+		QuicReorderTest, QuicCrlRejectThenAllowTest, QuicPeerCertCloseTest)
 	RegisterQuicMWTests(QuicCpsMWTest)
 	RegisterNoTopoTests(QuicFailedHandshakeTest, QuicCryptoContextTest)
+}
+
+func QuicPeerCertCloseTest(s *QuicSuite) {
+	tlsPeerCertClose(&s.VethsSuite, "quic")
 }
 
 func QuicCrlRejectThenAllowTest(s *QuicSuite) {

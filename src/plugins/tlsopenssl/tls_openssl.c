@@ -1849,9 +1849,10 @@ openssl_tls_ctx_attribute (tls_ctx_t *ctx, u8 is_get,
 	if (requested & TLS_CERT_F_LEAF)
 	  {
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
-	    X509 *peer_cert = SSL_get1_peer_certificate (oc->ssl);
+	    X509 *peer_cert = SSL_get0_peer_certificate (oc->ssl);
 #else
-	    X509 *peer_cert = SSL_get_peer_certificate (oc->ssl);
+	    SSL_SESSION *session = SSL_get_session (oc->ssl);
+	    X509 *peer_cert = session ? SSL_SESSION_get0_peer (session) : NULL;
 #endif
 	    if (peer_cert)
 	      {
@@ -1859,8 +1860,7 @@ openssl_tls_ctx_attribute (tls_ctx_t *ctx, u8 is_get,
 		attr->tls_peer_cert.flags |= TLS_CERT_F_LEAF;
 	      }
 	  }
-
-	if (requested & TLS_CERT_F_CHAIN)
+	else if (requested & TLS_CERT_F_CHAIN)
 	  {
 	    STACK_OF (X509) *chain = SSL_get_peer_cert_chain (oc->ssl);
 	    if (chain && sk_X509_num (chain) > 0)
