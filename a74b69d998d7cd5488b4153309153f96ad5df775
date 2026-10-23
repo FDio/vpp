@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3d1fb3c4_3f7733bc",
+        "filename": "src/plugins/af_packet/node.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 382,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-10-23T13:33:03Z",
+      "side": 1,
+      "message": "Could we provide a fallback definition of TP_STATUS_VLAN_TPID_VALID (1 \u003c\u003c 6) and keep both runtime checks unconditional? Otherwise, binaries built against older headers always restore 0x8100, even when the running kernel supplies valid TPID metadata. The other packet status flags are already checked at runtime. This adds a bit test only when restoring a stripped VLAN tag; unlike the per-interface GSO setting, per-packet validity cannot be constant-propagated away.",
+      "revId": "a74b69d998d7cd5488b4153309153f96ad5df775",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
