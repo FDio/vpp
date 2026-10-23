@@ -16,6 +16,24 @@
       "message": "Does this also work on the chain?",
       "revId": "f5ed156275cadd9f1e11dbffeb48398a50c2b430",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "2203b783_e057e62a",
+        "filename": "src/plugins/tlsopenssl/tls_openssl.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1880,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-10-23T21:22:48Z",
+      "side": 1,
+      "message": "refcounting removed",
+      "parentUuid": "14ca1dcf_472e70eb",
+      "revId": "f5ed156275cadd9f1e11dbffeb48398a50c2b430",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
