@@ -28,6 +28,68 @@
 /* New API calls */
 
 static void
+vl_api_nat44_ed_source_policy_set_t_handler (vl_api_nat44_ed_source_policy_set_t *mp)
+{
+  snat_main_t *sm = &snat_main;
+  vl_api_nat44_ed_source_policy_set_reply_t *rmp;
+  nat44_ed_source_prefix_t *prefixes = 0;
+  u32 count;
+  u32 supplied = vl_msg_api_get_msg_length (mp);
+  int rv = VNET_API_ERROR_INVALID_VALUE;
+
+  if (supplied < sizeof (*mp))
+    goto reply;
+  count = clib_net_to_host_u32 (mp->count);
+  if (count > (supplied - sizeof (*mp)) / sizeof (mp->prefixes[0]))
+    goto reply;
+
+  if (count)
+    {
+      vec_validate (prefixes, count - 1);
+      for (u32 i = 0; i < count; i++)
+	{
+	  ip4_address_decode (mp->prefixes[i].address, &prefixes[i].address);
+	  prefixes[i].len = mp->prefixes[i].len;
+	}
+    }
+  rv = nat44_ed_set_source_policy (clib_net_to_host_u32 (mp->vrf_id), mp->enable, prefixes);
+reply:
+  vec_free (prefixes);
+  REPLY_MACRO (VL_API_NAT44_ED_SOURCE_POLICY_SET_REPLY);
+}
+
+static void
+vl_api_nat44_ed_source_policy_dump_t_handler (vl_api_nat44_ed_source_policy_dump_t *mp)
+{
+  snat_main_t *sm = &snat_main;
+  vl_api_registration_t *reg = vl_api_client_index_to_registration (mp->client_index);
+  nat44_ed_source_policy_t *policy;
+
+  if (!reg)
+    return;
+  vec_foreach (policy, sm->source_policies)
+    {
+      vl_api_nat44_ed_source_policy_details_t *rmp;
+      if (!policy->enabled)
+	continue;
+      rmp = vl_msg_api_alloc_zero (sizeof (*rmp) +
+				   vec_len (policy->prefixes) * sizeof (rmp->prefixes[0]));
+      rmp->_vl_msg_id =
+	clib_host_to_net_u16 (VL_API_NAT44_ED_SOURCE_POLICY_DETAILS + sm->msg_id_base);
+      rmp->context = mp->context;
+      rmp->vrf_id = clib_host_to_net_u32 (
+	fib_table_get_table_id (policy - sm->source_policies, FIB_PROTOCOL_IP4));
+      rmp->count = clib_host_to_net_u32 (vec_len (policy->prefixes));
+      for (u32 i = 0; i < vec_len (policy->prefixes); i++)
+	{
+	  ip4_address_encode (&policy->prefixes[i].address, rmp->prefixes[i].address);
+	  rmp->prefixes[i].len = policy->prefixes[i].len;
+	}
+      vl_api_send_msg (reg, (u8 *) rmp);
+    }
+}
+
+static void
 vl_api_nat44_ed_plugin_enable_disable_t_handler (
   vl_api_nat44_ed_plugin_enable_disable_t *mp)
 {

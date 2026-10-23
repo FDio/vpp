@@ -18,6 +18,77 @@
 #include <nat/nat44-ed/nat44_ed_inlines.h>
 #include <nat/nat44-ed/nat44_ed_affinity.h>
 
+static clib_error_t *
+nat44_ed_source_policy_command_fn (vlib_main_t *vm, unformat_input_t *input,
+				   vlib_cli_command_t *cmd)
+{
+  nat44_ed_source_prefix_t *prefixes = 0;
+  ip4_address_t address;
+  u32 vrf_id = 0, len;
+  int enable = -1, rv;
+  clib_error_t *error = 0;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "vrf %u", &vrf_id))
+	;
+      else if (unformat (input, "enable"))
+	enable = 1;
+      else if (unformat (input, "disable"))
+	enable = 0;
+      else if (unformat (input, "%U/%u", unformat_ip4_address, &address, &len) && len <= 32)
+	vec_add1 (prefixes, ((nat44_ed_source_prefix_t) { .address = address, .len = len }));
+      else
+	{
+	  error =
+	    clib_error_return (0, "invalid source policy input: %U", format_unformat_error, input);
+	  goto done;
+	}
+    }
+  if (enable < 0)
+    {
+      error = clib_error_return (0, "specify enable or disable");
+      goto done;
+    }
+  rv = nat44_ed_set_source_policy (vrf_id, enable, prefixes);
+  if (rv)
+    error = clib_error_return (0, "source policy failed: %d", rv);
+done:
+  vec_free (prefixes);
+  return error;
+}
+
+VLIB_CLI_COMMAND (nat44_ed_source_policy_command, static) = {
+  .path = "nat44 source policy",
+  .short_help = "nat44 source policy [vrf <id>] enable [<ip4-prefix> ...] | disable",
+  .function = nat44_ed_source_policy_command_fn,
+};
+
+static clib_error_t *
+nat44_ed_show_source_policy_command_fn (vlib_main_t *vm, unformat_input_t *input,
+					vlib_cli_command_t *cmd)
+{
+  snat_main_t *sm = &snat_main;
+  nat44_ed_source_policy_t *policy;
+  nat44_ed_source_prefix_t *p;
+  vec_foreach (policy, sm->source_policies)
+    {
+      if (!policy->enabled)
+	continue;
+      vlib_cli_output (
+	vm, "vrf %u:", fib_table_get_table_id (policy - sm->source_policies, FIB_PROTOCOL_IP4));
+      vec_foreach (p, policy->prefixes)
+	vlib_cli_output (vm, "  %U/%u", format_ip4_address, &p->address, p->len);
+    }
+  return 0;
+}
+
+VLIB_CLI_COMMAND (nat44_ed_show_source_policy_command, static) = {
+  .path = "show nat44 source policy",
+  .short_help = "show nat44 source policy",
+  .function = nat44_ed_show_source_policy_command_fn,
+};
+
 #define NAT44_ED_EXPECTED_ARGUMENT "expected required argument(s)"
 
 static clib_error_t *

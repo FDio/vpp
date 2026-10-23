@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-option version = "5.5.0";
+option version = "5.6.0";
 import "vnet/ip/ip_types.api";
 import "vnet/interface_types.api";
 import "plugins/nat/lib/nat_types.api";
@@ -33,6 +33,42 @@ enum nat44_config_flags : u8
   NAT44_IS_STATIC_MAPPING_ONLY = 0x02,
   NAT44_IS_CONNECTION_TRACKING = 0x04,
   NAT44_IS_OUT2IN_DPO = 0x08,
+};
+
+/** \brief Replace the dynamic source NAT prefix policy for an inside VRF.
+    Disabled policies preserve the default NAT behavior. Enabled policies
+    select new dynamic sessions by source prefix; non-matching sources are
+    routed without translation. Static mappings and existing sessions take
+    precedence. Enable forwarding to pass untranslated return traffic.
+    An enabled policy with no prefixes selects no dynamic sessions.
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply with request
+    @param vrf_id - existing inside IPv4 table ID
+    @param enable - enable policy, or disable with an empty prefix list
+    @param count - number of IPv4 prefixes
+    @param prefixes - source prefixes, normalized before installation
+*/
+autoreply define nat44_ed_source_policy_set {
+  u32 client_index;
+  u32 context;
+  u32 vrf_id;
+  bool enable;
+  u32 count;
+  vl_api_ip4_prefix_t prefixes[count];
+};
+
+/** \brief Dump enabled dynamic source NAT prefix policies. */
+define nat44_ed_source_policy_dump {
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief One enabled policy, including an empty prefix list. */
+define nat44_ed_source_policy_details {
+  u32 context;
+  u32 vrf_id;
+  u32 count;
+  vl_api_ip4_prefix_t prefixes[count];
 };
 
 /** \brief Enable/disable NAT44ED plugin

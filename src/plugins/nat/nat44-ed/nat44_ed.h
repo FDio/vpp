@@ -59,6 +59,18 @@ typedef struct
   u32 sessions;
 } nat44_config_t;
 
+typedef struct
+{
+  ip4_address_t address;
+  u8 len;
+} nat44_ed_source_prefix_t;
+
+typedef struct
+{
+  nat44_ed_source_prefix_t *prefixes;
+  u8 enabled;
+} nat44_ed_source_policy_t;
+
 typedef enum
 {
   NAT_NEXT_DROP,
@@ -557,6 +569,9 @@ typedef struct snat_main_s
   /* If forwarding is enabled */
   u8 forwarding_enabled;
 
+  /* Indexed by the inside FIB index; only new dynamic sessions are selected. */
+  nat44_ed_source_policy_t *source_policies;
+
   /* Is translation memory size calculated or user defined */
   u8 translation_memory_size_set;
 
@@ -658,6 +673,8 @@ typedef struct
  */
 
 extern snat_main_t snat_main;
+
+int nat44_ed_set_source_policy (u32 vrf_id, u8 enable, nat44_ed_source_prefix_t *prefixes);
 
 extern vlib_node_registration_t nat_default_node;
 extern vlib_node_registration_t nat_pre_in2out_node;

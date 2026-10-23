@@ -18,6 +18,7 @@ features:
       - 1:1 NAT
       - 1:1 NAT with ports
       - VRF awareness
+      - Per-VRF source-prefix selection for dynamic NAT
       - Multiple inside interfaces
       - Hairpinning
       - IPFIX

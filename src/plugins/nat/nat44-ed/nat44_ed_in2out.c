@@ -438,19 +438,6 @@ slow_path_ed (vlib_main_t *vm, snat_main_t *sm, vlib_buffer_t *b,
   ip4_address_t daddr = r_addr;
   u16 dport = r_port;
 
-  if (PREDICT_FALSE
-      (nat44_ed_maximum_sessions_exceeded (sm, rx_fib_index, thread_index)))
-    {
-      if (!nat_lru_free_one (sm, thread_index, now))
-	{
-	  b->error = node->errors[NAT_IN2OUT_ED_ERROR_MAX_SESSIONS_EXCEEDED];
-	  nat_ipfix_logging_max_sessions (thread_index,
-					  sm->max_translations_per_thread);
-	  nat_elog_notice (sm, "maximum sessions exceeded");
-	  return NAT_NEXT_DROP;
-	}
-    }
-
   ip4_address_t sm_addr;
   u16 sm_port;
   u32 sm_fib_index;
@@ -466,6 +453,21 @@ slow_path_ed (vlib_main_t *vm, snat_main_t *sm, vlib_buffer_t *b,
 	  return next;
 	}
       is_sm = 1;
+    }
+
+  /* A routed bypass needs neither a session slot nor a public address. */
+  if (!is_sm && !nat44_ed_source_allowed (sm, rx_fib_index, l_addr))
+    return next;
+
+  if (PREDICT_FALSE (nat44_ed_maximum_sessions_exceeded (sm, rx_fib_index, thread_index)))
+    {
+      if (!nat_lru_free_one (sm, thread_index, now))
+	{
+	  b->error = node->errors[NAT_IN2OUT_ED_ERROR_MAX_SESSIONS_EXCEEDED];
+	  nat_ipfix_logging_max_sessions (thread_index, sm->max_translations_per_thread);
+	  nat_elog_notice (sm, "maximum sessions exceeded");
+	  return NAT_NEXT_DROP;
+	}
     }
 
   if (PREDICT_TRUE (proto == IP_PROTOCOL_TCP))
@@ -645,7 +647,7 @@ nat44_ed_not_translate (vlib_main_t *vm, vlib_node_runtime_t *node,
     }
 
   // do not nat if forwarding enabled
-  if (sm->forwarding_enabled)
+  if (sm->forwarding_enabled && !nat44_ed_source_policy_enabled (sm, rx_fib_index))
     {
       return 1;
     }
@@ -1388,6 +1390,9 @@ nat44_ed_in2out_slow_path_node_fn_inline (vlib_main_t *vm,
 
       if (PREDICT_FALSE (nat44_ed_is_unk_proto (proto0)))
 	{
+	  if (!nat44_ed_source_allowed (sm, rx_fib_index0, ip0->src_address) &&
+	      !nat44_ed_sm_i2o_lookup (sm, ip0->src_address, 0, rx_fib_index0, proto0))
+	    goto trace0;
 	  s0 = nat44_ed_in2out_slowpath_unknown_proto (
 	    sm, b0, ip0, rx_fib_index0, thread_index, now, vm, node);
 	  if (!s0)
