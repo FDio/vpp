@@ -370,6 +370,8 @@ jobs:
                   tests.append(cls.__name__ + "." + method)
           suite = sys.argv[1]
           sys.argv = [sys.argv[0], "--vpp-ws-dir=" + sys.argv[2], "--vpp-tag=vpp_debug", "--use-smt", "--vpp-worker-count=0"]
+          import asfframework
+          import framework
           discover_tests(sys.argv[1].split("=", 1)[1] + "/test", collect)
           print("MFIB_INVENTORY=" + json.dumps(sorted(tests)))
           '''
@@ -486,17 +488,22 @@ jobs:
                   try:
                       verify_source()
                       args = ['make', 'UNATTENDED=yes', 'TEST_JOBS=1', 'USE_SMT=yes', 'VPP_WORKER_COUNT=0', 'RETRIES=0', 'TEST=' + suite]
-                      command(suite + '-list', args + ['test-list'], seconds=300)
-                      methods = discovery(suite, directory)
                       run_error = None
                       try:
+                          command(suite + '-list', args + ['test-list'], seconds=300)
+                          methods = discovery(suite, directory)
                           command(suite, args + ['test-debug'], seconds=1200)
                       except Exception as error:
-                          run_error = str(error)
+                          run_error = error
+                          raise
                       finally:
-                          snapshot(directory)
+                          try:
+                              snapshot(directory)
+                          except Exception as error:
+                              save(directory / 'snapshot-error.json', {'error': str(error), 'traceback': traceback.format_exc()})
+                              if run_error is None:
+                                  raise
                       inventory(suite, directory, methods)
-                      assert run_error is None, run_error
                       verify_source()
                       states[suite] = 'PASS'
                   except Exception as error:
