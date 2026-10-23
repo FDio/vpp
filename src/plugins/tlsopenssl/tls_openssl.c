@@ -1817,6 +1817,13 @@ tls_init_ca_chain (void)
   return (rv < 0 ? -1 : 0);
 }
 
+static void
+openssl_tls_peer_cert_cleanup (tls_cert_t *cert)
+{
+  /* The leaf is owned by the caller; the chain is borrowed from SSL. */
+  X509_free (cert->cert);
+}
+
 int
 openssl_tls_ctx_attribute (tls_ctx_t *ctx, u8 is_get,
 			   transport_endpt_attr_t *attr)
@@ -1833,9 +1840,7 @@ openssl_tls_ctx_attribute (tls_ctx_t *ctx, u8 is_get,
       {
 	u32 requested = attr->tls_peer_cert.flags;
 
-	attr->tls_peer_cert.cert = 0;
-	attr->tls_peer_cert.chain = 0;
-	attr->tls_peer_cert.flags = 0;
+	attr->tls_peer_cert = (tls_cert_t) { 0 };
 
 	if (!oc->ssl)
 	  {
@@ -1859,8 +1864,7 @@ openssl_tls_ctx_attribute (tls_ctx_t *ctx, u8 is_get,
 		attr->tls_peer_cert.flags |= TLS_CERT_F_LEAF;
 	      }
 	  }
-
-	if (requested & TLS_CERT_F_CHAIN)
+	else if (requested & TLS_CERT_F_CHAIN)
 	  {
 	    STACK_OF (X509) *chain = SSL_get_peer_cert_chain (oc->ssl);
 	    if (chain && sk_X509_num (chain) > 0)
@@ -1872,6 +1876,8 @@ openssl_tls_ctx_attribute (tls_ctx_t *ctx, u8 is_get,
 
 	if (!attr->tls_peer_cert.flags)
 	  rv = -1;
+	else
+	  attr->tls_peer_cert.cleanup_cb = openssl_tls_peer_cert_cleanup;
       }
       break;
     case TRANSPORT_ENDPT_ATTR_TLS_SERVER_NAME:

@@ -15,6 +15,14 @@ typedef struct app_crypto_main_
 
 static app_crypto_main_t app_crypto_main;
 
+void
+app_crypto_cert_unref (tls_cert_t *cert)
+{
+  if (cert->cleanup_cb)
+    cert->cleanup_cb (cert);
+  *cert = (tls_cert_t) { 0 };
+}
+
 static app_cert_key_pair_t *
 app_cert_key_pair_alloc ()
 {

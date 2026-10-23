@@ -398,11 +398,15 @@ typedef enum tls_cert_flags_
   TLS_CERT_F_CHAIN = 1 << 1,
 } tls_cert_flags_t;
 
+struct tls_cert_;
+typedef void (*tls_cert_cleanup_fn) (struct tls_cert_ *cert);
+
 typedef struct tls_cert_
 {
-  void *cert;  /**< leaf cert, engine native; OpenSSL: caller-owned X509* */
-  void *chain; /**< cert chain, engine native; OpenSSL: borrowed STACK_OF(X509)* */
+  void *cert;  /**< leaf certificate, engine native */
+  void *chain; /**< certificate chain, engine native; may be borrowed */
   u32 flags;   /**< requested on input and valid TLS_CERT_F_* values on output */
+  tls_cert_cleanup_fn cleanup_cb; /**< provider cleanup; use app_crypto_cert_unref() */
 } tls_cert_t;
 
 typedef struct tls_profile_info_

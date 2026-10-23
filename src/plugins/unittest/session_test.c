@@ -2881,6 +2881,39 @@ session_test_ext_cfg (vlib_main_t *vm, unformat_input_t *input)
   return 0;
 }
 
+static void
+session_test_tls_cert_cleanup_cb (tls_cert_t *cert)
+{
+  u32 *cleanup_count = cert->cert;
+  *cleanup_count += 1;
+}
+
+static int
+session_test_tls_cert_cleanup (vlib_main_t *vm, unformat_input_t *input)
+{
+  u32 cleanup_count = 0;
+  tls_cert_t cert = {
+    .cert = &cleanup_count,
+    .chain = &cleanup_count,
+    .flags = TLS_CERT_F_LEAF | TLS_CERT_F_CHAIN,
+    .cleanup_cb = session_test_tls_cert_cleanup_cb,
+  };
+
+  app_crypto_cert_unref (&cert);
+  SESSION_TEST (cleanup_count == 1, "provider cleanup callback invoked once");
+  SESSION_TEST (!cert.cert && !cert.chain && !cert.flags && !cert.cleanup_cb,
+		"certificate result cleared after cleanup");
+  app_crypto_cert_unref (&cert);
+  SESSION_TEST (cleanup_count == 1, "repeated cleanup does not invoke the provider again");
+
+  cert.chain = &cleanup_count;
+  cert.flags = TLS_CERT_F_CHAIN;
+  app_crypto_cert_unref (&cert);
+  SESSION_TEST (!cert.chain && !cert.flags, "borrowed result without a callback cleared");
+  SESSION_TEST (cleanup_count == 1, "borrowed result does not invoke cleanup");
+  return 0;
+}
+
 static int
 session_test_app_crypto (vlib_main_t *vm, unformat_input_t *input)
 {
@@ -3324,6 +3357,8 @@ session_test (vlib_main_t * vm,
 	res = session_test_app_crypto (vm, input);
       else if (unformat (input, "rx-chain"))
 	res = session_test_rx_chain (vm, input);
+      else if (unformat (input, "tls-cert"))
+	res = session_test_tls_cert_cleanup (vm, input);
       else if (unformat (input, "pacer"))
 	res = session_test_pacer (vm, input);
       else if (unformat (input, "reconn-while-closed"))
@@ -3353,6 +3388,8 @@ session_test (vlib_main_t * vm,
 	  if ((res = session_test_app_crypto (vm, input)))
 	    goto done;
 	  if ((res = session_test_rx_chain (vm, input)))
+	    goto done;
+	  if ((res = session_test_tls_cert_cleanup (vm, input)))
 	    goto done;
 	  if ((res = session_test_pacer (vm, input)))
 	    goto done;

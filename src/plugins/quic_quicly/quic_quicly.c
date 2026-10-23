@@ -71,6 +71,13 @@ quic_quicly_connection_delete (quic_ctx_t *ctx)
   quic_quicly_main_t *qqm = &quic_quicly_main;
   quic_main_t *qm = qqm->qm;
 
+  /* Release the connection's reference, including failed handshakes. */
+  if (ctx->peer_cert)
+    {
+      X509_free ((X509 *) ctx->peer_cert);
+      ctx->peer_cert = NULL;
+    }
+
   if (ctx->conn == NULL)
     {
       QUIC_DBG (2, "Skipping redundant delete of connection %u",
@@ -1157,15 +1164,6 @@ quic_quicly_on_app_closed (u32 ctx_index, clib_thread_index_t thread_index)
       quic_quicly_stream_shutdown_tx (ctx, stream_session);
       return;
     }
-  else
-    {
-      /* Cleaning up now to avoid ossl dependency in quic.c */
-      if (ctx->peer_cert)
-	{
-	  X509_free ((X509 *) ctx->peer_cert);
-	  ctx->peer_cert = 0;
-	}
-    }
 
   switch (ctx->conn_state)
     {
@@ -1927,6 +1925,12 @@ quic_quicly_transport_closed (quic_ctx_t *ctx)
   quic_quicly_connection_closed (ctx);
 }
 
+static void
+quic_quicly_peer_cert_cleanup (tls_cert_t *cert)
+{
+  X509_free (cert->cert);
+}
+
 static int
 quic_quicly_ctx_attribute (quic_ctx_t *ctx, u8 is_get, transport_endpt_attr_t *attr)
 {
@@ -1939,9 +1943,7 @@ quic_quicly_ctx_attribute (quic_ctx_t *ctx, u8 is_get, transport_endpt_attr_t *a
       {
 	u32 requested = attr->tls_peer_cert.flags;
 
-	attr->tls_peer_cert.cert = 0;
-	attr->tls_peer_cert.chain = 0;
-	attr->tls_peer_cert.flags = 0;
+	attr->tls_peer_cert = (tls_cert_t) { 0 };
 
 	if (!requested)
 	  requested = TLS_CERT_F_LEAF;
@@ -1951,10 +1953,11 @@ quic_quicly_ctx_attribute (quic_ctx_t *ctx, u8 is_get, transport_endpt_attr_t *a
 	if (quic_ctx_is_stream (ctx))
 	  ctx = quic_quicly_get_quic_ctx (ctx->quic_connection_ctx_id, ctx->c_thread_index);
 	X509 *peer_cert = quic_quicly_crypto_get_peer_cert (ctx);
-	if (peer_cert)
+	if (peer_cert && X509_up_ref (peer_cert) == 1)
 	  {
 	    attr->tls_peer_cert.cert = peer_cert;
 	    attr->tls_peer_cert.flags = TLS_CERT_F_LEAF;
+	    attr->tls_peer_cert.cleanup_cb = quic_quicly_peer_cert_cleanup;
 	    return 0;
 	  }
 	return -1;

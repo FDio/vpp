@@ -7,6 +7,7 @@
 
 #include <vppinfra/types.h>
 #include <vppinfra/format.h>
+#include <vnet/session/session_types.h>
 #include <vnet/tls/tls_test.h>
 
 struct app_certkey_int_;
@@ -208,6 +209,8 @@ typedef struct app_crypto_ctx_
 
 void app_crypto_ctx_init (app_crypto_ctx_t *crypto_ctx);
 void app_crypto_ctx_free (app_crypto_ctx_t *crypto_ctx);
+
+__clib_export void app_crypto_cert_unref (tls_cert_t *cert);
 
 /*
  * Certificate key-pair management
