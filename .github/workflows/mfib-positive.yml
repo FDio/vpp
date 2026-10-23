@@ -327,7 +327,7 @@ jobs:
               if file_name == "test_" + suite + ".py":
                   tests.append(cls.__name__ + "." + method)
           suite = sys.argv[1]
-          sys.argv = [sys.argv[0], "--vpp-ws-dir=" + sys.argv[2], "--use-smt", "--vpp-worker-count=0"]
+          sys.argv = [sys.argv[0], "--vpp-ws-dir=" + sys.argv[2], "--vpp-tag=vpp_debug", "--use-smt", "--vpp-worker-count=0"]
           discover_tests(sys.argv[1].split("=", 1)[1] + "/test", collect)
           print("MFIB_INVENTORY=" + json.dumps(sorted(tests)))
           '''
