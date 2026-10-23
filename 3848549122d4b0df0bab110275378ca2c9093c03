@@ -1,0 +1,22 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "d50272c5_0aed88a7",
+        "filename": "src/plugins/ikev2/ikev2.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3383
+      },
+      "writtenOn": "2026-10-23T12:25:24Z",
+      "side": 1,
+      "message": "PS3 adds the short-circuit assertion: the cache is empty, or contains a response longer than the header with encoded length equal to the vector length. The runtime guard remains and rejects header-only and unequal-length caches without assertions. An extracted C23 guard check passes 35 cases in each assertion mode, including an inaccessible pointer for short buffers; the complete IKEv2 packet suite passes 49/49 with two workers. This patchset is rebased onto the existing public Child-SA lifecycle dependencies for 47242/47247.",
+      "parentUuid": "b152b6ff_86057f8d",
+      "revId": "3848549122d4b0df0bab110275378ca2c9093c03",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
