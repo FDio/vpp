@@ -639,8 +639,18 @@ int session_enqueue_dgram_connection_cl (session_t *s,
 					 session_dgram_hdr_t *hdr,
 					 vlib_buffer_t *b, u8 proto,
 					 u8 queue_event);
-__clib_export void session_fifo_tuning (session_t *s, svm_fifo_t *f, session_ft_action_t act,
-					u32 len);
+__clib_export void session_fifo_tuning_custom (session_t *s, svm_fifo_t *f, session_ft_action_t act,
+					       u32 len);
+
+/**
+ * Notify app of fifo changes, if it tunes its fifos
+ */
+static inline void
+session_fifo_tuning (session_t *s, svm_fifo_t *f, session_ft_action_t act, u32 len)
+{
+  if (PREDICT_FALSE (s->flags & SESSION_F_CUSTOM_FIFO_TUNING))
+    session_fifo_tuning_custom (s, f, act, len);
+}
 
 /**
  * Enqueue buffer chain
