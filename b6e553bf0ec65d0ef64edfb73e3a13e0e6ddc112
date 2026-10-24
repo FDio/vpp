@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "753e5406_dce48113",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2429
+      },
+      "writtenOn": "2026-10-24T12:41:28Z",
+      "side": 1,
+      "message": "LGTM, test failures look unrelated.",
+      "revId": "b6e553bf0ec65d0ef64edfb73e3a13e0e6ddc112",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
