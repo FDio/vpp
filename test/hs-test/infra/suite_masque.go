@@ -229,8 +229,9 @@ func (s *MasqueSuite) TeardownTest() {
 
 	clientVpp := s.Containers.VppClient.VppInstance
 	serverVpp := s.Containers.VppServer.VppInstance
+	collectDiagnostics := CurrentSpecReport().Failed()
 	defer func() {
-		if CurrentSpecReport().Failed() {
+		if collectDiagnostics {
 			CollectNginxLogs(s.Containers.NginxServer)
 			CollectIperfLogs(s.Containers.IperfServer)
 			Log(clientVpp.Vppctl("show session verbose 2"))
@@ -248,8 +249,11 @@ func (s *MasqueSuite) TeardownTest() {
 			Log(serverVpp.Vppctl("show quic"))
 		}
 	}()
-	if !CurrentSpecReport().Failed() && !CurrentSpecReport().State.Is(types.SpecStateSkipped) {
+	if !collectDiagnostics && !CurrentSpecReport().State.Is(types.SpecStateSkipped) {
+		// Ginkgo records failures raised in AfterEach after this function returns.
+		collectDiagnostics = true
 		AssertEqual(s.ExpectedConnectTimeouts, s.ConnectTimeouts(), "unexpected number of CONNECT response timeouts")
+		collectDiagnostics = false
 	}
 }
 
