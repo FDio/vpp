@@ -151,27 +151,41 @@ session_test_rx_chain_run (vlib_main_t *vm, transport_connection_t *tc, svm_fifo
 		    "out-of-order rx case %u preserves payload", i);
     }
 
-  /* An OOO chain reports failure only if no nonempty buffer was enqueued. */
+  /* Like a single buffer, an OOO chain is enqueued entirely or not at all. */
   svm_fifo_set_size (f, 4096);
   for (i = 0; i < 2; i++)
     {
-      session_test_rx_chain_prepare (vm, buffers, ooo_cases[i], 4, expected + 4032);
-      rv = session_enqueue_stream_connection (tc, vlib_get_buffer (vm, buffers[0]), 4080, 0, 0);
-      SESSION_TEST (rv == SVM_FIFO_EFULL && !svm_fifo_has_ooo_data (f),
-		    "out-of-order rx case %u reports failure before writing data", i);
+      len = session_test_rx_chain_prepare (vm, buffers, ooo_cases[i], 4, expected + 4000);
       rv = session_enqueue_stream_connection (tc, vlib_get_buffer (vm, buffers[0]), 4032, 0, 0);
-      SESSION_TEST (rv == 0, "out-of-order rx case %u reports partial success", i);
+      SESSION_TEST (rv == SVM_FIFO_EFULL && !svm_fifo_has_ooo_data (f),
+		    "out-of-order rx case %u that does not fit is not enqueued", i);
+      rv = session_enqueue_stream_connection (tc, vlib_get_buffer (vm, buffers[0]), 4000, 0, 0);
+      SESSION_TEST (rv == 0, "out-of-order rx case %u that fits is enqueued", i);
       newest = svm_fifo_newest_ooo_segment (f);
-      SESSION_TEST (newest && ooo_segment_offset_prod (f, newest) == 4032 &&
-		      ooo_segment_length (f, newest) == 32,
-		    "out-of-order rx case %u tracks newest partial segment", i);
+      SESSION_TEST (newest && ooo_segment_offset_prod (f, newest) == 4000 &&
+		      ooo_segment_length (f, newest) == len,
+		    "out-of-order rx case %u is one newest segment", i);
       svm_fifo_newest_ooo_segment_reset (f);
-      rv = svm_fifo_enqueue (f, 4032, expected);
-      SESSION_TEST (rv == 4064, "out-of-order rx case %u buffered only the completed prefix", i);
-      rv = svm_fifo_dequeue (f, 4064, actual);
-      SESSION_TEST (rv == 4064 && !memcmp (actual, expected, 4064),
-		    "partially enqueued out-of-order rx case %u preserves payload", i);
+      rv = svm_fifo_enqueue (f, 4000, expected);
+      SESSION_TEST (rv == 4000 + len, "filled gap before out-of-order rx case %u", i);
+      rv = svm_fifo_dequeue (f, 4000 + len, actual);
+      SESSION_TEST (rv == 4000 + len && !memcmp (actual, expected, 4000 + len),
+		    "out-of-order rx case %u fills the fifo and preserves payload", i);
     }
+
+  /* An OOO chain that only repeats queued data changes no segment. */
+  rv = svm_fifo_enqueue_with_offset (f, 32, 96, expected + 32);
+  SESSION_TEST (rv == 0, "buffered out-of-order data");
+  svm_fifo_newest_ooo_segment_reset (f);
+  session_test_rx_chain_prepare (vm, buffers, ooo_cases[0], 4, expected + 32);
+  rv = session_enqueue_stream_connection (tc, vlib_get_buffer (vm, buffers[0]), 32, 0, 0);
+  SESSION_TEST (rv == 0 && !svm_fifo_newest_ooo_segment (f) && svm_fifo_n_ooo_segments (f) == 1,
+		"out-of-order rx chain that repeats queued data changes no segment");
+  rv = svm_fifo_enqueue (f, 32, expected);
+  SESSION_TEST (rv == 128, "filled gap before repeated out-of-order data");
+  rv = svm_fifo_dequeue (f, 128, actual);
+  SESSION_TEST (rv == 128 && !memcmp (actual, expected, 128),
+		"repeated out-of-order rx chain preserves payload");
   SESSION_TEST (vec_len (session_main_get_worker (tc->thread_index)->rx_segs) == 0,
 		"rx segment vector reset");
 
