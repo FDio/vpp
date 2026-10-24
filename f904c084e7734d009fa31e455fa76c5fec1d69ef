@@ -34,6 +34,24 @@
       "parentUuid": "2ab7963c_a850fd1a",
       "revId": "f904c084e7734d009fa31e455fa76c5fec1d69ef",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "af69fd45_b102f828",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-10-24T21:00:42Z",
+      "side": 1,
+      "message": "We have extra 128B in the buffer exactly because we want to avoid these types of ifs. Sure the processor is doing a fine job at predicting them, but if we force more rigor in the graph nodes, we have less branches and pretty sure everything will be just a tad faster. \n\nNodes, especially encapsulators, should always check if there\u0027s enough space left in the buffer as opposed to expecting the infra to police their behavior.",
+      "parentUuid": "df93cba8_5315a31f",
+      "revId": "f904c084e7734d009fa31e455fa76c5fec1d69ef",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
