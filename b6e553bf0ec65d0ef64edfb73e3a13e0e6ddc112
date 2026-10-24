@@ -16,6 +16,23 @@
       "message": "LGTM, test failures look unrelated.",
       "revId": "b6e553bf0ec65d0ef64edfb73e3a13e0e6ddc112",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ab72cb69_0cca06e7",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-10-24T15:55:33Z",
+      "side": 1,
+      "message": "Re-run failed jobs via GitHub UI",
+      "revId": "b6e553bf0ec65d0ef64edfb73e3a13e0e6ddc112",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
