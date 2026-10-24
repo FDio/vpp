@@ -2207,6 +2207,93 @@ sfifo_test_fifo_make_rcv_wnd_zero (vlib_main_t * vm, unformat_input_t * input)
 
 static fifo_segment_main_t segment_main;
 
+/*
+ * Enqueue segments with offset
+ */
+static int
+sfifo_test_fifo_ooo_segs (vlib_main_t *vm, unformat_input_t *input)
+{
+  fifo_segment_main_t _fsm = { 0 }, *fsm = &_fsm;
+  u32 fifo_size = 16 << 10, index;
+  u8 *test_data = 0, *data_buf = 0;
+  svm_fifo_seg_t segs[4];
+  ooo_segment_t *newest;
+  int verbose = 0, rv;
+  fifo_segment_t *fs;
+  svm_fifo_t *f;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "verbose"))
+	verbose = 1;
+      else
+	{
+	  vlib_cli_output (vm, "parse error: '%U'", format_unformat_error, input);
+	  return -1;
+	}
+    }
+
+  fs = fifo_segment_prepare (fsm, "fifo-ooo-segs", 0);
+  f = fifo_prepare (fs, 4096);
+  svm_fifo_init_ooo_lookup (f, 0 /* enq ooo */);
+  svm_fifo_set_size (f, fifo_size);
+  validate_test_and_buf_vecs (&test_data, &data_buf, fifo_size);
+
+  /* Back to back segments, including an empty one, are added as one
+   * out-of-order segment, also across the chunks the enqueue allocates */
+  segs[0] = (svm_fifo_seg_t){ test_data + 1000, 3000 };
+  segs[1] = (svm_fifo_seg_t){ test_data + 4000, 0 };
+  segs[2] = (svm_fifo_seg_t){ test_data + 4000, 2500 };
+  segs[3] = (svm_fifo_seg_t){ test_data + 6500, 3000 };
+  rv = svm_fifo_enqueue_segments_with_offset (f, 1000, segs, 4, 0 /* allow partial */);
+  SFIFO_TEST (rv == 8500, "enqueued %d expected %u", rv, 8500);
+  newest = svm_fifo_newest_ooo_segment (f);
+  SFIFO_TEST (svm_fifo_n_ooo_segments (f) == 1 && newest &&
+		ooo_segment_offset_prod (f, newest) == 1000 &&
+		ooo_segment_length (f, newest) == 8500,
+	      "segments added as one out-of-order segment");
+  SFIFO_TEST (svm_fifo_n_chunks (f) > 1, "segments span %u chunks", svm_fifo_n_chunks (f));
+  SFIFO_TEST (svm_fifo_max_dequeue (f) == 0, "no data in order");
+  if (verbose)
+    vlib_cli_output (vm, "fifo after segments at 1000: %U", format_svm_fifo, f, 1);
+
+  /* Segments that only repeat queued data change no segment */
+  svm_fifo_newest_ooo_segment_reset (f);
+  segs[0] = (svm_fifo_seg_t){ test_data + 2000, 500 };
+  segs[1] = (svm_fifo_seg_t){ test_data + 2500, 3000 };
+  rv = svm_fifo_enqueue_segments_with_offset (f, 2000, segs, 2, 0 /* allow partial */);
+  SFIFO_TEST (rv == 3500 && !svm_fifo_newest_ooo_segment (f) && svm_fifo_n_ooo_segments (f) == 1,
+	      "repeated data changes no segment");
+
+  /* Segments that do not fit are not enqueued, unless partial enqueues are
+   * allowed, in which case the prefix that fits is */
+  segs[0] = (svm_fifo_seg_t){ test_data + 9000, 4000 };
+  segs[1] = (svm_fifo_seg_t){ test_data + 13000, 4000 };
+  rv = svm_fifo_enqueue_segments_with_offset (f, 9000, segs, 2, 0 /* allow partial */);
+  SFIFO_TEST (rv == SVM_FIFO_EFULL && svm_fifo_n_ooo_segments (f) == 1,
+	      "segments that do not fit are not enqueued");
+  rv = svm_fifo_enqueue_segments_with_offset (f, 9000, segs, 2, 1 /* allow partial */);
+  newest = svm_fifo_newest_ooo_segment (f);
+  SFIFO_TEST (rv == fifo_size - 9000 && newest && ooo_segment_offset_prod (f, newest) == 1000 &&
+		ooo_segment_length (f, newest) == fifo_size - 1000,
+	      "partial enqueue fills the fifo");
+  rv = svm_fifo_enqueue_segments_with_offset (f, fifo_size, segs, 1, 1 /* allow partial */);
+  SFIFO_TEST (rv == SVM_FIFO_EFULL, "no partial enqueue past the fifo end");
+
+  /* Filling the hole in order collects all of the data */
+  rv = svm_fifo_enqueue (f, 1000, test_data);
+  SFIFO_TEST (rv == fifo_size, "enqueued %d expected %u", rv, fifo_size);
+  rv = svm_fifo_dequeue (f, fifo_size, data_buf);
+  SFIFO_TEST (rv == fifo_size && !compare_data (data_buf, test_data, 0, fifo_size, &index),
+	      "data preserved");
+
+  vec_free (test_data);
+  vec_free (data_buf);
+  ft_fifo_free (fs, f);
+  ft_fifo_segment_free (fsm, fs);
+  return 0;
+}
+
 static int
 sfifo_test_fifo_segment_hello_world (int verbose)
 {
@@ -2961,6 +3048,8 @@ svm_fifo_test (vlib_main_t * vm, unformat_input_t * input,
 	res = sfifo_test_fifo_indirect (vm, input);
       else if (unformat (input, "zero"))
 	res = sfifo_test_fifo_make_rcv_wnd_zero (vm, input);
+      else if (unformat (input, "ooo-segs"))
+	res = sfifo_test_fifo_ooo_segs (vm, input);
       else if (unformat (input, "segment"))
 	res = sfifo_test_fifo_segment (vm, input);
       else if (unformat (input, "all"))
@@ -3029,6 +3118,9 @@ svm_fifo_test (vlib_main_t * vm, unformat_input_t * input,
 	    goto done;
 
 	  if ((res = sfifo_test_fifo_make_rcv_wnd_zero (vm, input)))
+	    goto done;
+
+	  if ((res = sfifo_test_fifo_ooo_segs (vm, input)))
 	    goto done;
 
 	  str = "all";
