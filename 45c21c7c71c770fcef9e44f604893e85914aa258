@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "55014358_a00526b7",
+        "filename": "src/plugins/ikev2/ikev2.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 2687,
+      "author": {
+        "id": 3383
+      },
+      "writtenOn": "2026-10-24T11:08:46Z",
+      "side": 1,
+      "message": "PS4 uses a temporary 2,048-bit stack bitmap (256 bytes). It marks live and pending-old IDs in one Child scan, checks local and remote ID prefixes separately, and retains the remote rekey bit when matching the remote prefix. The first clear slot is selected in at most 32 uword scans on 64-bit systems; no persistent allocator state is added. Existing Delete/rekey collision tests pass under debug/ASAN.",
+      "parentUuid": "2d6c5369_4a430af4",
+      "revId": "45c21c7c71c770fcef9e44f604893e85914aa258",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "50710e3f_c6d0d645",
@@ -31,6 +49,24 @@
       "writtenOn": "2026-10-23T13:29:11Z",
       "side": 1,
       "message": "Could we propagate allocation failure to the CREATE_CHILD_SA handler, remove the appended child, and return NO_ADDITIONAL_SAS? The caller currently ignores this return value and sends success without installing the IPsec SAs. I reproduced this under debug ASAN: with 2,048 live children, the next request receives an SA payload while the SAD remains at 4,096 entries.",
+      "revId": "45c21c7c71c770fcef9e44f604893e85914aa258",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "6e582243_92d76798",
+        "filename": "src/plugins/ikev2/ikev2.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 2703,
+      "author": {
+        "id": 3383
+      },
+      "writtenOn": "2026-10-24T11:08:46Z",
+      "side": 1,
+      "message": "Confirmed with a packet regression on PS3: after 2,048 live Children / 4,096 IPsec SAs, the next CREATE_CHILD_SA returns SA rather than Notify. PS4 checks the tunnel-creation return, frees/removes the appended Child, and returns NO_ADDITIONAL_SAS without deleting the IKE SA or existing Children (RFC 7296 sections 1.3 and 2.21.3). The same regression passes under debug/ASAN, including retransmission, unchanged counts, and successful reuse after Delete.",
+      "parentUuid": "50710e3f_c6d0d645",
       "revId": "45c21c7c71c770fcef9e44f604893e85914aa258",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
