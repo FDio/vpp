@@ -229,8 +229,9 @@ func (s *MasqueSuite) TeardownTest() {
 
 	clientVpp := s.Containers.VppClient.VppInstance
 	serverVpp := s.Containers.VppServer.VppInstance
+	collectDiagnostics := CurrentSpecReport().Failed()
 	defer func() {
-		if CurrentSpecReport().Failed() {
+		if collectDiagnostics {
 			CollectNginxLogs(s.Containers.NginxServer)
 			CollectIperfLogs(s.Containers.IperfServer)
 			Log(clientVpp.Vppctl("show session verbose 2"))
@@ -248,8 +249,40 @@ func (s *MasqueSuite) TeardownTest() {
 			Log(serverVpp.Vppctl("show quic"))
 		}
 	}()
-	if !CurrentSpecReport().Failed() && !CurrentSpecReport().State.Is(types.SpecStateSkipped) {
-		AssertEqual(s.ExpectedConnectTimeouts, s.ConnectTimeouts(), "unexpected number of CONNECT response timeouts")
+	if !collectDiagnostics && !CurrentSpecReport().State.Is(types.SpecStateSkipped) {
+		// Ginkgo records failures raised in AfterEach after this function returns.
+		collectDiagnostics = true
+		connectTimeouts := s.ConnectTimeouts()
+		if connectTimeouts != s.ExpectedConnectTimeouts {
+			s.SkipIfWrongWorkerThread("unexpected number of CONNECT response timeouts")
+		}
+		AssertEqual(s.ExpectedConnectTimeouts, connectTimeouts, "unexpected number of CONNECT response timeouts")
+		collectDiagnostics = false
+	}
+}
+
+// TAP flow steering can move an established TCP flow to another worker after
+// its Linux flow-cache entry expires. Skip affected cleanup/connect checks only.
+func (s *MasqueSuite) SkipIfWrongWorkerThread(reason string) {
+	for _, container := range []*Container{s.Containers.VppClient, s.Containers.VppServer} {
+		vpp := container.VppInstance
+		if vpp == nil || vpp.CpuConfig.NumWorkers < 2 {
+			continue
+		}
+		for _, line := range strings.Split(vpp.Vppctl("show error"), "\n") {
+			fields := strings.Fields(line)
+			if len(fields) < 5 || (fields[1] != "tcp4-input" && fields[1] != "tcp6-input") ||
+				strings.Join(fields[2:5], " ") != "Wrong worker thread" {
+				continue
+			}
+			count, err := strconv.ParseUint(fields[0], 10, 64)
+			AssertNil(err)
+			if count > 0 {
+				message := fmt.Sprintf("%s: %s reported %s", reason, container.Name, strings.TrimSpace(line))
+				Log(message)
+				s.Skip(message)
+			}
+		}
 	}
 }
 
@@ -287,6 +320,9 @@ func (s *MasqueSuite) ProxyClientConnect(proto, port string, extraArgs ...string
 			break
 		}
 		time.Sleep(1 * time.Second)
+	}
+	if !connected {
+		s.SkipIfWrongWorkerThread("client not connected to the server")
 	}
 	AssertEqual(connected, true, "client not connected to the server")
 }
