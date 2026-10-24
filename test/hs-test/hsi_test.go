@@ -154,6 +154,8 @@ func HsiProxyLiteIpv6OffloadTest(s *HsiSuite) {
 func runHsiProxyLiteDrainOffloadTest(s *HsiSuite) {
 	s.SetupNginxServer()
 	vpp := s.Containers.Vpp.VppInstance
+	unblock := s.BlockServerReplies()
+	defer unblock()
 	s.StartProxyLiteTcp4("hsi-offload", "fifo-size 4k")
 
 	uploadFileName := MakeProxyLiteUploadFile()
@@ -163,6 +165,8 @@ func runHsiProxyLiteDrainOffloadTest(s *HsiSuite) {
 	finished := startCurlHttpRequest(uri, s.NetNamespaces.Client, "201", 60,
 		"-T", uploadFileName, "-H", "Expect:", "--limit-rate", "256k")
 
+	WaitProxyLitePendingRx(vpp)
+	unblock()
 	WaitProxyLiteTracked(vpp, func() {})
 
 	AssertNil(<-finished)
@@ -190,6 +194,8 @@ func HsiProxyLiteDrainOffloadMWTest(s *HsiSuite) {
 func HsiProxyLiteIpv6DrainOffloadTest(s *HsiSuite) {
 	s.SetupNginxServerIp6()
 	vpp := s.Containers.Vpp.VppInstance
+	unblock := s.BlockServerReplies()
+	defer unblock()
 	s.StartProxyLiteTcp6("hsi-offload", "fifo-size 4k")
 
 	uploadFileName := MakeProxyLiteUploadFile()
@@ -200,6 +206,8 @@ func HsiProxyLiteIpv6DrainOffloadTest(s *HsiSuite) {
 	finished := startCurlHttpRequest(uri, s.NetNamespaces.Client, "201", 60,
 		"-T", uploadFileName, "-H", "Expect:", "--limit-rate", "256k")
 
+	WaitProxyLitePendingRx(vpp)
+	unblock()
 	WaitProxyLiteTracked(vpp, func() {})
 	AssertNil(<-finished)
 

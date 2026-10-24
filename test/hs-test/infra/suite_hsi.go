@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os/exec"
 	"reflect"
+	"regexp"
 	"runtime"
 	"strconv"
 	"strings"
@@ -268,6 +269,40 @@ func (s *HsiSuite) StartProxyLiteUdp4(options ...string) string {
 func (s *HsiSuite) StartProxyLiteUdp6(options ...string) string {
 	return s.StartProxyLite(HsiUri("udp", "::", s.Ports.Server),
 		HsiUri("udp", s.ServerAddr6(), s.Ports.Server), options...)
+}
+
+// BlockServerReplies keeps the target handshake pending until the client has
+// queued data in proxy-lite. The returned function releases the target replies.
+func (s *HsiSuite) BlockServerReplies() func() {
+	serverIf := s.Interfaces.Server.Host.Name()
+	output, err := exec.Command("tc", "qdisc", "add", "dev", serverIf,
+		"root", "netem", "loss", "100%").CombinedOutput()
+	AssertNil(err, string(output))
+
+	blocked := true
+	unblock := func() {
+		if !blocked {
+			return
+		}
+		output, err := exec.Command("tc", "qdisc", "del", "dev", serverIf, "root").CombinedOutput()
+		AssertNil(err, string(output))
+		blocked = false
+	}
+	return unblock
+}
+
+func WaitProxyLitePendingRx(vpp *VppInstance) {
+	pendingRx := regexp.MustCompile(`(?m)^\s*Rx fifo: cursize [1-9][0-9]*\b`)
+	var lastOutput string
+	deadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) {
+		lastOutput = vpp.Vppctl("show session verbose 2")
+		if pendingRx.MatchString(lastOutput) {
+			return
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	AssertFail("timed out waiting for proxy-lite RX data:\n%s", lastOutput)
 }
 
 func WaitProxyLiteTrackedCount(vpp *VppInstance, count int, cancel func()) string {
