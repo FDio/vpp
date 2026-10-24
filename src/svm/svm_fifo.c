@@ -1037,6 +1037,69 @@ svm_fifo_enqueue_segments (svm_fifo_t * f, const svm_fifo_seg_t segs[],
   return len;
 }
 
+int
+svm_fifo_enqueue_segments_with_offset (svm_fifo_t *f, u32 offset, const svm_fifo_seg_t segs[],
+				       u32 n_segs, u8 allow_partial)
+{
+  u32 tail, head, free_count, enq_pos, len = 0, n_left, to_copy, i;
+  fs_sptr_t last;
+
+  f_load_head_tail_prod (f, &head, &tail);
+
+  /* free space in fifo can only increase during enqueue: SPSC */
+  free_count = f_free_count (f, head, tail);
+  f->ooos_newest = OOO_SEGMENT_INVALID_INDEX;
+
+  for (i = 0; i < n_segs; i++)
+    len += segs[i].len;
+
+  if (PREDICT_FALSE (!len))
+    return 0;
+
+  /* will this request fit? */
+  if (PREDICT_FALSE (offset + len > free_count))
+    {
+      if (!allow_partial || offset >= free_count)
+	return SVM_FIFO_EFULL;
+      len = free_count - offset;
+    }
+
+  enq_pos = tail + offset;
+
+  if (f_pos_gt (enq_pos + len, f_chunk_end (f_end_cptr (f))))
+    {
+      if (PREDICT_FALSE (f_try_chunk_alloc (f, head, tail, offset + len)))
+	{
+	  if (!allow_partial || !f_pos_gt (f_chunk_end (f_end_cptr (f)), enq_pos))
+	    return SVM_FIFO_EGROW;
+	  len = f_chunk_end (f_end_cptr (f)) - enq_pos;
+	}
+    }
+
+  /* All segments are added as one out-of-order segment */
+  svm_fifo_trace_add (f, offset, len, 1);
+  ooo_segment_add (f, offset, head, tail, len);
+
+  if (!f->ooo_enq || !f_chunk_includes_pos (f->ooo_enq, enq_pos))
+    f_update_ooo_enq (f, enq_pos, enq_pos + len);
+
+  n_left = len;
+  for (i = 0; n_left; i++)
+    {
+      to_copy = clib_min (segs[i].len, n_left);
+      if (!to_copy)
+	continue;
+      last = F_INVALID_CPTR;
+      svm_fifo_copy_to_chunk (f, f->ooo_enq, enq_pos, segs[i].data, to_copy, &last);
+      if (last != F_INVALID_CPTR)
+	f->ooo_enq = f_cptr (f, last);
+      enq_pos += to_copy;
+      n_left -= to_copy;
+    }
+
+  return len;
+}
+
 always_inline svm_fifo_chunk_t *
 f_unlink_chunks (svm_fifo_t * f, u32 end_pos, u8 maybe_ooo)
 {
