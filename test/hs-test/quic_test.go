@@ -3,11 +3,14 @@ package main
 import (
 	"context"
 	"crypto/tls"
+	"net"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
 	. "fd.io/hs-test/infra"
+	. "github.com/onsi/gomega"
 	"github.com/quic-go/quic-go"
 )
 
@@ -18,7 +21,7 @@ func init() {
 		QuicBuiltinVperfBidirectionalZeroCopyTest, QuicBuiltinVperfTest, QuicBuiltinVperfBidirectionalTest,
 		QuicReorderTest, QuicCrlRejectThenAllowTest, QuicPeerCertCloseTest)
 	RegisterQuicMWTests(QuicCpsMWTest)
-	RegisterNoTopoTests(QuicFailedHandshakeTest, QuicCryptoContextTest)
+	RegisterNoTopoTests(QuicFailedHandshakeTest, QuicCryptoContextTest, QuicRxDatagramSizeTest)
 }
 
 func QuicPeerCertCloseTest(s *QuicSuite) {
@@ -218,6 +221,64 @@ func QuicFailedHandshakeTest(s *NoTopoSuite) {
 	o := s.Containers.Vpp.VppInstance.Vppctl("show session verbose")
 	Log(o)
 	AssertContains(o, "active sessions 2", "expected only listeners")
+}
+
+func QuicRxDatagramSizeTest(s *NoTopoSuite) {
+	const maxPacketSize = 1280 // QUIC_MAX_PACKET_SIZE in quic/quic.h.
+	vpp := s.Containers.Vpp.VppInstance
+	serverAddress := net.JoinHostPort(s.VppAddr(), s.Ports.Http)
+	o := vpp.Vppctl("test tls server alpn-proto1 3 uri quic://" + serverAddress)
+	Log(o)
+	AssertContains(o, "server started")
+
+	counterPattern := regexp.MustCompile(`(?m)^\s*(\d+)\s+quic-input\s+quic RX datagrams too large\s+error\s*$`)
+	oversizedDatagrams := func() int {
+		total := 0
+		for _, match := range counterPattern.FindAllStringSubmatch(vpp.Vppctl("show errors"), -1) {
+			count, err := strconv.Atoi(match[1])
+			AssertNil(err)
+			total += count
+		}
+		return total
+	}
+	AssertEqual(0, oversizedDatagrams())
+
+	remoteAddr, err := net.ResolveUDPAddr("udp4", serverAddress)
+	AssertNil(err)
+	socket, err := net.ListenUDP("udp4", &net.UDPAddr{IP: net.ParseIP(s.HostAddr())})
+	AssertNil(err)
+	defer socket.Close()
+
+	// Stay within the IP MTU to exercise the QUIC guard without fragmentation.
+	oversizedSizes := []int{maxPacketSize + 1, 1472, maxPacketSize + 1}
+	for _, size := range oversizedSizes {
+		n, err := socket.WriteToUDP(make([]byte, size), remoteAddr)
+		AssertNil(err)
+		AssertEqual(size, n)
+	}
+	Eventually(oversizedDatagrams, 5*time.Second, 100*time.Millisecond).
+		Should(Equal(len(oversizedSizes)), "oversized UDP datagrams were not counted")
+
+	// Reuse the same UDP flow to verify the rejected datagrams were consumed and
+	// a valid Initial datagram exactly at the size limit is still accepted.
+	transport := quic.Transport{Conn: socket}
+	defer transport.Close()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	conn, err := transport.Dial(ctx, remoteAddr,
+		&tls.Config{InsecureSkipVerify: true, NextProtos: []string{"h3"}, SessionTicketsDisabled: true},
+		&quic.Config{
+			Versions:                []quic.Version{quic.Version1},
+			InitialPacketSize:       maxPacketSize,
+			DisablePathMTUDiscovery: true,
+		})
+	AssertNil(err)
+	defer conn.CloseWithError(0, "test complete")
+	Eventually(func() string {
+		return vpp.Vppctl("show test tls server")
+	}, 5*time.Second, 100*time.Millisecond).Should(ContainSubstring("accepted connections 1"))
+	AssertEqual(len(oversizedSizes), oversizedDatagrams())
+	Log(vpp.Vppctl("show errors"))
 }
 
 func QuicCryptoContextTest(s *NoTopoSuite) {

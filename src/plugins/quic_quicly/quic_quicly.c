@@ -1368,6 +1368,13 @@ quic_quicly_process_one_rx_dgram (quic_ctx_t *ctx, quicly_context_t *quicly_ctx,
   quic_quicly_rx_packet_ctx_t *pctx;
   quic_quicly_main_t *qqm = &quic_quicly_main;
 
+  if (PREDICT_FALSE (data_length > sizeof (dctx->data)))
+    {
+      QUIC_ERR ("UDP datagram too large: %u bytes", data_length);
+      quic_increment_counter (qqm->qm, QUIC_ERROR_RX_DGRAM_TOO_LARGE, 1);
+      return 1;
+    }
+
   rv = svm_fifo_peek (rx_fifo, fifo_offset, data_length, dctx->data);
   ASSERT (rv == data_length);
 
