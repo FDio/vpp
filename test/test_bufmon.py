@@ -56,8 +56,8 @@ class TestBufmon(VppTestCase):
             try:
                 ip = packet[IP]
                 udp = packet[UDP]
-                # convert the payload to packet info object
-                payload_info = self.payload_to_info(packet[Raw])
+                # A UDP port may select a dissector before the Raw layer.
+                payload_info = self.payload_to_info(Raw(bytes(udp.payload)))
                 # make sure the indexes match
                 self.assert_equal(
                     payload_info.src, src_if.sw_if_index, "source sw_if_index"
