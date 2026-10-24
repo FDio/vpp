@@ -33,6 +33,42 @@
       "message": "Not to be merged until after VPP 26.10 Release is complete on 10/28/2026",
       "revId": "873c8f291b65747a99e99d33c44fb962ff7550d4",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "db2f674a_c9316351",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3383
+      },
+      "writtenOn": "2026-10-24T12:39:16Z",
+      "side": 1,
+      "message": "PS3 now targets master. No stable/2610 update or merge is requested; a backport will be considered separately after master acceptance and the release freeze.",
+      "parentUuid": "75e093e1_2655c315",
+      "revId": "873c8f291b65747a99e99d33c44fb962ff7550d4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e3e44967_ebc89785",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3383
+      },
+      "writtenOn": "2026-10-24T12:39:16Z",
+      "side": 1,
+      "message": "Addressed in PS3: this same change now targets master and is rebased onto its current tip. The change number and discussion history are preserved. The regression was reproduced on unmodified master and passes with the rebased fix. No stable-branch exception is requested.",
+      "parentUuid": "ee64d322_72e1ae2b",
+      "revId": "873c8f291b65747a99e99d33c44fb962ff7550d4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
