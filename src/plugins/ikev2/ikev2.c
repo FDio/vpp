@@ -5236,8 +5236,8 @@ ikev2_rekey_child_sa_internal (vlib_main_t * vm, ikev2_sa_t * sa,
 
   if (ikev2_natt_active (sa))
     len = ikev2_insert_non_esp_marker (ike0, len);
-  ikev2_send_ike (vm, &sa->iaddr, &sa->raddr, bi0, len,
-		  ikev2_get_port (sa), ikev2_get_port (sa), sa->sw_if_index);
+  ikev2_send_ike (vm, &sa->iaddr, &sa->raddr, bi0, len, ikev2_get_port (sa), sa->dst_port,
+		  sa->sw_if_index);
   vec_free (proposals);
 }
 
