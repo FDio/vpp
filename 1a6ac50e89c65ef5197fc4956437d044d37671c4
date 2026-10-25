@@ -33,6 +33,74 @@
       "message": "Adding Matt and Pim also.\nI think this is a cleaner way to handle the refcount for lcp routes, what do you think?",
       "revId": "1a6ac50e89c65ef5197fc4956437d044d37671c4",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "2513bec1_5803d739",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2026-10-25T08:28:00Z",
+      "side": 1,
+      "message": "I\u0027m not an expert in the FIB code but I don\u0027t think this will work - you are counting unicast fib entries in _owned_routes() but not multicast fib entries, which means we\u0027ll wipe the mcast fib in case the unicast fib becomes empty, which may be worth thinking about.\n\nSeperately, I got confused reading route_del as it doesn\u0027t seem to handle mcast deletes at all (passing them to fib_table_entry_path_remove2() rather than mfib_table_entry_paths_remove()) see mt comment there (more of a question really)",
+      "revId": "1a6ac50e89c65ef5197fc4956437d044d37671c4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b08b2d06_380c4a5d",
+        "filename": "src/plugins/linux-cp/lcp_router.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1015,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2026-10-25T08:28:00Z",
+      "side": 1,
+      "message": "l_r_t_owned_routes above inspects the unicast fib, and if it\u0027s empty, will allow the multicast fib to be flushed. Scenario:\n- add 1 unicast route\n- add 1 mcast routes\n- delete that 1 unicast route\n\nI think the mcast routes will then be cleared.",
+      "revId": "1a6ac50e89c65ef5197fc4956437d044d37671c4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9b6fd560_198d00fe",
+        "filename": "src/plugins/linux-cp/lcp_router.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1367,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2026-10-25T08:28:00Z",
+      "side": 1,
+      "message": "More of a curiosity / question (as clearly this hasn\u0027t been an issue before):\n\nWhile reading the table_free_if_unused() and _owned_prefixes() I also noticed that route_del() will always call the unicast variant, and never the multicast variant. I wonder do we delete mcast routes properly?\n\nroute_add() is using mfib_table_entry_update / mfib_table_entry_paths_update with MFIB_SOURCE_PLUGIN_LOW.\n\nShouldn\u0027t this have a branch on type\u003d\u003dRTN_MLUTICAST and if so, call mfib_table_entry_paths_remove() instead?",
+      "revId": "1a6ac50e89c65ef5197fc4956437d044d37671c4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "fff2dd44_db245a22",
+        "filename": "src/plugins/linux-cp/lcp_router.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1444,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2026-10-25T08:28:00Z",
+      "side": 1,
+      "message": "if we find_or_create a new table, for a multicast entry, we\u0027ll install it but any subsequent route_del (or sync_end) will conclude we own no routes, and free both unicast and multicast FIBs.\n\nshould we account for mcast fib entries in l_r_t_owned_routes()?",
+      "revId": "1a6ac50e89c65ef5197fc4956437d044d37671c4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
