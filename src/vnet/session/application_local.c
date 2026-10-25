@@ -356,7 +356,8 @@ static void
 ct_accept_rpc_wrk_handler (void *rpc_args)
 {
   clib_thread_index_t thread_index, n_connects, i, n_pending;
-  const u32 max_connects = 32;
+  const u32 max_burst = 32;
+  u32 free_cts, max_connects;
   ct_worker_t *wrk;
   u8 need_rpc = 0;
 
@@ -365,6 +366,13 @@ ct_accept_rpc_wrk_handler (void *rpc_args)
 
   /* Connects could be handled without worker barrier so grab lock */
   clib_spinlock_lock (&wrk->pending_connects_lock);
+
+  /* Each accept allocates a client and a server CT connection. Limit
+   * the burst to the current headroom and leave one entry so it cannot
+   * take the empty pool forced sync path. */
+  free_cts = wrk->connections ? pool_free_elts (wrk->connections) : POOL_REALLOC_SAFE_ELT_THRESH;
+  max_connects = free_cts > 1 ? (free_cts - 1) / 2 : 0;
+  max_connects = clib_min (max_connects, max_burst);
 
   n_pending = clib_fifo_elts (wrk->pending_connects);
   n_connects = clib_min (n_pending, max_connects);
