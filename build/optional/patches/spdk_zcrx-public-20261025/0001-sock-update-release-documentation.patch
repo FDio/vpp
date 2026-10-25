@@ -1,0 +1,85 @@
+From 5eb609b8577cef86854509f72b0b0e13c9039e97 Mon Sep 17 00:00:00 2001
+From: Ben Walker <ben@nvidia.com>
+Date: Thu, 17 Sep 2026 08:20:33 -0700
+Subject: [PATCH 01/10] sock: update release documentation
+
+Add changelog fragments and update deprecation.md for the recent sock
+library changes.
+
+Change-Id: If14f7bf54df730b13b146c0523d2dcf6e0337501
+Signed-off-by: Ben Walker <ben@nvidia.com>
+---
+ changelog.d/sock/add_sock_cb_arg_removed.md | 2 ++
+ changelog.d/sock/recv_next.md               | 3 +++
+ changelog.d/sock/sockets_require_group.md   | 3 +++
+ changelog.d/sock/uring_recv_pipe_removed.md | 2 ++
+ changelog.d/sock/writev_async_ext.md        | 3 +++
+ deprecation.md                              | 9 +++------
+ 6 files changed, 16 insertions(+), 6 deletions(-)
+ create mode 100644 changelog.d/sock/add_sock_cb_arg_removed.md
+ create mode 100644 changelog.d/sock/recv_next.md
+ create mode 100644 changelog.d/sock/sockets_require_group.md
+ create mode 100644 changelog.d/sock/uring_recv_pipe_removed.md
+ create mode 100644 changelog.d/sock/writev_async_ext.md
+
+diff --git a/changelog.d/sock/add_sock_cb_arg_removed.md b/changelog.d/sock/add_sock_cb_arg_removed.md
+new file mode 100644
+index 000000000..942151b20
+--- /dev/null
++++ b/changelog.d/sock/add_sock_cb_arg_removed.md
+@@ -0,0 +1,2 @@
++Removed the deprecated `cb_arg` parameter from `spdk_sock_group_add_sock()`. Use
++`spdk_sock_set_user_ctx()` to set a socket's callback context.
+diff --git a/changelog.d/sock/recv_next.md b/changelog.d/sock/recv_next.md
+new file mode 100644
+index 000000000..a63cbf45f
+--- /dev/null
++++ b/changelog.d/sock/recv_next.md
+@@ -0,0 +1,3 @@
++Added a zero-copy receive API in which the sock module owns the receive buffers.
++`spdk_sock_recv_next()` returns the next buffer and `spdk_sock_group_release_buf()` hands it back.
++`spdk_sock_impl_supports_recv_next()` reports whether an implementation supports it.
+diff --git a/changelog.d/sock/sockets_require_group.md b/changelog.d/sock/sockets_require_group.md
+new file mode 100644
+index 000000000..081f1aac2
+--- /dev/null
++++ b/changelog.d/sock/sockets_require_group.md
+@@ -0,0 +1,3 @@
++Every socket must now belong to a socket group. `spdk_sock_connect()` and `spdk_sock_listen()`
++require `spdk_sock_opts.group`, and accepted sockets inherit the listener's group. Closing a
++socket removes it from its group. `spdk_sock_opts.user_ctx` sets the initial `rx_cb` context.
+diff --git a/changelog.d/sock/uring_recv_pipe_removed.md b/changelog.d/sock/uring_recv_pipe_removed.md
+new file mode 100644
+index 000000000..9f9acb2b4
+--- /dev/null
++++ b/changelog.d/sock/uring_recv_pipe_removed.md
+@@ -0,0 +1,2 @@
++The uring sock implementation no longer supports `enable_recv_pipe`. The option is accepted as
++a no-op for uring and only applies to posix/ssl.
+diff --git a/changelog.d/sock/writev_async_ext.md b/changelog.d/sock/writev_async_ext.md
+new file mode 100644
+index 000000000..7e81a417f
+--- /dev/null
++++ b/changelog.d/sock/writev_async_ext.md
+@@ -0,0 +1,3 @@
++Added `spdk_sock_writev_async_ext()`, which accepts `struct spdk_sock_request_opts` to describe
++the memory domain of the request payload, and `spdk_sock_get_memory_domain()`, which returns the
++socket's memory domain, or NULL if the sock module doesn't support memory domains.
+diff --git a/deprecation.md b/deprecation.md
+index b45b25c6c..2574385e8 100644
+--- a/deprecation.md
++++ b/deprecation.md
+@@ -99,10 +99,7 @@ count aggressively and can guarantee attached controllers advertise `NLBAF` < 4
+ 
+ ### sock
+ 
+-#### `spdk_sock_group_add_sock_callbacks`
++#### uring `enable_recv_pipe`
+ 
+-The remaining `cb_arg` parameter of `spdk_sock_group_add_sock` is deprecated and will be
+-removed in v27.01. `spdk_sock_set_user_ctx()` updates a socket's callback context. In v26.09,
+-`spdk_sock_group_add_sock()` overwrites that context with its `cb_arg` argument, so applications
+-must still pass the intended context when adding a socket. Setting the context before adding
+-the socket does not replace that argument.
++`enable_recv_pipe` is no longer used by the uring sock implementation. The option remains
++accepted by `spdk_sock_impl_set_opts`, but it is a no-op for uring and only applies to posix/ssl.
