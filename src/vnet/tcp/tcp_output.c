@@ -1437,7 +1437,7 @@ tcp_timer_retransmit_handler (tcp_connection_t *tc)
       n_bytes = tcp_prepare_retransmit_segment (wrk, tc, 0, n_bytes, &b);
       if (!n_bytes)
 	{
-	  /* Allocation failed, do not re-credit again the head to rxt_delivered */
+	  /* Allocation failed. Copies below high_rxt were retired, so rewind it */
 	  tcp_loss_rto_retransmit_failed (tc);
 	  tcp_retransmit_timer_reschedule (&wrk->timer_wheel, tc, tcp_cfg.alloc_err_timeout);
 	  return;

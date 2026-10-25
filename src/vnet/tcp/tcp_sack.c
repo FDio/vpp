@@ -231,8 +231,9 @@ scoreboard_next_rxt_hole (sack_scoreboard_t * sb,
       return 0;
     }
 
-  /* Rule (1): if higher than rxt, less than high_sacked and lost */
-  if (hole->is_lost && seq_lt (hole->start, sb->high_sacked))
+  /* Rule (1): if higher than rxt and lost. Sack loss detection marks only
+   * holes below high_sacked lost, an rto or reneging also those above it */
+  if (hole->is_lost)
     {
       sb->cur_rxt_hole = scoreboard_hole_index (sb, hole);
     }
@@ -292,7 +293,7 @@ scoreboard_rxt_mark_lost (sack_scoreboard_t *sb, u32 snd_una, u32 snd_nxt)
 {
   sack_scoreboard_hole_t *hole;
 
-  hole = scoreboard_first_hole (sb);
+  hole = scoreboard_last_hole (sb);
   if (!hole)
     {
       hole = scoreboard_insert_hole (sb, TCP_INVALID_SACK_HOLE_INDEX, snd_una,
@@ -300,12 +301,24 @@ scoreboard_rxt_mark_lost (sack_scoreboard_t *sb, u32 snd_una, u32 snd_nxt)
       sb->tail = scoreboard_hole_index (sb, hole);
       sb->high_sacked = snd_una;
     }
+  /* The tail hole ends at snd_nxt as of the last ack. Cover data sent since */
+  else if (seq_lt (hole->end, snd_nxt))
+    {
+      if (seq_geq (hole->start, sb->high_sacked))
+	hole->end = snd_nxt;
+      else if (seq_lt (sb->high_sacked, snd_nxt))
+	scoreboard_insert_hole (sb, sb->tail, sb->high_sacked, snd_nxt);
+    }
 
-  if (hole->is_lost)
-    return;
-
-  hole->is_lost = 1;
-  sb->lost_bytes += scoreboard_hole_bytes (hole);
+  /* Every unsacked byte is lost */
+  sb->lost_bytes = 0;
+  hole = scoreboard_first_hole (sb);
+  while (hole)
+    {
+      hole->is_lost = 1;
+      sb->lost_bytes += scoreboard_hole_bytes (hole);
+      hole = scoreboard_next_hole (sb, hole);
+    }
 }
 
 void
@@ -798,14 +811,16 @@ tcp_scoreboard_apply_sacks (tcp_connection_t *tc, u32 ack, u32 high_sacked, tcp_
       hole = scoreboard_last_hole (sb);
       if (seq_gt (tc->snd_nxt, hole->end))
 	{
-	  if (seq_geq (hole->start, sb->high_sacked))
+	  /* A lost tail hole holds data sent before an rto. Keep data sent
+	   * after it out of the hole */
+	  if (seq_geq (hole->start, sb->high_sacked) && !hole->is_lost)
 	    {
 	      hole->end = tc->snd_nxt;
 	    }
-	  /* New hole after high sacked block */
+	  /* New hole after high sacked block or after the lost tail hole */
 	  else if (seq_lt (sb->high_sacked, tc->snd_nxt))
 	    {
-	      scoreboard_insert_hole (sb, sb->tail, sb->high_sacked,
+	      scoreboard_insert_hole (sb, sb->tail, seq_max (sb->high_sacked, hole->end),
 				      tc->snd_nxt);
 	    }
 	}

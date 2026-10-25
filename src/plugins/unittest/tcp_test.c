@@ -390,6 +390,123 @@ done:
   return rv;
 }
 
+static u8
+tcp_test_sack_next_rxt (tcp_connection_t *tc, tcp_test_sack_backend_t backend, u8 have_unsent,
+			tcp_rxt_range_t *range, u8 *can_rescue)
+{
+  sack_scoreboard_hole_t *hole;
+  u8 snd_limited = 0;
+
+  *can_rescue = 0;
+  if (backend == TCP_TEST_SACK_BACKEND_BT)
+    return tcp_bt_next_rxt_range (tc, have_unsent, can_rescue, &snd_limited, range);
+
+  hole = scoreboard_get_hole (&tc->sack_sb, tc->sack_sb.cur_rxt_hole);
+  hole = scoreboard_next_rxt_hole (&tc->sack_sb, hole, have_unsent, can_rescue, &snd_limited);
+  if (!hole)
+    return 0;
+  *range = hole->range;
+  range->start = seq_max (range->start, tc->sack_sb.high_rxt);
+  return 1;
+}
+
+/* An rto marks every unsacked byte lost, including data above the highest
+ * sack and data sent after the last ack, and retires every earlier copy. That
+ * data is retransmitted before new data, and data sent after the rto is not
+ * lost. */
+static int
+tcp_test_sack_rto_loss (tcp_test_sack_backend_t backend)
+{
+  const char *name = tcp_test_sack_backend_names[backend];
+  tcp_connection_t _tc, *tc = &_tc;
+  tcp_rxt_range_t range;
+  tcp_ack_ctx_t ac = {};
+  sack_block_t block;
+  u8 have_range, can_rescue;
+  u32 n_bytes;
+  int rv = 1;
+
+  clib_memset (tc, 0, sizeof (*tc));
+  tc->snd_una = 1000;
+  tc->snd_nxt = 2000;
+  tc->snd_mss = 100;
+  tc->rcv_opts.flags = TCP_OPTS_FLAG_SACK_PERMITTED | TCP_OPTS_FLAG_SACK;
+  tc->cc_algo = tcp_cc_algo_get (TCP_CC_CUBIC);
+  tc->cc_algo->init (tc);
+  tcp_test_sack_backend_init (tc, backend);
+
+  /* Too little is sacked for any hole to be lost */
+  block = (sack_block_t) { 1100, 1200 };
+  vec_add1 (tc->rcv_opts.sacks, block);
+  block = (sack_block_t) { 1400, 1500 };
+  vec_add1 (tc->rcv_opts.sacks, block);
+  tc->rcv_opts.n_sack_blocks = 2;
+  tcp_test_rcv_sacks (tc, tc->snd_una, &ac);
+  if (!TCP_TEST_I (tc->sack_sb.sacked_bytes == 200 && tc->sack_sb.lost_bytes == 0,
+		   "%s: sacks mark nothing lost (%u sacked, %u lost)", name,
+		   tc->sack_sb.sacked_bytes, tc->sack_sb.lost_bytes))
+    goto done;
+
+  /* Data sent after the last ack */
+  if (backend == TCP_TEST_SACK_BACKEND_BT)
+    tcp_bt_track_tx (tc, 100);
+  tc->snd_nxt += 100;
+
+  /* Fast recovery resent both holes below the highest sack */
+  tc->flags = TCP_CONN_FAST_RECOVERY;
+  tc->snd_congestion = tc->snd_nxt;
+  tcp_test_track_rxt (tc, 1000, 1100);
+  tcp_test_track_rxt (tc, 1200, 1400);
+  tc->snd_rxt_bytes = 300;
+  tc->sack_sb.high_rxt = 1400;
+
+  n_bytes = tcp_loss_on_rto (tc);
+  if (!TCP_TEST_I (n_bytes == 100 && tc->sack_sb.lost_bytes == 900 &&
+		     tc->rxt_delivered == tc->snd_rxt_bytes && tcp_flight_size (tc) == 0,
+		   "%s: rto marks all unsacked data lost and retires all copies (head %u, "
+		   "%u lost, %u of %u copies, %u in flight)",
+		   name, n_bytes, tc->sack_sb.lost_bytes, tc->snd_rxt_bytes - tc->rxt_delivered,
+		   tc->snd_rxt_bytes, tcp_flight_size (tc)))
+    goto done;
+
+  /* With the holes below the highest sack retransmitted, the data above it
+   * goes before new data */
+  tcp_sack_init_rxt (tc, tc->snd_una);
+  tc->sack_sb.high_rxt = 1500;
+  have_range = tcp_test_sack_next_rxt (tc, backend, 1 /* have_unsent */, &range, &can_rescue);
+  if (!TCP_TEST_I (have_range && range.start == 1500 && range.end == 2100 && !can_rescue,
+		   "%s: rto loss above the highest sack is retransmitted [%u, %u)", name,
+		   range.start, range.end))
+    goto done;
+
+  /* New data sent after the rto. An ack that sacks part of the lost tail
+   * leaves the new data out of the loss */
+  tc->sack_sb.high_rxt = 2100;
+  if (backend == TCP_TEST_SACK_BACKEND_BT)
+    tcp_bt_track_tx (tc, 100);
+  tc->snd_nxt += 100;
+  vec_reset_length (tc->rcv_opts.sacks);
+  block = (sack_block_t) { 1500, 1600 };
+  vec_add1 (tc->rcv_opts.sacks, block);
+  tc->rcv_opts.n_sack_blocks = 1;
+  tcp_test_rcv_sacks (tc, tc->snd_una, &ac);
+  if (!TCP_TEST_I (tc->sack_sb.lost_bytes == 800 && tcp_flight_size (tc) == 100,
+		   "%s: data sent after the rto is not lost (%u lost, %u in flight)", name,
+		   tc->sack_sb.lost_bytes, tcp_flight_size (tc)))
+    goto done;
+
+  have_range = tcp_test_sack_next_rxt (tc, backend, 0 /* have_unsent */, &range, &can_rescue);
+  if (!TCP_TEST_I (!have_range && can_rescue,
+		   "%s: data sent after the rto is left to a rescue retransmit", name))
+    goto done;
+
+  rv = 0;
+
+done:
+  tcp_test_sack_backend_cleanup (tc, backend);
+  return rv;
+}
+
 /* The reorder estimate must equal ceil(reordering_distance / mss) exactly,
  * neither under- nor over-estimating, and must track the maximum observed
  * distance rather than summing successive observations. */
@@ -538,6 +655,10 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
 
   if (tcp_test_sack_rxt_head (TCP_TEST_SACK_BACKEND_SCOREBOARD) ||
       tcp_test_sack_rxt_head (TCP_TEST_SACK_BACKEND_BT))
+    return 1;
+
+  if (tcp_test_sack_rto_loss (TCP_TEST_SACK_BACKEND_SCOREBOARD) ||
+      tcp_test_sack_rto_loss (TCP_TEST_SACK_BACKEND_BT))
     return 1;
 
   clib_memset (tc, 0, sizeof (*tc));
@@ -6374,7 +6495,8 @@ cleanup:
 
 /* The rto copy of the head stops at the first sacked byte. Send a short
  * segment followed by one the peer sacks, and drop the short one until a
- * retransmit timeout resends it. */
+ * retransmit timeout resends it. A timeout retires earlier copies, so with the
+ * peer's acks held only the last copy is in flight. */
 static int
 tcp_test_tamper_rto_head (vlib_main_t *vm)
 {
@@ -6390,11 +6512,11 @@ tcp_test_tamper_rto_head (vlib_main_t *vm)
   };
   const u32 head_len = 100, island_len = 200, total_bytes = head_len + island_len;
   tcp_e2e_ctx_t _ctx, *ctx = &_ctx;
-  tcp_connection_t *client_tc;
-  tcp_tamper_rule_t *seg_rule;
+  tcp_connection_t *client_tc, *server_tc;
+  tcp_tamper_rule_t *seg_rule, *ack_rule;
   session_t *client_s, *server_s;
   u32 tries, max_iters, tr_before, rxt_bytes_before, rxt_segs_before, drained = 0;
-  u32 rxt_bytes, rxt_segs;
+  u32 rxt_bytes, rxt_segs, rxt_in_flight;
   u8 *data = 0;
   int error, rv = 0, i;
 
@@ -6413,6 +6535,7 @@ tcp_test_tamper_rto_head (vlib_main_t *vm)
       rv = 1;
       goto cleanup;
     }
+  server_tc = (tcp_connection_t *) session_get_transport (server_s);
   if (!TCP_TEST_I ((total_bytes < client_tc->snd_mss),
 		   "rto_head: one mss covers both segments (mss %u)", client_tc->snd_mss))
     {
@@ -6432,10 +6555,15 @@ tcp_test_tamper_rto_head (vlib_main_t *vm)
   rxt_segs_before = client_tc->segs_retrans;
 
   /* Drop the short segment and its first retransmission. Whether loss
-   * detection or a timeout sends that copy, a later timeout sends the next. */
-  seg_rule = tcp_tamper_drop_seq (client_tc, client_tc->snd_una, 2);
+   * detection or a timeout sends that copy, a later timeout sends the next.
+   * The peer's acks pass until held. */
+  tcp_tamper_drop_seq (client_tc, client_tc->snd_una, 2);
+  tcp_tamper_drop_pure_ack (server_tc, 0);
+  seg_rule = &tcp_tamper_main.rules[0];
+  ack_rule = &tcp_tamper_main.rules[1];
   seg_rule->data_only = 1;
   tcp_tamper_enable (client_tc);
+  tcp_tamper_enable (server_tc);
   client_tc->rto = TCP_RTO_MIN;
 
   vec_validate (data, total_bytes - 1);
@@ -6457,6 +6585,26 @@ tcp_test_tamper_rto_head (vlib_main_t *vm)
 	  goto cleanup;
 	}
       tcp_e2e_pump (vm, 1e-3);
+    }
+
+  /* Nothing reaches the peer after the first copy is dropped. Hold its acks
+   * of the copy the next timeout sends. */
+  max_iters = tcp_e2e_rxt_wait_iters (client_tc, 10e-3);
+  for (tries = 0; seg_rule->n_dropped < 2 && tries < max_iters; tries++)
+    tcp_e2e_pump (vm, 10e-3);
+  ack_rule->n_drop = ~0;
+
+  max_iters = tcp_e2e_rxt_wait_iters (client_tc, 10e-3);
+  for (tries = 0; (seg_rule->n_matched < 3 || !ack_rule->n_dropped) && tries < max_iters; tries++)
+    tcp_e2e_pump (vm, 10e-3);
+  rxt_in_flight = client_tc->snd_rxt_bytes - client_tc->rxt_delivered;
+  ack_rule->n_drop = 0;
+
+  if (!TCP_TEST_I ((ack_rule->n_dropped && rxt_in_flight == head_len),
+		   "rto_head: only the last copy is in flight (%u bytes)", rxt_in_flight))
+    {
+      rv = 1;
+      goto cleanup;
     }
 
   max_iters = tcp_e2e_rxt_wait_iters (client_tc, 10e-3);
@@ -8066,9 +8214,9 @@ tcp_test_bt_incremental_sack_loss (void)
   tc->rcv_opts.n_sack_blocks = 1;
   tcp_test_rcv_sacks (tc, 0, &ac);
   tcp_bt_rxt_mark_lost (tc);
-  TCP_TEST (tc->sack_sb.lost_bytes == 300 && tc->bt->sack_loss_high == 0,
-	    "RTO loss does not advance SACK boundary: %u/%u", tc->sack_sb.lost_bytes,
-	    tc->bt->sack_loss_high);
+  TCP_TEST (tc->sack_sb.lost_bytes == 900 && tc->bt->sack_loss_high == 0,
+	    "RTO marks all unsacked data lost without advancing SACK boundary: %u/%u",
+	    tc->sack_sb.lost_bytes, tc->bt->sack_loss_high);
 
   tcp_bt_recompute_sack_loss (tc);
   TCP_TEST (tc->sack_sb.lost_bytes == 0 && tc->bt->sack_loss_high == 0,
@@ -8270,11 +8418,28 @@ tcp_test_bt_rescue_range (void)
   tcp_sack_init_rxt (default_tc, 100);
   tcp_sack_init_rxt (bt_tc, 100);
 
+  /* Rto loss above HighACK is retransmitted before new data */
+  hole = scoreboard_get_hole (&default_tc->sack_sb, default_tc->sack_sb.cur_rxt_hole);
+  hole = scoreboard_next_rxt_hole (&default_tc->sack_sb, hole, 1 /* have_unsent */, &default_rescue,
+				   &default_limited);
+  u8 have_range =
+    tcp_bt_next_rxt_range (bt_tc, 1 /* have_unsent */, &bt_rescue, &bt_limited, &range);
+  TCP_TEST (hole && have_range && hole->start == 100 && hole->end == 1000 && range.start == 100 &&
+	      range.end == 1000,
+	    "BT and scoreboard retransmit rto loss above HighACK: [%u,%u)", range.start, range.end);
+  TCP_TEST (!default_rescue && !bt_rescue && !default_limited && !bt_limited,
+	    "BT and scoreboard rto loss retransmit is not a rescue");
+
+  /* Once the rto loss is discarded, the range is left to a rescue retransmit */
+  tcp_sack_recompute_loss (default_tc);
+  tcp_sack_recompute_loss (bt_tc);
+  tcp_sack_init_rxt (default_tc, 100);
+  tcp_sack_init_rxt (bt_tc, 100);
+
   hole = scoreboard_get_hole (&default_tc->sack_sb, default_tc->sack_sb.cur_rxt_hole);
   hole = scoreboard_next_rxt_hole (&default_tc->sack_sb, hole, 0 /* have_unsent */, &default_rescue,
 				   &default_limited);
-  u8 have_range =
-    tcp_bt_next_rxt_range (bt_tc, 0 /* have_unsent */, &bt_rescue, &bt_limited, &range);
+  have_range = tcp_bt_next_rxt_range (bt_tc, 0 /* have_unsent */, &bt_rescue, &bt_limited, &range);
   TCP_TEST (!hole && !have_range, "ordinary BT and scoreboard retransmit ranges are exhausted");
   TCP_TEST (default_rescue && bt_rescue, "BT and scoreboard request a rescue retransmit");
   TCP_TEST (default_limited && bt_limited, "BT and scoreboard report rescue send limiting");
@@ -8366,7 +8531,7 @@ tcp_test_bt_rxt_over_sacked (void)
 	    "BT sacked bytes match default before rto: %u", bt_tc->sack_sb.sacked_bytes);
 
   /*
-   * Rto marks the head lost and rewinds the retransmit frontier
+   * Rto marks all unsacked data lost and rewinds the retransmit frontier
    */
   default_tc->flags = bt_tc->flags = TCP_CONN_FAST_RECOVERY | TCP_CONN_RECOVERY;
   default_tc->snd_congestion = bt_tc->snd_congestion = 1000;
@@ -8376,7 +8541,7 @@ tcp_test_bt_rxt_over_sacked (void)
   tcp_sack_init_rxt (bt_tc, 0);
 
   TCP_TEST (bt_tc->sack_sb.lost_bytes == default_tc->sack_sb.lost_bytes &&
-	      bt_tc->sack_sb.lost_bytes == 50,
+	      bt_tc->sack_sb.lost_bytes == 850,
 	    "BT lost bytes match default after rto: %u", bt_tc->sack_sb.lost_bytes);
 
   /*
@@ -8390,7 +8555,7 @@ tcp_test_bt_rxt_over_sacked (void)
 	      bt_tc->sack_sb.sacked_bytes == 150,
 	    "BT retains sacked bytes a head retransmit spans: %u", bt_tc->sack_sb.sacked_bytes);
   TCP_TEST (bt_tc->sack_sb.lost_bytes == default_tc->sack_sb.lost_bytes &&
-	      bt_tc->sack_sb.lost_bytes == 50,
+	      bt_tc->sack_sb.lost_bytes == 850,
 	    "BT lost bytes match default after head retransmit: %u", bt_tc->sack_sb.lost_bytes);
   TCP_TEST (tcp_bt_is_sane (bt_tc->bt), "BT range store sane after head retransmit");
   TCP_TEST (tcp_bt_is_sane_post_recovery (bt_tc),
@@ -8413,7 +8578,7 @@ tcp_test_bt_rxt_over_sacked (void)
 	      bt_tc->sack_sb.sacked_bytes == 250,
 	    "BT sacked bytes match default on next ack: %u", bt_tc->sack_sb.sacked_bytes);
   TCP_TEST (bt_tc->sack_sb.lost_bytes == default_tc->sack_sb.lost_bytes &&
-	      bt_tc->sack_sb.lost_bytes == 50,
+	      bt_tc->sack_sb.lost_bytes == 750,
 	    "BT lost bytes match default on next ack: %u", bt_tc->sack_sb.lost_bytes);
   TCP_TEST (bt_ac.last_sacked_bytes == default_ac.last_sacked_bytes &&
 	      bt_ac.last_lost == default_ac.last_lost,
@@ -8454,7 +8619,7 @@ tcp_test_bt_rxt_merge_over_sacked (void)
   tc->snd_congestion = 1000;
   tcp_sack_rxt_mark_lost (tc);
   tcp_sack_init_rxt (tc, 0);
-  TCP_TEST (tc->sack_sb.lost_bytes == 200, "lost bytes are %u", tc->sack_sb.lost_bytes);
+  TCP_TEST (tc->sack_sb.lost_bytes == 900, "lost bytes are %u", tc->sack_sb.lost_bytes);
 
   /* Retransmit the head, then a contiguous range that runs into the sacked
    * block. The second call extends the sample the first one allocated. */
@@ -8463,7 +8628,7 @@ tcp_test_bt_rxt_merge_over_sacked (void)
 
   TCP_TEST (tc->sack_sb.sacked_bytes == 100,
 	    "BT retains sacked bytes a merged retransmit spans: %u", tc->sack_sb.sacked_bytes);
-  TCP_TEST (tc->sack_sb.lost_bytes == 200, "BT lost bytes survive a merged retransmit: %u",
+  TCP_TEST (tc->sack_sb.lost_bytes == 900, "BT lost bytes survive a merged retransmit: %u",
 	    tc->sack_sb.lost_bytes);
   TCP_TEST (tcp_bt_is_sane (tc->bt), "BT range store sane after merged retransmit");
   TCP_TEST (tcp_bt_is_sane_post_recovery (tc),
@@ -8471,7 +8636,7 @@ tcp_test_bt_rxt_merge_over_sacked (void)
 
   /* Retransmitting only sacked bytes must be a no-op for the aggregates */
   tcp_test_track_rxt (tc, 200, 300);
-  TCP_TEST (tc->sack_sb.sacked_bytes == 100 && tc->sack_sb.lost_bytes == 200,
+  TCP_TEST (tc->sack_sb.sacked_bytes == 100 && tc->sack_sb.lost_bytes == 900,
 	    "BT aggregates unchanged by a fully sacked retransmit: %u/%u", tc->sack_sb.sacked_bytes,
 	    tc->sack_sb.lost_bytes);
   TCP_TEST (tcp_bt_is_sane (tc->bt), "BT range store sane after fully sacked retransmit");
