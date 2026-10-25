@@ -1,0 +1,89 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "42f1bddf_0db54f09",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2026-10-25T08:44:32Z",
+      "side": 1,
+      "message": "Thank you for this change! I had noticed that reading the eeprom stalls workers, but never looked into it.\n\nI have a few questions about stale/missing/broken optics possibly making other optics in a larger instance (say with 100 ports) become stale. PTAL.\n\nSince there are no tests (understandable without ixgbe hardware), could you add a short note on how this was tested, e.g. NIC/PMD, module types (DDM optic, passive DAC, empty cage) and measured read times? Should we test it against other DPDK PMDs?",
+      "revId": "c437742035940c69287b86f867521fab99e74427",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "df6a89b6_dbccd2fb",
+        "filename": "src/plugins/dpdk/device/eeprom.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 36,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2026-10-25T08:44:32Z",
+      "side": 1,
+      "message": "nit: although this is a generic eeprom reader (and I\u0027ve checked that ixgbe, i40e, ice, igb, txgbe, bnxt, hns3, cnxk, nfp all correctly honor info-\u003eoffset) the comments in the file seem to suggest it\u0027s specific to ixgbe, while I don\u0027t think it is. Maybe scrub this file for references to ixgbe?",
+      "revId": "c437742035940c69287b86f867521fab99e74427",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "cbecdfb4_e864fae9",
+        "filename": "src/plugins/dpdk/device/eeprom.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 129,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2026-10-25T08:44:32Z",
+      "side": 1,
+      "message": "OOC have you confirmed that an empty cage, or an optic without I2C, does not timeout perpetually?",
+      "revId": "c437742035940c69287b86f867521fab99e74427",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "83eb310d_2dcacc79",
+        "filename": "src/plugins/dpdk/device/eeprom.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 319,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2026-10-25T08:44:32Z",
+      "side": 1,
+      "message": "Bad optics will spin the reader (I\u0027ve seen this before on switch/router vendors), perhaps a backoff for failed (or missing) is in order, eg:\n\nf64 max_age \u003d st-\u003evalid ? DPDK_EEPROM_CACHE_MAX_AGE : DPDK_EEPROM_FAIL_MAX_AGE;",
+      "revId": "c437742035940c69287b86f867521fab99e74427",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6ee85056_9035878c",
+        "filename": "src/vnet/interface_cli.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 2774,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2026-10-25T08:44:32Z",
+      "side": 1,
+      "message": "errors were not checked here at HEAD, but with the async implementation, other errors (like eeprom read timeout) need to reach the user. Also, there\u0027s a pre-existing memory leak with error not being freed.\n\nI suggest you print and free the error here:\nif (error) {\n  vlib_cli_output (vm, \"%U\", format_clib_error, error);\n  clib_error_free (error);\n}",
+      "revId": "c437742035940c69287b86f867521fab99e74427",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
