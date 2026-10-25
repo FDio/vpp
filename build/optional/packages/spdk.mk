@@ -3,9 +3,9 @@
 
 SPDK_DEBUG ?= n
 
-spdk_version := 4828014884dcfafaaae1a741d613a45c57b64816
+spdk_version := c973715cf4763964804b5b58d06d8275a48e1aa1
 spdk_tarball := spdk-$(spdk_version).tar.gz
-spdk_tarball_sha256sum := cc206b53805dd136fdde93fdad1a87bec6e888538015c2e8a8d71eb8cd0408ed
+spdk_tarball_sha256sum := e3fbbd41016b39a70442e7f58c33b4846d1f22fe5bf4bc6e9136b24df275bf09
 spdk_url := https://github.com/spdk/spdk/archive/$(spdk_version).tar.gz
 spdk_tarball_strip_dirs := 1
 spdk_env_dir := $(CURDIR)/spdk-env-vpp
