@@ -42,3 +42,8 @@ add_vpp_plugin(ikev2
   LINK_LIBRARIES
   ${OPENSSL_CRYPTO_LIBRARIES}
 )
+
+add_vpp_plugin(ikev2_unittest
+  SOURCES
+  ikev2_cli_test.c
+)
