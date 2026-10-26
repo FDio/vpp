@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "03d447ab_71fae2e6",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-10-26T14:46:50Z",
+      "side": 1,
+      "message": "I think it is already addressed by https://gerrit.fd.io/r/c/vpp/+/46966",
+      "revId": "4416da94b673aeaa322ddfa1ab7149eb65c6a259",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
