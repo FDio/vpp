@@ -1259,6 +1259,7 @@ http3_req_state_wait_transport_reply (http_ctx_t *stream, http_ctx_t *req,
 
   msg.type = HTTP_MSG_REPLY;
   msg.code = req->status_code;
+  msg.data.len = req->control_data_len;
   msg.data.headers_offset = req->headers_offset;
   msg.data.headers_len = req->headers_len;
   msg.data.headers_ctx = pointer_to_uword (req->headers);
