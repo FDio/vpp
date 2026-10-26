@@ -158,6 +158,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "594373d1_29a3e0b4",
+        "filename": "src/plugins/hsi/hsi_tracker_tcp.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 979,
+      "author": {
+        "id": 3339
+      },
+      "writtenOn": "2026-10-26T21:02:56Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "597a00e7_eb35e493",
+      "revId": "ff2699ef9d5024fded1e6caf60b05a4f1292a40e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "b9ce308e_77ab9eac",
