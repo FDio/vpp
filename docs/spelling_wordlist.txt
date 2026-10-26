@@ -368,6 +368,7 @@ favour
 favoured
 favours
 fbfc
+fcp
 fd
 fdioDocs
 fff
@@ -393,6 +394,8 @@ fooC
 foreach
 formatter
 Fortville
+freebsd
+FreeBSD
 frontend
 fs
 fsol
@@ -1093,6 +1096,7 @@ spd
 spdk
 Spdk
 Specialisations
+SPI
 spinlock
 spinlocks
 sr
