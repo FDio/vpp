@@ -35,6 +35,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "5a13a41e_a43a9f74",
+        "filename": "src/plugins/hsi/hsi.h",
+        "patchSetId": 6
+      },
+      "lineNbr": 29,
+      "author": {
+        "id": 3339
+      },
+      "writtenOn": "2026-10-26T21:02:36Z",
+      "side": 1,
+      "message": "fixed",
+      "parentUuid": "2d64af63_01e6f200",
+      "revId": "ff2699ef9d5024fded1e6caf60b05a4f1292a40e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "69921c04_9dbe3707",
@@ -52,6 +70,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "2d8c5c4b_da990779",
+        "filename": "src/plugins/hsi/hsi_tracker.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 356,
+      "author": {
+        "id": 3339
+      },
+      "writtenOn": "2026-10-26T21:02:36Z",
+      "side": 1,
+      "message": "Fixed - add the UDP specific functions to this hsi_tracker_vft type: udp_tracked_action(...) and udp_tracker_get(...)",
+      "parentUuid": "69921c04_9dbe3707",
+      "revId": "ff2699ef9d5024fded1e6caf60b05a4f1292a40e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "4f8a5474_1d45d602",
@@ -65,6 +101,24 @@
       "writtenOn": "2026-10-26T18:05:05Z",
       "side": 1,
       "message": "shouldn\u0027t this just be an else?",
+      "revId": "ff2699ef9d5024fded1e6caf60b05a4f1292a40e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b20d3b31_8d157010",
+        "filename": "src/plugins/hsi/hsi_tracker_tcp.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 961,
+      "author": {
+        "id": 3339
+      },
+      "writtenOn": "2026-10-26T21:02:36Z",
+      "side": 1,
+      "message": "No, this should not just be an \"else\" - we may miss the case of \"ACK+RST\" flags on the packet",
+      "parentUuid": "4f8a5474_1d45d602",
       "revId": "ff2699ef9d5024fded1e6caf60b05a4f1292a40e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -88,6 +142,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "597a00e7_eb35e493",
+        "filename": "src/plugins/hsi/hsi_tracker_tcp.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 979,
+      "author": {
+        "id": 3339
+      },
+      "writtenOn": "2026-10-26T21:02:36Z",
+      "side": 1,
+      "message": "Yes we need this - when the new tls-hsi calls this function it passes in send_rst_on_drain_fail\u003d0 and the original function passes send_rst_on_drain_fail\u003d1 to this function : hsi_tcp_drain_fail_pair (drain) - just preserves the old logic before this code change: hsi_tcp_drain_fail_pair (drain) and hsi_tcp_drain_fail_pair_silent (drain) are mostly identical, except that the new function hsi_tcp_drain_fail_pair_silent (drain) skips sending RESET packet before cleaning up the sessions.",
+      "parentUuid": "c5d82218_97c8a3a4",
+      "revId": "ff2699ef9d5024fded1e6caf60b05a4f1292a40e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "b9ce308e_77ab9eac",
         "filename": "src/plugins/hsi/hsi_tracker_tcp.c",
         "patchSetId": 6
@@ -99,6 +171,24 @@
       "writtenOn": "2026-10-26T18:05:05Z",
       "side": 1,
       "message": "Is this accurate? We\u0027re past draining. The same comment lower",
+      "revId": "ff2699ef9d5024fded1e6caf60b05a4f1292a40e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "8549a1fe_9a87b2e2",
+        "filename": "src/plugins/hsi/hsi_tracker_tcp.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 1733,
+      "author": {
+        "id": 3339
+      },
+      "writtenOn": "2026-10-26T21:02:36Z",
+      "side": 1,
+      "message": "Fixed, use HSI_CLEANUP_TRACK_COMPLETE if RST during steady \"tracked\" state",
+      "parentUuid": "b9ce308e_77ab9eac",
       "revId": "ff2699ef9d5024fded1e6caf60b05a4f1292a40e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
