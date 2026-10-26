@@ -344,10 +344,10 @@ arp_dst_fib_check (const fib_node_index_t fei, fib_entry_flag_t * flags)
   FOR_EACH_SRC_ADDED(entry, entry_src, src,
   ({
     *flags = fib_entry_get_flags_for_source (fei, src);
-    if (fib_entry_is_sourced (fei, FIB_SOURCE_ADJ))
-        return ARP_DST_FIB_ADJ;
-      else if (FIB_ENTRY_FLAG_CONNECTED & *flags)
-        return ARP_DST_FIB_CONN;
+    if (FIB_SOURCE_ADJ == src)
+      return ARP_DST_FIB_ADJ;
+    else if (FIB_ENTRY_FLAG_CONNECTED & *flags)
+      return ARP_DST_FIB_CONN;
   }))
 
   return ARP_DST_FIB_NONE;

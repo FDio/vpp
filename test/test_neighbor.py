@@ -2025,6 +2025,46 @@ class ARPTestCase(VppTestCase):
             self.pg0.remote_ip4,
         )
 
+    def test_arp_forus_stale_adj(self):
+        """ARP for an address that was learned and then became local"""
+
+        #
+        # A neighbor entry exists for an address on the LAN, then the
+        # address becomes a local address of the interface (e.g. a VRRP
+        # failover with a Linux CP synced address). The entry has the
+        # interface source and the adjacency source. VPP must still
+        # answer ARP requests for the address.
+        #
+        self.pg0.generate_remote_hosts(2)
+        host = self.pg0.remote_hosts[1]
+
+        VppNeighbor(
+            self, self.pg0.sw_if_index, "00:00:00:11:22:33", host.ip4
+        ).add_vpp_config()
+        self.assertTrue(find_nbr(self, self.pg0.sw_if_index, host.ip4))
+
+        addr = VppIpInterfaceAddress(self, self.pg0, host.ip4, 24).add_vpp_config()
+
+        p = Ether(dst="ff:ff:ff:ff:ff:ff", src=self.pg0.remote_mac) / ARP(
+            op="who-has",
+            hwdst=self.pg0.local_mac,
+            hwsrc=self.pg0.remote_mac,
+            pdst=host.ip4,
+            psrc=self.pg0.remote_ip4,
+        )
+
+        rx = self.send_and_expect(self.pg0, [p], self.pg0)
+
+        self.verify_arp_resp(
+            rx[0],
+            self.pg0.local_mac,
+            self.pg0.remote_mac,
+            host.ip4,
+            self.pg0.remote_ip4,
+        )
+
+        addr.remove_vpp_config()
+
     def test_arp_table_swap(self):
         #
         # Generate some hosts on the LAN
