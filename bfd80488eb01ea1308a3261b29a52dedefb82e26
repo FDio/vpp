@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b6ec37ee_212c92cf",
+        "filename": "src/plugins/rdma/device.c",
+        "patchSetId": 137
+      },
+      "lineNbr": 318,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-10-26T10:53:16Z",
+      "side": 1,
+      "message": "The existing catch-all leaves the EtherType wildcarded and targets the same rx_qp4, so it should already receive PPPoE frames. What NIC/firmware behavior makes explicit EtherType rules necessary here?",
+      "revId": "bfd80488eb01ea1308a3261b29a52dedefb82e26",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
