@@ -119,7 +119,8 @@ vp_print_periodic_stats (vlib_main_t *vm, u8 print_header, vp_test_cfg_t *cfg, v
 	{
 	  vp_cli ("%-13.1f %-13U %-10U %+9Ub/s %+9.3fms %llu/%llu", interval_end, format_base10,
 		  sent_bytes, format_base10, received_bytes, format_base10,
-		  flt_round_nearest ((f64) (total_bytes - last_total_bytes) / print_delta) * 8,
+		  (u64) flt_round_nearest ((f64) (total_bytes - last_total_bytes) / print_delta) *
+		    8,
 		  (cfg->report_interval_jitter ? jitter : rtt), dgrams_sent, dgrams_received);
 	}
       else
@@ -128,7 +129,8 @@ vp_print_periodic_stats (vlib_main_t *vm, u8 print_header, vp_test_cfg_t *cfg, v
 	  vp_cli ("%.1f-%-9.1f %-13U %-10U %+9Ub/s %+9.3fms %llu/%llu", interval_start,
 		  interval_end, format_base10, sent_bytes - stats->last_total_tx_bytes,
 		  format_base10, received_bytes - stats->last_total_rx_bytes, format_base10,
-		  flt_round_nearest ((f64) (total_bytes - last_total_bytes) / print_delta) * 8,
+		  (u64) flt_round_nearest ((f64) (total_bytes - last_total_bytes) / print_delta) *
+		    8,
 		  (cfg->report_interval_jitter ? jitter : rtt),
 		  (dgrams_sent - stats->last_total_tx_dgrams),
 		  (dgrams_received - stats->last_total_rx_dgrams));
@@ -151,13 +153,15 @@ vp_print_periodic_stats (vlib_main_t *vm, u8 print_header, vp_test_cfg_t *cfg, v
       if (cfg->report_interval_total)
 	vp_cli ("%-13.1f %-13U %-10U %+9Ub/s %+7.3fms", interval_end, format_base10, sent_bytes,
 		format_base10, received_bytes, format_base10,
-		flt_round_nearest ((f64) total_bytes / (time_now - stats->test_start_time)) * 8,
+		(u64) flt_round_nearest ((f64) total_bytes / (time_now - stats->test_start_time)) *
+		  8,
 		rtt * 1000);
       else
 	vp_cli ("%.1f-%-9.1f %-13U %-10U %+9Ub/s %+7.3fms", interval_start, interval_end,
 		format_base10, sent_bytes - stats->last_total_tx_bytes, format_base10,
 		received_bytes - stats->last_total_rx_bytes, format_base10,
-		flt_round_nearest (((f64) (total_bytes - last_total_bytes)) / print_delta) * 8,
+		(u64) flt_round_nearest (((f64) (total_bytes - last_total_bytes)) / print_delta) *
+		  8,
 		rtt * 1000);
     }
   stats->last_print_time = time_now;
@@ -244,10 +248,10 @@ vp_print_final_stats (vlib_main_t *vm, f64 total_delta, vp_test_cfg_t *cfg, vp_s
   else
     total_bytes = (cfg->echo_bytes ? stats->rx_total : stats->tx_total);
   transfer_type = cfg->echo_bytes ? "full-duplex" : "half-duplex";
-  vp_cli ("%lld bytes (%lld mbytes, %lld gbytes) in %.2f seconds", total_bytes,
+  vp_cli ("%llu bytes (%llu mbytes, %llu gbytes) in %.2f seconds", total_bytes,
 	  total_bytes / (1ULL << 20), total_bytes / (1ULL << 30), total_delta);
-  vp_cli ("%u bytes/second %s", flt_round_nearest (((f64) total_bytes) / (total_delta)),
+  vp_cli ("%wd bytes/second %s", flt_round_nearest (((f64) total_bytes) / (total_delta)),
 	  transfer_type);
-  vp_cli ("%UB/s %s", format_base10, flt_round_nearest (((f64) total_bytes) / (total_delta)),
+  vp_cli ("%UB/s %s", format_base10, (u64) flt_round_nearest (((f64) total_bytes) / (total_delta)),
 	  transfer_type);
 }

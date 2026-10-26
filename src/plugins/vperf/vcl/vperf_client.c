@@ -104,7 +104,7 @@ vperf_client_cfg_sync (vperf_session_t *ts)
   if ((rx_bytes != sizeof (vperf_cfg_t)))
     {
       vperf_warn ("(fd %d): Invalid config received from server!", ts->fd);
-      vperf_info ("\tRx bytes %d != cfg size %lu", rx_bytes, sizeof (vperf_cfg_t));
+      vperf_info ("\tRx bytes %d != cfg size %zu", rx_bytes, sizeof (vperf_cfg_t));
       return -1;
     }
   /* in post test sync server use some fields for rx stats */
@@ -312,7 +312,7 @@ vperf_client_worker_inc_stats_check (vperf_client_worker_t *wrk, vperf_session_t
     {
       duration = vperf_time_diff (&wrk->old_stats_stop, &now);
       total_rate = (double) total_bytes * 8 / duration / 1e9;
-      printf ("Sum: Sent %lu Mbytes in %.2lf seconds %.2lf Gbps\n", (uint64_t) (total_bytes / 1e6),
+      printf ("Sum: Sent %" PRIu64 " Mbytes in %.2lf seconds %.2lf Gbps\n", total_bytes / 1000000,
 	      duration, total_rate);
       printf ("-------------------------------------------------\n");
     }
@@ -575,8 +575,9 @@ vperf_client_worker_connect_sessions_epoll (vperf_client_worker_t *wrk)
   clock_gettime (CLOCK_REALTIME, &end);
 
   diff = vperf_time_diff (&start, &end);
-  vperf_info ("Connected (%u) connected in %.2f seconds (%u CPS)!", wrk->cfg.num_test_sessions,
-	      diff, (uint32_t) ((double) wrk->cfg.num_test_sessions / diff));
+  vperf_info ("Connected (%u) connected in %.2f seconds (%" PRIu64 " CPS)!",
+	      wrk->cfg.num_test_sessions, diff,
+	      (uint64_t) ((double) wrk->cfg.num_test_sessions / diff));
 
   ev.events = EPOLLET | EPOLLIN | EPOLLOUT;
 
@@ -897,7 +898,7 @@ cfg_txbuf_size_set (void)
       vperf_cfg_dump (&ctrl->cfg, 1 /* is_client */);
     }
   else
-    vperf_warn ("Invalid txbuf size (%lu) < minimum buf size (%u)!", txbuf_size,
+    vperf_warn ("Invalid txbuf size (%" PRIu64 ") < minimum buf size (%u)!", txbuf_size,
 		VPERF_CFG_BUF_SIZE_MIN);
 }
 
@@ -956,7 +957,7 @@ cfg_rxbuf_size_set (void)
       vperf_cfg_dump (&ctrl->cfg, 1 /* is_client */);
     }
   else
-    vperf_warn ("Invalid rxbuf size (%lu) < minimum buf size (%u)!", rxbuf_size,
+    vperf_warn ("Invalid rxbuf size (%" PRIu64 ") < minimum buf size (%u)!", rxbuf_size,
 		VPERF_CFG_BUF_SIZE_MIN);
 }
 
@@ -1082,8 +1083,8 @@ vperf_client_process_opts (vperf_client_main_t *vcm, int argc, char **argv)
 	    }
 	if (!ctrl->cfg.num_test_sessions || (ctrl->cfg.num_test_sessions > VPERF_CFG_MAX_TEST_SESS))
 	  {
-	    vperf_warn ("Invalid number of sessions (%d) specified for option -%c!"
-			"\n       Valid range is 1 - %d",
+	    vperf_warn ("Invalid number of sessions (%u) specified for option -%c!"
+			"\n       Valid range is 1 - %u",
 			ctrl->cfg.num_test_sessions, c, VPERF_CFG_MAX_TEST_SESS);
 	    print_usage_and_exit ();
 	  }
@@ -1099,8 +1100,8 @@ vperf_client_process_opts (vperf_client_main_t *vcm, int argc, char **argv)
 	if (!ctrl->cfg.num_test_sessions_perq ||
 	    (ctrl->cfg.num_test_sessions_perq > VPERF_CFG_MAX_TEST_SESS))
 	  {
-	    vperf_warn ("Invalid number of Stream sessions (%d) per Qsession"
-			"for option -%c!\nValid range is 1 - %d",
+	    vperf_warn ("Invalid number of Stream sessions (%u) per Qsession"
+			"for option -%c!\nValid range is 1 - %u",
 			ctrl->cfg.num_test_sessions_perq, c, VPERF_CFG_MAX_TEST_SESS);
 	    print_usage_and_exit ();
 	  }
@@ -1135,8 +1136,8 @@ vperf_client_process_opts (vperf_client_main_t *vcm, int argc, char **argv)
 	break;
 
       case 'N':
-	if (sscanf (optarg, "0x%lx", &ctrl->cfg.num_writes) != 1)
-	  if (sscanf (optarg, "%ld", &ctrl->cfg.num_writes) != 1)
+	if (sscanf (optarg, "0x%" SCNx64, &ctrl->cfg.num_writes) != 1)
+	  if (sscanf (optarg, "%" SCNu64, &ctrl->cfg.num_writes) != 1)
 	    {
 	      vperf_warn ("Invalid value for option -%c!", c);
 	      print_usage_and_exit ();
@@ -1145,8 +1146,8 @@ vperf_client_process_opts (vperf_client_main_t *vcm, int argc, char **argv)
 	break;
 
       case 'R':
-	if (sscanf (optarg, "0x%lx", &ctrl->cfg.rxbuf_size) != 1)
-	  if (sscanf (optarg, "%ld", &ctrl->cfg.rxbuf_size) != 1)
+	if (sscanf (optarg, "0x%" SCNx64, &ctrl->cfg.rxbuf_size) != 1)
+	  if (sscanf (optarg, "%" SCNu64, &ctrl->cfg.rxbuf_size) != 1)
 	    {
 	      vperf_warn ("Invalid value for option -%c!", c);
 	      print_usage_and_exit ();
@@ -1159,7 +1160,7 @@ vperf_client_process_opts (vperf_client_main_t *vcm, int argc, char **argv)
 	  }
 	else
 	  {
-	    vperf_warn ("rxbuf size (%lu) less than minumum (%u)", ctrl->cfg.rxbuf_size,
+	    vperf_warn ("rxbuf size (%" PRIu64 ") less than minumum (%u)", ctrl->cfg.rxbuf_size,
 			VPERF_CFG_BUF_SIZE_MIN);
 	    print_usage_and_exit ();
 	  }
@@ -1167,8 +1168,8 @@ vperf_client_process_opts (vperf_client_main_t *vcm, int argc, char **argv)
 	break;
 
       case 'T':
-	if (sscanf (optarg, "0x%lx", &ctrl->cfg.txbuf_size) != 1)
-	  if (sscanf (optarg, "%ld", &ctrl->cfg.txbuf_size) != 1)
+	if (sscanf (optarg, "0x%" SCNx64, &ctrl->cfg.txbuf_size) != 1)
+	  if (sscanf (optarg, "%" SCNu64, &ctrl->cfg.txbuf_size) != 1)
 	    {
 	      vperf_warn ("Invalid value for option -%c!", c);
 	      print_usage_and_exit ();
@@ -1182,21 +1183,22 @@ vperf_client_process_opts (vperf_client_main_t *vcm, int argc, char **argv)
 	  }
 	else
 	  {
-	    vperf_warn ("txbuf size (%lu) less than minumum (%u)!", ctrl->cfg.txbuf_size,
+	    vperf_warn ("txbuf size (%" PRIu64 ") less than minumum (%u)!", ctrl->cfg.txbuf_size,
 			VPERF_CFG_BUF_SIZE_MIN);
 	    print_usage_and_exit ();
 	  }
 	break;
       case 'b':
-	if (sscanf (optarg, "0x%lu", &ctrl->cfg.total_bytes) != 1)
-	  if (sscanf (optarg, "%ld", &ctrl->cfg.total_bytes) != 1)
+	if (sscanf (optarg, "0x%" SCNx64, &ctrl->cfg.total_bytes) != 1)
+	  if (sscanf (optarg, "%" SCNu64, &ctrl->cfg.total_bytes) != 1)
 	    {
 	      vperf_warn ("Invalid value for option -%c!", c);
 	      print_usage_and_exit ();
 	    }
 	if (ctrl->cfg.total_bytes % ctrl->cfg.txbuf_size)
 	  {
-	    vperf_warn ("total bytes must be mutliple of txbuf size(0x%lu)!", ctrl->cfg.txbuf_size);
+	    vperf_warn ("total bytes must be mutliple of txbuf size(0x%" PRIx64 ")!",
+			ctrl->cfg.txbuf_size);
 	    print_usage_and_exit ();
 	  }
 	ctrl->cfg.num_writes = ctrl->cfg.total_bytes / ctrl->cfg.txbuf_size;

@@ -17,7 +17,7 @@ vp_proto_test_bytes (u8 *rx_buf, u32 actual_transfer, u32 offset)
     {
       if (rx_buf[i] != ((offset + i) & 0xff))
 	{
-	  vp_proto_err ("at %lld expected %d got %d", offset + i, (offset + i) & 0xff, rx_buf[i]);
+	  vp_proto_err ("at %u expected %d got %d", offset + i, (offset + i) & 0xff, rx_buf[i]);
 	}
     }
 }
@@ -171,7 +171,8 @@ vp_proto_server_stream_rx (vp_test_session_t *es, session_t *s, u8 *rx_buf,
 always_inline u8
 vp_proto_client_stream_rx_inline (vp_test_session_t *es, session_t *s, u8 *rx_buf, u8 test_bytes)
 {
-  u32 max_dequeue, test_buf_offset;
+  u32 max_dequeue;
+  u64 test_buf_offset;
   int n_read, i;
   svm_fifo_t *rx_fifo;
   u8 *rx_buf_start;
@@ -192,8 +193,9 @@ vp_proto_client_stream_rx_inline (vp_test_session_t *es, session_t *s, u8 *rx_bu
 	{
 	  if (rx_buf_start[i] != ((test_buf_offset + i) & 0xff))
 	    {
-	      vp_proto_err ("read %d error at byte %lld, 0x%x not 0x%x", n_read,
-			    test_buf_offset + i, rx_buf_start[i], ((test_buf_offset + i) & 0xff));
+	      vp_proto_err ("read %d error at byte %llu, 0x%x not 0x%x", n_read,
+			    test_buf_offset + i, rx_buf_start[i],
+			    (u32) ((test_buf_offset + i) & 0xff));
 	      rv = 1;
 	      break;
 	    }
@@ -475,8 +477,8 @@ vp_proto_client_dgram_rx_inline (vp_test_session_t *es, session_t *s, u8 *rx_buf
 	{
 	  if (rx_buf_start[i] != ((test_buf_offset + i) & 0xff))
 	    {
-	      vp_proto_err ("read %d error at byte %lld, 0x%x not 0x%x", n_read,
-			    test_buf_offset + i, rx_buf_start[i], ((test_buf_offset + i) & 0xff));
+	      vp_proto_err ("read %d error at byte %u, 0x%x not 0x%x", n_read, test_buf_offset + i,
+			    rx_buf_start[i], ((test_buf_offset + i) & 0xff));
 	      rv = 1;
 	      break;
 	    }
