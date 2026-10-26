@@ -16,6 +16,24 @@
       "message": "I think it is already addressed by https://gerrit.fd.io/r/c/vpp/+/46966",
       "revId": "4416da94b673aeaa322ddfa1ab7149eb65c6a259",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "31a153fb_5f22ecf9",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3383
+      },
+      "writtenOn": "2026-10-26T19:08:41Z",
+      "side": 1,
+      "message": "Confirmed: 46966 implements the same runtime formatter guard and is merged as 1b6931f11d727bb09bcee79e47c63b675946add7. The tests differ, but do not justify a second runtime fix. Change 47187 PS2 now carries only its required Delete regression fixture on current master, with no dependency on this change. Abandoning 47186 as superseded by 46966.",
+      "parentUuid": "03d447ab_71fae2e6",
+      "revId": "4416da94b673aeaa322ddfa1ab7149eb65c6a259",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
