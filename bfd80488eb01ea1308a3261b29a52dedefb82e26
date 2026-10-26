@@ -37,6 +37,42 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "11387554_674714ab",
+        "filename": "src/plugins/rdma/device.c",
+        "patchSetId": 137
+      },
+      "lineNbr": 318,
+      "author": {
+        "id": 3306
+      },
+      "writtenOn": "2026-10-26T13:44:32Z",
+      "side": 1,
+      "message": "Agreed — protocol-specific steering does not belong in interface setup. The right shape is an RDMA backend for the existing VNET_FLOW_TYPE_ETHERNET flow API (src/plugins/dpdk/device/flow.c is the model). That is separate work and is not needed by the pppoeclient stack, so I am not folding it in here; it can stand as a follow-up if there is demand for it.",
+      "parentUuid": "9abe080a_0b34ef8e",
+      "revId": "bfd80488eb01ea1308a3261b29a52dedefb82e26",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2a97d287_e0499857",
+        "filename": "src/plugins/rdma/device.c",
+        "patchSetId": 137
+      },
+      "lineNbr": 318,
+      "author": {
+        "id": 3306
+      },
+      "writtenOn": "2026-10-26T13:44:32Z",
+      "side": 1,
+      "message": "You\u0027re right that the catch-all already covers PPPoE: rdma_rxq_init_flow() leaves the EtherType mask zero when ether_type \u003d\u003d 0, so flow_ucast4 matches any EtherType onto rx_qp4, and in unicast mode discovery frames match flow_mcast4 (broadcast) or flow_ucast4 (unicast) and session frames match flow_ucast4, all with a wildcard EtherType.\n\nI have no NIC or firmware behaviour to report, because I never had a setup that could observe one. The only RDMA NIC I have is a ConnectX-3 Pro (mlx4, fw 2.42.5000) running in A0 steering mode, where ibv_create_flow() returns ENOTSUP and rdma_dev_set_ucast() cannot complete at all, and the rest of my testing was on DPDK VFs, TAP interfaces and pg0. So these rules were never exercised on hardware — they were defensive, which is not a reason to keep them.",
+      "parentUuid": "b6ec37ee_212c92cf",
+      "revId": "bfd80488eb01ea1308a3261b29a52dedefb82e26",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "c52efd83_793adebc",
         "filename": "src/plugins/rdma/device.c",
         "patchSetId": 137
@@ -48,6 +84,24 @@
       "writtenOn": "2026-10-26T11:04:57Z",
       "side": 1,
       "message": "Could we create the mandatory rules before attempting these optional rules? When remaining flow capacity is sufficient for the original rules, allocating the PPPoE rules first can exhaust it and make interface creation fail. The promiscuous path has the same issue. I reproduced both cases with mocked flow-capacity exhaustion.",
+      "revId": "bfd80488eb01ea1308a3261b29a52dedefb82e26",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "44bd21ed_000a479f",
+        "filename": "src/plugins/rdma/device.c",
+        "patchSetId": 137
+      },
+      "lineNbr": 353,
+      "author": {
+        "id": 3306
+      },
+      "writtenOn": "2026-10-26T13:44:32Z",
+      "side": 1,
+      "message": "Correct, and a good catch: the optional rules are allocated before the mandatory ones, so with a tight flow table the \"best-effort\" allocation becomes a bring-up failure, in the promiscuous path as well. Since the rules are redundant this goes away with them; otherwise I would have had to fix the ordering as you describe.",
+      "parentUuid": "c52efd83_793adebc",
       "revId": "bfd80488eb01ea1308a3261b29a52dedefb82e26",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
