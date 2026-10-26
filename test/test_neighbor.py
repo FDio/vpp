@@ -2831,5 +2831,123 @@ class NeighborFlush(VppTestCase):
                 )
 
 
+class NeighborEventCountersTestCase(VppTestCase):
+    """Neighbour table event counters"""
+
+    EVENTS = (
+        "new",
+        "refresh",
+        "mac-change",
+        "recycled",
+        "limit-exceeded",
+        "static-refused",
+    )
+
+    @classmethod
+    def setUpClass(cls):
+        super(NeighborEventCountersTestCase, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(NeighborEventCountersTestCase, cls).tearDownClass()
+
+    def setUp(self):
+        super(NeighborEventCountersTestCase, self).setUp()
+
+        self.create_pg_interfaces(range(1))
+        for i in self.pg_interfaces:
+            i.admin_up()
+            i.config_ip4()
+            i.config_ip6()
+        self.pg0.generate_remote_hosts(4)
+
+    def tearDown(self):
+        af = VppEnum.vl_api_address_family_t
+        for a in (af.ADDRESS_IP4, af.ADDRESS_IP6):
+            self.vapi.ip_neighbor_config(
+                af=a, max_number=50000, max_age=0, recycle=False
+            )
+            self.vapi.ip_neighbor_flush(a, 0xFFFFFFFF)
+        for i in self.pg_interfaces:
+            i.unconfig_ip4()
+            i.unconfig_ip6()
+            i.admin_down()
+        super(NeighborEventCountersTestCase, self).tearDown()
+
+    def counters(self, af_name):
+        return {
+            e: self.statistics["/net/ip-neighbor/%s/%s" % (af_name, e)][:, 0].sum()
+            for e in self.EVENTS
+        }
+
+    def assert_moved(self, af_name, before, **expected):
+        """Each named event moved by its expected amount, all others by 0"""
+        after = self.counters(af_name)
+        for e in self.EVENTS:
+            delta = after[e] - before[e]
+            want = expected.get(e.replace("-", "_"), 0)
+            self.assertEqual(
+                delta, want, "%s event %s moved by %d" % (af_name, e, delta)
+            )
+        return after
+
+    def add_nbr(self, addr, mac, is_static=False):
+        e = VppEnum.vl_api_ip_neighbor_flags_t
+        flags = e.IP_API_NEIGHBOR_FLAG_NONE
+        if is_static:
+            flags |= e.IP_API_NEIGHBOR_FLAG_STATIC
+        self.vapi.ip_neighbor_add_del(
+            self.pg0.sw_if_index, mac, addr, is_add=1, flags=flags
+        )
+
+    def run_event_counters(self, af, af_name, addr):
+        """Drive each table event once and check only its counter moves"""
+        h = self.pg0.remote_hosts
+        other_mac = "00:11:22:33:44:55"
+
+        c = self.counters(af_name)
+
+        # a neighbour that is not in the table yet
+        self.add_nbr(addr(h[0]), h[0].mac)
+        c = self.assert_moved(af_name, c, new=1)
+
+        # the same neighbour with the same MAC is a refresh
+        self.add_nbr(addr(h[0]), h[0].mac)
+        c = self.assert_moved(af_name, c, refresh=1)
+
+        # the same neighbour with another MAC
+        self.add_nbr(addr(h[0]), other_mac)
+        c = self.assert_moved(af_name, c, mac_change=1)
+
+        # a dynamic update may not overwrite a static entry's MAC
+        self.add_nbr(addr(h[1]), h[1].mac, is_static=True)
+        c = self.assert_moved(af_name, c, new=1)
+        with self.vapi.assert_negative_api_retval():
+            self.add_nbr(addr(h[1]), other_mac)
+        c = self.assert_moved(af_name, c, static_refused=1)
+
+        # table full, no recycling: the new neighbour is refused
+        # (the table holds h[0] and h[1])
+        self.vapi.ip_neighbor_config(af=af, max_number=2, max_age=0, recycle=False)
+        with self.vapi.assert_negative_api_retval():
+            self.add_nbr(addr(h[2]), h[2].mac)
+        c = self.assert_moved(af_name, c, limit_exceeded=1)
+
+        # table full with recycling: the oldest dynamic entry makes room
+        self.vapi.ip_neighbor_config(af=af, max_number=2, max_age=0, recycle=True)
+        self.add_nbr(addr(h[2]), h[2].mac)
+        c = self.assert_moved(af_name, c, recycled=1, new=1)
+
+    def test_event_counters_ip4(self):
+        """IPv4 counters: new, refresh, MAC change, limit, recycle, static"""
+        af = VppEnum.vl_api_address_family_t
+        self.run_event_counters(af.ADDRESS_IP4, "ip4", lambda h: h.ip4)
+
+    def test_event_counters_ip6(self):
+        """IPv6 counters: new, refresh, MAC change, limit, recycle, static"""
+        af = VppEnum.vl_api_address_family_t
+        self.run_event_counters(af.ADDRESS_IP6, "ip6", lambda h: h.ip6)
+
+
 if __name__ == "__main__":
     unittest.main(testRunner=VppTestRunner)
