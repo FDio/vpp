@@ -84,6 +84,43 @@ ip_neighbor_counters_t ip_neighbor_counters[] =
  },
 };
 
+/**
+ * Neighbour table events, one counter per address family at index 0,
+ * counted on the main thread by ip_neighbor_add and ip_neighbor_force_reuse.
+ * They show a table being stuffed or a neighbour flapping its MAC without a
+ * CLI read: stats segment /net/ip-neighbor/<af>/<event>.
+ */
+#define foreach_ip_neighbor_event                                                                  \
+  _ (NEW, "new")                                                                                   \
+  _ (REFRESH, "refresh")                                                                           \
+  _ (MAC_CHANGE, "mac-change")                                                                     \
+  _ (RECYCLED, "recycled")                                                                         \
+  _ (LIMIT_EXCEEDED, "limit-exceeded")                                                             \
+  _ (STATIC_REFUSED, "static-refused")
+
+typedef enum ip_neighbor_event_ctr_t_
+{
+#define _(a, b) IP_NEIGHBOR_EVENT_##a,
+  foreach_ip_neighbor_event
+#undef _
+    IP_NEIGHBOR_N_EVENTS,
+} ip_neighbor_event_ctr_t;
+
+static char *ip_neighbor_event_names[] = {
+#define _(a, b) [IP_NEIGHBOR_EVENT_##a] = b,
+  foreach_ip_neighbor_event
+#undef _
+};
+
+static vlib_simple_counter_main_t ip_neighbor_event_counters[N_AF][IP_NEIGHBOR_N_EVENTS];
+
+static void
+ip_neighbor_event_count (ip_address_family_t af, ip_neighbor_event_ctr_t ev)
+{
+  vlib_increment_simple_counter (&ip_neighbor_event_counters[af][ev], vlib_get_thread_index (), 0,
+				 1);
+}
+
 /** Pool for All IP neighbors */
 static ip_neighbor_t *ip_neighbor_pool;
 
@@ -495,6 +532,7 @@ ip_neighbor_force_reuse (ip_address_family_t af)
 
   elt = clib_llist_prev (ip_neighbor_elt_pool, ipne_anchor, head);
   ip_neighbor_destroy (ip_neighbor_get (elt->ipne_index));
+  ip_neighbor_event_count (af, IP_NEIGHBOR_EVENT_RECYCLED);
 
   return (true);
 }
@@ -584,6 +622,7 @@ ip_neighbor_add (const ip_address_t * ip,
 	  /* if MAC address match, still check to send event */
 	  if (0 == mac_address_cmp (&ipn->ipn_mac, mac))
 	    goto check_customers;
+	  ip_neighbor_event_count (ip_addr_version (ip), IP_NEIGHBOR_EVENT_STATIC_REFUSED);
 	  return -2;
 	}
 
@@ -605,9 +644,11 @@ ip_neighbor_add (const ip_address_t * ip,
       if (0 == mac_address_cmp (&ipn->ipn_mac, mac))
 	{
 	  ip_neighbor_refresh (ipn);
+	  ip_neighbor_event_count (ip_addr_version (ip), IP_NEIGHBOR_EVENT_REFRESH);
 	  goto check_customers;
 	}
 
+      ip_neighbor_event_count (ip_addr_version (ip), IP_NEIGHBOR_EVENT_MAC_CHANGE);
       mac_address_copy (&ipn->ipn_mac, mac);
 
       adj_nbr_walk_nh (ipn->ipn_key->ipnk_sw_if_index, fproto,
@@ -625,7 +666,11 @@ ip_neighbor_add (const ip_address_t * ip,
       ipn = ip_neighbor_alloc (&key, mac, flags);
 
       if (NULL == ipn)
-	return VNET_API_ERROR_LIMIT_EXCEEDED;
+	{
+	  ip_neighbor_event_count (ip_addr_version (ip), IP_NEIGHBOR_EVENT_LIMIT_EXCEEDED);
+	  return VNET_API_ERROR_LIMIT_EXCEEDED;
+	}
+      ip_neighbor_event_count (ip_addr_version (ip), IP_NEIGHBOR_EVENT_NEW);
     }
 
   /* Update time stamp and flags. */
@@ -1917,6 +1962,23 @@ ip_neighbor_init (vlib_main_t * vm)
   ipn_logger = vlib_log_register_class ("ip", "neighbor");
 
   ip_address_family_t af;
+
+  for (af = AF_IP4; af <= AF_IP6; af++)
+    {
+      ip_neighbor_event_ctr_t ev;
+
+      for (ev = 0; ev < IP_NEIGHBOR_N_EVENTS; ev++)
+	{
+	  vlib_simple_counter_main_t *cm = &ip_neighbor_event_counters[af][ev];
+	  u8 *name = format (0, "/net/ip-neighbor/%s/%s%c", AF_IP4 == af ? "ip4" : "ip6",
+			     ip_neighbor_event_names[ev], 0);
+
+	  cm->name = (char *) name;
+	  cm->stat_segment_name = (char *) name;
+	  vlib_validate_simple_counter (cm, 0);
+	  vlib_zero_simple_counter (cm, 0);
+	}
+    }
 
   FOR_EACH_IP_ADDRESS_FAMILY (af)
     ip_neighbor_list_head[af] =
