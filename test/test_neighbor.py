@@ -18,7 +18,7 @@ from vpp_ip_route import (
 )
 from vpp_papi import VppEnum, MACAddress
 from vpp_ip import VppIpPuntRedirect
-from vpp_sub_interface import VppDot1ADSubint
+from vpp_sub_interface import VppDot1ADSubint, VppDot1QSubint
 
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether, ARP, Dot1Q
@@ -1248,6 +1248,60 @@ class ARPTestCase(VppTestCase):
         # clean up on interface 2
         #
         self.pg2.unset_unnumbered(self.pg1.sw_if_index)
+
+    def test_proxy_arp_sub_if_recreate(self):
+        """Proxy ARP on a recreated sub-interface"""
+
+        self.vapi.proxy_arp_add_del(
+            proxy={"table_id": 0, "low": "10.10.10.2", "hi": "10.10.10.124"}, is_add=1
+        )
+
+        #
+        # Delete the sub-interface while it is still enabled for proxy ARP,
+        # then create it again so it reuses the same sw_if_index
+        #
+        sw_if_index = None
+        for _ in range(2):
+            sub_if = VppDot1QSubint(self, self.pg0, 100)
+            if sw_if_index is None:
+                sw_if_index = sub_if.sw_if_index
+            else:
+                self.assertEqual(sub_if.sw_if_index, sw_if_index)
+
+            sub_if.admin_up()
+            sub_if.config_ip4()
+            sub_if.set_proxy_arp()
+
+            arp_req = (
+                Ether(src=self.pg0.remote_mac, dst="ff:ff:ff:ff:ff:ff")
+                / Dot1Q(vlan=100)
+                / ARP(
+                    op="who-has",
+                    hwsrc=self.pg0.remote_mac,
+                    pdst="10.10.10.3",
+                    psrc=sub_if.remote_ip4,
+                )
+            )
+
+            self.pg0.add_stream(arp_req)
+            self.pg_enable_capture(self.pg_interfaces)
+            self.pg_start()
+
+            rx = self.pg0.get_capture(1)
+            self.verify_arp_resp(
+                sub_if.remove_dot1_layer(rx[0]),
+                self.pg0.local_mac,
+                self.pg0.remote_mac,
+                "10.10.10.3",
+                sub_if.remote_ip4,
+            )
+
+            sub_if.unconfig_ip4()
+            sub_if.remove_vpp_config()
+
+        self.vapi.proxy_arp_add_del(
+            proxy={"table_id": 0, "low": "10.10.10.2", "hi": "10.10.10.124"}, is_add=0
+        )
 
     def test_mpls(self):
         """MPLS"""

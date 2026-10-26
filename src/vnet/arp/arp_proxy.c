@@ -74,6 +74,24 @@ arp_proxy_enable (u32 sw_if_index)
   return (0);
 }
 
+/*
+ * The feature arc config of a deleted interface is removed by the feature
+ * infra, so forget the enabled state too. Otherwise an interface that later
+ * reuses the sw_if_index could never be enabled for proxy ARP.
+ */
+static clib_error_t *
+arp_proxy_sw_interface_add_del (vnet_main_t *vnm, u32 sw_if_index, u32 is_add)
+{
+  arp_proxy_main_t *am = &arp_proxy_main;
+
+  if (!is_add && sw_if_index < vec_len (am->enabled_by_sw_if_index))
+    am->enabled_by_sw_if_index[sw_if_index] = false;
+
+  return (NULL);
+}
+
+VNET_SW_INTERFACE_ADD_DEL_FUNCTION (arp_proxy_sw_interface_add_del);
+
 static int
 vnet_proxy_arp_add_del (const ip4_address_t * lo_addr,
 			const ip4_address_t * hi_addr,
