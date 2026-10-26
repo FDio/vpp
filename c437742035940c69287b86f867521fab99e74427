@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "833cb241_3337a4a2",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3374
+      },
+      "writtenOn": "2026-10-26T11:44:27Z",
+      "side": 1,
+      "message": "Thanks Pim, much appreciated. PS3 addresses all five comments. Answers inline; summary of testing:\n\n- ixgbe (82599, lab + production DBN/CPT): DDM optics (SFF-8472). Before the change, a `show interface transceiver` of 2 ports took 1.47 s with the box stalled (20.3 % loss at 100 pps through VPP, main-thread probe max 1481 ms). After: 0 % loss, probe max 3 ms; a diag read still takes ~0.79 s, but only for the vppctl that asked. Cached repeats 0.00 s.\n- ixgbe, passive DAC (SFPP-PC015, SFF-8472 without DDM, on DBN): served as SFF-8079 (A0h only), module info works, diag says not available; no A2h NACK storm.\n- i40e (X710, core01): ~0.28 s per module through the AdminQ; same behaviour, no stalls.\n- Empty cage: not measured yet. All the boxes I have are remote and fully populated, so I can\u0027t pull a module. From the ixgbe code path I expect get_module_info to fail after its I2C retries (about 1 s, the same as a NACKed byte on a DAC, which I did see). That error is then cached: for 2 s in PS2, 30 s in PS3. I\u0027ll add a measurement once I can test an empty cage on site.\n- Not tested: ice, mlx5, bnxt or other PMDs; I don\u0027t have that hardware. As you found, they all honour info-\u003eoffset, and nothing here is PMD-specific beyond that. If you or anyone at IPng could run `show interface transceiver` on ice/mlx5 with this change, that would be great.\n- There is no `make test` coverage: the test framework has no transceiver to read, and the dpdk plugin isn\u0027t exercised by make test. The lab script I used (a 100 pps ping through VPP plus a 50 ms main-thread probe during reads, an admin down/up mid-read, and DOM value comparison) is available if useful.\n\nOn stale/missing/broken optics making other optics stale on a large box: there is one reader thread, so reads are serialised, round-robin across ports. Every PMD call returns (good or error); nothing loops in the reader. A broken or empty port costs one failed read (roughly 1 s on ixgbe, where get_module_info itself NACKs), and with PS3 that happens at most every 30 s and only when someone asks (CLI). There is no background polling in this change. A waiting CLI times out after 15 s of its own read (120 s including queueing), so a bad port can delay a read of another port by at most one failed read, and never forwarding or the main loop.\n\nFollow-up: https://gerrit.fd.io/r/c/vpp/+/47237 makes `show hardware-interfaces` mp-safe as well. With 47213 in, it was the last command that still paused forwarding around module info (19 ms per run on DBN; 3.1 ms on the lab with the change, the same as idle). It\u0027s small; would you mind having a look at it too?",
+      "parentUuid": "42f1bddf_0db54f09",
+      "revId": "c437742035940c69287b86f867521fab99e74427",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "df6a89b6_dbccd2fb",
@@ -31,6 +49,24 @@
       "writtenOn": "2026-10-25T08:44:32Z",
       "side": 1,
       "message": "nit: although this is a generic eeprom reader (and I\u0027ve checked that ixgbe, i40e, ice, igb, txgbe, bnxt, hns3, cnxk, nfp all correctly honor info-\u003eoffset) the comments in the file seem to suggest it\u0027s specific to ixgbe, while I don\u0027t think it is. Maybe scrub this file for references to ixgbe?",
+      "revId": "c437742035940c69287b86f867521fab99e74427",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "6ca04e6d_7f59db6d",
+        "filename": "src/plugins/dpdk/device/eeprom.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 36,
+      "author": {
+        "id": 3374
+      },
+      "writtenOn": "2026-10-26T11:44:27Z",
+      "side": 1,
+      "message": "Done. The comments now describe it as slow I2C on most PMDs (software bit-banging, e.g. ixgbe, or a firmware/AdminQ mailbox, e.g. i40e). ixgbe is only mentioned as an example for the timer-slack numbers.",
+      "parentUuid": "df6a89b6_dbccd2fb",
       "revId": "c437742035940c69287b86f867521fab99e74427",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -52,6 +88,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "ee7cf03d_daad42b6",
+        "filename": "src/plugins/dpdk/device/eeprom.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 129,
+      "author": {
+        "id": 3374
+      },
+      "writtenOn": "2026-10-26T11:44:27Z",
+      "side": 1,
+      "message": "Confirmed: every rte_eth_dev_get_module_info / get_module_eeprom call is synchronous and returns. An empty cage or a module without I2C makes get_module_info fail after the PMD\u0027s own I2C retries (on ixgbe roughly 1 s; I haven\u0027t been able to measure an empty cage yet, as my boxes are remote and fully populated). The reader records last_rv, bumps the generation and goes idle, so nothing is retried in a loop. Callers get \"EEPROM read error for interface X (rv)\", and `show hardware detail` shows \"unknown\". With PS3 that error is cached for 30 s (see the next comment), and a port start/stop invalidates it, so a newly inserted module is read right after an admin down/up, and otherwise within 30 s.",
+      "parentUuid": "cbecdfb4_e864fae9",
+      "revId": "c437742035940c69287b86f867521fab99e74427",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "83eb310d_2dcacc79",
@@ -69,6 +123,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "070c0835_c0bd9f84",
+        "filename": "src/plugins/dpdk/device/eeprom.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 319,
+      "author": {
+        "id": 3374
+      },
+      "writtenOn": "2026-10-26T11:44:27Z",
+      "side": 1,
+      "message": "Agreed, done as you suggested: DPDK_EEPROM_FAIL_MAX_AGE \u003d 30 s for failed reads, 2 s for good ones. A port start/stop (stale flag) still forces a re-read. I kept it fixed rather than exponential: 30 s is short enough that an inserted optic shows up quickly and long enough that a broken one costs at most ~1 s of reader time per 30 s. Happy to change it if you\u0027d prefer exponential.",
+      "parentUuid": "83eb310d_2dcacc79",
+      "revId": "c437742035940c69287b86f867521fab99e74427",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "6ee85056_9035878c",
@@ -82,6 +154,24 @@
       "writtenOn": "2026-10-25T08:44:32Z",
       "side": 1,
       "message": "errors were not checked here at HEAD, but with the async implementation, other errors (like eeprom read timeout) need to reach the user. Also, there\u0027s a pre-existing memory leak with error not being freed.\n\nI suggest you print and free the error here:\nif (error) {\n  vlib_cli_output (vm, \"%U\", format_clib_error, error);\n  clib_error_free (error);\n}",
+      "revId": "c437742035940c69287b86f867521fab99e74427",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "1ab8da5a_1c961e36",
+        "filename": "src/vnet/interface_cli.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 2774,
+      "author": {
+        "id": 3374
+      },
+      "writtenOn": "2026-10-26T11:44:27Z",
+      "side": 1,
+      "message": "Good catch, thanks. Fixed as suggested: the error is printed with format_clib_error and freed. Since errors are now visible, `show interface transceiver` without an interface argument only iterates interfaces whose device class has an eeprom_read_function; otherwise every tap/loop/tunnel would print \"does not support EEPROM reading\". With an explicit interface it still reports that.",
+      "parentUuid": "6ee85056_9035878c",
       "revId": "c437742035940c69287b86f867521fab99e74427",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
