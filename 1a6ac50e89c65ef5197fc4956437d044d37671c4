@@ -52,6 +52,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "75c8e66a_5f9108ac",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2220
+      },
+      "writtenOn": "2026-10-26T13:51:30Z",
+      "side": 1,
+      "message": "Hi Pim,\nThanks for the review, it is a very good one. The current mfib code doesn\u0027t have a counter per source, so I need to introduce it first. Then, I can also add routes from mfib_table and of course fix the removal of mcast routes.\nDoes it sound good for you?",
+      "parentUuid": "2513bec1_5803d739",
+      "revId": "1a6ac50e89c65ef5197fc4956437d044d37671c4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "b08b2d06_380c4a5d",
@@ -65,6 +83,24 @@
       "writtenOn": "2026-10-25T08:28:00Z",
       "side": 1,
       "message": "l_r_t_owned_routes above inspects the unicast fib, and if it\u0027s empty, will allow the multicast fib to be flushed. Scenario:\n- add 1 unicast route\n- add 1 mcast routes\n- delete that 1 unicast route\n\nI think the mcast routes will then be cleared.",
+      "revId": "1a6ac50e89c65ef5197fc4956437d044d37671c4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f1f16121_e2d1867e",
+        "filename": "src/plugins/linux-cp/lcp_router.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1015,
+      "author": {
+        "id": 2220
+      },
+      "writtenOn": "2026-10-26T13:51:30Z",
+      "side": 1,
+      "message": "not if there\u0027s at least 1 lcp pair belonging to this VRF.\nbut I agree with you that we need to take into the consideration also the amount of mfib routes here. as soon as I have the counter per source, I will introduce it in this patch.",
+      "parentUuid": "b08b2d06_380c4a5d",
       "revId": "1a6ac50e89c65ef5197fc4956437d044d37671c4",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -88,6 +124,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "91d3c79d_6316e38a",
+        "filename": "src/plugins/linux-cp/lcp_router.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1367,
+      "author": {
+        "id": 2220
+      },
+      "writtenOn": "2026-10-26T13:51:30Z",
+      "side": 1,
+      "message": "agreed.",
+      "parentUuid": "9b6fd560_198d00fe",
+      "revId": "1a6ac50e89c65ef5197fc4956437d044d37671c4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "fff2dd44_db245a22",
         "filename": "src/plugins/linux-cp/lcp_router.c",
         "patchSetId": 1
@@ -99,6 +153,24 @@
       "writtenOn": "2026-10-25T08:28:00Z",
       "side": 1,
       "message": "if we find_or_create a new table, for a multicast entry, we\u0027ll install it but any subsequent route_del (or sync_end) will conclude we own no routes, and free both unicast and multicast FIBs.\n\nshould we account for mcast fib entries in l_r_t_owned_routes()?",
+      "revId": "1a6ac50e89c65ef5197fc4956437d044d37671c4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "25e267ef_36c1f615",
+        "filename": "src/plugins/linux-cp/lcp_router.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1444,
+      "author": {
+        "id": 2220
+      },
+      "writtenOn": "2026-10-26T13:51:30Z",
+      "side": 1,
+      "message": "agreed.",
+      "parentUuid": "fff2dd44_db245a22",
       "revId": "1a6ac50e89c65ef5197fc4956437d044d37671c4",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
