@@ -548,7 +548,7 @@ vperf_server_handle_ctrl_cfg (vperf_server_worker_t *wrk, vperf_cfg_t *rx_cfg,
 
   if (rx_bytes != sizeof (*rx_cfg))
     {
-      vperf_info ("(fd %d): Invalid cfg msg size %d expected %lu!", conn->fd, rx_bytes,
+      vperf_info ("(fd %d): Invalid cfg msg size %d expected %zu!", conn->fd, rx_bytes,
 		  sizeof (*rx_cfg));
       conn->cfg.rxbuf_size = 0;
       conn->cfg.num_writes = 0;

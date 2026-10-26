@@ -50,7 +50,7 @@ vp_server_create_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_
 	is_stop = 1;
       else if (unformat (input, "tls-engine %d", &vpsm->cfg.tls_engine))
 	;
-      else if (unformat (input, "report-interval %u", &vpsm->cfg.report_interval))
+      else if (unformat (input, "report-interval %llu", &vpsm->cfg.report_interval))
 	;
       else if (unformat (input, "report-interval"))
 	vpsm->cfg.report_interval = 1;
@@ -258,9 +258,9 @@ vp_client_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command
 	}
       else if (unformat (line_input, "report-jitter"))
 	vpcm->cfg.report_interval_jitter = 1;
-      else if (unformat (line_input, "report-interval-total %u", &vpcm->cfg.report_interval))
+      else if (unformat (line_input, "report-interval-total %llu", &vpcm->cfg.report_interval))
 	vpcm->cfg.report_interval_total = 1;
-      else if (unformat (line_input, "report-interval %u", &vpcm->cfg.report_interval))
+      else if (unformat (line_input, "report-interval %llu", &vpcm->cfg.report_interval))
 	;
       else if (unformat (line_input, "report-interval"))
 	vpcm->cfg.report_interval = 1;

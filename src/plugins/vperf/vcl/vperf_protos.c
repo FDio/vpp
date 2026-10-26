@@ -689,7 +689,7 @@ vperf_quic_get_app_proto_err_code (vperf_session_t *ts)
   uint64_t app_err_code = 0xFEFE;
   uint32_t elen = sizeof (app_err_code);
   vppcom_session_attr (ts->fd, VPPCOM_ATTR_GET_APP_PROTO_ERR_CODE, &app_err_code, &elen);
-  vperf_info ("%s %d app proto error code 0x%lx",
+  vperf_info ("%s %d app proto error code 0x%" PRIx64,
 	      vppcom_session_is_stream (ts->fd) ? "stream" : "connection", ts->fd, app_err_code);
   return app_err_code;
 }
@@ -1142,8 +1142,8 @@ vperf_quic_close (vperf_session_t *ts, uint32_t events)
 	      vperf_info ("stream %u reset by client", ts->fd);
 	      app_err_code = vperf_quic_get_app_proto_err_code (ts);
 	      if (app_err_code != VPERF_QUIC_CLIENT_ERROR)
-		vperf_warn ("invalid application error code 0x%lx, expected 0x%lx", app_err_code,
-			    VPERF_QUIC_CLIENT_ERROR);
+		vperf_warn ("invalid application error code 0x%" PRIx64 ", expected 0x%" PRIx64,
+			    app_err_code, VPERF_QUIC_CLIENT_ERROR);
 	      quic_ctx->flags |= VPERF_QUIC_F_RESET;
 	      ts->stats.reset_count = 1;
 	      return 1;
@@ -1163,8 +1163,8 @@ vperf_quic_close (vperf_session_t *ts, uint32_t events)
 	  app_err_code = vperf_quic_get_app_proto_err_code (ts);
 	  vperf_info ("connection %u closed by client", ts->fd);
 	  if (app_err_code != VPERF_QUIC_CLIENT_ERROR)
-	    vperf_warn ("invalid application error code 0x%lx, expected 0x%lx", app_err_code,
-			VPERF_QUIC_CLIENT_ERROR);
+	    vperf_warn ("invalid application error code 0x%" PRIx64 ", expected 0x%" PRIx64,
+			app_err_code, VPERF_QUIC_CLIENT_ERROR);
 	  ts->stats.close_count = 1;
 	}
       return 1;
@@ -1178,8 +1178,8 @@ vperf_quic_close (vperf_session_t *ts, uint32_t events)
 	      vperf_info ("stream %u reset by server", ts->fd);
 	      app_err_code = vperf_quic_get_app_proto_err_code (ts);
 	      if (app_err_code != VPERF_QUIC_SERVER_ERROR)
-		vperf_warn ("invalid application error code 0x%lx, expected 0x%lx", app_err_code,
-			    VPERF_QUIC_SERVER_ERROR);
+		vperf_warn ("invalid application error code 0x%" PRIx64 ", expected 0x%" PRIx64,
+			    app_err_code, VPERF_QUIC_SERVER_ERROR);
 	      quic_ctx->flags |= VPERF_QUIC_F_RESET;
 	      ts->stats.reset_count = 1;
 	      return 1;
@@ -1194,8 +1194,8 @@ vperf_quic_close (vperf_session_t *ts, uint32_t events)
 	      vperf_session_t *tq = vperf_quic_stream_get_qsession (ts);
 	      app_err_code = vperf_quic_get_app_proto_err_code (tq);
 	      if (app_err_code != VPERF_QUIC_SERVER_ERROR)
-		vperf_warn ("invalid application error code 0x%lx, expected 0x%lx", app_err_code,
-			    VPERF_QUIC_SERVER_ERROR);
+		vperf_warn ("invalid application error code 0x%" PRIx64 ", expected 0x%" PRIx64,
+			    app_err_code, VPERF_QUIC_SERVER_ERROR);
 	      ts->stats.close_count = 1;
 	      return 1;
 	    }
@@ -1229,8 +1229,8 @@ vperf_quic_reset (vperf_session_t *ts)
       vperf_info ("stream %u reset by client", ts->fd);
       app_err_code = vperf_quic_get_app_proto_err_code (ts);
       if (app_err_code != VPERF_QUIC_CLIENT_ERROR)
-	vperf_warn ("invalid application error code 0x%lx, expected 0x%lx", app_err_code,
-		    VPERF_QUIC_CLIENT_ERROR);
+	vperf_warn ("invalid application error code 0x%" PRIx64 ", expected 0x%" PRIx64,
+		    app_err_code, VPERF_QUIC_CLIENT_ERROR);
       quic_ctx->flags |= VPERF_QUIC_F_RESET;
       ts->stats.reset_count = 1;
       return 0;
@@ -1731,7 +1731,7 @@ vperf_process_http_client_write_msg (vperf_session_t *ts, void *buf, uint32_t nb
 	  if (vperf_http_ctx->rem_data == 0)
 	    {
 	      vperf_http_ctx->test_state = VPERF_HTTP_COMPLETED;
-	      vperf_info ("client finished sending %ld bytes of data", ts->cfg.total_bytes);
+	      vperf_info ("client finished sending %" PRIu64 " bytes of data", ts->cfg.total_bytes);
 	    }
 
 	  if (rv < nbytes)
