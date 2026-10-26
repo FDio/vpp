@@ -710,6 +710,7 @@ sfifo_test_fifo3 (vlib_main_t * vm, unformat_input_t * input)
       svm_fifo_enqueue_with_offset (
 	f, fifo_initial_offset + tp->offset - f->shr->tail, tp->len,
 	(u8 *) data_pattern + tp->offset);
+      SFIFO_TEST (svm_fifo_ooo_list_is_sane (f), "ooo list should be sane");
     }
 
   /* Add the first segment in order for non random data */
@@ -2294,6 +2295,124 @@ sfifo_test_fifo_ooo_segs (vlib_main_t *vm, unformat_input_t *input)
   return 0;
 }
 
+static ooo_segment_t *
+ooo_list_last (svm_fifo_t *f)
+{
+  return pool_elt_at_index (f->ooo_segments, svm_fifo_first_ooo_segment (f)->prev);
+}
+
+/*
+ * Out-of-order list keeps track of its last segment
+ */
+static int
+sfifo_test_fifo_ooo_list (vlib_main_t *vm, unformat_input_t *input)
+{
+  fifo_segment_main_t _fsm = { 0 }, *fsm = &_fsm;
+  u32 fifo_size = 16 << 10, index;
+  u8 *test_data = 0, *data_buf = 0;
+  ooo_segment_t *last;
+  int verbose = 0, rv;
+  fifo_segment_t *fs;
+  svm_fifo_t *f;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "verbose"))
+	verbose = 1;
+      else
+	{
+	  vlib_cli_output (vm, "parse error: '%U'", format_unformat_error, input);
+	  return -1;
+	}
+    }
+
+  fs = fifo_segment_prepare (fsm, "fifo-ooo-list", 0);
+  f = fifo_prepare (fs, fifo_size);
+  validate_test_and_buf_vecs (&test_data, &data_buf, fifo_size);
+
+  /* Only segment is also the last */
+  svm_fifo_enqueue_with_offset (f, 1000, 100, test_data + 1000);
+  last = ooo_list_last (f);
+  SFIFO_TEST (svm_fifo_is_sane (f) && last == svm_fifo_first_ooo_segment (f),
+	      "only segment is the last");
+
+  /* New head takes over the last */
+  svm_fifo_enqueue_with_offset (f, 500, 100, test_data + 500);
+  last = ooo_list_last (f);
+  SFIFO_TEST (svm_fifo_is_sane (f) && svm_fifo_n_ooo_segments (f) == 2 &&
+		ooo_segment_offset_prod (f, last) == 1000,
+	      "last after new head at %u", ooo_segment_offset_prod (f, last));
+
+  /* Segments after the last become the last */
+  svm_fifo_enqueue_with_offset (f, 1200, 100, test_data + 1200);
+  svm_fifo_enqueue_with_offset (f, 1400, 100, test_data + 1400);
+  svm_fifo_enqueue_with_offset (f, 1600, 100, test_data + 1600);
+  last = ooo_list_last (f);
+  SFIFO_TEST (svm_fifo_is_sane (f) && svm_fifo_n_ooo_segments (f) == 5 &&
+		ooo_segment_offset_prod (f, last) == 1600,
+	      "last after appends at %u", ooo_segment_offset_prod (f, last));
+
+  /* New head of several segments takes over the last */
+  svm_fifo_enqueue_with_offset (f, 200, 100, test_data + 200);
+  last = ooo_list_last (f);
+  SFIFO_TEST (svm_fifo_is_sane (f) && svm_fifo_n_ooo_segments (f) == 6 &&
+		ooo_segment_offset_prod (f, svm_fifo_first_ooo_segment (f)) == 200 &&
+		ooo_segment_offset_prod (f, last) == 1600,
+	      "last after new head at %u", ooo_segment_offset_prod (f, last));
+
+  /* Data that extends the last segment merges with it */
+  svm_fifo_enqueue_with_offset (f, 1700, 100, test_data + 1700);
+  last = ooo_list_last (f);
+  SFIFO_TEST (svm_fifo_is_sane (f) && svm_fifo_n_ooo_segments (f) == 6 &&
+		svm_fifo_newest_ooo_segment (f) == last && ooo_segment_length (f, last) == 200,
+	      "last extended to %u", ooo_segment_length (f, last));
+
+  /* Segment in the middle does not change the last */
+  svm_fifo_enqueue_with_offset (f, 1320, 30, test_data + 1320);
+  last = ooo_list_last (f);
+  SFIFO_TEST (svm_fifo_is_sane (f) && svm_fifo_n_ooo_segments (f) == 7 &&
+		ooo_segment_offset_prod (f, last) == 1600,
+	      "last after middle insert at %u", ooo_segment_offset_prod (f, last));
+
+  /* Data that covers the last segment removes it, the segment that merged it
+   * is the new last */
+  svm_fifo_enqueue_with_offset (f, 1390, 510, test_data + 1390);
+  last = ooo_list_last (f);
+  SFIFO_TEST (svm_fifo_is_sane (f) && svm_fifo_n_ooo_segments (f) == 6 &&
+		ooo_segment_offset_prod (f, last) == 1390 && ooo_segment_length (f, last) == 510,
+	      "last after merge at %u len %u", ooo_segment_offset_prod (f, last),
+	      ooo_segment_length (f, last));
+
+  svm_fifo_enqueue_with_offset (f, 2000, 100, test_data + 2000);
+  last = ooo_list_last (f);
+  SFIFO_TEST (svm_fifo_is_sane (f) && svm_fifo_n_ooo_segments (f) == 7 &&
+		ooo_segment_offset_prod (f, last) == 2000,
+	      "last after append at %u", ooo_segment_offset_prod (f, last));
+  if (verbose)
+    vlib_cli_output (vm, "fifo before in order data: %U", format_svm_fifo, f, 1);
+
+  /* Collecting the first segments passes the last to the new head */
+  rv = svm_fifo_enqueue (f, 500, test_data);
+  last = ooo_list_last (f);
+  SFIFO_TEST (rv == 600 && svm_fifo_is_sane (f) && svm_fifo_n_ooo_segments (f) == 5 &&
+		ooo_segment_offset_prod (f, last) == 2000 - 600,
+	      "last after collect at %u", ooo_segment_offset_prod (f, last));
+
+  /* Filling all holes collects all segments */
+  rv = svm_fifo_enqueue (f, 1500, test_data + 600);
+  SFIFO_TEST (rv == 1500 && svm_fifo_is_sane (f) && !svm_fifo_has_ooo_data (f) &&
+		svm_fifo_n_ooo_segments (f) == 0,
+	      "enqueued %d expected %u", rv, 1500);
+  rv = svm_fifo_dequeue (f, 2100, data_buf);
+  SFIFO_TEST (rv == 2100 && !compare_data (data_buf, test_data, 0, 2100, &index), "data preserved");
+
+  vec_free (test_data);
+  vec_free (data_buf);
+  ft_fifo_free (fs, f);
+  ft_fifo_segment_free (fsm, fs);
+  return 0;
+}
+
 static int
 sfifo_test_fifo_segment_hello_world (int verbose)
 {
@@ -3050,6 +3169,8 @@ svm_fifo_test (vlib_main_t * vm, unformat_input_t * input,
 	res = sfifo_test_fifo_make_rcv_wnd_zero (vm, input);
       else if (unformat (input, "ooo-segs"))
 	res = sfifo_test_fifo_ooo_segs (vm, input);
+      else if (unformat (input, "ooo-list"))
+	res = sfifo_test_fifo_ooo_list (vm, input);
       else if (unformat (input, "segment"))
 	res = sfifo_test_fifo_segment (vm, input);
       else if (unformat (input, "all"))
@@ -3121,6 +3242,9 @@ svm_fifo_test (vlib_main_t * vm, unformat_input_t * input,
 	    goto done;
 
 	  if ((res = sfifo_test_fifo_ooo_segs (vm, input)))
+	    goto done;
+
+	  if ((res = sfifo_test_fifo_ooo_list (vm, input)))
 	    goto done;
 
 	  str = "all";
