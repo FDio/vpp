@@ -108,12 +108,20 @@ svm_fifo_free_ooo_data (svm_fifo_t * f)
   pool_free (f->ooo_segments);
 }
 
+/* The head's prev is the last segment, so only other segments have one */
 static inline ooo_segment_t *
 ooo_segment_prev (svm_fifo_t * f, ooo_segment_t * s)
 {
-  if (s->prev == OOO_SEGMENT_INVALID_INDEX)
+  if (s - f->ooo_segments == f->ooos_list_head)
     return 0;
   return pool_elt_at_index (f->ooo_segments, s->prev);
+}
+
+static inline ooo_segment_t *
+ooo_segment_last (svm_fifo_t *f)
+{
+  ooo_segment_t *head = pool_elt_at_index (f->ooo_segments, f->ooos_list_head);
+  return pool_elt_at_index (f->ooo_segments, head->prev);
 }
 
 static inline ooo_segment_t *
@@ -141,23 +149,30 @@ ooo_segment_alloc (svm_fifo_t * f, u32 start, u32 length)
 static inline void
 ooo_segment_free (svm_fifo_t * f, u32 index)
 {
-  ooo_segment_t *cur, *prev = 0, *next = 0;
+  ooo_segment_t *cur, *prev, *next;
   cur = pool_elt_at_index (f->ooo_segments, index);
 
+  if (index == f->ooos_list_head)
+    {
+      f->ooos_list_head = cur->next;
+    }
+  else
+    {
+      prev = pool_elt_at_index (f->ooo_segments, cur->prev);
+      prev->next = cur->next;
+    }
+
+  /* The segment that points back at cur, the next one or the head if cur is
+   * the last, now points at cur's prev */
   if (cur->next != OOO_SEGMENT_INVALID_INDEX)
     {
       next = pool_elt_at_index (f->ooo_segments, cur->next);
       next->prev = cur->prev;
     }
-
-  if (cur->prev != OOO_SEGMENT_INVALID_INDEX)
+  else if (f->ooos_list_head != OOO_SEGMENT_INVALID_INDEX)
     {
-      prev = pool_elt_at_index (f->ooo_segments, cur->prev);
-      prev->next = cur->next;
-    }
-  else
-    {
-      f->ooos_list_head = cur->next;
+      next = pool_elt_at_index (f->ooo_segments, f->ooos_list_head);
+      next->prev = cur->prev;
     }
 
   pool_put (f->ooo_segments, cur);
@@ -185,15 +200,21 @@ ooo_segment_add (svm_fifo_t * f, u32 offset, u32 head, u32 tail, u32 length)
     {
       s = ooo_segment_alloc (f, offset_pos, length);
       f->ooos_list_head = s - f->ooo_segments;
+      /* Also the last segment */
+      s->prev = f->ooos_list_head;
       f->ooos_newest = f->ooos_list_head;
       return;
     }
 
-  /* Find first segment that starts after new segment */
-  s = pool_elt_at_index (f->ooo_segments, f->ooos_list_head);
-  while (s->next != OOO_SEGMENT_INVALID_INDEX
-	 && f_pos_lt (s->start, offset_pos))
-    s = pool_elt_at_index (f->ooo_segments, s->next);
+  /* Find first segment that starts after new segment, or the last one. New
+   * data usually lands after the last segment, so check it first */
+  s = ooo_segment_last (f);
+  if (f_pos_lt (offset_pos, s->start))
+    {
+      s = pool_elt_at_index (f->ooo_segments, f->ooos_list_head);
+      while (s->next != OOO_SEGMENT_INVALID_INDEX && f_pos_lt (s->start, offset_pos))
+	s = pool_elt_at_index (f->ooo_segments, s->next);
+    }
 
   /* If we have a previous and we overlap it, use it as starting point */
   prev = ooo_segment_prev (f, s);
@@ -219,10 +240,9 @@ ooo_segment_add (svm_fifo_t * f, u32 offset, u32 head, u32 tail, u32 length)
 
       /* Pool might've moved, get segment again */
       s = pool_elt_at_index (f->ooo_segments, s_index);
-      if (s->prev != OOO_SEGMENT_INVALID_INDEX)
+      if (s_index != f->ooos_list_head)
 	{
-	  new_s->prev = s->prev;
-	  prev = pool_elt_at_index (f->ooo_segments, new_s->prev);
+	  prev = pool_elt_at_index (f->ooo_segments, s->prev);
 	  prev->next = new_index;
 	}
       else
@@ -231,6 +251,8 @@ ooo_segment_add (svm_fifo_t * f, u32 offset, u32 head, u32 tail, u32 length)
 	  f->ooos_list_head = new_index;
 	}
 
+      /* A new head takes over the link to the last segment */
+      new_s->prev = s->prev;
       new_s->next = s_index;
       s->prev = new_index;
       f->ooos_newest = new_index;
@@ -250,6 +272,8 @@ ooo_segment_add (svm_fifo_t * f, u32 offset, u32 head, u32 tail, u32 length)
 
       new_s->prev = s_index;
       s->next = new_index;
+      /* New last segment */
+      pool_elt_at_index (f->ooo_segments, f->ooos_list_head)->prev = new_index;
       f->ooos_newest = new_index;
 
       return;
@@ -336,20 +360,6 @@ ooo_segment_try_collect (svm_fifo_t * f, u32 n_bytes_enqueued, u32 * tail)
 
   ASSERT (bytes <= f->shr->size);
   return bytes;
-}
-
-__clib_unused static ooo_segment_t *
-ooo_segment_last (svm_fifo_t * f)
-{
-  ooo_segment_t *s;
-
-  if (f->ooos_list_head == OOO_SEGMENT_INVALID_INDEX)
-    return 0;
-
-  s = svm_fifo_first_ooo_segment (f);
-  while (s->next != OOO_SEGMENT_INVALID_INDEX)
-    s = pool_elt_at_index (f->ooo_segments, s->next);
-  return s;
 }
 
 void
@@ -1602,7 +1612,35 @@ svm_fifo_is_sane (svm_fifo_t * f)
 	return 0;
     }
 
-  return 1;
+  return svm_fifo_ooo_list_is_sane (f);
+}
+
+u8
+svm_fifo_ooo_list_is_sane (svm_fifo_t *f)
+{
+  ooo_segment_t *s, *prev = 0;
+  u32 n_segs = 0;
+
+  if (f->ooos_list_head == OOO_SEGMENT_INVALID_INDEX)
+    return pool_elts (f->ooo_segments) == 0;
+
+  /* Segments are ordered, do not touch and link back to the previous one,
+   * while the head links back to the last */
+  s = svm_fifo_first_ooo_segment (f);
+  while (s)
+    {
+      /* More segments than allocated means the list loops */
+      if (++n_segs > pool_elts (f->ooo_segments))
+	return 0;
+      if (prev &&
+	  (f_pos_leq (s->start, ooo_segment_end_pos (prev)) || s->prev != prev - f->ooo_segments))
+	return 0;
+      prev = s;
+      s = ooo_segment_next (f, s);
+    }
+
+  return svm_fifo_first_ooo_segment (f)->prev == prev - f->ooo_segments &&
+	 n_segs == pool_elts (f->ooo_segments);
 }
 
 u32

@@ -489,6 +489,13 @@ ooo_segment_t *svm_fifo_first_ooo_segment (svm_fifo_t * f);
  */
 u8 svm_fifo_is_sane (svm_fifo_t * f);
 /**
+ * Check if fifo's out-of-order segment list is sane. Debug only.
+ *
+ * @param f	fifo
+ * @return 	1 if sane, 0 otherwise
+ */
+u8 svm_fifo_ooo_list_is_sane (svm_fifo_t *f);
+/**
  * Number of chunks linked into the fifo
  *
  * @param f	fifo
