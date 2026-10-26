@@ -30,7 +30,7 @@
 
 #define vperf_warn(_fmt, _args...) fprintf (stderr, "\nERROR: " _fmt "\n", ##_args)
 
-#define vperf_info(_fmt, _args...) fprintf (stdout, "vt<w%u>: " _fmt "\n", __wrk_index, ##_args)
+#define vperf_info(_fmt, _args...) fprintf (stdout, "vt<w%d>: " _fmt "\n", __wrk_index, ##_args)
 
 #define vperf_atomic_add(_ptr, _val) __atomic_fetch_add (_ptr, _val, __ATOMIC_RELEASE)
 
@@ -170,7 +170,7 @@ vperf_buf_alloc (vperf_cfg_t *cfg, uint8_t is_rxbuf, uint8_t **buf, uint32_t *bu
     }
   else
     {
-      vperf_warn ("realloc failed. using buffer size %d instead of %u", *bufsize, alloc_size);
+      vperf_warn ("realloc failed. using buffer size %u instead of %u", *bufsize, alloc_size);
     }
 }
 
@@ -214,16 +214,15 @@ vperf_stats_dump (char *header, vperf_stats_t *stats, uint8_t show_rx, uint8_t s
 
   total_bytes = stats->tx_bytes + stats->rx_bytes;
   rate = (double) total_bytes *8 / duration / 1e9;
-  printf ("\n%s: Streamed %lu bytes\n"
+  printf ("\n%s: Streamed %" PRIu64 " bytes\n"
 	  "  in %lf seconds (%lf Gbps %s-duplex)!\n",
-	  header, total_bytes, duration, rate,
-	  (show_rx && show_tx) ? "full" : "half");
+	  header, total_bytes, duration, rate, (show_rx && show_tx) ? "full" : "half");
 
   if (show_tx)
     {
       printf (VPERF_SEPARATOR_STRING "  tx stats (0x%p):\n" VPERF_SEPARATOR_STRING
-				     "         writes:  %lu (0x%08lx)\n"
-				     "       tx bytes:  %lu (0x%08lx)\n"
+				     "         writes:  %" PRIu64 " (0x%08" PRIx64 ")\n"
+				     "       tx bytes:  %" PRIu64 " (0x%08" PRIx64 ")\n"
 				     "      tx eagain:  %u (0x%08x)\n"
 				     "  tx incomplete:  %u (0x%08x)\n",
 	      (void *) stats, stats->tx_xacts, stats->tx_xacts, stats->tx_bytes, stats->tx_bytes,
@@ -232,8 +231,8 @@ vperf_stats_dump (char *header, vperf_stats_t *stats, uint8_t show_rx, uint8_t s
   if (show_rx)
     {
       printf (VPERF_SEPARATOR_STRING "  rx stats (0x%p):\n" VPERF_SEPARATOR_STRING
-				     "          reads:  %lu (0x%08lx)\n"
-				     "       rx bytes:  %lu (0x%08lx)\n"
+				     "          reads:  %" PRIu64 " (0x%08" PRIx64 ")\n"
+				     "       rx bytes:  %" PRIu64 " (0x%08" PRIx64 ")\n"
 				     "      rx eagain:  %u (0x%08x)\n"
 				     "  rx incomplete:  %u (0x%08x)\n",
 	      (void *) stats, stats->rx_xacts, stats->rx_xacts, stats->rx_bytes, stats->rx_bytes,
@@ -293,8 +292,8 @@ vperf_stats_dump_inc (vperf_session_t *ts, int is_rx)
     }
 
   rate = (double) total_bytes * 8 / duration / 1e9;
-  printf ("%d: %s %lu Mbytes in %.2lf seconds %.2lf Gbps\n", ts->fd, dir_str,
-	  (uint64_t) (total_bytes / 1e6), duration, rate);
+  printf ("%d: %s %" PRIu64 " Mbytes in %.2lf seconds %.2lf Gbps\n", ts->fd, dir_str,
+	  total_bytes / 1000000, duration, rate);
 }
 
 static inline int

@@ -753,7 +753,7 @@ vp_client_ctrl_session_rx_callback (session_t *s)
   rx_bytes = svm_fifo_dequeue (s->rx_fifo, sizeof (cfg), (u8 *) &cfg);
   if (rx_bytes != sizeof (cfg))
     {
-      vp_client_err ("invalid cfg length %d (expected %d)", rx_bytes, sizeof (cfg));
+      vp_client_err ("invalid cfg length %d (expected %wu)", rx_bytes, (uword) sizeof (cfg));
       signal_evt_to_cli (VP_CLIENT_CLI_CONNECTS_FAILED);
       return -1;
     }
@@ -1056,8 +1056,8 @@ vp_client_ctrl_test_stop ()
     case _sig:                                                                                     \
       break;                                                                                       \
     default:                                                                                       \
-      vp_cli ("unexpected event while waiting for " #_sig ": %d", event_type);                     \
-      return clib_error_return (0, "failed: unexpected event: %d", event_type);                    \
+      vp_cli ("unexpected event while waiting for " #_sig ": %wu", event_type);                    \
+      return clib_error_return (0, "failed: unexpected event: %wu", event_type);                   \
     }
 
 static void
@@ -1080,7 +1080,7 @@ vp_client_print_timeout_stats (vlib_main_t *vm)
 #endif
 	}
     }
-  vp_cli ("Timeout at %.6f with %d sessions still active...", vlib_time_now (vm),
+  vp_cli ("Timeout at %.6f with %u sessions still active...", vlib_time_now (vm),
 	  vpcm->ready_sessions);
   if (vpcm->cfg.echo_bytes)
     {
@@ -1224,8 +1224,8 @@ vp_client_run (vlib_main_t *vm)
       goto stop_test;
 
     default:
-      vp_cli ("unexpected event while waiting for connects to finish: %d", event_type);
-      error = clib_error_return (0, "failed: unexpected event while waiting for connects: %d",
+      vp_cli ("unexpected event while waiting for connects to finish: %wu", event_type);
+      error = clib_error_return (0, "failed: unexpected event while waiting for connects: %wu",
 				 event_type);
       goto stop_test;
     }
@@ -1311,8 +1311,8 @@ vp_client_run (vlib_main_t *vm)
 	  break;
 
 	default:
-	  vp_cli ("unexpected event while waiting for test end: %d", event_type);
-	  error = clib_error_return (0, "failed: unexpected event while waiting for test end: %d",
+	  vp_cli ("unexpected event while waiting for test end: %wu", event_type);
+	  error = clib_error_return (0, "failed: unexpected event while waiting for test end: %wu",
 				     event_type);
 	  goto stop_test;
 	}

@@ -7,6 +7,7 @@
 #ifndef __included_vperf_test_h__
 #define __included_vperf_test_h__
 
+#include <inttypes.h>
 #include <vnet/session/application_interface.h>
 #include <vnet/session/session.h>
 
@@ -186,10 +187,10 @@ vperf_cfg_dump (vperf_cfg_t *cfg, uint8_t is_client)
     "           ctrl handle:  %d (0x%x)\n"
     "%-5s num test sockets:  %u (0x%08x)\n"
     "%-5s          verbose:  %s (%d)\n"
-    "%-5s       rxbuf size:  %lu (0x%08lx)\n"
-    "%-5s       txbuf size:  %lu (0x%08lx)\n"
-    "%-5s       num writes:  %lu (0x%08lx)\n"
-    "       client tx bytes:  %lu (0x%08lx)\n" VPERF_SEPARATOR_STRING,
+    "%-5s       rxbuf size:  %" PRIu64 " (0x%08" PRIx64 ")\n"
+    "%-5s       txbuf size:  %" PRIu64 " (0x%08" PRIx64 ")\n"
+    "%-5s       num writes:  %" PRIu64 " (0x%08" PRIx64 ")\n"
+    "       client tx bytes:  %" PRIu64 " (0x%08" PRIx64 ")\n" VPERF_SEPARATOR_STRING,
     (void *) cfg, vperf_cmd_to_str (cfg->cmd), cfg->magic, cfg->seq_num,
     cfg->test_bytes ? "yes" : "no",
     is_client && (cfg->test == VPERF_TEST_TYPE_UNI) ? "'" VPERF_TOKEN_RUN_UNI "'" :
