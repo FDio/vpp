@@ -16,6 +16,40 @@
       "message": "The existing catch-all leaves the EtherType wildcarded and targets the same rx_qp4, so it should already receive PPPoE frames. What NIC/firmware behavior makes explicit EtherType rules necessary here?",
       "revId": "bfd80488eb01ea1308a3261b29a52dedefb82e26",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9abe080a_0b34ef8e",
+        "filename": "src/plugins/rdma/device.c",
+        "patchSetId": 137
+      },
+      "lineNbr": 318,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-10-26T11:04:57Z",
+      "side": 1,
+      "message": "Could we implement VPP flow offload support in the RDMA driver instead of hardcoding PPPoE rules into interface setup? The framework already supports Ethernet flows; adding an RDMA backend would allow configurable EtherType steering without protocol-specific state in the driver.",
+      "revId": "bfd80488eb01ea1308a3261b29a52dedefb82e26",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c52efd83_793adebc",
+        "filename": "src/plugins/rdma/device.c",
+        "patchSetId": 137
+      },
+      "lineNbr": 353,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-10-26T11:04:57Z",
+      "side": 1,
+      "message": "Could we create the mandatory rules before attempting these optional rules? When remaining flow capacity is sufficient for the original rules, allocating the PPPoE rules first can exhaust it and make interface creation fail. The promiscuous path has the same issue. I reproduced both cases with mocked flow-capacity exhaustion.",
+      "revId": "bfd80488eb01ea1308a3261b29a52dedefb82e26",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
