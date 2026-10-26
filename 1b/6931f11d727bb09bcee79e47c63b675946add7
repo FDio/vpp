@@ -1,0 +1,9 @@
+Code-Review+1: Filip Tehlar <filip.tehlar@gmail.com>
+Code-Review+1: Stanislav Zaikin <zstaseg@gmail.com>
+Code-Review+2: Benoit Ganne <bganne@cisco.com>
+Verified+1: FDio GitHub Actions <releng+fdio-github@linuxfoundation.org>
+Submitted-by: Benoit Ganne <bganne@cisco.com>
+Submitted-at: Mon, 26 Oct 2026 14:46:30 +0000
+Reviewed-on: https://gerrit.fd.io/r/c/vpp/+/46966
+Project: vpp
+Branch: refs/heads/master
