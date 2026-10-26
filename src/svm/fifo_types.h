@@ -39,7 +39,7 @@ typedef struct svm_fifo_chunk_
 typedef struct
 {
   u32 next;	/**< Next linked-list element pool index */
-  u32 prev;	/**< Previous linked-list element pool index */
+  u32 prev;	/**< Previous linked-list element pool index, last for head */
   u32 start;	/**< Start of segment, normalized*/
   u32 length;	/**< Length of segment */
 } ooo_segment_t;
