@@ -21,6 +21,7 @@ For more on plugins please refer to :ref:`add_plugin`.
     cnat
     npol
     lcp
+    fcp
     srv6/index
     lldp
     nat64

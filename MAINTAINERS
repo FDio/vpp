@@ -1002,6 +1002,11 @@ M:	Ole Troan <otroan@employees.org>
 M:	Mohammed Hawari <mohammed@hawari.fr>
 F:	src/plugins/sasc/
 
+Plugin - freebsd-cp
+I:     freebsd-cp
+M:     Pawel Szymanski <pawel.szymanski@intel.com>
+F:     src/plugins/freebsd-cp/
+
 GitHub Actions
 I: gha
 M: Dave Wallace <dwallacelf@gmail.com>
