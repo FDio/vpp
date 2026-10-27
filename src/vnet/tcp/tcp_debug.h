@@ -815,20 +815,19 @@ if (_av > 0) 								\
 	ed->data[3] = hole ? hole->end - _tc->iss : 0;                                             \
       }                                                                                            \
   }
-#define TCP_EVT_CC_SACKS_HANDLER(_tc, ...)				\
-{									\
-if (TCP_DEBUG_CC > 1)							\
-  {									\
-    ELOG_TYPE_DECLARE (_e) =						\
-    {									\
-      .format = "sacks: blocks %u bytes %u",				\
-      .format_args = "i4i4",						\
-    };									\
-    TCP_DECLARE_ETD(_tc, _e, 2);					\
-    ed->data[0] = vec_len (_tc->snd_sacks);				\
-    ed->data[1] = tcp_sack_list_bytes (_tc);				\
-  }									\
-}
+#define TCP_EVT_CC_SACKS_HANDLER(_tc, ...)                                                         \
+  {                                                                                                \
+    if (TCP_DEBUG_CC > 1)                                                                          \
+      {                                                                                            \
+	ELOG_TYPE_DECLARE (_e) = {                                                                 \
+	  .format = "sacks: newest start %u end %u",                                               \
+	  .format_args = "i4i4",                                                                   \
+	};                                                                                         \
+	TCP_DECLARE_ETD (_tc, _e, 2);                                                              \
+	ed->data[0] = _tc->snd_sack_newest.start - _tc->irs;                                       \
+	ed->data[1] = _tc->snd_sack_newest.end - _tc->irs;                                         \
+      }                                                                                            \
+  }
 #define TCP_EVT_CC_INPUT_HANDLER(_tc, _len, _written, ...)		\
 {									\
   ELOG_TYPE_DECLARE (_e) =						\

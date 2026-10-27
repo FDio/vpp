@@ -1462,12 +1462,15 @@ cleanup:
   return rv;
 }
 
+static int tcp_test_sack_tx_e2e (vlib_main_t *vm, u8 verbose);
+
 static int
-tcp_test_sack_tx (vlib_main_t * vm, unformat_input_t * input)
+tcp_test_sack_tx (vlib_main_t *vm, unformat_input_t *input)
 {
+  sack_block_t blks[TCP_OPTS_MAX_SACK_BLOCKS];
   tcp_connection_t _tc, *tc = &_tc;
-  sack_block_t *sacks;
-  int i, verbose = 0, expected;
+  int i, verbose = 0;
+  u32 n;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -1475,206 +1478,50 @@ tcp_test_sack_tx (vlib_main_t * vm, unformat_input_t * input)
 	verbose = 1;
       else
 	{
-	  vlib_cli_output (vm, "parse error: '%U'", format_unformat_error,
-			   input);
+	  vlib_cli_output (vm, "parse error: '%U'", format_unformat_error, input);
 	  return -1;
 	}
     }
 
+  /*
+   * D-SACK reports (RFC 2883) without out-of-order data
+   */
   clib_memset (tc, 0, sizeof (*tc));
+  tc->rcv_opts.flags = TCP_OPTS_FLAG_SACK_PERMITTED;
+  tc->rcv_nxt = 1000;
 
-  /*
-   * Add odd sack block pairs
-   */
-  for (i = 1; i < 10; i += 2)
-    {
-      tcp_update_sack_list (tc, i * 100, (i + 1) * 100, i * 100, (i + 1) * 100);
-    }
+  tcp_dsack_report (tc, 800, 900);
+  n = tcp_make_dupack_sacks (tc, 0, blks);
+  TCP_TEST ((n == 1 && blks[0].start == 800 && blks[0].end == 900 && !tcp_dsack_is_pending (tc)),
+	    "old duplicate is reported once, as the only block");
 
-  TCP_TEST ((vec_len (tc->snd_sacks) == 5), "sack blocks %d expected %d",
-	    vec_len (tc->snd_sacks), 5);
-  TCP_TEST ((tc->snd_sacks[0].start = 900),
-	    "first sack block start %u expected %u", tc->snd_sacks[0].start,
-	    900);
+  tcp_dsack_report (tc, 100, 200);
+  tcp_dsack_report (tc, 200, 300);
+  tcp_dsack_report (tc, 150, 250);
+  tcp_dsack_report (tc, 500, 600);
+  TCP_TEST ((vec_len (tc->snd_dsacks) == 2 && tc->snd_dsacks[0].start == 100 &&
+	     tc->snd_dsacks[0].end == 300 && tc->snd_dsacks[1].start == 500),
+	    "touching duplicates merge, others are reported separately");
+  n = tcp_make_dupack_sacks (tc, 0, blks);
+  TCP_TEST ((n == 1 && blks[0].start == 100 && vec_len (tc->snd_dsacks) == 1),
+	    "oldest duplicate is reported first, one per ack");
+  vec_free (tc->snd_dsacks);
+  for (i = 0; i < TCP_MAX_DSACK_BLOCKS + 2; i++)
+    tcp_dsack_report (tc, 100 * i, 100 * i + 50);
+  TCP_TEST ((vec_len (tc->snd_dsacks) == TCP_MAX_DSACK_BLOCKS && tc->snd_dsacks[0].start == 200),
+	    "pending duplicates are capped, keeping the most recent");
+  vec_free (tc->snd_dsacks);
 
-  /*
-   * Try to add one extra
-   */
-  sacks = vec_dup (tc->snd_sacks);
+  tc->sack_sb.flags |= TCP_DSACK_UNDO_DISABLED;
+  tcp_dsack_report (tc, 800, 900);
+  TCP_TEST ((!tcp_dsack_is_pending (tc)), "no reports with dsack disabled");
+  tc->sack_sb.flags = 0;
+  tc->rcv_opts.flags = 0;
+  tcp_dsack_report (tc, 800, 900);
+  TCP_TEST ((!tcp_dsack_is_pending (tc)), "no reports without sack");
+  vec_free (tc->snd_dsacks);
 
-  tcp_update_sack_list (tc, 1100, 1200, 1100, 1200);
-  if (verbose)
-    vlib_cli_output (vm, "add new segment [1100, 1200]\n%U",
-		     format_tcp_sacks, tc);
-  expected = 5 < TCP_MAX_SACK_BLOCKS ? 6 : 5;
-  TCP_TEST ((vec_len (tc->snd_sacks) == expected),
-	    "sack blocks %d expected %d", vec_len (tc->snd_sacks), expected);
-  TCP_TEST ((tc->snd_sacks[0].start == 1100),
-	    "first sack block start %u expected %u", tc->snd_sacks[0].start,
-	    1100);
-
-  /* restore */
-  vec_free (tc->snd_sacks);
-  tc->snd_sacks = sacks;
-
-  /*
-   * Overlap first 2 segment
-   */
-  tc->rcv_nxt = 300;
-  tcp_update_sack_list (tc, 300, 300, 300, 300);
-  if (verbose)
-    vlib_cli_output (vm, "overlap first 2 segments:\n%U",
-		     format_tcp_sacks, tc);
-  TCP_TEST ((vec_len (tc->snd_sacks) == 3), "sack blocks %d expected %d",
-	    vec_len (tc->snd_sacks), 3);
-  TCP_TEST ((tc->snd_sacks[0].start == 900),
-	    "first sack block start %u expected %u", tc->snd_sacks[0].start,
-	    500);
-
-  /*
-   * Add a new segment
-   */
-  tcp_update_sack_list (tc, 1100, 1200, 1100, 1200);
-  if (verbose)
-    vlib_cli_output (vm, "add new segment [1100, 1200]\n%U",
-		     format_tcp_sacks, tc);
-  TCP_TEST ((vec_len (tc->snd_sacks) == 4), "sack blocks %d expected %d",
-	    vec_len (tc->snd_sacks), 4);
-  TCP_TEST ((tc->snd_sacks[0].start == 1100),
-	    "first sack block start %u expected %u", tc->snd_sacks[0].start,
-	    1100);
-
-  /*
-   * Join middle segments
-   */
-  tcp_update_sack_list (tc, 800, 900, 800, 900);
-  if (verbose)
-    vlib_cli_output (vm, "join middle segments [800, 900]\n%U",
-		     format_tcp_sacks, tc);
-
-  TCP_TEST ((vec_len (tc->snd_sacks) == 3), "sack blocks %d expected %d",
-	    vec_len (tc->snd_sacks), 3);
-  TCP_TEST ((tc->snd_sacks[0].start == 700),
-	    "first sack block start %u expected %u", tc->snd_sacks[0].start,
-	    1100);
-
-  /*
-   * Advance rcv_nxt to overlap all
-   */
-  tc->rcv_nxt = 1200;
-  tcp_update_sack_list (tc, 1200, 1200, 1200, 1200);
-  if (verbose)
-    vlib_cli_output (vm, "advance rcv_nxt to 1200\n%U", format_tcp_sacks, tc);
-  TCP_TEST ((vec_len (tc->snd_sacks) == 0), "sack blocks %d expected %d",
-	    vec_len (tc->snd_sacks), 0);
-
-
-  /*
-   * Add 2 blocks, overwrite first and update rcv_nxt to also remove it
-   */
-
-  vec_reset_length (tc->snd_sacks);
-  tc->rcv_nxt = 0;
-
-  tcp_update_sack_list (tc, 100, 200, 100, 200);
-  tcp_update_sack_list (tc, 300, 400, 300, 400);
-
-  if (verbose)
-    vlib_cli_output (vm, "add [100, 200] [300, 400]\n%U",
-		     format_tcp_sacks, tc);
-  TCP_TEST ((vec_len (tc->snd_sacks) == 2),
-	    "sack blocks %d expected %d", vec_len (tc->snd_sacks), 2);
-  TCP_TEST ((tc->snd_sacks[0].start == 300),
-	    "first sack block start %u expected %u", tc->snd_sacks[0].start,
-	    300);
-
-  tc->rcv_nxt = 100;
-  tcp_update_sack_list (tc, 100, 100, 100, 100);
-  if (verbose)
-    vlib_cli_output (vm, "add [100, 200] rcv_nxt = 100\n%U",
-		     format_tcp_sacks, tc);
-  TCP_TEST ((vec_len (tc->snd_sacks) == 1),
-	    "sack blocks %d expected %d", vec_len (tc->snd_sacks), 1);
-  TCP_TEST ((tc->snd_sacks[0].start == 300),
-	    "first sack block start %u expected %u", tc->snd_sacks[0].start,
-	    300);
-
-  /*
-   * D-SACK reports (RFC 2883)
-   */
-  {
-    sack_block_t blks[TCP_OPTS_MAX_SACK_BLOCKS];
-    u32 n;
-
-    vec_free (tc->snd_sacks);
-    vec_free (tc->snd_sacks_fl);
-    clib_memset (tc, 0, sizeof (*tc));
-    tc->rcv_opts.flags = TCP_OPTS_FLAG_SACK_PERMITTED;
-    tc->rcv_nxt = 1000;
-
-    tcp_dsack_report (tc, 800, 900);
-    n = tcp_dsack_make_sacks (tc, blks);
-    TCP_TEST ((n == 1 && blks[0].start == 800 && blks[0].end == 900 && !tcp_dsack_is_pending (tc)),
-	      "old duplicate is reported once, as the only block");
-
-    tcp_dsack_report (tc, 100, 200);
-    tcp_dsack_report (tc, 200, 300);
-    tcp_dsack_report (tc, 150, 250);
-    tcp_dsack_report (tc, 500, 600);
-    TCP_TEST ((vec_len (tc->snd_dsacks) == 2 && tc->snd_dsacks[0].start == 100 &&
-	       tc->snd_dsacks[0].end == 300 && tc->snd_dsacks[1].start == 500),
-	      "touching duplicates merge, others are reported separately");
-    n = tcp_dsack_make_sacks (tc, blks);
-    TCP_TEST ((n == 1 && blks[0].start == 100 && vec_len (tc->snd_dsacks) == 1),
-	      "oldest duplicate is reported first, one per ack");
-    vec_free (tc->snd_dsacks);
-    for (i = 0; i < TCP_MAX_DSACK_BLOCKS + 2; i++)
-      tcp_dsack_report (tc, 100 * i, 100 * i + 50);
-    TCP_TEST ((vec_len (tc->snd_dsacks) == TCP_MAX_DSACK_BLOCKS && tc->snd_dsacks[0].start == 200),
-	      "pending duplicates are capped, keeping the most recent");
-    vec_free (tc->snd_dsacks);
-
-    tcp_update_sack_list (tc, 1200, 1300, 1200, 1300);
-    tcp_update_sack_list (tc, 1500, 1800, 1500, 1800);
-    tcp_update_sack_list (tc, 2000, 2100, 2000, 2100);
-    tcp_dsack_report (tc, 1600, 1700);
-    n = tcp_dsack_make_sacks (tc, blks);
-    TCP_TEST ((n == 3 && blks[0].start == 1600 && blks[0].end == 1700 && blks[1].start == 1500 &&
-	       blks[1].end == 1800 && blks[2].start == 2000 && tc->snd_sack_pos == 1),
-	      "out-of-order duplicate is followed by the block that contains it");
-
-    tc->snd_sack_pos = 0;
-    tcp_dsack_report (tc, 800, 900);
-    n = tcp_dsack_make_sacks (tc, blks);
-    TCP_TEST ((n == 3 && blks[0].start == 800 && blks[1].start == 2000 && blks[2].start == 1500),
-	      "old duplicate is followed by the blocks in rotation");
-
-    tcp_update_sack_list (tc, 1500, 1850, 1750, 1850);
-    TCP_TEST ((vec_len (tc->snd_dsacks) == 1 && tc->snd_dsacks[0].start == 1750 &&
-	       tc->snd_dsacks[0].end == 1800),
-	      "out-of-order segment reports the part it repeated");
-    vec_free (tc->snd_dsacks);
-    tcp_update_sack_list (tc, 2000, 2200, 2100, 2200);
-    TCP_TEST ((!tcp_dsack_is_pending (tc)), "adjacent out-of-order segment reports nothing");
-    tc->rcv_nxt = 1300;
-    tcp_update_sack_list (tc, 1300, 1300, 1000, 1300);
-    TCP_TEST ((vec_len (tc->snd_dsacks) == 1 && tc->snd_dsacks[0].start == 1200 &&
-	       tc->snd_dsacks[0].end == 1300 && vec_len (tc->snd_sacks) == 2),
-	      "in-order segment reports the blocks it delivered again");
-    vec_free (tc->snd_dsacks);
-
-    tc->sack_sb.flags |= TCP_DSACK_UNDO_DISABLED;
-    tcp_dsack_report (tc, 800, 900);
-    TCP_TEST ((!tcp_dsack_is_pending (tc)), "no reports with dsack disabled");
-    tc->sack_sb.flags = 0;
-    tc->rcv_opts.flags = 0;
-    tcp_dsack_report (tc, 800, 900);
-    TCP_TEST ((!tcp_dsack_is_pending (tc)), "no reports without sack");
-    vec_free (tc->snd_sacks);
-    vec_free (tc->snd_sacks_fl);
-    vec_free (tc->snd_dsacks);
-  }
-  return 0;
+  return tcp_test_sack_tx_e2e (vm, verbose);
 }
 
 static int
@@ -5937,12 +5784,12 @@ tcp_test_dsack_ack_rpc (void *arg)
 {
   tcp_test_dsack_ack_rpc_args_t *a = arg;
 
-  vec_insert_elts (a->tc->snd_sacks, &a->dsack, 1, 0);
-  a->tc->snd_sack_pos = 0;
+  vec_add1 (a->tc->snd_dsacks, a->dsack);
   a->ack_matches_before = a->ack_rule->n_matched;
   /* Keep ACKs suppressed until the D-SACK is ready on the receiver's owner. */
   a->ack_rule->n_drop = 0;
-  tcp_program_ack (a->tc);
+  /* Only dupacks carry dsacks */
+  tcp_program_dupack (a->tc);
   a->done = 1;
   a->in_flight = 0;
 }
@@ -6115,9 +5962,10 @@ tcp_test_tamper_dsack_early_undo (vlib_main_t *vm)
     tcp_e2e_pump (vm, 1e-3);
   if (!TCP_TEST_I ((seq_gt (client_tc->snd_una, spurious_seq)),
 		   "dsack_early: synthetic D-SACK ACK reached sender "
-		   "(ack matches %u->%u, server sacks %u, tr %u, fr %u, flags 0x%x, "
+		   "(ack matches %u->%u, server ooo segments %u, tr %u, fr %u, flags 0x%x, "
 		   "dsack flags 0x%x, pending bytes %u)",
-		   a->ack_matches_before, ack_rule->n_matched, vec_len (server_tc->snd_sacks),
+		   a->ack_matches_before, ack_rule->n_matched,
+		   svm_fifo_n_ooo_segments (server_s->rx_fifo),
 		   client_tc->tr_occurences - tr_before, client_tc->fr_occurences - fr_before,
 		   client_tc->flags, client_tc->sack_sb.flags, tcp_dsack_pending_bytes (client_tc)))
     {
@@ -6915,7 +6763,8 @@ tcp_test_tamper_dsack_mode (vlib_main_t *vm, u8 partial)
    * mode, the second segment is held out of order. */
   for (tries = 0, arrived = 0; !arrived && tries < 200; tries++)
     {
-      arrived = partial ? (server_tc->rcv_nxt == start && vec_len (server_tc->snd_sacks) == 1) :
+      arrived = partial ? (server_tc->rcv_nxt == start &&
+			   svm_fifo_n_ooo_segments (server_s->rx_fifo) == 1) :
 			  server_tc->rcv_nxt - start == total_bytes;
       arrived = arrived && ack_rule->n_dropped;
       if (!arrived)
@@ -7054,6 +6903,154 @@ tcp_test_dsack_rx_inject (vlib_main_t *vm, tcp_connection_t *tc, u32 seq, u16 le
   return 0;
 }
 
+/* Check that the n blocks in blks are the n_exp ones in exp, as offsets
+ * from base */
+static int
+tcp_test_sack_blocks (const char *what, sack_block_t *blks, u32 n, u32 base, const u32 exp[][2],
+		      u32 n_exp)
+{
+  u8 *str = 0;
+  int ok;
+  u32 i;
+
+  ok = n == n_exp;
+  for (i = 0; ok && i < n; i++)
+    ok = blks[i].start == base + exp[i][0] && blks[i].end == base + exp[i][1];
+  for (i = 0; i < n; i++)
+    str = format (str, " [%u, %u)", blks[i].start - base, blks[i].end - base);
+  ok = TCP_TEST_I (ok, "sack_tx: %s:%v", what, str);
+  vec_free (str);
+  return ok;
+}
+
+static int
+tcp_test_sack_tx_e2e (vlib_main_t *vm, u8 verbose)
+{
+  tcp_e2e_params_t params = {
+    .name = "sack_tx",
+    .client_addr = 0x26262601,
+    .server_addr = 0x27272701,
+    .client_vrf = 0,
+    .server_vrf = 2,
+    .server_port = 2273,
+    .secret = 2272,
+  };
+  sack_block_t blks[TCP_OPTS_MAX_SACK_BLOCKS];
+  tcp_sack_rotation_t rot;
+  tcp_e2e_ctx_t ctx;
+  tcp_connection_t *tc;
+  u32 base, n;
+  int rv = 1;
+
+#define SACK_INJECT(_start, _end)                                                                  \
+  do                                                                                               \
+    {                                                                                              \
+      if (tcp_test_dsack_rx_inject (vm, tc, base + (_start), (_end) - (_start), 0))                \
+	goto cleanup;                                                                              \
+    }                                                                                              \
+  while (0)
+#define SACK_CHECK(_what, _n, ...)                                                                 \
+  do                                                                                               \
+    {                                                                                              \
+      const u32 _exp[][2] = { __VA_ARGS__ };                                                       \
+      if (verbose)                                                                                 \
+	vlib_cli_output (vm, "%U", format_svm_fifo, ctx.client_s->rx_fifo, 2);                     \
+      if (!tcp_test_sack_blocks (_what, blks, _n, base, _exp, ARRAY_LEN (_exp)))                   \
+	goto cleanup;                                                                              \
+    }                                                                                              \
+  while (0)
+
+  if (!TCP_TEST_I (!tcp_e2e_setup (vm, &ctx, &params), "sack_tx: e2e setup"))
+    goto cleanup;
+  tc = ctx.client_tc;
+  tc->rcv_opts.flags &= ~TCP_OPTS_FLAG_TSTAMP;
+  base = tc->rcv_nxt;
+  tc->snd_sack_cursor = base;
+
+  /* Out-of-order segments: the newest block first, then the lowest */
+  SACK_INJECT (100, 200);
+  SACK_INJECT (300, 400);
+  SACK_INJECT (500, 600);
+  SACK_INJECT (700, 800);
+  SACK_INJECT (900, 1000);
+  n = tcp_make_sacks (tc, blks);
+  SACK_CHECK ("newest block, then the lowest", n, { 900, 1000 }, { 100, 200 }, { 300, 400 });
+
+  SACK_INJECT (600, 700);
+  n = tcp_make_sacks (tc, blks);
+  SACK_CHECK ("segment that joins blocks is newest", n, { 500, 800 }, { 100, 200 }, { 300, 400 });
+
+  /* Dupacks rotate through the other blocks and later bursts continue */
+  tcp_sack_rotation_init (tc, &rot);
+  n = tcp_make_dupack_sacks (tc, &rot, blks);
+  SACK_CHECK ("first dupack", n, { 500, 800 }, { 100, 200 }, { 300, 400 });
+  n = tcp_make_dupack_sacks (tc, &rot, blks);
+  SACK_CHECK ("second dupack wraps", n, { 500, 800 }, { 900, 1000 }, { 100, 200 });
+  tcp_sack_rotation_save (tc, &rot);
+  tcp_sack_rotation_init (tc, &rot);
+  n = tcp_make_dupack_sacks (tc, &rot, blks);
+  SACK_CHECK ("next burst continues", n, { 500, 800 }, { 300, 400 }, { 900, 1000 });
+  tcp_sack_rotation_save (tc, &rot);
+
+  /* Out-of-order duplicates are followed by the block that holds them */
+  SACK_INJECT (320, 380);
+  n = tcp_make_sacks (tc, blks);
+  SACK_CHECK ("block of a duplicate is newest", n, { 300, 400 }, { 100, 200 }, { 500, 800 });
+  tcp_sack_rotation_init (tc, &rot);
+  n = tcp_make_dupack_sacks (tc, &rot, blks);
+  SACK_CHECK ("duplicate, its block, rotation", n, { 320, 380 }, { 300, 400 }, { 100, 200 });
+  SACK_INJECT (1150, 1250);
+  SACK_INJECT (1200, 1300);
+  tcp_sack_rotation_init (tc, &rot);
+  n = tcp_make_dupack_sacks (tc, &rot, blks);
+  SACK_CHECK ("partial duplicate, its block, rotation", n, { 1200, 1250 }, { 1150, 1300 },
+	      { 100, 200 });
+  tcp_sack_rotation_save (tc, &rot);
+
+  /* In-order data delivers blocks, repeating some */
+  SACK_INJECT (0, 100);
+  n = tcp_make_sacks (tc, blks);
+  SACK_CHECK ("delivered block is dropped", n, { 1150, 1300 }, { 300, 400 }, { 500, 800 });
+  SACK_INJECT (200, 450);
+  n = tcp_make_sacks (tc, blks);
+  SACK_CHECK ("block repeated in order is dropped", n, { 1150, 1300 }, { 500, 800 }, { 900, 1000 });
+  tcp_sack_rotation_init (tc, &rot);
+  n = tcp_make_dupack_sacks (tc, &rot, blks);
+  SACK_CHECK ("in-order duplicate has no block", n, { 300, 400 }, { 1150, 1300 }, { 500, 800 });
+  tcp_sack_rotation_save (tc, &rot);
+
+  /* Old duplicates are followed by the newest block */
+  SACK_INJECT (0, 100);
+  tcp_sack_rotation_init (tc, &rot);
+  n = tcp_make_dupack_sacks (tc, &rot, blks);
+  SACK_CHECK ("old duplicate, newest, rotation", n, { 0, 100 }, { 1150, 1300 }, { 900, 1000 });
+
+  /* Delivering the newest block makes the lowest one newest */
+  SACK_INJECT (520, 540);
+  SACK_INJECT (450, 850);
+  n = tcp_make_sacks (tc, blks);
+  SACK_CHECK ("delivered newest is replaced by the lowest", n, { 900, 1000 }, { 1150, 1300 });
+
+  SACK_INJECT (850, 1150);
+  if (!TCP_TEST_I (vec_len (tc->snd_dsacks) == 2 && tc->snd_dsacks[0].start == base + 500 &&
+		     tc->snd_dsacks[0].end == base + 800 && tc->snd_dsacks[1].start == base + 900 &&
+		     tc->snd_dsacks[1].end == base + 1000,
+		   "sack_tx: in-order data reports each block it repeats"))
+    goto cleanup;
+  if (!TCP_TEST_I (!tcp_sack_has_blocks (tc) && tc->rcv_nxt == base + 1300,
+		   "sack_tx: no blocks once all is delivered"))
+    goto cleanup;
+
+  rv = 0;
+
+cleanup:
+#undef SACK_INJECT
+#undef SACK_CHECK
+  if (!tcp_e2e_teardown (vm, &ctx))
+    rv = 1;
+  return rv;
+}
+
 static int
 tcp_test_dsack_rx_e2e (vlib_main_t *vm)
 {
@@ -7117,9 +7114,9 @@ tcp_test_dsack_rx_e2e (vlib_main_t *vm)
 	  rv = 1;
 	  goto cleanup;
 	}
-      if (!TCP_TEST_I (vec_len (tc->snd_sacks) &&
-			 seq_leq (tc->snd_sacks[0].start, base + cases[i].start) &&
-			 seq_geq (tc->snd_sacks[0].end, base + cases[i].start + cases[i].len),
+      if (!TCP_TEST_I (tcp_sack_has_blocks (tc) &&
+			 seq_leq (tc->snd_sack_newest.start, base + cases[i].start) &&
+			 seq_geq (tc->snd_sack_newest.end, base + cases[i].start + cases[i].len),
 		       "dsack_rx: %s first sack block covers the segment", cases[i].name))
 	{
 	  rv = 1;
@@ -7146,9 +7143,10 @@ tcp_test_dsack_rx_e2e (vlib_main_t *vm)
       rv = 1;
       goto cleanup;
     }
-  if (!TCP_TEST_I (!tcp_dsack_is_pending (tc) && vec_len (tc->snd_sacks) == 1 &&
-		     tc->snd_sacks[0].start == base + cap - 600 &&
-		     tc->snd_sacks[0].end == base + cap - 200,
+  if (!TCP_TEST_I (!tcp_dsack_is_pending (tc) &&
+		     svm_fifo_n_ooo_segments (ctx.client_s->rx_fifo) == 1 &&
+		     tc->snd_sack_newest.start == base + cap - 600 &&
+		     tc->snd_sack_newest.end == base + cap - 200,
 		   "dsack_rx: chain that overflows the fifo reports only queued data"))
     {
       rv = 1;
