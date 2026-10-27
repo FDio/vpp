@@ -113,17 +113,36 @@ __clib_export void scoreboard_init (sack_scoreboard_t *sb);
 
 __clib_export format_function_t format_tcp_scoreboard;
 
-__clib_export void tcp_update_sack_list (tcp_connection_t *tc, u32 start, u32 end, u32 seg_start,
-					 u32 seg_end);
+/** Rx fifo segments the dupacks of a burst report in rotation */
+typedef struct tcp_sack_rotation_
+{
+  svm_fifo_t *f;
+  ooo_segment_t *seg; /**< Next segment to report */
+  u32 n_segs;	      /**< Segments in the fifo */
+} tcp_sack_rotation_t;
+
 /** Report [start, end), received again (RFC 2883), if reporting is enabled */
 __clib_export void tcp_dsack_report (tcp_connection_t *tc, u32 start, u32 end);
-/** Fill blks with the oldest pending dsack, the block that contains it, if
- * any, and the next blocks in rotation. Each dsack is reported once. */
-__clib_export u32 tcp_dsack_make_sacks (tcp_connection_t *tc, sack_block_t *blks);
+/** Report what in-order data that ends at end repeats of the out-of-order
+ * data it delivers. Called before the data is enqueued. */
+void tcp_dsack_report_delivered (tcp_connection_t *tc, u32 end);
+/** Pick the next newest block once the newest one was delivered */
+void tcp_sack_newest_delivered (tcp_connection_t *tc);
+/** Fill blks with the newest block and the lowest ones */
+__clib_export u32 tcp_make_sacks (tcp_connection_t *tc, sack_block_t *blks);
+/** Start a dupack burst where the last one stopped reporting blocks */
+__clib_export void tcp_sack_rotation_init (tcp_connection_t *tc, tcp_sack_rotation_t *rot);
+/** Save where the dupack burst stopped reporting blocks */
+__clib_export void tcp_sack_rotation_save (tcp_connection_t *tc, tcp_sack_rotation_t *rot);
+/** Fill blks for a dupack of a burst: the oldest pending dsack, if any, and
+ * the block that contains it, the newest block and the next blocks in
+ * rotation. Each dsack is reported once, so call once the ack has a buffer.
+ * rot is only used if the fifo has out-of-order data. */
+__clib_export u32 tcp_make_dupack_sacks (tcp_connection_t *tc, tcp_sack_rotation_t *rot,
+					 sack_block_t *blks);
 __clib_export void tcp_dsack_recovery_clear (tcp_connection_t *tc);
 __clib_export void tcp_dsack_recovery_init (tcp_connection_t *tc);
 __clib_export void tcp_track_rxt (tcp_connection_t *tc, u32 start, u32 end);
-u32 tcp_sack_list_bytes (tcp_connection_t * tc);
 __clib_export void tcp_rcv_dsack (tcp_connection_t *tc, u32 ack, tcp_ack_ctx_t *ac);
 __clib_export void tcp_ack_handle_full_feedback (tcp_connection_t *tc, u32 packet_ack, u32 ack,
 						 tcp_ack_ctx_t *ac);
@@ -161,6 +180,19 @@ static inline u8
 tcp_dsack_is_pending (tcp_connection_t *tc)
 {
   return vec_len (tc->snd_dsacks) != 0;
+}
+
+/** Rx fifo has out-of-order data to report */
+static inline u8
+tcp_sack_has_blocks (tcp_connection_t *tc)
+{
+  return tc->snd_sack_newest.start != tc->snd_sack_newest.end;
+}
+
+static inline void
+tcp_sack_clear_blocks (tcp_connection_t *tc)
+{
+  tc->snd_sack_newest.end = tc->snd_sack_newest.start;
 }
 
 __clib_export void tcp_sack_init_rxt (tcp_connection_t *tc, u32 snd_una);
