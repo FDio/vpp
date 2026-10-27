@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "694d5b15_e77210c3",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-10-27T20:49:02Z",
+      "side": 1,
+      "message": "Wow, the copy-paste is strong with these tests.\n\nAnyhow - I see the same pattern of `payload_to_info(packet[Raw]) in multiple other tests. Is a similar fix required elsewhere too? Why not?",
+      "revId": "cf58787965d1402f5126fd930e78e9443f94dc92",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
