@@ -794,6 +794,54 @@ ooo_segment_length (svm_fifo_t * f, ooo_segment_t * s)
   return s->length;
 }
 
+/*
+ * Out-of-order data of a fifo, see @ref ooo_segments_t. Producer only
+ */
+
+/** Lowest segment, or 0 if there are none */
+static inline ooo_segment_t *
+ooo_segments_first (ooo_segments_t *o)
+{
+  if (o->head == OOO_SEGMENT_INVALID_INDEX)
+    return 0;
+  return pool_elt_at_index (o->segments, o->head);
+}
+
+/** Segment after s, or 0 if s is the last */
+static inline ooo_segment_t *
+ooo_segments_next (ooo_segments_t *o, ooo_segment_t *s)
+{
+  if (s->next == OOO_SEGMENT_INVALID_INDEX)
+    return 0;
+  return pool_elt_at_index (o->segments, s->next);
+}
+
+static inline u32
+ooo_segments_n (ooo_segments_t *o)
+{
+  return pool_elts (o->segments);
+}
+
+static inline svm_fifo_t *
+ooo_segments_fifo (ooo_segments_t *o)
+{
+  return (svm_fifo_t *) ((u8 *) o - STRUCT_OFFSET_OF (svm_fifo_t, ooo));
+}
+
+/** Offset of s from the fifo's tail */
+static inline u32
+ooo_segments_offset (ooo_segments_t *o, ooo_segment_t *s)
+{
+  return ooo_segment_offset_prod (ooo_segments_fifo (o), s);
+}
+
+/** Segment that holds the byte at offset from the fifo's tail, or 0 */
+static inline ooo_segment_t *
+ooo_segments_find (ooo_segments_t *o, u32 offset)
+{
+  return svm_fifo_find_ooo_segment (ooo_segments_fifo (o), offset);
+}
+
 static inline u32
 svm_fifo_size (svm_fifo_t * f)
 {

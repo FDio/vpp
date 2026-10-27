@@ -2506,6 +2506,15 @@ sfifo_test_fifo_ooo_info (vlib_main_t *vm, unformat_input_t *input)
 	      "next segment at 1900 len 850");
   SFIFO_TEST (!svm_fifo_next_ooo_segment (f, seg), "no segment after the last");
 
+  /* Transports see the same segments through the out-of-order data */
+  seg = ooo_segments_first (&f->ooo);
+  SFIFO_TEST (seg && ooo_segments_offset (&f->ooo, seg) == 1000 && ooo_segments_n (&f->ooo) == 2,
+	      "first of 2 segments at %d", seg ? (int) ooo_segments_offset (&f->ooo, seg) : -1);
+  seg = ooo_segments_next (&f->ooo, seg);
+  SFIFO_TEST (seg && ooo_segments_offset (&f->ooo, seg) == 1900 &&
+		!ooo_segments_next (&f->ooo, seg) && ooo_segments_find (&f->ooo, 2000) == seg,
+	      "next and last segment at %d", seg ? (int) ooo_segments_offset (&f->ooo, seg) : -1);
+
   for (i = 0; i < ARRAY_LEN (lookups); i++)
     {
       seg = svm_fifo_find_ooo_segment (f, lookups[i].offset);
