@@ -658,10 +658,12 @@ session_fifo_tuning (session_t *s, svm_fifo_t *f, session_ft_action_t act, u32 l
  * In order, returns number of bytes enqueued, including any collected
  * out-of-order bytes, or a negative svm fifo error. Out of order, like a single
  * buffer, the chain is enqueued entirely or not at all, and returns 0 or a
- * negative svm fifo error.
+ * negative svm fifo error. If info is set, it reports what an out-of-order
+ * enqueue found in the fifo.
  */
 always_inline int
-session_enqueue_chain (session_t *s, vlib_buffer_t *b, u32 offset, u8 is_in_order)
+session_enqueue_chain (session_t *s, vlib_buffer_t *b, u32 offset, u8 is_in_order,
+		       svm_fifo_ooo_enq_info_t *info)
 {
   session_worker_t *wrk = session_main_get_worker (s->thread_index);
   vlib_buffer_t *chain_b = b;
@@ -685,8 +687,8 @@ session_enqueue_chain (session_t *s, vlib_buffer_t *b, u32 offset, u8 is_in_orde
     }
   else
     {
-      rv = svm_fifo_enqueue_segments_with_offset (s->rx_fifo, offset, wrk->rx_segs,
-						  vec_len (wrk->rx_segs), 0 /* allow partial */);
+      rv = svm_fifo_enqueue_segments_with_offset_info (
+	s->rx_fifo, offset, wrk->rx_segs, vec_len (wrk->rx_segs), 0 /* allow partial */, info);
       rv = rv < 0 ? rv : 0;
     }
 
@@ -696,45 +698,30 @@ session_enqueue_chain (session_t *s, vlib_buffer_t *b, u32 offset, u8 is_in_orde
 }
 
 /*
- * Enqueue data for delivery to app. If requested, it queues app notification
- * event for later delivery.
+ * Enqueue in-order data for delivery to app. If requested, it queues app
+ * notification event for later delivery.
  *
  * @param tc Transport connection which is to be enqueued data
  * @param b Buffer to be enqueued
- * @param offset Offset at which to start enqueueing if out-of-order
  * @param queue_event Flag to indicate if peer is to be notified or if event
  *                    is to be queued. The former is useful when more data is
  *                    enqueued and only one event is to be generated.
- * @param is_in_order Flag to indicate if data is in order
- * @return If in order, number of bytes enqueued, which may exceed the buffer
- *         length if out-of-order data was collected. If out of order, 0 if
- *         the buffer, which is enqueued entirely or not at all, was enqueued.
- *         Negative svm fifo error if nothing could be enqueued.
+ * @return Number of bytes enqueued, which may exceed the buffer length if
+ *         out-of-order data was collected, or negative svm fifo error if
+ *         nothing could be enqueued.
  */
 always_inline int
-session_enqueue_stream_connection (transport_connection_t *tc,
-				   vlib_buffer_t *b, u32 offset,
-				   u8 queue_event, u8 is_in_order)
+session_enqueue_stream_connection (transport_connection_t *tc, vlib_buffer_t *b, u8 queue_event)
 {
   session_t *s;
-  int enqueued = 0;
+  int enqueued;
 
   s = session_get (tc->s_index, tc->thread_index);
 
-  if (is_in_order)
-    {
-      if (PREDICT_TRUE (!(b->flags & VLIB_BUFFER_NEXT_PRESENT)))
-	enqueued = svm_fifo_enqueue (s->rx_fifo, b->current_length, vlib_buffer_get_current (b));
-      else
-	enqueued = session_enqueue_chain (s, b, 0, 1);
-    }
+  if (PREDICT_TRUE (!(b->flags & VLIB_BUFFER_NEXT_PRESENT)))
+    enqueued = svm_fifo_enqueue (s->rx_fifo, b->current_length, vlib_buffer_get_current (b));
   else
-    {
-      if (PREDICT_TRUE (!(b->flags & VLIB_BUFFER_NEXT_PRESENT)))
-	return svm_fifo_enqueue_with_offset (s->rx_fifo, offset, b->current_length,
-					     vlib_buffer_get_current (b));
-      return session_enqueue_chain (s, b, offset, 0);
-    }
+    enqueued = session_enqueue_chain (s, b, 0, 1, 0);
 
   if (queue_event)
     {
@@ -752,6 +739,26 @@ session_enqueue_stream_connection (transport_connection_t *tc,
     }
 
   return enqueued;
+}
+
+/**
+ * Enqueue out-of-order data at offset from the rx fifo tail and report what
+ * the enqueue found in the fifo, see @ref svm_fifo_ooo_enq_info_t. The app
+ * sees the data only once in-order data fills the gap before it.
+ *
+ * @return 0 if the buffer, which is enqueued entirely or not at all, was
+ *         enqueued, negative svm fifo error otherwise
+ */
+always_inline int
+session_enqueue_stream_connection_ooo (transport_connection_t *tc, vlib_buffer_t *b, u32 offset,
+				       svm_fifo_ooo_enq_info_t *info)
+{
+  session_t *s = session_get (tc->s_index, tc->thread_index);
+
+  if (PREDICT_TRUE (!(b->flags & VLIB_BUFFER_NEXT_PRESENT)))
+    return svm_fifo_enqueue_with_offset_info (s->rx_fifo, offset, b->current_length,
+					      vlib_buffer_get_current (b), info);
+  return session_enqueue_chain (s, b, offset, 0, info);
 }
 
 always_inline int

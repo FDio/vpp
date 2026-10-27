@@ -1040,8 +1040,7 @@ tcp_session_enqueue_data (tcp_connection_t * tc, vlib_buffer_t * b,
 
   ASSERT (seq_geq (vnet_buffer (b)->tcp.seq_number, tc->rcv_nxt));
   ASSERT (data_len);
-  written = session_enqueue_stream_connection (&tc->connection, b, 0,
-					       1 /* queue event */ , 1);
+  written = session_enqueue_stream_connection (&tc->connection, b, 1 /* queue event */);
 
   TCP_EVT (TCP_EVT_INPUT, tc, 0, data_len, written);
 
@@ -1093,17 +1092,15 @@ static int
 tcp_session_enqueue_ooo (tcp_connection_t * tc, vlib_buffer_t * b,
 			 u16 data_len)
 {
-  session_t *s0;
-  int rv, offset;
+  svm_fifo_ooo_enq_info_t info;
+  int rv;
 
   ASSERT (seq_gt (vnet_buffer (b)->tcp.seq_number, tc->rcv_nxt));
   ASSERT (data_len);
 
   /* Enqueue out-of-order data with relative offset */
-  rv = session_enqueue_stream_connection (&tc->connection, b,
-					  vnet_buffer (b)->tcp.seq_number -
-					  tc->rcv_nxt, 0 /* queue event */ ,
-					  0);
+  rv = session_enqueue_stream_connection_ooo (&tc->connection, b,
+					      vnet_buffer (b)->tcp.seq_number - tc->rcv_nxt, &info);
 
   /* Nothing written */
   if (rv)
@@ -1118,26 +1115,18 @@ tcp_session_enqueue_ooo (tcp_connection_t * tc, vlib_buffer_t * b,
   /* Update SACK list if in use */
   if (tcp_opts_sack_permitted (&tc->rcv_opts))
     {
-      ooo_segment_t *newest;
-      u32 start, end, seq = vnet_buffer (b)->tcp.seq_number;
+      u32 start, seq = vnet_buffer (b)->tcp.seq_number;
 
-      s0 = session_get (tc->c_s_index, tc->c_thread_index);
-
-      /* Get the newest segment from the fifo */
-      newest = svm_fifo_newest_ooo_segment (s0->rx_fifo);
-      if (newest)
+      if (info.dup_len < data_len)
 	{
-	  offset = ooo_segment_offset_prod (s0->rx_fifo, newest);
-	  ASSERT (offset <= vnet_buffer (b)->tcp.seq_number - tc->rcv_nxt);
-	  start = tc->rcv_nxt + offset;
-	  end = start + ooo_segment_length (s0->rx_fifo, newest);
-	  tcp_update_sack_list (tc, start, end, seq, seq + data_len);
-	  svm_fifo_newest_ooo_segment_reset (s0->rx_fifo);
+	  ASSERT (info.seg_offset <= seq - tc->rcv_nxt);
+	  start = tc->rcv_nxt + info.seg_offset;
+	  tcp_update_sack_list (tc, start, start + info.seg_len, seq, seq + data_len);
 	  TCP_EVT (TCP_EVT_CC_SACKS, tc);
 	}
       else
 	{
-	  /* The enqueue changed no segment, so all of the data was queued already */
+	  /* All of the data was queued already */
 	  tcp_dsack_report (tc, seq, seq + data_len);
 	}
     }
