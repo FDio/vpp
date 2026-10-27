@@ -49,6 +49,15 @@ typedef struct svm_fifo_seg_
   u32 len;
 } svm_fifo_seg_t;
 
+/** What an out-of-order enqueue found in the fifo */
+typedef struct svm_fifo_ooo_enq_info_
+{
+  u32 seg_offset; /**< Offset from tail of the segment that holds the data */
+  u32 seg_len;	  /**< Length of that segment */
+  u32 dup_offset; /**< Offset from tail of the first data the fifo had, 0 if none */
+  u32 dup_len;	  /**< Length of that data, 0 if all the data is new */
+} svm_fifo_ooo_enq_info_t;
+
 #if SVM_FIFO_TRACE
 #define svm_fifo_trace_add(_f, _s, _l, _t)		\
 {							\
@@ -156,6 +165,18 @@ always_inline int
 f_pos_geq (u32 a, u32 b)
 {
   return ((i32) (a - b) >= 0);
+}
+
+always_inline u32
+f_pos_min (u32 a, u32 b)
+{
+  return f_pos_lt (a, b) ? a : b;
+}
+
+always_inline u32
+f_pos_max (u32 a, u32 b)
+{
+  return f_pos_lt (a, b) ? b : a;
 }
 
 always_inline u8
@@ -394,6 +415,25 @@ int svm_fifo_enqueue_segments (svm_fifo_t * f, const svm_fifo_seg_t segs[],
 int svm_fifo_enqueue_segments_with_offset (svm_fifo_t *f, u32 offset, const svm_fifo_seg_t segs[],
 					   u32 n_segs, u8 allow_partial);
 /**
+ * Enqueue data to fifo with offset, like @ref svm_fifo_enqueue_with_offset,
+ * and report the segment that holds it and what of it the fifo had already
+ *
+ * @param info		filled if the enqueue was successful
+ */
+int svm_fifo_enqueue_with_offset_info (svm_fifo_t *f, u32 offset, u32 len, u8 *src,
+				       svm_fifo_ooo_enq_info_t *info);
+/**
+ * Enqueue array of @ref svm_fifo_seg_t with offset, like
+ * @ref svm_fifo_enqueue_segments_with_offset, and report the segment that
+ * holds the data and what of it the fifo had already
+ *
+ * @param info		filled if data was enqueued, so not if the segments
+ *			are empty, for which 0 is returned
+ */
+int svm_fifo_enqueue_segments_with_offset_info (svm_fifo_t *f, u32 offset,
+						const svm_fifo_seg_t segs[], u32 n_segs,
+						u8 allow_partial, svm_fifo_ooo_enq_info_t *info);
+/**
  * Overwrite fifo head with new data
  *
  * This should be typically used by dgram transport protocols that need
@@ -473,14 +513,15 @@ int svm_fifo_segments (svm_fifo_t *f, u32 offset, svm_fifo_seg_t *fs,
  * @param f	fifo
  * @return	number of out of order segments
  */
-u32 svm_fifo_n_ooo_segments (svm_fifo_t * f);
+u32 svm_fifo_n_ooo_segments (svm_fifo_t *f);
 /**
- * First out-of-order segment for fifo
+ * Out-of-order segment that holds the byte at offset from the tail
  *
  * @param f	fifo
- * @return	first out-of-order segment for fifo
+ * @param offset offset from the tail
+ * @return	segment, or 0 if the byte was not received out of order
  */
-ooo_segment_t *svm_fifo_first_ooo_segment (svm_fifo_t * f);
+ooo_segment_t *svm_fifo_find_ooo_segment (svm_fifo_t *f, u32 offset);
 /**
  * Check if fifo is sane. Debug only.
  *
@@ -678,18 +719,26 @@ svm_fifo_has_ooo_data (svm_fifo_t * f)
   return f->ooos_list_head != OOO_SEGMENT_INVALID_INDEX;
 }
 
+/**
+ * First out-of-order segment for fifo
+ *
+ * @param f	fifo
+ * @return	first out-of-order segment for fifo, or 0 if it has none
+ */
 static inline ooo_segment_t *
-svm_fifo_newest_ooo_segment (svm_fifo_t * f)
+svm_fifo_first_ooo_segment (svm_fifo_t *f)
 {
-  if (f->ooos_newest == OOO_SEGMENT_INVALID_INDEX)
+  if (f->ooos_list_head == OOO_SEGMENT_INVALID_INDEX)
     return 0;
-  return pool_elt_at_index (f->ooo_segments, f->ooos_newest);
+  return pool_elt_at_index (f->ooo_segments, f->ooos_list_head);
 }
 
-static inline void
-svm_fifo_newest_ooo_segment_reset (svm_fifo_t * f)
+static inline ooo_segment_t *
+svm_fifo_next_ooo_segment (svm_fifo_t *f, ooo_segment_t *s)
 {
-  f->ooos_newest = OOO_SEGMENT_INVALID_INDEX;
+  if (s->next == OOO_SEGMENT_INVALID_INDEX)
+    return 0;
+  return pool_elt_at_index (f->ooo_segments, s->next);
 }
 
 static inline u32
