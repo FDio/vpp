@@ -9,6 +9,7 @@
 #include <vperf/vperf_test.h>
 #include <netdb.h>
 #include <errno.h>
+#include <limits.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -38,6 +39,8 @@
 #define VPERF_LOCALHOST_IPADDR "127.0.0.1"
 
 #define VPERF_CFG_BUF_SIZE_MIN	   128
+/* I/O callbacks and vperf_write's remaining length use int. */
+#define VPERF_CFG_BUF_SIZE_MAX	   INT_MAX
 #define VPERF_CFG_MAX_TEST_SESS	   ((uint32_t) 1e6)
 #define VPERF_CFG_MAX_SELECT_SESS  512
 #define VPERF_CFG_INIT_TEST_SESS   512
@@ -153,32 +156,44 @@ vperf_stats_accumulate (vperf_stats_t *accum, vperf_stats_t *incr)
   accum->close_count += incr->close_count;
 }
 
+static inline int
+vperf_buf_size_valid (uint64_t size)
+{
+  return size >= VPERF_CFG_BUF_SIZE_MIN && size <= VPERF_CFG_BUF_SIZE_MAX;
+}
+
 static inline void
 vperf_buf_alloc (vperf_cfg_t *cfg, uint8_t is_rxbuf, uint8_t **buf, uint32_t *bufsize)
 {
-  uint32_t alloc_size = is_rxbuf ? cfg->rxbuf_size : cfg->txbuf_size;
-  uint8_t *lb = realloc (*buf, (size_t) alloc_size);
+  uint64_t alloc_size = is_rxbuf ? cfg->rxbuf_size : cfg->txbuf_size;
+  uint8_t *lb;
+
+  if (!vperf_buf_size_valid (alloc_size))
+    vperf_fail ("buffer size", -EINVAL);
+
+  lb = realloc (*buf, (size_t) alloc_size);
 
   if (lb)
     {
-      if (is_rxbuf)
-	cfg->rxbuf_size = *bufsize = alloc_size;
-      else
-	cfg->txbuf_size = *bufsize = alloc_size;
-
+      *bufsize = alloc_size;
       *buf = lb;
     }
   else
     {
-      vperf_warn ("realloc failed. using buffer size %u instead of %u", *bufsize, alloc_size);
+      if (!*buf)
+	vperf_fail ("realloc", -ENOMEM);
+      vperf_warn ("realloc failed. using buffer size %u instead of %u", *bufsize,
+		  (uint32_t) alloc_size);
     }
+  if (is_rxbuf)
+    cfg->rxbuf_size = *bufsize;
+  else
+    cfg->txbuf_size = *bufsize;
 }
 
 static inline void
 vperf_session_buf_alloc (vperf_session_t *ts)
 {
-  ts->rxbuf_size = ts->cfg.rxbuf_size;
-  ts->txbuf_size = ts->cfg.txbuf_size;
   vperf_buf_alloc (&ts->cfg, 0 /* is_rxbuf */, (uint8_t **) &ts->txbuf, &ts->txbuf_size);
   vperf_buf_alloc (&ts->cfg, 1 /* is_rxbuf */, (uint8_t **) &ts->rxbuf, &ts->rxbuf_size);
 }

@@ -381,6 +381,16 @@ sts_handle_cfg (vperf_cfg_t *rx_cfg, sock_server_conn_t *conn, int rx_bytes)
       return -1;
     }
 
+  if (rx_cfg->test != VPERF_TEST_TYPE_EXIT &&
+      (!vperf_buf_size_valid (rx_cfg->rxbuf_size) || !vperf_buf_size_valid (rx_cfg->txbuf_size)))
+    {
+      stwrn ("Invalid buffer size. Valid range is %u - %u", VPERF_CFG_BUF_SIZE_MIN,
+	     VPERF_CFG_BUF_SIZE_MAX);
+      sock_test_write (conn->fd, (uint8_t *) &conn->cfg, sizeof (conn->cfg), NULL,
+		       conn->cfg.verbose);
+      return -1;
+    }
+
   switch (rx_cfg->test)
     {
     case VPERF_TEST_TYPE_NONE:

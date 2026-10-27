@@ -882,24 +882,53 @@ vperf_client_stream (vperf_client_main_t *vcm)
     vperf_warn ("post-test cfg sync failed!");
 }
 
+static int
+vperf_client_parse_buf_size (const char *str, int base, uint64_t *size)
+{
+  unsigned long long value;
+  char *end;
+
+  while (isspace ((unsigned char) *str))
+    str++;
+  if (*str == '-')
+    return -1;
+
+  if (!base)
+    {
+      const char *digits = *str == '+' ? str + 1 : str;
+      base = digits[0] == '0' && (digits[1] == 'x' || digits[1] == 'X') ? 16 : 10;
+    }
+  errno = 0;
+  value = strtoull (str, &end, base);
+  if (end == str || errno == ERANGE || !vperf_buf_size_valid (value))
+    return -1;
+  while (isspace ((unsigned char) *end))
+    end++;
+  if (*end)
+    return -1;
+
+  *size = value;
+  return 0;
+}
+
 static void
 cfg_txbuf_size_set (void)
 {
   vperf_client_main_t *vcm = &vperf_client_main;
   vperf_session_t *ctrl = &vcm->ctrl_session;
   char *p = ctrl->txbuf + strlen (VPERF_TOKEN_TXBUF_SIZE);
-  uint64_t txbuf_size = strtoull ((const char *) p, NULL, 10);
+  uint64_t txbuf_size;
 
-  if (txbuf_size >= VPERF_CFG_BUF_SIZE_MIN)
+  if (!vperf_client_parse_buf_size (p, 10, &txbuf_size))
     {
       ctrl->cfg.txbuf_size = txbuf_size;
-      ctrl->cfg.total_bytes = ctrl->cfg.num_writes * ctrl->cfg.txbuf_size;
       vperf_buf_alloc (&ctrl->cfg, 0 /* is_rxbuf */, (uint8_t **) &ctrl->txbuf, &ctrl->txbuf_size);
+      ctrl->cfg.total_bytes = ctrl->cfg.num_writes * ctrl->cfg.txbuf_size;
       vperf_cfg_dump (&ctrl->cfg, 1 /* is_client */);
     }
   else
-    vperf_warn ("Invalid txbuf size (%" PRIu64 ") < minimum buf size (%u)!", txbuf_size,
-		VPERF_CFG_BUF_SIZE_MIN);
+    vperf_warn ("Invalid txbuf size. Valid range is %u - %u", VPERF_CFG_BUF_SIZE_MIN,
+		VPERF_CFG_BUF_SIZE_MAX);
 }
 
 static void
@@ -948,17 +977,17 @@ cfg_rxbuf_size_set (void)
   vperf_client_main_t *vcm = &vperf_client_main;
   vperf_session_t *ctrl = &vcm->ctrl_session;
   char *p = ctrl->txbuf + strlen (VPERF_TOKEN_RXBUF_SIZE);
-  uint64_t rxbuf_size = strtoull ((const char *) p, NULL, 10);
+  uint64_t rxbuf_size;
 
-  if (rxbuf_size >= VPERF_CFG_BUF_SIZE_MIN)
+  if (!vperf_client_parse_buf_size (p, 10, &rxbuf_size))
     {
       ctrl->cfg.rxbuf_size = rxbuf_size;
       vperf_buf_alloc (&ctrl->cfg, 1 /* is_rxbuf */, (uint8_t **) &ctrl->rxbuf, &ctrl->rxbuf_size);
       vperf_cfg_dump (&ctrl->cfg, 1 /* is_client */);
     }
   else
-    vperf_warn ("Invalid rxbuf size (%" PRIu64 ") < minimum buf size (%u)!", rxbuf_size,
-		VPERF_CFG_BUF_SIZE_MIN);
+    vperf_warn ("Invalid rxbuf size. Valid range is %u - %u", VPERF_CFG_BUF_SIZE_MIN,
+		VPERF_CFG_BUF_SIZE_MAX);
 }
 
 static void
@@ -1146,47 +1175,29 @@ vperf_client_process_opts (vperf_client_main_t *vcm, int argc, char **argv)
 	break;
 
       case 'R':
-	if (sscanf (optarg, "0x%" SCNx64, &ctrl->cfg.rxbuf_size) != 1)
-	  if (sscanf (optarg, "%" SCNu64, &ctrl->cfg.rxbuf_size) != 1)
-	    {
-	      vperf_warn ("Invalid value for option -%c!", c);
-	      print_usage_and_exit ();
-	    }
-	if (ctrl->cfg.rxbuf_size >= VPERF_CFG_BUF_SIZE_MIN)
-	  {
-	    ctrl->rxbuf_size = ctrl->cfg.rxbuf_size;
-	    vperf_buf_alloc (&ctrl->cfg, 1 /* is_rxbuf */, (uint8_t **) &ctrl->rxbuf,
-			     &ctrl->rxbuf_size);
-	  }
-	else
-	  {
-	    vperf_warn ("rxbuf size (%" PRIu64 ") less than minumum (%u)", ctrl->cfg.rxbuf_size,
-			VPERF_CFG_BUF_SIZE_MIN);
-	    print_usage_and_exit ();
-	  }
-
-	break;
-
       case 'T':
-	if (sscanf (optarg, "0x%" SCNx64, &ctrl->cfg.txbuf_size) != 1)
-	  if (sscanf (optarg, "%" SCNu64, &ctrl->cfg.txbuf_size) != 1)
+	{
+	  uint64_t size;
+	  if (vperf_client_parse_buf_size (optarg, 0, &size))
 	    {
-	      vperf_warn ("Invalid value for option -%c!", c);
+	      vperf_warn ("Invalid buffer size for option -%c. Valid range is %u - %u", c,
+			  VPERF_CFG_BUF_SIZE_MIN, VPERF_CFG_BUF_SIZE_MAX);
 	      print_usage_and_exit ();
 	    }
-	if (ctrl->cfg.txbuf_size >= VPERF_CFG_BUF_SIZE_MIN)
-	  {
-	    ctrl->txbuf_size = ctrl->cfg.txbuf_size;
-	    vperf_buf_alloc (&ctrl->cfg, 0 /* is_rxbuf */, (uint8_t **) &ctrl->txbuf,
-			     &ctrl->txbuf_size);
-	    ctrl->cfg.total_bytes = ctrl->cfg.num_writes * ctrl->cfg.txbuf_size;
-	  }
-	else
-	  {
-	    vperf_warn ("txbuf size (%" PRIu64 ") less than minumum (%u)!", ctrl->cfg.txbuf_size,
-			VPERF_CFG_BUF_SIZE_MIN);
-	    print_usage_and_exit ();
-	  }
+	  if (c == 'R')
+	    {
+	      ctrl->cfg.rxbuf_size = size;
+	      vperf_buf_alloc (&ctrl->cfg, 1 /* is_rxbuf */, (uint8_t **) &ctrl->rxbuf,
+			       &ctrl->rxbuf_size);
+	    }
+	  else
+	    {
+	      ctrl->cfg.txbuf_size = size;
+	      vperf_buf_alloc (&ctrl->cfg, 0 /* is_rxbuf */, (uint8_t **) &ctrl->txbuf,
+			       &ctrl->txbuf_size);
+	      ctrl->cfg.total_bytes = ctrl->cfg.num_writes * ctrl->cfg.txbuf_size;
+	    }
+	}
 	break;
       case 'b':
 	if (sscanf (optarg, "0x%" SCNx64, &ctrl->cfg.total_bytes) != 1)
