@@ -1081,13 +1081,18 @@ tcp_session_enqueue_data (tcp_connection_t *tc, vlib_buffer_t *b, u16 data_len)
       return TCP_ERROR_FIFO_FULL;
     }
 
-  /* Update SACK list if need be */
-  if (tcp_opts_sack_permitted (&tc->rcv_opts) && vec_len (tc->snd_sacks))
+  if (tcp_sack_has_blocks (tc))
     {
-      /* written includes collected ooo bytes, so the segment started at rcv_nxt - written.
-       * Remove the blocks it delivered and report what it repeated of them */
-      u32 seq = tc->rcv_nxt - written;
-      tcp_update_sack_list (tc, tc->rcv_nxt, tc->rcv_nxt, seq, seq + data_len);
+      /* Report what the data repeated of the out-of-order data it delivered.
+       * The data started at rcv_nxt - written */
+      if (PREDICT_FALSE (args.dup_len))
+	{
+	  u32 start = tc->rcv_nxt - written + args.dup_offset;
+	  tcp_dsack_report (tc, start, start + args.dup_len);
+	}
+      /* The data reached out-of-order segments, which the fifo delivered */
+      if (written > data_len || args.dup_len)
+	tcp_sack_delivered (tc, transport_get_rx_ooo (&tc->connection));
       if (tcp_dsack_is_pending (tc))
 	tcp_program_dupack (tc);
     }
@@ -1118,23 +1123,19 @@ tcp_session_enqueue_ooo (tcp_connection_t *tc, vlib_buffer_t *b, u16 data_len)
   TCP_EVT (TCP_EVT_INPUT, tc, 1, data_len, data_len);
   tc->bytes_in += data_len;
 
-  /* Update SACK list if in use */
+  /* Record the block that holds the segment as the newest, even if the fifo
+   * had all of it, and what the fifo had as a dsack */
   if (tcp_opts_sack_permitted (&tc->rcv_opts))
     {
-      u32 start, seq = vnet_buffer (b)->tcp.seq_number;
+      sack_block_t blk = { .start = tc->rcv_nxt + args.seg_offset };
 
-      if (args.dup_len < data_len)
-	{
-	  ASSERT (args.seg_offset <= seq - tc->rcv_nxt);
-	  start = tc->rcv_nxt + args.seg_offset;
-	  tcp_update_sack_list (tc, start, start + args.seg_len, seq, seq + data_len);
-	  TCP_EVT (TCP_EVT_CC_SACKS, tc);
-	}
-      else
-	{
-	  /* All of the data was queued already */
-	  tcp_dsack_report (tc, seq, seq + data_len);
-	}
+      blk.end = blk.start + args.seg_len;
+      if (PREDICT_FALSE (tcp_sack_add (tc, blk)))
+	tcp_sack_refill (tc, transport_get_rx_ooo (&tc->connection));
+      if (PREDICT_FALSE (args.dup_len))
+	tcp_dsack_report (tc, tc->rcv_nxt + args.dup_offset,
+			  tc->rcv_nxt + args.dup_offset + args.dup_len);
+      TCP_EVT (TCP_EVT_CC_SACKS, tc);
     }
 
   return TCP_ERROR_ENQUEUED_OOO;
