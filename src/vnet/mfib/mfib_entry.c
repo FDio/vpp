@@ -8,6 +8,7 @@
 #include <vnet/mfib/mfib_entry.h>
 #include <vnet/mfib/mfib_entry_src.h>
 #include <vnet/mfib/mfib_entry_cover.h>
+#include <vnet/mfib/mfib_table.h>
 #include <vnet/fib/fib_path_list.h>
 #include <vnet/fib/fib_walk.h>
 
@@ -223,6 +224,10 @@ mfib_entry_src_init (mfib_entry_t *mfib_entry,
     vec_add1(mfib_entry->mfe_srcs, esrc);
     vec_sort_with_function(mfib_entry->mfe_srcs,
                            mfib_entry_src_cmp_for_sort);
+
+    mfib_table_source_count_inc(mfib_entry->mfe_fib_index,
+                                mfib_entry->mfe_prefix.fp_proto,
+                                source);
 }
 
 static mfib_entry_src_t *
@@ -391,10 +396,14 @@ mfib_entry_is_host (fib_node_index_t mfib_entry_index)
 
 
 static void
-mfib_entry_src_flush (mfib_entry_src_t *msrc)
+mfib_entry_src_flush (mfib_entry_t *mfib_entry, mfib_entry_src_t *msrc)
 {
     u32 sw_if_index;
     index_t mfii;
+
+    mfib_table_source_count_dec(mfib_entry->mfe_fib_index,
+                                mfib_entry->mfe_prefix.fp_proto,
+                                msrc->mfes_src);
 
     hash_foreach(sw_if_index, mfii, msrc->mfes_itfs,
     ({
@@ -425,7 +434,7 @@ mfib_entry_src_remove (mfib_entry_t *mfib_entry,
         if (0 == msrc->mfes_ref_count)
         {
             mfib_entry_src_deactivate(mfib_entry, msrc);
-            mfib_entry_src_flush(msrc);
+            mfib_entry_src_flush(mfib_entry, msrc);
 
             vec_del1(mfib_entry->mfe_srcs, index);
             if (vec_len (mfib_entry->mfe_srcs) > 1)
@@ -1327,7 +1336,7 @@ mfib_entry_last_lock_gone (fib_node_t *node)
 
     vec_foreach(msrc, mfib_entry->mfe_srcs)
     {
-        mfib_entry_src_flush(msrc);
+        mfib_entry_src_flush(mfib_entry, msrc);
     }
 
     vec_free(mfib_entry->mfe_srcs);

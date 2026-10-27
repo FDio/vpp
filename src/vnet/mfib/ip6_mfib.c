@@ -196,6 +196,7 @@ ip6_mfib_table_destroy (ip6_mfib_t *mfib)
         .frp_weight = 1,
         .frp_flags = FIB_ROUTE_PATH_LOCAL,
     };
+    u32 *srci;
 
     /*
      * remove all the specials we added when the table was created.
@@ -216,6 +217,12 @@ ip6_mfib_table_destroy (ip6_mfib_t *mfib)
      */
     ASSERT(0 == mfib_table->mft_total_route_counts);
     ASSERT(~0 != mfib_table->mft_table_id);
+
+    vec_foreach(srci, mfib_table->mft_src_route_counts)
+    {
+      ASSERT(0 == *srci);
+    }
+    vec_free(mfib_table->mft_src_route_counts);
 
     hash_unset (ip6_main.mfib_index_by_table_id, mfib_table->mft_table_id);
     pool_put(ip6_main.mfibs, mfib_table);

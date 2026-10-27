@@ -107,6 +107,11 @@ typedef struct mfib_table_t_
     fib_node_index_t mft_index;
 
     /**
+     * Per-source route counters
+     */
+    u32 *mft_src_route_counts;
+
+    /**
      * Total route counters
      */
     u32 mft_total_route_counts;
@@ -504,6 +509,40 @@ __clib_export extern void mfib_table_lock(u32 fib_index,
 
 /**
  * @brief
+ * Increase per-source entry count in given mfib table.
+ *
+ * @param fib_index
+ *  The index of the FIB
+ *
+ * @param proto
+ *  The protocol of the FIB (and thus the entries therein)
+ *
+ * @param source
+ *  The ID of the client/source.
+ */
+extern void mfib_table_source_count_inc(u32 fib_index,
+                                        fib_protocol_t proto,
+                                        mfib_source_t source);
+
+/**
+ * @brief
+ * Decrease per-source entry count in given mfib table.
+ *
+ * @param fib_index
+ *  The index of the FIB
+ *
+ * @param proto
+ *  The protocol of the FIB (and thus the entries therein)
+ *
+ * @param source
+ *  The ID of the client/source.
+ */
+extern void mfib_table_source_count_dec(u32 fib_index,
+                                        fib_protocol_t proto,
+                                        mfib_source_t source);
+
+/**
+ * @brief
  * Return the number of entries in the FIB added by a given source.
  *
  * @param fib_index
@@ -512,10 +551,14 @@ __clib_export extern void mfib_table_lock(u32 fib_index,
  * @paran proto
  *  The protocol of the FIB (and thus the entries therein)
  *
+ * @param source
+ *  The ID of the client/source.
+ *
  * @return number of sourced entries.
  */
-extern u32 mfib_table_get_num_entries(u32 fib_index,
-                                      fib_protocol_t proto);
+__clib_export extern u32 mfib_table_get_num_entries(u32 fib_index,
+                                                    fib_protocol_t proto,
+                                                    mfib_source_t source);
 
 /**
  * @brief
