@@ -1484,18 +1484,21 @@ tcp_test_sack_tx (vlib_main_t * vm, unformat_input_t * input)
   clib_memset (tc, 0, sizeof (*tc));
 
   /*
-   * Add odd sack block pairs
+   * Add odd sack block pairs, only the most recent are kept
    */
   for (i = 1; i < 10; i += 2)
     {
       tcp_update_sack_list (tc, i * 100, (i + 1) * 100, i * 100, (i + 1) * 100);
     }
 
-  TCP_TEST ((vec_len (tc->snd_sacks) == 5), "sack blocks %d expected %d",
-	    vec_len (tc->snd_sacks), 5);
-  TCP_TEST ((tc->snd_sacks[0].start = 900),
-	    "first sack block start %u expected %u", tc->snd_sacks[0].start,
-	    900);
+  expected = clib_min (5, TCP_MAX_SACK_BLOCKS);
+  TCP_TEST ((vec_len (tc->snd_sacks) == expected), "sack blocks %d expected %d",
+	    vec_len (tc->snd_sacks), expected);
+  TCP_TEST ((tc->snd_sacks[0].start == 900), "first sack block start %u expected %u",
+	    tc->snd_sacks[0].start, 900);
+  TCP_TEST ((tc->snd_sacks[expected - 1].start == 1100 - expected * 200),
+	    "last sack block start %u expected %u", tc->snd_sacks[expected - 1].start,
+	    1100 - expected * 200);
 
   /*
    * Try to add one extra
@@ -1506,12 +1509,15 @@ tcp_test_sack_tx (vlib_main_t * vm, unformat_input_t * input)
   if (verbose)
     vlib_cli_output (vm, "add new segment [1100, 1200]\n%U",
 		     format_tcp_sacks, tc);
-  expected = 5 < TCP_MAX_SACK_BLOCKS ? 6 : 5;
+  expected = clib_min (6, TCP_MAX_SACK_BLOCKS);
   TCP_TEST ((vec_len (tc->snd_sacks) == expected),
 	    "sack blocks %d expected %d", vec_len (tc->snd_sacks), expected);
   TCP_TEST ((tc->snd_sacks[0].start == 1100),
 	    "first sack block start %u expected %u", tc->snd_sacks[0].start,
 	    1100);
+  TCP_TEST ((tc->snd_sacks[expected - 1].start == 1300 - expected * 200),
+	    "last sack block start %u expected %u", tc->snd_sacks[expected - 1].start,
+	    1300 - expected * 200);
 
   /* restore */
   vec_free (tc->snd_sacks);
@@ -1527,9 +1533,8 @@ tcp_test_sack_tx (vlib_main_t * vm, unformat_input_t * input)
 		     format_tcp_sacks, tc);
   TCP_TEST ((vec_len (tc->snd_sacks) == 3), "sack blocks %d expected %d",
 	    vec_len (tc->snd_sacks), 3);
-  TCP_TEST ((tc->snd_sacks[0].start == 900),
-	    "first sack block start %u expected %u", tc->snd_sacks[0].start,
-	    500);
+  TCP_TEST ((tc->snd_sacks[0].start == 900), "first sack block start %u expected %u",
+	    tc->snd_sacks[0].start, 900);
 
   /*
    * Add a new segment
@@ -1600,20 +1605,51 @@ tcp_test_sack_tx (vlib_main_t * vm, unformat_input_t * input)
 	    300);
 
   /*
+   * Only the most recent blocks are kept
+   */
+  vec_reset_length (tc->snd_sacks);
+  tc->rcv_nxt = 0;
+  for (i = 1; i < 2 * TCP_MAX_SACK_BLOCKS + 4; i += 2)
+    tcp_update_sack_list (tc, i * 100, (i + 1) * 100, i * 100, (i + 1) * 100);
+  if (verbose)
+    vlib_cli_output (vm, "add %u blocks\n%U", TCP_MAX_SACK_BLOCKS + 2, format_tcp_sacks, tc);
+  TCP_TEST ((vec_len (tc->snd_sacks) == TCP_MAX_SACK_BLOCKS &&
+	     tc->snd_sacks[0].start == (2 * TCP_MAX_SACK_BLOCKS + 3) * 100 &&
+	     tc->snd_sacks[TCP_MAX_SACK_BLOCKS - 1].start == 500),
+	    "most recent blocks kept, oldest at %u",
+	    tc->snd_sacks[vec_len (tc->snd_sacks) - 1].start);
+
+  /* An older block that changes is reported first */
+  tcp_update_sack_list (tc, 700, 850, 800, 850);
+  TCP_TEST ((vec_len (tc->snd_sacks) == TCP_MAX_SACK_BLOCKS && tc->snd_sacks[0].start == 700 &&
+	     tc->snd_sacks[0].end == 850 &&
+	     tc->snd_sacks[1].start == (2 * TCP_MAX_SACK_BLOCKS + 3) * 100),
+	    "extended block moves first");
+  tcp_update_sack_list (tc, 4000, 4100, 4000, 4100);
+  TCP_TEST ((vec_len (tc->snd_sacks) == TCP_MAX_SACK_BLOCKS && tc->snd_sacks[0].start == 4000 &&
+	     tc->snd_sacks[1].start == 700 && tc->snd_sacks[TCP_MAX_SACK_BLOCKS - 1].start == 900),
+	    "new block first, oldest dropped");
+  tc->rcv_nxt = 900;
+  tcp_update_sack_list (tc, 900, 900, 880, 900);
+  TCP_TEST ((vec_len (tc->snd_sacks) == TCP_MAX_SACK_BLOCKS - 2 && tc->snd_sacks[0].start == 4000 &&
+	     tc->snd_sacks[1].start == 2 * TCP_MAX_SACK_BLOCKS * 100 + 300),
+	    "delivered blocks are removed");
+
+  /*
    * D-SACK reports (RFC 2883)
    */
   {
-    sack_block_t blks[TCP_OPTS_MAX_SACK_BLOCKS];
-    u32 n;
+    sack_block_t blks[TCP_OPTS_MAX_SACK_BLOCKS], *log;
+    u32 n, log_pos = 0;
 
     vec_free (tc->snd_sacks);
-    vec_free (tc->snd_sacks_fl);
+    vec_free (tc->snd_sack_log);
     clib_memset (tc, 0, sizeof (*tc));
     tc->rcv_opts.flags = TCP_OPTS_FLAG_SACK_PERMITTED;
     tc->rcv_nxt = 1000;
 
     tcp_dsack_report (tc, 800, 900);
-    n = tcp_dsack_make_sacks (tc, blks);
+    n = tcp_sack_make_dupack_sacks (tc, blks, &log_pos);
     TCP_TEST ((n == 1 && blks[0].start == 800 && blks[0].end == 900 && !tcp_dsack_is_pending (tc)),
 	      "old duplicate is reported once, as the only block");
 
@@ -1624,7 +1660,7 @@ tcp_test_sack_tx (vlib_main_t * vm, unformat_input_t * input)
     TCP_TEST ((vec_len (tc->snd_dsacks) == 2 && tc->snd_dsacks[0].start == 100 &&
 	       tc->snd_dsacks[0].end == 300 && tc->snd_dsacks[1].start == 500),
 	      "touching duplicates merge, others are reported separately");
-    n = tcp_dsack_make_sacks (tc, blks);
+    n = tcp_sack_make_dupack_sacks (tc, blks, &log_pos);
     TCP_TEST ((n == 1 && blks[0].start == 100 && vec_len (tc->snd_dsacks) == 1),
 	      "oldest duplicate is reported first, one per ack");
     vec_free (tc->snd_dsacks);
@@ -1637,17 +1673,17 @@ tcp_test_sack_tx (vlib_main_t * vm, unformat_input_t * input)
     tcp_update_sack_list (tc, 1200, 1300, 1200, 1300);
     tcp_update_sack_list (tc, 1500, 1800, 1500, 1800);
     tcp_update_sack_list (tc, 2000, 2100, 2000, 2100);
+    vec_reset_length (tc->snd_sack_log);
     tcp_dsack_report (tc, 1600, 1700);
-    n = tcp_dsack_make_sacks (tc, blks);
+    n = tcp_sack_make_dupack_sacks (tc, blks, &log_pos);
     TCP_TEST ((n == 3 && blks[0].start == 1600 && blks[0].end == 1700 && blks[1].start == 1500 &&
-	       blks[1].end == 1800 && blks[2].start == 2000 && tc->snd_sack_pos == 1),
+	       blks[1].end == 1800 && blks[2].start == 2000),
 	      "out-of-order duplicate is followed by the block that contains it");
 
-    tc->snd_sack_pos = 0;
     tcp_dsack_report (tc, 800, 900);
-    n = tcp_dsack_make_sacks (tc, blks);
+    n = tcp_sack_make_dupack_sacks (tc, blks, &log_pos);
     TCP_TEST ((n == 3 && blks[0].start == 800 && blks[1].start == 2000 && blks[2].start == 1500),
-	      "old duplicate is followed by the blocks in rotation");
+	      "old duplicate is followed by the most recent blocks");
 
     tcp_update_sack_list (tc, 1500, 1850, 1750, 1850);
     TCP_TEST ((vec_len (tc->snd_dsacks) == 1 && tc->snd_dsacks[0].start == 1750 &&
@@ -1663,6 +1699,86 @@ tcp_test_sack_tx (vlib_main_t * vm, unformat_input_t * input)
 	      "in-order segment reports the blocks it delivered again");
     vec_free (tc->snd_dsacks);
 
+    /*
+     * Changed blocks are logged and dupacks report each once
+     */
+    vec_reset_length (tc->snd_sacks);
+    vec_reset_length (tc->snd_sack_log);
+    tc->snd_sack_changed = 0;
+    tc->rcv_nxt = 1000;
+    for (i = 0; i < 8; i++)
+      tcp_update_sack_list (tc, 1100 + 200 * i, 1200 + 200 * i, 1100 + 200 * i, 1200 + 200 * i);
+    TCP_TEST ((vec_len (tc->snd_sacks) == TCP_MAX_SACK_BLOCKS && vec_len (tc->snd_sack_log) == 7 &&
+	       tc->snd_sack_changed),
+	      "changed blocks logged once no longer newest, %u", vec_len (tc->snd_sack_log));
+    tcp_update_sack_list (tc, 2500, 2650, 2600, 2650);
+    TCP_TEST ((vec_len (tc->snd_sack_log) == 7 && tc->snd_sacks[0].end == 2650),
+	      "newest block that grows is not logged");
+    tcp_update_sack_list (tc, 1100, 1250, 1200, 1250);
+    TCP_TEST ((vec_len (tc->snd_sack_log) == 8 && tc->snd_sack_log[7].end == 2650 &&
+	       tc->snd_sacks[0].start == 1100),
+	      "older block that grew is the newest, previous one logged");
+    tc->rcv_nxt = 1400;
+    tcp_update_sack_list (tc, 1400, 1400, 1400, 1400);
+    TCP_TEST ((!tc->snd_sack_changed), "delivered newest block needs no dupacks");
+    tcp_sack_log_prepare (tc);
+    log = tc->snd_sack_log;
+    TCP_TEST ((vec_len (log) == 6 && log[0].start == 1500 && log[4].start == 2300 &&
+	       log[5].start == 2500 && log[5].end == 2650),
+	      "delivered blocks dropped, %u changed", vec_len (log));
+
+    log_pos = 0;
+    n = tcp_sack_make_dupack_sacks (tc, blks, &log_pos);
+    TCP_TEST ((n == 3 && blks[0].start == 2500 && blks[1].start == 1500 && blks[2].start == 1700 &&
+	       log_pos == 2),
+	      "first dupack has the most recent block and the first changed ones");
+    n = tcp_sack_make_dupack_sacks (tc, blks, &log_pos);
+    TCP_TEST ((n == 3 && blks[0].start == 2500 && blks[1].start == 1900 && blks[2].start == 2100 &&
+	       log_pos == 4),
+	      "next dupack has the next changed blocks");
+    n = tcp_sack_make_dupack_sacks (tc, blks, &log_pos);
+    TCP_TEST ((n == 3 && blks[0].start == 2500 && blks[1].start == 2300 && blks[2].start == 2100 &&
+	       log_pos == 6),
+	      "last dupack has the last changed block, then the most recent");
+
+    /* The newest block is logged before dupacks, merging older versions */
+    vec_reset_length (tc->snd_sacks);
+    vec_reset_length (tc->snd_sack_log);
+    tc->rcv_nxt = 1000;
+    tcp_update_sack_list (tc, 3000, 3100, 3000, 3100);
+    tcp_update_sack_list (tc, 2000, 2100, 2000, 2100);
+    tcp_update_sack_list (tc, 3000, 3200, 3100, 3200);
+    tcp_sack_log_prepare (tc);
+    log = tc->snd_sack_log;
+    TCP_TEST ((vec_len (log) == 2 && log[0].start == 2000 && log[1].start == 3000 &&
+	       log[1].end == 3200 && !tc->snd_sack_changed),
+	      "newest logged with its older version, %u changed", vec_len (log));
+
+    /* The log is capped, later changes are dropped until dupacks */
+    vec_reset_length (tc->snd_sacks);
+    vec_reset_length (tc->snd_sack_log);
+    tc->snd_sack_changed = 0;
+    tc->rcv_nxt = 1000;
+    for (i = 0; i < TCP_MAX_SACK_LOG + 10; i++)
+      tcp_update_sack_list (tc, 2000 + 200 * i, 2100 + 200 * i, 2000 + 200 * i, 2100 + 200 * i);
+    TCP_TEST ((vec_len (tc->snd_sack_log) == TCP_MAX_SACK_LOG && tc->snd_sack_log_full),
+	      "log capped at %u changes", vec_len (tc->snd_sack_log));
+    tcp_sack_log_trim (tc, vec_len (tc->snd_sack_log));
+    TCP_TEST ((!vec_len (tc->snd_sack_log) && !tc->snd_sack_log_full),
+	      "reported log takes changes again");
+
+    /* Versions of a block are merged, also if logged out of order */
+    vec_reset_length (tc->snd_sack_log);
+    sack_block_t versions[] = { { 3000, 3100 }, { 2000, 2100 }, { 2000, 2300 },
+				{ 1500, 1600 }, { 1400, 1450 }, { 1900, 2300 } };
+    vec_add (tc->snd_sack_log, versions, ARRAY_LEN (versions));
+    tc->rcv_nxt = 1450;
+    tcp_sack_log_normalize (tc);
+    log = tc->snd_sack_log;
+    TCP_TEST ((vec_len (log) == 3 && log[0].start == 1500 && log[1].start == 1900 &&
+	       log[1].end == 2300 && log[2].start == 3000),
+	      "versions merged, %u changed", vec_len (log));
+
     tc->sack_sb.flags |= TCP_DSACK_UNDO_DISABLED;
     tcp_dsack_report (tc, 800, 900);
     TCP_TEST ((!tcp_dsack_is_pending (tc)), "no reports with dsack disabled");
@@ -1671,7 +1787,7 @@ tcp_test_sack_tx (vlib_main_t * vm, unformat_input_t * input)
     tcp_dsack_report (tc, 800, 900);
     TCP_TEST ((!tcp_dsack_is_pending (tc)), "no reports without sack");
     vec_free (tc->snd_sacks);
-    vec_free (tc->snd_sacks_fl);
+    vec_free (tc->snd_sack_log);
     vec_free (tc->snd_dsacks);
   }
   return 0;
@@ -5938,7 +6054,6 @@ tcp_test_dsack_ack_rpc (void *arg)
   tcp_test_dsack_ack_rpc_args_t *a = arg;
 
   vec_insert_elts (a->tc->snd_sacks, &a->dsack, 1, 0);
-  a->tc->snd_sack_pos = 0;
   a->ack_matches_before = a->ack_rule->n_matched;
   /* Keep ACKs suppressed until the D-SACK is ready on the receiver's owner. */
   a->ack_rule->n_drop = 0;
@@ -7135,6 +7250,81 @@ tcp_test_dsack_rx_e2e (vlib_main_t *vm)
       session_test_drain_rx_fifo (ctx.client_s);
       vec_free (tc->snd_dsacks);
     }
+
+  /* Duplicates of blocks no longer cached are found in the fifo */
+  {
+    sack_block_t blks[TCP_OPTS_MAX_SACK_BLOCKS];
+    u32 n, log_pos = 0;
+
+    base = tc->rcv_nxt;
+    for (i = 0; i < TCP_MAX_SACK_BLOCKS + 1; i++)
+      if (tcp_test_dsack_rx_inject (vm, tc, base + 100 + 200 * i, 100, 0))
+	{
+	  rv = 1;
+	  goto cleanup;
+	}
+    /* Dupacks reported the changes, so only the fifo has the oldest block */
+    tcp_sack_log_prepare (tc);
+    tcp_sack_log_trim (tc, vec_len (tc->snd_sack_log));
+    if (!TCP_TEST_I (vec_len (tc->snd_sacks) == TCP_MAX_SACK_BLOCKS &&
+		       tc->snd_sacks[TCP_MAX_SACK_BLOCKS - 1].start == base + 300,
+		     "dsack_rx: oldest block no longer cached"))
+      {
+	rv = 1;
+	goto cleanup;
+      }
+    if (tcp_test_dsack_rx_inject (vm, tc, base + 120, 50, 0))
+      {
+	rv = 1;
+	goto cleanup;
+      }
+    tcp_sack_log_prepare (tc);
+    n = tcp_sack_make_dupack_sacks (tc, blks, &log_pos);
+    if (!TCP_TEST_I (n >= 2 && blks[0].start == base + 120 && blks[0].end == base + 170 &&
+		       blks[1].start == base + 100 && blks[1].end == base + 200,
+		     "dsack_rx: duplicate of a block no longer cached is followed by it"))
+      {
+	rv = 1;
+	goto cleanup;
+      }
+
+    for (i = 0; i < TCP_MAX_SACK_BLOCKS; i++)
+      if (tcp_test_dsack_rx_inject (vm, tc, base + 1100 + 200 * i, 100, 0))
+	{
+	  rv = 1;
+	  goto cleanup;
+	}
+    for (i = 0; i < vec_len (tc->snd_sacks); i++)
+      if (!TCP_TEST_I (tc->snd_sacks[i].start != base + 100,
+		       "dsack_rx: block no longer cached again"))
+	{
+	  rv = 1;
+	  goto cleanup;
+	}
+    if (tcp_test_dsack_rx_inject (vm, tc, base, 150, 0))
+      {
+	rv = 1;
+	goto cleanup;
+      }
+    if (!TCP_TEST_I (tcp_dsack_is_pending (tc) && tc->snd_dsacks[0].start == base + 100 &&
+		       tc->snd_dsacks[0].end == base + 150,
+		     "dsack_rx: in order segment reports what it repeats of a block no "
+		     "longer cached"))
+      {
+	rv = 1;
+	goto cleanup;
+      }
+
+    /* Deliver the rest */
+    if (tcp_test_dsack_rx_inject (vm, tc, tc->rcv_nxt, base + 1800 - tc->rcv_nxt, 0))
+      {
+	rv = 1;
+	goto cleanup;
+      }
+    session_test_drain_rx_fifo (ctx.client_s);
+    vec_free (tc->snd_dsacks);
+    vec_reset_length (tc->snd_sack_log);
+  }
 
   /* A chain that overflows the fifo is not enqueued, so neither its
    * duplicate prefix nor its tail is reported */

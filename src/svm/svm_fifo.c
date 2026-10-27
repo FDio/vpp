@@ -1465,6 +1465,27 @@ svm_fifo_first_ooo_segment (svm_fifo_t * f)
   return pool_elt_at_index (f->ooo_segments, f->ooos_list_head);
 }
 
+ooo_segment_t *
+svm_fifo_find_ooo_segment (svm_fifo_t *f, u32 offset)
+{
+  u32 pos = f->shr->tail + offset;
+  ooo_segment_t *s;
+
+  if (f->ooos_list_head == OOO_SEGMENT_INVALID_INDEX)
+    return 0;
+
+  /* Segments are sorted */
+  s = pool_elt_at_index (f->ooo_segments, f->ooos_list_head);
+  while (s && f_pos_leq (s->start, pos))
+    {
+      if (f_pos_lt (pos, ooo_segment_end_pos (s)))
+	return s;
+      s = ooo_segment_next (f, s);
+    }
+
+  return 0;
+}
+
 /**
  * Set fifo pointers to requested offset
  */

@@ -1031,6 +1031,30 @@ tcp_rcv_fin (tcp_worker_ctx_t * wrk, tcp_connection_t * tc, vlib_buffer_t * b,
   *error = TCP_ERROR_FIN_RCVD;
 }
 
+/* Report what the in order segment repeats of the out-of-order data it
+ * delivers. The fifo has all of it, also the blocks no longer cached */
+static __clib_noinline void
+tcp_dsack_report_delivered (tcp_connection_t *tc, u32 seg_end)
+{
+  session_t *s = session_get (tc->c_s_index, tc->c_thread_index);
+  svm_fifo_t *f = s->rx_fifo;
+  ooo_segment_t *seg;
+  u32 start;
+
+  if (!svm_fifo_has_ooo_data (f))
+    return;
+
+  seg = svm_fifo_first_ooo_segment (f);
+  while (seg)
+    {
+      start = tc->rcv_nxt + ooo_segment_offset_prod (f, seg);
+      if (!seq_lt (start, seg_end))
+	break;
+      tcp_dsack_report (tc, start, seq_min (start + ooo_segment_length (f, seg), seg_end));
+      seg = svm_fifo_next_ooo_segment (f, seg);
+    }
+}
+
 /** Enqueue data for delivery to application */
 static int
 tcp_session_enqueue_data (tcp_connection_t * tc, vlib_buffer_t * b,
@@ -1040,6 +1064,12 @@ tcp_session_enqueue_data (tcp_connection_t * tc, vlib_buffer_t * b,
 
   ASSERT (seq_geq (vnet_buffer (b)->tcp.seq_number, tc->rcv_nxt));
   ASSERT (data_len);
+
+  /* Delivering out-of-order data drops it from the fifo, report duplicates
+   * first */
+  if (PREDICT_FALSE (vec_len (tc->snd_sacks)) && tcp_dsack_report_enabled (tc))
+    tcp_dsack_report_delivered (tc, tc->rcv_nxt + data_len);
+
   written = session_enqueue_stream_connection (&tc->connection, b, 0,
 					       1 /* queue event */ , 1);
 
@@ -1077,10 +1107,8 @@ tcp_session_enqueue_data (tcp_connection_t * tc, vlib_buffer_t * b,
   /* Update SACK list if need be */
   if (tcp_opts_sack_permitted (&tc->rcv_opts) && vec_len (tc->snd_sacks))
     {
-      /* written includes collected ooo bytes, so the segment started at rcv_nxt - written.
-       * Remove the blocks it delivered and report what it repeated of them */
-      u32 seq = tc->rcv_nxt - written;
-      tcp_update_sack_list (tc, tc->rcv_nxt, tc->rcv_nxt, seq, seq + data_len);
+      /* Remove the blocks it delivered, duplicates were reported already */
+      tcp_update_sack_list (tc, tc->rcv_nxt, tc->rcv_nxt, tc->rcv_nxt, tc->rcv_nxt);
       if (tcp_dsack_is_pending (tc))
 	tcp_program_dupack (tc);
     }
@@ -1137,8 +1165,17 @@ tcp_session_enqueue_ooo (tcp_connection_t * tc, vlib_buffer_t * b,
 	}
       else
 	{
-	  /* The enqueue changed no segment, so all of the data was queued already */
+	  /* The enqueue changed no segment, so all of the data was queued
+	   * already. Its segment becomes the newest block, for the dsack to be
+	   * followed by it, also if no longer cached */
 	  tcp_dsack_report (tc, seq, seq + data_len);
+	  newest = svm_fifo_find_ooo_segment (s0->rx_fifo, seq - tc->rcv_nxt);
+	  if (newest)
+	    {
+	      start = tc->rcv_nxt + ooo_segment_offset_prod (s0->rx_fifo, newest);
+	      end = start + ooo_segment_length (s0->rx_fifo, newest);
+	      tcp_update_sack_list (tc, start, end, seq, seq);
+	    }
 	}
     }
 

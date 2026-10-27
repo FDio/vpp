@@ -117,9 +117,22 @@ __clib_export void tcp_update_sack_list (tcp_connection_t *tc, u32 start, u32 en
 					 u32 seg_end);
 /** Report [start, end), received again (RFC 2883), if reporting is enabled */
 __clib_export void tcp_dsack_report (tcp_connection_t *tc, u32 start, u32 end);
-/** Fill blks with the oldest pending dsack, the block that contains it, if
- * any, and the next blocks in rotation. Each dsack is reported once. */
-__clib_export u32 tcp_dsack_make_sacks (tcp_connection_t *tc, sack_block_t *blks);
+/** Leave in the log of changed sack blocks only the ones still above
+ * rcv_nxt, sorted and each in its last version */
+__clib_export void tcp_sack_log_normalize (tcp_connection_t *tc);
+/** Log the newest block, if it changed, and normalize the log before dupacks
+ * report it */
+__clib_export void tcp_sack_log_prepare (tcp_connection_t *tc);
+/** Drop the first n blocks of the log, already reported */
+__clib_export void tcp_sack_log_trim (tcp_connection_t *tc, u32 n);
+/** Report dsack again, it was not sent */
+__clib_export void tcp_dsack_requeue (tcp_connection_t *tc, sack_block_t *dsack);
+/** Fill blks with the sack blocks of the next dupack: the oldest pending
+ * dsack and the block that contains it, if any, the most recent block, the
+ * blocks logged from log_pos on, which advances, and the most recent blocks.
+ * Each dsack and logged block is reported once */
+__clib_export u32 tcp_sack_make_dupack_sacks (tcp_connection_t *tc, sack_block_t *blks,
+					      u32 *log_pos);
 __clib_export void tcp_dsack_recovery_clear (tcp_connection_t *tc);
 __clib_export void tcp_dsack_recovery_init (tcp_connection_t *tc);
 __clib_export void tcp_track_rxt (tcp_connection_t *tc, u32 start, u32 end);

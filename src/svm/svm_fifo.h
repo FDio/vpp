@@ -482,6 +482,14 @@ u32 svm_fifo_n_ooo_segments (svm_fifo_t * f);
  */
 ooo_segment_t *svm_fifo_first_ooo_segment (svm_fifo_t * f);
 /**
+ * Out-of-order segment that holds the byte at offset from the tail
+ *
+ * @param f	fifo
+ * @param offset offset from the tail
+ * @return	segment, or 0 if the byte was not received out of order
+ */
+ooo_segment_t *svm_fifo_find_ooo_segment (svm_fifo_t *f, u32 offset);
+/**
  * Check if fifo is sane. Debug only.
  *
  * @param f	fifo
@@ -677,6 +685,14 @@ svm_fifo_newest_ooo_segment (svm_fifo_t * f)
   if (f->ooos_newest == OOO_SEGMENT_INVALID_INDEX)
     return 0;
   return pool_elt_at_index (f->ooo_segments, f->ooos_newest);
+}
+
+static inline ooo_segment_t *
+svm_fifo_next_ooo_segment (svm_fifo_t *f, ooo_segment_t *s)
+{
+  if (s->next == OOO_SEGMENT_INVALID_INDEX)
+    return 0;
+  return pool_elt_at_index (f->ooo_segments, s->next);
 }
 
 static inline void
