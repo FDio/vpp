@@ -16,6 +16,23 @@
       "message": "Needed for QAT tests to pass on 3n-gnr (after CSIT switched to platform-specific builds there).",
       "revId": "aeb92c2739c364dd31500aed0a4d3db1c9cad21b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "8e7c29f5_11d9602a",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3121
+      },
+      "writtenOn": "2026-10-27T20:16:59Z",
+      "side": 1,
+      "message": "Vratko, can you please rebase this patch on https://gerrit.fd.io/r/c/vpp/+/47297 for hs-test runs on CI to pass. Thanks.",
+      "revId": "aeb92c2739c364dd31500aed0a4d3db1c9cad21b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
