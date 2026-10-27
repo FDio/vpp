@@ -178,15 +178,28 @@ ooo_segment_free (svm_fifo_t * f, u32 index)
   pool_put (f->ooo_segments, cur);
 }
 
+static inline u32
+f_pos_min (u32 a, u32 b)
+{
+  return f_pos_lt (a, b) ? a : b;
+}
+
+static inline u32
+f_pos_max (u32 a, u32 b)
+{
+  return f_pos_lt (a, b) ? b : a;
+}
+
 /**
  * Add segment to fifo's out-of-order segment list. Takes care of merging
- * adjacent segments and removing overlapping ones.
+ * adjacent segments and removing overlapping ones. If res is set, reports the
+ * segment that holds the data and the first part of the data the fifo had.
  */
 static void
-ooo_segment_add (svm_fifo_t * f, u32 offset, u32 head, u32 tail, u32 length)
+ooo_segment_add (svm_fifo_t *f, u32 offset, u32 head, u32 tail, u32 length, svm_fifo_ooo_res_t *res)
 {
   ooo_segment_t *s, *new_s, *prev, *next, *it;
-  u32 new_index, s_end_pos, s_index;
+  u32 new_index, s_end_pos, s_index, dup_pos = 0, dup_end_pos = 0;
   u32 offset_pos, offset_end_pos;
 
   ASSERT (offset + length <= f_free_count (f, head, tail));
@@ -194,16 +207,13 @@ ooo_segment_add (svm_fifo_t * f, u32 offset, u32 head, u32 tail, u32 length)
   offset_pos = tail + offset;
   offset_end_pos = tail + offset + length;
 
-  f->ooos_newest = OOO_SEGMENT_INVALID_INDEX;
-
   if (f->ooos_list_head == OOO_SEGMENT_INVALID_INDEX)
     {
       s = ooo_segment_alloc (f, offset_pos, length);
       f->ooos_list_head = s - f->ooo_segments;
       /* Also the last segment */
       s->prev = f->ooos_list_head;
-      f->ooos_newest = f->ooos_list_head;
-      return;
+      goto done;
     }
 
   /* Find first segment that starts after new segment, or the last one. New
@@ -226,6 +236,8 @@ ooo_segment_add (svm_fifo_t * f, u32 offset, u32 head, u32 tail, u32 length)
       /* Since we have previous, offset start position cannot be smaller
        * than prev->start. Check tail */
       ASSERT (f_pos_lt (s->start, offset_pos));
+      dup_pos = offset_pos;
+      dup_end_pos = f_pos_min (offset_end_pos, s_end_pos);
       goto check_tail;
     }
 
@@ -255,8 +267,8 @@ ooo_segment_add (svm_fifo_t * f, u32 offset, u32 head, u32 tail, u32 length)
       new_s->prev = s->prev;
       new_s->next = s_index;
       s->prev = new_index;
-      f->ooos_newest = new_index;
-      return;
+      s = new_s;
+      goto done;
     }
   /* No overlap, add after current segment */
   else if (f_pos_gt (offset_pos, s_end_pos))
@@ -274,21 +286,22 @@ ooo_segment_add (svm_fifo_t * f, u32 offset, u32 head, u32 tail, u32 length)
       s->next = new_index;
       /* New last segment */
       pool_elt_at_index (f->ooo_segments, f->ooos_list_head)->prev = new_index;
-      f->ooos_newest = new_index;
-
-      return;
+      s = new_s;
+      goto done;
     }
 
   /*
    * Merge needed
    */
 
+  dup_pos = f_pos_max (offset_pos, s->start);
+  dup_end_pos = f_pos_min (offset_end_pos, s_end_pos);
+
   /* Merge at head */
   if (f_pos_lt (offset_pos, s->start))
     {
       s->start = offset_pos;
       s->length = s_end_pos - s->start;
-      f->ooos_newest = s - f->ooo_segments;
     }
 
 check_tail:
@@ -302,6 +315,11 @@ check_tail:
       it = ooo_segment_next (f, s);
       while (it && f_pos_leq (ooo_segment_end_pos (it), offset_end_pos))
 	{
+	  if (!f_pos_lt (dup_pos, dup_end_pos))
+	    {
+	      dup_pos = it->start;
+	      dup_end_pos = ooo_segment_end_pos (it);
+	    }
 	  next = ooo_segment_next (f, it);
 	  ooo_segment_free (f, it - f->ooo_segments);
 	  it = next;
@@ -310,10 +328,24 @@ check_tail:
       /* If partial overlap with last, merge */
       if (it && f_pos_leq (it->start, offset_end_pos))
 	{
+	  if (!f_pos_lt (dup_pos, dup_end_pos))
+	    {
+	      dup_pos = it->start;
+	      dup_end_pos = offset_end_pos;
+	    }
 	  s->length = ooo_segment_end_pos (it) - s->start;
 	  ooo_segment_free (f, it - f->ooo_segments);
 	}
-      f->ooos_newest = s - f->ooo_segments;
+    }
+
+done:
+
+  if (res)
+    {
+      res->seg_offset = s->start - tail;
+      res->seg_len = s->length;
+      res->dup_offset = dup_pos - tail;
+      res->dup_len = f_pos_lt (dup_pos, dup_end_pos) ? dup_end_pos - dup_pos : 0;
     }
 }
 
@@ -845,8 +877,6 @@ svm_fifo_enqueue (svm_fifo_t * f, u32 len, const u8 * src)
   u32 tail, head, free_count;
   svm_fifo_chunk_t *old_tail_c;
 
-  f->ooos_newest = OOO_SEGMENT_INVALID_INDEX;
-
   f_load_head_tail_prod (f, &head, &tail);
 
   /* free space in fifo can only increase during enqueue: SPSC */
@@ -898,8 +928,9 @@ svm_fifo_enqueue (svm_fifo_t * f, u32 len, const u8 * src)
  * Returns 0 of the entire segment was copied
  * Returns -1 if none of the segment was copied due to lack of space
  */
-int
-svm_fifo_enqueue_with_offset (svm_fifo_t * f, u32 offset, u32 len, u8 * src)
+static_always_inline int
+svm_fifo_enqueue_with_offset_inline (svm_fifo_t *f, u32 offset, u32 len, u8 *src,
+				     svm_fifo_ooo_res_t *res)
 {
   u32 tail, head, free_count, enq_pos;
   fs_sptr_t last = F_INVALID_CPTR;
@@ -908,7 +939,6 @@ svm_fifo_enqueue_with_offset (svm_fifo_t * f, u32 offset, u32 len, u8 * src)
 
   /* free space in fifo can only increase during enqueue: SPSC */
   free_count = f_free_count (f, head, tail);
-  f->ooos_newest = OOO_SEGMENT_INVALID_INDEX;
 
   /* will this request fit? */
   if ((len + offset) > free_count)
@@ -923,7 +953,7 @@ svm_fifo_enqueue_with_offset (svm_fifo_t * f, u32 offset, u32 len, u8 * src)
     }
 
   svm_fifo_trace_add (f, offset, len, 1);
-  ooo_segment_add (f, offset, head, tail, len);
+  ooo_segment_add (f, offset, head, tail, len, res);
 
   if (!f->ooo_enq || !f_chunk_includes_pos (f->ooo_enq, enq_pos))
     f_update_ooo_enq (f, enq_pos, enq_pos + len);
@@ -933,6 +963,19 @@ svm_fifo_enqueue_with_offset (svm_fifo_t * f, u32 offset, u32 len, u8 * src)
     f->ooo_enq = f_cptr (f, last);
 
   return 0;
+}
+
+int
+svm_fifo_enqueue_with_offset (svm_fifo_t *f, u32 offset, u32 len, u8 *src)
+{
+  return svm_fifo_enqueue_with_offset_inline (f, offset, len, src, 0);
+}
+
+int
+svm_fifo_enqueue_with_offset_res (svm_fifo_t *f, u32 offset, u32 len, u8 *src,
+				  svm_fifo_ooo_res_t *res)
+{
+  return svm_fifo_enqueue_with_offset_inline (f, offset, len, src, res);
 }
 
 /**
@@ -970,8 +1013,6 @@ svm_fifo_enqueue_segments (svm_fifo_t * f, const svm_fifo_seg_t segs[],
 {
   u32 tail, head, free_count, len = 0, i;
   svm_fifo_chunk_t *old_tail_c;
-
-  f->ooos_newest = OOO_SEGMENT_INVALID_INDEX;
 
   f_load_head_tail_prod (f, &head, &tail);
 
@@ -1047,9 +1088,10 @@ svm_fifo_enqueue_segments (svm_fifo_t * f, const svm_fifo_seg_t segs[],
   return len;
 }
 
-int
-svm_fifo_enqueue_segments_with_offset (svm_fifo_t *f, u32 offset, const svm_fifo_seg_t segs[],
-				       u32 n_segs, u8 allow_partial)
+static_always_inline int
+svm_fifo_enqueue_segments_with_offset_inline (svm_fifo_t *f, u32 offset,
+					      const svm_fifo_seg_t segs[], u32 n_segs,
+					      u8 allow_partial, svm_fifo_ooo_res_t *res)
 {
   u32 tail, head, free_count, enq_pos, len = 0, n_left, to_copy, i;
   fs_sptr_t last;
@@ -1058,7 +1100,6 @@ svm_fifo_enqueue_segments_with_offset (svm_fifo_t *f, u32 offset, const svm_fifo
 
   /* free space in fifo can only increase during enqueue: SPSC */
   free_count = f_free_count (f, head, tail);
-  f->ooos_newest = OOO_SEGMENT_INVALID_INDEX;
 
   for (i = 0; i < n_segs; i++)
     len += segs[i].len;
@@ -1088,7 +1129,7 @@ svm_fifo_enqueue_segments_with_offset (svm_fifo_t *f, u32 offset, const svm_fifo
 
   /* All segments are added as one out-of-order segment */
   svm_fifo_trace_add (f, offset, len, 1);
-  ooo_segment_add (f, offset, head, tail, len);
+  ooo_segment_add (f, offset, head, tail, len, res);
 
   if (!f->ooo_enq || !f_chunk_includes_pos (f->ooo_enq, enq_pos))
     f_update_ooo_enq (f, enq_pos, enq_pos + len);
@@ -1108,6 +1149,20 @@ svm_fifo_enqueue_segments_with_offset (svm_fifo_t *f, u32 offset, const svm_fifo
     }
 
   return len;
+}
+
+int
+svm_fifo_enqueue_segments_with_offset (svm_fifo_t *f, u32 offset, const svm_fifo_seg_t segs[],
+				       u32 n_segs, u8 allow_partial)
+{
+  return svm_fifo_enqueue_segments_with_offset_inline (f, offset, segs, n_segs, allow_partial, 0);
+}
+
+int
+svm_fifo_enqueue_segments_with_offset_res (svm_fifo_t *f, u32 offset, const svm_fifo_seg_t segs[],
+					   u32 n_segs, u8 allow_partial, svm_fifo_ooo_res_t *res)
+{
+  return svm_fifo_enqueue_segments_with_offset_inline (f, offset, segs, n_segs, allow_partial, res);
 }
 
 always_inline svm_fifo_chunk_t *
@@ -1470,9 +1525,20 @@ svm_fifo_n_ooo_segments (svm_fifo_t * f)
 }
 
 ooo_segment_t *
-svm_fifo_first_ooo_segment (svm_fifo_t * f)
+svm_fifo_find_ooo_segment (svm_fifo_t *f, u32 offset)
 {
-  return pool_elt_at_index (f->ooo_segments, f->ooos_list_head);
+  ooo_segment_t *s = svm_fifo_first_ooo_segment (f);
+  u32 pos = f->shr->tail + offset;
+
+  /* Segments are sorted */
+  while (s && f_pos_leq (s->start, pos))
+    {
+      if (f_pos_lt (pos, ooo_segment_end_pos (s)))
+	return s;
+      s = ooo_segment_next (f, s);
+    }
+
+  return 0;
 }
 
 /**
@@ -1797,9 +1863,8 @@ format_svm_fifo (u8 * s, va_list * args)
 
   if (verbose)
     {
-      s = format (s, "%Uooo pool %d active elts newest %u\n",
-		  format_white_space, indent, pool_elts (f->ooo_segments),
-		  f->ooos_newest);
+      s = format (s, "%Uooo pool %d active elts\n", format_white_space, indent,
+		  pool_elts (f->ooo_segments));
       if (svm_fifo_has_ooo_data (f))
 	s = format (s, " %U", format_ooo_list, f, indent, verbose);
     }
