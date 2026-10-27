@@ -548,15 +548,27 @@ vperf_server_handle_ctrl_cfg (vperf_server_worker_t *wrk, vperf_cfg_t *rx_cfg,
 
   if (rx_bytes != sizeof (*rx_cfg))
     {
+      /* Data sessions inherit the control configuration. */
+      vperf_cfg_t reply = conn->cfg;
+
       vperf_info ("(fd %d): Invalid cfg msg size %d expected %lu!", conn->fd, rx_bytes,
 		  sizeof (*rx_cfg));
-      conn->cfg.rxbuf_size = 0;
-      conn->cfg.num_writes = 0;
+      reply.rxbuf_size = 0;
+      reply.num_writes = 0;
       if (conn->cfg.verbose)
 	{
 	  vperf_info ("(fd %d): Replying to cfg msg", conn->fd);
 	  vperf_cfg_dump (rx_cfg, 0 /* is_client */);
 	}
+      conn->write (conn, &reply, sizeof (reply));
+      return -1;
+    }
+
+  if (rx_cfg->test != VPERF_TEST_TYPE_EXIT &&
+      (!vperf_buf_size_valid (rx_cfg->rxbuf_size) || !vperf_buf_size_valid (rx_cfg->txbuf_size)))
+    {
+      vperf_warn ("Invalid buffer size. Valid range is %u - %u", VPERF_CFG_BUF_SIZE_MIN,
+		  VPERF_CFG_BUF_SIZE_MAX);
       conn->write (conn, &conn->cfg, sizeof (conn->cfg));
       return -1;
     }
