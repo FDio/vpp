@@ -112,6 +112,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "a5202b17_6030e811",
+        "filename": "src/plugins/linux-cp/lcp_router.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 996,
+      "author": {
+        "id": 3374
+      },
+      "writtenOn": "2026-10-27T07:25:23Z",
+      "side": 1,
+      "message": "Thanks Zachary, that matches the question I raised on 255.255.255.255/32 earlier. With full tables a netlink resync isn\u0027t rare, so this one matters for us too. Happy to test a combined patchset (Pim\u0027s mcast accounting + your resync fix) on my lab with the 200-blackhole reproducer and a forced resync.",
+      "parentUuid": "37f48e33_70a0c27a",
+      "revId": "1a6ac50e89c65ef5197fc4956437d044d37671c4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "b08b2d06_380c4a5d",
         "filename": "src/plugins/linux-cp/lcp_router.c",
         "patchSetId": 1
