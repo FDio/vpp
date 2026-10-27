@@ -1036,11 +1036,12 @@ static int
 tcp_session_enqueue_data (tcp_connection_t * tc, vlib_buffer_t * b,
 			  u16 data_len)
 {
+  svm_fifo_ooo_enq_info_t info;
   int written, error = TCP_ERROR_ENQUEUED;
 
   ASSERT (seq_geq (vnet_buffer (b)->tcp.seq_number, tc->rcv_nxt));
   ASSERT (data_len);
-  written = session_enqueue_stream_connection (&tc->connection, b, 1 /* queue event */);
+  written = session_enqueue_stream_connection (&tc->connection, b, 1 /* queue event */, &info);
 
   TCP_EVT (TCP_EVT_INPUT, tc, 0, data_len, written);
 
@@ -1073,13 +1074,19 @@ tcp_session_enqueue_data (tcp_connection_t * tc, vlib_buffer_t * b,
       return TCP_ERROR_FIFO_FULL;
     }
 
-  /* Update SACK list if need be */
-  if (tcp_opts_sack_permitted (&tc->rcv_opts) && vec_len (tc->snd_sacks))
+  if (tcp_sack_has_blocks (tc))
     {
-      /* written includes collected ooo bytes, so the segment started at rcv_nxt - written.
-       * Remove the blocks it delivered and report what it repeated of them */
-      u32 seq = tc->rcv_nxt - written;
-      tcp_update_sack_list (tc, tc->rcv_nxt, tc->rcv_nxt, seq, seq + data_len);
+      /* Report what the data repeated of the out-of-order data it delivered.
+       * The data started at rcv_nxt - written */
+      if (PREDICT_FALSE (info.dup_len))
+	{
+	  u32 start = tc->rcv_nxt - written + info.dup_offset;
+	  tcp_dsack_report (tc, start, start + info.dup_len);
+	}
+      /* The fifo delivers whole segments, so the newest one was delivered if
+       * rcv_nxt reached its start */
+      if (seq_leq (tc->snd_sack_newest.start, tc->rcv_nxt))
+	tcp_sack_newest_delivered (tc);
       if (tcp_dsack_is_pending (tc))
 	tcp_program_dupack (tc);
     }
@@ -1112,23 +1119,16 @@ tcp_session_enqueue_ooo (tcp_connection_t * tc, vlib_buffer_t * b,
   TCP_EVT (TCP_EVT_INPUT, tc, 1, data_len, data_len);
   tc->bytes_in += data_len;
 
-  /* Update SACK list if in use */
+  /* The block that holds the segment is reported first, even if the fifo
+   * had all of it, and what the fifo had as a dsack */
   if (tcp_opts_sack_permitted (&tc->rcv_opts))
     {
-      u32 start, seq = vnet_buffer (b)->tcp.seq_number;
-
-      if (info.dup_len < data_len)
-	{
-	  ASSERT (info.seg_offset <= seq - tc->rcv_nxt);
-	  start = tc->rcv_nxt + info.seg_offset;
-	  tcp_update_sack_list (tc, start, start + info.seg_len, seq, seq + data_len);
-	  TCP_EVT (TCP_EVT_CC_SACKS, tc);
-	}
-      else
-	{
-	  /* All of the data was queued already */
-	  tcp_dsack_report (tc, seq, seq + data_len);
-	}
+      tc->snd_sack_newest.start = tc->rcv_nxt + info.seg_offset;
+      tc->snd_sack_newest.end = tc->snd_sack_newest.start + info.seg_len;
+      if (PREDICT_FALSE (info.dup_len))
+	tcp_dsack_report (tc, tc->rcv_nxt + info.dup_offset,
+			  tc->rcv_nxt + info.dup_offset + info.dup_len);
+      TCP_EVT (TCP_EVT_CC_SACKS, tc);
     }
 
   return TCP_ERROR_ENQUEUED_OOO;

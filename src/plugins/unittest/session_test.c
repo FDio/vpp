@@ -105,7 +105,7 @@ session_test_rx_chain_run (vlib_main_t *vm, transport_connection_t *tc, svm_fifo
   for (i = 0; i < ARRAY_LEN (lengths); i++)
     {
       len = session_test_rx_chain_prepare (vm, buffers, lengths[i], n_buffers[i], expected);
-      rv = session_enqueue_stream_connection (tc, vlib_get_buffer (vm, buffers[0]), 0);
+      rv = session_enqueue_stream_connection (tc, vlib_get_buffer (vm, buffers[0]), 0, 0);
       SESSION_TEST (rv == len, "rx case %u enqueued %d bytes", i, rv);
       rv = svm_fifo_dequeue (f, len, actual);
       SESSION_TEST (rv == len && !memcmp (actual, expected, len), "rx case %u preserves payload",
@@ -117,9 +117,9 @@ session_test_rx_chain_run (vlib_main_t *vm, transport_connection_t *tc, svm_fifo
   rv = svm_fifo_enqueue (f, 4096 - 64, expected);
   SESSION_TEST (rv == 4096 - 64, "left 64 bytes free in fifo");
   session_test_rx_chain_prepare (vm, buffers, partial_lengths, 4, expected);
-  rv = session_enqueue_stream_connection (tc, vlib_get_buffer (vm, buffers[0]), 0);
+  rv = session_enqueue_stream_connection (tc, vlib_get_buffer (vm, buffers[0]), 0, 0);
   SESSION_TEST (rv == 64, "rx chain partially enqueues when fifo fills");
-  rv = session_enqueue_stream_connection (tc, vlib_get_buffer (vm, buffers[0]), 0);
+  rv = session_enqueue_stream_connection (tc, vlib_get_buffer (vm, buffers[0]), 0, 0);
   SESSION_TEST (rv == SVM_FIFO_EFULL, "rx chain reports a full fifo");
   rv = svm_fifo_dequeue_drop (f, 4096 - 64);
   SESSION_TEST (rv == 4096 - 64, "dropped original fifo contents");
@@ -131,8 +131,10 @@ session_test_rx_chain_run (vlib_main_t *vm, transport_connection_t *tc, svm_fifo
   rv = svm_fifo_enqueue_with_offset (f, 32, 128, expected + 32);
   SESSION_TEST (rv == 0, "buffered out-of-order data");
   session_test_rx_chain_prepare (vm, buffers, ooo_lengths, 4, expected);
-  rv = session_enqueue_stream_connection (tc, vlib_get_buffer (vm, buffers[0]), 0);
-  SESSION_TEST (rv == 160, "rx chain collects out-of-order data");
+  rv = session_enqueue_stream_connection (tc, vlib_get_buffer (vm, buffers[0]), 0, &info);
+  SESSION_TEST (rv == 160 && info.dup_offset == 32 && info.dup_len == 64,
+		"rx chain collects out-of-order data, the fifo had %u bytes at %u", info.dup_len,
+		info.dup_offset);
   rv = svm_fifo_dequeue (f, 160, actual);
   SESSION_TEST (rv == 160 && !memcmp (actual, expected, 160), "collected rx payload preserved");
 

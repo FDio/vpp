@@ -231,7 +231,7 @@ format_tcp_vars (u8 * s, va_list * args)
 	}
       s = format (s, " stats: %U\n", format_tcp_stats, tc);
     }
-  if (vec_len (tc->snd_sacks))
+  if (tcp_sack_has_blocks (tc))
     s = format (s, " sacks tx: %U\n", format_tcp_sacks, tc);
   else if (tc->state < TCP_STATE_ESTABLISHED)
     s = format (s, "\n");
@@ -316,23 +316,10 @@ u8 *
 format_tcp_sacks (u8 * s, va_list * args)
 {
   tcp_connection_t *tc = va_arg (*args, tcp_connection_t *);
-  sack_block_t *sacks = tc->snd_sacks;
-  sack_block_t *block;
-  int i, len = 0;
 
-  len = vec_len (sacks);
-  for (i = 0; i < len - 1; i++)
-    {
-      block = &sacks[i];
-      s = format (s, " start %u end %u\n", block->start - tc->irs,
-		  block->end - tc->irs);
-    }
-  if (len)
-    {
-      block = &sacks[len - 1];
-      s = format (s, " start %u end %u", block->start - tc->irs,
-		  block->end - tc->irs);
-    }
+  /* Other blocks are in the rx fifo */
+  s = format (s, " newest start %u end %u cursor %u", tc->snd_sack_newest.start - tc->irs,
+	      tc->snd_sack_newest.end - tc->irs, tc->snd_sack_cursor - tc->irs);
   return s;
 }
 

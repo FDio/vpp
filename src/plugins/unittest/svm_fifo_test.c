@@ -2502,9 +2502,17 @@ sfifo_test_fifo_ooo_info (vlib_main_t *vm, unformat_input_t *input)
 		  seg ? (int) ooo_segment_offset_prod (f, seg) : -1);
     }
 
-  rv = svm_fifo_enqueue (f, 2700, test_data);
-  SFIFO_TEST (rv == 2750 && !svm_fifo_has_ooo_data (f) && !svm_fifo_first_ooo_segment (f),
-	      "enqueued %d expected %u, no segments left", rv, 2750);
+  /* In-order data that only touches a segment collects it, repeating nothing */
+  rv = svm_fifo_enqueue_info (f, 1000, test_data, &info);
+  SFIFO_TEST (rv == 1500 && !info.dup_len && !info.dup_offset,
+	      "in-order data touching a segment enqueued %d expected %u, duplicate len %u", rv,
+	      1500, info.dup_len);
+  /* In-order data that overlaps a segment reports what it repeats */
+  rv = svm_fifo_enqueue_info (f, 1200, test_data + 1500, &info);
+  SFIFO_TEST (rv == 1250 && info.dup_offset == 400 && info.dup_len == 800 &&
+		!svm_fifo_has_ooo_data (f) && !svm_fifo_first_ooo_segment (f),
+	      "in-order data enqueued %d expected %u, duplicate at %u len %u, no segments left", rv,
+	      1250, info.dup_offset, info.dup_len);
   rv = svm_fifo_dequeue (f, 2750, data_buf);
   SFIFO_TEST (rv == 2750 && !compare_data (data_buf, test_data, 0, 2750, &index), "data preserved");
 

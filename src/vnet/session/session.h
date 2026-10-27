@@ -658,8 +658,8 @@ session_fifo_tuning (session_t *s, svm_fifo_t *f, session_ft_action_t act, u32 l
  * In order, returns number of bytes enqueued, including any collected
  * out-of-order bytes, or a negative svm fifo error. Out of order, like a single
  * buffer, the chain is enqueued entirely or not at all, and returns 0 or a
- * negative svm fifo error. If info is set, it reports what an out-of-order
- * enqueue found in the fifo.
+ * negative svm fifo error. If info is set, it reports what the enqueue found
+ * of the fifo's out-of-order data.
  */
 always_inline int
 session_enqueue_chain (session_t *s, vlib_buffer_t *b, u32 offset, u8 is_in_order,
@@ -682,8 +682,8 @@ session_enqueue_chain (session_t *s, vlib_buffer_t *b, u32 offset, u8 is_in_orde
 
   if (is_in_order)
     {
-      rv = svm_fifo_enqueue_segments (s->rx_fifo, wrk->rx_segs, vec_len (wrk->rx_segs),
-				      1 /* allow partial*/);
+      rv = svm_fifo_enqueue_segments_info (s->rx_fifo, wrk->rx_segs, vec_len (wrk->rx_segs),
+					   1 /* allow partial*/, info);
     }
   else
     {
@@ -706,12 +706,15 @@ session_enqueue_chain (session_t *s, vlib_buffer_t *b, u32 offset, u8 is_in_orde
  * @param queue_event Flag to indicate if peer is to be notified or if event
  *                    is to be queued. The former is useful when more data is
  *                    enqueued and only one event is to be generated.
+ * @param info If set, reports the first part of the data the fifo had already
+ *             out of order, see @ref svm_fifo_ooo_enq_info_t
  * @return Number of bytes enqueued, which may exceed the buffer length if
  *         out-of-order data was collected, or negative svm fifo error if
  *         nothing could be enqueued.
  */
 always_inline int
-session_enqueue_stream_connection (transport_connection_t *tc, vlib_buffer_t *b, u8 queue_event)
+session_enqueue_stream_connection (transport_connection_t *tc, vlib_buffer_t *b, u8 queue_event,
+				   svm_fifo_ooo_enq_info_t *info)
 {
   session_t *s;
   int enqueued;
@@ -719,9 +722,10 @@ session_enqueue_stream_connection (transport_connection_t *tc, vlib_buffer_t *b,
   s = session_get (tc->s_index, tc->thread_index);
 
   if (PREDICT_TRUE (!(b->flags & VLIB_BUFFER_NEXT_PRESENT)))
-    enqueued = svm_fifo_enqueue (s->rx_fifo, b->current_length, vlib_buffer_get_current (b));
+    enqueued =
+      svm_fifo_enqueue_info (s->rx_fifo, b->current_length, vlib_buffer_get_current (b), info);
   else
-    enqueued = session_enqueue_chain (s, b, 0, 1, 0);
+    enqueued = session_enqueue_chain (s, b, 0, 1, info);
 
   if (queue_event)
     {

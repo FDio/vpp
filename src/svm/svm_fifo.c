@@ -335,15 +335,25 @@ done:
 
 /**
  * Removes segments that can now be enqueued because the fifo's tail has
- * advanced. Returns the number of bytes added to tail.
+ * advanced. Returns the number of bytes added to tail. If info is set,
+ * reports the first data the fifo already had of the n_bytes_enqueued that
+ * end at tail.
  */
 static int
-ooo_segment_try_collect (svm_fifo_t * f, u32 n_bytes_enqueued, u32 * tail)
+ooo_segment_try_collect (svm_fifo_t *f, u32 n_bytes_enqueued, u32 *tail,
+			 svm_fifo_ooo_enq_info_t *info)
 {
   u32 s_index, s_end, bytes = 0;
   ooo_segment_t *s;
 
   s = pool_elt_at_index (f->ooo_segments, f->ooos_list_head);
+
+  /* Segments are sorted, so if any has some of the data, the first does */
+  if (info && f_pos_lt (s->start, *tail))
+    {
+      info->dup_offset = s->start - (*tail - n_bytes_enqueued);
+      info->dup_len = f_pos_min (*tail, ooo_segment_end_pos (s)) - s->start;
+    }
 
   /* If last tail update overlaps one/multiple ooo segments, remove them */
   while (f_pos_leq (s->start, *tail))
@@ -855,8 +865,8 @@ f_try_chunk_alloc (svm_fifo_t * f, u32 head, u32 tail, u32 len)
   return 0;
 }
 
-int
-svm_fifo_enqueue (svm_fifo_t * f, u32 len, const u8 * src)
+static_always_inline int
+f_enqueue (svm_fifo_t *f, u32 len, const u8 *src, svm_fifo_ooo_enq_info_t *info)
 {
   u32 tail, head, free_count;
   svm_fifo_chunk_t *old_tail_c;
@@ -892,7 +902,7 @@ svm_fifo_enqueue (svm_fifo_t * f, u32 len, const u8 * src)
   /* collect out-of-order segments */
   if (PREDICT_FALSE (f->ooos_list_head != OOO_SEGMENT_INVALID_INDEX))
     {
-      len += ooo_segment_try_collect (f, len, &tail);
+      len += ooo_segment_try_collect (f, len, &tail, info);
       /* Tail chunk might've changed even if nothing was collected */
       f->shr->tail_chunk =
 	f_csptr (f, f_lookup_clear_enq_chunks (f, old_tail_c, tail));
@@ -903,6 +913,20 @@ svm_fifo_enqueue (svm_fifo_t * f, u32 len, const u8 * src)
   clib_atomic_store_rel_n (&f->shr->tail, tail);
 
   return len;
+}
+
+int
+svm_fifo_enqueue (svm_fifo_t *f, u32 len, const u8 *src)
+{
+  return f_enqueue (f, len, src, 0);
+}
+
+int
+svm_fifo_enqueue_info (svm_fifo_t *f, u32 len, const u8 *src, svm_fifo_ooo_enq_info_t *info)
+{
+  if (info)
+    *info = (svm_fifo_ooo_enq_info_t){};
+  return f_enqueue (f, len, src, info);
 }
 
 /**
@@ -992,9 +1016,9 @@ svm_fifo_enqueue_nocopy (svm_fifo_t * f, u32 len)
   clib_atomic_store_rel_n (&f->shr->tail, tail);
 }
 
-int
-svm_fifo_enqueue_segments (svm_fifo_t * f, const svm_fifo_seg_t segs[],
-			   u32 n_segs, u8 allow_partial)
+static_always_inline int
+f_enqueue_segments (svm_fifo_t *f, const svm_fifo_seg_t segs[], u32 n_segs, u8 allow_partial,
+		    svm_fifo_ooo_enq_info_t *info)
 {
   u32 tail, head, free_count, len = 0, i;
   svm_fifo_chunk_t *old_tail_c;
@@ -1060,7 +1084,7 @@ svm_fifo_enqueue_segments (svm_fifo_t * f, const svm_fifo_seg_t segs[],
   /* collect out-of-order segments */
   if (PREDICT_FALSE (f->ooos_list_head != OOO_SEGMENT_INVALID_INDEX))
     {
-      len += ooo_segment_try_collect (f, len, &tail);
+      len += ooo_segment_try_collect (f, len, &tail, info);
       /* Tail chunk might've changed even if nothing was collected */
       f->shr->tail_chunk =
 	f_csptr (f, f_lookup_clear_enq_chunks (f, old_tail_c, tail));
@@ -1071,6 +1095,21 @@ svm_fifo_enqueue_segments (svm_fifo_t * f, const svm_fifo_seg_t segs[],
   clib_atomic_store_rel_n (&f->shr->tail, tail);
 
   return len;
+}
+
+int
+svm_fifo_enqueue_segments (svm_fifo_t *f, const svm_fifo_seg_t segs[], u32 n_segs, u8 allow_partial)
+{
+  return f_enqueue_segments (f, segs, n_segs, allow_partial, 0);
+}
+
+int
+svm_fifo_enqueue_segments_info (svm_fifo_t *f, const svm_fifo_seg_t segs[], u32 n_segs,
+				u8 allow_partial, svm_fifo_ooo_enq_info_t *info)
+{
+  if (info)
+    *info = (svm_fifo_ooo_enq_info_t){};
+  return f_enqueue_segments (f, segs, n_segs, allow_partial, info);
 }
 
 /* One copy for both variants, which jump to it directly */

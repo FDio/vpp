@@ -49,12 +49,13 @@ typedef struct svm_fifo_seg_
   u32 len;
 } svm_fifo_seg_t;
 
-/** What an out-of-order enqueue found in the fifo */
+/** What an enqueue found of the fifo's out-of-order data. Offsets are from
+ * the tail before the enqueue. In-order enqueues report only duplicates */
 typedef struct svm_fifo_ooo_enq_info_
 {
-  u32 seg_offset; /**< Offset from tail of the segment that holds the data */
+  u32 seg_offset; /**< Offset of the segment that holds the data, out of order */
   u32 seg_len;	  /**< Length of that segment */
-  u32 dup_offset; /**< Offset from tail of the first data the fifo had, 0 if none */
+  u32 dup_offset; /**< Offset of the first data the fifo had, 0 if none */
   u32 dup_len;	  /**< Length of that data, 0 if all the data is new */
 } svm_fifo_ooo_enq_info_t;
 
@@ -363,6 +364,13 @@ void svm_fifo_clone (svm_fifo_t * df, svm_fifo_t * sf);
  */
 int svm_fifo_enqueue (svm_fifo_t * f, u32 len, const u8 * src);
 /**
+ * Enqueue data to fifo, like @ref svm_fifo_enqueue, and report the first
+ * part of it the fifo had already out of order
+ *
+ * @param info		filled if the enqueue was successful
+ */
+int svm_fifo_enqueue_info (svm_fifo_t *f, u32 len, const u8 *src, svm_fifo_ooo_enq_info_t *info);
+/**
  * Enqueue data to fifo with offset
  *
  * Data is enqueued without updating tail pointer. Instead, an out-of-order
@@ -398,6 +406,15 @@ void svm_fifo_enqueue_nocopy (svm_fifo_t * f, u32 len);
  */
 int svm_fifo_enqueue_segments (svm_fifo_t * f, const svm_fifo_seg_t segs[],
 			       u32 n_segs, u8 allow_partial);
+/**
+ * Enqueue array of @ref svm_fifo_seg_t in order, like
+ * @ref svm_fifo_enqueue_segments, and report the first part of the data the
+ * fifo had already out of order
+ *
+ * @param info		filled if the enqueue was successful
+ */
+int svm_fifo_enqueue_segments_info (svm_fifo_t *f, const svm_fifo_seg_t segs[], u32 n_segs,
+				    u8 allow_partial, svm_fifo_ooo_enq_info_t *info);
 /**
  * Enqueue array of @ref svm_fifo_seg_t with offset
  *
