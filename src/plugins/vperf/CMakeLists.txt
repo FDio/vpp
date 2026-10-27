@@ -50,4 +50,15 @@ if(VPP_BUILD_VCL_TESTS AND VPP_BUILD_VPERF_TESTS)
     LINK_LIBRARIES vppcom pthread ${EPOLL_LIB}
     NO_INSTALL
   )
+
+  foreach(test
+    test_vperf_client
+    test_vperf_server
+  )
+    add_vpp_test(${test}
+      SOURCES "vcl/tests/${test}.c"
+      LINK_LIBRARIES vppcom pthread ${EPOLL_LIB}
+      NO_INSTALL
+    )
+  endforeach()
 endif()

@@ -344,9 +344,10 @@ stream_test_client (vperf_test_t test)
 	  if (FD_ISSET (tsock->fd, wfdset) &&
 	      (tsock->stats.tx_bytes < ctrl->cfg.total_bytes))
 	    {
-	      tx_bytes = sock_test_write (tsock->fd, (uint8_t *) tsock->txbuf,
-					  ctrl->cfg.txbuf_size, &tsock->stats,
-					  ctrl->cfg.verbose);
+	      tx_bytes = sock_test_write (
+		tsock->fd, (uint8_t *) tsock->txbuf,
+		clib_min (tsock->txbuf_size, ctrl->cfg.total_bytes - tsock->stats.tx_bytes),
+		&tsock->stats, ctrl->cfg.verbose);
 	      if (tx_bytes < 0)
 		stabrt ("sock_test_write(%d) failed -- aborting test!",
 			tsock->fd);
@@ -523,8 +524,8 @@ cfg_txbuf_size_set (void)
   if (txbuf_size >= VPERF_CFG_BUF_SIZE_MIN)
     {
       ctrl->cfg.txbuf_size = txbuf_size;
-      ctrl->cfg.total_bytes = ctrl->cfg.num_writes * ctrl->cfg.txbuf_size;
       vperf_buf_alloc (&ctrl->cfg, 0 /* is_rxbuf */, (uint8_t **) &ctrl->txbuf, &ctrl->txbuf_size);
+      ctrl->cfg.total_bytes = ctrl->cfg.num_writes * ctrl->cfg.txbuf_size;
       vperf_cfg_dump (&ctrl->cfg, 1 /* is_client */);
     }
   else
@@ -752,7 +753,6 @@ main (int argc, char **argv)
 	    }
 	if (ctrl->cfg.rxbuf_size >= VPERF_CFG_BUF_SIZE_MIN)
 	  {
-	    ctrl->rxbuf_size = ctrl->cfg.rxbuf_size;
 	    vperf_buf_alloc (&ctrl->cfg, 1 /* is_rxbuf */, (uint8_t **) &ctrl->rxbuf,
 			     &ctrl->rxbuf_size);
 	  }
@@ -774,7 +774,6 @@ main (int argc, char **argv)
 	    }
 	if (ctrl->cfg.txbuf_size >= VPERF_CFG_BUF_SIZE_MIN)
 	  {
-	    ctrl->txbuf_size = ctrl->cfg.txbuf_size;
 	    vperf_buf_alloc (&ctrl->cfg, 0 /* is_rxbuf */, (uint8_t **) &ctrl->txbuf,
 			     &ctrl->txbuf_size);
 	    ctrl->cfg.total_bytes =
