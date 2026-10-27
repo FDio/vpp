@@ -96,7 +96,7 @@ create_buffer_for_client_message (vlib_main_t * vm,
   /* Get a link-local address */
   src_addr = ip6_get_link_local_address (sw_if_index);
 
-  if (src_addr->as_u8[0] != 0xfe)
+  if (src_addr == NULL || src_addr->as_u8[0] != 0xfe)
     {
       if (!client_state->missing_lladdr_warned)
 	{
