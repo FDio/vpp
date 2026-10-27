@@ -1538,18 +1538,7 @@ svm_fifo_n_ooo_segments (svm_fifo_t * f)
 ooo_segment_t *
 svm_fifo_find_ooo_segment (svm_fifo_t *f, u32 offset)
 {
-  ooo_segment_t *s = svm_fifo_first_ooo_segment (f);
-  u32 pos = f->shr->tail + offset;
-
-  /* Segments are sorted */
-  while (s && f_pos_leq (s->start, pos))
-    {
-      if (f_pos_lt (pos, ooo_segment_end_pos (s)))
-	return s;
-      s = ooo_segment_next (f, s);
-    }
-
-  return 0;
+  return ooo_segments_find (&f->ooo, f->shr->tail + offset);
 }
 
 /**
