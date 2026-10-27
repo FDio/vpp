@@ -70,6 +70,46 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "3b386aec_ff2bb082",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3387
+      },
+      "writtenOn": "2026-10-27T03:20:12Z",
+      "side": 1,
+      "message": "Hello, I\u0027m new here, but I have been testing many different scenarios with internal CI on stable/2610 for my use cases and also ran into this same problem. I am seeing two leaks fixed with this patch set, but I think this fix may still be off by one after a netlink resync in the lcp_router_table_owned_routes. Only tables with no lcp pairs are affected. \nThx. Hope this helps. Happy to share a patch if it helps.",
+      "revId": "1a6ac50e89c65ef5197fc4956437d044d37671c4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "37f48e33_70a0c27a",
+        "filename": "src/plugins/linux-cp/lcp_router.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 996,
+      "author": {
+        "id": 3387
+      },
+      "writtenOn": "2026-10-27T03:20:12Z",
+      "side": 1,
+      "message": "This subtracts 1 assuming the 255.255.255.255/32 special is in the count, but a resync sweeps it (it is under lcp_rt_fib_src, gets marked, and the kernel dump does not re-add it). Then a table holding just 1 real route counts 1, this makes it 0, and the table is freed with the route still in it.",
+      "range": {
+        "startLine": 996,
+        "startChar": 0,
+        "endLine": 996,
+        "endChar": 3
+      },
+      "revId": "1a6ac50e89c65ef5197fc4956437d044d37671c4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "b08b2d06_380c4a5d",
