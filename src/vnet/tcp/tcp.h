@@ -121,7 +121,7 @@ typedef struct tcp_worker_ctx_
   /** worker timer wheel */
   tcp_timer_wheel_t timer_wheel;
 
-  /** Sack blocks of an ack that reports a dsack */
+  /** Sack blocks of the options being built */
   sack_block_t ack_sacks[TCP_OPTS_MAX_SACK_BLOCKS];
 
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline2);
@@ -324,6 +324,7 @@ void tcp_send_syn (tcp_connection_t * tc);
 __clib_export void tcp_send_synack (tcp_connection_t *tc);
 void tcp_send_fin (tcp_connection_t * tc);
 __clib_export void tcp_send_ack (tcp_connection_t *tc);
+void tcp_send_sack_flush (tcp_connection_t *tc);
 void tcp_send_window_update_ack (tcp_connection_t * tc);
 
 __clib_export void tcp_program_ack (tcp_connection_t *tc);
