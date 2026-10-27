@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "61e5fd33_f6279320",
+        "filename": "test/test_l2_fib.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 704,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-10-27T19:01:08Z",
+      "side": 1,
+      "message": "Could we replace the sleep-polling loop with self.vapi.wait_for_event(None, \"l2_macs_event\") and assert the expected MAC, ADD action, and interface directly? Both the initial learn and the stale refresh must emit an ADD event when notifications are enabled. Blocking on the event queue would avoid polling and the separate five-second cutoff; the test launcher\u0027s existing timeout would bound a missing-event failure.",
+      "revId": "3455acaa8683f7291c7f65b7ed093ae7ed289832",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
