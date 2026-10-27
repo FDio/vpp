@@ -121,8 +121,11 @@ typedef struct tcp_worker_ctx_
   /** worker timer wheel */
   tcp_timer_wheel_t timer_wheel;
 
-  /** Sack blocks of an ack that reports a dsack */
+  /** Sack blocks of the ack being built */
   sack_block_t ack_sacks[TCP_OPTS_MAX_SACK_BLOCKS];
+
+  /** Blocks dupacks report in rotation while a burst is sent, 0 otherwise */
+  tcp_sack_rotation_t *dupack_rot;
 
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline2);
 
@@ -324,7 +327,7 @@ __clib_export void tcp_send_ack (tcp_connection_t *tc);
 void tcp_send_window_update_ack (tcp_connection_t * tc);
 
 __clib_export void tcp_program_ack (tcp_connection_t *tc);
-void tcp_program_dupack (tcp_connection_t * tc);
+__clib_export void tcp_program_dupack (tcp_connection_t *tc);
 void tcp_program_retransmit (tcp_connection_t * tc);
 
 void tcp_update_burst_snd_vars (tcp_connection_t * tc);
