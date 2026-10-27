@@ -130,6 +130,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "8b8c2e08_d85fcddd",
+        "filename": "src/plugins/linux-cp/lcp_router.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 996,
+      "author": {
+        "id": 3387
+      },
+      "writtenOn": "2026-10-27T19:57:29Z",
+      "side": 1,
+      "message": "Thanks Pieter, I pushed a followup change here: https://gerrit.fd.io/r/c/vpp/+/47288 Feel free to test; It gives the special its own FIB source so resync does not discard it and owned_routes does not discount it. It includes a test which we could drop if that\u0027s too much LOC. Happy to have it folded in here or rewritten another way, whatever works.",
+      "parentUuid": "a5202b17_6030e811",
+      "revId": "1a6ac50e89c65ef5197fc4956437d044d37671c4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "b08b2d06_380c4a5d",
         "filename": "src/plugins/linux-cp/lcp_router.c",
         "patchSetId": 1
