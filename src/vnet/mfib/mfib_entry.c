@@ -339,6 +339,24 @@ mfib_entry_get_best_source (const mfib_entry_t *mfib_entry)
     return (bsrc->mfes_src);
 }
 
+u32
+mfib_entry_get_n_paths(fib_node_index_t fib_entry_index,
+                       mfib_source_t source)
+{
+    mfib_entry_t *mfib_entry;
+    mfib_entry_src_t *msrc;
+
+    mfib_entry = mfib_entry_get(fib_entry_index);
+    msrc = mfib_entry_src_find(mfib_entry, source, NULL);
+
+    if (NULL == msrc)
+    {
+      return (0);
+    }
+
+    return fib_path_list_get_n_paths(msrc->mfes_pl);
+}
+
 int
 mfib_entry_is_sourced (fib_node_index_t mfib_entry_index,
                        mfib_source_t source)

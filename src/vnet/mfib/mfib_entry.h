@@ -148,8 +148,10 @@ extern void mfib_entry_unlock(fib_node_index_t fib_entry_index);
 
 __clib_export extern const mfib_prefix_t *mfib_entry_get_prefix(fib_node_index_t fib_entry_index);
 extern u32 mfib_entry_get_fib_index(fib_node_index_t fib_entry_index);
-extern int mfib_entry_is_sourced(fib_node_index_t fib_entry_index,
-                                 mfib_source_t source);
+__clib_export extern u32 mfib_entry_get_n_paths(fib_node_index_t fib_entry_index,
+                                                mfib_source_t source);
+__clib_export extern int mfib_entry_is_sourced(fib_node_index_t fib_entry_index,
+                                               mfib_source_t source);
 extern int mfib_entry_is_host(fib_node_index_t fib_entry_index);
 extern int mfib_entry_is_marked(fib_node_index_t fib_entry_index, mfib_source_t source);
 extern void mfib_entry_mark(fib_node_index_t fib_entry_index, mfib_source_t source);
