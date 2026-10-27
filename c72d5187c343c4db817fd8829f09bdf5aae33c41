@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "6c149728_1f4759ed",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3387
+      },
+      "writtenOn": "2026-10-27T04:39:30Z",
+      "side": 1,
+      "message": "Hello. I\u0027ve been internally testing VPP on my CI with many test cases and came across this edge case where an admin-down interface in vpp can blackhole routed traffic when lcp-sync is on; and worse when the interface returns it will route traffic for routes no longer installed in Linux. I think it\u0027s a simple fix, if you have a few minutes to take a look thx.",
+      "revId": "c72d5187c343c4db817fd8829f09bdf5aae33c41",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
