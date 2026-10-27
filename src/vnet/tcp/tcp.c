@@ -274,9 +274,8 @@ tcp_connection_cleanup (tcp_connection_t * tc)
 	tcp_add_del_adjacency (tc, 0);
 
       tcp_cc_cleanup (tc);
-      vec_free (tc->snd_sacks);
-      vec_free (tc->snd_sacks_fl);
       vec_free (tc->snd_dsacks);
+      vec_free (tc->snd_sack_hist);
       vec_free (tc->rcv_opts.sacks);
       pool_free (tc->sack_sb.holes);
 
@@ -779,6 +778,13 @@ tcp_connection_init_vars (tcp_connection_t * tc)
   scoreboard_init (&tc->sack_sb);
   if (!tcp_cfg.enable_dsack)
     tc->sack_sb.flags |= TCP_DSACK_UNDO_DISABLED;
+
+  /* Room for the older sack blocks, so the data path does not allocate */
+  if (tcp_opts_sack_permitted (&tc->rcv_opts))
+    {
+      vec_validate (tc->snd_sack_hist, TCP_OPTS_MAX_SACK_BLOCKS - 1);
+      vec_reset_length (tc->snd_sack_hist);
+    }
 
   if (tc->state == TCP_STATE_SYN_RCVD)
     tcp_init_snd_vars (tc);

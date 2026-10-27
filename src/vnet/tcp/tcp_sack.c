@@ -1010,33 +1010,23 @@ tcp_ack_handle_full_feedback (tcp_connection_t *tc, u32 packet_ack, u32 ack, tcp
     tcp_scoreboard_apply_ack (tc, ack, high_sacked, ac);
 }
 
-static u8
-tcp_sack_vector_is_sane (sack_block_t * sacks)
+/* Queue [start, end), received again, and blk, the block that held it if it was out of order.
+ * A duplicate that touches the last one extends it, others are reported in separate acks.
+ * Callers check that reporting is enabled and that the range is not empty */
+static void
+tcp_dsack_add (tcp_connection_t *tc, u32 start, u32 end, sack_block_t blk)
 {
-  int i;
-  for (i = 1; i < vec_len (sacks); i++)
-    {
-      if (sacks[i - 1].end == sacks[i].start)
-	return 0;
-    }
-  return 1;
-}
-
-/* Queue [start, end), received again. A duplicate that touches the last one
- * extends it, others are reported in separate acks. Callers check that
- * reporting is enabled and that the range is not empty. */
-static __clib_noinline void
-tcp_dsack_add (tcp_connection_t *tc, u32 start, u32 end)
-{
-  sack_block_t *last;
+  tcp_dsack_t *last;
 
   if (tcp_dsack_is_pending (tc))
     {
       last = vec_end (tc->snd_dsacks) - 1;
-      if (seq_leq (start, last->end) && seq_leq (last->start, end))
+      if (seq_leq (start, last->dup.end) && seq_leq (last->dup.start, end))
 	{
-	  last->start = seq_min (last->start, start);
-	  last->end = seq_max (last->end, end);
+	  last->dup.start = seq_min (last->dup.start, start);
+	  last->dup.end = seq_max (last->dup.end, end);
+	  if (blk.start != blk.end)
+	    last->blk = blk;
 	  return;
 	}
     }
@@ -1046,138 +1036,124 @@ tcp_dsack_add (tcp_connection_t *tc, u32 start, u32 end)
     vec_delete (tc->snd_dsacks, 1, 0);
 
   vec_add2 (tc->snd_dsacks, last, 1);
-  last->start = start;
-  last->end = end;
+  last->dup.start = start;
+  last->dup.end = end;
+  last->blk = blk;
 }
 
 void
 tcp_dsack_report (tcp_connection_t *tc, u32 start, u32 end)
 {
+  sack_block_t none = {};
+
   if (tcp_dsack_report_enabled (tc) && seq_lt (start, end))
-    tcp_dsack_add (tc, start, end);
+    tcp_dsack_add (tc, start, end, none);
+}
+
+void
+tcp_dsack_report_ooo (tcp_connection_t *tc, u32 start, u32 end, sack_block_t blk)
+{
+  if (tcp_dsack_report_enabled (tc) && seq_lt (start, end))
+    tcp_dsack_add (tc, start, end, blk);
+}
+
+void
+tcp_sack_add_slow (tcp_connection_t *tc, sack_block_t blk)
+{
+  sack_block_t *hist = tc->snd_sack_hist;
+  u32 i, n = 0;
+
+  /* The newest becomes an older block, unless blk grew from it */
+  if (tcp_sack_has_blocks (tc) && !tcp_sack_block_contains (blk, tc->snd_sack_newest))
+    {
+      vec_add1 (hist, tc->snd_sack_newest);
+      tc->snd_sack_changes += tc->snd_sack_changes < CLIB_U8_MAX;
+    }
+  else
+    tc->snd_sack_changes = clib_max (tc->snd_sack_changes, 1);
+
+  /* Drop the blocks blk joined */
+  for (i = 0; i < vec_len (hist); i++)
+    if (!tcp_sack_block_contains (blk, hist[i]))
+      hist[n++] = hist[i];
+  if (hist)
+    vec_set_len (hist, n);
+
+  /* Keep the most recent, as many as fit in an ack with the newest */
+  if (n >= TCP_OPTS_MAX_SACK_BLOCKS)
+    vec_delete (hist, n - (TCP_OPTS_MAX_SACK_BLOCKS - 1), 0);
+
+  tc->snd_sack_hist = hist;
+  tc->snd_sack_newest = blk;
+}
+
+void
+tcp_sack_delivered (tcp_connection_t *tc)
+{
+  sack_block_t *hist = tc->snd_sack_hist;
+  u32 i, n = 0;
+
+  /* The fifo delivers whole segments, so delivered blocks start at or below rcv_nxt */
+  for (i = 0; i < vec_len (hist); i++)
+    if (seq_gt (hist[i].start, tc->rcv_nxt))
+      hist[n++] = hist[i];
+  if (hist)
+    vec_set_len (hist, n);
+
+  if (seq_gt (tc->snd_sack_newest.start, tc->rcv_nxt))
+    return;
+
+  /* The most recent left is the newest. Blocks pushed out earlier that the fifo still has are
+   * reported again once a segment lands in them */
+  if (n)
+    {
+      tc->snd_sack_newest = hist[n - 1];
+      vec_set_len (hist, n - 1);
+    }
+  else
+    tcp_sack_clear_blocks (tc);
 }
 
 u32
 tcp_dsack_make_sacks (tcp_connection_t *tc, sack_block_t *blks)
 {
-  sack_block_t *sacks = tc->snd_sacks, dsack;
-  u32 i, n = 0, n_sacks = vec_len (sacks), contains = ~0;
+  sack_block_t cur[TCP_OPTS_MAX_SACK_BLOCKS];
+  u32 i, n = 0, n_cur = 0, contains = ~0, changed, sent = 0;
+  tcp_dsack_t d;
 
   ASSERT (tcp_dsack_is_pending (tc));
-  dsack = tc->snd_dsacks[0];
+  d = tc->snd_dsacks[0];
   vec_delete (tc->snd_dsacks, 1, 0);
-  blks[n++] = dsack;
+  blks[n++] = d.dup;
 
-  /* Sack blocks are above rcv_nxt, so only out-of-order duplicates have one */
-  for (i = 0; seq_geq (dsack.start, tc->rcv_nxt) && i < n_sacks; i++)
-    if (seq_leq (sacks[i].start, dsack.start) && seq_leq (dsack.end, sacks[i].end))
+  if (tcp_sack_has_blocks (tc))
+    n_cur = tcp_make_sacks (tc, cur);
+
+  /* Out-of-order duplicates are followed by the block that holds them: a kept one, else the
+   * one recorded when they arrived, which the fifo holds until rcv_nxt passes it */
+  for (i = 0; i < n_cur; i++)
+    if (tcp_sack_block_contains (cur[i], d.dup))
       {
-	blks[n++] = sacks[i];
+	blks[n++] = cur[i];
 	contains = i;
+	sent |= 1 << i;
 	break;
       }
+  if (contains == ~0 && d.blk.start != d.blk.end && seq_gt (d.blk.start, tc->rcv_nxt))
+    blks[n++] = d.blk;
 
-  if (tc->snd_sack_pos >= n_sacks)
-    tc->snd_sack_pos = 0;
-
-  for (i = tc->snd_sack_pos; i < n_sacks && n < TCP_OPTS_MAX_SACK_BLOCKS; i++)
+  for (i = 0; i < n_cur && n < TCP_OPTS_MAX_SACK_BLOCKS; i++)
     if (i != contains)
-      blks[n++] = sacks[i];
+      {
+	blks[n++] = cur[i];
+	sent |= 1 << i;
+      }
 
-  tc->snd_sack_pos = i;
+  /* The changed blocks are the most recent ones. If the ack does not hold them all,
+   * tcp_send_acks follows with one that does */
+  changed = (1 << clib_min (tc->snd_sack_changes, n_cur)) - 1;
+  if ((sent & changed) == changed)
+    tc->snd_sack_changes = 0;
+
   return n;
-}
-
-/* Report what the segment repeated of a block it delivered or merged with.
- * Duplicates are rare, so check the overlap before calling */
-static_always_inline void
-tcp_dsack_report_overlap (tcp_connection_t *tc, sack_block_t *blk, u32 seg_start, u32 seg_end)
-{
-  u32 start = seq_max (seg_start, blk->start), end = seq_min (seg_end, blk->end);
-
-  if (PREDICT_FALSE (seq_lt (start, end)))
-    tcp_dsack_add (tc, start, end);
-}
-
-/**
- * Build SACK list as per RFC2018.
- *
- * Makes sure the first block contains the segment that generated the current
- * ACK and the following ones are the ones most recently reported in SACK
- * blocks.
- *
- * [start, end) is the newest out-of-order block, empty if the segment the
- * receiver got last, [seg_start, seg_end), was enqueued in order. What the
- * segment overlaps of the blocks it delivered or merged with was received
- * twice and is reported as a dsack.
- *
- * @param tc TCP connection for which the SACK list is updated
- * @param start Start sequence number of the newest out-of-order block
- * @param end End sequence number of the newest out-of-order block
- * @param seg_start Start sequence number of the segment received last
- * @param seg_end End sequence number of the segment received last
- */
-void
-tcp_update_sack_list (tcp_connection_t *tc, u32 start, u32 end, u32 seg_start, u32 seg_end)
-{
-  sack_block_t *new_list = tc->snd_sacks_fl, *block = 0;
-  u8 dsack_report = tcp_dsack_report_enabled (tc);
-  int i;
-
-  /* If the first segment is ooo add it to the list. Last write might've moved
-   * rcv_nxt over the first segment. */
-  if (seq_lt (tc->rcv_nxt, start))
-    {
-      vec_add2 (new_list, block, 1);
-      block->start = start;
-      block->end = end;
-    }
-
-  /* Find the blocks still worth keeping. */
-  for (i = 0; i < vec_len (tc->snd_sacks); i++)
-    {
-      /* Discard if rcv_nxt advanced beyond current block */
-      if (seq_leq (tc->snd_sacks[i].start, tc->rcv_nxt))
-	{
-	  if (dsack_report)
-	    tcp_dsack_report_overlap (tc, &tc->snd_sacks[i], seg_start, seg_end);
-	  continue;
-	}
-
-      /* Merge or drop if segment overlapped by the new segment */
-      if (block && (seq_geq (tc->snd_sacks[i].end, new_list[0].start)
-		    && seq_leq (tc->snd_sacks[i].start, new_list[0].end)))
-	{
-	  if (dsack_report)
-	    tcp_dsack_report_overlap (tc, &tc->snd_sacks[i], seg_start, seg_end);
-	  if (seq_lt (tc->snd_sacks[i].start, new_list[0].start))
-	    new_list[0].start = tc->snd_sacks[i].start;
-	  if (seq_lt (new_list[0].end, tc->snd_sacks[i].end))
-	    new_list[0].end = tc->snd_sacks[i].end;
-	  continue;
-	}
-
-      /* Save to new SACK list if we have space. */
-      if (vec_len (new_list) < TCP_MAX_SACK_BLOCKS)
-	vec_add1 (new_list, tc->snd_sacks[i]);
-    }
-
-  ASSERT (vec_len (new_list) <= TCP_MAX_SACK_BLOCKS);
-
-  /* Replace old vector with new one */
-  vec_reset_length (tc->snd_sacks);
-  tc->snd_sacks_fl = tc->snd_sacks;
-  tc->snd_sacks = new_list;
-
-  /* Segments should not 'touch' */
-  ASSERT (tcp_sack_vector_is_sane (tc->snd_sacks));
-}
-
-u32
-tcp_sack_list_bytes (tcp_connection_t * tc)
-{
-  u32 bytes = 0, i;
-  for (i = 0; i < vec_len (tc->snd_sacks); i++)
-    bytes += tc->snd_sacks[i].end - tc->snd_sacks[i].start;
-  return bytes;
 }

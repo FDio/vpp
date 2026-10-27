@@ -697,8 +697,8 @@ hsi_tcp_track_cleanup_tcp_state (tcp_connection_t *tc)
   if (tc->cc_algo && tc->cc_algo->cleanup)
     tc->cc_algo->cleanup (tc);
 
-  vec_free (tc->snd_sacks);
-  vec_free (tc->snd_sacks_fl);
+  tcp_sack_clear_blocks (tc);
+  vec_free (tc->snd_sack_hist);
   vec_free (tc->rcv_opts.sacks);
   pool_free (tc->sack_sb.holes);
   clib_memset (&tc->sack_sb, 0, sizeof (tc->sack_sb));
@@ -720,7 +720,6 @@ hsi_tcp_track_cleanup_pending_tx (session_t *s, tcp_connection_t *tc)
   tcp_cong_recovery_off (tc);
   tc->flags &= ~(TCP_CONN_SNDACK | TCP_CONN_RXT_PENDING | TCP_CONN_DEQ_PENDING);
   tc->pending_dupacks = 0;
-  tc->snd_sack_pos = 0;
   tc->snd_rxt_bytes = 0;
   tc->rxt_delivered = 0;
 }
