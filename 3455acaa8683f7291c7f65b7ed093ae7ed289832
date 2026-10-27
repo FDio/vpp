@@ -1,6 +1,24 @@
 {
   "comments": [
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "1dcfc809_20c9913a",
+        "filename": "test/test_l2_fib.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-10-27T20:48:12Z",
+      "side": 1,
+      "message": "Updated in PS3: both notifications now use wait_for_event(None, \"l2_macs_event\"). The helper asserts a single entry, the expected MAC, ADD action and interface. The polling loop, five-second deadline and unused time import are removed. On x86_64 Debug, the focused test passes with 0 and 2 workers in the normal runner; all 13 L2 FIB tests also pass with 0 and 2 workers in foreground mode, without retries.",
+      "parentUuid": "61e5fd33_f6279320",
+      "revId": "3455acaa8683f7291c7f65b7ed093ae7ed289832",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "61e5fd33_f6279320",
