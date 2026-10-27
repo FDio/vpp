@@ -106,6 +106,12 @@ tcp_ho_connection_get (u32 conn_index)
   return tcp_connection_get (conn_index, transport_cl_thread ());
 }
 
+always_inline svm_fifo_t *
+tcp_rx_fifo (tcp_connection_t *tc)
+{
+  return session_get (tc->c_s_index, tc->c_thread_index)->rx_fifo;
+}
+
 /**
  * Our estimate of the number of bytes that have left the network
  */
