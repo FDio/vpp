@@ -52,6 +52,24 @@
       "parentUuid": "df93cba8_5315a31f",
       "revId": "f904c084e7734d009fa31e455fa76c5fec1d69ef",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "245c1412_2df6b6c2",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3374
+      },
+      "writtenOn": "2026-10-27T08:16:51Z",
+      "side": 1,
+      "message": "Hi Florin, Stanislav,\n\nSome data from the production crash behind this change (core02, 2026-10-05, vpp-dev #27229), in case it helps decide where the check belongs.\n\nThe loop happened mid-convergence. The remote VTEP\u0027s /32 briefly disappeared, and the VTEP then resolved through a /24 learned over the overlay. The path was: bridge domain -\u003e vxlan4-encap -\u003e ip4-lookup -\u003e ip4-rewrite (BVI) -\u003e l2 -\u003e vxlan4-encap -\u003e ... Each lap prepends 36 B in vxlan4-encap and 14 B in ip4-rewrite: 50 B per lap with an IPv4 underlay, 70 B with IPv6.\n\nFor a bridged frame starting at current_data 0, the offsets go -36, -50, -86, -100. The third vxlan4-encap then writes its header from -136, which is 8 bytes below pre_data, and that happens before ip4-rewrite checks anything. With PS6 the packet is dropped one node later, but the out-of-bounds write has already happened in the encap node. So for this case I agree with Florin: the check that actually prevents the corruption belongs in vxlan-encap (and the other encapsulators).\n\nStanislav, would you be open to adding the check to vxlan4/6-encap first, with a no-space counter like the one here? We\u0027ve mitigated the loop with floating /32 blackholes for the remote VTEPs, so it isn\u0027t urgent for us, but I\u0027m happy to run a build with the encap check on one of our VXLAN routers and report the counters.",
+      "parentUuid": "af69fd45_b102f828",
+      "revId": "f904c084e7734d009fa31e455fa76c5fec1d69ef",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
