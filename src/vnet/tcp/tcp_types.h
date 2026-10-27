@@ -139,8 +139,7 @@ typedef enum tcp_connection_flag_
   TCP_CONN_N_FLAGS
 } tcp_connection_flags_e;
 
-#define TCP_SCOREBOARD_TRACE (0)
-#define TCP_MAX_SACK_BLOCKS	    255 /**< Max number of SACK blocks stored */
+#define TCP_SCOREBOARD_TRACE	    (0)
 #define TCP_MAX_DSACK_BLOCKS	    8	/**< Max number of dsack blocks pending */
 #define TCP_INVALID_SACK_HOLE_INDEX ((u32)~0)
 #define TCP_MAX_SACK_REORDER 300
@@ -161,6 +160,13 @@ typedef struct tcp_rxt_range_
   u32 end;    /**< End sequence number */
   u8 is_lost; /**< Range is considered lost */
 } tcp_rxt_range_t;
+
+/** A duplicate to report and, if out of order, the block that held it when it arrived */
+typedef struct
+{
+  sack_block_t dup;
+  sack_block_t blk;
+} tcp_dsack_t;
 
 typedef struct _sack_scoreboard_hole
 {
@@ -432,7 +438,8 @@ typedef struct _tcp_connection
 
   /* Options */
   u8 snd_opts_len;		/**< Tx options len */
-  u8 snd_sack_pos;		/**< Position in vec of first block to send */
+  u8 snd_sack_changes;		/**< Kept blocks changed, i.e. with arrivals, since an ack reported
+				  them are among this many most recent ones */
   u8 rcv_wscale;		/**< Window scale to advertise to peer */
   u8 snd_wscale;		/**< Window scale to use when sending */
   u32 tsval_recent;		/**< Last timestamp received */
@@ -442,8 +449,10 @@ typedef struct _tcp_connection
   tcp_options_t snd_opts;	/**< Tx options for connection */
   tcp_options_t rcv_opts;	/**< Rx options for connection */
 
-  sack_block_t *snd_sacks;	/**< Vector of SACKs to send. XXX Fixed size? */
-  sack_block_t *snd_sacks_fl;	/**< Vector for building new list */
+  sack_block_t snd_sack_newest; /**< Block that holds the last out-of-order arrival, the first
+				  one acks report. Empty if no blocks are kept */
+  sack_block_t *snd_sack_hist;	/**< Other kept blocks, least recent first, as many as fit in an
+				  ack after the newest. Acks report them most recent first */
   sack_scoreboard_t sack_sb;	/**< SACK "scoreboard" that tracks holes */
 
   u16 rcv_dupacks;	/**< Number of recent DUPACKs received */
@@ -503,7 +512,7 @@ typedef struct _tcp_connection
   tcp_errors_t errors;	/**< Soft connection errors */
 
   tcp_dsack_undo_t dsack_undo; /**< Retransmit budget for D-SACK undo */
-  sack_block_t *snd_dsacks;    /**< Duplicates to report, one per ack */
+  tcp_dsack_t *snd_dsacks;     /**< Duplicates to report, one per ack */
 
   u32 iss;		/**< initial sent sequence */
   u32 irs;		/**< initial remote sequence */

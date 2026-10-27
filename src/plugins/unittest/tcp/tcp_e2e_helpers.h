@@ -63,6 +63,42 @@ tcp_e2e_pump (vlib_main_t *vm, f64 secs)
 
 typedef struct
 {
+  int (*fn) (void *arg);
+  void *arg;
+  int rv;
+  volatile u8 done;
+} tcp_e2e_call_t;
+
+static inline void
+tcp_e2e_call_rpc (void *arg)
+{
+  tcp_e2e_call_t *c = arg;
+
+  c->rv = c->fn (c->arg);
+  c->done = 1;
+}
+
+/* Run fn on the thread that owns the connections it uses, so it can inject
+ * into and send from the datapath there. fn runs to completion, so nothing
+ * else the thread does, like sending programmed acks, interleaves with it */
+static inline int
+tcp_e2e_call_on_thread (vlib_main_t *vm, clib_thread_index_t thread_index, int (*fn) (void *),
+			void *arg)
+{
+  tcp_e2e_call_t c = { .fn = fn, .arg = arg };
+
+  if (thread_index == vm->thread_index)
+    return fn (arg);
+
+  session_send_rpc_evt_to_thread (thread_index, tcp_e2e_call_rpc, &c);
+  /* c and arg are on the stack, so wait for fn however long it takes */
+  while (!c.done)
+    tcp_e2e_pump (vm, 1e-3);
+  return c.rv;
+}
+
+typedef struct
+{
   session_handle_t handle;
   volatile u8 done;
 } tcp_e2e_cleanup_req_t;
