@@ -55,6 +55,33 @@ mfib_table_lookup_i (const mfib_table_t *mfib_table,
     return (FIB_NODE_INDEX_INVALID);
 }
 
+void
+mfib_table_source_count_inc (u32 fib_index,
+                             fib_protocol_t proto,
+                             mfib_source_t source)
+{
+    mfib_table_t *mfib_table;
+
+    mfib_table = mfib_table_get(fib_index, proto);
+
+    vec_validate (mfib_table->mft_src_route_counts, source);
+    mfib_table->mft_src_route_counts[source]++;
+}
+
+void
+mfib_table_source_count_dec (u32 fib_index,
+                             fib_protocol_t proto,
+                             mfib_source_t source)
+{
+    mfib_table_t *mfib_table;
+
+    mfib_table = mfib_table_get(fib_index, proto);
+
+    vec_validate (mfib_table->mft_src_route_counts, source);
+    ASSERT(mfib_table->mft_src_route_counts[source] > 0);
+    mfib_table->mft_src_route_counts[source]--;
+}
+
 fib_node_index_t
 mfib_table_lookup (u32 fib_index,
                    const mfib_prefix_t *prefix)
@@ -806,6 +833,24 @@ mfib_table_lock (u32 fib_index,
     mfib_table = mfib_table_get(fib_index, proto);
     mfib_table->mft_locks[source]++;
     mfib_table->mft_locks[MFIB_TABLE_TOTAL_LOCKS]++;
+}
+
+u32
+mfib_table_get_num_entries (u32 mfib_index,
+                            fib_protocol_t proto,
+                            mfib_source_t source)
+{
+    mfib_table_t *mfib_table;
+
+    mfib_table = mfib_table_get(mfib_index, proto);
+
+    if (NULL == mfib_table->mft_src_route_counts ||
+        (u32) source >= vec_len(mfib_table->mft_src_route_counts))
+    {
+        return (0);
+    }
+
+    return (mfib_table->mft_src_route_counts[source]);
 }
 
 u32
