@@ -44,6 +44,13 @@ typedef struct
   u32 length;	/**< Length of segment */
 } ooo_segment_t;
 
+/** Out-of-order data, a sorted list of segments the producer keeps */
+typedef struct ooo_segments_
+{
+  ooo_segment_t *segments; /**< Pool of segments */
+  u32 head;		   /**< Lowest segment */
+} ooo_segments_t;
+
 typedef struct
 {
   u32 offset;
@@ -106,8 +113,15 @@ typedef struct _svm_fifo
   rb_tree_t ooo_deq_lookup;	 /**< rbtree for ooo deq chunk lookup */
   svm_fifo_chunk_t *ooo_deq;	 /**< last chunk used for ooo dequeue */
   svm_fifo_chunk_t *ooo_enq;	 /**< last chunk used for ooo enqueue */
-  ooo_segment_t *ooo_segments;	 /**< Pool of ooo segments */
-  u32 ooos_list_head;		 /**< Head of out-of-order linked-list */
+  union
+  {
+    struct
+    {
+      ooo_segment_t *ooo_segments; /**< Pool of ooo segments */
+      u32 ooos_list_head;	   /**< Head of out-of-order linked-list */
+    };
+    ooo_segments_t ooo; /**< Out-of-order data, for transports */
+  };
 
   u8 flags;		  /**< fifo flags */
   i8 refcnt;		  /**< reference count  */
@@ -142,6 +156,12 @@ typedef struct _svm_fifo
   svm_fifo_trace_elem_t *trace;
 #endif
 } svm_fifo_t;
+
+STATIC_ASSERT (STRUCT_OFFSET_OF (svm_fifo_t, ooo_segments) ==
+		   STRUCT_OFFSET_OF (svm_fifo_t, ooo.segments) &&
+		 STRUCT_OFFSET_OF (svm_fifo_t, ooos_list_head) ==
+		   STRUCT_OFFSET_OF (svm_fifo_t, ooo.head),
+	       "ooo fields and ooo_segments_t must overlap");
 
 /* To minimize size of svm_fifo_t reuse ooo lookup for tracking chunks and
  * hdr at attach/detach. Fifo being migrated should not receive new data */

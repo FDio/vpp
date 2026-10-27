@@ -113,17 +113,27 @@ __clib_export void scoreboard_init (sack_scoreboard_t *sb);
 
 __clib_export format_function_t format_tcp_scoreboard;
 
-__clib_export void tcp_update_sack_list (tcp_connection_t *tc, u32 start, u32 end, u32 seg_start,
-					 u32 seg_end);
 /** Report [start, end), received again (RFC 2883), if reporting is enabled */
 __clib_export void tcp_dsack_report (tcp_connection_t *tc, u32 start, u32 end);
+/*
+ * Acks report the newest block, the one that holds the last out-of-order
+ * arrival, first and then the most recent others, as RFC 2018 asks. Only as
+ * many blocks as fit in an ack are kept
+ */
+/** If fewer blocks than fit in an ack are kept, add the lowest of o, the rx
+ * fifo's out-of-order data, that are not reported */
+void tcp_sack_refill (tcp_connection_t *tc, ooo_segments_t *o);
+/** Drop the blocks in-order data delivered, then refill */
+void tcp_sack_delivered (tcp_connection_t *tc, ooo_segments_t *o);
 /** Fill blks with the oldest pending dsack, the block that contains it, if
- * any, and the next blocks in rotation. Each dsack is reported once. */
-__clib_export u32 tcp_dsack_make_sacks (tcp_connection_t *tc, sack_block_t *blks);
+ * any, and the other blocks. Each dsack is reported once. o, the rx fifo's
+ * out-of-order data, has the block of an out-of-order duplicate that the kept
+ * blocks no longer have. It is only needed if there are blocks to report */
+__clib_export u32 tcp_dsack_make_sacks (tcp_connection_t *tc, ooo_segments_t *o,
+					sack_block_t *blks);
 __clib_export void tcp_dsack_recovery_clear (tcp_connection_t *tc);
 __clib_export void tcp_dsack_recovery_init (tcp_connection_t *tc);
 __clib_export void tcp_track_rxt (tcp_connection_t *tc, u32 start, u32 end);
-u32 tcp_sack_list_bytes (tcp_connection_t * tc);
 __clib_export void tcp_rcv_dsack (tcp_connection_t *tc, u32 ack, tcp_ack_ctx_t *ac);
 __clib_export void tcp_ack_handle_full_feedback (tcp_connection_t *tc, u32 packet_ack, u32 ack,
 						 tcp_ack_ctx_t *ac);
@@ -161,6 +171,66 @@ static inline u8
 tcp_dsack_is_pending (tcp_connection_t *tc)
 {
   return vec_len (tc->snd_dsacks) != 0;
+}
+
+/** Rx fifo has out-of-order data to report */
+static inline u8
+tcp_sack_has_blocks (tcp_connection_t *tc)
+{
+  return tc->snd_sack_newest.start != tc->snd_sack_newest.end;
+}
+
+static inline void
+tcp_sack_clear_blocks (tcp_connection_t *tc)
+{
+  tc->snd_sack_newest.end = tc->snd_sack_newest.start;
+  vec_free (tc->snd_sack_hist);
+}
+
+/** a holds all of b */
+static inline u8
+tcp_sack_block_contains (sack_block_t a, sack_block_t b)
+{
+  return seq_leq (a.start, b.start) && seq_leq (b.end, a.end);
+}
+
+u8 tcp_sack_add_slow (tcp_connection_t *tc, sack_block_t blk);
+
+/**
+ * Build the sack blocks of an ack, as per RFC2018.
+ *
+ * The first block holds the segment received out of order last, and the
+ * next ones are the most recent other blocks, so each block is repeated in
+ * the acks that follow it.
+ */
+static inline u32
+tcp_make_sacks (tcp_connection_t *tc, sack_block_t *blks)
+{
+  sack_block_t *hist = tc->snd_sack_hist;
+  u32 i, n = 1;
+
+  ASSERT (tcp_sack_has_blocks (tc) && vec_len (hist) < TCP_OPTS_MAX_SACK_BLOCKS);
+  blks[0] = tc->snd_sack_newest;
+  for (i = vec_len (hist); i > 0; i--)
+    blks[n++] = hist[i - 1];
+  return n;
+}
+
+/** Record blk, the block that now holds an out-of-order arrival, as the
+ * newest. Blocks only grow, so one that holds the newest grew from it.
+ * Returns 1 if blk joined older blocks, so a refill might be needed */
+static inline u8
+tcp_sack_add (tcp_connection_t *tc, sack_block_t blk)
+{
+  /* Most arrivals grow the only block */
+  if (PREDICT_TRUE (
+	!vec_len (tc->snd_sack_hist) &&
+	(!tcp_sack_has_blocks (tc) || tcp_sack_block_contains (blk, tc->snd_sack_newest))))
+    {
+      tc->snd_sack_newest = blk;
+      return 0;
+    }
+  return tcp_sack_add_slow (tc, blk);
 }
 
 __clib_export void tcp_sack_init_rxt (tcp_connection_t *tc, u32 snd_una);
