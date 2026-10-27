@@ -97,6 +97,7 @@ ip4_mfib_table_destroy (ip4_mfib_t *mfib)
 {
     mfib_table_t *mfib_table = (mfib_table_t*)mfib;
     int ii;
+    u32 *srci;
 
     /*
      * remove all the specials we added when the table was created.
@@ -118,6 +119,12 @@ ip4_mfib_table_destroy (ip4_mfib_t *mfib)
      */
     ASSERT(0 == mfib_table->mft_total_route_counts);
     ASSERT(~0 != mfib_table->mft_table_id);
+
+    vec_foreach(srci, mfib_table->mft_src_route_counts)
+    {
+      ASSERT(0 == *srci);
+    }
+    vec_free(mfib_table->mft_src_route_counts);
 
     for (u32 i = 0; i < ARRAY_LEN (mfib->fib_entry_by_dst_address); i++)
       hash_free (mfib->fib_entry_by_dst_address[i]);
