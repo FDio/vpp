@@ -140,8 +140,9 @@ typedef enum tcp_connection_flag_
 } tcp_connection_flags_e;
 
 #define TCP_SCOREBOARD_TRACE (0)
-#define TCP_MAX_SACK_BLOCKS	    255 /**< Max number of SACK blocks stored */
+#define TCP_MAX_SACK_BLOCKS	    4	/**< Max number of SACK blocks stored */
 #define TCP_MAX_DSACK_BLOCKS	    8	/**< Max number of dsack blocks pending */
+#define TCP_MAX_SACK_LOG	    256 /**< Changed blocks logged before compacting */
 #define TCP_INVALID_SACK_HOLE_INDEX ((u32)~0)
 #define TCP_MAX_SACK_REORDER 300
 #define TCP_SEQ_HALF_SPACE	    (1ULL << 31) /**< Half the 32-bit TCP sequence space */
@@ -432,7 +433,6 @@ typedef struct _tcp_connection
 
   /* Options */
   u8 snd_opts_len;		/**< Tx options len */
-  u8 snd_sack_pos;		/**< Position in vec of first block to send */
   u8 rcv_wscale;		/**< Window scale to advertise to peer */
   u8 snd_wscale;		/**< Window scale to use when sending */
   u32 tsval_recent;		/**< Last timestamp received */
@@ -442,13 +442,14 @@ typedef struct _tcp_connection
   tcp_options_t snd_opts;	/**< Tx options for connection */
   tcp_options_t rcv_opts;	/**< Rx options for connection */
 
-  sack_block_t *snd_sacks;	/**< Vector of SACKs to send. XXX Fixed size? */
-  sack_block_t *snd_sacks_fl;	/**< Vector for building new list */
+  sack_block_t *snd_sacks;	/**< Most recent SACKs to send, newest first */
+  sack_block_t *snd_sack_log;	/**< SACKs changed since the last dupacks */
   sack_scoreboard_t sack_sb;	/**< SACK "scoreboard" that tracks holes */
 
   u16 rcv_dupacks;	/**< Number of recent DUPACKs received */
   u32 dupacks_in;	/**< RFC4898 tcpEStatsStackDupAcksIn*/
   u8 pending_dupacks;	/**< Number of DUPACKs to be sent */
+  u8 snd_sack_changed;	/**< Newest SACK changed since last dupacks */
   u32 dupacks_out;	/**< RFC4898 tcpEStatsPathDupAcksOut */
 
   /* Congestion control */

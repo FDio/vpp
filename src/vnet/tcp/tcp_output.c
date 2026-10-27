@@ -238,26 +238,26 @@ tcp_make_established_options (tcp_connection_t *tc, tcp_options_t *opts, u8 is_a
     }
   if (tcp_opts_sack_permitted (&tc->rcv_opts))
     {
-      /* Every report programs a dupack. Burst options are reused by all
-       * segments, so only acks carry dsacks */
-      if (PREDICT_FALSE (is_ack && tc->pending_dupacks && tcp_dsack_is_pending (tc)))
+      sack_block_t *blks = tc->snd_sacks;
+      u32 n_blks = vec_len (tc->snd_sacks);
+
+      /* Dupacks carry the blocks tcp_send_acks picked for them. Burst
+       * options are reused by all segments, so only acks do */
+      if (PREDICT_FALSE (is_ack && tc->pending_dupacks))
 	{
-	  sack_block_t *blks = tcp_get_worker (tc->c_thread_index)->ack_sacks;
+	  tcp_worker_ctx_t *wrk = tcp_get_worker (tc->c_thread_index);
+	  if (wrk->n_ack_sacks)
+	    {
+	      blks = wrk->ack_sacks;
+	      n_blks = wrk->n_ack_sacks;
+	    }
+	}
+
+      if (n_blks)
+	{
 	  opts->flags |= TCP_OPTS_FLAG_SACK;
 	  opts->sacks = blks;
-	  opts->n_sack_blocks = tcp_dsack_make_sacks (tc, blks);
-	  len += 2 + TCP_OPTION_LEN_SACK_BLOCK * opts->n_sack_blocks;
-	}
-      else if (vec_len (tc->snd_sacks))
-	{
-	  opts->flags |= TCP_OPTS_FLAG_SACK;
-	  if (tc->snd_sack_pos >= vec_len (tc->snd_sacks))
-	    tc->snd_sack_pos = 0;
-	  opts->sacks = &tc->snd_sacks[tc->snd_sack_pos];
-	  opts->n_sack_blocks = vec_len (tc->snd_sacks) - tc->snd_sack_pos;
-	  opts->n_sack_blocks = clib_min (opts->n_sack_blocks,
-					  TCP_OPTS_MAX_SACK_BLOCKS);
-	  tc->snd_sack_pos += opts->n_sack_blocks;
+	  opts->n_sack_blocks = clib_min (n_blks, TCP_OPTS_MAX_SACK_BLOCKS);
 	  len += 2 + TCP_OPTION_LEN_SACK_BLOCK * opts->n_sack_blocks;
 	}
     }
@@ -1037,8 +1037,8 @@ tcp_session_push_header (transport_connection_t *tconn, vlib_buffer_t **bs, u32 
   return 0;
 }
 
-void
-tcp_send_ack (tcp_connection_t *tc)
+static int
+tcp_send_ack_i (tcp_connection_t *tc)
 {
   tcp_worker_ctx_t *wrk = tcp_get_worker (tc->c_thread_index);
   vlib_main_t *vm = wrk->vm;
@@ -1049,12 +1049,19 @@ tcp_send_ack (tcp_connection_t *tc)
     {
       tcp_update_rcv_wnd (tc);
       tcp_worker_stats_inc (wrk, no_buffer, 1);
-      return;
+      return 0;
     }
   b = vlib_get_buffer (vm, bi);
   tcp_init_buffer (vm, b);
   tcp_make_ack (tc, b);
   tcp_enqueue_to_output (wrk, b, bi, tc->c_is_ip4);
+  return 1;
+}
+
+void
+tcp_send_ack (tcp_connection_t *tc)
+{
+  tcp_send_ack_i (tc);
 }
 
 void
@@ -2069,7 +2076,8 @@ done:
 static int
 tcp_send_acks (tcp_connection_t * tc, u32 max_burst_size)
 {
-  int j, n_acks;
+  u32 n_acks = 0, n_min, log_pos = 0;
+  tcp_worker_ctx_t *wrk;
 
   if (!tc->pending_dupacks)
     {
@@ -2082,51 +2090,52 @@ tcp_send_acks (tcp_connection_t * tc, u32 max_burst_size)
       return 0;
     }
 
-  /* If we're supposed to send dupacks but have no ooo data send only one
-   * ack, or one per duplicate to report */
-  if (!vec_len (tc->snd_sacks))
+  /* With out-of-order data, generate 3 dupacks, i.e., the number needed to
+   * signal congestion, if as many packets were received, otherwise one. Then
+   * as many as needed to report each duplicate and each changed block once */
+  n_min = vec_len (tc->snd_sacks) ? clib_min (tc->pending_dupacks, 3) : 1;
+  if (tc->snd_sack_changed || vec_len (tc->snd_sack_log))
+    tcp_sack_log_prepare (tc);
+
+  wrk = tcp_get_worker (tc->c_thread_index);
+  while (n_acks < max_burst_size &&
+	 (n_acks < n_min || tcp_dsack_is_pending (tc) || log_pos < vec_len (tc->snd_sack_log)))
     {
-      n_acks = clib_min (clib_max (vec_len (tc->snd_dsacks), 1), max_burst_size);
-      for (j = 0; j < n_acks; j++)
-	tcp_send_ack (tc);
+      u8 dsack = tcp_dsack_is_pending (tc);
+      u32 pos = log_pos;
 
-      tc->dupacks_out += n_acks;
-      tc->pending_dupacks = 0;
-      if (tcp_dsack_is_pending (tc))
-	tcp_program_dupack (tc);
-
-      return n_acks;
+      wrk->n_ack_sacks = tcp_sack_make_dupack_sacks (tc, wrk->ack_sacks, &pos);
+      if (PREDICT_FALSE (!tcp_send_ack_i (tc)))
+	{
+	  /* No buffer, report the blocks with the next dupack */
+	  if (dsack)
+	    tcp_dsack_requeue (tc, wrk->ack_sacks);
+	  break;
+	}
+      log_pos = pos;
+      n_acks++;
     }
+  wrk->n_ack_sacks = 0;
 
-  /* Start with first sack block */
-  tc->snd_sack_pos = 0;
+  tc->dupacks_out += n_acks;
+  tc->pending_dupacks = 0;
 
-  /* Generate enough dupacks to cover all sack blocks. Do not generate
-   * more sacks than the number of packets received. But do generate at
-   * least 3, i.e., the number needed to signal congestion, if needed. */
-  n_acks = vec_len (tc->snd_sacks) / TCP_OPTS_MAX_SACK_BLOCKS;
-  n_acks = clib_min (n_acks, tc->pending_dupacks);
-  n_acks = clib_max (n_acks, clib_min (tc->pending_dupacks, 3));
-  /* Each ack reports at most one duplicate */
-  n_acks = clib_max (n_acks, vec_len (tc->snd_dsacks));
-  for (j = 0; j < clib_min (n_acks, max_burst_size); j++)
-    tcp_send_ack (tc);
-
-  if (n_acks < max_burst_size)
+  /* Constrained by burst size, report what is left with the next burst */
+  if (PREDICT_FALSE (n_acks < n_min || tcp_dsack_is_pending (tc) ||
+		     log_pos < vec_len (tc->snd_sack_log)))
     {
-      tc->pending_dupacks = 0;
-      tc->snd_sack_pos = 0;
-      tc->dupacks_out += n_acks;
-      return n_acks;
+      TCP_DBG ("constrained by burst size");
+      if (log_pos)
+	tcp_sack_log_trim (tc, log_pos);
+      tc->pending_dupacks = n_min > n_acks ? n_min - n_acks - 1 : 0;
+      tcp_program_dupack (tc);
     }
   else
     {
-      TCP_DBG ("constrained by burst size");
-      tc->pending_dupacks = n_acks - max_burst_size;
-      tc->dupacks_out += max_burst_size;
-      tcp_program_dupack (tc);
-      return max_burst_size;
+      vec_reset_length (tc->snd_sack_log);
     }
+
+  return n_acks;
 }
 
 static int

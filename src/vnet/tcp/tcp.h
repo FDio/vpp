@@ -121,8 +121,9 @@ typedef struct tcp_worker_ctx_
   /** worker timer wheel */
   tcp_timer_wheel_t timer_wheel;
 
-  /** Sack blocks of an ack that reports a dsack */
+  /** Sack blocks of the dupack being sent, see tcp_send_acks */
   sack_block_t ack_sacks[TCP_OPTS_MAX_SACK_BLOCKS];
+  u8 n_ack_sacks;
 
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline2);
 
