@@ -113,17 +113,19 @@ __clib_export void scoreboard_init (sack_scoreboard_t *sb);
 
 __clib_export format_function_t format_tcp_scoreboard;
 
-__clib_export void tcp_update_sack_list (tcp_connection_t *tc, u32 start, u32 end, u32 seg_start,
-					 u32 seg_end);
 /** Report [start, end), received again (RFC 2883), if reporting is enabled */
 __clib_export void tcp_dsack_report (tcp_connection_t *tc, u32 start, u32 end);
-/** Fill blks with the oldest pending dsack, the block that contains it, if
- * any, and the next blocks in rotation. Each dsack is reported once. */
+/** Same, for out-of-order data in blk, which follows the dsack even if no longer kept */
+__clib_export void tcp_dsack_report_ooo (tcp_connection_t *tc, u32 start, u32 end,
+					 sack_block_t blk);
+/** Drop the blocks in-order data delivered */
+void tcp_sack_delivered (tcp_connection_t *tc);
+/** Fill blks with the oldest pending dsack, the block that holds it, if any, and the other
+ * blocks. Each dsack is reported once. Changed blocks that do not fit stay unreported */
 __clib_export u32 tcp_dsack_make_sacks (tcp_connection_t *tc, sack_block_t *blks);
 __clib_export void tcp_dsack_recovery_clear (tcp_connection_t *tc);
 __clib_export void tcp_dsack_recovery_init (tcp_connection_t *tc);
 __clib_export void tcp_track_rxt (tcp_connection_t *tc, u32 start, u32 end);
-u32 tcp_sack_list_bytes (tcp_connection_t * tc);
 __clib_export void tcp_rcv_dsack (tcp_connection_t *tc, u32 ack, tcp_ack_ctx_t *ac);
 __clib_export void tcp_ack_handle_full_feedback (tcp_connection_t *tc, u32 packet_ack, u32 ack,
 						 tcp_ack_ctx_t *ac);
@@ -161,6 +163,85 @@ static inline u8
 tcp_dsack_is_pending (tcp_connection_t *tc)
 {
   return vec_len (tc->snd_dsacks) != 0;
+}
+
+/** Acks have sack blocks to report */
+static inline u8
+tcp_sack_has_blocks (tcp_connection_t *tc)
+{
+  return tc->snd_sack_newest.start != tc->snd_sack_newest.end;
+}
+
+/** Drop all blocks. The vector, sized at connection init, is kept for the next ones */
+static inline void
+tcp_sack_clear_blocks (tcp_connection_t *tc)
+{
+  tc->snd_sack_newest.end = tc->snd_sack_newest.start;
+  tc->snd_sack_changes = 0;
+  vec_reset_length (tc->snd_sack_hist);
+}
+
+/** a holds all of b */
+static inline u8
+tcp_sack_block_contains (sack_block_t a, sack_block_t b)
+{
+  return seq_leq (a.start, b.start) && seq_leq (b.end, a.end);
+}
+
+void tcp_sack_add_slow (tcp_connection_t *tc, sack_block_t blk);
+
+/**
+ * Build the sack blocks of an ack, as per RFC 2018: first the newest block, the one that holds
+ * the last out-of-order arrival, then the most recent others. Only the blocks that fit in an ack
+ * are kept. An ack reports them before an arrival pushes out a changed one, see
+ * tcp_sack_add_pushes_unreported
+ */
+static inline u32
+tcp_make_sacks (tcp_connection_t *tc, sack_block_t *blks)
+{
+  sack_block_t *hist = tc->snd_sack_hist;
+  u32 i, n = 1;
+
+  ASSERT (tcp_sack_has_blocks (tc) && vec_len (hist) < TCP_OPTS_MAX_SACK_BLOCKS);
+  blks[0] = tc->snd_sack_newest;
+  for (i = vec_len (hist); i > 0; i--)
+    blks[n++] = hist[i - 1];
+  return n;
+}
+
+/** Record blk, the block that now holds an out-of-order arrival, as the newest. Blocks only
+ * grow, so one that holds the newest grew from it */
+static inline void
+tcp_sack_add (tcp_connection_t *tc, sack_block_t blk)
+{
+  /* Most arrivals start or grow the only block */
+  if (PREDICT_TRUE (
+	!vec_len (tc->snd_sack_hist) &&
+	(!tcp_sack_has_blocks (tc) || tcp_sack_block_contains (blk, tc->snd_sack_newest))))
+    {
+      tc->snd_sack_newest = blk;
+      tc->snd_sack_changes = clib_max (tc->snd_sack_changes, 1);
+      return;
+    }
+  tcp_sack_add_slow (tc, blk);
+}
+
+/** Adding blk, the block of an out-of-order arrival, would push out a changed block. That
+ * happens once all kept blocks changed, unless blk grew from or joins one of them */
+static inline u8
+tcp_sack_add_pushes_unreported (tcp_connection_t *tc, sack_block_t blk)
+{
+  sack_block_t *hist = tc->snd_sack_hist;
+  u32 i;
+
+  if (tc->snd_sack_changes < TCP_OPTS_MAX_SACK_BLOCKS ||
+      vec_len (hist) < TCP_OPTS_MAX_SACK_BLOCKS - 1 ||
+      tcp_sack_block_contains (blk, tc->snd_sack_newest))
+    return 0;
+  for (i = 0; i < vec_len (hist); i++)
+    if (tcp_sack_block_contains (blk, hist[i]))
+      return 0;
+  return 1;
 }
 
 __clib_export void tcp_sack_init_rxt (tcp_connection_t *tc, u32 snd_una);
