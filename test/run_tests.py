@@ -54,6 +54,7 @@ from util import (
     extract_coredumpctl_core,
     get_core_path,
     is_core_present,
+    set_ci_core_pattern,
     uses_coredumpctl,
 )
 
@@ -1344,6 +1345,11 @@ if __name__ == "__main__":
 
     if config.api_preload:
         VPPApiJSONFiles.load_api(apidir=config.extern_apidir + [config.vpp_install_dir])
+
+    ci_core = set_ci_core_pattern()
+    if ci_core:
+        msg, is_warning = ci_core
+        print(colorize(f"WARNING: {msg}", YELLOW) if is_warning else f"CI: {msg}")
 
     core_dir_warning = check_core_dir()
     if core_dir_warning:
