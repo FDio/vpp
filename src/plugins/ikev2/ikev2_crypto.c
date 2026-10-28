@@ -523,8 +523,8 @@ BN_bn2binpad (const BIGNUM * a, unsigned char *to, int tolen)
 }
 #endif
 
-void
-ikev2_generate_dh (ikev2_sa_t * sa, ikev2_sa_transform_t * t)
+int
+ikev2_generate_dh (ikev2_sa_t *sa, ikev2_sa_transform_t *t)
 {
   int r;
 
@@ -576,14 +576,26 @@ ikev2_generate_dh (ikev2_sa_t * sa, ikev2_sa_transform_t * t)
 	  sa->dh_shared_key = vec_new (u8, t->key_len);
 	  ex = BN_bin2bn (sa->i_dh_data, vec_len (sa->i_dh_data), NULL);
 	  r = DH_compute_key (sa->dh_shared_key, ex, dh);
-	  ASSERT (t->key_len >= r);
+	  BN_clear_free (ex);
+	  /* DH_compute_key() returns -1 on failure and never more than the
+	     group size. A negative or oversized length would make pad exceed
+	     the key_len buffer and drive an out-of-bounds write from a peer
+	     controlled KE payload. Report the failure to the caller instead
+	     of leaving an all-zero shared secret: a zero secret still lets
+	     the caller derive deterministic IKE keys and continue the
+	     exchange, which the peer can precompute. */
+	  if (r < 0 || r > t->key_len)
+	    {
+	      vec_free (sa->dh_shared_key);
+	      DH_free (dh);
+	      return -1;
+	    }
 	  int pad = t->key_len - r;
 	  if (pad)
 	    {
 	      memmove (sa->dh_shared_key + pad, sa->dh_shared_key, r);
 	      clib_memset (sa->dh_shared_key, 0, pad);
 	    }
-	  BN_clear_free (ex);
 	}
       DH_free (dh);
     }
@@ -666,10 +678,11 @@ ikev2_generate_dh (ikev2_sa_t * sa, ikev2_sa_transform_t * t)
       EC_POINT_free (i_point);
       EC_POINT_free (shared_point);
     }
+  return 0;
 }
 
-void
-ikev2_complete_dh (ikev2_sa_t * sa, ikev2_sa_transform_t * t)
+int
+ikev2_complete_dh (ikev2_sa_t *sa, ikev2_sa_transform_t *t)
 {
   int r;
 
@@ -699,7 +712,18 @@ ikev2_complete_dh (ikev2_sa_t * sa, ikev2_sa_transform_t * t)
       sa->dh_shared_key = vec_new (u8, t->key_len);
       ex = BN_bin2bn (sa->r_dh_data, vec_len (sa->r_dh_data), NULL);
       r = DH_compute_key (sa->dh_shared_key, ex, dh);
-      ASSERT (t->key_len >= r);
+      BN_clear_free (ex);
+      DH_free (dh);
+      /* See ikev2_generate_dh(): guard against a negative or oversized
+	 DH_compute_key() result before computing the leading-zero pad.
+	 Report failure so the caller can abort the exchange — a zeroed
+	 shared secret still lets the derived IKE keys be precomputed by
+	 the peer. */
+      if (r < 0 || r > t->key_len)
+	{
+	  vec_free (sa->dh_shared_key);
+	  return -1;
+	}
       int pad = t->key_len - r;
       if (pad)
 	{
@@ -707,8 +731,6 @@ ikev2_complete_dh (ikev2_sa_t * sa, ikev2_sa_transform_t * t)
 	  clib_memset (sa->dh_shared_key, 0, pad);
 	  vec_dec_len (sa->dh_shared_key, pad);
 	}
-      BN_clear_free (ex);
-      DH_free (dh);
     }
   else if (t->dh_group == IKEV2_DH_GROUP_ECP)
     {
@@ -771,6 +793,7 @@ ikev2_complete_dh (ikev2_sa_t * sa, ikev2_sa_transform_t * t)
       EC_POINT_free (r_point);
       EC_POINT_free (shared_point);
     }
+  return 0;
 }
 
 int
