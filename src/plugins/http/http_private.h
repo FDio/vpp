@@ -439,6 +439,8 @@ typedef struct http_ctx_
 	  /* http1 */
 	  u32 body_offset;
 	  u32 rx_buf_offset; /* current offset during parsing */
+	  u32 http1_rx_staged_len; /* unpublished bytes after reserved http_msg_t */
+	  u8 http1_parse_state;
 	  u32 target_authority_offset;
 	  u32 target_authority_len;
 	  u32 host_header_index;
@@ -540,6 +542,8 @@ typedef struct http_main_
   u64 add_seg_size;
   u32 fifo_size;
 
+  /* http/1 */
+  u32 h1_max_header_list_size;
   /* http/2 */
   http_conn_settings_t h2_settings;
   /* http/3 */
@@ -972,6 +976,59 @@ http_io_as_max_write (http_ctx_t *req)
   return svm_fifo_max_enqueue_prod (as->rx_fifo);
 }
 
+always_inline int
+http_io_as_rx_provision (http_ctx_t *req, u32 offset, svm_fifo_seg_t *segs, u32 n_segs, u32 len)
+{
+  session_t *as = session_get (req->c_s_index, req->c_thread_index);
+  return svm_fifo_provision_chunks_at_offset (as->rx_fifo, offset, segs, n_segs, len);
+}
+
+/* Read unpublished data relative to the producer tail, independently of the consumer head. */
+always_inline u32
+http_io_as_rx_peek (http_ctx_t *req, u32 offset, u32 len, u8 *buf)
+{
+  svm_fifo_seg_t segs[2];
+  u32 copied = 0;
+  int n_segs;
+
+  while (copied < len)
+    {
+      n_segs = http_io_as_rx_provision (req, offset + copied, segs, ARRAY_LEN (segs), len - copied);
+      ASSERT (n_segs > 0);
+      for (int i = 0; i < n_segs; i++)
+	{
+	  clib_memcpy_fast (buf + copied, segs[i].data, segs[i].len);
+	  copied += segs[i].len;
+	}
+    }
+  return copied;
+}
+
+/* Publish the metadata and staged bytes with one release-store of the FIFO tail. */
+always_inline int
+http_io_as_rx_publish (http_ctx_t *req, const http_msg_t *msg, u32 len)
+{
+  session_t *as = session_get (req->c_s_index, req->c_thread_index);
+  svm_fifo_seg_t segs[2];
+  u32 copied = 0;
+  int n_segs;
+
+  while (copied < sizeof (*msg))
+    {
+      n_segs =
+	http_io_as_rx_provision (req, copied, segs, ARRAY_LEN (segs), sizeof (*msg) - copied);
+      if (n_segs < 0)
+	return n_segs;
+      for (int i = 0; i < n_segs; i++)
+	{
+	  clib_memcpy_fast (segs[i].data, (const u8 *) msg + copied, segs[i].len);
+	  copied += segs[i].len;
+	}
+    }
+  svm_fifo_enqueue_nocopy (as->rx_fifo, sizeof (*msg) + len);
+  return 0;
+}
+
 always_inline u32
 http_io_as_max_read (http_ctx_t *req)
 {
@@ -1103,6 +1160,17 @@ http_io_ts_read (http_ctx_t *hc, u8 *buf, u32 len, u8 peek)
   return (u32) n_read;
 }
 
+always_inline u32
+http_io_ts_peek (http_ctx_t *hc, u32 offset, u32 len, u8 *buf)
+{
+  int n_read;
+  session_t *ts = session_get_from_handle (hc->hc_tc_session_handle);
+
+  n_read = svm_fifo_peek (ts->rx_fifo, offset, len, buf);
+  ASSERT (n_read == len);
+  return (u32) n_read;
+}
+
 always_inline void
 http_io_ts_read_segs (http_ctx_t *hc, svm_fifo_seg_t *segs, u32 *n_segs, u32 max_bytes)
 {
@@ -1117,6 +1185,50 @@ http_io_ts_drain (http_ctx_t *hc, u32 len)
 {
   session_t *ts = session_get_from_handle (hc->hc_tc_session_handle);
   return svm_fifo_dequeue_drop (ts->rx_fifo, len);
+}
+
+/* Move bytes into unpublished app RX storage. Either segment array may map
+ * only part of the range; drain each copied prefix before mapping the next. */
+always_inline u32
+http_io_ts_move_to_as (http_ctx_t *hc, http_ctx_t *req, u32 offset, u32 len)
+{
+  svm_fifo_seg_t src[2], dst[2];
+  u32 total = 0, n_src, copied, si, di, src_offset, dst_offset, n;
+  int n_dst;
+
+  while (total < len)
+    {
+      n_src = ARRAY_LEN (src);
+      http_io_ts_read_segs (hc, src, &n_src, len - total);
+      n_dst = http_io_as_rx_provision (req, offset + total, dst, ARRAY_LEN (dst), len - total);
+      if (n_dst < 0)
+	break;
+
+      copied = si = di = src_offset = dst_offset = 0;
+      while (si < n_src && di < (u32) n_dst)
+	{
+	  n = clib_min (src[si].len - src_offset, dst[di].len - dst_offset);
+	  clib_memcpy_fast (dst[di].data + dst_offset, src[si].data + src_offset, n);
+	  copied += n;
+	  src_offset += n;
+	  dst_offset += n;
+	  if (src_offset == src[si].len)
+	    {
+	      si++;
+	      src_offset = 0;
+	    }
+	  if (dst_offset == dst[di].len)
+	    {
+	      di++;
+	      dst_offset = 0;
+	    }
+	}
+      if (!copied)
+	break;
+      http_io_ts_drain (hc, copied);
+      total += copied;
+    }
+  return total;
 }
 
 always_inline void
@@ -1259,10 +1371,9 @@ http_conn_upgrade_version (http_ctx_t *hc, http_version_t new_version)
 }
 
 always_inline int
-http_conn_accept_request (http_ctx_t *hc, http_ctx_t *req, u8 is_stream)
+http_conn_prepare_request (http_ctx_t *hc, http_ctx_t *req, u8 is_stream)
 {
   session_t *as, *asl, *asp;
-  app_worker_t *app_wrk;
   int rv;
 
   HTTP_DBG (1, "hc [%u]%x req %x", hc->c_thread_index, hc->hc_hc_index,
@@ -1286,8 +1397,6 @@ http_conn_accept_request (http_ctx_t *hc, http_ctx_t *req, u8 is_stream)
     {
       as->listener_handle = hc->hc_pa_session_handle;
       asl = session_get_from_handle_if_valid (hc->hc_pa_session_handle);
-      /* change hc_pa_session_handle to parent session */
-      hc->hc_pa_session_handle = session_handle (as);
     }
   /* the listener can go away while the handshake runs */
   if (PREDICT_FALSE (!asl || asl->session_state != SESSION_STATE_LISTENING))
@@ -1298,7 +1407,7 @@ http_conn_accept_request (http_ctx_t *hc, http_ctx_t *req, u8 is_stream)
     }
   as->session_type = asl->session_type;
 
-  /* init session fifos and notify app */
+  /* initialize session FIFOs; the caller decides when to notify the app */
   if ((rv = app_worker_init_accepted (as)))
     {
       HTTP_DBG (1, "failed to allocate fifos");
@@ -1310,15 +1419,39 @@ http_conn_accept_request (http_ctx_t *hc, http_ctx_t *req, u8 is_stream)
   /* now we can change it to parent */
   if (is_stream)
     as->listener_handle = hc->hc_pa_session_handle;
+  else
+    hc->hc_pa_session_handle = session_handle (as);
 
   req->hr_pa_wrk_index = as->app_wrk_index;
+  return 0;
+}
 
-  app_wrk = app_worker_get (as->app_wrk_index);
+always_inline int
+http_conn_notify_accept (http_ctx_t *req)
+{
+  session_t *as = session_get (req->c_s_index, req->c_thread_index);
+  app_worker_t *app_wrk = app_worker_get (as->app_wrk_index);
 
-  if ((rv = app_worker_accept_notify (app_wrk, as)))
+  return app_worker_accept_notify (app_wrk, as);
+}
+
+always_inline int
+http_conn_accept_request (http_ctx_t *hc, http_ctx_t *req, u8 is_stream)
+{
+  session_t *as;
+  int rv;
+
+  if ((rv = http_conn_prepare_request (hc, req, is_stream)))
+    return rv;
+
+  if ((rv = http_conn_notify_accept (req)))
     {
       HTTP_DBG (1, "app accept returned");
+      as = session_get (req->c_s_index, req->c_thread_index);
+      if (!is_stream)
+	hc->hc_pa_session_handle = as->listener_handle;
       req->c_s_index = SESSION_INVALID_INDEX;
+      segment_manager_dealloc_fifos (as->rx_fifo, as->tx_fifo);
       session_free (as);
       return rv;
     }

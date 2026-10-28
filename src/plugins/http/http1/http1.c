@@ -3,6 +3,7 @@
  */
 
 #include <vnet/session/application.h>
+#include <vnet/tcp/tcp.h>
 
 #include <http/http.h>
 #include <http/http_header_names.h>
@@ -18,6 +19,37 @@ const char *http1_upgrade_proto_str[] = { "",
 
 /* estimated http response/request overhead, excluded app headers and target */
 #define HTTP1_MESSAGE_OVERHEAD 256
+
+/* Bound delimiter lookahead independently of FIFO and message body sizes. */
+#define HTTP1_PARSE_LOOKAHEAD 256
+
+/* HTTP/1 parser results; only request-line parsing can upgrade to HTTP/2. */
+typedef enum http1_parse_result_ : i8
+{
+  HTTP1_PARSE_ERROR = -1,
+  HTTP1_PARSE_OK = 0,
+  HTTP1_PARSE_INCOMPLETE = 1,
+  HTTP1_PARSE_UPGRADE_HTTP2 = 2,
+} http1_parse_result_t;
+
+typedef enum http1_parse_state_ : u8
+{
+  HTTP1_PARSE_STATE_IDLE,
+  HTTP1_PARSE_STATE_REQUEST_START,
+  HTTP1_PARSE_STATE_REQUEST_LEADING_LF,
+  HTTP1_PARSE_STATE_REQUEST_METHOD,
+  HTTP1_PARSE_STATE_REQUEST_HTTP2_PREFACE,
+  HTTP1_PARSE_STATE_REQUEST_TARGET,
+  HTTP1_PARSE_STATE_REQUEST_VERSION,
+  HTTP1_PARSE_STATE_REQUEST_LINE_CR,
+  HTTP1_PARSE_STATE_REQUEST_LINE_LF,
+  HTTP1_PARSE_STATE_STATUS_LINE,
+  HTTP1_PARSE_STATE_HEADER_CHECK,
+  HTTP1_PARSE_STATE_HEADER_NAME,
+  HTTP1_PARSE_STATE_HEADER_VALUE_START,
+  HTTP1_PARSE_STATE_HEADER_VALUE,
+  HTTP1_PARSE_STATE_DONE,
+} http1_parse_state_t;
 
 /**
  * http error boilerplate
@@ -76,8 +108,17 @@ always_inline void
 http1_conn_free_req (http_ctx_t *hc)
 {
   http_ctx_t *req;
+  session_t *as;
 
   req = http_ctx_get_w_thread (hc->hc_parent_req_index, hc->c_thread_index);
+  if (req->c_s_index != SESSION_INVALID_INDEX && (hc->flags & HTTP_CONN_F_NO_APP_SESSION))
+    {
+      as = session_get (req->c_s_index, req->c_thread_index);
+      hc->hc_pa_session_handle = as->listener_handle;
+      segment_manager_dealloc_fifos (as->rx_fifo, as->tx_fifo);
+      session_free (as);
+      req->c_s_index = SESSION_INVALID_INDEX;
+    }
   vec_free (req->headers);
   vec_free (req->target);
   http_buffer_free (&req->tx_buf);
@@ -122,41 +163,147 @@ http1_response_tx_complete (http_ctx_t *hc, http_ctx_t *req)
   return 1;
 }
 
-static void
+static int
 http1_send_error (http_ctx_t *hc, http_status_code_t ec, transport_send_params_t *sp)
 {
   u8 *data;
+  u32 len, n_written;
 
   if (ec >= HTTP_N_STATUS)
     ec = HTTP_STATUS_INTERNAL_ERROR;
 
-  data = format (0, error_template, http_status_code_str[ec],
-		 format_http_time_now, hc);
+  data = format (0, error_template, http_status_code_str[ec], format_http_time_now, hc);
+  len = vec_len (data);
   HTTP_DBG (3, "%v", data);
   /* if ts tx fifo can't buffer bytes we just close connecton */
-  if (PREDICT_TRUE (http_io_ts_write (hc, data, vec_len (data), sp, 1)))
+  n_written = http_io_ts_write (hc, data, len, sp, 1);
+  if (PREDICT_TRUE (n_written))
     http_io_ts_after_write (hc, 0);
   vec_free (data);
+  return n_written == len;
+}
+
+static u32
+http1_staged_rx_len (http_ctx_t *req)
+{
+  return req->http1_rx_staged_len;
+}
+
+static u32
+http1_rx_max_write (http_ctx_t *req)
+{
+  u32 available = http_io_as_max_write (req);
+  u32 reserved = sizeof (http_msg_t) + req->http1_rx_staged_len;
+  return available > reserved ? available - reserved : 0;
+}
+
+static u32
+http1_rx_available (http_ctx_t *hc, http_ctx_t *req)
+{
+  return http1_staged_rx_len (req) + http_io_ts_max_read (hc);
+}
+
+static void
+http1_peek_into (http_ctx_t *hc, http_ctx_t *req, u32 offset, u32 len, u8 *buf)
+{
+  u32 staged_len = http1_staged_rx_len (req), n_staged = 0;
+
+  if (offset < staged_len)
+    {
+      n_staged = clib_min (len, staged_len - offset);
+      http_io_as_rx_peek (req, sizeof (http_msg_t) + offset, n_staged, buf);
+    }
+  if (n_staged < len)
+    {
+      u32 ts_offset = offset + n_staged - staged_len;
+      http_io_ts_peek (hc, ts_offset, len - n_staged, buf + n_staged);
+    }
 }
 
 static u8 *
-http1_read_message (http_ctx_t *hc)
+http1_peek_range (http_ctx_t *hc, http_ctx_t *req, u32 offset, u32 len)
 {
-  u32 max_deq;
-  u8 *rx_buf;
-
-  max_deq = http_io_ts_max_read (hc);
-  if (PREDICT_FALSE (max_deq == 0))
-    return 0;
-
-  rx_buf = http_get_rx_buf_len (hc, max_deq);
-  http_io_ts_read (hc, rx_buf, max_deq, 1);
-
+  u8 *rx_buf = http_get_rx_buf_len (hc, len);
+  http1_peek_into (hc, req, offset, len, rx_buf);
   return rx_buf;
 }
 
+static u8 *
+http1_read_control_data (http_ctx_t *hc, http_ctx_t *req)
+{
+  ASSERT (req->control_data_len && req->control_data_len <= http1_rx_available (hc, req));
+  /* Body bytes are staged directly; only line/header validation needs a copy. */
+  return http1_peek_range (hc, req, 0, req->control_data_len);
+}
+
+static u32
+http1_stage_rx_data (http_ctx_t *hc, http_ctx_t *req, u32 max_len)
+{
+  u32 n_read, n_written;
+
+  n_read = clib_min (max_len, clib_min (http_io_ts_max_read (hc), http1_rx_max_write (req)));
+  n_written =
+    http_io_ts_move_to_as (hc, req, sizeof (http_msg_t) + req->http1_rx_staged_len, n_read);
+  req->http1_rx_staged_len += n_written;
+  return n_written;
+}
+
 static int
-http1_parse_target (http_ctx_t *req, u8 *rx_buf)
+http1_stage_to_length (http_ctx_t *hc, http_ctx_t *req, u32 len)
+{
+  u32 staged_len = http1_staged_rx_len (req), n_to_stage;
+
+  if (staged_len > len)
+    return -1;
+  n_to_stage = len - staged_len;
+  if (n_to_stage > http1_rx_max_write (req) || n_to_stage > http_io_ts_max_read (hc))
+    return -1;
+  return http1_stage_rx_data (hc, req, n_to_stage) == n_to_stage ? 0 : -1;
+}
+
+static u32
+http1_max_header_list_size (http_ctx_t *hc)
+{
+  u32 max_size = http_main.h1_max_header_list_size;
+
+  if (hc->hc_app_rx_fifo_size <= sizeof (http_msg_t))
+    return 0;
+  return clib_min (max_size, hc->hc_app_rx_fifo_size - sizeof (http_msg_t));
+}
+
+static int
+http1_incomplete_headers_too_large (http_ctx_t *hc, http_ctx_t *req, u32 available)
+{
+  u32 end;
+
+  if (req->http1_parse_state < HTTP1_PARSE_STATE_HEADER_CHECK)
+    return 0;
+
+  /* HEADER_CHECK stops at the empty line, so a pending CR there belongs to
+   * the terminator. In other states, pending bytes belong to a field line. */
+  end = req->http1_parse_state == HTTP1_PARSE_STATE_HEADER_CHECK ? req->rx_buf_offset : available;
+  return end - req->headers_offset > http1_max_header_list_size (hc);
+}
+
+static int
+http1_rx_msg_start (http_ctx_t *req)
+{
+  req->http1_rx_staged_len = 0;
+  if (http_io_as_max_write (req) < sizeof (http_msg_t))
+    return -1;
+  return 0;
+}
+
+static inline void
+http1_parse_state_reset (http_ctx_t *req)
+{
+  req->http1_parse_state = HTTP1_PARSE_STATE_IDLE;
+  req->rx_buf_offset = 0;
+  req->http1_rx_staged_len = 0;
+}
+
+static http1_parse_result_t
+http1_parse_non_origin_target (http_ctx_t *req, u8 *rx_buf)
 {
   u32 i;
   u8 *p, *end;
@@ -166,25 +313,12 @@ http1_parse_target (http_ctx_t *req, u8 *rx_buf)
     {
       req->target_form = HTTP_TARGET_ASTERISK_FORM;
       /* we do not support OPTIONS request */
-      return -1;
-    }
-
-  /* origin-form = 1*( "/" segment ) [ "?" query ] */
-  if (rx_buf[req->target_path_offset] == '/')
-    {
-      /* drop leading slash */
-      req->target_path_len--;
-      req->target_path_offset++;
-      req->target_form = HTTP_TARGET_ORIGIN_FORM;
-      http_identify_optional_query (req, rx_buf);
-      /* can't be CONNECT method */
-      return req->method == HTTP_REQ_CONNECT ? -1 : 0;
+      return HTTP1_PARSE_ERROR;
     }
 
   /* absolute-form =
    * scheme "://" host [ ":" port ] *( "/" segment ) [ "?" query ] */
-  if (req->target_path_len > 8 &&
-      !memcmp (rx_buf + req->target_path_offset, "http", 4))
+  if (req->target_path_len > 8 && !memcmp (rx_buf + req->target_path_offset, "http", 4))
     {
       req->scheme = HTTP_URL_SCHEME_HTTP;
       p = rx_buf + req->target_path_offset + 4;
@@ -216,11 +350,17 @@ http1_parse_target (http_ctx_t *req, u8 *rx_buf)
 	  if (!req->target_path_len)
 	    {
 	      clib_warning ("zero length host");
-	      return -1;
+	      return HTTP1_PARSE_ERROR;
 	    }
-	  http_identify_optional_query (req, rx_buf);
+	  if (req->target_query_offset)
+	    {
+	      if (req->target_query_offset <= req->target_path_offset ||
+		  req->target_query_offset - req->target_path_offset > req->target_path_len)
+		return HTTP1_PARSE_ERROR;
+	      req->target_path_len = req->target_query_offset - req->target_path_offset - 1;
+	    }
 	  /* can't be CONNECT method */
-	  return req->method == HTTP_REQ_CONNECT ? -1 : 0;
+	  return req->method == HTTP_REQ_CONNECT ? HTTP1_PARSE_ERROR : HTTP1_PARSE_OK;
 	}
     }
 
@@ -236,12 +376,11 @@ http1_parse_target (http_ctx_t *req, u8 *rx_buf)
       req->target_path_len = 0;
       req->target_path_offset = 0;
       /* can be CONNECT-UDP method only */
-      return req->method == HTTP_REQ_CONNECT_UDP ? 0 : -1;
+      return req->method == HTTP_REQ_CONNECT_UDP ? HTTP1_PARSE_OK : HTTP1_PARSE_ERROR;
     }
 
   /* authority-form = host ":" port */
-  for (i = req->target_path_offset;
-       i < (req->target_path_offset + req->target_path_len); i++)
+  for (i = req->target_path_offset; i + 1 < (req->target_path_offset + req->target_path_len); i++)
     {
       if ((rx_buf[i] == ':') && (isdigit (rx_buf[i + 1])))
 	{
@@ -251,198 +390,262 @@ http1_parse_target (http_ctx_t *req, u8 *rx_buf)
 	  req->target_path_offset = 0;
 	  req->target_form = HTTP_TARGET_AUTHORITY_FORM;
 	  /* "authority-form" is only used for CONNECT requests */
-	  return req->method == HTTP_REQ_CONNECT ? 0 : -1;
+	  return req->method == HTTP_REQ_CONNECT ? HTTP1_PARSE_OK : HTTP1_PARSE_ERROR;
 	}
     }
 
-  return -1;
+  return HTTP1_PARSE_ERROR;
 }
 
-static int
-http1_parse_request_line (http_ctx_t *hc, http_ctx_t *req, u8 *rx_buf, http_status_code_t *ec)
+static http1_parse_result_t
+http1_find_line_end (http_ctx_t *hc, http_ctx_t *req, u32 *line_end)
 {
-  int i, target_len;
-  u32 next_line_offset, method_offset;
+  u32 available = http1_rx_available (hc, req), base, len;
+  u8 buf[HTTP1_PARSE_LOOKAHEAD], next;
 
-  /* request-line = method SP request-target SP HTTP-version CRLF */
-  i = http_v_find_index (rx_buf, 8, 0, "\r\n");
-  if (i < 0)
+  while (req->rx_buf_offset < available)
     {
-      clib_warning ("request line incomplete");
-      *ec = HTTP_STATUS_BAD_REQUEST;
-      return -1;
-    }
-  HTTP_DBG (2, "request line length: %d", i);
-  req->control_data_len = i + 2;
-  next_line_offset = req->control_data_len;
-
-  /* there should be at least one more CRLF */
-  if (vec_len (rx_buf) < (next_line_offset + 2))
-    {
-      clib_warning ("malformed message, too short");
-      *ec = HTTP_STATUS_BAD_REQUEST;
-      return -1;
-    }
-
-  /*
-   * RFC9112 2.2:
-   * In the interest of robustness, a server that is expecting to receive and
-   * parse a request-line SHOULD ignore at least one empty line (CRLF)
-   * received prior to the request-line.
-   */
-  method_offset = rx_buf[0] == '\r' && rx_buf[1] == '\n' ? 2 : 0;
-  /* parse method */
-  if (!memcmp (rx_buf + method_offset, "GET ", 4))
-    {
-      HTTP_DBG (1, "GET method");
-      req->method = HTTP_REQ_GET;
-      req->target_path_offset = method_offset + 4;
-    }
-  else if (!memcmp (rx_buf + method_offset, "POST ", 5))
-    {
-      HTTP_DBG (1, "POST method");
-      req->method = HTTP_REQ_POST;
-      req->target_path_offset = method_offset + 5;
-    }
-  else if (!memcmp (rx_buf + method_offset, "PUT ", 4))
-    {
-      HTTP_DBG (1, "PUT method");
-      req->method = HTTP_REQ_PUT;
-      req->target_path_offset = method_offset + 4;
-    }
-  else if (!memcmp (rx_buf + method_offset, "CONNECT ", 8))
-    {
-      HTTP_DBG (1, "CONNECT method");
-      req->method = HTTP_REQ_CONNECT;
-      req->upgrade_proto = HTTP_UPGRADE_PROTO_NA;
-      req->target_path_offset = method_offset + 8;
-      req->req_flags |= HTTP_REQ_F_IS_TUNNEL;
-    }
-  else if (!memcmp (rx_buf + method_offset, "CONNECT-UDP ", 12) &&
-	   (hc->flags & HTTP_CONN_F_CONNECT_UDP_DRAFT03))
-    {
-      HTTP_DBG (1, "CONNECT-UDP method");
-      req->method = HTTP_REQ_CONNECT_UDP;
-      req->upgrade_proto = HTTP_UPGRADE_PROTO_NA;
-      req->target_path_offset = method_offset + 12;
-      req->req_flags |= HTTP_REQ_F_IS_TUNNEL;
-      req->req_flags |= HTTP_REQ_F_CONNECT_UDP_DRAFT03;
-    }
-  else if (!memcmp (rx_buf + method_offset, "PRI ", 4))
-    {
-      HTTP_DBG (1, "request start with PRI, upgrading to http/2");
-      return 2;
-    }
-  else
-    {
-      if (rx_buf[method_offset] - 'A' <= 'Z' - 'A')
+      base = req->rx_buf_offset;
+      len = clib_min (sizeof (buf), available - base);
+      http1_peek_into (hc, req, base, len, buf);
+      for (u32 i = 0; i < len; i++, req->rx_buf_offset++)
 	{
-	  *ec = HTTP_STATUS_NOT_IMPLEMENTED;
-	  return -1;
-	}
-      else
-	{
-	  *ec = HTTP_STATUS_BAD_REQUEST;
-	  return -1;
+	  if (buf[i] != '\r')
+	    continue;
+	  if (base + i + 1 == available)
+	    return HTTP1_PARSE_INCOMPLETE;
+	  if (i + 1 < len)
+	    next = buf[i + 1];
+	  else
+	    http1_peek_into (hc, req, base + i + 1, 1, &next);
+	  if (next == '\n')
+	    {
+	      *line_end = base + i;
+	      req->rx_buf_offset += 2;
+	      return HTTP1_PARSE_OK;
+	    }
 	}
     }
-
-  /* find version */
-  i = http_v_find_index (rx_buf, next_line_offset - 11, 11, " HTTP/");
-  if (i < 0)
-    {
-      clib_warning ("HTTP version not present");
-      *ec = HTTP_STATUS_BAD_REQUEST;
-      return -1;
-    }
-  /* verify major version */
-  if (isdigit (rx_buf[i + 6]))
-    {
-      if (rx_buf[i + 6] != '1')
-	{
-	  clib_warning ("HTTP major version '%c' not supported",
-			rx_buf[i + 6]);
-	  *ec = HTTP_STATUS_HTTP_VERSION_NOT_SUPPORTED;
-	  return -1;
-	}
-    }
-  else
-    {
-      clib_warning ("HTTP major version '%c' is not digit", rx_buf[i + 6]);
-      *ec = HTTP_STATUS_BAD_REQUEST;
-      return -1;
-    }
-
-  /* parse request-target */
-  HTTP_DBG (2, "http at %d", i);
-  target_len = i - req->target_path_offset;
-  HTTP_DBG (2, "target_len %d", target_len);
-  if (target_len < 1)
-    {
-      clib_warning ("request-target not present");
-      *ec = HTTP_STATUS_BAD_REQUEST;
-      return -1;
-    }
-  if (target_len > UINT16_MAX)
-    {
-      clib_warning ("request-target too long");
-      *ec = HTTP_STATUS_BAD_REQUEST;
-      return -1;
-    }
-  req->target_path_len = target_len;
-  req->target_query_offset = 0;
-  req->target_query_len = 0;
-  req->target_authority_len = 0;
-  req->target_authority_offset = 0;
-  if (http1_parse_target (req, rx_buf))
-    {
-      clib_warning ("invalid target");
-      *ec = HTTP_STATUS_BAD_REQUEST;
-      return -1;
-    }
-  HTTP_DBG (2, "request-target path length: %u", req->target_path_len);
-  HTTP_DBG (2, "request-target path offset: %u", req->target_path_offset);
-  HTTP_DBG (2, "request-target query length: %u", req->target_query_len);
-  HTTP_DBG (2, "request-target query offset: %u", req->target_query_offset);
-
-  /* set buffer offset to nex line start */
-  req->rx_buf_offset = next_line_offset;
-
-  return 0;
+  return HTTP1_PARSE_INCOMPLETE;
 }
 
-static int
-http1_parse_status_line (http_ctx_t *req, u8 *rx_buf)
+static http1_parse_result_t
+http1_parse_request_line (http_ctx_t *hc, http_ctx_t *req, http_status_code_t *ec)
 {
-  int i;
+  static const http_token_t methods[] = {
+    [HTTP_REQ_GET] = { http_token_lit ("GET ") },
+    [HTTP_REQ_POST] = { http_token_lit ("POST ") },
+    [HTTP_REQ_PUT] = { http_token_lit ("PUT ") },
+    [HTTP_REQ_CONNECT] = { http_token_lit ("CONNECT ") },
+    [HTTP_REQ_CONNECT_UDP] = { http_token_lit ("CONNECT-UDP ") },
+    [HTTP_REQ_UNKNOWN] = { http_token_lit ("PRI ") },
+  };
+  u32 available =
+    clib_min (http1_rx_available (hc, req), http1_staged_rx_len (req) + http1_rx_max_write (req));
+  u32 base = ~0, len = 0, pos;
+  u8 buf[HTTP1_PARSE_LOOKAHEAD], c, first;
+  const http_token_t *method;
+
+  /* rx_buf_offset always names the next unparsed byte. control_data_len holds
+   * the current token's start until the request line is complete. */
+  while (req->rx_buf_offset < available)
+    {
+      if (base == ~0 || req->rx_buf_offset - base >= len)
+	{
+	  base = req->rx_buf_offset;
+	  len = clib_min (sizeof (buf), available - base);
+	  http1_peek_into (hc, req, base, len, buf);
+	}
+      c = buf[req->rx_buf_offset - base];
+      switch (req->http1_parse_state)
+	{
+	case HTTP1_PARSE_STATE_REQUEST_START:
+	  req->http1_parse_state = HTTP1_PARSE_STATE_REQUEST_METHOD;
+	  req->control_data_len = req->rx_buf_offset;
+	  if (c == '\r')
+	    {
+	      req->rx_buf_offset++;
+	      req->http1_parse_state = HTTP1_PARSE_STATE_REQUEST_LEADING_LF;
+	    }
+	  break;
+
+	case HTTP1_PARSE_STATE_REQUEST_LEADING_LF:
+	  if (c != '\n')
+	    return HTTP1_PARSE_ERROR;
+	  req->rx_buf_offset++;
+	  req->control_data_len = req->rx_buf_offset;
+	  req->http1_parse_state = HTTP1_PARSE_STATE_REQUEST_METHOD;
+	  break;
+
+	case HTTP1_PARSE_STATE_REQUEST_METHOD:
+	  pos = req->rx_buf_offset - req->control_data_len;
+	  if (pos == 0)
+	    {
+	      switch (c)
+		{
+		case 'G':
+		  req->method = HTTP_REQ_GET;
+		  break;
+		case 'P':
+		  req->method = HTTP_REQ_PUT;
+		  break;
+		case 'C':
+		  req->method = HTTP_REQ_CONNECT;
+		  break;
+		default:
+		  *ec =
+		    c >= 'A' && c <= 'Z' ? HTTP_STATUS_NOT_IMPLEMENTED : HTTP_STATUS_BAD_REQUEST;
+		  return HTTP1_PARSE_ERROR;
+		}
+	    }
+	  else if (pos == 1 && req->method == HTTP_REQ_PUT)
+	    {
+	      if (c == 'O')
+		req->method = HTTP_REQ_POST;
+	      else if (c == 'R')
+		req->method = HTTP_REQ_UNKNOWN;
+	    }
+	  else if (pos == 7 && req->method == HTTP_REQ_CONNECT && c == '-' &&
+		   (hc->flags & HTTP_CONN_F_CONNECT_UDP_DRAFT03))
+	    req->method = HTTP_REQ_CONNECT_UDP;
+
+	  method = &methods[req->method];
+	  if (pos >= method->len || c != method->base[pos])
+	    {
+	      *ec = c <= ' ' || c == 0x7f ? HTTP_STATUS_BAD_REQUEST : HTTP_STATUS_NOT_IMPLEMENTED;
+	      return HTTP1_PARSE_ERROR;
+	    }
+	  req->rx_buf_offset++;
+	  if (c != ' ')
+	    break;
+	  if (req->method == HTTP_REQ_UNKNOWN)
+	    {
+	      req->http1_parse_state = HTTP1_PARSE_STATE_REQUEST_HTTP2_PREFACE;
+	      break;
+	    }
+	  if (req->method == HTTP_REQ_CONNECT || req->method == HTTP_REQ_CONNECT_UDP)
+	    {
+	      req->upgrade_proto = HTTP_UPGRADE_PROTO_NA;
+	      req->req_flags |= HTTP_REQ_F_IS_TUNNEL;
+	      if (req->method == HTTP_REQ_CONNECT_UDP)
+		req->req_flags |= HTTP_REQ_F_CONNECT_UDP_DRAFT03;
+	    }
+	  req->control_data_len = req->target_path_offset = req->rx_buf_offset;
+	  req->target_path_len = 0;
+	  req->target_query_offset = req->target_query_len = 0;
+	  req->target_authority_offset = req->target_authority_len = 0;
+	  req->http1_parse_state = HTTP1_PARSE_STATE_REQUEST_TARGET;
+	  break;
+
+	case HTTP1_PARSE_STATE_REQUEST_HTTP2_PREFACE:
+	  /* HTTP/2 validates the magic itself, but requires it all to be present. */
+	  if (available < http2_conn_preface.len)
+	    return HTTP1_PARSE_INCOMPLETE;
+	  return HTTP1_PARSE_UPGRADE_HTTP2;
+
+	case HTTP1_PARSE_STATE_REQUEST_TARGET:
+	  if (c == ' ')
+	    {
+	      if (!req->target_path_len)
+		return HTTP1_PARSE_ERROR;
+	      http1_peek_into (hc, req, req->target_path_offset, 1, &first);
+	      if (first == '/')
+		{
+		  if (req->method == HTTP_REQ_CONNECT)
+		    return HTTP1_PARSE_ERROR;
+		  req->target_form = HTTP_TARGET_ORIGIN_FORM;
+		  req->target_path_offset++;
+		  req->target_path_len--;
+		  if (req->target_query_offset)
+		    req->target_path_len -= req->target_query_len + 1;
+		}
+	      else
+		{
+		  /* Classify a non-origin target once, after its delimiter.
+		   * Do not copy headers or a body just to locate that delimiter. */
+		  u8 *target = http1_peek_range (hc, req, 0, req->rx_buf_offset);
+		  if (http1_parse_non_origin_target (req, target) != HTTP1_PARSE_OK)
+		    return HTTP1_PARSE_ERROR;
+		}
+	      req->control_data_len = ++req->rx_buf_offset;
+	      req->http1_parse_state = HTTP1_PARSE_STATE_REQUEST_VERSION;
+	      break;
+	    }
+	  /* Reject before incrementing the u16 length or waiting for SP/CRLF. */
+	  if (req->rx_buf_offset - req->control_data_len == UINT16_MAX || c < ' ' || c == 0x7f)
+	    return HTTP1_PARSE_ERROR;
+	  req->target_path_len++;
+	  if (req->target_query_offset)
+	    req->target_query_len++;
+	  else if (c == '?')
+	    req->target_query_offset = req->rx_buf_offset + 1;
+	  req->rx_buf_offset++;
+	  break;
+
+	case HTTP1_PARSE_STATE_REQUEST_VERSION:
+	  pos = req->rx_buf_offset - req->control_data_len;
+	  if (pos == 5)
+	    {
+	      if (!isdigit (c))
+		return HTTP1_PARSE_ERROR;
+	      if (c != '1')
+		{
+		  *ec = HTTP_STATUS_HTTP_VERSION_NOT_SUPPORTED;
+		  return HTTP1_PARSE_ERROR;
+		}
+	    }
+	  else if (pos == 7)
+	    {
+	      if (!isdigit (c))
+		return HTTP1_PARSE_ERROR;
+	    }
+	  else if (c != (u8) "HTTP/1.1"[pos])
+	    return HTTP1_PARSE_ERROR;
+	  req->rx_buf_offset++;
+	  if (pos == 7)
+	    req->http1_parse_state = HTTP1_PARSE_STATE_REQUEST_LINE_CR;
+	  break;
+
+	case HTTP1_PARSE_STATE_REQUEST_LINE_CR:
+	  if (c != '\r')
+	    return HTTP1_PARSE_ERROR;
+	  req->rx_buf_offset++;
+	  req->http1_parse_state = HTTP1_PARSE_STATE_REQUEST_LINE_LF;
+	  break;
+
+	case HTTP1_PARSE_STATE_REQUEST_LINE_LF:
+	  if (c != '\n')
+	    return HTTP1_PARSE_ERROR;
+	  req->control_data_len = ++req->rx_buf_offset;
+	  return HTTP1_PARSE_OK;
+
+	default:
+	  ASSERT (0);
+	  return HTTP1_PARSE_ERROR;
+	}
+    }
+  return HTTP1_PARSE_INCOMPLETE;
+}
+
+static http1_parse_result_t
+http1_parse_status_line (http_ctx_t *req, u8 *rx_buf, u32 line_end)
+{
+  int i = line_end;
   u32 next_line_offset;
   u8 *p, *end;
   u16 status_code = 0;
 
-  i = http_v_find_index (rx_buf, 0, 0, "\r\n");
   /* status-line = HTTP-version SP status-code SP [ reason-phrase ] CRLF */
-  if (i < 0)
-    {
-      clib_warning ("status line incomplete");
-      return -1;
-    }
   HTTP_DBG (2, "status line length: %d", i);
   if (i < 12)
     {
       clib_warning ("status line too short (%d)", i);
-      return -1;
+      return HTTP1_PARSE_ERROR;
     }
   req->control_data_len = i + 2;
   next_line_offset = req->control_data_len;
   p = rx_buf;
   end = rx_buf + i;
-
-  /* there should be at least one more CRLF */
-  if (vec_len (rx_buf) < (next_line_offset + 2))
-    {
-      clib_warning ("malformed message, too short");
-      return -1;
-    }
 
   /* parse version */
   expect_char ('H');
@@ -455,14 +658,14 @@ http1_parse_status_line (http_ctx_t *req, u8 *rx_buf)
   if (!isdigit (*p++))
     {
       clib_warning ("invalid HTTP minor version");
-      return -1;
+      return HTTP1_PARSE_ERROR;
     }
 
   /* skip space(s) */
   if (*p != ' ')
     {
       clib_warning ("no space after HTTP version");
-      return -1;
+      return HTTP1_PARSE_ERROR;
     }
   do
     {
@@ -470,7 +673,7 @@ http1_parse_status_line (http_ctx_t *req, u8 *rx_buf)
       if (p == end)
 	{
 	  clib_warning ("no status code");
-	  return -1;
+	  return HTTP1_PARSE_ERROR;
 	}
     }
   while (*p == ' ');
@@ -479,7 +682,7 @@ http1_parse_status_line (http_ctx_t *req, u8 *rx_buf)
   if ((end - p) < 3)
     {
       clib_warning ("not enough characters for status code");
-      return -1;
+      return HTTP1_PARSE_ERROR;
     }
   parse_int (status_code, 100);
   parse_int (status_code, 10);
@@ -487,7 +690,7 @@ http1_parse_status_line (http_ctx_t *req, u8 *rx_buf)
   if (status_code < 100 || status_code > 599)
     {
       clib_warning ("invalid status code %d", status_code);
-      return -1;
+      return HTTP1_PARSE_ERROR;
     }
   req->status_code = http_sc_by_u16 (status_code);
   HTTP_DBG (0, "status code: %d", status_code);
@@ -495,126 +698,12 @@ http1_parse_status_line (http_ctx_t *req, u8 *rx_buf)
   /* set buffer offset to nex line start */
   req->rx_buf_offset = next_line_offset;
 
-  return 0;
+  return HTTP1_PARSE_OK;
 }
 
-always_inline int
-http1_parse_field_name (u8 **pos, u8 *end, u8 **field_name_start,
-			u32 *field_name_len)
+static void
+http1_parse_headers_start (http_ctx_t *req)
 {
-  u32 name_len = 0;
-  u8 *p;
-
-  p = *pos;
-
-  *field_name_start = p;
-  while (p != end)
-    {
-      if (http_token_char_is_valid (*p))
-	{
-	  name_len++;
-	  p++;
-	}
-      else if (*p == ':')
-	{
-	  if (name_len == 0)
-	    {
-	      clib_warning ("empty field name");
-	      return -1;
-	    }
-	  *field_name_len = name_len;
-	  p++;
-	  *pos = p;
-	  return 0;
-	}
-      else
-	{
-	  clib_warning ("invalid character %d", *p);
-	  return -1;
-	}
-    }
-  clib_warning ("field name end not found");
-  return -1;
-}
-
-always_inline int
-http1_parse_field_value (u8 **pos, u8 *end, u8 **field_value_start,
-			 u32 *field_value_len)
-{
-  u32 value_len = 0;
-  u8 *p;
-
-  p = *pos;
-
-  /* skip leading whitespace */
-  while (1)
-    {
-      if (p == end)
-	{
-	  clib_warning ("field value not found");
-	  return -1;
-	}
-      else if (*p != ' ' && *p != '\t')
-	{
-	  break;
-	}
-      p++;
-    }
-
-  *field_value_start = p;
-  while (p != end)
-    {
-      if (*p == '\r')
-	{
-	  if ((end - p) < 1)
-	    {
-	      clib_warning ("incorrect field line end");
-	      return -1;
-	    }
-	  p++;
-	  if (*p == '\n')
-	    {
-	      if (value_len == 0)
-		{
-		  clib_warning ("empty field value");
-		  return -1;
-		}
-	      p++;
-	      *pos = p;
-	      /* skip trailing whitespace */
-	      p = *field_value_start + value_len - 1;
-	      while (*p == ' ' || *p == '\t')
-		{
-		  p--;
-		  value_len--;
-		}
-	      *field_value_len = value_len;
-	      return 0;
-	    }
-	  clib_warning ("CR without LF");
-	  return -1;
-	}
-      if (*p < ' ' && *p != '\t')
-	{
-	  clib_warning ("invalid character %d", *p);
-	  return -1;
-	}
-      p++;
-      value_len++;
-    }
-
-  clib_warning ("field value end not found");
-  return -1;
-}
-
-static int
-http1_identify_headers (http_ctx_t *req, u8 *rx_buf, http_status_code_t *ec)
-{
-  int rv;
-  u8 *p, *end, *name_start, *value_start;
-  u32 name_len, value_len, header_index;
-  http_field_line_t *field_line;
-
   vec_reset_length (req->headers);
   req->content_len_header_index = ~0;
   req->transfer_encoding_header_index = ~0;
@@ -622,85 +711,225 @@ http1_identify_headers (http_ctx_t *req, u8 *rx_buf, http_status_code_t *ec)
   req->upgrade_header_index = ~0;
   req->host_header_index = ~0;
   req->headers_offset = req->rx_buf_offset;
-
-  /* check if we have any header */
-  if ((rx_buf[req->rx_buf_offset] == '\r') &&
-      (rx_buf[req->rx_buf_offset + 1] == '\n'))
-    {
-      /* just another CRLF -> no headers */
-      HTTP_DBG (2, "no headers");
-      req->headers_len = 0;
-      req->control_data_len += 2;
-      return 0;
-    }
-
-  end = vec_end (rx_buf);
-  p = rx_buf + req->rx_buf_offset;
-
-  while (1)
-    {
-      rv = http1_parse_field_name (&p, end, &name_start, &name_len);
-      if (rv != 0)
-	{
-	  *ec = HTTP_STATUS_BAD_REQUEST;
-	  return -1;
-	}
-      rv = http1_parse_field_value (&p, end, &value_start, &value_len);
-      if (rv != 0 || (end - p) < 2)
-	{
-	  *ec = HTTP_STATUS_BAD_REQUEST;
-	  return -1;
-	}
-
-      vec_add2 (req->headers, field_line, 1);
-      field_line->name_offset = (name_start - rx_buf) - req->headers_offset;
-      field_line->name_len = name_len;
-      field_line->value_offset = (value_start - rx_buf) - req->headers_offset;
-      field_line->value_len = value_len;
-      header_index = field_line - req->headers;
-
-      /* find headers that will be used later in preprocessing */
-      /* names are case-insensitive (RFC9110 section 5.1) */
-      if (req->content_len_header_index == ~0 &&
-	  http_token_is_case (
-	    (const char *) name_start, name_len,
-	    http_header_name_token (HTTP_HEADER_CONTENT_LENGTH)))
-	req->content_len_header_index = header_index;
-      else if (req->transfer_encoding_header_index == ~0 &&
-	       http_token_is_case ((const char *) name_start, name_len,
-				   http_header_name_token (HTTP_HEADER_TRANSFER_ENCODING)))
-	req->transfer_encoding_header_index = header_index;
-      else if (req->connection_header_index == ~0 &&
-	       http_token_is_case ((const char *) name_start, name_len,
-				   http_header_name_token (HTTP_HEADER_CONNECTION)))
-	req->connection_header_index = header_index;
-      else if (req->upgrade_header_index == ~0 &&
-	       http_token_is_case (
-		 (const char *) name_start, name_len,
-		 http_header_name_token (HTTP_HEADER_UPGRADE)))
-	req->upgrade_header_index = header_index;
-      else if (req->host_header_index == ~0 &&
-	       http_token_is_case ((const char *) name_start, name_len,
-				   http_header_name_token (HTTP_HEADER_HOST)))
-	req->host_header_index = header_index;
-
-      /* are we done? */
-      if (*p == '\r' && *(p + 1) == '\n')
-	break;
-    }
-
-  req->headers_len = p - (rx_buf + req->headers_offset);
-  req->control_data_len += (req->headers_len + 2);
-  HTTP_DBG (2, "headers length: %u", req->headers_len);
-  HTTP_DBG (2, "headers offset: %u", req->headers_offset);
-
-  return 0;
+  req->http1_parse_state = HTTP1_PARSE_STATE_HEADER_CHECK;
 }
 
 static int
+http1_header_name_is (http_ctx_t *hc, http_ctx_t *req, u32 name_offset, u32 name_len,
+		      const char *expected, uword expected_len)
+{
+  u8 name_buf[32];
+
+  if (name_len != expected_len || expected_len > sizeof (name_buf))
+    return 0;
+
+  http1_peek_into (hc, req, name_offset, name_len, name_buf);
+  return http_token_is_case ((const char *) name_buf, name_len, expected, expected_len);
+}
+
+static http1_parse_result_t
+http1_identify_headers_chunk (http_ctx_t *hc, http_ctx_t *req, http_status_code_t *ec,
+			      u32 available)
+{
+  u32 base = req->rx_buf_offset;
+  u32 len, name_len, header_index;
+  u8 *rx_buf;
+  http_field_line_t *field_line;
+
+  if (base >= available)
+    return HTTP1_PARSE_INCOMPLETE;
+
+  len = available - base;
+  rx_buf = http1_peek_range (hc, req, base, len);
+
+  while (1)
+    {
+      switch (req->http1_parse_state)
+	{
+	case HTTP1_PARSE_STATE_HEADER_CHECK:
+	  if (req->rx_buf_offset == available)
+	    return HTTP1_PARSE_INCOMPLETE;
+	  if (rx_buf[req->rx_buf_offset - base] == '\r')
+	    {
+	      if (available - req->rx_buf_offset < 2)
+		return HTTP1_PARSE_INCOMPLETE;
+	      if (rx_buf[req->rx_buf_offset - base + 1] == '\n')
+		{
+		  req->headers_len = req->rx_buf_offset - req->headers_offset;
+		  req->control_data_len += req->headers_len + 2;
+		  req->http1_parse_state = HTTP1_PARSE_STATE_DONE;
+		  HTTP_DBG (2, "headers length: %u", req->headers_len);
+		  HTTP_DBG (2, "headers offset: %u", req->headers_offset);
+		  return HTTP1_PARSE_OK;
+		}
+	    }
+	  vec_add2 (req->headers, field_line, 1);
+	  field_line->name_offset = req->rx_buf_offset - req->headers_offset;
+	  field_line->name_len = 0;
+	  field_line->value_offset = 0;
+	  field_line->value_len = 0;
+	  req->http1_parse_state = HTTP1_PARSE_STATE_HEADER_NAME;
+	  break;
+
+	case HTTP1_PARSE_STATE_HEADER_NAME:
+	  while (req->rx_buf_offset < available)
+	    {
+	      u8 c = rx_buf[req->rx_buf_offset - base];
+	      if (http_token_char_is_valid (c))
+		{
+		  req->rx_buf_offset++;
+		  continue;
+		}
+	      if (c != ':')
+		{
+		  clib_warning ("invalid character %d", c);
+		  *ec = HTTP_STATUS_BAD_REQUEST;
+		  return HTTP1_PARSE_ERROR;
+		}
+	      field_line = vec_elt_at_index (req->headers, vec_len (req->headers) - 1);
+	      name_len = req->rx_buf_offset - req->headers_offset - field_line->name_offset;
+	      if (!name_len)
+		{
+		  clib_warning ("empty field name");
+		  *ec = HTTP_STATUS_BAD_REQUEST;
+		  return HTTP1_PARSE_ERROR;
+		}
+	      if (name_len > 0xffff)
+		{
+		  clib_warning ("field name too long");
+		  *ec = *ec == HTTP_STATUS_BAD_REQUEST ?
+			  HTTP_STATUS_REQUEST_HEADER_FIELDS_TOO_LARGE :
+			  HTTP_STATUS_BAD_GATEWAY;
+		  return HTTP1_PARSE_ERROR;
+		}
+	      field_line->name_len = name_len;
+	      header_index = vec_len (req->headers) - 1;
+
+	      /* Identify special headers with the full u32 name length, before
+	       * storing it in the u16 http_field_line_t member. */
+	      if (req->content_len_header_index == ~0 &&
+		  http1_header_name_is (hc, req, req->headers_offset + field_line->name_offset,
+					name_len,
+					http_header_name_token (HTTP_HEADER_CONTENT_LENGTH)))
+		req->content_len_header_index = header_index;
+	      else if (req->transfer_encoding_header_index == ~0 &&
+		       http1_header_name_is (
+			 hc, req, req->headers_offset + field_line->name_offset, name_len,
+			 http_header_name_token (HTTP_HEADER_TRANSFER_ENCODING)))
+		req->transfer_encoding_header_index = header_index;
+	      else if (req->connection_header_index == ~0 &&
+		       http1_header_name_is (hc, req, req->headers_offset + field_line->name_offset,
+					     name_len,
+					     http_header_name_token (HTTP_HEADER_CONNECTION)))
+		req->connection_header_index = header_index;
+	      else if (req->upgrade_header_index == ~0 &&
+		       http1_header_name_is (hc, req, req->headers_offset + field_line->name_offset,
+					     name_len,
+					     http_header_name_token (HTTP_HEADER_UPGRADE)))
+		req->upgrade_header_index = header_index;
+	      else if (req->host_header_index == ~0 &&
+		       http1_header_name_is (hc, req, req->headers_offset + field_line->name_offset,
+					     name_len, http_header_name_token (HTTP_HEADER_HOST)))
+		req->host_header_index = header_index;
+
+	      req->rx_buf_offset++;
+	      req->http1_parse_state = HTTP1_PARSE_STATE_HEADER_VALUE_START;
+	      break;
+	    }
+	  if (req->http1_parse_state == HTTP1_PARSE_STATE_HEADER_NAME)
+	    return HTTP1_PARSE_INCOMPLETE;
+	  break;
+
+	case HTTP1_PARSE_STATE_HEADER_VALUE_START:
+	  while (req->rx_buf_offset < available && (rx_buf[req->rx_buf_offset - base] == ' ' ||
+						    rx_buf[req->rx_buf_offset - base] == '\t'))
+	    req->rx_buf_offset++;
+	  if (req->rx_buf_offset == available)
+	    return HTTP1_PARSE_INCOMPLETE;
+	  if (rx_buf[req->rx_buf_offset - base] == '\r')
+	    {
+	      if (available - req->rx_buf_offset < 2)
+		return HTTP1_PARSE_INCOMPLETE;
+	      clib_warning ("empty field value");
+	      *ec = HTTP_STATUS_BAD_REQUEST;
+	      return HTTP1_PARSE_ERROR;
+	    }
+	  field_line = vec_elt_at_index (req->headers, vec_len (req->headers) - 1);
+	  field_line->value_offset = req->rx_buf_offset - req->headers_offset;
+	  req->http1_parse_state = HTTP1_PARSE_STATE_HEADER_VALUE;
+	  break;
+
+	case HTTP1_PARSE_STATE_HEADER_VALUE:
+	  field_line = vec_elt_at_index (req->headers, vec_len (req->headers) - 1);
+	  while (req->rx_buf_offset < available)
+	    {
+	      u8 c = rx_buf[req->rx_buf_offset - base];
+	      if (c == '\r')
+		{
+		  if (available - req->rx_buf_offset < 2)
+		    return HTTP1_PARSE_INCOMPLETE;
+		  if (rx_buf[req->rx_buf_offset - base + 1] != '\n')
+		    {
+		      clib_warning ("CR without LF");
+		      *ec = HTTP_STATUS_BAD_REQUEST;
+		      return HTTP1_PARSE_ERROR;
+		    }
+		  if (!field_line->value_len)
+		    {
+		      clib_warning ("empty field value");
+		      *ec = HTTP_STATUS_BAD_REQUEST;
+		      return HTTP1_PARSE_ERROR;
+		    }
+		  req->rx_buf_offset += 2;
+		  req->http1_parse_state = HTTP1_PARSE_STATE_HEADER_CHECK;
+		  break;
+		}
+	      if (c < ' ' && c != '\t')
+		{
+		  clib_warning ("invalid character %d", c);
+		  *ec = HTTP_STATUS_BAD_REQUEST;
+		  return HTTP1_PARSE_ERROR;
+		}
+	      req->rx_buf_offset++;
+	      if (c != ' ' && c != '\t')
+		field_line->value_len =
+		  req->rx_buf_offset - req->headers_offset - field_line->value_offset;
+	    }
+	  if (req->http1_parse_state == HTTP1_PARSE_STATE_HEADER_VALUE)
+	    return HTTP1_PARSE_INCOMPLETE;
+	  break;
+
+	case HTTP1_PARSE_STATE_DONE:
+	  return HTTP1_PARSE_OK;
+
+	default:
+	  ASSERT (0);
+	  return HTTP1_PARSE_ERROR;
+	}
+    }
+}
+
+static http1_parse_result_t
+http1_identify_headers (http_ctx_t *hc, http_ctx_t *req, http_status_code_t *ec)
+{
+  u32 available = http1_rx_available (hc, req), end;
+  http1_parse_result_t rv;
+
+  do
+    {
+      end = clib_min (available, req->rx_buf_offset + HTTP1_PARSE_LOOKAHEAD);
+      rv = http1_identify_headers_chunk (hc, req, ec, end);
+      /* A trailing CR is left unparsed and reappears with its LF in the next
+       * window. Only wait for transport data once this RX snapshot ends. */
+    }
+  while (rv == HTTP1_PARSE_INCOMPLETE && end < available);
+
+  return rv;
+}
+
+static http1_parse_result_t
 http1_identify_message_body (http_ctx_t *hc, http_ctx_t *req, u8 *rx_buf, http_status_code_t *ec)
 {
-  int rv;
   u8 is_server = !!(hc->flags & HTTP_CONN_F_IS_SERVER);
 
   req->body_len = 0;
@@ -710,12 +939,12 @@ http1_identify_message_body (http_ctx_t *hc, http_ctx_t *req, u8 *rx_buf, http_s
       ((req->req_flags & HTTP_REQ_F_IS_TUNNEL) ||
        http_status_code_str[req->status_code][0] == '1' ||
        req->status_code == HTTP_STATUS_NO_CONTENT || req->status_code == HTTP_STATUS_NOT_MODIFIED))
-    return 0;
+    return HTTP1_PARSE_OK;
 
   if (req->headers_len == 0)
     {
       HTTP_DBG (2, "no header, no message-body");
-      return 0;
+      return HTTP1_PARSE_OK;
     }
   if (req->transfer_encoding_header_index != ~0)
     {
@@ -724,50 +953,49 @@ http1_identify_message_body (http_ctx_t *hc, http_ctx_t *req, u8 *rx_buf, http_s
       *ec = HTTP_STATUS_BAD_REQUEST;
       if (req->content_len_header_index != ~0 || (req->req_flags & HTTP_REQ_F_IS_TUNNEL) ||
 	  rx_buf[is_server ? req->headers_offset - 3 : 7] == '0')
-	return -1;
+	return HTTP1_PARSE_ERROR;
 
       field = vec_elt_at_index (req->headers, req->transfer_encoding_header_index);
       if (!http_token_is_case (http_field_line_value_token (field, req, rx_buf),
 			       http_token_lit ("chunked")))
-	return -1;
+	return HTTP1_PARSE_ERROR;
       for (u32 i = req->transfer_encoding_header_index + 1; i < vec_len (req->headers); i++)
 	{
 	  field = vec_elt_at_index (req->headers, i);
 	  if (http_token_is_case ((const char *) rx_buf + req->headers_offset + field->name_offset,
 				  field->name_len,
 				  http_header_name_token (HTTP_HEADER_TRANSFER_ENCODING)))
-	    return -1;
+	    return HTTP1_PARSE_ERROR;
 	}
 
       req->chunked_decoder = (http1_chunked_decoder_t) {};
       req->req_flags |= HTTP_REQ_F_RX_STREAMING;
       req->body_offset = req->control_data_len;
-      return 0;
+      return HTTP1_PARSE_OK;
     }
   if (req->req_flags & HTTP_REQ_F_IS_TUNNEL)
     {
       HTTP_DBG (2, "tunnel, no message-body");
-      return 0;
+      return HTTP1_PARSE_OK;
     }
 
   if (req->content_len_header_index == ~0)
     {
       HTTP_DBG (2, "Content-Length header not present, no message-body");
-      return 0;
+      return HTTP1_PARSE_OK;
     }
 
-  rv = http_parse_content_length (req, rx_buf);
-  if (rv)
+  if (http_parse_content_length (req, rx_buf))
     {
       *ec = HTTP_STATUS_BAD_REQUEST;
-      return rv;
+      return HTTP1_PARSE_ERROR;
     }
 
   req->body_offset = req->headers_offset + req->headers_len + 2;
   HTTP_DBG (2, "body length: %llu", req->body_len);
   HTTP_DBG (2, "body offset: %u", req->body_offset);
 
-  return 0;
+  return HTTP1_PARSE_OK;
 }
 
 static void
@@ -886,53 +1114,69 @@ http1_write_app_headers (http_ctx_t *req, http_msg_t *msg, u8 **tx_buf)
 static http_sm_result_t
 http1_req_state_wait_transport_reply (http_ctx_t *hc, http_ctx_t *req, transport_send_params_t *sp)
 {
-  int rv;
+  http1_parse_result_t rv;
   http_msg_t msg = {};
-  u32 len, max_enq, body_sent;
-  http_status_code_t ec;
+  u32 body_available, body_sent;
+  http_status_code_t ec = HTTP_STATUS_BAD_GATEWAY;
   u8 *rx_buf;
 
-  rx_buf = http1_read_message (hc);
-
   /* Nothing yet, wait for data or timer expire */
-  if (!rx_buf)
+  if (!http_io_ts_max_read (hc))
     {
       HTTP_DBG (1, "no data to deq");
       return HTTP_SM_STOP;
     }
 
-  HTTP_DBG (3, "%v", rx_buf);
-  http_stats_responses_received_inc (hc->c_thread_index);
-
-  if (vec_len (rx_buf) < 8)
+  if (req->http1_parse_state == HTTP1_PARSE_STATE_IDLE)
     {
-      clib_warning ("response buffer too short");
-      goto error;
+      if (http1_rx_msg_start (req))
+	goto error;
+      req->http1_parse_state = HTTP1_PARSE_STATE_STATUS_LINE;
+      req->rx_buf_offset = 0;
     }
 
-  rv = http1_parse_status_line (req, rx_buf);
-  if (rv)
+  if (req->http1_parse_state == HTTP1_PARSE_STATE_STATUS_LINE)
+    {
+      u32 line_end;
+      rv = http1_find_line_end (hc, req, &line_end);
+      if (rv == HTTP1_PARSE_INCOMPLETE)
+	goto incomplete;
+      rx_buf = http1_peek_range (hc, req, 0, line_end + 2);
+      rv = http1_parse_status_line (req, rx_buf, line_end);
+      if (rv != HTTP1_PARSE_OK)
+	goto error;
+      http1_parse_headers_start (req);
+    }
+
+  rv = http1_identify_headers (hc, req, &ec);
+  if (rv == HTTP1_PARSE_INCOMPLETE)
+    goto incomplete;
+  if (rv != HTTP1_PARSE_OK)
+    goto error;
+  if (req->headers_len > http1_max_header_list_size (hc))
     goto error;
 
-  rv = http1_identify_headers (req, rx_buf, &ec);
-  if (rv)
-    goto error;
+  rx_buf = http1_read_control_data (hc, req);
+  ASSERT (rx_buf);
+  HTTP_DBG (3, "%v", rx_buf);
+
+  http_stats_responses_received_inc (hc->c_thread_index);
 
   rv = http1_identify_message_body (hc, req, rx_buf, &ec);
-  if (rv)
+  if (rv != HTTP1_PARSE_OK)
     goto error;
 
   /* send at least "control data" which is necessary minimum,
    * if there is some space send also portion of body */
-  max_enq = http_io_as_max_write (req);
-  max_enq -= sizeof (msg);
-  if (max_enq < req->control_data_len)
+  if (http1_stage_to_length (hc, req, req->control_data_len))
     {
       clib_warning ("not enough room for control data in app's rx fifo");
       goto error;
     }
-  len = clib_min (max_enq, vec_len (rx_buf));
-  len = req->control_data_len + clib_min (req->body_len, len - req->control_data_len);
+  body_available = clib_min (req->body_len, http_io_ts_max_read (hc));
+  body_sent = clib_min (body_available, http1_rx_max_write (req));
+  if (http1_stage_rx_data (hc, req, body_sent) != body_sent)
+    goto error;
 
   msg.type = HTTP_MSG_REPLY;
   msg.code = req->status_code;
@@ -942,23 +1186,20 @@ http1_req_state_wait_transport_reply (http_ctx_t *hc, http_ctx_t *req, transport
   msg.data.body_len = req->body_len;
   msg.data.type =
     req->req_flags & HTTP_REQ_F_RX_STREAMING ? HTTP_MSG_DATA_STREAMING : HTTP_MSG_DATA_INLINE;
-  msg.data.len = len;
+  msg.data.len = req->control_data_len + body_sent;
   msg.data.headers_ctx = pointer_to_uword (req->headers);
 
-  svm_fifo_seg_t segs[2] = { { (u8 *) &msg, sizeof (msg) }, { rx_buf, len } };
-
-  http_io_as_write_segs (req, segs, 2);
-
+  if (http_io_as_rx_publish (req, &msg, req->http1_rx_staged_len))
+    goto error;
   if (req->req_flags & HTTP_REQ_F_RX_STREAMING)
     {
-      http_io_ts_drain (hc, len);
+      http1_parse_state_reset (req);
       http_req_state_change (req, HTTP_REQ_STATE_TRANSPORT_IO_MORE_STREAMING_DATA);
-      http_io_ts_after_read (hc, 1);
+      http_io_ts_after_read (hc, !http_io_ts_max_read (hc));
       http_app_worker_rx_notify (req);
       return HTTP_SM_CONTINUE;
     }
 
-  body_sent = len - req->control_data_len;
   req->to_recv = req->body_len - body_sent;
   if (req->to_recv == 0)
     {
@@ -969,18 +1210,33 @@ http1_req_state_wait_transport_reply (http_ctx_t *hc, http_ctx_t *req, transport
     {
       /* stream rest of the response body */
       http_req_state_change (req, HTTP_REQ_STATE_TRANSPORT_IO_MORE_DATA);
-      if (len < vec_len (rx_buf))
+      if (body_sent < body_available)
 	http_io_as_add_want_deq_ntf (req);
     }
 
-  http_io_ts_drain (hc, len);
-  http_io_ts_after_read (hc, 1);
+  if (req->to_recv == 0)
+    http_io_ts_drain_all (hc);
+  http1_parse_state_reset (req);
+  http_io_ts_after_read (hc, !http_io_ts_max_read (hc));
   http_app_worker_rx_notify (req);
   http1_close_completed_reply (hc, req);
   return HTTP_SM_STOP;
 
+incomplete:
+  {
+    u32 n_read = http_io_ts_max_read (hc);
+    u32 n_staged = http1_stage_rx_data (hc, req, http1_rx_max_write (req));
+    if (n_staged != n_read)
+      goto error;
+    http_io_ts_after_read (hc, 1);
+    if (http1_incomplete_headers_too_large (hc, req, http1_rx_available (hc, req)))
+      goto error;
+  }
+  return HTTP_SM_STOP;
+
 error:
   http_io_ts_drain_all (hc);
+  http1_parse_state_reset (req);
   http_io_ts_after_read (hc, 1);
   session_transport_reset_notify (&req->connection);
   session_transport_closed_notify (&req->connection);
@@ -992,29 +1248,38 @@ error:
 static http_sm_result_t
 http1_req_state_wait_transport_method (http_ctx_t *hc, http_ctx_t *req, transport_send_params_t *sp)
 {
-  http_status_code_t ec;
+  http_status_code_t ec = HTTP_STATUS_BAD_REQUEST;
   http_msg_t msg;
-  int rv;
-  u32 len, max_enq, body_sent;
-  u64 max_deq;
+  http1_parse_result_t rv;
+  u32 body_available, body_sent;
   u8 *rx_buf;
 
-  rx_buf = http1_read_message (hc);
-
   /* Nothing yet, wait for data or timer expire */
-  if (!rx_buf)
+  if (!http_io_ts_max_read (hc))
     return HTTP_SM_STOP;
 
-  if (vec_len (rx_buf) < 8)
+  if (req->http1_parse_state == HTTP1_PARSE_STATE_IDLE)
     {
-      ec = HTTP_STATUS_BAD_REQUEST;
-      goto error;
+      if ((hc->flags & HTTP_CONN_F_NO_APP_SESSION) && http_conn_prepare_request (hc, req, 0))
+	{
+	  ec = HTTP_STATUS_INTERNAL_ERROR;
+	  goto error;
+	}
+      if (http1_rx_msg_start (req))
+	{
+	  ec = HTTP_STATUS_REQUEST_HEADER_FIELDS_TOO_LARGE;
+	  goto error;
+	}
+      req->http1_parse_state = HTTP1_PARSE_STATE_REQUEST_START;
+      req->rx_buf_offset = 0;
     }
 
-  rv = http1_parse_request_line (hc, req, rx_buf, &ec);
-  if (rv)
+  if (req->http1_parse_state <= HTTP1_PARSE_STATE_REQUEST_LINE_LF)
     {
-      if (rv == 2)
+      rv = http1_parse_request_line (hc, req, &ec);
+      if (rv == HTTP1_PARSE_INCOMPLETE)
+	goto incomplete;
+      if (rv == HTTP1_PARSE_UPGRADE_HTTP2)
 	{
 	  http1_conn_free_req (hc);
 	  hc->hc_parent_req_index = SESSION_INVALID_INDEX;
@@ -1022,15 +1287,27 @@ http1_req_state_wait_transport_method (http_ctx_t *hc, http_ctx_t *req, transpor
 	  hc->rx_expect = HTTP2_RX_EXPECT_CLIENT_PREFACE;
 	  return HTTP_SM_STOP;
 	}
+      if (rv != HTTP1_PARSE_OK)
+	goto error;
+      http1_parse_headers_start (req);
+    }
+
+  rv = http1_identify_headers (hc, req, &ec);
+  if (rv == HTTP1_PARSE_INCOMPLETE)
+    goto incomplete;
+  if (rv != HTTP1_PARSE_OK)
+    goto error;
+  if (req->headers_len > http1_max_header_list_size (hc))
+    {
+      ec = HTTP_STATUS_REQUEST_HEADER_FIELDS_TOO_LARGE;
       goto error;
     }
 
+  rx_buf = http1_read_control_data (hc, req);
+  ASSERT (rx_buf);
   HTTP_DBG (3, "%v", rx_buf);
-  http_stats_requests_received_inc (hc->c_thread_index);
 
-  rv = http1_identify_headers (req, rx_buf, &ec);
-  if (rv)
-    goto error;
+  http_stats_requests_received_inc (hc->c_thread_index);
 
   /* RFC9112 3.2: Host is required even for absolute and authority-form */
   if (req->host_header_index == ~0)
@@ -1044,36 +1321,25 @@ http1_req_state_wait_transport_method (http_ctx_t *hc, http_ctx_t *req, transpor
   http1_check_connection_upgrade (req, rx_buf);
 
   rv = http1_identify_message_body (hc, req, rx_buf, &ec);
-  if (rv)
+  if (rv != HTTP1_PARSE_OK)
     goto error;
 
-  if (hc->flags & HTTP_CONN_F_NO_APP_SESSION)
+  if (http1_stage_to_length (hc, req, req->control_data_len))
     {
-      /* notify app about new conn */
-      if (http_conn_accept_request (hc, req, 0))
-	goto error;
-      http_stats_connections_accepted_inc (hc->c_thread_index);
-      hc->flags &= ~HTTP_CONN_F_NO_APP_SESSION;
-    }
-  /* send at least "control data" which is necessary minimum,
-   * if there is some space send also portion of body */
-  max_enq = http_io_as_max_write (req);
-  max_enq -= sizeof (msg);
-  if (max_enq < req->control_data_len)
-    {
-      clib_warning ("not enough room for control data in app's rx fifo");
-      ec = HTTP_STATUS_INTERNAL_ERROR;
+      clib_warning ("not enough room for request headers in app's rx fifo");
+      ec = HTTP_STATUS_REQUEST_HEADER_FIELDS_TOO_LARGE;
       goto error;
     }
-  /* do not dequeue more than one HTTP request, we do not support pipelining */
-  max_deq = clib_min (req->control_data_len + req->body_len, vec_len (rx_buf));
-  len = clib_min (max_enq, max_deq);
+  body_available = clib_min (req->body_len, http_io_ts_max_read (hc));
+  body_sent = clib_min (body_available, http1_rx_max_write (req));
+  if (http1_stage_rx_data (hc, req, body_sent) != body_sent)
+    goto error;
 
   msg.type = HTTP_MSG_REQUEST;
   msg.method_type = req->method;
   msg.data.type =
     req->req_flags & HTTP_REQ_F_RX_STREAMING ? HTTP_MSG_DATA_STREAMING : HTTP_MSG_DATA_INLINE;
-  msg.data.len = len;
+  msg.data.len = req->control_data_len + body_sent;
   msg.data.scheme = req->scheme;
   msg.data.target_authority_offset = req->target_authority_offset;
   msg.data.target_authority_len = req->target_authority_len;
@@ -1088,20 +1354,42 @@ http1_req_state_wait_transport_method (http_ctx_t *hc, http_ctx_t *req, transpor
   msg.data.headers_ctx = pointer_to_uword (req->headers);
   msg.data.upgrade_proto = req->upgrade_proto;
 
-  svm_fifo_seg_t segs[2] = { { (u8 *) &msg, sizeof (msg) }, { rx_buf, len } };
+  if (http_io_as_rx_publish (req, &msg, req->http1_rx_staged_len))
+    {
+      ec = HTTP_STATUS_INTERNAL_ERROR;
+      goto error;
+    }
+  if (hc->flags & HTTP_CONN_F_NO_APP_SESSION)
+    {
+      session_t *as = session_get (req->c_s_index, req->c_thread_index);
+      session_t *asl = session_get_from_handle_if_valid (as->listener_handle);
 
-  http_io_as_write_segs (req, segs, 2);
+      /* The listener can disappear while we wait for fragmented headers. */
+      if (PREDICT_FALSE (!asl || asl->session_state != SESSION_STATE_LISTENING))
+	{
+	  http1_parse_state_reset (req);
+	  http_disconnect_transport (hc);
+	  return HTTP_SM_ERROR;
+	}
+
+      if (http_conn_notify_accept (req))
+	{
+	  ec = HTTP_STATUS_INTERNAL_ERROR;
+	  goto error;
+	}
+      http_stats_connections_accepted_inc (hc->c_thread_index);
+      hc->flags &= ~HTTP_CONN_F_NO_APP_SESSION;
+    }
 
   if (req->req_flags & HTTP_REQ_F_RX_STREAMING)
     {
-      http_io_ts_drain (hc, len);
+      http1_parse_state_reset (req);
       http_req_state_change (req, HTTP_REQ_STATE_TRANSPORT_IO_MORE_STREAMING_DATA);
       http_app_worker_rx_notify (req);
-      http_io_ts_after_read (hc, 1);
+      http_io_ts_after_read (hc, !http_io_ts_max_read (hc));
       return HTTP_SM_CONTINUE;
     }
 
-  body_sent = len - req->control_data_len;
   req->to_recv = req->body_len - body_sent;
   if (req->to_recv == 0)
     {
@@ -1112,26 +1400,54 @@ http1_req_state_wait_transport_method (http_ctx_t *hc, http_ctx_t *req, transpor
     }
   else
     {
-      http_io_ts_drain (hc, len);
       /* stream rest of the response body */
       http_req_state_change (req, HTTP_REQ_STATE_TRANSPORT_IO_MORE_DATA);
-      if (len < max_deq)
+      if (body_sent < body_available)
 	http_io_as_add_want_deq_ntf (req);
     }
 
+  http1_parse_state_reset (req);
+  http_io_ts_after_read (hc, !http_io_ts_max_read (hc));
   http_app_worker_rx_notify (req);
-  http_io_ts_after_read (hc, 1);
 
+  return HTTP_SM_STOP;
+
+incomplete:
+  /* Keep the bounded method prefix in the transport FIFO so a fragmented PRI
+   * preface can be handed intact to HTTP/2. At EOF, stage it for close cleanup. */
+  if (req->http1_parse_state <= HTTP1_PARSE_STATE_REQUEST_HTTP2_PREFACE &&
+      hc->state != HTTP_CONN_STATE_TRANSPORT_CLOSED &&
+      http_io_ts_max_read (hc) <= http1_rx_max_write (req))
+    return HTTP_SM_STOP;
+  {
+    u32 n_read = http_io_ts_max_read (hc);
+    u32 n_staged = http1_stage_rx_data (hc, req, http1_rx_max_write (req));
+    if (n_staged != n_read)
+      {
+	ec = HTTP_STATUS_REQUEST_HEADER_FIELDS_TOO_LARGE;
+	goto error;
+      }
+    http_io_ts_after_read (hc, 1);
+    if (http1_incomplete_headers_too_large (hc, req, http1_rx_available (hc, req)))
+      {
+	ec = HTTP_STATUS_REQUEST_HEADER_FIELDS_TOO_LARGE;
+	goto error;
+      }
+  }
   return HTTP_SM_STOP;
 
 error:
   http_io_ts_drain_all (hc);
+  http1_parse_state_reset (req);
   http_io_ts_after_read (hc, 1);
-  http1_send_error (hc, ec, 0);
-  if (!(hc->flags & HTTP_CONN_F_NO_APP_SESSION))
+  int error_sent = http1_send_error (hc, ec, 0);
+  if (req->c_s_index != SESSION_INVALID_INDEX && !(hc->flags & HTTP_CONN_F_NO_APP_SESSION))
     session_transport_closing_notify (&req->connection);
   http_stats_proto_errors_inc (hc->c_thread_index);
-  http_disconnect_transport (hc);
+  if (error_sent)
+    http_shutdown_transport (hc);
+  else
+    http_disconnect_transport (hc);
 
   return HTTP_SM_ERROR;
 }
@@ -2265,8 +2581,13 @@ http1_transport_close_callback (http_ctx_t *hc)
   clib_thread_index_t thread_index = hc->c_thread_index;
   http_ctx_t *req;
 
-  /* Process buffered transport bytes before checking for HTTP message completion. */
-  if (http_io_ts_max_read (hc))
+  if (hc->state == HTTP_CONN_STATE_CLOSED)
+    return;
+
+  /* Process buffered bytes before checking message completion, including after
+   * app shutdown. An expired timer must not reenter RX and update itself under
+   * the timer lock. */
+  if (!(hc->flags & HTTP_CONN_F_PENDING_TIMER) && http_io_ts_max_read (hc))
     {
       http1_transport_rx_callback (hc);
       hc = http_ctx_get_w_thread (hc_index, thread_index);
@@ -2276,8 +2597,22 @@ http1_transport_close_callback (http_ctx_t *hc)
     return;
 
   req = http1_conn_get_req (hc);
-  if (hc->state == HTTP_CONN_STATE_CLOSED || (hc->flags & HTTP_CONN_F_NO_APP_SESSION))
+  if (hc->state == HTTP_CONN_STATE_CLOSED)
     return;
+
+  if (hc->flags & HTTP_CONN_F_NO_APP_SESSION)
+    {
+      if (hc->state == HTTP_CONN_STATE_TRANSPORT_CLOSED &&
+	  req->req_state == HTTP_REQ_STATE_WAIT_TRANSPORT_METHOD &&
+	  req->http1_parse_state != HTTP1_PARSE_STATE_IDLE && !http_io_ts_max_read (hc))
+	{
+	  /* EOF cannot complete this request. Cleanup frees the pending session
+	   * and its unpublished bytes without notifying the application. */
+	  http1_parse_state_reset (req);
+	  http_disconnect_transport (hc);
+	}
+      return;
+    }
 
   if (req->req_flags & HTTP_REQ_F_RX_STREAMING)
     {
@@ -2288,7 +2623,25 @@ http1_transport_close_callback (http_ctx_t *hc)
 
   /* Nothing more to rx, propagate to app */
   if (!http_io_ts_max_read (hc))
-    session_transport_closing_notify (&req->connection);
+    {
+      if (hc->state == HTTP_CONN_STATE_TRANSPORT_CLOSED &&
+	  req->req_state == HTTP_REQ_STATE_WAIT_TRANSPORT_REPLY &&
+	  req->http1_parse_state != HTTP1_PARSE_STATE_IDLE)
+	{
+	  /* A clean EOF in a partial response cannot complete the pending reply. */
+	  http1_parse_state_reset (req);
+	  if (req->c_s_index != SESSION_INVALID_INDEX && !(hc->flags & HTTP_CONN_F_NO_APP_SESSION))
+	    {
+	      session_transport_closing_notify (&req->connection);
+	      session_transport_closed_notify (&req->connection);
+	    }
+	  http_stats_proto_errors_inc (hc->c_thread_index);
+	  http_disconnect_transport (hc);
+	  return;
+	}
+      if (req->c_s_index != SESSION_INVALID_INDEX && !(hc->flags & HTTP_CONN_F_NO_APP_SESSION))
+	session_transport_closing_notify (&req->connection);
+    }
 }
 
 static void
@@ -2298,8 +2651,11 @@ http1_transport_reset_callback (http_ctx_t *hc)
     return;
   http_ctx_t *req = http1_conn_get_req (hc);
   hc->flags &= ~HTTP_CONN_F_PENDING_LAST_CHUNK;
-  session_transport_reset_notify (&req->connection);
-  session_transport_closed_notify (&req->connection);
+  if (req->c_s_index != SESSION_INVALID_INDEX && !(hc->flags & HTTP_CONN_F_NO_APP_SESSION))
+    {
+      session_transport_reset_notify (&req->connection);
+      session_transport_closed_notify (&req->connection);
+    }
   http_stats_connections_reset_by_peer_inc (hc->c_thread_index);
 }
 
@@ -2333,10 +2689,12 @@ http1_conn_cleanup_callback (http_ctx_t *hc)
 
   req = http1_conn_get_req (hc);
   /* do not notify if accept or connect failed */
-  if (req->c_s_index != SESSION_INVALID_INDEX)
+  if (req->c_s_index != SESSION_INVALID_INDEX && !(hc->flags & HTTP_CONN_F_NO_APP_SESSION))
     session_transport_delete_notify (&req->connection);
   http1_conn_free_req (hc);
 }
+
+static uword http1_unformat_config_callback (unformat_input_t *input);
 
 const static http_engine_vft_t http1_engine = {
   .name = "http1",
@@ -2353,11 +2711,32 @@ const static http_engine_vft_t http1_engine = {
   .transport_reset_callback = http1_transport_reset_callback,
   .conn_accept_callback = http1_conn_accept_callback,
   .conn_cleanup_callback = http1_conn_cleanup_callback,
+  .unformat_cfg_callback = http1_unformat_config_callback,
 };
+
+static uword
+http1_unformat_config_callback (unformat_input_t *input)
+{
+  u32 value;
+
+  if (!input)
+    return 0;
+
+  unformat_skip_white_space (input);
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "max-header-list-size %u", &value))
+	http_main.h1_max_header_list_size = value;
+      else
+	return 0;
+    }
+  return 1;
+}
 
 static clib_error_t *
 http1_init (vlib_main_t *vm)
 {
+  http_main.h1_max_header_list_size = 1 << 16;
   http_register_engine (&http1_engine, HTTP_VERSION_1);
   return 0;
 }

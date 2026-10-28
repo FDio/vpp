@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"io"
 	"math/rand"
@@ -13,12 +14,16 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
+
+	"golang.org/x/net/http2"
 
 	"github.com/onsi/gomega/ghttp"
 	"github.com/onsi/gomega/gmeasure"
 
 	. "fd.io/hs-test/infra"
+	. "github.com/onsi/ginkgo/v2"
 )
 
 func init() {
@@ -27,7 +32,7 @@ func init() {
 	RegisterSoloVethTests(HttpClientGetMemLeakTest)
 	RegisterHttp1Tests(HeaderServerTest, HttpPersistentConnectionTest, HttpPipeliningTest,
 		HttpCliMethodNotAllowedTest, HttpAbsoluteFormUriTest, HttpCliBadRequestTest,
-		HttpInvalidRequestLineTest, HttpMethodNotImplementedTest, HttpInvalidHeadersTest, HttpMissingHostHeaderTest,
+		HttpInvalidRequestLineTest, HttpIncrementalRequestLineTest, HttpFragmentedH2PrefaceTest, HttpMethodNotImplementedTest, HttpInvalidHeadersTest, HttpMissingHostHeaderTest,
 		HttpContentLengthTest, HttpVersionNotSupportedTest, HttpInvalidContentLengthTest, HttpInvalidTargetSyntaxTest, HttpUriDecodeTest,
 		HttpHeadersTest, HttpClientTest, HttpClientErrRespTest, HttpClientPostFormTest, HttpClientPostFormPtrTest,
 		HttpClientGet128kbResponseTest, HttpClientGetResponseBodyTest, HttpClientGetTlsNoRespBodyTest, HttpClientPostFileTest, HttpClientPostFilePtrTest,
@@ -42,7 +47,7 @@ func init() {
 		HttpCliClientHeadersTest, HttpCliClientLargeHeadersRejectedTest, HttpCliServerEchoTest,
 		HttpCliClientStreamGetTest, HttpCliClientStreamPostTest, HttpCliClientStreamPutTest, HttpCliClientStreamTlsTest,
 		HttpCliClientStreamEmptyTest, HttpCliClientStreamDrainTest, HttpCliClientStreamCloseTest,
-		HttpCliClientStreamEarlyResponseTest, HttpCliClientStreamWireTest,
+		HttpCliClientStreamEarlyResponseTest, HttpCliClientEarlyResponseFinTest, HttpCliClientStreamWireTest,
 		HttpCliClientChunkedTest, HttpCliClientChunkedFragmentedTest, HttpCliClientChunkedTrailersTest,
 		HttpCliClientChunkedBackpressureTest, HttpCliClientChunkedHalfCloseTest,
 		HttpCliClientChunkedBadFramingTest, HttpCliClientChunkedHeadersTest,
@@ -59,7 +64,17 @@ func init() {
 		HttpClientPutStreamingTest, HttpClientPostRejectedTest,
 		HttpClientRedirect302Test, HttpClientRedirect308Test, HttpSendGetAndCloseTest, HttpClientRedirectLimitTest, HttpClientRedirectGetMemLeakTest,
 		HttpClientRedirectPostMemLeakTest, HttpGetTpsTest, HttpPostTpsTest, HttpGetTpsInterruptModeTest, HttpPostTpsInterruptModeTest,
-		HttpPostTpsTlsTest, HttpGetTpsTlsTest, HttpTpsTest)
+		HttpPostTpsTlsTest, HttpGetTpsTlsTest, HttpTpsTest,
+		HttpFragmentedHeadersTest, HttpClientFragmentedHeadersTest, HttpClientPartialResponseFinTest,
+		HttpPartialRequestPeerResetTest, HttpPartialRequestPeerFinTest, HttpPartialRequestListenerRemovedTest,
+		HttpIncompleteHeadersFullFifoTest, HttpClientIncompleteHeadersFullFifoTest,
+		HttpIncompleteHeadersTimeoutTest)
+	var headerLimitConfig Stanza
+	headerLimitConfig.NewStanza("http").NewStanza("http1").Append("max-header-list-size 128").Close().Close()
+	RegisterHttp1TestsWithConfig(headerLimitConfig, HttpHeaderListSizeLimitTest)
+	var largeHeaderLimitConfig Stanza
+	largeHeaderLimitConfig.NewStanza("http").NewStanza("http1").Append("max-header-list-size 131072").Close().Close()
+	RegisterHttp1TestsWithConfig(largeHeaderLimitConfig, HttpOversizedHeaderNameTest)
 	RegisterHttp1SoloTests(HttpClientPostMemLeakTest, HttpInvalidClientRequestMemLeakTest, HttpTpsMemLeakTest)
 	RegisterHttp1MWTests(HttpClientGetRepeatMWTest, HttpClientPtrGetRepeatMWTest, HttpTsFifoMemPressureMWTest)
 	RegisterNoTopo6SoloTests(HttpClientGetResponseBody6Test, HttpClientGetTlsResponseBody6Test)
@@ -644,6 +659,113 @@ func HttpCliClientStreamEarlyResponseTest(s *Http1Suite) {
 	defer server.Close()
 	output := vpp.Vppctl("http cli client stream method post file /tmp/http-cli-stream-reject.txt fifo-size 4 tx-delay 0.01 uri http://%s/echo", address)
 	AssertContains(output, "request failed, response code: 413")
+}
+
+// An early response abandons the upload without marking the HTTP connection
+// closed. FIN must still reach the app after a truncated response is drained.
+func HttpCliClientEarlyResponseFinTest(s *Http1Suite) {
+	vpp := s.Containers.Vpp.VppInstance
+	upload := strings.Repeat("x", 1024*1024)
+	file := "/tmp/http-cli-early-response.txt"
+	AssertNil(vpp.Container.CreateFile(file, upload))
+	for _, stream := range []bool{false, true} {
+		for _, body := range []string{"", "early-response", strings.Repeat("response!", 2048)} {
+			for _, missing := range []int{0, 1} {
+				for _, fragmented := range []bool{false, true} {
+					Log("early response: stream=%t, body=%d, missing=%d, fragmented=%t",
+						stream, len(body), missing, fragmented)
+					func() {
+						listener, err := net.Listen("tcp", net.JoinHostPort(s.HostAddr(), s.Ports.Http))
+						AssertNil(err)
+						defer listener.Close()
+						AssertNil(listener.(*net.TCPListener).SetDeadline(time.Now().Add(defaultHttpTimeout)))
+						finished := make(chan error, 1)
+						clientFinished := make(chan struct{})
+						go func() {
+							finished <- func() error {
+								conn, err := listener.Accept()
+								if err != nil {
+									return err
+								}
+								defer conn.Close()
+								if err = conn.(*net.TCPConn).SetReadBuffer(4096); err != nil {
+									return err
+								}
+								if err = conn.SetDeadline(time.Now().Add(defaultHttpTimeout)); err != nil {
+									return err
+								}
+								reader := bufio.NewReader(conn)
+								request, err := http.ReadRequest(reader)
+								if err != nil {
+									return err
+								}
+								if stream && (len(request.TransferEncoding) != 1 || request.TransferEncoding[0] != "chunked") {
+									return fmt.Errorf("expected a streamed upload, got %v", request.TransferEncoding)
+								}
+								if !stream && request.ContentLength != int64(len(upload)) {
+									return fmt.Errorf("unexpected upload length %d", request.ContentLength)
+								}
+								headers := fmt.Sprintf("HTTP/1.1 200 OK\r\nContent-Length: %d\r\n\r\n", len(body)+missing)
+								parts := []string{headers + body}
+								if fragmented {
+									parts = []string{"HTTP/1.1 200 OK\r\nContent-Len",
+										fmt.Sprintf("gth: %d\r\n\r\n", len(body)+missing) + body[:len(body)/2]}
+									if len(body) != 0 {
+										parts = append(parts, body[len(body)/2:])
+									}
+								}
+								// Respond before consuming the request body. Keep the read
+								// direction open after FIN to avoid resetting unread uploads.
+								for i, part := range parts {
+									if _, err = io.WriteString(conn, part); err != nil {
+										return err
+									}
+									if i < len(parts)-1 {
+										time.Sleep(100 * time.Millisecond)
+									}
+								}
+								if err = conn.(*net.TCPConn).CloseWrite(); err != nil {
+									return err
+								}
+								// Drain while the client handles FIN, then stop cleanup
+								// independently of upload-side TCP completion.
+								go func() {
+									<-clientFinished
+									conn.Close()
+								}()
+								n, err := io.Copy(io.Discard, reader)
+								if err != nil && !errors.Is(err, syscall.ECONNRESET) && !errors.Is(err, net.ErrClosed) {
+									return err
+								}
+								if n >= int64(len(upload)) {
+									return fmt.Errorf("response did not interrupt the upload: received %d bytes", n)
+								}
+								return nil
+							}()
+						}()
+						options := ""
+						if stream {
+							options = "stream tx-delay 0.01"
+						}
+						started := time.Now()
+						output := vpp.Vppctl("http cli client %s method post file %s fifo-size 4 uri http://%s/test",
+							options, file, listener.Addr().String())
+						elapsed := time.Since(started)
+						close(clientFinished)
+						AssertNil(<-finished)
+						AssertNotContains(output, "timeout")
+						AssertEqual(true, elapsed < defaultHttpTimeout/2, "FIN must close the reply before its timeout")
+						if missing != 0 {
+							AssertContains(output, "transport closed")
+						} else {
+							AssertEqual(body, strings.TrimSpace(output))
+						}
+					}()
+				}
+			}
+		}
+	}
+	AssertNotContains(vpp.Vppctl("show http stats"), "connections timeout")
 }
 
 func HttpCliClientStreamWireTest(s *Http1Suite) {
@@ -2391,25 +2513,17 @@ func HttpInvalidRequestLineTest(s *Http1Suite) {
 	serverAddress := s.VppAddr() + ":" + s.Ports.Http
 	vpp.Vppctl("http cli server uri http://" + serverAddress)
 
-	resp, err := TcpSendReceive(serverAddress, " GET / HTTP/1.1")
+	resp, err := TcpSendReceive(serverAddress, " GET / HTTP/1.1\r\n\r\n")
 	AssertNil(err, fmt.Sprint(err))
 	AssertContains(resp, "HTTP/1.1 400 Bad Request", "invalid request line start not allowed")
 
-	resp, err = TcpSendReceive(serverAddress, "\rGET / HTTP/1.1")
+	resp, err = TcpSendReceive(serverAddress, "\rGET / HTTP/1.1\r\n\r\n")
 	AssertNil(err, fmt.Sprint(err))
 	AssertContains(resp, "HTTP/1.1 400 Bad Request", "invalid request line start not allowed")
 
-	resp, err = TcpSendReceive(serverAddress, "\nGET / HTTP/1.1")
+	resp, err = TcpSendReceive(serverAddress, "\nGET / HTTP/1.1\r\n\r\n")
 	AssertNil(err, fmt.Sprint(err))
 	AssertContains(resp, "HTTP/1.1 400 Bad Request", "invalid request line start not allowed")
-
-	resp, err = TcpSendReceive(serverAddress, "GET / HTTP/1.1")
-	AssertNil(err, fmt.Sprint(err))
-	AssertContains(resp, "HTTP/1.1 400 Bad Request", "invalid framing not allowed")
-
-	resp, err = TcpSendReceive(serverAddress, "GET / HTTP/1.1\r\n")
-	AssertNil(err, fmt.Sprint(err))
-	AssertContains(resp, "HTTP/1.1 400 Bad Request", "invalid framing not allowed")
 
 	resp, err = TcpSendReceive(serverAddress, "GET /\r\n\r\n")
 	AssertNil(err, fmt.Sprint(err))
@@ -2438,6 +2552,202 @@ func HttpInvalidRequestLineTest(s *Http1Suite) {
 	resp, err = TcpSendReceive(serverAddress, "/\r\n\r\n")
 	AssertNil(err, fmt.Sprint(err))
 	AssertContains(resp, "HTTP/1.1 400 Bad Request")
+}
+
+// HttpIncrementalRequestLineTest requires errors to be detected without waiting
+// for a request-line terminator, with enough FIFO space to expose the URI limit.
+func HttpIncrementalRequestLineTest(s *Http1Suite) {
+	vpp := s.Containers.Vpp.VppInstance
+	address := net.JoinHostPort(s.VppAddr(), s.Ports.Http)
+	vpp.Vppctl("http static server uri tcp://%s url-handlers fifo-size 128k", address)
+	for _, test := range []struct {
+		fragments []string
+		status    int
+	}{
+		{[]string{"g"}, http.StatusBadRequest},
+		{[]string{"Z"}, http.StatusNotImplemented},
+		{[]string{"G", "ETX"}, http.StatusNotImplemented},
+		{[]string{"P", "X"}, http.StatusNotImplemented},
+		{[]string{"CONNECT", "-"}, http.StatusNotImplemented},
+		{[]string{"GET ", " "}, http.StatusBadRequest},
+		{[]string{"GET /version.json ", "HTX"}, http.StatusBadRequest},
+		{[]string{"GET /version.json HTTP/", "2"}, http.StatusHTTPVersionNotSupported},
+		{[]string{"GET /version.json HTTP/1.1", "x"}, http.StatusBadRequest},
+		{[]string{"GET /version.json HTTP/1.1\r", "X"}, http.StatusBadRequest},
+		{[]string{"GET /", strings.Repeat("x", 65535)}, http.StatusBadRequest},
+	} {
+		Log("Early request-line rejection: prefix %q, status %d", test.fragments[0], test.status)
+		func() {
+			conn, err := net.DialTimeout("tcp", address, defaultHttpTimeout)
+			AssertNil(err)
+			defer conn.Close()
+			for i, fragment := range test.fragments {
+				AssertNil(conn.SetWriteDeadline(time.Now().Add(defaultHttpTimeout)))
+				_, err = io.WriteString(conn, fragment)
+				AssertNil(err)
+				if i < len(test.fragments)-1 {
+					AssertNil(conn.SetReadDeadline(time.Now().Add(100 * time.Millisecond)))
+					var b [1]byte
+					n, readErr := conn.Read(b[:])
+					AssertEqual(0, n)
+					timeout, ok := readErr.(net.Error)
+					AssertEqual(true, ok && timeout.Timeout(), fmt.Sprint(readErr))
+				}
+			}
+			AssertNil(conn.SetReadDeadline(time.Now().Add(2 * time.Second)))
+			response, err := http.ReadResponse(bufio.NewReader(conn), nil)
+			AssertNil(err)
+			AssertHttpStatus(response, test.status)
+			AssertNil(response.Body.Close())
+		}()
+	}
+	// Reuse the connection while crossing every single split position of
+	// representative request lines, then deliver each line byte by byte.
+	conn, err := net.DialTimeout("tcp", address, defaultHttpTimeout)
+	AssertNil(err)
+	defer conn.Close()
+	reader := bufio.NewReader(conn)
+	var expectedBody string
+	check := func(parts []string) {
+		for i, part := range parts {
+			AssertNil(conn.SetWriteDeadline(time.Now().Add(defaultHttpTimeout)))
+			_, err := io.WriteString(conn, part)
+			AssertNil(err)
+			if i < len(parts)-1 {
+				AssertNil(conn.SetReadDeadline(time.Now().Add(100 * time.Millisecond)))
+				var b [1]byte
+				n, readErr := conn.Read(b[:])
+				AssertEqual(0, n)
+				timeout, ok := readErr.(net.Error)
+				AssertEqual(true, ok && timeout.Timeout(), fmt.Sprint(readErr))
+			}
+		}
+		AssertNil(conn.SetReadDeadline(time.Now().Add(defaultHttpTimeout)))
+		response, err := http.ReadResponse(reader, nil)
+		AssertNil(err)
+		AssertHttpStatus(response, http.StatusOK)
+		body, err := io.ReadAll(response.Body)
+		AssertNil(err)
+		AssertNil(response.Body.Close())
+		if expectedBody == "" {
+			expectedBody = string(body)
+			AssertContains(expectedBody, "build_date")
+		}
+		AssertEqual(expectedBody, string(body))
+	}
+	headers := "Host: example.com\r\n\r\n"
+	for _, line := range []string{
+		"GET /version.json?x=a?b HTTP/1.1\r\n",
+		"\r\nGET /version.json?x=a?b HTTP/1.1\r\n",
+		"GET http://example.com/version.json?x=a?b HTTP/1.1\r\n",
+		"GET /version.json HTTP/1.0\r\n",
+	} {
+		Log("Request-line fragmentation invariance: %q", line)
+		check([]string{line + headers})
+		for split := 1; split < len(line); split++ {
+			check([]string{line[:split], line[split:] + headers})
+		}
+		parts := make([]string, 0, len(line)+1)
+		for _, c := range line {
+			parts = append(parts, string(c))
+		}
+		check(append(parts, headers))
+	}
+	// The total target length includes path, '?' and query. Cross both the
+	// u16 limit and a FIFO chunk boundary while keeping headers within limits.
+	for _, length := range []int{65534, 65535} {
+		target := "/version.json?x=" + strings.Repeat("x", length-len("/version.json?x="))
+		check([]string{"GET " + target + " HTTP/1.1\r\n" + headers})
+		check([]string{"GET " + target[:len(target)-1], target[len(target)-1:] + " HTTP/1.1\r\n" + headers})
+	}
+
+	// Put both field-line and final CRLF at bounded header-scan edges.
+	for _, boundary := range []int{253, 254, 255, 256, 257} {
+		fields := "Host: example.com\r\nX-Pad: "
+		fields += strings.Repeat("x", boundary-len(fields))
+		check([]string{"GET /version.json HTTP/1.1\r\n" + fields + "\r\n\r\n"})
+	}
+
+	// Exercise ambiguous P prefixes and retain a coalesced body after CRLF.
+	echoAddress := net.JoinHostPort(s.VppAddr(), s.Ports.Https)
+	vpp.Vppctl("http cli server uri http://%s", echoAddress)
+	echo, err := net.DialTimeout("tcp", echoAddress, defaultHttpTimeout)
+	AssertNil(err)
+	defer echo.Close()
+	echoReader := bufio.NewReader(echo)
+	for _, method := range []string{"GET", "POST", "PUT"} {
+		request := method + " /echo?x=a?b HTTP/1.1\r\nHost: example.com\r\nContent-Length: 4\r\n\r\nbody"
+		for split := 1; split <= len(method)+1; split++ {
+			AssertNil(echo.SetWriteDeadline(time.Now().Add(defaultHttpTimeout)))
+			_, err = io.WriteString(echo, request[:split])
+			AssertNil(err)
+			AssertNil(echo.SetReadDeadline(time.Now().Add(100 * time.Millisecond)))
+			var b [1]byte
+			n, readErr := echo.Read(b[:])
+			AssertEqual(0, n)
+			timeout, ok := readErr.(net.Error)
+			AssertEqual(true, ok && timeout.Timeout(), fmt.Sprint(readErr))
+			_, err = io.WriteString(echo, request[split:])
+			AssertNil(err)
+			AssertNil(echo.SetReadDeadline(time.Now().Add(defaultHttpTimeout)))
+			response, err := http.ReadResponse(echoReader, nil)
+			AssertNil(err)
+			AssertHttpStatus(response, http.StatusOK)
+			AssertHttpBody(response, "body")
+			AssertNil(response.Body.Close())
+		}
+	}
+}
+
+// HttpFragmentedH2PrefaceTest keeps an undecided method prefix intact when
+// handing a cleartext HTTP/2 prior-knowledge connection to the HTTP/2 parser.
+func HttpFragmentedH2PrefaceTest(s *Http1Suite) {
+	vpp := s.Containers.Vpp.VppInstance
+	address := net.JoinHostPort(s.VppAddr(), s.Ports.Http)
+	vpp.Vppctl("http static server uri tcp://%s url-handlers", address)
+	check := func(parts []string) {
+		conn, err := net.DialTimeout("tcp", address, defaultHttpTimeout)
+		AssertNil(err)
+		defer conn.Close()
+		AssertNil(conn.SetWriteDeadline(time.Now().Add(defaultHttpTimeout)))
+		for i, fragment := range parts {
+			_, err = io.WriteString(conn, fragment)
+			AssertNil(err)
+			if i < len(parts)-1 {
+				AssertNil(conn.SetReadDeadline(time.Now().Add(100 * time.Millisecond)))
+				var b [1]byte
+				n, readErr := conn.Read(b[:])
+				AssertEqual(0, n)
+				timeout, ok := readErr.(net.Error)
+				AssertEqual(true, ok && timeout.Timeout(), fmt.Sprint(readErr))
+			}
+		}
+		AssertNil(conn.SetReadDeadline(time.Now().Add(defaultHttpTimeout)))
+		framer := http2.NewFramer(conn, conn)
+		AssertNil(framer.WriteSettings(http2.Setting{ID: http2.SettingEnablePush, Val: 0}))
+		for range 4 {
+			frame, err := framer.ReadFrame()
+			AssertNil(err)
+			if settings, ok := frame.(*http2.SettingsFrame); ok {
+				if settings.IsAck() {
+					return
+				}
+				AssertNil(framer.WriteSettingsAck())
+			}
+		}
+		Fail("HTTP/2 did not acknowledge SETTINGS after the fragmented preface")
+	}
+	check([]string{http2.ClientPreface})
+	for split := 1; split < len(http2.ClientPreface); split++ {
+		Log("HTTP/2 preface split at %d", split)
+		check([]string{http2.ClientPreface[:split], http2.ClientPreface[split:]})
+	}
+	parts := make([]string, 0, len(http2.ClientPreface))
+	for _, c := range http2.ClientPreface {
+		parts = append(parts, string(c))
+	}
+	check(parts)
+	AssertNotContains(vpp.Vppctl("show http stats"), "connections protocol error")
 }
 
 func HttpTimerSessionDisable(s *Http1Suite) {
@@ -2818,11 +3128,7 @@ func HttpInvalidHeadersTest(s *Http1Suite) {
 	serverAddress := s.VppAddr() + ":" + s.Ports.Http
 	vpp.Vppctl("http cli server uri http://" + serverAddress)
 
-	resp, err := TcpSendReceive(serverAddress, "GET /show/version HTTP/1.1\r\nUser-Agent: test\r\n")
-	AssertNil(err, fmt.Sprint(err))
-	AssertContains(resp, "HTTP/1.1 400 Bad Request", "Header section must end with CRLF CRLF")
-
-	resp, err = TcpSendReceive(serverAddress, "GET /show/version HTTP/1.1\r\nHost:"+serverAddress+"\r\nUser@Agent:test\r\n\r\n")
+	resp, err := TcpSendReceive(serverAddress, "GET /show/version HTTP/1.1\r\nHost:"+serverAddress+"\r\nUser@Agent:test\r\n\r\n")
 	AssertNil(err, fmt.Sprint(err))
 	AssertContains(resp, "HTTP/1.1 400 Bad Request", "'@' not allowed in field name")
 
@@ -2899,6 +3205,72 @@ func HttpConnTimeoutTest(s *Http1Suite) {
 	o := vpp.Vppctl("show http stats")
 	Log(o)
 	AssertContains(o, "1 connections timeout")
+}
+
+// Cover the request-line substates and retained HTTP/2 magic as well as headers
+// with the same FIN, RST and inactivity-timeout matrix.
+var http1PartialRequestPrefixes = []string{
+	"G",
+	"P",
+	"PR",
+	"\r",
+	"\r\nG",
+	"GET /version.json?x=a",
+	"GET /version.json HTT",
+	"GET /version.json HTTP/1.",
+	"GET /version.json HTTP/1.1",
+	"GET /version.json HTTP/1.1\r",
+	"PRI * HTTP/2.0\r\n",
+	"GET /version.json HTTP/1.1\r\n",
+	"GET /version.json HTTP/1.1\r\nHost",
+	"GET /version.json HTTP/1.1\r\nHost: ",
+	"GET /version.json HTTP/1.1\r\nHost: example",
+	"GET /version.json HTTP/1.1\r\nHost: example.com\r",
+	"GET /version.json HTTP/1.1\r\nHost: example.com\r\n\r",
+	"GET /version.json HTTP/1.1\r\nHost: example.com\r\nX-Incomplete:",
+}
+
+// HttpIncompleteHeadersTimeoutTest checks that stalled partial requests expire.
+// Start a server with a two-second inactivity timeout, send each partial request,
+// verify it initially waits, then stop sending and expect EOF or a TCP reset.
+// Require one HTTP timeout per connection and no protocol errors.
+func HttpIncompleteHeadersTimeoutTest(s *Http1Suite) {
+	vpp := s.Containers.Vpp.VppInstance
+	address := net.JoinHostPort(s.VppAddr(), s.Ports.Http)
+	vpp.Vppctl("http static server uri tcp://%s url-handlers keepalive-timeout 2", address)
+	partials := http1PartialRequestPrefixes
+	for _, partial := range partials {
+		Log("Checking inactivity timeout for partial request %q", partial)
+		conn, err := net.DialTimeout("tcp", address, defaultHttpTimeout)
+		AssertNil(err)
+		func() {
+			defer conn.Close()
+			AssertNil(conn.SetWriteDeadline(time.Now().Add(defaultHttpTimeout)))
+			n, err := io.WriteString(conn, partial)
+			AssertNil(err)
+			AssertEqual(len(partial), n)
+
+			// Partial input must wait for more data rather than fail immediately.
+			AssertNil(conn.SetReadDeadline(time.Now().Add(100 * time.Millisecond)))
+			var b [1]byte
+			n, err = conn.Read(b[:])
+			AssertEqual(0, n)
+			timeout, ok := err.(net.Error)
+			AssertEqual(true, ok && timeout.Timeout())
+
+			// Send nothing else. The HTTP inactivity timer must close the
+			// connection before the client's longer read deadline expires.
+			AssertNil(conn.SetReadDeadline(time.Now().Add(defaultHttpTimeout)))
+			n, err = conn.Read(b[:])
+			AssertEqual(0, n)
+			// TCP may reset on close because the partial request is still unread.
+			AssertEqual(true, errors.Is(err, io.EOF) || errors.Is(err, syscall.ECONNRESET),
+				fmt.Sprintf("partial request was not closed by the server: %v", err))
+		}()
+	}
+	stats := vpp.Vppctl("show http stats")
+	AssertContains(stats, fmt.Sprintf("%d connections timeout", len(partials)))
+	AssertNotContains(stats, "connections protocol error")
 }
 
 func HttpIgnoreH2UpgradeTest(s *Http1Suite) {
@@ -3089,4 +3461,478 @@ func HttpTpsMemLeakTest(s *Http1Suite) {
 	traces2, err := vpp.GetMemoryTrace()
 	AssertNil(err, fmt.Sprint(err))
 	vpp.MemLeakCheck(traces1, traces2)
+}
+
+// HttpFragmentedHeadersTest checks that valid requests can span receive events.
+// Send a long URI query and large headers in fragments, splitting tokens and CRLF,
+// and repeat on the same connection. Expect no response until headers complete,
+// then a 200 response for each request, counted once, with no protocol errors.
+func HttpFragmentedHeadersTest(s *Http1Suite) {
+	vpp := s.Containers.Vpp.VppInstance
+	address := net.JoinHostPort(s.VppAddr(), s.Ports.Http)
+	vpp.Vppctl("http static server uri tcp://%s url-handlers fifo-size 64k", address)
+	conn, err := net.DialTimeout("tcp", address, defaultHttpTimeout)
+	AssertNil(err)
+	defer conn.Close()
+	reader := bufio.NewReader(conn)
+
+	// Repeat on the same connection to check that retrying header parsing does
+	// not leave stale offsets or headers for the next request.
+	for range 2 {
+		fragments := []string{
+			"\r", "\nG", "ET /version.json?padding=", strings.Repeat("x", 16*1024),
+			" HTTP/1.", "1\r", "\n", "Host", ":", " ", address, "\r", "\n",
+			"X-Large: ", strings.Repeat("x", 16*1024), "\r", "\nX-Last", ": ", "value", "\r", "\n", "\r", "\n",
+		}
+		for i, fragment := range fragments {
+			AssertNil(conn.SetWriteDeadline(time.Now().Add(defaultHttpTimeout)))
+			n, err := io.WriteString(conn, fragment)
+			AssertNil(err)
+			AssertEqual(len(fragment), n)
+			if i == len(fragments)-1 {
+				break
+			}
+			// Give VPP time to process each fragment and verify it neither
+			// responds nor closes the connection before the final CRLF.
+			AssertNil(conn.SetReadDeadline(time.Now().Add(100 * time.Millisecond)))
+			var b [1]byte
+			n, err = conn.Read(b[:])
+			AssertEqual(0, n, fmt.Sprintf("fragment %d (%q): received %q, err %v", i, fragment, b[:n], err))
+			timeout, ok := err.(net.Error)
+			AssertEqual(true, ok && timeout.Timeout(), fmt.Sprintf("fragment %d: %v", i, err))
+		}
+		AssertNil(conn.SetReadDeadline(time.Now().Add(defaultHttpTimeout)))
+		response, err := http.ReadResponse(reader, nil)
+		AssertNil(err)
+		AssertHttpStatus(response, http.StatusOK)
+		body, err := io.ReadAll(response.Body)
+		AssertNil(err)
+		AssertNil(response.Body.Close())
+		AssertContains(string(body), "build_date")
+	}
+	stats := vpp.Vppctl("show http stats")
+	AssertContains(stats, "2 requests received")
+	AssertNotContains(stats, "connections protocol error")
+}
+
+// Keep the server connection open until VPP closes it, so a server-side close
+// cannot hide a client that is stuck waiting for incomplete headers.
+func http1RawResponse(s *Http1Suite, fragments []string, expectRejection bool,
+	closeWrite ...bool) string {
+	address := net.JoinHostPort(s.HostAddr(), s.Ports.Http)
+	listener, err := net.Listen("tcp", address)
+	AssertNil(err)
+	defer listener.Close()
+	done := make(chan error)
+	go func() {
+		defer GinkgoRecover()
+		defer close(done)
+		conn, err := listener.Accept()
+		AssertNil(err)
+		defer conn.Close()
+		AssertNil(conn.SetDeadline(time.Now().Add(30 * time.Second)))
+		request, err := http.ReadRequest(bufio.NewReader(conn))
+		AssertNil(err)
+		AssertNil(request.Body.Close())
+		for i, fragment := range fragments {
+			n, err := io.WriteString(conn, fragment)
+			// A full-FIFO rejection can close the connection before the
+			// writer finishes sending bytes beyond the usable TCP window.
+			if err != nil && expectRejection {
+				timeout, ok := err.(net.Error)
+				AssertEqual(false, ok && timeout.Timeout())
+				return
+			}
+			AssertNil(err)
+			AssertEqual(len(fragment), n)
+			if i < len(fragments)-1 {
+				time.Sleep(100 * time.Millisecond)
+			}
+		}
+		if len(closeWrite) > 0 && closeWrite[0] {
+			AssertNil(conn.(*net.TCPConn).CloseWrite())
+		}
+		var b [1]byte
+		_, err = conn.Read(b[:])
+		if expectRejection {
+			AssertNotNil(err)
+			timeout, ok := err.(net.Error)
+			AssertEqual(false, ok && timeout.Timeout())
+		} else {
+			AssertEqual(io.EOF, err)
+		}
+	}()
+	output := s.Containers.Vpp.VppInstance.Vppctl("http cli client fifo-size 64 uri http://%s/test", address)
+	AssertChannelClosed(30*time.Second, done)
+	return output
+}
+
+// HttpClientFragmentedHeadersTest checks client parsing of fragmented responses.
+// Have a raw TCP server split a long status line, large headers, and the body,
+// then send a separate response with an empty header section split across writes.
+// Expect the complete body or 404 status, each response counted once, and no protocol errors.
+func HttpClientFragmentedHeadersTest(s *Http1Suite) {
+	body := "fragmented response body"
+	fragments := []string{
+		"H", "TTP/1.1 200 ", strings.Repeat("x", 4*1024), "\r", "\n",
+		"Content-Len", "gth:", " ", fmt.Sprint(len(body)), "\r", "\n",
+		"X-Large: ", strings.Repeat("x", 16*1024), "\r", "\nX-Last", ": ", "value", "\r", "\n", "\r",
+		"\n" + body[:8], body[8:],
+	}
+	AssertContains(http1RawResponse(s, fragments, false), body)
+
+	// No header fields: both bytes of the empty header section arrive later
+	// than the complete status line. Use an error status with no response body.
+	output := http1RawResponse(s, []string{"HTTP/1.1 404 Not Found\r\n", "\r", "\n"}, false)
+	AssertContains(output, "request failed, response code:")
+	AssertContains(output, "404")
+	// Cross bounded lookahead edges in both status-line and header scans,
+	// with the complete body already available in the same transport burst.
+	for _, boundary := range []int{253, 254, 255, 256, 257} {
+		fields := fmt.Sprintf("Content-Length: %d\r\nX-Pad: ", len(body))
+		fields += strings.Repeat("x", boundary-len(fields))
+		output := http1RawResponse(s, []string{"HTTP/1.1 200 OK\r\n" + fields + "\r\n\r\n" + body}, false)
+		AssertContains(output, body)
+	}
+	for _, boundary := range []int{255, 256, 257} {
+		line := "HTTP/1.1 200 "
+		line += strings.Repeat("x", boundary-len(line)) + "\r\n"
+		fields := fmt.Sprintf("Content-Length: %d\r\n\r\n", len(body))
+		AssertContains(http1RawResponse(s, []string{line + fields + body}, false), body)
+	}
+	stats := s.Containers.Vpp.VppInstance.Vppctl("show http stats")
+	AssertContains(stats, "10 responses received")
+	AssertNotContains(stats, "connections protocol error")
+}
+
+// The HTTP transport's default RX FIFO size (http_transport_init).
+const http1TransportFifoSize = 512 * 1024
+
+// HttpIncompleteHeadersFullFifoTest checks prompt rejection when no more header bytes can arrive.
+// Start a server and fill its usable transport RX capacity with an unfinished
+// request line, header name, or header value. Expect a 431 response before the
+// client deadline and one protocol error for each rejected connection.
+func HttpIncompleteHeadersFullFifoTest(s *Http1Suite) {
+	vpp := s.Containers.Vpp.VppInstance
+	address := net.JoinHostPort(s.VppAddr(), s.Ports.Http)
+	vpp.Vppctl("http cli server uri http://%s", address)
+	for _, prefix := range []string{
+		"GET /",
+		"GET /show/version HTTP/1.1\r\nHost: example.com\r\nX-Long-Name",
+		"GET /show/version HTTP/1.1\r\nHost: example.com\r\nX-Long-Value: ",
+	} {
+		conn, err := net.DialTimeout("tcp", address, defaultHttpTimeout)
+		AssertNil(err)
+		func() {
+			defer conn.Close()
+			AssertNil(conn.SetDeadline(time.Now().Add(defaultHttpTimeout)))
+			message := prefix + strings.Repeat("x", http1TransportFifoSize-len(prefix))
+			n, err := io.WriteString(conn, message)
+			if err != nil {
+				// The server can reject the request before all queued bytes
+				// have been sent. Still require its 431 response below.
+				timeout, ok := err.(net.Error)
+				AssertEqual(false, ok && timeout.Timeout())
+			} else {
+				AssertEqual(len(message), n)
+			}
+			response, err := http.ReadResponse(bufio.NewReader(conn), nil)
+			AssertNil(err)
+			AssertHttpStatus(response, http.StatusRequestHeaderFieldsTooLarge)
+			AssertNil(response.Body.Close())
+		}()
+	}
+	AssertContains(vpp.Vppctl("show http stats"), "3 connections protocol error")
+}
+
+// HttpClientIncompleteHeadersFullFifoTest checks the corresponding client rejection path.
+// Have a raw TCP server fill the client's usable transport RX capacity with an
+// unfinished status line, header name, or header value, then wait for VPP to close.
+// Expect transport-closed errors rather than timeouts, and one protocol error per connection.
+func HttpClientIncompleteHeadersFullFifoTest(s *Http1Suite) {
+	for _, prefix := range []string{
+		"HTTP/1.1 200 ",
+		"HTTP/1.1 200 OK\r\nX-Long-Name",
+		"HTTP/1.1 200 OK\r\nX-Long-Value: ",
+	} {
+		message := prefix + strings.Repeat("x", http1TransportFifoSize-len(prefix))
+		output := http1RawResponse(s, []string{message}, true)
+		AssertContains(output, "transport closed")
+		AssertNotContains(output, "timeout")
+	}
+	AssertContains(s.Containers.Vpp.VppInstance.Vppctl("show http stats"), "3 connections protocol error")
+}
+
+// HttpPartialRequestPeerResetTest checks that a reset during the first partial
+// request does not notify the application before its session is accepted.
+func HttpPartialRequestPeerResetTest(s *Http1Suite) {
+	vpp := s.Containers.Vpp.VppInstance
+	address := net.JoinHostPort(s.VppAddr(), s.Ports.Http)
+	vpp.Vppctl("http static server uri tcp://%s url-handlers", address)
+	for i, partial := range http1PartialRequestPrefixes {
+		Log("Checking RST for partial request %q", partial)
+		func() {
+			conn, err := net.DialTimeout("tcp", address, defaultHttpTimeout)
+			AssertNil(err)
+			defer conn.Close()
+			AssertNil(conn.SetWriteDeadline(time.Now().Add(defaultHttpTimeout)))
+			_, err = io.WriteString(conn, partial)
+			AssertNil(err)
+			AssertNil(conn.SetReadDeadline(time.Now().Add(100 * time.Millisecond)))
+			var b [1]byte
+			n, readErr := conn.Read(b[:])
+			AssertEqual(0, n)
+			timeout, ok := readErr.(net.Error)
+			AssertEqual(true, ok && timeout.Timeout(), fmt.Sprint(readErr))
+			AssertNil(conn.(*net.TCPConn).SetLinger(0))
+			AssertNil(conn.Close())
+		}()
+		expected := fmt.Sprintf("%d connections reset by peer", i+1)
+		var stats string
+		for range 20 {
+			stats = vpp.Vppctl("show http stats")
+			if strings.Contains(stats, expected) {
+				break
+			}
+			time.Sleep(50 * time.Millisecond)
+		}
+		AssertContains(stats, expected)
+		AssertNotContains(stats, "connections accepted")
+		AssertNotContains(stats, "connections protocol error")
+	}
+}
+
+// HttpPartialRequestPeerFinTest checks that FIN during an unaccepted request
+// closes promptly and frees the pending session without notifying the app.
+func HttpPartialRequestPeerFinTest(s *Http1Suite) {
+	vpp := s.Containers.Vpp.VppInstance
+	address := net.JoinHostPort(s.VppAddr(), s.Ports.Http)
+	vpp.Vppctl("http static server uri tcp://%s url-handlers", address)
+	baseline := vpp.Vppctl("show session")
+	for _, partial := range http1PartialRequestPrefixes {
+		Log("Checking FIN for partial request %q", partial)
+		func() {
+			conn, err := net.DialTimeout("tcp", address, defaultHttpTimeout)
+			AssertNil(err)
+			defer conn.Close()
+			AssertNil(conn.SetWriteDeadline(time.Now().Add(defaultHttpTimeout)))
+			n, err := io.WriteString(conn, partial)
+			AssertNil(err)
+			AssertEqual(len(partial), n)
+
+			// Give RX processing time to stage the unpublished bytes. The
+			// server must wait for more input until the peer sends FIN.
+			AssertNil(conn.SetReadDeadline(time.Now().Add(100 * time.Millisecond)))
+			var b [1]byte
+			n, err = conn.Read(b[:])
+			AssertEqual(0, n)
+			timeout, ok := err.(net.Error)
+			AssertEqual(true, ok && timeout.Timeout(), fmt.Sprint(err))
+			AssertNil(conn.(*net.TCPConn).CloseWrite())
+			AssertNil(conn.SetReadDeadline(time.Now().Add(2 * time.Second)))
+			n, err = conn.Read(b[:])
+			AssertEqual(0, n)
+			AssertEqual(io.EOF, err)
+		}()
+
+		// Include the pending application session in the cleanup check,
+		// not just the transport connection observed by the peer.
+		var sessions string
+		for range 20 {
+			sessions = vpp.Vppctl("show session")
+			if sessions == baseline {
+				break
+			}
+			time.Sleep(50 * time.Millisecond)
+		}
+		AssertEqual(baseline, sessions)
+	}
+	stats := vpp.Vppctl("show http stats")
+	AssertNotContains(stats, "connections accepted")
+	AssertNotContains(stats, "connections timeout")
+	AssertNotContains(stats, "connections protocol error")
+}
+
+// HttpPartialRequestListenerRemovedTest checks that completing a partial first
+// request cannot accept a session after its listener has been removed.
+func HttpPartialRequestListenerRemovedTest(s *Http1Suite) {
+	vpp := s.Containers.Vpp.VppInstance
+	address := net.JoinHostPort(s.VppAddr(), s.Ports.Http)
+	// Keep another listener so removing the tested listener does not detach
+	// the app and close its sessions through the application cleanup path.
+	otherAddress := net.JoinHostPort(s.VppAddr(), s.Ports.Https)
+	AssertEqual("", vpp.Vppctl("http cli server uri http://%s", otherAddress))
+	baseline := vpp.Vppctl("show session")
+	request := "GET /show/version HTTP/1.1\r\nHost: example.com\r\n\r\n"
+	for _, split := range []int{
+		len("GET /show/"),
+		strings.Index(request, "Host"),
+		strings.Index(request, "Host") + 2,
+		len(request) - 4,
+		len(request) - 1,
+	} {
+		Log("Removing listener after partial request %q", request[:split])
+		AssertEqual("", vpp.Vppctl("http cli server listener add uri http://%s", address))
+		func() {
+			conn, err := net.DialTimeout("tcp", address, defaultHttpTimeout)
+			AssertNil(err)
+			defer conn.Close()
+			AssertNil(conn.SetWriteDeadline(time.Now().Add(defaultHttpTimeout)))
+			_, err = io.WriteString(conn, request[:split])
+			AssertNil(err)
+			AssertNil(conn.SetReadDeadline(time.Now().Add(100 * time.Millisecond)))
+			var b [1]byte
+			n, err := conn.Read(b[:])
+			AssertEqual(0, n)
+			timeout, ok := err.(net.Error)
+			AssertEqual(true, ok && timeout.Timeout(), fmt.Sprint(err))
+			AssertContains(vpp.Vppctl("show session verbose 2 proto http state accepting"),
+				"session: state: accepting")
+
+			AssertEqual("", vpp.Vppctl("http cli server listener del uri http://%s", address))
+			AssertNotContains(vpp.Vppctl("show session verbose proto http state listening"), address)
+			_, err = io.WriteString(conn, request[split:])
+			AssertNil(err)
+			AssertNil(conn.SetReadDeadline(time.Now().Add(2 * time.Second)))
+			n, err = conn.Read(b[:])
+			AssertEqual(0, n, "removed listener must not receive a request or send a response")
+			AssertEqual(io.EOF, err)
+		}()
+
+		// This active close retains the transport and pending app session
+		// until TCP's ten-second TIME_WAIT expires and invokes cleanup.
+		var sessions string
+		for range 75 {
+			sessions = vpp.Vppctl("show session")
+			if sessions == baseline {
+				break
+			}
+			time.Sleep(200 * time.Millisecond)
+		}
+		AssertEqual(baseline, sessions, "pending transport and app sessions must be freed")
+	}
+	stats := vpp.Vppctl("show http stats")
+	AssertNotContains(stats, "connections accepted")
+	AssertNotContains(stats, "responses sent")
+	AssertNotContains(stats, "connections timeout")
+	AssertNotContains(stats, "connections protocol error")
+
+	// The application and its other listener remain usable.
+	client := NewHttpClient(defaultHttpTimeout, false)
+	defer client.CloseIdleConnections()
+	response, err := client.Get("http://" + otherAddress + "/show/version")
+	AssertNil(err)
+	defer response.Body.Close()
+	AssertHttpStatus(response, http.StatusOK)
+	_, err = io.Copy(io.Discard, response.Body)
+	AssertNil(err)
+	AssertContains(vpp.Vppctl("show http stats"), "1 connections accepted")
+}
+
+// HttpClientPartialResponseFinTest checks that FIN during response headers
+// closes the pending request promptly instead of waiting for its timeout.
+func HttpClientPartialResponseFinTest(s *Http1Suite) {
+	output := http1RawResponse(s, []string{"HTTP/1.1 200 OK\r\n"}, true, true)
+	AssertContains(output, "transport closed")
+	AssertNotContains(output, "timeout")
+	AssertContains(s.Containers.Vpp.VppInstance.Vppctl("show http stats"),
+		"1 connections protocol error")
+}
+
+// HttpHeaderListSizeLimitTest checks request and response boundaries with the
+// final empty line arriving together, separately, or with CR and LF split.
+func HttpHeaderListSizeLimitTest(s *Http1Suite) {
+	vpp := s.Containers.Vpp.VppInstance
+	address := net.JoinHostPort(s.VppAddr(), s.Ports.Http)
+	vpp.Vppctl("http static server uri tcp://%s url-handlers", address)
+
+	const limit = 128
+	fragments := func(prefix, body string, split int) []string {
+		switch split {
+		case 0:
+			return []string{prefix + "\r\n" + body}
+		case 1:
+			return []string{prefix, "\r\n" + body}
+		default:
+			return []string{prefix + "\r", "\n" + body}
+		}
+	}
+	for _, size := range []int{limit - 1, limit, limit + 1} {
+		for split := range 3 {
+			Log("request headers: %d bytes, terminator split %d", size, split)
+			func() {
+				conn, err := net.DialTimeout("tcp", address, defaultHttpTimeout)
+				AssertNil(err)
+				defer conn.Close()
+				fields := "Host: example.com\r\nX-Limit: "
+				fields += strings.Repeat("x", size-len(fields)-2) + "\r\n"
+				AssertEqual(size, len(fields))
+				parts := fragments("GET /version.json HTTP/1.1\r\n"+fields, "", split)
+				if size > limit {
+					// Reject oversized fields without waiting for a missing terminator.
+					parts = parts[:1]
+				}
+				for i, part := range parts {
+					AssertNil(conn.SetWriteDeadline(time.Now().Add(defaultHttpTimeout)))
+					_, err = io.WriteString(conn, part)
+					AssertNil(err)
+					if i < len(parts)-1 {
+						AssertNil(conn.SetReadDeadline(time.Now().Add(100 * time.Millisecond)))
+						var b [1]byte
+						n, readErr := conn.Read(b[:])
+						AssertEqual(0, n)
+						timeout, ok := readErr.(net.Error)
+						AssertEqual(true, ok && timeout.Timeout(), fmt.Sprint(readErr))
+					}
+				}
+				AssertNil(conn.SetReadDeadline(time.Now().Add(defaultHttpTimeout)))
+				response, err := http.ReadResponse(bufio.NewReader(conn), nil)
+				AssertNil(err)
+				status := http.StatusOK
+				if size > limit {
+					status = http.StatusRequestHeaderFieldsTooLarge
+				}
+				AssertHttpStatus(response, status)
+				AssertNil(response.Body.Close())
+			}()
+
+			Log("response headers: %d bytes, terminator split %d", size, split)
+			body := "limit-ok"
+			fields := fmt.Sprintf("Content-Length: %d\r\nX-Limit: ", len(body))
+			fields += strings.Repeat("x", size-len(fields)-2) + "\r\n"
+			AssertEqual(size, len(fields))
+			parts := fragments("HTTP/1.1 200 OK\r\n"+fields, body, split)
+			if size > limit {
+				parts = parts[:1]
+			}
+			output := http1RawResponse(s, parts, size > limit)
+			if size > limit {
+				AssertContains(output, "transport closed")
+				AssertNotContains(output, "timeout")
+			} else {
+				AssertEqual(body, strings.TrimSpace(output))
+			}
+		}
+	}
+}
+
+// HttpOversizedHeaderNameTest checks that an overflowing u16 name length
+// cannot make a long name match the Content-Length prefix.
+func HttpOversizedHeaderNameTest(s *Http1Suite) {
+	vpp := s.Containers.Vpp.VppInstance
+	address := net.JoinHostPort(s.VppAddr(), s.Ports.Http)
+	vpp.Vppctl("http static server uri tcp://%s url-handlers", address)
+
+	conn, err := net.DialTimeout("tcp", address, defaultHttpTimeout)
+	AssertNil(err)
+	defer conn.Close()
+	AssertNil(conn.SetDeadline(time.Now().Add(defaultHttpTimeout)))
+	request := "GET /version.json HTTP/1.1\r\nHost: example.com\r\nContent-Length" +
+		strings.Repeat("x", 65536) + ": invalid\r\n\r\n"
+	_, err = io.WriteString(conn, request)
+	AssertNil(err)
+	response, err := http.ReadResponse(bufio.NewReader(conn), nil)
+	AssertNil(err)
+	AssertHttpStatus(response, http.StatusRequestHeaderFieldsTooLarge)
+	AssertNil(response.Body.Close())
 }
