@@ -24,6 +24,7 @@
 #include <vnet/fib/fib_entry_src.h>
 #include <vnet/fib/fib_path_list.h>
 #include <vnet/fib/fib_table.h>
+#include <vnet/mfib/mfib_entry.h>
 #include <vnet/mfib/mfib_table.h>
 #include <vnet/ip/ip6_ll_table.h>
 #include <vnet/ip-neighbor/ip_neighbor.h>
@@ -1361,7 +1362,24 @@ lcp_router_route_del (struct rtnl_route *rr)
   rtnl_route_foreach_nexthop (rr, lcp_router_route_path_parse, &np);
   lcp_router_route_path_add_special (rr, &np);
 
-  if (0 != vec_len (np.paths))
+  if (RTN_MULTICAST == rtype)
+    {
+      mfib_prefix_t mpfx = {};
+      fib_node_index_t mfei;
+
+      lcp_router_route_mk_mprefix (rr, &mpfx);
+
+      if (0 != vec_len (np.paths))
+	mfib_table_entry_paths_remove (nlt->nlt_mfib_index, &mpfx, MFIB_SOURCE_PLUGIN_LOW,
+				       np.paths);
+
+      mfei = mfib_table_lookup_exact_match (nlt->nlt_mfib_index, &mpfx);
+
+      if (FIB_NODE_INDEX_INVALID != mfei && mfib_entry_is_sourced (mfei, MFIB_SOURCE_PLUGIN_LOW) &&
+	  (0 == vec_len (np.paths) || 0 == mfib_entry_get_n_paths (mfei, MFIB_SOURCE_PLUGIN_LOW)))
+	mfib_table_entry_delete (nlt->nlt_mfib_index, &mpfx, MFIB_SOURCE_PLUGIN_LOW);
+    }
+  else if (0 != vec_len (np.paths))
     {
       fib_source_t fib_src;
 
