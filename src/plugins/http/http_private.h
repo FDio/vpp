@@ -432,6 +432,7 @@ typedef struct http_ctx_
 	  /* http1 */
 	  u32 body_offset;
 	  u32 rx_buf_offset; /* current offset during parsing */
+	  u8 http1_parse_state;
 	  u32 target_authority_offset;
 	  u32 target_authority_len;
 	  u32 host_header_index;
@@ -532,6 +533,8 @@ typedef struct http_main_
   u64 add_seg_size;
   u32 fifo_size;
 
+  /* http/1 */
+  u32 h1_max_header_list_size;
   /* http/2 */
   http_conn_settings_t h2_settings;
   /* http/3 */
@@ -962,6 +965,29 @@ http_io_as_max_write (http_ctx_t *req)
 }
 
 always_inline u32
+http_io_as_rx_fifo_size (http_ctx_t *req)
+{
+  session_t *as = session_get (req->c_s_index, req->c_thread_index);
+  return svm_fifo_max_dequeue_prod (as->rx_fifo);
+}
+
+always_inline u32
+http_io_as_rx_peek (http_ctx_t *req, u32 offset, u32 len, u8 *buf)
+{
+  session_t *as = session_get (req->c_s_index, req->c_thread_index);
+  int n_read = svm_fifo_peek (as->rx_fifo, offset, len, buf);
+  ASSERT (n_read == len);
+  return (u32) n_read;
+}
+
+always_inline void
+http_io_as_rx_overwrite_head (http_ctx_t *req, u8 *buf, u32 len)
+{
+  session_t *as = session_get (req->c_s_index, req->c_thread_index);
+  svm_fifo_overwrite_head (as->rx_fifo, buf, len);
+}
+
+always_inline u32
 http_io_as_max_read (http_ctx_t *req)
 {
   session_t *as = session_get (req->c_s_index, req->c_thread_index);
@@ -1088,6 +1114,17 @@ http_io_ts_read (http_ctx_t *hc, u8 *buf, u32 len, u8 peek)
     }
 
   n_read = svm_fifo_dequeue (ts->rx_fifo, len, buf);
+  ASSERT (n_read == len);
+  return (u32) n_read;
+}
+
+always_inline u32
+http_io_ts_peek (http_ctx_t *hc, u32 offset, u32 len, u8 *buf)
+{
+  int n_read;
+  session_t *ts = session_get_from_handle (hc->hc_tc_session_handle);
+
+  n_read = svm_fifo_peek (ts->rx_fifo, offset, len, buf);
   ASSERT (n_read == len);
   return (u32) n_read;
 }
@@ -1248,10 +1285,9 @@ http_conn_upgrade_version (http_ctx_t *hc, http_version_t new_version)
 }
 
 always_inline int
-http_conn_accept_request (http_ctx_t *hc, http_ctx_t *req, u8 is_stream)
+http_conn_prepare_request (http_ctx_t *hc, http_ctx_t *req, u8 is_stream)
 {
   session_t *as, *asl, *asp;
-  app_worker_t *app_wrk;
   int rv;
 
   HTTP_DBG (1, "hc [%u]%x req %x", hc->c_thread_index, hc->hc_hc_index,
@@ -1275,8 +1311,6 @@ http_conn_accept_request (http_ctx_t *hc, http_ctx_t *req, u8 is_stream)
     {
       as->listener_handle = hc->hc_pa_session_handle;
       asl = session_get_from_handle_if_valid (hc->hc_pa_session_handle);
-      /* change hc_pa_session_handle to parent session */
-      hc->hc_pa_session_handle = session_handle (as);
     }
   /* the listener can go away while the handshake runs */
   if (PREDICT_FALSE (!asl || asl->session_state != SESSION_STATE_LISTENING))
@@ -1287,7 +1321,7 @@ http_conn_accept_request (http_ctx_t *hc, http_ctx_t *req, u8 is_stream)
     }
   as->session_type = asl->session_type;
 
-  /* init session fifos and notify app */
+  /* initialize session FIFOs; the caller decides when to notify the app */
   if ((rv = app_worker_init_accepted (as)))
     {
       HTTP_DBG (1, "failed to allocate fifos");
@@ -1299,15 +1333,39 @@ http_conn_accept_request (http_ctx_t *hc, http_ctx_t *req, u8 is_stream)
   /* now we can change it to parent */
   if (is_stream)
     as->listener_handle = hc->hc_pa_session_handle;
+  else
+    hc->hc_pa_session_handle = session_handle (as);
 
   req->hr_pa_wrk_index = as->app_wrk_index;
+  return 0;
+}
 
-  app_wrk = app_worker_get (as->app_wrk_index);
+always_inline int
+http_conn_notify_accept (http_ctx_t *req)
+{
+  session_t *as = session_get (req->c_s_index, req->c_thread_index);
+  app_worker_t *app_wrk = app_worker_get (as->app_wrk_index);
 
-  if ((rv = app_worker_accept_notify (app_wrk, as)))
+  return app_worker_accept_notify (app_wrk, as);
+}
+
+always_inline int
+http_conn_accept_request (http_ctx_t *hc, http_ctx_t *req, u8 is_stream)
+{
+  session_t *as;
+  int rv;
+
+  if ((rv = http_conn_prepare_request (hc, req, is_stream)))
+    return rv;
+
+  if ((rv = http_conn_notify_accept (req)))
     {
       HTTP_DBG (1, "app accept returned");
+      as = session_get (req->c_s_index, req->c_thread_index);
+      if (!is_stream)
+	hc->hc_pa_session_handle = as->listener_handle;
       req->c_s_index = SESSION_INVALID_INDEX;
+      segment_manager_dealloc_fifos (as->rx_fifo, as->tx_fifo);
       session_free (as);
       return rv;
     }
