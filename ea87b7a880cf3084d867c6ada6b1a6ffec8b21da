@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "85c91d06_4aa05c5f",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3387
+      },
+      "writtenOn": "2026-10-28T13:13:02Z",
+      "side": 1,
+      "message": "Thanks Stanislav. Also tested over here and it resolves all table reference problems I had, the resync leak, the replace leak, and the resync case. Good work! Thanks.",
+      "revId": "ea87b7a880cf3084d867c6ada6b1a6ffec8b21da",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
