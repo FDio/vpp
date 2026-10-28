@@ -34,6 +34,24 @@
       "parentUuid": "694d5b15_e77210c3",
       "revId": "cf58787965d1402f5126fd930e78e9443f94dc92",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "1f73c9f8_68a2967e",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-10-28T06:53:48Z",
+      "side": 1,
+      "message": "Addressed by the call-site audit and explanation above.",
+      "parentUuid": "bffee878_701d47f2",
+      "revId": "cf58787965d1402f5126fd930e78e9443f94dc92",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
