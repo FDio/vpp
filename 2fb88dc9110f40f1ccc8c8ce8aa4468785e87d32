@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "fd74ffe8_d115a246",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2220
+      },
+      "writtenOn": "2026-10-28T09:52:47Z",
+      "side": 1,
+      "message": "guys, thanks for all the suggestions. I think I\u0027ve fixed all the issues mentioned here in the following chain of patches:\nhttps://gerrit.fd.io/r/c/vpp/+/47292\nhttps://gerrit.fd.io/r/c/vpp/+/47293\nhttps://gerrit.fd.io/r/c/vpp/+/47294\nhttps://gerrit.fd.io/r/c/vpp/+/46959 (this patch)\nhttps://gerrit.fd.io/r/c/vpp/+/47295\n\nI\u0027ve also found another issue with mpls-only tables, will work on that separately.\nopen to any further concerns/issues/improvements/suggestions/etc.",
+      "revId": "2fb88dc9110f40f1ccc8c8ce8aa4468785e87d32",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}

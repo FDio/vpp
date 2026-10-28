@@ -146,6 +146,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "4d24bfc3_01e0d6c7",
+        "filename": "src/plugins/linux-cp/lcp_router.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 996,
+      "author": {
+        "id": 2220
+      },
+      "writtenOn": "2026-10-28T09:52:47Z",
+      "side": 1,
+      "message": "Hi Zachary,\nI also yesterday fixed this issue by moving 255.255.255.255/32 to another fib source, but I used FIB_SOURCE_SPECIAL instead (as I thought that making a whole fib source just for 1 route is overkill).",
+      "parentUuid": "8b8c2e08_d85fcddd",
+      "revId": "1a6ac50e89c65ef5197fc4956437d044d37671c4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "b08b2d06_380c4a5d",
@@ -177,6 +195,24 @@
       "side": 1,
       "message": "not if there\u0027s at least 1 lcp pair belonging to this VRF.\nbut I agree with you that we need to take into the consideration also the amount of mfib routes here. as soon as I have the counter per source, I will introduce it in this patch.",
       "parentUuid": "b08b2d06_380c4a5d",
+      "revId": "1a6ac50e89c65ef5197fc4956437d044d37671c4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "bf804c2a_7e6f4a9a",
+        "filename": "src/plugins/linux-cp/lcp_router.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1015,
+      "author": {
+        "id": 2220
+      },
+      "writtenOn": "2026-10-28T09:52:47Z",
+      "side": 1,
+      "message": "I\u0027m checking the num of multicast routes now.",
+      "parentUuid": "f1f16121_e2d1867e",
       "revId": "1a6ac50e89c65ef5197fc4956437d044d37671c4",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -216,6 +252,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "6d22dd19_cb386b2a",
+        "filename": "src/plugins/linux-cp/lcp_router.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1367,
+      "author": {
+        "id": 2220
+      },
+      "writtenOn": "2026-10-28T09:52:47Z",
+      "side": 1,
+      "message": "fixed in https://gerrit.fd.io/r/c/vpp/+/47295",
+      "parentUuid": "91d3c79d_6316e38a",
+      "revId": "1a6ac50e89c65ef5197fc4956437d044d37671c4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "fff2dd44_db245a22",
@@ -247,6 +301,24 @@
       "side": 1,
       "message": "agreed.",
       "parentUuid": "fff2dd44_db245a22",
+      "revId": "1a6ac50e89c65ef5197fc4956437d044d37671c4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "9707c09c_73778ed4",
+        "filename": "src/plugins/linux-cp/lcp_router.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1444,
+      "author": {
+        "id": 2220
+      },
+      "writtenOn": "2026-10-28T09:52:47Z",
+      "side": 1,
+      "message": "fixed.",
+      "parentUuid": "25e267ef_36c1f615",
       "revId": "1a6ac50e89c65ef5197fc4956437d044d37671c4",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
