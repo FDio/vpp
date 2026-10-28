@@ -81,7 +81,7 @@ runs:
               echo "ERROR: Unsupported OS '$OS_ID'!"
           fi
           exit 0
-        } | tee "$LOG_FILE"
+        }
 
     - name: VPP Install External Dependencies
       shell: bash
@@ -99,4 +99,4 @@ runs:
           echo -e "$TUI_LINE\nInstalling VPP external dependencies...\n"
           make UNATTENDED=yes install-ext-deps
           echo "$TUI_LINE"
-        } | tee "$LOG_FILE"
+        }

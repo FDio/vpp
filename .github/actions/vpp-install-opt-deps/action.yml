@@ -37,4 +37,4 @@ runs:
           echo -e "$TUI_LINE\nInstalling VPP optional dependencies...\n"
           make UNATTENDED=yes install-opt-deps
           echo "$TUI_LINE"
-        } | tee "$LOG_FILE"
+        }
