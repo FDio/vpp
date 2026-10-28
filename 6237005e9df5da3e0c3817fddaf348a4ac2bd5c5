@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "255a2a9d_47e1353f",
+        "filename": "src/vnet/ip/ip.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 13,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-10-28T09:03:12Z",
+      "side": 1,
+      "message": "Optional factorization: Could this live alongside the VLIB buffer-chain helpers? The operation has no IP-specific semantics. There isn\u0027t an existing truncation helper that directly replaces it; vlib_buffer_chain_linearize() provides shared-tail handling, but would also copy/compact the packet. A generic trim helper would let other callers reuse the chain traversal, tail cleanup, and sharing logic.",
+      "revId": "6237005e9df5da3e0c3817fddaf348a4ac2bd5c5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8fcd6153_a0be37c1",
+        "filename": "src/vnet/ip/ip.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 29,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-10-28T09:03:12Z",
+      "side": 1,
+      "message": "Could we handle the shared tail rather than return success here? If the datagram ends inside a shared buffer, this leaves the trailer attached, so cloned packets can still exhibit the oversized-frame behavior this change fixes. Please make the affected tail private before trimming, handle allocation failure explicitly, and add coverage for a cloned chain.",
+      "revId": "6237005e9df5da3e0c3817fddaf348a4ac2bd5c5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
