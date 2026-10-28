@@ -55,6 +55,7 @@ from util import (
     get_core_path,
     is_core_present,
     is_recent_core,
+    set_ci_core_pattern,
     uses_coredumpctl,
 )
 
@@ -1347,6 +1348,9 @@ if __name__ == "__main__":
 
     if config.api_preload:
         VPPApiJSONFiles.load_api(apidir=config.extern_apidir + [config.vpp_install_dir])
+
+    core_pattern_set, msg = set_ci_core_pattern()
+    print(msg if core_pattern_set else f"core_pattern not set: {msg}")
 
     core_dir_warning = check_core_dir()
     if core_dir_warning:
