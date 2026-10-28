@@ -92,7 +92,11 @@ jobs:
     name: Merge Maketest
     needs:
       - start-merge
+<<<<<<< HEAD   (143c38 gha: clean up unused log variables in actions)
     uses: fdio/vpp/.github/workflows/vpp-merge-maketest.yml@1d3c4f761e2c0d2fa8b20d8653d4614a4fbaea49
+=======
+    uses: fdio/vpp/.github/workflows/vpp-merge-maketest.yml@83178775c288d3f3f9668d5d28331662e4f85d25
+>>>>>>> CHANGE (0d07a3 gha: pin vpp workflows to latest sha)
     with:
       FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE }}
       GERRIT_BRANCH: ${{ inputs.GERRIT_BRANCH }}
@@ -173,7 +177,11 @@ jobs:
       - start-merge
       - detect-docs-changes
     if: ${{ needs.detect-docs-changes.outputs.docs_changed == 'true' }}
+<<<<<<< HEAD   (143c38 gha: clean up unused log variables in actions)
     uses: fdio/vpp/.github/workflows/vpp-merge-docs.yml@eb4497824eab8f892014948c7553a1b6777735f5
+=======
+    uses: fdio/vpp/.github/workflows/vpp-merge-docs.yml@83178775c288d3f3f9668d5d28331662e4f85d25
+>>>>>>> CHANGE (0d07a3 gha: pin vpp workflows to latest sha)
     with:
       FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE }}
       GERRIT_BRANCH: ${{ inputs.GERRIT_BRANCH }}
