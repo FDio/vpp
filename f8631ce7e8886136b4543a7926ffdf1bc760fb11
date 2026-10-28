@@ -35,6 +35,41 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "8432d963_70e63051",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2026-10-28T18:59:14Z",
+      "side": 1,
+      "message": "Marking comments resolved so this change stops showing up on my main gerrit page :)",
+      "revId": "f8631ce7e8886136b4543a7926ffdf1bc760fb11",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "0559effb_165a06fc",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2026-10-28T18:59:14Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "47f23bea_069a81af",
+      "revId": "f8631ce7e8886136b4543a7926ffdf1bc760fb11",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "d64790b3_edddc8b0",
@@ -48,6 +83,30 @@
       "writtenOn": "2022-07-02T17:19:09Z",
       "side": 1,
       "message": "Hate to be that person but shouldn\u0027t we fix this in NAT? And maybe convert the get lower to vec_elt_at_index to force the crash in debug images",
+      "range": {
+        "startLine": 264,
+        "startChar": 0,
+        "endLine": 265,
+        "endChar": 13
+      },
+      "revId": "f8631ce7e8886136b4543a7926ffdf1bc760fb11",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "da47c7ad_6c290c25",
+        "filename": "src/vlib/buffer_funcs.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 265,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2026-10-28T18:59:14Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "d64790b3_edddc8b0",
       "range": {
         "startLine": 264,
         "startChar": 0,
