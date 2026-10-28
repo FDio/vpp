@@ -16,6 +16,23 @@
       "message": "recheck",
       "revId": "2eeaacb80eb13b44baa06d490ad3d2fae85406ec",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "96848002_f2c97f7f",
+        "filename": "src/vnet/ip6-nd/ip6_nd.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 191,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-10-28T04:09:19Z",
+      "side": 1,
+      "message": "NS path lower (line 279) has the same type of problem, i.e., learns the NS source without checking whether it\u0027s one of our own addresses. So maybe rename the helper to ip6_nd_addr_is_local and reuse it there as well.",
+      "revId": "2eeaacb80eb13b44baa06d490ad3d2fae85406ec",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
