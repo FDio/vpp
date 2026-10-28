@@ -1,0 +1,136 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9766e51f_4e289ba3",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 2
+      },
+      "lineNbr": 7,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-10-28T16:40:53Z",
+      "side": 1,
+      "message": "this should be just http",
+      "range": {
+        "startLine": 7,
+        "startChar": 0,
+        "endLine": 7,
+        "endChar": 11
+      },
+      "revId": "c4189f81ba01430f69f594bbf1c126a16cc44daf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7f6a954d_2a043d5b",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 2
+      },
+      "lineNbr": 9,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-10-28T16:40:53Z",
+      "side": 1,
+      "message": "wait",
+      "range": {
+        "startLine": 9,
+        "startChar": 52,
+        "endLine": 9,
+        "endChar": 56
+      },
+      "revId": "c4189f81ba01430f69f594bbf1c126a16cc44daf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "bc4f56f4_809f18e5",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 2
+      },
+      "lineNbr": 10,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-10-28T16:40:53Z",
+      "side": 1,
+      "message": "end",
+      "range": {
+        "startLine": 10,
+        "startChar": 18,
+        "endLine": 10,
+        "endChar": 22
+      },
+      "revId": "c4189f81ba01430f69f594bbf1c126a16cc44daf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f42b3ba2_b6235542",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 2
+      },
+      "lineNbr": 10,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-10-28T16:40:53Z",
+      "side": 1,
+      "message": "malformed",
+      "range": {
+        "startLine": 10,
+        "startChar": 45,
+        "endLine": 10,
+        "endChar": 54
+      },
+      "revId": "c4189f81ba01430f69f594bbf1c126a16cc44daf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f974a2c1_f54aaba6",
+        "filename": "src/plugins/http/http1.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-10-28T16:40:53Z",
+      "side": 1,
+      "message": "this need improvement, we can\u0027t start parsing always from scratch when we receive more data, that text processing is not cheap and reading from fifo to rx buffer too. we need to keep state where we end last time in case we successfully parsed some element(s) and track rx buffer offset or drop parsed piece of data from the rx fifo.",
+      "revId": "c4189f81ba01430f69f594bbf1c126a16cc44daf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b5e586b3_45deba15",
+        "filename": "src/plugins/http/http1.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 28,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-10-28T16:40:53Z",
+      "side": 1,
+      "message": "enum?",
+      "range": {
+        "startLine": 24,
+        "startChar": 0,
+        "endLine": 28,
+        "endChar": 0
+      },
+      "revId": "c4189f81ba01430f69f594bbf1c126a16cc44daf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
