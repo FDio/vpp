@@ -1897,9 +1897,15 @@ http3_stream_transport_rx_req (http_ctx_t *req, http_ctx_t *stream, http_req_sta
 	    }
 	  break;
 	default:
-	  /* discard payload of unknown frame */
+	  /* discard payload of unknown frame; keep left_deq in sync so a frame
+	   * whose payload is not fully buffered drains the loop guard instead of
+	   * spinning on an empty fifo */
 	  if (req->fh.length)
-	    req->fh.length -= http_io_ts_drain (stream, req->fh.length);
+	    {
+	      u32 n_drained = http_io_ts_drain (stream, req->fh.length);
+	      req->fh.length -= n_drained;
+	      left_deq -= n_drained;
+	    }
 	  continue;
 	}
 
