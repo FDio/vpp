@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "16b4cb9b_70390f58",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3121
+      },
+      "writtenOn": "2026-10-28T03:04:02Z",
+      "side": 1,
+      "message": "Thanks @Suresh for validating the fix works in [47289](https://gerrit.fd.io/r/c/vpp/+/47289)",
+      "revId": "8d94988e44a814ef70cb39a6bcb1d5a40f5028c6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
