@@ -163,7 +163,7 @@ jobs:
       - name: Show Environment
         run: |
           set -euo pipefail
-          env | sort | tee "$LOG_DIR/environment.log"
+          env | sort
 
       - name: "Show Nomad Dockerfile"
         # yamllint disable-line rule:line-length
@@ -178,6 +178,17 @@ jobs:
           GERRIT_REFSPEC: ${{ env.GERRIT_REFSPEC }}
           TUI_LINE: ${{ env.TUI_LINE }}
 
+<<<<<<< HEAD   (143c38 gha: clean up unused log variables in actions)
+=======
+      - name: Install VPP dependencies
+        # yamllint disable-line rule:line-length
+        uses: fdio/vpp/.github/actions/vpp-install-deps@be4c10d674fb302334b14c217d69f9cb18eb7785
+        with:
+          LOG_DIR: ${{ env.LOG_DIR }}
+          WORKSPACE: ${{ env.WORKSPACE }}
+          TUI_LINE: ${{ env.TUI_LINE }}
+
+>>>>>>> CHANGE (831787 gha: remove extraneous logs in workflows)
       - name: Run Checkstyle Scripts
         run: |
           set -euxo pipefail
