@@ -1327,6 +1327,23 @@ svm_fifo_async_link_segment (svm_fifo_async_state_t *state, svm_fifo_async_seg_t
   state->n_segs++;
 }
 
+/* Move head to the prefix end and reset the state. Defer rebasing an unsealed
+ * chain until a normal write, avoiding a chunk walk for each deferred batch. */
+static void
+svm_fifo_async_consume_prefix (svm_fifo_t *f, svm_fifo_async_state_t *state)
+{
+  u8 needs_rebase = !state->sealed;
+  u32 end = state->end;
+
+  svm_fifo_async_state_reset (state);
+  state->needs_rebase = needs_rebase;
+  if (needs_rebase)
+    f->shr->tail_chunk = 0;
+
+  clib_atomic_store_rel_n (&f->shr->head, end);
+  f->shr->head_chunk = needs_rebase ? 0 : f->shr->start_chunk;
+}
+
 int
 svm_fifo_enqueue_async_segment (svm_fifo_t *f, svm_fifo_async_seg_t *seg)
 {
@@ -1361,19 +1378,23 @@ svm_fifo_async_segment_chunk (svm_fifo_async_seg_t *seg)
 }
 
 int
-svm_fifo_enqueue_async_copy (svm_fifo_t *f, const u8 *src, u32 len)
+svm_fifo_enqueue_async_copy_segments (svm_fifo_t *f, const svm_fifo_seg_t segs[], u32 n_segs,
+				      u8 allow_partial)
 {
+  u32 head, tail, free_count, len = 0, room = 0, reserved_bytes = 0, alloc_size;
+  u32 i, n, n_copied = 0, seg_off = 0;
+  svm_fifo_chunk_t *c, *reserved = 0;
   svm_fifo_async_state_t *state;
   svm_fifo_async_seg_t *seg;
-  u32 head, tail, free_count, room = 0, alloc_size, n, n_copied = 0;
-  svm_fifo_chunk_t *c;
   int rv;
 
+  for (i = 0; i < n_segs; i++)
+    len += segs[i].len;
   if (!len)
     return SVM_FIFO_EINVAL;
 
   f_load_head_tail_prod (f, &head, &tail);
-  rv = svm_fifo_async_append_state (f, head, tail, 1, &state);
+  rv = svm_fifo_async_append_state (f, head, tail, allow_partial ? 1 : len, &state);
   if (PREDICT_FALSE (rv))
     return rv;
 
@@ -1383,22 +1404,44 @@ svm_fifo_enqueue_async_copy (svm_fifo_t *f, const u8 *src, u32 len)
   if (seg && svm_fifo_async_segment_is_fifo_owned (seg))
     room = svm_fifo_async_segment_chunk (seg)->length - SVM_FIFO_ASYNC_COPY_HDR_SZ - seg->len;
 
-  while (n_copied < len)
+  /* Reserve all storage before publishing anything. Grow like normal chunks,
+   * by min_alloc capped by free space, so later copies fill the same storage.
+   * One chunk per segment, so stop if the segment can only provide smaller
+   * pieces. */
+  while (room + reserved_bytes < len)
+    {
+      alloc_size = clib_min (free_count - room - reserved_bytes + SVM_FIFO_ASYNC_COPY_HDR_SZ,
+			     clib_max (f->shr->min_alloc, FS_MIN_CHUNK_SZ));
+      c = fsh_alloc_chunk (f->fs_hdr, f->shr->slice_index, alloc_size);
+      if (PREDICT_FALSE (!c || c->next))
+	{
+	  if (c)
+	    fsh_collect_chunks (f->fs_hdr, f->shr->slice_index, c);
+	  if (!allow_partial)
+	    {
+	      if (reserved)
+		fsh_collect_chunks (f->fs_hdr, f->shr->slice_index, reserved);
+	      return SVM_FIFO_EGROW;
+	    }
+	  break;
+	}
+      c->next = f_csptr (f, reserved);
+      reserved = c;
+      reserved_bytes += c->length - SVM_FIFO_ASYNC_COPY_HDR_SZ;
+    }
+
+  len = clib_min (len, room + reserved_bytes);
+  if (PREDICT_FALSE (!len))
+    return SVM_FIFO_EGROW;
+
+  /* Copy the pieces back to back, filling the last segment first */
+  for (i = 0; n_copied < len;)
     {
       if (!room)
 	{
-	  /* Grow like normal chunks, by min_alloc capped by free space, so
-	   * later copies fill the same storage. One chunk per segment, so give
-	   * up if the segment can only provide smaller pieces. */
-	  alloc_size = clib_min (free_count - n_copied + SVM_FIFO_ASYNC_COPY_HDR_SZ,
-				 clib_max (f->shr->min_alloc, FS_MIN_CHUNK_SZ));
-	  c = fsh_alloc_chunk (f->fs_hdr, f->shr->slice_index, alloc_size);
-	  if (PREDICT_FALSE (!c || c->next))
-	    {
-	      if (c)
-		fsh_collect_chunks (f->fs_hdr, f->shr->slice_index, c);
-	      break;
-	    }
+	  c = reserved;
+	  reserved = f_cptr (f, c->next);
+	  c->next = 0;
 	  seg = (svm_fifo_async_seg_t *) c->data;
 	  *seg = (svm_fifo_async_seg_t) {
 	    .data = c->data + SVM_FIFO_ASYNC_COPY_HDR_SZ,
@@ -1408,22 +1451,34 @@ svm_fifo_enqueue_async_copy (svm_fifo_t *f, const u8 *src, u32 len)
 	  room = c->length - SVM_FIFO_ASYNC_COPY_HDR_SZ;
 	}
 
-      n = clib_min (room, len - n_copied);
-      clib_memcpy_fast (seg->data + seg->len, src + n_copied, n);
+      n = clib_min (room, clib_min (segs[i].len - seg_off, len - n_copied));
+      clib_memcpy_fast (seg->data + seg->len, segs[i].data + seg_off, n);
       seg->len += n;
       room -= n;
       n_copied += n;
+      seg_off += n;
+      if (seg_off == segs[i].len)
+	{
+	  i++;
+	  seg_off = 0;
+	}
     }
 
-  if (PREDICT_FALSE (!n_copied))
-    return SVM_FIFO_EGROW;
-
+  ASSERT (!reserved);
   state->end = tail + n_copied;
   state->active = 1;
   svm_fifo_trace_add (f, head, n_copied, 2);
   clib_atomic_store_rel_n (&f->shr->tail, state->end);
 
   return n_copied;
+}
+
+int
+svm_fifo_enqueue_async_copy (svm_fifo_t *f, const u8 *src, u32 len)
+{
+  svm_fifo_seg_t seg = { .data = (u8 *) src, .len = len };
+
+  return svm_fifo_enqueue_async_copy_segments (f, &seg, 1, 1 /* allow_partial */);
 }
 
 void
@@ -1434,6 +1489,143 @@ svm_fifo_async_free_segment (svm_fifo_t *f, svm_fifo_async_seg_t *seg)
   ASSERT (svm_fifo_async_segment_is_fifo_owned (seg));
   c->next = 0;
   fsh_collect_chunks (f->fs_hdr, f->shr->slice_index, c);
+}
+
+/* Find the segment holding pos. Start at the read cursor if it is still in
+ * the list, i.e., not before head, and not past pos. */
+static svm_fifo_async_seg_t *
+svm_fifo_async_seg_at (svm_fifo_async_state_t *state, u32 head, u32 pos, u32 *seg_pos)
+{
+  svm_fifo_async_seg_t *seg = state->head;
+  u32 start = head;
+
+  if (state->rd_seg && f_pos_geq (state->rd_pos, head) && f_pos_leq (state->rd_pos, pos))
+    {
+      seg = state->rd_seg;
+      start = state->rd_pos;
+    }
+
+  while (f_pos_geq (pos, start + seg->len))
+    {
+      start += seg->len;
+      seg = seg->next;
+    }
+
+  *seg_pos = start;
+  return seg;
+}
+
+int
+svm_fifo_async_peek (svm_fifo_t *f, u32 offset, u32 len, u8 *dst)
+{
+  svm_fifo_async_state_t *state = f->async_state;
+  u32 head, tail, cursize, pos, start, prefix_len, n, n_read = 0;
+  fs_sptr_t last = F_INVALID_CPTR;
+  svm_fifo_async_seg_t *seg;
+
+  if (!state || !state->active)
+    return svm_fifo_peek (f, offset, len, dst);
+
+  f_load_head_tail_cons (f, &head, &tail);
+  cursize = f_cursize (f, head, tail);
+  if (PREDICT_FALSE (cursize <= offset))
+    return offset ? 0 : SVM_FIFO_EEMPTY;
+
+  len = clib_min (cursize - offset, len);
+  pos = head + offset;
+
+  if (f_pos_lt (pos, state->end))
+    {
+      prefix_len = clib_min (len, state->end - pos);
+      seg = svm_fifo_async_seg_at (state, head, pos, &start);
+      while (1)
+	{
+	  n = clib_min (seg->len - (pos - start), prefix_len - n_read);
+	  clib_memcpy_fast (dst + n_read, seg->data + (pos - start), n);
+	  n_read += n;
+	  pos += n;
+	  if (n_read == prefix_len)
+	    break;
+	  start += seg->len;
+	  seg = seg->next;
+	}
+      state->rd_seg = seg;
+      state->rd_pos = start;
+    }
+
+  /* A sealed prefix continues in chunks that start at its end */
+  if (n_read < len)
+    {
+      ASSERT (state->sealed && f_pos_geq (pos, state->end));
+      clib_mem_unpoison (f->ooo_deq, sizeof (*f->ooo_deq));
+      if (!f->ooo_deq || !f_chunk_includes_pos (f->ooo_deq, pos))
+	f_update_ooo_deq (f, pos, pos + len - n_read);
+      svm_fifo_copy_from_chunk (f, f->ooo_deq, pos, dst + n_read, len - n_read, &last);
+      if (last != F_INVALID_CPTR)
+	f->ooo_deq = f_cptr (f, last);
+    }
+
+  return len;
+}
+
+int
+svm_fifo_async_dequeue_drop (svm_fifo_t *f, u32 len, svm_fifo_async_seg_t **released,
+			     u32 *n_released)
+{
+  svm_fifo_async_state_t *state = f->async_state;
+  svm_fifo_async_seg_t *seg, *last = 0;
+  u32 head, tail, cursize, n_drop, n_prefix, left, n = 0;
+
+  *released = 0;
+  *n_released = 0;
+  if (!state || !state->active)
+    return svm_fifo_dequeue_drop (f, len);
+
+  f_load_head_tail_cons (f, &head, &tail);
+  cursize = f_cursize (f, head, tail);
+  if (PREDICT_FALSE (!cursize))
+    return SVM_FIFO_EEMPTY;
+
+  n_drop = clib_min (cursize, len);
+  n_prefix = clib_min (n_drop, state->end - head);
+
+  /* Detach fully consumed segments, then trim the first one left */
+  left = n_prefix;
+  for (seg = state->head; seg && left >= seg->len; seg = seg->next)
+    {
+      left -= seg->len;
+      last = seg;
+      n++;
+    }
+  if (n)
+    {
+      *released = state->head;
+      *n_released = n;
+      last->next = 0;
+      state->head = seg;
+      state->n_segs -= n;
+      if (!seg)
+	state->tail = 0;
+    }
+  if (left)
+    {
+      ASSERT (seg && left < seg->len);
+      seg->data += left;
+      seg->len -= left;
+    }
+
+  if (state->head)
+    {
+      clib_atomic_store_rel_n (&f->shr->head, head + n_prefix);
+      return n_drop;
+    }
+
+  /* Prefix consumed. Drop the rest from the chunks of a sealed suffix. */
+  svm_fifo_async_consume_prefix (f, state);
+  if (n_drop > n_prefix)
+    svm_fifo_dequeue_drop (f, n_drop - n_prefix);
+
+  return n_drop;
 }
 
 /* Copy the prefix into chunks, reusing an empty chain or prepending new chunks
@@ -1537,8 +1729,7 @@ int
 svm_fifo_acquire_async_segments (svm_fifo_t *f, svm_fifo_async_seg_t **segments, u32 *n_segments)
 {
   svm_fifo_async_state_t *state = f->async_state;
-  u32 n_bytes, head;
-  u8 needs_rebase;
+  u32 n_bytes;
 
   if (!segments || !n_segments)
     return SVM_FIFO_EINVAL;
@@ -1548,20 +1739,10 @@ svm_fifo_acquire_async_segments (svm_fifo_t *f, svm_fifo_async_seg_t **segments,
   if (!state || !state->active)
     return 0;
 
-  head = f->shr->head;
-  n_bytes = state->end - head;
+  n_bytes = state->end - f->shr->head;
   *segments = state->head;
   *n_segments = state->n_segs;
-  /* Defer rebasing an unsealed chain until a normal write, avoiding a chunk
-   * walk for each deferred batch. */
-  needs_rebase = !state->sealed;
-  svm_fifo_async_state_reset (state);
-  state->needs_rebase = needs_rebase;
-  if (needs_rebase)
-    f->shr->tail_chunk = 0;
-
-  clib_atomic_store_rel_n (&f->shr->head, head + n_bytes);
-  f->shr->head_chunk = needs_rebase ? 0 : f->shr->start_chunk;
+  svm_fifo_async_consume_prefix (f, state);
 
   return n_bytes;
 }

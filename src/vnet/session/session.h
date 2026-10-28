@@ -275,8 +275,9 @@ typedef struct session_main_
   /** vpp fifo event queue configured length */
   u32 configured_wrk_mq_length;
 
-  /** max deferred rx segments per worker */
+  /** max deferred rx and tx segments per worker */
   u32 deferred_rx_max_segs;
+  u32 deferred_tx_max_segs;
 
   /** Session ssvm segment configs*/
   uword wrk_mqs_segment_size;
