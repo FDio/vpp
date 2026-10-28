@@ -16,6 +16,40 @@
       "message": "Thanks @Suresh for validating the fix works in [47289](https://gerrit.fd.io/r/c/vpp/+/47289)",
       "revId": "8d94988e44a814ef70cb39a6bcb1d5a40f5028c6",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f066fda0_e2e4b5b5",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-10-28T07:04:39Z",
+      "side": 1,
+      "message": "Looks good, but it introduces a couple of new methods and parameters and none of these are type-annotated. I\u0027d add that.",
+      "revId": "8d94988e44a814ef70cb39a6bcb1d5a40f5028c6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "22086ae7_9f96dd51",
+        "filename": "test/util.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 200,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-10-28T07:04:39Z",
+      "side": 1,
+      "message": "While less probable, I think the main issue being fixed can still happen on PID reuse. I\u0027m not sure how probable it is, though. Not a blocker, but if you wanted to make it bulletproof, maybe we could enforce a floor - at module level:\n\n```\n# Timestamp used for classifying core recency\n_START_TIMESTAMP \u003d time.time()\n```\n\nand here then:\n\n```    \nmatches \u003d [\n        m\n        for m in glob.glob(glob_pat)\n        if os.path.isfile(m) and os.path.getmtime(m) \u003e\u003d _START_TIMESTAMP - 1\n    ]\n```\n\nit doesn\u0027t matter if the timestamp is main or child - it still will be \u003c\u003d than any vpp core run by that particular child",
+      "revId": "8d94988e44a814ef70cb39a6bcb1d5a40f5028c6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
