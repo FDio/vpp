@@ -1474,8 +1474,8 @@ session_tx_fifo_read_and_snd_i (session_worker_t *wrk, vlib_node_runtime_t *node
       ctx->transport_pending_bufs[ctx->n_segs_per_evt - n_left + 1] = b1;
       n_left -= 2;
 
-      session_tx_add_data_buffer (wrk, bi0, next_index);
-      session_tx_add_data_buffer (wrk, bi1, next_index);
+      session_tx_add_data_buffer (wrk, bi0, next_index, 0 /* dma */);
+      session_tx_add_data_buffer (wrk, bi1, next_index, 0 /* dma */);
     }
   while (n_left)
     {
@@ -1496,7 +1496,7 @@ session_tx_fifo_read_and_snd_i (session_worker_t *wrk, vlib_node_runtime_t *node
       ctx->transport_pending_bufs[ctx->n_segs_per_evt - n_left] = b0;
       n_left -= 1;
 
-      session_tx_add_data_buffer (wrk, bi0, next_index);
+      session_tx_add_data_buffer (wrk, bi0, next_index, 0 /* dma */);
     }
 
   /* Ask transport to push headers */

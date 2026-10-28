@@ -501,6 +501,11 @@ session_alloc_for_connection (transport_connection_t * tc)
   s = session_alloc (thread_index);
   s->session_type = session_type_from_proto_and_ip (tc->proto, tc->is_ip4);
 
+  /* Dma copies are deferred io, so send peek transports through it */
+  if (PREDICT_FALSE (session_main_get_worker (thread_index)->dma_enabled) &&
+      transport_protocol_tx_fn_type (tc->proto) == TRANSPORT_TX_PEEK)
+    s->flags |= SESSION_F_DEFERRED_TX;
+
   /* Attach transport to session and vice versa */
   s->connection_index = tc->c_index;
   tc->s_index = s->session_index;
@@ -730,6 +735,9 @@ session_tx_fifo_peek_bytes (transport_connection_t * tc, u8 * buffer,
 			    u32 offset, u32 max_bytes)
 {
   session_t *s = session_get (tc->s_index, tc->thread_index);
+
+  if (PREDICT_FALSE (s->flags & SESSION_F_DEFERRED_TX))
+    return svm_fifo_async_peek (s->tx_fifo, offset, max_bytes, buffer);
   return svm_fifo_peek (s->tx_fifo, offset, max_bytes, buffer);
 }
 
@@ -739,7 +747,10 @@ session_tx_fifo_dequeue_drop (transport_connection_t * tc, u32 max_bytes)
   session_t *s = session_get (tc->s_index, tc->thread_index);
   u32 rv;
 
-  rv = svm_fifo_dequeue_drop (s->tx_fifo, max_bytes);
+  if (PREDICT_FALSE (s->flags & SESSION_F_DEFERRED_TX))
+    rv = session_dio_tx_dequeue_drop (s, max_bytes);
+  else
+    rv = svm_fifo_dequeue_drop (s->tx_fifo, max_bytes);
   session_fifo_tuning (s, s->tx_fifo, SESSION_FT_ACTION_DEQUEUED, rv);
 
   if (svm_fifo_needs_deq_ntf (s->tx_fifo, max_bytes))
@@ -2050,7 +2061,8 @@ session_manager_main_enable (vlib_main_t *vm,
       wrk->evts_pending_main =
 	clib_llist_make_head (wrk->event_elts, evt_list);
       wrk->vm = vlib_get_main_by_index (i);
-      wrk->dio.max_segs = smm->deferred_rx_max_segs;
+      wrk->dio.max_rx_segs = smm->deferred_rx_max_segs;
+      wrk->dio.max_tx_segs = smm->deferred_tx_max_segs;
       wrk->last_vlib_time = vlib_time_now (vm);
       wrk->last_vlib_us_time = wrk->last_vlib_time * CLIB_US_TIME_FREQ;
       wrk->timerfd = -1;
@@ -2313,6 +2325,7 @@ session_main_init (vlib_main_t * vm)
   smm->port_allocator_min_src_port = 1024;
   smm->port_allocator_max_src_port = 65535;
   smm->deferred_rx_max_segs = SESSION_DIO_RX_MAX_SEGS;
+  smm->deferred_tx_max_segs = SESSION_DIO_TX_MAX_SEGS;
 
   /* default enable app socket api */
   (void) appns_sapi_enable_disable (1 /* is_enable */);

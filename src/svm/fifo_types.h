@@ -116,6 +116,8 @@ typedef struct
 {
   svm_fifo_async_seg_t *head;
   svm_fifo_async_seg_t *tail;
+  svm_fifo_async_seg_t *rd_seg; /**< read cursor */
+  u32 rd_pos;			/**< stream position of rd_seg */
   u32 n_segs;
   u32 end;	   /**< prefix end */
   u8 sealed;	   /**< later writes use chunks */
