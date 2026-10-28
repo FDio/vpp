@@ -1382,7 +1382,7 @@ class TemplateInitiator(IkePeer):
         c.ispi = prop.SPI
         self.update_esp_transforms(prop[ikev2.IKEv2_payload_Transform], self.sa)
 
-    def send_init_response(self):
+    def create_init_response(self, dh_pub_key=None):
         tr_attr = self.sa.ike_crypto_attr()
         trans_nb = 3
         trans = self.sa.encr_transform(self.sa.ike_crypto, tr_attr)
@@ -1418,7 +1418,9 @@ class TemplateInitiator(IkePeer):
             )
             / ikev2.IKEv2_payload_SA(next_payload="KE", prop=props)
             / ikev2.IKEv2_payload_KE(
-                next_payload="Nonce", group=self.sa.ike_dh, load=self.sa.my_dh_pub_key
+                next_payload="Nonce",
+                group=self.sa.ike_dh,
+                load=self.sa.my_dh_pub_key if dh_pub_key is None else dh_pub_key,
             )
             / ikev2.IKEv2_payload_Nonce(load=self.sa.r_nonce, next_payload="Notify")
             / ikev2.IKEv2_payload_Notify(
@@ -1429,7 +1431,7 @@ class TemplateInitiator(IkePeer):
             )
         )
 
-        ike_msg = self.create_packet(
+        return self.create_packet(
             self.pg0,
             self.sa.init_resp_packet,
             self.sa.sport,
@@ -1437,6 +1439,9 @@ class TemplateInitiator(IkePeer):
             False,
             self.ip6,
         )
+
+    def send_init_response(self):
+        ike_msg = self.create_init_response()
         self.pg_send(self.pg0, ike_msg)
         capture = self.pg0.get_capture(1)
         self.verify_sa_auth_req(capture[0])
@@ -3008,6 +3013,71 @@ class TestInitiatorKeepaliveMsg(TestInitiatorPsk):
     def test_initiator(self):
         super(TestInitiatorKeepaliveMsg, self).test_initiator()
         self.send_empty_req_from_responder()
+
+
+class TestInitiatorInvalidModp(TestInitiatorPsk):
+    """An invalid MODP response must not cause an IKE_AUTH request."""
+
+    def tearDown(self):
+        super(IkePeer, self).tearDown()
+        self.p.remove_vpp_config()
+
+    def test_initiator(self):
+        self.pg0.enable_capture()
+        self.pg_start()
+        self.vapi.ikev2_initiate_sa_init(name=self.p.profile_name)
+        self.verify_sa_init_request(self.pg0.get_capture(1)[0])
+        response = self.create_init_response(
+            dh_pub_key=bytes(len(self.sa.my_dh_pub_key))
+        )
+        self.send_and_assert_no_replies(self.pg0, response)
+        self.assertEqual(len(self.vapi.ipsec_sa_dump()), 0)
+
+
+class TestResponderInvalidNewChildModp(TestResponderPsk):
+    """An invalid new Child KE preserves the existing Child and permits cleanup."""
+
+    def test_responder(self):
+        super().test_responder()
+        plain, first_payload = self.generate_auth_payload(is_rekey=True, kex=True)
+        plain[ikev2.IKEv2_payload_KE].load = bytes(len(self.sa.my_dh_pub_key))
+        plain[ikev2.IKEv2_payload_TSr].next_payload = 0
+        plain[ikev2.IKEv2_payload_TSr].remove_payload()
+        self.assertFalse(plain.haslayer(ikev2.IKEv2_payload_Notify))
+        header = ikev2.IKEv2(
+            init_SPI=self.sa.ispi,
+            resp_SPI=self.sa.rspi,
+            id=self.sa.new_msg_id(),
+            flags="Initiator",
+            exch_type="CREATE_CHILD_SA",
+        )
+        request = self.encrypt_ike_msg(header, plain, first_payload)
+        packet = self.create_packet(self.pg0, request, self.sa.sport, self.sa.dport)
+        reply = self.get_ike_header(self.send_and_expect(self.pg0, packet, self.pg0)[0])
+        notify = ikev2.IKEv2_payload_Notify(self.sa.hmac_and_decrypt(reply))
+        self.assertEqual(notify.type, 17)
+        self.verify_ike_sas()
+        self.verify_ike_sas_v2()
+        self.verify_ipsec_sas()
+
+
+class TestResponderInvalidModp(TestResponderPsk):
+    """An all-zero MODP public value must be rejected before IKE_AUTH."""
+
+    def tearDown(self):
+        super(IkePeer, self).tearDown()
+        self.p.remove_vpp_config()
+
+    def test_responder(self):
+        request = ikev2.IKEv2(
+            init_SPI=self.sa.ispi, flags="Initiator", exch_type="IKE_SA_INIT"
+        ) / self.generate_sa_init_payload(dh_pub_key=bytes(len(self.sa.my_dh_pub_key)))
+        packet = self.create_packet(self.pg0, request, self.sa.sport, self.sa.dport)
+        reply = self.get_ike_header(self.send_and_expect(self.pg0, packet, self.pg0)[0])
+        self.assertEqual(reply.exch_type, 34)
+        self.assertEqual(reply[ikev2.IKEv2_payload_Notify].type, 17)
+        self.assertEqual(len(self.vapi.ikev2_sa_dump()), 0)
+        self.assertEqual(len(self.vapi.ipsec_sa_dump()), 0)
 
 
 class TestMalformedMessages(TemplateResponder, Ikev2Params):
