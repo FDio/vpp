@@ -16,6 +16,24 @@
       "message": "Wow, the copy-paste is strong with these tests.\n\nAnyhow - I see the same pattern of `payload_to_info(packet[Raw]) in multiple other tests. Is a similar fix required elsewhere too? Why not?",
       "revId": "cf58787965d1402f5126fd930e78e9443f94dc92",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "bffee878_701d47f2",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-10-28T06:45:57Z",
+      "side": 1,
+      "message": "Hi Klement,\n\nI checked the other call sites. These three tests select random UDP source ports across 49152-65535, including 51820, which triggers Scapy\u0027s WireGuard dissector. The same issue in nsim has already been fixed.\n\nOther callers mostly use fixed ports or restricted ranges. Some also intentionally place protocol headers before the metadata, so replacing every Raw access with the complete UDP payload would be incorrect.\n\nI kept this patch focused on the three reproduced CI failures. The audit has not identified another occurrence of this specific failure mechanism.\n\nThanks,\nJerome",
+      "parentUuid": "694d5b15_e77210c3",
+      "revId": "cf58787965d1402f5126fd930e78e9443f94dc92",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
