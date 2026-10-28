@@ -10,21 +10,26 @@
 #include <svm/svm_fifo.h>
 #include <vlib/vlib.h>
 
-/* Deferred IO (dio): stream bytes held outside fifo chunks, e.g., retained RX
- * buffers, until consumed or copied into chunks.
- * All operations must run on the session's owning thread. */
+/* Deferred IO (dio): stream bytes held outside fifo chunks, e.g., retained
+ * RX packets or buffers apps enqueue for TX, until consumed or copied into
+ * chunks. All operations must run on the session's owning thread. */
 
-/* Default maximum number of retained RX buffer segments per worker.
- * Override at startup with session { deferred-rx-max-segs <count> }. */
+/* Default maximum number of retained buffer segments per worker and direction.
+ * Override at startup with session { deferred-rx-max-segs <count> } and
+ * session { deferred-tx-max-segs <count> }. */
 #define SESSION_DIO_RX_MAX_SEGS (2 * VLIB_FRAME_SIZE)
+#define SESSION_DIO_TX_MAX_SEGS (2 * VLIB_FRAME_SIZE)
 
 typedef svm_fifo_async_seg_t session_dio_segment_t;
 
 typedef struct
 {
   u32 *held_buffers;
-  u32 n_segs;
-  u32 max_segs;
+  svm_fifo_seg_t *copy_segs; /**< scratch for copying chains */
+  u32 n_rx_segs;
+  u32 max_rx_segs;
+  u32 n_tx_segs;
+  u32 max_tx_segs;
 } session_dio_ctx_t;
 
 /** Exclude retained roots from buffer_indices and return the number left to
@@ -101,5 +106,36 @@ __clib_export int session_dio_rx_flush (session_t *s);
 
 /** Discard all remaining deferred payload without copying it to the rx fifo. */
 __clib_export int session_dio_rx_discard (session_t *s);
+
+/**
+ * Enable or disable deferred TX for a built-in TCP session.
+ *
+ * Once enabled, write the tx fifo only with the deferred TX enqueue APIs.
+ * Retained buffers stay in the fifo until acknowledged; others are copied into
+ * fifo-owned segments, so the stream never needs sealing. Disabling copies
+ * pending bytes into normal chunks. Retained buffers share a per-worker limit.
+ *
+ * Workers with dma send all peek transport sessions through deferred TX, so
+ * the flag is set without the app enabling it and stays set on disable. Those
+ * apps keep writing normally unless they use the deferred TX enqueue APIs.
+ */
+__clib_export int session_dio_tx_enable_disable (session_t *s, u8 enable);
+
+/**
+ * Append a buffer chain to the tx stream.
+ *
+ * On success the session owns the chain: it is retained until acknowledged, or
+ * copied and freed if it cannot be, e.g., over the limit or shared. Segment
+ * metadata lives in opaque2, so leave it alone. Return bytes enqueued, or zero
+ * or a FIFO error, e.g., if the chain does not fit, with the caller still
+ * owning the chain.
+ */
+__clib_export int session_dio_tx_enqueue_buffer (session_t *s, vlib_buffer_t *b);
+
+/** Copy bytes into the tx stream. Writes what fits, like svm_fifo_enqueue(). */
+__clib_export int session_dio_tx_enqueue (session_t *s, const u8 *data, u32 len);
+
+/** Drop acknowledged bytes and release their buffers. Used by transports. */
+__clib_export int session_dio_tx_dequeue_drop (session_t *s, u32 len);
 
 #endif /* __included_session_deferred_io_h__ */
