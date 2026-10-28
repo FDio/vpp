@@ -198,14 +198,12 @@ lcp_router_ip4_mroutes_add_del (u32 sw_if_index, u8 is_add)
     {
       if (is_add)
 	{
-	  mfib_table_entry_path_update (mfib_index, &ip4_specials[ii],
-					MFIB_SOURCE_PLUGIN_LOW,
+	  mfib_table_entry_path_update (mfib_index, &ip4_specials[ii], MFIB_SOURCE_SPECIAL,
 					MFIB_ENTRY_FLAG_NONE, &path);
 	}
       else
 	{
-	  mfib_table_entry_path_remove (mfib_index, &ip4_specials[ii],
-					MFIB_SOURCE_PLUGIN_LOW, &path);
+	  mfib_table_entry_path_remove (mfib_index, &ip4_specials[ii], MFIB_SOURCE_SPECIAL, &path);
 	}
     }
 }
@@ -231,14 +229,12 @@ lcp_router_ip6_mroutes_add_del (u32 sw_if_index, u8 is_add)
     {
       if (is_add)
 	{
-	  mfib_table_entry_path_update (mfib_index, &ip6_specials[ii],
-					MFIB_SOURCE_PLUGIN_LOW,
+	  mfib_table_entry_path_update (mfib_index, &ip6_specials[ii], MFIB_SOURCE_SPECIAL,
 					MFIB_ENTRY_FLAG_NONE, &path);
 	}
       else
 	{
-	  mfib_table_entry_path_remove (mfib_index, &ip6_specials[ii],
-					MFIB_SOURCE_PLUGIN_LOW, &path);
+	  mfib_table_entry_path_remove (mfib_index, &ip6_specials[ii], MFIB_SOURCE_SPECIAL, &path);
 	}
     }
 }
@@ -932,10 +928,10 @@ lcp_router_table_add_del_special_routes (lcp_router_table_t *nlt, u8 is_add)
     {
       /* Set the all 1s address in this table to punt */
       if (is_add)
-	fib_table_entry_special_add (nlt->nlt_fib_index, &pfx_all1s, lcp_rt_fib_src,
+	fib_table_entry_special_add (nlt->nlt_fib_index, &pfx_all1s, FIB_SOURCE_SPECIAL,
 				     FIB_ENTRY_FLAG_LOCAL);
       else
-	fib_table_entry_special_remove (nlt->nlt_fib_index, &pfx_all1s, lcp_rt_fib_src);
+	fib_table_entry_special_remove (nlt->nlt_fib_index, &pfx_all1s, FIB_SOURCE_SPECIAL);
 
       const fib_route_path_t path = {
 	.frp_proto = DPO_PROTO_IP4,
@@ -952,10 +948,10 @@ lcp_router_table_add_del_special_routes (lcp_router_table_t *nlt, u8 is_add)
 	{
 	  if (is_add)
 	    mfib_table_entry_path_update (nlt->nlt_mfib_index, &ip4_specials[ii],
-					  MFIB_SOURCE_PLUGIN_LOW, MFIB_ENTRY_FLAG_NONE, &path);
+					  MFIB_SOURCE_SPECIAL, MFIB_ENTRY_FLAG_NONE, &path);
 	  else
 	    mfib_table_entry_path_remove (nlt->nlt_mfib_index, &ip4_specials[ii],
-					  MFIB_SOURCE_PLUGIN_LOW, &path);
+					  MFIB_SOURCE_SPECIAL, &path);
 	}
     }
   else if (FIB_PROTOCOL_IP6 == nlt->nlt_proto)
@@ -975,10 +971,10 @@ lcp_router_table_add_del_special_routes (lcp_router_table_t *nlt, u8 is_add)
 	{
 	  if (is_add)
 	    mfib_table_entry_path_update (nlt->nlt_mfib_index, &ip6_specials[ii],
-					  MFIB_SOURCE_PLUGIN_LOW, MFIB_ENTRY_FLAG_NONE, &path);
+					  MFIB_SOURCE_SPECIAL, MFIB_ENTRY_FLAG_NONE, &path);
 	  else
 	    mfib_table_entry_path_remove (nlt->nlt_mfib_index, &ip6_specials[ii],
-					  MFIB_SOURCE_PLUGIN_LOW, &path);
+					  MFIB_SOURCE_SPECIAL, &path);
 	}
     }
 }
