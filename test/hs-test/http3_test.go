@@ -22,7 +22,7 @@ func init() {
 		Http3MissingPseudoHeaderTest, Http3MissingSchemePseudoHeaderTest, Http3MissingPathPseudoHeaderTest,
 		Http3MissingAuthorityPseudoHeaderTest, Http3ConnectWithSchemePathPseudoHeadersTest,
 		Http3PseudoHeaderAfterRegularTest, Http3ReservedFrameTest, Http3DataFrameOnCtrlStreamTest,
-		Http3GoawayOnReqStreamTest, Http3GoawayInvalidLengthTest, Http3SecondSettingsFrameTest,
+		Http3GoawayOnReqStreamTest, Http3UnknownFrameOnReqStreamTest, Http3GoawayInvalidLengthTest, Http3SecondSettingsFrameTest,
 		Http3ReservedSettingsTest, Http3MissingSettingsTest, Http3SecondCtrlStreamTest,
 		Http3SecondQpackDecoderStreamTest, Http3SecondQpackEncoderStreamTest, Http3CtrlStreamClosedTest,
 		Http3QpackDecompressionFailedTest, Http3ClientOpenPushStreamTest, Http3DataBeforeHeadersTest,
@@ -593,6 +593,31 @@ func Http3DataFrameOnCtrlStreamTest(s *Http3Suite) {
 
 func Http3GoawayOnReqStreamTest(s *Http3Suite) {
 	http3SendReqExpectConnError(s, []byte{0x07, 0x02, 0x7B, 0xBD}, http3.ErrCodeFrameUnexpected)
+}
+
+func Http3UnknownFrameOnReqStreamTest(s *Http3Suite) {
+	vpp := s.Containers.Vpp.VppInstance
+	serverAddress := s.VppAddr() + ":" + s.Ports.Port1
+	Log(vpp.Vppctl("http tps no-zc h3 uri https://" + serverAddress))
+
+	conn := H3ClientConnect(serverAddress)
+	defer conn.CloseWithError(0, "")
+	stream, err := conn.OpenStream()
+	AssertNil(err)
+	// a complete unknown frame (reserved type 0x21, length 16) on a request
+	// stream must be discarded, not crash the server by peeking an empty fifo
+	_, err = stream.Write(append([]byte{0x21, 0x10}, make([]byte, 16)...))
+	AssertNil(err)
+
+	select {
+	case <-conn.Context().Done():
+		AssertNil(context.Cause(conn.Context()), "unknown frame must not error the connection")
+	case <-time.After(time.Second):
+	}
+
+	o := vpp.Vppctl("show session verbose 2")
+	Log(o)
+	AssertContains(o, "[H3]")
 }
 
 func Http3GoawayInvalidLengthTest(s *Http3Suite) {
