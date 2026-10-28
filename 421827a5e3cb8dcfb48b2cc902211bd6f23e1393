@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "47aca87a_3a82a200",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 17
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-10-28T16:08:55Z",
+      "side": 1,
+      "message": "hs-test fix was merged, please rebase your patch\nhttps://gerrit.fd.io/r/c/vpp/+/47319",
+      "revId": "421827a5e3cb8dcfb48b2cc902211bd6f23e1393",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
