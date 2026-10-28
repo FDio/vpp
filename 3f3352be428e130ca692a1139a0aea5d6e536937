@@ -16,6 +16,24 @@
       "message": "inline or noinline 😊",
       "revId": "3f3352be428e130ca692a1139a0aea5d6e536937",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "7b398016_4c6eecb5",
+        "filename": "src/svm/svm_fifo.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 1079,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-10-28T19:01:22Z",
+      "side": 1,
+      "message": "noinline. I know as confusing as it gets. Will probably rename to internal. There\u0027s no point in having it be inline, since info is just passed in. I didn\u0027t want t have one call the other because of the PLT jump ...",
+      "parentUuid": "d47aa3fb_1bcf36f3",
+      "revId": "3f3352be428e130ca692a1139a0aea5d6e536937",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
