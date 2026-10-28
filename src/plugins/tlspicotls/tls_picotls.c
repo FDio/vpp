@@ -375,10 +375,6 @@ ptls_tcp_to_app_write (picotls_ctx_t *ptls_ctx, svm_fifo_t *app_rx_fifo, svm_fif
   if (n_fs_app <= 0)
     return PICOTLS_RX_OK;
 
-  tcp_len = svm_fifo_segments (tcp_rx_fifo, 0, tcp_fs, &n_segs, max_len);
-  if (tcp_len <= 0)
-    return PICOTLS_RX_OK;
-
   if (ptls_ctx->read_buffer_offset)
     {
       to_copy = buf->off - ptls_ctx->read_buffer_offset;
@@ -391,6 +387,10 @@ ptls_tcp_to_app_write (picotls_ctx_t *ptls_ctx, svm_fifo_t *app_rx_fifo, svm_fif
 	}
       ptls_ctx->read_buffer_offset = 0;
     }
+
+  tcp_len = svm_fifo_segments (tcp_rx_fifo, 0, tcp_fs, &n_segs, max_len);
+  if (tcp_len <= 0)
+    goto do_checks;
 
   while (ai < n_fs_app && read < tcp_len)
     {
@@ -441,6 +441,11 @@ ptls_tcp_to_app_write (picotls_ctx_t *ptls_ctx, svm_fifo_t *app_rx_fifo, svm_fif
 	    {
 	      ptls_ctx->read_buffer_offset = buf->off - left;
 	      wrote += ptls_ctx->read_buffer_offset;
+	      /* Other sessions share the thread's receive buffer. */
+	      vec_validate (ptls_ctx->rx_content, buf->off - 1);
+	      clib_memcpy_fast (ptls_ctx->rx_content, buf->base, buf->off);
+	      buf->base = ptls_ctx->rx_content;
+	      buf->capacity = vec_len (ptls_ctx->rx_content);
 	    }
 	}
 
