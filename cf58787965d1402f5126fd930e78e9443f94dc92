@@ -69,6 +69,24 @@
       "message": "It looks like the generic function is error prone to use. While this patch is good as it is, I\u0027d rather heal the systemic issue, ideally make the problematic function take packet, instead of the \"Raw\" payload, then pick the Raw payload from the packet in the function the same way as in the fixed version. Would need a rename, could sprinkle in type annotations to make it more obvious to use.",
       "revId": "cf58787965d1402f5126fd930e78e9443f94dc92",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7add45bd_d22dcd37",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-10-28T14:59:09Z",
+      "side": 1,
+      "message": "Thanks Klement, agreed. I\u0027ll address the helper API in a separate follow-up, including encapsulated packets, so callers no longer need to select Raw themselves. This keeps the current CI fix focused and ready to merge.",
+      "parentUuid": "2213424d_ece7ab52",
+      "revId": "cf58787965d1402f5126fd930e78e9443f94dc92",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
