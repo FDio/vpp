@@ -58,9 +58,7 @@ class TestMdataCli(VppTestCase):
             try:
                 ip = packet[IP]
                 udp = packet[UDP]
-                self.logger.debug("Converting UDP payload to info: %s", udp.payload)
-                # A UDP port may select a dissector before the Raw layer.
-                payload_info = self.payload_to_info(Raw(bytes(udp.payload)))
+                payload_info = self.udp_packet_to_info(packet)
                 # make sure the indexes match
                 self.assert_equal(
                     payload_info.src, src_if.sw_if_index, "source sw_if_index"
