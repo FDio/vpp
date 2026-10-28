@@ -446,8 +446,8 @@ int ikev2_encrypt_aead_data (ikev2_sa_t *sa, ikev2_sa_transform_t *tr_encr, v8 *
 			     u8 *aad, u32 aad_len, u8 *tag);
 int ikev2_decrypt_aead_data (ikev2_sa_t *sa, ikev2_sa_transform_t *tr_encr, u8 *data, int data_len,
 			     u8 *aad, u32 aad_len, u8 *tag, u32 *out_len);
-void ikev2_generate_dh (ikev2_sa_t * sa, ikev2_sa_transform_t * t);
-void ikev2_complete_dh (ikev2_sa_t * sa, ikev2_sa_transform_t * t);
+int ikev2_generate_dh (ikev2_sa_t * sa, ikev2_sa_transform_t * t);
+int ikev2_complete_dh (ikev2_sa_t * sa, ikev2_sa_transform_t * t);
 int ikev2_verify_sign (EVP_PKEY * pkey, u8 * sigbuf, u8 * data);
 u8 *ikev2_calc_sign (EVP_PKEY * pkey, u8 * data);
 EVP_PKEY *ikev2_load_cert_file (u8 * file);

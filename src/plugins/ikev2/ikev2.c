@@ -525,7 +525,11 @@ ikev2_generate_sa_init_data (ikev2_sa_t * sa)
     }
 
   /* generate dh keys */
-  ikev2_generate_dh (sa, t);
+  if (ikev2_generate_dh (sa, t) < 0)
+    {
+      sa->dh_group = IKEV2_TRANSFORM_DH_TYPE_NONE;
+      return IKEV2_GENERATE_SA_INIT_ERR_UNSUPPORTED_DH;
+    }
 
   return IKEV2_GENERATE_SA_INIT_OK;
 }
@@ -590,8 +594,12 @@ ikev2_complete_sa_data (ikev2_sa_t * sa, ikev2_sa_t * sai)
 
 
   /* generate dh keys */
-  ikev2_complete_dh (sa, t);
-
+  if (ikev2_complete_dh (sa, t) < 0)
+    {
+      /* DH_compute_key() rejected the peer KE; mark the SA so key
+	 derivation stops instead of running on an all-zero secret. */
+      sa->dh_group = IKEV2_TRANSFORM_DH_TYPE_NONE;
+    }
 }
 
 static void
@@ -1548,7 +1556,12 @@ ikev2_process_create_child_sa_rekey (ikev2_sa_t *sa, ikev2_sa_t *sar,
       sa->i_dh_data = sar->i_dh_data;
       sar->i_dh_data = 0;
 
-      ikev2_generate_dh (sa, tr);
+      if (ikev2_generate_dh (sa, tr) < 0)
+	{
+	  rekey->notify_type = IKEV2_NOTIFY_MSG_INVALID_KE_PAYLOAD;
+	  ikev2_sa_free_proposal_vector (&rekey->r_proposal);
+	  return 0;
+	}
       rekey->kex = 1;
     }
 
@@ -3594,6 +3607,15 @@ ikev2_node_internal (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *f
 			  (&sai->init_response_received, 0, 1))
 			{
 			  ikev2_complete_sa_data (sa0, sai);
+			  if (sa0->dh_group == IKEV2_TRANSFORM_DH_TYPE_NONE)
+			    {
+			      /* ikev2_complete_dh() rejected the peer KE
+				 or marked the SA as unsupported — abort
+				 before deriving IKE keys from an invalid
+				 shared secret. */
+			      sa0->state = IKEV2_STATE_NO_PROPOSAL_CHOSEN;
+			      goto dispatch0;
+			    }
 			  ikev2_calc_keys (sa0);
 			  ikev2_sa_auth_init (sa0);
 			  ike0->flags = IKEV2_HDR_FLAG_INITIATOR;
