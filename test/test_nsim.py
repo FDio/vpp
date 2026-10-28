@@ -35,20 +35,6 @@ def create_stream(self, src_if, dst_if, count):
     return packets
 
 
-def packet_info_from_capture(self, packet):
-    # Scapy may decode a random UDP source port as another protocol
-    # (WireGuard on 51820), leaving only part of the marker in Raw.
-    udp = packet[UDP]
-    payload = udp.original[8 : udp.len]
-    self.assertGreaterEqual(
-        len(payload),
-        18,
-        f"Short UDP payload on sport {udp.sport}, dport {udp.dport}: "
-        f"UDP length {udp.len}, captured {len(udp.original)} bytes",
-    )
-    return self.payload_to_info(Raw(payload))
-
-
 def verify_capture(self, src_if, dst_if, capture, reply):
     packet_info = None
     for packet in capture:
@@ -56,7 +42,7 @@ def verify_capture(self, src_if, dst_if, capture, reply):
             ip = packet[IP]
             udp = packet[UDP]
             # convert the payload to packet info object
-            payload_info = packet_info_from_capture(self, packet)
+            payload_info = self.udp_packet_to_info(packet)
             # make sure the indexes match
             self.assert_equal(
                 payload_info.src, src_if.sw_if_index, "source sw_if_index"
