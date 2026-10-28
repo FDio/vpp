@@ -37,7 +37,7 @@ from template_ipsec import (
 )
 from test_ipsec_tun_if_esp import TemplateIpsecItf4
 from config import config
-from vpp_ip_route import FibPathType, VppIpTable, find_mroute_path
+from vpp_ip_route import FibPathType, VppIpTable, find_mroute, find_mroute_path
 from vpp_papi import VppEnum
 from vpp_qemu_utils import (
     add_namespace_route,
@@ -1522,6 +1522,45 @@ class TestLinuxCPLinuxToVPP(TestLinuxCPNetNSBase):
                 for a in self.vapi.ip_address_dump(lo0_idx, is_ipv6=True)
             ),
             False,
+        )
+
+
+@unittest.skipIf(config.skip_netns_tests, "netns not available or disabled from cli")
+class TestLinuxCPMcastRoute(TestLinuxCPNetNSBase):
+    """Deleting a Linux multicast route removes it from the VPP MFIB"""
+
+    mcast_group = "239.1.1.1"
+    mcast_prefix = mcast_group + "/32"
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.create_pg_interfaces(range(1))
+        cls.phy = cls.pg_interfaces[0]
+        cls.vapi.lcp_itf_pair_add_del_v3(
+            is_add=True,
+            sw_if_index=cls.phy.sw_if_index,
+            host_if_name="hmcast",
+            netns=cls.ns_name,
+        )
+        cls.phy.admin_up()
+        set_interface_up(cls.ns_name, "hmcast")
+
+    def _mfib_entry_present(self):
+        return find_mroute(self, self.mcast_group, "0.0.0.0", 32)
+
+    def test_linux_to_vpp_mcast_route_delete(self):
+        """Linux multicast route delete is synced to the MFIB"""
+        add_namespace_route(
+            self.ns_name, self.mcast_prefix, dev="hmcast", route_type="multicast"
+        )
+        self.poll_for(
+            "multicast route present in VPP MFIB", self._mfib_entry_present, True
+        )
+
+        del_namespace_route(self.ns_name, self.mcast_prefix)
+        self.poll_for(
+            "multicast route removed from VPP MFIB", self._mfib_entry_present, False
         )
 
 
