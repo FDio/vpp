@@ -576,14 +576,23 @@ ikev2_generate_dh (ikev2_sa_t * sa, ikev2_sa_transform_t * t)
 	  sa->dh_shared_key = vec_new (u8, t->key_len);
 	  ex = BN_bin2bn (sa->i_dh_data, vec_len (sa->i_dh_data), NULL);
 	  r = DH_compute_key (sa->dh_shared_key, ex, dh);
-	  ASSERT (t->key_len >= r);
-	  int pad = t->key_len - r;
-	  if (pad)
-	    {
-	      memmove (sa->dh_shared_key + pad, sa->dh_shared_key, r);
-	      clib_memset (sa->dh_shared_key, 0, pad);
-	    }
 	  BN_clear_free (ex);
+	  /* DH_compute_key() returns -1 on failure and never more than the
+	     group size. A negative or oversized length would make pad exceed
+	     the key_len buffer and drive an out-of-bounds write from a peer
+	     controlled KE payload, so reject it and leave the shared key
+	     zeroed to fail the exchange. */
+	  if (r < 0 || r > t->key_len)
+	    clib_memset (sa->dh_shared_key, 0, t->key_len);
+	  else
+	    {
+	      int pad = t->key_len - r;
+	      if (pad)
+		{
+		  memmove (sa->dh_shared_key + pad, sa->dh_shared_key, r);
+		  clib_memset (sa->dh_shared_key, 0, pad);
+		}
+	    }
 	}
       DH_free (dh);
     }
@@ -699,16 +708,22 @@ ikev2_complete_dh (ikev2_sa_t * sa, ikev2_sa_transform_t * t)
       sa->dh_shared_key = vec_new (u8, t->key_len);
       ex = BN_bin2bn (sa->r_dh_data, vec_len (sa->r_dh_data), NULL);
       r = DH_compute_key (sa->dh_shared_key, ex, dh);
-      ASSERT (t->key_len >= r);
-      int pad = t->key_len - r;
-      if (pad)
-	{
-	  vec_insert (sa->dh_shared_key, pad, 0);
-	  clib_memset (sa->dh_shared_key, 0, pad);
-	  vec_dec_len (sa->dh_shared_key, pad);
-	}
       BN_clear_free (ex);
       DH_free (dh);
+      /* See ikev2_generate_dh(): guard against a negative or oversized
+         DH_compute_key() result before computing the leading-zero pad. */
+      if (r < 0 || r > t->key_len)
+	clib_memset (sa->dh_shared_key, 0, t->key_len);
+      else
+	{
+	  int pad = t->key_len - r;
+	  if (pad)
+	    {
+	      vec_insert (sa->dh_shared_key, pad, 0);
+	      clib_memset (sa->dh_shared_key, 0, pad);
+	      vec_dec_len (sa->dh_shared_key, pad);
+	    }
+	}
     }
   else if (t->dh_group == IKEV2_DH_GROUP_ECP)
     {
