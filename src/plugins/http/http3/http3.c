@@ -1900,7 +1900,11 @@ http3_stream_transport_rx_req (http_ctx_t *req, http_ctx_t *stream, http_req_sta
 	default:
 	  /* discard payload of unknown frame */
 	  if (req->fh.length)
-	    req->fh.length -= http_io_ts_drain (stream, req->fh.length);
+	    {
+	      u32 n_drained = http_io_ts_drain (stream, req->fh.length);
+	      req->fh.length -= n_drained;
+	      left_deq -= n_drained;
+	    }
 	  continue;
 	}
 
