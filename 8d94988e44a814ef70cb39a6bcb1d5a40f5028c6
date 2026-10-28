@@ -35,6 +35,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "a4e69f1a_c1f5186e",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3121
+      },
+      "writtenOn": "2026-10-28T19:11:01Z",
+      "side": 1,
+      "message": "Ack, added type annotations to all new and edited functions.",
+      "parentUuid": "f066fda0_e2e4b5b5",
+      "revId": "8d94988e44a814ef70cb39a6bcb1d5a40f5028c6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "22086ae7_9f96dd51",
@@ -48,6 +66,24 @@
       "writtenOn": "2026-10-28T07:04:39Z",
       "side": 1,
       "message": "While less probable, I think the main issue being fixed can still happen on PID reuse. I\u0027m not sure how probable it is, though. Not a blocker, but if you wanted to make it bulletproof, maybe we could enforce a floor - at module level:\n\n```\n# Timestamp used for classifying core recency\n_START_TIMESTAMP \u003d time.time()\n```\n\nand here then:\n\n```    \nmatches \u003d [\n        m\n        for m in glob.glob(glob_pat)\n        if os.path.isfile(m) and os.path.getmtime(m) \u003e\u003d _START_TIMESTAMP - 1\n    ]\n```\n\nit doesn\u0027t matter if the timestamp is main or child - it still will be \u003c\u003d than any vpp core run by that particular child",
+      "revId": "8d94988e44a814ef70cb39a6bcb1d5a40f5028c6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "abbd090d_fc934c63",
+        "filename": "test/util.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 200,
+      "author": {
+        "id": 3121
+      },
+      "writtenOn": "2026-10-28T19:11:01Z",
+      "side": 1,
+      "message": "Nice, yes this sounds better. Added `_START_TIMESTAMP` with the 1s slack in a `is_recent_core()` helper used by all core checks. Filtering the glob alone wasn\u0027t enough, because `get_core_path()` falls back to the expected path, which for `core.%p` is the stale file itself.",
+      "parentUuid": "22086ae7_9f96dd51",
       "revId": "8d94988e44a814ef70cb39a6bcb1d5a40f5028c6",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
