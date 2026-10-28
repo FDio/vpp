@@ -11,6 +11,7 @@ import (
 var http1Tests = map[string][]func(s *Http1Suite){}
 var http1SoloTests = map[string][]func(s *Http1Suite){}
 var http1MWTests = map[string][]func(s *Http1Suite){}
+var http1StartupConfigs = map[string]Stanza{}
 
 type Http1Suite struct {
 	HstSuite
@@ -34,6 +35,17 @@ type Http1Suite struct {
 func RegisterHttp1Tests(tests ...func(s *Http1Suite)) {
 	http1Tests[GetTestFilename()] = tests
 }
+
+func RegisterHttp1TestsWithConfig(config Stanza, tests ...func(s *Http1Suite)) {
+	filename := GetTestFilename()
+	http1Tests[filename] = append(http1Tests[filename], tests...)
+	for _, test := range tests {
+		funcName := runtime.FuncForPC(reflect.ValueOf(test).Pointer()).Name()
+		testName := strings.Split(funcName, ".")[2]
+		http1StartupConfigs[testName] = config
+	}
+}
+
 func RegisterHttp1SoloTests(tests ...func(s *Http1Suite)) {
 	http1SoloTests[GetTestFilename()] = tests
 }
@@ -150,7 +162,14 @@ var _ = Describe("Http1Suite", Ordered, ContinueOnFailure, Label("HTTP", "HTTP1"
 		s.SetupSuite()
 	})
 	BeforeEach(func() {
-		s.SetupTest()
+		var startupConf []Stanza
+		for testName, config := range http1StartupConfigs {
+			if strings.Contains(CurrentSpecReport().LeafNodeText, testName) {
+				startupConf = append(startupConf, config)
+				break
+			}
+		}
+		s.SetupTest(startupConf...)
 	})
 	AfterAll(func() {
 		s.TeardownSuite()

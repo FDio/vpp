@@ -2803,6 +2803,135 @@ http_test_http_headers_rx_to_tx (vlib_main_t *vm)
 }
 
 static int
+http_test_rx_publication (vlib_main_t *vm)
+{
+  session_enable_disable_args_t session_args = {
+    .is_en = 1,
+    .rt_engine_type = RT_BACKEND_ENGINE_RULE_TABLE,
+  };
+  clib_error_t *error;
+  fifo_segment_main_t fsm = {};
+  fifo_segment_create_args_t args = {
+    .segment_type = SSVM_SEGMENT_PRIVATE,
+    .segment_size = 1 << 20,
+    .segment_name = "http-rx-publication",
+  };
+  fifo_segment_t *fs = 0;
+  svm_fifo_t *fifo = 0, *transport_fifo = 0;
+  session_t *as = 0, *ts = 0;
+  http_ctx_t req = {}, hc = {};
+  http_msg_t msg = {}, received;
+  svm_fifo_seg_t segs[2];
+  u8 expected[9000], actual[sizeof (msg) + sizeof (expected)], marker = 0xa5;
+  u32 tail, copied = 0, limit, n_src, moved;
+  int n_read, result = 1;
+
+#define RX_TEST(_cond, _comment)                                                                   \
+  do                                                                                               \
+    {                                                                                              \
+      if (!HTTP_TEST_I ((_cond), _comment))                                                        \
+	goto done;                                                                                 \
+    }                                                                                              \
+  while (0)
+
+  /* session_alloc() needs session workers even when no HTTP app is attached. */
+  error = vnet_session_enable_disable (vm, &session_args);
+  if (error)
+    {
+      clib_error_report (error);
+      return 1;
+    }
+
+  fifo_segment_main_init (&fsm, 0, 5);
+  RX_TEST (!fifo_segment_create (&fsm, &args), "RX test segment allocated");
+  fs = fifo_segment_get_segment (&fsm, args.new_segment_indices[0]);
+  fifo = fifo_segment_alloc_fifo_w_slice (fs, 0, 4096, FIFO_SEGMENT_RX_FIFO);
+  RX_TEST (fifo != 0, "RX test FIFO allocated");
+  svm_fifo_set_size (fifo, 16 << 10);
+  /* Exercise producer-index wraparound and metadata crossing a chunk boundary. */
+  f_head_cptr (fifo)->start_byte = 0u - f_head_cptr (fifo)->length;
+  svm_fifo_init_pointers (fifo, ~0u - 64, ~0u - 64);
+  as = session_alloc (vm->thread_index);
+  as->rx_fifo = fifo;
+  req.c_s_index = as->session_index;
+  req.c_thread_index = as->thread_index;
+  ts = session_alloc (vm->thread_index);
+  /* Allocating the transport session may relocate the session pool. */
+  as = session_get (req.c_s_index, req.c_thread_index);
+  transport_fifo = fifo_segment_alloc_fifo_w_slice (fs, 0, 4096, FIFO_SEGMENT_RX_FIFO);
+  RX_TEST (transport_fifo != 0, "transport RX test FIFO allocated");
+  svm_fifo_set_size (transport_fifo, 16 << 10);
+  ts->rx_fifo = transport_fifo;
+  hc.hc_tc_session_handle = session_handle (ts);
+  for (u32 i = 0; i < sizeof (expected); i++)
+    expected[i] = (i * 17 + 3) & 0xff;
+  /* Grow the source in 4K chunks, so two segment slots cannot map it all. */
+  for (u32 offset = 0; offset < sizeof (expected); offset += moved)
+    {
+      moved = clib_min (4096, sizeof (expected) - offset);
+      RX_TEST (svm_fifo_enqueue (transport_fifo, moved, expected + offset) == moved,
+	       "transport RX bytes queued");
+    }
+  n_src = ARRAY_LEN (segs);
+  n_read = svm_fifo_segments (transport_fifo, 0, segs, &n_src, sizeof (expected));
+  RX_TEST (n_src == ARRAY_LEN (segs) && n_read > 0 && n_read < sizeof (expected),
+	   "two source segments map fewer bytes than the requested transfer");
+
+  RX_TEST (svm_fifo_enqueue (fifo, 1, &marker) == 1, "previous message is readable");
+  tail = fifo->shr->tail;
+  for (u32 fragment = 0; fragment < 2; fragment++)
+    {
+      limit = fragment ? sizeof (expected) : 1;
+      moved = http_io_ts_move_to_as (&hc, &req, sizeof (msg) + copied, limit - copied);
+      RX_TEST (moved == limit - copied, "transfer completes across partial source mappings");
+      copied += moved;
+      RX_TEST (svm_fifo_max_dequeue_cons (transport_fifo) == sizeof (expected) - copied,
+	       "transport FIFO drains exactly the successfully staged bytes");
+      RX_TEST (fifo->shr->tail == tail, "staging leaves the producer tail unchanged");
+      if (!fragment)
+	RX_TEST (svm_fifo_dequeue (fifo, 1, actual) == 1 && actual[0] == marker,
+		 "consumer can drain the previous message during staging");
+      RX_TEST (svm_fifo_max_dequeue_cons (fifo) == 0,
+	       "polling consumer cannot read partial headers or metadata");
+      RX_TEST (svm_fifo_dequeue (fifo, 1, actual) == SVM_FIFO_EEMPTY,
+	       "partial headers remain unreadable without relying on notifications");
+      http_io_as_rx_peek (&req, sizeof (msg), copied, actual);
+      RX_TEST (!memcmp (actual, expected, copied), "parser can read unpublished fragments");
+    }
+
+  msg.type = HTTP_MSG_REPLY;
+  msg.code = HTTP_STATUS_OK;
+  msg.data.type = HTTP_MSG_DATA_INLINE;
+  msg.data.len = sizeof (expected);
+  RX_TEST (!http_io_as_rx_publish (&req, &msg, copied), "complete message published");
+  RX_TEST (svm_fifo_max_dequeue_cons (fifo) == sizeof (actual),
+	   "metadata and all staged bytes become readable together");
+  RX_TEST (svm_fifo_dequeue (fifo, sizeof (actual), actual) == sizeof (actual),
+	   "consumer reads the complete message");
+  clib_memcpy_fast (&received, actual, sizeof (received));
+  RX_TEST (!memcmp (&received, &msg, sizeof (msg)), "published metadata is intact");
+  RX_TEST (!memcmp (actual + sizeof (msg), expected, sizeof (expected)),
+	   "published headers are intact across FIFO chunks and index wraparound");
+  result = 0;
+
+done:
+  if (ts)
+    session_free (ts);
+  if (as)
+    session_free (as);
+  if (transport_fifo)
+    fifo_segment_free_fifo (fs, transport_fifo);
+  if (fifo)
+    fifo_segment_free_fifo (fs, fifo);
+  if (fs)
+    fifo_segment_delete (&fsm, fs);
+  vec_free (args.new_segment_indices);
+  pool_free (fsm.segments);
+  return result;
+#undef RX_TEST
+}
+
+static int
 http_test_encode_u64_decimal (vlib_main_t *vm)
 {
   static const struct
@@ -3558,10 +3687,14 @@ test_http_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	res = http_test_decode_chunked (vm);
       else if (unformat (input, "encode-u64-decimal"))
 	res = http_test_encode_u64_decimal (vm);
+      else if (unformat (input, "rx-publication"))
+	res = http_test_rx_publication (vm);
       else if (unformat (input, "decode-varint"))
 	res = http_test_decode_varint (vm);
       else if (unformat (input, "all"))
 	{
+	  if ((res = http_test_rx_publication (vm)))
+	    goto done;
 	  if ((res = http_test_decode_varint (vm)))
 	    goto done;
 	  if ((res = http_test_parse_authority (vm)))
@@ -3596,7 +3729,7 @@ test_http_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	    goto done;
 	}
       else
-	break;
+	return clib_error_return (0, "unknown input `%U'", format_unformat_error, input);
     }
 
 done:
