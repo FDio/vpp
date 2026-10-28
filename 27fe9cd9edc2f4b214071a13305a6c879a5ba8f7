@@ -24,6 +24,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "2bacd52c_4376f437",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 2
+      },
+      "lineNbr": 7,
+      "author": {
+        "id": 3139
+      },
+      "writtenOn": "2026-10-28T10:19:23Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "4029998b_e1f159ce",
+      "range": {
+        "startLine": 7,
+        "startChar": 0,
+        "endLine": 7,
+        "endChar": 5
+      },
+      "revId": "27fe9cd9edc2f4b214071a13305a6c879a5ba8f7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "3b55270f_9d1de960",
@@ -41,6 +65,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "c44020f4_62a0bbd7",
+        "filename": "src/plugins/http/http3/http3.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1900,
+      "author": {
+        "id": 3139
+      },
+      "writtenOn": "2026-10-28T10:19:23Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3b55270f_9d1de960",
+      "revId": "27fe9cd9edc2f4b214071a13305a6c879a5ba8f7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "c9f9069a_1c71a789",
@@ -54,6 +96,24 @@
       "writtenOn": "2026-10-28T07:41:05Z",
       "side": 1,
       "message": "all http/3 tests are in test/hs-test/http3_test.go",
+      "revId": "27fe9cd9edc2f4b214071a13305a6c879a5ba8f7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ba3d6c94_d1dbcfa0",
+        "filename": "test/asf/test_http3.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3139
+      },
+      "writtenOn": "2026-10-28T10:19:23Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "c9f9069a_1c71a789",
       "revId": "27fe9cd9edc2f4b214071a13305a6c879a5ba8f7",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
