@@ -3005,6 +3005,8 @@ class TestInitiatorKeepaliveMsg(TestInitiatorPsk):
 class TestInitiatorInvalidModp(TestInitiatorPsk):
     """An invalid MODP response must not cause an IKE_AUTH request."""
 
+    invalid_ke_length = None
+
     def tearDown(self):
         super(IkePeer, self).tearDown()
         self.p.remove_vpp_config()
@@ -3014,9 +3016,10 @@ class TestInitiatorInvalidModp(TestInitiatorPsk):
         self.pg_start()
         self.vapi.ikev2_initiate_sa_init(name=self.p.profile_name)
         self.verify_sa_init_request(self.pg0.get_capture(1)[0])
-        response = self.create_init_response(
-            dh_pub_key=bytes(len(self.sa.my_dh_pub_key))
-        )
+        length = self.invalid_ke_length
+        if length is None:
+            length = len(self.sa.my_dh_pub_key)
+        response = self.create_init_response(dh_pub_key=bytes(length))
         self.send_and_assert_no_replies(self.pg0, response)
         self.assertEqual(len(self.vapi.ipsec_sa_dump()), 0)
 
@@ -3024,20 +3027,43 @@ class TestInitiatorInvalidModp(TestInitiatorPsk):
 class TestResponderInvalidModp(TestResponderPsk):
     """An all-zero MODP public value must be rejected before IKE_AUTH."""
 
+    invalid_ke_length = None
+
     def tearDown(self):
         super(IkePeer, self).tearDown()
         self.p.remove_vpp_config()
 
     def test_responder(self):
+        length = self.invalid_ke_length
+        if length is None:
+            length = len(self.sa.my_dh_pub_key)
         request = ikev2.IKEv2(
             init_SPI=self.sa.ispi, flags="Initiator", exch_type="IKE_SA_INIT"
-        ) / self.generate_sa_init_payload(dh_pub_key=bytes(len(self.sa.my_dh_pub_key)))
+        ) / self.generate_sa_init_payload(dh_pub_key=bytes(length))
         packet = self.create_packet(self.pg0, request, self.sa.sport, self.sa.dport)
         reply = self.get_ike_header(self.send_and_expect(self.pg0, packet, self.pg0)[0])
         self.assertEqual(reply.exch_type, 34)
         self.assertEqual(reply[ikev2.IKEv2_payload_Notify].type, 17)
         self.assertEqual(len(self.vapi.ikev2_sa_dump()), 0)
         self.assertEqual(len(self.vapi.ipsec_sa_dump()), 0)
+
+
+class TestInitiatorShortEcp384(TestInitiatorInvalidModp):
+    """A one-byte ECP-384 response must not cause an IKE_AUTH request."""
+
+    invalid_ke_length = 1
+
+    def config_tc(self):
+        TestInitiatorEcp384.config_tc(self)
+
+
+class TestResponderShortEcp256(TestResponderInvalidModp):
+    """A one-byte ECP-256 request must not install IKE or Child SAs."""
+
+    invalid_ke_length = 1
+
+    def config_tc(self):
+        TestAES_GCM_16_256_ECP256_ESP_AES_GCM_16.config_tc(self)
 
 
 class TestMalformedMessages(TemplateResponder, Ikev2Params):

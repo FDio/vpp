@@ -827,10 +827,12 @@ ikev2_parse_ke_payload (const void *p, u32 rlen, ikev2_sa_t * sa,
 {
   const ike_ke_payload_header_t *ke = p;
   u16 plen = clib_net_to_host_u16 (ke->length);
-  ASSERT (plen >= sizeof (*ke) && plen <= rlen);
-  if (sizeof (*ke) > rlen)
+  /* The ASSERT is compiled out in release builds. A payload length below
+     the header underflows the vec_add() copy length, and one above the
+     received data reads past the packet, both from peer input. */
+  if (plen < sizeof (*ke) || plen > rlen)
     {
-      log_err ("KE: packet too small");
+      log_err ("KE: invalid length");
       return 0;
     }
 
