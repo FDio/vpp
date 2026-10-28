@@ -100,6 +100,7 @@ typedef struct
       f64 send_rtt;
       f64 jitter;
       u32 rtt_udp_buffer_offset;
+      u32 dio_tx_seg;
     };
     /* server */
     struct

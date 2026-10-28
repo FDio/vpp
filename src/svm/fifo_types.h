@@ -112,10 +112,19 @@ typedef struct svm_fifo_async_seg_
 #define SVM_FIFO_ASYNC_OPAQUE_INVALID ((u32) ~0)
 #define SVM_FIFO_ASYNC_OPAQUE_FIFO    ((u32) ~0 - 1)
 
+/* Segment where a read ended, valid while seg is set */
+typedef struct
+{
+  svm_fifo_async_seg_t *seg;
+  u32 pos; /**< stream position of seg */
+} svm_fifo_async_cursor_t;
+
 typedef struct
 {
   svm_fifo_async_seg_t *head;
   svm_fifo_async_seg_t *tail;
+  svm_fifo_async_cursor_t fwd;	/**< furthest read */
+  svm_fifo_async_cursor_t back; /**< last read behind fwd, e.g., retransmit */
   u32 n_segs;
   u32 end;	   /**< prefix end */
   u8 sealed;	   /**< later writes use chunks */

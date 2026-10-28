@@ -922,10 +922,12 @@ format_session_queue_trace (u8 * s, va_list * args)
   return s;
 }
 
-#define foreach_session_queue_error                                           \
-  _ (TX, tx, INFO, "Packets transmitted")                                     \
-  _ (TIMER, timer, INFO, "Timer events")                                      \
-  _ (NO_BUFFER, no_buffer, ERROR, "Out of buffers")
+#define foreach_session_queue_error                                                                \
+  _ (TX, tx, INFO, "Packets transmitted")                                                          \
+  _ (TIMER, timer, INFO, "Timer events")                                                           \
+  _ (NO_BUFFER, no_buffer, ERROR, "Out of buffers")                                                \
+  _ (DIO_ATTACHED, dio_attached, INFO, "Deferred tx segments sent without copies")                 \
+  _ (DIO_COPIED, dio_copied, INFO, "Deferred tx segments copied")
 
 typedef enum
 {
@@ -1005,16 +1007,20 @@ session_tx_fill_dma_transfers (session_worker_t *wrk, session_tx_context_t *ctx,
 
 /* Copy len stream bytes at tx_offset into data and advance tx_offset. Keep
  * track of progress locally, transports are also supposed to increment it
- * independently when pushing their headers */
+ * independently when pushing their headers. Deferred tx copies with dma from
+ * chunks, or on the cpu from prefix segments */
 always_inline int
-session_tx_stream_copy (session_worker_t *wrk, session_tx_context_t *ctx, u32 len, u8 *data, u8 dma)
+session_tx_stream_copy (session_worker_t *wrk, session_tx_context_t *ctx, u32 len, u8 *data, u8 dio,
+			u8 dma)
 {
   int n_bytes_read;
 
-  if (PREDICT_TRUE (!dma))
+  if (PREDICT_TRUE (!dio))
     n_bytes_read = svm_fifo_peek (ctx->s->tx_fifo, ctx->sp.tx_offset, len, data);
-  else
+  else if (dma)
     n_bytes_read = session_tx_fill_dma_transfers (wrk, ctx, len, data);
+  else
+    n_bytes_read = svm_fifo_async_peek (ctx->s->tx_fifo, ctx->sp.tx_offset, len, data);
   ASSERT (n_bytes_read > 0);
   ctx->sp.tx_offset += n_bytes_read;
 
@@ -1065,7 +1071,7 @@ session_tx_dgram_copy_hdr (session_tx_context_t *ctx, u8 *dst)
 
 always_inline void
 session_tx_fifo_chain_tail (session_worker_t *wrk, session_tx_context_t *ctx, vlib_buffer_t *b,
-			    u16 *n_bufs, u8 is_dgram, u8 dma)
+			    u16 *n_bufs, u8 is_dgram, u8 dio, u8 dma)
 {
   vlib_main_t *vm = wrk->vm;
   vlib_buffer_t *chain_b, *prev_b;
@@ -1092,7 +1098,7 @@ session_tx_fifo_chain_tail (session_worker_t *wrk, session_tx_context_t *ctx, vl
       chain_b->current_data = 0;
       data = vlib_buffer_get_current (chain_b);
       if (!is_dgram)
-	n_bytes_read = session_tx_stream_copy (wrk, ctx, len_to_deq, data, dma);
+	n_bytes_read = session_tx_stream_copy (wrk, ctx, len_to_deq, data, dio, dma);
       else
 	n_bytes_read = session_tx_dgram_copy (ctx, len_to_deq, data, to_deq);
       ASSERT (n_bytes_read == len_to_deq);
@@ -1117,7 +1123,7 @@ session_tx_fifo_chain_tail (session_worker_t *wrk, session_tx_context_t *ctx, vl
 
 always_inline void
 session_tx_fill_buffer (session_worker_t *wrk, session_tx_context_t *ctx, vlib_buffer_t *b,
-			u16 *n_bufs, u8 chained, u8 is_dgram, u8 is_cless, u8 dma)
+			u16 *n_bufs, u8 chained, u8 is_dgram, u8 is_cless, u8 dio, u8 dma)
 {
   u32 len_to_deq;
   u8 *data0;
@@ -1133,7 +1139,7 @@ session_tx_fill_buffer (session_worker_t *wrk, session_tx_context_t *ctx, vlib_b
   len_to_deq = clib_min (ctx->left_to_snd, ctx->deq_per_first_buf);
 
   if (!is_dgram)
-    n_bytes_read = session_tx_stream_copy (wrk, ctx, len_to_deq, data0, dma);
+    n_bytes_read = session_tx_stream_copy (wrk, ctx, len_to_deq, data0, dio, dma);
   else
     {
       /* Peer address for connectionless transports */
@@ -1149,7 +1155,7 @@ session_tx_fill_buffer (session_worker_t *wrk, session_tx_context_t *ctx, vlib_b
    * Fill in the remaining buffers in the chain, if any
    */
   if (chained && ctx->left_to_snd)
-    session_tx_fifo_chain_tail (wrk, ctx, b, n_bufs, is_dgram, dma);
+    session_tx_fifo_chain_tail (wrk, ctx, b, n_bufs, is_dgram, dio, dma);
 }
 
 /* Bytes to send from the same length dgrams at the head of the tx fifo, in
@@ -1299,7 +1305,7 @@ session_tx_burst_free_bufs (vlib_main_t *vm, u32 *bis, u32 n_bufs)
 }
 
 always_inline int
-session_tx_burst_inline (session_worker_t *wrk, session_tx_burst_t *b, u8 is_dgram, u8 dma)
+session_tx_burst_inline (session_worker_t *wrk, session_tx_burst_t *b, u8 is_dgram, u8 dio, u8 dma)
 {
   session_tx_context_t *ctx = &wrk->ctx;
   u32 n_left, n_out, pbi, bi0, bi1, *bis, **out_bis;
@@ -1330,7 +1336,7 @@ session_tx_burst_inline (session_worker_t *wrk, session_tx_burst_t *b, u8 is_dgr
   next_index = b->next_node;
   is_cless = is_dgram && transport_connection_is_cless (ctx->tc);
 
-  /* With dma, packets wait for the copies queued in the worker's batch */
+  /* Packets filled by dma wait for the copies queued in the worker's batch */
   if (dma)
     {
       session_dma_transfer *dma_transfer = &wrk->dma_trans[wrk->trans_tail];
@@ -1372,8 +1378,10 @@ session_tx_burst_inline (session_worker_t *wrk, session_tx_burst_t *b, u8 is_dgr
 	  vlib_prefetch_buffer_header (bufs[2], STORE);
 	  vlib_prefetch_buffer_header (bufs[3], STORE);
 
-	  session_tx_fill_buffer (wrk, ctx, bufs[0], 0, 0 /* chained */, is_dgram, is_cless, dma);
-	  session_tx_fill_buffer (wrk, ctx, bufs[1], 0, 0 /* chained */, is_dgram, is_cless, dma);
+	  session_tx_fill_buffer (wrk, ctx, bufs[0], 0, 0 /* chained */, is_dgram, is_cless, dio,
+				  dma);
+	  session_tx_fill_buffer (wrk, ctx, bufs[1], 0, 0 /* chained */, is_dgram, is_cless, dio,
+				  dma);
 
 	  bufs += 2;
 	  n_left -= 2;
@@ -1383,7 +1391,8 @@ session_tx_burst_inline (session_worker_t *wrk, session_tx_burst_t *b, u8 is_dgr
 	  if (n_left > 1)
 	    vlib_prefetch_buffer_header (bufs[1], STORE);
 
-	  session_tx_fill_buffer (wrk, ctx, bufs[0], 0, 0 /* chained */, is_dgram, is_cless, dma);
+	  session_tx_fill_buffer (wrk, ctx, bufs[0], 0, 0 /* chained */, is_dgram, is_cless, dio,
+				  dma);
 
 	  bufs += 1;
 	  n_left -= 1;
@@ -1418,8 +1427,10 @@ session_tx_burst_inline (session_worker_t *wrk, session_tx_burst_t *b, u8 is_dgr
 	  b0 = vlib_get_buffer (vm, bi0);
 	  b1 = vlib_get_buffer (vm, bi1);
 
-	  session_tx_fill_buffer (wrk, ctx, b0, &n_bufs, 1 /* chained */, is_dgram, is_cless, dma);
-	  session_tx_fill_buffer (wrk, ctx, b1, &n_bufs, 1 /* chained */, is_dgram, is_cless, dma);
+	  session_tx_fill_buffer (wrk, ctx, b0, &n_bufs, 1 /* chained */, is_dgram, is_cless, dio,
+				  dma);
+	  session_tx_fill_buffer (wrk, ctx, b1, &n_bufs, 1 /* chained */, is_dgram, is_cless, dio,
+				  dma);
 
 	  ctx->transport_pending_bufs[ctx->n_segs_per_evt - n_left] = b0;
 	  ctx->transport_pending_bufs[ctx->n_segs_per_evt - n_left + 1] = b1;
@@ -1441,7 +1452,8 @@ session_tx_burst_inline (session_worker_t *wrk, session_tx_burst_t *b, u8 is_dgr
 
 	  bi0 = ctx->tx_buffers[--n_bufs];
 	  b0 = vlib_get_buffer (vm, bi0);
-	  session_tx_fill_buffer (wrk, ctx, b0, &n_bufs, 1 /* chained */, is_dgram, is_cless, dma);
+	  session_tx_fill_buffer (wrk, ctx, b0, &n_bufs, 1 /* chained */, is_dgram, is_cless, dio,
+				  dma);
 
 	  ctx->transport_pending_bufs[ctx->n_segs_per_evt - n_left] = b0;
 	  n_left -= 1;
@@ -1480,13 +1492,130 @@ session_tx_burst_inline (session_worker_t *wrk, session_tx_burst_t *b, u8 is_dgr
   return b->n_segs;
 }
 
-/* Dma bursts are rare, keep them out of the copy bursts' code */
-static __clib_noinline int
-session_tx_burst_dma (session_worker_t *wrk, session_tx_burst_t *b, u8 is_dgram)
+/* Segments that start at a retained chain that fits them carry it after a
+ * header buffer, without a copy. Like clones, the header buffer takes a
+ * minimum first segment from the root, which is advanced past it, and the
+ * tx fifo and the packet share the chain until it is acked and sent. Fifo
+ * segments keep the stream's view of the root. Other bytes are copied, up to
+ * the next chain. Short chains make short segments, so the burst may build
+ * fewer bytes. */
+static int
+session_tx_burst_stream_attach (session_worker_t *wrk, session_tx_burst_t *b)
 {
-  if (is_dgram)
-    return session_tx_burst_inline (wrk, b, 1 /* is_dgram */, 1 /* dma */);
-  return session_tx_burst_inline (wrk, b, 0 /* is_dgram */, 1 /* dma */);
+  session_tx_context_t *ctx = &wrk->ctx;
+  svm_fifo_t *f = ctx->s->tx_fifo;
+  vlib_main_t *vm = wrk->vm;
+  u32 bi, root_bi, len, left, n_bufs_max, n_attached = 0;
+  u16 n_bufs, n_segs = 0, max_segs;
+  vlib_buffer_t *hb, *root, *cb;
+
+  ASSERT (b->n_bytes && ctx->sp.tx_offset + b->n_bytes <= svm_fifo_max_dequeue_cons (f));
+  ctx->max_len_to_snd = b->n_bytes;
+  session_tx_set_buffer_params (vm, ctx);
+
+  /* As many segments as full ones would need, each a chain if copied */
+  max_segs = ctx->n_segs_per_evt;
+  n_bufs_max = max_segs * ctx->n_bufs_per_seg;
+  vec_validate_aligned (ctx->tx_buffers, n_bufs_max - 1, CLIB_CACHE_LINE_BYTES);
+  n_bufs = vlib_buffer_alloc (vm, ctx->tx_buffers, n_bufs_max);
+  if (PREDICT_FALSE (n_bufs < n_bufs_max))
+    {
+      if (n_bufs)
+	session_tx_burst_free_bufs (vm, ctx->tx_buffers, n_bufs);
+      return -1;
+    }
+  vec_validate (ctx->transport_pending_bufs, max_segs);
+
+  left = b->n_bytes;
+  while (left && n_segs < max_segs)
+    {
+      root_bi = session_dio_tx_segment (vm, f, ctx->sp.tx_offset, ctx->sp.snd_mss, left, &len);
+      /* End the burst at a chain that needs more room, so it goes whole
+       * later. Acks for data in flight bring more. With nothing in flight
+       * the window may not grow, so wait once, then copy. */
+      if (root_bi == SESSION_DIO_TX_WAIT)
+	{
+	  if (n_segs || ctx->sp.tx_offset)
+	    break;
+	  if (!(ctx->s->flags & SESSION_F_DIO_TX_WAIT))
+	    {
+	      ctx->s->flags |= SESSION_F_DIO_TX_WAIT;
+	      break;
+	    }
+	  root_bi = SESSION_DIO_TX_COPY;
+	}
+      bi = ctx->tx_buffers[--n_bufs];
+      hb = vlib_get_buffer (vm, bi);
+      root = root_bi != SESSION_DIO_TX_COPY ? vlib_get_buffer (vm, root_bi) : 0;
+      if (root && root->buffer_pool_index == hb->buffer_pool_index)
+	{
+	  hb->error = 0;
+	  hb->flags = VNET_BUFFER_F_LOCALLY_ORIGINATED;
+	  hb->current_data = 0;
+	  clib_memcpy_fast (vlib_buffer_make_headroom (hb, TRANSPORT_MAX_HDRS_LEN),
+			    vlib_buffer_get_current (root), VLIB_BUFFER_MIN_CHAIN_SEG_SIZE);
+	  hb->current_length = VLIB_BUFFER_MIN_CHAIN_SEG_SIZE;
+	  root->current_data += VLIB_BUFFER_MIN_CHAIN_SEG_SIZE;
+	  root->current_length -= VLIB_BUFFER_MIN_CHAIN_SEG_SIZE;
+	  /* Only the fifo holds the chain, so take the packet's references
+	   * without atomics */
+	  hb->flags |= VLIB_BUFFER_NEXT_PRESENT | VLIB_BUFFER_TOTAL_LENGTH_VALID;
+	  hb->next_buffer = root_bi;
+	  hb->total_length_not_including_first_buffer = len - VLIB_BUFFER_MIN_CHAIN_SEG_SIZE;
+	  for (cb = root;; cb = vlib_get_buffer (vm, cb->next_buffer))
+	    {
+	      ASSERT (cb->ref_count == 1);
+	      cb->ref_count = 2;
+	      if (!(cb->flags & VLIB_BUFFER_NEXT_PRESENT))
+		break;
+	    }
+	  ctx->sp.tx_offset += len;
+	  n_attached++;
+	}
+      else
+	{
+	  ctx->left_to_snd = len;
+	  if (ctx->n_bufs_per_seg == 1)
+	    session_tx_fill_buffer (wrk, ctx, hb, &n_bufs, 0 /* chained */, 0 /* is_dgram */,
+				    0 /* is_cless */, 1 /* dio */, 0 /* dma */);
+	  else
+	    session_tx_fill_buffer (wrk, ctx, hb, &n_bufs, 1 /* chained */, 0 /* is_dgram */,
+				    0 /* is_cless */, 1 /* dio */, 0 /* dma */);
+	}
+      left -= len;
+      ctx->transport_pending_bufs[n_segs++] = hb;
+      vec_add1 (wrk->pending_tx_buffers, bi);
+      vec_add1 (wrk->pending_tx_nexts, b->next_node);
+    }
+
+  if (n_bufs)
+    session_tx_burst_free_bufs (vm, ctx->tx_buffers, n_bufs);
+
+  if (n_segs)
+    ctx->s->flags &= ~SESSION_F_DIO_TX_WAIT;
+
+  if (n_attached)
+    vlib_node_increment_counter (vm, session_queue_node.index, SESSION_QUEUE_ERROR_DIO_ATTACHED,
+				 n_attached);
+  if (n_segs > n_attached)
+    vlib_node_increment_counter (vm, session_queue_node.index, SESSION_QUEUE_ERROR_DIO_COPIED,
+				 n_segs - n_attached);
+
+  b->n_bytes -= left;
+  b->bufs = ctx->transport_pending_bufs;
+  b->n_segs = n_segs;
+
+  return n_segs;
+}
+
+/* Deferred tx bursts are rare, keep them out of the copy bursts' code. Dma
+ * copies from chunks, retained chains go without copies where they can. */
+static __clib_noinline int
+session_tx_burst_stream_dio (session_worker_t *wrk, session_tx_burst_t *b)
+{
+  if ((wrk->flags & SESSION_WRK_F_DMA) && !svm_fifo_n_async_segments (wrk->ctx.s->tx_fifo))
+    return session_tx_burst_inline (wrk, b, 0 /* is_dgram */, 1 /* dio */, 1 /* dma */);
+  return session_tx_burst_stream_attach (wrk, b);
 }
 
 int
@@ -1494,19 +1623,18 @@ session_tx_burst_stream (transport_send_params_t *sp, session_tx_burst_t *b)
 {
   session_worker_t *wrk = session_tx_sp_wrk (sp);
 
-  if (PREDICT_FALSE (wrk->flags & SESSION_WRK_F_DMA))
-    return session_tx_burst_dma (wrk, b, 0 /* is_dgram */);
-  return session_tx_burst_inline (wrk, b, 0 /* is_dgram */, 0 /* dma */);
+  /* Deferred tx reads prefix segments, and dma copies on workers with dma
+   * are deferred io */
+  if (PREDICT_FALSE ((wrk->ctx.s->flags & SESSION_F_DIO_TX) || (wrk->flags & SESSION_WRK_F_DMA)))
+    return session_tx_burst_stream_dio (wrk, b);
+  return session_tx_burst_inline (wrk, b, 0 /* is_dgram */, 0 /* dio */, 0 /* dma */);
 }
 
 int
 session_tx_burst_dgram (transport_send_params_t *sp, session_tx_burst_t *b)
 {
-  session_worker_t *wrk = session_tx_sp_wrk (sp);
-
-  if (PREDICT_FALSE (wrk->flags & SESSION_WRK_F_DMA))
-    return session_tx_burst_dma (wrk, b, 1 /* is_dgram */);
-  return session_tx_burst_inline (wrk, b, 1 /* is_dgram */, 0 /* dma */);
+  return session_tx_burst_inline (session_tx_sp_wrk (sp), b, 1 /* is_dgram */, 0 /* dio */,
+				  0 /* dma */);
 }
 
 always_inline u8
