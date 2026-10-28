@@ -1,4 +1,5 @@
 pip-tools==7.6.1                        # BSD   Keep this in sync with Makefile's PIP_TOOLS_VERSION
+aioquic==1.7.0                          # BSD   HTTP/3 client for http3 plugin tests
 cryptography!=2.0                       # BSD/Apache-2.0
 deprecation>=2.0.6                      # Apache-2.0
 faulthandler; python_version < '3.3' #  # BSD License (2 clause)
