@@ -37,7 +37,7 @@ import vpp_papi
 from vpp_object import VppObjectRegistry
 from util import ppp, ppc, is_core_present, StatsDiff
 from scapy.layers.l2 import Ether
-from scapy.layers.inet import IPerror, TCPerror, UDPerror, ICMPerror
+from scapy.layers.inet import IPerror, TCPerror, UDPerror, ICMPerror, UDP
 from scapy.layers.inet6 import ICMPv6DestUnreach, ICMPv6EchoRequest
 from scapy.layers.inet6 import ICMPv6EchoReply
 from asfframework import VppAsfTestCase
@@ -361,21 +361,30 @@ class VppTestCase(VppAsfTestCase):
         return pack("iiiih", info.index, info.src, info.dst, info.ip, info.proto)
 
     @staticmethod
-    def payload_to_info(payload, payload_field="load"):
+    def get_info_from_packet(packet: Packet) -> _PacketInfo:
+        """Decode test info from a packet or an explicitly selected inner packet.
+
+        Read UDP bytes before Scapy interprets its payload as another protocol.
+        The UDP length also excludes Ethernet padding. Other test packets carry
+        the info in Raw, except ICMPv6 Echo, which stores it in data.
         """
-        Convert packet payload to _PacketInfo object
+        if packet.haslayer(UDP):
+            udp = packet[UDP]
+            data = udp.original or bytes(udp)
+            length = unpack("!H", data[4:6])[0]
+            payload_b = data[8:length]
+            if len(payload_b) < 18:
+                raise ValueError(
+                    f"Short packet info on UDP sport {udp.sport}, dport {udp.dport}: "
+                    f"UDP length {length}, captured {len(data)} bytes"
+                )
+        elif packet.haslayer(ICMPv6EchoRequest):
+            data = packet[ICMPv6EchoRequest].data
+            payload_b = data.load if isinstance(data, Raw) else bytes(data)
+        else:
+            payload_b = packet[Raw].load
 
-        :param payload: packet payload
-        :type payload:  <class 'scapy.packet.Raw'>
-        :param payload_field: packet fieldname of payload "load" for
-                <class 'scapy.packet.Raw'>
-        :type payload_field: str
-        :returns: _PacketInfo object containing de-serialized data from payload
-
-        """
-
-        # retrieve payload, currently 18 bytes (4 x ints + 1 short)
-        payload_b = getattr(payload, payload_field)[:18]
+        payload_b = payload_b[:18]
 
         info = _PacketInfo()
         info.index, info.src, info.dst, info.ip, info.proto = unpack("iiiih", payload_b)

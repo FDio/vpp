@@ -141,7 +141,7 @@ class TestECMP(VppTestCase):
         for packet in capture:
             try:
                 ip_received = packet[ip_l]
-                payload_info = self.payload_to_info(packet[Raw])
+                payload_info = self.get_info_from_packet(packet)
                 packet_index = payload_info.index
                 ip_sent = self._packet_infos[packet_index].data[ip_l]
                 self.logger.debug(

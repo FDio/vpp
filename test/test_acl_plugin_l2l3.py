@@ -352,9 +352,9 @@ class TestACLpluginL2L3(VppTestCase):
                         ICMPv6Unknown(scapy.compat.raw(packet[l3].payload)).msgbody
                     )
             udp_or_icmp = packet[l3].payload
-            data_obj = Raw(data)
-            # FIXME: make framework believe we are on object
-            payload_info = self.payload_to_info(data_obj)
+            # The ICMP payload has been normalized above to avoid Scapy's
+            # protocol-specific dissection of these test bytes.
+            payload_info = self.get_info_from_packet(Raw(data))
             packet_index = payload_info.index
 
             self.assertEqual(payload_info.dst, dst_ip_sw_if_index)

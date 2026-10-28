@@ -4048,7 +4048,7 @@ class TestNAT44EI(MethodHolder):
         self.pg_start()
         recvd = self.pg1.get_capture(len(pkts))
         for p_recvd in recvd:
-            payload_info = self.payload_to_info(p_recvd[Raw])
+            payload_info = self.get_info_from_packet(p_recvd)
             packet_index = payload_info.index
             info = self._packet_infos[packet_index]
             self.assertTrue(info is not None)

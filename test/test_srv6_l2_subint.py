@@ -127,10 +127,10 @@ class TestSRv6L2Subint(VppTestCase):
     def get_payload_info(self, packet):
         """Extract the payload_info from the packet."""
         try:
-            payload_info = self.payload_to_info(packet[Raw])
+            payload_info = self.get_info_from_packet(packet)
         except Exception:
-            payload_info = self.payload_to_info(
-                Ether(scapy.compat.raw(packet[Raw]))[Raw]
+            payload_info = self.get_info_from_packet(
+                Ether(scapy.compat.raw(packet[Raw]))
             )
         return payload_info
 

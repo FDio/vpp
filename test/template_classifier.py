@@ -332,7 +332,7 @@ class TestClassifier(VppTestCase):
             try:
                 ip_received = packet[ip_proto]
                 proto_received = packet[proto_l]
-                payload_info = self.payload_to_info(packet[Raw])
+                payload_info = self.get_info_from_packet(packet)
                 packet_index = payload_info.index
                 self.assertEqual(payload_info.dst, dst_sw_if_index)
                 self.logger.debug(

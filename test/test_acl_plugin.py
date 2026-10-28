@@ -359,14 +359,11 @@ class TestACLplugin(VppTestCase):
                 else:
                     continue
             try:
+                payload_info = self.get_info_from_packet(packet)
                 # Raw data for ICMPv6 are stored in ICMPv6EchoRequest.data
                 if traffic_type == self.ICMP and ip_type == self.IPV6:
-                    payload_info = self.payload_to_info(
-                        packet[ICMPv6EchoRequest], "data"
-                    )
                     payload = packet[ICMPv6EchoRequest]
                 else:
-                    payload_info = self.payload_to_info(packet[Raw])
                     payload = packet[self.proto_map[payload_info.proto]]
             except:
                 self.logger.error(

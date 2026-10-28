@@ -2906,7 +2906,7 @@ class IPSecIPv4Fwd(VppTestCase):
                 ip = packet[IP]
                 udp = packet[UDP]
                 # convert the payload to packet info object
-                payload_info = self.payload_to_info(packet)
+                payload_info = self.get_info_from_packet(packet)
                 # make sure the indexes match
                 self.assert_equal(
                     payload_info.src, src_if.sw_if_index, "source sw_if_index"
@@ -3307,7 +3307,7 @@ class IPSecIPv6Fwd(VppTestCase):
                 ip = packet[IPv6]
                 udp = packet[UDP]
                 # convert the payload to packet info object
-                payload_info = self.payload_to_info(packet)
+                payload_info = self.get_info_from_packet(packet)
                 # make sure the indexes match
                 self.assert_equal(
                     payload_info.src, src_if.sw_if_index, "source sw_if_index"

@@ -360,7 +360,7 @@ class TestIP6VrfMultiInst(VppTestCase):
             try:
                 ip = packet[IPv6]
                 udp = packet[UDP]
-                payload_info = self.payload_to_info(packet[Raw])
+                payload_info = self.get_info_from_packet(packet)
                 packet_index = payload_info.index
                 self.assertEqual(payload_info.dst, dst_sw_if_index)
                 self.logger.debug(

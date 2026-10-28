@@ -298,7 +298,7 @@ class TestL2bdMultiInst(VppTestCase):
             try:
                 ip = packet[IP]
                 udp = packet[UDP]
-                info = self.payload_to_info(packet[Raw])
+                info = self.get_info_from_packet(packet)
                 self.assertEqual(info.dst, dst)
                 self.logger.debug(
                     "Got packet on port %s: src=%u (id=%u)"
