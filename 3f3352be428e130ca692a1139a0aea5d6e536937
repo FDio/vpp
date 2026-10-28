@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d47aa3fb_1bcf36f3",
+        "filename": "src/svm/svm_fifo.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 1079,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-10-28T15:29:05Z",
+      "side": 1,
+      "message": "inline or noinline 😊",
+      "revId": "3f3352be428e130ca692a1139a0aea5d6e536937",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
