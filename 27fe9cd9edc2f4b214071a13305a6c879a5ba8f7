@@ -26,6 +26,23 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "3b55270f_9d1de960",
+        "filename": "src/plugins/http/http3/http3.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1900,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-10-28T07:42:37Z",
+      "side": 1,
+      "message": "please keep comment as it was before, this is just bloating code and make it harder to read",
+      "revId": "27fe9cd9edc2f4b214071a13305a6c879a5ba8f7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "c9f9069a_1c71a789",
         "filename": "test/asf/test_http3.py",
         "patchSetId": 2
