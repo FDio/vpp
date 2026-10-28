@@ -14,8 +14,9 @@
 #include <vnet/adj/rewrite.h>
 
 /* Statistics (not all errors) */
-#define foreach_vxlan_encap_error    \
-_(ENCAPSULATED, "good packets encapsulated")
+#define foreach_vxlan_encap_error                                                                  \
+  _ (ENCAPSULATED, "good packets encapsulated")                                                    \
+  _ (NO_SPACE, "insufficient headroom for vxlan encap")
 
 static char *vxlan_encap_error_strings[] = {
 #define _(sym,string) string,
@@ -113,6 +114,13 @@ vxlan_encap_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	    CLIB_PREFETCH (b[3]->data - CLIB_CACHE_LINE_BYTES,
 			   2 * CLIB_CACHE_LINE_BYTES, LOAD);
 	  }
+
+	  if (PREDICT_FALSE (!vlib_buffer_has_pre_data (b[0], underlay_hdr_len) ||
+			     !vlib_buffer_has_pre_data (b[1], underlay_hdr_len)))
+	    {
+	      /* cannot process 2 pkts in the same way, drop to per-pkt handling */
+	      break;
+	    }
 
 	  u32 bi0 = to_next[0] = from[0];
 	  u32 bi1 = to_next[1] = from[1];
@@ -350,6 +358,15 @@ vxlan_encap_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 
 	  vlib_buffer_t *b0 = b[0];
 	  b += 1;
+
+	  if (PREDICT_FALSE (!vlib_buffer_has_pre_data (b0, underlay_hdr_len)))
+	    {
+	      b0->error = node->errors[VXLAN_ENCAP_ERROR_NO_SPACE];
+
+	      vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next, n_left_to_next, bi0,
+					       VXLAN_ENCAP_NEXT_DROP);
+	      continue;
+	    }
 
 	  u32 flow_hash0 = vnet_l2_compute_flow_hash (b0);
 
