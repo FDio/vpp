@@ -74,10 +74,12 @@ func (s *NoTopoSuite) SetupTest(startupConf ...Stanza) {
 
 	// Setup test conditions
 	var sessionConfig Stanza
-	sessionConfig.
-		NewStanza("session").
-		Append("enable").
-		Append("use-app-socket-api")
+	sessionConfig.NewStanza("session")
+	// HTTP unit tests must initialize session workers themselves on a fresh VPP.
+	if !strings.Contains(CurrentSpecReport().LeafNodeText, "/HttpUnitTest") {
+		sessionConfig.Append("enable")
+	}
+	sessionConfig.Append("use-app-socket-api")
 
 	if strings.Contains(CurrentSpecReport().LeafNodeText, "InterruptMode") {
 		sessionConfig.Append("use-private-rx-mqs").Close()
