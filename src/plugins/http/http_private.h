@@ -428,6 +428,7 @@ typedef struct http_ctx_
 	  /* http1 */
 	  u32 body_offset;
 	  u32 rx_buf_offset; /* current offset during parsing */
+	  u8 http1_parse_state;
 	  u32 target_authority_offset;
 	  u32 target_authority_len;
 	  u32 host_header_index;
