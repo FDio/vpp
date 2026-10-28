@@ -291,6 +291,18 @@ vlib_buffer_has_space (vlib_buffer_t * b, word l)
   return b->current_length >= l;
 }
 
+/** \brief Check if there is enough space in buffer's pre-data to prepend
+
+    @param b - (vlib_buffer_t *) pointer to the buffer
+    @param n - (word) number of bytes to prepend
+    @return - 0 if there is less than 'n' bytes of pre-data space
+*/
+always_inline u8
+vlib_buffer_has_pre_data (vlib_buffer_t *b, word n)
+{
+  return b->current_data + VLIB_BUFFER_PRE_DATA_SIZE >= n;
+}
+
 /** \brief Reset current header & length to state they were in when
     packet was received.
 
