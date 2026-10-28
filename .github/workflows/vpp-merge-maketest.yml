@@ -175,7 +175,7 @@ jobs:
       - name: Show Environment
         run: |
           set -euo pipefail
-          env | sort | tee "$LOG_DIR/environment.log"
+          env | sort
 
       - name: Show Nomad Dockerfile
         # yamllint disable-line rule:line-length

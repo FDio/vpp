@@ -161,7 +161,7 @@ jobs:
       - name: Show Environment
         run: |
           set -euo pipefail
-          env | sort | tee "$LOG_DIR/environment.log"
+          env | sort
 
       - name: "Show Nomad Dockerfile"
         # yamllint disable-line rule:line-length
@@ -178,7 +178,7 @@ jobs:
 
       - name: Install VPP dependencies
         # yamllint disable-line rule:line-length
-        uses: fdio/vpp/.github/actions/vpp-install-deps@777792ecef2d5c93ce15fa5b7fdca999f5412c9d
+        uses: fdio/vpp/.github/actions/vpp-install-deps@347133c5bec344647f45475fcaad52bba7ba5675
         with:
           LOG_DIR: ${{ env.LOG_DIR }}
           WORKSPACE: ${{ env.WORKSPACE }}
