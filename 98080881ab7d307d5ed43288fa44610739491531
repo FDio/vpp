@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "c33407f2_5c860fe3",
+        "filename": "src/vnet/flow/flow_cli.c",
+        "patchSetId": 16
+      },
+      "lineNbr": 243,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2026-10-28T09:04:43Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "0af03397_2d9b525f",
+      "revId": "98080881ab7d307d5ed43288fa44610739491531",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "4a1a6d58_594c6fc6",
@@ -31,6 +49,24 @@
       "writtenOn": "2026-10-23T13:54:37Z",
       "side": 1,
       "message": "Could we preserve the generic pattern’s spec and mask in the snapshot output, including the full-batch path above? `format_flow` currently prints `pattern unknown type \u0027generic_pattern_t\u0027`, so removing the explicit spec/mask output makes generic-flow matches unavailable in `show flow entry`.",
+      "revId": "98080881ab7d307d5ed43288fa44610739491531",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "879065d3_c60fb55a",
+        "filename": "src/vnet/flow/flow_cli.c",
+        "patchSetId": 16
+      },
+      "lineNbr": 323,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2026-10-28T09:04:43Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "4a1a6d58_594c6fc6",
       "revId": "98080881ab7d307d5ed43288fa44610739491531",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
