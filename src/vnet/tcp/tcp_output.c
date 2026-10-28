@@ -1120,13 +1120,14 @@ tcp_tx_burst_init (vlib_main_t *vm, tcp_tx_burst_t *tb, u32 max_segs)
 
 /* Copy data at tx_offset */
 static_always_inline int
-tcp_tx_burst_copy (tcp_tx_burst_t *tb, u32 len, u8 *data)
+tcp_tx_burst_copy (tcp_tx_burst_t *tb, u32 len, u8 *data, u8 dio, u8 dma)
 {
-  return session_tx_copy (tb->sp, tb->sp->tx_offset, len, data);
+  return session_tx_copy (tb->sp, tb->sp->tx_offset, len, data, dio, dma);
 }
 
 static_always_inline void
-tcp_tx_burst_chain_tail (tcp_worker_ctx_t *wrk, tcp_tx_burst_t *tb, vlib_buffer_t *b, u16 *n_bufs)
+tcp_tx_burst_chain_tail (tcp_worker_ctx_t *wrk, tcp_tx_burst_t *tb, vlib_buffer_t *b, u16 *n_bufs,
+			 u8 dio, u8 dma)
 {
   vlib_main_t *vm = wrk->vm;
   vlib_buffer_t *chain_b, *prev_b;
@@ -1150,7 +1151,7 @@ tcp_tx_burst_chain_tail (tcp_worker_ctx_t *wrk, tcp_tx_burst_t *tb, vlib_buffer_
       chain_b = vlib_get_buffer (vm, chain_bi0);
       chain_b->current_data = 0;
       data = vlib_buffer_get_current (chain_b);
-      n_bytes_read = tcp_tx_burst_copy (tb, len_to_deq, data);
+      n_bytes_read = tcp_tx_burst_copy (tb, len_to_deq, data, dio, dma);
       tb->sp->tx_offset += n_bytes_read;
       ASSERT (n_bytes_read == len_to_deq);
       chain_b->current_length = n_bytes_read;
@@ -1172,7 +1173,8 @@ tcp_tx_burst_chain_tail (tcp_worker_ctx_t *wrk, tcp_tx_burst_t *tb, vlib_buffer_
 }
 
 static_always_inline void
-tcp_tx_burst_fill_buffer (tcp_worker_ctx_t *wrk, tcp_tx_burst_t *tb, vlib_buffer_t *b, u16 *n_bufs)
+tcp_tx_burst_fill_buffer (tcp_worker_ctx_t *wrk, tcp_tx_burst_t *tb, vlib_buffer_t *b, u16 *n_bufs,
+			  u8 dio, u8 dma)
 {
   u32 len_to_deq;
   u8 *data0;
@@ -1188,7 +1190,7 @@ tcp_tx_burst_fill_buffer (tcp_worker_ctx_t *wrk, tcp_tx_burst_t *tb, vlib_buffer
   data0 = vlib_buffer_make_headroom (b, TRANSPORT_MAX_HDRS_LEN);
   len_to_deq = clib_min (tb->left_to_snd, tb->deq_per_first_buf);
 
-  n_bytes_read = tcp_tx_burst_copy (tb, len_to_deq, data0);
+  n_bytes_read = tcp_tx_burst_copy (tb, len_to_deq, data0, dio, dma);
   ASSERT (n_bytes_read > 0);
   /* Keep track of progress locally, pushing headers advances snd_nxt */
   tb->sp->tx_offset += n_bytes_read;
@@ -1200,13 +1202,14 @@ tcp_tx_burst_fill_buffer (tcp_worker_ctx_t *wrk, tcp_tx_burst_t *tb, vlib_buffer
    * Fill in the remaining buffers in the chain, if any
    */
   if (PREDICT_FALSE (tb->n_bufs_per_seg > 1 && tb->left_to_snd))
-    tcp_tx_burst_chain_tail (wrk, tb, b, n_bufs);
+    tcp_tx_burst_chain_tail (wrk, tb, b, n_bufs, dio, dma);
 }
 
 /* Send new data in up to max_burst segments and use the send params flags
  * to ask the session layer for rescheduling */
-static u32
-tcp_session_send_data (tcp_connection_t *tc, u32 max_burst, transport_send_params_t *sp)
+static_always_inline u32
+tcp_session_send_data_inline (tcp_connection_t *tc, u32 max_burst, transport_send_params_t *sp,
+			      u8 dio, u8 dma)
 {
   tcp_worker_ctx_t *wrk = tcp_get_worker (tc->c_thread_index);
   transport_connection_t *tconn = &tc->connection;
@@ -1288,15 +1291,15 @@ tcp_session_send_data (tcp_connection_t *tc, u32 max_burst, transport_send_param
       b0 = vlib_get_buffer (vm, bi0);
       b1 = vlib_get_buffer (vm, bi1);
 
-      tcp_tx_burst_fill_buffer (wrk, tb, b0, &n_bufs);
-      tcp_tx_burst_fill_buffer (wrk, tb, b1, &n_bufs);
+      tcp_tx_burst_fill_buffer (wrk, tb, b0, &n_bufs, dio, dma);
+      tcp_tx_burst_fill_buffer (wrk, tb, b1, &n_bufs, dio, dma);
 
       wrk->tx_data_bufs[tb->n_segs - n_left] = b0;
       wrk->tx_data_bufs[tb->n_segs - n_left + 1] = b1;
       n_left -= 2;
 
-      session_tx_send_buffer (sp, bi0);
-      session_tx_send_buffer (sp, bi1);
+      session_tx_send_buffer (sp, bi0, dma);
+      session_tx_send_buffer (sp, bi1, dma);
     }
   while (n_left)
     {
@@ -1309,12 +1312,12 @@ tcp_session_send_data (tcp_connection_t *tc, u32 max_burst, transport_send_param
 
       bi0 = wrk->tx_buffers[--n_bufs];
       b0 = vlib_get_buffer (vm, bi0);
-      tcp_tx_burst_fill_buffer (wrk, tb, b0, &n_bufs);
+      tcp_tx_burst_fill_buffer (wrk, tb, b0, &n_bufs, dio, dma);
 
       wrk->tx_data_bufs[tb->n_segs - n_left] = b0;
       n_left -= 1;
 
-      session_tx_send_buffer (sp, bi0);
+      session_tx_send_buffer (sp, bi0, dma);
     }
 
   tcp_session_push_header (tconn, wrk->tx_data_bufs, tb->n_segs, tb->max_dequeue);
@@ -1329,6 +1332,22 @@ tcp_session_send_data (tcp_connection_t *tc, u32 max_burst, transport_send_param
     sp->flags |= TRANSPORT_SND_F_POSTPONE;
 
   return tb->n_segs;
+}
+
+static __clib_noinline u32
+tcp_session_send_data_dio (tcp_connection_t *tc, u32 max_burst, transport_send_params_t *sp)
+{
+  if (session_tx_dio_uses_dma (sp))
+    return tcp_session_send_data_inline (tc, max_burst, sp, 1, 1 /* dma */);
+  return tcp_session_send_data_inline (tc, max_burst, sp, 1, 0);
+}
+
+static u32
+tcp_session_send_data (tcp_connection_t *tc, u32 max_burst, transport_send_params_t *sp)
+{
+  if (PREDICT_FALSE (session_tx_is_dio (sp)))
+    return tcp_session_send_data_dio (tc, max_burst, sp);
+  return tcp_session_send_data_inline (tc, max_burst, sp, 0, 0);
 }
 
 void

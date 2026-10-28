@@ -712,8 +712,8 @@ udp_session_custom_tx (void *conn, transport_send_params_t *sp)
       wrk->tx_data_bufs[tb->n_segs - n_left + 1] = b1;
       n_left -= 2;
 
-      session_tx_send_buffer (sp, bi0);
-      session_tx_send_buffer (sp, bi1);
+      session_tx_send_buffer (sp, bi0, 0 /* dma */);
+      session_tx_send_buffer (sp, bi1, 0 /* dma */);
     }
   while (n_left)
     {
@@ -731,7 +731,7 @@ udp_session_custom_tx (void *conn, transport_send_params_t *sp)
       wrk->tx_data_bufs[tb->n_segs - n_left] = b0;
       n_left -= 1;
 
-      session_tx_send_buffer (sp, bi0);
+      session_tx_send_buffer (sp, bi0, 0 /* dma */);
     }
 
   udp_push_header (&uc->connection, wrk->tx_data_bufs, tb->n_segs, tb->max_dequeue);

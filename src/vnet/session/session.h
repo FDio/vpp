@@ -254,8 +254,9 @@ typedef struct session_main_
   /** vpp fifo event queue configured length */
   u32 configured_wrk_mq_length;
 
-  /** max deferred rx segments per worker */
+  /** max deferred rx and tx segments per worker */
   u32 deferred_rx_max_segs;
+  u32 deferred_tx_max_segs;
 
   /** Session ssvm segment configs*/
   uword wrk_mqs_segment_size;
@@ -1096,17 +1097,40 @@ session_tx_peek (transport_send_params_t *sp, u32 offset, u32 len, u8 *data)
   return svm_fifo_peek (session_tx_ctx (sp)->s->tx_fifo, offset, len, data);
 }
 
-/** Copy len tx fifo bytes at offset into a buffer passed to
- * session_tx_send_buffer. With dma, queue the copy on the worker's batch. */
-always_inline int
-session_tx_copy (transport_send_params_t *sp, u32 offset, u32 len, u8 *data)
+/** Tx data is deferred io. Transports pass it as dio to session_tx_copy */
+always_inline u8
+session_tx_is_dio (transport_send_params_t *sp)
+{
+  return (session_tx_ctx (sp)->s->flags & SESSION_F_DEFERRED_TX) ? 1 : 0;
+}
+
+/** Deferred io copies use dma. Dma copies from chunks, so with segment
+ * prefixes copy on the cpu for now. Transports pass it as dma to
+ * session_tx_copy and session_tx_send_buffer */
+always_inline u8
+session_tx_dio_uses_dma (transport_send_params_t *sp)
 {
   session_tx_context_t *ctx = session_tx_ctx (sp);
-  session_worker_t *wrk = session_tx_ctx_wrk (ctx);
 
-  if (PREDICT_TRUE (!wrk->dma_enabled))
-    return svm_fifo_peek (ctx->s->tx_fifo, offset, len, data);
-  return session_tx_fifo_dma_copy (wrk, ctx->s->tx_fifo, offset, len, data);
+  return (session_tx_ctx_wrk (ctx)->dma_enabled && !svm_fifo_n_async_segments (ctx->s->tx_fifo));
+}
+
+/** Copy len tx fifo bytes at offset into a buffer passed to
+ * session_tx_send_buffer. Deferred io reads prefix segments or queues dma
+ * copies of chunks on the worker's batch. */
+always_inline int
+session_tx_copy (transport_send_params_t *sp, u32 offset, u32 len, u8 *data, u8 dio, u8 dma)
+{
+  session_tx_context_t *ctx = session_tx_ctx (sp);
+
+  if (PREDICT_FALSE (dio))
+    {
+      if (dma)
+	return session_tx_fifo_dma_copy (session_tx_ctx_wrk (ctx), ctx->s->tx_fifo, offset, len,
+					 data);
+      return svm_fifo_async_peek (ctx->s->tx_fifo, offset, len, data);
+    }
+  return svm_fifo_peek (ctx->s->tx_fifo, offset, len, data);
 }
 
 /** Drop len bytes from the head of the tx fifo */
@@ -1123,15 +1147,15 @@ session_tx_overwrite_head (transport_send_params_t *sp, u8 *data, u32 len)
   svm_fifo_overwrite_head (session_tx_ctx (sp)->s->tx_fifo, data, len);
 }
 
-/** Send a packet built by custom tx. With dma, it waits for the copies
- * queued in the worker's current batch. */
+/** Send a packet built by custom tx. Packets filled by dma wait for the
+ * copies queued in the worker's current batch. */
 always_inline void
-session_tx_send_buffer (transport_send_params_t *sp, u32 bi)
+session_tx_send_buffer (transport_send_params_t *sp, u32 bi, u8 dma)
 {
   session_tx_context_t *ctx = session_tx_ctx (sp);
   session_worker_t *wrk = session_tx_ctx_wrk (ctx);
 
-  if (PREDICT_TRUE (!wrk->dma_enabled))
+  if (PREDICT_TRUE (!dma))
     {
       vec_add1 (wrk->pending_tx_buffers, bi);
       vec_add1 (wrk->pending_tx_nexts, ctx->next_index);
