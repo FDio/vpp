@@ -649,6 +649,22 @@ ikev2_generate_dh (ikev2_sa_t *sa, ikev2_sa_transform_t *t)
 	  clib_memset (sa->r_dh_data + len, 0, y_off - len);
 	  BN_bn2bin (y, sa->r_dh_data + y_off);
 
+	  /* RFC 7296 section 3.4: the peer KE must carry the full group
+	     size before its two coordinates are read at fixed offsets; a
+	     short payload would read past i_dh_data. Report failure so
+	     the caller can abort with INVALID_KE_PAYLOAD. */
+	  if (vec_len (sa->i_dh_data) < t->key_len)
+	    {
+	      EC_KEY_free (ec);
+	      BN_free (x);
+	      BN_free (y);
+	      BN_CTX_free (bn_ctx);
+	      EC_POINT_free (i_point);
+	      EC_POINT_free (shared_point);
+	      return -1;
+	    }
+
+	  sa->dh_shared_key = vec_new (u8, len);
 	  x = BN_bin2bn (sa->i_dh_data, len, x);
 	  y = BN_bin2bn (sa->i_dh_data + len, len, y);
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
@@ -664,8 +680,7 @@ ikev2_generate_dh (ikev2_sa_t *sa, ikev2_sa_transform_t *t)
 	  EC_POINT_get_affine_coordinates_GFp (group, shared_point, x, y,
 					       bn_ctx);
 #endif
-	  /* RFC 5903 section 7: the shared secret is the x coordinate only */
-	  sa->dh_shared_key = vec_new (u8, len);
+	  /* RFC 5903 section 7: the shared secret is the x coordinate */
 	  x_off = len - BN_num_bytes (x);
 	  clib_memset (sa->dh_shared_key, 0, x_off);
 	  BN_bn2bin (x, sa->dh_shared_key + x_off);
@@ -751,6 +766,21 @@ ikev2_complete_dh (ikev2_sa_t *sa, ikev2_sa_transform_t *t)
       y = BN_new ();
       len = t->key_len / 2;
 
+      /* RFC 7296 section 3.4: the responder KE must carry the full group
+	 size before its two coordinates are read at fixed offsets; a short
+	 payload would read past r_dh_data. Report failure so the caller
+	 can abort the exchange. */
+      if (vec_len (sa->r_dh_data) < t->key_len)
+	{
+	  EC_KEY_free (ec);
+	  BN_free (x);
+	  BN_free (y);
+	  BN_free (prv);
+	  BN_CTX_free (bn_ctx);
+	  return -1;
+	}
+
+      sa->dh_shared_key = vec_new (u8, len);
       x = BN_bin2bn (sa->r_dh_data, len, x);
       y = BN_bin2bn (sa->r_dh_data + len, len, y);
       EC_POINT *r_point = EC_POINT_new (group);
@@ -779,19 +809,19 @@ ikev2_complete_dh (ikev2_sa_t *sa, ikev2_sa_transform_t *t)
       EC_POINT_get_affine_coordinates_GFp (group, shared_point, x, y, bn_ctx);
 #endif
       /* RFC 5903 section 7: the shared secret is the x coordinate only */
-      sa->dh_shared_key = vec_new (u8, len);
       x_off = len - BN_num_bytes (x);
       clib_memset (sa->dh_shared_key, 0, x_off);
       BN_bn2bin (x, sa->dh_shared_key + x_off);
+
+      EC_POINT_free (i_point);
+      EC_POINT_free (r_point);
+      EC_POINT_free (shared_point);
 
       EC_KEY_free (ec);
       BN_free (x);
       BN_free (y);
       BN_free (prv);
       BN_CTX_free (bn_ctx);
-      EC_POINT_free (i_point);
-      EC_POINT_free (r_point);
-      EC_POINT_free (shared_point);
     }
   return 0;
 }
