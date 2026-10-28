@@ -16,6 +16,29 @@
       "message": "waiting for release time.",
       "revId": "567179233b9a6694a94a4c13d2ded1489df0164b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "bff2b219_96eb6f9b",
+        "filename": "docs/aboutvpp/releasenotes/v26.10.rst",
+        "patchSetId": 1
+      },
+      "lineNbr": 115,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-10-28T00:14:18Z",
+      "side": 1,
+      "message": "git.fd.io is out of commission due to being a dos magnet.\n\nPlease update this to https://github.com/FDio/vpp/commits/master/\n\nIt might be worth updating the same in the 26.06 and 26.02 release notes as well.\nIf you do so, please fix the dead JIRA links too -\u003e https://github.com/fdio/vpp/issues.  Probably best to revise those in separate gerrit changes originating in the associated stable/26.xx branch and cherry-picked forward through newer stable branches and master.",
+      "range": {
+        "startLine": 115,
+        "startChar": 27,
+        "endLine": 115,
+        "endChar": 36
+      },
+      "revId": "567179233b9a6694a94a4c13d2ded1489df0164b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
