@@ -24,6 +24,7 @@
 #include <vnet/fib/fib_entry_src.h>
 #include <vnet/fib/fib_path_list.h>
 #include <vnet/fib/fib_table.h>
+#include <vnet/mfib/mfib_entry.h>
 #include <vnet/mfib/mfib_table.h>
 #include <vnet/ip/ip6_ll_table.h>
 #include <vnet/ip-neighbor/ip_neighbor.h>
@@ -1378,6 +1379,7 @@ lcp_router_route_del (struct rtnl_route *rr)
   fib_entry_flag_t entry_flags;
   uint32_t table_id;
   fib_prefix_t pfx;
+  mfib_prefix_t mpfx = {};
   lcp_router_table_t *nlt;
   uint8_t rtype, rproto;
 
@@ -1389,7 +1391,8 @@ lcp_router_route_del (struct rtnl_route *rr)
   if (!lcp_router_route_type_valid[rtype] || (table_id == 255))
     return;
 
-  if (!lcp_router_route_mk_prefix (rr, &pfx))
+  if (!lcp_router_route_mk_prefix (rr, &pfx) ||
+      (rtype == RTN_MULTICAST && !lcp_router_route_mk_mprefix (rr, &mpfx)))
     {
       LCP_ROUTER_ERROR ("route del: invalid destination: oversized netlink attribute");
       return;
@@ -1430,23 +1433,38 @@ lcp_router_route_del (struct rtnl_route *rr)
 
   if (0 != vec_len (np.paths))
     {
-      fib_source_t fib_src;
-
-      fib_src = lcp_router_proto_fib_source (rproto);
-
-      switch (pfx.fp_proto)
+      if (RTN_MULTICAST == rtype)
 	{
-	case FIB_PROTOCOL_IP6:
-	  fib_table_entry_delete (nlt->nlt_fib_index, &pfx, fib_src);
-	  break;
-	case FIB_PROTOCOL_MPLS:
-	  fib_table_entry_path_remove2 (nlt->nlt_fib_index, &pfx, fib_src,
-					np.paths);
-	  /* delete the EOS route in addition to NEOS - fallthrough */
-	  pfx.fp_eos = MPLS_EOS;
-	default:
-	  fib_table_entry_path_remove2 (nlt->nlt_fib_index, &pfx, fib_src,
-					np.paths);
+	  fib_node_index_t mfei;
+
+	  mfib_table_entry_paths_remove (nlt->nlt_mfib_index, &mpfx, MFIB_SOURCE_PLUGIN_LOW,
+					 np.paths);
+
+	  mfei = mfib_table_lookup_exact_match (nlt->nlt_mfib_index, &mpfx);
+
+	  if (FIB_NODE_INDEX_INVALID != mfei &&
+	      mfib_entry_is_sourced (mfei, MFIB_SOURCE_PLUGIN_LOW) &&
+	      0 == mfib_entry_get_n_paths (mfei, MFIB_SOURCE_PLUGIN_LOW))
+	    mfib_table_entry_delete (nlt->nlt_mfib_index, &mpfx, MFIB_SOURCE_PLUGIN_LOW);
+	}
+      else
+	{
+	  fib_source_t fib_src;
+
+	  fib_src = lcp_router_proto_fib_source (rproto);
+
+	  switch (pfx.fp_proto)
+	    {
+	    case FIB_PROTOCOL_IP6:
+	      fib_table_entry_delete (nlt->nlt_fib_index, &pfx, fib_src);
+	      break;
+	    case FIB_PROTOCOL_MPLS:
+	      fib_table_entry_path_remove2 (nlt->nlt_fib_index, &pfx, fib_src, np.paths);
+	      /* delete the EOS route in addition to NEOS - fallthrough */
+	      pfx.fp_eos = MPLS_EOS;
+	    default:
+	      fib_table_entry_path_remove2 (nlt->nlt_fib_index, &pfx, fib_src, np.paths);
+	    }
 	}
     }
 
