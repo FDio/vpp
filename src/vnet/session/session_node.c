@@ -1005,16 +1005,20 @@ session_tx_fill_dma_transfers (session_worker_t *wrk, session_tx_context_t *ctx,
 
 /* Copy len stream bytes at tx_offset into data and advance tx_offset. Keep
  * track of progress locally, transports are also supposed to increment it
- * independently when pushing their headers */
+ * independently when pushing their headers. Deferred tx copies with dma from
+ * chunks, or on the cpu from prefix segments */
 always_inline int
-session_tx_stream_copy (session_worker_t *wrk, session_tx_context_t *ctx, u32 len, u8 *data, u8 dma)
+session_tx_stream_copy (session_worker_t *wrk, session_tx_context_t *ctx, u32 len, u8 *data, u8 dio,
+			u8 dma)
 {
   int n_bytes_read;
 
-  if (PREDICT_TRUE (!dma))
+  if (PREDICT_TRUE (!dio))
     n_bytes_read = svm_fifo_peek (ctx->s->tx_fifo, ctx->sp.tx_offset, len, data);
-  else
+  else if (dma)
     n_bytes_read = session_tx_fill_dma_transfers (wrk, ctx, len, data);
+  else
+    n_bytes_read = svm_fifo_async_peek (ctx->s->tx_fifo, ctx->sp.tx_offset, len, data);
   ASSERT (n_bytes_read > 0);
   ctx->sp.tx_offset += n_bytes_read;
 
@@ -1065,7 +1069,7 @@ session_tx_dgram_copy_hdr (session_tx_context_t *ctx, u8 *dst)
 
 always_inline void
 session_tx_fifo_chain_tail (session_worker_t *wrk, session_tx_context_t *ctx, vlib_buffer_t *b,
-			    u16 *n_bufs, u8 is_dgram, u8 dma)
+			    u16 *n_bufs, u8 is_dgram, u8 dio, u8 dma)
 {
   vlib_main_t *vm = wrk->vm;
   vlib_buffer_t *chain_b, *prev_b;
@@ -1092,7 +1096,7 @@ session_tx_fifo_chain_tail (session_worker_t *wrk, session_tx_context_t *ctx, vl
       chain_b->current_data = 0;
       data = vlib_buffer_get_current (chain_b);
       if (!is_dgram)
-	n_bytes_read = session_tx_stream_copy (wrk, ctx, len_to_deq, data, dma);
+	n_bytes_read = session_tx_stream_copy (wrk, ctx, len_to_deq, data, dio, dma);
       else
 	n_bytes_read = session_tx_dgram_copy (ctx, len_to_deq, data, to_deq);
       ASSERT (n_bytes_read == len_to_deq);
@@ -1117,7 +1121,7 @@ session_tx_fifo_chain_tail (session_worker_t *wrk, session_tx_context_t *ctx, vl
 
 always_inline void
 session_tx_fill_buffer (session_worker_t *wrk, session_tx_context_t *ctx, vlib_buffer_t *b,
-			u16 *n_bufs, u8 chained, u8 is_dgram, u8 is_cless, u8 dma)
+			u16 *n_bufs, u8 chained, u8 is_dgram, u8 is_cless, u8 dio, u8 dma)
 {
   u32 len_to_deq;
   u8 *data0;
@@ -1133,7 +1137,7 @@ session_tx_fill_buffer (session_worker_t *wrk, session_tx_context_t *ctx, vlib_b
   len_to_deq = clib_min (ctx->left_to_snd, ctx->deq_per_first_buf);
 
   if (!is_dgram)
-    n_bytes_read = session_tx_stream_copy (wrk, ctx, len_to_deq, data0, dma);
+    n_bytes_read = session_tx_stream_copy (wrk, ctx, len_to_deq, data0, dio, dma);
   else
     {
       /* Peer address for connectionless transports */
@@ -1149,7 +1153,7 @@ session_tx_fill_buffer (session_worker_t *wrk, session_tx_context_t *ctx, vlib_b
    * Fill in the remaining buffers in the chain, if any
    */
   if (chained && ctx->left_to_snd)
-    session_tx_fifo_chain_tail (wrk, ctx, b, n_bufs, is_dgram, dma);
+    session_tx_fifo_chain_tail (wrk, ctx, b, n_bufs, is_dgram, dio, dma);
 }
 
 /* Bytes to send from the same length dgrams at the head of the tx fifo, in
@@ -1299,7 +1303,7 @@ session_tx_burst_free_bufs (vlib_main_t *vm, u32 *bis, u32 n_bufs)
 }
 
 always_inline int
-session_tx_burst_inline (session_worker_t *wrk, session_tx_burst_t *b, u8 is_dgram, u8 dma)
+session_tx_burst_inline (session_worker_t *wrk, session_tx_burst_t *b, u8 is_dgram, u8 dio, u8 dma)
 {
   session_tx_context_t *ctx = &wrk->ctx;
   u32 n_left, n_out, pbi, bi0, bi1, *bis, **out_bis;
@@ -1330,7 +1334,7 @@ session_tx_burst_inline (session_worker_t *wrk, session_tx_burst_t *b, u8 is_dgr
   next_index = b->next_node;
   is_cless = is_dgram && transport_connection_is_cless (ctx->tc);
 
-  /* With dma, packets wait for the copies queued in the worker's batch */
+  /* Packets filled by dma wait for the copies queued in the worker's batch */
   if (dma)
     {
       session_dma_transfer *dma_transfer = &wrk->dma_trans[wrk->trans_tail];
@@ -1372,8 +1376,10 @@ session_tx_burst_inline (session_worker_t *wrk, session_tx_burst_t *b, u8 is_dgr
 	  vlib_prefetch_buffer_header (bufs[2], STORE);
 	  vlib_prefetch_buffer_header (bufs[3], STORE);
 
-	  session_tx_fill_buffer (wrk, ctx, bufs[0], 0, 0 /* chained */, is_dgram, is_cless, dma);
-	  session_tx_fill_buffer (wrk, ctx, bufs[1], 0, 0 /* chained */, is_dgram, is_cless, dma);
+	  session_tx_fill_buffer (wrk, ctx, bufs[0], 0, 0 /* chained */, is_dgram, is_cless, dio,
+				  dma);
+	  session_tx_fill_buffer (wrk, ctx, bufs[1], 0, 0 /* chained */, is_dgram, is_cless, dio,
+				  dma);
 
 	  bufs += 2;
 	  n_left -= 2;
@@ -1383,7 +1389,8 @@ session_tx_burst_inline (session_worker_t *wrk, session_tx_burst_t *b, u8 is_dgr
 	  if (n_left > 1)
 	    vlib_prefetch_buffer_header (bufs[1], STORE);
 
-	  session_tx_fill_buffer (wrk, ctx, bufs[0], 0, 0 /* chained */, is_dgram, is_cless, dma);
+	  session_tx_fill_buffer (wrk, ctx, bufs[0], 0, 0 /* chained */, is_dgram, is_cless, dio,
+				  dma);
 
 	  bufs += 1;
 	  n_left -= 1;
@@ -1418,8 +1425,10 @@ session_tx_burst_inline (session_worker_t *wrk, session_tx_burst_t *b, u8 is_dgr
 	  b0 = vlib_get_buffer (vm, bi0);
 	  b1 = vlib_get_buffer (vm, bi1);
 
-	  session_tx_fill_buffer (wrk, ctx, b0, &n_bufs, 1 /* chained */, is_dgram, is_cless, dma);
-	  session_tx_fill_buffer (wrk, ctx, b1, &n_bufs, 1 /* chained */, is_dgram, is_cless, dma);
+	  session_tx_fill_buffer (wrk, ctx, b0, &n_bufs, 1 /* chained */, is_dgram, is_cless, dio,
+				  dma);
+	  session_tx_fill_buffer (wrk, ctx, b1, &n_bufs, 1 /* chained */, is_dgram, is_cless, dio,
+				  dma);
 
 	  ctx->transport_pending_bufs[ctx->n_segs_per_evt - n_left] = b0;
 	  ctx->transport_pending_bufs[ctx->n_segs_per_evt - n_left + 1] = b1;
@@ -1441,7 +1450,8 @@ session_tx_burst_inline (session_worker_t *wrk, session_tx_burst_t *b, u8 is_dgr
 
 	  bi0 = ctx->tx_buffers[--n_bufs];
 	  b0 = vlib_get_buffer (vm, bi0);
-	  session_tx_fill_buffer (wrk, ctx, b0, &n_bufs, 1 /* chained */, is_dgram, is_cless, dma);
+	  session_tx_fill_buffer (wrk, ctx, b0, &n_bufs, 1 /* chained */, is_dgram, is_cless, dio,
+				  dma);
 
 	  ctx->transport_pending_bufs[ctx->n_segs_per_evt - n_left] = b0;
 	  n_left -= 1;
@@ -1480,13 +1490,14 @@ session_tx_burst_inline (session_worker_t *wrk, session_tx_burst_t *b, u8 is_dgr
   return b->n_segs;
 }
 
-/* Dma bursts are rare, keep them out of the copy bursts' code */
+/* Deferred tx bursts are rare, keep them out of the copy bursts' code. Dma
+ * copies from chunks. Copy segment prefixes on the cpu for now. */
 static __clib_noinline int
-session_tx_burst_dma (session_worker_t *wrk, session_tx_burst_t *b, u8 is_dgram)
+session_tx_burst_stream_dio (session_worker_t *wrk, session_tx_burst_t *b)
 {
-  if (is_dgram)
-    return session_tx_burst_inline (wrk, b, 1 /* is_dgram */, 1 /* dma */);
-  return session_tx_burst_inline (wrk, b, 0 /* is_dgram */, 1 /* dma */);
+  if ((wrk->flags & SESSION_WRK_F_DMA) && !svm_fifo_n_async_segments (wrk->ctx.s->tx_fifo))
+    return session_tx_burst_inline (wrk, b, 0 /* is_dgram */, 1 /* dio */, 1 /* dma */);
+  return session_tx_burst_inline (wrk, b, 0 /* is_dgram */, 1 /* dio */, 0 /* dma */);
 }
 
 int
@@ -1494,19 +1505,18 @@ session_tx_burst_stream (transport_send_params_t *sp, session_tx_burst_t *b)
 {
   session_worker_t *wrk = session_tx_sp_wrk (sp);
 
-  if (PREDICT_FALSE (wrk->flags & SESSION_WRK_F_DMA))
-    return session_tx_burst_dma (wrk, b, 0 /* is_dgram */);
-  return session_tx_burst_inline (wrk, b, 0 /* is_dgram */, 0 /* dma */);
+  /* Deferred tx reads prefix segments, and dma copies on workers with dma
+   * are deferred io */
+  if (PREDICT_FALSE ((wrk->ctx.s->flags & SESSION_F_DIO_TX) || (wrk->flags & SESSION_WRK_F_DMA)))
+    return session_tx_burst_stream_dio (wrk, b);
+  return session_tx_burst_inline (wrk, b, 0 /* is_dgram */, 0 /* dio */, 0 /* dma */);
 }
 
 int
 session_tx_burst_dgram (transport_send_params_t *sp, session_tx_burst_t *b)
 {
-  session_worker_t *wrk = session_tx_sp_wrk (sp);
-
-  if (PREDICT_FALSE (wrk->flags & SESSION_WRK_F_DMA))
-    return session_tx_burst_dma (wrk, b, 1 /* is_dgram */);
-  return session_tx_burst_inline (wrk, b, 1 /* is_dgram */, 0 /* dma */);
+  return session_tx_burst_inline (session_tx_sp_wrk (sp), b, 1 /* is_dgram */, 0 /* dio */,
+				  0 /* dma */);
 }
 
 always_inline u8
