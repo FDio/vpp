@@ -2423,13 +2423,13 @@ class TestSRv6(VppTestCase):
         # but packet[Raw] gives the complete payload
         # (incl L2 header) for the T.Encaps L2 case
         try:
-            payload_info = self.payload_to_info(packet[Raw])
+            payload_info = self.get_info_from_packet(packet)
 
         except:
             # remote L2 header from packet[Raw]:
             # take packet[Raw], convert it to an Ether layer
             # and then extract Raw from it
-            payload_info = self.payload_to_info(Ether(scapy.compat.r(packet[Raw]))[Raw])
+            payload_info = self.get_info_from_packet(Ether(scapy.compat.r(packet[Raw])))
 
         return payload_info
 
