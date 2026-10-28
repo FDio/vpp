@@ -5913,6 +5913,185 @@ cleanup:
   return rv;
 }
 
+/* Read the server rx fifo and check bytes against the i & 0xff pattern. */
+static u32
+tcp_test_drain_check_pattern (session_t *s, u32 offset, u8 *ok)
+{
+  svm_fifo_t *f = s->rx_fifo;
+  u32 n, i, total = 0;
+  u8 buf[4096];
+
+  while ((n = svm_fifo_max_dequeue_cons (f)))
+    {
+      n = clib_min (n, sizeof (buf));
+      svm_fifo_dequeue (f, n, buf);
+      for (i = 0; i < n; i++)
+	if (buf[i] != ((offset + total + i) & 0xff))
+	  *ok = 0;
+      total += n;
+    }
+
+  if (total && svm_fifo_needs_deq_ntf (f, total))
+    {
+      svm_fifo_clear_deq_ntf (f);
+      session_program_transport_io_evt (s->handle, SESSION_IO_EVT_RX);
+    }
+
+  return total;
+}
+
+/* Send from a deferred tx stream, half retained buffers and half copied bytes,
+ * through the same losses as the recovery point test. Retransmits read the
+ * stream at older offsets and acks release its buffers and copies. */
+static int
+tcp_test_tamper_deferred_tx (vlib_main_t *vm)
+{
+  tcp_e2e_params_t params = {
+    .name = "dio_tx",
+    .client_addr = 0x16161601,
+    .server_addr = 0x17171701,
+    .client_vrf = 0,
+    .server_vrf = 3,
+    .server_port = 2251,
+    .client_port = 0, /* ephemeral */
+    .secret = 2250,
+    .rx_fifo_size = 256 << 10,
+    .tx_fifo_size = 256 << 10,
+  };
+  u32 tries, mss, seq1, total_bytes = 256 << 10, n_buf_bytes = 128 << 10, drained = 0;
+  u32 bi, buf_size, initial_n_segs, fr_before, off;
+  tcp_e2e_ctx_t _ctx, *ctx = &_ctx;
+  tcp_connection_t *client_tc;
+  tcp_tamper_rule_t *r1, *r2;
+  session_t *client_s, *server_s;
+  session_dio_ctx_t *dio;
+  vlib_buffer_t *b;
+  u8 *data = 0, ok = 1;
+  int error, rv = 0, i;
+
+  tcp_tamper_reset ();
+
+  if (!TCP_TEST_I ((tcp_e2e_setup (vm, ctx, &params) == 0), "dio_tx: e2e setup"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  client_tc = ctx->client_tc;
+  client_s = ctx->client_s;
+  server_s = session_get_if_valid (accepted_session_index, accepted_session_thread);
+  if (!TCP_TEST_I ((server_s != 0), "dio_tx: server session resolvable"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  if (!TCP_TEST_I ((session_dio_tx_enable_disable (client_s, 1) == 0 &&
+		    (client_s->flags & SESSION_F_DEFERRED_TX)),
+		   "dio_tx: deferred tx enabled"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  dio = &session_main_get_worker (client_s->thread_index)->dio;
+  initial_n_segs = dio->n_tx_segs;
+  mss = client_tc->snd_mss;
+  fr_before = client_tc->fr_occurences;
+
+  seq1 = client_tc->snd_una + 4 * mss;
+  tcp_tamper_drop_seq (client_tc, seq1, 2);
+  tcp_tamper_drop_above_rp (client_tc, 1);
+  r1 = &tcp_tamper_main.rules[0];
+  r2 = &tcp_tamper_main.rules[1];
+  tcp_tamper_enable (client_tc);
+
+  vec_validate (data, total_bytes - 1);
+  for (i = 0; i < (int) total_bytes; i++)
+    data[i] = i & 0xff;
+
+  /* First half as retained buffers, second half as copied bytes */
+  buf_size = vlib_buffer_get_default_data_size (vm);
+  for (off = 0; off < n_buf_bytes; off += buf_size)
+    {
+      if (vlib_buffer_alloc (vm, &bi, 1) != 1)
+	break;
+      b = vlib_get_buffer (vm, bi);
+      b->current_length = clib_min (buf_size, n_buf_bytes - off);
+      clib_memcpy_fast (vlib_buffer_get_current (b), data + off, b->current_length);
+      if (session_dio_tx_enqueue_buffer (client_s, b) != (int) b->current_length)
+	{
+	  vlib_buffer_free (vm, &bi, 1);
+	  break;
+	}
+    }
+  error = session_dio_tx_enqueue (client_s, data + n_buf_bytes, total_bytes - n_buf_bytes);
+  if (!TCP_TEST_I ((off == n_buf_bytes && error == (int) (total_bytes - n_buf_bytes) &&
+		    dio->n_tx_segs > initial_n_segs),
+		   "dio_tx: client queued %u buffer and %u copied bytes", off, error))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  error = session_program_tx_io_evt (client_s->handle, SESSION_IO_EVT_TX);
+  if (!TCP_TEST_I ((error == 0), "dio_tx: client tx event programmed"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+  for (tries = 0; tries < 2000; tries++)
+    {
+      drained += tcp_test_drain_check_pattern (server_s, drained, &ok);
+      if (drained >= total_bytes && !svm_fifo_max_dequeue (client_s->tx_fifo))
+	break;
+      tcp_e2e_pump (vm, 5e-3);
+    }
+
+  if (!TCP_TEST_I ((r1->n_dropped == 2 && r2->n_dropped == 1),
+		   "dio_tx: early segment, its retransmit (%u) and one segment above the "
+		   "recovery point (%u) dropped",
+		   r1->n_dropped, r2->n_dropped))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  if (!TCP_TEST_I ((drained == total_bytes && ok),
+		   "dio_tx: all %u bytes delivered intact despite losses (got %u, intact %u)",
+		   total_bytes, drained, ok))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  if (!TCP_TEST_I (((client_tc->fr_occurences - fr_before) >= 1),
+		   "dio_tx: recovery retransmitted from the deferred stream (fr delta %u)",
+		   client_tc->fr_occurences - fr_before))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  if (!TCP_TEST_I ((!svm_fifo_max_dequeue (client_s->tx_fifo) &&
+		    !svm_fifo_n_async_segments (client_s->tx_fifo) &&
+		    dio->n_tx_segs == initial_n_segs),
+		   "dio_tx: acks released every buffer and copy (segs %u initial %u)",
+		   dio->n_tx_segs, initial_n_segs))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  if (!TCP_TEST_I ((session_dio_tx_enable_disable (client_s, 0) == 0 &&
+		    !(client_s->flags & SESSION_F_DEFERRED_TX)),
+		   "dio_tx: deferred tx disabled"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+cleanup:
+  tcp_tamper_reset ();
+  vec_free (data);
+  if (!tcp_e2e_teardown (vm, ctx))
+    rv = 1;
+  return rv;
+}
+
 /* Suppress ACKs until the sender spuriously retransmits the first segment,
  * while genuinely losing a later segment. The retransmission reaches a
  * receiver that already has the first segment. Add that duplicate range to the
@@ -7177,6 +7356,7 @@ tcp_test_tamper (vlib_main_t *vm, unformat_input_t *input)
     { "queued-data-loss", tcp_test_tamper_queued_data_loss },
     { "queued-data-loss-bt", tcp_test_tamper_queued_data_loss_bt },
     { "recov-pt", tcp_test_tamper_recovery_point },
+    { "dio-tx", tcp_test_tamper_deferred_tx },
     { "dsack-early", tcp_test_tamper_dsack_early_undo },
     { "strand-head", tcp_test_tamper_stranded_head },
     { "rto", tcp_test_tamper_rto },

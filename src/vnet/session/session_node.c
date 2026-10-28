@@ -1043,11 +1043,13 @@ session_tx_fill_dma_transfers_tail (session_worker_t *wrk,
 }
 
 always_inline int
-session_tx_copy_data (session_worker_t *wrk, session_tx_context_t *ctx,
-		      vlib_buffer_t *b, u32 len_to_deq, u8 *data0)
+session_tx_copy_data (session_worker_t *wrk, session_tx_context_t *ctx, vlib_buffer_t *b,
+		      u32 len_to_deq, u8 *data0, u8 dio)
 {
   int n_bytes_read;
-  if (PREDICT_TRUE (!wrk->dma_enabled))
+  if (dio)
+    n_bytes_read = svm_fifo_async_peek (ctx->s->tx_fifo, ctx->sp.tx_offset, len_to_deq, data0);
+  else if (PREDICT_TRUE (!wrk->dma_enabled))
     n_bytes_read =
       svm_fifo_peek (ctx->s->tx_fifo, ctx->sp.tx_offset, len_to_deq, data0);
   else
@@ -1056,11 +1058,13 @@ session_tx_copy_data (session_worker_t *wrk, session_tx_context_t *ctx,
 }
 
 always_inline int
-session_tx_copy_data_tail (session_worker_t *wrk, session_tx_context_t *ctx,
-			   vlib_buffer_t *b, u32 len_to_deq, u8 *data)
+session_tx_copy_data_tail (session_worker_t *wrk, session_tx_context_t *ctx, vlib_buffer_t *b,
+			   u32 len_to_deq, u8 *data, u8 dio)
 {
   int n_bytes_read;
-  if (PREDICT_TRUE (!wrk->dma_enabled))
+  if (dio)
+    n_bytes_read = svm_fifo_async_peek (ctx->s->tx_fifo, ctx->sp.tx_offset, len_to_deq, data);
+  else if (PREDICT_TRUE (!wrk->dma_enabled))
     n_bytes_read =
       svm_fifo_peek (ctx->s->tx_fifo, ctx->sp.tx_offset, len_to_deq, data);
   else
@@ -1070,8 +1074,8 @@ session_tx_copy_data_tail (session_worker_t *wrk, session_tx_context_t *ctx,
 }
 
 always_inline void
-session_tx_fifo_chain_tail (session_worker_t *wrk, session_tx_context_t *ctx,
-			    vlib_buffer_t *b, u16 *n_bufs, u8 peek_data)
+session_tx_fifo_chain_tail (session_worker_t *wrk, session_tx_context_t *ctx, vlib_buffer_t *b,
+			    u16 *n_bufs, u8 peek_data, u8 dio)
 {
   vlib_main_t *vm = wrk->vm;
   vlib_buffer_t *chain_b, *prev_b;
@@ -1098,8 +1102,7 @@ session_tx_fifo_chain_tail (session_worker_t *wrk, session_tx_context_t *ctx,
       data = vlib_buffer_get_current (chain_b);
       if (peek_data)
 	{
-	  n_bytes_read =
-	    session_tx_copy_data_tail (wrk, ctx, b, len_to_deq, data);
+	  n_bytes_read = session_tx_copy_data_tail (wrk, ctx, b, len_to_deq, data, dio);
 	  ctx->sp.tx_offset += n_bytes_read;
 	}
       else
@@ -1156,8 +1159,8 @@ session_tx_fifo_chain_tail (session_worker_t *wrk, session_tx_context_t *ctx,
 }
 
 always_inline void
-session_tx_fill_buffer (session_worker_t *wrk, session_tx_context_t *ctx,
-			vlib_buffer_t *b, u16 *n_bufs, u8 peek_data)
+session_tx_fill_buffer (session_worker_t *wrk, session_tx_context_t *ctx, vlib_buffer_t *b,
+			u16 *n_bufs, u8 peek_data, u8 dio)
 {
   u32 len_to_deq;
   u8 *data0;
@@ -1174,7 +1177,7 @@ session_tx_fill_buffer (session_worker_t *wrk, session_tx_context_t *ctx,
 
   if (peek_data)
     {
-      n_bytes_read = session_tx_copy_data (wrk, ctx, b, len_to_deq, data0);
+      n_bytes_read = session_tx_copy_data (wrk, ctx, b, len_to_deq, data0, dio);
       ASSERT (n_bytes_read > 0);
       /* Keep track of progress locally, transport is also supposed to
        * increment it independently when pushing the header */
@@ -1232,7 +1235,7 @@ session_tx_fill_buffer (session_worker_t *wrk, session_tx_context_t *ctx,
    * Fill in the remaining buffers in the chain, if any
    */
   if (PREDICT_FALSE (ctx->n_bufs_per_seg > 1 && ctx->left_to_snd))
-    session_tx_fifo_chain_tail (wrk, ctx, b, n_bufs, peek_data);
+    session_tx_fifo_chain_tail (wrk, ctx, b, n_bufs, peek_data, dio);
 }
 
 always_inline u8
@@ -1453,9 +1456,10 @@ session_tx_maybe_reschedule (session_worker_t * wrk,
 }
 
 always_inline void
-session_tx_add_pending_buffer (session_worker_t *wrk, u32 bi, u32 next_index)
+session_tx_add_pending_buffer (session_worker_t *wrk, u32 bi, u32 next_index, u8 dio)
 {
-  if (PREDICT_TRUE (!wrk->dma_enabled))
+  /* Deferred tx copies on the CPU, so its buffers are ready now */
+  if (dio || PREDICT_TRUE (!wrk->dma_enabled))
     {
       vec_add1 (wrk->pending_tx_buffers, bi);
       vec_add1 (wrk->pending_tx_nexts, next_index);
@@ -1469,10 +1473,8 @@ session_tx_add_pending_buffer (session_worker_t *wrk, u32 bi, u32 next_index)
 }
 
 always_inline int
-session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
-				vlib_node_runtime_t * node,
-				session_evt_elt_t * elt,
-				int *n_tx_packets, u8 peek_data)
+session_tx_fifo_read_and_snd_i (session_worker_t *wrk, vlib_node_runtime_t *node,
+				session_evt_elt_t *elt, int *n_tx_packets, u8 peek_data, u8 dio)
 {
   u32 n_left, pbi, next_index, max_burst;
   session_tx_context_t *ctx = &wrk->ctx;
@@ -1610,15 +1612,15 @@ session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
       b0 = vlib_get_buffer (vm, bi0);
       b1 = vlib_get_buffer (vm, bi1);
 
-      session_tx_fill_buffer (wrk, ctx, b0, &n_bufs, peek_data);
-      session_tx_fill_buffer (wrk, ctx, b1, &n_bufs, peek_data);
+      session_tx_fill_buffer (wrk, ctx, b0, &n_bufs, peek_data, dio);
+      session_tx_fill_buffer (wrk, ctx, b1, &n_bufs, peek_data, dio);
 
       ctx->transport_pending_bufs[ctx->n_segs_per_evt - n_left] = b0;
       ctx->transport_pending_bufs[ctx->n_segs_per_evt - n_left + 1] = b1;
       n_left -= 2;
 
-      session_tx_add_pending_buffer (wrk, bi0, next_index);
-      session_tx_add_pending_buffer (wrk, bi1, next_index);
+      session_tx_add_pending_buffer (wrk, bi0, next_index, dio);
+      session_tx_add_pending_buffer (wrk, bi1, next_index, dio);
     }
   while (n_left)
     {
@@ -1634,12 +1636,12 @@ session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
 
       bi0 = ctx->tx_buffers[--n_bufs];
       b0 = vlib_get_buffer (vm, bi0);
-      session_tx_fill_buffer (wrk, ctx, b0, &n_bufs, peek_data);
+      session_tx_fill_buffer (wrk, ctx, b0, &n_bufs, peek_data, dio);
 
       ctx->transport_pending_bufs[ctx->n_segs_per_evt - n_left] = b0;
       n_left -= 1;
 
-      session_tx_add_pending_buffer (wrk, bi0, next_index);
+      session_tx_add_pending_buffer (wrk, bi0, next_index, dio);
     }
 
   /* Ask transport to push headers */
@@ -1674,12 +1676,21 @@ session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
   return SESSION_TX_OK;
 }
 
+static __clib_noinline int
+session_tx_fifo_dio_peek_and_snd (session_worker_t *wrk, vlib_node_runtime_t *node,
+				  session_evt_elt_t *e, int *n_tx_packets)
+{
+  return session_tx_fifo_read_and_snd_i (wrk, node, e, n_tx_packets, 1, 1 /* dio */);
+}
+
 int
 session_tx_fifo_peek_and_snd (session_worker_t * wrk,
 			      vlib_node_runtime_t * node,
 			      session_evt_elt_t * e, int *n_tx_packets)
 {
-  return session_tx_fifo_read_and_snd_i (wrk, node, e, n_tx_packets, 1);
+  if (PREDICT_FALSE (wrk->ctx.s->flags & SESSION_F_DEFERRED_TX))
+    return session_tx_fifo_dio_peek_and_snd (wrk, node, e, n_tx_packets);
+  return session_tx_fifo_read_and_snd_i (wrk, node, e, n_tx_packets, 1, 0);
 }
 
 int
@@ -1687,7 +1698,7 @@ session_tx_fifo_dequeue_and_snd (session_worker_t * wrk,
 				 vlib_node_runtime_t * node,
 				 session_evt_elt_t * e, int *n_tx_packets)
 {
-  return session_tx_fifo_read_and_snd_i (wrk, node, e, n_tx_packets, 0);
+  return session_tx_fifo_read_and_snd_i (wrk, node, e, n_tx_packets, 0, 0);
 }
 
 int

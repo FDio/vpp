@@ -1336,6 +1336,13 @@ session_config_fn (vlib_main_t *vm, unformat_input_t *input)
 
 	  smm->deferred_rx_max_segs = nitems;
 	}
+      else if (unformat (input, "deferred-tx-max-segs %u", &nitems))
+	{
+	  if (!nitems)
+	    return clib_error_return (0, "deferred-tx-max-segs must be at least 1");
+
+	  smm->deferred_tx_max_segs = nitems;
+	}
       else if (unformat (input, "v4-session-table-buckets %d",
 			 &smm->configured_v4_session_table_buckets))
 	;

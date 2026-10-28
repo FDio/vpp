@@ -221,7 +221,8 @@ typedef enum
   _ (RX_READY, "rx-ready")                                                                         \
   _ (TPT_INIT_CLOSE, "transport-init-close")                                                       \
   _ (STREAM, "stream")                                                                             \
-  _ (DEFERRED_RX, "deferred-rx")
+  _ (DEFERRED_RX, "deferred-rx")                                                                   \
+  _ (DEFERRED_TX, "deferred-tx")
 
 typedef enum session_flags_bits_
 {
