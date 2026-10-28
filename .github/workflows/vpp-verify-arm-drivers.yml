@@ -152,7 +152,7 @@ jobs:
         run: |
           set -euo pipefail
           ls -l "$LOG_DIR"
-          env | sort | tee "$LOG_DIR/environment.log"
+          env | sort
 
       - name: Show Nomad Dockerfile
         # yamllint disable-line rule:line-length
@@ -168,14 +168,22 @@ jobs:
           TUI_LINE: ${{ env.TUI_LINE }}
 
       - name: Install VPP dependencies
+<<<<<<< HEAD   (853353 gha: clean up unused log variables in actions)
         uses: fdio/vpp/.github/actions/vpp-install-deps@5a0fc5b4e502234fbd5a3f427268fa75590c0ea5
+=======
+        uses: fdio/vpp/.github/actions/vpp-install-deps@be4c10d674fb302334b14c217d69f9cb18eb7785
+>>>>>>> CHANGE (831787 gha: remove extraneous logs in workflows)
         with:
           LOG_DIR: ${{ env.LOG_DIR }}
           WORKSPACE: ${{ env.WORKSPACE }}
           TUI_LINE: ${{ env.TUI_LINE }}
 
       - name: Install VPP external dependencies
+<<<<<<< HEAD   (853353 gha: clean up unused log variables in actions)
         uses: fdio/vpp/.github/actions/vpp-install-ext-deps@77986ebaac9a194fead153d2c441eca547931528
+=======
+        uses: fdio/vpp/.github/actions/vpp-install-ext-deps@be4c10d674fb302334b14c217d69f9cb18eb7785
+>>>>>>> CHANGE (831787 gha: remove extraneous logs in workflows)
         with:
           LOG_DIR: ${{ env.LOG_DIR }}
           WORKSPACE: ${{ env.WORKSPACE }}
