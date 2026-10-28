@@ -1,0 +1,157 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Binds platform devices away from their normal kernel driver and over to a
+# generic UIO driver, so VPP can map their registers from userspace.
+#
+# Usage: ./attach-to-uio [device...]
+#   device  platform bus device name, e.g. 3a000000.ethernet. With no
+#           arguments, binds the PPE and its three UNIPHY/PCS blocks (see
+#           default_devices below) - everything qppe needs a UIO mapping
+#           for. The UIO driver is fixed at uio_pdrv_genirq.
+#
+# IMPORTANT: unbinding a network driver while its netdevs are still up can
+# hang the kernel forever inside napi_disable(), with no way back short of
+# a power cycle (seen in practice on the PPE/EDMA driver). This script
+# brings every netdev owned by each device down first to avoid that.
+#
+# The PCS/UNIPHY driver (pcs_qcom_ipq9574) sets suppress_bind_attrs, so it
+# has no sysfs bind/unbind files at all - its devices can only be detached
+# by removing the module outright (see TODO.md).
+
+# This script itself runs as the invoking user throughout - only the
+# individual commands that touch sysfs/netdevs are sudo'd. That matters
+# over a krb5-secured NFS mount: root has no krb5 ticket there, so a
+# re-exec of the whole script under sudo would fail to even open this
+# file. sudo as plain commands (tee, ip, modprobe) has no such problem.
+
+default_devices=(3a000000.ethernet 7a00000.ethernet-pcs 7a10000.ethernet-uniphy 7a20000.ethernet-pcs)
+devices=("${@:-${default_devices[@]}}")
+uio_driver=uio_pdrv_genirq
+phy_driver_modules=(mxl_gpy realtek sfp)
+script_dir=${BASH_SOURCE[0]%/*}
+[ "${script_dir}" != "${BASH_SOURCE[0]}" ] || script_dir=.
+kdi_module="${script_dir}/kdi/vpp_kdi.ko"
+
+die() { echo "error: $*" >&2; exit 1; }
+step() { echo "--- $*"; }
+
+bring_down_netdevs() {
+  local device=$1
+  local dev_path="/sys/bus/platform/devices/${device}"
+
+  [ -d "${dev_path}" ] || die "no such platform device: ${device}"
+
+  step "bringing down netdevs owned by ${device} (avoids a napi_disable() hang on unbind)"
+  if [ -d "${dev_path}/net" ]; then
+    for net_dir in "${dev_path}"/net/*; do
+      [ -e "${net_dir}" ] || continue
+      ifname=$(basename "${net_dir}")
+      echo "  ${ifname} down"
+      sudo ip link set "${ifname}" down || die "could not bring ${ifname} down"
+    done
+  else
+    echo "  none found"
+  fi
+}
+
+bind_device() {
+  local device=$1
+  local dev_path="/sys/bus/platform/devices/${device}"
+  local current_driver=""
+
+  if [ -e "${dev_path}/driver" ]; then
+    current_driver=$(basename "$(readlink -f "${dev_path}/driver")")
+  fi
+
+  if [ "${current_driver}" = "${uio_driver}" ]; then
+    echo "  ${device} is already bound to ${uio_driver}"
+    return
+  fi
+
+  step "setting driver_override=${uio_driver} for ${device}"
+  echo "${uio_driver}" | sudo tee "${dev_path}/driver_override" >/dev/null ||
+    die "could not set driver_override"
+
+  step "binding ${device} to ${uio_driver}"
+  echo "${device}" |
+    sudo tee "/sys/bus/platform/drivers/${uio_driver}/bind" >/dev/null ||
+    die "bind to ${uio_driver} failed"
+
+  step "checking for a uio device"
+  local uio_dir="${dev_path}/uio"
+  [ -d "${uio_dir}" ] || die "no uio entry under ${dev_path} - bind did not take"
+
+  for entry in "${uio_dir}"/uio*; do
+    [ -e "${entry}" ] || continue
+    echo "  found $(basename "${entry}") -> /dev/$(basename "${entry}")"
+  done
+}
+
+step "reloading KDI with debug logging enabled"
+[ -f "${kdi_module}" ] || die "KDI module not found: ${kdi_module}"
+if grep -q '^vpp_kdi ' /proc/modules; then
+  sudo rmmod vpp_kdi || die "could not unload vpp_kdi (a process may still have resource fds open)"
+else
+  echo "  vpp_kdi is not currently loaded"
+fi
+sudo insmod "${kdi_module}" debug=1 || die "could not load ${kdi_module}"
+
+step "ensuring ${uio_driver} is available"
+if [ -d "/sys/bus/platform/drivers/${uio_driver}" ]; then
+  echo "  already available (built-in, or already loaded)"
+else
+  sudo modprobe "${uio_driver}" 2>/dev/null || true
+  [ -d "/sys/bus/platform/drivers/${uio_driver}" ] ||
+    die "${uio_driver} is not built in and modprobe could not load it"
+fi
+
+for device in "${devices[@]}"; do
+  bring_down_netdevs "${device}"
+done
+
+step "detecting vendor driver modules currently bound to target devices"
+declare -A driver_modules=()
+for device in "${devices[@]}"; do
+  dev_path="/sys/bus/platform/devices/${device}"
+  [ -e "${dev_path}/driver/module" ] || continue
+  mod=$(basename "$(readlink -f "${dev_path}/driver/module")")
+  [ "${mod}" != "${uio_driver}" ] && driver_modules[${mod}]=1
+done
+
+if [ "${#driver_modules[@]}" -gt 0 ]; then
+  step "removing vendor driver modules: ${!driver_modules[*]}"
+  echo "  some of these (e.g. the IPQ9574 PCS driver, module"
+  echo "  pcs_qcom_ipq9574) set suppress_bind_attrs and have no sysfs"
+  echo "  unbind file at all - removing the module is the only way to"
+  echo "  detach their devices, via the same driver_detach()/.remove()"
+  echo "  path sysfs unbind would have used. Retried a few times since"
+  echo "  removal order matters (e.g. qcom_ppe depends on"
+  echo "  pcs_qcom_ipq9574, so must be removed first)."
+  remaining=("${!driver_modules[@]}")
+  for attempt in 1 2 3; do
+    [ "${#remaining[@]}" -eq 0 ] && break
+    next=()
+    for mod in "${remaining[@]}"; do
+      if ! grep -q "^${mod} " /proc/modules; then
+        continue
+      fi
+      echo "  rmmod ${mod} (attempt ${attempt})"
+      sudo rmmod "${mod}" || next+=("${mod}")
+    done
+    remaining=("${next[@]}")
+  done
+  [ "${#remaining[@]}" -eq 0 ] || die "could not remove module(s): ${remaining[*]}"
+fi
+
+for device in "${devices[@]}"; do
+  bind_device "${device}"
+done
+
+for phy_driver_module in "${phy_driver_modules[@]}"; do
+  step "ensuring PHY/SFP support module ${phy_driver_module} is available"
+  sudo modprobe "${phy_driver_module}" ||
+    die "could not load PHY/SFP support module ${phy_driver_module}"
+done
+
+echo "done - use 'dev platform/${devices[0]} { }' in startup.conf"
