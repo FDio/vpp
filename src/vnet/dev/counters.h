@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0
- * Copyright (c) 2023 Cisco Systems, Inc.
+ * Copyright (c) 2023-2026 Cisco Systems, Inc.
  */
 
 #ifndef _VNET_DEV_COUNTERS_H_
@@ -96,7 +96,6 @@ __clib_export void vnet_dev_counters_clear (vlib_main_t *, vnet_dev_counter_main
 void vnet_dev_counters_free (vlib_main_t *, vnet_dev_counter_main_t *);
 
 format_function_t format_vnet_dev_counters;
-format_function_t format_vnet_dev_counters_all;
 
 static_always_inline vnet_dev_counter_main_t *
 vnet_dev_counter_get_main (vnet_dev_counter_t *counter)
