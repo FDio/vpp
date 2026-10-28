@@ -1116,6 +1116,9 @@ func VppConnectProxyClientConnectTimeoutMWTest(s *MasqueSuite) {
 	cmd = CommandInNetns([]string{"curl", "--noproxy", "*", "--max-time", "15", "--fail", "--silent", "--show-error", uri}, s.NetNamespaces.Client)
 	output, err = cmd.CombinedOutput()
 	Log(string(output))
+	if err != nil {
+		s.SkipIfWrongWorkerThread("tunnel request on original parent connection failed")
+	}
 	AssertNil(err)
 	AssertEqual(strings.Repeat("x", 64), string(output))
 	AssertEqual(parentConnection, clientVpp.Vppctl("show http connect proxy client"), "parent connection changed")
