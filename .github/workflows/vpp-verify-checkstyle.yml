@@ -163,7 +163,7 @@ jobs:
       - name: Show Environment
         run: |
           set -euo pipefail
-          env | sort | tee "$LOG_DIR/environment.log"
+          env | sort
 
       - name: "Show Nomad Dockerfile"
         # yamllint disable-line rule:line-length
@@ -176,6 +176,14 @@ jobs:
           WORKSPACE: ${{ env.WORKSPACE }}
           GERRIT_BRANCH: ${{ env.GERRIT_BRANCH }}
           GERRIT_REFSPEC: ${{ env.GERRIT_REFSPEC }}
+          TUI_LINE: ${{ env.TUI_LINE }}
+
+      - name: Install VPP dependencies
+        # yamllint disable-line rule:line-length
+        uses: fdio/vpp/.github/actions/vpp-install-deps@9ee8e92b645c8e0a963d5be9fba92ccb9019c8d5
+        with:
+          LOG_DIR: ${{ env.LOG_DIR }}
+          WORKSPACE: ${{ env.WORKSPACE }}
           TUI_LINE: ${{ env.TUI_LINE }}
 
       - name: Run Checkstyle Scripts
