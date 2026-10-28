@@ -70,6 +70,24 @@
       "parentUuid": "af69fd45_b102f828",
       "revId": "f904c084e7734d009fa31e455fa76c5fec1d69ef",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a2651655_2d16827b",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2220
+      },
+      "writtenOn": "2026-10-28T12:20:39Z",
+      "side": 1,
+      "message": "Sure, I can drop this patch and implement only the vxlan-encap check but I still want to explain my reasoning:\nrewrite nodes work after the encapsulation nodes (i.e. they work in the very end), so they are also prone to overwrite the buffer\u0027s metadata in case things go wrong.\nfor instance, imagine a packet that goes to l2 interface and then to vxlan tunnel:\n0. 0 bytes offset as this is a bridged packet\n1. vxlan6-encap (ipv6 header 40B + udp header 8B + vxlan header 8B \u003d 56B) -56B\n2. ip6-rewrite (ethernet header 14B) -70B\n3. vxlan6-encap -126B (would still pass the vxlan check for available headroom)\n4. ip6-rewrite -140B (we\u0027ve just overwritten 12B in vlib_buffer_t metadata)\n\nregarding the performance concern: we can ask CSIT guys to measure the potential performance regression (IIRC they did something similar before for individual patches).",
+      "parentUuid": "245c1412_2df6b6c2",
+      "revId": "f904c084e7734d009fa31e455fa76c5fec1d69ef",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
