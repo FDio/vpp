@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ae5e672b_193307c7",
+        "filename": "src/plugins/linux-cp/lcp_router.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1379,
+      "author": {
+        "id": 3374
+      },
+      "writtenOn": "2026-10-28T12:42:47Z",
+      "side": 1,
+      "message": "Suggestion for the hole in my comment above (untested; happy to test your next PS on the lab): only act when the route actually has lcp paths, mirroring route_add, and delete the entry only when no PLUGIN_LOW paths remain:\n\n```\n  if (RTN_MULTICAST \u003d\u003d rtype)\n    {\n      /* nothing was installed if no nexthop is an lcp interface (see\n       * lcp_router_route_add); don\u0027t touch the PLUGIN_LOW source, it also\n       * holds linux-cp\u0027s own specials such as (*,224.0.0.0/24) */\n      if (0 !\u003d vec_len (np.paths))\n\t{\n\t  mfib_prefix_t mpfx \u003d {};\n\t  fib_node_index_t mfei;\n\n\t  lcp_router_route_mk_mprefix (rr, \u0026mpfx);\n\t  mfib_table_entry_paths_remove (nlt-\u003enlt_mfib_index, \u0026mpfx,\n\t\t\t\t\t MFIB_SOURCE_PLUGIN_LOW, np.paths);\n\n\t  mfei \u003d mfib_table_lookup_exact_match (nlt-\u003enlt_mfib_index, \u0026mpfx);\n\t  if (FIB_NODE_INDEX_INVALID !\u003d mfei \u0026\u0026\n\t      mfib_entry_is_sourced (mfei, MFIB_SOURCE_PLUGIN_LOW) \u0026\u0026\n\t      0 \u003d\u003d mfib_entry_get_n_paths (mfei, MFIB_SOURCE_PLUGIN_LOW))\n\t    mfib_table_entry_delete (nlt-\u003enlt_mfib_index, \u0026mpfx,\n\t\t\t\t     MFIB_SOURCE_PLUGIN_LOW);\n\t}\n    }\n```\n\nThe special entries keep their local/receive path, so they are never deleted by a route delete. (Related but pre-existing, not from this change: a multicast route for exactly 224.0.0.0/24 via an lcp interface is merged into the special entry by route_add, so its delete also removes that interface\u0027s Accept.)",
+      "revId": "64366cae6ea86b1691d8e9b8422b34164f00c701",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
