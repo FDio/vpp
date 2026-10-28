@@ -1,4 +1,4 @@
-# Copyright (c) 2018-2020 Cisco and/or its affiliates.
+# Copyright (c) 2018-2026 Cisco and/or its affiliates.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at:
@@ -15,6 +15,10 @@ unset(VNET_SOURCES)
 unset(VNET_HEADERS)
 unset(VNET_API_FILES)
 unset(VNET_MULTIARCH_SOURCES)
+
+if(VPP_PLATFORM_USES_KDI)
+  add_subdirectory(dev/kdi)
+endif()
 
 option(VPP_IP_FIB_MTRIE_16 "IP FIB's MTRIE Stride is 16-8-8 (if not set it's 8-8-8-8)" ON)
 
