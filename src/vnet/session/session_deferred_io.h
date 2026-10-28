@@ -10,21 +10,26 @@
 #include <svm/svm_fifo.h>
 #include <vlib/vlib.h>
 
-/* Deferred IO (dio): stream bytes held outside fifo chunks, e.g., retained RX
- * buffers, until consumed or copied into chunks.
- * All operations must run on the session's owning thread. */
+/* Deferred IO (dio): stream bytes held outside fifo chunks, e.g., retained
+ * RX packets or buffers apps enqueue for TX, until consumed or copied into
+ * chunks. All operations must run on the session's owning thread. */
 
-/* Default maximum number of retained RX buffer segments per worker.
- * Override at startup with session { deferred-rx-max-segs <count> }. */
+/* Default maximum number of retained buffer segments per worker and direction.
+ * TX holds buffers until acknowledged, so allow about one 4 MB fifo of 2 KB
+ * buffers. Override at startup with session { deferred-rx-max-segs <count> }
+ * and session { deferred-tx-max-segs <count> }. */
 #define SESSION_DIO_RX_MAX_SEGS (2 * VLIB_FRAME_SIZE)
+#define SESSION_DIO_TX_MAX_SEGS (8 * VLIB_FRAME_SIZE)
 
 typedef svm_fifo_async_seg_t session_dio_segment_t;
 
+/* Per-worker state, small enough for the worker's tail padding. Limits are
+ * the session main's, chain copies use the worker's rx segments scratch. */
 typedef struct
 {
   u32 *held_buffers;
-  u32 n_segs;
-  u32 max_segs;
+  u32 n_rx_segs; /**< retained rx buffer segments */
+  u32 n_tx_segs; /**< retained tx buffer segments */
 } session_dio_ctx_t;
 
 /** Exclude retained roots from buffer_indices and return the number left to
@@ -101,5 +106,68 @@ __clib_export int session_dio_rx_flush (session_t *s);
 
 /** Discard all remaining deferred payload without copying it to the rx fifo. */
 __clib_export int session_dio_rx_discard (session_t *s);
+
+/**
+ * Enable or disable deferred TX for a built-in TCP session.
+ *
+ * Enable with an empty tx fifo and, once enabled, write it only with the
+ * deferred TX enqueue APIs. Retained buffers stay in the fifo until
+ * acknowledged; others are copied into fifo-owned segments, so the stream
+ * never needs sealing. Disabling copies pending bytes into normal chunks.
+ * Retained buffers share a per-worker limit.
+ *
+ * Acks release pending bytes. If the connection goes away first, e.g., on
+ * reset, discard them before the session is freed, at the latest from the
+ * cleanup callback.
+ *
+ * Workers with dma send peek transport bursts through deferred TX too, without
+ * the flag, as dma copies are deferred io.
+ */
+__clib_export int session_dio_tx_enable_disable (session_t *s, u8 enable);
+
+/**
+ * Append a buffer chain to the tx stream.
+ *
+ * On success the session owns the chain: it is retained until acknowledged, or
+ * copied and freed if it cannot be, e.g., over the limit or shared. Chains of
+ * whole segments, up to TRANSPORT_PACER_MAX_BURST bytes and
+ * SESSION_DIO_TX_MAX_CHAIN_BUFS buffers, are sent without copies. Segment
+ * metadata lives in opaque2, so leave it alone. Return bytes enqueued, or zero
+ * or a FIFO error, e.g., if the chain does not fit, with the caller still
+ * owning the chain.
+ */
+__clib_export int session_dio_tx_enqueue_buffer (session_t *s, vlib_buffer_t *b);
+
+/** Copy bytes into the tx stream. Writes what fits, like svm_fifo_enqueue(). */
+__clib_export int session_dio_tx_enqueue (session_t *s, const u8 *data, u32 len);
+
+/** Drop acknowledged bytes and release their buffers. Used by transports. */
+__clib_export int session_dio_tx_dequeue_drop (session_t *s, u32 len);
+
+/** Drop all pending bytes without sending them and release their buffers. */
+__clib_export int session_dio_tx_discard (session_t *s);
+
+#define SESSION_DIO_TX_COPY ((u32) ~0)
+#define SESSION_DIO_TX_WAIT ((u32) ~0 - 1)
+
+/* Most buffers a chain sent without a copy may have. Packets also carry a
+ * header buffer and offloads may take a context descriptor, and drivers like
+ * i40e hang on packets with more descriptors than their tx rs threshold, 32
+ * by default. Copied packets stay within it. */
+#define SESSION_DIO_TX_MAX_CHAIN_BUFS 30
+
+/**
+ * Plan the tx segment at offset for session tx bursts. Segments carry at most
+ * max_seg bytes and the burst has room for room bytes.
+ *
+ * Return the root of a retained chain that starts at offset and fits both, to
+ * be sent whole without a copy, with its length in len. Return
+ * SESSION_DIO_TX_WAIT if such a chain fits a segment but not the room, with
+ * len set to the room for a copy if waiting is not an option. Otherwise
+ * return SESSION_DIO_TX_COPY with len set to the bytes to copy, up to where
+ * the next chain starts.
+ */
+__clib_export u32 session_dio_tx_segment (vlib_main_t *vm, svm_fifo_t *f, u32 offset, u32 max_seg,
+					  u32 room, u32 *len);
 
 #endif /* __included_session_deferred_io_h__ */

@@ -158,6 +158,7 @@ typedef struct session_worker_
   /** Per-app-worker bitmap of pending notifications */
   uword *app_wrks_pending_ntf;
 
+  /** Scratch segments for chained rx enqueues and dio chain copies */
   svm_fifo_seg_t *rx_segs;
 
   session_switch_pool_args_t *session_migrate_requests;
@@ -269,8 +270,9 @@ typedef struct session_main_
   /** vpp fifo event queue configured length */
   u32 configured_wrk_mq_length;
 
-  /** max deferred rx segments per worker */
+  /** max deferred rx and tx segments per worker */
   u32 dio_rx_max_segs;
+  u32 dio_tx_max_segs;
 
   /** Session ssvm segment configs*/
   uword wrk_mqs_segment_size;
@@ -1069,7 +1071,9 @@ typedef struct session_tx_burst_
  *
  * Transports size the burst within what is ready after tx_offset, set the
  * send params passed to custom tx, and push their headers onto the burst's
- * buffers. The data is read from tx_offset, which is advanced.
+ * buffers. The data is read from tx_offset, which is advanced. Deferred tx
+ * segments may be shorter, so the burst may build fewer bytes, returned in
+ * n_bytes.
  *
  * @return segments built, -1 if out of buffers
  */

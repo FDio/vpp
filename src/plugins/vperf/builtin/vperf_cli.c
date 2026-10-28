@@ -196,6 +196,9 @@ vp_client_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command
       error = clib_error_return (0, "failed init");
       goto cleanup;
     }
+  vpcm->dio_tx = 0;
+  vpcm->dio_tx_seg = 0;
+  vpcm->tx_fill = 0;
 
   if (!unformat_user (input, unformat_line_input, line_input))
     {
@@ -279,6 +282,12 @@ vp_client_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command
 	vpcm->cfg.test_cfg.verbose = 1;
       else if (unformat (line_input, "test-bytes"))
 	vpcm->cfg.test_cfg.test_bytes = 1;
+      else if (unformat (line_input, "dio-tx-seg %u", &vpcm->dio_tx_seg))
+	vpcm->dio_tx = 1;
+      else if (unformat (line_input, "dio-tx"))
+	vpcm->dio_tx = 1;
+      else if (unformat (line_input, "tx-fill"))
+	vpcm->tx_fill = 1;
       else if (unformat (line_input, "tls-engine %d", &vpcm->cfg.tls_engine))
 	;
       else if (unformat (line_input, "http1"))
@@ -395,6 +404,7 @@ VLIB_CLI_COMMAND (vp_client_command, static) = {
     "[client-batch <n>] [max-tx-chunk <bytes>[k|m]] [nstreams <n>]\n"
     "[throughput <bytes>[k|m|g]] [report-interval[-total] [<seconds>]] [report-jitter]\n"
     "[uri <proto://ip:port>] [test-bytes] [verbose] [all-scope|local-scope|global-scope]\n"
+    "[dio-tx [dio-tx-seg <bytes>]] [tx-fill]\n"
     "[connect-tcp|connect-udp] [fifo-pct-first-alloc <n>]",
   .function = vp_client_command_fn,
   .is_mp_safe = 1,

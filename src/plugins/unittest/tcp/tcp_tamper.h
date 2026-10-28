@@ -50,6 +50,7 @@ typedef struct
   tcp_tamper_rule_t *rules; /**< armed rules */
   u32 out4_next;	    /**< tamper slot on tcp4-output, ~0 if unset */
   u32 out6_next;	    /**< tamper slot on tcp6-output, ~0 if unset */
+  u32 n_shared;		    /**< data segments with payload in shared buffers */
 } tcp_tamper_main_t;
 
 extern tcp_tamper_main_t tcp_tamper_main;

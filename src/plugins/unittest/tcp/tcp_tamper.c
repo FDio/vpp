@@ -180,6 +180,9 @@ VLIB_NODE_FN (tcp_tamper_node)
 
       tcp_tamper_parse (b[0], &seq, &data_len, &flags, &is_ip4);
       drop = tcp_tamper_should_drop (vm->thread_index, conn_index, seq, data_len, flags);
+      if (data_len && (b[0]->flags & VLIB_BUFFER_NEXT_PRESENT) &&
+	  vlib_get_buffer (vm, b[0]->next_buffer)->ref_count > 1)
+	tcp_tamper_main.n_shared += 1;
 
       if (drop)
 	{
@@ -236,6 +239,7 @@ tcp_tamper_reset (void)
 {
   tcp_tamper_main_t *im = &tcp_tamper_main;
   vec_free (im->rules);
+  im->n_shared = 0;
 }
 
 tcp_tamper_rule_t *

@@ -66,6 +66,9 @@ typedef struct
   u8 test_failed;
   u8 barrier_acq_needed;
   u8 include_buffer_offset;
+  u8 dio_tx;	  /**< Send deferred tx buffers */
+  u8 tx_fill;	  /**< Write the test pattern without the server checking it */
+  u32 dio_tx_seg; /**< Deferred tx buffer bytes, 0 for one segment */
 
   vlib_main_t *vlib_main;
 

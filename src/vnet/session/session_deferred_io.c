@@ -8,8 +8,9 @@
 #include <vnet/session/session_deferred_io.h>
 #include <vnet/buffer.h>
 
-/* TCP RX is finished with opaque2 when it hands payload to the session.
- * Keep VLIB's next_buffer link intact for chained packets and buffer free. */
+/* Retained buffers keep their segment in opaque2. TCP RX is finished with it
+ * when it hands payload to the session, and apps give it up when they enqueue
+ * TX buffers. Keep VLIB's next_buffer link intact for chains and buffer free. */
 STATIC_ASSERT (sizeof (((vnet_buffer_opaque2_t *) 0)->unused) >= sizeof (svm_fifo_async_seg_t),
 	       "deferred segment metadata must fit");
 STATIC_ASSERT (STRUCT_OFFSET_OF (vnet_buffer_opaque2_t, unused) % 8 == 0,
@@ -18,25 +19,29 @@ STATIC_ASSERT (STRUCT_OFFSET_OF (vnet_buffer_opaque2_t, unused) % 8 == 0,
 #define SESSION_DIO_FREE_BATCH 64
 
 static_always_inline svm_fifo_async_seg_t *
-session_dio_rx_seg (vlib_buffer_t *b)
+session_dio_seg (vlib_buffer_t *b)
 {
   return (svm_fifo_async_seg_t *) vnet_buffer2 (b)->unused;
 }
 
-static_always_inline int
-session_dio_rx_stage_buffer (session_t *s, vlib_buffer_t *b)
+static_always_inline vlib_buffer_t *
+session_dio_seg_buffer (svm_fifo_async_seg_t *seg)
 {
-  session_dio_ctx_t *dio_ctx;
-  session_worker_t *wrk;
-  svm_fifo_async_seg_t *seg;
+  return (vlib_buffer_t *) ((u8 *) seg - STRUCT_OFFSET_OF (vlib_buffer_t, opaque2) -
+			    STRUCT_OFFSET_OF (vnet_buffer_opaque2_t, unused));
+}
+
+/* Link a chain's data buffers into f as segments charged to the n_used budget,
+ * with one append. The last data segment carries the root, which frees the
+ * whole chain. Return bytes staged, or a FIFO error with nothing staged. */
+static_always_inline int
+session_dio_stage_chain (vlib_main_t *vm, svm_fifo_t *f, vlib_buffer_t *b, u32 *n_used,
+			 u32 max_used)
+{
+  svm_fifo_async_seg_t *seg, *first = 0, *last = 0;
   vlib_buffer_t *cur = b;
   u32 bi, left, len = 0, n_segs = 0;
-  u8 first_seg = 1;
   int rv;
-
-  wrk = session_main_get_worker (s->thread_index);
-  dio_ctx = &wrk->dio;
-  ASSERT (s->thread_index == vlib_get_thread_index ());
 
   /* Validate and size the whole chain before staging any of it. */
   while (1)
@@ -48,21 +53,17 @@ session_dio_rx_stage_buffer (session_t *s, vlib_buffer_t *b)
       n_segs += cur->current_length != 0;
       if (PREDICT_TRUE (!(cur->flags & VLIB_BUFFER_NEXT_PRESENT)))
 	break;
-      cur = vlib_get_buffer (wrk->vm, cur->next_buffer);
+      cur = vlib_get_buffer (vm, cur->next_buffer);
     }
 
   if (!len)
     return 0;
 
-  if (PREDICT_FALSE (dio_ctx->n_segs >= dio_ctx->max_segs ||
-		     n_segs > dio_ctx->max_segs - dio_ctx->n_segs))
+  if (PREDICT_FALSE (*n_used >= max_used || n_segs > max_used - *n_used))
     return SVM_FIFO_EFULL;
 
-  if (PREDICT_FALSE (svm_fifo_max_enqueue_prod (s->rx_fifo) < len))
-    return SVM_FIFO_EFULL;
-
-  /* The last data segment carries the root, which frees the whole chain. */
-  bi = vlib_get_buffer_index (wrk->vm, b);
+  /* Link the chain's segments, then append them at once */
+  bi = vlib_get_buffer_index (vm, b);
   left = len;
   cur = b;
   while (1)
@@ -70,72 +71,175 @@ session_dio_rx_stage_buffer (session_t *s, vlib_buffer_t *b)
       if (cur->current_length)
 	{
 	  left -= cur->current_length;
-	  seg = session_dio_rx_seg (cur);
+	  seg = session_dio_seg (cur);
 	  *seg = (svm_fifo_async_seg_t) {
 	    .data = vlib_buffer_get_current (cur),
 	    .len = cur->current_length,
 	    .opaque = left ? SVM_FIFO_ASYNC_OPAQUE_INVALID : bi,
 	  };
-	  rv = svm_fifo_enqueue_async_segment (s->rx_fifo, seg);
-	  if (PREDICT_FALSE (first_seg && rv < 0))
-	    return rv;
-
-	  ASSERT (rv == seg->len);
-	  first_seg = 0;
+	  if (last)
+	    last->next = seg;
+	  else
+	    first = seg;
+	  last = seg;
 	}
 
       if (PREDICT_TRUE (!(cur->flags & VLIB_BUFFER_NEXT_PRESENT)))
 	break;
-      cur = vlib_get_buffer (wrk->vm, cur->next_buffer);
+      cur = vlib_get_buffer (vm, cur->next_buffer);
     }
 
+  rv = svm_fifo_enqueue_async_segments (f, first, last, n_segs, len);
+  if (PREDICT_FALSE (rv < 0))
+    return rv;
+
   ASSERT (left == 0);
-  dio_ctx->n_segs += n_segs;
-  vec_add1 (dio_ctx->held_buffers, bi);
-  wrk->flags |= SESSION_WRK_F_DIO_RX_PENDING;
+  *n_used += n_segs;
 
   return len;
 }
 
-/* Copy a chain into fifo-owned segments. Return bytes copied, short if the
- * fifo fills, or a FIFO error if nothing was copied. */
+/* Copy a chain into fifo-owned segments. Return bytes copied, short only with
+ * allow_partial, or a FIFO error with nothing copied. */
 static int
-session_dio_rx_copy_buffer (session_t *s, vlib_buffer_t *b)
+session_dio_copy_chain (session_worker_t *wrk, svm_fifo_t *f, vlib_buffer_t *b, u8 allow_partial)
 {
-  vlib_main_t *vm = session_main_get_worker (s->thread_index)->vm;
-  u32 n_copied = 0;
+  svm_fifo_seg_t *seg;
   int rv;
 
+  if (PREDICT_TRUE (!(b->flags & VLIB_BUFFER_NEXT_PRESENT)))
+    {
+      svm_fifo_seg_t one = { .data = vlib_buffer_get_current (b), .len = b->current_length };
+      return one.len ? svm_fifo_enqueue_async_copy_segments (f, &one, 1, allow_partial) : 0;
+    }
+
+  /* The worker's rx segments are scratch, empty between enqueues */
+  ASSERT (!vec_len (wrk->rx_segs));
   while (1)
     {
       if (b->current_length)
 	{
-	  rv = svm_fifo_enqueue_async_copy (s->rx_fifo, vlib_buffer_get_current (b),
-					    b->current_length);
-	  if (PREDICT_FALSE (rv < 0))
-	    return n_copied ? n_copied : rv;
-	  n_copied += rv;
-	  if (rv < b->current_length)
-	    break;
+	  vec_add2 (wrk->rx_segs, seg, 1);
+	  seg->data = vlib_buffer_get_current (b);
+	  seg->len = b->current_length;
 	}
 
       if (!(b->flags & VLIB_BUFFER_NEXT_PRESENT))
 	break;
-      b = vlib_get_buffer (vm, b->next_buffer);
+      b = vlib_get_buffer (wrk->vm, b->next_buffer);
     }
 
-  return n_copied;
+  if (!vec_len (wrk->rx_segs))
+    return 0;
+
+  rv =
+    svm_fifo_enqueue_async_copy_segments (f, wrk->rx_segs, vec_len (wrk->rx_segs), allow_partial);
+  vec_reset_length (wrk->rx_segs);
+
+  return rv;
+}
+
+/* Free the segments' buffers and fifo-owned storage, and return the buffer
+ * segments to the n_used budget. */
+static void
+session_dio_free_segments (session_worker_t *wrk, svm_fifo_t *f, svm_fifo_async_seg_t *segs,
+			   u32 n_segs, u32 *n_used)
+{
+  u32 refs[SESSION_DIO_FREE_BATCH], i = 0, n_refs = 0, n_buf_segs = 0;
+  svm_fifo_async_seg_t *seg, *next;
+
+  for (seg = segs; seg; seg = next)
+    {
+      next = seg->next;
+      i++;
+      if (svm_fifo_async_segment_is_fifo_owned (seg))
+	{
+	  svm_fifo_async_free_segment (f, seg);
+	  continue;
+	}
+      n_buf_segs++;
+      if (seg->opaque != SVM_FIFO_ASYNC_OPAQUE_INVALID)
+	{
+	  refs[n_refs++] = seg->opaque;
+	  if (n_refs == ARRAY_LEN (refs))
+	    {
+	      vlib_buffer_free (wrk->vm, refs, n_refs);
+	      n_refs = 0;
+	    }
+	}
+    }
+
+  ASSERT (i == n_segs);
+  ASSERT (*n_used >= n_buf_segs);
+  *n_used -= n_buf_segs;
+  if (n_refs)
+    vlib_buffer_free (wrk->vm, refs, n_refs);
+}
+
+static int
+session_dio_flush_fifo (session_t *s, svm_fifo_t *f, u8 is_tx)
+{
+  session_worker_t *wrk;
+  svm_fifo_async_seg_t *segs;
+  u32 n_segs, n_committed;
+  int rv;
+
+  n_segs = svm_fifo_n_async_segments (f);
+  if (!n_segs)
+    return 0;
+
+  rv = svm_fifo_commit_async_segments (f, &segs, &n_committed);
+  if (PREDICT_FALSE (rv < 0))
+    return rv;
+
+  ASSERT (n_committed == n_segs);
+  wrk = session_main_get_worker (s->thread_index);
+  session_dio_free_segments (wrk, f, segs, n_segs,
+			     is_tx ? &wrk->dio.n_tx_segs : &wrk->dio.n_rx_segs);
+
+  return rv;
+}
+
+/* Deferred io is for built-in TCP apps. Prepare the fifo's async state. */
+static int
+session_dio_prepare_fifo (session_t *s, svm_fifo_t *f)
+{
+  app_worker_t *app_wrk = app_worker_get_if_valid (s->app_wrk_index);
+
+  if (!f || session_get_transport_proto (s) != TRANSPORT_PROTO_TCP || !app_wrk ||
+      !app_worker_application_is_builtin (app_wrk))
+    return SVM_FIFO_EINVAL;
+
+  return svm_fifo_prepare_async (f);
+}
+
+/*
+ * RX
+ */
+
+static_always_inline int
+session_dio_rx_stage_buffer (session_worker_t *wrk, session_t *s, vlib_buffer_t *b)
+{
+  session_dio_ctx_t *ctx = &wrk->dio;
+  int rv;
+
+  rv =
+    session_dio_stage_chain (wrk->vm, s->rx_fifo, b, &ctx->n_rx_segs, session_main.dio_rx_max_segs);
+  if (rv > 0)
+    {
+      vec_add1 (ctx->held_buffers, vlib_get_buffer_index (wrk->vm, b));
+      wrk->flags |= SESSION_WRK_F_DIO_RX_PENDING;
+    }
+
+  return rv;
 }
 
 static_always_inline void
-session_dio_rx_queue_event (session_t *s, transport_connection_t *tc)
+session_dio_rx_queue_event (session_worker_t *wrk, session_t *s, transport_connection_t *tc)
 {
-  session_worker_t *wrk;
-
   if (s->flags & SESSION_F_RX_EVT)
     return;
 
-  wrk = session_main_get_worker (s->thread_index);
   s->flags |= SESSION_F_RX_EVT;
   vec_add1 (wrk->session_to_enqueue[tc->proto], session_handle (s));
 }
@@ -145,6 +249,7 @@ session_dio_rx_enqueue_or_seal (session_t *s, transport_connection_t *tc, vlib_b
 				u8 queue_event, int *enqueued)
 {
   svm_fifo_async_state_t *state = s->rx_fifo->async_state;
+  session_worker_t *wrk;
   int rv;
 
   ASSERT ((s->flags & SESSION_F_DIO_RX) && enqueued);
@@ -154,15 +259,17 @@ session_dio_rx_enqueue_or_seal (session_t *s, transport_connection_t *tc, vlib_b
   if (!(s->flags & SESSION_F_APP_CLOSED) && queue_event && !svm_fifo_has_ooo_data (s->rx_fifo) &&
       ((state && state->active && !state->sealed) || !svm_fifo_max_dequeue_prod (s->rx_fifo)))
     {
-      rv = session_dio_rx_stage_buffer (s, b);
+      ASSERT (s->thread_index == vlib_get_thread_index ());
+      wrk = session_main_get_worker (s->thread_index);
+      rv = session_dio_rx_stage_buffer (wrk, s, b);
       /* Copy what cannot be retained into fifo-owned segments, which keeps the
        * prefix unsealed. */
       if (PREDICT_FALSE (rv < 0))
-	rv = session_dio_rx_copy_buffer (s, b);
+	rv = session_dio_copy_chain (wrk, s->rx_fifo, b, 1 /* allow_partial */);
       if (rv >= 0)
 	{
 	  if (rv)
-	    session_dio_rx_queue_event (s, tc);
+	    session_dio_rx_queue_event (wrk, s, tc);
 	  session_fifo_tuning (s, s->rx_fifo, SESSION_FT_ACTION_ENQUEUED, 0);
 	  *enqueued = rv;
 	  return 1;
@@ -188,44 +295,6 @@ session_dio_rx_enqueue_stream (session_t *s, transport_connection_t *tc, vlib_bu
     return enqueued;
 
   return session_enqueue_stream_inline (s, tc, b, queue_event, a);
-}
-
-/* Free the segments' buffers and fifo-owned storage, and return the buffer
- * segments' worker budget. */
-static void
-session_dio_free_segments (session_worker_t *wrk, svm_fifo_t *f, svm_fifo_async_seg_t *segs,
-			   u32 n_segs)
-{
-  u32 refs[SESSION_DIO_FREE_BATCH], i = 0, n_refs = 0, n_buf_segs = 0;
-  session_dio_ctx_t *dio_ctx = &wrk->dio;
-  svm_fifo_async_seg_t *seg, *next;
-
-  for (seg = segs; seg; seg = next)
-    {
-      next = seg->next;
-      i++;
-      if (svm_fifo_async_segment_is_fifo_owned (seg))
-	{
-	  svm_fifo_async_free_segment (f, seg);
-	  continue;
-	}
-      n_buf_segs++;
-      if (seg->opaque != SVM_FIFO_ASYNC_OPAQUE_INVALID)
-	{
-	  refs[n_refs++] = seg->opaque;
-	  if (n_refs == ARRAY_LEN (refs))
-	    {
-	      vlib_buffer_free (wrk->vm, refs, n_refs);
-	      n_refs = 0;
-	    }
-	}
-    }
-
-  ASSERT (i == n_segs);
-  ASSERT (dio_ctx->n_segs >= n_buf_segs);
-  dio_ctx->n_segs -= n_buf_segs;
-  if (n_refs)
-    vlib_buffer_free (wrk->vm, refs, n_refs);
 }
 
 __clib_noinline u32
@@ -275,38 +344,16 @@ session_dio_rx_notify_transport (session_t *s, u32 n_bytes)
     }
 }
 
-static int
-session_dio_rx_flush_fifo (svm_fifo_t *f)
-{
-  svm_fifo_async_seg_t *segs;
-  u32 n_segs, n_committed;
-  int rv;
-
-  n_segs = svm_fifo_n_async_segments (f);
-  if (!n_segs)
-    return 0;
-
-  rv = svm_fifo_commit_async_segments (f, &segs, &n_committed);
-  if (PREDICT_FALSE (rv < 0))
-    return rv;
-
-  ASSERT (n_committed == n_segs);
-  session_dio_free_segments (session_main_get_worker (f->master_thread_index), f, segs, n_segs);
-
-  return rv;
-}
-
 int
 session_dio_rx_flush (session_t *s)
 {
   ASSERT (s->thread_index == vlib_get_thread_index ());
-  return session_dio_rx_flush_fifo (s->rx_fifo);
+  return session_dio_flush_fifo (s, s->rx_fifo, 0 /* is_tx */);
 }
 
 int
 session_dio_rx_enable_disable (session_t *s, u8 enable)
 {
-  app_worker_t *app_wrk;
   session_worker_t *wrk;
   int rv;
 
@@ -314,12 +361,7 @@ session_dio_rx_enable_disable (session_t *s, u8 enable)
 
   if (enable)
     {
-      app_wrk = app_worker_get_if_valid (s->app_wrk_index);
-      if (!s->rx_fifo || session_get_transport_proto (s) != TRANSPORT_PROTO_TCP || !app_wrk ||
-	  !app_worker_application_is_builtin (app_wrk))
-	return SVM_FIFO_EINVAL;
-
-      rv = svm_fifo_prepare_async (s->rx_fifo);
+      rv = session_dio_prepare_fifo (s, s->rx_fifo);
       if (rv < 0)
 	return rv;
 
@@ -382,19 +424,23 @@ session_dio_rx_acquire (session_t *s, session_dio_rx_batch_t *batch)
 void
 session_dio_rx_release (session_dio_rx_batch_t *batch)
 {
+  session_worker_t *wrk;
+
   ASSERT (batch != 0);
   if (!batch->segments)
     return;
 
   ASSERT (batch->owner_thread_index == vlib_get_thread_index ());
-  session_dio_free_segments (session_main_get_worker (batch->owner_thread_index), batch->fifo,
-			     (svm_fifo_async_seg_t *) batch->segments, batch->n_segments);
+  wrk = session_main_get_worker (batch->owner_thread_index);
+  session_dio_free_segments (wrk, batch->fifo, (svm_fifo_async_seg_t *) batch->segments,
+			     batch->n_segments, &wrk->dio.n_rx_segs);
   clib_memset (batch, 0, sizeof (*batch));
 }
 
 int
 session_dio_rx_discard (session_t *s)
 {
+  session_worker_t *wrk = session_main_get_worker (s->thread_index);
   svm_fifo_async_seg_t *segs;
   u32 n_segs;
   int rv;
@@ -405,7 +451,212 @@ session_dio_rx_discard (session_t *s)
   if (rv <= 0)
     return rv;
 
-  session_dio_free_segments (session_main_get_worker (s->thread_index), s->rx_fifo, segs, n_segs);
+  session_dio_free_segments (wrk, s->rx_fifo, segs, n_segs, &wrk->dio.n_rx_segs);
   session_dio_rx_notify_transport (s, rv);
   return rv;
+}
+
+/*
+ * TX
+ */
+
+/* Paced transports release at least their min burst per dispatch. With
+ * deferred tx, make that fit any chain sent whole, up to the pacer's max
+ * burst, so bursts don't end at chains for lack of room. */
+static void
+session_dio_tx_pacer_bursts (session_t *s, u8 enable)
+{
+  transport_connection_t *tc;
+
+  if (s->session_state < SESSION_STATE_READY || s->session_state >= SESSION_STATE_TRANSPORT_DELETED)
+    return;
+
+  tc = session_get_transport (s);
+  if (!tc || !transport_connection_is_tx_paced (tc))
+    return;
+
+  if (enable)
+    transport_connection_tx_pacer_set_burst_limits (tc, TRANSPORT_PACER_MAX_BURST,
+						    TRANSPORT_PACER_MAX_BURST);
+  else if (tc->pacer.min_burst == TRANSPORT_PACER_MAX_BURST)
+    transport_connection_tx_pacer_set_burst_limits (tc, TRANSPORT_PACER_MIN_BURST,
+						    TRANSPORT_PACER_MAX_BURST);
+}
+
+int
+session_dio_tx_enable_disable (session_t *s, u8 enable)
+{
+  int rv;
+
+  ASSERT (s->thread_index == vlib_get_thread_index ());
+
+  if (enable)
+    {
+      if (s->flags & SESSION_F_DIO_TX)
+	return 0;
+
+      /* The deferred stream starts at head, after what was written normally */
+      if (PREDICT_FALSE (s->tx_fifo && svm_fifo_max_dequeue_prod (s->tx_fifo)))
+	return SVM_FIFO_EINVAL;
+
+      rv = session_dio_prepare_fifo (s, s->tx_fifo);
+      if (rv < 0)
+	return rv;
+
+      session_dio_tx_pacer_bursts (s, 1 /* enable */);
+      s->flags |= SESSION_F_DIO_TX;
+      return 0;
+    }
+
+  rv = session_dio_flush_fifo (s, s->tx_fifo, 1 /* is_tx */);
+  if (rv >= 0)
+    {
+      svm_fifo_seal_async (s->tx_fifo);
+      session_dio_tx_pacer_bursts (s, 0 /* enable */);
+      s->flags &= ~SESSION_F_DIO_TX;
+    }
+
+  return rv < 0 ? rv : 0;
+}
+
+int
+session_dio_tx_enqueue_buffer (session_t *s, vlib_buffer_t *b)
+{
+  session_worker_t *wrk = session_main_get_worker (s->thread_index);
+  session_dio_ctx_t *ctx = &wrk->dio;
+  u32 bi, len;
+  int rv;
+
+  ASSERT (s->thread_index == vlib_get_thread_index () && (s->flags & SESSION_F_DIO_TX));
+
+  len = vlib_buffer_length_in_chain (wrk->vm, b);
+  if (PREDICT_FALSE (!len))
+    return 0;
+
+  if (PREDICT_FALSE (svm_fifo_max_enqueue_prod (s->tx_fifo) < len))
+    return SVM_FIFO_EFULL;
+
+  rv =
+    session_dio_stage_chain (wrk->vm, s->tx_fifo, b, &ctx->n_tx_segs, session_main.dio_tx_max_segs);
+  if (PREDICT_TRUE (rv >= 0))
+    return rv;
+
+  /* Copy what cannot be retained, then release the chain */
+  rv = session_dio_copy_chain (wrk, s->tx_fifo, b, 0 /* allow_partial */);
+  if (rv > 0)
+    {
+      bi = vlib_get_buffer_index (wrk->vm, b);
+      vlib_buffer_free (wrk->vm, &bi, 1);
+    }
+
+  return rv;
+}
+
+int
+session_dio_tx_enqueue (session_t *s, const u8 *data, u32 len)
+{
+  ASSERT (s->thread_index == vlib_get_thread_index () && (s->flags & SESSION_F_DIO_TX));
+  return svm_fifo_enqueue_async_copy (s->tx_fifo, data, len);
+}
+
+int
+session_dio_tx_dequeue_drop (session_t *s, u32 len)
+{
+  svm_fifo_async_seg_t *segs;
+  session_worker_t *wrk;
+  u32 n_segs;
+  int rv;
+
+  rv = svm_fifo_async_dequeue_drop (s->tx_fifo, len, &segs, &n_segs);
+  if (n_segs)
+    {
+      wrk = session_main_get_worker (s->thread_index);
+      session_dio_free_segments (wrk, s->tx_fifo, segs, n_segs, &wrk->dio.n_tx_segs);
+    }
+
+  return rv;
+}
+
+/* Segments link through buffer headers, so walking them misses on each. Ahead
+ * of the next call, prefetch the next segment's header and the bytes packets
+ * copy from its root, and the segment after it. The previous call prefetched
+ * this one. */
+static_always_inline void
+session_dio_tx_prefetch (svm_fifo_async_seg_t *next)
+{
+  if (!next)
+    return;
+  if (!svm_fifo_async_segment_is_fifo_owned (next))
+    vlib_prefetch_buffer_header (session_dio_seg_buffer (next), LOAD);
+  CLIB_PREFETCH (next->data, VLIB_BUFFER_MIN_CHAIN_SEG_SIZE, LOAD);
+  if (next->next)
+    CLIB_PREFETCH (next->next, sizeof (*next), LOAD);
+}
+
+u32
+session_dio_tx_segment (vlib_main_t *vm, svm_fifo_t *f, u32 offset, u32 max_seg, u32 room, u32 *len)
+{
+  u32 seg_offset, n = 0, n_bufs = 1, max_len = clib_min (max_seg, room);
+  svm_fifo_async_seg_t *seg, *prev;
+  vlib_buffer_t *b;
+
+  seg = svm_fifo_async_peek_segment (f, offset, &seg_offset);
+  if (!seg)
+    {
+      *len = max_len;
+      return SESSION_DIO_TX_COPY;
+    }
+
+  /* A chain starts here if its root holds this segment. Its last segment
+   * carries the root. Send it whole, while only the fifo holds it and it
+   * still matches its segments. Packets copy a minimum first segment from the
+   * root, so it must hold more. */
+  if (!seg_offset && !svm_fifo_async_segment_is_fifo_owned (seg))
+    {
+      for (prev = seg; prev->opaque == SVM_FIFO_ASYNC_OPAQUE_INVALID && n <= max_seg;
+	   prev = prev->next, n_bufs++)
+	n += prev->len;
+      n += prev->len;
+      b = session_dio_seg_buffer (seg);
+      if (n <= max_seg && n_bufs <= SESSION_DIO_TX_MAX_CHAIN_BUFS &&
+	  prev->opaque == vlib_get_buffer_index (vm, b) && b->ref_count == 1 &&
+	  b->current_length > VLIB_BUFFER_MIN_CHAIN_SEG_SIZE &&
+	  vlib_buffer_length_in_chain (vm, b) == n)
+	{
+	  /* Wait for room rather than copy a part of it */
+	  if (n > room)
+	    {
+	      *len = room;
+	      return SESSION_DIO_TX_WAIT;
+	    }
+	  session_dio_tx_prefetch (prev->next);
+	  *len = n;
+	  return prev->opaque;
+	}
+    }
+
+  /* Copy up to the next chain, so later segments can be sent whole */
+  n = seg->len - seg_offset;
+  for (prev = seg, seg = seg->next; seg && n < max_len; prev = seg, seg = seg->next)
+    {
+      if (!svm_fifo_async_segment_is_fifo_owned (seg) &&
+	  prev->opaque != SVM_FIFO_ASYNC_OPAQUE_INVALID)
+	break;
+      n += seg->len;
+    }
+  session_dio_tx_prefetch (seg);
+  *len = clib_min (n, max_len);
+
+  return SESSION_DIO_TX_COPY;
+}
+
+int
+session_dio_tx_discard (session_t *s)
+{
+  u32 n_bytes;
+
+  ASSERT (s->thread_index == vlib_get_thread_index ());
+
+  n_bytes = svm_fifo_max_dequeue_cons (s->tx_fifo);
+  return n_bytes ? session_dio_tx_dequeue_drop (s, n_bytes) : 0;
 }

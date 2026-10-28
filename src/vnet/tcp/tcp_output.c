@@ -1134,6 +1134,14 @@ tcp_session_send_data (tcp_connection_t *tc, u32 max_burst, transport_send_param
       sp->flags |= TRANSPORT_SND_F_NO_BUFFERS;
       return 0;
     }
+  n_bytes = b->n_bytes;
+
+  /* Deferred tx can wait for room to send a chain whole */
+  if (PREDICT_FALSE (!n_segs))
+    {
+      sp->flags |= TRANSPORT_SND_F_POSTPONE;
+      return 0;
+    }
 
   if (transport_connection_is_tx_paced (tconn))
     transport_connection_tx_pacer_update_bytes (tconn, n_bytes);
