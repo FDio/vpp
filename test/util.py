@@ -257,12 +257,16 @@ def check_core_dir() -> str | None:
     return None
 
 
+CORE_PATTERN_PROC = "/proc/sys/kernel/core_pattern"
+CI_CORE_PATTERN = "/var/lib/vpp/vppcore.%e.%p"
+
+
 def get_core_pattern():
     if platform.uname().system == "FreeBSD":
         import sysctl
 
         return sysctl.filter("kern.corefile")[0].value
-    with open("/proc/sys/kernel/core_pattern", "r") as f:
+    with open(CORE_PATTERN_PROC, "r") as f:
         corefmt = f.read().strip()
     if corefmt.startswith("|"):
         # A pipe handler owns the core; core_uses_pid doesn't apply and the
@@ -273,6 +277,38 @@ def get_core_pattern():
     if uses_pid and "%p" not in corefmt:
         corefmt += ".%p"
     return corefmt
+
+
+def set_ci_core_pattern() -> tuple[str, bool] | None:
+    """Set core_pattern to CI_CORE_PATTERN in CI, as hs-test does.
+
+    Returns None outside CI (GITHUB_REPO_URL unset), else a
+    (message, is_warning) tuple describing the result.
+
+    A core_pattern that pipes cores to a handler does not leave
+    a core file for gdb to decode, so set the same pattern as
+    test/hs-test/Makefile (.set-core-pattern).
+    """
+    if not os.environ.get("GITHUB_REPO_URL"):
+        return None
+    try:
+        with open(CORE_PATTERN_PROC, "r") as f:
+            current = f.read().strip()
+    except OSError:
+        current = "<unreadable>"
+    if current == CI_CORE_PATTERN:
+        return f"core_pattern is '{current}'", False
+    try:
+        with open(CORE_PATTERN_PROC, "w") as f:
+            f.write(CI_CORE_PATTERN)
+    except OSError as e:
+        return (
+            f"core_pattern is '{current}' and could not be set to "
+            f"'{CI_CORE_PATTERN}' ({e.strerror}): VPP core files may not "
+            "be written and no backtrace will be decoded into the test logs.",
+            True,
+        )
+    return f"core_pattern changed from '{current}' to '{CI_CORE_PATTERN}'", False
 
 
 def uses_coredumpctl():
