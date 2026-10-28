@@ -1,0 +1,44 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4029998b_e1f159ce",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 2
+      },
+      "lineNbr": 7,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-10-28T07:41:05Z",
+      "side": 1,
+      "message": "this need to be http only",
+      "range": {
+        "startLine": 7,
+        "startChar": 0,
+        "endLine": 7,
+        "endChar": 5
+      },
+      "revId": "27fe9cd9edc2f4b214071a13305a6c879a5ba8f7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c9f9069a_1c71a789",
+        "filename": "test/asf/test_http3.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-10-28T07:41:05Z",
+      "side": 1,
+      "message": "all http/3 tests are in test/hs-test/http3_test.go",
+      "revId": "27fe9cd9edc2f4b214071a13305a6c879a5ba8f7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
