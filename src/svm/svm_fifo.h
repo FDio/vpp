@@ -422,6 +422,11 @@ int svm_fifo_enqueue_async_segment (svm_fifo_t *f, svm_fifo_async_seg_t *seg);
  */
 int svm_fifo_enqueue_async_copy (svm_fifo_t *f, const u8 *src, u32 len);
 
+/** Copy pieces back to back into fifo-owned segments at the end of the prefix.
+ * Without allow_partial, write all bytes or none. */
+int svm_fifo_enqueue_async_copy_segments (svm_fifo_t *f, const svm_fifo_seg_t segs[], u32 n_segs,
+					  u8 allow_partial);
+
 /** Return a fifo-owned segment's storage to the fifo segment. */
 void svm_fifo_async_free_segment (svm_fifo_t *f, svm_fifo_async_seg_t *seg);
 
@@ -453,6 +458,16 @@ int svm_fifo_commit_async_segments (svm_fifo_t *f, svm_fifo_async_seg_t **segmen
 /** Consume the buffer-backed prefix and transfer its linked segments to the caller. */
 int svm_fifo_acquire_async_segments (svm_fifo_t *f, svm_fifo_async_seg_t **segments,
 				     u32 *n_segments);
+
+/** Copy bytes at offset from head out of the prefix and any sealed suffix.
+ * Same as svm_fifo_peek() without a prefix. */
+int svm_fifo_async_peek (svm_fifo_t *f, u32 offset, u32 len, u8 *dst);
+
+/** Drop bytes from head, prefix first. Detach fully consumed segments, in
+ * order, for the caller to release and trim a partly consumed one. Same as
+ * svm_fifo_dequeue_drop() without a prefix. */
+int svm_fifo_async_dequeue_drop (svm_fifo_t *f, u32 len, svm_fifo_async_seg_t **released,
+				 u32 *n_released);
 
 void svm_fifo_free_async_data (svm_fifo_t *f);
 

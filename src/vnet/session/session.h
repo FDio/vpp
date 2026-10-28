@@ -261,8 +261,9 @@ typedef struct session_main_
   /** vpp fifo event queue configured length */
   u32 configured_wrk_mq_length;
 
-  /** max deferred rx segments per worker */
+  /** max deferred rx and tx segments per worker */
   u32 deferred_rx_max_segs;
+  u32 deferred_tx_max_segs;
 
   /** Session ssvm segment configs*/
   uword wrk_mqs_segment_size;
@@ -1071,12 +1072,12 @@ session_tx_next_index (session_t *s)
   return session_main.session_type_to_next[s->session_type];
 }
 
-/** Add a data packet built while the session node sends. With dma, it waits
- * for the copies queued in the worker's current batch. */
+/** Add a data packet built while the session node sends. Packets filled by
+ * dma wait for the copies queued in the worker's current batch. */
 always_inline void
-session_tx_add_data_buffer (session_worker_t *wrk, u32 bi, u32 next_index)
+session_tx_add_data_buffer (session_worker_t *wrk, u32 bi, u32 next_index, u8 dma)
 {
-  if (PREDICT_TRUE (!wrk->dma_enabled))
+  if (PREDICT_TRUE (!dma))
     {
       vec_add1 (wrk->pending_tx_buffers, bi);
       vec_add1 (wrk->pending_tx_nexts, next_index);
