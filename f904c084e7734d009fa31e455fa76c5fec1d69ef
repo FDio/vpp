@@ -88,6 +88,24 @@
       "parentUuid": "245c1412_2df6b6c2",
       "revId": "f904c084e7734d009fa31e455fa76c5fec1d69ef",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "bbfc5a87_a4cc8a43",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3374
+      },
+      "writtenOn": "2026-10-28T12:47:36Z",
+      "side": 1,
+      "message": "Thanks Stanislav, you\u0027re right: my lap math only covered an IPv4 underlay, where vxlan4-encap overruns first (-136). With an IPv6 underlay the encap check passes at -126 and ip6-rewrite is the first to overrun (-140), so an encap-only check doesn\u0027t protect that case. To me that argues for both: the check in vxlan4/6-encap (and the other encapsulators) to stop the out-of-bounds write where it starts, and the rewrite-node check as the backstop, with a CSIT run to put a number on the cost. Happy to run a build with both on one of our VXLAN routers and report the drop counters.",
+      "parentUuid": "a2651655_2d16827b",
+      "revId": "f904c084e7734d009fa31e455fa76c5fec1d69ef",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
