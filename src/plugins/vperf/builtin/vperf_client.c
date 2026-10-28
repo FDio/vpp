@@ -177,6 +177,90 @@ vp_client_ctrl_session_peer_close (session_t *s, u8 is_reset)
     }
 }
 
+/* Deferred tx, tcp only. Send buffers of one segment, or chains of dio-tx-seg
+ * bytes, without writing them, like the default fifo mode. */
+static void
+vp_client_dio_tx_enable (vp_test_worker_t *wrk, session_t *s)
+{
+  vp_client_main_t *vpcm = &vp_client_main;
+  transport_endpt_attr_t attr = { .type = TRANSPORT_ENDPT_ATTR_MSS };
+  vp_test_session_t *es = vp_client_session_get (wrk, s->opaque);
+
+  if (session_dio_tx_enable_disable (s, 1) ||
+      session_transport_attribute (s, 1 /* is_get */, &attr) || !attr.mss)
+    {
+      vp_client_err ("deferred tx enable failed");
+      return;
+    }
+  /* Chains of whole segments, like tcp's gso goal size */
+  es->dio_tx_seg =
+    vpcm->dio_tx_seg ? clib_max (vpcm->dio_tx_seg / attr.mss, 1) * attr.mss : attr.mss;
+}
+
+static u32
+vp_client_dio_tx (vp_test_session_t *es, u32 max_send, u8 fill)
+{
+  vp_client_main_t *vpcm = &vp_client_main;
+  vlib_main_t *vm = vlib_get_main ();
+  session_t *s = session_get_from_handle (es->vpp_session_handle);
+  u32 buf_size = vlib_buffer_get_default_data_size (vm), seg = es->dio_tx_seg, n_per_seg;
+  u32 bis[VLIB_FRAME_SIZE], n_segs, n_bufs, n_sent = 0, i, j, len, to_send, tail = 0, filled = 0;
+  vlib_buffer_t *b;
+  int rv;
+
+  if (!seg)
+    return 0;
+  n_per_seg = (seg + buf_size - 1) / buf_size;
+  /* At least one segment, even if larger than the tx chunk */
+  max_send = clib_max (max_send, seg);
+  if (!vpcm->cfg.run_time)
+    max_send = clib_min (max_send, es->bytes_to_send);
+  to_send = clib_min (svm_fifo_max_enqueue_prod (es->tx_fifo), max_send);
+  n_segs = clib_min (to_send / seg, VLIB_FRAME_SIZE / n_per_seg - 1);
+  /* Whole segments, but for the last bytes of the test */
+  if (!vpcm->cfg.run_time && to_send == es->bytes_to_send && n_segs == to_send / seg)
+    tail = to_send % seg;
+  n_bufs = n_segs * n_per_seg + (tail + buf_size - 1) / buf_size;
+  if (!n_bufs)
+    return 0;
+  if (vlib_buffer_alloc (vm, bis, n_bufs) != n_bufs)
+    return 0;
+
+  for (i = 0; i < n_segs + (tail != 0); i++)
+    {
+      len = i < n_segs ? seg : tail;
+      for (j = 0; len; j++)
+	{
+	  b = vlib_get_buffer (vm, bis[i * n_per_seg + j]);
+	  b->current_length = clib_min (len, buf_size);
+	  /* The test pattern at this stream offset, like test-bytes */
+	  if (fill)
+	    clib_memcpy_fast (vlib_buffer_get_current (b),
+			      vpcm->connect_test_data + ((es->bytes_sent + filled) & 0xff),
+			      b->current_length);
+	  filled += b->current_length;
+	  len -= b->current_length;
+	  b->flags &= ~VLIB_BUFFER_NEXT_PRESENT;
+	  if (len)
+	    {
+	      b->flags |= VLIB_BUFFER_NEXT_PRESENT;
+	      b->next_buffer = bis[i * n_per_seg + j + 1];
+	    }
+	}
+      rv = session_dio_tx_enqueue_buffer (s, vlib_get_buffer (vm, bis[i * n_per_seg]));
+      if (rv <= 0)
+	break;
+      n_sent += rv;
+    }
+  if (i * n_per_seg < n_bufs)
+    vlib_buffer_free_no_next (vm, bis + i * n_per_seg, n_bufs - i * n_per_seg);
+
+  if (n_sent && svm_fifo_set_event (es->tx_fifo))
+    session_program_tx_io_evt (es->vpp_session_handle, SESSION_IO_EVT_TX);
+  es->bytes_sent += n_sent;
+  return n_sent;
+}
+
 always_inline void
 vp_client_tx_data (vp_test_session_t *es, u8 run_time, u8 paced, u8 test_bytes)
 {
@@ -199,7 +283,9 @@ vp_client_tx_data (vp_test_session_t *es, u8 run_time, u8 paced, u8 test_bytes)
       bytes_to_send = clib_min (bytes_to_send, es->bytes_paced_current);
     }
 
-  if (test_bytes)
+  if (PREDICT_FALSE (vpcm->dio_tx))
+    n_send = vp_client_dio_tx (es, bytes_to_send, test_bytes);
+  else if (test_bytes)
     n_send = tp->client_tx_test_bytes (es, vpcm->connect_test_data, bytes_to_send);
   else
     n_send = tp->client_tx (es, bytes_to_send);
@@ -680,6 +766,8 @@ vp_client_session_connected_callback (u32 app_index, u32 api_context, session_t 
   wrk = vp_client_worker_get (thread_index);
   tp = &vp_test_main.protos[vpcm->cfg.proto];
   n_connected = tp->connected (s, &vpcm->cfg, wrk, vpcm->app_index);
+  if (vpcm->dio_tx && vpcm->cfg.proto == VP_PROTO_TCP)
+    vp_client_dio_tx_enable (wrk, s);
 
   n_ready = clib_atomic_add_fetch (&vpcm->ready_sessions, n_connected);
   if (n_ready == vpcm->expected_sessions)
@@ -1119,8 +1207,9 @@ vp_client_run (vlib_main_t *vm)
       vpcm->include_buffer_offset = 1;
     }
 
-  /* set tx function which we'll use */
-  if (vpcm->cfg.test_cfg.test_bytes)
+  /* set tx function which we'll use. tx-fill writes the pattern like
+   * test-bytes, but the server is not asked to check it. */
+  if (vpcm->cfg.test_cfg.test_bytes || vpcm->tx_fill)
     {
       if (vpcm->throughput)
 	vpcm->tx_callback =
