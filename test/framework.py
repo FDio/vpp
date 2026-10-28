@@ -37,7 +37,7 @@ import vpp_papi
 from vpp_object import VppObjectRegistry
 from util import ppp, ppc, is_core_present, StatsDiff
 from scapy.layers.l2 import Ether
-from scapy.layers.inet import IPerror, TCPerror, UDPerror, ICMPerror
+from scapy.layers.inet import IPerror, TCPerror, UDPerror, ICMPerror, UDP
 from scapy.layers.inet6 import ICMPv6DestUnreach, ICMPv6EchoRequest
 from scapy.layers.inet6 import ICMPv6EchoReply
 from asfframework import VppAsfTestCase
@@ -361,9 +361,31 @@ class VppTestCase(VppAsfTestCase):
         return pack("iiiih", info.index, info.src, info.dst, info.ip, info.proto)
 
     @staticmethod
+    def udp_packet_to_info(packet: Packet) -> _PacketInfo:
+        """Decode packet info at the start of the first UDP layer's payload.
+
+        Pass the inner packet or UDP layer for encapsulated traffic. Reading
+        the complete UDP payload avoids losing bytes to Scapy's dissectors.
+        The UDP length excludes any trailing Ethernet padding.
+        """
+        udp = packet[UDP]
+        data = udp.original or bytes(udp)
+        length = unpack("!H", data[4:6])[0]
+        payload = data[8:length]
+        if len(payload) < 18:
+            raise ValueError(
+                f"Short packet info on UDP sport {udp.sport}, dport {udp.dport}: "
+                f"UDP length {length}, captured {len(data)} bytes"
+            )
+        return VppTestCase.payload_to_info(Raw(payload))
+
+    @staticmethod
     def payload_to_info(payload, payload_field="load"):
         """
         Convert packet payload to _PacketInfo object
+
+        For UDP captures, use udp_packet_to_info() to retain bytes decoded by
+        Scapy as protocol headers.
 
         :param payload: packet payload
         :type payload:  <class 'scapy.packet.Raw'>
