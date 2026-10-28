@@ -40,4 +40,4 @@ runs:
           echo "$TUI_LINE"
           make UNATTENDED=yes install-deps
           echo "$TUI_LINE"
-        } | tee "$LOG_FILE"
+        }
