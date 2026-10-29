@@ -337,11 +337,19 @@ ikev2_calc_integr (ikev2_sa_transform_t * tr, v8 * key, u8 * data, int len)
 
   r = vec_new (u8, tr->key_len);
 
-  if (tr->md == EVP_sha1 ())
+  /*
+   * Fetched OpenSSL 3.x providers return non-static pointers, so a
+   * direct `tr->md == EVP_sha1 ()` would re-fetch and compare
+   * provider pointers that need not stay equal. Switch to the
+   * stable integ_type enum.
+   */
+  if (tr->integ_type == IKEV2_TRANSFORM_INTEG_TYPE_AUTH_HMAC_SHA1_96 ||
+      tr->integ_type == IKEV2_TRANSFORM_INTEG_TYPE_AUTH_HMAC_SHA1_160)
     {
       log_debug ("integrity checking with sha1");
     }
-  else if (tr->md == EVP_sha256 ())
+  else if (tr->integ_type ==
+	   IKEV2_TRANSFORM_INTEG_TYPE_AUTH_HMAC_SHA2_256_128)
     {
       log_debug ("integrity checking with sha256");
     }
@@ -889,6 +897,40 @@ end:
   return pkey;
 }
 
+/*
+ * On OpenSSL 3.x, each legacy accessor (EVP_aes_256_cbc, EVP_sha256,
+ * ...) returns a static legacy pointer whose first use through the
+ * EVP_CipherInit/EVP_SignInit/HMAC_Init_ex family triggers an
+ * implicit algorithm fetch through the method-store property cache.
+ * The implicit fetch takes the global per-OSSL_LIB_CTX property
+ * lock, reads/updates the per-algorithm QUERY LHASH, and is
+ * repeated on every (Init, Decrypt, Encrypt, Sign, Verify) call
+ * that was prepared from a legacy pointer. For an ikev2 responder
+ * with K active SAs taking rekeys and auxiliary exchanges, the
+ * property cache sees O(K) QUERY_LHASH mutations per second even
+ * though the resolved implementation never changes.
+ *
+ * Fetch-once stores the OpenSSL 3.x provider cipher/MD at crypto
+ * init time (plugin lifetime). The fetched pointer bypasses the
+ * per-call property-cache path in EVP_CipherInit/EVP_SignInit/
+ * HMAC_Init_ex/CMAC_Init: these call sites take the provider
+ * pointer directly, no lookup. Memory for fetched pointers lives
+ * for process lifetime; VPP never unloads the plugin, so an
+ * explicit EVP_CIPHER_free/EVP_MD_free is unnecessary (atexit).
+ *
+ * On OpenSSL 1.1.x the legacy accessors return the only
+ * representation that exists; fall back to them unchanged.
+ */
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+#define IKEV2_CIPHER(ssl3_name, legacy_fn)                                   \
+  ((const EVP_CIPHER *) EVP_CIPHER_fetch (NULL, ssl3_name, NULL))
+#define IKEV2_MD(ssl3_name, legacy_fn)                                       \
+  ((const EVP_MD *) EVP_MD_fetch (NULL, ssl3_name, NULL))
+#else
+#define IKEV2_CIPHER(ssl3_name, legacy_fn) legacy_fn ()
+#define IKEV2_MD(ssl3_name, legacy_fn)	 legacy_fn ()
+#endif
+
 void
 ikev2_crypto_init (ikev2_main_t * km)
 {
@@ -910,70 +952,70 @@ ikev2_crypto_init (ikev2_main_t * km)
   tr->encr_type = IKEV2_TRANSFORM_ENCR_TYPE_AES_CBC;
   tr->key_len = 256 / 8;
   tr->block_size = 128 / 8;
-  tr->cipher = EVP_aes_256_cbc ();
+  tr->cipher = IKEV2_CIPHER ("AES-256-CBC", EVP_aes_256_cbc);
 
   vec_add2 (km->supported_transforms, tr, 1);
   tr->type = IKEV2_TRANSFORM_TYPE_ENCR;
   tr->encr_type = IKEV2_TRANSFORM_ENCR_TYPE_AES_CTR;
   tr->key_len = 256 / 8;
   tr->block_size = 128 / 8;
-  tr->cipher = EVP_aes_256_ctr ();
+  tr->cipher = IKEV2_CIPHER ("AES-256-CTR", EVP_aes_256_ctr);
 
   vec_add2 (km->supported_transforms, tr, 1);
   tr->type = IKEV2_TRANSFORM_TYPE_ENCR;
   tr->encr_type = IKEV2_TRANSFORM_ENCR_TYPE_AES_CBC;
   tr->key_len = 192 / 8;
   tr->block_size = 128 / 8;
-  tr->cipher = EVP_aes_192_cbc ();
+  tr->cipher = IKEV2_CIPHER ("AES-192-CBC", EVP_aes_192_cbc);
 
   vec_add2 (km->supported_transforms, tr, 1);
   tr->type = IKEV2_TRANSFORM_TYPE_ENCR;
   tr->encr_type = IKEV2_TRANSFORM_ENCR_TYPE_AES_CTR;
   tr->key_len = 192 / 8;
   tr->block_size = 128 / 8;
-  tr->cipher = EVP_aes_192_ctr ();
+  tr->cipher = IKEV2_CIPHER ("AES-192-CTR", EVP_aes_192_ctr);
 
   vec_add2 (km->supported_transforms, tr, 1);
   tr->type = IKEV2_TRANSFORM_TYPE_ENCR;
   tr->encr_type = IKEV2_TRANSFORM_ENCR_TYPE_AES_CBC;
   tr->key_len = 128 / 8;
   tr->block_size = 128 / 8;
-  tr->cipher = EVP_aes_128_cbc ();
+  tr->cipher = IKEV2_CIPHER ("AES-128-CBC", EVP_aes_128_cbc);
 
   vec_add2 (km->supported_transforms, tr, 1);
   tr->type = IKEV2_TRANSFORM_TYPE_ENCR;
   tr->encr_type = IKEV2_TRANSFORM_ENCR_TYPE_AES_CTR;
   tr->key_len = 128 / 8;
   tr->block_size = 128 / 8;
-  tr->cipher = EVP_aes_128_ctr ();
+  tr->cipher = IKEV2_CIPHER ("AES-128-CTR", EVP_aes_128_ctr);
 
   vec_add2 (km->supported_transforms, tr, 1);
   tr->type = IKEV2_TRANSFORM_TYPE_ENCR;
   tr->encr_type = IKEV2_TRANSFORM_ENCR_TYPE_AES_GCM_16;
   tr->key_len = 256 / 8;
   tr->block_size = 128 / 8;
-  tr->cipher = EVP_aes_256_gcm ();
+  tr->cipher = IKEV2_CIPHER ("AES-256-GCM", EVP_aes_256_gcm);
 
   vec_add2 (km->supported_transforms, tr, 1);
   tr->type = IKEV2_TRANSFORM_TYPE_ENCR;
   tr->encr_type = IKEV2_TRANSFORM_ENCR_TYPE_AES_GCM_16;
   tr->key_len = 192 / 8;
   tr->block_size = 128 / 8;
-  tr->cipher = EVP_aes_192_gcm ();
+  tr->cipher = IKEV2_CIPHER ("AES-192-GCM", EVP_aes_192_gcm);
 
   vec_add2 (km->supported_transforms, tr, 1);
   tr->type = IKEV2_TRANSFORM_TYPE_ENCR;
   tr->encr_type = IKEV2_TRANSFORM_ENCR_TYPE_AES_GCM_16;
   tr->key_len = 128 / 8;
   tr->block_size = 128 / 8;
-  tr->cipher = EVP_aes_128_gcm ();
+  tr->cipher = IKEV2_CIPHER ("AES-128-GCM", EVP_aes_128_gcm);
 
   vec_add2 (km->supported_transforms, tr, 1);
   tr->type = IKEV2_TRANSFORM_TYPE_ENCR;
   tr->encr_type = IKEV2_TRANSFORM_ENCR_TYPE_CHACHA20_POLY1305;
   tr->key_len = 256 / 8;
   tr->block_size = 1;
-  tr->cipher = EVP_chacha20_poly1305 ();
+  tr->cipher = IKEV2_CIPHER ("ChaCha20-Poly1305", EVP_chacha20_poly1305);
 
   //PRF
   vec_add2 (km->supported_transforms, tr, 1);
@@ -981,28 +1023,28 @@ ikev2_crypto_init (ikev2_main_t * km)
   tr->prf_type = IKEV2_TRANSFORM_PRF_TYPE_PRF_HMAC_SHA2_256;
   tr->key_len = 256 / 8;
   tr->key_trunc = 256 / 8;
-  tr->md = EVP_sha256 ();
+  tr->md = IKEV2_MD ("SHA2-256", EVP_sha256);
 
   vec_add2 (km->supported_transforms, tr, 1);
   tr->type = IKEV2_TRANSFORM_TYPE_PRF;
   tr->prf_type = IKEV2_TRANSFORM_PRF_TYPE_PRF_HMAC_SHA2_384;
   tr->key_len = 384 / 8;
   tr->key_trunc = 384 / 8;
-  tr->md = EVP_sha384 ();
+  tr->md = IKEV2_MD ("SHA2-384", EVP_sha384);
 
   vec_add2 (km->supported_transforms, tr, 1);
   tr->type = IKEV2_TRANSFORM_TYPE_PRF;
   tr->prf_type = IKEV2_TRANSFORM_PRF_TYPE_PRF_HMAC_SHA2_512;
   tr->key_len = 512 / 8;
   tr->key_trunc = 512 / 8;
-  tr->md = EVP_sha512 ();
+  tr->md = IKEV2_MD ("SHA2-512", EVP_sha512);
 
   vec_add2 (km->supported_transforms, tr, 1);
   tr->type = IKEV2_TRANSFORM_TYPE_PRF;
   tr->prf_type = IKEV2_TRANSFORM_PRF_TYPE_PRF_HMAC_SHA1;
   tr->key_len = 160 / 8;
   tr->key_trunc = 160 / 8;
-  tr->md = EVP_sha1 ();
+  tr->md = IKEV2_MD ("SHA1", EVP_sha1);
 
   vec_add2 (km->supported_transforms, tr, 1);
   tr->type = IKEV2_TRANSFORM_TYPE_PRF;
@@ -1010,7 +1052,7 @@ ikev2_crypto_init (ikev2_main_t * km)
   tr->key_len = 128 / 8;
   tr->key_trunc = 128 / 8;
   tr->md = 0;
-  tr->cipher = EVP_aes_128_cbc ();
+  tr->cipher = IKEV2_CIPHER ("AES-128-CBC", EVP_aes_128_cbc);
 
   //Integrity
   vec_add2 (km->supported_transforms, tr, 1);
@@ -1018,35 +1060,35 @@ ikev2_crypto_init (ikev2_main_t * km)
   tr->integ_type = IKEV2_TRANSFORM_INTEG_TYPE_AUTH_HMAC_SHA2_256_128;
   tr->key_len = 256 / 8;
   tr->key_trunc = 128 / 8;
-  tr->md = EVP_sha256 ();
+  tr->md = IKEV2_MD ("SHA2-256", EVP_sha256);
 
   vec_add2 (km->supported_transforms, tr, 1);
   tr->type = IKEV2_TRANSFORM_TYPE_INTEG;
   tr->integ_type = IKEV2_TRANSFORM_INTEG_TYPE_AUTH_HMAC_SHA2_384_192;
   tr->key_len = 384 / 8;
   tr->key_trunc = 192 / 8;
-  tr->md = EVP_sha384 ();
+  tr->md = IKEV2_MD ("SHA2-384", EVP_sha384);
 
   vec_add2 (km->supported_transforms, tr, 1);
   tr->type = IKEV2_TRANSFORM_TYPE_INTEG;
   tr->integ_type = IKEV2_TRANSFORM_INTEG_TYPE_AUTH_HMAC_SHA2_512_256;
   tr->key_len = 512 / 8;
   tr->key_trunc = 256 / 8;
-  tr->md = EVP_sha512 ();
+  tr->md = IKEV2_MD ("SHA2-512", EVP_sha512);
 
   vec_add2 (km->supported_transforms, tr, 1);
   tr->type = IKEV2_TRANSFORM_TYPE_INTEG;
   tr->integ_type = IKEV2_TRANSFORM_INTEG_TYPE_AUTH_HMAC_SHA1_160;
   tr->key_len = 160 / 8;
   tr->key_trunc = 160 / 8;
-  tr->md = EVP_sha1 ();
+  tr->md = IKEV2_MD ("SHA1", EVP_sha1);
 
   vec_add2 (km->supported_transforms, tr, 1);
   tr->type = IKEV2_TRANSFORM_TYPE_INTEG;
   tr->integ_type = IKEV2_TRANSFORM_INTEG_TYPE_AUTH_HMAC_SHA1_96;
   tr->key_len = 160 / 8;
   tr->key_trunc = 96 / 8;
-  tr->md = EVP_sha1 ();
+  tr->md = IKEV2_MD ("SHA1", EVP_sha1);
 
   vec_add2 (km->supported_transforms, tr, 1);
   tr->type = IKEV2_TRANSFORM_TYPE_INTEG;
@@ -1054,7 +1096,7 @@ ikev2_crypto_init (ikev2_main_t * km)
   tr->key_len = 128 / 8;
   tr->key_trunc = 96 / 8;
   tr->md = 0;
-  tr->cipher = EVP_aes_128_cbc ();
+  tr->cipher = IKEV2_CIPHER ("AES-128-CBC", EVP_aes_128_cbc);
 
   vec_add2 (km->supported_transforms, tr, 1);
   tr->type = IKEV2_TRANSFORM_TYPE_INTEG;
