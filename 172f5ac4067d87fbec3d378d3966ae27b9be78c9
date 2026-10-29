@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "038b794a_841fe6d8",
+        "filename": "src/plugins/policer/ip4_punt.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 98,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2026-10-29T12:35:53Z",
+      "side": 1,
+      "message": "good catch, thanks",
+      "parentUuid": "fc971087_74799c32",
+      "revId": "172f5ac4067d87fbec3d378d3966ae27b9be78c9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "7496551b_6607a404",
@@ -31,6 +49,24 @@
       "writtenOn": "2026-10-23T09:45:35Z",
       "side": 1,
       "message": "Could we use a wider reference counter here, including the saved value in policer_update()? Applying one policer to RX and TX on 128 interfaces wraps this u8 to zero, allowing policer_del() to free it while all 256 bindings remain active. I reproduced the successful deletion under debug ASAN.",
+      "revId": "172f5ac4067d87fbec3d378d3966ae27b9be78c9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "f91e2e66_a6c4f30b",
+        "filename": "src/plugins/policer/policer.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 71,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2026-10-29T12:35:53Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "7496551b_6607a404",
       "revId": "172f5ac4067d87fbec3d378d3966ae27b9be78c9",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
