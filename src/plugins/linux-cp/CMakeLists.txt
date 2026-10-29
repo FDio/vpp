@@ -63,6 +63,7 @@ add_vpp_plugin(linux_cp
 add_vpp_plugin(linux_cp_unittest
   SOURCES
   test/lcp_unittest.c
+  test/lcp_route_test.c
 
   LINK_LIBRARIES
   lcp

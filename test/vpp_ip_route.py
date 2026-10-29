@@ -197,7 +197,7 @@ class VppIpTable(VppObject):
         self.table_id = table_id
         self.is_ip6 = is_ip6
         self.register = register
-        self.create_mfib = True
+        self.create_mfib = create_mfib
 
     def add_vpp_config(self):
         self._test.vapi.ip_table_add_del_v2(
