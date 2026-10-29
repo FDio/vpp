@@ -38,7 +38,6 @@ typedef struct hsi_tcp_track_snapshot_
 
 typedef struct hsi_tcp_track_commit_req_
 {
-  clib_thread_index_t owner_thread;
   session_handle_t session_handle;
   hsi_tcp_track_snapshot_t peer;
 } hsi_tcp_track_commit_req_t;
