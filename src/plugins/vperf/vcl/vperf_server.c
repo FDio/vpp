@@ -40,7 +40,7 @@ typedef struct
 
 typedef struct
 {
-  vperf_session_t *conn_pool;
+  vperf_session_t **conn_pool;
   uint32_t wrk_index;
   int epfd;
   int conn_pool_size;
@@ -69,19 +69,13 @@ static vperf_server_main_t vperf_server_main;
 static inline void
 conn_pool_expand (vperf_server_worker_t *wrk, size_t expand_size)
 {
-  vperf_session_t *conn_pool;
+  vperf_session_t **conn_pool;
   size_t new_size = wrk->conn_pool_size + expand_size;
-  int i;
 
   conn_pool = realloc (wrk->conn_pool, new_size * sizeof (*wrk->conn_pool));
   if (conn_pool)
     {
-      for (i = wrk->conn_pool_size; i < new_size; i++)
-	{
-	  vperf_session_t *conn = &conn_pool[i];
-	  memset (conn, 0, sizeof (*conn));
-	}
-
+      memset (conn_pool + wrk->conn_pool_size, 0, expand_size * sizeof (*conn_pool));
       wrk->conn_pool = conn_pool;
       wrk->conn_pool_size = new_size;
     }
@@ -100,16 +94,28 @@ conn_pool_alloc (vperf_server_worker_t *wrk)
 again:
   for (i = 0; i < wrk->conn_pool_size; i++)
     {
-      if (!wrk->conn_pool[i].is_alloc)
+      conn = wrk->conn_pool[i];
+      if (conn && conn->is_alloc)
+	continue;
+
+      if (!conn)
 	{
-	  conn = &wrk->conn_pool[i];
-	  memset (conn, 0, sizeof (*conn));
-	  conn->endpt.ip = wrk->conn_pool[i].ip;
-	  conn->is_alloc = 1;
-	  conn->session_index = i;
-	  vperf_cfg_init (&conn->cfg);
-	  return (&wrk->conn_pool[i]);
+	  conn = calloc (1, sizeof (*conn));
+	  if (!conn)
+	    {
+	      vperf_err ("calloc", -errno);
+	      return 0;
+	    }
+	  wrk->conn_pool[i] = conn;
 	}
+      else
+	memset (conn, 0, sizeof (*conn));
+
+      conn->endpt.ip = conn->ip;
+      conn->is_alloc = 1;
+      conn->session_index = i;
+      vperf_cfg_init (&conn->cfg);
+      return conn;
     }
 
   if (expand == 0)
@@ -176,7 +182,9 @@ vperf_server_wrk_cleanup_all (vperf_server_worker_t *wrk)
 
   for (i = 0; i < wrk->conn_pool_size; i++)
     {
-      conn = &wrk->conn_pool[i];
+      conn = wrk->conn_pool[i];
+      if (!conn)
+	continue;
       vperf_server_session_cleanup (conn);
     }
 
@@ -207,8 +215,8 @@ vperf_server_test_cmd (vperf_server_worker_t *wrk, vperf_session_t *conn, vperf_
       /* Accumulate stats over all of the worker's sessions */
       for (i = 0; i < wrk->conn_pool_size; i++)
 	{
-	  tc = &wrk->conn_pool[i];
-	  if (tc == conn)
+	  tc = wrk->conn_pool[i];
+	  if (!tc || tc == conn)
 	    continue;
 
 	  vperf_stats_accumulate (&conn->stats, &tc->stats);
@@ -329,7 +337,7 @@ vperf_server_accept_ctrl (vperf_server_worker_t *wrk, int listen_fd)
 	      listen_fd, listen_fd);
 
   ev.events = EPOLLET | EPOLLIN;
-  ev.data.u64 = conn - wrk->conn_pool;
+  ev.data.u64 = conn->session_index;
   rv = vppcom_epoll_ctl (wrk->epfd, EPOLL_CTL_ADD, conn->fd, &ev);
   if (rv < 0)
     {
@@ -372,7 +380,7 @@ vperf_server_accept_client (vperf_server_worker_t *wrk, int listen_fd)
 		conn->fd, listen_fd, listen_fd);
 
   ev.events = EPOLLET | EPOLLIN | EPOLLRDHUP;
-  ev.data.u64 = conn - wrk->conn_pool;
+  ev.data.u64 = conn->session_index;
   rv = vppcom_epoll_ctl (wrk->epfd, EPOLL_CTL_ADD, conn->fd, &ev);
   if (rv < 0)
     {
@@ -690,8 +698,8 @@ vperf_server_worker_write_test_data (vperf_server_worker_t *wrk)
     {
       for (i = 0; i < wrk->conn_pool_size; i++)
 	{
-	  conn = &wrk->conn_pool[i];
-	  if (conn == vsm->ctrl)
+	  conn = wrk->conn_pool[i];
+	  if (!conn || conn == vsm->ctrl)
 	    continue;
 	  if (conn->is_open)
 	    (void) conn->write (conn, 0, 0);
@@ -732,12 +740,16 @@ vperf_server_worker_loop (void *arg)
 	}
       for (i = 0; i < num_ev; i++)
 	{
-	  conn = &wrk->conn_pool[ep_evts[i].data.u32];
+	  conn = ep_evts[i].data.u32 < (u32) wrk->conn_pool_size ?
+		   wrk->conn_pool[ep_evts[i].data.u32] :
+		   0;
 	  /*
 	   * Check for close events
 	   */
 	  if (ep_evts[i].events & (EPOLLHUP | EPOLLRDHUP))
 	    {
+	      if (!conn)
+		continue;
 	      if (conn == vsm->ctrl)
 		{
 		  vperf_info ("ctrl session went away");
@@ -790,7 +802,9 @@ vperf_server_worker_loop (void *arg)
 	      conn->cfg = vsm->ctrl->cfg;
 	      continue;
 	    }
-	  else if (vppcom_session_is_connectable_listener (conn->fd))
+	  if (!conn)
+	    continue;
+	  if (vppcom_session_is_connectable_listener (conn->fd))
 	    {
 	      while (vperf_server_accept_client (wrk, conn->fd))
 		;
@@ -875,6 +889,8 @@ done:
 	vsm->ctrl = 0;
       /* Drain leftover sessions before freeing the pool. */
       vperf_server_wrk_cleanup_all (wrk);
+      for (i = 0; i < wrk->conn_pool_size; i++)
+	free (wrk->conn_pool[i]);
       free (wrk->conn_pool);
     }
   vsm->active_workers -= 1;
