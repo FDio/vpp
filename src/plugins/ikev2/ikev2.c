@@ -2735,12 +2735,21 @@ ikev2_del_tunnel_from_main (ikev2_del_ipsec_tunnel_args_t * a)
       vnet_sw_interface_admin_down (vnet_get_main (), sw_if_index);
     }
 
+  /*
+   * Hold the worker barrier across the protect-entry removal and SA
+   * unlocks. ipsec_tun_protect_del() calls pool_put() on the tun-protect
+   * entry; without the barrier a forwarding thread could still be
+   * dereferencing it through the fib adjacency it owns.
+   */
+  vlib_main_t *vm = vlib_get_main ();
+  vlib_worker_thread_barrier_sync (vm);
   if (INDEX_INVALID != sw_if_index)
     ipsec_tun_protect_del (sw_if_index, NULL);
 
   ipsec_sa_unlock_id (a->remote_sa_id);
   ipsec_sa_unlock_id (a->local_sa_id);
   ipsec_sa_unlock_id (ikev2_flip_alternate_sa_bit (a->remote_sa_id));
+  vlib_worker_thread_barrier_release (vm);
 
   if (INDEX_INVALID != ipip_sw_if_index)
     km->ipip_del_tunnel_fn_ptr (ipip_sw_if_index);
