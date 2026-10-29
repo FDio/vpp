@@ -537,17 +537,13 @@ hsi_tcp_track_is_possible (tcp_connection_t *tc0, tcp_connection_t *tc1)
 static void
 hsi_tcp_drain_start_req_free_rpc (void *arg)
 {
-  hsi_tcp_drain_start_req_t *a = arg;
-  hsi_worker_t *wrk;
-
-  wrk = hsi_worker_get (a->owner_thread);
-  pool_put (wrk->tcp_drain_start_reqs, a);
+  hsi_rpc_req_put (tcp_drain_start_reqs, arg);
 }
 
 static void
 hsi_tcp_drain_start_rpc (void *arg)
 {
-  hsi_tcp_drain_start_req_t *a = arg;
+  hsi_tcp_drain_start_req_t *a = hsi_rpc_req_get (tcp_drain_start_reqs, arg);
   session_handle_tu_t sh = { .handle = a->session_handle };
   session_handle_tu_t peer_sh = { .handle = a->peer_session_handle };
   session_t *s, *peer_s;
@@ -573,7 +569,7 @@ hsi_tcp_drain_start_rpc (void *arg)
   hsi_tcp_drain_start (s, peer_s, tc, peer_tc);
 
 done:
-  session_send_rpc_evt_to_thread (a->owner_thread, hsi_tcp_drain_start_req_free_rpc, a);
+  session_send_rpc_evt_to_thread (hsi_rpc_req_thread (arg), hsi_tcp_drain_start_req_free_rpc, arg);
 }
 
 static void
@@ -582,16 +578,15 @@ hsi_tcp_track_send_drain_start (session_t *s, session_t *peer_s)
   hsi_tcp_drain_start_req_t *a;
   hsi_worker_t *wrk;
   clib_thread_index_t thread_index;
+  void *arg;
 
   thread_index = s->thread_index;
-  ASSERT (thread_index == vlib_get_thread_index ());
   wrk = hsi_worker_get (thread_index);
-  pool_get_zero (wrk->tcp_drain_start_reqs, a);
-
-  a->owner_thread = thread_index;
+  arg = hsi_rpc_req_alloc (wrk, tcp_drain_start_reqs, a, thread_index);
   a->session_handle = session_handle (peer_s);
   a->peer_session_handle = session_handle (s);
-  session_send_rpc_evt_to_thread (peer_s->thread_index, hsi_tcp_drain_start_rpc, a);
+
+  session_send_rpc_evt_to_thread (peer_s->thread_index, hsi_tcp_drain_start_rpc, arg);
 }
 
 static void
@@ -768,17 +763,13 @@ hsi_tcp_track_commit (session_t *s, hsi_tcp_track_snapshot_t *peer)
 static void
 hsi_tcp_track_commit_req_free_rpc (void *arg)
 {
-  hsi_tcp_track_commit_req_t *a = arg;
-  hsi_worker_t *wrk;
-
-  wrk = hsi_worker_get (a->owner_thread);
-  pool_put (wrk->tcp_track_commit_reqs, a);
+  hsi_rpc_req_put (tcp_track_commit_reqs, arg);
 }
 
 static void
 hsi_tcp_track_commit_rpc (void *arg)
 {
-  hsi_tcp_track_commit_req_t *a = arg;
+  hsi_tcp_track_commit_req_t *a = hsi_rpc_req_get (tcp_track_commit_reqs, arg);
   session_handle_tu_t sh = { .handle = a->session_handle };
   session_t *s;
 
@@ -792,7 +783,7 @@ hsi_tcp_track_commit_rpc (void *arg)
       hsi_tcp_track_send_abort (a->peer.session_handle);
     }
 
-  session_send_rpc_evt_to_thread (a->owner_thread, hsi_tcp_track_commit_req_free_rpc, a);
+  session_send_rpc_evt_to_thread (hsi_rpc_req_thread (arg), hsi_tcp_track_commit_req_free_rpc, arg);
 }
 
 static void
@@ -801,16 +792,15 @@ hsi_tcp_track_send_commit (session_t *peer_s, hsi_tcp_track_snapshot_t *peer)
   hsi_tcp_track_commit_req_t *a;
   hsi_worker_t *wrk;
   clib_thread_index_t thread_index;
+  void *arg;
 
   thread_index = peer->thread_index;
-  ASSERT (thread_index == vlib_get_thread_index ());
   wrk = hsi_worker_get (thread_index);
-  pool_get_zero (wrk->tcp_track_commit_reqs, a);
+  arg = hsi_rpc_req_alloc (wrk, tcp_track_commit_reqs, a, thread_index);
 
-  a->owner_thread = thread_index;
   a->session_handle = session_handle (peer_s);
   a->peer = *peer;
-  session_send_rpc_evt_to_thread (peer_s->thread_index, hsi_tcp_track_commit_rpc, a);
+  session_send_rpc_evt_to_thread (peer_s->thread_index, hsi_tcp_track_commit_rpc, arg);
 }
 
 static int
@@ -1351,17 +1341,13 @@ hsi_tcp_mark_fin_acked (tcp_connection_t *tc, u32 ack)
 static void
 hsi_tcp_fin_ack_req_free_rpc (void *arg)
 {
-  hsi_tcp_fin_ack_req_t *a = arg;
-  hsi_worker_t *wrk;
-
-  wrk = hsi_worker_get (a->owner_thread);
-  pool_put (wrk->tcp_fin_ack_reqs, a);
+  hsi_rpc_req_put (tcp_fin_ack_reqs, arg);
 }
 
 static void
 hsi_tcp_mark_fin_acked_rpc (void *arg)
 {
-  hsi_tcp_fin_ack_req_t *a = arg;
+  hsi_tcp_fin_ack_req_t *a = hsi_rpc_req_get (tcp_fin_ack_reqs, arg);
   session_handle_tu_t sh = { .handle = a->session_handle };
   session_t *s;
 
@@ -1369,7 +1355,7 @@ hsi_tcp_mark_fin_acked_rpc (void *arg)
   if (s)
     hsi_tcp_mark_fin_acked (hsi_tcp_connection_at_session (s), a->ack);
 
-  session_send_rpc_evt_to_thread (a->owner_thread, hsi_tcp_fin_ack_req_free_rpc, a);
+  session_send_rpc_evt_to_thread (hsi_rpc_req_thread (arg), hsi_tcp_fin_ack_req_free_rpc, arg);
 }
 
 static void
@@ -1378,14 +1364,14 @@ hsi_tcp_send_fin_acked (session_handle_t session_handle, clib_thread_index_t own
   session_handle_tu_t sh = { .handle = session_handle };
   hsi_tcp_fin_ack_req_t *a;
   hsi_worker_t *wrk;
+  void *arg;
 
   wrk = hsi_worker_get (owner_thread);
-  pool_get_zero (wrk->tcp_fin_ack_reqs, a);
+  arg = hsi_rpc_req_alloc (wrk, tcp_fin_ack_reqs, a, owner_thread);
 
-  a->owner_thread = owner_thread;
   a->session_handle = session_handle;
   a->ack = ack;
-  session_send_rpc_evt_to_thread_force (sh.thread_index, hsi_tcp_mark_fin_acked_rpc, a);
+  session_send_rpc_evt_to_thread_force (sh.thread_index, hsi_tcp_mark_fin_acked_rpc, arg);
 }
 
 static void
@@ -1450,17 +1436,13 @@ hsi_tcp_mark_peer_fin_pending (tcp_connection_t *tc, u32 ack)
 static void
 hsi_tcp_peer_fin_req_free_rpc (void *arg)
 {
-  hsi_tcp_peer_fin_req_t *a = arg;
-  hsi_worker_t *wrk;
-
-  wrk = hsi_worker_get (a->owner_thread);
-  pool_put (wrk->tcp_peer_fin_reqs, a);
+  hsi_rpc_req_put (tcp_peer_fin_reqs, arg);
 }
 
 static void
 hsi_tcp_mark_peer_fin_pending_rpc (void *arg)
 {
-  hsi_tcp_peer_fin_req_t *a = arg;
+  hsi_tcp_peer_fin_req_t *a = hsi_rpc_req_get (tcp_peer_fin_reqs, arg);
   session_handle_tu_t sh = { .handle = a->session_handle };
   session_t *s;
 
@@ -1468,7 +1450,7 @@ hsi_tcp_mark_peer_fin_pending_rpc (void *arg)
   if (s)
     hsi_tcp_mark_peer_fin_pending (hsi_tcp_connection_at_session (s), a->ack);
 
-  session_send_rpc_evt_to_thread (a->owner_thread, hsi_tcp_peer_fin_req_free_rpc, a);
+  session_send_rpc_evt_to_thread (hsi_rpc_req_thread (arg), hsi_tcp_peer_fin_req_free_rpc, arg);
 }
 
 static void
@@ -1478,14 +1460,14 @@ hsi_tcp_send_peer_fin_pending (session_handle_t session_handle, clib_thread_inde
   session_handle_tu_t sh = { .handle = session_handle };
   hsi_tcp_peer_fin_req_t *a;
   hsi_worker_t *wrk;
+  void *arg;
 
   wrk = hsi_worker_get (owner_thread);
-  pool_get_zero (wrk->tcp_peer_fin_reqs, a);
+  arg = hsi_rpc_req_alloc (wrk, tcp_peer_fin_reqs, a, owner_thread);
 
-  a->owner_thread = owner_thread;
   a->session_handle = session_handle;
   a->ack = ack;
-  session_send_rpc_evt_to_thread_force (sh.thread_index, hsi_tcp_mark_peer_fin_pending_rpc, a);
+  session_send_rpc_evt_to_thread_force (sh.thread_index, hsi_tcp_mark_peer_fin_pending_rpc, arg);
 }
 
 static void

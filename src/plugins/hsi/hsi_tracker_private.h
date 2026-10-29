@@ -101,35 +101,30 @@ typedef struct hsi_udp_track_snapshot_
 
 struct hsi_udp_track_commit_req_
 {
-  clib_thread_index_t owner_thread;
   session_handle_t session_handle;
   hsi_udp_track_snapshot_t peer;
 };
 
 struct hsi_udp_peer_update_req_
 {
-  clib_thread_index_t owner_thread;
   session_handle_t session_handle;
   session_handle_t peer_session_handle;
 };
 
 typedef struct hsi_tcp_fin_ack_req_
 {
-  clib_thread_index_t owner_thread;
   session_handle_t session_handle;
   u32 ack;
 } hsi_tcp_fin_ack_req_t;
 
 typedef struct hsi_tcp_peer_fin_req_
 {
-  clib_thread_index_t owner_thread;
   session_handle_t session_handle;
   u32 ack;
 } hsi_tcp_peer_fin_req_t;
 
 struct hsi_session_fifos_cleanup_req_
 {
-  clib_thread_index_t owner_thread;
   svm_fifo_t *rx_fifo;
   svm_fifo_t *tx_fifo;
 };
@@ -191,7 +186,6 @@ struct hsi_tcp_drain_
 
 struct hsi_tcp_drain_start_req_
 {
-  clib_thread_index_t owner_thread;
   session_handle_t session_handle;
   session_handle_t peer_session_handle;
 };
@@ -216,14 +210,12 @@ struct hsi_udp_drain_
 
 struct hsi_udp_drain_start_req_
 {
-  clib_thread_index_t owner_thread;
   session_handle_t session_handle;
   session_handle_t peer_session_handle;
 };
 
 struct hsi_udp_drain_cache_req_
 {
-  clib_thread_index_t owner_thread;
   session_handle_t session_handle;
   u32 buffer_index;
   u32 len;
@@ -234,6 +226,43 @@ hsi_worker_get (clib_thread_index_t thread_index)
 {
   return vec_elt_at_index (hsi_main.wrk, thread_index);
 }
+
+/*
+ * Cross-thread rpc requests are passed as (owner thread, pool index) packed
+ * into the rpc arg. Owner pools must be grown with pool_get_aligned_safe so
+ * that the pool base only moves under the worker barrier.
+ */
+STATIC_ASSERT (sizeof (void *) == 8, "rpc req arg packs thread and index in a pointer");
+
+#define hsi_rpc_req_arg(thread, index)                                                             \
+  uword_to_pointer (((uword) (thread) << 32) | (u32) (index), void *)
+#define hsi_rpc_req_thread(arg) ((clib_thread_index_t) (pointer_to_uword (arg) >> 32))
+#define hsi_rpc_req_index(arg)	((u32) pointer_to_uword (arg))
+
+/* Resolve on the consumer thread; never cache the result across a barrier. */
+#define hsi_rpc_req_get(field, arg)                                                                \
+  ({                                                                                               \
+    hsi_worker_t *_w = hsi_worker_get (hsi_rpc_req_thread (arg));                                  \
+    u32 _i = hsi_rpc_req_index (arg);                                                              \
+    ASSERT (_i < vec_len (_w->field));                                                             \
+    _w->field + _i;                                                                                \
+  })
+
+#define hsi_rpc_req_put(field, arg)                                                                \
+  do                                                                                               \
+    {                                                                                              \
+      ASSERT (hsi_rpc_req_thread (arg) == vlib_get_thread_index ());                               \
+      pool_put_index (hsi_worker_get (hsi_rpc_req_thread (arg))->field, hsi_rpc_req_index (arg));  \
+    }                                                                                              \
+  while (0)
+
+#define hsi_rpc_req_alloc(wrk, field, a, thread)                                                   \
+  ({                                                                                               \
+    ASSERT ((thread) == vlib_get_thread_index ());                                                 \
+    pool_get_aligned_safe ((wrk)->field, a, 0);                                                    \
+    clib_memset (a, 0, sizeof (*(a)));                                                             \
+    hsi_rpc_req_arg (thread, (a) - (wrk)->field);                                                  \
+  })
 
 static_always_inline uword
 hsi_session_conn_key (u32 session_index, u32 conn_index)
