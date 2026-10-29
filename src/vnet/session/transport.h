@@ -30,29 +30,23 @@ typedef struct _transport_options_t
 
 typedef enum transport_snd_flags_
 {
-  TRANSPORT_SND_F_DESCHED = 1 << 0,
-  TRANSPORT_SND_F_POSTPONE = 1 << 1,
+  TRANSPORT_SND_F_DESCHED = 1 << 0,    /**< transport reschedules connection */
+  TRANSPORT_SND_F_POSTPONE = 1 << 1,   /**< retry after sessions with data */
+  TRANSPORT_SND_F_RETRY = 1 << 2,      /**< retry before sessions with data */
+  TRANSPORT_SND_F_NO_BUFFERS = 1 << 3, /**< retry, buffer alloc failed */
+  TRANSPORT_SND_F_CTRL_ONLY = 1 << 4,  /**< input, no new data allowed */
   TRANSPORT_SND_N_FLAGS
 } __clib_packed transport_snd_flags_t;
 
 typedef struct transport_send_params_
 {
-  union
-  {
-    /* Used to retrieve snd params from transports */
-    struct
-    {
-      u32 snd_space;
-      u32 tx_offset;
-      u16 snd_mss;
-    };
-    /* Used by custom tx functions */
-    struct
-    {
-      u32 max_burst_size;
-      u32 bytes_dequeued;
-    };
-  };
+  /* Filled in by transport send params */
+  u32 snd_space;
+  u32 tx_offset; /**< tx fifo offset of first unsent byte */
+  u16 snd_mss;
+  /* Custom tx burst limit and what it dequeued from the tx fifo */
+  u32 max_burst_size;
+  u32 bytes_dequeued;
   transport_snd_flags_t flags;
 } transport_send_params_t;
 

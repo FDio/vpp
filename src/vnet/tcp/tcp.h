@@ -112,6 +112,9 @@ typedef struct tcp_worker_ctx_
   /** tx buffer free list */
   u32 *tx_buffers;
 
+  /** buffers of a new data burst */
+  vlib_buffer_t **tx_data_bufs;
+
   /* fifo of pending free requests */
   tcp_cleanup_req_t *pending_cleanups;
 
@@ -334,7 +337,7 @@ void tcp_reschedule (tcp_connection_t * tc);
 fib_node_index_t tcp_lookup_rmt_in_fib (tcp_connection_t * tc);
 u32 tcp_session_push_header (transport_connection_t *tconn, vlib_buffer_t **b, u32 n_bufs,
 			     u32 available_bytes);
-int tcp_session_custom_tx (void *conn, transport_send_params_t * sp);
+int tcp_session_custom_tx (void *session, transport_send_params_t *sp);
 
 __clib_export void tcp_connection_timers_init (tcp_connection_t *tc);
 __clib_export void tcp_connection_timers_reset (tcp_connection_t *tc);

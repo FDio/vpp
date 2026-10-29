@@ -27,20 +27,6 @@ typedef struct session_tx_context_
   const transport_proto_vft_t *transport_vft;
   transport_connection_t *tc;
   transport_send_params_t sp;
-  u32 max_dequeue;
-  u32 left_to_snd;
-  u32 max_len_to_snd;
-  u16 deq_per_first_buf;
-  u16 deq_per_buf;
-  u16 n_segs_per_evt;
-  u16 n_bufs_needed;
-  u8 n_bufs_per_seg;
-    CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
-  session_dgram_hdr_t hdr;
-
-  /** Vector of tx buffer free lists */
-  u32 *tx_buffers;
-  vlib_buffer_t **transport_pending_bufs;
 } session_tx_context_t;
 
 typedef struct session_evt_elt
@@ -181,14 +167,6 @@ typedef struct session_worker_
   session_dio_ctx_t dio;
 } session_worker_t;
 
-typedef int (session_fifo_rx_fn) (session_worker_t * wrk,
-				  vlib_node_runtime_t * node,
-				  session_evt_elt_t * e, int *n_tx_packets);
-
-extern session_fifo_rx_fn session_tx_fifo_peek_and_snd;
-extern session_fifo_rx_fn session_tx_fifo_dequeue_and_snd;
-extern session_fifo_rx_fn session_tx_fifo_dequeue_internal;
-
 u8 session_node_lookup_fifo_event (svm_fifo_t * f, session_event_t * e);
 
 typedef void (*nat44_original_dst_lookup_fn) (
@@ -219,8 +197,8 @@ typedef struct session_main_
   /** Worker contexts */
   session_worker_t *wrk;
 
-  /** Per transport rx function that can either dequeue or peek */
-  session_fifo_rx_fn **session_tx_fns;
+  /** Per session type transport tx type */
+  transport_tx_fn_type_t *session_type_to_tx_type;
 
   /** Per session type output nodes. Could optimize to group nodes by
    * fib but lookup would then require session type parsing in session node.
@@ -1077,6 +1055,35 @@ session_add_pending_tx_buffer (clib_thread_index_t thread_index, u32 bi,
   if (PREDICT_FALSE (wrk->state == SESSION_WRK_INTERRUPT))
     vlib_node_set_interrupt_pending (wrk->vm, session_queue_node.index);
 }
+
+/** Session node next index for packets of the session's transport */
+always_inline u32
+session_tx_next_index (session_t *s)
+{
+  return session_main.session_type_to_next[s->session_type];
+}
+
+/** Add a data packet built while the session node sends. With dma, it waits
+ * for the copies queued in the worker's current batch. */
+always_inline void
+session_tx_add_data_buffer (session_worker_t *wrk, u32 bi, u32 next_index)
+{
+  if (PREDICT_TRUE (!wrk->dma_enabled))
+    {
+      vec_add1 (wrk->pending_tx_buffers, bi);
+      vec_add1 (wrk->pending_tx_nexts, next_index);
+    }
+  else
+    {
+      session_dma_transfer *dma_transfer = &wrk->dma_trans[wrk->trans_tail];
+      vec_add1 (dma_transfer->pending_tx_buffers, bi);
+      vec_add1 (dma_transfer->pending_tx_nexts, next_index);
+    }
+}
+
+/** Queue a copy of len tx fifo bytes at offset into data on the worker's
+ * dma batch. Return the bytes queued. */
+int session_tx_fifo_dma_copy (session_worker_t *wrk, svm_fifo_t *f, u32 offset, u32 len, u8 *data);
 
 always_inline void
 session_wrk_update_time (session_worker_t *wrk, f64 now)
