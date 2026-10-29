@@ -37,7 +37,7 @@ from template_ipsec import (
 )
 from test_ipsec_tun_if_esp import TemplateIpsecItf4
 from config import config
-from vpp_ip_route import FibPathType
+from vpp_ip_route import FibPathType, VppIpTable
 from vpp_qemu_utils import (
     add_namespace_route,
     add_namespace_multipath_route,
@@ -701,6 +701,78 @@ class TestLinuxCPNetNSBase(VppTestCase):
             self.sleep(0.1)
         else:
             self.assertEqual(paths, expected_paths)
+
+
+@unittest.skipIf(config.skip_netns_tests, "netns not available or disabled from cli")
+@unittest.skipIf(
+    "linux-cp" in config.excluded_plugins or "linux-nl" in config.excluded_plugins,
+    "Exclude linux-cp route tests",
+)
+class TestLinuxCPMalformedRoutes(TestLinuxCPNetNSBase):
+    """Malformed libnl routes preserve the FIB and release table references."""
+
+    extra_vpp_plugin_config = [
+        "plugin linux_cp_plugin.so { enable }",
+        "plugin linux_nl_plugin.so { enable }",
+        "plugin linux_cp_unittest_plugin.so { enable }",
+    ]
+
+    def setUp(self):
+        super().setUp()
+        self.create_pg_interfaces(range(2))
+        self.phy, self.host = self.pg_interfaces
+        self.phy.admin_up()
+        self.host.admin_up()
+        self.pair = VppLcpPair(self, self.phy, self.host).add_vpp_config()
+
+    def test_malformed_routes(self):
+        """Rejected destination, nexthop and source attributes leave no FIB changes."""
+        table_id = 65000
+        for is_ip6 in (False, True):
+            family = "ip6" if is_ip6 else "ip4"
+            for operation in ("add", "replace", "del"):
+                faults = ["destination", "gateway-first", "gateway-last"]
+                if is_ip6 and operation != "del":
+                    faults.append("source")
+                for fault in faults:
+                    table_id += 1
+                    with self.subTest(family=family, operation=operation, fault=fault):
+                        table = VppIpTable(
+                            self, table_id, is_ip6=is_ip6, create_mfib=False
+                        ).add_vpp_config()
+                        command = (
+                            f"test lcp route phy {self.phy.sw_if_index} "
+                            f"table {table_id} {family}"
+                        )
+                        self.assertFalse(
+                            any(
+                                r.table.table_id == table_id
+                                and r.table.is_ip6 == is_ip6
+                                for r in self.vapi.ip_mtable_dump()
+                            ),
+                            "unicast-only fixture created an MFIB",
+                        )
+                        try:
+                            self.vapi.cli(f"{command} add valid")
+                            before = [r.route for r in table.dump()]
+                            default = next(r for r in before if r.prefix.prefixlen == 0)
+                            self.assertEqual(default.n_paths, 2)
+                            self.vapi.cli(f"{command} {operation} {fault}")
+                            self.assertEqual(before, [r.route for r in table.dump()])
+                        finally:
+                            try:
+                                self.vapi.cli(f"{command} del valid")
+                                self.assertFalse(
+                                    any(
+                                        r.table.table_id == table_id
+                                        and r.table.is_ip6 == is_ip6
+                                        for r in self.vapi.ip_mtable_dump()
+                                    ),
+                                    "rejected route retained an LCP table reference",
+                                )
+                            finally:
+                                # Release one extra reference when testing the unfixed add.
+                                self.vapi.cli(f"{command} del valid")
 
 
 @unittest.skipIf(config.skip_netns_tests, "netns not available or disabled from cli")
