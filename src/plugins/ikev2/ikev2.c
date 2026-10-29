@@ -5140,15 +5140,22 @@ ikev2_delete_child_sa_internal (vlib_main_t * vm, ikev2_sa_t * sa,
   ike0->msgid = clib_host_to_net_u32 (sa->last_init_msg_id);
   sa->last_init_msg_id += 1;
   len = ikev2_generate_message (vm, b0, sa, ike0, 0, 0, 0);
-  if (~0 == len)
-    return;
+  if (~0 != len)
+    {
+      if (ikev2_natt_active (sa))
+	len = ikev2_insert_non_esp_marker (ike0, len);
+      ikev2_send_ike (vm, &sa->iaddr, &sa->raddr, bi0, len, ikev2_get_port (sa), sa->dst_port,
+		      sa->sw_if_index);
+    }
+  else
+    {
+      vlib_buffer_free_one (vm, bi0);
+    }
 
-  if (ikev2_natt_active (sa))
-    len = ikev2_insert_non_esp_marker (ike0, len);
-  ikev2_send_ike (vm, &sa->iaddr, &sa->raddr, bi0, len,
-		  ikev2_get_port (sa), sa->dst_port, sa->sw_if_index);
-
-  /* delete local child SA */
+  /* Always tear down the local Child SA, even when the Delete notification
+     was not sent. Leaving the Child alive after we have decided to drop it
+     keeps a tunnel-protect entry pinning IPsec SA ids that the peer no
+     longer knows, which breaks the next rekey. */
   ikev2_delete_tunnel_interface (vnet_get_main (), sa, csa);
   ikev2_sa_del_child_sa (sa, csa);
 }
