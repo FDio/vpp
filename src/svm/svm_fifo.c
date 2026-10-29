@@ -178,14 +178,19 @@ ooo_segment_free (svm_fifo_t * f, u32 index)
   pool_put (f->ooo_segments, cur);
 }
 
+static_always_inline void
+f_enq_args_reset (svm_fifo_enq_args_t *a)
+{
+  a->seg_offset = a->seg_len = a->dup_offset = a->dup_len = 0;
+}
+
 /**
  * Add segment to fifo's out-of-order segment list. Takes care of merging
- * adjacent segments and removing overlapping ones. If info is set, reports the
+ * adjacent segments and removing overlapping ones. If a is set, reports the
  * segment that holds the data and the first part of the data the fifo had.
  */
 static void
-ooo_segment_add (svm_fifo_t *f, u32 offset, u32 head, u32 tail, u32 length,
-		 svm_fifo_ooo_enq_info_t *info)
+ooo_segment_add (svm_fifo_t *f, u32 offset, u32 head, u32 tail, u32 length, svm_fifo_enq_args_t *a)
 {
   ooo_segment_t *s, *new_s, *prev, *next, *it, *first;
   u32 new_index, s_end_pos, s_index, dup_pos = 0, dup_end_pos = 0;
@@ -219,7 +224,7 @@ ooo_segment_add (svm_fifo_t *f, u32 offset, u32 head, u32 tail, u32 length,
 
   /* Data the fifo already had, if any, starts in prev if the new data starts inside it, else in s.
    * Without overlap, the range is empty or inverted, which means no duplicate */
-  if (info)
+  if (a)
     {
       first = prev && f_pos_lt (offset_pos, ooo_segment_end_pos (prev)) ? prev : s;
       dup_pos = f_pos_max (offset_pos, first->start);
@@ -324,26 +329,35 @@ check_tail:
 
 done:
 
-  if (info)
+  if (a)
     {
-      info->seg_offset = s->start - tail;
-      info->seg_len = s->length;
-      info->dup_len = f_pos_lt (dup_pos, dup_end_pos) ? dup_end_pos - dup_pos : 0;
-      info->dup_offset = info->dup_len ? dup_pos - tail : 0;
+      a->seg_offset = s->start - tail;
+      a->seg_len = s->length;
+      a->dup_len = f_pos_lt (dup_pos, dup_end_pos) ? dup_end_pos - dup_pos : 0;
+      a->dup_offset = a->dup_len ? dup_pos - tail : 0;
     }
 }
 
 /**
  * Removes segments that can now be enqueued because the fifo's tail has
- * advanced. Returns the number of bytes added to tail.
+ * advanced. Returns the number of bytes added to tail. If a is set, reports
+ * the first data the fifo already had of the n_bytes_enqueued that end at
+ * tail.
  */
 static int
-ooo_segment_try_collect (svm_fifo_t * f, u32 n_bytes_enqueued, u32 * tail)
+ooo_segment_try_collect (svm_fifo_t *f, u32 n_bytes_enqueued, u32 *tail, svm_fifo_enq_args_t *a)
 {
   u32 s_index, s_end, bytes = 0;
   ooo_segment_t *s;
 
   s = pool_elt_at_index (f->ooo_segments, f->ooos_list_head);
+
+  /* Segments are sorted, so if any has some of the data, the first does */
+  if (a && f_pos_lt (s->start, *tail))
+    {
+      a->dup_offset = s->start - (*tail - n_bytes_enqueued);
+      a->dup_len = f_pos_min (*tail, ooo_segment_end_pos (s)) - s->start;
+    }
 
   /* If last tail update overlaps one/multiple ooo segments, remove them */
   while (f_pos_leq (s->start, *tail))
@@ -855,8 +869,8 @@ f_try_chunk_alloc (svm_fifo_t * f, u32 head, u32 tail, u32 len)
   return 0;
 }
 
-int
-svm_fifo_enqueue (svm_fifo_t * f, u32 len, const u8 * src)
+static_always_inline int
+f_enqueue (svm_fifo_t *f, u32 len, const u8 *src, svm_fifo_enq_args_t *a)
 {
   u32 tail, head, free_count;
   svm_fifo_chunk_t *old_tail_c;
@@ -892,7 +906,7 @@ svm_fifo_enqueue (svm_fifo_t * f, u32 len, const u8 * src)
   /* collect out-of-order segments */
   if (PREDICT_FALSE (f->ooos_list_head != OOO_SEGMENT_INVALID_INDEX))
     {
-      len += ooo_segment_try_collect (f, len, &tail);
+      len += ooo_segment_try_collect (f, len, &tail, a);
       /* Tail chunk might've changed even if nothing was collected */
       f->shr->tail_chunk =
 	f_csptr (f, f_lookup_clear_enq_chunks (f, old_tail_c, tail));
@@ -905,6 +919,19 @@ svm_fifo_enqueue (svm_fifo_t * f, u32 len, const u8 * src)
   return len;
 }
 
+int
+svm_fifo_enqueue (svm_fifo_t *f, u32 len, const u8 *src)
+{
+  return f_enqueue (f, len, src, 0);
+}
+
+int
+svm_fifo_enqueue2 (svm_fifo_t *f, u32 len, const u8 *src, svm_fifo_enq_args_t *a)
+{
+  f_enq_args_reset (a);
+  return f_enqueue (f, len, src, a);
+}
+
 /**
  * Enqueue a future segment.
  *
@@ -915,7 +942,7 @@ svm_fifo_enqueue (svm_fifo_t * f, u32 len, const u8 * src)
  * One copy for both variants, which jump to it directly
  */
 static __clib_noinline int
-f_enqueue_with_offset (svm_fifo_t *f, u32 offset, u32 len, u8 *src, svm_fifo_ooo_enq_info_t *info)
+f_enqueue_with_offset (svm_fifo_t *f, u32 offset, u32 len, u8 *src, svm_fifo_enq_args_t *a)
 {
   u32 tail, head, free_count, enq_pos;
   fs_sptr_t last = F_INVALID_CPTR;
@@ -938,7 +965,7 @@ f_enqueue_with_offset (svm_fifo_t *f, u32 offset, u32 len, u8 *src, svm_fifo_ooo
     }
 
   svm_fifo_trace_add (f, offset, len, 1);
-  ooo_segment_add (f, offset, head, tail, len, info);
+  ooo_segment_add (f, offset, head, tail, len, a);
 
   if (!f->ooo_enq || !f_chunk_includes_pos (f->ooo_enq, enq_pos))
     f_update_ooo_enq (f, enq_pos, enq_pos + len);
@@ -957,10 +984,10 @@ svm_fifo_enqueue_with_offset (svm_fifo_t *f, u32 offset, u32 len, u8 *src)
 }
 
 int
-svm_fifo_enqueue_with_offset_info (svm_fifo_t *f, u32 offset, u32 len, u8 *src,
-				   svm_fifo_ooo_enq_info_t *info)
+svm_fifo_enqueue_with_offset2 (svm_fifo_t *f, u32 len, u8 *src, svm_fifo_enq_args_t *a)
 {
-  return f_enqueue_with_offset (f, offset, len, src, info);
+  f_enq_args_reset (a);
+  return f_enqueue_with_offset (f, a->offset, len, src, a);
 }
 
 /**
@@ -992,9 +1019,9 @@ svm_fifo_enqueue_nocopy (svm_fifo_t * f, u32 len)
   clib_atomic_store_rel_n (&f->shr->tail, tail);
 }
 
-int
-svm_fifo_enqueue_segments (svm_fifo_t * f, const svm_fifo_seg_t segs[],
-			   u32 n_segs, u8 allow_partial)
+static_always_inline int
+f_enqueue_segments (svm_fifo_t *f, const svm_fifo_seg_t segs[], u32 n_segs, u8 allow_partial,
+		    svm_fifo_enq_args_t *a)
 {
   u32 tail, head, free_count, len = 0, i;
   svm_fifo_chunk_t *old_tail_c;
@@ -1060,7 +1087,7 @@ svm_fifo_enqueue_segments (svm_fifo_t * f, const svm_fifo_seg_t segs[],
   /* collect out-of-order segments */
   if (PREDICT_FALSE (f->ooos_list_head != OOO_SEGMENT_INVALID_INDEX))
     {
-      len += ooo_segment_try_collect (f, len, &tail);
+      len += ooo_segment_try_collect (f, len, &tail, a);
       /* Tail chunk might've changed even if nothing was collected */
       f->shr->tail_chunk =
 	f_csptr (f, f_lookup_clear_enq_chunks (f, old_tail_c, tail));
@@ -1073,13 +1100,30 @@ svm_fifo_enqueue_segments (svm_fifo_t * f, const svm_fifo_seg_t segs[],
   return len;
 }
 
-/* One copy for both variants, which jump to it directly */
-static __clib_noinline int
-f_enqueue_segments_with_offset (svm_fifo_t *f, u32 offset, const svm_fifo_seg_t segs[], u32 n_segs,
-				u8 allow_partial, svm_fifo_ooo_enq_info_t *info)
+int
+svm_fifo_enqueue_segments (svm_fifo_t *f, const svm_fifo_seg_t segs[], u32 n_segs, u8 allow_partial)
+{
+  return f_enqueue_segments (f, segs, n_segs, allow_partial, 0);
+}
+
+int
+svm_fifo_enqueue_segments2 (svm_fifo_t *f, const svm_fifo_seg_t segs[], u32 n_segs,
+			    svm_fifo_enq_args_t *a)
+{
+  f_enq_args_reset (a);
+  return f_enqueue_segments (f, segs, n_segs, a->allow_partial, a);
+}
+
+int
+svm_fifo_enqueue_segments_with_offset2 (svm_fifo_t *f, const svm_fifo_seg_t segs[], u32 n_segs,
+					svm_fifo_enq_args_t *a)
 {
   u32 tail, head, free_count, enq_pos, len = 0, n_left, to_copy, i;
+  u32 offset = a->offset;
+  u8 allow_partial = a->allow_partial;
   fs_sptr_t last;
+
+  f_enq_args_reset (a);
 
   f_load_head_tail_prod (f, &head, &tail);
 
@@ -1114,7 +1158,7 @@ f_enqueue_segments_with_offset (svm_fifo_t *f, u32 offset, const svm_fifo_seg_t 
 
   /* All segments are added as one out-of-order segment */
   svm_fifo_trace_add (f, offset, len, 1);
-  ooo_segment_add (f, offset, head, tail, len, info);
+  ooo_segment_add (f, offset, head, tail, len, a);
 
   if (!f->ooo_enq || !f_chunk_includes_pos (f->ooo_enq, enq_pos))
     f_update_ooo_enq (f, enq_pos, enq_pos + len);
@@ -1134,21 +1178,6 @@ f_enqueue_segments_with_offset (svm_fifo_t *f, u32 offset, const svm_fifo_seg_t 
     }
 
   return len;
-}
-
-int
-svm_fifo_enqueue_segments_with_offset (svm_fifo_t *f, u32 offset, const svm_fifo_seg_t segs[],
-				       u32 n_segs, u8 allow_partial)
-{
-  return f_enqueue_segments_with_offset (f, offset, segs, n_segs, allow_partial, 0);
-}
-
-int
-svm_fifo_enqueue_segments_with_offset_info (svm_fifo_t *f, u32 offset, const svm_fifo_seg_t segs[],
-					    u32 n_segs, u8 allow_partial,
-					    svm_fifo_ooo_enq_info_t *info)
-{
-  return f_enqueue_segments_with_offset (f, offset, segs, n_segs, allow_partial, info);
 }
 
 always_inline svm_fifo_chunk_t *

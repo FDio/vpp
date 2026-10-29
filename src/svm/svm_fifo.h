@@ -49,14 +49,20 @@ typedef struct svm_fifo_seg_
   u32 len;
 } svm_fifo_seg_t;
 
-/** What an out-of-order enqueue found in the fifo */
-typedef struct svm_fifo_ooo_enq_info_
+/** Arguments of the enqueues that take them, like @ref svm_fifo_enqueue2,
+ * and what the enqueue found of the fifo's out-of-order data. Offsets are
+ * from the tail before the enqueue */
+typedef struct svm_fifo_enq_args_
 {
-  u32 seg_offset; /**< Offset from tail of the segment that holds the data */
+  /* In */
+  u32 offset;	    /**< Out-of-order enqueues, where the data goes */
+  u8 allow_partial; /**< Segment enqueues, enqueue as much as fits */
+  /* Out, reset by every enqueue */
+  u32 seg_offset; /**< Out-of-order enqueues, segment that holds the data */
   u32 seg_len;	  /**< Length of that segment */
-  u32 dup_offset; /**< Offset from tail of the first data the fifo had, 0 if none */
+  u32 dup_offset; /**< First data the fifo had out of order, 0 if none */
   u32 dup_len;	  /**< Length of that data, 0 if all the data is new */
-} svm_fifo_ooo_enq_info_t;
+} svm_fifo_enq_args_t;
 
 #if SVM_FIFO_TRACE
 #define svm_fifo_trace_add(_f, _s, _l, _t)		\
@@ -399,40 +405,43 @@ void svm_fifo_enqueue_nocopy (svm_fifo_t * f, u32 len);
 int svm_fifo_enqueue_segments (svm_fifo_t * f, const svm_fifo_seg_t segs[],
 			       u32 n_segs, u8 allow_partial);
 /**
- * Enqueue array of @ref svm_fifo_seg_t with offset
+ * Enqueue data to fifo, like @ref svm_fifo_enqueue, and report the first
+ * part of it the fifo had already out of order
  *
- * Segments are copied back to back, starting at offset, and added to the
- * out-of-order list as one segment, like data enqueued with
- * @ref svm_fifo_enqueue_with_offset.
- *
- * @param f		fifo
- * @param offset	offset at which to copy the data
- * @param segs		array of segments to enqueue
- * @param n_segs	number of segments
- * @param allow_partial	if set partial enqueues are allowed
- * @return		len if enqueue was successful, error otherwise
+ * @param a		args, see @ref svm_fifo_enq_args_t
  */
-int svm_fifo_enqueue_segments_with_offset (svm_fifo_t *f, u32 offset, const svm_fifo_seg_t segs[],
-					   u32 n_segs, u8 allow_partial);
+int svm_fifo_enqueue2 (svm_fifo_t *f, u32 len, const u8 *src, svm_fifo_enq_args_t *a);
 /**
- * Enqueue data to fifo with offset, like @ref svm_fifo_enqueue_with_offset,
+ * Enqueue array of @ref svm_fifo_seg_t in order, like
+ * @ref svm_fifo_enqueue_segments, and report the first part of the data the
+ * fifo had already out of order
+ *
+ * @param a		args, allow_partial is used, see @ref svm_fifo_enq_args_t
+ */
+int svm_fifo_enqueue_segments2 (svm_fifo_t *f, const svm_fifo_seg_t segs[], u32 n_segs,
+				svm_fifo_enq_args_t *a);
+/**
+ * Enqueue data to fifo at a->offset, like @ref svm_fifo_enqueue_with_offset,
  * and report the segment that holds it and what of it the fifo had already
  *
- * @param info		filled if the enqueue was successful
+ * @param a		args, offset is used, see @ref svm_fifo_enq_args_t
  */
-int svm_fifo_enqueue_with_offset_info (svm_fifo_t *f, u32 offset, u32 len, u8 *src,
-				       svm_fifo_ooo_enq_info_t *info);
+int svm_fifo_enqueue_with_offset2 (svm_fifo_t *f, u32 len, u8 *src, svm_fifo_enq_args_t *a);
 /**
- * Enqueue array of @ref svm_fifo_seg_t with offset, like
- * @ref svm_fifo_enqueue_segments_with_offset, and report the segment that
- * holds the data and what of it the fifo had already
+ * Enqueue array of @ref svm_fifo_seg_t at a->offset
  *
- * @param info		filled if data was enqueued, so not if the segments
- *			are empty, for which 0 is returned
+ * Segments are copied back to back and added to the out-of-order list as one
+ * segment, like data enqueued with @ref svm_fifo_enqueue_with_offset2.
+ *
+ * @param f		fifo
+ * @param segs		array of segments to enqueue
+ * @param n_segs	number of segments
+ * @param a		args, offset and allow_partial are used, see
+ *			@ref svm_fifo_enq_args_t
+ * @return		len if enqueue was successful, error otherwise
  */
-int svm_fifo_enqueue_segments_with_offset_info (svm_fifo_t *f, u32 offset,
-						const svm_fifo_seg_t segs[], u32 n_segs,
-						u8 allow_partial, svm_fifo_ooo_enq_info_t *info);
+int svm_fifo_enqueue_segments_with_offset2 (svm_fifo_t *f, const svm_fifo_seg_t segs[], u32 n_segs,
+					    svm_fifo_enq_args_t *a);
 /**
  * Overwrite fifo head with new data
  *
