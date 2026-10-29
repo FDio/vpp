@@ -2114,6 +2114,34 @@ session_manager_main_disable (vlib_main_t *vm,
   session_rt_backend_enable_disable (rt_engine_type);
 }
 
+int
+session_tx_fifo_dma_copy (session_worker_t *wrk, svm_fifo_t *f, u32 offset, u32 len, u8 *data)
+{
+  vlib_main_t *vm = wrk->vm;
+  int n_bytes_read, len_write;
+  svm_fifo_seg_t data_fs[2];
+  u32 n_segs = 2;
+  u16 n_transfers = 0;
+
+  n_bytes_read = svm_fifo_segments (f, offset, data_fs, &n_segs, len);
+
+  len_write = n_bytes_read;
+
+  ASSERT (n_bytes_read == len);
+
+  while (n_bytes_read)
+    {
+      wrk->batch_num++;
+      vlib_dma_batch_add (vm, wrk->batch, data, data_fs[n_transfers].data,
+			  data_fs[n_transfers].len);
+      data += data_fs[n_transfers].len;
+      n_bytes_read -= data_fs[n_transfers].len;
+      n_transfers++;
+    }
+
+  return len_write;
+}
+
 /* in this new callback, cookie hint the index */
 void
 session_dma_completion_cb (vlib_main_t *vm, struct vlib_dma_batch *batch)

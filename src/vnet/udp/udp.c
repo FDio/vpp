@@ -3,6 +3,7 @@
  * Copyright (c) 2016-2020 Cisco and/or its affiliates.
  */
 
+#include <math.h>
 #include <vnet/udp/udp.h>
 #include <vnet/session/session.h>
 #include <vnet/dpo/load_balance.h>
@@ -397,6 +398,372 @@ udp_session_send_params (transport_connection_t * tconn,
   return 0;
 }
 
+/*
+ * Datagram tx
+ */
+
+typedef struct udp_tx_burst_
+{
+  session_t *s;
+  transport_send_params_t *sp;
+  session_dgram_hdr_t hdr;
+  u32 max_dequeue;
+  u32 left_to_snd;
+  u32 max_len_to_snd;
+  u16 deq_per_first_buf;
+  u16 deq_per_buf;
+  u16 n_segs;
+  u16 n_bufs_needed;
+  u8 n_bufs_per_seg;
+} udp_tx_burst_t;
+
+/* Size a burst of at most max_segs segments from the first dgram in the tx
+ * fifo and the dgrams of the same length that follow it */
+static void
+udp_tx_burst_init (vlib_main_t *vm, udp_tx_burst_t *tb, u32 max_segs)
+{
+  u32 n_bytes_per_buf, n_bytes_per_seg, len, chain_limit;
+  transport_send_params_t *sp = tb->sp;
+  svm_fifo_t *f = tb->s->tx_fifo;
+
+  n_bytes_per_buf = vlib_buffer_get_default_data_size (vm);
+  tb->max_dequeue = svm_fifo_max_dequeue_cons (f);
+
+  if (tb->max_dequeue <= sizeof (tb->hdr))
+    {
+      tb->max_len_to_snd = 0;
+      return;
+    }
+
+  svm_fifo_peek (f, 0, sizeof (tb->hdr), (u8 *) &tb->hdr);
+  /* Zero length dgrams not supported */
+  if (PREDICT_FALSE (tb->hdr.data_length == 0))
+    {
+      svm_fifo_dequeue_drop (f, sizeof (tb->hdr));
+      tb->max_len_to_snd = 0;
+      return;
+    }
+  /* We cannot be sure apps have not enqueued incomplete dgrams */
+  if (PREDICT_FALSE (tb->max_dequeue < tb->hdr.data_length + sizeof (tb->hdr)))
+    {
+      tb->max_len_to_snd = 0;
+      return;
+    }
+  ASSERT (tb->hdr.data_length > tb->hdr.data_offset);
+  len = tb->hdr.data_length - tb->hdr.data_offset;
+  sp->snd_mss = clib_min (sp->snd_mss, len);
+
+  if (tb->hdr.gso_size)
+    {
+      sp->snd_mss = clib_min (sp->snd_mss, tb->hdr.gso_size);
+    }
+
+  /* Process multiple dgrams if smaller than min (buf_space, mss).
+   * This avoids handling multiple dgrams if they require buffer
+   * chains */
+  chain_limit = clib_min (n_bytes_per_buf - TRANSPORT_MAX_HDRS_LEN, sp->snd_mss);
+  if (tb->hdr.data_length <= chain_limit)
+    {
+      u32 first_dgram_len, dgram_len, offset, max_offset;
+      session_dgram_hdr_t hdr;
+
+      sp->snd_mss = clib_min (sp->snd_mss, len);
+      offset = tb->hdr.data_length + sizeof (session_dgram_hdr_t);
+      first_dgram_len = len;
+      max_offset = clib_min (tb->max_dequeue, 32 << 10);
+
+      while (offset < max_offset)
+	{
+	  svm_fifo_peek (f, offset, sizeof (tb->hdr), (u8 *) &hdr);
+	  dgram_len = hdr.data_length - hdr.data_offset;
+	  if (offset + sizeof (hdr) + hdr.data_length > tb->max_dequeue ||
+	      first_dgram_len != dgram_len)
+	    break;
+	  /* Assert here to allow test above with zero length dgrams */
+	  ASSERT (hdr.data_length > hdr.data_offset);
+	  len += dgram_len;
+	  offset += sizeof (hdr) + hdr.data_length;
+	}
+    }
+
+  tb->max_dequeue = len;
+
+  /* Ensure we're not writing more than transport window allows */
+  if (tb->max_dequeue < sp->snd_space)
+    {
+      /* Constrained by tx queue. Try to send only fully formed segments */
+      tb->max_len_to_snd = (tb->max_dequeue > sp->snd_mss) ?
+			     (tb->max_dequeue - (tb->max_dequeue % sp->snd_mss)) :
+			     tb->max_dequeue;
+    }
+  else
+    {
+      tb->max_len_to_snd = sp->snd_space;
+    }
+
+  /* Check if we're tx constrained by the node */
+  tb->n_segs = ceil ((f64) tb->max_len_to_snd / sp->snd_mss);
+  if (tb->n_segs > max_segs)
+    {
+      tb->n_segs = max_segs;
+      tb->max_len_to_snd = max_segs * sp->snd_mss;
+    }
+
+  ASSERT (n_bytes_per_buf > TRANSPORT_MAX_HDRS_LEN);
+  if (tb->n_segs > 1)
+    {
+      u32 n_bytes_last_seg, n_bufs_last_seg;
+
+      n_bytes_per_seg = TRANSPORT_MAX_HDRS_LEN + sp->snd_mss;
+      n_bytes_last_seg =
+	TRANSPORT_MAX_HDRS_LEN + tb->max_len_to_snd - ((tb->n_segs - 1) * sp->snd_mss);
+      tb->n_bufs_per_seg = ceil ((f64) n_bytes_per_seg / n_bytes_per_buf);
+      n_bufs_last_seg = ceil ((f64) n_bytes_last_seg / n_bytes_per_buf);
+      tb->n_bufs_needed = ((tb->n_segs - 1) * tb->n_bufs_per_seg) + n_bufs_last_seg;
+    }
+  else
+    {
+      n_bytes_per_seg = TRANSPORT_MAX_HDRS_LEN + tb->max_len_to_snd;
+      tb->n_bufs_per_seg = ceil ((f64) n_bytes_per_seg / n_bytes_per_buf);
+      tb->n_bufs_needed = tb->n_bufs_per_seg;
+    }
+
+  tb->deq_per_buf = clib_min (sp->snd_mss, n_bytes_per_buf);
+  tb->deq_per_first_buf = clib_min (sp->snd_mss, n_bytes_per_buf - TRANSPORT_MAX_HDRS_LEN);
+}
+
+static_always_inline void
+udp_tx_burst_chain_tail (vlib_main_t *vm, udp_worker_t *wrk, udp_tx_burst_t *tb, vlib_buffer_t *b,
+			 u16 *n_bufs)
+{
+  session_dgram_hdr_t *hdr = &tb->hdr;
+  svm_fifo_t *f = tb->s->tx_fifo;
+  vlib_buffer_t *chain_b, *prev_b;
+  u32 chain_bi0, to_deq, left_from_seg;
+  int len_to_deq, n_bytes_read;
+  u16 deq_now;
+  u32 offset;
+  u8 *data, j;
+
+  b->flags |= VLIB_BUFFER_TOTAL_LENGTH_VALID;
+  b->total_length_not_including_first_buffer = 0;
+
+  chain_b = b;
+  left_from_seg = clib_min (tb->sp->snd_mss - b->current_length, tb->left_to_snd);
+  to_deq = left_from_seg;
+  for (j = 1; j < tb->n_bufs_per_seg; j++)
+    {
+      prev_b = chain_b;
+      len_to_deq = clib_min (to_deq, tb->deq_per_buf);
+
+      *n_bufs -= 1;
+      chain_bi0 = wrk->tx_buffers[*n_bufs];
+      chain_b = vlib_get_buffer (vm, chain_bi0);
+      chain_b->current_data = 0;
+      data = vlib_buffer_get_current (chain_b);
+
+      deq_now = clib_min (hdr->data_length - hdr->data_offset, len_to_deq);
+      offset = hdr->data_offset + SESSION_CONN_HDR_LEN;
+      n_bytes_read = svm_fifo_peek (f, offset, deq_now, data);
+      ASSERT (n_bytes_read > 0);
+
+      hdr->data_offset += n_bytes_read;
+      if (hdr->data_offset == hdr->data_length)
+	{
+	  offset = hdr->data_length + SESSION_CONN_HDR_LEN;
+	  svm_fifo_dequeue_drop (f, offset);
+	  if (to_deq > n_bytes_read)
+	    svm_fifo_peek (f, 0, sizeof (*hdr), (u8 *) hdr);
+	}
+      else if (to_deq == n_bytes_read)
+	svm_fifo_overwrite_head (f, (u8 *) hdr, sizeof (session_dgram_pre_hdr_t));
+
+      ASSERT (n_bytes_read == len_to_deq);
+      chain_b->current_length = n_bytes_read;
+      b->total_length_not_including_first_buffer += chain_b->current_length;
+
+      /* update previous buffer */
+      prev_b->next_buffer = chain_bi0;
+      prev_b->flags |= VLIB_BUFFER_NEXT_PRESENT;
+
+      /* update current buffer */
+      chain_b->next_buffer = 0;
+
+      to_deq -= n_bytes_read;
+      if (to_deq == 0)
+	break;
+    }
+  ASSERT (to_deq == 0 && b->total_length_not_including_first_buffer == left_from_seg);
+  tb->left_to_snd -= left_from_seg;
+}
+
+static_always_inline void
+udp_tx_burst_fill_buffer (vlib_main_t *vm, udp_worker_t *wrk, udp_tx_burst_t *tb, vlib_buffer_t *b,
+			  u16 *n_bufs, u8 is_cless)
+{
+  session_dgram_hdr_t *hdr = &tb->hdr;
+  svm_fifo_t *f = tb->s->tx_fifo;
+  u32 len_to_deq, offset;
+  int n_bytes_read;
+  u16 deq_now;
+  u8 *data0;
+
+  /*
+   * Start with the first buffer in chain
+   */
+  b->error = 0;
+  b->flags = VNET_BUFFER_F_LOCALLY_ORIGINATED;
+  b->current_data = 0;
+
+  data0 = vlib_buffer_make_headroom (b, TRANSPORT_MAX_HDRS_LEN);
+  len_to_deq = clib_min (tb->left_to_snd, tb->deq_per_first_buf);
+
+  ASSERT (hdr->data_length > hdr->data_offset);
+  deq_now = clib_min (hdr->data_length - hdr->data_offset, len_to_deq);
+  offset = hdr->data_offset + SESSION_CONN_HDR_LEN;
+  n_bytes_read = svm_fifo_peek (f, offset, deq_now, data0);
+  ASSERT (n_bytes_read > 0);
+
+  /* Peer address for udp_push_one_header */
+  if (is_cless)
+    clib_memcpy_fast (data0 - sizeof (session_dgram_hdr_t), hdr, sizeof (*hdr));
+
+  hdr->data_offset += n_bytes_read;
+  if (hdr->data_offset == hdr->data_length)
+    {
+      offset = hdr->data_length + SESSION_CONN_HDR_LEN;
+      svm_fifo_dequeue_drop (f, offset);
+      if (tb->left_to_snd > n_bytes_read)
+	{
+	  svm_fifo_peek (f, 0, sizeof (*hdr), (u8 *) hdr);
+	  ASSERT (hdr->data_length > hdr->data_offset);
+	}
+    }
+  else if (tb->left_to_snd == n_bytes_read)
+    svm_fifo_overwrite_head (f, (u8 *) hdr, sizeof (session_dgram_pre_hdr_t));
+
+  b->current_length = n_bytes_read;
+  tb->left_to_snd -= n_bytes_read;
+
+  /*
+   * Fill in the remaining buffers in the chain, if any
+   */
+  if (PREDICT_FALSE (tb->n_bufs_per_seg > 1 && tb->left_to_snd))
+    udp_tx_burst_chain_tail (vm, wrk, tb, b, n_bufs);
+}
+
+/* Send dgrams from the tx fifo in up to max_burst_size packets */
+static int
+udp_session_custom_tx (void *session, transport_send_params_t *sp)
+{
+  session_t *s = (session_t *) session;
+  udp_worker_t *wrk = udp_worker_get (s->thread_index);
+  session_worker_t *swrk = session_main_get_worker (s->thread_index);
+  u32 n_left, pbi, bi0, bi1, next_index;
+  udp_tx_burst_t _tb, *tb = &_tb;
+  vlib_buffer_t *pb, *b0, *b1;
+  vlib_main_t *vm = swrk->vm;
+  udp_connection_t *uc;
+  u16 n_bufs;
+  u8 is_cless;
+
+  if (s->session_state == SESSION_STATE_LISTENING)
+    uc = udp_listener_get (s->connection_index);
+  else
+    uc = udp_connection_get (s->connection_index, s->thread_index);
+
+  tb->s = s;
+  tb->sp = sp;
+  next_index = session_tx_next_index (s);
+  is_cless = transport_connection_is_cless (&uc->connection);
+
+  /* No tx window or pacing, so there is always room for a burst */
+  udp_session_send_params (&uc->connection, sp);
+
+  /* Check how much we can pull. */
+  udp_tx_burst_init (vm, tb, sp->max_burst_size);
+
+  if (PREDICT_FALSE (!tb->max_len_to_snd))
+    return 0;
+
+  vec_validate_aligned (wrk->tx_buffers, tb->n_bufs_needed - 1, CLIB_CACHE_LINE_BYTES);
+  n_bufs = vlib_buffer_alloc (vm, wrk->tx_buffers, tb->n_bufs_needed);
+  if (PREDICT_FALSE (n_bufs < tb->n_bufs_needed))
+    {
+      if (n_bufs)
+	vlib_buffer_free (vm, wrk->tx_buffers, n_bufs);
+      sp->flags |= TRANSPORT_SND_F_NO_BUFFERS;
+      return 0;
+    }
+
+  tb->left_to_snd = tb->max_len_to_snd;
+  n_left = tb->n_segs;
+
+  vec_validate (wrk->tx_data_bufs, n_left);
+
+  while (n_left >= 4)
+    {
+      pbi = wrk->tx_buffers[n_bufs - 3];
+      pb = vlib_get_buffer (vm, pbi);
+      vlib_prefetch_buffer_header (pb, STORE);
+      pbi = wrk->tx_buffers[n_bufs - 4];
+      pb = vlib_get_buffer (vm, pbi);
+      vlib_prefetch_buffer_header (pb, STORE);
+
+      bi0 = wrk->tx_buffers[--n_bufs];
+      bi1 = wrk->tx_buffers[--n_bufs];
+
+      b0 = vlib_get_buffer (vm, bi0);
+      b1 = vlib_get_buffer (vm, bi1);
+
+      udp_tx_burst_fill_buffer (vm, wrk, tb, b0, &n_bufs, is_cless);
+      udp_tx_burst_fill_buffer (vm, wrk, tb, b1, &n_bufs, is_cless);
+
+      wrk->tx_data_bufs[tb->n_segs - n_left] = b0;
+      wrk->tx_data_bufs[tb->n_segs - n_left + 1] = b1;
+      n_left -= 2;
+
+      session_tx_add_data_buffer (swrk, bi0, next_index);
+      session_tx_add_data_buffer (swrk, bi1, next_index);
+    }
+  while (n_left)
+    {
+      if (n_left > 1)
+	{
+	  pbi = wrk->tx_buffers[n_bufs - 2];
+	  pb = vlib_get_buffer (vm, pbi);
+	  vlib_prefetch_buffer_header (pb, STORE);
+	}
+
+      bi0 = wrk->tx_buffers[--n_bufs];
+      b0 = vlib_get_buffer (vm, bi0);
+      udp_tx_burst_fill_buffer (vm, wrk, tb, b0, &n_bufs, is_cless);
+
+      wrk->tx_data_bufs[tb->n_segs - n_left] = b0;
+      n_left -= 1;
+
+      session_tx_add_data_buffer (swrk, bi0, next_index);
+    }
+
+  udp_push_header (&uc->connection, wrk->tx_data_bufs, tb->n_segs, tb->max_dequeue);
+
+  if (PREDICT_FALSE (n_bufs))
+    vlib_buffer_free (vm, wrk->tx_buffers, n_bufs);
+
+  SESSION_EVT (SESSION_EVT_DEQ, s, tb->max_len_to_snd, tb->max_dequeue,
+	       s->tx_fifo->signals->has_event, swrk->last_vlib_time);
+
+  ASSERT (tb->left_to_snd == 0);
+
+  /* If we couldn't send all bytes, reschedule as old flow */
+  if (tb->max_len_to_snd < tb->max_dequeue)
+    sp->flags |= TRANSPORT_SND_F_POSTPONE;
+
+  sp->bytes_dequeued = tb->max_len_to_snd + tb->n_segs * SESSION_CONN_HDR_LEN;
+
+  return tb->n_segs;
+}
+
 static int
 udp_open_connection (transport_endpoint_cfg_t * rmt)
 {
@@ -620,6 +987,7 @@ static const transport_proto_vft_t udp_proto = {
   .close = udp_session_close,
   .cleanup = udp_session_cleanup,
   .send_params = udp_session_send_params,
+  .custom_tx = udp_session_custom_tx,
   .format_connection = format_udp_session,
   .format_half_open = format_udp_half_open_session,
   .format_listener = format_udp_listener_session,
