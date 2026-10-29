@@ -7935,7 +7935,7 @@ static u32
 tcp_test_sack_tx_acks_n (vlib_main_t *vm, tcp_connection_t *tc, sack_block_t **blks, u32 max_burst)
 {
   session_worker_t *swrk = session_main_get_worker (vm->thread_index);
-  transport_send_params_t sp = { .max_burst_size = max_burst };
+  transport_send_params_t sp = { .max_burst_size = max_burst, .flags = TRANSPORT_SND_F_CTRL_ONLY };
   tcp_options_t opts = {};
   vlib_buffer_t *b;
   u32 i, n_acks;

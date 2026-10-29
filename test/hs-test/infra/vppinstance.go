@@ -892,7 +892,7 @@ var defaultMemLeakReportNoiseFrames = []string{
 // 12 frames, so anchor pairs deep in the stack.
 var defaultMemLeakReportNoiseFramePairs = [][2]string{
 	// per worker scratch vectors, grow to a high-water mark and are never freed
-	{"_vec_validate", "session_tx_fifo_read_and_snd_i"},
+	{"_vec_validate", "session_tx_burst_inline"},
 	// These pools retain their free bitmap and free-index vector for reuse.
 	{"_pool_put_index", "session_event_dispatch_io"},
 	{"_pool_put_index", "hcs_session_free"},

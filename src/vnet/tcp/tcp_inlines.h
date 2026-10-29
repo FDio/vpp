@@ -231,6 +231,76 @@ tcp_available_cc_snd_space (const tcp_connection_t * tc)
   return available_wnd - flight_size;
 }
 
+always_inline u32
+tcp_round_snd_space (tcp_connection_t *tc, u32 snd_space)
+{
+  if (PREDICT_FALSE (tc->snd_wnd < tc->snd_mss))
+    {
+      if (!tc->snd_wnd || tc->snd_wnd > snd_space)
+	return 0;
+      /* Sender SWS avoidance, as per RFC9293 sec. 3.8.6.2.1: fill a window smaller than an mss
+       * only if it is at least half of the max window offered or all unsent data fits. If not,
+       * nothing is in flight, so set the persist timer, which sends what fits */
+      if (tc->snd_wnd < tc->snd_wnd_max / 2 && tcp_unsent_bytes (tc) > tc->snd_wnd)
+	{
+	  if (!tcp_timer_is_active (tc, TCP_TIMER_PERSIST))
+	    tcp_persist_timer_set (&tcp_get_worker (tc->c_thread_index)->timer_wheel, tc);
+	  return 0;
+	}
+      /* Sending, so stop a persist timer set while the window was too small to send into, or
+       * zero. Once data is in flight, the retransmit timer covers the connection */
+      if (PREDICT_FALSE (tcp_timer_is_active (tc, TCP_TIMER_PERSIST)))
+	tcp_persist_timer_reset (&tcp_get_worker (tc->c_thread_index)->timer_wheel, tc);
+      return tc->snd_wnd;
+    }
+
+  /* If not snd_wnd constrained and we can't write at least a segment,
+   * don't try at all */
+  if (PREDICT_FALSE (snd_space < tc->snd_mss))
+    return snd_space < tc->cwnd ? 0 : snd_space;
+
+  /* round down to mss multiple */
+  return snd_space - (snd_space % tc->snd_mss);
+}
+
+/**
+ * Compute tx window session is allowed to fill.
+ *
+ * Takes into account available send space, snd_mss and the congestion
+ * state of the connection. If possible, the value returned is a multiple
+ * of snd_mss.
+ *
+ * @param tc tcp connection
+ * @return number of bytes session is allowed to write
+ */
+always_inline u32
+tcp_snd_space_inline (tcp_connection_t *tc)
+{
+  int snd_space;
+
+  /* Fast path is disabled when recovery is on. @ref tcp_session_custom_tx
+   * controls both retransmits and the sending of new data while congested
+   */
+  if (PREDICT_FALSE (tcp_in_cong_recovery (tc) || tc->state == TCP_STATE_CLOSED))
+    return 0;
+
+  snd_space = tcp_available_output_snd_space (tc);
+
+  /* Limited transmit. Before recovery, segments that left the network make
+   * room for as many new ones within the peer's window: those sacked, as per
+   * RFC 6675, or without sack, one per dupack for the first two, as per
+   * RFC 3042
+   */
+  if (PREDICT_FALSE (tc->rcv_dupacks || tc->sack_sb.sacked_bytes))
+    {
+      int rcv_space = (int) tc->snd_wnd - (int) (tc->snd_nxt - tc->snd_una);
+      int pipe_space = tcp_available_cc_snd_space (tc);
+
+      snd_space = clib_max (snd_space, clib_min (pipe_space, rcv_space));
+    }
+  return tcp_round_snd_space (tc, snd_space);
+}
+
 always_inline u8
 tcp_is_lost_fin (tcp_connection_t * tc)
 {
