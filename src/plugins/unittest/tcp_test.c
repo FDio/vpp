@@ -326,6 +326,8 @@ tcp_test_sack_rxt_head (tcp_test_sack_backend_t backend)
   tc->rcv_opts.flags = TCP_OPTS_FLAG_SACK_PERMITTED | TCP_OPTS_FLAG_SACK;
   tcp_test_sack_backend_init (tc, backend);
 
+  /* The rto marks loss before it sizes the head copy */
+  tcp_sack_rxt_mark_lost (tc);
   if (!TCP_TEST_I (tcp_sack_rxt_head_bytes (tc, 100) == 100,
 		   "%s: without sacks the head copy is a full mss", name))
     goto done;
@@ -361,6 +363,8 @@ tcp_test_sack_rxt_head (tcp_test_sack_backend_t backend)
   tc->rcv_opts.n_sack_blocks = 2;
   tcp_test_rack_rcv_ack (tc, 1200, &ac);
   tcp_test_rack_rcv_ack (tc, 1500, &ac);
+  /* The rto handles reneging before it sizes the head copy */
+  tcp_sack_handle_reneging (tc);
   if (!TCP_TEST_I (tcp_sack_rxt_head_bytes (tc, 200) == 200,
 		   "%s: a sacked head left by reneging does not limit the copy", name))
     goto done;
@@ -498,6 +502,152 @@ tcp_test_sack_empty_tail (void)
 
 done:
   tcp_test_sack_backend_cleanup (tc, TCP_TEST_SACK_BACKEND_SCOREBOARD);
+  return rv;
+}
+
+/* An rto with nothing sacked marks everything outstanding lost. Data sent
+ * during recovery is not lost and must not inherit the mark, or recovery
+ * exit sees loss above the recovery point and enters recovery again. */
+static int
+tcp_test_sack_rto_new_data (vlib_main_t *vm, int verbose)
+{
+  tcp_connection_t _tc, *tc = &_tc;
+  sack_scoreboard_t *sb = &tc->sack_sb;
+  sack_scoreboard_hole_t *hole;
+  tcp_ack_ctx_t ac = {};
+  sack_block_t block;
+  int rv = 0;
+
+  clib_memset (tc, 0, sizeof (*tc));
+  tc->snd_una = 1000;
+  tc->snd_nxt = 2000;
+  tc->snd_mss = 100;
+  tc->rcv_opts.flags = TCP_OPTS_FLAG_SACK_PERMITTED;
+  tc->cc_algo = tcp_cc_algo_get (TCP_CC_NEWRENO);
+  tc->cwnd = tc->ssthresh = 10 * tc->snd_mss;
+  tc->mrtt_us = 0.1;
+  scoreboard_init (sb);
+
+  /* rto retransmits the head of [1000, 2000] */
+  tc->flags = TCP_CONN_RECOVERY;
+  tc->snd_congestion = tc->snd_nxt;
+  tcp_sack_rxt_mark_lost (tc);
+  tcp_sack_init_rxt (tc, tc->snd_una + tc->snd_mss);
+  rv |= !TCP_TEST_I (sb->lost_bytes == 1000, "rto new data: rto marks [1000, 2000] lost (lost %u)",
+		     sb->lost_bytes);
+
+  /* New data [2000, 2200] is sent. The ack for the head carries no sacks */
+  tc->snd_nxt = 2200;
+  tcp_test_rcv_sacks (tc, 1100, &ac);
+  tc->snd_una = 1100;
+  hole = scoreboard_last_hole (sb);
+  if (verbose)
+    vlib_cli_output (vm, "\nrto new data, ack 1100 no sacks:\n%U", format_tcp_scoreboard, sb, tc);
+  rv |= !TCP_TEST_I (sb->lost_bytes == 900,
+		     "rto new data: data sent after the rto is not lost (lost %u, last hole "
+		     "[%u, %u] is_lost %u)",
+		     sb->lost_bytes, hole->start, hole->end, hole->is_lost);
+
+  /* More new data [2200, 2400]. The peer sacks [2000, 2100] */
+  tc->snd_nxt = 2400;
+  tc->rcv_opts.flags |= TCP_OPTS_FLAG_SACK;
+  block = (sack_block_t) { 2000, 2100 };
+  vec_add1 (tc->rcv_opts.sacks, block);
+  tc->rcv_opts.n_sack_blocks = 1;
+  tcp_test_rcv_sacks (tc, 1100, &ac);
+  hole = scoreboard_last_hole (sb);
+  if (verbose)
+    vlib_cli_output (vm, "\nrto new data, sack [2000, 2100]:\n%U", format_tcp_scoreboard, sb, tc);
+  rv |= !TCP_TEST_I (sb->lost_bytes == 900 && !hole->is_lost,
+		     "rto new data: hole above the sacked block is not lost (lost %u, last hole "
+		     "[%u, %u] is_lost %u)",
+		     sb->lost_bytes, hole->start, hole->end, hole->is_lost);
+
+  /* [1100, 2000] is retransmitted and the peer acks up to the sacked block */
+  sb->high_rxt = 2000;
+  vec_reset_length (tc->rcv_opts.sacks);
+  tc->rcv_opts.flags &= ~TCP_OPTS_FLAG_SACK;
+  tc->rcv_opts.n_sack_blocks = 0;
+  tcp_test_rcv_sacks (tc, 2100, &ac);
+  tc->snd_una = 2100;
+  if (verbose)
+    vlib_cli_output (vm, "\nrto new data, ack 2100:\n%U", format_tcp_scoreboard, sb, tc);
+  rv |= !TCP_TEST_I (sb->lost_bytes == 0,
+		     "rto new data: nothing lost at the recovery point (lost %u)", sb->lost_bytes);
+
+  tcp_loss_exit_recovery (tc, &ac);
+  rv |=
+    !TCP_TEST_I (!tcp_loss_should_reenter_recovery (tc, &ac, 1),
+		 "rto new data: recovery exit does not enter recovery again (lost %u, holes %u)",
+		 sb->lost_bytes, pool_elts (sb->holes));
+
+  /* A second rto with nothing sacked also marks the data sent after the first */
+  tc->snd_una = 1000;
+  tc->snd_nxt = 2000;
+  tc->flags = TCP_CONN_RECOVERY;
+  tc->snd_congestion = tc->snd_nxt;
+  tcp_sack_rxt_mark_lost (tc);
+  tcp_sack_init_rxt (tc, tc->snd_una + tc->snd_mss);
+  tc->snd_nxt = 2200;
+  tcp_test_rcv_sacks (tc, 1100, &ac);
+  tc->snd_una = 1100;
+  tc->snd_nxt = 2300;
+  tc->snd_congestion = tc->snd_nxt;
+  tcp_sack_rxt_mark_lost (tc);
+  hole = scoreboard_first_hole (sb);
+  if (verbose)
+    vlib_cli_output (vm, "\nrto new data, second rto:\n%U", format_tcp_scoreboard, sb, tc);
+  rv |= !TCP_TEST_I (pool_elts (sb->holes) == 1 && hole->start == 1100 && hole->end == 2300 &&
+		       hole->is_lost && sb->lost_bytes == 1200,
+		     "rto new data: second rto marks [1100, 2300] lost (holes %u, lost %u)",
+		     pool_elts (sb->holes), sb->lost_bytes);
+
+  /* After an rto, data sent and sacked above the lost hole. A spurious exit
+   * clears the loss marks, which leaves the two holes as one */
+  scoreboard_clear (sb);
+  tc->snd_una = 1000;
+  tc->snd_nxt = 2000;
+  tc->flags = TCP_CONN_RECOVERY;
+  tc->snd_congestion = tc->snd_nxt;
+  tc->prev_cwnd = tc->cwnd;
+  tc->prev_ssthresh = tc->ssthresh;
+  tcp_sack_rxt_mark_lost (tc);
+  tcp_sack_init_rxt (tc, tc->snd_una + tc->snd_mss);
+  tc->snd_nxt = 2200;
+  tcp_test_sack_tail_ack (tc, 1100, 0, 0, &ac);
+  tc->snd_nxt = 2500;
+  tcp_test_sack_tail_ack (tc, 1100, 2300, 2400, &ac);
+  rv |= !TCP_TEST_I (pool_elts (sb->holes) == 3,
+		     "rto new data: lost hole, hole after it and tail (holes %u)",
+		     pool_elts (sb->holes));
+  ac.ack_flags = TCP_ACK_F_EIFEL_SPURIOUS;
+  tcp_loss_exit_recovery (tc, &ac);
+  hole = scoreboard_first_hole (sb);
+  rv |= !TCP_TEST_I (
+    pool_elts (sb->holes) == 2 && hole->start == 1100 && hole->end == 2300 && !hole->is_lost,
+    "rto new data: spurious exit merges the holes (holes %u)", pool_elts (sb->holes));
+
+  /* A second rto copies the head across the hole for data sent after the
+   * first one, up to the first sacked byte */
+  scoreboard_clear (sb);
+  tc->snd_una = 1000;
+  tc->snd_nxt = 2000;
+  tc->flags = TCP_CONN_RECOVERY;
+  tc->snd_congestion = tc->snd_nxt;
+  tcp_sack_rxt_mark_lost (tc);
+  tcp_sack_init_rxt (tc, tc->snd_una + tc->snd_mss);
+  tc->snd_nxt = 2300;
+  tcp_test_sack_tail_ack (tc, 1950, 0, 0, &ac);
+  tc->snd_nxt = 2600;
+  tcp_test_sack_tail_ack (tc, 1950, 2400, 2500, &ac);
+  tcp_sack_rxt_mark_lost (tc);
+  rv |= !TCP_TEST_I (tcp_sack_rxt_head_bytes (tc, tc->snd_mss) == tc->snd_mss,
+		     "rto new data: head copy spans the hole after the lost one (bytes %u)",
+		     tcp_sack_rxt_head_bytes (tc, tc->snd_mss));
+
+  scoreboard_clear (sb);
+  pool_free (sb->holes);
+  vec_free (tc->rcv_opts.sacks);
   return rv;
 }
 
@@ -652,6 +802,9 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
     return 1;
 
   if (tcp_test_sack_empty_tail ())
+    return 1;
+
+  if (tcp_test_sack_rto_new_data (vm, verbose))
     return 1;
 
   clib_memset (tc, 0, sizeof (*tc));

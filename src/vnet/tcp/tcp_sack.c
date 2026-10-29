@@ -118,11 +118,19 @@ scoreboard_update_loss (sack_scoreboard_t *sb, u32 ack, u32 snd_mss, u8 clear_lo
 
   if (clear_lost)
     {
+      /* Without loss marks, a lost hole and the one an rto started after it are a single hole */
       hole = scoreboard_first_hole (sb);
       while (hole)
 	{
 	  hole->is_lost = 0;
-	  hole = scoreboard_next_hole (sb, hole);
+	  right = scoreboard_next_hole (sb, hole);
+	  if (right && right->start == hole->end)
+	    {
+	      hole->end = right->end;
+	      scoreboard_remove_hole (sb, right);
+	      continue;
+	    }
+	  hole = right;
 	}
     }
 
@@ -292,7 +300,15 @@ scoreboard_rxt_mark_lost (sack_scoreboard_t *sb, u32 snd_una, u32 snd_nxt)
 {
   sack_scoreboard_hole_t *hole;
 
+  /* Nothing sacked, so all outstanding data is lost, including any sent after
+   * the last ack or a previous rto. Replace the holes with one. */
   hole = scoreboard_first_hole (sb);
+  if (hole && !sb->sacked_bytes)
+    {
+      scoreboard_clear (sb);
+      hole = 0;
+    }
+
   if (!hole)
     {
       hole = scoreboard_insert_hole (sb, TCP_INVALID_SACK_HOLE_INDEX, snd_una,
@@ -390,13 +406,19 @@ tcp_sack_init_rxt (tcp_connection_t *tc, u32 snd_una)
 static u32
 scoreboard_rxt_head_bytes (sack_scoreboard_t *sb, u32 snd_una, u32 max_bytes)
 {
-  sack_scoreboard_hole_t *hole;
+  sack_scoreboard_hole_t *hole, *next;
+
+  /* Reneging handling and rto loss marking leave a first hole at snd_una */
+  hole = scoreboard_first_hole (sb);
+  ASSERT (hole && hole->start == snd_una && seq_gt (hole->end, snd_una));
+
+  /* A lost hole ends where the hole for data sent after its rto starts */
+  while ((next = scoreboard_next_hole (sb, hole)) && next->start == hole->end)
+    hole = next;
 
   /* Only a hole that ends below high_sacked ends where sacked data begins. A
    * tail hole ends at snd_nxt as of the last ack. */
-  hole = scoreboard_first_hole (sb);
-  if (!hole || seq_gt (hole->start, snd_una) || seq_leq (hole->end, snd_una) ||
-      !seq_lt (hole->end, sb->high_sacked))
+  if (!seq_lt (hole->end, sb->high_sacked))
     return max_bytes;
   return clib_min (max_bytes, hole->end - snd_una);
 }
@@ -819,14 +841,15 @@ tcp_scoreboard_apply_sacks (tcp_connection_t *tc, u32 ack, u32 high_sacked, tcp_
       hole = scoreboard_last_hole (sb);
       if (seq_gt (tc->snd_nxt, hole->end))
 	{
-	  if (seq_geq (hole->start, sb->high_sacked))
+	  /* An rto marks the hole lost. Data sent after it is not lost */
+	  if (seq_geq (hole->start, sb->high_sacked) && !hole->is_lost)
 	    {
 	      hole->end = tc->snd_nxt;
 	    }
-	  /* New hole after high sacked block */
+	  /* New hole after high sacked block or the lost hole */
 	  else if (seq_lt (sb->high_sacked, tc->snd_nxt))
 	    {
-	      scoreboard_insert_hole (sb, sb->tail, sb->high_sacked,
+	      scoreboard_insert_hole (sb, sb->tail, seq_max (sb->high_sacked, hole->end),
 				      tc->snd_nxt);
 	    }
 	}
