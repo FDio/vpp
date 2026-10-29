@@ -792,11 +792,12 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
 
   TCP_TEST (vec_len (tc->rcv_opts.sacks) == 0, "cumulative ack does not add a sack block");
   TCP_TEST ((sb->sacked_bytes == 0), "sacked bytes %d", sb->sacked_bytes);
-  TCP_TEST ((pool_elts (sb->holes) == 1), "scoreboard has %d elements", pool_elts (sb->holes));
+  /* Out of recovery, the tail hole left with nothing sacked is dropped */
+  TCP_TEST ((pool_elts (sb->holes) == 0), "scoreboard has %d elements", pool_elts (sb->holes));
   TCP_TEST ((ac.last_bytes_delivered == 100), "last bytes delivered %d", ac.last_bytes_delivered);
   TCP_TEST ((sb->lost_bytes == 0), "lost bytes %u", sb->lost_bytes);
-  TCP_TEST ((sb->head != TCP_INVALID_SACK_HOLE_INDEX), "head %u", sb->head);
-  TCP_TEST ((sb->tail != TCP_INVALID_SACK_HOLE_INDEX), "tail %u", sb->tail);
+  TCP_TEST ((sb->head == TCP_INVALID_SACK_HOLE_INDEX), "head %u", sb->head);
+  TCP_TEST ((sb->tail == TCP_INVALID_SACK_HOLE_INDEX), "tail %u", sb->tail);
   TCP_TEST ((!tcp_scoreboard_is_reneging (sb)), "is not reneging");
 
   /*
@@ -891,15 +892,14 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
     vlib_cli_output (vm, "\nsb ack [0, 800]:\n%U", format_tcp_scoreboard, sb,
 		     tc);
 
-  TCP_TEST ((pool_elts (sb->holes) == 1),
-	    "scoreboard has %d elements", pool_elts (sb->holes));
+  TCP_TEST ((pool_elts (sb->holes) == 0), "scoreboard has %d elements", pool_elts (sb->holes));
   TCP_TEST ((!tcp_scoreboard_is_reneging (sb)), "is not reneging");
   TCP_TEST ((sb->sacked_bytes == 0), "sacked bytes %d", sb->sacked_bytes);
   TCP_TEST ((ac.last_sacked_bytes == 0), "last sacked bytes %d", ac.last_sacked_bytes);
   TCP_TEST ((ac.last_bytes_delivered == 400), "last bytes delivered %d", ac.last_bytes_delivered);
   TCP_TEST ((sb->lost_bytes == 0), "lost bytes %u", sb->lost_bytes);
-  TCP_TEST ((sb->head != TCP_INVALID_SACK_HOLE_INDEX), "head %u", sb->head);
-  TCP_TEST ((sb->tail != TCP_INVALID_SACK_HOLE_INDEX), "tail %u", sb->tail);
+  TCP_TEST ((sb->head == TCP_INVALID_SACK_HOLE_INDEX), "head %u", sb->head);
+  TCP_TEST ((sb->tail == TCP_INVALID_SACK_HOLE_INDEX), "tail %u", sb->tail);
 
   /*
    * One hole close to head, patch head, split in two and start acking

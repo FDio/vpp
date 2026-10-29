@@ -732,6 +732,18 @@ scoreboard_update_cumulative_ack (tcp_connection_t *tc, u32 ack, tcp_sb_sack_mod
       hole = next_hole;
     }
 
+  /* Out of recovery, an ack that reaches the sack frontier leaves only the
+   * tail hole, with nothing sacked above it. Unless this ack sacks new data,
+   * drop it so later acks take the fast path. */
+  if (hole && mode == TCP_SB_SACK_OOO && seq_geq (ack, sb->high_sacked) &&
+      !(ac->ack_flags & TCP_ACK_F_SACK))
+    {
+      ASSERT (hole->next == TCP_INVALID_SACK_HOLE_INDEX && !hole->is_lost &&
+	      !tcp_scoreboard_is_reneging (sb));
+      scoreboard_remove_hole (sb, hole);
+      hole = 0;
+    }
+
   return hole;
 }
 
