@@ -895,7 +895,10 @@ var defaultMemLeakReportNoiseFramePairs = [][2]string{
 	// The trace dump captures its own output path before freeing it.
 	{"format", "save_memory_trace"},
 	// per worker scratch vectors, grow to a high-water mark and are never freed
-	{"_vec_validate", "session_tx_fifo_read_and_snd_i"},
+	{"_vec_validate", "session_tx_burst_inline"},
+	// the same in release builds, which inline the validate into the helpers
+	{"_vec_realloc_internal", "session_tx_burst_stream"},
+	{"_vec_realloc_internal", "session_tx_burst_dgram"},
 	// These pools retain their free bitmap and free-index vector for reuse.
 	{"_pool_put_index", "session_event_dispatch_io"},
 	{"_pool_put_index", "hcs_session_free"},
