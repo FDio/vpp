@@ -297,7 +297,8 @@ always_inline void
 udp_push_header_batch (udp_connection_t *uc, vlib_buffer_t **bs, u32 n_bufs,
 		       u8 is_cless)
 {
-  vlib_main_t *vm = vlib_get_main ();
+  /* Connection's thread, not a thread local lookup */
+  vlib_main_t *vm = vlib_get_main_by_index (uc->c_thread_index);
 
   while (n_bufs >= 4)
     {
@@ -381,20 +382,52 @@ udp_session_cleanup (u32 connection_index, clib_thread_index_t thread_index)
 }
 
 static int
-udp_session_send_params (transport_connection_t * tconn,
-			 transport_send_params_t * sp)
+udp_session_attribute (u32 conn_index, clib_thread_index_t thread_index, u8 is_get,
+		       transport_endpt_attr_t *attr)
 {
-  udp_connection_t *uc;
+  udp_connection_t *uc = udp_connection_get (conn_index, thread_index);
 
-  uc = udp_connection_from_transport (tconn);
+  if (PREDICT_FALSE (!uc || !is_get))
+    return -1;
 
-  /* No constraint on TX window */
-  sp->snd_space = ~0;
+  switch (attr->type)
+    {
+    case TRANSPORT_ENDPT_ATTR_MSS:
+      attr->mss = uc->mss;
+      return 0;
+    default:
+      return -1;
+    }
+}
+
+/* Send dgrams from the tx fifo in up to max_burst_size packets */
+static int
+udp_session_custom_tx (void *conn, transport_send_params_t *sp)
+{
+  udp_connection_t *uc = udp_connection_from_transport (conn);
+  session_tx_burst_t burst, *b = &burst;
+  int n_segs;
+
+  /* No tx window or pacing, so there is always room for a burst */
   /* TODO figure out MTU of output interface */
   sp->snd_mss = uc->mss;
-  sp->tx_offset = 0;
-  sp->flags = 0;
-  return 0;
+  b->next_node = udp_main.session_to_output_edge[uc->c_is_ip4];
+  n_segs = session_tx_burst_dgram (sp, b);
+
+  if (PREDICT_FALSE (n_segs <= 0))
+    {
+      if (n_segs < 0)
+	sp->flags |= TRANSPORT_SND_F_NO_BUFFERS;
+      return 0;
+    }
+
+  udp_push_header (&uc->connection, b->bufs, n_segs, b->max_dequeue);
+
+  /* If we couldn't send all bytes, reschedule as old flow */
+  if (b->n_bytes < b->max_dequeue)
+    sp->flags |= TRANSPORT_SND_F_POSTPONE;
+
+  return n_segs;
 }
 
 static int
@@ -619,7 +652,8 @@ static const transport_proto_vft_t udp_proto = {
   .get_half_open = udp_session_get_half_open,
   .close = udp_session_close,
   .cleanup = udp_session_cleanup,
-  .send_params = udp_session_send_params,
+  .custom_tx = udp_session_custom_tx,
+  .attribute = udp_session_attribute,
   .format_connection = format_udp_session,
   .format_half_open = format_udp_half_open_session,
   .format_listener = format_udp_listener_session,
@@ -668,6 +702,10 @@ udp_init (vlib_main_t * vm)
     vlib_node_add_next (vm, udp4_local_node.index, udp4_input_node.index);
   um->local_to_input_edge[UDP_IP6] =
     vlib_node_add_next (vm, udp6_local_node.index, udp6_input_node.index);
+  um->session_to_output_edge[UDP_IP4] =
+    vlib_node_get_next (vm, session_queue_node.index, udp4_output_node.index);
+  um->session_to_output_edge[UDP_IP6] =
+    vlib_node_get_next (vm, session_queue_node.index, udp6_output_node.index);
 
   um->default_mtu = 1500;
   um->csum_offload = 1;

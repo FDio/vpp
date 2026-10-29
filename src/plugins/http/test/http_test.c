@@ -4323,7 +4323,7 @@ http_test_h3_streaming_lifecycle_case (vlib_main_t *vm, u8 queue_data)
   elt->evt.session_index = as_index;
   swrk->ctx.s = as;
   svm_fifo_set_event (app_fifo);
-  session_main.session_tx_fns[as->session_type](swrk, 0, elt, &n_tx_packets);
+  session_tx_event_dispatch (swrk, 0, elt, &n_tx_packets);
   as = session_get (as_index, vm->thread_index);
   if (!queue_data)
     vft->half_close (handle.as_u32, vm->thread_index, 0 /* is_rx */);
