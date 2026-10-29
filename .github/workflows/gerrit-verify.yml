@@ -209,11 +209,7 @@ jobs:
       - start-verify
       - verify-checkstyle
     if: ${{ needs.verify-checkstyle.result == 'success' }}
-<<<<<<< HEAD   (7d6dbf gha: remove extraneous logs in workflows)
-    uses: fdio/vpp/.github/workflows/vpp-verify-hst.yml@f2443416568f44a73be9d94758f3077a43e8b1f0
-=======
     uses: fdio/vpp/.github/workflows/vpp-verify-hst.yml@7d6dbf5f25ddfcfc9b5163afc18d24f6883306fc
->>>>>>> CHANGE (0d07a3 gha: pin vpp workflows to latest sha)
     with:
       FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE }}
       GERRIT_BRANCH: ${{ inputs.GERRIT_BRANCH }}
