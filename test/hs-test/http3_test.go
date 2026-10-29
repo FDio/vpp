@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"strconv"
@@ -14,6 +15,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	"github.com/quic-go/quic-go"
 	"github.com/quic-go/quic-go/http3"
+	"github.com/quic-go/quic-go/quicvarint"
 )
 
 func init() {
@@ -599,26 +601,46 @@ func Http3GoawayOnReqStreamTest(s *Http3Suite) {
 func Http3UnknownFrameOnReqStreamTest(s *Http3Suite) {
 	vpp := s.Containers.Vpp.VppInstance
 	serverAddress := s.VppAddr() + ":" + s.Ports.Port1
-	Log(vpp.Vppctl("http tps no-zc h3 uri https://" + serverAddress))
+	uri := "https://" + serverAddress
+	Log(vpp.Vppctl("http tps no-zc h3 uri " + uri))
 
-	conn := H3ClientConnect(serverAddress)
-	defer conn.CloseWithError(0, "")
-	stream, err := conn.OpenStream()
-	AssertNil(err)
-	// a complete unknown frame (reserved type 0x21, length 16) on a request
-	// stream must be discarded, not crash the server by peeking an empty fifo
-	_, err = stream.Write(append([]byte{0x21, 0x10}, make([]byte, 16)...))
-	AssertNil(err)
+	for _, tc := range []struct {
+		length     uint64
+		payloadLen int
+	}{
+		{16, 16},
+		{1 << 32, 2},
+		{1<<32 + 1, 2},
+		{0x001fffff00000000, 2},
+	} {
+		By(fmt.Sprintf("discarding an unknown frame with payload length %d", tc.length))
+		conn := H3ClientConnect(serverAddress)
+		defer conn.CloseWithError(0, "")
+		h3c := (&http3.Transport{}).NewClientConn(conn)
+		stream, err := conn.OpenStream()
+		AssertNil(err)
 
-	select {
-	case <-conn.Context().Done():
-		AssertNil(context.Cause(conn.Context()), "unknown frame must not error the connection")
-	case <-time.After(time.Second):
+		frame := quicvarint.Append(nil, 0x21)
+		frame = quicvarint.Append(frame, tc.length)
+		_, err = stream.Write(append(frame, make([]byte, tc.payloadLen)...))
+		AssertNil(err)
+		time.Sleep(100 * time.Millisecond)
+
+		responseStream, err := h3c.OpenRequestStream(context.Background())
+		AssertNil(err)
+		AssertNil(responseStream.SetDeadline(time.Now().Add(3 * time.Second)))
+		req, err := http.NewRequest(http.MethodGet, uri+"/test_file_64", nil)
+		AssertNil(err)
+		AssertNil(responseStream.SendRequestHeader(req))
+		AssertNil(responseStream.Close())
+		resp, err := responseStream.ReadResponse()
+		AssertNil(err, "server must remain responsive while discarding a large unknown frame")
+		AssertHttpStatus(resp, http.StatusOK)
+		body, err := io.ReadAll(resp.Body)
+		AssertNil(err)
+		AssertEqual(64, len(body))
+		AssertNil(resp.Body.Close())
 	}
-
-	o := vpp.Vppctl("show session verbose 2")
-	Log(o)
-	AssertContains(o, "[H3]")
 }
 
 func Http3GoawayInvalidLengthTest(s *Http3Suite) {
