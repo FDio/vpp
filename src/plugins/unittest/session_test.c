@@ -92,7 +92,7 @@ session_test_rx_chain_run (vlib_main_t *vm, transport_connection_t *tc, svm_fifo
   const u16 empty_ooo_lengths[] = { 0, 0, 32, 64 };
   const u16 *ooo_cases[] = { ooo_lengths, empty_ooo_lengths, lengths[2] };
   const u32 ooo_n_buffers[] = { 4, 4, 1 };
-  svm_fifo_ooo_enq_info_t info;
+  svm_fifo_enq_args_t args = {};
   u32 i, len;
   int rv;
 
@@ -105,7 +105,7 @@ session_test_rx_chain_run (vlib_main_t *vm, transport_connection_t *tc, svm_fifo
   for (i = 0; i < ARRAY_LEN (lengths); i++)
     {
       len = session_test_rx_chain_prepare (vm, buffers, lengths[i], n_buffers[i], expected);
-      rv = session_enqueue_stream_connection (tc, vlib_get_buffer (vm, buffers[0]), 0);
+      rv = session_enqueue_stream_connection (tc, vlib_get_buffer (vm, buffers[0]), 0, &args);
       SESSION_TEST (rv == len, "rx case %u enqueued %d bytes", i, rv);
       rv = svm_fifo_dequeue (f, len, actual);
       SESSION_TEST (rv == len && !memcmp (actual, expected, len), "rx case %u preserves payload",
@@ -117,9 +117,9 @@ session_test_rx_chain_run (vlib_main_t *vm, transport_connection_t *tc, svm_fifo
   rv = svm_fifo_enqueue (f, 4096 - 64, expected);
   SESSION_TEST (rv == 4096 - 64, "left 64 bytes free in fifo");
   session_test_rx_chain_prepare (vm, buffers, partial_lengths, 4, expected);
-  rv = session_enqueue_stream_connection (tc, vlib_get_buffer (vm, buffers[0]), 0);
+  rv = session_enqueue_stream_connection (tc, vlib_get_buffer (vm, buffers[0]), 0, &args);
   SESSION_TEST (rv == 64, "rx chain partially enqueues when fifo fills");
-  rv = session_enqueue_stream_connection (tc, vlib_get_buffer (vm, buffers[0]), 0);
+  rv = session_enqueue_stream_connection (tc, vlib_get_buffer (vm, buffers[0]), 0, &args);
   SESSION_TEST (rv == SVM_FIFO_EFULL, "rx chain reports a full fifo");
   rv = svm_fifo_dequeue_drop (f, 4096 - 64);
   SESSION_TEST (rv == 4096 - 64, "dropped original fifo contents");
@@ -131,8 +131,10 @@ session_test_rx_chain_run (vlib_main_t *vm, transport_connection_t *tc, svm_fifo
   rv = svm_fifo_enqueue_with_offset (f, 32, 128, expected + 32);
   SESSION_TEST (rv == 0, "buffered out-of-order data");
   session_test_rx_chain_prepare (vm, buffers, ooo_lengths, 4, expected);
-  rv = session_enqueue_stream_connection (tc, vlib_get_buffer (vm, buffers[0]), 0);
-  SESSION_TEST (rv == 160, "rx chain collects out-of-order data");
+  rv = session_enqueue_stream_connection (tc, vlib_get_buffer (vm, buffers[0]), 0, &args);
+  SESSION_TEST (rv == 160 && args.dup_offset == 32 && args.dup_len == 64,
+		"rx chain collects out-of-order data, the fifo had %u bytes at %u", args.dup_len,
+		args.dup_offset);
   rv = svm_fifo_dequeue (f, 160, actual);
   SESSION_TEST (rv == 160 && !memcmp (actual, expected, 160), "collected rx payload preserved");
 
@@ -141,8 +143,9 @@ session_test_rx_chain_run (vlib_main_t *vm, transport_connection_t *tc, svm_fifo
     {
       len =
 	session_test_rx_chain_prepare (vm, buffers, ooo_cases[i], ooo_n_buffers[i], expected + 32);
-      rv = session_enqueue_stream_connection_ooo (tc, vlib_get_buffer (vm, buffers[0]), 32, &info);
-      SESSION_TEST (rv == 0 && svm_fifo_max_dequeue_cons (f) == 0,
+      args.offset = 32;
+      rv = session_enqueue_stream_connection (tc, vlib_get_buffer (vm, buffers[0]), 0, &args);
+      SESSION_TEST (rv == len && svm_fifo_max_dequeue_cons (f) == 0,
 		    "out-of-order rx case %u remains unpublished", i);
       rv = svm_fifo_enqueue (f, 32, expected);
       SESSION_TEST (rv == 32 + len, "filled gap before out-of-order rx case %u", i);
@@ -156,14 +159,14 @@ session_test_rx_chain_run (vlib_main_t *vm, transport_connection_t *tc, svm_fifo
   for (i = 0; i < 2; i++)
     {
       len = session_test_rx_chain_prepare (vm, buffers, ooo_cases[i], 4, expected + 4000);
-      rv =
-	session_enqueue_stream_connection_ooo (tc, vlib_get_buffer (vm, buffers[0]), 4032, &info);
+      args.offset = 4032;
+      rv = session_enqueue_stream_connection (tc, vlib_get_buffer (vm, buffers[0]), 0, &args);
       SESSION_TEST (rv == SVM_FIFO_EFULL && !svm_fifo_has_ooo_data (f),
 		    "out-of-order rx case %u that does not fit is not enqueued", i);
-      rv =
-	session_enqueue_stream_connection_ooo (tc, vlib_get_buffer (vm, buffers[0]), 4000, &info);
-      SESSION_TEST (rv == 0, "out-of-order rx case %u that fits is enqueued", i);
-      SESSION_TEST (info.seg_offset == 4000 && info.seg_len == len && !info.dup_len,
+      args.offset = 4000;
+      rv = session_enqueue_stream_connection (tc, vlib_get_buffer (vm, buffers[0]), 0, &args);
+      SESSION_TEST (rv == len, "out-of-order rx case %u that fits is enqueued", i);
+      SESSION_TEST (args.seg_offset == 4000 && args.seg_len == len && !args.dup_len,
 		    "out-of-order rx case %u is one new segment", i);
       rv = svm_fifo_enqueue (f, 4000, expected);
       SESSION_TEST (rv == 4000 + len, "filled gap before out-of-order rx case %u", i);
@@ -176,9 +179,10 @@ session_test_rx_chain_run (vlib_main_t *vm, transport_connection_t *tc, svm_fifo
   rv = svm_fifo_enqueue_with_offset (f, 32, 96, expected + 32);
   SESSION_TEST (rv == 0, "buffered out-of-order data");
   len = session_test_rx_chain_prepare (vm, buffers, ooo_cases[0], 4, expected + 32);
-  rv = session_enqueue_stream_connection_ooo (tc, vlib_get_buffer (vm, buffers[0]), 32, &info);
-  SESSION_TEST (rv == 0 && svm_fifo_n_ooo_segments (f) == 1 && info.seg_offset == 32 &&
-		  info.seg_len == 96 && info.dup_offset == 32 && info.dup_len == len,
+  args.offset = 32;
+  rv = session_enqueue_stream_connection (tc, vlib_get_buffer (vm, buffers[0]), 0, &args);
+  SESSION_TEST (rv == len && svm_fifo_n_ooo_segments (f) == 1 && args.seg_offset == 32 &&
+		  args.seg_len == 96 && args.dup_offset == 32 && args.dup_len == len,
 		"out-of-order rx chain that repeats queued data changes no segment");
   rv = svm_fifo_enqueue (f, 32, expected);
   SESSION_TEST (rv == 128, "filled gap before repeated out-of-order data");
