@@ -390,6 +390,117 @@ done:
   return rv;
 }
 
+static void
+tcp_test_sack_tail_init (tcp_connection_t *tc, u32 flags)
+{
+  clib_memset (tc, 0, sizeof (*tc));
+  tc->snd_una = 1000;
+  tc->snd_nxt = 2000;
+  tc->snd_mss = 100;
+  tc->flags = flags;
+  tc->rcv_opts.flags = TCP_OPTS_FLAG_SACK_PERMITTED;
+  scoreboard_init (&tc->sack_sb);
+}
+
+/* Ack with one sack block, or none if the block is empty */
+static void
+tcp_test_sack_tail_ack (tcp_connection_t *tc, u32 ack, u32 start, u32 end, tcp_ack_ctx_t *ac)
+{
+  sack_block_t block = { start, end };
+
+  vec_reset_length (tc->rcv_opts.sacks);
+  tc->rcv_opts.flags &= ~TCP_OPTS_FLAG_SACK;
+  tc->rcv_opts.n_sack_blocks = 0;
+  if (start != end)
+    {
+      vec_add1 (tc->rcv_opts.sacks, block);
+      tc->rcv_opts.flags |= TCP_OPTS_FLAG_SACK;
+      tc->rcv_opts.n_sack_blocks = 1;
+    }
+  tcp_test_rcv_sacks (tc, ack, ac);
+  tc->snd_una = seq_max (tc->snd_una, ack);
+}
+
+/* Out of recovery, an ack that covers all sacked data drops the tail hole
+ * left with nothing sacked above it. The hole stays if the ack sacks new
+ * data, if sacked data remains, if it is lost, or in recovery. */
+static int
+tcp_test_sack_empty_tail (void)
+{
+  tcp_connection_t _tc, *tc = &_tc;
+  sack_scoreboard_t *sb = &tc->sack_sb;
+  sack_scoreboard_hole_t *first, *last;
+  u8 can_rescue = 0, snd_limited = 0;
+  tcp_ack_ctx_t ac = {};
+  int rv = 1;
+
+  tcp_test_sack_tail_init (tc, 0);
+  tcp_test_sack_tail_ack (tc, 1000, 1100, 1300, &ac);
+
+  /* An ack at the frontier that sacks new data keeps the tail for the block */
+  tc->snd_nxt = 2200;
+  tcp_test_sack_tail_ack (tc, 1300, 1500, 1600, &ac);
+  first = scoreboard_first_hole (sb);
+  last = scoreboard_last_hole (sb);
+  if (!TCP_TEST_I (pool_elts (sb->holes) == 2 && first->start == 1300 && first->end == 1500 &&
+		     last->start == 1600 && last->end == 2200 && sb->sacked_bytes == 100,
+		   "empty tail: an ack at the frontier that sacks new data keeps the holes "
+		   "(holes %u, sacked %u)",
+		   pool_elts (sb->holes), sb->sacked_bytes))
+    goto done;
+
+  /* An ack below the frontier keeps the holes */
+  tcp_test_sack_tail_ack (tc, 1400, 0, 0, &ac);
+  first = scoreboard_first_hole (sb);
+  if (!TCP_TEST_I (pool_elts (sb->holes) == 2 && first->start == 1400 && sb->sacked_bytes == 100,
+		   "empty tail: an ack below the frontier keeps the holes (holes %u, sacked %u)",
+		   pool_elts (sb->holes), sb->sacked_bytes))
+    goto done;
+
+  /* An ack at the frontier drops the tail */
+  tcp_test_sack_tail_ack (tc, 1600, 0, 0, &ac);
+  if (!TCP_TEST_I (
+	pool_elts (sb->holes) == 0 && sb->head == TCP_INVALID_SACK_HOLE_INDEX && !sb->sacked_bytes,
+	"empty tail: an ack at the frontier drops the tail (holes %u)", pool_elts (sb->holes)))
+    goto done;
+
+  /* In recovery the tail stays, so rule 4 can still rescue it */
+  tcp_test_sack_backend_cleanup (tc, TCP_TEST_SACK_BACKEND_SCOREBOARD);
+  tcp_test_sack_tail_init (tc, TCP_CONN_FAST_RECOVERY | TCP_CONN_RECOVERY);
+  tc->snd_congestion = tc->snd_nxt;
+  tcp_test_sack_tail_ack (tc, 1000, 1100, 1300, &ac);
+  tcp_sack_init_rxt (tc, tc->snd_una);
+  tcp_test_sack_tail_ack (tc, 1300, 0, 0, &ac);
+  first = scoreboard_first_hole (sb);
+  if (!TCP_TEST_I (pool_elts (sb->holes) == 1 && first->start == 1300 && first->end == 2000,
+		   "empty tail: recovery keeps the tail (holes %u)", pool_elts (sb->holes)))
+    goto done;
+  if (!TCP_TEST_I (
+	!scoreboard_next_rxt_hole (sb, 0, 0 /* have_unsent */, &can_rescue, &snd_limited) &&
+	  can_rescue,
+	"empty tail: recovery can still rescue the tail"))
+    goto done;
+
+  /* A lost hole keeps its loss state out of recovery */
+  tcp_test_sack_backend_cleanup (tc, TCP_TEST_SACK_BACKEND_SCOREBOARD);
+  tcp_test_sack_tail_init (tc, TCP_CONN_RECOVERY);
+  tcp_sack_rxt_mark_lost (tc);
+  tc->flags = 0;
+  tcp_test_sack_tail_ack (tc, 1500, 0, 0, &ac);
+  first = scoreboard_first_hole (sb);
+  if (!TCP_TEST_I (pool_elts (sb->holes) == 1 && first->start == 1500 && first->is_lost &&
+		     sb->lost_bytes == 500,
+		   "empty tail: a lost hole is kept (holes %u, lost %u)", pool_elts (sb->holes),
+		   sb->lost_bytes))
+    goto done;
+
+  rv = 0;
+
+done:
+  tcp_test_sack_backend_cleanup (tc, TCP_TEST_SACK_BACKEND_SCOREBOARD);
+  return rv;
+}
+
 /* The reorder estimate must equal ceil(reordering_distance / mss) exactly,
  * neither under- nor over-estimating, and must track the maximum observed
  * distance rather than summing successive observations. */
@@ -538,6 +649,9 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
 
   if (tcp_test_sack_rxt_head (TCP_TEST_SACK_BACKEND_SCOREBOARD) ||
       tcp_test_sack_rxt_head (TCP_TEST_SACK_BACKEND_BT))
+    return 1;
+
+  if (tcp_test_sack_empty_tail ())
     return 1;
 
   clib_memset (tc, 0, sizeof (*tc));
@@ -792,11 +906,12 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
 
   TCP_TEST (vec_len (tc->rcv_opts.sacks) == 0, "cumulative ack does not add a sack block");
   TCP_TEST ((sb->sacked_bytes == 0), "sacked bytes %d", sb->sacked_bytes);
-  TCP_TEST ((pool_elts (sb->holes) == 1), "scoreboard has %d elements", pool_elts (sb->holes));
+  /* Out of recovery, the tail hole left with nothing sacked is dropped */
+  TCP_TEST ((pool_elts (sb->holes) == 0), "scoreboard has %d elements", pool_elts (sb->holes));
   TCP_TEST ((ac.last_bytes_delivered == 100), "last bytes delivered %d", ac.last_bytes_delivered);
   TCP_TEST ((sb->lost_bytes == 0), "lost bytes %u", sb->lost_bytes);
-  TCP_TEST ((sb->head != TCP_INVALID_SACK_HOLE_INDEX), "head %u", sb->head);
-  TCP_TEST ((sb->tail != TCP_INVALID_SACK_HOLE_INDEX), "tail %u", sb->tail);
+  TCP_TEST ((sb->head == TCP_INVALID_SACK_HOLE_INDEX), "head %u", sb->head);
+  TCP_TEST ((sb->tail == TCP_INVALID_SACK_HOLE_INDEX), "tail %u", sb->tail);
   TCP_TEST ((!tcp_scoreboard_is_reneging (sb)), "is not reneging");
 
   /*
@@ -891,15 +1006,14 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
     vlib_cli_output (vm, "\nsb ack [0, 800]:\n%U", format_tcp_scoreboard, sb,
 		     tc);
 
-  TCP_TEST ((pool_elts (sb->holes) == 1),
-	    "scoreboard has %d elements", pool_elts (sb->holes));
+  TCP_TEST ((pool_elts (sb->holes) == 0), "scoreboard has %d elements", pool_elts (sb->holes));
   TCP_TEST ((!tcp_scoreboard_is_reneging (sb)), "is not reneging");
   TCP_TEST ((sb->sacked_bytes == 0), "sacked bytes %d", sb->sacked_bytes);
   TCP_TEST ((ac.last_sacked_bytes == 0), "last sacked bytes %d", ac.last_sacked_bytes);
   TCP_TEST ((ac.last_bytes_delivered == 400), "last bytes delivered %d", ac.last_bytes_delivered);
   TCP_TEST ((sb->lost_bytes == 0), "lost bytes %u", sb->lost_bytes);
-  TCP_TEST ((sb->head != TCP_INVALID_SACK_HOLE_INDEX), "head %u", sb->head);
-  TCP_TEST ((sb->tail != TCP_INVALID_SACK_HOLE_INDEX), "tail %u", sb->tail);
+  TCP_TEST ((sb->head == TCP_INVALID_SACK_HOLE_INDEX), "head %u", sb->head);
+  TCP_TEST ((sb->tail == TCP_INVALID_SACK_HOLE_INDEX), "tail %u", sb->tail);
 
   /*
    * One hole close to head, patch head, split in two and start acking
