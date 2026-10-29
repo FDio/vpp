@@ -87,6 +87,24 @@
       "parentUuid": "2213424d_ece7ab52",
       "revId": "cf58787965d1402f5126fd930e78e9443f94dc92",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "11f20f7c_cc5a172d",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-10-29T17:05:15Z",
+      "side": 1,
+      "message": "Comment addressed by https://gerrit.fd.io/r/c/vpp/+/47335?forceReload\u003dtrue",
+      "parentUuid": "7add45bd_d22dcd37",
+      "revId": "cf58787965d1402f5126fd930e78e9443f94dc92",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
