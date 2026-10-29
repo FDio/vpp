@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3c11ec9c_b44b6638",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 2
+      },
+      "lineNbr": 8,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-10-29T20:09:55Z",
+      "side": 1,
+      "message": "Add a line here",
+      "revId": "f15efdfd1df1996b25f4e3064d3e4233b4483144",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "24a1357b_6d41af98",
+        "filename": "src/plugins/hsi/hsi_tracker_private.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 235,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-10-29T20:09:55Z",
+      "side": 1,
+      "message": "This would fail in many other places, not needed :)",
+      "revId": "f15efdfd1df1996b25f4e3064d3e4233b4483144",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9d27c28f_78147610",
+        "filename": "src/plugins/hsi/hsi_tracker_private.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 251,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-10-29T20:09:55Z",
+      "side": 1,
+      "message": "Let\u0027s make these static inlines to make sure they\u0027re easier to troubleshoot",
+      "revId": "f15efdfd1df1996b25f4e3064d3e4233b4483144",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
