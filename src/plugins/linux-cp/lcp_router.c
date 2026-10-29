@@ -617,21 +617,40 @@ lcp_router_mk_addr (const struct nl_addr *rna, ip_address_t *ia)
 		  FIB_PROTOCOL_IP4 == fproto ? AF_IP4 : AF_IP6);
 }
 
-static fib_protocol_t
-lcp_router_mk_addr46 (const struct nl_addr *rna, ip46_address_t *ia)
+/*
+ * Convert a libnl address into an ip46_address_t and report its family.
+ * Returns true on success. Returns false when the raw address length
+ * exceeds the destination (an oversized attribute from a malformed
+ * netlink message) — the caller must reject the record instead of
+ * continuing with a reset ip46_address_t that would be interpreted as
+ * 0.0.0.0 / ::.
+ */
+static bool
+lcp_router_mk_addr46 (const struct nl_addr *rna, ip46_address_t *ia, fib_protocol_t *out_fproto)
 {
   fib_protocol_t fproto;
+  unsigned int alen;
 
   fproto = lcp_router_proto_k2f (nl_addr_get_family (rna));
   ASSERT (FIB_PROTOCOL_MPLS != fproto);
 
   ip46_address_reset (ia);
+  alen = nl_addr_get_len (rna);
   if (FIB_PROTOCOL_IP4 == fproto)
-    memcpy (&ia->ip4, nl_addr_get_binary_addr (rna), nl_addr_get_len (rna));
+    {
+      if (PREDICT_FALSE (alen > sizeof (ia->ip4)))
+	return false;
+      memcpy (&ia->ip4, nl_addr_get_binary_addr (rna), alen);
+    }
   else
-    memcpy (&ia->ip6, nl_addr_get_binary_addr (rna), nl_addr_get_len (rna));
+    {
+      if (PREDICT_FALSE (alen > sizeof (ia->ip6)))
+	return false;
+      memcpy (&ia->ip6, nl_addr_get_binary_addr (rna), alen);
+    }
 
-  return (fproto);
+  *out_fproto = fproto;
+  return true;
 }
 
 static u32
@@ -1032,7 +1051,14 @@ lcp_router_table_unlock (lcp_router_table_t *nlt)
     }
 }
 
-static void
+/*
+ * Build the fib_prefix_t for the destination of a netlink route. Returns
+ * true on success. Returns false when the netlink destination address is
+ * longer than the destination family can hold — the caller must drop the
+ * record instead of defaulting fp_len to 0, which would otherwise hijack
+ * 0.0.0.0/0 or ::/0 with no next hop.
+ */
+static bool
 lcp_router_route_mk_prefix (struct rtnl_route *r, fib_prefix_t *p)
 {
   const struct nl_addr *addr = rtnl_route_get_dst (r);
@@ -1051,31 +1077,48 @@ lcp_router_route_mk_prefix (struct rtnl_route *r, fib_prefix_t *p)
       p->fp_label = (entry & MPLS_LS_LABEL_MASK) >> MPLS_LS_LABEL_SHIFT;
       p->fp_len = 21;
       p->fp_eos = MPLS_NON_EOS;
-      return;
+      return true;
     case FIB_PROTOCOL_IP4:
+      if (PREDICT_FALSE (blen > sizeof (paddr->ip4)))
+	return false;
       memcpy (&paddr->ip4, baddr, blen);
       break;
     case FIB_PROTOCOL_IP6:
+      if (PREDICT_FALSE (blen > sizeof (paddr->ip6)))
+	return false;
       memcpy (&paddr->ip6, baddr, blen);
       break;
     }
 
   p->fp_len = nl_addr_get_prefixlen (addr);
+  return true;
 }
 
-static void
+/*
+ * Build the mfib_prefix_t for a multicast netlink route. Returns true on
+ * success. Returns false when either group or source address is oversized.
+ */
+static bool
 lcp_router_route_mk_mprefix (struct rtnl_route *r, mfib_prefix_t *p)
 {
   const struct nl_addr *addr;
+  fib_protocol_t fproto;
 
   addr = rtnl_route_get_dst (r);
 
   p->fp_len = nl_addr_get_prefixlen (addr);
-  p->fp_proto = lcp_router_mk_addr46 (addr, &p->fp_grp_addr);
+  if (!lcp_router_mk_addr46 (addr, &p->fp_grp_addr, &fproto))
+    return false;
+  p->fp_proto = fproto;
 
   addr = rtnl_route_get_src (r);
   if (addr)
-    p->fp_proto = lcp_router_mk_addr46 (addr, &p->fp_src_addr);
+    {
+      if (!lcp_router_mk_addr46 (addr, &p->fp_src_addr, &fproto))
+	return false;
+      p->fp_proto = fproto;
+    }
+  return true;
 }
 
 static int
@@ -1114,6 +1157,7 @@ typedef struct lcp_router_route_path_parse_t_
   fib_route_path_t *paths;
   fib_protocol_t route_proto;
   bool is_mcast;
+  bool invalid;
   fib_route_path_flags_t type_flags;
   u8 preference;
 } lcp_router_route_path_parse_t;
@@ -1125,6 +1169,9 @@ lcp_router_route_path_parse (struct rtnl_nexthop *rnh, void *arg)
   fib_route_path_t *path;
   u32 sw_if_index;
   int label_count = 0;
+
+  if (ctx->invalid)
+    return;
 
   sw_if_index = lcp_router_intf_h2p (rtnl_route_nh_get_ifindex (rnh));
 
@@ -1152,7 +1199,15 @@ lcp_router_route_path_parse (struct rtnl_nexthop *rnh, void *arg)
 	addr = rtnl_route_nh_get_via (rnh);
 
       if (addr)
-	fproto = lcp_router_mk_addr46 (addr, &path->frp_addr);
+	{
+	  if (!lcp_router_mk_addr46 (addr, &path->frp_addr, &fproto))
+	    {
+	      LCP_ROUTER_ERROR ("invalid nexthop address: oversized netlink attribute");
+	      ctx->invalid = true;
+	      vec_dec_len (ctx->paths, 1);
+	      return;
+	    }
+	}
       else
 	fproto = ctx->route_proto;
 
@@ -1189,6 +1244,17 @@ lcp_router_route_path_parse (struct rtnl_nexthop *rnh, void *arg)
 
       LCP_ROUTER_DBG (" path:[%U]", format_fib_route_path, path);
     }
+}
+
+/* Rejected paths have not transferred label ownership to the FIB. */
+static void
+lcp_router_route_paths_discard (fib_route_path_t *paths)
+{
+  fib_route_path_t *path;
+
+  vec_foreach (path, paths)
+    vec_free (path->frp_label_stack);
+  vec_free (paths);
 }
 
 /*
@@ -1281,7 +1347,11 @@ lcp_router_route_del (struct rtnl_route *rr)
   if (!lcp_router_route_type_valid[rtype] || (table_id == 255))
     return;
 
-  lcp_router_route_mk_prefix (rr, &pfx);
+  if (!lcp_router_route_mk_prefix (rr, &pfx))
+    {
+      LCP_ROUTER_ERROR ("route del: invalid destination: oversized netlink attribute");
+      return;
+    }
   entry_flags = lcp_router_route_mk_entry_flags (rtype, table_id, rproto);
 
   /* Skip any kernel routes and IPv6 LL or multicast routes */
@@ -1309,6 +1379,11 @@ lcp_router_route_del (struct rtnl_route *rr)
   };
 
   rtnl_route_foreach_nexthop (rr, lcp_router_route_path_parse, &np);
+  if (np.invalid)
+    {
+      lcp_router_route_paths_discard (np.paths);
+      return;
+    }
   lcp_router_route_path_add_special (rr, &np);
 
   if (0 != vec_len (np.paths))
@@ -1364,6 +1439,7 @@ lcp_router_route_add (struct rtnl_route *rr, int is_replace)
   fib_entry_flag_t entry_flags;
   uint32_t table_id;
   fib_prefix_t pfx;
+  mfib_prefix_t mpfx = {};
   lcp_router_table_t *nlt;
   uint8_t rtype, rproto;
 
@@ -1375,7 +1451,11 @@ lcp_router_route_add (struct rtnl_route *rr, int is_replace)
   if (!lcp_router_route_type_valid[rtype] || (table_id == 255))
     return;
 
-  lcp_router_route_mk_prefix (rr, &pfx);
+  if (!lcp_router_route_mk_prefix (rr, &pfx))
+    {
+      LCP_ROUTER_ERROR ("route add: invalid destination: oversized netlink attribute");
+      return;
+    }
   entry_flags = lcp_router_route_mk_entry_flags (rtype, table_id, rproto);
 
   /* Skip any kernel routes and IPv6 LL or multicast routes */
@@ -1392,6 +1472,12 @@ lcp_router_route_add (struct rtnl_route *rr, int is_replace)
 		  rtnl_route_get_table (rr), format_fib_prefix, &pfx,
 		  format_fib_entry_flags, entry_flags);
 
+  if (rtype == RTN_MULTICAST && !lcp_router_route_mk_mprefix (rr, &mpfx))
+    {
+      LCP_ROUTER_ERROR ("route add: invalid mcast prefix: oversized netlink attribute");
+      return;
+    }
+
   lcp_router_route_path_parse_t np = {
     .route_proto = pfx.fp_proto,
     .is_mcast = (rtype == RTN_MULTICAST),
@@ -1400,6 +1486,11 @@ lcp_router_route_add (struct rtnl_route *rr, int is_replace)
   };
 
   rtnl_route_foreach_nexthop (rr, lcp_router_route_path_parse, &np);
+  if (np.invalid)
+    {
+      lcp_router_route_paths_discard (np.paths);
+      return;
+    }
   lcp_router_route_path_add_special (rr, &np);
 
   if (0 != vec_len (np.paths))
@@ -1410,10 +1501,6 @@ lcp_router_route_add (struct rtnl_route *rr, int is_replace)
 	{
 	  /* it's not clear to me how linux expresses the RPF paramters
 	   * so we'll allow from all interfaces and hope for the best */
-	  mfib_prefix_t mpfx = {};
-
-	  lcp_router_route_mk_mprefix (rr, &mpfx);
-
 	  mfib_table_entry_update (nlt->nlt_mfib_index, &mpfx,
 				   MFIB_SOURCE_PLUGIN_LOW, MFIB_RPF_ID_NONE,
 				   MFIB_ENTRY_FLAG_ACCEPT_ALL_ITF);
@@ -1605,30 +1692,23 @@ lcp_router_table_flush (lcp_router_table_t *nlt, u32 *sw_if_index_to_bool,
   vec_free (ctx.lrtf_entries);
 }
 
-const nl_vft_t lcp_router_vft = {
+__clib_export const nl_vft_t lcp_router_vft = {
   .nvl_rt_link_add = { .is_mp_safe = 0, .cb = lcp_router_link_add },
   .nvl_rt_link_del = { .is_mp_safe = 0, .cb = lcp_router_link_del },
-  .nvl_rt_link_sync_begin = { .is_mp_safe = 0,
-			      .cb = lcp_router_link_sync_begin },
+  .nvl_rt_link_sync_begin = { .is_mp_safe = 0, .cb = lcp_router_link_sync_begin },
   .nvl_rt_link_sync_end = { .is_mp_safe = 0, .cb = lcp_router_link_sync_end },
   .nvl_rt_addr_add = { .is_mp_safe = 0, .cb = lcp_router_link_addr_add },
   .nvl_rt_addr_del = { .is_mp_safe = 0, .cb = lcp_router_link_addr_del },
-  .nvl_rt_addr_sync_begin = { .is_mp_safe = 0,
-			      .cb = lcp_router_link_addr_sync_begin },
-  .nvl_rt_addr_sync_end = { .is_mp_safe = 0,
-			    .cb = lcp_router_link_addr_sync_end },
+  .nvl_rt_addr_sync_begin = { .is_mp_safe = 0, .cb = lcp_router_link_addr_sync_begin },
+  .nvl_rt_addr_sync_end = { .is_mp_safe = 0, .cb = lcp_router_link_addr_sync_end },
   .nvl_rt_neigh_add = { .is_mp_safe = 0, .cb = lcp_router_neigh_add },
   .nvl_rt_neigh_del = { .is_mp_safe = 0, .cb = lcp_router_neigh_del },
-  .nvl_rt_neigh_sync_begin = { .is_mp_safe = 0,
-			       .cb = lcp_router_neigh_sync_begin },
-  .nvl_rt_neigh_sync_end = { .is_mp_safe = 0,
-			     .cb = lcp_router_neigh_sync_end },
+  .nvl_rt_neigh_sync_begin = { .is_mp_safe = 0, .cb = lcp_router_neigh_sync_begin },
+  .nvl_rt_neigh_sync_end = { .is_mp_safe = 0, .cb = lcp_router_neigh_sync_end },
   .nvl_rt_route_add = { .is_mp_safe = 1, .cb = lcp_router_route_add },
   .nvl_rt_route_del = { .is_mp_safe = 1, .cb = lcp_router_route_del },
-  .nvl_rt_route_sync_begin = { .is_mp_safe = 0,
-			       .cb = lcp_router_route_sync_begin },
-  .nvl_rt_route_sync_end = { .is_mp_safe = 0,
-			     .cb = lcp_router_route_sync_end },
+  .nvl_rt_route_sync_begin = { .is_mp_safe = 0, .cb = lcp_router_route_sync_begin },
+  .nvl_rt_route_sync_end = { .is_mp_safe = 0, .cb = lcp_router_route_sync_end },
 };
 
 static void
