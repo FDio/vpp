@@ -1,0 +1,22 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "bec57f6a_d6bad019",
+        "filename": "src/plugins/ikev2/ikev2_crypto.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 925,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-10-29T19:20:17Z",
+      "side": 1,
+      "message": "Could we check both fetch results and exclude unavailable transforms (or fail initialization) before adding them to `supported_transforms`? Unlike the legacy accessors, `EVP_CIPHER_fetch`/`EVP_MD_fetch` can return NULL when the configured providers or property policy do not supply an algorithm, but proposal selection still accepts these entries. The crypto paths then pass NULL to the shared EVP/HMAC contexts, where it means reuse the previous algorithm. A local OpenSSL 3 probe confirms that both Init calls can succeed while retaining AES-256-CBC or SHA-512 instead of the requested algorithm; the latter writes 64 bytes even when the selected SHA-256 transform allocates only 32. Validate the fetches before publishing the table so a missing algorithm cannot select stale crypto state.",
+      "tag": "prview:39c15ddf76fee48108828c86e0b5b926:05e690950589f709d38172c83cddf3745927a5b7",
+      "revId": "05e690950589f709d38172c83cddf3745927a5b7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
