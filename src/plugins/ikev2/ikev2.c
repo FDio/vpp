@@ -2330,7 +2330,19 @@ ikev2_add_tunnel_from_main (ikev2_add_ipsec_tunnel_args_t * a)
   if (rv)
     goto err1;
 
+  /*
+   * Hold the worker barrier across tun_protect_update() so that
+   * forwarding threads see either the previous SA set (if rekey, that
+   * is already released above by ipsec_tun_protect_del()) or the new
+   * one, never a transient state with no SAs attached. Without the
+   * barrier peers running Cisco IOS XE 17.18 observe the short
+   * unprotected window on rekey as a LINEPROTO flap at the IKE SA
+   * lifetime boundary and the BGP session over the tunnel resets.
+   */
+  vlib_main_t *vm = vlib_get_main ();
+  vlib_worker_thread_barrier_sync (vm);
   rv = ipsec_tun_protect_update (sw_if_index, NULL, a->local_sa_id, sas_in);
+  vlib_worker_thread_barrier_release (vm);
   if (rv)
     goto err2;
 
