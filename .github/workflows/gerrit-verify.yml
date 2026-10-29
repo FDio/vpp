@@ -118,7 +118,6 @@ jobs:
       - verify-checkstyle
     if: ${{ needs.verify-checkstyle.result == 'success' }}
     uses: fdio/vpp/.github/workflows/vpp-verify-maketest.yml@9aebb8130fc22756fbfac0773c7f87d38a0a8938
->>>>>>> CHANGE (0d07a3 gha: pin vpp workflows to latest sha)
     with:
       FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE }}
       GERRIT_BRANCH: ${{ inputs.GERRIT_BRANCH }}
