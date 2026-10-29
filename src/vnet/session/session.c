@@ -1815,13 +1815,6 @@ session_get_original_dst (transport_endpoint_t *i2o_src,
 			    original_dst_port);
 }
 
-static session_fifo_rx_fn *session_tx_fns[TRANSPORT_TX_N_FNS] = {
-    session_tx_fifo_peek_and_snd,
-    session_tx_fifo_dequeue_and_snd,
-    session_tx_fifo_dequeue_internal,
-    session_tx_fifo_dequeue_and_snd
-};
-
 void
 session_register_transport (transport_proto_t transport_proto,
 			    const transport_proto_vft_t * vft, u8 is_ip4,
@@ -1834,15 +1827,14 @@ session_register_transport (transport_proto_t transport_proto,
   session_type = session_type_from_proto_and_ip (transport_proto, is_ip4);
 
   vec_validate (smm->session_type_to_next, session_type);
-  vec_validate (smm->session_tx_fns, session_type);
+  vec_validate (smm->session_type_to_tx_type, session_type);
 
   if (output_node != ~0)
     next_index = vlib_node_add_next (vlib_get_main (),
 				     session_queue_node.index, output_node);
 
   smm->session_type_to_next[session_type] = next_index;
-  smm->session_tx_fns[session_type] =
-    session_tx_fns[vft->transport_options.tx_type];
+  smm->session_type_to_tx_type[session_type] = vft->transport_options.tx_type;
 }
 
 static void
@@ -2112,6 +2104,34 @@ session_manager_main_disable (vlib_main_t *vm,
 {
   transport_enable_disable (vm, 0 /* is_en */ );
   session_rt_backend_enable_disable (rt_engine_type);
+}
+
+int
+session_tx_fifo_dma_copy (session_worker_t *wrk, svm_fifo_t *f, u32 offset, u32 len, u8 *data)
+{
+  vlib_main_t *vm = wrk->vm;
+  int n_bytes_read, len_write;
+  svm_fifo_seg_t data_fs[2];
+  u32 n_segs = 2;
+  u16 n_transfers = 0;
+
+  n_bytes_read = svm_fifo_segments (f, offset, data_fs, &n_segs, len);
+
+  len_write = n_bytes_read;
+
+  ASSERT (n_bytes_read == len);
+
+  while (n_bytes_read)
+    {
+      wrk->batch_num++;
+      vlib_dma_batch_add (vm, wrk->batch, data, data_fs[n_transfers].data,
+			  data_fs[n_transfers].len);
+      data += data_fs[n_transfers].len;
+      n_bytes_read -= data_fs[n_transfers].len;
+      n_transfers++;
+    }
+
+  return len_write;
 }
 
 /* in this new callback, cookie hint the index */

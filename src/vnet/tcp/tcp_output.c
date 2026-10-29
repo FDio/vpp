@@ -1037,6 +1037,312 @@ tcp_session_push_header (transport_connection_t *tconn, vlib_buffer_t **bs, u32 
   return 0;
 }
 
+/*
+ * New data
+ */
+
+typedef struct tcp_tx_burst_
+{
+  session_t *s;
+  transport_send_params_t *sp;
+  u32 max_dequeue;
+  u32 left_to_snd;
+  u32 max_len_to_snd;
+  u16 deq_per_first_buf;
+  u16 deq_per_buf;
+  u16 n_segs;
+  u16 n_bufs_needed;
+  u8 n_bufs_per_seg;
+} tcp_tx_burst_t;
+
+/* Size a burst of at most max_segs segments from the data after tx_offset and
+ * the space the window allows. */
+static void
+tcp_tx_burst_init (vlib_main_t *vm, tcp_tx_burst_t *tb, u32 max_segs)
+{
+  u32 n_bytes_per_buf, n_bytes_per_seg;
+
+  n_bytes_per_buf = vlib_buffer_get_default_data_size (vm);
+  tb->max_dequeue = svm_fifo_max_dequeue_cons (tb->s->tx_fifo);
+
+  /* Offset in tx fifo from where to peek data */
+  if (PREDICT_FALSE (tb->sp->tx_offset >= tb->max_dequeue))
+    {
+      tb->max_len_to_snd = 0;
+      return;
+    }
+  tb->max_dequeue -= tb->sp->tx_offset;
+
+  /* Ensure we're not writing more than transport window allows */
+  if (tb->max_dequeue < tb->sp->snd_space)
+    {
+      /* Constrained by tx queue. Try to send only fully formed segments */
+      tb->max_len_to_snd = (tb->max_dequeue > tb->sp->snd_mss) ?
+			     (tb->max_dequeue - (tb->max_dequeue % tb->sp->snd_mss)) :
+			     tb->max_dequeue;
+      /* TODO Nagle ? */
+    }
+  else
+    {
+      /* Expectation is that snd_space0 is already a multiple of snd_mss */
+      tb->max_len_to_snd = tb->sp->snd_space;
+    }
+
+  /* Check if we're tx constrained by the node */
+  tb->n_segs = ceil ((f64) tb->max_len_to_snd / tb->sp->snd_mss);
+  if (tb->n_segs > max_segs)
+    {
+      tb->n_segs = max_segs;
+      tb->max_len_to_snd = max_segs * tb->sp->snd_mss;
+    }
+
+  ASSERT (n_bytes_per_buf > TRANSPORT_MAX_HDRS_LEN);
+  if (tb->n_segs > 1)
+    {
+      u32 n_bytes_last_seg, n_bufs_last_seg;
+
+      n_bytes_per_seg = TRANSPORT_MAX_HDRS_LEN + tb->sp->snd_mss;
+      n_bytes_last_seg =
+	TRANSPORT_MAX_HDRS_LEN + tb->max_len_to_snd - ((tb->n_segs - 1) * tb->sp->snd_mss);
+      tb->n_bufs_per_seg = ceil ((f64) n_bytes_per_seg / n_bytes_per_buf);
+      n_bufs_last_seg = ceil ((f64) n_bytes_last_seg / n_bytes_per_buf);
+      tb->n_bufs_needed = ((tb->n_segs - 1) * tb->n_bufs_per_seg) + n_bufs_last_seg;
+    }
+  else
+    {
+      n_bytes_per_seg = TRANSPORT_MAX_HDRS_LEN + tb->max_len_to_snd;
+      tb->n_bufs_per_seg = ceil ((f64) n_bytes_per_seg / n_bytes_per_buf);
+      tb->n_bufs_needed = tb->n_bufs_per_seg;
+    }
+
+  tb->deq_per_buf = clib_min (tb->sp->snd_mss, n_bytes_per_buf);
+  tb->deq_per_first_buf = clib_min (tb->sp->snd_mss, n_bytes_per_buf - TRANSPORT_MAX_HDRS_LEN);
+}
+
+/* Copy data at tx_offset, or queue the copy if the session worker uses dma */
+static_always_inline int
+tcp_tx_burst_copy (session_worker_t *swrk, tcp_tx_burst_t *tb, u32 len, u8 *data)
+{
+  if (PREDICT_TRUE (!swrk->dma_enabled))
+    return svm_fifo_peek (tb->s->tx_fifo, tb->sp->tx_offset, len, data);
+  return session_tx_fifo_dma_copy (swrk, tb->s->tx_fifo, tb->sp->tx_offset, len, data);
+}
+
+static_always_inline void
+tcp_tx_burst_chain_tail (session_worker_t *swrk, tcp_worker_ctx_t *wrk, tcp_tx_burst_t *tb,
+			 vlib_buffer_t *b, u16 *n_bufs)
+{
+  vlib_main_t *vm = wrk->vm;
+  vlib_buffer_t *chain_b, *prev_b;
+  u32 chain_bi0, to_deq, left_from_seg;
+  int len_to_deq, n_bytes_read;
+  u8 *data, j;
+
+  b->flags |= VLIB_BUFFER_TOTAL_LENGTH_VALID;
+  b->total_length_not_including_first_buffer = 0;
+
+  chain_b = b;
+  left_from_seg = clib_min (tb->sp->snd_mss - b->current_length, tb->left_to_snd);
+  to_deq = left_from_seg;
+  for (j = 1; j < tb->n_bufs_per_seg; j++)
+    {
+      prev_b = chain_b;
+      len_to_deq = clib_min (to_deq, tb->deq_per_buf);
+
+      *n_bufs -= 1;
+      chain_bi0 = wrk->tx_buffers[*n_bufs];
+      chain_b = vlib_get_buffer (vm, chain_bi0);
+      chain_b->current_data = 0;
+      data = vlib_buffer_get_current (chain_b);
+      n_bytes_read = tcp_tx_burst_copy (swrk, tb, len_to_deq, data);
+      tb->sp->tx_offset += n_bytes_read;
+      ASSERT (n_bytes_read == len_to_deq);
+      chain_b->current_length = n_bytes_read;
+      b->total_length_not_including_first_buffer += chain_b->current_length;
+
+      /* update previous buffer */
+      prev_b->next_buffer = chain_bi0;
+      prev_b->flags |= VLIB_BUFFER_NEXT_PRESENT;
+
+      /* update current buffer */
+      chain_b->next_buffer = 0;
+
+      to_deq -= n_bytes_read;
+      if (to_deq == 0)
+	break;
+    }
+  ASSERT (to_deq == 0 && b->total_length_not_including_first_buffer == left_from_seg);
+  tb->left_to_snd -= left_from_seg;
+}
+
+static_always_inline void
+tcp_tx_burst_fill_buffer (session_worker_t *swrk, tcp_worker_ctx_t *wrk, tcp_tx_burst_t *tb,
+			  vlib_buffer_t *b, u16 *n_bufs)
+{
+  u32 len_to_deq;
+  u8 *data0;
+  int n_bytes_read;
+
+  /*
+   * Start with the first buffer in chain
+   */
+  b->error = 0;
+  b->flags = VNET_BUFFER_F_LOCALLY_ORIGINATED;
+  b->current_data = 0;
+
+  data0 = vlib_buffer_make_headroom (b, TRANSPORT_MAX_HDRS_LEN);
+  len_to_deq = clib_min (tb->left_to_snd, tb->deq_per_first_buf);
+
+  n_bytes_read = tcp_tx_burst_copy (swrk, tb, len_to_deq, data0);
+  ASSERT (n_bytes_read > 0);
+  /* Keep track of progress locally, pushing headers advances snd_nxt */
+  tb->sp->tx_offset += n_bytes_read;
+
+  b->current_length = n_bytes_read;
+  tb->left_to_snd -= n_bytes_read;
+
+  /*
+   * Fill in the remaining buffers in the chain, if any
+   */
+  if (PREDICT_FALSE (tb->n_bufs_per_seg > 1 && tb->left_to_snd))
+    tcp_tx_burst_chain_tail (swrk, wrk, tb, b, n_bufs);
+}
+
+/* Send new data in up to max_burst segments and use the send params flags
+ * to ask the session layer for rescheduling */
+static u32
+tcp_session_send_data (tcp_connection_t *tc, session_t *s, u32 max_burst,
+		       transport_send_params_t *sp)
+{
+  tcp_worker_ctx_t *wrk = tcp_get_worker (tc->c_thread_index);
+  session_worker_t *swrk = session_main_get_worker (tc->c_thread_index);
+  transport_connection_t *tconn = &tc->connection;
+  u32 n_left, pbi, bi0, bi1, next_index;
+  tcp_tx_burst_t _tb, *tb = &_tb;
+  vlib_buffer_t *pb, *b0, *b1;
+  vlib_main_t *vm = wrk->vm;
+  u16 n_bufs;
+
+  tb->s = s;
+  tb->sp = sp;
+  next_index = wrk->tco_next_node[!tc->c_is_ip4];
+
+  transport_connection_snd_params (tconn, sp);
+
+  if (!sp->snd_space)
+    {
+      /* If the deschedule flag was set, remove the connection from the
+       * scheduler. The transport is responsible for rescheduling it. */
+      if (sp->flags & TRANSPORT_SND_F_DESCHED)
+	transport_connection_deschedule (tconn);
+      /* Unless postponed, e.g., zero-wnd and not currently probing, this
+       * flow queue is "empty" so it should be re-evaluated before the ones
+       * that have data to send. */
+      else if (!(sp->flags & TRANSPORT_SND_F_POSTPONE))
+	sp->flags |= TRANSPORT_SND_F_RETRY;
+      return 0;
+    }
+
+  if (transport_connection_is_tx_paced (tconn))
+    {
+      u32 snd_space = transport_connection_tx_pacer_burst (tconn);
+      if (snd_space < TRANSPORT_PACER_MIN_BURST)
+	{
+	  sp->flags |= TRANSPORT_SND_F_RETRY;
+	  return 0;
+	}
+      snd_space = clib_min (sp->snd_space, snd_space);
+      sp->snd_space = snd_space >= sp->snd_mss ? snd_space - snd_space % sp->snd_mss : snd_space;
+    }
+
+  /* Check how much we can pull. */
+  tcp_tx_burst_init (vm, tb, max_burst);
+
+  if (PREDICT_FALSE (!tb->max_len_to_snd))
+    {
+      transport_connection_tx_pacer_reset_bucket (tconn, 0);
+      return 0;
+    }
+
+  vec_validate_aligned (wrk->tx_buffers, tb->n_bufs_needed - 1, CLIB_CACHE_LINE_BYTES);
+  n_bufs = vlib_buffer_alloc (vm, wrk->tx_buffers, tb->n_bufs_needed);
+  if (PREDICT_FALSE (n_bufs < tb->n_bufs_needed))
+    {
+      if (n_bufs)
+	vlib_buffer_free (vm, wrk->tx_buffers, n_bufs);
+      sp->flags |= TRANSPORT_SND_F_NO_BUFFERS;
+      return 0;
+    }
+
+  if (transport_connection_is_tx_paced (tconn))
+    transport_connection_tx_pacer_update_bytes (tconn, tb->max_len_to_snd);
+
+  tb->left_to_snd = tb->max_len_to_snd;
+  n_left = tb->n_segs;
+
+  vec_validate (wrk->tx_data_bufs, n_left);
+
+  while (n_left >= 4)
+    {
+      pbi = wrk->tx_buffers[n_bufs - 3];
+      pb = vlib_get_buffer (vm, pbi);
+      vlib_prefetch_buffer_header (pb, STORE);
+      pbi = wrk->tx_buffers[n_bufs - 4];
+      pb = vlib_get_buffer (vm, pbi);
+      vlib_prefetch_buffer_header (pb, STORE);
+
+      bi0 = wrk->tx_buffers[--n_bufs];
+      bi1 = wrk->tx_buffers[--n_bufs];
+
+      b0 = vlib_get_buffer (vm, bi0);
+      b1 = vlib_get_buffer (vm, bi1);
+
+      tcp_tx_burst_fill_buffer (swrk, wrk, tb, b0, &n_bufs);
+      tcp_tx_burst_fill_buffer (swrk, wrk, tb, b1, &n_bufs);
+
+      wrk->tx_data_bufs[tb->n_segs - n_left] = b0;
+      wrk->tx_data_bufs[tb->n_segs - n_left + 1] = b1;
+      n_left -= 2;
+
+      session_tx_add_data_buffer (swrk, bi0, next_index);
+      session_tx_add_data_buffer (swrk, bi1, next_index);
+    }
+  while (n_left)
+    {
+      if (n_left > 1)
+	{
+	  pbi = wrk->tx_buffers[n_bufs - 2];
+	  pb = vlib_get_buffer (vm, pbi);
+	  vlib_prefetch_buffer_header (pb, STORE);
+	}
+
+      bi0 = wrk->tx_buffers[--n_bufs];
+      b0 = vlib_get_buffer (vm, bi0);
+      tcp_tx_burst_fill_buffer (swrk, wrk, tb, b0, &n_bufs);
+
+      wrk->tx_data_bufs[tb->n_segs - n_left] = b0;
+      n_left -= 1;
+
+      session_tx_add_data_buffer (swrk, bi0, next_index);
+    }
+
+  tcp_session_push_header (tconn, wrk->tx_data_bufs, tb->n_segs, tb->max_dequeue);
+
+  if (PREDICT_FALSE (n_bufs))
+    vlib_buffer_free (vm, wrk->tx_buffers, n_bufs);
+
+  SESSION_EVT (SESSION_EVT_DEQ, s, tb->max_len_to_snd, tb->max_dequeue,
+	       s->tx_fifo->signals->has_event, swrk->last_vlib_time);
+
+  ASSERT (tb->left_to_snd == 0);
+
+  /* If we couldn't send all bytes, reschedule as old flow */
+  if (tb->max_len_to_snd < tb->max_dequeue)
+    sp->flags |= TRANSPORT_SND_F_POSTPONE;
+
+  return tb->n_segs;
+}
+
 void
 tcp_send_ack (tcp_connection_t *tc)
 {
@@ -2158,16 +2464,16 @@ tcp_do_retransmit (tcp_connection_t * tc, u32 max_burst_size)
   return n_segs;
 }
 
-int
-tcp_session_custom_tx (void *conn, transport_send_params_t * sp)
+/* Retransmit and send acks programmed since the last custom tx */
+static u32
+tcp_send_programmed (tcp_connection_t *tc, u32 max_burst_size)
 {
-  tcp_connection_t *tc = (tcp_connection_t *) conn;
   u32 n_segs = 0;
 
   if (tcp_in_cong_recovery (tc) && (tc->flags & TCP_CONN_RXT_PENDING))
     {
       tc->flags &= ~TCP_CONN_RXT_PENDING;
-      n_segs = tcp_do_retransmit (tc, sp->max_burst_size);
+      n_segs = tcp_do_retransmit (tc, max_burst_size);
     }
 
   if (!(tc->flags & TCP_CONN_SNDACK))
@@ -2179,15 +2485,40 @@ tcp_session_custom_tx (void *conn, transport_send_params_t * sp)
   if (n_segs && !tc->pending_dupacks)
     return n_segs;
 
-  if (sp->max_burst_size <= n_segs)
+  if (max_burst_size <= n_segs)
     {
       tcp_program_ack (tc);
       return n_segs;
     }
 
-  n_segs += tcp_send_acks (tc, sp->max_burst_size - n_segs);
+  n_segs += tcp_send_acks (tc, max_burst_size - n_segs);
 
   return n_segs;
+}
+
+int
+tcp_session_custom_tx (void *session, transport_send_params_t *sp)
+{
+  session_t *s = (session_t *) session;
+  tcp_connection_t *tc;
+  u32 n_segs = 0;
+
+  tc = tcp_connection_get (s->connection_index, s->thread_index);
+
+  if (PREDICT_FALSE (tc->flags & (TCP_CONN_RXT_PENDING | TCP_CONN_SNDACK)))
+    n_segs = tcp_send_programmed (tc, sp->max_burst_size);
+
+  if (PREDICT_FALSE (sp->flags & TRANSPORT_SND_F_CTRL_ONLY))
+    return n_segs;
+
+  /* Out of burst or more control packets programmed, send new data later */
+  if (PREDICT_FALSE (n_segs >= sp->max_burst_size || (s->flags & SESSION_F_CUSTOM_TX)))
+    {
+      sp->flags |= TRANSPORT_SND_F_POSTPONE;
+      return n_segs;
+    }
+
+  return n_segs + tcp_session_send_data (tc, s, sp->max_burst_size - n_segs, sp);
 }
 #endif /* CLIB_MARCH_VARIANT */
 
