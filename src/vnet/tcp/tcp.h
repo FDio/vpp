@@ -327,14 +327,13 @@ __clib_export void tcp_program_ack (tcp_connection_t *tc);
 void tcp_program_dupack (tcp_connection_t * tc);
 void tcp_program_retransmit (tcp_connection_t * tc);
 
-void tcp_update_burst_snd_vars (tcp_connection_t * tc);
 u32 tcp_snd_space (tcp_connection_t * tc);
 __clib_export int tcp_fastrecovery_prr_snd_space (tcp_connection_t *tc);
 void tcp_reschedule (tcp_connection_t * tc);
 fib_node_index_t tcp_lookup_rmt_in_fib (tcp_connection_t * tc);
 u32 tcp_session_push_header (transport_connection_t *tconn, vlib_buffer_t **b, u32 n_bufs,
 			     u32 available_bytes);
-int tcp_session_custom_tx (void *conn, transport_send_params_t * sp);
+int tcp_session_custom_tx (void *conn, transport_send_params_t *sp);
 
 __clib_export void tcp_connection_timers_init (tcp_connection_t *tc);
 __clib_export void tcp_connection_timers_reset (tcp_connection_t *tc);

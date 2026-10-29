@@ -30,29 +30,24 @@ typedef struct _transport_options_t
 
 typedef enum transport_snd_flags_
 {
-  TRANSPORT_SND_F_DESCHED = 1 << 0,
-  TRANSPORT_SND_F_POSTPONE = 1 << 1,
+  TRANSPORT_SND_F_DESCHED = 1 << 0,    /**< transport reschedules connection */
+  TRANSPORT_SND_F_POSTPONE = 1 << 1,   /**< retry after sessions with data */
+  TRANSPORT_SND_F_RETRY = 1 << 2,      /**< retry before sessions with data */
+  TRANSPORT_SND_F_NO_BUFFERS = 1 << 3, /**< retry, buffer alloc failed */
+  TRANSPORT_SND_F_CTRL_ONLY = 1 << 4,  /**< input, no new data allowed */
+  TRANSPORT_SND_F_FLUSH = 1 << 5,      /**< input, app asked for a flush */
   TRANSPORT_SND_N_FLAGS
 } __clib_packed transport_snd_flags_t;
 
 typedef struct transport_send_params_
 {
-  union
-  {
-    /* Used to retrieve snd params from transports */
-    struct
-    {
-      u32 snd_space;
-      u32 tx_offset;
-      u16 snd_mss;
-    };
-    /* Used by custom tx functions */
-    struct
-    {
-      u32 max_burst_size;
-      u32 bytes_dequeued;
-    };
-  };
+  /* Transport's tx window and progress */
+  u32 snd_space;
+  u32 tx_offset; /**< tx fifo offset of first unsent byte */
+  /* Custom tx burst limit and what it dequeued from the tx fifo */
+  u32 max_burst_size;
+  u32 bytes_dequeued;
+  u16 snd_mss; /**< transport's segment size */
   transport_snd_flags_t flags;
 } transport_send_params_t;
 
@@ -82,11 +77,10 @@ typedef struct _transport_proto_vft
 
   u32 (*push_header) (transport_connection_t *tconn, vlib_buffer_t **b, u32 n_bufs,
 		      u32 available_bytes);
-  int (*send_params) (transport_connection_t * tconn,
-		      transport_send_params_t *sp);
   void (*update_time) (f64 time_now, u8 thread_index);
-  void (*flush_data) (transport_connection_t *tconn);
-  int (*custom_tx) (void *session, transport_send_params_t *sp);
+  /** Send control packets and new data. Peek and dgram transports get
+   * their connection, internal transports the session */
+  int (*custom_tx) (void *conn_or_session, transport_send_params_t *sp);
   int (*app_rx_evt) (transport_connection_t *tconn);
 
   /*
@@ -189,23 +183,6 @@ transport_app_rx_evt (transport_proto_t tp, u32 conn_index,
     return 0;
   tc = transport_get_connection (tp, conn_index, thread_index);
   return tp_vfts[tp].app_rx_evt (tc);
-}
-
-/**
- * Get send parameters for transport connection
- *
- * These include maximum tx burst, mss, tx offset and other flags
- * transport might want to provide to sessin layer
- *
- * @param tc		transport connection
- * @param sp		send paramaters
- *
- */
-static inline u32
-transport_connection_snd_params (transport_connection_t * tc,
-				 transport_send_params_t * sp)
-{
-  return tp_vfts[tc->proto].send_params (tc, sp);
 }
 
 static inline u8

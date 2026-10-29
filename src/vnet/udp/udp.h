@@ -141,6 +141,9 @@ typedef struct
   /* Udp local to input arc index */
   u32 local_to_input_edge[N_UDP_AF];
 
+  /* Session queue to udp output arc index */
+  u32 session_to_output_edge[N_UDP_AF];
+
   /*
    * UDP transport layer per-thread context
    */
