@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4f23be03_accf1686",
+        "filename": "src/plugins/policer/policer_op.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 275,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-10-29T18:28:07Z",
+      "side": 1,
+      "message": "Could we widen `old_refcount` to `u32` too? With 256 attachments, it truncates to zero, so detaching one binding triggers the assertion at line 290 and aborts debug VPP. I reproduced this under debug ASAN with RX and TX bindings on 128 interfaces.",
+      "revId": "7bb98a58ac454bf4e0441c693faa886b745e13a1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
