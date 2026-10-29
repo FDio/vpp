@@ -4361,7 +4361,10 @@ ikev2_initiate_delete_ike_sa_internal (vlib_main_t *vm, ikev2_sa_t *sa, u8 send_
       sa->last_init_msg_id += 1;
       len = ikev2_generate_message (vm, b0, sa, ike0, 0, 0, 0);
       if (~0 == len)
-	return;
+	{
+	  vlib_buffer_free_one (vm, bi0);
+	  goto delete_sa;
+	}
 
       if (ikev2_natt_active (sa))
 	len = ikev2_insert_non_esp_marker (ike0, len);
