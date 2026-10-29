@@ -24,9 +24,9 @@ typedef struct session_tx_context_
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   session_t *s;
-  const transport_proto_vft_t *transport_vft;
-  transport_connection_t *tc;
+  transport_connection_t *tc; /**< peek and dgram transports only */
   transport_send_params_t sp;
+  u32 next_index; /**< session node next for transport packets */
   u32 max_dequeue;
   u32 left_to_snd;
   u32 max_len_to_snd;
@@ -181,14 +181,6 @@ typedef struct session_worker_
   session_dio_ctx_t dio;
 } session_worker_t;
 
-typedef int (session_fifo_rx_fn) (session_worker_t * wrk,
-				  vlib_node_runtime_t * node,
-				  session_evt_elt_t * e, int *n_tx_packets);
-
-extern session_fifo_rx_fn session_tx_fifo_peek_and_snd;
-extern session_fifo_rx_fn session_tx_fifo_dequeue_and_snd;
-extern session_fifo_rx_fn session_tx_fifo_dequeue_internal;
-
 u8 session_node_lookup_fifo_event (svm_fifo_t * f, session_event_t * e);
 
 typedef void (*nat44_original_dst_lookup_fn) (
@@ -219,8 +211,8 @@ typedef struct session_main_
   /** Worker contexts */
   session_worker_t *wrk;
 
-  /** Per transport rx function that can either dequeue or peek */
-  session_fifo_rx_fn **session_tx_fns;
+  /** Per session type transport tx type */
+  transport_tx_fn_type_t *session_type_to_tx_type;
 
   /** Per session type output nodes. Could optimize to group nodes by
    * fib but lookup would then require session type parsing in session node.
@@ -1051,6 +1043,36 @@ session_add_pending_tx_buffer (clib_thread_index_t thread_index, u32 bi,
   if (PREDICT_FALSE (wrk->state == SESSION_WRK_INTERRUPT))
     vlib_node_set_interrupt_pending (wrk->vm, session_queue_node.index);
 }
+
+/** Burst of segments built from a session's tx fifo for transport custom tx */
+typedef struct session_tx_burst_
+{
+  vlib_buffer_t **bufs; /**< segment head buffers, for transport headers */
+  u32 n_bytes;		/**< payload bytes in the burst */
+  u32 max_dequeue;	/**< dgram sessions, bytes that were ready */
+  u16 n_segs;		/**< segments in the burst */
+} session_tx_burst_t;
+
+/**
+ * Build a burst of n_bytes from the tx fifo of the session custom tx is
+ * called for, in segments of snd_mss bytes, and queue it for output
+ *
+ * Transports size the burst within what is ready after tx_offset, set the
+ * send params passed to custom tx, and push their headers onto the burst's
+ * buffers. The data is read from tx_offset, which is advanced.
+ *
+ * @return segments built, -1 if out of buffers
+ */
+int session_tx_burst_stream (transport_send_params_t *sp, u32 n_bytes, session_tx_burst_t *b);
+
+/**
+ * Build a burst from the dgrams in the tx fifo, in up to max_burst_size
+ * segments of at most snd_mss bytes, and queue it for output. Sets
+ * bytes_dequeued.
+ *
+ * @return segments built, 0 if no dgram is ready, -1 if out of buffers
+ */
+int session_tx_burst_dgram (transport_send_params_t *sp, session_tx_burst_t *b);
 
 always_inline void
 session_wrk_update_time (session_worker_t *wrk, f64 now)

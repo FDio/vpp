@@ -1104,113 +1104,10 @@ tcp_session_attribute (u32 conn_index, clib_thread_index_t thread_index,
     return tcp_set_attribute (tc, attr);
 }
 
-static u16
-tcp_session_cal_goal_size (tcp_connection_t * tc)
-{
-  u16 goal_size = tc->snd_mss;
-
-  goal_size = tcp_cfg.max_gso_size - tcp_cfg.max_gso_size % tc->snd_mss;
-  goal_size = clib_min (goal_size, tc->snd_wnd / 2);
-
-  return goal_size > tc->snd_mss ? goal_size : tc->snd_mss;
-}
-
-always_inline u32
-tcp_round_snd_space (tcp_connection_t * tc, u32 snd_space)
-{
-  if (PREDICT_FALSE (tc->snd_wnd < tc->snd_mss))
-    {
-      return tc->snd_wnd <= snd_space ? tc->snd_wnd : 0;
-    }
-
-  /* If not snd_wnd constrained and we can't write at least a segment,
-   * don't try at all */
-  if (PREDICT_FALSE (snd_space < tc->snd_mss))
-    return snd_space < tc->cwnd ? 0 : snd_space;
-
-  /* round down to mss multiple */
-  return snd_space - (snd_space % tc->snd_mss);
-}
-
-/**
- * Compute tx window session is allowed to fill.
- *
- * Takes into account available send space, snd_mss and the congestion
- * state of the connection. If possible, the value returned is a multiple
- * of snd_mss.
- *
- * @param tc tcp connection
- * @return number of bytes session is allowed to write
- */
-static inline u32
-tcp_snd_space_inline (tcp_connection_t * tc)
-{
-  int snd_space;
-
-  /* Fast path is disabled when recovery is on. @ref tcp_session_custom_tx
-   * controls both retransmits and the sending of new data while congested
-   */
-  if (PREDICT_FALSE (tcp_in_cong_recovery (tc)
-		     || tc->state == TCP_STATE_CLOSED))
-    return 0;
-
-  snd_space = tcp_available_output_snd_space (tc);
-
-  /* If we got dupacks or sacked bytes but we're not yet in recovery, try
-   * to force the peer to send enough dupacks to start retransmitting as
-   * per Limited Transmit (RFC3042)
-   */
-  if (PREDICT_FALSE (tc->rcv_dupacks || tc->sack_sb.sacked_bytes))
-    {
-      int snt_limited, n_pkts;
-
-      n_pkts = tcp_opts_sack_permitted (&tc->rcv_opts)
-	? tc->sack_sb.reorder - 1 : 2;
-
-      if ((seq_lt (tc->limited_transmit, tc->snd_nxt - n_pkts * tc->snd_mss)
-	   || seq_gt (tc->limited_transmit, tc->snd_nxt)))
-	tc->limited_transmit = tc->snd_nxt;
-
-      ASSERT (seq_leq (tc->limited_transmit, tc->snd_nxt));
-
-      snt_limited = tc->snd_nxt - tc->limited_transmit;
-      snd_space = clib_max (n_pkts * tc->snd_mss - snt_limited, 0);
-    }
-  return tcp_round_snd_space (tc, snd_space);
-}
-
 u32
 tcp_snd_space (tcp_connection_t * tc)
 {
   return tcp_snd_space_inline (tc);
-}
-
-static int
-tcp_session_send_params (transport_connection_t * trans_conn,
-			 transport_send_params_t * sp)
-{
-  tcp_connection_t *tc = (tcp_connection_t *) trans_conn;
-
-  /* Ensure snd_mss does accurately reflect the amount of data we can push
-   * in a segment. This also makes sure that options are updated according to
-   * the current state of the connection. */
-  tcp_update_burst_snd_vars (tc);
-
-  if (PREDICT_FALSE (tc->cfg_flags & TCP_CFG_F_TSO))
-    sp->snd_mss = tcp_session_cal_goal_size (tc);
-  else
-    sp->snd_mss = tc->snd_mss;
-
-  sp->snd_space = clib_min (tcp_snd_space_inline (tc),
-			    tc->snd_wnd - (tc->snd_nxt - tc->snd_una));
-
-  ASSERT (seq_geq (tc->snd_nxt, tc->snd_una));
-  /* This still works if fast retransmit is on */
-  sp->tx_offset = tc->snd_nxt - tc->snd_una;
-
-  sp->flags = sp->snd_space ? 0 : TRANSPORT_SND_F_DESCHED;
-
-  return 0;
 }
 
 static void
@@ -1386,16 +1283,6 @@ tcp_update_time (f64 now, u8 thread_index)
   tcp_dispatch_pending_timers (wrk);
 }
 
-static void
-tcp_session_flush_data (transport_connection_t * tconn)
-{
-  tcp_connection_t *tc = (tcp_connection_t *) tconn;
-  if (tc->flags & TCP_CONN_PSH_PENDING)
-    return;
-  tc->flags |= TCP_CONN_PSH_PENDING;
-  tc->psh_seq = tc->snd_una + transport_max_tx_dequeue (tconn) - 1;
-}
-
 static int
 tcp_session_app_rx_evt (transport_connection_t *conn)
 {
@@ -1432,9 +1319,7 @@ static const transport_proto_vft_t tcp_proto = {
   .cleanup = tcp_session_cleanup,
   .cleanup_ho = tcp_session_cleanup_ho,
   .reset = tcp_session_reset,
-  .send_params = tcp_session_send_params,
   .update_time = tcp_update_time,
-  .flush_data = tcp_session_flush_data,
   .custom_tx = tcp_session_custom_tx,
   .app_rx_evt = tcp_session_app_rx_evt,
   .format_connection = format_tcp_session,

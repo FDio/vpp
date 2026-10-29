@@ -302,8 +302,8 @@ tcp_make_options (tcp_connection_t * tc, tcp_options_t * opts,
  *
  * This should *only* be called when doing bursts
  */
-void
-tcp_update_burst_snd_vars (tcp_connection_t * tc)
+static void
+tcp_update_burst_snd_vars (tcp_connection_t *tc)
 {
   tcp_worker_ctx_t *wrk = tcp_get_worker (tc->c_thread_index);
 
@@ -333,6 +333,39 @@ tcp_update_burst_snd_vars (tcp_connection_t * tc)
       /* Last byte marked for push */
       tc->psh_seq = tc->snd_una + max_deq - 1;
     }
+}
+
+static u16
+tcp_session_cal_goal_size (tcp_connection_t *tc)
+{
+  u16 goal_size = tc->snd_mss;
+
+  goal_size = tcp_cfg.max_gso_size - tcp_cfg.max_gso_size % tc->snd_mss;
+  goal_size = clib_min (goal_size, tc->snd_wnd / 2);
+
+  return goal_size > tc->snd_mss ? goal_size : tc->snd_mss;
+}
+
+static void
+tcp_session_send_params (tcp_connection_t *tc, transport_send_params_t *sp)
+{
+  /* Ensure snd_mss does accurately reflect the amount of data we can push
+   * in a segment. This also makes sure that options are updated according to
+   * the current state of the connection. */
+  tcp_update_burst_snd_vars (tc);
+
+  if (PREDICT_FALSE (tc->cfg_flags & TCP_CFG_F_TSO))
+    sp->snd_mss = tcp_session_cal_goal_size (tc);
+  else
+    sp->snd_mss = tc->snd_mss;
+
+  sp->snd_space = clib_min (tcp_snd_space_inline (tc), tc->snd_wnd - (tc->snd_nxt - tc->snd_una));
+
+  ASSERT (seq_geq (tc->snd_nxt, tc->snd_una));
+  /* This still works if fast retransmit is on */
+  sp->tx_offset = tc->snd_nxt - tc->snd_una;
+
+  sp->flags = sp->snd_space ? 0 : TRANSPORT_SND_F_DESCHED;
 }
 
 static void *
@@ -1035,6 +1068,88 @@ tcp_session_push_header (transport_connection_t *tconn, vlib_buffer_t **bs, u32 
 	}
     }
   return 0;
+}
+
+/* Send new data in up to max_burst segments and use the send params flags
+ * to ask the session layer for rescheduling */
+static u32
+tcp_session_send_data (tcp_connection_t *tc, u32 max_burst, transport_send_params_t *sp)
+{
+  transport_connection_t *tconn = &tc->connection;
+  session_tx_burst_t burst, *b = &burst;
+  u32 max_dequeue, n_bytes;
+  int n_segs;
+
+  tcp_session_send_params (tc, sp);
+
+  if (!sp->snd_space)
+    {
+      /* If the deschedule flag was set, remove the connection from the
+       * scheduler. The transport is responsible for rescheduling it. */
+      if (sp->flags & TRANSPORT_SND_F_DESCHED)
+	transport_connection_deschedule (tconn);
+      /* Unless postponed, e.g., zero-wnd and not currently probing, this
+       * flow queue is "empty" so it should be re-evaluated before the ones
+       * that have data to send. */
+      else if (!(sp->flags & TRANSPORT_SND_F_POSTPONE))
+	sp->flags |= TRANSPORT_SND_F_RETRY;
+      return 0;
+    }
+
+  if (transport_connection_is_tx_paced (tconn))
+    {
+      u32 snd_space = transport_connection_tx_pacer_burst (tconn);
+      if (snd_space < TRANSPORT_PACER_MIN_BURST)
+	{
+	  sp->flags |= TRANSPORT_SND_F_RETRY;
+	  return 0;
+	}
+      snd_space = clib_min (sp->snd_space, snd_space);
+      sp->snd_space = snd_space >= sp->snd_mss ? snd_space - snd_space % sp->snd_mss : snd_space;
+    }
+
+  /* Data ready after what was already sent */
+  max_dequeue = transport_max_tx_dequeue (tconn);
+  if (PREDICT_FALSE (sp->tx_offset >= max_dequeue))
+    {
+      transport_connection_tx_pacer_reset_bucket (tconn, 0);
+      return 0;
+    }
+  max_dequeue -= sp->tx_offset;
+
+  /* Ensure we're not writing more than the window allows */
+  if (max_dequeue < sp->snd_space)
+    {
+      /* Constrained by tx queue. Try to send only fully formed segments */
+      n_bytes = max_dequeue > sp->snd_mss ? max_dequeue - max_dequeue % sp->snd_mss : max_dequeue;
+      /* TODO Nagle ? */
+    }
+  else
+    {
+      /* Expectation is that snd_space is already a multiple of snd_mss */
+      n_bytes = sp->snd_space;
+    }
+
+  /* Check if we're tx constrained by the burst */
+  n_bytes = clib_min (n_bytes, max_burst * sp->snd_mss);
+
+  n_segs = session_tx_burst_stream (sp, n_bytes, b);
+  if (PREDICT_FALSE (n_segs < 0))
+    {
+      sp->flags |= TRANSPORT_SND_F_NO_BUFFERS;
+      return 0;
+    }
+
+  if (transport_connection_is_tx_paced (tconn))
+    transport_connection_tx_pacer_update_bytes (tconn, n_bytes);
+
+  tcp_session_push_header (tconn, b->bufs, n_segs, max_dequeue);
+
+  /* If we couldn't send all bytes, reschedule as old flow */
+  if (n_bytes < max_dequeue)
+    sp->flags |= TRANSPORT_SND_F_POSTPONE;
+
+  return n_segs;
 }
 
 void
@@ -2158,16 +2273,33 @@ tcp_do_retransmit (tcp_connection_t * tc, u32 max_burst_size)
   return n_segs;
 }
 
-int
-tcp_session_custom_tx (void *conn, transport_send_params_t * sp)
+static void
+tcp_session_flush_data (tcp_connection_t *tc)
 {
-  tcp_connection_t *tc = (tcp_connection_t *) conn;
+  if (tc->flags & TCP_CONN_PSH_PENDING)
+    return;
+  tc->flags |= TCP_CONN_PSH_PENDING;
+  tc->psh_seq = tc->snd_una + transport_max_tx_dequeue (&tc->connection) - 1;
+}
+
+/* Retransmits or acks programmed since the last custom tx */
+static_always_inline u8
+tcp_has_programmed (tcp_connection_t *tc)
+{
+  return ((tc->flags & TCP_CONN_SNDACK) ||
+	  (tcp_in_cong_recovery (tc) && (tc->flags & TCP_CONN_RXT_PENDING)));
+}
+
+/* Retransmit and send acks programmed since the last custom tx */
+static u32
+tcp_send_programmed (tcp_connection_t *tc, u32 max_burst_size)
+{
   u32 n_segs = 0;
 
   if (tcp_in_cong_recovery (tc) && (tc->flags & TCP_CONN_RXT_PENDING))
     {
       tc->flags &= ~TCP_CONN_RXT_PENDING;
-      n_segs = tcp_do_retransmit (tc, sp->max_burst_size);
+      n_segs = tcp_do_retransmit (tc, max_burst_size);
     }
 
   if (!(tc->flags & TCP_CONN_SNDACK))
@@ -2179,15 +2311,44 @@ tcp_session_custom_tx (void *conn, transport_send_params_t * sp)
   if (n_segs && !tc->pending_dupacks)
     return n_segs;
 
-  if (sp->max_burst_size <= n_segs)
+  if (max_burst_size <= n_segs)
     {
       tcp_program_ack (tc);
       return n_segs;
     }
 
-  n_segs += tcp_send_acks (tc, sp->max_burst_size - n_segs);
+  n_segs += tcp_send_acks (tc, max_burst_size - n_segs);
 
   return n_segs;
+}
+
+int
+tcp_session_custom_tx (void *conn, transport_send_params_t *sp)
+{
+  tcp_connection_t *tc = (tcp_connection_t *) conn;
+  u32 n_segs = 0;
+
+  if (PREDICT_FALSE (sp->flags & TRANSPORT_SND_F_FLUSH))
+    tcp_session_flush_data (tc);
+
+  if (PREDICT_FALSE (tc->flags & (TCP_CONN_RXT_PENDING | TCP_CONN_SNDACK)))
+    {
+      n_segs = tcp_send_programmed (tc, sp->max_burst_size);
+
+      if (PREDICT_FALSE (sp->flags & TRANSPORT_SND_F_CTRL_ONLY))
+	return n_segs;
+
+      /* Out of burst or more programmed, send new data later */
+      if (n_segs >= sp->max_burst_size || tcp_has_programmed (tc))
+	{
+	  sp->flags |= TRANSPORT_SND_F_POSTPONE;
+	  return n_segs;
+	}
+    }
+  else if (PREDICT_FALSE (sp->flags & TRANSPORT_SND_F_CTRL_ONLY))
+    return 0;
+
+  return n_segs + tcp_session_send_data (tc, sp->max_burst_size - n_segs, sp);
 }
 #endif /* CLIB_MARCH_VARIANT */
 
