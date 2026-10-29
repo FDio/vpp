@@ -951,7 +951,11 @@ main (int argc, char **argv)
 
   /* Protos like tls/dtls/quic need init */
   if (vt->protos[vsm->server_cfg.proto]->init)
-    vt->protos[vsm->server_cfg.proto]->init (0);
+    {
+      rv = vt->protos[vsm->server_cfg.proto]->init (0);
+      if (rv)
+	vperf_fail ("server init failed", rv);
+    }
 
   vsm->workers = calloc (vsm->server_cfg.workers, sizeof (*vsm->workers));
   vperf_server_ctrl_session_init (&vsm->workers[0]);

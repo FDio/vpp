@@ -1997,6 +1997,7 @@ sapi_socket_close_w_handle (u32 api_handle)
   clib_file_del (&file_main, cf);
 
   clib_socket_close (cs);
+  clib_socket_free (cs);
   appns_sapi_free_socket (app_ns, cs);
 }
 
@@ -2085,31 +2086,6 @@ done:
   clib_socket_sendmsg (cs, &msg, sizeof (msg), fds, n_fds);
 }
 
-/* This is a workaround for the case when session layer starts reading
- * the socket before the client actualy sends the data
- */
-static clib_error_t *
-sapi_socket_receive_wait (clib_socket_t *cs, u8 *msg, u32 msg_len)
-{
-  clib_error_t *err;
-  int n_tries = 5;
-
-  while (1)
-    {
-      err = clib_socket_recvmsg (cs, msg, msg_len, 0, 0);
-      if (!err)
-	break;
-
-      if (!n_tries)
-	return err;
-
-      n_tries--;
-      usleep (1);
-    }
-
-  return err;
-}
-
 static void
 sapi_add_del_cert_key_handler (app_namespace_t *app_ns, clib_socket_t *cs,
 			       app_sapi_cert_key_add_del_msg_t *mp)
@@ -2117,13 +2093,13 @@ sapi_add_del_cert_key_handler (app_namespace_t *app_ns, clib_socket_t *cs,
   vnet_app_add_cert_key_pair_args_t _a, *a = &_a;
   app_sapi_cert_key_add_del_reply_msg_t *rmp;
   app_sapi_msg_t msg = { 0 };
+  u8 *certkey = 0;
   int rv = 0;
 
   if (mp->is_add)
     {
       const u32 max_certkey_len = 2e4, max_cert_len = 1e4, max_key_len = 1e4;
       clib_error_t *err;
-      u8 *certkey = 0;
       u32 key_len;
 
       if (mp->certkey_len > max_certkey_len)
@@ -2134,7 +2110,7 @@ sapi_add_del_cert_key_handler (app_namespace_t *app_ns, clib_socket_t *cs,
 
       vec_validate (certkey, mp->certkey_len - 1);
 
-      err = sapi_socket_receive_wait (cs, certkey, mp->certkey_len);
+      err = clib_socket_recvmsg (cs, certkey, mp->certkey_len, 0, 0);
       if (err)
 	{
 	  clib_error_report (err);
@@ -2167,8 +2143,6 @@ sapi_add_del_cert_key_handler (app_namespace_t *app_ns, clib_socket_t *cs,
       a->cert_len = mp->cert_len;
       a->key_len = key_len;
       rv = vnet_app_add_cert_key_pair (a);
-
-      vec_free (certkey);
     }
   else
     {
@@ -2177,6 +2151,7 @@ sapi_add_del_cert_key_handler (app_namespace_t *app_ns, clib_socket_t *cs,
 
 send_reply:
 
+  vec_free (certkey);
   msg.type = APP_SAPI_MSG_TYPE_ADD_DEL_CERT_KEY_REPLY;
   rmp = &msg.cert_key_add_del_reply;
   rmp->retval = rv;
@@ -2222,18 +2197,29 @@ sapi_sock_read_ready (clib_file_t * cf)
   app_namespace_t *app_ns;
   clib_error_t *err = 0;
   clib_socket_t *cs;
+  u8 cert_key_pending;
 
   app_ns = app_namespace_get (handle->aah_app_ns_index);
   cs = appns_sapi_get_socket (app_ns, handle->aah_sock_index);
   if (!cs)
     goto error;
 
-  err = clib_socket_recvmsg (cs, &msg, sizeof (msg), 0, 0);
-  if (err)
+  cert_key_pending = vec_len (cs->rx_buffer) != 0;
+  if (cert_key_pending)
     {
-      clib_error_free (err);
-      sapi_socket_detach (app_ns, cs);
-      goto error;
+      msg.type = APP_SAPI_MSG_TYPE_ADD_DEL_CERT_KEY;
+      clib_memcpy (&msg.cert_key_add_del, cs->rx_buffer, sizeof (msg.cert_key_add_del));
+      vec_reset_length (cs->rx_buffer);
+    }
+  else
+    {
+      err = clib_socket_recvmsg (cs, &msg, sizeof (msg), 0, 0);
+      if (err)
+	{
+	  clib_error_free (err);
+	  sapi_socket_detach (app_ns, cs);
+	  goto error;
+	}
     }
 
   handle = (app_ns_api_handle_t *) & cs->private_data;
@@ -2249,6 +2235,13 @@ sapi_sock_read_ready (clib_file_t * cf)
       sapi_add_del_worker_handler (app_ns, cs, &msg.worker_add_del);
       break;
     case APP_SAPI_MSG_TYPE_ADD_DEL_CERT_KEY:
+      if (msg.cert_key_add_del.is_add && !cert_key_pending)
+	{
+	  /* The certificate and key arrive in a separate seqpacket. Save the
+	   * header and let the next read-ready event process the payload. */
+	  vec_add (cs->rx_buffer, (u8 *) &msg.cert_key_add_del, sizeof (msg.cert_key_add_del));
+	  break;
+	}
       sapi_add_del_cert_key_handler (app_ns, cs, &msg.cert_key_add_del);
       break;
     default:
