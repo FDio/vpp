@@ -874,7 +874,7 @@ sfifo_test_fifo5 (vlib_main_t * vm, unformat_input_t * input)
   u8 *test_data = 0, *data_buf = 0;
   int i, rv, verbose = 0;
   ooo_segment_t *ooo_seg;
-  svm_fifo_ooo_enq_info_t info;
+  svm_fifo_enq_args_t args = {};
   fifo_segment_t *fs;
   svm_fifo_t *f;
 
@@ -903,12 +903,13 @@ sfifo_test_fifo5 (vlib_main_t * vm, unformat_input_t * input)
    * Start with [100, 200] and [300, 400]
    */
   svm_fifo_enqueue_with_offset (f, 100, 100, &test_data[100]);
-  svm_fifo_enqueue_with_offset_info (f, 300, 100, &test_data[300], &info);
+  args.offset = 300;
+  svm_fifo_enqueue2 (f, 100, &test_data[300], &args);
 
   SFIFO_TEST ((svm_fifo_n_ooo_segments (f) == 2),
 	      "number of ooo segments %u", svm_fifo_n_ooo_segments (f));
-  SFIFO_TEST ((info.seg_offset == 300 && info.seg_len == 100 && !info.dup_len),
-	      "data in segment at %u len %u", info.seg_offset, info.seg_len);
+  SFIFO_TEST ((args.seg_offset == 300 && args.seg_len == 100 && !args.dup_len),
+	      "data in segment at %u len %u", args.seg_offset, args.seg_len);
   if (verbose)
     vlib_cli_output (vm, "fifo after [100, 200] and [300, 400] : %U",
 		     format_svm_fifo, f, 2 /* verbose */ );
@@ -917,7 +918,8 @@ sfifo_test_fifo5 (vlib_main_t * vm, unformat_input_t * input)
    * Add [225, 275]
    */
 
-  rv = svm_fifo_enqueue_with_offset_info (f, 225, 50, &test_data[225], &info);
+  args.offset = 225;
+  rv = svm_fifo_enqueue2 (f, 50, &test_data[225], &args);
   if (verbose)
     vlib_cli_output (vm, "fifo after [225, 275] : %U",
 		     format_svm_fifo, f, 2 /* verbose */ );
@@ -941,15 +943,16 @@ sfifo_test_fifo5 (vlib_main_t * vm, unformat_input_t * input)
 	      ooo_seg->start, fifo_pos (f, 300 + offset));
   SFIFO_TEST ((ooo_seg->length == 100), "third seg length %u expected %u",
 	      ooo_seg->length, 100);
-  SFIFO_TEST ((info.seg_offset == 225 && info.seg_len == 50 && !info.dup_len),
-	      "data in segment at %u len %u", info.seg_offset, info.seg_len);
+  SFIFO_TEST ((args.seg_offset == 225 && args.seg_len == 50 && !args.dup_len),
+	      "data in segment at %u len %u", args.seg_offset, args.seg_len);
   /*
    * Add [190, 310]
    */
-  rv = svm_fifo_enqueue_with_offset_info (f, 190, 120, &test_data[190], &info);
+  args.offset = 190;
+  rv = svm_fifo_enqueue2 (f, 120, &test_data[190], &args);
   SFIFO_TEST (
-    (info.seg_offset == 100 && info.seg_len == 300 && info.dup_offset == 190 && info.dup_len == 10),
-    "data in merged segment, first duplicate at %u len %u", info.dup_offset, info.dup_len);
+    (args.seg_offset == 100 && args.seg_len == 300 && args.dup_offset == 190 && args.dup_len == 10),
+    "data in merged segment, first duplicate at %u len %u", args.dup_offset, args.dup_len);
   if (verbose)
     vlib_cli_output (vm, "fifo after [190, 310] : %U",
 		     format_svm_fifo, f, 1 /* verbose */ );
@@ -2224,7 +2227,7 @@ sfifo_test_fifo_ooo_segs (vlib_main_t *vm, unformat_input_t *input)
   u32 fifo_size = 16 << 10, index;
   u8 *test_data = 0, *data_buf = 0;
   svm_fifo_seg_t segs[4];
-  svm_fifo_ooo_enq_info_t info;
+  svm_fifo_enq_args_t args = {};
   int verbose = 0, rv;
   fifo_segment_t *fs;
   svm_fifo_t *f;
@@ -2252,10 +2255,12 @@ sfifo_test_fifo_ooo_segs (vlib_main_t *vm, unformat_input_t *input)
   segs[1] = (svm_fifo_seg_t) { test_data + 4000, 0 };
   segs[2] = (svm_fifo_seg_t) { test_data + 4000, 2500 };
   segs[3] = (svm_fifo_seg_t) { test_data + 6500, 3000 };
-  rv = svm_fifo_enqueue_segments_with_offset_info (f, 1000, segs, 4, 0 /* allow partial */, &info);
+  args.offset = 1000;
+  args.allow_partial = 0;
+  rv = svm_fifo_enqueue_segments2 (f, segs, 4, &args);
   SFIFO_TEST (rv == 8500, "enqueued %d expected %u", rv, 8500);
-  SFIFO_TEST (svm_fifo_n_ooo_segments (f) == 1 && info.seg_offset == 1000 && info.seg_len == 8500 &&
-		!info.dup_len,
+  SFIFO_TEST (svm_fifo_n_ooo_segments (f) == 1 && args.seg_offset == 1000 && args.seg_len == 8500 &&
+		!args.dup_len,
 	      "segments added as one out-of-order segment");
   SFIFO_TEST (svm_fifo_n_chunks (f) > 1, "segments span %u chunks", svm_fifo_n_chunks (f));
   SFIFO_TEST (svm_fifo_max_dequeue (f) == 0, "no data in order");
@@ -2265,23 +2270,31 @@ sfifo_test_fifo_ooo_segs (vlib_main_t *vm, unformat_input_t *input)
   /* Segments that only repeat queued data change no segment */
   segs[0] = (svm_fifo_seg_t) { test_data + 2000, 500 };
   segs[1] = (svm_fifo_seg_t) { test_data + 2500, 3000 };
-  rv = svm_fifo_enqueue_segments_with_offset_info (f, 2000, segs, 2, 0 /* allow partial */, &info);
-  SFIFO_TEST (rv == 3500 && svm_fifo_n_ooo_segments (f) == 1 && info.seg_offset == 1000 &&
-		info.seg_len == 8500 && info.dup_offset == 2000 && info.dup_len == 3500,
+  args.offset = 2000;
+  args.allow_partial = 0;
+  rv = svm_fifo_enqueue_segments2 (f, segs, 2, &args);
+  SFIFO_TEST (rv == 3500 && svm_fifo_n_ooo_segments (f) == 1 && args.seg_offset == 1000 &&
+		args.seg_len == 8500 && args.dup_offset == 2000 && args.dup_len == 3500,
 	      "repeated data changes no segment, all of it is duplicate");
 
   /* Segments that do not fit are not enqueued, unless partial enqueues are
    * allowed, in which case the prefix that fits is */
   segs[0] = (svm_fifo_seg_t) { test_data + 9000, 4000 };
   segs[1] = (svm_fifo_seg_t) { test_data + 13000, 4000 };
-  rv = svm_fifo_enqueue_segments_with_offset (f, 9000, segs, 2, 0 /* allow partial */);
+  args.offset = 9000;
+  args.allow_partial = 0;
+  rv = svm_fifo_enqueue_segments2 (f, segs, 2, &args);
   SFIFO_TEST (rv == SVM_FIFO_EFULL && svm_fifo_n_ooo_segments (f) == 1,
 	      "segments that do not fit are not enqueued");
-  rv = svm_fifo_enqueue_segments_with_offset_info (f, 9000, segs, 2, 1 /* allow partial */, &info);
-  SFIFO_TEST (rv == fifo_size - 9000 && info.seg_offset == 1000 &&
-		info.seg_len == fifo_size - 1000 && info.dup_offset == 9000 && info.dup_len == 500,
+  args.offset = 9000;
+  args.allow_partial = 1;
+  rv = svm_fifo_enqueue_segments2 (f, segs, 2, &args);
+  SFIFO_TEST (rv == fifo_size - 9000 && args.seg_offset == 1000 &&
+		args.seg_len == fifo_size - 1000 && args.dup_offset == 9000 && args.dup_len == 500,
 	      "partial enqueue fills the fifo, repeats the end of the segment");
-  rv = svm_fifo_enqueue_segments_with_offset (f, fifo_size, segs, 1, 1 /* allow partial */);
+  args.offset = fifo_size;
+  args.allow_partial = 1;
+  rv = svm_fifo_enqueue_segments2 (f, segs, 1, &args);
   SFIFO_TEST (rv == SVM_FIFO_EFULL, "no partial enqueue past the fifo end");
 
   /* Filling the hole in order collects all of the data */
@@ -2314,7 +2327,7 @@ sfifo_test_fifo_ooo_list (vlib_main_t *vm, unformat_input_t *input)
   u32 fifo_size = 16 << 10, index;
   u8 *test_data = 0, *data_buf = 0;
   ooo_segment_t *last;
-  svm_fifo_ooo_enq_info_t info;
+  svm_fifo_enq_args_t args = {};
   int verbose = 0, rv;
   fifo_segment_t *fs;
   svm_fifo_t *f;
@@ -2365,11 +2378,12 @@ sfifo_test_fifo_ooo_list (vlib_main_t *vm, unformat_input_t *input)
 	      "last after new head at %u", ooo_segment_offset_prod (f, last));
 
   /* Data that extends the last segment merges with it */
-  svm_fifo_enqueue_with_offset_info (f, 1700, 100, test_data + 1700, &info);
+  args.offset = 1700;
+  svm_fifo_enqueue2 (f, 100, test_data + 1700, &args);
   last = ooo_list_last (f);
   SFIFO_TEST (svm_fifo_is_sane (f) && svm_fifo_n_ooo_segments (f) == 6 &&
-		ooo_segment_offset_prod (f, last) == info.seg_offset &&
-		ooo_segment_length (f, last) == 200 && info.seg_len == 200,
+		ooo_segment_offset_prod (f, last) == args.seg_offset &&
+		ooo_segment_length (f, last) == 200 && args.seg_len == 200,
 	      "last extended to %u", ooo_segment_length (f, last));
 
   /* Segment in the middle does not change the last */
@@ -2428,7 +2442,7 @@ sfifo_test_fifo_ooo_info (vlib_main_t *vm, unformat_input_t *input)
   fifo_segment_main_t _fsm = { 0 }, *fsm = &_fsm;
   u32 fifo_size = 16 << 10, index, i;
   u8 *test_data = 0, *data_buf = 0;
-  svm_fifo_ooo_enq_info_t info;
+  svm_fifo_enq_args_t args = {};
   fifo_segment_t *fs;
   ooo_segment_t *seg;
   svm_fifo_t *f;
@@ -2474,13 +2488,13 @@ sfifo_test_fifo_ooo_info (vlib_main_t *vm, unformat_input_t *input)
 
   for (i = 0; i < ARRAY_LEN (cases); i++)
     {
-      rv = svm_fifo_enqueue_with_offset_info (f, cases[i].offset, cases[i].len,
-					      test_data + cases[i].offset, &info);
-      SFIFO_TEST (rv == 0 && svm_fifo_is_sane (f) && info.seg_offset == cases[i].seg_offset &&
-		    info.seg_len == cases[i].seg_len && info.dup_len == cases[i].dup_len &&
-		    info.dup_offset == cases[i].dup_offset,
+      args.offset = cases[i].offset;
+      rv = svm_fifo_enqueue2 (f, cases[i].len, test_data + cases[i].offset, &args);
+      SFIFO_TEST (rv == cases[i].len && svm_fifo_is_sane (f) &&
+		    args.seg_offset == cases[i].seg_offset && args.seg_len == cases[i].seg_len &&
+		    args.dup_len == cases[i].dup_len && args.dup_offset == cases[i].dup_offset,
 		  "%s: segment at %u len %u, duplicate at %u len %u", cases[i].name,
-		  info.seg_offset, info.seg_len, info.dup_offset, info.dup_len);
+		  args.seg_offset, args.seg_len, args.dup_offset, args.dup_len);
     }
 
   /* Segments are now [1000, 1500) and [1900, 2750) */
@@ -2502,9 +2516,19 @@ sfifo_test_fifo_ooo_info (vlib_main_t *vm, unformat_input_t *input)
 		  seg ? (int) ooo_segment_offset_prod (f, seg) : -1);
     }
 
-  rv = svm_fifo_enqueue (f, 2700, test_data);
-  SFIFO_TEST (rv == 2750 && !svm_fifo_has_ooo_data (f) && !svm_fifo_first_ooo_segment (f),
-	      "enqueued %d expected %u, no segments left", rv, 2750);
+  /* In-order data that only touches a segment collects it, repeating nothing */
+  args = (svm_fifo_enq_args_t) {};
+  rv = svm_fifo_enqueue2 (f, 1000, test_data, &args);
+  SFIFO_TEST (rv == 1500 && !args.dup_len && !args.dup_offset,
+	      "in-order data touching a segment enqueued %d expected %u, duplicate len %u", rv,
+	      1500, args.dup_len);
+  /* In-order data that overlaps a segment reports what it repeats */
+  args = (svm_fifo_enq_args_t) {};
+  rv = svm_fifo_enqueue2 (f, 1200, test_data + 1500, &args);
+  SFIFO_TEST (rv == 1250 && args.dup_offset == 400 && args.dup_len == 800 &&
+		!svm_fifo_has_ooo_data (f) && !svm_fifo_first_ooo_segment (f),
+	      "in-order data enqueued %d expected %u, duplicate at %u len %u, no segments left", rv,
+	      1250, args.dup_offset, args.dup_len);
   rv = svm_fifo_dequeue (f, 2750, data_buf);
   SFIFO_TEST (rv == 2750 && !compare_data (data_buf, test_data, 0, 2750, &index), "data preserved");
 
