@@ -2306,12 +2306,12 @@ ikev2_add_tunnel_from_main (ikev2_add_ipsec_tunnel_args_t * a)
   vec_add1 (sas_in, a->remote_sa_id);
   if (a->is_rekey)
     {
-      ipsec_tun_protect_del (sw_if_index, NULL);
-
-      /* replace local SA immediately */
+      /* unlock the obsolete outbound SA id; the new one is installed below */
       ipsec_sa_unlock_id (a->local_sa_id);
 
-      /* keep the old sa */
+      /* keep the previous inbound SA attached across the swap so in-flight
+         ESP packets with the old SPI are still decrypted while the peer
+         rolls over to the new SPI */
       vec_add1 (sas_in, a->old_remote_sa_id);
     }
 
@@ -2330,7 +2330,19 @@ ikev2_add_tunnel_from_main (ikev2_add_ipsec_tunnel_args_t * a)
   if (rv)
     goto err1;
 
+  /*
+   * Swap the tun-protect entry under the worker barrier so forwarding
+   * threads see either the old SA set or the new one, never a transient
+   * state with no SAs attached. The previous code called
+   * ipsec_tun_protect_del() before installing the new entry, which left a
+   * brief window during which packets could be dropped; peers running Cisco
+   * IOS XE 17.18 observed this window as a short LINEPROTO flap at the IKE
+   * SA lifetime boundary.
+   */
+  vlib_main_t *vm = vlib_get_main ();
+  vlib_worker_thread_barrier_sync (vm);
   rv = ipsec_tun_protect_update (sw_if_index, NULL, a->local_sa_id, sas_in);
+  vlib_worker_thread_barrier_release (vm);
   if (rv)
     goto err2;
 
