@@ -64,20 +64,17 @@ hsi_session_cleanup_peer_handle (session_t *s)
 static void
 hsi_session_fifos_cleanup_req_free_rpc (void *arg)
 {
-  hsi_session_fifos_cleanup_req_t *a = arg;
-  hsi_worker_t *wrk;
-
-  wrk = hsi_worker_get (vlib_get_thread_index ());
-  pool_put (wrk->session_fifos_cleanup_reqs, a);
+  hsi_session_fifos_cleanup_req_put (arg);
 }
 
 static void
 hsi_session_fifos_cleanup_on_thread_rpc (void *arg)
 {
-  hsi_session_fifos_cleanup_req_t *a = arg;
+  hsi_session_fifos_cleanup_req_t *a = hsi_session_fifos_cleanup_req_get (arg);
 
   segment_manager_dealloc_fifos (a->rx_fifo, a->tx_fifo);
-  session_send_rpc_evt_to_thread (a->owner_thread, hsi_session_fifos_cleanup_req_free_rpc, a);
+  session_send_rpc_evt_to_thread (hsi_rpc_req_thread (arg), hsi_session_fifos_cleanup_req_free_rpc,
+				  arg);
 }
 
 static void
@@ -87,15 +84,15 @@ hsi_session_send_fifos_cleanup_on_thread (clib_thread_index_t thread_index, svm_
   hsi_session_fifos_cleanup_req_t *a;
   hsi_worker_t *wrk;
   clib_thread_index_t owner_thread;
+  void *arg;
 
   owner_thread = vlib_get_thread_index ();
   wrk = hsi_worker_get (owner_thread);
-  pool_get_zero (wrk->session_fifos_cleanup_reqs, a);
+  arg = hsi_session_fifos_cleanup_req_alloc (wrk, &a, owner_thread);
 
-  a->owner_thread = owner_thread;
   a->rx_fifo = rx_fifo;
   a->tx_fifo = tx_fifo;
-  session_send_rpc_evt_to_thread_force (thread_index, hsi_session_fifos_cleanup_on_thread_rpc, a);
+  session_send_rpc_evt_to_thread_force (thread_index, hsi_session_fifos_cleanup_on_thread_rpc, arg);
 }
 
 static_always_inline void

@@ -17,8 +17,6 @@
 #define HSI_UDP_DRAIN_INDEX_INVALID   ((u32) ~0)
 #define HSI_UDP_DRAIN_CACHE_MAX_BYTES (2 << 20)
 
-STATIC_ASSERT (sizeof (uword) >= sizeof (u64), "hsi drain lookup requires 64-bit keys");
-
 typedef enum hsi_tracker_flags_
 {
   HSI_TRACKER_F_CLEANUP_PENDING = 1 << 0,
@@ -101,35 +99,30 @@ typedef struct hsi_udp_track_snapshot_
 
 struct hsi_udp_track_commit_req_
 {
-  clib_thread_index_t owner_thread;
   session_handle_t session_handle;
   hsi_udp_track_snapshot_t peer;
 };
 
 struct hsi_udp_peer_update_req_
 {
-  clib_thread_index_t owner_thread;
   session_handle_t session_handle;
   session_handle_t peer_session_handle;
 };
 
 typedef struct hsi_tcp_fin_ack_req_
 {
-  clib_thread_index_t owner_thread;
   session_handle_t session_handle;
   u32 ack;
 } hsi_tcp_fin_ack_req_t;
 
 typedef struct hsi_tcp_peer_fin_req_
 {
-  clib_thread_index_t owner_thread;
   session_handle_t session_handle;
   u32 ack;
 } hsi_tcp_peer_fin_req_t;
 
 struct hsi_session_fifos_cleanup_req_
 {
-  clib_thread_index_t owner_thread;
   svm_fifo_t *rx_fifo;
   svm_fifo_t *tx_fifo;
 };
@@ -191,7 +184,6 @@ struct hsi_tcp_drain_
 
 struct hsi_tcp_drain_start_req_
 {
-  clib_thread_index_t owner_thread;
   session_handle_t session_handle;
   session_handle_t peer_session_handle;
 };
@@ -216,14 +208,12 @@ struct hsi_udp_drain_
 
 struct hsi_udp_drain_start_req_
 {
-  clib_thread_index_t owner_thread;
   session_handle_t session_handle;
   session_handle_t peer_session_handle;
 };
 
 struct hsi_udp_drain_cache_req_
 {
-  clib_thread_index_t owner_thread;
   session_handle_t session_handle;
   u32 buffer_index;
   u32 len;
@@ -234,6 +224,66 @@ hsi_worker_get (clib_thread_index_t thread_index)
 {
   return vec_elt_at_index (hsi_main.wrk, thread_index);
 }
+
+/*
+ * Cross-thread rpc requests are passed as (owner thread, pool index) packed
+ * into the rpc arg. Owner pools must be grown with pool_get_aligned_safe so
+ * that the pool base only moves under the worker barrier.
+ */
+
+#define hsi_rpc_req_arg(thread, index)                                                             \
+  uword_to_pointer (((uword) (thread) << 32) | (u32) (index), void *)
+#define hsi_rpc_req_thread(arg) ((clib_thread_index_t) (pointer_to_uword (arg) >> 32))
+#define hsi_rpc_req_index(arg)	((u32) pointer_to_uword (arg))
+
+#define foreach_hsi_rpc_req                                                                        \
+  _ (tcp_track_commit)                                                                             \
+  _ (tcp_drain_start)                                                                              \
+  _ (tcp_fin_ack)                                                                                  \
+  _ (tcp_peer_fin)                                                                                 \
+  _ (session_fifos_cleanup)                                                                        \
+  _ (udp_track_commit)                                                                             \
+  _ (udp_peer_update)                                                                              \
+  _ (udp_drain_start)                                                                              \
+  _ (udp_drain_cache)
+
+/*
+ * For each request type <n>, hsi_<n>_req_get resolves the request on the
+ * consumer thread (never cache the result across a barrier), hsi_<n>_req_put
+ * releases it on the owner thread and hsi_<n>_req_alloc allocates it on the
+ * owner thread and returns the packed rpc arg.
+ */
+#define _(n)                                                                                       \
+  static_always_inline hsi_##n##_req_t *hsi_##n##_req_get (void *arg)                              \
+  {                                                                                                \
+    hsi_worker_t *wrk = hsi_worker_get (hsi_rpc_req_thread (arg));                                 \
+    u32 index = hsi_rpc_req_index (arg);                                                           \
+                                                                                                   \
+    ASSERT (index < vec_len (wrk->n##_reqs));                                                      \
+    return wrk->n##_reqs + index;                                                                  \
+  }                                                                                                \
+                                                                                                   \
+  static_always_inline void hsi_##n##_req_put (void *arg)                                          \
+  {                                                                                                \
+    clib_thread_index_t thread = hsi_rpc_req_thread (arg);                                         \
+                                                                                                   \
+    ASSERT (thread == vlib_get_thread_index ());                                                   \
+    pool_put_index (hsi_worker_get (thread)->n##_reqs, hsi_rpc_req_index (arg));                   \
+  }                                                                                                \
+                                                                                                   \
+  static_always_inline void *hsi_##n##_req_alloc (hsi_worker_t *wrk, hsi_##n##_req_t **a,          \
+						  clib_thread_index_t thread)                      \
+  {                                                                                                \
+    hsi_##n##_req_t *req;                                                                          \
+                                                                                                   \
+    ASSERT (thread == vlib_get_thread_index ());                                                   \
+    pool_get_aligned_safe (wrk->n##_reqs, req, 0);                                                 \
+    clib_memset (req, 0, sizeof (*req));                                                           \
+    *a = req;                                                                                      \
+    return hsi_rpc_req_arg (thread, req - wrk->n##_reqs);                                          \
+  }
+foreach_hsi_rpc_req
+#undef _
 
 static_always_inline uword
 hsi_session_conn_key (u32 session_index, u32 conn_index)
