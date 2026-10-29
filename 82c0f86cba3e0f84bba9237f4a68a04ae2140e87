@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "c3f40be2_f4780c4b",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2220
+      },
+      "writtenOn": "2026-10-29T09:20:17Z",
+      "side": 1,
+      "message": "Hello,\n\nI was helping Pieter[0] to investigate the root-cause for their crashes. The first crash was triggered by mid-convergence issue in their setup - there was a route over a BVI that forwarded traffic to a vxlan tunnel and the vtep dst was looped again to the BVI and therefore the tunnel again and so on. So, the first packet triggered the infinite encapsulation issue (vxlan4-encap -\u003e ip4-rewrite -\u003e ... l2-input .. l2-output -\u003e vxlan4-encap and so on). While this is an obviously wrong configuration - vpp shouldn\u0027t crash.\n\nthis patch adds check for available headroom in vxlan plugin.\n\n[0] - https://lists.fd.io/g/vpp-dev/topic/26_06_worker_crashes_with/121592811",
+      "revId": "82c0f86cba3e0f84bba9237f4a68a04ae2140e87",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
