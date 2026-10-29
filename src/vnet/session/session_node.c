@@ -3,7 +3,6 @@
  * Copyright (c) 2017-2019 Cisco and/or its affiliates.
  */
 
-#include <math.h>
 #include <vlib/vlib.h>
 #include <vnet/vnet.h>
 #include <vppinfra/elog.h>
@@ -945,7 +944,7 @@ enum
 {
   SESSION_TX_NO_BUFFERS = -2,
   SESSION_TX_NO_DATA,
-  SESSION_TX_OK
+  SESSION_TX_OK,
 };
 
 static void
@@ -972,273 +971,10 @@ session_tx_trace_frame (vlib_main_t *vm, vlib_node_runtime_t *node, u32 *bis,
   vlib_set_trace_count (vm, node, n_trace);
 }
 
-always_inline int
-session_tx_fill_dma_transfers (session_worker_t *wrk,
-			       session_tx_context_t *ctx, vlib_buffer_t *b)
-{
-  vlib_main_t *vm = wrk->vm;
-  u32 len_to_deq;
-  u8 *data0 = NULL;
-  int n_bytes_read, len_write;
-  svm_fifo_seg_t data_fs[2];
-
-  u32 n_segs = 2;
-  u16 n_transfers = 0;
-  /*
-   * Start with the first buffer in chain
-   */
-  b->error = 0;
-  b->flags = VNET_BUFFER_F_LOCALLY_ORIGINATED;
-  b->current_data = 0;
-  data0 = vlib_buffer_make_headroom (b, TRANSPORT_MAX_HDRS_LEN);
-  len_to_deq = clib_min (ctx->left_to_snd, ctx->deq_per_first_buf);
-
-  n_bytes_read = svm_fifo_segments (ctx->s->tx_fifo, ctx->sp.tx_offset,
-				    data_fs, &n_segs, len_to_deq);
-
-  len_write = n_bytes_read;
-  ASSERT (n_bytes_read == len_to_deq);
-
-  while (n_bytes_read)
-    {
-      wrk->batch_num++;
-      vlib_dma_batch_add (vm, wrk->batch, data0, data_fs[n_transfers].data,
-			  data_fs[n_transfers].len);
-      data0 += data_fs[n_transfers].len;
-      n_bytes_read -= data_fs[n_transfers].len;
-      n_transfers++;
-    }
-  return len_write;
-}
-
-always_inline int
-session_tx_fill_dma_transfers_tail (session_worker_t *wrk,
-				    session_tx_context_t *ctx,
-				    vlib_buffer_t *b, u32 len_to_deq, u8 *data)
-{
-  vlib_main_t *vm = wrk->vm;
-  int n_bytes_read, len_write;
-  svm_fifo_seg_t data_fs[2];
-  u32 n_segs = 2;
-  u16 n_transfers = 0;
-
-  n_bytes_read = svm_fifo_segments (ctx->s->tx_fifo, ctx->sp.tx_offset,
-				    data_fs, &n_segs, len_to_deq);
-
-  len_write = n_bytes_read;
-
-  ASSERT (n_bytes_read == len_to_deq);
-
-  while (n_bytes_read)
-    {
-      wrk->batch_num++;
-      vlib_dma_batch_add (vm, wrk->batch, data, data_fs[n_transfers].data,
-			  data_fs[n_transfers].len);
-      data += data_fs[n_transfers].len;
-      n_bytes_read -= data_fs[n_transfers].len;
-      n_transfers++;
-    }
-
-  return len_write;
-}
-
-always_inline int
-session_tx_copy_data (session_worker_t *wrk, session_tx_context_t *ctx,
-		      vlib_buffer_t *b, u32 len_to_deq, u8 *data0)
-{
-  int n_bytes_read;
-  if (PREDICT_TRUE (!wrk->dma_enabled))
-    n_bytes_read =
-      svm_fifo_peek (ctx->s->tx_fifo, ctx->sp.tx_offset, len_to_deq, data0);
-  else
-    n_bytes_read = session_tx_fill_dma_transfers (wrk, ctx, b);
-  return n_bytes_read;
-}
-
-always_inline int
-session_tx_copy_data_tail (session_worker_t *wrk, session_tx_context_t *ctx,
-			   vlib_buffer_t *b, u32 len_to_deq, u8 *data)
-{
-  int n_bytes_read;
-  if (PREDICT_TRUE (!wrk->dma_enabled))
-    n_bytes_read =
-      svm_fifo_peek (ctx->s->tx_fifo, ctx->sp.tx_offset, len_to_deq, data);
-  else
-    n_bytes_read =
-      session_tx_fill_dma_transfers_tail (wrk, ctx, b, len_to_deq, data);
-  return n_bytes_read;
-}
-
-always_inline void
-session_tx_fifo_chain_tail (session_worker_t *wrk, session_tx_context_t *ctx,
-			    vlib_buffer_t *b, u16 *n_bufs, u8 peek_data)
-{
-  vlib_main_t *vm = wrk->vm;
-  vlib_buffer_t *chain_b, *prev_b;
-  u32 chain_bi0, to_deq, left_from_seg;
-  int len_to_deq, n_bytes_read;
-  u8 *data, j;
-
-  b->flags |= VLIB_BUFFER_TOTAL_LENGTH_VALID;
-  b->total_length_not_including_first_buffer = 0;
-
-  chain_b = b;
-  left_from_seg = clib_min (ctx->sp.snd_mss - b->current_length,
-			    ctx->left_to_snd);
-  to_deq = left_from_seg;
-  for (j = 1; j < ctx->n_bufs_per_seg; j++)
-    {
-      prev_b = chain_b;
-      len_to_deq = clib_min (to_deq, ctx->deq_per_buf);
-
-      *n_bufs -= 1;
-      chain_bi0 = ctx->tx_buffers[*n_bufs];
-      chain_b = vlib_get_buffer (vm, chain_bi0);
-      chain_b->current_data = 0;
-      data = vlib_buffer_get_current (chain_b);
-      if (peek_data)
-	{
-	  n_bytes_read =
-	    session_tx_copy_data_tail (wrk, ctx, b, len_to_deq, data);
-	  ctx->sp.tx_offset += n_bytes_read;
-	}
-      else
-	{
-	  if (ctx->transport_vft->transport_options.tx_type ==
-	      TRANSPORT_TX_DGRAM)
-	    {
-	      svm_fifo_t *f = ctx->s->tx_fifo;
-	      session_dgram_hdr_t *hdr = &ctx->hdr;
-	      u16 deq_now;
-	      u32 offset;
-
-	      deq_now = clib_min (hdr->data_length - hdr->data_offset,
-				  len_to_deq);
-	      offset = hdr->data_offset + SESSION_CONN_HDR_LEN;
-	      n_bytes_read = svm_fifo_peek (f, offset, deq_now, data);
-	      ASSERT (n_bytes_read > 0);
-
-	      hdr->data_offset += n_bytes_read;
-	      if (hdr->data_offset == hdr->data_length)
-		{
-		  offset = hdr->data_length + SESSION_CONN_HDR_LEN;
-		  svm_fifo_dequeue_drop (f, offset);
-		  if (to_deq > n_bytes_read)
-		    svm_fifo_peek (ctx->s->tx_fifo, 0, sizeof (ctx->hdr),
-				   (u8 *) & ctx->hdr);
-		}
-	      else if (to_deq == n_bytes_read)
-		svm_fifo_overwrite_head (ctx->s->tx_fifo, (u8 *) & ctx->hdr,
-					 sizeof (session_dgram_pre_hdr_t));
-	    }
-	  else
-	    n_bytes_read = svm_fifo_dequeue (ctx->s->tx_fifo,
-					     len_to_deq, data);
-	}
-      ASSERT (n_bytes_read == len_to_deq);
-      chain_b->current_length = n_bytes_read;
-      b->total_length_not_including_first_buffer += chain_b->current_length;
-
-      /* update previous buffer */
-      prev_b->next_buffer = chain_bi0;
-      prev_b->flags |= VLIB_BUFFER_NEXT_PRESENT;
-
-      /* update current buffer */
-      chain_b->next_buffer = 0;
-
-      to_deq -= n_bytes_read;
-      if (to_deq == 0)
-	break;
-    }
-  ASSERT (to_deq == 0
-	  && b->total_length_not_including_first_buffer == left_from_seg);
-  ctx->left_to_snd -= left_from_seg;
-}
-
-always_inline void
-session_tx_fill_buffer (session_worker_t *wrk, session_tx_context_t *ctx,
-			vlib_buffer_t *b, u16 *n_bufs, u8 peek_data)
-{
-  u32 len_to_deq;
-  u8 *data0;
-  int n_bytes_read;
-  /*
-   * Start with the first buffer in chain
-   */
-  b->error = 0;
-  b->flags = VNET_BUFFER_F_LOCALLY_ORIGINATED;
-  b->current_data = 0;
-
-  data0 = vlib_buffer_make_headroom (b, TRANSPORT_MAX_HDRS_LEN);
-  len_to_deq = clib_min (ctx->left_to_snd, ctx->deq_per_first_buf);
-
-  if (peek_data)
-    {
-      n_bytes_read = session_tx_copy_data (wrk, ctx, b, len_to_deq, data0);
-      ASSERT (n_bytes_read > 0);
-      /* Keep track of progress locally, transport is also supposed to
-       * increment it independently when pushing the header */
-      ctx->sp.tx_offset += n_bytes_read;
-    }
-  else
-    {
-      if (ctx->transport_vft->transport_options.tx_type == TRANSPORT_TX_DGRAM)
-	{
-	  session_dgram_hdr_t *hdr = &ctx->hdr;
-	  svm_fifo_t *f = ctx->s->tx_fifo;
-	  u16 deq_now;
-	  u32 offset;
-
-	  ASSERT (hdr->data_length > hdr->data_offset);
-	  deq_now = clib_min (hdr->data_length - hdr->data_offset,
-			      len_to_deq);
-	  offset = hdr->data_offset + SESSION_CONN_HDR_LEN;
-	  n_bytes_read = svm_fifo_peek (f, offset, deq_now, data0);
-	  ASSERT (n_bytes_read > 0);
-
-	  if (transport_connection_is_cless (ctx->tc))
-	    {
-	      clib_memcpy_fast (data0 - sizeof (session_dgram_hdr_t), hdr,
-				sizeof (*hdr));
-	    }
-	  hdr->data_offset += n_bytes_read;
-	  if (hdr->data_offset == hdr->data_length)
-	    {
-	      offset = hdr->data_length + SESSION_CONN_HDR_LEN;
-	      svm_fifo_dequeue_drop (f, offset);
-	      if (ctx->left_to_snd > n_bytes_read)
-		{
-		  svm_fifo_peek (ctx->s->tx_fifo, 0, sizeof (ctx->hdr),
-				 (u8 *) &ctx->hdr);
-		  ASSERT (hdr->data_length > hdr->data_offset);
-		}
-	    }
-	  else if (ctx->left_to_snd == n_bytes_read)
-	    svm_fifo_overwrite_head (ctx->s->tx_fifo, (u8 *) & ctx->hdr,
-				     sizeof (session_dgram_pre_hdr_t));
-	}
-      else
-	{
-	  n_bytes_read = svm_fifo_dequeue (ctx->s->tx_fifo,
-					   len_to_deq, data0);
-	  ASSERT (n_bytes_read > 0);
-	}
-    }
-
-  b->current_length = n_bytes_read;
-  ctx->left_to_snd -= n_bytes_read;
-
-  /*
-   * Fill in the remaining buffers in the chain, if any
-   */
-  if (PREDICT_FALSE (ctx->n_bufs_per_seg > 1 && ctx->left_to_snd))
-    session_tx_fifo_chain_tail (wrk, ctx, b, n_bufs, peek_data);
-}
-
 always_inline u8
-session_tx_not_ready (session_t * s, u8 peek_data)
+session_tx_not_ready (session_t *s, transport_tx_fn_type_t tx_type)
 {
-  if (peek_data)
+  if (tx_type == TRANSPORT_TX_PEEK)
     {
       if (PREDICT_TRUE (s->session_state == SESSION_STATE_READY))
 	return 0;
@@ -1264,6 +1000,12 @@ session_tx_not_ready (session_t * s, u8 peek_data)
 	  return 2;
 	}
     }
+  else if (tx_type == TRANSPORT_TX_INTERNAL)
+    {
+      if (s->session_state >= SESSION_STATE_TRANSPORT_CLOSED ||
+	  (s->session_state == SESSION_STATE_CONNECTING && (s->flags & SESSION_F_HALF_OPEN)))
+	return 2;
+    }
   else
     {
       if (s->session_state == SESSION_STATE_TRANSPORT_DELETED || !s->tx_fifo)
@@ -1273,164 +1015,11 @@ session_tx_not_ready (session_t * s, u8 peek_data)
 }
 
 always_inline transport_connection_t *
-session_tx_get_transport (session_tx_context_t * ctx, u8 peek_data)
+session_tx_get_transport (session_t *s, transport_proto_t tp)
 {
-  if (peek_data)
-    {
-      return ctx->transport_vft->get_connection (ctx->s->connection_index,
-						 ctx->s->thread_index);
-    }
-  else
-    {
-      if (ctx->s->session_state == SESSION_STATE_LISTENING)
-	return ctx->transport_vft->get_listener (ctx->s->connection_index);
-      else
-	{
-	  return ctx->transport_vft->get_connection (ctx->s->connection_index,
-						     ctx->s->thread_index);
-	}
-    }
-}
-
-always_inline void
-session_tx_set_dequeue_params (vlib_main_t * vm, session_tx_context_t * ctx,
-			       u32 max_segs, u8 peek_data)
-{
-  u32 n_bytes_per_buf, n_bytes_per_seg;
-
-  n_bytes_per_buf = vlib_buffer_get_default_data_size (vm);
-  ctx->max_dequeue = svm_fifo_max_dequeue_cons (ctx->s->tx_fifo);
-
-  if (peek_data)
-    {
-      /* Offset in rx fifo from where to peek data */
-      if (PREDICT_FALSE (ctx->sp.tx_offset >= ctx->max_dequeue))
-	{
-	  ctx->max_len_to_snd = 0;
-	  return;
-	}
-      ctx->max_dequeue -= ctx->sp.tx_offset;
-    }
-  else
-    {
-      if (ctx->transport_vft->transport_options.tx_type == TRANSPORT_TX_DGRAM)
-	{
-	  u32 len, chain_limit;
-
-	  if (ctx->max_dequeue <= sizeof (ctx->hdr))
-	    {
-	      ctx->max_len_to_snd = 0;
-	      return;
-	    }
-
-	  svm_fifo_peek (ctx->s->tx_fifo, 0, sizeof (ctx->hdr),
-			 (u8 *) & ctx->hdr);
-	  /* Zero length dgrams not supported */
-	  if (PREDICT_FALSE (ctx->hdr.data_length == 0))
-	    {
-	      svm_fifo_dequeue_drop (ctx->s->tx_fifo, sizeof (ctx->hdr));
-	      ctx->max_len_to_snd = 0;
-	      return;
-	    }
-	  /* We cannot be sure apps have not enqueued incomplete dgrams */
-	  if (PREDICT_FALSE (ctx->max_dequeue <
-			     ctx->hdr.data_length + sizeof (ctx->hdr)))
-	    {
-	      ctx->max_len_to_snd = 0;
-	      return;
-	    }
-	  ASSERT (ctx->hdr.data_length > ctx->hdr.data_offset);
-	  len = ctx->hdr.data_length - ctx->hdr.data_offset;
-	  ctx->sp.snd_mss = clib_min (ctx->sp.snd_mss, len);
-
-	  if (ctx->hdr.gso_size)
-	    {
-	      ctx->sp.snd_mss = clib_min (ctx->sp.snd_mss, ctx->hdr.gso_size);
-	    }
-
-	  /* Process multiple dgrams if smaller than min (buf_space, mss).
-	   * This avoids handling multiple dgrams if they require buffer
-	   * chains */
-	  chain_limit = clib_min (n_bytes_per_buf - TRANSPORT_MAX_HDRS_LEN,
-				  ctx->sp.snd_mss);
-	  if (ctx->hdr.data_length <= chain_limit)
-	    {
-	      u32 first_dgram_len, dgram_len, offset, max_offset;
-	      session_dgram_hdr_t hdr;
-
-	      ctx->sp.snd_mss = clib_min (ctx->sp.snd_mss, len);
-	      offset = ctx->hdr.data_length + sizeof (session_dgram_hdr_t);
-	      first_dgram_len = len;
-	      max_offset = clib_min (ctx->max_dequeue, 32 << 10);
-
-	      while (offset < max_offset)
-		{
-		  svm_fifo_peek (ctx->s->tx_fifo, offset, sizeof (ctx->hdr),
-				 (u8 *) & hdr);
-		  dgram_len = hdr.data_length - hdr.data_offset;
-		  if (offset + sizeof (hdr) + hdr.data_length >
-			ctx->max_dequeue ||
-		      first_dgram_len != dgram_len)
-		    break;
-		  /* Assert here to allow test above with zero length dgrams */
-		  ASSERT (hdr.data_length > hdr.data_offset);
-		  len += dgram_len;
-		  offset += sizeof (hdr) + hdr.data_length;
-		}
-	    }
-
-	  ctx->max_dequeue = len;
-	}
-    }
-  ASSERT (ctx->max_dequeue > 0);
-
-  /* Ensure we're not writing more than transport window allows */
-  if (ctx->max_dequeue < ctx->sp.snd_space)
-    {
-      /* Constrained by tx queue. Try to send only fully formed segments */
-      ctx->max_len_to_snd = (ctx->max_dequeue > ctx->sp.snd_mss) ?
-	(ctx->max_dequeue - (ctx->max_dequeue % ctx->sp.snd_mss)) :
-	ctx->max_dequeue;
-      /* TODO Nagle ? */
-    }
-  else
-    {
-      /* Expectation is that snd_space0 is already a multiple of snd_mss */
-      ctx->max_len_to_snd = ctx->sp.snd_space;
-    }
-
-  /* Check if we're tx constrained by the node */
-  ctx->n_segs_per_evt = ceil ((f64) ctx->max_len_to_snd / ctx->sp.snd_mss);
-  if (ctx->n_segs_per_evt > max_segs)
-    {
-      ctx->n_segs_per_evt = max_segs;
-      ctx->max_len_to_snd = max_segs * ctx->sp.snd_mss;
-    }
-
-  ASSERT (n_bytes_per_buf > TRANSPORT_MAX_HDRS_LEN);
-  if (ctx->n_segs_per_evt > 1)
-    {
-      u32 n_bytes_last_seg, n_bufs_last_seg;
-
-      n_bytes_per_seg = TRANSPORT_MAX_HDRS_LEN + ctx->sp.snd_mss;
-      n_bytes_last_seg = TRANSPORT_MAX_HDRS_LEN + ctx->max_len_to_snd
-	- ((ctx->n_segs_per_evt - 1) * ctx->sp.snd_mss);
-      ctx->n_bufs_per_seg = ceil ((f64) n_bytes_per_seg / n_bytes_per_buf);
-      n_bufs_last_seg = ceil ((f64) n_bytes_last_seg / n_bytes_per_buf);
-      ctx->n_bufs_needed = ((ctx->n_segs_per_evt - 1) * ctx->n_bufs_per_seg)
-	+ n_bufs_last_seg;
-    }
-  else
-    {
-      n_bytes_per_seg = TRANSPORT_MAX_HDRS_LEN + ctx->max_len_to_snd;
-      ctx->n_bufs_per_seg = ceil ((f64) n_bytes_per_seg / n_bytes_per_buf);
-      ctx->n_bufs_needed = ctx->n_bufs_per_seg;
-    }
-
-  ctx->deq_per_buf = clib_min (ctx->sp.snd_mss, n_bytes_per_buf);
-  ctx->deq_per_first_buf = clib_min (ctx->sp.snd_mss,
-				     n_bytes_per_buf -
-				     TRANSPORT_MAX_HDRS_LEN);
+  if (s->session_state == SESSION_STATE_LISTENING)
+    return transport_get_listener (tp, s->connection_index);
+  return transport_get_connection (tp, s->connection_index, s->thread_index);
 }
 
 always_inline void
@@ -1446,298 +1035,123 @@ session_tx_maybe_reschedule (session_worker_t * wrk,
       if (svm_fifo_set_event (s->tx_fifo))
 	session_evt_add_head_old (wrk, elt);
     }
-  else
+  else if (ctx->tc)
     {
       transport_connection_deschedule (ctx->tc);
     }
 }
 
-always_inline void
-session_tx_add_pending_buffer (session_worker_t *wrk, u32 bi, u32 next_index)
+/* Transports send control packets and new data in custom tx and use the send
+ * params flags to ask for rescheduling. Peek and dgram transports get their
+ * connection, which is descheduled once the tx fifo drains. Internal
+ * transports get the session. */
+static int
+session_tx_send (session_worker_t *wrk, vlib_node_runtime_t *node, session_evt_elt_t *elt,
+		 int *n_tx_packets, transport_tx_fn_type_t tx_type)
 {
-  if (PREDICT_TRUE (!wrk->dma_enabled))
-    {
-      vec_add1 (wrk->pending_tx_buffers, bi);
-      vec_add1 (wrk->pending_tx_nexts, next_index);
-    }
-  else
-    {
-      session_dma_transfer *dma_transfer = &wrk->dma_trans[wrk->trans_tail];
-      vec_add1 (dma_transfer->pending_tx_buffers, bi);
-      vec_add1 (dma_transfer->pending_tx_nexts, next_index);
-    }
-}
-
-always_inline int
-session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
-				vlib_node_runtime_t * node,
-				session_evt_elt_t * elt,
-				int *n_tx_packets, u8 peek_data)
-{
-  u32 n_left, pbi, next_index, max_burst;
   session_tx_context_t *ctx = &wrk->ctx;
-  session_main_t *smm = &session_main;
+  transport_send_params_t *sp = &ctx->sp;
   session_event_t *e = &elt->evt;
-  vlib_main_t *vm = wrk->vm;
+  session_t *s = ctx->s;
+  clib_llist_index_t ei;
   transport_proto_t tp;
-  vlib_buffer_t *pb;
-  u16 n_bufs, rv;
+  u8 ctrl_only = 0;
+  u32 n_packets;
+  void *conn;
+  u16 rv;
 
-  if (PREDICT_FALSE ((rv = session_tx_not_ready (ctx->s, peek_data))))
+  if (PREDICT_FALSE ((rv = session_tx_not_ready (s, tx_type))))
     {
       if (rv < 2)
 	session_evt_add_old (wrk, elt);
       return SESSION_TX_NO_DATA;
     }
 
-  next_index = smm->session_type_to_next[ctx->s->session_type];
-  max_burst = SESSION_NODE_FRAME_SIZE - *n_tx_packets;
-
-  tp = session_get_transport_proto (ctx->s);
-  ctx->transport_vft = transport_protocol_get_vft (tp);
-  ctx->tc = session_tx_get_transport (ctx, peek_data);
+  tp = session_get_transport_proto (s);
+  sp->max_burst_size = SESSION_NODE_FRAME_SIZE - *n_tx_packets;
+  sp->bytes_dequeued = 0;
+  sp->tx_offset = 0;
+  sp->flags = 0;
 
   if (PREDICT_FALSE (e->event_type == SESSION_IO_EVT_TX_FLUSH))
     {
-      if (ctx->transport_vft->flush_data)
-	ctx->transport_vft->flush_data (ctx->tc);
+      sp->flags |= TRANSPORT_SND_F_FLUSH;
       e->event_type = SESSION_IO_EVT_TX;
     }
 
-  if (ctx->s->flags & SESSION_F_CUSTOM_TX)
+  if (tx_type != TRANSPORT_TX_INTERNAL)
     {
-      u32 n_custom_tx;
-      ctx->s->flags &= ~SESSION_F_CUSTOM_TX;
-      ctx->sp.max_burst_size = max_burst;
-      n_custom_tx = ctx->transport_vft->custom_tx (ctx->tc, &ctx->sp);
-      *n_tx_packets += n_custom_tx;
-      if (PREDICT_FALSE (ctx->s->session_state >=
-			 SESSION_STATE_TRANSPORT_CLOSED))
-	{
-	  svm_fifo_unset_event (ctx->s->tx_fifo);
-	  return SESSION_TX_OK;
-	}
-      max_burst -= n_custom_tx;
-      if (!max_burst || (ctx->s->flags & SESSION_F_CUSTOM_TX))
-	{
-	  session_evt_add_old (wrk, elt);
-	  return SESSION_TX_OK;
-	}
+      ctx->tc = session_tx_get_transport (s, tp);
+      ctx->next_index = session_main.session_type_to_next[s->session_type];
+
+      /* Closed sessions can still send custom packets but no new data */
+      ctrl_only =
+	tx_type == TRANSPORT_TX_PEEK && s->session_state >= SESSION_STATE_TRANSPORT_CLOSED;
+      if (PREDICT_FALSE (ctrl_only))
+	sp->flags |= TRANSPORT_SND_F_CTRL_ONLY;
+      else if (transport_connection_is_descheduled (ctx->tc))
+	transport_connection_tx_reactivate (ctx->tc);
+      conn = ctx->tc;
     }
-
-  if (transport_connection_is_descheduled (ctx->tc))
-    transport_connection_tx_reactivate (ctx->tc);
-
-  transport_connection_snd_params (ctx->tc, &ctx->sp);
-
-  if (!ctx->sp.snd_space)
-    {
-      /* If the deschedule flag was set, remove session from scheduler.
-       * Transport is responsible for rescheduling this session. */
-      if (ctx->sp.flags & TRANSPORT_SND_F_DESCHED)
-	transport_connection_deschedule (ctx->tc);
-      /* Request to postpone the session, e.g., zero-wnd and transport
-       * is not currently probing */
-      else if (ctx->sp.flags & TRANSPORT_SND_F_POSTPONE)
-	session_evt_add_old (wrk, elt);
-      /* This flow queue is "empty" so it should be re-evaluated before
-       * the ones that have data to send. */
-      else
-	session_evt_add_head_old (wrk, elt);
-
-      return SESSION_TX_NO_DATA;
-    }
-
-  if (transport_connection_is_tx_paced (ctx->tc))
-    {
-      u32 snd_space = transport_connection_tx_pacer_burst (ctx->tc);
-      if (snd_space < TRANSPORT_PACER_MIN_BURST)
-	{
-	  session_evt_add_head_old (wrk, elt);
-	  return SESSION_TX_NO_DATA;
-	}
-      snd_space = clib_min (ctx->sp.snd_space, snd_space);
-      ctx->sp.snd_space = snd_space >= ctx->sp.snd_mss ?
-	snd_space - snd_space % ctx->sp.snd_mss : snd_space;
-    }
-
-  /* Check how much we can pull. */
-  session_tx_set_dequeue_params (vm, ctx, max_burst, peek_data);
-
-  if (PREDICT_FALSE (!ctx->max_len_to_snd))
-    {
-      transport_connection_tx_pacer_reset_bucket (ctx->tc, 0);
-      session_tx_maybe_reschedule (wrk, ctx, elt);
-      return SESSION_TX_NO_DATA;
-    }
-
-  vec_validate_aligned (ctx->tx_buffers, ctx->n_bufs_needed - 1,
-			CLIB_CACHE_LINE_BYTES);
-  n_bufs = vlib_buffer_alloc (vm, ctx->tx_buffers, ctx->n_bufs_needed);
-  if (PREDICT_FALSE (n_bufs < ctx->n_bufs_needed))
-    {
-      if (n_bufs)
-	vlib_buffer_free (vm, ctx->tx_buffers, n_bufs);
-      session_evt_add_head_old (wrk, elt);
-      vlib_node_increment_counter (wrk->vm, node->node_index,
-				   SESSION_QUEUE_ERROR_NO_BUFFER, 1);
-      return SESSION_TX_NO_BUFFERS;
-    }
-
-  if (transport_connection_is_tx_paced (ctx->tc))
-    transport_connection_tx_pacer_update_bytes (ctx->tc, ctx->max_len_to_snd);
-
-  ctx->left_to_snd = ctx->max_len_to_snd;
-  n_left = ctx->n_segs_per_evt;
-
-  vec_validate (ctx->transport_pending_bufs, n_left);
-
-  while (n_left >= 4)
-    {
-      vlib_buffer_t *b0, *b1;
-      u32 bi0, bi1;
-
-      pbi = ctx->tx_buffers[n_bufs - 3];
-      pb = vlib_get_buffer (vm, pbi);
-      vlib_prefetch_buffer_header (pb, STORE);
-      pbi = ctx->tx_buffers[n_bufs - 4];
-      pb = vlib_get_buffer (vm, pbi);
-      vlib_prefetch_buffer_header (pb, STORE);
-
-      bi0 = ctx->tx_buffers[--n_bufs];
-      bi1 = ctx->tx_buffers[--n_bufs];
-
-      b0 = vlib_get_buffer (vm, bi0);
-      b1 = vlib_get_buffer (vm, bi1);
-
-      session_tx_fill_buffer (wrk, ctx, b0, &n_bufs, peek_data);
-      session_tx_fill_buffer (wrk, ctx, b1, &n_bufs, peek_data);
-
-      ctx->transport_pending_bufs[ctx->n_segs_per_evt - n_left] = b0;
-      ctx->transport_pending_bufs[ctx->n_segs_per_evt - n_left + 1] = b1;
-      n_left -= 2;
-
-      session_tx_add_pending_buffer (wrk, bi0, next_index);
-      session_tx_add_pending_buffer (wrk, bi1, next_index);
-    }
-  while (n_left)
-    {
-      vlib_buffer_t *b0;
-      u32 bi0;
-
-      if (n_left > 1)
-	{
-	  pbi = ctx->tx_buffers[n_bufs - 2];
-	  pb = vlib_get_buffer (vm, pbi);
-	  vlib_prefetch_buffer_header (pb, STORE);
-	}
-
-      bi0 = ctx->tx_buffers[--n_bufs];
-      b0 = vlib_get_buffer (vm, bi0);
-      session_tx_fill_buffer (wrk, ctx, b0, &n_bufs, peek_data);
-
-      ctx->transport_pending_bufs[ctx->n_segs_per_evt - n_left] = b0;
-      n_left -= 1;
-
-      session_tx_add_pending_buffer (wrk, bi0, next_index);
-    }
-
-  /* Ask transport to push headers */
-  ctx->transport_vft->push_header (ctx->tc, ctx->transport_pending_bufs, ctx->n_segs_per_evt,
-				   ctx->max_dequeue);
-
-  if (PREDICT_FALSE (n_bufs))
-    vlib_buffer_free (vm, ctx->tx_buffers, n_bufs);
-
-  *n_tx_packets += ctx->n_segs_per_evt;
-
-  SESSION_EVT (SESSION_EVT_DEQ, ctx->s, ctx->max_len_to_snd, ctx->max_dequeue,
-	       ctx->s->tx_fifo->signals->has_event, wrk->last_vlib_time);
-
-  ASSERT (ctx->left_to_snd == 0);
-
-  /* If we couldn't dequeue all bytes reschedule as old flow. Otherwise,
-   * check if application enqueued more data and reschedule accordingly */
-  if (ctx->max_len_to_snd < ctx->max_dequeue)
-    session_evt_add_old (wrk, elt);
   else
-    session_tx_maybe_reschedule (wrk, ctx, elt);
-
-  if (!peek_data)
     {
-      u32 n_dequeued = ctx->max_len_to_snd;
-      if (ctx->transport_vft->transport_options.tx_type == TRANSPORT_TX_DGRAM)
-	n_dequeued += ctx->n_segs_per_evt * SESSION_CONN_HDR_LEN;
-      if (svm_fifo_needs_deq_ntf (ctx->s->tx_fifo, n_dequeued))
-	session_dequeue_notify (ctx->s);
+      ctx->tc = 0;
+      sp->max_burst_size = clib_min (sp->max_burst_size, TRANSPORT_PACER_MAX_BURST_PKTS);
+      conn = s;
     }
-  return SESSION_TX_OK;
-}
-
-int
-session_tx_fifo_peek_and_snd (session_worker_t * wrk,
-			      vlib_node_runtime_t * node,
-			      session_evt_elt_t * e, int *n_tx_packets)
-{
-  return session_tx_fifo_read_and_snd_i (wrk, node, e, n_tx_packets, 1);
-}
-
-int
-session_tx_fifo_dequeue_and_snd (session_worker_t * wrk,
-				 vlib_node_runtime_t * node,
-				 session_evt_elt_t * e, int *n_tx_packets)
-{
-  return session_tx_fifo_read_and_snd_i (wrk, node, e, n_tx_packets, 0);
-}
-
-int
-session_tx_fifo_dequeue_internal (session_worker_t * wrk,
-				  vlib_node_runtime_t * node,
-				  session_evt_elt_t * elt, int *n_tx_packets)
-{
-  transport_send_params_t *sp = &wrk->ctx.sp;
-  session_t *s = wrk->ctx.s;
-  clib_llist_index_t ei;
-  u32 n_packets;
-
-  if (PREDICT_FALSE ((s->session_state >= SESSION_STATE_TRANSPORT_CLOSED) ||
-		     (s->session_state == SESSION_STATE_CONNECTING &&
-		      (s->flags & SESSION_F_HALF_OPEN))))
-    return 0;
 
   /* Clear custom-tx flag used to request reschedule for tx */
   s->flags &= ~SESSION_F_CUSTOM_TX;
 
-  sp->flags = 0;
-  sp->bytes_dequeued = 0;
-  sp->max_burst_size = clib_min (SESSION_NODE_FRAME_SIZE - *n_tx_packets,
-				 TRANSPORT_PACER_MAX_BURST_PKTS);
-
-  /* Grab elt index since app transports can enqueue events on tx */
+  /* Grab elt index since custom tx can enqueue events */
   ei = clib_llist_entry_index (wrk->event_elts, elt);
 
-  n_packets = transport_custom_tx (session_get_transport_proto (s), s, sp);
+  n_packets = transport_custom_tx (tp, conn, sp);
   *n_tx_packets += n_packets;
 
   elt = clib_llist_elt (wrk->event_elts, ei);
 
-  if (s->flags & SESSION_F_CUSTOM_TX)
+  if (n_packets)
+    SESSION_EVT (SESSION_EVT_DEQ, s, n_packets, svm_fifo_max_dequeue_cons (s->tx_fifo),
+		 s->tx_fifo->signals->has_event, wrk->last_vlib_time);
+
+  if (PREDICT_FALSE (ctrl_only))
+    {
+      svm_fifo_unset_event (s->tx_fifo);
+      return SESSION_TX_OK;
+    }
+
+  if ((s->flags & SESSION_F_CUSTOM_TX) || (sp->flags & TRANSPORT_SND_F_POSTPONE))
     {
       session_evt_add_old (wrk, elt);
     }
+  else if (sp->flags & (TRANSPORT_SND_F_RETRY | TRANSPORT_SND_F_NO_BUFFERS))
+    {
+      if (sp->flags & TRANSPORT_SND_F_NO_BUFFERS)
+	vlib_node_increment_counter (wrk->vm, node->node_index, SESSION_QUEUE_ERROR_NO_BUFFER, 1);
+      /* Re-evaluate before the sessions that have data to send */
+      session_evt_add_head_old (wrk, elt);
+    }
   else if (!(sp->flags & TRANSPORT_SND_F_DESCHED))
     {
-      svm_fifo_unset_event (s->tx_fifo);
-      if (svm_fifo_max_dequeue_cons (s->tx_fifo))
-	if (svm_fifo_set_event (s->tx_fifo))
-	  session_evt_add_head_old (wrk, elt);
+      /* Check if application enqueued more data and reschedule accordingly */
+      session_tx_maybe_reschedule (wrk, ctx, elt);
     }
 
-  if (sp->bytes_dequeued &&
-      svm_fifo_needs_deq_ntf (s->tx_fifo, sp->bytes_dequeued))
+  if (sp->bytes_dequeued && svm_fifo_needs_deq_ntf (s->tx_fifo, sp->bytes_dequeued))
     session_dequeue_notify (s);
 
-  return n_packets;
+  return n_packets ? SESSION_TX_OK : SESSION_TX_NO_DATA;
+}
+
+always_inline void
+session_tx_dispatch (session_worker_t *wrk, vlib_node_runtime_t *node, session_evt_elt_t *elt,
+		     int *n_tx_packets)
+{
+  session_t *s = wrk->ctx.s;
+
+  session_tx_send (wrk, node, elt, n_tx_packets,
+		   session_main.session_type_to_tx_type[s->session_type]);
 }
 
 always_inline session_t *
@@ -1857,7 +1271,6 @@ always_inline void
 session_event_dispatch_io (session_worker_t * wrk, vlib_node_runtime_t * node,
 			   session_evt_elt_t * elt, int *n_tx_packets)
 {
-  session_main_t *smm = &session_main;
   app_worker_t *app_wrk;
   clib_llist_index_t ei;
   session_event_t *e;
@@ -1877,7 +1290,7 @@ session_event_dispatch_io (session_worker_t * wrk, vlib_node_runtime_t * node,
       wrk->ctx.s = s;
       /* Spray packets in per session type frames, since they go to
        * different nodes */
-      (smm->session_tx_fns[s->session_type]) (wrk, node, elt, n_tx_packets);
+      session_tx_dispatch (wrk, node, elt, n_tx_packets);
       break;
     case SESSION_IO_EVT_RX:
       s = session_event_get_session (wrk, e);
@@ -1900,7 +1313,7 @@ session_event_dispatch_io (session_worker_t * wrk, vlib_node_runtime_t * node,
 	break;
       wrk->ctx.s = s;
       if (PREDICT_TRUE (s != 0))
-	(smm->session_tx_fns[s->session_type]) (wrk, node, elt, n_tx_packets);
+	session_tx_dispatch (wrk, node, elt, n_tx_packets);
       break;
     default:
       clib_warning ("unhandled event type %d", e->event_type);

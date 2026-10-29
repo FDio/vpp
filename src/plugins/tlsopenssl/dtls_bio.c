@@ -127,12 +127,13 @@ dtls_dgram_overhead (BIO *b)
 static u16
 dtls_dgram_mss (BIO *b)
 {
+  transport_endpt_attr_t attr = { .type = TRANSPORT_ENDPT_ATTR_MSS };
   session_t *s = bio_session (b);
-  transport_send_params_t sp;
 
-  transport_connection_snd_params (session_get_transport (s), &sp);
+  if (session_transport_attribute (s, 1 /* is_get */, &attr))
+    return 0;
 
-  return sp.snd_mss;
+  return attr.mss;
 }
 
 long

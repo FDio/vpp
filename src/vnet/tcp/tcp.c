@@ -1185,12 +1185,9 @@ tcp_snd_space (tcp_connection_t * tc)
   return tcp_snd_space_inline (tc);
 }
 
-static int
-tcp_session_send_params (transport_connection_t * trans_conn,
-			 transport_send_params_t * sp)
+void
+tcp_session_send_params (tcp_connection_t *tc, transport_send_params_t *sp)
 {
-  tcp_connection_t *tc = (tcp_connection_t *) trans_conn;
-
   /* Ensure snd_mss does accurately reflect the amount of data we can push
    * in a segment. This also makes sure that options are updated according to
    * the current state of the connection. */
@@ -1209,8 +1206,6 @@ tcp_session_send_params (transport_connection_t * trans_conn,
   sp->tx_offset = tc->snd_nxt - tc->snd_una;
 
   sp->flags = sp->snd_space ? 0 : TRANSPORT_SND_F_DESCHED;
-
-  return 0;
 }
 
 static void
@@ -1386,14 +1381,13 @@ tcp_update_time (f64 now, u8 thread_index)
   tcp_dispatch_pending_timers (wrk);
 }
 
-static void
-tcp_session_flush_data (transport_connection_t * tconn)
+void
+tcp_session_flush_data (tcp_connection_t *tc)
 {
-  tcp_connection_t *tc = (tcp_connection_t *) tconn;
   if (tc->flags & TCP_CONN_PSH_PENDING)
     return;
   tc->flags |= TCP_CONN_PSH_PENDING;
-  tc->psh_seq = tc->snd_una + transport_max_tx_dequeue (tconn) - 1;
+  tc->psh_seq = tc->snd_una + transport_max_tx_dequeue (&tc->connection) - 1;
 }
 
 static int
@@ -1432,9 +1426,7 @@ static const transport_proto_vft_t tcp_proto = {
   .cleanup = tcp_session_cleanup,
   .cleanup_ho = tcp_session_cleanup_ho,
   .reset = tcp_session_reset,
-  .send_params = tcp_session_send_params,
   .update_time = tcp_update_time,
-  .flush_data = tcp_session_flush_data,
   .custom_tx = tcp_session_custom_tx,
   .app_rx_evt = tcp_session_app_rx_evt,
   .format_connection = format_tcp_session,
