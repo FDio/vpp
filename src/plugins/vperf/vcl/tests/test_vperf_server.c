@@ -24,11 +24,35 @@ static unsigned allocations, replies, closes, cases;
 static size_t requested;
 static int fail_alloc;
 static unsigned char reply_bytes[STORAGE_SIZE];
+static int pool_test, fail_table, fail_session;
+static size_t table_bytes;
+static unsigned table_moves;
 
 static void *
 test_realloc (void *old, size_t size)
 {
   void *fresh;
+
+  if (pool_test)
+    {
+      CHECK (size > table_bytes && size <= 128 * sizeof (void *));
+      if (fail_table)
+	{
+	  errno = ENOMEM;
+	  return NULL;
+	}
+      fresh = malloc (size);
+      CHECK (fresh && fresh != old);
+      memset (fresh, 0xa5, size);
+      if (old)
+	{
+	  memcpy (fresh, old, table_bytes);
+	  table_moves++;
+	}
+      free (old);
+      table_bytes = size;
+      return fresh;
+    }
 
   allocations++;
   requested = size;
@@ -56,8 +80,10 @@ test_session_close (uint32_t fd)
 }
 
 static int test_session_write (uint32_t fd, void *data, size_t size);
+static void *test_calloc (size_t count, size_t size);
 
 #define realloc		     test_realloc
+#define calloc		     test_calloc
 #define vppcom_session_write test_session_write
 #define vppcom_session_close test_session_close
 #define main		     vperf_server_program_main
@@ -66,6 +92,22 @@ static int test_session_write (uint32_t fd, void *data, size_t size);
 #undef vppcom_session_close
 #undef vppcom_session_write
 #undef realloc
+#undef calloc
+
+static void *
+test_calloc (size_t count, size_t size)
+{
+  if (pool_test)
+    {
+      CHECK (count == 1 && size == sizeof (vperf_session_t));
+      if (fail_session)
+	{
+	  errno = ENOMEM;
+	  return NULL;
+	}
+    }
+  return calloc (count, size);
+}
 
 static int
 test_session_write (uint32_t fd, void *data, size_t size)
@@ -177,6 +219,116 @@ exit_case (void)
   cases++;
 }
 
+static void
+pool_init (vperf_server_worker_t *worker)
+{
+  pool_test = 1;
+  fail_table = fail_session = table_bytes = table_moves = 0;
+  conn_pool_expand (worker, 2);
+  CHECK (worker->conn_pool && worker->conn_pool_size == 2);
+  CHECK (!worker->conn_pool[0] && !worker->conn_pool[1]);
+}
+
+static void
+pool_cleanup (vperf_server_worker_t *worker)
+{
+  vperf_server_main.ctrl = NULL;
+  for (int i = 0; i < worker->conn_pool_size; i++)
+    if (worker->conn_pool[i])
+      {
+	conn_pool_free (worker->conn_pool[i]);
+	free (worker->conn_pool[i]);
+      }
+  free (worker->conn_pool);
+  pool_test = 0;
+}
+
+static void
+pool_growth_case (void)
+{
+  vperf_server_worker_t worker = { 0 };
+  vperf_session_t *saved[16], *reused;
+
+  pool_init (&worker);
+  for (int i = 0; i < (int) ARRAY_LEN (saved); i++)
+    {
+      saved[i] = conn_pool_alloc (&worker);
+      CHECK (saved[i] && saved[i]->session_index == i);
+      saved[i]->fd = i + 32;
+      saved[i]->ip[0] = i + 1;
+      if (!i)
+	{
+	  vperf_server_main.ctrl = saved[i];
+	  saved[i]->cfg.total_bytes = 123456789;
+	}
+      for (int j = 0; j <= i; j++)
+	{
+	  CHECK (worker.conn_pool[j] == saved[j] && saved[j]->fd == j + 32);
+	  CHECK (saved[j]->endpt.ip == saved[j]->ip && saved[j]->endpt.ip[0] == j + 1);
+	}
+      for (int j = i + 1; j < worker.conn_pool_size; j++)
+	CHECK (!worker.conn_pool[j]);
+      CHECK (vperf_server_main.ctrl == saved[0] &&
+	     vperf_server_main.ctrl->cfg.total_bytes == 123456789);
+    }
+  CHECK (table_moves >= 2);
+  saved[5]->rxbuf = malloc (STORAGE_SIZE);
+  saved[5]->txbuf = malloc (STORAGE_SIZE);
+  CHECK (saved[5]->rxbuf && saved[5]->txbuf);
+  saved[5]->stats.rx_bytes = 123;
+  conn_pool_free (saved[5]);
+  CHECK (!saved[5]->is_alloc && !saved[5]->rxbuf && !saved[5]->txbuf);
+  reused = conn_pool_alloc (&worker);
+  CHECK (reused == saved[5] && reused->session_index == 5 && !reused->stats.rx_bytes);
+  CHECK (reused->endpt.ip == reused->ip && vperf_server_main.ctrl == saved[0]);
+  pool_cleanup (&worker);
+  cases++;
+}
+
+static void
+pool_failure_case (int table_failure)
+{
+  vperf_server_worker_t worker = { 0 };
+  vperf_session_t *first, *second;
+  uintptr_t table;
+
+  pool_init (&worker);
+  if (table_failure)
+    {
+      first = conn_pool_alloc (&worker);
+      second = conn_pool_alloc (&worker);
+      CHECK (first && second);
+      vperf_server_main.ctrl = first;
+      first->cfg.total_bytes = 123456789;
+      table = (uintptr_t) worker.conn_pool;
+      fail_table = 1;
+      CHECK (!conn_pool_alloc (&worker));
+      CHECK ((uintptr_t) worker.conn_pool == table && worker.conn_pool_size == 2);
+      CHECK (worker.conn_pool[0] == first && worker.conn_pool[1] == second);
+      CHECK (vperf_server_main.ctrl == first && first->is_alloc && second->is_alloc);
+      fail_table = 0;
+      fail_session = 1;
+      CHECK (!conn_pool_alloc (&worker));
+      CHECK (worker.conn_pool_size > 2 && worker.conn_pool[0] == first &&
+	     worker.conn_pool[1] == second && !worker.conn_pool[2]);
+      CHECK (vperf_server_main.ctrl == first &&
+	     vperf_server_main.ctrl->cfg.total_bytes == 123456789);
+      fail_session = 0;
+      CHECK (conn_pool_alloc (&worker));
+    }
+  else
+    {
+      fail_session = 1;
+      CHECK (!conn_pool_alloc (&worker));
+      CHECK (worker.conn_pool_size == 2 && !worker.conn_pool[0] && !worker.conn_pool[1]);
+      fail_session = 0;
+      first = conn_pool_alloc (&worker);
+      CHECK (first && first->session_index == 0 && first->endpt.ip == first->ip);
+    }
+  pool_cleanup (&worker);
+  cases++;
+}
+
 int
 main (void)
 {
@@ -195,6 +347,9 @@ main (void)
     }
   configuration_case (STORAGE_SIZE, STORAGE_SIZE, 0, 1);
   exit_case ();
+  pool_growth_case ();
+  pool_failure_case (1);
+  pool_failure_case (0);
   printf ("%u vperf server buffer cases passed\n", cases);
   return 0;
 }
