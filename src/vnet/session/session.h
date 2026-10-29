@@ -1078,6 +1078,28 @@ session_add_pending_tx_buffer (clib_thread_index_t thread_index, u32 bi,
     vlib_node_set_interrupt_pending (wrk->vm, session_queue_node.index);
 }
 
+/** Add a data packet built while the session node sends. With dma, it waits
+ * for the copies queued in the worker's current batch. */
+always_inline void
+session_tx_add_data_buffer (session_worker_t *wrk, u32 bi, u32 next_index)
+{
+  if (PREDICT_TRUE (!wrk->dma_enabled))
+    {
+      vec_add1 (wrk->pending_tx_buffers, bi);
+      vec_add1 (wrk->pending_tx_nexts, next_index);
+    }
+  else
+    {
+      session_dma_transfer *dma_transfer = &wrk->dma_trans[wrk->trans_tail];
+      vec_add1 (dma_transfer->pending_tx_buffers, bi);
+      vec_add1 (dma_transfer->pending_tx_nexts, next_index);
+    }
+}
+
+/** Queue a copy of len tx fifo bytes at offset into data on the worker's
+ * dma batch. Return the bytes queued. */
+int session_tx_fifo_dma_copy (session_worker_t *wrk, svm_fifo_t *f, u32 offset, u32 len, u8 *data);
+
 always_inline void
 session_wrk_update_time (session_worker_t *wrk, f64 now)
 {

@@ -56,6 +56,25 @@ typedef struct transport_send_params_
   transport_snd_flags_t flags;
 } transport_send_params_t;
 
+/** What a send_data call did, so the session layer can reschedule */
+typedef enum transport_tx_status_
+{
+  TRANSPORT_TX_DONE,	   /**< sent all ready data, or none was ready */
+  TRANSPORT_TX_MORE,	   /**< more data ready than was sent */
+  TRANSPORT_TX_RETRY,	   /**< no room for a burst now, retry soon */
+  TRANSPORT_TX_POSTPONE,   /**< cannot send for a while, e.g., zero window */
+  TRANSPORT_TX_DESCHED,	   /**< descheduled, the transport resumes the connection */
+  TRANSPORT_TX_NO_BUFFERS, /**< buffer allocation failed, retry soon */
+} transport_tx_status_t;
+
+typedef struct transport_tx_result_
+{
+  u32 n_packets; /**< packets queued for output */
+  u32 n_bytes;	 /**< new data bytes sent */
+  u32 tx_offset; /**< tx fifo offset of the first unsent byte */
+  transport_tx_status_t status;
+} transport_tx_result_t;
+
 /*
  * Transport protocol virtual function table
  */
@@ -87,6 +106,9 @@ typedef struct _transport_proto_vft
   void (*update_time) (f64 time_now, u8 thread_index);
   void (*flush_data) (transport_connection_t *tconn);
   int (*custom_tx) (void *session, transport_send_params_t *sp);
+  /** Send new tx fifo data in up to max_burst packets. Peek transports own
+   * their send params, pacing, segmentation and buffers. */
+  void (*send_data) (transport_connection_t *tconn, u32 max_burst, transport_tx_result_t *res);
   int (*app_rx_evt) (transport_connection_t *tconn);
 
   /*

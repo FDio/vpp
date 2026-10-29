@@ -1436,6 +1436,7 @@ static const transport_proto_vft_t tcp_proto = {
   .update_time = tcp_update_time,
   .flush_data = tcp_session_flush_data,
   .custom_tx = tcp_session_custom_tx,
+  .send_data = tcp_session_send_data,
   .app_rx_evt = tcp_session_app_rx_evt,
   .format_connection = format_tcp_session,
   .format_listener = format_tcp_listener_session,
