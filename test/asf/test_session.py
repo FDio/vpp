@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 
 import unittest
+import select
+import socket
+import struct
 
 from asfframework import (
     VppAsfTestCase,
@@ -12,6 +15,191 @@ from vpp_papi import VppEnum
 from vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath
 from ipaddress import IPv4Network
 from config import config
+
+
+class TestSessionSocketAPI(VppAsfTestCase):
+    """Session socket API certificate messages"""
+
+    extra_vpp_config = ["session { enable use-app-socket-api }"]
+
+    # app_sapi_msg_t uses a packed type byte and a union whose largest member
+    # is the attach message (name[64], options[18]). Fields use native endian.
+    msg_len = struct.calcsize("=B64s18Q")
+    cert_key_msg_type = 6
+    cert_key_reply_type = 7
+    context = 123
+
+    def setUp(self):
+        super().setUp()
+        self.sock = socket.socket(socket.AF_UNIX, socket.SOCK_SEQPACKET)
+        self.addCleanup(self.sock.close)
+        self.sock.settimeout(2)
+        self.sock.connect(f"{self.tempdir}/app_ns_sockets/default")
+        self.sock.sendall(
+            struct.pack("=B64s18Q", 1, b"session-socket-api-test", *([0] * 18))
+        )
+        reply = self.sock.recv(self.msg_len)
+        self.assertEqual(len(reply), self.msg_len)
+        self.assertEqual(struct.unpack_from("=Bi", reply), (2, 0))
+
+    def cert_key_msg(self, cert_len=0, data_len=0, index=0, is_add=1):
+        return struct.pack(
+            "=BIIHHB",
+            self.cert_key_msg_type,
+            self.context,
+            index,
+            cert_len,
+            data_len,
+            is_add,
+        ).ljust(self.msg_len, b"\0")
+
+    def cert_key_reply(self):
+        reply = self.sock.recv(self.msg_len)
+        self.assertEqual(len(reply), self.msg_len)
+        msg_type, context, retval, index = struct.unpack_from("=BIiI", reply)
+        self.assertEqual(msg_type, self.cert_key_reply_type)
+        self.assertEqual(context, self.context)
+        return retval, index
+
+    def assert_no_reply(self):
+        self.assertFalse(select.select([self.sock], [], [], 0.05)[0])
+
+    def test_cert_key_fragments(self):
+        """Accumulate delayed certificate payloads across seqpackets"""
+        cases = [
+            (4, b"certkey", [7]),
+            (4, b"certkey", list(range(1, 8))),
+            (10000, b"c" * 10000 + b"k" * 10000, [20000]),
+            (10000, b"c" * 10000 + b"k" * 10000, [1, 4097, 11097, 19999, 20000]),
+        ]
+        for cert_len, data, ends in cases:
+            with self.subTest(cert_len=cert_len, fragments=len(ends)):
+                self.sock.sendall(self.cert_key_msg(cert_len, len(data)))
+                self.assert_no_reply()
+                start = 0
+                for end in ends:
+                    self.sock.sendall(data[start:end])
+                    if end < len(data):
+                        self.assert_no_reply()
+                    start = end
+                retval, index = self.cert_key_reply()
+                self.assertEqual(retval, 0)
+                self.assertIn(
+                    f"{index} (cert:{cert_len}, key:{len(data) - cert_len})",
+                    self.vapi.cli("show app certificate"),
+                )
+                self.sock.sendall(self.cert_key_msg(index=index, is_add=0))
+                retval, _ = self.cert_key_reply()
+                self.assertEqual(retval, 0)
+
+    def test_cert_key_invalid_lengths(self):
+        """Discard invalid certificate bodies and preserve request framing"""
+        for cert_len, data_len in [
+            (0, 0),
+            (1, 0),
+            (0, 1),
+            (1, 1),
+            (2, 1),
+            (10001, 10002),
+            (1, 10002),
+            (10000, 20001),
+            (1, 65535),
+        ]:
+            with self.subTest(cert_len=cert_len, data_len=data_len):
+                self.sock.sendall(self.cert_key_msg(cert_len, data_len))
+                if data_len:
+                    self.sock.sendall(b"x" * data_len)
+                retval, _ = self.cert_key_reply()
+                self.assertLess(retval, 0)
+
+                # A rejected body must not detach the worker or consume the
+                # next request. Exercise another complete add/delete pair.
+                self.sock.sendall(self.cert_key_msg(4, 7))
+                self.sock.sendall(b"certkey")
+                retval, index = self.cert_key_reply()
+                self.assertEqual(retval, 0)
+                self.sock.sendall(self.cert_key_msg(index=index, is_add=0))
+                retval, _ = self.cert_key_reply()
+                self.assertEqual(retval, 0)
+
+    def test_cert_key_queued_payload(self):
+        """Read queued certificate fragments without consuming the next command"""
+        cases = [
+            (4, b"certkey", [7]),
+            (4, b"certkey", list(range(1, 8))),
+            (10000, b"c" * 10000 + b"k" * 10000, [20000]),
+            (10000, b"c" * 10000 + b"k" * 10000, [1, 4097, 11097, 19999, 20000]),
+        ]
+        for cert_len, data, ends in cases:
+            with self.subTest(cert_len=cert_len, fragments=len(ends)):
+                saved = self.vapi.app_add_cert_key_pair(
+                    cert_len=4, certkey_len=7, certkey=b"certkey"
+                )
+                self.sock.sendall(self.cert_key_msg(cert_len, len(data)))
+                start = 0
+                for end in ends:
+                    self.sock.sendall(data[start:end])
+                    start = end
+                # Queue a command immediately after the payload. The receive
+                # loop must stop at the advertised length and preserve it.
+                self.sock.sendall(self.cert_key_msg(index=saved.index, is_add=0))
+                retval, index = self.cert_key_reply()
+                self.assertEqual(retval, 0)
+                retval, _ = self.cert_key_reply()
+                self.assertEqual(retval, 0)
+                self.assertIn(
+                    f"{index} (cert:{cert_len}, key:{len(data) - cert_len})",
+                    self.vapi.cli("show app certificate"),
+                )
+                self.sock.sendall(self.cert_key_msg(index=index, is_add=0))
+                retval, _ = self.cert_key_reply()
+                self.assertEqual(retval, 0)
+
+    def assert_incomplete_payload_eof(self, prefix=b""):
+        self.sock.sendall(self.cert_key_msg(4, 7))
+        if prefix:
+            self.sock.sendall(prefix)
+        self.assert_no_reply()
+        self.sock.shutdown(socket.SHUT_WR)
+        self.assertEqual(self.sock.recv(self.msg_len), b"")
+        self.assertTrue(self.vapi.cli("show version"))
+
+    def test_cert_key_eof_before_payload(self):
+        """Detach when the peer closes before sending the certificate payload"""
+        self.assert_incomplete_payload_eof()
+
+    def test_cert_key_eof_after_fragment(self):
+        """Detach when the peer closes after sending an incomplete payload"""
+        self.assert_incomplete_payload_eof(b"cert")
+
+    def test_cert_key_invalid_body_command(self):
+        """Never dispatch a rejected certificate body as an API command"""
+        reply = self.vapi.app_add_cert_key_pair(
+            cert_len=4, certkey_len=7, certkey=b"certkey"
+        )
+        index = reply.index
+        body = self.cert_key_msg(index=index, is_add=0)
+
+        for fragments in ([body], [body[:1], body[1:100], body[100:]]):
+            with self.subTest(fragments=len(fragments)):
+                self.sock.sendall(self.cert_key_msg(0, len(body)))
+                if len(fragments) > 1:
+                    self.assert_no_reply()
+                for fragment in fragments[:-1]:
+                    self.sock.sendall(fragment)
+                    self.assert_no_reply()
+                self.sock.sendall(fragments[-1])
+                retval, _ = self.cert_key_reply()
+                self.assertLess(retval, 0)
+                self.assert_no_reply()
+                self.assertIn(
+                    f"{index} (cert:4, key:3)",
+                    self.vapi.cli("show app certificate"),
+                )
+
+        self.sock.sendall(self.cert_key_msg(index=index, is_add=0))
+        retval, _ = self.cert_key_reply()
+        self.assertEqual(retval, 0)
 
 
 @tag_fixme_vpp_workers
