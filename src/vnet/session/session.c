@@ -1815,13 +1815,6 @@ session_get_original_dst (transport_endpoint_t *i2o_src,
 			    original_dst_port);
 }
 
-static session_fifo_rx_fn *session_tx_fns[TRANSPORT_TX_N_FNS] = {
-    session_tx_fifo_peek_and_snd,
-    session_tx_fifo_dequeue_and_snd,
-    session_tx_fifo_dequeue_internal,
-    session_tx_fifo_dequeue_and_snd
-};
-
 void
 session_register_transport (transport_proto_t transport_proto,
 			    const transport_proto_vft_t * vft, u8 is_ip4,
@@ -1831,18 +1824,21 @@ session_register_transport (transport_proto_t transport_proto,
   session_type_t session_type;
   u32 next_index = ~0;
 
+  /* Transports send all data with custom tx */
+  ASSERT (vft->custom_tx);
+  ASSERT (vft->transport_options.tx_type < TRANSPORT_TX_N_FNS);
+
   session_type = session_type_from_proto_and_ip (transport_proto, is_ip4);
 
   vec_validate (smm->session_type_to_next, session_type);
-  vec_validate (smm->session_tx_fns, session_type);
+  vec_validate (smm->session_type_to_tx_type, session_type);
 
   if (output_node != ~0)
     next_index = vlib_node_add_next (vlib_get_main (),
 				     session_queue_node.index, output_node);
 
   smm->session_type_to_next[session_type] = next_index;
-  smm->session_tx_fns[session_type] =
-    session_tx_fns[vft->transport_options.tx_type];
+  smm->session_type_to_tx_type[session_type] = vft->transport_options.tx_type;
 }
 
 static void
