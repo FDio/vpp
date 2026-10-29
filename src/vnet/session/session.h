@@ -27,20 +27,7 @@ typedef struct session_tx_context_
   const transport_proto_vft_t *transport_vft;
   transport_connection_t *tc;
   transport_send_params_t sp;
-  u32 max_dequeue;
-  u32 left_to_snd;
-  u32 max_len_to_snd;
-  u16 deq_per_first_buf;
-  u16 deq_per_buf;
-  u16 n_segs_per_evt;
-  u16 n_bufs_needed;
-  u8 n_bufs_per_seg;
-    CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
-  session_dgram_hdr_t hdr;
-
-  /** Vector of tx buffer free lists */
-  u32 *tx_buffers;
-  vlib_buffer_t **transport_pending_bufs;
+  u32 next_index; /**< session node next for transport packets */
 } session_tx_context_t;
 
 typedef struct session_evt_elt
@@ -181,14 +168,6 @@ typedef struct session_worker_
   session_dio_ctx_t dio;
 } session_worker_t;
 
-typedef int (session_fifo_rx_fn) (session_worker_t * wrk,
-				  vlib_node_runtime_t * node,
-				  session_evt_elt_t * e, int *n_tx_packets);
-
-extern session_fifo_rx_fn session_tx_fifo_peek_and_snd;
-extern session_fifo_rx_fn session_tx_fifo_dequeue_and_snd;
-extern session_fifo_rx_fn session_tx_fifo_dequeue_internal;
-
 u8 session_node_lookup_fifo_event (svm_fifo_t * f, session_event_t * e);
 
 typedef void (*nat44_original_dst_lookup_fn) (
@@ -219,8 +198,8 @@ typedef struct session_main_
   /** Worker contexts */
   session_worker_t *wrk;
 
-  /** Per transport rx function that can either dequeue or peek */
-  session_fifo_rx_fn **session_tx_fns;
+  /** Per session type transport tx type */
+  transport_tx_fn_type_t *session_type_to_tx_type;
 
   /** Per session type output nodes. Could optimize to group nodes by
    * fib but lookup would then require session type parsing in session node.
@@ -1076,6 +1055,93 @@ session_add_pending_tx_buffer (clib_thread_index_t thread_index, u32 bi,
   vec_add1 (wrk->pending_tx_nexts, next_node);
   if (PREDICT_FALSE (wrk->state == SESSION_WRK_INTERRUPT))
     vlib_node_set_interrupt_pending (wrk->vm, session_queue_node.index);
+}
+
+/** Queue a copy of len tx fifo bytes at offset into data on the worker's
+ * dma batch. Return the bytes queued. */
+int session_tx_fifo_dma_copy (session_worker_t *wrk, svm_fifo_t *f, u32 offset, u32 len, u8 *data);
+
+/*
+ * Tx helpers for transport custom tx. The send params passed to custom tx
+ * are the transport's handle to the session's tx fifo and output.
+ */
+
+always_inline session_tx_context_t *
+session_tx_ctx (transport_send_params_t *sp)
+{
+  session_tx_context_t *ctx;
+
+  ctx = (session_tx_context_t *) ((u8 *) sp - STRUCT_OFFSET_OF (session_tx_context_t, sp));
+  ASSERT (ctx == &session_main_get_worker (vlib_get_thread_index ())->ctx);
+  return ctx;
+}
+
+always_inline session_worker_t *
+session_tx_ctx_wrk (session_tx_context_t *ctx)
+{
+  return (session_worker_t *) ((u8 *) ctx - STRUCT_OFFSET_OF (session_worker_t, ctx));
+}
+
+/** Bytes in the tx fifo */
+always_inline u32
+session_tx_max_dequeue (transport_send_params_t *sp)
+{
+  return svm_fifo_max_dequeue_cons (session_tx_ctx (sp)->s->tx_fifo);
+}
+
+/** Copy len tx fifo bytes at offset into data */
+always_inline int
+session_tx_peek (transport_send_params_t *sp, u32 offset, u32 len, u8 *data)
+{
+  return svm_fifo_peek (session_tx_ctx (sp)->s->tx_fifo, offset, len, data);
+}
+
+/** Copy len tx fifo bytes at offset into a buffer passed to
+ * session_tx_send_buffer. With dma, queue the copy on the worker's batch. */
+always_inline int
+session_tx_copy (transport_send_params_t *sp, u32 offset, u32 len, u8 *data)
+{
+  session_tx_context_t *ctx = session_tx_ctx (sp);
+  session_worker_t *wrk = session_tx_ctx_wrk (ctx);
+
+  if (PREDICT_TRUE (!wrk->dma_enabled))
+    return svm_fifo_peek (ctx->s->tx_fifo, offset, len, data);
+  return session_tx_fifo_dma_copy (wrk, ctx->s->tx_fifo, offset, len, data);
+}
+
+/** Drop len bytes from the head of the tx fifo */
+always_inline u32
+session_tx_drop (transport_send_params_t *sp, u32 len)
+{
+  return svm_fifo_dequeue_drop (session_tx_ctx (sp)->s->tx_fifo, len);
+}
+
+/** Overwrite the first len bytes of the tx fifo */
+always_inline void
+session_tx_overwrite_head (transport_send_params_t *sp, u8 *data, u32 len)
+{
+  svm_fifo_overwrite_head (session_tx_ctx (sp)->s->tx_fifo, data, len);
+}
+
+/** Send a packet built by custom tx. With dma, it waits for the copies
+ * queued in the worker's current batch. */
+always_inline void
+session_tx_send_buffer (transport_send_params_t *sp, u32 bi)
+{
+  session_tx_context_t *ctx = session_tx_ctx (sp);
+  session_worker_t *wrk = session_tx_ctx_wrk (ctx);
+
+  if (PREDICT_TRUE (!wrk->dma_enabled))
+    {
+      vec_add1 (wrk->pending_tx_buffers, bi);
+      vec_add1 (wrk->pending_tx_nexts, ctx->next_index);
+    }
+  else
+    {
+      session_dma_transfer *dma_transfer = &wrk->dma_trans[wrk->trans_tail];
+      vec_add1 (dma_transfer->pending_tx_buffers, bi);
+      vec_add1 (dma_transfer->pending_tx_nexts, ctx->next_index);
+    }
 }
 
 always_inline void

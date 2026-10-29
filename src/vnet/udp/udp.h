@@ -120,6 +120,8 @@ typedef struct udp_worker_
 {
   udp_connection_t *connections;
   u32 *pending_cleanups;
+  u32 *tx_buffers;		/**< buffers allocated for a tx burst */
+  vlib_buffer_t **tx_data_bufs; /**< buffers of a tx burst */
 } udp_worker_t;
 
 typedef struct
