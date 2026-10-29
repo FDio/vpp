@@ -393,7 +393,7 @@ dpdk_lib_init (dpdk_main_t * dm)
 	}
       else
 	{
-	  struct rte_pci_device *pci_dev;
+	  struct rte_pci_device *pci_dev = 0;
 	  if (dr && dr->interface_name_prefix)
 	    {
 	      /* prefix override by driver */

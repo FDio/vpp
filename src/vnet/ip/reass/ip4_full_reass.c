@@ -1181,7 +1181,7 @@ ip4_full_reass_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
     {
       u32 bi0;
       vlib_buffer_t *b0;
-      u32 next0;
+      u32 next0 = IP4_FULL_REASS_NEXT_INPUT;
       u32 error0 = IP4_ERROR_NONE;
 
       bi0 = from[0];
