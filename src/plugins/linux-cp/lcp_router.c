@@ -621,15 +621,25 @@ static fib_protocol_t
 lcp_router_mk_addr46 (const struct nl_addr *rna, ip46_address_t *ia)
 {
   fib_protocol_t fproto;
+  unsigned int alen;
 
   fproto = lcp_router_proto_k2f (nl_addr_get_family (rna));
   ASSERT (FIB_PROTOCOL_MPLS != fproto);
 
   ip46_address_reset (ia);
+  alen = nl_addr_get_len (rna);
   if (FIB_PROTOCOL_IP4 == fproto)
-    memcpy (&ia->ip4, nl_addr_get_binary_addr (rna), nl_addr_get_len (rna));
+    {
+      if (PREDICT_FALSE (alen > sizeof (ia->ip4)))
+	return FIB_PROTOCOL_MAX;
+      memcpy (&ia->ip4, nl_addr_get_binary_addr (rna), alen);
+    }
   else
-    memcpy (&ia->ip6, nl_addr_get_binary_addr (rna), nl_addr_get_len (rna));
+    {
+      if (PREDICT_FALSE (alen > sizeof (ia->ip6)))
+	return FIB_PROTOCOL_MAX;
+      memcpy (&ia->ip6, nl_addr_get_binary_addr (rna), alen);
+    }
 
   return (fproto);
 }
@@ -1053,9 +1063,19 @@ lcp_router_route_mk_prefix (struct rtnl_route *r, fib_prefix_t *p)
       p->fp_eos = MPLS_NON_EOS;
       return;
     case FIB_PROTOCOL_IP4:
+      if (PREDICT_FALSE (blen > sizeof (paddr->ip4)))
+	{
+	  p->fp_len = 0;
+	  return;
+	}
       memcpy (&paddr->ip4, baddr, blen);
       break;
     case FIB_PROTOCOL_IP6:
+      if (PREDICT_FALSE (blen > sizeof (paddr->ip6)))
+	{
+	  p->fp_len = 0;
+	  return;
+	}
       memcpy (&paddr->ip6, baddr, blen);
       break;
     }
