@@ -1033,14 +1033,14 @@ tcp_rcv_fin (tcp_worker_ctx_t * wrk, tcp_connection_t * tc, vlib_buffer_t * b,
 
 /** Enqueue data for delivery to application */
 static int
-tcp_session_enqueue_data (tcp_connection_t * tc, vlib_buffer_t * b,
-			  u16 data_len)
+tcp_session_enqueue_data (tcp_connection_t *tc, vlib_buffer_t *b, u16 data_len)
 {
   int written, error = TCP_ERROR_ENQUEUED;
+  svm_fifo_enq_args_t args = {};
 
   ASSERT (seq_geq (vnet_buffer (b)->tcp.seq_number, tc->rcv_nxt));
   ASSERT (data_len);
-  written = session_enqueue_stream_connection (&tc->connection, b, 1 /* queue event */);
+  written = session_enqueue_stream_connection (&tc->connection, b, 1 /* queue event */, &args);
 
   TCP_EVT (TCP_EVT_INPUT, tc, 0, data_len, written);
 
@@ -1089,21 +1089,19 @@ tcp_session_enqueue_data (tcp_connection_t * tc, vlib_buffer_t * b,
 
 /** Enqueue out-of-order data */
 static int
-tcp_session_enqueue_ooo (tcp_connection_t * tc, vlib_buffer_t * b,
-			 u16 data_len)
+tcp_session_enqueue_ooo (tcp_connection_t *tc, vlib_buffer_t *b, u16 data_len)
 {
-  svm_fifo_ooo_enq_info_t info;
+  svm_fifo_enq_args_t args = { .offset = vnet_buffer (b)->tcp.seq_number - tc->rcv_nxt };
   int rv;
 
   ASSERT (seq_gt (vnet_buffer (b)->tcp.seq_number, tc->rcv_nxt));
   ASSERT (data_len);
 
   /* Enqueue out-of-order data with relative offset */
-  rv = session_enqueue_stream_connection_ooo (&tc->connection, b,
-					      vnet_buffer (b)->tcp.seq_number - tc->rcv_nxt, &info);
+  rv = session_enqueue_stream_connection (&tc->connection, b, 0 /* queue event */, &args);
 
   /* Nothing written */
-  if (rv)
+  if (rv < 0)
     {
       TCP_EVT (TCP_EVT_INPUT, tc, 1, data_len, 0);
       return TCP_ERROR_FIFO_FULL;
@@ -1117,11 +1115,11 @@ tcp_session_enqueue_ooo (tcp_connection_t * tc, vlib_buffer_t * b,
     {
       u32 start, seq = vnet_buffer (b)->tcp.seq_number;
 
-      if (info.dup_len < data_len)
+      if (args.dup_len < data_len)
 	{
-	  ASSERT (info.seg_offset <= seq - tc->rcv_nxt);
-	  start = tc->rcv_nxt + info.seg_offset;
-	  tcp_update_sack_list (tc, start, start + info.seg_len, seq, seq + data_len);
+	  ASSERT (args.seg_offset <= seq - tc->rcv_nxt);
+	  start = tc->rcv_nxt + args.seg_offset;
+	  tcp_update_sack_list (tc, start, start + args.seg_len, seq, seq + data_len);
 	  TCP_EVT (TCP_EVT_CC_SACKS, tc);
 	}
       else
