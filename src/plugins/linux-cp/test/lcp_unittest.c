@@ -58,7 +58,7 @@ lcp_add_pair_command_fn (vlib_main_t *vm, unformat_input_t *input,
 				  input);
 
       rv = lcp_itf_pair_add (host_sw_if_index, phy_sw_if_index, host_name,
-			     host_vif, host_type, NULL);
+			     host_vif, host_type, lcp_get_default_ns ());
     }
   else
     rv = lcp_itf_pair_del (phy_sw_if_index);
