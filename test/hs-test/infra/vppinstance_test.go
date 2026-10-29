@@ -10,17 +10,27 @@ var (
 	// per worker session tx scratch vector, noise
 	tbSessionTxVecValidate = []string{
 		"_vec_realloc_internal + 0x100",
-		"_vec_resize_internal + 0xd3",
-		"_vec_validate + 0x111",
-		"session_tx_fifo_read_and_snd_i + 0x5cb",
-		"session_tx_fifo_peek_and_snd + 0x32",
-		"session_event_dispatch_io + 0x104",
-		"session_queue_node_fn + 0xc69",
-		"dispatch_node + 0x348",
-		"vlib_main_or_worker_loop + 0x49f",
-		"vlib_main + 0x678",
-		"thread0 + 0x7c",
-		"0x7c7143c6c6e3",
+		"_vec_resize_internal + 0xd4",
+		"_vec_validate + 0x112",
+		"session_tx_burst_inline + 0x2bc",
+		"session_tx_burst_stream + 0x5a",
+		"tcp_session_send_data + 0x264",
+		"tcp_session_custom_tx + 0x118",
+		"transport_custom_tx + 0x38",
+		"session_tx_send + 0x25e",
+		"session_tx_dispatch + 0x73",
+		"session_event_dispatch_io + 0xe9",
+		"session_queue_node_fn + 0x118b",
+	}
+	// the same scratch vector in a release build, noise
+	tbSessionTxVecValidateRelease = []string{
+		"_vec_realloc_internal + 0x93",
+		"session_tx_burst_stream + 0x13b8",
+		"tcp_session_custom_tx + 0x2a8",
+		"session_tx_dispatch + 0x42c",
+		"session_queue_node_fn + 0x653",
+		"vlib_main + 0xb26",
+		"thread0 + 0x298",
 	}
 	// per worker session event pool free indices, noise
 	tbSessionEventPoolPut = []string{
@@ -88,23 +98,27 @@ var (
 		"vlib_process_bootstrap + 0x5c",
 	}
 	// another path through the same caller, must be reported
-	tbTcpSendAck = []string{
+	tbSessionTxFifoPeek = []string{
 		"_vec_realloc_internal + 0x100",
-		"_vec_resize_internal + 0xd3",
-		"_hash_set3 + 0x2a1",
-		"vlib_buffer_alloc + 0x9f",
-		"tcp_send_ack + 0x11d",
-		"tcp_session_custom_tx + 0x2e2",
-		"session_tx_fifo_read_and_snd_i + 0x494",
-		"session_event_dispatch_io + 0x104",
+		"_pool_get + 0x1b7",
+		"rb_tree_add_custom + 0x6f",
+		"f_update_ooo_deq + 0xf2",
+		"svm_fifo_peek + 0xff",
+		"session_tx_stream_copy + 0x55",
+		"session_tx_fill_buffer + 0xea",
+		"session_tx_burst_inline + 0x778",
+		"session_tx_burst_stream + 0x5a",
+		"tcp_session_send_data + 0x264",
+		"tcp_session_custom_tx + 0x118",
+		"transport_custom_tx + 0x38",
 	}
 	// both pair frames present but not adjacent, must be reported
 	tbPairNotAdjacent = []string{
 		"_vec_realloc_internal + 0x100",
-		"_vec_validate + 0x111",
+		"_vec_validate + 0x112",
 		"_hash_set3 + 0x2a1",
-		"tcp_session_custom_tx + 0x2e2",
-		"session_tx_fifo_read_and_snd_i + 0x494",
+		"session_tx_fill_buffer + 0xea",
+		"session_tx_burst_inline + 0x778",
 	}
 	// pair on the last two frames still matches, the cap only hides what is past them
 	tbPairAtCap = []string{
@@ -118,8 +132,8 @@ var (
 		"dispatch_node + 0x348",
 		"vlib_main + 0x678",
 		"thread0 + 0x7c",
-		"_vec_validate + 0x111",
-		"session_tx_fifo_read_and_snd_i + 0x5cb",
+		"_vec_validate + 0x112",
+		"session_tx_burst_inline + 0x2bc",
 	}
 	// caller pushed past the cap, cannot match
 	tbPairTruncated = []string{
@@ -136,6 +150,8 @@ func TestMemTraceIsReportNoise(t *testing.T) {
 		noise     bool
 	}{
 		{name: "session tx scratch vector", traceback: tbSessionTxVecValidate, noise: true},
+		{name: "session tx scratch vector, release", traceback: tbSessionTxVecValidateRelease, noise: true},
+		{name: "realloc under another caller", traceback: []string{"_vec_realloc_internal", "_pool_get", "session_tx_burst_stream"}, noise: false},
 		{name: "session event pool put", traceback: tbSessionEventPoolPut, noise: true},
 		{name: "HTTP CLI session pool put", traceback: tbHttpCliSessionPoolPut, noise: true},
 		{name: "pool put with another caller", traceback: []string{"_vec_validate", "clib_bitmap_ori_notrim", "_pool_put_index", "session_free"}, noise: false},
@@ -147,7 +163,7 @@ func TestMemTraceIsReportNoise(t *testing.T) {
 		{name: "parsed filename", traceback: tbSaveMemoryTraceFilename, noise: false},
 		{name: "pair on last two frames", traceback: tbPairAtCap, noise: true},
 		{name: "deliberate leak", traceback: tbDeliberateLeak, noise: false},
-		{name: "tcp send ack", traceback: tbTcpSendAck, noise: false},
+		{name: "session tx fifo peek", traceback: tbSessionTxFifoPeek, noise: false},
 		{name: "pair not adjacent", traceback: tbPairNotAdjacent, noise: false},
 		{name: "pair truncated", traceback: tbPairTruncated, noise: false},
 		{name: "empty traceback", traceback: nil, noise: false},
@@ -173,10 +189,10 @@ func TestMemTracesSuppressReportNoise(t *testing.T) {
 		{Count: 1, Size: 192, Sample: "session tx scratch vector", Traceback: tbSessionTxVecValidate},
 		{Count: 1, Size: 4112, Sample: "unix cli", Traceback: tbUnixCli},
 		{Count: 1, Size: 112, Sample: "deliberate leak", Traceback: tbDeliberateLeak},
-		{Count: 1, Size: 64, Sample: "tcp send ack", Traceback: tbTcpSendAck},
+		{Count: 1, Size: 64, Sample: "session tx fifo peek", Traceback: tbSessionTxFifoPeek},
 		{Count: 1, Size: 32, Sample: "pair not adjacent", Traceback: tbPairNotAdjacent},
 	}
-	expected := []string{"deliberate leak", "tcp send ack", "pair not adjacent"}
+	expected := []string{"deliberate leak", "session tx fifo peek", "pair not adjacent"}
 
 	filtered := memTracesSuppressReportNoise(traces)
 	if len(filtered) != len(expected) {

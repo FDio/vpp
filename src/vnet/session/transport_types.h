@@ -15,10 +15,9 @@
 
 typedef enum transport_dequeue_type_
 {
-  TRANSPORT_TX_PEEK,		/**< reliable transport protos */
-  TRANSPORT_TX_DEQUEUE,		/**< unreliable transport protos */
-  TRANSPORT_TX_INTERNAL,	/**< apps acting as transports */
-  TRANSPORT_TX_DGRAM,		/**< datagram mode */
+  TRANSPORT_TX_PEEK,	 /**< reliable transport protos */
+  TRANSPORT_TX_INTERNAL, /**< apps acting as transports */
+  TRANSPORT_TX_DGRAM,	 /**< datagram mode */
   TRANSPORT_TX_N_FNS
 } transport_tx_fn_type_t;
 
