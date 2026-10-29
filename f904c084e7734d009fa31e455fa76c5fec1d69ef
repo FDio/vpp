@@ -106,6 +106,24 @@
       "parentUuid": "a2651655_2d16827b",
       "revId": "f904c084e7734d009fa31e455fa76c5fec1d69ef",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8042f726_825f79b1",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2220
+      },
+      "writtenOn": "2026-10-29T08:23:27Z",
+      "side": 1,
+      "message": "Hi guys,\nI\u0027ve made 3 patches:\nhttps://gerrit.fd.io/r/c/vpp/+/47321 (shared helper)\nhttps://gerrit.fd.io/r/c/vpp/+/47322 (vxlan check for available headroom)\nhttps://gerrit.fd.io/r/c/vpp/+/47106 (this patch)",
+      "parentUuid": "bbfc5a87_a4cc8a43",
+      "revId": "f904c084e7734d009fa31e455fa76c5fec1d69ef",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
