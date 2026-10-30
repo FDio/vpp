@@ -1452,14 +1452,9 @@ http1_req_state_wait_app_method (http_ctx_t *hc, http_ctx_t *req, transport_send
   target = http_get_app_target (req, &msg);
 
   vec_reset_length (http_tx_buf (hc));
-  /* currently we support only GET and POST method */
+  /* currently we support GET, POST and PUT methods */
   if (msg.method_type == HTTP_REQ_GET)
     {
-      if (msg.data.body_len)
-	{
-	  clib_warning ("GET request shouldn't include data");
-	  goto error;
-	}
       /*
        * Add "protocol layer" headers:
        * - host
@@ -1473,8 +1468,12 @@ http1_req_state_wait_app_method (http_ctx_t *hc, http_ctx_t *req, transport_send
 				 /* User-Agent */
 				 hc->app_name);
 
-      next_state = HTTP_REQ_STATE_WAIT_TRANSPORT_REPLY;
-      sm_result = HTTP_SM_STOP;
+      if (msg.data.body_len)
+	http_tx_buf (hc) = format (http_tx_buf (hc), content_len_template, msg.data.body_len);
+
+      next_state =
+	msg.data.body_len ? HTTP_REQ_STATE_APP_IO_MORE_DATA : HTTP_REQ_STATE_WAIT_TRANSPORT_REPLY;
+      sm_result = msg.data.body_len ? HTTP_SM_CONTINUE : HTTP_SM_STOP;
     }
   else if (msg.method_type == HTTP_REQ_POST)
     {
