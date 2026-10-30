@@ -42,6 +42,10 @@ ip6_neighbor_advertise (vlib_main_t *vm, vnet_main_t *vnm, u32 sw_if_index,
   u8 *rewrite, rewrite_len;
   u8 dst_address[6];
 
+  /* The advertisement carries this interface's MAC address. */
+  if (PREDICT_FALSE (NULL == hi->hw_address))
+    return;
+
   if (NULL == addr)
     addr = ip6_interface_first_address (i6m, sw_if_index);
 
