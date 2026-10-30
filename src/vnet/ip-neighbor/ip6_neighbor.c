@@ -42,6 +42,10 @@ ip6_neighbor_advertise (vlib_main_t *vm, vnet_main_t *vnm, u32 sw_if_index,
   u8 *rewrite, rewrite_len;
   u8 dst_address[6];
 
+  /* The advertisement carries this interface's MAC address. */
+  if (PREDICT_FALSE (NULL == hi->hw_address))
+    return;
+
   if (NULL == addr)
     addr = ip6_interface_first_address (i6m, sw_if_index);
 
@@ -82,6 +86,11 @@ ip6_neighbor_advertise (vlib_main_t *vm, vnet_main_t *vnm, u32 sw_if_index,
 				      IP6_MULTICAST_GROUP_ID_all_hosts);
       rewrite =
 	ethernet_build_rewrite (vnm, sw_if_index, VNET_LINK_IP6, dst_address);
+      if (PREDICT_FALSE (NULL == rewrite))
+	{
+	  vlib_buffer_free (vm, &bi, 1);
+	  return;
+	}
       rewrite_len = vec_len (rewrite);
       vlib_buffer_advance (b, -rewrite_len);
       ethernet_header_t *e = vlib_buffer_get_current (b);

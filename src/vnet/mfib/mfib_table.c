@@ -33,6 +33,38 @@ mfib_table_get (fib_node_index_t index,
     return (NULL);
 }
 
+/*
+ * mfib_table_get() indexes the per-protocol MFIB pool without validating the
+ * index.  Callers that derive the index from an interface binding can be
+ * handed ~0, and an interface that has been deleted keeps ~0 in its binding
+ * until it is bound again.  Validate here so that a bad index produces a
+ * missing table rather than a read through a wild pointer.
+ */
+mfib_table_t *
+mfib_table_get_or_null (u32 fib_index, fib_protocol_t proto)
+{
+    if (~0 == fib_index)
+        return (NULL);
+
+    switch (proto)
+    {
+    case FIB_PROTOCOL_IP4:
+        if (fib_index >= vec_len (ip4_main.mfibs) ||
+            pool_is_free_index (ip4_main.mfibs, fib_index))
+            return (NULL);
+        break;
+    case FIB_PROTOCOL_IP6:
+        if (fib_index >= vec_len (ip6_main.mfibs) ||
+            pool_is_free_index (ip6_main.mfibs, fib_index))
+            return (NULL);
+        break;
+    case FIB_PROTOCOL_MPLS:
+        return (NULL);
+    }
+
+    return (mfib_table_get (fib_index, proto));
+}
+
 static inline fib_node_index_t
 mfib_table_lookup_i (const mfib_table_t *mfib_table,
                      const mfib_prefix_t *prefix)
@@ -59,7 +91,14 @@ fib_node_index_t
 mfib_table_lookup (u32 fib_index,
                    const mfib_prefix_t *prefix)
 {
-    return (mfib_table_lookup_i(mfib_table_get(fib_index, prefix->fp_proto), prefix));
+    mfib_table_t *mfib_table;
+
+    mfib_table = mfib_table_get_or_null(fib_index, prefix->fp_proto);
+
+    if (NULL == mfib_table)
+        return (FIB_NODE_INDEX_INVALID);
+
+    return (mfib_table_lookup_i(mfib_table, prefix));
 }
 
 static inline fib_node_index_t
@@ -88,9 +127,14 @@ fib_node_index_t
 mfib_table_lookup_exact_match (u32 fib_index,
                               const mfib_prefix_t *prefix)
 {
-    return (mfib_table_lookup_exact_match_i(mfib_table_get(fib_index,
-                                                          prefix->fp_proto),
-                                            prefix));
+    mfib_table_t *mfib_table;
+
+    mfib_table = mfib_table_get_or_null(fib_index, prefix->fp_proto);
+
+    if (NULL == mfib_table)
+        return (FIB_NODE_INDEX_INVALID);
+
+    return (mfib_table_lookup_exact_match_i(mfib_table, prefix));
 }
 
 static fib_node_index_t
@@ -119,9 +163,14 @@ fib_node_index_t
 mfib_table_get_less_specific (u32 fib_index,
                               const mfib_prefix_t *prefix)
 {
-    return (mfib_table_get_less_specific_i(mfib_table_get(fib_index,
-                                                          prefix->fp_proto),
-                                           prefix));
+    mfib_table_t *mfib_table;
+
+    mfib_table = mfib_table_get_or_null(fib_index, prefix->fp_proto);
+
+    if (NULL == mfib_table)
+        return (FIB_NODE_INDEX_INVALID);
+
+    return (mfib_table_get_less_specific_i(mfib_table, prefix));
 }
 
 static void
@@ -233,7 +282,11 @@ mfib_table_entry_update (u32 fib_index,
     fib_node_index_t mfib_entry_index;
     mfib_table_t *mfib_table;
 
-    mfib_table = mfib_table_get(fib_index, prefix->fp_proto);
+    mfib_table = mfib_table_get_or_null(fib_index, prefix->fp_proto);
+
+    if (NULL == mfib_table)
+        return (FIB_NODE_INDEX_INVALID);
+
     mfib_entry_index = mfib_table_lookup_exact_match_i(mfib_table, prefix);
 
     if (FIB_NODE_INDEX_INVALID == mfib_entry_index)
@@ -288,7 +341,11 @@ mfib_table_entry_paths_update_i (u32 fib_index,
     fib_node_index_t mfib_entry_index;
     mfib_table_t *mfib_table;
 
-    mfib_table = mfib_table_get(fib_index, prefix->fp_proto);
+    mfib_table = mfib_table_get_or_null(fib_index, prefix->fp_proto);
+
+    if (NULL == mfib_table)
+        return (FIB_NODE_INDEX_INVALID);
+
     mfib_entry_index = mfib_table_lookup_exact_match_i(mfib_table, prefix);
 
     if (FIB_NODE_INDEX_INVALID == mfib_entry_index)
@@ -352,7 +409,11 @@ mfib_table_entry_paths_remove_i (u32 fib_index,
     fib_node_index_t mfib_entry_index;
     mfib_table_t *mfib_table;
 
-    mfib_table = mfib_table_get(fib_index, prefix->fp_proto);
+    mfib_table = mfib_table_get_or_null(fib_index, prefix->fp_proto);
+
+    if (NULL == mfib_table)
+        return;
+
     mfib_entry_index = mfib_table_lookup_exact_match_i(mfib_table, prefix);
 
     if (FIB_NODE_INDEX_INVALID == mfib_entry_index)
@@ -425,7 +486,11 @@ mfib_table_entry_special_add (u32 fib_index,
     fib_node_index_t mfib_entry_index;
     mfib_table_t *mfib_table;
 
-    mfib_table = mfib_table_get(fib_index, prefix->fp_proto);
+    mfib_table = mfib_table_get_or_null(fib_index, prefix->fp_proto);
+
+    if (NULL == mfib_table)
+        return (FIB_NODE_INDEX_INVALID);
+
     mfib_entry_index = mfib_table_lookup_exact_match_i(mfib_table, prefix);
 
     if (INDEX_INVALID != repi)
@@ -461,7 +526,10 @@ mfib_table_entry_delete_i (u32 fib_index,
 {
     mfib_table_t *mfib_table;
 
-    mfib_table = mfib_table_get(fib_index, prefix->fp_proto);
+    mfib_table = mfib_table_get_or_null(fib_index, prefix->fp_proto);
+
+    if (NULL == mfib_table)
+        return;
 
     /*
      * don't nobody go nowhere
@@ -507,10 +575,31 @@ mfib_table_entry_delete (u32 fib_index,
     }
 }
 
+/*
+ * mfib_entry_get() indexes mfib_entry_pool without validating the index.
+ * mfib_table_entry_delete_index() takes an index that its caller may have
+ * stored earlier from mfib_table_entry_path_update(), which returns
+ * FIB_NODE_INDEX_INVALID for a missing table, so validate the index before
+ * the entry is read.
+ */
+static mfib_entry_t *
+mfib_entry_get_or_null (fib_node_index_t mfib_entry_index)
+{
+    if (FIB_NODE_INDEX_INVALID == mfib_entry_index ||
+        mfib_entry_index >= vec_len (mfib_entry_pool) ||
+        pool_is_free_index (mfib_entry_pool, mfib_entry_index))
+        return (NULL);
+
+    return (mfib_entry_get (mfib_entry_index));
+}
+
 void
 mfib_table_entry_delete_index (fib_node_index_t mfib_entry_index,
                                mfib_source_t source)
 {
+    if (NULL == mfib_entry_get_or_null(mfib_entry_index))
+        return;
+
     mfib_table_entry_delete_i(mfib_entry_get_fib_index(mfib_entry_index),
                               mfib_entry_index,
                               mfib_entry_get_prefix(mfib_entry_index),
@@ -540,7 +629,7 @@ mfib_table_get_table_id (u32 fib_index,
 {
     mfib_table_t *mfib_table;
 
-    mfib_table = mfib_table_get(fib_index, proto);
+    mfib_table = mfib_table_get_or_null(fib_index, proto);
 
     return ((NULL != mfib_table ? mfib_table->mft_table_id : ~0));
 }
@@ -698,7 +787,10 @@ mfib_table_mark (u32 fib_index,
     };
     mfib_table_t *mfib_table;
 
-    mfib_table = mfib_table_get(fib_index, proto);
+    mfib_table = mfib_table_get_or_null(fib_index, proto);
+
+    if (NULL == mfib_table)
+        return;
 
     mfib_table->mft_epoch++;
     mfib_table->mft_flags |= MFIB_TABLE_FLAG_RESYNC;
@@ -732,7 +824,10 @@ mfib_table_sweep (u32 fib_index,
     fib_node_index_t *fib_entry_index;
     mfib_table_t *mfib_table;
 
-    mfib_table = mfib_table_get(fib_index, proto);
+    mfib_table = mfib_table_get_or_null(fib_index, proto);
+
+    if (NULL == mfib_table)
+        return;
 
     mfib_table->mft_flags &= ~MFIB_TABLE_FLAG_RESYNC;
 
@@ -774,7 +869,11 @@ mfib_table_unlock (u32 fib_index,
 {
     mfib_table_t *mfib_table;
 
-    mfib_table = mfib_table_get(fib_index, proto);
+    mfib_table = mfib_table_get_or_null(fib_index, proto);
+
+    if (NULL == mfib_table)
+        return;
+
     mfib_table->mft_locks[source]--;
     mfib_table->mft_locks[MFIB_TABLE_TOTAL_LOCKS]--;
 
@@ -803,7 +902,11 @@ mfib_table_lock (u32 fib_index,
 {
     mfib_table_t *mfib_table;
 
-    mfib_table = mfib_table_get(fib_index, proto);
+    mfib_table = mfib_table_get_or_null(fib_index, proto);
+
+    if (NULL == mfib_table)
+        return;
+
     mfib_table->mft_locks[source]++;
     mfib_table->mft_locks[MFIB_TABLE_TOTAL_LOCKS]++;
 }
@@ -814,7 +917,10 @@ mfib_table_get_n_routes (fib_node_index_t fib_index,
 {
     mfib_table_t *mfib_table;
 
-    mfib_table = mfib_table_get(fib_index, proto);
+    mfib_table = mfib_table_get_or_null(fib_index, proto);
+
+    if (NULL == mfib_table)
+        return (0);
 
     return (mfib_table->mft_total_route_counts);
 }
@@ -825,6 +931,9 @@ mfib_table_walk (u32 fib_index,
                  mfib_table_walk_fn_t fn,
                  void *ctx)
 {
+    if (NULL == mfib_table_get_or_null(fib_index, proto))
+        return;
+
     switch (proto)
     {
     case FIB_PROTOCOL_IP4:
@@ -865,7 +974,10 @@ format_mfib_table_name (u8* s, va_list *ap)
     fib_protocol_t proto = va_arg(*ap, int); // int promotion
     mfib_table_t *mfib_table;
 
-    mfib_table = mfib_table_get(fib_index, proto);
+    mfib_table = mfib_table_get_or_null(fib_index, proto);
+
+    if (NULL == mfib_table)
+        return (format (s, "(unknown)"));
 
     s = format(s, "%v", mfib_table->mft_desc);
 

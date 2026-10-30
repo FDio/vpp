@@ -38,20 +38,27 @@ ip6_neighbor_probe (vlib_main_t *vm, vnet_main_t *vnm, u32 sw_if_index,
   int bogus_length;
   u32 bi0 = 0;
 
-  h0 = vlib_packet_template_get_packet
-    (vm, &ip6_neighbor_packet_template, &bi0);
-  if (!h0)
-    return NULL;
-
   /* if the interface has been disabled for ip6, later steps to retrieve
    * an adjacency will result in a segv.
    */
   if (!ip6_link_is_enabled (sw_if_index))
     return NULL;
 
-  b0 = vlib_get_buffer (vm, bi0);
-
   hw_if0 = vnet_get_sup_hw_interface (vnm, sw_if_index);
+
+  /*
+   * The solicitation carries this interface's MAC address in the source
+   * link layer option.  An interface that has none, a GRE tunnel for
+   * instance, has nothing to put there and no way to probe.
+   */
+  if (PREDICT_FALSE (NULL == hw_if0->hw_address))
+    return NULL;
+
+  h0 = vlib_packet_template_get_packet (vm, &ip6_neighbor_packet_template, &bi0);
+  if (!h0)
+    return NULL;
+
+  b0 = vlib_get_buffer (vm, bi0);
 
   /*
    * Destination address is a solicited node multicast address.

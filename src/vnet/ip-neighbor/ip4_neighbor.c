@@ -73,6 +73,10 @@ ip4_neighbor_advertise (vlib_main_t *vm, vnet_main_t *vnm, u32 sw_if_index,
   u8 *rewrite, rewrite_len;
   ip4_address_t tmp;
 
+  /* The advertisement carries this interface's MAC address. */
+  if (PREDICT_FALSE (NULL == hi->hw_address))
+    return;
+
   if (NULL == addr)
     {
       if (fib_sas4_get (sw_if_index, NULL, &tmp) ||
@@ -105,6 +109,11 @@ ip4_neighbor_advertise (vlib_main_t *vm, vnet_main_t *vnm, u32 sw_if_index,
       rewrite =
 	ethernet_build_rewrite (vnm, sw_if_index, VNET_LINK_ARP,
 				VNET_REWRITE_FOR_SW_INTERFACE_ADDRESS_BROADCAST);
+      if (PREDICT_FALSE (NULL == rewrite))
+	{
+	  vlib_buffer_free (vm, &bi, 1);
+	  return;
+	}
       rewrite_len = vec_len (rewrite);
       vlib_buffer_advance (b, -rewrite_len);
       ethernet_header_t *e = vlib_buffer_get_current (b);
