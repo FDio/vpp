@@ -464,7 +464,7 @@ __clib_export extern int fib_entry_is_sourced(fib_node_index_t fib_entry_index,
 extern fib_node_index_t fib_entry_get_path_list(fib_node_index_t fib_entry_index);
 extern int fib_entry_is_resolved(fib_node_index_t fib_entry_index);
 extern int fib_entry_is_host(fib_node_index_t fib_entry_index);
-extern int fib_entry_is_marked(fib_node_index_t fib_entry_index, fib_source_t source);
+__clib_export extern int fib_entry_is_marked(fib_node_index_t fib_entry_index, fib_source_t source);
 extern void fib_entry_mark(fib_node_index_t fib_entry_index, fib_source_t source);
 extern void fib_entry_set_flow_hash_config(fib_node_index_t fib_entry_index,
                                            flow_hash_config_t hash_config);

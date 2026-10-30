@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
 
 import unittest
+import os
+import signal
 import socket
 import subprocess
+import tempfile
 from ipaddress import ip_address, ip_interface
 
 from scapy.layers.inet import IP, UDP
@@ -928,6 +931,93 @@ class TestLinuxCPRoutes(TestLinuxCPNetNSBase):
             )
         # leave the adj-fib alone on the entry before the neighbour goes
         self.wait_route_source("10.10.1.44/32", lcp_rt, present=False)
+
+
+@unittest.skipIf(config.skip_netns_tests, "netns not available or disabled from cli")
+@unittest.skipIf(config.running_vpp, "needs to pause the VPP it started")
+class TestLinuxCPResyncNextHop(TestLinuxCPNetNSBase):
+    """Linux CP resync after next hops change"""
+
+    n_routes = 200
+    nh_old = "10.10.1.1"
+    nh_new = "10.10.1.3"
+
+    @classmethod
+    def setUpNetNS(cls):
+        super().setUpNetNS()
+        # A small receive buffer, so the changes below overflow it
+        cls.vpp_cmdline.extend(["linux-nl", "{", "nl-rx-buffer-size", "4096", "}"])
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.create_loopback_interfaces(1)
+        cls.vapi.cli(f"lcp create loop0 host-if hloop0 netns {cls.ns_name}")
+        cls.vapi.cli("set int ip address loop0 10.10.1.2/24")
+        cls.lo_interfaces[0].admin_up()
+
+    def _route(self, i):
+        return f"10.200.{i // 256}.{i % 256}/32"
+
+    def _ip_batch(self, op, nh):
+        with tempfile.NamedTemporaryFile("w") as f:
+            for i in range(self.n_routes):
+                f.write(f"route {op} {self._route(i)} via {nh} dev hloop0\n")
+            f.flush()
+            subprocess.run(
+                ["ip", "netns", "exec", self.ns_name, "ip", "-batch", f.name],
+                capture_output=True,
+                check=True,
+            )
+
+    def _resync_state(self):
+        """(epoch, resync running) of table 0: a resync increments the
+        epoch when it starts and clears the resync flag when it ends."""
+        hdr = self.vapi.cli("show ip fib table 0 summary").split("epoch:")[1]
+        return int(hdr.split()[0]), "resync" in hdr.split("flags:")[1].split()[0]
+
+    def _resynced_since(self, epoch):
+        e, running = self._resync_state()
+        return e > epoch and not running
+
+    def _paths(self, i):
+        return self.get_paths(self._route(i))
+
+    def test_resync_replaces_next_hops(self):
+        """Resync replaces next hops that changed while messages were lost"""
+        self.poll_for(
+            "hloop0 up", lambda: is_interface_up(self.ns_name, "hloop0"), True
+        )
+        old = dict(
+            type=FibPathType.FIB_PATH_TYPE_NORMAL,
+            sw_if_index=self.lo_interfaces[0].sw_if_index,
+            ip4=self.nh_old,
+        )
+        new = dict(old, ip4=self.nh_new)
+
+        # With the small buffer the socket can overflow as soon as it opens,
+        # and linux-nl waits 2 s before a resync, so allow for that
+        self._ip_batch("add", self.nh_old)
+        self.poll_for(
+            "routes added", lambda: self._paths(self.n_routes - 1) == [old], True, 10
+        )
+        self.poll_for("no resync running", lambda: self._resync_state()[1], False, 10)
+        epoch = self._resync_state()[0]
+
+        # Where this was found the overflow came from load: a full table moving
+        # to another next hop. Stopping VPP while the next hops change gives
+        # the same overflow with far fewer routes, on any machine: nothing
+        # reads the netlink socket until VPP continues, and linux-nl then
+        # resynchronises.
+        os.kill(self.vpp.pid, signal.SIGSTOP)
+        try:
+            self._ip_batch("replace", self.nh_new)
+        finally:
+            os.kill(self.vpp.pid, signal.SIGCONT)
+
+        self.poll_for("resync done", lambda: self._resynced_since(epoch), True, 15)
+        for i in range(self.n_routes):
+            self.assertEqual(self._paths(i), [new], self._route(i))
 
 
 ISIS_PROTO = 0x83

@@ -1534,6 +1534,21 @@ lcp_router_fib_route_path_dup (fib_route_path_t *old)
   return new;
 }
 
+/*
+ * A resync marks every route linux-cp owns as stale, then the dump re-adds
+ * them. A dump reply that finds its route still marked is the first sight of
+ * that route in this resync, so its paths must replace the old ones: adding
+ * them would keep next hops the kernel no longer has. Later replies for the
+ * same prefix find it unmarked and add their paths, as outside a resync.
+ */
+static int
+lcp_router_route_is_stale (u32 fib_index, const fib_prefix_t *pfx, fib_source_t src)
+{
+  fib_node_index_t fei = fib_table_lookup_exact_match (fib_index, pfx);
+
+  return (FIB_NODE_INDEX_INVALID != fei && fib_entry_is_marked (fei, src));
+}
+
 static void
 lcp_router_route_add (struct rtnl_route *rr, int is_replace)
 {
@@ -1631,7 +1646,7 @@ lcp_router_route_add (struct rtnl_route *rr, int is_replace)
 	      /* in order to avoid double-frees, we duplicate the paths. */
 	      fib_route_path_t *pathdup =
 		lcp_router_fib_route_path_dup (np.paths);
-	      if (is_replace)
+	      if (is_replace || lcp_router_route_is_stale (nlt->nlt_fib_index, &pfx, fib_src))
 		fib_table_entry_update (nlt->nlt_fib_index, &pfx, fib_src,
 					entry_flags, pathdup);
 	      else
@@ -1644,7 +1659,7 @@ lcp_router_route_add (struct rtnl_route *rr, int is_replace)
 	      pfx.fp_payload_proto = np.paths[0].frp_proto;
 	    }
 
-	  if (is_replace)
+	  if (is_replace || lcp_router_route_is_stale (nlt->nlt_fib_index, &pfx, fib_src))
 	    fib_table_entry_update (nlt->nlt_fib_index, &pfx, fib_src,
 				    entry_flags, np.paths);
 	  else
