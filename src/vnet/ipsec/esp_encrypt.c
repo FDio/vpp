@@ -1078,6 +1078,13 @@ esp_encrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  n_sync++;
 	  sync_next++;
 	}
+      else if (PREDICT_FALSE (!vnet_crypto_ctx_async_acquire (ort->ctx)))
+	{
+	  err = ESP_ENCRYPT_ERROR_CRYPTO_ENGINE_ERROR;
+	  esp_encrypt_set_next_index (b[0], node, thread_index, err, n_noop, noop_nexts, drop_next,
+				      current_sa_index);
+	  noop_bi[n_noop++] = from[b - bufs];
+	}
       else
 	{
 	  async_bi[n_async] = from[b - bufs];
