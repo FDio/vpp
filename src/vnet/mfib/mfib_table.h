@@ -545,9 +545,10 @@ __clib_export extern mfib_table_t *mfib_table_get(fib_node_index_t index,
  * Get a pointer to a MFIB table, validating the index
  *
  * Unlike mfib_table_get(), this rejects ~0, an out-of-range index and a
- * free pool slot, and returns NULL instead. Callers that derive the index
- * from an interface binding or from another untrusted source must use this
- * accessor.
+ * free pool slot, and returns NULL instead. The symbol is internal to
+ * libvnet and is not exported, so plugins cannot call it; plugin callers
+ * get the same protection from the entry points in this header, which
+ * validate the index themselves.
  */
 extern mfib_table_t *mfib_table_get_or_null(u32 fib_index,
                                             fib_protocol_t proto);
