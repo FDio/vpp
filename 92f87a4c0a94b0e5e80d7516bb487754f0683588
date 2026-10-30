@@ -1,0 +1,22 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "746cda6c_7fc6126c",
+        "filename": "src/plugins/ikev2/ikev2_crypto.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 715,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-10-30T11:25:29Z",
+      "side": 1,
+      "message": "Zeroing `dh_shared_key` does not fail the exchange: both DH helpers return normally, and their callers proceed to `ikev2_calc_keys()` without checking the secret. A peer can send a correctly sized MODP KE containing zero to trigger this branch; VPP then derives IKE keys from the known all-zero secret and the public nonces. In the initiator path it sends IKE_AUTH under these attacker-computable keys, exposing the encrypted identity and AUTH payload before the peer authenticates. The responder branch at lines 585–586 has the same problem. Could both helpers propagate an error and have callers abort/clean up the exchange before deriving keys or sending IKE_AUTH? Please cover invalid KE rejection in a regression test.",
+      "tag": "prview:a60e6f75ff6b548d34a4e5a8056a2ec4:92f87a4c0a94b0e5e80d7516bb487754f0683588",
+      "revId": "92f87a4c0a94b0e5e80d7516bb487754f0683588",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
