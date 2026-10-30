@@ -206,6 +206,11 @@ jobs:
       - name: Write the test-suite derivation helper
         run: |
           cat > "${RUNNER_TEMP}/derive-suites.sh" <<'HELPER'
+          # One push runs at most SUITE_CAP test suites. The suites that do not
+          # fit are named in the log instead of being dropped without a word, so
+          # the selection and the drop report both read this one value.
+          SUITE_CAP=3
+
           # A bare suite name resolves to test/test_<name>.py or
           # test/asf/test_<name>.py. A rule that resolves to no module selects
           # no test at all, so it reports itself instead of returning nothing.
@@ -280,8 +285,9 @@ jobs:
 
           # Read the changed paths from stdin and print the TEST filter: a suite
           # whose own test module also changed goes first, alphabetical order
-          # within each group, at most three suites, ip4 when nothing derives.
-          # A suite the cap drops is named on stderr rather than vanishing.
+          # within each group, at most SUITE_CAP suites, ip4 when nothing
+          # derives. A suite the cap drops is named on stderr rather than
+          # vanishing.
           derive_test_suites() {
             local changed path name suite suites prioritized remaining selected dropped
             local -a paths=()
@@ -307,11 +313,12 @@ jobs:
             done
             suites=$(printf '%s %s\n' "${prioritized}" "${remaining}" |
                      tr ' ' '\n' | sed '/^$/d')
-            selected=$(printf '%s\n' "${suites}" | head -n 3 | tr '\n' ' ')
+            selected=$(printf '%s\n' "${suites}" | head -n "${SUITE_CAP}" | tr '\n' ' ')
             selected=${selected% }
-            dropped=$(printf '%s\n' "${suites}" | sed '1,3d' | tr '\n' ' ')
+            dropped=$(printf '%s\n' "${suites}" | sed "1,${SUITE_CAP}d" | tr '\n' ' ')
             if [ -n "${dropped% }" ]; then
-              printf 'Not selected: the three-suite cap drops %s\n' "${dropped% }" >&2
+              printf 'Not selected: the suite cap of %s drops %s\n' \
+                "${SUITE_CAP}" "${dropped% }" >&2
             fi
             if [ -z "${selected}" ]; then
               printf 'No test derives from the changed paths; using the ip4 smoke suite\n' >&2
@@ -359,17 +366,31 @@ jobs:
             fi
           }
           # One fixture per rule: the src/vnet alias table, the plain directory
-          # rule, the plugin subdirectory-then-package order, and a directory
-          # that has no module of its own.
+          # rule, the plugin subdirectory candidate, the plugin package-name
+          # fallback, and directories that have no module of their own.
           expect_suite src/vnet/ip-neighbor/ip6_neighbor.c neighbor
           expect_suite src/vnet/mfib/mfib_table.c ip_mcast
           expect_suite src/vnet/fib/fib_table.c fib
-          expect_suite src/plugins/linux-cp/lcp_node.c linux_cp
           expect_suite src/plugins/nat/nat64/nat64_db.c nat64
+          # linux-cp has no test_lcp_node module, so this path can only resolve
+          # through the package name.
+          expect_suite src/plugins/linux-cp/lcp_node.c linux_cp
           expect_uncovered src/vnet/l2/l2_input.c "test/test_l2.py or test/asf/test_l2.py"
           expect_uncovered src/plugins/xdp/xdp_input.c "test/test_xdp.py or test/asf/test_xdp.py"
-          # The aggregate filter: order, the three-suite cap, the priority of a
-          # suite whose own module changed, and the fallback.
+          # No package in this repository has both test_<pkg>.py and
+          # test_<sub>.py, so the subdirectory-first order is unobservable in
+          # the real tree. Assert it in a tree that has both.
+          order_tree="${RUNNER_TEMP}/plugin-order"
+          mkdir -p "${order_tree}/src/plugins/alpha/beta" "${order_tree}/test"
+          : > "${order_tree}/test/test_alpha.py"
+          : > "${order_tree}/test/test_beta.py"
+          ordered=$(cd "${order_tree}" && derive_suite_for_path src/plugins/alpha/beta/x.c || true)
+          if [ "${ordered}" != "beta" ]; then
+            echo "::error::src/plugins/alpha/beta/x.c: expected the subdirectory suite 'beta', derived '${ordered}'"
+            failures=$((failures + 1))
+          fi
+          # The aggregate filter: order, SUITE_CAP, the priority of a suite whose
+          # own module changed, and the fallback.
           expect_suites "fib ip_mcast linux_cp" \
             src/vnet/fib/fib_table.c src/vnet/mfib/mfib_table.c \
             src/plugins/linux-cp/lcp_node.c
@@ -377,13 +398,13 @@ jobs:
             src/vnet/ip-neighbor/ip6_neighbor.c src/vnet/fib/fib_table.c \
             src/vnet/mfib/mfib_table.c src/plugins/linux-cp/lcp_node.c
           expect_suites "ip4" src/vnet/l2/l2_input.c
-          # The three-suite cap still applies, but a suite it leaves out is
-          # named instead of vanishing: this is the changed set of pull request
-          # 48, where the ip-neighbor suite was second in line to be dropped.
+          # SUITE_CAP is three, but a suite it leaves out is named instead of
+          # vanishing: this is the changed set of pull request 48, where the
+          # ip-neighbor suite does not fit in the cap.
           capped=$(printf '%s\n' src/vnet/fib/fib_table.c \
                    src/vnet/ip-neighbor/ip6_neighbor.c src/vnet/mfib/mfib_table.c \
                    src/plugins/linux-cp/lcp_node.c | derive_test_suites 2>&1 >/dev/null)
-          if [ "${capped}" != "Not selected: the three-suite cap drops neighbor" ]; then
+          if [ "${capped}" != "Not selected: the suite cap of 3 drops neighbor" ]; then
             echo "::error::the suite left out by the cap was not reported, got '${capped}'"
             failures=$((failures + 1))
           fi
@@ -724,10 +745,12 @@ jobs:
       - name: Run the Python functional tests
         id: positive
         if: matrix.variant == 'fixed'
+        env:
+          SUITES: ${{ steps.tests.outputs.suites }}
         run: |
           git config --global --add safe.directory "$PWD"
           set -eu
-          suites=(${{ steps.tests.outputs.suites }})
+          read -ra suites <<< "${SUITES}"
           if [ '${{ steps.tests.outputs.tunnel_regression }}' = true ]; then
             case " ${suites[*]} " in
               *' ipsec_esp '*) ;;
