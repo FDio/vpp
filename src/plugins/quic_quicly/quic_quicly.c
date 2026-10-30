@@ -1279,6 +1279,10 @@ quic_quicly_on_app_reset (u32 ctx_index, clib_thread_index_t thread_index)
       quicly_reset_stream (
 	stream, QUICLY_ERROR_FROM_APPLICATION_ERROR_CODE (ctx->app_err_code));
     }
+
+  /* schedule reset frames explicitly, it may never be sent otherwise */
+  quic_quicly_reschedule_ctx (
+    quic_quicly_get_quic_ctx (ctx->quic_connection_ctx_id, ctx->c_thread_index));
 }
 
 static quic_quicly_rx_error_t
