@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "257b4e2c_0d708f34",
+        "filename": "src/vnet/ip6-nd/ip6_ra.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 96,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-10-30T04:27:52Z",
+      "side": 1,
+      "message": "Nit, initialize these above, compiler should take care of optimizations.",
+      "revId": "85b96f4b98d6a3f2e9e7c907d21014d1b1fa7f70",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
