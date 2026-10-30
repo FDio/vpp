@@ -15,3 +15,5 @@ updates:
       interval: "weekly"
     # Disable all pull requests for github-actions
     open-pull-requests-limit: 0
+    cooldown:
+      default-days: 7
