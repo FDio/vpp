@@ -106,6 +106,8 @@ crypto_update_key_handler_for_alg (vnet_crypto_main_t *cm, vnet_crypto_alg_t alg
 
       if (pool_is_free_index (cm->ctxs, i))
 	continue;
+      if (vnet_crypto_ctx_is_retiring (cm->ctxs[i]))
+	continue;
       if (cm->ctxs[i]->alg != alg)
 	continue;
       if (old_ei != VNET_CRYPTO_ENGINE_ID_NONE)

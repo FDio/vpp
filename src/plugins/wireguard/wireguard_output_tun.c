@@ -258,10 +258,10 @@ error:
 }
 
 static_always_inline enum noise_state_crypt
-wg_add_to_async_frame (vlib_main_t *vm, wg_per_thread_data_t *ptd, u32 *async_bi, u64 *async_ctx,
-		       vlib_buffer_t *b, vlib_buffer_t *lb, u8 *payload, u32 payload_len, u32 bi,
-		       u16 next, u16 async_next, noise_remote_t *r, uint32_t *r_idx,
-		       uint64_t *nonce, u8 *iv, f64 time)
+wg_add_to_async_frame (vlib_main_t *vm, vlib_node_runtime_t *node, wg_per_thread_data_t *ptd,
+		       u32 *async_bi, u64 *async_ctx, vlib_buffer_t *b, vlib_buffer_t *lb,
+		       u8 *payload, u32 payload_len, u32 bi, u16 next, u16 async_next,
+		       noise_remote_t *r, uint32_t *r_idx, uint64_t *nonce, u8 *iv, f64 time)
 {
   wg_post_data_t *post = wg_post_data (b);
   noise_keypair_t *kp;
@@ -305,6 +305,12 @@ wg_add_to_async_frame (vlib_main_t *vm, wg_per_thread_data_t *ptd, u32 *async_bi
     .icv_len = NOISE_AUTHTAG_LEN,
     .is_chained_buffers = b != lb,
   };
+
+  if (PREDICT_FALSE (!vnet_crypto_ctx_async_acquire (kp->send_ctx)))
+    {
+      b->error = node->errors[WG_OUTPUT_ERROR_CRYPTO_ENGINE_ERROR];
+      goto error;
+    }
 
   *vnet_crypto_buffer_get_metadata (b) = md;
   async_bi[0] = bi;
@@ -551,7 +557,7 @@ wg_output_tun_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       if (is_async)
 	{
 	  state = wg_add_to_async_frame (
-	    vm, ptd, async_bi + n_async, async_ctx + n_async, b[0], lb, plain_data,
+	    vm, node, ptd, async_bi + n_async, async_ctx + n_async, b[0], lb, plain_data,
 	    plain_data_len_total, bi, next[0], async_next_node, &peer->remote,
 	    &message_data_wg->receiver_index, &message_data_wg->counter, iv_data, time);
 	}

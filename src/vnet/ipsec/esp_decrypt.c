@@ -1032,6 +1032,13 @@ esp_decrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  sync_next++;
 	  pd += 1;
 	}
+      else if (PREDICT_FALSE (!vnet_crypto_ctx_async_acquire (irt->ctx)))
+	{
+	  err = ESP_DECRYPT_ERROR_CRYPTO_ENGINE_ERROR;
+	  esp_decrypt_set_next_index (b[0], node, thread_index, err, n_noop, noop_nexts,
+				      ESP_DECRYPT_NEXT_DROP, current_sa_index);
+	  noop_bi[n_noop++] = from[b - bufs];
+	}
       else
 	{
 	  async_bi[n_async] = from[b - bufs];

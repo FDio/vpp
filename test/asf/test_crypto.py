@@ -66,5 +66,21 @@ class TestCryptoWorker(TestCrypto):
         super().setUp()
 
 
+class TestCryptoAsyncLifetime(VppAsfTestCase):
+    """Crypto async context lifetime regression"""
+
+    vpp_worker_count = 0
+    extra_vpp_plugin_config = [
+        "plugin crypto_sw_scheduler_plugin.so { enable }",
+    ]
+
+    def test_crypto_async_lifetime(self):
+        """Pending async work keeps its crypto context alive"""
+        output = self.vapi.cli("test crypto async lifetime")
+        if output:
+            self.logger.info(output)
+        self.assertEqual("OK", output.strip())
+
+
 if __name__ == "__main__":
     unittest.main(testRunner=VppTestRunner)
