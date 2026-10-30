@@ -541,6 +541,18 @@ __clib_export extern mfib_table_t *mfib_table_get(fib_node_index_t index,
                                     fib_protocol_t proto);
 
 /**
+ * @brief
+ * Get a pointer to a MFIB table, validating the index
+ *
+ * Unlike mfib_table_get(), this rejects ~0, an out-of-range index and a
+ * free pool slot, and returns NULL instead. Callers that derive the index
+ * from an interface binding or from another untrusted source must use this
+ * accessor.
+ */
+extern mfib_table_t *mfib_table_get_or_null(u32 fib_index,
+                                            fib_protocol_t proto);
+
+/**
  * @brief Call back function when walking entries in a FIB table
  */
 typedef walk_rc_t (*mfib_table_walk_fn_t)(fib_node_index_t fei,
