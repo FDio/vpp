@@ -380,6 +380,8 @@ ip_neighbor_adj_fib_remove (ip_neighbor_t * ipn, u32 fib_index)
 	}
       else
 	{
+	  if (INDEX_INVALID == fib_index)
+	    return;
 	  fib_protocol_t fproto;
 
 	  fproto = ip_address_family_to_fib_proto (af);
