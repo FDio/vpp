@@ -5,6 +5,18 @@ on:
   pull_request:
     branches: [master]
     types: [opened, synchronize, reopened]
+  # A manual run has no pull request, so the steps that read the pull_request
+  # context fall back to comparing the branch tip with its parent, and the
+  # suites input replaces the filter derived from the changed paths.
+  workflow_dispatch:
+    inputs:
+      suites:
+        description: >-
+          TEST suites that replace the derived filter, for example
+          "neighbor ip_mcast linux_cp". Leave empty to derive them.
+        required: false
+        default: ""
+        type: string
 
 # One run per ref: a new push to the same branch cancels the previous run.
 concurrency:
@@ -117,15 +129,24 @@ jobs:
           def git(*args):
               return subprocess.check_output(["git", *args])
 
-          changed = git("diff", "--name-only", os.environ["PR_BASE"] + "..." +
-                        os.environ["PR_HEAD"]).decode().splitlines()
+          base = os.environ["PR_BASE"]
+          head = os.environ["PR_HEAD"]
+          if not base or not head:
+              # A workflow_dispatch run has no pull request context; compare the
+              # branch tip with its parent instead.
+              base = subprocess.run(["git", "rev-parse", "HEAD^"], capture_output=True,
+                                    text=True).stdout.strip()
+              head = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True,
+                                    text=True).stdout.strip()
+          changed = (git("diff", "--name-only", base + "..." + head).decode().splitlines()
+                     if base and head else [])
           enabled = False
           if "src/vnet/tunnel/tunnel_dp.h" in changed:
               path = "test/test_ipsec_esp.py"
               exists = subprocess.run(["git", "cat-file", "-e",
-                                       os.environ["PR_HEAD"] + ":" + path]).returncode == 0
+                                       head + ":" + path]).returncode == 0
               if exists:
-                  tree = ast.parse(git("show", os.environ["PR_HEAD"] + ":" + path))
+                  tree = ast.parse(git("show", head + ":" + path))
                   enabled = any(isinstance(node, ast.ClassDef) and node.name == "TestIpsecEspTun"
                                 and any(isinstance(method, ast.FunctionDef) and
                                         method.name == "test_tun_df44" for method in node.body)
@@ -178,6 +199,199 @@ jobs:
         with:
           fetch-depth: 0
           fetch-tags: true
+
+      # The rules that map a changed path to a test module are written once,
+      # into a file in the runner's temporary directory, so the self-check below
+      # and the derive step run the same code.
+      - name: Write the test-suite derivation helper
+        run: |
+          cat > "${RUNNER_TEMP}/derive-suites.sh" <<'HELPER'
+          # A bare suite name resolves to test/test_<name>.py or
+          # test/asf/test_<name>.py. A rule that resolves to no module selects
+          # no test at all, so it reports itself instead of returning nothing.
+          suite_module_exists() {
+            [ -f "test/test_$1.py" ] || [ -f "test/asf/test_$1.py" ]
+          }
+
+          # src/vnet/<dir> directories whose test module is named differently
+          # from the directory. Every other directory keeps its own name.
+          suite_module_alias() {
+            case "$1" in
+              ip-neighbor) printf '%s\n' neighbor ;;
+              mfib) printf '%s\n' ip_mcast ;;
+            esac
+          }
+
+          report_uncovered() {
+            local path="$1" candidate looked=""
+            shift
+            for candidate in "$@"; do
+              looked="${looked}${looked:+, }test/test_${candidate}.py or test/asf/test_${candidate}.py"
+            done
+            printf 'UNCOVERED %s: looked for %s\n' "${path}" "${looked}" >&2
+          }
+
+          # Print the module that covers one changed path and return success, or
+          # print an UNCOVERED report on stderr and return failure.
+          derive_suite_for_path() {
+            local path="$1" rest dir sub name
+            local -a candidates=()
+            case "${path}" in
+              src/plugins/*/*)
+                rest=${path#src/plugins/}
+                dir=${rest%%/*}
+                sub=${rest#*/}
+                sub=${sub%%/*}
+                # The subdirectory is tried first, so
+                # src/plugins/nat/nat64/nat64_db.c selects nat64 rather than the
+                # package name nat, which has no module of its own. Only a
+                # directory is a candidate: in src/plugins/gre/gre.c the second
+                # path component is the file that changed.
+                if [ -d "src/plugins/${dir}/${sub}" ]; then
+                  candidates+=("${sub//-/_}")
+                fi
+                candidates+=("${dir//-/_}")
+                for name in "${candidates[@]}"; do
+                  if suite_module_exists "${name}"; then
+                    printf '%s\n' "${name}"
+                    return 0
+                  fi
+                done
+                report_uncovered "${path}" "${candidates[@]}"
+                return 1
+                ;;
+              src/vnet/*/*)
+                rest=${path#src/vnet/}
+                dir=${rest%%/*}
+                name=$(suite_module_alias "${dir}")
+                if [ -z "${name}" ]; then
+                  name=${dir//-/_}
+                fi
+                if suite_module_exists "${name}"; then
+                  printf '%s\n' "${name}"
+                  return 0
+                fi
+                report_uncovered "${path}" "${name}"
+                return 1
+                ;;
+            esac
+            return 1
+          }
+
+          # Read the changed paths from stdin and print the TEST filter: a suite
+          # whose own test module also changed goes first, alphabetical order
+          # within each group, at most three suites, ip4 when nothing derives.
+          # A suite the cap drops is named on stderr rather than vanishing.
+          derive_test_suites() {
+            local changed path name suite suites prioritized remaining selected dropped
+            local -a paths=()
+            changed=$(cat)
+            mapfile -t paths <<< "${changed}"
+            suites=""
+            for path in "${paths[@]}"; do
+              [ -n "${path}" ] || continue
+              if name=$(derive_suite_for_path "${path}"); then
+                suites="${suites} ${name}"
+              fi
+            done
+            suites=$(printf '%s\n' "${suites}" | tr ' ' '\n' | sed '/^$/d' | sort -u)
+            prioritized=""
+            remaining=""
+            for suite in ${suites}; do
+              case $'\n'"${changed}"$'\n' in
+                *$'\n'"test/test_${suite}.py"$'\n'*|*$'\n'"test/asf/test_${suite}.py"$'\n'*)
+                  prioritized="${prioritized} ${suite}"
+                  ;;
+                *) remaining="${remaining} ${suite}" ;;
+              esac
+            done
+            suites=$(printf '%s %s\n' "${prioritized}" "${remaining}" |
+                     tr ' ' '\n' | sed '/^$/d')
+            selected=$(printf '%s\n' "${suites}" | head -n 3 | tr '\n' ' ')
+            selected=${selected% }
+            dropped=$(printf '%s\n' "${suites}" | sed '1,3d' | tr '\n' ' ')
+            if [ -n "${dropped% }" ]; then
+              printf 'Not selected: the three-suite cap drops %s\n' "${dropped% }" >&2
+            fi
+            if [ -z "${selected}" ]; then
+              printf 'No test derives from the changed paths; using the ip4 smoke suite\n' >&2
+              selected="ip4"
+            fi
+            printf '%s\n' "${selected}"
+          }
+          HELPER
+
+      # The derivation decides which suites the pull request runs, and a rule
+      # that resolves to no module selects nothing instead of failing, so its
+      # output is asserted on fixed paths before the build starts.
+      - name: Self-check the test-suite derivation
+        run: |
+          set -eu
+          . "${RUNNER_TEMP}/derive-suites.sh"
+          failures=0
+          expect_suite() {
+            local path="$1" expected="$2" actual
+            actual=$(derive_suite_for_path "${path}" 2>/dev/null || true)
+            if [ "${actual}" != "${expected}" ]; then
+              echo "::error::${path}: expected suite '${expected}', derived '${actual}'"
+              failures=$((failures + 1))
+            fi
+          }
+          expect_uncovered() {
+            local path="$1" looked="$2" module line
+            module=$(derive_suite_for_path "${path}" 2>/dev/null || true)
+            line=$(derive_suite_for_path "${path}" 2>&1 >/dev/null || true)
+            if [ -n "${module}" ]; then
+              echo "::error::${path}: expected no suite, derived '${module}'"
+              failures=$((failures + 1))
+            elif [ "${line}" != "UNCOVERED ${path}: looked for ${looked}" ]; then
+              echo "::error::${path}: expected 'UNCOVERED ${path}: looked for ${looked}', got '${line}'"
+              failures=$((failures + 1))
+            fi
+          }
+          expect_suites() {
+            local expected="$1" actual
+            shift
+            actual=$(printf '%s\n' "$@" | derive_test_suites 2>/dev/null)
+            if [ "${actual}" != "${expected}" ]; then
+              echo "::error::derived suites '${actual}', expected '${expected}' from: $*"
+              failures=$((failures + 1))
+            fi
+          }
+          # One fixture per rule: the src/vnet alias table, the plain directory
+          # rule, the plugin subdirectory-then-package order, and a directory
+          # that has no module of its own.
+          expect_suite src/vnet/ip-neighbor/ip6_neighbor.c neighbor
+          expect_suite src/vnet/mfib/mfib_table.c ip_mcast
+          expect_suite src/vnet/fib/fib_table.c fib
+          expect_suite src/plugins/linux-cp/lcp_node.c linux_cp
+          expect_suite src/plugins/nat/nat64/nat64_db.c nat64
+          expect_uncovered src/vnet/l2/l2_input.c "test/test_l2.py or test/asf/test_l2.py"
+          expect_uncovered src/plugins/xdp/xdp_input.c "test/test_xdp.py or test/asf/test_xdp.py"
+          # The aggregate filter: order, the three-suite cap, the priority of a
+          # suite whose own module changed, and the fallback.
+          expect_suites "fib ip_mcast linux_cp" \
+            src/vnet/fib/fib_table.c src/vnet/mfib/mfib_table.c \
+            src/plugins/linux-cp/lcp_node.c
+          expect_suites "neighbor fib ip_mcast" test/test_neighbor.py \
+            src/vnet/ip-neighbor/ip6_neighbor.c src/vnet/fib/fib_table.c \
+            src/vnet/mfib/mfib_table.c src/plugins/linux-cp/lcp_node.c
+          expect_suites "ip4" src/vnet/l2/l2_input.c
+          # The three-suite cap still applies, but a suite it leaves out is
+          # named instead of vanishing: this is the changed set of pull request
+          # 48, where the ip-neighbor suite was second in line to be dropped.
+          capped=$(printf '%s\n' src/vnet/fib/fib_table.c \
+                   src/vnet/ip-neighbor/ip6_neighbor.c src/vnet/mfib/mfib_table.c \
+                   src/plugins/linux-cp/lcp_node.c | derive_test_suites 2>&1 >/dev/null)
+          if [ "${capped}" != "Not selected: the three-suite cap drops neighbor" ]; then
+            echo "::error::the suite left out by the cap was not reported, got '${capped}'"
+            failures=$((failures + 1))
+          fi
+          if [ "${failures}" -ne 0 ]; then
+            echo "::error::${failures} derivation self-check assertion(s) failed"
+            exit 1
+          fi
+          echo "The derivation self-check passed"
 
       # make install-dep installs $(DEB_DEPENDS), which is defined in the
       # Makefile, so key the apt archive cache on that file: the key moves when
@@ -243,82 +457,42 @@ jobs:
               > src/scripts/.version
           fi
 
-      # Turn the changed paths into a focused TEST filter. Every emitted name
-      # must have an exact test_<name>.py module under test/ or test/asf/,
-      # because the runner resolves a bare filter to that file name and matches
-      # it literally: a name with no such module selects no test and fails the
-      # job instead of the suite falling back. For src/plugins/<pkg>/<sub>/...
-      # the subdirectory is tried first, so src/plugins/nat/nat64/nat64_db.c
-      # selects nat64 (test_nat64.py) rather than the package name nat, which
-      # has no module of its own and would match nothing. src/vnet/<name>
-      # selects <name> only on an exact module too, because a prefix match on a
-      # directory such as ip would pull in every ip4/ip6/ipip/ipsec suite.
-      # Changes under src/vppinfra, src/svm and src/vlib select nothing here
-      # and use the fallback smoke suite.
+      # Apply the derivation written into ${RUNNER_TEMP}/derive-suites.sh above.
+      # src/vnet/<dir> resolves through the alias table (ip-neighbor selects
+      # neighbor, mfib selects ip_mcast) and otherwise to <dir>; a prefix match
+      # is never used, because a directory such as ip would pull in every
+      # ip4/ip6/ipip/ipsec suite. A src path that resolves to no test module is
+      # logged as UNCOVERED with the module names that were tried, so a missing
+      # mapping is visible in the log instead of shrinking the run silently.
+      # src/vnet/tunnel/tunnel_dp.h is reported that way too: the ESP control
+      # below selects ipsec_esp for it separately. Changes under src/vppinfra,
+      # src/svm and src/vlib select nothing and use the ip4 fallback.
       - name: Derive a test filter from the changed paths
         id: tests
+        env:
+          # A workflow_dispatch run may name the suites itself.
+          MANUAL_SUITES: ${{ inputs.suites }}
         run: |
           set -eu
+          . "${RUNNER_TEMP}/derive-suites.sh"
           base="${{ github.event.pull_request.base.sha }}"
           head="${{ github.event.pull_request.head.sha }}"
+          # A workflow_dispatch run has no pull request context; compare the
+          # branch tip with its parent instead.
           if [ -z "${base}" ] || [ -z "${head}" ]; then
             base=$(git rev-parse HEAD^ 2>/dev/null || echo "")
             head=$(git rev-parse HEAD)
           fi
           changed=$(git diff --name-only "${base}...${head}" 2>/dev/null ||
                     git diff --name-only "${base}..${head}" 2>/dev/null || true)
-          suites=""
-          for path in ${changed}; do
-            name=""
-            case "${path}" in
-              src/plugins/*/*)
-                rest=${path#src/plugins/}
-                dir=${rest%%/*}
-                sub=${rest#*/}
-                sub=${sub%%/*}
-                for candidate in "${sub}" "${dir}"; do
-                  candidate=${candidate//-/_}
-                  if [ -f "test/test_${candidate}.py" ] ||
-                     [ -f "test/asf/test_${candidate}.py" ]; then
-                    name=${candidate}
-                    break
-                  fi
-                done
-                ;;
-              src/vnet/*/*)
-                name=${path#src/vnet/}
-                name=${name%%/*}
-                name=${name//-/_}
-                if [ ! -f "test/test_${name}.py" ] &&
-                   [ ! -f "test/asf/test_${name}.py" ]; then
-                  name=""
-                fi
-                ;;
-            esac
-            [ -n "${name}" ] || continue
-            suites="${suites} ${name}"
-          done
-          suites=$(echo "${suites}" | tr ' ' '\n' | sed '/^$/d' | sort -u)
-          # Prioritize source-derived suites whose exact test module also changed.
-          # Keep alphabetical order within each group and select at most three.
-          prioritized=""
-          remaining=""
-          for suite in ${suites}; do
-            case $'\n'"${changed}"$'\n' in
-              *$'\n'"test/test_${suite}.py"$'\n'*|\
-              *$'\n'"test/asf/test_${suite}.py"$'\n'*)
-                prioritized="${prioritized} ${suite}"
-                ;;
-              *) remaining="${remaining} ${suite}" ;;
-            esac
-          done
-          suites=$(echo "${prioritized} ${remaining}" | tr ' ' '\n' |
-                   sed '/^$/d' | head -n 3 | tr '\n' ' ')
-          if [ -z "${suites}" ]; then
-            echo "No test derives from the changed paths; running the ip4 smoke suite"
-            suites="ip4"
+          if [ -n "${MANUAL_SUITES}" ]; then
+            suites=$(printf '%s' "${MANUAL_SUITES}" | tr -s '[:space:]' ' ' |
+                     sed 's/^ *//; s/ *$//')
+            echo "Using the suites input of this workflow_dispatch run: ${suites}"
+          else
+            suites=$(printf '%s\n' "${changed}" | derive_test_suites)
           fi
-          echo "Running TEST suites:${suites}"
+          echo "Running TEST suites: ${suites}"
           echo "suites=${suites}" >> "$GITHUB_OUTPUT"
           tunnel_regression=false
           case $'\n'"${changed}"$'\n' in
@@ -337,6 +511,14 @@ jobs:
           PR_BASE: ${{ github.event.pull_request.base.sha }}
           PR_HEAD: ${{ github.event.pull_request.head.sha }}
         run: |
+          set -eu
+          # A workflow_dispatch run has no pull request context; report the
+          # branch tip and its parent instead of empty base and head values.
+          if [ -z "${PR_BASE}" ] || [ -z "${PR_HEAD}" ]; then
+            PR_BASE=$(git rev-parse HEAD^ 2>/dev/null || echo "")
+            PR_HEAD=$(git rev-parse HEAD)
+            export PR_BASE PR_HEAD
+          fi
           python3 - <<'PY'
           import hashlib
           import json
