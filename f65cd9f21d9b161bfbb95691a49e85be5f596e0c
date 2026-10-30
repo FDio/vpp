@@ -1,0 +1,123 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "53cdf323_acf63f38",
+        "filename": "src/plugins/http/http1.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 167,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-10-30T13:17:45Z",
+      "side": 1,
+      "message": "for fifo operations we have helper functions in http_private.h\ncreate http_io_ts_peek (http_ctx_t *hc, u32 offset, u32 len)\nbuffer allocation should stay here",
+      "revId": "f65cd9f21d9b161bfbb95691a49e85be5f596e0c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d6cd985f_6d4c715d",
+        "filename": "src/plugins/http/http1.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 172,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-10-30T13:17:45Z",
+      "side": 1,
+      "message": "static inline",
+      "revId": "f65cd9f21d9b161bfbb95691a49e85be5f596e0c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ef4b189c_fc063dd6",
+        "filename": "src/plugins/http/http1.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 182,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-10-30T13:17:45Z",
+      "side": 1,
+      "message": "static inline",
+      "revId": "f65cd9f21d9b161bfbb95691a49e85be5f596e0c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "94c9f829_fbbdaca6",
+        "filename": "src/plugins/http/http1.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 318,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-10-30T13:17:45Z",
+      "side": 1,
+      "message": "we are doing same in http1_parse_request_line can it be optimized?",
+      "revId": "f65cd9f21d9b161bfbb95691a49e85be5f596e0c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "efacd3fa_f29ebeb5",
+        "filename": "src/plugins/http/http1.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 727,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-10-30T13:17:45Z",
+      "side": 1,
+      "message": "be careful with oversized header names, previously identification used the full u32 length.\ne.g.\nContent-Length followed by 65536 characters, name length is truncated to 14 in u16 name_len member of http_field_line_t and http1_header_name_is compare only the prefix and incorrectly recognize field as Content-Length",
+      "revId": "f65cd9f21d9b161bfbb95691a49e85be5f596e0c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "82e35c94_e95ae054",
+        "filename": "src/plugins/http/http1.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1027,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-10-30T13:17:45Z",
+      "side": 1,
+      "message": "agin be more careful now\ne.g. server sends HTTP/1.1 200 OK\\r\\n and then FIN, this return leaves the incomplete response queued, http1_transport_close_callback() only notifies app when transport rx fifo is empty and we only timeout",
+      "revId": "f65cd9f21d9b161bfbb95691a49e85be5f596e0c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0fb97166_416016eb",
+        "filename": "src/plugins/http/http1.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1177,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-10-30T13:17:45Z",
+      "side": 1,
+      "message": "we need to be more careful with reset notifications now\nif client send first request partial and then resets the connection, this waiting path leaves HTTP_CONN_F_HAS_REQUEST set while req-\u003ec_s_index is still SESSION_INVALID_INDEX, http1_transport_reset_callback calls session_transport_reset_notify with invalid session index...\n\nand other types of error handling too",
+      "revId": "f65cd9f21d9b161bfbb95691a49e85be5f596e0c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}

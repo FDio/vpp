@@ -112,6 +112,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "9397e53a_1f246dae",
+        "filename": "src/plugins/http/http1.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-10-30T13:17:45Z",
+      "side": 1,
+      "message": "I think parsing should be still more granular and there is room for another improvements\n\n1. avoid searching for CRLS first, instead parse request line incrementally: METHOD -\u003e TARGET -\u003e VERSION -\u003e CRLF. Record target boundaries and query separator while advancing. wit this we can also fail fast for invalid methods or oversized targets\n\n2. avoid copying all available fifo data just to find delimiter. http1_peek_range copy entire requested range before scanning\n\n3. identify special headers when the name finishes, currently http1_header_name_is peeks backwards into fifo after the value finishes\n\n4. bound final copy to what can actually be delivered. http1_read_message copies everything queued before the app rx fifo space is considered",
+      "parentUuid": "f974a2c1_f54aaba6",
+      "revId": "c4189f81ba01430f69f594bbf1c126a16cc44daf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "b5e586b3_45deba15",
         "filename": "src/plugins/http/http1.c",
         "patchSetId": 2
@@ -123,6 +141,30 @@
       "writtenOn": "2026-10-28T16:40:53Z",
       "side": 1,
       "message": "enum?",
+      "range": {
+        "startLine": 24,
+        "startChar": 0,
+        "endLine": 28,
+        "endChar": 0
+      },
+      "revId": "c4189f81ba01430f69f594bbf1c126a16cc44daf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e00f1f6e_a3379333",
+        "filename": "src/plugins/http/http1.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 28,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-10-30T13:17:45Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "b5e586b3_45deba15",
       "range": {
         "startLine": 24,
         "startChar": 0,
