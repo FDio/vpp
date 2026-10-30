@@ -69,6 +69,25 @@
       "parentUuid": "7496551b_6607a404",
       "revId": "172f5ac4067d87fbec3d378d3966ae27b9be78c9",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "14983705_57d918de",
+        "filename": "src/plugins/policer/policer.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 71,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-10-30T10:29:15Z",
+      "side": 1,
+      "message": "The counter is now `u32`, but the saved `refcount` in `policer_update()` is still `u8` at policer_op.c:103 in patch set 7. With 256 active bindings, updating the policer truncates the restored count to zero and allows deletion while those bindings remain active; this reproduced under debug ASAN. Could we widen that saved value to `u32` as requested here? This part of the original concern remains unresolved.",
+      "parentUuid": "f91e2e66_a6c4f30b",
+      "tag": "prview:0b84948726333cc0d5d7d5133cff9660:172f5ac4067d87fbec3d378d3966ae27b9be78c9",
+      "revId": "172f5ac4067d87fbec3d378d3966ae27b9be78c9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
