@@ -318,6 +318,7 @@ _clib_socket_get_string (char **p, int is_hostname)
 	case '_':
 	  if (is_hostname)
 	    return s;
+	  /* fallthrough */
 	case 'a' ... 'z':
 	case 'A' ... 'Z':
 	case '0' ... '9':
@@ -480,7 +481,8 @@ clib_socket_init (clib_socket_t *s)
 
       if (setns (netns_fd, CLONE_NEWNET) < 0)
 	{
-	  close (fd);
+	  if (fd >= 0)
+	    close (fd);
 	  err = clib_error_return_unix (0, "setns(%d)", netns_fd);
 	  goto done;
 	}
