@@ -728,7 +728,10 @@ __clib_export extern u32 fib_table_get_table_id(u32 fib_index, fib_protocol_t pr
  *  The Table-ID
  *
  * @return fib_index
- *  The index of the FIB, which may be INVALID.
+ *  The index of the FIB, which may be INVALID. A table ID with no FIB yields
+ *  ~0. This function neither validates the table ID nor logs a warning, so a
+ *  caller must check the result before passing it to fib_table_get_or_null()
+ *  or to any of the entry points below, where ~0 is rejected as a bad index.
  */
 __clib_export extern u32 fib_table_find(fib_protocol_t proto, u32 table_id);
 
@@ -900,6 +903,11 @@ __clib_export extern u32 fib_table_get_num_entries(u32 fib_index,
 /**
  * @brief
  * Get a pointer to a FIB table
+ *
+ * This function does not validate the index. The index is used to index the
+ * per-protocol FIB pool as given, so ~0, an out-of-range index and a free pool
+ * slot all resolve to a pointer outside the pool. Use fib_table_get_or_null()
+ * unless the index is known to name a live table.
  */
 __clib_export extern fib_table_t *fib_table_get(fib_node_index_t index,
 				  fib_protocol_t proto);
@@ -912,6 +920,55 @@ __clib_export extern fib_table_t *fib_table_get(fib_node_index_t index,
  * free pool slot, and returns NULL instead. Callers that derive the index
  * from an interface binding or from another untrusted source must use this
  * accessor.
+ *
+ * The entry points declared in this header handle a table index in one of
+ * three ways.
+ *
+ * fib_table_get() is the only accessor that returns a table pointer without
+ * validating the index; it indexes the pool as given.
+ *
+ * fib_table_lookup(), fib_table_lookup_exact_match(),
+ * fib_table_get_table_id() and format_fib_table_name() call this function and
+ * log nothing, because they run per entry on lookup and show paths, where a
+ * warning per call would flood the log. In that order they return
+ * FIB_NODE_INDEX_INVALID, FIB_NODE_INDEX_INVALID, ~0 and the string
+ * "unknown".
+ *
+ * fib_table_get_table_id_for_sw_if_index(), which derives the index from a
+ * sw_if_index first, is silent in the same way and returns ~0.
+ * fib_table_entry_delete(), fib_table_entry_local_label_remove() and
+ * fib_table_entry_get_stats_index() reach this function through
+ * fib_table_lookup_exact_match(); the first two return without touching an
+ * entry, and the last returns ~0, the value an entry without a load-balance
+ * DPO already yields.
+ *
+ * The remaining entry points call this function through
+ * fib_table_get_checked(), which reports a rejected index with clib_warning()
+ * naming the entry point whose check fired: fib_table_get_less_specific(),
+ * fib_table_entry_special_dpo_add(), fib_table_entry_special_dpo_update(),
+ * fib_table_entry_special_remove(), fib_table_entry_path_add2(),
+ * fib_table_entry_path_remove2(), fib_table_entry_update(),
+ * fib_table_lock(), fib_table_unlock(), fib_table_get_flow_hash_config(),
+ * fib_table_set_flow_hash_config(), fib_table_get_num_entries(),
+ * fib_table_walk(), fib_table_sub_tree_walk(), fib_table_mark() and
+ * fib_table_sweep(). fib_table_entry_special_add(),
+ * fib_table_entry_path_add(), fib_table_entry_path_remove(),
+ * fib_table_entry_update_one_path(), fib_table_entry_local_label_add(),
+ * fib_table_flush() and fib_table_walk_w_src() report the name of the entry
+ * point they delegate to instead of their own. fib_table_fwding_dpo_update()
+ * and fib_table_fwding_dpo_remove(), declared in fib_internal.h, check and
+ * report under their own names.
+ *
+ * A rejected index yields the failure value of the entry point that rejected
+ * it. For the checking entry points above that is: nothing for those that only
+ * walk or update the table, FIB_NODE_INDEX_INVALID for those returning a
+ * fib_node_index_t, 0 for fib_table_get_num_entries(), the protocol default
+ * for fib_table_get_flow_hash_config(), and ~0 for
+ * fib_table_find_or_create_and_lock(),
+ * fib_table_find_or_create_and_lock_w_name() and fib_table_create_and_lock().
+ * Those three take a table ID rather than a fib_index and validate the index
+ * that the protocol specific create returns; their warnings name
+ * fib_table_find_or_create_and_lock_i() and fib_table_create_and_lock().
  */
 __clib_export extern fib_table_t *fib_table_get_or_null(u32 fib_index,
 					  fib_protocol_t proto);
