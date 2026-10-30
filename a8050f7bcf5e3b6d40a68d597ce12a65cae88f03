@@ -1,0 +1,22 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "11bc3be1_4e8421c0",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 2
+      },
+      "lineNbr": 7,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-10-30T13:57:07Z",
+      "side": 1,
+      "message": "The commit body is a single 358-character line. Could you wrap this paragraph to the 78-character limit?",
+      "tag": "prview:6f67d84536ea3ae647bc460de473abe9:a8050f7bcf5e3b6d40a68d597ce12a65cae88f03",
+      "revId": "a8050f7bcf5e3b6d40a68d597ce12a65cae88f03",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
