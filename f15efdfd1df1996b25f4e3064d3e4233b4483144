@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "2fff404c_994093a8",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 2
+      },
+      "lineNbr": 8,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-10-30T04:03:01Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3c11ec9c_b44b6638",
+      "revId": "f15efdfd1df1996b25f4e3064d3e4233b4483144",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "24a1357b_6d41af98",
@@ -35,6 +53,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "15e44ca6_7b98f7a0",
+        "filename": "src/plugins/hsi/hsi_tracker_private.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 235,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-10-30T04:03:01Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "24a1357b_6d41af98",
+      "revId": "f15efdfd1df1996b25f4e3064d3e4233b4483144",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "9d27c28f_78147610",
@@ -48,6 +84,24 @@
       "writtenOn": "2026-10-29T20:09:55Z",
       "side": 1,
       "message": "Let\u0027s make these static inlines to make sure they\u0027re easier to troubleshoot",
+      "revId": "f15efdfd1df1996b25f4e3064d3e4233b4483144",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "81e74ed4_680d8345",
+        "filename": "src/plugins/hsi/hsi_tracker_private.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 251,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-10-30T04:03:01Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "9d27c28f_78147610",
       "revId": "f15efdfd1df1996b25f4e3064d3e4233b4483144",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
