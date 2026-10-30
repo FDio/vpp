@@ -16,6 +16,23 @@
       "message": "recheck",
       "revId": "f429cd38d7737be6f3be6201c55b0bb1f3c4d562",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "d771f013_e130feb5",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 9
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2220
+      },
+      "writtenOn": "2026-10-30T08:31:45Z",
+      "side": 1,
+      "message": "Hello Benoît,\nThanks for merging my previous small fixes! Sorry, I was on vacation and then was distracted by some other vpp patches (in linux-cp). Finally managed to update this one, hope it looks better now.",
+      "revId": "f429cd38d7737be6f3be6201c55b0bb1f3c4d562",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
