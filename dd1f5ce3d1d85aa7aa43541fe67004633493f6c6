@@ -1,0 +1,40 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b71bcfe2_c1a29a48",
+        "filename": "src/plugins/policer/ip4_punt.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 100,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-10-30T10:29:14Z",
+      "side": 1,
+      "message": "Could we check `policer_lock()` before releasing the current attachment or storing the new index, and propagate a failure to the caller? Attaching nonexistent index 0 is currently accepted despite the failed lock. If a policer is then allocated at index 0, removing the attachment unlocks its zero reference count and aborts debug VPP. This reproduced under debug ASAN for both IPv4 and IPv6. A rejected replacement should preserve the existing attachment and its reference.",
+      "tag": "prview:0b84948726333cc0d5d7d5133cff9660:dd1f5ce3d1d85aa7aa43541fe67004633493f6c6",
+      "revId": "dd1f5ce3d1d85aa7aa43541fe67004633493f6c6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a2ba5c10_c06ed716",
+        "filename": "src/plugins/policer/ip4_punt.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 106,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-10-30T10:29:14Z",
+      "side": 1,
+      "message": "Could we enable the punt feature only when transitioning from unattached to attached? Attaching A, replacing it with B, then removing B adds two feature entries but removes only one. Removal now clears the policer index to `~0`, so the remaining entry dereferences that invalid index on the next punt packet and crashes VPP. This reproduced under debug ASAN for both IPv4 and IPv6; `ip6_punt_policer_add_del()` needs the same adjustment. Please include traffic after replacement and removal in the regression coverage.",
+      "tag": "prview:0b84948726333cc0d5d7d5133cff9660:dd1f5ce3d1d85aa7aa43541fe67004633493f6c6",
+      "revId": "dd1f5ce3d1d85aa7aa43541fe67004633493f6c6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
