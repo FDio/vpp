@@ -1,0 +1,22 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4923d48b_34ef2784",
+        "filename": "src/plugins/ikev2/ikev2_crypto.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 644,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-10-30T11:06:24Z",
+      "side": 1,
+      "message": "A short ECP KE now leaves `dh_shared_key` all zero and returns normally; neither caller treats this as an error, so key derivation and authentication continue. I reproduced full authenticated exchanges under debug ASAN with a one-byte KE, using a 32-byte zero secret against the ECP256 responder and a 48-byte zero secret against the ECP384 initiator. Thus this does not fail the exchange cleanly: an authenticated peer can establish IKE and initial child SAs whose encryption keys are derived entirely from public handshake values and the known zero secret. Could we reject the invalid KE and propagate failure before deriving keys in both this branch and `ikev2_complete_dh`, with regression tests asserting rejection?",
+      "tag": "prview:51268590729d5f15a393c12eaa6897ea:6252b5be326ebf9ab398029d1f7628f435d7bbb2",
+      "revId": "6252b5be326ebf9ab398029d1f7628f435d7bbb2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
