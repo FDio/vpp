@@ -357,6 +357,13 @@ format_lcp_xc_trace (u8 *s, va_list *args)
   return s;
 }
 
+/*
+ * lcp_xc_ip4 and lcp_xc_ip6 are siblings of ip4-rewrite and ip6-rewrite
+ * (see VLIB_REGISTER_NODE below) and inherit their next-node slots, where
+ * slot 0 is the ip4-drop or ip6-drop node.
+ */
+#define LCP_XC_REWRITE_NEXT_DROP 0
+
 /**
  * X-connect all packets from the HOST to the PHY.
  *
@@ -407,6 +414,11 @@ lcp_xc_inline (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame,
 	  lipi =
 	    lcp_itf_pair_find_by_host (vnet_buffer (b0)->sw_if_index[VLIB_RX]);
 	  lip = lcp_itf_pair_get (lipi);
+	  if (PREDICT_FALSE (!lip))
+	    {
+	      next0 = LCP_XC_REWRITE_NEXT_DROP;
+	      goto enqueue0;
+	    }
 
 	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = lip->lip_phy_sw_if_index;
 	  vlib_buffer_advance (b0, -lip->lip_rewrite_len);
@@ -438,6 +450,7 @@ lcp_xc_inline (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame,
 	      t->adj_index = vnet_buffer (b0)->ip.adj_index[VLIB_TX];
 	    }
 
+	enqueue0:
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
 					   n_left_to_next, bi0, next0);
 	}
@@ -536,6 +549,11 @@ lcp_xc_mpls_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  lipi =
 	    lcp_itf_pair_find_by_host (vnet_buffer (b0)->sw_if_index[VLIB_RX]);
 	  lip = lcp_itf_pair_get (lipi);
+	  if (PREDICT_FALSE (!lip))
+	    {
+	      next0 = LCP_XC_MPLS_NEXT_DROP;
+	      goto enqueue0;
+	    }
 
 	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = lip->lip_phy_sw_if_index;
 	  vlib_buffer_advance (b0, -lip->lip_rewrite_len);
@@ -559,6 +577,7 @@ lcp_xc_mpls_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	      t->adj_index = vnet_buffer (b0)->ip.adj_index[VLIB_TX];
 	    }
 
+	enqueue0:
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
 					   n_left_to_next, bi0, next0);
 	}
@@ -596,6 +615,7 @@ typedef enum
 {
   LCP_XC_L3_NEXT_XC,
   LCP_XC_L3_NEXT_LOOKUP,
+  LCP_XC_L3_NEXT_DROP,
   LCP_XC_L3_N_NEXT,
 } lcp_xc_l3_next_t;
 
@@ -645,6 +665,11 @@ lcp_xc_l3_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  lipi =
 	    lcp_itf_pair_find_by_host (vnet_buffer (b0)->sw_if_index[VLIB_RX]);
 	  lip = lcp_itf_pair_get (lipi);
+	  if (PREDICT_FALSE (!lip))
+	    {
+	      next0 = LCP_XC_L3_NEXT_DROP;
+	      goto enqueue0;
+	    }
 
 	  /* P2P tunnels can use generic adjacency */
 	  if (PREDICT_TRUE (
@@ -672,6 +697,7 @@ lcp_xc_l3_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	      t->adj_index = vnet_buffer (b0)->ip.adj_index[VLIB_TX];
 	    }
 
+	enqueue0:
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
 					   n_left_to_next, bi0, next0);
 	}
@@ -707,6 +733,7 @@ VLIB_REGISTER_NODE (lcp_xc_l3_ip4_node) = {
   .next_nodes = {
     [LCP_XC_L3_NEXT_XC] = "ip4-midchain",
     [LCP_XC_L3_NEXT_LOOKUP] = "ip4-lookup",
+    [LCP_XC_L3_NEXT_DROP] = "error-drop",
   },
 };
 
@@ -732,6 +759,7 @@ VLIB_REGISTER_NODE (lcp_xc_l3_ip6_node) = {
   .next_nodes = {
     [LCP_XC_L3_NEXT_XC] = "ip6-midchain",
     [LCP_XC_L3_NEXT_LOOKUP] = "ip6-lookup",
+    [LCP_XC_L3_NEXT_DROP] = "error-drop",
   },
 };
 
@@ -1049,6 +1077,11 @@ VLIB_NODE_FN (lcp_arp_host_node)
 	  lipi0 =
 	    lcp_itf_pair_find_by_host (vnet_buffer (b0)->sw_if_index[VLIB_RX]);
 	  lip0 = lcp_itf_pair_get (lipi0);
+	  if (PREDICT_FALSE (!lip0))
+	    {
+	      next0 = LCP_ARP_NEXT_DROP;
+	      goto trace0;
+	    }
 
 	  /* Send to the phy */
 	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = lip0->lip_phy_sw_if_index;
@@ -1057,6 +1090,7 @@ VLIB_NODE_FN (lcp_arp_host_node)
 		  (u8 *) ethernet_buffer_get_header (b0));
 	  vlib_buffer_advance (b0, -len0);
 
+	trace0:
 	  if (PREDICT_FALSE ((b0->flags & VLIB_BUFFER_IS_TRACED)))
 	    {
 	      lcp_arp_trace_t *t = vlib_add_trace (vm, node, b0, sizeof (*t));
