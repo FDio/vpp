@@ -54,6 +54,23 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "4d54d903_f38280c4",
+        "filename": "src/plugins/http/http1.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 190,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-10-30T22:10:26Z",
+      "side": 1,
+      "message": "this is costly doing it over and over, also we should not be looking at tcp layer from here. I think we should always move data from transport rx fifo to app rx fifo starting at sizeof(http_msg_t) offsets without notifying app. this will be also good indication that we can\u0027t receive more data. make sure we send correct status code in case of error (431 Request Header Fields Too Large). and maybe we should have configurable limit for headers size, something like max_header_list_size in http2 (max-header-list-size in http2 startup conf stanza).",
+      "revId": "f65cd9f21d9b161bfbb95691a49e85be5f596e0c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "94c9f829_fbbdaca6",
         "filename": "src/plugins/http/http1.c",
         "patchSetId": 4
