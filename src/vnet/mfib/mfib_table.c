@@ -575,10 +575,31 @@ mfib_table_entry_delete (u32 fib_index,
     }
 }
 
+/*
+ * mfib_entry_get() indexes mfib_entry_pool without validating the index.
+ * mfib_table_entry_delete_index() takes an index that its caller may have
+ * stored earlier from mfib_table_entry_path_update(), which returns
+ * FIB_NODE_INDEX_INVALID for a missing table, so validate the index before
+ * the entry is read.
+ */
+static mfib_entry_t *
+mfib_entry_get_or_null (fib_node_index_t mfib_entry_index)
+{
+    if (FIB_NODE_INDEX_INVALID == mfib_entry_index ||
+        mfib_entry_index >= vec_len (mfib_entry_pool) ||
+        pool_is_free_index (mfib_entry_pool, mfib_entry_index))
+        return (NULL);
+
+    return (mfib_entry_get (mfib_entry_index));
+}
+
 void
 mfib_table_entry_delete_index (fib_node_index_t mfib_entry_index,
                                mfib_source_t source)
 {
+    if (NULL == mfib_entry_get_or_null(mfib_entry_index))
+        return;
+
     mfib_table_entry_delete_i(mfib_entry_get_fib_index(mfib_entry_index),
                               mfib_entry_index,
                               mfib_entry_get_prefix(mfib_entry_index),
