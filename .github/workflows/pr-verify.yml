@@ -90,20 +90,48 @@ jobs:
           set -eu
           base="${{ github.event.pull_request.base.sha }}"
           head="${{ github.event.pull_request.head.sha }}"
-          if [ -z "${base}" ] || [ -z "${head}" ]; then
-            make checkstyle-commit
-            exit 0
-          fi
           checked_out=$(git rev-parse HEAD)
           trap 'git checkout --quiet "${checked_out}"' EXIT
           # A merge commit has no feature id in its subject, and
           # check_commit_msg.sh rejects a subject without one, so only the
           # commits the pull request author wrote are checked.
-          for commit in $(git rev-list --reverse --no-merges "${base}..${head}"); do
+          if [ -n "${base}" ] && [ -n "${head}" ]; then
+            echo "Pull request base ${base}, head ${head}"
+            commits=$(git rev-list --reverse --no-merges "${base}..${head}")
+          else
+            # A manual run has no pull request context, and its tip is usually a
+            # merge commit, which check_commit_msg.sh rejects. The commits such a
+            # tip carries are the range between its first parent and itself, and
+            # the merge commits inside that range are skipped for the same
+            # reason. A tip with one parent, or a root commit, carries itself.
+            head=$(git rev-parse HEAD)
+            first_parent=$(git rev-parse --verify --quiet "${head}^1" || true)
+            if [ -n "${first_parent}" ]; then
+              echo "No pull request context; first parent of ${head} is ${first_parent}"
+              commits=$(git rev-list --reverse --no-merges "${first_parent}..${head}")
+            else
+              echo "No pull request context and ${head} has no parent"
+              commits=""
+            fi
+            if [ -z "${commits}" ]; then
+              # An empty set would check nothing and pass, so the newest
+              # non-merge commit reachable from the tip is checked instead.
+              commits=$(git rev-list --no-merges --max-count=1 "${head}")
+              if [ -z "${commits}" ]; then
+                echo "::error::No commit message to check from ${head}"
+                exit 1
+              fi
+              echo "No non-merge commit derives from ${head}; checking only ${commits}"
+            fi
+          fi
+          checked=0
+          for commit in ${commits}; do
             echo "Checking commit message of ${commit}"
             git checkout --quiet "${commit}"
             extras/scripts/check_commit_msg.sh
+            checked=$((checked + 1))
           done
+          echo "Checked the commit message of ${checked} commit(s) for head ${head}"
 
   test-plan:
     runs-on: ubuntu-24.04
