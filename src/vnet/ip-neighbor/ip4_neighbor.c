@@ -73,6 +73,10 @@ ip4_neighbor_advertise (vlib_main_t *vm, vnet_main_t *vnm, u32 sw_if_index,
   u8 *rewrite, rewrite_len;
   ip4_address_t tmp;
 
+  /* The advertisement carries this interface's MAC address. */
+  if (PREDICT_FALSE (NULL == hi->hw_address))
+    return;
+
   if (NULL == addr)
     {
       if (fib_sas4_get (sw_if_index, NULL, &tmp) ||

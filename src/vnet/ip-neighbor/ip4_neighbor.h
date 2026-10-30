@@ -28,8 +28,13 @@ ip4_neighbor_probe (vlib_main_t *vm, vnet_main_t *vnm,
 
   hw_if0 = vnet_get_sup_hw_interface (vnm, adj0->rewrite_header.sw_if_index);
 
-  /* if (NULL == hw_if0->hw_address) */
-  /*   return (NULL); */
+  /*
+   * The request carries this interface's MAC address as the sender's
+   * hardware address.  An interface that has none, a GRE tunnel for
+   * instance, has nothing to put there and no way to probe.
+   */
+  if (PREDICT_FALSE (NULL == hw_if0->hw_address))
+    return (NULL);
 
   /* Send ARP request. */
   h0 = vlib_packet_template_get_packet (vm,
