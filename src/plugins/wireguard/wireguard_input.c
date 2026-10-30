@@ -545,6 +545,9 @@ wg_input_process (vlib_main_t *vm, wg_per_thread_data_t *ptd, vnet_crypto_op_t *
 	.is_chained_buffers = is_chained,
       };
 
+      if (PREDICT_FALSE (!vnet_crypto_ctx_async_acquire (kp->recv_ctx)))
+	goto error;
+
       post->next_index = async_next_node;
       *vnet_crypto_buffer_get_metadata (b) = md;
       async_bi[0] = buf_idx;

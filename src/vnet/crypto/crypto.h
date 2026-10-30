@@ -348,6 +348,9 @@ typedef u8 vnet_crypto_engine_id_t;
 #define VNET_CRYPTO_ENGINE_ID_NONE    ((vnet_crypto_engine_id_t) 0)
 #define VNET_CRYPTO_ENGINE_ID_INVALID ((vnet_crypto_engine_id_t) ~0)
 
+#define VNET_CRYPTO_CTX_ASYNC_RETIRING	(1U << 31)
+#define VNET_CRYPTO_CTX_ASYNC_REFS_MASK (VNET_CRYPTO_CTX_ASYNC_RETIRING - 1)
+
 typedef struct
 {
   u32 index;
@@ -362,7 +365,8 @@ typedef struct
   void *handlers[VNET_CRYPTO_OP_N_TYPES][VNET_CRYPTO_HANDLER_N_TYPES];
   vnet_crypto_alg_t alg : 8;
   u8 indirect_auth_key : 1;
-  u8 pending_destroy : 1;
+  /* One lifecycle reference plus references owned by async work. */
+  u32 async_lifetime;
   u8 _data[] __clib_aligned (64);
 } __clib_aligned (64)
 vnet_crypto_ctx_t;
@@ -696,9 +700,62 @@ int vnet_crypto_ctx_set_cipher_key (vnet_crypto_ctx_t *ctx, const u8 *cipher_key
 				    u16 cipher_key_len);
 int vnet_crypto_ctx_set_auth_key (vnet_crypto_ctx_t *ctx, const u8 *auth_key, u16 auth_key_len);
 void vnet_crypto_ctx_destroy (vlib_main_t *vm, vnet_crypto_ctx_t *ctx);
+void vnet_crypto_ctx_async_release_last (vnet_crypto_ctx_t *ctx);
 void vnet_crypto_ctx_set_engine (vnet_crypto_ctx_t *ctx, vnet_crypto_handler_type_t t,
 				 vnet_crypto_engine_id_t engine);
 void vnet_crypto_ctx_set_default_engine (vnet_crypto_ctx_t *ctx, vnet_crypto_handler_type_t t);
+
+static_always_inline int
+vnet_crypto_ctx_is_retiring (vnet_crypto_ctx_t *ctx)
+{
+  return (__atomic_load_n (&ctx->async_lifetime, __ATOMIC_ACQUIRE) &
+	  VNET_CRYPTO_CTX_ASYNC_RETIRING) != 0;
+}
+
+/* Acquire before publishing ctx in a crypto-enq graph frame, while borrowing
+ * it from a live owner protected by worker-barrier synchronization. A
+ * successful acquisition must be released exactly once. */
+static_always_inline int
+vnet_crypto_ctx_async_acquire (vnet_crypto_ctx_t *ctx)
+{
+  u32 state;
+
+  if (PREDICT_FALSE (ctx == 0))
+    return 0;
+
+  state = __atomic_load_n (&ctx->async_lifetime, __ATOMIC_RELAXED);
+  while ((state & VNET_CRYPTO_CTX_ASYNC_RETIRING) == 0)
+    {
+      if (PREDICT_FALSE (state == 0 || state == VNET_CRYPTO_CTX_ASYNC_REFS_MASK))
+	return 0;
+      if (__atomic_compare_exchange_n (&ctx->async_lifetime, &state, state + 1, 1, __ATOMIC_ACQ_REL,
+				       __ATOMIC_RELAXED))
+	return 1;
+    }
+  return 0;
+}
+
+static_always_inline void
+vnet_crypto_ctx_async_release (vnet_crypto_ctx_t *ctx)
+{
+  u32 state = __atomic_fetch_sub (&ctx->async_lifetime, 1, __ATOMIC_ACQ_REL);
+
+  ASSERT ((state & VNET_CRYPTO_CTX_ASYNC_REFS_MASK) != 0);
+  if (PREDICT_FALSE ((state & VNET_CRYPTO_CTX_ASYNC_REFS_MASK) == 1))
+    {
+      ASSERT (state & VNET_CRYPTO_CTX_ASYNC_RETIRING);
+      if (state & VNET_CRYPTO_CTX_ASYNC_RETIRING)
+	vnet_crypto_ctx_async_release_last (ctx);
+    }
+}
+
+/* An async frame owns one context reference per element until terminal dispatch. */
+static_always_inline void
+vnet_crypto_async_frame_release_ctxs (vnet_crypto_async_frame_t *f)
+{
+  for (u32 i = 0; i < f->n_elts; i++)
+    vnet_crypto_ctx_async_release (f->ctxs[i]);
+}
 
 format_function_t format_vnet_crypto_alg;
 format_function_t format_vnet_crypto_engine;
@@ -848,6 +905,7 @@ vnet_crypto_async_add_to_frame (vlib_main_t *vm, vnet_crypto_async_frame_t *f,
 
   index = f->n_elts;
   f->n_elts++;
+  /* Transfer the graph frame's context reference to the async frame. */
   f->ctxs[index] = ctx;
   f->buffer_indices[index] = buffer_index;
   f->next_node_index[index] = next_node;

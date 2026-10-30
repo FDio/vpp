@@ -157,6 +157,7 @@ crypto_dispatch_frame (vlib_main_t *vm, vlib_node_runtime_t *node, vnet_crypto_t
 	    vnet_crypto_async_add_trace (vm, node, b, cf->alg, cf->type, status);
 	}
     }
+  vnet_crypto_async_frame_release_ctxs (cf);
   if (cf->enqueue_thread_index == vm->thread_index)
     pool_put (ct->frame_pool, cf);
   else
@@ -266,6 +267,7 @@ VLIB_NODE_FN (crypto_enq_node)
 	      drop_bi[n_drop++] = bi;
 	      vlib_node_increment_counter (vm, node->node_index,
 					   VNET_CRYPTO_ASYNC_ERROR_ENQUEUE_FAIL_NO_FRAME, 1);
+	      vnet_crypto_ctx_async_release (ctx[0]);
 	      goto next;
 	    }
 

@@ -1951,6 +1951,54 @@ typedef struct
   vnet_crypto_async_frame_t *frame;
 } crypto_test_async_result_t;
 
+typedef enum
+{
+  CRYPTO_TEST_ASYNC_RETIRE_NONE,
+  CRYPTO_TEST_ASYNC_RETIRE_BEFORE_ENQ,
+  CRYPTO_TEST_ASYNC_RETIRE_AFTER_ENQ,
+} crypto_test_async_retire_t;
+
+static int
+crypto_test_ctx_is_allocated (vnet_crypto_ctx_t *ctx, u32 index)
+{
+  return index < vec_len (crypto_main.ctxs) && !pool_is_free_index (crypto_main.ctxs, index) &&
+	 crypto_main.ctxs[index] == ctx;
+}
+
+static clib_error_t *
+crypto_test_async_retire_contexts (vlib_main_t *vm, vnet_crypto_ctx_t **ctxs, u32 *ctx_indices,
+				   u8 *early_reclaimed)
+{
+  u32 i, after_rpc;
+
+  vec_foreach_index (i, ctxs)
+    vnet_crypto_ctx_destroy (vm, ctxs[i]);
+
+  for (after_rpc = 0; after_rpc < 2; after_rpc++)
+    {
+      if (after_rpc)
+	vlib_rpc_call_main_thread_process (vm);
+
+      vec_foreach_index (i, ctxs)
+	{
+	  if (!crypto_test_ctx_is_allocated (ctxs[i], ctx_indices[i]))
+	    {
+	      *early_reclaimed = 1;
+	      return clib_error_return (0, "async context %u reclaimed before completion", i);
+	    }
+	  if (!vnet_crypto_ctx_is_retiring (ctxs[i]))
+	    return clib_error_return (0, "async context %u did not enter retirement", i);
+	  if (vnet_crypto_ctx_async_acquire (ctxs[i]))
+	    {
+	      vnet_crypto_ctx_async_release (ctxs[i]);
+	      return clib_error_return (0, "async context %u accepted work after retirement", i);
+	    }
+	}
+    }
+
+  return 0;
+}
+
 static int
 crypto_test_engine_has_async_rows (crypto_test_result_row_t *rows, vnet_crypto_engine_id_t engine)
 {
@@ -2116,7 +2164,8 @@ static clib_error_t *
 test_crypto_async_case (vlib_main_t *vm, crypto_test_main_t *tm,
 			unittest_crypto_test_registration_t *r, vnet_crypto_engine_id_t engine,
 			vnet_crypto_op_type_t op_type, u8 is_chained,
-			crypto_test_result_t *test_result)
+			crypto_test_async_retire_t retire_at, crypto_test_result_t *test_result,
+			u8 *unsafe_pending)
 {
   vlib_main_t *async_vm;
   vnet_crypto_main_t *cm = &crypto_main;
@@ -2143,7 +2192,13 @@ test_crypto_async_case (vlib_main_t *vm, crypto_test_main_t *tm,
   u8 *iv = 0;
   u8 *tag = 0;
   u8 enqueued = 0;
+  u8 frame_verified = 0;
+  u8 frame_recycled = 0;
+  u8 contexts_retired = 0;
+  u8 early_reclaimed = 0;
   vnet_crypto_ctx_t **ctxs = 0;
+  u32 *ctx_indices = 0;
+  u32 n_ctx_refs = 0;
   crypto_test_async_result_t result = {};
   clib_error_t *rv = 0;
   char *mismatch = 0;
@@ -2222,18 +2277,24 @@ test_crypto_async_case (vlib_main_t *vm, crypto_test_main_t *tm,
     }
 
   vec_validate (ctxs, n_elts - 1);
+  vec_validate (ctx_indices, n_elts - 1);
 
   for (i = 0; i < n_elts; i++)
     {
       u8 is_hmac_check = 0;
       vnet_crypto_buffer_metadata_t *md;
 
-      ctxs[i] = crypto_test_ctx_add_data (async_vm, engine, r->alg, r->key.data, r->key.length, 1);
+      if (retire_at != CRYPTO_TEST_ASYNC_RETIRE_NONE && i > 0)
+	ctxs[i] = ctxs[0];
+      else
+	ctxs[i] =
+	  crypto_test_ctx_add_data (async_vm, engine, r->alg, r->key.data, r->key.length, 1);
       if (ctxs[i] == 0)
 	{
 	  rv = clib_error_return (0, "key add failed");
 	  goto done;
 	}
+      ctx_indices[i] = ctxs[i]->index;
 
       crypto_test_async_buffer_chain_init (vm, buffer_indices + i * n_buffers, n_buffers, input);
       head_indices[i] = buffer_indices[i * n_buffers];
@@ -2277,6 +2338,16 @@ test_crypto_async_case (vlib_main_t *vm, crypto_test_main_t *tm,
       };
     }
 
+  for (i = 0; i < n_elts; i++)
+    {
+      if (!vnet_crypto_ctx_async_acquire (ctxs[i]))
+	{
+	  rv = clib_error_return (0, "async context acquisition failed");
+	  goto done;
+	}
+      n_ctx_refs++;
+    }
+
   {
     u32 *to = vlib_frame_vector_args (enq_frame);
     vnet_crypto_ctx_t **aux = vlib_frame_aux_args (enq_frame);
@@ -2289,9 +2360,24 @@ test_crypto_async_case (vlib_main_t *vm, crypto_test_main_t *tm,
       .next_node_index = post_next_index,
       .op_type = op_type,
     };
+    if (retire_at == CRYPTO_TEST_ASYNC_RETIRE_BEFORE_ENQ)
+      {
+	contexts_retired = 1;
+	rv = crypto_test_async_retire_contexts (vm, ctxs, ctx_indices, &early_reclaimed);
+	if (rv)
+	  goto done;
+      }
     enq_rt->function (async_vm, enq_rt, enq_frame);
     enqueued = 1;
   }
+
+  if (retire_at == CRYPTO_TEST_ASYNC_RETIRE_AFTER_ENQ)
+    {
+      contexts_retired = 1;
+      rv = crypto_test_async_retire_contexts (vm, ctxs, ctx_indices, &early_reclaimed);
+      if (rv)
+	goto done;
+    }
 
   rv = crypto_test_wait_for_async_frame (vm, engine, &result);
   if (rv)
@@ -2305,23 +2391,40 @@ test_crypto_async_case (vlib_main_t *vm, crypto_test_main_t *tm,
       *test_result = CRYPTO_TEST_RESULT_ERROR;
       goto done;
     }
+  if (result.frame->state != VNET_CRYPTO_FRAME_STATE_COMPLETED ||
+      result.frame->enqueue_thread_index != async_vm->thread_index)
+    {
+      log_err (0, "%s %s: returned frame has unexpected state or owner thread", engine_name,
+	       r->name);
+      *test_result = CRYPTO_TEST_RESULT_ERROR;
+      goto done;
+    }
+  for (i = 0; i < n_elts; i++)
+    if (result.frame->ctxs[i] != ctxs[i] || result.frame->buffer_indices[i] != head_indices[i])
+      {
+	log_err (0, "%s %s: returned frame element %u does not match submitted work", engine_name,
+		 r->name, i);
+	*test_result = CRYPTO_TEST_RESULT_ERROR;
+	goto done;
+      }
+  frame_verified = 1;
 
   if (vnet_crypto_async_frame_bitmap_count_set_bits (result.frame->engine_error_bitmap))
     {
-      log_err (0, "%s %s %U-%U %s: fail-engine-err %U", engine_name, r->name,
+      log_err (0, "%s %s %U-%U %s: fail-engine-err (%u elements)", engine_name, r->name,
 	       format_crypto_op_type_short, op_type, format_vnet_crypto_alg, r->alg,
-	       is_chained ? "chained" : "simple", format_uword_bitmap,
-	       result.frame->engine_error_bitmap);
+	       is_chained ? "chained" : "simple",
+	       vnet_crypto_async_frame_bitmap_count_set_bits (result.frame->engine_error_bitmap));
       *test_result = CRYPTO_TEST_RESULT_ERROR;
       goto done;
     }
 
   if (vnet_crypto_async_frame_bitmap_count_set_bits (result.frame->bad_hmac_bitmap))
     {
-      log_err (0, "%s %s %U-%U %s: fail-bad-hmac %U", engine_name, r->name,
+      log_err (0, "%s %s %U-%U %s: fail-bad-hmac (%u elements)", engine_name, r->name,
 	       format_crypto_op_type_short, op_type, format_vnet_crypto_alg, r->alg,
-	       is_chained ? "chained" : "simple", format_uword_bitmap,
-	       result.frame->bad_hmac_bitmap);
+	       is_chained ? "chained" : "simple",
+	       vnet_crypto_async_frame_bitmap_count_set_bits (result.frame->bad_hmac_bitmap));
       *test_result = CRYPTO_TEST_RESULT_FAIL;
       goto done;
     }
@@ -2377,15 +2480,69 @@ test_crypto_async_case (vlib_main_t *vm, crypto_test_main_t *tm,
   *test_result = CRYPTO_TEST_RESULT_OK;
 
 done:
-  if (result.frame)
+  if (result.frame && frame_verified)
     {
-      vnet_crypto_thread_t *ct = crypto_main.threads + result.frame->enqueue_thread_index;
+      u8 contexts_allocated = 1;
 
-      pool_put (ct->frame_pool, result.frame);
+      if (retire_at != CRYPTO_TEST_ASYNC_RETIRE_NONE)
+	vec_foreach_index (i, ctxs)
+	  if (!crypto_test_ctx_is_allocated (ctxs[i], ctx_indices[i]))
+	    contexts_allocated = 0;
+
+      if (!contexts_allocated)
+	{
+	  early_reclaimed = 1;
+	  frame_verified = 0;
+	  if (rv == 0)
+	    rv = clib_error_return (0, "async context reclaimed before terminal frame release");
+	}
+      else if (retire_at != CRYPTO_TEST_ASYNC_RETIRE_NONE)
+	{
+	  if (n_elts != 2 || ctxs[0] != ctxs[1])
+	    {
+	      frame_verified = 0;
+	      if (rv == 0)
+		rv = clib_error_return (
+		  0, "async lifetime frame does not have two shared-context elements");
+	    }
+	  else
+	    {
+	      /* Keep one terminal element owned while processing cleanup RPCs. */
+	      vnet_crypto_ctx_async_release (result.frame->ctxs[1]);
+	      result.frame->ctxs[1] = 0;
+	      result.frame->n_elts = 1;
+	      vlib_rpc_call_main_thread_process (vm);
+	      if (!crypto_test_ctx_is_allocated (ctxs[0], ctx_indices[0]))
+		{
+		  early_reclaimed = 1;
+		  frame_verified = 0;
+		  if (rv == 0)
+		    rv =
+		      clib_error_return (0, "async context reclaimed with one element still owned");
+		}
+	    }
+	}
+
+      if (frame_verified)
+	{
+	  vnet_crypto_thread_t *ct = crypto_main.threads + result.frame->enqueue_thread_index;
+
+	  vnet_crypto_async_frame_release_ctxs (result.frame);
+	  pool_put (ct->frame_pool, result.frame);
+	  frame_recycled = 1;
+	}
     }
+  if (unsafe_pending &&
+      ((result.frame && !frame_verified) || (enqueued && !result.frame && early_reclaimed)))
+    *unsafe_pending = 1;
+  if (!enqueued)
+    for (i = 0; i < n_ctx_refs; i++)
+      if (retire_at == CRYPTO_TEST_ASYNC_RETIRE_NONE ||
+	  crypto_test_ctx_is_allocated (ctxs[i], ctx_indices[i]))
+	vnet_crypto_ctx_async_release (ctxs[i]);
   if (enq_frame)
     vlib_frame_free (vm, enq_frame);
-  if (n_alloc && (!enqueued || result.frame))
+  if (n_alloc && (!enqueued || frame_recycled))
     {
       if (is_chained)
 	vlib_buffer_free (vm, head_indices, n_elts);
@@ -2393,9 +2550,22 @@ done:
 	vlib_buffer_free (vm, buffer_indices, n_alloc);
     }
   vec_foreach_index (i, ctxs)
-    if (ctxs[i] && (result.frame || !enqueued))
+    if (ctxs[i] && !contexts_retired)
       vnet_crypto_ctx_destroy (async_vm, ctxs[i]);
+  if (contexts_retired && (frame_recycled || !enqueued) && !early_reclaimed)
+    {
+      vlib_rpc_call_main_thread_process (vm);
+      vec_foreach_index (i, ctxs)
+	if (ctx_indices[i] >= vec_len (crypto_main.ctxs) ||
+	    !pool_is_free_index (crypto_main.ctxs, ctx_indices[i]))
+	  {
+	    if (rv == 0)
+	      rv = clib_error_return (0, "async context %u not reclaimed after completion", i);
+	    *test_result = CRYPTO_TEST_RESULT_ERROR;
+	  }
+    }
   vec_free (head_indices);
+  vec_free (ctx_indices);
   vec_free (ctxs);
   vec_free (buffer_indices);
   return rv;
@@ -2445,7 +2615,8 @@ test_crypto_async_engine (vlib_main_t *vm, crypto_test_main_t *tm, vnet_crypto_e
 
 	  for (is_chained = 0; is_chained <= 1; is_chained++)
 	    {
-	      err = test_crypto_async_case (vm, tm, r, engine, i, is_chained, &result);
+	      err = test_crypto_async_case (vm, tm, r, engine, i, is_chained,
+					    CRYPTO_TEST_ASYNC_RETIRE_NONE, &result, 0);
 	      if (err)
 		{
 		  summary.error[is_chained]++;
@@ -2525,6 +2696,77 @@ test_crypto_async (vlib_main_t *vm, crypto_test_main_t *tm)
 
   vec_free (node_states);
   crypto_test_result_table_free (&results);
+  return err;
+}
+
+static clib_error_t *
+test_crypto_async_lifetime (vlib_main_t *vm, crypto_test_main_t *tm)
+{
+  vnet_crypto_main_t *cm = &crypto_main;
+  unittest_crypto_test_registration_t *r = tm->test_registrations;
+  vnet_crypto_engine_id_t engine;
+  vnet_crypto_engine_t *e;
+  vlib_node_t *node;
+  vlib_node_state_t node_state;
+  crypto_test_async_retire_t retire_at;
+  crypto_test_result_t result;
+  clib_error_t *err = 0;
+  u8 unsafe_pending = 0, is_chained;
+  vnet_crypto_op_type_t op;
+  u32 saved_elts_per_frame = tm->elts_per_frame;
+
+  if (vlib_num_workers () != 0)
+    return clib_error_return (0, "async lifetime test requires no workers");
+
+  engine = vnet_crypto_get_engine_index_by_name ("sw_scheduler");
+  if (engine == VNET_CRYPTO_ENGINE_ID_INVALID)
+    return clib_error_return (0, "sw_scheduler engine not found");
+  e = vec_elt_at_index (cm->engines, engine);
+
+  while (r)
+    {
+      if (r->alg == VNET_CRYPTO_ALG_AES_128_GCM_ICV16_AAD12 &&
+	  strcmp (r->name, "128-GCM TC4 [aad12]") == 0)
+	break;
+      r = r->next;
+    }
+  if (r == 0)
+    return clib_error_return (0, "AES-128-GCM aad12 known-answer vector not found");
+  if (e->dequeue_handler == 0 ||
+      e->ops[r->alg][VNET_CRYPTO_OP_TYPE_ENCRYPT].handlers[VNET_CRYPTO_HANDLER_TYPE_ASYNC] == 0)
+    return clib_error_return (0, "sw_scheduler AES-128-GCM async handler not found");
+
+  node = vlib_get_node (vm, cm->crypto_node_index);
+  node_state = node->state;
+  vlib_node_set_state (vm, cm->crypto_node_index, VLIB_NODE_STATE_DISABLED);
+  tm->elts_per_frame = 2;
+
+  for (op = VNET_CRYPTO_OP_TYPE_ENCRYPT; op <= VNET_CRYPTO_OP_TYPE_DECRYPT; op++)
+    for (is_chained = 0; is_chained <= 1; is_chained++)
+      for (retire_at = CRYPTO_TEST_ASYNC_RETIRE_BEFORE_ENQ;
+	   retire_at <= CRYPTO_TEST_ASYNC_RETIRE_AFTER_ENQ; retire_at++)
+	{
+	  err = test_crypto_async_case (vm, tm, r, engine, op, is_chained, retire_at, &result,
+					&unsafe_pending);
+	  if (err)
+	    goto done;
+	  if (result != CRYPTO_TEST_RESULT_OK)
+	    {
+	      err = clib_error_return (0, "async lifetime op %u chained %u phase %u failed",
+				       (u32) op, is_chained, (u32) retire_at);
+	      goto done;
+	    }
+	}
+
+done:
+  if (!unsafe_pending)
+    vlib_node_set_state (vm, cm->crypto_node_index, node_state);
+  else
+    err = clib_error_return (
+      err, "crypto-deq remains disabled because async work ownership could not be verified");
+  tm->elts_per_frame = saved_elts_per_frame;
+  if (err == 0)
+    vlib_cli_output (vm, "OK");
   return err;
 }
 
@@ -2974,9 +3216,8 @@ leak_test_run_alg (vlib_main_t *vm, vnet_crypto_alg_t alg)
 
   vnet_crypto_ctx_destroy (vm, ctx);
 
-  /* Wait for any async handlers to complete before checking counters. */
-  vlib_worker_thread_barrier_sync (vm);
-  vlib_worker_thread_barrier_release (vm);
+  /* Process deferred context retirement before checking counters. */
+  vlib_rpc_call_main_thread_process (vm);
 
   /* Mid-lifecycle sanity: every unmatched ADD means a leaked key_data.
      The buggy path grows (add - remove) linearly across rekeys; the
@@ -3056,6 +3297,7 @@ test_crypto_command_dispatch (vlib_main_t *vm, unformat_input_t *input, u8 force
   vnet_crypto_engine_id_t engine;
   int is_perf = 0;
   int is_leak = 0;
+  int is_lifetime = 0;
 
   tr = tm->test_registrations;
   vec_free (tm->engine);
@@ -3074,6 +3316,8 @@ test_crypto_command_dispatch (vlib_main_t *vm, unformat_input_t *input, u8 force
 	tm->async = 1;
       else if (unformat (input, "leak"))
 	is_leak = 1;
+      else if (unformat (input, "lifetime"))
+	is_lifetime = 1;
       else if (unformat (input, "engine %U", unformat_vnet_crypto_engine, &engine))
 	tm->engine = format (0, "%U%c", format_vnet_crypto_engine, engine, 0);
       else if (unformat (input, "algo %U", unformat_vnet_crypto_alg, &tm->alg))
@@ -3098,6 +3342,12 @@ test_crypto_command_dispatch (vlib_main_t *vm, unformat_input_t *input, u8 force
 
   if (is_leak)
     return test_crypto_leak_fn (vm);
+  if (is_lifetime)
+    {
+      if (!tm->async || is_perf)
+	return clib_error_return (0, "'lifetime' requires 'async' without 'perf'");
+      return test_crypto_async_lifetime (vm, tm);
+    }
 
   if (is_perf)
     {
@@ -3120,7 +3370,7 @@ test_crypto_command_fn (vlib_main_t *vm, unformat_input_t *input,
 
 VLIB_CLI_COMMAND (test_crypto_command, static) = {
   .path = "test crypto",
-  .short_help = "test crypto [quiet|verbose] [async [engine <name>]] [perf <alg>]",
+  .short_help = "test crypto [quiet|verbose] [async [engine <name>|lifetime]] [perf <alg>]",
   .function = test_crypto_command_fn,
   .is_mp_safe = 1,
 };

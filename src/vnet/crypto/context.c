@@ -16,14 +16,18 @@ VLIB_REGISTER_LOG_CLASS (crypto_log, static) = {
 };
 
 static void
-vnet_crypto_ctx_destroy_cb (vlib_main_t *vm __clib_unused, uword arg)
+vnet_crypto_ctx_destroy_now (vnet_crypto_ctx_t *ctx)
 {
   vnet_crypto_main_t *cm = &crypto_main;
-  vnet_crypto_ctx_t *ctx = (vnet_crypto_ctx_t *) arg;
   u8 **indirect_auth_key = 0;
   vnet_crypto_handler_type_t t;
   uword key_sz = sizeof (vnet_crypto_ctx_t) + ctx->total_data_sz;
   u32 index = ctx->index;
+
+  ASSERT (vlib_get_thread_index () == 0);
+  ASSERT (vlib_worker_thread_barrier_held ());
+  ASSERT (__atomic_load_n (&ctx->async_lifetime, __ATOMIC_ACQUIRE) ==
+	  VNET_CRYPTO_CTX_ASYNC_RETIRING);
 
   for (t = 0; t < VNET_CRYPTO_HANDLER_N_TYPES; t++)
     vnet_crypto_ctx_set_engine (ctx, t, VNET_CRYPTO_ENGINE_ID_NONE);
@@ -44,6 +48,40 @@ vnet_crypto_ctx_destroy_cb (vlib_main_t *vm __clib_unused, uword arg)
   clib_memset (ctx, 0xfe, key_sz);
   clib_mem_free (ctx);
   pool_put_index (cm->ctxs, index);
+}
+
+static void
+vnet_crypto_ctx_retire_rpc (void *arg)
+{
+  vnet_crypto_ctx_t *ctx;
+  u32 state;
+
+  clib_memcpy_fast (&ctx, arg, sizeof (ctx));
+  /* The RPC's worker barrier completes pre-retirement borrows before this
+   * lifecycle reference is released. */
+  state = __atomic_fetch_sub (&ctx->async_lifetime, 1, __ATOMIC_ACQ_REL);
+
+  ASSERT (state & VNET_CRYPTO_CTX_ASYNC_RETIRING);
+  ASSERT ((state & VNET_CRYPTO_CTX_ASYNC_REFS_MASK) != 0);
+  if ((state & VNET_CRYPTO_CTX_ASYNC_REFS_MASK) == 1)
+    vnet_crypto_ctx_destroy_now (ctx);
+}
+
+static void
+vnet_crypto_ctx_destroy_rpc (void *arg)
+{
+  vnet_crypto_ctx_t *ctx;
+
+  clib_memcpy_fast (&ctx, arg, sizeof (ctx));
+  vnet_crypto_ctx_destroy_now (ctx);
+}
+
+void
+vnet_crypto_ctx_async_release_last (vnet_crypto_ctx_t *ctx)
+{
+  ASSERT (__atomic_load_n (&ctx->async_lifetime, __ATOMIC_ACQUIRE) ==
+	  VNET_CRYPTO_CTX_ASYNC_RETIRING);
+  vlib_force_rpc_call_main_thread (vnet_crypto_ctx_destroy_rpc, (u8 *) &ctx, sizeof (ctx));
 }
 
 static_always_inline void
@@ -287,7 +325,7 @@ vnet_crypto_ctx_alloc (const vnet_crypto_ctx_layout_t *kl)
   uword key_data_base;
   uword key_sz;
   vnet_crypto_handler_type_t t;
-  vnet_crypto_ctx_t tmpl = {};
+  vnet_crypto_ctx_t tmpl = { .async_lifetime = 1 };
 
   tmpl.auth_key_offset = kl->cipher_key_len;
 
@@ -425,10 +463,12 @@ vnet_crypto_ctx_set_auth_key (vnet_crypto_ctx_t *ctx, const u8 *auth_key, u16 au
 void
 vnet_crypto_ctx_destroy (vlib_main_t *vm __clib_unused, vnet_crypto_ctx_t *ctx)
 {
-  if (ctx->pending_destroy)
+  u32 state =
+    __atomic_fetch_or (&ctx->async_lifetime, VNET_CRYPTO_CTX_ASYNC_RETIRING, __ATOMIC_ACQ_REL);
+
+  if (state & VNET_CRYPTO_CTX_ASYNC_RETIRING)
     return;
 
-  ctx->pending_destroy = 1;
-
-  vlib_worker_thread_register_one_time_release_fn (vnet_crypto_ctx_destroy_cb, (uword) ctx);
+  ASSERT ((state & VNET_CRYPTO_CTX_ASYNC_REFS_MASK) != 0);
+  vlib_force_rpc_call_main_thread (vnet_crypto_ctx_retire_rpc, (u8 *) &ctx, sizeof (ctx));
 }
