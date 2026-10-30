@@ -41,6 +41,7 @@ ip6_neighbor_advertise (vlib_main_t *vm, vnet_main_t *vnm, u32 sw_if_index,
   ip6_main_t *i6m = &ip6_main;
   u8 *rewrite, rewrite_len;
   u8 dst_address[6];
+  uword hw_address_len;
 
   /* The advertisement carries this interface's MAC address. */
   if (PREDICT_FALSE (NULL == hi->hw_address))
@@ -74,8 +75,12 @@ ip6_neighbor_advertise (vlib_main_t *vm, vnet_main_t *vnm, u32 sw_if_index,
 	(ICMP6_NEIGHBOR_ADVERTISEMENT_FLAG_OVERRIDE);
       h->link_layer_option.header.type =
 	ICMP6_NEIGHBOR_DISCOVERY_OPTION_target_link_layer_address;
-      clib_memcpy (h->link_layer_option.ethernet_address,
-		   hi->hw_address, vec_len (hi->hw_address));
+      /* Clamp to the option's 6 byte field and zero any leftover bytes. */
+      hw_address_len =
+	clib_min (vec_len (hi->hw_address), sizeof (h->link_layer_option.ethernet_address));
+      clib_memset (h->link_layer_option.ethernet_address, 0,
+		   sizeof (h->link_layer_option.ethernet_address));
+      clib_memcpy (h->link_layer_option.ethernet_address, hi->hw_address, hw_address_len);
       h->neighbor.icmp.checksum =
 	ip6_tcp_udp_icmp_compute_checksum (vm, 0, &h->ip, &bogus_length);
       ASSERT (bogus_length == 0);

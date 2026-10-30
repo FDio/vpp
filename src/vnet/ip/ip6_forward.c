@@ -3005,8 +3005,7 @@ vnet_set_ip6_classify_intfc (vlib_main_t *vm, u32 sw_if_index, u32 table_index)
       };
       u32 fib_index;
 
-      fib_index = fib_table_get_index_for_sw_if_index (FIB_PROTOCOL_IP4,
-						       sw_if_index);
+      fib_index = fib_table_get_index_for_sw_if_index (FIB_PROTOCOL_IP6, sw_if_index);
       if (table_index != (u32) ~ 0)
 	{
 	  dpo_id_t dpo = DPO_INVALID;
