@@ -1,0 +1,40 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6cd83e78_a1d124c1",
+        "filename": "src/plugins/linux-cp/lcp_router.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 634,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-10-30T10:55:47Z",
+      "side": 1,
+      "message": "The callers do not handle the new `FIB_PROTOCOL_MAX` result. For an oversized gateway on a paired interface, `lcp_router_route_path_parse()` passes it directly to `fib_proto_to_dpo()`, which hits `ASSERT(0)` in a debug build and returns zero (`DPO_PROTO_IP4`) in a release build. Since the address was reset, release builds then process a zero next hop instead of discarding the malformed path. The multicast prefix caller also passes an unchecked result to MFIB (or overwrites a failed group conversion with the source conversion). Could all callers propagate a conversion failure and reject the malformed route/path before invoking FIB/MFIB? Please add malformed gateway and multicast address regression coverage.",
+      "tag": "prview:78efd46cc6d9bba6475d624c42e1b559:913307daedcc720fb0de901b8e73266598dbff3a",
+      "revId": "913307daedcc720fb0de901b8e73266598dbff3a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f8c61aee_56136ff0",
+        "filename": "src/plugins/linux-cp/lcp_router.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1068,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-10-30T10:55:47Z",
+      "side": 1,
+      "message": "Setting `fp_len` to zero does not reject this route: `lcp_router_route_add()` and `lcp_router_route_del()` continue with the zeroed address and a valid IP protocol. An oversized destination therefore becomes `0.0.0.0/0` or `::/0`, so an add/replace can install or replace the default route, and a delete can remove an existing default route (IPv6 deletes the entire source entry). Libnl accepts oversized destination attributes, so this branch is reachable. Could this helper return an explicit failure and have both callers discard the message before any FIB/table changes? Please cover oversized IPv4/IPv6 destinations with regression tests that preserve an existing default route.",
+      "tag": "prview:78efd46cc6d9bba6475d624c42e1b559:913307daedcc720fb0de901b8e73266598dbff3a",
+      "revId": "913307daedcc720fb0de901b8e73266598dbff3a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
