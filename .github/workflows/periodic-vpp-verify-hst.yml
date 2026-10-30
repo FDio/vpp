@@ -70,7 +70,7 @@ jobs:
 
     steps:
       - name: Actions Checkout
-        uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98  # v6.0.2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
       - name: Setup Environment
         # yamllint disable-line rule:line-length
