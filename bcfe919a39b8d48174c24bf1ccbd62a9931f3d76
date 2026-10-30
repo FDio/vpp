@@ -16,6 +16,24 @@
       "message": "We already have a configurable parameter\n````\n  /* delay in seconds between two scans of session/clients tables */\n  f64 scanner_timeout;\n````\nthat allows to set a more aggressive scanner by reducing the delay between two scans (default is 1 s), to achieve what you want.\nI think that using it is better than maintaining two configurable parameters that are inter dependent.\n`session-cleanup-timeout`",
       "revId": "bcfe919a39b8d48174c24bf1ccbd62a9931f3d76",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2fb552fe_1456f55e",
+        "filename": "src/plugins/cnat/cnat_types.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 305,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-10-30T18:24:00Z",
+      "side": 1,
+      "message": "Could we reject non-positive `session-cleanup-max-time` values during startup? `%f` accepts both `0` and negative values, but `cnat_session_scan()` checks the elapsed time before processing its first bucket. With either value it returns at the same bucket on every wakeup, so expired sessions are never reclaimed; continued traffic can exhaust the session limit and prevent new flows. Please require a positive budget and cover invalid values in a configuration test.",
+      "tag": "prview:a2e4070d019f7dd3b8aa378ce7f0780e:bcfe919a39b8d48174c24bf1ccbd62a9931f3d76",
+      "revId": "bcfe919a39b8d48174c24bf1ccbd62a9931f3d76",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
