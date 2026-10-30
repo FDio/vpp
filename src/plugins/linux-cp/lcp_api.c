@@ -164,6 +164,22 @@ vl_api_lcp_itf_pair_add_del_v3_t_handler (vl_api_lcp_itf_pair_add_del_v3_t *mp)
 		    }));
 }
 
+/*
+ * Copy a NUL-terminated vector into a fixed-size API string field, keeping the
+ * last byte of the field for the terminating NUL.
+ */
+static void
+lcp_api_copy_string (u8 *dst, size_t dst_size, u8 *src)
+{
+  u32 len = src ? vec_len (src) : 0;
+
+  if (len > dst_size - 1)
+    len = dst_size - 1;
+
+  clib_memcpy (dst, src, len);
+  dst[len] = 0;
+}
+
 static void
 send_lcp_itf_pair_details (index_t lipi, vl_api_registration_t *rp,
 			   u32 context)
@@ -178,13 +194,8 @@ send_lcp_itf_pair_details (index_t lipi, vl_api_registration_t *rp,
       rmp->vif_index = lcp_pair->lip_vif_index;
       rmp->host_if_type = api_encode_host_type (lcp_pair->lip_host_type);
 
-      memcpy_s (rmp->host_if_name, sizeof (rmp->host_if_name),
-		lcp_pair->lip_host_name, vec_len (lcp_pair->lip_host_name));
-      rmp->host_if_name[vec_len (lcp_pair->lip_host_name)] = 0;
-
-      memcpy_s (rmp->netns, sizeof (rmp->netns), lcp_pair->lip_namespace,
-		vec_len (lcp_pair->lip_namespace));
-      rmp->netns[vec_len (lcp_pair->lip_namespace)] = 0;
+      lcp_api_copy_string (rmp->host_if_name, sizeof (rmp->host_if_name), lcp_pair->lip_host_name);
+      lcp_api_copy_string (rmp->netns, sizeof (rmp->netns), lcp_pair->lip_namespace);
     }));
 }
 
