@@ -1,0 +1,22 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "aa445b55_c73647b6",
+        "filename": "src/plugins/ikev2/ikev2.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 2343,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-10-30T16:30:54Z",
+      "side": 1,
+      "message": "Does this barrier pair really change rekey synchronization, given that the sole caller uses `vlib_rpc_call_main_thread()`, which already holds the worker barrier across the entire callback on both the direct and queued paths? Since nested sync/release calls only adjust `recursion_level`, wouldn\u0027t workers already be stopped across deletion, both SA additions, and the update before this patch? Could we add a regression test reproducing the reported flap to establish its cause and verify that the fix addresses it?",
+      "tag": "prview:a8b88fb21c0dd18e780d24a23047ef3e:7bc69851241cdbd5151bbe4ca3350151b99604db",
+      "revId": "7bc69851241cdbd5151bbe4ca3350151b99604db",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
