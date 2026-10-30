@@ -1,0 +1,22 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "70de354d_3d71776a",
+        "filename": "test/test_cnat.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 1025,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-10-30T18:35:26Z",
+      "side": 1,
+      "message": "The new test crashes VPP during teardown in the required debug ASAN run, both alone and in the full CNAT suite. Clearing the only INCLUDE_V4 bit trims `interface_maps[0]` to length zero; `cnat_snat_policy_entry_is_init()` then returns false, so the following `cnat_set_snat_addresses()` skips policy-resource cleanup before returning the entry to its pool. `show bihash` in the framework teardown dereferences the now-poisoned `snat prefixes` hash still registered in `clib_all_bihashes`. Could we fix the initialization/cleanup check exposed by this test, or let policy deletion clean up the interface map without first clearing its final bit? The suite currently stops with nine tests unexecuted. Reproduced with `make test-debug VPP_EXTRA_CMAKE_ARGS\u003d-DVPP_ENABLE_SANITIZE_ADDR\u003dON TEST\u003dtest_cnat.TestCNatTranslation.test_cnat_snat_excluded_with_encap`; log: `/tmp/review-cnat-isolated-asan.HEpnuL.log`.",
+      "tag": "prview:06e307e783dd8d49fd3bd8109ca95047:cc8bd3bee651eae0214affa8d37c19bc880b715a",
+      "revId": "cc8bd3bee651eae0214affa8d37c19bc880b715a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
