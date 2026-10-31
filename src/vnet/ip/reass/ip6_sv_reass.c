@@ -642,7 +642,7 @@ ip6_sv_reass_update (vlib_main_t *vm, vlib_node_runtime_t *node,
   if (!ip6_frag_hdr_more (frag_hdr))
     {
       reass->last_fragment_seen = true;
-      reass->total_ip_payload_length = fragment_last - 1;
+      reass->total_ip_payload_length = fragment_first + fragment_length;
       vlib_buffer_t *b0 = vlib_get_buffer (vm, bi0);
       if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 	{
