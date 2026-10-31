@@ -17,6 +17,24 @@
       "tag": "prview:06e307e783dd8d49fd3bd8109ca95047:cc8bd3bee651eae0214affa8d37c19bc880b715a",
       "revId": "cc8bd3bee651eae0214affa8d37c19bc880b715a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "8cfbd742_00e1f6a3",
+        "filename": "test/test_cnat.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 1025,
+      "author": {
+        "id": 3121
+      },
+      "writtenOn": "2026-10-31T00:06:57Z",
+      "side": 1,
+      "message": "Thanks for the detailed explanation and for tracking down the bug. I did not test with ASan last time 😊 I have updated the initialization check to use the bitmap’s allocation rather than its length, so clearing the final bit no longer skips cleanup. Tested locally with ASan enabled - all 21 CNAT tests pass now.",
+      "parentUuid": "70de354d_3d71776a",
+      "revId": "cc8bd3bee651eae0214affa8d37c19bc880b715a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
