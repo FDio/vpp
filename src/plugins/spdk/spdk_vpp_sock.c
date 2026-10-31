@@ -45,7 +45,6 @@ struct spdk_vpp_rx_batch
   svm_fifo_t *tx_fifo;
   u32 refcnt;
   u32 n_buffer_refs;
-  u32 n_buffers;
   u32 n_bytes;
   u32 owner_thread;
   u64 take_tsc;
@@ -78,13 +77,6 @@ struct spdk_vpp_sock
   u8 event_queued;
   u8 flush_queued;
 
-  u8 *rx_spill;
-  u32 rx_spill_offset;
-  u8 rx_direct_active;
-  session_t *rx_direct_session;
-  u8 *tx_deferred;
-  u32 tx_deferred_offset;
-
   spdk_sock_connect_cb_fn connect_cb_fn;
   void *connect_cb_arg;
   u32 opaque;
@@ -113,11 +105,6 @@ struct spdk_vpp_sock
   u64 rx_direct_bytes;
   u64 rx_direct_spill_bytes;
   u64 rx_direct_fallbacks;
-  u64 rx_direct_tx_deferred_calls;
-  u64 rx_direct_tx_deferred_bytes;
-  u64 rx_direct_flush_deferrals;
-  u64 rx_direct_reserve_calls;
-  u64 rx_direct_commit_calls;
   u64 rx_zcopy_segments;
   u64 rx_zcopy_bytes;
   u64 rx_copy_segments;
@@ -145,10 +132,8 @@ struct spdk_vpp_group
   u64 rx_loan_batches;
   u64 rx_loan_limit_fallbacks;
   u64 rx_loan_current_refs;
-  u64 rx_loan_current_buffers;
   u64 rx_loan_current_bytes;
   u64 rx_loan_peak_refs;
-  u64 rx_loan_peak_buffers;
   u64 rx_loan_peak_bytes;
   u64 rx_loan_released_refs;
   u64 rx_loan_lifetime_tsc;
@@ -515,13 +500,11 @@ spdk_vpp_rx_token_release (spdk_vpp_rx_token_t *token)
 
 	  ASSERT (batch->owner_thread == vlib_get_thread_index ());
 	  ASSERT (group->rx_loan_current_refs >= batch->n_buffer_refs);
-	  ASSERT (group->rx_loan_current_buffers >= batch->n_buffers);
 	  ASSERT (group->rx_loan_current_bytes >= batch->n_bytes);
 
 	  session_dio_rx_release (&batch->deferred);
 	  segment_manager_dealloc_fifos (rx_fifo, batch->tx_fifo);
 	  group->rx_loan_current_refs -= batch->n_buffer_refs;
-	  group->rx_loan_current_buffers -= batch->n_buffers;
 	  group->rx_loan_current_bytes -= batch->n_bytes;
 	  group->rx_loan_released_refs += batch->n_buffer_refs;
 
@@ -549,8 +532,6 @@ spdk_vpp_sock_free (spdk_vpp_sock_t *sock)
       spdk_vpp_rx_token_release (token);
     }
 
-  vec_free (sock->rx_spill);
-  vec_free (sock->tx_deferred);
   clib_spinlock_free (&sock->lock);
   free (sock);
 }
@@ -703,7 +684,6 @@ spdk_vpp_take_deferred_rx (spdk_vpp_sock_t *sock, session_t *s, const session_di
   s->tx_fifo->refcnt++;
   batch->refcnt = n_segs;
   batch->n_buffer_refs = n_buffer_refs;
-  batch->n_buffers = n_buffer_refs;
   batch->n_bytes = n_bytes;
   batch->owner_thread = s->thread_index;
   token_addr = (uword) (batch + 1);
@@ -730,11 +710,8 @@ spdk_vpp_take_deferred_rx (spdk_vpp_sock_t *sock, session_t *s, const session_di
 
   group->rx_loan_batches++;
   group->rx_loan_current_refs += n_buffer_refs;
-  group->rx_loan_current_buffers += n_buffer_refs;
   group->rx_loan_current_bytes += n_bytes;
   group->rx_loan_peak_refs = clib_max (group->rx_loan_peak_refs, group->rx_loan_current_refs);
-  group->rx_loan_peak_buffers =
-    clib_max (group->rx_loan_peak_buffers, group->rx_loan_current_buffers);
   group->rx_loan_peak_bytes = clib_max (group->rx_loan_peak_bytes, group->rx_loan_current_bytes);
 
   sock->rx_direct_callbacks++;
@@ -1244,21 +1221,6 @@ spdk_vpp_sock_recv (struct spdk_sock *_sock, void *buf, size_t len)
   u8 requeue = 0;
   int rv;
 
-  if (PREDICT_FALSE (sock->rx_spill_offset < vec_len (sock->rx_spill)))
-    {
-      rv = clib_min ((u32) len, vec_len (sock->rx_spill) - sock->rx_spill_offset);
-      clib_memcpy_fast (buf, sock->rx_spill + sock->rx_spill_offset, rv);
-      sock->rx_spill_offset += rv;
-      if (sock->rx_spill_offset == vec_len (sock->rx_spill))
-	{
-	  vec_reset_length (sock->rx_spill);
-	  sock->rx_spill_offset = 0;
-	}
-      sock->rx_calls++;
-      sock->rx_bytes += rv;
-      return rv;
-    }
-
   rv = spdk_vpp_sock_check_affinity (sock);
   if (rv)
     return rv;
@@ -1406,75 +1368,21 @@ spdk_vpp_sock_writev_internal (spdk_vpp_sock_t *sock, struct iovec *iov, int iov
   return rv;
 }
 
-static ssize_t
-spdk_vpp_sock_defer_writev (spdk_vpp_sock_t *sock, struct iovec *iov, int iovcnt)
-{
-  u8 *dst;
-  size_t total = 0;
-  int i;
-
-  for (i = 0; i < iovcnt; i++)
-    {
-      if (iov[i].iov_len > UINT32_MAX - total)
-	return -E2BIG;
-      total += iov[i].iov_len;
-    }
-
-  if (!total)
-    return 0;
-
-  vec_add2 (sock->tx_deferred, dst, total);
-  for (i = 0; i < iovcnt; i++)
-    {
-      clib_memcpy_fast (dst, iov[i].iov_base, iov[i].iov_len);
-      dst += iov[i].iov_len;
-    }
-
-  sock->rx_direct_tx_deferred_calls++;
-  sock->rx_direct_tx_deferred_bytes += total;
-  spdk_vpp_group_enqueue_flush (sock->group, sock);
-  return total;
-}
-
 static int
 spdk_vpp_sock_flush (struct spdk_sock *_sock)
 {
   spdk_vpp_sock_t *sock = __vpp_sock (_sock);
   struct spdk_sock_request *req;
   struct iovec iovs[IOV_BATCH_SIZE];
-  struct iovec deferred_iov;
   uint64_t requested;
   ssize_t rv;
   int iovcnt, rc;
 
   sock->tx_flush_calls++;
-  if (PREDICT_FALSE (sock->rx_direct_active))
-    {
-      sock->rx_direct_flush_deferrals++;
-      return -EAGAIN;
-    }
   if (_sock->cb_cnt > 0)
     {
       sock->tx_flush_cb_busy++;
       return -EAGAIN;
-    }
-
-  if (sock->tx_deferred_offset < vec_len (sock->tx_deferred))
-    {
-      deferred_iov.iov_base = sock->tx_deferred + sock->tx_deferred_offset;
-      deferred_iov.iov_len = vec_len (sock->tx_deferred) - sock->tx_deferred_offset;
-      clib_spinlock_lock (&sock->lock);
-      rv = spdk_vpp_sock_writev_internal (sock, &deferred_iov, 1);
-      clib_spinlock_unlock (&sock->lock);
-      if (rv < 0)
-	return rv;
-
-      sock->tx_deferred_offset += rv;
-      if (sock->tx_deferred_offset != vec_len (sock->tx_deferred))
-	return -EAGAIN;
-
-      vec_reset_length (sock->tx_deferred);
-      sock->tx_deferred_offset = 0;
     }
 
   /* Complete one asynchronous request at a time.  A completion callback may
@@ -1516,9 +1424,6 @@ spdk_vpp_sock_writev (struct spdk_sock *_sock, struct iovec *iov, int iovcnt)
   spdk_vpp_sock_t *sock = __vpp_sock (_sock);
   ssize_t rv;
   int frc;
-
-  if (PREDICT_FALSE (sock->rx_direct_active))
-    return spdk_vpp_sock_defer_writev (sock, iov, iovcnt);
 
   frc = spdk_vpp_sock_flush (_sock);
   if (frc < 0 && frc != -EAGAIN)
@@ -1572,16 +1477,12 @@ spdk_vpp_sock_recv_next (struct spdk_sock *_sock, void **buf,
     }
 
   /* Resolve deferred data first, then avoid allocating a copied segment for
-   * an empty read.  Preserve recv's spill-before-close ordering.  The session
-   * and its FIFO are accessed only on their owner worker after the affinity
-   * check above. */
-  if (sock->rx_spill_offset >= vec_len (sock->rx_spill))
-    {
-      if (sock->closed)
-	return -ENOTCONN;
-      if (!s || !s->rx_fifo || !svm_fifo_max_dequeue_cons (s->rx_fifo))
-	return 0;
-    }
+   * an empty read.  The session and its FIFO are accessed only on their owner
+   * worker after the affinity check above. */
+  if (sock->closed)
+    return -ENOTCONN;
+  if (!s || !s->rx_fifo || !svm_fifo_max_dequeue_cons (s->rx_fifo))
+    return 0;
 
   /* The retained-buffer path can be disabled at runtime for an A/B test, or
    * temporarily fall back to the session FIFO.  recv_next remains the SPDK
@@ -1609,7 +1510,6 @@ spdk_vpp_sock_recv_next (struct spdk_sock *_sock, void **buf,
   batch->group = sock->group;
   batch->refcnt = 1;
   batch->n_buffer_refs = 0;
-  batch->n_buffers = 0;
   batch->n_bytes = 0;
   batch->owner_thread = vlib_get_thread_index ();
   token = uword_to_pointer (round_pow2 ((uword) (batch + 1), __alignof__ (spdk_vpp_rx_token_t)),
@@ -1656,7 +1556,7 @@ spdk_vpp_sock_writev_async (struct spdk_sock *sock, struct spdk_sock_request *re
   vpp_sock->tx_async_reqs++;
   spdk_sock_request_queue (sock, req);
   spdk_vpp_group_enqueue_flush (vpp_sock->group, vpp_sock);
-  if (!vpp_sock->rx_direct_active && sock->queued_iovcnt >= IOV_BATCH_SIZE)
+  if (sock->queued_iovcnt >= IOV_BATCH_SIZE)
     {
       int rv = spdk_vpp_sock_flush (sock);
       if (rv < 0 && rv != -EAGAIN)
@@ -1829,8 +1729,7 @@ spdk_vpp_sock_group_impl_add_sock (struct spdk_sock_group_impl *_group, struct s
       (!sock->is_listener && s &&
        (svm_fifo_max_dequeue_cons (s->rx_fifo) || svm_fifo_n_async_segments (s->rx_fifo))))
     spdk_vpp_group_enqueue (group, sock);
-  if (!TAILQ_EMPTY (&sock->base.queued_reqs) ||
-      sock->tx_deferred_offset < vec_len (sock->tx_deferred))
+  if (!TAILQ_EMPTY (&sock->base.queued_reqs))
     spdk_vpp_group_enqueue_flush (group, sock);
   clib_spinlock_unlock (&sock->lock);
 
@@ -1909,8 +1808,7 @@ spdk_vpp_sock_group_impl_poll (struct spdk_sock_group_impl *_group, int max_even
       rv = spdk_vpp_sock_flush (&sock->base);
       if (rv < 0 && rv != -EAGAIN)
 	spdk_sock_abort_requests (&sock->base);
-      else if (!TAILQ_EMPTY (&sock->base.queued_reqs) ||
-	       sock->tx_deferred_offset < vec_len (sock->tx_deferred))
+      else if (!TAILQ_EMPTY (&sock->base.queued_reqs))
 	spdk_vpp_group_enqueue_flush (group, sock);
     }
 
@@ -1943,8 +1841,7 @@ spdk_vpp_sock_group_impl_poll (struct spdk_sock_group_impl *_group, int max_even
 	      spdk_vpp_group_enqueue (group, sock);
 	    }
 
-	  if (!TAILQ_EMPTY (&base_sock->queued_reqs) ||
-	      sock->tx_deferred_offset < vec_len (sock->tx_deferred))
+	  if (!TAILQ_EMPTY (&base_sock->queued_reqs))
 	    {
 	      group->tx_sweep_queued++;
 	      spdk_vpp_group_enqueue_flush (group, sock);
@@ -1981,16 +1878,13 @@ spdk_vpp_sock_group_impl_close (struct spdk_sock_group_impl *_group)
   /* recv_next() buffers are owned by the socket group, not by their socket.
    * SPDK must release all of them before closing the group.  Do not free the
    * backend accounting object if that lifecycle contract is violated. */
-  if (PREDICT_FALSE (group->rx_loan_current_refs || group->rx_loan_current_buffers ||
-		     group->rx_loan_current_bytes))
+  if (PREDICT_FALSE (group->rx_loan_current_refs || group->rx_loan_current_bytes))
     {
       SPDK_ERRLOG ("refusing to close VPP socket group for thread %u with "
-		   "%llu RX refs, %llu buffers and %llu bytes still on loan\n",
+		   "%llu RX refs and %llu bytes still on loan\n",
 		   group->vpp_thread_index, (unsigned long long) group->rx_loan_current_refs,
-		   (unsigned long long) group->rx_loan_current_buffers,
 		   (unsigned long long) group->rx_loan_current_bytes);
-      ASSERT (group->rx_loan_current_refs == 0 && group->rx_loan_current_buffers == 0 &&
-	      group->rx_loan_current_bytes == 0);
+      ASSERT (group->rx_loan_current_refs == 0 && group->rx_loan_current_bytes == 0);
       return -EBUSY;
     }
 
@@ -2051,9 +1945,6 @@ format_spdk_vpp_state (u8 *s)
     u64 rx_calls = 0, rx_bytes = 0;
     u64 rx_direct_callbacks = 0, rx_direct_bytes = 0;
     u64 rx_direct_spill_bytes = 0, rx_direct_fallbacks = 0;
-    u64 rx_direct_tx_deferred_calls = 0, rx_direct_tx_deferred_bytes = 0;
-    u64 rx_direct_flush_deferrals = 0, rx_direct_reserve_calls = 0;
-    u64 rx_direct_commit_calls = 0;
     u64 rx_zcopy_segments = 0, rx_zcopy_bytes = 0;
     u64 rx_copy_segments = 0, rx_copy_bytes = 0;
     u32 n_socks = 0, queued_socks = 0, queued_iovs = 0;
@@ -2079,17 +1970,11 @@ format_spdk_vpp_state (u8 *s)
       rx_direct_bytes += sock->rx_direct_bytes;
       rx_direct_spill_bytes += sock->rx_direct_spill_bytes;
       rx_direct_fallbacks += sock->rx_direct_fallbacks;
-      rx_direct_tx_deferred_calls += sock->rx_direct_tx_deferred_calls;
-      rx_direct_tx_deferred_bytes += sock->rx_direct_tx_deferred_bytes;
-      rx_direct_flush_deferrals += sock->rx_direct_flush_deferrals;
-      rx_direct_reserve_calls += sock->rx_direct_reserve_calls;
-      rx_direct_commit_calls += sock->rx_direct_commit_calls;
       rx_zcopy_segments += sock->rx_zcopy_segments;
       rx_zcopy_bytes += sock->rx_zcopy_bytes;
       rx_copy_segments += sock->rx_copy_segments;
       rx_copy_bytes += sock->rx_copy_bytes;
-      if (!TAILQ_EMPTY (&base_sock->queued_reqs) ||
-	  sock->tx_deferred_offset < vec_len (sock->tx_deferred))
+      if (!TAILQ_EMPTY (&base_sock->queued_reqs))
 	{
 	  queued_socks++;
 	  queued_iovs += base_sock->queued_iovcnt;
@@ -2139,23 +2024,20 @@ format_spdk_vpp_state (u8 *s)
 	  0;
       f64 max_us = cps ? (f64) group->rx_loan_lifetime_max_tsc * 1e6 / cps : 0;
 
+      /* Each retained payload buffer has one ref. Keep both CLI labels for
+       * existing diagnostics without maintaining duplicate counters. */
       s = format (s,
 		  "    rx loans current refs %llu buffers %llu bytes %U; "
 		  "peak refs %llu buffers %llu bytes %U\n",
-		  group->rx_loan_current_refs, group->rx_loan_current_buffers, format_memory_size,
-		  group->rx_loan_current_bytes, group->rx_loan_peak_refs,
-		  group->rx_loan_peak_buffers, format_memory_size, group->rx_loan_peak_bytes);
+		  group->rx_loan_current_refs, group->rx_loan_current_refs, format_memory_size,
+		  group->rx_loan_current_bytes, group->rx_loan_peak_refs, group->rx_loan_peak_refs,
+		  format_memory_size, group->rx_loan_peak_bytes);
       s = format (s,
 		  "    rx loan batches %llu released-refs %llu limit-fallbacks %llu; "
 		  "lifetime avg %.3f us p99<=%llu us max %.3f us\n",
 		  group->rx_loan_batches, group->rx_loan_released_refs,
 		  group->rx_loan_limit_fallbacks, avg_us, spdk_vpp_rx_loan_p99_us (group), max_us);
     }
-    s = format (s,
-		"    direct-rx deferred-tx calls %llu bytes %llu flushes %llu "
-		"reserves %llu commits %llu\n",
-		rx_direct_tx_deferred_calls, rx_direct_tx_deferred_bytes, rx_direct_flush_deferrals,
-		rx_direct_reserve_calls, rx_direct_commit_calls);
   }
   clib_spinlock_unlock (&vm->lock);
   return s;
@@ -2223,7 +2105,7 @@ test_spdk_rx_loan_stats_reset_command_fn (vlib_main_t *vlib_vm, unformat_input_t
   clib_spinlock_lock (&vm->lock);
   TAILQ_FOREACH (group, &vm->groups, link)
   {
-    if (group->rx_loan_current_buffers)
+    if (group->rx_loan_current_refs)
       {
 	clib_spinlock_unlock (&vm->lock);
 	return clib_error_return (0, "cannot reset with outstanding group RX loans");
@@ -2234,7 +2116,6 @@ test_spdk_rx_loan_stats_reset_command_fn (vlib_main_t *vlib_vm, unformat_input_t
     group->rx_loan_batches = 0;
     group->rx_loan_limit_fallbacks = 0;
     group->rx_loan_peak_refs = 0;
-    group->rx_loan_peak_buffers = 0;
     group->rx_loan_peak_bytes = 0;
     group->rx_loan_released_refs = 0;
     group->rx_loan_lifetime_tsc = 0;
