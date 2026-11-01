@@ -38,6 +38,9 @@ typedef struct
   u32 session_index;
   clib_thread_index_t thread_index;
   u8 *tx_buf;
+  u8 *rx_buf;
+  u64 rx_left;
+  u8 echo_rx;
   u32 tx_offset;
   u32 vpp_session_index;
   http_header_table_t req_headers;
@@ -180,7 +183,7 @@ hcs_cli_output (uword arg, u8 *buffer, uword buffer_bytes)
 static void
 start_send_data (hcs_session_t *hs, http_status_code_t status)
 {
-  http_msg_t msg;
+  http_msg_t msg = {};
   session_t *ts;
   int rv;
 
@@ -195,6 +198,7 @@ start_send_data (hcs_session_t *hs, http_status_code_t status)
   msg.data.len = msg.data.body_len + msg.data.headers_len;
 
   ts = session_get (hs->vpp_session_index, hs->thread_index);
+  hs->tx_offset = 0;
   rv = svm_fifo_enqueue (ts->tx_fifo, sizeof (msg), (u8 *) &msg);
   ASSERT (rv == sizeof (msg));
 
@@ -360,6 +364,37 @@ alloc_cli_process_callback (void *cb_args)
 }
 
 static int
+hcs_echo_rx (session_t *ts, hcs_session_t *hs, u32 control_len)
+{
+  u32 n_deq = clib_min (hs->rx_left, svm_fifo_max_dequeue (ts->rx_fifo));
+  u8 *data;
+  int rv;
+
+  if (n_deq)
+    {
+      vec_add2 (hs->rx_buf, data, n_deq);
+      rv = svm_fifo_dequeue (ts->rx_fifo, n_deq, data);
+      ASSERT (rv == n_deq);
+      hs->rx_left -= n_deq;
+    }
+  if (svm_fifo_needs_deq_ntf (ts->rx_fifo, n_deq + control_len))
+    {
+      svm_fifo_clear_deq_ntf (ts->rx_fifo);
+      session_program_transport_io_evt (ts->handle, SESSION_IO_EVT_RX);
+    }
+  if (!hs->rx_left)
+    {
+      hs->echo_rx = 0;
+      hs->tx_buf = hs->rx_buf;
+      hs->rx_buf = 0;
+      http_add_header (&hs->resp_headers, HTTP_HEADER_CONTENT_TYPE,
+		       http_content_type_token (HTTP_CONTENT_APP_OCTET_STREAM));
+      start_send_data (hs, HTTP_STATUS_OK);
+    }
+  return 0;
+}
+
+static int
 hcs_ts_rx_callback (session_t *ts)
 {
   hcs_cli_args_t args = {};
@@ -368,6 +403,8 @@ hcs_ts_rx_callback (session_t *ts)
   int rv, is_encoded = 0;
 
   hs = hcs_session_get (ts->thread_index, ts->opaque);
+  if (hs->echo_rx)
+    return hcs_echo_rx (ts, hs, 0);
   hs->tx_buf = 0;
   http_init_headers_ctx (&hs->resp_headers, hs->resp_headers_buf,
 			 vec_len (hs->resp_headers_buf));
@@ -377,7 +414,9 @@ hcs_ts_rx_callback (session_t *ts)
   rv = svm_fifo_dequeue (ts->rx_fifo, sizeof (msg), (u8 *) &msg);
   ASSERT (rv == sizeof (msg));
 
-  if (msg.type != HTTP_MSG_REQUEST || msg.method_type != HTTP_REQ_GET)
+  if (msg.type != HTTP_MSG_REQUEST ||
+      (msg.method_type != HTTP_REQ_GET && msg.method_type != HTTP_REQ_POST &&
+       msg.method_type != HTTP_REQ_PUT))
     {
       http_add_header (&hs->resp_headers, HTTP_HEADER_ALLOW,
 		       http_token_lit ("GET"));
@@ -408,6 +447,24 @@ hcs_ts_rx_callback (session_t *ts)
       u8 *decoded = http_percent_decode (args.buf, vec_len (args.buf));
       vec_free (args.buf);
       args.buf = decoded;
+    }
+
+  if (vec_len (args.buf) == 4 && !memcmp (args.buf, "echo", 4))
+    {
+      u32 control_len = msg.data.body_len ? msg.data.body_offset : msg.data.len;
+      vec_free (args.buf);
+      hs->echo_rx = 1;
+      hs->rx_left = msg.data.body_len;
+      svm_fifo_dequeue_drop (ts->rx_fifo, control_len);
+      return hcs_echo_rx (ts, hs, control_len);
+    }
+
+  if (msg.method_type != HTTP_REQ_GET)
+    {
+      vec_free (args.buf);
+      http_add_header (&hs->resp_headers, HTTP_HEADER_ALLOW, http_token_lit ("GET"));
+      start_send_data (hs, HTTP_STATUS_METHOD_NOT_ALLOWED);
+      goto done;
     }
 
   if (msg.data.headers_len)
@@ -542,6 +599,7 @@ hcs_ts_cleanup_callback (session_t *s, session_cleanup_ntf_t ntf)
     return;
 
   vec_free (hs->tx_buf);
+  vec_free (hs->rx_buf);
   vec_free (hs->resp_headers_buf);
   http_free_header_table (&hs->req_headers);
   hcs_session_free (hs);

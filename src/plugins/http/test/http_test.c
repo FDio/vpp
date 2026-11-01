@@ -2172,6 +2172,39 @@ http_test_http_headers_rx_to_tx (vlib_main_t *vm)
 }
 
 static int
+http_test_encode_u64_decimal (vlib_main_t *vm)
+{
+  static const struct
+  {
+    u64 value;
+    http_token_t expected;
+  } tests[] = {
+    { 0, { http_token_lit ("0") } },
+    { 1, { http_token_lit ("1") } },
+    { 9, { http_token_lit ("9") } },
+    { 10, { http_token_lit ("10") } },
+    { 99, { http_token_lit ("99") } },
+    { 100, { http_token_lit ("100") } },
+    { CLIB_U32_MAX, { http_token_lit ("4294967295") } },
+    { (u64) 1 << 63, { http_token_lit ("9223372036854775808") } },
+    { CLIB_U64_MAX, { http_token_lit ("18446744073709551615") } },
+  };
+  u8 buf[HTTP_U64_MAX_DECIMAL_DIGITS + 2];
+  u8 *end = buf + sizeof (buf) - 1, *digits;
+
+  for (u32 i = 0; i < ARRAY_LEN (tests); i++)
+    {
+      clib_memset (buf, 0xA5, sizeof (buf));
+      digits = http_encode_u64_decimal (end, tests[i].value);
+      HTTP_TEST ((end - digits == tests[i].expected.len &&
+		  !memcmp (digits, tests[i].expected.base, tests[i].expected.len)),
+		 "decimal encoding of %llu", tests[i].value);
+      HTTP_TEST ((buf[0] == 0xA5 && *end == 0xA5), "decimal encoding stays within its buffer");
+    }
+  return 0;
+}
+
+static int
 http_test_parse_content_length (vlib_main_t *vm)
 {
   http_ctx_t req = {};
@@ -2496,6 +2529,8 @@ test_http_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	res = http_test_http_headers_rx_to_tx (vm);
       else if (unformat (input, "parse-content-length"))
 	res = http_test_parse_content_length (vm);
+      else if (unformat (input, "encode-u64-decimal"))
+	res = http_test_encode_u64_decimal (vm);
       else if (unformat (input, "decode-varint"))
 	res = http_test_decode_varint (vm);
       else if (unformat (input, "all"))
@@ -2527,6 +2562,8 @@ test_http_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	  if ((res = http_test_http_headers_rx_to_tx (vm)))
 	    goto done;
 	  if ((res = http_test_parse_content_length (vm)))
+	    goto done;
+	  if ((res = http_test_encode_u64_decimal (vm)))
 	    goto done;
 	}
       else

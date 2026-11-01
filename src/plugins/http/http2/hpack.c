@@ -705,8 +705,8 @@ hpack_encode_authority (u8 *dst, u8 *authority, u32 authority_len)
 static inline u8 *
 hpack_encode_content_len (u8 *dst, u64 content_len)
 {
-  u8 digit_buffer[20];
-  u8 *d = digit_buffer + sizeof (digit_buffer);
+  u8 digit_buffer[HTTP_U64_MAX_DECIMAL_DIGITS];
+  u8 *d = http_encode_u64_decimal (digit_buffer + sizeof (digit_buffer), content_len);
   u32 orig_len, actual_size;
   u8 *a, *b;
 
@@ -717,13 +717,6 @@ hpack_encode_content_len (u8 *dst, u64 content_len)
   /* static table index 28 */
   *b++ = 0x0F;
   *b++ = 0x0D;
-  do
-    {
-      *--d = '0' + content_len % 10;
-      content_len /= 10;
-    }
-  while (content_len);
-
   b = hpack_encode_string (b, d, digit_buffer + sizeof (digit_buffer) - d);
   actual_size = b - a;
   vec_set_len (dst, orig_len + actual_size);
