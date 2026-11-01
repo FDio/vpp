@@ -3840,6 +3840,62 @@ done:
 }
 
 static int
+tcp_test_limited_transmit (vlib_main_t *vm, unformat_input_t *input)
+{
+  tcp_connection_t _tc, *tc = &_tc;
+  u32 mss = 1448, una = 100000;
+
+  clib_memset (tc, 0, sizeof (*tc));
+  tc->state = TCP_STATE_ESTABLISHED;
+  tc->rcv_opts.flags = TCP_OPTS_FLAG_SACK_PERMITTED;
+  tc->snd_mss = mss;
+  tc->cwnd = 100 * mss;
+  tc->snd_wnd = 1000 * mss;
+  tc->snd_una = una;
+  tc->snd_nxt = una + 10 * mss;
+  tc->sack_sb.reorder = TCP_DUPACK_THRESHOLD;
+
+  TCP_TEST ((tcp_snd_space (tc) == 90 * mss), "without dupacks or sacks cwnd decides");
+
+  /* With sack, each sacked segment left the network and makes room for a
+   * new one (RFC 6675) */
+  tc->sack_sb.sacked_bytes = mss;
+  TCP_TEST ((tcp_snd_space (tc) == 91 * mss), "a sacked segment makes room for one more");
+  tc->snd_nxt = una + 100 * mss;
+  TCP_TEST ((tcp_snd_space (tc) == mss), "with cwnd used, one new segment per sacked one");
+  tc->snd_nxt += mss;
+  TCP_TEST ((tcp_snd_space (tc) == 0), "nothing once it is sent");
+  tc->sack_sb.sacked_bytes = 51 * mss;
+  TCP_TEST ((tcp_snd_space (tc) == 50 * mss), "more sacked segments, more room");
+  tc->snd_wnd = 121 * mss;
+  TCP_TEST ((tcp_snd_space (tc) == 20 * mss), "but only within the peer's window");
+  tc->snd_wnd = 100 * mss;
+  TCP_TEST ((tcp_snd_space (tc) == 0), "and nothing if it shrank below what is outstanding");
+  tc->snd_wnd = 1000 * mss;
+
+  /* Sacked bytes with cwnd room left, which used to stall the sender */
+  tc->cwnd = 700 * mss;
+  tc->snd_nxt = una + 400 * mss;
+  tc->sack_sb.sacked_bytes = 50 * mss;
+  TCP_TEST ((tcp_snd_space (tc) == 350 * mss), "cwnd room and sacked segments are both used");
+
+  /* Without sack, one new segment per dupack (RFC 3042) */
+  tc->rcv_opts.flags = 0;
+  tc->sack_sb.sacked_bytes = 0;
+  tc->cwnd = 100 * mss;
+  tc->snd_nxt = una + 100 * mss;
+  tc->rcv_dupacks = 1;
+  TCP_TEST ((tcp_snd_space (tc) == mss), "without sack, one segment for the first dupack");
+  tc->snd_nxt += mss;
+  tc->rcv_dupacks = 2;
+  TCP_TEST ((tcp_snd_space (tc) == mss), "and one for the second");
+  tc->snd_nxt += mss;
+  TCP_TEST ((tcp_snd_space (tc) == 0), "nothing more until the next dupack");
+
+  return 0;
+}
+
+static int
 tcp_test_persist (vlib_main_t *vm, unformat_input_t *input)
 {
   return tcp_test_persist_e2e (vm, input);
@@ -12488,6 +12544,10 @@ tcp_test (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd_arg)
 	{
 	  res = tcp_test_persist (vm, input);
 	}
+      else if (unformat (input, "limited-transmit"))
+	{
+	  res = tcp_test_limited_transmit (vm, input);
+	}
       else if (unformat (input, "rto"))
 	{
 	  res = tcp_test_rto (vm, input);
@@ -12541,6 +12601,8 @@ tcp_test (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd_arg)
 	  if ((res = tcp_test_delivery (vm, input)))
 	    goto done;
 	  if ((res = tcp_test_persist (vm, input)))
+	    goto done;
+	  if ((res = tcp_test_limited_transmit (vm, input)))
 	    goto done;
 	  if ((res = tcp_test_rto (vm, input)))
 	    goto done;
