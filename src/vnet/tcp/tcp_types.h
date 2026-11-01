@@ -489,7 +489,7 @@ typedef struct _tcp_connection
   u32 psh_seq;		/**< Add psh header for seg that includes this */
   u32 next_node_index;	/**< Can be used to control next node in output */
   u32 next_node_opaque;	/**< Opaque to pass to next node */
-  u32 limited_transmit;	/**< snd_nxt when limited transmit starts */
+  u32 unused;		/**< Unused, keeps the layout */
   u32 sw_if_index;	/**< Interface for the connection */
 
   /* Delivery rate estimation */

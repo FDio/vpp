@@ -1150,31 +1150,22 @@ tcp_snd_space_inline (tcp_connection_t * tc)
   /* Fast path is disabled when recovery is on. @ref tcp_session_custom_tx
    * controls both retransmits and the sending of new data while congested
    */
-  if (PREDICT_FALSE (tcp_in_cong_recovery (tc)
-		     || tc->state == TCP_STATE_CLOSED))
+  if (PREDICT_FALSE (tcp_in_cong_recovery (tc) || tc->state == TCP_STATE_CLOSED))
     return 0;
 
   snd_space = tcp_available_output_snd_space (tc);
 
-  /* If we got dupacks or sacked bytes but we're not yet in recovery, try
-   * to force the peer to send enough dupacks to start retransmitting as
-   * per Limited Transmit (RFC3042)
+  /* Limited transmit. Before recovery, segments that left the network make
+   * room for as many new ones within the peer's window: those sacked, as per
+   * RFC 6675, or without sack, one per dupack for the first two, as per
+   * RFC 3042
    */
   if (PREDICT_FALSE (tc->rcv_dupacks || tc->sack_sb.sacked_bytes))
     {
-      int snt_limited, n_pkts;
+      int rcv_space = (int) tc->snd_wnd - (int) (tc->snd_nxt - tc->snd_una);
+      int pipe_space = tcp_available_cc_snd_space (tc);
 
-      n_pkts = tcp_opts_sack_permitted (&tc->rcv_opts)
-	? tc->sack_sb.reorder - 1 : 2;
-
-      if ((seq_lt (tc->limited_transmit, tc->snd_nxt - n_pkts * tc->snd_mss)
-	   || seq_gt (tc->limited_transmit, tc->snd_nxt)))
-	tc->limited_transmit = tc->snd_nxt;
-
-      ASSERT (seq_leq (tc->limited_transmit, tc->snd_nxt));
-
-      snt_limited = tc->snd_nxt - tc->limited_transmit;
-      snd_space = clib_max (n_pkts * tc->snd_mss - snt_limited, 0);
+      snd_space = clib_max (snd_space, clib_min (pipe_space, rcv_space));
     }
   return tcp_round_snd_space (tc, snd_space);
 }

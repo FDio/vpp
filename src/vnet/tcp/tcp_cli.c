@@ -135,9 +135,8 @@ format_tcp_congestion (u8 * s, va_list * args)
   s = format (s, "%Ucc space %u prev_cwnd %u prev_ssthresh %u\n",
 	      format_white_space, indent, tcp_available_cc_snd_space (tc),
 	      tc->prev_cwnd, tc->prev_ssthresh);
-  s = format (s, "%Usnd_cong %u dupack %u limited_tx %u\n",
-	      format_white_space, indent, tc->snd_congestion - tc->iss,
-	      tc->rcv_dupacks, tc->limited_transmit - tc->iss);
+  s = format (s, "%Usnd_cong %u dupack %u\n", format_white_space, indent,
+	      tc->snd_congestion - tc->iss, tc->rcv_dupacks);
   s = format (s, "%Urxt_bytes %u rxt_delivered %u prev_prr_delivered %u rxt_ts %u\n",
 	      format_white_space, indent, tc->snd_rxt_bytes, tc->rxt_delivered,
 	      tc->prev_prr_delivered, tcp_tstamp (tc) - tc->snd_rxt_ts);
