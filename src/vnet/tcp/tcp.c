@@ -1158,11 +1158,12 @@ tcp_snd_space_inline (tcp_connection_t * tc)
 
   /* If we got dupacks or sacked bytes but we're not yet in recovery, try
    * to force the peer to send enough dupacks to start retransmitting as
-   * per Limited Transmit (RFC3042)
+   * per Limited Transmit (RFC3042). It allows sending past what cwnd allows,
+   * never less, and within the peer's window
    */
   if (PREDICT_FALSE (tc->rcv_dupacks || tc->sack_sb.sacked_bytes))
     {
-      int snt_limited, n_pkts;
+      int snt_limited, n_pkts, limited, rcv_space;
 
       n_pkts = tcp_opts_sack_permitted (&tc->rcv_opts)
 	? tc->sack_sb.reorder - 1 : 2;
@@ -1174,7 +1175,9 @@ tcp_snd_space_inline (tcp_connection_t * tc)
       ASSERT (seq_leq (tc->limited_transmit, tc->snd_nxt));
 
       snt_limited = tc->snd_nxt - tc->limited_transmit;
-      snd_space = clib_max (n_pkts * tc->snd_mss - snt_limited, 0);
+      limited = n_pkts * tc->snd_mss - snt_limited;
+      rcv_space = (int) tc->snd_wnd - (int) (tc->snd_nxt - tc->snd_una);
+      snd_space = clib_max (snd_space, clib_min (limited, rcv_space));
     }
   return tcp_round_snd_space (tc, snd_space);
 }

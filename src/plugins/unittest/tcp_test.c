@@ -3840,6 +3840,64 @@ done:
 }
 
 static int
+tcp_test_limited_transmit (vlib_main_t *vm, unformat_input_t *input)
+{
+  tcp_connection_t _tc, *tc = &_tc;
+  u32 mss = 1448, una = 100000;
+
+  clib_memset (tc, 0, sizeof (*tc));
+  tc->state = TCP_STATE_ESTABLISHED;
+  tc->rcv_opts.flags = TCP_OPTS_FLAG_SACK_PERMITTED;
+  tc->snd_mss = mss;
+  tc->cwnd = 100 * mss;
+  tc->snd_wnd = 1000 * mss;
+  tc->snd_una = una;
+  tc->snd_nxt = una + 10 * mss;
+  tc->sack_sb.reorder = TCP_DUPACK_THRESHOLD;
+
+  TCP_TEST ((tcp_snd_space (tc) == 90 * mss), "without dupacks or sacks cwnd decides");
+
+  /* Outside recovery, sacked bytes start limited transmit, which never
+   * allows less than cwnd */
+  tc->sack_sb.sacked_bytes = mss;
+  TCP_TEST ((tcp_snd_space (tc) == 90 * mss), "limited transmit keeps the space cwnd allows");
+
+  /* Once cwnd is used, reorder - 1 segments may be sent past it */
+  tc->snd_nxt = una + 100 * mss;
+  tc->limited_transmit = tc->snd_nxt;
+  TCP_TEST ((tcp_snd_space (tc) == 2 * mss), "past cwnd, reorder - 1 segments");
+  tc->snd_nxt += 2 * mss;
+  TCP_TEST ((tcp_snd_space (tc) == 0), "nothing once those are sent");
+
+  /* More reordering allows more, but only within the peer's window */
+  tc->sack_sb.reorder = TCP_MAX_SACK_REORDER;
+  tc->limited_transmit = tc->snd_nxt;
+  TCP_TEST ((tcp_snd_space (tc) == (TCP_MAX_SACK_REORDER - 1) * mss),
+	    "past cwnd, reorder - 1 segments of a larger reorder");
+  tc->snd_wnd = 152 * mss;
+  TCP_TEST ((tcp_snd_space (tc) == 50 * mss), "limited transmit stays within the peer's window");
+  tc->snd_wnd = 1000 * mss;
+
+  /* With its segments sent, the space cwnd allows is still used, so new data
+   * can be sacked above a loss and reveal it */
+  tc->snd_nxt = una + 400 * mss;
+  tc->limited_transmit = tc->snd_nxt - (TCP_MAX_SACK_REORDER - 1) * mss;
+  tc->cwnd = 700 * mss;
+  TCP_TEST ((tcp_snd_space (tc) == 300 * mss), "limited transmit done, cwnd space left");
+
+  /* Without sack, dupacks allow two segments past cwnd */
+  tc->rcv_opts.flags = 0;
+  tc->sack_sb.sacked_bytes = 0;
+  tc->rcv_dupacks = 2;
+  tc->cwnd = 100 * mss;
+  tc->snd_nxt = una + 100 * mss;
+  tc->limited_transmit = tc->snd_nxt;
+  TCP_TEST ((tcp_snd_space (tc) == 2 * mss), "without sack, two segments past cwnd");
+
+  return 0;
+}
+
+static int
 tcp_test_persist (vlib_main_t *vm, unformat_input_t *input)
 {
   return tcp_test_persist_e2e (vm, input);
@@ -12027,6 +12085,10 @@ tcp_test (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd_arg)
 	{
 	  res = tcp_test_persist (vm, input);
 	}
+      else if (unformat (input, "limited-transmit"))
+	{
+	  res = tcp_test_limited_transmit (vm, input);
+	}
       else if (unformat (input, "rto"))
 	{
 	  res = tcp_test_rto (vm, input);
@@ -12080,6 +12142,8 @@ tcp_test (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd_arg)
 	  if ((res = tcp_test_delivery (vm, input)))
 	    goto done;
 	  if ((res = tcp_test_persist (vm, input)))
+	    goto done;
+	  if ((res = tcp_test_limited_transmit (vm, input)))
 	    goto done;
 	  if ((res = tcp_test_rto (vm, input)))
 	    goto done;
