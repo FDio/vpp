@@ -1177,8 +1177,8 @@ qpack_encode_status_code (u8 *dst, http_status_code_t sc)
 static u8 *
 qpack_encode_content_len (u8 *dst, u64 content_len)
 {
-  u8 digit_buffer[20];
-  u8 *d = digit_buffer + sizeof (digit_buffer);
+  u8 digit_buffer[HTTP_U64_MAX_DECIMAL_DIGITS];
+  u8 *d;
   u8 *a;
 
   /* save some cycles and encode "content-length: 0" directly */
@@ -1190,12 +1190,7 @@ qpack_encode_content_len (u8 *dst, u64 content_len)
       return dst;
     }
 
-  do
-    {
-      *--d = '0' + content_len % 10;
-      content_len /= 10;
-    }
-  while (content_len);
+  d = http_encode_u64_decimal (digit_buffer + sizeof (digit_buffer), content_len);
 
   dst = qpack_encode_header (dst, HTTP_HEADER_CONTENT_LENGTH, d,
 			     digit_buffer + sizeof (digit_buffer) - d, 0);

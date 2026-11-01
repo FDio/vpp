@@ -8,6 +8,7 @@
 #include <http/http.h>
 #include <http/http_content_types.h>
 #include <http/http_status_codes.h>
+#include <vppinfra/unix.h>
 
 #define HCC_DEBUG 0
 
@@ -25,8 +26,16 @@ typedef struct
   u32 rx_offset;
   u32 vpp_session_index;
   u64 to_recv;
+  u64 tx_offset;
+  u8 have_reply;
   u8 is_closed;
 } hcc_session_t;
+
+typedef struct
+{
+  u8 *name;
+  u8 *value;
+} hcc_header_t;
 
 typedef struct
 {
@@ -44,6 +53,13 @@ typedef struct
   u32 fifo_size;
   u8 *uri;
   u8 *http_query;
+  u8 *body;
+  u8 *headers_buf;
+  u32 headers_len;
+  hcc_header_t *custom_headers;
+  http_req_method_t method;
+  u8 use_ptr;
+  u8 no_headers;
   session_endpoint_cfg_t connect_sep;
 
   u8 test_client_attached;
@@ -62,6 +78,7 @@ typedef enum
   HCC_REPLY_RECEIVED = 100,
   HCC_TRANSPORT_CLOSED,
   HCC_CONNECT_FAILED,
+  HCC_REQUEST_FAILED,
 } hcc_cli_signal_t;
 
 static hcc_main_t hcc_main;
@@ -115,17 +132,36 @@ hcc_ts_disconnect_callback (session_t *s)
 }
 
 static int
-hcc_ts_connected_callback (u32 app_index, u32 hc_index, session_t *as,
-			   session_error_t err)
+hcc_send_body (session_t *s, hcc_session_t *hs)
+{
+  hcc_main_t *hcm = &hcc_main;
+  u64 left = vec_len (hcm->body) - hs->tx_offset;
+  int rv;
+
+  if (left)
+    {
+      rv = svm_fifo_enqueue (s->tx_fifo, left, hcm->body + hs->tx_offset);
+      if (rv > 0)
+	hs->tx_offset += rv;
+      if (hs->tx_offset < vec_len (hcm->body))
+	svm_fifo_add_want_deq_ntf (s->tx_fifo, SVM_FIFO_WANT_DEQ_NOTIF);
+    }
+
+  if (svm_fifo_set_event (s->tx_fifo))
+    session_program_tx_io_evt (s->handle, SESSION_IO_EVT_TX);
+  return 0;
+}
+
+static int
+hcc_ts_connected_callback (u32 app_index, u32 hc_index, session_t *as, session_error_t err)
 {
   hcc_main_t *hcm = &hcc_main;
   hcc_session_t *hs, *new_hs;
   hcc_worker_t *wrk;
-  http_msg_t msg;
-  u8 *headers_buf = 0;
-  u32 new_hs_index;
+  http_msg_t msg = {};
+  u32 new_hs_index, n_segs, expected;
+  uword target, headers, body;
   int rv;
-  http_headers_ctx_t headers;
 
   HCC_DBG ("ho hc_index: %d", hc_index);
 
@@ -151,43 +187,57 @@ hcc_ts_connected_callback (u32 app_index, u32 hc_index, session_t *as,
   HCC_DBG ("new hc_index: %d", new_hs->session_index);
   as->opaque = new_hs_index;
 
-  vec_validate (headers_buf, 63);
-  http_init_headers_ctx (&headers, headers_buf, vec_len (headers_buf));
-  http_add_header (&headers, HTTP_HEADER_ACCEPT,
-		   http_content_type_token (HTTP_CONTENT_TEXT_HTML));
-
   msg.type = HTTP_MSG_REQUEST;
-  msg.method_type = HTTP_REQ_GET;
+  msg.method_type = hcm->method;
   /* request target */
   msg.data.target_path_offset = 0;
   /* request target len must be without null termination */
   msg.data.target_path_len = strlen ((char *) hcm->http_query);
   /* custom headers */
   msg.data.headers_offset = msg.data.target_path_len;
-  msg.data.headers_len = headers.tail_offset;
+  msg.data.headers_len = hcm->headers_len;
   /* request body */
-  msg.data.body_len = 0;
+  msg.data.body_len = vec_len (hcm->body);
+  msg.data.body_offset = msg.data.headers_offset + msg.data.headers_len;
   /* data type and total length */
-  msg.data.type = HTTP_MSG_DATA_INLINE;
-  msg.data.len =
-    msg.data.target_path_len + msg.data.headers_len + msg.data.body_len;
+  msg.data.type = hcm->use_ptr ? HTTP_MSG_DATA_PTR : HTTP_MSG_DATA_INLINE;
+  msg.data.len = msg.data.target_path_len + msg.data.headers_len + msg.data.body_len;
 
-  svm_fifo_seg_t segs[3] = { { (u8 *) &msg, sizeof (msg) },
-			     { hcm->http_query, msg.data.target_path_len },
-			     { headers_buf, msg.data.headers_len } };
+  svm_fifo_seg_t segs[4] = { { (u8 *) &msg, sizeof (msg) } };
+  n_segs = 1;
+  expected = sizeof (msg);
+  if (hcm->use_ptr)
+    {
+      target = pointer_to_uword (hcm->http_query);
+      headers = pointer_to_uword (hcm->headers_buf);
+      body = pointer_to_uword (hcm->body);
+      segs[n_segs++] = (svm_fifo_seg_t) { (u8 *) &target, sizeof (target) };
+      if (msg.data.headers_len)
+	segs[n_segs++] = (svm_fifo_seg_t) { (u8 *) &headers, sizeof (headers) };
+      if (msg.data.body_len)
+	segs[n_segs++] = (svm_fifo_seg_t) { (u8 *) &body, sizeof (body) };
+      expected += (n_segs - 1) * sizeof (uword);
+    }
+  else
+    {
+      segs[n_segs++] = (svm_fifo_seg_t) { hcm->http_query, msg.data.target_path_len };
+      if (msg.data.headers_len)
+	segs[n_segs++] = (svm_fifo_seg_t) { hcm->headers_buf, msg.data.headers_len };
+      expected += msg.data.target_path_len + msg.data.headers_len;
+    }
 
-  rv = svm_fifo_enqueue_segments (as->tx_fifo, segs, 3, 0 /* allow partial */);
-  vec_free (headers_buf);
-  if (rv < 0 || rv != sizeof (msg) + msg.data.len)
+  rv = svm_fifo_enqueue_segments (as->tx_fifo, segs, n_segs, 0 /* allow partial */);
+  if (rv != expected)
     {
       clib_warning ("failed app enqueue");
+      new_hs->is_closed = 1;
+      vlib_process_signal_event_mt (hcm->vlib_main, hcm->cli_node_index, HCC_REQUEST_FAILED, 0);
       return -1;
     }
 
-  if (svm_fifo_set_event (as->tx_fifo))
-    session_program_tx_io_evt (as->handle, SESSION_IO_EVT_TX);
-
-  return 0;
+  if (hcm->use_ptr)
+    new_hs->tx_offset = vec_len (hcm->body);
+  return hcc_send_body (as, new_hs);
 }
 
 static void
@@ -198,6 +248,8 @@ hcc_ts_reset_callback (session_t *s)
   vnet_disconnect_args_t _a = { 0 }, *a = &_a;
 
   hs = hcc_session_get (s->opaque, s->thread_index);
+  if (!hs->is_closed)
+    vlib_process_signal_event_mt (hcm->vlib_main, hcm->cli_node_index, HCC_TRANSPORT_CLOSED, 0);
   hs->is_closed = 1;
 
   a->handle = session_handle (s);
@@ -208,8 +260,10 @@ hcc_ts_reset_callback (session_t *s)
 static int
 hcc_ts_tx_callback (session_t *ts)
 {
-  clib_warning ("bug");
-  return -1;
+  hcc_session_t *hs = hcc_session_get (ts->opaque, ts->thread_index);
+  if (hs->is_closed)
+    return 0;
+  return hcc_send_body (ts, hs);
 }
 
 static void
@@ -238,7 +292,7 @@ hcc_ts_rx_callback (session_t *ts)
       return 0;
     }
 
-  if (hs->to_recv == 0)
+  if (!hs->have_reply)
     {
       /* read the http message header */
       rv = svm_fifo_dequeue (ts->rx_fifo, sizeof (msg), (u8 *) &msg);
@@ -252,13 +306,15 @@ hcc_ts_rx_callback (session_t *ts)
       /* drop everything up to body */
       svm_fifo_dequeue_drop (ts->rx_fifo, msg.data.body_offset);
       hs->to_recv = msg.data.body_len;
+      hs->have_reply = 1;
       if (msg.code != HTTP_STATUS_OK && hs->to_recv == 0)
 	{
 	  hcm->http_response = format (0, "request failed, response code: %U",
 				       format_http_status_code, msg.code);
 	  goto done;
 	}
-      vec_validate (hcm->http_response, msg.data.body_len - 1);
+      if (msg.data.body_len)
+	vec_validate (hcm->http_response, msg.data.body_len - 1);
       vec_reset_length (hcm->http_response);
     }
 
@@ -296,6 +352,7 @@ hcc_ts_rx_callback (session_t *ts)
 done:
   if (hs->to_recv == 0)
     {
+      hs->is_closed = 1;
       HCC_DBG ("all data received, going to disconnect");
       hcc_session_disconnect (ts);
       vlib_process_signal_event_mt (hcm->vlib_main, hcm->cli_node_index,
@@ -309,11 +366,15 @@ static void
 hcc_ts_transport_closed (session_t *s)
 {
   hcc_main_t *hcm = &hcc_main;
+  hcc_session_t *hs = hcc_session_get (s->opaque, s->thread_index);
 
   HCC_DBG ("transport closed");
 
-  vlib_process_signal_event_mt (hcm->vlib_main, hcm->cli_node_index,
-				HCC_TRANSPORT_CLOSED, 0);
+  if (!hs->is_closed)
+    {
+      hs->is_closed = 1;
+      vlib_process_signal_event_mt (hcm->vlib_main, hcm->cli_node_index, HCC_TRANSPORT_CLOSED, 0);
+    }
 }
 
 static void
@@ -515,6 +576,9 @@ hcc_run (vlib_main_t *vm, int print_output)
     case HCC_CONNECT_FAILED:
       err = clib_error_return (0, "failed to connect");
       break;
+    case HCC_REQUEST_FAILED:
+      err = clib_error_return (0, "request metadata does not fit in TX FIFO");
+      break;
     default:
       err = clib_error_return (0, "unexpected event %d", event_type);
       break;
@@ -556,6 +620,7 @@ hcc_cleanup ()
 {
   hcc_main_t *hcm = &hcc_main;
   hcc_worker_t *wrk;
+  hcc_header_t *header;
 
   vec_foreach (wrk, hcm->wrk)
     hcc_worker_cleanup (wrk);
@@ -565,6 +630,14 @@ hcc_cleanup ()
   vec_free (hcm->http_response);
   vec_free (hcm->appns_id);
   vec_free (hcm->wrk);
+  vec_free (hcm->body);
+  vec_free (hcm->headers_buf);
+  vec_foreach (header, hcm->custom_headers)
+    {
+      vec_free (header->name);
+      vec_free (header->value);
+    }
+  vec_free (hcm->custom_headers);
 }
 
 static clib_error_t *
@@ -575,16 +648,23 @@ hcc_command_fn (vlib_main_t *vm, unformat_input_t *input,
   hcc_main_t *hcm = &hcc_main;
   u64 seg_size;
   u8 *appns_id = 0;
+  u8 *path = 0, *name = 0, *value = 0;
+  hcc_header_t *header;
+  http_headers_ctx_t headers;
+  u32 headers_size = 64;
   clib_error_t *err = 0;
   int rv, print_output = 1;
+
+  if (hcm->test_client_attached)
+    return clib_error_return (0, "failed: already running!");
 
   hcm->prealloc_fifos = 0;
   hcm->private_segment_size = 0;
   hcm->fifo_size = 0;
   hcm->use_http3 = 0;
-
-  if (hcm->test_client_attached)
-    return clib_error_return (0, "failed: already running!");
+  hcm->method = HTTP_REQ_GET;
+  hcm->use_ptr = 0;
+  hcm->no_headers = 0;
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -601,6 +681,26 @@ hcc_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	hcm->fifo_size <<= 10;
       else if (unformat (line_input, "uri %s", &hcm->uri))
 	;
+      else if (unformat (line_input, "method get"))
+	hcm->method = HTTP_REQ_GET;
+      else if (unformat (line_input, "method post"))
+	hcm->method = HTTP_REQ_POST;
+      else if (unformat (line_input, "method put"))
+	hcm->method = HTTP_REQ_PUT;
+      else if (unformat (line_input, "data %v", &hcm->body))
+	;
+      else if (unformat (line_input, "file %s", &path))
+	;
+      else if (unformat (line_input, "use-ptr"))
+	hcm->use_ptr = 1;
+      else if (unformat (line_input, "no-headers"))
+	hcm->no_headers = 1;
+      else if (unformat (line_input, "header %v:%v", &name, &value))
+	{
+	  vec_add2 (hcm->custom_headers, header, 1);
+	  header->name = name;
+	  header->value = value;
+	}
       else if (unformat (line_input, "no-output"))
 	print_output = 0;
       else if (unformat (line_input, "appns %_%v%_", &appns_id))
@@ -625,6 +725,31 @@ hcc_command_fn (vlib_main_t *vm, unformat_input_t *input,
       err = clib_error_return (0, "URI not defined");
       goto done;
     }
+
+  if (path)
+    {
+      if (hcm->body)
+	{
+	  err = clib_error_return (0, "use either data or file");
+	  goto done;
+	}
+      err = clib_file_contents ((char *) path, &hcm->body);
+      if (err)
+	goto done;
+    }
+
+  vec_foreach (header, hcm->custom_headers)
+    headers_size +=
+      2 * sizeof (http_custom_token_t) + vec_len (header->name) + vec_len (header->value);
+  vec_validate (hcm->headers_buf, headers_size - 1);
+  http_init_headers_ctx (&headers, hcm->headers_buf, vec_len (hcm->headers_buf));
+  if (!hcm->no_headers)
+    http_add_header (&headers, HTTP_HEADER_ACCEPT,
+		     http_content_type_token (HTTP_CONTENT_TEXT_HTML));
+  vec_foreach (header, hcm->custom_headers)
+    http_add_custom_header (&headers, (char *) header->name, vec_len (header->name),
+			    (char *) header->value, vec_len (header->value));
+  hcm->headers_len = headers.tail_offset;
 
   if ((rv = parse_target ((char **) &hcm->uri, (char **) &hcm->http_query)))
     {
@@ -658,6 +783,7 @@ hcc_command_fn (vlib_main_t *vm, unformat_input_t *input,
     }
 
 done:
+  vec_free (path);
   hcc_cleanup ();
   unformat_free (line_input);
   return err;
@@ -665,9 +791,9 @@ done:
 
 VLIB_CLI_COMMAND (hcc_command, static) = {
   .path = "http cli client",
-  .short_help =
-    "[appns <app-ns> secret <appns-secret>] uri http[s]://<ip-addr>/<target> "
-    "[no-output] [http3]",
+  .short_help = "[appns <app-ns> secret <appns-secret>] uri http[s]://<ip-addr>/<target> "
+		"[method get|post|put] [data <payload> | file <path>] [use-ptr] "
+		"[header <Name:Value>] [no-headers] [fifo-size <KiB>] [no-output] [http3]",
   .function = hcc_command_fn,
   .is_mp_safe = 1,
 };

@@ -41,29 +41,6 @@ static const char *alt_svc_template = "Alt-Svc: %v\r\n";
 static const char *connection_upgrade_template = "Connection: upgrade\r\n"
 						 "Upgrade: %s\r\n";
 
-/**
- * http request boilerplate
- */
-static const char *get_request_template = "GET %U HTTP/1.1\r\n"
-					  "Host: %v\r\n"
-					  "User-Agent: %v\r\n";
-
-static const char *post_request_template = "POST %U HTTP/1.1\r\n"
-					   "Host: %v\r\n"
-					   "User-Agent: %v\r\n"
-					   "Content-Length: %llu\r\n";
-
-static const char *put_request_template = "PUT %U HTTP/1.1\r\n"
-					  "Host: %v\r\n"
-					  "User-Agent: %v\r\n"
-					  "Content-Length: %llu\r\n";
-
-static const char *put_chunked_request_template =
-  "PUT %U HTTP/1.1\r\n"
-  "Host: %v\r\n"
-  "User-Agent: %v\r\n"
-  "Transfer-Encoding: chunked\r\n";
-
 always_inline http_ctx_t *
 http1_conn_alloc_req (u32 hc_index, clib_thread_index_t thread_index)
 {
@@ -1423,9 +1400,16 @@ error:
 static http_sm_result_t
 http1_req_state_wait_app_method (http_ctx_t *hc, http_ctx_t *req, transport_send_params_t *sp)
 {
+  static const http_token_t methods[] = {
+    [HTTP_REQ_GET] = { http_token_lit ("GET ") },
+    [HTTP_REQ_POST] = { http_token_lit ("POST ") },
+    [HTTP_REQ_PUT] = { http_token_lit ("PUT ") },
+  };
   http_msg_t msg;
   u8 *target;
-  u32 max_enq;
+  u8 content_len_buf[HTTP_U64_MAX_DECIMAL_DIGITS], chunked;
+  u32 n_segs, max_enq;
+  u64 max_request_len, request_len;
   http_sm_result_t sm_result = HTTP_SM_ERROR;
   http_req_state_t next_state;
 
@@ -1436,10 +1420,10 @@ http1_req_state_wait_app_method (http_ctx_t *hc, http_ctx_t *req, transport_send
 
   /* make sure ts tx fifo can actually buffer request message, this should be overestimated since
    * not all app header names are in text format, cap it up to fifo size */
-  if (PREDICT_FALSE (http_io_ts_provision_chunks (
-	hc,
-	clib_min (HTTP1_MESSAGE_OVERHEAD + (msg.data.headers_len << 1) + msg.data.target_path_len,
-		  http_io_ts_fifo_size (hc, 0)))))
+  max_request_len =
+    HTTP1_MESSAGE_OVERHEAD + ((u64) msg.data.headers_len << 1) + msg.data.target_path_len;
+  if (PREDICT_FALSE (
+	http_io_ts_provision_chunks (hc, clib_min (max_request_len, http_io_ts_fifo_size (hc, 0)))))
     {
       HTTP_DBG (1, "http_io_ts_provision_chunks failed");
       http_stats_ts_fifo_egrow_inc (hc->c_thread_index);
@@ -1451,124 +1435,78 @@ http1_req_state_wait_app_method (http_ctx_t *hc, http_ctx_t *req, transport_send
   /* read request target */
   target = http_get_app_target (req, &msg);
 
-  vec_reset_length (http_tx_buf (hc));
-  /* currently we support GET, POST and PUT methods */
-  if (msg.method_type == HTTP_REQ_GET)
-    {
-      /*
-       * Add "protocol layer" headers:
-       * - host
-       * - user agent
-       */
-      http_tx_buf (hc) = format (http_tx_buf (hc), get_request_template,
-				 /* target */
-				 format_http_bytes, target, msg.data.target_path_len,
-				 /* Host */
-				 hc->host,
-				 /* User-Agent */
-				 hc->app_name);
-
-      if (msg.data.body_len)
-	http_tx_buf (hc) = format (http_tx_buf (hc), content_len_template, msg.data.body_len);
-
-      next_state =
-	msg.data.body_len ? HTTP_REQ_STATE_APP_IO_MORE_DATA : HTTP_REQ_STATE_WAIT_TRANSPORT_REPLY;
-      sm_result = msg.data.body_len ? HTTP_SM_CONTINUE : HTTP_SM_STOP;
-    }
-  else if (msg.method_type == HTTP_REQ_POST)
-    {
-      /*
-       * Add "protocol layer" headers:
-       * - host
-       * - user agent
-       * - content length
-       */
-      http_tx_buf (hc) = format (http_tx_buf (hc), post_request_template,
-				 /* target */
-				 format_http_bytes, target, msg.data.target_path_len,
-				 /* Host */
-				 hc->host,
-				 /* User-Agent */
-				 hc->app_name,
-				 /* Content-Length */
-				 msg.data.body_len);
-
-      next_state =
-	msg.data.body_len ? HTTP_REQ_STATE_APP_IO_MORE_DATA : HTTP_REQ_STATE_WAIT_TRANSPORT_REPLY;
-      sm_result = msg.data.body_len ? HTTP_SM_CONTINUE : HTTP_SM_STOP;
-    }
-  else if (msg.method_type == HTTP_REQ_PUT)
-    {
-      /* Check if this is a streaming PUT */
-      if (msg.data.type == HTTP_MSG_DATA_STREAMING)
-	{
-	  /*
-	   * Streaming PUT with chunked transfer encoding
-	   */
-	  http_tx_buf (hc) = format (http_tx_buf (hc), put_chunked_request_template,
-				     /* target */
-				     format_http_bytes, target, msg.data.target_path_len,
-				     /* Host */
-				     hc->host,
-				     /* User-Agent */
-				     hc->app_name);
-
-	  /* For streaming, we need a different state */
-	  next_state = HTTP_REQ_STATE_APP_IO_MORE_STREAMING_DATA;
-	  sm_result = HTTP_SM_CONTINUE;
-	}
-      else
-	{
-	  if (!msg.data.body_len)
-	    {
-	      clib_warning ("PUT request should include data");
-	      goto error;
-	    }
-	  /*
-	   * Regular PUT with Content-Length
-	   */
-	  http_tx_buf (hc) = format (http_tx_buf (hc), put_request_template,
-				     /* target */
-				     format_http_bytes, target, msg.data.target_path_len,
-				     /* Host */
-				     hc->host,
-				     /* User-Agent */
-				     hc->app_name,
-				     /* Content-Length */
-				     msg.data.body_len);
-
-	  next_state = HTTP_REQ_STATE_APP_IO_MORE_DATA;
-	  sm_result = HTTP_SM_CONTINUE;
-	}
-    }
-
-  else
+  if (PREDICT_FALSE (msg.method_type >= ARRAY_LEN (methods) || !methods[msg.method_type].len))
     {
       clib_warning ("unsupported method %d", msg.method_type);
       goto error;
+    }
+
+  chunked = msg.method_type == HTTP_REQ_PUT && msg.data.type == HTTP_MSG_DATA_STREAMING;
+  if (PREDICT_FALSE (msg.method_type == HTTP_REQ_PUT && !chunked && !msg.data.body_len))
+    {
+      clib_warning ("PUT request should include data");
+      goto error;
+    }
+
+  next_state = chunked		 ? HTTP_REQ_STATE_APP_IO_MORE_STREAMING_DATA :
+	       msg.data.body_len ? HTTP_REQ_STATE_APP_IO_MORE_DATA :
+				   HTTP_REQ_STATE_WAIT_TRANSPORT_REPLY;
+  sm_result = next_state == HTTP_REQ_STATE_WAIT_TRANSPORT_REPLY ? HTTP_SM_STOP : HTTP_SM_CONTINUE;
+
+  svm_fifo_seg_t segs[12] = {
+    { (u8 *) methods[msg.method_type].base, methods[msg.method_type].len },
+    { target, msg.data.target_path_len },
+    { (u8 *) http_token_lit (" HTTP/1.1\r\nHost: ") },
+    { hc->host, vec_len (hc->host) },
+    { (u8 *) http_token_lit ("\r\nUser-Agent: ") },
+    { hc->app_name, vec_len (hc->app_name) },
+    { (u8 *) http_token_lit ("\r\n") },
+  };
+  n_segs = 7;
+  request_len = (u64) segs[0].len + segs[1].len + segs[2].len + segs[3].len + segs[4].len +
+		segs[5].len + segs[6].len;
+
+  if (chunked)
+    {
+      segs[n_segs++] =
+	(svm_fifo_seg_t) { (u8 *) http_token_lit ("Transfer-Encoding: chunked\r\n") };
+      request_len += segs[n_segs - 1].len;
+    }
+  else if (msg.data.body_len || msg.method_type != HTTP_REQ_GET)
+    {
+      u8 *end = content_len_buf + sizeof (content_len_buf);
+      u8 *digits = http_encode_u64_decimal (end, msg.data.body_len);
+      segs[n_segs++] = (svm_fifo_seg_t) { (u8 *) http_token_lit ("Content-Length: ") };
+      request_len += segs[n_segs - 1].len;
+      segs[n_segs++] = (svm_fifo_seg_t) { digits, end - digits };
+      request_len += segs[n_segs - 1].len;
+      segs[n_segs++] = (svm_fifo_seg_t) { (u8 *) http_token_lit ("\r\n") };
+      request_len += segs[n_segs - 1].len;
     }
 
   /* Add headers from app (if any) */
   if (msg.data.headers_len)
     {
       HTTP_DBG (0, "got headers from app, len %d", msg.data.headers_len);
+      vec_reset_length (http_tx_buf (hc));
       http1_write_app_headers (req, &msg, &http_tx_buf (hc));
+      segs[n_segs++] = (svm_fifo_seg_t) { http_tx_buf (hc), vec_len (http_tx_buf (hc)) };
+      request_len += segs[n_segs - 1].len;
     }
   /* Add empty line after headers */
-  http_tx_buf (hc) = format (http_tx_buf (hc), "\r\n");
-  HTTP_DBG (3, "%v", http_tx_buf (hc));
+  segs[n_segs++] = (svm_fifo_seg_t) { (u8 *) http_token_lit ("\r\n") };
+  request_len += segs[n_segs - 1].len;
 
   max_enq = http_io_ts_max_write (hc, sp);
-  if (max_enq < vec_len (http_tx_buf (hc)))
+  if (max_enq < request_len)
     {
       clib_warning ("sending request-line and headers failed!");
       sm_result = HTTP_SM_ERROR;
       goto error;
     }
   /* if this assert adjust formula in the beginning where we try to provision ts fifo chunks */
-  ASSERT ((HTTP1_MESSAGE_OVERHEAD + (msg.data.headers_len << 1) + msg.data.target_path_len) >
-	  vec_len (http_tx_buf (hc)));
-  http_io_ts_write (hc, http_tx_buf (hc), vec_len (http_tx_buf (hc)), sp, 0);
+  ASSERT (max_request_len > request_len);
+  http_io_ts_write_segs (hc, segs, n_segs, sp, 0);
 
   if (next_state != HTTP_REQ_STATE_WAIT_TRANSPORT_REPLY)
     http_req_tx_buffer_init (req, &msg);

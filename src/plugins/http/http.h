@@ -538,6 +538,25 @@ format_http_bytes (u8 *s, va_list *va)
   return s;
 }
 
+#define HTTP_U64_MAX_DECIMAL_DIGITS 20
+
+/**
+ * Encode an unsigned integer as decimal ASCII, writing backwards from end.
+ * The caller must provide HTTP_U64_MAX_DECIMAL_DIGITS bytes before end.
+ * Returns the first digit; no terminating NUL is written.
+ */
+always_inline u8 *
+http_encode_u64_decimal (u8 *end, u64 value)
+{
+  do
+    {
+      *--end = '0' + value % 10;
+      value /= 10;
+    }
+  while (value);
+  return end;
+}
+
 always_inline int
 http_validate_target_syntax (u8 *target, u32 len, int is_query,
 			     int *is_encoded)
