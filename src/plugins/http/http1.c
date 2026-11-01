@@ -1991,8 +1991,8 @@ http1_app_rx_evt_callback (http_ctx_t *hc, u32 req_index, clib_thread_index_t th
 
   req = http_ctx_get_w_thread (req_index, thread_index);
 
-  if (req->req_state == HTTP_REQ_STATE_TUNNEL)
-    http1_req_state_tunnel_rx (hc, req, 0);
+  if (http1_req_state_is_rx_valid (req))
+    http1_req_run_state_machine (hc, req, 0, 0);
 }
 
 static void
