@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"crypto/tls"
 	"fmt"
@@ -33,12 +34,17 @@ func init() {
 		HttpRequestLineTest, HttpClientGetTimeout, HttpConnTimeoutTest, HttpClientGetRepeatTest, HttpClientPostRepeatTest,
 		HttpIgnoreH2UpgradeTest, HttpInvalidAuthorityFormUriTest, HttpHeaderErrorConnectionDropTest,
 		HttpClientInvalidHeaderNameTest, HttpTimerSessionDisable, HttpClientBodySizeTest,
-		HttpCliSmallRxFifoReplyTest, HttpContentLengthLongerBodyTest,
+		HttpCliSmallRxFifoReplyTest, HttpCliFragmentedReplyTest, HttpContentLengthLongerBodyTest,
 		HttpCliClientGetBodyTest, HttpCliClientGetBodyPtrTest,
 		HttpCliClientPostBodyTest, HttpCliClientPostBodyPtrTest,
 		HttpCliClientPutBodyTest, HttpCliClientPutBodyPtrTest,
 		HttpCliClientEmptyBodyTest, HttpCliClientNoHeadersTest,
 		HttpCliClientHeadersTest, HttpCliClientLargeHeadersRejectedTest, HttpCliServerEchoTest,
+		HttpCliClientStreamGetTest, HttpCliClientStreamPostTest, HttpCliClientStreamPutTest, HttpCliClientStreamTlsTest,
+		HttpCliClientStreamEmptyTest, HttpCliClientStreamDrainTest, HttpCliClientStreamCloseTest,
+		HttpCliClientStreamEarlyResponseTest, HttpCliClientStreamWireTest,
+		HttpCliServerStreamTest, HttpCliServerStreamCloseTest, HttpCliServerStreamDrainTest,
+		HttpCliServerStreamBackpressureTest, HttpCliServerStreamTlsTest,
 		HttpClientNoPrintTest, HttpClientChunkedDownloadTest, HttpClientPutStreamingTest, HttpClientPostRejectedTest,
 		HttpClientRedirect302Test, HttpClientRedirect308Test, HttpSendGetAndCloseTest, HttpClientRedirectLimitTest, HttpClientRedirectGetMemLeakTest,
 		HttpClientRedirectPostMemLeakTest, HttpGetTpsTest, HttpPostTpsTest, HttpGetTpsInterruptModeTest, HttpPostTpsInterruptModeTest,
@@ -515,6 +521,251 @@ func HttpCliServerEchoTest(s *Http1Suite) {
 	}
 }
 
+// Streaming bodies deliberately advertise no body length to the transport.
+func httpCliClientStreamTest(s *Http1Suite, method, body, options string, secure bool) {
+	vpp := s.Containers.Vpp.VppInstance
+	file := "/tmp/http-cli-stream.txt"
+	AssertNil(vpp.Container.CreateFile(file, body))
+	address := net.JoinHostPort(s.HostAddr(), s.Ports.Http)
+	protocol := "http"
+	if secure {
+		protocol = "https"
+	}
+	server := golangServer(address, protocol)
+	server.AppendHandlers(func(w http.ResponseWriter, r *http.Request) {
+		AssertEqual(method, r.Method)
+		AssertEqual("/echo", r.URL.Path)
+		AssertEqual(address, r.Host)
+		AssertEqual("http_cli_client", r.UserAgent())
+		AssertEqual("stream", r.Header.Get("X-Test"))
+		AssertEqual([]string{"chunked"}, r.TransferEncoding)
+		AssertEqual(int64(-1), r.ContentLength)
+		AssertEmpty(r.Header.Get("Content-Length"))
+		AssertEqual(true, r.Close)
+		started := time.Now()
+		data, err := io.ReadAll(r.Body)
+		AssertNil(err)
+		AssertEqual(body, string(data))
+		AssertEmpty(r.Trailer)
+		if strings.Contains(options, "tx-delay") {
+			AssertEqual(true, time.Since(started) >= 20*time.Millisecond)
+		}
+		// A response body larger than the app FIFO also verifies RX after shutdown.
+		reply := "stream-complete:" + body
+		w.Header().Set("Content-Length", strconv.Itoa(len(reply)))
+		_, err = io.WriteString(w, reply)
+		AssertNil(err)
+	})
+	server.Start()
+	defer server.Close()
+	output := vpp.Vppctl("http cli client stream method %s file %s fifo-size 4 header X-Test:stream %s uri %s://%s/echo",
+		strings.ToLower(method), file, options, protocol, address)
+	AssertEqual("stream-complete:"+body, strings.TrimSpace(output))
+	AssertEqual(1, len(server.ReceivedRequests()))
+}
+
+func HttpCliClientStreamGetTest(s *Http1Suite) {
+	httpCliClientStreamTest(s, "GET", strings.Repeat("stream-get-body!", 8192), "", false)
+}
+
+func HttpCliClientStreamPostTest(s *Http1Suite) {
+	httpCliClientStreamTest(s, "POST", strings.Repeat("stream-post-body", 8192), "", false)
+}
+
+func HttpCliClientStreamPutTest(s *Http1Suite) {
+	httpCliClientStreamTest(s, "PUT", strings.Repeat("stream-put-body!", 8192), "", false)
+}
+
+func HttpCliClientStreamEmptyTest(s *Http1Suite) {
+	for _, method := range []string{"GET", "POST", "PUT"} {
+		for _, options := range []string{"", "eof-after-drain"} {
+			httpCliClientStreamTest(s, method, "", options, false)
+		}
+	}
+}
+
+func HttpCliClientStreamDrainTest(s *Http1Suite) {
+	httpCliClientStreamTest(s, "POST", strings.Repeat("delayed-stream!", 8192),
+		"eof-after-drain tx-delay 0.01", false)
+}
+
+func HttpCliClientStreamTlsTest(s *Http1Suite) {
+	httpCliClientStreamTest(s, "POST", strings.Repeat("tls-stream-body!", 8192), "eof-after-drain", true)
+}
+
+func HttpCliClientStreamCloseTest(s *Http1Suite) {
+	vpp := s.Containers.Vpp.VppInstance
+	for _, body := range []string{"", strings.Repeat("close-stream!", 8192)} {
+		AssertNil(vpp.Container.CreateFile("/tmp/http-cli-stream-close.txt", body))
+		server, address := httpCliTestServer(s)
+		received := make(chan struct{})
+		server.AppendHandlers(func(w http.ResponseWriter, r *http.Request) {
+			AssertEqual([]string{"chunked"}, r.TransferEncoding)
+			data, err := io.ReadAll(r.Body)
+			AssertNil(err)
+			AssertEqual(body, string(data))
+			close(received)
+			w.Header().Set("Content-Length", "0")
+		})
+		server.Start()
+		output := vpp.Vppctl("http cli client stream close-after-tx method put file /tmp/http-cli-stream-close.txt fifo-size 4 uri http://%s/echo", address)
+		AssertContains(output, "transport closed")
+		select {
+		case <-received:
+		case <-time.After(defaultHttpTimeout):
+			AssertEqual(true, false, "server did not receive the complete stream")
+		}
+		server.Close()
+	}
+}
+
+func HttpCliClientStreamEarlyResponseTest(s *Http1Suite) {
+	vpp := s.Containers.Vpp.VppInstance
+	AssertNil(vpp.Container.CreateFile("/tmp/http-cli-stream-reject.txt", strings.Repeat("x", 1024*1024)))
+	server, address := httpCliTestServer(s)
+	server.AppendHandlers(func(w http.ResponseWriter, r *http.Request) {
+		AssertEqual([]string{"chunked"}, r.TransferEncoding)
+		w.Header().Set("Content-Length", "0")
+		w.WriteHeader(http.StatusRequestEntityTooLarge)
+		w.(http.Flusher).Flush()
+	})
+	server.Start()
+	defer server.Close()
+	output := vpp.Vppctl("http cli client stream method post file /tmp/http-cli-stream-reject.txt fifo-size 4 tx-delay 0.01 uri http://%s/echo", address)
+	AssertContains(output, "request failed, response code: 413")
+}
+
+func HttpCliClientStreamWireTest(s *Http1Suite) {
+	vpp := s.Containers.Vpp.VppInstance
+	address := net.JoinHostPort(s.HostAddr(), s.Ports.Http)
+	listener, err := net.Listen("tcp", address)
+	AssertNil(err)
+	defer listener.Close()
+	finished := make(chan error, 1)
+	body := strings.Repeat("wire-stream!", 8192)
+	AssertNil(vpp.Container.CreateFile("/tmp/http-cli-stream-wire.txt", body))
+	go func() {
+		finished <- func() error {
+			conn, err := listener.Accept()
+			if err != nil {
+				return err
+			}
+			defer conn.Close()
+			if err = conn.SetDeadline(time.Now().Add(defaultHttpTimeout)); err != nil {
+				return err
+			}
+			reader := bufio.NewReader(conn)
+			request, err := http.ReadRequest(reader)
+			if err != nil {
+				return err
+			}
+			data, err := io.ReadAll(request.Body)
+			if err != nil {
+				return err
+			}
+			if string(data) != body {
+				return fmt.Errorf("streamed request body differs")
+			}
+			if _, err = io.WriteString(conn, "HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nOK"); err != nil {
+				return err
+			}
+			// Extra terminal chunks must not appear after the decoded body.
+			if b, err := reader.ReadByte(); err != io.EOF {
+				return fmt.Errorf("expected connection EOF after request, got %q, %v", b, err)
+			}
+			return nil
+		}()
+	}()
+	output := vpp.Vppctl("http cli client stream method put file /tmp/http-cli-stream-wire.txt fifo-size 4 uri http://%s/echo", address)
+	AssertEqual("OK", strings.TrimSpace(output))
+	AssertNil(<-finished)
+}
+
+func httpCliServerStreamResponse(address, target, method, body string, backpressure bool) {
+	conn, err := net.DialTimeout("tcp", address, defaultHttpTimeout)
+	AssertNil(err)
+	defer conn.Close()
+	AssertNil(conn.SetDeadline(time.Now().Add(defaultHttpTimeout)))
+	if backpressure {
+		AssertNil(conn.(*net.TCPConn).SetReadBuffer(4096))
+	}
+	request, err := http.NewRequest(method, "http://"+address+target, strings.NewReader(body))
+	AssertNil(err)
+	AssertNil(request.Write(conn))
+	if backpressure {
+		// Let the response fill the transport FIFO before the peer starts reading.
+		time.Sleep(100 * time.Millisecond)
+	}
+	reader := bufio.NewReader(conn)
+	response, err := http.ReadResponse(reader, request)
+	AssertNil(err)
+	AssertHttpStatus(response, http.StatusOK)
+	AssertEqual([]string{"chunked"}, response.TransferEncoding)
+	AssertEqual(int64(-1), response.ContentLength)
+	AssertEmpty(response.Header.Get("Content-Length"))
+	AssertEqual(true, response.Close)
+	data, err := io.ReadAll(response.Body)
+	AssertNil(err)
+	AssertEqual(body, string(data))
+	AssertEmpty(response.Trailer)
+	AssertNil(response.Body.Close())
+	_, err = reader.ReadByte()
+	AssertEqual(io.EOF, err, "response must end once, followed by connection close")
+}
+
+func HttpCliServerStreamTest(s *Http1Suite) {
+	address := net.JoinHostPort(s.VppAddr(), s.Ports.Http)
+	s.Containers.Vpp.VppInstance.Vppctl("http cli server fifo-size 4 uri http://" + address)
+	for _, method := range []string{"GET", "POST", "PUT"} {
+		for _, body := range []string{"", "small-stream", strings.Repeat("response-stream!", 8192)} {
+			httpCliServerStreamResponse(address, "/echo-stream", method, body, false)
+		}
+	}
+}
+
+func HttpCliServerStreamCloseTest(s *Http1Suite) {
+	address := net.JoinHostPort(s.VppAddr(), s.Ports.Http)
+	s.Containers.Vpp.VppInstance.Vppctl("http cli server fifo-size 4 uri http://" + address)
+	for _, body := range []string{"", "small-stream", strings.Repeat("response-close!", 8192)} {
+		httpCliServerStreamResponse(address, "/echo-stream-close", "POST", body, false)
+	}
+}
+
+func HttpCliServerStreamDrainTest(s *Http1Suite) {
+	address := net.JoinHostPort(s.VppAddr(), s.Ports.Http)
+	s.Containers.Vpp.VppInstance.Vppctl("http cli server fifo-size 4 uri http://" + address)
+	for _, body := range []string{"", "small-stream", strings.Repeat("response-drain!", 8192)} {
+		httpCliServerStreamResponse(address, "/echo-stream-drain", "POST", body, false)
+	}
+}
+
+func HttpCliServerStreamBackpressureTest(s *Http1Suite) {
+	address := net.JoinHostPort(s.VppAddr(), s.Ports.Http)
+	s.Containers.Vpp.VppInstance.Vppctl("http cli server fifo-size 4 uri http://" + address)
+	for _, target := range []string{"/echo-stream", "/echo-stream-drain"} {
+		httpCliServerStreamResponse(address, target, "PUT", strings.Repeat("backpressure!", 128*1024), true)
+	}
+}
+
+func HttpCliServerStreamTlsTest(s *Http1Suite) {
+	address := net.JoinHostPort(s.VppAddr(), s.Ports.Https)
+	s.Containers.Vpp.VppInstance.Vppctl("http cli server http1-only fifo-size 4 uri https://" + address)
+	body := strings.Repeat("tls-response!", 8192)
+	client := NewHttpClient(defaultHttpTimeout, false)
+	defer client.CloseIdleConnections()
+	request, err := http.NewRequest("POST", "https://"+address+"/echo-stream", strings.NewReader(body))
+	AssertNil(err)
+	response, err := client.Do(request)
+	AssertNil(err)
+	AssertHttpStatus(response, http.StatusOK)
+	AssertEqual([]string{"chunked"}, response.TransferEncoding)
+	AssertEqual(int64(-1), response.ContentLength)
+	data, err := io.ReadAll(response.Body)
+	AssertNil(err)
+	AssertNil(response.Body.Close())
+	AssertEqual(body, string(data))
+}
+
 func HttpCliEchoTest(s *VethsSuite) {
 	server := s.Containers.ServerVpp.VppInstance
 	client := s.Containers.ClientVpp.VppInstance
@@ -579,6 +830,33 @@ func HttpCliSmallRxFifoReplyTest(s *Http1Suite) {
 
 	Log(o)
 	AssertContains(o, "transport closed")
+}
+
+func HttpCliFragmentedReplyTest(s *Http1Suite) {
+	vpp := s.Containers.Vpp.VppInstance
+	body := strings.Repeat("fragmented-body!", 4096)
+	server, address := httpCliTestServer(s)
+	server.AppendHandlers(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Length", strconv.Itoa(len(body)))
+		w.Header().Set("Connection", "close")
+		for offset, part := 0, 0; offset < len(body); part++ {
+			size := 1024
+			if part%2 != 0 {
+				size = 8192
+			}
+			end := min(offset+size, len(body))
+			_, err := io.WriteString(w, body[offset:end])
+			AssertNil(err)
+			w.(http.Flusher).Flush()
+			offset = end
+			// Exercise both waiting for another packet and app FIFO backpressure.
+			time.Sleep(10 * time.Millisecond)
+		}
+	})
+	server.Start()
+	defer server.Close()
+	output := vpp.Vppctl("http cli client fifo-size 4 uri http://%s/test", address)
+	AssertEqual(body, strings.TrimSpace(output))
 }
 
 func HttpClientChunkedDownloadTest(s *Http1Suite) {

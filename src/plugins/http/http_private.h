@@ -63,13 +63,14 @@ typedef union
 
 STATIC_ASSERT (sizeof (http_conn_handle_t) == sizeof (u32), "must fit in u32");
 
-#define foreach_http_conn_state                                               \
-  _ (LISTEN, "LISTEN")                                                        \
-  _ (CONNECTING, "CONNECTING")                                                \
-  _ (ESTABLISHED, "ESTABLISHED")                                              \
-  _ (HALF_CLOSED, "HALF-CLOSED")                                              \
-  _ (TRANSPORT_CLOSED, "TRANSPORT-CLOSED")                                    \
-  _ (APP_CLOSED, "APP-CLOSED")                                                \
+#define foreach_http_conn_state                                                                    \
+  _ (LISTEN, "LISTEN")                                                                             \
+  _ (CONNECTING, "CONNECTING")                                                                     \
+  _ (ESTABLISHED, "ESTABLISHED")                                                                   \
+  _ (HALF_CLOSED, "HALF-CLOSED")                                                                   \
+  _ (TRANSPORT_CLOSED, "TRANSPORT-CLOSED")                                                         \
+  _ (APP_SHUTDOWN, "APP-SHUTDOWN")                                                                 \
+  _ (APP_CLOSED, "APP-CLOSED")                                                                     \
   _ (CLOSED, "CLOSED")
 
 typedef enum http_conn_state_ : u8
@@ -117,7 +118,9 @@ typedef enum http_target_form_ : u8
   _ (PENDING_SND_WIN_UPDATE, "pending-snd-win-update")                                             \
   _ (IS_TUNNEL, "is-tunnel")                                                                       \
   _ (CONNECT_UDP_DRAFT03, "connect-udp-draft03")                                                   \
-  _ (PEER_CLOSED, "peer-closed")
+  _ (PEER_CLOSED, "peer-closed")                                                                   \
+  _ (TX_STREAMING, "tx-streaming")                                                                 \
+  _ (TX_EOF, "tx-eof")
 
 typedef enum http_req_flags_bit_
 {
@@ -127,7 +130,7 @@ typedef enum http_req_flags_bit_
     HTTP_REQ_N_F_BITS
 } http_req_flags_bit_t;
 
-typedef enum http_req_flags_ : u8
+typedef enum http_req_flags_ : u16
 {
 #define _(sym, str) HTTP_REQ_F_##sym = 1 << HTTP_REQ_F_BIT_##sym,
   foreach_http_req_flags
@@ -171,7 +174,8 @@ typedef struct
   _ (EXPECT_PEER_SETTINGS, "expect-peer-settings")                                                 \
   _ (UDP_TUNNEL_DGRAM, "udp-tunnel-dgram")                                                         \
   _ (CONNECT_UDP_DRAFT03, "connect-udp-draft03")                                                   \
-  _ (TUNNEL_RX_CLOSED, "tunnel-rx-closed")
+  _ (TUNNEL_RX_CLOSED, "tunnel-rx-closed")                                                         \
+  _ (PENDING_LAST_CHUNK, "pending-last-chunk")
 
 typedef enum http_conn_flags_bit_
 {

@@ -19,7 +19,7 @@ static http_engine_vft_t *http_vfts;
 const http_buffer_type_t msg_to_buf_type[] = {
   [HTTP_MSG_DATA_INLINE] = HTTP_BUFFER_FIFO,
   [HTTP_MSG_DATA_PTR] = HTTP_BUFFER_PTR,
-  [HTTP_MSG_DATA_STREAMING] = HTTP_BUFFER_STREAMING,
+  [HTTP_MSG_DATA_STREAMING] = HTTP_BUFFER_FIFO,
 };
 
 #define HTTP_MAX_STREAMS_UNI  3 /* control + QPACK encoder and decoder */
@@ -1622,9 +1622,9 @@ http_app_tx_callback (void *session, transport_send_params_t *sp)
   else
     HTTP_DBG (1, "ignoring tx callback with empty app fifo");
 
-  if (hc->state == HTTP_CONN_STATE_APP_CLOSED)
-    http_vfts[hc->version].app_close_callback (hc, hr_handle.req_index,
-					       as->thread_index, 0);
+  if (hc->state == HTTP_CONN_STATE_APP_CLOSED || hc->state == HTTP_CONN_STATE_APP_SHUTDOWN)
+    http_vfts[hc->version].app_close_callback (hc, hr_handle.req_index, as->thread_index,
+					       hc->state == HTTP_CONN_STATE_APP_SHUTDOWN);
 
   sent = max_burst_sz - sp->max_burst_size;
 

@@ -19,11 +19,12 @@
 #define HC_DBG(_fmt, _args...)
 #endif
 
-#define foreach_hc_s_flag                                                     \
-  _ (1, IS_CLOSED)                                                            \
-  _ (2, PRINTABLE_BODY)                                                       \
-  _ (4, CHUNKED_BODY)                                                         \
-  _ (8, IS_PARENT)
+#define foreach_hc_s_flag                                                                          \
+  _ (1, IS_CLOSED)                                                                                 \
+  _ (2, PRINTABLE_BODY)                                                                            \
+  _ (4, CHUNKED_BODY)                                                                              \
+  _ (8, IS_PARENT)                                                                                 \
+  _ (16, TX_EOF)
 
 typedef enum hc_s_flag_
 {
@@ -164,7 +165,7 @@ hc_req_method_has_body (http_req_method_t method)
 static inline http_msg_data_type_t
 hc_msg_data_type (hc_main_t *hcm)
 {
-  if (hcm->req_method == HTTP_REQ_PUT)
+  if (hcm->req_method == HTTP_REQ_PUT && !hcm->use_ptr)
     return HTTP_MSG_DATA_STREAMING;
 
   return hcm->use_ptr ? HTTP_MSG_DATA_PTR : HTTP_MSG_DATA_INLINE;
@@ -205,6 +206,20 @@ hc_session_alloc (hc_worker_t *wrk)
 }
 
 static int
+hc_shutdown_tx (session_t *s, hc_session_t *hs)
+{
+  hc_main_t *hcm = &hc_main;
+  if (hcm->http_version == HTTP_VERSION_1 && hc_msg_data_type (hcm) == HTTP_MSG_DATA_STREAMING &&
+      !(hs->session_flags & HC_S_FLAG_TX_EOF) && hs->data_offset == vec_len (hcm->data))
+    {
+      vnet_shutdown_args_t a = { .handle = s->handle, .app_index = hcm->app_index };
+      hs->session_flags |= HC_S_FLAG_TX_EOF;
+      return vnet_shutdown_session (&a);
+    }
+  return 0;
+}
+
+static int
 hc_request (session_t *s, hc_worker_t *wrk, hc_session_t *hc_session)
 {
   hc_main_t *hcm = &hc_main;
@@ -212,6 +227,8 @@ hc_request (session_t *s, hc_worker_t *wrk, hc_session_t *hc_session)
   u32 n_enq;
   u8 n_segs;
   int rv;
+
+  hc_session->data_offset = 0;
 
   if (hcm->use_ptr)
     {
@@ -251,9 +268,9 @@ hc_request (session_t *s, hc_worker_t *wrk, hc_session_t *hc_session)
       n_enq = clib_min (svm_fifo_size (s->tx_fifo), to_send);
 
       rv = svm_fifo_enqueue (s->tx_fifo, n_enq, hcm->data);
+      hc_session->data_offset = (rv > 0) ? rv : 0;
       if (rv < to_send)
 	{
-	  hc_session->data_offset = (rv > 0) ? rv : 0;
 	  svm_fifo_add_want_deq_ntf (s->tx_fifo, SVM_FIFO_WANT_DEQ_NOTIF);
 	}
     }
@@ -263,7 +280,7 @@ done:
     {
       session_program_tx_io_evt (s->handle, SESSION_IO_EVT_TX);
     }
-  return 0;
+  return hc_shutdown_tx (s, hc_session);
 }
 
 static int
@@ -982,7 +999,11 @@ hc_tx_callback (session_t *s)
   u64 to_send;
   int rv;
 
+  if (hc_session->session_flags & (HC_S_FLAG_TX_EOF | HC_S_FLAG_IS_CLOSED))
+    return 0;
   to_send = vec_len (hcm->data) - hc_session->data_offset;
+  if (!to_send)
+    return hc_shutdown_tx (s, hc_session);
   rv = svm_fifo_enqueue (s->tx_fifo, to_send,
 			 hcm->data + hc_session->data_offset);
 
@@ -992,16 +1013,16 @@ hc_tx_callback (session_t *s)
       return 0;
     }
 
+  hc_session->data_offset += rv;
   if (rv < to_send)
     {
-      hc_session->data_offset += rv;
       svm_fifo_add_want_deq_ntf (s->tx_fifo, SVM_FIFO_WANT_DEQ_NOTIF);
     }
 
   if (svm_fifo_set_event (s->tx_fifo))
     session_program_tx_io_evt (s->handle, SESSION_IO_EVT_TX);
 
-  return 0;
+  return hc_shutdown_tx (s, hc_session);
 }
 
 static void

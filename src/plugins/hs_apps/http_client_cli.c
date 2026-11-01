@@ -4,6 +4,7 @@
  */
 
 #include <vnet/session/application_interface.h>
+#include <vnet/session/application.h>
 #include <vnet/session/session.h>
 #include <http/http.h>
 #include <http/http_content_types.h>
@@ -29,6 +30,8 @@ typedef struct
   u64 tx_offset;
   u8 have_reply;
   u8 is_closed;
+  u8 tx_eof;
+  u8 tx_pending;
 } hcc_session_t;
 
 typedef struct
@@ -60,6 +63,10 @@ typedef struct
   http_req_method_t method;
   u8 use_ptr;
   u8 no_headers;
+  u8 stream;
+  u8 close_after_tx;
+  u8 eof_after_drain;
+  f64 tx_delay;
   session_endpoint_cfg_t connect_sep;
 
   u8 test_client_attached;
@@ -79,6 +86,7 @@ typedef enum
   HCC_TRANSPORT_CLOSED,
   HCC_CONNECT_FAILED,
   HCC_REQUEST_FAILED,
+  HCC_TX_READY,
 } hcc_cli_signal_t;
 
 static hcc_main_t hcc_main;
@@ -149,6 +157,26 @@ hcc_send_body (session_t *s, hcc_session_t *hs)
 
   if (svm_fifo_set_event (s->tx_fifo))
     session_program_tx_io_evt (s->handle, SESSION_IO_EVT_TX);
+
+  if (hcm->stream && !hs->tx_eof && hs->tx_offset == vec_len (hcm->body))
+    {
+      if (hcm->eof_after_drain && svm_fifo_max_dequeue (s->tx_fifo))
+	svm_fifo_add_want_deq_ntf (s->tx_fifo, SVM_FIFO_WANT_DEQ_NOTIF);
+      else
+	{
+	  hs->tx_eof = 1;
+	  if (hcm->close_after_tx)
+	    {
+	      vnet_disconnect_args_t a = { .handle = s->handle, .app_index = hcm->app_index };
+	      vnet_disconnect_session (&a);
+	    }
+	  else
+	    {
+	      vnet_shutdown_args_t a = { .handle = s->handle, .app_index = hcm->app_index };
+	      vnet_shutdown_session (&a);
+	    }
+	}
+    }
   return 0;
 }
 
@@ -167,10 +195,8 @@ hcc_ts_connected_callback (u32 app_index, u32 hc_index, session_t *as, session_e
 
   if (err)
     {
-      clib_warning ("connected error: hc_index(%d): %U", hc_index,
-		    format_session_error, err);
-      vlib_process_signal_event_mt (hcm->vlib_main, hcm->cli_node_index,
-				    HCC_CONNECT_FAILED, 0);
+      clib_warning ("connected error: hc_index(%d): %U", hc_index, format_session_error, err);
+      vlib_process_signal_event_mt (hcm->vlib_main, hcm->cli_node_index, HCC_CONNECT_FAILED, 0);
       return -1;
     }
 
@@ -197,10 +223,12 @@ hcc_ts_connected_callback (u32 app_index, u32 hc_index, session_t *as, session_e
   msg.data.headers_offset = msg.data.target_path_len;
   msg.data.headers_len = hcm->headers_len;
   /* request body */
-  msg.data.body_len = vec_len (hcm->body);
+  msg.data.body_len = hcm->stream ? 0 : vec_len (hcm->body);
   msg.data.body_offset = msg.data.headers_offset + msg.data.headers_len;
   /* data type and total length */
-  msg.data.type = hcm->use_ptr ? HTTP_MSG_DATA_PTR : HTTP_MSG_DATA_INLINE;
+  msg.data.type = hcm->stream  ? HTTP_MSG_DATA_STREAMING :
+		  hcm->use_ptr ? HTTP_MSG_DATA_PTR :
+				 HTTP_MSG_DATA_INLINE;
   msg.data.len = msg.data.target_path_len + msg.data.headers_len + msg.data.body_len;
 
   svm_fifo_seg_t segs[4] = { { (u8 *) &msg, sizeof (msg) } };
@@ -260,10 +288,35 @@ hcc_ts_reset_callback (session_t *s)
 static int
 hcc_ts_tx_callback (session_t *ts)
 {
+  hcc_main_t *hcm = &hcc_main;
   hcc_session_t *hs = hcc_session_get (ts->opaque, ts->thread_index);
-  if (hs->is_closed)
+  if (hs->is_closed || hs->tx_eof)
     return 0;
+  if (hcm->tx_delay)
+    {
+      if (!hs->tx_pending)
+	{
+	  hs->tx_pending = 1;
+	  vlib_process_signal_event_mt (hcm->vlib_main, hcm->cli_node_index, HCC_TX_READY,
+					ts->handle);
+	}
+      return 0;
+    }
   return hcc_send_body (ts, hs);
+}
+
+static void
+hcc_send_body_rpc (void *arg)
+{
+  session_t *s = session_get_from_handle_if_valid (pointer_to_uword (arg));
+  hcc_session_t *hs;
+
+  if (!s || s->app_wrk_index == APP_INVALID_INDEX)
+    return;
+  hs = hcc_session_get (s->opaque, s->thread_index);
+  hs->tx_pending = 0;
+  if (!hs->is_closed && !hs->tx_eof)
+    hcc_send_body (s, hs);
 }
 
 static void
@@ -558,8 +611,19 @@ hcc_run (vlib_main_t *vm, int print_output)
 				format_clib_error, err);
     }
 
-  vlib_process_wait_for_event_or_clock (vm, 10);
-  event_type = vlib_process_get_events (vm, &event_data);
+  while (1)
+    {
+      vlib_process_wait_for_event_or_clock (vm, 10);
+      event_type = vlib_process_get_events (vm, &event_data);
+      if (event_type != HCC_TX_READY)
+	break;
+      vlib_process_suspend (vm, hcm->tx_delay);
+      for (u32 i = 0; i < vec_len (event_data); i++)
+	session_send_rpc_evt_to_thread_force (session_thread_from_handle (event_data[i]),
+					      hcc_send_body_rpc,
+					      uword_to_pointer (event_data[i], void *));
+      vec_reset_length (event_data);
+    }
   switch (event_type)
     {
     case ~0:
@@ -665,6 +729,10 @@ hcc_command_fn (vlib_main_t *vm, unformat_input_t *input,
   hcm->method = HTTP_REQ_GET;
   hcm->use_ptr = 0;
   hcm->no_headers = 0;
+  hcm->stream = 0;
+  hcm->close_after_tx = 0;
+  hcm->eof_after_drain = 0;
+  hcm->tx_delay = 0;
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -674,8 +742,7 @@ hcc_command_fn (vlib_main_t *vm, unformat_input_t *input,
     {
       if (unformat (line_input, "prealloc-fifos %d", &hcm->prealloc_fifos))
 	;
-      else if (unformat (line_input, "private-segment-size %U",
-			 unformat_memory_size, &seg_size))
+      else if (unformat (line_input, "private-segment-size %U", unformat_memory_size, &seg_size))
 	hcm->private_segment_size = seg_size;
       else if (unformat (line_input, "fifo-size %d", &hcm->fifo_size))
 	hcm->fifo_size <<= 10;
@@ -693,6 +760,14 @@ hcc_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	;
       else if (unformat (line_input, "use-ptr"))
 	hcm->use_ptr = 1;
+      else if (unformat (line_input, "stream"))
+	hcm->stream = 1;
+      else if (unformat (line_input, "close-after-tx"))
+	hcm->close_after_tx = 1;
+      else if (unformat (line_input, "eof-after-drain"))
+	hcm->eof_after_drain = 1;
+      else if (unformat (line_input, "tx-delay %f", &hcm->tx_delay))
+	;
       else if (unformat (line_input, "no-headers"))
 	hcm->no_headers = 1;
       else if (unformat (line_input, "header %v:%v", &name, &value))
@@ -719,6 +794,13 @@ hcc_command_fn (vlib_main_t *vm, unformat_input_t *input,
 
   hcm->appns_id = appns_id;
   hcm->cli_node_index = vlib_get_current_process (vm)->node_runtime.node_index;
+
+  if ((hcm->stream && (hcm->use_ptr || hcm->use_http3)) || hcm->tx_delay < 0 ||
+      ((hcm->close_after_tx || hcm->eof_after_drain || hcm->tx_delay) && !hcm->stream))
+    {
+      err = clib_error_return (0, "stream requires inline HTTP/1 data; TX controls require stream");
+      goto done;
+    }
 
   if (!hcm->uri)
     {
@@ -793,6 +875,7 @@ VLIB_CLI_COMMAND (hcc_command, static) = {
   .path = "http cli client",
   .short_help = "[appns <app-ns> secret <appns-secret>] uri http[s]://<ip-addr>/<target> "
 		"[method get|post|put] [data <payload> | file <path>] [use-ptr] "
+		"[stream [close-after-tx] [eof-after-drain] [tx-delay <seconds>]] "
 		"[header <Name:Value>] [no-headers] [fifo-size <KiB>] [no-output] [http3]",
   .function = hcc_command_fn,
   .is_mp_safe = 1,

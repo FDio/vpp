@@ -9,12 +9,12 @@
 #include <svm/svm_fifo.h>
 
 #define HTTP_BUFFER_DATA_SZ 32
+#define HTTP_BUFFER_MAX_SEGS 5
 
 typedef enum http_buffer_type_ : u8
 {
   HTTP_BUFFER_FIFO,
   HTTP_BUFFER_PTR,
-  HTTP_BUFFER_STREAMING,
   /* the value below is used to size the structures indexed by
      http_buffer_type_t */
   HTTP_BUFFER_N_TYPES,

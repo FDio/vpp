@@ -41,6 +41,10 @@ typedef struct
   u8 *rx_buf;
   u64 rx_left;
   u8 echo_rx;
+  u8 stream;
+  u8 close_after_tx;
+  u8 eof_after_drain;
+  u8 tx_eof;
   u32 tx_offset;
   u32 vpp_session_index;
   http_header_table_t req_headers;
@@ -181,6 +185,31 @@ hcs_cli_output (uword arg, u8 *buffer, uword buffer_bytes)
 }
 
 static void
+hcs_finish_tx (session_t *s, hcs_session_t *hs)
+{
+  hcs_main_t *hcm = &hcs_main;
+
+  if (!hs->stream || hs->tx_eof || hs->tx_buf)
+    return;
+  if (hs->eof_after_drain && svm_fifo_max_dequeue (s->tx_fifo))
+    {
+      svm_fifo_add_want_deq_ntf (s->tx_fifo, SVM_FIFO_WANT_DEQ_NOTIF);
+      return;
+    }
+  hs->tx_eof = 1;
+  if (hs->close_after_tx)
+    {
+      vnet_disconnect_args_t a = { .handle = s->handle, .app_index = hcm->app_index };
+      vnet_disconnect_session (&a);
+    }
+  else
+    {
+      vnet_shutdown_args_t a = { .handle = s->handle, .app_index = hcm->app_index };
+      vnet_shutdown_session (&a);
+    }
+}
+
+static void
 start_send_data (hcs_session_t *hs, http_status_code_t status)
 {
   http_msg_t msg = {};
@@ -192,8 +221,8 @@ start_send_data (hcs_session_t *hs, http_status_code_t status)
 
   msg.type = HTTP_MSG_REPLY;
   msg.code = status;
-  msg.data.type = HTTP_MSG_DATA_INLINE;
-  msg.data.body_len = vec_len (hs->tx_buf);
+  msg.data.type = hs->stream ? HTTP_MSG_DATA_STREAMING : HTTP_MSG_DATA_INLINE;
+  msg.data.body_len = hs->stream ? 0 : vec_len (hs->tx_buf);
   msg.data.body_offset = msg.data.headers_len;
   msg.data.len = msg.data.body_len + msg.data.headers_len;
 
@@ -209,8 +238,11 @@ start_send_data (hcs_session_t *hs, http_status_code_t status)
       ASSERT (rv == msg.data.headers_len);
     }
 
-  if (!msg.data.body_len)
-    goto done;
+  if (!vec_len (hs->tx_buf))
+    {
+      vec_free (hs->tx_buf);
+      goto done;
+    }
 
   rv = svm_fifo_enqueue (ts->tx_fifo, vec_len (hs->tx_buf), hs->tx_buf);
 
@@ -228,6 +260,7 @@ done:
 
   if (svm_fifo_set_event (ts->tx_fifo))
     session_program_tx_io_evt (ts->handle, SESSION_IO_EVT_TX);
+  hcs_finish_tx (ts, hs);
 }
 
 static void
@@ -418,8 +451,7 @@ hcs_ts_rx_callback (session_t *ts)
       (msg.method_type != HTTP_REQ_GET && msg.method_type != HTTP_REQ_POST &&
        msg.method_type != HTTP_REQ_PUT))
     {
-      http_add_header (&hs->resp_headers, HTTP_HEADER_ALLOW,
-		       http_token_lit ("GET"));
+      http_add_header (&hs->resp_headers, HTTP_HEADER_ALLOW, http_token_lit ("GET"));
       start_send_data (hs, HTTP_STATUS_METHOD_NOT_ALLOWED);
       goto done;
     }
@@ -432,8 +464,7 @@ hcs_ts_rx_callback (session_t *ts)
 
   /* send the command to a new/recycled vlib process */
   vec_validate (args.buf, msg.data.target_path_len - 1);
-  rv = svm_fifo_peek (ts->rx_fifo, msg.data.target_path_offset,
-		      msg.data.target_path_len, args.buf);
+  rv = svm_fifo_peek (ts->rx_fifo, msg.data.target_path_offset, msg.data.target_path_len, args.buf);
   ASSERT (rv == msg.data.target_path_len);
   HCS_DBG ("%v", args.buf);
   if (http_validate_abs_path_syntax (args.buf, &is_encoded))
@@ -449,9 +480,17 @@ hcs_ts_rx_callback (session_t *ts)
       args.buf = decoded;
     }
 
-  if (vec_len (args.buf) == 4 && !memcmp (args.buf, "echo", 4))
+  if (http_token_is ((char *) args.buf, vec_len (args.buf), http_token_lit ("echo")) ||
+      http_token_is ((char *) args.buf, vec_len (args.buf), http_token_lit ("echo-stream")) ||
+      http_token_is ((char *) args.buf, vec_len (args.buf), http_token_lit ("echo-stream-close")) ||
+      http_token_is ((char *) args.buf, vec_len (args.buf), http_token_lit ("echo-stream-drain")))
     {
       u32 control_len = msg.data.body_len ? msg.data.body_offset : msg.data.len;
+      hs->stream = vec_len (args.buf) > 4;
+      hs->close_after_tx =
+	http_token_is ((char *) args.buf, vec_len (args.buf), http_token_lit ("echo-stream-close"));
+      hs->eof_after_drain =
+	http_token_is ((char *) args.buf, vec_len (args.buf), http_token_lit ("echo-stream-drain"));
       vec_free (args.buf);
       hs->echo_rx = 1;
       hs->rx_left = msg.data.body_len;
@@ -510,8 +549,13 @@ hcs_ts_tx_callback (session_t *ts)
   int rv;
 
   hs = hcs_session_get (ts->thread_index, ts->opaque);
-  if (!hs || !hs->tx_buf)
+  if (!hs)
     return 0;
+  if (!hs->tx_buf)
+    {
+      hcs_finish_tx (ts, hs);
+      return 0;
+    }
 
   to_send = vec_len (hs->tx_buf) - hs->tx_offset;
   rv = svm_fifo_enqueue (ts->tx_fifo, to_send, hs->tx_buf + hs->tx_offset);
@@ -535,6 +579,7 @@ hcs_ts_tx_callback (session_t *ts)
   if (svm_fifo_set_event (ts->tx_fifo))
     session_program_tx_io_evt (ts->handle, SESSION_IO_EVT_TX);
 
+  hcs_finish_tx (ts, hs);
   return 0;
 }
 
@@ -554,8 +599,7 @@ hcs_ts_accept_callback (session_t *ts)
 }
 
 static int
-hcs_ts_connected_callback (u32 app_index, u32 api_context, session_t *s,
-			   session_error_t err)
+hcs_ts_connected_callback (u32 app_index, u32 api_context, session_t *s, session_error_t err)
 {
   clib_warning ("called...");
   return -1;

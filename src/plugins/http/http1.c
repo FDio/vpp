@@ -41,6 +41,9 @@ static const char *alt_svc_template = "Alt-Svc: %v\r\n";
 static const char *connection_upgrade_template = "Connection: upgrade\r\n"
 						 "Upgrade: %s\r\n";
 
+static const http_token_t chunked_header = { http_token_lit ("Transfer-Encoding: chunked\r\n") };
+static const http_token_t last_chunk = { http_token_lit ("0\r\n\r\n") };
+
 always_inline http_ctx_t *
 http1_conn_alloc_req (u32 hc_index, clib_thread_index_t thread_index)
 {
@@ -91,6 +94,20 @@ http1_check_and_deschedule (http_ctx_t *hc, http_ctx_t *req, transport_send_para
     {
       http_req_deschedule (req, sp);
       http_io_ts_add_want_deq_ntf (hc);
+    }
+}
+
+/* Streaming requests (chunked transfer coding) and app shutdown limit the connection to
+ * one exchange, fully close once response has been queued in app rx fifo. */
+static void
+http1_close_completed_reply (http_ctx_t *hc, http_ctx_t *req)
+{
+  if (!(hc->flags & HTTP_CONN_F_IS_SERVER) && !req->to_recv &&
+      (req->req_flags & (HTTP_REQ_F_TX_STREAMING | HTTP_REQ_F_TX_EOF)))
+    {
+      http_req_state_change (req, HTTP_REQ_STATE_IDLE);
+      session_transport_closing_notify (&req->connection);
+      http_disconnect_transport (hc);
     }
 }
 
@@ -902,11 +919,14 @@ http1_req_state_wait_transport_reply (http_ctx_t *hc, http_ctx_t *req, transport
     {
       /* stream rest of the response body */
       http_req_state_change (req, HTTP_REQ_STATE_TRANSPORT_IO_MORE_DATA);
+      if (len < vec_len (rx_buf))
+	http_io_as_add_want_deq_ntf (req);
     }
 
   http_io_ts_drain (hc, len);
   http_io_ts_after_read (hc, 1);
   http_app_worker_rx_notify (req);
+  http1_close_completed_reply (hc, req);
   return HTTP_SM_STOP;
 
 error:
@@ -1035,6 +1055,8 @@ http1_req_state_wait_transport_method (http_ctx_t *hc, http_ctx_t *req, transpor
       http_io_ts_drain (hc, len);
       /* stream rest of the response body */
       http_req_state_change (req, HTTP_REQ_STATE_TRANSPORT_IO_MORE_DATA);
+      if (len < max_deq)
+	http_io_as_add_want_deq_ntf (req);
     }
 
   http_app_worker_rx_notify (req);
@@ -1102,11 +1124,14 @@ http1_req_state_transport_io_more_data (http_ctx_t *hc, http_ctx_t *req,
     http_req_state_change (req, (hc->flags & HTTP_CONN_F_IS_SERVER) ?
 				  HTTP_REQ_STATE_WAIT_APP_REPLY :
 				  HTTP_REQ_STATE_WAIT_APP_METHOD);
+  else if (n_written < max_deq)
+    http_io_as_add_want_deq_ntf (req);
 
   http_app_worker_rx_notify (req);
 
   http_io_ts_after_read (hc, 0);
 
+  http1_close_completed_reply (hc, req);
   return HTTP_SM_STOP;
 }
 
@@ -1346,6 +1371,17 @@ http1_req_state_wait_app_reply (http_ctx_t *hc, http_ctx_t *req, transport_send_
       req->capsule_ctx_rx.state = HTTP_CAPSULE_STATE_HEADER;
       req->capsule_ctx_rx.len = 0;
     }
+  else if (msg.data.type == HTTP_MSG_DATA_STREAMING)
+    {
+      if (http_status_code_str[msg.code][0] == '1' || msg.code == HTTP_STATUS_NO_CONTENT ||
+	  msg.code == HTTP_STATUS_NOT_MODIFIED)
+	{
+	  sc = HTTP_STATUS_INTERNAL_ERROR;
+	  goto error;
+	}
+      req->req_flags |= HTTP_REQ_F_TX_STREAMING;
+      http_tx_buf (hc) = format (http_tx_buf (hc), "%sConnection: close\r\n", chunked_header.base);
+    }
   else
     http_tx_buf (hc) = format (http_tx_buf (hc), content_len_template, msg.data.body_len);
 
@@ -1370,7 +1406,14 @@ http1_req_state_wait_app_reply (http_ctx_t *hc, http_ctx_t *req, transport_send_
   ASSERT ((HTTP1_MESSAGE_OVERHEAD + (msg.data.headers_len << 1)) > vec_len (http_tx_buf (hc)));
   http_io_ts_write (hc, http_tx_buf (hc), vec_len (http_tx_buf (hc)), sp, 0);
 
-  if (msg.data.body_len)
+  if (req->req_flags & HTTP_REQ_F_TX_STREAMING)
+    {
+      msg.data.body_len = CLIB_U64_MAX;
+      http_req_tx_buffer_init (req, &msg);
+      next_state = HTTP_REQ_STATE_APP_IO_MORE_STREAMING_DATA;
+      sm_result = HTTP_SM_CONTINUE;
+    }
+  else if (msg.data.body_len)
     {
       /* Start sending the actual data */
       http_req_tx_buffer_init (req, &msg);
@@ -1441,7 +1484,7 @@ http1_req_state_wait_app_method (http_ctx_t *hc, http_ctx_t *req, transport_send
       goto error;
     }
 
-  chunked = msg.method_type == HTTP_REQ_PUT && msg.data.type == HTTP_MSG_DATA_STREAMING;
+  chunked = msg.data.type == HTTP_MSG_DATA_STREAMING;
   if (PREDICT_FALSE (msg.method_type == HTTP_REQ_PUT && !chunked && !msg.data.body_len))
     {
       clib_warning ("PUT request should include data");
@@ -1468,8 +1511,11 @@ http1_req_state_wait_app_method (http_ctx_t *hc, http_ctx_t *req, transport_send
 
   if (chunked)
     {
-      segs[n_segs++] =
-	(svm_fifo_seg_t) { (u8 *) http_token_lit ("Transfer-Encoding: chunked\r\n") };
+      req->req_flags |= HTTP_REQ_F_TX_STREAMING;
+      msg.data.body_len = CLIB_U64_MAX;
+      segs[n_segs++] = (svm_fifo_seg_t) { (u8 *) chunked_header.base, chunked_header.len };
+      request_len += segs[n_segs - 1].len;
+      segs[n_segs++] = (svm_fifo_seg_t) { (u8 *) http_token_lit ("Connection: close\r\n") };
       request_len += segs[n_segs - 1].len;
     }
   else if (msg.data.body_len || msg.method_type != HTTP_REQ_GET)
@@ -1576,74 +1622,82 @@ check_fifo:
   return HTTP_SM_STOP;
 }
 
+static void
+http1_streaming_tx_complete (http_ctx_t *hc, http_ctx_t *req)
+{
+  hc->flags &= ~HTTP_CONN_F_PENDING_LAST_CHUNK;
+  http_buffer_free (&req->tx_buf);
+  http_req_state_change (req, (hc->flags & HTTP_CONN_F_IS_SERVER) ?
+				HTTP_REQ_STATE_IDLE :
+				HTTP_REQ_STATE_WAIT_TRANSPORT_REPLY);
+}
+
+/* EOF can arrive after all payload has already been copied to the transport. */
+static int
+http1_send_last_chunk (http_ctx_t *hc, http_ctx_t *req)
+{
+  if (http_io_ts_provision_chunks (hc, last_chunk.len))
+    {
+      http_stats_ts_fifo_egrow_inc (hc->c_thread_index);
+      goto blocked;
+    }
+
+  http_io_ts_write (hc, (u8 *) last_chunk.base, last_chunk.len, 0, 0);
+  http1_streaming_tx_complete (hc, req);
+  http_io_ts_after_write (hc, 1);
+  return 1;
+
+blocked:
+  hc->flags |= HTTP_CONN_F_PENDING_LAST_CHUNK;
+  transport_connection_deschedule (&req->connection);
+  http_io_ts_add_want_deq_ntf (hc);
+  return 0;
+}
+
 static http_sm_result_t
 http1_req_state_app_io_more_streaming_data (http_ctx_t *hc, http_ctx_t *req,
 					    transport_send_params_t *sp)
 {
-  u32 max_write, chunk_size, n_segs, n_written = 0;
+  u32 max_write, chunk_size, n_segs, overhead, hdr_len;
   http_buffer_t *hb = &req->tx_buf;
-  svm_fifo_seg_t *seg;
-  int finished = 0;
-  int chunk_sz_value_headroom = 20;
-  u8 chunk_hdr[32];
-  int hdr_len;
+  svm_fifo_seg_t *payload, segs[HTTP_BUFFER_MAX_SEGS + 2];
+  u8 chunk_hdr[11]; /* eight hexadecimal digits, CRLF and terminating NUL */
+  u8 finished;
 
-  ASSERT (hb->type == HTTP_BUFFER_STREAMING);
+  ASSERT (hb->type == HTTP_BUFFER_FIFO);
 
-  /* For streaming, check if we have data available */
+  /* Reserve framing and, once EOF is known, room for the terminating chunk. */
+  overhead = sizeof (chunk_hdr) - 1 + 2;
+  if (req->req_flags & HTTP_REQ_F_TX_EOF)
+    overhead += last_chunk.len;
   max_write = http_io_ts_max_write (hc, sp);
-  /*
-   * do not drain more than we are going to write at a max - which
-   * is max_write minus chunk_sz_value_headroom (overhead for the chunk
-   * size value) bytes to leave the room for chunk headers.
-   */
-  if (max_write < chunk_sz_value_headroom)
+  if (max_write <= overhead)
     {
-      HTTP_DBG (1, "ts tx fifo full - before write");
       http_stats_ts_fifo_efull_inc (hc->c_thread_index);
       goto check_fifo;
     }
-  chunk_size = http_buffer_get_segs (hb, max_write - chunk_sz_value_headroom,
-				     &seg, &n_segs);
-  if (chunk_size == 0)
-    {
-      /* No data available right now, wait for more */
-      HTTP_DBG (1, "streaming: no data available");
-      return HTTP_SM_STOP;
-    }
-  /* make sure ts tx fifo can actually buffer chunk */
-  if (PREDICT_FALSE (http_io_ts_provision_chunks (hc, chunk_size + chunk_sz_value_headroom)))
+
+  chunk_size = http_buffer_get_segs (hb, max_write - overhead, &payload, &n_segs);
+  if (!chunk_size)
+    return HTTP_SM_STOP;
+
+  finished = (req->req_flags & HTTP_REQ_F_TX_EOF) && chunk_size == http_io_as_max_read (req);
+  hdr_len = snprintf ((char *) chunk_hdr, sizeof (chunk_hdr), "%x\r\n", chunk_size);
+  segs[0] = (svm_fifo_seg_t) { chunk_hdr, hdr_len };
+  clib_memcpy_fast (segs + 1, payload, n_segs * sizeof (*payload));
+  segs[n_segs + 1] = finished ? (svm_fifo_seg_t) { (u8 *) http_token_lit ("\r\n0\r\n\r\n") } :
+				(svm_fifo_seg_t) { (u8 *) http_token_lit ("\r\n") };
+
+  if (PREDICT_FALSE (http_io_ts_provision_chunks (hc, hdr_len + chunk_size + segs[n_segs + 1].len)))
     {
       http_stats_ts_fifo_egrow_inc (hc->c_thread_index);
       goto check_fifo;
     }
 
-  /* Write chunk size in hex */
-  hdr_len = snprintf ((char *) chunk_hdr, sizeof (chunk_hdr), "%x\r\n", chunk_size);
-  http_io_ts_write (hc, chunk_hdr, hdr_len, sp, 0);
-
-  /* Write chunk data */
-  n_written = http_io_ts_write_segs (hc, seg, n_segs, sp, 0);
-
-  /* Write chunk trailer */
-  http_io_ts_write (hc, (u8 *) "\r\n", 2, sp, 0);
-
-  http_buffer_drain (hb, n_written);
-
-  finished = http_buffer_bytes_left (hb) == 0;
+  http_io_ts_write_segs (hc, segs, n_segs + 2, sp, 0);
+  http_buffer_drain (hb, chunk_size);
   if (finished)
-    {
-      /* Send final chunk (0-sized) */
-      http_io_ts_write (hc, (u8 *) "0\r\n\r\n", 5, sp, 0);
-
-      /* Finished transaction:
-       * server back to HTTP_REQ_STATE_WAIT_TRANSPORT_METHOD
-       * client to HTTP_REQ_STATE_WAIT_TRANSPORT_REPLY */
-      http_req_state_change (req, (hc->flags & HTTP_CONN_F_IS_SERVER) ?
-				    HTTP_REQ_STATE_WAIT_TRANSPORT_METHOD :
-				    HTTP_REQ_STATE_WAIT_TRANSPORT_REPLY);
-      http_buffer_free (hb);
-    }
+    http1_streaming_tx_complete (hc, req);
   http_io_ts_after_write (hc, finished);
 
 check_fifo:
@@ -1945,18 +1999,26 @@ http1_app_close_callback (http_ctx_t *hc, u32 req_index, clib_thread_index_t thr
       HTTP_DBG (1, "req already deleted");
       return;
     }
-  /* Nothing more to send, confirm close */
-  if (!http_io_as_max_read (req) || hc->state == HTTP_CONN_STATE_CLOSED)
+  req->req_flags |= HTTP_REQ_F_TX_EOF;
+
+  if (hc->state != HTTP_CONN_STATE_CLOSED)
     {
-      HTTP_DBG (1, "nothing more to send, confirm close");
-      session_transport_closed_notify (&req->connection);
-      http_disconnect_transport (hc);
+      hc->state = is_shutdown ? HTTP_CONN_STATE_APP_SHUTDOWN : HTTP_CONN_STATE_APP_CLOSED;
+      if (http_io_as_max_read (req))
+	return;
+      if (req->req_state == HTTP_REQ_STATE_APP_IO_MORE_STREAMING_DATA &&
+	  !http1_send_last_chunk (hc, req))
+	return;
+      if (is_shutdown && !(hc->flags & HTTP_CONN_F_IS_SERVER))
+	{
+	  /* Request EOF must leave the response direction open. */
+	  hc->state = HTTP_CONN_STATE_ESTABLISHED;
+	  return;
+	}
     }
-  else
-    {
-      /* Wait for all data to be written to ts */
-      hc->state = HTTP_CONN_STATE_APP_CLOSED;
-    }
+  hc->flags &= ~HTTP_CONN_F_PENDING_LAST_CHUNK;
+  session_transport_closed_notify (&req->connection);
+  http_disconnect_transport (hc);
 }
 
 static void
@@ -1964,6 +2026,7 @@ http1_app_reset_callback (http_ctx_t *hc, u32 req_index, clib_thread_index_t thr
 {
   http_ctx_t *req;
   req = http_ctx_get_w_thread (req_index, thread_index);
+  hc->flags &= ~HTTP_CONN_F_PENDING_LAST_CHUNK;
   session_transport_closed_notify (&req->connection);
   http_disconnect_transport (hc);
   http_stats_connections_reset_by_app_inc (hc->c_thread_index);
@@ -2009,7 +2072,8 @@ http1_transport_rx_callback (http_ctx_t *hc)
     {
       if (http_io_ts_max_read (hc))
 	{
-	  if (req->req_state == HTTP_REQ_STATE_APP_IO_MORE_DATA &&
+	  if ((req->req_state == HTTP_REQ_STATE_APP_IO_MORE_DATA ||
+	       req->req_state == HTTP_REQ_STATE_APP_IO_MORE_STREAMING_DATA) &&
 	      !(hc->flags & HTTP_CONN_F_IS_SERVER))
 	    {
 	      /* client can receive error response from server when still
@@ -2017,6 +2081,7 @@ http1_transport_rx_callback (http_ctx_t *hc)
 	      /* TODO: 100 continue support */
 	      HTTP_DBG (1, "server send response while client sending data");
 	      http_io_as_drain_all (req);
+	      hc->flags &= ~HTTP_CONN_F_PENDING_LAST_CHUNK;
 	      hc->state = HTTP_CONN_STATE_CLOSED;
 	      http_req_state_change (req, HTTP_REQ_STATE_WAIT_TRANSPORT_REPLY);
 	      goto run_sm;
@@ -2054,6 +2119,7 @@ http1_transport_reset_callback (http_ctx_t *hc)
   if (!(hc->flags & HTTP_CONN_F_HAS_REQUEST))
     return;
   http_ctx_t *req = http1_conn_get_req (hc);
+  hc->flags &= ~HTTP_CONN_F_PENDING_LAST_CHUNK;
   session_transport_reset_notify (&req->connection);
   http_stats_connections_reset_by_peer_inc (hc->c_thread_index);
 }
@@ -2063,6 +2129,13 @@ http1_transport_conn_reschedule_callback (http_ctx_t *hc)
 {
   ASSERT (hc->flags & HTTP_CONN_F_HAS_REQUEST);
   http_ctx_t *req = http1_conn_get_req (hc);
+  /* Retry a terminating chunk that could not be queued at application EOF. */
+  if (hc->flags & HTTP_CONN_F_PENDING_LAST_CHUNK)
+    {
+      http1_app_close_callback (hc, hc->hc_parent_req_index, hc->c_thread_index,
+				hc->state == HTTP_CONN_STATE_APP_SHUTDOWN);
+      return;
+    }
   transport_connection_reschedule (&req->connection);
 }
 
