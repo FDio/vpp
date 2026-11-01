@@ -22,7 +22,7 @@ import (
 
 func init() {
 	RegisterVethTests(HttpCliTest, HttpCliConnectErrorTest, HttpCliConnectNoRouteTest,
-		HttpCliListenTcpPortInUseTest, HttpCliTlsTest)
+		HttpCliListenTcpPortInUseTest, HttpCliTlsTest, HttpCliEchoTest)
 	RegisterSoloVethTests(HttpClientGetMemLeakTest)
 	RegisterHttp1Tests(HeaderServerTest, HttpPersistentConnectionTest, HttpPipeliningTest,
 		HttpCliMethodNotAllowedTest, HttpAbsoluteFormUriTest, HttpCliBadRequestTest,
@@ -34,6 +34,11 @@ func init() {
 		HttpIgnoreH2UpgradeTest, HttpInvalidAuthorityFormUriTest, HttpHeaderErrorConnectionDropTest,
 		HttpClientInvalidHeaderNameTest, HttpTimerSessionDisable, HttpClientBodySizeTest,
 		HttpCliSmallRxFifoReplyTest, HttpContentLengthLongerBodyTest,
+		HttpCliClientGetBodyTest, HttpCliClientGetBodyPtrTest,
+		HttpCliClientPostBodyTest, HttpCliClientPostBodyPtrTest,
+		HttpCliClientPutBodyTest, HttpCliClientPutBodyPtrTest,
+		HttpCliClientEmptyBodyTest, HttpCliClientNoHeadersTest,
+		HttpCliClientHeadersTest, HttpCliClientLargeHeadersRejectedTest, HttpCliServerEchoTest,
 		HttpClientNoPrintTest, HttpClientChunkedDownloadTest, HttpClientPutStreamingTest, HttpClientPostRejectedTest,
 		HttpClientRedirect302Test, HttpClientRedirect308Test, HttpSendGetAndCloseTest, HttpClientRedirectLimitTest, HttpClientRedirectGetMemLeakTest,
 		HttpClientRedirectPostMemLeakTest, HttpGetTpsTest, HttpPostTpsTest, HttpGetTpsInterruptModeTest, HttpPostTpsInterruptModeTest,
@@ -329,6 +334,201 @@ func HttpCliListenTcpPortInUseTest(s *VethsSuite) {
 
 	Log(o)
 	AssertContains(o, "failed to start listening")
+}
+
+func httpCliTestServer(s *Http1Suite) (*ghttp.Server, string) {
+	address := net.JoinHostPort(s.HostAddr(), s.Ports.Http)
+	listener, err := net.Listen("tcp", address)
+	AssertNil(err)
+	server := ghttp.NewUnstartedServer()
+	server.HTTPTestServer.Listener = listener
+	return server, address
+}
+
+func httpCliVerifyRequest(method, target, address, body string, headers http.Header, accept bool) http.HandlerFunc {
+	return ghttp.CombineHandlers(
+		ghttp.VerifyRequest(method, target),
+		ghttp.VerifyHeader(headers),
+		ghttp.VerifyBody([]byte(body)),
+		func(w http.ResponseWriter, r *http.Request) {
+			AssertEqual("HTTP/1.1", r.Proto)
+			AssertEqual(address, r.Host)
+			AssertEqual("http_cli_client", r.UserAgent())
+			AssertEmpty(r.TransferEncoding)
+			AssertEqual(int64(len(body)), r.ContentLength)
+			if len(body) > 0 || method != "GET" {
+				AssertEqual(strconv.Itoa(len(body)), r.Header.Get("Content-Length"))
+			} else {
+				AssertEmpty(r.Header.Get("Content-Length"))
+			}
+			if accept {
+				AssertEqual("text/html", r.Header.Get("Accept"))
+			} else {
+				AssertEmpty(r.Header.Get("Accept"))
+			}
+			w.Header().Set("Content-Length", strconv.Itoa(len(body)))
+			_, err := io.WriteString(w, body)
+			AssertNil(err)
+		},
+	)
+}
+
+func httpCliClientBodyTest(s *Http1Suite, method string, usePtr bool) {
+	vpp := s.Containers.Vpp.VppInstance
+	body := strings.Repeat("0123456789AbCdEf", 8*1024)
+	file := "/tmp/http-cli-body.txt"
+	AssertNil(vpp.Container.CreateFile(file, body))
+	server, address := httpCliTestServer(s)
+	server.AppendHandlers(httpCliVerifyRequest(method, "/echo", address, body,
+		http.Header{"X-Test": {"body"}}, true))
+	server.Start()
+	defer server.Close()
+	options := ""
+	if usePtr {
+		options = " use-ptr"
+	}
+	output := vpp.Vppctl("http cli client method %s file %s fifo-size 4 header X-Test:body%s uri http://%s/echo",
+		strings.ToLower(method), file, options, address)
+	AssertEqual(body, strings.TrimSpace(output))
+	AssertEqual(1, len(server.ReceivedRequests()))
+}
+
+func HttpCliClientGetBodyTest(s *Http1Suite) {
+	httpCliClientBodyTest(s, "GET", false)
+}
+func HttpCliClientGetBodyPtrTest(s *Http1Suite) {
+	httpCliClientBodyTest(s, "GET", true)
+}
+func HttpCliClientPostBodyTest(s *Http1Suite) {
+	httpCliClientBodyTest(s, "POST", false)
+}
+func HttpCliClientPostBodyPtrTest(s *Http1Suite) {
+	httpCliClientBodyTest(s, "POST", true)
+}
+func HttpCliClientPutBodyTest(s *Http1Suite) {
+	httpCliClientBodyTest(s, "PUT", false)
+}
+func HttpCliClientPutBodyPtrTest(s *Http1Suite) {
+	httpCliClientBodyTest(s, "PUT", true)
+}
+
+func HttpCliClientEmptyBodyTest(s *Http1Suite) {
+	vpp := s.Containers.Vpp.VppInstance
+	AssertNil(vpp.Container.CreateFile("/tmp/http-cli-empty.txt", ""))
+	server, address := httpCliTestServer(s)
+	for range 2 {
+		for _, method := range []string{"GET", "POST"} {
+			server.AppendHandlers(httpCliVerifyRequest(method, "/echo", address, "", nil, true))
+		}
+		server.AppendHandlers(httpCliVerifyRequest("POST", "/echo", address, "", nil, true))
+	}
+	server.Start()
+	defer server.Close()
+	for _, options := range []string{"", "use-ptr"} {
+		for _, method := range []string{"get", "post"} {
+			output := vpp.Vppctl("http cli client method %s %s uri http://%s/echo", method, options, address)
+			AssertEmpty(strings.TrimSpace(output))
+		}
+		output := vpp.Vppctl("http cli client method post file /tmp/http-cli-empty.txt %s uri http://%s/echo", options, address)
+		AssertEmpty(strings.TrimSpace(output))
+		output = vpp.Vppctl("http cli client method put %s uri http://%s/echo", options, address)
+		AssertContains(output, "transport closed")
+	}
+	AssertEqual(6, len(server.ReceivedRequests()))
+}
+
+func HttpCliClientNoHeadersTest(s *Http1Suite) {
+	vpp := s.Containers.Vpp.VppInstance
+	server, address := httpCliTestServer(s)
+	for range 2 {
+		server.AppendHandlers(httpCliVerifyRequest("GET", "/echo", address, "", nil, false))
+		server.AppendHandlers(httpCliVerifyRequest("POST", "/echo", address, "no-headers-body", nil, false))
+	}
+	server.Start()
+	defer server.Close()
+	for _, options := range []string{"", "use-ptr"} {
+		output := vpp.Vppctl("http cli client no-headers %s uri http://%s/echo", options, address)
+		AssertEmpty(strings.TrimSpace(output))
+		output = vpp.Vppctl("http cli client method post data no-headers-body no-headers %s uri http://%s/echo", options, address)
+		AssertEqual("no-headers-body", strings.TrimSpace(output))
+	}
+	AssertEqual(4, len(server.ReceivedRequests()))
+}
+
+func HttpCliClientHeadersTest(s *Http1Suite) {
+	vpp := s.Containers.Vpp.VppInstance
+	target := "/" + strings.Repeat("long-target-", 128)
+	value := strings.Repeat("header-value-", 128)
+	body := "body-after-headers"
+	server, address := httpCliTestServer(s)
+	for range 2 {
+		server.AppendHandlers(httpCliVerifyRequest("POST", target, address, body,
+			http.Header{"X-First": {value}, "X-Second": {"second"}, "X-Last": {"last"}}, true))
+	}
+	server.Start()
+	defer server.Close()
+	for _, options := range []string{"", "use-ptr"} {
+		output := vpp.Vppctl("http cli client method post data %s fifo-size 4 header X-First:%s header X-Second:second header X-Last:last %s uri http://%s%s",
+			body, value, options, address, target)
+		AssertEqual(body, strings.TrimSpace(output))
+	}
+	AssertEqual(2, len(server.ReceivedRequests()))
+}
+
+func HttpCliClientLargeHeadersRejectedTest(s *Http1Suite) {
+	vpp := s.Containers.Vpp.VppInstance
+	server, address := httpCliTestServer(s)
+	server.Start()
+	defer server.Close()
+	command := fmt.Sprintf("http cli client use-ptr header X-Large:%s uri http://%s/echo\n",
+		strings.Repeat("x", 600*1024), address)
+	AssertNil(vpp.Container.CreateFile("/tmp/http-cli-large-header.cli", command))
+	output := vpp.Vppctl("exec /tmp/http-cli-large-header.cli")
+	AssertContains(output, "CLI line error")
+	AssertContains(vpp.Vppctl("show http stats"), "1 connections protocol error")
+	AssertEmpty(server.ReceivedRequests())
+	server.AppendHandlers(httpCliVerifyRequest("GET", "/echo", address, "", nil, true))
+	output = vpp.Vppctl("http cli client uri http://%s/echo", address)
+	AssertEmpty(strings.TrimSpace(output))
+	AssertEqual(1, len(server.ReceivedRequests()))
+}
+
+func HttpCliServerEchoTest(s *Http1Suite) {
+	vpp := s.Containers.Vpp.VppInstance
+	address := net.JoinHostPort(s.VppAddr(), s.Ports.Http)
+	vpp.Vppctl("http cli server fifo-size 4 uri http://" + address)
+	client := NewHttpClient(defaultHttpTimeout, false)
+	defer client.CloseIdleConnections()
+	for _, method := range []string{"GET", "POST", "PUT"} {
+		for _, body := range []string{"", strings.Repeat("0123456789AbCdEf", 8*1024)} {
+			request, err := http.NewRequest(method, "http://"+address+"/echo", bytes.NewBufferString(body))
+			AssertNil(err)
+			response, err := client.Do(request)
+			AssertNil(err)
+			AssertHttpStatus(response, http.StatusOK)
+			AssertHttpContentLength(response, int64(len(body)))
+			data, err := io.ReadAll(response.Body)
+			AssertNil(err)
+			AssertNil(response.Body.Close())
+			AssertEqual(body, string(data))
+		}
+	}
+}
+
+func HttpCliEchoTest(s *VethsSuite) {
+	server := s.Containers.ServerVpp.VppInstance
+	client := s.Containers.ClientVpp.VppInstance
+	address := net.JoinHostPort(s.Interfaces.Server.Ip4AddressString(), s.Ports.Port1)
+	server.Vppctl("http cli server fifo-size 4 uri http://" + address)
+	body := strings.Repeat("0123456789AbCdEf", 8*1024)
+	AssertNil(client.Container.CreateFile("/tmp/http-cli-echo.txt", body))
+	for _, method := range []string{"get", "post", "put"} {
+		for _, options := range []string{"", "use-ptr"} {
+			output := client.Vppctl("http cli client method %s file /tmp/http-cli-echo.txt fifo-size 4 %s uri http://%s/echo",
+				method, options, address)
+			AssertEqual(body, strings.TrimSpace(output))
+		}
+	}
 }
 
 func HttpClientTest(s *Http1Suite) {
