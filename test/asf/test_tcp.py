@@ -133,6 +133,7 @@ class TestTCPUnitTests(VppAsfTestCase):
             "lookup",
             "delivery",
             "persist",
+            "limited-transmit",
             "rto",
             "rst",
             "fin-rst",
