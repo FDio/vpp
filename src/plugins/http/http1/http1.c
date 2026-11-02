@@ -111,6 +111,17 @@ http1_close_completed_reply (http_ctx_t *hc, http_ctx_t *req)
     }
 }
 
+static int
+http1_response_tx_complete (http_ctx_t *hc, http_ctx_t *req)
+{
+  if (!(req->req_flags & HTTP_REQ_F_RX_STREAMING))
+    return 0;
+  http_req_state_change (req, HTTP_REQ_STATE_IDLE);
+  session_transport_closed_notify (&req->connection);
+  http_disconnect_transport (hc);
+  return 1;
+}
+
 static void
 http1_send_error (http_ctx_t *hc, http_status_code_t ec, transport_send_params_t *sp)
 {
@@ -615,6 +626,7 @@ http1_identify_headers (http_ctx_t *req, u8 *rx_buf, http_status_code_t *ec)
 
   vec_reset_length (req->headers);
   req->content_len_header_index = ~0;
+  req->transfer_encoding_header_index = ~0;
   req->connection_header_index = ~0;
   req->upgrade_header_index = ~0;
   req->host_header_index = ~0;
@@ -663,10 +675,13 @@ http1_identify_headers (http_ctx_t *req, u8 *rx_buf, http_status_code_t *ec)
 	    (const char *) name_start, name_len,
 	    http_header_name_token (HTTP_HEADER_CONTENT_LENGTH)))
 	req->content_len_header_index = header_index;
+      else if (req->transfer_encoding_header_index == ~0 &&
+	       http_token_is_case ((const char *) name_start, name_len,
+				   http_header_name_token (HTTP_HEADER_TRANSFER_ENCODING)))
+	req->transfer_encoding_header_index = header_index;
       else if (req->connection_header_index == ~0 &&
-	       http_token_is_case (
-		 (const char *) name_start, name_len,
-		 http_header_name_token (HTTP_HEADER_CONNECTION)))
+	       http_token_is_case ((const char *) name_start, name_len,
+				   http_header_name_token (HTTP_HEADER_CONNECTION)))
 	req->connection_header_index = header_index;
       else if (req->upgrade_header_index == ~0 &&
 	       http_token_is_case (
@@ -692,15 +707,50 @@ http1_identify_headers (http_ctx_t *req, u8 *rx_buf, http_status_code_t *ec)
 }
 
 static int
-http1_identify_message_body (http_ctx_t *req, u8 *rx_buf, http_status_code_t *ec)
+http1_identify_message_body (http_ctx_t *hc, http_ctx_t *req, u8 *rx_buf, http_status_code_t *ec)
 {
   int rv;
+  u8 is_server = !!(hc->flags & HTTP_CONN_F_IS_SERVER);
 
   req->body_len = 0;
+  req->body_offset = req->control_data_len;
+
+  if (!is_server &&
+      ((req->req_flags & HTTP_REQ_F_IS_TUNNEL) ||
+       http_status_code_str[req->status_code][0] == '1' ||
+       req->status_code == HTTP_STATUS_NO_CONTENT || req->status_code == HTTP_STATUS_NOT_MODIFIED))
+    return 0;
 
   if (req->headers_len == 0)
     {
       HTTP_DBG (2, "no header, no message-body");
+      return 0;
+    }
+  if (req->transfer_encoding_header_index != ~0)
+    {
+      http_field_line_t *field;
+
+      *ec = HTTP_STATUS_BAD_REQUEST;
+      if (req->content_len_header_index != ~0 || (req->req_flags & HTTP_REQ_F_IS_TUNNEL) ||
+	  rx_buf[is_server ? req->headers_offset - 3 : 7] == '0')
+	return -1;
+
+      field = vec_elt_at_index (req->headers, req->transfer_encoding_header_index);
+      if (!http_token_is_case (http_field_line_value_token (field, req, rx_buf),
+			       http_token_lit ("chunked")))
+	return -1;
+      for (u32 i = req->transfer_encoding_header_index + 1; i < vec_len (req->headers); i++)
+	{
+	  field = vec_elt_at_index (req->headers, i);
+	  if (http_token_is_case ((const char *) rx_buf + req->headers_offset + field->name_offset,
+				  field->name_len,
+				  http_header_name_token (HTTP_HEADER_TRANSFER_ENCODING)))
+	    return -1;
+	}
+
+      req->chunked_decoder = (http1_chunked_decoder_t) {};
+      req->req_flags |= HTTP_REQ_F_RX_STREAMING;
+      req->body_offset = req->control_data_len;
       return 0;
     }
   if (req->req_flags & HTTP_REQ_F_IS_TUNNEL)
@@ -708,8 +758,6 @@ http1_identify_message_body (http_ctx_t *req, u8 *rx_buf, http_status_code_t *ec
       HTTP_DBG (2, "tunnel, no message-body");
       return 0;
     }
-
-  /* TODO check for chunked transfer coding */
 
   if (req->content_len_header_index == ~0)
     {
@@ -879,7 +927,7 @@ http1_req_state_wait_transport_reply (http_ctx_t *hc, http_ctx_t *req, transport
   if (rv)
     goto error;
 
-  rv = http1_identify_message_body (req, rx_buf, &ec);
+  rv = http1_identify_message_body (hc, req, rx_buf, &ec);
   if (rv)
     goto error;
 
@@ -893,6 +941,7 @@ http1_req_state_wait_transport_reply (http_ctx_t *hc, http_ctx_t *req, transport
       goto error;
     }
   len = clib_min (max_enq, vec_len (rx_buf));
+  len = req->control_data_len + clib_min (req->body_len, len - req->control_data_len);
 
   msg.type = HTTP_MSG_REPLY;
   msg.code = req->status_code;
@@ -900,13 +949,23 @@ http1_req_state_wait_transport_reply (http_ctx_t *hc, http_ctx_t *req, transport
   msg.data.headers_len = req->headers_len;
   msg.data.body_offset = req->body_offset;
   msg.data.body_len = req->body_len;
-  msg.data.type = HTTP_MSG_DATA_INLINE;
+  msg.data.type =
+    req->req_flags & HTTP_REQ_F_RX_STREAMING ? HTTP_MSG_DATA_STREAMING : HTTP_MSG_DATA_INLINE;
   msg.data.len = len;
   msg.data.headers_ctx = pointer_to_uword (req->headers);
 
   svm_fifo_seg_t segs[2] = { { (u8 *) &msg, sizeof (msg) }, { rx_buf, len } };
 
   http_io_as_write_segs (req, segs, 2);
+
+  if (req->req_flags & HTTP_REQ_F_RX_STREAMING)
+    {
+      http_io_ts_drain (hc, len);
+      http_req_state_change (req, HTTP_REQ_STATE_TRANSPORT_IO_MORE_STREAMING_DATA);
+      http_io_ts_after_read (hc, 1);
+      http_app_worker_rx_notify (req);
+      return HTTP_SM_CONTINUE;
+    }
 
   body_sent = len - req->control_data_len;
   req->to_recv = req->body_len - body_sent;
@@ -932,7 +991,7 @@ http1_req_state_wait_transport_reply (http_ctx_t *hc, http_ctx_t *req, transport
 error:
   http_io_ts_drain_all (hc);
   http_io_ts_after_read (hc, 1);
-  session_transport_closing_notify (&req->connection);
+  session_transport_reset_notify (&req->connection);
   session_transport_closed_notify (&req->connection);
   http_disconnect_transport (hc);
   http_stats_proto_errors_inc (hc->c_thread_index);
@@ -993,7 +1052,7 @@ http1_req_state_wait_transport_method (http_ctx_t *hc, http_ctx_t *req, transpor
   http1_target_fixup (hc, req);
   http1_check_connection_upgrade (req, rx_buf);
 
-  rv = http1_identify_message_body (req, rx_buf, &ec);
+  rv = http1_identify_message_body (hc, req, rx_buf, &ec);
   if (rv)
     goto error;
 
@@ -1021,7 +1080,8 @@ http1_req_state_wait_transport_method (http_ctx_t *hc, http_ctx_t *req, transpor
 
   msg.type = HTTP_MSG_REQUEST;
   msg.method_type = req->method;
-  msg.data.type = HTTP_MSG_DATA_INLINE;
+  msg.data.type =
+    req->req_flags & HTTP_REQ_F_RX_STREAMING ? HTTP_MSG_DATA_STREAMING : HTTP_MSG_DATA_INLINE;
   msg.data.len = len;
   msg.data.scheme = req->scheme;
   msg.data.target_authority_offset = req->target_authority_offset;
@@ -1040,6 +1100,15 @@ http1_req_state_wait_transport_method (http_ctx_t *hc, http_ctx_t *req, transpor
   svm_fifo_seg_t segs[2] = { { (u8 *) &msg, sizeof (msg) }, { rx_buf, len } };
 
   http_io_as_write_segs (req, segs, 2);
+
+  if (req->req_flags & HTTP_REQ_F_RX_STREAMING)
+    {
+      http_io_ts_drain (hc, len);
+      http_req_state_change (req, HTTP_REQ_STATE_TRANSPORT_IO_MORE_STREAMING_DATA);
+      http_app_worker_rx_notify (req);
+      http_io_ts_after_read (hc, 1);
+      return HTTP_SM_CONTINUE;
+    }
 
   body_sent = len - req->control_data_len;
   req->to_recv = req->body_len - body_sent;
@@ -1074,6 +1143,90 @@ error:
   http_disconnect_transport (hc);
 
   return HTTP_SM_ERROR;
+}
+
+static http_sm_result_t
+http1_chunked_rx_error (http_ctx_t *hc, http_ctx_t *req)
+{
+  http_io_ts_drain_all (hc);
+  http_io_ts_after_read (hc, 1);
+  if (hc->flags & HTTP_CONN_F_IS_SERVER)
+    http1_send_error (hc, HTTP_STATUS_BAD_REQUEST, 0);
+  session_transport_reset_notify (&req->connection);
+  session_transport_closed_notify (&req->connection);
+  http_disconnect_transport (hc);
+  http_stats_proto_errors_inc (hc->c_thread_index);
+  return HTTP_SM_ERROR;
+}
+
+static http_sm_result_t
+http1_req_state_transport_io_more_streaming_data (http_ctx_t *hc, http_ctx_t *req,
+						  transport_send_params_t *sp)
+{
+  u32 max_deq, len, consumed, data_len, offset = 0, written = 0;
+  http1_chunked_result_t result;
+  u8 *buf, blocked = 0;
+
+  max_deq = http_io_ts_max_read (hc);
+  if (!max_deq)
+    return HTTP_SM_STOP;
+
+  buf = http_get_rx_buf (hc);
+  len = http_io_ts_read (hc, buf, clib_min (max_deq, vec_max_len (buf)), 1);
+
+  while (offset < len)
+    {
+      result = http1_chunked_decode (&req->chunked_decoder, buf + offset, len - offset, &consumed,
+				     &data_len);
+      offset += consumed;
+
+      switch (result)
+	{
+	case HTTP1_CHUNKED_DATA:
+	  data_len = clib_min (data_len, http_io_as_max_write (req));
+	  if (!data_len)
+	    {
+	      http_stats_as_fifo_efull_inc (hc->c_thread_index);
+	      http_io_as_add_want_deq_ntf (req);
+	      blocked = 1;
+	      goto done;
+	    }
+	  http_io_as_write (req, buf + offset, data_len);
+	  http1_chunked_consume_data (&req->chunked_decoder, data_len);
+	  offset += data_len;
+	  written += data_len;
+	  break;
+	case HTTP1_CHUNKED_MORE:
+	  goto done;
+	case HTTP1_CHUNKED_DONE:
+	  req->req_flags |= HTTP_REQ_F_RX_EOF;
+	  http_req_state_change (req, hc->flags & HTTP_CONN_F_IS_SERVER ?
+					HTTP_REQ_STATE_WAIT_APP_REPLY :
+					HTTP_REQ_STATE_IDLE);
+	  /* one exchange per connection, discard any pipelined input */
+	  http_io_ts_drain_all (hc);
+	  http_io_ts_after_read (hc, 1);
+	  if (written)
+	    http_app_worker_rx_notify (req);
+	  session_transport_closing_notify (&req->connection);
+	  if (!(hc->flags & HTTP_CONN_F_IS_SERVER))
+	    http_disconnect_transport (hc);
+	  return HTTP_SM_STOP;
+	case HTTP1_CHUNKED_INVALID:
+	case HTTP1_CHUNKED_TOO_LARGE:
+	  return http1_chunked_rx_error (hc, req);
+	default:
+	  ASSERT (0);
+	  break;
+	}
+    }
+
+done:
+  http_io_ts_drain (hc, offset);
+  http_io_ts_after_read (hc, 1);
+  if (written)
+    http_app_worker_rx_notify (req);
+  return !blocked && http_io_ts_max_read (hc) ? HTTP_SM_CONTINUE : HTTP_SM_STOP;
 }
 
 static http_sm_result_t
@@ -1383,7 +1536,11 @@ http1_req_state_wait_app_reply (http_ctx_t *hc, http_ctx_t *req, transport_send_
       http_tx_buf (hc) = format (http_tx_buf (hc), "%sConnection: close\r\n", chunked_header.base);
     }
   else
-    http_tx_buf (hc) = format (http_tx_buf (hc), content_len_template, msg.data.body_len);
+    {
+      http_tx_buf (hc) = format (http_tx_buf (hc), content_len_template, msg.data.body_len);
+      if (req->req_flags & HTTP_REQ_F_RX_STREAMING)
+	http_tx_buf (hc) = format (http_tx_buf (hc), "Connection: close\r\n");
+    }
 
   /* Add headers from app (if any) */
   if (msg.data.headers_len)
@@ -1430,6 +1587,8 @@ http1_req_state_wait_app_reply (http_ctx_t *hc, http_ctx_t *req, transport_send_
 
   http_io_ts_after_write (hc, 0);
   http_stats_responses_sent_inc (hc->c_thread_index);
+  if (sm_result == HTTP_SM_STOP)
+    http1_response_tx_complete (hc, req);
   return sm_result;
 
 error:
@@ -1616,6 +1775,8 @@ http1_req_state_app_io_more_data (http_ctx_t *hc, http_ctx_t *req, transport_sen
       http_buffer_free (hb);
     }
   http_io_ts_after_write (hc, finished);
+  if (finished && http1_response_tx_complete (hc, req))
+    return HTTP_SM_STOP;
 
 check_fifo:
   http1_check_and_deschedule (hc, req, sp);
@@ -1829,6 +1990,8 @@ static http_sm_handler tx_state_funcs[HTTP_REQ_N_STATES] = {
   http1_req_state_udp_tunnel_tx,
   http1_req_state_udp_tunnel_draft03_tx,
   http1_req_state_app_io_more_streaming_data,
+  0, /* transport io drop */
+  0, /* transport io more streaming data */
 };
 
 static http_sm_handler rx_state_funcs[HTTP_REQ_N_STATES] = {
@@ -1843,6 +2006,8 @@ static http_sm_handler rx_state_funcs[HTTP_REQ_N_STATES] = {
   http1_req_state_udp_tunnel_rx,
   http1_req_state_udp_tunnel_draft03_rx,
   0, /* app io more streaming data */
+  0, /* transport io drop */
+  http1_req_state_transport_io_more_streaming_data,
 };
 
 static_always_inline int
@@ -1955,7 +2120,8 @@ http1_app_tx_callback (http_ctx_t *hc, u32 req_index, transport_send_params_t *s
     {
       /* Sometimes the server apps can send the response earlier
        * than expected (e.g when rejecting a bad request)*/
-      if (req->req_state == HTTP_REQ_STATE_TRANSPORT_IO_MORE_DATA &&
+      if ((req->req_state == HTTP_REQ_STATE_TRANSPORT_IO_MORE_DATA ||
+	   req->req_state == HTTP_REQ_STATE_TRANSPORT_IO_MORE_STREAMING_DATA) &&
 	  (hc->flags & HTTP_CONN_F_IS_SERVER))
 	{
 	  http_io_ts_drain_all (hc);
@@ -2082,7 +2248,8 @@ http1_transport_rx_callback (http_ctx_t *hc)
 	      HTTP_DBG (1, "server send response while client sending data");
 	      http_io_as_drain_all (req);
 	      hc->flags &= ~HTTP_CONN_F_PENDING_LAST_CHUNK;
-	      hc->state = HTTP_CONN_STATE_CLOSED;
+	      req->req_flags |= HTTP_REQ_F_TX_EOF;
+	      http_buffer_free (&req->tx_buf);
 	      http_req_state_change (req, HTTP_REQ_STATE_WAIT_TRANSPORT_REPLY);
 	      goto run_sm;
 	    }
@@ -2103,14 +2270,34 @@ run_sm:
 static void
 http1_transport_close_callback (http_ctx_t *hc)
 {
+  u32 hc_index = hc->hc_hc_index;
+  clib_thread_index_t thread_index = hc->c_thread_index;
+  http_ctx_t *req;
+
+  /* Process buffered transport bytes before checking for HTTP message completion. */
+  if (http_io_ts_max_read (hc))
+    {
+      http1_transport_rx_callback (hc);
+      hc = http_ctx_get_w_thread (hc_index, thread_index);
+    }
+
   if (!(hc->flags & HTTP_CONN_F_HAS_REQUEST))
     return;
+
+  req = http1_conn_get_req (hc);
+  if (hc->state == HTTP_CONN_STATE_CLOSED || (hc->flags & HTTP_CONN_F_NO_APP_SESSION))
+    return;
+
+  if (req->req_flags & HTTP_REQ_F_RX_STREAMING)
+    {
+      if (!(req->req_flags & HTTP_REQ_F_RX_EOF) && !http_io_ts_max_read (hc))
+	http1_chunked_rx_error (hc, req);
+      return;
+    }
+
   /* Nothing more to rx, propagate to app */
   if (!http_io_ts_max_read (hc))
-    {
-      http_ctx_t *req = http1_conn_get_req (hc);
-      session_transport_closing_notify (&req->connection);
-    }
+    session_transport_closing_notify (&req->connection);
 }
 
 static void

@@ -17,6 +17,7 @@ import (
 
 func init() {
 	RegisterHttpStaticSrvTests(HttpStaticMovedTest, HttpStaticNotFoundTest, HttpStaticBuildInUrlGetIfStatsTest, HttpStaticBuildInUrlPostIfStatsTest,
+		HttpStaticChunkedRequestRejectedTest,
 		HttpStaticPostTest, HttpStaticBuildInUrlGetIfListTest, HttpStaticBuildInUrlGetVersionTest,
 		HttpStaticMacTimeTest, HttpStaticBuildInUrlGetVersionVerboseTest, HttpStaticPathSanitizationTest, HttpStaticFileHandlerTest, HttpStaticFileHandlerDefaultMaxAgeTest,
 		HttpStaticFileHandlerWrkTest, HttpStaticUrlHandlerWrkTest, HttpStaticHttp1OnlyTest, HttpStaticRedirectTest, HttpStaticPromTest, PromConcurrentConnectionsTest,
@@ -25,6 +26,25 @@ func init() {
 		HttpStaticAltSvcHttp1Test, HttpStaticAltSvcHttps1Test, HttpStaticAltSvcHttp2Test, HttpStaticAltSvcHttps2Test,
 		HttpStaticAltSvcListenerNoHdrTest, HttpStaticAltSvcListenerDelTest)
 	RegisterHttpStaticSrvSoloTests(PromMemLeakTest)
+}
+
+func HttpStaticChunkedRequestRejectedTest(s *HttpStaticSrvSuite) {
+	s.SkipIfMultiWorker()
+	vpp := s.Containers.Vpp.VppInstance
+	address := net.JoinHostPort(s.VppAddr(), s.Ports.Http)
+	Log(vpp.Vppctl("http static server url-handlers fifo-size 4k uri http://" + address))
+	Log(vpp.Vppctl("test-url-handler enable"))
+
+	conn, reader := httpCliChunkedConnect(address, "GET", "/test_delayed",
+		"Transfer-Encoding: chunked\r\n", "")
+	defer conn.Close()
+	time.Sleep(100 * time.Millisecond)
+	_, _ = io.WriteString(conn, "1\r\nx\r\n")
+	response, err := http.ReadResponse(reader, &http.Request{Method: "GET"})
+	AssertNil(err)
+	defer response.Body.Close()
+	AssertHttpStatus(response, http.StatusLengthRequired)
+	AssertEqual(true, response.Close)
 }
 
 func HttpStaticPostTest(s *HttpStaticSrvSuite) {

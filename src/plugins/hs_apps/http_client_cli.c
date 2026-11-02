@@ -32,6 +32,8 @@ typedef struct
   u8 is_closed;
   u8 tx_eof;
   u8 tx_pending;
+  u8 rx_streaming;
+  http_status_code_t status;
 } hcc_session_t;
 
 typedef struct
@@ -126,17 +128,6 @@ hcc_ts_accept_callback (session_t *ts)
 {
   clib_warning ("bug");
   return -1;
-}
-
-static void
-hcc_ts_disconnect_callback (session_t *s)
-{
-  hcc_main_t *hcm = &hcc_main;
-  vnet_disconnect_args_t _a = { 0 }, *a = &_a;
-
-  a->handle = session_handle (s);
-  a->app_index = hcm->app_index;
-  vnet_disconnect_session (a);
 }
 
 static int
@@ -329,6 +320,37 @@ hcc_session_disconnect (session_t *s)
   vnet_disconnect_session (a);
 }
 
+static void
+hcc_response_complete (session_t *s, hcc_session_t *hs)
+{
+  hcc_main_t *hcm = &hcc_main;
+
+  if (!vec_len (hcm->http_response) && hs->status != HTTP_STATUS_OK)
+    hcm->http_response = format (hcm->http_response, "request failed, response code: %U",
+				 format_http_status_code, hs->status);
+  hs->is_closed = 1;
+  HCC_DBG ("all data received, going to disconnect");
+  hcc_session_disconnect (s);
+  vlib_process_signal_event_mt (hcm->vlib_main, hcm->cli_node_index, HCC_REPLY_RECEIVED, 0);
+}
+
+static void
+hcc_ts_disconnect_callback (session_t *s)
+{
+  hcc_main_t *hcm = &hcc_main;
+  hcc_session_t *hs = hcc_session_get (s->opaque, s->thread_index);
+  vnet_disconnect_args_t _a = { 0 }, *a = &_a;
+
+  if (hs->rx_streaming)
+    {
+      hcc_response_complete (s, hs);
+      return;
+    }
+  a->handle = session_handle (s);
+  a->app_index = hcm->app_index;
+  vnet_disconnect_session (a);
+}
+
 static int
 hcc_ts_rx_callback (session_t *ts)
 {
@@ -347,6 +369,8 @@ hcc_ts_rx_callback (session_t *ts)
 
   if (!hs->have_reply)
     {
+      if (!svm_fifo_max_dequeue (ts->rx_fifo))
+	return 0;
       /* read the http message header */
       rv = svm_fifo_dequeue (ts->rx_fifo, sizeof (msg), (u8 *) &msg);
       ASSERT (rv == sizeof (msg));
@@ -360,14 +384,9 @@ hcc_ts_rx_callback (session_t *ts)
       svm_fifo_dequeue_drop (ts->rx_fifo, msg.data.body_offset);
       hs->to_recv = msg.data.body_len;
       hs->have_reply = 1;
-      if (msg.code != HTTP_STATUS_OK && hs->to_recv == 0)
-	{
-	  hcm->http_response = format (0, "request failed, response code: %U",
-				       format_http_status_code, msg.code);
-	  goto done;
-	}
-      if (msg.data.body_len)
-	vec_validate (hcm->http_response, msg.data.body_len - 1);
+      hs->tx_eof = 1;
+      hs->rx_streaming = msg.data.type == HTTP_MSG_DATA_STREAMING;
+      hs->status = msg.code;
       vec_reset_length (hcm->http_response);
     }
 
@@ -375,12 +394,9 @@ hcc_ts_rx_callback (session_t *ts)
   if (!max_deq)
     goto done;
 
-  u32 n_deq = clib_min (hs->to_recv, max_deq);
-  u32 curr = vec_len (hcm->http_response);
-  u8 *data = hcm->http_response + curr;
-  /* vec_reset_length poisons the reserved capacity under ASAN; unpoison
-   * the destination bytes before dequeuing through the raw pointer */
-  clib_mem_unpoison (data, n_deq);
+  u32 n_deq = hs->rx_streaming ? max_deq : clib_min (hs->to_recv, max_deq);
+  u8 *data;
+  vec_add2 (hcm->http_response, data, n_deq);
   rv = svm_fifo_dequeue (ts->rx_fifo, n_deq, data);
   if (rv < 0)
     {
@@ -397,20 +413,16 @@ hcc_ts_rx_callback (session_t *ts)
       session_program_transport_io_evt (ts->handle, SESSION_IO_EVT_RX);
     }
 
-  vec_set_len (hcm->http_response, curr + n_deq);
-  ASSERT (hs->to_recv >= rv);
-  hs->to_recv -= rv;
+  if (!hs->rx_streaming)
+    {
+      ASSERT (hs->to_recv >= rv);
+      hs->to_recv -= rv;
+    }
   HCC_DBG ("app rcvd %d, remains %llu", rv, hs->to_recv);
 
 done:
-  if (hs->to_recv == 0)
-    {
-      hs->is_closed = 1;
-      HCC_DBG ("all data received, going to disconnect");
-      hcc_session_disconnect (ts);
-      vlib_process_signal_event_mt (hcm->vlib_main, hcm->cli_node_index,
-				    HCC_REPLY_RECEIVED, 0);
-    }
+  if (!hs->rx_streaming && hs->to_recv == 0)
+    hcc_response_complete (ts, hs);
 
   return 0;
 }
