@@ -19,6 +19,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "6d689bfe_843c5c9f",
+        "filename": "src/plugins/policer/ip4_punt.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 100,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2026-11-02T13:53:23Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "b71bcfe2_c1a29a48",
+      "revId": "dd1f5ce3d1d85aa7aa43541fe67004633493f6c6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "a2ba5c10_c06ed716",
@@ -33,6 +51,24 @@
       "side": 1,
       "message": "Could we enable the punt feature only when transitioning from unattached to attached? Attaching A, replacing it with B, then removing B adds two feature entries but removes only one. Removal now clears the policer index to `~0`, so the remaining entry dereferences that invalid index on the next punt packet and crashes VPP. This reproduced under debug ASAN for both IPv4 and IPv6; `ip6_punt_policer_add_del()` needs the same adjustment. Please include traffic after replacement and removal in the regression coverage.",
       "tag": "prview:0b84948726333cc0d5d7d5133cff9660:dd1f5ce3d1d85aa7aa43541fe67004633493f6c6",
+      "revId": "dd1f5ce3d1d85aa7aa43541fe67004633493f6c6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "dd77ed3e_cc91e34e",
+        "filename": "src/plugins/policer/ip4_punt.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 106,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2026-11-02T13:53:23Z",
+      "side": 1,
+      "message": "This is not related to this patch, the behavior you describe was already there when disabling policing on this path. `Removal now clears the policer index to ~0`, this was always the case but not enforce in the function. Before `ip6_punt_policer_add_del()` was always called with `~0` as policer index when `is_add \u003d\u003d false`.\n\nIt seems that it should be addressed in the punt node, dropping packets that have a policer index that does not exist.",
+      "parentUuid": "a2ba5c10_c06ed716",
       "revId": "dd1f5ce3d1d85aa7aa43541fe67004633493f6c6",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
