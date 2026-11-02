@@ -662,6 +662,8 @@ void vnet_dev_clear_hw_interface_counters (u32);
 void vnet_dev_set_interface_next_node (vnet_main_t *, u32, u32);
 clib_error_t *vnet_dev_port_eeprom_read (vnet_main_t *, vnet_hw_interface_t *,
 					 vnet_interface_eeprom_t **);
+vnet_dev_rv_t vnet_dev_port_get_module_eeprom (vlib_main_t *, vnet_dev_port_t *,
+					       vnet_interface_eeprom_t *);
 
 /* port.c */
 
