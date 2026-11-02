@@ -476,6 +476,11 @@ M:	Monendra Singh Kushwaha <kmonendra@marvell.com>
 M:	Damjan Marion <damarion@cisco.com>
 F:	src/drivers/octeon/
 
+Intel E8xx (ice) device driver
+I:	ice
+M:	Damjan Marion <damarion@cisco.com>
+F:	src/drivers/ice/
+
 Plugin - Dispatch Trace PCAP
 I:	dispatch-trace
 M:	Dave Barach <vpp@barachs.net>
