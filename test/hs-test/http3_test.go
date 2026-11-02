@@ -807,6 +807,13 @@ func Http3GoawayOnReqStreamTest(s *Http3Suite) {
 	http3SendReqExpectConnError(s, []byte{0x07, 0x02, 0x7B, 0xBD}, http3.ErrCodeFrameUnexpected)
 }
 
+type http3TraceFunc func(qlogwriter.Event)
+
+func (f http3TraceFunc) AddProducer() qlogwriter.Recorder { return f }
+func (f http3TraceFunc) SupportsSchemas(string) bool      { return true }
+func (f http3TraceFunc) RecordEvent(e qlogwriter.Event)   { f(e) }
+func (f http3TraceFunc) Close() error                     { return nil }
+
 func Http3UnknownFrameOnReqStreamTest(s *Http3Suite) {
 	vpp := s.Containers.Vpp.VppInstance
 	serverAddress := s.VppAddr() + ":" + s.Ports.Port1
@@ -818,24 +825,70 @@ func Http3UnknownFrameOnReqStreamTest(s *Http3Suite) {
 		payloadLen int
 	}{
 		{16, 16},
+		{1, 0},
 		{1 << 32, 2},
 		{1<<32 + 1, 2},
 		{0x001fffff00000000, 2},
 	} {
-		By(fmt.Sprintf("discarding an unknown frame with payload length %d", tc.length))
-		conn := H3ClientConnect(serverAddress)
+		By(fmt.Sprintf("discarding an unknown frame of length %d with %d payload bytes received", tc.length, tc.payloadLen))
+		frame := quicvarint.Append(nil, 0x21)
+		frame = quicvarint.Append(frame, tc.length)
+		frame = append(frame, make([]byte, tc.payloadLen)...)
+
+		acked := make(chan struct{})
+		var mu sync.Mutex
+		var ackOnce sync.Once
+		packets := make(map[qlog.PacketNumber]bool)
+		trace := http3TraceFunc(func(event qlogwriter.Event) {
+			mu.Lock()
+			defer mu.Unlock()
+			switch packet := event.(type) {
+			case qlog.PacketSent:
+				for _, frameEvent := range packet.Frames {
+					// The raw request stream is the first bidirectional stream.
+					if f, ok := frameEvent.Frame.(*qlog.StreamFrame); ok && f.StreamID == 0 &&
+						f.Offset+f.Length == int64(len(frame)) {
+						packets[packet.Header.PacketNumber] = true
+					}
+				}
+			case qlog.PacketReceived:
+				if packet.Header.PacketType != qlog.PacketType1RTT {
+					return
+				}
+				for _, frameEvent := range packet.Frames {
+					if ack, ok := frameEvent.Frame.(*qlog.AckFrame); ok {
+						for pn := range packets {
+							if ack.AcksPacket(pn) {
+								ackOnce.Do(func() { close(acked) })
+							}
+						}
+					}
+				}
+			}
+		})
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		conn, err := quic.DialAddr(ctx, serverAddress,
+			&tls.Config{InsecureSkipVerify: true, NextProtos: []string{"h3"}, SessionTicketsDisabled: true},
+			&quic.Config{Tracer: func(context.Context, bool, quic.ConnectionID) qlogwriter.Trace { return trace }})
+		AssertNil(err)
 		defer conn.CloseWithError(0, "")
 		h3c := (&http3.Transport{}).NewClientConn(conn)
 		stream, err := conn.OpenStream()
 		AssertNil(err)
+		deadline, _ := ctx.Deadline()
+		AssertNil(stream.SetWriteDeadline(deadline))
 
-		frame := quicvarint.Append(nil, 0x21)
-		frame = quicvarint.Append(frame, tc.length)
-		_, err = stream.Write(append(frame, make([]byte, tc.payloadLen)...))
+		// Keep the send side open and withhold any remaining frame payload.
+		_, err = stream.Write(frame)
 		AssertNil(err)
-		time.Sleep(100 * time.Millisecond)
+		select {
+		case <-acked:
+		case <-ctx.Done():
+			Fail("server did not acknowledge the unknown-frame data")
+		}
 
-		responseStream, err := h3c.OpenRequestStream(context.Background())
+		responseStream, err := h3c.OpenRequestStream(ctx)
 		AssertNil(err)
 		AssertNil(responseStream.SetDeadline(time.Now().Add(3 * time.Second)))
 		req, err := http.NewRequest(http.MethodGet, uri+"/test_file_64", nil)
@@ -849,6 +902,7 @@ func Http3UnknownFrameOnReqStreamTest(s *Http3Suite) {
 		AssertNil(err)
 		AssertEqual(64, len(body))
 		AssertNil(resp.Body.Close())
+		AssertNil(context.Cause(stream.Context()), "unknown frame must not reset the request stream")
 	}
 }
 
