@@ -1,0 +1,22 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0fccd79c_f895d324",
+        "filename": "test/test_ikev2.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 879,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-11-02T17:59:11Z",
+      "side": 1,
+      "message": "The new GRE cases run even when `gre` is in `config.excluded_plugins`: the inherited skip condition only checks `ikev2` and `ipip`, so setup still calls `gre_tunnel_add_del_v2` against a disabled/missing plugin and fails instead of skipping. Could we add a GRE exclusion check for the GRE test classes (or skip them before setup), as the existing IPsec GRE tests do, while keeping the IPIP cases runnable?",
+      "tag": "prview:acf1f2f46deca57143342256fb687248:5db238064b5dd24188c2fcab8e51a41e94ed4f80",
+      "revId": "5db238064b5dd24188c2fcab8e51a41e94ed4f80",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
