@@ -17,6 +17,24 @@
       "tag": "prview:5b8798c29392d3780189427e93e1ce46:ce4a1200735cddaa7ed28aee0a298369c7c26b7f",
       "revId": "ce4a1200735cddaa7ed28aee0a298369c7c26b7f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "adcda8fb_5439c94d",
+        "filename": "src/plugins/lb/node.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 500,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-11-02T20:06:34Z",
+      "side": 1,
+      "message": "Added in PS3: retain the original seven-packet case, then send two identical 65-packet bursts alternating the two VIPs. This covers repeated four-slot prefetch-ring wraps, the residual tail, and repeated sticky-table hits, reusing the distinct backends and destination assertions. All 22 test_lb tests pass.",
+      "parentUuid": "e6f6f60b_d87abf47",
+      "revId": "ce4a1200735cddaa7ed28aee0a298369c7c26b7f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
