@@ -331,23 +331,26 @@ format_dpdk_device_module_info (u8 * s, va_list * args)
   dpdk_device_t *xd = va_arg (*args, dpdk_device_t *);
   struct rte_eth_dev_module_info mi = { 0 };
   struct rte_dev_eeprom_info ei = { 0 };
+  vnet_interface_eeprom_t eeprom = {};
 
   if (rte_eth_dev_get_module_info (xd->port_id, &mi) != 0)
     return format (s, "unknown");
 
+  if (mi.eeprom_len > sizeof (eeprom.eeprom_raw))
+    return format (s, "eeprom too large (%u bytes)", mi.eeprom_len);
+
   ei.length = mi.eeprom_len;
-  ei.data = clib_mem_alloc (mi.eeprom_len);
+  ei.data = eeprom.eeprom_raw;
 
-  if (rte_eth_dev_get_module_eeprom (xd->port_id, &ei) == 0)
-    {
-      s = format (s, "%U", format_sfp_eeprom, ei.data +
-		  (mi.type == RTE_ETH_MODULE_SFF_8436 ? 0x80 : 0));
-    }
-  else
-    s = format (s, "eeprom read error");
+  if (rte_eth_dev_get_module_eeprom (xd->port_id, &ei) != 0)
+    return format (s, "eeprom read error");
 
-  clib_mem_free (ei.data);
-  return s;
+  /* RTE_ETH_MODULE_SFF_* values match vnet_interface_eeprom_type_t 1:1 -
+   * both are modeled on the linux/ethtool.h module info type */
+  eeprom.eeprom_type = mi.type;
+  eeprom.eeprom_len = mi.eeprom_len;
+
+  return format (s, "%U", format_sfp_eeprom_module, &eeprom, /* is_terse */ 0);
 }
 
 u8 *

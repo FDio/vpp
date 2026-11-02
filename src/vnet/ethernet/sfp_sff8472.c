@@ -3,42 +3,28 @@
  * Copyright (c) 2025 Cisco and/or its affiliates.
  */
 
-#include <math.h>
 #include <vlib/vlib.h>
 #include <vppinfra/clib.h>
-#include <vnet/ethernet/sfp_sff8472.h>
+#include <vnet/ethernet/sfp.h>
 
-static f64
-sff8472_convert_temperature (u16 raw_temp)
+u8 *
+format_sff8472_compliance (u8 *s, va_list *args)
 {
-  i16 temp = (i16) raw_temp;
-  return (f64) temp / 256.0;
-}
+  u8 *c = va_arg (*args, u8 *);
+  u8 first = 1;
 
-static f64
-sff8472_convert_voltage (u16 raw_voltage)
-{
-  return (f64) raw_voltage / 10000.0;
-}
+#define _(byte, bit, name)                                                                         \
+  if (c[byte] & (1 << (bit)))                                                                      \
+    {                                                                                              \
+      s = format (s, "%s%s", first ? "" : ", ", name);                                             \
+      first = 0;                                                                                   \
+    }
+  foreach_sff8472_compliance
+#undef _
 
-static f64
-sff8472_convert_current (u16 raw_current)
-{
-  return (f64) raw_current * 2.0 / 1000.0;
-}
+    if (first) s = format (s, "none");
 
-static f64
-sff8472_convert_power (u16 raw_power)
-{
-  return (f64) raw_power / 10000.0;
-}
-
-static f64
-sff8472_mw_to_dbm (f64 power_mw)
-{
-  if (power_mw <= 0.0)
-    return -40.0; /* Use -40 dBm for zero/negative power to avoid log(0) */
-  return 10.0 * log10 (power_mw);
+  return s;
 }
 
 static f64
@@ -97,10 +83,12 @@ sff8472_apply_calibration (sff8472_diag_t *diag, f64 *temp, f64 *vcc,
 	      (rx_raw * rx_raw * rx_raw * rx_raw * rxpwr_cal[4]);
 }
 
-void
-sff8472_decode_diagnostics (vlib_main_t *vm, vnet_interface_eeprom_t *eeprom,
-			    u8 is_terse)
+u8 *
+format_sff8472_diagnostics (u8 *s, va_list *args)
 {
+  vnet_interface_eeprom_t *eeprom = va_arg (*args, vnet_interface_eeprom_t *);
+  u8 is_terse = va_arg (*args, u32);
+  u32 indent = format_get_indent (s);
   f64 temp, vcc, tx_bias, tx_power, rx_power;
   f64 temp_high_alarm, temp_low_alarm, temp_high_warn, temp_low_warn;
   f64 vcc_high_alarm, vcc_low_alarm, vcc_high_warn, vcc_low_warn;
@@ -110,12 +98,8 @@ sff8472_decode_diagnostics (vlib_main_t *vm, vnet_interface_eeprom_t *eeprom,
   f64 rx_power_high_alarm, rx_power_low_alarm, rx_power_high_warn,
     rx_power_low_warn;
 
-  vlib_cli_output (vm, "  Module Diagnostics:");
   if (eeprom->eeprom_len <= 256)
-    {
-      vlib_cli_output (vm, "    Not supported (no A2h data)");
-      return;
-    }
+    return format (s, "Not supported (no A2h data)");
 
   u8 *eeprom_data_a2 = eeprom->eeprom_raw;
   /* Check if we have A0h+A2h (512 bytes) */
@@ -125,108 +109,93 @@ sff8472_decode_diagnostics (vlib_main_t *vm, vnet_interface_eeprom_t *eeprom,
     }
 
   sff8472_diag_t *diag = (sff8472_diag_t *) eeprom_data_a2;
-  temp =
-    sff8472_convert_temperature (clib_net_to_host_u16 (diag->temperature));
-  vcc = sff8472_convert_voltage (clib_net_to_host_u16 (diag->vcc));
-  tx_bias = sff8472_convert_current (clib_net_to_host_u16 (diag->tx_bias));
-  tx_power = sff8472_convert_power (clib_net_to_host_u16 (diag->tx_power));
-  rx_power = sff8472_convert_power (clib_net_to_host_u16 (diag->rx_power));
+  temp = sfp_sff_convert_temperature (diag->temperature);
+  vcc = sfp_sff_convert_voltage (diag->vcc);
+  tx_bias = sfp_sff_convert_current (diag->tx_bias);
+  tx_power = sfp_sff_convert_power (diag->tx_power);
+  rx_power = sfp_sff_convert_power (diag->rx_power);
 
-  /* Check if external calibration is required (A0 page byte 92, bit 4) */
-  if (eeprom->eeprom_len >= 512 && (eeprom->eeprom_raw[92] & 0x10))
+  /* Check if external calibration is required (A0 page byte 92) */
+  sff8472_diag_monitoring_type_t dmt = { .as_u8 = eeprom->eeprom_raw[92] };
+  if (eeprom->eeprom_len >= 512 && dmt.externally_calibrated)
     {
       sff8472_apply_calibration (diag, &temp, &vcc, &tx_bias, &tx_power,
 				 &rx_power);
     }
 
-  vlib_cli_output (vm, "    Current Values:");
-  vlib_cli_output (vm, "      Temperature: %.2f °C", temp);
-  vlib_cli_output (vm, "      Supply Voltage: %.4f V", vcc);
-  vlib_cli_output (vm, "      TX Bias Current: %.2f mA", tx_bias);
-  vlib_cli_output (vm, "      TX Average Power: %.4f mW (%.2f dBm)", tx_power,
-		   sff8472_mw_to_dbm (tx_power));
-  vlib_cli_output (vm, "      RX Average Power: %.4f mW (%.2f dBm)", rx_power,
-		   sff8472_mw_to_dbm (rx_power));
+  s = format (s, "Current Values:");
+  s = format_newline (s, indent + 2);
+  s = format (s, "Temperature: %.2f °C", temp);
+  s = format_newline (s, indent + 2);
+  s = format (s, "Supply Voltage: %.4f V", vcc);
+  s = format_newline (s, indent + 2);
+  s = format (s, "TX Bias Current: %.2f mA", tx_bias);
+  s = format_newline (s, indent + 2);
+  s = format (s, "TX Average Power: %.4f mW (%.2f dBm)", tx_power, sfp_sff_mw_to_dbm (tx_power));
+  s = format_newline (s, indent + 2);
+  s = format (s, "RX Average Power: %.4f mW (%.2f dBm)", rx_power, sfp_sff_mw_to_dbm (rx_power));
 
   if (is_terse || eeprom->eeprom_len <= 256 + sizeof (sff8472_diag_t))
-    {
-      return;
-    }
+    return s;
 
-  temp_high_alarm =
-    sff8472_convert_temperature (clib_net_to_host_u16 (diag->temp_high_alarm));
-  temp_low_alarm =
-    sff8472_convert_temperature (clib_net_to_host_u16 (diag->temp_low_alarm));
-  temp_high_warn = sff8472_convert_temperature (
-    clib_net_to_host_u16 (diag->temp_high_warning));
-  temp_low_warn = sff8472_convert_temperature (
-    clib_net_to_host_u16 (diag->temp_low_warning));
+  temp_high_alarm = sfp_sff_convert_temperature (diag->temp_high_alarm);
+  temp_low_alarm = sfp_sff_convert_temperature (diag->temp_low_alarm);
+  temp_high_warn = sfp_sff_convert_temperature (diag->temp_high_warning);
+  temp_low_warn = sfp_sff_convert_temperature (diag->temp_low_warning);
 
-  vcc_high_alarm =
-    sff8472_convert_voltage (clib_net_to_host_u16 (diag->voltage_high_alarm));
-  vcc_low_alarm =
-    sff8472_convert_voltage (clib_net_to_host_u16 (diag->voltage_low_alarm));
-  vcc_high_warn = sff8472_convert_voltage (
-    clib_net_to_host_u16 (diag->voltage_high_warning));
-  vcc_low_warn =
-    sff8472_convert_voltage (clib_net_to_host_u16 (diag->voltage_low_warning));
+  vcc_high_alarm = sfp_sff_convert_voltage (diag->voltage_high_alarm);
+  vcc_low_alarm = sfp_sff_convert_voltage (diag->voltage_low_alarm);
+  vcc_high_warn = sfp_sff_convert_voltage (diag->voltage_high_warning);
+  vcc_low_warn = sfp_sff_convert_voltage (diag->voltage_low_warning);
 
-  bias_high_alarm =
-    sff8472_convert_current (clib_net_to_host_u16 (diag->bias_high_alarm));
-  bias_low_alarm =
-    sff8472_convert_current (clib_net_to_host_u16 (diag->bias_low_alarm));
-  bias_high_warn =
-    sff8472_convert_current (clib_net_to_host_u16 (diag->bias_high_warning));
-  bias_low_warn =
-    sff8472_convert_current (clib_net_to_host_u16 (diag->bias_low_warning));
+  bias_high_alarm = sfp_sff_convert_current (diag->bias_high_alarm);
+  bias_low_alarm = sfp_sff_convert_current (diag->bias_low_alarm);
+  bias_high_warn = sfp_sff_convert_current (diag->bias_high_warning);
+  bias_low_warn = sfp_sff_convert_current (diag->bias_low_warning);
 
-  tx_power_high_alarm =
-    sff8472_convert_power (clib_net_to_host_u16 (diag->tx_power_high_alarm));
-  tx_power_low_alarm =
-    sff8472_convert_power (clib_net_to_host_u16 (diag->tx_power_low_alarm));
-  tx_power_high_warn =
-    sff8472_convert_power (clib_net_to_host_u16 (diag->tx_power_high_warning));
-  tx_power_low_warn =
-    sff8472_convert_power (clib_net_to_host_u16 (diag->tx_power_low_warning));
+  tx_power_high_alarm = sfp_sff_convert_power (diag->tx_power_high_alarm);
+  tx_power_low_alarm = sfp_sff_convert_power (diag->tx_power_low_alarm);
+  tx_power_high_warn = sfp_sff_convert_power (diag->tx_power_high_warning);
+  tx_power_low_warn = sfp_sff_convert_power (diag->tx_power_low_warning);
 
-  rx_power_high_alarm =
-    sff8472_convert_power (clib_net_to_host_u16 (diag->rx_power_high_alarm));
-  rx_power_low_alarm =
-    sff8472_convert_power (clib_net_to_host_u16 (diag->rx_power_low_alarm));
-  rx_power_high_warn =
-    sff8472_convert_power (clib_net_to_host_u16 (diag->rx_power_high_warning));
-  rx_power_low_warn =
-    sff8472_convert_power (clib_net_to_host_u16 (diag->rx_power_low_warning));
+  rx_power_high_alarm = sfp_sff_convert_power (diag->rx_power_high_alarm);
+  rx_power_low_alarm = sfp_sff_convert_power (diag->rx_power_low_alarm);
+  rx_power_high_warn = sfp_sff_convert_power (diag->rx_power_high_warning);
+  rx_power_low_warn = sfp_sff_convert_power (diag->rx_power_low_warning);
 
-  vlib_cli_output (vm, "    Alarm Thresholds:");
-  vlib_cli_output (vm, "      Temperature High: %.2f °C, Low: %.2f °C",
-		   temp_high_alarm, temp_low_alarm);
-  vlib_cli_output (vm, "      Voltage High: %.4f V, Low: %.4f V",
-		   vcc_high_alarm, vcc_low_alarm);
-  vlib_cli_output (vm, "      Bias Current High: %.2f mA, Low: %.2f mA",
-		   bias_high_alarm, bias_low_alarm);
-  vlib_cli_output (
-    vm, "      TX Power High: %.4f mW (%.2f dBm), Low: %.4f mW (%.2f dBm)",
-    tx_power_high_alarm, sff8472_mw_to_dbm (tx_power_high_alarm),
-    tx_power_low_alarm, sff8472_mw_to_dbm (tx_power_low_alarm));
-  vlib_cli_output (
-    vm, "      RX Power High: %.4f mW (%.2f dBm), Low: %.4f mW (%.2f dBm)",
-    rx_power_high_alarm, sff8472_mw_to_dbm (rx_power_high_alarm),
-    rx_power_low_alarm, sff8472_mw_to_dbm (rx_power_low_alarm));
+  s = format_newline (s, indent);
+  s = format (s, "Alarm Thresholds:");
+  s = format_newline (s, indent + 2);
+  s = format (s, "Temperature High: %.2f °C, Low: %.2f °C", temp_high_alarm, temp_low_alarm);
+  s = format_newline (s, indent + 2);
+  s = format (s, "Voltage High: %.4f V, Low: %.4f V", vcc_high_alarm, vcc_low_alarm);
+  s = format_newline (s, indent + 2);
+  s = format (s, "Bias Current High: %.2f mA, Low: %.2f mA", bias_high_alarm, bias_low_alarm);
+  s = format_newline (s, indent + 2);
+  s = format (s, "TX Power High: %.4f mW (%.2f dBm), Low: %.4f mW (%.2f dBm)", tx_power_high_alarm,
+	      sfp_sff_mw_to_dbm (tx_power_high_alarm), tx_power_low_alarm,
+	      sfp_sff_mw_to_dbm (tx_power_low_alarm));
+  s = format_newline (s, indent + 2);
+  s = format (s, "RX Power High: %.4f mW (%.2f dBm), Low: %.4f mW (%.2f dBm)", rx_power_high_alarm,
+	      sfp_sff_mw_to_dbm (rx_power_high_alarm), rx_power_low_alarm,
+	      sfp_sff_mw_to_dbm (rx_power_low_alarm));
 
-  vlib_cli_output (vm, "    Warning Thresholds:");
-  vlib_cli_output (vm, "      Temperature High: %.2f °C, Low: %.2f °C",
-		   temp_high_warn, temp_low_warn);
-  vlib_cli_output (vm, "      Voltage High: %.4f V, Low: %.4f V",
-		   vcc_high_warn, vcc_low_warn);
-  vlib_cli_output (vm, "      Bias Current High: %.2f mA, Low: %.2f mA",
-		   bias_high_warn, bias_low_warn);
-  vlib_cli_output (
-    vm, "      TX Power High: %.4f mW (%.2f dBm), Low: %.4f mW (%.2f dBm)",
-    tx_power_high_warn, sff8472_mw_to_dbm (tx_power_high_warn),
-    tx_power_low_warn, sff8472_mw_to_dbm (tx_power_low_warn));
-  vlib_cli_output (
-    vm, "      RX Power High: %.4f mW (%.2f dBm), Low: %.4f mW (%.2f dBm)",
-    rx_power_high_warn, sff8472_mw_to_dbm (rx_power_high_warn),
-    rx_power_low_warn, sff8472_mw_to_dbm (rx_power_low_warn));
+  s = format_newline (s, indent);
+  s = format (s, "Warning Thresholds:");
+  s = format_newline (s, indent + 2);
+  s = format (s, "Temperature High: %.2f °C, Low: %.2f °C", temp_high_warn, temp_low_warn);
+  s = format_newline (s, indent + 2);
+  s = format (s, "Voltage High: %.4f V, Low: %.4f V", vcc_high_warn, vcc_low_warn);
+  s = format_newline (s, indent + 2);
+  s = format (s, "Bias Current High: %.2f mA, Low: %.2f mA", bias_high_warn, bias_low_warn);
+  s = format_newline (s, indent + 2);
+  s = format (s, "TX Power High: %.4f mW (%.2f dBm), Low: %.4f mW (%.2f dBm)", tx_power_high_warn,
+	      sfp_sff_mw_to_dbm (tx_power_high_warn), tx_power_low_warn,
+	      sfp_sff_mw_to_dbm (tx_power_low_warn));
+  s = format_newline (s, indent + 2);
+  s = format (s, "RX Power High: %.4f mW (%.2f dBm), Low: %.4f mW (%.2f dBm)", rx_power_high_warn,
+	      sfp_sff_mw_to_dbm (rx_power_high_warn), rx_power_low_warn,
+	      sfp_sff_mw_to_dbm (rx_power_low_warn));
+
+  return s;
 }

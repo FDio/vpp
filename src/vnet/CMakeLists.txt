@@ -152,8 +152,6 @@ list(APPEND VNET_HEADERS
   ethernet/packet.h
   ethernet/types.def
   ethernet/sfp.h
-  ethernet/sfp_sff8472.h
-  ethernet/sfp_sff8636.h
   ethernet/p2p_ethernet.h
   ethernet/arp_packet.h
 )
