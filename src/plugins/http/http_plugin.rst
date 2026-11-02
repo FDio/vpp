@@ -23,6 +23,58 @@ The plugin exposes following inline functions: ``http_validate_abs_path_syntax``
 
 It relies on the hoststack constructs and uses ``http_msg_data_t`` data structure for passing metadata to/from applications.
 
+.. _http_plugin_sending_streamed_bodies:
+
+Sending streamed bodies
+^^^^^^^^^^^^^^^^^^^^^^^
+
+HTTP/1 clients can stream GET, POST and PUT request bodies. Servers can stream
+responses whose status permits a body. Set ``msg.data.type`` to
+``HTTP_MSG_DATA_STREAMING`` and ``msg.data.body_len`` to zero. Enqueue one
+``http_msg_t``, followed by the request target (for requests), serialized headers
+and raw body bytes, using the inline layout shown below.
+
+The application can enqueue body bytes over multiple TX callbacks, handling FIFO
+backpressure and scheduling TX events as usual. Further writes contain only body
+bytes, without additional message metadata or chunk framing. The transport adds
+``Transfer-Encoding: chunked``, omits ``Content-Length`` and encodes the chunks.
+
+After enqueuing all body bytes, signal EOF with ``vnet_shutdown_session()``:
+
+.. code-block:: C
+
+  vnet_shutdown_args_t args = {
+    .handle = session_handle (ts),
+    .app_index = app_index,
+  };
+  rv = vnet_shutdown_session (&args);
+  ASSERT (rv == 0);
+
+The transport drains pending TX data and sends the terminating chunk. The
+application can signal EOF while data remains in the TX FIFO; an empty body also
+requires EOF. Client request shutdown keeps RX open for the response. For server
+responses, shutdown finishes the response and closes the session.
+``vnet_disconnect_session()`` also finishes pending streamed data, but fully closes
+the session, including the response direction on a client.
+
+Streamed HTTP/1 messages use one request and response per connection. The
+``HTTP_MSG_DATA_INLINE`` and ``HTTP_MSG_DATA_PTR`` examples below describe bodies
+with a known length.
+
+Receiving streamed bodies
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+HTTP/1 chunked requests and responses are delivered with ``msg.data.type`` set to
+``HTTP_MSG_DATA_STREAMING``. The application receives one message header and the
+control data, followed by decoded body bytes. ``msg.data.body_len`` is zero and
+does not indicate completion. Chunk framing, extensions and trailers are discarded.
+
+The session disconnect callback signals body completion. The application must
+drain any remaining data from its RX FIFO before finishing the message. Malformed
+or incomplete chunked bodies reset the session instead. A streamed HTTP/1 exchange
+uses one request and response per connection; the server can still send its
+response after receiving request EOF.
+
 Server application
 ^^^^^^^^^^^^^^^^^^
 
@@ -256,6 +308,8 @@ Sending data
 
 When server application sends response back to HTTP layer it starts with message metadata, followed by optional serialized headers and finally body (if any).
 
+For bodies with an unknown length, see :ref:`http_plugin_sending_streamed_bodies`.
+
 Application should set following items:
 
 * Status code
@@ -267,7 +321,7 @@ Well known header names are predefined and are added using ``http_add_header``, 
 Header list buffer is sent buffer to HTTP layer in raw, current length is stored ``tail_offset`` member of ``http_headers_ctx_t``.
 
 .. note::
-    Following headers are added at protocol layer and **MUST NOT** be set by application: Date, Server, Content-Length, Connection, Upgrade
+    Following headers are added at protocol layer and **MUST NOT** be set by application: Date, Server, Content-Length, Transfer-Encoding, Connection, Upgrade
 
 Following example shows how to create headers section:
 
@@ -364,6 +418,8 @@ HTTP request is sent when connection is successfully established in ``session_co
 
 When client application sends message to HTTP layer it starts with message metadata, followed by request target, optional headers and body (if any) buffers.
 
+For bodies with an unknown length, see :ref:`http_plugin_sending_streamed_bodies`.
+
 Application should set following items:
 
 * HTTP method
@@ -377,7 +433,7 @@ Well known header names are predefined.
 The list is serialized just before you send buffer to HTTP layer.
 
 .. note::
-    Following headers are added at protocol layer and **MUST NOT** be set by application: Host, User-Agent
+    Following headers are added at protocol layer and **MUST NOT** be set by application: Host, User-Agent, Content-Length, Transfer-Encoding, Connection
 
 
 The example below shows how to create headers section:
