@@ -7,6 +7,7 @@
 #include <http/http.h>
 #include <http/http_header_names.h>
 #include <http/http_private.h>
+#include <http/http1/chunked.h>
 #include <http/http2/http2_inlines.h>
 #include <http/http2/hpack_inlines.h>
 #include <http/http2/hpack.h>
@@ -2204,6 +2205,400 @@ http_test_encode_u64_decimal (vlib_main_t *vm)
   return 0;
 }
 
+typedef struct
+{
+  http1_chunked_decoder_t decoder;
+  http1_chunked_result_t result;
+  u32 consumed;
+  u32 body_len;
+  u8 body[128];
+} http_chunked_test_result_t;
+
+static http1_chunked_result_t (*_http1_chunked_decode) (http1_chunked_decoder_t *, const u8 *, u32,
+							u32 *, u32 *);
+
+static int
+http_test_chunked_run (http_token_t input, u32 split, u32 fragment_size, u32 write_limit,
+		       http_chunked_test_result_t *test)
+{
+  u32 end = 0, consumed, data_len, n, iterations = 0;
+  http1_chunked_result_t result;
+
+  clib_memset (test, 0, sizeof (*test));
+  for (;;)
+    {
+      if (++iterations > input.len * 3 + 4)
+	return 1;
+      if (test->consumed == end && end < input.len)
+	{
+	  end = fragment_size ? clib_min (end + fragment_size, input.len) : input.len;
+	  if (test->consumed < split)
+	    end = clib_min (end, split);
+	}
+      result = _http1_chunked_decode (&test->decoder, (const u8 *) input.base + test->consumed,
+				      end - test->consumed, &consumed, &data_len);
+      if (consumed > end - test->consumed)
+	return 1;
+      test->consumed += consumed;
+      if (result == HTTP1_CHUNKED_DATA)
+	{
+	  if (!data_len || data_len > end - test->consumed ||
+	      data_len > test->decoder.chunk_bytes_left)
+	    return 1;
+	  n = clib_min (data_len, write_limit);
+	  if (test->body_len + n > sizeof (test->body))
+	    return 1;
+	  clib_memcpy_fast (test->body + test->body_len, input.base + test->consumed, n);
+	  test->body_len += n;
+	  test->consumed += n;
+	  http1_chunked_consume_data (&test->decoder, n);
+	}
+      else
+	{
+	  if (data_len)
+	    return 1;
+	  if (result != HTTP1_CHUNKED_MORE || end == input.len)
+	    break;
+	  if (test->consumed != end)
+	    return 1;
+	}
+    }
+  test->result = result;
+  /* Empty input must preserve completion, failure, or incomplete status. */
+  return _http1_chunked_decode (&test->decoder, 0, 0, &consumed, &data_len) != result || consumed ||
+	 data_len;
+}
+
+static int
+http_test_chunked_valid (vlib_main_t *vm)
+{
+  static const struct
+  {
+    const char *name;
+    http_token_t input;
+    http_token_t body;
+    u32 extra;
+  } tests[] = {
+    { "empty", { http_token_lit ("0\r\n\r\n") }, { http_token_lit ("") }, 0 },
+    { "multiple zero digits", { http_token_lit ("0000\r\n\r\n") }, { http_token_lit ("") }, 0 },
+    { "one chunk", { http_token_lit ("4\r\nWiki\r\n0\r\n\r\n") }, { http_token_lit ("Wiki") }, 0 },
+    { "several chunks",
+      { http_token_lit ("4\r\nWiki\r\n5\r\npedia\r\n0\r\n\r\n") },
+      { http_token_lit ("Wikipedia") },
+      0 },
+    { "mixed case hex",
+      { http_token_lit ("a\r\n0123456789\r\nA\r\nabcdefghij\r\n0\r\n\r\n") },
+      { http_token_lit ("0123456789abcdefghij") },
+      0 },
+    { "leading zeros",
+      { http_token_lit ("0001\r\nx\r\n000\r\n\r\n") },
+      { http_token_lit ("x") },
+      0 },
+    { "binary payload",
+      { http_token_lit ("5\r\n\0\r\n\377x\r\n0\r\n\r\n") },
+      { http_token_lit ("\0\r\n\377x") },
+      0 },
+    { "extensions",
+      { http_token_lit ("1;foo;bar=baz\r\nx\r\n0;end=yes\r\n\r\n") },
+      { http_token_lit ("x") },
+      0 },
+    { "extension whitespace",
+      { http_token_lit ("1 \t; \tfoo \t= \tbar \t; baz\r\nx\r\n0\r\n\r\n") },
+      { http_token_lit ("x") },
+      0 },
+    { "quoted extensions",
+      { http_token_lit ("1;x=\"\";y=\"a;= \\\"\\\\\t\200\";z=\"\\\200\"\r\nx\r\n0\r\n\r\n") },
+      { http_token_lit ("x") },
+      0 },
+    { "token punctuation",
+      { http_token_lit ("0;!#$%&'*+-.^_`|~=!#$%&'*+-.^_`|~\r\n\r\n") },
+      { http_token_lit ("") },
+      0 },
+    { "trailers",
+      { http_token_lit ("1\r\nx\r\n0\r\nX-Checksum: abc\r\nOther:\r\n\r\n") },
+      { http_token_lit ("x") },
+      0 },
+    { "trailer values",
+      { http_token_lit ("0\r\nX: \t!\"\\:;\200\377 \t\r\n\r\n") },
+      { http_token_lit ("") },
+      0 },
+    { "empty with following input",
+      { http_token_lit ("0\r\n\r\nNEXT") },
+      { http_token_lit ("") },
+      4 },
+    { "trailers with following input",
+      { http_token_lit ("1\r\nx\r\n0\r\nX: v\r\n\r\nNEXT") },
+      { http_token_lit ("x") },
+      4 },
+  };
+  http_chunked_test_result_t test;
+  int failed;
+
+  for (u32 i = 0; i < ARRAY_LEN (tests); i++)
+    {
+      failed = 0;
+      for (u32 split = 0; split <= tests[i].input.len && !failed; split++)
+	for (u32 mode = 0; mode < 3; mode++)
+	  {
+	    failed = http_test_chunked_run (tests[i].input, split, mode == 2 ? 1 : 0,
+					    mode ? 1 : CLIB_U32_MAX, &test);
+	    failed |= test.result != HTTP1_CHUNKED_DONE ||
+		      test.consumed != tests[i].input.len - tests[i].extra ||
+		      test.body_len != tests[i].body.len ||
+		      memcmp (test.body, tests[i].body.base, tests[i].body.len);
+	    if (failed)
+	      {
+		vlib_cli_output (vm,
+				 "chunked case %s, split %u, mode %u: result %d, consumed %u, "
+				 "body length %u",
+				 tests[i].name, split, mode, test.result, test.consumed,
+				 test.body_len);
+		break;
+	      }
+	  }
+      HTTP_TEST (!failed, "chunked: %s across all fragment boundaries", tests[i].name);
+    }
+  return 0;
+}
+
+static int
+http_test_chunked_invalid (vlib_main_t *vm)
+{
+  static const http_token_t tests[] = {
+    { http_token_lit ("\r\n") },
+    { http_token_lit ("\n") },
+    { http_token_lit (" 1\r\n") },
+    { http_token_lit ("\t1\r\n") },
+    { http_token_lit ("+1\r\n") },
+    { http_token_lit ("-1\r\n") },
+    { http_token_lit ("0x1\r\n") },
+    { http_token_lit ("g\r\n") },
+    { http_token_lit ("1G\r\n") },
+    { http_token_lit ("1\n") },
+    { http_token_lit ("1\rx") },
+    { http_token_lit ("1 \r\n") },
+    { http_token_lit ("1\tX\r\n") },
+    { http_token_lit ("1\r\naX") },
+    { http_token_lit ("1\r\na\rX") },
+    { http_token_lit ("1\r\na\n") },
+    { http_token_lit ("1\r\na\r\n\r\n") },
+    { http_token_lit ("0\r\n\n") },
+    { http_token_lit ("0\r\n\rX") },
+    { http_token_lit ("0\r\nMissing-colon\r\n\r\n") },
+    { http_token_lit ("0\r\n: value\r\n\r\n") },
+    { http_token_lit ("0\r\nX : value\r\n\r\n") },
+    { http_token_lit ("0\r\n X: value\r\n\r\n") },
+    { http_token_lit ("0\r\nX: value\n\r\n") },
+    { http_token_lit ("0\r\nX: value\rX") },
+    { http_token_lit ("0\r\nX: value\r\n folded\r\n\r\n") },
+    { http_token_lit ("0\r\nX: \1\r\n\r\n") },
+    { http_token_lit ("0\r\nX: \177\r\n\r\n") },
+    { http_token_lit ("0\r\nX: \0\r\n\r\n") },
+    { http_token_lit ("0;\r\n\r\n") },
+    { http_token_lit ("0;;x\r\n\r\n") },
+    { http_token_lit ("0;=v\r\n\r\n") },
+    { http_token_lit ("0;x=\r\n\r\n") },
+    { http_token_lit ("0;x=\"unclosed\r\n\r\n") },
+    { http_token_lit ("0;x=\"a\\\r\n") },
+    { http_token_lit ("0;x=\"a\"b\r\n\r\n") },
+    { http_token_lit ("0;x=v w\r\n\r\n") },
+    { http_token_lit ("0;x=v \r\n\r\n") },
+    { http_token_lit ("0;x \r\n\r\n") },
+    { http_token_lit ("0;x=(v)\r\n\r\n") },
+    { http_token_lit ("0;\200=v\r\n\r\n") },
+    { http_token_lit ("0;x=\200\r\n\r\n") },
+    { http_token_lit ("0;x=\"\177\"\r\n\r\n") },
+    { http_token_lit ("0;x=\"\0\"\r\n\r\n") },
+    { http_token_lit ("10000000000000000\r\n") },
+    { http_token_lit ("ffffffffffffffff0\r\n") },
+    { http_token_lit ("80000000000000000\r\n") },
+    { http_token_lit ("00010000000000000000\r\n") },
+  };
+  http_chunked_test_result_t test;
+  int failed;
+
+  for (u32 i = 0; i < ARRAY_LEN (tests); i++)
+    {
+      failed = 0;
+      for (u32 split = 0; split <= tests[i].len && !failed; split++)
+	for (u32 mode = 0; mode < 2; mode++)
+	  {
+	    failed = http_test_chunked_run (tests[i], split, mode, 1, &test);
+	    failed |= test.result != HTTP1_CHUNKED_INVALID || test.consumed >= tests[i].len;
+	    if (failed)
+	      {
+		vlib_cli_output (vm,
+				 "invalid chunked case %u, split %u, mode %u: result %d, "
+				 "consumed %u",
+				 i, split, mode, test.result, test.consumed);
+		break;
+	      }
+	  }
+      HTTP_TEST (!failed, "chunked: malformed input %u rejected across all fragment boundaries", i);
+    }
+  return 0;
+}
+
+static int
+http_test_chunked_incremental (vlib_main_t *vm)
+{
+  static const struct
+  {
+    http_token_t input;
+    u64 size;
+  } sizes[] = {
+    { { http_token_lit ("0\r\n") }, 0 },
+    { { http_token_lit ("1\r\n") }, 1 },
+    { { http_token_lit ("a\r\n") }, 10 },
+    { { http_token_lit ("F\r\n") }, 15 },
+    { { http_token_lit ("10\r\n") }, 16 },
+    { { http_token_lit ("FFFFFFFF\r\n") }, CLIB_U32_MAX },
+    { { http_token_lit ("100000000\r\n") }, (u64) CLIB_U32_MAX + 1 },
+    { { http_token_lit ("7fffffffffffffff\r\n") }, CLIB_U64_MAX >> 1 },
+    { { http_token_lit ("8000000000000000\r\n") }, (u64) 1 << 63 },
+    { { http_token_lit ("ffffffffffffffff\r\n") }, CLIB_U64_MAX },
+    { { http_token_lit ("000FFFFFFFFFFFFFFFF\r\n") }, CLIB_U64_MAX },
+  };
+  http_token_t input = { http_token_lit ("4;ext=\"a\\\"b\"\r\ndata\r\n0;end\r\nX: value\r\n\r\n") };
+  http_token_t huge = { http_token_lit ("ffffffffffffffff\r\nx") };
+  http1_chunked_decoder_t decoder = {};
+  http_chunked_test_result_t test;
+  http1_chunked_result_t result;
+  u32 consumed, data_len;
+
+  for (u32 i = 0; i < ARRAY_LEN (sizes); i++)
+    {
+      for (u32 mode = 0; mode < 2; mode++)
+	{
+	  HTTP_TEST (!http_test_chunked_run (sizes[i].input, 0, mode, 1, &test) &&
+		       test.result == HTTP1_CHUNKED_MORE && test.consumed == sizes[i].input.len &&
+		       test.decoder.chunk_bytes_left == sizes[i].size,
+		     "chunked: size %llu accepted (fragment size %u)", sizes[i].size, mode);
+	}
+    }
+  HTTP_TEST (!http_test_chunked_run (huge, 0, 1, 1, &test) && test.result == HTTP1_CHUNKED_MORE &&
+	       test.decoder.chunk_bytes_left == CLIB_U64_MAX - 1 && test.body_len == 1 &&
+	       test.body[0] == 'x',
+	     "chunked: large chunk streamed without buffering");
+
+  for (u32 len = 0; len < input.len; len++)
+    {
+      http_token_t prefix = { input.base, len };
+      HTTP_TEST (!http_test_chunked_run (prefix, 0, 1, 1, &test) &&
+		   test.result == HTTP1_CHUNKED_MORE && test.consumed == len,
+		 "chunked: prefix %u remains incomplete at EOF", len);
+    }
+
+  input = (http_token_t) { http_token_lit ("4\r\ndata\r\n0\r\n\r\nNEXT") };
+  result =
+    _http1_chunked_decode (&decoder, (const u8 *) input.base, input.len, &consumed, &data_len);
+  HTTP_TEST (result == HTTP1_CHUNKED_DATA && consumed == 3 && data_len == 4,
+	     "chunked: payload returned separately from framing");
+  http1_chunked_consume_data (&decoder, 0);
+  result = _http1_chunked_decode (&decoder, (const u8 *) input.base + 3, input.len - 3, &consumed,
+				  &data_len);
+  HTTP_TEST (result == HTTP1_CHUNKED_DATA && !consumed && data_len == 4 &&
+	       decoder.chunk_bytes_left == 4,
+	     "chunked: full app FIFO leaves payload pending");
+  http1_chunked_consume_data (&decoder, 1);
+  result = _http1_chunked_decode (&decoder, (const u8 *) input.base + 4, input.len - 4, &consumed,
+				  &data_len);
+  HTTP_TEST (result == HTTP1_CHUNKED_DATA && !consumed && data_len == 3 &&
+	       decoder.chunk_bytes_left == 3,
+	     "chunked: partial app write resumes at remaining payload");
+  http1_chunked_consume_data (&decoder, 3);
+  result = _http1_chunked_decode (&decoder, (const u8 *) input.base + 7, input.len - 7, &consumed,
+				  &data_len);
+  HTTP_TEST (result == HTTP1_CHUNKED_DONE && consumed == 7 && !data_len,
+	     "chunked: completion leaves following input untouched");
+  result = _http1_chunked_decode (&decoder, (const u8 *) input.base + 14, 4, &consumed, &data_len);
+  HTTP_TEST (result == HTTP1_CHUNKED_DONE && !consumed && !data_len,
+	     "chunked: completed decoder does not consume a subsequent message");
+  return 0;
+}
+
+static int
+http_test_chunked_limits (vlib_main_t *vm)
+{
+  http_chunked_test_result_t test;
+  http1_chunked_result_t expected;
+  http_token_t input;
+  u8 *buf = 0;
+  u32 size;
+  int failed;
+
+  for (u32 excess = 0; excess < 2; excess++)
+    {
+      size = HTTP1_CHUNKED_MAX_LINE_SIZE + excess;
+      vec_validate (buf, size + 1);
+      clib_memcpy_fast (buf, "0;x=", 4);
+      clib_memset (buf + 4, 'a', size - 6);
+      clib_memcpy_fast (buf + size - 2, "\r\n\r\n", 4);
+      input = (http_token_t) { (char *) buf, size + 2 };
+      expected = excess ? HTTP1_CHUNKED_TOO_LARGE : HTTP1_CHUNKED_DONE;
+      failed = 0;
+      for (u32 mode = 0; mode < 2; mode++)
+	{
+	  failed |= http_test_chunked_run (input, 0, mode, 1, &test);
+	  failed |= test.result != expected || test.body_len ||
+		    test.consumed != (excess ? HTTP1_CHUNKED_MAX_LINE_SIZE : input.len);
+	}
+      vec_free (buf);
+      HTTP_TEST (!failed, "chunked: size line limit %u (excess %u)", HTTP1_CHUNKED_MAX_LINE_SIZE,
+		 excess);
+
+      size = HTTP1_CHUNKED_MAX_TRAILER_SIZE + excess;
+      vec_validate (buf, size + 2);
+      clib_memcpy_fast (buf, "0\r\nX:", 5);
+      clib_memset (buf + 5, 'a', size - 6);
+      clib_memcpy_fast (buf + size - 1, "\r\n\r\n", 4);
+      input = (http_token_t) { (char *) buf, size + 3 };
+      failed = 0;
+      for (u32 mode = 0; mode < 2; mode++)
+	{
+	  failed |= http_test_chunked_run (input, 0, mode, 1, &test);
+	  failed |= test.result != expected || test.body_len ||
+		    test.consumed != (excess ? 3 + HTTP1_CHUNKED_MAX_TRAILER_SIZE : input.len);
+	}
+      vec_free (buf);
+      HTTP_TEST (!failed, "chunked: trailer section limit %u (excess %u)",
+		 HTTP1_CHUNKED_MAX_TRAILER_SIZE, excess);
+    }
+
+  /* Leading zeros cannot bypass the size-line bound without overflowing u64. */
+  size = HTTP1_CHUNKED_MAX_LINE_SIZE + 1;
+  vec_validate (buf, size + 1);
+  clib_memset (buf, '0', size - 2);
+  clib_memcpy_fast (buf + size - 2, "\r\n\r\n", 4);
+  input = (http_token_t) { (char *) buf, size + 2 };
+  failed = http_test_chunked_run (input, 0, 1, 1, &test) || test.result != HTTP1_CHUNKED_TOO_LARGE;
+  vec_free (buf);
+  HTTP_TEST (!failed, "chunked: excessive leading zeros rejected");
+
+  /* The trailer bound applies to the whole section, including short fields. */
+  vec_validate (buf, HTTP1_CHUNKED_MAX_TRAILER_SIZE + 4);
+  clib_memcpy_fast (buf, "0\r\n", 3);
+  for (u32 i = 0; i < HTTP1_CHUNKED_MAX_TRAILER_SIZE; i += 4)
+    clib_memcpy_fast (buf + 3 + i, "X:\r\n", 4);
+  clib_memcpy_fast (buf + 3 + HTTP1_CHUNKED_MAX_TRAILER_SIZE, "\r\n", 2);
+  input = (http_token_t) { (char *) buf, vec_len (buf) };
+  failed = http_test_chunked_run (input, 0, 1, 1, &test) ||
+	   test.result != HTTP1_CHUNKED_TOO_LARGE ||
+	   test.consumed != 3 + HTTP1_CHUNKED_MAX_TRAILER_SIZE;
+  vec_free (buf);
+  HTTP_TEST (!failed, "chunked: aggregate trailer limit enforced");
+  return 0;
+}
+
+static int
+http_test_decode_chunked (vlib_main_t *vm)
+{
+  _http1_chunked_decode = vlib_get_plugin_symbol ("http_plugin.so", "http1_chunked_decode");
+  HTTP_TEST (_http1_chunked_decode != 0, "chunked decoder symbol resolved");
+  return http_test_chunked_valid (vm) || http_test_chunked_invalid (vm) ||
+	 http_test_chunked_incremental (vm) || http_test_chunked_limits (vm);
+}
+
 static int
 http_test_parse_content_length (vlib_main_t *vm)
 {
@@ -2529,6 +2924,8 @@ test_http_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	res = http_test_http_headers_rx_to_tx (vm);
       else if (unformat (input, "parse-content-length"))
 	res = http_test_parse_content_length (vm);
+      else if (unformat (input, "decode-chunked"))
+	res = http_test_decode_chunked (vm);
       else if (unformat (input, "encode-u64-decimal"))
 	res = http_test_encode_u64_decimal (vm);
       else if (unformat (input, "decode-varint"))
@@ -2562,6 +2959,8 @@ test_http_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	  if ((res = http_test_http_headers_rx_to_tx (vm)))
 	    goto done;
 	  if ((res = http_test_parse_content_length (vm)))
+	    goto done;
+	  if ((res = http_test_decode_chunked (vm)))
 	    goto done;
 	  if ((res = http_test_encode_u64_decimal (vm)))
 	    goto done;

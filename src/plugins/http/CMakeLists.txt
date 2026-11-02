@@ -13,6 +13,8 @@
 
 add_vpp_plugin(http
   SOURCES
+  http1/chunked.c
+  http1/http1.c
   http2/hpack.c
   http2/http2.c
   http2/frame.c
@@ -22,7 +24,6 @@ add_vpp_plugin(http
   http.c
   http_buffer.c
   http_timer.c
-  http1.c
 )
 
 add_vpp_plugin(http_unittest
