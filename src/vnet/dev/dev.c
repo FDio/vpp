@@ -609,7 +609,7 @@ vnet_dev_main_init (vlib_main_t *vm)
       driver->bus_index = bus_index;
       driver->ops = r->device.ops;
       dev_class = clib_mem_alloc (sizeof (vnet_device_class_t));
-      *dev_class = (vnet_device_class_t){
+      *dev_class = (vnet_device_class_t) {
 	.name = r->name,
 	.format_device_name = format_vnet_dev_interface_name,
 	.format_device = format_vnet_dev_interface_info,
@@ -622,6 +622,7 @@ vnet_dev_main_init (vlib_main_t *vm)
 	.format_flow = format_vnet_dev_flow,
 	.set_rss_queues_function = vnet_dev_interface_set_rss_queues,
 	.set_link_speed_function = vnet_dev_port_set_link_speed,
+	.eeprom_read_function = vnet_dev_port_eeprom_read,
       };
       driver->dev_class_index = vnet_register_device_class (vm, dev_class);
 
