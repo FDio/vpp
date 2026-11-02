@@ -1,0 +1,40 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "75e54fba_b5c3e907",
+        "filename": "src/plugins/rdma/device.c",
+        "patchSetId": 28
+      },
+      "lineNbr": 974,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-11-02T12:34:04Z",
+      "side": 1,
+      "message": "Could we validate the actual SQ size against the counter and bitfield limits after enabling inline data? For example, `tx-queue-size 8192 tx-empw-inline on max-size 460` makes mlx5 allocate 512 bytes per requested WR, giving 65536 WQEBBs (the provider rounds `max_send_wr * wqe_size` to a power of two). This passes the current SQ checks, but storing log2(65536) in the four-bit `dv_sq_log2sz` truncates it to zero. The datapath then uses a one-entry SQ mask and overwrites slot zero instead of the hardware\u0027s next WQE, stopping transmission. Reject an unrepresentable SQ size, or cap the usable ring with accounting that remains valid for the 16-bit counters; simply widening the bitfield would also require handling a full 65536-entry ring. Provider sizing: https://github.com/linux-rdma/rdma-core/blob/master/providers/mlx5/verbs.c#L1688-L1733",
+      "tag": "prview:7c0cc8d8dc29ff9577dd56dae4486e33:562393629e84e03e6732a89ee0aa4c79f473f0d7",
+      "revId": "562393629e84e03e6732a89ee0aa4c79f473f0d7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "cf716700_6c1457b7",
+        "filename": "src/plugins/rdma/output.c",
+        "patchSetId": 28
+      },
+      "lineNbr": 101,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-11-02T12:34:04Z",
+      "side": 1,
+      "message": "Could we set an `invalid_completion` flag in the validation `if` blocks and use a final `if/else` for error counting versus buffer reclamation, removing both `goto invalid_completion` and `goto done`? Please keep it separate from `completion_error`, guard the buffer-tail map lookup after SQ validation fails, and retain the common CQ doorbell/error epilogue. This would make the control flow easier to follow while preserving the existing behavior.",
+      "tag": "prview:7c0cc8d8dc29ff9577dd56dae4486e33:562393629e84e03e6732a89ee0aa4c79f473f0d7",
+      "revId": "562393629e84e03e6732a89ee0aa4c79f473f0d7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
