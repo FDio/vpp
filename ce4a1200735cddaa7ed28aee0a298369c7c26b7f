@@ -1,0 +1,22 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e6f6f60b_d87abf47",
+        "filename": "src/plugins/lb/node.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 500,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-11-02T12:44:13Z",
+      "side": 1,
+      "message": "Optional test coverage: could we extend `test_lb_sticky_cross_vip` with a longer burst alternating between its two VIPs, then repeat it to exercise sticky-table hits? The existing seven-packet case already covers an uneven packet count; alternating VIPs over several ring wraps would better exercise keeping each cached hash paired with the correct VIP index. Its distinct backends and existing destination assertions can be reused.",
+      "tag": "prview:5b8798c29392d3780189427e93e1ce46:ce4a1200735cddaa7ed28aee0a298369c7c26b7f",
+      "revId": "ce4a1200735cddaa7ed28aee0a298369c7c26b7f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
