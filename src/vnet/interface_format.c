@@ -101,7 +101,7 @@ format_vnet_hw_interface_link_speed (u8 * s, va_list * args)
   if (link_speed >= 1000)
     return format (s, "%u Mbps", link_speed / 1000);
 
-  return format (s, "%u Kbps", link_speed);
+  return format (s, "%u kbps", link_speed);
 }
 
 u8 *
