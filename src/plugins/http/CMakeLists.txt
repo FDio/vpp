@@ -23,6 +23,7 @@ add_vpp_plugin(http
   http_buffer.c
   http_timer.c
   http1.c
+  http1_chunked.c
 )
 
 add_vpp_plugin(http_unittest

@@ -39,8 +39,11 @@ typedef struct
   clib_thread_index_t thread_index;
   u8 *tx_buf;
   u8 *rx_buf;
+  hcs_cli_args_t *pending_cli;
   u64 rx_left;
   u8 echo_rx;
+  u8 rx_streaming;
+  u8 rx_eof;
   u8 stream;
   u8 close_after_tx;
   u8 eof_after_drain;
@@ -189,7 +192,7 @@ hcs_finish_tx (session_t *s, hcs_session_t *hs)
 {
   hcs_main_t *hcm = &hcs_main;
 
-  if (!hs->stream || hs->tx_eof || hs->tx_buf)
+  if ((!hs->stream && !hs->rx_streaming) || hs->tx_eof || hs->tx_buf)
     return;
   if (hs->eof_after_drain && svm_fifo_max_dequeue (s->tx_fifo))
     {
@@ -197,7 +200,7 @@ hcs_finish_tx (session_t *s, hcs_session_t *hs)
       return;
     }
   hs->tx_eof = 1;
-  if (hs->close_after_tx)
+  if (hs->close_after_tx || !hs->stream)
     {
       vnet_disconnect_args_t a = { .handle = s->handle, .app_index = hcm->app_index };
       vnet_disconnect_session (&a);
@@ -396,26 +399,38 @@ alloc_cli_process_callback (void *cb_args)
   alloc_cli_process ((hcs_cli_args_t *) cb_args);
 }
 
+static void
+hcs_schedule_cli (hcs_cli_args_t *args)
+{
+  if (vlib_get_thread_index () != 0)
+    vlib_rpc_call_main_thread (alloc_cli_process_callback, (u8 *) args, sizeof (*args));
+  else
+    alloc_cli_process (args);
+}
+
 static int
 hcs_echo_rx (session_t *ts, hcs_session_t *hs, u32 control_len)
 {
-  u32 n_deq = clib_min (hs->rx_left, svm_fifo_max_dequeue (ts->rx_fifo));
+  u32 n_deq = svm_fifo_max_dequeue (ts->rx_fifo);
   u8 *data;
   int rv;
 
+  if (!hs->rx_streaming)
+    n_deq = clib_min (hs->rx_left, n_deq);
   if (n_deq)
     {
       vec_add2 (hs->rx_buf, data, n_deq);
       rv = svm_fifo_dequeue (ts->rx_fifo, n_deq, data);
       ASSERT (rv == n_deq);
-      hs->rx_left -= n_deq;
+      if (!hs->rx_streaming)
+	hs->rx_left -= n_deq;
     }
   if (svm_fifo_needs_deq_ntf (ts->rx_fifo, n_deq + control_len))
     {
       svm_fifo_clear_deq_ntf (ts->rx_fifo);
       session_program_transport_io_evt (ts->handle, SESSION_IO_EVT_RX);
     }
-  if (!hs->rx_left)
+  if (hs->rx_streaming ? hs->rx_eof : !hs->rx_left)
     {
       hs->echo_rx = 0;
       hs->tx_buf = hs->rx_buf;
@@ -425,6 +440,18 @@ hcs_echo_rx (session_t *ts, hcs_session_t *hs, u32 control_len)
       start_send_data (hs, HTTP_STATUS_OK);
     }
   return 0;
+}
+
+static void
+hcs_discard_rx (session_t *ts)
+{
+  u32 n_deq = svm_fifo_max_dequeue (ts->rx_fifo);
+  svm_fifo_dequeue_drop_all (ts->rx_fifo);
+  if (svm_fifo_needs_deq_ntf (ts->rx_fifo, n_deq))
+    {
+      svm_fifo_clear_deq_ntf (ts->rx_fifo);
+      session_program_transport_io_evt (ts->handle, SESSION_IO_EVT_RX);
+    }
 }
 
 static int
@@ -438,6 +465,11 @@ hcs_ts_rx_callback (session_t *ts)
   hs = hcs_session_get (ts->thread_index, ts->opaque);
   if (hs->echo_rx)
     return hcs_echo_rx (ts, hs, 0);
+  if (hs->rx_streaming)
+    {
+      hcs_discard_rx (ts);
+      return 0;
+    }
   hs->tx_buf = 0;
   http_init_headers_ctx (&hs->resp_headers, hs->resp_headers_buf,
 			 vec_len (hs->resp_headers_buf));
@@ -446,6 +478,8 @@ hcs_ts_rx_callback (session_t *ts)
   /* Read the http message header */
   rv = svm_fifo_dequeue (ts->rx_fifo, sizeof (msg), (u8 *) &msg);
   ASSERT (rv == sizeof (msg));
+  hs->rx_streaming = msg.data.type == HTTP_MSG_DATA_STREAMING;
+  hs->rx_eof = 0;
 
   if (msg.type != HTTP_MSG_REQUEST ||
       (msg.method_type != HTTP_REQ_GET && msg.method_type != HTTP_REQ_POST &&
@@ -485,7 +519,9 @@ hcs_ts_rx_callback (session_t *ts)
       http_token_is ((char *) args.buf, vec_len (args.buf), http_token_lit ("echo-stream-close")) ||
       http_token_is ((char *) args.buf, vec_len (args.buf), http_token_lit ("echo-stream-drain")))
     {
-      u32 control_len = msg.data.body_len ? msg.data.body_offset : msg.data.len;
+      u32 control_len = (msg.data.type == HTTP_MSG_DATA_STREAMING || msg.data.body_len) ?
+			  msg.data.body_offset :
+			  msg.data.len;
       hs->stream = vec_len (args.buf) > 4;
       hs->close_after_tx =
 	http_token_is ((char *) args.buf, vec_len (args.buf), http_token_lit ("echo-stream-close"));
@@ -513,12 +549,11 @@ hcs_ts_rx_callback (session_t *ts)
 			  msg.data.headers_len, hs->req_headers.buf);
       ASSERT (rv == msg.data.headers_len);
       http_build_header_table (&hs->req_headers, msg);
-      const http_token_t *accept_value = http_get_header (
-	&hs->req_headers, http_header_name_token (HTTP_HEADER_ACCEPT));
+      const http_token_t *accept_value =
+	http_get_header (&hs->req_headers, http_header_name_token (HTTP_HEADER_ACCEPT));
       if (accept_value)
 	{
-	  HCS_DBG ("client accept: %U", format_http_bytes, accept_value->base,
-		   accept_value->len);
+	  HCS_DBG ("client accept: %U", format_http_bytes, accept_value->base, accept_value->len);
 	  /* just for testing purpose, we don't care about precedence */
 	  if (http_token_contains (accept_value->base, accept_value->len,
 				   http_token_lit ("text/plain")))
@@ -529,15 +564,19 @@ hcs_ts_rx_callback (session_t *ts)
   args.hs_index = hs->session_index;
   args.thread_index = ts->thread_index;
 
-  /* Send RPC request to main thread */
-  if (vlib_get_thread_index () != 0)
-    vlib_rpc_call_main_thread (alloc_cli_process_callback, (u8 *) &args,
-			       sizeof (args));
+  /* Wait for request EOF before executing a streamed CLI command. */
+  if (hs->rx_streaming)
+    {
+      hs->pending_cli = clib_mem_alloc (sizeof (args));
+      *hs->pending_cli = args;
+    }
   else
-    alloc_cli_process (&args);
+    hcs_schedule_cli (&args);
 
 done:
   svm_fifo_dequeue_drop (ts->rx_fifo, msg.data.len);
+  if (hs->rx_streaming)
+    hcs_discard_rx (ts);
   return 0;
 }
 
@@ -609,9 +648,25 @@ static void
 hcs_ts_disconnect_callback (session_t *s)
 {
   hcs_main_t *hcm = &hcs_main;
+  hcs_session_t *hs = hcs_session_get (s->thread_index, s->opaque);
   vnet_disconnect_args_t _a = { 0 }, *a = &_a;
 
   HCS_DBG ("hs_index: %u", s->opaque);
+  if (svm_fifo_max_dequeue (s->rx_fifo))
+    hcs_ts_rx_callback (s);
+  if (hs->rx_streaming)
+    {
+      hs->rx_eof = 1;
+      if (hs->echo_rx)
+	hcs_echo_rx (s, hs, 0);
+      else if (hs->pending_cli)
+	{
+	  hcs_schedule_cli (hs->pending_cli);
+	  clib_mem_free (hs->pending_cli);
+	  hs->pending_cli = 0;
+	}
+      return;
+    }
   a->handle = session_handle (s);
   a->app_index = hcm->app_index;
   vnet_disconnect_session (a);
@@ -645,6 +700,11 @@ hcs_ts_cleanup_callback (session_t *s, session_cleanup_ntf_t ntf)
   vec_free (hs->tx_buf);
   vec_free (hs->rx_buf);
   vec_free (hs->resp_headers_buf);
+  if (hs->pending_cli)
+    {
+      vec_free (hs->pending_cli->buf);
+      clib_mem_free (hs->pending_cli);
+    }
   http_free_header_table (&hs->req_headers);
   hcs_session_free (hs);
 }

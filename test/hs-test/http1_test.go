@@ -45,6 +45,11 @@ func init() {
 		HttpCliClientStreamEarlyResponseTest, HttpCliClientStreamWireTest,
 		HttpCliServerStreamTest, HttpCliServerStreamCloseTest, HttpCliServerStreamDrainTest,
 		HttpCliServerStreamBackpressureTest, HttpCliServerStreamTlsTest,
+		HttpCliServerChunkedTest, HttpCliServerChunkedFragmentedTest, HttpCliServerChunkedTrailersTest,
+		HttpCliServerChunkedBackpressureTest, HttpCliServerChunkedHalfCloseTest, HttpCliServerChunkedLargeFifoTest,
+		HttpCliServerChunkedBadFramingTest, HttpCliServerChunkedHeadersTest,
+		HttpCliServerChunkedEarlyReplyTest, HttpCliServerChunkedCliTest, HttpCliServerChunkedTlsTest,
+		HttpCliServerChunkedCurlUploadTest, HttpCliServerChunkedCurlDownloadTest,
 		HttpClientNoPrintTest, HttpClientChunkedDownloadTest, HttpClientPutStreamingTest, HttpClientPostRejectedTest,
 		HttpClientRedirect302Test, HttpClientRedirect308Test, HttpSendGetAndCloseTest, HttpClientRedirectLimitTest, HttpClientRedirectGetMemLeakTest,
 		HttpClientRedirectPostMemLeakTest, HttpGetTpsTest, HttpPostTpsTest, HttpGetTpsInterruptModeTest, HttpPostTpsInterruptModeTest,
@@ -766,6 +771,297 @@ func HttpCliServerStreamTlsTest(s *Http1Suite) {
 	AssertEqual(body, string(data))
 }
 
+func httpCliChunkedBody(body string) string {
+	if body == "" {
+		return "0\r\n\r\n"
+	}
+	return fmt.Sprintf("%x\r\n%s\r\n0\r\n\r\n", len(body), body)
+}
+
+func httpCliChunkedConnect(address, method, target, headers, body string) (net.Conn, *bufio.Reader) {
+	conn, err := net.DialTimeout("tcp", address, defaultHttpTimeout)
+	AssertNil(err)
+	AssertNil(conn.SetDeadline(time.Now().Add(defaultHttpTimeout)))
+	request := fmt.Sprintf("%s %s HTTP/1.1\r\nHost: %s\r\n%s\r\n%s", method, target, address, headers, body)
+	n, err := io.WriteString(conn, request)
+	AssertNil(err)
+	AssertEqual(len(request), n)
+	return conn, bufio.NewReader(conn)
+}
+
+func httpCliChunkedReply(conn net.Conn, reader *bufio.Reader, method, body string, status int, streaming bool) {
+	response, err := http.ReadResponse(reader, &http.Request{Method: method})
+	AssertNil(err)
+	AssertHttpStatus(response, status)
+	AssertEqual(true, response.Close)
+	if streaming {
+		AssertEqual([]string{"chunked"}, response.TransferEncoding)
+	} else {
+		AssertEmpty(response.TransferEncoding)
+		AssertEqual(int64(len(body)), response.ContentLength)
+	}
+	data, err := io.ReadAll(response.Body)
+	AssertNil(err)
+	AssertEqual(body, string(data))
+	AssertEmpty(response.Trailer)
+	AssertNil(response.Body.Close())
+	_, err = reader.ReadByte()
+	AssertEqual(io.EOF, err, "chunked request must permit exactly one response before closing")
+	AssertNil(conn.Close())
+}
+
+func HttpCliServerChunkedTest(s *Http1Suite) {
+	address := net.JoinHostPort(s.VppAddr(), s.Ports.Http)
+	s.Containers.Vpp.VppInstance.Vppctl("http cli server fifo-size 4 uri http://" + address)
+	for _, method := range []string{"GET", "POST", "PUT"} {
+		for _, target := range []string{"/echo", "/echo-stream"} {
+			for _, body := range []string{"", "small body", strings.Repeat("chunked-body!", 8192)} {
+				Log(method, " ", target, " chunked request, body length ", len(body))
+				conn, reader := httpCliChunkedConnect(address, method, target, "Transfer-Encoding: chunked\r\n", httpCliChunkedBody(body))
+				defer conn.Close()
+				httpCliChunkedReply(conn, reader, method, body, http.StatusOK, target != "/echo")
+			}
+		}
+	}
+	// Following must not become another request on the same connection
+	conn, reader := httpCliChunkedConnect(address, "GET", "/echo", "tRaNsFeR-EnCoDiNg: \tChUnKeD \t\r\n",
+		httpCliChunkedBody("first")+"GET /echo HTTP/1.1\r\nHost: "+address+"\r\n\r\n")
+	defer conn.Close()
+	httpCliChunkedReply(conn, reader, "GET", "first", http.StatusOK, false)
+}
+
+func HttpCliServerChunkedFragmentedTest(s *Http1Suite) {
+	address := net.JoinHostPort(s.VppAddr(), s.Ports.Http)
+	s.Containers.Vpp.VppInstance.Vppctl("http cli server fifo-size 4 uri http://" + address)
+	wire := "3;foo=\"a\\\";b\"\r\na\x00b\r\nA\r\n0123456789\r\n000;end\r\nX-Test: value\r\nOther:\r\n\r\n"
+	conn, reader := httpCliChunkedConnect(address, "PUT", "/echo", "Transfer-Encoding: chunked\r\n", "")
+	defer conn.Close()
+	for i := range len(wire) {
+		_, err := io.WriteString(conn, wire[i:i+1])
+		AssertNil(err)
+		time.Sleep(time.Millisecond)
+	}
+	httpCliChunkedReply(conn, reader, "PUT", "a\x00b0123456789", http.StatusOK, false)
+}
+
+func HttpCliServerChunkedTrailersTest(s *Http1Suite) {
+	address := net.JoinHostPort(s.VppAddr(), s.Ports.Http)
+	s.Containers.Vpp.VppInstance.Vppctl("http cli server fifo-size 4 uri http://" + address)
+	conn, reader := httpCliChunkedConnect(address, "POST", "/echo", "Transfer-Encoding: chunked\r\n",
+		"3\r\nabc\r\n0;ignored=yes\r\nX-Checksum: discarded\r\n")
+	defer conn.Close()
+	// Neither zero chunk nor trailer's CRLF ends the request yet
+	AssertNil(conn.SetReadDeadline(time.Now().Add(100 * time.Millisecond)))
+	_, err := reader.ReadByte()
+	netErr, ok := err.(net.Error)
+	AssertEqual(true, ok && netErr.Timeout(), "response arrived before the final empty trailer line")
+	AssertNil(conn.SetDeadline(time.Now().Add(defaultHttpTimeout)))
+	_, err = io.WriteString(conn, "\r\n")
+	AssertNil(err)
+	httpCliChunkedReply(conn, reader, "POST", "abc", http.StatusOK, false)
+}
+
+func HttpCliServerChunkedBackpressureTest(s *Http1Suite) {
+	address := net.JoinHostPort(s.VppAddr(), s.Ports.Http)
+	s.Containers.Vpp.VppInstance.Vppctl("http cli server fifo-size 4 uri http://" + address)
+	body := strings.Repeat("backpressure\x00\r\n", 128*1024)
+	for _, target := range []string{"/echo", "/echo-stream", "/echo-stream-drain", "/echo-stream-close"} {
+		conn, reader := httpCliChunkedConnect(address, "POST", target, "Transfer-Encoding: chunked\r\n", httpCliChunkedBody(body))
+		defer conn.Close()
+		httpCliChunkedReply(conn, reader, "POST", body, http.StatusOK, target != "/echo")
+	}
+}
+
+func HttpCliServerChunkedHalfCloseTest(s *Http1Suite) {
+	address := net.JoinHostPort(s.VppAddr(), s.Ports.Http)
+	s.Containers.Vpp.VppInstance.Vppctl("http cli server fifo-size 4 uri http://" + address)
+	for _, body := range []string{"", "body before FIN", strings.Repeat("fin-with-pending-data!", 8192)} {
+		conn, reader := httpCliChunkedConnect(address, "PUT", "/echo", "Transfer-Encoding: chunked\r\n", httpCliChunkedBody(body))
+		defer conn.Close()
+		AssertNil(conn.(*net.TCPConn).CloseWrite())
+		httpCliChunkedReply(conn, reader, "PUT", body, http.StatusOK, false)
+	}
+}
+
+func httpCliServerChunkedCurlTest(s *Http1Suite, upload bool) {
+	address := net.JoinHostPort(s.VppAddr(), s.Ports.Http)
+	s.Containers.Vpp.VppInstance.Vppctl("http cli server fifo-size 4 uri http://" + address)
+	body := strings.Repeat("curl-interop\x00\r\n!", 8192)
+	file := "/tmp/http-cli-curl-body.bin"
+	method, target := "GET", "/echo-stream"
+	options := "--request=GET --data-binary=@" + file
+	if upload {
+		method, target = "PUT", "/echo"
+		options = "--header=Transfer-Encoding:chunked --upload-file=" + file
+	}
+
+	curl := s.Containers.Curl
+	curl.ExtraRunningArgs = "curl --http1.1 --verbose --silent --show-error --fail --max-time 10 " +
+		"--noproxy * --header=Expect: --write-out=HTTP_STATUS:%{http_code};CURL_EXIT:%{exitcode} " +
+		options + " http://" + address + target
+	AssertNil(curl.Create())
+	AssertNil(curl.CreateFile(file, body))
+	AssertNil(curl.Start())
+	output, trace := curl.GetOutput()
+	Log(trace)
+	AssertEqual(body+"HTTP_STATUS:200;CURL_EXIT:0", output)
+	AssertContains(trace, "> "+method+" "+target+" HTTP/1.1")
+	AssertContains(trace, "< HTTP/1.1 200 OK")
+	headers := strings.ReplaceAll(trace, " ", "")
+	AssertContains(headers, "<Connection:close")
+	AssertNotContains(headers, ">Expect:")
+	if upload {
+		AssertContains(headers, ">Transfer-Encoding:chunked")
+		AssertNotContains(headers, ">Content-Length:")
+		AssertContains(headers, "<Content-Length:"+strconv.Itoa(len(body)))
+		AssertNotContains(headers, "<Transfer-Encoding:")
+	} else {
+		AssertContains(headers, ">Content-Length:"+strconv.Itoa(len(body)))
+		AssertNotContains(headers, ">Transfer-Encoding:")
+		AssertContains(headers, "<Transfer-Encoding:chunked")
+		AssertNotContains(headers, "<Content-Length:")
+	}
+}
+
+func HttpCliServerChunkedCurlUploadTest(s *Http1Suite) {
+	httpCliServerChunkedCurlTest(s, true)
+}
+
+func HttpCliServerChunkedCurlDownloadTest(s *Http1Suite) {
+	httpCliServerChunkedCurlTest(s, false)
+}
+
+func HttpCliServerChunkedLargeFifoTest(s *Http1Suite) {
+	address := net.JoinHostPort(s.VppAddr(), s.Ports.Http)
+	s.Containers.Vpp.VppInstance.Vppctl("http cli server fifo-size 2048 uri http://" + address)
+	conn, reader := httpCliChunkedConnect(address, "PUT", "/echo", "Transfer-Encoding: chunked\r\n", "")
+	defer conn.Close()
+	time.Sleep(20 * time.Millisecond)
+	body := strings.Repeat("buffered-chunked-body!", 64*1024)
+	wire := httpCliChunkedBody(body)
+	n, err := io.WriteString(conn, wire)
+	AssertNil(err)
+	AssertEqual(len(wire), n)
+	AssertNil(conn.(*net.TCPConn).CloseWrite())
+	httpCliChunkedReply(conn, reader, "PUT", body, http.StatusOK, false)
+}
+
+func HttpCliServerChunkedBadFramingTest(s *Http1Suite) {
+	address := net.JoinHostPort(s.VppAddr(), s.Ports.Http)
+	s.Containers.Vpp.VppInstance.Vppctl("http cli server fifo-size 4 uri http://" + address)
+	tests := []struct {
+		name, body string
+		fin        bool
+	}{
+		{"invalid hex", "g\r\n", false},
+		{"overflow", "10000000000000000\r\n", false},
+		{"size LF", "1\nx\r\n0\r\n\r\n", false},
+		{"data CRLF", "1\r\nx!\r\n0\r\n\r\n", false},
+		{"invalid extension", "0;x=\"unterminated\r\n\r\n", false},
+		{"invalid trailer", "0\r\nNo-Colon\r\n\r\n", false},
+		{"oversized extension", "0;x=" + strings.Repeat("a", 8192) + "\r\n\r\n", false},
+		{"oversized trailers", "0\r\nX:" + strings.Repeat("a", 65536) + "\r\n\r\n", false},
+		{"FIN before size", "", true},
+		{"FIN in size", "a", true},
+		{"FIN in payload", "4\r\nab", true},
+		{"FIN before last chunk", "1\r\nx\r\n", true},
+		{"FIN after backpressured payload", fmt.Sprintf("%x\r\n%s\r\n", 128*1024, strings.Repeat("x", 128*1024)), true},
+		{"FIN after zero chunk", "0\r\n", true},
+		{"FIN in trailer", "0\r\nX: value\r\n\r", true},
+	}
+	for _, test := range tests {
+		Log(test.name)
+		conn, reader := httpCliChunkedConnect(address, "POST", "/echo", "Transfer-Encoding: chunked\r\n", test.body)
+		defer conn.Close()
+		if test.fin {
+			AssertNil(conn.(*net.TCPConn).CloseWrite())
+		}
+		httpCliChunkedReply(conn, reader, "POST", "", http.StatusBadRequest, false)
+	}
+	conn, reader := httpCliChunkedConnect(address, "POST", "/echo", "Transfer-Encoding: chunked\r\n", httpCliChunkedBody("still alive"))
+	defer conn.Close()
+	httpCliChunkedReply(conn, reader, "POST", "still alive", http.StatusOK, false)
+}
+
+func HttpCliServerChunkedHeadersTest(s *Http1Suite) {
+	address := net.JoinHostPort(s.VppAddr(), s.Ports.Http)
+	s.Containers.Vpp.VppInstance.Vppctl("http cli server fifo-size 4 uri http://" + address)
+	for _, headers := range []string{
+		"Transfer-Encoding: chunked\r\nContent-Length: 0\r\n",
+		"Content-Length: 5\r\nTransfer-Encoding: chunked\r\n",
+		"Transfer-Encoding: chunked\r\ntransfer-encoding: chunked\r\n",
+		"Transfer-Encoding: chunked, chunked\r\n",
+		"Transfer-Encoding: gzip\r\n",
+		"Transfer-Encoding: gzip, chunked\r\n",
+		"Transfer-Encoding: chunked, gzip\r\n",
+		"Transfer-Encoding: chunked,\r\n",
+		"Transfer-Encoding: chunked;foo=bar\r\n",
+	} {
+		Log(headers)
+		conn, reader := httpCliChunkedConnect(address, "POST", "/echo", headers, "0\r\n\r\n")
+		defer conn.Close()
+		httpCliChunkedReply(conn, reader, "POST", "", http.StatusBadRequest, false)
+	}
+	conn, err := net.DialTimeout("tcp", address, defaultHttpTimeout)
+	AssertNil(err)
+	defer conn.Close()
+	AssertNil(conn.SetDeadline(time.Now().Add(defaultHttpTimeout)))
+	_, err = fmt.Fprintf(conn, "POST /echo HTTP/1.0\r\nHost: %s\r\nTransfer-Encoding: chunked\r\n\r\n0\r\n\r\n", address)
+	AssertNil(err)
+	httpCliChunkedReply(conn, bufio.NewReader(conn), "POST", "", http.StatusBadRequest, false)
+}
+
+func HttpCliServerChunkedEarlyReplyTest(s *Http1Suite) {
+	address := net.JoinHostPort(s.VppAddr(), s.Ports.Http)
+	s.Containers.Vpp.VppInstance.Vppctl("http cli server fifo-size 4 uri http://" + address)
+	conn, reader := httpCliChunkedConnect(address, "POST", "/show/version", "Transfer-Encoding: chunked\r\n", "100000\r\npartial")
+	defer conn.Close()
+	httpCliChunkedReply(conn, reader, "POST", "", http.StatusMethodNotAllowed, false)
+}
+
+func HttpCliServerChunkedTlsTest(s *Http1Suite) {
+	address := net.JoinHostPort(s.VppAddr(), s.Ports.Https)
+	s.Containers.Vpp.VppInstance.Vppctl("http cli server http1-only fifo-size 4 uri https://" + address)
+	client := NewHttpClient(defaultHttpTimeout, false)
+	defer client.CloseIdleConnections()
+	for _, method := range []string{"GET", "POST", "PUT"} {
+		body := strings.Repeat("tls-chunked-request!", 8192)
+		request, err := http.NewRequest(method, "https://"+address+"/echo", io.NopCloser(strings.NewReader(body)))
+		AssertNil(err)
+		response, err := client.Do(request)
+		AssertNil(err)
+		AssertHttpStatus(response, http.StatusOK)
+		AssertEqual(int64(len(body)), response.ContentLength)
+		AssertEqual(true, response.Close)
+		data, err := io.ReadAll(response.Body)
+		AssertNil(err)
+		AssertEqual(body, string(data))
+		AssertNil(response.Body.Close())
+	}
+}
+
+func HttpCliServerChunkedCliTest(s *Http1Suite) {
+	address := net.JoinHostPort(s.VppAddr(), s.Ports.Http)
+	s.Containers.Vpp.VppInstance.Vppctl("http cli server fifo-size 4 uri http://" + address)
+	for _, body := range []string{"", "ignored", strings.Repeat("ignored-body!", 8192)} {
+		Log("CLI request body length ", len(body))
+		conn, reader := httpCliChunkedConnect(address, "GET", "/show/version",
+			"Transfer-Encoding: chunked\r\nAccept: text/plain\r\n", httpCliChunkedBody(body))
+		defer conn.Close()
+		response, err := http.ReadResponse(reader, &http.Request{Method: "GET"})
+		AssertNil(err)
+		AssertHttpStatus(response, http.StatusOK)
+		AssertEqual(true, response.Close)
+		data, err := io.ReadAll(response.Body)
+		AssertNil(err)
+		AssertContains(string(data), "vpp")
+		AssertNil(response.Body.Close())
+		_, err = reader.ReadByte()
+		AssertEqual(io.EOF, err)
+		AssertNil(conn.Close())
+	}
+}
+
 func HttpCliEchoTest(s *VethsSuite) {
 	server := s.Containers.ServerVpp.VppInstance
 	client := s.Containers.ClientVpp.VppInstance
@@ -774,7 +1070,7 @@ func HttpCliEchoTest(s *VethsSuite) {
 	body := strings.Repeat("0123456789AbCdEf", 8*1024)
 	AssertNil(client.Container.CreateFile("/tmp/http-cli-echo.txt", body))
 	for _, method := range []string{"get", "post", "put"} {
-		for _, options := range []string{"", "use-ptr"} {
+		for _, options := range []string{"", "use-ptr", "stream"} {
 			output := client.Vppctl("http cli client method %s file /tmp/http-cli-echo.txt fifo-size 4 %s uri http://%s/echo",
 				method, options, address)
 			AssertEqual(body, strings.TrimSpace(output))
