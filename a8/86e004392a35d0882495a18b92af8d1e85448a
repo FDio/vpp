@@ -1,0 +1,7 @@
+Code-Review+2: Benoit Ganne <bganne@cisco.com>
+Verified+1: FDio GitHub Actions <releng+fdio-github@linuxfoundation.org>
+Submitted-by: Benoit Ganne <bganne@cisco.com>
+Submitted-at: Mon, 02 Nov 2026 09:42:17 +0000
+Reviewed-on: https://gerrit.fd.io/r/c/vpp/+/46809
+Project: vpp
+Branch: refs/heads/master
