@@ -56,7 +56,10 @@ sff8636_decode_diagnostics (vlib_main_t *vm, vnet_interface_eeprom_t *eeprom,
 
   vlib_cli_output (vm, "  Module Diagnostics:");
 
-  if (eeprom->eeprom_len < sizeof (sff8636_eeprom_t))
+  /* current values live in the lower page (bytes 0-127), which is always
+   * read regardless of page support - only the alarm/warning thresholds
+   * below need the full upper-page 03h dump */
+  if (eeprom->eeprom_len < STRUCT_OFFSET_OF (sff8636_eeprom_t, reserved_lane))
     {
       vlib_cli_output (vm, "    Not supported (insufficient data)");
       return;
@@ -92,6 +95,13 @@ sff8636_decode_diagnostics (vlib_main_t *vm, vnet_interface_eeprom_t *eeprom,
 
   if (is_terse)
     {
+      return;
+    }
+
+  if (eeprom->eeprom_len < sizeof (sff8636_eeprom_t))
+    {
+      vlib_cli_output (vm, "    Alarm/Warning Thresholds: not available "
+			   "(module does not support upper page 03h)");
       return;
     }
 
