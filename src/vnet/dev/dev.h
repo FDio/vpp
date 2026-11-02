@@ -727,9 +727,8 @@ vnet_dev_rv_t vnet_dev_process_call_op (vlib_main_t *, vnet_dev_t *,
 					vnet_dev_op_t *);
 vnet_dev_rv_t vnet_dev_process_call_op_no_rv (vlib_main_t *, vnet_dev_t *,
 					      vnet_dev_op_no_rv_t *);
-vnet_dev_rv_t vnet_dev_process_call_op_with_ptr (vlib_main_t *, vnet_dev_t *,
-						 vnet_dev_op_with_ptr_t *,
-						 void *);
+__clib_export vnet_dev_rv_t vnet_dev_process_call_op_with_ptr (vlib_main_t *, vnet_dev_t *,
+							       vnet_dev_op_with_ptr_t *, void *);
 __clib_export void vnet_dev_process_call_op_no_wait (vlib_main_t *, vnet_dev_t *,
 						     vnet_dev_op_no_rv_t *);
 vnet_dev_rv_t vnet_dev_process_call_port_op (vlib_main_t *, vnet_dev_port_t *,
@@ -787,7 +786,7 @@ format_function_t format_vnet_dev_port_info;
 format_function_t format_vnet_dev_port_rx_offloads;
 format_function_t format_vnet_dev_port_tx_offloads;
 format_function_t format_vnet_dev_port_primary_intf_name;
-format_function_t format_vnet_dev_rv;
+__clib_export format_function_t format_vnet_dev_rv;
 format_function_t format_vnet_dev_rx_queue_info;
 format_function_t format_vnet_dev_tx_queue_info;
 format_function_t format_vnet_dev_flow;
