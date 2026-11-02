@@ -137,11 +137,14 @@ fib_entry_import_remove (fib_ae_import_t *import,
 }
 
 static void
-fib_entry_import_add (fib_ae_import_t *import,
+fib_entry_import_add (u32 impi,
 		      fib_node_index_t entry_index)
 {
     fib_node_index_t *existing;
+    fib_ae_import_t *import;
     fib_prefix_t prefix;
+
+    import = pool_elt_at_index(fib_ae_import_pool, impi);
 
     /*
      * ensure we only add the exported entry once, since
@@ -180,6 +183,10 @@ fib_entry_import_add (fib_ae_import_t *import,
                                              FIB_ENTRY_FLAG_EXCLUSIVE),
                                             load_balance_get_bucket(dpo->dpoi_index, 0));
 
+            if (pool_is_free_index(fib_ae_import_pool, impi))
+                return;
+
+            import = pool_elt_at_index(fib_ae_import_pool, impi);
             fib_entry_lock(entry_index);
             vec_add1(import->faei_importeds, entry_index);
         }
@@ -199,9 +206,7 @@ fib_entry_covered_walk_import (fib_entry_t *cover,
 			       fib_node_index_t covered,
 			       void *ctx)
 {
-    fib_ae_import_t *import = ctx;
-
-    fib_entry_import_add(import, covered);
+    fib_entry_import_add(pointer_to_uword(ctx), covered);
 
     return (WALK_CONTINUE);
 }
@@ -213,16 +218,18 @@ fib_entry_covered_walk_import (fib_entry_t *cover,
  */
 static void
 fib_ae_export_import_add (fib_ae_export_t *export,
-			  fib_ae_import_t *import)
+			  u32 impi)
 {
+    fib_ae_import_t *import;
     fib_entry_t *entry;
 
+    import = pool_elt_at_index(fib_ae_import_pool, impi);
     import->faei_exporter = (export - fib_ae_export_pool);
     entry = fib_entry_get(export->faee_ei);
 
     fib_entry_cover_walk(entry,
 			 fib_entry_covered_walk_import,
-			 import);
+			 uword_to_pointer(impi, void*));
 }
 
 void
@@ -232,6 +239,7 @@ fib_attached_export_import (fib_entry_t *fib_entry,
     fib_entry_delegate_t *fed;
     fib_ae_import_t *import;
     fib_node_index_t fei;
+    u32 impi;
 
     /*
      * save index for later post-realloc retrieval
@@ -239,6 +247,7 @@ fib_attached_export_import (fib_entry_t *fib_entry,
     fei = fib_entry_get_index(fib_entry);
 
     pool_get_zero(fib_ae_import_pool, import);
+    impi = (import - fib_ae_import_pool);
 
     import->faei_import_fib = fib_entry->fe_fib_index;
     import->faei_export_fib = export_fib;
@@ -278,8 +287,8 @@ fib_attached_export_import (fib_entry_t *fib_entry,
 	    fib_ae_export_t *export;
 
 	    export = fib_entry_ae_add_or_lock(import->faei_export_entry);
-	    vec_add1(export->faee_importers, (import - fib_ae_import_pool));
-	    fib_ae_export_import_add(export, import);
+	    vec_add1(export->faee_importers, impi);
+	    fib_ae_export_import_add(export, impi);
 	}
     }
 
@@ -289,13 +298,14 @@ fib_attached_export_import (fib_entry_t *fib_entry,
      * Exporting prefixes will have allocated new fib_entry_t objects, so the pool
      * may have realloc'd.
      */
+    import = pool_elt_at_index(fib_ae_import_pool, impi);
     fib_entry = fib_entry_get(fei);
     import->faei_export_sibling =
 	fib_entry_cover_track(fib_entry_get(import->faei_export_entry), fei);
 
     fed = fib_entry_delegate_find_or_add(fib_entry,
                                          FIB_ENTRY_DELEGATE_ATTACHED_IMPORT);
-    fed->fd_index = (import - fib_ae_import_pool);
+    fed->fd_index = impi;
 }
 
 /**
@@ -398,20 +408,22 @@ fib_attached_export_covered_added (fib_entry_t *cover,
 	/*
 	 * the covering prefix is exporting to other tables
 	 */
- 	fib_node_index_t *import_index;
-	fib_ae_import_t *import;
 	fib_ae_export_t *export;
+	u32 expi, i;
 
-	export = pool_elt_at_index(fib_ae_export_pool, fed->fd_index);
+	expi = fed->fd_index;
+	export = pool_elt_at_index(fib_ae_export_pool, expi);
 
 	/*
 	 * export the covered entry to each of the importers
 	 */
-	vec_foreach(import_index, export->faee_importers)
+	for (i = 0; i < vec_len(export->faee_importers); i++)
 	{
-	    import = pool_elt_at_index(fib_ae_import_pool, *import_index);
+	    fib_entry_import_add(export->faee_importers[i], covered);
 
-	    fib_entry_import_add(import, covered);
+	    if (pool_is_free_index(fib_ae_export_pool, expi))
+		break;
+	    export = pool_elt_at_index(fib_ae_export_pool, expi);
 	}
     }
 }

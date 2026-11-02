@@ -5920,6 +5920,151 @@ fib_test_ae (void)
 }
 
 /*
+ * Test Attached Exports where the import walk creates more importers.
+ * The covereds of the exporting prefix are themselves importers, so
+ * each entry copied into the import table imports too. These nested
+ * imports grow the importer pool while the outer import walks.
+ */
+static int
+fib_test_ae_nested (void)
+{
+    const u32 fib_index = 0, n_importers = 256;
+    u32 import_fib_index1, import_fib_index2, ii;
+    fib_node_index_t fei;
+    test_main_t *tm;
+    int res;
+
+    res = 0;
+    tm = &test_main;
+
+    FIB_TEST((0 == adj_nbr_db_size()), "ADJ DB size is %d",
+             adj_nbr_db_size());
+
+    fib_table_bind (FIB_PROTOCOL_IP4, tm->hw[0]->sw_if_index, fib_index);
+
+    fib_prefix_t pfx_10_10_0_0_s_16 = {
+        .fp_len = 16,
+        .fp_proto = FIB_PROTOCOL_IP4,
+        .fp_addr = {
+            /* 10.10.0.0 */
+            .ip4.as_u32 = clib_host_to_net_u32(0x0a0a0000),
+        },
+    };
+    fib_prefix_t pfx_s_32 = {
+        .fp_len = 32,
+        .fp_proto = FIB_PROTOCOL_IP4,
+    };
+
+    /*
+     * the attached prefix in the export table
+     */
+    fib_table_entry_update_one_path(fib_index, &pfx_10_10_0_0_s_16,
+                                    FIB_SOURCE_INTERFACE,
+                                    (FIB_ENTRY_FLAG_CONNECTED |
+                                     FIB_ENTRY_FLAG_ATTACHED),
+                                    DPO_PROTO_IP4,
+                                    NULL,
+                                    tm->hw[0]->sw_if_index,
+                                    ~0,
+                                    1,
+                                    NULL,
+                                    FIB_ROUTE_PATH_FLAG_NONE);
+
+    import_fib_index1 = fib_table_find_or_create_and_lock(FIB_PROTOCOL_IP4,
+                                                          21,
+                                                          FIB_SOURCE_CLI);
+    import_fib_index2 = fib_table_find_or_create_and_lock(FIB_PROTOCOL_IP4,
+                                                          22,
+                                                          FIB_SOURCE_CLI);
+
+    /*
+     * host routes in the 1st import table via the export table's
+     * interface. each one imports, and with no exact match in the
+     * export table tracks the /16, so becomes one of its covereds.
+     */
+    for (ii = 0; ii < n_importers; ii++)
+    {
+        pfx_s_32.fp_addr.ip4.as_u32 = clib_host_to_net_u32(0x0a0a0100 + ii);
+        fib_table_entry_path_add(import_fib_index1,
+                                 &pfx_s_32,
+                                 FIB_SOURCE_API,
+                                 FIB_ENTRY_FLAG_NONE,
+                                 DPO_PROTO_IP4,
+                                 NULL,
+                                 tm->hw[0]->sw_if_index,
+                                 ~0,
+                                 1,
+                                 NULL,
+                                 FIB_ROUTE_PATH_FLAG_NONE);
+        fei = fib_table_lookup_exact_match(import_fib_index1, &pfx_s_32);
+        FIB_TEST((FIB_ENTRY_FLAG_IMPORT & fib_entry_get_flags(fei)),
+                 "%U is an importer", format_fib_prefix, &pfx_s_32);
+    }
+
+    /*
+     * import the /16 into the 2nd import table. the walk copies each
+     * importer, and each copy imports in turn.
+     */
+    fib_table_entry_update_one_path(import_fib_index2,
+                                    &pfx_10_10_0_0_s_16,
+                                    FIB_SOURCE_API,
+                                    FIB_ENTRY_FLAG_NONE,
+                                    DPO_PROTO_IP4,
+                                    NULL,
+                                    tm->hw[0]->sw_if_index,
+                                    ~0,
+                                    1,
+                                    NULL,
+                                    FIB_ROUTE_PATH_FLAG_NONE);
+
+    for (ii = 0; ii < n_importers; ii++)
+    {
+        pfx_s_32.fp_addr.ip4.as_u32 = clib_host_to_net_u32(0x0a0a0100 + ii);
+        fei = fib_table_lookup_exact_match(import_fib_index2, &pfx_s_32);
+        FIB_TEST((FIB_NODE_INDEX_INVALID != fei),
+                 "%U imported", format_fib_prefix, &pfx_s_32);
+    }
+
+    /*
+     * remove the /16 from the 2nd import table. expect every
+     * imported entry to be removed with it.
+     */
+    fib_table_entry_delete(import_fib_index2,
+                           &pfx_10_10_0_0_s_16,
+                           FIB_SOURCE_API);
+
+    for (ii = 0; ii < n_importers; ii++)
+    {
+        pfx_s_32.fp_addr.ip4.as_u32 = clib_host_to_net_u32(0x0a0a0100 + ii);
+        fei = fib_table_lookup_exact_match(import_fib_index2, &pfx_s_32);
+        FIB_TEST((FIB_NODE_INDEX_INVALID == fei),
+                 "%U removed", format_fib_prefix, &pfx_s_32);
+    }
+
+    /*
+     * CLEANUP
+     */
+    for (ii = 0; ii < n_importers; ii++)
+    {
+        pfx_s_32.fp_addr.ip4.as_u32 = clib_host_to_net_u32(0x0a0a0100 + ii);
+        fib_table_entry_delete(import_fib_index1,
+                               &pfx_s_32,
+                               FIB_SOURCE_API);
+    }
+    fib_table_entry_delete(fib_index,
+                           &pfx_10_10_0_0_s_16,
+                           FIB_SOURCE_INTERFACE);
+
+    fib_table_unlock(import_fib_index1, FIB_PROTOCOL_IP4, FIB_SOURCE_CLI);
+    fib_table_unlock(import_fib_index2, FIB_PROTOCOL_IP4, FIB_SOURCE_CLI);
+
+    FIB_TEST((0 == adj_nbr_db_size()), "ADJ DB size is %d",
+             adj_nbr_db_size());
+
+    return (res);
+}
+
+/*
  * Test Path Preference
  */
 static int
@@ -10886,6 +11031,7 @@ fib_test (vlib_main_t * vm,
     else if (unformat (input, "ae"))
     {
         res += fib_test_ae();
+        res += fib_test_ae_nested();
     }
     else if (unformat (input, "pref"))
     {
@@ -10916,6 +11062,7 @@ fib_test (vlib_main_t * vm,
         res += fib_test_v4();
         res += fib_test_v6();
         res += fib_test_ae();
+        res += fib_test_ae_nested();
         res += fib_test_bfd();
         res += fib_test_pref();
         res += fib_test_label();
