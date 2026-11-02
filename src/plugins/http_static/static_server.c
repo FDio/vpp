@@ -649,6 +649,11 @@ hss_ts_rx_callback (session_t *ts)
   int rv;
 
   hs = hss_session_get (ts->thread_index, ts->opaque);
+  if (ts->flags & SESSION_F_APP_CLOSED)
+    {
+      svm_fifo_dequeue_drop_all (ts->rx_fifo);
+      return 0;
+    }
   if (hs->left_recv != 0)
     {
       ASSERT (hs->read_body_handler);
@@ -669,6 +674,13 @@ hss_ts_rx_callback (session_t *ts)
   /* Read the http message header */
   rv = svm_fifo_dequeue (ts->rx_fifo, sizeof (msg), (u8 *) &msg);
   ASSERT (rv == sizeof (msg));
+
+  /* Request handlers require a known body length. */
+  if (msg.data.type == HTTP_MSG_DATA_STREAMING)
+    {
+      start_send_data (hs, HTTP_STATUS_LENGTH_REQUIRED);
+      goto err_done;
+    }
 
   if (msg.type != HTTP_MSG_REQUEST ||
       (msg.method_type != HTTP_REQ_GET && msg.method_type != HTTP_REQ_POST))
@@ -740,6 +752,8 @@ hss_ts_rx_callback (session_t *ts)
 
 err_done:
   hss_session_disconnect_transport (hs);
+  svm_fifo_dequeue_drop_all (ts->rx_fifo);
+  return 0;
 done:
   svm_fifo_dequeue_drop (ts->rx_fifo, msg.data.len);
   return 0;

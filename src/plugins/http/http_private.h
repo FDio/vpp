@@ -12,6 +12,7 @@
 #include <vnet/session/transport.h>
 #include <http/http.h>
 #include <http/http_buffer.h>
+#include <http/http1/chunked.h>
 
 #define HTTP_FIFO_THRESH (16 << 10)
 
@@ -92,7 +93,8 @@ typedef enum http_conn_state_ : u8
   _ (8, UDP_TUNNEL, "udp tunnel")                                                                  \
   _ (9, UDP_TUNNEL_DRAFT03, "udp tunnel draft03")                                                  \
   _ (10, APP_IO_MORE_STREAMING_DATA, "app io more streaming data")                                 \
-  _ (11, TRANSPORT_IO_DROP, "transport io drop")
+  _ (11, TRANSPORT_IO_DROP, "transport io drop")                                                   \
+  _ (12, TRANSPORT_IO_MORE_STREAMING_DATA, "transport io more streaming data")
 
 typedef enum http_req_state_ : u8
 {
@@ -120,7 +122,9 @@ typedef enum http_target_form_ : u8
   _ (CONNECT_UDP_DRAFT03, "connect-udp-draft03")                                                   \
   _ (PEER_CLOSED, "peer-closed")                                                                   \
   _ (TX_STREAMING, "tx-streaming")                                                                 \
-  _ (TX_EOF, "tx-eof")
+  _ (TX_EOF, "tx-eof")                                                                             \
+  _ (RX_STREAMING, "rx-streaming")                                                                 \
+  _ (RX_EOF, "rx-eof")
 
 typedef enum http_req_flags_bit_
 {
@@ -437,8 +441,10 @@ typedef struct http_ctx_
 	  u32 host_header_index;
 	  u32 connection_header_index;
 	  u32 upgrade_header_index;
+	  u32 transfer_encoding_header_index;
 	  http_target_form_t target_form;
 	  http_url_scheme_t scheme;
+	  http1_chunked_decoder_t chunked_decoder;
 	};
 	struct
 	{
