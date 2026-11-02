@@ -380,6 +380,10 @@ vnet_dev_port_cfg_change_req_validate (vlib_main_t *vm, vnet_dev_port_t *port,
       break;
 
     case VNET_DEV_PORT_CFG_CHANGE_PRIMARY_HW_ADDR:
+      if (port->attr.type == VNET_DEV_PORT_TYPE_ETHERNET &&
+	  (ethernet_address_cast (req->addr.eth_mac) ||
+	   ethernet_mac_address_is_zero (req->addr.eth_mac)))
+	return VNET_DEV_ERR_INVALID_VALUE;
       if (clib_memcmp (&req->addr, &port->primary_hw_addr,
 		       sizeof (vnet_dev_hw_addr_t)) == 0)
 	return VNET_DEV_ERR_NO_CHANGE;
