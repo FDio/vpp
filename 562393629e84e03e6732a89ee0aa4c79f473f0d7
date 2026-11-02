@@ -19,6 +19,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "722b71c3_cd796910",
+        "filename": "src/plugins/rdma/device.c",
+        "patchSetId": 28
+      },
+      "lineNbr": 974,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-11-02T20:06:32Z",
+      "side": 1,
+      "message": "Addressed in PS29: reject actual provider SQ allocations above 32768 WQEBBs before assigning the four-bit log2 field or using the SQ ring. This also keeps the capacity representable by the u16 counter arithmetic. The provider-mocked test with tx-queue-size 8192 and inline max 460 accepts 16384/32768 WQEBBs and rejects 65536/131072; the 65536 rejection test fails with the PS28 initializer.",
+      "parentUuid": "75e54fba_b5c3e907",
+      "revId": "562393629e84e03e6732a89ee0aa4c79f473f0d7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "cf716700_6c1457b7",
@@ -33,6 +51,24 @@
       "side": 1,
       "message": "Could we set an `invalid_completion` flag in the validation `if` blocks and use a final `if/else` for error counting versus buffer reclamation, removing both `goto invalid_completion` and `goto done`? Please keep it separate from `completion_error`, guard the buffer-tail map lookup after SQ validation fails, and retain the common CQ doorbell/error epilogue. This would make the control flow easier to follow while preserving the existing behavior.",
       "tag": "prview:7c0cc8d8dc29ff9577dd56dae4486e33:562393629e84e03e6732a89ee0aa4c79f473f0d7",
+      "revId": "562393629e84e03e6732a89ee0aa4c79f473f0d7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "87cad63c_044271ff",
+        "filename": "src/plugins/rdma/output.c",
+        "patchSetId": 28
+      },
+      "lineNbr": 101,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-11-02T20:06:32Z",
+      "side": 1,
+      "message": "Addressed in PS29: a separate invalid_completion flag replaces both gotos. SQ validation guards the buffer-tail map lookup; the final if/else chooses error accounting or reclamation, with the CQ doorbell and queue-error epilogue shared. All 1038 source-derived regression cases pass in optimized release and ASan/UBSan debug, including invalid SQ completions tested with a null buffer-tail map to catch an unintended lookup.",
+      "parentUuid": "cf716700_6c1457b7",
       "revId": "562393629e84e03e6732a89ee0aa4c79f473f0d7",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
