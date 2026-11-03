@@ -316,6 +316,13 @@ api_ip6nd_proxy_enable_disable (vat_main_t *vam)
 }
 
 static int
+api_ip6nd_proxy_enable_disable_v2 (vat_main_t *vam)
+{
+  // not yet implemented
+  return -1;
+}
+
+static int
 api_sw_interface_ip6nd_ra_dump (vat_main_t *vam)
 {
   unformat_input_t *i = vam->input;
