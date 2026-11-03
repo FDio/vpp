@@ -11,34 +11,39 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-ipsec-mb_version             := 2.0
-ipsec-mb_patch_version       := 2
+ipsec-mb_version             := 3.0
+ipsec-mb_patch_version       := 1
 ipsec-mb_version_str         := $(ipsec-mb_version).$(ipsec-mb_patch_version)
 ipsec-mb_tarball             := v$(ipsec-mb_version_str).tar.gz
-ipsec-mb_tarball_sha256sum_2.0  := b0e22e113ebbaa4aa8fd2332897540bff87bfabf397daeb05301b603947dda83
+ipsec-mb_tarball_sha256sum_3.0  := f971b253d1ad4affa01bad557a4b8ae60fce37256e0afca03d480377c497c1aa
 
 ipsec-mb_tarball_sha256sum   := $(ipsec-mb_tarball_sha256sum_$(ipsec-mb_version))
 ipsec-mb_tarball_strip_dirs  := 1
-ipsec-mb_url                 := http://github.com/intel/intel-ipsec-mb/archive/$(ipsec-mb_tarball)
+ipsec-mb_url                 := https://github.com/intel/intel-ipsec-mb/archive/$(ipsec-mb_tarball)
+
+# ipsec-mb 3.0 only supports CMake builds (legacy Makefiles were deprecated)
 define  ipsec-mb_config_cmds
-	@true
+	@$(CMAKE) -S $(ipsec-mb_src_dir) -B $(ipsec-mb_build_dir) \
+	  -DCMAKE_BUILD_TYPE=Release \
+	  -DBUILD_SHARED_LIBS=OFF \
+	  -DBUILD_LIBRARY_ONLY=ON \
+	  -DSAFE_PARAM=OFF \
+	  -DSAFE_LOOKUP=OFF \
+	  -DSAFE_DATA=OFF \
+	  -DCMAKE_INSTALL_PREFIX=$(ipsec-mb_install_dir) \
+	  -DEXTRA_CFLAGS="-g -msse4.2" > $(ipsec-mb_config_log) 2>&1
 endef
 
 define  ipsec-mb_build_cmds
-	@$(MAKE) -C $(ipsec-mb_src_dir)/lib -j \
-	  SHARED=n \
-	  SAFE_PARAM=n \
-	  SAFE_LOOKUP=n \
-	  SAFE_DATA=n \
-	  PREFIX=$(ipsec-mb_install_dir) \
-	  EXTRA_CFLAGS="-g -msse4.2" > $(ipsec-mb_build_log)
+	@$(CMAKE) --build $(ipsec-mb_build_dir) --parallel $(JOBS) \
+	  > $(ipsec-mb_build_log) 2>&1
 endef
 
 define  ipsec-mb_install_cmds
 	@mkdir -p $(ipsec-mb_install_dir)/include
 	@mkdir -p $(ipsec-mb_install_dir)/lib
 	@cp $(ipsec-mb_src_dir)/lib/intel-ipsec-mb.h $(ipsec-mb_install_dir)/include
-	@cp $(ipsec-mb_src_dir)/lib/libIPSec_MB.a $(ipsec-mb_install_dir)/lib
+	@cp $(ipsec-mb_build_dir)/lib/libIPSec_MB.a $(ipsec-mb_install_dir)/lib
 endef
 
 $(eval $(call package,ipsec-mb))
