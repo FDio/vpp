@@ -114,15 +114,61 @@ iavf_tx_prepare_cksum (vlib_buffer_t *b, u8 is_gso)
 }
 
 static_always_inline void
-iavf_tx_fill_ctx_desc (vlib_main_t *vm, iavf_tx_desc_t *d, vlib_buffer_t *b)
+iavf_tx_fill_ctx_desc (iavf_tx_desc_t *d, vlib_buffer_t *b, u32 tlen)
 {
-  u16 l234hdr_sz = vnet_buffer (b)->l4_hdr_offset - b->current_data +
-		   vnet_buffer2 (b)->gso_l4_hdr_sz;
-  u16 tlen = vlib_buffer_length_in_chain (vm, b) - l234hdr_sz;
+  ASSERT ((b->flags & VNET_BUFFER_F_L4_HDR_OFFSET_VALID) != 0);
+
   d[0].qword[0] = 0;
   d[0].qword[1] = IAVF_TXD_DTYP_CTX | IAVF_TXD_CTX_CMD_TSO |
 		  IAVF_TXD_CTX_SEG_MSS (vnet_buffer2 (b)->gso_size) |
 		  IAVF_TXD_CTX_SEG_TLEN (tlen);
+}
+
+static_always_inline int
+iavf_tx_get_gso_hdr_sz (vlib_buffer_t *b, u32 *hdr_szp)
+{
+  i32 l4_offset = (i32) vnet_buffer (b)->l4_hdr_offset - b->current_data;
+  u16 l4_hdr_sz = vnet_buffer2 (b)->gso_l4_hdr_sz;
+  i32 hdr_sz = l4_offset + l4_hdr_sz;
+
+  if (l4_offset <= 0)
+    return IAVF_TX_NODE_CTR_GSO_BAD_HDR_OFFSET;
+
+  if (l4_hdr_sz == 0)
+    return IAVF_TX_NODE_CTR_GSO_BAD_L4_HDR_SZ;
+
+  hdr_szp[0] = hdr_sz;
+  return 0;
+}
+
+static_always_inline int
+iavf_tx_fix_gso_l4_hdr_sz (vlib_buffer_t *b, u32 *hdr_szp)
+{
+  i32 l4_offset = (i32) vnet_buffer (b)->l4_hdr_offset - b->current_data;
+  tcp_header_t *tcp;
+  u16 l4_hdr_sz;
+
+  if (l4_offset <= 0 || l4_offset + sizeof (udp_header_t) > b->current_length)
+    return 0;
+
+  if (vnet_buffer (b)->oflags & VNET_BUFFER_OFFLOAD_F_UDP_CKSUM)
+    l4_hdr_sz = sizeof (udp_header_t);
+  else
+    {
+      if (l4_offset + sizeof (tcp_header_t) > b->current_length)
+	return 0;
+      tcp = (tcp_header_t *) (vlib_buffer_get_current (b) + l4_offset);
+      l4_hdr_sz = tcp_header_bytes (tcp);
+      if (l4_hdr_sz < sizeof (tcp_header_t))
+	return 0;
+    }
+
+  if (l4_offset + l4_hdr_sz > b->current_length)
+    return 0;
+
+  vnet_buffer2 (b)->gso_l4_hdr_sz = l4_hdr_sz;
+  hdr_szp[0] = l4_offset + l4_hdr_sz;
+  return 1;
 }
 
 static_always_inline void
@@ -192,8 +238,90 @@ iavf_tx_fill_data_desc (vlib_main_t *vm, iavf_tx_desc_t *d, vlib_buffer_t *b,
   d->qword[1] = (((u64) b->current_length) << 34 | cmd | IAVF_TXD_CMD_RSV);
 }
 
+static_always_inline u32
+iavf_tx_tso_chain_len_and_descs (vlib_main_t *vm, vlib_buffer_t *b, u16 *n_descs)
+{
+  u32 pkt_len = 0;
+  u16 n = 0;
+
+  while (1)
+    {
+      pkt_len += b->current_length;
+      n++;
+
+      if ((b->flags & VLIB_BUFFER_NEXT_PRESENT) == 0)
+	break;
+
+      b = vlib_get_buffer (vm, b->next_buffer);
+    }
+
+  n_descs[0] = n;
+  return pkt_len;
+}
+
 static_always_inline int
-iavf_tx_prepare_gso (vnet_dev_tx_queue_t *txq, vlib_buffer_t *b)
+iavf_tx_prepare_gso (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_buffer_t *b, u32 *flags,
+		     u16 *tso_n_descs, u32 *tso_tlen, u8 *is_tso)
+{
+  u32 hdr_sz, gso_size;
+  u32 pkt_len, payload_len;
+  int gso_error;
+
+  if (PREDICT_FALSE ((flags[0] & VNET_BUFFER_F_L4_HDR_OFFSET_VALID) == 0))
+    return IAVF_TX_NODE_CTR_GSO_NO_L4_HDR;
+
+  gso_error = iavf_tx_get_gso_hdr_sz (b, &hdr_sz);
+  if (PREDICT_FALSE (gso_error))
+    return gso_error;
+
+  gso_size = vnet_buffer2 (b)->gso_size;
+  pkt_len = iavf_tx_tso_chain_len_and_descs (vm, b, tso_n_descs);
+
+  if (PREDICT_FALSE (pkt_len <= hdr_sz))
+    {
+      if (!iavf_tx_fix_gso_l4_hdr_sz (b, &hdr_sz) || pkt_len <= hdr_sz)
+	{
+	  flags[0] &= ~VNET_BUFFER_F_GSO;
+	  vlib_error_count (vm, node->node_index, IAVF_TX_NODE_CTR_GSO_NOT_NEEDED, 1);
+	  return 0;
+	}
+    }
+
+  if (PREDICT_FALSE (hdr_sz > b->current_length))
+    {
+      u32 n_lin = vlib_buffer_chain_linearize (vm, b);
+      if (PREDICT_FALSE (n_lin == 0 || hdr_sz > b->current_length))
+	return IAVF_TX_NODE_CTR_GSO_HDR_LINEARIZE_FAIL;
+
+      flags[0] = b->flags;
+      pkt_len = iavf_tx_tso_chain_len_and_descs (vm, b, tso_n_descs);
+      vlib_error_count (vm, node->node_index, IAVF_TX_NODE_CTR_GSO_HDR_LINEARIZED, 1);
+    }
+
+  if (PREDICT_FALSE (pkt_len <= hdr_sz))
+    return IAVF_TX_NODE_CTR_GSO_BAD_PAYLOAD;
+
+  if (PREDICT_FALSE (gso_size < IAVF_MIN_TSO_MSS || gso_size > IAVF_MAX_TSO_MSS))
+    return IAVF_TX_NODE_CTR_GSO_BAD_MSS;
+
+  payload_len = pkt_len - hdr_sz;
+  is_tso[0] = payload_len > gso_size;
+  if (!is_tso[0])
+    {
+      flags[0] &= ~VNET_BUFFER_F_GSO;
+      vlib_error_count (vm, node->node_index, IAVF_TX_NODE_CTR_GSO_NOT_NEEDED, 1);
+      return 0;
+    }
+
+  if (PREDICT_FALSE (payload_len > IAVF_MAX_TSO_LEN))
+    return IAVF_TX_NODE_CTR_GSO_BAD_TLEN;
+
+  tso_tlen[0] = payload_len;
+  return 0;
+}
+
+static_always_inline int
+iavf_tx_prepare_gso_offload (vnet_dev_tx_queue_t *txq, vlib_buffer_t *b)
 {
   u32 is_ip4 = b->flags & VNET_BUFFER_F_IS_IP4;
   i16 l3_hdr_offset = vnet_buffer (b)->l3_hdr_offset;
@@ -228,6 +356,7 @@ iavf_tx_prepare (vlib_main_t *vm, vlib_node_runtime_t *node,
 #endif
   iavf_tx_desc_t *d = atq->tmp_descs;
   u32 *tb = atq->tmp_bufs;
+  u32 drop_counter;
 
   n_free_desc = n_desc_left = txq->size - atq->n_enqueued - 8;
 
@@ -336,51 +465,58 @@ iavf_tx_prepare (vlib_main_t *vm, vlib_node_runtime_t *node,
 	}
       else
 	{
-	  u16 n_desc_needed = 1;
+	  u16 n_desc_needed;
 	  u64 cmd = 0;
-
-	  if (flags & VLIB_BUFFER_NEXT_PRESENT)
-	    {
-	      vlib_buffer_t *next = vlib_get_buffer (vm, b[0]->next_buffer);
-	      n_desc_needed = 2;
-	      while (next->flags & VLIB_BUFFER_NEXT_PRESENT)
-		{
-		  next = vlib_get_buffer (vm, next->next_buffer);
-		  n_desc_needed++;
-		}
-	    }
+	  u32 tso_tlen = 0;
+	  u16 tso_n_descs = 0;
+	  u8 is_tso = 0;
 
 	  if (flags & VNET_BUFFER_F_GSO)
 	    {
-	      n_desc_needed++;
+	      if (PREDICT_FALSE (iavf_tx_prepare_gso_offload (txq, b[0])))
+		{
+		  drop_counter = IAVF_TX_NODE_CTR_GSO_PACKET_DROP;
+		  goto drop_one;
+		}
+	      drop_counter =
+		iavf_tx_prepare_gso (vm, node, b[0], &flags, &tso_n_descs, &tso_tlen, &is_tso);
+	      if (PREDICT_FALSE (drop_counter))
+		goto drop_one;
 	    }
-	  else if (PREDICT_FALSE (n_desc_needed > 8))
+
+	  if (is_tso)
+	    n_desc_needed = tso_n_descs + 1;
+	  else
 	    {
-	      vlib_buffer_free_one (vm, buffers[0]);
-	      vlib_error_count (vm, node->node_index,
-				IAVF_TX_NODE_CTR_SEG_SZ_EXCEEDED, 1);
-	      n_packets_left -= 1;
-	      buffers += 1;
-	      continue;
+	      n_desc_needed = 1;
+
+	      if (flags & VLIB_BUFFER_NEXT_PRESENT)
+		{
+		  vlib_buffer_t *next = vlib_get_buffer (vm, b[0]->next_buffer);
+		  n_desc_needed++;
+		  while (next->flags & VLIB_BUFFER_NEXT_PRESENT)
+		    {
+		      next = vlib_get_buffer (vm, next->next_buffer);
+		      n_desc_needed++;
+		    }
+		}
+
+	      if (PREDICT_FALSE (n_desc_needed > 8))
+		{
+		  drop_counter = IAVF_TX_NODE_CTR_CHAIN_TOO_LONG;
+		  goto drop_one;
+		}
 	    }
 
 	  if (PREDICT_FALSE (n_desc_left < n_desc_needed))
 	    break;
 
-	  if (flags & VNET_BUFFER_F_GSO)
+	  if (is_tso)
 	    {
-	      if (PREDICT_FALSE (iavf_tx_prepare_gso (txq, b[0])))
-		{
-		  vlib_buffer_free_one (vm, buffers[0]);
-		  vlib_error_count (vm, node->node_index, IAVF_TX_NODE_CTR_GSO_PACKET_DROP, 1);
-		  n_packets_left -= 1;
-		  buffers += 1;
-		  continue;
-		}
 	      /* Enqueue a context descriptor */
 	      b[0]->ref_count++;
 	      tb[1] = tb[0];
-	      iavf_tx_fill_ctx_desc (vm, d, b[0]);
+	      iavf_tx_fill_ctx_desc (d, b[0], tso_tlen);
 	      n_desc_left -= 1;
 	      d += 1;
 	      tb += 1;
@@ -395,16 +531,27 @@ iavf_tx_prepare (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  while (b[0]->flags & VLIB_BUFFER_NEXT_PRESENT)
 	    {
 	      iavf_tx_fill_data_desc (vm, d, b[0], cmd, use_va_dma);
-
 	      n_desc_left -= 1;
 	      d += 1;
 	      tb += 1;
-
 	      tb[0] = b[0]->next_buffer;
 	      b[0] = vlib_get_buffer (vm, b[0]->next_buffer);
 	    }
-
 	  iavf_tx_fill_data_desc (vm, d, b[0], cmd_eop | cmd, use_va_dma);
+	  n_desc_left -= 1;
+	  d += 1;
+	  tb += 1;
+
+	  buffers += 1;
+	  n_packets_left -= 1;
+	  continue;
+
+	drop_one:
+	  vlib_buffer_free_one (vm, buffers[0]);
+	  vlib_error_count (vm, node->node_index, drop_counter, 1);
+	  n_packets_left -= 1;
+	  buffers += 1;
+	  continue;
 	}
 
       buffers += 1;

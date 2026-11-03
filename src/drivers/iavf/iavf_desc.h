@@ -34,9 +34,12 @@
 #define IAVF_TXD_OFFSET_L4LEN(val)  IAVF_TXD_OFFSET (14, 4, val)
 #define IAVF_TXD_DTYP_CTX	    0x1ULL
 #define IAVF_TXD_CTX_CMD_TSO	    IAVF_TXD_CMD (0)
-#define IAVF_TXD_CTX_SEG(val, x)    (((u64) val) << (30 + x))
-#define IAVF_TXD_CTX_SEG_TLEN(val)  IAVF_TXD_CTX_SEG (val, 0)
-#define IAVF_TXD_CTX_SEG_MSS(val)   IAVF_TXD_CTX_SEG (val, 20)
+#define IAVF_TXD_CTX_SEG_TLEN(val)  ((((u64) (val)) & 0x3ffff) << 30)
+#define IAVF_TXD_CTX_SEG_MSS(val)   ((((u64) (val)) & 0x3fff) << 50)
+#define IAVF_MAX_TSO_LEN	    0x3ffff
+#define IAVF_MAX_DATA_PER_TXD	    0x3fff
+#define IAVF_MIN_TSO_MSS	    256
+#define IAVF_MAX_TSO_MSS	    9668
 
 typedef union
 {
