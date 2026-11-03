@@ -504,6 +504,7 @@ typedef struct http_worker_
   clib_llist_index_t sched_head;
   u32 h2_n_sessions;
   http_wrk_stats_t stats;
+  clib_timebase_t timebase; /* uses this thread's clock */
 } http_worker_t;
 
 typedef struct http_main_
@@ -516,8 +517,6 @@ typedef struct http_main_
   u8 **rx_bufs;
   u8 **tx_bufs;
   u8 **app_header_lists;
-
-  clib_timebase_t timebase;
 
   http_status_code_t *sc_by_u16;
   /*
