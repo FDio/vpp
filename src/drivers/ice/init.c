@@ -397,7 +397,7 @@ ice_deinit (vlib_main_t *vm, vnet_dev_t *dev)
 {
   ice_dev_t *id = vnet_dev_get_data (dev);
   vnet_dev_port_t *port = vnet_dev_get_port_by_id (dev, 0);
-  ice_port_t *ip = vnet_dev_get_port_data (port);
+  ice_port_t *ip = port ? vnet_dev_get_port_data (port) : 0;
 
   log_debug (dev, "deinitializing device");
   if (id->bar0)
