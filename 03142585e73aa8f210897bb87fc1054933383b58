@@ -1,0 +1,22 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0b3b4c5d_3fe9117e",
+        "filename": "src/plugins/cnat/cnat_client.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 383,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-11-03T13:30:05Z",
+      "side": 1,
+      "message": "Could we move the `pool_is_free_index` check and invalid-ID formatting into `format_cnat_client`, before `pool_elt_at_index`? That would centralize handling of invalid client IDs for all formatter callers and simplify this branch to a single `vlib_cli_output` call.",
+      "tag": "prview:a7b0dfabe93aebabb8405edad9b2955f:03142585e73aa8f210897bb87fc1054933383b58",
+      "revId": "03142585e73aa8f210897bb87fc1054933383b58",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
