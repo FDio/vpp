@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "29ab6000_ff684245",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2026-11-03T12:44:21Z",
+      "side": 1,
+      "message": "avoid mixing unrlated cosmetic and functional changes in single patch",
+      "revId": "9f679947988429aec53f761fae317accbfdf3822",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
