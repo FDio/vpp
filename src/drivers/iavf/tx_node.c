@@ -391,10 +391,14 @@ iavf_tx_prepare (vlib_main_t *vm, vlib_node_runtime_t *node,
 	      cmd = iavf_tx_prepare_cksum (b[0], 0 /* is_gso */);
 	    }
 
-	  /* Deal with chain buffer if present */
-	  while (b[0]->flags & VLIB_BUFFER_NEXT_PRESENT)
+	  /* Set EOP only on the final buffer in the chain. */
+	  while (1)
 	    {
-	      iavf_tx_fill_data_desc (vm, d, b[0], cmd, use_va_dma);
+	      u8 has_next = (b[0]->flags & VLIB_BUFFER_NEXT_PRESENT) != 0;
+	      iavf_tx_fill_data_desc (vm, d, b[0], cmd | (has_next ? 0 : cmd_eop), use_va_dma);
+
+	      if (!has_next)
+		break;
 
 	      n_desc_left -= 1;
 	      d += 1;
@@ -403,8 +407,6 @@ iavf_tx_prepare (vlib_main_t *vm, vlib_node_runtime_t *node,
 	      tb[0] = b[0]->next_buffer;
 	      b[0] = vlib_get_buffer (vm, b[0]->next_buffer);
 	    }
-
-	  iavf_tx_fill_data_desc (vm, d, b[0], cmd_eop | cmd, use_va_dma);
 	}
 
       buffers += 1;
