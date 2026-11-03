@@ -176,7 +176,7 @@ iavf_tx_queue_stop (vlib_main_t *vm, vnet_dev_tx_queue_t *txq)
   if (atq->n_enqueued)
     {
       vlib_buffer_free_from_ring_no_next (vm, atq->buffer_indices,
-					  atq->next - atq->n_enqueued,
+					  (atq->next - atq->n_enqueued) & (txq->size - 1),
 					  txq->size, atq->n_enqueued);
       log_debug (txq->port->dev, "%u buffers freed from tx queue %u",
 		 atq->n_enqueued, txq->queue_id);
