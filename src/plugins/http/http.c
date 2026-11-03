@@ -161,8 +161,9 @@ u8 *
 format_http_time_now (u8 *s, va_list *args)
 {
   http_ctx_t __clib_unused *hc = va_arg (*args, http_ctx_t *);
-  http_main_t *hm = &http_main;
-  f64 now = clib_timebase_now (&hm->timebase);
+  /* clib_time_now updates the clock it reads, so only use this thread's */
+  http_worker_t *wrk = http_worker_get (vlib_get_thread_index ());
+  f64 now = clib_timebase_now (&wrk->timebase);
   return format (s, "%U", format_clib_timebase_time, now);
 }
 
@@ -1097,6 +1098,8 @@ http_transport_enable (vlib_main_t *vm, u8 is_en)
       vec_validate (wrk->header_list, clib_max (hm->h2_settings.max_header_list_size,
 						hm->h3_settings.max_field_section_size) -
 					1);
+      clib_timebase_init (&wrk->timebase, 0 /* GMT */, CLIB_TIMEBASE_DAYLIGHT_NONE,
+			  &vlib_get_main_by_index (ti)->clib_time);
     }
   vec_validate (hm->rx_bufs, num_threads - 1);
   vec_validate (hm->tx_bufs, num_threads - 1);
@@ -1111,9 +1114,6 @@ http_transport_enable (vlib_main_t *vm, u8 is_en)
 		      HTTP_UDP_PROXY_DATAGRAM_CAPSULE_OVERHEAD);
       vec_validate (hm->app_header_lists[i], 64 << 10);
     }
-
-  clib_timebase_init (&hm->timebase, 0 /* GMT */, CLIB_TIMEBASE_DAYLIGHT_NONE,
-		      &vm->clib_time /* share the system clock */);
 
   http_timers_init (vm, http_conn_timeout_cb, http_conn_invalidate_timer_cb);
   hm->is_init = 1;
