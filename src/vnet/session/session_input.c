@@ -171,13 +171,23 @@ app_worker_flush_events_inline (app_worker_t *app_wrk,
 		  s = session_get_from_handle (
 		    session_make_handle (evt->session_index, thread_index));
 		  session_set_state (s, clib_max (old_state, s->session_state));
+		  s->flags &= ~SESSION_F_RX_READY;
+		  if (!(s->flags & SESSION_F_APP_CLOSED))
+		    s->flags |= SESSION_F_TPT_INIT_CLOSE;
+		  if (s->session_state >= SESSION_STATE_TRANSPORT_CLOSED)
+		    {
+		      if (s->session_state < SESSION_STATE_TRANSPORT_DELETED &&
+			  (session_get_transport (s)->flags & TRANSPORT_CONNECTION_F_ERROR))
+			{
+			  if (!(s->flags & SESSION_F_APP_CLOSED))
+			    app->cb_fns.session_reset_callback (s);
+			  break;
+			}
+		    }
 		  if (svm_fifo_max_dequeue (s->rx_fifo))
 		    app->cb_fns.builtin_app_rx_callback (s);
 		  if (!(s->flags & SESSION_F_APP_CLOSED))
-		    {
-		      s->flags |= SESSION_F_TPT_INIT_CLOSE;
-		      app->cb_fns.session_disconnect_callback (s);
-		    }
+		    app->cb_fns.session_disconnect_callback (s);
 		}
 	      else
 		{
