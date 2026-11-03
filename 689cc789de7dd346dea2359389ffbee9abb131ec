@@ -16,6 +16,23 @@
       "message": "zero length segments should never hit driver, this needs to be fixed at sender.",
       "revId": "689cc789de7dd346dea2359389ffbee9abb131ec",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "653613d5_08903861",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2026-11-03T12:49:29Z",
+      "side": 1,
+      "message": "knowing that we use 2K buffer size, can you explain in which case this is going to be a problem?",
+      "revId": "689cc789de7dd346dea2359389ffbee9abb131ec",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
