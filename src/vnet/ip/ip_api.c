@@ -2158,6 +2158,12 @@ ip_api_hookup (vlib_main_t * vm)
   vl_api_set_msg_thread_safe (am, REPLY_MSG_ID_BASE + VL_API_IP_ADDRESS_DUMP,
 			      1);
 
+  /*
+   * Mark the route lookup API as MP safe
+   */
+  vl_api_set_msg_thread_safe (am, REPLY_MSG_ID_BASE + VL_API_IP_ROUTE_LOOKUP, 1);
+  vl_api_set_msg_thread_safe (am, REPLY_MSG_ID_BASE + VL_API_IP_ROUTE_LOOKUP_V2, 1);
+
   return 0;
 }
 
