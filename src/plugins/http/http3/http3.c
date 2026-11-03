@@ -158,8 +158,7 @@ http3_stream_terminate (http_ctx_t *stream, http_ctx_t *req, http3_error_t err)
     {
       if (!(req->req_flags & HTTP_REQ_F_APP_CLOSED))
 	session_transport_reset_notify (&req->connection);
-      else
-	session_transport_closed_notify (&req->connection);
+      session_transport_closed_notify (&req->connection);
     }
   http_reset_transport_stream (stream);
 }
@@ -177,8 +176,7 @@ http3_conn_terminate (http_ctx_t *hc, http3_error_t err)
 	{
 	  if (!(parent_req->req_flags & HTTP_REQ_F_APP_CLOSED))
 	    session_transport_reset_notify (&parent_req->connection);
-	  else
-	    session_transport_closed_notify (&parent_req->connection);
+	  session_transport_closed_notify (&parent_req->connection);
 	}
     }
   http_disconnect_transport (hc);
@@ -223,11 +221,11 @@ http3_stream_ctx_reset (http_ctx_t *old_stream, http_ctx_t *req)
   if (rv)
     {
       HTTP_DBG (1, "failed to open request stream");
-      /* not much to do here, just notify app */
+      if (req->req_flags & HTTP_REQ_F_IS_PARENT)
+	http_disconnect_transport (hc);
       if (!(req->req_flags & HTTP_REQ_F_APP_CLOSED))
 	session_transport_reset_notify (&req->connection);
-      else
-	session_transport_closed_notify (&req->connection);
+      session_transport_closed_notify (&req->connection);
       return;
     }
   new_stream->http_req_index = req_index;
@@ -920,8 +918,7 @@ http3_send_431 (http_ctx_t *stream, http_ctx_t *req)
   /* notify app that nothing will happen */
   if (!(req->req_flags & HTTP_REQ_F_APP_CLOSED))
     session_transport_reset_notify (&req->connection);
-  else
-    session_transport_closed_notify (&req->connection);
+  session_transport_closed_notify (&req->connection);
   http_close_transport_stream (stream);
   http_io_ts_after_write (stream, 0);
   http_stats_responses_sent_inc (stream->c_thread_index);
@@ -2318,6 +2315,7 @@ http3_transport_reset_callback (http_ctx_t *hc)
     {
       parent_req = http_ctx_get_w_thread (hc->hc_parent_req_index, hc->c_thread_index);
       session_transport_reset_notify (&parent_req->connection);
+      session_transport_closed_notify (&parent_req->connection);
     }
   hc->our_ctrl_stream_index = SESSION_INVALID_INDEX;
   hc->peer_ctrl_stream_index = SESSION_INVALID_INDEX;
@@ -2500,8 +2498,7 @@ http3_transport_stream_reset_callback (http_ctx_t *stream)
       http_stats_stream_reset_by_peer_inc (stream->c_thread_index);
       if (!(req->req_flags & HTTP_REQ_F_APP_CLOSED))
 	session_transport_reset_notify (&req->connection);
-      else
-	session_transport_closed_notify (&req->connection);
+      session_transport_closed_notify (&req->connection);
     }
 }
 
