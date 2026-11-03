@@ -1174,6 +1174,7 @@ session_transport_reset_notify (transport_connection_t * tc)
     return;
   if (s->session_state == SESSION_STATE_ACCEPTING)
     {
+      tc->flags |= TRANSPORT_CONNECTION_F_ERROR;
       session_set_state (s, SESSION_STATE_TRANSPORT_CLOSING);
       return;
     }

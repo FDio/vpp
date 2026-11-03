@@ -86,6 +86,7 @@ app_worker_flush_events_inline (app_worker_t *app_wrk,
   svm_msg_q_t *mq = app_wrk->event_queue;
   u8 ring_index, mq_is_cong;
   session_state_t old_state;
+  transport_connection_t *tc;
   session_event_t *evt;
   u32 n_evts = 128, i;
   session_t *s;
@@ -171,6 +172,17 @@ app_worker_flush_events_inline (app_worker_t *app_wrk,
 		  s = session_get_from_handle (
 		    session_make_handle (evt->session_index, thread_index));
 		  session_set_state (s, clib_max (old_state, s->session_state));
+		  tc = session_get_transport (s);
+		  if (tc && (tc->flags & TRANSPORT_CONNECTION_F_ERROR))
+		    {
+		      s->flags &= ~SESSION_F_RX_READY;
+		      if (!(s->flags & SESSION_F_APP_CLOSED))
+			{
+			  s->flags |= SESSION_F_TPT_INIT_CLOSE;
+			  app->cb_fns.session_reset_callback (s);
+			}
+		      break;
+		    }
 		  if (svm_fifo_max_dequeue (s->rx_fifo))
 		    app->cb_fns.builtin_app_rx_callback (s);
 		  if (!(s->flags & SESSION_F_APP_CLOSED))

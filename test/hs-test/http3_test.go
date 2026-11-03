@@ -610,9 +610,8 @@ func Http3ClientRequestIncompleteTest(s *Http3Suite) {
 	defer conn.CloseWithError(0, "")
 	stream, err := conn.OpenStream()
 	AssertNil(err)
-	// send just frame header and close stream
-	stream.Write([]byte{0x01, 0x09})
-	stream.CancelWrite(quic.StreamErrorCode(http3.ErrCodeRequestCanceled))
+	// End the request with FIN before sending its headers.
+	AssertNil(stream.Close())
 	time.Sleep(500 * time.Millisecond)
 	// server should reset stream with H3_REQUEST_INCOMPLETE
 	stream.SetReadDeadline(time.Now().Add(time.Second))
