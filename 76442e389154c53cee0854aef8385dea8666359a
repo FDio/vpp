@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "9ce33db3_13a60e26",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 42
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-11-03T16:22:23Z",
+      "side": 1,
+      "message": "Hi Jerome. If this is still happening, I would fix tcp packet generation, as opposed to iavf.",
+      "revId": "76442e389154c53cee0854aef8385dea8666359a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
