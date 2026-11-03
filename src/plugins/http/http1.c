@@ -2121,6 +2121,7 @@ http1_transport_reset_callback (http_ctx_t *hc)
   http_ctx_t *req = http1_conn_get_req (hc);
   hc->flags &= ~HTTP_CONN_F_PENDING_LAST_CHUNK;
   session_transport_reset_notify (&req->connection);
+  session_transport_closed_notify (&req->connection);
   http_stats_connections_reset_by_peer_inc (hc->c_thread_index);
 }
 

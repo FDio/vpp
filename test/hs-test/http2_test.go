@@ -23,7 +23,7 @@ func init() {
 	RegisterH2Tests(Http2TcpGetTest, Http2TcpPostTest, Http2MultiplexingTest, Http2TlsTest, Http2ContinuationTxTest,
 		Http2ServerMemLeakTest, Http2ClientGetTest, Http2ClientPostTest, Http2ClientPostPtrTest, Http2ClientGetRepeatTest,
 		Http2ClientMultiplexingTest, Http2ClientH2cTest, Http2ClientContinuationH2cTest, Http2ClientNoContentLengthTest, Http2ServerExtraDataTest,
-		Http2ClientMemLeakTest, Http2ClientClosedHeadersTest,
+		Http2ClientMemLeakTest, Http2ClientClosedHeadersTest, Http2ServerDeferredCleanupTest,
 		Htttp2TlsNoAlpnTest, Http2TcpClientCloseDuringHandshakeTest)
 	RegisterH2MWTests(Http2MultiplexingMWTest, Http2ClientMultiplexingMWTest, Http2TsFifoMemPressureMWTest)
 	RegisterVethTests(Http2CliTlsTest, Http2ClientContinuationTest, Http2ClientPostFormTest, Http2ClientPostFormPtrTest)
@@ -506,6 +506,103 @@ func Http2ServerExtraDataTest(s *Http2Suite) {
 	o := vpp.Vppctl("show http stats")
 	Log(o)
 	AssertContains(o, "1 connections protocol error")
+}
+
+func Http2ServerDeferredCleanupTest(s *Http2Suite) {
+	vpp := s.Containers.Vpp.VppInstance
+	address := net.JoinHostPort(s.VppAddr(), s.Ports.Port1)
+	Log(vpp.Vppctl("http cli server fifo-size 4 uri http://" + address))
+	conn, err := net.DialTimeout("tcp", address, 5*time.Second)
+	AssertNil(err)
+	defer conn.Close()
+	AssertNil(conn.SetDeadline(time.Now().Add(10 * time.Second)))
+	reader := http2.NewFramer(conn, conn)
+	reader.ReadMetaHeaders = hpack.NewDecoder(4096, nil)
+	block := http2HeaderBlock(hpack.HeaderField{Name: ":method", Value: "POST"},
+		hpack.HeaderField{Name: ":scheme", Value: "http"},
+		hpack.HeaderField{Name: ":path", Value: "/echo"},
+		hpack.HeaderField{Name: ":authority", Value: address},
+		hpack.HeaderField{Name: "content-length", Value: "1"})
+
+	streamID := uint32(1)
+	for round := range 2 {
+		var out bytes.Buffer
+		writer := http2.NewFramer(&out, nil)
+		if round == 0 {
+			out.WriteString(http2.ClientPreface)
+			AssertNil(writer.WriteSettings(http2.Setting{ID: http2.SettingMaxConcurrentStreams, Val: 100}))
+		}
+		pending := make(map[uint32]bool)
+		bodies := make(map[uint32]string)
+		for i := range 12 {
+			AssertNil(writer.WriteHeaders(http2.HeadersFrameParam{
+				StreamID: streamID, BlockFragment: block, EndHeaders: true,
+			}))
+			switch i % 3 {
+			case 0:
+				// Reject an oversized body before app acceptance can run.
+				AssertNil(writer.WriteData(streamID, true, []byte("xx")))
+				pending[streamID] = false
+			case 1:
+				AssertNil(writer.WriteRSTStream(streamID, http2.ErrCodeCancel))
+			case 2:
+				AssertNil(writer.WriteData(streamID, true, []byte("x")))
+				pending[streamID] = true
+			}
+			streamID += 2
+		}
+		_, err = conn.Write(out.Bytes())
+		AssertNil(err)
+		for len(pending) != 0 {
+			frame, err := reader.ReadFrame()
+			AssertNil(err)
+			switch frame := frame.(type) {
+			case *http2.SettingsFrame:
+				if !frame.IsAck() {
+					AssertNil(reader.WriteSettingsAck())
+				}
+			case *http2.RSTStreamFrame:
+				body, expected := pending[frame.StreamID]
+				AssertEqual(true, expected && !body, "unexpected stream reset")
+				AssertEqual(http2.ErrCodeProtocol, frame.ErrCode)
+				delete(pending, frame.StreamID)
+			case *http2.MetaHeadersFrame:
+				AssertEqual(true, pending[frame.StreamID], "response on a reset stream")
+				AssertEqual("200", frame.PseudoValue("status"))
+			case *http2.DataFrame:
+				AssertEqual(true, pending[frame.StreamID], "data on a reset stream")
+				bodies[frame.StreamID] += string(frame.Data())
+				if frame.StreamEnded() {
+					AssertEqual("x", bodies[frame.StreamID])
+					delete(pending, frame.StreamID)
+				}
+			case *http2.GoAwayFrame:
+				Fail(fmt.Sprintf("unexpected GOAWAY: %v", frame.ErrCode))
+			}
+		}
+	}
+	// Destroy the parent connection with child cleanup notifications pending.
+	var out bytes.Buffer
+	writer := http2.NewFramer(&out, nil)
+	for range 12 {
+		AssertNil(writer.WriteHeaders(http2.HeadersFrameParam{
+			StreamID: streamID, BlockFragment: block, EndHeaders: true,
+		}))
+		AssertNil(writer.WriteRSTStream(streamID, http2.ErrCodeCancel))
+		streamID += 2
+	}
+	_, err = conn.Write(out.Bytes())
+	AssertNil(err)
+	AssertNil(conn.Close())
+	var output string
+	for range 50 {
+		output = vpp.Vppctl("show http")
+		if strings.Contains(output, "Thread 0: ctx pool 2/") {
+			break
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	AssertContains(output, "Thread 0: ctx pool 2/", "HTTP/2 contexts were not released")
 }
 
 func http2ClientPostFile(s *Http2Suite, usePtr bool, fileSize int) {

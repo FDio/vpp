@@ -194,6 +194,17 @@ http2_req_set_stream_id (http_ctx_t *req, http_ctx_t *hc, u32 stream_id, u8 unse
   hash_set (hc->req_by_stream_id, stream_id, ((http_req_handle_t) req->hr_req_handle).req_index);
 }
 
+static void
+http2_req_free (transport_connection_t *tc)
+{
+  http_ctx_t *req = (http_ctx_t *) tc;
+
+  vec_free (req->headers);
+  vec_free (req->target);
+  http_buffer_free (&req->tx_buf);
+  http_ctx_free (req);
+}
+
 static inline void
 http2_conn_free_req (http_ctx_t *hc, http_ctx_t *req, clib_thread_index_t thread_index)
 {
@@ -204,9 +215,6 @@ http2_conn_free_req (http_ctx_t *hc, http_ctx_t *req, clib_thread_index_t thread
 	    clib_net_to_host_u32 (req->stream_id));
   if (clib_llist_elt_is_linked (req, stream_sched_list))
     clib_llist_remove (wrk->ctx_pool, stream_sched_list, req);
-  vec_free (req->headers);
-  vec_free (req->target);
-  http_buffer_free (&req->tx_buf);
   if (req->stream_id)
     hash_unset (hc->req_by_stream_id, req->stream_id);
   if (req->req_flags & HTTP_REQ_F_IS_PARENT)
@@ -216,7 +224,11 @@ http2_conn_free_req (http_ctx_t *hc, http_ctx_t *req, clib_thread_index_t thread
       hc->req_num--;
       http_stats_app_streams_closed_inc (thread_index);
     }
-  http_ctx_free (req);
+  /* keep the transport valid until queued app notifications are handled */
+  if (req->c_s_index != SESSION_INVALID_INDEX)
+    session_transport_delete_request (&req->connection, http2_req_free);
+  else
+    http2_req_free (&req->connection);
 }
 
 static inline void
@@ -348,11 +360,13 @@ http2_connection_error (http_ctx_t *hc, http2_error_t error, transport_send_para
 		      req = http_ctx_get_w_thread (req_index, hc->c_thread_index);
 		      if (req->stream_state != HTTP2_STREAM_STATE_CLOSED)
 			session_transport_reset_notify (&req->connection);
+		      session_transport_closed_notify (&req->connection);
 		    }));
       if (hc->hc_parent_req_index != SESSION_INVALID_INDEX)
 	{
 	  req = http_ctx_get_w_thread (hc->hc_parent_req_index, hc->c_thread_index);
 	  session_transport_reset_notify (&req->connection);
+	  session_transport_closed_notify (&req->connection);
 	}
     }
   else
@@ -369,6 +383,7 @@ http2_connection_error (http_ctx_t *hc, http2_error_t error, transport_send_para
 	{
 	  req = http_ctx_get_w_thread (hc->hc_parent_req_index, hc->c_thread_index);
 	  session_transport_reset_notify (&req->connection);
+	  session_transport_closed_notify (&req->connection);
 	}
       else
 	{
@@ -409,10 +424,8 @@ http2_stream_error (http_ctx_t *hc, http_ctx_t *req, http2_error_t error)
       http_io_as_drain_unread (req);
       session_transport_reset_notify (&req->connection);
     }
-  else
-    session_transport_closed_notify (&req->connection);
+  session_transport_closed_notify (&req->connection);
 
-  session_transport_delete_notify (&req->connection);
   http2_conn_free_req (hc, req, hc->c_thread_index);
 }
 
@@ -433,7 +446,6 @@ http2_stream_close (http_ctx_t *req, http_ctx_t *hc)
       session_transport_closing_notify (&req->connection);
     }
 
-  session_transport_delete_notify (&req->connection);
   http2_conn_free_req (hc, req, hc->c_thread_index);
 }
 
@@ -1035,9 +1047,7 @@ http_sched_dispatch_431 (http_ctx_t *req, http_ctx_t *hc, u8 *n_emissions,
   /* notify app that nothing will happen and free request */
   if (!(req->req_flags & HTTP_REQ_F_APP_CLOSED))
     session_transport_reset_notify (&req->connection);
-  else
-    session_transport_closed_notify (&req->connection);
-  session_transport_delete_notify (&req->connection);
+  session_transport_closed_notify (&req->connection);
   http2_conn_free_req (hc, req, hc->c_thread_index);
   return 0;
 }
@@ -2945,10 +2955,8 @@ http2_handle_rst_stream_frame (http_ctx_t *hc, http2_frame_header_t *fh)
       http_io_as_drain_unread (req);
       session_transport_reset_notify (&req->connection);
     }
-  else
-    session_transport_closed_notify (&req->connection);
+  session_transport_closed_notify (&req->connection);
 
-  session_transport_delete_notify (&req->connection);
   http2_conn_free_req (hc, req, hc->c_thread_index);
   return HTTP2_ERROR_NO_ERROR;
 }
@@ -3010,12 +3018,14 @@ http2_handle_goaway_frame (http_ctx_t *hc, http2_frame_header_t *fh)
 	  hash_foreach (stream_id, req_index, hc->req_by_stream_id, ({
 			  req = http_ctx_get_w_thread (req_index, hc->c_thread_index);
 			  session_transport_reset_notify (&req->connection);
+			  session_transport_closed_notify (&req->connection);
 			}));
 	}
       if (hc->hc_parent_req_index != SESSION_INVALID_INDEX)
 	{
 	  req = http_ctx_get_w_thread (hc->hc_parent_req_index, hc->c_thread_index);
 	  session_transport_reset_notify (&req->connection);
+	  session_transport_closed_notify (&req->connection);
 	}
       if (clib_llist_elt_is_linked (hc, sched_list))
 	clib_llist_remove (wrk->ctx_pool, sched_list, hc);
@@ -3355,7 +3365,6 @@ http2_app_reset_callback (http_ctx_t *hc, u32 req_index, clib_thread_index_t thr
 			       (req->req_flags & HTTP_REQ_F_IS_TUNNEL) ?
 				 HTTP2_ERROR_CONNECT_ERROR :
 				 HTTP2_ERROR_INTERNAL_ERROR);
-  session_transport_delete_notify (&req->connection);
   if (req->req_flags & HTTP_REQ_F_IS_PARENT)
     {
       HTTP_DBG (1, "app closed parent, closing connection");
@@ -3769,6 +3778,7 @@ http2_transport_reset_callback (http_ctx_t *hc)
 		    {
 		      HTTP_DBG (1, "req_index %x", req_index);
 		      session_transport_reset_notify (&req->connection);
+		      session_transport_closed_notify (&req->connection);
 		    }
 		}));
 
@@ -3776,6 +3786,7 @@ http2_transport_reset_callback (http_ctx_t *hc)
     {
       req = http_ctx_get_w_thread (hc->hc_parent_req_index, hc->c_thread_index);
       session_transport_reset_notify (&req->connection);
+      session_transport_closed_notify (&req->connection);
     }
 
   if (clib_llist_elt_is_linked (hc, sched_list))
@@ -3860,7 +3871,6 @@ http2_conn_cleanup_callback (http_ctx_t *hc)
   vec_foreach (req_index_p, req_indices)
     {
       req = http_ctx_get_w_thread (*req_index_p, hc->c_thread_index);
-      session_transport_delete_notify (&req->connection);
       http2_conn_free_req (hc, req, hc->c_thread_index);
     }
   if ((hc->hc_parent_req_index != SESSION_INVALID_INDEX))
@@ -3868,7 +3878,6 @@ http2_conn_cleanup_callback (http_ctx_t *hc)
       req = http_ctx_get_w_thread (hc->hc_parent_req_index, hc->c_thread_index);
       if (req->stream_state != HTTP2_STREAM_STATE_CLOSED)
 	session_transport_closing_notify (&req->connection);
-      session_transport_delete_notify (&req->connection);
       http2_conn_free_req (hc, req, hc->c_thread_index);
     }
 
