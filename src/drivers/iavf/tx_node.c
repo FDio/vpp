@@ -18,7 +18,7 @@
 static_always_inline u8
 iavf_tx_desc_get_dtyp (iavf_tx_desc_t *d)
 {
-  return d->qword[1] & 0x0f;
+  return d->qword[1] & IAVF_TXD_DTYP_MASK;
 }
 
 struct iavf_ip4_psh
@@ -575,26 +575,23 @@ iavf_tx_prepare (vlib_main_t *vm, vlib_node_runtime_t *node,
 	      cmd = iavf_tx_prepare_cksum (b[0], 0 /* is_gso */);
 	    }
 
-	  /* Deal with chain buffer if present */
-	  while (b[0]->flags & VLIB_BUFFER_NEXT_PRESENT)
+	  /* Set EOP only on the final buffer in the chain. */
+	  while (1)
 	    {
-	      u16 n = iavf_tx_fill_buffer_descs (vm, d, tb, b[0], tb[0], cmd, use_va_dma, is_tso);
+	      u8 has_next = (b[0]->flags & VLIB_BUFFER_NEXT_PRESENT) != 0;
+	      u16 n = iavf_tx_fill_buffer_descs (
+		vm, d, tb, b[0], tb[0], cmd | (has_next ? 0 : cmd_eop), use_va_dma, is_tso);
 
 	      n_desc_left -= n;
 	      d += n;
 	      tb += n;
 
+	      if (!has_next)
+		break;
+
 	      tb[0] = b[0]->next_buffer;
 	      b[0] = vlib_get_buffer (vm, b[0]->next_buffer);
 	    }
-
-	  {
-	    u16 n =
-	      iavf_tx_fill_buffer_descs (vm, d, tb, b[0], tb[0], cmd_eop | cmd, use_va_dma, is_tso);
-	    n_desc_left -= n;
-	    d += n;
-	    tb += n;
-	  }
 
 	  buffers += 1;
 	  n_packets_left -= 1;
@@ -650,7 +647,7 @@ retry:
 	  if (slot == 0)
 	    break;
 
-	  if (iavf_tx_desc_get_dtyp (atq->descs + slot[0]) != 0x0F)
+	  if (iavf_tx_desc_get_dtyp (atq->descs + slot[0]) != IAVF_TXD_DTYP_DONE)
 	    break;
 
 	  complete_slot = slot[0];
