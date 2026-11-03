@@ -226,6 +226,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "e985ac96_300b7c09",
+        "filename": "src/plugins/http/http1.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-11-03T15:22:39Z",
+      "side": 1,
+      "message": "this is not completed all, state preservation and header name identification are addressed.\nremaining:\n- parse the request line incrementally, avoid copying all available data just to find delimiters\n- now with staging, limit final scratch buffer copy to control data, body bytes do not need copying into rx_buf",
+      "parentUuid": "9397e53a_1f246dae",
+      "revId": "c4189f81ba01430f69f594bbf1c126a16cc44daf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "b5e586b3_45deba15",
         "filename": "src/plugins/http/http1.c",
         "patchSetId": 2

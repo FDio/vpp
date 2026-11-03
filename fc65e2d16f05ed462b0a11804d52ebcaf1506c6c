@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6053d8bd_9aa9efea",
+        "filename": "src/plugins/http/http1.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 217,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-11-03T15:22:39Z",
+      "side": 1,
+      "message": "here we need to loop until requested byte count is staged, svm_fifo_segments() can return fewer bytes when data spans more than two segments, this is normal partial transfer, not a protocol error, drain only the bytes successfully copied on each iteration.",
+      "revId": "fc65e2d16f05ed462b0a11804d52ebcaf1506c6c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "743eb055_c3a1a1b3",
+        "filename": "src/plugins/http/http1.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 262,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-11-03T15:22:39Z",
+      "side": 1,
+      "message": "we can\u0027t use svm_fifo_enqueu here otherwise VLC app can read data. stage headers with svm_fifo_provision_chunks_at_offset() without advancing the app rx fifo tail. when parsing is done write http metadata and publish everything together with svm_fifo_enqueue_nocopy()",
+      "revId": "fc65e2d16f05ed462b0a11804d52ebcaf1506c6c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
