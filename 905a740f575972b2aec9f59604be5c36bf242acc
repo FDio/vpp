@@ -1,0 +1,40 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "87b198e9_ad38f0f2",
+        "filename": "src/plugins/cnat/cnat_snat_policy.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 576,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-11-03T15:11:43Z",
+      "side": 1,
+      "message": "Could we allow an existing single-family entry to acquire the other family before asserting equality? After `set cnat snat-policy addr 30.0.0.1`, `set cnat snat-policy addr 30.0.0.1 2001:db8::1` (or switching to an interface) now yields non-null `cpe4` and null `cpe6`, so the assertion immediately below aborts a debug VPP. Previously the missing-family lookup returned the default entry and these updates succeeded. Add regression coverage for upgrading a single-family default policy to dual stack/interface configuration.",
+      "tag": "prview:78d51056336e066720f0d4ed975f70c0:905a740f575972b2aec9f59604be5c36bf242acc",
+      "revId": "905a740f575972b2aec9f59604be5c36bf242acc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "57e30021_b32b4347",
+        "filename": "src/plugins/cnat/cnat_snat_policy.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 577,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-11-03T15:11:43Z",
+      "side": 1,
+      "message": "Creating a separate entry for a new FIB now reaches `pool_get_zero()` while `snat_default_policy` still points into the old pool allocation. If the pool grows and moves, the saved default pointer is never rebased (and the non-default CLI call no longer replaces it), so fallback lookups for unmapped FIBs dereference freed memory. An ASAN probe using the actual policy type and pool implementation confirms that allocating the second entry can move the pool and poison the saved pointer. Could we store the default policy as a pool index, or refresh its pointer after growth, and add coverage that uses fallback after creating another FIB policy?",
+      "tag": "prview:78d51056336e066720f0d4ed975f70c0:905a740f575972b2aec9f59604be5c36bf242acc",
+      "revId": "905a740f575972b2aec9f59604be5c36bf242acc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
