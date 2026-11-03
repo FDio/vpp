@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "cba1b5eb_30da5737",
+        "filename": "src/vnet/session/session_input.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 175,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-11-03T16:30:08Z",
+      "side": 1,
+      "message": "Maybe let\u0027s check for state first, i.e., if \u003e transport_closed, get transport and see if we have error. Otherwise, keep on doing what we\u0027re doing. \nWe could maybe pull some common stuff out, e.g., the logic that sets TPT_INIT_CLOSE, the SESSION_F_RX_READY, as those should be invariant. But then depending on state, we decide if we get tcp and check for error. If yes, reset, if not, try to read and call disconnect",
+      "revId": "58d05f2a0a4d77868e7fbf3e278642a4e0a9e21f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
