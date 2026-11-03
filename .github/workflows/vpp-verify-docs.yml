@@ -93,13 +93,18 @@ defaults:
 
 permissions:
   contents: read
-  actions: read
+  actions: read   # Needed to read local actions
+
+concurrency:
+  group: ${{ github.workflow }}-${{ inputs.GERRIT_PROJECT }}-${{ inputs.GERRIT_BRANCH }}-${{ inputs.GERRIT_CHANGE_NUMBER }}-${{ inputs.FDIO_NAMESPACE }}
+  cancel-in-progress: true
 
 jobs:
   verify-docs:
     # yamllint disable-line rule:line-length
     name: ${{ inputs.GERRIT_CHANGE_NUMBER }}/${{ inputs.GERRIT_PATCHSET_NUMBER}}__${{ inputs.GERRIT_BRANCH }}__${{ inputs.FDIO_NAMESPACE }}
     runs-on:
+      # zizmor: ignore[self-hosted-runner]
       - self-hosted
       - nomad
       - fdio:arch=${{ matrix.executor_arch }}
@@ -116,6 +121,9 @@ jobs:
         executor_arch: ['x86_64']
 
     env:
+      MATRIX_OS: ${{ matrix.os }}
+      MATRIX_CLASS: ${{ matrix.class }}
+      MATRIX_EXECUTOR_ARCH: ${{ matrix.executor_arch }}
       FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE }}
       GERRIT_BRANCH: ${{ inputs.GERRIT_BRANCH }}
       GERRIT_CHANGE_URL: ${{ inputs.GERRIT_CHANGE_URL }}
@@ -144,7 +152,7 @@ jobs:
       - name: Prepare Log Directory
         run: |
           set -euxo pipefail
-          LOG_NAME="${{ env.LOG_PREFIX }}/verify-docs-${{ matrix.class }}-${{ matrix.os }}-${{ inputs.FDIO_NAMESPACE }}-${{ matrix.executor_arch }}"
+          LOG_NAME="${LOG_PREFIX}/verify-docs-${MATRIX_CLASS}-${MATRIX_OS}-${FDIO_NAMESPACE}-${MATRIX_EXECUTOR_ARCH}"
           echo "LOG_NAME=$LOG_NAME" >> "$GITHUB_ENV"
           echo "S3_DOCS_7DAY_PATH=$LOG_NAME/docs" >> "$GITHUB_ENV"
           LOG_DIR="$WORKSPACE/logs/$LOG_NAME"
