@@ -505,6 +505,9 @@ retry:
   else
     n_enq = iavf_tx_prepare (vm, node, txq, buffers, n_left, &n_desc, 0);
 
+  buffers += n_enq;
+  n_left -= n_enq;
+
   if (n_desc)
     {
       if (PREDICT_TRUE (next + n_desc <= txq->size))
@@ -538,13 +541,10 @@ retry:
       atq->next = next & mask;
       __atomic_store_n (atq->qtx_tail, atq->next, __ATOMIC_RELEASE);
       atq->n_enqueued += n_desc;
-      n_left -= n_enq;
     }
 
   if (n_left)
     {
-      buffers += n_enq;
-
       if (n_retry--)
 	goto retry;
 
