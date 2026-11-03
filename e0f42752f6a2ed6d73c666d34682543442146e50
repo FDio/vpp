@@ -16,6 +16,24 @@
       "message": "Dave, thanks for the report. I’ve uploaded patchset 2, which fixes the make install-ext-deps failure you hit when upgrading from stable/2506. The cause was the clean target: $(I) now points to the real install path (/opt/vpp/external/x86_64), so clean tried to delete the previously installed system files. It now removes only the local copy ($(R)/$(I)). I also restored the DPDK build to use pkg-config and set PKG_CONFIG_SYSROOT_DIR so the .pc paths from the deb tmp dir resolve during linking. The vpp-ext-deps deb size is unchanged (76M). Could you re-run your stable/2506 → master make install-ext-deps sequence and confirm it’s fixed?",
       "revId": "e0f42752f6a2ed6d73c666d34682543442146e50",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b91689de_e4cd21f5",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 10
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3189
+      },
+      "writtenOn": "2026-11-03T14:08:13Z",
+      "side": 1,
+      "message": "Sorry it\u0027s patchset 10",
+      "parentUuid": "549557d6_8d2f1d74",
+      "revId": "e0f42752f6a2ed6d73c666d34682543442146e50",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
