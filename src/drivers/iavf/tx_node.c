@@ -271,6 +271,24 @@ iavf_tx_tso_chain_len_and_descs (vlib_main_t *vm, vlib_buffer_t *b, u16 *n_descs
       pkt_len += b->current_length;
       n += iavf_tx_buffer_desc_count (b, 1 /* tso */);
 
+      /* A zero-length data descriptor can terminate TSO before the final
+       * segment is emitted. Unlink empty fragments while retaining the
+       * ownership of every nonempty buffer in the chain. */
+      while (b->flags & VLIB_BUFFER_NEXT_PRESENT)
+	{
+	  u32 bi = b->next_buffer;
+	  vlib_buffer_t *next = vlib_get_buffer (vm, bi);
+
+	  if (next->current_length)
+	    break;
+
+	  if (next->flags & VLIB_BUFFER_NEXT_PRESENT)
+	    b->next_buffer = next->next_buffer;
+	  else
+	    b->flags &= ~VLIB_BUFFER_NEXT_PRESENT;
+	  vlib_buffer_free_no_next (vm, &bi, 1);
+	}
+
       if ((b->flags & VLIB_BUFFER_NEXT_PRESENT) == 0)
 	break;
 
@@ -298,6 +316,7 @@ iavf_tx_prepare_gso (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_buffer_t *
 
   gso_size = vnet_buffer2 (b)->gso_size;
   pkt_len = iavf_tx_tso_chain_len_and_descs (vm, b, tso_n_descs);
+  flags[0] = b->flags;
 
   if (PREDICT_FALSE (pkt_len <= hdr_sz))
     {
@@ -315,8 +334,8 @@ iavf_tx_prepare_gso (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_buffer_t *
       if (PREDICT_FALSE (n_lin == 0 || hdr_sz > b->current_length))
 	return IAVF_TX_NODE_CTR_GSO_HDR_LINEARIZE_FAIL;
 
-      flags[0] = b->flags;
       pkt_len = iavf_tx_tso_chain_len_and_descs (vm, b, tso_n_descs);
+      flags[0] = b->flags;
       vlib_error_count (vm, node->node_index, IAVF_TX_NODE_CTR_GSO_HDR_LINEARIZED, 1);
     }
 
