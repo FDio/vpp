@@ -13,12 +13,19 @@
 #include <vnet/ip-neighbor/ip_neighbor_types.h>
 #include <vnet/ip6-nd/ip6_ra.h>
 
-typedef enum
+typedef enum icmp6_neighbor_solicitation_next_t_
 {
   ICMP6_NEIGHBOR_SOLICITATION_NEXT_DROP,
   ICMP6_NEIGHBOR_SOLICITATION_NEXT_REPLY,
   ICMP6_NEIGHBOR_SOLICITATION_N_NEXT,
-} icmp6_neighbor_solicitation_or_advertisement_next_t;
+} icmp6_neighbor_solicitation_next_t;
+
+typedef enum icmp6_neighbor_advertisement_next_t_
+{
+  ICMP6_NEIGHBOR_ADVERTISEMENT_NEXT_DROP,
+  ICMP6_NEIGHBOR_ADVERTISEMENT_NEXT_PUNT,
+  ICMP6_NEIGHBOR_ADVERTISEMENT_N_NEXT,
+} icmp6_neighbor_advertisement_next_t;
 
 static_always_inline void
 icmp6_send_neighbor_advertisement (
