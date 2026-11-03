@@ -52,6 +52,8 @@ _vnet_dev_rt_exec_op (vlib_main_t *vm, vnet_dev_rt_op_t *op)
 update_runtime:
   rtd->first_rx_queue = first;
   vlib_node_set_state (vm, node_index, state);
+  if (state == VLIB_NODE_STATE_INTERRUPT)
+    vlib_node_set_interrupt_pending (vm, node_index);
   __atomic_store_n (&op->completed, 1, __ATOMIC_RELEASE);
 }
 
