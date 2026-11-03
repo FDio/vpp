@@ -1,0 +1,22 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "042d1e6f_193b7750",
+        "filename": "src/plugins/policer/ip_punt.h",
+        "patchSetId": 8
+      },
+      "lineNbr": 55,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-11-03T14:32:08Z",
+      "side": 1,
+      "message": "Could we make this a regular function in a `.c` file, with just its declaration in the header? This runs only during configuration, so forcing inlining offers little benefit here.",
+      "tag": "prview:c9492a680c2d05b6a3788a73d4dc84ca:dd2076dc87c201a812995ac8bd0e440d75e0fbd4",
+      "revId": "dd2076dc87c201a812995ac8bd0e440d75e0fbd4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
