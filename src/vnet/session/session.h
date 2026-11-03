@@ -607,8 +607,8 @@ __clib_export int session_stream_accept (transport_connection_t *tc, u32 listene
 					 clib_thread_index_t thread_index, u8 notify);
 int session_dgram_accept (transport_connection_t *tc, u32 listener_index,
 			  clib_thread_index_t thread_index);
-void session_transport_delete_request (transport_connection_t *tc,
-				       transport_cleanup_cb_fn cb_fn);
+__clib_export void session_transport_delete_request (transport_connection_t *tc,
+						     transport_cleanup_cb_fn cb_fn);
 
 /**
  * Initialize session layer for given transport proto and ip version
