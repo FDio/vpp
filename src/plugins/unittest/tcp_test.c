@@ -7807,7 +7807,8 @@ cleanup:
     client_tc->cc_algo = cc_algo;
   tcp_tamper_reset ();
   vec_free (data);
-  tcp_e2e_teardown (vm, ctx);
+  if (!tcp_e2e_teardown (vm, ctx))
+    rv = 1;
   return rv;
 }
 
@@ -7964,7 +7965,8 @@ cleanup:
     client_tc->cc_algo = cc_algo;
   tcp_tamper_reset ();
   vec_free (data);
-  tcp_e2e_teardown (vm, ctx);
+  if (!tcp_e2e_teardown (vm, ctx))
+    rv = 1;
   return rv;
 }
 
