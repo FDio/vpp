@@ -113,30 +113,9 @@ iavf_tx_prepare_cksum (vlib_buffer_t *b, u8 is_gso)
   return flags;
 }
 
-static_always_inline u32
-iavf_tx_fill_ctx_desc (vlib_main_t *vm, vnet_dev_tx_queue_t *txq,
-		       iavf_tx_desc_t *d, vlib_buffer_t *b)
+static_always_inline void
+iavf_tx_fill_ctx_desc (vlib_main_t *vm, iavf_tx_desc_t *d, vlib_buffer_t *b)
 {
-  iavf_txq_t *atq = vnet_dev_get_tx_queue_data (txq);
-  vlib_buffer_t *ctx_ph;
-  u32 *bi = atq->ph_bufs;
-
-next:
-  if (PREDICT_FALSE (bi[0] == ~0))
-    {
-      if (PREDICT_FALSE (vlib_buffer_alloc (vm, bi, 1)) != 1)
-	return ~0;
-    }
-  ctx_ph = vlib_get_buffer (vm, bi[0]);
-  if (PREDICT_FALSE (ctx_ph->ref_count == 255))
-    {
-      bi++;
-      goto next;
-    }
-
-  /* Acquire a reference on the placeholder buffer */
-  ctx_ph->ref_count++;
-
   u16 l234hdr_sz = vnet_buffer (b)->l4_hdr_offset - b->current_data +
 		   vnet_buffer2 (b)->gso_l4_hdr_sz;
   u16 tlen = vlib_buffer_length_in_chain (vm, b) - l234hdr_sz;
@@ -144,7 +123,6 @@ next:
   d[0].qword[1] = IAVF_TXD_DTYP_CTX | IAVF_TXD_CTX_CMD_TSO |
 		  IAVF_TXD_CTX_SEG_MSS (vnet_buffer2 (b)->gso_size) |
 		  IAVF_TXD_CTX_SEG_TLEN (tlen);
-  return bi[0];
 }
 
 static_always_inline void
@@ -400,16 +378,9 @@ iavf_tx_prepare (vlib_main_t *vm, vlib_node_runtime_t *node,
 		  continue;
 		}
 	      /* Enqueue a context descriptor */
+	      b[0]->ref_count++;
 	      tb[1] = tb[0];
-	      tb[0] = iavf_tx_fill_ctx_desc (vm, txq, d, b[0]);
-	      if (PREDICT_FALSE (tb[0] == ~0))
-		{
-		  vlib_buffer_free_one (vm, buffers[0]);
-		  vlib_error_count (vm, node->node_index, IAVF_TX_NODE_CTR_PH_BUF_ALLOC, 1);
-		  n_packets_left -= 1;
-		  buffers += 1;
-		  continue;
-		}
+	      iavf_tx_fill_ctx_desc (vm, d, b[0]);
 	      n_desc_left -= 1;
 	      d += 1;
 	      tb += 1;
