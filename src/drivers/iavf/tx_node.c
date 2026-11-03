@@ -228,14 +228,36 @@ iavf_tx_copy_desc (iavf_tx_desc_t *d, iavf_tx_desc_t *s, u32 n_descs)
 }
 
 static_always_inline void
-iavf_tx_fill_data_desc (vlib_main_t *vm, iavf_tx_desc_t *d, vlib_buffer_t *b,
-			u64 cmd, int use_va_dma)
+iavf_tx_fill_data_desc_addr (iavf_tx_desc_t *d, u64 addr, u16 len, u64 cmd)
+{
+  d->qword[0] = addr;
+  d->qword[1] = IAVF_TXD_DATA_SZ (len) | cmd | IAVF_TXD_CMD_RSV;
+}
+
+static_always_inline u64
+iavf_tx_buffer_dma_addr (vlib_main_t *vm, vlib_buffer_t *b, int use_va_dma)
 {
   if (use_va_dma)
-    d->qword[0] = vlib_buffer_get_current_va (b);
+    return vlib_buffer_get_current_va (b);
   else
-    d->qword[0] = vlib_buffer_get_current_pa (vm, b);
-  d->qword[1] = (((u64) b->current_length) << 34 | cmd | IAVF_TXD_CMD_RSV);
+    return vlib_buffer_get_current_pa (vm, b);
+}
+
+static_always_inline void
+iavf_tx_fill_data_desc (vlib_main_t *vm, iavf_tx_desc_t *d, vlib_buffer_t *b, u64 cmd,
+			int use_va_dma)
+{
+  iavf_tx_fill_data_desc_addr (d, iavf_tx_buffer_dma_addr (vm, b, use_va_dma), b->current_length,
+			       cmd);
+}
+
+static_always_inline u16
+iavf_tx_buffer_desc_count (vlib_buffer_t *b, u8 tso)
+{
+  if (tso)
+    /* The descriptor writer also emits one descriptor for an empty buffer. */
+    return clib_max (1, (b->current_length + IAVF_MAX_DATA_PER_TXD - 1) / IAVF_MAX_DATA_PER_TXD);
+  return 1;
 }
 
 static_always_inline u32
@@ -247,7 +269,7 @@ iavf_tx_tso_chain_len_and_descs (vlib_main_t *vm, vlib_buffer_t *b, u16 *n_descs
   while (1)
     {
       pkt_len += b->current_length;
-      n++;
+      n += iavf_tx_buffer_desc_count (b, 1 /* tso */);
 
       if ((b->flags & VLIB_BUFFER_NEXT_PRESENT) == 0)
 	break;
@@ -318,6 +340,32 @@ iavf_tx_prepare_gso (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_buffer_t *
 
   tso_tlen[0] = payload_len;
   return 0;
+}
+
+static_always_inline u16
+iavf_tx_fill_buffer_descs (vlib_main_t *vm, iavf_tx_desc_t *d, u32 *tb, vlib_buffer_t *b, u32 bi,
+			   u64 cmd, int use_va_dma, u8 tso)
+{
+  u64 addr = iavf_tx_buffer_dma_addr (vm, b, use_va_dma);
+  u32 len = b->current_length;
+  u16 n_descs = 0;
+
+  while (tso && len > IAVF_MAX_DATA_PER_TXD)
+    {
+      iavf_tx_fill_data_desc_addr (d, addr, IAVF_MAX_DATA_PER_TXD, cmd & ~IAVF_TXD_CMD_EOP);
+      tb[0] = bi;
+      d++;
+      tb++;
+      n_descs++;
+      addr += IAVF_MAX_DATA_PER_TXD;
+      len -= IAVF_MAX_DATA_PER_TXD;
+    }
+
+  iavf_tx_fill_data_desc_addr (d, addr, len, cmd);
+  tb[0] = bi;
+  if (tso && n_descs)
+    b->ref_count += n_descs;
+  return n_descs + 1;
 }
 
 static_always_inline int
@@ -530,17 +578,23 @@ iavf_tx_prepare (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  /* Deal with chain buffer if present */
 	  while (b[0]->flags & VLIB_BUFFER_NEXT_PRESENT)
 	    {
-	      iavf_tx_fill_data_desc (vm, d, b[0], cmd, use_va_dma);
-	      n_desc_left -= 1;
-	      d += 1;
-	      tb += 1;
+	      u16 n = iavf_tx_fill_buffer_descs (vm, d, tb, b[0], tb[0], cmd, use_va_dma, is_tso);
+
+	      n_desc_left -= n;
+	      d += n;
+	      tb += n;
+
 	      tb[0] = b[0]->next_buffer;
 	      b[0] = vlib_get_buffer (vm, b[0]->next_buffer);
 	    }
-	  iavf_tx_fill_data_desc (vm, d, b[0], cmd_eop | cmd, use_va_dma);
-	  n_desc_left -= 1;
-	  d += 1;
-	  tb += 1;
+
+	  {
+	    u16 n =
+	      iavf_tx_fill_buffer_descs (vm, d, tb, b[0], tb[0], cmd_eop | cmd, use_va_dma, is_tso);
+	    n_desc_left -= n;
+	    d += n;
+	    tb += n;
+	  }
 
 	  buffers += 1;
 	  n_packets_left -= 1;
