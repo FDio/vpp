@@ -21,9 +21,22 @@ vpp_find_library(IPSECMB_LIB NAMES libIPSec_MB.a HINTS ${IPSECMB_LIB_DIR_HINT})
 
 if(IPSECMB_INCLUDE_DIR AND IPSECMB_LIB)
 
+	file(READ "${IPSECMB_INCLUDE_DIR}/intel-ipsec-mb.h" ipsecmb_header)
+	string(REGEX MATCH "IMB_VERSION_STR[ \t]+\"([0-9]+\\.[0-9]+\\.[0-9]+)\"" _ "${ipsecmb_header}")
+	set(IPSECMB_VERSION "${CMAKE_MATCH_1}")
+
+	# Minimum supported verion is v2.0.2.
+	if(IPSECMB_VERSION VERSION_LESS "2.0.2")
+		message(STATUS "Intel IPSecMB ${IPSECMB_VERSION} found: ${IPSECMB_INCLUDE_DIR} (2.0.2 or newer required). Disabled")
+		return()
+	endif()
+
 	get_filename_component(IPSECMB_LIB_DIR ${IPSECMB_LIB} DIRECTORY)
 	set(IPSECMB_LINK_FLAGS "${IPSECMB_LINK_FLAGS} -L${IPSECMB_LIB_DIR} -Wl,--whole-archive ${IPSECMB_LIB} -Wl,--no-whole-archive")
 	set(IPSECMB_LINK_FLAGS "${IPSECMB_LINK_FLAGS} -Wl,--exclude-libs,libIPSec_MB.a,-l:libIPSec_MB.a")
+	# Some ipsec-mb 3.0 objects lack .note.GNU-stack, which would otherwise mark
+	# the engine as needing an executable stack.
+	set(IPSECMB_LINK_FLAGS "${IPSECMB_LINK_FLAGS} -Wl,-z,noexecstack")
 	include_directories(${IPSECMB_INCLUDE_DIR})
 	add_vpp_crypto_engine(ipsecmb
 		SOURCES
@@ -32,10 +45,6 @@ if(IPSECMB_INCLUDE_DIR AND IPSECMB_LIB)
 		LINK_FLAGS
 		${IPSECMB_LINK_FLAGS}
 		)
-
-	file(READ "${IPSECMB_INCLUDE_DIR}/intel-ipsec-mb.h" ipsecmb_header)
-	string(REGEX MATCH "IMB_VERSION_STR (\"+[0-9]+\\.[0-9]+\\.[0-9]+\")" _ ${ipsecmb_header})
-	string(REPLACE "\"" "" IPSECMB_VERSION ${CMAKE_MATCH_1})
 
 	if (${IPSECMB_VERSION} VERSION_GREATER "0.54.0")
 		add_definitions(-DHAVE_IPSECMB_CHACHA_POLY)

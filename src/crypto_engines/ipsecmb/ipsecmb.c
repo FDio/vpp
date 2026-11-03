@@ -67,12 +67,15 @@ ipsecmb_get_per_thread_data (void)
       return 0;
     }
 
+    /* burst API is always available in 3.0 */
+#if IMB_VERSION_NUM < IMB_VERSION(3, 0, 0)
   if (!ptd->mgr->submit_hash_burst_nocheck)
     {
       free_mb_mgr (ptd->mgr);
       ptd->mgr = 0;
       return 0;
     }
+#endif
 
   return ptd;
 }
@@ -524,15 +527,30 @@ foreach_ipsecmb_combined_fixed_extra_op;
 
   typedef struct
 {
-  aes_gcm_enc_dec_t enc_dec_fn;
-  aes_gcm_init_t init_fn;
-  aes_gcm_enc_dec_update_t upd_fn;
-  aes_gcm_enc_dec_finalize_t finalize_fn;
+  IMB_MGR *mgr;
+  u32 key_bits;
   u32 is_dec;
   u32 chained;
   i32 aadlen;
   u32 taglen;
 } ipsecmb_ops_gcm_args_t;
+
+/*
+ * Call IMB_AES<bits>_GCM_<op>. The IMB_* macros take the manager first and
+ * hide the API differences between ipsec-mb releases. bits is a compile-time
+ * constant at every call site, so only one branch is emitted.
+ */
+#define ipsecmb_gcm_op(bits, op, ...)                                                              \
+  do                                                                                               \
+    {                                                                                              \
+      if ((bits) == 128)                                                                           \
+	IMB_AES128_GCM_##op (__VA_ARGS__);                                                         \
+      else if ((bits) == 192)                                                                      \
+	IMB_AES192_GCM_##op (__VA_ARGS__);                                                         \
+      else                                                                                         \
+	IMB_AES256_GCM_##op (__VA_ARGS__);                                                         \
+    }                                                                                              \
+  while (0)
 
 static_always_inline u32
 ipsecmb_ops_gcm (vnet_crypto_op_t *ops[], vnet_crypto_op_chunk_t *chunks, u32 n_ops,
@@ -556,20 +574,29 @@ ipsecmb_ops_gcm (vnet_crypto_op_t *ops[], vnet_crypto_op_chunk_t *chunks, u32 n_
       if (a.chained)
 	{
 	  ASSERT (op->flags & VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS);
-	  a.init_fn (kd, &ctx, op->iv, op->aad, aadlen);
+	  ipsecmb_gcm_op (a.key_bits, INIT, a.mgr, kd, &ctx, op->iv, op->aad, aadlen);
 	  chp = chunks + op->chunk_index;
 	  for (j = 0; j < op->n_chunks; j++)
 	    {
-	      a.upd_fn (kd, &ctx, chp->dst, chp->src, chp->len);
+	      if (a.is_dec)
+		ipsecmb_gcm_op (a.key_bits, DEC_UPDATE, a.mgr, kd, &ctx, chp->dst, chp->src,
+				chp->len);
+	      else
+		ipsecmb_gcm_op (a.key_bits, ENC_UPDATE, a.mgr, kd, &ctx, chp->dst, chp->src,
+				chp->len);
 	      chp += 1;
 	    }
-	  a.finalize_fn (kd, &ctx, tag, taglen);
+	  if (a.is_dec)
+	    ipsecmb_gcm_op (a.key_bits, DEC_FINALIZE, a.mgr, kd, &ctx, tag, taglen);
+	  else
+	    ipsecmb_gcm_op (a.key_bits, ENC_FINALIZE, a.mgr, kd, &ctx, tag, taglen);
 	}
+      else if (a.is_dec)
+	ipsecmb_gcm_op (a.key_bits, DEC, a.mgr, kd, &ctx, op->dst, op->src, op->len, op->iv,
+			op->aad, aadlen, tag, taglen);
       else
-	{
-	  a.enc_dec_fn (kd, &ctx, op->dst, op->src, op->len, op->iv, op->aad,
-			aadlen, tag, taglen);
-	}
+	ipsecmb_gcm_op (a.key_bits, ENC, a.mgr, kd, &ctx, op->dst, op->src, op->len, op->iv,
+			op->aad, aadlen, tag, taglen);
 
       if (a.is_dec && (memcmp (op->auth, tag, taglen)))
 	{
@@ -598,8 +625,9 @@ get_mgr (vlib_main_t *vm __clib_unused)
     clib_thread_index_t thread_index __clib_unused)                                                \
   {                                                                                                \
     return ipsecmb_ops_gcm (ops, 0, n_ops,                                                         \
-			    (ipsecmb_ops_gcm_args_t){                                              \
-			      .enc_dec_fn = get_mgr (vlib_get_main ())->gcm##b##_enc,              \
+			    (ipsecmb_ops_gcm_args_t) {                                             \
+			      .mgr = get_mgr (vlib_get_main ()),                                   \
+			      .key_bits = b,                                                       \
 			      .aadlen = (f) ? (l) : -1,                                            \
 			      .taglen = (f) ? 16 : 0,                                              \
 			    });                                                                    \
@@ -609,12 +637,10 @@ get_mgr (vlib_main_t *vm __clib_unused)
     vnet_crypto_op_t *ops[], vnet_crypto_op_chunk_t *chunks, u32 n_ops,                            \
     clib_thread_index_t thread_index __clib_unused)                                                \
   {                                                                                                \
-    IMB_MGR *m = get_mgr (vlib_get_main ());                                                       \
     return ipsecmb_ops_gcm (ops, chunks, n_ops,                                                    \
-			    (ipsecmb_ops_gcm_args_t){                                              \
-			      .init_fn = m->gcm##b##_init,                                         \
-			      .upd_fn = m->gcm##b##_enc_update,                                    \
-			      .finalize_fn = m->gcm##b##_enc_finalize,                             \
+			    (ipsecmb_ops_gcm_args_t) {                                             \
+			      .mgr = get_mgr (vlib_get_main ()),                                   \
+			      .key_bits = b,                                                       \
 			      .chained = 1,                                                        \
 			      .aadlen = (f) ? (l) : -1,                                            \
 			      .taglen = (f) ? 16 : 0,                                              \
@@ -625,27 +651,29 @@ get_mgr (vlib_main_t *vm __clib_unused)
     vnet_crypto_op_t *ops[], vnet_crypto_op_chunk_t *chunks __clib_unused, u32 n_ops,              \
     clib_thread_index_t thread_index __clib_unused)                                                \
   {                                                                                                \
-    return ipsecmb_ops_gcm (                                                                       \
-      ops, 0, n_ops,                                                                               \
-      (ipsecmb_ops_gcm_args_t){ .enc_dec_fn = get_mgr (vlib_get_main ())->gcm##b##_dec,            \
-				.aadlen = (f) ? (l) : -1,                                          \
-				.taglen = (f) ? 16 : 0,                                            \
-				.is_dec = 1 });                                                    \
+    return ipsecmb_ops_gcm (ops, 0, n_ops,                                                         \
+			    (ipsecmb_ops_gcm_args_t) {                                             \
+			      .mgr = get_mgr (vlib_get_main ()),                                   \
+			      .key_bits = b,                                                       \
+			      .is_dec = 1,                                                         \
+			      .aadlen = (f) ? (l) : -1,                                            \
+			      .taglen = (f) ? 16 : 0,                                              \
+			    });                                                                    \
   }                                                                                                \
                                                                                                    \
   static_always_inline u32 ipsecmb_ops_gcm_cipher_dec_##a##_chained (                              \
     vnet_crypto_op_t *ops[], vnet_crypto_op_chunk_t *chunks, u32 n_ops,                            \
     clib_thread_index_t thread_index __clib_unused)                                                \
   {                                                                                                \
-    IMB_MGR *m = get_mgr (vlib_get_main ());                                                       \
     return ipsecmb_ops_gcm (ops, chunks, n_ops,                                                    \
-			    (ipsecmb_ops_gcm_args_t){ .init_fn = m->gcm##b##_init,                 \
-						      .upd_fn = m->gcm##b##_dec_update,            \
-						      .finalize_fn = m->gcm##b##_dec_finalize,     \
-						      .chained = 1,                                \
-						      .aadlen = (f) ? (l) : -1,                    \
-						      .taglen = (f) ? 16 : 0,                      \
-						      .is_dec = 1 });                              \
+			    (ipsecmb_ops_gcm_args_t) {                                             \
+			      .mgr = get_mgr (vlib_get_main ()),                                   \
+			      .key_bits = b,                                                       \
+			      .chained = 1,                                                        \
+			      .is_dec = 1,                                                         \
+			      .aadlen = (f) ? (l) : -1,                                            \
+			      .taglen = (f) ? 16 : 0,                                              \
+			    });                                                                    \
   }
 foreach_ipsecmb_gcm_cipher_op;
 #undef _
@@ -886,13 +914,18 @@ foreach_chacha_poly_fixed_aad_lengths
 #endif
 
   static void
-  crypto_ipsecmb_cipher_key_add_inline (vnet_crypto_ctx_t *ctx, u8 *key_data, keyexp_t keyexp)
+  crypto_ipsecmb_cipher_key_add_inline (vnet_crypto_ctx_t *ctx, u8 *key_data, u32 key_bits,
+					IMB_MGR *mgr)
 {
-  if (keyexp == 0)
-    return;
+  ipsecmb_aes_key_data_t *kd = (ipsecmb_aes_key_data_t *) key_data;
+  const u8 *key = vnet_crypto_get_cipher_key (ctx);
 
-  keyexp (vnet_crypto_get_cipher_key (ctx), ((ipsecmb_aes_key_data_t *) key_data)->enc_key_exp,
-	  ((ipsecmb_aes_key_data_t *) key_data)->dec_key_exp);
+  if (key_bits == 128)
+    IMB_AES_KEYEXP_128 (mgr, key, kd->enc_key_exp, kd->dec_key_exp);
+  else if (key_bits == 192)
+    IMB_AES_KEYEXP_192 (mgr, key, kd->enc_key_exp, kd->dec_key_exp);
+  else
+    IMB_AES_KEYEXP_256 (mgr, key, kd->enc_key_exp, kd->dec_key_exp);
 }
 
 #define _(a, b, c)                                                                                 \
@@ -908,7 +941,7 @@ foreach_chacha_poly_fixed_aad_lengths
     if (imbm->mgr == 0)                                                                            \
       return;                                                                                      \
                                                                                                    \
-    crypto_ipsecmb_cipher_key_add_inline (ctx, key_data, imbm->mgr->keyexp_##b);                   \
+    crypto_ipsecmb_cipher_key_add_inline (ctx, key_data, b, imbm->mgr);                            \
   }                                                                                                \
                                                                                                    \
   VNET_CRYPTO_REGISTER_ALG_GROUP (ipsecmb_cipher_##a##_group) = {                                  \
@@ -919,12 +952,11 @@ foreach_ipsecmb_cipher_op
 #undef _
 
   static void
-  crypto_ipsecmb_gcm_key_add_inline (vnet_crypto_ctx_t *ctx, u8 *key_data, aes_gcm_pre_t pre)
+  crypto_ipsecmb_gcm_key_add_inline (vnet_crypto_ctx_t *ctx, u8 *key_data, u32 key_bits,
+				     IMB_MGR *mgr)
 {
-  if (pre == 0)
-    return;
-
-  pre (vnet_crypto_get_cipher_key (ctx), (struct gcm_key_data *) key_data);
+  ipsecmb_gcm_op (key_bits, PRE, mgr, vnet_crypto_get_cipher_key (ctx),
+		  (struct gcm_key_data *) key_data);
 }
 
 #define _(a, b, f, l)                                                                              \
@@ -941,7 +973,7 @@ foreach_ipsecmb_cipher_op
     if (imbm->mgr == 0)                                                                            \
       return;                                                                                      \
                                                                                                    \
-    crypto_ipsecmb_gcm_key_add_inline (ctx, key_data, imbm->mgr->gcm##b##_pre);                    \
+    crypto_ipsecmb_gcm_key_add_inline (ctx, key_data, b, imbm->mgr);                               \
   }                                                                                                \
                                                                                                    \
   VNET_CRYPTO_REGISTER_ALG_GROUP (ipsecmb_gcm_##a##_group) = {                                     \
@@ -952,9 +984,58 @@ foreach_ipsecmb_gcm_cipher_op
 #undef _
 
   static void
-  crypto_ipsecmb_hmac_key_add_inline (vnet_crypto_ctx_t *ctx, u8 *key_data,
-				      hash_one_block_t hash_one_block, hash_fn_t hash_fn,
-				      u32 block_size, u32 data_size)
+  ipsecmb_sha_one_block (IMB_MGR *mgr, IMB_HASH_ALG alg, const void *src, void *digest)
+{
+  switch (alg)
+    {
+    case IMB_AUTH_HMAC_SHA_1:
+      IMB_SHA1_ONE_BLOCK (mgr, src, digest);
+      break;
+    case IMB_AUTH_HMAC_SHA_224:
+      IMB_SHA224_ONE_BLOCK (mgr, src, digest);
+      break;
+    case IMB_AUTH_HMAC_SHA_256:
+      IMB_SHA256_ONE_BLOCK (mgr, src, digest);
+      break;
+    case IMB_AUTH_HMAC_SHA_384:
+      IMB_SHA384_ONE_BLOCK (mgr, src, digest);
+      break;
+    case IMB_AUTH_HMAC_SHA_512:
+      IMB_SHA512_ONE_BLOCK (mgr, src, digest);
+      break;
+    default:
+      ASSERT (0);
+    }
+}
+
+static void
+ipsecmb_sha (IMB_MGR *mgr, IMB_HASH_ALG alg, const void *src, u64 len, void *digest)
+{
+  switch (alg)
+    {
+    case IMB_AUTH_HMAC_SHA_1:
+      IMB_SHA1 (mgr, src, len, digest);
+      break;
+    case IMB_AUTH_HMAC_SHA_224:
+      IMB_SHA224 (mgr, src, len, digest);
+      break;
+    case IMB_AUTH_HMAC_SHA_256:
+      IMB_SHA256 (mgr, src, len, digest);
+      break;
+    case IMB_AUTH_HMAC_SHA_384:
+      IMB_SHA384 (mgr, src, len, digest);
+      break;
+    case IMB_AUTH_HMAC_SHA_512:
+      IMB_SHA512 (mgr, src, len, digest);
+      break;
+    default:
+      ASSERT (0);
+    }
+}
+
+static void
+crypto_ipsecmb_hmac_key_add_inline (vnet_crypto_ctx_t *ctx, u8 *key_data, IMB_HASH_ALG alg,
+				    u32 block_size, u32 data_size, IMB_MGR *mgr)
 {
   u32 i;
 
@@ -966,15 +1047,15 @@ foreach_ipsecmb_gcm_cipher_op
     if (ctx->auth_key_sz <= block_size)
       clib_memcpy_fast (key_hash, vnet_crypto_get_auth_key (ctx), ctx->auth_key_sz);
     else
-      hash_fn (vnet_crypto_get_auth_key (ctx), ctx->auth_key_sz, key_hash);
+      ipsecmb_sha (mgr, alg, vnet_crypto_get_auth_key (ctx), ctx->auth_key_sz, key_hash);
 
     for (i = 0; i < block_qw; i++)
       pad[i] = key_hash[i] ^ 0x3636363636363636;
-    hash_one_block (pad, key_data);
+    ipsecmb_sha_one_block (mgr, alg, pad, key_data);
 
     for (i = 0; i < block_qw; i++)
       pad[i] = key_hash[i] ^ 0x5c5c5c5c5c5c5c5c;
-    hash_one_block (pad, ((u8 *) key_data) + (data_size / 2));
+    ipsecmb_sha_one_block (mgr, alg, pad, ((u8 *) key_data) + (data_size / 2));
   }
 }
 
@@ -987,8 +1068,7 @@ foreach_ipsecmb_gcm_cipher_op
     if (imbm->mgr == 0)                                                                            \
       return;                                                                                      \
                                                                                                    \
-    crypto_ipsecmb_hmac_key_add_inline (ctx, key_data, imbm->mgr->c##_one_block, imbm->mgr->c, d,  \
-					e * 2);                                                    \
+    crypto_ipsecmb_hmac_key_add_inline (ctx, key_data, IMB_AUTH_HMAC_##b, d, e * 2, imbm->mgr);    \
   }                                                                                                \
                                                                                                    \
   static void crypto_ipsecmb_hmac_key_change_##a (vnet_crypto_ctx_t *ctx,                          \
@@ -1024,7 +1104,8 @@ foreach_ipsecmb_hmac_op
 }
 
 static void
-crypto_ipsecmb_combined_key_add_inline (vnet_crypto_ctx_t *ctx, u8 *key_data, keyexp_t keyexp,
+crypto_ipsecmb_combined_key_add_inline (vnet_crypto_ctx_t *ctx, u8 *key_data, u32 key_bits,
+					IMB_MGR *mgr,
 					void (*hmac_key_add_fn) (vnet_crypto_ctx_t *ctx,
 								 u8 *key_data),
 					vnet_crypto_alg_t cipher_alg, vnet_crypto_alg_t integ_alg)
@@ -1040,7 +1121,7 @@ crypto_ipsecmb_combined_key_add_inline (vnet_crypto_ctx_t *ctx, u8 *key_data, ke
   clib_memcpy_fast (tmp_ctx, ctx, sizeof (vnet_crypto_ctx_t) + key_data_len);
   tmp_ctx->alg = cipher_alg;
 
-  crypto_ipsecmb_cipher_key_add_inline (tmp_ctx, key_data, keyexp);
+  crypto_ipsecmb_cipher_key_add_inline (tmp_ctx, key_data, key_bits, mgr);
   tmp_ctx->alg = integ_alg;
 
   hmac_key_add_fn (tmp_ctx, key_data + sizeof (ipsecmb_aes_key_data_t));
@@ -1059,7 +1140,7 @@ crypto_ipsecmb_combined_key_add_inline (vnet_crypto_ctx_t *ctx, u8 *key_data, ke
     if (imbm->mgr == 0)                                                                            \
       return;                                                                                      \
                                                                                                    \
-    crypto_ipsecmb_combined_key_add_inline (ctx, key_data, imbm->mgr->keyexp_##b,                  \
+    crypto_ipsecmb_combined_key_add_inline (ctx, key_data, b, imbm->mgr,                           \
 					    crypto_ipsecmb_hmac_key_add_internal_##e,              \
 					    VNET_CRYPTO_ALG_AES_##b##_##j, VNET_CRYPTO_ALG_##e);   \
   }                                                                                                \
