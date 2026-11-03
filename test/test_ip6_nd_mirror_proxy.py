@@ -7,6 +7,7 @@ from framework import VppTestCase
 from asfframework import VppTestRunner
 
 from vpp_ip import VppIpPuntRedirect
+from vpp_neighbor import find_nbr
 
 from scapy.layers.l2 import Ether
 from scapy.layers.inet6 import (
@@ -183,6 +184,62 @@ class TestNDPROXY(VppTestCase):
             sw_if_index=self.pg1.sw_if_index, is_enable=0
         )
         redirect.remove_vpp_config()
+
+    def test_nd_mirror_proxy_unicast_na_learning(self):
+        """Unicast NA is forwarded and learns only from valid TLLA"""
+
+        learned_mac = "02:de:ad:be:ef:01"
+        target_ip6 = self.pg0.remote_ip6
+
+        self.pg1.unconfig_ip6()
+        self.pg1.set_unnumbered(self.pg0.sw_if_index)
+        self.vapi.ip6nd_proxy_enable_disable(
+            sw_if_index=self.pg1.sw_if_index, is_enable=1
+        )
+
+        try:
+            # Resolve the NDs on the uplink
+            self.pg0.resolve_ndp()
+
+            # malformed unicast NA (wrong option type) should not be learned
+            malformed_na = (
+                Ether(src=self.pg1.remote_mac, dst=self.pg1.local_mac)
+                / IPv6(dst=target_ip6, src=self.pg1.remote_ip6_ll)
+                / ICMPv6ND_NA(tgt=target_ip6)
+                / ICMPv6NDOptSrcLLAddr(lladdr=learned_mac)
+            )
+
+            rx = self.send_and_expect(self.pg1, [malformed_na], self.pg0)
+            self.assertEqual(rx[0][IPv6].dst, target_ip6)
+            self.assertTrue(rx[0].haslayer(ICMPv6ND_NA))
+            self.pg1.assert_nothing_captured(
+                timeout=0.1, remark="must not reflect NA on ingress interface"
+            )
+            self.assertFalse(
+                find_nbr(self, self.pg1.sw_if_index, target_ip6, mac=learned_mac)
+            )
+
+            # valid unicast NA (TLLA) should be learned
+            valid_na = (
+                Ether(src=self.pg1.remote_mac, dst=self.pg1.local_mac)
+                / IPv6(dst=target_ip6, src=self.pg1.remote_ip6_ll)
+                / ICMPv6ND_NA(tgt=target_ip6)
+                / ICMPv6NDOptDstLLAddr(lladdr=learned_mac)
+            )
+
+            rx = self.send_and_expect(self.pg1, [valid_na], self.pg0)
+            self.assertEqual(rx[0][IPv6].dst, target_ip6)
+            self.assertTrue(rx[0].haslayer(ICMPv6ND_NA))
+            self.pg1.assert_nothing_captured(
+                timeout=0.1, remark="must not reflect NA on ingress interface"
+            )
+            self.assertTrue(
+                find_nbr(self, self.pg1.sw_if_index, target_ip6, mac=learned_mac)
+            )
+        finally:
+            self.vapi.ip6nd_proxy_enable_disable(
+                sw_if_index=self.pg1.sw_if_index, is_enable=0
+            )
 
 
 if __name__ == "__main__":
