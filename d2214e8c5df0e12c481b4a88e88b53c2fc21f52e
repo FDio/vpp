@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a6ee9bdb_b6dbd788",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2026-11-03T12:51:28Z",
+      "side": 1,
+      "message": "it is not driver\u0027s job to validate, otherwise we will have duplicated validation code across all drivers. driver needs to trust data and it is sender\u0027s job to make it valid",
+      "revId": "d2214e8c5df0e12c481b4a88e88b53c2fc21f52e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
