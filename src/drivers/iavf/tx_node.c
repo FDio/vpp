@@ -118,7 +118,7 @@ iavf_tx_fill_ctx_desc (vlib_main_t *vm, iavf_tx_desc_t *d, vlib_buffer_t *b)
 {
   u16 l234hdr_sz = vnet_buffer (b)->l4_hdr_offset - b->current_data +
 		   vnet_buffer2 (b)->gso_l4_hdr_sz;
-  u16 tlen = vlib_buffer_length_in_chain (vm, b) - l234hdr_sz;
+  u32 tlen = vlib_buffer_length_in_chain (vm, b) - l234hdr_sz;
   d[0].qword[0] = 0;
   d[0].qword[1] = IAVF_TXD_DTYP_CTX | IAVF_TXD_CTX_CMD_TSO |
 		  IAVF_TXD_CTX_SEG_MSS (vnet_buffer2 (b)->gso_size) |
