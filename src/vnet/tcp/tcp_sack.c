@@ -403,6 +403,18 @@ tcp_sack_init_rxt (tcp_connection_t *tc, u32 snd_una)
     scoreboard_init_rxt (&tc->sack_sb, snd_una);
 }
 
+void
+tcp_sack_rxt_rewind (tcp_connection_t *tc)
+{
+  sack_scoreboard_t *sb = &tc->sack_sb;
+  u32 rescue_rxt = sb->rescue_rxt;
+
+  /* Retransmit again from the first hole. A rescue already sent in this
+   * recovery stays sent */
+  scoreboard_init_rxt (sb, tc->snd_una);
+  sb->rescue_rxt = rescue_rxt;
+}
+
 static u32
 scoreboard_rxt_head_bytes (sack_scoreboard_t *sb, u32 snd_una, u32 max_bytes)
 {

@@ -154,6 +154,8 @@ class TestTCPUnitTests(VppAsfTestCase):
             "tamper dsack-early",
             "tamper strand-head",
             "tamper full-wnd",
+            "tamper lost-rxt",
+            "tamper lost-rxt-late",
             "tamper rto",
             "tamper rto-head",
             "tamper dupack-run",
