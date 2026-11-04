@@ -20,6 +20,7 @@ void tcp_loss_recovery_state_sync (tcp_connection_t *tc);
 u8 tcp_loss_recovery_state_is_sane (tcp_connection_t *tc);
 u8 tcp_loss_retransmit_timer_expired (tcp_connection_t *tc);
 void tcp_loss_rto_retransmit_failed (tcp_connection_t *tc);
+void tcp_loss_check_lost_rxt (tcp_connection_t *tc);
 
 /* Eifel spurious-retransmit detection (RFC 3522 Sec. 3.2): an advancing ACK echoes a timestamp
  * older than the first retransmit. Conservatively require snd_una below snd_congestion and no
