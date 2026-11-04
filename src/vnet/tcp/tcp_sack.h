@@ -213,6 +213,7 @@ tcp_sack_add (tcp_connection_t *tc, sack_block_t blk)
 }
 
 __clib_export void tcp_sack_init_rxt (tcp_connection_t *tc, u32 snd_una);
+void tcp_sack_rxt_rewind (tcp_connection_t *tc);
 /** Bytes from snd_una to the first sacked byte, at most max_bytes. Reneged
  * sacks at the head do not limit it. */
 __clib_export u32 tcp_sack_rxt_head_bytes (tcp_connection_t *tc, u32 max_bytes);

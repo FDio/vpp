@@ -769,6 +769,9 @@ tcp_cc_handle_event (tcp_connection_t *tc, tcp_ack_ctx_t *ac)
 
   tcp_loss_account_recovery_ack (tc, ac, has_sack);
 
+  if (has_sack && ac->last_sacked_bytes)
+    tcp_loss_check_lost_rxt (tc);
+
   tcp_program_retransmit (tc);
 
   /*

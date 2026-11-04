@@ -18,6 +18,7 @@ tcp_loss_recovery_state_init (tcp_connection_t *tc)
       else
 	{
 	  tc->snd_rxt_bytes = 0;
+	  tc->rxt_snd_nxt = tc->snd_nxt;
 	  tcp_sack_init_rxt (tc, tc->snd_una);
 	}
     }
@@ -236,6 +237,34 @@ tcp_loss_prepare_rto (tcp_connection_t *tc, u8 *sack_reneged)
     }
 
   return n_bytes;
+}
+
+/* Retransmits can be lost too. Lost holes are retransmitted before new data,
+ * so data at or above snd_nxt as of the start of a retransmit round was sent
+ * after the round's retransmits. Once the peer sacks such data further than
+ * the reordering estimate allows, as for loss of any segment, the copies
+ * still in flight are presumed lost. Retire them and retransmit the lost
+ * holes again, within the same recovery. */
+void
+tcp_loss_check_lost_rxt (tcp_connection_t *tc)
+{
+  sack_scoreboard_t *sb = &tc->sack_sb;
+
+  if (!tcp_in_fastrecovery (tc) || tcp_rack_enabled (tc) ||
+      (tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER))
+    return;
+
+  /* The head was retransmitted this round and copies are still in flight */
+  if (!seq_gt (sb->high_rxt, tc->snd_una) || tc->snd_rxt_bytes == tc->rxt_delivered)
+    return;
+
+  if (!seq_gt (sb->high_sacked, tc->rxt_snd_nxt + (sb->reorder - 1) * tc->snd_mss))
+    return;
+
+  tc->rxt_delivered = tc->snd_rxt_bytes;
+  tcp_sack_rxt_rewind (tc);
+  tc->rxt_snd_nxt = tc->snd_nxt;
+  tcp_worker_stats_inc (tcp_get_worker (tc->c_thread_index), lost_rxt_events, 1);
 }
 
 void
