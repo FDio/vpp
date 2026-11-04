@@ -1543,8 +1543,9 @@ tcp_timer_retransmit_syn_handler (tcp_connection_t * tc)
 
   tcp_worker_stats_inc (wrk, to_establish, 1);
 
-  /* Active open establish timeout */
-  if (tc->rto >= TCP_ESTABLISH_TIME >> 1)
+  /* Active open establish timeout. RTO doubles after the first retries,
+   * so time since first syn is ~2 * (rto + rto_init) */
+  if (2 * (tc->rto + TCP_RTO_INIT) >= tcp_cfg.syn_sent_time)
     {
       session_stream_connect_notify (&tc->connection, SESSION_E_TIMEDOUT);
       tcp_connection_cleanup (tc);

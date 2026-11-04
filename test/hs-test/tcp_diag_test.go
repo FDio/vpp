@@ -270,6 +270,7 @@ func TcpCubicStartupConfigDiagTest(s *VethsSuite) {
 		Append("cc-algo cubic").
 		Append("no-dsack").
 		Append("byte-tracker").
+		Append("syn-sent-time 500").
 		NewStanza("cubic").
 		Append("no-fast-convergence").
 		Append("no-hystart").
@@ -292,6 +293,7 @@ func TcpCubicStartupConfigDiagTest(s *VethsSuite) {
 	AssertContains(config, "congestion control algorithm: cubic")
 	AssertContains(config, "dsack: disabled")
 	AssertContains(config, "byte tracker: enabled")
+	AssertContains(config, "syn_sent time: 120 sec")
 
 	serverVpp.Vppctl("vperf server fifo-size 64k uri tcp://%s/%s", serverAddress, s.Ports.Port1)
 	listenerDetail := serverVpp.Vppctl("show session verbose 2 proto tcp state listening")

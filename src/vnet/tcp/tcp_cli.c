@@ -906,6 +906,7 @@ format_tcp_cfg (u8 *s, va_list *args)
 	      (u32) (tm_cfg.closing_time * TCP_TIMER_TICK));
   s = format (s, "syn_rcvd time: %u sec\n",
 	      (u32) (tm_cfg.syn_rcvd_time * TCP_TICK));
+  s = format (s, "syn_sent time: %u sec\n", (u32) (tm_cfg.syn_sent_time * TCP_TICK));
   s = format (s, "tcp allocation error cleanup time: %0.2f sec\n",
 	      (f32) (tm_cfg.alloc_err_timeout * TCP_TIMER_TICK));
   s = format (s, "connection cleanup time: %.2f sec\n", tm_cfg.cleanup_time);
@@ -1259,6 +1260,9 @@ tcp_config_fn (vlib_main_t * vm, unformat_input_t * input)
 	tcp_cfg.cleanup_time = tmp_time / 1000.0;
       else if (unformat (input, "syn-rcvd-time %u", &tmp_time))
 	tcp_cfg.syn_rcvd_time = tmp_time * THZ;
+      else if (unformat (input, "syn-sent-time %u", &tmp_time))
+	/* rto is capped so syn-sent timeout is estimated up to 2 * TCP_RTO_MAX */
+	tcp_cfg.syn_sent_time = clib_min ((u64) tmp_time * THZ, 2 * TCP_RTO_MAX);
       else
 	return clib_error_return (0, "unknown input `%U'",
 				  format_unformat_error, input);
