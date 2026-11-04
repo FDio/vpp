@@ -105,15 +105,26 @@ virtio_vring_init (vlib_main_t * vm, virtio_if_t * vif, u16 idx, u16 sz)
 }
 
 inline void
-virtio_free_buffers (vlib_main_t *vm, vnet_virtio_vring_t *vring)
+virtio_free_buffers (vlib_main_t *vm, vnet_virtio_vring_t *vring, int split_tx)
 {
-  u16 used = vring->desc_in_use;
+  /* TX completions can leave holes in the buffer ring when returned out of
+   * order.  Every live TX entry is marked by an index other than ~0. */
+  u16 used = (vring->queue_id & 1) ? vring->queue_size : vring->desc_in_use;
   u16 last = vring->last_used_idx;
   u16 mask = vring->queue_size - 1;
 
   while (used)
     {
-      vlib_buffer_free (vm, &vring->buffers[last & mask], 1);
+      u16 slot = last & mask;
+      u32 bi = vring->buffers[slot];
+
+      if (bi != (u32) ~0)
+	{
+	  if (split_tx && !(vring->desc[slot].flags & VRING_DESC_F_INDIRECT))
+	    vlib_buffer_free_no_next (vm, &bi, 1);
+	  else
+	    vlib_buffer_free_one (vm, bi);
+	}
       last++;
       used--;
     }
