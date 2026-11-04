@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3f438301_08dcab90",
+        "filename": "src/plugins/http/http1.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 1293,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-11-04T15:21:01Z",
+      "side": 1,
+      "message": "incomplete message check counts staged rx bytes through req-\u003eheaders_offset, including pending header section terminator, completed message check uses req-\u003eheaders_len, which excludes that terminator. with max-header-list-size 128, header field lines occupying exactly 128 bytes are accepted when the final CRLF arrives together, but rejected with 431 when only its CR has arrived and incomplete path count becomes 129. response parser has same issue and disconnects valid response. please use parser state/offset to exclude pending terminator consistently in both, while still rejecting headers above limit. verify that splitting the final CRLF across transport rx events do not change acceptance",
+      "revId": "65e29f5047f8bc8ea7464f3c8d3cf7fdf4f93535",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3c2a294c_b650cc49",
+        "filename": "src/plugins/http/http1.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 2345,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-11-04T15:21:01Z",
+      "side": 1,
+      "message": "client’s early response path in http1_transport_rx_callback() sets hc-\u003estate to HTTP_CONN_STATE_CLOSED while underlying transport session remains connected, when peer subsequently sends FIN, this new guard skips session_transport_closing_notify(\u0026req-\u003econnection). if response body is truncated, app session waits for more rx data until timeout. please distinguish this early-response state from transport teardown and preserve the closing notification once the transport rx fifo is drained",
+      "revId": "65e29f5047f8bc8ea7464f3c8d3cf7fdf4f93535",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "476b3bba_0e47c98a",
+        "filename": "src/plugins/http/http1.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 2351,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-11-04T15:21:01Z",
+      "side": 1,
+      "message": "for incomplete request, rx processing move data from transport rx fifo into unpublished space in app rx fifo. after peer FIN transport rx fifo is empty, but request is still in HTTP_REQ_STATE_WAIT_TRANSPORT_METHOD with HTTP_CONN_F_NO_APP_SESSION set because accept notification is deferred. this handle only WAIT_TRANSPORT_REPLY and notification below is correctly suppressed for unaccepted session, leaving no teardown action. we need to handle end of received data during partial request parsing, so reset parser and call http_disconnect_transport(hc), this trigger existing cleanup path to free the unaccepted session. keep app notifications suppressed until accept event towards app",
+      "revId": "65e29f5047f8bc8ea7464f3c8d3cf7fdf4f93535",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
