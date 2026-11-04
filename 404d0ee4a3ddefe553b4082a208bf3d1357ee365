@@ -16,6 +16,24 @@
       "message": "Do NOT add JIRA description in commit messages.\n```\nExpand current matrix to include `ubuntu2604` for `debug` \u0026 `release` builds on `x86_64` \u0026 `aarch64` architectures.\n\nEffectively, 4 new periodic `hs-test` jobs will be run:\n\n1. `hst-ubuntu2604-x86_64-debug-prod`\n2. `hst-ubuntu2604-x86_64-release-prod`\n3. `hst-ubuntu2604-aarch64-debug-prod`\n4. `hst-ubuntu2604-aarch64-release-prod`\n```\n\nRun `make checkstyle` before pushing patches.\n`Type: ci` is still missing. `Checkstyle` workflow will again fail.",
       "revId": "404d0ee4a3ddefe553b4082a208bf3d1357ee365",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b188353c_f275992e",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3347
+      },
+      "writtenOn": "2026-11-04T23:40:29Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "9c061ab2_bdc73287",
+      "revId": "404d0ee4a3ddefe553b4082a208bf3d1357ee365",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
