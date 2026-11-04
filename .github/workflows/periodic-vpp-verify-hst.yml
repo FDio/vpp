@@ -44,7 +44,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: ['ubuntu2204', 'ubuntu2404']
+        os: ['ubuntu2204', 'ubuntu2404', 'ubuntu2604']
         executor_arch: ['x86_64', 'aarch64']
         build_type: ['debug', 'release']
         class: ['hst']
