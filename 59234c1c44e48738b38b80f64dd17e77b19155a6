@@ -1,0 +1,40 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "774e5d0e_9a3f9381",
+        "filename": "src/plugins/ikev2/ikev2.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 1563,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-11-04T17:57:17Z",
+      "side": 1,
+      "message": "Could the new-Child-SA caller also honor this error before appending a child? For an authenticated CREATE_CHILD_SA request with a matching MODP group, a zero KE and no REKEY_SA notify, this branch frees `rekey-\u003er_proposal` and returns 0. `ikev2_process_create_child_sa_req()` then frees `proposal` but leaves it in `sa-\u003enew_child[0].i_proposal`; the node\u0027s `new_child` branch unconditionally copies that dangling pointer into `sa-\u003echilds`. Unlike the rekey branch, it never checks `notify_type`. A subsequent Child-SA dump dereferences the freed proposal, and SA cleanup frees it again. Please guard child creation on successful DH/proposal negotiation and retain only the error response on failure.",
+      "tag": "prview:898577ec13c2636e6a72af3b46b1af3d:59234c1c44e48738b38b80f64dd17e77b19155a6",
+      "revId": "59234c1c44e48738b38b80f64dd17e77b19155a6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "51425ae1_01ab6d80",
+        "filename": "src/plugins/ikev2/ikev2.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 3617,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-11-04T17:57:17Z",
+      "side": 1,
+      "message": "Could this failure exit free the temporary SA and remove the pending initiator entry before dispatch? `ikev2_complete_sa_data()` has already moved the nonce, DH private key, identities, authentication data, children and saved request out of `sai` into stack-local `sa0`. This `goto` skips `ikev2_sa_free_all_vec(sa0)` below, and `dispatch0` only deletes DELETED/NOTIFY_AND_DELETE SAs, so these allocations are lost. It also leaves `sai-\u003einit_response_received \u003d 1`; the pending-SA loop skips it forever and subsequent valid responses cannot pass the CAS. A zero MODP KE therefore leaks the exchange\u0027s allocations and leaves initiation stuck until explicit cleanup.",
+      "tag": "prview:898577ec13c2636e6a72af3b46b1af3d:59234c1c44e48738b38b80f64dd17e77b19155a6",
+      "revId": "59234c1c44e48738b38b80f64dd17e77b19155a6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
