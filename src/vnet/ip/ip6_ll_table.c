@@ -155,16 +155,6 @@ ip6_ll_table_entry_delete (const ip6_ll_prefix_t * ilp)
     }
 }
 
-static void
-ip6_ll_table_show_one (vlib_main_t * vm, ip6_ll_prefix_t * ilp, int detail)
-{
-  vlib_cli_output (vm, "%U",
-		   format_fib_entry,
-		   ip6_ll_table_lookup (ilp),
-		   (detail ?
-		    FIB_ENTRY_FORMAT_DETAIL2 : FIB_ENTRY_FORMAT_DETAIL));
-}
-
 typedef struct ip6_ll_show_ctx_t_
 {
   fib_node_index_t *entries;
@@ -201,88 +191,86 @@ ip6_ll_table_show_all (vlib_main_t * vm, u32 fib_index)
   vec_free (ctx.entries);
 }
 
-static clib_error_t *
-ip6_ll_show_fib (vlib_main_t * vm,
-		 unformat_input_t * input, vlib_cli_command_t * cmd)
+static void
+ip6_ll_show_one_fib (vlib_main_t *vm, u32 sw_if_index, ip6_address_t *matching_address, int verbose)
 {
   fib_table_t *fib_table;
-  int verbose, matching;
-  ip6_address_t matching_address;
-  u32 mask_len = 128;
-  u32 sw_if_index = ~0;
-  int detail = 0;
-  vnet_main_t *vnm = vnet_get_main ();
+  fib_node_index_t fei;
   u32 fib_index;
 
-  verbose = 1;
-  matching = 0;
+  if (sw_if_index >= vec_len (ip6_ll_table.ilt_fibs))
+    return;
+
+  fib_index = ip6_ll_table.ilt_fibs[sw_if_index];
+  if (~0 == fib_index)
+    return;
+
+  fib_table = fib_table_get (fib_index, FIB_PROTOCOL_IP6);
+  if (!(fib_table->ft_flags & FIB_TABLE_FLAG_IP6_LL))
+    return;
+
+  ip6_fib_table_show (vm, fib_table, !verbose);
+  if (FIB_ENTRY_FORMAT_BRIEF == verbose)
+    return;
+
+  if (NULL == matching_address)
+    {
+      ip6_ll_table_show_all (vm, fib_index);
+      return;
+    }
+
+  /* Link-local addresses are /128 entries. An optional input width is
+   * address notation, not a covering-prefix lookup through the glean. */
+  fei = ip6_fib_table_lookup_exact_match (fib_index, matching_address, 128);
+  if (FIB_NODE_INDEX_INVALID == fei)
+    return;
+
+  vlib_cli_output (vm, "%U", format_fib_entry, fei, verbose);
+}
+
+static clib_error_t *
+ip6_ll_show_fib (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
+{
+  ip6_address_t matching_address, *matching = NULL;
+  vnet_main_t *vnm = vnet_get_main ();
+  u32 sw_if_index = ~0;
+  u32 mask_len = 128;
+  int verbose = FIB_ENTRY_FORMAT_DETAIL;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (input, "brief") ||
-	  unformat (input, "summary") || unformat (input, "sum"))
-	verbose = 0;
-
+      if (unformat (input, "brief") || unformat (input, "summary") || unformat (input, "sum"))
+	verbose = FIB_ENTRY_FORMAT_BRIEF;
       else if (unformat (input, "detail") || unformat (input, "det"))
-	detail = 1;
-
-      else if (unformat (input, "%U/%d",
-			 unformat_ip6_address, &matching_address, &mask_len))
-	matching = 1;
-
-      else
-	if (unformat (input, "%U", unformat_ip6_address, &matching_address))
-	matching = 1;
-      else if (unformat (input, "%U",
-			 unformat_vnet_sw_interface, vnm, &sw_if_index))
+	verbose = FIB_ENTRY_FORMAT_DETAIL2;
+      else if (unformat (input, "%U/%d", unformat_ip6_address, &matching_address, &mask_len))
+	matching = &matching_address;
+      else if (unformat (input, "%U", unformat_ip6_address, &matching_address))
+	matching = &matching_address;
+      else if (unformat (input, "%U", unformat_vnet_sw_interface, vnm, &sw_if_index))
 	;
       else
 	break;
     }
 
-  vec_foreach_index (sw_if_index, ip6_ll_table.ilt_fibs)
-  {
-    fib_index = ip6_ll_table.ilt_fibs[sw_if_index];
-    if (~0 == fib_index)
-      continue;
+  if (matching && mask_len > 128)
+    return clib_error_return (0, "prefix length %u > 128", mask_len);
 
-    fib_table = fib_table_get (fib_index, FIB_PROTOCOL_IP6);
-
-    if (!(fib_table->ft_flags & FIB_TABLE_FLAG_IP6_LL))
-      continue;
-
-    ip6_fib_table_show (vm, fib_table, !verbose);
-    if (!verbose)
-      continue;
-
-    if (!matching)
-      {
-	ip6_ll_table_show_all (vm, fib_index);
-      }
-    else
-      {
-	if (~0 == sw_if_index)
-	  {
-	    vlib_cli_output (vm, "specify the interface");
-	  }
-	else
-	  {
-	    ip6_ll_prefix_t ilp = {
-	      .ilp_addr = matching_address,
-	      .ilp_sw_if_index = sw_if_index,
-	    };
-	    ip6_ll_table_show_one (vm, &ilp, detail);
-	  }
-      }
-  };
+  if (~0 != sw_if_index)
+    ip6_ll_show_one_fib (vm, sw_if_index, matching, verbose);
+  else
+    vec_foreach_index (sw_if_index, ip6_ll_table.ilt_fibs)
+      ip6_ll_show_one_fib (vm, sw_if_index, matching, verbose);
 
   return 0;
 }
 
 VLIB_CLI_COMMAND (ip6_show_fib_command, static) = {
-    .path = "show ip6-ll",
-    .short_help = "show ip6-ll [summary] [interface] [<ip6-addr>[/<width>]] [detail]",
-    .function = ip6_ll_show_fib,
+  .path = "show ip6-ll",
+  .short_help = "show ip6-ll [summary] [interface] [<ip6-addr>[/<width>]] [detail]",
+  .long_help = "Show per-interface IPv6 link-local tables. An address selects its exact /128 "
+	       "entry. An optional /width is validated but does not change the address lookup.",
+  .function = ip6_ll_show_fib,
 };
 
 static clib_error_t *
