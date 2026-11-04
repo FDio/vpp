@@ -642,6 +642,10 @@ tcp_loss_account_recovery_ack (tcp_connection_t *tc, tcp_ack_ctx_t *ac, u8 has_s
       tc->rxt_delivered += ac->rxt_sacked;
       tc->prr_delivered += ac->acked_and_sacked;
       ASSERT (tcp_loss_recovery_state_is_sane (tc));
+
+      /* Sacks of data sent after the copies in flight can show them lost */
+      if (ac->last_sacked_bytes)
+	tcp_loss_check_lost_rxt (tc);
     }
   else
     {
