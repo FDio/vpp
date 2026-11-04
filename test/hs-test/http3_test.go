@@ -15,6 +15,7 @@ import (
 	. "fd.io/hs-test/infra"
 	"github.com/edwarnicke/exechelper"
 	. "github.com/onsi/ginkgo/v2"
+	"github.com/quic-go/qpack"
 	"github.com/quic-go/quic-go"
 	"github.com/quic-go/quic-go/http3"
 	"github.com/quic-go/quic-go/qlog"
@@ -33,7 +34,8 @@ func init() {
 		Http3SecondQpackDecoderStreamTest, Http3SecondQpackEncoderStreamTest, Http3CtrlStreamClosedTest,
 		Http3QpackDecompressionFailedTest, Http3ClientOpenPushStreamTest, Http3DataBeforeHeadersTest,
 		Http3LongerDataThanContentLengthTest, Http3HalfClosedBeforeAllDataTest, Http3StaticGetTest,
-		Http3MaxHeaderListSizeTest, Http3ServerMemLeakTest, Http3ClientMemLeakTest)
+		Http3MaxHeaderListSizeTest, Http3ServerHeadersFrameTooLargeTest, Http3ClientHeadersFrameTooLargeTest,
+		Http3ServerMemLeakTest, Http3ClientMemLeakTest)
 	RegisterH3MWTests(Http3ClientFailedConnectMWTest, Http3TsFifoMemPressureMWTest)
 	RegisterVethTests(Http3CliTest, Http3ClientPostTest, Http3ClientPostPtrTest)
 }
@@ -352,6 +354,125 @@ func Http3MaxHeaderListSizeTest(s *Http3Suite) {
 	resp, err := stream.ReadResponse()
 	Log(DumpHttpResp(resp, true))
 	AssertHttpStatus(resp, 431)
+}
+
+func Http3ServerHeadersFrameTooLargeTest(s *Http3Suite) {
+	vpp := s.Containers.Vpp.VppInstance
+	serverAddress := s.VppAddr() + ":" + s.Ports.Port1
+	Log(vpp.Vppctl("http tps no-zc h3 uri https://" + serverAddress))
+
+	conn := H3ClientConnect(serverAddress)
+	defer conn.CloseWithError(0, "")
+	control, err := conn.OpenUniStream()
+	AssertNil(err)
+	_, err = control.Write([]byte{0x00, 0x04, 0x00})
+	AssertNil(err)
+
+	for _, length := range []uint64{512<<10 + 1, 1<<32 + 1, 1<<62 - 1} {
+		for _, payloadLen := range []int{0, 1} {
+			By(fmt.Sprintf("rejecting request HEADERS length %d with %d payload bytes", length, payloadLen))
+			stream, err := conn.OpenStream()
+			AssertNil(err)
+			AssertNil(stream.SetDeadline(time.Now().Add(3 * time.Second)))
+			frame := quicvarint.Append(nil, 0x01)
+			frame = quicvarint.Append(frame, length)
+			frame = append(frame, make([]byte, payloadLen)...)
+			// Keep the send side open: rejection must not depend on the rest of the payload or FIN.
+			_, err = stream.Write(frame)
+			AssertNil(err)
+
+			reader := quicvarint.NewReader(stream)
+			frameType, err := quicvarint.Read(reader)
+			AssertNil(err, "expected an immediate HTTP error response")
+			AssertEqual(uint64(0x01), frameType)
+			responseLen, err := quicvarint.Read(reader)
+			AssertNil(err)
+			AssertEqual(true, responseLen < 4096, "error response must be small")
+			response := make([]byte, int(responseLen))
+			_, err = io.ReadFull(stream, response)
+			AssertNil(err)
+			decode := qpack.NewDecoder().Decode(response)
+			status := ""
+			for {
+				field, err := decode()
+				if err == io.EOF {
+					break
+				}
+				AssertNil(err)
+				if field.Name == ":status" {
+					status = field.Value
+				}
+			}
+			AssertEqual("431", status)
+			_, err = stream.Read([]byte{0})
+			AssertEqual(io.EOF, err, "error response must end with FIN")
+			AssertNil(context.Cause(conn.Context()), "oversized request must not close the connection")
+			stream.CancelWrite(quic.StreamErrorCode(http3.ErrCodeRequestCanceled))
+		}
+	}
+}
+
+func Http3ClientHeadersFrameTooLargeTest(s *Http3Suite) {
+	cert, err := tls.LoadX509KeyPair("resources/cert/localhost.crt", "resources/cert/localhost.key")
+	AssertNil(err)
+	serverAddress := s.HostAddr() + ":" + s.Ports.Port1
+	listener, err := quic.ListenAddr(serverAddress,
+		&tls.Config{Certificates: []tls.Certificate{cert}, NextProtos: []string{"h3"}}, nil)
+	AssertNil(err)
+	defer listener.Close()
+
+	for _, length := range []uint64{512<<10 + 1, 1<<32 + 1, 1<<62 - 1} {
+		for _, payloadLen := range []int{0, 1} {
+			By(fmt.Sprintf("rejecting response HEADERS length %d with %d payload bytes", length, payloadLen))
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			done := make(chan struct{})
+			go func() {
+				defer GinkgoRecover()
+				defer close(done)
+				conn, err := listener.Accept(ctx)
+				AssertNil(err)
+				defer conn.CloseWithError(0, "")
+				control, err := conn.OpenUniStream()
+				AssertNil(err)
+				_, err = control.Write([]byte{0x00, 0x04, 0x00})
+				AssertNil(err)
+				stream, err := conn.AcceptStream(ctx)
+				AssertNil(err)
+				deadline, _ := ctx.Deadline()
+				AssertNil(stream.SetDeadline(deadline))
+				reader := quicvarint.NewReader(stream)
+				frameType, err := quicvarint.Read(reader)
+				AssertNil(err)
+				AssertEqual(uint64(0x01), frameType)
+				requestLen, err := quicvarint.Read(reader)
+				AssertNil(err)
+				_, err = io.CopyN(io.Discard, stream, int64(requestLen))
+				AssertNil(err)
+
+				frame := quicvarint.Append(nil, 0x01)
+				frame = quicvarint.Append(frame, length)
+				frame = append(frame, make([]byte, payloadLen)...)
+				_, err = stream.Write(frame)
+				AssertNil(err)
+				select {
+				case <-conn.Context().Done():
+					expectedErr := quic.ApplicationError{
+						ErrorCode: quic.ApplicationErrorCode(http3.ErrCodeExcessiveLoad),
+						Remote:    true,
+					}
+					AssertMatchError(context.Cause(conn.Context()), &expectedErr)
+				case <-ctx.Done():
+					Fail("client did not reject oversized response HEADERS")
+				}
+			}()
+
+			o := s.Containers.Vpp.VppInstance.Vppctl("http client http3 timeout 5 uri https://" + serverAddress + "/")
+			Log(o)
+			AssertContains(o, "transport closed")
+			<-done
+		}
+	}
 }
 
 func Http3PeerResetStream(s *Http3Suite) {

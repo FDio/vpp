@@ -945,6 +945,14 @@ http3_req_state_wait_transport_method (http_ctx_t *stream, http_ctx_t *req,
       return HTTP_SM_STOP;
     }
 
+  if (PREDICT_FALSE (req->fh.length > http_io_ts_fifo_size (stream, 1)))
+    {
+      HTTP_DBG (1, "ts rx fifo too small to hold headers frame (%lu)", req->fh.length);
+      *n_deq = 0;
+      http3_send_431 (stream, req);
+      return HTTP_SM_STOP;
+    }
+
   if (http_io_ts_max_read (stream) < req->fh.length)
     {
       HTTP_DBG (1, "headers frame incomplete");
@@ -1172,6 +1180,14 @@ http3_req_state_wait_transport_reply (http_ctx_t *stream, http_ctx_t *req,
       *n_deq = 0;
       http3_stream_terminate (stream, req, HTTP3_ERROR_MESSAGE_ERROR);
       return HTTP_SM_STOP;
+    }
+
+  if (PREDICT_FALSE (req->fh.length > http_io_ts_fifo_size (stream, 1)))
+    {
+      HTTP_DBG (1, "ts rx fifo too small to hold headers frame (%lu)", req->fh.length);
+      *error = HTTP3_ERROR_EXCESSIVE_LOAD;
+      *n_deq = 0;
+      return HTTP_SM_ERROR;
     }
 
   if (http_io_ts_max_read (stream) < req->fh.length)
