@@ -98,6 +98,57 @@ Example configuration:
        connection-timeout 30
    }
 
+Cleanup diagnostics
+^^^^^^^^^^^^^^^^^^^
+
+``show quic`` reports the allocated VPP context count per thread as
+``ctx pool used/slots``. With the quicly engine, it also reports independent
+live object counts:
+
+* ``quicly connections`` counts connection objects through quicly's
+  ``update_open_count`` callback, including handshakes and closing connections.
+* ``quicly streams`` counts application streams through their open and destroy
+  callbacks. Internal crypto streams are excluded.
+
+``show quic verbose`` additionally walks the context pools and reports each
+thread's connection, stream, listener, and reserved context counts. Connection
+contexts are grouped by their raw ``conn_state``, including contexts without an
+engine connection. States with zero contexts are omitted. The reserved entry
+at index zero is excluded from the type and state counts.
+
+Each thread also shows ``active timers: ACCEPT N TX N``, counted directly from
+its timer-wheel pool, excluding permanent list heads. These counts include
+scheduled timers even if their owning context has been released. A live
+connection can have no TX timer while immediate work is queued as a session
+event.
+
+``show session verbose 2`` shows a line such as
+``timers: ACCEPT inactive TX active`` for individual QUIC connections.
+Half-open connections show only ``timers: TX active/inactive``. This status is
+read directly from the context's timer handles without walking the timer pool.
+Streams and listeners do not show this line.
+
+The context and timer pool walks and the round trip time and traffic statistics
+collected from live connections run only with ``verbose``. Plain ``show quic``
+reads pool usage and counters without walking either pool.
+
+The engine counts sum per-thread signed lifecycle deltas, so updates need no
+atomics. An object can be created on one worker and freed on another; summing
+the deltas preserves the live total across migration, including objects in
+transit. The CLI reads these counters under the worker barrier. They are not
+reset by ``clear errors``. Compare them with a pre-test baseline
+after allowing closing and draining to finish. Counting engine objects
+independently can expose leaks even when VPP contexts have already been freed.
+
+The stream event counters distinguish locally ``Opened`` streams from peer
+``Accepted`` streams; ``Closed`` includes both. These counters and the packet
+``RX Total`` and ``TX Total`` counters are reset by ``clear errors``. Compare
+event counter deltas over the same interval when checking lifecycle balance.
+
+The connection ``Closed`` counter advances after ``quicly_free`` completes.
+Requesting a UDP disconnect without deleting the engine connection does not
+increment it.
+
 Getting started
 ^^^^^^^^^^^^^^^
 

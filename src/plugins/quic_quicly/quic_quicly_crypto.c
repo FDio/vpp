@@ -603,6 +603,8 @@ quic_quicly_crypto_get_time (ptls_get_time_t *self)
 
 ptls_get_time_t quic_quicly_crypto_get_time_cb = { quic_quicly_crypto_get_time };
 
+static quicly_update_open_count_t quic_quicly_open_count_cb = { quic_quicly_update_open_count };
+
 static int
 quic_quicly_crypto_context_init_data (quic_quicly_crypto_ctx_t *crctx, quic_ctx_t *ctx)
 {
@@ -691,6 +693,7 @@ quic_quicly_crypto_context_init_data (quic_quicly_crypto_ctx_t *crctx, quic_ctx_
   ptls_ctx->encrypt_ticket = NULL;
   clib_memcpy (quicly_ctx, &quicly_spec_context, sizeof (quicly_context_t));
 
+  quicly_ctx->update_open_count = &quic_quicly_open_count_cb;
   quicly_ctx->max_packets_per_key = qm->max_packets_per_key;
   quicly_ctx->tls = ptls_ctx;
   quicly_ctx->enable_ratio.pacing = qm->enable_tx_pacing ? 255 : 0;

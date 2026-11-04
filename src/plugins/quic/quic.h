@@ -143,17 +143,22 @@ typedef enum
   QUIC_N_ERROR,
 } quic_error_t;
 
+#define foreach_quic_conn_state                                                                    \
+  _ (OPENED)                                                                                       \
+  _ (HANDSHAKE)                                                                                    \
+  _ (READY)                                                                                        \
+  _ (PASSIVE_CLOSING)                                                                              \
+  _ (PASSIVE_CLOSING_APP_CLOSED)                                                                   \
+  _ (PASSIVE_CLOSING_QUIC_CLOSED)                                                                  \
+  _ (ACTIVE_CLOSING)                                                                               \
+  _ (TRANSPORT_CLOSED)                                                                             \
+  _ (CLOSED)
+
 typedef enum quic_ctx_conn_state_ : u8
 {
-  QUIC_CONN_STATE_OPENED,
-  QUIC_CONN_STATE_HANDSHAKE,
-  QUIC_CONN_STATE_READY,
-  QUIC_CONN_STATE_PASSIVE_CLOSING,
-  QUIC_CONN_STATE_PASSIVE_CLOSING_APP_CLOSED,
-  QUIC_CONN_STATE_PASSIVE_CLOSING_QUIC_CLOSED,
-  QUIC_CONN_STATE_ACTIVE_CLOSING,
-  QUIC_CONN_STATE_TRANSPORT_CLOSED,
-  QUIC_CONN_STATE_CLOSED,
+#define _(sym) QUIC_CONN_STATE_##sym,
+  foreach_quic_conn_state
+#undef _
 } quic_ctx_conn_state_t;
 
 typedef enum quic_packet_type_ : u8
@@ -476,6 +481,7 @@ typedef struct quic_engine_vft_
   void (*transport_closed) (quic_ctx_t *ctx);
   int (*ctx_attribute) (quic_ctx_t *ctx, u8 is_get, transport_endpt_attr_t *attr);
   void (*conn_tx_timer_expired) (u32 conn_index, clib_thread_index_t thread_index);
+  void (*engine_show_stats) (vlib_main_t *vm);
 } quic_engine_vft_t;
 
 extern quic_engine_vft_t *quic_engine_vfts;

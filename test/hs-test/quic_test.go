@@ -20,8 +20,175 @@ func init() {
 		QuicAlpnEmptyServerListTest, QuicAlpnEmptyClientListTest, QuicBuiltinVperfZeroCopyTest,
 		QuicBuiltinVperfBidirectionalZeroCopyTest, QuicBuiltinVperfTest, QuicBuiltinVperfBidirectionalTest,
 		QuicReorderTest, QuicCrlRejectThenAllowTest, QuicPeerCertCloseTest)
-	RegisterQuicMWTests(QuicCpsMWTest)
-	RegisterNoTopoTests(QuicFailedHandshakeTest, QuicCryptoContextTest, QuicRxDatagramSizeTest)
+	RegisterQuicMWTests(QuicCpsMWTest, QuicEngineObjectCountMigrationMWTest)
+	RegisterNoTopoTests(QuicFailedHandshakeTest, QuicCryptoContextTest, QuicRxDatagramSizeTest, QuicEngineObjectCountTest)
+	RegisterNoTopoMWTests(QuicEngineObjectCountMWTest)
+}
+
+func QuicEngineObjectCountMWTest(s *NoTopoSuite) {
+	s.CpusPerVppContainer = 3
+	s.SetupTest()
+	QuicEngineObjectCountTest(s)
+}
+
+func quicEngineObjectCounts(vpp *VppInstance) []uint64 {
+	pattern := regexp.MustCompile(`(?m)^(?:quicly connections|quicly streams):\s+(\d+)\r?$`)
+	o := vpp.Vppctl("show quic")
+	matches := pattern.FindAllStringSubmatch(o, -1)
+	AssertEqual(2, len(matches), "missing engine object counts: "+o)
+	result := make([]uint64, len(matches))
+	for i, match := range matches {
+		var err error
+		result[i], err = strconv.ParseUint(match[1], 10, 64)
+		AssertNil(err)
+	}
+	return result
+}
+
+func quicActiveTimerCounts(vpp *VppInstance) []uint64 {
+	o := vpp.Vppctl("show quic verbose")
+	pattern := regexp.MustCompile(`(?m)^  active timers: ACCEPT (\d+) TX (\d+)\r?$`)
+	matches := pattern.FindAllStringSubmatch(o, -1)
+	AssertNotEmpty(matches, "missing active timer counts: "+o)
+	AssertEqual(strings.Count(o, "connections without engine:"), len(matches),
+		"expected timer counts for every thread: "+o)
+	result := []uint64{0, 0}
+	for _, match := range matches {
+		for i := range result {
+			count, err := strconv.ParseUint(match[i+1], 10, 64)
+			AssertNil(err)
+			result[i] += count
+		}
+	}
+	return result
+}
+
+func QuicEngineObjectCountMigrationMWTest(s *QuicSuite) {
+	s.CpusPerVppContainer = 3
+	s.SetupTest()
+	clientVpp := s.Containers.ClientVpp.VppInstance
+	serverVpp := s.Containers.ServerVpp.VppInstance
+	// Connects start on worker 0. Receive on worker 1 to force UDP/QUIC
+	// migration, so engine objects are freed on a different thread.
+	for queue := range 2 {
+		AssertEmpty(clientVpp.Vppctl("set interface rx-placement " + s.Interfaces.Client.VppName() +
+			" queue " + strconv.Itoa(queue) + " worker 1"))
+	}
+	uri := "quic://" + net.JoinHostPort(s.Interfaces.Server.Ip4AddressString(), s.Ports.Port1)
+	AssertContains(serverVpp.Vppctl("test tls server uri "+uri), "server started")
+	for range 2 {
+		o := clientVpp.Vppctl("test tls client uri " + uri)
+		Log(o)
+		AssertContains(o, "TLS version: 1.3")
+		for _, vpp := range []*VppInstance{clientVpp, serverVpp} {
+			Eventually(func() []uint64 {
+				return quicEngineObjectCounts(vpp)
+			}, 5*time.Second, 100*time.Millisecond).Should(Equal([]uint64{0, 0}))
+			Eventually(func() []uint64 {
+				return quicActiveTimerCounts(vpp)
+			}, 5*time.Second, 100*time.Millisecond).Should(Equal([]uint64{0, 0}))
+			Log(vpp.Vppctl("show quic"))
+		}
+	}
+}
+
+func QuicEngineObjectCountTest(s *NoTopoSuite) {
+	vpp := s.Containers.Vpp.VppInstance
+	address := net.JoinHostPort(s.VppAddr(), s.Ports.Http)
+	Log(vpp.Vppctl("test tls server alpn-proto1 3 uri quic://" + address))
+	counts := func() []uint64 {
+		return quicEngineObjectCounts(vpp)
+	}
+	baseline := counts()
+	AssertEqual([]uint64{0, 0}, baseline, "listeners must not create engine connection objects")
+	o := vpp.Vppctl("show quic")
+	AssertNotContains(o, "VPP Context Details")
+	AssertNotContains(o, "Smoothed RTT")
+	AssertNotContains(o, "active timers:")
+	verbose := func() string { return vpp.Vppctl("show quic verbose") }
+	o = verbose()
+	AssertContains(o, "Thread 0: connections 0 streams 0 listeners 1 reserved 1")
+	AssertNotContains(o, "conn state ")
+	AssertContains(o, "Smoothed RTT")
+	timerCounts := func() []uint64 { return quicActiveTimerCounts(vpp) }
+	AssertEqual([]uint64{0, 0}, timerCounts(), "listeners must not create timers")
+	sessionDetails := func() string { return vpp.Vppctl("show session verbose 2") }
+	AssertNotContains(sessionDetails(), " timers: ACCEPT ")
+	waitCounts := func(expected []uint64) {
+		Eventually(counts, 5*time.Second, 100*time.Millisecond).Should(Equal(expected))
+	}
+	streamStatsPattern := regexp.MustCompile(`(?s)---------- Streams ----------.*?---------- Packets ----------`)
+
+	for range 2 {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		conn, err := quic.DialAddr(ctx, address,
+			&tls.Config{InsecureSkipVerify: true, NextProtos: []string{"h3"}},
+			&quic.Config{Versions: []quic.Version{quic.Version1}})
+		cancel()
+		AssertNil(err)
+		defer conn.CloseWithError(0, "test complete")
+		waitCounts([]uint64{1, 0})
+		Eventually(timerCounts, 5*time.Second, 100*time.Millisecond).Should(Equal([]uint64{0, 1}))
+		Eventually(sessionDetails, 5*time.Second, 100*time.Millisecond).
+			Should(ContainSubstring(" timers: ACCEPT inactive TX active"))
+		AssertNotContains(vpp.Vppctl("show session verbose"), " timers: ACCEPT ")
+		Eventually(verbose, 5*time.Second, 100*time.Millisecond).Should(And(
+			MatchRegexp(`Thread \d+: connections 1 streams 0 listeners \d+ reserved 1`),
+			ContainSubstring("conn state READY: 1"),
+		))
+
+		stream, err := conn.OpenStream()
+		AssertNil(err)
+		_, err = stream.Write([]byte("count this stream"))
+		AssertNil(err)
+		waitCounts([]uint64{1, 1})
+		AssertEqual(1, strings.Count(sessionDetails(), " timers: ACCEPT "),
+			"only the connection should show timers, not its stream or listeners")
+		Eventually(verbose, 5*time.Second, 100*time.Millisecond).
+			Should(MatchRegexp(`Thread \d+: connections 1 streams 1 listeners \d+ reserved 1`))
+		Log(vpp.Vppctl("clear errors"))
+		waitCounts([]uint64{1, 1})
+
+		stream.CancelRead(1)
+		stream.CancelWrite(1)
+		waitCounts([]uint64{1, 0})
+		AssertNil(context.Cause(conn.Context()), "stream reset must leave connection alive")
+		Log(vpp.Vppctl("clear errors"))
+
+		// Closing a connection must also destroy any remaining streams.
+		stream, err = conn.OpenStream()
+		AssertNil(err)
+		_, err = stream.Write([]byte("close with this stream still open"))
+		AssertNil(err)
+		waitCounts([]uint64{1, 1})
+		AssertNil(conn.CloseWithError(0, "test complete"))
+		waitCounts(baseline)
+		Eventually(timerCounts, 5*time.Second, 100*time.Millisecond).Should(Equal([]uint64{0, 0}))
+		Eventually(verbose, 5*time.Second, 100*time.Millisecond).Should(And(
+			Not(ContainSubstring("conn state ")),
+			Not(MatchRegexp(`(?m)^Thread \d+: connections \d+ streams [1-9]`)),
+		), "verbose context counts must return to the listener baseline")
+		Eventually(func() string {
+			return streamStatsPattern.FindString(vpp.Vppctl("show quic"))
+		}, 5*time.Second, 100*time.Millisecond).Should(And(
+			MatchRegexp(`(?m)^Accepted:\s+1\r?$`),
+			MatchRegexp(`(?m)^Opened:\s+0\r?$`),
+			MatchRegexp(`(?m)^Closed:\s+1\r?$`),
+		), "peer-opened stream must increment accepted and closed counters")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	conn, err := quic.DialAddr(ctx, address,
+		&tls.Config{InsecureSkipVerify: true, NextProtos: []string{"no-match"}},
+		&quic.Config{Versions: []quic.Version{quic.Version1}})
+	if conn != nil {
+		defer conn.CloseWithError(0, "test complete")
+	}
+	AssertNotNil(err, "ALPN mismatch must fail the handshake")
+	waitCounts(baseline)
+	Eventually(timerCounts, 5*time.Second, 100*time.Millisecond).Should(Equal([]uint64{0, 0}))
+	Log(vpp.Vppctl("show quic"))
 }
 
 func QuicPeerCertCloseTest(s *QuicSuite) {
@@ -258,6 +425,10 @@ func QuicRxDatagramSizeTest(s *NoTopoSuite) {
 	}
 	Eventually(oversizedDatagrams, 5*time.Second, 100*time.Millisecond).
 		Should(Equal(len(oversizedSizes)), "oversized UDP datagrams were not counted")
+	o = vpp.Vppctl("show quic verbose")
+	AssertContains(o, "connections without engine: 1")
+	AssertContains(o, "conn state OPENED: 1")
+	AssertContains(o, "active timers: ACCEPT 1 TX 0")
 
 	// Reuse the same UDP flow to verify the rejected datagrams were consumed and
 	// a valid Initial datagram exactly at the size limit is still accepted.
