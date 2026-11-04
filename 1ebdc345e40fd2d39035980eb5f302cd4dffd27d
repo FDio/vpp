@@ -1,0 +1,22 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e655929b_dc67eb0c",
+        "filename": "src/plugins/rdma/output.c",
+        "patchSetId": 70
+      },
+      "lineNbr": 548,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-11-04T14:26:54Z",
+      "side": 1,
+      "message": "Could we propagate `NO_SLOTS` without freeing the packet when the chained payload exceeds the currently available WQEBBs? `rdma_mlx5_tso_append_chain()` returns zero for both the hardware DS limit and transient slot exhaustion, and this branch consumes/frees both. For example, 254 SENDs on an empty 256-slot queue leave two slots: a GSO packet with a 54-byte header and four 2K buffers passes the initial two-slot check but needs three WQEBBs, so it is immediately dropped instead of retrying after the SEND prefix completes. The eMPW fallback has the same behavior. A source-derived ASAN/UBSan harness reproduces this; the same packet posts successfully with three slots. Please distinguish the transient case, as `rdma_mlx5_build_send()` already does.",
+      "tag": "prview:cb57b47826df2d4cf99095aaab2d7d2b:1ebdc345e40fd2d39035980eb5f302cd4dffd27d",
+      "revId": "1ebdc345e40fd2d39035980eb5f302cd4dffd27d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
