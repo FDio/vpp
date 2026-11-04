@@ -340,12 +340,16 @@ tc_attach ()
 static int
 tc_connect_rpc (void *rpc_args)
 {
+  tls_client_main_t *cm = &tls_client_main;
   vnet_connect_args_t *a = rpc_args;
   int rv;
 
   rv = vnet_connect (a);
   if (rv)
-    clib_warning ("connect returned: %U", format_session_error, rv);
+    {
+      clib_warning ("connect returned: %U", format_session_error, rv);
+      vlib_process_signal_event_mt (cm->vlib_main, cm->cli_node_index, TC_CLI_CONNECT_FAILED, rv);
+    }
 
   session_endpoint_free_ext_cfgs (&a->sep_ext);
   vec_free (a);

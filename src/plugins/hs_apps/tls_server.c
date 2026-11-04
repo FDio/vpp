@@ -24,23 +24,75 @@ typedef struct
   u32 accepted_count;
   u64 received_bytes;
   u64 rx_fifo_size;
+  u8 echo;
 } tls_server_main_t;
 
 tls_server_main_t tls_server_main;
+
+static void
+ts_disconnect (session_t *s)
+{
+  vnet_disconnect_args_t a = { .handle = session_handle (s),
+			       .app_index = tls_server_main.app_index };
+
+  vnet_disconnect_session (&a);
+}
 
 static int
 ts_ts_rx_callback (session_t *ts)
 {
   tls_server_main_t *sm = &tls_server_main;
   u32 n = svm_fifo_max_dequeue_cons (ts->rx_fifo);
-  svm_fifo_dequeue_drop (ts->rx_fifo, n);
-  sm->received_bytes += n;
+  u32 n_deq = 0;
+
+  if (sm->echo && !(ts->flags & SESSION_F_UNIDIRECTIONAL))
+    {
+      u8 data[4096];
+      int written;
+
+      while ((n = clib_min (svm_fifo_max_dequeue_cons (ts->rx_fifo),
+			    svm_fifo_max_enqueue_prod (ts->tx_fifo))))
+	{
+	  n = clib_min (n, sizeof (data));
+	  svm_fifo_peek (ts->rx_fifo, 0, n, data);
+	  written = svm_fifo_enqueue (ts->tx_fifo, n, data);
+	  if (written <= 0)
+	    break;
+	  svm_fifo_dequeue_drop (ts->rx_fifo, written);
+	  n_deq += written;
+	  if (svm_fifo_set_event (ts->tx_fifo))
+	    session_program_tx_io_evt (ts->handle, SESSION_IO_EVT_TX);
+	}
+      if (svm_fifo_max_dequeue_cons (ts->rx_fifo))
+	svm_fifo_add_want_deq_ntf (ts->tx_fifo, SVM_FIFO_WANT_DEQ_NOTIF);
+    }
+  else
+    {
+      svm_fifo_dequeue_drop (ts->rx_fifo, n);
+      n_deq = n;
+    }
+  sm->received_bytes += n_deq;
+  if (svm_fifo_needs_deq_ntf (ts->rx_fifo, n_deq))
+    {
+      svm_fifo_clear_deq_ntf (ts->rx_fifo);
+      session_program_transport_io_evt (ts->handle, SESSION_IO_EVT_RX);
+    }
+
+  /* Acknowledging the peer's close disables TX dequeue notifications.
+   * Keep them enabled until all buffered input has been copied to TX. */
+  if (ts->session_state == SESSION_STATE_TRANSPORT_CLOSING && svm_fifo_is_empty_cons (ts->rx_fifo))
+    ts_disconnect (ts);
   return 0;
 }
 
 static int
 ts_ts_tx_callback (session_t *ts)
 {
+  if (tls_server_main.echo)
+    {
+      svm_fifo_clear_deq_ntf (ts->tx_fifo);
+      return ts_ts_rx_callback (ts);
+    }
   clib_warning ("called...");
   return -1;
 }
@@ -72,31 +124,21 @@ ts_ts_connected_callback (u32 app_index, u32 api_context, session_t *s, session_
 static void
 ts_ts_disconnect_callback (session_t *s)
 {
-  tls_server_main_t *sm = &tls_server_main;
-  vnet_disconnect_args_t _a = { 0 }, *a = &_a;
-
   ts_ts_rx_callback (s);
-
-  a->handle = session_handle (s);
-  a->app_index = sm->app_index;
-  vnet_disconnect_session (a);
 }
 
 static void
 ts_ts_reset_callback (session_t *s)
 {
-  tls_server_main_t *sm = &tls_server_main;
-  vnet_disconnect_args_t _a = { 0 }, *a = &_a;
-
-  a->handle = session_handle (s);
-  a->app_index = sm->app_index;
-  vnet_disconnect_session (a);
+  ts_disconnect (s);
 }
 
 static void
 ts_ts_cleanup_callback (session_t *s, session_cleanup_ntf_t ntf)
 {
-  return;
+  /* Transport loss can interrupt an echo waiting for TX space. */
+  if (ntf == SESSION_CLEANUP_TRANSPORT && !(s->flags & SESSION_F_APP_CLOSED))
+    ts_disconnect (s);
 }
 
 static int
@@ -283,6 +325,7 @@ tls_server_create_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli
   sm->key_file = 0;
   sm->use_last_ckpair = 0;
   sm->rx_fifo_size = 8 << 10;
+  sm->echo = 0;
   sm->alpn_protos[0] = sm->alpn_protos[1] = sm->alpn_protos[2] = sm->alpn_protos[3] =
     TLS_ALPN_PROTO_NONE;
 
@@ -297,6 +340,8 @@ tls_server_create_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli
 	;
       else if (unformat (line_input, "rx-fifo-size %U", unformat_memory_size, &sm->rx_fifo_size))
 	;
+      else if (unformat (line_input, "echo"))
+	sm->echo = 1;
       else if (unformat (line_input, "alpn-proto1 %d", &sm->alpn_protos[0]))
 	;
       else if (unformat (line_input, "alpn-proto2 %d", &sm->alpn_protos[1]))
@@ -355,7 +400,7 @@ done:
 VLIB_CLI_COMMAND (tls_server_create_command, static) = {
   .path = "test tls server",
   .short_help = "test tls server uri <tls://ip/port> [tls-engine %d] "
-		"[rx-fifo-size <bytes>[k|m]] "
+		"[rx-fifo-size <bytes>[k|m]] [echo] "
 		"[profile-index %d] [cert <cert-file> key <key-file>]",
   .function = tls_server_create_command_fn,
 };

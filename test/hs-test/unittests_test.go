@@ -5,7 +5,8 @@ import (
 )
 
 func init() {
-	RegisterNoTopoTests(HttpUnitTest, TcpUnitTest, UdpUnitTest, SvmUnitTest, SessionUnitTest)
+	RegisterNoTopoTests(HttpUnitTest, TcpUnitTest, UdpUnitTest, SvmUnitTest, SessionUnitTest, QuicUnitTest,
+		QuicQuiclyUnitTest)
 }
 
 func runUnitTest(s *NoTopoSuite, vppCmd string) {
@@ -17,6 +18,14 @@ func runUnitTest(s *NoTopoSuite, vppCmd string) {
 
 func HttpUnitTest(s *NoTopoSuite) {
 	runUnitTest(s, "test http all")
+}
+
+func QuicUnitTest(s *NoTopoSuite) {
+	runUnitTest(s, "test quic all")
+}
+
+func QuicQuiclyUnitTest(s *NoTopoSuite) {
+	runUnitTest(s, "test quicly all")
 }
 
 func TcpUnitTest(s *NoTopoSuite) {
