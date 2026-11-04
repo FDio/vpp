@@ -1,0 +1,22 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "0af6e26e_a1f62c9f",
+        "filename": "src/plugins/rdma/output.c",
+        "patchSetId": 71
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-11-04T15:59:30Z",
+      "side": 1,
+      "message": "Addressed in PS71 (35e31887d). Transient WQEBB exhaustion now returns NO_SLOTS without consuming/freeing the packet, in both TSO and eMPW fallback. A shared split-header copy is discarded on retry while retaining the original chain. The exact 254 SEND + chained-GSO reproducer, completion/retry and wrap cases pass in Release and ASan/UBSan; PS70 and the rebased pre-fix baseline fail it. Full validation details are in the patchset message.",
+      "parentUuid": "e655929b_dc67eb0c",
+      "revId": "35e31887d86f939c995160f707e46991b5c36be4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
