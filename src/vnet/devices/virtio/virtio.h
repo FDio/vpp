@@ -176,7 +176,7 @@ clib_error_t *virtio_vring_init (vlib_main_t *vm, virtio_if_t *vif, u16 idx,
 				 u16 sz);
 void virtio_vring_set_rx_queues (vlib_main_t *vm, virtio_if_t *vif);
 void virtio_vring_set_tx_queues (vlib_main_t *vm, virtio_if_t *vif);
-extern void virtio_free_buffers (vlib_main_t *vm, vnet_virtio_vring_t *vring);
+extern void virtio_free_buffers (vlib_main_t *vm, vnet_virtio_vring_t *vring, int split_tx);
 extern void virtio_set_net_hdr_size (virtio_if_t * vif);
 extern void virtio_show (vlib_main_t *vm, u32 *hw_if_indices, u8 show_descr);
 clib_error_t *virtio_set_packet_buffering (virtio_if_t * vif, u16 size);
