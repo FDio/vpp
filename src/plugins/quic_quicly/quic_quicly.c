@@ -90,10 +90,10 @@ quic_quicly_connection_delete (quic_ctx_t *ctx)
   quic_mvt.conn_tx_timer_stop (quic_wrk_ctx_get (qm, ctx->c_thread_index), ctx);
   QUIC_DBG (4, "Stopped timer for ctx %u", ctx->c_c_index);
 
-  quic_increment_counter (qm, QUIC_ERROR_CLOSED_CONNECTION, 1);
   quic_disconnect_transport (ctx, qm->app_index);
   quicly_free (ctx->conn);
   ctx->conn = NULL;
+  quic_increment_counter (qm, QUIC_ERROR_CLOSED_CONNECTION, 1);
   if (ctx->c_s_index != QUIC_SESSION_INVALID && !(ctx->flags & QUIC_F_NO_APP_SESSION))
     session_transport_delete_notify (&ctx->connection);
 }
@@ -378,6 +378,7 @@ static void
 quic_quicly_on_stream_destroy (quicly_stream_t *stream, quicly_error_t err)
 {
   quic_stream_data_t *stream_data = (quic_stream_data_t *) stream->data;
+  quic_quicly_get_worker_stats (stream_data->thread_index)->n_streams--;
   quic_ctx_t *sctx =
     quic_quicly_get_quic_ctx (stream_data->ctx_id, stream_data->thread_index);
 
@@ -824,12 +825,14 @@ quic_quicly_on_stream_open (quicly_stream_open_t *self, quicly_stream_t *stream)
   quic_stream_data_t *stream_data;
   app_worker_t *app_wrk;
   quic_ctx_t *qctx, *sctx;
+  clib_thread_index_t thread_index = vlib_get_thread_index ();
   u32 sctx_id;
   int rv;
 
   QUIC_DBG (2, "on_stream_open called");
   stream->data = clib_mem_alloc (sizeof (quic_stream_data_t));
   stream->callbacks = &quic_quicly_stream_callbacks;
+  quic_quicly_get_worker_stats (thread_index)->n_streams++;
   /* Notify accept on parent qsession, but only if this is not a locally
    * initiated stream */
   if (quicly_stream_is_self_initiated (stream))
@@ -838,7 +841,8 @@ quic_quicly_on_stream_open (quicly_stream_open_t *self, quicly_stream_t *stream)
       return 0;
     }
 
-  sctx_id = quic_ctx_alloc (quic_quicly_main.qm, vlib_get_thread_index ());
+  quic_increment_counter (quic_quicly_main.qm, QUIC_ERROR_ACCEPTED_STREAM, 1);
+  sctx_id = quic_ctx_alloc (quic_quicly_main.qm, thread_index);
   qctx = quic_quicly_get_conn_ctx (stream->conn);
 
   /* Might need to signal that the connection is ready if the first thing the
@@ -1673,7 +1677,6 @@ quic_quicly_receive_a_packet (quic_ctx_t *ctx, quic_quicly_rx_packet_ctx_t *pctx
 	  quic_quicly_main_t *qqm = &quic_quicly_main;
 	  quic_main_t *qm = qqm->qm;
 	  ctx->conn_state = QUIC_CONN_STATE_CLOSED;
-	  quic_increment_counter (qm, QUIC_ERROR_CLOSED_CONNECTION, 1);
 	  quic_disconnect_transport (ctx, qm->app_index);
 	}
       return QUIC_QUICLY_RX_ERROR_CRITICAL;
@@ -1793,6 +1796,7 @@ quic_quicly_engine_init (quic_main_t *qm)
   qm->max_packets_per_key = DEFAULT_MAX_PACKETS_PER_KEY;
   qqm->qm = qm;
 
+  vec_validate_aligned (qqm->worker_stats, qm->num_threads - 1, CLIB_CACHE_LINE_BYTES);
   vec_validate (qqm->next_cid, qm->num_threads - 1);
   vec_validate (qqm->rx_packets, qm->num_threads - 1);
   vec_validate (qqm->rx_dgrams, qm->num_threads - 1);
@@ -2011,6 +2015,24 @@ quic_quicly_ctx_attribute (quic_ctx_t *ctx, u8 is_get, transport_endpt_attr_t *a
     }
 }
 
+static void
+quic_quicly_engine_show_stats (vlib_main_t *vm)
+{
+  quic_quicly_main_t *qqm = &quic_quicly_main;
+  quic_quicly_worker_stats_t totals = {}, *stats;
+
+  /* show quic holds the worker barrier while reading per-thread counters. */
+  vec_foreach (stats, qqm->worker_stats)
+    {
+      totals.n_connections += stats->n_connections;
+      totals.n_streams += stats->n_streams;
+    }
+
+  vlib_cli_output (vm, "------- Engine Objects ------");
+  vlib_cli_output (vm, "quicly connections: %ld", totals.n_connections);
+  vlib_cli_output (vm, "quicly streams:     %ld", totals.n_streams);
+}
+
 const static quic_engine_vft_t quic_quicly_engine_vft = {
   .engine_init = quic_quicly_engine_init,
   .crypto_context_acquire_listen = quic_quicly_crypto_context_acquire_listen,
@@ -2037,6 +2059,7 @@ const static quic_engine_vft_t quic_quicly_engine_vft = {
   .transport_closed = quic_quicly_transport_closed,
   .ctx_attribute = quic_quicly_ctx_attribute,
   .conn_tx_timer_expired = quic_quicly_tx_timer_expired,
+  .engine_show_stats = quic_quicly_engine_show_stats,
 };
 
 static clib_error_t *
