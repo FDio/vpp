@@ -153,11 +153,12 @@ update_state_one_pkt (sfdp_tw_t *tw, sfdp_tenant_t *tenant, u8 fsol_non_syn_secu
 	}
       if (flags & SFDP_TCP_CHECK_TCP_FLAGS_SYN)
 	{
-	  /* New session, must be a SYN otherwise bad */
+	  /* A pure SYN retransmission is valid until the TCP handshake completes. */
 	  if (sf[0] == 0)
 	    nsf[0] = SFDP_TCP_CHECK_SESSION_FLAG_WAIT_FOR_RESP_SYN |
 		     SFDP_TCP_CHECK_SESSION_FLAG_WAIT_FOR_RESP_ACK_TO_SYN;
-	  else
+	  else if (session->state != SFDP_SESSION_STATE_FSOL ||
+		   flags != SFDP_TCP_CHECK_TCP_FLAGS_SYN)
 	    {
 	      remove_session = 1;
 	      goto out;
