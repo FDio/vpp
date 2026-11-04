@@ -16,6 +16,7 @@
 #define RDMA_TXQ_DV_DSEG2WQE(d)	 (((d) + RDMA_MLX5_WQE_DS - 1) / RDMA_MLX5_WQE_DS)
 
 #define RDMA_MLX5_EMPW_MAX_PACKETS 32
+#define RDMA_TXQ_INVALID_BUF	   ((u32) ~0)
 
 typedef enum
 {
@@ -30,6 +31,41 @@ rdma_mlx5_packet_too_short (const rdma_device_t *rd, const vlib_buffer_t *b)
   u16 min_length = rd->tx_min_inline ? rd->tx_min_inline : 1;
 
   return b->current_length < min_length;
+}
+
+static_always_inline void
+rdma_buffer_free_mlx5_span (vlib_main_t *vm, u32 *buffers, u32 n_buffers)
+{
+  u32 i = 0;
+
+  while (i < n_buffers)
+    {
+      u32 first;
+
+      while (i < n_buffers && buffers[i] == RDMA_TXQ_INVALID_BUF)
+	i++;
+
+      first = i;
+      while (i < n_buffers && buffers[i] != RDMA_TXQ_INVALID_BUF)
+	i++;
+
+      if (i > first)
+	vlib_buffer_free (vm, buffers + first, i - first);
+    }
+}
+
+static_always_inline void
+rdma_buffer_free_from_ring_mlx5 (vlib_main_t *vm, u32 *ring, u32 start, u32 ring_size,
+				 u32 n_buffers)
+{
+  u32 n;
+
+  ASSERT (n_buffers <= ring_size);
+
+  n = clib_min (n_buffers, ring_size - start);
+  rdma_buffer_free_mlx5_span (vm, ring + start, n);
+  if (PREDICT_FALSE (n != n_buffers))
+    rdma_buffer_free_mlx5_span (vm, ring, n_buffers - n);
 }
 
 /*
@@ -123,8 +159,12 @@ rdma_device_output_free_mlx5 (vlib_main_t *vm, const vlib_node_runtime_t *node, 
   else
     {
       /* free sent buffers and update txq head */
-      vlib_buffer_free_from_ring (vm, txq->bufs, txq->head & mask, buf_sz,
-				  RDMA_TXQ_USED_SZ (txq->head, buf_tail));
+      if (mode == RDMA_MLX5_TX_MODE_SEND)
+	rdma_buffer_free_from_ring_mlx5 (vm, txq->bufs, txq->head & mask, buf_sz,
+					 RDMA_TXQ_USED_SZ (txq->head, buf_tail));
+      else
+	vlib_buffer_free_from_ring (vm, txq->bufs, txq->head & mask, buf_sz,
+				    RDMA_TXQ_USED_SZ (txq->head, buf_tail));
       txq->head = buf_tail;
       if (mode == RDMA_MLX5_TX_MODE_EMPW)
 	txq->dv_sq_head = comp_tail;
@@ -530,17 +570,11 @@ rdma_device_output_tx_mlx5_chained (vlib_main_t *vm, const vlib_node_runtime_t *
 	      dseg += ((tail + 1) * RDMA_MLX5_WQE_DS + chained_n) & dseg_mask;
 	      if (((clib_address_t) dseg & (MLX5_SEND_WQE_BB - 1)) == 0)
 		{
-		  /*
-		   * start of new WQEBB
-		   * head/tail are shared between buffers and descriptor
-		   * In order to maintain 1:1 correspondance between
-		   * buffer index and descriptor index, we build
-		   * 4-fragments chains and save the head
-		   */
-		  chained_b->flags &= ~(VLIB_BUFFER_NEXT_PRESENT | VLIB_BUFFER_TOTAL_LENGTH_VALID);
+		  /* Keep the packet chain intact: other clones can share its tail.
+		   * Only the first WQEBB owns the packet head. */
 		  u32 idx = tail + 1 + RDMA_TXQ_DV_DSEG2WQE (chained_n);
 		  idx &= mask;
-		  txq->bufs[idx] = chained_b->next_buffer;
+		  txq->bufs[idx] = RDMA_TXQ_INVALID_BUF;
 		}
 
 	      chained_b = vlib_get_buffer (vm, chained_b->next_buffer);
@@ -557,8 +591,7 @@ rdma_device_output_tx_mlx5_chained (vlib_main_t *vm, const vlib_node_runtime_t *
 	       * no descriptors left: drop the chain including 1st WQE
 	       * skip the problematic packet and continue
 	       */
-	      vlib_buffer_free_from_ring (vm, txq->bufs, tail & mask, RDMA_TXQ_BUF_SZ (txq),
-					  1 + RDMA_TXQ_DV_DSEG2WQE (chained_n));
+	      vlib_buffer_free_one (vm, bi[0]);
 	      vlib_error_count (vm, node->node_index,
 				chained_n == dseg_hw_max ? RDMA_TX_ERROR_SEGMENT_SIZE_EXCEEDED :
 							   RDMA_TX_ERROR_NO_FREE_SLOTS,
