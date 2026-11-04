@@ -16,6 +16,40 @@
       "message": "Done",
       "revId": "af008643370ae3aaee47bba88a668c1313a50ba4",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "f0702cb8_46cfa137",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 7
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-11-04T15:53:10Z",
+      "side": 1,
+      "message": "there is a typo in the commit message:  s/enabe/enable/g",
+      "revId": "af008643370ae3aaee47bba88a668c1313a50ba4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1f423a47_e0f5cd06",
+        "filename": "src/plugins/hs_apps/vcl/tcp_test_endpoint.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 446,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-11-04T15:53:10Z",
+      "side": 1,
+      "message": "Please don\u0027t add ifdef\u0027s in source files unless absolutely necessary -- ifdefs like these should be in a header file as an inline function or macro definition to be used here\n\ne.g. tcp_test_maybe_set_window_clamp_sock_opt(window_clamp);\n\nand conditionally compiled in the header file.",
+      "revId": "af008643370ae3aaee47bba88a668c1313a50ba4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
