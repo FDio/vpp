@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "4d606a99_e0407334",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3121
+      },
+      "writtenOn": "2026-11-04T23:29:31Z",
+      "side": 1,
+      "message": "`make checkstyle` failed. `Type: ci` is missing in the commit message. Also, do NOT use internal JIRA IDs in open-source commits.",
+      "revId": "2b7e4238b75801c4673c016f02e953e435bb640b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
