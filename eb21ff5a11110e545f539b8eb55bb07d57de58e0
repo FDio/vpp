@@ -1,0 +1,22 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1745699a_cdfbefe1",
+        "filename": "src/plugins/ikev2/ikev2_crypto.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 929,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-11-04T18:03:52Z",
+      "side": 1,
+      "message": "Could we use the existing `log_warn(...)` helper here and in `ikev2_md_fetch_once()`? The IKEv2 logging class is already registered before crypto initialization runs through `ikev2_lazy_init()`. Using the helper would keep these warnings under the IKEv2 logging configuration and make them available in `show logging`.",
+      "tag": "prview:293cad83c2def377bd4334642e91cf07:eb21ff5a11110e545f539b8eb55bb07d57de58e0",
+      "revId": "eb21ff5a11110e545f539b8eb55bb07d57de58e0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
