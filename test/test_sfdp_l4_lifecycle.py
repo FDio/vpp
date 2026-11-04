@@ -108,7 +108,14 @@ class TestSfdpL4LifecycleBase(BaseSfdpTest):
         self.vapi.sfdp_tenant_add_del(tenant_id=1, is_del=True)
         super().tearDown()
 
-    def _tcp_establish(self, sport, is_ip6=None):
+    def _tcp_establish(
+        self,
+        sport,
+        is_ip6=None,
+        retransmit_syn=False,
+        retransmit_syn_after_synack=False,
+        retransmit_synack_after_established=False,
+    ):
         if is_ip6 is None:
             is_ip6 = self.is_ip6
         if is_ip6:
@@ -149,6 +156,32 @@ class TestSfdpL4LifecycleBase(BaseSfdpTest):
             session_type,
         )
 
+        if retransmit_syn:
+            # Simulate downstream loss of the original SYN after SFDP forwarded it.
+            self.send_and_expect(
+                self.pg0,
+                tcp_packet_fn(
+                    self.pg0.remote_mac,
+                    self.pg0.local_mac,
+                    src_ip,
+                    dst_ip,
+                    sport=sport,
+                    dport=80,
+                    flags="S",
+                    seq=1000,
+                ),
+                self.pg1,
+            )
+            self.virtual_sleep(1)
+            sessions = self.sessions()
+            self.assertEqual(len(sessions), 1, "Expected exactly one session")
+            self.verify_basic_session_state(
+                sessions[0],
+                6,
+                VppEnum.vl_api_sfdp_session_state_t.SFDP_API_SESSION_STATE_FSOL,
+                session_type,
+            )
+
         # SYN-ACK: session should still be in FSOL
         self.send_and_expect(
             self.pg1,
@@ -174,6 +207,56 @@ class TestSfdpL4LifecycleBase(BaseSfdpTest):
             session_type,
         )
 
+        if retransmit_syn_after_synack:
+            # Simulate downstream loss of the SYN-ACK after SFDP forwarded it.
+            self.send_and_expect(
+                self.pg0,
+                tcp_packet_fn(
+                    self.pg0.remote_mac,
+                    self.pg0.local_mac,
+                    src_ip,
+                    dst_ip,
+                    sport=sport,
+                    dport=80,
+                    flags="S",
+                    seq=1000,
+                ),
+                self.pg1,
+            )
+            self.virtual_sleep(1)
+            sessions = self.sessions()
+            self.assertEqual(len(sessions), 1, "Expected exactly one session")
+            self.verify_basic_session_state(
+                sessions[0],
+                6,
+                VppEnum.vl_api_sfdp_session_state_t.SFDP_API_SESSION_STATE_FSOL,
+                session_type,
+            )
+
+            self.send_and_expect(
+                self.pg1,
+                tcp_packet_fn(
+                    self.pg1.remote_mac,
+                    self.pg1.local_mac,
+                    rev_src_ip,
+                    rev_dst_ip,
+                    sport=80,
+                    dport=sport,
+                    flags="SA",
+                    seq=2000,
+                    ack=1001,
+                ),
+                self.pg0,
+            )
+            sessions = self.sessions()
+            self.assertEqual(len(sessions), 1, "Expected exactly one session")
+            self.verify_basic_session_state(
+                sessions[0],
+                6,
+                VppEnum.vl_api_sfdp_session_state_t.SFDP_API_SESSION_STATE_FSOL,
+                session_type,
+            )
+
         # ACK: session should be ESTABLISHED
         self.send_and_expect(
             self.pg0,
@@ -198,6 +281,98 @@ class TestSfdpL4LifecycleBase(BaseSfdpTest):
             VppEnum.vl_api_sfdp_session_state_t.SFDP_API_SESSION_STATE_ESTABLISHED,
             session_type,
         )
+
+        if retransmit_synack_after_established:
+            # Simulate downstream loss of the original ACK after SFDP forwarded it.
+            self.send_and_expect(
+                self.pg1,
+                tcp_packet_fn(
+                    self.pg1.remote_mac,
+                    self.pg1.local_mac,
+                    rev_src_ip,
+                    rev_dst_ip,
+                    sport=80,
+                    dport=sport,
+                    flags="SA",
+                    seq=2000,
+                    ack=1001,
+                ),
+                self.pg0,
+            )
+            sessions = self.sessions()
+            self.assertEqual(len(sessions), 1, "Expected exactly one session")
+            self.verify_basic_session_state(
+                sessions[0],
+                6,
+                VppEnum.vl_api_sfdp_session_state_t.SFDP_API_SESSION_STATE_ESTABLISHED,
+                session_type,
+            )
+
+            self.send_and_expect(
+                self.pg0,
+                tcp_packet_fn(
+                    self.pg0.remote_mac,
+                    self.pg0.local_mac,
+                    src_ip,
+                    dst_ip,
+                    sport=sport,
+                    dport=80,
+                    flags="A",
+                    seq=1001,
+                    ack=2001,
+                ),
+                self.pg1,
+            )
+            sessions = self.sessions()
+            self.assertEqual(len(sessions), 1, "Expected exactly one session")
+            self.verify_basic_session_state(
+                sessions[0],
+                6,
+                VppEnum.vl_api_sfdp_session_state_t.SFDP_API_SESSION_STATE_ESTABLISHED,
+                session_type,
+            )
+
+    def _tcp_fsol_syn_ack_removes_session(self, sport, is_ip6=None):
+        if is_ip6 is None:
+            is_ip6 = self.is_ip6
+        if is_ip6:
+            tcp_packet_fn = self.create_tcp6_packet
+            src_ip, dst_ip = self.pg0.remote_ip6, self.pg1.remote_ip6
+        else:
+            tcp_packet_fn = self.create_tcp_packet
+            src_ip, dst_ip = self.pg0.remote_ip4, self.pg1.remote_ip4
+
+        self.send_and_expect(
+            self.pg0,
+            tcp_packet_fn(
+                self.pg0.remote_mac,
+                self.pg0.local_mac,
+                src_ip,
+                dst_ip,
+                sport=sport,
+                dport=80,
+                flags="S",
+                seq=1000,
+            ),
+            self.pg1,
+        )
+        self.send_and_expect(
+            self.pg0,
+            tcp_packet_fn(
+                self.pg0.remote_mac,
+                self.pg0.local_mac,
+                src_ip,
+                dst_ip,
+                sport=sport,
+                dport=80,
+                flags="SA",
+                seq=1000,
+                ack=1,
+            ),
+            self.pg1,
+        )
+        self.virtual_sleep(1)
+        self.wait_no_sessions()
 
 
 @unittest.skipIf(
@@ -313,6 +488,22 @@ class TestSfdpL4LifecycleIp4(TestSfdpL4LifecycleBase):
         # Session reaped after tcp_established timeout
         self.virtual_sleep(11)  # tcp_established timeout = 10s
         self.wait_no_sessions()
+
+    def test_tcp_retransmitted_syn(self):
+        """TCP - retransmitted SYN preserves the embryonic session"""
+        self._tcp_establish(sport=20012, retransmit_syn=True)
+
+    def test_tcp_retransmitted_syn_after_synack(self):
+        """TCP - retransmitted SYN after a SYN-ACK preserves the session"""
+        self._tcp_establish(sport=20013, retransmit_syn_after_synack=True)
+
+    def test_tcp_retransmitted_synack_after_established(self):
+        """TCP - retransmitted SYN-ACK preserves an established session"""
+        self._tcp_establish(sport=20015, retransmit_synack_after_established=True)
+
+    def test_tcp_fsol_syn_ack_removes_session(self):
+        """TCP - forward SYN-ACK during handshake removes the session"""
+        self._tcp_fsol_syn_ack_removes_session(sport=20014)
 
     def test_tcp_rst_from_initiator(self):
         """TCP - RST from initiator on established session reaps session"""
@@ -763,6 +954,22 @@ class TestSfdpL4LifecycleIp6(TestSfdpL4LifecycleBase):
         self._tcp_establish(sport=30001)
         self.virtual_sleep(11)  # tcp_established timeout = 10s
         self.wait_no_sessions()
+
+    def test_tcp_retransmitted_syn(self):
+        """TCP - retransmitted SYN preserves the embryonic session"""
+        self._tcp_establish(sport=30012, retransmit_syn=True)
+
+    def test_tcp_retransmitted_syn_after_synack(self):
+        """TCP - retransmitted SYN after a SYN-ACK preserves the session"""
+        self._tcp_establish(sport=30013, retransmit_syn_after_synack=True)
+
+    def test_tcp_retransmitted_synack_after_established(self):
+        """TCP - retransmitted SYN-ACK preserves an established session"""
+        self._tcp_establish(sport=30015, retransmit_synack_after_established=True)
+
+    def test_tcp_fsol_syn_ack_removes_session(self):
+        """TCP - forward SYN-ACK during handshake removes the session"""
+        self._tcp_fsol_syn_ack_removes_session(sport=30014)
 
     def test_tcp_rst_from_initiator(self):
         """TCP - RST from initiator on established session reaps session"""
