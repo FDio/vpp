@@ -214,6 +214,7 @@ typedef enum tcp_scoreboard_flag_
   TCP_DSACK_RXT_SEEN = 1 << 3,
   TCP_DSACK_RXT_UNCHARGED = 1 << 4, /**< Copy sent outside recovery */
   TCP_SCOREBOARD_F_RENEGING = 1 << 5,
+  TCP_SCOREBOARD_F_RXT_REWOUND = 1 << 6, /**< Lost copies resent, see tcp_sack_rxt_rewind */
 } __clib_packed tcp_scoreboard_flag_t;
 
 STATIC_ASSERT_SIZEOF (tcp_scoreboard_flag_t, 1);
@@ -511,7 +512,7 @@ typedef struct _tcp_connection
   u32 psh_seq;		/**< Add psh header for seg that includes this */
   u32 next_node_index;	/**< Can be used to control next node in output */
   u32 next_node_opaque;	/**< Opaque to pass to next node */
-  u32 unused;		/**< Unused, keeps the layout */
+  u32 rxt_snd_nxt;	/**< snd_nxt when the last retransmit was sent */
   u32 sw_if_index;	/**< Interface for the connection */
 
   /* Delivery rate estimation */

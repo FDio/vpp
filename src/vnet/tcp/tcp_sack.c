@@ -93,9 +93,10 @@ scoreboard_update_sacked (sack_scoreboard_t *sb, tcp_ack_ctx_t *ac, u32 start, u
 {
   /* A newly sacked segment below the sack frontier arrived out of order. Use it to grow the reorder
    * estimate when its late arrival is unambiguous reordering. Segments below high_rxt (or after
-   * rescue has fired) are excluded because they're ambiguous */
+   * rescue has fired or a rewind) are excluded because they're ambiguous */
   if (seq_lt (start, sb->high_sacked) &&
-      (mode == TCP_SB_SACK_OOO || (mode == TCP_SB_SACK_RXT && seq_geq (start, sb->high_rxt))))
+      (mode == TCP_SB_SACK_OOO || (mode == TCP_SB_SACK_RXT && seq_geq (start, sb->high_rxt) &&
+				   !(sb->flags & TCP_SCOREBOARD_F_RXT_REWOUND))))
     {
       u32 reord = (sb->high_sacked - start + snd_mss - 1) / snd_mss;
       reord = clib_min (reord, TCP_MAX_SACK_REORDER);
@@ -298,6 +299,7 @@ scoreboard_init_rxt (sack_scoreboard_t *sb, u32 snd_una)
     }
   sb->high_rxt = snd_una;
   sb->rescue_rxt = snd_una - 1;
+  sb->flags &= ~TCP_SCOREBOARD_F_RXT_REWOUND;
 }
 
 static void
@@ -408,6 +410,41 @@ tcp_sack_init_rxt (tcp_connection_t *tc, u32 snd_una)
     scoreboard_init_rxt (&tc->sack_sb, snd_una);
 }
 
+void
+tcp_sack_rxt_rewind (tcp_connection_t *tc)
+{
+  sack_scoreboard_t *sb = &tc->sack_sb;
+  u32 rescue_rxt = sb->rescue_rxt;
+
+  /* Retransmit again from the first hole. A rescue already sent in this
+   * recovery stays sent. Sacks of the earlier copies say nothing about
+   * reordering, so they no longer grow the estimate */
+  scoreboard_init_rxt (sb, tc->snd_una);
+  sb->rescue_rxt = rescue_rxt;
+  sb->flags |= TCP_SCOREBOARD_F_RXT_REWOUND;
+}
+
+u32
+tcp_sack_bytes_above (tcp_connection_t *tc, u32 seq)
+{
+  sack_scoreboard_t *sb = &tc->sack_sb;
+  sack_scoreboard_hole_t *hole = scoreboard_last_hole (sb);
+  u32 start, sacked = 0, end = sb->high_sacked;
+
+  /* Each sacked block ends at high_sacked or where a hole starts */
+  while (seq_gt (end, seq))
+    {
+      start = hole && seq_gt (hole->end, seq) ? hole->end : seq;
+      if (seq_lt (start, end))
+	sacked += end - start;
+      if (!hole)
+	break;
+      end = hole->start;
+      hole = scoreboard_prev_hole (sb, hole);
+    }
+  return sacked;
+}
+
 static u32
 scoreboard_rxt_head_bytes (sack_scoreboard_t *sb, u32 snd_una, u32 max_bytes)
 {
@@ -488,8 +525,9 @@ tcp_dsack_recovery_clear (tcp_connection_t *tc)
   if (!seq_lt (tc->snd_una, undo->end))
     undo->start = undo->end = 0;
   undo->pending_bytes = 0;
-  tc->sack_sb.flags &=
-    TCP_SCOREBOARD_F_RENEGING | TCP_DSACK_UNDO_DISABLED | TCP_DSACK_RXT_UNCHARGED;
+  /* The rewind belongs to the retransmit cursor, see scoreboard_init_rxt */
+  tc->sack_sb.flags &= TCP_SCOREBOARD_F_RENEGING | TCP_DSACK_UNDO_DISABLED |
+		       TCP_DSACK_RXT_UNCHARGED | TCP_SCOREBOARD_F_RXT_REWOUND;
 }
 
 /* Expire snapshots before sequence-number comparisons become ambiguous. */
