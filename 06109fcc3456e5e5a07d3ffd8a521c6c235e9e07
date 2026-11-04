@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "54c1e8ad_0fcfc3c7",
+        "filename": "src/vnet/ip6-nd/ip6_dad.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 358,
+      "author": {
+        "id": 3121
+      },
+      "writtenOn": "2026-11-04T20:32:52Z",
+      "side": 1,
+      "message": "I think this is effectively dead code. After the `pool_foreach (entry, dm-\u003edad_entries)` loop, any surviving `TENTATIVE` entry has `dad_next_send_time \u003e now` (either it wasn\u0027t due yet or it was just rescheduled to `now + dad_retransmit_delay`).",
+      "range": {
+        "startLine": 357,
+        "startChar": 0,
+        "endLine": 358,
+        "endChar": 41
+      },
+      "revId": "06109fcc3456e5e5a07d3ffd8a521c6c235e9e07",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
