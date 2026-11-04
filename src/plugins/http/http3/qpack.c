@@ -35,7 +35,7 @@ static qpack_static_table_entry_t qpack_static_table[] = {
   { name_val_token_lit ("referer", "") },
   { name_val_token_lit ("set-cookie", "") },
   { name_val_token_lit (":method", "CONNECT") },
-  { name_val_token_lit (":metho", "DELETE") },
+  { name_val_token_lit (":method", "DELETE") },
   { name_val_token_lit (":method", "GET") },
   { name_val_token_lit (":method", "HEAD") },
   { name_val_token_lit (":method", "OPTIONS") },
