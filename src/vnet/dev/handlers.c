@@ -200,7 +200,7 @@ vnet_dev_flow_ops_fn (vnet_main_t *vnm, vnet_flow_dev_op_t op, u32 dev_instance,
   vlib_main_t *vm = vlib_get_main ();
   vnet_dev_instance_t *di = vnet_dev_get_dev_instance (dev_instance);
   vnet_dev_port_t *p;
-  vnet_dev_port_cfg_change_req_t req;
+  vnet_dev_port_cfg_change_req_t req = {};
   vnet_dev_rv_t rv;
 
   if (!di)
