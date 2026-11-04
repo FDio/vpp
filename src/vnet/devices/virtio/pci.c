@@ -1825,7 +1825,7 @@ virtio_pci_delete_if (vlib_main_t * vm, virtio_if_t * vif)
     vnet_virtio_vring_t *vring = vec_elt_at_index (vif->rxq_vrings, i);
     if (vring->used)
       {
-	virtio_free_buffers (vm, vring);
+	virtio_free_buffers (vm, vring, 0);
       }
     vec_free (vring->buffers);
     vlib_physmem_free (vm, vring->desc);
@@ -1839,7 +1839,7 @@ virtio_pci_delete_if (vlib_main_t * vm, virtio_if_t * vif)
     vnet_virtio_vring_t *vring = vec_elt_at_index (vif->txq_vrings, i);
     if (vring->used)
       {
-	virtio_free_buffers (vm, vring);
+	virtio_free_buffers (vm, vring, !(vif->features & VIRTIO_FEATURE (VIRTIO_F_RING_PACKED)));
       }
     vec_free (vring->buffers);
     gro_flow_table_free (vring->flow_table);
