@@ -14,3 +14,8 @@ add_vpp_plugin(quic
 
   LINK_LIBRARIES ${OPENSSL_LIBRARIES}
 )
+
+add_vpp_plugin(quic_unittest
+  SOURCES
+  test/quic_test.c
+)

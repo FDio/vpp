@@ -69,7 +69,7 @@ func (s *NoTopoSuite) SetupSuite() {
 	s.Ports.CutThru = s.GeneratePort()
 }
 
-func (s *NoTopoSuite) SetupTest() {
+func (s *NoTopoSuite) SetupTest(startupConf ...Stanza) {
 	s.HstSuite.SetupTest()
 
 	// Setup test conditions
@@ -86,7 +86,8 @@ func (s *NoTopoSuite) SetupTest() {
 		sessionConfig.Close()
 	}
 
-	vpp, _ := s.Containers.Vpp.newVppInstance(s.Containers.Vpp.AllocatedCpus, sessionConfig)
+	configs := append([]Stanza{sessionConfig}, startupConf...)
+	vpp, _ := s.Containers.Vpp.newVppInstance(s.Containers.Vpp.AllocatedCpus, configs...)
 
 	AssertNil(vpp.Start())
 	AssertNil(vpp.CreateTap(s.Interfaces.Tap, false, 1), "failed to create tap interface")

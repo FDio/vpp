@@ -68,7 +68,8 @@ typedef struct quic_quicly_main_
   quic_quicly_worker_stats_t *worker_stats;
 } quic_quicly_main_t;
 
-extern quic_quicly_main_t quic_quicly_main;
+__clib_export extern quic_quicly_main_t quic_quicly_main;
+__clib_export extern const quicly_stream_callbacks_t quic_quicly_stream_callbacks;
 extern quic_ctx_t *quic_quicly_get_conn_ctx (void *conn);
 
 static_always_inline quic_quicly_worker_stats_t *

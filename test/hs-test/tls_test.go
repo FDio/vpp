@@ -44,6 +44,10 @@ func tlsPeerCertClose(s *VethsSuite, proto string) {
 	AssertContains(o, "server started")
 	serverSessions := serverVpp.Vppctl("show session")
 	clientSessions := clientVpp.Vppctl("show session")
+	var checkQuicCleanup func()
+	if proto == "quic" {
+		checkQuicCleanup = quicCleanupCheck(cleanupTimeout, clientVpp, serverVpp)
+	}
 
 	for range 2 {
 		o = clientVpp.Vppctl("test tls client verify peer ca-cert " + a.CaCert + " get-peer-cert uri " + uri)
@@ -52,6 +56,9 @@ func tlsPeerCertClose(s *VethsSuite, proto string) {
 		AssertContains(o, "TLS version: 1.3")
 		AssertNotContains(o, "timeout")
 		AssertNotContains(o, "connect error")
+		if checkQuicCleanup != nil {
+			checkQuicCleanup()
+		}
 
 		Eventually(func() string {
 			return clientVpp.Vppctl("show session")

@@ -151,13 +151,21 @@ quic_connect_connection (transport_endpoint_cfg_t *tep)
     }
   error = quic_eng_crypto_context_acquire_connect (ctx);
   if (error)
-    return error;
+    goto free_ctx;
 
   error = vnet_connect (cargs);
   if (error)
-    return error;
+    goto release_crypto_ctx;
 
   return ctx_index;
+
+release_crypto_ctx:
+  ctx = quic_ctx_get (ctx_index, thread_index);
+  quic_eng_crypto_context_release (ctx->crypto_context_index, thread_index);
+free_ctx:
+  vec_free (ctx->srv_hostname);
+  quic_ctx_free (qm, ctx);
+  return error;
 }
 
 static int
@@ -195,8 +203,8 @@ quic_connect_stream (transport_endpoint_cfg_t *tep, session_t *stream_session,
   if (quic_ctx_is_stream (qctx))
     {
       QUIC_ERR ("session is a stream");
-      quic_ctx_free (qm, sctx);
-      return SESSION_E_UNKNOWN;
+      rv = SESSION_E_UNKNOWN;
+      goto free_ctx;
     }
 
   sctx->parent_app_wrk_id = qctx->parent_app_wrk_id;
@@ -210,7 +218,10 @@ quic_connect_stream (transport_endpoint_cfg_t *tep, session_t *stream_session,
   sctx->crypto_context_index = qctx->crypto_context_index;
 
   if (!(conn = qctx->conn))
-    return SESSION_E_UNKNOWN;
+    {
+      rv = SESSION_E_UNKNOWN;
+      goto free_ctx;
+    }
 
   is_unidir = sep->transport_flags & TRANSPORT_CFG_F_UNIDIRECTIONAL;
   rv = quic_eng_connect_stream (conn, &stream, &stream_data, is_unidir);
@@ -220,7 +231,7 @@ quic_connect_stream (transport_endpoint_cfg_t *tep, session_t *stream_session,
 		"Connect stream: failed %d, conn %p, stream %p, stream_data "
 		"%p, unidir %d",
 		rv, conn, &stream, &stream_data, is_unidir);
-      return rv;
+      goto free_ctx;
     }
   quic_increment_counter (qm, QUIC_ERROR_OPENED_STREAM, 1);
 
@@ -244,6 +255,11 @@ quic_connect_stream (transport_endpoint_cfg_t *tep, session_t *stream_session,
 			       SVM_FIFO_WANT_DEQ_NOTIF_IF_EMPTY);
 
   return SESSION_E_NONE;
+
+free_ctx:
+  sctx = quic_ctx_get (sctx_index, quic_session->thread_index);
+  quic_ctx_free (qm, sctx);
+  return rv;
 }
 
 static void
@@ -800,8 +816,9 @@ quic_accept_timer_expired (u32 conn_index, clib_thread_index_t thread_index)
   ctx = quic_ctx_get (conn_index, thread_index);
   ASSERT (!quic_ctx_is_stream (ctx));
   ASSERT (ctx->c_s_index == QUIC_SESSION_INVALID);
-  ASSERT (ctx->flags & QUIC_F_NO_APP_SESSION);
-  ctx->timers[QUIC_TIMER_TX] = QUIC_TIMER_HANDLE_INVALID;
+  ASSERT (ctx->conn == NULL);
+  ctx->timers[QUIC_TIMER_ACCEPT] = QUIC_TIMER_HANDLE_INVALID;
+  ctx->flags |= QUIC_F_NO_APP_SESSION;
   ctx->conn_state = QUIC_CONN_STATE_CLOSED;
   quic_disconnect_transport (ctx, qm->app_index);
 }

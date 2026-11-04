@@ -48,6 +48,11 @@ if(QUICLY_INCLUDE_DIR AND QUICLY_LINK_LIBRARIES)
       LINK_LIBRARIES ${QUICLY_LINK_LIBRARIES} ${OPENSSL_LIBRARIES}
     )
 
+    add_vpp_plugin(quic_quicly_unittest
+      SOURCES
+      test/quic_quicly_test.c
+    )
+
     if(CMAKE_SYSTEM_PROCESSOR MATCHES "amd64.*|x86_64.*|AMD64.*")
       target_compile_options(quic_quicly_plugin PRIVATE "-maes")
     endif()

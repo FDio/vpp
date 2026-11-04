@@ -338,7 +338,7 @@ typedef struct quic_main_
   u8 engine_is_initialized[QUIC_ENGINE_LAST + 1];
 } quic_main_t;
 
-extern quic_main_t quic_main;
+__clib_export extern quic_main_t quic_main;
 
 static_always_inline void
 quic_ctx_timers_init (quic_ctx_t *ctx)
@@ -484,7 +484,7 @@ typedef struct quic_engine_vft_
   void (*engine_show_stats) (vlib_main_t *vm);
 } quic_engine_vft_t;
 
-extern quic_engine_vft_t *quic_engine_vfts;
+__clib_export extern quic_engine_vft_t *quic_engine_vfts;
 void quic_register_engine (const quic_engine_vft_t *vft, quic_engine_type_t engine_type);
 
 void quic_update_fifo_size ();
