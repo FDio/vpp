@@ -6644,6 +6644,146 @@ cleanup:
   return rv;
 }
 
+/* Full window in sack recovery. Drop the first segment and its first
+ * retransmit. Fast recovery sends new data until the peer's window is full
+ * and everything but the head is sacked, so no more acks arrive. With unsent
+ * data but no window, NextSeg Rule (2) does not apply (RFC 6675), so the
+ * retransmit path must not keep rescheduling itself. The rto then recovers
+ * the head. */
+static int
+tcp_test_tamper_full_window (vlib_main_t *vm)
+{
+  tcp_e2e_params_t params = {
+    .name = "full_wnd",
+    .client_addr = 0x26262601,
+    .server_addr = 0x27272701,
+    .client_vrf = 0,
+    .server_vrf = 2,
+    .server_port = 2273,
+    .client_port = 0, /* ephemeral */
+    .secret = 2272,
+    /* Much less window than data, so new data runs out of window */
+    .rx_fifo_size = 64 << 10,
+    .tx_fifo_size = 256 << 10,
+  };
+  tcp_e2e_ctx_t _ctx, *ctx = &_ctx;
+  tcp_connection_t *client_tc;
+  tcp_tamper_rule_t *head_rule;
+  session_t *client_s, *server_s;
+  u32 tries, una, outstanding, nxt = 0, idle = 0, fr_before, total_bytes = 256 << 10;
+  u32 drained = 0;
+  u8 *data = 0, stalled = 0, rxt_pending = 0;
+  int error, rv = 0, i;
+
+  tcp_tamper_reset ();
+
+  if (!TCP_TEST_I ((tcp_e2e_setup (vm, ctx, &params) == 0), "full_wnd: e2e setup"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  client_tc = ctx->client_tc;
+  client_s = ctx->client_s;
+  server_s = session_get_if_valid (accepted_session_index, accepted_session_thread);
+  if (!TCP_TEST_I ((server_s != 0), "full_wnd: server session resolvable"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  if (!TCP_TEST_I (
+	(tcp_opts_sack_permitted (&client_tc->rcv_opts) && !tcp_rack_enabled (client_tc)),
+	"full_wnd: sack negotiated, default loss detection"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+  /* The pacer may legitimately defer retransmits, keep it out */
+  client_tc->connection.flags &= ~TRANSPORT_CONNECTION_F_IS_TX_PACED;
+  fr_before = client_tc->fr_occurences;
+  una = client_tc->snd_una;
+  head_rule = tcp_tamper_drop_seq (client_tc, una, 2);
+  tcp_tamper_enable (client_tc);
+
+  vec_validate (data, total_bytes - 1);
+  for (i = 0; i < (int) total_bytes; i++)
+    data[i] = i & 0xff;
+  error = svm_fifo_enqueue (client_s->tx_fifo, total_bytes, data);
+  if (!TCP_TEST_I ((error == (int) total_bytes), "full_wnd: client queued %u bytes", total_bytes))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  error = session_program_tx_io_evt (client_s->handle, SESSION_IO_EVT_TX);
+  if (!TCP_TEST_I ((error == 0), "full_wnd: client tx event programmed"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+  /* Wait until recovery stops sending while the head is missing and unsent
+   * data remains */
+  for (tries = 0; tries < 500 && !stalled; tries++)
+    {
+      drained += session_test_drain_rx_fifo (server_s);
+      tcp_e2e_pump (vm, 1e-3);
+      idle = client_tc->snd_nxt == nxt ? idle + 1 : 0;
+      nxt = client_tc->snd_nxt;
+      outstanding = client_tc->snd_nxt - client_tc->snd_una;
+      stalled = tcp_in_fastrecovery (client_tc) && client_tc->snd_una == una && idle >= 3 &&
+		svm_fifo_max_dequeue (client_s->tx_fifo) > outstanding;
+    }
+  if (!TCP_TEST_I ((stalled && head_rule->n_dropped == 2),
+		   "full_wnd: recovery stopped with the head and its retransmit dropped (%u of 2)",
+		   head_rule->n_dropped))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  /* No acks arrive, so nothing should keep the retransmit path scheduled */
+  for (tries = 0; tries < 5; tries++)
+    {
+      tcp_e2e_pump (vm, 1e-3);
+      rxt_pending |= !!(client_tc->flags & TCP_CONN_RXT_PENDING);
+    }
+  if (!TCP_TEST_I ((!rxt_pending && tcp_in_fastrecovery (client_tc)),
+		   "full_wnd: retransmit not rescheduled with no window for new data"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+  if (!TCP_TEST_I ((client_tc->snd_wnd - outstanding < client_tc->snd_mss),
+		   "full_wnd: new data filled the window (%u of %u bytes free)",
+		   client_tc->snd_wnd - outstanding, client_tc->snd_wnd))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+  for (tries = 0; drained < total_bytes && tries < 8000; tries++)
+    {
+      drained += session_test_drain_rx_fifo (server_s);
+      if (drained >= total_bytes)
+	break;
+      tcp_e2e_pump (vm, 5e-3);
+    }
+  if (!TCP_TEST_I ((client_tc->fr_occurences > fr_before && drained == total_bytes),
+		   "full_wnd: all %u bytes delivered (got %u, fr %u)", total_bytes, drained,
+		   client_tc->fr_occurences - fr_before))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+cleanup:
+  tcp_tamper_reset ();
+  vec_free (data);
+  if (!tcp_e2e_teardown (vm, ctx))
+    rv = 1;
+  return rv;
+}
+
 /* Drop the only in-flight segment and verify recovery through one RTO. */
 static int
 tcp_test_tamper_rto (vlib_main_t *vm)
@@ -7988,6 +8128,7 @@ tcp_test_tamper (vlib_main_t *vm, unformat_input_t *input)
     { "recov-pt", tcp_test_tamper_recovery_point },
     { "dsack-early", tcp_test_tamper_dsack_early_undo },
     { "strand-head", tcp_test_tamper_stranded_head },
+    { "full-wnd", tcp_test_tamper_full_window },
     { "rto", tcp_test_tamper_rto },
     { "rto-head", tcp_test_tamper_rto_head },
     { "dupack-run", tcp_test_tamper_dupack_run },
