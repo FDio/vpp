@@ -238,6 +238,22 @@ tcp_loss_prepare_rto (tcp_connection_t *tc, u8 *sack_reneged)
   return n_bytes;
 }
 
+/* The highest sack passed the bound, see tcp_loss_check_lost_rxt. Count the
+ * sacked bytes, and if they show the copies lost, retire and resend them */
+void
+tcp_loss_check_lost_rxt_slow (tcp_connection_t *tc)
+{
+  if (tcp_sack_bytes_above (tc, tc->rxt_snd_nxt) <= (tc->sack_sb.reorder - 1) * tc->snd_mss)
+    return;
+
+  /* The copies are presumed lost, not delivered, so Eifel can no longer show
+   * the recovery spurious */
+  tc->rxt_delivered = tc->snd_rxt_bytes;
+  tc->snd_rxt_ts = 0;
+  tcp_sack_rxt_rewind (tc);
+  tcp_worker_stats_inc (tcp_get_worker (tc->c_thread_index), lost_rxt_events, 1);
+}
+
 void
 tcp_loss_rto_retransmit_failed (tcp_connection_t *tc)
 {
