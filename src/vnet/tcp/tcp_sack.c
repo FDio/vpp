@@ -407,6 +407,41 @@ tcp_sack_init_rxt (tcp_connection_t *tc, u32 snd_una)
     scoreboard_init_rxt (&tc->sack_sb, snd_una);
 }
 
+void
+tcp_sack_rxt_rewind (tcp_connection_t *tc)
+{
+  sack_scoreboard_t *sb = &tc->sack_sb;
+  u32 rescue_rxt = sb->rescue_rxt, rxt_frontier = sb->rxt_frontier;
+
+  /* Retransmit again from the first hole. A rescue already sent in this
+   * recovery stays sent. The frontier stays too, so sacks of the earlier
+   * copies still don't grow the reordering estimate */
+  scoreboard_init_rxt (sb, tc->snd_una);
+  sb->rescue_rxt = rescue_rxt;
+  sb->rxt_frontier = rxt_frontier;
+}
+
+u32
+tcp_sack_bytes_above (tcp_connection_t *tc, u32 seq)
+{
+  sack_scoreboard_t *sb = &tc->sack_sb;
+  sack_scoreboard_hole_t *hole = scoreboard_last_hole (sb);
+  u32 start, sacked = 0, end = sb->high_sacked;
+
+  /* Each sacked block ends at high_sacked or where a hole starts */
+  while (seq_gt (end, seq))
+    {
+      start = hole && seq_gt (hole->end, seq) ? hole->end : seq;
+      if (seq_lt (start, end))
+	sacked += end - start;
+      if (!hole)
+	break;
+      end = hole->start;
+      hole = scoreboard_prev_hole (sb, hole);
+    }
+  return sacked;
+}
+
 static u32
 scoreboard_rxt_head_bytes (sack_scoreboard_t *sb, u32 snd_una, u32 max_bytes)
 {

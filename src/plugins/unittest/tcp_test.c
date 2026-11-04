@@ -6515,11 +6515,11 @@ cleanup:
 }
 
 /* Full window in sack recovery. Drop the first segment and its first
- * retransmit. Fast recovery sends new data until the peer's window is full
- * and everything but the head is sacked, so no more acks arrive. With unsent
- * data but no window, NextSeg Rule (2) does not apply (RFC 6675), so the
- * retransmit path must not keep rescheduling itself. The rto then recovers
- * the head. */
+ * retransmit. The first flight fills the peer's window, so everything but the
+ * head is sacked, no more acks arrive and no data goes out after the head's
+ * retransmit. With unsent data but no window, NextSeg Rule (2) does not apply
+ * (RFC 6675), so the retransmit path must not keep rescheduling itself. The
+ * rto then recovers the head. */
 static int
 tcp_test_tamper_full_window (vlib_main_t *vm)
 {
@@ -6568,8 +6568,10 @@ tcp_test_tamper_full_window (vlib_main_t *vm)
       goto cleanup;
     }
 
-  /* The pacer may legitimately defer retransmits, keep it out */
+  /* The pacer may legitimately defer retransmits, keep it out. Let the first
+   * flight fill the window */
   client_tc->connection.flags &= ~TRANSPORT_CONNECTION_F_IS_TX_PACED;
+  client_tc->cwnd = clib_max (client_tc->cwnd, 2 * params.rx_fifo_size);
   fr_before = client_tc->fr_occurences;
   una = client_tc->snd_una;
   head_rule = tcp_tamper_drop_seq (client_tc, una, 2);
@@ -6641,6 +6643,268 @@ tcp_test_tamper_full_window (vlib_main_t *vm)
   if (!TCP_TEST_I ((client_tc->fr_occurences > fr_before && drained == total_bytes),
 		   "full_wnd: all %u bytes delivered (got %u, fr %u)", total_bytes, drained,
 		   client_tc->fr_occurences - fr_before))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+cleanup:
+  tcp_tamper_reset ();
+  vec_free (data);
+  if (!tcp_e2e_teardown (vm, ctx))
+    rv = 1;
+  return rv;
+}
+
+/* A hole found lost late in a recovery is retransmitted after new data. Drop
+ * the first segment and the last of the initial window, once each. The last
+ * one is found lost only after the peer sacks new data sent in recovery, so its
+ * retransmit follows that data, and sacks of data sent before it say nothing
+ * about it. Expect no lost retransmit events and one retransmit per hole. */
+static int
+tcp_test_tamper_lost_rxt_late (vlib_main_t *vm)
+{
+  tcp_e2e_params_t params = {
+    .name = "lost_rxt_late",
+    .client_addr = 0x2e2e2e01,
+    .server_addr = 0x2f2f2f01,
+    .client_vrf = 0,
+    .server_vrf = 2,
+    .server_port = 2281,
+    .client_port = 0, /* ephemeral */
+    .secret = 2280,
+    .rx_fifo_size = 256 << 10,
+    .tx_fifo_size = 256 << 10,
+  };
+  tcp_e2e_ctx_t _ctx, *ctx = &_ctx;
+  tcp_connection_t *client_tc;
+  tcp_tamper_rule_t *rules;
+  tcp_worker_ctx_t *wrk;
+  session_t *client_s, *server_s;
+  u32 tries, una, mss, iw, fr_before, lost_rxt_before, total_bytes = 128 << 10, drained = 0;
+  u64 tr_before, rxt_before;
+  u8 *data = 0;
+  int error, rv = 0, i;
+
+  tcp_tamper_reset ();
+
+  if (!TCP_TEST_I ((tcp_e2e_setup (vm, ctx, &params) == 0), "lost_rxt_late: e2e setup"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  client_tc = ctx->client_tc;
+  client_s = ctx->client_s;
+  server_s = session_get_if_valid (accepted_session_index, accepted_session_thread);
+  if (!TCP_TEST_I ((server_s != 0), "lost_rxt_late: server session resolvable"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  if (!TCP_TEST_I ((tcp_opts_sack_permitted (&client_tc->rcv_opts) &&
+		    !tcp_rack_enabled (client_tc) &&
+		    !(client_tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER)),
+		   "lost_rxt_late: sack negotiated, default loss detection"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+  client_tc->connection.flags &= ~TRANSPORT_CONNECTION_F_IS_TX_PACED;
+  wrk = tcp_get_worker (client_tc->c_thread_index);
+  lost_rxt_before = wrk->stats.lost_rxt_events;
+  fr_before = client_tc->fr_occurences;
+  tr_before = client_tc->tr_occurences;
+  rxt_before = client_tc->segs_retrans;
+  mss = client_tc->snd_mss;
+  una = client_tc->snd_una;
+  iw = client_tc->cwnd / mss;
+  if (!TCP_TEST_I ((iw >= 4), "lost_rxt_late: initial window of %u segments", iw))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  tcp_tamper_drop_seq (client_tc, una, 1);
+  tcp_tamper_drop_seq (client_tc, una + (iw - 1) * mss, 1);
+  /* Reference by index: tcp_tamper_add_rule may realloc the rule vector. */
+  rules = tcp_tamper_main.rules;
+  tcp_tamper_enable (client_tc);
+
+  vec_validate (data, total_bytes - 1);
+  for (i = 0; i < (int) total_bytes; i++)
+    data[i] = i & 0xff;
+  error = svm_fifo_enqueue (client_s->tx_fifo, total_bytes, data);
+  if (!TCP_TEST_I ((error == (int) total_bytes), "lost_rxt_late: client queued %u bytes",
+		   total_bytes))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  error = session_program_tx_io_evt (client_s->handle, SESSION_IO_EVT_TX);
+  if (!TCP_TEST_I ((error == 0), "lost_rxt_late: client tx event programmed"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+  for (tries = 0; drained < total_bytes && tries < 8000; tries++)
+    {
+      drained += session_test_drain_rx_fifo (server_s);
+      if (drained >= total_bytes)
+	break;
+      tcp_e2e_pump (vm, 1e-3);
+    }
+
+  rules = tcp_tamper_main.rules;
+  if (!TCP_TEST_I ((rules[0].n_dropped == 1 && rules[1].n_dropped == 1),
+		   "lost_rxt_late: both segments dropped once (%u, %u of 1)", rules[0].n_dropped,
+		   rules[1].n_dropped))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  if (!TCP_TEST_I ((client_tc->fr_occurences > fr_before && client_tc->tr_occurences == tr_before),
+		   "lost_rxt_late: recovered in fast recovery, without an rto (fr %u, rto %llu)",
+		   client_tc->fr_occurences - fr_before, client_tc->tr_occurences - tr_before))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  if (!TCP_TEST_I (
+	(wrk->stats.lost_rxt_events == lost_rxt_before &&
+	 client_tc->segs_retrans - rxt_before == 2),
+	"lost_rxt_late: retransmits not presumed lost, one per hole (lost rxt events %u, "
+	"retransmits %llu)",
+	wrk->stats.lost_rxt_events - lost_rxt_before, client_tc->segs_retrans - rxt_before))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  if (!TCP_TEST_I ((drained == total_bytes), "lost_rxt_late: all %u bytes delivered (got %u)",
+		   total_bytes, drained))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+cleanup:
+  tcp_tamper_reset ();
+  vec_free (data);
+  if (!tcp_e2e_teardown (vm, ctx))
+    rv = 1;
+  return rv;
+}
+
+/* Lost retransmits in sack recovery. Drop the first and the sixth segment,
+ * and the first retransmit of each. Fast recovery sends new data after the
+ * retransmits, and once the peer sacks enough of it, the retransmits are
+ * presumed lost and resent within the same recovery, without an rto. */
+static int
+tcp_test_tamper_lost_rxt (vlib_main_t *vm)
+{
+  tcp_e2e_params_t params = {
+    .name = "lost_rxt",
+    .client_addr = 0x2c2c2c01,
+    .server_addr = 0x2d2d2d01,
+    .client_vrf = 0,
+    .server_vrf = 2,
+    .server_port = 2279,
+    .client_port = 0, /* ephemeral */
+    .secret = 2278,
+    .rx_fifo_size = 256 << 10,
+    .tx_fifo_size = 256 << 10,
+  };
+  tcp_e2e_ctx_t _ctx, *ctx = &_ctx;
+  tcp_connection_t *client_tc;
+  tcp_tamper_rule_t *rules;
+  tcp_worker_ctx_t *wrk;
+  session_t *client_s, *server_s;
+  u32 tries, una, mss, fr_before, lost_rxt_before, total_bytes = 128 << 10, drained = 0;
+  u64 tr_before;
+  u8 *data = 0;
+  int error, rv = 0, i;
+
+  tcp_tamper_reset ();
+
+  if (!TCP_TEST_I ((tcp_e2e_setup (vm, ctx, &params) == 0), "lost_rxt: e2e setup"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  client_tc = ctx->client_tc;
+  client_s = ctx->client_s;
+  server_s = session_get_if_valid (accepted_session_index, accepted_session_thread);
+  if (!TCP_TEST_I ((server_s != 0), "lost_rxt: server session resolvable"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  if (!TCP_TEST_I ((tcp_opts_sack_permitted (&client_tc->rcv_opts) &&
+		    !tcp_rack_enabled (client_tc) &&
+		    !(client_tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER)),
+		   "lost_rxt: sack negotiated, default loss detection"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+  client_tc->connection.flags &= ~TRANSPORT_CONNECTION_F_IS_TX_PACED;
+  wrk = tcp_get_worker (client_tc->c_thread_index);
+  lost_rxt_before = wrk->stats.lost_rxt_events;
+  fr_before = client_tc->fr_occurences;
+  tr_before = client_tc->tr_occurences;
+  mss = client_tc->snd_mss;
+  una = client_tc->snd_una;
+  tcp_tamper_drop_seq (client_tc, una, 2);
+  tcp_tamper_drop_seq (client_tc, una + 5 * mss, 2);
+  /* Reference by index: tcp_tamper_add_rule may realloc the rule vector. */
+  rules = tcp_tamper_main.rules;
+  tcp_tamper_enable (client_tc);
+
+  vec_validate (data, total_bytes - 1);
+  for (i = 0; i < (int) total_bytes; i++)
+    data[i] = i & 0xff;
+  error = svm_fifo_enqueue (client_s->tx_fifo, total_bytes, data);
+  if (!TCP_TEST_I ((error == (int) total_bytes), "lost_rxt: client queued %u bytes", total_bytes))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  error = session_program_tx_io_evt (client_s->handle, SESSION_IO_EVT_TX);
+  if (!TCP_TEST_I ((error == 0), "lost_rxt: client tx event programmed"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+  for (tries = 0; drained < total_bytes && tries < 8000; tries++)
+    {
+      drained += session_test_drain_rx_fifo (server_s);
+      if (drained >= total_bytes)
+	break;
+      tcp_e2e_pump (vm, 1e-3);
+    }
+
+  rules = tcp_tamper_main.rules;
+  if (!TCP_TEST_I ((rules[0].n_dropped == 2 && rules[1].n_dropped == 2),
+		   "lost_rxt: both segments and their first retransmits dropped (%u, %u of 2)",
+		   rules[0].n_dropped, rules[1].n_dropped))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  if (!TCP_TEST_I ((client_tc->fr_occurences > fr_before && client_tc->tr_occurences == tr_before &&
+		    wrk->stats.lost_rxt_events > lost_rxt_before),
+		   "lost_rxt: lost retransmits resent in fast recovery, without an rto "
+		   "(fr %u, rto %llu, lost rxt events %u)",
+		   client_tc->fr_occurences - fr_before, client_tc->tr_occurences - tr_before,
+		   wrk->stats.lost_rxt_events - lost_rxt_before))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  if (!TCP_TEST_I ((drained == total_bytes), "lost_rxt: all %u bytes delivered (got %u)",
+		   total_bytes, drained))
     {
       rv = 1;
       goto cleanup;
@@ -8197,6 +8461,212 @@ tcp_test_sack_tx_e2e (vlib_main_t *vm, u8 verbose)
   return rv;
 }
 
+/* Ack base + ack and sack [base + start, base + end), through the established node. With
+ * timestamps on, the ack echoes tsecr */
+static int
+tcp_test_lost_rxt_inject (vlib_main_t *vm, tcp_connection_t *tc, u32 base, u32 ack, u32 start,
+			  u32 end, u32 tsecr)
+{
+  vlib_node_runtime_t *node = vlib_node_get_runtime (vm, tcp4_established_node.index);
+  vlib_frame_t *frame;
+  vlib_buffer_t *b;
+  tcp_header_t *th;
+  u32 bi, *to;
+  u8 *opts;
+
+  if (vlib_buffer_alloc (vm, &bi, 1) != 1)
+    return -1;
+  b = vlib_get_buffer (vm, bi);
+  vlib_buffer_reset (b);
+  /* nop, nop and one sack block, after nop, nop and a timestamp if on */
+  b->current_length = sizeof (*th) + 12 + (tcp_opts_tstamp (&tc->rcv_opts) ? 12 : 0);
+  vnet_buffer (b)->tcp.connection_index = tc->c_c_index;
+  vnet_buffer (b)->tcp.seq_number = tc->rcv_nxt;
+  vnet_buffer (b)->tcp.seq_end = tc->rcv_nxt;
+  vnet_buffer (b)->tcp.ack_number = base + ack;
+  vnet_buffer (b)->tcp.hdr_offset = 0;
+  vnet_buffer (b)->tcp.data_offset = b->current_length;
+  vnet_buffer (b)->tcp.data_len = 0;
+
+  th = vlib_buffer_get_current (b);
+  clib_memset (th, 0, b->current_length);
+  th->src_port = tc->c_rmt_port;
+  th->dst_port = tc->c_lcl_port;
+  th->seq_number = clib_host_to_net_u32 (tc->rcv_nxt);
+  th->ack_number = clib_host_to_net_u32 (base + ack);
+  th->data_offset_and_reserved = (b->current_length / 4) << 4;
+  th->flags = TCP_FLAG_ACK;
+  th->window = clib_host_to_net_u16 (tc->snd_wnd >> tc->snd_wscale);
+
+  opts = (u8 *) (th + 1);
+  if (tcp_opts_tstamp (&tc->rcv_opts))
+    {
+      opts[0] = TCP_OPTION_NOOP;
+      opts[1] = TCP_OPTION_NOOP;
+      opts[2] = TCP_OPTION_TIMESTAMP;
+      opts[3] = TCP_OPTION_LEN_TIMESTAMP;
+      *(u32 *) (opts + 4) = clib_host_to_net_u32 (tc->tsval_recent);
+      *(u32 *) (opts + 8) = clib_host_to_net_u32 (tsecr);
+      opts += 12;
+    }
+  opts[0] = TCP_OPTION_NOOP;
+  opts[1] = TCP_OPTION_NOOP;
+  opts[2] = TCP_OPTION_SACK_BLOCK;
+  opts[3] = 2 + TCP_OPTION_LEN_SACK_BLOCK;
+  *(u32 *) (opts + 4) = clib_host_to_net_u32 (base + start);
+  *(u32 *) (opts + 8) = clib_host_to_net_u32 (base + end);
+
+  frame = vlib_get_frame_to_node (vm, tcp4_established_node.index);
+  to = vlib_frame_vector_args (frame);
+  to[0] = bi;
+  frame->n_vectors = 1;
+  tcp4_established_node.function (vm, node, frame);
+  vlib_frame_free (vm, frame);
+  return 0;
+}
+
+/* Sacks of data sent after the last retransmit show the copy in flight lost
+ * only once more than reorder - 1 segments of it are sacked, as for loss of
+ * any segment. A single segment far above is not enough. After the copies are
+ * resent, which one acks it is ambiguous, so a late ack of a resent segment
+ * leaves the reordering estimate, unlike one of data never resent. Presumed loss
+ * is not delivery, so an ack that also echoes a timestamp from before the first
+ * retransmit must not undo the recovery (Eifel). Runs on the connection's
+ * thread, see tcp_e2e_call_on_thread */
+static int
+tcp_test_lost_rxt_evidence_steps (void *arg)
+{
+  /* Acks and sacks above the copies' marker at 1000, relative to the first byte */
+  static const struct
+  {
+    const char *what;
+    u32 ack, start, end;
+    u8 lost;
+    u8 eifel; /**< the ack echoes a timestamp from before the first retransmit */
+  } cases[] = {
+    { "one segment far above the copies does not show them lost", 0, 1200, 1300, 0, 0 },
+    { "more than reorder - 1 segments above the copies show them lost", 0, 1000, 1300, 1, 0 },
+    { "an ack that shows a copy lost and echoes a timestamp from before the first retransmit "
+      "does not undo the recovery",
+      500, 1000, 1300, 1, 1 },
+  };
+  tcp_test_e2e_steps_args_t *a = arg;
+  tcp_worker_ctx_t *wrk = tcp_get_worker (vlib_get_thread_index ());
+  vlib_main_t *vm = vlib_get_main ();
+  tcp_connection_t *tc = a->ctx->client_tc, saved = *tc;
+  svm_fifo_t *tx_fifo = a->ctx->client_s->tx_fifo;
+  sack_scoreboard_t *sb = &tc->sack_sb;
+  u32 i, base, events, reorder, fr;
+  u8 payload[2000] = {};
+  tcp_ack_ctx_t ac;
+  int ok = 1;
+
+  /* Each case leaves the connection as it found it */
+  if (!TCP_TEST_I ((!sb->holes && !tc->rcv_opts.sacks), "lost_rxt_evidence: fresh connection"))
+    return 1;
+
+  for (i = 0; ok && i < ARRAY_LEN (cases); i++)
+    {
+      base = tc->snd_una;
+      ok = svm_fifo_enqueue (tx_fifo, sizeof (payload), payload) == (int) sizeof (payload);
+
+      /* 10 segments out. The peer sacks all but the first and the sixth, lost,
+       * and the ninth, too little sacked above it to be lost */
+      tc->snd_nxt = base + 1000;
+      tc->bytes_out += 1000;
+      tc->snd_mss = 100;
+      tc->snd_wnd = tc->snd_wnd_max = 4000;
+      tc->cwnd = 1000;
+      tc->cc_algo = tcp_cc_algo_get (TCP_CC_NEWRENO);
+      tc->rcv_opts.flags = TCP_OPTS_FLAG_SACK_PERMITTED | TCP_OPTS_FLAG_SACK;
+      if (cases[i].eifel)
+	tc->rcv_opts.flags |= TCP_OPTS_FLAG_TSTAMP;
+      scoreboard_init (sb);
+      vec_add1 (tc->rcv_opts.sacks, ((sack_block_t){ base + 100, base + 500 }));
+      vec_add1 (tc->rcv_opts.sacks, ((sack_block_t){ base + 600, base + 800 }));
+      vec_add1 (tc->rcv_opts.sacks, ((sack_block_t){ base + 900, base + 1000 }));
+      tc->rcv_opts.n_sack_blocks = 3;
+      tcp_test_rcv_sacks (tc, base, &ac);
+      tcp_loss_enter_recovery (tc);
+
+      /* Retransmit both, with room and credit as if data was delivered, then
+       * send new data after them */
+      tc->ssthresh = 4 * tc->snd_mss;
+      tc->prr_delivered = 2 * tc->snd_mss;
+      tcp_test_sack_tx_acks_n (vm, tc, 0, 2);
+      ok = ok && sb->high_rxt == base + 600 && tc->snd_rxt_bytes == 200 &&
+	   tc->rxt_snd_nxt == base + 1000 && tc->snd_rxt_ts;
+      tc->snd_nxt = base + 2000;
+      tc->bytes_out += 1000;
+
+      /* None ends the recovery, an undo would restart it */
+      events = wrk->stats.lost_rxt_events;
+      fr = tc->fr_occurences;
+      ok = ok && !tcp_test_lost_rxt_inject (vm, tc, base, cases[i].ack, cases[i].start,
+					    cases[i].end, tc->snd_rxt_ts - 1);
+      events = wrk->stats.lost_rxt_events - events;
+      ok = ok && events == cases[i].lost && tcp_in_fastrecovery (tc) && tc->fr_occurences == fr &&
+	   (cases[i].lost ? tc->rxt_delivered == tc->snd_rxt_bytes : sb->high_rxt == base + 600);
+      ok = TCP_TEST_I (ok, "lost_rxt_evidence: %s (events %u, recoveries %u, rxt %u/%u)",
+		       cases[i].what, events, tc->fr_occurences - fr, tc->rxt_delivered,
+		       tc->snd_rxt_bytes);
+
+      /* The first arrives late, and its copy was resent: the ack says nothing
+       * about reordering. The ninth, never resent, arrives late too: its sack
+       * does, (1300 - 800) / 100 segments */
+      if (ok && cases[i].lost && !cases[i].ack)
+	{
+	  reorder = sb->reorder;
+	  ok = !tcp_test_lost_rxt_inject (vm, tc, base, 100, 100, 800, 0);
+	  ok = TCP_TEST_I ((ok && sb->reorder == reorder),
+			   "lost_rxt_evidence: once the copy is presumed lost, a late ack of "
+			   "it leaves the reordering estimate (%u, was %u)",
+			   sb->reorder, reorder);
+	  ok = ok && !tcp_test_lost_rxt_inject (vm, tc, base, 100, 800, 900, 0);
+	  ok = TCP_TEST_I ((ok && sb->reorder == 5),
+			   "lost_rxt_evidence: a late sack of data never resent grows the "
+			   "reordering estimate (%u)",
+			   sb->reorder);
+	}
+
+      tcp_connection_timers_reset (tc);
+      scoreboard_clear (sb);
+      pool_free (sb->holes);
+      vec_free (tc->rcv_opts.sacks);
+      svm_fifo_dequeue_drop_all (tx_fifo);
+      *tc = saved;
+    }
+  return !ok;
+}
+
+static int
+tcp_test_tamper_lost_rxt_evidence (vlib_main_t *vm)
+{
+  tcp_e2e_params_t params = {
+    .name = "lost_rxt_evidence",
+    .client_addr = 0x30303001,
+    .server_addr = 0x31313101,
+    .client_vrf = 0,
+    .server_vrf = 2,
+    .server_port = 2283,
+    .secret = 2282,
+  };
+  tcp_test_e2e_steps_args_t args;
+  tcp_e2e_ctx_t ctx;
+  int rv = 1;
+
+  if (TCP_TEST_I (!tcp_e2e_setup (vm, &ctx, &params), "lost_rxt_evidence: e2e setup"))
+    {
+      args = (tcp_test_e2e_steps_args_t){ .ctx = &ctx };
+      rv = tcp_e2e_call_on_thread (vm, ctx.client_tc->c_thread_index,
+				   tcp_test_lost_rxt_evidence_steps, &args);
+    }
+
+  if (!tcp_e2e_teardown (vm, &ctx))
+    rv = 1;
+  return rv;
+}
+
 /* The dsack the connection reports next: the pending one, else the newest postponed ack's, see
  * tcp_ack_sacks */
 static sack_block_t *
@@ -9574,6 +10044,9 @@ tcp_test_tamper (vlib_main_t *vm, unformat_input_t *input)
     { "dsack-early", tcp_test_tamper_dsack_early_undo },
     { "strand-head", tcp_test_tamper_stranded_head },
     { "full-wnd", tcp_test_tamper_full_window },
+    { "lost-rxt", tcp_test_tamper_lost_rxt },
+    { "lost-rxt-late", tcp_test_tamper_lost_rxt_late },
+    { "lost-rxt-evidence", tcp_test_tamper_lost_rxt_evidence },
     { "rto", tcp_test_tamper_rto },
     { "rto-head", tcp_test_tamper_rto_head },
     { "dupack-run", tcp_test_tamper_dupack_run },
