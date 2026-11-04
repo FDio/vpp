@@ -49,6 +49,14 @@ typedef struct quic_quicly_rx_dgram_ctx_
   u8 data[QUIC_MAX_PACKET_SIZE];
 } quic_quicly_rx_dgram_ctx_t;
 
+typedef struct quic_quicly_worker_stats_
+{
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+  /* because of migrations per-thread counters can be negative, sum gives live counts */
+  i64 n_connections;
+  i64 n_streams;
+} quic_quicly_worker_stats_t;
+
 typedef struct quic_quicly_main_
 {
   quic_main_t *qm;
@@ -57,10 +65,25 @@ typedef struct quic_quicly_main_
   quic_quicly_rx_dgram_ctx_t **rx_dgrams;
   struct iovec **tx_packets;
   u8 **tx_bufs;
+  quic_quicly_worker_stats_t *worker_stats;
 } quic_quicly_main_t;
 
 extern quic_quicly_main_t quic_quicly_main;
 extern quic_ctx_t *quic_quicly_get_conn_ctx (void *conn);
+
+static_always_inline quic_quicly_worker_stats_t *
+quic_quicly_get_worker_stats (clib_thread_index_t thread_index)
+{
+  return vec_elt_at_index (quic_quicly_main.worker_stats, thread_index);
+}
+
+/* This callback has no object/thread argument and crypto contexts are shared,
+ * so use the executing thread's slot rather than the object's creation thread. */
+static_always_inline void
+quic_quicly_update_open_count (quicly_update_open_count_t *self, ssize_t delta)
+{
+  quic_quicly_get_worker_stats (vlib_get_thread_index ())->n_connections += delta;
+}
 
 static_always_inline quic_ctx_t *
 quic_quicly_get_quic_ctx (u32 ctx_index, u32 thread_index)

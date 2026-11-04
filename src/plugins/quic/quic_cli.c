@@ -50,6 +50,17 @@ format_quic_connection_id (u8 *s, va_list *args)
 }
 
 static u8 *
+format_quic_ctx_timers (u8 *s, va_list *args)
+{
+  quic_ctx_t *ctx = va_arg (*args, quic_ctx_t *);
+  u8 accept_active = ctx->timers[QUIC_TIMER_ACCEPT] != QUIC_TIMER_HANDLE_INVALID;
+  u8 tx_active = ctx->timers[QUIC_TIMER_TX] != QUIC_TIMER_HANDLE_INVALID;
+
+  return format (s, " timers: ACCEPT %s TX %s\n", accept_active ? "active" : "inactive",
+		 tx_active ? "active" : "inactive");
+}
+
+static u8 *
 format_quic_ctx_connection (u8 *s, va_list *args)
 {
   quic_ctx_t *ctx = va_arg (*args, quic_ctx_t *);
@@ -62,7 +73,10 @@ format_quic_ctx_connection (u8 *s, va_list *args)
 	{
 	  s = format (s, "%-" SESSION_CLI_STATE_LEN "U", format_quic_ctx_state, ctx);
 	  if (fmt.level > 1)
-	    s = format (s, "\n%U", quic_eng_format_connection_stats, ctx);
+	    {
+	      s = format (s, "\n%U", format_quic_ctx_timers, ctx);
+	      s = format (s, "%U", quic_eng_format_connection_stats, ctx);
+	    }
 	}
       return s;
     }
@@ -76,7 +90,10 @@ format_quic_ctx_connection (u8 *s, va_list *args)
       s = format (s, "%U", format_quic_ctx_state, ctx);
     }
   if (fmt.transport_detail)
-    s = format (s, "\n%U", quic_eng_format_connection_stats, ctx);
+    {
+      s = format (s, "\n%U", format_quic_ctx_timers, ctx);
+      s = format (s, "%U", quic_eng_format_connection_stats, ctx);
+    }
 
   return s;
 }
@@ -173,12 +190,15 @@ format_quic_half_open (u8 *s, va_list *args)
   clib_thread_index_t thread_index = va_arg (*args, u32);
   transport_fmt_req_t fmt = { .as_u32 = va_arg (*args, u32) };
   quic_ctx_t *ctx = quic_ctx_get (qc_index, thread_index);
+  u8 tx_active = ctx->timers[QUIC_TIMER_TX] != QUIC_TIMER_HANDLE_INVALID;
 
   if (!transport_fmt_req_is_explicit (fmt))
     {
       s = format (s, "%-" SESSION_CLI_ID_LEN "U", format_quic_ho_conn_id, ctx);
       if (fmt.level)
 	s = format (s, "%-" SESSION_CLI_STATE_LEN "U", format_quic_ctx_state, ctx);
+      if (fmt.level > 1)
+	s = format (s, "\n timers: TX %s\n", tx_active ? "active" : "inactive");
       return s;
     }
 
@@ -191,7 +211,7 @@ format_quic_half_open (u8 *s, va_list *args)
       s = format (s, "%U", format_quic_ctx_state, ctx);
     }
   if (fmt.transport_detail)
-    s = format (s, "\n");
+    s = format (s, "\n timers: TX %s\n", tx_active ? "active" : "inactive");
   return s;
 }
 
@@ -428,57 +448,126 @@ quic_get_counter_value (u32 event_code)
   return sum;
 }
 
+static const char *quic_conn_state_names[] = {
+#define _(sym) [QUIC_CONN_STATE_##sym] = #sym,
+  foreach_quic_conn_state
+#undef _
+};
+
 static void
-quic_show_aggregated_stats (vlib_main_t *vm)
+quic_show_context_details (vlib_main_t *vm, quic_stats_t *agg_stats, u32 *nconn, u32 *nstream)
 {
   u32 num_workers = vlib_num_workers ();
   quic_ctx_t *ctx = NULL;
-  quic_stats_t st, agg_stats;
-  u32 i, nconn = 0, nstream = 0;
+  quic_stats_t st;
+  u32 i;
 
-  clib_memset (&agg_stats, 0, sizeof (agg_stats));
+  clib_memset (agg_stats, 0, sizeof (*agg_stats));
+  *nconn = *nstream = 0;
+  vlib_cli_output (vm, "---- VPP Context Details ----");
   for (i = 0; i < num_workers + 1; i++)
     {
+      u32 states[ARRAY_LEN (quic_conn_state_names)] = {};
+      u32 active_timers[QUIC_N_TIMERS] = {};
+      u32 connections = 0, streams = 0, listeners = 0, reserved = 0;
+      u32 without_engine = 0, unknown_state = 0, state;
+      tw_timer_quic_twslov_t *timer;
+
       pool_foreach (ctx, quic_main.wrk_ctx[i].ctx_pool)
 	{
-	  if (quic_ctx_is_conn (ctx) && ctx->conn)
+	  /* Index zero is reserved when the per-thread pool is initialized. */
+	  if (ctx == quic_main.wrk_ctx[i].ctx_pool)
 	    {
-	      quic_eng_connection_get_stats (ctx->conn, &st);
-	      agg_stats.rtt_smoothed += st.rtt_smoothed;
-	      agg_stats.rtt_minimum += st.rtt_minimum;
-	      agg_stats.rtt_variance += st.rtt_variance;
-	      agg_stats.num_packets_received += st.num_packets_received;
-	      agg_stats.num_packets_sent += st.num_packets_sent;
-	      agg_stats.num_packets_lost += st.num_packets_lost;
-	      agg_stats.num_packets_ack_received +=
-		st.num_packets_ack_received;
-	      agg_stats.num_bytes_received += st.num_bytes_received;
-	      agg_stats.num_bytes_sent += st.num_bytes_sent;
-	      nconn++;
+	      reserved++;
+	      continue;
 	    }
-	  else if (quic_ctx_is_stream (ctx))
-	    nstream++;
+	  if (quic_ctx_is_listener (ctx))
+	    {
+	      listeners++;
+	      continue;
+	    }
+	  if (quic_ctx_is_stream (ctx))
+	    {
+	      streams++;
+	      (*nstream)++;
+	      continue;
+	    }
+
+	  connections++;
+	  if (ctx->conn_state < ARRAY_LEN (states))
+	    states[ctx->conn_state]++;
+	  else
+	    unknown_state++;
+	  if (!ctx->conn)
+	    {
+	      without_engine++;
+	      continue;
+	    }
+
+	  quic_eng_connection_get_stats (ctx->conn, &st);
+	  agg_stats->rtt_smoothed += st.rtt_smoothed;
+	  agg_stats->rtt_minimum += st.rtt_minimum;
+	  agg_stats->rtt_variance += st.rtt_variance;
+	  agg_stats->num_packets_received += st.num_packets_received;
+	  agg_stats->num_packets_sent += st.num_packets_sent;
+	  agg_stats->num_packets_lost += st.num_packets_lost;
+	  agg_stats->num_packets_ack_received += st.num_packets_ack_received;
+	  agg_stats->num_bytes_received += st.num_bytes_received;
+	  agg_stats->num_bytes_sent += st.num_bytes_sent;
+	  (*nconn)++;
 	}
+      pool_foreach (timer, quic_main.wrk_ctx[i].timer_wheel.timers)
+	{
+	  /* Permanent wheel list heads have no user handle. */
+	  if (timer->user_handle == ~0)
+	    continue;
+	  u32 timer_id = timer->user_handle >> (32 - QUIC_LOG2_TW_TIMERS_PER_OBJECT);
+	  if (timer_id < QUIC_N_TIMERS)
+	    active_timers[timer_id]++;
+	}
+      vlib_cli_output (vm, "Thread %u: connections %u streams %u listeners %u reserved %u", i,
+		       connections, streams, listeners, reserved);
+      vlib_cli_output (vm, "  connections without engine: %u", without_engine);
+      vlib_cli_output (vm, "  active timers: ACCEPT %u TX %u", active_timers[QUIC_TIMER_ACCEPT],
+		       active_timers[QUIC_TIMER_TX]);
+      for (state = 0; state < ARRAY_LEN (states); state++)
+	if (states[state])
+	  vlib_cli_output (vm, "  conn state %s: %u", quic_conn_state_names[state], states[state]);
+      if (unknown_state)
+	vlib_cli_output (vm, "  conn state UNKNOWN: %u", unknown_state);
     }
+}
+
+static void
+quic_show_aggregated_stats (vlib_main_t *vm, u8 verbose)
+{
+  quic_stats_t agg_stats;
+  u32 nconn = 0, nstream = 0;
+
+  if (verbose)
+    quic_show_context_details (vm, &agg_stats, &nconn, &nstream);
+
   vlib_cli_output (vm, "-------- Connections --------");
-  vlib_cli_output (vm, "Current:         %u", nconn);
-  vlib_cli_output (vm, "Accepted:        %d",
+  if (verbose)
+    vlib_cli_output (vm, "Current:         %u", nconn);
+  vlib_cli_output (vm, "Accepted:        %lu",
 		   quic_get_counter_value (QUIC_ERROR_ACCEPTED_CONNECTION));
-  vlib_cli_output (vm, "Opened:          %d",
+  vlib_cli_output (vm, "Opened:          %lu",
 		   quic_get_counter_value (QUIC_ERROR_OPENED_CONNECTION));
-  vlib_cli_output (vm, "Closed:          %d",
+  vlib_cli_output (vm, "Closed:          %lu",
 		   quic_get_counter_value (QUIC_ERROR_CLOSED_CONNECTION));
   vlib_cli_output (vm, "---------- Streams ----------");
-  vlib_cli_output (vm, "Current:         %u", nstream);
-  vlib_cli_output (vm, "Opened:          %d",
-		   quic_get_counter_value (QUIC_ERROR_OPENED_STREAM));
-  vlib_cli_output (vm, "Closed:          %d",
-		   quic_get_counter_value (QUIC_ERROR_CLOSED_STREAM));
+  if (verbose)
+    vlib_cli_output (vm, "Current:         %u", nstream);
+  vlib_cli_output (vm, "Accepted:        %lu", quic_get_counter_value (QUIC_ERROR_ACCEPTED_STREAM));
+  vlib_cli_output (vm, "Opened:          %lu", quic_get_counter_value (QUIC_ERROR_OPENED_STREAM));
+  vlib_cli_output (vm, "Closed:          %lu", quic_get_counter_value (QUIC_ERROR_CLOSED_STREAM));
   vlib_cli_output (vm, "---------- Packets ----------");
-  vlib_cli_output (vm, "RX Total:        %d",
-		   quic_get_counter_value (QUIC_ERROR_RX_PACKETS));
-  vlib_cli_output (vm, "RX 0RTT:         %d",
-		   quic_get_counter_value (QUIC_ERROR_TX_PACKETS));
+  vlib_cli_output (vm, "RX Total:        %lu", quic_get_counter_value (QUIC_ERROR_RX_PACKETS));
+  vlib_cli_output (vm, "TX Total:        %lu", quic_get_counter_value (QUIC_ERROR_TX_PACKETS));
+  if (!verbose)
+    return;
+
   vlib_cli_output (vm, "----------- Stats -----------");
   vlib_cli_output (vm, "Min      RTT     %u",
 		   nconn > 0 ? (u32) (agg_stats.rtt_minimum / nconn) : 0);
@@ -504,6 +593,7 @@ quic_show_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command
   u32 num_threads, i;
   vlib_thread_main_t *vtm = vlib_get_thread_main ();
   quic_worker_ctx_t *wrk;
+  u8 verbose = 0;
 
   session_cli_return_if_not_enabled ();
   if (qm->engine_type == QUIC_ENGINE_NONE)
@@ -518,6 +608,25 @@ quic_show_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command
       return 0;
     }
 
+  if (unformat_user (input, unformat_line_input, line_input))
+    {
+      while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+	{
+	  if (unformat (line_input, "verbose"))
+	    verbose = 1;
+	  else
+	    {
+	      error =
+		clib_error_return (0, "unknown input `%U'", format_unformat_error, line_input);
+	      break;
+	    }
+	}
+      unformat_free (line_input);
+      if (error)
+	return error;
+    }
+
+  vlib_cli_output (vm, "------- Configuration -------");
   vlib_cli_output (vm, "quic engine: %s",
 		   quic_engine_type_str (qm->engine_type));
   vlib_cli_output (vm, "default crypto engine: %s",
@@ -537,6 +646,7 @@ quic_show_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command
 
   num_threads = 1 /* main thread */ + vtm->n_threads;
 
+  vlib_cli_output (vm, "----- VPP Context Pools -----");
   for (i = 0; i < num_threads; i++)
     {
       wrk = quic_wrk_ctx_get (qm, i);
@@ -544,21 +654,9 @@ quic_show_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command
 		       pool_len (wrk->ctx_pool));
     }
 
-  if (!unformat_user (input, unformat_line_input, line_input))
-    {
-      quic_show_aggregated_stats (vm);
-      return 0;
-    }
-  else
-    {
-      error = clib_error_return (0, "unknown input `%U'",
-				 format_unformat_error, line_input);
-      goto done;
-    }
-
-done:
-  unformat_free (line_input);
-  return error;
+  quic_eng_engine_show_stats (vm);
+  quic_show_aggregated_stats (vm, verbose);
+  return 0;
 }
 
 /* TODO: This command should not be engine specific.
@@ -577,7 +675,7 @@ VLIB_CLI_COMMAND (quic_plugin_set_fifo_size_command, static) = {
 };
 VLIB_CLI_COMMAND (quic_show_ctx_command, static) = {
   .path = "show quic",
-  .short_help = "show quic",
+  .short_help = "show quic [verbose]",
   .function = quic_show_command_fn,
 };
 VLIB_CLI_COMMAND (quic_list_crypto_context_command, static) = {
