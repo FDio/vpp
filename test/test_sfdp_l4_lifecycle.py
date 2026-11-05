@@ -454,6 +454,234 @@ class TestSfdpL4LifecycleBase(BaseSfdpTest):
             VppEnum.vl_api_sfdp_session_state_t.SFDP_API_SESSION_STATE_TIME_WAIT,
         )
 
+    def _test_tcp_debug_counters(self):
+        if self.is_ip6:
+            tcp_packet_fn = self.create_tcp6_packet
+            udp_packet_fn = self.create_udp6_packet
+            src_ip, dst_ip = self.pg0.remote_ip6, self.pg1.remote_ip6
+        else:
+            tcp_packet_fn = self.create_tcp_packet
+            udp_packet_fn = self.create_udp_packet
+            src_ip, dst_ip = self.pg0.remote_ip4, self.pg1.remote_ip4
+
+        lookup_node = "sfdp-lookup-ip6" if self.is_ip6 else "sfdp-lookup-ip4"
+        first_packet_counters = (
+            ("S", "first packet tcp syn"),
+            ("SA", "first packet tcp syn-ack"),
+            ("F", "first packet tcp fin"),
+            ("FA", "first packet tcp fin-ack"),
+            ("R", "first packet tcp rst"),
+            ("RA", "first packet tcp rst-ack"),
+            ("A", "first packet tcp ack"),
+            ("SFA", "first packet tcp other"),
+        )
+        lookup_before = {
+            name: self.statistics.get_err_counter(f"/err/{lookup_node}/{name}")
+            for _, name in first_packet_counters
+        }
+        non_tcp_counter = f"/err/{lookup_node}/first packet non-tcp"
+        non_tcp_before = self.statistics.get_err_counter(non_tcp_counter)
+        tcp_check_counters = {
+            "fsol_non_syn_removed": "/err/sfdp-tcp-check/first packet non-syn removed",
+            "fsol_non_syn_blocked": "/err/sfdp-tcp-check/first packet non-syn blocked",
+            "unexpected_syn": "/err/sfdp-tcp-check/unexpected syn",
+            "rst": "/err/sfdp-tcp-check/tcp reset",
+            "fin_complete": "/err/sfdp-tcp-check/tcp fin handshake complete",
+            "time_wait_set": "/err/sfdp-tcp-check/tcp time_wait set",
+        }
+        tcp_check_before = {
+            name: self.statistics.get_err_counter(counter)
+            for name, counter in tcp_check_counters.items()
+        }
+
+        for sport_offset, (flags, _) in enumerate(first_packet_counters):
+            self.send_and_expect(
+                self.pg0,
+                tcp_packet_fn(
+                    self.pg0.remote_mac,
+                    self.pg0.local_mac,
+                    src_ip,
+                    dst_ip,
+                    sport=31000 + sport_offset,
+                    dport=80,
+                    flags=flags,
+                    seq=1000,
+                    ack=1,
+                ),
+                self.pg1,
+            )
+
+        self.send_and_expect(
+            self.pg0,
+            udp_packet_fn(
+                self.pg0.remote_mac,
+                self.pg0.local_mac,
+                src_ip,
+                dst_ip,
+                sport=31010,
+                dport=53,
+            ),
+            self.pg1,
+        )
+
+        for _, name in first_packet_counters:
+            self.assertEqual(
+                self.statistics.get_err_counter(f"/err/{lookup_node}/{name}"),
+                lookup_before[name] + 1,
+            )
+        self.assertEqual(
+            self.statistics.get_err_counter(non_tcp_counter), non_tcp_before + 1
+        )
+
+        # Reap sessions created only to classify first-packet flags.
+        self.vapi.sfdp_kill_session(is_all=True)
+        self.wait_no_sessions()
+
+        # A SYN retransmission during the handshake is not unexpected.
+        self.send_and_expect(
+            self.pg0,
+            tcp_packet_fn(
+                self.pg0.remote_mac,
+                self.pg0.local_mac,
+                src_ip,
+                dst_ip,
+                sport=31100,
+                dport=80,
+                flags="S",
+                seq=1000,
+            ),
+            self.pg1,
+        )
+        self.send_and_expect(
+            self.pg0,
+            tcp_packet_fn(
+                self.pg0.remote_mac,
+                self.pg0.local_mac,
+                src_ip,
+                dst_ip,
+                sport=31100,
+                dport=80,
+                flags="S",
+                seq=1000,
+            ),
+            self.pg1,
+        )
+        self.assertEqual(len(self.sessions()), 1)
+        self.assertEqual(
+            self.statistics.get_err_counter(tcp_check_counters["unexpected_syn"]),
+            tcp_check_before["unexpected_syn"],
+        )
+
+        # A forward SYN-ACK during the handshake is unexpected.
+        self.send_and_expect(
+            self.pg0,
+            tcp_packet_fn(
+                self.pg0.remote_mac,
+                self.pg0.local_mac,
+                src_ip,
+                dst_ip,
+                sport=31100,
+                dport=80,
+                flags="SA",
+                seq=1000,
+                ack=1,
+            ),
+            self.pg1,
+        )
+        self.wait_no_sessions()
+
+        # An RST removes an established session.
+        self._tcp_establish(sport=31101)
+        self.send_and_expect(
+            self.pg0,
+            tcp_packet_fn(
+                self.pg0.remote_mac,
+                self.pg0.local_mac,
+                src_ip,
+                dst_ip,
+                sport=31101,
+                dport=80,
+                flags="R",
+                seq=1001,
+            ),
+            self.pg1,
+        )
+        self.wait_no_sessions()
+
+        # A completed close enters TIME_WAIT when close grace is enabled.
+        self.set_timeout("tcp-close-grace", 2)
+        self._tcp_establish(sport=31102)
+        responder_fin = self._tcp_close(sport=31102)
+        self._assert_tcp_time_wait()
+        self.assertEqual(
+            self.statistics.get_err_counter(tcp_check_counters["time_wait_set"]),
+            tcp_check_before["time_wait_set"] + 1,
+        )
+        self.assertEqual(
+            self.statistics.get_err_counter(tcp_check_counters["fin_complete"]),
+            tcp_check_before["fin_complete"],
+        )
+        # Retransmitted teardown packets must not count another transition.
+        self.send_and_expect(self.pg1, responder_fin, self.pg0)
+        self.assertEqual(
+            self.statistics.get_err_counter(tcp_check_counters["time_wait_set"]),
+            tcp_check_before["time_wait_set"] + 1,
+        )
+        self.virtual_sleep(3)
+        self.wait_no_sessions()
+
+        # With close grace disabled, the FIN handshake removes the session.
+        self.set_timeout("tcp-close-grace", 0)
+        self._tcp_establish(sport=31104)
+        self._tcp_close(sport=31104)
+        self.wait_no_sessions()
+        self.assertEqual(
+            self.statistics.get_err_counter(tcp_check_counters["fin_complete"]),
+            tcp_check_before["fin_complete"] + 1,
+        )
+        self.assertEqual(
+            self.statistics.get_err_counter(tcp_check_counters["time_wait_set"]),
+            tcp_check_before["time_wait_set"] + 1,
+        )
+
+        self.vapi.cli("set sfdp tcp-check fsol-non-syn security")
+        self.send_and_assert_no_replies(
+            self.pg0,
+            tcp_packet_fn(
+                self.pg0.remote_mac,
+                self.pg0.local_mac,
+                src_ip,
+                dst_ip,
+                sport=31103,
+                dport=80,
+                flags="A",
+                seq=1000,
+                ack=1,
+            ),
+        )
+        self.vapi.cli("set sfdp tcp-check fsol-non-syn remove")
+
+        self.assertEqual(
+            self.statistics.get_err_counter(tcp_check_counters["fsol_non_syn_removed"]),
+            tcp_check_before["fsol_non_syn_removed"] + 7,
+        )
+        self.assertEqual(
+            self.statistics.get_err_counter(tcp_check_counters["fsol_non_syn_blocked"]),
+            tcp_check_before["fsol_non_syn_blocked"] + 1,
+        )
+        self.assertEqual(
+            self.statistics.get_err_counter(tcp_check_counters["unexpected_syn"]),
+            tcp_check_before["unexpected_syn"] + 1,
+        )
+        self.assertEqual(
+            self.statistics.get_err_counter(tcp_check_counters["rst"]),
+            tcp_check_before["rst"] + 1,
+        )
+        self.assertEqual(
+            self.statistics.get_err_counter(tcp_check_counters["fin_complete"]),
+            tcp_check_before["fin_complete"] + 1,
+        )
+
 
 @unittest.skipIf(
     "sfdp_services" in config.excluded_plugins,
@@ -463,6 +691,10 @@ class TestSfdpL4LifecycleIp4(TestSfdpL4LifecycleBase):
     """SFDP L4 Lifecycle - IPv4 (UDP/TCP)"""
 
     is_ip6 = False
+
+    def test_tcp_debug_counters(self):
+        """TCP - Count first-packet flags, removal reasons, and TIME_WAIT"""
+        self._test_tcp_debug_counters()
 
     def test_udp_states(self):
         """UDP - Test UDP lifecycle states and timeout"""
@@ -997,6 +1229,10 @@ class TestSfdpL4LifecycleIp6(TestSfdpL4LifecycleBase):
     """SFDP L4 Lifecycle - IPv6 (UDP/TCP)"""
 
     is_ip6 = True
+
+    def test_tcp_debug_counters(self):
+        """TCP - Count first-packet flags, removal reasons, and TIME_WAIT"""
+        self._test_tcp_debug_counters()
 
     def test_udp_states(self):
         """UDP - Verify states and timeout"""

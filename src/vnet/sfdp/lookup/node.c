@@ -33,6 +33,45 @@ static vlib_error_desc_t sfdp_handoff_error_counters[] = {
 #undef _
 };
 
+static_always_inline void
+sfdp_lookup_count_first_packet (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_buffer_t *b,
+				u8 proto)
+{
+  sfdp_lookup_error_t error = SFDP_LOOKUP_ERROR_FIRST_PACKET_NON_TCP;
+
+  if (proto == IP_PROTOCOL_TCP)
+    {
+      switch (sfdp_buffer (b)->tcp_flags & 0x17)
+	{
+	case 0x02:
+	  error = SFDP_LOOKUP_ERROR_FIRST_PACKET_TCP_SYN;
+	  break;
+	case 0x12:
+	  error = SFDP_LOOKUP_ERROR_FIRST_PACKET_TCP_SYN_ACK;
+	  break;
+	case 0x01:
+	  error = SFDP_LOOKUP_ERROR_FIRST_PACKET_TCP_FIN;
+	  break;
+	case 0x11:
+	  error = SFDP_LOOKUP_ERROR_FIRST_PACKET_TCP_FIN_ACK;
+	  break;
+	case 0x04:
+	  error = SFDP_LOOKUP_ERROR_FIRST_PACKET_TCP_RST;
+	  break;
+	case 0x14:
+	  error = SFDP_LOOKUP_ERROR_FIRST_PACKET_TCP_RST_ACK;
+	  break;
+	case 0x10:
+	  error = SFDP_LOOKUP_ERROR_FIRST_PACKET_TCP_ACK;
+	  break;
+	default:
+	  error = SFDP_LOOKUP_ERROR_FIRST_PACKET_TCP_OTHER;
+	}
+    }
+
+  vlib_node_increment_counter (vm, node->node_index, error, 1);
+}
+
 typedef struct
 {
   u32 sw_if_index;
@@ -449,6 +488,7 @@ sfdp_lookup_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	    created_session_indices[n_created] =
 	      sfdp_session_index_from_lookup (lv[0]);
 	    n_created++;
+	    sfdp_lookup_count_first_packet (vm, node, b[0], k6->ip6_key.proto);
 	  }
 	else
 	  {
@@ -509,6 +549,7 @@ sfdp_lookup_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	    created_session_indices[n_created] =
 	      sfdp_session_index_from_lookup (lv[0]);
 	    n_created++;
+	    sfdp_lookup_count_first_packet (vm, node, b[0], k4->ip4_key.proto);
 	  }
 	else
 	  {
