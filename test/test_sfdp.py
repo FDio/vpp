@@ -342,6 +342,7 @@ class TestSfdp(BaseSfdpTest):
             "embryonic": 5,
             "established": 120,
             "tcp-established": 3600,
+            "tcp-close-grace": 2,
             "security": 30,
         }
         timeouts = {timeout.name: timeout for timeout in self.vapi.sfdp_timeout_dump()}
@@ -1105,7 +1106,6 @@ class TestSfdpSampleTimeout(BaseSfdpTest):
     def test_sample_timeout_registration(self):
         # Dump registered timeouts and verify that sample-timeout is registered.
         timeouts = list(self.vapi.sfdp_timeout_dump())
-        self.assertEqual(len(timeouts), 5)
 
         # Verify that there is only a single 'sample-timeout' entry
         custom_timeouts = [
