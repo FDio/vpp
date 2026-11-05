@@ -177,6 +177,8 @@ struct hsi_tcp_drain_
   u32 tx_deq;
   u32 snd_una;
   u32 snd_nxt;
+  u32 rx_fifo_size; /**< rx fifo size before clamping it */
+  u32 rcv_wnd;	    /**< window advertised before clamping it */
   u32 cached_bytes;
   u32 *cached_buffers;
   hsi_tcp_drain_flags_t flags;
@@ -626,6 +628,7 @@ void hsi_session_cleanup (session_t *s);
 void hsi_session_send_cleanup_pair (session_handle_t first);
 
 int hsi_tcp_session_is_cleanup_ready (session_t *s);
+void hsi_tcp_session_restore_fifos (session_t *s);
 session_handle_t hsi_tcp_session_cleanup_peer_handle (session_t *s);
 void hsi_tcp_session_cleanup_state (session_t *s);
 

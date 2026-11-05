@@ -136,6 +136,9 @@ hsi_session_cleanup_fifos (session_t *s)
   if (!s->rx_fifo && !s->tx_fifo)
     return;
 
+  if (session_get_transport_proto (s) == TRANSPORT_PROTO_TCP)
+    hsi_tcp_session_restore_fifos (s);
+
   ASSERT (s->rx_fifo && s->tx_fifo);
 
   rx_fifo = s->rx_fifo;
