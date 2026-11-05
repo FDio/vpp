@@ -20,7 +20,7 @@ defaults:
 
 permissions:
   contents: read
-  actions: read
+  actions: read   # Needed to read local actions
 
 concurrency:
   group: ${{ github.workflow }}-${{ inputs.FDIO_NAMESPACE }}
@@ -31,6 +31,7 @@ jobs:
     # yamllint disable-line rule:line-length
     name: maketest-${{ matrix.os }}-${{ matrix.executor_arch }}-${{ matrix.build_type }}-${{ github.event.inputs.FDIO_NAMESPACE || 'prod' }}
     runs-on:
+      # zizmor: ignore[self-hosted-runner]
       - self-hosted
       - nomad
       - fdio:arch=${{ matrix.executor_arch }}
@@ -38,7 +39,7 @@ jobs:
       - fdio:namespace=${{ github.event.inputs.FDIO_NAMESPACE || 'prod' }}
       - fdio:os=${{ matrix.os }}
       - fdio:workflow=${{ github.run_id }}
-
+    environment: production
     strategy:
       fail-fast: false
       matrix:
@@ -48,6 +49,10 @@ jobs:
         class: ['builder']
 
     env:
+      MATRIX_BUILD_TYPE: ${{ matrix.build_type }}
+      MATRIX_CLASS: ${{ matrix.class }}
+      MATRIX_OS: ${{ matrix.os }}
+      MATRIX_EXECUTOR_ARCH: ${{ matrix.executor_arch }}
       FDIO_NAMESPACE: ${{ github.event.inputs.FDIO_NAMESPACE || 'prod' }}
       LOG_NAME: ""
       LOG_DIR: ""
@@ -72,7 +77,7 @@ jobs:
         run: |
           set -euxo pipefail
           ts="$(date -u +%Y_%m_%d_%H%M%S_UTC)"
-          LOG_NAME="gha-vpp-periodic/vpp-verify-maketest-master-${ts}-${{ matrix.build_type }}-${{ matrix.class }}-${{ matrix.os }}-${{ env.FDIO_NAMESPACE }}-${{ matrix.executor_arch }}"
+          LOG_NAME="gha-vpp-periodic/vpp-verify-maketest-master-${ts}-${MATRIX_BUILD_TYPE}-${MATRIX_CLASS}-${MATRIX_OS}-${FDIO_NAMESPACE}-${MATRIX_EXECUTOR_ARCH}"
           echo "LOG_NAME=$LOG_NAME" >> "$GITHUB_ENV"
           LOG_DIR="$WORKSPACE/logs/$LOG_NAME"
           echo "LOG_DIR=$LOG_DIR" >> "$GITHUB_ENV"
