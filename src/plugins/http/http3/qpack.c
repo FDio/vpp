@@ -1344,7 +1344,7 @@ qpack_parse_request (u8 *src, u32 src_len, u8 *dst, u32 dst_len,
 
   ASSERT (dst_len);
 
-  if (src_len < 3)
+  if (src_len < 2)
     return HTTP3_ERROR_QPACK_DECOMPRESSION_FAILED;
 
   p = src;
@@ -1352,8 +1352,12 @@ qpack_parse_request (u8 *src, u32 src_len, u8 *dst, u32 dst_len,
 
   /* encoded field section prefix */
   rv = qpack_parse_headers_prefix (&p, end, decoder_ctx);
-  if (rv || p == end)
+  if (rv)
     return hpack_error_to_http3_error[rv];
+
+  /* missing mandatory request pseudo-headers */
+  if (p == end)
+    return HTTP3_ERROR_MESSAGE_ERROR;
 
   rv = hpack_decode_request (p, end, dst, dst_len, control_data, headers,
 			     decoder_ctx, (void *) qpack_decode_header);
@@ -1371,7 +1375,7 @@ qpack_parse_response (u8 *src, u32 src_len, u8 *dst, u32 dst_len,
 
   ASSERT (dst_len);
 
-  if (src_len < 3)
+  if (src_len < 2)
     return HTTP3_ERROR_QPACK_DECOMPRESSION_FAILED;
 
   p = src;
@@ -1379,8 +1383,12 @@ qpack_parse_response (u8 *src, u32 src_len, u8 *dst, u32 dst_len,
 
   /* encoded field section prefix */
   rv = qpack_parse_headers_prefix (&p, end, decoder_ctx);
-  if (rv || p == end)
+  if (rv)
     return hpack_error_to_http3_error[rv];
+
+  /* missing mandatory :status pseudo-header */
+  if (p == end)
+    return HTTP3_ERROR_MESSAGE_ERROR;
 
   rv = hpack_decode_response (p, end, dst, dst_len, control_data, headers,
 			      decoder_ctx, qpack_decode_header);

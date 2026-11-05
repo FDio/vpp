@@ -1757,6 +1757,22 @@ http_test_qpack (vlib_main_t *vm)
   } prefix_tests[] = {
 #define _(name, prefix, fields, error, base)                                                       \
   { name, (u8 *) prefix, sizeof (prefix) - 1, fields, error, base }
+    /* Empty initial sections lack mandatory pseudo-headers. */
+    _ ("empty initial section, zero Base", "\x00\x00", 0, HTTP3_ERROR_MESSAGE_ERROR, 0),
+    _ ("empty initial section, nonzero Base", "\x00\x01", 0, HTTP3_ERROR_MESSAGE_ERROR, 0),
+    _ ("empty initial section, extended Base", "\x00\x7f\x00", 0, HTTP3_ERROR_MESSAGE_ERROR, 0),
+    _ ("empty initial section, redundant Base encoding", "\x00\x7f\x80\x00", 0,
+       HTTP3_ERROR_MESSAGE_ERROR, 0),
+    _ ("empty initial section, multi-byte Base", "\x00\x7f\x81\x01", 0, HTTP3_ERROR_MESSAGE_ERROR,
+       0),
+    /* Invalid prefixes take precedence even without any field lines. */
+    _ ("nonzero Required Insert Count without fields", "\x01\x00", 0,
+       HTTP3_ERROR_QPACK_DECOMPRESSION_FAILED, 0),
+    _ ("negative Base without fields", "\x00\x80", 0, HTTP3_ERROR_QPACK_DECOMPRESSION_FAILED, 0),
+    _ ("negative extended Base without fields", "\x00\xff\x00", 0,
+       HTTP3_ERROR_QPACK_DECOMPRESSION_FAILED, 0),
+    _ ("truncated Delta Base without extension byte", "\x00\x7f", 0,
+       HTTP3_ERROR_QPACK_DECOMPRESSION_FAILED, 0),
     _ ("zero Base", "\x00\x00", 1, HTTP3_ERROR_NO_ERROR, 0),
     _ ("nonzero Base", "\x00\x01", 1, HTTP3_ERROR_NO_ERROR, 1),
     _ ("largest single-byte Base", "\x00\x7e", 1, HTTP3_ERROR_NO_ERROR, 126),
@@ -1790,7 +1806,8 @@ http_test_qpack (vlib_main_t *vm)
       if (prefix_tests[i].append_fields)
 	vec_add (input, req + 2, sizeof (req) - 2);
       memset (&decoder_ctx, 0, sizeof (decoder_ctx));
-      memset (&req_control_data, 0, sizeof (req_control_data));
+      /* Error classification must not depend on the previous decoder output. */
+      memset (&req_control_data, 0xa5, sizeof (req_control_data));
       err = _qpack_parse_request (input, vec_len (input), buf, vec_len (buf), &req_control_data,
 				  &headers, &decoder_ctx);
       HTTP_TEST (err == prefix_tests[i].error, "request %s: %U", prefix_tests[i].name,
@@ -1806,7 +1823,8 @@ http_test_qpack (vlib_main_t *vm)
       if (prefix_tests[i].append_fields)
 	vec_add (input, resp + 2, sizeof (resp) - 2);
       memset (&decoder_ctx, 0, sizeof (decoder_ctx));
-      memset (&resp_control_data, 0, sizeof (resp_control_data));
+      /* Error classification must not depend on the previous decoder output. */
+      memset (&resp_control_data, 0xa5, sizeof (resp_control_data));
       err = _qpack_parse_response (input, vec_len (input), buf, vec_len (buf), &resp_control_data,
 				   &headers, &decoder_ctx);
       HTTP_TEST (err == prefix_tests[i].error, "response %s: %U", prefix_tests[i].name,
