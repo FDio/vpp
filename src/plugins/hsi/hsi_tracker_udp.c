@@ -9,11 +9,19 @@
 #include <vnet/session/session_lookup.h>
 #include <vnet/session/transport.h>
 
+static int hsi_udp_drain_transport_closed (session_t *s, hsi_udp_drain_t *drain);
+
 int
 hsi_udp_session_is_cleanup_ready (session_t *s)
 {
-  udp_connection_t *uc = hsi_udp_connection_at_session (s);
+  hsi_udp_drain_t *drain;
+  udp_connection_t *uc;
 
+  drain = hsi_udp_drain_get (s->thread_index, hsi_session_conn_key_from_session (s));
+  if (drain && hsi_udp_drain_transport_closed (s, drain))
+    return 0;
+
+  uc = hsi_udp_connection_at_session (s);
   return uc->cfg_flags & UDP_CFG_F_TRACKED;
 }
 
@@ -175,28 +183,32 @@ hsi_udp_idle_timeout_update (void)
     }
 }
 static void
-hsi_udp_drain_stop (udp_connection_t *uc)
+hsi_udp_drain_stop_key (clib_thread_index_t thread_index, uword key)
 {
   hsi_udp_drain_t *drain;
   hsi_worker_t *wrk;
   u32 n_dropped;
   u32 drain_index;
-  uword key;
 
-  key = hsi_udp_session_conn_key_from_connection (uc);
-  drain_index = hsi_udp_drain_index_get (uc->c_thread_index, key);
+  drain_index = hsi_udp_drain_index_get (thread_index, key);
   if (drain_index == HSI_UDP_DRAIN_INDEX_INVALID)
     return;
 
-  wrk = hsi_worker_get (uc->c_thread_index);
+  wrk = hsi_worker_get (thread_index);
   drain = pool_elt_at_index (wrk->udp_drains, drain_index);
-  n_dropped = hsi_drain_drop_cached_buffers (vlib_get_main_by_index (uc->c_thread_index),
+  n_dropped = hsi_drain_drop_cached_buffers (vlib_get_main_by_index (thread_index),
 					     &drain->cached_buffers, &drain->cached_bytes);
   hsi_worker_counter_add (wrk, udp_drain_cache_dropped, n_dropped);
 
   hash_unset (wrk->udp_drain_by_session_conn, key);
   hsi_udp_drain_pool_put_index (wrk, drain_index);
-  hsi_udp_drain_maybe_unregister_time_update (uc->c_thread_index);
+  hsi_udp_drain_maybe_unregister_time_update (thread_index);
+}
+
+static void
+hsi_udp_drain_stop (udp_connection_t *uc)
+{
+  hsi_udp_drain_stop_key (uc->c_thread_index, hsi_udp_session_conn_key_from_connection (uc));
 }
 
 static_always_inline void
@@ -260,6 +272,7 @@ static u8
 hsi_udp_track_peer_update (session_handle_t session_handle, session_handle_t peer_handle)
 {
   session_handle_tu_t sh = { .handle = session_handle };
+  hsi_udp_drain_t *drain;
   session_t *s;
   udp_connection_t *uc;
 
@@ -270,12 +283,16 @@ hsi_udp_track_peer_update (session_handle_t session_handle, session_handle_t pee
   if (session_get_transport_proto (s) != TRANSPORT_PROTO_UDP)
     return 0;
 
+  drain = hsi_udp_drain_get (s->thread_index, hsi_session_conn_key_from_session (s));
+  if (drain && hsi_udp_drain_transport_closed (s, drain))
+    return 0;
+
   uc = hsi_udp_connection_at_session (s);
   if (!(uc->cfg_flags & UDP_CFG_F_TRACKED))
     return 0;
 
   hsi_udp_track_peer_set (s, peer_handle);
-  if (!hsi_udp_drain_get (s->thread_index, hsi_session_conn_key_from_session (s)))
+  if (!drain)
     hsi_udp_connection_peer_handle_set (uc, peer_handle);
   return 1;
 }
@@ -430,6 +447,42 @@ hsi_udp_session_cleanup_state (session_t *s)
   hsi_udp_drain_stop (uc);
   hsi_udp_idle_del (uc);
   hsi_udp_track_peer_unset (s);
+}
+
+/*
+ * Udp closes draining connections on icmp errors. It moves the session to
+ * transport closed, which hsi does not do while draining, and deletes the
+ * connection on a later rpc. Session is then left transport deleted, waiting
+ * for hsi to clean it up. Cleanup hsi state without accessing the connection
+ * and release the session, or free it if the connection is gone.
+ */
+static int
+hsi_udp_drain_transport_closed (session_t *s, hsi_udp_drain_t *drain)
+{
+  session_handle_t peer_handle;
+  u8 is_deleted;
+
+  if (PREDICT_TRUE (s->session_state < SESSION_STATE_TRANSPORT_CLOSING))
+    return 0;
+
+  hsi_worker_counter_inc (hsi_worker_get (s->thread_index), udp_drain_transport_closed);
+  peer_handle = drain->peer_session_handle;
+  is_deleted = s->session_state == SESSION_STATE_TRANSPORT_DELETED;
+
+  hsi_udp_drain_stop_key (s->thread_index, hsi_session_conn_key_from_session (s));
+  hsi_udp_track_peer_unset (s);
+  hsi_session_cleanup_fifos (s);
+  hsi_session_release (s);
+  if (is_deleted)
+    {
+      s->session_state = SESSION_STATE_TRANSPORT_DELETED;
+      session_program_cleanup (s);
+    }
+
+  /* Pending pair cleanups stop at this session, now released */
+  hsi_session_send_cleanup_pair (peer_handle);
+
+  return 1;
 }
 
 static_always_inline u8
@@ -712,11 +765,14 @@ hsi_udp_drain_cache_rpc (void *arg)
   if (!s || session_get_transport_proto (s) != TRANSPORT_PROTO_UDP)
     goto drop;
 
+  drain = hsi_udp_drain_get (s->thread_index, hsi_session_conn_key_from_session (s));
+  if (drain && hsi_udp_drain_transport_closed (s, drain))
+    goto drop;
+
   uc = hsi_udp_connection_at_session (s);
   if (!(uc->cfg_flags & UDP_CFG_F_TRACKED))
     goto drop;
 
-  drain = hsi_udp_drain_get (uc->c_thread_index, hsi_udp_session_conn_key_from_connection (uc));
   if (!drain)
     {
       vlib_buffer_t *b = vlib_get_buffer (vm, a->buffer_index);
@@ -797,8 +853,9 @@ hsi_udp_drain_cache_buffer (vlib_main_t *vm, vlib_buffer_t *b, udp_connection_t 
 
   key = hsi_udp_session_conn_key_from_connection (uc);
   drain = hsi_udp_drain_get (uc->c_thread_index, key);
+  /* Drain stopped because udp closed the connection */
   if (!drain)
-    return HSI_UDP_TRACKED_ACTION_FORWARD;
+    return HSI_UDP_TRACKED_ACTION_DROP;
   if (PREDICT_FALSE (drain->state == HSI_UDP_DRAIN_STATE_FAILED))
     return HSI_UDP_TRACKED_ACTION_DROP;
 
@@ -891,14 +948,14 @@ hsi_udp_drain_start_rpc (void *arg)
 
   s = session_get_from_handle_if_valid (sh);
   peer_s = hsi_session_peer_get_if_valid (peer_sh);
-  if (!s || !peer_s)
+  /* App handed off session but udp might have closed it, e.g., on icmp error,
+   * while the rpc was pending */
+  if (!s || !peer_s || !hsi_track_sessions_compatible (s, peer_s))
     {
       hsi_worker_counter_inc (hsi_worker_get (vlib_get_thread_index ()), udp_track_peer_rpc_failed);
       hsi_udp_send_cleanup_pair_once (a->session_handle, a->peer_session_handle);
       goto done;
     }
-
-  ASSERT (hsi_track_sessions_compatible (s, peer_s));
 
   uc = hsi_udp_connection_at_session (s);
   peer_uc = hsi_udp_connection_at_session (peer_s);
@@ -1009,8 +1066,11 @@ hsi_udp_track_commit (session_t *s, hsi_udp_track_snapshot_t *peer)
 
   ASSERT (s->thread_index == vlib_get_thread_index ());
 
+  drain = hsi_udp_drain_get (s->thread_index, hsi_session_conn_key_from_session (s));
+  if (drain && hsi_udp_drain_transport_closed (s, drain))
+    return;
+
   uc = hsi_udp_connection_at_session (s);
-  drain = hsi_udp_drain_get (uc->c_thread_index, hsi_udp_session_conn_key_from_connection (uc));
   if (!drain && s->session_state == SESSION_STATE_TRANSPORT_CLOSED)
     {
       ASSERT (uc->cfg_flags & UDP_CFG_F_TRACKED);
@@ -1084,6 +1144,8 @@ hsi_udp_drain_try_complete (session_t *s, udp_connection_t *uc, hsi_udp_drain_t 
 
   if (!drain)
     return 1;
+  if (hsi_udp_drain_transport_closed (s, drain))
+    return -1;
   if (drain->state == HSI_UDP_DRAIN_STATE_FAILED)
     {
       hsi_udp_drain_fail_pair (drain);
@@ -1118,7 +1180,8 @@ hsi_udp_drain_try_complete (session_t *s, udp_connection_t *uc, hsi_udp_drain_t 
 				      hsi_udp_session_conn_key_from_connection (peer_uc));
       if (peer_drain)
 	{
-	  if (peer_drain->state == HSI_UDP_DRAIN_STATE_FAILED)
+	  if (hsi_udp_drain_transport_closed (peer_s, peer_drain) ||
+	      peer_drain->state == HSI_UDP_DRAIN_STATE_FAILED)
 	    return -1;
 	  rv = hsi_udp_drain_update_and_needs_drain (peer_s, peer_drain, now);
 	  if (rv < 0)
@@ -1222,13 +1285,15 @@ hsi_udp_drain_update_time (f64 time_now, u8 thread_index)
       if (!s || s->thread_index != thread_index)
 	continue;
 
+      drain = hsi_udp_drain_get (thread_index, hsi_session_conn_key_from_session (s));
+      if (!drain || hsi_udp_drain_transport_closed (s, drain))
+	continue;
+
       uc = hsi_udp_connection_at_session (s);
       if (!(uc->cfg_flags & UDP_CFG_F_TRACKED))
 	continue;
 
-      drain = hsi_udp_drain_get (thread_index, hsi_session_conn_key_from_session (s));
-      if (drain)
-	hsi_udp_drain_try_complete (s, uc, drain, time_now);
+      hsi_udp_drain_try_complete (s, uc, drain, time_now);
     }
 
   hsi_udp_drain_maybe_unregister_time_update (thread_index);

@@ -81,6 +81,7 @@ typedef struct hsi_udp_drain_cache_req_ hsi_udp_drain_cache_req_t;
   _ (udp_drain_started, u64, "udp-drain-started")                                                  \
   _ (udp_drain_completed, u64, "udp-drain-completed")                                              \
   _ (udp_drain_stalled, u64, "udp-drain-stalled")                                                  \
+  _ (udp_drain_transport_closed, u64, "udp-drain-transport-closed")                                \
   _ (udp_drain_cached, u64, "udp-drain-cached")                                                    \
   _ (udp_drain_cache_overflow, u64, "udp-drain-cache-overflow")                                    \
   _ (udp_drain_cache_dropped, u64, "udp-drain-cache-dropped")                                      \
