@@ -291,6 +291,27 @@ func (s *HsiSuite) BlockServerReplies() func() {
 	return unblock
 }
 
+// AddClientDelay delays the packets the client sends to vpp. The returned
+// function removes the delay.
+func (s *HsiSuite) AddClientDelay(delay time.Duration) func() {
+	clientIf := s.Interfaces.Client.Host.Name()
+	run := func(args ...string) {
+		output, err := CommandInNetns(append([]string{"tc", "qdisc"}, args...),
+			s.NetNamespaces.Client).CombinedOutput()
+		AssertNil(err, string(output))
+	}
+	run("add", "dev", clientIf, "root", "netem", "delay", fmt.Sprintf("%dms", delay.Milliseconds()))
+
+	delayed := true
+	return func() {
+		if !delayed {
+			return
+		}
+		run("del", "dev", clientIf, "root")
+		delayed = false
+	}
+}
+
 // AddHostLoss drops percent of the packets the client and the target send to
 // vpp. The returned function removes the loss.
 func (s *HsiSuite) AddHostLoss(percent int) func() {

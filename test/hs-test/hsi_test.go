@@ -27,7 +27,8 @@ func init() {
 		HsiProxyLiteUdpDrainCacheOverflowTest,
 		HsiProxyLiteUdpDrainTimeoutTest, HsiProxyLiteNotifyCleanupTest,
 		HsiProxyLiteNotifyCleanupDrainTimeoutTest, HsiProxyLiteNotifyCleanupUdpIdleTest,
-		HsiProxyLiteDrainTransportClosedTest, HsiProxyLiteLossTest)
+		HsiProxyLiteDrainTransportClosedTest, HsiProxyLiteLossTest,
+		HsiProxyLiteDrainActiveSenderTest)
 	RegisterHsiMWTests(HsiProxyLiteOffloadMWTest, HsiProxyLiteRepeatedOffloadMWTest,
 		HsiProxyLiteDrainOffloadMWTest,
 		HsiProxyLiteUdpConnectedMWTest, HsiProxyLiteUdpDrainOffloadMWTest,
@@ -529,22 +530,27 @@ func HsiProxyLiteNotifyCleanupUdpMigrationMWTest(s *HsiSuite) {
 	AssertProxyLiteHsiCleanups(s.Containers.Vpp.VppInstance, flows*2)
 }
 
+// Client data in flight when the drain closes the window must still be cached.
+// Delay client packets so that data is on the wire while the drain waits for the
+// slow target, and rate limit the client so the fifo does not fill before track.
 func HsiProxyLiteDrainCacheOverflowTest(s *HsiSuite) {
 	s.SetupNginxServer()
 	vpp := s.Containers.Vpp.VppInstance
 
 	Log(vpp.Vppctl("set nsim poll-main-thread delay 100 ms bandwidth 40 gbit"))
 	Log(vpp.Vppctl("nsim output-feature enable-disable " + s.Interfaces.Server.VppName()))
+	clearDelay := s.AddClientDelay(50 * time.Millisecond)
+	defer clearDelay()
 
 	Log(vpp.Vppctl("hsi tcp drain-cache max-packets 1"))
-	s.StartProxyLiteTcp4("hsi-offload", "fifo-size 4k")
+	s.StartProxyLiteTcp4("hsi-offload")
 
 	uploadFileName := MakeProxyLiteUploadFile()
 	defer os.Remove(uploadFileName)
 
 	uri := fmt.Sprintf("http://%s:%d/upload/hsi-proxy-lite-overflow", s.ServerAddr(), s.Ports.Server)
 	finished := startCurlHttpRequest(uri, s.NetNamespaces.Client, "201", 10,
-		"-T", uploadFileName, "-H", "Expect:")
+		"-T", uploadFileName, "-H", "Expect:", "--limit-rate", "256k")
 
 	WaitProxyLiteTracked(vpp, func() {})
 
@@ -642,6 +648,34 @@ func HsiProxyLiteLossTest(s *HsiSuite) {
 
 	hsi := WaitHsiContains(vpp, "tcp-fin-cleanup 1")
 	Log(hsi)
+	AssertProxyLiteSessionsCleaned(s)
+}
+
+// Drain with default fifos and no rate limit, so acks and data keep arriving
+// while hsi drains. They must not overflow the drain cache.
+func HsiProxyLiteDrainActiveSenderTest(s *HsiSuite) {
+	s.SetupNginxServer()
+	vpp := s.Containers.Vpp.VppInstance
+	unblock := s.BlockServerReplies()
+	defer unblock()
+	s.StartProxyLiteTcp4("hsi-offload")
+
+	uploadFileName := MakeProxyLiteUploadFile()
+	defer os.Remove(uploadFileName)
+
+	uri := fmt.Sprintf("http://%s:%d/upload/hsi-proxy-lite-active", s.ServerAddr(),
+		s.Ports.Server)
+	finished := startCurlHttpRequest(uri, s.NetNamespaces.Client, "201", 60,
+		"-T", uploadFileName, "-H", "Expect:")
+
+	WaitProxyLitePendingRxAtLeast(vpp, 32<<10)
+	unblock()
+	WaitProxyLiteTracked(vpp, func() {})
+	AssertNil(<-finished)
+
+	hsi := WaitHsiCounterAtLeast(vpp, "tcp-drain-completed", 2)
+	Log(hsi)
+	AssertEqual(0, HsiCounterValue(hsi, "tcp-drain-cache-overflow"))
 	AssertProxyLiteSessionsCleaned(s)
 }
 
