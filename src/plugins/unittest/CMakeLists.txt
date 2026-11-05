@@ -52,6 +52,7 @@ add_vpp_plugin(unittest
   pool_test.c
   punt_test.c
   rbtree_test.c
+  rdma_clone_test.c
   session_test.c
   sparse_vec_test.c
   string_test.c
