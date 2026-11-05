@@ -1514,6 +1514,18 @@ tcp_timer_retransmit_handler (tcp_connection_t *tc)
 }
 
 /**
+ * Time since first syn. RTO doubles only after the first retries, so it's
+ * (rto_boff + 1) * rto_init until then and 2 * (rto + rto_init) afterwards
+ */
+static u32
+tcp_syn_sent_elapsed_time (tcp_connection_t *tc)
+{
+  if (tc->rto_boff < TCP_RTO_SYN_RETRIES)
+    return (tc->rto_boff + 1) * TCP_RTO_INIT;
+  return 2 * (tc->rto + TCP_RTO_INIT);
+}
+
+/**
  * SYN retransmit timer handler. Active open only.
  */
 void
@@ -1543,9 +1555,8 @@ tcp_timer_retransmit_syn_handler (tcp_connection_t * tc)
 
   tcp_worker_stats_inc (wrk, to_establish, 1);
 
-  /* Active open establish timeout. RTO doubles after the first retries,
-   * so time since first syn is ~2 * (rto + rto_init) */
-  if (2 * (tc->rto + TCP_RTO_INIT) >= tcp_cfg.syn_sent_time)
+  /* Active open establish timeout */
+  if (tcp_syn_sent_elapsed_time (tc) >= tcp_cfg.syn_sent_time)
     {
       session_stream_connect_notify (&tc->connection, SESSION_E_TIMEDOUT);
       tcp_connection_cleanup (tc);
