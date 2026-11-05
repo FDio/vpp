@@ -3,6 +3,23 @@
     {
       "unresolved": false,
       "key": {
+        "uuid": "33d5181c_8a05dd9b",
+        "filename": ".github/workflows/periodic-vpp-verify-maketest.yml",
+        "patchSetId": 1
+      },
+      "lineNbr": 5,
+      "author": {
+        "id": 3121
+      },
+      "writtenOn": "2026-11-05T01:54:05Z",
+      "side": 1,
+      "message": "We already have 2 periodic workflows running at 4am UTC. Maybe we should update this to 5am to avoid multiple overlaps?\n\n| UTC | Workflow |\n|---|---|\n| 00:00 | periodic-vpp-verify-cov |\n| 01:00 \u0026 13:00 | periodic-vpp-verify-hst |\n| 02:00 | periodic-vpp-verify-dpdk-rdma-ver |\n| 03:00 | periodic-vpp-coverity |\n| 04:00 | periodic-vpp-verify-asan-hst |\n| 04:00 | periodic-vpp-verify-asan-maketest |\n| 04:00 | periodic-vpp-verify-maketest | \u003c-- this patch",
+      "revId": "0960d24349746e6a784b21a321f986e80e8912de",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
         "uuid": "545cb81b_7c8a9ca1",
         "filename": ".github/workflows/periodic-vpp-verify-maketest.yml",
         "patchSetId": 1
