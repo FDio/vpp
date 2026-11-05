@@ -46,6 +46,17 @@ void hsi_tcp_drain_update_time (f64 time_now, u8 thread_index);
 void hsi_tcp_fin_wait_update_time (f64 time_now, u8 thread_index);
 void hsi_tracker_show (vlib_main_t *vm);
 
+/*
+ * Tracked connections (TCP_CFG_F_TRACKED) are draining until committed, at
+ * which point the tracker overlays the connection. Committed connections are
+ * also moved to closed but tcp may close draining connections too.
+ */
+static_always_inline u8
+hsi_tcp_connection_is_committed (tcp_connection_t *tc)
+{
+  return tc->c_flags & TRANSPORT_CONNECTION_F_SPLICED;
+}
+
 static_always_inline hsi_tcp_tracked_action_t
 hsi_tcp_tracked_connection_action (vlib_main_t *vm, vlib_buffer_t *b, tcp_connection_t *tc,
 				   void *ip_hdr, tcp_header_t *tcp_hdr, u8 is_ip4,
@@ -53,7 +64,7 @@ hsi_tcp_tracked_connection_action (vlib_main_t *vm, vlib_buffer_t *b, tcp_connec
 {
   ASSERT (tc->cfg_flags & TCP_CFG_F_TRACKED);
 
-  if (tc->state == TCP_STATE_CLOSED || hsi_tcp_try_complete_drain (vm, tc))
+  if (hsi_tcp_connection_is_committed (tc) || hsi_tcp_try_complete_drain (vm, tc))
     return hsi_tcp_handle_tracked_connection (vm, b, tc, ip_hdr, tcp_hdr, is_ip4, cleanup_session);
 
   return hsi_tcp_drain_cache_buffer (vm, b, tc, ip_hdr, tcp_hdr, is_ip4, send_rst_on_drain_fail,

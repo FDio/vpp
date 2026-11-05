@@ -26,7 +26,8 @@ func init() {
 		HsiTrackerTcpOptionRewriteTest,
 		HsiProxyLiteUdpDrainCacheOverflowTest,
 		HsiProxyLiteUdpDrainTimeoutTest, HsiProxyLiteNotifyCleanupTest,
-		HsiProxyLiteNotifyCleanupDrainTimeoutTest, HsiProxyLiteNotifyCleanupUdpIdleTest)
+		HsiProxyLiteNotifyCleanupDrainTimeoutTest, HsiProxyLiteNotifyCleanupUdpIdleTest,
+		HsiProxyLiteDrainTransportClosedTest)
 	RegisterHsiMWTests(HsiProxyLiteOffloadMWTest, HsiProxyLiteRepeatedOffloadMWTest,
 		HsiProxyLiteDrainOffloadMWTest,
 		HsiProxyLiteUdpConnectedMWTest, HsiProxyLiteUdpDrainOffloadMWTest,
@@ -584,6 +585,44 @@ func HsiProxyLiteDrainTimeoutTest(s *HsiSuite) {
 func HsiProxyLiteNotifyCleanupDrainTimeoutTest(s *HsiSuite) {
 	runHsiProxyLiteDrainTimeoutTest(s, "hsi-notify-cleanup")
 	AssertProxyLiteHsiCleanups(s.Containers.Vpp.VppInstance, 2)
+}
+
+// Target never acks drained data, so tcp gives up retransmitting before the hsi
+// drain timeout. Hsi must abort the pair and the session layer must clean up the
+// session, and notify proxy-lite, once tcp deletes the connection. Takes ~100s
+// because tcp gives up only after TCP_RTO_BOFF_MAX backoffs.
+func HsiProxyLiteDrainTransportClosedTest(s *HsiSuite) {
+	s.SetupNginxServer()
+	vpp := s.Containers.Vpp.VppInstance
+	Log(vpp.Vppctl("hsi tcp drain-timeout 300"))
+	dropData := s.DropServerDataSegments()
+	defer dropData()
+	unblock := s.BlockServerReplies()
+	defer unblock()
+	s.StartProxyLiteTcp4("hsi-offload", "hsi-notify-cleanup", "fifo-size 4k")
+
+	uploadFileName := MakeProxyLiteUploadFile()
+	defer os.Remove(uploadFileName)
+
+	uri := fmt.Sprintf("http://%s:%d/upload/hsi-proxy-lite-transport-closed", s.ServerAddr(),
+		s.Ports.Server)
+	finished := startCurlHttpRequest(uri, s.NetNamespaces.Client, "201", 180,
+		"-T", uploadFileName, "-H", "Expect:", "--limit-rate", "256k")
+
+	// First drained segment must be full size so it is dropped and never acked
+	WaitProxyLitePendingRxAtLeast(vpp, 2048)
+	unblock()
+	WaitProxyLiteTracked(vpp, func() {})
+	// Keep target timeouts, e.g., nginx client body timeout, from closing the pair
+	reblock := s.BlockServerReplies()
+	defer reblock()
+
+	hsi := WaitHsiCounterAtLeastWithin(vpp, "tcp-drain-transport-closed", 1, 150*time.Second)
+	Log(hsi)
+	AssertEqual(0, HsiCounterValue(hsi, "tcp-drain-stalled"))
+	AssertNotNil(<-finished)
+	AssertProxyLiteSessionsCleaned(s)
+	AssertProxyLiteHsiCleanups(vpp, 2)
 }
 
 func runHsiProxyLiteClientAbortTest(s *HsiSuite) {

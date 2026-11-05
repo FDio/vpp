@@ -37,13 +37,16 @@ typedef enum transport_service_type_
  * CLESS: Connection is "connection less". Some important implications of that
  *        are that connections are not pinned to workers and listeners will
  *        have fifos associated to them
+ * SPLICED: Connection handed over to a tracker, e.g., hsi, that splices it to a
+ *          peer connection. Transport state is no longer used
  */
 #define foreach_transport_connection_flag                                                          \
   _ (IS_TX_PACED, "tx_paced")                                                                      \
   _ (NO_LOOKUP, "no_lookup")                                                                       \
   _ (DESCHED, "descheduled")                                                                       \
   _ (CLESS, "connectionless")                                                                      \
-  _ (ERROR, "error")
+  _ (ERROR, "error")                                                                               \
+  _ (SPLICED, "spliced")
 
 typedef enum transport_connection_flags_bits_
 {

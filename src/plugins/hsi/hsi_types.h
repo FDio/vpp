@@ -60,6 +60,7 @@ typedef struct hsi_udp_drain_cache_req_ hsi_udp_drain_cache_req_t;
   _ (tcp_drain_started, u64, "tcp-drain-started")                                                  \
   _ (tcp_drain_completed, u64, "tcp-drain-completed")                                              \
   _ (tcp_drain_stalled, u64, "tcp-drain-stalled")                                                  \
+  _ (tcp_drain_transport_closed, u64, "tcp-drain-transport-closed")                                \
   _ (tcp_drain_cached, u64, "tcp-drain-cached")                                                    \
   _ (tcp_drain_cache_overflow, u64, "tcp-drain-cache-overflow")                                    \
   _ (tcp_drain_cache_dropped, u64, "tcp-drain-cache-dropped")                                      \
