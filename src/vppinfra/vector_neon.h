@@ -232,6 +232,10 @@ u16x8_sum_elts (u16x8 v)
 
 #define u8x16_word_shift_left(x,n)  vextq_u8(u8x16_splat (0), x, 16 - n)
 #define u8x16_word_shift_right(x,n) vextq_u8(x, u8x16_splat (0), n)
+#define u16x8_word_shift_left(x, n)                                                                \
+  ((u16x8) u8x16_word_shift_left ((u8x16) (x), (n) * sizeof (u16)))
+#define u16x8_word_shift_right(x, n)                                                               \
+  ((u16x8) u8x16_word_shift_right ((u8x16) (x), (n) * sizeof (u16)))
 
 always_inline u32x4
 u32x4_interleave_hi (u32x4 a, u32x4 b)
