@@ -1179,8 +1179,10 @@ session_transport_reset_notify (transport_connection_t * tc)
       return;
     }
   session_set_state (s, SESSION_STATE_TRANSPORT_CLOSING);
-  app_wrk = app_worker_get (s->app_wrk_index);
-  app_worker_reset_notify (app_wrk, s);
+
+  app_wrk = app_worker_get_if_valid (s->app_wrk_index);
+  if (app_wrk)
+    app_worker_reset_notify (app_wrk, s);
 }
 
 int

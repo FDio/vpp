@@ -186,6 +186,7 @@ struct hsi_tcp_drain_start_req_
 {
   session_handle_t session_handle;
   session_handle_t peer_session_handle;
+  hsi_track_flags_t flags;
 };
 
 struct hsi_udp_drain_
@@ -210,6 +211,7 @@ struct hsi_udp_drain_start_req_
 {
   session_handle_t session_handle;
   session_handle_t peer_session_handle;
+  hsi_track_flags_t flags;
 };
 
 struct hsi_udp_drain_cache_req_
@@ -313,6 +315,37 @@ static_always_inline u8
 hsi_session_is_hsi_owned (session_t *s)
 {
   return s->app_wrk_index == APP_INVALID_INDEX;
+}
+
+/*
+ * If app wants cleanup notifications, save the app worker HSI takes the
+ * session from in al_index, which is only used by listeners. Must be called
+ * before HSI takes ownership of the session.
+ */
+static_always_inline void
+hsi_session_save_app_wrk (session_t *s, hsi_track_flags_t flags)
+{
+  if (flags & HSI_TRACK_F_NOTIFY_CLEANUP)
+    s->al_index = s->app_wrk_index;
+}
+
+/* No-op, i.e., session stays hsi owned, if no app worker was saved */
+static_always_inline void
+hsi_session_restore_app_wrk (session_t *s)
+{
+  s->app_wrk_index = s->al_index;
+}
+
+/*
+ * Sessions handed back to their app worker for cleanup notifications stay
+ * valid until the app is notified but their transport is already deleted.
+ */
+static_always_inline session_t *
+hsi_session_get_owned_if_valid (session_handle_tu_t sh)
+{
+  session_t *s = session_get_from_handle_if_valid (sh);
+
+  return s && hsi_session_is_hsi_owned (s) ? s : 0;
 }
 
 static_always_inline hsi_tcp_tracker_t *
@@ -566,15 +599,23 @@ hsi_udp_drain_pool_put_index (hsi_worker_t *wrk, u32 drain_index)
 static_always_inline session_t *
 hsi_session_peer_get_if_valid (session_handle_tu_t sh)
 {
-  if (sh.thread_index == vlib_get_thread_index ())
-    return session_get_from_handle_if_valid (sh);
+  session_t *s;
 
-  return session_get_from_handle_safe (sh);
+  if (sh.thread_index == vlib_get_thread_index ())
+    s = session_get_from_handle_if_valid (sh);
+  else
+    s = session_get_from_handle_safe (sh);
+
+  /* Peer transport is gone, e.g., peer is waiting for app cleanup */
+  if (s && s->session_state == SESSION_STATE_TRANSPORT_DELETED)
+    return 0;
+
+  return s;
 }
 
 int hsi_track_sessions_compatible (session_t *s, session_t *peer_s);
-int hsi_track_tcp (session_t *s, session_t *peer_s);
-int hsi_track_udp (session_t *s, session_t *peer_s);
+int hsi_track_tcp (session_t *s, session_t *peer_s, hsi_track_flags_t flags);
+int hsi_track_udp (session_t *s, session_t *peer_s, hsi_track_flags_t flags);
 
 void hsi_session_cleanup_fifos (session_t *s);
 void hsi_session_program_cleanup (session_t *s);
