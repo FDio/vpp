@@ -74,6 +74,16 @@ hsi_tcp_tracked_connection_action (vlib_main_t *vm, vlib_buffer_t *b, tcp_connec
 				     cleanup_session);
 }
 
+/*
+ * Committed udp connections are tracked from the peer's snapshot. Other
+ * threads migrate them, draining connections are handled by the owner.
+ */
+static_always_inline u8
+hsi_udp_connection_is_committed (udp_connection_t *uc)
+{
+  return uc->c_flags & TRANSPORT_CONNECTION_F_SPLICED;
+}
+
 void hsi_udp_handle_tracked_connection (vlib_main_t *vm, vlib_buffer_t *b, udp_connection_t *uc,
 					void *ip_hdr, udp_header_t *udp_hdr, u8 is_ip4);
 int hsi_udp_connection_is_draining (udp_connection_t *uc);
