@@ -1,0 +1,72 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5885393f_14b10bed",
+        "filename": "src/plugins/http/http1/http1.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 230,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-11-05T22:54:43Z",
+      "side": 1,
+      "message": "available includes staged bytes plus everything queued in the transport rx fifo, including body data. both request and response paths call this before calculating how much body fits in the app rx fifo.",
+      "revId": "dc9567690d7d0eb40f3d13b885cd8699cd9f6e53",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6f9ce978_1b3704e0",
+        "filename": "src/plugins/http/http1/http1.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 1236,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-11-05T22:54:43Z",
+      "side": 1,
+      "message": "this still search for complete CRLF terminated line before parsing method, target, and version. preserving delimiter-search offset only partially addresses earlier comment. please parse METHOD -\u003e TARGET -\u003e VERSION -\u003e CRLF incrementally, keeping parser state and target/query offsets in req across transport rx events, reject invalid methods and oversized targets once detectable, also avoid copying entire available fifo range merely to locate delimiters.",
+      "revId": "dc9567690d7d0eb40f3d13b885cd8699cd9f6e53",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "87b437c3_506237d5",
+        "filename": "src/plugins/http/http1/http1.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 1323,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-11-05T22:54:43Z",
+      "side": 1,
+      "message": "listener was validated in http_conn_prepare_request(), but it can disappear while the first request is incomplete. prepared app session is already SESSION_STATE_ACCEPTING, whereas app_worker_stop_listen_session() only cancels CREATED sessions. completing the headers can therefore queue SESSION_CTRL_EVT_ACCEPTED with a stale listener_handle.\nplease revalidate the listener before notifying acceptance. if it disappeared, keep HTTP_CONN_F_NO_APP_SESSION set, disconnect transport, and let existing cleanup path release pending session and fifos without app notifications.",
+      "revId": "dc9567690d7d0eb40f3d13b885cd8699cd9f6e53",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "373639fb_43c0fc66",
+        "filename": "src/plugins/http/test/http_test.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 2211,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-11-05T22:54:43Z",
+      "side": 1,
+      "message": "session_alloc() requires initialized session workers, on a fresh VPP instance, test http rx-publication and test http all reach this allocation with session_main.wrk \u003d\u003d NULL. enable sessions before allocating test resources using vnet_session_enable_disable(), see tcp test",
+      "revId": "dc9567690d7d0eb40f3d13b885cd8699cd9f6e53",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
